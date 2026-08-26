@@ -1,0 +1,53 @@
+# graph_project_docs_manager - TodoList
+# 結構化版本管理與任務追蹤
+#
+# 此檔案是版本索引的 Source of Truth。
+# get_current_version() 優先解析此檔案中 status=active 的版本。
+#
+# 本專案不預先將功能劃分到 v1 / v2：所有應做的功能先討論清楚並文件化，
+# 再依序安排實作順序。本檔只登記「已經發生」與「進行中」的版本，
+# 不預先登記尚未定案範圍的未來版本。
+
+meta:
+  project: "graph_project_docs_manager"
+  architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
+  last_updated: "2026-08-26"
+  maintainer: "rosemary-project-manager"
+
+versions:
+  - version: "0.0.1"
+    codename: "Foundation"
+    description: "Flutter 專案骨架、FVM 版本釘選、雙層測試、多語系"
+    status: "completed"
+    worklog: "docs/work-logs/v0/v0.0/v0.0.1/"
+    notes: |
+      建立 macOS 桌面基礎架構。發布通路自 Mac App Store 改為
+      Developer ID + notarization，App Sandbox 關閉——實測沙盒下
+      無法執行 doc CLI 亦無法讀取任意專案資料夾。
+      security-scoped bookmark 實作因此移除，改存路徑字串。
+
+  - version: "0.0.2"
+    codename: "Intake"
+    description: "設計與選型訪談，產出需求追蹤文件"
+    status: "completed"
+    proposals:
+      - PROP-001
+      - PROP-002
+      - PROP-003
+      - PROP-004
+    worklog: "docs/work-logs/v0/v0.0/v0.0.2/"
+    notes: |
+      saas-tech-selection Stage 0-6 全程。產出 PROP-001~004（皆 confirmed）、
+      SPEC-001（畫面狀態矩陣，26 狀態 6 FR）、UC-01~06（皆含結構化 flow 區塊）、
+      domain-map（7 domain）、9 個 EVT、0.1 展示介面版型定案。
+
+      六個 UC 的結構化 flow 使本專案成為 FlowStep 的第二份獨立語料。
+
+  - version: "0.0.3"
+    codename: "Toolkit"
+    description: "第三方套件選型評估"
+    status: "active"
+    worklog: "docs/work-logs/v0/v0.0/v0.0.3/"
+    notes: |
+      訪談階段未涵蓋的選型議題：markdown 渲染、markdown 編輯、
+      git 變更記錄。以真實語料實測後定案，不憑套件描述決定。

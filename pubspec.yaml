@@ -18,7 +18,7 @@ dependencies:
   intl: any
   file_selector: ^1.1.0
   shared_preferences: ^2.5.5
-
+  flutter_markdown_plus: ^1.0.12
 dev_dependencies:
   flutter_test:
     sdk: flutter

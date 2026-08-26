@@ -589,3 +589,61 @@ Flutter 官方對 application（非 library）的建議本即為 commit lock 檔
 
 graph schema 允許 `\d{2,}`，因此其他 consumer 專案可能存在三位數 UC。
 本 App 的解析須容納兩者，不可硬編碼位數。
+
+---
+
+## 0.0.3：選型評估
+
+### markdown 渲染：`flutter_markdown_plus`（票 `0.0.3-W1-001`）
+
+`flutter_markdown` 已被 Flutter 官方標記 `discontinued`，pub.dev metadata
+直接指定接替者為 `flutter_markdown_plus`。候選為該接替者與 `gpt_markdown`
+（更新最頻繁，2026-08-23）。
+
+以本專案 `docs/` 的真實內容實測（表格、YAML flow block、程式碼區塊、
+行內程式碼、中文長段落、巢狀清單、引用區塊），並另做標題階層隔離測試：
+
+| 面向 | flutter_markdown_plus | gpt_markdown |
+|------|----------------------|--------------|
+| 依賴足跡 | 1（`markdown`） | 8（含 `flutter_math_fork`、`flutter_svg`） |
+| 樣式覆寫 | 宣告式樣式表，27 個可覆寫欄位 | 命令式 builder 回呼，9 個 |
+| 文字可選取 | 內建 `selectable` 參數 | 需自行包 `SelectionArea` |
+| 標題階層 | H3/H4/H5 差異小 | 五階分明，H1 下有分隔線 |
+| 行內程式碼 | 僅換字型 | 有底色框 |
+| 程式碼區塊 | 淡底色 | 語言標籤 + Copy code 按鈕 |
+| 表格 | 完整框線、儲存格換行 | 內容寬度、表頭底色 |
+
+**採用 `flutter_markdown_plus`。**
+
+決定理由不是「現在誰看起來好」，而是**誰的缺點改得動**：
+`flutter_markdown_plus` 的兩個缺點（標題階層扁平、行內程式碼無底色）
+正好落在它那 27 個樣式欄位能修的範圍內；`gpt_markdown` 的缺點
+（8 個依賴，含本專案用不到的 LaTeX 與 SVG 渲染器）不能修。
+
+`gpt_markdown` 的 Copy code 按鈕與語言標籤是 LLM 對話場景的介面家具，
+對本專案非必要；其較佳的標題階層可透過樣式表在採用方案上複製。
+
+**實測方法留記**：以 `RepaintBoundary.toImage` 在 macOS 整合測試中截圖比較。
+首次以單一混合文件目視比較時，誤判 `gpt_markdown` 的標題階層有缺陷；
+隔離測試後發現剛好相反。**混合文件的目視比較不足以下結論。**
+
+### 更正：先前以版本切範圍的框法
+
+專案早期將 git 變更記錄記為「延後，非核心價值」、編輯能力記為
+「首版唯讀，另立提案」。該框法以版本劃分範圍，與本專案方法論衝突——
+**所有應做的功能先討論清楚再排順序，不預先劃分到 v1 / v2**。
+
+正確狀態為**尚未討論**。兩者已納入 0.0.3 的選型議題。
+
+### git 變更記錄：成本實測（尚未定案）
+
+先前估計「精確版為 O(commits × files)，成本高」是錯的。實測
+（flutter_balance，9409 commits）：
+
+| 做法 | 耗時 |
+|------|------|
+| 逐檔 `git log`（1346 檔） | 0.21 秒 × 1346 = 約 4.5 分鐘 |
+| 單次 `git log --name-only -- docs/` | **1.04 秒**，輸出 1.64 MB |
+
+**文件層級的變更記錄很便宜**；昂貴的是每條**邊**的變更歷史
+（需逐 commit diff 檔案內容）。兩者應分開決策。
