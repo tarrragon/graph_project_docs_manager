@@ -319,3 +319,73 @@ Stage 3 的七個核心問題有一半在本專案退化（無後端、單使用
 flutter_balance 的 130 張 ticket frontmatter 含未閉合的單引號字串，
 斷點總落在 `how.strategy`，導致 YAML 解析失敗。成因在 ticket 寫入端，
 非本 App 的解析問題。
+
+### 2026-08-26：Stage 4 技術維度定案
+
+多數維度在本專案退化：
+
+| 維度 | 狀態 |
+|------|------|
+| state-storage | 退化——唯一持久狀態是工作資料夾路徑字串 |
+| deployment-platform | 退化為打包與 notarization（見 PROP-001） |
+| security | 退化——本機工具，整個選定資料夾可讀 |
+| async-queue | N/A——無跨程序訊息 |
+| observability | 已於 Stage 3 定案：破洞報告即診斷入口 |
+| cache | **不做**——依視圖惰性載入已足夠，不提前最佳化 |
+| capacity-performance | 見下方載入策略 |
+| verification-surface | 見下 |
+
+#### 狀態管理：Riverpod
+
+理由是**生態一致性而非技術優越性**。框架已綁定 Riverpod：
+`dart-provider-architecture` skill 明文為 Riverpod 規範（含必接線 provider
+與 wiring test 配對規則）、`parsley-flutter-developer` 代理人假設 Provider
+模型、flutter_balance 亦採用。選擇其他方案等於放棄整套現成規範與代理人支援。
+
+#### 載入策略：依視圖惰性，而非依欄位
+
+**原本的「先建圖、ticket 詳情用到才讀」在欄位層級不成立**：5W1H
+（`where` / `why` / `how` / `acceptance`）全部位於 frontmatter，
+與 Graph 需要的邊（`blockedBy` / `relatedTo` / `parent_id` / `source_ticket`）
+在同一個 YAML 區塊。無法只解析半個 block——讀了邊等於讀了詳情。
+
+實測（flutter_balance，Python + PyYAML 為粗略上界）：
+
+| 資料 | 檔案數 | 耗時 |
+|------|-------|------|
+| 圖譜節點（PROP/SPEC/UC/EVT/DomainBundle） | **16** | ~20 ms |
+| Ticket | **1338** | ~1.9 s（11.6 MB） |
+
+**核心場景（domain ↔ UC flow 穿透）完全不需要 ticket**，兩者差兩個數量級。
+因此惰性的正確切法是依視圖：
+
+- 開 App → 解析 16 個節點檔 → domain/UC 圖立即可用
+- 點進 ticket 清單或「什麼卡住了」→ 才付 1.9 秒，帶進度指示
+
+這個切法成立的原因是 domain map 已把 Graph 與 TicketDetail 分成兩個 domain，
+而它們的**資料來源恰好也是分離的**（`docs/` 下的節點檔 vs
+`docs/work-logs/**/tickets/`）。切分理由是變更理由不同，結果連載入時機
+都能分開——這是第二次出現「為 A 理由畫的邊界在 B 面向也成立」。
+
+ticket 解析需置於 isolate 或分塊執行：1.9 秒即使在 Dart 快一倍，
+仍會凍住 UI 約一秒。節點解析（~20ms）可留在主執行緒。
+
+#### verification-surface：自動化為主，0.1 的驗證是設計版型比較
+
+自動化驗證已就位並持續使用：
+
+```
+fvm flutter analyze
+fvm flutter test test/                        內層契約，~0.3s
+fvm flutter test integration_test/ -d macos   外層行為，需編譯
+```
+
+已知雜訊：`Failed to foreground app; open returned 1` 為 macOS 上
+integration_test 的常態，不影響結果。
+
+環境釘選：Flutter 3.47.1（`.fvmrc`）、macOS 12.0+ 部署目標、
+視窗下限 960×640（契約測試守護）。
+
+**0.1 階段不採用「人手動開 App 觀察」作為驗證手段**——該階段無資料可看，
+App 本身即展示殼，驗證形式改為**以設計技能生成多種版型配置並比較**。
+手動觀察留待有真實資料的階段。
