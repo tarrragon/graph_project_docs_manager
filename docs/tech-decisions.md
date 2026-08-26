@@ -228,3 +228,47 @@ monitor、screen_clock（擱置中）可作參考語料。
 兩者同屬「索引與檔案分歧」族，且第一個與先前發現的
 `dispatch-record-hook.py` 誤報同構——**檢查器只有二元輸出，卻要表達三態**
 （欄位不存在 / 值已相同 / 已更新）。
+
+### 2026-08-26：Stage 2 完成，domain map 與 event catalog 落檔
+
+七個 domain（Workspace / Schema / Corpus / Graph / TicketDetail / Layout /
+Diagnostics）與九個 event，見 `docs/domain-map.md` 與 `docs/events/`。
+
+三項關鍵切分決策：
+
+1. **不照抄上游 schema 的節點型別。** 那是「被觀察物的結構」，不是本 App
+   的責任邊界。照抄會切出 `PropManager` 這類以資料表為單位的偽領域。
+   實際依據是變更理由的來源。
+2. **Ticket 分兩層。** 1295 張 vs 約 12 個其他節點，差兩個數量級且結構不同。
+   Graph 持有輕節點，TicketDetail 持有 5W1H 全文。
+3. **Corpus 是唯一的解析者。** 三個消費方各自投影，避免容錯規則分歧。
+
+Commodity check（本專案退化為「用套件 vs 自己寫」）：矩陣委派
+`two_dimensional_scrollables`（publisher 為 **flutter.dev** 官方），
+泳道自建（產品差異化，且無對應套件——`graphview` 等皆為力導向或樹狀）。
+
+### 2026-08-26：第三個框架工具鏈缺陷（`doc validate-filenames` 對 EVT 誤判）
+
+`doc create event --domain X` 產生的檔名，被 `doc validate-filenames`
+判為違規，訊息為「應以 EVT-數字 開頭」。**CLI 產生的檔案被 CLI 自己的
+驗證器拒絕。**
+
+四個獨立來源證實驗證器是錯的一方：
+
+| 來源 | 規定 |
+|------|------|
+| schema `id_pattern` | `^EVT-[A-Z0-9]+-\d{3}$`（要求 DOMAIN 區段） |
+| schema `carrier` | `docs/events/{domain}/EVT-{DOMAIN}-NNN-{slug}.md` |
+| `event-template.md` | `EVT-{DOMAIN}-{NNN}-{簡短描述}.md` |
+| flutter_balance 實際檔案 | `EVT-BALANCE-001-盤點快照已儲存.md` |
+
+根因在 `doc_system/commands/validate.py:279-282`：驗證器套用通用規則
+`^{PREFIX}-\d+`，而 EVT 的 ID 格式為 `EVT-{DOMAIN}-{NNN}`，永遠不匹配。
+
+值得注意的是**配號器本身沒有問題** —— 它正確產生了 per-domain 序號
+（CORPUS-001/002/003、SCHEMA-001/002），與 flutter_balance 的
+BALANCE-001~005 一致。所以「配號器盲區」這個訊息描述的問題並不存在，
+盲的是驗證器。
+
+不阻塞：EVT 的 `doc validate` 全部通過（9/9 符合 EVT schema）。
+已回報上游。

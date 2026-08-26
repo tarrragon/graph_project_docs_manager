@@ -34,7 +34,7 @@ proposals:
   checklist: []
 - id: PROP-004
   title: presentation shell and domain view layout
-  status: draft
+  status: discussing
   proposed: '2026-08-26'
   confirmed_at: null
   target_version: null
