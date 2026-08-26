@@ -10,7 +10,7 @@ target_version: null
 priority: P1
 
 outputs:
-  spec_refs: []
+  spec_refs: [SPEC-001]
   usecase_refs: []
   ticket_refs: []
 

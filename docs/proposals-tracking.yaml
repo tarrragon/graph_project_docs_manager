@@ -39,9 +39,15 @@ proposals:
   confirmed_at: '2026-08-26'
   target_version: null
   source: ''
-  spec_refs: []
+  spec_refs:
+  - SPEC-001
   usecase_refs: []
   ticket_refs: []
   checklist: []
 usecases: []
-specs: []
+specs:
+- id: SPEC-001
+  title: 畫面狀態矩陣與 gate 退出路徑
+  status: draft
+  domain: ui
+  source_proposal: PROP-004
