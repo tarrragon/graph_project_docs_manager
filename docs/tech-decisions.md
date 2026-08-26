@@ -674,3 +674,40 @@ graph schema 允許 `\d{2,}`，因此其他 consumer 專案可能存在三位數
 十倍規模即 312 MB）。早期警訊為輸出位元組數超過閾值；緩解手段為
 `--since` 或路徑範圍收窄。淺層 clone 會使「首次出現」時點錯誤，
 須以 `git rev-parse --is-shallow-repository` 偵測並標示。
+
+### markdown 編輯模型：直接改檔 + CLI 驗證（票 `0.0.3-W1-002`）
+
+**問題原本被框窄了。** 原框架是「選哪個 markdown 編輯器套件」，
+反向框架檢查後發現真正的問題是「編輯的寫入責任歸誰」。
+
+實測推翻了 CLI 寫入路徑：
+
+| 對象 | CLI 可編輯範圍 |
+|------|---------------|
+| doc CLI 的變更型指令 | 3 個（`create`／`batch-init`／`update`），且 `update` 只改 `status` |
+| ticket track 的變更型子命令 | 32 個 |
+| 圖譜節點（PROP/SPEC/UC/EVT/DomainBundle） | **僅 `status`** |
+| schema 的 16 條邊 | **僅 4 條**可經 CLI 編輯 |
+
+即使投入實作，CLI 路徑也只覆蓋 25% 的邊，其餘仍須直接改檔——等於同時
+維護兩套寫入路徑，而兩者分歧的形態正是本專案已撞到六次的索引不同步。
+
+**採用方案**：
+
+- 寫入：本 App 直接改檔
+- frontmatter 與結構化區塊：結構化表單，欄位定義取自 `tracking_schema.json`
+- markdown 內文：`re_editor`，**關閉 markdown 語法高亮**
+- 驗證：寫入後立即呼叫 CLI 的唯讀驗證器（`doc validate`／`uc verify`／
+  `validate-filenames`），把索引不同步從靜默錯誤變成可偵測的紅燈
+
+**編輯器實測**（`re_editor` 0.10.0）：首次渲染 744 ms、8000 行大檔換入
+122 ms、中文插入 108 ms，虛擬化渲染有效。
+
+但 `re_highlight` 的 markdown mode **將 snake_case 識別符中的底線誤判為
+強調標記**，導致大段內文錯誤斜體化。關閉語法高亮的對照組全部正確，
+確認缺陷在高亮模式而非編輯器本身。本專案語料充斥 snake_case
+（`source_proposal`、`where.files`、`tracking_schema.py`），該缺陷會普遍發作。
+
+**CLI 呼叫的環境依賴**：硬性需要使用者裝有 `uv`。系統內建 python3 為
+3.9.6，執行 doc CLI 會因 PEP 604 的 `X | None` 語法直接 `TypeError`。
+無 `uv` 時為 `ProcessException`，可辨識並降級為「無法驗證」而非「無法編輯」。
