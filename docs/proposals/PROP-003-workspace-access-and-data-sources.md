@@ -11,7 +11,7 @@ priority: P0
 
 outputs:
   spec_refs: []
-  usecase_refs: []
+  usecase_refs: [UC-01]
   ticket_refs: []
 
 related_proposals: [PROP-001]

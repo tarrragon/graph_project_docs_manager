@@ -29,7 +29,8 @@ proposals:
   target_version: null
   source: ''
   spec_refs: []
-  usecase_refs: []
+  usecase_refs:
+  - UC-01
   ticket_refs: []
   checklist: []
 - id: PROP-004
@@ -41,10 +42,39 @@ proposals:
   source: ''
   spec_refs:
   - SPEC-001
-  usecase_refs: []
+  usecase_refs:
+  - UC-02
+  - UC-03
+  - UC-04
+  - UC-05
+  - UC-06
   ticket_refs: []
   checklist: []
-usecases: []
+usecases:
+- id: UC-01
+  title: 開啟專案並抵達可用狀態
+  status: draft
+  source_proposal: PROP-003
+- id: UC-02
+  title: 依 domain 盤點變更影響面
+  status: draft
+  source_proposal: PROP-004
+- id: UC-03
+  title: 理解一條 flow 貫穿哪些 domain
+  status: draft
+  source_proposal: PROP-004
+- id: UC-04
+  title: 追溯一項需求的實現鏈
+  status: draft
+  source_proposal: PROP-004
+- id: UC-05
+  title: 找出被阻擋的工作
+  status: draft
+  source_proposal: PROP-004
+- id: UC-06
+  title: 找出並修復文件破洞
+  status: draft
+  source_proposal: PROP-004
 specs:
 - id: SPEC-001
   title: 畫面狀態矩陣與 gate 退出路徑
