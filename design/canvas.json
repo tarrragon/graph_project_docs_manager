@@ -1,0 +1,107 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "DomainSwimlane.dc.html",
+      "x": 1400,
+      "y": 0,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "TicketListA.dc.html",
+      "x": 0,
+      "y": 980,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "TicketListB.dc.html",
+      "x": 1400,
+      "y": 980,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "UCFlowB.dc.html",
+      "x": 0,
+      "y": 1960,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "TraceA.dc.html",
+      "x": 1400,
+      "y": 1960,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "GapReportA.dc.html",
+      "x": 0,
+      "y": 2940,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "NodeDetailB.dc.html",
+      "x": 1400,
+      "y": 2940,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "ProjectPickerD.dc.html",
+      "x": 0,
+      "y": 3920,
+      "w": 1280,
+      "h": 800
+    }
+  ],
+  "annotations": [
+    {
+      "id": "row-1",
+      "x": -340,
+      "y": 40,
+      "w": 290,
+      "text": "Domain 視圖 · 矩陣與泳道雙模式"
+    },
+    {
+      "id": "row-2",
+      "x": -340,
+      "y": 1020,
+      "w": 290,
+      "text": "Ticket 清單 · 列表與主題雙模式"
+    },
+    {
+      "id": "row-3",
+      "x": -340,
+      "y": 2000,
+      "w": 290,
+      "text": "UC Flow 視圖 · 追溯視圖"
+    },
+    {
+      "id": "row-4",
+      "x": -340,
+      "y": 2980,
+      "w": 290,
+      "text": "破洞報告 · 節點詳情"
+    },
+    {
+      "id": "row-5",
+      "x": -340,
+      "y": 3960,
+      "w": 290,
+      "text": "專案切換 · 側欄浮層，非獨立畫面"
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

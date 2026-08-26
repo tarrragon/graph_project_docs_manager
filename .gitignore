@@ -100,3 +100,6 @@ __pycache__
 coverage/
 htmlcov/
 .claude/tool-results/
+
+# 設計畫布的組裝產物（可由 design/gen.py 重新產生）
+design/docs-graph-ui-layouts.html

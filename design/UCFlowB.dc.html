@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin:0; font-family:-apple-system, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#2E6F6A; } a:hover { color:#0F4B47; }
+  </style>
+</helmet>
+<div style="width:1280px;height:800px;background:#F4F6F5;display:flex;
+     flex-direction:column;overflow:hidden;color:#181C1B">
+  <div style="height:36px;flex:none;background:#E9EEED;
+       border-bottom:1px solid #C7D2D0;display:flex;align-items:center;
+       justify-content:center">
+    <span style="font-size:12px;color:#5C6866;font-weight:500">專案文件流</span>
+  </div>
+  <div style="flex:1;display:flex;min-height:0">
+    <div style="width:172px;flex:none;background:#FFFFFF;
+         border-right:1px solid #E2E9E8;display:flex;flex-direction:column;
+         gap:2px;padding:12px 10px">
+      <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;
+           margin-bottom:8px;border-radius:8px;border:1px solid #E2E9E8;
+           background:#F4F6F5">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span style="flex:1;min-width:0;font-size:11.5px;font-weight:600;
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap">flutter_balance</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">Domain</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:#E0EFED"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F4B47" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M4 6h6M4 12h10M4 18h6"/><circle cx="18" cy="12" r="2.5"/></svg><span style="font-size:13px;color:#0F4B47;font-weight:600">UC Flow</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 3v6M12 15v6M5 12h14"/><circle cx="12" cy="12" r="2.5"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">追溯</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">Ticket</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 9v4M12 17h.01"/><path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">破洞</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">詳情</span></div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+      <div style="height:52px;flex:none;padding:0 20px;display:flex;
+           align-items:center;justify-content:space-between;
+           border-bottom:1px solid #E2E9E8;background:#FFFFFF">
+        <div style="display:flex;flex-direction:column;gap:1px">
+          <span style="font-size:15px;font-weight:600">UC Flow 視圖</span>
+          <span style="font-size:11.5px;color:#8A9694">方案 B · 垂直步驟，domain 與事件成欄</span>
+        </div>
+        
+      </div>
+      <div style="flex:1;min-height:0;overflow:hidden"><div style="height:100%;padding:20px;display:flex;box-sizing:border-box;flex-direction:column;gap:14px;overflow:hidden"><div style="background:#FFFFFF;border:1px solid #E2E9E8;border-radius:11px;padding:14px;flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;overflow:hidden"><div style="display:grid;grid-template-columns:26px 1fr 118px 1fr;gap:12px;padding-bottom:7px;border-bottom:1px solid #C7D2D0;font-size:10.5px;color:#8A9694;font-weight:600"><span></span><span>步驟</span><span style="text-align:center">Domain</span><span>發送事件</span></div><div style="flex:1;min-height:0;overflow:hidden"><div style="display:grid;grid-template-columns:26px 1fr 118px 1fr;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #E2E9E8"><span style="width:24px;height:24px;border-radius:12px;background:#E0EFED;color:#0F4B47;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">1</span><span style="font-size:12.5px;font-weight:500">選擇資料夾</span><span style="font-size:11.5px;color:#0F4B47;background:#E0EFED;padding:3px 8px;border-radius:6px;text-align:center;font-weight:550">Workspace</span><div style="display:flex;gap:5px;flex-wrap:wrap"><span style="padding:2px 7px;border-radius:5px;background:#E9EEED;color:#5C6866;font-size:10.5px;font-weight:600;white-space:nowrap">emits WorkspaceSelected</span></div></div><div style="display:grid;grid-template-columns:26px 1fr 118px 1fr;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #E2E9E8"><span style="width:24px;height:24px;border-radius:12px;background:#E0EFED;color:#0F4B47;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">2</span><span style="font-size:12.5px;font-weight:500">載入型別表</span><span style="font-size:11.5px;color:#0F4B47;background:#E0EFED;padding:3px 8px;border-radius:6px;text-align:center;font-weight:550">Schema</span><div style="display:flex;gap:5px;flex-wrap:wrap"><span style="padding:2px 7px;border-radius:5px;background:#E9EEED;color:#5C6866;font-size:10.5px;font-weight:600;white-space:nowrap">emits SchemaLoaded</span></div></div><div style="display:grid;grid-template-columns:26px 1fr 118px 1fr;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #E2E9E8"><span style="width:24px;height:24px;border-radius:12px;background:#E0EFED;color:#0F4B47;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">3</span><span style="font-size:12.5px;font-weight:500">掃描目錄</span><span style="font-size:11.5px;color:#0F4B47;background:#E0EFED;padding:3px 8px;border-radius:6px;text-align:center;font-weight:550">Corpus</span><div style="display:flex;gap:5px;flex-wrap:wrap"></div></div><div style="display:grid;grid-template-columns:26px 1fr 118px 1fr;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #E2E9E8"><span style="width:24px;height:24px;border-radius:12px;background:#E0EFED;color:#0F4B47;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">4</span><span style="font-size:12.5px;font-weight:500">解析 frontmatter</span><span style="font-size:11.5px;color:#0F4B47;background:#E0EFED;padding:3px 8px;border-radius:6px;text-align:center;font-weight:550">Corpus</span><div style="display:flex;gap:5px;flex-wrap:wrap"><span style="padding:2px 7px;border-radius:5px;background:#E9EEED;color:#5C6866;font-size:10.5px;font-weight:600;white-space:nowrap">emits CorpusParsed</span><span style="padding:2px 7px;border-radius:5px;background:#FBE9E7;color:#B3261E;font-size:10.5px;font-weight:600;white-space:nowrap">emits ParseFailed</span></div></div><div style="display:grid;grid-template-columns:26px 1fr 118px 1fr;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #E2E9E8"><span style="width:24px;height:24px;border-radius:12px;background:#E0EFED;color:#0F4B47;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">5</span><span style="font-size:12.5px;font-weight:500">建圖與 union</span><span style="font-size:11.5px;color:#0F4B47;background:#E0EFED;padding:3px 8px;border-radius:6px;text-align:center;font-weight:550">Graph</span><div style="display:flex;gap:5px;flex-wrap:wrap"><span style="padding:2px 7px;border-radius:5px;background:#E9EEED;color:#5C6866;font-size:10.5px;font-weight:600;white-space:nowrap">emits GraphBuilt</span></div></div><div style="display:grid;grid-template-columns:26px 1fr 118px 1fr;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #E2E9E8"><span style="width:24px;height:24px;border-radius:12px;background:#E0EFED;color:#0F4B47;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">6</span><span style="font-size:12.5px;font-weight:500">計算版面</span><span style="font-size:11.5px;color:#0F4B47;background:#E0EFED;padding:3px 8px;border-radius:6px;text-align:center;font-weight:550">Layout</span><div style="display:flex;gap:5px;flex-wrap:wrap"><span style="padding:2px 7px;border-radius:5px;background:#E9EEED;color:#5C6866;font-size:10.5px;font-weight:600;white-space:nowrap">emits LayoutComputed</span></div></div></div></div></div></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

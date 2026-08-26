@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin:0; font-family:-apple-system, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#2E6F6A; } a:hover { color:#0F4B47; }
+  </style>
+</helmet>
+<div style="width:1280px;height:800px;background:#F4F6F5;display:flex;
+     flex-direction:column;overflow:hidden;color:#181C1B">
+  <div style="height:36px;flex:none;background:#E9EEED;
+       border-bottom:1px solid #C7D2D0;display:flex;align-items:center;
+       justify-content:center">
+    <span style="font-size:12px;color:#5C6866;font-weight:500">專案文件流</span>
+  </div>
+  <div style="flex:1;display:flex;min-height:0">
+    <div style="width:172px;flex:none;background:#FFFFFF;
+         border-right:1px solid #E2E9E8;display:flex;flex-direction:column;
+         gap:2px;padding:12px 10px">
+      <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;
+           margin-bottom:8px;border-radius:8px;border:1px solid #E2E9E8;
+           background:#F4F6F5">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span style="flex:1;min-width:0;font-size:11.5px;font-weight:600;
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap">flutter_balance</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">Domain</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M4 6h6M4 12h10M4 18h6"/><circle cx="18" cy="12" r="2.5"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">UC Flow</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:#E0EFED"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F4B47" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 3v6M12 15v6M5 12h14"/><circle cx="12" cy="12" r="2.5"/></svg><span style="font-size:13px;color:#0F4B47;font-weight:600">追溯</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">Ticket</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 9v4M12 17h.01"/><path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">破洞</span></div><div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:transparent"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6866" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><span style="font-size:13px;color:#5C6866;font-weight:450">詳情</span></div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+      <div style="height:52px;flex:none;padding:0 20px;display:flex;
+           align-items:center;justify-content:space-between;
+           border-bottom:1px solid #E2E9E8;background:#FFFFFF">
+        <div style="display:flex;flex-direction:column;gap:1px">
+          <span style="font-size:15px;font-weight:600">追溯視圖</span>
+          <span style="font-size:11.5px;color:#8A9694">方案 A · 樹狀展開，沿因果鏈往下</span>
+        </div>
+        
+      </div>
+      <div style="flex:1;min-height:0;overflow:hidden"><div style="height:100%;padding:20px;display:flex;box-sizing:border-box;flex-direction:column;gap:14px;overflow:hidden"><div style="background:#FFFFFF;border:1px solid #E2E9E8;border-radius:11px;padding:14px;flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;overflow:hidden"><div style="flex:1;min-height:0"><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:0px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg><span style="font-size:12px;font-weight:600;flex:1;min-width:0">PROP-001 交付形態與發布通路</span><span style="font-size:10.5px;color:#2E6F3E;font-weight:600">confirmed</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg><span style="font-size:12px;font-weight:450;flex:1;min-width:0">SPEC-001 沙盒與 entitlements 契約</span><span style="font-size:10.5px;color:#2E6F3E;font-weight:600">approved</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:48px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg><span style="font-size:12px;font-weight:450;flex:1;min-width:0">UC-01 開啟專案</span><span style="font-size:10.5px;color:#8A9694;font-weight:600">—</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:72px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 6l6 6-6 6"/></svg><span style="font-size:12px;font-weight:450;flex:1;min-width:0">0.1.0-W1-003 關閉 App Sandbox</span><span style="font-size:10.5px;color:#2E6F3E;font-weight:600">completed</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:72px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 6l6 6-6 6"/></svg><span style="font-size:12px;font-weight:450;flex:1;min-width:0">0.1.0-W1-004 契約測試斷言反轉</span><span style="font-size:10.5px;color:#2E6F3E;font-weight:600">completed</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:0px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg><span style="font-size:12px;font-weight:600;flex:1;min-width:0">PROP-002 圖譜 schema 消費方式</span><span style="font-size:10.5px;color:#2E6F3E;font-weight:600">confirmed</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg><span style="font-size:12px;font-weight:450;flex:1;min-width:0">SPEC-002 schema 載入與版本相容</span><span style="font-size:10.5px;color:#8A5A00;font-weight:600">draft</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:48px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg><span style="font-size:12px;font-weight:450;flex:1;min-width:0">UC-02 檢視穿透</span><span style="font-size:10.5px;color:#8A9694;font-weight:600">—</span></div><div style="display:flex;align-items:center;gap:8px;height:31px;padding-left:72px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9694" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 6l6 6-6 6"/></svg><span style="font-size:12px;font-weight:450;flex:1;min-width:0">（尚無 ticket）</span><span style="font-size:10.5px;color:#B3261E;font-weight:600">缺口</span></div></div></div></div></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
