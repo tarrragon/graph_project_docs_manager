@@ -1,0 +1,14 @@
+{
+  // 讓 VS Code 的 Dart 外掛改用 FVM 釘住的 SDK，而非全域 flutter。
+  // 沒有這行，IDE 的分析結果會來自 3.38.10，跟 CLI 的 3.47.1 不一致。
+  "dart.flutterSdkPath": ".fvm/flutter_sdk",
+
+  // .fvm/flutter_sdk 是整包 Flutter SDK 的 symlink。
+  // 不排除的話搜尋會掃進 SDK 原始碼，檔案監看也會吃掉大量資源。
+  "search.exclude": {
+    "**/.fvm/**": true
+  },
+  "files.watcherExclude": {
+    "**/.fvm/**": true
+  }
+}

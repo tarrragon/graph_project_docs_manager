@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- outgoing 連線。Release 樣板預設完全沒有網路權限，
+	     這是「debug 正常、打包後連不上網」最常見的成因。 -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- 使用者透過開啟／儲存面板主動選取的檔案與資料夾，可讀寫。 -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- security-scoped bookmark：讓上述授權在 App 重啟後仍然有效。 -->
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+</dict>
+</plist>

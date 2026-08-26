@@ -1,0 +1,34 @@
+name: graph_project_docs_manager
+description: "建立專案管理的文件流"
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # 全 App 尺寸基準：所有元件尺寸都經 ScreenUtil 換算，避免跨機型跑版
+  flutter_screenutil: ^5.9.3
+  # 多語系：提供 Material/Cupertino 內建元件的在地化字串
+  flutter_localizations:
+    sdk: flutter
+  # ARB 生成的程式碼會用到 intl 的日期／數字格式化，版本交由 SDK 決定
+  intl: any
+  file_selector: ^1.1.0
+  shared_preferences: ^2.5.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # 雙層測試的外層：真機／模擬器上的整合測試
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  # 依 l10n.yaml 從 lib/l10n/*.arb 生成 AppLocalizations。
+  # Flutter 3.32 起不再走 synthetic package，產物直接落在 lib/l10n/。
+  generate: true

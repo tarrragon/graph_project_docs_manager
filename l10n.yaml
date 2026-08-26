@@ -1,0 +1,14 @@
+# ARB 原始檔位置
+arb-dir: lib/l10n
+# 樣板語系：新增字串時以此檔為準，其他語系缺漏會在生成時警告。
+# 專案主語系為繁體中文，因此以它為樣板而非慣例上的英文。
+#
+# 這裡用 app_zh.arb 而非 app_zh_Hant.arb：gen-l10n 規定帶 script code
+# 的語系必須有無 script code 的 base locale 作為 fallback。讓 zh 直接
+# 等於繁中最簡潔；未來要支援簡中時，新增 app_zh_Hans.arb 即可，
+# 屆時 zh 仍為繁中 fallback。
+template-arb-file: app_zh.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+# 讓 AppLocalizations.of(context) 回傳非 nullable，省去呼叫端到處加 !
+nullable-getter: false

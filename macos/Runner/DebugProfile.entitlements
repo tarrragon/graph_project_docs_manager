@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<!-- incoming 連線：Flutter 的 hot reload 與 VM service 需要，僅 debug。 -->
+	<key>com.apple.security.network.server</key>
+	<true/>
+	<!-- outgoing 連線。樣板預設沒有這一項，缺了它連 HTTP 請求都會被 sandbox 擋掉。 -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- 使用者透過開啟／儲存面板主動選取的檔案與資料夾，可讀寫。 -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- security-scoped bookmark：讓上述授權在 App 重啟後仍然有效。
+	     沒有它，使用者每次開啟 App 都必須重新選一次資料夾。 -->
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+</dict>
+</plist>

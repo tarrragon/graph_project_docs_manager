@@ -27,3 +27,39 @@ doc/api/
 
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# ── Flutter app 補充（原檔為 Dart package 模板，以下為手動補齊）──
+
+# IntelliJ / Android Studio：專案設定屬個人環境，不入庫
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code：只保留團隊共用的設定，個人偏好與快取排除
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# macOS
+.DS_Store
+
+# 各平台編譯產物（子資料夾的 build 也一併排除）
+**/build/
+**/.dart_tool/
+
+# CocoaPods lock（iOS / macOS）
+ios/Podfile.lock
+macos/Podfile.lock
+
+# 其他
+*.log
+
+# FVM Version Cache
+.fvm/
+
+# 注意：lib/l10n/app_localizations*.dart 是 gen-l10n 的產物，但刻意「入庫」。
+# Flutter 3.32 起不再走 synthetic package，產物落在 lib/ 下；納入版控可讓
+# clone 後無需先執行生成即可開啟 IDE，語系變更也會出現在 diff 中可供審閱。
+# 請勿為它們新增忽略規則。

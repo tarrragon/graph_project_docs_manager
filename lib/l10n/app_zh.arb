@@ -1,0 +1,73 @@
+{
+  "@@locale": "zh",
+
+  "appTitle": "專案文件流",
+  "@appTitle": {
+    "description": "應用程式名稱，用於視窗標題與 AppBar"
+  },
+
+  "sectionRecentDocuments": "近期文件",
+  "@sectionRecentDocuments": {
+    "description": "首頁文件列表的區塊標題"
+  },
+
+  "statInProgress": "進行中",
+  "@statInProgress": {
+    "description": "統計卡片：處理中的文件數"
+  },
+
+  "statPendingReview": "待審閱",
+  "@statPendingReview": {
+    "description": "統計卡片：等待審閱的文件數"
+  },
+
+  "statArchived": "已歸檔",
+  "@statArchived": {
+    "description": "統計卡片：已封存的文件數"
+  },
+
+  "documentCount": "{count, plural, other{{count} 份文件}}",
+  "@documentCount": {
+    "description": "文件數量。中文無單複數變化，故僅有 other 分支",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "chooseWorkspaceFolder": "選擇工作資料夾",
+  "@chooseWorkspaceFolder": {
+    "description": "引導使用者授權本機資料夾存取的按鈕"
+  },
+
+  "folderAccessRationale": "請選擇一個資料夾，App 將在其中讀取與編輯文件。此授權會被記住，下次開啟不需重選。",
+  "@folderAccessRationale": {
+    "description": "說明為何需要資料夾存取權，顯示於選取面板之前"
+  },
+
+  "workspaceReady": "工作資料夾：{path}",
+  "@workspaceReady": {
+    "description": "已取得授權時顯示的目前資料夾",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+
+  "workspaceUnavailable": "無法存取先前的資料夾：{reason}",
+  "@workspaceUnavailable": {
+    "description": "授權失效時的說明，reason 由原生端提供",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+
+  "changeWorkspaceFolder": "變更資料夾",
+  "@changeWorkspaceFolder": {
+    "description": "已有工作資料夾時的重新選取按鈕"
+  }
+}
