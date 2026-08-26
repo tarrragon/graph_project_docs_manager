@@ -1,0 +1,999 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml"]
+# ///
+
+"""
+Acceptance Gate Hook - 驗收流程完整引導（Orchestrator）
+
+在 `ticket track complete` 執行前檢查並引導驗收流程。
+
+功能：
+- 監控 Bash 工具中的 ticket track complete 命令
+- 協調 8 個獨立 checker 模組執行驗收檢查
+- 生成 Hook 輸出（含 AskUserQuestion 場景提醒）
+
+檢查項目（由 acceptance_checkers/ 模組執行）：
+- 子任務完成度（阻塞）
+- 驗收記錄（警告）
+- ANA Ticket 後續 Ticket
+- Error-pattern 衝突（Step 2.7）
+- Error-pattern 新增（場景 #17）
+- 5W1H 完整性
+- Execution log 填寫
+- 同 Wave pending sibling tickets（場景 #9）
+- Ticket 規模（C1 移植，0.2.1-W3-052.1，警告不阻擋）
+- 檔案範圍職責邊界（C3 移植，0.2.1-W3-052.1，警告不阻擋）
+- 實驗器材殘留（阻擋）
+
+Exit Code：
+- 0 (EXIT_SUCCESS): 命令允許執行
+- 2 (EXIT_BLOCK): 阻止執行（子任務未完成）
+- 1 (EXIT_ERROR): Hook 執行錯誤
+
+Hook 類型: PreToolUse
+觸發時機: Bash 工具執行前，命令含 "ticket track complete" 或 "ticket track batch-complete"
+
+使用方式:
+    echo '{"tool_name":"Bash","tool_input":{"command":"ticket track complete 0.31.0-W4-036"}}' | python3 acceptance-gate-hook.py
+"""
+
+import sys
+import json
+import re
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, Any, Optional, Tuple, List, NamedTuple, TypedDict
+
+# 加入 hook_utils 路徑（相同目錄）
+_claude_dir = Path(__file__).resolve().parents[3]
+_hooks_dir = _claude_dir / "hooks"
+if str(_claude_dir) not in sys.path:
+    sys.path.insert(0, str(_claude_dir))
+if str(_hooks_dir) not in sys.path:
+    sys.path.insert(0, str(_hooks_dir))
+
+from lib import (
+    setup_hook_logging,
+    run_hook_safely,
+    read_json_from_stdin,
+    get_effort_level,
+    extract_tool_input,
+    parse_ticket_frontmatter,
+    check_error_patterns_changed,
+    get_project_root,
+    find_ticket_file,
+    save_check_log,
+    validate_hook_input,
+    is_subagent_environment,
+)
+from lib.hook_messages import GateMessages, CoreMessages, AskUserQuestionMessages, format_message
+
+from acceptance_checkers import (
+    extract_children_from_frontmatter,
+    is_doc_type,
+    is_ana_type,
+    check_children_completed_from_frontmatter,
+    verify_acceptance_record,
+    check_error_pattern_conflicts,
+    check_5w1h_completeness,
+    check_execution_log_filled,
+    check_ana_has_spawned_tickets,
+    find_pending_sibling_tickets,
+    check_multi_view_status,
+    filter_error_patterns_by_ticket_scope,
+    check_custom_h2_sections,
+    check_self_check_visibility,
+    check_ana_spawn_consistency,
+    check_spawn_requests,
+    check_phase4_review_evidence,
+    check_god_ticket_scale,
+    check_file_scope_diversity,
+    check_hook_protection_acceptance,
+    check_experiment_artifact_residual,
+)
+# W17-120.2 / PC-091: ana_spawned_checker 退場
+# ANA complete 阻擋判斷統一收斂到 children_checker（PC-091 路線：
+# ANA 落地統一用 --parent <ANA-ID>，spawned_tickets 對 ANA 重定位為弱 metadata）。
+# 既有 ana_spawned_checker.py 已 deprecated，僅保留 check_ana_has_spawned_tickets
+# 作為「無後續 ticket」的 missing 警告（不阻擋）。
+from acceptance_checkers.ticket_parser import get_ticket_start_time
+
+
+# ============================================================================
+# 資料結構定義
+# ============================================================================
+
+class TicketFrontmatter(TypedDict, total=False):
+    """Ticket Frontmatter 結構"""
+    id: str
+    title: str
+    type: str
+    status: str
+    children: str
+    spawned_tickets: str
+    created: str
+    started_at: str
+    priority: str
+
+
+class AcceptanceCheckResult(NamedTuple):
+    """驗收狀態檢查結果"""
+    should_block: bool
+    has_acceptance: bool
+    message: Optional[str]
+    has_new_error_patterns: bool
+    new_error_pattern_files: List[str]
+    pending_sibling_tickets: List[str] = []
+    task_type: str = ""
+    priority: str = ""
+    error_pattern_conflicts: List[str] = []
+    incomplete_5w1h_fields: List[str] = []
+    has_empty_execution_log: bool = False
+    multi_view_warning: Optional[str] = None
+    # W12-004 Phase 1：ANA spawned 非 terminal 警告專用欄位
+    # 獨立於 `message` 避免抑制 scene #9/#1 gate（`not check_result.message`）
+    spawned_non_terminal_warning: Optional[str] = None
+    # W17-072：非 Schema H2 章節清單（偵測 agent 自定義 H2 違規，warning 不阻擋）
+    custom_h2_sections: List[str] = []
+    # W17-064：Layer 1 自檢可觀測性 warning（缺 `### 自檢結果` 時非 None，warning 不阻擋）
+    self_check_warning: Optional[str] = None
+    # W1-080.1：Phase 4 審查證據 warning（IMP 缺 Phase 4 證據時非 None，warning 不阻擋）
+    phase4_review_warning: Optional[str] = None
+    # 0.2.1-W3-052.1：規模判準（C1 移植）違規清單，warning 不阻擋
+    god_ticket_scale_violations: List[str] = []
+    # 0.2.1-W3-052.1：職責邊界判準（C3 移植）違規清單，warning 不阻擋
+    responsibility_scope_violations: List[str] = []
+    # 0.4.1-W2-006：complete 與 git merge / set-acceptance / append-log 等寫入操作
+    # 串接於同一 Bash 呼叫時為 True，代表 acceptance / execution log 檢查因讀檔
+    # 時序早於同鏈操作執行而略過（避免滯後誤報，見 detect_chained_pre_complete_write）
+    chained_write_detected: bool = False
+
+
+# ============================================================================
+# 常數定義
+# ============================================================================
+
+EXIT_SUCCESS = 0
+EXIT_ERROR = 1
+EXIT_BLOCK = 2
+
+TICKET_ID_PATTERN = r'\d+\.\d+\.\d+-W\d+-\d+(?:\.\d+)*'
+
+# Error-pattern 衝突提醒訊息模板
+ERROR_PATTERN_CONFLICT_WARNING = (
+    "[WARNING] error-pattern 衝突檢查（Step 2.7）\n"
+    "本 Ticket 修改的模組與以下 error-pattern 相關，請確認是否已考慮這些已知問題：\n"
+    "{conflict_list}\n"
+    "建議：complete 前確認修改未引入已知的錯誤模式。"
+)
+
+# W17-072：自定義 H2 警告訊息模板
+# 對應 `.claude/rules/core/agent-definition-standard.md` v1.2.0「禁止自定義 H2」條款
+# 與 PC-110 根因 B 防護。
+CUSTOM_H2_WARNING = (
+    "[WARNING] 偵測到非 Schema H2 章節（W17-072）\n"
+    "本 Ticket body 含以下非 Schema H2 章節：\n"
+    "{h2_list}\n"
+    "依 `.claude/rules/core/agent-definition-standard.md` v1.2.0「禁止自定義 H2」條款，\n"
+    "實作內容應寫入 Schema 章節（Problem Analysis / Solution / Test Results 等），\n"
+    "如需子結構請使用 H3（`### 子標題`）組織。\n"
+    "建議：complete 前搬移自定義 H2 內容到對應 Schema 章節並降為 H3。"
+)
+
+
+# W17-064：Layer 1 自檢可觀測性 warning 訊息由 checker 直接組裝（含 ticket type 條件性說明），
+# 此處不另定義模板，warning 字串透過 `check_self_check_visibility` 回傳。
+
+
+# 0.2.1-W3-052.1：規模判準警告訊息模板（C1 God Ticket 移植）
+GOD_TICKET_SCALE_WARNING = (
+    "[WARNING] Ticket 規模偏大（0.2.1-W3-052.1）\n"
+    "本 Ticket 的 where.files 檔案數已超過建議拆分閾值：\n"
+    "{violation_list}\n"
+    "建議：依 `.claude/rules/core/cognitive-load.md` 任務拆分閾值評估是否拆分為子 Ticket。"
+)
+
+# 0.2.1-W3-052.1：職責邊界警告訊息模板（C3 Ambiguous Responsibility 移植）
+RESPONSIBILITY_SCOPE_WARNING = (
+    "[WARNING] Ticket 檔案範圍跨越多個 domain（0.2.1-W3-052.1）\n"
+    "本 Ticket 的 where.files 涵蓋的頂層路徑 domain 數已超過建議閾值：\n"
+    "{violation_list}\n"
+    "建議：確認是否屬單一職責，或依 domain 拆分為子 Ticket。"
+)
+
+
+# 0.4.1-W2-006：滯後讀檔誤報提示訊息模板
+# 對應 0.4.0-W3-006（merge 與 complete 同鏈）/ 0.4.1-W1-001（set-acceptance +
+# append-log 與 complete 同鏈）兩起實證：PreToolUse Hook 在整個 Bash 命令字串
+# 執行前觸發一次，若 complete 前段串接會改變驗收狀態的操作，Hook 讀檔當下這些
+# 操作尚未真正執行，讀到的必然是執行前（滯後）狀態。
+CHAINED_WRITE_INFO_NOTE = (
+    "[INFO] 偵測到同一命令鏈於 complete 前包含 git merge / set-acceptance / "
+    "append-log（0.4.1-W2-006）\n"
+    "本次 Hook 讀檔時機早於同鏈操作實際執行，acceptance / execution log 判定"
+    "已略過以避免滯後誤報（清單項目標記為 [--]）；\n"
+    "請以 `ticket track complete` 實際執行後的結果為準，不需額外二次查證。"
+)
+
+
+# ============================================================================
+# 命令識別
+# ============================================================================
+
+def _strip_quoted_spans(command: str) -> str:
+    """移除命令字串中單/雙引號包住的內容（0.2.1-W3-020）。
+
+    `ticket track create` 常帶 `--why "..."` 等長文字參數，內容可能引用
+    「ticket track complete」字面（例如描述本 Hook 行為的 why 文字）。
+    is_complete_command 若直接對整串命令做子字串比對，會把這段引號內文字
+    誤判為真正的 complete 呼叫，導致 create 命令被連帶擋下，形成死鎖
+    （PM 於 0.2.1-W3-016 / 0.2.1-W3-019 兩度實證）。
+
+    移除引號內容後再比對，可保留「真正的 complete 呼叫」偵測能力
+    （不在引號內，仍會被找到），只排除引號內的字面引用。
+    """
+    return re.sub(r'"[^"]*"|\'[^\']*\'', "", command)
+
+
+def extract_ticket_id_from_command(command: str, logger) -> Optional[str]:
+    """從命令中提取 Ticket ID"""
+    stripped = _strip_quoted_spans(command)
+    if "ticket track complete" not in stripped and "ticket track batch-complete" not in stripped:
+        return None
+
+    match = re.search(TICKET_ID_PATTERN, stripped)
+    if match:
+        ticket_id = match.group(0)
+        logger.info(f"從命令中提取 Ticket ID: {ticket_id}")
+        return ticket_id
+
+    logger.debug(f"無法從命令中提取 Ticket ID: {command}")
+    return None
+
+
+def is_complete_command(command: str) -> bool:
+    """判斷是否為 ticket track complete 命令
+
+    引號內文字（如 --why 參數的字面引用）不列入判斷，見 _strip_quoted_spans。
+    """
+    stripped = _strip_quoted_spans(command)
+    return "ticket track complete" in stripped or "ticket track batch-complete" in stripped
+
+
+# 0.4.1-W2-006：complete 前段串接後可能改變驗收狀態的寫入操作。
+# 命中任一 pattern 即代表「Hook 讀檔當下該操作尚未執行」，見
+# detect_chained_pre_complete_write 說明。
+_CHAINED_WRITE_TRIGGERS = (
+    re.compile(r'\bgit\s+merge\b'),
+    re.compile(r'\bticket\s+track\s+set-acceptance\b'),
+    re.compile(r'\bticket\s+track\s+append-log\b'),
+)
+
+
+def detect_chained_pre_complete_write(command: str) -> bool:
+    """偵測 complete 命令是否與可能改變驗收狀態的操作串接於同一 Bash 呼叫。
+
+    PreToolUse Hook 在整個 command 字串執行前觸發一次；若同一命令鏈在
+    complete 之前包含 git merge / set-acceptance / append-log，這些操作在
+    Hook 讀檔當下尚未真正執行（Bash 尚未開始執行任何一段），讀到的必然是
+    執行前（滯後）狀態，導致 acceptance 未勾選、execution log 未填寫等
+    warning 級誤報（0.4.0-W3-006 / 0.4.1-W1-001 實證，見 0.4.1-W2-006）。
+
+    只檢查 complete 命令「之前」的片段：出現在 complete 之後的寫入操作
+    （例如同鏈接續的收尾動作）不影響本次 complete 讀到的檔案狀態，不列入判定。
+    """
+    complete_pos = command.find("ticket track complete")
+    if complete_pos == -1:
+        complete_pos = command.find("ticket track batch-complete")
+    if complete_pos == -1:
+        return False
+
+    preceding = command[:complete_pos]
+    return any(pattern.search(preceding) for pattern in _CHAINED_WRITE_TRIGGERS)
+
+
+# ============================================================================
+# 主協調函式
+# ============================================================================
+
+def check_acceptance_status(
+    ticket_id: str, project_dir: Path, logger, command: str = ""
+) -> AcceptanceCheckResult:
+    """
+    檢查 Ticket 的驗收狀態（主協調函式）
+
+    協調所有 checker 模組：
+    1. 子任務完成度檢查
+    2. 驗收記錄驗證
+    2.5. ANA Ticket 後續 Ticket 檢查
+    2.7. Error-pattern 衝突檢查
+    3. Error-pattern 新增檢查
+    4. Sibling tickets 完成度檢查（場景 #9）
+    5. 5W1H 完整性
+    6. Execution log 填寫
+
+    Args:
+        command: 觸發本次檢查的完整 Bash 命令字串（選填）。用於偵測 complete
+            是否與 git merge / set-acceptance / append-log 串接於同一呼叫
+            （0.4.1-W2-006），偵測到時略過 acceptance / execution log 的
+            滯後誤報判定。空字串時行為與未偵測相同（向後相容）。
+    """
+    ticket_file = find_ticket_file(ticket_id, project_dir, logger)
+
+    if not ticket_file:
+        logger.error(f"找不到 Ticket 檔案: {ticket_id}")
+        return AcceptanceCheckResult(False, False, None, False, [])
+
+    try:
+        content = ticket_file.read_text(encoding="utf-8")
+        frontmatter = parse_ticket_frontmatter(content)
+
+        # 步驟 1：檢查子任務完成度
+        should_block, error_msg = check_children_completed_from_frontmatter(
+            ticket_file, frontmatter, project_dir, ticket_id, logger
+        )
+        if should_block:
+            return AcceptanceCheckResult(True, False, error_msg, False, [], [], "", "", [], [], False)
+
+        # 步驟 1.5：防護類 hook ticket 的必含項目（前三項命中 acceptance，
+        # 第四項「產生路徑盤點結果」命中 how.strategy 缺則 Solution 的盤點表
+        # 正本，需傳入 content 供 Solution fallback 讀取）
+        hook_protection_should_block, hook_protection_msg = check_hook_protection_acceptance(
+            frontmatter, logger, content
+        )
+        if hook_protection_should_block:
+            return AcceptanceCheckResult(
+                True, False, hook_protection_msg, False, [], [], "", "", [], [], False
+            )
+
+        # 0.4.1-W2-006：偵測 complete 是否與同鏈寫入操作串接
+        chained_write_detected = bool(command) and detect_chained_pre_complete_write(command)
+        if chained_write_detected:
+            logger.info(
+                f"Ticket {ticket_id}：偵測到 complete 與同鏈寫入操作串接，"
+                "略過 acceptance / execution log 滯後誤報判定"
+            )
+
+        # 步驟 2：驗證驗收記錄
+        should_block, warning_msg, should_check_acceptance, has_acceptance = verify_acceptance_record(
+            content, frontmatter, ticket_id, logger
+        )
+
+        # chained_write_detected 時，verify_acceptance_record 剛回傳的 warning_msg
+        # 必然只承載「驗收記錄缺失」這一段（後續步驟才會疊加其他警告），可安全歸零，
+        # 避免同鏈尚未執行的 set-acceptance 造成假警告。
+        if chained_write_detected and warning_msg:
+            warning_msg = None
+
+        if not warning_msg:
+            logger.info(f"Ticket {ticket_id} 驗收檢查通過")
+
+        # 步驟 2.5：檢查 ANA Ticket 是否有後續 Ticket
+        if is_ana_type(frontmatter.get("type")):
+            ana_should_warn, ana_warning_msg = check_ana_has_spawned_tickets(frontmatter, logger)
+            if ana_should_warn:
+                if warning_msg:
+                    warning_msg = warning_msg + "\n\n" + ana_warning_msg
+                else:
+                    warning_msg = ana_warning_msg
+
+        # 步驟 2.5.1：[已退場 W17-120.2 / PC-091]
+        # 原 ana_spawned_checker 阻擋邏輯已移除。ANA complete 的阻擋判斷統一由
+        # children_checker（步驟 1）負責——ANA 落地請用 `--parent <ANA-ID>` 建 children。
+        # spawned_tickets 對 ANA 為弱 metadata，不阻擋父 complete。
+        spawned_non_terminal_warning: Optional[str] = None  # 保留欄位向後相容
+
+        # 步驟 2.5.2：ANA Solution spawn 規劃 vs spawned+children 一致性檢查（W17-168）
+        # 對應 W17-167 ANA L2 設計：解析 Solution spawn 規劃表格（IMP/DOC/ANA + P0-P3），
+        # 與 frontmatter spawned_tickets + children 比對。N>0 且 S+C==0 → 阻擋；
+        # N>0 且 S+C<N → warning；含豁免標記（「無需建 ticket」「不 spawn」）→ 跳過。
+        if is_ana_type(frontmatter.get("type")):
+            spawn_should_block, spawn_msg = check_ana_spawn_consistency(
+                content, frontmatter, logger
+            )
+            if spawn_should_block:
+                return AcceptanceCheckResult(
+                    True, False, spawn_msg, False, [], [], "", "", [], [], False
+                )
+            if spawn_msg:
+                if warning_msg:
+                    warning_msg = warning_msg + "\n\n" + spawn_msg
+                else:
+                    warning_msg = spawn_msg
+
+        # 步驟 2.6：ANA Ticket Solution 必須含 multi_view_status 標註（W10-051）
+        # 非法值（值不在 reviewed/skipped/n_a 之列）升級為阻擋，修正途徑由
+        # `ticket track fix-multi-view-status` CLI 提供。「未標註」（缺欄位／
+        # 缺子欄位）維持警告——存量掃描顯示 ANA 票中缺標註佔比遠高於非法值，
+        # 全面阻擋會癱瘓既有票收尾，兩情況相容性風險不對稱，分別處置（詳見 Solution）。
+        multi_view_warning: Optional[str] = None
+        if is_ana_type(frontmatter.get("type")):
+            mv_should_warn, mv_msg = check_multi_view_status(
+                content, frontmatter, project_dir, logger
+            )
+            if mv_should_warn and mv_msg:
+                is_illegal_value = "值非法" in mv_msg
+                if is_illegal_value:
+                    fix_hint = (
+                        "\n\n修正途徑：ticket track fix-multi-view-status "
+                        f"{ticket_id} --value <reviewed|skipped|n_a> "
+                        "--reason \"<修正理由，至少 10 字元>\""
+                    )
+                    return AcceptanceCheckResult(
+                        True, False, mv_msg + fix_hint, False, [], [], "", "", [], [], False
+                    )
+                multi_view_warning = mv_msg
+                if warning_msg:
+                    warning_msg = warning_msg + "\n\n" + mv_msg
+                else:
+                    warning_msg = mv_msg
+
+        # 步驟 2.6.1：檢查 Spawn Requests 章節是否有未處理條目（1.5.0-W5-024）
+        spawn_request_should_warn, spawn_request_msg = check_spawn_requests(
+            content, frontmatter, logger
+        )
+        if spawn_request_should_warn and spawn_request_msg:
+            if warning_msg:
+                warning_msg = warning_msg + "\n\n" + spawn_request_msg
+            else:
+                warning_msg = spawn_request_msg
+
+        # 步驟 2.7：檢查修改模組與既有 error-pattern 的衝突
+        error_pattern_conflicts = check_error_pattern_conflicts(frontmatter, project_dir, logger)
+
+        # 步驟 3：檢查 error-pattern 新增
+        has_new_error_patterns = False
+        new_error_pattern_files = []
+
+        if should_check_acceptance:
+            ticket_start_time = get_ticket_start_time(frontmatter, logger)
+            if ticket_start_time:
+                has_new_error_patterns, new_error_pattern_files = check_error_patterns_changed(
+                    project_dir, ticket_start_time, logger
+                )
+                if has_new_error_patterns:
+                    logger.info(
+                        f"mtime 比對發現 {len(new_error_pattern_files)} 個候選 error-pattern，"
+                        "進入 PC-099 歸屬過濾"
+                    )
+                    # PC-099 防護：以 frontmatter source_ticket + ticket md 引用雙重過濾
+                    new_error_pattern_files = filter_error_patterns_by_ticket_scope(
+                        new_error_pattern_files,
+                        ticket_id,
+                        content,
+                        project_dir,
+                        logger,
+                    )
+                    has_new_error_patterns = bool(new_error_pattern_files)
+                    logger.info(
+                        f"歸屬過濾後保留 {len(new_error_pattern_files)} 個真正屬於當前 ticket 的 error-pattern"
+                    )
+            else:
+                logger.warning(f"無法取得 ticket 的開始時間，跳過 error-pattern 檢查")
+
+        # 步驟 4：檢查 pending sibling tickets（場景 #9）
+        pending_siblings = find_pending_sibling_tickets(ticket_id, project_dir, logger)
+        logger.info(f"發現 {len(pending_siblings)} 個 pending sibling tickets")
+
+        # 步驟 5：檢查 5W1H 完整性
+        incomplete_5w1h = check_5w1h_completeness(frontmatter, logger)
+
+        # 步驟 6：檢查 execution log 填寫（W8-007：ANA type 額外查重現實驗結果）
+        has_empty_log = check_execution_log_filled(
+            content, logger, ticket_type=frontmatter.get("type", "")
+        )
+        # chained_write_detected 時同鏈的 append-log 尚未執行，本次讀到的 log
+        # 必然滯後，不視為真正「未填寫」（checklist 會改用 [--] 標記略過判定）
+        if chained_write_detected:
+            has_empty_log = False
+
+        # 步驟 7：檢查自定義 H2 章節（W17-072，warning 不阻擋）
+        custom_h2 = check_custom_h2_sections(content, logger)
+
+        # 步驟 8：檢查 Layer 1 自檢可觀測性（W17-064，warning 不阻擋）
+        self_check_warning = check_self_check_visibility(
+            content, frontmatter.get("type", ""), logger
+        )
+
+        # 步驟 9：檢查 Phase 4 審查證據（W1-080.1，warning 不阻擋）
+        phase4_warning = check_phase4_review_evidence(
+            content, frontmatter.get("type", ""), logger
+        )
+
+        # 步驟 10：檢查規模判準（0.2.1-W3-052.1，C1 移植，warning 不阻擋）
+        god_ticket_scale_violations = check_god_ticket_scale(frontmatter, logger)
+
+        # 步驟 11：檢查職責邊界判準（0.2.1-W3-052.1，C3 移植，warning 不阻擋）
+        responsibility_scope_violations = check_file_scope_diversity(frontmatter, logger)
+
+        # 步驟 12：檢查實驗器材殘留（阻擋）
+        # 掃描工作區找出屬於本 ticket、依規範命名但尚未妥善處置的實驗器材，
+        # 不依賴票面登記本身是否完整（見 experiment_artifact_checker 模組
+        # docstring 的三情境判定與阻擋層級理由）。
+        exp_should_block, exp_msg = check_experiment_artifact_residual(
+            ticket_id, project_dir, logger
+        )
+        if exp_should_block:
+            return AcceptanceCheckResult(
+                True, False, exp_msg, False, [], [], "", "", [], [], False
+            )
+
+        task_type = frontmatter.get("type", "")
+        priority = frontmatter.get("priority", "")
+
+        return AcceptanceCheckResult(
+            should_block=False,
+            has_acceptance=has_acceptance,
+            message=warning_msg,
+            has_new_error_patterns=has_new_error_patterns,
+            new_error_pattern_files=new_error_pattern_files,
+            pending_sibling_tickets=pending_siblings,
+            task_type=task_type,
+            priority=priority,
+            error_pattern_conflicts=error_pattern_conflicts,
+            incomplete_5w1h_fields=incomplete_5w1h,
+            has_empty_execution_log=has_empty_log,
+            multi_view_warning=multi_view_warning,
+            spawned_non_terminal_warning=spawned_non_terminal_warning,
+            custom_h2_sections=custom_h2,
+            self_check_warning=self_check_warning,
+            phase4_review_warning=phase4_warning,
+            chained_write_detected=chained_write_detected,
+            god_ticket_scale_violations=god_ticket_scale_violations,
+            responsibility_scope_violations=responsibility_scope_violations,
+        )
+
+    except Exception as e:
+        logger.error(f"檢查驗收狀態失敗: {e}", exc_info=True)
+        sys.stderr.write(f"ERROR: 檢查驗收狀態失敗: {e}\n")
+        return AcceptanceCheckResult(False, False, None, False, [])
+
+
+# ============================================================================
+# 輸出生成
+# ============================================================================
+
+def generate_hook_output(
+    ticket_id: str,
+    check_result: AcceptanceCheckResult,
+    project_dir: Path,
+    logger,
+    is_subagent: bool = False,
+) -> Dict[str, Any]:
+    """生成 Hook 輸出
+
+    Args:
+        is_subagent: 是否為 subagent 環境（is_subagent_environment 判定）。
+            為 True 時僅略過「PM 必須使用 AskUserQuestion」互動提醒（場景
+            #1/#2/#9/#17），should_block 語意與其他 warning（checklist、
+            error-pattern 衝突、H2、自檢、Phase 4、規模/職責判準等）不受
+            影響，維持對 subagent 生效。
+    """
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny" if check_result.should_block else "allow"
+        }
+    }
+
+    context_parts = []
+
+    # 統一清單輸出（PROP-009 面向 C）
+    checklist_items = []
+
+    # 項目 1: acceptance
+    if check_result.chained_write_detected:
+        checklist_items.append("[--] 1. acceptance（同命令鏈偵測，略過本次判定）")
+    elif check_result.has_acceptance:
+        checklist_items.append("[x] 1. acceptance 已全勾選")
+    else:
+        checklist_items.append("[WARNING] 1. acceptance 未全勾選")
+
+    # 項目 2: 5W1H
+    if not check_result.incomplete_5w1h_fields:
+        checklist_items.append("[x] 2. 5W1H 已補完")
+    else:
+        fields_str = ", ".join(check_result.incomplete_5w1h_fields)
+        checklist_items.append(f"[WARNING] 2. 5W1H 未補完（{fields_str}）")
+
+    # 項目 3: error-pattern
+    if check_result.error_pattern_conflicts:
+        checklist_items.append("[WARNING] 3. error-pattern 衝突待確認")
+    else:
+        checklist_items.append("[x] 3. error-pattern 無衝突")
+
+    # 項目 4: execution log
+    if check_result.chained_write_detected:
+        checklist_items.append("[--] 4. execution log（同命令鏈偵測，略過本次判定）")
+    elif not check_result.has_empty_execution_log:
+        checklist_items.append("[x] 4. execution log 已填寫")
+    else:
+        checklist_items.append("[WARNING] 4. execution log 未填寫")
+
+    # 項目 5: ANA 後續 ticket（W17-120.2 / PC-091）
+    # 路線：ANA 落地統一用 children（`--parent <ANA-ID>`），spawned_tickets 對 ANA
+    # 為弱 metadata 不阻擋。本項僅檢查「ANA 是否缺後續 ticket」（warning 層）。
+    ticket_type_upper_for_checklist = (check_result.task_type or "").upper()
+    if ticket_type_upper_for_checklist == "ANA":
+        # 「未建立」訊息來自 GateMessages.ANA_MISSING_SPAWNED_TICKETS_WARNING
+        followup_missing = bool(
+            check_result.message and "缺少後續 Ticket" in check_result.message
+        )
+        if followup_missing:
+            checklist_items.append(
+                "[WARNING] 5. ANA 缺後續 ticket（請用 --parent 建 children）"
+            )
+        else:
+            checklist_items.append("[x] 5. ANA 已有後續 ticket")
+    else:
+        checklist_items.append("[--] 5. ANA 後續 ticket(非 ANA，不適用)")
+
+    # 項目 6: multi_view_status（W10-051，只對 ANA 顯示）
+    if ticket_type_upper_for_checklist == "ANA":
+        if check_result.multi_view_warning:
+            checklist_items.append("[WARNING] 6. multi_view_status 未標註或不完整（ANA）")
+        else:
+            checklist_items.append("[x] 6. multi_view_status 已標註（ANA）")
+    else:
+        checklist_items.append("[--] 6. multi_view_status(非 ANA，不適用)")
+
+    # 項目 7: 自定義 H2 章節（W17-072）
+    if check_result.custom_h2_sections:
+        h2_count = len(check_result.custom_h2_sections)
+        checklist_items.append(
+            f"[WARNING] 7. 偵測到 {h2_count} 個非 Schema H2 章節"
+        )
+    else:
+        checklist_items.append("[x] 7. body 僅使用 Schema 章節")
+
+    # 項目 8: Layer 1 自檢可觀測性（W17-064，僅對 IMP/ANA/DOC 顯示）
+    if ticket_type_upper_for_checklist in ("IMP", "ANA", "DOC"):
+        if check_result.self_check_warning:
+            checklist_items.append(
+                "[WARNING] 8. Solution 缺 ### 自檢結果 子章節（Layer 1）"
+            )
+        else:
+            checklist_items.append("[x] 8. Layer 1 自檢結果已記錄")
+    else:
+        checklist_items.append("[--] 8. Layer 1 自檢(非 IMP/ANA/DOC，不適用)")
+
+    # 項目 9: Phase 4 審查證據（W1-080.1，僅對 IMP 顯示）
+    if ticket_type_upper_for_checklist == "IMP":
+        if check_result.phase4_review_warning:
+            checklist_items.append(
+                "[WARNING] 9. Solution 缺 Phase 4 審查證據"
+            )
+        else:
+            checklist_items.append("[x] 9. Phase 4 審查證據已記錄")
+    else:
+        checklist_items.append("[--] 9. Phase 4 審查(非 IMP，不適用)")
+
+    # 項目 10: 規模判準（0.2.1-W3-052.1，C1 移植，僅對 IMP/ADJ 顯示，ANA/DOC 豁免）
+    if ticket_type_upper_for_checklist in ("ANA", "DOC"):
+        checklist_items.append("[--] 10. 規模判準(ANA/DOC，不適用)")
+    elif check_result.god_ticket_scale_violations:
+        checklist_items.append("[WARNING] 10. Ticket 規模偏大（建議評估拆分）")
+    else:
+        checklist_items.append("[x] 10. Ticket 規模在建議範圍內")
+
+    # 項目 11: 職責邊界判準（0.2.1-W3-052.1，C3 移植，僅對 IMP/ADJ 顯示，ANA/DOC 豁免）
+    if ticket_type_upper_for_checklist in ("ANA", "DOC"):
+        checklist_items.append("[--] 11. 職責邊界判準(ANA/DOC，不適用)")
+    elif check_result.responsibility_scope_violations:
+        checklist_items.append("[WARNING] 11. 檔案範圍跨越多個 domain（建議確認職責邊界）")
+    else:
+        checklist_items.append("[x] 11. 檔案範圍 domain 分散度在建議範圍內")
+
+    checklist_text = "[Complete 清單]\n" + "\n".join(checklist_items)
+    context_parts.append(checklist_text)
+
+    # 0.4.1-W2-006：同鏈寫入偵測提示（緊接清單，優先於其他訊息）
+    if check_result.chained_write_detected:
+        context_parts.append(CHAINED_WRITE_INFO_NOTE)
+        logger.info("新增同命令鏈滯後讀檔提示（0.4.1-W2-006）")
+
+    # 優先級 1：錯誤或警告訊息
+    if check_result.message:
+        context_parts.append(check_result.message)
+
+    # 優先級 1.5：[已退場 W17-120.2 / PC-091] 原 ANA spawned 非 terminal 警告已移除
+    # spawned_tickets 對 ANA 為弱 metadata，不再產生阻擋或專用警告
+    if check_result.spawned_non_terminal_warning:
+        # 保留輸出邏輯防呼叫端外掛行為，但 orchestrator 已不再 set 此欄位
+        context_parts.append(check_result.spawned_non_terminal_warning)
+
+    # 優先級 2：error-pattern 場景 #17 提醒（與 warning_msg 並存觸發）
+    # subagent 環境略過：本提醒要求「PM 必須使用 AskUserQuestion」，對
+    # subagent 不適用（is_subagent_environment docstring 原始範圍）。
+    if check_result.has_new_error_patterns and not is_subagent:
+        file_list_formatted = "\n".join(f"  - {f}" for f in (check_result.new_error_pattern_files or []))
+        reminder_msg = AskUserQuestionMessages.ERROR_PATTERN_REMINDER.format(
+            file_list=file_list_formatted
+        )
+        context_parts.append(reminder_msg)
+        logger.info(f"新增場景 #17 (error-pattern) 提醒")
+    elif check_result.has_new_error_patterns:
+        logger.info("subagent 環境略過場景 #17 (error-pattern) AskUserQuestion 提醒")
+
+    # 優先級 2.5：error-pattern 衝突提醒（Step 2.7，WARNING 不阻擋）
+    if check_result.error_pattern_conflicts:
+        conflict_list_formatted = "\n".join(
+            f"  - {f}" for f in check_result.error_pattern_conflicts
+        )
+        conflict_msg = ERROR_PATTERN_CONFLICT_WARNING.format(
+            conflict_list=conflict_list_formatted
+        )
+        context_parts.append(conflict_msg)
+        logger.info(f"新增 error-pattern 衝突提醒，衝突數量: {len(check_result.error_pattern_conflicts)}")
+
+    # 優先級 2.6：自定義 H2 警告（W17-072，WARNING 不阻擋）
+    if check_result.custom_h2_sections:
+        h2_list_formatted = "\n".join(
+            f"  - `## {h2}`" for h2 in check_result.custom_h2_sections
+        )
+        h2_warning_msg = CUSTOM_H2_WARNING.format(h2_list=h2_list_formatted)
+        context_parts.append(h2_warning_msg)
+        logger.info(
+            f"新增自定義 H2 警告，違規章節數: {len(check_result.custom_h2_sections)}"
+        )
+
+    # 優先級 2.7：Layer 1 自檢可觀測性 warning（W17-064，WARNING 不阻擋）
+    if check_result.self_check_warning:
+        context_parts.append(check_result.self_check_warning)
+        logger.info("新增 Layer 1 自檢可觀測性 warning")
+
+    # 優先級 2.8：Phase 4 審查證據 warning（W1-080.1，WARNING 不阻擋）
+    if check_result.phase4_review_warning:
+        context_parts.append(check_result.phase4_review_warning)
+        logger.info("新增 Phase 4 審查證據 warning")
+
+    # 優先級 2.9：規模判準 warning（0.2.1-W3-052.1，C1 移植，WARNING 不阻擋）
+    if check_result.god_ticket_scale_violations:
+        violation_list_formatted = "\n".join(
+            f"  - {v}" for v in check_result.god_ticket_scale_violations
+        )
+        context_parts.append(
+            GOD_TICKET_SCALE_WARNING.format(violation_list=violation_list_formatted)
+        )
+        logger.info(
+            f"新增規模判準 warning，違規數量: {len(check_result.god_ticket_scale_violations)}"
+        )
+
+    # 優先級 2.10：職責邊界判準 warning（0.2.1-W3-052.1，C3 移植，WARNING 不阻擋）
+    if check_result.responsibility_scope_violations:
+        scope_violation_list_formatted = "\n".join(
+            f"  - {v}" for v in check_result.responsibility_scope_violations
+        )
+        context_parts.append(
+            RESPONSIBILITY_SCOPE_WARNING.format(violation_list=scope_violation_list_formatted)
+        )
+        logger.info(
+            f"新增職責邊界判準 warning，違規數量: {len(check_result.responsibility_scope_violations)}"
+        )
+
+    # 優先級 3：Handoff 方向選擇 場景 #9（無訊息時，sibling >= 2）
+    # subagent 環境略過：本提醒要求「PM 必須使用 AskUserQuestion」，對
+    # subagent 不適用（is_subagent_environment docstring 原始範圍）。
+    if (
+        not check_result.message
+        and len(check_result.pending_sibling_tickets) >= 2
+        and not is_subagent
+    ):
+        sibling_list_formatted = "\n".join(
+            f"  - {sibling_id}"
+            for sibling_id in check_result.pending_sibling_tickets
+        )
+        reminder_msg = AskUserQuestionMessages.HANDOFF_DIRECTION_REMINDER.format(
+            sibling_count=len(check_result.pending_sibling_tickets),
+            sibling_list=sibling_list_formatted,
+            # 模板範例指令需要一個具體建議票號；本分支已保證
+            # len(pending_sibling_tickets) >= 2，取第一個作為建議的下一張票
+            next_ticket_id=check_result.pending_sibling_tickets[0],
+        )
+        context_parts.append(reminder_msg)
+        logger.info(f"新增場景 #9 (Handoff 方向) 提醒，sibling 數量: {len(check_result.pending_sibling_tickets)}")
+
+    # 優先級 4：complete 流程提醒（驗收方式，場景 #1）
+    # subagent 環境略過理由同上。
+    if (
+        not check_result.message
+        and len(check_result.pending_sibling_tickets) < 2
+        and not is_subagent
+    ):
+        ticket_type_upper = (check_result.task_type or "").upper()
+        priority_upper = (check_result.priority or "").upper()
+        is_auto_accept_type = ticket_type_upper in ("DOC", "ANA")
+        needs_manual_confirmation = priority_upper == "P0" and not is_auto_accept_type
+
+        if needs_manual_confirmation:
+            context_parts.append(AskUserQuestionMessages.COMPLETE_REMINDER)
+            logger.info(f"新增場景 #1 (complete 流程) 提醒（P0 Ticket，type={ticket_type_upper}）")
+        else:
+            logger.info(
+                f"跳過場景 #1（自動簡化驗收，priority={priority_upper}, type={ticket_type_upper}）"
+            )
+
+    # 優先級 5：complete 後下一步提醒（路由選擇，場景 #2）
+    # subagent 環境略過理由同上。
+    if not check_result.message and not is_subagent:
+        context_parts.append(AskUserQuestionMessages.COMPLETE_NEXT_STEP_REMINDER)
+        logger.info("新增場景 #2 (complete 後下一步) 提醒")
+    elif not check_result.message:
+        logger.info("subagent 環境略過場景 #1/#2/#9 AskUserQuestion 提醒")
+
+    if context_parts:
+        output["hookSpecificOutput"]["additionalContext"] = "\n\n".join(context_parts)
+
+    output["check_result"] = {
+        "should_block": check_result.should_block,
+        "timestamp": datetime.now().isoformat()
+    }
+
+    return output
+
+
+# ============================================================================
+# 主入口點輔助函式
+# ============================================================================
+
+def _output_allow_json() -> None:
+    """輸出允許執行的 Hook 應答 JSON。"""
+    print(json.dumps({
+        "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}
+    }, ensure_ascii=False, indent=2))
+
+
+def _parse_and_validate_input(input_data: Dict[str, Any], logger) -> Optional[Tuple[str, str]]:
+    """解析並驗證輸入資料。"""
+    if input_data is None:
+        logger.debug("輸入資料為 None，跳過驗證")
+        _output_allow_json()
+        return None
+
+    if not validate_hook_input(input_data, logger, ("tool_name", "tool_input")):
+        logger.error("輸入格式錯誤")
+        _output_allow_json()
+        return None
+
+    tool_name = input_data.get("tool_name", "")
+    tool_input = extract_tool_input(input_data, logger)
+    command = tool_input.get("command", "")
+
+    return tool_name, command
+
+
+def _extract_ticket_or_skip(tool_name: str, command: str, logger) -> Optional[str]:
+    """識別 complete 命令並提取 Ticket ID。"""
+    if tool_name != "Bash":
+        logger.debug(f"非 Bash 工具: {tool_name}，直接放行")
+        _output_allow_json()
+        return None
+
+    if not is_complete_command(command):
+        logger.debug(f"非 ticket track complete 命令: {command}")
+        _output_allow_json()
+        return None
+
+    logger.info(f"識別到 ticket track complete 命令: {command}")
+
+    ticket_id = extract_ticket_id_from_command(command, logger)
+    if not ticket_id:
+        logger.error("無法從命令中提取 Ticket ID")
+        _output_allow_json()
+        return None
+
+    logger.info(f"提取 Ticket ID: {ticket_id}")
+    return ticket_id
+
+
+# ============================================================================
+# 主入口點
+# ============================================================================
+
+def main() -> int:
+    """主入口點 - 驗收流程協調"""
+    logger = setup_hook_logging("acceptance-gate")
+
+    try:
+        logger.info(CoreMessages.HOOK_START.format(hook_name="Acceptance Gate Hook"))
+
+        # 步驟 1: 解析驗證輸入
+        input_data = read_json_from_stdin(logger)
+
+        # 降級 fast-path（W10-047.1）：
+        # ANA W10-035.3 觀察 3d 觸發 1667 次僅 36 Action（2.2%）。
+        # 在執行 subagent 偵測 / 完整輸入驗證 / Ticket 提取 / 驗收檢查等
+        # 重操作前，先以最低成本判斷命令是否為 ticket track complete；
+        # 不是即直接放行，避免每次 Bash 命令都跑完整流程。
+        # 此判斷必須先於 effort 短路（0.2.1-W3-018）：effort=low 不可豁免
+        # complete 命令的驗收檢查，否則 acceptance-gate 形同虛設
+        # （0.2.1-W3-014 實證：非法 multi_view_status 值藉此成功 complete）。
+        _fp_is_complete = False
+        if input_data is not None:
+            _fp_tool_input = input_data.get("tool_input") or {}
+            _fp_command = _fp_tool_input.get("command", "") if isinstance(_fp_tool_input, dict) else ""
+            _fp_is_complete = (
+                input_data.get("tool_name") == "Bash" and is_complete_command(_fp_command)
+            )
+            if not _fp_is_complete:
+                logger.debug("Fast-path skip: 非 ticket track complete 命令")
+                _output_allow_json()
+                return EXIT_SUCCESS
+
+        # Effort 感知（v2.1.133+，W14-034）：僅記錄 effort 供除錯，
+        # 不再作為短路放行條件（0.2.1-W3-018）。此處已確定為
+        # ticket track complete 命令（上方 fast-path 保證），故一律
+        # 執行完整驗收檢查，effort=low 不豁免。
+        effort = get_effort_level(input_data)
+        logger.info("effort=%s，命令為 complete，執行完整 acceptance 驗證", effort)
+
+        # subagent 環境僅跳過「PM 必須使用 AskUserQuestion」互動提醒文字
+        # （is_subagent_environment docstring 原始範圍），blocking checker
+        # （children_completed / hook_protection_acceptance 等）不受影響、
+        # 仍對 subagent 生效。修復前此處直接 return EXIT_SUCCESS，使整條
+        # 驗收流程（含硬擋）對 subagent 短路；subagent 是本框架絕大多數
+        # ticket 執行主體，等同 acceptance-gate 對多數 complete 呼叫從未
+        # 真正生效過（實測 hook-logs 證實）。
+        is_subagent = is_subagent_environment(input_data)
+        if is_subagent:
+            logger.info(
+                "偵測到 subagent 環境（agent_id=%s），將略過 AskUserQuestion 互動"
+                "提醒；blocking checker 與其他 warning 仍照常執行",
+                input_data.get("agent_id"),
+            )
+
+        parsed = _parse_and_validate_input(input_data, logger)
+        if parsed is None:
+            return EXIT_SUCCESS
+        tool_name, command = parsed
+
+        # 步驟 2: 識別命令並提取 Ticket ID
+        ticket_id = _extract_ticket_or_skip(tool_name, command, logger)
+        if ticket_id is None:
+            return EXIT_SUCCESS
+
+        # 步驟 3: 檢查驗收狀態
+        project_dir = get_project_root()
+        result = check_acceptance_status(ticket_id, project_dir, logger, command)
+        logger.info(
+            f"驗收結果: should_block={result.should_block}, "
+            f"has_acceptance={result.has_acceptance}, "
+            f"has_new_error_patterns={result.has_new_error_patterns}, "
+            f"pending_siblings={len(result.pending_sibling_tickets)}"
+        )
+
+        # 步驟 4: 生成輸出並儲存日誌
+        output = generate_hook_output(ticket_id, result, project_dir, logger, is_subagent=is_subagent)
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+        status = "BLOCKED" if result.should_block else "ALLOWED"
+        log_entry = f"""[{datetime.now().isoformat()}]
+  TicketID: {ticket_id}
+  Status: {status}
+
+"""
+        save_check_log("acceptance-gate", log_entry, logger)
+
+        # 步驟 5: 決定 exit code
+        if result.should_block:
+            logger.warning("Acceptance Gate Hook：子任務未完成，阻止執行")
+            return EXIT_BLOCK
+        logger.info("Acceptance Gate Hook 檢查完成：允許執行")
+        return EXIT_SUCCESS
+
+    except Exception as e:
+        logger.critical(f"Hook 執行錯誤: {e}", exc_info=True)
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "additionalContext": "Hook 執行錯誤，詳見日誌: .claude/hook-logs/acceptance-gate/"
+            },
+            "error": {"type": type(e).__name__, "message": str(e)}
+        }, ensure_ascii=False, indent=2))
+        return EXIT_ERROR
+
+
+if __name__ == "__main__":
+    sys.exit(run_hook_safely(main, "acceptance-gate"))

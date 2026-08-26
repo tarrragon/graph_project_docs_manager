@@ -2,22 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- App Sandbox 關閉。
+	     本 App 是框架的配套開發者工具，需要兩件沙盒禁止的事：
+	     (1) 執行專案內的 doc CLI（沙盒下 python3 被 xcrun shim 拒絕、
+	         使用者安裝的 binary 直接 Operation not permitted）
+	     (2) 讀取使用者指定的任意專案資料夾而不需每次重新授權
+	     發布通路改為 Developer ID + notarization，不上架 Mac App Store。 -->
 	<key>com.apple.security.app-sandbox</key>
-	<true/>
+	<false/>
+	<!-- Hardened Runtime（notarization 必要條件）下，Dart VM 的 JIT 需要此項。
+	     僅 debug；release 走 AOT 不需要。 -->
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
 	<!-- incoming 連線：Flutter 的 hot reload 與 VM service 需要，僅 debug。 -->
 	<key>com.apple.security.network.server</key>
-	<true/>
-	<!-- outgoing 連線。樣板預設沒有這一項，缺了它連 HTTP 請求都會被 sandbox 擋掉。 -->
-	<key>com.apple.security.network.client</key>
-	<true/>
-	<!-- 使用者透過開啟／儲存面板主動選取的檔案與資料夾，可讀寫。 -->
-	<key>com.apple.security.files.user-selected.read-write</key>
-	<true/>
-	<!-- security-scoped bookmark：讓上述授權在 App 重啟後仍然有效。
-	     沒有它，使用者每次開啟 App 都必須重新選一次資料夾。 -->
-	<key>com.apple.security.files.bookmarks.app-scope</key>
 	<true/>
 </dict>
 </plist>

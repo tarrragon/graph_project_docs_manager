@@ -1,0 +1,145 @@
+"""Skill-root 共用 pytest fixtures（W1-054）。
+
+收斂背景：`tests/conftest.py` 與 `ticket_system/tests/conftest.py` 原各自
+逐字維護 `_isolate_project_root` + `real_repo_root` 兩份副本（W1-050 引入）。
+W1-050 Phase 4 兩視角發現此重複（linux 判 DRY 違規，docstring 已漂移為徵兆）。
+
+收斂可行性（已實證，見 W1-054 Solution）：
+- pyproject.toml 的 `[tool.pytest.ini_options]` 位於 skill root，故 pytest
+  rootdir = skill root，且 `testpaths = ["tests", "ticket_system/tests"]`
+  使兩樹共用單一 pytest session。
+- skill-root `conftest.py` 對「在 rootdir 下任一 testpath 收集到的測試」皆生效，
+  兩樹自然共享，無需 cross-rootdir 技巧。
+- 故將共用 fixture 上提至此，兩子 conftest 移除副本（DRY 收斂成立）。
+
+仍保留於各子 conftest 的 fixture（職責分裂合理，不上提）：
+- `tests/conftest.py`：`_assert_no_repo_pollution`（依賴 `parents[4]` 相對路徑，
+  與該檔位置耦合）、ticket data fixtures（`valid_ticket_data` 等）。
+- `ticket_system/tests/conftest.py`：`_isolate_hook_logs_dir`、
+  `_mock_track_snapshot_filesystem_scan`、precondition fixtures（僅該樹消費）。
+"""
+
+from __future__ import annotations
+
+import subprocess
+
+import pytest
+
+from ticket_system.lib.paths import reset_project_root_cache
+
+
+@pytest.fixture(autouse=True)
+def _isolate_project_root(tmp_path_factory, monkeypatch):
+    """Autouse fixture: 將 CLAUDE_PROJECT_DIR 預設導向 tmp，避免 lock 污染真實 repo。
+
+    Why（W1-050）：`paths.get_project_root()` 第一優先讀 CLAUDE_PROJECT_DIR，
+    未設時 fallback 至 `git rev-parse --show-toplevel`，解析到真實 repo root。
+    測試若呼叫 `file_lock(get_ticket_path(...))` 但未 patch 路徑解析，lock 檔
+    會落在真實 `docs/work-logs/v0/.../tickets/`（W14-042 設計不刪 lock 檔，
+    產生殘留如 dummy.md.lock / 0.31.0-W4-001.md.lock）。
+
+    Why（0.2.1-W3-223 修復）：W3-008 根因 1 修復後，`get_project_root()` 的
+    「worktree 感知」判斷（`_linked_worktree_root()`）優先序高於
+    `CLAUDE_PROJECT_DIR`——當 pytest 本身在 git linked worktree（如
+    `.claude/worktrees/agent-*`）內執行時，本 fixture 注入的 tmp
+    `CLAUDE_PROJECT_DIR` 會被該 worktree 的真實根目錄整個蓋過，隔離失效。
+    後果：測試 fixture（如 `test_enum_gate.py` 寫入的 `v9.9.9-W1-00N.md`）
+    寫入 worktree 真實的 `docs/work-logs/v9/v9.9/v9.9.9/tickets/`，殘留污染
+    後續讀取 ticket 檔案 / todolist.yaml 的測試（PC-BAL-022 案例，
+    0.2.1-W3-218 / 0.2.1-W3-220 兩次假紅燈）。修復：同步注入逃生艙旗標
+    `TICKET_SYSTEM_TEST_ISOLATION=1`，使 `get_project_root()` 在此旗標存在
+    時優先直接採用 `CLAUDE_PROJECT_DIR`、略過 worktree 偵測——不透過
+    monkeypatch 覆寫 `_linked_worktree_root` 本身（該函式與 `get_project_root`
+    的既有優先序皆有獨立單元測試直接驗證其邏輯，全域覆寫會破壞這些測試契約），
+    改在 `get_project_root()` 內新增最高優先序的旗標檢查分支。`real_repo_root`
+    / `seeded_repo_root` 兩個 opt-out fixture 不需額外處理：它們設定的
+    `CLAUDE_PROJECT_DIR` 在 worktree 環境下本就等於 worktree 自身根目錄
+    （`git rev-parse --show-toplevel` 的結果），改走旗標分支後行為等價。
+
+    Why（0.2.1-W3-254 新增）：`get_project_root()` 加上程序內快取後，pytest
+    同一 process 內執行的後續 test 若不清快取，會沿用第一個呼叫過
+    `get_project_root()` 的 test 所快取的（舊）CLAUDE_PROJECT_DIR，使本
+    fixture 每個 test 各自注入獨立 tmp 目錄的隔離設計失效——第二個 test 起
+    的檔案操作實際落在第一個 test 的 tmp 目錄。故 fixture 進入時先呼叫
+    `reset_project_root_cache()`，確保快取狀態不跨 test 洩漏。
+
+    設計（提供 default，個別測試可 override，opt-out 機制）：
+    - autouse 在每個 test 前先清除 get_project_root() 快取（0.2.1-W3-254），
+      再注入 CLAUDE_PROJECT_DIR 指向獨立 tmp 目錄
+    - 同步注入 `TICKET_SYSTEM_TEST_ISOLATION=1`，避免 worktree 環境下的
+      優先序覆蓋使上述隔離失效（0.2.1-W3-223）
+    - 需要真實 repo 或測試 fallback 行為的測試（如 test_paths_get_project_root）
+      已用 `patch.dict("os.environ", {}, clear=True)` 或顯式 setenv 覆蓋；
+      後注入者勝出，不影響其既有斷言（自然 opt-out）
+    - 預先建立 docs/work-logs 階層，使 lock 路徑解析有合法落點
+    """
+    reset_project_root_cache()
+    root = tmp_path_factory.mktemp("project-root-default")
+    (root / "docs" / "work-logs").mkdir(parents=True, exist_ok=True)
+    (root / "CLAUDE.md").write_text("# CLAUDE.md\n", encoding="utf-8")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(root))
+    monkeypatch.setenv("TICKET_SYSTEM_TEST_ISOLATION", "1")
+
+
+@pytest.fixture
+def real_repo_root(monkeypatch):
+    """Opt-out fixture：將 CLAUDE_PROJECT_DIR 還原為真實 repo root。
+
+    Why（W1-050）：少數測試刻意驗證真實 repo 下的版本自動偵測（version=None
+    → 讀 docs/todolist.yaml / 掃 work-logs），autouse `_isolate_project_root`
+    將 root 導向空 tmp 會使版本偵測先觸發 VERSION_NOT_DETECTED，遮蔽待測的
+    後續錯誤路徑。這類測試走 early-exit 錯誤路徑（exit 1），不會抵達 file_lock，
+    故在真實 repo root 執行無 lock 污染風險。
+
+    使用（統一為簽名注入，W1-054）：在依賴真實版本偵測的測試函式簽名直接加入
+    `real_repo_root` 參數即可（無需 `_use_real_repo_root` 中介 autouse fixture）。
+
+    邊界（W5-006 後）：僅供「必須讀真實 repo 資產」的測試（如 dispatch registry
+    實檔載入）。create 版本偵測類測試改用 `seeded_repo_root`——綁定真實
+    todolist 會隨專案版本推進而漂移失敗（環境依賴，違反測試隔離）。
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", result.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+
+@pytest.fixture
+def seeded_repo_root(tmp_path_factory, monkeypatch):
+    """Hermetic 版本偵測 fixture：受控 todolist.yaml 取代真實 repo 依賴。
+
+    Why（W5-006）：create 的版本歸屬引導（suggest_version_for_ticket）與註冊
+    驗證（validate_version_registered）讀 `<root>/docs/todolist.yaml`。原
+    `real_repo_root` 使 create 流程測試綁定專案 todolist 的即時註冊狀態——
+    專案版本推進後（patch 建議版本未註冊）create 在待測錯誤路徑之前先觸發
+    VERSION_NOT_REGISTERED hard-fail，測試連鎖失敗。本 fixture 種入受控
+    todolist，版本偵測三函式全走確定性資料，與專案狀態解耦。
+
+    種子設計（覆蓋 patch 與 major 兩條建議路徑）：
+    - 1.0.0 completed：_suggest_next_patch 錨點 → 建議 1.0.1
+    - 1.0.1 active：patch 建議即已註冊 active 版本 → 註冊驗證通過
+    - 1.1.0 active + proposals：_suggest_next_major 首選 → feat 路徑亦確定
+    """
+    root = tmp_path_factory.mktemp("seeded-repo-root")
+    (root / "docs" / "work-logs").mkdir(parents=True, exist_ok=True)
+    (root / "CLAUDE.md").write_text("# CLAUDE.md\n", encoding="utf-8")
+    (root / "docs" / "todolist.yaml").write_text(
+        "versions:\n"
+        "  - version: 1.0.0\n"
+        "    status: completed\n"
+        "  - version: 1.0.1\n"
+        "    status: active\n"
+        "  - version: 1.1.0\n"
+        "    status: active\n"
+        "    proposals:\n"
+        "      - PROP-SEED\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(root))
+    return root

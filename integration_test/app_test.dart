@@ -1,12 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'package:graph_project_docs_manager/main.dart';
-import 'package:graph_project_docs_manager/platform/secure_bookmark.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 
 /// 一組要驗證的螢幕條件。
@@ -112,45 +108,6 @@ void main() {
     });
   });
 
-  group('原生通道', () {
-    testWidgets('secure bookmark channel 已在 macOS 端註冊', (tester) async {
-      // 用一個不存在的路徑呼叫，原生端必然失敗並回 PlatformException。
-      // 關鍵在於它「不是」MissingPluginException —— 那會代表 channel
-      // 根本沒註冊，是 MainFlutterWindow 接線斷掉的徵兆。
-      await expectLater(
-        const SecureBookmark().create('/definitely/not/a/real/path'),
-        throwsA(
-          isA<PlatformException>().having(
-            (e) => e.code,
-            'code',
-            'create_failed',
-          ),
-        ),
-      );
-    });
-
-    testWidgets('bookmark 可完成 建立 → 解析 → 釋放 的完整往返', (tester) async {
-      // sandbox container 內的暫存目錄，App 本來就有權限，
-      // 適合用來驗證機制本身而不需要真人操作開啟面板。
-      final probe = Directory.systemTemp.createTempSync('bookmark_probe');
-      addTearDown(() => probe.deleteSync(recursive: true));
-
-      const bookmark = SecureBookmark();
-      final encoded = await bookmark.create(probe.path);
-      expect(encoded, isNotEmpty, reason: 'bookmark 應為非空的 base64 字串');
-
-      final resolved = await bookmark.resolve(encoded);
-      addTearDown(() => bookmark.stopAccessing(resolved.path));
-
-      expect(resolved.granted, isTrue, reason: '應成功取得存取權');
-      expect(resolved.isStale, isFalse, reason: '剛建立的 bookmark 不應過期');
-      expect(
-        Directory(resolved.path).resolveSymbolicLinksSync(),
-        probe.resolveSymbolicLinksSync(),
-        reason: '解回的路徑應指向同一個目錄',
-      );
-    });
-  });
 }
 
 /// 套用螢幕尺寸，並登記還原，避免污染後續測試。
@@ -229,7 +186,4 @@ class _StubWorkspaceRepository implements WorkspaceRepository {
 
   @override
   Future<WorkspaceState?> chooseFolder() async => _state;
-
-  @override
-  Future<void> release() async {}
 }

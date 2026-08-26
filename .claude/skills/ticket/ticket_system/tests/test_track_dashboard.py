@@ -1,0 +1,1005 @@
+"""Tests for ticket_system/commands/track_dashboard.py (W10-114).
+
+28 案測試，覆蓋 sage Phase 2 設計：
+- Group A：三章節輸出結構（A1-A6，6 案）
+- Group B：[N] 編號規則（B1-B5，5 案）
+- Group C：複用既有函式不 subprocess（C1-C3，3 案）
+- Group D：邊界條件（D1-D7，7 案）
+- Group E：Flag 行為（E1-E4，4 案）
+- Group F：Golden output（F1-F3，3 案）
+
+策略：
+- 直接 invoke main function（不走 CliRunner）
+- ticket loader 注入：monkeypatch track_dashboard.list_tickets
+- subprocess spy：monkeypatch subprocess.run/Popen/check_output/check_call
+- 動態 stale 分鐘：fixture 內 started_at 用 now - timedelta
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+import pytest
+
+from ticket_system.commands import track_dashboard
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _mk(
+    tid: str,
+    status: str = "pending",
+    blocked: Optional[List[str]] = None,
+    priority: str = "P2",
+    wave: int = 10,
+    title: Optional[str] = None,
+    started_at: Optional[str] = None,
+    body_with_cb: bool = True,
+    agent: Optional[str] = None,
+    trigger_bound: bool = False,
+    children: Optional[List[Any]] = None,
+) -> Dict[str, Any]:
+    """建立最小 ticket dict。
+
+    body_with_cb=True 注入含 Context Bundle 區塊的 _body，使
+    _compute_readiness 回傳 READY（無 handoff 時走 Context Bundle 分支）。
+
+    trigger_bound: W3-096 新增欄位，預設 False 不影響既有 Group A-F 測試。
+    children: 0.2.1-W3-261 新增欄位，預設 None（等同 []）不影響既有測試。
+    """
+    body = ""
+    if body_with_cb:
+        body = (
+            "## Context Bundle\n\n"
+            "<!-- auto-extracted -->\n\n"
+            "### Task Reference\n- relevant context here\n"
+        )
+    return {
+        "id": tid,
+        "title": title or f"title-{tid}",
+        "status": status,
+        "blockedBy": blocked or [],
+        "children": children or [],
+        "priority": priority,
+        "wave": wave,
+        "version": "0.18.0",
+        "started_at": started_at,
+        "who": {"current": agent} if agent else {},
+        "trigger_bound": trigger_bound,
+        "_body": body,
+    }
+
+
+def _ns(**kwargs) -> argparse.Namespace:
+    defaults = dict(
+        top=track_dashboard.DEFAULT_TOP,
+        wave=None,
+        no_stale=False,
+        stale_threshold=track_dashboard.DEFAULT_STALE_THRESHOLD_MIN,
+        format=track_dashboard.FORMAT_TEXT,
+    )
+    defaults.update(kwargs)
+    return argparse.Namespace(**defaults)
+
+
+def _patch_loader(monkeypatch, tickets: List[Dict]):
+    monkeypatch.setattr(track_dashboard, "list_tickets", lambda v: tickets)
+    monkeypatch.setattr(
+        track_dashboard, "_get_pending_handoff_info", lambda: {}
+    )
+    # lease 三態接線後 dashboard_main 一律呼叫 lease.load_registry_snapshot；
+    # 預設 patch 為 registry 不可用（pm_registry=None），避免 Group A-I 既有
+    # 測試受真實環境 registry 檔案內容影響，也避免觸發 git subprocess 呼叫
+    # 破壞 Group C 的 no-subprocess 斷言。Group J 針對 lease 三態另行 patch。
+    monkeypatch.setattr(
+        track_dashboard.lease, "load_registry_snapshot", lambda: ({}, None)
+    )
+
+
+def _now_iso(minutes_ago: int = 0) -> str:
+    return (datetime.now() - timedelta(minutes=minutes_ago)).strftime(
+        "%Y-%m-%dT%H:%M:%S"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Group A：三章節輸出結構（6 案）
+# ---------------------------------------------------------------------------
+
+def test_A1_text_three_sections_present(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-001", status="in_progress",
+            started_at=_now_iso(5), agent="thyme"),
+        _mk("0.18.0-W10-002", priority="P0"),
+        _mk("0.18.0-W10-003", status="in_progress",
+            started_at=_now_iso(120), agent="parsley"),  # stale
+    ]
+    _patch_loader(monkeypatch, tickets)
+    rc = track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert out.count("[In Progress]") == 1
+    assert out.count("[Ready Top 5]") == 1
+    assert out.count("[Stale Warning]") == 1
+
+
+def test_A2_text_section_order_stable(monkeypatch, capsys):
+    tickets = [_mk("0.18.0-W10-002", priority="P0")]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    ip = out.find("[In Progress]")
+    rd = out.find("[Ready Top")
+    st = out.find("[Stale Warning]")
+    assert 0 <= ip < rd < st
+
+
+def test_A3_json_three_keys_present(monkeypatch, capsys):
+    tickets = [_mk("0.18.0-W10-002", priority="P0")]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(format="json"), "0.18.0")
+    payload = json.loads(capsys.readouterr().out)
+    assert "in_progress" in payload
+    assert "ready" in payload
+    assert "stale" in payload
+
+
+def test_A4_json_text_data_equivalence(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-002", priority="P0"),
+        _mk("0.18.0-W10-003", priority="P1"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+
+    track_dashboard.dashboard_main(_ns(format="json"), "0.18.0")
+    j = json.loads(capsys.readouterr().out)
+    json_ids = [r["id"] for r in j["ready"]]
+
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    text_out = capsys.readouterr().out
+    text_ids = re.findall(
+        r"^\s*\[\d+\]\s+\[P\d\]\s+\[ready\]\s+(\S+)",
+        text_out, flags=re.MULTILINE,
+    )
+    assert json_ids == text_ids
+
+
+def test_A5_header_meta_present(monkeypatch, capsys):
+    _patch_loader(monkeypatch, [])
+    track_dashboard.dashboard_main(_ns(wave=10), "0.18.0")
+    out = capsys.readouterr().out
+    assert re.match(
+        r"=== Dashboard \(wave=10, version=0\.18\.0\) ===",
+        out.splitlines()[0],
+    )
+
+
+def test_A6_empty_section_renders_none(monkeypatch, capsys):
+    _patch_loader(monkeypatch, [])
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    # 四章節 header 出現（0.2.1-W3-220 新增 Handoff Target）
+    assert "[In Progress] 0 ticket(s)" in out
+    assert "[Handoff Target] 0 ticket(s)" in out
+    assert "[Ready Top 5]" in out
+    assert "[Stale Warning] 0 ticket(s) over 60min" in out
+    # 四段空狀態字面（0.2.1-W3-590：對齊其餘五命令的全形中文樣式）
+    assert "（無 in_progress ticket）" in out
+    assert "（無 handoff target）" in out
+    assert "（無可認領建議）" in out
+    assert "（無 stale ticket）" in out
+
+
+# ---------------------------------------------------------------------------
+# Group B：[N] 編號規則（5 案）
+# ---------------------------------------------------------------------------
+
+def test_B1_ready_lines_have_bracket_n(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-002", priority="P0"),
+        _mk("0.18.0-W10-003", priority="P1"),
+        _mk("0.18.0-W10-004", priority="P2"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    pattern = re.compile(r"^\s*\[\d+\]\s+\[P\d\]\s+\[ready\]\s+\S+")
+    # 抓 Ready 區段
+    ready_section = out.split("[Ready Top 5]")[1].split("[Stale Warning]")[0]
+    matched = [ln for ln in ready_section.splitlines() if pattern.match(ln)]
+    assert len(matched) == 3
+
+
+def test_B2_numbering_starts_from_1(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-002", priority="P0"),
+        _mk("0.18.0-W10-003", priority="P1"),
+        _mk("0.18.0-W10-004", priority="P2"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    nums = re.findall(r"^\s*\[(\d+)\]\s+\[P\d\]\s+\[ready\]", out, flags=re.MULTILINE)
+    assert nums == ["1", "2", "3"]
+
+
+def test_B3_in_progress_no_bracket_n(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-001", status="in_progress",
+            started_at=_now_iso(5), agent="thyme"),
+        _mk("0.18.0-W10-002", status="in_progress",
+            started_at=_now_iso(6), agent="parsley"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    ip_section = out.split("[In Progress]")[1].split("[Ready Top")[0]
+    assert not re.search(r"^\s*\[\d+\]", ip_section, flags=re.MULTILINE)
+
+
+def test_B4_stale_no_bracket_n(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-001", status="in_progress",
+            started_at=_now_iso(120), agent="thyme"),
+        _mk("0.18.0-W10-002", status="in_progress",
+            started_at=_now_iso(200), agent="parsley"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    stale_section = out.split("[Stale Warning]")[1]
+    assert not re.search(r"^\s*\[\d+\]", stale_section, flags=re.MULTILINE)
+
+
+def test_B5_top_limits_numbering(monkeypatch, capsys):
+    tickets = [
+        _mk(f"0.18.0-W10-{i:03d}", priority="P1") for i in range(2, 7)
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(top=2), "0.18.0")
+    out = capsys.readouterr().out
+    nums = re.findall(r"^\s*\[(\d+)\]\s+\[P\d\]\s+\[ready\]", out, flags=re.MULTILINE)
+    assert nums == ["1", "2"]
+
+
+# ---------------------------------------------------------------------------
+# Group C：禁用 subprocess + ticket index 載入 1 次（3 案）
+# ---------------------------------------------------------------------------
+
+def test_C1_no_subprocess_run(monkeypatch, capsys):
+    def _fail(*args, **kwargs):
+        raise AssertionError("subprocess.run called")
+    monkeypatch.setattr(subprocess, "run", _fail)
+    _patch_loader(monkeypatch, [_mk("0.18.0-W10-002", priority="P0")])
+    rc = track_dashboard.dashboard_main(_ns(), "0.18.0")
+    assert rc == 0
+
+
+def test_C2_no_subprocess_popen(monkeypatch, capsys):
+    def _fail(*args, **kwargs):
+        raise AssertionError("subprocess.Popen called")
+    monkeypatch.setattr(subprocess, "Popen", _fail)
+    monkeypatch.setattr(subprocess, "check_output",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            AssertionError("check_output called")))
+    monkeypatch.setattr(subprocess, "check_call",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            AssertionError("check_call called")))
+    _patch_loader(monkeypatch, [_mk("0.18.0-W10-002", priority="P0")])
+    rc = track_dashboard.dashboard_main(_ns(), "0.18.0")
+    assert rc == 0
+
+
+def test_C3_ticket_index_loaded_once(monkeypatch, capsys):
+    call_count = {"n": 0}
+
+    def _spy(version):
+        call_count["n"] += 1
+        return [
+            _mk("0.18.0-W10-001", status="in_progress",
+                started_at=_now_iso(5)),
+            _mk("0.18.0-W10-002", priority="P0"),
+            _mk("0.18.0-W10-003", status="in_progress",
+                started_at=_now_iso(120)),  # 同時也是 stale 候選
+        ]
+    monkeypatch.setattr(track_dashboard, "list_tickets", _spy)
+    monkeypatch.setattr(
+        track_dashboard, "_get_pending_handoff_info", lambda: {}
+    )
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    assert call_count["n"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Group D：邊界條件（7 案）
+# ---------------------------------------------------------------------------
+
+def test_D1_top_zero(monkeypatch, capsys):
+    tickets = [_mk("0.18.0-W10-002", priority="P0")]
+    _patch_loader(monkeypatch, tickets)
+    rc = track_dashboard.dashboard_main(_ns(top=0), "0.18.0")
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "[Ready Top 0]" in out
+    ready_section = out.split("[Ready Top 0]")[1].split("[Stale Warning]")[0]
+    assert "（無可認領建議）" in ready_section
+
+
+def test_D2_top_exceeds_available(monkeypatch, capsys):
+    tickets = [
+        _mk(f"0.18.0-W10-{i:03d}", priority="P1") for i in range(2, 5)
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(top=100), "0.18.0")
+    out = capsys.readouterr().out
+    nums = re.findall(r"^\s*\[(\d+)\]\s+\[P\d\]\s+\[ready\]", out, flags=re.MULTILINE)
+    assert len(nums) == 3
+
+
+def test_D3_wave_not_exist(monkeypatch, capsys):
+    tickets = [_mk("0.18.0-W10-002", priority="P0", wave=10)]
+    _patch_loader(monkeypatch, tickets)
+    rc = track_dashboard.dashboard_main(_ns(wave=999), "0.18.0")
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "wave=999" in out
+    assert "（無 in_progress ticket）" in out
+    assert "（無 handoff target）" in out
+    assert "（無可認領建議）" in out
+    assert "（無 stale ticket）" in out
+
+
+def test_D4_no_stale_flag(monkeypatch, capsys):
+    tickets = [_mk("0.18.0-W10-001", status="in_progress",
+                   started_at=_now_iso(200))]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(no_stale=True), "0.18.0")
+    out = capsys.readouterr().out
+    assert "[Stale Warning]" not in out
+
+
+def test_D5_json_no_stale_null(monkeypatch, capsys):
+    _patch_loader(monkeypatch, [])
+    track_dashboard.dashboard_main(_ns(format="json", no_stale=True), "0.18.0")
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["stale"] is None
+
+
+def test_D6_no_active_version(monkeypatch, capsys):
+    # W15-028.2: 無 active version 屬業務拒絕（查無資料），exit code 2
+    rc = track_dashboard.dashboard_main(_ns(), None)
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "No active version detected" in err
+
+
+def test_D7_ticket_index_load_fail(monkeypatch, capsys):
+    def _raise(v):
+        raise RuntimeError("simulated index load failure")
+    monkeypatch.setattr(track_dashboard, "list_tickets", _raise)
+    rc = track_dashboard.dashboard_main(_ns(), "0.18.0")
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "simulated index load failure" in captured.err
+    assert captured.out == ""
+
+
+# ---------------------------------------------------------------------------
+# Group E：Flag 預設行為（4 案）
+# ---------------------------------------------------------------------------
+
+def test_E1_default_top_is_5(monkeypatch, capsys):
+    tickets = [
+        _mk(f"0.18.0-W10-{i:03d}", priority="P1") for i in range(2, 12)
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    nums = re.findall(r"^\s*\[(\d+)\]\s+\[P\d\]\s+\[ready\]", out, flags=re.MULTILINE)
+    assert len(nums) == 5
+
+
+def test_E2_default_stale_threshold_60(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-001", status="in_progress",
+            started_at=_now_iso(70)),   # 命中
+        _mk("0.18.0-W10-002", status="in_progress",
+            started_at=_now_iso(30)),   # 不命中
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    stale_section = out.split("[Stale Warning]")[1]
+    assert "0.18.0-W10-001" in stale_section
+    assert "0.18.0-W10-002" not in stale_section
+
+
+def test_E3_custom_stale_threshold(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-001", status="in_progress",
+            started_at=_now_iso(35)),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(stale_threshold=30), "0.18.0")
+    out = capsys.readouterr().out
+    stale_section = out.split("[Stale Warning]")[1]
+    assert "0.18.0-W10-001" in stale_section
+
+
+def test_E4_default_format_text(monkeypatch, capsys):
+    _patch_loader(monkeypatch, [])
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    assert out.lstrip().startswith("=== Dashboard")
+    # 非 JSON：不應為 valid json
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(out)
+
+
+# ---------------------------------------------------------------------------
+# Group F：Golden output 對照（3 案，inline expected）
+# ---------------------------------------------------------------------------
+
+def _normalize(text: str) -> str:
+    """normalize 動態欄位（started_at / stale=Nm）以利字串比對。"""
+    text = re.sub(
+        r"started_at:\s*[\d\-T:\.]+",
+        "started_at: <NORMALIZED>",
+        text,
+    )
+    text = re.sub(r"stale=\d+m", "stale=<MINS>m", text)
+    return text
+
+
+def test_F1_golden_pure_pending(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-101", priority="P0", title="A"),
+        _mk("0.18.0-W10-102", priority="P1", title="B"),
+        _mk("0.18.0-W10-103", priority="P2", title="C"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(wave=10), "0.18.0")
+    out = _normalize(capsys.readouterr().out)
+    expected = (
+        "=== Dashboard (wave=10, version=0.18.0) ===\n"
+        "\n"
+        "[In Progress] 0 ticket(s)\n"
+        "  （無 in_progress ticket）\n"
+        "\n"
+        "[Handoff Target] 0 ticket(s)\n"
+        "  （無 handoff target）\n"
+        "\n"
+        "[Ready Top 5]  priority 排序，可直接 claim\n"
+        "  [1] [P0] [ready] 0.18.0-W10-101  A\n"
+        "  [2] [P1] [ready] 0.18.0-W10-102  B\n"
+        "  [3] [P2] [ready] 0.18.0-W10-103  C\n"
+        "\n"
+        "[Stale Warning] 0 ticket(s) over 60min\n"
+        "  （無 stale ticket）\n"
+        "\n"
+        "Hint: ticket track claim <id>\n"
+    )
+    assert out == expected
+
+
+def test_F2_golden_with_in_progress(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-001", status="in_progress",
+            started_at=_now_iso(5), agent="thyme",
+            title="impl"),
+        _mk("0.18.0-W10-101", priority="P1", title="X"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(wave=10), "0.18.0")
+    out = _normalize(capsys.readouterr().out)
+    expected = (
+        "=== Dashboard (wave=10, version=0.18.0) ===\n"
+        "\n"
+        "[In Progress] 1 ticket(s)\n"
+        "  - 0.18.0-W10-001  impl  "
+        "(started_at: <NORMALIZED>, agent: thyme)\n"
+        "\n"
+        "[Handoff Target] 0 ticket(s)\n"
+        "  （無 handoff target）\n"
+        "\n"
+        "[Ready Top 5]  priority 排序，可直接 claim\n"
+        "  [1] [P1] [ready] 0.18.0-W10-101  X\n"
+        "\n"
+        "[Stale Warning] 0 ticket(s) over 60min\n"
+        "  （無 stale ticket）\n"
+        "\n"
+        "Hint: ticket track claim <id>\n"
+    )
+    assert out == expected
+
+
+def test_F3_golden_with_stale(monkeypatch, capsys):
+    tickets = [
+        _mk("0.18.0-W10-001", status="in_progress",
+            started_at=_now_iso(87), agent="parsley", title="long"),
+        _mk("0.18.0-W10-101", priority="P0", title="P"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(wave=10, stale_threshold=30), "0.18.0")
+    out = _normalize(capsys.readouterr().out)
+    expected = (
+        "=== Dashboard (wave=10, version=0.18.0) ===\n"
+        "\n"
+        "[In Progress] 1 ticket(s)\n"
+        "  - 0.18.0-W10-001  long  "
+        "(started_at: <NORMALIZED>, agent: parsley)\n"
+        "\n"
+        "[Handoff Target] 0 ticket(s)\n"
+        "  （無 handoff target）\n"
+        "\n"
+        "[Ready Top 5]  priority 排序，可直接 claim\n"
+        "  [1] [P0] [ready] 0.18.0-W10-101  P\n"
+        "\n"
+        "[Stale Warning] 1 ticket(s) over 30min\n"
+        "  - 0.18.0-W10-001  stale=<MINS>m  "
+        "status=in_progress  agent=parsley\n"
+        "\n"
+        "Hint: ticket track claim <id>\n"
+    )
+    assert out == expected
+
+
+# ---------------------------------------------------------------------------
+# Group G：trigger_bound 行為（5 案，W3-096 落地 W3-095 方案 B）
+#
+# 規格參考：0.19.0-W3-096 Problem Analysis Phase 1 §1-§4
+# - trigger_bound: bool frontmatter 欄位，預設 false 向後相容
+# - text 渲染：[N] [P?] [ready] [T] {id}  {title}（[T] 在 [ready] 後）
+# - 排序：(priority_rank, trigger_bound_flag, id)，同 priority 內 trigger-bound 排後段
+# - JSON：ready 物件加 trigger_bound 欄位
+# ---------------------------------------------------------------------------
+
+def test_G1_text_trigger_bound_renders_t_tag(monkeypatch, capsys):
+    """trigger_bound=true ticket 渲染含 [T] 標籤。"""
+    tickets = [
+        _mk("0.18.0-W10-201", priority="P1", trigger_bound=True, title="trig"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    # 預期格式：  [1] [P1] [ready] [T] 0.18.0-W10-201  trig
+    assert re.search(
+        r"^\s*\[\d+\]\s+\[P1\]\s+\[ready\]\s+\[T\]\s+0\.18\.0-W10-201\s+trig",
+        out, flags=re.MULTILINE,
+    ), f"未找到 [T] 標籤行於：\n{out}"
+
+
+def test_G2_text_normal_no_t_tag(monkeypatch, capsys):
+    """trigger_bound=false / 缺欄位 ticket 渲染不含 [T]。"""
+    tickets = [
+        _mk("0.18.0-W10-202", priority="P1", trigger_bound=False, title="norm"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    # Ready 區段不應出現 [T]
+    ready_section = out.split("[Ready Top 5]")[1].split("[Stale Warning]")[0]
+    assert "[T]" not in ready_section, f"[T] 不應出現於：\n{ready_section}"
+
+
+def test_G3_sort_same_priority_trigger_bound_after(monkeypatch, capsys):
+    """同 priority 內 trigger_bound=true 排在 false 之後。"""
+    tickets = [
+        # 故意把 trigger-bound 放前面，預期排序後排到後面
+        _mk("0.18.0-W10-301", priority="P1", trigger_bound=True, title="trig"),
+        _mk("0.18.0-W10-302", priority="P1", trigger_bound=False, title="norm"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    # 預期順序：W10-302 (normal) 先於 W10-301 (trigger-bound)
+    pos_normal = out.find("0.18.0-W10-302")
+    pos_trigger = out.find("0.18.0-W10-301")
+    assert 0 < pos_normal < pos_trigger, (
+        f"trigger-bound 應排後段。normal@{pos_normal}, trigger@{pos_trigger}\n"
+        f"輸出：\n{out}"
+    )
+
+
+def test_G4_json_includes_trigger_bound_field(monkeypatch, capsys):
+    """JSON 輸出 ready 陣列每物件含 trigger_bound 欄位。"""
+    tickets = [
+        _mk("0.18.0-W10-401", priority="P1", trigger_bound=True),
+        _mk("0.18.0-W10-402", priority="P1", trigger_bound=False),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(format="json"), "0.18.0")
+    payload = json.loads(capsys.readouterr().out)
+    assert len(payload["ready"]) == 2
+    for item in payload["ready"]:
+        assert "trigger_bound" in item, f"ready 物件缺 trigger_bound 欄位: {item}"
+        assert isinstance(item["trigger_bound"], bool)
+    # 驗證值對應
+    by_id = {item["id"]: item for item in payload["ready"]}
+    assert by_id["0.18.0-W10-401"]["trigger_bound"] is True
+    assert by_id["0.18.0-W10-402"]["trigger_bound"] is False
+
+
+def test_G5_sort_cross_priority_priority_wins(monkeypatch, capsys):
+    """跨 priority 排序時 priority 優先（P1 trigger-bound 仍排在 P2 normal 前）。"""
+    tickets = [
+        # P2 normal vs P1 trigger-bound：priority 高的 P1 仍應排前
+        _mk("0.18.0-W10-501", priority="P2", trigger_bound=False, title="p2norm"),
+        _mk("0.18.0-W10-502", priority="P1", trigger_bound=True, title="p1trig"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    pos_p1_trigger = out.find("0.18.0-W10-502")
+    pos_p2_normal = out.find("0.18.0-W10-501")
+    # P1 trigger-bound 應排在 P2 normal 之前（priority 優先於 trigger_bound）
+    assert 0 < pos_p1_trigger < pos_p2_normal, (
+        f"priority 應優先：P1@{pos_p1_trigger}, P2@{pos_p2_normal}\n"
+        f"輸出：\n{out}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Group H：[Handoff Target] 章節（0.2.1-W3-220）
+# 涵蓋 target 票為 pending / in_progress / completed 三種狀態，
+# 驗證獨立於 Ready 的 unblocked-pending 過濾，且 text/json 一致（A4 約束）。
+# ---------------------------------------------------------------------------
+
+def _mk_handoff_info(source_id: str, target_id: str) -> Dict[str, Dict]:
+    """建立修復後 _get_pending_handoff_info() 應回傳的資料形態
+    （source key + target key 皆指向同一份 data，含 target_ticket_id 欄位）。
+    """
+    data = {"ticket_id": source_id, "target_ticket_id": target_id}
+    return {source_id: data, target_id: data}
+
+
+def test_H1_target_pending_shown(monkeypatch, capsys):
+    tickets = [_mk("0.18.0-W10-900", status="pending")]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard, "_get_pending_handoff_info",
+        lambda: _mk_handoff_info("0.18.0-W10-899", "0.18.0-W10-900"),
+    )
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    assert "[Handoff Target]" in out
+    assert "0.18.0-W10-900" in out.split("[Handoff Target]")[1].split("[Ready")[0]
+
+
+def test_H2_target_in_progress_shown(monkeypatch, capsys):
+    """target 票 in_progress 時，Ready 章節不收（unblocked-pending 過濾），
+    但 Handoff Target 章節須顯示（來源票 E3 實測缺口）。
+    """
+    tickets = [_mk("0.18.0-W10-901", status="in_progress",
+                    started_at=_now_iso(1), agent="thyme")]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard, "_get_pending_handoff_info",
+        lambda: _mk_handoff_info("0.18.0-W10-889", "0.18.0-W10-901"),
+    )
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    handoff_section = out.split("[Handoff Target]")[1].split("[Ready")[0]
+    ready_section = out.split("[Ready")[1]
+    assert "0.18.0-W10-901" in handoff_section
+    assert "0.18.0-W10-901" not in ready_section
+
+
+def test_H3_target_completed_shown(monkeypatch, capsys):
+    """target 票 completed 時，Ready 章節不收，但 Handoff Target 章節須顯示。"""
+    tickets = [_mk("0.18.0-W10-902", status="completed")]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard, "_get_pending_handoff_info",
+        lambda: _mk_handoff_info("0.18.0-W10-879", "0.18.0-W10-902"),
+    )
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    handoff_section = out.split("[Handoff Target]")[1].split("[Ready")[0]
+    ready_section = out.split("[Ready")[1]
+    assert "0.18.0-W10-902" in handoff_section
+    assert "0.18.0-W10-902" not in ready_section
+
+
+def test_H4_json_text_handoff_target_equivalence(monkeypatch, capsys):
+    """text 與 json 兩種格式的 Handoff Target 章節內容一致（A4 一致性約束）。"""
+    tickets = [
+        _mk("0.18.0-W10-903", status="completed"),
+        _mk("0.18.0-W10-904", status="pending", priority="P2"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard, "_get_pending_handoff_info",
+        lambda: _mk_handoff_info("0.18.0-W10-869", "0.18.0-W10-903"),
+    )
+
+    track_dashboard.dashboard_main(_ns(format="json"), "0.18.0")
+    payload = json.loads(capsys.readouterr().out)
+    assert "handoff_targets" in payload
+    json_ids = [item["id"] for item in payload["handoff_targets"]]
+
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    text_out = capsys.readouterr().out
+    handoff_section = text_out.split("[Handoff Target]")[1].split("[Ready")[0]
+
+    assert json_ids == ["0.18.0-W10-903"]
+    assert "0.18.0-W10-903" in handoff_section
+
+
+def test_H5_no_handoff_renders_none(monkeypatch, capsys):
+    """無 handoff pending 時，Handoff Target 章節顯示 0 且空狀態字面。"""
+    _patch_loader(monkeypatch, [])
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    assert "[Handoff Target] 0 ticket(s)" in out
+    assert "（無 handoff target）" in out
+
+
+def test_H6_ready_section_not_regressed_by_handoff_target(monkeypatch, capsys):
+    """既有 Ready 章節排序與編號行為不因新增 Handoff Target 章節而回歸。"""
+    tickets = [
+        _mk("0.18.0-W10-910", priority="P0"),
+        _mk("0.18.0-W10-911", priority="P1"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    ready_section = out.split("[Ready")[1]
+    pos_1 = ready_section.find("[1]")
+    pos_2 = ready_section.find("[2]")
+    assert 0 <= pos_1 < pos_2
+    assert "0.18.0-W10-910" in ready_section.split("[2]")[0]
+
+
+# ---------------------------------------------------------------------------
+# Group I：Ready 判定同源 is_fully_unblocked + children 過濾（0.2.1-W3-261）
+#
+# 框架 issue 42 實證場景：同一 wave 中 3 張 P0 子票的 blocker 完成後，
+# runqueue 正確列為前三順位，dashboard --top 5 完全未列、第一順位反而是
+# 其父票（父票 children 未完成，complete 時會被 acceptance_auditor 阻擋）。
+# ---------------------------------------------------------------------------
+
+def test_I1_parent_with_incomplete_children_excluded(monkeypatch, capsys):
+    """父票有未完成 children 時不列入 Ready，即使自身 blockedBy 為空。"""
+    tickets = [
+        _mk("0.18.0-W10-950", priority="P0", children=["0.18.0-W10-951"]),
+        _mk("0.18.0-W10-951", priority="P1", status="pending"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    ready_section = out.split("[Ready")[1].split("[Stale")[0]
+    assert "0.18.0-W10-950" not in ready_section
+    assert "0.18.0-W10-951" in ready_section
+
+
+def test_I2_parent_with_all_children_completed_included(monkeypatch, capsys):
+    """父票 children 皆已 completed/closed 時，父票正常列入 Ready（無誤排除）。"""
+    tickets = [
+        _mk("0.18.0-W10-952", priority="P0",
+            children=["0.18.0-W10-953", "0.18.0-W10-954"]),
+        _mk("0.18.0-W10-953", status="completed"),
+        _mk("0.18.0-W10-954", status="closed"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    ready_section = out.split("[Ready")[1].split("[Stale")[0]
+    assert "0.18.0-W10-952" in ready_section
+
+
+def test_I3_child_dict_embedded_status_conservative_fallback(monkeypatch, capsys):
+    """children 為字典且嵌入未完成 status、且不在 ticket_map 中時，
+    保守 fallback 讀嵌入 status（排除父票）。
+    """
+    tickets = [
+        _mk("0.18.0-W10-955", priority="P0",
+            children=[{"id": "0.18.0-W10-956", "status": "pending"}]),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    ready_section = out.split("[Ready")[1].split("[Stale")[0]
+    assert "0.18.0-W10-955" not in ready_section
+
+
+def test_I4_blockedby_pointing_to_completed_ticket_appears_in_ready(monkeypatch, capsys):
+    """blockedBy 指向已 completed ticket 的任務出現在 Ready（AC #2 回歸守護）。
+
+    Ready 判定的 blockedBy 維度自初版即同源 is_fully_unblocked
+    （經 _is_unblocked_pending 間接複用），本案為顯性回歸測試。
+    """
+    tickets = [
+        _mk("0.18.0-W10-960", status="completed"),
+        _mk("0.18.0-W10-961", priority="P0", blocked=["0.18.0-W10-960"]),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    ready_section = out.split("[Ready")[1].split("[Stale")[0]
+    assert "0.18.0-W10-961" in ready_section
+
+
+def test_I5_issue_42_scenario_children_ranked_parent_excluded(monkeypatch, capsys):
+    """issue 42 實證場景回歸案例：blocker 完成後的 3 張 P0 子票排前 3 順位，
+    有未完成 children 的父票不進 Ready top 5（即使父票自身 unblocked pending）。
+    """
+    tickets = [
+        _mk("0.18.0-W10-970", status="completed"),  # blocker，已完成
+        _mk("0.18.0-W10-971", priority="P0", blocked=["0.18.0-W10-970"]),
+        _mk("0.18.0-W10-972", priority="P0", blocked=["0.18.0-W10-970"]),
+        _mk("0.18.0-W10-973", priority="P0", blocked=["0.18.0-W10-970"]),
+        _mk("0.18.0-W10-974", priority="P0",
+            children=["0.18.0-W10-971", "0.18.0-W10-972", "0.18.0-W10-973"]),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    track_dashboard.dashboard_main(_ns(top=5), "0.18.0")
+    out = capsys.readouterr().out
+    ready_section = out.split("[Ready")[1].split("[Stale")[0]
+    assert "0.18.0-W10-971" in ready_section
+    assert "0.18.0-W10-972" in ready_section
+    assert "0.18.0-W10-973" in ready_section
+    assert "0.18.0-W10-974" not in ready_section
+
+
+def test_I6_dashboard_runqueue_blockedby_predicate_consistency(monkeypatch, capsys):
+    """dashboard 與 runqueue 對同一 wave 的 blockedBy 判定同源一致性測試。
+
+    兩命令共用同一 _is_unblocked_pending predicate（非各自重新實作），
+    對 blocker 已 completed 的子票應一致判定為可執行。
+    """
+    tickets = [
+        _mk("0.18.0-W10-980", status="completed", wave=20),
+        _mk("0.18.0-W10-981", priority="P0", blocked=["0.18.0-W10-980"], wave=20),
+    ]
+    ticket_map = {t["id"]: t for t in tickets}
+
+    # dashboard 路徑
+    dashboard_ready_ids = {
+        item["id"] for item in track_dashboard.load_top_ready(tickets, top=5)
+    }
+    # runqueue 路徑（同一 predicate，直接呼叫確認不各自重新實作）
+    runqueue_unblocked_ids = {
+        t["id"] for t in tickets
+        if track_dashboard._is_unblocked_pending(t, ticket_map)
+    }
+
+    assert "0.18.0-W10-981" in dashboard_ready_ids
+    assert "0.18.0-W10-981" in runqueue_unblocked_ids
+    assert dashboard_ready_ids <= runqueue_unblocked_ids
+
+
+# ---------------------------------------------------------------------------
+# Group J：In Progress lease 三態標記（dashboard 接線 registry lease 狀態，
+# 6 案）
+# ---------------------------------------------------------------------------
+
+class _FakePmRegistry:
+    """最小假物件：`is_fresh(heartbeat_ts, now)` 僅比對 heartbeat_ts 字面，
+    測試不依賴真實 heartbeat 時間戳格式。"""
+
+    def is_fresh(self, heartbeat_ts: Any, now: Any) -> bool:
+        return heartbeat_ts == "FRESH"
+
+
+def _mk_lease_registry(ticket_id: str, session_id: str, heartbeat_ts: str) -> Dict[str, Any]:
+    return {
+        "sessions": {
+            session_id: {"tickets": [ticket_id], "heartbeat_ts": heartbeat_ts},
+        },
+    }
+
+
+def test_J1_text_live_tag_for_fresh_session_owner(monkeypatch, capsys):
+    """FRESH session 持有 → In Progress 條目附 [LIVE]（不可接手語意）。"""
+    tickets = [_mk("0.18.0-W10-701", status="in_progress",
+                    started_at=_now_iso(5), agent="thyme")]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard.lease, "load_registry_snapshot",
+        lambda: (_mk_lease_registry("0.18.0-W10-701", "sess-a", "FRESH"), _FakePmRegistry()),
+    )
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    target_line = next(ln for ln in out.splitlines() if "0.18.0-W10-701" in ln)
+    assert f"[{track_dashboard.LIVE_TAG}]" in target_line
+    assert f"[{track_dashboard.RECLAIMABLE_TAG}]" not in target_line
+
+
+def test_J2_text_reclaimable_tag_for_stale_session_owner(monkeypatch, capsys):
+    """STALE session 持有 → In Progress 條目附 [RECLAIMABLE]（走 reclaim 鑑識）。"""
+    tickets = [_mk("0.18.0-W10-702", status="in_progress",
+                    started_at=_now_iso(5), agent="parsley")]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard.lease, "load_registry_snapshot",
+        lambda: (_mk_lease_registry("0.18.0-W10-702", "sess-b", "STALE"), _FakePmRegistry()),
+    )
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    target_line = next(ln for ln in out.splitlines() if "0.18.0-W10-702" in ln)
+    assert f"[{track_dashboard.RECLAIMABLE_TAG}]" in target_line
+    assert f"[{track_dashboard.LIVE_TAG}]" not in target_line
+
+
+def test_J3_text_reclaimable_tag_when_registry_untracked(monkeypatch, capsys):
+    """registry 已載入但未追蹤該票 lease（無 owner，含 graceful SessionEnd
+    已刪除 entry 的情形）→ 視為 RECLAIMABLE（0.2.1-W3-867：owner=None 不再
+    降級為 untracked，語意對齊 check_reclaimable 既有邏輯）。"""
+    tickets = [_mk("0.18.0-W10-703", status="in_progress",
+                    started_at=_now_iso(5), agent="fennel")]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard.lease, "load_registry_snapshot",
+        lambda: ({"sessions": {}}, _FakePmRegistry()),
+    )
+    track_dashboard.dashboard_main(_ns(), "0.18.0")
+    out = capsys.readouterr().out
+    target_line = next(ln for ln in out.splitlines() if "0.18.0-W10-703" in ln)
+    assert f"[{track_dashboard.LIVE_TAG}]" not in target_line
+    assert f"[{track_dashboard.RECLAIMABLE_TAG}]" in target_line
+
+
+def test_J4_json_lease_field_present_for_all_three_states(monkeypatch, capsys):
+    """JSON in_progress 每項附 lease 欄位：live/reclaimable（STALE owner）/
+    reclaimable（無 owner，registry 已載入但未追蹤此票，0.2.1-W3-867）。"""
+    tickets = [
+        _mk("0.18.0-W10-711", status="in_progress",
+            started_at=_now_iso(5), agent="live-agent"),
+        _mk("0.18.0-W10-712", status="in_progress",
+            started_at=_now_iso(6), agent="reclaim-agent"),
+        _mk("0.18.0-W10-713", status="in_progress",
+            started_at=_now_iso(7), agent="untracked-agent"),
+    ]
+    _patch_loader(monkeypatch, tickets)
+    registry = {
+        "sessions": {
+            "sess-live": {"tickets": ["0.18.0-W10-711"], "heartbeat_ts": "FRESH"},
+            "sess-stale": {"tickets": ["0.18.0-W10-712"], "heartbeat_ts": "STALE"},
+        },
+    }
+    monkeypatch.setattr(
+        track_dashboard.lease, "load_registry_snapshot",
+        lambda: (registry, _FakePmRegistry()),
+    )
+    track_dashboard.dashboard_main(_ns(format="json"), "0.18.0")
+    payload = json.loads(capsys.readouterr().out)
+    lease_by_id = {item["id"]: item["lease"] for item in payload["in_progress"]}
+    assert lease_by_id["0.18.0-W10-711"] == track_dashboard.LEASE_LIVE
+    assert lease_by_id["0.18.0-W10-712"] == track_dashboard.LEASE_RECLAIMABLE
+    assert lease_by_id["0.18.0-W10-713"] == track_dashboard.LEASE_RECLAIMABLE
+
+
+def test_J5_registry_unavailable_degrades_to_untracked_golden_unchanged(monkeypatch, capsys):
+    """registry 不可用（pm_registry=None）時全部 untracked，text 輸出格式與
+    現狀完全一致（Never break userspace，golden 比對）。"""
+    tickets = [_mk("0.18.0-W10-001", status="in_progress",
+                    started_at=_now_iso(5), agent="thyme", title="impl")]
+    _patch_loader(monkeypatch, tickets)
+    monkeypatch.setattr(
+        track_dashboard.lease, "load_registry_snapshot", lambda: ({}, None)
+    )
+    track_dashboard.dashboard_main(_ns(wave=10), "0.18.0")
+    out = _normalize(capsys.readouterr().out)
+    assert (
+        "[In Progress] 1 ticket(s)\n"
+        "  - 0.18.0-W10-001  impl  "
+        "(started_at: <NORMALIZED>, agent: thyme)\n"
+    ) in out
+    assert f"[{track_dashboard.LIVE_TAG}]" not in out
+    assert f"[{track_dashboard.RECLAIMABLE_TAG}]" not in out
+
+
+def test_J6_load_in_progress_default_signature_backward_compatible():
+    """`load_in_progress(tickets)` 舊呼叫簽名（無 registry 參數）仍可用，
+    lease 一律為 untracked（既有呼叫端不因新參數而破壞）。"""
+    tickets = [_mk("0.18.0-W10-721", status="in_progress", started_at=_now_iso(5))]
+    result = track_dashboard.load_in_progress(tickets)
+    assert result[0]["lease"] == track_dashboard.LEASE_UNTRACKED

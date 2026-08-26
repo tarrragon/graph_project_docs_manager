@@ -1,0 +1,196 @@
+# PM 品質基線規則
+
+本檔承載原 `quality-baseline.md` 規則 6-7，屬 PM 情境專屬品質底線，由 PM 按需讀取（非 auto-load）。
+
+> **適用對象**：主線程 PM（rosemary-project-manager）。代理人執行 Ticket 時不觸發這兩條規則，因此不納入 auto-load。
+>
+> **與 `quality-baseline.md` 的關係**：`quality-baseline.md` 規則 1-5 為所有角色通用品質底線（auto-load）；本檔規則 6-7 為 PM 行為規範（按需讀取），兩檔合稱完整品質基線。
+
+---
+
+## 強制規則
+
+### 規則 6：框架修改優先於專案進度
+
+**`.claude/` 框架改善的優先級永遠高於個別專案的功能進度**
+
+> **來源**：PM 多次在 WRAP 分析中將框架改善延後到下版本，理由為「專案進度優先」。但框架是跨專案共用基礎設施，一次改善惠及所有後續工作，回報永遠最高。
+
+**判斷標準**：
+
+| 問題 | 若答「是」 | 行動 |
+|------|-----------|------|
+| 改善 `.claude/` 下的規則/方法論/代理人/Hook？ | 是 | 框架修改，優先處理 |
+| 修復的問題會在其他 Ticket/版本重複出現？ | 是 | 框架修改，優先處理 |
+| 改善僅影響當前 Ticket 的產品功能？ | 是 | 專案進度，正常排序 |
+
+**禁止行為**：
+
+| 禁止 | 原因 |
+|------|------|
+| 以「專案進度緊迫」為由延後框架修改 | 框架債務會在每個後續 Ticket 重複支付成本 |
+| 將框架改善排入「下個版本」 | 延後 = 累積，每延後一次就多 N 個 Ticket 受影響 |
+| 框架問題只記錄不立即處理 | 記錄不等於解決，必須當前 Wave 內處理 |
+
+**執行原則**：
+- 發現框架可改善時，**當前 Wave 內**建立 Ticket 並執行
+- 框架修改 Ticket 的優先級自動提升為 P1（至少）
+- 唯一允許延後的情況：框架修改依賴尚未完成的前置工作（技術阻塞，非時間阻塞）
+
+---
+
+### 規則 6.1：框架 ticket 版本歸屬補強
+
+**框架 ticket 必須建在當前 active 版本，禁止建在 planned 狀態的未來版本**
+
+> **來源**：規則 6 原條款規定「當前 Wave 內建立」但未明示「Wave 必須屬於 active 版本」。當 active 版本主題與框架 ticket 不符時，PM 易傾向放主題吻合的 planned 版本（如 W14-019 設計時 PM 內心傾向 v0.20.0 planned），實質延後框架改善並違反規則 6 本意。`version-progression.md` 已強制「.claude 工件歸活躍版本」，但規則 6 未交叉引用，造成 PM 漏看。
+
+**「當前 active 版本」定義**：
+
+| 來源 | 說明 |
+|------|------|
+| `docs/todolist.yaml` 中 `status: active` 的版本 | 與 `version-progression.md` 強制規則「活躍版本由 todolist.yaml 決定」「版本邊界以 active 為準」「.claude 工件歸活躍版本」一致 |
+| 多個 active 版本（monorepo） | 建在最早完成的 active 版本 |
+| 無 active 版本（罕見） | 先依 `version-progression.md` 啟用 planned 版本為 active，再建立 |
+
+**情境處置表**：
+
+| 情境 | 處置 |
+|------|------|
+| active 版本主題與框架 ticket 吻合 | 直接建在 active 版本對應 Wave |
+| active 版本主題與框架 ticket 不符 | **仍建在 active 版本**，新建專屬「框架雜項」Wave 或借用最新 Wave |
+| 多個 active 版本（monorepo） | 建在最早完成的 active 版本（L1 monorepo 版本） |
+| 框架 ticket 跨多版本適用 | 仍建在當前 active 版本，於 ticket 中說明跨版本適用性 |
+
+**禁止行為補強**：
+
+| 禁止 | 原因 |
+|------|------|
+| 以「主題吻合度」為由放 planned 版本 | 「主題吻合」是次要考量；「立即執行」才是規則 6 本意 |
+| 為避免「干擾現有版本規劃」放未來版本 | 框架 ticket 本質是「非版本主題的雜項」，不會干擾主題 |
+| 在 AskUserQuestion 用 (Recommended) 暗示用戶選未來版本 | 違反規則 5 機制 4「反討好設計」（`ai-communication-rules.md`）；規則 6 同樣禁止 |
+| 用「啟用未來版本」當建議選項規避 active 版本 | 啟用版本是版本規劃決策，不該為單一框架 ticket 變更 |
+
+**Why**: 規則 6 與 `version-progression.md` 之間缺乏交叉引用，導致 PM 設計框架 ticket 時走「規則 6 → 主題吻合度判斷」路徑，跳過「version-progression.md → active 版本強制」路徑。本 session（W14-019 ticket 設計）即為實證案例。
+
+**Consequence**: 框架改善若放 planned 版本，需等 planned 版本啟用才能執行，框架債務累積；其他相關 ticket 在等待期間重複支付成本（違反規則 6 上位原則）。
+
+**Action**:
+
+1. 建立框架 ticket 前先讀 `docs/todolist.yaml` 確認 active 版本。
+2. 若 active 版本主題與框架 ticket 不符，仍建在 active 版本（新增「框架雜項」Wave 或借用最新 Wave）。
+3. AskUserQuestion 提供版本選項時，禁止把 planned 版本標 (Recommended)（規則 5 機制 4）。
+4. 若實在需要啟用 planned 版本（例如 active 版本即將完結），先走 `/version-release check` + 啟用流程，再建框架 ticket。
+
+**與其他規則邊界**：
+
+| 規則 | 關係 |
+|------|------|
+| `version-progression.md`「.claude 工件歸活躍版本」 | 本條款是規則 6 對該強制規則的明文引用 + 補強執行細節 |
+| `monorepo-version-strategy.md` L1 權威來源 | 完全一致——L1 即 active 版本，Ticket 版本基於 L1 |
+| `ai-communication-rules.md` 規則 5 機制 4 反討好設計 | 互相引用——本 session PM 違反規則 5 才暴露規則 6 漏洞 |
+| `PC-121-pm-recommends-framework-ticket-to-future-version.md` | 本條款的反模式案例 + 防護記錄 |
+
+---
+
+### 規則 7：知識捕獲時分流（memory 排除，三分流取代原目的地表）
+
+**準備記錄經驗教訓時，先分流再落筆：依內容性質分流到三個目的地之一，memory 不在其中**
+
+> **來源**：W9-003 分析發現 PM 有 5/13（約 38%）的 feedback memory 僅存 memory 未升級；後續全量實測 130 檔 feedback memory 的升級標註率僅 4%（依原規則 7 頂部標註格式計合規 0 檔）——「先寫 memory、事後再升級」的閉環經量化證明不執行。`0.2.1-W3-082` 進一步裁示排除 memory：Claude Code 原生 memory 存於使用者 home 目錄的**專案層級儲存**（`~/.claude/projects/<project>/memory/`），不納入專案 git、不隨 `.claude/` sync 到其他專案，與「經驗須跨專案複用」的框架目標根本衝突；跨專案原則若僅存 memory，會在其他專案消失並重複踩同樣的雷。本框架因此自建 `.claude/error-patterns/` 取代 memory 作為跨專案錯誤學習的載體——memory 機制本身不受影響（仍是 Claude Code 原生功能），只是本框架的知識指引不再把它列為目的地。
+
+**捕獲時分流判準**（記錄前必答；判別問句：「另一個專案的 session 讀到這段，能用嗎」）：
+
+| 學習成果性質 | 判別 | 目的地 |
+|------------|------|--------|
+| 框架相關 | 替換專案名稱與檔案路徑後仍成立 | `.claude/error-patterns/` 或 `.claude/rules/` `.claude/methodologies/` `.claude/references/`（依內容性質見下方升級路徑表） |
+| 專案相關 | 僅在本專案成立（架構、領域規則、工具鏈） | `docs/` 或 `CLAUDE.md` |
+| 兩者皆非 | 僅在當前 session 成立 | 不記錄。ticket md 已承載執行脈絡 |
+
+**沒有第四個選項**：三分流判準與下方升級路徑表全部檢查後仍拿不定，代表資訊尚不成熟，留在 ticket 執行紀錄內待同主題再現時累積判斷，不得以「先寫 memory 保底」迴避——原「memory 即可」與「immature 暫留 memory 待升級」兩分支已隨本次改寫廢除。
+
+**框架相關內的錯誤學習需先過根因成熟度門檻**：
+
+| 情境 | 目的地 |
+|------|--------|
+| 錯誤學習類 + 跨專案適用 + 根因已過 Two-Phase Reflection（`.claude/methodologies/three-phase-reflection-methodology.md`） | 直接 `/error-pattern add`（allocator 來源前綴編號） |
+| 錯誤學習類 + 跨專案適用 + 根因未熟（單一事件、假設未驗證——直寫 canonical 會使表層根因經 sync 擴散，回收成本高於暫緩記錄） | 暫不記錄，續觀察同主題是否再現；明顯跨專案者可另以 framework-issue `create --label candidate` 建 inbox 錨點供後續收斂 |
+| 非錯誤學習類（通用品質 / PM 行為 / 方法論 / skill 引導） | 依下方升級路徑表選目的地 |
+
+**升級路徑表**（框架相關內容依性質選目的地；目的地拿不準時先查 `.claude/methodologies/knowledge-carrier-allocation-methodology.md` 受眾 x 形態地圖）：
+
+| 檢查問題 | 回答「是」的路徑 |
+|---------|-------------------|
+| 此原則對其他專案也適用嗎？ | 框架相關，進入本表；否則歸專案相關，落 `docs/` 或 `CLAUDE.md` |
+| 此原則是通用品質或流程原則嗎？ | 預設升級至 `.claude/references/`；僅當屬「每回合都需遵守的行為禁令」且通過預算閘門（見下）時進 `rules/core/`（quality-baseline.md 加一行或速查 stub） |
+| 此原則是 PM 行為規範嗎？ | 升級至 `.claude/pm-rules/`（按需層）；pm-role.md（自動載入）僅加路由行 |
+| 此原則是單一代理人的身份 / 偏好嗎？ | 升級至 `.claude/agents/<name>.md`（內容邊界見 knowledge-carrier-allocation「代理人定義內容規範」節：偏好 / 邊界可裝，流程外移 skill） |
+| 此原則是錯誤學習嗎？ | 升級至 `.claude/error-patterns/`（PC/IMP/ARCH 對應分類） |
+| 此原則是流程方法論嗎？ | 升級至 `.claude/methodologies/` |
+| 此原則是 Skill 引導嗎？ | 升級至 `.claude/skills/<skill>/` |
+
+**升級目的地預算閘門**（W7-007）：升級目的地屬自動載入層（`rules/core/`、CLAUDE.md、rules/README.md、pm-role.md）時，必須先通過 `rules/README.md`「自動載入預算原則」自問——「這是否每回合都需要遵守？」答否一律改放按需層（references/ / pm-rules/ / error-patterns/），自動載入層至多加一行路由。**Why**：升級路徑若預設指向自動載入層，每次知識固化即膨脹一次，45k 預算單調耗盡（W7-004 根因「每次事故教訓傾向寫進自動載入層」的制度化版本）。寫入形態依 `document-writing-style.md`「載入層邊界」：自動載入層為禁令 + 路由，論證放按需層。
+
+**禁止行為**：
+
+| 禁止 | 原因 |
+|------|------|
+| 以「先寫 memory 保底」規避三分流判準 | memory 為排除的目的地，非合法選項；框架相關／專案相關／兩者皆非三分流已窮盡所有情境 |
+| 記錄經驗教訓前未執行捕獲時分流判準 | 評估缺失直接導致跨專案原則流失，或散落無主無法複用 |
+| 將跨專案原則誤歸為「專案特定」以規避升級 | 跨專案原則若僅落 `docs/`，不會隨 `.claude/` sync 傳播到其他專案 |
+
+**驗證方式**（如實反映現況，非宣稱已自動化）：
+
+| 子部分 | 現況 |
+|--------|------|
+| memory 排除（三分流「memory 不在目的地」） | 已機械執法：`memory-write-guard-hook.py`（PreToolUse，命中 memory 目錄路徑即 deny）+ `memory-dir-audit-hook.py`（SessionStart/Stop 快照比對告警），兩者皆已掛載於 `.claude/settings.json`。**涵蓋邊界**：PreToolUse deny 僅覆蓋 Write / Edit / MultiEdit / NotebookEdit 四項工具；Bash 路徑（含 heredoc）不在攔截範圍內，由 SessionStart/Stop 稽核事後告警承接，此邊界為 hook 自身明文的刻意設計 |
+| 三分流語意分類（框架相關／專案相關／兩者皆非） | **無機械稽核**，正確性完全依賴 PM 於版本發布前人工抽查本版 ticket 的 Completion Info / Solution，確認標記「發現」的內容皆已依三分流落地 |
+
+**Why（為何不機械化）**：三分流判準的判別問句「另一個專案的 session 讀到這段，能用嗎」本質是對內容通用性的語意評估，無法用正則/關鍵字模式比對窮盡。
+
+**Consequence（強行機械化的後果，含實測依據）**：重現實驗對累積的 400 筆 ticket md 樣本執行 `grep -l "發現"`，命中率**100%（400/400）**；抽樣檢視命中行內容，主要來源為 Spawn Requests 章節固定模板註解、Problem Analysis placeholder、「無發現需修正項」等否定敘述，而非真正待正規化的知識性發現——關鍵字比對無法區分三者，偽陽性率 100%。若照字面建置此稽核，不但不能攔截任何真實遺漏，反而製造「已有自動防護」的假象，使 PM 更可能省略人工抽查。**可攜性**：關鍵字比對無法區分三者之機制性主張可攜至其他專案；400 筆樣本數與 100% 偽陽性率為本專案實測值，`.claude/` 經 sync 後不預期在其他 consumer 專案同樣成立。
+
+**Action（實際須做的事）**：版本發布前由 PM 人工抽查本版 ticket 的 Completion Info / Solution，逐一確認標記「發現」的內容皆已依三分流落地，無殘留僅存於 ticket 文字未正規化的項目；此步驟無自動化輔助，已列入 `.claude/skills/version-release/SKILL.md`「使用流程檢查清單」對應勾選項，逐版執行，不可因「規則已寫」而預設已被稽核涵蓋。
+
+**選配資訊性掃描**：非阻擋式資訊性掃描（輔助人工抽查定位知識載體變動範圍）尚未實作，人工抽查目前無工具輔助定位範圍。
+
+---
+
+## PM 品質檢查清單
+
+以下兩項為 PM 專屬檢查（規則 1-5 的通用清單見 `quality-baseline.md`）：
+
+- [ ] 發現框架可改善時，是否已在當前 Wave 建立 Ticket？（規則 6）
+- [ ] 記錄經驗教訓前已執行捕獲時分流判準？（規則 7，PC-061 / PC-160）
+
+> **Auto-load 鏡像**：規則 7 的分流檢查項已鏡像至 `.claude/rules/core/quality-baseline.md` 通用檢查清單末端（W3-060），確保 PM auto-load context 含此檢查項。本檔為完整分流判準定義的權威來源；auto-load 層僅含指向本檔的提醒項。修改本規則時必須同步檢查 quality-baseline.md 鏡像項是否需更新。
+
+---
+
+## 底線要求總結（PM 專屬）
+
+| 要求 | 說明 | 可協商 |
+|------|------|--------|
+| 框架修改優先於專案進度 | `.claude/` 改善不可因專案進度延後 | 否 |
+| 知識捕獲時分流 | 記錄前先分流：框架相關進 error-patterns／規則／方法論／references；專案相關進 docs／CLAUDE.md；兩者皆非不記錄，memory 不在目的地內 | 否 |
+
+---
+
+## 相關規則
+
+- `.claude/rules/core/quality-baseline.md` - 通用品質基線（規則 1-5，auto-load）
+- `.claude/rules/core/pm-role.md` - 主線程角色行為準則
+- `.claude/pm-rules/plan-to-ticket-flow.md` - Plan 轉 Ticket 流程
+- `.claude/error-patterns/process-compliance/PC-061-memory-upgrade-blindness.md` - 規則 7 錯誤模式來源
+- `.claude/skills/continuous-learning/SKILL.md` - 知識捕獲三分流 Skill
+
+---
+
+**Last Updated**: 2026-08-10
+**Version**: 2.3.0 - 規則 7 三處修正（文字審查發現）：Action 層原指向不存在的發版 checklist 落點，改為指向 `version-release/SKILL.md` 使用流程檢查清單新增的對應勾選項（該勾選項同一次變更中同步新增）；memory 排除列補涵蓋邊界（PreToolUse deny 僅覆蓋 Write/Edit/MultiEdit/NotebookEdit，Bash 路徑由事後稽核承接）；Consequence 補標「400 筆樣本為本專案實測，機制主張可攜但量測值不可攜」；移除「選配資訊性掃描的處置」過去式過程紀錄段落（依 spec 與 process record 分離原則，過程細節屬 ticket/worklog 範疇），改為不含過程與識別符的一句現況陳述。
+**Version**: 2.2.0 - 規則 7「驗證方式」段落改寫：移除對不存在的 version-release 稽核項的字面宣稱，改為如實描述現況（memory 排除已 hook 化；三分流語意分類無機械稽核、依賴人工抽查），並補三明示（Why 三分流本質為語意判斷 / Consequence 400 ticket 樣本關鍵字比對偽陽性率 100% 實測 / Action 版本發布前人工抽查 checklist）；新增選配資訊性掃描（方案 C）處置說明，判定不隨本次併入並已提出 follow-up spawn request，避免無 trigger 延後。
+**Version**: 2.1.0 - 規則 7 全文改寫：以三分流（框架相關／專案相關／兩者皆非）取代原「跨專案錯誤學習 + memory 承接專案特定與 deferred 項」目的地表，memory 不再列為任何分支的合法目的地；`upgrade: deferred` frontmatter 標註與「升級後處理」三步（MEMORY.md 索引移除）隨之廢除；底線要求總結與相關規則指標同步更新（0.2.1-W3-083，承接 0.2.1-W3-082 用戶裁示）。
+**Version**: 2.0.0 - 規則 7 語意由「寫入後四問評估」前移為「捕獲時分流」：新增分流判準表（Two-Phase Reflection 成熟度門檻 + `upgrade: deferred` 顯式標註 + framework-issue candidate 可選 inbox），原四問表降為分流目的地路由；升級後處理綁 promote/scan 工具與發版稽核。依據：130 檔 feedback memory 實測 4% 標註率，事後補評估閉環量化證明不執行
+**Version**: 1.2.0 - 規則 7 升級路徑表補「單一代理人身份/偏好 → agents/<name>.md」分支（原六分支對偏好類教訓無目的地，fall through 誤置）+ 表前補知識載體地圖路由（W8 multi-round-review R3）
+**Version**: 1.1.0 - 規則 7 新增「升級目的地預算閘門」（自動載入層需過「每回合都需要」自問，預設按需層）；升級後處理改「升級即搬家」（MEMORY.md 索引移除條目，修正與 W7-004.6 索引修剪實務的矛盾）（W7-007）
+**Version**: 1.0.0 - 從 quality-baseline.md v1.9.0 規則 6-7 外移；auto-load 僅保留通用品質底線（規則 1-5），PM 情境專屬規則移至此處按需讀取（對應 0.18.0-W10-073.4 WRAP 選項 B）

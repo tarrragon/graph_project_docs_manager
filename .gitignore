@@ -63,3 +63,40 @@ macos/Podfile.lock
 # Flutter 3.32 起不再走 synthetic package，產物落在 lib/ 下；納入版控可讓
 # clone 後無需先執行生成即可開啟 IDE，語系變更也會出現在 diff 中可供審閱。
 # 請勿為它們新增忽略規則。
+
+# ── Claude 框架（.claude/）的本地執行期產物，不入庫 ──
+# 清單來源：.claude/lib/sync_exclude_manifest.py 的 GITIGNORE_EXPECTED
+# 框架本體要入庫，僅以下子路徑排除。
+.claude/.sync-conflicts
+.claude/.sync-state.json
+.claude/.version-release.yaml
+.claude/.zhtw-mcp-skip
+.claude/ARCHITECTURE_REVIEW_REQUIRED
+.claude/PM_INTERVENTION_REQUIRED
+.claude/TASK_AVOIDANCE_FIX_MODE
+.claude/analyses
+.claude/dispatch-active.json
+.claude/dispatch-active.lock
+.claude/handoff
+.claude/hook-logs
+.claude/hook-state
+.claude/logs
+.claude/migration-backups
+.claude/plans
+.claude/pm-status.json
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+.claude/state
+.claude/sync-preserve.yaml
+.claude/sync-skills.yaml
+.claude/worktrees
+
+# Python 執行期產物（全域）
+.pytest_cache
+.venv
+__pycache__
+
+# project-init onboard 要求的框架規則
+coverage/
+htmlcov/
+.claude/tool-results/

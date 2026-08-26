@@ -1,10 +1,9 @@
+import 'dart:io';
+
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../platform/secure_bookmark.dart';
-
-/// 還原先前工作資料夾的結果。
+/// 工作資料夾的狀態。
 sealed class WorkspaceState {
   const WorkspaceState();
 }
@@ -14,100 +13,74 @@ class WorkspaceUnset extends WorkspaceState {
   const WorkspaceUnset();
 }
 
-/// 已取得存取權，可讀寫 [path]。
+/// 資料夾存在且可讀。
 class WorkspaceReady extends WorkspaceState {
   const WorkspaceReady(this.path);
   final String path;
 }
 
-/// 先前選過資料夾，但授權已無法還原（資料夾被刪除、外接磁碟未掛載、
-/// bookmark 損毀等）。[lastKnownPath] 供 UI 提示使用者是哪一個。
+/// 先前選過資料夾，但現在無法使用（已刪除、外接磁碟未掛載、權限變更）。
+/// [lastKnownPath] 供 UI 提示使用者是哪一個。
 class WorkspaceUnavailable extends WorkspaceState {
-  const WorkspaceUnavailable({required this.lastKnownPath, required this.reason});
+  const WorkspaceUnavailable({
+    required this.lastKnownPath,
+    required this.reason,
+  });
   final String? lastKnownPath;
   final String reason;
 }
 
-/// 管理「使用者授權的工作資料夾」的完整生命週期。
+/// 管理「使用者選定的工作資料夾」。
 ///
-/// 職責邊界：[SecureBookmark] 只做原生通訊，本類別負責決定何時建立、
-/// 何時重建、失敗時如何收場。
+/// App Sandbox 已關閉（見 macos/Runner/*.entitlements），因此不需要
+/// security-scoped bookmark —— 記住路徑字串即可跨啟動存取。這個簡化的
+/// 代價是 App 無法上架 Mac App Store，那是刻意的取捨：本 App 需要執行
+/// 專案內的 doc CLI，沙盒下做不到。
 class WorkspaceRepository {
-  /// [bookmark] 可注入替身供測試使用；預設走真實的 platform channel。
-  WorkspaceRepository({SecureBookmark? bookmark})
-      : _bookmark = bookmark ?? const SecureBookmark();
+  static const _pathKey = 'workspace.path';
 
-  final SecureBookmark _bookmark;
-
-  static const _bookmarkKey = 'workspace.bookmark';
-  static const _lastPathKey = 'workspace.last_path';
-
-  /// 開啟系統面板讓使用者選取資料夾，並把授權保存下來。
-  ///
-  /// 回傳 null 表示使用者取消。
+  /// 開啟系統面板讓使用者選取資料夾。回傳 null 表示使用者取消。
   Future<WorkspaceState?> chooseFolder() async {
     final path = await getDirectoryPath();
     if (path == null) return null;
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lastPathKey, path);
-
-    if (!SecureBookmark.isSupported) {
-      // 非 macOS 平台沒有 sandbox 限制，記住路徑即可。
-      return WorkspaceReady(path);
-    }
-
-    try {
-      await prefs.setString(_bookmarkKey, await _bookmark.create(path));
-      return WorkspaceReady(path);
-    } on PlatformException catch (e) {
-      return WorkspaceUnavailable(
-        lastKnownPath: path,
-        reason: e.message ?? '無法保存資料夾授權',
-      );
-    }
+    await prefs.setString(_pathKey, path);
+    return _inspect(path);
   }
 
-  /// App 啟動時呼叫，還原先前的授權。
+  /// App 啟動時呼叫，還原先前選定的資料夾。
   Future<WorkspaceState> restore() async {
     final prefs = await SharedPreferences.getInstance();
-    final lastPath = prefs.getString(_lastPathKey);
-
-    if (!SecureBookmark.isSupported) {
-      return lastPath == null ? const WorkspaceUnset() : WorkspaceReady(lastPath);
-    }
-
-    final stored = prefs.getString(_bookmarkKey);
-    if (stored == null) return const WorkspaceUnset();
-
-    try {
-      final resolved = await _bookmark.resolve(stored);
-      if (!resolved.granted) {
-        return WorkspaceUnavailable(
-          lastKnownPath: lastPath,
-          reason: '系統拒絕了先前的資料夾授權',
-        );
-      }
-      // isStale 代表 bookmark 還能解析但已過期；此時必須趁著手上還有存取權
-      // 立刻重建，否則下一次很可能就完全解不開了。
-      if (resolved.isStale) {
-        await prefs.setString(_bookmarkKey, await _bookmark.create(resolved.path));
-      }
-      await prefs.setString(_lastPathKey, resolved.path);
-      return WorkspaceReady(resolved.path);
-    } on PlatformException catch (e) {
-      // 策略選擇：此處「保留」失效的 bookmark 而非清除，讓 UI 能顯示
-      // lastKnownPath 提示使用者是哪個資料夾出了問題（例如外接磁碟沒插）。
-      // 若偏好「失效即忘記」，在這裡 remove 兩個 key 即可。
-      return WorkspaceUnavailable(
-        lastKnownPath: lastPath,
-        reason: e.message ?? '先前的資料夾授權已失效',
-      );
-    }
+    final path = prefs.getString(_pathKey);
+    if (path == null) return const WorkspaceUnset();
+    return _inspect(path);
   }
 
-  /// 釋放所有存取權。應在 App 結束前呼叫。
-  Future<void> release() async {
-    if (SecureBookmark.isSupported) await _bookmark.stopAll();
+  /// 路徑字串會過期（資料夾被搬移、重新命名、刪除，或位於未掛載的磁碟），
+  /// 因此每次取用都要實際確認，不能假設存下來就一直有效。
+  ///
+  /// 這是路徑字串相對於 security-scoped bookmark 的取捨：bookmark 追蹤的是
+  /// 檔案系統節點、能跟著搬移，路徑字串不能。對開發者工具而言可接受 ——
+  /// 專案資料夾被搬走時，讓使用者重選一次是合理的。
+  Future<WorkspaceState> _inspect(String path) async {
+    final dir = Directory(path);
+    if (!await dir.exists()) {
+      return WorkspaceUnavailable(
+        lastKnownPath: path,
+        reason: '資料夾不存在或所在磁碟未掛載',
+      );
+    }
+    try {
+      await dir.list().first;
+    } on FileSystemException catch (e) {
+      return WorkspaceUnavailable(
+        lastKnownPath: path,
+        reason: e.osError?.message ?? '無法讀取資料夾內容',
+      );
+    } on StateError {
+      // 空資料夾：list().first 找不到元素，但資料夾本身可讀。
+    }
+    return WorkspaceReady(path);
   }
 }

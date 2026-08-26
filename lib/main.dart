@@ -93,13 +93,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  @override
-  void dispose() {
-    // 釋放 security-scoped 存取權。未釋放會佔用系統配額。
-    _repository.release();
-    super.dispose();
-  }
-
   Future<void> _chooseFolder() async {
     final state = await _repository.chooseFolder();
     if (state != null && mounted) setState(() => _workspace = state);

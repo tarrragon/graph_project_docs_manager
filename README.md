@@ -124,35 +124,36 @@ integration_test/                   外層測試
 
 ScreenUtil 只負責讓 UI 在不同尺寸下維持比例，它**不會**阻止 overflow。
 
-## macOS 權限
+## macOS 權限與發布
 
-App 啟用 App Sandbox（Mac App Store 上架的必要條件）。已配置的 entitlements：
+App Sandbox **關閉**。發布通路為 Developer ID 簽署 + notarization，不上架
+Mac App Store。
+
+這是能力決策而非偏好：本 App 是框架的配套開發者工具，需要執行專案內的
+doc CLI 並讀取使用者指定的任意專案資料夾。實測沙盒下兩者皆不可行 ——
+
+| 目標 | 沙盒開啟 | 沙盒關閉 |
+|---|---|---|
+| `/bin/echo` | ✅ | ✅ |
+| `/usr/bin/python3` | ❌ `xcrun: error: cannot be used within an App Sandbox.` | ✅ Python 3.9.6 |
+| 使用者安裝的 `uv` | ❌ `ProcessException: Operation not permitted` | ✅ uv 0.8.13 |
+| 讀取任意專案資料夾 | 需 security-scoped bookmark | ✅ 直接可讀 |
+
+另有 App Store 審查指南 2.5.2 的獨立阻擋：app 須自包含，不得執行改變功能的
+程式碼（明文含 Python 等直譯式語言）。doc CLI 位於使用者選取的資料夾內，
+即使打包直譯器仍踩線。
+
+### entitlements
 
 | 權限 | Debug | Release | 用途 |
 |---|:---:|:---:|---|
-| `app-sandbox` | ✅ | ✅ | 沙盒本身 |
-| `network.client` | ✅ | ✅ | 對外連線 |
-| `files.user-selected.read-write` | ✅ | ✅ | 使用者選取的檔案／資料夾讀寫 |
-| `files.bookmarks.app-scope` | ✅ | ✅ | 授權跨啟動保留 |
-| `cs.allow-jit` | ✅ | — | Dart VM JIT |
+| `app-sandbox` | `false` | `false` | 明確關閉，契約測試守著不被重新打開 |
+| `cs.allow-jit` | ✅ | — | Dart VM JIT（Hardened Runtime 下必要） |
 | `network.server` | ✅ | — | hot reload / VM service |
 
-### 本機資料夾存取
-
-沙盒下，使用者選取的資料夾授權**預設只在該次執行期間有效**。要讓授權活過重啟，
-必須使用 security-scoped bookmark：
-
-1. `file_selector` 開啟系統面板，使用者選取資料夾
-2. 原生端呼叫 `bookmarkData(options: .withSecurityScope)` 產生憑證
-3. 憑證以 base64 存入 `UserDefaults`（透過 `shared_preferences`）
-4. 下次啟動解回 URL 並呼叫 `startAccessingSecurityScopedResource()`
-
-Flutter 生態目前**沒有**維護中的套件處理這件事，因此以 MethodChannel 自行實作，
-原生端位於 `macos/Runner/MainFlutterWindow.swift`。
-
-> `startAccessingSecurityScopedResource()` 有系統配額，且必須與
-> `stopAccessingSecurityScopedResource()` 成對呼叫。未釋放不會報錯，
-> 只會在某個時間點開始靜默失敗。
+Release 走 AOT 不需 JIT。契約測試 `test/entitlements_contract_test.dart`
+斷言 sandbox 維持關閉 —— 一旦被重新開啟，`Process.run` 會靜默失去執行
+CLI 的能力，且沒有任何編譯期徵兆。
 
 ## 多語系
 

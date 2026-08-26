@@ -1,0 +1,671 @@
+"""
+Ticket 關係和狀態管理模組
+
+負責管理 Ticket 的父子關係、TDD Phase 和代理人派發等。
+"""
+# 防止直接執行此模組
+if __name__ == "__main__":
+    import sys
+    print(SEPARATOR_PRIMARY)
+    print("[ERROR] 此檔案不支援直接執行")
+    print(SEPARATOR_PRIMARY)
+    print()
+    print("正確使用方式：")
+    print("  ticket track summary")
+    print("  ticket track claim 0.31.0-W4-001")
+    print()
+    print("如尚未安裝，請執行：")
+    print("  cd .claude/skills/ticket && uv tool install .")
+    print()
+    print("詳見 SKILL.md")
+    print(SEPARATOR_PRIMARY)
+    sys.exit(1)
+
+
+
+import argparse
+from contextlib import ExitStack
+from pathlib import Path
+
+from ticket_system.lib.ui_constants import SEPARATOR_PRIMARY
+from ticket_system.lib.constants import (
+    STATUS_PENDING,
+    STATUS_IN_PROGRESS,
+    STATUS_COMPLETED,
+    STATUS_BLOCKED,
+    STATUS_CLOSED,
+    STATUS_SUPERSEDED,
+)
+from ticket_system.lib.file_lock import file_lock
+from ticket_system.lib.ticket_loader import (
+    get_ticket_path,
+    list_tickets,
+    load_ticket,
+    save_ticket,
+)
+from ticket_system.lib.messages import (
+    ErrorMessages,
+    InfoMessages,
+    AgentProgressMessages,
+    format_error,
+    format_info,
+)
+from ticket_system.lib.command_tracking_messages import (
+    TrackRelationsMessages,
+    format_msg,
+)
+from ticket_system.lib.ticket_ops import (
+    load_and_validate_ticket,
+    resolve_ticket_path,
+)
+from ticket_system.lib.tdd_phase_inference import TDD_PHASE_SOURCE_MANUAL
+from ticket_system.lib.ticket_validator import validate_ticket_id
+
+# _execute_set_relation_field 呼叫入口對應的 CLI 子命令名稱，
+# 用於逗號分隔誤用訊息中組出正確指令範例。
+_RELATION_FIELD_TO_CLI_COMMAND = {
+    "blockedBy": "set-blocked-by",
+    "relatedTo": "set-related-to",
+}
+
+
+def validate_ticket_exists(version: str, ticket_id: str) -> tuple[dict | None, bool]:
+    """
+    驗證並載入 Ticket。不存在時輸出錯誤訊息。
+
+    共用驗證函式，減少重複的 load_ticket + error check 邏輯，
+    同時回傳載入的 Ticket 避免重複呼叫 load_ticket()。
+
+    Args:
+        version: 版本號
+        ticket_id: Ticket ID
+
+    Returns:
+        tuple: (ticket dict or None, success: bool)
+               - ticket: 載入的 Ticket 物件（驗證失敗時為 None）
+               - success: True 表示驗證成功，False 表示失敗（已輸出錯誤訊息）
+    """
+    ticket = load_ticket(version, ticket_id)
+    if not ticket:
+        print(format_error(ErrorMessages.TICKET_NOT_FOUND, ticket_id=ticket_id))
+        return None, False
+    return ticket, True
+
+
+def _normalize_ticket_id_list(value: str | list) -> list[str]:
+    """
+    標準化 Ticket ID 清單為列表
+
+    將字符串或列表轉換為統一的列表格式。
+
+    Args:
+        value: Ticket ID 清單（字符串或列表）
+               - 字符串：逗號或空格分隔
+               - 列表：直接使用
+
+    Returns:
+        list[str]: 標準化的 ID 列表
+    """
+    if isinstance(value, str):
+        # 支援逗號或空格分隔
+        return [id_str.strip() for id_str in value.split(",") if id_str.strip()]
+    elif isinstance(value, list):
+        return value
+    else:
+        return []
+
+
+def _detect_comma_separated_misuse(value_str: str) -> list[str] | None:
+    """
+    偵測「逗號分隔且各段皆為合法 ID 格式」的誤用輸入。
+
+    set-blocked-by / set-related-to 的 value 參數須以空格分隔；
+    若呼叫者誤用逗號分隔（如另一組指令 set-where 的慣例），
+    直接以空格切分會把整串當成單一（不存在的）ID 查詢，
+    錯誤訊息無法指出真正的問題所在。本函式在早期攔截此情況，
+    使呼叫端能輸出專屬提示而非泛用的「找不到 Ticket」。
+
+    Args:
+        value_str: 命令列傳入的原始 value 字串
+
+    Returns:
+        list[str] | None: 逗號分隔且各段皆為合法 ticket ID 格式時，
+                           回傳去除空白後的 ID 清單；否則回傳 None。
+    """
+    if "," not in value_str:
+        return None
+    candidates = [part.strip() for part in value_str.split(",") if part.strip()]
+    if not candidates:
+        return None
+    if all(validate_ticket_id(candidate) for candidate in candidates):
+        return candidates
+    return None
+
+
+def _execute_set_relation_field_replace(
+    referenced_ids: list[str],
+) -> list[str]:
+    """替換模式：直接替換欄位值"""
+    return referenced_ids
+
+
+def _execute_set_relation_field_add(
+    current_list: list[str],
+    referenced_ids: list[str],
+) -> list[str]:
+    """追加模式：將 ID 加入列表（去重）"""
+    new_value = current_list.copy()
+    for ref_id in referenced_ids:
+        if ref_id not in new_value:
+            new_value.append(ref_id)
+    return new_value
+
+
+def _execute_set_relation_field_remove(
+    current_list: list[str],
+    referenced_ids: list[str],
+) -> list[str]:
+    """移除模式：從列表中移除指定的 ID"""
+    return [id_str for id_str in current_list if id_str not in referenced_ids]
+
+
+def _execute_set_relation_field(
+    args: argparse.Namespace,
+    version: str,
+    field_name: str,
+) -> int:
+    """
+    通用關係欄位設定函式
+
+    支援 blockedBy 和 relatedTo 欄位的設定，包含三種模式：
+    - replace（預設）：替換欄位值
+    - --add：追加到欄位，去重
+    - --remove：從欄位移除
+
+    Args:
+        args: 命令列參數
+            - ticket_id: 目標 Ticket ID
+            - value: 被引用的 Ticket ID（空格分隔或單個）
+            - --add: 追加模式旗標
+            - --remove: 移除模式旗標
+        version: 版本號
+        field_name: 欄位名稱 ("blockedBy" 或 "relatedTo")
+
+    Returns:
+        int: 0 表示成功，1 表示失敗
+    """
+    target_id = args.ticket_id
+
+    # W14-045: file_lock 包圍 target ticket 的 load → modify → save。
+    # 被引用 ticket 的 validate_ticket_exists 為 read-only（只 load 檢查存在），
+    # 但為簡化邏輯統一在 lock 內執行（同一 lock 內 read 其他 ticket 安全）。
+    lock_target = Path(get_ticket_path(version, target_id))
+    with file_lock(lock_target):
+        # Step 1：驗證並載入目標 Ticket
+        target_ticket, success = validate_ticket_exists(version, target_id)
+        if not success:
+            return 1
+
+        # 解析被引用的 Ticket ID 清單
+        value_str = args.value if hasattr(args, "value") else ""
+
+        # 逗號分隔誤用偵測：優先於一般解析，避免整串被當成單一不存在 ID
+        comma_candidates = _detect_comma_separated_misuse(value_str)
+        if comma_candidates is not None:
+            print(format_error(
+                ErrorMessages.RELATION_VALUE_COMMA_SEPARATED,
+                ticket_id=value_str,
+                command=_RELATION_FIELD_TO_CLI_COMMAND.get(field_name, field_name),
+                target_id=target_id,
+                space_separated_ids=" ".join(comma_candidates),
+            ))
+            return 1
+
+        referenced_ids = [id_str.strip() for id_str in value_str.split() if id_str.strip()]
+
+        # Step 2：驗證被引用 Ticket 存在（--remove 除外）
+        is_remove_mode = getattr(args, "remove", False)
+        if not is_remove_mode:
+            for ref_id in referenced_ids:
+                _, success = validate_ticket_exists(version, ref_id)
+                if not success:
+                    return 1
+
+        # Step 3：取得並標準化目前欄位值
+        current_value = target_ticket.get(field_name, [])
+        current_list = _normalize_ticket_id_list(current_value)
+
+        # Step 4：根據模式更新欄位值
+        is_add_mode = getattr(args, "add", False)
+
+        if is_remove_mode:
+            new_value = _execute_set_relation_field_remove(current_list, referenced_ids)
+        elif is_add_mode:
+            new_value = _execute_set_relation_field_add(current_list, referenced_ids)
+        else:
+            new_value = _execute_set_relation_field_replace(referenced_ids)
+
+        # Step 5：更新 Ticket 並保存
+        target_ticket[field_name] = new_value
+
+        ticket_path = resolve_ticket_path(target_ticket, version, target_id)
+        save_ticket(target_ticket, ticket_path)
+
+    # Step 6：輸出成功訊息
+    print(format_info(
+        InfoMessages.FIELD_UPDATED,
+        ticket_id=target_id,
+        field_name=field_name,
+    ))
+    if new_value:
+        print(f"  新值：{', '.join(new_value)}")
+    else:
+        print(f"  新值：（空）")
+
+    return 0
+
+
+def execute_set_blocked_by(args: argparse.Namespace, version: str) -> int:
+    """
+    設定 Ticket 的 blockedBy 欄位
+
+    命令格式：ticket track set-blocked-by <ticket-id> <blocking-ids> [--add|--remove]
+
+    Args:
+        args: 命令列參數
+        version: 版本號
+
+    Returns:
+        int: exit code
+    """
+    return _execute_set_relation_field(args, version, "blockedBy")
+
+
+def execute_set_related_to(args: argparse.Namespace, version: str) -> int:
+    """
+    設定 Ticket 的 relatedTo 欄位
+
+    命令格式：ticket track set-related-to <ticket-id> <related-ids> [--add|--remove]
+
+    Args:
+        args: 命令列參數
+        version: 版本號
+
+    Returns:
+        int: exit code
+    """
+    return _execute_set_relation_field(args, version, "relatedTo")
+
+
+def execute_add_child(args: argparse.Namespace, version: str) -> int:
+    """
+    建立 Ticket 父子關係
+
+    命令格式：ticket track add-child <parent-id> <child-id>
+
+    動作：
+    1. 驗證父 Ticket 和子 Ticket 都存在
+    2. 更新父 Ticket 的 children 陣列
+    3. 更新子 Ticket 的 parent_id 欄位
+    4. 避免重複添加
+    """
+    parent_id = args.parent_id
+    child_id = args.child_id
+
+    # W14-045: file_lock 包圍 parent + child 的 load → modify → save。
+    # 兩個不同 ticket file 採用嵌套順序 (parent first → child second)；
+    # 由於 path 不同不會 self-block。固定順序避免將來其他 caller 反向加鎖
+    # 導致 deadlock。
+    parent_lock = Path(get_ticket_path(version, parent_id))
+    child_lock = Path(get_ticket_path(version, child_id))
+    with file_lock(parent_lock), file_lock(child_lock):
+        # Step 1：驗證父 Ticket
+        parent_ticket, success = validate_ticket_exists(version, parent_id)
+        if not success:
+            return 1
+
+        # Step 2：驗證子 Ticket
+        child_ticket, success = validate_ticket_exists(version, child_id)
+        if not success:
+            return 1
+
+        # Step 3：檢查是否已經是子 Ticket（避免重複）
+        children = parent_ticket.get("children", [])
+        if child_id in children:
+            print(format_msg(TrackRelationsMessages.CHILD_ALREADY_EXISTS_FORMAT, child_id=child_id, parent_id=parent_id))
+            return 0
+
+        # Step 4：更新父 Ticket 的 children 陣列
+        if "children" not in parent_ticket:
+            parent_ticket["children"] = []
+        parent_ticket["children"].append(child_id)
+
+        # Step 5：更新子 Ticket 的 parent_id 欄位
+        old_parent = child_ticket.get("parent_id")
+        child_ticket["parent_id"] = parent_id
+
+        # Step 6：更新 chain 欄位（如果存在）
+        if "chain" not in child_ticket:
+            child_ticket["chain"] = {}
+
+        chain_info = child_ticket.get("chain", {})
+        chain_info["parent"] = parent_id
+
+        # 如果子 Ticket 有 root，維持不變；否則使用父的 root
+        if "root" not in chain_info:
+            parent_chain = parent_ticket.get("chain", {})
+            parent_root = parent_chain.get("root", parent_id)
+            chain_info["root"] = parent_root
+
+        child_ticket["chain"] = chain_info
+
+        # Step 7：保存父 Ticket
+        parent_path = resolve_ticket_path(parent_ticket, version, parent_id)
+        save_ticket(parent_ticket, parent_path)
+
+        # Step 8：保存子 Ticket
+        child_path = resolve_ticket_path(child_ticket, version, child_id)
+        save_ticket(child_ticket, child_path)
+
+    # Step 9：輸出成功訊息
+    print(format_info(InfoMessages.CHILD_RELATION_CREATED))
+    print(f"{TrackRelationsMessages.RELATION_PARENT_PREFIX} {parent_id}")
+    print(f"{TrackRelationsMessages.RELATION_CHILD_PREFIX} {child_id}")
+    if old_parent:
+        print(f"{TrackRelationsMessages.RELATION_OLD_PARENT_PREFIX} {old_parent} {TrackRelationsMessages.RELATION_OLD_PARENT_SUFFIX}")
+
+    return 0
+
+
+def execute_set_parent(args: argparse.Namespace, version: str) -> int:
+    """
+    修正 Ticket 的 parent_id（改寫或清除），並同步上游 children
+
+    命令格式：
+        ticket track set-parent <child-id> <new-parent-id>
+        ticket track set-parent <child-id> --clear
+
+    parent_id 是單值欄位且有反向投影（上游的 children），與
+    blockedBy / relatedTo 這類無反向投影的列表欄位不同：任何一側被
+    改動都必須同步另一側，否則留下懸空引用（一邊指向、另一邊不承認
+    的關係）。本命令是唯一入口，同時涵蓋清除、改寫兩種情境：
+    - 清除（--clear）：parent_id 設為 None，若原 parent 仍存在，
+      從其 children 移除本票 ID。
+    - 改寫（傳入 new-parent-id）：先比照清除邏輯脫離原 parent，
+      再加入新 parent 的 children（去重）。
+
+    因此不需要獨立的「移除 children 成員」命令：children 的異動
+    永遠由 parent_id 的異動驅動，單向操作已涵蓋雙向一致性。
+
+    動作：
+    1. 驗證互斥旗標（new_parent_id 與 --clear 不可同時提供，也不可
+       同時缺席）
+    2. 驗證新 parent（若提供）存在，且非自我參照
+    3. 從舊 parent（若存在於票庫）的 children 移除本票 ID
+    4. 若有新 parent，加入其 children（去重）
+    5. 更新本票的 parent_id 與 chain.parent
+
+    Returns:
+        int: 0 表示成功（含 no-op），1 表示驗證失敗
+    """
+    child_id = args.child_id
+    new_parent_id = getattr(args, "new_parent_id", None)
+    is_clear = getattr(args, "clear", False)
+
+    if is_clear and new_parent_id:
+        print(format_error(ErrorMessages.SET_PARENT_CLEAR_CONFLICT))
+        return 1
+    if not is_clear and not new_parent_id:
+        print(format_error(ErrorMessages.SET_PARENT_REQUIRES_TARGET))
+        return 1
+    if new_parent_id == child_id:
+        print(format_error(ErrorMessages.SET_PARENT_SELF_REFERENCE, ticket_id=child_id))
+        return 1
+
+    # Step 1：peek 目前的 parent_id 以組出完整鎖定集合。
+    # 這裡讀到的值只用於決定要鎖哪些檔案；權威值於取得所有鎖後重新載入。
+    peek_ticket, success = validate_ticket_exists(version, child_id)
+    if not success:
+        return 1
+    peek_old_parent_id = peek_ticket.get("parent_id")
+
+    lock_ids = {child_id}
+    if peek_old_parent_id:
+        lock_ids.add(peek_old_parent_id)
+    if new_parent_id:
+        lock_ids.add(new_parent_id)
+    lock_paths = sorted(
+        (Path(get_ticket_path(version, tid)) for tid in lock_ids),
+        key=str,
+    )
+
+    with ExitStack() as stack:
+        for lock_path in lock_paths:
+            stack.enter_context(file_lock(lock_path))
+
+        # Step 2：取得所有鎖後重新載入，避免 peek 之後的競態使鎖定集合失準。
+        child_ticket, success = validate_ticket_exists(version, child_id)
+        if not success:
+            return 1
+        old_parent_id = child_ticket.get("parent_id")
+
+        new_parent_ticket = None
+        if new_parent_id:
+            new_parent_ticket, success = validate_ticket_exists(version, new_parent_id)
+            if not success:
+                return 1
+
+        if old_parent_id == new_parent_id:
+            print(format_info(InfoMessages.PARENT_RELATION_NOOP, child_id=child_id))
+            return 0
+
+        # Step 3：從舊 parent 的 children 移除本票（舊 parent 可能已不存在票庫中）
+        if old_parent_id:
+            old_parent_ticket = load_ticket(version, old_parent_id)
+            if old_parent_ticket:
+                children = old_parent_ticket.get("children", [])
+                if child_id in children:
+                    old_parent_ticket["children"] = [
+                        cid for cid in children if cid != child_id
+                    ]
+                    save_ticket(
+                        old_parent_ticket,
+                        resolve_ticket_path(old_parent_ticket, version, old_parent_id),
+                    )
+
+        # Step 4：加入新 parent 的 children（去重）
+        if new_parent_id and new_parent_ticket is not None:
+            children = new_parent_ticket.get("children", [])
+            if child_id not in children:
+                children.append(child_id)
+            new_parent_ticket["children"] = children
+            save_ticket(
+                new_parent_ticket,
+                resolve_ticket_path(new_parent_ticket, version, new_parent_id),
+            )
+
+        # Step 5：更新本票的 parent_id 與 chain.parent
+        child_ticket["parent_id"] = new_parent_id
+        chain_info = child_ticket.get("chain", {})
+        if new_parent_id:
+            chain_info["parent"] = new_parent_id
+        else:
+            chain_info.pop("parent", None)
+        child_ticket["chain"] = chain_info
+
+        save_ticket(
+            child_ticket,
+            resolve_ticket_path(child_ticket, version, child_id),
+        )
+
+    if new_parent_id:
+        print(format_info(InfoMessages.PARENT_RELATION_UPDATED, child_id=child_id))
+    else:
+        print(format_info(InfoMessages.PARENT_RELATION_CLEARED, child_id=child_id))
+    print(f"{TrackRelationsMessages.SET_PARENT_CHILD_PREFIX} {child_id}")
+    old_label = old_parent_id or TrackRelationsMessages.SET_PARENT_NONE_LABEL
+    new_label = new_parent_id or TrackRelationsMessages.SET_PARENT_NONE_LABEL
+    print(f"{TrackRelationsMessages.SET_PARENT_OLD_PREFIX} {old_label}")
+    print(f"{TrackRelationsMessages.SET_PARENT_NEW_PREFIX} {new_label}")
+
+    return 0
+
+
+def _normalize_phase_input(phase: str) -> str:
+    """將各種 Phase 輸入格式正規化為標準 'Phase X' 格式。
+
+    支援輸入: phase0, phase1, phase2, phase3a, phase3b, phase4,
+              Phase 0, Phase 1, Phase 3a 等。
+
+    Returns:
+        正規化後的 Phase 名稱（如 'Phase 2'），或原始輸入（若無法辨識）。
+    """
+    normalized = phase.lower().strip()
+    # 移除 "phase" 前綴，取得數字部分
+    if normalized.startswith("phase"):
+        num_part = normalized[5:].strip()
+        if num_part in ("0", "1", "2", "3a", "3b", "4"):
+            return f"Phase {num_part}"
+    return phase
+
+
+def execute_phase(args: argparse.Namespace, version: str) -> int:
+    """更新 Ticket 的 TDD Phase"""
+    # 有效的 Phase 值
+    VALID_PHASES = TrackRelationsMessages.VALID_PHASES
+
+    # W14-045: file_lock 包圍 load → modify → save
+    lock_target = Path(get_ticket_path(version, args.ticket_id))
+    with file_lock(lock_target):
+        # 驗證 Ticket 存在
+        ticket, success = validate_ticket_exists(version, args.ticket_id)
+        if not success:
+            return 1
+
+        # 正規化並驗證 phase 參數
+        phase = _normalize_phase_input(args.phase)
+        if phase not in VALID_PHASES:
+            print(format_error(ErrorMessages.INVALID_PHASE_VALUE, phase=args.phase))
+            print(f"{TrackRelationsMessages.PHASE_VALID_VALUES_PREFIX} {', '.join(VALID_PHASES)}")
+            print("  也接受簡寫格式: phase0, phase1, phase2, phase3a, phase3b, phase4")
+            return 1
+
+        # 更新 Ticket 欄位
+        ticket["current_phase"] = phase
+        ticket["assignee"] = args.agent
+
+        # W2-009：同步寫入 tdd_phase（緊湊格式，與 tdd_stage/claim 推導共用）
+        # 並標記為手動來源，使後續 claim --as 的自動推導不覆蓋此值。
+        ticket["tdd_phase"] = phase.lower().replace(" ", "")
+        ticket["tdd_phase_source"] = TDD_PHASE_SOURCE_MANUAL
+
+        ticket_path = resolve_ticket_path(ticket, version, args.ticket_id)
+        save_ticket(ticket, ticket_path)
+
+    print(format_info(InfoMessages.PHASE_UPDATED, ticket_id=args.ticket_id))
+    print(f"{TrackRelationsMessages.PHASE_PREFIX} {phase}")
+    print(f"{TrackRelationsMessages.PHASE_ASSIGNEE_PREFIX} {args.agent}")
+    return 0
+
+
+def execute_agent(args: argparse.Namespace, version: str) -> int:
+    """查詢特定代理人負責的所有 Tickets"""
+    agent_name = args.agent_name.lower()
+    all_tickets = list_tickets(version)
+
+    if not all_tickets:
+        print(format_info(AgentProgressMessages.AGENT_PROGRESS, agent_name=args.agent_name))
+        print(TrackRelationsMessages.AGENT_SEPARATOR)
+        print(AgentProgressMessages.NO_TICKETS)
+        return 0
+
+    # 過濾代理人的 Tickets 並按狀態分組（單次遍歷）
+    # 支援模糊匹配：parsley 可匹配 parsley-flutter-developer
+    status_groups: dict[str, list] = {
+        STATUS_PENDING: [],
+        STATUS_IN_PROGRESS: [],
+        STATUS_COMPLETED: [],
+        STATUS_BLOCKED: [],
+        STATUS_CLOSED: [],
+        STATUS_SUPERSEDED: [],
+    }
+
+    for ticket in all_tickets:
+        # 從 assignee 或 who 欄位匹配代理人
+        assignee = ticket.get("assignee", "").lower()
+        who = ticket.get("who", "")
+        if isinstance(who, dict):
+            who = who.get("current", "").lower()
+        else:
+            who = str(who).lower()
+
+        # 進行模糊匹配（子字串比對）
+        if agent_name in assignee or agent_name in who:
+            # 直接按狀態分組（消除獨立的 agent_tickets 和第二次遍歷）
+            status = ticket.get("status", "")
+            if status in status_groups:
+                status_groups[status].append(ticket)
+
+    # 取得分組結果
+    pending_tickets = status_groups[STATUS_PENDING]
+    in_progress_tickets = status_groups[STATUS_IN_PROGRESS]
+    completed_tickets = status_groups[STATUS_COMPLETED]
+    blocked_tickets = status_groups[STATUS_BLOCKED]
+    closed_tickets = status_groups[STATUS_CLOSED]
+    superseded_tickets = status_groups[STATUS_SUPERSEDED]
+    agent_tickets = (
+        pending_tickets
+        + in_progress_tickets
+        + completed_tickets
+        + blocked_tickets
+        + closed_tickets
+        + superseded_tickets
+    )
+
+    # 顯示摘要
+    print(format_info(AgentProgressMessages.AGENT_PROGRESS, agent_name=args.agent_name))
+    print(TrackRelationsMessages.AGENT_SEPARATOR)
+    print(format_info(AgentProgressMessages.TICKETS_COUNT, count=len(agent_tickets)))
+    print()
+
+    # 顯示進行中
+    if in_progress_tickets:
+        print(format_info(AgentProgressMessages.IN_PROGRESS, count=len(in_progress_tickets)))
+        for ticket in in_progress_tickets:
+            ticket_id = ticket.get("id", "?")
+            ticket_type = ticket.get("type", "?")
+            title = ticket.get("title", "?")
+            print(f"{TrackRelationsMessages.AGENT_ITEM_PREFIX} {ticket_id}: [{ticket_type}] {title}")
+    print()
+
+    # 顯示待處理
+    if pending_tickets:
+        print(format_info(AgentProgressMessages.PENDING, count=len(pending_tickets)))
+        for ticket in pending_tickets:
+            ticket_id = ticket.get("id", "?")
+            ticket_type = ticket.get("type", "?")
+            title = ticket.get("title", "?")
+            print(f"{TrackRelationsMessages.AGENT_ITEM_PREFIX} {ticket_id}: [{ticket_type}] {title}")
+    print()
+
+    # 顯示已完成
+    if completed_tickets:
+        print(format_info(AgentProgressMessages.COMPLETED, count=len(completed_tickets)))
+        for ticket in completed_tickets:
+            ticket_id = ticket.get("id", "?")
+            ticket_type = ticket.get("type", "?")
+            title = ticket.get("title", "?")
+            print(f"{TrackRelationsMessages.AGENT_ITEM_PREFIX} {ticket_id}: [{ticket_type}] {title}")
+    print()
+
+    # 顯示被阻塞
+    if blocked_tickets:
+        print(format_info(AgentProgressMessages.BLOCKED, count=len(blocked_tickets)))
+        for ticket in blocked_tickets:
+            ticket_id = ticket.get("id", "?")
+            ticket_type = ticket.get("type", "?")
+            title = ticket.get("title", "?")
+            print(f"{TrackRelationsMessages.AGENT_ITEM_PREFIX} {ticket_id}: [{ticket_type}] {title}")
+        print()
+
+    return 0

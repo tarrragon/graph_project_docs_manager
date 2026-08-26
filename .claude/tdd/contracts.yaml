@@ -1,0 +1,173 @@
+# .claude/tdd/contracts.yaml
+# TDD Phase Input/Output Contract 定義
+# 版本：2.0.0
+
+version: "2.0.0"
+description: >
+  TDD Phase 1-4 產出物格式契約定義（單一 ticket.md 版）。原 1.0.0
+  版預期每個 Phase 產出獨立命名檔案（如 {ticket-id}-phase3b-execution-report.md），
+  這是本專案早期一度嘗試、後未沿用的慣例（全專案僅一份歷史檔案符合該命名）；
+  現行慣例是單一 {ticket-id}.md 檔（docs/work-logs/.../tickets/），Problem
+  Analysis / Solution / Test Results 等內容以 `ticket track append-log
+  --section` 寫入同一份檔案的對應章節。本版改為對這份單一檔案做「章節存在性」
+  檢查，章節名稱與 .claude/pm-rules/ticket-body-schema.md 的實際章節結構
+  一致，不自創新章節名。
+
+# 本檔只使用 phase_contract_validator.py 實際會讀取的欄位：
+# artifacts[].required、artifacts[].format.{type,path_pattern,alternate_patterns}、
+# artifacts[].content_sections[].{name,required,validation_level,alternate_names}。
+# 舊版另有 validation_rules / field_formats / code_requirements 等區塊，
+# 程式碼從未讀取這些欄位（純文件性質，逐行確認過）——保留會讓 schema 看起來
+# 「有在驗證」實際上沒有，正是本次 contracts.yaml 與程式碼脫節的同一種問題，
+# 故本版不再保留未被消費的欄位。
+
+contracts:
+
+  # ============================================================
+  # Phase 1：功能設計完成
+  # Producer: lavender-interface-designer
+  # Consumer: sage-test-architect
+  # ============================================================
+  phase1_output:
+    producer: "lavender-interface-designer"
+    consumer:
+      - "sage-test-architect"
+    description: "Ticket 已建立且 Task Summary 章節存在"
+
+    artifacts:
+      - name: "ticket-doc"
+        required: true
+        format:
+          type: "markdown"
+          path_pattern: "{ticket-id}.md"
+
+        content_sections:
+          - name: "Task Summary"
+            required: true
+            validation_level: "error"
+
+  # ============================================================
+  # Phase 2：測試設計完成
+  # Producer: sage-test-architect
+  # Consumer: pepper-test-implementer
+  # ============================================================
+  phase2_output:
+    producer: "sage-test-architect"
+    consumer:
+      - "pepper-test-implementer"
+    description: "Task Summary 與 Problem Analysis 章節皆存在"
+
+    artifacts:
+      - name: "ticket-doc"
+        required: true
+        format:
+          type: "markdown"
+          path_pattern: "{ticket-id}.md"
+
+        content_sections:
+          - name: "Task Summary"
+            required: true
+            validation_level: "error"
+          - name: "Problem Analysis"
+            required: true
+            validation_level: "error"
+
+  # ============================================================
+  # Phase 3a：實作策略規劃完成
+  # Producer: pepper-test-implementer
+  # Consumer: parsley-flutter-developer
+  # ============================================================
+  phase3a_output:
+    producer: "pepper-test-implementer"
+    consumer:
+      - "parsley-flutter-developer"
+    description: "累加 Solution 章節（實作策略起草）"
+
+    artifacts:
+      - name: "ticket-doc"
+        required: true
+        format:
+          type: "markdown"
+          path_pattern: "{ticket-id}.md"
+
+        content_sections:
+          - name: "Task Summary"
+            required: true
+            validation_level: "error"
+          - name: "Problem Analysis"
+            required: true
+            validation_level: "error"
+          - name: "Solution"
+            required: true
+            validation_level: "error"
+
+  # ============================================================
+  # Phase 3b：實作執行完成
+  # Producer: parsley-flutter-developer
+  # Consumer: cinnamon-refactor-owl（Phase 4）
+  # ============================================================
+  phase3b_output:
+    producer: "parsley-flutter-developer"
+    consumer:
+      - "cinnamon-refactor-owl"
+    description: "Solution 與 Test Results 章節皆存在（核心 gate）"
+
+    artifacts:
+      - name: "ticket-doc"
+        required: true
+        format:
+          type: "markdown"
+          path_pattern: "{ticket-id}.md"
+
+        content_sections:
+          - name: "Task Summary"
+            required: true
+            validation_level: "error"
+          - name: "Solution"
+            required: true
+            validation_level: "error"
+          - name: "Test Results"
+            required: true
+            validation_level: "error"
+
+  # ============================================================
+  # Phase 4：重構評估／收尾完成
+  # Producer: cinnamon-refactor-owl
+  # Consumer: PM（/ticket track complete）
+  # ============================================================
+  phase4_output:
+    producer: "cinnamon-refactor-owl"
+    consumer:
+      - "PM"
+    description: "Completion Info 章節存在（收尾章節，1.0.0 版缺此 phase 定義）"
+
+    artifacts:
+      - name: "ticket-doc"
+        required: true
+        format:
+          type: "markdown"
+          path_pattern: "{ticket-id}.md"
+
+        content_sections:
+          - name: "Completion Info"
+            required: true
+            validation_level: "error"
+
+# ============================================================
+# 向後相容策略配置
+# ============================================================
+compatibility:
+  legacy_mode: true
+  legacy_threshold_date: "2026-03-24"
+
+  # Layer 1（存在性）驗證沒有 legacy 降級路徑（程式碼逐行確認），下列設定
+  # 只影響 Layer 2/3（格式／結構）——與 1.0.0 版行為一致，本次未變動。
+  legacy_artifact_behavior:
+    missing_sections: "warning"
+    wrong_format: "warning"
+    missing_frontmatter: "info"
+
+  strict_artifact_behavior:
+    missing_required_section: "error"
+    wrong_field_format: "error"
+    missing_optional_section: "warning"

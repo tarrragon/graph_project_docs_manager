@@ -1,0 +1,1184 @@
+"""
+Context Bundle 自動抽取測試（Phase 2 v2 15 場景，L1 單元 + merge 整合）
+
+權威規格：Phase 2 v2 §v2.3 15 場景 + Phase 3a 虛擬碼。
+Mock 邊界：load_ticket（外部 I/O）、extract_version_from_ticket_id（S19 驗證）。
+"""
+
+import json
+import subprocess
+from unittest.mock import patch
+
+import pytest
+
+from ticket_system.lib.context_bundle_extractor import (
+    AUTO_EXTRACTED_BLOCK_PATTERN,
+    EXTRACTABLE_FIELDS,
+    MAX_ITEMS_PER_FIELD,
+    MAX_TOTAL_CHARS,
+    SOURCE_PRIORITY,
+    ContextBundleExtractionError,
+    ExtractedField,
+    ExtractResult,
+    detect_self_reference,
+    extract_and_write_context_bundle,
+    extract_context_bundle,
+    format_cli_summary,
+    format_cli_summary_json,
+    merge_auto_extracted_block,
+    render_context_bundle_markdown,
+    set_metric_sink,
+)
+
+LOAD_TICKET_PATH = "ticket_system.lib.context_bundle_extractor.load_ticket"
+EXTRACT_VERSION_PATH = (
+    "ticket_system.lib.context_bundle_extractor.extract_version_from_ticket_id"
+)
+SUBPROCESS_RUN_PATH = "ticket_system.lib.context_bundle_extractor.subprocess.run"
+
+
+def _make_source(
+    ticket_id: str,
+    what: str = "實作 X 功能",
+    why: str = "因為 Y 需求",
+    where_files: list = None,
+    acceptance: list = None,
+) -> dict:
+    return {
+        "id": ticket_id,
+        "what": what,
+        "why": why,
+        "where": {"files": where_files if where_files is not None else ["a.py"]},
+        "acceptance": acceptance if acceptance is not None else ["- [ ] 完成 A"],
+    }
+
+
+def _make_target(
+    target_id: str = "0.18.0-W17-010",
+    source_ticket=None,
+    blocked_by=None,
+    related_to=None,
+    where_files: list = None,
+) -> dict:
+    return {
+        "id": target_id,
+        "source_ticket": source_ticket,
+        "blockedBy": blocked_by,
+        "relatedTo": related_to,
+        "where": {"files": where_files if where_files is not None else []},
+    }
+
+
+# ============================================================================
+# 群組 A：正常抽取
+# ============================================================================
+
+
+class TestGroupA_NormalExtraction:
+    """S1, S2, S3"""
+
+    def test_s1_single_source_extracts_four_fields(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source(
+            "0.18.0-W17-001",
+            what="W17-001 任務",
+            why="W17-001 理由",
+            where_files=["file1.py"],
+            acceptance=["- [ ] ac1"],
+        )
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        assert result.status == "success"
+        assert len(result.extracted) == 4
+        assert result.sources_declared == 1
+        assert result.sources_ok == 1
+        # 驗證 raw_value（SIMP-4）
+        whats = [f for f in result.extracted if f.source_field == "what"]
+        assert whats[0].raw_value == "W17-001 任務"
+
+    def test_s2_three_sources_priority_order(self):
+        target = _make_target(
+            source_ticket="0.18.0-W17-001",
+            blocked_by=["0.18.0-W17-002"],
+            related_to=["0.18.0-W17-003"],
+        )
+        sources = {
+            "0.18.0-W17-001": _make_source("0.18.0-W17-001"),
+            "0.18.0-W17-002": _make_source("0.18.0-W17-002"),
+            "0.18.0-W17-003": _make_source("0.18.0-W17-003"),
+        }
+        with patch(LOAD_TICKET_PATH, side_effect=lambda v, i: sources.get(i)):
+            result = extract_context_bundle(target)
+        assert result.sources_declared == 3
+        assert result.status == "success"
+        # 第一個 extracted 必為 source_ticket（SOURCE_PRIORITY 首位）
+        source_ids_order = []
+        for f in result.extracted:
+            if f.source_id not in source_ids_order:
+                source_ids_order.append(f.source_id)
+        assert source_ids_order == [
+            "0.18.0-W17-001",
+            "0.18.0-W17-002",
+            "0.18.0-W17-003",
+        ]
+
+    def test_s3_where_files_dedup(self):
+        target = _make_target(
+            source_ticket="0.18.0-W17-001",
+            blocked_by=["0.18.0-W17-002"],
+            where_files=[],
+        )
+        sources = {
+            "0.18.0-W17-001": _make_source("0.18.0-W17-001", where_files=["f1", "f2"]),
+            "0.18.0-W17-002": _make_source("0.18.0-W17-002", where_files=["f2", "f3"]),
+        }
+        with patch(LOAD_TICKET_PATH, side_effect=lambda v, i: sources.get(i)):
+            result = extract_context_bundle(target)
+        # 收集所有 Related Files 項
+        files_items = []
+        for f in result.extracted:
+            if f.target_subsection == "Related Files":
+                files_items.extend(f.raw_value)
+        # f2 只應出現一次（跨 source 去重）
+        assert files_items.count("f2") == 1
+
+
+# ============================================================================
+# 群組 A2：relatedTo 1-hop symmetric union（0.2.1-W3-1067）
+# ============================================================================
+
+GET_SYMMETRIC_RELATED_TO_PATH = (
+    "ticket_system.lib.context_bundle_extractor.get_symmetric_related_to"
+)
+
+
+class TestGroupA2_RelatedToSymmetricUnion:
+    """relatedTo 儲存單向，消費端經 relatedto_index 做 1-hop symmetric union。"""
+
+    def test_backward_reference_included_via_reverse_index(self):
+        """target 自身 relatedTo 為空，但反向索引查得到引用方，仍應被收錄為來源。"""
+        target = _make_target(
+            target_id="0.18.0-W17-010",
+            source_ticket=None,
+            blocked_by=None,
+            related_to=None,
+        )
+        sources = {"0.18.0-W17-099": _make_source("0.18.0-W17-099")}
+        with patch(
+            GET_SYMMETRIC_RELATED_TO_PATH,
+            return_value=["0.18.0-W17-099"],
+        ) as mock_symmetric, patch(
+            LOAD_TICKET_PATH, side_effect=lambda v, i: sources.get(i)
+        ):
+            result = extract_context_bundle(target)
+
+        mock_symmetric.assert_called_once_with("0.18.0", "0.18.0-W17-010", [])
+        assert result.sources_declared == 1
+        assert result.status == "success"
+        source_ids = {f.source_id for f in result.extracted}
+        assert "0.18.0-W17-099" in source_ids
+
+    def test_forward_reference_passed_to_symmetric_lookup(self):
+        """target 自身有 relatedTo 時，該清單作為 forward 參數傳入查詢函式。"""
+        target = _make_target(
+            target_id="0.18.0-W17-010",
+            source_ticket=None,
+            blocked_by=None,
+            related_to=["0.18.0-W17-020"],
+        )
+        with patch(
+            GET_SYMMETRIC_RELATED_TO_PATH, return_value=["0.18.0-W17-020"]
+        ) as mock_symmetric, patch(LOAD_TICKET_PATH, return_value=None):
+            extract_context_bundle(target)
+
+        mock_symmetric.assert_called_once_with(
+            "0.18.0", "0.18.0-W17-010", ["0.18.0-W17-020"]
+        )
+
+    def test_transitive_related_not_included(self):
+        """relatedto_index 已限 1-hop（本測試驗證消費端不繞過該邊界再展開查詢）。"""
+        target = _make_target(
+            target_id="0.18.0-W17-010",
+            source_ticket=None,
+            blocked_by=None,
+            related_to=["0.18.0-W17-020"],
+        )
+        with patch(
+            GET_SYMMETRIC_RELATED_TO_PATH, return_value=["0.18.0-W17-020"]
+        ) as mock_symmetric, patch(LOAD_TICKET_PATH, return_value=None):
+            extract_context_bundle(target)
+
+        # 僅呼叫一次：不對 union 結果（如 W17-020）再遞迴查詢 symmetric closure
+        assert mock_symmetric.call_count == 1
+
+
+# ============================================================================
+# 群組 B：邊界條件
+# ============================================================================
+
+
+class TestGroupB_Boundary:
+    """S5, S6P, S7, S9P"""
+
+    def test_s5_no_source(self):
+        target = _make_target(source_ticket=None, blocked_by=None, related_to=None)
+        result = extract_context_bundle(target)
+        assert result.status == "no_source"
+        assert result.extracted == []
+        assert result.sources_declared == 0
+        assert any("無可抽取來源" in w for w in result.warnings)
+
+    @pytest.mark.parametrize(
+        "case_name,source_present,blocked_present,expected_status,expected_declared,expected_ok",
+        [
+            ("partial", False, True, "partial", 2, 1),
+            ("all_missing", False, False, "all_sources_missing", 2, 0),
+        ],
+    )
+    def test_s6p_sources_availability(
+        self,
+        case_name,
+        source_present,
+        blocked_present,
+        expected_status,
+        expected_declared,
+        expected_ok,
+    ):
+        target = _make_target(
+            source_ticket="0.18.0-W99-001",
+            blocked_by=["0.18.0-W99-002"],
+        )
+        sources = {}
+        if source_present:
+            sources["0.18.0-W99-001"] = _make_source("0.18.0-W99-001")
+        if blocked_present:
+            sources["0.18.0-W99-002"] = _make_source("0.18.0-W99-002")
+        with patch(LOAD_TICKET_PATH, side_effect=lambda v, i: sources.get(i)):
+            result = extract_context_bundle(target)
+        assert result.status == expected_status
+        assert result.sources_declared == expected_declared
+        assert result.sources_ok == expected_ok
+        # skipped 均為 source_missing
+        for sk in result.skipped:
+            assert sk.reason == "source_missing"
+
+    def test_s7_placeholder_field_skipped(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source("0.18.0-W17-001", what="待定義")
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        assert not any(f.source_field == "what" for f in result.extracted)
+        assert any(
+            sk.reason == "source_field_undefined" and "what" in sk.detail
+            for sk in result.skipped
+        )
+
+    def test_s9p_per_field_where_files_truncation(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source(
+            "0.18.0-W17-001", where_files=[f"f{i}.py" for i in range(10)]
+        )
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        files_field = next(
+            f for f in result.extracted if f.source_field == "where.files"
+        )
+        assert len(files_field.raw_value) == MAX_ITEMS_PER_FIELD
+        assert files_field.truncated is True
+
+    def test_s9p_per_field_acceptance_truncation(self):
+        """§v3.3 BLK-v3-3：is_list=True 欄位統一套 MAX_ITEMS_PER_FIELD。"""
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source(
+            "0.18.0-W17-001", acceptance=[f"- [ ] ac{i}" for i in range(8)]
+        )
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        ac_field = next(
+            f for f in result.extracted if f.source_field == "acceptance"
+        )
+        assert len(ac_field.raw_value) == MAX_ITEMS_PER_FIELD
+        assert ac_field.truncated is True
+
+    def test_s9p_total_chars_truncation(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        long_str = "X" * (MAX_TOTAL_CHARS + 500)
+        source = _make_source("0.18.0-W17-001", what=long_str)
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        assert result.total_chars_estimate <= MAX_TOTAL_CHARS
+        assert any(f.truncated for f in result.extracted)
+
+
+# ============================================================================
+# 群組 C：衝突與冪等（merge_auto_extracted_block）
+# ============================================================================
+
+
+class TestGroupC_MergeIdempotency:
+    """S11, S12, S13"""
+
+    def test_s11_pm_handwritten_plus_append(self):
+        existing = "PM 手寫段落\n\n重要脈絡說明。"
+        new_md = (
+            "<!-- auto-extracted: v1 | sources: 0.18.0-W17-001 | chars: 100 -->\n"
+            "\n### Task Reference\n- ..."
+        )
+        merged, notes = merge_auto_extracted_block(existing, new_md)
+        assert notes == ["appended_new_block"]
+        assert merged.startswith("PM 手寫段落")
+        assert "<!-- auto-extracted:" in merged
+
+    @pytest.mark.parametrize(
+        "existing_chars,new_chars",
+        [
+            (100, 100),  # chars 相同
+            (100, 250),  # chars 不同但 sources 相同（§v3.2 主鍵）
+        ],
+    )
+    def test_s12_sources_unchanged_idempotent(self, existing_chars, new_chars):
+        existing = (
+            f"<!-- auto-extracted: v1 | sources: A,B | chars: {existing_chars} -->\n"
+            "\n### Task Reference\n- A what\n- B what\n"
+        )
+        new = (
+            f"<!-- auto-extracted: v1 | sources: A,B | chars: {new_chars} -->\n"
+            "\n### Task Reference\n- A what\n- B what\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert notes == ["no_change_idempotent"]
+        assert merged == existing
+
+    def test_s13_sources_changed_replace_with_h2_after(self):
+        existing = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 50 -->\n"
+            "### Task Reference\n- A what\n\n"
+            "## Other Section\n內容保留\n"
+        )
+        new = (
+            "<!-- auto-extracted: v1 | sources: A,B | chars: 100 -->\n"
+            "### Task Reference\n- A what\n- B what\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert "replaced_auto_block" in notes
+        assert "## Other Section" in merged
+        assert "內容保留" in merged
+        assert "- B what" in merged
+
+    def test_s13_sources_changed_replace_at_eof(self):
+        existing = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 50 -->\n"
+            "### Task Reference\n- A what\n"
+        )
+        new = (
+            "<!-- auto-extracted: v1 | sources: A,B | chars: 100 -->\n"
+            "### Task Reference\n- A what\n- B what\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert "replaced_auto_block" in notes
+        assert "- B what" in merged
+
+    def test_s13_known_auto_subsection_not_a_boundary(self):
+        """0.2.1-W3-252：已知自動抽取子節（EXTRACTABLE_FIELDS 對應標題）為 managed
+        block 內部，不作邊界，隨整塊替換。"""
+        existing = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 50 -->\n"
+            "### Task Reference\n- x\n### Rationale Chain\n- y\n"
+        )
+        new = (
+            "<!-- auto-extracted: v1 | sources: A,B | chars: 100 -->\n"
+            "### Task Reference\n- new\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert "replaced_auto_block" in notes
+        # 舊已知子節應被整塊替換（非保留）
+        assert "### Rationale Chain" not in merged
+        assert "### Task Reference" in merged
+        assert "- new" in merged
+
+    def test_s13_unknown_h3_after_auto_block_is_boundary_and_preserved(self):
+        """0.2.1-W3-252 核心防護：PM 手動追加的未知 H3 段落（如「並行派發約束」，
+        0.2.1-W3-152 實例）於重抽時完整保留，不隨 auto 區塊一併覆蓋刪除。
+
+        source 集合刻意保持不變（皆為 A），驗證 content-aware 冪等判定本身即會
+        因內容差異觸發更新（舊 source-ID-only 判定會誤判為 no_change_idempotent，
+        使漂移內容永不更新，即 0.2.1-W3-177 ANA 量測到的根因）。
+        """
+        existing = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 50 -->\n"
+            "\n### Task Reference\n- old value\n\n"
+            "### 並行派發約束（續用派發，同輪多張並行）\n"
+            "同一輪另有其他票在別的檔案作業，檔案範圍不重疊。\n"
+        )
+        new = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 80 -->\n"
+            "\n### Task Reference\n- updated value\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert "replaced_auto_block" in notes
+        assert "- updated value" in merged
+        assert "- old value" not in merged
+        # 手動段落須逐字保留
+        assert "### 並行派發約束（續用派發，同輪多張並行）" in merged
+        assert "同一輪另有其他票在別的檔案作業，檔案範圍不重疊。" in merged
+
+    def test_bare_manual_paragraph_glued_after_last_bullet_is_preserved(self):
+        """0.2.1-W3-252 回歸案例：以實際漂移票（0.2.1-W3-171，source 0.2.1-W3-159）
+        的真實樣態模擬 claim 重抽——PM 手動提醒緊接在最後一個已知子區塊 bullet 之後，
+        中間無空行、無標題分隔（比 test_s13_unknown_h3_after_auto_block_is_boundary_
+        and_preserved 更嚴苛：該案例手動內容有自己的 H3 標題，本案例完全沒有）。
+
+        純以「下一個已知標題」為界的判定（本票初版設計）無法偵測此樣態，會將手動段落
+        併入 auto 區塊一併覆蓋刪除；改為逐行分類（`- ` bullet 前綴 / 已知標題 / 空行
+        以外一律視為邊界）後，此樣態亦正確保留。
+        """
+        existing = (
+            "<!-- auto-extracted: v1 | sources: 0.2.1-W3-159 | chars: 897 -->\n"
+            "\n### Rationale Chain\n"
+            "- 0.2.1-W3-159 why: 【前提已更正】舊前提文字\n\n"
+            "### Related Files\n"
+            "- .claude/skills/skill-sync/  # from 0.2.1-W3-159\n"
+            "[PM 派發提醒 2026-08-04] 本票 Context Bundle 的 auto-extracted 段抽取自"
+            "來源票後，該來源票的結論已被事後更正，凍結快照含被推翻前的前提。\n"
+        )
+        new = (
+            "<!-- auto-extracted: v1 | sources: 0.2.1-W3-159 | chars: 950 -->\n"
+            "\n### Rationale Chain\n"
+            "- 0.2.1-W3-159 why: 【本欄的前提更正已被推翻，以 Solution 為準】新前提文字\n\n"
+            "### Related Files\n"
+            "- .claude/skills/skill-sync/  # from 0.2.1-W3-159\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert "replaced_auto_block" in notes
+        assert "【本欄的前提更正已被推翻，以 Solution 為準】新前提文字" in merged
+        assert "【前提已更正】舊前提文字" not in merged
+        assert "[PM 派發提醒 2026-08-04]" in merged
+        assert "凍結快照含被推翻前的前提。" in merged
+
+    def test_multi_paragraph_bullet_value_does_not_duplicate_trailing_subsections(self):
+        """0.2.1-W3-403 回歸案例：Rationale Chain 的 why 值含空行分隔多段落時，
+        逐行分類（0.2.1-W3-252）誤判續段落為手動內容起點，`_find_auto_block_end`
+        提早收尾，其後的 auto 內容（含整個 Related Files 子節）被誤留為「手動
+        內容」，於整塊替換後與新寫入的完整 auto 區塊並存，造成 Related Files
+        子節重複（實測命中 0.2.1-W3-392、0.2.1-W3-402、0.2.1-W3-253、
+        0.2.1-W3-382 共 4 張）。
+
+        修復後：多段落續行歸屬其所在子區塊（以「向後尋找下一個已知子區塊標題」
+        判別為續段落而非邊界），緊接其後的已知子區塊（Related Files）不重複。
+        """
+        existing = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 300 -->\n"
+            "\n### Rationale Chain\n"
+            "- A why: 段落一舊文字。\n\n"
+            "段落二舊文字（續行，不以「- 」開頭）。\n\n"
+            "### Related Files\n"
+            "- old/path.py  # from A\n"
+        )
+        new = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 320 -->\n"
+            "\n### Rationale Chain\n"
+            "- A why: 段落一新文字。\n\n"
+            "段落二新文字（續行，不以「- 」開頭）。\n\n"
+            "### Related Files\n"
+            "- new/path.py  # from A\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert "replaced_auto_block" in notes
+        # Related Files 子節標題只應出現一次（缺陷簽名：重複出現 2 次）
+        assert merged.count("### Related Files") == 1
+        assert merged.count("### Rationale Chain") == 1
+        # 新內容完整寫入
+        assert "段落一新文字。" in merged
+        assert "段落二新文字（續行，不以「- 」開頭）。" in merged
+        assert "- new/path.py  # from A" in merged
+        # 舊內容不殘留
+        assert "段落一舊文字。" not in merged
+        assert "段落二舊文字（續行，不以「- 」開頭）。" not in merged
+        assert "old/path.py" not in merged
+
+    def test_content_unchanged_same_sources_stays_idempotent(self):
+        """內容無實質差異（僅 chars 估算值不同）時仍走 no_change_idempotent，
+        不因改用 content-aware 判定而產生空更新 commit（acceptance 3）。"""
+        existing = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 50 -->\n"
+            "\n### Task Reference\n- same value\n"
+        )
+        new = (
+            "<!-- auto-extracted: v1 | sources: A | chars: 999 -->\n"
+            "\n### Task Reference\n- same value\n"
+        )
+        merged, notes = merge_auto_extracted_block(existing, new)
+        assert notes == ["no_change_idempotent"]
+        assert merged == existing
+
+
+# ============================================================================
+# 群組 E：新增語義場景
+# ============================================================================
+
+
+class TestGroupE_Semantics:
+    """S17, S19"""
+
+    def test_s17_self_reference_short_circuit(self):
+        target = _make_target(target_id="0.18.0-W17-010", source_ticket="0.18.0-W17-010")
+        assert detect_self_reference(target) is True
+        with patch(LOAD_TICKET_PATH) as mock_load:
+            result = extract_context_bundle(target)
+        assert result.status == "self_reference"
+        assert result.extracted == []
+        assert any(sk.reason == "self_reference" for sk in result.skipped)
+        assert any("self-reference" in w for w in result.warnings)
+        # 關鍵：短路，load_ticket 未被呼叫
+        mock_load.assert_not_called()
+
+    def test_s19_cross_version_source(self):
+        """target 是 0.18.0，source 是 0.17.5 → 應以 0.17.5 版本呼叫 load_ticket。"""
+        target = _make_target(
+            target_id="0.18.0-W17-010", source_ticket="0.17.5-W10-001"
+        )
+        source = _make_source("0.17.5-W10-001")
+        captured_versions = []
+
+        def _fake_load(version, tid):
+            captured_versions.append(version)
+            return source if tid == "0.17.5-W10-001" else None
+
+        with patch(LOAD_TICKET_PATH, side_effect=_fake_load):
+            result = extract_context_bundle(target)
+        assert "0.17.5" in captured_versions
+        assert result.status == "success"
+        assert result.extracted[0].source_id == "0.17.5-W10-001"
+
+
+# ============================================================================
+# Render 測試
+# ============================================================================
+
+
+class TestRender:
+    def test_render_no_source_returns_empty(self):
+        result = ExtractResult(status="no_source", target_ticket_id="T")
+        assert render_context_bundle_markdown(result) == ""
+
+    def test_render_self_reference_returns_empty(self):
+        result = ExtractResult(status="self_reference", target_ticket_id="T")
+        assert render_context_bundle_markdown(result) == ""
+
+    def test_render_all_missing_returns_empty(self):
+        result = ExtractResult(status="all_sources_missing", target_ticket_id="T")
+        assert render_context_bundle_markdown(result) == ""
+
+    def test_render_success_contains_marker_and_headings(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source("0.18.0-W17-001")
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        md = render_context_bundle_markdown(result)
+        assert "<!-- auto-extracted:" in md
+        assert "sources: 0.18.0-W17-001" in md
+        # managed block 不含 ## Context Bundle（該 H2 由 section 容器提供）
+        assert "### Task Reference" in md
+        assert "### Rationale Chain" in md
+        assert AUTO_EXTRACTED_BLOCK_PATTERN.search(md) is not None
+
+
+# ============================================================================
+# 群組 D：CLI 對接（L2 整合 + S16smoke）
+# ============================================================================
+
+
+class TestGroupD_CLI:
+    """S14 integration, S16smoke, S20"""
+
+    @pytest.mark.parametrize(
+        "flag_case,expected_pattern",
+        [
+            # W17-002.1 acceptance #1：quiet 預設單行輸出
+            ("default", r"\[Context Bundle\] 已抽取（\d+ 項，\d+ 字元）"),
+            ("quiet", r"\[Context Bundle\] 已抽取（\d+ 項，\d+ 字元）"),
+            ("explicit_non_quiet", r"已從 \d+ 個來源抽取 \d+ 項欄位"),
+            ("verbose", r"預覽："),
+        ],
+    )
+    def test_s16smoke_verbosity(self, flag_case, expected_pattern):
+        import re as _re
+
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source("0.18.0-W17-001")
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        kwargs = {
+            "default": {},
+            "quiet": {"quiet": True},
+            "explicit_non_quiet": {"quiet": False},
+            "verbose": {"verbose": True},
+        }[flag_case]
+        out = format_cli_summary(result, **kwargs)
+        assert _re.search(expected_pattern, out), f"pattern not matched: {out}"
+
+    def test_s14_extract_and_write_writes_section(self, tmp_path):
+        """S14：extract_and_write_context_bundle 寫入 ticket md 可見 marker + headings。"""
+        target_body = "## Context Bundle\n\n（待自動填入）\n\n## Other\n保留\n"
+        target = {
+            "id": "0.18.0-W17-010",
+            "source_ticket": "0.18.0-W17-001",
+            "blockedBy": None,
+            "relatedTo": None,
+            "where": {"files": []},
+            "_body": target_body,
+        }
+        source = _make_source("0.18.0-W17-001")
+
+        saved_calls = []
+
+        def _fake_load(version, tid):
+            if tid == "0.18.0-W17-010":
+                return target
+            if tid == "0.18.0-W17-001":
+                return source
+            return None
+
+        def _fake_save(ticket_obj, path):
+            saved_calls.append((ticket_obj, path))
+
+        with patch(
+            "ticket_system.lib.context_bundle_extractor.load_ticket",
+            side_effect=_fake_load,
+        ), patch(
+            "ticket_system.lib.context_bundle_extractor.save_ticket",
+            side_effect=_fake_save,
+        ), patch(
+            "ticket_system.lib.context_bundle_extractor.get_ticket_path",
+            return_value=tmp_path / "t.md",
+        ):
+            result, notes = extract_and_write_context_bundle(
+                "0.18.0", "0.18.0-W17-010"
+            )
+
+        assert result.status == "success"
+        assert len(saved_calls) == 1
+        written_body = saved_calls[0][0]["_body"]
+        assert "<!-- auto-extracted:" in written_body
+        assert "### Task Reference" in written_body
+        assert "## Other" in written_body  # 其他 section 保留
+
+    def test_s14_idempotent_second_call(self, tmp_path):
+        """二次呼叫 sources 不變 → 不再寫入（no_change_idempotent）。"""
+        source = _make_source("0.18.0-W17-001")
+        # 先渲染一次得到預期 body
+        target_ticket = _make_target(source_ticket="0.18.0-W17-001")
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            first_result = extract_context_bundle(target_ticket)
+        rendered = render_context_bundle_markdown(first_result)
+
+        pre_filled_body = f"## Context Bundle\n\n{rendered}\n\n## Other\n保留\n"
+        target = {
+            "id": "0.18.0-W17-010",
+            "source_ticket": "0.18.0-W17-001",
+            "blockedBy": None,
+            "relatedTo": None,
+            "where": {"files": []},
+            "_body": pre_filled_body,
+        }
+
+        def _fake_load(version, tid):
+            return target if tid == "0.18.0-W17-010" else source
+
+        saved_calls = []
+        with patch(
+            "ticket_system.lib.context_bundle_extractor.load_ticket",
+            side_effect=_fake_load,
+        ), patch(
+            "ticket_system.lib.context_bundle_extractor.save_ticket",
+            side_effect=lambda t, p: saved_calls.append((t, p)),
+        ), patch(
+            "ticket_system.lib.context_bundle_extractor.get_ticket_path",
+            return_value=tmp_path / "t.md",
+        ):
+            result, notes = extract_and_write_context_bundle(
+                "0.18.0", "0.18.0-W17-010"
+            )
+        assert "no_change_idempotent" in notes
+        assert saved_calls == []  # 未寫入
+
+    def test_detect_duplicate_known_headings_flags_repeated_subsection(self):
+        """post-write self-check helper：已知子區塊標題重複時回傳該標題清單，
+        無重複時回傳空列表。"""
+        from ticket_system.lib.context_bundle_extractor import (
+            _detect_duplicate_known_headings,
+        )
+
+        clean = "### Task Reference\n- x\n### Related Files\n- y\n"
+        duplicated = (
+            "### Task Reference\n- x\n### Related Files\n- y\n"
+            "### Related Files\n- y again\n"
+        )
+        assert _detect_duplicate_known_headings(clean) == []
+        assert _detect_duplicate_known_headings(duplicated) == ["### Related Files"]
+
+    def test_extract_and_write_aborts_when_merge_produces_duplicate_headings(
+        self, tmp_path
+    ):
+        """post-write self-check：即使 `merge_auto_extracted_block` 因未知原因回傳
+        含重複已知標題的結果，`extract_and_write_context_bundle` 亦須偵測並中止
+        寫入，不靜默持久化損毀內容（規則 4）。以 patch 強制 merge 回傳損毀結果，
+        驗證此為獨立於 merge 邏輯本身的防禦縱深，不因單一函式的修復而永久免疫。
+        """
+        source = _make_source("0.18.0-W17-001")
+        target = {
+            "id": "0.18.0-W17-010",
+            "source_ticket": "0.18.0-W17-001",
+            "blockedBy": None,
+            "relatedTo": None,
+            "where": {"files": []},
+            "_body": "## Context Bundle\n\n（待自動填入）\n\n## Other\n保留\n",
+        }
+
+        def _fake_load(version, tid):
+            return target if tid == "0.18.0-W17-010" else source
+
+        saved_calls = []
+        corrupted = (
+            "<!-- auto-extracted: v1 | sources: 0.18.0-W17-001 | chars: 10 -->\n"
+            "### Related Files\n- a\n### Related Files\n- a\n"
+        )
+        with patch(
+            "ticket_system.lib.context_bundle_extractor.load_ticket",
+            side_effect=_fake_load,
+        ), patch(
+            "ticket_system.lib.context_bundle_extractor.save_ticket",
+            side_effect=lambda t, p: saved_calls.append((t, p)),
+        ), patch(
+            "ticket_system.lib.context_bundle_extractor.get_ticket_path",
+            return_value=tmp_path / "t.md",
+        ), patch(
+            "ticket_system.lib.context_bundle_extractor.merge_auto_extracted_block",
+            return_value=(corrupted, ["replaced_auto_block"]),
+        ):
+            result, notes = extract_and_write_context_bundle(
+                "0.18.0", "0.18.0-W17-010"
+            )
+
+        assert "aborted_duplicate_headings_detected" in notes
+        assert saved_calls == []
+        assert any("post-write self-check 失敗" in w for w in result.warnings)
+
+    def test_s20_extraction_exception_non_raising(self, tmp_path):
+        """S20：target load 失敗 → 拋 ContextBundleExtractionError（W17-002.1 #5 專屬 Exception）。
+
+        原因鏈以 __cause__ 保留原始例外（RuntimeError），caller 可
+        except ContextBundleExtractionError 一次涵蓋所有底層 I/O 問題。
+        """
+        def _fake_load(version, tid):
+            raise RuntimeError("simulated I/O failure")
+
+        with patch(
+            "ticket_system.lib.context_bundle_extractor.load_ticket",
+            side_effect=_fake_load,
+        ):
+            with pytest.raises(ContextBundleExtractionError) as exc_info:
+                extract_and_write_context_bundle("0.18.0", "0.18.0-W17-010")
+        assert isinstance(exc_info.value.__cause__, RuntimeError)
+
+    def test_s20_extract_context_bundle_non_raising_on_source_load_failure(self):
+        """extract_context_bundle 對 source load 失敗 → 記錄 warning 不拋例外。"""
+        target = _make_target(source_ticket="0.18.0-W17-001")
+
+        def _fake_load(version, tid):
+            raise RuntimeError("source fetch broken")
+
+        with patch(LOAD_TICKET_PATH, side_effect=_fake_load):
+            result = extract_context_bundle(target)
+        # 未拋例外，status 為 all_sources_missing
+        assert result.status == "all_sources_missing"
+        assert any("失敗" in w for w in result.warnings)
+
+
+# ============================================================================
+# 群組 F：W17-002.1 P2 風格增強（acceptance #1-#10）
+# ============================================================================
+
+
+class TestGroupF_P2Enhancements:
+    """W17-002.1 新增 acceptance 對應測試。"""
+
+    # --- acceptance #2：MAX_TOTAL_CHARS rationale ---
+    def test_max_total_chars_has_rationale_in_constants(self):
+        """常數值從 constants.py 集中管理，並附 rationale 註解（#2, #3）。"""
+        from ticket_system.constants import (
+            CONTEXT_BUNDLE_MAX_ITEMS_PER_FIELD,
+            CONTEXT_BUNDLE_MAX_TOTAL_CHARS,
+        )
+
+        assert CONTEXT_BUNDLE_MAX_TOTAL_CHARS == MAX_TOTAL_CHARS == 2000
+        assert CONTEXT_BUNDLE_MAX_ITEMS_PER_FIELD == MAX_ITEMS_PER_FIELD == 5
+
+    # --- acceptance #3：Literal 源自 lib/constants.py ---
+    def test_literal_values_from_constants(self):
+        from ticket_system.constants import (
+            CONTEXT_BUNDLE_EXTRACT_STATUSES,
+            CONTEXT_BUNDLE_SKIP_REASONS,
+            CONTEXT_BUNDLE_SOURCE_KINDS,
+        )
+
+        assert CONTEXT_BUNDLE_SOURCE_KINDS == SOURCE_PRIORITY
+        # 新增 opt_out 狀態
+        assert "opt_out" in CONTEXT_BUNDLE_EXTRACT_STATUSES
+        assert "opt_out" in CONTEXT_BUNDLE_SKIP_REASONS
+
+    # --- acceptance #4：SkipRecord dataclass ---
+    def test_skip_record_is_dataclass(self):
+        from dataclasses import is_dataclass
+
+        from ticket_system.lib.context_bundle_extractor import SkipRecord
+
+        assert is_dataclass(SkipRecord)
+        rec = SkipRecord(
+            source_id="T", source_kind="source_ticket", reason="source_missing"
+        )
+        assert rec.detail == ""
+
+    # --- acceptance #6：ac_parser 整合 acceptance 過濾 ---
+    def test_ac_parser_filters_checked_acceptance_items(self):
+        """已勾選的 acceptance（[x]）應被過濾，不出現在抽取結果中。"""
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source(
+            "0.18.0-W17-001",
+            acceptance=[
+                "- [x] 已完成 A",
+                "- [ ] 未完成 B",
+                "- [x] 已完成 C",
+                "- [ ] 未完成 D",
+            ],
+        )
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        ac_field = next(
+            (f for f in result.extracted if f.source_field == "acceptance"), None
+        )
+        assert ac_field is not None
+        # 僅未完成項被保留
+        joined = " ".join(ac_field.raw_value)
+        assert "未完成 B" in joined
+        assert "未完成 D" in joined
+        assert "已完成 A" not in joined
+        assert "已完成 C" not in joined
+
+    def test_ac_parser_all_checked_yields_no_field(self):
+        """所有 acceptance 皆已完成 → 過濾後為空，該欄位不寫入 extracted。"""
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source(
+            "0.18.0-W17-001",
+            acceptance=["- [x] done 1", "- [x] done 2"],
+        )
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        assert not any(f.source_field == "acceptance" for f in result.extracted)
+
+    # --- acceptance #7：--json 結構化輸出 ---
+    def test_format_cli_summary_json_schema(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source(
+            "0.18.0-W17-001",
+            what="task W",
+            why="reason R",
+            where_files=["a.py"],
+            acceptance=["- [ ] ac1"],
+        )
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        out = format_cli_summary_json(result)
+
+        import json as _json
+
+        payload = _json.loads(out)
+        assert payload["status"] == "success"
+        assert payload["sources_declared"] == 1
+        assert payload["sources_ok"] == 1
+        assert isinstance(payload["extracted"], list)
+        assert isinstance(payload["skipped"], list)
+        assert isinstance(payload["warnings"], list)
+        assert payload["total_chars_estimate"] >= 0
+        # extracted 各項含 required keys
+        for f in payload["extracted"]:
+            assert set(f.keys()) >= {
+                "source_id",
+                "source_kind",
+                "source_field",
+                "target_subsection",
+                "truncated",
+                "value",
+            }
+
+    def test_format_cli_summary_json_for_no_source(self):
+        result = ExtractResult(status="no_source", target_ticket_id="T")
+        import json as _json
+
+        payload = _json.loads(format_cli_summary_json(result))
+        assert payload["status"] == "no_source"
+        assert payload["extracted"] == []
+
+    # --- acceptance #8：metric event 埋點 ---
+    def test_metric_sink_is_invoked_on_extract(self):
+        events: list = []
+
+        def _sink(event_type, payload):
+            events.append((event_type, dict(payload)))
+
+        set_metric_sink(_sink)
+        try:
+            target = _make_target(source_ticket="0.18.0-W17-001")
+            source = _make_source("0.18.0-W17-001")
+            with patch(LOAD_TICKET_PATH, return_value=source):
+                extract_context_bundle(target)
+        finally:
+            set_metric_sink(None)
+
+        assert len(events) == 1
+        event_type, payload = events[0]
+        assert event_type == "context_bundle.extract"
+        assert payload["status"] == "success"
+        assert payload["sources_declared"] == 1
+        assert payload["sources_ok"] == 1
+        assert payload["fields_extracted"] >= 1
+        assert payload["total_chars"] >= 0
+        assert payload["truncated_count"] == 0
+
+    def test_metric_sink_failure_does_not_break_extract(self, capsys):
+        def _bad_sink(event_type, payload):
+            raise RuntimeError("sink boom")
+
+        set_metric_sink(_bad_sink)
+        try:
+            target = _make_target(source_ticket="0.18.0-W17-001")
+            source = _make_source("0.18.0-W17-001")
+            with patch(LOAD_TICKET_PATH, return_value=source):
+                result = extract_context_bundle(target)
+        finally:
+            set_metric_sink(None)
+        # 主流程仍成功
+        assert result.status == "success"
+        captured = capsys.readouterr()
+        assert "metric sink 失敗" in captured.err
+
+    # --- acceptance #9：opt-out 標記 context-bundle: manual ---
+    def test_opt_out_marker_short_circuits_extraction(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["context_bundle"] = "manual"
+        with patch(LOAD_TICKET_PATH) as mock_load:
+            result = extract_context_bundle(target)
+        assert result.status == "opt_out"
+        assert result.extracted == []
+        assert any(sk.reason == "opt_out" for sk in result.skipped)
+        # 短路：未載入 source
+        mock_load.assert_not_called()
+
+    def test_opt_out_with_hyphen_key_also_detected(self):
+        """支援 YAML key 為 `context-bundle`（hyphen 形式）。"""
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["context-bundle"] = "manual"
+        result = extract_context_bundle(target)
+        assert result.status == "opt_out"
+
+    def test_opt_out_other_values_do_not_trigger(self):
+        """值非 "manual" 時不觸發 opt-out（例如 "auto"）。"""
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["context_bundle"] = "auto"
+        source = _make_source("0.18.0-W17-001")
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        assert result.status == "success"
+
+    def test_render_opt_out_returns_empty(self):
+        result = ExtractResult(status="opt_out", target_ticket_id="T")
+        assert render_context_bundle_markdown(result) == ""
+
+    def test_format_cli_summary_opt_out_quiet(self):
+        result = ExtractResult(status="opt_out", target_ticket_id="T")
+        out = format_cli_summary(result)  # quiet 預設
+        assert "opt-out" in out
+
+    # --- acceptance #10：placeholder 擴為 list ---
+    @pytest.mark.parametrize(
+        "placeholder",
+        ["待定義", "TBD", "TODO", "待填寫", "(待填寫)", "（待填寫）", "N/A"],
+    )
+    def test_placeholder_list_detects_common_variants(self, placeholder):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source("0.18.0-W17-001", what=placeholder)
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        # what 欄位應被略過
+        assert not any(f.source_field == "what" for f in result.extracted)
+        assert any(
+            sk.reason == "source_field_undefined" and sk.detail == "what"
+            for sk in result.skipped
+        )
+
+    # --- acceptance #1：quiet 預設單行 ---
+    def test_format_cli_summary_default_is_quiet_single_line(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source("0.18.0-W17-001")
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            result = extract_context_bundle(target)
+        out = format_cli_summary(result)  # 預設（無 kwargs）
+        # 單行
+        assert "\n" not in out
+        assert "已抽取" in out
+
+
+# ============================================================================
+# 群組 F：UC 自動注入（0.38.1-W1-066.4）
+# ============================================================================
+
+
+def _fake_uc_proc(uc_id="UC-01", title="測試標題", returncode=0, main_flow=None):
+    payload = {
+        "uc_id": uc_id,
+        "title": title,
+        "spec_path": "docs/app-use-cases.md",
+        "spec_line": 1,
+        "main_flow": main_flow if main_flow is not None else ["1. **步驟一**"],
+    }
+    return subprocess.CompletedProcess(
+        args=["doc"], returncode=returncode, stdout=json.dumps(payload), stderr=""
+    )
+
+
+class TestGroupF_UcInjection:
+    def test_detected_reference_injects_uc_context(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["what"] = "實作 UC-01 相關功能"
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(SUBPROCESS_RUN_PATH, return_value=_fake_uc_proc()):
+                result = extract_context_bundle(target)
+
+        assert len(result.uc_context) == 1
+        assert result.uc_context[0]["uc_id"] == "UC-01"
+        rendered = render_context_bundle_markdown(result)
+        assert "### UC Context" in rendered
+        assert "#### UC-01: 測試標題" in rendered
+        assert "1. **步驟一**" in rendered
+
+    def test_no_reference_skips_injection(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(SUBPROCESS_RUN_PATH) as mock_run:
+                result = extract_context_bundle(target)
+
+        assert result.uc_context == []
+        mock_run.assert_not_called()
+        assert "### UC Context" not in render_context_bundle_markdown(result)
+
+    def test_off_switch_silently_skips_without_scanning(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["what"] = "實作 UC-01 相關功能"
+        target["context_bundle_uc_injection"] = "off"
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(SUBPROCESS_RUN_PATH) as mock_run:
+                result = extract_context_bundle(target)
+
+        assert result.uc_context == []
+        assert result.warnings == []
+        mock_run.assert_not_called()
+
+    def test_manual_switch_skips_with_warning(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["what"] = "實作 UC-01 相關功能"
+        target["context_bundle_uc_injection"] = "manual"
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(SUBPROCESS_RUN_PATH) as mock_run:
+                result = extract_context_bundle(target)
+
+        assert result.uc_context == []
+        assert any("manual" in w for w in result.warnings)
+        mock_run.assert_not_called()
+
+    def test_doc_cli_unavailable_degrades_gracefully(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["what"] = "實作 UC-01 相關功能"
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(
+                SUBPROCESS_RUN_PATH, side_effect=FileNotFoundError("doc not found")
+            ):
+                result = extract_context_bundle(target)
+
+        assert result.uc_context == []
+        assert any("UC 摘要取得失敗" in w for w in result.warnings)
+
+    def test_doc_cli_nonzero_exit_degrades_gracefully(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["what"] = "實作 UC-01 相關功能"
+        source = _make_source("0.18.0-W17-001")
+        fail_proc = subprocess.CompletedProcess(
+            args=["doc"], returncode=1, stdout="", stderr="not found"
+        )
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(SUBPROCESS_RUN_PATH, return_value=fail_proc):
+                result = extract_context_bundle(target)
+
+        assert result.uc_context == []
+        assert any("UC 摘要取得失敗" in w for w in result.warnings)
+
+    def test_doc_cli_timeout_degrades_gracefully(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["what"] = "實作 UC-01 相關功能"
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(
+                SUBPROCESS_RUN_PATH,
+                side_effect=subprocess.TimeoutExpired(cmd="doc", timeout=10),
+            ):
+                result = extract_context_bundle(target)
+
+        assert result.uc_context == []
+        assert any("UC 摘要取得失敗" in w for w in result.warnings)
+
+    def test_multiple_uc_references_deduped_in_order(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["what"] = "整合 UC-01 和 UC-02，再次提及 UC-01"
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(
+                SUBPROCESS_RUN_PATH,
+                side_effect=[_fake_uc_proc("UC-01"), _fake_uc_proc("UC-02")],
+            ):
+                result = extract_context_bundle(target)
+
+        assert [uc["uc_id"] for uc in result.uc_context] == ["UC-01", "UC-02"]
+
+    def test_acceptance_list_items_scanned_for_uc(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["acceptance"] = ["- [ ] 對齊 UC-03 主流程"]
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(SUBPROCESS_RUN_PATH, return_value=_fake_uc_proc("UC-03")):
+                result = extract_context_bundle(target)
+
+        assert [uc["uc_id"] for uc in result.uc_context] == ["UC-03"]
+
+    def test_why_field_scanned_for_uc(self):
+        target = _make_target(source_ticket="0.18.0-W17-001")
+        target["why"] = "延伸自 UC-07 的同步準備需求"
+        source = _make_source("0.18.0-W17-001")
+
+        with patch(LOAD_TICKET_PATH, return_value=source):
+            with patch(SUBPROCESS_RUN_PATH, return_value=_fake_uc_proc("UC-07")):
+                result = extract_context_bundle(target)
+
+        assert [uc["uc_id"] for uc in result.uc_context] == ["UC-07"]
