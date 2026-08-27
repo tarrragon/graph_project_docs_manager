@@ -206,6 +206,17 @@
 
   所以 `rev-parse` 同時解決兩件事：判別建立與更新，以及在 `old-oid` 為全零時取得真正的舊值。
 
+  **但它的回傳語意隨狀態改變**（實測，同一個呼叫）：
+
+  ```
+  [prepared ]  refs/heads/work   old=f38ba32  new=baa5afb   rev-parse=f38ba3225   ← 舊值
+  [committed]  refs/heads/work   old=f38ba32  new=baa5afb   rev-parse=baa5afb3e   ← 新值
+  ```
+
+  `prepared` 時 ref 已鎖未寫，取得交易前的值；`committed` 時交易已完成，同一個呼叫取得的是新值。**手冊那句「用 `rev-parse` 分辨」只在 `prepared` 成立**——寫在 `committed` 通知裡的人會拿到新值卻以為是舊值，而兩種寫法在程式碼上長得一樣。
+
+  這與下方的 `[ "$1" = prepared ] || exit 0` 是同一條紀律的兩面：**閘門要分支，取值也要分支。**
+
 **必備的第一行**：`prepared` 對每一次 ref 交易都會叫，所以任何無條件失敗路徑會讓該 repo 的每一次 ref 更新失敗——包含 `git checkout -b`。當閘門用就寫 `[ "$1" = prepared ] || exit 0` 把爆炸面收到只剩真正判斷的那一次；當通知用就反過來只認 `committed`，那一格的離開碼被忽略，寫壞了也不會中止交易。
 
 **它為什麼不是內容檢查的好住處**：不是看不到內容——實測 `prepared` 時對 new-oid 執行 `cat-file -t` 回傳 `commit`，新物件已在物件庫中（`git commit` 先寫 tree 與 commit、才更新 ref），走訪做得到。**擋住它的是頻率與成本**：fetch、reset、`checkout -b` 一律要付這筆走訪錢，而其中絕大多數與內容檢查無關。
