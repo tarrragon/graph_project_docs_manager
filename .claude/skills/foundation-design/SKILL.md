@@ -3,8 +3,7 @@ name: foundation-design
 description: "地基工作的單一入口與路由層。逐維度決定「本專案的地基產物是什麼」，權威只提供預設產物，形態不符時改寫產物而非跳過維度。維度含 UI／測試／資料庫／DevOps／可觀測性，各指名既有權威並標明權威缺席時的處置。新舊專案一體適用：老專案先盤點萃取再命名固化。觸發詞：地基、地基波、元件庫、design token、fixture、seed、migration、scaffold、鷹架、腳手架、接手老專案。Do NOT use for 環境安裝（用 project-init）。"
 license: MIT
 metadata:
-  portable: true
-  version: 4.0.0
+  version: 4.1.0
   category: engineering-workflow
 ---
 
@@ -132,7 +131,7 @@ metadata:
 
 ## 移植前置條件
 
-本 skill 標記 `portable: true`，但它路由到的權威不隨它一起移動。搬進新專案前先確認：
+本 skill 是**框架綁定**的：它以框架資產的路徑為主題，路由到的權威不隨它一起移動（同 `version-bootstrap`、`ticket`、`doc`，皆不宣告 `portable`）。搬進新專案前先確認：
 
 - [ ] 維度表列出的**全部**權威檔案各自存在？（五個維度共 8 個檔案）缺者走〈權威缺席時〉
 - [ ] 專案有具 `blockedBy` 語意的 ticket 系統？步驟 4 與〈權威缺席時〉的建票動作依賴它

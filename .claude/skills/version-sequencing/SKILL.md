@@ -3,8 +3,7 @@ name: version-sequencing
 description: "版本序列規劃——規格完備後把待決清單收束為版本序列（每版一個整合測試），再開首版票。含 multi-round-review 完備檢查、切分軸選擇、待決 blockedBy 綁版本、地基先行開票。序列是順序不是閘門，不綁定完整敏捷。觸發詞：版本規劃、版本序列、整合測試順序、排版本、開票規劃、里程碑、milestone、roadmap。Use when 規格完成後、寫第一張實作票前。Do NOT use for 單一版本內的規劃波（用 version-bootstrap）。"
 license: MIT
 metadata:
-  portable: true
-  version: 3.0.0
+  version: 3.1.0
   category: engineering-workflow
 ---
 
@@ -141,7 +140,7 @@ metadata:
 
 ## 移植前置條件
 
-本 skill 標記 `portable: true`，但它依賴的基礎設施不隨它移動。搬進新專案前確認：
+本 skill 是**框架綁定**的：它以框架資產的路徑為主題，依賴的基礎設施不隨它移動（同 `version-bootstrap`、`ticket`、`doc`，皆不宣告 `portable`）。搬進新專案前確認：
 
 - [ ] 有具 `blockedBy` 語意的 ticket 系統？步驟 4、5、6 全部依賴它
 - [ ] 有提案機制（任何形式的持久文件）？步驟 3 的載體，也是版本啟動閘門的判定對象
