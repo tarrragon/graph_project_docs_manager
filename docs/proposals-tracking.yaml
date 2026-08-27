@@ -50,6 +50,17 @@ proposals:
   - UC-06
   ticket_refs: []
   checklist: []
+- id: PROP-005
+  title: 版本序列：依資料管線切分，每版一個整合測試
+  status: draft
+  proposed: '2026-08-27'
+  confirmed_at: null
+  target_version: null
+  source: development
+  spec_refs: []
+  usecase_refs: []
+  ticket_refs: []
+  checklist: []
 usecases:
 - id: UC-01
   title: 開啟專案並抵達可用狀態

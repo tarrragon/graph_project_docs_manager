@@ -51,8 +51,31 @@ versions:
   - version: "0.0.3"
     codename: "Toolkit"
     description: "第三方套件選型評估"
-    status: "active"
+    status: "completed"
     worklog: "docs/work-logs/v0/v0.0/v0.0.3/"
     notes: |
       訪談階段未涵蓋的選型議題：markdown 渲染、markdown 編輯、
       git 變更記錄。以真實語料實測後定案，不憑套件描述決定。
+
+      收尾另含三輪文件審查（17 個 frame、12 位 reviewer）：撤回
+      「130 個 YAML 錯誤」的量測 artifact、修復 37 個 FlowStep 結構違規、
+      SPEC-001 補上 94% 實際輸入的行為定義（FR-07）。待決由 5 項擴為 19 項，
+      收束為 PROP-005 的版本序列。
+
+  - version: "0.1.0"
+    codename: "Shell"
+    description: "展示介面：七個畫面與浮層的全部狀態皆可渲染，不串真實資料"
+    status: "active"
+    proposals:
+      - PROP-005
+    worklog: "docs/work-logs/v0/v0.1/v0.1.0/"
+    notes: |
+      整合測試：SPEC-001 §1-7 的全部狀態皆能渲染且不溢位；該捲動處能捲動、
+      該換頁處能換頁、該拖拉處能拖拉。與資料正確性解耦，後續加邏輯時持續有效。
+
+      假資料採真實 repo 快照（非生成器）——生成器產的損壞形態是想像的，
+      而 0.0.3 的審查已證明想像的損壞形態可能整批是假的。
+      泳道本版只做靜態版型，布局演算法後推至 Layout 接真資料的版本。
+
+      實作中撞到 SPEC-001 未預估的文件變體或畫面情況時，開 0.1.x 的票修正
+      並回填狀態表，不回頭改版本規劃。
