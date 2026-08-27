@@ -103,3 +103,7 @@ htmlcov/
 
 # 設計畫布的組裝產物（可由 design/gen.py 重新產生）
 design/docs-graph-ui-layouts.html
+
+# Hook 執行期日誌（框架 2.42.x 起的新路徑）
+.claude/hooks/hook-logs/
+hook-logs/
