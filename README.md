@@ -1,8 +1,17 @@
 # graph_project_docs_manager
 
-建立專案管理的文件流。
+**把專案文件之間的因果鏈與型別化邊變成可導航、可視覺化的圖。**
 
-macOS 桌面應用程式，用於管理本機專案文件。目前僅針對 macOS 開發與測試。
+使用 claude 框架的專案，其需求以 `PROP → SPEC → UC → Ticket` 的鏈條散落在
+數百到數千份 markdown 的 frontmatter 裡。目前要追一條需求長出了什麼、
+或反問某段程式碼為何存在，只能靠 grep 與人工追溯。本 App 把那些關係讀出來，
+畫成可以點的圖。
+
+定位近似 Jira / Asana / Trello，但管理對象不是任務看板，而是文件之間的
+型別化關係（上游 schema 定義 7 種節點、16 條邊）。
+
+macOS 桌面應用程式，讀取本機專案資料夾，唯讀為主。目前僅針對 macOS
+開發與測試。規格文件見下方〈規格文件〉一節。
 
 ---
 
@@ -41,8 +50,8 @@ fvm flutter pub get
 > 可能導致分析結果、建置產物與 CI 不一致。
 >
 > ```bash
-> flutter --version       # ❌ 全域版本
-> fvm flutter --version   # ✅ 3.47.1
+> flutter --version       # 全域版本，不使用
+> fvm flutter --version   # 3.47.1，專案指定
 > ```
 
 ### 3. IDE 設定
@@ -70,19 +79,31 @@ fvm flutter gen-l10n                # 重新生成多語系程式碼
 > 執行整合測試時出現 `Failed to foreground app; open returned 1` 屬正常現象，
 > 是 macOS 上 integration_test 的已知行為，不影響測試結果。
 
+## 規格文件
+
+程式碼以外的規格全數落在 `docs/`，寫程式前先讀：
+
+| 入口 | 內容 |
+|---|---|
+| `docs/tech-decisions.md` | 設計決策記錄（append-only，**以最後的補記為準**） |
+| `docs/domain-map.md` | 8 個 domain 的邊界、依賴方向、容錯策略、待決事項 |
+| `docs/proposals/` | PROP-001~004：交付形態、schema 消費、資料來源、展示介面 |
+| `docs/spec/ui/SPEC-001-*.md` | 六個畫面加浮層的狀態矩陣與 FR-01~06 |
+| `docs/usecases/` | UC-01~06，含結構化 flow 區塊 |
+| `docs/events/` | 9 個 EVT 節點 |
+| `design/` | 設計畫布：9 個 artboard 與產生器 |
+
 ## 專案結構
 
 ```
 lib/
 ├── main.dart                       App 進入點、ScreenUtil 設定、首頁
 ├── l10n/                           多語系（.arb 原始檔 + 生成的 .dart）
-├── platform/
-│   └── secure_bookmark.dart        macOS security-scoped bookmark 封裝
 └── workspace/
     └── workspace_repository.dart   工作資料夾的選取、保存、還原
 
 macos/Runner/
-├── MainFlutterWindow.swift         視窗尺寸設定 + bookmark 原生實作
+├── MainFlutterWindow.swift         視窗尺寸下限與預設尺寸
 ├── DebugProfile.entitlements       Debug 權限
 └── Release.entitlements            Release 權限
 
@@ -110,7 +131,7 @@ integration_test/                   外層測試
 - 四種視窗尺寸下版面不溢位（960×640 / 1280×800 / 1512×982 / 1920×1080）
 - 兩種語系下文案正確且不溢位
 - 三種工作資料夾狀態下不溢位
-- 原生 bookmark 通道已註冊，且可完成建立 → 解析 → 釋放的往返
+- 工作資料夾的三種狀態（未設定／可用／不可用）皆能渲染且不溢位
 
 ### 尺寸與版面
 
@@ -134,10 +155,10 @@ doc CLI 並讀取使用者指定的任意專案資料夾。實測沙盒下兩者
 
 | 目標 | 沙盒開啟 | 沙盒關閉 |
 |---|---|---|
-| `/bin/echo` | ✅ | ✅ |
-| `/usr/bin/python3` | ❌ `xcrun: error: cannot be used within an App Sandbox.` | ✅ Python 3.9.6 |
-| 使用者安裝的 `uv` | ❌ `ProcessException: Operation not permitted` | ✅ uv 0.8.13 |
-| 讀取任意專案資料夾 | 需 security-scoped bookmark | ✅ 直接可讀 |
+| `/bin/echo` | 可 | 可 |
+| `/usr/bin/python3` | 不可 —— `xcrun: error: cannot be used within an App Sandbox.` | 可 —— Python 3.9.6 |
+| 使用者安裝的 `uv` | 不可 —— `ProcessException: Operation not permitted` | 可 —— uv 0.8.13 |
+| 讀取任意專案資料夾 | 需 security-scoped bookmark | 可 —— 直接可讀 |
 
 另有 App Store 審查指南 2.5.2 的獨立阻擋：app 須自包含，不得執行改變功能的
 程式碼（明文含 Python 等直譯式語言）。doc CLI 位於使用者選取的資料夾內，
@@ -148,8 +169,8 @@ doc CLI 並讀取使用者指定的任意專案資料夾。實測沙盒下兩者
 | 權限 | Debug | Release | 用途 |
 |---|:---:|:---:|---|
 | `app-sandbox` | `false` | `false` | 明確關閉，契約測試守著不被重新打開 |
-| `cs.allow-jit` | ✅ | — | Dart VM JIT（Hardened Runtime 下必要） |
-| `network.server` | ✅ | — | hot reload / VM service |
+| `cs.allow-jit` | 是 | — | Dart VM JIT（Hardened Runtime 下必要） |
+| `network.server` | 是 | — | hot reload / VM service |
 
 Release 走 AOT 不需 JIT。契約測試 `test/entitlements_contract_test.dart`
 斷言 sandbox 維持關閉 —— 一旦被重新開啟，`Process.run` 會靜默失去執行
@@ -170,8 +191,13 @@ CLI 的能力，且沒有任何編譯期徵兆。
 3. `fvm flutter gen-l10n`
 4. 於程式碼中使用 `AppLocalizations.of(context).yourKey`
 
-要新增語系時，於 `lib/l10n/` 加入 `app_<code>.arb` 即可，
-`supportedLocales` 會自動包含它。
+新增語系的流程：
+
+1. 於 `lib/l10n/` 加入 `app_<code>.arb`
+2. `fvm flutter gen-l10n`
+
+`supportedLocales` 讀的是 `AppLocalizations.supportedLocales`
+（`lib/main.dart`），那是生成產物——**不重跑第 2 步，新語系不會出現**。
 
 ### 未來支援簡體中文
 

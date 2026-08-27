@@ -84,15 +84,26 @@ frontmatter、只能靠 grep 與人工追溯的關係顯性化、可導航、可
 | 檔案存取 | **App Sandbox 關閉** | 開發者工具需執行專案內 doc CLI；實測沙盒下 python3 被 xcrun shim 拒絕、使用者安裝 binary 為 Operation not permitted |
 | 測試策略 | 雙層（`test/` 契約 + `integration_test/` 行為） | 內層針對「改錯無編譯期徵兆」的跨語言常數 |
 
-**待決**（由 saas-tech-selection 訪談補完）：
+**已補完的原待決項**：schema 消費方式定為讀 `tracking_schema.json`（PROP-002）；
+security-scoped bookmark 實作已移除（PROP-001）；狀態管理定為 Riverpod、
+矩陣渲染委派 `two_dimensional_scrollables`、持久化為路徑字串
+（`docs/tech-decisions.md` 的補記段「2026-08-26：Stage 4 技術維度定案」；
+注意該檔另有一個編號不同的 `## 4. 資料來源`，兩者不是同一處）。
 
-- Dart 端如何消費 `.claude/skills/doc/doc_system/core/tracking_schema.py`
-  的圖譜型別常數表。sandbox 關閉後三條路皆可行（呼叫 CLI / 建置期產生
-  JSON / Dart 側重建），需在訪談中定案；契約測試的**比對欄位範圍**要
-  明寫，整份檔案雜湊會因無關的註解改動而誤報。
-- 既有的 security-scoped bookmark 實作（`lib/platform/secure_bookmark.dart`
-  與 Swift 端）在非沙盒下已非必要，待決定移除或保留。
-- 狀態管理方案、圖譜渲染方案、資料持久化方案。
+**現行待決**（每一項都是版本規劃的前置，見 `docs/domain-map.md` §9）：
+
+- **UC → Ticket 在上游 16 條語意邊中無對應邊**。追溯視圖（UC-04）承諾的
+  四層鏈，第三跳沒有資料來源
+- **Domain 視圖的列與格無來源**：個別 domain 不是圖節點（`DomainBundle`
+  的 carrier 是整份 domain-map.md），`FlowStep` 亦無 `domain` 欄位
+- **`tracking_schema.json` 只在框架 v2.41.0 以上存在**。實測五個語料專案
+  中四個沒有此檔（含本專案，v2.40.2），PROP-002 未涵蓋此狀態
+- 五項空殼判準：「App 已知範圍」「間接依賴」「破洞分類」「預估耗時」「資源上限」
+- 泳道布局演算法（唯一的差異化元件）
+- **是否寫執行期 log**：`.claude/rules/core/observability-rules.md` 要求
+  啟動／異常／關閉 log，`docs/tech-decisions.md` Stage 5 明示不寫，兩者衝突
+- 編輯能力與 git 邊層級歷史已定案但未落為提案與規格
+- 0.1 之後的版號規則與 wave 切法
 
 ---
 
@@ -104,20 +115,27 @@ frontmatter、只能靠 grep 與人工追溯的關係顯性化、可導航、可
 |------|------|
 | `docs/todolist.yaml` | 結構化版本索引（Source of Truth） |
 | `docs/work-logs/` | 版本工作日誌 |
-| `CHANGELOG.md` | 版本變更記錄 |
+| `CHANGELOG.md` | 版本變更記錄（**尚未建立**） |
 | `docs/work-logs/v{version}/tickets/` | Ticket 文件 |
 
 ### 專案文件
 
-> 目前 `docs/` 尚未建立。以下為 saas-tech-selection 訪談後預期產出的結構。
+> **與 README.md 的分工**：README 面向人類維護者（環境設定、常用指令、
+> 專案結構），本檔面向 AI（行為規範、決策脈絡、規則路由）。目的與格式
+> 不同，內容重疊屬正常，**不需要對齊或互相涵蓋**。審查時若被報為
+> 「兩份索引不對稱」，那是誤判。
 
-| 文件 | 用途 |
-|------|------|
-| `docs/proposals/` | PROP 節點 |
-| `docs/spec/{domain}/` | SPEC 節點與 domain-map |
-| `docs/usecases/` | UC 節點（含結構化 flow 區塊） |
-| `docs/events/{domain}/` | EVT 節點 |
-| `docs/traceability.yaml` | 四軸追溯矩陣 |
+| 文件 | 用途 | 現況 |
+|------|------|------|
+| `docs/proposals/` | PROP 節點 | PROP-001~004，皆 confirmed |
+| `docs/spec/{domain}/` | SPEC 節點 | SPEC-001（ui domain） |
+| `docs/domain-map.md` | DomainBundle 節點，8 個 domain 的邊界與依賴 | 已建立 |
+| `docs/usecases/` | UC 節點（含結構化 flow 區塊） | UC-01~06，共 39 個 FlowStep |
+| `docs/events/{domain}/` | EVT 節點 | 9 個 |
+| `docs/app-use-cases.md` | UC 白名單 SSOT（`doc uc verify` 依此驗證） | 已建立 |
+| `docs/proposals-tracking.yaml` | 提案索引 | 已建立 |
+| `docs/tech-decisions.md` | 設計決策記錄（append-only，以最後的補記為準） | 已建立 |
+| `docs/traceability.yaml` | 四軸追溯矩陣（FR → UC 場景 → tests） | **尚未建立** |
 
 ### 上游 schema（唯一權威，禁止另建副本）
 
@@ -137,11 +155,18 @@ frontmatter、只能靠 grep 與人工追溯的關係顯性化、可導航、可
 ## 8. 里程碑
 
 
-- **v0.1.0（已完成）**: macOS 桌面基礎架構、FVM 釘選、雙層測試、
-  多語系、沙盒權限與 security-scoped bookmark
-- v0.2.x: 圖譜 schema 消費層、文件解析與圖譜建構
-- v0.3.x: 圖譜視覺化與導航
-- v1.0.0: 完整功能，準備上架 Mac App Store
+版本以 `docs/todolist.yaml` 為準，該檔只登記已發生與進行中的版本。
+**本專案不預先劃分未來版本**——所有應做的功能先討論清楚並文件化，
+再依序安排實作順序。
+
+| 版本 | 內容 | 狀態 |
+|------|------|------|
+| 0.0.1 Foundation | macOS 桌面基礎架構、FVM 釘選、雙層測試、多語系 | 完成 |
+| 0.0.2 Intake | 設計與選型訪談，產出 PROP×4 / SPEC-001 / UC×6 / 8 domain / EVT×9 | 完成 |
+| 0.0.3 Toolkit | markdown 渲染、編輯模型、git 變更記錄三項選型 | ticket 全完成 |
+
+發布通路為 **Developer ID + notarization，不上架 Mac App Store**（PROP-001，
+能力決策：沙盒下無法執行 doc CLI 亦無法讀取任意資料夾）。
 
 ---
 
