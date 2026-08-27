@@ -1,0 +1,12 @@
+source_project: book_overview_app
+source_path: ~/project/book_overview_app
+snapshot_date: "2026-08-27"
+claude_framework_version: "2.27.8"
+extreme_case: 真實規模與部分損壞
+notes: |
+  proposals(18)/spec(多 domain)/usecases(11) 節點檔皆為真實規模範例。
+  docs/spec/ 下 4 個非 SPEC-ID 檔案（ui-layout-overflow-prevention.md、
+  synchronization/test-fixtures/README.md、search/book-supplement-page.md、
+  search/conflict-resolution-widget.md）無 frontmatter，可作為
+  parse_frontmatter 回傳 None 的「損壞資料」邊界樣本。
+  不含 work-logs（依 ticket how 段落排除）。

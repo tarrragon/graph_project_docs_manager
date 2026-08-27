@@ -1,0 +1,11 @@
+source_project: screen_clock
+source_path: ~/project/screen_clock
+snapshot_date: "2026-08-27"
+claude_framework_version: "2.24.0"
+extreme_case: 舊框架版本語料（次新於 monitor）
+notes: |
+  框架版本介於 monitor（2.22.1）與本專案現行版本之間，補充「舊框架版本」
+  極端的中間取樣點。5 份 per-domain domain-map.md（input/data-management/
+  platform/user-experience/display）。本語料無 frontmatter 缺漏、無壞
+  YAML，屬乾淨真實規模樣本。
+  不含 work-logs（依 ticket how 段落排除）。

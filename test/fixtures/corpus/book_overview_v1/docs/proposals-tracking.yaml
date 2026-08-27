@@ -1,0 +1,426 @@
+version: '1.1'
+last_updated: '2026-07-11'
+proposals:
+  PROP-000:
+    title: 提案驅動需求追蹤機制設計
+    status: implemented
+    proposed: '2026-03-30'
+    confirmed: null
+    target_version: v0.16.2
+    source: development
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs:
+    - 0.16.2-W1-002
+    checklist:
+    - item: 完成現有文件架構問題分析報告
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: 設計提案文件格式與流程
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: 設計 proposals-tracking.yaml 格式
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: 設計四資料夾架構
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: 建立目錄結構和模板
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: Spec Domain 目錄遷移
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: 文件系統 Skill 實作
+      status: pending
+      verified_by: null
+    - item: UseCase 遷移
+      status: pending
+      verified_by: null
+  PROP-001:
+    title: 多平台隔離與跨平台路由
+    status: draft
+    proposed: '2026-03-30'
+    confirmed: null
+    target_version: v2.0+
+    source: spec
+    spec_refs:
+    - spec/platform/platform-management.md
+    usecase_refs: []
+    ticket_refs: []
+    checklist:
+    - item: 啟用 PlatformIsolationService
+      status: pending
+      verified_by: null
+    - item: 實作 CrossPlatformRouter
+      status: pending
+      verified_by: null
+    - item: 新增至少一個非 Readmoo 適配器
+      status: pending
+      verified_by: null
+    - item: 多平台資料隔離驗證
+      status: pending
+      verified_by: null
+  PROP-002:
+    title: 跨設備同步機制完善
+    note: 部分被 PROP-007 更新：同步方案變更為 Google Drive，進階功能延後至 v2.0。v0.16.2 完成需求分析，後續方向已被 PROP-007/PROP-012 取代。
+    status: discussing
+    proposed: '2026-03-30'
+    confirmed: null
+    target_version: v2.0+
+    source: spec
+    spec_refs:
+    - spec/data-management/data-management.md
+    usecase_refs: []
+    ticket_refs:
+    - 0.16.2-W1-001
+    checklist:
+    - item: 完成同步機制需求分析報告
+      status: done
+      verified_by: 0.16.2-W1-001
+    - item: 確定 SyncStrategyProcessor 增強方案
+      status: superseded
+      verified_by: null
+      note: 被 PROP-007 方向變更取代（Google Drive 同步延後 v2.0）
+    - item: 確定 RetryCoordinator 重試策略
+      status: pending
+      verified_by: null
+    - item: 同步流程設計文件完成
+      status: pending
+      verified_by: null
+  PROP-003:
+    title: 資料備份與恢復機制
+    note: 現有 JSON 匯出入（UC-03/04）作為變通備份，專用備份功能延後至 v2.0+
+    status: draft
+    proposed: '2026-03-30'
+    confirmed: null
+    target_version: v2.0+
+    source: spec
+    spec_refs:
+    - spec/data-management/data-management.md
+    usecase_refs: []
+    ticket_refs: []
+    checklist:
+    - item: BackupRecoveryService 實作
+      status: pending
+      verified_by: null
+    - item: 手動備份功能
+      status: pending
+      verified_by: null
+    - item: 備份恢復功能
+      status: pending
+      verified_by: null
+    - item: 備份檔案格式文件
+      status: pending
+      verified_by: null
+    - item: 測試通過
+      status: pending
+      verified_by: null
+  PROP-004:
+    title: UseCase 與測試覆蓋率差距分析
+    status: implemented
+    proposed: '2026-03-30'
+    confirmed: null
+    target_version: v0.16.2
+    source: development
+    spec_refs: []
+    usecase_refs:
+    - UC-01
+    - UC-02
+    - UC-04
+    - UC-05
+    - UC-07
+    - UC-08
+    ticket_refs:
+    - 0.16.2-W2-001
+    - 0.16.2-W2-002
+    - 0.16.2-W2-003
+    - 0.16.2-W2-004
+    - 0.16.2-W2-005
+    checklist:
+    - item: 6 個 UC 測試對應分析
+      status: done
+      verified_by: null
+    - item: 差距確認和嚴重程度標記
+      status: done
+      verified_by: null
+    - item: UC 資訊鏈整合測試分析
+      status: done
+      verified_by: null
+    - item: 為差距建立修復 ticket
+      status: done
+      verified_by: null
+  PROP-005:
+    title: 外部依賴邊界防護驗證
+    status: implemented
+    proposed: '2026-03-30'
+    confirmed: null
+    target_version: v0.16.2
+    source: development
+    note: v0.18.0 測試重寫已涵蓋 E2E selector fallback 測試
+    spec_refs: []
+    usecase_refs:
+    - UC-01
+    - UC-02
+    - UC-05
+    - UC-08
+    ticket_refs:
+    - 0.16.2-W2-002
+    checklist:
+    - item: 外部依賴邊界點盤點
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: 各邊界點 exception 處理確認
+      status: done
+      verified_by: 0.16.2-W1-002
+    - item: 整合測試覆蓋評估
+      status: done
+      verified_by: null
+    - item: DOM 結構變更偵測測試
+      status: done
+      verified_by: v0.18.0 E2E selector fallback tests
+  PROP-007:
+    title: 跨專案規格對齊（Tag-based Model / Interchange Format v2 / Google Drive 同步）
+    status: implemented
+    proposed: '2026-04-02'
+    confirmed: '2026-04-02'
+    target_version: v0.17.0 ~ v1.0.0
+    note: 核心 model + format 已完成。Google Drive 同步延後至 v2.0。Format v2 已進化為 v3 canonical（v1.0.0）。
+    source: cross-project
+    reference: Flutter App 專案 docs/proposals/PROP-007-cross-project-spec-alignment.md
+    spec_refs:
+    - spec/data-management/data-management.md
+    usecase_refs:
+    - UC-07
+    ticket_refs: []
+    checklist:
+    - item: Chrome Storage 資料結構改為 tag-based model
+      status: done
+      verified_by: v0.17.0 BookSchemaV2.js
+    - item: 匯出格式升級為 Interchange Format v2
+      status: done
+      verified_by: v1.0.0 進化為 v3 canonical
+    - item: 同步方案變更為 Google Drive（v2.0 階段）
+      status: pending
+      verified_by: null
+      note: 延後至 v2.0
+    - item: UC-07 替代流程進階功能延後至 v2.0
+      status: done
+      verified_by: use-cases.md UC-07 v1.0 基線
+  PROP-008:
+    title: 統一 UI Design System（從 APP 專案移植）
+    status: partial
+    proposed: '2026-04-08'
+    confirmed: '2026-04-08'
+    target_version: v0.17.3（Phase 1）/ v2.0+（Phase 2-3）
+    source: cross-project
+    reference: Flutter App 專案 lib/core/ui/ui_config.dart + flat_design_config.dart
+    note: Phase 1 已於 v0.17.3 完成（colors.js + spacing.js + DEFAULT_COLOR 合併）。Phase 2-3 延後。
+    spec_refs:
+    - spec/design-system-spec.md
+    usecase_refs: []
+    ticket_refs: []
+    checklist:
+    - item: 'Phase 1: 建立 design-system/colors.js 對齊 APP UIColors'
+      status: done
+      verified_by: v0.17.3 src/core/design-system/colors.js
+    - item: 'Phase 1: 建立 design-system/spacing.js 對齊 APP UISpacing'
+      status: done
+      verified_by: v0.17.3 src/core/design-system/spacing.js
+    - item: 'Phase 1: 合併 3 個重複 DEFAULT_COLOR + 補齊 Status CSS'
+      status: done
+      verified_by: v0.17.3 design system 集中化
+    - item: 'Phase 2: 導入 CSS Variables + 語意化按鈕 CSS class'
+      status: pending
+      verified_by: null
+    - item: 'Phase 3: Dark Mode + 陰影系統 + Spec 文件全面對齊'
+      status: pending
+      verified_by: null
+  PROP-009:
+    title: Ticket CLI 完整性提升 — 全欄位 CLI 化 + 清單式驗證
+    status: implemented
+    proposed: '2026-04-11'
+    confirmed: null
+    target_version: v0.17.4 ~ v0.18.0
+    source: framework
+    reference: docs/proposals/PROP-009-ticket-cli-completeness.md
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs: []
+    checklist:
+    - item: 面向 A - 補齊 priority / acceptance / spawned_tickets / decision_tree_path 欄位操作 CLI
+      status: done
+      verified_by: set-priority / set-acceptance / set-who~how CLI 均已實作
+    - item: 面向 B - create 時加入欄位完整性清單驗證
+      status: done
+      verified_by: ticket create --force 標註跳過 PROP-009 清單式驗證
+    - item: 面向 C - complete 前整合清單式驗證
+      status: done
+      verified_by: acceptance-gate-hook + --skip-body-check
+  PROP-010:
+    title: Ticket AC 與實況漂移偵測機制
+    status: partial
+    proposed: '2026-04-12'
+    confirmed: '2026-04-12'
+    target_version: v0.18.0 ~ v1.0.0（Phase 1）/ v2.0+（Phase 2-3）
+    source: framework
+    reference: docs/proposals/PROP-010-ticket-ac-drift-detection.md
+    note: Phase 1 核心機制已實作（claim --verify + stale 警告 + PM rules）。Phase 2-3 延後。
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs:
+    - 0.18.0-W4-006
+    - 0.18.0-W5-001
+    checklist:
+    - item: Phase 1 - Claim 前 AC 驗證流程
+      status: done
+      verified_by: claim --verify 已實作
+    - item: Phase 1 - claim/query/list stale 警告
+      status: done
+      verified_by: staleness.py lib + query stale warning
+    - item: Phase 1 - AC 自然語言驗證模板
+      status: pending
+      verified_by: null
+    - item: Phase 1 - PM rules claim 流程文件更新
+      status: done
+      verified_by: pm-role.md claim 流程
+    - item: Phase 1 - 觸發案例回歸測試
+      status: pending
+      verified_by: null
+    - item: Phase 2 - Wave 檢查 / SPEC audit
+      status: pending
+      verified_by: null
+    - item: Phase 3 - SPEC / Plan / Ticket 三層溯源評估
+      status: pending
+      verified_by: null
+  PROP-011:
+    title: 自動導航書庫頁 + 自動滾動蒐集完整書目
+    status: partial
+    proposed: '2026-04-20'
+    confirmed: '2026-04-20'
+    target_version: v1.0.0（Phase 1 核心）/ v2.0+（Phase 1.5 進階）
+    source: development
+    reference: /Users/mac-eric/project/readmoo-tracker_20260418（同類擴充功能 v1.5 content.js:128-166
+      核心演算法借鑑）
+    note: Phase 1 核心已於 v1.0.0 W1-030 實作（loadAllBooksLazy 捲動載入 + findScrollContainer 多層 fallback）。自動導航（popup 直接開書庫頁）未實作，用戶仍需手動前往。Phase 1.5 進階功能延後。
+    spec_refs: []
+    usecase_refs:
+    - UC-09
+    - UC-01
+    - UC-02
+    ticket_refs:
+    - 1.0.0-W1-030
+    checklist:
+    - item: Phase 1 MVP - ANA-A Readmoo 書庫頁 DOM 勘查 + manifest 權限核對
+      status: done
+      verified_by: readmoo-adapter.js DOM 選擇器 + scrollContainerCandidates 實機取證
+    - item: Phase 1 MVP - IMP-A popup 一鍵導航 + autoStart 雙通道（flag + message）
+      status: partial
+      verified_by: null
+      note: popup 有一鍵提取（startExtraction），但無自動導航到書庫頁
+    - item: Phase 1 MVP - IMP-B scrollUntilStable 核心演算法（連續 2 次穩定 + safetyBreak）
+      status: done
+      verified_by: loadAllBooksLazy() + readmoo-adapter-scroll-load.test.js
+    - item: Phase 1 MVP - IMP-F1 E2E 測試（正常路徑，50/500 本模擬）
+      status: pending
+      verified_by: null
+      note: 有單元測試（scroll-load/scroll-container），E2E 模擬未建
+    - item: Phase 1.5 - IMP-C AbortController 中斷 + partial status 持久化
+      status: pending
+      verified_by: null
+    - item: Phase 1.5 - IMP-D 錯誤恢復重試層（漸進退避 1s/2s/3s）
+      status: pending
+      verified_by: null
+    - item: Phase 1.5 - IMP-E 儲存容量預警（動態 quota + 80/90/95 分級）
+      status: pending
+      verified_by: null
+    - item: Phase 1.5 - IMP-F2 E2E 測試（中斷、重試、quota 場景）
+      status: pending
+      verified_by: null
+    - item: DOC-A UC-09 完稿 + UC-01/02 交叉引用
+      status: pending
+      verified_by: null
+  PROP-012:
+    title: QR Code 動畫離線同步方案（Extension 端）
+    status: implemented
+    proposed: '2026-05-10'
+    confirmed: '2026-05-10'
+    target_version: v1.2.0
+    source: cross-project
+    reference: Flutter App PROP-014 對應
+    note: v1.2.0 完成。Extension 端 QR 動畫產生 + JSON 匯入（sync_meta 驗證 + 智慧合併）。
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs: []
+    checklist:
+    - item: QR encoder 實作（src/sync/qr-encoder.js）
+      status: done
+      verified_by: v1.2.0
+    - item: QR renderer 實作（src/popup/services/sync-qr-renderer.js）
+      status: done
+      verified_by: v1.2.0
+    - item: Sync panel UI（src/popup/components/sync-panel.js）
+      status: done
+      verified_by: v1.2.0
+    - item: JSON 匯入 sync_meta 驗證 + 智慧合併
+      status: done
+      verified_by: v1.2.0
+  PROP-014:
+    title: Design token 值層統一——token manifest 雙向校驗層 + 平台覆蓋機制
+    status: confirmed
+    proposed: '2026-07-11'
+    confirmed: '2026-07-11'
+    target_version: v1.5.0
+    source: cross-project
+    reference: Flutter App PROP-018 對應（sibling；heavy 評估採方案 D，載體 ticket 1.5.0-W6-006）
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs:
+    - 1.5.0-W6-006
+    - 1.5.0-W6-007
+    - 1.5.0-W6-008
+    checklist:
+    - item: heavy 級評估（5 候選逐評表 + linux/thyme 雙視角審查）後 confirmed
+      status: done
+      verified_by: 1.5.0-W6-006
+    - item: 全量 token 分歧盤點 + manifest schema 設計 + token-manifest.json 初版
+      status: pending
+      ticket: 1.5.0-W6-007
+    - item: 雙向校驗 script + CI 接線 + validate:design-system 孤兒腳本接線
+      status: pending
+      ticket: 1.5.0-W6-008
+    - item: 跨 repo 比對（第二階段，APP 端 Dart 校驗，PROP-018 承擔）
+      status: pending
+
+  PROP-013:
+    title: 元件庫統一化（Extension 端）——ui-factory 升級為核心元件庫並對齊 APP 命名契約
+    status: confirmed
+    proposed: '2026-07-08'
+    confirmed: '2026-07-11'
+    target_version: v1.5.0
+    source: cross-project
+    reference: Flutter App PROP-016 對應（命名契約 SSOT 在 APP 端 design-system-spec）
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs:
+    - 1.5.0-W6-001
+    - 1.5.0-W6-002
+    - 1.5.0-W6-003
+    - 1.5.0-W6-004
+    - 1.5.0-W6-005
+    checklist:
+    - item: popup.html 內嵌 style 收斂 + createElement 直建消除
+      status: pending
+      ticket: 1.5.0-W6-001
+    - item: ui-factory 升遷核心目錄，popup/overview 統一引用
+      status: pending
+      ticket: 1.5.0-W6-002
+    - item: 元件命名對齊 APP spec 跨平台元件對照表
+      status: pending
+      ticket: 1.5.0-W6-003
+    - item: divider 元件（分割陰影）+ overview.css border 收斂
+      status: pending
+      ticket: 1.5.0-W6-004
+    - item: 測試同步（搬遷修正 + 新元件測試）
+      status: pending
+      ticket: 1.5.0-W6-005

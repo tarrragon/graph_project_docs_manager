@@ -1,0 +1,81 @@
+{
+  "_comment": "sync_meta 結構驗證 — 合法與非法範例",
+
+  "valid_examples": [
+    {
+      "id": "complete-sync-meta",
+      "sync_meta": {
+        "exported_at": "2026-06-18T14:30:00Z",
+        "source_app": "chrome-extension",
+        "source_device": "ext_xyz",
+        "book_count": 155,
+        "last_sync_summary": { "added": 3, "updated": 5, "deleted": 0 }
+      }
+    },
+    {
+      "id": "flutter-app-source",
+      "sync_meta": {
+        "exported_at": "2026-06-18T16:00:00Z",
+        "source_app": "flutter-app",
+        "source_device": "app_abc123",
+        "book_count": 0,
+        "last_sync_summary": { "added": 0, "updated": 0, "deleted": 0 }
+      }
+    },
+    {
+      "id": "first-ever-export-no-prior-sync",
+      "description": "首次匯出，無先前同步紀錄",
+      "sync_meta": {
+        "exported_at": "2026-06-18T12:00:00Z",
+        "source_app": "chrome-extension",
+        "source_device": "ext_first",
+        "book_count": 42,
+        "last_sync_summary": null
+      }
+    }
+  ],
+
+  "invalid_examples": [
+    {
+      "id": "missing-exported-at",
+      "sync_meta": {
+        "source_app": "chrome-extension",
+        "source_device": "ext_xyz",
+        "book_count": 10
+      },
+      "expected_error": "missing required field: exported_at"
+    },
+    {
+      "id": "missing-source-app",
+      "sync_meta": {
+        "exported_at": "2026-06-18T14:30:00Z",
+        "source_device": "ext_xyz",
+        "book_count": 10
+      },
+      "expected_error": "missing required field: source_app"
+    },
+    {
+      "id": "invalid-source-app-value",
+      "sync_meta": {
+        "exported_at": "2026-06-18T14:30:00Z",
+        "source_app": "unknown-app",
+        "source_device": "xxx",
+        "book_count": 10
+      },
+      "expected_error": "source_app must be 'chrome-extension' or 'flutter-app'"
+    },
+    {
+      "id": "no-sync-meta-at-all",
+      "description": "整個 sync_meta 欄位缺失（舊版 JSON 匯出格式）",
+      "json_root": {
+        "format_version": "1.0",
+        "books": []
+      },
+      "expected_behavior": "accept with warning: no sync_meta, treating as legacy import"
+    }
+  ],
+
+  "required_fields": ["exported_at", "source_app", "source_device", "book_count"],
+  "optional_fields": ["last_sync_summary"],
+  "valid_source_apps": ["chrome-extension", "flutter-app"]
+}
