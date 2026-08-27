@@ -93,6 +93,10 @@ macos/Podfile.lock
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 .claude/state
+# 框架執行期鎖檔的類別式涵蓋。上兩行的 dispatch-active.lock / scheduled_tasks.lock
+# 為逐檔列舉，屬「遇到才補」——error-patterns/.allocator.lock 即因未列而漏網。
+# 改以此行涵蓋整個類別，新增的框架鎖檔不需再逐一追加。
+.claude/**/*.lock
 .claude/sync-preserve.yaml
 .claude/sync-skills.yaml
 .claude/worktrees
