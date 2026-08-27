@@ -11,7 +11,7 @@ proposals:
   ticket_refs: []
   checklist: []
 - id: PROP-002
-  title: schema consumption via bundled json
+  title: 圖譜 schema 消費方式：讀取框架隨附的 tracking_schema.json
   status: confirmed
   proposed: '2026-08-26'
   confirmed_at: '2026-08-26'
@@ -22,7 +22,7 @@ proposals:
   ticket_refs: []
   checklist: []
 - id: PROP-003
-  title: workspace access and data sources
+  title: 工作資料夾存取與資料來源範圍
   status: confirmed
   proposed: '2026-08-26'
   confirmed_at: '2026-08-26'
@@ -34,7 +34,7 @@ proposals:
   ticket_refs: []
   checklist: []
 - id: PROP-004
-  title: presentation shell and domain view layout
+  title: 展示介面與 Domain 視圖版型
   status: confirmed
   proposed: '2026-08-26'
   confirmed_at: '2026-08-26'

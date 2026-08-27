@@ -11,7 +11,8 @@ priority: P0
 
 outputs:
   spec_refs: []
-  usecase_refs: []
+  usecase_refs: [UC-01]
+  event_refs: [EVT-SCHEMA-001, EVT-SCHEMA-002]
   ticket_refs: []
 
 related_proposals: [PROP-001]

@@ -4,8 +4,9 @@ name: "LayoutComputed"
 canonical_name: "Layout.Geometry.Computed"
 category: domain_event
 status: draft
+source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-08-26"
+updated: "2026-08-27"
 
 payload: null
 

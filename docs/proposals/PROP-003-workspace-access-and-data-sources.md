@@ -12,6 +12,7 @@ priority: P0
 outputs:
   spec_refs: []
   usecase_refs: [UC-01]
+  event_refs: [EVT-WORKSPACE-001, EVT-CORPUS-001, EVT-CORPUS-002, EVT-CORPUS-003]
   ticket_refs: []
 
 related_proposals: [PROP-001]
@@ -57,8 +58,14 @@ supersedes: null
 
 - security-scoped bookmark → 沙盒已關閉，機制冗餘；上架 MAS 時需重新引入
 - 跨機器同步 → 由框架的 ticket 系統與 GitHub 承擔，非本 App 職責
-- **git 歷史（邊的變更歷史）** → 非核心價值，成本為 O(commits × files)，
-  另立提案處理
+- ~~**git 歷史（邊的變更歷史）** → 非核心價值，成本為 O(commits × files)，
+  另立提案處理~~
+
+  > **本項已於 2026-08-27 撤回。** 排除理由是未經量測的推估，票
+  > `0.0.3-W1-003` 實測推翻：單次 `git log -p` 掃描 9409 commits 為 2.28 秒，
+  > 與 ticket 載入同一量級。已改採邊層級並新增 History domain
+  > （`docs/domain-map.md` §4.3）。本提案的資料來源範圍因此需擴充，
+  > 但擴充內容尚未落檔——列為待決。
 - 同時開啟多個專案 → 一次一個，切換即重新載入
 
 ## 提案方案
@@ -84,7 +91,7 @@ supersedes: null
 | 來源 | 用途 | 規模參考（flutter_balance） |
 |------|------|------------------------|
 | `docs/` 圖譜節點 frontmatter | PROP / SPEC / UC / EVT / DomainBundle | PROP 2、SPEC 4、UC 1、EVT 5 |
-| `docs/work-logs/**/tickets/*.md` | 進度與狀態 | **1295 張** |
+| `docs/work-logs/**/tickets/*.md` | 進度與狀態 | **1295 張**（量測於 2026-08-26；2026-08-27 為 1300，持續成長） |
 | `docs/traceability.yaml` | 四軸追溯矩陣，已結構化 | 1 檔 |
 
 Ticket 為主要的效能熱點。**1295 為全量，非 pending 數（約 190）** —— 兩者
@@ -100,7 +107,7 @@ Ticket 為主要的效能熱點。**1295 為全量，非 pending 數（約 190�
 - [x] security-scoped bookmark 實作已移除
 - [ ] 解析器可讀取三類資料來源
 - [ ] 外部改動可被偵測並觸發重新載入
-- [ ] 以 1295 張 ticket 的規模驗證清單效能
+- [ ] 以不低於 1300 張 ticket 的規模驗證清單效能（取下界，因語料持續成長）
 
 ## 風險與 Tripwire
 

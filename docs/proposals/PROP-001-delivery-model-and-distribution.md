@@ -44,7 +44,7 @@ supersedes: null
 |---------|------|
 | 模組 | 工作資料夾存取、未來的 doc CLI 呼叫層 |
 | 檔案 | `macos/Runner/*.entitlements`、`macos/Runner/MainFlutterWindow.swift`、`lib/workspace/workspace_repository.dart` |
-| 用例 | 尚未建立 UC；影響「選擇專案資料夾」與「呼叫 doc CLI」兩類操作 |
+| 用例 | 無直接對應的 UC——本提案定的是交付形態與能力邊界，不是使用者操作。它使 UC-01 的「選擇任意資料夾」與（尚未落檔的）「呼叫 doc CLI 驗證」成為可能 |
 
 ## 範圍界定
 

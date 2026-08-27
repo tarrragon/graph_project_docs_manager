@@ -55,6 +55,9 @@ ticket_refs: []
 
 ## 流程拓撲（結構化 Flow 區塊）
 
+> 本 flow 全程不發送也不消費事件——它是純檢視操作。`emits` / `consumes`
+> 依 `FLOWSTEP_REQUIRED_FIELDS` 為必填，故逐步填空陣列。
+
 ```yaml
 flow:
   - id: "select-proposal"
@@ -62,31 +65,43 @@ flow:
     next: ["expand-downstream"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "expand-downstream"
     name: "展開下游"
     next: ["inspect-status"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "inspect-status"
     name: "檢視狀態"
     next: ["jump-to-detail"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "jump-to-detail"
     name: "跳轉細節"
     next: []
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "reverse-trace"
     name: "反向追溯"
     next: ["inspect-status"]
     branch_from: "select-proposal"
     return_to: null
+    emits: []
+    consumes: []
   - id: "chain-broken"
     name: "鏈路中斷"
     next: []
     branch_from: "expand-downstream"
     return_to: "expand-downstream"
+    emits: []
+    consumes: []
 ```
 
 ## 例外場景
@@ -101,9 +116,17 @@ flow:
 
 ## 驗收條件
 
+> **前提未滿足。** 第三跳（UC → Ticket）在上游 16 條語意邊中無對應邊；
+> 第二跳（PROP → SPEC → UC）走 `SPEC.related_usecases` 或 `UC.source_proposal`
+> 會得到不同的樹，欄位未明訂。兩項皆列於 `docs/domain-map.md` §9。
+> 本批文件自身即是反例：UC-01 自報來自 PROP-003，但經 SPEC-001 展開會
+> 出現在 PROP-004 底下。
+
 - [ ] 樹狀結構完整呈現四層，缺口層以視覺差異標示而非省略
+      （第三跳無邊、第二跳欄位未定，見 §9）
 - [ ] 反向追溯可自任一層出發，不限於自 PROP 開始
-- [ ] 點選節點開啟的詳情與該節點一致
+      （各層的「向上」欄位對照表尚未建立）
+- [ ] 點選節點開啟的詳情與該節點一致，且部分損壞的節點仍能開啟
 
 ## 變更歷史
 

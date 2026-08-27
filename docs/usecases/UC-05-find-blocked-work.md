@@ -66,6 +66,8 @@ flow:
     next: ["trigger-load"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
     implements: ["FR-02"]
   - id: "trigger-load"
     name: "觸發載入"
@@ -73,34 +75,44 @@ flow:
     branch_from: null
     return_to: null
     emits: ["EVT-CORPUS-001"]
+    consumes: []
   - id: "switch-to-topic"
     name: "切換至主題模式"
     next: ["locate-blocked"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "locate-blocked"
     name: "定位阻擋"
     next: []
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "filter-in-list-mode"
     name: "列表模式篩選"
     next: []
     branch_from: "switch-to-topic"
     return_to: "switch-to-topic"
+    emits: []
+    consumes: []
   - id: "cancel-loading"
     name: "載入期間離開"
     next: []
     branch_from: "trigger-load"
     return_to: "enter-ticket-list"
+    emits: []
+    consumes: []
     implements: ["FR-02"]
   - id: "damaged-tickets"
     name: "含損壞票"
     next: []
     branch_from: "trigger-load"
     return_to: null
-    implements: ["FR-05"]
+    emits: []
     consumes: ["EVT-CORPUS-003"]
+    implements: ["FR-05"]
 ```
 
 ## 例外場景
@@ -117,7 +129,11 @@ flow:
 
 - [ ] 首次進入不自動載入，且載入提示標明筆數與預估耗時
 - [ ] 載入期間取消操作可用，取消後回到未載入狀態
-- [ ] 主題節標題呈現票數與最高優先級，排序為最高優先級後接票數降冪
+- [ ] 主題節標題呈現票數與最高優先級，排序為最高優先級後接票數降冪；
+      **無有效 `priority` 的主題排最後**（tie-break，規格見 PROP-004 §分組軸）
+- [ ] 主題歸屬讀自 `docs/work-logs/topic-assignments.txt` 與
+      `topics-registry.txt` 兩檔，**非 ticket frontmatter**（格式與不變式
+      見 PROP-004 §對 Corpus domain 的影響）
 - [ ] 未歸屬票獨立成節置於全部主題節之後，不與任一主題混列
 
 ## 變更歷史

@@ -4,8 +4,9 @@ name: "SchemaLoaded"
 canonical_name: "Schema.TypeTable.Loaded"
 category: domain_event
 status: draft
+source_proposal: PROP-002
 created: "2026-08-26"
-updated: "2026-08-26"
+updated: "2026-08-27"
 
 payload: null
 

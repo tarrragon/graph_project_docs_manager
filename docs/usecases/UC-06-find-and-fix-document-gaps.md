@@ -39,7 +39,7 @@ ticket_refs: []
    - 使用者導覽至破洞報告，系統開始掃描
 
 2. **檢視分類**
-   - 系統依類別分節呈現：資料損壞、追溯缺口、圖結構
+   - 系統依 `EVT-DIAGNOSTICS-001` 定義的類別分節呈現
 
 3. **定位單項**
    - 使用者點選任一項，系統顯示檔案路徑與行號
@@ -62,6 +62,7 @@ flow:
     next: ["view-categories"]
     branch_from: null
     return_to: null
+    emits: []
     consumes: ["EVT-CORPUS-003"]
   - id: "view-categories"
     name: "檢視分類"
@@ -69,27 +70,35 @@ flow:
     branch_from: null
     return_to: null
     emits: ["EVT-DIAGNOSTICS-001"]
+    consumes: []
   - id: "locate-item"
     name: "定位單項"
     next: ["open-source-file"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "open-source-file"
     name: "開啟原始檔"
     next: []
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "rescan"
     name: "重新掃描"
     next: ["view-categories"]
     branch_from: "open-source-file"
     return_to: "view-categories"
     emits: ["EVT-CORPUS-002"]
+    consumes: []
   - id: "no-gaps"
     name: "無破洞"
     next: []
     branch_from: "view-categories"
     return_to: null
+    emits: []
+    consumes: []
 ```
 
 ## 例外場景

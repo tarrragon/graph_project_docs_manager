@@ -55,6 +55,9 @@ ticket_refs: []
 
 ## 流程拓撲（結構化 Flow 區塊）
 
+> 本 flow 全程不發送也不消費事件——它是純檢視操作。`emits` / `consumes`
+> 依 `FLOWSTEP_REQUIRED_FIELDS` 為必填，故逐步填空陣列。
+
 ```yaml
 flow:
   - id: "select-uc"
@@ -62,32 +65,44 @@ flow:
     next: ["view-steps"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "view-steps"
     name: "檢視步驟序列"
     next: ["jump-to-node"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
     implements: ["FR-06"]
   - id: "jump-to-node"
     name: "跳轉節點"
     next: []
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "jump-to-domain"
     name: "跳回 domain"
     next: []
     branch_from: "view-steps"
     return_to: null
+    emits: []
+    consumes: []
   - id: "inspect-event-flow"
     name: "檢視事件流"
     next: []
     branch_from: "view-steps"
     return_to: "view-steps"
+    emits: []
+    consumes: []
   - id: "flow-block-absent"
     name: "UC 無結構化 flow"
     next: []
     branch_from: "select-uc"
     return_to: "select-uc"
+    emits: []
+    consumes: []
     implements: ["FR-06"]
 ```
 
@@ -103,7 +118,12 @@ flow:
 
 ## 驗收條件
 
+> **前提未滿足，本 UC 的第 1、2 條驗收目前不可實作。** 「所屬 domain」不是
+> `FlowStep` 的欄位（`FLOWSTEP_REQUIRED_FIELDS` 無 `domain`），本 UC 自身的
+> flow 區塊亦未帶。該欄的推導方式未定，見 `docs/domain-map.md` §9。
+
 - [ ] 步驟表的每一列同時呈現步驟名稱、所屬 domain 與發送事件
+      （「所屬 domain」的來源未定，見 §9）
 - [ ] 點選 domain 欄可跳轉至 Domain 視圖且定位正確
 - [ ] 無結構化 flow 的 UC 仍可開啟，不顯示錯誤
 

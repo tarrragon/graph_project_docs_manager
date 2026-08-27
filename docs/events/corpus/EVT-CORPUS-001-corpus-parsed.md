@@ -4,8 +4,9 @@ name: "CorpusParsed"
 canonical_name: "Corpus.Scan.Completed"
 category: domain_event
 status: draft
+source_proposal: PROP-003
 created: "2026-08-26"
-updated: "2026-08-26"
+updated: "2026-08-27"
 
 payload: null
 

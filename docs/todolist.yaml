@@ -11,7 +11,7 @@
 meta:
   project: "graph_project_docs_manager"
   architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
-  last_updated: "2026-08-26"
+  last_updated: "2026-08-27"
   maintainer: "rosemary-project-manager"
 
 versions:
@@ -19,7 +19,7 @@ versions:
     codename: "Foundation"
     description: "Flutter 專案骨架、FVM 版本釘選、雙層測試、多語系"
     status: "completed"
-    worklog: "docs/work-logs/v0/v0.0/v0.0.1/"
+    worklog: null    # 0.0.1 在 ticket 系統導入前完成，無 worklog 目錄
     notes: |
       建立 macOS 桌面基礎架構。發布通路自 Mac App Store 改為
       Developer ID + notarization，App Sandbox 關閉——實測沙盒下
@@ -35,13 +35,18 @@ versions:
       - PROP-002
       - PROP-003
       - PROP-004
-    worklog: "docs/work-logs/v0/v0.0/v0.0.2/"
+    worklog: null    # 訪談以對話進行，產物直接落為 PROP / SPEC / UC / EVT
     notes: |
       saas-tech-selection Stage 0-6 全程。產出 PROP-001~004（皆 confirmed）、
-      SPEC-001（畫面狀態矩陣，26 狀態 6 FR）、UC-01~06（皆含結構化 flow 區塊）、
-      domain-map（7 domain）、9 個 EVT、0.1 展示介面版型定案。
+      SPEC-001（畫面狀態矩陣，狀態集合見該檔 §1-7，6 個 FR）、
+      UC-01~06（皆含結構化 flow 區塊）、
+      domain-map（訪談時 7 domain，0.0.3 新增 History 為第 8 個）、9 個 EVT、
+      0.1 展示介面版型定案。
 
-      六個 UC 的結構化 flow 使本專案成為 FlowStep 的第二份獨立語料。
+      六個 UC 的結構化 flow 使本專案具備成為 FlowStep 第二份獨立語料的條件，
+      但升級判準另有第二條（doc CLI 須有建立與驗證支援）尚未滿足——該缺口
+      已實際發作：39 個 FlowStep 中 37 個曾缺必填欄位而無機制察覺，
+      2026-08-27 的多輪審查才發現並補齊。
 
   - version: "0.0.3"
     codename: "Toolkit"

@@ -13,6 +13,10 @@ UC 白名單 SSOT（Single Source of Truth）。
 產出來源：`saas-tech-selection` Stage 6。行為者統一為框架使用者（專案維護者）——
 本 App 為單使用者本機工具，無組織角色分層。
 
+本表使用的三個易混淆詞——**貫穿**（flow 經過某 domain）、**穿透**（兩視圖間
+雙向導覽）、**破洞**（四類，見 `docs/events/diagnostics/EVT-DIAGNOSTICS-001-gaps-detected.md`）
+——定義見 `docs/domain-map.md` §2.5。
+
 ---
 
 ## UC-01: 開啟專案並抵達可用狀態
@@ -99,6 +103,6 @@ UC 白名單 SSOT（Single Source of Truth）。
 ### 主要成功場景
 
 1. **進入破洞報告** — 系統開始掃描
-2. **檢視分類** — 依類別分節：資料損壞、追溯缺口、圖結構
+2. **檢視分類** — 依 `EVT-DIAGNOSTICS-001` 定義的類別分節
 3. **定位單項** — 點選任一項顯示檔案路徑與行號
 4. **開啟原始檔** — 以外部編輯器開啟並定位至該行

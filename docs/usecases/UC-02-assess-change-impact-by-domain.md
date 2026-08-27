@@ -33,6 +33,9 @@ ticket_refs: []
 | 前置條件 | 已開啟專案且 Domain 視圖可用 |
 | 成功保證 | 使用者得知該 domain 被哪些 UC flow 貫穿，以及各自貫穿的步驟 |
 
+> 「貫穿」＝一條 UC flow 經過某個 domain，是圖上的水平關係、可計數。
+> 與「穿透」（兩視圖間的雙向導覽操作）不同，定義見 `docs/domain-map.md` §2.5。
+
 ## 主要成功場景
 
 1. **定位 domain**
@@ -66,37 +69,50 @@ flow:
     next: ["read-traversal-count"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "read-traversal-count"
     name: "讀取貫穿數"
     next: ["switch-to-swimlane"]
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "switch-to-swimlane"
     name: "切換至泳道"
     next: ["inspect-steps"]
     branch_from: null
     return_to: null
+    emits: []
     consumes: ["EVT-LAYOUT-001"]
   - id: "inspect-steps"
     name: "檢視步驟"
     next: []
     branch_from: null
     return_to: null
+    emits: []
+    consumes: []
   - id: "matrix-overview-only"
     name: "僅檢視全貌"
     next: []
     branch_from: "read-traversal-count"
     return_to: null
+    emits: []
+    consumes: []
   - id: "enter-from-ticket"
     name: "由 ticket 切入"
     next: ["read-traversal-count"]
     branch_from: "locate-domain"
     return_to: null
+    emits: []
+    consumes: []
   - id: "flow-not-structured"
     name: "flow 未結構化"
     next: []
     branch_from: "switch-to-swimlane"
     return_to: "locate-domain"
+    emits: []
+    consumes: []
     implements: ["FR-06"]
 ```
 
@@ -112,9 +128,18 @@ where.files 無法對應到任何 domain 時標記為無法定位，並列入破
 
 ## 驗收條件
 
+> **前提未滿足，本 UC 的第 1、4 條驗收目前不可實作。** 矩陣的列（domain 清單）
+> 與格（step → domain）皆無資料來源：個別 domain 不是圖節點、`FlowStep` 無
+> `domain` 欄位；「路徑模式 → domain」對照表亦不存在。三項皆列於
+> `docs/domain-map.md` §9。排版本順序時，這些前置必須先綠燈。
+
 - [ ] 矩陣的每一格明確區分直接貫穿、間接依賴、無關三種狀態
+      （「直接貫穿」與「間接依賴」的判定式皆未定義，見 §9）
 - [ ] 點選交叉格後泳道定位至正確的 domain 與 UC，不需使用者再次搜尋
 - [ ] UC 無結構化 flow 時顯示 UC 基本資訊與說明，而非空白或錯誤
+      （「基本資訊」的欄位清單未列舉）
+- [ ] ticket 的 `where.files` 對應不到任何 domain 時標記為無法定位，
+      並列入破洞報告的 `unlocatable` 類（見 `EVT-DIAGNOSTICS-001`）
 
 ## 變更歷史
 

@@ -4,8 +4,9 @@ name: "CorpusChanged"
 canonical_name: "Corpus.FileSystem.Changed"
 category: domain_event
 status: draft
+source_proposal: PROP-003
 created: "2026-08-26"
-updated: "2026-08-26"
+updated: "2026-08-27"
 
 payload: null
 

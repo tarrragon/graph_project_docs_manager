@@ -67,6 +67,7 @@ flow:
     branch_from: null
     return_to: null
     emits: ["EVT-WORKSPACE-001"]
+    consumes: []
   - id: "load-schema"
     name: "載入型別表"
     next: ["parse-nodes"]
@@ -86,24 +87,30 @@ flow:
     next: []
     branch_from: null
     return_to: null
+    emits: []
     consumes: ["EVT-CORPUS-001"]
   - id: "folder-unavailable"
     name: "資料夾不可用"
     next: []
     branch_from: "select-folder"
     return_to: "select-folder"
+    emits: []
+    consumes: []
   - id: "empty-graph"
     name: "空專案"
     next: []
     branch_from: "parse-nodes"
     return_to: null
+    emits: []
+    consumes: []
   - id: "schema-rejected"
     name: "版本不符拒絕渲染"
     next: []
     branch_from: "load-schema"
     return_to: "select-folder"
-    implements: ["FR-04"]
     emits: ["EVT-SCHEMA-002"]
+    consumes: []
+    implements: ["FR-04"]
 ```
 
 ## 例外場景
