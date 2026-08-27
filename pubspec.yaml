@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   # 全 App 尺寸基準：所有元件尺寸都經 ScreenUtil 換算，避免跨機型跑版
   flutter_screenutil: ^5.9.3
+  # 狀態管理（tech-decisions Stage 4 定案）
+  flutter_riverpod: ^2.6.1
   # 多語系：提供 Material/Cupertino 內建元件的在地化字串
   flutter_localizations:
     sdk: flutter

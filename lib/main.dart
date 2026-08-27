@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'l10n/app_localizations.dart';
@@ -20,7 +21,7 @@ const Size kDesignSize = Size(1280, 800);
 const Size kMinWindowSize = Size(960, 640);
 
 void main() {
-  runApp(const DocsManagerApp());
+  runApp(const ProviderScope(child: DocsManagerApp()));
 }
 
 class DocsManagerApp extends StatelessWidget {
