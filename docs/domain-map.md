@@ -252,12 +252,26 @@ frontmatter 解析語意——見下方「解析器語意是規格的一部分�
 > 目錄內但不符檔名模式）；完整路徑模式讀法報 1 項。
 > 本節先前寫作「所在目錄」，已於 2026-08-27 的個案實跑（frame 3-H）更正。
 
-**carrier 重疊時取最具體者。** `DomainBundle` 的 carrier
-（`docs/spec/{domain}/domain-map.md`）是 `SPEC` 的 carrier
-（`docs/spec/{domain}/{slug}.md`）的真子集，一個檔可同時命中兩者。
-比對順序為最長字面前綴優先，否則 per-domain 的 domain-map 會被判成
-id 不合法的 SPEC——實測 `monitor` 有 3 份、`book_overview_v1` 有 5 份
-會踩到這個情形。
+**型別判別以 `id_pattern` 為準，不以 carrier 為準。** carrier 描述的是
+檔案落點，允許重疊：`DomainBundle` 的 `docs/spec/{domain}/domain-map.md`
+是 `SPEC` 的 `docs/spec/{domain}/{slug}.md` 的真子集。但兩型的 `id_pattern`
+互斥，先讀 frontmatter 的 `id` 再判型就沒有歧義。
+
+實測七個節點型別的 `id_pattern` **兩兩互斥、跨型誤配 0 組**：
+`DOMAIN-MAP-docs-graph` 只符合 `DomainBundle`，`SPEC-001` 只符合 `SPEC`。
+
+> 本判準原寫作「carrier 重疊時取最長字面前綴」。上游複驗指出
+> `id_pattern` 已足以消歧，另立一套前綴規則會製造第二份需維護的判別依據，
+> 已於 2026-08-27 改為現行寫法。上游同時開了 conformance 測試票
+> （`0.2.1-W3-1130`）斷言全部型別的 `id_pattern` 兩兩互斥，
+> 未來新增型別若造成重疊會紅燈。
+>
+> **carrier-first 比對是唯一會踩到歧義的路徑，本 App 不採用。**
+> 實測 per-domain domain-map 份數：`monitor` 3、`book_overview_v1` 9、
+> `book_overview_app` 9、**`flutter_balance` 0**——最後那個 0 是關鍵：
+> schema 是對著一份兩個 carrier 從不碰撞的語料寫出來的，缺陷不在推導
+> 過程，在原語料未涵蓋這個形態。這與 `FlowStep` 升級判準要求
+> 「兩個以上互相獨立的專案語料」是同一件事的兩面。
 
 若不做這個區分，破洞報告會一次吐出 1290 項而其中 96% 是雜訊，使用者用一次
 就不會再用。
@@ -343,10 +357,25 @@ id 不合法的 SPEC——實測 `monitor` 有 3 份、`book_overview_v1` 有 5 
   並回答三個今天沒有答案的問題：型別表缺席時 Corpus 用什麼掃描、
   `id_pattern` 隨版本變動時舊語料的不合法 id 歸哪一類破洞、
   選到非框架專案時走哪條退出路徑
-- **五個節點型別沒有必填欄位定義**：schema 只為 `EVT` 與 `FlowStep` 定義了
-  `*_REQUIRED_FIELDS`，`PROP` / `SPEC` / `UC` / `Ticket` / `DomainBundle`
-  皆無。`EVT-CORPUS-003` 的 payload 明列 `lostFields`，但對 7 個型別中的
-  5 個不可計算，`severity` 分級因此在多數情況無輸入
+- **`*_REQUIRED_FIELDS` 的語意本身未定，`lostFields` 在裁決前不可實作。**
+  上游複驗（票 `0.2.1-W3-1131`）指出問題有三層，比「5 型缺定義」更基本：
+
+  1. `PROP` / `SPEC` / `UC` / `Ticket` / `DomainBundle` 五型無定義
+  2. 已存在的 `EVT` 與 `FlowStep` 兩個**沒有任何 validator 消費**——
+     `grep -rln` 只命中 `tracking_schema.py` 自己與其 conformance 測試。
+     不是「缺定義」，是這個概念根本沒接線
+  3. `FLOWSTEP_REQUIRED_FIELDS` 的原始註解是「**依首批真實資料實例對齊**」
+     ——「首批樣本中出現過的欄位」不等於「必填欄位」。該清單含
+     `branch_from` / `return_to` / `emits` / `consumes`，依語意都是選填的
+
+  **後果**：若照現行清單實作 `lostFields`，會在每個不分支的步驟上報
+  「缺 `branch_from`」，誤報量很大。上游把語意裁決排在覆蓋之前——
+  該集合表達的是「必填」（缺少即不合規）還是「該型別的已知欄位」
+  （用於偵測未預期欄位），兩者的消費方式相反。
+
+  **在裁決前，本 App 不得把現行 FlowStep 清單當必填用。**
+  本專案 39 個 FlowStep 已補齊七個欄位（值為空陣列），該動作在兩種
+  語意下都安全（欄位存在且值明確為空），但它的**理由**需隨裁決結果重述
 - **`鄰接查詢` 的簽章未定**（§2.5）：Graph 的公開面列了它，但吃什麼、回什麼、
   幾 hop 皆無。矩陣的「間接依賴」判定會落在這個 API 上
 - **UC-04 四層樹的第二跳欄位未明訂**：自 PROP 展開時，走
