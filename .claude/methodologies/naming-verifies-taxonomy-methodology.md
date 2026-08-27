@@ -155,10 +155,13 @@
 
 - **每次交易觸發兩次**（`prepared` 與 `committed` 兩個狀態，以第一個參數區分），naive 計數會重複計算
 - **內部 ref 也會觸發**（如合併期間的 `AUTO_MERGE`），且有 `aborted` 狀態
-- **非零離開碼會中止 ref 更新**（實測誤寫路徑導致失敗時，git 回報 `fatal: ref updates aborted by hook`）——它是實質閘門，不只是通知
+- **只有 `prepared` 狀態的非零離開碼會中止交易**，`committed` 與 `aborted` 的離開碼被忽略（實測：hook 僅於 `committed` 回非零時，`rev-parse` 仍取得新 hash、`git log` 有該 commit；而無條件失敗的版本在 `prepared` 那次就中止，git 回報 `fatal: ref updates aborted by hook`）。它是實質閘門，但**閘門只有一格**
 - **stdin 收到的是 `<old> <new> <ref>` 三元組而非 diff**，內容檢查須自行從 new-oid 走訪 tree
+- **刪除型交易的 new-oid 是全零**（實測 `AUTO_MERGE` 該筆為 `0000…`，對其 `cat-file` 直接 fatal），走訪 tree 的實作必須先擋掉它
 
-最後一項決定了它的定位：**它是「ref 變了」的偵測點，不是內容檢查的好住處**——它對 fetch 與 reset 也會叫，觸發頻率與所需的走訪成本都不對。
+**必備的第一行**：`prepared` 對每一次 ref 交易都會叫，所以任何無條件失敗路徑會讓該 repo 的每一次 ref 更新失敗——包含 `git checkout -b`。當閘門用就寫 `[ "$1" = prepared ] || exit 0` 把爆炸面收到只剩真正判斷的那一次；當通知用就反過來只認 `committed`，那一格的離開碼被忽略，寫壞了也不會中止交易。
+
+**它為什麼不是內容檢查的好住處**：不是看不到內容——實測 `prepared` 時對 new-oid 執行 `cat-file -t` 回傳 `commit`，新物件已在物件庫中（`git commit` 先寫 tree 與 commit、才更新 ref），走訪做得到。**擋住它的是頻率與成本**：fetch、reset、`checkout -b` 一律要付這筆走訪錢，而其中絕大多數與內容檢查無關。
 
 **所以兩者兼得的位置在伺服器端**（`pre-receive`，或 push 觸發的 CI）：那裡「ref 變了」是事件本身，而且換一個本機命令繞不過去——繞過本機不改變推上來的東西。本專案的 commit 層補網做對了方向，但它綁定在 `git commit` 這個命令上；要覆蓋檔案而非管道，最終落點在推送之後。
 
