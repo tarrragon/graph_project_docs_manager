@@ -1,0 +1,14 @@
+source_project: book_overview_v1
+source_path: ~/project/book_overview_v1
+snapshot_date: "2026-08-27"
+claude_framework_version: "2.27.8"
+extreme_case: 異常長內容與大量無 frontmatter carrier
+notes: |
+  docs/spec/extraction/e2e-contract.md 長達 1673 行，為「異常長內容」樣本。
+  9 份 per-domain domain-map.md（page/core/synchronization/data-management/
+  platform/system/user-experience/extraction/messaging）。
+  docs/spec/synchronization/SPEC-009-qr-frame-format.md 為真實 SPEC-ID
+  carrier 但無 frontmatter；另 7 個非 ID 檔案（csv-export-spec.md、
+  cross-project-verification-protocol.md、README.md 系列、
+  book-interchange-v1.md）同樣無 frontmatter，合計 8 個「損壞資料」樣本。
+  不含 work-logs（依 ticket how 段落排除）。

@@ -1,0 +1,353 @@
+# Monitor 專案提案追蹤索引
+#
+# status 詞彙：draft（未開工）/ in_progress（進行中）/ completed（checklist 全達成）
+#              / partially_completed（已出貨但有缺口，缺口項引用 gap ticket）
+# 2026-07-02 全量回填（0.3.6-W1-004）：依 ticket 實績 + 程式碼驗證逐項校準，
+# 稽核方法與證據見 docs/work-logs/v0/v0.3/v0.3.6/tickets/0.3.6-W1-004.md
+#
+# depends_on（選填欄位，0.4.1-W2-007 新增）：提案 ID 陣列，標記本提案設計上
+# 依賴的前置提案。version-bootstrap Step 1 執行
+# .claude/skills/version-bootstrap/scripts/check_proposal_dependencies.py 時
+# 會比對 depends_on 提案的 target_version，若依賴提案排在更晚版本即視為排序
+# 矛盾（動機案例：PROP-010 依賴 PROP-011 卻曾排入 v0.4.0，早於 PROP-011 的
+# v0.5.0，詳見 0.4.1-W1-001 Solution「版本切分決策評估」）。
+
+proposals:
+  PROP-001:
+    title: "Monitor MVP — 端到端事件收集與查詢"
+    status: completed
+    proposed: "2026-06-21"
+    confirmed: null
+    target_version: "v0.1.0"
+    source: "development"
+    spec_refs:
+      - spec/core/event-schema.md
+      - spec/collector/ingestion.md
+      - spec/collector/query.md
+      - spec/collector/storage.md
+      - spec/collector/rule-engine.md
+      - spec/sdk/python-sdk.md
+    usecase_refs: [UC-01, UC-02, UC-03]
+    ticket_refs: ["v0.1.0 全波次（tag v0.1.0）"]
+    checklist:
+      - item: "Collector ingestion endpoint"
+        status: done
+        verified_by: "tag v0.1.0（CHANGELOG 0.1.0：POST /v1/events 批次+207）+ 0.3.6-W2-009 程式碼實據（collector/cmd/collector/main.go:326 路由，實跑 go test ok）"
+      - item: "Collector query API"
+        status: done
+        verified_by: "tag v0.1.0（CHANGELOG 0.1.0：GET /v1/events + summary）+ 0.3.6-W2-009（main.go:331-332 路由）"
+      - item: "Collector storage + retention"
+        status: done
+        verified_by: "tag v0.1.0（CHANGELOG 0.1.0：SQLite Store/Query/Summary/Count）+ 0.3.6-W2-009（internal/storage/sqlite + retention constants.go:7-8）"
+      - item: "Collector rule engine (minimal)"
+        status: done
+        verified_by: "tag v0.1.0（CHANGELOG 0.1.0：error 閾值 + .alert）+ 0.3.6-W2-009（internal/rule/engine.go）"
+      - item: "Python SDK 五個 API"
+        status: done
+        verified_by: "tag v0.1.0（CHANGELOG 0.1.0：init/event/error/flush/close）+ 0.3.6-W2-009（sdk-python monitor/__init__.py:82-204，pytest 44 passed）"
+      - item: "SDK 攢批 + 離線容錯"
+        status: done
+        verified_by: "tag v0.1.0（CHANGELOG 0.1.0：buffer_size=10 + FIFO 上限 100）+ 0.3.6-W2-009（程式碼驗證 FIFO 上限）"
+      - item: "端到端驗收通過"
+        status: done
+        verified_by: "tag v0.1.0（CHANGELOG 0.1.0：端到端 3 passed）+ 0.3.6-W2-009（tests/e2e 實跑 3 passed）"
+
+  PROP-004:
+    title: "Benchmark CLI — SQLite 效能基準實測工具"
+    status: completed
+    proposed: "2026-06-22"
+    confirmed: null
+    target_version: "v0.2.0"
+    source: "development"
+    spec_refs:
+      - spec/collector/benchmark.md
+    usecase_refs: []
+    ticket_refs: [0.2.0-W1-003.1, 0.2.0-W3-001]
+    checklist:
+      - item: "benchmark write（單筆 + 批次）"
+        status: done
+        verified_by: "0.2.0-W3-001"
+      - item: "benchmark seed（灌入測試資料）"
+        status: done
+        verified_by: "0.2.0-W3-001"
+      - item: "benchmark query（查詢延遲）"
+        status: done
+        verified_by: "0.2.0-W3-001"
+      - item: "實測結果 vs 教學預期比對"
+        status: done
+        verified_by: "0.3.6-W1-009（docs/challenges/005-benchmark-baseline-deviation.md）"
+
+  PROP-005:
+    title: "JSONL 匯出與備份"
+    status: completed
+    proposed: "2026-06-22"
+    confirmed: null
+    target_version: "v0.2.0"
+    source: "development"
+    spec_refs:
+      - spec/collector/jsonl-export.md
+    usecase_refs: []
+    ticket_refs: [0.2.0-W1-003.2, 0.2.0-W3-004]
+    checklist:
+      - item: "collector export --format=jsonl"
+        status: done
+        verified_by: "0.2.0-W1-003.2 測試 + collector/internal/export/export.go"
+      - item: "collector import --file=<jsonl>"
+        status: done
+        verified_by: "0.2.0-W1-003.2 測試（CHANGELOG 0.2.0：Export/Import/Mirror）"
+      - item: "Streaming 匯出（記憶體 < 50MB）"
+        status: done
+        verified_by: "0.2.0-W1-003.2 測試（SPEC-011 FR）"
+      - item: "往返驗證（export → import → export 一致）"
+        status: done
+        verified_by: "0.2.0-W1-003.2 測試（SPEC-011 FR）"
+
+  PROP-006:
+    title: "Container 部署 — Dockerfile + Docker Compose"
+    status: completed
+    proposed: "2026-06-22"
+    confirmed: null
+    target_version: "v0.2.0"
+    source: "development"
+    spec_refs:
+      - spec/collector/container.md
+    usecase_refs: []
+    ticket_refs: [0.2.0-W1-003.3, 0.2.0-W4-002, 0.2.0-W4-007]
+    checklist:
+      - item: "Dockerfile multi-stage build（image < 25MB）"
+        status: done
+        verified_by: "0.2.0-W4-002（collector/Dockerfile 存在，2026-07-02 驗證）"
+      - item: "Docker Compose 範例"
+        status: done
+        verified_by: "0.2.0-W4-002（collector/docker-compose.yml 存在）"
+      - item: "Volume mount + graceful shutdown"
+        status: done
+        verified_by: "0.2.0-W4-002"
+      - item: "效能對照（volume mount vs overlay）"
+        status: done
+        verified_by: "0.2.0-W4-002（volume perf 驗收項）"
+
+  PROP-007:
+    title: "Ingestion 背壓與 Rate Limiting"
+    status: completed
+    proposed: "2026-06-22"
+    confirmed: null
+    target_version: "v0.3.0"
+    source: "development"
+    spec_refs:
+      - spec/collector/backpressure.md
+    usecase_refs: []
+    ticket_refs: [0.3.0-W1-003, 0.3.0-W1-010, 0.3.0-W3-001, 0.3.0-W3-002, 0.3.0-W3-003, 0.3.0-W3-004, 0.3.0-W3-006, 0.3.6-W1-001, 0.3.6-W1-002]
+    checklist:
+      - item: "寫入 channel pattern（single-writer）"
+        status: done
+        verified_by: "0.3.0-W3-001"
+      - item: "Per-SDK rate limiting"
+        status: done
+        verified_by: "0.3.0-W3-002"
+      - item: "Error 快通道"
+        status: done
+        verified_by: "0.3.0-W3-002 + 0.3.1-W1-7（main.go 接線）"
+      - item: "429 回應 + Retry-After"
+        status: done
+        verified_by: "0.3.0-W3-002（internal/handler/ingest.go，2026-07-02 驗證）"
+      - item: "壓測驗證（1000 events/sec 持續 30s）"
+        status: done
+        verified_by: "0.3.0-W3-003（tests/integration/backpressure_test.go）"
+      - item: "Circuit breaker（per-key 429 超閾值 → 503）"
+        status: done
+        verified_by: "0.3.0-W3-004（internal/ratelimit/breaker.go）"
+      - item: "SDK 自監控指標（sdk.events.* metric 事件）"
+        status: done
+        verified_by: "0.3.6-W1-001（sdk-js/src/monitor.ts 四計數器隨 flush 送出，2026-07-03 驗收稽核實跑通過）"
+        gap_ticket: 0.3.6-W1-001
+      - item: "Collector 完整性指標（/metrics endpoint）"
+        status: done
+        verified_by: "0.3.0-W3-006"
+      - item: "Init jitter（首次 flush 隨機延遲）"
+        status: done
+        verified_by: "0.3.6-W1-002（sdk-js + sdk-python 雙實作，100 SDK 分散驗證測試，2026-07-03）"
+        gap_ticket: 0.3.6-W1-002
+
+  PROP-009:
+    title: "Error Fingerprint 與去重分群"
+    status: completed
+    proposed: "2026-06-24"
+    confirmed: null
+    target_version: "v0.3.0"
+    source: "development"
+    spec_refs:
+      - spec/collector/error-fingerprint.md
+    usecase_refs: []
+    ticket_refs: [0.3.0-W1-009, 0.3.0-W1-011, 0.3.0-W3-007, 0.3.0-W3-008, 0.3.6-W1-003]
+    checklist:
+      - item: "Fingerprint 計算（type + normalized message）"
+        status: done
+        verified_by: "0.3.0-W3-007（internal/fingerprint/fingerprint.go）"
+      - item: "Message normalization（UUID/email/IP/數字/timestamp/path）"
+        status: done
+        verified_by: "0.3.0-W3-007"
+      - item: "Events 表加 fingerprint 欄位 + index"
+        status: done
+        verified_by: "0.3.0-W3-007 + 0.3.0-W1-011（_fingerprint schema 對齊）"
+      - item: "error_groups 表（UPSERT count/last_seen）"
+        status: done
+        verified_by: "0.3.0-W3-007（internal/handler/errorgroups.go）"
+      - item: "SDK 端自定義 fingerprint 覆蓋"
+        status: done
+        verified_by: "0.3.6-W1-003（error API options.fingerprint 寫入 data.fingerprint 對齊 collector SDKOverride 契約，2026-07-03）"
+        gap_ticket: 0.3.6-W1-003
+      - item: "Dashboard Error 列表用 fingerprint 分群"
+        status: done
+        verified_by: "0.3.0-W3-008"
+
+  PROP-010:
+    title: "Client-side SDK 認證與偽造流量防護"
+    status: draft
+    proposed: "2026-06-24"
+    confirmed: null
+    # 2026-07-03 節點決策（用戶確認）：主體移 v0.5.0 與 PROP-011 同節點——防偽造真實需求
+    # 與 BaaS 公開部署同時出現，認證方式需對齊 BaaS endpoint 設計；唯一硬耦合
+    # （_flags schema 擴充影響 PG DDL）由 0.4.0 的 _flags schema 定形票先行斬斷
+    target_version: "v0.5.0"
+    depends_on: [PROP-011]
+    source: "development"
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs: []
+    checklist:
+      - item: "Event schema _flags metadata 擴充"
+        status: pending
+        verified_by: null
+      - item: "Origin check middleware（白名單）"
+        status: pending
+        verified_by: null
+      - item: "HMAC request signing + 驗證"
+        status: pending
+        verified_by: null
+      - item: "行為分析異常偵測 + _flags.suspicious 標記"
+        status: pending
+        verified_by: null
+      - item: "Dashboard _flags.suspicious 過濾"
+        status: pending
+        verified_by: null
+
+  PROP-011:
+    title: "Serverless Collector 變體 — BaaS + Serverless 部署路徑"
+    status: draft
+    proposed: "2026-06-24"
+    confirmed: null
+    target_version: "v0.5.0"
+    source: "development"
+    spec_refs: []
+    usecase_refs: []
+    ticket_refs: []
+    checklist:
+      - item: "Serverless ingestion function（schema 驗證 + PostgreSQL 寫入）"
+        status: pending
+        verified_by: null
+      - item: "背壓替代（DB-level rate limit 或 Upstash Redis）"
+        status: pending
+        verified_by: null
+      - item: "pg_cron downsample / purge"
+        status: pending
+        verified_by: null
+      - item: "Storage schema 和 Go collector 共用"
+        status: pending
+        verified_by: null
+      - item: "Supabase Free + Vercel Hobby 免費額度內驗收"
+        status: pending
+        verified_by: null
+
+  PROP-008:
+    title: "PostgreSQL Storage Backend — 可插拔儲存架構"
+    status: in_progress
+    proposed: "2026-06-22"
+    confirmed: null
+    target_version: "v0.4.0"
+    source: "development"
+    spec_refs:
+      - spec/collector/postgresql.md
+    usecase_refs: []
+    ticket_refs: [0.4.0-W1-001]
+    checklist:
+      - item: "BasicStorage / AnalyticsStorage interface"
+        status: pending
+        verified_by: null
+      - item: "SQLite 重構為 BasicStorage implementation"
+        status: pending
+        verified_by: null
+      - item: "PostgreSQL AnalyticsStorage implementation"
+        status: pending
+        verified_by: null
+      - item: "Dashboard 能力偵測（type assertion）"
+        status: pending
+        verified_by: null
+
+  PROP-002:
+    title: "Flutter SDK — Mobile App 事件收集"
+    status: completed
+    proposed: "2026-06-22"
+    confirmed: null
+    target_version: "v0.2.0"
+    source: "development"
+    spec_refs:
+      - spec/sdk/flutter-sdk.md
+    usecase_refs: [UC-01, UC-04]
+    ticket_refs: [0.2.0-W1-002, 0.2.0-W2-001, 0.2.0-W2-002, 0.2.0-W2-003, 0.2.0-W2-004, 0.2.0-W2-005, 0.2.0-W2-006]
+    checklist:
+      - item: "六個公開 API（init/event/error/metric/flush/close）"
+        status: done
+        verified_by: "0.2.0-W2-001"
+      - item: "攢批送出 + heartbeat"
+        status: done
+        verified_by: "0.2.0-W2-002"
+      - item: "離線容錯（FIFO buffer）"
+        status: done
+        verified_by: "0.2.0-W2-003"
+      - item: "自動錯誤攔截（FlutterError + PlatformDispatcher）"
+        status: done
+        verified_by: "0.2.0-W2-004"
+      - item: "App lifecycle 整合（paused flush / resumed retry / detached close）"
+        status: done
+        verified_by: "0.2.0-W2-005"
+      - item: "Isolate 安全（SendPort 事件轉發）"
+        status: done
+        verified_by: "0.2.0-W2-005"
+      - item: "端到端驗收通過"
+        status: done
+        verified_by: "0.2.0-W2-006"
+
+  PROP-003:
+    title: "JS/TS SDK — Web 頁面事件收集"
+    status: completed
+    proposed: "2026-06-22"
+    confirmed: null
+    target_version: "v0.3.0"
+    source: "development"
+    spec_refs:
+      - spec/sdk/js-sdk.md
+    usecase_refs: [UC-01, UC-05]
+    ticket_refs: [0.3.0-W1-002, 0.3.0-W2-001, 0.3.0-W2-002, 0.3.0-W2-003, 0.3.0-W2-004, 0.3.0-W2-005, 0.3.0-W2-006]
+    checklist:
+      - item: "六個公開 API（init/event/error/metric/flush/close）"
+        status: done
+        verified_by: "0.3.0-W2-001（sdk-js/src/monitor.ts:83-355，2026-07-02 驗證）"
+      - item: "攢批送出 + heartbeat"
+        status: done
+        verified_by: "0.3.0-W2-002（DEFAULT_HEARTBEAT_INTERVAL 存在）"
+      - item: "離線容錯（FIFO buffer）"
+        status: done
+        verified_by: "0.3.0-W2-003"
+      - item: "自動錯誤攔截（onerror + onunhandledrejection）"
+        status: done
+        verified_by: "0.3.0-W2-004"
+      - item: "頁面生命週期（visibilitychange flush / beforeunload sendBeacon）"
+        status: done
+        verified_by: "0.3.0-W2-005"
+      - item: "CORS 處理（fetch + sendBeacon 雙通道）"
+        status: done
+        verified_by: "0.3.0-W2-002（fetch + sendBeacon 並存於 monitor.ts）"
+      - item: "端到端驗收通過"
+        status: done
+        verified_by: "0.3.0-W2-006（tests/integration/e2e.test.ts）"

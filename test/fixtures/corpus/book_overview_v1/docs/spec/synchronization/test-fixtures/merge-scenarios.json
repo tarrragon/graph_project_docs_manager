@@ -1,0 +1,103 @@
+{
+  "_comment": "合併邏輯測試場景 — 兩端共用",
+
+  "scenarios": [
+    {
+      "id": "both-have-same-book-source-newer",
+      "description": "同 id，來源端 updated_at 較新 → 採用來源端版本",
+      "local_book": {
+        "id": "book_001",
+        "title": "舊標題",
+        "updated_at": "2026-06-17T10:00:00Z"
+      },
+      "incoming_book": {
+        "id": "book_001",
+        "title": "新標題",
+        "updated_at": "2026-06-18T14:00:00Z"
+      },
+      "expected_result": {
+        "id": "book_001",
+        "title": "新標題",
+        "updated_at": "2026-06-18T14:00:00Z"
+      }
+    },
+    {
+      "id": "both-have-same-book-local-newer",
+      "description": "同 id，本機 updated_at 較新 → 保留本機版本",
+      "local_book": {
+        "id": "book_002",
+        "title": "本機新標題",
+        "updated_at": "2026-06-18T16:00:00Z"
+      },
+      "incoming_book": {
+        "id": "book_002",
+        "title": "來源舊標題",
+        "updated_at": "2026-06-17T08:00:00Z"
+      },
+      "expected_result": {
+        "id": "book_002",
+        "title": "本機新標題",
+        "updated_at": "2026-06-18T16:00:00Z"
+      }
+    },
+    {
+      "id": "incoming-only-new-book",
+      "description": "僅來源端有此書 → 新增到本機",
+      "local_book": null,
+      "incoming_book": {
+        "id": "book_003",
+        "title": "全新的書",
+        "updated_at": "2026-06-18T12:00:00Z"
+      },
+      "expected_action": "add",
+      "expected_result": {
+        "id": "book_003",
+        "title": "全新的書",
+        "updated_at": "2026-06-18T12:00:00Z"
+      }
+    },
+    {
+      "id": "local-only-keep",
+      "description": "僅本機有此書 → 保留不刪除",
+      "local_book": {
+        "id": "book_004",
+        "title": "本機獨有的書",
+        "updated_at": "2026-06-15T09:00:00Z"
+      },
+      "incoming_book": null,
+      "expected_action": "keep",
+      "expected_result": {
+        "id": "book_004",
+        "title": "本機獨有的書",
+        "updated_at": "2026-06-15T09:00:00Z"
+      }
+    },
+    {
+      "id": "same-updated-at-keep-local",
+      "description": "同 id，updated_at 完全相同 → 保留本機（平手保守策略）",
+      "local_book": {
+        "id": "book_005",
+        "title": "本機版本",
+        "updated_at": "2026-06-18T12:00:00Z"
+      },
+      "incoming_book": {
+        "id": "book_005",
+        "title": "來源版本",
+        "updated_at": "2026-06-18T12:00:00Z"
+      },
+      "expected_result": {
+        "id": "book_005",
+        "title": "本機版本",
+        "updated_at": "2026-06-18T12:00:00Z"
+      }
+    },
+    {
+      "id": "stale-export-warning",
+      "description": "匯入資料的 exported_at 比本機 last_imported_at 舊 → 觸發警告",
+      "local_last_imported_at": "2026-06-18T14:00:00Z",
+      "incoming_exported_at": "2026-06-17T10:00:00Z",
+      "expected_warning": true,
+      "expected_warning_type": "stale_export"
+    }
+  ]
+}

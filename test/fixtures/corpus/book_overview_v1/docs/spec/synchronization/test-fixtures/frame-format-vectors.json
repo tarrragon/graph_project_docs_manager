@@ -1,0 +1,61 @@
+{
+  "_comment": "QR Frame Format Test Vectors — SPEC-009 v1.0",
+  "_usage": "Extension 編碼測試：input → expected_frames; App 解碼測試：expected_frames → input",
+
+  "vectors": [
+    {
+      "id": "single-frame-short-text",
+      "description": "短文字，壓縮後 <= 800 bytes，產生單一幀",
+      "input_text": "Hello, Book Overview!",
+      "input_text_utf8_hex": "48656c6c6f2c20426f6f6b204f7665727669657721",
+      "expected_total_frames": 1,
+      "expected_frame_0_header": {
+        "magic_hex": "5152",
+        "version": 1,
+        "total_frames": 1,
+        "frame_index": 0,
+        "total_size": "_computed_at_runtime_",
+        "crc32": "_computed_at_runtime_"
+      },
+      "notes": "total_size 和 crc32 依賴 gzip 壓縮結果，各實作可能因 gzip level 略異。測試應驗證 header 結構正確而非逐 byte 比對壓縮輸出。"
+    },
+    {
+      "id": "multi-frame-medium-text",
+      "description": "中等文字，壓縮後 > 800 bytes，產生多幀",
+      "input_text_description": "重複 'Book #{n} by Author #{n}\\n' 共 200 行（約 5KB 原文）",
+      "expected_total_frames_range": [2, 10],
+      "validation_rules": [
+        "所有幀的 magic = 0x5152",
+        "所有幀的 version = 0x01",
+        "所有幀的 total_frames 相同",
+        "所有幀的 crc32 相同（同一份資料）",
+        "frame_index 從 0 到 total_frames-1 各出現恰好一次",
+        "所有 payload 拼接後長度 = total_size",
+        "拼接後 CRC32 = header 中的 crc32",
+        "gzip 解壓後 = 原始 UTF-8 文字"
+      ]
+    },
+    {
+      "id": "crc32-known-value",
+      "description": "CRC32 已知值驗證（確保兩端算法一致）",
+      "input_bytes_hex": "48656c6c6f",
+      "expected_crc32_hex": "F7D18982",
+      "expected_crc32_uint32": 4157704578,
+      "notes": "CRC32 of ASCII 'Hello' — 兩端必須產出相同值"
+    },
+    {
+      "id": "header-byte-order",
+      "description": "驗證 big-endian 位元序",
+      "header_hex": "51520103000200050000040000001234",
+      "parsed": {
+        "magic": "0x5152",
+        "version": 1,
+        "total_frames": 770,
+        "frame_index": 5,
+        "total_size": 1024,
+        "crc32": "0x00001234"
+      },
+      "notes": "16 進位 header 對照解析結果，驗證 big-endian"
+    }
+  ]
+}

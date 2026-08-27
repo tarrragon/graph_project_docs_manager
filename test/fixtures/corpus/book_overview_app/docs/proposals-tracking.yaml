@@ -1,0 +1,177 @@
+# Proposals Tracking Index
+# 管理提案生命週期（draft -> discussing -> confirmed -> implemented）
+
+proposals:
+  - id: PROP-001
+    title: "架構清理 — 合併重複目錄"
+    status: draft
+    priority: P1
+  - id: PROP-002
+    title: "UC-06 借閱管理 Presentation 層補齊"
+    status: draft
+    priority: P2
+  - id: PROP-003
+    title: "UC-05/07 測試覆蓋補強"
+    status: draft
+    priority: P2
+  - id: PROP-004
+    title: "測試失敗系統性修復"
+    status: completed
+    priority: P1
+    completed_note: "0.32.0-W6-006 saffron 審查確認實質達成：7/9 UC 有完整整合測試（92 case，0 skip 全通過）；UC-06/07 為功能未完成空殼，隨功能開發自然覆蓋"
+  - id: PROP-005
+    title: "Domain Spec 充實"
+    status: draft
+    priority: P2
+  - id: PROP-007
+    title: "Chrome Extension 與 Flutter App 跨專案 Spec 對齊"
+    status: confirmed
+    priority: P1
+    confirmed_at: "2026-06-02"
+    canonical_ssot: "book_overview_v1/docs/spec/book-interchange-v1.md"
+    tracking_ticket: "0.32.0-W5-001"
+
+  - id: PROP-015
+    title: "ISBN 多來源查詢增強 — NBINet + Open Library + 條碼掃描 + 地區路由"
+    status: confirmed
+    priority: P1
+    confirmed_at: "2026-06-18"
+
+  - id: PROP-016
+    title: "元件庫統一化——補完 core/ui/components 元件層並收斂散落自製元件"
+    status: confirmed
+    priority: P1
+    confirmed_at: "2026-07-08"
+    target_version: v0.38.0
+
+  - id: PROP-017
+    title: "回饋類元件統一化——載入指示、SnackBar、空狀態元件"
+    status: draft
+    priority: P2
+
+  - id: PROP-018
+    title: "Design token 值層統一——token manifest 雙向校驗層 + 平台覆蓋機制"
+    status: draft
+    priority: P2
+
+usecases:
+  - id: UC-01
+    title: "匯入Chrome Extension書庫資料"
+    status: approved
+    spec_refs: [SPEC-002]
+    implementation_status: implemented
+  - id: UC-02
+    title: "匯出書庫資料"
+    status: approved
+    spec_refs: [SPEC-003]
+    implementation_status: in_progress
+  - id: UC-03
+    title: "ISBN條碼掃描新增書籍"
+    status: approved
+    spec_refs: [SPEC-004]
+    implementation_status: implemented
+  - id: UC-04
+    title: "關鍵字搜尋補充書籍資訊"
+    status: approved
+    spec_refs: [SPEC-005]
+    implementation_status: implemented
+  - id: UC-05
+    title: "雙模式書庫展示系統"
+    status: approved
+    spec_refs: [SPEC-006]
+    implementation_status: implemented
+  - id: UC-06
+    title: "借閱管理系統"
+    status: approved
+    spec_refs: [SPEC-007]
+    implementation_status: partial
+  - id: UC-07
+    title: "跨平台資料同步準備"
+    status: approved
+    spec_refs: [SPEC-008]
+    implementation_status: implemented
+  - id: UC-08
+    title: "書籍版本管理系統"
+    status: approved
+    spec_refs: [SPEC-009]
+    implementation_status: implemented
+  - id: UC-09
+    title: "系統錯誤處理與恢復"
+    status: approved
+    spec_refs: [SPEC-001]
+    implementation_status: implemented
+  - id: UC-10
+    title: "書籍搜尋加入書庫"
+    status: approved
+    spec_refs: []  # 流程規格載於 docs/app-use-cases.md UC-10 段落（W1-045），無專屬 SPEC 檔；SPEC-005 僅涵蓋 UC-04
+    implementation_status: implemented
+  - id: UC-11
+    title: "標籤管理"
+    status: approved
+    spec_refs: [SPEC-013]
+    implementation_status: implemented
+
+specs:
+  - id: SPEC-001
+    title: "錯誤處理規格"
+    domain: core
+    status: draft
+  - id: SPEC-002
+    title: "Chrome Extension 匯入規格"
+    domain: import
+    status: draft
+    source_proposal: PROP-007
+  - id: SPEC-003
+    title: "書庫匯出規格"
+    domain: export
+    status: draft
+    source_proposal: PROP-007
+  - id: SPEC-004
+    title: "ISBN 條碼掃描規格"
+    domain: scanner
+    status: draft
+  - id: SPEC-005
+    title: "關鍵字搜尋與資訊補充規格"
+    domain: search
+    status: draft
+  - id: SPEC-006
+    title: "雙模式書庫展示規格"
+    domain: library
+    status: draft
+  - id: SPEC-007
+    title: "借閱管理規格"
+    domain: loan
+    status: draft
+  - id: SPEC-008
+    title: "跨平台同步規格"
+    domain: synchronization
+    status: draft
+    source_proposal: PROP-007
+  - id: SPEC-009
+    title: "書籍版本管理規格"
+    domain: version-management
+    status: draft
+  - id: SPEC-010
+    title: "ISBN 多來源查詢規格"
+    domain: scanner
+    status: draft
+    source_proposal: PROP-015
+  - id: SPEC-011
+    title: "BookRepository 介面契約規格"
+    domain: library
+    status: draft
+  - id: SPEC-012
+    title: "BatchSupplementPage 介面規格（批次補充頁面）"
+    domain: search
+    status: draft
+  - id: SPEC-013
+    title: "標籤管理系統規格"
+    domain: library
+    status: draft
+  # SPEC-014 / SPEC-015 / SPEC-016（三冊資料契約）尚未登錄於本索引；
+  # 補登需求記於 0.38.1-W11-004 Spawn Requests，待 PM 轉票。
+  - id: SPEC-017
+    title: "QR 離線同步 Frame 二進位格式規格 v1"
+    domain: synchronization
+    status: draft
+    source_proposal: PROP-014
