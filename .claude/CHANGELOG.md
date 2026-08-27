@@ -1,3 +1,82 @@
+## [2.42.11] - 2026-08-27
+
+### Summary
+fix: sync-pull hook 自動登記去重 key 改為腳本身分; fix: skill.md 大小寫檢查機制擴充與訊息改寫; fix: sync-push 推送前檢查遠端 skill.md 大小寫 (+3 more)
+
+Changes: 4 fix, 2 docs
+
+- fix: sync-pull hook 自動登記去重 key 改為腳本身分
+- fix: skill.md 大小寫檢查機制擴充與訊息改寫
+- fix: sync-push 推送前檢查遠端 skill.md 大小寫
+- fix: 還原 settings.json 至 pull 前狀態，消除 105 組重複 hook 登記
+- docs: IMP-BAL-017 交叉引用 PC-GPD-001；建 追蹤 gitignore 缺口
+- docs: PC-BAL-056 補必要細分（執行本身也分維度）
+
+---
+
+## [2.42.10] - 2026-08-27
+
+### Summary
+收尾同步：skill-design-guide 1.2.0 外部引用規則、兩份 skill 引用改指名身分、component-library 1.8.0 Web 端元件庫產物定義
+
+---
+
+## [2.42.9] - 2026-08-27
+
+### Summary
+skill-design-guide 1.2.0：外部引用規則
+
+---
+
+## [2.42.8] - 2026-08-27
+
+### Summary
+skill 引用形式改為指名身分
+
+---
+
+## [2.42.7] - 2026-08-27
+
+### Summary
+component-library 方法論 1.8.0：補 Web 端元件庫產物定義
+
+---
+
+## [2.42.6] - 2026-08-27
+
+### Summary
+skill Version footer 補正
+
+---
+
+## [2.42.5] - 2026-08-27
+
+### Summary
+foundation-design 5.0.0：判準通則化，六 repo 實跑驗證
+
+---
+
+## [2.42.4] - 2026-08-27
+
+### Summary
+foundation-design 4.2.0：實跑驗證後修正，含一處已推送的事實錯誤更正
+
+---
+
+## [2.42.3] - 2026-08-27
+
+### Summary
+多輪審查（Round 1-3）修正：foundation-design 判定對象改為產物、version-sequencing 補不變量 4 散文落地形態、方法論四塊表述一致化、PC-BAL-010 補空集合子群
+
+---
+
+## [2.42.2] - 2026-08-27
+
+### Summary
+feat: 新增 foundation-design 與 version-sequencing 兩個跨專案 skill（規格與實作之間的基礎設施設計區塊；規格完備後的版本序列規劃）
+
+---
+
 ## [2.42.1] - 2026-08-27
 
 ### Summary
