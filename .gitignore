@@ -25,6 +25,12 @@ doc/api/
 *.js.deps
 *.js.map
 
+# 框架 skill 隨附的 JS 腳本不是 dart2js 產物，須排除於上述通配之外。
+# 未加此例外時它們在檔案系統存在但 untracked，而框架 sync-push 推的是
+# git tracked 樹（git archive HEAD）——結果是推不出去也刪不掉，且每次
+# push 都被孤兒偵測誤報為「本地已刪除的殘留」。
+!.claude/skills/**/*.js
+
 .flutter-plugins
 .flutter-plugins-dependencies
 
