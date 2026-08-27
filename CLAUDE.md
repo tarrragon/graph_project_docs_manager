@@ -96,8 +96,10 @@ security-scoped bookmark 實作已移除（PROP-001）；狀態管理定為 Rive
   四層鏈，第三跳沒有資料來源
 - **Domain 視圖的列與格無來源**：個別 domain 不是圖節點（`DomainBundle`
   的 carrier 是整份 domain-map.md），`FlowStep` 亦無 `domain` 欄位
-- **`tracking_schema.json` 只在框架 v2.41.0 以上存在**。實測五個語料專案
-  中四個沒有此檔（含本專案，v2.40.2），PROP-002 未涵蓋此狀態
+- **`tracking_schema.json` 只在框架 v2.41.0 以上存在**。實測四個語料專案
+  沒有此檔（本專案已於 2026-08-27 sync-pull 至 2.42.1 取得），
+  PROP-002 未涵蓋「檔案不存在」此狀態——SPEC-001 的「無可消費的型別表」
+  狀態與 FR-07 已承接畫面行為，但 gate 的下界策略（拒絕／降級）仍待實作定案
 - 五項空殼判準：「App 已知範圍」「間接依賴」「破洞分類」「預估耗時」「資源上限」
 - 泳道布局演算法（唯一的差異化元件）
 - **是否寫執行期 log**：`.claude/rules/core/observability-rules.md` 要求
