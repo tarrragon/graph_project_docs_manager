@@ -5,13 +5,14 @@ status: confirmed
 source: development
 proposed_by: saas-tech-selection 訪談
 proposed_date: "2026-08-26"
-confirmed_date: null
+confirmed_date: "2026-08-26"
 target_version: null
 priority: P1
 
 outputs:
   spec_refs: [SPEC-001]
   usecase_refs: [UC-02, UC-03, UC-04, UC-05, UC-06]
+  event_refs: [EVT-GRAPH-001, EVT-LAYOUT-001, EVT-DIAGNOSTICS-001]
   ticket_refs: []
 
 related_proposals: [PROP-003]
@@ -21,11 +22,12 @@ supersedes: null
 # PROP-004: 展示介面與 Domain 視圖版型
 
 > **狀態說明**：版型已全數定案（見 §「版型定案」）。畫面狀態矩陣（Stage 1.5）
-> 尚未展開，列於驗收條件。
+> 已展開為 `SPEC-001`。
 
 ## 需求來源
 
-核心使用場景：需求變更時的雙向穿透 ——
+核心使用場景：需求變更時的雙向**穿透**（兩視圖間的雙向導覽操作；
+與「貫穿」的區別見 `docs/domain-map.md` §2.5）——
 
 - **domain → UC**：找出負責的 domain，檢視有哪些 UC flow 貫穿它
 - **UC → domain**：自 UC 頭尾檢視該 flow 貫穿哪些 domain
@@ -46,7 +48,7 @@ supersedes: null
 |---------|------|
 | 模組 | 全部展示層 |
 | 檔案 | `lib/` 之下尚未建立的畫面模組 |
-| 用例 | 尚未建立 UC |
+| 用例 | UC-02、UC-03、UC-04、UC-05、UC-06 |
 
 ## 範圍界定
 
@@ -69,7 +71,12 @@ supersedes: null
 ### 本提案不做的（Out of Scope）
 
 - **獨立的 ticket 進入點畫面** → 經 WRAP 分析否決，理由見下
-- 編輯能力 → 首版唯讀，另立提案
+- ~~編輯能力 → 首版唯讀，另立提案~~
+
+  > **本項的框法已於 2026-08-27 撤回。** 「首版唯讀」以版本劃分範圍，與專案
+  > 方法論（所有應做的功能先討論清楚再排順序，不預先劃分 v1／v2）衝突。
+  > 票 `0.0.3-W1-002` 已定案編輯模型（本 App 直接改檔、CLI 僅作驗證器），
+  > 但該決策尚未落為提案與規格——列為待決。
 - 搜尋與全域導覽 → 尚未確認是否納入，待訪談補完
 - 圖譜總覽（鳥瞰起手畫面） → 同上
 
@@ -106,9 +113,27 @@ supersedes: null
 `track topic` 只給單一主題的鏈，兩者皆無法一次看到所有主題的內容，
 而**票數相同的兩個主題正是內容決定該先做哪個**。
 
-**對 Corpus domain 的影響**：主題歸屬讀自 `lib/topic_assignments`
-的 append-only 中央清單，**非 ticket frontmatter 欄位**。解析 ticket
-frontmatter 取不到 topic，須另外讀取該清單。
+**對 Corpus domain 的影響**：主題是 ticket 的 side-channel 資訊，
+**全程不寫入 ticket frontmatter**。解析 frontmatter 取不到 topic，
+須另讀被觀察專案的**兩個**純文字檔：
+
+| 檔案 | 格式 | 語意 |
+|------|------|------|
+| `docs/work-logs/topic-assignments.txt` | 每行 `ticket_id \t topic`（tab 分隔） | ticket → 主題的 append-only 映射 |
+| `docs/work-logs/topics-registry.txt` | 每行一個主題名 | 主題名的去重清單 |
+
+**不變式**：任何出現在 assignments 的主題名必已存在於 registry——框架的
+寫入路徑先呼叫 `append_topic()` 註冊主題名，再寫 assignment log
+（`lib/topic_assignments.py:_append_line`）。本 App 若讀到 assignments
+中有而 registry 中無的主題，屬破洞而非正常狀態。
+
+**解析寬容度比照框架**：跳過空行與不含 `\t` 的行；容忍檔尾缺換行
+（外部手動編輯所致，框架自身亦有此防護）。
+
+> 框架另有同名的 Python 實作模組
+> `.claude/skills/ticket/ticket_system/lib/topic_assignments.py`，
+> 那是 CLI 的讀寫程式而非資料檔。本 App 以 Dart 撰寫、無法 import Python
+> 模組（同 PROP-002 對 schema 消費的論證），只能讀 `.txt` 資料檔。
 
 ### 已否決：獨立的 ticket 進入點畫面
 
@@ -120,34 +145,54 @@ frontmatter 取不到 topic，須另外讀取該清單。
 
 | 欄位 | 填寫率 |
 |------|--------|
-| `where.files` | 99.5% |
-| `why` | 99.5% |
-| `how.strategy` | 98.1% |
-| `acceptance` | 89.8% |
-| `source_ticket` | 70.3% |
-| `blockedBy` | 18.1% |
-| **`where.layer`** | **14~15%（資訊率）** |
-| `relatedTo` | 13.4% |
+| `where.files` | 99.9% |
+| `why` | 99.9% |
+| `how.strategy` | 99.8% |
+| `acceptance` | 99.9% |
+| `source_ticket` | 70.1% |
+| `blockedBy` | 18.0% |
+| **`where.layer`** | **16.1%（資訊率）／99.9%（填寫率）** |
+| `relatedTo` | 13.6% |
 
-> `where.layer` 須分兩層看：**填寫率 99.9%**（欄位幾乎都有值），
-> 但 **資訊率僅約 14%** —— 1164 張有值的票中 996 張是 CLI 的預設佔位字串
-> `待定義`。上游複驗另發現該欄位的合法值域僅載於 docstring、無任何強制，
-> 實際出現 20 種以上變體（含自創詞、與 `--where` 參數錯置而貼入的檔案路徑）。
+> 分母為可解析 ticket N=1299（總檔 1300，1 檔無 frontmatter），
+> 重測於 2026-08-27。
+>
+> `where.layer` 須分兩層看：**填寫率 99.9%**（1298 張有值），
+> 但 **資訊率 16.1%** —— 有值的票中 1089 張是 CLI 的預設佔位字串 `待定義`。
+> 該欄位的合法值域僅載於 docstring、無任何強制，實際出現 **32 種**相異值
+> （含自創詞如「工具層」「架構層」，以及與 `--where` 參數錯置而貼入的檔案路徑）。
+>
+> **先前版本的數字已作廢**：`acceptance` 89.8%、`where.files` / `why` 99.5%、
+> `how.strategy` 98.1%、資訊率 14% 皆偏低，成因是量測腳本用
+> `content.split("---")` 解析 frontmatter，被引號字串內的 markdown 表格
+> 分隔線截斷而產生 130 筆假損壞。詳見 `docs/domain-map.md` §7。
 
-「從哪裡開始」在 99.5% 的情況下已由 ticket 的 5W1H 結構回答，
+「從哪裡開始」在 99.9% 的情況下已由 ticket 的 5W1H 結構回答，
 獨立畫面是在解 0.5% 的問題。Premortem：該畫面會因「僅將同一份 YAML
 換個字體顯示」而在使用兩次後被棄用。
 
-**但資料同時暴露真正的缺口**：`where.layer` 僅 15.4%。ticket 記錄了
+**但資料同時暴露真正的缺口**：`where.layer` 的資訊率僅 16.1%。ticket 記錄了
 「要改 `lib/domain`」，卻未記錄那屬於哪個 DDD domain、被哪些 UC flow 貫穿。
-這條 ticket → domain 的邊在 84.6% 的票上是斷的。
+這條 ticket → domain 的邊在 83.9% 的票上是斷的。
+
+> 本節一律採資訊率口徑（分母為可解析 ticket N=1299）。先前版本混用了
+> 15.4%／84.6% 與 14%／85.6% 兩組數字，兩者分母不同且皆受量測 artifact 污染。
 
 **採用方案**：於既有 Domain / UC Flow 視圖加入「以 ticket 切入」模式，
 以 **`where.files`** 反查涵蓋的 domain 並高亮。
 
 定位機制刻意**不使用 `where.layer`**：該欄位資訊率僅約 14% 且值域未受強制，
-不足以承擔定位職責。`where.files` 的填寫率為 99.5%，且其值是實際路徑，
-可對照 `domain-map.md` 推導所屬 domain。
+不足以承擔定位職責。`where.files` 的填寫率為 99.9%，且其值是實際路徑，
+原則上可對照 `domain-map.md` 推導所屬 domain。
+
+> **但被對照的那一側目前不存在。** `domain-map.md` 全篇以「唯一變更理由」
+> 定義 domain，**沒有任何一個 domain 標註它涵蓋哪些路徑**（該檔 `lib/`
+> 路徑出現次數為 0）。實作者拿到一張 `where.files: [lib/workspace/foo.dart]`
+> 的票，無從判定它屬不屬於 Workspace。
+>
+> 這條推導成立的前提是先建立「路徑模式 → domain」對照表。該表尚未建立，
+> 且它本身是設計決策（本專案的 `lib/` 目前只有 `main.dart`、`l10n/`、
+> `workspace/`，分層命名未定）。列入 `domain-map.md` §9 待決。
 
 無法自 `where.files` 對應到任何 domain 的票，顯示為「無法定位」，
 該狀態本身即為破洞報告的一項。
@@ -158,15 +203,17 @@ frontmatter 取不到 topic，須另外讀取該清單。
 
 - 每個畫面皆能渲染且無版面溢位
 - 應可捲動處能捲動、應可換頁處能換頁、應可拖拉處能拖拉
-- 假資料涵蓋四種極端：真實規模（1295 張 ticket）、空狀態、
+- 假資料涵蓋四種極端：真實規模（不低於 1300 張 ticket——`flutter_balance`
+  於 2026-08-26 量得 1295、2026-08-27 量得 1300，口徑為
+  `docs/work-logs/**/tickets/*.md`；該數字持續成長，驗收取下界不取定值）、空狀態、
   異常長內容、損壞資料（舊框架版本缺欄位、斷邊、不合法 ID）
 
 此測試與資料正確性解耦，因此在後續每次加入邏輯時持續有效。
 
 ## 驗收條件
 
-- [ ] 七個畫面的狀態矩陣完成（顯示／可用操作／進入條件／退出路徑）
-- [ ] 每個畫面的退出路徑欄非空（空欄位 = UX 死胡同）
+- [x] 六個畫面與專案切換浮層的狀態矩陣完成（顯示／可用操作／進入條件／退出路徑）
+- [x] 每個畫面的退出路徑欄非空（空欄位 = UX 死胡同；唯一例外為浮層收合態）
 - [ ] Domain 視圖雙模式可切換，點矩陣格子能定位至對應泳道
 - [ ] 首個整合測試涵蓋四種極端假資料
 
@@ -220,4 +267,6 @@ frontmatter 取不到 topic，須另外讀取該清單。
 
 - 搜尋與全域導覽是否納入畫面清單
 - 圖譜總覽（鳥瞰起手畫面）是否需要
-- 各畫面的狀態矩陣（Stage 1.5 尚未執行）
+- 矩陣的列（domain 清單）與格（step → domain）的資料來源：上游 schema 中
+  個別 domain 不是圖節點、`FlowStep` 亦無 `domain` 欄位，推導方式未定
+- 「間接依賴」的計算路徑與跳數上限（UC-02 驗收條件依賴此定義）
