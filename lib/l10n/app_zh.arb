@@ -69,5 +69,123 @@
   "changeWorkspaceFolder": "變更資料夾",
   "@changeWorkspaceFolder": {
     "description": "已有工作資料夾時的重新選取按鈕"
+  },
+
+  "domainLoading": "正在解析圖譜節點…",
+  "@domainLoading": {
+    "description": "SPEC-001 §1 Domain 視圖·載入中狀態的顯示文案"
+  },
+
+  "emptyGraphMessage": "此專案尚無圖譜節點",
+  "@emptyGraphMessage": {
+    "description": "SPEC-001 §1 Domain 視圖·空圖狀態的顯示文案"
+  },
+
+  "notFrameworkProjectMessage": "此資料夾沒有 docs/，不是使用本框架的專案",
+  "@notFrameworkProjectMessage": {
+    "description": "SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案"
+  },
+
+  "schemaUnconsumableMessage": "此專案的框架版本（{version}）早於圖譜型別表的機器可讀匯出",
+  "@schemaUnconsumableMessage": {
+    "description": "SPEC-001 §1 Domain 視圖·無可消費的型別表狀態的顯示文案",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+
+  "schemaIncompatibleMessage": "App 支援的 schema 版本為 {appVersion}，此專案為 {projectVersion}，版本不相容",
+  "@schemaIncompatibleMessage": {
+    "description": "SPEC-001 §1 Domain 視圖·schema 不相容狀態的顯示文案",
+    "placeholders": {
+      "appVersion": {
+        "type": "String"
+      },
+      "projectVersion": {
+        "type": "String"
+      }
+    }
+  },
+
+  "emptyUcMessage": "此專案尚無 UC 節點",
+  "@emptyUcMessage": {
+    "description": "SPEC-001 §2 UC Flow 視圖·無 UC 狀態的顯示文案"
+  },
+
+  "flowUnstructuredMessage": "尚未填寫結構化 flow",
+  "@flowUnstructuredMessage": {
+    "description": "SPEC-001 §2 UC Flow 視圖·flow 未結構化狀態的顯示文案"
+  },
+
+  "emptyProposalMessage": "此專案尚無提案",
+  "@emptyProposalMessage": {
+    "description": "SPEC-001 §3 追溯視圖·無提案狀態的顯示文案"
+  },
+
+  "ticketsLoadPrompt": "載入 {count} 張 ticket",
+  "@ticketsLoadPrompt": {
+    "description": "SPEC-001 §4 Ticket 清單·未載入狀態的顯示文案",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "ticketsLoadingProgress": "已解析 {parsed} 筆",
+  "@ticketsLoadingProgress": {
+    "description": "SPEC-001 §4 Ticket 清單·載入中狀態的顯示文案",
+    "placeholders": {
+      "parsed": {
+        "type": "int"
+      }
+    }
+  },
+
+  "emptyTicketsMessage": "此專案尚無 ticket",
+  "@emptyTicketsMessage": {
+    "description": "SPEC-001 §4 Ticket 清單·無 ticket 狀態的顯示文案"
+  },
+
+  "corruptedTicketsBadge": "{count} 張損壞",
+  "@corruptedTicketsBadge": {
+    "description": "SPEC-001 §4 Ticket 清單·含損壞狀態的徽章文案",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "noGapsMessage": "未偵測到破洞",
+  "@noGapsMessage": {
+    "description": "SPEC-001 §5 破洞報告·無破洞狀態的顯示文案"
+  },
+
+  "fieldCorruptedMessage": "因檔案損壞而無法讀取",
+  "@fieldCorruptedMessage": {
+    "description": "SPEC-001 §6 節點詳情·部分損壞狀態的欄位標示文案"
+  },
+
+  "sourceFileMissingMessage": "原始檔已不存在",
+  "@sourceFileMissingMessage": {
+    "description": "SPEC-001 §6 節點詳情·原始檔已消失狀態的顯示文案"
+  },
+
+  "lastKnownPathLabel": "最後已知路徑：{path}",
+  "@lastKnownPathLabel": {
+    "description": "SPEC-001 §6 節點詳情·原始檔已消失狀態的路徑標籤",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+
+  "switcherChooseFolderPrompt": "選擇資料夾…",
+  "@switcherChooseFolderPrompt": {
+    "description": "SPEC-001 §7 專案切換浮層·無最近專案狀態的顯示文案"
   }
 }

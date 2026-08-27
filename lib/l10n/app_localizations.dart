@@ -163,6 +163,108 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'變更資料夾'**
   String get changeWorkspaceFolder;
+
+  /// SPEC-001 §1 Domain 視圖·載入中狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'正在解析圖譜節點…'**
+  String get domainLoading;
+
+  /// SPEC-001 §1 Domain 視圖·空圖狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案尚無圖譜節點'**
+  String get emptyGraphMessage;
+
+  /// SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此資料夾沒有 docs/，不是使用本框架的專案'**
+  String get notFrameworkProjectMessage;
+
+  /// SPEC-001 §1 Domain 視圖·無可消費的型別表狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案的框架版本（{version}）早於圖譜型別表的機器可讀匯出'**
+  String schemaUnconsumableMessage(String version);
+
+  /// SPEC-001 §1 Domain 視圖·schema 不相容狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'App 支援的 schema 版本為 {appVersion}，此專案為 {projectVersion}，版本不相容'**
+  String schemaIncompatibleMessage(String appVersion, String projectVersion);
+
+  /// SPEC-001 §2 UC Flow 視圖·無 UC 狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案尚無 UC 節點'**
+  String get emptyUcMessage;
+
+  /// SPEC-001 §2 UC Flow 視圖·flow 未結構化狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未填寫結構化 flow'**
+  String get flowUnstructuredMessage;
+
+  /// SPEC-001 §3 追溯視圖·無提案狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案尚無提案'**
+  String get emptyProposalMessage;
+
+  /// SPEC-001 §4 Ticket 清單·未載入狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'載入 {count} 張 ticket'**
+  String ticketsLoadPrompt(int count);
+
+  /// SPEC-001 §4 Ticket 清單·載入中狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'已解析 {parsed} 筆'**
+  String ticketsLoadingProgress(int parsed);
+
+  /// SPEC-001 §4 Ticket 清單·無 ticket 狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案尚無 ticket'**
+  String get emptyTicketsMessage;
+
+  /// SPEC-001 §4 Ticket 清單·含損壞狀態的徽章文案
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 張損壞'**
+  String corruptedTicketsBadge(int count);
+
+  /// SPEC-001 §5 破洞報告·無破洞狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'未偵測到破洞'**
+  String get noGapsMessage;
+
+  /// SPEC-001 §6 節點詳情·部分損壞狀態的欄位標示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'因檔案損壞而無法讀取'**
+  String get fieldCorruptedMessage;
+
+  /// SPEC-001 §6 節點詳情·原始檔已消失狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'原始檔已不存在'**
+  String get sourceFileMissingMessage;
+
+  /// SPEC-001 §6 節點詳情·原始檔已消失狀態的路徑標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'最後已知路徑：{path}'**
+  String lastKnownPathLabel(String path);
+
+  /// SPEC-001 §7 專案切換浮層·無最近專案狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇資料夾…'**
+  String get switcherChooseFolderPrompt;
 }
 
 class _AppLocalizationsDelegate

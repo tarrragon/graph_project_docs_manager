@@ -11,5 +11,22 @@
   "folderAccessRationale": "Pick a folder for the app to read and edit documents in. This permission is remembered, so you won't need to select it again.",
   "workspaceReady": "Workspace: {path}",
   "workspaceUnavailable": "Cannot access the previous folder: {reason}",
-  "changeWorkspaceFolder": "Change Folder"
+  "changeWorkspaceFolder": "Change Folder",
+  "domainLoading": "Resolving graph nodes…",
+  "emptyGraphMessage": "This project has no graph nodes yet",
+  "notFrameworkProjectMessage": "This folder has no docs/ — it does not use this framework",
+  "schemaUnconsumableMessage": "This project's framework version ({version}) predates the machine-readable export of the graph type table",
+  "schemaIncompatibleMessage": "This app supports schema version {appVersion}; this project uses {projectVersion}, which is incompatible",
+  "emptyUcMessage": "This project has no UC nodes yet",
+  "flowUnstructuredMessage": "No structured flow has been written yet",
+  "emptyProposalMessage": "This project has no proposals yet",
+  "ticketsLoadPrompt": "Load {count} tickets",
+  "ticketsLoadingProgress": "Parsed {parsed} so far",
+  "emptyTicketsMessage": "This project has no tickets yet",
+  "corruptedTicketsBadge": "{count} corrupted",
+  "noGapsMessage": "No gaps detected",
+  "fieldCorruptedMessage": "Unreadable due to file corruption",
+  "sourceFileMissingMessage": "Source file no longer exists",
+  "lastKnownPathLabel": "Last known path: {path}",
+  "switcherChooseFolderPrompt": "Choose a folder…"
 }

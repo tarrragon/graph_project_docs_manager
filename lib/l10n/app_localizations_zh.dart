@@ -53,4 +53,67 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get changeWorkspaceFolder => '變更資料夾';
+
+  @override
+  String get domainLoading => '正在解析圖譜節點…';
+
+  @override
+  String get emptyGraphMessage => '此專案尚無圖譜節點';
+
+  @override
+  String get notFrameworkProjectMessage => '此資料夾沒有 docs/，不是使用本框架的專案';
+
+  @override
+  String schemaUnconsumableMessage(String version) {
+    return '此專案的框架版本（$version）早於圖譜型別表的機器可讀匯出';
+  }
+
+  @override
+  String schemaIncompatibleMessage(String appVersion, String projectVersion) {
+    return 'App 支援的 schema 版本為 $appVersion，此專案為 $projectVersion，版本不相容';
+  }
+
+  @override
+  String get emptyUcMessage => '此專案尚無 UC 節點';
+
+  @override
+  String get flowUnstructuredMessage => '尚未填寫結構化 flow';
+
+  @override
+  String get emptyProposalMessage => '此專案尚無提案';
+
+  @override
+  String ticketsLoadPrompt(int count) {
+    return '載入 $count 張 ticket';
+  }
+
+  @override
+  String ticketsLoadingProgress(int parsed) {
+    return '已解析 $parsed 筆';
+  }
+
+  @override
+  String get emptyTicketsMessage => '此專案尚無 ticket';
+
+  @override
+  String corruptedTicketsBadge(int count) {
+    return '$count 張損壞';
+  }
+
+  @override
+  String get noGapsMessage => '未偵測到破洞';
+
+  @override
+  String get fieldCorruptedMessage => '因檔案損壞而無法讀取';
+
+  @override
+  String get sourceFileMissingMessage => '原始檔已不存在';
+
+  @override
+  String lastKnownPathLabel(String path) {
+    return '最後已知路徑：$path';
+  }
+
+  @override
+  String get switcherChooseFolderPrompt => '選擇資料夾…';
 }

@@ -55,4 +55,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get changeWorkspaceFolder => 'Change Folder';
+
+  @override
+  String get domainLoading => 'Resolving graph nodes…';
+
+  @override
+  String get emptyGraphMessage => 'This project has no graph nodes yet';
+
+  @override
+  String get notFrameworkProjectMessage =>
+      'This folder has no docs/ — it does not use this framework';
+
+  @override
+  String schemaUnconsumableMessage(String version) {
+    return 'This project\'s framework version ($version) predates the machine-readable export of the graph type table';
+  }
+
+  @override
+  String schemaIncompatibleMessage(String appVersion, String projectVersion) {
+    return 'This app supports schema version $appVersion; this project uses $projectVersion, which is incompatible';
+  }
+
+  @override
+  String get emptyUcMessage => 'This project has no UC nodes yet';
+
+  @override
+  String get flowUnstructuredMessage =>
+      'No structured flow has been written yet';
+
+  @override
+  String get emptyProposalMessage => 'This project has no proposals yet';
+
+  @override
+  String ticketsLoadPrompt(int count) {
+    return 'Load $count tickets';
+  }
+
+  @override
+  String ticketsLoadingProgress(int parsed) {
+    return 'Parsed $parsed so far';
+  }
+
+  @override
+  String get emptyTicketsMessage => 'This project has no tickets yet';
+
+  @override
+  String corruptedTicketsBadge(int count) {
+    return '$count corrupted';
+  }
+
+  @override
+  String get noGapsMessage => 'No gaps detected';
+
+  @override
+  String get fieldCorruptedMessage => 'Unreadable due to file corruption';
+
+  @override
+  String get sourceFileMissingMessage => 'Source file no longer exists';
+
+  @override
+  String lastKnownPathLabel(String path) {
+    return 'Last known path: $path';
+  }
+
+  @override
+  String get switcherChooseFolderPrompt => 'Choose a folder…';
 }
