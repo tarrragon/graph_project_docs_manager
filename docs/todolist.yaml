@@ -67,6 +67,7 @@ versions:
     description: "展示介面：七個畫面與浮層的全部狀態皆可渲染，不串真實資料"
     status: "active"
     proposals:
+      - PROP-004
       - PROP-005
     worklog: "docs/work-logs/v0/v0.1/v0.1.0/"
     notes: |

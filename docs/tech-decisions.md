@@ -862,3 +862,38 @@ tripwire 總表在 `tech-decisions.md`，而本檔是 append-only 決策紀錄�
 
 **來源**：多輪審查 Round 3 的 frame 3-G（共同前提盤點）表一第 2 列
 與表二第 9 列——兩者是同一件事的兩面。
+
+### 2026-08-27：地基五維度盤點（foundation-design v6.0.0）
+
+0.1.0 的 19 張票在 `foundation-design` 存在之前產出，走的是 `version-bootstrap` 的規劃波。
+該 skill 自身載明「交回下游不等於下游覆蓋全部維度——DevOps 與可觀測性在 version-bootstrap
+全文 0 命中」，本專案原樣命中該預警：19 張票涵蓋 UI、測試、狀態管理，三個維度無票。
+
+工具造好後回頭盤點一次，情境判定為第三列「規劃波之後」（該版票已建），由本 skill 驅動、
+補判未被既有票涵蓋的產物、不重排既有票。
+
+| 維度 | 產物欄 | 實測依據 | 落地 |
+|------|-------|---------|------|
+| UI | 已存在於 SPEC-002 ＋ 照預設 | 四塊依序有票，`blockedBy` 已接：W1-009 i18n → W1-004 token → W1-010 UX 審查 → W1-005 元件庫 | 既有票 |
+| 測試 | 照預設 ＋ 待定：分層地基 | `test/` 2 檔、`integration_test/` 1 檔、fixture 0 個。雙層策略已定但地基未建 | W1-003（fixture 部分） |
+| 資料庫 | **改寫產物**：`shared_preferences` 的 key 版本化與遷移策略 | 僅 `shared_preferences`，無 schema。migration 版本化紀律投影到 key-value 形態即 key 格式的遷移 | **W1-014**（新建） |
+| DevOps | 已存在於 `macos/Runner.xcodeproj`（12 項簽章設定）＋ 無：notarization 配方 | 無 CI。發布通路 Developer ID + notarization、不上架 MAS | **W1-015**（新建，P3，為延後決策的載體） |
+| 可觀測性 | **待定：無判準** | 規則要求三階段 log、Stage 5 明示不寫，衝突未解；`lib/` 下零 log | **W1-013**（新建） |
+
+**資料庫那格是本次盤點最有價值的產出。** 直覺會判「無資料庫 → N/A」而整格跳過；改判產物後
+問題變成「migration 版本化紀律在 key-value 形態上長成什麼樣子」，答案是 key 格式的遷移。
+本 App 存的是使用者選定的專案路徑，0.1.x 若改了 key 名或把單一路徑改為清單結構，既有使用者
+會看到空的專案清單——無錯誤、無紅燈、無法從伺服器端比對。
+
+**可觀測性記為「待定：無判準」而非「無」。** 兩者不可混用：「無」是判定後不產出、記下即結案；
+「待定」是該判而未能判、必須留下未結的痕跡。此處確為無判準——兩份現行有效文件直接對撞，
+無第三份裁決。
+
+**交接契約同步補齊（version-sequencing 步驟 4）**：`proposals-tracking.yaml` 五個提案全部回填
+`target_version` 與 `depends_on`（先前各為 0 筆）。依賴鏈為 PROP-001（0.0.2）→ PROP-003（0.2.0）
+→ PROP-002（0.2.0）：關閉沙盒才能存取任意資料夾，能存取資料夾才能讀該資料夾裡的
+`tracking_schema.json`。`todolist.yaml` 的 0.1.0 提案清單補入 PROP-004（其 `target_version` 為 0.1.0）。
+
+回填前 `check_proposal_dependencies.py` 對本專案回報 `[OK] 無跨提案依賴排序矛盾`、exit=0——
+但欄位一筆都沒有，那是「沒東西可檢查」而非「檢查通過」，兩者輸出逐字相同。回填後同一命令
+仍回報 `[OK]`，此時才第一次有意義。此實例已併入 `PC-BAL-010` 的恆真組並新增〈空集合子群的辨識法〉。

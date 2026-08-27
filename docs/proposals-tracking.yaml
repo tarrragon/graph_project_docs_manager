@@ -4,7 +4,8 @@ proposals:
   status: confirmed
   proposed: '2026-08-26'
   confirmed_at: '2026-08-26'
-  target_version: null
+  target_version: 0.0.2
+  depends_on: []
   source: ''
   spec_refs: []
   usecase_refs: []
@@ -15,7 +16,9 @@ proposals:
   status: confirmed
   proposed: '2026-08-26'
   confirmed_at: '2026-08-26'
-  target_version: null
+  target_version: 0.2.0
+  depends_on:
+  - PROP-003
   source: ''
   spec_refs: []
   usecase_refs: []
@@ -26,7 +29,9 @@ proposals:
   status: confirmed
   proposed: '2026-08-26'
   confirmed_at: '2026-08-26'
-  target_version: null
+  target_version: 0.2.0
+  depends_on:
+  - PROP-001
   source: ''
   spec_refs: []
   usecase_refs:
@@ -38,7 +43,8 @@ proposals:
   status: confirmed
   proposed: '2026-08-26'
   confirmed_at: '2026-08-26'
-  target_version: null
+  target_version: 0.1.0
+  depends_on: []
   source: ''
   spec_refs:
   - SPEC-001
@@ -55,7 +61,8 @@ proposals:
   status: draft
   proposed: '2026-08-27'
   confirmed_at: null
-  target_version: null
+  target_version: 0.1.0
+  depends_on: []
   source: development
   spec_refs: []
   usecase_refs: []
