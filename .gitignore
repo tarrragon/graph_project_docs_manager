@@ -107,3 +107,6 @@ design/docs-graph-ui-layouts.html
 # Hook 執行期日誌（框架 2.42.x 起的新路徑）
 .claude/hooks/hook-logs/
 hook-logs/
+
+# skill-sync 的本地同步狀態標記（各專案自己的 sync point，不入庫）
+.skill-sync-base
