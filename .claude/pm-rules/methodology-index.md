@@ -24,6 +24,7 @@
 | 方法論 | 用途 |
 |-------|------|
 | natural-language-programming-methodology.md | 命名方法論 |
+| naming-verifies-taxonomy-methodology.md | 命名作為分類的驗證程序（凍結一批觀察值為分類之前：個別化 / 語意內容可否證 / 真值條件在規格之外解決三條件；序號式命名使驗證力歸零；帶順序詞的集合標籤外溢至擴充規則；三層結構的可回溯不等於已驗證） |
 | .claude/skills/compositional-writing/references/writing-code-comments.md | 註解方法論 |
 | package-import-methodology.md | 導入路徑方法論（5 原則 + 開發階段檢查清單，核心判準） |
 | .claude/references/package-import-language-mechanisms.md | 各語言語意化導入機制 + 跨語言程式碼範例 + Linter/自動化工具配置（衛星檔） |
