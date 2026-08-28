@@ -307,6 +307,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'選擇其他'**
   String get switcherChooseOtherFolder;
+
+  /// 導覽列項目：Domain 視圖（SPEC-001 §1）
+  ///
+  /// In zh, this message translates to:
+  /// **'Domain 視圖'**
+  String get navDomain;
+
+  /// 導覽列項目：UC Flow 視圖（SPEC-001 §2）
+  ///
+  /// In zh, this message translates to:
+  /// **'UC Flow'**
+  String get navUcFlow;
+
+  /// 導覽列項目：追溯視圖（SPEC-001 §3）
+  ///
+  /// In zh, this message translates to:
+  /// **'追溯視圖'**
+  String get navTraceability;
+
+  /// 導覽列項目：Ticket 清單（SPEC-001 §4）
+  ///
+  /// In zh, this message translates to:
+  /// **'Ticket 清單'**
+  String get navTickets;
+
+  /// 導覽列項目：破洞報告（SPEC-001 §5）
+  ///
+  /// In zh, this message translates to:
+  /// **'破洞報告'**
+  String get navGaps;
+
+  /// 導覽列項目：節點詳情（SPEC-001 §6）
+  ///
+  /// In zh, this message translates to:
+  /// **'節點詳情'**
+  String get navNodeDetail;
+
+  /// 側欄頂端專案名按鈕的 tooltip／語意標籤，點擊開啟專案切換浮層（SPEC-001 §7）
+  ///
+  /// In zh, this message translates to:
+  /// **'切換專案'**
+  String get projectSwitcherEntryLabel;
+
+  /// 專案切換浮層的佔位標題，浮層內容由後續票實作
+  ///
+  /// In zh, this message translates to:
+  /// **'專案切換'**
+  String get projectSwitcherPlaceholderTitle;
 }
 
 class _AppLocalizationsDelegate
