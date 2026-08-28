@@ -58,10 +58,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get domainLoading => '正在解析圖譜節點…';
 
   @override
+  String get cancelLoadingAction => '取消載入';
+
+  @override
   String get emptyGraphMessage => '此專案尚無圖譜節點';
 
   @override
   String get notFrameworkProjectMessage => '此資料夾沒有 docs/，不是使用本框架的專案';
+
+  @override
+  String get notFrameworkProjectExplanation =>
+      '本 App 需要專案根目錄下含 docs/ 目錄，並依循框架文件慣例組織文件';
 
   @override
   String schemaUnconsumableMessage(String version) {
@@ -93,6 +100,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get ticketsUnassignedSection => '未歸屬';
+
+  @override
   String get emptyTicketsMessage => '此專案尚無 ticket';
 
   @override
@@ -101,7 +111,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gapReportScanning => '正在掃描破洞…';
+
+  @override
+  String get cancelScanAction => '取消';
+
+  @override
   String get noGapsMessage => '未偵測到破洞';
+
+  @override
+  String get noGapsScanScope => '已掃描全部節點與邊';
 
   @override
   String get fieldCorruptedMessage => '因檔案損壞而無法讀取';
@@ -116,4 +135,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get switcherChooseFolderPrompt => '選擇資料夾…';
+
+  @override
+  String get switcherChooseOtherFolder => '選擇其他';
 }

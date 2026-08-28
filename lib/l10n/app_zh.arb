@@ -76,6 +76,11 @@
     "description": "SPEC-001 §1 Domain 視圖·載入中狀態的顯示文案"
   },
 
+  "cancelLoadingAction": "取消載入",
+  "@cancelLoadingAction": {
+    "description": "SPEC-001 §1 Domain 視圖·載入中狀態與 §4 Ticket 清單·載入中狀態共用的操作文案（取消操作）"
+  },
+
   "emptyGraphMessage": "此專案尚無圖譜節點",
   "@emptyGraphMessage": {
     "description": "SPEC-001 §1 Domain 視圖·空圖狀態的顯示文案"
@@ -84,6 +89,11 @@
   "notFrameworkProjectMessage": "此資料夾沒有 docs/，不是使用本框架的專案",
   "@notFrameworkProjectMessage": {
     "description": "SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案"
+  },
+
+  "notFrameworkProjectExplanation": "本 App 需要專案根目錄下含 docs/ 目錄，並依循框架文件慣例組織文件",
+  "@notFrameworkProjectExplanation": {
+    "description": "SPEC-001 §1 Domain 視圖·不是框架專案狀態的補充說明文案（說明本 App 需要什麼）"
   },
 
   "schemaUnconsumableMessage": "此專案的框架版本（{version}）早於圖譜型別表的機器可讀匯出",
@@ -144,6 +154,11 @@
     }
   },
 
+  "ticketsUnassignedSection": "未歸屬",
+  "@ticketsUnassignedSection": {
+    "description": "SPEC-001 §4 Ticket 清單·正常·主題狀態的未歸屬節標題文案"
+  },
+
   "emptyTicketsMessage": "此專案尚無 ticket",
   "@emptyTicketsMessage": {
     "description": "SPEC-001 §4 Ticket 清單·無 ticket 狀態的顯示文案"
@@ -159,9 +174,24 @@
     }
   },
 
+  "gapReportScanning": "正在掃描破洞…",
+  "@gapReportScanning": {
+    "description": "SPEC-001 §5 破洞報告·掃描中狀態的顯示文案"
+  },
+
+  "cancelScanAction": "取消",
+  "@cancelScanAction": {
+    "description": "SPEC-001 §5 破洞報告·掃描中狀態的操作文案（取消操作）"
+  },
+
   "noGapsMessage": "未偵測到破洞",
   "@noGapsMessage": {
     "description": "SPEC-001 §5 破洞報告·無破洞狀態的顯示文案"
+  },
+
+  "noGapsScanScope": "已掃描全部節點與邊",
+  "@noGapsScanScope": {
+    "description": "SPEC-001 §5 破洞報告·無破洞狀態的掃描範圍說明文案"
   },
 
   "fieldCorruptedMessage": "因檔案損壞而無法讀取",
@@ -187,5 +217,10 @@
   "switcherChooseFolderPrompt": "選擇資料夾…",
   "@switcherChooseFolderPrompt": {
     "description": "SPEC-001 §7 專案切換浮層·無最近專案狀態的顯示文案"
+  },
+
+  "switcherChooseOtherFolder": "選擇其他",
+  "@switcherChooseOtherFolder": {
+    "description": "SPEC-001 §7 專案切換浮層·展開狀態的操作文案（選擇其他資料夾）"
   }
 }
