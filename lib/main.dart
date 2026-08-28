@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'app/shell.dart';
 import 'l10n/app_localizations.dart';
 import 'workspace/workspace_repository.dart';
 
@@ -60,7 +61,7 @@ class DocsManagerApp extends StatelessWidget {
         ),
         home: child,
       ),
-      child: HomePage(repository: repository),
+      child: const AppShell(),
     );
   }
 }

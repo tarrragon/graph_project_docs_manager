@@ -138,4 +138,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get switcherChooseOtherFolder => '選擇其他';
+
+  @override
+  String get navDomain => 'Domain 視圖';
+
+  @override
+  String get navUcFlow => 'UC Flow';
+
+  @override
+  String get navTraceability => '追溯視圖';
+
+  @override
+  String get navTickets => 'Ticket 清單';
+
+  @override
+  String get navGaps => '破洞報告';
+
+  @override
+  String get navNodeDetail => '節點詳情';
+
+  @override
+  String get projectSwitcherEntryLabel => '切換專案';
+
+  @override
+  String get projectSwitcherPlaceholderTitle => '專案切換';
 }

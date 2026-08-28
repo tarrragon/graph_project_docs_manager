@@ -142,4 +142,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get switcherChooseOtherFolder => 'Choose another';
+
+  @override
+  String get navDomain => 'Domain';
+
+  @override
+  String get navUcFlow => 'UC Flow';
+
+  @override
+  String get navTraceability => 'Traceability';
+
+  @override
+  String get navTickets => 'Tickets';
+
+  @override
+  String get navGaps => 'Gaps';
+
+  @override
+  String get navNodeDetail => 'Node Detail';
+
+  @override
+  String get projectSwitcherEntryLabel => 'Switch project';
+
+  @override
+  String get projectSwitcherPlaceholderTitle => 'Project switcher';
 }

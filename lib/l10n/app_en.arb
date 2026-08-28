@@ -35,5 +35,13 @@
   "sourceFileMissingMessage": "Source file no longer exists",
   "lastKnownPathLabel": "Last known path: {path}",
   "switcherChooseFolderPrompt": "Choose a folder…",
-  "switcherChooseOtherFolder": "Choose another"
+  "switcherChooseOtherFolder": "Choose another",
+  "navDomain": "Domain",
+  "navUcFlow": "UC Flow",
+  "navTraceability": "Traceability",
+  "navTickets": "Tickets",
+  "navGaps": "Gaps",
+  "navNodeDetail": "Node Detail",
+  "projectSwitcherEntryLabel": "Switch project",
+  "projectSwitcherPlaceholderTitle": "Project switcher"
 }

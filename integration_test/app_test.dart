@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+
+/// App 啟動後的預設落地畫面錨點（導覽殼的預設項目：Domain 視圖）。
+///
+/// 六項導覽的路由殼掛載後，[HomePage] 不再是進入點；「啟動後抵達某個確定
+/// 畫面」這件事改由此錨點斷言。
+final Key kLandingPageKey = AppDestination.domain.pageKey;
 
 /// 一組要驗證的螢幕條件。
 ///
@@ -39,9 +47,9 @@ void main() {
       final errors = await _pumpAppAndCollectErrors(tester);
 
       expect(
-        find.byKey(HomePage.pageKey),
+        find.byKey(kLandingPageKey),
         findsOneWidget,
-        reason: 'App 啟動後應停在 HomePage',
+        reason: 'App 啟動後應停在導覽殼的預設落地畫面',
       );
       _expectNoErrors(errors, context: '預設尺寸');
     });
@@ -53,7 +61,7 @@ void main() {
 
         final errors = await _pumpAppAndCollectErrors(tester);
 
-        expect(find.byKey(HomePage.pageKey), findsOneWidget);
+        expect(find.byKey(kLandingPageKey), findsOneWidget);
         _expectNoErrors(errors, context: viewport.name);
       });
     }
@@ -102,7 +110,7 @@ void main() {
           repository: _StubWorkspaceRepository(state),
         );
 
-        expect(find.byKey(HomePage.pageKey), findsOneWidget);
+        expect(find.byKey(kLandingPageKey), findsOneWidget);
         _expectNoErrors(errors, context: '工作資料夾=$label');
       });
     });
@@ -134,11 +142,17 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
   FlutterError.onError = captured.add;
   try {
     await tester.pumpWidget(
-      DocsManagerApp(
-        locale: locale,
-        // 預設也注入替身：真實 repository 會讀寫使用者的 UserDefaults，
-        // 讓測試結果取決於機器上的殘留狀態。
-        repository: repository ?? _StubWorkspaceRepository(const WorkspaceUnset()),
+      // main() 的 runApp 才包 ProviderScope（見 lib/main.dart）；直接
+      // pump DocsManagerApp 時，導覽殼（AppShell 為 ConsumerWidget）需要
+      // 自行補上這層祖先，否則 ref.watch 會找不到 ProviderScope 而拋錯。
+      ProviderScope(
+        child: DocsManagerApp(
+          locale: locale,
+          // 預設也注入替身：真實 repository 會讀寫使用者的 UserDefaults，
+          // 讓測試結果取決於機器上的殘留狀態。
+          repository:
+              repository ?? _StubWorkspaceRepository(const WorkspaceUnset()),
+        ),
       ),
     );
     // ScreenUtilInit 首幀只做量測，需再 settle 一次才會渲染出真正的版面。

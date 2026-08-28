@@ -222,5 +222,45 @@
   "switcherChooseOtherFolder": "選擇其他",
   "@switcherChooseOtherFolder": {
     "description": "SPEC-001 §7 專案切換浮層·展開狀態的操作文案（選擇其他資料夾）"
+  },
+
+  "navDomain": "Domain 視圖",
+  "@navDomain": {
+    "description": "導覽列項目：Domain 視圖（SPEC-001 §1）"
+  },
+
+  "navUcFlow": "UC Flow",
+  "@navUcFlow": {
+    "description": "導覽列項目：UC Flow 視圖（SPEC-001 §2）"
+  },
+
+  "navTraceability": "追溯視圖",
+  "@navTraceability": {
+    "description": "導覽列項目：追溯視圖（SPEC-001 §3）"
+  },
+
+  "navTickets": "Ticket 清單",
+  "@navTickets": {
+    "description": "導覽列項目：Ticket 清單（SPEC-001 §4）"
+  },
+
+  "navGaps": "破洞報告",
+  "@navGaps": {
+    "description": "導覽列項目：破洞報告（SPEC-001 §5）"
+  },
+
+  "navNodeDetail": "節點詳情",
+  "@navNodeDetail": {
+    "description": "導覽列項目：節點詳情（SPEC-001 §6）"
+  },
+
+  "projectSwitcherEntryLabel": "切換專案",
+  "@projectSwitcherEntryLabel": {
+    "description": "側欄頂端專案名按鈕的 tooltip／語意標籤，點擊開啟專案切換浮層（SPEC-001 §7）"
+  },
+
+  "projectSwitcherPlaceholderTitle": "專案切換",
+  "@projectSwitcherPlaceholderTitle": {
+    "description": "專案切換浮層的佔位標題，浮層內容由後續票實作"
   }
 }
