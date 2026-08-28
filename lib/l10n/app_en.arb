@@ -13,8 +13,10 @@
   "workspaceUnavailable": "Cannot access the previous folder: {reason}",
   "changeWorkspaceFolder": "Change Folder",
   "domainLoading": "Resolving graph nodes…",
+  "cancelLoadingAction": "Cancel loading",
   "emptyGraphMessage": "This project has no graph nodes yet",
   "notFrameworkProjectMessage": "This folder has no docs/ — it does not use this framework",
+  "notFrameworkProjectExplanation": "This app requires a docs/ directory at the project root, organized per framework conventions",
   "schemaUnconsumableMessage": "This project's framework version ({version}) predates the machine-readable export of the graph type table",
   "schemaIncompatibleMessage": "This app supports schema version {appVersion}; this project uses {projectVersion}, which is incompatible",
   "emptyUcMessage": "This project has no UC nodes yet",
@@ -22,11 +24,16 @@
   "emptyProposalMessage": "This project has no proposals yet",
   "ticketsLoadPrompt": "Load {count} tickets",
   "ticketsLoadingProgress": "Parsed {parsed} so far",
+  "ticketsUnassignedSection": "Unassigned",
   "emptyTicketsMessage": "This project has no tickets yet",
   "corruptedTicketsBadge": "{count} corrupted",
+  "gapReportScanning": "Scanning for gaps…",
+  "cancelScanAction": "Cancel",
   "noGapsMessage": "No gaps detected",
+  "noGapsScanScope": "Scanned all nodes and edges",
   "fieldCorruptedMessage": "Unreadable due to file corruption",
   "sourceFileMissingMessage": "Source file no longer exists",
   "lastKnownPathLabel": "Last known path: {path}",
-  "switcherChooseFolderPrompt": "Choose a folder…"
+  "switcherChooseFolderPrompt": "Choose a folder…",
+  "switcherChooseOtherFolder": "Choose another"
 }

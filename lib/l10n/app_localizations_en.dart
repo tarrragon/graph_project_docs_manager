@@ -60,11 +60,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domainLoading => 'Resolving graph nodes…';
 
   @override
+  String get cancelLoadingAction => 'Cancel loading';
+
+  @override
   String get emptyGraphMessage => 'This project has no graph nodes yet';
 
   @override
   String get notFrameworkProjectMessage =>
       'This folder has no docs/ — it does not use this framework';
+
+  @override
+  String get notFrameworkProjectExplanation =>
+      'This app requires a docs/ directory at the project root, organized per framework conventions';
 
   @override
   String schemaUnconsumableMessage(String version) {
@@ -97,6 +104,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get ticketsUnassignedSection => 'Unassigned';
+
+  @override
   String get emptyTicketsMessage => 'This project has no tickets yet';
 
   @override
@@ -105,7 +115,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gapReportScanning => 'Scanning for gaps…';
+
+  @override
+  String get cancelScanAction => 'Cancel';
+
+  @override
   String get noGapsMessage => 'No gaps detected';
+
+  @override
+  String get noGapsScanScope => 'Scanned all nodes and edges';
 
   @override
   String get fieldCorruptedMessage => 'Unreadable due to file corruption';
@@ -120,4 +139,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get switcherChooseFolderPrompt => 'Choose a folder…';
+
+  @override
+  String get switcherChooseOtherFolder => 'Choose another';
 }

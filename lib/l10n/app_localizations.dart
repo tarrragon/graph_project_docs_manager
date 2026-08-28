@@ -170,6 +170,12 @@ abstract class AppLocalizations {
   /// **'正在解析圖譜節點…'**
   String get domainLoading;
 
+  /// SPEC-001 §1 Domain 視圖·載入中狀態與 §4 Ticket 清單·載入中狀態共用的操作文案（取消操作）
+  ///
+  /// In zh, this message translates to:
+  /// **'取消載入'**
+  String get cancelLoadingAction;
+
   /// SPEC-001 §1 Domain 視圖·空圖狀態的顯示文案
   ///
   /// In zh, this message translates to:
@@ -181,6 +187,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'此資料夾沒有 docs/，不是使用本框架的專案'**
   String get notFrameworkProjectMessage;
+
+  /// SPEC-001 §1 Domain 視圖·不是框架專案狀態的補充說明文案（說明本 App 需要什麼）
+  ///
+  /// In zh, this message translates to:
+  /// **'本 App 需要專案根目錄下含 docs/ 目錄，並依循框架文件慣例組織文件'**
+  String get notFrameworkProjectExplanation;
 
   /// SPEC-001 §1 Domain 視圖·無可消費的型別表狀態的顯示文案
   ///
@@ -224,6 +236,12 @@ abstract class AppLocalizations {
   /// **'已解析 {parsed} 筆'**
   String ticketsLoadingProgress(int parsed);
 
+  /// SPEC-001 §4 Ticket 清單·正常·主題狀態的未歸屬節標題文案
+  ///
+  /// In zh, this message translates to:
+  /// **'未歸屬'**
+  String get ticketsUnassignedSection;
+
   /// SPEC-001 §4 Ticket 清單·無 ticket 狀態的顯示文案
   ///
   /// In zh, this message translates to:
@@ -236,11 +254,29 @@ abstract class AppLocalizations {
   /// **'{count} 張損壞'**
   String corruptedTicketsBadge(int count);
 
+  /// SPEC-001 §5 破洞報告·掃描中狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'正在掃描破洞…'**
+  String get gapReportScanning;
+
+  /// SPEC-001 §5 破洞報告·掃描中狀態的操作文案（取消操作）
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get cancelScanAction;
+
   /// SPEC-001 §5 破洞報告·無破洞狀態的顯示文案
   ///
   /// In zh, this message translates to:
   /// **'未偵測到破洞'**
   String get noGapsMessage;
+
+  /// SPEC-001 §5 破洞報告·無破洞狀態的掃描範圍說明文案
+  ///
+  /// In zh, this message translates to:
+  /// **'已掃描全部節點與邊'**
+  String get noGapsScanScope;
 
   /// SPEC-001 §6 節點詳情·部分損壞狀態的欄位標示文案
   ///
@@ -265,6 +301,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'選擇資料夾…'**
   String get switcherChooseFolderPrompt;
+
+  /// SPEC-001 §7 專案切換浮層·展開狀態的操作文案（選擇其他資料夾）
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇其他'**
+  String get switcherChooseOtherFolder;
 }
 
 class _AppLocalizationsDelegate
