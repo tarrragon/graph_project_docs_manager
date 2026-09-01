@@ -166,4 +166,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectSwitcherPlaceholderTitle => 'Project switcher';
+
+  @override
+  String get domainSwitchToMatrixAction => 'Switch to Matrix';
+
+  @override
+  String get domainSwitchToSwimlaneAction => 'Switch to Swimlane';
+
+  @override
+  String get ticketsSwitchToListAction => 'Switch to List';
+
+  @override
+  String get ticketsSwitchToTopicAction => 'Switch to Topic';
+
+  @override
+  String get openDocsFolderAction => 'Open docs Folder';
+
+  @override
+  String get openedExternallyMessage => 'Opened externally';
+
+  @override
+  String get viewSchemaDetailAction => 'View Details';
+
+  @override
+  String get gotoGapsReportAction => 'Go to Gap Report';
+
+  @override
+  String get openSourceFileAction => 'Open Source File';
+
+  @override
+  String get sourceFileNotFoundSnackbarMessage => 'File not found';
+
+  @override
+  String get refreshAction => 'Refresh';
+
+  @override
+  String get viewRelationsAction => 'View Relations';
+
+  @override
+  String get backToDomainAction => 'Back to Domain View';
+
+  @override
+  String get backAction => 'Back';
+
+  @override
+  String get startLoadAction => 'Start Loading';
+
+  @override
+  String get rescanAction => 'Rescan';
+
+  @override
+  String get cancelInProgressAction => 'Cancelling…';
+
+  @override
+  String domainLoadingProcessedCount(int count) {
+    return '$count nodes processed';
+  }
+
+  @override
+  String gapsScanningProcessedCount(int count) {
+    return '$count items scanned';
+  }
+
+  @override
+  String get noNodeSelectedMessage => 'No node selected';
+
+  @override
+  String get gotoTraceabilityAction => 'Go to Traceability View';
+
+  @override
+  String projectUnavailableReasonLabel(String reason) {
+    return 'Unavailable: $reason';
+  }
+
+  @override
+  String get probeTimeoutReason => 'May be an unmounted disk';
+
+  @override
+  String get sourceFileStillMissingMessage => 'File still not found';
 }

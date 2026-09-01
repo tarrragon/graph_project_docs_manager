@@ -355,6 +355,150 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'專案切換'**
   String get projectSwitcherPlaceholderTitle;
+
+  /// SPEC-003 §3.1 Domain 視圖：mode-domain-matrix 切換按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'切換至矩陣'**
+  String get domainSwitchToMatrixAction;
+
+  /// SPEC-003 §3.1 Domain 視圖：mode-domain-swimlane 切換按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'切換至泳道'**
+  String get domainSwitchToSwimlaneAction;
+
+  /// SPEC-003 §3.4 Ticket 清單：mode-tickets-list 切換按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'切換至列表'**
+  String get ticketsSwitchToListAction;
+
+  /// SPEC-003 §3.4 Ticket 清單：mode-tickets-topic 切換按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'切換至主題'**
+  String get ticketsSwitchToTopicAction;
+
+  /// SPEC-003 §3.1 Domain 視圖：action-domain-open-docs 按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'開啟 docs 目錄'**
+  String get openDocsFolderAction;
+
+  /// SPEC-003 §2.2／§3.1／§3.2／§3.5：以系統預設方式開啟檔案或目錄成功後的 SnackBar 文案
+  ///
+  /// In zh, this message translates to:
+  /// **'已在外部開啟'**
+  String get openedExternallyMessage;
+
+  /// SPEC-003 §3.1 Domain 視圖：action-domain-schema-detail 按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'檢視詳情'**
+  String get viewSchemaDetailAction;
+
+  /// SPEC-003 §3.1／§3.2／§3.3／§3.4：各畫面前往破洞報告的前進動作文案
+  ///
+  /// In zh, this message translates to:
+  /// **'前往破洞報告'**
+  String get gotoGapsReportAction;
+
+  /// SPEC-003 §3.2 UC Flow／§3.6 節點詳情：action-*-open-source 按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'開啟原始檔'**
+  String get openSourceFileAction;
+
+  /// SPEC-003 §3.2／§3.5：開啟原始檔或破洞項時檔案不存在的 SnackBar 提示文案（暫時性，區別於既有的狀態文案 sourceFileMissingMessage）
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到檔案'**
+  String get sourceFileNotFoundSnackbarMessage;
+
+  /// SPEC-003 §3.2 SnackBar 動作／§3.6 action-nodeDetail-refresh 共用的重新整理文案
+  ///
+  /// In zh, this message translates to:
+  /// **'重新整理'**
+  String get refreshAction;
+
+  /// SPEC-003 §3.2 UC Flow：action-ucFlow-relations 按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'檢視關聯'**
+  String get viewRelationsAction;
+
+  /// SPEC-003 §3.2 UC Flow：action-ucFlow-back-to-domain 固定目標按鈕文案，不循 returnTo 語意
+  ///
+  /// In zh, this message translates to:
+  /// **'返回 Domain 視圖'**
+  String get backToDomainAction;
+
+  /// SPEC-003 §2.3／§3.4／§3.6：returnTo 語意的返回按鈕共用文案。返回鍵未來將由 AppShell 單一承擔，故此 key 不逐畫面分立
+  ///
+  /// In zh, this message translates to:
+  /// **'返回'**
+  String get backAction;
+
+  /// SPEC-003 §3.4 Ticket 清單：action-tickets-start-load 按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'開始載入'**
+  String get startLoadAction;
+
+  /// SPEC-003 §3.5 破洞報告：action-gaps-rescan 按鈕與 SnackBar 動作共用文案
+  ///
+  /// In zh, this message translates to:
+  /// **'重新掃描'**
+  String get rescanAction;
+
+  /// SPEC-003 §2.5 C3：按下取消後 Motion.feedback 內的取消按鈕文案，三處載入態共用
+  ///
+  /// In zh, this message translates to:
+  /// **'取消中'**
+  String get cancelInProgressAction;
+
+  /// SPEC-003 §2.6：state-domain-loading 的已處理節點計數文字
+  ///
+  /// In zh, this message translates to:
+  /// **'已處理 {count} 個節點'**
+  String domainLoadingProcessedCount(int count);
+
+  /// SPEC-003 §2.6：state-gaps-scanning 的已掃描項目計數文字
+  ///
+  /// In zh, this message translates to:
+  /// **'已掃描 {count} 項'**
+  String gapsScanningProcessedCount(int count);
+
+  /// SPEC-003 §3.6：經導覽列直接進入節點詳情且無選定節點時的空狀態文案
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未選取節點'**
+  String get noNodeSelectedMessage;
+
+  /// SPEC-003 §3.6：action-nodeDetail-goto-traceability 前進動作文案
+  ///
+  /// In zh, this message translates to:
+  /// **'前往追溯視圖'**
+  String get gotoTraceabilityAction;
+
+  /// SPEC-003 §3.7：專案切換浮層中不可用專案項的常駐說明文案
+  ///
+  /// In zh, this message translates to:
+  /// **'無法使用：{reason}'**
+  String projectUnavailableReasonLabel(String reason);
+
+  /// SPEC-003 §3.7：資料夾可用性探測逾時時，作為 projectUnavailableReasonLabel 的 reason 值
+  ///
+  /// In zh, this message translates to:
+  /// **'可能是磁碟未掛載'**
+  String get probeTimeoutReason;
+
+  /// SPEC-003 §3.6：action-nodeDetail-refresh 重新整理後，檔案仍不存在分支的 SnackBar 文案
+  ///
+  /// In zh, this message translates to:
+  /// **'檔案仍不存在'**
+  String get sourceFileStillMissingMessage;
 }
 
 class _AppLocalizationsDelegate
