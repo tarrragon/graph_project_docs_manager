@@ -162,4 +162,82 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get projectSwitcherPlaceholderTitle => '專案切換';
+
+  @override
+  String get domainSwitchToMatrixAction => '切換至矩陣';
+
+  @override
+  String get domainSwitchToSwimlaneAction => '切換至泳道';
+
+  @override
+  String get ticketsSwitchToListAction => '切換至列表';
+
+  @override
+  String get ticketsSwitchToTopicAction => '切換至主題';
+
+  @override
+  String get openDocsFolderAction => '開啟 docs 目錄';
+
+  @override
+  String get openedExternallyMessage => '已在外部開啟';
+
+  @override
+  String get viewSchemaDetailAction => '檢視詳情';
+
+  @override
+  String get gotoGapsReportAction => '前往破洞報告';
+
+  @override
+  String get openSourceFileAction => '開啟原始檔';
+
+  @override
+  String get sourceFileNotFoundSnackbarMessage => '找不到檔案';
+
+  @override
+  String get refreshAction => '重新整理';
+
+  @override
+  String get viewRelationsAction => '檢視關聯';
+
+  @override
+  String get backToDomainAction => '返回 Domain 視圖';
+
+  @override
+  String get backAction => '返回';
+
+  @override
+  String get startLoadAction => '開始載入';
+
+  @override
+  String get rescanAction => '重新掃描';
+
+  @override
+  String get cancelInProgressAction => '取消中';
+
+  @override
+  String domainLoadingProcessedCount(int count) {
+    return '已處理 $count 個節點';
+  }
+
+  @override
+  String gapsScanningProcessedCount(int count) {
+    return '已掃描 $count 項';
+  }
+
+  @override
+  String get noNodeSelectedMessage => '尚未選取節點';
+
+  @override
+  String get gotoTraceabilityAction => '前往追溯視圖';
+
+  @override
+  String projectUnavailableReasonLabel(String reason) {
+    return '無法使用：$reason';
+  }
+
+  @override
+  String get probeTimeoutReason => '可能是磁碟未掛載';
+
+  @override
+  String get sourceFileStillMissingMessage => '檔案仍不存在';
 }
