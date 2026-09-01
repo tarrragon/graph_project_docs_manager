@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'app/shell.dart';
 import 'l10n/app_localizations.dart';
+import 'tokens/colors.dart';
 import 'workspace/workspace_repository.dart';
 
 /// 設計稿基準尺寸（logical pixels）。
@@ -57,7 +58,7 @@ class DocsManagerApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
-          colorSchemeSeed: const Color(0xFF2E6F6A),
+          colorSchemeSeed: AppColors.accent,
         ),
         home: child,
       ),
