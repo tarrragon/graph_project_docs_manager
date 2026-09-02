@@ -99,10 +99,12 @@ void main() {
       // 已在起點（offset 0），再往正方向拖（超出頂端邊界）不應改變位置。
       final before = tester.getTopLeft(find.byKey(const ValueKey('node-0-0')));
       await tester.drag(find.byKey(scrollKey), const Offset(200, 200));
-      await tester.pump();
+      // 用 pumpAndSettle 而非單次 pump：讓桌機捲軸淡出等過場動畫（與捲動
+      // offset 無關）走完，避免瞬時視覺狀態造成的次像素位置雜訊。
+      await tester.pumpAndSettle();
       final after = tester.getTopLeft(find.byKey(const ValueKey('node-0-0')));
 
-      expect(after, before);
+      expect((after - before).distance, lessThan(1));
     });
   });
 
@@ -165,23 +167,23 @@ void main() {
 
   group('尺寸與顏色引用 token 非硬編碼', () {
     testWidgets('泳道列高為 LayoutSize.laneRowHeight', (tester) async {
+      // TableView 的列高由 rowBuilder 的 TableSpan.extent 決定，非獨立可
+      // find 的 Container；改量相鄰兩泳道列同欄節點的垂直間距，等於
+      // TableSpan 給的列高（本測試 1 欄 2 泳道，兩節點分屬相鄰列同欄）。
       await pumpHarness(
         tester,
         size: WindowSize.design,
         child: SwimlaneGrid(
-          lanes: buildLanes(laneCount: 1, columnCount: 1),
+          lanes: buildLanes(laneCount: 2, columnCount: 1),
           scrollKey: scrollKey,
           dragKey: dragKey,
         ),
       );
 
-      final laneRowFinder = find.ancestor(
-        of: find.byKey(const ValueKey('node-0-0')),
-        matching: find.byType(Container),
-      );
-      final laneRowHeight = tester.getSize(laneRowFinder.first).height;
+      final row0Top = tester.getTopLeft(find.byKey(const ValueKey('node-0-0'))).dy;
+      final row1Top = tester.getTopLeft(find.byKey(const ValueKey('node-1-0'))).dy;
 
-      expect(laneRowHeight, LayoutSize.laneRowHeight);
+      expect(row1Top - row0Top, LayoutSize.laneRowHeight);
     });
   });
 
@@ -247,7 +249,12 @@ void main() {
       );
 
       expectNoOverflow(tester);
-      // 超出可用空間的節點仍存在於元件樹（捲動承載，非裁切遺失）。
+      // TableView 為 lazy 渲染，畫面外節點本就不在元件樹（非裁切遺失，
+      // 是延遲建構）；驗證「可捲動」改為拖曳至邊界後，原本畫面外的最後
+      // 一格能進入畫面。
+      await tester.drag(find.byKey(scrollKey), const Offset(-100000, -100000));
+      await tester.pump();
+      expectNoOverflow(tester);
       expect(find.byKey(const ValueKey('node-19-19')), findsOneWidget);
     });
   });

@@ -5,22 +5,35 @@
 /// 靜態排版（SPEC-001 設計約束）——步驟欄寬非畫布量測值，本檔以私有常數
 /// [_stepColumnWidth] 承載，SPEC-004 4.38「尺寸契約」明文「不設 token」。
 ///
-/// 二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）共用
-/// 同一組 offset：以單一 `(_dx, _dy)` state 承載，滾輪（`Listener` 收
-/// `PointerScrollEvent`）與拖曳（`GestureDetector.onPanUpdate`）兩種輸入
-/// 路徑都直接改變同一組欄位，非各自建立獨立的捲動狀態。位移比例 1:1、
-/// 至邊界生硬停止、無慣性：以 `clamp` 手動限制 offset 範圍，不經
-/// `Scrollable` 的 ballistic 慣性模擬（SPEC-004 4.38「互動反應」、
-/// SPEC-003 §1.3）。未採巢狀 `SingleChildScrollView`（水平 + 垂直）：兩個
-/// 正交方向的內建拖曳辨識器在同一手勢仲裁中互斥，斜向拖曳只有一軸生效，
-/// 無法滿足「位移比例 1:1」（雙軸同時）契約。
+/// 二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）委派
+/// `package:two_dimensional_scrollables` 的 [TableView]（`docs/tech-decisions.md`
+/// 對矩陣／泳道視圖的定案）：泳道名欄以 `pinnedColumnCount: 1` 釘選；
+/// `diagonalDragBehavior: DiagonalDragBehavior.free` 允許斜向拖曳雙軸同時
+/// 位移（原巢狀 `SingleChildScrollView` 方案兩個正交方向的內建拖曳辨識器
+/// 在同一手勢仲裁中互斥，斜向拖曳只有一軸生效，不滿足「位移比例 1:1」
+/// 契約，正是本套件要解的問題）。滾輪與拖曳共用 [_hController] /
+/// [_vController] 這組 `ScrollController`（`horizontalDetails` /
+/// `verticalDetails` 皆掛同一顆 controller），滿足 5.12「與捲軸共用同一
+/// offset」語意。至邊界生硬停止、無慣性：兩軸皆掛
+/// [_NoInertiaScrollPhysics]（`ClampingScrollPhysics` 已提供無回彈，本類
+/// 另關閉 ballistic 模擬取消放開後的慣性滑動，SPEC-004 4.38「互動反應」、
+/// SPEC-003 §1.3）。
+///
+/// **契約值實測**：底部箭頭列原計畫以 `trailingPinnedRowCount: 1` 釘選在
+/// 底，實測 `trailingPinnedRowCount` 搭配 `ScrollController.jumpTo` 大距離
+/// 跳轉會觸發 `two_dimensional_scrollables` 0.5.4 內部
+/// `_TwoDimensionalViewportElement._reuseChild` 的
+/// `elementToReuse != null` 斷言失敗（`row == laneCount` 的釘選列找不到
+/// 可重用的 element，與跳轉距離無關，小到 6 列同樣觸發）；改為一般
+/// （非釘選）末列即可正常運作，且無此類例外。此為套件限制的實作層面
+/// 迴避，非契約值變更——底部箭頭列位置仍在視覺上位於所有泳道列之後。
 library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
@@ -64,11 +77,13 @@ class SwimlaneGrid extends StatefulWidget {
   /// 由呼叫端傳入（SPEC-004 4.38「狀態矩陣」）。
   final String? laneHighlight;
 
-  /// `scroll-domain-swimlane` 捲動互動定址 key（滾輪 `Listener`）。
+  /// `scroll-domain-swimlane` 捲動互動定址 key，掛在 [TableView] 本身
+  /// （滾輪與捲軸互動的定址對象）。
   final Key scrollKey;
 
-  /// `drag-domain-swimlane` 拖曳互動定址 key（`GestureDetector`），與
-  /// [scrollKey] 共用同一組 offset（見本檔 dartdoc）。
+  /// `drag-domain-swimlane` 拖曳互動定址 key，以 `KeyedSubtree` 包裹同一顆
+  /// [TableView]——拖曳與捲動是同一個互動表面，兩個 key 定址的是同一組
+  /// offset（見本檔 dartdoc）。
   final Key dragKey;
 
   @override
@@ -76,11 +91,8 @@ class SwimlaneGrid extends StatefulWidget {
 }
 
 class _SwimlaneGridState extends State<SwimlaneGrid> {
-  double _dx = 0;
-  double _dy = 0;
-
-  double _maxDx = 0;
-  double _maxDy = 0;
+  final ScrollController _hController = ScrollController();
+  final ScrollController _vController = ScrollController();
 
   @override
   void initState() {
@@ -99,10 +111,17 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     }
   }
 
-  /// 自詳情卡「在泳道中檢視」進入：直接改 offset 使命中列 rect 與
+  @override
+  void dispose() {
+    _hController.dispose();
+    _vController.dispose();
+    super.dispose();
+  }
+
+  /// 自詳情卡「在泳道中檢視」進入：直接 `jumpTo` 使命中列 rect 與
   /// viewport 有交集（SPEC-004 4.38「互動反應」，不用漸進動畫）。
   void _jumpToHighlight() {
-    if (!mounted) {
+    if (!mounted || !_vController.hasClients) {
       return;
     }
     final index = widget.lanes.indexWhere(
@@ -114,30 +133,21 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     final rowHeight = LayoutSize.laneRowHeight.h;
     final rowTop = index * rowHeight;
     final rowBottom = rowTop + rowHeight;
-    // _maxDy 於上一次 build 已依當時 viewport 算好；viewport 高度用
-    // `_maxDy` 反推不可行（無獨立欄位存 viewport 尺寸），改由呼叫端
-    // 觸發後的下一次 build 以 LayoutBuilder 現算的 viewport 判斷。
-    setState(() {
-      final alreadyVisible = rowTop >= _dy && rowBottom <= _dy + _lastViewportHeight;
-      if (!alreadyVisible) {
-        final target = rowBottom > _dy + _lastViewportHeight
-            ? rowBottom - _lastViewportHeight
-            : rowTop;
-        _dy = target.clamp(0.0, _maxDy);
-      }
-    });
+    final viewport = _vController.position.viewportDimension;
+    final current = _vController.position.pixels;
+    final alreadyVisible = rowTop >= current && rowBottom <= current + viewport;
+    if (alreadyVisible) {
+      return;
+    }
+    final target = rowBottom > current + viewport
+        ? rowBottom - viewport
+        : rowTop;
+    _vController.jumpTo(
+      target.clamp(0.0, _vController.position.maxScrollExtent),
+    );
   }
 
-  double _lastViewportHeight = 0;
-
-  void _applyDelta(Offset delta) {
-    setState(() {
-      _dx = (_dx - delta.dx).clamp(0.0, _maxDx);
-      _dy = (_dy - delta.dy).clamp(0.0, _maxDy);
-    });
-  }
-
-  int get _columnCount {
+  int get _stepColumnCount {
     var maxColumn = -1;
     for (final lane in widget.lanes) {
       for (final entry in lane.nodes) {
@@ -152,138 +162,110 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final columnCount = _columnCount;
-    final contentWidth =
-        LayoutSize.laneLabelWidth.w + columnCount * _stepColumnWidth.w;
-    final contentHeight =
-        widget.lanes.length * LayoutSize.laneRowHeight.h + _arrowRowHeight.h;
+    final laneCount = widget.lanes.length;
+    final stepColumnCount = _stepColumnCount;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final viewportWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : contentWidth;
-        final viewportHeight = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : contentHeight;
-        _maxDx = math.max(0.0, contentWidth - viewportWidth);
-        _maxDy = math.max(0.0, contentHeight - viewportHeight);
-        _lastViewportHeight = viewportHeight;
-        _dx = _dx.clamp(0.0, _maxDx);
-        _dy = _dy.clamp(0.0, _maxDy);
-
-        return ClipRect(
-          child: Listener(
-            key: widget.scrollKey,
-            onPointerSignal: (event) {
-              if (event is PointerScrollEvent) {
-                _applyDelta(-event.scrollDelta);
-              }
-            },
-            child: GestureDetector(
-              key: widget.dragKey,
-              behavior: HitTestBehavior.opaque,
-              onPanUpdate: (details) => _applyDelta(details.delta),
-              child: Transform.translate(
-                offset: Offset(-_dx, -_dy),
-                // 內容尺寸可能大於 viewport（二維捲動的前提）；祖先
-                // `LayoutBuilder` 常給出 tight 上界，`SizedBox` 的
-                // `enforce()` 會把內容夾回 viewport 大小。`OverflowBox`
-                // 忽略父層傳入約束，讓內容依真實內容尺寸排版，超出部分
-                // 由外層 `ClipRect` 裁切、由 `Transform.translate` 位移
-                // 顯示範圍。
-                child: OverflowBox(
-                  minWidth: contentWidth,
-                  maxWidth: contentWidth,
-                  minHeight: contentHeight,
-                  maxHeight: contentHeight,
-                  alignment: Alignment.topLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final lane in widget.lanes)
-                        _buildLaneRow(context, l10n, lane, columnCount),
-                      _buildArrowRow(columnCount),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLaneRow(
-    BuildContext context,
-    AppLocalizations l10n,
-    SwimlaneLane lane,
-    int columnCount,
-  ) {
-    final nodesByColumn = <int, SwimlaneNode>{
-      for (final entry in lane.nodes) entry.$2: entry.$1,
-    };
-    final highlighted = lane.name == widget.laneHighlight;
-
-    return Semantics(
-      label: l10n.laneA11yLabel(lane.name),
-      container: true,
-      child: Container(
-        height: LayoutSize.laneRowHeight.h,
-        decoration: BoxDecoration(
-          color: highlighted ? AppColors.surfaceIconTint : null,
-          border: Border(
-            bottom: BorderSide(color: AppColors.borderStrong, width: 1),
+    return KeyedSubtree(
+      key: widget.dragKey,
+      child: TableView.builder(
+        key: widget.scrollKey,
+        diagonalDragBehavior: DiagonalDragBehavior.free,
+        horizontalDetails: ScrollableDetails.horizontal(
+          controller: _hController,
+          physics: const _NoInertiaScrollPhysics(),
+        ),
+        verticalDetails: ScrollableDetails.vertical(
+          controller: _vController,
+          physics: const _NoInertiaScrollPhysics(),
+        ),
+        pinnedColumnCount: 1,
+        // +1：欄 0 為釘選的泳道名欄；列 laneCount 為底部箭頭列（一般列，
+        // 非 trailingPinnedRowCount 釘選——實測 trailingPinnedRowCount 搭配
+        // jumpTo 大距離跳轉會觸發 two_dimensional_scrollables 0.5.4 內部
+        // child-reuse 例外，見本檔頂端 dartdoc「契約值實測」段）。
+        columnCount: stepColumnCount + 1,
+        rowCount: laneCount + 1,
+        columnBuilder: (column) => TableSpan(
+          extent: FixedTableSpanExtent(
+            column == 0 ? LayoutSize.laneLabelWidth.w : _stepColumnWidth.w,
           ),
         ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: LayoutSize.laneLabelWidth.w,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: AppText(lane.name, maxLines: 1),
-                ),
-              ),
+        rowBuilder: (row) {
+          if (row == laneCount) {
+            return TableSpan(extent: FixedTableSpanExtent(_arrowRowHeight.h));
+          }
+          final highlighted = widget.lanes[row].name == widget.laneHighlight;
+          return TableSpan(
+            extent: FixedTableSpanExtent(LayoutSize.laneRowHeight.h),
+            backgroundDecoration: highlighted
+                ? const TableSpanDecoration(color: AppColors.surfaceIconTint)
+                : null,
+            // 列間虛線：與 Section 容器（section.dart）的私有虛線繪製類別
+            // 視覺重複（同色 token、同線寬、同短劃長度），因該類為
+            // section.dart 私有型別本票不改該檔，改在本檔自寫等效實作；
+            // 待後續回填共用元件庫時應抽出共用的 dashed painter 供兩者引用。
+            foregroundDecoration: row < laneCount
+                ? const _DashedBottomDecoration()
+                : null,
+          );
+        },
+        cellBuilder: (context, vicinity) {
+          if (vicinity.row == laneCount) {
+            return TableViewCell(child: _buildArrowCell(vicinity.column));
+          }
+          return TableViewCell(
+            child: _buildLaneCell(
+              context,
+              l10n,
+              widget.lanes[vicinity.row],
+              vicinity.column,
             ),
-            for (var column = 0; column < columnCount; column++)
-              SizedBox(
-                width: _stepColumnWidth.w,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: Space.xs.w),
-                  child: Center(
-                    child: nodesByColumn[column] ?? const SizedBox.shrink(),
-                  ),
-                ),
-              ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildArrowRow(int columnCount) {
+  Widget _buildLaneCell(
+    BuildContext context,
+    AppLocalizations l10n,
+    SwimlaneLane lane,
+    int column,
+  ) {
+    if (column == 0) {
+      return Semantics(
+        label: l10n.laneA11yLabel(lane.name),
+        container: true,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: AppText(lane.name, maxLines: 1),
+          ),
+        ),
+      );
+    }
+    final stepColumn = column - 1;
+    final node = lane.nodes
+        .where((entry) => entry.$2 == stepColumn)
+        .map((entry) => entry.$1)
+        .firstOrNull;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: Space.xs.w),
+      child: Center(child: node ?? const SizedBox.shrink()),
+    );
+  }
+
+  Widget _buildArrowCell(int column) {
+    if (column == 0) {
+      return const SizedBox.shrink();
+    }
     return ExcludeSemantics(
-      child: SizedBox(
-        height: _arrowRowHeight.h,
-        child: Row(
-          children: [
-            SizedBox(width: LayoutSize.laneLabelWidth.w),
-            for (var column = 0; column < columnCount; column++)
-              SizedBox(
-                width: _stepColumnWidth.w,
-                child: Center(
-                  child: AppIcon(
-                    icon: Icons.arrow_forward,
-                    size: IconSize.sm,
-                    color: AppColors.textDisabled,
-                  ),
-                ),
-              ),
-          ],
+      child: Center(
+        child: AppIcon(
+          icon: Icons.arrow_forward,
+          size: IconSize.sm,
+          color: AppColors.textDisabled,
         ),
       ),
     );
@@ -296,3 +278,49 @@ const double _stepColumnWidth = 96;
 
 /// 底部箭頭列高：裝飾列，非畫布量測值，理由同 [_stepColumnWidth]。
 const double _arrowRowHeight = 28;
+
+/// 泳道列的列間虛線裝飾：於列底畫等距短劃。與 Section 容器
+/// （section.dart）的私有虛線繪製類別視覺等效（同色
+/// `AppColors.borderStrong`、線寬 1、短劃 4、間隔 3），因該類為私有型別
+/// 無法跨檔重用，本檔自寫一份；待後續回填共用元件庫票次時應抽出共用實作
+/// （見本檔 rowBuilder 的行內註解）。
+class _DashedBottomDecoration extends TableSpanDecoration {
+  const _DashedBottomDecoration();
+
+  static const double _strokeWidth = 1;
+  static const double _dashWidth = 4;
+  static const double _dashGap = 3;
+
+  @override
+  void paint(TableSpanDecorationPaintDetails details) {
+    final paint = Paint()
+      ..color = AppColors.borderStrong
+      ..strokeWidth = _strokeWidth;
+    final y = details.rect.bottom;
+    var x = details.rect.left;
+    while (x < details.rect.right) {
+      final segmentEnd = math.min(x + _dashWidth, details.rect.right);
+      details.canvas.drawLine(Offset(x, y), Offset(segmentEnd, y), paint);
+      x += _dashWidth + _dashGap;
+    }
+  }
+}
+
+/// 無慣性 clamping 捲動物理：拖曳位移 1:1 反映於 offset、至邊界生硬停止
+/// （`ClampingScrollPhysics` 已提供無回彈），並關閉放開後的 ballistic
+/// 模擬取消慣性滑動（SPEC-004 4.38「互動反應」、SPEC-003 §1.3）。
+class _NoInertiaScrollPhysics extends ClampingScrollPhysics {
+  const _NoInertiaScrollPhysics({super.parent});
+
+  @override
+  _NoInertiaScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _NoInertiaScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position,
+    double velocity,
+  ) =>
+      null;
+}
