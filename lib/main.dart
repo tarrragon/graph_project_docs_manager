@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'app/shell.dart';
 import 'l10n/app_localizations.dart';
-import 'tokens/colors.dart';
+import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
 
 /// 設計稿基準尺寸（logical pixels）。
@@ -107,27 +107,30 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       key: HomePage.pageKey,
       appBar: AppBar(
-        title: Text(l10n.appTitle, style: TextStyle(fontSize: 18.sp)),
-        toolbarHeight: 56.h,
+        title: Text(l10n.appTitle, style: TextStyle(fontSize: 18.sp)), // 18.sp 無對應 token，見票面 Problem Analysis
+        toolbarHeight: 56.h, // 56.h 無對應 token，見票面 Problem Analysis
       ),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          padding: EdgeInsets.symmetric(
+            horizontal: Space.lg.w,
+            vertical: Space.md.h,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _WorkspaceBanner(state: _workspace, onChoose: _chooseFolder),
-              SizedBox(height: 12.h),
+              SizedBox(height: Space.md.h),
               const _StatsRow(),
-              SizedBox(height: 16.h),
+              SizedBox(height: Space.lg.h),
               Text(
                 l10n.sectionRecentDocuments,
                 style: TextStyle(
-                  fontSize: 16.sp,
+                  fontSize: 16.sp, // 16.sp 無對應 token，見票面 Problem Analysis
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: Space.sm.h),
               // Expanded 交出剩餘高度給可捲動區，是這個版型不會垂直 overflow
               // 的關鍵：Column 的固定高度子項總和永遠小於可用高度。
               const Expanded(child: _DocumentList()),
@@ -176,10 +179,10 @@ class _WorkspaceBanner extends StatelessWidget {
 
     return Container(
       key: bannerKey,
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.all(Space.md.w),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(10.r),
+        borderRadius: BorderRadius.circular(10.r), // 10.r 無對應 token，見票面 Problem Analysis
       ),
       child: Row(
         children: [
@@ -188,10 +191,10 @@ class _WorkspaceBanner extends StatelessWidget {
               message,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13.sp),
+              style: TextStyle(fontSize: 13.sp), // 13.sp 無對應 token，見票面 Problem Analysis
             ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: Space.md.w),
           FilledButton(onPressed: onChoose, child: Text(action)),
         ],
       ),
@@ -216,7 +219,7 @@ class _StatsRow extends StatelessWidget {
           // Expanded 讓三張卡片均分寬度，而非各自撐開 —— 這是 Row 水平
           // overflow 最常見的成因，也是窄螢幕上第一個爆掉的地方。
           Expanded(child: _StatCard(label: label, value: value)),
-          if (label != items.last.$1) SizedBox(width: 8.w),
+          if (label != items.last.$1) SizedBox(width: Space.sm.w),
         ],
       ],
     );
@@ -233,10 +236,13 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: Space.md.w,
+        vertical: 14.h, // 14.h 無對應 token，見票面 Problem Analysis
+      ),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(Radius.lg.r),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -244,14 +250,17 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold), // 22.sp 無對應 token，見票面 Problem Analysis
           ),
-          SizedBox(height: 2.h),
+          SizedBox(height: Space.xxs.h),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12.sp, color: scheme.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: AppFontSize.body.sp,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -273,29 +282,29 @@ class _DocumentList extends StatelessWidget {
     ];
     return ListView.separated(
       itemCount: docs.length,
-      separatorBuilder: (_, _) => SizedBox(height: 8.h),
+      separatorBuilder: (_, _) => SizedBox(height: Space.sm.h),
       itemBuilder: (context, index) => Container(
-        padding: EdgeInsets.all(12.w),
+        padding: EdgeInsets.all(Space.md.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10.r),
+          borderRadius: BorderRadius.circular(10.r), // 10.r 無對應 token，見票面 Problem Analysis
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
         child: Row(
           children: [
-            Icon(Icons.description_outlined, size: 20.r),
-            SizedBox(width: 10.w),
+            Icon(Icons.description_outlined, size: 20.r), // 20.r 無對應 token，見票面 Problem Analysis
+            SizedBox(width: 10.w), // 10.w 無對應 token，見票面 Problem Analysis
             // Expanded + ellipsis：長標題在窄螢幕上收斂而非撐破 Row。
             Expanded(
               child: Text(
                 docs[index],
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14.sp),
+                style: TextStyle(fontSize: AppFontSize.subtitle.sp),
               ),
             ),
-            Icon(Icons.chevron_right, size: 20.r),
+            Icon(Icons.chevron_right, size: 20.r), // 20.r 無對應 token，見票面 Problem Analysis
           ],
         ),
       ),
