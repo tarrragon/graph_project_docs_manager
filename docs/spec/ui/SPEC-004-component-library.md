@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-02"
-version: "1.8"
+version: "1.9"
 owner: lavender-interface-designer
 
 domain: "ui"
