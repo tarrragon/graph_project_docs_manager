@@ -12,6 +12,7 @@ export 'badge_row.dart';
 export 'button_row.dart';
 export 'divider.dart';
 export 'document_body.dart';
+export 'empty_state.dart';
 export 'expander_icon.dart';
 export 'list_row.dart';
 export 'page_column.dart';
