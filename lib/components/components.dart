@@ -29,4 +29,5 @@ export 'section.dart';
 export 'segmented_control.dart';
 export 'split_row.dart';
 export 'swimlane_node.dart';
+export 'switcher_overlay.dart';
 export 'two_column_layout.dart';
