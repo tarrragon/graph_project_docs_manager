@@ -32,5 +32,6 @@ export 'search_field.dart';
 export 'section.dart';
 export 'segmented_control.dart';
 export 'split_row.dart';
+export 'step_number.dart';
 export 'swimlane_node.dart';
 export 'two_column_layout.dart';
