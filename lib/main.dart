@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'app/shell.dart';
+import 'components/app_text.dart';
 import 'l10n/app_localizations.dart';
-import 'tokens/colors.dart';
+import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
 
 /// 設計稿基準尺寸（logical pixels）。
@@ -107,27 +108,27 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       key: HomePage.pageKey,
       appBar: AppBar(
-        title: Text(l10n.appTitle, style: TextStyle(fontSize: 18.sp)),
-        toolbarHeight: 56.h,
+        title: AppText(l10n.appTitle, variant: AppTextVariant.title),
+        toolbarHeight: LayoutSize.titleBarHeight.h,
       ),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          padding: EdgeInsets.symmetric(
+            horizontal: Space.lg.w,
+            vertical: Space.md.h,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _WorkspaceBanner(state: _workspace, onChoose: _chooseFolder),
-              SizedBox(height: 12.h),
+              SizedBox(height: Space.md.h),
               const _StatsRow(),
-              SizedBox(height: 16.h),
-              Text(
+              SizedBox(height: Space.lg.h),
+              AppText(
                 l10n.sectionRecentDocuments,
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+                variant: AppTextVariant.subtitle,
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: Space.sm.h),
               // Expanded 交出剩餘高度給可捲動區，是這個版型不會垂直 overflow
               // 的關鍵：Column 的固定高度子項總和永遠小於可用高度。
               const Expanded(child: _DocumentList()),
@@ -176,22 +177,18 @@ class _WorkspaceBanner extends StatelessWidget {
 
     return Container(
       key: bannerKey,
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.all(Space.md.w),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(10.r),
+        // 10 無精確匹配值，取最近檔位 Radius.md(8)，見票面 Problem Analysis 對照表
+        borderRadius: BorderRadius.circular(Radius.md.r),
       ),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              message,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13.sp),
-            ),
+            child: AppText(message, variant: AppTextVariant.body, maxLines: 2),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: Space.md.w),
           FilledButton(onPressed: onChoose, child: Text(action)),
         ],
       ),
@@ -216,7 +213,7 @@ class _StatsRow extends StatelessWidget {
           // Expanded 讓三張卡片均分寬度，而非各自撐開 —— 這是 Row 水平
           // overflow 最常見的成因，也是窄螢幕上第一個爆掉的地方。
           Expanded(child: _StatCard(label: label, value: value)),
-          if (label != items.last.$1) SizedBox(width: 8.w),
+          if (label != items.last.$1) SizedBox(width: Space.sm.w),
         ],
       ],
     );
@@ -233,26 +230,22 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: Space.md.w,
+        // 14 等距於 Space.md(12)／Space.lg(16)，取 lg 維持與水平間距的相對關係
+        vertical: Space.lg.h,
+      ),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(Radius.lg.r),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            value,
-            style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12.sp, color: scheme.onSurfaceVariant),
-          ),
+          AppText(value, variant: AppTextVariant.title),
+          SizedBox(height: Space.xxs.h),
+          AppText(label, variant: AppTextVariant.body, secondary: true),
         ],
       ),
     );
@@ -273,29 +266,27 @@ class _DocumentList extends StatelessWidget {
     ];
     return ListView.separated(
       itemCount: docs.length,
-      separatorBuilder: (_, _) => SizedBox(height: 8.h),
+      separatorBuilder: (_, _) => SizedBox(height: Space.sm.h),
       itemBuilder: (context, index) => Container(
-        padding: EdgeInsets.all(12.w),
+        padding: EdgeInsets.all(Space.md.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10.r),
+          // 10 無精確匹配值，取最近檔位 Radius.md(8)，見票面 Problem Analysis 對照表
+          borderRadius: BorderRadius.circular(Radius.md.r),
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
         child: Row(
           children: [
-            Icon(Icons.description_outlined, size: 20.r),
-            SizedBox(width: 10.w),
+            // 20 無精確匹配值，取最近檔位 LayoutSize.iconLg(17)，見票面 Problem Analysis 對照表
+            Icon(Icons.description_outlined, size: LayoutSize.iconLg.r),
+            // 10 等距於 Space.sm(8)／Space.md(12)，取 sm 維持列表緊湊感
+            SizedBox(width: Space.sm.w),
             // Expanded + ellipsis：長標題在窄螢幕上收斂而非撐破 Row。
             Expanded(
-              child: Text(
-                docs[index],
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14.sp),
-              ),
+              child: AppText(docs[index], variant: AppTextVariant.subtitle),
             ),
-            Icon(Icons.chevron_right, size: 20.r),
+            Icon(Icons.chevron_right, size: LayoutSize.iconLg.r),
           ],
         ),
       ),
