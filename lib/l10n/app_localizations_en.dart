@@ -244,4 +244,191 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sourceFileStillMissingMessage => 'File still not found';
+
+  @override
+  String get expanderLabel => 'Expand or collapse';
+
+  @override
+  String get searchPlaceholder => 'Search';
+
+  @override
+  String get searchClearAction => 'Clear search';
+
+  @override
+  String get filterAllOption => 'All';
+
+  @override
+  String filterA11yLabel(String label, String value) {
+    return '$label filter, current: $value';
+  }
+
+  @override
+  String get filterStatusLabel => 'Status';
+
+  @override
+  String get filterPriorityLabel => 'Priority';
+
+  @override
+  String sortA11yLabel(String label, String order) {
+    return '$label, sortable, current: $order';
+  }
+
+  @override
+  String get sortNone => 'Unsorted';
+
+  @override
+  String get sortAscending => 'Ascending';
+
+  @override
+  String get sortDescending => 'Descending';
+
+  @override
+  String get columnId => 'ID';
+
+  @override
+  String get columnTitle => 'Title';
+
+  @override
+  String get columnStatus => 'Status';
+
+  @override
+  String get columnPriority => 'Priority';
+
+  @override
+  String get columnStep => 'Step';
+
+  @override
+  String get columnDomain => 'Domain';
+
+  @override
+  String get columnEvents => 'Events';
+
+  @override
+  String matrixCellA11yLabel(String domain, String uc, String relation) {
+    return '$domain × $uc: $relation';
+  }
+
+  @override
+  String get legendDirect => 'Direct';
+
+  @override
+  String get legendIndirect => 'Indirect';
+
+  @override
+  String get legendNone => 'None';
+
+  @override
+  String matrixSubtotalA11yLabel(int count) {
+    return 'Subtotal $count';
+  }
+
+  @override
+  String laneA11yLabel(String name) {
+    return 'Lane $name';
+  }
+
+  @override
+  String get laneNodeActive => 'Active';
+
+  @override
+  String get laneNodeInactive => 'Inactive';
+
+  @override
+  String stepNumberA11yLabel(int number) {
+    return 'Step $number';
+  }
+
+  @override
+  String get gapMarkerLabel => 'Gap';
+
+  @override
+  String get damagedEdgeMarkerLabel => 'Edge damaged';
+
+  @override
+  String get damagedDetailMarkerLabel => 'Detail damaged';
+
+  @override
+  String relationItemA11yLabel(String id) {
+    return 'Related node $id';
+  }
+
+  @override
+  String get currentProjectA11yLabel => 'Current project';
+
+  @override
+  String projectSummaryLabel(int nodes, int tickets) {
+    return '$nodes nodes · $tickets tickets';
+  }
+
+  @override
+  String healthBadgeA11yLabel(int count) {
+    return '$count issues';
+  }
+
+  @override
+  String get switcherTitle => 'Switch project';
+
+  @override
+  String get schemaAppVersionLabel => 'Supported schema version';
+
+  @override
+  String get schemaProjectVersionLabel => 'Project version';
+
+  @override
+  String treeDepthA11yLabel(int depth) {
+    return 'Level $depth';
+  }
+
+  @override
+  String get openExternallyA11yLabel => 'Opens externally';
+
+  @override
+  String get loadingSkeletonA11yLabel => 'Loading';
+
+  @override
+  String progressA11yLabel(int parsed, int total) {
+    return 'Progress $parsed of $total';
+  }
+
+  @override
+  String get cellDetailPrompt => 'Select a cell to view details';
+
+  @override
+  String get cellDetailNotInvolved => 'This domain is not involved in this UC';
+
+  @override
+  String get cellDetailCloseAction => 'Close';
+
+  @override
+  String get cellDetailViewInSwimlaneAction => 'View in swimlane';
+
+  @override
+  String get modeMatrixLabel => 'Matrix';
+
+  @override
+  String get modeSwimlaneLabel => 'Swimlane';
+
+  @override
+  String get modeListLabel => 'List';
+
+  @override
+  String get modeTopicLabel => 'Topic';
+
+  @override
+  String ticketsSummaryLabel(int from, int to, int total) {
+    return 'Showing $from–$to of $total';
+  }
+
+  @override
+  String get ticketsVirtualScrollNote => 'Virtual scrolling, no pagination';
+
+  @override
+  String topicSectionSummary(int count, String priority) {
+    return '($count tasks, top priority=$priority)';
+  }
+
+  @override
+  String gapSectionCount(int count) {
+    return '$count items';
+  }
 }
