@@ -33,4 +33,5 @@ export 'section.dart';
 export 'segmented_control.dart';
 export 'split_row.dart';
 export 'swimlane_node.dart';
+export 'toolbar.dart';
 export 'two_column_layout.dart';
