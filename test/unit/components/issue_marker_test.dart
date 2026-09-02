@@ -2,7 +2,6 @@
 library;
 
 import 'package:flutter/material.dart' as material;
-import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -227,7 +226,7 @@ void main() {
       );
 
       final data = tester.getSemantics(find.byKey(damagedEdgeKey));
-      expect(data.hasFlag(SemanticsFlag.isButton), isTrue);
+      expect(data.flagsCollection.isButton, isTrue);
       expect(data.label, contains('邊損壞'));
     });
 
@@ -244,7 +243,7 @@ void main() {
       );
 
       final data = tester.getSemantics(find.byKey(damagedDetailKey));
-      expect(data.hasFlag(SemanticsFlag.isButton), isTrue);
+      expect(data.flagsCollection.isButton, isTrue);
       expect(data.label, contains('詳情損壞'));
       expect(data.label, contains('2419'));
     });
@@ -268,7 +267,7 @@ void main() {
       );
 
       final data = tester.getSemantics(find.byKey(gapKey));
-      expect(data.hasFlag(SemanticsFlag.isButton), isTrue);
+      expect(data.flagsCollection.isButton, isTrue);
       expect(data.label, '缺口');
     });
   });

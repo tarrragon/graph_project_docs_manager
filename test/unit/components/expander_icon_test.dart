@@ -1,8 +1,9 @@
 /// ExpanderIcon 元件測試（SPEC-004 4.18）。
 library;
 
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -102,8 +103,8 @@ void main() {
       expect(callCount, 1);
 
       final data = tester.getSemantics(find.byKey(testKey));
-      expect(data.hasFlag(SemanticsFlag.isButton), isTrue);
-      expect(data.hasFlag(SemanticsFlag.isExpanded), isFalse);
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.flagsCollection.isExpanded, Tristate.isFalse);
       expect(data.label, contains('展開或收合'));
     });
 
@@ -118,7 +119,7 @@ void main() {
       );
 
       final data = tester.getSemantics(find.byKey(testKey));
-      expect(data.hasFlag(SemanticsFlag.isExpanded), isTrue);
+      expect(data.flagsCollection.isExpanded, Tristate.isTrue);
     });
 
     testWidgets('leaf 無語意節點', (tester) async {
