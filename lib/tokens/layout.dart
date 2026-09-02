@@ -22,6 +22,16 @@
 /// | [LayoutSize.iconMd] | 15 | 15 | 圖示尺寸階：中 |
 /// | [LayoutSize.iconLg] | 17 | 17 | 圖示尺寸階：大 |
 /// | [LayoutSize.hitTargetMin] | 28 | 25～31（見〈最小命中區〉） | 可點元件最小命中區（桌機指標形態） |
+/// | [LayoutSize.titleBarHeight] | 36 | 36（九份 artboard 頂端標題列 height，一致） | `AppShell` 標題列高（SPEC-004 4.27） |
+/// | [LayoutSize.ticketIdColumnWidth] | 132 | 132（`TicketListA` grid-template-columns 第 1 欄） | `TableRow.ticket` ID 固定寬欄（SPEC-004 4.35） |
+/// | [LayoutSize.ticketStatusColumnWidth] | 84 | 84（`TicketListA` 第 3 欄） | `TableRow.ticket` 狀態固定寬欄 |
+/// | [LayoutSize.ticketPriorityColumnWidth] | 40 | 40（`TicketListA` 第 4 欄） | `TableRow.ticket` 優先固定寬欄 |
+/// | [LayoutSize.ticketMarkerColumnWidth] | 22 | 22（`TicketListA` 第 5 欄） | `TableRow.ticket` 標記固定寬欄（欄間 gap 12 = [Space.md]，非本檔範圍） |
+/// | [LayoutSize.stepNumberColumnWidth] | 26 | 26（`UCFlowB` grid-template-columns 第 1 欄） | `TableRow.step` 序號固定寬欄（SPEC-004 4.35） |
+/// | [LayoutSize.stepDomainColumnWidth] | 118 | 118（`UCFlowB` 第 3 欄） | `TableRow.step` domain 固定寬欄（第 2、4 欄為 `1fr` 等分填滿欄，非固定寬，不建 token） |
+/// | [LayoutSize.treeIndent] | 24 | 24（`TraceA` 各層 padding-left 0/24/48/72，等差） | `Tree` 每層縮排（SPEC-004 4.39） |
+/// | [LayoutSize.stepNumberSize] | 24 | 16（`Main` 詳情卡方形 `border-radius:4px`）與 24（`UCFlowB` 圓形 `border-radius:12px`）兩值，見〈StepNumber 尺寸收斂〉 | `StepNumber` 直徑（SPEC-004 4.17） |
+/// | [LayoutSize.matrixColumnWidth] | 122 | 畫布為 `repeat(5,1fr)` 無固定值，由 `Main` 版面推算，見〈MatrixGrid UC 欄寬定案〉。**待 PM 核定** | `MatrixGrid` UC 欄寬（SPEC-004 4.37；委派 `two_dimensional_scrollables` 需固定欄寬） |
 ///
 /// 導覽項的 padding（實測 7、10）不在本檔新增：兩值已落於
 /// `spacing.dart` 的 [Space.sm]（8，吸收原始值 7、8、9、10）區間內，
@@ -53,6 +63,33 @@
 /// 15px，高度 5+15+5=25px），範圍 25～31px。桌機指標（滑鼠／trackpad）不像
 /// 觸控需 44pt 級門檻，取 macOS 標準控制項 regular 高度 28pt 作為下限，
 /// 落於實測範圍內，可點元件的尺寸契約引用本值作最小命中區下限。
+///
+/// ### StepNumber 尺寸收斂（[LayoutSize.stepNumberSize]）
+///
+/// 畫布兩處 `StepNumber` 尺寸不同：`Main` 詳情卡步驟清單用 16px 方形
+/// （`border-radius:4px`），`UCFlowB` 步驟流用 24px 圓形
+/// （`border-radius:12px`，半徑恰為直徑一半）。SPEC-004 §3.7 第 11 項已核定
+/// 形態統一為圓形，故收斂值採圓形所在的 24，非方形的 16。
+///
+/// ### MatrixGrid UC 欄寬定案（[LayoutSize.matrixColumnWidth]）
+///
+/// 畫布 `Main.dc.html` 的 `DomainSwimlane` 矩陣格 grid-template-columns 為
+/// `132px repeat(5,1fr) 46px`（無 gap），5 個 UC 欄以 `1fr` 等分，無固定
+/// 像素值可直接量測；`MatrixGrid` 委派 `two_dimensional_scrollables` 做二維
+/// 捲動，欄寬須為固定值，故以 `Main` 版面實際可用寬度反推：
+///
+/// ```text
+/// artboard 寬 1280 − sidebarWidth 172 = 1108
+/// 1108 − 內容區 padding 20×2           = 1068（雙欄列寬）
+/// 1068 − 右欄 detailPaneWidth 236 − 雙欄 gap 14 = 818（矩陣面板寬）
+/// 818 − 面板 padding 14×2 − border 1×2  = 788（grid 內容寬）
+/// 788 − matrixLeadColumnWidth 132 − matrixSubtotalWidth 46 = 610（5 UC 欄合計）
+/// 610 / 5 = 122
+/// ```
+///
+/// 推算值 122 非畫布直接量測值，屬本票依既有面板尺寸鏈反推的提案值，
+/// dartdoc 與 SPEC-004 4.37 皆標「待 PM 核定」；核定前元件票不得引用本值
+/// 排入正式畫面（依 SPEC-004 §4.0.9 待決清單既有約束）。
 library;
 
 /// 佈局尺寸離散值。畫面只引用具名常數，不接受任意數字。
@@ -71,4 +108,15 @@ abstract final class LayoutSize {
   static const double iconMd = 15; // magic-exempt token 定義本身
   static const double iconLg = 17; // magic-exempt token 定義本身
   static const double hitTargetMin = 28; // magic-exempt token 定義本身
+  static const double titleBarHeight = 36; // magic-exempt token 定義本身
+  static const double ticketIdColumnWidth = 132; // magic-exempt token 定義本身
+  static const double ticketStatusColumnWidth = 84; // magic-exempt token 定義本身
+  static const double ticketPriorityColumnWidth = 40; // magic-exempt token 定義本身
+  static const double ticketMarkerColumnWidth = 22; // magic-exempt token 定義本身
+  static const double stepNumberColumnWidth = 26; // magic-exempt token 定義本身
+  static const double stepDomainColumnWidth = 118; // magic-exempt token 定義本身
+  static const double treeIndent = 24; // magic-exempt token 定義本身
+  static const double stepNumberSize = 24; // magic-exempt token 定義本身
+  /// 提案值，待 PM 核定（見 dartdoc〈MatrixGrid UC 欄寬定案〉推算過程）。
+  static const double matrixColumnWidth = 122; // magic-exempt token 定義本身
 }

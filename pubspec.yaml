@@ -23,6 +23,7 @@ dependencies:
   flutter_markdown_plus: ^1.0.12
   re_editor: ^0.10.0
   re_highlight: ^0.0.3
+  two_dimensional_scrollables: ^0.5.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
