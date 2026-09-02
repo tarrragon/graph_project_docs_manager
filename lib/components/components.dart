@@ -13,6 +13,7 @@ export 'button_row.dart';
 export 'divider.dart';
 export 'expander_icon.dart';
 export 'list_row.dart';
+export 'nav_item.dart';
 export 'page_column.dart';
 export 'page_title.dart';
 export 'panel.dart';
