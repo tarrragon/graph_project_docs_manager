@@ -499,6 +499,324 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'檔案仍不存在'**
   String get sourceFileStillMissingMessage;
+
+  /// SPEC-004 §4.18：Expander 展開/收合朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'展開或收合'**
+  String get expanderLabel;
+
+  /// SPEC-004 §4.12：SearchField 佔位文字
+  ///
+  /// In zh, this message translates to:
+  /// **'搜尋'**
+  String get searchPlaceholder;
+
+  /// SPEC-004 §4.12：SearchField 清除按鈕文案
+  ///
+  /// In zh, this message translates to:
+  /// **'清除搜尋'**
+  String get searchClearAction;
+
+  /// SPEC-004 §4.13：FilterDropdown「全部」選項文案
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get filterAllOption;
+
+  /// SPEC-004 §4.13：FilterDropdown 朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'{label} 篩選，目前：{value}'**
+  String filterA11yLabel(String label, String value);
+
+  /// SPEC-004 §4：畫面呼叫端使用的狀態篩選標籤（4.13 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'狀態'**
+  String get filterStatusLabel;
+
+  /// SPEC-004 §4：畫面呼叫端使用的優先篩選標籤（4.13 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'優先'**
+  String get filterPriorityLabel;
+
+  /// SPEC-004 §4.14：TableColumnHeader 排序朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}，可排序，目前：{order}'**
+  String sortA11yLabel(String label, String order);
+
+  /// SPEC-004 §4.14：排序狀態文案
+  ///
+  /// In zh, this message translates to:
+  /// **'未排序'**
+  String get sortNone;
+
+  /// SPEC-004 §4.14：排序狀態文案
+  ///
+  /// In zh, this message translates to:
+  /// **'遞增'**
+  String get sortAscending;
+
+  /// SPEC-004 §4.14：排序狀態文案
+  ///
+  /// In zh, this message translates to:
+  /// **'遞減'**
+  String get sortDescending;
+
+  /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'ID'**
+  String get columnId;
+
+  /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'標題'**
+  String get columnTitle;
+
+  /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'狀態'**
+  String get columnStatus;
+
+  /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'優先'**
+  String get columnPriority;
+
+  /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'步驟'**
+  String get columnStep;
+
+  /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'Domain'**
+  String get columnDomain;
+
+  /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
+  ///
+  /// In zh, this message translates to:
+  /// **'發送事件'**
+  String get columnEvents;
+
+  /// SPEC-004 §4.15：MatrixGrid 格子朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'{domain} × {uc}：{relation}'**
+  String matrixCellA11yLabel(String domain, String uc, String relation);
+
+  /// SPEC-004 §4.5（legend）、4.15、§1 畫面：關係圖例文案
+  ///
+  /// In zh, this message translates to:
+  /// **'直接貫穿'**
+  String get legendDirect;
+
+  /// SPEC-004 §4.5（legend）、4.15、§1 畫面：關係圖例文案
+  ///
+  /// In zh, this message translates to:
+  /// **'間接依賴'**
+  String get legendIndirect;
+
+  /// SPEC-004 §4.5（legend）、4.15、§1 畫面：關係圖例文案
+  ///
+  /// In zh, this message translates to:
+  /// **'無關'**
+  String get legendNone;
+
+  /// SPEC-004 §4.37：MatrixGrid 小計朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'小計 {count}'**
+  String matrixSubtotalA11yLabel(int count);
+
+  /// SPEC-004 §4.38：泳道朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'泳道 {name}'**
+  String laneA11yLabel(String name);
+
+  /// SPEC-004 §4.16：泳道節點狀態文案
+  ///
+  /// In zh, this message translates to:
+  /// **'作用中'**
+  String get laneNodeActive;
+
+  /// SPEC-004 §4.16：泳道節點狀態文案
+  ///
+  /// In zh, this message translates to:
+  /// **'非作用中'**
+  String get laneNodeInactive;
+
+  /// SPEC-004 §4.17：StepNumber 朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'步驟 {number}'**
+  String stepNumberA11yLabel(int number);
+
+  /// SPEC-004 §4.6：缺口標記可見文字
+  ///
+  /// In zh, this message translates to:
+  /// **'缺口'**
+  String get gapMarkerLabel;
+
+  /// SPEC-004 §4.6：邊損壞標記朗讀文案
+  ///
+  /// In zh, this message translates to:
+  /// **'邊損壞'**
+  String get damagedEdgeMarkerLabel;
+
+  /// SPEC-004 §4.6：詳情損壞標記朗讀文案
+  ///
+  /// In zh, this message translates to:
+  /// **'詳情損壞'**
+  String get damagedDetailMarkerLabel;
+
+  /// SPEC-004 §4.19：RelationItem 朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'關聯節點 {id}'**
+  String relationItemA11yLabel(String id);
+
+  /// SPEC-004 §4.9：目前專案朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'目前專案'**
+  String get currentProjectA11yLabel;
+
+  /// SPEC-004 §4.9：專案摘要文案
+  ///
+  /// In zh, this message translates to:
+  /// **'{nodes} 節點 · {tickets} 票'**
+  String projectSummaryLabel(int nodes, int tickets);
+
+  /// SPEC-004 §4.5（health）：健康度徽章朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 個問題'**
+  String healthBadgeA11yLabel(int count);
+
+  /// SPEC-004 §4.42：專案切換器標題文案
+  ///
+  /// In zh, this message translates to:
+  /// **'切換專案'**
+  String get switcherTitle;
+
+  /// SPEC-004 §4.23：Schema 版本標籤文案
+  ///
+  /// In zh, this message translates to:
+  /// **'App 支援版本'**
+  String get schemaAppVersionLabel;
+
+  /// SPEC-004 §4.23：Schema 版本標籤文案
+  ///
+  /// In zh, this message translates to:
+  /// **'專案版本'**
+  String get schemaProjectVersionLabel;
+
+  /// SPEC-004 §4.39：Tree 深度朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {depth} 層'**
+  String treeDepthA11yLabel(int depth);
+
+  /// SPEC-004 §4.40（item）：外部開啟朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'在外部開啟'**
+  String get openExternallyA11yLabel;
+
+  /// SPEC-004 §4.24：載入骨架朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'載入中'**
+  String get loadingSkeletonA11yLabel;
+
+  /// SPEC-004 §4.24：進度朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'進度 {parsed} / {total}'**
+  String progressA11yLabel(int parsed, int total);
+
+  /// SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-003 §3.1）：格詳情卡提示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'點選一格檢視詳情'**
+  String get cellDetailPrompt;
+
+  /// SPEC-004 §1 畫面（SPEC-003 §3.1）：格詳情卡不參與文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此 domain 不參與此 UC'**
+  String get cellDetailNotInvolved;
+
+  /// SPEC-004 §1 畫面（4.4 text 呼叫端）：格詳情卡關閉動作文案
+  ///
+  /// In zh, this message translates to:
+  /// **'關閉'**
+  String get cellDetailCloseAction;
+
+  /// SPEC-004 §1 畫面（4.4 secondary 呼叫端）：格詳情卡跳轉泳道動作文案
+  ///
+  /// In zh, this message translates to:
+  /// **'在泳道中檢視'**
+  String get cellDetailViewInSwimlaneAction;
+
+  /// SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案
+  ///
+  /// In zh, this message translates to:
+  /// **'矩陣'**
+  String get modeMatrixLabel;
+
+  /// SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案
+  ///
+  /// In zh, this message translates to:
+  /// **'泳道'**
+  String get modeSwimlaneLabel;
+
+  /// SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案
+  ///
+  /// In zh, this message translates to:
+  /// **'列表'**
+  String get modeListLabel;
+
+  /// SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案
+  ///
+  /// In zh, this message translates to:
+  /// **'主題'**
+  String get modeTopicLabel;
+
+  /// SPEC-004 §4 畫面（4.29 footer 呼叫端）：票列表摘要文案
+  ///
+  /// In zh, this message translates to:
+  /// **'顯示 {from}–{to} / 共 {total}'**
+  String ticketsSummaryLabel(int from, int to, int total);
+
+  /// SPEC-004 §4 畫面：票列表虛擬捲動說明文案
+  ///
+  /// In zh, this message translates to:
+  /// **'虛擬捲動，不分頁'**
+  String get ticketsVirtualScrollNote;
+
+  /// SPEC-004 §4 畫面（4.40 sectionHeader 呼叫端）：主題區塊摘要文案
+  ///
+  /// In zh, this message translates to:
+  /// **'({count} tasks, 最高優先級={priority})'**
+  String topicSectionSummary(int count, String priority);
+
+  /// SPEC-004 §5 畫面（4.40 sectionHeader 呼叫端）：缺口區塊數量文案
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 項'**
+  String gapSectionCount(int count);
 }
 
 class _AppLocalizationsDelegate

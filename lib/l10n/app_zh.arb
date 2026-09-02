@@ -397,5 +397,367 @@
   "sourceFileStillMissingMessage": "檔案仍不存在",
   "@sourceFileStillMissingMessage": {
     "description": "SPEC-003 §3.6：action-nodeDetail-refresh 重新整理後，檔案仍不存在分支的 SnackBar 文案"
+  },
+
+  "expanderLabel": "展開或收合",
+  "@expanderLabel": {
+    "description": "SPEC-004 §4.18：Expander 展開/收合朗讀標籤"
+  },
+
+  "searchPlaceholder": "搜尋",
+  "@searchPlaceholder": {
+    "description": "SPEC-004 §4.12：SearchField 佔位文字"
+  },
+
+  "searchClearAction": "清除搜尋",
+  "@searchClearAction": {
+    "description": "SPEC-004 §4.12：SearchField 清除按鈕文案"
+  },
+
+  "filterAllOption": "全部",
+  "@filterAllOption": {
+    "description": "SPEC-004 §4.13：FilterDropdown「全部」選項文案"
+  },
+
+  "filterA11yLabel": "{label} 篩選，目前：{value}",
+  "@filterA11yLabel": {
+    "description": "SPEC-004 §4.13：FilterDropdown 朗讀標籤",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
+  "filterStatusLabel": "狀態",
+  "@filterStatusLabel": {
+    "description": "SPEC-004 §4：畫面呼叫端使用的狀態篩選標籤（4.13 呼叫端）"
+  },
+
+  "filterPriorityLabel": "優先",
+  "@filterPriorityLabel": {
+    "description": "SPEC-004 §4：畫面呼叫端使用的優先篩選標籤（4.13 呼叫端）"
+  },
+
+  "sortA11yLabel": "{label}，可排序，目前：{order}",
+  "@sortA11yLabel": {
+    "description": "SPEC-004 §4.14：TableColumnHeader 排序朗讀標籤",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "order": {
+        "type": "String"
+      }
+    }
+  },
+
+  "sortNone": "未排序",
+  "@sortNone": {
+    "description": "SPEC-004 §4.14：排序狀態文案"
+  },
+
+  "sortAscending": "遞增",
+  "@sortAscending": {
+    "description": "SPEC-004 §4.14：排序狀態文案"
+  },
+
+  "sortDescending": "遞減",
+  "@sortDescending": {
+    "description": "SPEC-004 §4.14：排序狀態文案"
+  },
+
+  "columnId": "ID",
+  "@columnId": {
+    "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
+  },
+
+  "columnTitle": "標題",
+  "@columnTitle": {
+    "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
+  },
+
+  "columnStatus": "狀態",
+  "@columnStatus": {
+    "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
+  },
+
+  "columnPriority": "優先",
+  "@columnPriority": {
+    "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
+  },
+
+  "columnStep": "步驟",
+  "@columnStep": {
+    "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
+  },
+
+  "columnDomain": "Domain",
+  "@columnDomain": {
+    "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
+  },
+
+  "columnEvents": "發送事件",
+  "@columnEvents": {
+    "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
+  },
+
+  "matrixCellA11yLabel": "{domain} × {uc}：{relation}",
+  "@matrixCellA11yLabel": {
+    "description": "SPEC-004 §4.15：MatrixGrid 格子朗讀標籤",
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "uc": {
+        "type": "String"
+      },
+      "relation": {
+        "type": "String"
+      }
+    }
+  },
+
+  "legendDirect": "直接貫穿",
+  "@legendDirect": {
+    "description": "SPEC-004 §4.5（legend）、4.15、§1 畫面：關係圖例文案"
+  },
+
+  "legendIndirect": "間接依賴",
+  "@legendIndirect": {
+    "description": "SPEC-004 §4.5（legend）、4.15、§1 畫面：關係圖例文案"
+  },
+
+  "legendNone": "無關",
+  "@legendNone": {
+    "description": "SPEC-004 §4.5（legend）、4.15、§1 畫面：關係圖例文案"
+  },
+
+  "matrixSubtotalA11yLabel": "小計 {count}",
+  "@matrixSubtotalA11yLabel": {
+    "description": "SPEC-004 §4.37：MatrixGrid 小計朗讀標籤",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "laneA11yLabel": "泳道 {name}",
+  "@laneA11yLabel": {
+    "description": "SPEC-004 §4.38：泳道朗讀標籤",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "laneNodeActive": "作用中",
+  "@laneNodeActive": {
+    "description": "SPEC-004 §4.16：泳道節點狀態文案"
+  },
+
+  "laneNodeInactive": "非作用中",
+  "@laneNodeInactive": {
+    "description": "SPEC-004 §4.16：泳道節點狀態文案"
+  },
+
+  "stepNumberA11yLabel": "步驟 {number}",
+  "@stepNumberA11yLabel": {
+    "description": "SPEC-004 §4.17：StepNumber 朗讀標籤",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+
+  "gapMarkerLabel": "缺口",
+  "@gapMarkerLabel": {
+    "description": "SPEC-004 §4.6：缺口標記可見文字"
+  },
+
+  "damagedEdgeMarkerLabel": "邊損壞",
+  "@damagedEdgeMarkerLabel": {
+    "description": "SPEC-004 §4.6：邊損壞標記朗讀文案"
+  },
+
+  "damagedDetailMarkerLabel": "詳情損壞",
+  "@damagedDetailMarkerLabel": {
+    "description": "SPEC-004 §4.6：詳情損壞標記朗讀文案"
+  },
+
+  "relationItemA11yLabel": "關聯節點 {id}",
+  "@relationItemA11yLabel": {
+    "description": "SPEC-004 §4.19：RelationItem 朗讀標籤",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+
+  "currentProjectA11yLabel": "目前專案",
+  "@currentProjectA11yLabel": {
+    "description": "SPEC-004 §4.9：目前專案朗讀標籤"
+  },
+
+  "projectSummaryLabel": "{nodes} 節點 · {tickets} 票",
+  "@projectSummaryLabel": {
+    "description": "SPEC-004 §4.9：專案摘要文案",
+    "placeholders": {
+      "nodes": {
+        "type": "int"
+      },
+      "tickets": {
+        "type": "int"
+      }
+    }
+  },
+
+  "healthBadgeA11yLabel": "{count} 個問題",
+  "@healthBadgeA11yLabel": {
+    "description": "SPEC-004 §4.5（health）：健康度徽章朗讀標籤",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "switcherTitle": "切換專案",
+  "@switcherTitle": {
+    "description": "SPEC-004 §4.42：專案切換器標題文案"
+  },
+
+  "schemaAppVersionLabel": "App 支援版本",
+  "@schemaAppVersionLabel": {
+    "description": "SPEC-004 §4.23：Schema 版本標籤文案"
+  },
+
+  "schemaProjectVersionLabel": "專案版本",
+  "@schemaProjectVersionLabel": {
+    "description": "SPEC-004 §4.23：Schema 版本標籤文案"
+  },
+
+  "treeDepthA11yLabel": "第 {depth} 層",
+  "@treeDepthA11yLabel": {
+    "description": "SPEC-004 §4.39：Tree 深度朗讀標籤",
+    "placeholders": {
+      "depth": {
+        "type": "int"
+      }
+    }
+  },
+
+  "openExternallyA11yLabel": "在外部開啟",
+  "@openExternallyA11yLabel": {
+    "description": "SPEC-004 §4.40（item）：外部開啟朗讀標籤"
+  },
+
+  "loadingSkeletonA11yLabel": "載入中",
+  "@loadingSkeletonA11yLabel": {
+    "description": "SPEC-004 §4.24：載入骨架朗讀標籤"
+  },
+
+  "progressA11yLabel": "進度 {parsed} / {total}",
+  "@progressA11yLabel": {
+    "description": "SPEC-004 §4.24：進度朗讀標籤",
+    "placeholders": {
+      "parsed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+
+  "cellDetailPrompt": "點選一格檢視詳情",
+  "@cellDetailPrompt": {
+    "description": "SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-003 §3.1）：格詳情卡提示文案"
+  },
+
+  "cellDetailNotInvolved": "此 domain 不參與此 UC",
+  "@cellDetailNotInvolved": {
+    "description": "SPEC-004 §1 畫面（SPEC-003 §3.1）：格詳情卡不參與文案"
+  },
+
+  "cellDetailCloseAction": "關閉",
+  "@cellDetailCloseAction": {
+    "description": "SPEC-004 §1 畫面（4.4 text 呼叫端）：格詳情卡關閉動作文案"
+  },
+
+  "cellDetailViewInSwimlaneAction": "在泳道中檢視",
+  "@cellDetailViewInSwimlaneAction": {
+    "description": "SPEC-004 §1 畫面（4.4 secondary 呼叫端）：格詳情卡跳轉泳道動作文案"
+  },
+
+  "modeMatrixLabel": "矩陣",
+  "@modeMatrixLabel": {
+    "description": "SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案"
+  },
+
+  "modeSwimlaneLabel": "泳道",
+  "@modeSwimlaneLabel": {
+    "description": "SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案"
+  },
+
+  "modeListLabel": "列表",
+  "@modeListLabel": {
+    "description": "SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案"
+  },
+
+  "modeTopicLabel": "主題",
+  "@modeTopicLabel": {
+    "description": "SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案"
+  },
+
+  "ticketsSummaryLabel": "顯示 {from}–{to} / 共 {total}",
+  "@ticketsSummaryLabel": {
+    "description": "SPEC-004 §4 畫面（4.29 footer 呼叫端）：票列表摘要文案",
+    "placeholders": {
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+
+  "ticketsVirtualScrollNote": "虛擬捲動，不分頁",
+  "@ticketsVirtualScrollNote": {
+    "description": "SPEC-004 §4 畫面：票列表虛擬捲動說明文案"
+  },
+
+  "topicSectionSummary": "({count} tasks, 最高優先級={priority})",
+  "@topicSectionSummary": {
+    "description": "SPEC-004 §4 畫面（4.40 sectionHeader 呼叫端）：主題區塊摘要文案",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "priority": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapSectionCount": "{count} 項",
+  "@gapSectionCount": {
+    "description": "SPEC-004 §5 畫面（4.40 sectionHeader 呼叫端）：缺口區塊數量文案",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }
