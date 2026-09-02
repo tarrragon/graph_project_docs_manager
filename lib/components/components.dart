@@ -9,6 +9,7 @@ export 'app_icon.dart';
 export 'app_text.dart';
 export 'badge.dart';
 export 'badge_row.dart';
+export 'blocked_state.dart';
 export 'button_row.dart';
 export 'divider.dart';
 export 'document_body.dart';
