@@ -246,7 +246,8 @@ HTML/CSS 缺乏原生元件邊界，元件化必須由約定補足。本節屬�
 - `.claude/rules/core/cognitive-load.md` - 存量遷移拆票閾值
 - `.claude/skills/ticket/SKILL.md` - 元件票開立與 blockedBy 設定
 - `.claude/skills/ux-design-evaluation/SKILL.md` - 地基波 UX 審查所依循的評估方法；元件契約「狀態集」欄的狀態矩陣填法
-- `.claude/skills/doc/templates/component-library-spec-template.md` - L3 元件庫章節的產物範本（須承載九欄位與容器條目）
+- `.claude/skills/doc/templates/component-library-spec-template.md` - L3 元件庫章節的產物範本（承載九欄位與容器條目）
+- `.claude/skills/component-contract-design/SKILL.md` - 〈元件契約判準〉的程序層：規格推導 / 畫布拆解 / 程式碼萃取三種起點走到契約齊全
 - `.claude/skills/version-bootstrap/SKILL.md` - 地基波 build 順序的 orchestration 落地端（消費本方法論作為權威來源）
 - 各專案 spec 的元件庫章節（L3 實例）
 

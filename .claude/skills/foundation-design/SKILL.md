@@ -44,7 +44,7 @@ metadata:
 
 | 維度 | 權威來源（判準在此，本 skill 不複述） | 權威提供的預設產物 |
 |------|--------------------------------|------------------|
-| **UI** | 元件庫雙向約束方法論的〈地基波 build 順序〉，四塊依序：i18n → design-system → UX 審查 → 元件庫。UX 審查那塊的執行方法見 `ux-design-evaluation` skill | 四塊各自的實作票；元件庫 `blockedBy` 前三塊 |
+| **UI** | 元件庫雙向約束方法論的〈地基波 build 順序〉，四塊依序：i18n → design-system → UX 審查 → 元件庫。UX 審查那塊的執行方法見 `ux-design-evaluation` skill；元件庫那塊實作前的契約程序（九欄位、容器元件）見 `component-contract-design` skill | 四塊各自的實作票；元件庫 `blockedBy` 前三塊與契約齊全 |
 | **測試** | `tdd` skill 的分層測試策略，以及其 Phase 2 測試設計檢驗 Q9–Q14（資料是否碰巧通過、error path 覆蓋、資料工廠版本、防哪種改壞、斷言是否 flaky、資料代表性） | fixture 策略、分層地基 |
 | **資料庫** | `saas-tech-selection` skill 的 state-storage 維度（migration 版本化紀律、多租戶資料模型、**防護底線的自動備份與還原驗證**） | migration baseline、**備份與還原驗證**。seed 見〈權威缺席時〉形態 3 |
 | **DevOps** | `saas-tech-selection` skill 的 reliability 維度（CI gate 構成與起始門檻） | CI gate、部署與還原配方 |
@@ -215,6 +215,7 @@ metadata:
 
 ---
 
+**Version**: 6.1.0 — UI 列補反向路由：元件庫那塊實作前的契約程序指名 `component-contract-design` skill，預設產物的元件庫依賴補「契約齊全」。動因：多輪審查發現本 skill 自稱地基單一入口，UI 列卻零次指向契約程序，即本檔 Examples 自述的「錯誤的承接宣告誘發漏做」形態
 **Version**: 6.0.0 — 引用形式由檔案路徑改為指名身分（skill 用名字、方法論與規則用標題）。路徑是「它現在放在哪」會隨改版移動，名字是「它是什麼」不會；且 skill 在本系統以名字載入，寫路徑等於繞過既有載入機制。實測依據：框架改版移動 hook 位置使註冊失效、可攜性閘門把 25 處路徑判為指名他專案檔案而擋下推送。
 **Version**: 5.0.1 — 「無 UI 框架的元件庫產物」自「已知答不出來」改為指向權威。上游 component-library 方法論 1.8.0 已補〈Web/HTML 端 L2 特別判準〉的「元件規則 SSOT」與「元件邊界的可驗產物」兩條，該缺口不再存在。
 **Version**: 5.0.0 — 判準通則化為「問作用不問存在」（四處存在性判準改為有效性）；資料庫列補備份還原驗證；形態 3 拆判準層與產物層；萃取前提補第四種「決策者不可得」；命名前提補規模閘門；〈老專案模式〉更名〈接手模式〉。依據為六個 repo 的實跑驗證。
