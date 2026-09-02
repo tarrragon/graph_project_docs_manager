@@ -63,7 +63,8 @@ Text('...', style: AppText.body)
 | 色碼 | 出現次數 | 觀察到的角色 | 採用的語意名 |
 |------|:---:|------|------|
 | `#5C6866` | 147 | 主要文字 | `AppColors.textPrimary` |
-| `#8A9694` | 116 | 次要文字／弱化 | `AppColors.textSecondary` |
+| ~~`#8A9694`~~ `#6A7674` | 116 | 次要文字／弱化 | `AppColors.textSecondary`（2026-09-02 調深，見下方〈無障礙對比例外〉） |
+| `#8A9694` | — | 停用態文字／純裝飾圖示 | `AppColors.textDisabled`（2026-09-02 新增，沿用原次要文字色） |
 | `#E2E9E8` | 70 | 分隔線／邊框 | `AppColors.border` |
 | `#0F4B47` | 59 | 深色強調 | `AppColors.accentStrong` |
 | `#C7D2D0` | 47 | 邊框（較深） | `AppColors.borderStrong` |
@@ -72,7 +73,7 @@ Text('...', style: AppText.body)
 | `#E9EEED` | 35 | ~~表面層次~~ 徽章／標籤底 | `AppColors.surfaceChip` |
 | `#E0EFED` | 27 | ~~表面層次~~ 圖示容器底 | `AppColors.surfaceIconTint` |
 | `#F4F6F5` | 19 | ~~表面層次~~ 側欄背景（頁面級） | `AppColors.surfaceSidebar` |
-| `#DCE4E2` | 6 | ~~表面層次~~ 分段控制軌道底 | `AppColors.surfaceSegmentTrack` |
+| ~~`#DCE4E2`~~ `#DEE6E4` | 6 | ~~表面層次~~ 分段控制軌道底 | `AppColors.surfaceSegmentTrack`（2026-09-02 調淺，見下方〈無障礙對比例外〉） |
 | `#181C1B` | 21 | 標題文字 | `AppColors.textTitle` |
 | `#2E6F3E` | 13 | 成功 | `AppColors.success` |
 | `#8A5A00` / `#FBF1DF` | 11／3 | 警告／警告底 | `AppColors.warning` / `AppColors.warningSurface` |
@@ -91,6 +92,23 @@ Text('...', style: AppText.body)
 全部 17 色皆採用，無未採用者。命名落點：`lib/tokens/colors.dart`（三層結構，
 原始值層 `_Palette` 私有、語意層 `AppColors` 公開，每個語意名的回溯映射在該檔
 dartdoc 逐條列出）。
+
+#### 無障礙對比例外（2026-09-02）
+
+依 WCAG 相對亮度公式重算語意色組合，發現 `textSecondary` 對 `surfaceBase`
+僅 3.06:1、`textPrimary` 對 `surfaceSegmentTrack` 僅 4.48:1，皆未達 AA
+一般字級門檻（4.5:1）。經 WRAP 重評裁決方案 C：
+
+| token | 原值（畫布實測） | 新值 | 對比結果 |
+|-------|------|------|------|
+| `textSecondary` | `#8A9694` | `#6A7674` | 對 `surfaceBase` 4.71:1，達 AA |
+| `textDisabled`（新增） | — | `#8A9694`（沿用原次要文字色） | 對 `surfaceBase` 3.06:1，達 SC 1.4.11 非文字對比（3:1）但未達 AA 一般字級，僅限停用態與純裝飾圖示 |
+| `surfaceSegmentTrack` | `#DCE4E2` | `#DEE6E4` | 對 `textPrimary` 4.56:1，達 AA |
+
+`textDisabled` 與 `surfaceSegmentTrack` 新值皆非 artboard 實測值，是
+〈設計約束〉節「以 artboard 為準」原則下的刻意例外——WCAG AA 為硬性
+無障礙門檻，優先於畫布一致性。落地於 `lib/tokens/colors.dart`
+`AppColors` dartdoc；契約測試見 `test/unit/tokens/colors_test.dart`。
 
 ### 已知的尺寸分佈
 
@@ -228,6 +246,10 @@ FR-01 檢查範圍。
 - `Theme` 由 token 建構，不反向——不得先設 `ThemeData` 再從中取值命名
 - 本規格是 `design/` artboard 的下游：artboard 是視覺決策的產物，
   本規格是它的結構化表達。兩者不符時**以 artboard 為準並更新本規格**
+- **無障礙對比例外**：token 對比未達 WCAG AA 硬性門檻時，得偏離 artboard
+  實測值以達標，WCAG AA 優先於畫布一致性。偏離須記錄原值、新值、對比
+  結果於〈已知的顏色分佈〉節，不得無註記逕改（見〈無障礙對比例外
+  （2026-09-02）〉小節，為此原則首例）
 - 元件庫清單不宣稱窮盡，實作中補入者須回填本規格
 
 ## 變更歷史
@@ -239,3 +261,4 @@ FR-01 檢查範圍。
 | 1.3 | 2026-09-02 | 新增〈已知的佈局尺寸分佈〉：`lib/tokens/layout.dart` 落地十三個佈局尺寸 token（側欄寬、頁首高、表格列高兩階、右欄寬、浮層寬、矩陣首欄／小計欄寬、泳道名欄寬／列高、圖示三階），呼應 SPEC-004 §3.7 第 21 項核定（0.1.0-W1-047） |
 | 1.4 | 2026-09-02 | 新增〈時間 token〉節：`lib/tokens/motion.dart` 落地 SPEC-003 §2.1 十個 `Motion` token（七個契約類 `static const`、三個動畫類依 context 求值），FR-01 檢查式擴及 `Duration(milliseconds:`／`Duration(seconds:` 字面值 |
 | 1.2 | 2026-09-02 | 狀態數依 SPEC-001 v1.4（§1 新增「已選格」疊加態）更正為 31（`0.1.0-W1-048`） |
+| 1.5 | 2026-09-02 | 對比重算發現 `textSecondary`／`textPrimary` 兩組合未達 WCAG AA，裁決方案 C：`textSecondary` 調深、新增 `textDisabled`、`surfaceSegmentTrack` 調淺；新增〈設計約束〉「無障礙對比例外」條款與〈無障礙對比例外（2026-09-02）〉小節 |

@@ -22,7 +22,8 @@ abstract final class _Palette {
   // 中性色階（依明度排序）
   static const Color black900 = Color(0xFF181C1B); // color-exempt 標題文字，21 次
   static const Color gray700 = Color(0xFF5C6866); // color-exempt 主要文字，147 次
-  static const Color gray500 = Color(0xFF8A9694); // color-exempt 次要文字／弱化，116 次
+  static const Color gray500 = Color(0xFF8A9694); // color-exempt 畫布原次要文字色，116 次；2026-09-02 起僅供 textDisabled，不再供 textSecondary
+  static const Color gray600 = Color(0xFF6A7674); // color-exempt 2026-09-02 新增：次要文字調深值（對 white 4.71:1，達 WCAG AA），非 artboard 實測值
   static const Color gray300 = Color(0xFFC7D2D0); // color-exempt 邊框（較深），47 次
   static const Color gray200 = Color(0xFFE2E9E8); // color-exempt 分隔線／邊框，70 次
   static const Color white = Color(0xFFFFFFFF); // color-exempt 底，37 次
@@ -31,7 +32,7 @@ abstract final class _Palette {
   static const Color surfaceSidebar = Color(0xFFF4F6F5); // color-exempt 側欄背景
   static const Color surfaceIconTint = Color(0xFFE0EFED); // color-exempt 圖示容器底
   static const Color surfaceChip = Color(0xFFE9EEED); // color-exempt 徽章／標籤底
-  static const Color surfaceSegmentTrack = Color(0xFFDCE4E2); // color-exempt 分段控制軌道底
+  static const Color surfaceSegmentTrack = Color(0xFFDEE6E4); // color-exempt 2026-09-02 調淺：分段控制軌道底（對 textPrimary 4.56:1，達 WCAG AA），原畫布值 #DCE4E2 對 textPrimary 4.48:1 未達
 
   // 品牌強調色
   static const Color teal900 = Color(0xFF0F4B47); // color-exempt 深色強調（圖示、標籤文字），59 次
@@ -49,7 +50,8 @@ abstract final class _Palette {
 ///
 /// 每個名字回溯自 [_Palette] 的原始值：
 /// - [textPrimary] = `_Palette.gray700`
-/// - [textSecondary] = `_Palette.gray500`
+/// - [textSecondary] = `_Palette.gray600`
+/// - [textDisabled] = `_Palette.gray500`
 /// - [textTitle] = `_Palette.black900`
 /// - [accent] = `_Palette.teal600`
 /// - [accentStrong] = `_Palette.teal900`
@@ -65,9 +67,31 @@ abstract final class _Palette {
 /// - [warningSurface] = `_Palette.amber100`
 /// - [error] = `_Palette.red600`
 /// - [errorSurface] = `_Palette.red100`
+///
+/// ### 無障礙對比調整（2026-09-02）
+///
+/// 對比重算（WCAG 相對亮度公式）發現三處未達 AA 一般字級門檻（4.5:1）：
+/// `textSecondary` 對 `surfaceBase` 原僅 3.06:1；`textPrimary` 對
+/// `surfaceSegmentTrack` 原僅 4.48:1。經 WRAP 重評裁決方案 C：
+///
+/// | 變更 | 原值（畫布實測） | 新值 | 對比 | AA 一般字（4.5:1） |
+/// |------|------|------|------|------|
+/// | [textSecondary] 調深 | `#8A9694` | `#6A7674` | 對 white 4.71:1 | 通過 |
+/// | 新增 [textDisabled] | — | `#8A9694`（沿用原 `gray500`） | 對 white 3.06:1 | 僅達大字／非文字門檻（3:1），供停用態與純裝飾圖示 |
+/// | [surfaceSegmentTrack] 調淺 | `#DCE4E2` | `#DEE6E4` | 對 textPrimary 4.56:1 | 通過 |
+///
+/// `textDisabled` 與 `surfaceSegmentTrack` 的新值皆非 artboard 實測值，
+/// 是本節設計約束「以 artboard 為準」下的刻意例外，理由是 WCAG AA 為
+/// 硬性無障礙門檻，優先於畫布一致性。SPEC-002〈設計約束〉節記此例外。
 abstract final class AppColors {
   static const Color textPrimary = _Palette.gray700;
-  static const Color textSecondary = _Palette.gray500;
+  static const Color textSecondary = _Palette.gray600;
+
+  /// 停用態文字與純裝飾性圖示專用色。對 [surfaceBase] 僅 3.06:1，
+  /// 達 WCAG SC 1.4.11（非文字對比 3:1）但未達 AA 一般字級（4.5:1），
+  /// 故不得用於一般可讀文字，僅限停用態（本身即傳達「不可互動」語意）
+  /// 與純裝飾箭頭圖示。
+  static const Color textDisabled = _Palette.gray500;
   static const Color textTitle = _Palette.black900;
 
   static const Color accent = _Palette.teal600;
@@ -88,6 +112,8 @@ abstract final class AppColors {
   static const Color surfaceChip = _Palette.surfaceChip;
 
   /// 分段控制（segmented control）軌道底色，選中項的容器背景。
+  /// 2026-09-02 調淺自畫布實測值（見上方〈無障礙對比調整〉表），
+  /// 使 [textPrimary] 在此底色上達 WCAG AA 一般字級對比。
   static const Color surfaceSegmentTrack = _Palette.surfaceSegmentTrack;
 
   static const Color success = _Palette.green600;
