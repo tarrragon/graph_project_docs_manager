@@ -111,10 +111,10 @@ class _AppButtonState extends State<AppButton> {
   @override
   Widget build(BuildContext context) {
     final colors = _colors;
-    // disabled：文字與圖示改 textSecondary（SPEC-004 §4.0.1）。
+    // disabled：文字與圖示改 textDisabled（SPEC-004 §4.0.1）。
     final foreground = widget.enabled
         ? colors.foreground
-        : AppColors.textSecondary;
+        : AppColors.textDisabled;
 
     final Widget? leadingIcon = widget.leading == null
         ? null
@@ -133,7 +133,7 @@ class _AppButtonState extends State<AppButton> {
       style: TextButton.styleFrom(
         backgroundColor: colors.background,
         foregroundColor: foreground,
-        disabledForegroundColor: AppColors.textSecondary,
+        disabledForegroundColor: AppColors.textDisabled,
         disabledBackgroundColor: colors.background,
         side: colors.border == null
             ? null

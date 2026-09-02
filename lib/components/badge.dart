@@ -9,10 +9,10 @@
 /// 呼叫端不可覆寫（SPEC-004 §4.5「對映表為元件常數」）；`category` 變體
 /// 的 tone 必填由呼叫端指定；其餘變體有固定或預設 tone。
 ///
-/// `secondary` tone 對 `textSecondary`／`surfaceChip` 的對比未達 WCAG AA
-/// （SPEC-004 §4.0.2），已核定方案將刪除 `secondary` tone 並調深
-/// `textSecondary`（見 ticket 追蹤紀錄）；本票依現行契約實作、保留
-/// `secondary`，待前置調色票回填後再由後續票移除。
+/// `secondary` tone（底 `surfaceChip`、字 `textSecondary`）對比 4.02:1
+/// 未達 WCAG AA，已依 SPEC-004 v1.9（2026-09-02）刪除；`rejected` /
+/// `superseded` / `revised` 改對映 [BadgeTone.neutral]（§4.0.2 帶色表面
+/// 規則：`textPrimary` 後與 `neutral` 無差異）。
 library;
 
 import 'package:flutter/widgets.dart';
@@ -52,9 +52,6 @@ enum BadgeTone {
   /// 底 `surfaceChip`、字 `textPrimary`。
   neutral,
 
-  /// 底 `surfaceChip`、字 `textSecondary`（對比處置見檔案頭）。
-  secondary,
-
   /// 底 `surfaceIconTint`、字 `accentStrong`。
   accent,
 
@@ -79,9 +76,9 @@ const Map<String, BadgeTone> _statusToneMap = {
   'pending': BadgeTone.warning,
   'review': BadgeTone.warning,
   'in_progress': BadgeTone.warning,
-  'rejected': BadgeTone.secondary,
-  'superseded': BadgeTone.secondary,
-  'revised': BadgeTone.secondary,
+  'rejected': BadgeTone.neutral,
+  'superseded': BadgeTone.neutral,
+  'revised': BadgeTone.neutral,
 };
 
 /// tone 決定的底色與字色（chip / inline 共用計算，形態差異在渲染層）。
@@ -94,10 +91,6 @@ class _ToneColors {
 
 const Map<BadgeTone, _ToneColors> _toneColors = {
   BadgeTone.neutral: _ToneColors(AppColors.surfaceChip, AppColors.textPrimary),
-  BadgeTone.secondary: _ToneColors(
-    AppColors.surfaceChip,
-    AppColors.textSecondary,
-  ),
   BadgeTone.accent: _ToneColors(
     AppColors.surfaceIconTint,
     AppColors.accentStrong,

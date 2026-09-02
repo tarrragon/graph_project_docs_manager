@@ -167,15 +167,14 @@ void main() {
       'pending': BadgeTone.warning,
       'review': BadgeTone.warning,
       'in_progress': BadgeTone.warning,
-      'rejected': BadgeTone.secondary,
-      'superseded': BadgeTone.secondary,
-      'revised': BadgeTone.secondary,
+      'rejected': BadgeTone.neutral,
+      'superseded': BadgeTone.neutral,
+      'revised': BadgeTone.neutral,
     };
 
     const toneForeground = {
       BadgeTone.positive: AppColors.success,
       BadgeTone.warning: AppColors.warning,
-      BadgeTone.secondary: AppColors.textSecondary,
       BadgeTone.neutral: AppColors.textPrimary,
     };
 

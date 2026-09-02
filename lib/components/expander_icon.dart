@@ -128,7 +128,7 @@ class _ExpanderIconState extends State<ExpanderIcon> {
                         ? Icons.keyboard_arrow_down
                         : Icons.keyboard_arrow_right,
                     size: LayoutSize.iconSm,
-                    color: AppColors.textSecondary,
+                    color: AppColors.textDisabled,
                   ),
                 ),
               ),
