@@ -106,7 +106,8 @@ doc domain <name>   # 帶 domain 名稱：列出該 domain 下的 spec 清單與
 | 規格模板 | `templates/spec-template.md` | 建立新功能規格 |
 | Domain Map 模板 | `templates/domain-map-template.md` | 建立 domain bundle 邊界地圖（DDD 水平視角）。§3 每個 bundle 必須 `ls`/`grep` 驗證目標路徑存在後才標「已實作」，不存在標「規劃中」（PC-APP-012 防護） |
 | 資料契約模板 | `templates/data-contract-template.md` | 建立資料層邏輯契約與實作綁定文件（DB-agnostic / DB-specific 兩區） |
-| Design System 規格模板 | `templates/design-system-spec-template.md` | 建立 UI 設計系統規格 |
+| Design System 規格模板 | `templates/design-system-spec-template.md` | 建立 UI 設計系統規格（token 層） |
+| 元件庫規格模板 | `templates/component-library-spec-template.md` | 建立 L3 元件庫章節：逐元件九欄位契約、容器元件排列不變式、禁用對照、豁免清單（依元件庫雙向約束方法論） |
 | 用例模板 | `templates/usecase-template.md` | 建立新用例 |
 | 事件模板 | `templates/event-template.md` | 建立新領域事件（producers/consumers 建立時選填） |
 
@@ -134,9 +135,10 @@ doc create event --title "{事件簡述}" --domain {domain}
 doc next-id spec
 doc next-id event --domain {domain}
 
-# 尚未接線的類型（domain-map / design-system-spec）仍用 cp
+# 尚未接線的類型（domain-map / design-system-spec / component-library-spec）仍用 cp
 cp .claude/skills/doc/templates/domain-map-template.md docs/spec/{domain}/domain-map.md
 cp .claude/skills/doc/templates/design-system-spec-template.md docs/spec/design-system-spec.md
+cp .claude/skills/doc/templates/component-library-spec-template.md docs/spec/component-library-spec.md
 ```
 
 ---
