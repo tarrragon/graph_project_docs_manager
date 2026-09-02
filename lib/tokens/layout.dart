@@ -21,6 +21,7 @@
 /// | [LayoutSize.iconSm] | 13 | 13 | 圖示尺寸階：小 |
 /// | [LayoutSize.iconMd] | 15 | 15 | 圖示尺寸階：中 |
 /// | [LayoutSize.iconLg] | 17 | 17 | 圖示尺寸階：大 |
+/// | [LayoutSize.hitTargetMin] | 28 | 25～31（見〈最小命中區〉） | 可點元件最小命中區（桌機指標形態） |
 ///
 /// 導覽項的 padding（實測 7、10）不在本檔新增：兩值已落於
 /// `spacing.dart` 的 [Space.sm]（8，吸收原始值 7、8、9、10）區間內，
@@ -43,6 +44,15 @@
 /// SPEC-004 §3.7 第 21 項核定收斂為單一值。矩陣格詳情卡內容較多（標題／
 /// 說明／步驟／標籤堆疊），取兩者中較寬的 236，避免內容被壓縮；節點
 /// 詳情右欄沿用同一寬度，內容較少時多出的留白不影響可讀性。
+///
+/// ### 最小命中區（[LayoutSize.hitTargetMin]）
+///
+/// SPEC-004 §1「最小命中區」列（桌機指標形態）。`design/Main.dc.html` 兩處
+/// 最小可點元件實測：側欄導覽項（padding 7px 10px + 17px 圖示，高度
+/// 7+17+7=31px）、頁首檢視切換分頁（padding 5px 12px + 12.5px 文字行高約
+/// 15px，高度 5+15+5=25px），範圍 25～31px。桌機指標（滑鼠／trackpad）不像
+/// 觸控需 44pt 級門檻，取 macOS 標準控制項 regular 高度 28pt 作為下限，
+/// 落於實測範圍內，可點元件的尺寸契約引用本值作最小命中區下限。
 library;
 
 /// 佈局尺寸離散值。畫面只引用具名常數，不接受任意數字。
@@ -60,4 +70,5 @@ abstract final class LayoutSize {
   static const double iconSm = 13; // magic-exempt token 定義本身
   static const double iconMd = 15; // magic-exempt token 定義本身
   static const double iconLg = 17; // magic-exempt token 定義本身
+  static const double hitTargetMin = 28; // magic-exempt token 定義本身
 }

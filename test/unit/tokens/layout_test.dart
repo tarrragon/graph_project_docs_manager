@@ -93,4 +93,14 @@ void main() {
       expect(LayoutSize.detailPaneWidth, isNot(216));
     });
   });
+
+  group('最小命中區（hitTargetMin）', () {
+    test('hitTargetMin 回溯桌機指標形態實測範圍 25～31px，取 macOS 慣例值 28', () {
+      expect(LayoutSize.hitTargetMin, 28);
+      const measuredMin = 25; // 頁首檢視切換分頁
+      const measuredMax = 31; // 側欄導覽項
+      expect(LayoutSize.hitTargetMin, greaterThanOrEqualTo(measuredMin));
+      expect(LayoutSize.hitTargetMin, lessThanOrEqualTo(measuredMax));
+    });
+  });
 }
