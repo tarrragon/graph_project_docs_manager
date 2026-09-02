@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-27"
 updated: "2026-09-02"
-version: "1.1"
+version: "1.2"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -123,6 +123,26 @@ grep -ohE '(^|[^-])gap: *[0-9.]+px'   design/*.dc.html | grep -oE '[0-9.]+' | so
 分階區間內；受影響的是該檔 dartdoc 記錄的「各階吸收哪些原始值」映射表，該表依
 錯誤清單撰寫，已另票更正。
 
+### 已知的佈局尺寸分佈
+
+| 類別 | artboard 實測值 | token |
+|------|----------------|-------|
+| 側欄寬 | 172 | `LayoutSize.sidebarWidth` |
+| 頁首高 | 52 | `LayoutSize.headerHeight` |
+| 表格列高 | 28、29、31、32、34、36（歸併為兩階，見 layout.dart） | `LayoutSize.rowHeightDense` / `LayoutSize.rowHeightRelaxed` |
+| 主副雙欄右欄寬 | 236（矩陣格詳情卡）、216（節點詳情）；收斂為單一值 | `LayoutSize.detailPaneWidth` |
+| 浮層寬 | 262 | `LayoutSize.overlayWidth` |
+| 矩陣首欄寬 | 132 | `LayoutSize.matrixLeadColumnWidth` |
+| 矩陣小計欄寬 | 46 | `LayoutSize.matrixSubtotalWidth` |
+| 泳道名欄寬 | 106 | `LayoutSize.laneLabelWidth` |
+| 泳道列高 | 52 | `LayoutSize.laneRowHeight` |
+| 圖示尺寸 | 13、15、17 | `LayoutSize.iconSm` / `iconMd` / `iconLg` |
+
+（量測於 2026-08-27，`design/` 九份 artboard，已列於 0.1.0-W1-044.1 NeedsContext
+第 1 項。導覽項 padding 實測 7、10 已落於 `Space.sm` 區間內，不另建佈局尺寸
+token。列高歸併與右欄寬收斂的完整推導記於 `lib/tokens/layout.dart` dartdoc，
+本表不重複記錄，避免雙份維護漂移。SPEC-004 §3.7 第 21 項為本節的核定來源。）
+
 ## 命名層次
 
 三層，各自回答不同問題：
@@ -198,3 +218,4 @@ SPEC-004 不得推翻。
 |------|------|------|
 | 1.0 | 2026-08-27 | 初版。起因為 0.1 開票後發現七張畫面票會各自決定尺寸與顏色；同時發現 PROP-004 §版型定案 的 token 描述（圓角 10/12、字級 12–22）與 artboard 實測（圓角 5/7/8、字級 10–19）不符，成因正是這些值沒有單一住址 |
 | 1.1 | 2026-09-02 | §元件庫的範圍 的元件清單改為指向 SPEC-004（0.1.0-W1-044.1）；狀態數依 SPEC-001 v1.3 更正為 30；「空狀態與阻擋狀態必須是兩個元件」保留為 SPEC-004 存在必要性檢視的前提；`related_specs` 補 SPEC-004 |
+| 1.2 | 2026-09-02 | 新增〈已知的佈局尺寸分佈〉：`lib/tokens/layout.dart` 落地十三個佈局尺寸 token（側欄寬、頁首高、表格列高兩階、右欄寬、浮層寬、矩陣首欄／小計欄寬、泳道名欄寬／列高、圖示三階），呼應 SPEC-004 §3.7 第 21 項核定（0.1.0-W1-047） |
