@@ -8,6 +8,7 @@ export 'app_button.dart';
 export 'app_icon.dart';
 export 'app_text.dart';
 export 'badge.dart';
+export 'badge_row.dart';
 export 'divider.dart';
 export 'expander_icon.dart';
 export 'page_title.dart';
