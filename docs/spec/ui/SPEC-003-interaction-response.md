@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-09-01"
-version: "1.0"
+updated: "2026-09-02"
+version: "1.1"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -21,7 +21,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 
 ## 概述
 
-SPEC-001 界定七個畫面的 29 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
+SPEC-001 界定七個畫面的 31 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
 
 | 類別 | 界定什麼 |
@@ -58,7 +58,7 @@ PROP-004 §首個整合測試的契約 要求斷言「應可捲動處能捲動�
 應可拖拉處能拖拉」。該句的三個「處」在本節窮舉——**清單之外沒有第四處**，
 整合測試依此枚舉即為完整覆蓋。
 
-### 1.1 捲動處（10 個）
+### 1.1 捲動處（11 個）
 
 | # | 位置 | 錨點 | 軸 | 備註 |
 |---|------|------|----|------|
@@ -72,13 +72,15 @@ PROP-004 §首個整合測試的契約 要求斷言「應可捲動處能捲動�
 | 8 | 節點詳情 · 主欄 | `scroll-nodeDetail-content` | 垂直 | 與 #9 各自獨立 |
 | 9 | 節點詳情 · 關聯右欄 | `scroll-nodeDetail-relations` | 垂直 | 不與主欄連動 |
 | 10 | 專案切換浮層 | `scroll-switcher-recent` | 垂直 | 最近專案清單 |
+| 11 | Domain 視圖 · 矩陣右欄格詳情卡 | `scroll-domain-cell-detail` | 垂直 | 與 #1 各自獨立；步驟清單為異常長內容時的承載處 |
 
 **斷言形式**：對錨點執行 `tester.drag(finder, Offset(dx, dy))` 後
 `pumpAndSettle()`，該容器的 `ScrollController.offset` 與拖曳前不相等；
 內容不足一屏時 offset 維持 0 且不得拋出 framework 錯誤。
 
 **捲動連動禁令**：#8 與 #9 是兩個獨立 `ScrollController`。捲動主欄時右欄
-offset 不變，反之亦然。
+offset 不變，反之亦然。#1 與 #11 同此禁令：捲動矩陣時格詳情卡 offset 不變，
+反之亦然。
 
 ### 1.2 換頁處（3 類）
 
@@ -322,6 +324,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 任一元素取得焦點 | 具可見焦點指示（WCAG SC 2.4.7）；斷言為該元素的 `Focus.hasFocus` 為 `true` 且渲染出焦點裝飾 |
 | 浮層展開時按 Esc | 浮層收合，焦點回到 `project-switcher-entry` |
 | `panel-domain-schema-detail` 展開時按 Esc | 面板收合，其餘狀態不變 |
+| 矩陣已選格（`panel-domain-cell-detail` 存在）時按 Esc | 選取清除，右欄回到 `panel-domain-cell-detail-empty`；焦點停在原格，矩陣 offset 不變 |
 | 浮層展開時 | 焦點被限制在浮層內（Tab 不會跑到背景的導覽列） |
 
 方向鍵捲動、快捷鍵切換導覽項不列入 0.1 下界，亦不得以無回饋的方式部分實作。
@@ -359,8 +362,15 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 取消載入 | `action-domain-cancel-load` | 點擊 | 依 §2.5，目標態 `state-domain-unset` |
 | 切至矩陣 | `mode-domain-matrix` | 點擊 | `state-domain-swimlane` 消失、`state-domain-matrix` 出現 |
 | 切至泳道 | `mode-domain-swimlane` | 點擊 | 反向；矩陣的捲動 offset 被保留，切回時還原 |
-| 矩陣格子 | `cell-domain-<rowId>-<colId>` | 點擊 | 切至 `state-domain-matrix` → `state-domain-swimlane`，且該格對應的泳道列 rect 與 viewport rect 有交集 |
-| 矩陣捲動 | `scroll-domain-matrix` | 二維 drag | 水平與垂直 offset 皆改變；列首與欄首保持釘選（不隨內容捲離） |
+| 矩陣格子（選格） | `cell-domain-<rowId>-<colId>` | 單擊 | `Motion.feedback` 內該格呈選中態、其所在列呈列高亮（選中 domain 同步為該列）；`panel-domain-cell-detail-empty` 消失、`panel-domain-cell-detail` 出現且其標題文字等於「`<domain 名> × <UC id>`」；`state-domain-matrix` 仍存在（疊加態）；矩陣 offset 不變；`IndexedStack` 索引不變 |
+| 矩陣格子（換選） | 另一個 `cell-domain-*` | 已選格下單擊 | 前一格失去選中態、新格取得；`panel-domain-cell-detail` 內容替換為新格；`scroll-domain-cell-detail` 的 offset 歸零（新格的舊 offset 無意義） |
+| 矩陣格子（再點同一格） | 同一 `cell-domain-*` | 已選格下單擊 | 無狀態改變（不切換為取消選取——取消由 Esc 承擔，同一元素不得依狀態改變語意） |
+| 矩陣格子（「無關」格） | 關係種類為 `none` 的 `cell-domain-*` | 單擊 | 同「選格」；`panel-domain-cell-detail` 內步驟清單與事件標籤不渲染，說明 slot 為 `l10n.cellDetailNotInvolved` 的值 |
+| 在泳道中檢視 | `action-domain-cell-goto-swimlane` | 點擊（僅於 `panel-domain-cell-detail` 內渲染） | `state-domain-matrix` 消失、`state-domain-swimlane` 出現，且該格對應的泳道列 rect 與 viewport rect 有交集；選中格保留（切回矩陣時仍為已選格） |
+| 清除選取 | — | 已選格下按 Esc | 依 §2.10；亦可由 `action-domain-cell-clear`（詳情卡右上關閉）觸發，兩者結果相同 |
+| 選 domain（列首）與選格的關係 | `action-domain-select-<domainId>` | 已選格下點擊**另一列**的列首 | 列高亮移至該列，選格清除，右欄回 `panel-domain-cell-detail-empty`（列高亮唯一，右欄內容須與高亮列一致）；點擊**同一列**列首則選格不變 |
+| 格詳情卡捲動 | `scroll-domain-cell-detail` | drag / 捲軸 | 右欄 offset 改變、矩陣 offset 不變（§1.1 連動禁令） |
+| 矩陣捲動 | `scroll-domain-matrix` | 二維 drag | 水平與垂直 offset 皆改變；列首與欄首保持釘選（不隨內容捲離）；已選格隨內容捲離 viewport 時選中態與右欄內容皆不變 |
 | 泳道拖曳 | `drag-domain-swimlane` | drag | 內容平移量等於位移，比例 1:1 |
 | 泳道捲動 | `scroll-domain-swimlane` | drag / 捲軸 | offset 改變，與拖曳共用同一 offset |
 | 選 domain | `action-domain-select-<domainId>` | 點擊 | 該 domain 於當前模式中呈選中態；不改變 `IndexedStack` 索引 |
@@ -369,6 +379,41 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 檢視 schema 詳情 | `action-domain-schema-detail` | 點擊 | `panel-domain-schema-detail` 出現，含 App 支援版本與專案版本兩個值；再次點擊或 Esc 收合 |
 | 導覽至破洞報告 | `action-domain-goto-gaps` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `domain` |
 | 切換專案 | `project-switcher-entry`（既有） | 點擊 | 浮層展開（§3.7） |
+
+**格詳情卡的內容契約**（`panel-domain-cell-detail`）：
+
+| 區塊 | 存在條件 | 可觀察結果 |
+|------|---------|-----------|
+| 標題 | 恆在 | 文字為「`<domain 名> × <UC id>`」 |
+| 關係種類 | 恆在 | 文字等於圖例三值之一（`l10n.legendDirect` / `legendIndirect` / `legendNone`），與該格符號一致 |
+| 說明 | 該格有說明資料時 | 一段文字；無資料時該 slot 不渲染，不留空白列 |
+| 編號步驟 | 該格步驟數 > 0 | 依 flow 順序的編號列；序號從 1 起連續 |
+| 事件標籤 | 該格步驟的 `emits` / `consumes` 聯集非空 | 每個事件一個標籤，前綴 `emits` 或 `consumes` |
+| 在泳道中檢視 | 恆在 | `action-domain-cell-goto-swimlane` 存在且 `enabled` 為 `true` |
+| 關閉 | 恆在 | `action-domain-cell-clear` 存在 |
+
+三個可缺區塊的資料來源屬 CLAUDE.md §6 待決（Domain 視圖的列與格無來源），
+0.1 以假資料驅動；假資料須至少含一格「三區塊皆有」、一格「僅標題與關係種類」、
+一格「步驟數足以觸發 `scroll-domain-cell-detail` 捲動」。
+
+**未選格的右欄**（`panel-domain-cell-detail-empty`）：常駐於 `state-domain-matrix`，
+內容為提示文字 `l10n.cellDetailPrompt`，無動作（前進動作即點格，在主欄）。
+與 `panel-domain-cell-detail` 互斥存在。右欄常駐不隱藏的理由見 SPEC-001 §1 註記。
+
+**選格與切泳道的關係（PM 核定 2026-09-02：採方案 B，單擊選格、詳情卡內「在泳道中檢視」切泳道；理由：可發現、有鍵盤等價、同元素語意不隨狀態變）**：畫布副標「點格子切換至泳道」與右欄詳情卡
+不能同時由單擊承擔。四案比較：
+
+| 案 | 單擊 | 切泳道由誰承擔 | 不採／採用理由 |
+|----|------|--------------|--------------|
+| A | 切泳道（維持現狀） | 單擊 | 詳情卡沒有觸發方式；hover 顯示不可鍵盤觸發、右欄內容隨滑鼠閃動、無穩定狀態可斷言 |
+| B（**採用**） | 選格 | 詳情卡內 `action-domain-cell-goto-swimlane` 按鈕 | 兩個層級分開：選格是同畫面狀態轉換，切泳道是換頁（§1.2）；按鈕可 Tab 到、可見、可斷言，符合 §2.2 可點性辨識與 §2.10 鍵盤下界；多一次點擊是代價 |
+| C | 選格 | 雙擊 | 雙擊不可發現、無鍵盤等價、與單擊在同一元素上疊兩種語意；桌面慣例但違反 §2.2「未接線動作須可見」精神 |
+| D | 選格 | 再點同一格 | 同一元素依狀態改變語意，使用者不可預期；且與「換選」的點擊無法區辨 |
+
+採 B 的後果：畫布副標須改為「點格子檢視詳情」（畫布漂移，記入 SPEC-004 §3.5，
+由 `0.1.0-W1-044.2` 消費）；`MatrixCell` 的狀態集需增 `selected`；`TwoColumnLayout`
+右欄在 §1 為 `Panel.scrollable`。PM 若改採 A 或 C，只有上表「矩陣格子（選格）」
+列的觸發欄與「在泳道中檢視」列改寫，詳情卡內容契約與退出路徑不變。
 
 #### 動畫提示
 
@@ -379,6 +424,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 載入中 → 正常 / 空圖 / 三個阻擋狀態 | cross-fade，`Motion.transition` |
 | 矩陣首次渲染 | **不做逐格入場動畫**。真實規模下（不低於 1300 筆）逐格動畫無資訊量且成本高 |
 | 矩陣 → 泳道的定位 | 以 `jumpTo` 即時定位，**不用** `animateTo`。定位是導航結果不是動畫；長泳道上的 animateTo 會產生數秒捲動且中途無法斷言 |
+| 格選中態出現 | 點擊確認用 `InkWell` 內建 pressed 態（§2.2），選中態本身無入場動畫（持續性標記） |
+| 右欄提示 ↔ 詳情卡、詳情卡內容換選 | cross-fade，`Motion.transition`；資料為本地已解析內容，落在 0–100 ms 即時帶，不顯示任何等待指示 |
 | `panel-domain-schema-detail` 展開 | 高度變化 `Motion.transition` |
 
 #### 導航跳轉與退出
@@ -387,7 +434,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 |------|----------------|
 | 未選專案 | `action-domain-choose-folder` → `state-domain-loading` |
 | 載入中 | `action-domain-cancel-load` → `state-domain-unset`；解析完成 → `state-domain-matrix` 或 `state-domain-empty` |
-| 正常 · 矩陣 | `nav-item-<d>` → 其他畫面（rail）；`project-switcher-entry` → 浮層 |
+| 正常 · 矩陣 | `nav-item-<d>` → 其他畫面（rail）；`project-switcher-entry` → 浮層；`cell-domain-*` → 已選格（同畫面疊加） |
+| 已選格（疊加） | Esc / `action-domain-cell-clear` → 正常 · 矩陣（未選格）；另一 `cell-domain-*` → 已選格（換內容）；`action-domain-cell-goto-swimlane` → 正常 · 泳道；其餘繼承正常 · 矩陣 |
 | 正常 · 泳道 | `mode-domain-matrix` → 矩陣；其餘同上 |
 | 空圖 | `action-domain-goto-gaps` → `nav-page-gaps`（jump）；`project-switcher-entry` → 浮層 |
 | 不是框架專案 | `project-switcher-entry` → 浮層（唯一出口，恆可用） |
@@ -401,8 +449,9 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | App 啟動且有已存路徑 | 直接進入 `state-domain-loading` |
 | App 啟動且無已存路徑 | 進入 `state-domain-unset` |
 | 本畫面非惰性 | 它是預設落地頁，啟動即可見，不套用首次可見延遲 |
-| 切至其他導覽項 | 載入繼續；矩陣／泳道的 offset、選中 domain、當前模式保留 |
-| 切換專案 | 中止載入；重置為 `state-domain-loading`（新專案）或 `state-domain-unset` |
+| 切至其他導覽項 | 載入繼續；矩陣／泳道的 offset、選中 domain、選中格與 `scroll-domain-cell-detail` 的 offset、當前模式保留 |
+| 矩陣 ↔ 泳道切換 | 選中格保留；由泳道切回矩陣時 `panel-domain-cell-detail` 仍存在且內容不變 |
+| 切換專案 | 中止載入；重置為 `state-domain-loading`（新專案）或 `state-domain-unset`；選中格清除 |
 | 視窗尺寸變更 | 矩陣以左上角為錨定保留 offset；不重新解析 |
 
 ### 3.2 UC Flow 視圖（`nav-page-ucFlow`）
@@ -622,12 +671,10 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 部分損壞 | 同正常，另加 `action-nodeDetail-goto-gaps` → jump |
 | 原始檔已消失 | `action-nodeDetail-refresh` → 三分支；`action-nodeDetail-back` → `returnTo`；`nav-item-<d>` |
 
-**經導覽列直接進入本畫面且無選定節點時**，SPEC-001 §6 的三個狀態進入條件皆不成立
-（三者都預設已有節點）。此路徑在 SPEC-001 中無對應狀態，屬規格缺口（見報告的發現 1）。
-在 SPEC-001 補上該狀態之前，本規格規定的行為是：渲染空狀態元件，訊息為「尚未選取節點」，
+**經導覽列直接進入本畫面且無選定節點時**，SPEC-001 §6「未選節點」（v1.3 新增，
+狀態錨點 `state-nodeDetail-unset`）承接此路徑：渲染空狀態元件，訊息為「尚未選取節點」，
 前進動作為 `action-nodeDetail-goto-traceability`（jump 至追溯視圖），
-`action-nodeDetail-back` 不渲染。此規定使 FR-01 在 0.1 不被破壞，
-但 SPEC-001 仍須補列該狀態以維持「29 狀態即全部」的宣稱成立。
+`action-nodeDetail-back` 不渲染。此列已納入 §4 對照表第 30 列。
 
 #### 生命週期
 
@@ -685,7 +732,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 ---
 
-## 4. SPEC-001 全 29 狀態的導航反應對照
+## 4. SPEC-001 全 31 狀態的導航反應對照
 
 本表逐一列出 SPEC-001 §1–§7 的每一個狀態，**無一遺漏**，並將其退出路徑欄
 對應到本規格定義的導航反應與觸發錨點。此表即 acceptance「每個狀態的退出路徑
@@ -722,9 +769,12 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 27 | 浮層 | 收合 | `state-switcher-collapsed` | 靜止態（SPEC-001 FR-01 唯一例外） | 進入：`project-switcher-entry` → `state-switcher-expanded`。本列不要求退出路徑 |
 | 28 | 浮層 | 展開 | `state-switcher-expanded` | 選取 → 收合並重載；Esc／點外部 → 收合 | 覆蓋層關閉：`card-switcher-recent-*` → 收合 + 全域重置 + `state-domain-loading`；Esc／點外部 → `state-switcher-collapsed` |
 | 29 | 浮層 | 無最近專案 | `state-switcher-no-recent` | 選取 → 收合並載入；Esc → 收合 | 覆蓋層關閉：`action-switcher-choose-folder` → 收合 + `state-domain-loading`；Esc → `state-switcher-collapsed` |
+| 30 | 節點詳情 | 未選節點 | `state-nodeDetail-unset` | 前往追溯視圖 | jump：`action-nodeDetail-goto-traceability` → `nav-page-traceability`，`returnTo`=nodeDetail；rail；`action-nodeDetail-back` 不渲染 |
+| 31 | Domain | 已選格（疊加於 #3） | `panel-domain-cell-detail` | 點其他格 → 換內容；Esc → 未選格；在泳道中檢視 → 正常 · 泳道；導覽、切換專案 | 同畫面轉換：Esc / `action-domain-cell-clear` → `panel-domain-cell-detail-empty`；`cell-domain-*` → 內容替換；`action-domain-cell-goto-swimlane` → `state-domain-swimlane`；繼承 #3 的 rail 與覆蓋層 |
 
-**覆蓋完整性**：29 列，對應 SPEC-001 §1（8）+ §2（3）+ §3（3）+ §4（6）+ §5（3）
-+ §6（3）+ §7（3）= 29。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
+**覆蓋完整性**：31 列，對應 SPEC-001 §1（9）+ §2（3）+ §3（3）+ §4（6）+ §5（3）
++ §6（4）+ §7（3）= 31。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
+#30、#31 為 SPEC-001 v1.3／v1.4 新增，依 SPEC-001 §狀態總數 的順序編號，不重排既有列。
 
 ---
 
@@ -742,7 +792,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | §1 無可消費的型別表「（若支援降級）以純檔案模式檢視」 | 括號表示尚未定案。0.1 不渲染該動作（依 §2.2 未接線動作處理），該狀態的退出由「切換專案」單獨承擔 |
 | §4 未載入「預估耗時」 | 預估依據屬待決事項，0.1 不顯示（依 §2.6 誠實性硬規則），只顯示票數 N |
 | FR-02 驗收「Ticket 載入與破洞掃描期間」 | §1 Domain 視圖載入中亦列有「取消載入」操作，故本規格的取消契約覆蓋三處而非兩處 |
-| §6 三個狀態的進入條件 | 皆預設已有選定節點。經導覽列直接進入時無對應狀態，本規格於 §3.6 規定過渡行為並標示為 SPEC-001 缺口 |
+| §6 三個狀態的進入條件 | 皆預設已有選定節點。經導覽列直接進入時的缺口已由 SPEC-001 v1.3「未選節點」補上，本規格 §3.6 與 §4 第 30 列對應之 |
+| §1 已選格「點格子→已選格」 | 「點格子」判讀為單擊；切泳道改由詳情卡內按鈕承擔（§3.1 四案比較，PM 核定）。若 PM 改採他案，本規格 §3.1 兩列改寫，SPEC-001 §1 可用操作欄同步 |
 
 ---
 
@@ -753,7 +804,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | §4 對照表 29 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
+| 驗收 | §4 對照表 31 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
 
 ### FR-02: 取消契約的十一條行為全部成立
 
@@ -802,7 +853,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P1 |
-| 驗收 | §1.1 的 10 個捲動錨點各自通過「drag 後 offset 改變」；§1.2 的三類換頁各自通過「觸發後目標錨點存在且來源錨點不存在」；§1.3 的 `drag-domain-swimlane` 通過「平移量等於位移」；對非拖曳元素 drag 的結果是其所在容器捲動 |
+| 驗收 | §1.1 的 11 個捲動錨點各自通過「drag 後 offset 改變」；§1.2 的三類換頁各自通過「觸發後目標錨點存在且來源錨點不存在」；§1.3 的 `drag-domain-swimlane` 通過「平移量等於位移」；對非拖曳元素 drag 的結果是其所在容器捲動 |
 
 ### FR-09: 焦點與鍵盤下界
 
@@ -829,7 +880,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 - 導航來源記錄為單槽而非堆疊；若日後導入 deep link 或多視窗，此決策須重新評估，
   屆時 §2.3 的四條規則是重評的起點
 - 0.1 的互動全部以假資料驅動。假資料須使每個狀態可被單獨渲染（狀態注入而非
-  等待真實解析），否則 §4 對照表的 29 列無法逐列斷言
+  等待真實解析），否則 §4 對照表的 31 列無法逐列斷言
 - 泳道的拖曳是版型行為，與布局演算法無關；0.1 的泳道以寫死座標的假資料畫出，
   拖曳只驗證平移，不驗證排列品質（SPEC-001 §設計約束已定案）
 
@@ -837,4 +888,5 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.1 | 2026-09-02 | 格詳情卡補件（`0.1.0-W1-048`）：§3.1 互動反應「矩陣格子」由單擊切泳道改為單擊選格（疊加態 `panel-domain-cell-detail`，`Motion.feedback` 內選中、`Motion.transition` cross-fade），新增換選、再點同格、無關格、在泳道中檢視（`action-domain-cell-goto-swimlane`）、清除選取（Esc／`action-domain-cell-clear`）、選 domain 與選格關係、右欄捲動八列；新增「格詳情卡的內容契約」（七區塊存在條件）、未選格右欄 `panel-domain-cell-detail-empty`、「選格與切泳道的關係」四案比較（採 B，標 PM 核定）；動畫提示、導航退出、生命週期各補已選格列；§1.1 捲動處 10 → 11（`scroll-domain-cell-detail`）並延伸連動禁令；§2.10 補已選格 Esc；FR-08 同步 11。同步 SPEC-001 v1.3／v1.4 狀態數：§0 與 §4 由 29 改 31，§4 補第 30 列「未選節點」（`state-nodeDetail-unset`）與第 31 列「已選格」，§3.6 缺口段落改為已承接，§5 判讀表更新 §6 列並補 §1 已選格列，FR-01 與設計約束同步 31 |
 | 1.0 | 2026-09-01 | 初版，`0.1.0-W1-010` 產出。建立時間 token、取消契約十一條、單槽導航來源記錄、首次可見惰性載入契約、測試錨點命名規範；七畫面各自填四類行為；SPEC-001 全 29 狀態逐列對應導航反應 |

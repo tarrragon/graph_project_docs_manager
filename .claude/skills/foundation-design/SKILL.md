@@ -44,7 +44,7 @@ metadata:
 
 | 維度 | 權威來源（判準在此，本 skill 不複述） | 權威提供的預設產物 |
 |------|--------------------------------|------------------|
-| **UI** | 元件庫雙向約束方法論的〈地基波 build 順序〉，四塊依序：i18n → design-system → UX 審查 → 元件庫。UX 審查那塊的執行方法見 `ux-design-evaluation` skill；元件庫那塊實作前的契約程序（九欄位、容器元件）見 `component-contract-design` skill | 四塊各自的實作票；元件庫 `blockedBy` 前三塊與契約齊全 |
+| **UI** | 元件庫雙向約束方法論的〈地基波 build 順序〉，四塊依序：i18n → design-system → UX 審查 → 元件庫。UX 審查那塊的執行方法見 `ux-design-evaluation` skill；元件庫那塊實作前的契約程序（十一欄位、容器元件）見 `component-contract-design` skill | 四塊各自的實作票；元件庫 `blockedBy` 前三塊與契約齊全 |
 | **測試** | `tdd` skill 的分層測試策略，以及其 Phase 2 測試設計檢驗 Q9–Q14（資料是否碰巧通過、error path 覆蓋、資料工廠版本、防哪種改壞、斷言是否 flaky、資料代表性） | fixture 策略、分層地基 |
 | **資料庫** | `saas-tech-selection` skill 的 state-storage 維度（migration 版本化紀律、多租戶資料模型、**防護底線的自動備份與還原驗證**） | migration baseline、**備份與還原驗證**。seed 見〈權威缺席時〉形態 3 |
 | **DevOps** | `saas-tech-selection` skill 的 reliability 維度（CI gate 構成與起始門檻） | CI gate、部署與還原配方 |
