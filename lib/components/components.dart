@@ -10,4 +10,5 @@ export 'app_text.dart';
 export 'badge.dart';
 export 'divider.dart';
 export 'expander_icon.dart';
+export 'list_row.dart';
 export 'page_title.dart';
