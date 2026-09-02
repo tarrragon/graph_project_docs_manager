@@ -16,6 +16,7 @@ export 'list_row.dart';
 export 'page_column.dart';
 export 'page_title.dart';
 export 'panel.dart';
+export 'recent_project_item.dart';
 export 'section.dart';
 export 'split_row.dart';
 export 'two_column_layout.dart';
