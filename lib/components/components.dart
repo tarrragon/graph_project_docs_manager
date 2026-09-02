@@ -15,6 +15,7 @@ export 'document_body.dart';
 export 'expander_icon.dart';
 export 'issue_marker.dart';
 export 'list_row.dart';
+export 'load_prompt.dart';
 export 'nav_item.dart';
 export 'page_column.dart';
 export 'page_title.dart';
