@@ -39,6 +39,7 @@ export 'section.dart';
 export 'segmented_control.dart';
 export 'split_row.dart';
 export 'step_number.dart';
+export 'swimlane_grid.dart';
 export 'swimlane_node.dart';
 export 'switcher_overlay.dart';
 export 'table_column_header.dart';
