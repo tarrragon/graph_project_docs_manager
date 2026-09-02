@@ -16,6 +16,7 @@ export 'divider.dart';
 export 'document_body.dart';
 export 'empty_state.dart';
 export 'expander_icon.dart';
+export 'filter_dropdown.dart';
 export 'issue_marker.dart';
 export 'list_row.dart';
 export 'load_prompt.dart';
