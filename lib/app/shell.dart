@@ -1,248 +1,103 @@
 /// 六項導覽的路由殼。
 ///
-/// 左側導覽列 + 右側內容區的共用容器。各畫面若自帶導覽，切換行為會分歧
-/// （見 ticket why）；[AppShell] 交出「可切換」這件事本身，內容由
-/// [buildDestinationPage] 依 [AppDestination] 決定。
+/// 左側導覽列 + 右側內容區的共用容器，實作骨架委派給
+/// [components.AppShell]（SPEC-004 §4.27）——本檔只負責把 [router.dart]
+/// 的路由狀態組成該容器所需的六組 slot，不再自建側欄／標題列骨架。
 ///
 /// 側欄頂端顯示專案名，是專案切換的入口——PROP-004 §範圍界定已定案：
 /// 專案切換不是獨立畫面，故不佔導覽列一項，收為側欄浮層。浮層的三個狀態
 /// （近期專案／選擇資料夾／切換中）由後續票實作，本票只留入口與空殼浮層。
 library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Icons, Material;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../components/components.dart' as components;
 import '../l10n/app_localizations.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
-import '../tokens/typography.dart';
 import 'router.dart';
 
-/// 側欄固定寬度。桌面單視窗版型，不隨內容縮放。
-const double _kSidebarWidth = 220;
-
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   /// 整合測試用來確認「已抵達導覽殼」的錨點。
-  static const Key shellKey = Key('app-shell');
+  static const Key shellKey = components.AppShell.shellKey;
 
   /// 側欄頂端專案名按鈕的錨點，供測試定位點擊目標。
-  static const Key projectSwitcherEntryKey = Key('project-switcher-entry');
+  static const Key projectSwitcherEntryKey =
+      components.AppShell.projectSwitcherEntryKey;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  bool _isSwitcherOpen = false;
+
+  void _toggleSwitcher() => setState(() => _isSwitcherOpen = !_isSwitcherOpen);
+
+  void _dismissSwitcher() => setState(() => _isSwitcherOpen = false);
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final destination = ref.watch(selectedDestinationProvider);
-    return Scaffold(
-      key: shellKey,
-      appBar: AppBar(
-        title: Text(
-          l10n.appTitle,
-          style: TextStyle(fontSize: AppFontSize.title.sp),
+
+    // `MaterialApp.home` 不自動提供 Material 祖先（過去由 shell.dart 自建
+    // 的 `Scaffold` 承接）；`components.AppShell` 是純骨架容器不含
+    // `Scaffold`，故在此補上唯一一層 `Material`，讓子件（`InkWell` 等）
+    // 的 ink 效果有著落。
+    return Material(
+      child: components.AppShell(
+        switcherEntry: components.ProjectSwitcherEntry(
+          isExpanded: _isSwitcherOpen,
+          onTap: _toggleSwitcher,
+          testKey: AppShell.projectSwitcherEntryKey,
         ),
-      ),
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _Sidebar(selected: destination),
-            const VerticalDivider(width: 1, color: AppColors.border),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _ReturnToHeader(current: destination),
-                  Expanded(
-                    child: IndexedStack(
-                      index: destination.index,
-                      children: [
-                        for (final item in AppDestination.values)
-                          buildDestinationPage(context, item),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+        navItems: [
+          for (final item in AppDestination.values)
+            components.NavItem(
+              icon: components.AppIcon(icon: _iconFor(item)),
+              label: item.label(l10n),
+              isSelected: item == destination,
+              onTap: () => navigateTo(ref.read, item, NavIntent.rail),
+              testKey: Key('nav-item-${item.name}'),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 返回鍵的統一渲染位置（SPEC-003 §2.4：`action-<screen>-back` 一律由
-/// `AppShell` 之下的頁面框架容器單一渲染，六個畫面不各自決定返回鍵的
-/// 擺放方式）。
-///
-/// 元件庫的 `PageColumn` / `SplitRow` / `ButtonRow`（SPEC-004）尚未實作，
-/// 本票先以此簡易 header 承接同一份對外行為——`returnToProvider` 非
-/// `null` 時渲染、按下後觸發 [consumeReturnTo]；元件庫元件到位後只需
-/// 替換渲染實作，錨點與行為不變。
-class _ReturnToHeader extends ConsumerWidget {
-  const _ReturnToHeader({required this.current});
-
-  final AppDestination current;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final returnTo = ref.watch(returnToProvider);
-    if (returnTo == null) return const SizedBox.shrink();
-
-    final l10n = AppLocalizations.of(context);
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: Space.md.w,
-          vertical: Space.sm.h,
-        ),
-        child: TextButton.icon(
-          key: Key('action-${current.name}-back'),
-          onPressed: () => consumeReturnTo(ref.read),
-          icon: const Icon(Icons.arrow_back, size: 16),
-          label: Text(l10n.backAction),
-        ),
-      ),
-    );
-  }
-}
-
-/// 左側導覽列：頂端專案切換入口 + 六個畫面項目。
-class _Sidebar extends ConsumerWidget {
-  const _Sidebar({required this.selected});
-
-  final AppDestination selected;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    return Container(
-      width: _kSidebarWidth.w,
-      color: AppColors.surfaceSidebar,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ProjectSwitcherEntry(l10n: l10n),
-          const Divider(height: 1, color: AppColors.border),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(vertical: Space.sm.h),
-              children: [
-                for (final item in AppDestination.values)
-                  _NavItem(
-                    destination: item,
-                    label: item.label(l10n),
-                    isSelected: item == selected,
-                    onTap: () => navigateTo(ref.read, item, NavIntent.rail),
-                  ),
-              ],
-            ),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-/// 側欄頂端的專案名按鈕，同時是專案切換浮層的入口。
-///
-/// 專案名稱本身由後續票接上真實資料來源；本票僅交出「點擊有回應」這件
-/// 事——回應形式是彈出一個標示切換浮層標題的空殼對話框。
-class _ProjectSwitcherEntry extends StatelessWidget {
-  const _ProjectSwitcherEntry({required this.l10n});
-
-  final AppLocalizations l10n;
-
-  void _openSwitcher(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.projectSwitcherPlaceholderTitle),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      key: AppShell.projectSwitcherEntryKey,
-      onTap: () => _openSwitcher(context),
-      child: Padding(
-        padding: EdgeInsets.all(Space.md.w),
-        child: Row(
-          children: [
-            Icon(Icons.folder_outlined, size: 18.r, color: AppColors.accent),
-            SizedBox(width: Space.sm.w),
-            Expanded(
-              child: Text(
-                l10n.projectSwitcherEntryLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: AppFontSize.subtitle.sp,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textTitle,
+        pages: [
+          for (final item in AppDestination.values)
+            components.PageColumn(
+              semanticLabel: item.label(l10n),
+              header: const SizedBox.shrink(),
+              content: buildDestinationPage(context, item),
+            ),
+        ],
+        overlay: _isSwitcherOpen
+            ? components.SwitcherOverlay(
+                items: const [],
+                chooseOther: components.AppButton(
+                  label: l10n.switcherChooseOtherFolder,
+                  onPressed: _dismissSwitcher,
+                  testKey: const Key('action-switcher-choose-other'),
+                  variant: components.AppButtonVariant.text,
                 ),
-              ),
-            ),
-            Icon(
-              Icons.unfold_more,
-              size: 16.r,
-              color: AppColors.textSecondary,
-            ),
-          ],
-        ),
+                onDismiss: _dismissSwitcher,
+                testKey: const Key('state-switcher-no-recent'),
+                scrollKey: const Key('scroll-switcher-recent'),
+              )
+            : null,
       ),
     );
   }
 }
 
-/// 單一導覽項目。
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.destination,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final AppDestination destination;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      key: Key('nav-item-${destination.name}'),
-      onTap: onTap,
-      child: Container(
-        margin: EdgeInsets.symmetric(
-          horizontal: Space.sm.w,
-          vertical: Space.xxs.h,
-        ),
-        padding: EdgeInsets.symmetric(
-          horizontal: Space.md.w,
-          vertical: Space.sm.h,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.surfaceChip : null,
-          borderRadius: BorderRadius.circular(Radius.md),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: AppFontSize.body.sp,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? AppColors.accentStrong : AppColors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-}
+/// 六個導覽項的裝飾性圖示（純顯示，不承載語意——`NavItem` 已以 `label`
+/// 承載朗讀內容）。依畫面性質挑選語意相近的圖示，元件庫契約未限定圖示集。
+IconData _iconFor(AppDestination destination) => switch (destination) {
+      AppDestination.domain => Icons.grid_view_outlined,
+      AppDestination.ucFlow => Icons.timeline_outlined,
+      AppDestination.traceability => Icons.route_outlined,
+      AppDestination.tickets => Icons.checklist_outlined,
+      AppDestination.gaps => Icons.report_problem_outlined,
+      AppDestination.nodeDetail => Icons.description_outlined,
+    };
