@@ -17,5 +17,6 @@ export 'page_column.dart';
 export 'page_title.dart';
 export 'panel.dart';
 export 'section.dart';
+export 'segmented_control.dart';
 export 'split_row.dart';
 export 'two_column_layout.dart';
