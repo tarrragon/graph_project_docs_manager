@@ -50,15 +50,60 @@ class AppShell extends ConsumerWidget {
             _Sidebar(selected: destination),
             const VerticalDivider(width: 1, color: AppColors.border),
             Expanded(
-              child: IndexedStack(
-                index: destination.index,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final item in AppDestination.values)
-                    buildDestinationPage(context, item),
+                  _ReturnToHeader(current: destination),
+                  Expanded(
+                    child: IndexedStack(
+                      index: destination.index,
+                      children: [
+                        for (final item in AppDestination.values)
+                          buildDestinationPage(context, item),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 返回鍵的統一渲染位置（SPEC-003 §2.4：`action-<screen>-back` 一律由
+/// `AppShell` 之下的頁面框架容器單一渲染，六個畫面不各自決定返回鍵的
+/// 擺放方式）。
+///
+/// 元件庫的 `PageColumn` / `SplitRow` / `ButtonRow`（SPEC-004）尚未實作，
+/// 本票先以此簡易 header 承接同一份對外行為——`returnToProvider` 非
+/// `null` 時渲染、按下後觸發 [consumeReturnTo]；元件庫元件到位後只需
+/// 替換渲染實作，錨點與行為不變。
+class _ReturnToHeader extends ConsumerWidget {
+  const _ReturnToHeader({required this.current});
+
+  final AppDestination current;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final returnTo = ref.watch(returnToProvider);
+    if (returnTo == null) return const SizedBox.shrink();
+
+    final l10n = AppLocalizations.of(context);
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: Space.md.w,
+          vertical: Space.sm.h,
+        ),
+        child: TextButton.icon(
+          key: Key('action-${current.name}-back'),
+          onPressed: () => consumeReturnTo(ref.read),
+          icon: const Icon(Icons.arrow_back, size: 16),
+          label: Text(l10n.backAction),
         ),
       ),
     );
@@ -91,9 +136,7 @@ class _Sidebar extends ConsumerWidget {
                     destination: item,
                     label: item.label(l10n),
                     isSelected: item == selected,
-                    onTap: () => ref
-                        .read(selectedDestinationProvider.notifier)
-                        .state = item,
+                    onTap: () => navigateTo(ref.read, item, NavIntent.rail),
                   ),
               ],
             ),
