@@ -12,6 +12,7 @@ export 'badge_row.dart';
 export 'button_row.dart';
 export 'divider.dart';
 export 'expander_icon.dart';
+export 'issue_marker.dart';
 export 'list_row.dart';
 export 'page_column.dart';
 export 'page_title.dart';
