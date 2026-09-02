@@ -5,6 +5,7 @@
 library;
 
 export 'app_button.dart';
+export 'app_data_table.dart';
 export 'app_icon.dart';
 export 'app_shell.dart';
 export 'app_snack_bar.dart';
