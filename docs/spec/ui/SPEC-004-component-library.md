@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-02"
-version: "1.10"
+version: "1.11"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -3395,7 +3395,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
-| `message` | 是 | 2 | 末行截斷 | `ticketsLoadPrompt`（count 代入 1313；en 較長）；`TestCopy.longZh` |
+| `message` | 否 | 1 | 末端省略 | `ticketsLoadPrompt`（count 代入 1313；en 較長）；`TestCopy.longZh` |
 
 #### slot 契約
 
@@ -3445,7 +3445,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 - [ ] 一支測試渲染單一狀態（count 1 與 99999）
 - [ ] 兩種視窗尺寸下不溢位
-- [ ] 最長測試文案兩行末截斷
+- [ ] 最長測試文案單行末端省略
 - [ ] zh / en 兩個 key 皆不溢位
 - [ ] 開始載入呼叫 `onStart` 恰一次；畫面中不存在 `%`、無預估耗時文字（SPEC-003 FR-07）
 - [ ] 間距引用 token 非硬編碼
@@ -5767,6 +5767,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.11 | 2026-09-02 | `LoadPrompt` 元件票實作時修正 4.25 `LoadPrompt` 內容政策與測試點：`message` 原標「可換行、最大行數 2、末行截斷」與同條目「最小尺寸」列（訊息一行）及 slot 契約（訊息取 `AppText.subtitle`，單行變體）自相矛盾，`AppText`（4.1）subtitle 變體恆為單行不接受 `maxLines`；改為「不可換行、最大行數 1、末端省略」，測試點「最長測試文案兩行末截斷」同步改「最長測試文案單行末端省略」 |
 | 1.10 | 2026-09-02 | 實作校正（`MissingSourceState` 元件票）：4.22 狀態矩陣「顯示」「可用操作」「退出路徑」三欄與「互動反應」「slot 契約」（僅 `path`／`onRefresh`／`testKey`，無 `returnTo`）內部不一致——`ButtonRow` 移除「返回」按鈕，改註明返回鍵由頁面框架於 `SplitRow.header` 統一渲染，與 §3011 既有澄清對齊；內容政策 `message`／`path` 兩列原標可換行（2／3 行）與 `AppText.subtitle`／`AppText.mono` 已核定的單行鎖定契約（4.1）矛盾，改標單行截斷，與實作行為一致 |
 | 1.9 | 2026-09-02 | 對比核定回填（`0.1.0-W1-060`，依 `0.1.0-W1-058` 方案 C 與 `0.1.0-W1-059` 落地值）：§3.7 新增第 25 項；§4.0.1 disabled 列改 `textDisabled`；§4.0.2 重寫為表 1（文字對比，精確值）+ 表 2（`textDisabled` 停用態與純裝飾）+ 帶色表面規則 + `textDisabled` 對應清單；15 條目無障礙子節對比列填實際值去「待 W1-058」（4.1 / 4.4 / 4.5 / 4.6 / 4.9 / 4.11 / 4.12 / 4.13 / 4.14 / 4.15 / 4.18 / 4.21 / 4.22 / 4.23 / 4.24）；4.5 `Badge` 刪 `secondary` tone，`rejected` / `superseded` / `revised` 改對映 `neutral`；4.6 `damagedEdge` child 文字與 4.19 `RelationItem.damaged` 改維持 `textPrimary`；4.9 selected 摘要改 `textPrimary`；4.10 軌道底對比改 4.56:1；停用態與純裝飾箭頭圖示改引用 `textDisabled`（4.2 色彩列補 token、4.4 disabled、4.8 展開箭頭、4.9 disabled、4.12 搜尋圖示、4.13 箭頭、4.18 箭頭、4.38 底部箭頭列）；標頭版本欄自 1.5 補正（1.6–1.8 未同步更新） |
 | 1.8 | 2026-09-02 | PM 核定 `matrixColumnWidth` = 122（§3.7 第 24 項），4.15 / 4.37 與 §4.0.9 去「待核定」標；§3.7 第 23 項更新為 W1-038 已加入依賴 |
