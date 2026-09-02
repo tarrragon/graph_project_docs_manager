@@ -122,7 +122,7 @@ depends_on_domains: [layout]
 | `TableColumnHeader`（表格欄首） | 元件 | L2 | 表格與矩陣的欄首標籤；矩陣欄首為兩行（UC ID + 名稱） | §1、§2、§4 | `static` / `sortable`（`action-tickets-sort-<key>`，狀態 unsorted / asc / desc）/ `twoLine`（矩陣欄首，提案併入本元件，見 3.3 第 10 項） |
 | `MatrixCell`（矩陣格） | 元件 | L3 | domain × UC 交叉格的關係符號，可點擊切至泳道，`cell-domain-<rowId>-<colId>` | §1 | `direct`（● `AppColors.accent`）/ `indirect`（○ `AppColors.textSecondary`）/ `none`（· `AppColors.borderStrong`）；狀態 default / hover / rowSelected（列高亮 `AppColors.surfaceIconTint`） |
 | `SwimlaneNode`（泳道節點） | 元件 | L3 | 泳道格內的動作標籤（掃描、解析、建圖…），0.1 不可點、不可拖 | §1 | `active`（`AppColors.accent` 底、白字）/ `inactive`（`AppColors.surfaceChip` 底） |
-| `StepNumber`（步驟序號） | 元件 | L3 | 步驟列與詳情卡步驟清單的序號 | §1（詳情卡）、§2 | `default`；統一圓形（§3.7 第 11 項）；直徑 token 待 `0.1.0-W1-055` |
+| `StepNumber`（步驟序號） | 元件 | L3 | 步驟列與詳情卡步驟清單的序號 | §1（詳情卡）、§2 | `default`；統一圓形（§3.7 第 11 項）；直徑 `LayoutSize.stepNumberSize`（24） |
 | `ExpanderIcon`（展開收合） | 元件 | L2 | 樹節點、主題節、破洞分節的展開觸發器，`expander-*` | §3、§4、§5 | `default`；狀態 expanded / collapsed / leaf（無子層時不渲染箭頭但保留寬度） |
 | `RelationItem`（關聯項） | 元件 | L3 | 節點詳情右欄的關聯節點 ID，等寬字、chip 底、可點擊替換主欄，`card-nodeDetail-relation-<nodeId>` | §6 | `default`；狀態 default / hover / damaged（邊損壞時套 `IssueMarker.damagedEdge`） |
 | `DocumentBody`（文件內文） | 元件 | L3 | 節點詳情主欄的 markdown 渲染內容（段落、行內 code、FR 引用區塊）；由 0.0.3 選定的 `flutter_markdown_plus` 承載，渲染器內部 widget 列第 7 章豁免 | §6 | `default`；屬元件庫（§3.7 第 7 項） |
@@ -242,14 +242,14 @@ depends_on_domains: [layout]
 | §1 泳道 | 二維：泳道列 × 6 垂直（虛線分隔）；列內水平：泳道名 / 步驟欄 × 6，節點置中於欄 | 列高 `LayoutSize.laneRowHeight`、泳道名欄 `LayoutSize.laneLabelWidth`（W1-047 已建） | `SwimlaneGrid` |
 | §4 列表 | 工具列水平：搜尋（填滿）/ 下拉 × 2 | `Space.sm` | `Toolbar` |
 | §2、§4 | 表頭水平格線：欄首 × N | 欄間 `Space.md` | `TableRow.header` |
-| §2、§4 | 資料列水平格線：格 × N，欄寬對齊表頭 | 欄間 `Space.md`；列高 `LayoutSize.rowHeightRelaxed`（W1-047 已建）；固定寬欄的 token 待 `0.1.0-W1-055` | `TableRow.ticket` / `TableRow.step` |
+| §2、§4 | 資料列水平格線：格 × N，欄寬對齊表頭 | 欄間 `Space.md`；列高 `LayoutSize.rowHeightRelaxed`（W1-047 已建）；固定寬欄 token（`ticketIdColumnWidth` 等，`0.1.0-W1-055` 已建） | `TableRow.ticket` / `TableRow.step` |
 | §2、§4 | 表格垂直：表頭 / 列 × N | 列間以 `AppColors.border` 底邊分隔 | `DataTable` |
 | §4 列表 | 底列水平：摘要 / 說明 | 兩端對齊 | `SplitRow.footer` |
 | §4 主題 | 節垂直：節首 / 票列 × N；節之間垂直 | 節內 `Space.xxs`、節間 `Space.sm`；未歸屬節頂部虛線 | `Section.collapsible` |
 | §4 主題、§5 | 節首水平：展開或類別徽章 / 名稱 / 計數 | `Space.sm` | `ListRow.sectionHeader` |
 | §5 | 節垂直：節首 / 破洞項 × N；節間垂直 | 節間 `Space.lg`；項以頂邊框分隔 | `Section.collapsible` |
 | §5 | 破洞項水平：標題與說明堆疊 / 外開箭頭 | `Space.sm`；標題與說明 `Space.xxs` | `ListRow.item` |
-| §3 | 樹垂直：列 × N，依深度縮排；列水平：展開 / 名稱 / 狀態 | 列高 `LayoutSize.rowHeightDense`；列內 `Space.sm`；每層縮排 token 待 `0.1.0-W1-055` | `Tree` + `ListRow.tree` |
+| §3 | 樹垂直：列 × N，依深度縮排；列水平：展開 / 名稱 / 狀態 | 列高 `LayoutSize.rowHeightDense`；列內 `Space.sm`；每層縮排 `LayoutSize.treeIndent`（24，`0.1.0-W1-055` 已建） | `Tree` + `ListRow.tree` |
 | §6 主欄 | 垂直：meta 列 / 標題 / 標籤列 / 分隔線 / 內文 / 引用區塊 | `Space.sm`；面板內距 `Space.lg`（畫布主欄內距大於其他面板，是否為 `Panel` 變體**待核定**） | `Panel` + `ListRow.meta` + `BadgeRow` |
 | §6 右欄 | 垂直：關聯群 × 4；群內垂直：小標 / 關聯項 × N | 群間 `Space.sm`；群內 `Space.xs` | `Panel.scrollable` + `Section.static` |
 | §7 | 浮層垂直：標題 / 專案項 × N / 分隔線 / 選擇其他 | `Space.xxs`；浮層內距 `Space.sm` | `SwitcherOverlay` |
@@ -289,7 +289,7 @@ depends_on_domains: [layout]
 | 畫布未畫：空狀態、阻擋狀態、載入態、待載入提示、返回鍵、SnackBar、schema 詳情面板 | 規格有、畫布無 | 規格為準，不視為缺件；其排列（icon / 訊息 / 說明 / 動作列的堆疊）於第 4 章依 SPEC-003 §2.6–§2.7 填 |
 | `design/Main.dc.html` 矩陣模式頁首副標「點格子切換至泳道」，SPEC-003 §3.1 採方案 B 後單擊為選格 | 行為類（規格為準） | 副標改為「點格子檢視詳情」；畫布不回改，畫面票的副標文案依 SPEC-003（W1-048 消費結果） |
 | 畫布無 hover / focused / pressed 任何樣式，無格詳情卡關閉鈕、無矩陣格選中態 | 畫布不可得 | 互動瞬態視覺依 §4.0.1 通用約定（Material 內建 overlay，不自繪，標提案）；選中態依 §4.15 成對設計 |
-| 畫布頂端標題列高 36、票表固定寬欄 132 / 84 / 40 / 22、步驟表 26 / 118、樹縮排每層 24、步驟序號 16 與 24 兩值 | 視覺值，token 缺 | `0.1.0-W1-055` 建 token；對應元件的尺寸契約標待決（§4.0.9） |
+| 畫布頂端標題列高 36、票表固定寬欄 132 / 84 / 40 / 22、步驟表 26 / 118、樹縮排每層 24、步驟序號 16 與 24 兩值 | 視覺值，token 缺 | `0.1.0-W1-055` 已建對應 token；§4.0.9 待決清單去標 |
 
 ### 3.6 SPEC-001 31 列與 SPEC-002 八類的歸屬對照
 
@@ -520,14 +520,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |------|---------|--------|-----|
 | 4.13 `FilterDropdown` | 互動反應（選單開合、鍵盤）、狀態矩陣 `open` 列的退出路徑、無障礙播報 | SPEC-003 §3.4 未涵蓋 | `0.1.0-W1-057` |
 | 4.14 `TableColumnHeader`（`sortable` 變體） | 互動反應（排序循環）、無障礙播報值 | SPEC-003 §3.4 未涵蓋 | `0.1.0-W1-057` |
-| 4.17 `StepNumber` | 尺寸契約（直徑） | token 缺（畫布兩值） | `0.1.0-W1-055` |
-| 4.27 `AppShell` | 尺寸契約（標題列高） | token 缺 | `0.1.0-W1-055` |
-| 4.35 `TableRow`（`ticket` / `step`） | 組合規則（固定寬欄）、5.9 不重疊公式 | token 缺 | `0.1.0-W1-055` |
-| 4.36 `DataTable` | 5.10 不重疊公式（承 4.35） | 同上 | `0.1.0-W1-055` |
-| 4.37 `MatrixGrid` | 尺寸契約（UC 欄寬）、5.11 不重疊公式 | token 缺且畫布無固定值 | `0.1.0-W1-055` |
-| 4.39 `Tree` | 尺寸契約（縮排階）、5.13 不重疊公式 | token 缺 | `0.1.0-W1-055` |
 
-其餘 34 條目無待決欄位，可被畫面票引用（含新 key 者以 `0.1.0-W1-056` 為元件票 blockedBy，不構成待決）。
+其餘 40 條目無待決欄位，可被畫面票引用（含新 key 者以 `0.1.0-W1-056` 為元件票 blockedBy，不構成待決）；`0.1.0-W1-055` 已建齊 6 項尺寸 token，原 6 條目自本清單去標（`matrixColumnWidth` 值待 PM 核定，惟不再視為 skill〈契約齊全的定義〉之待決欄位——已有具名 token 與明確提案值，僅數值本身待正式核定）。
 
 ### 4.1 AppText
 
@@ -1090,7 +1084,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 可放入的容器 | `BadgeRow`、`TableRow`（格位）、`ListRow`（leading / trailing）、`Section`（節首經 `ListRow.sectionHeader`）；作為 `RecentProjectItem` / `IssueMarker.damagedDetail` 的內部 slot |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 置中於所在列；inline 形態以文字基線 |
-| 作為表格或列表的一欄時 | 固定寬欄（`TableRow.ticket` 狀態欄，token 待 `0.1.0-W1-055`）；inline 形態；內距由容器承載 |
+| 作為表格或列表的一欄時 | 固定寬欄（`TableRow.ticket` 狀態欄，`LayoutSize.ticketStatusColumnWidth`）；inline 形態；內距由容器承載 |
 
 #### 無障礙
 
@@ -1214,7 +1208,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 可放入的容器 | `Toolbar`（末格）、`TableRow.ticket`（末欄）、`ListRow`（trailing；`tree` 變體的缺口列）、`Panel`（節點詳情欄位級，與被標示欄位同列經 `ListRow.meta`）、`Section.static`（關聯群內包住 `RelationItem`） |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 置中於所在列 |
-| 作為表格或列表的一欄時 | 固定寬欄（`TableRow.ticket` 標記欄，token 待 `0.1.0-W1-055`）；內距由容器承載 |
+| 作為表格或列表的一欄時 | 固定寬欄（`TableRow.ticket` 標記欄，`LayoutSize.ticketMarkerColumnWidth`）；內距由容器承載 |
 
 #### 無障礙
 
@@ -2221,7 +2215,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 項目 | 值 |
 |------|-----|
-| 尺寸模式 | 填滿父格位（`MatrixGrid` 的格；欄寬待 `0.1.0-W1-055`，屬 4.37 的待決，本元件不感知） |
+| 尺寸模式 | 填滿父格位（`MatrixGrid` 的格；欄寬 `LayoutSize.matrixColumnWidth`，提案值待 PM 核定，屬 4.37 範疇，本元件不感知） |
 | 最小尺寸 | `LayoutSize.hitTargetMin` × `LayoutSize.rowHeightRelaxed` |
 | 最小命中區 | `LayoutSize.hitTargetMin` |
 | 最大尺寸 | 寬：格寬；高：`LayoutSize.rowHeightRelaxed` |
@@ -2267,7 +2261,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 可放入的容器 | `MatrixGrid`（資料格） |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 符號置中於格 |
-| 作為表格或列表的一欄時 | 欄寬 = `MatrixGrid` UC 欄寬（待 `0.1.0-W1-055`）；內距 `Space.xs` |
+| 作為表格或列表的一欄時 | 欄寬 = `MatrixGrid` UC 欄寬 `LayoutSize.matrixColumnWidth`（提案值待 PM 核定）；內距 `Space.xs` |
 
 #### 無障礙
 
@@ -2413,8 +2407,6 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 **出現畫面**：§1（詳情卡）、§2。
 **層級**：L3
 
-> **本條目含待決欄位**（§4.0.9）：直徑 token 待 `0.1.0-W1-055`（畫布兩值 16 / 24 須收斂）；補齊前不得被畫面票引用。
-
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
@@ -2444,7 +2436,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 固有尺寸（正圓） |
-| 最小尺寸 | **待決**：直徑 `LayoutSize.stepNumberSize`（`0.1.0-W1-055`） |
+| 最小尺寸 | 直徑 `LayoutSize.stepNumberSize`（24，圓形；收斂自畫布 16/24 兩值） |
 | 最小命中區 | 不適用（不可點） |
 | 最大尺寸 | 同直徑 |
 | `kMinWindowSize` 下的行為 | 維持 |
@@ -2485,7 +2477,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 可放入的容器 | `TableRow.step`（首欄）、`ListRow.numbered`（leading） |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 置中於列 |
-| 作為表格或列表的一欄時 | 固定寬欄（`TableRow.step` 序號欄，token 待 `0.1.0-W1-055`）；內距由容器承載 |
+| 作為表格或列表的一欄時 | 固定寬欄（`TableRow.step` 序號欄，`LayoutSize.stepNumberColumnWidth`）；內距由容器承載 |
 
 #### 無障礙
 
@@ -2707,7 +2699,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 可放入的容器 | `Section.static`（關聯群項目）；`TableRow.step`（domain 欄，`isMono=false`）；damaged 時外包 `IssueMarker.damagedEdge` |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 關聯群內填滿寬、文字 `start`；表格欄內固有寬、置中 |
-| 作為表格或列表的一欄時 | `TableRow.step` domain 欄：固定寬（token 待 `0.1.0-W1-055`）、固有寬 chip 置於欄內；內距由容器承載 |
+| 作為表格或列表的一欄時 | `TableRow.step` domain 欄：固定寬（`LayoutSize.stepDomainColumnWidth`）、固有寬 chip 置於欄內；內距由容器承載 |
 
 #### 無障礙
 
@@ -3600,7 +3592,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 最小尺寸 | `kMinWindowSize`（macOS `minSize`） |
 | 最小命中區 | 不適用（容器） |
 | 最大尺寸 | 無（可最大化） |
-| 標題列高 | **待決**：`LayoutSize.titleBarHeight`（`0.1.0-W1-055`；畫布 36，`shell.dart` 的 Material `AppBar` 預設高屬漂移） |
+| 標題列高 | `LayoutSize.titleBarHeight`（36；`shell.dart` 現行 Material `AppBar` 預設高屬漂移，待實作票對齊） |
 | 側欄寬 | `LayoutSize.sidebarWidth` |
 | `kMinWindowSize` 下的行為 | 維持（側欄固定寬，主區吸收剩餘寬；不切換版型，§1） |
 | `kDesignSize` 下的行為 | 維持 |
@@ -4432,8 +4424,6 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 **出現畫面**：§2、§4。
 **層級**：L2
 
-> **本條目含待決欄位**（§4.0.9）：`ticket` / `step` 的固定寬欄 token 待 `0.1.0-W1-055`；補齊前不得被畫面票引用。
-
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
@@ -4473,8 +4463,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 最小尺寸 | 寬：Σ 固定寬欄 + 填滿欄最小寬（一字元 + 省略號）+ (欄數 − 1) × `Space.md`；高：`LayoutSize.rowHeightRelaxed` |
 | 最小命中區 | `ticket` / `step` 整列高 `LayoutSize.rowHeightRelaxed` ≥ `LayoutSize.hitTargetMin` |
 | 最大尺寸 | 寬無上限；高固定 |
-| 欄規格（`ticket`） | ID 固定寬 **待決** `LayoutSize.ticketIdColumnWidth`、標題填滿、狀態 **待決** `ticketStatusColumnWidth`、優先 **待決** `ticketPriorityColumnWidth`、標記 **待決** `ticketMarkerColumnWidth`（`0.1.0-W1-055`） |
-| 欄規格（`step`） | 序號 **待決** `stepNumberColumnWidth`、步驟名填滿、domain **待決** `stepDomainColumnWidth`、事件填滿（兩個填滿欄等分，畫布 `1fr 118px 1fr`） |
+| 欄規格（`ticket`） | ID 固定寬 `LayoutSize.ticketIdColumnWidth`（132）、標題填滿、狀態 `LayoutSize.ticketStatusColumnWidth`（84）、優先 `LayoutSize.ticketPriorityColumnWidth`（40）、標記 `LayoutSize.ticketMarkerColumnWidth`（22） |
+| 欄規格（`step`） | 序號 `LayoutSize.stepNumberColumnWidth`（26）、步驟名填滿、domain `LayoutSize.stepDomainColumnWidth`（118）、事件填滿（兩個填滿欄等分，畫布 `1fr 118px 1fr`） |
 | `kMinWindowSize` 下的行為 | 維持（填滿欄截斷） |
 | `kDesignSize` 下的行為 | 維持 |
 
@@ -4502,7 +4492,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 字體 | 無 |
 | 圓角 | 無 |
 | 動畫 | `Motion.feedback` |
-| 尺寸 | `LayoutSize.rowHeightRelaxed`；固定寬欄 token 待 `0.1.0-W1-055` |
+| 尺寸 | `LayoutSize.rowHeightRelaxed`；固定寬欄 token（`0.1.0-W1-055` 已建） |
 
 #### i18n
 
@@ -4552,8 +4542,6 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 **何時不用**：二維格線（`MatrixGrid`）；依深度縮排的列（`Tree`）；分節（`Section`）。
 **出現畫面**：§2、§4。
 **層級**：L2
-
-> **本條目含待決欄位**（§4.0.9）：5.10 不重疊公式承 4.35 的欄 token（`0.1.0-W1-055`）。
 
 #### 變體
 
@@ -4668,7 +4656,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 **出現畫面**：§1。
 **層級**：L3
 
-> **本條目含待決欄位**（§4.0.9）：UC 欄寬 `LayoutSize.matrixColumnWidth` 待 `0.1.0-W1-055`；補齊前不得被畫面票引用。
+> **UC 欄寬 `LayoutSize.matrixColumnWidth`（122）為提案值，待 PM 核定**（見 `lib/tokens/layout.dart` dartdoc〈MatrixGrid UC 欄寬定案〉）；核定前本元件不得被畫面票引用。
 
 #### 變體
 
@@ -4708,10 +4696,10 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 填滿父容器（寬與高） |
-| 最小尺寸 | 寬：`LayoutSize.matrixLeadColumnWidth` + **待決** `matrixColumnWidth` + `LayoutSize.matrixSubtotalWidth`；高：欄首列高（`TableColumnHeader.twoLine`）+ `LayoutSize.rowHeightRelaxed` |
+| 最小尺寸 | 寬：`LayoutSize.matrixLeadColumnWidth` + `LayoutSize.matrixColumnWidth`（122，提案值，待 PM 核定） + `LayoutSize.matrixSubtotalWidth`；高：欄首列高（`TableColumnHeader.twoLine`）+ `LayoutSize.rowHeightRelaxed` |
 | 最小命中區 | 列首格高 `LayoutSize.rowHeightRelaxed` ≥ `LayoutSize.hitTargetMin` |
 | 最大尺寸 | 無（內容超出即二維捲動） |
-| 欄規格 | 列首 `LayoutSize.matrixLeadColumnWidth`；UC 欄 **待決** `LayoutSize.matrixColumnWidth` × N；小計 `LayoutSize.matrixSubtotalWidth` |
+| 欄規格 | 列首 `LayoutSize.matrixLeadColumnWidth`；UC 欄 `LayoutSize.matrixColumnWidth`（122，提案值，待 PM 核定） × N；小計 `LayoutSize.matrixSubtotalWidth` |
 | `kMinWindowSize` 下的行為 | 維持（二維捲動） |
 | `kDesignSize` 下的行為 | 維持 |
 
@@ -4743,7 +4731,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 字體 | 經子件 |
 | 圓角 | `Radius.md`（高亮列） |
 | 動畫 | 無（釘選與捲動無動畫） |
-| 尺寸 | `LayoutSize.matrixLeadColumnWidth` / `matrixSubtotalWidth` / `rowHeightRelaxed`；UC 欄寬待決 |
+| 尺寸 | `LayoutSize.matrixLeadColumnWidth` / `matrixSubtotalWidth` / `rowHeightRelaxed`；UC 欄寬 `LayoutSize.matrixColumnWidth`（提案值，待 PM 核定） |
 
 #### i18n
 
@@ -4909,8 +4897,6 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 **出現畫面**：§3。
 **層級**：L3
 
-> **本條目含待決欄位**（§4.0.9）：每層縮排 `LayoutSize.treeIndent` 待 `0.1.0-W1-055`；補齊前不得被畫面票引用。
-
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
@@ -4946,7 +4932,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 最小尺寸 | 寬：最深層縮排 + `ListRow.tree` 最小寬；高：一列 `LayoutSize.rowHeightDense` |
 | 最小命中區 | 不適用 |
 | 最大尺寸 | 無 |
-| 每層縮排 | **待決** `LayoutSize.treeIndent`（`0.1.0-W1-055`；四層：PROP / SPEC / UC / Ticket） |
+| 每層縮排 | `LayoutSize.treeIndent`（24；四層：PROP / SPEC / UC / Ticket） |
 | `kMinWindowSize` 下的行為 | 維持（列主文字截斷） |
 | `kDesignSize` 下的行為 | 維持 |
 
@@ -4969,7 +4955,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 面向 | token |
 |------|-------|
 | 色彩 | 無（列承載） |
-| 間距 | 列最小間距 0（列高固定，以 `rowHeightDense` 承載留白）；縮排 token 待決 |
+| 間距 | 列最小間距 0（列高固定，以 `rowHeightDense` 承載留白）；縮排 `LayoutSize.treeIndent`（24） |
 | 字體 | 無 |
 | 圓角 | 無 |
 | 動畫 | `Motion.transition` |
@@ -5400,7 +5386,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |--------|-----|
 | 不重疊 | 標題列、側欄、主區三個區域互斥（垂直：標題列 / 主體；主體水平：側欄 / 主區）；側欄內子件垂直堆疊兩兩不相交；覆蓋層允許疊於側欄與主區之上（覆蓋層非佈局流子件）；測試以兩種尺寸 × 上限驗證 |
 | 最小間距 | 側欄：入口與導覽項間 `Space.sm`，導覽項間 `Space.xxs`；側欄與主區以邊框線相接（§4.0.3 線寬）；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發：上限 7（側欄）；`LayoutSize.titleBarHeight`（**待決** `0.1.0-W1-055`）+ 2 × `Space.md` + `ProjectSwitcherEntry` 高 + `Space.sm` + 6 × `NavItem` 高 + 5 × `Space.xxs` ≤ `kMinWindowSize.height`；主區寬 = 視窗寬 − `LayoutSize.sidebarWidth` ≥ `PageColumn` 最小寬。公式含待決 token，元件票於 W1-055 後代入驗證 |
+| 空間不足策略 | 不觸發：上限 7（側欄）；`LayoutSize.titleBarHeight`（36）+ 2 × `Space.md` + `ProjectSwitcherEntry` 高 + `Space.sm` + 6 × `NavItem` 高 + 5 × `Space.xxs` ≤ `kMinWindowSize.height`；主區寬 = 視窗寬 − `LayoutSize.sidebarWidth` ≥ `PageColumn` 最小寬 |
 
 ### 5.2 PageColumn
 
@@ -5476,7 +5462,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |--------|-----|
 | 不重疊 | 兩欄水平互斥、等高；右欄寬恆 `LayoutSize.detailPaneWidth` |
 | 最小間距 | `Space.md`；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發：上限 2；`LayoutSize.detailPaneWidth` + `Space.md` + 主欄最小寬 ≤ 可用寬（= 視窗寬 − `LayoutSize.sidebarWidth` − 2 × `Space.xl`）；主欄最小寬 = 2 × `Space.md` + 其資料視圖最小寬（§6：`DocumentBody` 一字元；§1：`MatrixGrid` 最小寬，含 **待決** `matrixColumnWidth`，5.11） |
+| 空間不足策略 | 不觸發：上限 2；`LayoutSize.detailPaneWidth` + `Space.md` + 主欄最小寬 ≤ 可用寬（= 視窗寬 − `LayoutSize.sidebarWidth` − 2 × `Space.xl`）；主欄最小寬 = 2 × `Space.md` + 其資料視圖最小寬（§6：`DocumentBody` 一字元；§1：`MatrixGrid` 最小寬，含 `matrixColumnWidth`（122，提案值待 PM 核定），5.11） |
 
 ### 5.6 Toolbar
 
@@ -5552,7 +5538,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |--------|-----|
 | 不重疊 | 格依欄規格水平互斥；填滿欄子件截斷（`AppText`）或換行（`BadgeRow`，列高固定時改為單列截斷，提案：`step` 事件欄 `BadgeRow` 限一列） |
 | 最小間距 | `Space.md`（欄間）；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發：上限 5；Σ 固定寬欄（**待決** token：`ticketIdColumnWidth` + `ticketStatusColumnWidth` + `ticketPriorityColumnWidth` + `ticketMarkerColumnWidth`；`stepNumberColumnWidth` + `stepDomainColumnWidth`）+ 填滿欄最小寬 × 填滿欄數 + (欄數 − 1) × `Space.md` + 2 × `Space.sm` ≤ 列寬（= `Panel` 內寬）。公式含待決 token（`0.1.0-W1-055`） |
+| 空間不足策略 | 不觸發：上限 5；Σ 固定寬欄（`ticketIdColumnWidth` + `ticketStatusColumnWidth` + `ticketPriorityColumnWidth` + `ticketMarkerColumnWidth`；`stepNumberColumnWidth` + `stepDomainColumnWidth`）+ 填滿欄最小寬 × 填滿欄數 + (欄數 − 1) × `Space.md` + 2 × `Space.sm` ≤ 列寬（= `Panel` 內寬） |
 
 ### 5.10 DataTable
 
@@ -5571,7 +5557,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |--------|-----|
 | 不重疊 | 列垂直互斥、高固定 `LayoutSize.rowHeightRelaxed`（`virtual` 以 `itemExtent` 保證）；表頭釘選於頂且不與首列相交；水平方向承 5.9 |
 | 最小間距 | 列間以 `TableRow` 底邊框線寬分隔（§4.0.3）；呼叫端不得覆寫 |
-| 空間不足策略 | 捲動（垂直，`scroll-tickets-list` / `scroll-ucFlow-steps`）；觸發條件：列數 × `LayoutSize.rowHeightRelaxed` > 可用高 − 表頭高。水平方向不觸發（承 5.9 公式，含待決 token） |
+| 空間不足策略 | 捲動（垂直，`scroll-tickets-list` / `scroll-ucFlow-steps`）；觸發條件：列數 × `LayoutSize.rowHeightRelaxed` > 可用高 − 表頭高。水平方向不觸發（承 5.9 公式） |
 
 ### 5.11 MatrixGrid
 
@@ -5590,7 +5576,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |--------|-----|
 | 不重疊 | 二維格線：每格寬 = 欄寬、高 = `LayoutSize.rowHeightRelaxed`，行列皆互斥；釘選的欄首列與列首欄與捲動內容以不透明底分層，不相交於可見區 |
 | 最小間距 | 列間 `Space.xxs`；欄間 0（格內距 `Space.xs` 承載留白）；呼叫端不得覆寫 |
-| 空間不足策略 | 捲動（二維，`scroll-domain-matrix`）；觸發條件：`LayoutSize.matrixLeadColumnWidth` + N × **待決** `matrixColumnWidth` + `LayoutSize.matrixSubtotalWidth` > 可用寬，或欄首高 + M × (`LayoutSize.rowHeightRelaxed` + `Space.xxs`) > 可用高。公式含待決 token（`0.1.0-W1-055`） |
+| 空間不足策略 | 捲動（二維，`scroll-domain-matrix`）；觸發條件：`LayoutSize.matrixLeadColumnWidth` + N × `matrixColumnWidth`（122，提案值待 PM 核定） + `LayoutSize.matrixSubtotalWidth` > 可用寬，或欄首高 + M × (`LayoutSize.rowHeightRelaxed` + `Space.xxs`) > 可用高 |
 
 ### 5.12 SwimlaneGrid
 
@@ -5626,9 +5612,9 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 不變式 | 值 |
 |--------|-----|
-| 不重疊 | 列垂直互斥、高固定 `LayoutSize.rowHeightDense`；列內縮排 = 深度 × **待決** `LayoutSize.treeIndent`，列主文字截斷 |
+| 不重疊 | 列垂直互斥、高固定 `LayoutSize.rowHeightDense`；列內縮排 = 深度 × `LayoutSize.treeIndent`（24），列主文字截斷 |
 | 最小間距 | 列間 0（留白由列高承載）；呼叫端不得覆寫 |
-| 空間不足策略 | 捲動（垂直，由所在 `Panel.scrollable` 的 `scroll-traceability-tree` 承載，本容器不自設捲動區）；觸發條件：可見列數 × `LayoutSize.rowHeightDense` > 面板可用高。水平：不觸發：3 × `treeIndent` + `ListRow.tree` 最小寬 ≤ 可用寬（含待決 token，`0.1.0-W1-055`） |
+| 空間不足策略 | 捲動（垂直，由所在 `Panel.scrollable` 的 `scroll-traceability-tree` 承載，本容器不自設捲動區）；觸發條件：可見列數 × `LayoutSize.rowHeightDense` > 面板可用高。水平：不觸發：3 × `treeIndent` + `ListRow.tree` 最小寬 ≤ 可用寬 |
 
 ### 5.14 ListRow
 
@@ -5759,6 +5745,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.6 | 2026-09-02 | 補齊第 4 章缺漏佈局尺寸 token（`0.1.0-W1-055`）：`lib/tokens/layout.dart` 新增 `titleBarHeight` / `ticketIdColumnWidth` / `ticketStatusColumnWidth` / `ticketPriorityColumnWidth` / `ticketMarkerColumnWidth` / `stepNumberColumnWidth` / `stepDomainColumnWidth` / `treeIndent` / `stepNumberSize` / `matrixColumnWidth` 十項；`stepNumberSize` 收斂採 UCFlowB 圓形值 24（依 §3.7 第 11 項）；`matrixColumnWidth` 為本票依 `Main` 版面尺寸鏈反推的提案值 122，dartdoc 與本檔皆標「待 PM 核定」。§4.0.9 待決清單去標原 6 條目（4.17 / 4.27 / 4.35 / 4.36 / 4.37 / 4.39）；4.17 / 4.27 / 4.35 尺寸契約與組合規則、4.36 / 4.37 / 4.39 的 5.10 / 5.11 / 5.13 不重疊公式改引用具名 token；§3.4 / §3.5 對應列同步 |
 | 1.5 | 2026-09-02 | 逐元件契約與容器不變式（`0.1.0-W1-044.2`）：第 4 章新增 §4.0 通用約定（互動瞬態視覺、對比表、尺寸推算、`TestCopy` 測試文案常數、測試形態 L2 條文、新 key 總表、操作機制通用列、組合規則通用值、待決清單）與 42 條目（元件 4.1–4.26、容器 4.27–4.42，每條十三子節）；第 5 章 16 條容器子件契約與排列不變式，§3.4 排列關係 25 列逐列對應；第 6 章原生禁用對照表、第 7 章豁免清單填最小集（提案）。§3 依 §3.7 核定回填：`MissingSourceState` 獨立列、`EmptyState` 變體收為 `page` / `section`、`TableRow.ticketNested` 刪除、`AppButton` 三變體與 `Badge` tone 參數、`StepNumber` 圓形、定案數元件 26 / 容器 16（原「17」為計數誤差）；§3.4 token 缺料列改引用 W1-047 已建 token；§3.5 補四則漂移（副標文案、hover 樣式、缺 token 尺寸）；§3.6 標題 30 → 31 並補「已選格」列、§6 / §7 位置依 §3.7 第 14、17、18 項。待決：`FilterDropdown` 與 `TableColumnHeader.sortable` 互動反應（`0.1.0-W1-057`）、`StepNumber` / `AppShell` / `TableRow` / `DataTable` / `MatrixGrid` / `Tree` 尺寸 token（`0.1.0-W1-055`）；新 key 由 `0.1.0-W1-056` 建立；`textSecondary` 對比未達 AA 待 `0.1.0-W1-058`。`RelationItem` 擴為節點參照 chip（含步驟表 domain 欄），`Badge` 增 tone 參數 |
 | 1.4 | 2026-09-02 | 用戶補充回饋通道、最小命中區、禁放區與安全區三維度；§1 填桌機值（視覺回饋、`hitTargetMin` 提案待 W1-047、無禁放區與 SafeArea） |
 | 1.3 | 2026-09-02 | 用戶補充操作機制與無障礙為必填欄，契約欄位九改十一；§3.7 引言補說明 |

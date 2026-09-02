@@ -103,4 +103,74 @@ void main() {
       expect(LayoutSize.hitTargetMin, lessThanOrEqualTo(measuredMax));
     });
   });
+
+  group('LayoutSize 原始值回溯（SPEC-004 第 4 章缺漏 token 補齊）', () {
+    test('titleBarHeight 回溯九份 artboard 頂端標題列一致實測值 36', () {
+      expect(LayoutSize.titleBarHeight, 36);
+    });
+
+    test('ticket 欄組回溯 TicketListA grid-template-columns 132/84/40/22', () {
+      expect(LayoutSize.ticketIdColumnWidth, 132);
+      expect(LayoutSize.ticketStatusColumnWidth, 84);
+      expect(LayoutSize.ticketPriorityColumnWidth, 40);
+      expect(LayoutSize.ticketMarkerColumnWidth, 22);
+    });
+
+    test('ticketIdColumnWidth 與 matrixLeadColumnWidth 恰好同值但語意不同', () {
+      expect(
+        LayoutSize.ticketIdColumnWidth,
+        LayoutSize.matrixLeadColumnWidth,
+        reason: '兩者恰好同值但各自獨立量測，非共用來源',
+      );
+    });
+
+    test('step 欄組回溯 UCFlowB grid-template-columns 固定寬欄 26/118', () {
+      expect(LayoutSize.stepNumberColumnWidth, 26);
+      expect(LayoutSize.stepDomainColumnWidth, 118);
+    });
+
+    test('treeIndent 回溯 TraceA 四層 padding-left 等差值 24', () {
+      const depths = [0, 24, 48, 72];
+      for (var i = 1; i < depths.length; i++) {
+        expect(depths[i] - depths[i - 1], LayoutSize.treeIndent);
+      }
+      expect(LayoutSize.treeIndent, 24);
+    });
+  });
+
+  group('StepNumber 尺寸收斂（stepNumberSize）', () {
+    test('收斂採 UCFlowB 圓形值 24，非 Main 方形值 16', () {
+      const squareValue = 16; // Main 詳情卡步驟清單，border-radius:4px（方形）
+      const circleValue = 24; // UCFlowB 步驟流，border-radius:12px（圓形，半徑=直徑/2）
+      expect(LayoutSize.stepNumberSize, isNot(squareValue));
+      expect(LayoutSize.stepNumberSize, circleValue);
+    });
+  });
+
+  group('MatrixGrid UC 欄寬定案（matrixColumnWidth，待 PM 核定）', () {
+    test('由 Main 版面尺寸鏈推算出 5 UC 欄合計並等分為 122', () {
+      const artboardWidth = 1280;
+      const sidebarWidth = 172;
+      const contentPadding = 20;
+      const detailPaneWidth = 236;
+      const panelGap = 14;
+      const panelPadding = 14;
+      const panelBorder = 1;
+      const ucColumnCount = 5;
+
+      final dualColumnWidth =
+          artboardWidth - sidebarWidth - contentPadding * 2;
+      final matrixPanelWidth =
+          dualColumnWidth - detailPaneWidth - panelGap;
+      final gridContentWidth =
+          matrixPanelWidth - panelPadding * 2 - panelBorder * 2;
+      final ucColumnsTotal = gridContentWidth -
+          LayoutSize.matrixLeadColumnWidth -
+          LayoutSize.matrixSubtotalWidth;
+      final perColumn = ucColumnsTotal / ucColumnCount;
+
+      expect(perColumn, LayoutSize.matrixColumnWidth);
+      expect(LayoutSize.matrixColumnWidth, 122);
+    });
+  });
 }
