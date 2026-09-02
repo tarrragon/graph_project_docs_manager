@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'app/shell.dart';
+import 'components/app_text.dart';
 import 'l10n/app_localizations.dart';
 import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
@@ -107,8 +108,8 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       key: HomePage.pageKey,
       appBar: AppBar(
-        title: Text(l10n.appTitle, style: TextStyle(fontSize: 18.sp)), // 18.sp 無對應 token，見票面 Problem Analysis
-        toolbarHeight: 56.h, // 56.h 無對應 token，見票面 Problem Analysis
+        title: AppText(l10n.appTitle, variant: AppTextVariant.title),
+        toolbarHeight: LayoutSize.titleBarHeight.h,
       ),
       body: SafeArea(
         child: Padding(
@@ -123,12 +124,9 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: Space.md.h),
               const _StatsRow(),
               SizedBox(height: Space.lg.h),
-              Text(
+              AppText(
                 l10n.sectionRecentDocuments,
-                style: TextStyle(
-                  fontSize: 16.sp, // 16.sp 無對應 token，見票面 Problem Analysis
-                  fontWeight: FontWeight.w600,
-                ),
+                variant: AppTextVariant.subtitle,
               ),
               SizedBox(height: Space.sm.h),
               // Expanded 交出剩餘高度給可捲動區，是這個版型不會垂直 overflow
@@ -182,17 +180,13 @@ class _WorkspaceBanner extends StatelessWidget {
       padding: EdgeInsets.all(Space.md.w),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(10.r), // 10.r 無對應 token，見票面 Problem Analysis
+        // 10 無精確匹配值，取最近檔位 Radius.md(8)，見票面 Problem Analysis 對照表
+        borderRadius: BorderRadius.circular(Radius.md.r),
       ),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              message,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13.sp), // 13.sp 無對應 token，見票面 Problem Analysis
-            ),
+            child: AppText(message, variant: AppTextVariant.body, maxLines: 2),
           ),
           SizedBox(width: Space.md.w),
           FilledButton(onPressed: onChoose, child: Text(action)),
@@ -238,7 +232,8 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: Space.md.w,
-        vertical: 14.h, // 14.h 無對應 token，見票面 Problem Analysis
+        // 14 等距於 Space.md(12)／Space.lg(16)，取 lg 維持與水平間距的相對關係
+        vertical: Space.lg.h,
       ),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
@@ -248,20 +243,9 @@ class _StatCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            value,
-            style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold), // 22.sp 無對應 token，見票面 Problem Analysis
-          ),
+          AppText(value, variant: AppTextVariant.title),
           SizedBox(height: Space.xxs.h),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: AppFontSize.body.sp,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
+          AppText(label, variant: AppTextVariant.body, secondary: true),
         ],
       ),
     );
@@ -286,25 +270,23 @@ class _DocumentList extends StatelessWidget {
       itemBuilder: (context, index) => Container(
         padding: EdgeInsets.all(Space.md.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10.r), // 10.r 無對應 token，見票面 Problem Analysis
+          // 10 無精確匹配值，取最近檔位 Radius.md(8)，見票面 Problem Analysis 對照表
+          borderRadius: BorderRadius.circular(Radius.md.r),
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
         child: Row(
           children: [
-            Icon(Icons.description_outlined, size: 20.r), // 20.r 無對應 token，見票面 Problem Analysis
-            SizedBox(width: 10.w), // 10.w 無對應 token，見票面 Problem Analysis
+            // 20 無精確匹配值，取最近檔位 LayoutSize.iconLg(17)，見票面 Problem Analysis 對照表
+            Icon(Icons.description_outlined, size: LayoutSize.iconLg.r),
+            // 10 等距於 Space.sm(8)／Space.md(12)，取 sm 維持列表緊湊感
+            SizedBox(width: Space.sm.w),
             // Expanded + ellipsis：長標題在窄螢幕上收斂而非撐破 Row。
             Expanded(
-              child: Text(
-                docs[index],
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: AppFontSize.subtitle.sp),
-              ),
+              child: AppText(docs[index], variant: AppTextVariant.subtitle),
             ),
-            Icon(Icons.chevron_right, size: 20.r), // 20.r 無對應 token，見票面 Problem Analysis
+            Icon(Icons.chevron_right, size: LayoutSize.iconLg.r),
           ],
         ),
       ),
