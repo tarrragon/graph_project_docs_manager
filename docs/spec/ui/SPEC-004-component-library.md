@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-02"
-version: "1.11"
+version: "1.12"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -541,9 +541,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 條目 | 待決欄位 | 缺什麼 | 票 |
 |------|---------|--------|-----|
 | 4.13 `FilterDropdown` | 互動反應（選單開合、鍵盤）、狀態矩陣 `open` 列的退出路徑、無障礙播報 | SPEC-003 §3.4 未涵蓋 | `0.1.0-W1-057` |
-| 4.14 `TableColumnHeader`（`sortable` 變體） | 互動反應（排序循環）、無障礙播報值 | SPEC-003 §3.4 未涵蓋 | `0.1.0-W1-057` |
 
-其餘 40 條目無待決欄位，可被畫面票引用（含新 key 者以 `0.1.0-W1-056` 為元件票 blockedBy，已建，不構成待決）；`0.1.0-W1-055` 已建齊 6 項尺寸 token，原 6 條目自本清單去標（`matrixColumnWidth` 值已於 §3.7 第 24 項核定為 122）。
+其餘 41 條目無待決欄位，可被畫面票引用（含新 key 者以 `0.1.0-W1-056` 為元件票 blockedBy，已建，不構成待決）；`0.1.0-W1-055` 已建齊 6 項尺寸 token，原 6 條目自本清單去標（`matrixColumnWidth` 值已於 §3.7 第 24 項核定為 122）；4.14 `TableColumnHeader`（`sortable` 變體）已依 SPEC-003 §3.4 S1–S7 補齊互動反應與播報值，元件票實作時自本清單去標。
 
 ### 4.1 AppText
 
@@ -2079,8 +2078,6 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 **出現畫面**：§1（`twoLine`）、§2（`static`）、§4（`sortable`）。
 **層級**：L2
 
-> **`sortable` 變體含待決欄位**（§4.0.9）：排序循環與播報值待 `0.1.0-W1-057`；`static` 與 `twoLine` 變體不受影響，可被畫面票引用。
-
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
@@ -2094,15 +2091,15 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
 | default（`static` / `twoLine`） | label | 無 | 建構 | 不適用：純顯示變體無狀態集 |
-| unsorted（`sortable`） | label，無指示 | 點選 | `order` 為 `none` | 點選 → asc（**循環待決**） |
-| asc / desc（`sortable`） | label + 向上／向下指示（`AppIcon.sm`，`accentStrong`） | 點選 | `order` 為 `asc` / `desc` | **待決**（`0.1.0-W1-057`） |
+| unsorted（`sortable`） | label，無指示 | 點選 | `order` 為 `none` | 點選 → 呼叫 `onSort`；下一個 `order`（`asc`）由呼叫端依 SPEC-003 §3.4 S2 決定 |
+| asc / desc（`sortable`） | label + 向上／向下指示（`AppIcon.sm`，`accentStrong`） | 點選 | `order` 為 `asc` / `desc` | 點選 → 呼叫 `onSort`；下一個 `order`（`desc` / `none`）由呼叫端依 SPEC-003 §3.4 S2 決定 |
 | hover / pressed / focused（`sortable`） | 依 §4.0.1 | 點選 | | |
 
 #### 互動反應
 
 | 互動 | 反應 | 動畫 | 時間門檻 |
 |------|------|------|---------|
-| 點選（`sortable`） | 呼叫 `onSort`；呼叫端執行：首列與末列內容改變、offset 歸零（SPEC-003 §3.4）；下一個 `order` 值 **待決** | 無 | `Motion.feedback` |
+| 點選（`sortable`） | 呼叫 `onSort` 恰一次；呼叫端執行：依 SPEC-003 §3.4 S1–S2（`none→asc→desc→none`，換欄自 `asc` 起算，單欄排序）推進該欄 `order`；首列與末列內容改變、offset 歸零 | 無 | `Motion.feedback` |
 
 #### 操作機制
 
@@ -2169,7 +2166,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 面向 | 要求 |
 |------|------|
 | 朗讀標籤 | `static` / `twoLine`：`Semantics.header`，唸出 label（`twoLine` 唸「{ID}，{名稱}」）；`sortable`：`Semantics.button`，label 為 `sortA11yLabel`（order 代入 `sortNone` / `sortAscending` / `sortDescending`） |
-| 狀態變化播報 | `sortable` 點選後 order 改變的播報值 **待決**（`0.1.0-W1-057`） |
+| 狀態變化播報 | `sortable` 點選後 `order` 改變時欄首重建，`Semantics.button` 的 label 等於 `sortA11yLabel(label, order)`，`{order}` 依新 `order` 取 `sortNone` / `sortAscending` / `sortDescending`（SPEC-003 §3.4 S4）；焦點停留於該欄首，重建即為播報載體，不另發 `SemanticsService.announce` |
 | 非視覺替代訊號 | 排序方向由朗讀標籤的 order 值承載，圖示非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | `sortable` 進入 Tab 順序，Space / Enter 觸發；其餘不進入 |
 | 對比 | 依 §4.0.2 表 1：label `textSecondary` / `surfaceBase` 4.71:1、`twoLine` 第一行 `textPrimary` / `surfaceBase` 5.79:1、排序指示 `accentStrong` / `surfaceBase` 9.92:1，皆通過 |
@@ -5767,6 +5764,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.12 | 2026-09-02 | `TableColumnHeader` 元件票實作時依 SPEC-003 §3.4 S1–S7 補齊 4.14 `sortable` 變體的互動反應（點選呼叫 `onSort`，下一個 `order` 由呼叫端決定）、狀態矩陣退出路徑、無障礙狀態變化播報值，去除本條目「待決」標記；§4.0.9 待決清單移除 4.14 一列（餘 4.13 `FilterDropdown` 一項），41 條目無待決欄位 |
 | 1.11 | 2026-09-02 | `LoadPrompt` 元件票實作時修正 4.25 `LoadPrompt` 內容政策與測試點：`message` 原標「可換行、最大行數 2、末行截斷」與同條目「最小尺寸」列（訊息一行）及 slot 契約（訊息取 `AppText.subtitle`，單行變體）自相矛盾，`AppText`（4.1）subtitle 變體恆為單行不接受 `maxLines`；改為「不可換行、最大行數 1、末端省略」，測試點「最長測試文案兩行末截斷」同步改「最長測試文案單行末端省略」 |
 | 1.10 | 2026-09-02 | 實作校正（`MissingSourceState` 元件票）：4.22 狀態矩陣「顯示」「可用操作」「退出路徑」三欄與「互動反應」「slot 契約」（僅 `path`／`onRefresh`／`testKey`，無 `returnTo`）內部不一致——`ButtonRow` 移除「返回」按鈕，改註明返回鍵由頁面框架於 `SplitRow.header` 統一渲染，與 §3011 既有澄清對齊；內容政策 `message`／`path` 兩列原標可換行（2／3 行）與 `AppText.subtitle`／`AppText.mono` 已核定的單行鎖定契約（4.1）矛盾，改標單行截斷，與實作行為一致 |
 | 1.9 | 2026-09-02 | 對比核定回填（`0.1.0-W1-060`，依 `0.1.0-W1-058` 方案 C 與 `0.1.0-W1-059` 落地值）：§3.7 新增第 25 項；§4.0.1 disabled 列改 `textDisabled`；§4.0.2 重寫為表 1（文字對比，精確值）+ 表 2（`textDisabled` 停用態與純裝飾）+ 帶色表面規則 + `textDisabled` 對應清單；15 條目無障礙子節對比列填實際值去「待 W1-058」（4.1 / 4.4 / 4.5 / 4.6 / 4.9 / 4.11 / 4.12 / 4.13 / 4.14 / 4.15 / 4.18 / 4.21 / 4.22 / 4.23 / 4.24）；4.5 `Badge` 刪 `secondary` tone，`rejected` / `superseded` / `revised` 改對映 `neutral`；4.6 `damagedEdge` child 文字與 4.19 `RelationItem.damaged` 改維持 `textPrimary`；4.9 selected 摘要改 `textPrimary`；4.10 軌道底對比改 4.56:1；停用態與純裝飾箭頭圖示改引用 `textDisabled`（4.2 色彩列補 token、4.4 disabled、4.8 展開箭頭、4.9 disabled、4.12 搜尋圖示、4.13 箭頭、4.18 箭頭、4.38 底部箭頭列）；標頭版本欄自 1.5 補正（1.6–1.8 未同步更新） |
