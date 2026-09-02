@@ -22,6 +22,7 @@ export 'list_row.dart';
 export 'load_prompt.dart';
 export 'loading_state.dart';
 export 'matrix_cell.dart';
+export 'matrix_grid.dart';
 export 'missing_source_state.dart';
 export 'nav_item.dart';
 export 'page_column.dart';
