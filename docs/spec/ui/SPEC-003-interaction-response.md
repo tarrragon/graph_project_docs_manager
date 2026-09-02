@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-02"
-version: "1.5"
+version: "1.6"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -117,12 +117,13 @@ offset 不變，反之亦然。#1 與 #11 同此禁令：捲動矩陣時格詳�
 節點卡、矩陣格、樹節點、ticket 列皆**不可拖曳**（0.1 無排序與重新配置功能）。
 對這些元素執行 drag 的預期結果是「觸發所在容器的捲動」，不是元素本身移動。
 
-### 1.4 同畫面內展開（2 個）
+### 1.4 同畫面內展開（3 個）
 
 | 位置 | 錨點 | 展開後 | 收合方式 |
 |------|------|--------|---------|
 | 追溯樹節點 | `expander-traceability-<nodeId>` | 子層節點出現於樹中 | 再次點擊同一錨點 |
 | schema 不相容詳情 | `action-domain-schema-detail` → `panel-domain-schema-detail` | 面板出現於同一狀態根節點內 | 再次點擊、或按 Esc |
+| 篩選下拉選單 | `action-tickets-filter-<key>` → `menu-tickets-filter-<key>` | 選單以覆蓋層出現於觸發器正下方，不擠壓版面（§3.4 F4） | 選取選項、再次點擊觸發器、Esc、Tab、點選單外部（§3.4 篩選各列） |
 
 展開收合不改變狀態錨點，也不改變 `returnTo`（§2.4）。
 
@@ -354,6 +355,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 拖曳畫布 | `drag-<screen>-<area>` | `drag-domain-swimlane` |
 | 徽章 | `badge-<screen>-<kind>` | `badge-tickets-corrupted` |
 | 面板 | `panel-<screen>-<kind>` | `panel-domain-schema-detail` |
+| 選單（覆蓋層根節點） | `menu-<screen>-<kind>` | `menu-tickets-filter-status` |
+| 選單項 | `option-<screen>-<kind>-<value>` | `option-tickets-filter-status-all` |
 
 `<screen>` 一律取 `AppDestination` 的 `name`（camelCase，如 `ucFlow`、
 `nodeDetail`），與既有 `nav-item-` / `nav-page-` 同源，不另創 kebab 拼法。
@@ -369,6 +372,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | `panel-domain-schema-detail` 展開時按 Esc | 面板收合，其餘狀態不變 |
 | 矩陣已選格（`panel-domain-cell-detail` 存在）時按 Esc | 選取清除，右欄回到 `panel-domain-cell-detail-empty`；焦點停在原格，矩陣 offset 不變 |
 | 浮層展開時 | 焦點被限制在浮層內（Tab 不會跑到背景的導覽列） |
+| 篩選選單（`menu-tickets-filter-<key>`）展開時按 Esc | 選單收合；`onChanged` 不被呼叫；焦點回到 `action-tickets-filter-<key>` |
+| 篩選選單展開時 | 焦點以 ↑／↓／Home／End 在選項間移動（§3.4 走選項列）；按 Tab 或 Shift+Tab 選單收合且焦點依本節順序離開觸發器——選單**不**限制焦點，與浮層不同（選單沒有必須完成的交易，離開即等於取消） |
 
 **Tab 內容區順序（斷言方式）**：三個區段（專案切換入口、六個導覽項、內容區）須
 依序窮盡——同一區段內的可用動作與捲動容器全部走完才進入下一區段。區段內的相對
@@ -384,6 +389,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 裝飾存在。
 
 方向鍵捲動、快捷鍵切換導覽項不列入 0.1 下界，亦不得以無回饋的方式部分實作。
+篩選選單內以方向鍵走選項是選單元件的固有行為（§3.4 走選項列），不在此排除範圍。
 
 ### 2.11 元件庫對應
 
@@ -399,6 +405,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 節點卡 | §1.3 不可拖曳、§2.4 內容跳轉 |
 | 損壞標記（兩級） | §3.4 含損壞、§3.6 部分損壞的跳轉行為 |
 | 徽章 | §3.4 損壞徽章的可點性 |
+| 篩選下拉（SPEC-004 4.13 `FilterDropdown`） | §3.4 篩選七列與元件級契約 F1–F7、§2.10 選單 Esc／Tab 兩列、§1.4 第 3 列 |
+| 表格欄首（SPEC-004 4.14 `TableColumnHeader.sortable`） | §3.4 排序兩列與元件級契約 S1–S7 |
 
 **取消契約由載入態元件單一承擔，不由三個畫面各自實作。** 三處載入態的差異只有
 「目標態」與「進度型別」兩個參數，其餘行為（§2.5 的 C1–C8 與 §2.8 的 L1–L2，
@@ -597,8 +605,15 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 取消載入 | `action-tickets-cancel-load` | 點擊 | 依 §2.5，目標態 `state-tickets-unloaded` |
 | 返回上一畫面 | `action-tickets-back` | 點擊 | 切至 `returnTo`；`returnTo` 為 `null` 時**此錨點不渲染**（§2.3 規則 4） |
 | 搜尋 | `input-tickets-search` | 輸入 | 輸入停止 `Motion.searchDebounce` 後清單筆數更新（防抖動，不逐字元觸發）；清空輸入立即還原全部筆數 |
-| 篩選 | `action-tickets-filter-<key>` | 點擊 | 該篩選呈選中態；清單筆數改變 |
-| 排序 | `action-tickets-sort-<key>` | 點擊 | 首列與末列的內容改變；offset 歸零（排序改變後保留舊 offset 無意義） |
+| 篩選 · 開啟 | `action-tickets-filter-<key>` | 點擊（選單收合時）；或焦點在此時按 Enter／Space／↓ | `Motion.overlay` 內 `menu-tickets-filter-<key>` 出現；觸發器 `Semantics` 的 `expanded` 為 `true`；焦點移至目前值對應的選項（`selected` 為 `null` 時為 `option-tickets-filter-<key>-all`）；`onChanged` 不被呼叫；清單筆數與 offset 不變 |
+| 篩選 · 走選項 | `menu-tickets-filter-<key>` | ↑／↓／Home／End | 焦點在選項間移動：↓ 下一項、↑ 上一項、Home 首項、End 末項；首項按 ↑ 與末項按 ↓ 焦點不動（不循環）；`onChanged` 不被呼叫（焦點移動不套用篩選） |
+| 篩選 · 選取 | `option-tickets-filter-<key>-<value>` | 點擊；或焦點在此時按 Enter／Space | 值與目前 `selected` **不同**時：`onChanged` 被呼叫恰一次，值為 `<value>`（`all` 傳 `null`）；選單於 `Motion.overlay` 內收合；觸發器文字改為該選項文字，`selected` 非 `null` 時該篩選呈選中態、為 `null` 時回到非選中態；清單筆數改變；offset 歸零（與排序同理，列集合改變後保留舊 offset 無意義）；焦點回到觸發器。值與目前 `selected` **相同**時：選單收合；`onChanged` 不被呼叫；清單筆數與 offset 不變 |
+| 篩選 · Esc 收合 | `menu-tickets-filter-<key>` | 按 Esc | 選單收合；`onChanged` 不被呼叫；`selected` 不變；焦點回到 `action-tickets-filter-<key>`（§2.10） |
+| 篩選 · 點外部收合 | — | 點擊選單與其觸發器以外任一處 | 選單收合；`onChanged` 不被呼叫；該次點擊被選單吸收、不傳遞至下層元素（斷言：點在 `card-tickets-<ticketId>` 上時選單收合且不 jump、`returnTo` 不變；點在 `action-tickets-filter-<key2>` 上時 `menu-tickets-filter-<key2>` 不出現；點在 `nav-item-<d>` 上時 `IndexedStack` 可見頁不變） |
+| 篩選 · 再點觸發器 | `action-tickets-filter-<key>` | 點擊（選單展開時） | 選單收合；`onChanged` 不被呼叫；焦點停在觸發器 |
+| 篩選 · Tab 離開 | `menu-tickets-filter-<key>` | 按 Tab／Shift+Tab | 選單收合；`onChanged` 不被呼叫；焦點依 §2.10 順序移至觸發器之後（Shift+Tab 為之前）的元素 |
+| 排序 · 循環 | `action-tickets-sort-<key>` | 點擊；或焦點在此時按 Enter／Space | `onSort` 被呼叫恰一次；呼叫端依 `none → asc → desc → none` 推進該欄 `order`（三態循環，`desc` 之後回到 `none`，不停留於 `desc`）；`Motion.feedback` 內欄首指示與朗讀標籤更新（S4）；轉入 `asc`／`desc` 時首列與末列的內容改變；轉回 `none` 時首列與末列等於載入完成當下的首列與末列（S3）；每次轉換 offset 歸零（排序改變後保留舊 offset 無意義） |
+| 排序 · 換欄 | `action-tickets-sort-<key2>` | 點擊（`<key>` 的 `order` 非 `none` 時） | `<key>` 的 `order` 回到 `none`、其指示消失；`<key2>` 的 `order` 為 `asc`（自 `none` 起算，不繼承前欄方向）；首列與末列的內容改變；offset 歸零 |
 | 切至列表 | `mode-tickets-list` | 點擊 | `state-tickets-list` 出現、`state-tickets-topic` 消失 |
 | 切至主題 | `mode-tickets-topic` | 點擊 | 反向；兩模式各自保留自己的 offset |
 | 主題節展開收合 | `expander-tickets-topic-<name>` | 點擊 | 該節票行出現或消失 |
@@ -611,6 +626,40 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 `state-tickets-list`（或 `state-tickets-topic`）**同時存在**。整合測試枚舉狀態時
 須將其視為正常態的一個修飾，不視為第七個互斥狀態。
 
+#### 篩選下拉的元件級契約（F1–F7）
+
+上表篩選七列描述單次操作的反應；下列契約描述跨操作恆成立的性質，由 SPEC-004
+4.13 `FilterDropdown` 單一承擔，呼叫端只提供 `options`、`selected`、`onChanged`。
+
+| # | 條件 | 可觀察結果 |
+|---|------|-----------|
+| F1 | 任一時刻 | `menu-tickets-filter-*` 至多存在一個（同時只有一個選單展開；開啟另一個下拉的第一次點擊依「點外部收合」列只收合不開啟，需再點一次） |
+| F2 | 選單展開時 | 觸發器的選中態只由 `selected` 決定，不因展開改變——`open` 是疊加於 default／active 之上的修飾，不是第三個互斥狀態（判讀同「含損壞」）；斷言：`selected` 非 `null` 時展開前後觸發器皆呈選中態 |
+| F3 | 選單展開時（內容契約） | 首項為 `option-tickets-filter-<key>-all`，文字等於 `l10n.filterAllOption`；其後逐項依 `options` 順序，文字等於 `options[i].label`、錨點為 `option-tickets-filter-<key>-<options[i].value>`；`options` 的 `value` 不得為 `all`（該值保留給「全部」，屬呼叫端資料值域約束） |
+| F4 | 選單展開時（幾何契約） | 選單為覆蓋層：其 rect 的頂緣等於觸發器 rect 的底緣、左緣等於觸發器左緣；`scroll-tickets-list` 與工具列其餘元素的 rect 在展開前後相同（不擠壓版面）；選單以 `options` 全數展開、選單內不捲動；`kMinWindowSize` 下選單底緣仍在視窗內（元件票以 SPEC-004 4.13 最長 `options` 集代入斷言） |
+| F5 | 展開／走選項／收合（任一方式） | 皆不呼叫 `onChanged`；唯一呼叫點是「選取且值改變」（上表選取列）——篩選在選取時一次套用，不在焦點移動時即時套用 |
+| F6 | 選單展開時（播報契約） | 選單根節點 `Semantics` 的 `role` 為 `SemanticsRole.menu`；每個選項 `role` 為 `SemanticsRole.menuItem`、label 等於選項文字、`selected` 於目前值項為 `true` 其餘為 `false`（斷言 `tester.getSemantics(find.byKey(...))`）；觸發器 `expanded` 展開時為 `true`、收合後為 `false`；選取後觸發器重建，其 `filterA11yLabel` 的 `{value}` 為新選項文字，重建即為播報載體，不另發 `SemanticsService.announce` |
+| F7 | 選單展開期間 | 點擊任何外部元素（含 `nav-item-<d>`、`project-switcher-entry`）皆依「點外部收合」列被吸收，因此選單展開期間不會發生導覽切換或專案切換，§2.8 L1／L2 對選單無額外規定 |
+
+**F7 採吸收而非穿透的理由**：一次點擊只產生一個可斷言的結果（收合），且使用者
+為收合選單而點到下層時不會誤觸開票或跳轉；代價是關閉選單後要再點一次才能
+執行原本想做的動作。此為本規格的明示決定，不引用平台慣例。
+
+#### 排序欄首的元件級契約（S1–S7）
+
+由 SPEC-004 4.14 `TableColumnHeader.sortable` 與其呼叫端（Ticket 清單畫面）共同承擔：
+元件只呈現 `order` 並回呼 `onSort`，循環推進與唯一性由呼叫端維護。
+
+| # | 條件 | 可觀察結果 |
+|---|------|-----------|
+| S1 | 任一時刻 | `order` 非 `none` 的欄首至多一個——單欄排序，各欄互斥，不存在多欄排序（0.1 明示不做）；呼叫端於 `onSort` 以「設定目標欄、其餘欄歸 `none`」實作 |
+| S2 | 每次 `onSort` | 下一個 `order` 只由該欄自身的當前值決定：`none → asc`、`asc → desc`、`desc → none`；換欄一律自 `asc` 起算 |
+| S3 | `order` 為 `none` 時 | 列序等於載入完成當下的列序（載入順序即「未排序」的定義，不是任意順序）；欄首無排序指示圖示；朗讀標籤 `{order}` 為 `l10n.sortNone` |
+| S4 | 排序改變後（播報契約） | 欄首重建，其 `Semantics.button` 的 label 等於 `sortA11yLabel(label, order)`，`{order}` 依 `order` 為 `l10n.sortNone`／`l10n.sortAscending`／`l10n.sortDescending`（斷言 `tester.getSemantics(find.byKey(Key('action-tickets-sort-<key>'))).label`）；焦點停在該欄首，重建即為播報載體，不另發 `SemanticsService.announce`（與 F6 同一機制） |
+| S5 | 排序與篩選／搜尋並存 | 三者獨立：篩選或搜尋改變後 `order` 不變、子集依現行 `order` 排列；排序改變後篩選值與搜尋詞不變 |
+| S6 | 切模式 | 排序與篩選只於 `state-tickets-list` 可觸發（SPEC-001 §4 主題模式的可用操作不含之）；切至主題再切回列表，`order`、篩選值、列序皆不變（§2.8 保留） |
+| S7 | `static`／`twoLine` 變體（§2 步驟表與 §1 矩陣欄首） | 非互動元素：點擊不產生任何反應且不呈現按鈕形態（同 §3.7 健康徽章的可點性辨識）；不進入 Tab 順序 |
+
 #### 動畫提示
 
 | 轉換 | 形式 |
@@ -621,6 +670,9 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 列表首次渲染 | 不做逐列入場動畫（虛擬捲動下逐列動畫會在捲動時反覆觸發） |
 | 列表 ↔ 主題 | cross-fade，`Motion.transition` |
 | 損壞徽章出現 | 無入場動畫（靜態標記） |
+| 篩選選單展開 → 收合 | 淡入 + 自觸發器向下展開，`Motion.overlay`；收合反向（與 §3.7 浮層同一手法）；`disableAnimations` 下依 §2.1 歸零 |
+| 排序指示切換 | 無動畫（圖示直接替換；三態循環每步皆為離散狀態，中間態無斷言價值） |
+| 篩選或排序後的列表重繪 | 無 cross-fade（列表直接重建，理由同「列表首次渲染」列） |
 
 #### 導航跳轉與退出
 
@@ -639,9 +691,9 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 |------|------|
 | 建構 | 隨 `IndexedStack` 於 App 啟動時建構，但**不觸發解析** |
 | 首次可見 | 進入 `state-tickets-unloaded`；解析仍**不觸發**，須使用者按 `action-tickets-start-load`（SPEC-001 §4 的「開始載入」是使用者操作） |
-| 切至其他導覽項 | 載入繼續（見 §2.8 L1）；搜尋詞、篩選、排序、模式、offset 全部保留 |
+| 切至其他導覽項 | 載入繼續（見 §2.8 L1）；搜尋詞、篩選、排序、模式、offset 全部保留；篩選選單展開時點導覽項只收合選單、不切換（F7），故切換發生時選單必為收合態 |
 | 再次可見 | 已載入者直接顯示正常態，不重新解析 |
-| 切換專案 | 中止載入；重置為 `state-tickets-unloaded`；搜尋詞與篩選清空 |
+| 切換專案 | 中止載入；重置為 `state-tickets-unloaded`；搜尋詞與篩選清空；全部欄首 `order` 重置為 `none` |
 
 **未載入態不顯示預估耗時。** SPEC-001 §4 顯示欄含「預估耗時」，但預估耗時的
 計算依據屬 CLAUDE.md 現行待決的五項空殼判準之一，尚無定義。依 §2.6 誠實性硬規則，
@@ -921,7 +973,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P1 |
-| 驗收 | Tab 可依 §2.10 順序走遍全部可用操作且每一步有可見焦點指示；浮層展開時 Tab 不離開浮層；Esc 收合浮層與 schema 詳情面板 |
+| 驗收 | Tab 可依 §2.10 順序走遍全部可用操作且每一步有可見焦點指示；浮層展開時 Tab 不離開浮層；Esc 收合浮層與 schema 詳情面板；Esc 收合篩選選單且焦點回到其觸發器，選單內 ↑／↓ 移動焦點而不呼叫 `onChanged` |
 
 ### FR-10: 兩個獨立捲動區不連動
 
@@ -955,6 +1007,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.6 | 2026-09-02 | 元件級互動補件（`0.1.0-W1-057`，來源 `0.1.0-W1-044.2` NeedsContext）：§3.4 互動反應表「篩選」一列展開為開啟／走選項／選取／Esc 收合／點外部收合／再點觸發器／Tab 離開七列，「排序」一列展開為循環／換欄兩列，每列含錨點與可觀察結果；新增「篩選下拉的元件級契約 F1–F7」（同時至多一個選單、`open` 為疊加態、選單內容契約含 `all` 首項、覆蓋層幾何契約、只在選取時呼叫 `onChanged`、`SemanticsRole.menu`／`menuItem` 播報契約、點外部一律吸收）與「排序欄首的元件級契約 S1–S7」（單欄排序、`none → asc → desc → none` 三態循環、`none` 等於載入順序、`sortA11yLabel` 播報值、與篩選／搜尋獨立、只於列表模式可觸發、`static`／`twoLine` 非互動）。§2.9 新增選單 `menu-<screen>-<kind>` 與選單項 `option-<screen>-<kind>-<value>` 兩類錨點；§2.10 新增選單 Esc 與方向鍵／Tab 兩列並明示選單不限制焦點、方向鍵走選項不在 0.1 排除範圍；§1.4 同畫面內展開由 2 增為 3；§2.11 補兩個元件的承擔對應；§3.4 動畫提示補選單展開收合（`Motion.overlay`）、排序指示切換與列表重繪皆無動畫三列；§3.4 生命週期補選單展開時點導覽項不切換、切換專案重置 `order`；FR-09 驗收補選單 Esc 與方向鍵。不新增時間 token（選單沿用 `Motion.overlay`，排序沿用 `Motion.feedback`）。不改 SPEC-001 與 SPEC-004；SPEC-004 4.13／4.14 的待決標記由 W1-005 對應子票代入本版內容後去除。 |
 | 1.5 | 2026-09-02 | 對照表與 SPEC-001 同步修訂（`0.1.0-W1-039.4`，父票 `0.1.0-W1-039` 十四項審查發現第 4、12、13、14 項，本票是 039 系列最後一張）：§4 對照表第 2 列補三個阻擋狀態為「載入中」完成後的可能落點（與 SPEC-001 §1 註記一致）；第 13 列移除誤植入 SPEC-001 退出路徑欄的「跳轉破洞報告」（該項在 SPEC-001 §3 屬可用操作欄，非退出路徑欄），退出路徑欄改回與正常態一致的「同上」；第 21 列補「掃描完成 → 有／無破洞」的同畫面轉換描述於導航反應欄。§4 覆蓋完整性算式後新增同步提醒，明列與狀態數字（31）耦合的四處（本節標題、本段算式、FR-01 驗收、§0 概述）。§5 判讀註記更新 FR-02 一列為現行 SPEC-001 v1.3 起文字（三處長時操作期間），原「兩處」判讀改列為判讀沿革記錄。設計約束段新增用語決定：全文統一用「渲染」不改「算繪」，並附理由（既定用語、全文逾三十次引用、避免與 3D／影像運算語境混淆）。全文檢核無指向一次性審查報告的引用（原第 626 行問題已由 `0.1.0-W1-039.1`～`.3` 與 `0.1.0-W1-048` 修訂消除）。 |
 | 1.4 | 2026-09-02 | 返回語意與導覽修訂（`0.1.0-W1-039.3`）：§2.4 更名為「退出路徑的四種導航反應」，新增「返回（consume）」為獨立第四類（既有 rail／jump／同畫面狀態轉換三類皆無法準確描述它），並說明其觸發錨點 `action-<screen>-back` 統一置於該畫面 `PageColumn` 的 `SplitRow.header` 右側 `ButtonRow`，由頁面框架容器單一渲染，不由六個畫面各自決定擺放方式，與 SPEC-004 §3.7 第 17、18 項一致。§2.3 四條規則後新增說明：Domain 視圖、追溯視圖、破洞報告正常態依 SPEC-001 未列「返回」退出路徑，故不渲染 `action-<screen>-back`，但其 `returnTo` 值仍由規則 1（任一畫面下一次 rail 切換皆清空 `returnTo`）消費，與規則 1 不構成矛盾，非孤兒值。「採單槽而非堆疊」的理由改寫：移除「堆疊會產生回到哪一層的歧義」這項論證——規則 3 的 A→B→C 場景已示範單槽下返回目標明確，該論證與規則 3 自相矛盾。理由改為兩項實用主義依據：導覽列恆常可見，故深層返回鏈無額外使用者價值；單槽只需斷言單一值。 |
 | 1.3 | 2026-09-02 | 時間 token 與取消契約修訂（`0.1.0-W1-039.2`）：§2.1 Motion 表新增類別欄，十個 token 逐一分類為「動畫」（transition／overlay／skeletonCycle）或「契約」（其餘七項）；減少動態效果規則改寫為依類別判定的性質陳述，不再逐一枚舉例外；`spinnerDelay` 因全域無使用情境已刪除；新增 `Motion.searchDebounce`（300 ms）承接 Ticket 清單搜尋輸入的防抖動語意，不再誤用 `progressTick`。§2.5 取消契約 C1 併入原 C2 並限定「尚未按下取消」，收斂為 C1–C8；原 C10／C11（切換導覽項／切換專案期間的行為）移至 §2.8 生命週期契約改編為 L1／L2；全文對 C10／C11 的引用同步改為指向 §2.8 L1；§2.11、FR-02 標題與驗收的條數引用同步為「C1–C8 與 L1–L2，共 10 條」。「感知即時帶」（第 640 行原文）與「即時帶」（第 456 行原文）兩個歧異用語統一為 token 表已定義的「幾乎即時帶」（100–400 ms），並修正第 640 行原本站不住腳的推論（兩段 cross-fade 300 ms 實際落在該帶內，改以「舊結果已判定待汰換、不宜維持淡出」與「手法一致性」為理由）。§1.3 泳道拖曳邊界的「桌面慣例」改寫：macOS 原生 `NSScrollView` 實際預設具彈性回彈，本規格改明示為顧及斷言可驗證性的專案決定，不再誤植為平台慣例。Motion 表六處時間值依據（`feedback`／`spinnerMinVisible`／`cancelDeadline`／`snackBar`／已刪除的 `spinnerDelay`／§1.3 桌面慣例）改為附具體出處（如 Flutter `SnackBar` 預設時長）或改寫為不引用外部權威的專案決定陳述。 |
