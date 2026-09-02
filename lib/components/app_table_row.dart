@@ -7,16 +7,15 @@
 /// 因欄首元件（`TableColumnHeader`，4.14）尚未建立，改以 `Widget` 承接
 /// （與 `ListRow` leading/trailing 已記錄的契約差異同一慣例）。
 ///
-/// **命名注意**：類別名稱與
-/// `package:flutter/widgets.dart` 內建的 `TableRow`（`Table` widget 用）
-/// 撞名；本檔以 `hide TableRow` 排除內建版本共存，呼叫端若同檔需要
-/// Flutter 內建 `TableRow`，需以 `import ... as material_table;` 區分，
-/// 本專案目前無此需求（`Table` widget 未被元件庫採用，4.36 `DataTable`
-/// 為虛擬捲動實作，非 `Table`）。
+/// **命名注意**：類別名稱因與 `package:flutter/widgets.dart` 內建的
+/// `TableRow`（`Table` widget 用）撞名，改為 [AppTableRow]（依 `AppButton`
+/// / `AppText` / `AppSnackBar` 既有撞名慣例，前綴 `App`）。契約名
+/// （SPEC-004 4.35）仍為 `TableRow`，本檔類別名為實作層偏離，契約名對照
+/// 說明由後續 DOC 票回填。
 library;
 
 import 'package:flutter/material.dart' show InkWell;
-import 'package:flutter/widgets.dart' hide TableRow;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../tokens/tokens.dart';
@@ -52,9 +51,10 @@ class _FlexColumnSpec extends ColumnSpec {
 /// 三變體（SPEC-004 4.35「變體」表）。
 enum _TableRowVariant { header, ticket, step }
 
-/// 表格列（SPEC-004 §4.35）。
-class TableRow extends StatelessWidget {
-  const TableRow._({
+/// 表格列（SPEC-004 §4.35，契約名 `TableRow`；類別名因與 Flutter 內建
+/// `TableRow` 撞名改為 [AppTableRow]，見檔頭「命名注意」）。
+class AppTableRow extends StatelessWidget {
+  const AppTableRow._({
     super.key,
     required this._variant,
     required this.columns,
@@ -70,7 +70,7 @@ class TableRow extends StatelessWidget {
   /// 欄首列。`columns` 決定欄數與寬度（傳 [ticketColumns] 或
   /// [stepColumns]，對齊所頭的資料列），`cells` 為對應的欄首 widget
   /// （型別見檔頭說明）。無點擊、無自身狀態集。
-  const TableRow.header({
+  const AppTableRow.header({
     Key? key,
     required List<ColumnSpec> columns,
     required List<Widget> cells,
@@ -83,7 +83,7 @@ class TableRow extends StatelessWidget {
 
   /// 票列。欄序 ID / 標題 / 狀態 / 優先 / 標記，[marker] 可為 `null`
   /// （欄位保留但不渲染內容，維持欄寬對齊）。整列可點。
-  TableRow.ticket({
+  AppTableRow.ticket({
     Key? key,
     required AppText id,
     required AppText title,
@@ -103,7 +103,7 @@ class TableRow extends StatelessWidget {
 
   /// 步驟列。欄序 序號 / 步驟名 / domain / 事件。整列可點；domain 格另有
   /// 自己的點擊（`RelationItem`，不觸發列 `onTap`）。
-  TableRow.step({
+  AppTableRow.step({
     Key? key,
     required StepNumber number,
     required AppText stepName,

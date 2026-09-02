@@ -1,7 +1,7 @@
-/// TableRow 元件測試（SPEC-004 4.35、5.9）。
+/// AppTableRow 元件測試（SPEC-004 4.35、5.9，契約名 `TableRow`）。
 library;
 
-import 'package:flutter/widgets.dart' hide TableRow;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -22,12 +22,12 @@ void main() {
   Widget wrapPanelWidth({required Widget child, double width = 700}) =>
       SizedBox(width: width, child: child);
 
-  TableRow buildTicketRow({
+  AppTableRow buildTicketRow({
     IssueMarker? marker,
     required VoidCallback onTap,
     String title = TestCopy.nodeTitle,
   }) {
-    return TableRow.ticket(
+    return AppTableRow.ticket(
       id: AppText(TestCopy.nodeId, key: idKey, variant: AppTextVariant.mono),
       title: AppText(title, key: titleKey),
       status: Badge.status(key: statusKey, label: TestCopy.status),
@@ -42,12 +42,12 @@ void main() {
     );
   }
 
-  TableRow buildStepRow({
+  AppTableRow buildStepRow({
     required int eventCount,
     required VoidCallback onTap,
     required VoidCallback onDomainTap,
   }) {
-    return TableRow.step(
+    return AppTableRow.step(
       number: const StepNumber(number: 1),
       stepName: AppText(TestCopy.stepName, key: stepNameKey),
       domain: RelationItem(
@@ -74,8 +74,8 @@ void main() {
         tester,
         size: size,
         child: wrapPanelWidth(
-          child: TableRow.header(
-            columns: TableRow.ticketColumns,
+          child: AppTableRow.header(
+            columns: AppTableRow.ticketColumns,
             cells: const [
               AppText('ID', variant: AppTextVariant.caption),
               AppText('標題', variant: AppTextVariant.caption),
@@ -95,8 +95,8 @@ void main() {
         tester,
         size: size,
         child: wrapPanelWidth(
-          child: TableRow.header(
-            columns: TableRow.stepColumns,
+          child: AppTableRow.header(
+            columns: AppTableRow.stepColumns,
             cells: const [
               AppText('', variant: AppTextVariant.caption),
               AppText('步驟', variant: AppTextVariant.caption),
