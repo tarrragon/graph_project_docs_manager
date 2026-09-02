@@ -6,6 +6,7 @@ library;
 
 export 'app_button.dart';
 export 'app_icon.dart';
+export 'app_shell.dart';
 export 'app_text.dart';
 export 'badge.dart';
 export 'badge_row.dart';
