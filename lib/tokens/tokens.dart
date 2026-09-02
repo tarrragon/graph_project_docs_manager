@@ -6,5 +6,6 @@ library;
 
 export 'colors.dart';
 export 'layout.dart';
+export 'motion.dart';
 export 'spacing.dart';
 export 'typography.dart';

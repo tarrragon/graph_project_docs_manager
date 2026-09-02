@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-27"
 updated: "2026-09-02"
-version: "1.3"
+version: "1.4"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -181,7 +181,25 @@ SPEC-004 不得推翻。
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | `lib/` 下（`lib/tokens/` 除外）grep 不到 `Color(0x`、`#[0-9A-Fa-f]{6}`、以及 `fontSize:`／`borderRadius:`／`EdgeInsets` 後方接字面數字。此檢查可機械化，應納入 CI |
+| 驗收 | `lib/` 下（`lib/tokens/` 除外）grep 不到 `Color(0x`、`#[0-9A-Fa-f]{6}`、以及 `fontSize:`／`borderRadius:`／`EdgeInsets` 後方接字面數字，亦 grep 不到 `Duration(milliseconds:` 或 `Duration(seconds:` 後方接字面數字（時間 token，見下方〈時間 token〉節）。此檢查可機械化，應納入 CI |
+
+## 時間 token
+
+十個時間值定義於 SPEC-003 §2.1，落地 `lib/tokens/motion.dart`，類名
+`Motion`，型別 `Duration`。時間值不屬視覺樣式（「按下取消後多久內抵達目標
+態」是行為契約不是外觀），但適用本規格的唯一硬規則：所有值先具名，故納入
+FR-01 檢查範圍。
+
+**類別與呼叫慣例**：依 SPEC-003 §2.1 分為兩類。「契約」類（`feedback`、
+`spinnerMinVisible`、`cancelDeadline`、`progressTick`、`snackBar`、
+`snackBarWithAction`、`searchDebounce`）是 `static const Duration`，代表行為
+時限承諾（多久內必須抵達、最短停留多久、輸入後多久觸發過濾），與視覺呈現
+無關。「動畫」類（`transition`、`overlay`、`skeletonCycle`）是依 `context`
+求值的 `static Duration` 方法，代表純視覺呈現時長。
+
+**不歸零清單**：`MediaQuery.disableAnimationsOf(context)` 為 `true` 時，
+動畫類三個 token 一律回傳 [Duration.zero]；契約類七個 token 恆不歸零——
+使用者選擇減少動態效果不代表放棄行為時限承諾。
 
 ### FR-02: 每個 token 有語意名
 
@@ -219,4 +237,5 @@ SPEC-004 不得推翻。
 | 1.0 | 2026-08-27 | 初版。起因為 0.1 開票後發現七張畫面票會各自決定尺寸與顏色；同時發現 PROP-004 §版型定案 的 token 描述（圓角 10/12、字級 12–22）與 artboard 實測（圓角 5/7/8、字級 10–19）不符，成因正是這些值沒有單一住址 |
 | 1.1 | 2026-09-02 | §元件庫的範圍 的元件清單改為指向 SPEC-004（0.1.0-W1-044.1）；狀態數依 SPEC-001 v1.3 更正為 30；「空狀態與阻擋狀態必須是兩個元件」保留為 SPEC-004 存在必要性檢視的前提；`related_specs` 補 SPEC-004 |
 | 1.3 | 2026-09-02 | 新增〈已知的佈局尺寸分佈〉：`lib/tokens/layout.dart` 落地十三個佈局尺寸 token（側欄寬、頁首高、表格列高兩階、右欄寬、浮層寬、矩陣首欄／小計欄寬、泳道名欄寬／列高、圖示三階），呼應 SPEC-004 §3.7 第 21 項核定（0.1.0-W1-047） |
+| 1.4 | 2026-09-02 | 新增〈時間 token〉節：`lib/tokens/motion.dart` 落地 SPEC-003 §2.1 十個 `Motion` token（七個契約類 `static const`、三個動畫類依 context 求值），FR-01 檢查式擴及 `Duration(milliseconds:`／`Duration(seconds:` 字面值 |
 | 1.2 | 2026-09-02 | 狀態數依 SPEC-001 v1.4（§1 新增「已選格」疊加態）更正為 31（`0.1.0-W1-048`） |
