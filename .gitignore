@@ -105,6 +105,7 @@ macos/Podfile.lock
 .pytest_cache
 .venv
 __pycache__
+*.egg-info/
 
 # project-init onboard 要求的框架規則
 coverage/

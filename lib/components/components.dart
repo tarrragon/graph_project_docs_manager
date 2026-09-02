@@ -11,4 +11,5 @@ export 'badge.dart';
 export 'divider.dart';
 export 'expander_icon.dart';
 export 'page_title.dart';
+export 'split_row.dart';
 export 'two_column_layout.dart';
