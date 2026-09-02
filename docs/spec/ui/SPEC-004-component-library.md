@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-02"
-version: "1.5"
+version: "1.7"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -453,7 +453,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 4.0.6 i18n 標記約定與新 key 總表
 
-條目 i18n 表中標「新 key」者為本檔宣告、`lib/l10n/*.arb` 尚未存在的 key。依 skill〈十一欄位填寫問句〉「i18n key 已宣告而譯文未到者，內容政策填 key 即齊全」，不標待決；建立由 `0.1.0-W1-056` 承接，為含新 key 之元件票的 blockedBy。既有 key 直接寫 key 名。
+下表為本檔宣告的新 key（原標「新 key」，已由 `0.1.0-W1-056` 建於 `lib/l10n/app_zh.arb`、`app_en.arb` 並重新產生 `app_localizations*.dart`，狀態改為已建）。條目 i18n 表中不再逐一標記「新 key」，既有 key 直接寫 key 名。
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -521,7 +521,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 4.13 `FilterDropdown` | 互動反應（選單開合、鍵盤）、狀態矩陣 `open` 列的退出路徑、無障礙播報 | SPEC-003 §3.4 未涵蓋 | `0.1.0-W1-057` |
 | 4.14 `TableColumnHeader`（`sortable` 變體） | 互動反應（排序循環）、無障礙播報值 | SPEC-003 §3.4 未涵蓋 | `0.1.0-W1-057` |
 
-其餘 40 條目無待決欄位，可被畫面票引用（含新 key 者以 `0.1.0-W1-056` 為元件票 blockedBy，不構成待決）；`0.1.0-W1-055` 已建齊 6 項尺寸 token，原 6 條目自本清單去標（`matrixColumnWidth` 值待 PM 核定，惟不再視為 skill〈契約齊全的定義〉之待決欄位——已有具名 token 與明確提案值，僅數值本身待正式核定）。
+其餘 40 條目無待決欄位，可被畫面票引用（含新 key 者以 `0.1.0-W1-056` 為元件票 blockedBy，已建，不構成待決）；`0.1.0-W1-055` 已建齊 6 項尺寸 token，原 6 條目自本清單去標（`matrixColumnWidth` 值待 PM 核定，惟不再視為 skill〈契約齊全的定義〉之待決欄位——已有具名 token 與明確提案值，僅數值本身待正式核定）。
 
 ### 4.1 AppText
 
@@ -946,7 +946,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| `label` | 呼叫端傳入（既有：`chooseWorkspaceFolder`、`cancelLoadingAction`、`cancelScanAction`、`cancelInProgressAction`、`startLoadAction`、`backAction`、`backToDomainAction`、`refreshAction`、`rescanAction`、`openSourceFileAction`、`openDocsFolderAction`、`viewRelationsAction`、`viewSchemaDetailAction`、`gotoGapsReportAction`、`gotoTraceabilityAction`、`switcherChooseOtherFolder`；新 key：`cellDetailCloseAction`、`cellDetailViewInSwimlaneAction`） |
+| `label` | 呼叫端傳入（既有：`chooseWorkspaceFolder`、`cancelLoadingAction`、`cancelScanAction`、`cancelInProgressAction`、`startLoadAction`、`backAction`、`backToDomainAction`、`refreshAction`、`rescanAction`、`openSourceFileAction`、`openDocsFolderAction`、`viewRelationsAction`、`viewSchemaDetailAction`、`gotoGapsReportAction`、`gotoTraceabilityAction`、`switcherChooseOtherFolder`；`cellDetailCloseAction`、`cellDetailViewInSwimlaneAction`） |
 | `disabledReason` | 呼叫端傳入 |
 
 #### 組合規則
@@ -1073,8 +1073,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| `label` | 呼叫端傳入；legend 用 `legendDirect` / `legendIndirect` / `legendNone`（新 key） |
-| `semanticLabel`（health） | `healthBadgeA11yLabel`（新 key） |
+| `label` | 呼叫端傳入；legend 用 `legendDirect` / `legendIndirect` / `legendNone` |
+| `semanticLabel`（health） | `healthBadgeA11yLabel` |
 | `count` 的組字（損壞計數） | `corruptedTicketsBadge`（既有，由 `IssueMarker` 呼叫端組字） |
 
 #### 組合規則
@@ -1196,8 +1196,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| `gap` 可見文字 | `gapMarkerLabel`（新 key） |
-| 朗讀標籤 | `damagedEdgeMarkerLabel` / `damagedDetailMarkerLabel`（新 key） |
+| `gap` 可見文字 | `gapMarkerLabel` |
+| 朗讀標籤 | `damagedEdgeMarkerLabel` / `damagedDetailMarkerLabel` |
 | 計數組字 | `corruptedTicketsBadge`（既有） |
 | 欄位級說明 | `fieldCorruptedMessage`（既有，呼叫端傳入） |
 
@@ -1550,9 +1550,9 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| `summary` | `projectSummaryLabel`（新 key，呼叫端取值） |
+| `summary` | `projectSummaryLabel`（呼叫端取值） |
 | `reason` | `projectUnavailableReasonLabel` + `probeTimeoutReason`（既有） |
-| 朗讀「目前專案」 | `currentProjectA11yLabel`（新 key） |
+| 朗讀「目前專案」 | `currentProjectA11yLabel` |
 
 #### 組合規則
 
@@ -1647,7 +1647,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `segments` | `List<Segment{label, semanticLabel, testKey}>`，長度恰 2 | 是 | label 由呼叫端（`mode*Label` 新 key）；semanticLabel 由呼叫端（既有 `*SwitchTo*Action`） |
+| `segments` | `List<Segment{label, semanticLabel, testKey}>`，長度恰 2 | 是 | label 由呼叫端（`mode*Label`）；semanticLabel 由呼叫端（既有 `*SwitchTo*Action`） |
 | `selectedIndex` | `int` | 是 | 不適用 |
 | `onChanged` | `ValueChanged<int>` | 是 | 不適用 |
 
@@ -1665,7 +1665,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 段 label | `modeMatrixLabel` / `modeSwimlaneLabel` / `modeListLabel` / `modeTopicLabel`（新 key，呼叫端傳入） |
+| 段 label | `modeMatrixLabel` / `modeSwimlaneLabel` / `modeListLabel` / `modeTopicLabel`（呼叫端傳入） |
 | 段朗讀提示 | `domainSwitchToMatrixAction` / `domainSwitchToSwimlaneAction` / `ticketsSwitchToListAction` / `ticketsSwitchToTopicAction`（既有，呼叫端傳入） |
 
 #### 組合規則
@@ -1891,8 +1891,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| placeholder 與朗讀標籤 | `searchPlaceholder`（新 key） |
-| 清除鈕朗讀 | `searchClearAction`（新 key） |
+| placeholder 與朗讀標籤 | `searchPlaceholder` |
+| 清除鈕朗讀 | `searchClearAction` |
 
 #### 組合規則
 
@@ -1989,7 +1989,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `label` | `String` | 是 | 呼叫端（`filterStatusLabel` / `filterPriorityLabel` 新 key） |
+| `label` | `String` | 是 | 呼叫端（`filterStatusLabel` / `filterPriorityLabel`） |
 | `options` | `List<FilterOption{value, label}>` | 是（不含「全部」，由元件自動前置） | label 由呼叫端（資料值原文或 i18n） |
 | `allOptionLabel` | `String?` | 否 | 元件預設 `filterAllOption`（強語意預設，參數可覆蓋） |
 | `selected` | `String?`（`null` = 全部） | 是 | 不適用 |
@@ -2010,9 +2010,9 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 「全部」 | `filterAllOption`（新 key） |
-| 朗讀標籤 | `filterA11yLabel`（新 key） |
-| `label` | `filterStatusLabel` / `filterPriorityLabel`（新 key，呼叫端傳入） |
+| 「全部」 | `filterAllOption` |
+| 朗讀標籤 | `filterA11yLabel` |
+| `label` | `filterStatusLabel` / `filterPriorityLabel`（呼叫端傳入） |
 
 #### 組合規則
 
@@ -2110,7 +2110,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `label` | `String` | 是 | 呼叫端（`column*` 新 key；`twoLine` 第一行為 UC ID 資料值） |
+| `label` | `String` | 是 | 呼叫端（`column*`；`twoLine` 第一行為 UC ID 資料值） |
 | `secondLine` | `String`（`twoLine`） | `twoLine` 必填 | 呼叫端（資料值） |
 | `order` | `SortOrder { none, asc, desc }`（`sortable`） | `sortable` 必填 | 不適用 |
 | `onSort` | `VoidCallback`（`sortable`） | `sortable` 必填 | 不適用 |
@@ -2130,8 +2130,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| `label` | `columnId` / `columnTitle` / `columnStatus` / `columnPriority` / `columnStep` / `columnDomain` / `columnEvents`（新 key，呼叫端傳入） |
-| 排序朗讀 | `sortA11yLabel` + `sortNone` / `sortAscending` / `sortDescending`（新 key） |
+| `label` | `columnId` / `columnTitle` / `columnStatus` / `columnPriority` / `columnStep` / `columnDomain` / `columnEvents`（呼叫端傳入） |
+| 排序朗讀 | `sortA11yLabel` + `sortNone` / `sortAscending` / `sortDescending` |
 
 #### 組合規則
 
@@ -2252,7 +2252,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 朗讀標籤 | `matrixCellA11yLabel` + `legendDirect` / `legendIndirect` / `legendNone`（新 key，呼叫端組字） |
+| 朗讀標籤 | `matrixCellA11yLabel` + `legendDirect` / `legendIndirect` / `legendNone`（呼叫端組字） |
 
 #### 組合規則
 
@@ -2362,7 +2362,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 文字 | i18n key |
 |------|---------|
 | `label` | 呼叫端傳入（資料值） |
-| 朗讀狀態 | `laneNodeActive` / `laneNodeInactive`（新 key） |
+| 朗讀狀態 | `laneNodeActive` / `laneNodeInactive` |
 
 #### 組合規則
 
@@ -2468,7 +2468,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 朗讀標籤 | `stepNumberA11yLabel`（新 key） |
+| 朗讀標籤 | `stepNumberA11yLabel` |
 
 #### 組合規則
 
@@ -2579,7 +2579,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 朗讀標籤 | `expanderLabel`（新 key） |
+| 朗讀標籤 | `expanderLabel` |
 
 #### 組合規則
 
@@ -2690,7 +2690,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 朗讀標籤 | `relationItemA11yLabel`（新 key） |
+| 朗讀標籤 | `relationItemA11yLabel` |
 
 #### 組合規則
 
@@ -2918,7 +2918,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| `message` | 呼叫端傳入：`emptyGraphMessage` / `emptyUcMessage` / `flowUnstructuredMessage` / `emptyProposalMessage` / `emptyTicketsMessage` / `noGapsMessage` / `noNodeSelectedMessage`（既有）、`cellDetailPrompt`（新 key）；未選專案的訊息由畫面票宣告 |
+| `message` | 呼叫端傳入：`emptyGraphMessage` / `emptyUcMessage` / `flowUnstructuredMessage` / `emptyProposalMessage` / `emptyTicketsMessage` / `noGapsMessage` / `noNodeSelectedMessage`（既有）、`cellDetailPrompt`；未選專案的訊息由畫面票宣告 |
 | `explanation` | `noGapsScanScope`（既有）等 |
 | 動作 | 經 `AppButton`（`chooseWorkspaceFolder` / `gotoGapsReportAction` / `gotoTraceabilityAction` / `openDocsFolderAction` / `rescanAction` / `openSourceFileAction` / `viewRelationsAction` / `backToDomainAction`） |
 
@@ -3160,7 +3160,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 訊息 / 說明 | `notFrameworkProjectMessage` / `notFrameworkProjectExplanation` / `schemaUnconsumableMessage` / `schemaIncompatibleMessage`（既有，呼叫端傳入） |
 | 切換專案 | `projectSwitcherEntryLabel`（既有，元件預設，參數可覆蓋） |
 | 檢視詳情 | `viewSchemaDetailAction`（既有，元件預設） |
-| 面板小標 | `schemaAppVersionLabel` / `schemaProjectVersionLabel`（新 key，元件預設） |
+| 面板小標 | `schemaAppVersionLabel` / `schemaProjectVersionLabel`（元件預設） |
 
 #### 組合規則
 
@@ -3286,7 +3286,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |------|---------|
 | 訊息 / 計數 | `domainLoading` / `gapReportScanning` / `domainLoadingProcessedCount` / `gapsScanningProcessedCount` / `ticketsLoadingProgress`（既有） |
 | 取消 | `cancelLoadingAction` / `cancelScanAction` / `cancelInProgressAction`（既有） |
-| 骨架朗讀 | `loadingSkeletonA11yLabel`（新 key）；進度朗讀 `progressA11yLabel`（新 key） |
+| 骨架朗讀 | `loadingSkeletonA11yLabel`；進度朗讀 `progressA11yLabel` |
 
 #### 組合規則
 
@@ -4737,7 +4737,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 小計朗讀 | `matrixSubtotalA11yLabel`（新 key） |
+| 小計朗讀 | `matrixSubtotalA11yLabel` |
 
 #### 組合規則
 
@@ -4852,7 +4852,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 泳道朗讀 | `laneA11yLabel`（新 key） |
+| 泳道朗讀 | `laneA11yLabel` |
 
 #### 組合規則
 
@@ -4965,7 +4965,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 層級朗讀 | `treeDepthA11yLabel`（新 key） |
+| 層級朗讀 | `treeDepthA11yLabel` |
 
 #### 組合規則
 
@@ -5084,8 +5084,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| `item` trailing 朗讀 | `openExternallyA11yLabel`（新 key） |
-| `sectionHeader` trailing | `topicSectionSummary` / `gapSectionCount`（新 key，呼叫端傳入） |
+| `item` trailing 朗讀 | `openExternallyA11yLabel` |
+| `sectionHeader` trailing | `topicSectionSummary` / `gapSectionCount`（呼叫端傳入） |
 
 #### 組合規則
 
@@ -5320,7 +5320,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 | i18n key |
 |------|---------|
-| 標題 | `switcherTitle`（新 key） |
+| 標題 | `switcherTitle` |
 | 選擇其他 | `switcherChooseOtherFolder` / `switcherChooseFolderPrompt`（既有，呼叫端傳入） |
 
 #### 組合規則
@@ -5745,7 +5745,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
-| 1.6 | 2026-09-02 | 補齊第 4 章缺漏佈局尺寸 token（`0.1.0-W1-055`）：`lib/tokens/layout.dart` 新增 `titleBarHeight` / `ticketIdColumnWidth` / `ticketStatusColumnWidth` / `ticketPriorityColumnWidth` / `ticketMarkerColumnWidth` / `stepNumberColumnWidth` / `stepDomainColumnWidth` / `treeIndent` / `stepNumberSize` / `matrixColumnWidth` 十項；`stepNumberSize` 收斂採 UCFlowB 圓形值 24（依 §3.7 第 11 項）；`matrixColumnWidth` 為本票依 `Main` 版面尺寸鏈反推的提案值 122，dartdoc 與本檔皆標「待 PM 核定」。§4.0.9 待決清單去標原 6 條目（4.17 / 4.27 / 4.35 / 4.36 / 4.37 / 4.39）；4.17 / 4.27 / 4.35 尺寸契約與組合規則、4.36 / 4.37 / 4.39 的 5.10 / 5.11 / 5.13 不重疊公式改引用具名 token；§3.4 / §3.5 對應列同步 |
+| 1.7 | 2026-09-02 | 補齊第 4 章缺漏佈局尺寸 token（`0.1.0-W1-055`）：`lib/tokens/layout.dart` 新增 `titleBarHeight` / `ticketIdColumnWidth` / `ticketStatusColumnWidth` / `ticketPriorityColumnWidth` / `ticketMarkerColumnWidth` / `stepNumberColumnWidth` / `stepDomainColumnWidth` / `treeIndent` / `stepNumberSize` / `matrixColumnWidth` 十項；`stepNumberSize` 收斂採 UCFlowB 圓形值 24（依 §3.7 第 11 項）；`matrixColumnWidth` 為本票依 `Main` 版面尺寸鏈反推的提案值 122，dartdoc 與本檔皆標「待 PM 核定」。§4.0.9 待決清單去標原 6 條目（4.17 / 4.27 / 4.35 / 4.36 / 4.37 / 4.39）；4.17 / 4.27 / 4.35 尺寸契約與組合規則、4.36 / 4.37 / 4.39 的 5.10 / 5.11 / 5.13 不重疊公式改引用具名 token；§3.4 / §3.5 對應列同步 |
+| 1.6 | 2026-09-02 | i18n 新 key 補齊（`0.1.0-W1-056`）：§4.0.6 新 key 總表 53 個 key 已建於 `lib/l10n/app_zh.arb`、`app_en.arb`，`app_localizations*.dart` 重新產生；§4 逐條目 i18n 表移除「新 key」標記；§4.0.6 引言與 §4.0.9 待決清單結語同步更新為已建狀態 |
 | 1.5 | 2026-09-02 | 逐元件契約與容器不變式（`0.1.0-W1-044.2`）：第 4 章新增 §4.0 通用約定（互動瞬態視覺、對比表、尺寸推算、`TestCopy` 測試文案常數、測試形態 L2 條文、新 key 總表、操作機制通用列、組合規則通用值、待決清單）與 42 條目（元件 4.1–4.26、容器 4.27–4.42，每條十三子節）；第 5 章 16 條容器子件契約與排列不變式，§3.4 排列關係 25 列逐列對應；第 6 章原生禁用對照表、第 7 章豁免清單填最小集（提案）。§3 依 §3.7 核定回填：`MissingSourceState` 獨立列、`EmptyState` 變體收為 `page` / `section`、`TableRow.ticketNested` 刪除、`AppButton` 三變體與 `Badge` tone 參數、`StepNumber` 圓形、定案數元件 26 / 容器 16（原「17」為計數誤差）；§3.4 token 缺料列改引用 W1-047 已建 token；§3.5 補四則漂移（副標文案、hover 樣式、缺 token 尺寸）；§3.6 標題 30 → 31 並補「已選格」列、§6 / §7 位置依 §3.7 第 14、17、18 項。待決：`FilterDropdown` 與 `TableColumnHeader.sortable` 互動反應（`0.1.0-W1-057`）、`StepNumber` / `AppShell` / `TableRow` / `DataTable` / `MatrixGrid` / `Tree` 尺寸 token（`0.1.0-W1-055`）；新 key 由 `0.1.0-W1-056` 建立；`textSecondary` 對比未達 AA 待 `0.1.0-W1-058`。`RelationItem` 擴為節點參照 chip（含步驟表 domain 欄），`Badge` 增 tone 參數 |
 | 1.4 | 2026-09-02 | 用戶補充回饋通道、最小命中區、禁放區與安全區三維度；§1 填桌機值（視覺回饋、`hitTargetMin` 提案待 W1-047、無禁放區與 SafeArea） |
 | 1.3 | 2026-09-02 | 用戶補充操作機制與無障礙為必填欄，契約欄位九改十一；§3.7 引言補說明 |

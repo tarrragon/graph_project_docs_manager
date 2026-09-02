@@ -240,4 +240,191 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sourceFileStillMissingMessage => '檔案仍不存在';
+
+  @override
+  String get expanderLabel => '展開或收合';
+
+  @override
+  String get searchPlaceholder => '搜尋';
+
+  @override
+  String get searchClearAction => '清除搜尋';
+
+  @override
+  String get filterAllOption => '全部';
+
+  @override
+  String filterA11yLabel(String label, String value) {
+    return '$label 篩選，目前：$value';
+  }
+
+  @override
+  String get filterStatusLabel => '狀態';
+
+  @override
+  String get filterPriorityLabel => '優先';
+
+  @override
+  String sortA11yLabel(String label, String order) {
+    return '$label，可排序，目前：$order';
+  }
+
+  @override
+  String get sortNone => '未排序';
+
+  @override
+  String get sortAscending => '遞增';
+
+  @override
+  String get sortDescending => '遞減';
+
+  @override
+  String get columnId => 'ID';
+
+  @override
+  String get columnTitle => '標題';
+
+  @override
+  String get columnStatus => '狀態';
+
+  @override
+  String get columnPriority => '優先';
+
+  @override
+  String get columnStep => '步驟';
+
+  @override
+  String get columnDomain => 'Domain';
+
+  @override
+  String get columnEvents => '發送事件';
+
+  @override
+  String matrixCellA11yLabel(String domain, String uc, String relation) {
+    return '$domain × $uc：$relation';
+  }
+
+  @override
+  String get legendDirect => '直接貫穿';
+
+  @override
+  String get legendIndirect => '間接依賴';
+
+  @override
+  String get legendNone => '無關';
+
+  @override
+  String matrixSubtotalA11yLabel(int count) {
+    return '小計 $count';
+  }
+
+  @override
+  String laneA11yLabel(String name) {
+    return '泳道 $name';
+  }
+
+  @override
+  String get laneNodeActive => '作用中';
+
+  @override
+  String get laneNodeInactive => '非作用中';
+
+  @override
+  String stepNumberA11yLabel(int number) {
+    return '步驟 $number';
+  }
+
+  @override
+  String get gapMarkerLabel => '缺口';
+
+  @override
+  String get damagedEdgeMarkerLabel => '邊損壞';
+
+  @override
+  String get damagedDetailMarkerLabel => '詳情損壞';
+
+  @override
+  String relationItemA11yLabel(String id) {
+    return '關聯節點 $id';
+  }
+
+  @override
+  String get currentProjectA11yLabel => '目前專案';
+
+  @override
+  String projectSummaryLabel(int nodes, int tickets) {
+    return '$nodes 節點 · $tickets 票';
+  }
+
+  @override
+  String healthBadgeA11yLabel(int count) {
+    return '$count 個問題';
+  }
+
+  @override
+  String get switcherTitle => '切換專案';
+
+  @override
+  String get schemaAppVersionLabel => 'App 支援版本';
+
+  @override
+  String get schemaProjectVersionLabel => '專案版本';
+
+  @override
+  String treeDepthA11yLabel(int depth) {
+    return '第 $depth 層';
+  }
+
+  @override
+  String get openExternallyA11yLabel => '在外部開啟';
+
+  @override
+  String get loadingSkeletonA11yLabel => '載入中';
+
+  @override
+  String progressA11yLabel(int parsed, int total) {
+    return '進度 $parsed / $total';
+  }
+
+  @override
+  String get cellDetailPrompt => '點選一格檢視詳情';
+
+  @override
+  String get cellDetailNotInvolved => '此 domain 不參與此 UC';
+
+  @override
+  String get cellDetailCloseAction => '關閉';
+
+  @override
+  String get cellDetailViewInSwimlaneAction => '在泳道中檢視';
+
+  @override
+  String get modeMatrixLabel => '矩陣';
+
+  @override
+  String get modeSwimlaneLabel => '泳道';
+
+  @override
+  String get modeListLabel => '列表';
+
+  @override
+  String get modeTopicLabel => '主題';
+
+  @override
+  String ticketsSummaryLabel(int from, int to, int total) {
+    return '顯示 $from–$to / 共 $total';
+  }
+
+  @override
+  String get ticketsVirtualScrollNote => '虛擬捲動，不分頁';
+
+  @override
+  String topicSectionSummary(int count, String priority) {
+    return '($count tasks, 最高優先級=$priority)';
+  }
+
+  @override
+  String gapSectionCount(int count) {
+    return '$count 項';
+  }
 }
