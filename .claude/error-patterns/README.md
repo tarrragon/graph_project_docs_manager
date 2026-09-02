@@ -648,6 +648,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | PC-GPD-001 | 追加型載體凍結未量測的宣稱——讀者取得的是「現況」，載體記錄的是「當時的推測」 | 高 | 0.1.0 |
 | PC-GPD-002 | 兩個來源共享同一個抽取方法時，一致性不是證據——它們會同時錯且錯得一樣 | 高 | 0.1.0 |
 | PC-GPD-003 | worktree guard 拒收含換行的 CLI 參數，代理人壓平 markdown 後章節標題失效阻擋 complete | 中 | 0.1.0 |
+| PC-GPD-004 | 派發前工具清單核對只查 Bash，漏查寫檔工具——DOC 票派給無 Write/Edit 的代理人，開工才撞牆 | 中 | 0.1.0 |
 
 ---
 
