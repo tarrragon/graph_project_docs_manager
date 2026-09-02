@@ -19,4 +19,5 @@ export 'panel.dart';
 export 'relation_item.dart';
 export 'section.dart';
 export 'split_row.dart';
+export 'swimlane_node.dart';
 export 'two_column_layout.dart';
