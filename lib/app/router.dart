@@ -54,6 +54,96 @@ final selectedDestinationProvider = StateProvider<AppDestination>(
   (ref) => AppDestination.domain,
 );
 
+/// 觸發導覽切換的兩種意圖（SPEC-003 §2.3）。
+///
+/// 兩者的差異只在對 [returnToProvider] 的效果：[rail] 清空來源記錄
+/// （切換工作區語意，等同 `go`），[jump] 記錄跳轉前的畫面（暫時離開
+/// 語意，等同 `push`）。
+enum NavIntent {
+  /// 使用者點擊 `nav-item-<d>` 造成的切換。
+  rail,
+
+  /// 畫面內元素（空狀態的前進動作、徽章、節點卡、關聯項）造成的切換。
+  jump,
+}
+
+/// 單槽來源記錄（SPEC-003 §2.3 FR-03）。
+///
+/// **採單槽而非堆疊**：六項導覽恆常可見於側欄，逐層回退相對於直接點擊
+/// 目標分頁不提供額外使用者價值，單槽記錄「最近一次跳轉從哪來」即可
+/// 滿足 SPEC-001 四個退出路徑的「回到來源」語意。
+///
+/// 四條規則（皆由 [navigateTo] 與 [consumeReturnTo] 落實，畫面不得繞過
+/// 這兩個入口直接寫 [selectedDestinationProvider]）：
+/// 1. `rail` 切換 → 設為 `null`
+/// 2. `jump` 切換 → 設為跳轉前的 destination
+/// 3. 連續 `jump`（A→B→C）→ 為 B，此為明確定義而非未定義行為
+/// 4. 觸發返回時 → 切至 `returnTo`，隨即設為 `null`
+final returnToProvider = StateProvider<AppDestination?>((ref) => null);
+
+/// [navigateTo] / [consumeReturnTo] 共用的讀取簽章。[WidgetRef.read] 與
+/// [ProviderContainer.read] 皆符合此簽章，讓兩函式在 widget 與純
+/// provider（測試用 [ProviderContainer]）情境下皆可直接呼叫同一份實作，
+/// 不需為測試另建重複邏輯。
+typedef ProviderReader = T Function<T>(ProviderListenable<T> provider);
+
+/// 依 [intent] 切換到 [target]，同時依 SPEC-003 §2.3 四條規則更新
+/// [returnToProvider]。畫面內的導覽動作（`nav-item-<d>`、jump 錨點）
+/// 一律透過本函式切換（呼叫時傳入 `ref.read`），不得直接寫
+/// provider——否則 `returnTo` 的兩條規則會被繞過而產生不一致的來源記錄。
+void navigateTo(ProviderReader read, AppDestination target, NavIntent intent) {
+  final current = read(selectedDestinationProvider);
+  read(returnToProvider.notifier).state = switch (intent) {
+    NavIntent.rail => null,
+    NavIntent.jump => current,
+  };
+  read(selectedDestinationProvider.notifier).state = target;
+}
+
+/// 觸發「返回」（SPEC-003 §2.4 第四類反應）：切至 [returnToProvider]
+/// 的值，隨即將其設為 `null`。呼叫前應先確認 `returnTo` 非 `null`——
+/// 為 `null` 時沒有意義的返回目標，`action-<screen>-back` 錨點依規則 4
+/// 本就不應渲染。
+void consumeReturnTo(ProviderReader read) {
+  final target = read(returnToProvider);
+  if (target == null) return;
+  read(returnToProvider.notifier).state = null;
+  read(selectedDestinationProvider.notifier).state = target;
+}
+
+/// 已首次可見過的畫面集合（SPEC-003 §2.8：`IndexedStack` 一次建構六頁，
+/// 「依視圖惰性」不得以首次建構為觸發訊號，須以首次成為 index 觸發）。
+///
+/// 初始為空集合——啟動當下的落地頁尚未被記錄，讓它在第一次被
+/// [firstVisibleProvider] 讀取時仍判定為「首次」；此後由
+/// [firstVisibleProvider] 寫入。判斷來源完全在 provider 層（本值 +
+/// [selectedDestinationProvider]），不依賴任何 widget 生命週期。
+final visitedDestinationsProvider = StateProvider<Set<AppDestination>>(
+  (ref) => <AppDestination>{},
+);
+
+/// [destination] 是否為「首次可見」：目前選取項恰為 [destination]，且
+/// 尚未出現在 [visitedDestinationsProvider]。
+///
+/// 讀取到 `true` 的那次即為觸發惰性載入的時機；讀取後立即（下一個
+/// microtask）把 [destination] 併入已見集合，故同一個 destination 不會
+/// 重複觸發——切走再切回只會再次讀到 `false`。副作用延後到 microtask
+/// 執行，避免在其他 provider 的 build 過程中同步改寫本 provider 狀態。
+final firstVisibleProvider = Provider.family<bool, AppDestination>(
+  (ref, destination) {
+    final current = ref.watch(selectedDestinationProvider);
+    final visited = ref.watch(visitedDestinationsProvider);
+    final isFirst = current == destination && !visited.contains(destination);
+    if (isFirst) {
+      Future.microtask(() {
+        final notifier = ref.read(visitedDestinationsProvider.notifier);
+        notifier.state = {...notifier.state, destination};
+      });
+    }
+    return isFirst;
+  },
+);
+
 /// 依 [destination] 產生對應的畫面內容。
 ///
 /// 目前六項全部渲染標示畫面名的佔位頁——各畫面的實際內容由後續票逐一

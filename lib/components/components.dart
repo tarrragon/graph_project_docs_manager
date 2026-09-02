@@ -1,7 +1,12 @@
-/// 元件庫 barrel 匯出（SPEC-004 第 4 章）。
+/// 元件庫 barrel 匯出（SPEC-004）。
 ///
-/// 畫面與容器只需 `import 'package:graph_project_docs_manager/components/components.dart';`
-/// 即取得全部元件，不逐檔各自 import。
+/// 集中匯出 `lib/components/` 下所有元件，供畫面單一入口引用，
+/// 避免逐檔各自 import。逐票新增自己的 export 行，不重排既有行。
 library;
 
 export 'app_button.dart';
+export 'app_icon.dart';
+export 'app_text.dart';
+export 'badge.dart';
+export 'divider.dart';
+export 'page_title.dart';

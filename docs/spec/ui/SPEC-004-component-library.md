@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-02"
-version: "1.8"
+version: "1.9"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.5（第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案）
+**版本**: 1.9（第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -372,6 +372,7 @@ PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶�
 | 22 | `Motion` token | 由既有 pending 票承接，設為 044.2 blockedBy | 互動反應與動畫子節需引用 |
 | 23 | `two_dimensional_scrollables` 未在 pubspec | 已由 W1-038 加入（^0.5.4） | 依賴屬實作票 acceptance |
 | 24 | `LayoutSize.matrixColumnWidth` 提案值 122 | 核定 | 畫布為 `repeat(5,1fr)` 無固定值；122 由 Main 版面尺寸鏈（矩陣首欄 + 小計欄 + 五個 UC 欄 = 主區寬）反推，與既有 token 加總一致；`two_dimensional_scrollables` 需固定欄寬 |
+| 25 | `textSecondary` 對比未達 WCAG AA（`0.1.0-W1-058`） | 方案 C（用戶經 WRAP 重評裁決）：`textSecondary` 調深 `#8A9694` → `#6A7674`（對 `surfaceBase` 4.71:1）；新增 `textDisabled` = `#8A9694` 供停用態與純裝飾箭頭圖示；`surfaceSegmentTrack` 調淺 `#DCE4E2` → `#DEE6E4`（對 `textPrimary` 4.56:1）；三案共通項：`Badge` 刪 `secondary` tone、帶色表面上的次要文字改 `textPrimary`。token 由 `0.1.0-W1-059` 落地，本檔由 `0.1.0-W1-060` 回填 | AA 一般字級是硬門檻，11 個文字條目全為 10～12px 無大字級可套用；原 token 兼任停用色，僅調深會使停用態與作用中次要文字同色，故以新 token 分離兩種語意，並讓 SC 1.4.3 非作用中元件豁免有明確 token 對應；畫布偏離面積最小（116 處文字調深，約 10 處箭頭／停用維持原色）。失敗警訊：實機主次層級不可辨，回退為主色再調深 |
 
 ---
 
@@ -393,26 +394,46 @@ PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶�
 | pressed | Material `InkWell` / `ButtonStyleButton` 內建 pressed 態，不自繪 | SPEC-003 §2.2（抄錄） |
 | hover | 同上，Material `InkWell` 內建 hover overlay（`hoverColor` 取 `ThemeData` 預設），不自繪；畫布無 hover 樣式 | 提案：延伸 SPEC-003 §2.2「不自繪」慣例 |
 | focused | 元件祖先鏈存在 `decoration` 非 `null` 的 `DecoratedBox`（SPEC-003 §2.10 焦點裝飾斷言）；裝飾為 `AppColors.accent` 外框、圓角同元件 | 存在性抄錄 SPEC-003 §2.10；顏色為提案 |
-| disabled | `enabled` 為 `false`；文字與圖示改 `AppColors.textSecondary`，無 hover overlay；同列以常駐文字（非 tooltip）說明原因（SPEC-003 §2.2、FR-06） | SPEC-003（抄錄） |
+| disabled | `enabled` 為 `false`；文字與圖示改 `AppColors.textDisabled`（停用態專用 token，§3.7 第 25 項；SC 1.4.3 對非作用中元件豁免），無 hover overlay；同列以常駐文字（非 tooltip，`AppText.caption`，`textSecondary`）說明原因（SPEC-003 §2.2、FR-06） | SPEC-003（抄錄）；token 名依 `0.1.0-W1-058` 方案 C |
 
 狀態矩陣中 hover / pressed / focused 三列為「互動瞬態」，不改變元件語意狀態，退出路徑恆為「指標離開／放開／焦點移走」，各條目不重複填此三列，以「依 §4.0.1」一列代之。
 
 #### 4.0.2 對比約定（WCAG 2.1 SC 1.4.3，AA：一般字 4.5:1、大字 3:1）
 
-依 `lib/tokens/colors.dart` 的 token 值計算（量測對象為 token，非畫布）：
+依 `lib/tokens/colors.dart` 的 token 值計算（量測對象為 token，非畫布；相對亮度公式，保留兩位小數）。`0.1.0-W1-058` 核定方案 C（§3.7 第 25 項），`0.1.0-W1-059` 落地：`textSecondary` 調深為 `#6A7674`、新增 `textDisabled`（原畫布次要文字色 `#8A9694`）、`surfaceSegmentTrack` 調淺為 `#DEE6E4`。
+
+**表 1：文字對比（SC 1.4.3，一般字 4.5:1）**
 
 | 前景 / 底色 | 對比 | AA 一般字 | 備註 |
 |------|------|------|------|
-| `textPrimary` / `surfaceBase` | 約 5.0:1 | 通過 | |
-| `textTitle` / `surfaceBase`、`textTitle` / `surfaceSidebar` | 約 14:1 | 通過 | |
-| `textSecondary` / `surfaceBase` | 約 3.1:1 | **未達**（大字通過） | 處置待 `0.1.0-W1-058` 核定 |
-| `textSecondary` / `surfaceChip` | 約 2.6:1 | **未達** | 同上 |
-| `accentStrong` / `surfaceIconTint`、`accentStrong` / `surfaceChip` | 約 10:1 | 通過 | |
-| `surfaceBase` / `accent` | 約 5.8:1 | 通過 | 選中態、`primary` 按鈕 |
-| `success` / `surfaceBase` | 約 6.1:1 | 通過 | |
-| `warning` / `warningSurface`、`error` / `errorSurface`、`error` / `surfaceBase` | 5.4～5.6:1 | 通過 | |
+| `textPrimary` / `surfaceBase` | 5.79:1 | 通過 | |
+| `textPrimary` / `surfaceSidebar` | 5.33:1 | 通過 | |
+| `textPrimary` / `surfaceChip` | 4.94:1 | 通過 | 徽章 `neutral` tone、`RelationItem`、`SwimlaneNode` |
+| `textPrimary` / `surfaceIconTint` | 4.89:1 | 通過 | `RecentProjectItem` selected 摘要 |
+| `textPrimary` / `surfaceSegmentTrack` | 4.56:1 | 通過 | 調淺後；原畫布值 `#DCE4E2` 為 4.48:1 未達 |
+| `textTitle` / `surfaceBase`、`textTitle` / `surfaceSidebar`、`textTitle` / `surfaceIconTint` | 14.5～17.2:1 | 通過 | |
+| `textSecondary` / `surfaceBase` | 4.71:1 | 通過 | 調深後；原畫布值 `#8A9694` 為 3.06:1 未達 |
+| `textSecondary` / `surfaceSidebar` | 4.34:1 | **未達** | 見帶色表面規則 |
+| `textSecondary` / `surfaceChip` | 4.02:1 | **未達** | 同上 |
+| `textSecondary` / `surfaceIconTint` | 3.98:1 | **未達** | 同上 |
+| `accentStrong` / `surfaceIconTint`、`accentStrong` / `surfaceChip`、`accentStrong` / `surfaceBase` | 8.4～9.9:1 | 通過 | |
+| `surfaceBase` / `accent` | 5.84:1 | 通過 | 選中態、`primary` 按鈕 |
+| `success` / `surfaceBase`、`success` / `surfaceChip` | 5.18～6.07:1 | 通過 | |
+| `warning` / `warningSurface`、`error` / `errorSurface`、`error` / `surfaceBase` | 5.29～6.54:1 | 通過 | |
 
-各條目無障礙子節的「對比」列只寫「依 §4.0.2；含 `textSecondary` 者待 W1-058」，不重算。
+**表 2：停用態與純裝飾圖示（`textDisabled`，SC 1.4.3 對非作用中元件豁免；SC 1.4.11 非文字 3:1）**
+
+| 前景 / 底色 | 對比 | 判定 | 允許用途 |
+|------|------|------|------|
+| `textDisabled` / `surfaceBase` | 3.06:1 | 未達一般字；達非文字 3:1 | 停用態文字與圖示（§4.0.1）、純裝飾箭頭圖示 |
+| `textDisabled` / `surfaceSidebar` | 2.82:1 | 未達 3:1 | 僅純裝飾（排除於語意樹）：`ProjectSwitcherEntry` 展開箭頭 |
+| `textDisabled` / `surfaceChip`、`textDisabled` / `surfaceIconTint` | 2.58～2.61:1 | 未達 3:1 | 不得使用 |
+
+**帶色表面規則**：`textSecondary` 只承諾於 `surfaceBase` 達 AA；`surfaceSidebar` / `surfaceChip` / `surfaceIconTint` / `surfaceSegmentTrack` 上的可讀文字一律取 `textPrimary` 或語意色（`accentStrong` / `success` / `warning` / `error`），不得置 `textSecondary`。依此規則改寫的條目：4.5 `Badge` 刪 `secondary` tone、4.6 `IssueMarker.damagedEdge` child 文字改 `textPrimary`、4.9 `RecentProjectItem` selected 摘要改 `textPrimary`。
+
+**`textDisabled` 對應**：4.0.1 disabled 列（4.4 `AppButton`、4.9 `RecentProjectItem`、4.24 `LoadingState` 取消鈕經 4.4）、4.8 `ProjectSwitcherEntry` 展開箭頭、4.12 `SearchField` 搜尋圖示、4.13 `FilterDropdown` 箭頭、4.18 `ExpanderIcon` 箭頭、4.38 `SwimlaneGrid` 底部箭頭列（皆為非文字且非唯一訊號，語意另由旗標或文案承載）。語意符號（4.15 `MatrixCell.indirect` ○、4.5 `Badge.legend` 符號）與可讀文字維持 `textSecondary`。
+
+各條目無障礙子節的「對比」列引用本表值，不另重算。
 
 #### 4.0.3 尺寸推算約定
 
@@ -627,7 +648,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 文字更新時不主動播報；需要即時播報的呼叫端（載入計數，4.24）以 `liveRegion` 包裝 |
 | 非視覺替代訊號 | `secondary` 修飾只弱化外觀、不承載語意，故無需替代訊號；語意由呼叫端的文案本身承載 |
 | 焦點順序與操作路徑（桌機） | 不進入 Tab 順序（非互動）；輔助技術依閱讀順序讀到 |
-| 對比 | 依 §4.0.2；`caption` 與 `secondary` 含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：`textTitle` / `textPrimary` / `textSecondary` 對 `surfaceBase` 分別 17.20 / 5.79 / 4.71:1，皆通過；`caption` 與 `secondary` 修飾只得置於 `surfaceBase`（帶色表面規則），呼叫端置於帶色表面時改用預設字色 |
 
 #### 測試點（widget test）
 
@@ -711,7 +732,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.textPrimary` / `textSecondary` / `accent` / `accentStrong` / `error` |
+| 色彩 | `AppColors.textPrimary` / `textSecondary` / `textDisabled`（停用態與純裝飾箭頭，§4.0.2 表 2）/ `accent` / `accentStrong` / `error` |
 | 間距 | 無 |
 | 字體 | 無 |
 | 圓角 | 無 |
@@ -937,7 +958,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.accent` / `surfaceBase` / `borderStrong` / `textPrimary` / `textSecondary`（disabled） |
+| 色彩 | `AppColors.accent` / `surfaceBase` / `borderStrong` / `textPrimary` / `textDisabled`（disabled 的 label 與 icon，§4.0.1）/ `textSecondary`（`disabledReason` 經 `AppText.caption`） |
 | 間距 | 內距 `Space.md`（水平）× `Space.sm`（垂直）；圖示與 label 間 `Space.xs` |
 | 字體 | `AppFontSize.body` |
 | 圓角 | `Radius.md` |
@@ -967,7 +988,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | `enabled` 改變時語意樹 `enabled` 旗標同步；`disabledReason` 以 `Semantics.hint` 附於同一節點 |
 | 非視覺替代訊號 | 變體差異不承載語意（皆為動作），故顏色非唯一訊號；disabled 由 `enabled` 旗標與常駐文字承載 |
 | 焦點順序與操作路徑（桌機） | 進入 Tab 順序（SPEC-003 §2.10 內容區段）；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
-| 對比 | 依 §4.0.2；`disabledReason` 含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2：`primary` 字 `surfaceBase` / `accent` 5.84:1、`secondary` 與 `text` 字 `textPrimary` / `surfaceBase` 5.79:1、`disabledReason` `textSecondary` / `surfaceBase` 4.71:1，皆通過；disabled 的 label 與 icon `textDisabled` 3.06:1 屬非作用中元件豁免（表 2） |
 
 #### 測試點（widget test）
 
@@ -1009,9 +1030,9 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `legend` | 符號 slot + 文字，無底色；符號色依關係種類 | 無 | 矩陣與泳道圖例 |
 | `health` | 數字；tone `negative` | 無 | 專案健康計數（`badge-switcher-health-<index>`） |
 
-**tone（語意色參數，非變體）**：`neutral`（底 `AppColors.surfaceChip`、字 `textPrimary`）/ `secondary`（底 `surfaceChip`、字 `textSecondary`）/ `accent`（底 `surfaceIconTint`、字 `accentStrong`）/ `positive`（底 `surfaceChip`、字 `success`；提案，畫布只有 inline 形態）/ `warning`（底 `warningSurface`、字 `warning`）/ `negative`（底 `errorSurface`、字 `error`）。
+**tone（語意色參數，非變體）**：`neutral`（底 `AppColors.surfaceChip`、字 `textPrimary`）/ `accent`（底 `surfaceIconTint`、字 `accentStrong`）/ `positive`（底 `surfaceChip`、字 `success`；提案，畫布只有 inline 形態）/ `warning`（底 `warningSurface`、字 `warning`）/ `negative`（底 `errorSurface`、字 `error`）。
 **外觀由容器格位決定（§3.7 第 5 項）**：置於 `TableRow` 格位時為 inline（無底色、只取 tone 字色）；其餘為 chip（底色 + `Radius.sm`）。
-**`status` 的 tone 對映（提案；畫布：draft / pending 為 warning，completed 為 positive）**：`completed` / `confirmed` / `approved` / `implemented` / `baseline` → `positive`；`draft` / `pending` / `review` / `in_progress` → `warning`；`rejected` / `superseded` / `revised` → `secondary`；未列值 → `neutral`。對映表為元件常數，呼叫端不覆寫。
+**`status` 的 tone 對映（提案；畫布：draft / pending 為 warning，completed 為 positive）**：`completed` / `confirmed` / `approved` / `implemented` / `baseline` → `positive`；`draft` / `pending` / `review` / `in_progress` → `warning`；`rejected` / `superseded` / `revised` 與未列值 → `neutral`。對映表為元件常數，呼叫端不覆寫。原 `secondary` tone（底 `surfaceChip`、字 `textSecondary`）於 `0.1.0-W1-060` 刪除：`textSecondary` / `surfaceChip` 4.02:1 未達 AA，改 `textPrimary` 後與 `neutral` 無差異（§4.0.2 帶色表面規則）；終止類狀態與未列值同以文字承載語意，不另設色。
 
 #### 狀態矩陣
 
@@ -1064,7 +1085,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.surfaceChip` / `surfaceIconTint` / `warningSurface` / `errorSurface`（底）；`textPrimary` / `textSecondary` / `accentStrong` / `success` / `warning` / `error`（字）；legend 符號 `accent` / `textSecondary` / `borderStrong` |
+| 色彩 | `AppColors.surfaceChip` / `surfaceIconTint` / `warningSurface` / `errorSurface`（底）；`textPrimary` / `accentStrong` / `success` / `warning` / `error`（字，五個 tone）；legend 符號 `accent` / `textSecondary` / `borderStrong`（符號非文字，`textSecondary` / `surfaceBase` 4.71:1） |
 | 間距 | 內距 `Space.sm`（水平）× `Space.xxs`（垂直）；legend 符號與文字間 `Space.xs` |
 | 字體 | `AppFontSize.caption`、半粗 |
 | 圓角 | `Radius.sm` |
@@ -1095,7 +1116,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 不播報（值變更由所在列重建，非即時區域） |
 | 非視覺替代訊號 | tone 顏色非唯一訊號：`status` 的文字即狀態值、`category` / `event` 的文字即語意、`legend` 的符號另有文字說明 |
 | 焦點順序與操作路徑（桌機） | 不進入 Tab 順序（非互動，`Semantics.button` 為 `false`） |
-| 對比 | 依 §4.0.2；`secondary` tone 含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：`neutral` `textPrimary` / `surfaceChip` 4.94:1、`accent` `accentStrong` / `surfaceIconTint` 8.38:1、`positive` `success` / `surfaceChip` 5.18:1、`warning` `warning` / `warningSurface` 5.29:1、`negative` `error` / `errorSurface` 5.58:1，皆通過；inline 形態（`TableRow` 內，底 `surfaceBase`）各字色對 `surfaceBase` 皆不低於 chip 形態 |
 
 #### 測試點（widget test）
 
@@ -1128,7 +1149,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `damagedEdge` | 包住 `child`：虛線框 `AppColors.error`，child 文字色改 `AppColors.textSecondary`（規格「虛線框／降低不透明度」取虛線框，不引入不透明度值，提案） | 點擊 → jump 破洞報告 | 邊損壞（`RelationItem.damaged`） |
+| `damagedEdge` | 包住 `child`：虛線框 `AppColors.error`，child 文字色維持 `AppColors.textPrimary`（規格「虛線框／降低不透明度」取虛線框，不引入不透明度值，提案；原提案改 `textSecondary` 於 `0.1.0-W1-060` 撤回：child 底為 `surfaceChip`，4.02:1 未達 AA，損壞語意已由虛線框與朗讀標籤承載） | 點擊 → jump 破洞報告 | 邊損壞（`RelationItem.damaged`） |
 | `damagedDetail` | `AppIcon`（warning 圖示，`AppColors.error`）+ 可選 `Badge.count` + 可選說明 `AppText.caption` | 點擊 → jump 破洞報告（`badge-tickets-corrupted`、`action-nodeDetail-goto-gaps`）；票列末欄的圖示形態亦可點（同結果） | 詳情損壞：工具列右側計數、票列末欄圖示、節點詳情欄位級標示 |
 | `gap` | 虛線框 `AppColors.error` + 文字 `gapMarkerLabel`（`AppColors.error`） | 點擊 → jump 破洞報告（`badge-traceability-broken-<layer>`） | 追溯缺口層 |
 
@@ -1187,7 +1208,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.error`（框、圖示、文字）、`errorSurface`（計數底）、`textSecondary`（`damagedEdge` child 文字） |
+| 色彩 | `AppColors.error`（框、圖示、文字）、`errorSurface`（計數底）；`damagedEdge` child 文字色不覆寫（維持 child 自身的 `textPrimary`） |
 | 間距 | 圖示與計數／說明間 `Space.xs`；框內距 `Space.xxs` |
 | 字體 | `AppFontSize.caption` |
 | 圓角 | `Radius.sm` |
@@ -1219,7 +1240,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 不播報（靜態標記，出現即隨列重建） |
 | 非視覺替代訊號 | 虛線框與紅色非唯一訊號：三變體皆有文字或圖示 + 朗讀標籤 |
 | 焦點順序與操作路徑（桌機） | 進入 Tab 順序；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
-| 對比 | 依 §4.0.2（`error` / `surfaceBase` 通過；`damagedEdge` child 文字含 `textSecondary`，待 `0.1.0-W1-058`） |
+| 對比 | 依 §4.0.2 表 1：`error` / `surfaceBase` 6.54:1、`error` / `errorSurface` 5.58:1、`damagedEdge` child `textPrimary` / `surfaceChip` 4.94:1，皆通過 |
 
 #### 測試點（widget test）
 
@@ -1423,7 +1444,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.accent`（資料夾圖示）、`textTitle`（專案名）、`textSecondary`（箭頭）、`surfaceSidebar`（底）、`border`（框線） |
+| 色彩 | `AppColors.accent`（資料夾圖示）、`textTitle`（專案名）、`textDisabled`（展開箭頭，純裝飾，§4.0.2 表 2）、`surfaceSidebar`（底）、`border`（框線） |
 | 間距 | 內距 `Space.sm`；圖示與文字間 `Space.sm` |
 | 字體 | `AppFontSize.body`、半粗 |
 | 圓角 | `Radius.md` |
@@ -1452,7 +1473,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | `expanded` 旗標改變由輔助技術播報；專案名改變隨重建唸出 |
 | 非視覺替代訊號 | 展開狀態由箭頭方向與 `expanded` 旗標承載 |
 | 焦點順序與操作路徑（桌機） | Tab 第一區段（SPEC-003 §2.10）；Space / Enter 展開；浮層 Esc 後焦點回到本元件 |
-| 對比 | 依 §4.0.2（`textTitle` / `surfaceSidebar` 通過；箭頭為裝飾性） |
+| 對比 | 依 §4.0.2：`textTitle` / `surfaceSidebar` 15.85:1、`accent` / `surfaceSidebar` 5.38:1，通過；箭頭 `textDisabled` / `surfaceSidebar` 2.82:1 為純裝飾（展開狀態由 `expanded` 旗標承載，表 2 允許） |
 
 #### 測試點（widget test）
 
@@ -1489,7 +1510,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
 | enabled | 圖示 `AppColors.textSecondary`、名稱 `textTitle`、摘要 caption | 點選 → 切換至該專案 | 可用性探測成功 | 點選 → 浮層收合（本元件隨浮層消失） |
-| selected（目前專案） | 底 `AppColors.surfaceIconTint`、圖示與名稱 `accentStrong`（畫布為準） | 點選（重載同一專案，SPEC-003 §3.7 未區分，視同選取） | 為目前開啟的專案 | 同上 |
+| selected（目前專案） | 底 `AppColors.surfaceIconTint`、圖示與名稱 `accentStrong`（畫布為準）、摘要 `textPrimary`（§4.0.2 帶色表面規則：`textSecondary` / `surfaceIconTint` 3.98:1 未達 AA，`0.1.0-W1-060` 改） | 點選（重載同一專案，SPEC-003 §3.7 未區分，視同選取） | 為目前開啟的專案 | 同上 |
 | disabled | 依 §4.0.1；同列常駐 `reason` 文字（不用 tooltip，SPEC-003 §3.7） | 無 | 探測失敗或逾時（reason 含 `probeTimeoutReason`） | 探測結果更新 → enabled（其餘項不受本項探測影響） |
 | hover / pressed / focused | 依 §4.0.1 | 點選 | | |
 
@@ -1541,7 +1562,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.surfaceIconTint`（selected 底）、`accentStrong`、`textTitle`、`textSecondary`、`surfaceBase` |
+| 色彩 | `AppColors.surfaceIconTint`（selected 底）、`accentStrong`、`textTitle`、`textSecondary`（enabled 圖示、摘要、原因）、`textPrimary`（selected 摘要）、`textDisabled`（disabled 圖示與名稱，§4.0.1）、`surfaceBase` |
 | 間距 | 內距 `Space.sm`（垂直）× `Space.sm`（水平）；圖示與文字間 `Space.sm`；名稱與摘要間 `Space.xxs` |
 | 字體 | `AppFontSize.body`（名稱，半粗）、`caption`（摘要、原因） |
 | 圓角 | `Radius.md` |
@@ -1572,7 +1593,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | `enabled` 改變（探測結果）隨重建更新旗標；不設 live region |
 | 非視覺替代訊號 | 不可用由 `enabled` 旗標 + 常駐文字承載；目前專案由 `selected` 旗標承載，底色非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | 浮層展開時焦點限制於浮層內，Tab 依序走過各項（SPEC-003 §2.10）；Space / Enter 觸發；Esc 收合 |
-| 對比 | 依 §4.0.2；摘要與原因含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2：enabled 摘要與 disabled 原因 `textSecondary` / `surfaceBase` 4.71:1、selected 摘要 `textPrimary` / `surfaceIconTint` 4.89:1、selected 名稱 `accentStrong` / `surfaceIconTint` 8.38:1，皆通過；disabled 圖示與名稱 `textDisabled` 3.06:1 屬非作用中元件豁免（表 2） |
 
 #### 測試點（widget test）
 
@@ -1686,7 +1707,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | `selected` 旗標改變由輔助技術播報 |
 | 非視覺替代訊號 | 選中態同時以底色、字重與 `selected` 旗標承載 |
 | 焦點順序與操作路徑（桌機） | Tab 內容區段，兩段依序各為停留點；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
-| 對比 | 依 §4.0.2（`accentStrong` / `surfaceBase` 通過；`textPrimary` / `surfaceSegmentTrack` 約 4.6:1，通過） |
+| 對比 | 依 §4.0.2 表 1：選中段 `accentStrong` / `surfaceBase` 9.92:1、未選段 `textPrimary` / `surfaceSegmentTrack` 4.56:1（`0.1.0-W1-059` 軌道底調淺為 `#DEE6E4` 後；原畫布值 4.48:1 未達），皆通過 |
 
 #### 測試點（widget test）
 
@@ -1794,7 +1815,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 副標更新（選中摘要）不主動播報 |
 | 非視覺替代訊號 | 不適用顏色訊號（純文字） |
 | 焦點順序與操作路徑（桌機） | 不進入 Tab 順序 |
-| 對比 | 依 §4.0.2；副標含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：畫面名 `textTitle` / `surfaceBase` 17.20:1、副標 `textSecondary` / `surfaceBase` 4.71:1，皆通過 |
 
 #### 測試點（widget test）
 
@@ -1830,7 +1851,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
-| empty | 搜尋圖示 + placeholder（`searchPlaceholder`，`textSecondary`）；無清除鈕 | 輸入 | 值為空字串 | 輸入 → filled |
+| empty | 搜尋圖示（`textDisabled`，純裝飾）+ placeholder（`searchPlaceholder`，`textSecondary`）；無清除鈕 | 輸入 | 值為空字串 | 輸入 → filled |
 | filled | 搜尋圖示 + 值 + 清除鈕（內部 affordance，朗讀 `searchClearAction`） | 輸入、清除 | 值非空 | 清除或刪除至空 → empty |
 | focused | 邊框 `AppColors.accent`（焦點裝飾，§4.0.1）；可與 empty / filled 並存 | 輸入 | 取得焦點 | 焦點移走 |
 | hover | 依 §4.0.1 | | | |
@@ -1882,7 +1903,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.border`（框）、`accent`（focused 框）、`textPrimary`（值）、`textSecondary`（placeholder、圖示） |
+| 色彩 | `AppColors.border`（框）、`accent`（focused 框）、`textPrimary`（值、清除鈕）、`textSecondary`（placeholder）、`textDisabled`（搜尋圖示，純裝飾，§4.0.2 表 2） |
 | 間距 | 內距 `Space.sm`（水平）× `Space.xs`（垂直）；圖示與文字間 `Space.sm` |
 | 字體 | `AppFontSize.body` |
 | 圓角 | `Radius.md` |
@@ -1912,7 +1933,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 值改變由 textField 語意自動播報；清單筆數變化的播報由畫面（`SplitRow.footer` 摘要）承載，本元件不播報 |
 | 非視覺替代訊號 | focused 框色非唯一訊號：文字游標與 textField 語意承載焦點 |
 | 焦點順序與操作路徑（桌機） | Tab 內容區段首個（工具列首格）；輸入即操作；Tab 至清除鈕（filled 時存在）；焦點裝飾依 §4.0.1 |
-| 對比 | 依 §4.0.2；placeholder 含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2：值 `textPrimary` / `surfaceBase` 5.79:1、placeholder `textSecondary` / `surfaceBase` 4.71:1，通過；搜尋圖示 `textDisabled` 3.06:1 達非文字 3:1，且為純裝飾（欄位語意由 placeholder 與 `Semantics.textField` 承載） |
 
 #### 測試點（widget test）
 
@@ -2001,7 +2022,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.surfaceBase`、`border`、`accent`（active 框）、`textPrimary`、`textSecondary`（箭頭） |
+| 色彩 | `AppColors.surfaceBase`、`border`、`accent`（active 框）、`textPrimary`、`textDisabled`（箭頭，純裝飾，§4.0.2 表 2） |
 | 間距 | 內距 `Space.sm`（水平）× `Space.xs`（垂直）；文字與箭頭間 `Space.xs` |
 | 字體 | `AppFontSize.body` |
 | 圓角 | `Radius.md` |
@@ -2032,7 +2053,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 選取後重建即唸出新值；選單內選項的播報 **待決**（`0.1.0-W1-057`） |
 | 非視覺替代訊號 | active 由觸發器文字（值非「全部」）承載，框色非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | 觸發器進入 Tab 順序；選單內路徑 **待決** |
-| 對比 | 依 §4.0.2；箭頭含 `textSecondary`（裝飾性），待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2：label 與值 `textPrimary` / `surfaceBase` 5.79:1，通過；箭頭 `textDisabled` / `surfaceBase` 3.06:1 達非文字 3:1，且為純裝飾（開合狀態由語意樹承載，表 2） |
 
 #### 測試點（widget test）
 
@@ -2151,7 +2172,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | `sortable` 點選後 order 改變的播報值 **待決**（`0.1.0-W1-057`） |
 | 非視覺替代訊號 | 排序方向由朗讀標籤的 order 值承載，圖示非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | `sortable` 進入 Tab 順序，Space / Enter 觸發；其餘不進入 |
-| 對比 | 依 §4.0.2；label 含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：label `textSecondary` / `surfaceBase` 4.71:1、`twoLine` 第一行 `textPrimary` / `surfaceBase` 5.79:1、排序指示 `accentStrong` / `surfaceBase` 9.92:1，皆通過 |
 
 #### 測試點（widget test）
 
@@ -2272,7 +2293,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | `selected` 旗標改變由輔助技術播報；右欄內容更新由詳情卡標題（header）承載 |
 | 非視覺替代訊號 | 關係種類由符號形狀（● ○ ·）與朗讀文字承載，顏色非唯一訊號；選中由 `selected` 旗標承載 |
 | 焦點順序與操作路徑（桌機） | 進入 Tab 順序（矩陣內依閱讀順序）；Space / Enter 選格；Esc 清除且焦點停留本格（SPEC-003 §2.10）；焦點裝飾依 §4.0.1 |
-| 對比 | 依 §4.0.2（selected `surfaceBase` / `accent` 通過；`indirect` 符號含 `textSecondary`，待 `0.1.0-W1-058`） |
+| 對比 | 依 §4.0.2 表 1：selected `surfaceBase` / `accent` 5.84:1、`direct` 符號 `accent` / `surfaceBase` 5.84:1、`indirect` 符號 `textSecondary` / `surfaceBase` 4.71:1（語意符號，維持 `textSecondary`），皆通過；`none` 符號 `borderStrong` 1.55:1 為刻意弱化（無關係即無資訊，朗讀標籤另承載） |
 
 #### 測試點（widget test）
 
@@ -2523,7 +2544,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
-| collapsed | 向右箭頭 `AppIcon.sm`（`textSecondary`） | 點選 | `isExpanded` 為 `false` 且有子層 | 點選 → expanded |
+| collapsed | 向右箭頭 `AppIcon.sm`（`textDisabled`，純裝飾箭頭，§4.0.2 表 2） | 點選 | `isExpanded` 為 `false` 且有子層 | 點選 → expanded |
 | expanded | 向下箭頭 | 點選 | `isExpanded` 為 `true` | 點選 → collapsed |
 | leaf | 不渲染箭頭但保留寬度（對齊） | 無 | 無子層 | 不適用：靜止（資料決定，非死胡同） |
 | hover / pressed / focused | 依 §4.0.1 | 點選 | | |
@@ -2570,7 +2591,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.textSecondary` |
+| 色彩 | `AppColors.textDisabled`（箭頭，純裝飾，§4.0.2 表 2） |
 | 間距 | 無（與文字的間距由所在列承載） |
 | 字體 | 無 |
 | 圓角 | `Radius.sm`（焦點與 hover 區） |
@@ -2599,7 +2620,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | `expanded` 旗標改變由輔助技術播報 |
 | 非視覺替代訊號 | 展開狀態由 `expanded` 旗標承載，箭頭方向非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | 進入 Tab 順序；Space / Enter 切換；焦點裝飾依 §4.0.1 |
-| 對比 | 圖示含 `textSecondary`，待 `0.1.0-W1-058`（依 §4.0.2） |
+| 對比 | 依 §4.0.2 表 2：箭頭 `textDisabled` / `surfaceBase` 3.06:1 達非文字 3:1，且為純裝飾（展開狀態由 `expanded` 旗標承載，箭頭方向非唯一訊號） |
 
 #### 測試點（widget test）
 
@@ -2635,7 +2656,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
 | default | chip 底 `AppColors.surfaceChip`、mono `textPrimary` | 點選 | 邊完整 | 呼叫端標記損壞 → damaged |
-| damaged | 由 `IssueMarker.damagedEdge` 包住（虛線框、文字 `textSecondary`） | 點選（改為跳轉破洞報告，由 `IssueMarker` 承載） | 邊損壞（FR-05） | 重新整理後邊完整 → default |
+| damaged | 由 `IssueMarker.damagedEdge` 包住（虛線框；文字維持 `textPrimary`，§4.0.2 帶色表面規則） | 點選（改為跳轉破洞報告，由 `IssueMarker` 承載） | 邊損壞（FR-05） | 重新整理後邊完整 → default |
 | hover / pressed / focused | 依 §4.0.1 | 點選 | | |
 
 #### 互動反應
@@ -2681,7 +2702,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.surfaceChip`、`textPrimary`、`textSecondary`（damaged，經 `IssueMarker`） |
+| 色彩 | `AppColors.surfaceChip`、`textPrimary`（default 與 damaged 同色，損壞由 `IssueMarker` 的虛線框承載） |
 | 間距 | 內距 `Space.sm`（水平）× `Space.sm`（垂直） |
 | 字體 | `AppFontSize.body`（mono） |
 | 圓角 | `Radius.md` |
@@ -2710,7 +2731,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 點選後主欄替換由主欄標題（`Semantics.header`）承載，本元件不播報 |
 | 非視覺替代訊號 | damaged 由 `IssueMarker` 的朗讀標籤承載 |
 | 焦點順序與操作路徑（桌機） | 進入 Tab 順序（右欄依群組閱讀順序）；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
-| 對比 | 依 §4.0.2（`textPrimary` / `surfaceChip` 約 4.6:1，通過） |
+| 對比 | 依 §4.0.2 表 1：`textPrimary` / `surfaceChip` 4.94:1（default 與 damaged 同值），通過 |
 
 #### 測試點（widget test）
 
@@ -2940,7 +2961,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 進入本狀態時訊息以 `liveRegion` 播報一次（提案：狀態轉換是使用者操作的結果，需即時告知） |
 | 非視覺替代訊號 | 純文字 + 按鈕，無顏色訊號 |
 | 焦點順序與操作路徑（桌機） | 動作按鈕進入 Tab 內容區段；`section` 無動作時無停留點 |
-| 對比 | 依 §4.0.2；說明含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：訊息 `textTitle` / `surfaceBase` 17.20:1、說明 `textSecondary` / `surfaceBase` 4.71:1，皆通過（兩變體底皆 `surfaceBase`） |
 
 #### 測試點（widget test）
 
@@ -3057,7 +3078,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 進入本狀態時訊息以 `liveRegion` 播報一次（同 4.21）；重新整理仍不存在時由 SnackBar 播報 |
 | 非視覺替代訊號 | 純文字 + 按鈕 |
 | 焦點順序與操作路徑（桌機） | 重新整理按鈕進入 Tab 內容區段 |
-| 對比 | 依 §4.0.2；路徑含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：訊息 `textTitle` / `surfaceBase` 17.20:1、路徑 `textSecondary` / `surfaceBase` 4.71:1，皆通過；按鈕依 4.4 |
 
 #### 測試點（widget test）
 
@@ -3180,7 +3201,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 進入本狀態時訊息以 `liveRegion` 播報一次；面板展開由 `expanded` 旗標播報 |
 | 非視覺替代訊號 | 純文字 + 按鈕 |
 | 焦點順序與操作路徑（桌機） | 兩顆按鈕進入 Tab 內容區段；Esc 收合面板；切換專案入口 `project-switcher-entry` 同時恆可用（SPEC-003 §2.7 斷言） |
-| 對比 | 依 §4.0.2；說明與小標含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：說明與小標 `textSecondary` / `surfaceBase` 4.71:1、詳情 mono `textPrimary` / `surfaceBase` 5.79:1，皆通過；按鈕依 4.4 |
 
 #### 測試點（widget test）
 
@@ -3306,7 +3327,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態變化播報 | 計數文字為 `liveRegion`（更新間隔 `Motion.progressTick`）；取消中由取消鈕 label 換文案播報 |
 | 非視覺替代訊號 | 進度由文字計數承載，進度條顏色非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | 取消鈕進入 Tab 內容區段；C1 期間恆可聚焦 |
-| 對比 | 依 §4.0.2；計數文字含 `textSecondary`，待 `0.1.0-W1-058` |
+| 對比 | 依 §4.0.2 表 1：計數文字 `textSecondary` / `surfaceBase` 4.71:1，通過；取消鈕 enabled 與 cancelling 後的 disabled 依 4.4（disabled label `textDisabled` 屬非作用中元件豁免） |
 
 #### 測試點（widget test）
 
@@ -4842,7 +4863,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.borderStrong`（列間虛線）、`surfaceIconTint`（高亮列）、`textSecondary`（箭頭列） |
+| 色彩 | `AppColors.borderStrong`（列間虛線）、`surfaceIconTint`（高亮列）、`textDisabled`（底部箭頭列，純裝飾且排除於語意樹，§4.0.2 表 2） |
 | 間距 | 節點與欄邊最小間距 `Space.xs`；泳道名內距 `Space.sm` |
 | 字體 | 經子件 |
 | 圓角 | 無 |
@@ -5746,6 +5767,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.9 | 2026-09-02 | 對比核定回填（`0.1.0-W1-060`，依 `0.1.0-W1-058` 方案 C 與 `0.1.0-W1-059` 落地值）：§3.7 新增第 25 項；§4.0.1 disabled 列改 `textDisabled`；§4.0.2 重寫為表 1（文字對比，精確值）+ 表 2（`textDisabled` 停用態與純裝飾）+ 帶色表面規則 + `textDisabled` 對應清單；15 條目無障礙子節對比列填實際值去「待 W1-058」（4.1 / 4.4 / 4.5 / 4.6 / 4.9 / 4.11 / 4.12 / 4.13 / 4.14 / 4.15 / 4.18 / 4.21 / 4.22 / 4.23 / 4.24）；4.5 `Badge` 刪 `secondary` tone，`rejected` / `superseded` / `revised` 改對映 `neutral`；4.6 `damagedEdge` child 文字與 4.19 `RelationItem.damaged` 改維持 `textPrimary`；4.9 selected 摘要改 `textPrimary`；4.10 軌道底對比改 4.56:1；停用態與純裝飾箭頭圖示改引用 `textDisabled`（4.2 色彩列補 token、4.4 disabled、4.8 展開箭頭、4.9 disabled、4.12 搜尋圖示、4.13 箭頭、4.18 箭頭、4.38 底部箭頭列）；標頭版本欄自 1.5 補正（1.6–1.8 未同步更新） |
 | 1.8 | 2026-09-02 | PM 核定 `matrixColumnWidth` = 122（§3.7 第 24 項），4.15 / 4.37 與 §4.0.9 去「待核定」標；§3.7 第 23 項更新為 W1-038 已加入依賴 |
 | 1.7 | 2026-09-02 | 補齊第 4 章缺漏佈局尺寸 token（`0.1.0-W1-055`）：`lib/tokens/layout.dart` 新增 `titleBarHeight` / `ticketIdColumnWidth` / `ticketStatusColumnWidth` / `ticketPriorityColumnWidth` / `ticketMarkerColumnWidth` / `stepNumberColumnWidth` / `stepDomainColumnWidth` / `treeIndent` / `stepNumberSize` / `matrixColumnWidth` 十項；`stepNumberSize` 收斂採 UCFlowB 圓形值 24（依 §3.7 第 11 項）；`matrixColumnWidth` 為本票依 `Main` 版面尺寸鏈反推的提案值 122，dartdoc 與本檔皆標「待 PM 核定」。§4.0.9 待決清單去標原 6 條目（4.17 / 4.27 / 4.35 / 4.36 / 4.37 / 4.39）；4.17 / 4.27 / 4.35 尺寸契約與組合規則、4.36 / 4.37 / 4.39 的 5.10 / 5.11 / 5.13 不重疊公式改引用具名 token；§3.4 / §3.5 對應列同步 |
 | 1.6 | 2026-09-02 | i18n 新 key 補齊（`0.1.0-W1-056`）：§4.0.6 新 key 總表 53 個 key 已建於 `lib/l10n/app_zh.arb`、`app_en.arb`，`app_localizations*.dart` 重新產生；§4 逐條目 i18n 表移除「新 key」標記；§4.0.6 引言與 §4.0.9 待決清單結語同步更新為已建狀態 |
