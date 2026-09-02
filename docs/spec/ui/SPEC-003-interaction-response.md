@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-02"
-version: "1.2"
+version: "1.3"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -110,7 +110,7 @@ offset 不變，反之亦然。#1 與 #11 同此禁令：捲動矩陣時格詳�
 |------|------|
 | 觸發 | 於畫布區域按下並移動（`tester.drag`） |
 | 反應 | 內容平移量等於拖曳位移，比例 1:1，無額外縮放係數 |
-| 邊界 | 平移至內容邊界時停止，不做橡皮筋回彈（桌面慣例） |
+| 邊界 | 平移至內容邊界時停止，不做橡皮筋回彈——此為自訂拖曳手勢（非原生 `NSScrollView`）；macOS 原生捲動元件雖預設具彈性回彈，但本規格明示採生硬停止，理由是彈性動畫的中間態難以用固定幀斷言驗證（見 §撰寫判準），屬本規格的明示決定，非沿用平台慣例 |
 | 與捲動的關係 | 拖曳與捲軸作用於同一個 offset；拖曳後捲軸位置同步改變 |
 | 慣性 | 0.1 不做拋擲慣性；放開手指即停止 |
 
@@ -137,27 +137,29 @@ offset 不變，反之亦然。#1 與 #11 同此禁令：捲動矩陣時格詳�
 SPEC-002 的唯一硬規則要求所有值先具名。時間值同樣適用，落點
 `lib/tokens/motion.dart`，類名 `Motion`，型別 `Duration`。
 
-| token | 值 | 用途 | 依據 |
-|-------|-----|------|------|
-| `Motion.feedback` | 100 ms | 點擊確認的出現上限 | Nielsen 100 ms 感知門檻 |
-| `Motion.transition` | 150 ms | 狀態之間的 cross-fade | 落在 100–400 ms「幾乎即時」帶，以動畫掩蓋切換 |
-| `Motion.overlay` | 200 ms | 浮層展開與收合 | 同上，浮層位移距離大於狀態淡入故取較長值 |
-| `Motion.spinnerMinVisible` | 300 ms | 指示一旦顯示的最短停留 | 消除閃爍的業界慣例值 |
-| `Motion.spinnerDelay` | 400 ms | 延遲顯示門檻（僅 §2.6 限定情境） | Doherty 生產力門檻 |
-| `Motion.cancelDeadline` | 500 ms | 按下取消後抵達目標態的上限 | 介於 400 ms 生產力門檻與 1 s 注意力門檻之間 |
-| `Motion.progressTick` | 200 ms | 進度計數文字的最小更新間隔 | 高於此頻率的數字跳動不可讀 |
-| `Motion.skeletonCycle` | 1200 ms | 骨架 shimmer 的循環週期 | 一屏內可辨識為「持續進行」而不干擾閱讀 |
-| `Motion.snackBar` | 4 s | 純告知型 SnackBar 停留 | Material 慣例 |
-| `Motion.snackBarWithAction` | 8 s | 帶動作 SnackBar 停留 | 需讀完再決定是否按 |
+| token | 值 | 類別 | 用途 | 依據 |
+|-------|-----|------|------|------|
+| `Motion.feedback` | 100 ms | 契約 | 點擊確認的出現上限 | 100 ms 為知覺「操作立即生效」的上限，同時是「幾乎即時帶」（100–400 ms，見下）下界；本規格以此訂為點擊回饋必須可見的時限 |
+| `Motion.transition` | 150 ms | 動畫 | 狀態之間的 cross-fade | 落在「幾乎即時帶」（100–400 ms）內，以動畫掩蓋切換 |
+| `Motion.overlay` | 200 ms | 動畫 | 浮層展開與收合 | 同上，浮層位移距離大於狀態淡入故取較長值 |
+| `Motion.spinnerMinVisible` | 300 ms | 契約 | 指示一旦顯示的最短停留 | 避免載入極快時指示器一閃即逝造成視覺跳動，訂為固定下限（本規格決定，非引用外部研究值） |
+| `Motion.cancelDeadline` | 500 ms | 契約 | 按下取消後抵達目標態的上限 | 訂於 400 ms–1 s 之間，權衡「系統過慢打斷操作連續感」與「等待過久使用者失去專注」兩種風險；具體數值為本規格權衡後的決定，非引用特定研究值 |
+| `Motion.progressTick` | 200 ms | 契約 | 進度計數文字的最小更新間隔 | 高於此頻率的數字跳動不可讀 |
+| `Motion.skeletonCycle` | 1200 ms | 動畫 | 骨架 shimmer 的循環週期 | 一屏內可辨識為「持續進行」而不干擾閱讀 |
+| `Motion.snackBar` | 4 s | 契約 | 純告知型 SnackBar 停留 | Flutter Material `SnackBar` 元件的預設顯示時長（4000 ms），本規格沿用不覆寫 |
+| `Motion.snackBarWithAction` | 8 s | 契約 | 帶動作 SnackBar 停留 | 需讀完再決定是否按，較純告知型加倍 |
+| `Motion.searchDebounce` | 300 ms | 契約 | 搜尋輸入停止後至觸發過濾的等待 | 避免逐字元觸發造成的畫面閃爍與重複運算，訂為輸入停頓後的防抖動延遲 |
 
 **硬規則**：`lib/` 之下（`lib/tokens/` 除外）不得出現 `Duration(milliseconds: <字面數字>)`
 或 `Duration(seconds: <字面數字>)`。此檢查可機械化，與 SPEC-002 FR-01 同一條 CI 規則擴充。
 
-**減少動態效果**：`MediaQuery.disableAnimationsOf(context)` 為 `true` 時，
-`Motion.transition` / `Motion.overlay` / `Motion.skeletonCycle` 一律視為
-`Duration.zero`，shimmer 改為靜態灰塊。`Motion.cancelDeadline`、
-`Motion.spinnerMinVisible`、`Motion.snackBar` **不歸零**——它們是行為契約
-（多久內必須抵達、最短停留多久）而非動畫。
+**減少動態效果（依類別判定，非逐一枚舉）**：`MediaQuery.disableAnimationsOf(context)`
+為 `true` 時，類別為「動畫」的 token（`Motion.transition`、`Motion.overlay`、
+`Motion.skeletonCycle`）一律視為 `Duration.zero`，shimmer 改為靜態灰塊；類別為
+「契約」的 token 恆不歸零——它們是行為時限承諾（多久內必須抵達、最短停留多久、
+輸入後多久觸發過濾），與視覺呈現無關，使用者選擇減少動態效果不代表放棄這些
+行為保證。新增 token 時只需歸類「動畫」或「契約」，disableAnimations 下的行為
+即由本段規則推導，不需逐一列舉例外。
 
 ### 2.2 三層回饋的落地
 
@@ -216,21 +218,26 @@ SPEC-001 退出路徑欄的所有措辭，歸為三類反應，不存在第四�
 
 適用三處載入態：`state-domain-loading`、`state-tickets-loading`、`state-gaps-scanning`。
 
+**C1 併入原 C2**：兩者皆描述「取消錨點在使用者尚未按下取消前恆可用」，差異
+只在觀察時間點（第一幀 / 任何進度），無獨立驗收價值，故合併為單一條件並限定
+適用範圍為「尚未按下取消」。
+
 | # | 條件 | 可觀察結果 |
 |---|------|-----------|
-| C1 | 載入態渲染的第一幀 | 取消錨點存在且 `enabled` 為 `true` |
-| C2 | 載入進行至任何進度 | 取消錨點的 `enabled` 恆為 `true`；不存在「收尾中所以不能取消」的時間窗 |
-| C3 | 按下取消後 `Motion.feedback` 內 | 取消錨點 `enabled` 轉為 `false`；其文字改為取消中的 i18n 值 |
-| C4 | 按下取消後至抵達目標態之間 | 畫面維持載入態版面（骨架與版位不變）；進度指示改為 indeterminate；計數文字凍結於最後值；不得閃現空白、不得出現錯誤文字（可執行斷言見下方「C4 的斷言方式」） |
-| C5 | 按下取消後 `Motion.cancelDeadline` 內 | 目標狀態錨點存在，載入態錨點不存在 |
-| C6 | 取消完成後 | 不出現任何 SnackBar、Dialog 或錯誤標記（取消是使用者意圖，不是失敗） |
-| C7 | 取消完成後 | 已解析的部分結果全數丟棄；不存在「半渲染」的矩陣或清單 |
-| C8 | 取消完成後再次觸發載入 | 進度自 0 起算，不續傳 |
-| C9 | 連續按下取消 N 次 | 狀態轉換只發生一次（冪等） |
-| C10 | 載入期間切換導覽項 | 載入**繼續**（離開畫面不等於取消）；回到該畫面時顯示當時進度 |
-| C11 | 載入期間切換專案 | 載入中止，且在 `Motion.cancelDeadline` 內完成中止，不留背景任務 |
+| C1 | 載入進行中且尚未按下取消的任一時刻（含渲染的第一幀） | 取消錨點存在且 `enabled` 恆為 `true`；不存在「收尾中所以不能取消」的時間窗 |
+| C2 | 按下取消後 `Motion.feedback` 內 | 取消錨點 `enabled` 轉為 `false`；其文字改為取消中的 i18n 值 |
+| C3 | 按下取消後至抵達目標態之間 | 畫面維持載入態版面（骨架與版位不變）；進度指示改為 indeterminate；計數文字凍結於最後值；不得閃現空白、不得出現錯誤文字（可執行斷言見下方「C3 的斷言方式」） |
+| C4 | 按下取消後 `Motion.cancelDeadline` 內 | 目標狀態錨點存在，載入態錨點不存在 |
+| C5 | 取消完成後 | 不出現任何 SnackBar、Dialog 或錯誤標記（取消是使用者意圖，不是失敗） |
+| C6 | 取消完成後 | 已解析的部分結果全數丟棄；不存在「半渲染」的矩陣或清單 |
+| C7 | 取消完成後再次觸發載入 | 進度自 0 起算，不續傳 |
+| C8 | 連續按下取消 N 次 | 狀態轉換只發生一次（冪等） |
 
-**C4 的斷言方式（強制）**：自按下取消起，以固定幀距
+**載入期間切換導覽項／切換專案的行為（原 C10／C11）已移至 §2.8 生命週期契約，
+改編為 L1／L2**——兩者描述的是「離開本畫面」而非「按下取消」，屬生命週期事件
+而非取消契約，收斂時一併移出。§2.11 與 FR-02 的條數引用已同步（見各節）。
+
+**C3 的斷言方式（強制）**：自按下取消起，以固定幀距
 （`tester.pump(const Duration(milliseconds: 16))`）逐幀推進至
 `Motion.cancelDeadline`；每一幀皆斷言載入態骨架根錨點（`state-domain-loading` /
 `state-tickets-loading` / `state-gaps-scanning` 之一）存在（`findsOneWidget`）——
@@ -245,12 +252,12 @@ SPEC-001 退出路徑欄的所有措辭，歸為三類反應，不存在第四�
 | `state-tickets-loading` | `state-tickets-unloaded` | SPEC-001 §4「取消 → 未載入」 |
 | `state-gaps-scanning` | `returnTo` 指定的畫面；`returnTo` 為 `null` 時為 `nav-page-domain` | SPEC-001 §5「取消 → 返回」（「返回」的目標由本規格定義，見 §5 註記） |
 
-**C5 的斷言方式（強制）**：以 `await tester.tap(...)` 後
+**C4 的斷言方式（強制）**：以 `await tester.tap(...)` 後
 `await tester.pump(Motion.cancelDeadline)` 推進假時鐘，再斷言目標態錨點存在。
 **禁止**以 `Stopwatch` 加 `lessThan` 量測真實耗時作為 pass-fail 條件——該類斷言
 的結果依賴機器負載而非程式正確性。
 
-**C5 的實作約束**：解析與掃描迴圈須以批次進行，每批之間檢查取消旗標，
+**C4 的實作約束**：解析與掃描迴圈須以批次進行，每批之間檢查取消旗標，
 且單一批次的處理量須使「檢查點之間的間隔」不超過 `Motion.cancelDeadline`。
 批次大小是實作參數，本規格只約束其後果。
 
@@ -269,8 +276,9 @@ SPEC-001 退出路徑欄的所有措辭，歸為三類反應，不存在第四�
 **計數文字更新頻率**：兩次更新之間至少間隔 `Motion.progressTick`。
 
 **延遲顯示不適用於上述三者。** 它們是 SPEC-001 明列的一級狀態、由使用者主動
-觸發、且是整個畫面的內容，必須立即渲染。`Motion.spinnerDelay` 保留給「非狀態級
-的短暫等待」（0.1 無此類情境；token 先定義以免日後出現時又寫裸值）。
+觸發、且是整個畫面的內容，必須立即渲染。0.1 無「非狀態級短暫等待需要延遲
+顯示」的情境，故不定義對應 token；此類情境出現時應另行評估並新增 token，
+不得沿用本節既有值。
 
 **最短顯示時間適用**：載入態一旦渲染，至少存續 `Motion.spinnerMinVisible`，
 即使解析在更短時間內完成。斷言：以極小假資料觸發載入，`pump(Motion.feedback)`
@@ -299,8 +307,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | App 啟動 | 落地於 `nav-page-domain`（`selectedDestinationProvider` 預設值）；`returnTo` 為 `null` |
 | 六頁建構時機 | `IndexedStack` 一次建構全部六頁。因此「依視圖惰性」**不得**以首次建構作為觸發訊號，須以**首次可見**（成為 `IndexedStack` 的 index）觸發 |
 | 切換導覽項 | 來源頁不 dispose：捲動位置、雙模式選擇、搜尋詞、篩選條件、樹展開狀態全部保留 |
-| 切換導覽項與進行中任務 | 任務繼續（見 §2.5 C10） |
-| 切換專案 | 六頁狀態全部重置為各自初始狀態；全部進行中任務中止（C11）；`returnTo` 設為 `null` |
+| 切換導覽項與進行中任務（L1） | 任務繼續（離開畫面不等於取消）；回到該畫面時顯示當時進度 |
+| 切換專案（L2） | 六頁狀態全部重置為各自初始狀態；全部進行中任務中止，且在 `Motion.cancelDeadline` 內完成中止、不留背景任務；`returnTo` 設為 `null` |
 | 視窗尺寸變更 | 不重置任何狀態、不重新載入；捲動容器以「當前 offset 夾在新的可捲範圍內」處理，不歸零 |
 | 視窗失焦 / 前景切換 | 不觸發任何重新載入（0.1 無檔案監看） |
 | 語系 | 0.1 由啟動參數決定，執行期不切換；本規格不定義執行期語系切換行為 |
@@ -363,7 +371,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 | SPEC-002 元件 | 承擔本規格的哪一節 |
 |--------------|------------------|
-| 載入態（骨架 + 進度 + 取消） | §2.5 取消契約全部 11 條、§2.6 等待指示 |
+| 載入態（骨架 + 進度 + 取消） | §2.5 取消契約 C1–C8、§2.8 生命週期 L1–L2、§2.6 等待指示 |
 | 空狀態（訊息 + 前進動作） | §2.7 空狀態欄、§2.4 內容跳轉 |
 | 阻擋狀態（訊息 + 版本值 + 出口） | §2.7 阻擋狀態欄、浮層可用性斷言 |
 | 導覽項 | §2.3 `rail` intent、§2.8 狀態保留 |
@@ -373,7 +381,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 徽章 | §3.4 損壞徽章的可點性 |
 
 **取消契約由載入態元件單一承擔，不由三個畫面各自實作。** 三處載入態的差異只有
-「目標態」與「進度型別」兩個參數，其餘 11 條行為完全相同。
+「目標態」與「進度型別」兩個參數，其餘行為（§2.5 的 C1–C8 與 §2.8 的 L1–L2，
+共 10 條）完全相同。
 
 ---
 
@@ -453,7 +462,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 矩陣首次渲染 | **不做逐格入場動畫**。真實規模下（不低於 1300 筆）逐格動畫無資訊量且成本高 |
 | 矩陣 → 泳道的定位 | 以 `jumpTo` 即時定位，**不用** `animateTo`。定位是導航結果不是動畫；長泳道上的 animateTo 會產生數秒捲動且中途無法斷言 |
 | 格選中態出現 | 點擊確認用 `InkWell` 內建 pressed 態（§2.2），選中態本身無入場動畫（持續性標記） |
-| 右欄提示 ↔ 詳情卡、詳情卡內容換選 | cross-fade，`Motion.transition`；資料為本地已解析內容，落在 0–100 ms 即時帶，不顯示任何等待指示 |
+| 右欄提示 ↔ 詳情卡、詳情卡內容換選 | cross-fade，`Motion.transition`；資料為本地已解析內容，切換耗時落在「幾乎即時帶」內，不顯示任何等待指示 |
 | `panel-domain-schema-detail` 展開 | 高度變化 `Motion.transition` |
 
 #### 導航跳轉與退出
@@ -567,7 +576,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 開始載入 | `action-tickets-start-load` | 點擊 | `state-tickets-unloaded` 消失、`state-tickets-loading` 出現 |
 | 取消載入 | `action-tickets-cancel-load` | 點擊 | 依 §2.5，目標態 `state-tickets-unloaded` |
 | 返回上一畫面 | `action-tickets-back` | 點擊 | 切至 `returnTo`；`returnTo` 為 `null` 時**此錨點不渲染**（§2.3 規則 4） |
-| 搜尋 | `input-tickets-search` | 輸入 | 輸入後 `Motion.progressTick` 內清單筆數更新；清空輸入還原全部筆數 |
+| 搜尋 | `input-tickets-search` | 輸入 | 輸入停止 `Motion.searchDebounce` 後清單筆數更新（防抖動，不逐字元觸發）；清空輸入立即還原全部筆數 |
 | 篩選 | `action-tickets-filter-<key>` | 點擊 | 該篩選呈選中態；清單筆數改變 |
 | 排序 | `action-tickets-sort-<key>` | 點擊 | 首列與末列的內容改變；offset 歸零（排序改變後保留舊 offset 無意義） |
 | 切至列表 | `mode-tickets-list` | 點擊 | `state-tickets-list` 出現、`state-tickets-topic` 消失 |
@@ -598,7 +607,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 狀態 | 退出動作 → 目標 |
 |------|----------------|
 | 未載入 | `action-tickets-back` → `returnTo`（`null` 時不渲染，改由 `nav-item-<d>` 承擔退出）；`project-switcher-entry` → 浮層 |
-| 載入中 | `action-tickets-cancel-load` → `state-tickets-unloaded`；完成 → `state-tickets-list`；載入中亦可 `nav-item-<d>` 切至其他畫面（載入繼續，C10） |
+| 載入中 | `action-tickets-cancel-load` → `state-tickets-unloaded`；完成 → `state-tickets-list`；載入中亦可 `nav-item-<d>` 切至其他畫面（載入繼續，見 §2.8 L1） |
 | 正常 · 列表 | `nav-item-<d>`；`card-tickets-*` → jump；`project-switcher-entry` |
 | 正常 · 主題 | 同上 |
 | 無 ticket | `action-tickets-goto-gaps` → jump；`nav-item-<d>`；`project-switcher-entry` |
@@ -610,7 +619,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 |------|------|
 | 建構 | 隨 `IndexedStack` 於 App 啟動時建構，但**不觸發解析** |
 | 首次可見 | 進入 `state-tickets-unloaded`；解析仍**不觸發**，須使用者按 `action-tickets-start-load`（SPEC-001 §4 的「開始載入」是使用者操作） |
-| 切至其他導覽項 | 載入繼續（C10）；搜尋詞、篩選、排序、模式、offset 全部保留 |
+| 切至其他導覽項 | 載入繼續（見 §2.8 L1）；搜尋詞、篩選、排序、模式、offset 全部保留 |
 | 再次可見 | 已載入者直接顯示正常態，不重新解析 |
 | 切換專案 | 中止載入；重置為 `state-tickets-unloaded`；搜尋詞與篩選清空 |
 
@@ -637,7 +646,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 |------|------|
 | 掃描中骨架 | shimmer `Motion.skeletonCycle`；`disableAnimations` 時靜態 |
 | 掃描中 → 無破洞 / 有破洞 | cross-fade，`Motion.transition` |
-| 重新掃描 | 現有結果立即被骨架取代（不做淡出後再淡入的兩段動畫，總時長會超出感知即時帶） |
+| 重新掃描 | 現有結果立即被骨架取代（不做淡出後再淡入的兩段動畫；舊結果在重新掃描的當下即被使用者意圖判定為待汰換，保留其淡出效果會延長已失效資料的可見時間，且與其餘狀態轉換一律採單段 `Motion.transition` 的手法不一致） |
 | 分節收合 | 高度變化 `Motion.transition` |
 
 #### 導航跳轉與退出
@@ -655,7 +664,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 首次可見且圖已建立 | 自動進入 `state-gaps-scanning`（SPEC-001 §5 進入條件） |
 | 首次可見但圖未建立 | 不自動掃描；0.1 假資料一律預先建立圖，此路徑不出現 |
 | 再次可見 | **不重新掃描**，顯示既有結果；要重掃須按 `action-gaps-rescan` |
-| 掃描中切至其他導覽項 | 掃描繼續（C10）；回來時顯示當時進度 |
+| 掃描中切至其他導覽項 | 掃描繼續（見 §2.8 L1）；回來時顯示當時進度 |
 | 切換專案 | 中止掃描；結果清空；下次可見時重新自動掃描 |
 
 ### 3.6 節點詳情（`nav-page-nodeDetail`）
@@ -783,7 +792,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 13 | 追溯 | 鏈路斷裂 | `state-traceability-broken` | 同上 + 跳轉破洞報告 | 同 #12，另加 jump：`action-traceability-goto-gaps` / `badge-traceability-broken-*` → `nav-page-gaps` |
 | 14 | 追溯 | 無提案 | `state-traceability-empty` | 導覽、切換專案 | jump：`action-traceability-goto-gaps` → `nav-page-gaps`；rail；覆蓋層 |
 | 15 | Ticket | 未載入 | `state-tickets-unloaded` | 返回上一畫面、切換專案 | 返回：`action-tickets-back` → `returnTo`（`null` 時不渲染，退出由 rail 承擔）；覆蓋層 |
-| 16 | Ticket | 載入中 | `state-tickets-loading` | 取消 → 未載入；完成 → 正常 | 同畫面轉換：`action-tickets-cancel-load` → `state-tickets-unloaded`（§2.5）；完成 → `state-tickets-list`；rail 可離開且載入繼續（C10） |
+| 16 | Ticket | 載入中 | `state-tickets-loading` | 取消 → 未載入；完成 → 正常 | 同畫面轉換：`action-tickets-cancel-load` → `state-tickets-unloaded`（§2.5）；完成 → `state-tickets-list`；rail 可離開且載入繼續（見 §2.8 L1） |
 | 17 | Ticket | 正常 · 列表 | `state-tickets-list` | 導覽、切換專案 | rail；jump：`card-tickets-*` → `nav-page-nodeDetail`；覆蓋層 |
 | 18 | Ticket | 正常 · 主題 | `state-tickets-topic` | 同上 | 同 #17，另加同畫面轉換 `mode-tickets-list` → `state-tickets-list` |
 | 19 | Ticket | 無 ticket | `state-tickets-empty` | 導覽、切換專案 | jump：`action-tickets-goto-gaps` → `nav-page-gaps`；rail；覆蓋層 |
@@ -834,12 +843,12 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 優先級 | P0 |
 | 驗收 | §4 對照表 31 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
 
-### FR-02: 取消契約的十一條行為全部成立
+### FR-02: 取消契約的十條行為全部成立
 
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | 三處載入態（`state-domain-loading`／`state-tickets-loading`／`state-gaps-scanning`）各自通過 §2.5 的 C1–C11；C5 以 `tester.pump(Motion.cancelDeadline)` 推進假時鐘後斷言，不得使用 `Stopwatch` 加 `lessThan` |
+| 驗收 | 三處載入態（`state-domain-loading`／`state-tickets-loading`／`state-gaps-scanning`）各自通過 §2.5 的 C1–C8 與 §2.8 的 L1–L2（共 10 條）；C4 以 `tester.pump(Motion.cancelDeadline)` 推進假時鐘後斷言，不得使用 `Stopwatch` 加 `lessThan` |
 
 ### FR-03: 導航來源以單槽記錄，返回目標唯一
 
@@ -916,6 +925,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.3 | 2026-09-02 | 時間 token 與取消契約修訂（`0.1.0-W1-039.2`）：§2.1 Motion 表新增類別欄，十個 token 逐一分類為「動畫」（transition／overlay／skeletonCycle）或「契約」（其餘七項）；減少動態效果規則改寫為依類別判定的性質陳述，不再逐一枚舉例外；`spinnerDelay` 因全域無使用情境已刪除；新增 `Motion.searchDebounce`（300 ms）承接 Ticket 清單搜尋輸入的防抖動語意，不再誤用 `progressTick`。§2.5 取消契約 C1 併入原 C2 並限定「尚未按下取消」，收斂為 C1–C8；原 C10／C11（切換導覽項／切換專案期間的行為）移至 §2.8 生命週期契約改編為 L1／L2；全文對 C10／C11 的引用同步改為指向 §2.8 L1；§2.11、FR-02 標題與驗收的條數引用同步為「C1–C8 與 L1–L2，共 10 條」。「感知即時帶」（第 640 行原文）與「即時帶」（第 456 行原文）兩個歧異用語統一為 token 表已定義的「幾乎即時帶」（100–400 ms），並修正第 640 行原本站不住腳的推論（兩段 cross-fade 300 ms 實際落在該帶內，改以「舊結果已判定待汰換、不宜維持淡出」與「手法一致性」為理由）。§1.3 泳道拖曳邊界的「桌面慣例」改寫：macOS 原生 `NSScrollView` 實際預設具彈性回彈，本規格改明示為顧及斷言可驗證性的專案決定，不再誤植為平台慣例。Motion 表六處時間值依據（`feedback`／`spinnerMinVisible`／`cancelDeadline`／`snackBar`／已刪除的 `spinnerDelay`／§1.3 桌面慣例）改為附具體出處（如 Flutter `SnackBar` 預設時長）或改寫為不引用外部權威的專案決定陳述。 |
 | 1.2 | 2026-09-02 | 撰寫判準與斷言形式修訂（`0.1.0-W1-039.1`）：§撰寫判準改名為「條件欄與可觀察結果欄皆為斷言」，適用範圍收窄至條件欄與可觀察結果欄，明示依據／理由欄得用一般論述語言；可觀察形式表由三種擴充為四種（元件樹結構、狀態容器值、靜態原始碼掃描、外部程序呼叫），使 FR-05（靜態原始碼掃描）與 FR-06（外部程序呼叫）各有可用斷言形式。§2.5 C4 新增「C4 的斷言方式（強制）」段落，將「不得閃現空白」「不得出現錯誤文字」改寫為逐幀骨架錨點存在性與 SnackBar／Dialog 不存在的可執行斷言。§2.10 新增「Tab 內容區順序（斷言方式）」與「焦點裝飾（斷言方式）」兩段，將區段內順序改寫為幾何位置遞增斷言、焦點裝飾改寫為祖先鏈 decoration 存在性斷言。 |
 | 1.1 | 2026-09-02 | 格詳情卡補件（`0.1.0-W1-048`）：§3.1 互動反應「矩陣格子」由單擊切泳道改為單擊選格（疊加態 `panel-domain-cell-detail`，`Motion.feedback` 內選中、`Motion.transition` cross-fade），新增換選、再點同格、無關格、在泳道中檢視（`action-domain-cell-goto-swimlane`）、清除選取（Esc／`action-domain-cell-clear`）、選 domain 與選格關係、右欄捲動八列；新增「格詳情卡的內容契約」（七區塊存在條件）、未選格右欄 `panel-domain-cell-detail-empty`、「選格與切泳道的關係」四案比較（採 B，標 PM 核定）；動畫提示、導航退出、生命週期各補已選格列；§1.1 捲動處 10 → 11（`scroll-domain-cell-detail`）並延伸連動禁令；§2.10 補已選格 Esc；FR-08 同步 11。同步 SPEC-001 v1.3／v1.4 狀態數：§0 與 §4 由 29 改 31，§4 補第 30 列「未選節點」（`state-nodeDetail-unset`）與第 31 列「已選格」，§3.6 缺口段落改為已承接，§5 判讀表更新 §6 列並補 §1 已選格列，FR-01 與設計約束同步 31 |
 | 1.0 | 2026-09-01 | 初版，`0.1.0-W1-010` 產出。建立時間 token、取消契約十一條、單槽導航來源記錄、首次可見惰性載入契約、測試錨點命名規範；七畫面各自填四類行為；SPEC-001 全 29 狀態逐列對應導航反應 |
