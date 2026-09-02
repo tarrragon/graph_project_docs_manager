@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-02"
-version: "1.9"
+version: "1.10"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.9（第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填）
+**版本**: 1.10（第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；4.22 內部不一致校正見變更歷史 1.10）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -2999,7 +2999,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
-| default | 訊息 `AppText.subtitle` + 路徑 `AppText.mono`（`secondary`）+ `ButtonRow`[重新整理 `primary`, 返回 `secondary`（`returnTo` 為 `null` 時不渲染）] | 重新整理、返回 | 呼叫端渲染（`state-nodeDetail-missing`） | 重新整理 → 三分支（仍不存在：維持 + SnackBar；完整 → normal；斷點 → partial）；返回 → `returnTo`（SPEC-003 §3.6） |
+| default | 訊息 `AppText.subtitle` + 路徑 `AppText.mono`（`secondary`）+ `ButtonRow`[重新整理 `primary`]（本元件動作列只含重新整理，返回鍵由頁面框架於 `SplitRow.header` 統一渲染，見下方「互動反應」與「slot 契約」） | 重新整理 | 呼叫端渲染（`state-nodeDetail-missing`） | 重新整理 → 三分支（仍不存在：維持 + SnackBar；完整 → normal；斷點 → partial）；返回 → 由頁面框架的返回鍵導向 `returnTo`（SPEC-003 §3.6） |
 
 #### 互動反應
 
@@ -3031,8 +3031,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
-| `message` | 是 | 2 | 末行截斷 | `sourceFileMissingMessage`（en「Source file no longer exists」）；`TestCopy.longZh` |
-| `path` | 是 | 3 | 末行截斷（路徑可於 `/` 處換行，提案） | `lastKnownPathLabel`（path 代入 `TestCopy.filePath`）；`TestCopy.longToken` |
+| `message` | 否（`AppText.subtitle` 契約鎖定單行，4.1 已核定行為） | 1 | 末行截斷 | `sourceFileMissingMessage`（en「Source file no longer exists」）；`TestCopy.longZh` |
+| `path` | 否（`AppText.mono` 契約鎖定單行，4.1 已核定行為） | 1 | 末行截斷 | `lastKnownPathLabel`（path 代入 `TestCopy.filePath`）；`TestCopy.longToken` |
 
 #### slot 契約
 
@@ -5767,6 +5767,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.10 | 2026-09-02 | 實作校正（`MissingSourceState` 元件票）：4.22 狀態矩陣「顯示」「可用操作」「退出路徑」三欄與「互動反應」「slot 契約」（僅 `path`／`onRefresh`／`testKey`，無 `returnTo`）內部不一致——`ButtonRow` 移除「返回」按鈕，改註明返回鍵由頁面框架於 `SplitRow.header` 統一渲染，與 §3011 既有澄清對齊；內容政策 `message`／`path` 兩列原標可換行（2／3 行）與 `AppText.subtitle`／`AppText.mono` 已核定的單行鎖定契約（4.1）矛盾，改標單行截斷，與實作行為一致 |
 | 1.9 | 2026-09-02 | 對比核定回填（`0.1.0-W1-060`，依 `0.1.0-W1-058` 方案 C 與 `0.1.0-W1-059` 落地值）：§3.7 新增第 25 項；§4.0.1 disabled 列改 `textDisabled`；§4.0.2 重寫為表 1（文字對比，精確值）+ 表 2（`textDisabled` 停用態與純裝飾）+ 帶色表面規則 + `textDisabled` 對應清單；15 條目無障礙子節對比列填實際值去「待 W1-058」（4.1 / 4.4 / 4.5 / 4.6 / 4.9 / 4.11 / 4.12 / 4.13 / 4.14 / 4.15 / 4.18 / 4.21 / 4.22 / 4.23 / 4.24）；4.5 `Badge` 刪 `secondary` tone，`rejected` / `superseded` / `revised` 改對映 `neutral`；4.6 `damagedEdge` child 文字與 4.19 `RelationItem.damaged` 改維持 `textPrimary`；4.9 selected 摘要改 `textPrimary`；4.10 軌道底對比改 4.56:1；停用態與純裝飾箭頭圖示改引用 `textDisabled`（4.2 色彩列補 token、4.4 disabled、4.8 展開箭頭、4.9 disabled、4.12 搜尋圖示、4.13 箭頭、4.18 箭頭、4.38 底部箭頭列）；標頭版本欄自 1.5 補正（1.6–1.8 未同步更新） |
 | 1.8 | 2026-09-02 | PM 核定 `matrixColumnWidth` = 122（§3.7 第 24 項），4.15 / 4.37 與 §4.0.9 去「待核定」標；§3.7 第 23 項更新為 W1-038 已加入依賴 |
 | 1.7 | 2026-09-02 | 補齊第 4 章缺漏佈局尺寸 token（`0.1.0-W1-055`）：`lib/tokens/layout.dart` 新增 `titleBarHeight` / `ticketIdColumnWidth` / `ticketStatusColumnWidth` / `ticketPriorityColumnWidth` / `ticketMarkerColumnWidth` / `stepNumberColumnWidth` / `stepDomainColumnWidth` / `treeIndent` / `stepNumberSize` / `matrixColumnWidth` 十項；`stepNumberSize` 收斂採 UCFlowB 圓形值 24（依 §3.7 第 11 項）；`matrixColumnWidth` 為本票依 `Main` 版面尺寸鏈反推的提案值 122，dartdoc 與本檔皆標「待 PM 核定」。§4.0.9 待決清單去標原 6 條目（4.17 / 4.27 / 4.35 / 4.36 / 4.37 / 4.39）；4.17 / 4.27 / 4.35 尺寸契約與組合規則、4.36 / 4.37 / 4.39 的 5.10 / 5.11 / 5.13 不重疊公式改引用具名 token；§3.4 / §3.5 對應列同步 |

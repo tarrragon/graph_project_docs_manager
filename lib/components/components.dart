@@ -14,6 +14,7 @@ export 'divider.dart';
 export 'document_body.dart';
 export 'expander_icon.dart';
 export 'list_row.dart';
+export 'missing_source_state.dart';
 export 'page_column.dart';
 export 'page_title.dart';
 export 'panel.dart';
