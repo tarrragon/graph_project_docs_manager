@@ -31,7 +31,7 @@
 /// | [LayoutSize.stepDomainColumnWidth] | 118 | 118（`UCFlowB` 第 3 欄） | `TableRow.step` domain 固定寬欄（第 2、4 欄為 `1fr` 等分填滿欄，非固定寬，不建 token） |
 /// | [LayoutSize.treeIndent] | 24 | 24（`TraceA` 各層 padding-left 0/24/48/72，等差） | `Tree` 每層縮排（SPEC-004 4.39） |
 /// | [LayoutSize.stepNumberSize] | 24 | 16（`Main` 詳情卡方形 `border-radius:4px`）與 24（`UCFlowB` 圓形 `border-radius:12px`）兩值，見〈StepNumber 尺寸收斂〉 | `StepNumber` 直徑（SPEC-004 4.17） |
-/// | [LayoutSize.matrixColumnWidth] | 122 | 畫布為 `repeat(5,1fr)` 無固定值，由 `Main` 版面推算，見〈MatrixGrid UC 欄寬定案〉。**待 PM 核定** | `MatrixGrid` UC 欄寬（SPEC-004 4.37；委派 `two_dimensional_scrollables` 需固定欄寬） |
+/// | [LayoutSize.matrixColumnWidth] | 122 | 畫布為 `repeat(5,1fr)` 無固定值，由 `Main` 版面推算，見〈MatrixGrid UC 欄寬定案〉。已核定 | `MatrixGrid` UC 欄寬（SPEC-004 4.37；委派 `two_dimensional_scrollables` 需固定欄寬） |
 ///
 /// 導覽項的 padding（實測 7、10）不在本檔新增：兩值已落於
 /// `spacing.dart` 的 [Space.sm]（8，吸收原始值 7、8、9、10）區間內，
@@ -87,9 +87,8 @@
 /// 610 / 5 = 122
 /// ```
 ///
-/// 推算值 122 非畫布直接量測值，屬本票依既有面板尺寸鏈反推的提案值，
-/// dartdoc 與 SPEC-004 4.37 皆標「待 PM 核定」；核定前元件票不得引用本值
-/// 排入正式畫面（依 SPEC-004 §4.0.9 待決清單既有約束）。
+/// 推算值 122 非畫布直接量測值，屬依既有面板尺寸鏈反推的提案值；PM 已於
+/// 2026-09-02 核定（SPEC-004 §3.7 第 24 項），可供元件票排入正式畫面。
 library;
 
 /// 佈局尺寸離散值。畫面只引用具名常數，不接受任意數字。
@@ -117,6 +116,6 @@ abstract final class LayoutSize {
   static const double stepDomainColumnWidth = 118; // magic-exempt token 定義本身
   static const double treeIndent = 24; // magic-exempt token 定義本身
   static const double stepNumberSize = 24; // magic-exempt token 定義本身
-  /// 提案值，待 PM 核定（見 dartdoc〈MatrixGrid UC 欄寬定案〉推算過程）。
+  /// 已核定值（見 dartdoc〈MatrixGrid UC 欄寬定案〉推算過程）。
   static const double matrixColumnWidth = 122; // magic-exempt token 定義本身
 }
