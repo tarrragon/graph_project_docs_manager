@@ -14,6 +14,7 @@ import '../tokens/colors.dart';
 import '../tokens/layout.dart';
 import '../tokens/motion.dart';
 import '../tokens/spacing.dart';
+import 'split_row.dart';
 
 /// 每頁根堆疊：頁首 + 內容垂直排列。
 ///
@@ -34,8 +35,8 @@ class PageColumn extends StatelessWidget {
   /// 朗讀標籤（頁名）。`Semantics(container: true)` 的 `label`。
   final String semanticLabel;
 
-  /// 頁首 slot（恰 1，`SplitRow.header`）。
-  final Widget header;
+  /// 頁首 slot（恰 1，SPEC-004 §4.28 slot 契約）。
+  final SplitRow header;
 
   /// 內容 slot（恰 1）。換件時觸發 cross-fade。
   final Widget content;

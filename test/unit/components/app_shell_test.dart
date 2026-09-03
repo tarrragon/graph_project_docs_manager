@@ -29,7 +29,7 @@ List<PageColumn> _buildPages({String? longestLabel}) {
     for (final destination in AppDestination.values)
       PageColumn(
         semanticLabel: destination.name,
-        header: const SizedBox.shrink(),
+        header: SplitRow.header(leading: PageTitle(title: destination.name)),
         content: _placeholderPage(
           destination == AppDestination.values.first && longestLabel != null
               ? longestLabel
@@ -82,10 +82,17 @@ void main() {
           switcherEntry: _buildSwitcherEntry(),
           navItems: _buildNavItems(selected: AppDestination.domain),
           pages: _buildPages(),
-          overlay: const SizedBox(
-            key: ValueKey('switcher-overlay'),
-            width: 200,
-            height: 100,
+          overlay: SwitcherOverlay(
+            items: const [],
+            chooseOther: AppButton(
+              label: 'choose other',
+              onPressed: () {},
+              testKey: const Key('action-switcher-choose-other'),
+              variant: AppButtonVariant.text,
+            ),
+            onDismiss: () {},
+            testKey: const ValueKey('switcher-overlay'),
+            scrollKey: const Key('scroll-switcher-overlay-test'),
           ),
         ),
       );

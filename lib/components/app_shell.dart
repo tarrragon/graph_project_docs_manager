@@ -7,11 +7,6 @@
 /// `selectedDestinationProvider` / `returnToProvider`（唯讀引用，非本票
 /// 修改範圍）決定當前可見頁與返回鍵狀態。
 ///
-/// `overlay` slot 型別依契約應為 `SwitcherOverlay?`（SPEC-004 4.42），但
-/// 該容器尚未建於 `lib/components/`，非本票範圍；比照 `AppButton.leading`
-/// 的既有慣例改以 `Widget?` 承接，型別相容，`SwitcherOverlay` 建立後可
-/// 直接代入。
-///
 /// 契約來源：`docs/spec/ui/SPEC-004-component-library.md` §4.27、§5.1。
 library;
 
@@ -26,6 +21,7 @@ import 'app_text.dart';
 import 'nav_item.dart';
 import 'page_column.dart';
 import 'project_switcher_entry.dart';
+import 'switcher_overlay.dart';
 
 /// 根框架容器（SPEC-004 §4.27）。
 ///
@@ -76,8 +72,8 @@ class AppShell extends ConsumerWidget {
   /// 六個頁面，與 [navItems] 同序（SPEC-004 4.27 slot 契約）。
   final List<PageColumn> pages;
 
-  /// `non-null` 即 overlayOpen 態；型別說明見檔頭。
-  final Widget? overlay;
+  /// `non-null` 即 overlayOpen 態（SPEC-004 §4.27 slot 契約）。
+  final SwitcherOverlay? overlay;
 
   /// 呼叫端定址 key，預設 [shellKey]。
   final Key testKey;

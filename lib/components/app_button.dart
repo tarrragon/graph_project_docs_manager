@@ -3,15 +3,12 @@
 /// SPEC-001「可用操作」欄所有有視覺承載的動作（十四種 + 格詳情卡兩種）
 /// 唯一承載元件。三種變體對應三種強調層級，不承載任何非動作語意。
 ///
-/// **與契約的一處差異（範圍限定）**：slot 契約表 `leading` 型別寫
-/// `AppIcon?`，但 `AppIcon`（SPEC-004 4.2）尚未建立於 `lib/components/`，
-/// 非本票（4.4）範圍。本檔改以 `Widget?` 承接，語意不變（`text` 變體專用
-/// 的 leading 圖示 slot）；`AppIcon` 建立後可直接代入，型別相容。
 library;
 
 import 'package:flutter/material.dart';
 
 import '../tokens/tokens.dart';
+import 'app_icon.dart';
 
 /// [AppButton] 的三種變體（SPEC-004 §4.4「變體」）。
 enum AppButtonVariant {
@@ -65,9 +62,9 @@ class AppButton extends StatefulWidget {
   /// 三種強調層級之一，預設 [AppButtonVariant.primary]。
   final AppButtonVariant variant;
 
-  /// 僅 [AppButtonVariant.text] 可用的 leading 圖示（見檔頭「與契約的一處
-  /// 差異」）。語意樹排除（非操作內容）。
-  final Widget? leading;
+  /// 僅 [AppButtonVariant.text] 可用的 leading 圖示（SPEC-004 §4.4 slot
+  /// 契約）。語意樹排除（非操作內容）。
+  final AppIcon? leading;
 
   /// 是否可互動，預設 `true`。為 `false` 時 [disabledReason] 必填。
   final bool enabled;

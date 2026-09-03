@@ -8,7 +8,7 @@
 /// | slot | 型別 | 必填 | 說明 |
 /// |------|------|------|------|
 /// | [search] | [SearchField] | 是（恰 1，首格） | 吸收剩餘寬（SPEC-004 5.6「不重疊」） |
-/// | [filters] | `List<Widget>` | 是（1..3） | 契約型別為 `FilterDropdown`；該元件尚未建立前，slot 以 [Widget] 承接（AppButton 慣例） |
+/// | [filters] | `List<FilterDropdown>` | 是（1..3） | SPEC-004 §4.32 slot 契約 |
 /// | [marker] | [IssueMarker]? | 否 | 含損壞疊加態時傳入，恆置末格靠右 |
 /// | [testKey] | [Key] | 是 | 呼叫端定址 key |
 library;
@@ -17,6 +17,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../tokens/tokens.dart';
+import 'filter_dropdown.dart';
 import 'issue_marker.dart';
 import 'search_field.dart';
 
@@ -43,9 +44,8 @@ class Toolbar extends StatelessWidget {
   /// 首格：搜尋框，吸收剩餘寬。
   final SearchField search;
 
-  /// 第 2..N 格：篩選下拉（1..3 個）。契約型別為 `FilterDropdown`；
-  /// 該元件尚未建立前以 [Widget] 承接。
-  final List<Widget> filters;
+  /// 第 2..N 格：篩選下拉（1..3 個，SPEC-004 §4.32 slot 契約）。
+  final List<FilterDropdown> filters;
 
   /// 末格：損壞計數標記，含損壞疊加態時傳入（SPEC-004 5.6 slot 契約）。
   final IssueMarker? marker;

@@ -100,7 +100,11 @@ class IssueMarker extends StatelessWidget {
   /// `badge-traceability-broken-<layer>` / 欄位級 `action-nodeDetail-goto-gaps`）。
   final Key testKey;
 
-  /// `damagedEdge` 必填：被包住的節點（`RelationItem`）。
+  /// `damagedEdge` 必填：被包住的節點。契約型別為 `RelationItem`
+  /// （SPEC-004 §4.6 slot 契約），但 `RelationItem` 自身持有可互動
+  /// `InkWell`，巢狀於本元件的 `InkWell` 內時內層攔截 tap 命中測試，
+  /// 導致本元件 [onTap] 不觸發（實測驗證）。收窄為 `RelationItem` 型別
+  /// 在實作上不可行，維持 `Widget?` 承接。
   final Widget? child;
 
   /// `damagedDetail` 可選：損壞計數（經 `Badge.count` 顯示）。

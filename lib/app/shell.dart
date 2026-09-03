@@ -68,7 +68,9 @@ class _AppShellState extends ConsumerState<AppShell> {
           for (final item in AppDestination.values)
             components.PageColumn(
               semanticLabel: item.label(l10n),
-              header: const SizedBox.shrink(),
+              header: components.SplitRow.header(
+                leading: components.PageTitle(title: item.label(l10n)),
+              ),
               content: buildDestinationPage(context, item),
             ),
         ],

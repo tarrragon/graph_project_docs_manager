@@ -18,15 +18,17 @@ SearchField _buildSearch({String value = ''}) {
   );
 }
 
-/// 建構 [count] 個固定寬度篩選器替身（契約型別為 `FilterDropdown`，
-/// 該元件尚未建立前以固定寬 [SizedBox] 模擬 slot 型別 [Widget]）。
-List<Widget> _buildFilters(int count, {double width = 60}) {
+/// 建構 [count] 個 [FilterDropdown]（SPEC-004 §4.32 slot 契約型別）。
+List<FilterDropdown> _buildFilters(int count) {
   return [
     for (var i = 0; i < count; i++)
-      SizedBox(
+      FilterDropdown(
         key: Key('toolbar-filter-$i'),
-        width: width,
-        height: LayoutSize.hitTargetMin,
+        label: 'F$i',
+        options: const [FilterOption(value: 'a', label: 'A')],
+        selected: null,
+        onChanged: (_) {},
+        testKey: Key('action-tickets-filter-$i'),
       ),
   ];
 }
@@ -90,7 +92,7 @@ void main() {
         child: Toolbar(
           testKey: const Key('toolbar'),
           search: _buildSearch(),
-          filters: _buildFilters(2, width: 60),
+          filters: _buildFilters(2),
           marker: _buildMarker(),
         ),
       );

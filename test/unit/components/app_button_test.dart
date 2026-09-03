@@ -306,7 +306,7 @@ void main() {
           testKey: Anchor.action(Screen.domain, 'button-invalid-leading'),
           label: 'x',
           variant: AppButtonVariant.primary,
-          leading: const SizedBox(),
+          leading: const AppIcon(icon: Icons.close),
           onPressed: () {},
         ),
         throwsAssertionError,
@@ -322,7 +322,7 @@ void main() {
           testKey: key,
           label: 'x',
           variant: AppButtonVariant.text,
-          leading: const Icon(Icons.close),
+          leading: const AppIcon(icon: Icons.close),
           onPressed: () {},
         ),
       );

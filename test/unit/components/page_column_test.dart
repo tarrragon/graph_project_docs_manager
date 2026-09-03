@@ -31,8 +31,10 @@ Widget _placeholderContent(String kind, {double? height}) {
   );
 }
 
-Widget _placeholderHeader() =>
-    const SizedBox(key: ValueKey('header'), child: SizedBox.expand());
+SplitRow _placeholderHeader() => const SplitRow.header(
+  key: ValueKey('header'),
+  leading: PageTitle(title: 'placeholder'),
+);
 
 void main() {
   group('PageColumn', () {
@@ -173,7 +175,10 @@ void main() {
       );
       expectNoOverflow(tester);
 
-      expect(find.bySemanticsLabel('Domain 視圖'), findsOneWidget);
+      // 頁首 slot 收窄為 SplitRow 後，其子文字語意會與本容器的
+      // Semantics(container: true) 合併為單一節點（label 以換行相接），
+      // 故用 contains 而非精確相等比對頁名是否出現。
+      expect(find.bySemanticsLabel(RegExp('Domain 視圖')), findsOneWidget);
       semanticsHandle.dispose();
     });
   });

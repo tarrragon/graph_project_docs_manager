@@ -22,10 +22,14 @@ import '../tokens/tokens.dart';
 class TwoColumnLayout extends StatelessWidget {
   const TwoColumnLayout({super.key, required this.main, required this.detail});
 
-  /// 主欄內容，`Panel` 或 `Panel.scrollable`（恰 1）。
+  /// 主欄內容，契約型別為 `Panel` 或 `Panel.scrollable`（SPEC-004 §4.31
+  /// slot 契約，恰 1）。維持 `Widget` 承接：既有測試以 `ListView` 型別
+  /// 斷言（`tester.widget<ListView>`）直接驗證捲動子件本身，改用 `Panel`
+  /// 需同步重寫該類斷言，非本票範圍。
   final Widget main;
 
-  /// 右欄內容，`Panel.scrollable`（恰 1）；§1 與 §6 皆為可捲動。
+  /// 右欄內容，契約型別為 `Panel.scrollable`（SPEC-004 §4.31 slot 契約，
+  /// 恰 1）；§1 與 §6 皆為可捲動。維持 `Widget` 承接，理由同 [main]。
   final Widget detail;
 
   @override
