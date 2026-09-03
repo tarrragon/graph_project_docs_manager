@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-09-02"
-version: "1.12"
+updated: "2026-09-03"
+version: "1.13"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -536,13 +536,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 4.0.9 待決清單（元件封鎖表）
 
-下列元件含「待決」欄位，依 skill〈契約齊全的定義〉不得被畫面票引用，決策票／前置票為其元件票的 blockedBy；票完成後由該票或後續 DOC 票去標。
-
-| 條目 | 待決欄位 | 缺什麼 | 票 |
-|------|---------|--------|-----|
-| 4.13 `FilterDropdown` | 互動反應（選單開合、鍵盤）、狀態矩陣 `open` 列的退出路徑、無障礙播報 | SPEC-003 §3.4 未涵蓋 | `0.1.0-W1-057` |
-
-其餘 41 條目無待決欄位，可被畫面票引用（含新 key 者以 `0.1.0-W1-056` 為元件票 blockedBy，已建，不構成待決）；`0.1.0-W1-055` 已建齊 6 項尺寸 token，原 6 條目自本清單去標（`matrixColumnWidth` 值已於 §3.7 第 24 項核定為 122）；4.14 `TableColumnHeader`（`sortable` 變體）已依 SPEC-003 §3.4 S1–S7 補齊互動反應與播報值，元件票實作時自本清單去標。
+全部 42 條目皆無待決欄位，可被畫面票引用（含新 key 者以既有 i18n 建置票為元件票 blockedBy，已建，不構成待決）；6 項尺寸 token 已建齊，原 6 條目自本清單去標（`matrixColumnWidth` 值已於 §3.7 第 24 項核定為 122）；4.13 `FilterDropdown`、4.14 `TableColumnHeader`（`sortable` 變體）已依 SPEC-003 §3.4 補齊互動反應與播報值，元件票實作時自本清單去標。
 
 ### 4.1 AppText
 
@@ -1668,9 +1662,11 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `segments` | `List<Segment{label, semanticLabel, testKey}>`，長度恰 2 | 是 | label 由呼叫端（`mode*Label`）；semanticLabel 由呼叫端（既有 `*SwitchTo*Action`） |
+| `segments` | `List<SegmentItem{label, semanticLabel, testKey}>`，長度恰 2 | 是 | label 由呼叫端（`mode*Label`）；semanticLabel 由呼叫端（既有 `*SwitchTo*Action`） |
 | `selectedIndex` | `int` | 是 | 不適用 |
 | `onChanged` | `ValueChanged<int>` | 是 | 不適用 |
+
+> **實作註記**：`segments` 型別名為 `SegmentItem`（非契約原文 `Segment`）——與 `package:flutter/material.dart` 內建 `Segment<T>`（`SegmentedButton` 用）撞名，實作時改名避免同檔匯入歧義，語意不變。
 
 #### 使用 design token
 
@@ -1958,8 +1954,6 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 **出現畫面**：§4。
 **層級**：L2
 
-> **本條目含待決欄位**（§4.0.9）：選單開合、鍵盤走選項、`open` 狀態的退出路徑、播報值等 SPEC-003 §3.4 未涵蓋，標「待決」並由 `0.1.0-W1-057` 補件；本元件在補件前不得被畫面票引用。
-
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
@@ -1971,22 +1965,28 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
 | default（全部） | 「{label}：{filterAllOption}」+ 向下箭頭；底 `surfaceBase`、框 `border` | 點選 → open | `selected` 為 `null` | 選取非全部 → active |
-| active（有篩選值） | 「{label}：{value}」；框 `accent`（提案，SPEC-003「該篩選呈選中態」的視覺落點） | 點選 → open | `selected` 非 `null` | 選取全部 → default |
-| open | **待決**（`0.1.0-W1-057`：選單形式、錨定、Esc / 點外部收合） | 待決 | 點選觸發器 | 待決 |
+| active（有篩選值） | 「{label}：{value}」；框 `accent`（SPEC-003「該篩選呈選中態」的視覺落點） | 點選 → open | `selected` 非 `null` | 選取全部 → default |
+| open | 選單以覆蓋層展開（F1、F4）；觸發器選中態不受影響，`open` 是疊加於 default／active 之上的修飾非第三個互斥狀態（F2） | 走選項（↑↓Home/End）、選取（Enter/Space/點擊）、Esc、點外部、再點觸發器、Tab/Shift+Tab | 點選觸發器（收合時）或聚焦時 Enter／Space／↓ | 選取且值改變 → 收合回 active／default；選取值相同、Esc、點外部、再點觸發器、Tab 離開 → 收合回原態（`selected` 不變） |
 | hover / pressed / focused | 依 §4.0.1 | 點選 | | |
 
 #### 互動反應
 
 | 互動 | 反應 | 動畫 | 時間門檻 |
 |------|------|------|---------|
-| 選取一個選項 | 呼叫 `onChanged(value)`；呼叫端執行：該篩選呈選中態、清單筆數改變（SPEC-003 §3.4） | 無 | `Motion.feedback` |
-| 點選觸發器（開啟選單）、鍵盤走選項、收合 | **待決**（`0.1.0-W1-057`） | 待決 | 待決 |
+| 點選觸發器（選單收合時）；或聚焦時按 Enter／Space／↓ | 選單展開（`menu-tickets-filter-<key>`）；焦點移至目前值對應選項（`selected` 為 `null` 時為「全部」項）；`onChanged` 不被呼叫 | `Motion.overlay` | — |
+| 選單內 ↑／↓／Home／End | 焦點在選項間移動（不循環：首項按 ↑ 與末項按 ↓ 不動）；`onChanged` 不被呼叫 | 無 | — |
+| 選取一個選項（值改變） | 呼叫 `onChanged(value)` 恰一次；呼叫端執行：該篩選呈選中態、清單筆數改變（SPEC-003 §3.4）；選單收合；焦點回觸發器 | 無 | `Motion.feedback` |
+| 選取一個選項（值相同） | 選單收合；`onChanged` 不被呼叫 | 無 | — |
+| Esc | 選單收合；`onChanged` 不被呼叫；`selected` 不變；焦點回觸發器 | 無 | — |
+| 點選單與觸發器以外任一處 | 選單收合；`onChanged` 不被呼叫；該次點擊被選單吸收、不傳遞至下層（F7） | 無 | — |
+| 再點觸發器（展開時） | 選單收合；`onChanged` 不被呼叫；焦點停在觸發器 | 無 | — |
+| Tab／Shift+Tab | 選單收合；`onChanged` 不被呼叫；焦點依序移至觸發器之後／之前元素 | 無 | — |
 
 #### 操作機制
 
 | 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
 |------|---------|-------------|--------------|---------|---------|
-| 桌機 | 依 §4.0.7 點選列（觸發器）；選單內選項的鍵盤路徑待決（`0.1.0-W1-057`） | | | | |
+| 桌機 | 依 §4.0.7 點選列（觸發器）；選單內以 ↑／↓／Home／End 走選項，Enter／Space 選取，Esc 收合 | | | | |
 
 #### 尺寸契約
 
@@ -2025,7 +2025,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 間距 | 內距 `Space.sm`（水平）× `Space.xs`（垂直）；文字與箭頭間 `Space.xs` |
 | 字體 | `AppFontSize.body` |
 | 圓角 | `Radius.md` |
-| 動畫 | `Motion.feedback`；選單開合動畫待決 |
+| 動畫 | `Motion.feedback`（選取）；`Motion.overlay`（選單展開收合） |
 
 #### i18n
 
@@ -2034,6 +2034,20 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 「全部」 | `filterAllOption` |
 | 朗讀標籤 | `filterA11yLabel` |
 | `label` | `filterStatusLabel` / `filterPriorityLabel`（呼叫端傳入） |
+
+#### 選單的元件級契約（跨操作恆成立，由本元件單一承擔）
+
+| # | 條件 | 可觀察結果 |
+|---|------|-----------|
+| F1 | 任一時刻 | 同時至多一個選單展開；開啟另一個下拉的第一次點擊只收合不開啟，需再點一次 |
+| F2 | 選單展開時 | 觸發器選中態只由 `selected` 決定，不因展開改變 |
+| F3 | 選單展開時（內容） | 首項為「全部」（文字 `filterAllOption`），其後依 `options` 順序；`options` 的 `value` 不得為 `all`（保留給「全部」） |
+| F4 | 選單展開時（幾何） | 選單為覆蓋層：頂緣貼觸發器底緣、左緣貼觸發器左緣；工具列其餘元素 rect 展開前後不變（不擠壓版面）；`options` 全數展開不捲動；`kMinWindowSize` 下選單底緣仍在視窗內 |
+| F5 | 展開／走選項／收合（任一方式） | 皆不呼叫 `onChanged`；唯一呼叫點是「選取且值改變」——篩選在選取時一次套用，不在焦點移動時即時套用 |
+| F6 | 選單展開時（播報） | 選單根節點 `role` 為 `menu`；每個選項 `role` 為 `menuItem`、label 為選項文字、`selected` 於目前值項為 `true`；觸發器 `expanded` 展開時 `true`、收合後 `false` |
+| F7 | 選單展開期間 | 點外部一律吸收收合，不穿透觸發下層動作（導覽切換、開票等） |
+
+**實作註記**：F7 的模態遮罩對整個視窗吸收點擊（含觸發器自身所在座標）——再次點擊觸發器座標時實際命中遮罩而非觸發器 `onTap`，但淨行為（選單皆收合）與逐字實作「再次點觸發器：焦點停在觸發器」一致，僅觸發路徑不同；若未來需要精確依字面實作，需改用 `TapRegion`（group 內點擊視為內部）取代目前的全螢幕 barrier。
 
 #### 組合規則
 
@@ -2049,18 +2063,19 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 面向 | 要求 |
 |------|------|
 | 朗讀標籤 | `Semantics.button`；label 為 `filterA11yLabel`（label 與目前值代入）；`expanded` 等於是否 open |
-| 狀態變化播報 | 選取後重建即唸出新值；選單內選項的播報 **待決**（`0.1.0-W1-057`） |
+| 狀態變化播報 | 選取後重建即唸出新值（`filterA11yLabel` 的 `{value}` 為新選項文字，重建即為播報載體，不另發 `SemanticsService.announce`）；選單根節點 `role` 為 `menu`、選項 `role` 為 `menuItem` 並帶 `selected`（F6） |
 | 非視覺替代訊號 | active 由觸發器文字（值非「全部」）承載，框色非唯一訊號 |
-| 焦點順序與操作路徑（桌機） | 觸發器進入 Tab 順序；選單內路徑 **待決** |
+| 焦點順序與操作路徑（桌機） | 觸發器進入 Tab 順序；選單展開時焦點以 ↑／↓／Home／End 在選項間移動；Esc／Tab 離開／再點觸發器時焦點回觸發器或依序移動 |
 | 對比 | 依 §4.0.2：label 與值 `textPrimary` / `surfaceBase` 5.79:1，通過；箭頭 `textDisabled` / `surfaceBase` 3.06:1 達非文字 3:1，且為純裝飾（開合狀態由語意樹承載，表 2） |
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染 default / active（open 待補件後補）
+- [ ] 一支測試渲染 default / active / open 三態
 - [ ] 兩種視窗尺寸下不溢位；高等於 `LayoutSize.hitTargetMin`；選取不同值時寬不變
 - [ ] 最長測試文案截斷
 - [ ] zh / en 兩語系值皆不溢位
-- [ ] 選取選項呼叫 `onChanged` 恰一次；選「全部」傳 `null`
+- [ ] 選取選項呼叫 `onChanged` 恰一次；選「全部」傳 `null`；值相同不呼叫
+- [ ] F1：開啟另一個下拉時前一個先收合；F4：選單幾何（頂緣貼底緣、左緣對齊、不擠壓版面、`kMinWindowSize` 底緣在視窗內）；F6：選單根 `role=menu`、選項 `role=menuItem`、`selected` 對應目前值；F7：點外部收合且吸收點擊
 - [ ] 顏色、內距、圓角引用 token 非硬編碼
 
 #### 反例
@@ -3326,6 +3341,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 焦點順序與操作路徑（桌機） | 取消鈕進入 Tab 內容區段；C1 期間恆可聚焦 |
 | 對比 | 依 §4.0.2 表 1：計數文字 `textSecondary` / `surfaceBase` 4.71:1，通過；取消鈕 enabled 與 cancelling 後的 disabled 依 4.4（disabled label `textDisabled` 屬非作用中元件豁免） |
 
+**實作註記**：`progressA11yLabel` 需要離散計數（parsed / total），但 slot 契約只提供 `progress: double?`（比值）。實作採比值轉百分比的等價語意：`progressA11yLabel((progress*100).round(), 100)`，讀作「進度 45 / 100」即 45%，為螢幕報讀器對百分比進度條的常見慣例，不影響朗讀語意，`progress` 型別不變。
+
 #### 測試點（widget test）
 
 - [ ] 一支測試渲染 `skeleton`（`matrix` / `sections`）× loading / cancelling 與 `progressBar` × loading / cancelling
@@ -3596,6 +3613,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 返回鍵 | 讀 `returnToProvider`，非 `null` 時把 `action-<screen>-back`（`AppButton.secondary`，`backAction`）注入當前 `PageColumn` 的頁面級動作列（SPEC-003 §2.4；W1-031） | — | `Motion.feedback` |
 | 首次可見訊號 | `selectedDestinationProvider` 改變時對首次成為 index 的頁發出（provider 層 visited set，W1-031） | — | — |
 | 視窗尺寸變更 | 不重置任何狀態；捲動容器 offset 夾在新範圍（SPEC-003 §2.8） | — | — |
+
+**實作註記**：「返回鍵」列契約寫「注入當前 `PageColumn` 的頁面級動作列」，但 `pages` slot 是呼叫端已建構完成的 `List<PageColumn>`，容器無法改寫其內部結構。實作改為獨立的返回列疊於 `IndexedStack` 內容之上（沿用既有版面慣例），對外可觀察行為（`action-<screen>-back` 錨點依 `returnTo` 存在/消失）與契約一致，僅視覺層級（注入 vs 疊加）不同。
 
 #### 操作機制
 
@@ -4437,6 +4456,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 ### 4.35 TableRow（容器）
 
+**實作類別**：`AppTableRow`（契約名 `TableRow` 與 `package:flutter/widgets.dart` 內建 `TableRow`（`Table` widget 用）撞名，依 `AppButton`／`AppText` 既有前綴慣例更名；本節條目名與契約值不變）。
+
 **用途**：欄寬對齊表頭的水平格線列；`header`（欄首）、`ticket`（票列，列表與主題模式共用欄序 ID / 標題 / 狀態 / 優先 / 標記，§3.7 第 15 項）、`step`（序號 / 步驟名 / domain / 事件）。
 **內容角色**：容器。
 **何時不用**：主文字填滿的清單列（`ListRow`）；二維格線（`MatrixGrid`）。
@@ -4555,6 +4576,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 矩陣列 | `MatrixGrid` |
 
 ### 4.36 DataTable（容器，資料視圖）
+
+**實作類別**：`AppDataTable`（契約名 `DataTable` 與 `package:flutter/material.dart` 內建 `DataTable` 撞名，依 `AppTableRow` 既有前綴慣例更名；本節條目名與契約值不變）。
 
 **用途**：`TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`）。得為 `ConsumerWidget`（§2 資料視圖例外）。
 **內容角色**：容器。
@@ -4841,6 +4864,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 步驟欄寬 | 由假資料座標決定（SPEC-001 設計約束「寫死座標」），不設 token |
 | `kMinWindowSize` 下的行為 | 維持（二維捲動） |
 | `kDesignSize` 下的行為 | 維持 |
+
+**實作註記**：底部箭頭列（裝飾）視覺上仍固定位於所有泳道列之後，但捲動時不釘選在視窗底部——`two_dimensional_scrollables` 套件對「釘選末列 + `ScrollController.jumpTo`」組合有已知限制（釘選列與跳轉互動觸發套件內部斷言失敗，與資料規模無關），改為一般（非釘選）末列規避，屬套件版本限制的實作層面迴避，非契約值變更。
 
 #### 內容政策
 
@@ -5764,6 +5789,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.13 | 2026-09-03 | 回填元件票實作偏離對齊：4.10 `segments` 型別 `Segment` 改 `SegmentItem`（撞名，實作已更名，語意不變）；4.35／4.36 首段補實作類別名（`AppTableRow`／`AppDataTable`，撞名更名，契約條目名與契約值不變）；4.13 `FilterDropdown` 去「待決」標記，依 SPEC-003 §3.4 篩選七列與 F1–F7 元件級契約補齊狀態矩陣 `open` 列、互動反應、無障礙播報、選單的元件級契約子節與 F7 實作註記；§4.0.9 待決清單移除 4.13 一列（全部 42 條目無待決欄位）；4.24／4.27／4.38 新增實作註記（進度百分比等價轉換、返回列以獨立疊加列取代注入 `PageColumn`、底部箭頭列因套件限制不釘選），皆為實作層面說明、非契約值變更。其餘型別放寬類偏離（`AppButton.leading`／`IssueMarker.child`／`PageColumn.header`／`content`／`Panel.children`／`Toolbar.filters`／`ListRow.leading`／`trailing`／`AppShell.overlay` 暫以 `Widget` 承接；`ListRow.sectionHeader`／`RecentProjectItem`／`NavItem` 取色繞過 `AppText`；`BlockedState.withDetail` 動作列改用 `Wrap`；4.11 `PageTitle` 副標變體）不改本檔契約內容，維持現況待對應收斂票落地 |
 | 1.12 | 2026-09-02 | `TableColumnHeader` 元件票實作時依 SPEC-003 §3.4 S1–S7 補齊 4.14 `sortable` 變體的互動反應（點選呼叫 `onSort`，下一個 `order` 由呼叫端決定）、狀態矩陣退出路徑、無障礙狀態變化播報值，去除本條目「待決」標記；§4.0.9 待決清單移除 4.14 一列（餘 4.13 `FilterDropdown` 一項），41 條目無待決欄位 |
 | 1.11 | 2026-09-02 | `LoadPrompt` 元件票實作時修正 4.25 `LoadPrompt` 內容政策與測試點：`message` 原標「可換行、最大行數 2、末行截斷」與同條目「最小尺寸」列（訊息一行）及 slot 契約（訊息取 `AppText.subtitle`，單行變體）自相矛盾，`AppText`（4.1）subtitle 變體恆為單行不接受 `maxLines`；改為「不可換行、最大行數 1、末端省略」，測試點「最長測試文案兩行末截斷」同步改「最長測試文案單行末端省略」 |
 | 1.10 | 2026-09-02 | 實作校正（`MissingSourceState` 元件票）：4.22 狀態矩陣「顯示」「可用操作」「退出路徑」三欄與「互動反應」「slot 契約」（僅 `path`／`onRefresh`／`testKey`，無 `returnTo`）內部不一致——`ButtonRow` 移除「返回」按鈕，改註明返回鍵由頁面框架於 `SplitRow.header` 統一渲染，與 §3011 既有澄清對齊；內容政策 `message`／`path` 兩列原標可換行（2／3 行）與 `AppText.subtitle`／`AppText.mono` 已核定的單行鎖定契約（4.1）矛盾，改標單行截斷，與實作行為一致 |
