@@ -1,3 +1,335 @@
+## [2.50.2] - 2026-09-03
+
+### Summary
+feat: canonical skill 四項更新（component-contract-design 新增、doc 1.12.0、version-bootstrap 1.5.0、foundation-design 6.2.0 合併撞號）與 component-library 方法論 1.12.0、PC-GPD-003/004
+
+---
+
+## [2.50.1] - 2026-09-03
+
+### Summary
+fix: 統一五處掃描搬移命令的根目錄解析為 ticket 狀態 root; fix: 修復 checkpoint_state handoff pending 目錄路徑錯字; fix: topic_registry 改用 ticket 狀態 root 解析 (+1 more)
+
+Changes: 3 fix, 1 chore
+
+- fix: 統一五處掃描搬移命令的根目錄解析為 ticket 狀態 root
+- fix: 修復 checkpoint_state handoff pending 目錄路徑錯字
+- fix: topic_registry 改用 ticket 狀態 root 解析
+- chore: VERSION 回寫 （ 骨架固定句 + runqueue root 修復傳播至 canonical）
+
+---
+
+## [2.50.0] - 2026-09-03
+
+### Summary
+feat: 骨架加前景執行固定句 + parallel-dispatch 補 in_progress idle 逾時判準; fix: track_runqueue handoff pending root 解析改用 get_ticket_state_root; chore: VERSION 回寫 、兩票派發骨架、 關閉為 重複
+
+Changes: 1 feat, 1 fix, 1 chore
+
+- feat: 骨架加前景執行固定句 + parallel-dispatch 補 in_progress idle 逾時判準
+- fix: track_runqueue handoff pending root 解析改用 get_ticket_state_root
+- chore: VERSION 回寫 、兩票派發骨架、 關閉為 重複
+
+---
+
+## [2.49.2] - 2026-09-03
+
+### Summary
+fix: 統一 handoff/dispatch-active 協調狀態根目錄解析為 ticket 狀態 root; fix: sync commit_files_isolated fake signature with cwd param; fix: 統一 list_ticket_files_from_main 的 project_root 解析根目錄 (+2 more)
+
+Changes: 3 fix, 1 docs, 1 chore
+
+- fix: 統一 handoff/dispatch-active 協調狀態根目錄解析為 ticket 狀態 root
+- fix: sync commit_files_isolated fake signature with cwd param
+- fix: 統一 list_ticket_files_from_main 的 project_root 解析根目錄
+- docs: 新增 PC-BAL-061 驗收範圍以 where.files 為界漏檢同函式 mock 簽名漂移（ 回歸復盤，修復票 ）
+- chore: VERSION 回寫 （/026/027 worktree 根目錄修復傳播至 canonical）
+
+---
+
+## [2.49.1] - 2026-09-03
+
+### Summary
+fix: 修復 _resolve_ticket_state_root 測試隔離分支消除 worktree 假失敗; fix: 修正 complete 自動提交在 linked worktree 內以呼叫端 cwd 為 repo; fix: 統一 topic-assignments 與工作日誌 appender 的根目錄解析 (+1 more)
+
+Changes: 3 fix, 1 chore
+
+- fix: 修復 _resolve_ticket_state_root 測試隔離分支消除 worktree 假失敗
+- fix: 修正 complete 自動提交在 linked worktree 內以呼叫端 cwd 為 repo
+- fix: 統一 topic-assignments 與工作日誌 appender 的根目錄解析
+- chore: VERSION 回寫 （dispatch --dry-run 傳播至 canonical）
+
+---
+
+## [2.49.0] - 2026-09-02
+
+### Summary
+feat: ticket track dispatch 新增 --dry-run 只輸出骨架不落票; chore: 回寫 .claude/VERSION 至
+
+Changes: 1 feat, 1 chore
+
+- feat: ticket track dispatch 新增 --dry-run 只輸出骨架不落票
+- chore: 回寫 .claude/VERSION 至
+
+---
+
+## [2.48.1] - 2026-09-02
+
+### Summary
+chore: 回寫 .claude/VERSION 至 ；建立 快取測試票並登記主題; test: 補齊 ticket frontmatter 磁碟快取與 ticket_state_root 行程快取的專屬測試
+
+Changes: 1 chore, 1 test
+
+- chore: 回寫 .claude/VERSION 至 ；建立 快取測試票並登記主題
+- test: 補齊 ticket frontmatter 磁碟快取與 ticket_state_root 行程快取的專屬測試
+
+---
+
+## [2.48.0] - 2026-09-02
+
+### Summary
+refactor: 抽離 dispatch 骨架純組裝函式使行數測試量測 CLI 本體; fix: rule8 guard 補新建巢狀目錄下新檔的 repo root 解析回退; docs: tool-selection 規則二增列非專案來源拒絕處置 (+4 more)
+
+Changes: 1 refactor, 1 fix, 3 docs, 1 chore, 1 perf
+
+- refactor: 抽離 dispatch 骨架純組裝函式使行數測試量測 CLI 本體
+- fix: rule8 guard 補新建巢狀目錄下新檔的 repo root 解析回退
+- docs: tool-selection 規則二增列非專案來源拒絕處置
+- docs: 收窄 foundation-design 三維度路由 saas-tech-selection 適用條件
+- docs: 補與 wrap-decision 的分工與路由
+- chore: 回寫 .claude/VERSION 至
+- perf: frontmatter 快取解 conflicts --for/--among 票面讀取瓶頸
+
+---
+
+## [2.47.0] - 2026-09-02
+
+### Summary
+revert: manual verify fix (will be reverted); feat: set-where --files/value 路徑補 auto-commit 留痕; fix: set-where 同時帶路徑與 --layer 時 files 靜默未同步 (+3 more)
+
+Changes: 1 revert, 1 feat, 2 fix, 1 chore, 1 perf
+
+- revert: manual verify fix (will be reverted)
+- feat: set-where --files/value 路徑補 auto-commit 留痕
+- fix: set-where 同時帶路徑與 --layer 時 files 靜默未同步
+- fix: resolve track commit against linked worktree repo root
+- chore: 回寫 .claude/VERSION 至 並登記 主題歸屬
+- perf: conflicts --for/--among 改走 O(k·n) 針對性比對，取代全量 O(n^2)
+
+---
+
+## [2.46.0] - 2026-09-02
+
+### Summary
+feat: where.files 快照路徑存在性檢查與失效標示; feat: where.files 路徑存在性檢查納入建票與派發前防線; feat: 新增 track conflicts --for/--among 針對性查詢 (+1 more)
+
+Changes: 3 feat, 1 chore
+
+- feat: where.files 快照路徑存在性檢查與失效標示
+- feat: where.files 路徑存在性檢查納入建票與派發前防線
+- feat: 新增 track conflicts --for/--among 針對性查詢
+- chore: 回寫 .claude/VERSION 至
+
+---
+
+## [2.45.2] - 2026-09-02
+
+### Summary
+fix: star-anise-system-designer 補上 Write/Edit/Bash 使工具清單與職責相符; fix: 修正 rule8 guard 對 worktree 路徑的誤判; docs: 補強 multi-round-review reviewer 回報指引 (+2 more)
+
+Changes: 2 fix, 2 docs, 1 chore
+
+- fix: star-anise-system-designer 補上 Write/Edit/Bash 使工具清單與職責相符
+- fix: 修正 rule8 guard 對 worktree 路徑的誤判
+- docs: 補強 multi-round-review reviewer 回報指引
+- docs: bash 規則二補截斷方向條款
+- chore: 回寫 .claude/VERSION 至
+
+---
+
+## [2.45.1] - 2026-09-02
+
+### Summary
+fix: P0 修復 skill 版本擷取未涵蓋 CHANGELOG 外移格式; chore: 回寫 VERSION 至 並登記主題歸屬
+
+Changes: 1 fix, 1 chore
+
+- fix: P0 修復 skill 版本擷取未涵蓋 CHANGELOG 外移格式
+- chore: 回寫 VERSION 至 並登記主題歸屬
+
+---
+
+## [2.45.0] - 2026-09-02
+
+### Summary
+feat: 遷移 ANA ticket metadata 驗證邏輯至 ticket create CLI; fix: 升級兩個 hook 的 CLAUDE_PROJECT_DIR fallback 為 get_project_root; fix: comment-qa-hook.py 的 PROJECT_ROOT 改用 get_project_root (+39 more)
+
+Changes: 1 feat, 8 fix, 31 docs, 2 chore
+
+- feat: 遷移 ANA ticket metadata 驗證邏輯至 ticket create CLI
+- fix: 升級兩個 hook 的 CLAUDE_PROJECT_DIR fallback 為 get_project_root
+- fix: comment-qa-hook.py 的 PROJECT_ROOT 改用 get_project_root
+- fix: spec skill test_spec_014_v1_4_passes 改用自足 fixture
+- fix: 擴充 portability gate 至裸格式 ticket ID，清理四個 skill 違規
+- fix: 錨定 skill-sync/ticket 的 hook-logs 路徑至專案根目錄
+- fix: 合併 spec skill 1.6.2 內容改進並清理雙向專案 ticket ID
+- fix: 移除 broken-link-check CHANGELOG.md 的專案 ticket ID 並合併重複 Source
+- fix: 修復 broken-link-check 與 wrap-decision 推送造成的格式回退
+- docs: 清除 ticket skill SKILL.md 全部 80 處識別符（fence 內外皆處理）
+- docs: 清除 broken-link-check scan_links.py 與 SKILL.md 殘留識別符
+- docs: 外移 error-pattern 與 doc 版本紀錄（D6 批次，D 類最後一批）
+- docs: 外移 continuous-learning 與 parallel-evaluation 版本紀錄（D5 批次）
+- docs: 外移 version-bootstrap 與 chrome-extension-mcp-debug 版本紀錄（D4 批次）
+- docs: 外移 version-release 與 framework-issue 版本紀錄（D3 批次）
+- docs: 外移 worktree 與 design-decision-framework 版本紀錄（D2 批次）
+- docs: 外移 search-tools-guide 與 test-assertion-design 版本紀錄（D1 批次）
+- docs: 回補 C 類批次 15-17 遺漏的 Last Updated（判準 2 反轉）
+- docs: 外移 ticket 版本紀錄，保留 bullet 結構並清除 14 處識別符
+- docs: 外移 skill-design-guide 與 version-sequencing 版本紀錄（C 類批次 17）
+- docs: 外移 foundation-design 與 test-effectiveness 版本紀錄（C 類批次 16）
+- docs: 外移 dart-provider-architecture 版本紀錄（C 類批次 15，framework-issue 排除）
+- docs: 補做 teaching-sync 版本紀錄外移（PM 裁決：兩版號並存）
+- docs: 外移 zellij 版本紀錄（批次 14，ticket 排除）
+- docs: 外移 tech-debt-capture 版本紀錄（批次 13，teaching-sync 排除）
+- docs: 外移 startup-check 與 strategic-compact 版本紀錄（批次 12）
+- docs: 外移 project-init 與 scope-confirmation 版本紀錄（批次 11）
+- docs: 外移 mermaid-ascii 與 pre-fix-eval 版本紀錄（批次 10）
+- docs: 外移 lsp-first 與 methodology-writing 版本紀錄（批次 9）
+- docs: 外移 doc-flow 與 evidence-driven-bugfix 版本紀錄（批次 8）
+- docs: 外移 decision-tree-helper 與 dispatch-strategy-review 版本紀錄（批次 7）
+- docs: 外移 dart-test-async-guardian 與 data-extraction 版本紀錄（批次 6）
+- docs: 外移 cognitive-load-assessment 與 dart-style-guardian 版本紀錄（批次 5）
+- docs: 外移 bulk-evaluate 與 cc-release-impact-review 版本紀錄（批次 4）
+- docs: 外移 agent-team 與 branch-worktree-guardian 版本紀錄（批次 3）
+- docs: 外移 impeccable 版本紀錄（批次 2）
+- docs: 外移 dart-domain-modeling 與 verify 版本紀錄（批次 1）
+- docs: 記錄 hook-logs cwd 路徑解析疊加 shim 造成稽核錯置的 error-pattern
+- docs: 移除 broken-link-check 測試檔內的專案 ticket ID
+- docs: 新增 PC-BAL-060 逃生閥授權範圍僅及發放它的閘門
+- chore: 同步 11 個 skill 至發佈庫版本並帶入 CHANGELOG 格式
+- chore: 回寫 .claude/VERSION 至
+
+---
+
+## [2.44.0] - 2026-09-01
+
+### Summary
+feat: reference-stability-rule8-guard 新增 relocation 逃生閥類別; feat: 新增 get_ticket_state_root 使 worktree 內 ticket 狀態寫入主倉庫; fix: acceptance-gate-hook 步驟 8 self_check_warning 套用 chained-write 抑制 (+9 more)
+
+Changes: 2 feat, 5 fix, 3 docs, 2 chore
+
+- feat: reference-stability-rule8-guard 新增 relocation 逃生閥類別
+- feat: 新增 get_ticket_state_root 使 worktree 內 ticket 狀態寫入主倉庫
+- fix: acceptance-gate-hook 步驟 8 self_check_warning 套用 chained-write 抑制
+- fix: 收斂自檢 warning 層 type 範圍為 IMP/ANA，對齊 gate 層 DOC 豁免
+- fix: 依 Layer 2 審查修正 ARCH-BAL-013 第四例的事實錯誤與文字品質
+- fix: 修復 bare-commit-guard 空 files 派發記錄使不相交放行路徑失效
+- fix: 骨架瘦身修復 dispatch prompt 超出 length guard 30 行硬上限
+- docs: 外移叢集 B/C（Worktree 隔離、派發機制選用+idle 回收 SOP）至 references/
+- docs: 外移叢集 D 實驗器材治理至 references/，主文件 stub 化
+- docs: 補充 tool-output-trust 規則 5 的瞬時狀態維度
+- chore: 熱點取向定案後的票面補齊與 error-pattern 沉澱
+- chore: 推送 並回寫 VERSION
+
+---
+
+## [2.43.6] - 2026-08-28
+
+### Summary
+chore: 推送 並回寫 VERSION
+
+Changes: 1 chore
+
+- chore: 推送 並回寫 VERSION
+
+---
+
+## [2.43.5] - 2026-08-28
+
+### Summary
+fix: 標題式 handoff 段落終點補進度追蹤條列判準; fix: turn-end auto-commit 補 session 歸屬過濾; fix: auto_commit 改用隔離索引 CAS，取代 pathspec commit (+9 more)
+
+Changes: 5 fix, 6 docs, 1 chore
+
+- fix: 標題式 handoff 段落終點補進度追蹤條列判準
+- fix: turn-end auto-commit 補 session 歸屬過濾
+- fix: auto_commit 改用隔離索引 CAS，取代 pathspec commit
+- fix: 對齊 liveness 索引與業務日誌的 root 解析
+- fix: FIFO fallback 停用於候選數>1 + 日誌/狀態 root 對齊
+- docs: PC-BAL-008 新增衝突合併收尾廣域 staging 變體
+- docs: 新增反向變體——守衛較嚴而規則層滯後
+- docs: 規則七涵蓋擴充至衝突合併收尾的廣域 staging
+- docs: 補規則七第三則邊界說明（過期 index 快照）
+- docs: 新增 IMP-BAL-018 module 層級路徑常數繞過測試隔離
+- docs: 新增 PC-BAL-059 驗收子項移交未同步上游
+- chore: 推送 並回寫 VERSION
+
+---
+
+## [2.43.4] - 2026-08-28
+
+### Summary
+fix: auto_register_hooks 於 yaml 不可用時補雙通道警訊; chore: 推送 並回寫 VERSION
+
+Changes: 1 fix, 1 chore
+
+- fix: auto_register_hooks 於 yaml 不可用時補雙通道警訊
+- chore: 推送 並回寫 VERSION
+
+---
+
+## [2.43.3] - 2026-08-28
+
+### Summary
+fix: 正向孤兒稽核命中大小寫變體時不再建議手動移除; chore: 推送 並回寫 VERSION
+
+Changes: 1 fix, 1 chore
+
+- fix: 正向孤兒稽核命中大小寫變體時不再建議手動移除
+- chore: 推送 並回寫 VERSION
+
+---
+
+## [2.43.2] - 2026-08-28
+
+### Summary
+fix: correct diagnosis - dedup logic sound, real gap is missing pyyaml dependency causing silent no-op; fix: 反向孤兒提醒對大小寫變體改述，不建議誤導性補齊; fix: bind commit-stage-guard-gate scan to ref-write event via reference-transaction (+3 more)
+
+Changes: 4 fix, 1 docs, 1 chore
+
+- fix: correct diagnosis - dedup logic sound, real gap is missing pyyaml dependency causing silent no-op
+- fix: 反向孤兒提醒對大小寫變體改述，不建議誤導性補齊
+- fix: bind commit-stage-guard-gate scan to ref-write event via reference-transaction
+- fix: 修復 sync-pull 三方合併純大小寫改名誤刪本地檔
+- docs: PC-BAL-058 補列舉有效性的觀察者獨立性限定
+- chore: pull .claude 更新（上游 6d969410）並還原跨專案引用
+
+---
+
+## [2.43.1] - 2026-08-28
+
+### Summary
+fix: 修三條——第 7 步反向會合法化 bug、走訪漏符號 ref、數量誤述; docs: 修翻譯探針的三條，第四條判為誤報; docs: 依 63 條審查 finding 完整重寫並拆出衛星檔 (+11 more)
+
+Changes: 1 fix, 11 docs, 2 chore
+
+- fix: 修三條——第 7 步反向會合法化 bug、走訪漏符號 ref、數量誤述
+- docs: 修翻譯探針的三條，第四條判為誤報
+- docs: 依 63 條審查 finding 完整重寫並拆出衛星檔
+- docs: 補 rev-parse 的狀態相依語意
+- docs: 補 rev-parse 消歧義法，示範升級為三段
+- docs: old-oid 全零的實測全貌，並新增操作面章節
+- docs: 收窄閘門宣稱並更正「不宜作內容檢查」的理由
+- docs: 落點推論修正為 reference-transaction 與伺服器端
+- docs: 更正限定節，補上遺漏的 commit 層補網
+- docs: 新增 naming-verifies-taxonomy 方法論並註冊索引
+- docs: 移除死引用並限定案例二的證據範圍
+- docs: 補 PC-BAL-057 雙向引用與「意圖抑制追問」一節
+- chore: base SHA 推進至 15d14be8，README 索引重生
+- chore: 框架同步至 2.43.0 並解三個 sync 衝突
+
+---
+
 ## [2.43.0] - 2026-08-27
 
 ### Summary

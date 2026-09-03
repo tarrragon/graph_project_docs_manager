@@ -22,6 +22,9 @@ GIT_TOPLEVEL_TIMEOUT = 5
 # 的 _isolate_project_root autouse fixture。
 _project_root_cache: Path | None = None
 
+# get_ticket_state_root() 程序內快取（2026-09-02 新增，語意同 _project_root_cache）。
+_ticket_state_root_cache: Path | None = None
+
 
 def _git_toplevel() -> Path | None:
     """
@@ -250,7 +253,7 @@ def get_tickets_dir_under_root(root: Path, version: str) -> Path:
 
 def get_tickets_dir(version: str) -> Path:
     """
-    取得 Tickets 目錄路徑（呼叫端自身所在 worktree 的 tickets 目錄）
+    取得 Tickets 目錄路徑（ticket 狀態根目錄下的 tickets 目錄）
 
     支援階層式目錄結構：docs/work-logs/v{major}/v{major}.{minor}/v{version}/tickets/
 
@@ -265,7 +268,7 @@ def get_tickets_dir(version: str) -> Path:
         >>> tickets_dir.name
         'tickets'
     """
-    return get_tickets_dir_under_root(get_project_root(), version)
+    return get_tickets_dir_under_root(get_ticket_state_root(), version)
 
 
 def get_git_common_dir(cwd: Optional[Path] = None) -> Optional[Path]:
@@ -305,6 +308,106 @@ def get_git_common_dir(cwd: Optional[Path] = None) -> Optional[Path]:
         base = cwd if cwd is not None else Path.cwd()
         common_dir = base / common_dir
     return common_dir.resolve()
+
+
+def get_ticket_state_root() -> Path:
+    """
+    取得 ticket 狀態操作（read/write ticket md、claim/append-log/set-acceptance
+    等）應使用的根目錄（程序內快取，2026-09-02 新增）。
+
+    快取語意：與 get_project_root() 的既有程序內快取相同——本函式的解析結果
+    在單次 CLI 呼叫（一個 process 的生命週期）內恆為常數，cwd 與 git 拓樸不會
+    在同一 process 執行期間變更。首次呼叫解析並存入 module-level cache，
+    後續呼叫直接回傳快取值。
+
+    Why（cProfile 量測，來源票 Problem Analysis）：本函式內部呼叫
+    `_linked_worktree_root()`（每次執行 1 個 git subprocess），且被
+    `get_ticket_path()` -> `get_tickets_dir()` 逐票呼叫一次。未快取前，
+    `list_tickets()` 對全票池即產生等票數次的 git subprocess，實測合計占
+    `list_tickets()` 總耗時約八成，是 conflicts --for/--among 票面讀取瓶頸
+    的真正成因——frontmatter/YAML 解析僅占約一成。快取後同一 process 內僅
+    需 1 次 git subprocess，N 票的重複呼叫成本歸零。
+
+    測試需在每個 test 前呼叫 reset_ticket_state_root_cache() 清除，見
+    `.claude/skills/ticket/conftest.py` 的 `_isolate_project_root` autouse
+    fixture（與 reset_project_root_cache() 一併呼叫）。
+
+    與 get_project_root() 的差異僅在 linked worktree 場景：get_project_root()
+    優先回傳呼叫端自己所在 worktree 的根目錄（供程式碼/測試隔離使用）；本函式
+    則反向回推「主倉庫」根目錄，使 ticket 狀態統一寫入單一位置。
+
+    Why：ticket CLI 為 cwd-resolving shim，若 ticket 狀態沿用 get_project_root()
+    的 worktree 感知，多個 worktree 隔離的 agent 各自把票面寫入自己的 worktree
+    分支，PM 在主倉庫看不到最新狀態（觀察性失效），且 body 內容不會隨 worktree
+    分支合併帶回主倉庫（受控實驗實測：並行派發的 worktree agent 全數出現票面
+    分裂）。統一寫入主倉庫消除此分裂——單一事實來源。
+
+    此函式僅影響 ticket 狀態的 root 解析（get_tickets_dir / get_ticket_path
+    的呼叫鏈）；`ticket track commit`（程式碼提交）維持 resolve_project_cwd
+    的原 worktree 感知行為不變，程式碼隔離不受影響。
+
+    Returns:
+        Path: linked worktree 場景回傳主倉庫根目錄（git-common-dir 的父目錄）；
+            其餘場景委派 get_project_root()（含 CLAUDE_PROJECT_DIR、
+            git rev-parse --show-toplevel、marker 搜尋、cwd fallback）。
+
+    Examples:
+        >>> root = get_ticket_state_root()
+        >>> (root / "CLAUDE.md").exists() or (root / "go.mod").exists() or (root / "pubspec.yaml").exists()
+        True
+    """
+    global _ticket_state_root_cache
+    if _ticket_state_root_cache is not None:
+        return _ticket_state_root_cache
+    _ticket_state_root_cache = _resolve_ticket_state_root()
+    return _ticket_state_root_cache
+
+
+def reset_ticket_state_root_cache() -> None:
+    """清除 get_ticket_state_root() 的程序內快取（測試專用）。
+
+    生產路徑不需呼叫——CLI 每次呼叫是獨立 process，快取隨 process 結束
+    自然失效。語意與 reset_project_root_cache() 相同（見該函式 docstring）。
+    """
+    global _ticket_state_root_cache
+    _ticket_state_root_cache = None
+
+
+def _resolve_ticket_state_root() -> Path:
+    """實際解析 ticket 狀態根目錄（原 get_ticket_state_root 本體，供快取包裝呼叫）。"""
+    # 1. worktree 感知（與 get_project_root() 方向相反）：偵測到 linked
+    #    worktree 時，回推主倉庫根目錄而非 worktree 自己的根目錄。
+    #    非 worktree 場景一律委派 get_project_root()（步驟 2），使既有呼叫端
+    #    對 get_project_root() 的 mock／CLAUDE_PROJECT_DIR 設定原樣生效
+    #    ——本函式不重複 get_project_root() 的解析鏈，只在偵測到 worktree
+    #    時才插入不同分支。
+    if _linked_worktree_root() is not None:
+        # 測試隔離逃生艙：僅在確實偵測到 worktree 時才需要考慮——pytest 本身
+        # 若在 git linked worktree 內執行（如 .claude/worktrees/agent-*），
+        # 下方 git-common-dir 回推會蓋過測試刻意注入的 CLAUDE_PROJECT_DIR
+        # 隔離（get_project_root() 曾因同型風險洩漏測試治具的 ticket 檔案至
+        # 真實 worktree，故沿用同一優先序修復方式）。非 worktree 場景不受
+        # 此分支影響，讓步驟 2 委派 get_project_root() 走其自身逃生艙。
+        #
+        # 委派 get_project_root()（而非直接讀 CLAUDE_PROJECT_DIR）：worktree
+        # 環境下先前直接讀環境變數會繞過測試對 get_project_root 的 mock
+        # （mock 不在呼叫路徑上），造成大量測試在 worktree 環境下假失敗。
+        # get_project_root() 本身的逃生艙分支（步驟 0）同樣檢查
+        # TICKET_SYSTEM_TEST_ISOLATION/CLAUDE_PROJECT_DIR，行為等價，
+        # 差異僅在於 mock 是否位於呼叫路徑上。
+        if os.environ.get("TICKET_SYSTEM_TEST_ISOLATION") == "1":
+            return get_project_root()
+
+        # git-common-dir 是主倉庫的 .git 目錄本身（主 repo 與任一 linked
+        # worktree 呼叫皆回傳同一絕對路徑，見 get_git_common_dir docstring），
+        # 其父目錄即主倉庫根目錄。
+        common_dir = get_git_common_dir()
+        if common_dir is not None:
+            return common_dir.parent
+
+    # 2. 非 worktree（或 git-common-dir 無法解析時的降級）：委派
+    #    get_project_root() 既有解析鏈，行為與其一致。
+    return get_project_root()
 
 
 def get_ticket_path(version: str, ticket_id: str) -> Path:

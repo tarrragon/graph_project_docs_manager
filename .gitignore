@@ -121,3 +121,7 @@ hook-logs/
 
 # skill-sync 的本地同步狀態標記（各專案自己的 sync point，不入庫）
 .skill-sync-base
+
+# 框架 sync-pull 前的本機穩定備份（sync-pull.md 流程的「先建備份」選項產生）。
+# 屬一次性還原素材，驗證拉取無誤後即可刪除，不入庫。
+.claude-backup-*/

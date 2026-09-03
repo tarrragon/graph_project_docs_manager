@@ -33,10 +33,21 @@ if __name__ == "__main__":
 
 
 import argparse
+import re
 import sys
 from datetime import datetime
 from typing import Optional
 
+from ticket_system.lib.dispatch_skeleton import (
+    HOOK_TICKET_REMINDER,
+    SKELETON_TEMPLATE_NORMAL,
+    SKELETON_TEMPLATE_REVIEW,
+    STAGING_PHRASE_AGENT,
+    STAGING_PHRASE_AGENT_PROMPT,
+    STAGING_PHRASE_NONE,
+    STAGING_PHRASE_PM,
+    build_skeleton,
+)
 from ticket_system.lib.file_lock import file_lock
 from ticket_system.lib.section_locator import find_section
 from ticket_system.lib.ticket_loader import get_ticket_path, load_ticket, save_ticket
@@ -51,122 +62,66 @@ from ticket_system.lib.ticket_ops import resolve_ticket_path
 DISPATCH_LOG_SECTION = "派發日誌"
 PARENT_SCHEMA_SECTION = "Problem Analysis"
 
-# 骨架（權威版）——與 .claude/references/agent-dispatch-template.md「骨架
-# （3 段）」逐字一致。修改本常數須同步該文件（單一權威決策：CLI 為權威，
-# 文件端改為引用本模組輸出）。
-SKELETON_TEMPLATE_NORMAL = """Ticket: {ticket_id}
+# Commit 規範章節名（骨架瘦身落地）。同樣掛 Problem Analysis 下 H3 子節，但
+# 語意與「派發日誌」不同：本節是**冪等覆寫**的固定內容（每次 dispatch 覆寫
+# 為 STAGING_PHRASE_AGENT 最新文字，不逐次累加），供骨架瘦身後代理人透過
+# `ticket track full` 讀取完整精準 staging 制式句——骨架本身只保留
+# STAGING_PHRASE_AGENT_PROMPT 短版指標句（見下方常數），避免逐字複製 26 行
+# 全文導致骨架超出 agent-prompt-length-guard 的 30 行硬上限（PC-040）。
+COMMIT_SECTION_HEADING = "Commit 規範"
 
-## 任務
-
-{task_summary}
-
-讀取 ticket：`ticket track full {ticket_id}`
-認領：`ticket track claim {ticket_id} --as {agent_name}`
-依 Context Bundle 執行流程。
-發現 prompt 與 ticket/框架正本衝突，停手寫入 ticket NeedsContext 上報，不自行選邊。
-遇阻立即停下回報，禁繞過 Hook。
-收尾：`ticket track set-acceptance {ticket_id} --check <編號>` → 填 Solution / Test Results → commit → `ticket track complete {ticket_id} --as {agent_name}`。"""
-
-# review 變體：審查派發不觸發 claim/complete 生命週期（審查非執行票，票本身
-# 只是審查標的，任務書在 prompt），欄位改為審查標的/視角/裁決問題/回報格式。
-SKELETON_TEMPLATE_REVIEW = """Ticket: {ticket_id}
-
-## 審查任務
-
-{task_summary}
-
-審查標的：`ticket track full {ticket_id}`
-審查視角：{review_perspective}
-裁決問題：{decision_question}
-回報格式：結論 + 理由 + 建議 ticket（不 claim/complete 本票，審查結果寫回派發者指定位置）。
-發現 prompt 與 ticket/框架正本衝突，停手回報，不自行選邊。"""
-
-# 精準 staging 制式句（權威版，PC-092 / PC-BAL-008）——與
-# .claude/references/agent-dispatch-template.md「精準 staging 制式句
-# （權威版）」節逐字一致（該文件段落改為引用本命令輸出，不再手動同步）。
-# 主路徑改為 `ticket track commit`（隔離索引提交 where.files 子集，全程不
-# 觸碰共用 index）；裸 git add/commit 降為 fallback，僅於新命令失敗或不可
-# 用時使用。fallback 段落仍保留 Category A/B/C 片語齊備（dispatch-staging-
-# phrase-guard-hook 的 _missing_categories 判定為空集——該 hook 不在本票
-# where.files，不可修改片語表，故以保留片語文字而非改寫方式維持相容）。
-STAGING_PHRASE_AGENT = """Recommended: commit via isolated index (files must be a subset of this
-ticket's where.files; never touches the shared index):
-  ticket track commit <ticket-id> -m "..." -- {exact files}
-Fallback (not recommended; only if `ticket track commit` fails or is
-unavailable) — use precise staging + verified bare commit only (no pathspec):
-  git add {exact files}
-  git diff --cached --name-only   # confirm index contains ONLY {exact files}
-  git commit -m "..."             # bare commit; no -- <paths> / --only / -o / -a
-Forbidden: git add . / git add -A; git commit -- <paths> / --only / -o / -a
-  (pathspec-style commit discards the index and rebuilds it from working-tree
-   content for the given paths — it silently absorbs unstaged edits other
-   sessions may have on the same path, not just already-staged ones)
-Before fallback commit: git diff --cached --name-only to check staged scope; git restore --staged <path> for any non-owned file
-If bare `git commit` fallback is DENYed by bare-commit-guard-hook (another
-dispatch active), stop and escalate to PM; never switch to pathspec /
---only / -o / -a to get around it.
-If a commit is later found to have swept in out-of-scope content (e.g. a
-peer session's staged changes):
-Forbidden recovery actions: git revert; git reset --soft; git commit
---amend; any "reverse apply"/reapply of the diff. None of these may be
-used to undo or rewrite the commit.
-The ONLY permitted actions are: stop, record the commit SHA and file
-list in the ticket, report to PM.
-Reason: swept-in content is diff-indistinguishable from a peer's
-legitimate concurrent write in the same window, so any of the forbidden
-actions above would also undo the peer's legitimate work."""
-
-# --commit-policy pm/none 的對應一行輸出。
-STAGING_PHRASE_PM = "Commit policy: PM 統一 commit，agent 不執行 git commit（完成後回報變更檔案清單）。"
-STAGING_PHRASE_NONE = "Commit policy: none（本次派發不涉及 git commit）。"
-
-# 防護類 hook 票四項必含提醒（對應 acceptance-gate 之
-# hook_protection_acceptance_checker 四項必含：本 session 實地觸發確認 /
-# liveness 驗證方式 / 失敗語意 fail-open/fail-closed / 產生路徑盤點表寫入
-# how.strategy）。文字與該 checker 的關鍵詞判準保持語意一致，供代理人在
-# 執行中即填妥，避免 876.2 事件重演（代理人未填四項、complete 被 gate
-# 擋下、PM 事後補料）。
-HOOK_TICKET_REMINDER = """本票 where.files 觸及 hooks 目錄，acceptance-gate 要求 acceptance 含四項必含：
-  1. 本 session 實地觸發確認（含落檔驗證，或說明何以暫不驗證）
-  2. liveness 驗證方式（如何確認 hook 被 runtime 載入並執行）
-  3. 失敗語意（fail-open 或 fail-closed）
-  4. 產生路徑盤點表（寫入 how.strategy，缺則 Solution；格式見
-     .claude/pm-rules/ticket-body-schema.md「防護類 hook ticket 額外
-     acceptance」節）
-執行中請一併填寫，勿留到 complete 前才補。"""
+# 骨架常數與純組裝邏輯已抽離至 ticket_system.lib.dispatch_skeleton（不
+# import filelock，供 CLI 與 hooks 測試套件共用同一份組裝路徑）。本模組
+# import 上方常數僅為向後相容既有引用（如逐字同步文件的比對），CLI 呼叫
+# 一律走下方 `_build_skeleton` 轉呼叫的 `build_skeleton`。
 
 
 def _build_skeleton(args: argparse.Namespace) -> str:
-    """依 --kind 產生骨架文字（review 變體不含 claim/收尾協議）。"""
+    """依 --kind 產生骨架文字（review 變體不含 claim/收尾協議）。
+
+    薄轉接層：將 argparse.Namespace 攤平為關鍵字參數後轉呼叫
+    `dispatch_skeleton.build_skeleton`（純函式，不觸碰檔案系統/filelock）。
+    """
     task_summary = args.task_summary or "{一句話動作描述，≤ 40 字}"
     agent_name = args.as_agent or "{agent_name}"
+    commit_policy = getattr(args, "commit_policy", "agent") or "agent"
 
-    if args.kind == "review":
-        return SKELETON_TEMPLATE_REVIEW.format(
-            ticket_id=args.ticket_id,
-            task_summary=task_summary,
-            review_perspective=args.review_perspective or "{審查視角}",
-            decision_question=args.decision_question or "{裁決問題}",
-        )
-
-    skeleton = SKELETON_TEMPLATE_NORMAL.format(
+    return build_skeleton(
+        kind=args.kind,
         ticket_id=args.ticket_id,
         task_summary=task_summary,
         agent_name=agent_name,
+        review_perspective=args.review_perspective or "{審查視角}",
+        decision_question=args.decision_question or "{裁決問題}",
+        commit_policy=commit_policy,
+        touches_hook_scope=getattr(args, "_touches_hook_scope", False),
     )
 
-    commit_policy = getattr(args, "commit_policy", "agent") or "agent"
-    if commit_policy == "agent":
-        skeleton = f"{skeleton}\n\n{STAGING_PHRASE_AGENT}"
-    elif commit_policy == "pm":
-        skeleton = f"{skeleton}\n\n{STAGING_PHRASE_PM}"
-    else:
-        skeleton = f"{skeleton}\n\n{STAGING_PHRASE_NONE}"
 
-    if getattr(args, "_touches_hook_scope", False):
-        skeleton = f"{skeleton}\n\n{HOOK_TICKET_REMINDER}"
+def _find_h3_subsection(section_content: str, heading: str) -> Optional[tuple]:
+    """在 H2 section 內容中定位單一 H3 子節 `### {heading}`，回傳
+    `(start, content_start, end, text)`；未找到回傳 None。
 
-    return skeleton
+    與 `section_locator.find_section(..., levels=(3,))` 的差異：後者的邊界
+    只認下一個 H2（`\\n## `），刻意假設每個 H2 底下只有一個 H3 子節（見
+    section_locator.py docstring）。本模組的「## Problem Analysis」現同時
+    掛「### 派發日誌」與「### Commit 規範」兩個手足 H3——若沿用該假設，
+    查詢在前的子節會把在後的手足子節內容一併吃進自己的範圍（多手足並存
+    時的邊界溢出，實測會使後續 dispatch 的新增內容被吞沒不見）。本函式
+    改以下一個「## 」或「### 」（不分層級）為界，僅限本模組內部使用，
+    不修改 section_locator.py 共用邏輯（其他呼叫端可能依賴既有「一路吃到
+    底」語意，例如 acceptance_auditor 的必填章節驗證）。
+    """
+    header_match = re.search(rf"^###\s+{re.escape(heading)}\s*$", section_content, re.MULTILINE)
+    if not header_match:
+        return None
+    start = header_match.start()
+    content_start = header_match.end()
+    if content_start < len(section_content) and section_content[content_start] == "\n":
+        content_start += 1
+    boundary_match = re.search(r"\n#{2,3} ", section_content[content_start:])
+    end = content_start + boundary_match.start() if boundary_match else len(section_content)
+    return start, content_start, end, section_content[start:end]
 
 
 def _append_dispatch_note(body: str, note: str) -> str:
@@ -192,19 +147,66 @@ def _append_dispatch_note(body: str, note: str) -> str:
     section_end = parent_match.end
     section_content = parent_match.content
 
-    sub_match = find_section(section_content, DISPATCH_LOG_SECTION, levels=(3,))
-    if sub_match.found:
-        sub_start = sub_match.start
-        sub_end = sub_match.end
-        sub_text = sub_match.text
+    sub_match = _find_h3_subsection(section_content, DISPATCH_LOG_SECTION)
+    if sub_match:
+        sub_start, _sub_content_start, sub_end, sub_text = sub_match
         header_end = sub_text.find("\n")
         header_line = sub_text[: header_end + 1] if header_end != -1 else sub_text
         rest = sub_text[header_end + 1:] if header_end != -1 else ""
         updated_sub = header_line + rest.rstrip("\n") + ("\n" if rest.strip() else "") + entry
         updated_content = section_content[:sub_start] + updated_sub + section_content[sub_end:]
     else:
-        # Problem Analysis 存在但無 ### 派發日誌 子節：附加於該 H2 內容末尾。
-        updated_content = section_content.rstrip("\n") + f"\n\n### {DISPATCH_LOG_SECTION}\n\n{entry}\n"
+        # Problem Analysis 存在但無 ### 派發日誌 子節：附加於該子節理應所在
+        # 位置的緊鄰處，不影響其他既有手足子節（如 ### Commit 規範）。若已
+        # 有 ### Commit 規範 子節，插在其之前；否則附加於 H2 內容末尾。
+        commit_sub = _find_h3_subsection(section_content, COMMIT_SECTION_HEADING)
+        insertion_block = f"### {DISPATCH_LOG_SECTION}\n\n{entry}\n"
+        if commit_sub:
+            insert_at = commit_sub[0]
+            updated_content = section_content[:insert_at] + insertion_block + "\n" + section_content[insert_at:]
+        else:
+            updated_content = section_content.rstrip("\n") + f"\n\n{insertion_block}"
+
+    updated_section = body[section_start:parent_match.content_start] + updated_content
+    return body[:section_start] + updated_section + body[section_end:]
+
+
+def _ensure_commit_section(body: str, content: str) -> str:
+    """確保「## Problem Analysis」下含「### Commit 規範」子節，內容**冪等
+    覆寫**為 `content`（通常是 `STAGING_PHRASE_AGENT` 全文）。
+
+    與 `_append_dispatch_note` 的差異：後者每次 dispatch 累加一筆帶時間戳的
+    暫態紀錄；本函式維護的是單一固定區塊，每次呼叫覆寫為最新內容，不隨
+    dispatch 次數增長，代理人 `ticket track full` 讀取到的永遠是與
+    `STAGING_PHRASE_AGENT` 常數同步的全文（骨架瘦身後，骨架本體只留短版
+    指標句指向本節，見 `STAGING_PHRASE_AGENT_PROMPT`）。
+
+    Returns:
+        更新後的 body；若既有內容已與 `content` 相同則原樣回傳（呼叫端可用
+        `body_before == body_after` 判斷是否需要落盤，避免無變更也觸發 save）。
+    """
+    parent_match = find_section(body, PARENT_SCHEMA_SECTION)
+    if not parent_match.found:
+        separator = "" if body.endswith("\n\n") else ("\n" if body.endswith("\n") else "\n\n")
+        new_block = (
+            f"{separator}## {PARENT_SCHEMA_SECTION}\n\n"
+            f"### {COMMIT_SECTION_HEADING}\n\n{content}\n\n---\n\n"
+        )
+        return body.rstrip("\n") + "\n\n" + new_block.lstrip("\n")
+
+    section_start = parent_match.start
+    section_end = parent_match.end
+    section_content = parent_match.content
+
+    sub_match = _find_h3_subsection(section_content, COMMIT_SECTION_HEADING)
+    if sub_match:
+        sub_start, _sub_content_start, sub_end, existing_text = sub_match
+        new_sub = f"### {COMMIT_SECTION_HEADING}\n\n{content}\n"
+        if existing_text.rstrip("\n") == new_sub.rstrip("\n"):
+            return body  # 內容未變，不需重寫（避免無變更也觸發 save）
+        updated_content = section_content[:sub_start] + new_sub + section_content[sub_end:]
+    else:
+        updated_content = section_content.rstrip("\n") + f"\n\n### {COMMIT_SECTION_HEADING}\n\n{content}\n"
 
     updated_section = body[section_start:parent_match.content_start] + updated_content
     return body[:section_start] + updated_section + body[section_end:]
@@ -289,19 +291,36 @@ def _touches_hook_protection_scope(ticket: dict) -> bool:
 
 
 def execute_dispatch(args: argparse.Namespace, version: str) -> int:
-    """派發即落票：--note 寫入派發日誌章節 + 輸出骨架 prompt。
+    """派發即落票：--note 寫入派發日誌章節 + kind="normal" 且
+    commit_policy="agent" 時冪等寫入/更新「### Commit 規範」固定章節（骨架
+    瘦身落地：骨架本體只留短版指標句，全文由此章節承載） + 輸出骨架 prompt。
+
+    `--dry-run` 時完全略過票面寫入（不落盤、不觸發 file_lock），僅唯讀確認
+    票存在；骨架輸出與非 dry-run 完全相同（`_build_skeleton` 不依賴票面
+    寫入結果），供 PM 量測骨架行數或預覽 prompt 時可自由重複執行，不再需要
+    事後 checkout 還原票面（2026-09-02 新增）。
 
     Args:
         args: 需含 ticket_id / as_agent / note / kind / task_summary /
-            review_perspective / decision_question
+            review_perspective / decision_question / commit_policy / dry_run
         version: 已解析版本號
 
     Returns:
         0 成功；1 票不存在或 body 缺失
     """
     ticket_path = get_ticket_path(version, args.ticket_id)
+    commit_policy = getattr(args, "commit_policy", "agent") or "agent"
+    dry_run = getattr(args, "dry_run", False)
+    needs_commit_section = args.kind == "normal" and commit_policy == "agent"
 
-    if args.note:
+    if dry_run or not (args.note or needs_commit_section):
+        # --dry-run，或無 note 且非 agent commit 情境：僅唯讀確認票存在，
+        # 避免對不存在的票輸出骨架造成誤派發；不落盤。
+        ticket = load_ticket(version, args.ticket_id)
+        if not ticket:
+            print(format_error(ErrorMessages.TICKET_NOT_FOUND, ticket_id=args.ticket_id))
+            return 1
+    else:
         with file_lock(ticket_path):
             ticket = load_ticket(version, args.ticket_id)
             if not ticket:
@@ -313,15 +332,16 @@ def execute_dispatch(args: argparse.Namespace, version: str) -> int:
                 print(format_error(ErrorMessages.BODY_CONTENT_NOT_FOUND, ticket_id=args.ticket_id))
                 return 1
 
-            ticket["_body"] = _append_dispatch_note(body, args.note)
-            save_path = resolve_ticket_path(ticket, version, args.ticket_id)
-            save_ticket(ticket, save_path)
-    else:
-        # --note 未提供時仍需確認票存在，避免對不存在的票輸出骨架造成誤派發
-        ticket = load_ticket(version, args.ticket_id)
-        if not ticket:
-            print(format_error(ErrorMessages.TICKET_NOT_FOUND, ticket_id=args.ticket_id))
-            return 1
+            updated_body = body
+            if args.note:
+                updated_body = _append_dispatch_note(updated_body, args.note)
+            if needs_commit_section:
+                updated_body = _ensure_commit_section(updated_body, STAGING_PHRASE_AGENT)
+
+            if updated_body != body:
+                ticket["_body"] = updated_body
+                save_path = resolve_ticket_path(ticket, version, args.ticket_id)
+                save_ticket(ticket, save_path)
 
     block_message = _directory_declaration_block_message(ticket, args.ticket_id, version)
     if block_message:
@@ -389,4 +409,11 @@ def register_dispatch_command(subparsers: "argparse._SubParsersAction") -> None:
             "commit 歸屬：agent（預設，嵌入精準 staging 制式句權威版全文）/"
             " pm（PM 統一 commit，agent 不執行）/ none（本次派發不涉及 commit）"
         ),
+    )
+    p_dispatch.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        default=False,
+        help="只輸出骨架，不寫入票面（不落 --note、不冪等寫入 Commit 規範子節）；預設行為不變",
     )

@@ -103,6 +103,7 @@ def _base_args(**overrides) -> argparse.Namespace:
         review_perspective=None,
         decision_question=None,
         commit_policy="agent",
+        dry_run=False,
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
@@ -134,6 +135,51 @@ def test_dispatch_note_appends_multiple_entries_with_timestamp(dispatch_ticket, 
     # 帶時間戳格式 [YYYY-MM-DD HH:MM]
     import re
     assert re.search(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]", content)
+
+
+def test_dispatch_note_and_commit_section_coexist_as_h3_siblings(dispatch_ticket, tmp_path):
+    """`### 派發日誌` 與 `### Commit 規範` 為同一 `## Problem Analysis` 下的
+    H3 手足子節（骨架瘦身後新增後者）。多次 dispatch --note 交錯呼叫，
+    兩節內容必須互不吞噬——回歸測試：`section_locator.find_section` 的
+    levels=(3,) 只以下一個 H2 為界，若局部子節查詢誤沿用該語意，會讓查
+    在前的子節把在後的手足子節內容一併吃入自己範圍，新增的 note entry
+    因此附加在錯誤位置甚至被覆寫消失。
+    """
+    args1 = _base_args(note="第一則備註")
+    td_mod.execute_dispatch(args1, "0.0.0")  # 預設 commit_policy=agent，一併寫入 Commit 規範
+
+    md_path = tmp_path / f"{dispatch_ticket}.md"
+    content_after_first = md_path.read_text(encoding="utf-8")
+    assert f"### {td_mod.DISPATCH_LOG_SECTION}" in content_after_first
+    assert f"### {td_mod.COMMIT_SECTION_HEADING}" in content_after_first
+    assert "第一則備註" in content_after_first
+    assert td_mod.STAGING_PHRASE_AGENT.splitlines()[0] in content_after_first
+
+    args2 = _base_args(note="第二則備註")
+    td_mod.execute_dispatch(args2, "0.0.0")
+
+    content_after_second = md_path.read_text(encoding="utf-8")
+    # 兩則 note entry 都必須存在（第一則不可被第二次呼叫覆寫或吞沒）。
+    assert "第一則備註" in content_after_second
+    assert "第二則備註" in content_after_second
+    # Commit 規範全文須維持完整（不可因 note 附加操作而被截斷或搬移）。
+    assert td_mod.STAGING_PHRASE_AGENT in content_after_second
+    # 兩節仍各自成立、互不吞噬：派發日誌只含自己的 entry，不含 Commit 規範全文。
+    dispatch_log_section = _find_h3_subsection_text(content_after_second, td_mod.DISPATCH_LOG_SECTION)
+    assert "Recommended: commit via isolated index" not in dispatch_log_section
+
+
+def _find_h3_subsection_text(content: str, heading: str) -> str:
+    """測試輔助：擷取 markdown body 中 `### {heading}` 子節內容（至下一個
+    `## `/`### ` 標題或檔案結尾），用於斷言子節互不吞噬。"""
+    import re
+
+    match = re.search(rf"^###\s+{re.escape(heading)}\s*$", content, re.MULTILINE)
+    assert match, f"未找到子節 ### {heading}"
+    start = match.end()
+    boundary = re.search(r"\n#{2,3} ", content[start:])
+    end = start + boundary.start() if boundary else len(content)
+    return content[start:end]
 
 
 def test_dispatch_note_creates_problem_analysis_when_missing(tmp_path, monkeypatch):
@@ -214,6 +260,55 @@ def test_dispatch_kind_normal_includes_completion_protocol(dispatch_ticket, caps
     assert "ticket track claim" in out
     assert "ticket track complete" in out
     assert "ticket track set-acceptance" in out
+
+
+# --- --dry-run（0.2.1-W4-022） ------------------------------------------
+
+
+def test_dispatch_dry_run_does_not_write_ticket_file(dispatch_ticket, tmp_path):
+    """--dry-run 時即使帶 --note 且 commit_policy=agent（預設會觸發兩種
+    寫入副作用），票面檔內容與 mtime 都必須維持不變（不落盤、不冪等寫入
+    Commit 規範子節）。"""
+    md_path = tmp_path / f"{dispatch_ticket}.md"
+    content_before = md_path.read_text(encoding="utf-8")
+    mtime_before = md_path.stat().st_mtime_ns
+
+    args = _base_args(note="dry-run 不應落票", dry_run=True)
+    rc = td_mod.execute_dispatch(args, "0.0.0")
+
+    assert rc == 0
+    content_after = md_path.read_text(encoding="utf-8")
+    mtime_after = md_path.stat().st_mtime_ns
+    assert content_after == content_before
+    assert mtime_after == mtime_before
+    assert f"### {td_mod.DISPATCH_LOG_SECTION}" not in content_after
+    assert f"### {td_mod.COMMIT_SECTION_HEADING}" not in content_after
+
+
+def test_dispatch_dry_run_outputs_same_skeleton_as_normal(dispatch_ticket, capsys):
+    """--dry-run 的骨架輸出與非 dry-run 完全相同（差異僅在票面副作用）。"""
+    args_normal = _base_args(dry_run=False)
+    rc_normal = td_mod.execute_dispatch(args_normal, "0.0.0")
+    assert rc_normal == 0
+    out_normal = capsys.readouterr().out
+
+    args_dry_run = _base_args(dry_run=True)
+    rc_dry_run = td_mod.execute_dispatch(args_dry_run, "0.0.0")
+    assert rc_dry_run == 0
+    out_dry_run = capsys.readouterr().out
+
+    assert out_dry_run == out_normal
+
+
+def test_dispatch_dry_run_missing_ticket_returns_error(tmp_path, monkeypatch, capsys):
+    """--dry-run 仍須確認票存在，不可對不存在的票輸出骨架。"""
+    monkeypatch.setattr(td_mod, "get_ticket_path", lambda version, tid: tmp_path / f"{tid}.md")
+    monkeypatch.setattr(td_mod, "load_ticket", lambda version, tid: None)
+
+    args = _base_args(ticket_id="0.0.0-W0-NOPE", dry_run=True)
+    rc = td_mod.execute_dispatch(args, "0.0.0")
+
+    assert rc == 1
 
 
 def test_dispatch_missing_ticket_returns_error(tmp_path, monkeypatch, capsys):
