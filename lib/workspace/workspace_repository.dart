@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -74,9 +75,18 @@ class WorkspaceRepository {
     try {
       await dir.list().first;
     } on FileSystemException catch (e) {
+      // 降級為 WorkspaceUnavailable 前先留下診斷日誌（觀測性規則 1）：
+      // 這裡吞掉的是使用者可自行排除的環境問題（磁碟未掛載、權限被收回），
+      // 不是需要中斷 App 的致命例外。
+      developer.log(
+        '資料夾探測失敗：$path', // i18n-exempt: 開發者 debug log，非使用者可見文字
+        name: 'WorkspaceRepository',
+        level: 900,
+        error: e,
+      );
       return WorkspaceUnavailable(
         lastKnownPath: path,
-        reason: e.osError?.message ?? '無法讀取資料夾內容',
+        reason: e.osError?.message ?? '無法讀取資料夾內容', // i18n-exempt: 既有欄位，本票未變更其 i18n 狀態
       );
     } on StateError {
       // 空資料夾：list().first 找不到元素，但資料夾本身可讀。
