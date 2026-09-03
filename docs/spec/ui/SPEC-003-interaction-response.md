@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-03"
-version: "1.7"
+version: "1.8"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -526,7 +526,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 正常 · 泳道 | `mode-domain-matrix` → 矩陣；其餘同上 |
 | 空圖 | `action-domain-goto-gaps` → `nav-page-gaps`（jump）；`project-switcher-entry` → 浮層 |
 | 不是框架專案 | `project-switcher-entry` → 浮層（唯一出口，恆可用） |
-| 無可消費的型別表 | `project-switcher-entry` → 浮層（唯一出口）。**0.1 不提供「以純檔案模式檢視」**——SPEC-001 該欄寫「（若支援降級）」，降級策略尚未定案，依 §2.2 不得以無回饋佔位 handler 上線，故不渲染該動作 |
+| 無可消費的型別表 | `project-switcher-entry` → 浮層；`action-domain-degraded-view` → `state-domain-matrix` 或 `state-domain-empty`（同畫面轉換，疊加 `badge-domain-degraded-schema`，SPEC-001 v1.5 §1 註記「降級型別表」）。該動作僅在 `.claude/VERSION` 不高於 App 內建型別表產生版本時渲染；高於時不渲染，退出只剩浮層。降級旗標於切換專案時重置（§2.8）。定案來源 `0.1.0-W1-035` |
 | schema 不相容 | `action-domain-schema-detail` → 同畫面展開；`project-switcher-entry` → 浮層 |
 
 #### 生命週期
@@ -880,7 +880,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 4 | Domain | 正常 · 泳道 | `state-domain-swimlane` | 切回矩陣、導覽、切換專案 | 同畫面轉換：`mode-domain-matrix` → `state-domain-matrix`；rail；覆蓋層 |
 | 5 | Domain | 空圖 | `state-domain-empty` | 切換專案、導覽至破洞報告 | 覆蓋層：`project-switcher-entry`；jump：`action-domain-goto-gaps` → `nav-page-gaps`，`returnTo`=domain |
 | 6 | Domain | 不是框架專案 | `state-domain-not-framework` | 切換專案（浮層維持可用） | 覆蓋層：`project-switcher-entry`（`enabled` 恆為 `true`） |
-| 7 | Domain | 無可消費的型別表 | `state-domain-schema-unconsumable` | 切換專案 | 覆蓋層：`project-switcher-entry`。降級檢視動作 0.1 不渲染（§3.1） |
+| 7 | Domain | 無可消費的型別表 | `state-domain-schema-unconsumable` | 切換專案；以 App 內建型別表檢視 → 正常／空圖 | 覆蓋層：`project-switcher-entry`；同畫面轉換：`action-domain-degraded-view` → `state-domain-matrix`／`state-domain-empty` 疊加 `badge-domain-degraded-schema`（§3.1，條件式渲染） |
 | 8 | Domain | schema 不相容 | `state-domain-schema-incompatible` | 切換專案（浮層維持可用） | 覆蓋層：`project-switcher-entry`；同畫面展開：`action-domain-schema-detail` → `panel-domain-schema-detail` |
 | 9 | UC Flow | 無 UC | `state-ucFlow-empty` | 導覽、切換專案 | jump：`action-ucFlow-goto-gaps` → `nav-page-gaps`；rail；覆蓋層 |
 | 10 | UC Flow | flow 未結構化 | `state-ucFlow-unstructured` | 開啟原始檔、返回 Domain 視圖 | 固定目標：`action-ucFlow-back-to-domain` → `nav-page-domain`（不用 `returnTo`）。`action-ucFlow-open-source` 為外部動作，不計為導航反應 |
@@ -927,7 +927,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | §4 未載入「返回上一畫面」 | 同上判讀。`returnTo` 為 `null` 時返回錨點不渲染，退出由導覽列承擔 |
 | §2 flow 未結構化「開啟原始檔、返回 Domain 視圖」 | 「開啟原始檔」是外部動作，不改變畫面狀態，嚴格說不是退出路徑。該狀態的實際導航退出為「返回 Domain 視圖」，非空 |
 | §4 含損壞「同正常」 | 判讀為疊加態而非互斥態：損壞徽章與正常視圖同時渲染 |
-| §1 無可消費的型別表「（若支援降級）以純檔案模式檢視」 | 括號表示尚未定案。0.1 不渲染該動作（依 §2.2 未接線動作處理），該狀態的退出由「切換專案」單獨承擔 |
+| §1 無可消費的型別表「以 App 內建型別表檢視」（SPEC-001 v1.5 起現行文字） | 判讀為條件式渲染的同畫面轉換：`VERSION` 不高於內建表產生版本時渲染 `action-domain-degraded-view`，目標為正常／空圖並疊加 `badge-<screen>-degraded-schema`（六畫面皆常駐）；高於時不渲染（依 §2.2 形態 a），退出由「切換專案」單獨承擔。判讀沿革：v1.4 以前該欄為「（若支援降級）以純檔案模式檢視」，括號表示未定案，0.1 曾判為不渲染；`0.1.0-W1-035` 定案後改為現行判讀 |
 | §4 未載入「預估耗時」 | 預估依據屬待決事項，0.1 不顯示（依 §2.6 誠實性硬規則），只顯示票數 N |
 | FR-02 驗收「三處長時操作期間」（SPEC-001 v1.3 起現行文字） | 三處（Domain 視圖載入、Ticket 載入、破洞掃描）與本規格 §2.5 取消契約定義的三個目標態逐一對應，現行文字已與本規格一致；此列存留判讀沿革——SPEC-001 v1.2 以前僅列「Ticket 載入與破洞掃描」兩處，遺漏 §1 Domain 視圖載入中的取消操作，該缺口已於 SPEC-001 v1.3 補齊 |
 | §6 三個狀態的進入條件 | 皆預設已有選定節點。經導覽列直接進入時的缺口已由 SPEC-001 v1.3「未選節點」補上，本規格 §3.6 與 §4 第 30 列對應之 |
@@ -1032,7 +1032,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
-| 1.7 | 2026-09-03 | 外部開啟落地定案（`0.1.0-W1-036`）：§2.2 新增「外部開啟契約」（`ExternalOpener` 介面與 `opened` / `notFound` / `failed` 三結果、前置存在檢查、`/usr/bin/open` 實作、不新增依賴、失敗 log、無等待指示、0.1 不定位行號、fake 斷言方式、i18n key；實作票 `0.1.0-W1-068`）。§3.1 開啟 docs 目錄、§3.2 與 §3.6 開啟原始檔、§3.5 破洞項四處的既有列改為引用契約結果值，並各新增一列「無預設應用程式或其他開啟失敗」→ SnackBar `externalOpenFailedMessage`；§3.5 明示 0.1 不定位至行號（追蹤票 `0.1.0-W1-070`）；§3.6 檔案不存在列補「不出現 SnackBar」。新增 i18n key `externalOpenFailedMessage`（補齊票 `0.1.0-W1-069`）。不改其他列；不改 SPEC-001 與 SPEC-004 |
+| 1.8 | 2026-09-03 | 外部開啟落地定案（`0.1.0-W1-036`）：§2.2 新增「外部開啟契約」（`ExternalOpener` 介面與 `opened` / `notFound` / `failed` 三結果、前置存在檢查、`/usr/bin/open` 實作、不新增依賴、失敗 log、無等待指示、0.1 不定位行號、fake 斷言方式、i18n key；實作票 `0.1.0-W1-068`）。§3.1 開啟 docs 目錄、§3.2 與 §3.6 開啟原始檔、§3.5 破洞項四處的既有列改為引用契約結果值，並各新增一列「無預設應用程式或其他開啟失敗」→ SnackBar `externalOpenFailedMessage`；§3.5 明示 0.1 不定位至行號（追蹤票 `0.1.0-W1-070`）；§3.6 檔案不存在列補「不出現 SnackBar」。新增 i18n key `externalOpenFailedMessage`（補齊票 `0.1.0-W1-069`）。不改其他列；不改 SPEC-001 與 SPEC-004 |
+| 1.7 | 2026-09-03 | 降級策略同步（`0.1.0-W1-035`，對應 SPEC-001 v1.5）：§3.1 導航跳轉「無可消費的型別表」列由「0.1 不渲染」改為條件式渲染 `action-domain-degraded-view`（同畫面轉換至正常／空圖，疊加 `badge-domain-degraded-schema`）；§4 第 7 列同步；§5 判讀註記該列改為現行判讀並保留沿革。不新增狀態、錨點類別與時間 token。不改 SPEC-004（其 `BlockedState` 三處「0.1 不渲染」引用由後續 DOC 票同步） |
 | 1.6 | 2026-09-02 | 元件級互動補件（`0.1.0-W1-057`，來源 `0.1.0-W1-044.2` NeedsContext）：§3.4 互動反應表「篩選」一列展開為開啟／走選項／選取／Esc 收合／點外部收合／再點觸發器／Tab 離開七列，「排序」一列展開為循環／換欄兩列，每列含錨點與可觀察結果；新增「篩選下拉的元件級契約 F1–F7」（同時至多一個選單、`open` 為疊加態、選單內容契約含 `all` 首項、覆蓋層幾何契約、只在選取時呼叫 `onChanged`、`SemanticsRole.menu`／`menuItem` 播報契約、點外部一律吸收）與「排序欄首的元件級契約 S1–S7」（單欄排序、`none → asc → desc → none` 三態循環、`none` 等於載入順序、`sortA11yLabel` 播報值、與篩選／搜尋獨立、只於列表模式可觸發、`static`／`twoLine` 非互動）。§2.9 新增選單 `menu-<screen>-<kind>` 與選單項 `option-<screen>-<kind>-<value>` 兩類錨點；§2.10 新增選單 Esc 與方向鍵／Tab 兩列並明示選單不限制焦點、方向鍵走選項不在 0.1 排除範圍；§1.4 同畫面內展開由 2 增為 3；§2.11 補兩個元件的承擔對應；§3.4 動畫提示補選單展開收合（`Motion.overlay`）、排序指示切換與列表重繪皆無動畫三列；§3.4 生命週期補選單展開時點導覽項不切換、切換專案重置 `order`；FR-09 驗收補選單 Esc 與方向鍵。不新增時間 token（選單沿用 `Motion.overlay`，排序沿用 `Motion.feedback`）。不改 SPEC-001 與 SPEC-004；SPEC-004 4.13／4.14 的待決標記由 W1-005 對應子票代入本版內容後去除。 |
 | 1.5 | 2026-09-02 | 對照表與 SPEC-001 同步修訂（`0.1.0-W1-039.4`，父票 `0.1.0-W1-039` 十四項審查發現第 4、12、13、14 項，本票是 039 系列最後一張）：§4 對照表第 2 列補三個阻擋狀態為「載入中」完成後的可能落點（與 SPEC-001 §1 註記一致）；第 13 列移除誤植入 SPEC-001 退出路徑欄的「跳轉破洞報告」（該項在 SPEC-001 §3 屬可用操作欄，非退出路徑欄），退出路徑欄改回與正常態一致的「同上」；第 21 列補「掃描完成 → 有／無破洞」的同畫面轉換描述於導航反應欄。§4 覆蓋完整性算式後新增同步提醒，明列與狀態數字（31）耦合的四處（本節標題、本段算式、FR-01 驗收、§0 概述）。§5 判讀註記更新 FR-02 一列為現行 SPEC-001 v1.3 起文字（三處長時操作期間），原「兩處」判讀改列為判讀沿革記錄。設計約束段新增用語決定：全文統一用「渲染」不改「算繪」，並附理由（既定用語、全文逾三十次引用、避免與 3D／影像運算語境混淆）。全文檢核無指向一次性審查報告的引用（原第 626 行問題已由 `0.1.0-W1-039.1`～`.3` 與 `0.1.0-W1-048` 修訂消除）。 |
 | 1.4 | 2026-09-02 | 返回語意與導覽修訂（`0.1.0-W1-039.3`）：§2.4 更名為「退出路徑的四種導航反應」，新增「返回（consume）」為獨立第四類（既有 rail／jump／同畫面狀態轉換三類皆無法準確描述它），並說明其觸發錨點 `action-<screen>-back` 統一置於該畫面 `PageColumn` 的 `SplitRow.header` 右側 `ButtonRow`，由頁面框架容器單一渲染，不由六個畫面各自決定擺放方式，與 SPEC-004 §3.7 第 17、18 項一致。§2.3 四條規則後新增說明：Domain 視圖、追溯視圖、破洞報告正常態依 SPEC-001 未列「返回」退出路徑，故不渲染 `action-<screen>-back`，但其 `returnTo` 值仍由規則 1（任一畫面下一次 rail 切換皆清空 `returnTo`）消費，與規則 1 不構成矛盾，非孤兒值。「採單槽而非堆疊」的理由改寫：移除「堆疊會產生回到哪一層的歧義」這項論證——規則 3 的 A→B→C 場景已示範單槽下返回目標明確，該論證與規則 3 自相矛盾。理由改為兩項實用主義依據：導覽列恆常可見，故深層返回鏈無額外使用者價值；單槽只需斷言單一值。 |
