@@ -8,7 +8,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
@@ -177,10 +176,9 @@ class BlockedState extends StatelessWidget {
     );
   }
 
-  /// 動作列。`plain` 用 `ButtonRow`[切換專案 `primary`]（SPEC-004 4.23
-  /// 「變體」）；`withDetail` 額外的「檢視詳情」鈕需以 `Semantics(expanded:
-  /// ...)` 包裹，`ButtonRow.children` 型別限定為 `AppButton` 清單，無法容納
-  /// 包裹後的節點，改以同構的 `Wrap`（同 spacing／alignment token）承載。
+  /// 動作列，兩變體皆由 `ButtonRow`[`AppButton` × N]（SPEC-004 4.23
+  /// 「變體」）承載。`withDetail` 的「檢視詳情」鈕以 `AppButton.semanticExpanded`
+  /// 附加展開語意（SPEC-004 4.4），不需外部包裹即維持 `AppButton` 型別。
   Widget _buildActions(AppLocalizations l10n) {
     final switchButton = AppButton(
       label: l10n.projectSwitcherEntryLabel,
@@ -196,21 +194,16 @@ class BlockedState extends StatelessWidget {
     }
 
     final onToggle = onToggleDetail;
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: Space.sm.w,
-      runSpacing: Space.sm.h,
+    return ButtonRow(
+      alignment: ButtonRowAlignment.center,
       children: [
         switchButton,
-        Semantics(
-          expanded: isDetailExpanded,
-          child: AppButton(
-            label: l10n.viewSchemaDetailAction,
-            variant: AppButtonVariant.secondary,
-            onPressed: onToggle!,
-            testKey: const ValueKey('action-domain-schema-detail'),
-          ),
+        AppButton(
+          label: l10n.viewSchemaDetailAction,
+          variant: AppButtonVariant.secondary,
+          onPressed: onToggle!,
+          testKey: const ValueKey('action-domain-schema-detail'),
+          semanticExpanded: isDetailExpanded,
         ),
       ],
     );

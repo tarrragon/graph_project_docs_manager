@@ -41,6 +41,7 @@ class AppButton extends StatefulWidget {
     this.leading,
     this.enabled = true,
     this.disabledReason,
+    this.semanticExpanded,
   }) : assert(
          enabled || disabledReason != null,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
@@ -73,6 +74,13 @@ class AppButton extends StatefulWidget {
 
   /// disabled 時的常駐說明文字（同列顯示，非 tooltip；SPEC-003 §2.2、FR-06）。
   final String? disabledReason;
+
+  /// 語意樹的展開狀態旗標（SPEC-004 §4.4 slot 契約）。`null` 時不附加該
+  /// 旗標；非 `null` 時附加於本元件既有語意節點，供呼叫端標示本按鈕控制
+  /// 的區塊是否展開（如 4.23 `BlockedState.withDetail` 檢視詳情鈕），
+  /// 不需呼叫端外部包裹 `Semantics(expanded: ...)` 即可維持 `AppButton`
+  /// 型別（回收 4.34 `ButtonRow` 的 `List<AppButton>` 型別限定）。
+  final bool? semanticExpanded;
 
   @override
   State<AppButton> createState() => _AppButtonState();
@@ -180,31 +188,49 @@ class _AppButtonState extends State<AppButton> {
       child: SizedBox(height: LayoutSize.hitTargetMin, child: button),
     );
 
-    if (widget.enabled || widget.disabledReason == null) {
-      return decoratedButton;
+    final Widget result = (widget.enabled || widget.disabledReason == null)
+        ? decoratedButton
+        // disabled 原因：同列常駐文字，非 tooltip（SPEC-003 §2.2、FR-06）。
+        : Semantics(
+            hint: widget.disabledReason,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                decoratedButton,
+                SizedBox(width: Space.xs),
+                Flexible(
+                  child: Text(
+                    widget.disabledReason!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: AppFontSize.caption,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+    final semanticExpanded = widget.semanticExpanded;
+    if (semanticExpanded == null) {
+      return result;
     }
 
-    // disabled 原因：同列常駐文字，非 tooltip（SPEC-003 §2.2、FR-06）。
+    // container: true 明確擁有語意節點（對齊 SPEC-004 4.7 NavItem 既有
+    // 寫法：`Semantics(container: true) child: ExcludeSemantics(...)`）；
+    // container: false（預設）的屬性向上併入祖先節點而非本元件自身按鈕
+    // 節點，無法承載 expanded 旗標。內部視覺內容排除於語意樹，避免與外層
+    // label / enabled 重複產生節點。
     return Semantics(
+      container: true,
+      button: true,
+      label: widget.label,
+      enabled: widget.enabled,
       hint: widget.disabledReason,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          decoratedButton,
-          SizedBox(width: Space.xs),
-          Flexible(
-            child: Text(
-              widget.disabledReason!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: AppFontSize.caption,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
+      expanded: semanticExpanded,
+      child: ExcludeSemantics(child: result),
     );
   }
 }

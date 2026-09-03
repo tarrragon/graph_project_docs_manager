@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-09-02"
-version: "1.12"
+updated: "2026-09-03"
+version: "1.13"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -951,6 +951,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `onPressed` | `VoidCallback` | 是 | 不適用 |
 | `enabled` | `bool` | 否（預設 `true`） | 不適用 |
 | `disabledReason` | `String?` | `enabled` 為 `false` 時必填 | 呼叫端（i18n key 取值） |
+| `semanticExpanded` | `bool?` | 否（`null` 時不附加該旗標） | 不適用 |
 | `testKey` | `Key` | 是（SPEC-003 §2.9 `action-<screen>-<action>`） | 不適用 |
 
 #### 使用 design token
@@ -984,7 +985,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 面向 | 要求 |
 |------|------|
 | 朗讀標籤 | `Semantics.button` 為 `true`，label 等於 `label` 值；`text` 變體的 leading icon 排除於語意樹 |
-| 狀態變化播報 | `enabled` 改變時語意樹 `enabled` 旗標同步；`disabledReason` 以 `Semantics.hint` 附於同一節點 |
+| 狀態變化播報 | `enabled` 改變時語意樹 `enabled` 旗標同步；`disabledReason` 以 `Semantics.hint` 附於同一節點；`semanticExpanded` 非 `null` 時附加 `expanded` 旗標於同一節點（供 4.23 `BlockedState.withDetail` 檢視詳情鈕標示展開狀態，取代呼叫端外部包裹） |
 | 非視覺替代訊號 | 變體差異不承載語意（皆為動作），故顏色非唯一訊號；disabled 由 `enabled` 旗標與常駐文字承載 |
 | 焦點順序與操作路徑（桌機） | 進入 Tab 順序（SPEC-003 §2.10 內容區段）；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
 | 對比 | 依 §4.0.2：`primary` 字 `surfaceBase` / `accent` 5.84:1、`secondary` 與 `text` 字 `textPrimary` / `surfaceBase` 5.79:1、`disabledReason` `textSecondary` / `surfaceBase` 4.71:1，皆通過；disabled 的 label 與 icon `textDisabled` 3.06:1 屬非作用中元件豁免（表 2） |
@@ -5764,6 +5765,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+<!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.13 | 2026-09-03 | `0.1.0-W1-066`：4.4 `AppButton` slot 契約新增 `semanticExpanded`（`bool?`，`null` 不附加旗標）與無障礙「狀態變化播報」列說明，讓帶展開語意的動作按鈕（如 4.23 `BlockedState.withDetail` 檢視詳情鈕）不需呼叫端外部包裹 `Semantics(expanded: ...)` 即可維持 `AppButton` 型別，回收 4.34 `ButtonRow` 的 `List<AppButton>` 型別限定 |
 | 1.12 | 2026-09-02 | `TableColumnHeader` 元件票實作時依 SPEC-003 §3.4 S1–S7 補齊 4.14 `sortable` 變體的互動反應（點選呼叫 `onSort`，下一個 `order` 由呼叫端決定）、狀態矩陣退出路徑、無障礙狀態變化播報值，去除本條目「待決」標記；§4.0.9 待決清單移除 4.14 一列（餘 4.13 `FilterDropdown` 一項），41 條目無待決欄位 |
 | 1.11 | 2026-09-02 | `LoadPrompt` 元件票實作時修正 4.25 `LoadPrompt` 內容政策與測試點：`message` 原標「可換行、最大行數 2、末行截斷」與同條目「最小尺寸」列（訊息一行）及 slot 契約（訊息取 `AppText.subtitle`，單行變體）自相矛盾，`AppText`（4.1）subtitle 變體恆為單行不接受 `maxLines`；改為「不可換行、最大行數 1、末端省略」，測試點「最長測試文案兩行末截斷」同步改「最長測試文案單行末端省略」 |
 | 1.10 | 2026-09-02 | 實作校正（`MissingSourceState` 元件票）：4.22 狀態矩陣「顯示」「可用操作」「退出路徑」三欄與「互動反應」「slot 契約」（僅 `path`／`onRefresh`／`testKey`，無 `returnTo`）內部不一致——`ButtonRow` 移除「返回」按鈕，改註明返回鍵由頁面框架於 `SplitRow.header` 統一渲染，與 §3011 既有澄清對齊；內容政策 `message`／`path` 兩列原標可換行（2／3 行）與 `AppText.subtitle`／`AppText.mono` 已核定的單行鎖定契約（4.1）矛盾，改標單行截斷，與實作行為一致 |
