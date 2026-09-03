@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../tokens/tokens.dart';
 import 'app_icon.dart';
+import 'app_text.dart';
 
 /// 側欄導覽項元件（SPEC-004 §4.7）。
 ///
@@ -92,17 +93,13 @@ class NavItem extends StatelessWidget {
                     effectiveIcon,
                     SizedBox(width: Space.sm),
                     Flexible(
-                      child: Text(
+                      child: AppText(
                         label,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: AppFontSize.body,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                          color: foreground,
-                        ),
+                        emphasis: isSelected,
+                        tone: isSelected
+                            ? AppTextTone.accentStrong
+                            : AppTextTone.textPrimary,
                       ),
                     ),
                   ],

@@ -251,6 +251,40 @@ void main() {
 
       handle.dispose();
     });
+
+    testWidgets('semanticExpanded 為 null 時不附加 expanded 旗標', (tester) async {
+      final key = Anchor.action(Screen.domain, 'button-semantics-no-expanded');
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: AppButton(testKey: key, label: 'x', onPressed: () {}),
+      );
+
+      final semantics = tester.getSemantics(find.byKey(key));
+      expect(semantics.flagsCollection.isExpanded.toBoolOrNull(), isNull);
+
+      handle.dispose();
+    });
+
+    testWidgets('semanticExpanded 附加於同一節點，值等於傳入值', (tester) async {
+      final key = Anchor.action(Screen.domain, 'button-semantics-expanded');
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: AppButton(
+          testKey: key,
+          label: 'x',
+          onPressed: () {},
+          semanticExpanded: true,
+        ),
+      );
+
+      final semantics = tester.getSemantics(find.byKey(key));
+      expect(semantics.flagsCollection.isExpanded.toBoolOrNull(), isTrue);
+      expect(semantics.label, 'x');
+
+      handle.dispose();
+    });
   });
 
   group('slot 契約', () {

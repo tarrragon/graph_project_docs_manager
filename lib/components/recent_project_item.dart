@@ -3,16 +3,11 @@
 /// 圖示 + 名稱 + 摘要（節點數 · 票數）+ 健康徽章 slot + 不可用原因常駐
 /// 文字。單一變體，`enabled` / `isCurrent` 為狀態（SPEC-004 4.9「變體」）。
 ///
-/// **與契約的一處差異（範圍限定）**：4.9「狀態矩陣」對 `selected` /
-/// `disabled` 態要求圖示與名稱改 [AppColors.accentStrong] /
-/// [AppColors.textDisabled]、摘要改 [AppColors.textPrimary] /
-/// [AppColors.textDisabled]，但 [AppText] 只開放 `secondary` 布林（僅
-/// 切換 [AppColors.textPrimary] / [AppColors.textSecondary] 兩色，見
-/// `app_text.dart`），無法表達 `accentStrong` / `textDisabled`。本檔對
-/// `name` / `summary` 改以內部 `Text` 依狀態直接取色渲染，非直接使用
-/// [AppText]——與 `ListRow.sectionHeader` 已記錄的差異同一慣例
-/// （`list_row.dart` 檔頭）。內容政策（單行、截斷）與 [AppText.caption]
-/// 一致，僅取色手段不同。
+/// 4.9「狀態矩陣」對 `selected` / `disabled` 態要求圖示與名稱改
+/// [AppColors.accentStrong] / [AppColors.textDisabled]、摘要改
+/// [AppColors.textPrimary] / [AppColors.textDisabled]。`name` / `summary`
+/// / `reason` 依 [AppText.tone]（SPEC-004 §4.1「修飾參數優先序」）依狀態
+/// 取色，圖示色由 [AppIcon.color] 承載（非文字，不經 [AppText]）。
 library;
 
 import 'package:flutter/material.dart' show Icons, InkWell;
@@ -21,6 +16,7 @@ import 'package:flutter/widgets.dart';
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_icon.dart';
+import 'app_text.dart';
 import 'badge.dart';
 
 /// 浮層內單一專案選項（SPEC-004 §4.9）。
@@ -85,16 +81,16 @@ class RecentProjectItem extends StatelessWidget {
     return AppColors.textSecondary;
   }
 
-  Color get _nameColor {
-    if (_isDisabled) return AppColors.textDisabled;
-    if (isCurrent) return AppColors.accentStrong;
-    return AppColors.textTitle;
+  AppTextTone get _nameTone {
+    if (_isDisabled) return AppTextTone.textDisabled;
+    if (isCurrent) return AppTextTone.accentStrong;
+    return AppTextTone.textTitle;
   }
 
-  Color get _summaryColor {
-    if (_isDisabled) return AppColors.textDisabled;
-    if (isCurrent) return AppColors.textPrimary;
-    return AppColors.textSecondary;
+  AppTextTone get _summaryTone {
+    if (_isDisabled) return AppTextTone.textDisabled;
+    if (isCurrent) return AppTextTone.textPrimary;
+    return AppTextTone.textSecondary;
   }
 
   @override
@@ -153,14 +149,11 @@ class RecentProjectItem extends StatelessWidget {
           ),
           if (_isDisabled && reason != null) ...[
             SizedBox(height: Space.xxs),
-            Text(
+            AppText(
               reason!,
+              variant: AppTextVariant.body,
               maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: AppFontSize.caption,
-                color: AppColors.textSecondary,
-              ),
+              tone: AppTextTone.textSecondary,
             ),
           ],
         ],
@@ -173,23 +166,9 @@ class RecentProjectItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: AppFontSize.body,
-            fontWeight: FontWeight.w600,
-            color: _nameColor,
-          ),
-        ),
+        AppText(name, maxLines: 1, emphasis: true, tone: _nameTone),
         SizedBox(height: Space.xxs),
-        Text(
-          summary,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: AppFontSize.caption, color: _summaryColor),
-        ),
+        AppText(summary, variant: AppTextVariant.caption, tone: _summaryTone),
       ],
     );
   }

@@ -174,6 +174,67 @@ void main() {
     });
   });
 
+  group('組合規則：動作列由 ButtonRow 承載（SPEC-004 4.34 型別限定）', () {
+    testWidgets('plain 動作列存在 ButtonRow 且無本地 Wrap 繞道', (tester) async {
+      await pumpHarness(
+        tester,
+        child: BlockedState.plain(
+          message: 'msg',
+          onSwitchProject: () {},
+          testKey: plainKey,
+        ),
+      );
+
+      // ButtonRow 內部以單一 Wrap 排列子件（SPEC-004 4.34）；本斷言確認
+      // 只有 ButtonRow 自身的 Wrap，無 blocked_state.dart 本地繞道的第二個。
+      expect(find.byType(ButtonRow), findsOneWidget);
+      expect(find.byType(Wrap), findsOneWidget);
+    });
+
+    testWidgets('withDetail 動作列存在 ButtonRow 且無本地 Wrap 繞道', (tester) async {
+      await pumpHarness(
+        tester,
+        child: BlockedState.withDetail(
+          message: 'msg',
+          appVersion: '1.0.0',
+          projectVersion: '2.0.0',
+          onSwitchProject: () {},
+          isDetailExpanded: false,
+          onToggleDetail: () {},
+          testKey: withDetailKey,
+        ),
+      );
+
+      // ButtonRow 內部以單一 Wrap 排列子件（SPEC-004 4.34）；本斷言確認
+      // 只有 ButtonRow 自身的 Wrap，無 blocked_state.dart 本地繞道的第二個。
+      expect(find.byType(ButtonRow), findsOneWidget);
+      expect(find.byType(Wrap), findsOneWidget);
+    });
+
+    testWidgets('withDetail 檢視詳情鈕 expanded 語意等於 isDetailExpanded', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: BlockedState.withDetail(
+          message: 'msg',
+          appVersion: '1.0.0',
+          projectVersion: '2.0.0',
+          onSwitchProject: () {},
+          isDetailExpanded: true,
+          onToggleDetail: () {},
+          testKey: withDetailKey,
+        ),
+      );
+
+      final semantics = tester.getSemantics(find.byKey(detailButtonKey));
+      expect(semantics.flagsCollection.isExpanded.toBoolOrNull(), isTrue);
+
+      handle.dispose();
+    });
+  });
+
   group('i18n：zh / en 四個訊息 key 皆不溢位', () {
     for (final locale in kTestLocales) {
       testWidgets('plain @ ${locale.languageCode}', (tester) async {

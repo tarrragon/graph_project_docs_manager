@@ -132,12 +132,7 @@ void main() {
         );
         expectNoOverflow(tester);
 
-        final text = tester.widget<Text>(
-          find.descendant(
-            of: find.byType(AppText),
-            matching: find.byType(Text),
-          ),
-        );
+        final text = tester.widget<Text>(find.text(TestCopy.longToken));
         expect(text.maxLines, 1);
         expect(text.overflow, TextOverflow.ellipsis);
       });
