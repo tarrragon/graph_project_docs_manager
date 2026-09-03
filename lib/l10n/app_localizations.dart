@@ -817,6 +817,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{count} 項'**
   String gapSectionCount(int count);
+
+  /// SPEC-001 §5 破洞報告·有破洞狀態：以真實 repo 快照缺 frontmatter 樣本驅動的分節類別名稱
+  ///
+  /// In zh, this message translates to:
+  /// **'缺少 Frontmatter'**
+  String get gapCategoryMissingFrontmatter;
+
+  /// SPEC-001 §5 破洞報告·有破洞狀態：ListRow.item 次文字，破洞所在行號
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {lineNumber} 行'**
+  String gapItemLineLabel(int lineNumber);
 }
 
 class _AppLocalizationsDelegate

@@ -431,4 +431,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String gapSectionCount(int count) {
     return '$count items';
   }
+
+  @override
+  String get gapCategoryMissingFrontmatter => '缺少 Frontmatter';
+
+  @override
+  String gapItemLineLabel(int lineNumber) {
+    return '第 $lineNumber 行';
+  }
 }

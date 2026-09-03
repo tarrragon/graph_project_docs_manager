@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
+import '../screens/gap_report/gap_report_screen.dart';
 
 /// 六個畫面，順序即導覽列的顯示順序（SPEC-001 §1-6 逐項對應）。
 enum AppDestination {
@@ -149,6 +150,9 @@ final firstVisibleProvider = Provider.family<bool, AppDestination>(
 /// 目前六項全部渲染標示畫面名的佔位頁——各畫面的實際內容由後續票逐一
 /// 實作，本票只交出「可切換」這件事本身。
 Widget buildDestinationPage(BuildContext context, AppDestination destination) {
+  if (destination == AppDestination.gaps) {
+    return GapReportScreen(key: destination.pageKey);
+  }
   final l10n = AppLocalizations.of(context);
   return _DestinationPlaceholderPage(
     key: destination.pageKey,
