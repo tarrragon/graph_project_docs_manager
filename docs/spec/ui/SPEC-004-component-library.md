@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-02"
-version: "1.12"
+version: "1.13"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -562,7 +562,14 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `caption` | `AppFontSize.caption`、`AppColors.textSecondary` | 單行 | 副標、欄首、小計、群組小標、次文字 |
 | `mono` | `AppFontSize.body`、等寬字型、`AppColors.textPrimary` | 單行 | ID、路徑、版本值 |
 
-修飾參數（非變體）：`emphasis`（粗體）、`secondary`（顏色改 `AppColors.textSecondary`）。等寬字型由 `ThemeData` 的 `fontFamily` 提供，元件內不寫死字型名（提案）。
+修飾參數（非變體）：`emphasis`（粗體）、`secondary`（顏色改 `AppColors.textSecondary`）、`tone`（語意色軸，值限
+`AppTextTone` 列舉——`textPrimary` / `textSecondary` / `textTitle` / `accentStrong` / `textDisabled`，一一對應同名
+`AppColors` 語意色，不接受任意 `Color`）。等寬字型由 `ThemeData` 的 `fontFamily` 提供，元件內不寫死字型名（提案）。
+
+**修飾參數優先序**：`tone` 傳入時覆蓋 `secondary` 與變體預設色；`emphasis` 與顏色軸正交、恆獨立生效。三者疊加順序：
+`tone` > `secondary` > 變體預設色（`emphasis` 不參與此順序，僅另軸控制字重）。任何元件需要 `AppColors` 五個語意色以外
+的文字著色時，先確認需求是否可用既有五色表達；若否，須先擴充 `AppTextTone` 列舉（同版本內同一提案一併走完，不得繞過
+`AppText` 另建 `Text`）。
 
 #### 狀態矩陣
 
@@ -5764,6 +5771,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.13 | 2026-09-03 | 補齊 4.1 `AppText` 語意色參數：新增修飾參數 `tone`（`AppTextTone` 列舉，五色對應 `AppColors` 語意色）與「修飾參數優先序」子節，消除元件內繞過 `AppText` 直接建 `Text` 的三處（`ListRow.sectionHeader` 主色、`RecentProjectItem` name／summary、`NavItem` icon 色由 `isSelected` 推導） |
 | 1.12 | 2026-09-02 | `TableColumnHeader` 元件票實作時依 SPEC-003 §3.4 S1–S7 補齊 4.14 `sortable` 變體的互動反應（點選呼叫 `onSort`，下一個 `order` 由呼叫端決定）、狀態矩陣退出路徑、無障礙狀態變化播報值，去除本條目「待決」標記；§4.0.9 待決清單移除 4.14 一列（餘 4.13 `FilterDropdown` 一項），41 條目無待決欄位 |
 | 1.11 | 2026-09-02 | `LoadPrompt` 元件票實作時修正 4.25 `LoadPrompt` 內容政策與測試點：`message` 原標「可換行、最大行數 2、末行截斷」與同條目「最小尺寸」列（訊息一行）及 slot 契約（訊息取 `AppText.subtitle`，單行變體）自相矛盾，`AppText`（4.1）subtitle 變體恆為單行不接受 `maxLines`；改為「不可換行、最大行數 1、末端省略」，測試點「最長測試文案兩行末截斷」同步改「最長測試文案單行末端省略」 |
 | 1.10 | 2026-09-02 | 實作校正（`MissingSourceState` 元件票）：4.22 狀態矩陣「顯示」「可用操作」「退出路徑」三欄與「互動反應」「slot 契約」（僅 `path`／`onRefresh`／`testKey`，無 `returnTo`）內部不一致——`ButtonRow` 移除「返回」按鈕，改註明返回鍵由頁面框架於 `SplitRow.header` 統一渲染，與 §3011 既有澄清對齊；內容政策 `message`／`path` 兩列原標可換行（2／3 行）與 `AppText.subtitle`／`AppText.mono` 已核定的單行鎖定契約（4.1）矛盾，改標單行截斷，與實作行為一致 |

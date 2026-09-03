@@ -11,6 +11,27 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../tokens/tokens.dart';
 
+/// 文字語意色（SPEC-004 §4.1「修飾參數」語意色軸）。
+///
+/// 值限 [AppColors] 語意色名，不接受任意 [Color]——呼叫端無法傳入畫布外
+/// 顏色，維持 SPEC-002「畫面只引用語意層與元件層」的邊界。
+enum AppTextTone {
+  /// [AppColors.textPrimary]。
+  textPrimary,
+
+  /// [AppColors.textSecondary]。
+  textSecondary,
+
+  /// [AppColors.textTitle]。
+  textTitle,
+
+  /// [AppColors.accentStrong]。
+  accentStrong,
+
+  /// [AppColors.textDisabled]。
+  textDisabled,
+}
+
 /// 文字語意角色（SPEC-004 §4.1「變體」）。
 enum AppTextVariant {
   /// 頁面標題、節點詳情主標。單行、`AppFontSize.title`、粗體。
@@ -41,6 +62,7 @@ class AppText extends StatelessWidget {
     this.maxLines,
     this.emphasis = false,
     this.secondary = false,
+    this.tone,
     this.textAlign,
   });
 
@@ -57,8 +79,14 @@ class AppText extends StatelessWidget {
   /// 粗體修飾（非變體）。
   final bool emphasis;
 
-  /// 顏色改 `AppColors.textSecondary`（非變體）。
+  /// 顏色改 `AppColors.textSecondary`（非變體）。忽略：[tone] 已傳入時
+  /// （見「修飾參數優先序」）。
   final bool secondary;
+
+  /// 語意色軸（非變體）；傳入時覆蓋 [secondary] 與變體預設色，[emphasis]
+  /// 仍獨立生效（字重與顏色為正交修飾）。優先序：[tone] > [secondary] >
+  /// 變體預設色。
+  final AppTextTone? tone;
 
   /// 格位內的水平對齊；不影響換行或截斷處置。
   final TextAlign? textAlign;
@@ -85,7 +113,7 @@ class AppText extends StatelessWidget {
   }
 
   TextStyle _resolveStyle(BuildContext context) {
-    final baseColor = secondary ? AppColors.textSecondary : _defaultColor;
+    final baseColor = _resolveColor();
     final baseWeight = emphasis ? FontWeight.bold : _defaultWeight;
 
     return TextStyle(
@@ -97,6 +125,21 @@ class AppText extends StatelessWidget {
           : null,
     );
   }
+
+  /// 依「修飾參數優先序」解析最終顏色：[tone] > [secondary] > 變體預設色。
+  Color _resolveColor() {
+    if (tone != null) return _colorForTone(tone!);
+    if (secondary) return AppColors.textSecondary;
+    return _defaultColor;
+  }
+
+  Color _colorForTone(AppTextTone tone) => switch (tone) {
+        AppTextTone.textPrimary => AppColors.textPrimary,
+        AppTextTone.textSecondary => AppColors.textSecondary,
+        AppTextTone.textTitle => AppColors.textTitle,
+        AppTextTone.accentStrong => AppColors.accentStrong,
+        AppTextTone.textDisabled => AppColors.textDisabled,
+      };
 
   double get _fontSize => switch (variant) {
         AppTextVariant.title => AppFontSize.title,

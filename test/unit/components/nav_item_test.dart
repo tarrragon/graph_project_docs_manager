@@ -215,9 +215,10 @@ void main() {
       final decoration = decoratedBox.decoration as BoxDecoration;
       expect(decoration.color, AppColors.surfaceIconTint);
 
+      expect(find.byType(AppText), findsOneWidget);
       final text = tester.widget<Text>(find.text('label'));
       expect(text.style?.color, AppColors.accentStrong);
-      expect(text.style?.fontWeight, FontWeight.w600);
+      expect(text.style?.fontWeight, FontWeight.bold);
 
       final renderedIcon = tester.widget<AppIcon>(find.byType(AppIcon));
       expect(renderedIcon.color, AppColors.accentStrong);
@@ -246,6 +247,7 @@ void main() {
       final decoration = decoratedBox.decoration as BoxDecoration;
       expect(decoration.color, isNull);
 
+      expect(find.byType(AppText), findsOneWidget);
       final text = tester.widget<Text>(find.text('label'));
       expect(text.style?.color, AppColors.textPrimary);
       expect(text.style?.fontWeight, FontWeight.normal);
