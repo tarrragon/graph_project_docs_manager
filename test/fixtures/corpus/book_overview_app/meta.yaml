@@ -9,4 +9,6 @@ notes: |
   synchronization/test-fixtures/README.md、search/book-supplement-page.md、
   search/conflict-resolution-widget.md）無 frontmatter，可作為
   parse_frontmatter 回傳 None 的「損壞資料」邊界樣本。
-  不含 work-logs（依 ticket how 段落排除）。
+  PROP/SPEC/UC 三型別不含 work-logs（依原 ticket how 段落排除）。
+  Ticket 節點檔另以版本切片方式補入 docs/work-logs/（v0.25 + v0.31），
+  切片標準與缺 frontmatter 樣本清單見 docs/work-logs/README.md。
