@@ -5,8 +5,10 @@
 /// 的路由狀態組成該容器所需的六組 slot，不再自建側欄／標題列骨架。
 ///
 /// 側欄頂端顯示專案名，是專案切換的入口——PROP-004 §範圍界定已定案：
-/// 專案切換不是獨立畫面，故不佔導覽列一項，收為側欄浮層。浮層的三個狀態
-/// （近期專案／選擇資料夾／切換中）由後續票實作，本票只留入口與空殼浮層。
+/// 專案切換不是獨立畫面，故不佔導覽列一項，收為側欄浮層。浮層開合與三個
+/// 狀態（收合／展開／無最近專案）委派給
+/// `screens/project_switcher/project_switcher_overlay.dart`，本檔只把
+/// provider 值接進 [components.AppShell] 的 `overlay` slot。
 library;
 
 import 'package:flutter/material.dart' show Icons, Material;
@@ -15,6 +17,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/components.dart' as components;
 import '../l10n/app_localizations.dart';
+import '../screens/project_switcher/project_switcher_overlay.dart';
+import '../screens/project_switcher/project_switcher_providers.dart';
 import 'router.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -32,16 +36,12 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  bool _isSwitcherOpen = false;
-
-  void _toggleSwitcher() => setState(() => _isSwitcherOpen = !_isSwitcherOpen);
-
-  void _dismissSwitcher() => setState(() => _isSwitcherOpen = false);
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final destination = ref.watch(selectedDestinationProvider);
+    final isSwitcherOpen = ref.watch(switcherOpenProvider);
+    final projectName = ref.watch(currentProjectNameProvider);
 
     // `MaterialApp.home` 不自動提供 Material 祖先（過去由 shell.dart 自建
     // 的 `Scaffold` 承接）；`components.AppShell` 是純骨架容器不含
@@ -50,8 +50,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Material(
       child: components.AppShell(
         switcherEntry: components.ProjectSwitcherEntry(
-          isExpanded: _isSwitcherOpen,
-          onTap: _toggleSwitcher,
+          projectName: projectName,
+          isExpanded: isSwitcherOpen,
+          onTap: () => ref.read(switcherOpenProvider.notifier).state =
+              !isSwitcherOpen,
           testKey: AppShell.projectSwitcherEntryKey,
         ),
         navItems: [
@@ -74,19 +76,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               content: buildDestinationPage(context, item),
             ),
         ],
-        overlay: _isSwitcherOpen
-            ? components.SwitcherOverlay(
-                items: const [],
-                chooseOther: components.AppButton(
-                  label: l10n.switcherChooseOtherFolder,
-                  onPressed: _dismissSwitcher,
-                  testKey: const Key('action-switcher-choose-other'),
-                  variant: components.AppButtonVariant.text,
-                ),
-                onDismiss: _dismissSwitcher,
-                testKey: const Key('state-switcher-no-recent'),
-                scrollKey: const Key('scroll-switcher-recent'),
-              )
+        overlay: isSwitcherOpen
+            ? buildProjectSwitcherOverlay(context: context, ref: ref)
             : null,
       ),
     );
