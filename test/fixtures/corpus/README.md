@@ -21,6 +21,16 @@ git 歷史、`.claude/` 框架本體、其餘文件目錄一律不納入。
 
 各專案詳細清單、框架版本與樣本檔案位置見各自目錄下 `meta.yaml`。
 
+## Ticket 節點檔切片
+
+`docs/proposals/`、`docs/spec/`、`docs/usecases/`、`docs/proposals-tracking.yaml`
+之外，Ticket 節點檔（`docs/work-logs/**/tickets/*.md`）另以版本切片方式
+補入 `book_overview_app/docs/work-logs/`（v0.25 + v0.31 兩個版本目錄），
+涵蓋 `status` 多值（pending/in_progress/completed/closed 等）、四型語意邊
+（`spawned_tickets`/`children`/`blockedBy`/`relatedTo`）與已知的
+「缺 frontmatter carrier」損壞樣本。完整切片標準見
+`book_overview_app/docs/work-logs/README.md`。
+
 ## 已知落差（描述 vs 實測）
 
 本票 `how` 欄位原描述「book_overview_app 帶 1 個真實 YAML 錯誤」與
