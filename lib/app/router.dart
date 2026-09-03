@@ -153,6 +153,7 @@ final firstVisibleProvider = Provider.family<bool, AppDestination>(
 Widget buildDestinationPage(BuildContext context, AppDestination destination) {
   if (destination == AppDestination.traceability) {
     return TraceabilityScreen(key: destination.pageKey);
+  }
   if (destination == AppDestination.gaps) {
     return GapReportScreen(key: destination.pageKey);
   }
