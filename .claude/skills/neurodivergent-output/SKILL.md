@@ -4,7 +4,7 @@ description: "Shape output for a neurodivergent reader who has declared their pr
 license: MIT
 metadata:
   portable: true
-  version: 1.9.0
+  version: 1.10.0
   category: neurodiversity-output
 ---
 
@@ -142,3 +142,7 @@ Neurodiversity is a spectrum. These rules are defaults, not prescriptions — th
 Two of these profiles — ADHD and autistic — are established diagnoses; demand avoidance (PDA) is not a formal DSM-5 / ICD-11 diagnosis and remains a contested construct within autism research. This skill uses it to shape how a task is phrased, not to assert a clinical fact. The de-imperative framing helps some readers regardless of whether they identify with the PDA label.
 
 This skill distills and integrates three prior single-profile skills: `i-have-adhd` (ayghri, MIT), the autistic-reader counterpart in the same style, and `pda-reframing` (emory, MIT). Each rule traces to a cognitive fact named in its mode's opening line, and the three modes compose over the shared base layer. This file carries the operational form of that reasoning; it does not restate the derivation.
+
+---
+
+版本紀錄在同目錄的 `CHANGELOG.md`。
