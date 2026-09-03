@@ -10,10 +10,10 @@
 /// 改以 `Widget` 承接（與 `AppButton` leading 已記錄的契約差異同一慣例）。
 ///
 /// `sectionHeader` 主文字需 `emphasis` + `accentStrong`（SPEC-004
-/// 4.40「變體」），但 [AppText] 無 `accentStrong` 顏色參數（僅
-/// `secondary` 布林切 `textSecondary`）。本元件對此變體讀出呼叫端傳入
-/// [AppText] 的 `text`，以符合契約色的內部 `Text` 重繪，非直接渲染呼叫端
-/// 元件——契約型別（`primary` 恰一個 [AppText]）不變，僅呈現手段不同。
+/// 4.40「變體」）。本元件依 [AppText.tone]（SPEC-004 §4.1「修飾參數優先
+/// 序」）以呼叫端傳入 [AppText] 的 `text` 與 `variant` 重建
+/// `AppText(tone: AppTextTone.accentStrong, emphasis: true)`，維持文字
+/// 恆以 [AppText] 承載（不繞道建 `Text`）。
 library;
 
 import 'package:flutter/material.dart' show InkWell;
@@ -201,7 +201,7 @@ class ListRow extends StatelessWidget {
   }
 
   /// 主／次文字堆疊。`sectionHeader` 依契約色（`emphasis` +
-  /// `accentStrong`）重繪，見檔頭「與契約的一處差異」。
+  /// `accentStrong`）重建，見檔頭說明。
   Widget _buildTextBlock() {
     if (variant != ListRowVariant.item) {
       return _buildPrimary();
@@ -221,15 +221,11 @@ class ListRow extends StatelessWidget {
     if (variant != ListRowVariant.sectionHeader) {
       return primary;
     }
-    return Text(
+    return AppText(
       primary.text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontSize: AppFontSize.body.sp,
-        fontWeight: FontWeight.w600,
-        color: AppColors.accentStrong,
-      ),
+      variant: primary.variant,
+      emphasis: true,
+      tone: AppTextTone.accentStrong,
     );
   }
 }
