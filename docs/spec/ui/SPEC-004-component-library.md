@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-03"
-version: "1.15"
+version: "1.16"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -551,9 +551,9 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
 | `title` | `AppFontSize.title`、`AppColors.textTitle`、粗體 | 單行 | 頁面標題、節點詳情主標 |
-| `subtitle` | `AppFontSize.subtitle`、`AppColors.textTitle`、半粗 | 單行 | 面板標題、格詳情卡標題、泳道面板標題 |
-| `body` | `AppFontSize.body`、`AppColors.textPrimary` | 可多行（`maxLines` 由呼叫端傳入，預設無上限） | 說明、內文、列主文字 |
-| `caption` | `AppFontSize.caption`、`AppColors.textSecondary` | 單行 | 副標、欄首、小計、群組小標、次文字 |
+| `subtitle` | `AppFontSize.subtitle`、`AppColors.textTitle`、半粗 | 單行；恆標記 `Semantics.header`（header 語意，非副標用途） | 面板標題、格詳情卡標題、泳道面板標題、頁首畫面名（4.11）。非 header 的次要一行文字（頁首副標、選中摘要）不用本變體，改 `body` + `secondary` + `maxLines: 1` |
+| `body` | `AppFontSize.body`、`AppColors.textPrimary` | 可多行（`maxLines` 由呼叫端傳入，預設無上限） | 說明、內文、列主文字；加 `secondary` 與 `maxLines: 1` 時作頁首副標（4.11） |
+| `caption` | `AppFontSize.caption`、`AppColors.textSecondary` | 單行 | 欄首、小計、群組小標、次文字（頁首副標見 `body` 列，非本變體） |
 | `mono` | `AppFontSize.body`、等寬字型、`AppColors.textPrimary` | 單行 | ID、路徑、版本值 |
 
 修飾參數（非變體）：`emphasis`（粗體）、`secondary`（顏色改 `AppColors.textSecondary`）、`tone`（語意色軸，值限
@@ -1731,7 +1731,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 ### 4.11 PageTitle
 
 **用途**：頁首左側：畫面名 + 一行副標（模式說明或選中摘要）。
-**內容角色**：標題 + 內文（title slot + subtitle slot）。
+**內容角色**：標題 + 內文（title slot + subtitle slot；`subtitle` 是 slot 名，其渲染變體為 `AppText.body`，非 `AppText.subtitle`——後者恆為 `Semantics.header`，而副標依本條目無障礙列不得為 header）。
 **何時不用**：面板內標題（`AppText.subtitle`）；節點詳情主標（`AppText.title`）。
 **出現畫面**：§1–§6。
 **層級**：L3
@@ -1746,7 +1746,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
 |------|------|---------|---------|---------|
-| default | `AppText.subtitle`（畫面名）上、`AppText.body`（`secondary` 修飾，副標）下，間距 `Space.xxs`；無副標時只一行 | 無 | 建構 | 不適用：純顯示，無狀態集 |
+| default | `AppText.subtitle`（畫面名）上、`AppText.body`（`secondary: true`、`maxLines: 1`，副標）下，間距 `Space.xxs`；無副標時只一行。副標著色寫法取 `secondary` 而非 `tone: textSecondary`：兩者結果同色，依 4.1 優先序 `tone` 只在需覆蓋 `secondary` 或變體預設色時才傳入，本元件無此需求，採較低優先序的 `secondary`（與 `lib/components/page_title.dart` 一致） | 無 | 建構 | 不適用：純顯示，無狀態集 |
 
 #### 互動反應
 
@@ -1791,7 +1791,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 |------|-------|
 | 色彩 | 經 `AppText`（`textTitle`、`textSecondary`） |
 | 間距 | 標題與副標間 `Space.xxs` |
-| 字體 | 經 `AppText`（`subtitle`、`body`） |
+| 字體 | 經 `AppText`（畫面名 `subtitle`、副標 `body`） |
 | 圓角 | 無 |
 | 動畫 | 無 |
 
@@ -1814,7 +1814,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 面向 | 要求 |
 |------|------|
-| 朗讀標籤 | `title` 為 `Semantics.header`；副標接續唸出 |
+| 朗讀標籤 | `title` 為 `Semantics.header`；副標非 header（故取 `AppText.body`），接續唸出 |
 | 狀態變化播報 | 副標更新（選中摘要）不主動播報 |
 | 非視覺替代訊號 | 不適用顏色訊號（純文字） |
 | 焦點順序與操作路徑（桌機） | 不進入 Tab 順序 |
@@ -5797,6 +5797,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+<!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.16 | 2026-09-03 | `0.1.0-W1-061`：對齊 4.11 `PageTitle` 副標的語意角色——內容角色明寫 `subtitle` 為 slot 名、渲染變體為 `AppText.body` 非 `AppText.subtitle`（後者恆為 `Semantics.header`，副標不得為 header）；狀態矩陣補 `secondary: true` + `maxLines: 1` 與著色寫法選擇理由（依 4.1 優先序取 `secondary` 而非 `tone: textSecondary`）；token 字體列標明畫面名／副標各自變體；無障礙朗讀標籤列補副標非 header。4.1 `AppText` 變體表：`subtitle` 行為差異補「恆標記 `Semantics.header`（header 語意，非副標用途）」與替代寫法（`body` + `secondary` + `maxLines: 1`）；`body` 何時選用補頁首副標；`caption` 何時選用移除「副標」改指向 `body` 列。契約值與 `lib/components/page_title.dart` 現況一致，實作不變 |
 | 1.15 | 2026-09-03 | 回填元件票實作偏離對齊：4.10 `segments` 型別 `Segment` 改 `SegmentItem`（撞名，實作已更名，語意不變）；4.35／4.36 首段補實作類別名（`AppTableRow`／`AppDataTable`，撞名更名，契約條目名與契約值不變）；4.13 `FilterDropdown` 去「待決」標記，依 SPEC-003 §3.4 篩選七列與 F1–F7 元件級契約補齊狀態矩陣 `open` 列、互動反應、無障礙播報、選單的元件級契約子節與 F7 實作註記；§4.0.9 待決清單移除 4.13 一列（全部 42 條目無待決欄位）；4.24／4.27／4.38 新增實作註記（進度百分比等價轉換、返回列以獨立疊加列取代注入 `PageColumn`、底部箭頭列因套件限制不釘選），皆為實作層面說明、非契約值變更。其餘型別放寬類偏離（`AppButton.leading`／`IssueMarker.child`／`PageColumn.header`／`content`／`Panel.children`／`Toolbar.filters`／`ListRow.leading`／`trailing`／`AppShell.overlay` 暫以 `Widget` 承接；`ListRow.sectionHeader`／`RecentProjectItem`／`NavItem` 取色繞過 `AppText`；`BlockedState.withDetail` 動作列改用 `Wrap`；4.11 `PageTitle` 副標變體）不改本檔契約內容，維持現況待對應收斂票落地 |
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
 | 1.14 | 2026-09-03 | `0.1.0-W1-066`：4.4 `AppButton` slot 契約新增 `semanticExpanded`（`bool?`，`null` 不附加旗標）與無障礙「狀態變化播報」列說明，讓帶展開語意的動作按鈕（如 4.23 `BlockedState.withDetail` 檢視詳情鈕）不需呼叫端外部包裹 `Semantics(expanded: ...)` 即可維持 `AppButton` 型別，回收 4.34 `ButtonRow` 的 `List<AppButton>` 型別限定 |
