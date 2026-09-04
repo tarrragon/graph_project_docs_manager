@@ -1,5 +1,11 @@
 # Seeing like an Agent: 工具設計哲學與進階模式
 
+> 何時讀：想理解工具設計哲學與 agent 視角的演進、或要判斷一個設計選擇背後的取捨從何而來時。本檔是「為什麼」層，不是操作步驟。
+>
+> 同目錄：怎麼寫的部分在 `frontmatter-and-description.md` 與 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`；〈核心心法〉留在 `SKILL.md`。
+>
+> 溯源：本檔為 skill-design-guide 的 reference，v1.6.0 拆分時補上檔頭三段式（此前缺）。
+
 來源：Anthropic 官方 "Lessons from Building Claude Code: Seeing like an Agent" + Best Practices
 
 ---

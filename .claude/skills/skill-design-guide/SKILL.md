@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.5.0
+  version: 1.6.0
 ---
 
 # Skill Design Guide
@@ -18,9 +18,9 @@ metadata:
 
 ---
 
-## 1. 核心心法
+## 核心心法
 
-### 1.1 Concise is Key — context 是公共資源
+### Concise is Key — context 是公共資源
 
 **預設假設**：Claude 已經夠聰明。每段文字必須通過兩問才能保留。
 
@@ -31,7 +31,7 @@ metadata:
 
 **Why**：兩層各有各的成本，機制不同，不可混談。**第 1 層**（description）常駐 system prompt，冗長會排擠其他 skill 的 description budget，讓自動觸發失敗——這是唯一會傷到別人的一層。**第 2 層**（body）只在本 skill 被觸發後載入，不影響他人；但它一旦載入就與對話歷史及其餘 context 競爭，冗長會壓縮讀者當下真正需要的空間。官方原文：「once Claude loads it, every token competes with conversation history and other context」。
 
-### 1.2 Progressive Disclosure — 三層載入
+### Progressive Disclosure — 三層載入
 
 | 層 | 載入時機 | 預算 | 寫什麼 |
 |----|---------|------|-------|
@@ -57,13 +57,13 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 
 混合內容取兩者之間，或直接以行數門檻判。**不可把 6,500 無條件套用於 ASCII 為主的 skill**——實測本庫一份 100% ASCII、7,584 字元的 skill 依 6,500 判超標，而它約 1,896 tokens，僅官方預算的 38%。
 
-超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。**拆分既有 skill 另有程序，見 §6.5**：搬移正確不等於拆分後可用，兩者要用不同方法驗。
+超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。**拆分既有 skill 另有程序**，見 `references/splitting-an-existing-skill.md`：搬移正確不等於拆分後可用，兩者要用不同方法驗。
 
 **Why 兩個都要量**：行數對繁中失效——每行字元數沒有上界，兩者在長行處脫鉤。一份實測案例（該 skill 已於此後拆分，以下為拆分前的量測值）：245 行（**通過** 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。反向地，字元數對英文失效（見上表）。單量一個必有一類漏網。
 
 **Consequence**：本層目前**無 hook 執法**——`file-size-guardian-hook.py` 的 `SCAN_CONFIG` 涵蓋 pm-rules / rules / references 三處，不含 `.claude/skills/`；`skill-description-length-check-hook.py` 只查第 1 層的 description（250 字元）。第 2 層判準完全依賴撰寫者自查，寫錯代理指標即等同無判準。
 
-### 1.3 Degrees of Freedom — 自由度匹配脆弱性
+### Degrees of Freedom — 自由度匹配脆弱性
 
 | 自由度 | 任務特徵 | 表達方式 | 範例 |
 |--------|---------|---------|------|
@@ -90,7 +90,7 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 
 差別不在字數，在**偏離的空間**：高只給目標，中給骨架並明示可調，低把每個欄位的合法值也定死。選錯的代價是不對稱的——該低而給高，產物形態每次都不同；該高而給低，執行者會在不適用的情境硬填。
 
-### 1.4 Opinionated Defaults — 預設路徑引導正確做法
+### Opinionated Defaults — 預設路徑引導正確做法
 
 **預設假設**：使用者（尤其 AI agent）走預設路徑。如果預設路徑不引導正確做法，文件規範再完整也無效。
 
@@ -103,35 +103,7 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 
 **Why**：AI agent 沒有跨 session 記憶，工具即時引導是唯一可靠防線。文件說的和工具做的不一致時，工具會贏。
 
-**一則完整走查**（對象：本 skill 的 §1.2 體量門檻）：
-
-| 階段 | 內容 |
-|------|------|
-| 原設計 | 表列兩個判準「< 5k tokens（< 500 行）」，Action 寫「超過 500 行就外移」 |
-| 套第 1 列（有無多數情況下正確的路徑） | 有——多數 skill 是繁中，行數對它失效 |
-| 套第 4 列（能不能改成自動檢查） | 部分——`wc` 可量，但語言比例要人判 |
-| 實際發生 | Action 只綁了行數，於是**只有行數生效**；一份 245 行、15,015 字元的 skill 全程通過 |
-| 改後設計 | 兩個門檻都量、都給指令；字元門檻附語言換算表；並在條文中載明「本層無 hook 執法，依賴自查」 |
-
-這一則的教訓可一般化：**當兩個判準只有一個附了可執行動作，實際生效的永遠是有動作的那個**——而寫的人會以為兩個都在跑。
-
-> 完整論證、案例、反模式對照表見 Opinionated Default 設計原則的詳細版；通用設計原則見同名的速查規則。
-
----
-
-## 2. Anatomy — Skill 該長什麼樣
-
-### 2.1 檔案結構
-
-```
-your-skill-name/
-├── SKILL.md              # 必要：YAML frontmatter + 主指令
-├── scripts/              # 選填：可執行程式碼（可不載入 context 直接跑）
-├── references/           # 選填：按需載入到 context 的文件
-└── assets/               # 選填：產出時使用的範本 / 圖示 / 字型
-```
-
-### 2.2 三類 bundled resource 的分工
+## 三類 bundled resource 的分工
 
 | 類型 | 載入方式 | 何時用 | 範例 |
 |------|---------|-------|------|
@@ -143,402 +115,34 @@ your-skill-name/
 
 ---
 
-## 3. 嚴禁清單 — 什麼不該放進 Skill
-
-> **核心原則**：Skill 只放 AI agent 執行任務需要的東西，不放給人看的後設資訊。
-
-### 3.1 禁止的檔案
-
-| 禁止檔案 | 為何禁止 | 替代方案 |
-|---------|---------|---------|
-| `README.md`（任何層級，含 `references/` 子目錄） | 給人看的入口；AI 經 SKILL.md 進入，README 只是冗餘 | 資料夾用途透過檔名自說明，或在 SKILL.md「參考文件」段落索引 |
-| `INSTALLATION_GUIDE.md` | 安裝是平台職責，非 skill 工作 | 放專案根目錄文件 |
-| `QUICK_REFERENCE.md` | 與 SKILL.md 必有重複 | 直接寫進 SKILL.md 或 reference 檔 |
-| `CHANGELOG.md` | **本專案不禁止**——見下方查證段 | 保留；版號協定見專案的 skill 同步規範 |
-| 設計過程紀錄 / 測試報告 | 開發 artifact，非 runtime 需要 | 放專案 worklog 系統 |
-
-**Why**：SKILL.md 是 Claude 進入 skill 的唯一入口，與它平行的檔案若無路由訊號就不會被讀到，卻仍佔目錄的辨識成本；給人看而 AI 不會讀的文件屬此類。
-
-**本表的官方依據到哪為止（2026-09-04 查證）**：官方 best-practices **未禁止**任何額外檔案，且明文相反——「Reference files, data, or documentation don't consume context tokens until actually read」「Bundle comprehensive resources: include complete API docs, extensive examples, large datasets; no context penalty until accessed」；其示範目錄即為 `SKILL.md` 與 `FORMS.md`／`reference.md`／`examples.md` 平鋪。故本表是**本地判斷**，理由是目錄辨識成本而非 context 成本，且僅對「AI 不會讀到的檔案」成立。
-
-`CHANGELOG.md` 因此不在禁止之列：本專案的 skill 走 git 同步、有跨 consumer 版號協定（版號有兩個住址——CHANGELOG 首條與 frontmatter 的 `metadata.version`），它是該協定的載體而非給人看的附錄。全庫 59 個 skill 有 58 個帶著它。
-
-### 3.2 禁止的內容
-
-| 禁止內容 | 為何禁止 |
-|---------|---------|
-| SKILL.md 內「When to Use This Skill」段落 | 觸發判斷靠 description（已在 system prompt），body 寫一次無效 |
-| 時間敏感資訊（「2025 年 8 月前用舊 API」） | 改成「old patterns」段落，不寫具體日期 |
-| 同一資訊同時放 SKILL.md 與 reference | 重複會稀釋 grep 命中率；資訊只放一處 |
-
----
-
-## 4. YAML Frontmatter
-
-### 4.1 標準欄位（Anthropic Agent Skills）
-
-| 欄位 | 必填 | 說明 |
-|------|------|------|
-| `name` | 是 | kebab-case，與資料夾名稱一致 |
-| `description` | 是 | 做什麼 + 何時用，最長 1024 字元（官方上限）；本框架另有更嚴的 250 字元閘門，見 §5.1 |
-| `license` | 否 | 開源授權字串 |
-| `compatibility` | 否 | 環境需求，最長 500 字元 |
-| `allowed-tools` | 否 | 限制 skill 可用工具 |
-| `metadata` | 否 | 自訂 key-value（author、version、tags 等） |
-
-### 4.2 Claude Code 擴展欄位
-
-> 僅在 Claude Code 可用，跨平台（Claude.ai / API）會被忽略或報錯。
-
-| 欄位 | 用途 | 範例 |
-|------|------|------|
-| `argument-hint` | `/<name>` 自動補全提示 | `"[issue-number]"` |
-| `disable-model-invocation` | 防止 Claude 自動觸發 | `true` |
-| `user-invocable` | 從 `/` 選單隱藏 | `false` |
-| `model` | 指定模型 | `haiku` |
-| `context` | 隔離子代理執行 | `fork` |
-| `agent` | `context: fork` 時的代理類型 | `Explore` |
-| `hooks` | Skill 生命週期 hook | 見官方文件 |
-
-### 4.3 安全與格式禁令
-
-| 禁止 | 原因 | 修正 |
-|------|------|------|
-| 角括號 `< >` | frontmatter 進 system prompt，可能被解讀為指令 | 用「lt」「gt」或全形字 |
-| `name` 含 "claude" / "anthropic" | 保留名稱 | 換名 |
-| YAML 多行語法（`\|` `>`） | 後續行被誤判為新屬性 | 改單行雙引號字串 |
-| 自訂屬性（`triggers` / `type` / `category` 等） | 解析器拒絕 | 全部塞進 `metadata` |
-| 缺 `---` 分隔符 | 整段被當 markdown body | 補分隔符 |
-| 未閉合引號 | 解析失敗整支 skill 不可用 | 補引號 |
-
----
-
-## 5. Description 寫作（最重要的一節）
-
-description 是 Claude 自動觸發 skill 的**唯一機制**。寫不好等於 skill 不存在。
-
-### 5.1 強制：長度 < 250 字元（最重要規則）
-
-| 長度 | 評估 | 後果 |
-|------|------|------|
-| < 100 字元 | 推薦 | 觸發詞完整可見 |
-| 100-250 字元 | 可接受 | 接近上限，關鍵詞放前面 |
-| > 250 字元 | 禁止 | **被截斷，後段觸發詞丟失，自動觸發失敗** |
-
-**Why**：Claude Code 對單一 description 有截斷行為（context budget 約 2% / 16k 字元）。實證案例：`/parallel-evaluation` 因 description 過長，「多視角審核」「code review」等詞在 Use for: 段落被截斷，無法自動觸發。
-
-**Action**：把最重要的觸發詞放最前面；截斷時前段不會丟。量測用：
-
-```bash
-python3 -c "import re,sys;t=open(sys.argv[1],encoding='utf-8').read();m=re.search(r'^description: \"(.*?)\"\s*\$',t,re.M|re.S);print(len(m.group(1)))" SKILL.md
-```
-
-執法層為 `skill-description-length-check-hook.py`（SessionStart 掃全庫，`WARNING_THRESHOLD = 250`，以字元計）。它是 warning 不阻擋，故仍須自查。
-
-### 5.2 強制：第三人稱
-
-description 進 system prompt，「I」「you」會破壞語境。
-
-| 正確 | 錯誤 |
-|------|------|
-| `Processes Excel files and generates reports` | `I can help you process Excel files` |
-| `Use when user uploads .xlsx files` | `You can use this to process Excel files` |
-
-### 5.3 結構公式
-
-```
-[做什麼] + [何時使用 / 觸發詞清單] + [可選：負面觸發]
-```
-
-### 5.4 防 undertrigger（官方建議）
-
-Claude 預設保守、傾向不觸發。description 應**主動列同義詞與隱性需求**。
-
-| 對比 | 範例 |
-|------|------|
-| 太被動 | `Processes PDF files to extract text and tables.` |
-| 積極版 | `Processes PDF files to extract text and tables. Use whenever the user mentions PDFs, documents, files, or asks to summarize a report — even if they don't explicitly say 'PDF'.` |
-
-**技巧**：
-
-- 列同義詞 / 近似詞（「document」「file」「report」不只「PDF」）
-- 加 "even if they don't explicitly ask..." 涵蓋隱性需求
-- 加 "Make sure to use this skill whenever..." 作明確指引
-
-### 5.5 防 overtrigger — 負面觸發
-
-```yaml
-description: "Advanced statistical modeling for CSV files. Use for regression, clustering, hypothesis testing. Do NOT use for simple data exploration (use data-viz skill instead)."
-```
-
-### 5.6 範例對照
-
-| 評估 | description |
-|------|------------|
-| 好（具體 + 觸發詞 + 同義詞） | `Analyzes Figma design files and generates developer handoff docs. Use when user uploads .fig files, asks for 'design specs', 'component documentation', or 'design-to-code handoff'.` |
-| 好（負面觸發） | `Statistical modeling for CSV. Use for regression / clustering. Do NOT use for visualization (use data-viz skill).` |
-| 壞（太籠統） | `Helps with projects.` |
-| 壞（缺觸發） | `Creates sophisticated multi-page documentation systems.` |
-| 壞（描述內部架構） | `統一 Ticket 系統 v1.0 — 整合 create / track / handoff / resume / migrate / generate 六大功能。` |
-
-### 5.7 觸發品質診斷
-
-| 症狀 | 修正 |
-|------|------|
-| Skill 該觸發卻沒觸發 | description 太籠統 → 加同義詞、加 "whenever..." |
-| Skill 不該觸發卻觸發 | 加負面觸發 "Do NOT use for X" |
-| 不確定 | 直接問 Claude「When would you use the [skill name] skill?」，看回答對不對 |
-
----
-
-## 6. Body 寫作
-
-### 6.1 SKILL.md 推薦骨架
-
-```markdown
----
-name: your-skill
-description: [...]
----
-
-# Your Skill Name
-
-[一句話說明目的，不重述 description]
-
-## Core Concepts / Workflow（必要）
-
-[關鍵概念表 或 步驟清單。少用 prose、多用表格 / 列表]
-
-## When to Read Which Reference（必要）
-
-[路由表：什麼情境讀哪份 reference]
-
-## Examples（建議）
-
-[輸入 → 動作 → 輸出 的具體案例 1-3 則]
-
-## Troubleshooting（建議）
-
-[常見錯誤 → 原因 → 解法]
-```
-
-### 6.2 內容品質規則
-
-| 規則 | 反例 → 正例 |
-|------|------------|
-| 具體可操作 | `Validate the data before proceeding.` → `Run python scripts/validate.py --input {filename}. If exit code != 0, see references/errors.md` |  <!-- skill-residue-exempt: 範例情境的示意路徑，非本專案實際檔案 -->
-| 包含錯誤處理 | （只寫成功路徑） → 額外加 `## Common Issues` 段 |
-| 重要指令前置 | 散落在中段 → 用 `## Important` / `## Critical` 標題 + 必要時重複 |
-| 一致術語 | 混用「endpoint / URL / route」 → 全 skill 統一一個詞 |
-| MCP 工具完整名稱 | `tool_name` → `ServerName:tool_name` |
-| 避免模糊語言 | `Make sure to validate things properly` → `CRITICAL: Before X, verify A, B, C` |
-
-### 6.3 references/ 引用規則
-
-| 規則 | 說明 |
-|------|------|
-| 一層深 | 所有 reference 從 SKILL.md 直接連結，禁止 A → B → C 巢狀 |
-| 路由訊號 | SKILL.md 必說明「什麼情境讀此檔」，否則 reference 形同孤兒 |
-| 100+ 行加 TOC | 讓 Claude preview 時看到完整範圍 |
-| 不重複 | 內容只放 SKILL.md 或 reference 之一，不兩處皆有 |
-
-> **skill 自身目錄內的 reference 用相對路徑**（`references/foo.md`），這是本表的適用範圍。**指向 skill 外部的東西見 §6.4。**
-
-### 6.4 外部引用：指名身分，不用檔案路徑
-
-**要讀的資料一律以身分指名，不寫檔案路徑。**
-
-| 引用對象 | 寫法 | 讀者如何取得 |
-|---------|------|------------|
-| 另一個 skill | `` `tdd` skill ``、`` `compositional-writing` skill 的字句層 keyword bank `` | Skill 工具以名字載入。指到某一節時，該節須在對方 SKILL.md 的路由中可被找到——否則讀者只能掃目錄，正是本節要取代的行為 |
-| 方法論 | 元件庫雙向約束方法論 | 以標題檢索 |
-| 規則 | 可觀測性規則、決策 trigger 綁定規則 | 以標題檢索 |
-
-**Why**：路徑是「它現在放在哪」，名字是「它是什麼」。路徑會因框架改版而失效——實證：某次改版把 hook 自 `.claude/hooks/` 移入 `.claude/skills/<name>/hooks/`，所有以舊路徑註冊者全數失效。更根本的是機制錯配：skill 在本系統以名字載入，寫路徑等於叫讀者 cat 檔案，繞過既有載入機制。
-
-**Consequence**：除了改版即斷，還會觸發 `skill-sync` 的可攜性閘門——宣告 `metadata.portable: true` 的 skill 若指名 `.claude/...` 路徑，push 會被中止並列出全部命中處（實證：兩份 skill 累計 25 處，被判為「指名他專案的檔案」）。
-
-**Action**：寫外部引用前先問——**讀者是要去讀它學東西，還是要寫進它讓別的東西動起來？**
-
-| 答案 | 形式 | 例 |
-|------|------|-----|
-| 讀它學東西 | 指名身分 | 「判準見 `tdd` skill 的分層測試策略」 |
-| 寫進它讓別的東西動起來 | 保留檔名與欄位名（**介面規格**） | 「依賴回填至 `docs/proposals-tracking.yaml` 的 `depends_on`，下游檢查器讀該欄位」 |
-
-**三類例外，路徑是正當的**：
-
-1. **框架綁定工具講自己的主題**：`ticket`／`doc`／`worktree`／`skill-sync` 等，`.claude/` 路徑就是它們的操作對象而非閱讀材料。
-2. **介面規格**：下游程式讀特定檔案的特定欄位時，泛稱會使契約不可驗證。此類須在鄰近處標明它是本框架的位置慣例、不是契約本身。
-3. **路徑本身即被討論的對象**：如本節引述「hook 自 `.claude/hooks/` 移入⋯⋯」作為失效實證。此時路徑是舉例的內容，不是指向要讀的東西。
-4. **hook 與 script 的溯源引用**：這類東西無法以名字載入（沒有 Skill 工具可用、也沒有標題可檢索），路徑是唯一可行的指名方式。寫路徑時給檔名即可，不必寫全路徑——`file-size-guardian-hook.py` 比 `.claude/hooks/file-size-guardian-hook.py` 更耐搬移。
-
-> 本節條文寫成後隨即套回本文件自身，抓到三處違規（§1.4 的詳細版路由、§13 延伸閱讀表兩列），已改為指名。**寫完條文與用條文掃過自己是兩個動作**，§12 的機械檢查即為此而設。
-
-### 6.5 拆分既有 skill（§1.2 超標後的動作）
-
-§1.2 說「超標就外移」，本節說怎麼外移才不會壞。**新建 skill 不適用**——它的內容從一開始就分層放，沒有既成的內部關係要保。
-
-**核心主張**：位元搬移正確不等於拆分後可用。一次實測驗證了行覆蓋 245/245、五份新檔與原區間位元相同，而該次拆分仍引入四項嚴重缺陷——壞的是位元之間的關係（節界、跨檔指涉、共置、外部引用），逐行比對對這四類全部無鑑別力。
-
-**Consequence**：只做搬移正確性驗證就宣告完成，缺陷會在讀者實際使用時才暴露，而那時已無「拆分前」可對照。
-
-**Action**：讀 `references/splitting-an-existing-skill.md`——它列出拆分特有的必查項（節界、跨檔指涉、共置關係、外部引用）、搬移正確性與拆分可用性各自的驗法、內嵌計數與位置性指涉這兩類拆分高頻缺陷的判準，以及檔頭與路由表的結構約定與收尾動作。
-
----
-
-## 7. 命名規則
-
-### 7.1 強制
-
-| 規則 | 正確 | 錯誤 |
-|------|------|------|
-| `SKILL.md` 大小寫 | `SKILL.md` | `skill.md`、`SKILL.MD` |
-| 資料夾 kebab-case | `notion-project-setup` | `Notion Project Setup`、`my_skill` |
-| 無底線 | `my-cool-skill` | `my_cool_skill` |
-| 無大寫 | `my-cool-skill` | `MyCoolSkill` |
-
-### 7.2 推薦：Gerund 命名
-
-| 類型 | 範例 | 評估 |
-|------|------|------|
-| Gerund（動詞 + ing，官方推薦） | `processing-pdfs`、`analyzing-spreadsheets`、`managing-databases` | 最佳，意圖明確 |
-| 名詞片語 | `pdf-processing`、`spreadsheet-analysis` | 可接受 |
-| 模糊名稱 | `helper`、`utils`、`tools`、`documents` | 避免，無法判斷觸發場景 |
-
----
-
-## 8. Skill 建立流程（官方 6 步）
-
-> 來源：Anthropic `skill-creator` 官方流程。新建或大改 skill 時依序執行，已知不適用才跳過。
-
-### Step 1：用具體案例釐清 skill
-
-列出 2-3 個使用者會說的話，作為 skill 觸發的代表情境。問題範例：
-
-- 「使用者會用什麼詞描述這個需求？」
-- 「同一需求有幾種說法？」
-- 「哪些情境**不該**觸發？」
-
-**Why**：description 設計、reference 拆分、scripts 規劃都從這些案例反推。
-
-### Step 2：規劃 bundled resources
-
-對每個案例分析：
-
-| 觀察 | 行動 |
-|------|------|
-| 同樣程式碼會被反覆寫 | 建 `scripts/X.py` |
-| 同樣文件 / schema 會被反覆查 | 建 `references/X.md` |
-| 同樣模板 / 素材會被輸出 | 建 `assets/X` |
-
-### Step 3：初始化 skill
-
-官方 `skill-creator` 提供 `scripts/init_skill.py`。手動建立時依 §2.1 結構。
-
-### Step 4：撰寫內容
-
-| 順序 | 動作 |
-|------|------|
-| 1 | 先寫 bundled resources（scripts / references / assets） |
-| 2 | 寫 SKILL.md frontmatter（依 §4 規範） |
-| 3 | 寫 SKILL.md body（依 §6 骨架） |
-| 4 | 測試 scripts 實際可跑 |
-
-**寫作風格**：用祈使句 / 不定式（imperative / infinitive），不用「我」「你」。
-
-### Step 5：打包
-
-官方 `skill-creator` 提供 `scripts/package_skill.py`，自動驗證 frontmatter + 命名 + 結構，產出 `.skill` 檔。
-
-### Step 6：迭代
-
-| 訊號 | 動作 |
-|------|------|
-| Skill 該觸發沒觸發 | 修 description（§5.4） |
-| Skill 觸發但用錯方向 | 修 SKILL.md body 路由 |
-| Skill 反覆需要相同細節 | 拆出 reference 或寫腳本 |
-
----
-
-## 9. Claude Code 特有功能
-
-### 9.1 字串替換
-
-| 變數 | 說明 | 範例 |
-|------|------|------|
-| `$ARGUMENTS` | 全部傳入參數 | `/fix-issue 123` → `$ARGUMENTS = "123"` |
-| `$ARGUMENTS[N]` | 第 N 個（0-based） | `$ARGUMENTS[0]` 第一個 |
-| `$N` | `$ARGUMENTS[N]` 簡寫 | `$0` 第一個 |
-
-若 SKILL.md 沒寫 `$ARGUMENTS`，參數自動附加為 `ARGUMENTS: <value>`。
-
-### 9.2 動態 context 注入（pre-process）
-
-`` !`command` `` 在 skill 載入前執行 shell，Claude 只看到結果：
-
-```markdown
-## Pull request context
-
-- PR diff: !`gh pr diff`
-- Changed files: !`gh pr diff --name-only`
-```
-
-### 9.3 觸發控制矩陣
-
-| frontmatter 設定 | 用戶可呼叫 | Claude 可呼叫 | 載入時機 |
-|----|----|----|----|
-| 預設 | 是 | 是 | description 常駐 context |
-| `disable-model-invocation: true` | 是 | 否 | 用戶呼叫時才載入 |
-| `user-invocable: false` | 否 | 是 | description 常駐 context |
-
-**設計建議**：
-
-- Reference 型（知識 / 規範） → 預設（自動觸發）
-- Task 型（執行副作用，如 deploy / commit） → `disable-model-invocation: true`，防 Claude 擅自執行
-
----
-
-## 10. Skill 類型速查
-
-| 類型 | 觸發方式 | 範例 | 設計重點 |
-|------|---------|------|---------|
-| Document & Asset Creation | Claude 自動 | frontend-design、docx、pptx | assets/ 放模板 |
-| Workflow Automation | 用戶觸發 | skill-creator、deploy | scripts/ 放主流程 |
-| MCP Enhancement | Claude 自動 | sentry-code-review | references/ 放 MCP schema |
-| Reference / Knowledge | Claude 自動 | coding-standards、api-conventions | references/ 主導 |
-| Task / Slash Command | 用戶手動 `/name` | commit、fix-issue | `disable-model-invocation` |
-
----
-
-## 11. 安全考量
-
-> **強烈建議只使用信任來源的 skill**（自建或 Anthropic 提供）。
-
-| 風險 | 說明 |
-|------|------|
-| 工具誤用 | 惡意 skill 可指示 Claude 執行非預期 bash / 檔案操作 |
-| 資料外洩 | 有敏感資料存取權的 skill 可能洩漏到外部 |
-| 注入攻擊 | 從 URL / 外部來源取內容的 skill 可能被注入 |
-
-**審查時檢查**：所有 SKILL.md、scripts/、assets/ 異常的網路呼叫、檔案存取模式。
-
----
-
-## 12. 發布前檢查清單
+## 按需讀取
+
+本檔留下的是路由與判準——三層載入的預算、四個核心心法、發布前的檢查清單。細節依你當下在做什麼取一份讀。
+
+| 何時讀 | 檔案 | 涵蓋章節 |
+|--------|------|---------|
+| 寫或修 frontmatter：name、description、擴展欄位、觸發控制、命名 | `references/frontmatter-and-description.md` | 〈YAML Frontmatter〉〈Description 寫作〉〈命名規則〉〈觸發控制矩陣〉 |
+| 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單〉〈Body 寫作〉〈字串替換〉〈動態 context 注入〉 |
+| 從零建一個新 skill、判斷它屬哪一類型、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈建立流程六步〉〈類型速查〉〈安全考量〉 |
+| 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 〈拆分既有 skill〉 |
+| 設計多步驟工作流、要進階範本模式、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈工作流模式〉〈測試方法〉〈迭代回饋〉〈常見問題排除〉 |
+| 想理解工具設計哲學與 agent 視角的演進 | `references/seeing-like-an-agent.md` | 〈設計哲學〉〈進階設計模式〉〈反模式〉 |
+
+## 發布前檢查清單
 
 ### 結構
 
 - [ ] 資料夾 kebab-case（推薦 gerund）
 - [ ] `SKILL.md` 大小寫正確
 - [ ] 無 `README.md`（任何層級，含子目錄）
-- [ ] 無 `INSTALLATION_GUIDE.md` / `QUICK_REFERENCE.md`（`CHANGELOG.md` 不在此列，見 §3.1）
-- [ ] SKILL.md body < 6,500 字元（`wc -m`；行數不是可靠代理，見 §1.2）
+- [ ] 無 `INSTALLATION_GUIDE.md` / `QUICK_REFERENCE.md`（`CHANGELOG.md` 不在此列，見 `references/writing-the-body.md` 的〈嚴禁清單〉）
+- [ ] SKILL.md body 通過兩個門檻：`wc -l` < 500 行，且 `wc -m` 在該語言的換算值內（見〈Progressive Disclosure〉）
 
 ### YAML
 
 - [ ] `---` 分隔符存在
 - [ ] `name` kebab-case 且與資料夾同名
-- [ ] `description` 第三人稱、< 250 字、含觸發詞
+- [ ] `description` 第三人稱、< 250 **字元**、含觸發詞（量測指令見 `references/frontmatter-and-description.md`）
 - [ ] 無角括號、無多行語法、無自訂屬性
 - [ ] 引號閉合
 
@@ -551,7 +155,7 @@ description: [...]
 - [ ] 100+ 行的 reference 有 TOC
 - [ ] 術語一致
 - [ ] 無時間敏感字串
-- [ ] **外部引用以身分指名，不寫檔案路徑**（§6.4）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬「外部引用」節的三類例外之一，逐一說明；說不出屬於哪一類就是該改
+- [ ] **外部引用以身分指名，不寫檔案路徑**（見 `references/writing-the-body.md` 的〈外部引用〉）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬「外部引用」節的三類例外之一，逐一說明；說不出屬於哪一類就是該改
 
 ### 觸發測試
 
@@ -559,18 +163,6 @@ description: [...]
 - [ ] 改述查詢仍觸發
 - [ ] 無關主題不觸發
 - [ ] Haiku / Sonnet / Opus 行為一致
-
----
-
-## 13. 延伸閱讀
-
-| 文件 | 何時讀 |
-|------|-------|
-| `references/patterns-and-troubleshooting.md` | 設計多步驟 / 條件式工作流、需要進階範本模式 |
-| `references/seeing-like-an-agent.md` | 想理解工具設計哲學與 agent 視角的演進 |
-| `references/splitting-an-existing-skill.md` | 既有 skill 超出第 2 層預算、要外移內容時（見 §6.5） |
-| Opinionated Default 設計原則的詳細版（框架 references） | 設計工具預設行為、判斷何時該有 opinion |
-| Skill 獨立上架標準（框架 references） | 規劃 Skill Market 上架、檢查獨立性與環境解耦 |
 
 ---
 

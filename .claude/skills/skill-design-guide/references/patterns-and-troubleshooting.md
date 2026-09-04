@@ -1,5 +1,11 @@
 # Skill Patterns, Testing & Troubleshooting
 
+> 何時讀：設計多步驟或條件式工作流、需要進階範本模式、要規劃 skill 的測試方法、或 skill 行為不如預期（未觸發／過度觸發／指令未被遵循／context 過大）時。
+>
+> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`；〈核心心法〉與〈發布前檢查清單〉留在 `SKILL.md`。
+>
+> 溯源：本檔為 skill-design-guide 的 reference，v1.6.0 拆分時補上檔頭三段式（此前缺）。
+
 詳細的 Skill 設計模式、測試方法和常見問題排除指引。
 
 > 來源：Anthropic 官方 Skills 文件 (platform.claude.com) + 《The Complete Guide to Building Skills for Claude》(2026-01)
