@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Use this skill when creating a new skill, updating an existing skill's YAML frontmatter, or reviewing skill quality. Provides the official Anthropic skill specification, frontmatter rules, description writing best practices, progressive disclosure architecture, and common pitfalls to avoid. Triggers include: creating skills, skill review, frontmatter validation, SKILL.md writing."
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # Skill Design Guide
@@ -36,10 +36,22 @@ metadata:
 | 層 | 載入時機 | 預算 | 寫什麼 |
 |----|---------|------|-------|
 | 1. frontmatter（name + description） | 常駐 system prompt | ~100 tokens / skill | 何時觸發 + 做什麼 |
-| 2. SKILL.md body | 觸發後載入 | < 5k tokens（< 500 行） | 核心工作流 + 路由 |
+| 2. SKILL.md body | 觸發後載入 | < 5k tokens（繁中約 6,500 字元） | 核心工作流 + 路由 |
 | 3. references/ + scripts/ + assets/ | Claude 按需 read / exec | 無上限 | 細節、範例、模板、可執行腳本 |
 
-**Action**：超過 500 行就外移到 references/；外移時必在 SKILL.md 留路由訊號（何時讀該檔）。
+「< 5k tokens」是**官方值**（上列 spec 的 Level 2 表格逐字為 "Under 5k tokens"）。官方全篇未給任何行數限制——行數門檻是本地代理指標，已於下方廢止。
+
+**Action**：以**字元數**判定，不以行數。門檻 6,500 字元（5k tokens × 框架校準係數 1.3 chars/token，見 `.claude/hooks/file-size-guardian-hook.py` 的 `CHARS_PER_TOKEN`，2026-06-12 以 `/context` 實測校準）：
+
+```bash
+wc -m .claude/skills/<name>/SKILL.md   # > 6500 即須外移
+```
+
+超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。
+
+**Why 不用行數**：行數是 token 的代理指標，而繁中散文的每行字元數沒有上界，兩者在長行處脫鉤。實測 `component-contract-design`：245 行（通過 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。
+
+**Consequence**：本層目前**無 hook 執法**——`file-size-guardian-hook.py` 的 `SCAN_CONFIG` 涵蓋 pm-rules / rules / references 三處，不含 `.claude/skills/`；`skill-description-length-check-hook.py` 只查第 1 層的 description（250 字元）。第 2 層判準完全依賴撰寫者自查，寫錯代理指標即等同無判準。
 
 ### 1.3 Degrees of Freedom — 自由度匹配脆弱性
 
@@ -460,7 +472,7 @@ description: [...]
 - [ ] `SKILL.md` 大小寫正確
 - [ ] 無 `README.md`（任何層級，含子目錄）
 - [ ] 無 `INSTALLATION_GUIDE.md` / `QUICK_REFERENCE.md` / `CHANGELOG.md`
-- [ ] SKILL.md body < 500 行
+- [ ] SKILL.md body < 6,500 字元（`wc -m`；行數不是可靠代理，見 §1.2）
 
 ### YAML
 
