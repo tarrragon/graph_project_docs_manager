@@ -1,4 +1,4 @@
-# Body 寫作 / 嚴禁清單 / Claude Code 正文語法
+# 嚴禁清單 / Body 寫作 / Claude Code 特有功能 / 一則完整走查
 
 > 何時讀：寫或修 SKILL.md 正文時——骨架、內容品質、什麼不該放進去、引用形式（skill 內用相對路徑、指向外部用指名身分）、字串替換與動態 context 注入。**亦由此進入**——`SKILL.md`〈發布前檢查清單〉的「結構」與「Body」兩組（尤其外部引用的機械檢查）；`creating-and-adopting-skills.md` 的 Step 4；`splitting-an-existing-skill.md` 的結構約定（拆完要照本檔的引用規則重寫指標）。
 >

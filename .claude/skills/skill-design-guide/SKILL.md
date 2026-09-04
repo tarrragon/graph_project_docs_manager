@@ -119,12 +119,12 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 
 本檔留下的是路由與判準——三層載入的預算、核心心法、三類 bundled resource 的分工、發布前的檢查清單。細節依你當下在做什麼取一份讀。
 
-**涵蓋章節欄的字串與目標檔的 `##` 標題逐字相同**，可直接 grep 落地。改任一目標檔的標題時，這一欄要同步——名字對不上時讀者拿著章節名在入口檔找不到落點，而路由表看起來仍然正常。
+**涵蓋章節欄的字串與目標檔的 `##` 標題逐字相同，且雙向齊全**——每個名字都在目標檔存在（無死名），且目標檔的每個 `##` 都在這一欄出現（無孤兒節）。改任一目標檔的標題或新增節時，這一欄要同步。**兩個方向要各驗一次**：死名檢查抓的是指向虛無的指標，抓不到沒有指標的內容，單驗一邊必漏一類（實測：一次修法新增了一個 `##` 而只跑了死名檢查，該節無人指向而檢查全綠）。
 
 | 何時讀 | 檔案 | 涵蓋章節 |
 |--------|------|---------|
 | 寫或修 frontmatter：name、description、擴展欄位、觸發控制、命名 | `references/frontmatter-and-description.md` | 〈YAML Frontmatter〉〈Description 寫作（最重要的一節）〉〈命名規則〉〈觸發控制矩陣〉 |
-| 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（含〈外部引用：指名身分，不用檔案路徑〉）〈Claude Code 特有功能〉 |
+| 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（含〈外部引用：指名身分，不用檔案路徑〉）〈Claude Code 特有功能〉〈一則完整走查：兩個判準只有一個附了可執行動作〉 |
 | 從零建一個新 skill、判斷它屬哪一類型、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈Skill 建立流程（官方 6 步）〉〈Skill 類型速查〉〈安全考量〉 |
 | 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 整份皆為該程序；主要落點〈拆分特有的必查項〉〈兩種驗證，方法不同〉〈結構約定〉〈收尾〉 |
 | 設計多步驟工作流、要進階範本、規劃測試方法、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈Skill 設計模式〉〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉 |
