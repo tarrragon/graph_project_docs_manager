@@ -2,7 +2,7 @@
 
 > 何時讀：判定起點為「有規格」或「有畫布」時。**亦由此進入**——`mode-c.md` 步驟 4 要查模式 A 的同型歸併規則時。模式 B 的末步驟接回模式 A 的存在必要性檢視，兩模式因此同檔。
 >
-> 同目錄：〈十一欄位填寫問句〉與〈多形態專案〉在 `field-questions.md`，〈執行者與簽核者〉與本 skill〈派發語言〉在 `dispatch-language.md`，〈Troubleshooting〉與〈Examples〉在 `examples-troubleshooting.md`；〈契約齊全的定義〉〈分工邊界〉與**〈外部資產與跨檔用詞的地址〉**留在 `SKILL.md`——本檔出現的方法論、範本、執法工具、判別問句、L2／L3、spec 檔、本規格票，地址一律查該表。
+> 同目錄：〈十一欄位填寫問句〉與〈多形態專案〉在 `field-questions.md`，〈執行者與簽核者〉與本 skill〈派發語言〉在 `dispatch-language.md`，〈Troubleshooting〉與〈Examples〉在 `examples-troubleshooting.md`；〈契約齊全的定義〉與**〈外部資產與跨檔用詞的地址〉**留在 `SKILL.md`，〈分工邊界〉在 `adjacent-assets.md`——本檔出現的方法論、範本、執法工具、判別問句、L2／L3、spec 檔、本規格票，地址一律查該表。
 >
 > 溯源：自 SKILL.md 的〈模式 A：規格推導〉〈模式 B：畫布拆解〉兩節搬移。
 
