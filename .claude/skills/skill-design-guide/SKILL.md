@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.7.0
+  version: 1.7.1
 ---
 
 # Skill Design Guide
@@ -141,6 +141,7 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 - [ ] 無 `README.md`（任何層級，含子目錄）
 - [ ] 無 `INSTALLATION_GUIDE.md` / `QUICK_REFERENCE.md`（`CHANGELOG.md` 不在此列，見 `references/writing-the-body.md` 的〈嚴禁清單〉）
 - [ ] SKILL.md body 通過兩個門檻：`wc -l` < 500 行，且 `wc -m` 在該語言的換算值內（見〈Progressive Disclosure〉）
+- [ ] **skill 帶 CLI 入口點時，另走 `skill-cli-sync-check` 規則**——本清單不涵蓋「CLI 行為變更後 SKILL.md 與 pm-rules 是否同步」，走完本清單全綠不代表那件事被問過
 
 ### YAML
 

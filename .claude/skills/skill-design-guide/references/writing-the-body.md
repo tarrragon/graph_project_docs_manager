@@ -114,10 +114,12 @@ description: [...]
 
 **以下例外，路徑是正當的**（同時命中多類時取義務較嚴者）：
 
-1. **框架綁定工具講自己的主題**：`ticket`／`doc`／`worktree`／`skill-sync` 等，`.claude/` 路徑就是它們的操作對象而非閱讀材料。
+1. **框架綁定工具講自己的主題**：`.claude/` 路徑就是該 skill 的操作對象而非閱讀材料時。判準是**它對那個路徑做什麼**——讀寫該路徑下的檔案是它的功能本身，而不是叫讀者去讀那個檔。不列具名清單：成員資格會與成員自述脫節（實測有一份 skill 的 SKILL.md 自稱 `zero framework dependencies and works in any project`，而它同時是任何一份具名清單都會收的成員）。
 2. **介面規格**：下游程式讀特定檔案的特定欄位時，泛稱會使契約不可驗證。此類須在鄰近處標明它是本框架的位置慣例、不是契約本身。
 3. **路徑本身即被討論的對象**：如本節引述「hook 自 `.claude/hooks/` 移入⋯⋯」作為失效實證。此時路徑是舉例的內容，不是指向要讀的東西。
 4. **hook 與 script 的溯源引用**：這類東西無法以名字載入（沒有 Skill 工具可用、也沒有標題可檢索），路徑是唯一可行的指名方式。寫路徑時給檔名即可，不必寫全路徑——`file-size-guardian-hook.py` 比 `.claude/hooks/file-size-guardian-hook.py` 更耐搬移。
+
+**skill 內相對路徑與外部路徑同形時，一律補足前綴。** `` `references/foo.md` `` 這種寫法在本 skill 目錄內指自己的 reference（合規），指到別的地方時則是斷掉的路徑——而**兩者字面完全相同**，讀者與機械檢查都分不出來（實測一份 skill 的 SKILL.md 寫 `` `references/agent-dispatch-template.md` ``，該檔實住 `.claude/references/`，而檢查清單的 grep 因為它不帶 `.claude/` 前綴也抓不到）。規則：**指自己目錄內的 reference 才可用裸相對路徑，其餘一律寫完整路徑或改指名**。
 
 > 本節條文寫成後隨即套回本文件自身，抓到三處違規（Opinionated Defaults 的詳細版路由、延伸閱讀表兩列），已改為指名。**寫完條文與用條文掃過自己是兩個動作**，`SKILL.md`〈發布前檢查清單〉的機械檢查即為此而設。
 >
