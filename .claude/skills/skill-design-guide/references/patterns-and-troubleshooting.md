@@ -318,7 +318,7 @@ With skill:
 **症狀**：Skill 變慢或回應品質下降
 
 **解決**：
-1. SKILL.md 保持低於 5,000 字，詳細文件移到 references/
+1. SKILL.md 保持在門檻內（見 skill-design-guide 的三層載入節，兩個官方門檻與語言換算皆在該處），詳細文件移到 references/
 2. 評估是否同時啟用太多 Skill（20-50 個以上需考慮精簡）
 3. 考慮將相關 Skill 打包為 "packs"
 
