@@ -49,7 +49,7 @@ wc -m .claude/skills/<name>/SKILL.md   # > 6500 即須外移
 
 超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。
 
-**Why 不用行數**：行數是 token 的代理指標，而繁中散文的每行字元數沒有上界，兩者在長行處脫鉤。實測 `component-contract-design`：245 行（通過 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。
+**Why 不用行數**：行數是 token 的代理指標，而繁中散文的每行字元數沒有上界，兩者在長行處脫鉤。一份實測案例（該 skill 已於此後拆分，以下為拆分前的量測值）：245 行（通過 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。
 
 **Consequence**：本層目前**無 hook 執法**——`file-size-guardian-hook.py` 的 `SCAN_CONFIG` 涵蓋 pm-rules / rules / references 三處，不含 `.claude/skills/`；`skill-description-length-check-hook.py` 只查第 1 層的 description（250 字元）。第 2 層判準完全依賴撰寫者自查，寫錯代理指標即等同無判準。
 
