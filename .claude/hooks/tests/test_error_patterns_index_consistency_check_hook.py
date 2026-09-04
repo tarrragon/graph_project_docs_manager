@@ -16,6 +16,7 @@ Error Patterns Index Consistency Check Hook 測試
 
 import importlib.util
 import sys
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -181,6 +182,52 @@ class TestCollectReadmeIds:
 
 
 # ---------------------------------------------------------------------------
+# collect_readme_id_counts
+# ---------------------------------------------------------------------------
+
+
+class TestCollectReadmeIdCounts:
+    def test_single_row_counted_once(self, tmp_path):
+        readme = tmp_path / "README.md"
+        readme.write_text(
+            "| ID | 標題 | 風險 | 來源版本 |\n"
+            "|----|------|------|---------|\n"
+            "| TEST-001 | 錯誤的等待機制 | 高 | v0.6.2 |\n",
+            encoding="utf-8",
+        )
+        counts = _hook.collect_readme_id_counts(readme)
+        assert counts["TEST-001"] == 1
+
+    def test_duplicate_row_counted_twice(self, tmp_path):
+        """collect_readme_ids 回傳 set 會合併重複列，collect_readme_id_counts
+        必須保留計數，才能供 compare() 的重複偵測使用（本 ticket 核心修復）。"""
+        readme = tmp_path / "README.md"
+        readme.write_text(
+            "| ID | 標題 | 風險 | 來源版本 |\n"
+            "|----|------|------|---------|\n"
+            "| TEST-001 | 錯誤的等待機制 | 高 | v0.6.2 |\n"
+            "| TEST-001 | 錯誤的等待機制 | 高 | v0.6.2 |\n",
+            encoding="utf-8",
+        )
+        counts = _hook.collect_readme_id_counts(readme)
+        assert counts["TEST-001"] == 2
+
+    def test_missing_readme_returns_empty_counter(self, tmp_path):
+        counts = _hook.collect_readme_id_counts(tmp_path / "not-exist.md")
+        assert counts == Counter()
+
+    def test_collect_readme_ids_derives_from_counts(self, tmp_path):
+        """collect_readme_ids 的 API 不變（仍回傳 set），內部改為由計數推導。"""
+        readme = tmp_path / "README.md"
+        readme.write_text(
+            "| TEST-001 | 標題 | 高 | v0.1.0 |\n"
+            "| TEST-001 | 標題 | 高 | v0.1.0 |\n",
+            encoding="utf-8",
+        )
+        assert _hook.collect_readme_ids(readme) == {"TEST-001"}
+
+
+# ---------------------------------------------------------------------------
 # compare
 # ---------------------------------------------------------------------------
 
@@ -233,6 +280,113 @@ class TestCompare:
         assert result["missing_in_readme"] == []
         assert result["collisions"] == {}
         assert result["unrecognized"] == ["test/not-an-id.md"]
+
+    def test_no_readme_id_counts_yields_empty_duplicate(self):
+        """readme_id_counts 未提供時（呼叫端沿用舊行為）duplicate_in_readme 為空，
+        不因新增欄位而破壞既有呼叫端。"""
+        result = _hook.compare({"TEST-001": ["test/TEST-001-a.md"]}, {"TEST-001"})
+        assert result["duplicate_in_readme"] == []
+
+
+class TestCompareDuplicateInReadme:
+    """README 列重複偵測（本 ticket 核心修復：collect_readme_ids 回傳 set 使
+    第 1、2 項比對看不到 README 內部的重複列，本組驗證新增的第 5 項比對）。"""
+
+    def test_real_duplicate_reported(self):
+        """同一 ID 在 README 出現兩次、非凍結表登記碰撞 -> 報出。"""
+        dir_id_map = {"TEST-001": ["test/TEST-001-a.md"]}
+        readme_ids = {"TEST-001"}
+        readme_id_counts = Counter({"TEST-001": 2})
+        result = _hook.compare(dir_id_map, readme_ids, readme_id_counts=readme_id_counts)
+        assert result["duplicate_in_readme"] == ["TEST-001"]
+
+    def test_frozen_registered_collision_not_reported(self):
+        """凍結表已登記的 ID 碰撞在 README 各佔一列、合計出現兩次，屬預期
+        狀態不是重複，不可誤報。"""
+        dir_id_map = {
+            "PC-010": [
+                "process-compliance/PC-010-pm-skipped-checkpoint-after-ticket-complete.md",
+                "process-compliance/PC-010-task-tracking-in-memory.md",
+            ]
+        }
+        readme_ids = {"PC-010"}
+        readme_id_counts = Counter({"PC-010": 2})
+        frozen_registry = {
+            "PC-010": {"pm-skipped-checkpoint-after-ticket-complete", "task-tracking-in-memory"}
+        }
+        result = _hook.compare(
+            dir_id_map, readme_ids, frozen_registry=frozen_registry, readme_id_counts=readme_id_counts
+        )
+        assert result["duplicate_in_readme"] == []
+
+    def test_real_duplicate_and_frozen_collision_coexist(self):
+        """真重複與凍結表碰撞同時存在時，前者報出、後者不報（team-lead 派發
+        要求的驗證組合）。"""
+        dir_id_map = {
+            "PC-010": [
+                "process-compliance/PC-010-pm-skipped-checkpoint-after-ticket-complete.md",
+                "process-compliance/PC-010-task-tracking-in-memory.md",
+            ],
+            "TEST-001": ["test/TEST-001-a.md"],
+        }
+        readme_ids = {"PC-010", "TEST-001"}
+        readme_id_counts = Counter({"PC-010": 2, "TEST-001": 2})
+        frozen_registry = {
+            "PC-010": {"pm-skipped-checkpoint-after-ticket-complete", "task-tracking-in-memory"}
+        }
+        result = _hook.compare(
+            dir_id_map, readme_ids, frozen_registry=frozen_registry, readme_id_counts=readme_id_counts
+        )
+        assert result["duplicate_in_readme"] == ["TEST-001"]
+
+    def test_single_row_not_flagged_as_duplicate(self):
+        dir_id_map = {"TEST-001": ["test/TEST-001-a.md"]}
+        readme_id_counts = Counter({"TEST-001": 1})
+        result = _hook.compare(
+            dir_id_map, {"TEST-001"}, readme_id_counts=readme_id_counts
+        )
+        assert result["duplicate_in_readme"] == []
+
+    def test_none_frozen_registry_fail_open_reports_duplicate(self):
+        """frozen_registry 為 None（凍結表解析失敗）時無法驗證排除資格，
+        與碰撞比對相同的 fail-open 語意：一律回報不可靜默放過。"""
+        dir_id_map = {"PC-010": ["process-compliance/PC-010-a.md", "process-compliance/PC-010-b.md"]}
+        readme_id_counts = Counter({"PC-010": 2})
+        result = _hook.compare(
+            dir_id_map, {"PC-010"}, frozen_registry=None, readme_id_counts=readme_id_counts
+        )
+        assert result["duplicate_in_readme"] == ["PC-010"]
+
+    def test_frozen_registered_id_exceeding_dir_count_reported(self):
+        """本 ticket 核心修復：凍結表登記 ID 在目錄側恆為 2 個檔案，但 README
+        被誤複製為 3 列時，超額列不可被舊有「已登記即排除」邏輯靜默放過。"""
+        dir_id_map = {
+            "PC-010": [
+                "process-compliance/PC-010-pm-skipped-checkpoint-after-ticket-complete.md",
+                "process-compliance/PC-010-task-tracking-in-memory.md",
+            ]
+        }
+        readme_id_counts = Counter({"PC-010": 3})
+        frozen_registry = {
+            "PC-010": {"pm-skipped-checkpoint-after-ticket-complete", "task-tracking-in-memory"}
+        }
+        result = _hook.compare(
+            dir_id_map, {"PC-010"}, frozen_registry=frozen_registry, readme_id_counts=readme_id_counts
+        )
+        assert result["duplicate_in_readme"] == ["PC-010"]
+
+    def test_non_frozen_id_two_rows_reported(self):
+        """未登記於凍結表的 ID 在 README 出現 2 列（目錄側僅 1 個檔案）須報出，
+        驗證排除條件不會誤放行非凍結 ID。"""
+        dir_id_map = {"TEST-001": ["test/TEST-001-a.md"]}
+        readme_id_counts = Counter({"TEST-001": 2})
+        frozen_registry = {
+            "PC-010": {"pm-skipped-checkpoint-after-ticket-complete", "task-tracking-in-memory"}
+        }
+        result = _hook.compare(
+            dir_id_map, {"TEST-001"}, frozen_registry=frozen_registry, readme_id_counts=readme_id_counts
+        )
+        assert result["duplicate_in_readme"] == ["TEST-001"]
 
 
 # ---------------------------------------------------------------------------
@@ -580,6 +734,31 @@ class TestFormatReport:
         assert "凍結表不存在" in report
         assert "fail-open" in report
 
+    def test_duplicate_in_readme_produces_warning(self):
+        result = {
+            "missing_in_readme": [],
+            "stale_in_readme": [],
+            "collisions": {},
+            "registered_collisions": {},
+            "unrecognized": [],
+            "duplicate_in_readme": ["TEST-001"],
+        }
+        report = _hook.format_report(result)
+        assert "[WARNING]" in report
+        assert "TEST-001" in report
+        assert "重複列" in report
+
+    def test_missing_duplicate_in_readme_key_defaults_empty(self):
+        """result dict 未帶 duplicate_in_readme 鍵（舊呼叫端相容）不應報錯或誤報。"""
+        result = {
+            "missing_in_readme": [],
+            "stale_in_readme": [],
+            "collisions": {},
+            "registered_collisions": {},
+            "unrecognized": [],
+        }
+        assert _hook.format_report(result) == ""
+
     def test_one_way_related_produces_warning(self):
         result = {
             "missing_in_readme": [],
@@ -757,6 +936,56 @@ class TestMainEndToEnd:
         assert exit_code == 0
         assert captured.err == ""
 
+    def test_main_reports_real_duplicate_but_not_frozen_collision(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """端對端驗證：README 內同一 ID 出現兩次時，真重複（TEST-001）須報出，
+        凍結表已登記的 ID 碰撞（PC-010，兩個檔案各佔一列）不可誤報
+        （team-lead 派發要求的驗證組合）。"""
+        root = tmp_path / "project"
+        error_patterns = root / ".claude" / "error-patterns"
+        error_patterns.mkdir(parents=True)
+        (error_patterns / "README.md").write_text(
+            "| ID | 標題 | 風險 | 來源版本 |\n|----|----|----|----|\n"
+            "| TEST-001 | 標題 A | 高 | v0.1.0 |\n"
+            "| TEST-001 | 標題 A | 高 | v0.1.0 |\n"
+            "| PC-010 (pm-skipped-checkpoint-after-ticket-complete) | 標題 B | 高 | v0.1.0 |\n"
+            "| PC-010 (task-tracking-in-memory) | 標題 C | 高 | v0.1.0 |\n",
+            encoding="utf-8",
+        )
+        (error_patterns / "test").mkdir()
+        (error_patterns / "test" / "TEST-001-a.md").write_text("# stub\n", encoding="utf-8")
+        pc_dir = error_patterns / "process-compliance"
+        pc_dir.mkdir()
+        (pc_dir / "PC-010-pm-skipped-checkpoint-after-ticket-complete.md").write_text(
+            "# stub\n", encoding="utf-8"
+        )
+        (pc_dir / "PC-010-task-tracking-in-memory.md").write_text("# stub\n", encoding="utf-8")
+
+        methodologies = root / ".claude" / "methodologies"
+        methodologies.mkdir(parents=True)
+        (methodologies / "error-pattern-numbering-methodology.md").write_text(
+            "## 核心原則\n\n"
+            "### 已知 legacy intra-dir 重號（凍結保留，不重編）\n\n"
+            "說明文字。\n\n"
+            "| Flat 號 | 教訓 A（slug） | 教訓 B（slug） |\n"
+            "|---------|---------------|---------------|\n"
+            "| PC-010 | pm-skipped-checkpoint-after-ticket-complete | task-tracking-in-memory |\n\n"
+            "### 下一節\n\n其他內容\n",
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr(_hook, "get_project_root", lambda: str(root))
+        exit_code = _hook.main()
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "重複列" in captured.err
+        assert "\n  TEST-001\n" in captured.err
+        # PC-010 的碰撞歸屬 registered_collisions（INFO，輸出格式帶冒號「PC-010:」），
+        # 不可落入 duplicate_in_readme 的 WARNING 重複列段落（輸出格式無冒號「  PC-010」）
+        assert "\n  PC-010\n" not in captured.err
+        assert "\n  PC-010:\n" in captured.err
+
     def test_main_silent_for_no_slug_placeholder_listed_in_readme(
         self, tmp_path, monkeypatch, capsys
     ):
@@ -786,6 +1015,26 @@ class TestMainEndToEnd:
 
 class TestCurrentRepoBaseline:
     def test_current_repo_matches_known_baseline(self):
+        """回歸基線：對現況 repo 的 error-patterns 目錄執行 compare()。
+
+        固定數字/固定空值斷言（missing_in_readme == [] 等）會使本測試對並行
+        session 寫入 .claude/error-patterns/ 假紅燈（W3-717 根因：測試恰讀到
+        「新檔已建立、README 尚未同步」的瞬間視窗，斷言結果依賴程式以外的
+        可變因素——跨 session 共享的檔案系統狀態，命中
+        test-assertion-design-rules 的不可靠斷言判準）。`registered_collisions
+        == 6` 額外受凍結表增修影響，數字本身也非固定值。
+
+        比照同檔 test_related_bidirectional_scan_runs_without_error 的既有
+        處理方式（該測試已因相同理由改為非固定斷言），改為驗證與環境無關的
+        「邏輯不變式」——compare() 各欄位對輸入資料必然成立的性質（如
+        collisions 內每個 ID 在目錄側確實對應 2+ 檔案、missing_in_readme
+        與 stale_in_readme 比對方向不可能同時成立故必互斥），而非「資料
+        現況」（目錄與 README 當下是否完全一致）。不論並行 session 寫入
+        什麼，這些不變式恆成立；但集合差方向寫反、條件寫錯、欄位互斥被
+        破壞、誤將未登記 ID 歸入 registered_collisions 等真實邏輯錯誤仍會
+        使斷言失敗，保留本測試存在的診斷價值。實際存量數字由 ticket 執行
+        紀錄另行回報，不進入本測試斷言。
+        """
         project_root = Path(__file__).resolve().parents[3]
         error_patterns_root = project_root / ".claude" / "error-patterns"
         methodology_path = (
@@ -795,16 +1044,47 @@ class TestCurrentRepoBaseline:
             pytest.skip("error-patterns 目錄不存在，略過回歸基線檢查")
 
         dir_id_map = _hook.collect_dir_id_map(error_patterns_root)
-        readme_ids = _hook.collect_readme_ids(error_patterns_root / "README.md")
+        readme_id_counts = _hook.collect_readme_id_counts(error_patterns_root / "README.md")
+        readme_ids = set(readme_id_counts)
         frozen_registry, frozen_error = _hook.parse_frozen_registry(methodology_path)
         assert frozen_error is None, f"凍結表解析失敗：{frozen_error}"
 
-        result = _hook.compare(dir_id_map, readme_ids, frozen_registry)
+        result = _hook.compare(dir_id_map, readme_ids, frozen_registry, readme_id_counts)
+        dir_ids = {k for k in dir_id_map if not k.startswith("UNRECOGNIZED:")}
 
-        assert result["missing_in_readme"] == []
-        assert result["stale_in_readme"] == []
-        assert result["collisions"] == {}
-        assert len(result["registered_collisions"]) == 6
+        assert isinstance(result["missing_in_readme"], list)
+        assert isinstance(result["stale_in_readme"], list)
+        assert isinstance(result["collisions"], dict)
+        assert isinstance(result["duplicate_in_readme"], list)
+        assert isinstance(result["registered_collisions"], dict)
+
+        # missing_in_readme：目錄有、README 無
+        for file_id in result["missing_in_readme"]:
+            assert file_id in dir_ids
+            assert file_id not in readme_ids
+
+        # stale_in_readme：README 有、目錄無
+        for file_id in result["stale_in_readme"]:
+            assert file_id in readme_ids
+            assert file_id not in dir_ids
+
+        # 比對方向互斥：同一 ID 不可能既是「目錄有 README 無」又是「README 有目錄無」
+        assert set(result["missing_in_readme"]).isdisjoint(result["stale_in_readme"])
+
+        # collisions：目錄側同一 ID 確實對應 2+ 檔案
+        for file_id in result["collisions"]:
+            assert len(dir_id_map[file_id]) > 1
+
+        # registered_collisions：每個 ID 皆確實登記於凍結表
+        for file_id in result["registered_collisions"]:
+            assert file_id in frozen_registry
+
+        # collisions 與 registered_collisions 互斥：同一 ID 不可能同時歸入兩類
+        assert set(result["collisions"]).isdisjoint(result["registered_collisions"])
+
+        # duplicate_in_readme：README 側同一 ID 確實出現 2+ 次
+        for file_id in result["duplicate_in_readme"]:
+            assert readme_id_counts[file_id] > 1
 
     def test_related_bidirectional_scan_runs_without_error(self):
         """related 雙向性掃描的存量基線非固定斷言（存量會隨其他票修正變動，

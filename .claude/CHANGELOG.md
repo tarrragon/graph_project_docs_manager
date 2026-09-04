@@ -1,3 +1,31 @@
+## [2.50.7] - 2026-09-03
+
+### Summary
+feat: framework-issue comment-as-section 協作 CLI（section_comment 六命令）與 framework-issue-curator 代理人；fix: needs-context-listener 與 workspace-wipe-guard 改為命令位置 token 比對（共用 parse_command_statements）；docs: PC-BAL-064/065、ARCH-BAL-013、PC-BAL-024 案例補充（跨 consumer 協作實證，tarrragon/claude#81 #82 #61）
+
+---
+
+## [2.50.6] - 2026-09-03
+
+### Summary
+feat: idle agent 回收 SOP 觸發層（SessionStart 唯讀掃描、歸屬三分、孤兒兩級判定）與 agent_handle 識別碼修復（取代對命名派發不可靠的 agentId，解平行情境候選恆空）；另含 PC-163 部分過期評估、狀態列語意判定為框架不可介入、PC-BAL-064 判準取樣維度
+
+---
+
+## [2.50.5] - 2026-09-03
+
+### Summary
+fix: 三張衍生修復票——hook_base 新增預設關閉的測試隔離逃生艙解 worktree 內假失敗、error-patterns 索引重複列偵測改比對實際檔案數、baseline 測試改邏輯不變式消除並行寫入假紅燈；另修正 worktree/ticket SKILL.md 對 ticket 狀態隔離的過期文件承諾
+
+---
+
+## [2.50.4] - 2026-09-03
+
+### Summary
+fix: 四張修復票——SubagentStop 改標記回合結束使 dispatch 記錄不再於代理人存活期間消失（並行安全防護恢復）、sync-pull 衝突檔改寫回合併結果不再靜默丟棄 upstream 變更、wrap-decision guard 訊息內嵌自足 yaml 範例、error-patterns 索引新增 README 重複列偵測；另含 PC-BAL-062/063 與 PC-BAL-045 更正
+
+---
+
 ## [2.50.3] - 2026-09-03
 
 ### Summary
