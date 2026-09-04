@@ -4,11 +4,9 @@
 >
 > 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉與〈發布前檢查清單〉留在 `SKILL.md`。
 >
-> 溯源：本檔為 skill-design-guide 的 reference，v1.6.0 拆分時補上檔頭三段式（此前缺）。
+> 溯源：本檔為 skill-design-guide 的 reference，v1.6.0 拆分時補上檔頭三段式（此前缺）。內容來源為 Anthropic 官方 Skills 文件（platform.claude.com）與《The Complete Guide to Building Skills for Claude》。
 
 本檔章節：〈Skill 設計模式〉〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉。
-
-> 來源：Anthropic 官方 Skills 文件 (platform.claude.com) + 《The Complete Guide to Building Skills for Claude》(2026-01)
 
 ---
 
@@ -331,7 +329,3 @@ With skill:
 1. SKILL.md body 保持在兩個門檻內：**< 500 行**，且 `wc -m` 在該語言的換算值內。門檻值、換算表與量測指令見 `SKILL.md`〈Progressive Disclosure — 三層載入〉；詳細文件移到 references/
 2. 評估是否同時啟用太多 Skill（20-50 個以上需考慮精簡）
 3. 考慮將相關 Skill 打包為 "packs"
-
----
-
-來源：Anthropic 官方 "The Complete Guide to Building Skills for Claude"。版本紀錄在 skill 目錄的 `CHANGELOG.md`。
