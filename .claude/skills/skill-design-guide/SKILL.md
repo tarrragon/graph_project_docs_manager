@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Use this skill when creating a new skill, updating an existing skill's YAML frontmatter, or reviewing skill quality. Provides the official Anthropic skill specification, frontmatter rules, description writing best practices, progressive disclosure architecture, and common pitfalls to avoid. Triggers include: creating skills, skill review, frontmatter validation, SKILL.md writing."
 metadata:
-  version: 1.3.0
+  version: 1.4.0
 ---
 
 # Skill Design Guide
@@ -47,7 +47,7 @@ metadata:
 wc -m .claude/skills/<name>/SKILL.md   # > 6500 即須外移
 ```
 
-超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。
+超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。**拆分既有 skill 另有程序，見 §6.5**：搬移正確不等於拆分後可用，兩者要用不同方法驗。
 
 **Why 不用行數**：行數是 token 的代理指標，而繁中散文的每行字元數沒有上界，兩者在長行處脫鉤。一份實測案例（該 skill 已於此後拆分，以下為拆分前的量測值）：245 行（通過 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。
 
@@ -324,6 +324,16 @@ description: [...]
 
 > 本節條文寫成後隨即套回本文件自身，抓到三處違規（§1.4 的詳細版路由、§13 延伸閱讀表兩列），已改為指名。**寫完條文與用條文掃過自己是兩個動作**，§12 的機械檢查即為此而設。
 
+### 6.5 拆分既有 skill（§1.2 超標後的動作）
+
+§1.2 說「超標就外移」，本節說怎麼外移才不會壞。**新建 skill 不適用**——它的內容從一開始就分層放，沒有既成的內部關係要保。
+
+**核心主張**：位元搬移正確不等於拆分後可用。一次實測驗證了行覆蓋 245/245、五份新檔與原區間位元相同，而該次拆分仍引入四項嚴重缺陷——壞的是位元之間的關係（節界、跨檔指涉、共置、外部引用），逐行比對對這四類全部無鑑別力。
+
+**Consequence**：只做搬移正確性驗證就宣告完成，缺陷會在讀者實際使用時才暴露，而那時已無「拆分前」可對照。
+
+**Action**：讀 `references/splitting-an-existing-skill.md`——它列出拆分特有的必查項（節界、跨檔指涉、共置關係、外部引用）、搬移正確性與拆分可用性各自的驗法、內嵌計數與位置性指涉這兩類拆分高頻缺陷的判準，以及檔頭與路由表的結構約定與收尾動作。
+
 ---
 
 ## 7. 命名規則
@@ -508,6 +518,7 @@ description: [...]
 |------|-------|
 | `references/patterns-and-troubleshooting.md` | 設計多步驟 / 條件式工作流、需要進階範本模式 |
 | `references/seeing-like-an-agent.md` | 想理解工具設計哲學與 agent 視角的演進 |
+| `references/splitting-an-existing-skill.md` | 既有 skill 超出第 2 層預算、要外移內容時（見 §6.5） |
 | Opinionated Default 設計原則的詳細版（框架 references） | 設計工具預設行為、判斷何時該有 opinion |
 | Skill Marketplace 標準（框架 references） | 規劃 Skill Market 上架、檢查獨立性與環境解耦 |
 
