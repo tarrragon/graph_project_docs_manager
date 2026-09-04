@@ -1,8 +1,8 @@
 # 嚴禁清單 / Body 寫作 / Claude Code 特有功能 / 一則完整走查
 
-> 何時讀：寫或修 SKILL.md 正文時——骨架、內容品質、什麼不該放進去、引用形式（skill 內用相對路徑、指向外部用指名身分）、字串替換與動態 context 注入。**亦由此進入**——`SKILL.md`〈發布前檢查清單〉的「結構」與「Body」兩組（尤其外部引用的機械檢查）；`creating-and-adopting-skills.md` 的 Step 4；`splitting-an-existing-skill.md` 的結構約定（拆完要照本檔的引用規則重寫指標）。
+> 何時讀：寫或修 SKILL.md 正文時——骨架、內容品質、什麼不該放進去、引用形式（skill 內用相對路徑、指向外部用指名身分）、字串替換與動態 context 注入。**亦由此進入**——`SKILL.md`〈發布前檢查清單〉的「結構」與「Body」兩組（尤其外部引用的機械檢查）；`creating-and-adopting-skills.md`〈Step 4：撰寫內容〉的 4c（寫 body）；`splitting-an-existing-skill.md` 的結構約定（拆完要照本檔的引用規則重寫指標）。
 >
-> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，新建流程在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`；〈核心心法〉〈三類 bundled resource 的分工〉〈發布前檢查清單〉留在 `SKILL.md`。
+> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，新建流程在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，工作流範本與問題排除在 `patterns-and-troubleshooting.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉〈三類 bundled resource 的分工〉〈發布前檢查清單〉留在 `SKILL.md`。
 >
 > 溯源：自 SKILL.md 搬移（v1.6.0，因兩個官方門檻皆超標）。
 
@@ -33,7 +33,7 @@
 | 禁止內容 | 為何禁止 |
 |---------|---------|
 | SKILL.md 內「When to Use This Skill」段落 | 觸發判斷靠 description（已在 system prompt），body 寫一次無效 |
-| 時間敏感資訊（「2025 年 8 月前用舊 API」） | 改成「old patterns」段落，不寫具體日期 |
+| 時間敏感資訊（「2025 年 8 月前用舊 API」） | 改成「old patterns」段落。**禁的是效力有期限的內容，不是內容有時間戳**——標記查證時點的括號註（「（YYYY-MM-DD 查證）」）、檔尾 `Last Updated`、以及年份本身就是所指之一部分者（「2023-era kicker」）皆不在此列 |
 | 同一資訊同時放 SKILL.md 與 reference | 重複會稀釋 grep 命中率；資訊只放一處 |
 
 ---
@@ -79,6 +79,9 @@ description: [...]
 | 一致術語 | 混用「endpoint / URL / route」 → 全 skill 統一一個詞 |
 | MCP 工具完整名稱 | `tool_name` → `ServerName:tool_name` |
 | 避免模糊語言 | `Make sure to validate things properly` → `CRITICAL: Before X, verify A, B, C` |
+| **不涵蓋的告示用固定前綴** | 五種寫法散落各處 → 一律以 `**不涵蓋**：` 起手 |
+
+**「不涵蓋」的告示要能被清點。** 一份檢查清單或一道機械檢查有射程之外的東西時，必須明寫，否則讀者會把「走完全綠」讀成「已驗證」。而這類告示是修法過程中新增最多的一類內容——實測一份 skill 的四批修法共新增 5 處，**用了五種不同形式**（checkbox 內粗體、checkbox 內句尾、組層級獨立段、粗體標籤加表格新欄、表前單行），沒有共同字串，因此**既無法 grep 清點、讀者也建立不起辨識模式**，其中藏在八項清單第八項句尾的那則最容易漏讀。固定前綴讓 `grep -rn '不涵蓋'` 一次列出全部射程缺口。
 
 ### references/ 引用規則
 
@@ -86,7 +89,7 @@ description: [...]
 |------|------|
 | 一層深 | 所有 reference 從 SKILL.md 直接連結，禁止 A → B → C 巢狀 |
 | 路由訊號 | SKILL.md 必說明「什麼情境讀此檔」，否則 reference 形同孤兒 |
-| 100+ 行加 TOC | 讓 Claude preview 時看到完整範圍 |
+| 100+ 行且**被選段查閱**者加 TOC | 讓 Claude preview 時看到完整範圍。**被整份執行的 reference 不適用**——SKILL.md 明令「讀這一份再繼續」的那種，反正從頭讀到尾，目錄省不下東西。行數只是成本，決定要不要 TOC 的是讀取方式（實測同一條判準在兩支 skill 上判出相反結果：一支 25 份誤報、一支 8 份真違規，差別只在這個維度） |
 | 不重複 | 內容只放 SKILL.md 或 reference 之一，不兩處皆有 |
 
 > **skill 自身目錄內的 reference 用相對路徑**（`references/foo.md`），這是本表的適用範圍。**指向 skill 外部的東西見〈外部引用〉。**
@@ -105,12 +108,16 @@ description: [...]
 
 **Consequence**：除了改版即斷，還會觸發 `skill-sync` 的可攜性閘門——宣告 `metadata.portable: true` 的 skill 若指名 `.claude/...` 路徑，push 會被中止並列出全部命中處（實證：兩份 skill 累計 25 處，被判為「指名他專案的檔案」）。
 
-**Action**：寫外部引用前先問——**讀者是要去讀它學東西，還是要寫進它讓別的東西動起來？**
+**Action**：寫外部引用前先問這一句，**它是主判準，底下的例外只是它的舉例**——
+
+> **這個路徑指向的是「它要操作的東西」，還是「讀者要去讀的東西」？** 前者合規，後者違規。
 
 | 答案 | 形式 | 例 |
 |------|------|-----|
-| 讀它學東西 | 指名身分 | 「判準見 `tdd` skill 的分層測試策略」 |
-| 寫進它讓別的東西動起來 | 保留檔名與欄位名（**介面規格**） | 「依賴回填至 `docs/proposals-tracking.yaml` 的 `depends_on`，下游檢查器讀該欄位」 |
+| 它要操作的東西 | 保留檔名與欄位名（**介面規格**） | 「依賴回填至 `docs/proposals-tracking.yaml` 的 `depends_on`，下游檢查器讀該欄位」 |
+| 讀者要去讀的東西 | 指名身分 | 「判準見 `tdd` skill 的分層測試策略」 |
+
+**先用這一問判，判不了才查下列例外。** 實測一支 skill 的 24 個 `.claude/` 命中裡，**這一問一次判定了 23 個**；而把例外清單放在問句之前，會讓判定者先去比對四個類別、比對不上才回頭想問句。
 
 **以下例外，路徑是正當的**（同時命中多類時取義務較嚴者）：
 
@@ -163,5 +170,3 @@ description: [...]
 這一則的教訓可一般化：**當兩個判準只有一個附了可執行動作，實際生效的永遠是有動作的那個**——而寫的人會以為兩個都在跑。
 
 > 完整論證、案例、反模式對照表見 Opinionated Default 設計原則的詳細版；通用設計原則見同名的速查規則。
-
----

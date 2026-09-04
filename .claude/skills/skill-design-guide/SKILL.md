@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.7.1
+  version: 1.7.2
 ---
 
 # Skill Design Guide
@@ -125,7 +125,7 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 |--------|------|---------|
 | 寫或修 frontmatter：name、description、擴展欄位、觸發控制、命名 | `references/frontmatter-and-description.md` | 〈YAML Frontmatter〉〈Description 寫作（最重要的一節）〉〈命名規則〉〈觸發控制矩陣〉 |
 | 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（含〈外部引用：指名身分，不用檔案路徑〉）〈Claude Code 特有功能〉〈一則完整走查：兩個判準只有一個附了可執行動作〉 |
-| 從零建一個新 skill、判斷它屬哪一類型、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈Skill 建立流程（官方 6 步）〉〈Skill 類型速查〉〈安全考量〉 |
+| 從零建一個新 skill、判斷它屬哪一類型、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈Skill 建立流程〉〈Skill 類型速查〉〈安全考量〉 |
 | 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 〈為什麼需要專屬程序〉〈拆分特有的必查項〉〈兩種驗證，方法不同〉〈拆分特有的高頻缺陷〉〈結構約定〉〈收尾〉〈一則最小走查〉〈相關〉 |
 | 設計多步驟工作流、要進階範本、規劃測試方法、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈Skill 設計模式〉〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉 |
 | 想理解工具設計哲學與 agent 視角的演進 | `references/seeing-like-an-agent.md` | 〈核心哲學〉〈Claude Code 團隊的演進教訓〉〈進階 Skill 設計模式〉〈觀察 Claude 如何使用 Skill〉〈反模式〉 |
@@ -141,7 +141,7 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 - [ ] 無 `README.md`（任何層級，含子目錄）
 - [ ] 無 `INSTALLATION_GUIDE.md` / `QUICK_REFERENCE.md`（`CHANGELOG.md` 不在此列，見 `references/writing-the-body.md` 的〈嚴禁清單〉）
 - [ ] SKILL.md body 通過兩個門檻：`wc -l` < 500 行，且 `wc -m` 在該語言的換算值內（見〈Progressive Disclosure〉）
-- [ ] **skill 帶 CLI 入口點時，另走 `skill-cli-sync-check` 規則**——本清單不涵蓋「CLI 行為變更後 SKILL.md 與 pm-rules 是否同步」，走完本清單全綠不代表那件事被問過
+- [ ] skill 帶 CLI 入口點時，另走 `skill-cli-sync-check` 規則。**不涵蓋**：本清單不問「CLI 行為變更後 SKILL.md 與 pm-rules 是否同步」，走完本清單全綠不代表那件事被問過
 
 ### YAML
 
@@ -160,16 +160,18 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 - [ ] 100+ 行的 reference 有 TOC
 - [ ] 術語一致
 - [ ] 無時間敏感字串
-- [ ] **外部引用以身分指名，不寫檔案路徑**（見 `references/writing-the-body.md` 的〈外部引用：指名身分，不用檔案路徑〉）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬該節列出的例外之一，逐一說明；說不出屬於哪一類就是該改。**此 grep 不涵蓋裸檔名例外**（`file-size-guardian-hook.py` 這種寫法不帶 `.claude/` 前綴，零命中），該類須人工核
+- [ ] **外部引用以身分指名，不寫檔案路徑**（見 `references/writing-the-body.md` 的〈外部引用：指名身分，不用檔案路徑〉）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬該節列出的例外之一，逐一說明；說不出屬於哪一類就是該改。**不涵蓋**：裸檔名（`file-size-guardian-hook.py` 這種寫法不帶 `.claude/` 前綴，零命中），以及反引號後不是緊接 `.claude/` 的片段（`` `node .claude/…` `` 這種寫法同樣零命中）——兩類皆須人工核
 
 ### 觸發測試
 
-做法見 `references/patterns-and-troubleshooting.md` 的〈測試方法〉（三種測試的具體查詢與判準）與〈迭代回饋指引〉（未觸發、過度觸發各自的修法）；description 側的診斷見 `references/frontmatter-and-description.md` 的〈觸發品質診斷〉。
+**不涵蓋**：本組四項對走 git 同步的專案全部無可執行程序。前三項的做法落在 `references/patterns-and-troubleshooting.md`〈測試方法〉的 Manual 層，而該節載明 Manual 與 Programmatic 兩層在無上傳環節的專案裡沒有管道、Scripted 是唯一可用的一層而本檔未給程序；第四項的做法不在本 skill 任何一份檔案內。**勾選本組任一項目前只代表「已知有這件事」，不代表已驗證**——在補上程序之前，這一組不是閘門。
+
+查詢的具體形態與判準仍可參考〈測試方法〉的觸發測試段（Should trigger / Should NOT trigger 範例）與〈迭代回饋指引〉（未觸發、過度觸發各自的修法）；description 側的診斷見 `references/frontmatter-and-description.md` 的〈觸發品質診斷〉。
 
 - [ ] 主關鍵字觸發成功
 - [ ] 改述查詢仍觸發
 - [ ] 無關主題不觸發
-- [ ] Haiku / Sonnet / Opus 行為一致 —— **本項無程序**：跨模型比對的做法不在本 skill 任何一份檔案內，也未見於官方文件。在補上程序之前它不構成可執行的閘門，勾選它只代表「已知有這件事」
+- [ ] Haiku / Sonnet / Opus 行為一致 —— 跨模型比對的做法不在本 skill 任何一份檔案內，也未見於官方文件
 
 ---
 

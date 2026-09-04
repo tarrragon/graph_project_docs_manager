@@ -2,11 +2,11 @@
 
 > 何時讀：從零建一個新 skill、決定它屬哪一類型、或引入他人寫的 skill 前做安全審查時。**亦由此進入**——`skill-creation-flow`（pm-rules）第 1 步把讀者送到入口檔之後的下一跳；`frontmatter-and-description.md` 與 `writing-the-body.md` 回跳「這一步在整體流程的哪裡」。
 >
-> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，工作流模式與問題排除在 `patterns-and-troubleshooting.md`；〈核心心法〉〈發布前檢查清單〉留在 `SKILL.md`。
+> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，拆分程序在 `splitting-an-existing-skill.md`，工作流範本與問題排除在 `patterns-and-troubleshooting.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉〈三類 bundled resource 的分工〉〈發布前檢查清單〉留在 `SKILL.md`。
 >
 > 溯源：自 SKILL.md 搬移（v1.6.0，因兩個官方門檻皆超標）。
 
-本檔章節：〈檔案結構〉〈Skill 建立流程（官方 6 步）〉〈Skill 類型速查〉〈安全考量〉。
+本檔章節：〈檔案結構〉〈Skill 建立流程〉〈Skill 類型速查〉〈安全考量〉。
 
 ## 檔案結構
 
@@ -18,7 +18,7 @@ your-skill-name/
 └── assets/               # 選填：產出時使用的範本 / 圖示 / 字型
 ```
 
-## Skill 建立流程（官方 6 步）
+## Skill 建立流程
 
 > 來源：Anthropic `skill-creator` 官方流程。新建或大改 skill 時依序執行，已知不適用才跳過。
 
@@ -48,14 +48,16 @@ your-skill-name/
 
 ### Step 4：撰寫內容
 
+本節內部用 **4a–4f** 編號，不用裸數字——本檔的 `## Step 1..6` 已佔用 1–6 這個命名空間，節內表格若也用 1–6，「Step 5」會同時指〈Step 5：打包〉與本表第五列，而**跨檔指涉一律只寫「Step N」**（實測有三處外部引用落在這個歧義區）。
+
 | 順序 | 動作 |
 |------|------|
-| 1 | 先寫 bundled resources（scripts / references / assets） |
-| 2 | 寫 SKILL.md frontmatter（依 `frontmatter-and-description.md`〈YAML Frontmatter〉） |
-| 3 | 寫 SKILL.md body（依 `writing-the-body.md`〈Body 寫作〉的骨架） |
-| 4 | 量兩個門檻：`wc -l` < 500，且 `wc -m` 在該語言的換算值內（見 `SKILL.md`〈Progressive Disclosure — 三層載入〉）；超標即依 `splitting-an-existing-skill.md` 外移 |
-| 5 | 測試 scripts 實際可跑 |
-| 6 | 走一遍 `SKILL.md`〈發布前檢查清單〉四組 |
+| 4a | 先寫 bundled resources（scripts / references / assets） |
+| 4b | 寫 SKILL.md frontmatter（依 `frontmatter-and-description.md`〈YAML Frontmatter〉） |
+| 4c | 寫 SKILL.md body（依 `writing-the-body.md`〈Body 寫作〉的骨架） |
+| 4d | 量兩個門檻：`wc -l` < 500，且 `wc -m` 在該語言的換算值內（見 `SKILL.md`〈Progressive Disclosure — 三層載入〉）；超標即依 `splitting-an-existing-skill.md` 外移 |
+| 4e | 測試 scripts 實際可跑 |
+| 4f | 走一遍 `SKILL.md`〈發布前檢查清單〉四組 |
 
 **寫作風格**：用祈使句 / 不定式（imperative / infinitive），不用「我」「你」。
 
@@ -98,5 +100,3 @@ your-skill-name/
 | 注入攻擊 | 從 URL / 外部來源取內容的 skill 可能被注入 |
 
 **審查時檢查**：所有 SKILL.md、scripts/、assets/ 異常的網路呼叫、檔案存取模式。
-
----
