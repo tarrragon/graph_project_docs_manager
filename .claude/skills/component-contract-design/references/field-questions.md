@@ -1,8 +1,8 @@
-# 十一欄位填寫問句
+# 十一欄位填寫問句 / 多形態專案
 
-> 何時讀：走到任一模式的「填契約」步驟時；或專案支援多個形態時。
+> 何時讀：走到任一模式的「填契約」步驟時；或專案支援多個形態時。**亦由此進入**——`mode-c.md` 步驟 1 要對照每一個問句標三態時、`dispatch-language.md` 寫元件票 acceptance 要逐欄投影時、`SKILL.md`〈契約齊全的定義〉查小型專案三欄制時。
 >
-> 同目錄：三種模式在 `modes-a-b.md` 與 `mode-c.md`，寫票句型在 `dispatch-language.md`，症狀處置在 `examples-troubleshooting.md`；〈契約齊全的定義〉與用詞定義留在 `SKILL.md`。
+> 同目錄：三種模式在 `modes-a-b.md` 與 `mode-c.md`，寫票句型在 `dispatch-language.md`，症狀處置在 `examples-troubleshooting.md`；〈契約齊全的定義〉與**〈外部資產與跨檔用詞的地址〉**留在 `SKILL.md`——本檔出現的方法論、範本、L2／L3，地址一律查該表。
 >
 > 溯源：自 SKILL.md 的〈十一欄位填寫問句〉全節、與〈三種起點〉的「多形態專案」段搬移。
 
