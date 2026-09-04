@@ -1,3 +1,57 @@
+## [2.51.0] - 2026-09-04
+
+### Summary
+feat: SessionStart hook 對本專案擁有區段的 framework issue 執行 check; feat: dispatch-readiness 新增檢查 6，acceptance 提及路徑未落在 where.files 內即 FAIL; fix: 收窄 bare-commit-guard -a／--all 並行期豁免並改寫 DENY 訊息 (+6 more)
+
+Changes: 2 feat, 3 fix, 3 docs, 1 chore
+
+- feat: SessionStart hook 對本專案擁有區段的 framework issue 執行 check
+- feat: dispatch-readiness 新增檢查 6，acceptance 提及路徑未落在 where.files 內即 FAIL
+- fix: 收窄 bare-commit-guard -a／--all 並行期豁免並改寫 DENY 訊息
+- fix: section_comment dedup 關鍵字含 - 開頭 token 不再誤判為旗標
+- fix: sync-push CHANGELOG 產生器不再把 revert 原 commit 的 ticket ID 寫入條目
+- docs: 同步 dispatch-readiness 文件至檢查 4/5/6 與 exit code 分流語意
+- docs: 泛化規則二截斷方向為輸出過濾方向，涵蓋 grep 白名單/-v
+- docs: 同一名稱跨兩個同步狀態，讀者把分歧歸因至錯誤的一邊
+- chore: sync-pull （6 delta，0 衝突）
+
+---
+
+## [2.50.9] - 2026-09-04
+
+### Summary
+chore: 合併結果回推，驗證 consumer 側手動補齊內容與上游一致
+
+前次 push（v2.50.8）之後本地無實質內容變更，本次為合併結果的確認性
+回推。若判定 no-change 則屬預期——第一次 pull 的手動補齊（七檔採
+upstream、README 合併保留 PC-GPD、PC-BAL-024 去重）已隨 v2.50.8 推送，
+之後的 pull 為 0 delta。
+
+---
+
+## [2.50.8] - 2026-09-04
+
+### Summary
+chore: PC-GPD-005/006 進 canonical，收斂 consumer 側 sync 落差
+
+本次推送的實質內容是兩份 error-pattern（檔案 + README 索引兩行），
+建立於上次 push（2.43.1）之後，故 canonical 只有 PC-GPD-001~004：
+
+- PC-GPD-005 版號是單調計數器不表達分叉，兩個 consumer 各自前進一步
+  即撞號，內容雜湊只證明不同不證明誰新
+- PC-GPD-006 「各專案自建」目錄跨 consumer 整包複製，夾帶他方 ticket
+  編號與指向不存在檔案的索引
+
+未推送使該 consumer 的 README 與上游在同一表格區塊持續分歧，每次 pull
+重現同一衝突且 base SHA 無法推進（腳本以「本輪有衝突」為不推進條件，
+而人工解衝突發生在腳本結束之後）。推送後兩側一致，下次 pull 即收斂。
+
+settings.json 另含一項本地多出的 hook 註冊
+（skills/ticket/hooks/ana-ticket-metadata-validation-hook.py，該檔
+canonical 已有、僅未註冊）。
+
+---
+
 ## [2.50.7] - 2026-09-03
 
 ### Summary
