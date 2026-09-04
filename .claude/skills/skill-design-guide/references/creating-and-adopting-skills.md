@@ -1,10 +1,12 @@
-# 檔案結構 / 官方六步建立流程 / 類型速查 / 安全考量
+# 檔案結構 / 官方建立流程 / 類型速查 / 安全考量
 
 > 何時讀：從零建一個新 skill、決定它屬哪一類型、或引入他人寫的 skill 前做安全審查時。**亦由此進入**——`skill-creation-flow`（pm-rules）第 1 步把讀者送到入口檔之後的下一跳；`frontmatter-and-description.md` 與 `writing-the-body.md` 回跳「這一步在整體流程的哪裡」。
 >
 > 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，工作流模式與問題排除在 `patterns-and-troubleshooting.md`；〈核心心法〉〈發布前檢查清單〉留在 `SKILL.md`。
 >
 > 溯源：自 SKILL.md 搬移（v1.6.0，因兩個官方門檻皆超標）。
+
+本檔章節：〈檔案結構〉〈Skill 建立流程（官方 6 步）〉〈Skill 類型速查〉〈安全考量〉。
 
 ## 檔案結構
 
@@ -49,21 +51,25 @@ your-skill-name/
 | 順序 | 動作 |
 |------|------|
 | 1 | 先寫 bundled resources（scripts / references / assets） |
-| 2 | 寫 SKILL.md frontmatter（依〈YAML Frontmatter〉） |
-| 3 | 寫 SKILL.md body（依〈Body 寫作〉骨架） |
-| 4 | 測試 scripts 實際可跑 |
+| 2 | 寫 SKILL.md frontmatter（依 `frontmatter-and-description.md`〈YAML Frontmatter〉） |
+| 3 | 寫 SKILL.md body（依 `writing-the-body.md`〈Body 寫作〉的骨架） |
+| 4 | 量兩個門檻：`wc -l` < 500，且 `wc -m` 在該語言的換算值內（見 `SKILL.md`〈Progressive Disclosure — 三層載入〉）；超標即依 `splitting-an-existing-skill.md` 外移 |
+| 5 | 測試 scripts 實際可跑 |
+| 6 | 走一遍 `SKILL.md`〈發布前檢查清單〉四組 |
 
 **寫作風格**：用祈使句 / 不定式（imperative / infinitive），不用「我」「你」。
 
 ### Step 5：打包
 
-官方 `skill-creator` 提供 `scripts/package_skill.py`，自動驗證 frontmatter + 命名 + 結構，產出 `.skill` 檔。
+**本專案不執行這一步**：本庫的 skill 走 git 同步、不產出 `.skill` 檔。只有要把 skill 散布到本庫以外時才走官方打包。
+
+官方 `skill-creator`（Anthropic 提供的 skill，安裝於 plugin marketplace，非本庫資產）提供 `scripts/package_skill.py`，自動驗證 frontmatter + 命名 + 結構，產出 `.skill` 檔。實測該腳本以 `from scripts.quick_validate import ...` 匯入，直接執行會 `ModuleNotFoundError`，須以 `PYTHONPATH=<skill-creator 目錄>` 呼叫。
 
 ### Step 6：迭代
 
 | 訊號 | 動作 |
 |------|------|
-| Skill 該觸發沒觸發 | 修 description（見〈防 undertrigger〉） |
+| Skill 該觸發沒觸發 | 修 description（見 `frontmatter-and-description.md`〈防 undertrigger（官方建議）〉） |
 | Skill 觸發但用錯方向 | 修 SKILL.md body 路由 |
 | Skill 反覆需要相同細節 | 拆出 reference 或寫腳本 |
 

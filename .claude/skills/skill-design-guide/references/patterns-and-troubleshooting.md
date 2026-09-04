@@ -1,12 +1,12 @@
 # Skill Patterns, Testing & Troubleshooting
 
-> 何時讀：設計多步驟或條件式工作流、需要進階範本模式、要規劃 skill 的測試方法、或 skill 行為不如預期（未觸發／過度觸發／指令未被遵循／context 過大）時。
+> 何時讀：設計多步驟或條件式工作流、需要進階範本模式、要規劃 skill 的測試方法、或 skill 行為不如預期（未觸發／過度觸發／指令未被遵循／context 過大）時。**亦由此進入**——`frontmatter-and-description.md`〈觸發品質診斷〉把改完 description 要驗觸發的讀者送過來（落點為本檔〈測試方法〉與〈迭代回饋指引〉）；`SKILL.md`〈發布前檢查清單〉的觸發測試組同樣指向本檔。
 >
-> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`；〈核心心法〉與〈發布前檢查清單〉留在 `SKILL.md`。
+> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉與〈發布前檢查清單〉留在 `SKILL.md`。
 >
 > 溯源：本檔為 skill-design-guide 的 reference，v1.6.0 拆分時補上檔頭三段式（此前缺）。
 
-詳細的 Skill 設計模式、測試方法和常見問題排除指引。
+本檔章節：〈Skill 設計模式〉〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉。
 
 > 來源：Anthropic 官方 Skills 文件 (platform.claude.com) + 《The Complete Guide to Building Skills for Claude》(2026-01)
 
@@ -190,7 +190,7 @@ ELSE:
 
 先對單一困難任務迭代直到 Claude 成功，再將成功方法提取為 Skill。這比廣泛測試提供更快的訊號。
 
-### 1. 觸發測試
+### 觸發測試
 
 確保 Skill 在正確時機載入。
 
@@ -206,7 +206,7 @@ Should NOT trigger:
 - "Create a spreadsheet"
 ```
 
-### 2. 功能測試
+### 功能測試
 
 確保 Skill 產出正確的輸出。
 
@@ -221,7 +221,7 @@ Then:
   - No API errors
 ```
 
-### 3. 效能比較
+### 效能比較
 
 證明 Skill 改善了結果。
 
@@ -243,7 +243,7 @@ With skill:
 
 **量化指標**：
 - Skill 在 90% 相關查詢中觸發
-- 在 X 次工具呼叫內完成工作流
+- 工具呼叫次數不超過該工作流的步驟數（每步一次，無重試）
 - 每次工作流 0 個失敗 API 呼叫
 
 **質化指標**：
@@ -324,11 +324,10 @@ With skill:
 **症狀**：Skill 變慢或回應品質下降
 
 **解決**：
-1. SKILL.md 保持在門檻內（見 skill-design-guide 的三層載入節，兩個官方門檻與語言換算皆在該處），詳細文件移到 references/
+1. SKILL.md body 保持在兩個門檻內：**< 500 行**，且字元數在該語言的換算值內（繁中約 6,500、英文約 20,000）。量測指令與混合內容的換算見 `SKILL.md`〈Progressive Disclosure — 三層載入〉；詳細文件移到 references/
 2. 評估是否同時啟用太多 Skill（20-50 個以上需考慮精簡）
 3. 考慮將相關 Skill 打包為 "packs"
 
 ---
 
-*Last Updated: 2026-02-11*
-*Source: Anthropic Official "The Complete Guide to Building Skills for Claude" (2026-01)*
+來源：Anthropic 官方 "The Complete Guide to Building Skills for Claude"。版本紀錄在 skill 目錄的 `CHANGELOG.md`。

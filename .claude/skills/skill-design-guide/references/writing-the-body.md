@@ -6,6 +6,8 @@
 >
 > 溯源：自 SKILL.md 搬移（v1.6.0，因兩個官方門檻皆超標）。
 
+本檔章節：〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（內含〈外部引用：指名身分，不用檔案路徑〉）〈Claude Code 特有功能〉〈一則完整走查：兩個判準只有一個附了可執行動作〉。
+
 ## 嚴禁清單 — 什麼不該放進 Skill
 
 > **核心原則**：Skill 只放 AI agent 執行任務需要的東西，不放給人看的後設資訊。
@@ -24,7 +26,7 @@
 
 **本表的官方依據到哪為止（2026-09-04 查證）**：官方 best-practices **未禁止**任何額外檔案，且明文相反——「Reference files, data, or documentation don't consume context tokens until actually read」「Bundle comprehensive resources: include complete API docs, extensive examples, large datasets; no context penalty until accessed」；其示範目錄即為 `SKILL.md` 與 `FORMS.md`／`reference.md`／`examples.md` 平鋪。故本表是**本地判斷**，理由是目錄辨識成本而非 context 成本，且僅對「AI 不會讀到的檔案」成立。
 
-`CHANGELOG.md` 因此不在禁止之列：本專案的 skill 走 git 同步、有跨 consumer 版號協定（版號有兩個住址——CHANGELOG 首條與 frontmatter 的 `metadata.version`），它是該協定的載體而非給人看的附錄。全庫 59 個 skill 有 58 個帶著它。
+`CHANGELOG.md` 因此不在禁止之列：本專案的 skill 走 git 同步、有跨 consumer 版號協定（版號有兩個住址——CHANGELOG 首條與 frontmatter 的 `metadata.version`），它是該協定的載體而非給人看的附錄。本庫的 skill 一律帶著它，缺漏由 `skill-residue-check-hook.py` 在 SessionStart 掃出。
 
 ### 禁止的內容
 
@@ -110,14 +112,16 @@ description: [...]
 | 讀它學東西 | 指名身分 | 「判準見 `tdd` skill 的分層測試策略」 |
 | 寫進它讓別的東西動起來 | 保留檔名與欄位名（**介面規格**） | 「依賴回填至 `docs/proposals-tracking.yaml` 的 `depends_on`，下游檢查器讀該欄位」 |
 
-**三類例外，路徑是正當的**：
+**以下例外，路徑是正當的**（同時命中多類時取義務較嚴者）：
 
 1. **框架綁定工具講自己的主題**：`ticket`／`doc`／`worktree`／`skill-sync` 等，`.claude/` 路徑就是它們的操作對象而非閱讀材料。
 2. **介面規格**：下游程式讀特定檔案的特定欄位時，泛稱會使契約不可驗證。此類須在鄰近處標明它是本框架的位置慣例、不是契約本身。
 3. **路徑本身即被討論的對象**：如本節引述「hook 自 `.claude/hooks/` 移入⋯⋯」作為失效實證。此時路徑是舉例的內容，不是指向要讀的東西。
 4. **hook 與 script 的溯源引用**：這類東西無法以名字載入（沒有 Skill 工具可用、也沒有標題可檢索），路徑是唯一可行的指名方式。寫路徑時給檔名即可，不必寫全路徑——`file-size-guardian-hook.py` 比 `.claude/hooks/file-size-guardian-hook.py` 更耐搬移。
 
-> 本節條文寫成後隨即套回本文件自身，抓到三處違規（Opinionated Defaults 的詳細版路由、延伸閱讀表兩列），已改為指名。**寫完條文與用條文掃過自己是兩個動作**，〈發布前檢查清單〉的機械檢查即為此而設。
+> 本節條文寫成後隨即套回本文件自身，抓到三處違規（Opinionated Defaults 的詳細版路由、延伸閱讀表兩列），已改為指名。**寫完條文與用條文掃過自己是兩個動作**，`SKILL.md`〈發布前檢查清單〉的機械檢查即為此而設。
+>
+> **但這一次的自我套用只跑了本節這一條規則。** 後續審查在同一份文件裡另抓到多處違反**其他**條文的地方（本節起手句原寫「三類例外」而底下實列四項、本檔 100+ 行卻無 TOC）。自我套用的單位不是「我剛寫的那一條」，是**這份文件的全部條文 × 這份文件的全部內容**；留下一句自我套用的宣告，會讓後續審查不再查這一節，其餘條文對它的違規因此拿到永久豁免。
 
 ## Claude Code 特有功能
 
@@ -142,13 +146,15 @@ description: [...]
 - Changed files: !`gh pr diff --name-only`
 ```
 
-**一則完整走查**（對象：本 skill 自己的體量門檻）：
+## 一則完整走查：兩個判準只有一個附了可執行動作
+
+本節與上一節的 Claude Code 語法無關，示範的是把 `SKILL.md`〈Opinionated Defaults — 預設路徑引導正確做法〉那張判準表套到一段既有條文上。對象是本 skill 自己的體量門檻。
 
 | 階段 | 內容 |
 |------|------|
 | 原設計 | 表列兩個判準「< 5k tokens（< 500 行）」，Action 寫「超過 500 行就外移」 |
-| 套第 1 列（有無多數情況下正確的路徑） | 有——多數 skill 是繁中，行數對它失效 |
-| 套第 4 列（能不能改成自動檢查） | 部分——`wc` 可量，但語言比例要人判 |
+| 套「有沒有多數情況下正確的路徑」這一問 | 有——多數 skill 是繁中，行數對它失效 |
+| 套「能不能改成自動檢查」這一問 | 部分——`wc` 可量，但語言比例要人判 |
 | 實際發生 | Action 只綁了行數，於是**只有行數生效**；一份 245 行、15,015 字元的 skill 全程通過 |
 | 改後設計 | 兩個門檻都量、都給指令；字元門檻附語言換算表；並在條文中載明「本層無 hook 執法，依賴自查」 |
 

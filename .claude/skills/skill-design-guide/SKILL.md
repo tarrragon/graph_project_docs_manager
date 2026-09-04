@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.6.0
+  version: 1.7.0
 ---
 
 # Skill Design Guide
@@ -117,16 +117,20 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 
 ## 按需讀取
 
-本檔留下的是路由與判準——三層載入的預算、四個核心心法、發布前的檢查清單。細節依你當下在做什麼取一份讀。
+本檔留下的是路由與判準——三層載入的預算、核心心法、三類 bundled resource 的分工、發布前的檢查清單。細節依你當下在做什麼取一份讀。
+
+**涵蓋章節欄的字串與目標檔的 `##` 標題逐字相同**，可直接 grep 落地。改任一目標檔的標題時，這一欄要同步——名字對不上時讀者拿著章節名在入口檔找不到落點，而路由表看起來仍然正常。
 
 | 何時讀 | 檔案 | 涵蓋章節 |
 |--------|------|---------|
-| 寫或修 frontmatter：name、description、擴展欄位、觸發控制、命名 | `references/frontmatter-and-description.md` | 〈YAML Frontmatter〉〈Description 寫作〉〈命名規則〉〈觸發控制矩陣〉 |
-| 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單〉〈Body 寫作〉〈字串替換〉〈動態 context 注入〉 |
-| 從零建一個新 skill、判斷它屬哪一類型、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈建立流程六步〉〈類型速查〉〈安全考量〉 |
-| 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 〈拆分既有 skill〉 |
-| 設計多步驟工作流、要進階範本模式、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈工作流模式〉〈測試方法〉〈迭代回饋〉〈常見問題排除〉 |
-| 想理解工具設計哲學與 agent 視角的演進 | `references/seeing-like-an-agent.md` | 〈設計哲學〉〈進階設計模式〉〈反模式〉 |
+| 寫或修 frontmatter：name、description、擴展欄位、觸發控制、命名 | `references/frontmatter-and-description.md` | 〈YAML Frontmatter〉〈Description 寫作（最重要的一節）〉〈命名規則〉〈觸發控制矩陣〉 |
+| 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（含〈外部引用：指名身分，不用檔案路徑〉）〈Claude Code 特有功能〉 |
+| 從零建一個新 skill、判斷它屬哪一類型、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈Skill 建立流程（官方 6 步）〉〈Skill 類型速查〉〈安全考量〉 |
+| 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 整份皆為該程序；主要落點〈拆分特有的必查項〉〈兩種驗證，方法不同〉〈結構約定〉〈收尾〉 |
+| 設計多步驟工作流、要進階範本、規劃測試方法、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈Skill 設計模式〉〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉 |
+| 想理解工具設計哲學與 agent 視角的演進 | `references/seeing-like-an-agent.md` | 〈核心哲學〉〈Claude Code 團隊的演進教訓〉〈進階 Skill 設計模式〉〈觀察 Claude 如何使用 Skill〉〈反模式〉 |
+
+**兩個近同名章節的消歧義**：〈Skill 設計模式〉（`patterns-and-troubleshooting.md`，五個可貼用的工作流範本）與〈進階 Skill 設計模式〉（`seeing-like-an-agent.md`，設計哲學層的六則模式）不是同一節。要範本去前者，要設計理由去後者。
 
 ## 發布前檢查清單
 
@@ -155,14 +159,16 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 - [ ] 100+ 行的 reference 有 TOC
 - [ ] 術語一致
 - [ ] 無時間敏感字串
-- [ ] **外部引用以身分指名，不寫檔案路徑**（見 `references/writing-the-body.md` 的〈外部引用〉）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬「外部引用」節的三類例外之一，逐一說明；說不出屬於哪一類就是該改
+- [ ] **外部引用以身分指名，不寫檔案路徑**（見 `references/writing-the-body.md` 的〈外部引用：指名身分，不用檔案路徑〉）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬該節列出的例外之一，逐一說明；說不出屬於哪一類就是該改。**此 grep 不涵蓋裸檔名例外**（`file-size-guardian-hook.py` 這種寫法不帶 `.claude/` 前綴，零命中），該類須人工核
 
 ### 觸發測試
+
+做法見 `references/patterns-and-troubleshooting.md` 的〈測試方法〉（三種測試的具體查詢與判準）與〈迭代回饋指引〉（未觸發、過度觸發各自的修法）；description 側的診斷見 `references/frontmatter-and-description.md` 的〈觸發品質診斷〉。
 
 - [ ] 主關鍵字觸發成功
 - [ ] 改述查詢仍觸發
 - [ ] 無關主題不觸發
-- [ ] Haiku / Sonnet / Opus 行為一致
+- [ ] Haiku / Sonnet / Opus 行為一致 —— **本項無程序**：跨模型比對的做法不在本 skill 任何一份檔案內，也未見於官方文件。在補上程序之前它不構成可執行的閘門，勾選它只代表「已知有這件事」
 
 ---
 
