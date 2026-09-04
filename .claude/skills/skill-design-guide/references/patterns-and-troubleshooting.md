@@ -324,7 +324,7 @@ With skill:
 **症狀**：Skill 變慢或回應品質下降
 
 **解決**：
-1. SKILL.md body 保持在兩個門檻內：**< 500 行**，且字元數在該語言的換算值內（繁中約 6,500、英文約 20,000）。量測指令與混合內容的換算見 `SKILL.md`〈Progressive Disclosure — 三層載入〉；詳細文件移到 references/
+1. SKILL.md body 保持在兩個門檻內：**< 500 行**，且 `wc -m` 在該語言的換算值內。門檻值、換算表與量測指令見 `SKILL.md`〈Progressive Disclosure — 三層載入〉；詳細文件移到 references/
 2. 評估是否同時啟用太多 Skill（20-50 個以上需考慮精簡）
 3. 考慮將相關 Skill 打包為 "packs"
 

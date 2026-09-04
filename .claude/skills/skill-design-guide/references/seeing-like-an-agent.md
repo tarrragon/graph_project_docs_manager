@@ -1,8 +1,8 @@
 # Seeing like an Agent: 工具設計哲學與進階模式
 
-> 何時讀：想理解工具設計哲學與 agent 視角的演進、或要判斷一個設計選擇背後的取捨從何而來時。本檔是「為什麼」層，不是操作步驟。
+> 何時讀：在決定某一步該寫成文字指引還是腳本、或某個設計取捨說不出理由時；也用於理解一個工具為何演成現在的樣子。**亦由此進入**——`SKILL.md`〈按需讀取〉的消歧義段把要「設計理由」的讀者送到本檔的〈進階 Skill 設計模式〉；`splitting-an-existing-skill.md` 與 `patterns-and-troubleshooting.md` 的「同目錄」段亦指向本檔。
 >
-> 同目錄：怎麼寫的部分在 `frontmatter-and-description.md` 與 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`；〈核心心法〉留在 `SKILL.md`。
+> 同目錄：怎麼寫的部分在 `frontmatter-and-description.md` 與 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，工作流範本與問題排除在 `patterns-and-troubleshooting.md`；〈核心心法〉留在 `SKILL.md`。
 >
 > 溯源：本檔為 skill-design-guide 的 reference，v1.6.0 拆分時補上檔頭三段式（此前缺）。
 
