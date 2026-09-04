@@ -1,6 +1,6 @@
 # Skill Patterns, Testing & Troubleshooting
 
-> 何時讀：設計多步驟或條件式工作流、需要進階範本模式、要規劃 skill 的測試方法、或 skill 行為不如預期（未觸發／過度觸發／指令未被遵循／context 過大）時。**亦由此進入**——`frontmatter-and-description.md`〈觸發品質診斷〉把改完 description 要驗觸發的讀者送過來（落點為本檔〈測試方法〉與〈迭代回饋指引〉）；`SKILL.md`〈發布前檢查清單〉的觸發測試組同樣指向本檔。
+> 何時讀：設計多步驟或條件式工作流、需要進階範本模式、要規劃 skill 的測試方法、或 skill 行為不如預期（未觸發／過度觸發／指令未被遵循／context 過大）時。**亦由此進入**——`SKILL.md`〈發布前檢查清單〉的觸發測試組指向本檔的〈測試方法〉與〈迭代回饋指引〉。
 >
 > 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，正文寫法在 `writing-the-body.md`，新建流程在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉與〈發布前檢查清單〉留在 `SKILL.md`。
 >

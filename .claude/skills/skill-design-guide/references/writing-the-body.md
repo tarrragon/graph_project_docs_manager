@@ -126,6 +126,8 @@ description: [...]
 3. **路徑本身即被討論的對象**：如本節引述「hook 自 `.claude/hooks/` 移入⋯⋯」作為失效實證。此時路徑是舉例的內容，不是指向要讀的東西。
 4. **hook 與 script 的溯源引用**：這類東西無法以名字載入（沒有 Skill 工具可用、也沒有標題可檢索），路徑是唯一可行的指名方式。寫路徑時給檔名即可，不必寫全路徑——`file-size-guardian-hook.py` 比 `.claude/hooks/file-size-guardian-hook.py` 更耐搬移。
 
+5. **skill 內相對路徑補足前綴後的結果**：依下一段的規則把 `` `references/foo.md` `` 補成完整路徑時，產生的 `.claude/…` 寫法屬本類，不必再歸入前四類。**這一條是為了讓遵守下一段規則的產物不會被〈發布前檢查清單〉的機械檢查判為「說不出屬於哪一類」。**
+
 **skill 內相對路徑與外部路徑同形時，一律補足前綴。** `` `references/foo.md` `` 這種寫法在本 skill 目錄內指自己的 reference（合規），指到別的地方時則是斷掉的路徑——而**兩者字面完全相同**，讀者與機械檢查都分不出來（實測一份 skill 的 SKILL.md 寫 `` `references/agent-dispatch-template.md` ``，該檔實住 `.claude/references/`，而檢查清單的 grep 因為它不帶 `.claude/` 前綴也抓不到）。規則：**指自己目錄內的 reference 才可用裸相對路徑，其餘一律寫完整路徑或改指名**。
 
 > 本節條文寫成後隨即套回本文件自身，抓到三處違規（Opinionated Defaults 的詳細版路由、延伸閱讀表兩列），已改為指名。**寫完條文與用條文掃過自己是兩個動作**，`SKILL.md`〈發布前檢查清單〉的機械檢查即為此而設。

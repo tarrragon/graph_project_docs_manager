@@ -1,4 +1,4 @@
-# 檔案結構 / 官方建立流程 / 類型速查 / 安全考量
+# 檔案結構 / 建立流程 / 類型速查 / 安全考量
 
 > 何時讀：從零建一個新 skill、決定它屬哪一類型、或引入他人寫的 skill 前做安全審查時。**亦由此進入**——`skill-creation-flow`（pm-rules）第 1 步把讀者送到入口檔之後的下一跳；`frontmatter-and-description.md` 與 `writing-the-body.md` 回跳「這一步在整體流程的哪裡」。
 >
@@ -7,6 +7,8 @@
 > 溯源：自 SKILL.md 搬移（v1.6.0，因兩個官方門檻皆超標）。
 
 本檔章節：〈檔案結構〉〈Skill 建立流程〉〈Skill 類型速查〉〈安全考量〉。
+
+
 
 ## 檔案結構
 
@@ -20,7 +22,9 @@ your-skill-name/
 
 ## Skill 建立流程
 
-> 來源：Anthropic `skill-creator` 官方流程。新建或大改 skill 時依序執行，已知不適用才跳過。
+> 來源：Anthropic `skill-creator` 官方流程，**本節已就本專案調整**。新建或大改 skill 時依序執行。
+>
+> **不涵蓋**：本節不是純官方流程。〈Step 5：打包〉本專案不執行（走 git 同步、不產出 `.skill` 檔）；Step 4 的六個子項中 4d（量兩個門檻）與 4f（走發布前檢查清單）是本地約定，不在官方流程內。要對照官方原文時以 `skill-creator` 為準，不以本節為準。
 
 ### Step 1：用具體案例釐清 skill
 
