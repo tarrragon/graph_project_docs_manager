@@ -2,7 +2,7 @@
 
 > 何時讀：卡住要查症狀處置時；或要校準某個步驟的產出物粒度時。**亦由此進入**——`mode-c.md` 步驟 4 要查容器候選的計數門檻時。
 >
-> 同目錄：三種模式在 `modes-a-b.md` 與 `mode-c.md`，填寫問句與多形態在 `field-questions.md`，寫票句型在 `dispatch-language.md`；〈契約齊全的定義〉與**〈外部資產與跨檔用詞的地址〉**留在 `SKILL.md`，〈分工邊界〉在 `adjacent-assets.md`——本檔出現的判別問句、執法工具、前置，地址一律查該表。
+> 同目錄：三種模式在 `modes-a-b.md` 與 `mode-c.md`，填寫問句與多形態在 `field-questions.md`，寫票句型在 `dispatch-language.md`；〈契約齊全的定義〉留在 `SKILL.md`，**〈外部資產與跨檔用詞的地址〉在 `addresses.md`**，〈分工邊界〉在 `adjacent-assets.md`——本檔出現的判別問句、執法工具、前置，地址一律查該表。
 >
 > 溯源：自 SKILL.md 的〈Examples〉〈Troubleshooting〉兩節搬移。
 

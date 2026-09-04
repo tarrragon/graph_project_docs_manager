@@ -2,7 +2,7 @@
 
 > 何時讀：判定起點為「已有元件程式碼與頁面」時。
 >
-> 同目錄：〈十一欄位填寫問句〉與〈多形態專案〉在 `field-questions.md`，〈執行者與簽核者〉與本 skill〈派發語言〉在 `dispatch-language.md`，〈Troubleshooting〉的計數門檻在 `examples-troubleshooting.md`，模式 A 的同型歸併規則與存在必要性檢視在 `modes-a-b.md`；〈契約齊全的定義〉與**〈外部資產與跨檔用詞的地址〉**留在 `SKILL.md`，〈分工邊界〉在 `adjacent-assets.md`——本檔出現的方法論、範本、執法工具、判別問句、統一匯出入口、baseline 相關用詞，地址一律查該表。
+> 同目錄：〈十一欄位填寫問句〉與〈多形態專案〉在 `field-questions.md`，〈執行者與簽核者〉與本 skill〈派發語言〉在 `dispatch-language.md`，〈Troubleshooting〉的計數門檻在 `examples-troubleshooting.md`，模式 A 的同型歸併規則與存在必要性檢視在 `modes-a-b.md`；〈契約齊全的定義〉留在 `SKILL.md`，**〈外部資產與跨檔用詞的地址〉在 `addresses.md`**，〈分工邊界〉在 `adjacent-assets.md`——本檔出現的方法論、範本、執法工具、判別問句、統一匯出入口、baseline 相關用詞，地址一律查該表。
 >
 > 溯源：自 SKILL.md 的〈模式 C：程式碼萃取（接手既有專案）〉一節搬移。
 

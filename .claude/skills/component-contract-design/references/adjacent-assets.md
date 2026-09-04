@@ -1,10 +1,10 @@
 # 分工邊界
 
-> 何時讀：不確定某件事該由本 skill 還是相鄰資產處理時；或要判斷某個失效該寫成契約欄位還是審查項時。
+> 何時讀：不確定某件事該由本 skill 還是相鄰資產處理時；判斷某個失效該寫成契約欄位還是審查項時；或執行中要查與相鄰資產的交界事實時（模式 C 沿用 `foundation-design` 的接手順序、原生佈局掃描與執法工具的分工、地基波第四塊的 checkpoint、範本的產物形狀與本 skill 的填寫程序如何分工）。
 >
-> 同目錄：三種模式在 `modes-a-b.md` 與 `mode-c.md`，填寫問句與多形態在 `field-questions.md`，寫票句型在 `dispatch-language.md`，症狀處置在 `examples-troubleshooting.md`；〈契約齊全的定義〉與〈外部資產與跨檔用詞的地址〉留在 `SKILL.md`。
+> 同目錄：三種模式在 `modes-a-b.md` 與 `mode-c.md`，填寫問句與多形態在 `field-questions.md`，寫票句型在 `dispatch-language.md`，症狀處置在 `examples-troubleshooting.md`；〈契約齊全的定義〉留在 `SKILL.md`，**〈外部資產與跨檔用詞的地址〉在 `addresses.md`**——本檔出現的方法論、範本、執法工具、判別問句、狀態矩陣、特徵測試，地址一律查該表。
 >
-> 溯源：自 SKILL.md 的〈分工邊界〉一節搬移（v1.4.0，為騰出 SKILL.md 體量預算）。
+> 溯源：自 SKILL.md 的〈分工邊界〉一節搬移（v1.4.0）。外移釋出 730 字元，但同次修法另新增內容，SKILL.md 淨值仍升——外移的效果是騰出空間，不是使檔案變小。
 
 ## 分工邊界
 
