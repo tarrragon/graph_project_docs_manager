@@ -4,7 +4,7 @@ description: "從規格狀態表、設計畫布或既有程式碼推導元件目
 license: MIT
 metadata:
   portable: true
-  version: 1.8.0
+  version: 1.9.0
   category: ui-design
 ---
 
@@ -42,9 +42,9 @@ metadata:
 |--------|------|---------|
 | 起點為「有規格」或「有畫布」，走模式 A / B | `references/modes-a-b.md` | 〈模式 A：規格推導〉〈模式 B：畫布拆解〉 |
 | 起點為「已有元件程式碼與頁面」，走模式 C | `references/mode-c.md` | 〈模式 C：程式碼萃取〉 |
-| 走到任一模式的「填契約」步驟；或專案支援多個形態 | `references/field-questions.md` | 〈十一欄位填寫問句〉〈多形態專案〉 |
+| 走到任一模式的「填契約」步驟；或專案支援多個形態；或想看一個填好的十一欄位契約條目 | `references/field-questions.md` | 〈十一欄位填寫問句〉〈多形態專案〉〈正例：清單卡的十一欄位〉 |
 | 要寫任何票（畫面／元件／遷移／決策），或派發前查誰執行誰簽核 | `references/dispatch-language.md` | 〈執行者與簽核者〉〈派發語言〉 |
-| 卡住要查症狀處置，或想看三種模式的實例 | `references/examples-troubleshooting.md` | 〈Examples〉〈Troubleshooting〉 |
+| 卡住要查症狀處置，或想看三種模式的實例，或想看完整的容器條目／畫面票／歸併判斷正例 | `references/examples-troubleshooting.md` | 〈Examples〉〈正例〉〈Troubleshooting〉 |
 | 不確定某件事該由本 skill 還是相鄰資產處理 | `references/adjacent-assets.md` | 〈分工邊界〉 |
 | 正文出現簡稱而不知它在哪 | `references/addresses.md` | 〈外部資產與跨檔用詞的地址〉 |
 
