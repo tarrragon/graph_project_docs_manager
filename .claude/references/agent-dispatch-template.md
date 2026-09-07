@@ -1019,7 +1019,7 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 
 > **與既有「Layer 1 自檢觸發指引」章節的差異**：該章節是通用的文字品質/禁用字/Schema 掃描指令；本項額外要求自檢結果**逐一對照 acceptance 編號**，讓 PM 與 acceptance-gate-hook 可直接核對「每項 acceptance 有無對應證據」，而非僅有一段籠統的自檢摘要。
 
-> **元件票／畫面票的票型專屬必含項**：見 `.claude/skills/component-contract-design/references/dispatch-language.md`〈派發語言〉表格的「派發 prompt 必含」列——內容即本節的自檢結果子章節義務套用到十一欄位投影／import 邊界斷言的具體對照，不重複展開。
+> **元件票／畫面票的票型專屬必含項**：見 `.claude/skills/component-contract-design/references/dispatch-language.md`〈派發語言〉表格的「派發 prompt 必含」列——內容即本節的自檢結果子章節義務套用到元件契約欄位表投影／import 邊界斷言的具體對照，不重複展開。
 
 ### 5. 明示：回覆勾選不算數，frontmatter 才是 SOT
 
@@ -1050,7 +1050,8 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 
 ---
 
-**Last Updated**: 2026-09-07
+**Last Updated**: 2026-09-08
+**Version**: 1.33.1 — 「元件票／畫面票的票型專屬必含項」句內「十一欄位投影」改「元件契約欄位表投影」，同步 component-contract-design 方法論欄位表計數去數字化（DOC-GPD-003）
 **Version**: 1.33.0 — 「Solution 自檢結果子章節義務」節後補一句路由，指向 `component-contract-design` skill〈派發語言〉表格的「派發 prompt 必含」列（元件票／畫面票的票型專屬對照，不重複展開）；本檔既有的骨架固定句（測試前台執行、`run_in_background` 限旁路任務）不變，該列僅回指本檔，不複製內容
 
 **Last Updated**: 2026-09-02
