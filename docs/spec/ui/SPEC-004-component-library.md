@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-08"
-version: "1.17"
+version: "1.18"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -72,7 +72,7 @@ depends_on_domains: [layout]
 > 本專案為單一形態（桌機），子表僅一欄；第 4 章各元件的「回饋契約」子節之「回饋通道（桌機）」欄引用本表對應列，不各自重述通道。
 > 無障礙播報（`Semantics` 標籤與狀態變化播報）是視覺障礙使用者對視覺回饋的替代通道，桌機同樣須提供（方法論〈形態因素先決〉）；
 > 本專案無觸覺、無聲音通道（桌機指標不遮住元件，無需觸覺確認；聲音無專案決策來源，不自行引入）。
-> **本表狀態**：提案，待 PM 於本規格票驗收核定；「狀態變更提示」列的系統通知升級為**待核定**（用戶簽核）。
+> **本表狀態**：提案，待 PM 於本規格票驗收核定；「狀態變更提示」列的系統通知升級已由用戶簽核（2026-09-08），規格在 SPEC-003 §2.2「系統層通知」。
 
 | 事件 | 桌機（指標 + 鍵盤） |
 |------|--------------------|
@@ -80,7 +80,7 @@ depends_on_domains: [layout]
 | 焦點 focus | 焦點環（§4.0.1 focused 態：`AppColors.accent` 外框，存在性斷言依 SPEC-003 §2.10 焦點裝飾）+ 鍵盤導覽（Tab 三區段順序、Esc 收合，SPEC-003 §2.10） |
 | 按下確認 press-ack | pressed（§4.0.1：Material `InkWell` / `ButtonStyleButton` 內建 pressed 態）+ Material ripple；時限 `Motion.feedback` 內（`lib/tokens/motion.dart`） |
 | 定位提示 locate | 容器 scroll-into-view + 短暫高亮（適用場景：搜尋命中列、樹節點展開後的子項、跨畫面跳轉到節點——追溯視圖至節點詳情、破洞項至來源）；輔助技術：焦點移入被定位項，由第 4 章對應容器條目定義高亮 token 與時長 |
-| 狀態變更提示 state-change | `Motion.*` 過渡（依 §4 各元件 token 子節）+ 無障礙狀態變化播報（第 4 章各條目無障礙子節）；元件不在視野時是否升級為 macOS 系統通知列——**待核定**（用戶簽核；0.1 預設**不用**：0.1 為唯讀展示殼，無背景完成的長操作需喚回使用者；載入與掃描的完成由畫面級狀態轉換承載） |
+| 狀態變更提示 state-change | `Motion.*` 過渡（依 §4 各元件 token 子節）+ 無障礙狀態變化播報（第 4 章各條目無障礙子節）；升級：掃描完成 AND（視窗非前景 OR 已離開觸發頁）→ macOS 系統通知，規格見 SPEC-003 §2.2「系統層通知」（觸發條件、文案 key、點擊導向引用本表 locate 列、權限 gate 三路徑與 `denied` 時的 `AppSnackBar.withAction` fallback、不重複發送）；用戶簽核 2026-09-08。0.1 僅此一處升級，Domain 與 Ticket 載入的完成仍由畫面級狀態轉換承載 |
 | 等待與結果 | SPEC-003 §2.2 三層（點擊確認＝Material pressed 態、等待指示＝畫面級載入態 §2.6、結果通知＝狀態轉換本身或 SnackBar）；不新增本檔專屬通道 |
 
 **與第 4 章的分工**：本表定「桌機有哪些通道可用」；每個元件在六類事件上實際走哪個通道、時間門檻、動畫 token、對應狀態邊，由第 4 章逐元件「回饋契約」子節填寫（`0.1.0-W3-060.2`–`060.5`），不適用者填「不可用 + 替代」或「不適用 + 理由」，不留空。
@@ -5819,6 +5819,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.18 | 2026-09-08 | `0.1.0-W3-063`：§1〈回饋通道子表〉state-change 列的「不在視野時是否升級 macOS 系統通知」由**待核定**改為已簽核（用戶簽核 2026-09-08）——升級條件「掃描完成 AND（視窗非前景 OR 已離開觸發頁）」，規格引用 SPEC-003 §2.2「系統層通知」（v1.9），0.1 僅此一處升級；本表狀態段移除待核定句。只動 §1 一列與狀態段，第 4 章逐元件條目不動（`060.2`–`060.5`） |
 | 1.17 | 2026-09-08 | `0.1.0-W3-060.1`：依範本 1.13.0 與方法論 1.14.0，§1「回饋通道」列展開為〈回饋通道子表〉（回饋事件六類 × 桌機單欄，提案）：affordance = hover、focus = 焦點環 + 鍵盤導覽、press-ack = pressed + ripple 於 `Motion.feedback` 內、locate = scroll-into-view + 短暫高亮 + 輔助技術焦點移入、state-change = `Motion.*` 過渡 + 無障礙播報（不在視野時升級 macOS 系統通知列標**待核定**，0.1 預設不用）、等待與結果 = SPEC-003 §2.2 三層；無觸覺、無聲音。§2 新增「過渡提示觸發點」（提案：呼叫端顯式觸發，容器例外於 `ref.listen` 內比對新舊值後觸發仍屬呼叫端）與「樂觀更新政策」（提案：0.1 不允許，同步策略欄不得填「樂觀更新後確認」；重評綁定 PROP-005〈0.x — 編輯〉落為提案票時）兩列。檔頭版本段由陳舊的 1.10 對齊 frontmatter；層級定位段「十一欄位」字面改為引用方法論〈元件契約欄位表〉（DOC-GPD-003）。第 4 章逐元件條目不動（`060.2`–`060.5`） |
 | 1.16 | 2026-09-03 | `0.1.0-W1-061`：對齊 4.11 `PageTitle` 副標的語意角色——內容角色明寫 `subtitle` 為 slot 名、渲染變體為 `AppText.body` 非 `AppText.subtitle`（後者恆為 `Semantics.header`，副標不得為 header）；狀態矩陣補 `secondary: true` + `maxLines: 1` 與著色寫法選擇理由（依 4.1 優先序取 `secondary` 而非 `tone: textSecondary`）；token 字體列標明畫面名／副標各自變體；無障礙朗讀標籤列補副標非 header。4.1 `AppText` 變體表：`subtitle` 行為差異補「恆標記 `Semantics.header`（header 語意，非副標用途）」與替代寫法（`body` + `secondary` + `maxLines: 1`）；`body` 何時選用補頁首副標；`caption` 何時選用移除「副標」改指向 `body` 列。契約值與 `lib/components/page_title.dart` 現況一致，實作不變 |
 | 1.15 | 2026-09-03 | 回填元件票實作偏離對齊：4.10 `segments` 型別 `Segment` 改 `SegmentItem`（撞名，實作已更名，語意不變）；4.35／4.36 首段補實作類別名（`AppTableRow`／`AppDataTable`，撞名更名，契約條目名與契約值不變）；4.13 `FilterDropdown` 去「待決」標記，依 SPEC-003 §3.4 篩選七列與 F1–F7 元件級契約補齊狀態矩陣 `open` 列、互動反應、無障礙播報、選單的元件級契約子節與 F7 實作註記；§4.0.9 待決清單移除 4.13 一列（全部 42 條目無待決欄位）；4.24／4.27／4.38 新增實作註記（進度百分比等價轉換、返回列以獨立疊加列取代注入 `PageColumn`、底部箭頭列因套件限制不釘選），皆為實作層面說明、非契約值變更。其餘型別放寬類偏離（`AppButton.leading`／`IssueMarker.child`／`PageColumn.header`／`content`／`Panel.children`／`Toolbar.filters`／`ListRow.leading`／`trailing`／`AppShell.overlay` 暫以 `Widget` 承接；`ListRow.sectionHeader`／`RecentProjectItem`／`NavItem` 取色繞過 `AppText`；`BlockedState.withDetail` 動作列改用 `Wrap`；4.11 `PageTitle` 副標變體）不改本檔契約內容，維持現況待對應收斂票落地 |

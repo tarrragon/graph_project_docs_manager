@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-09-03"
-version: "1.8"
+updated: "2026-09-08"
+version: "1.9"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -42,7 +42,7 @@ SPEC-001 界定七個畫面的 31 個狀態「是什麼、怎麼進、怎麼出�
 （例如 §2.1 時間 token 表的依據欄、§5 判讀註記表）記錄的是決策脈絡而非斷言
 對象，不受本判準約束，得使用一般論述語言。
 
-可觀察結果取以下四種形式，涵蓋本規格全部驗收（FR-01～FR-10）：
+可觀察結果取以下四種形式，涵蓋本規格全部驗收（FR-01～FR-11）：
 
 | 形式 | 範例 |
 |------|------|
@@ -194,6 +194,99 @@ SPEC-002 的唯一硬規則要求所有值先具名。時間值同樣適用，�
 實測依據（macOS 26.5 / Flutter 3.47.1 / 沙盒關閉）：`open <file>`、`open <dir>` 皆
 `exit=0`；不存在路徑 `exit=1`（stderr「does not exist」）；無應用程式對應的副檔名
 `exit=1`（stderr `kLSApplicationNotFoundErr`）。完整紀錄見 `0.1.0-W1-036` 重現實驗結果。
+
+#### 系統層通知（`0.1.0-W3-063` 定案：0.1 落地，用戶簽核 2026-09-08）
+
+結果通知層的第三種載體。§2.2 表「結果通知」列的兩種形式（狀態轉換本身、SnackBar）
+都以**視窗在前景且觸發畫面可見**為前提；破洞掃描（§3.5）是 0.1 唯一會在使用者離開
+畫面後仍持續並自行完成的長時操作（§2.8 L1），其完成時使用者可能已切至其他導覽項或
+切到別的應用程式，App 內任何通道都不在視線範圍，故升級為 macOS 系統通知——這是
+唯一能跨越 App 視窗邊界的結果通知通道。判準來源：ux-design-evaluation
+〈結果通知的形式選擇〉「操作成功、結果不在視線範圍」列，與〈gate-fallback〉權限
+gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 state-change 列引用本節。
+
+**適用範圍**：0.1 僅破洞掃描完成一處。Domain 視圖載入與 Ticket 載入不升級：兩者
+的完成落點就是使用者觸發時停留的畫面，離開後回來即見結果，且 SPEC-001 未定義
+其完成需喚回使用者。擴充至其他事件須另經用戶簽核，不由實作票自行擴充。
+
+| 項目 | 契約 |
+|------|------|
+| 觸發條件 | `state-gaps-scanning` 轉換至 `state-gaps-none` 或 `state-gaps-found` 的當下，**且**下列任一成立：(a) 視窗非前景——`AppLifecycleState` 不為 `resumed`；(b) 目前可見頁不是 `nav-page-gaps`——`selectedDestinationProvider` 的值不為 `AppDestination.gaps`。兩者皆不成立（使用者正看著破洞報告）時**不發送**，狀態轉換本身即結果 |
+| 不發送 | 掃描被取消（§2.5 C5：取消完成不通知）；切換專案中止掃描（§2.8 L2）；掃描未抵達完成態；同一次掃描結果已發送過（見「不重複發送」列） |
+| 通知內容 | 標題 `scanCompleteNotificationTitle`；內文依結果二擇一：`state-gaps-found` → `scanCompleteNotificationBody`（placeholder `count`，型別 `int`，值為破洞總數）、`state-gaps-none` → `scanCompleteNoGapsNotificationBody`。不含檔案路徑、不含逐項明細（明細由畫面承載；含關鍵資訊的結果不走自動消失的通道）；不附通知動作按鈕，唯一互動是點擊通知本體 |
+| 點擊通知的導向 | 系統將 App 帶到前景後，App 執行 rail 語意切換至 `nav-page-gaps`（`returnTo` 設為 `null`，§2.3 規則 1），並依 SPEC-004 §1 回饋通道子表 locate 列定位：`state-gaps-found` → `scroll-gaps-sections` scroll-into-view 至第一個分節的第一個 `card-gaps-<itemId>` 並短暫高亮、焦點移入該項（高亮 token 與時長由 SPEC-004 第 4 章對應容器條目定義）；`state-gaps-none` → 焦點移入 `state-gaps-none` 根節點，不高亮。點擊時若已進入新一輪 `state-gaps-scanning`，只切頁、顯示當時進度、不定位；若專案已切換（結果已清空），只切頁、不定位 |
+| 不重複發送 | 每一次掃描完成至多發送一則；同一結果不因視窗前景／背景往返而再發。以下事件由 App 撤回尚未被點擊的通知：使用者自行回到 `nav-page-gaps`（結果已被看見）、新一輪掃描開始（舊結果已判定待汰換，與 §3.5「重新掃描」列同一理由）、切換專案（§2.8 L2）。撤回失敗不阻擋、不轉狀態，只記 log |
+| 權限 gate | 見下方三路徑表。授權狀態於**每次**觸發條件成立時重新查詢（使用者可在系統設定隨時改動，不快取上一次結果） |
+| 等待指示 | 發送與撤回期間不顯示任何等待指示：兩者皆為非同步旁路動作，不改變畫面狀態，畫面已依 §3.5 完成掃描中 → 結果的 cross-fade |
+| 可觀測性 | 授權查詢入口與結果、授權請求入口與結果、發送與撤回的入口與成功／失敗，皆以 `developer.log`（info；失敗為 warning）記錄，含破洞總數與觸發原因（非前景／已離開頁）（observability 規則 5：權限 check／request 與平台 API 呼叫逐點記錄） |
+
+**權限 gate 三路徑**（gate-fallback：每道 gate 必答成功／失敗／不確定）：
+
+| 授權狀態 | 分類 | App 行為 | fallback |
+|---------|------|---------|----------|
+| `granted` | 成功 | 發送系統通知 | 不適用 |
+| `denied`（使用者拒絕請求，或事後於系統設定關閉） | 失敗 | 不發送、**不再請求**（系統不會再彈對話框）；0.1 **不引導至系統設定**——App 無設定畫面可承載入口，SPEC-001 亦無對應狀態 | App 內 SnackBar `AppSnackBar.withAction`：文字 `scanCompleteSnackbarMessage`（placeholder `count`；無破洞時 `scanCompleteNoGapsSnackbarMessage`），動作 `viewGapsAction`，停留 `Motion.snackBarWithAction`；動作觸發等同「點擊通知的導向」列。顯示時機：視窗在前景且可見頁不是 `nav-page-gaps` → 立即；視窗非前景 → **延後至視窗下一次回到 `resumed`** 時顯示（SnackBar 會自動消失，背景時顯示等於沒顯示）；回到前景前使用者已自行進入 `nav-page-gaps` → 不顯示。持續性的 App 內指示（Banner、導覽項徽章）0.1 **不提供**：SPEC-004 元件庫無 Banner、`NavItem` 無徽章 slot，依元件庫優先原則不就地發明；是否補元件由 `0.1.0-W3-063` spawn request 交 PM 核定 |
+| `notDetermined` | 不確定（尚未詢問） | 於**首次**觸發條件成立的當下請求授權（功能使用時即時請求，使用者剛經歷一次「離開後掃描才完成」的情境，理解為何需要）；**不**於 App 啟動時請求、不於掃描開始時請求。請求回覆 `granted` → 立即補發本次通知；回覆 `denied` → 本次即走 `denied` 列的 fallback | 請求對話框由系統呈現，App 不另加前置說明畫面（0.1 唯一權限，且請求時機已在操作 context 內） |
+| 其他（`provisional`、查詢或請求逾時／拋錯、API 不可用） | 不確定（結果未知） | 一律**視為 `denied`** 處理，記 warning log；不重試、不阻塞掃描結果的渲染 | 同 `denied` 列 |
+
+**介面（供實作票與測試注入）**：
+
+```dart
+enum NotificationAuthorization { notDetermined, granted, denied }
+
+class ScanCompleteNotification {
+  const ScanCompleteNotification({required this.gapCount});
+  final int gapCount; // 0 表示無破洞，對應 scanCompleteNoGapsNotificationBody
+}
+
+abstract class ScanNotifier {
+  Future<NotificationAuthorization> authorizationStatus();
+  Future<NotificationAuthorization> requestAuthorization();
+  Future<void> show(ScanCompleteNotification notification);
+  Future<void> withdraw();                 // 撤回尚未被點擊的通知；無通知時為 no-op
+  Stream<void> get activated;              // 使用者點擊通知
+}
+```
+
+查詢、請求、發送、撤回四個動作由同一個可注入的抽象承擔，畫面層只消費
+`activated` 串流執行「點擊通知的導向」列；三個授權值以外的平台結果（`provisional`、
+錯誤）由實作端在抽象邊界內收斂為 `denied`，不外洩至畫面層。
+
+**測試斷言**（整合測試注入 fake，記錄各方法呼叫次數與參數，概述表「外部程序呼叫」
+形式；系統通知本身不在測試中驗證）：
+
+| 情境 | 斷言 |
+|------|------|
+| 掃描完成時視窗前景且 `nav-page-gaps` 可見 | `show` 呼叫次數為 0；`find.byType(SnackBar)` 為 `findsNothing` |
+| 掃描完成時已切至 `nav-page-tickets`，fake 回 `granted` | `show` 恰一次，`gapCount` 等於假資料破洞數；`authorizationStatus` 在 `show` 之前被呼叫 |
+| 上一情境後視窗背景 → 前景往返兩次 | `show` 仍為一次 |
+| 上一情境後點 `nav-item-gaps` | `withdraw` 恰一次 |
+| 上一情境後點 `action-gaps-rescan` | `withdraw` 恰一次；新一輪完成且條件成立時 `show` 累計兩次 |
+| fake 回 `denied`，視窗前景、可見頁為 `nav-page-tickets` | `show` 為 0、`requestAuthorization` 為 0；SnackBar 文字等於 `scanCompleteSnackbarMessage` 帶入破洞數的值，動作文字等於 `viewGapsAction` |
+| fake 回 `denied`，視窗非前景 | 完成當下 `findsNothing`；模擬 `resumed` 後 SnackBar 出現 |
+| fake 回 `denied`，視窗非前景，`resumed` 前已點 `nav-item-gaps` | `resumed` 後仍 `findsNothing` |
+| fake 回 `notDetermined`，請求回 `granted` | `requestAuthorization` 恰一次且在 `show` 之前；`show` 恰一次 |
+| fake 回 `notDetermined`，請求回 `denied` | `requestAuthorization` 恰一次；`show` 為 0；SnackBar 依 `denied` 列出現 |
+| fake 於 `activated` 發事件（`state-gaps-found`） | `selectedDestinationProvider` 等於 `AppDestination.gaps`、`returnToProvider` 為 `null`；第一個 `card-gaps-<itemId>` 的 rect 與 `scroll-gaps-sections` viewport rect 有交集且 `Focus.hasFocus` 為 `true` |
+| 掃描中按 `action-gaps-cancel-scan` | `show` 為 0、`requestAuthorization` 為 0 |
+
+**i18n**（實作票補齊 ARB，key 命名沿用既有 `*Message` / `*Action` 慣例）：
+
+| key | zh | en |
+|-----|----|----|
+| `scanCompleteNotificationTitle` | 破洞掃描完成 | Gap scan complete |
+| `scanCompleteNotificationBody` | 偵測到 {count} 個破洞 | {count} gaps detected |
+| `scanCompleteNoGapsNotificationBody` | 未偵測到破洞 | No gaps detected |
+| `scanCompleteSnackbarMessage` | 掃描完成，偵測到 {count} 個破洞 | Scan complete: {count} gaps detected |
+| `scanCompleteNoGapsSnackbarMessage` | 掃描完成，未偵測到破洞 | Scan complete: no gaps detected |
+| `viewGapsAction` | 檢視 | View |
+
+**實作票驗證**（本節只寫規格，下列平台事實由實作票以實機確認並回填本節，不得
+以規格文字取代實測）：`UNUserNotificationCenter` 在沙盒關閉（PROP-001）與
+Developer ID 簽章下的可用性，以及 debug build 未簽章時授權請求是否直接回錯；
+Flutter 端載體（原生 channel 或第三方套件）的選擇；macOS 上 `AppLifecycleState`
+的 `inactive` / `hidden` 對應視窗失焦與最小化的實際行為；撤回已送達通知的 API 與
+其對「通知中心已收合」狀態的效果。
 
 ### 2.3 導航模型：六項平行 + 單槽來源記錄
 
@@ -428,6 +521,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 徽章 | §3.4 損壞徽章的可點性 |
 | 篩選下拉（SPEC-004 4.13 `FilterDropdown`） | §3.4 篩選七列與元件級契約 F1–F7、§2.10 選單 Esc／Tab 兩列、§1.4 第 3 列 |
 | 表格欄首（SPEC-004 4.14 `TableColumnHeader.sortable`） | §3.4 排序兩列與元件級契約 S1–S7 |
+| SnackBar（SPEC-004 4.26 `AppSnackBar.withAction`） | §2.2「系統層通知」權限 `denied` 列的 App 內 fallback |
 
 **取消契約由載入態元件單一承擔，不由三個畫面各自實作。** 三處載入態的差異只有
 「目標態」與「進度型別」兩個參數，其餘行為（§2.5 的 C1–C8 與 §2.8 的 L1–L2，
@@ -735,6 +829,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 破洞項（無預設應用程式或其他開啟失敗） | 同上 | 點擊 | 結果 `failed` → SnackBar `externalOpenFailedMessage`，停留 `Motion.snackBar`；畫面狀態不變 |
 | 分節捲動 | `scroll-gaps-sections` | drag / 捲軸 | offset 改變 |
 | 分節收合 | `expander-gaps-<category>` | 點擊 | 該類別的項目出現或消失 |
+| 系統通知本體（畫面外） | 無 widget 錨點；由 `ScanNotifier.activated` 事件承載 | 點擊 macOS 通知 | 依 §2.2「系統層通知」點擊導向列：切至 `nav-page-gaps`、`returnTo` 為 `null`，`state-gaps-found` 時定位至第一個 `card-gaps-<itemId>` |
+| SnackBar「檢視」動作（權限 `denied` fallback） | `viewGapsAction` | 點擊 | 同上一列 |
 
 #### 動畫提示
 
@@ -761,7 +857,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 首次可見但圖未建立 | 不自動掃描；0.1 假資料一律預先建立圖，此路徑不出現 |
 | 再次可見 | **不重新掃描**，顯示既有結果；要重掃須按 `action-gaps-rescan` |
 | 掃描中切至其他導覽項 | 掃描繼續（見 §2.8 L1）；回來時顯示當時進度 |
-| 切換專案 | 中止掃描；結果清空；下次可見時重新自動掃描 |
+| 掃描完成時視窗非前景或已離開本頁 | 依 §2.2「系統層通知」發送（權限 `denied` 時走 App 內 SnackBar fallback）；使用者回到本頁時撤回未點擊的通知 |
+| 切換專案 | 中止掃描；結果清空；下次可見時重新自動掃描；撤回未點擊的系統通知 |
 
 ### 3.6 節點詳情（`nav-page-nodeDetail`）
 
@@ -1007,6 +1104,13 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 優先級 | P2 |
 | 驗收 | 節點詳情主欄捲動後右欄 offset 不變；反之亦然 |
 
+### FR-11: 掃描完成的系統層通知
+
+| 項目 | 值 |
+|------|-----|
+| 優先級 | P1 |
+| 驗收 | §2.2「系統層通知」測試斷言表十二列全部成立：觸發條件（非前景或已離開頁）成立才發送、每次掃描至多一則、回頁／重掃／切換專案撤回、權限三路徑各走對應 fallback、點擊通知切頁並定位 |
+
 ---
 
 ## 設計約束
@@ -1032,6 +1136,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.9 | 2026-09-08 | 系統層通知定案（`0.1.0-W3-063`，用戶簽核 2026-09-08：0.1 掃描完成時元件不在視野則升級 macOS 系統通知）：§2.2 新增「系統層通知」子節——適用範圍限破洞掃描完成；觸發條件為完成當下視窗非前景（`AppLifecycleState` 非 `resumed`）或可見頁非 `nav-page-gaps`，兩者皆否則不發；不發送情境（取消、切換專案、未完成、已發過）；通知內容 key（`scanCompleteNotificationTitle` / `scanCompleteNotificationBody` / `scanCompleteNoGapsNotificationBody`，不含路徑與明細、無動作按鈕）；點擊導向（切至 `nav-page-gaps`、`returnTo` 為 `null`、依 SPEC-004 §1 locate 列定位第一個 `card-gaps-<itemId>`）；不重複發送與三種撤回時機（回頁、重掃、切換專案）；權限 gate 三路徑（`granted` 發送；`denied` 不再請求、0.1 不引導系統設定、fallback 為 `AppSnackBar.withAction` `scanCompleteSnackbarMessage` + `viewGapsAction`、非前景時延後至 `resumed`；`notDetermined` 於首次觸發時即時請求；其他結果視為 `denied`）；`ScanNotifier` 抽象與 fake 斷言十二列；i18n 六個 key；實作票驗證清單（`UNUserNotificationCenter` 沙盒關閉可用性、Flutter 載體、macOS 生命週期對應、撤回 API）。持續性 App 內指示（Banner／導覽項徽章）0.1 不提供，元件庫缺件交 PM 核定。§2.11 補 `AppSnackBar.withAction` 承擔列；§3.5 互動反應補系統通知本體與 SnackBar 動作兩列、生命週期補完成時非前景列並於切換專案列補撤回；新增 FR-11；概述 FR 範圍同步為 FR-01～FR-11。不改 SPEC-001；SPEC-004 §1 state-change 列由同票改為引用本節 |
 | 1.8 | 2026-09-03 | 外部開啟落地定案（`0.1.0-W1-036`）：§2.2 新增「外部開啟契約」（`ExternalOpener` 介面與 `opened` / `notFound` / `failed` 三結果、前置存在檢查、`/usr/bin/open` 實作、不新增依賴、失敗 log、無等待指示、0.1 不定位行號、fake 斷言方式、i18n key；實作票 `0.1.0-W1-068`）。§3.1 開啟 docs 目錄、§3.2 與 §3.6 開啟原始檔、§3.5 破洞項四處的既有列改為引用契約結果值，並各新增一列「無預設應用程式或其他開啟失敗」→ SnackBar `externalOpenFailedMessage`；§3.5 明示 0.1 不定位至行號（追蹤票 `0.1.0-W1-070`）；§3.6 檔案不存在列補「不出現 SnackBar」。新增 i18n key `externalOpenFailedMessage`（補齊票 `0.1.0-W1-069`）。不改其他列；不改 SPEC-001 與 SPEC-004 |
 | 1.7 | 2026-09-03 | 降級策略同步（`0.1.0-W1-035`，對應 SPEC-001 v1.5）：§3.1 導航跳轉「無可消費的型別表」列由「0.1 不渲染」改為條件式渲染 `action-domain-degraded-view`（同畫面轉換至正常／空圖，疊加 `badge-domain-degraded-schema`）；§4 第 7 列同步；§5 判讀註記該列改為現行判讀並保留沿革。不新增狀態、錨點類別與時間 token。不改 SPEC-004（其 `BlockedState` 三處「0.1 不渲染」引用由後續 DOC 票同步） |
 | 1.6 | 2026-09-02 | 元件級互動補件（`0.1.0-W1-057`，來源 `0.1.0-W1-044.2` NeedsContext）：§3.4 互動反應表「篩選」一列展開為開啟／走選項／選取／Esc 收合／點外部收合／再點觸發器／Tab 離開七列，「排序」一列展開為循環／換欄兩列，每列含錨點與可觀察結果；新增「篩選下拉的元件級契約 F1–F7」（同時至多一個選單、`open` 為疊加態、選單內容契約含 `all` 首項、覆蓋層幾何契約、只在選取時呼叫 `onChanged`、`SemanticsRole.menu`／`menuItem` 播報契約、點外部一律吸收）與「排序欄首的元件級契約 S1–S7」（單欄排序、`none → asc → desc → none` 三態循環、`none` 等於載入順序、`sortA11yLabel` 播報值、與篩選／搜尋獨立、只於列表模式可觸發、`static`／`twoLine` 非互動）。§2.9 新增選單 `menu-<screen>-<kind>` 與選單項 `option-<screen>-<kind>-<value>` 兩類錨點；§2.10 新增選單 Esc 與方向鍵／Tab 兩列並明示選單不限制焦點、方向鍵走選項不在 0.1 排除範圍；§1.4 同畫面內展開由 2 增為 3；§2.11 補兩個元件的承擔對應；§3.4 動畫提示補選單展開收合（`Motion.overlay`）、排序指示切換與列表重繪皆無動畫三列；§3.4 生命週期補選單展開時點導覽項不切換、切換專案重置 `order`；FR-09 驗收補選單 Esc 與方向鍵。不新增時間 token（選單沿用 `Motion.overlay`，排序沿用 `Motion.feedback`）。不改 SPEC-001 與 SPEC-004；SPEC-004 4.13／4.14 的待決標記由 W1-005 對應子票代入本版內容後去除。 |
