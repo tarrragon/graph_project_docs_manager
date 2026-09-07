@@ -137,6 +137,23 @@ PM 依 pm-role 流程先 `claim`（無 `--as` 或 `--as rosemary-project-manager
 set-who <id> --current <agent>`）——回報 PM 執行該指令重新指派，而非執行者
 自行執行。
 
+**`who.current` 的值因票而異，派發者無法預知**：上述兩道防線只處理
+「PM 先 claim 再派發」這一種情況。若 ticket 從建立時就由另一代理人指定
+具名執行者（`who.current` 從一開始就不是 PM），派發 prompt 若沿用經驗
+寫死 `--as rosemary-project-manager`，反而會撞上情境 4（身份不符）——
+因為真正該用的值其實是 `who.current` 目前的具體值，而這個值因票而異，
+連派發者都無法預先猜對。故 deny 訊息本身直接把當前值印出來，不留占位符：
+
+| 情境 | 訊息內容 |
+|------|---------|
+| 1a：缺 `--as`，`who.current` 已有具體值 | 直接給出可複製的 `--as <who.current 值>` 建議指令 |
+| 1a：缺 `--as`，`who.current` 真無主 | 維持 `--as <agent-name>` 占位符提示 |
+| 4：身份不符，`who.current` 已有具體值 | 並列兩條出口：(a) 若你就是該值，改用 `--as <值>` 自行重試；(b) 若指派本身錯誤，回報 PM 執行 `set-who` |
+| 4：身份不符，`who.current` 真無主 | 僅出口 (b)（回報 PM `set-who`），不印出無法執行的 `--as (未指派)` |
+
+執行者收到 deny 訊息時應直接依訊息內容判斷下一步，不需另外查
+`ticket track who <id>` 才知道該填什麼。
+
 ---
 
 ## 無子命令時的預設行為（dashboard-first，v2.7.0 起）
