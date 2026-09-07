@@ -2321,6 +2321,11 @@ def main() -> None:
     if not ensure_committed(project_root):
         print_color("警告: .claude 有未提交的變更（會被推送但未 commit）", "red")
         print("push 取的是 git tracked 樹（HEAD）；請先 git add .claude && git commit")
+        print(
+            "若只需推送單一 skill 至發佈庫（非整個 .claude 框架 canonical），"
+            "改用 skill-sync push（.claude/skills/skill-sync），該路徑無此全樹 "
+            "commit-first 前置條件"
+        )
         sys.exit(1)
     # 安全說明（C1）：push 改以 git archive HEAD 取 tracked 樹，untracked / gitignored
     # 機密檔不在 tracked 樹中，從架構層消滅 W1-019 secret-leak 風險，故無需 interim
