@@ -45,6 +45,15 @@ frontmatter、只能靠 grep 與人工追溯的關係顯性化、可導航、可
 - github - repo 操作
 - zhtw-mcp - 繁體中文用字檢查
 
+**常駐操作授權**：`git push origin main` 已由用戶授權，**不需逐次徵詢**（2026-09-07 裁示）。
+
+授權理由與範圍：worktree 派發守衛（`worktree-commit-before-dispatch-hook.py`）要求目標票的
+md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree 派發都變成一次中斷。授權範圍
+限本專案 `origin/main` 的常規推送；**force push、推送其他 remote、推送非 main 分支仍須確認**。
+
+框架資產的 `sync-push`（推 `tarrragon/claude`）與 `skill-sync push`（推發佈庫）**不在此授權內**
+——那兩者影響其他 consumer 專案，屬跨專案動作。
+
 ---
 
 ## 2. 核心價值
