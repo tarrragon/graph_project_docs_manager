@@ -28,7 +28,7 @@
 |------|------|
 | how | 逐狀態列「狀態 X：容器 Z 第 N 格放元件 A 變體 a、第 N+1 格放元件 B 變體 b」，狀態來源指向狀態矩陣。寫不成這個形式時停手建元件票、設為畫面票的 blockedBy |
 | acceptance（與方法論〈派發語言〉同文） | 「頁面檔的元件 import 只來自元件庫的統一匯出入口」（無 import 邊界的宿主改用方法論〈Web/HTML 端 L2 特別判準〉的不並存斷言）；「狀態矩陣每列都以契約內的元件組成」。不得追加「不溢位」「畫面正確顯示」：不溢位由元件票的測試契約承載，畫面票不重驗 |
-| 派發 prompt 必含 | Solution 含 `### 自檢結果` 子章節（逐 acceptance 附證據，非泛稱「已自檢」）與 Phase 4 結論；測試一律前台執行不用 `run_in_background`，回報前 `git status --porcelain` 為空——三者的固定句與觸發條件見 `.claude/references/agent-dispatch-template.md`「骨架（權威版）」與「Solution 自檢結果子章節義務」節，本節不重複 |
+| 派發 prompt 必含 | Solution 含 `### 自檢結果` 子章節（逐 acceptance 附證據，非泛稱「已自檢」）與 Phase 4 結論；測試一律前台執行不用 `run_in_background`，回報前 `git status --porcelain` 為空——三者的固定句與觸發條件見**agent 派發範本**（〈骨架（權威版）〉與〈Solution 自檢結果子章節義務〉兩節），本節不重複；地址見 `addresses.md` |
 
 **元件票**。粒度規範的是 acceptance 的投影單位，不是排程單位：一票一元件或一容器；多張元件票可掛同一張 parent 傘票分 wave 派發；變體與狀態集皆「不適用」的原子元件（分隔線、留白）得合併為一票，acceptance 仍逐元件投影；既有的多元件票拆分，已 claim 且實作中的票拆不動時，acceptance 以「符合 spec 條目 {編號} 的十一欄位」一條加測試契約一條代替逐欄投影：
 

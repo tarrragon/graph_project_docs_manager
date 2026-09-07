@@ -26,3 +26,4 @@
 | 事故對照 | 把既有的重疊／截斷／點不到事故對應到缺哪個容器或哪個空白欄位 | `references/mode-c.md` 模式 C 步驟 5 |
 | 特徵測試 | 不驗「應該是什麼」、只把現況行為原樣鎖住的測試；回收呼叫端設定前用它擋住行為改變 | `references/mode-c.md`〈特徵測試閘門〉；規模判準見 `foundation-design` skill 的接手模式 |
 | baseline | 執法工具「只擋新增」的存量白名單：既有違規列入後不報，新增者才報 | 形態依執法工具而定，見〈派發語言〉遷移票 acceptance 第三條 |
+| agent 派發範本 | 框架層 PM 派發代理人的骨架規範，非本 skill 專屬。〈骨架（權威版）〉與〈Solution 自檢結果子章節義務〉兩節是〈派發語言〉「派發 prompt 必含」列三項固定句（Solution 自檢結果子章節與 Phase 4 結論、測試前台執行、`git status --porcelain` 為空）的權威 | 本專案的實際路徑見 `references/project-integration/README.md`（本 skill 宣告 portable，正文不指名特定專案的檔案路徑） |

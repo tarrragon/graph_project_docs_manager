@@ -2,7 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
-**Version**: 1.8.0 — `dispatch-language.md` 元件票、畫面票兩表各補一列「派發 prompt 必含」：Solution 含自檢結果子章節（逐 acceptance 附證據）與 Phase 4 結論、測試前台執行不用 `run_in_background`、回報前 `git status --porcelain` 為空。三項固定句的權威留在 `.claude/references/agent-dispatch-template.md`（「Solution 自檢結果子章節義務」節與骨架固定句），本節只補「這兩票種也適用」的對照，不重複展開；該檔同步新增一句路由指回本表。動因：實作期四張元件票 Solution 缺自檢結果子章節被 body-check 擋下、另有代理人以 `run_in_background` 跑測試後停在等待通知（兩次），兩者皆是派發 prompt 層可一次消除的固定成本，此前〈派發語言〉對這兩件事零命中。
+**Version**: 1.8.0 — `dispatch-language.md` 元件票、畫面票兩表各補一列「派發 prompt 必含」：Solution 含自檢結果子章節（逐 acceptance 附證據）與 Phase 4 結論、測試前台執行不用 `run_in_background`、回報前 `git status --porcelain` 為空。三項固定句的權威留在**agent 派發範本**（〈Solution 自檢結果子章節義務〉節與骨架固定句，地址見 `references/addresses.md`），本節只補「這兩票種也適用」的對照，不重複展開；該範本同步新增一句路由指回本表。動因：實作期四張元件票 Solution 缺自檢結果子章節被 body-check 擋下、另有代理人以 `run_in_background` 跑測試後停在等待通知（兩次），兩者皆是派發 prompt 層可一次消除的固定成本，此前〈派發語言〉對這兩件事零命中。
 
 **Version**: 1.7.0 — 補兩條與規格範本同批新增的條文，兩條都處理「程序層知道而範本層才剛寫下」的落差。`mode-c.md` 步驟 6 補〈契約值不變的實作偏離不走漂移判定〉：該步驟原只有「待決」與「漂移」兩態，型別撞名改名、套件版本規避、等價轉換這三類改的是實作方式不是契約值，無處可歸而被歸入漂移，會為一個沒有分歧的情況觸發 PM 裁定；判別問句為「改完之後十一欄位有任何一欄的值不同了嗎」。`dispatch-language.md` 收尾補多票同改一份 spec 的版號處置：各票在自己的分支上都看得到同一個當前版號、都填下一號，撞號因此是常態而非意外，且到合併時才顯現，故版號由合併方決定而非各票自理。兩條的權威在規格範本的〈實作註記〉與〈變更歷史〉，本 skill 為程序側的對應。
 
