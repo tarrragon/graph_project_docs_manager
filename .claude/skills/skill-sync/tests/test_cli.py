@@ -34,6 +34,7 @@ from skill_sync.cli import (  # noqa: E402
     _should_exclude_file,
     build_parser,
     build_push_plan,
+    cmd_list,
     cmd_pull,
     cmd_pull_all,
     cmd_push,
@@ -408,6 +409,20 @@ def test_content_hash_excludes_ruff_cache_dir(tmp_path):
 
 def test_content_hash_returns_none_for_missing_dir(tmp_path):
     assert compute_content_hash(tmp_path / "does-not-exist") is None
+
+
+def test_content_hash_with_subdirectory_matches_hardcoded_digest(tmp_path):
+    """含子目錄的固定 digest 斷言（0.1.0-W3-039）：rel 鍵必須是 `sub/nested.txt`
+    這個 POSIX 分隔符形式，不論執行平台為何。若實作改回 `str(Path)`，在
+    Windows 上會產生 `sub\\nested.txt`，鍵值改變導致雜湊與此處硬編碼值不符；
+    本測試以固定內容 + 固定 digest 把這個格式鎖進斷言。"""
+    skill_dir = _write_skill(tmp_path, "wrap-decision", "2.5.0", "same body")
+    sub_dir = skill_dir / "sub"
+    sub_dir.mkdir()
+    (sub_dir / "nested.txt").write_text("nested content\n")
+
+    expected = "f45f1ae9f5242b3a26c6709e9cbabce09078a7914d10d203d78ac605b503f976"
+    assert compute_content_hash(skill_dir) == expected
 
 
 # --- regression: 同號不同內容不再被判為 up_to_date（0.2.1-W3-124 §11.2） ------
@@ -1128,6 +1143,32 @@ def test_cmd_push_records_sync_base_on_no_changes_fast_path(tmp_path, monkeypatc
     assert _read_sync_base(source) == compute_content_hash(source)
 
 
+def test_cmd_push_clone_disables_autocrlf(tmp_path, monkeypatch):
+    """push 用的暫存 clone 若繼承 Git for Windows 系統層 core.autocrlf=true，
+    checkout 出來的內容會變成 CRLF，使雜湊與本地不同（0.1.0-W3-039）。"""
+    import skill_sync.cli as cli_module
+
+    skills_dir = tmp_path / "skills"
+    (skills_dir / "demo-skill").mkdir(parents=True)
+    (skills_dir / "demo-skill" / "SKILL.md").write_text("kept")
+    monkeypatch.setattr(cli_module, "get_skills_dir", lambda: skills_dir)
+
+    scratch = tmp_path / "scratch"
+    remote_skill = scratch / "repo" / "demo-skill"
+    remote_skill.mkdir(parents=True)
+    (remote_skill / "SKILL.md").write_text("kept")
+    _stub_fixed_tempdir(monkeypatch, scratch)
+
+    git_calls, _ = _stub_git_recording(monkeypatch)
+
+    args = _RecordingArgs(name="demo-skill", prune=False, force=True)
+    cmd_push(args)
+
+    clone_calls = [call for call in git_calls if "clone" in call]
+    assert clone_calls, "expected at least one clone call"
+    assert all(call[:2] == ["-c", "core.autocrlf=false"] for call in clone_calls)
+
+
 # --- cmd_pull 記錄 sync base（0.2.1-W3-668） ----------------------------------
 
 
@@ -1181,6 +1222,57 @@ def test_cmd_pull_records_sync_base_when_already_up_to_date(tmp_path, monkeypatc
     cmd_pull(args)
 
     assert _read_sync_base(target) == compute_content_hash(target)
+
+
+def test_cmd_pull_clone_disables_autocrlf(tmp_path, monkeypatch):
+    """pull 用的暫存 clone 同樣需要 -c core.autocrlf=false（0.1.0-W3-039）。"""
+    import skill_sync.cli as cli_module
+
+    skills_dir = tmp_path / "skills"
+    monkeypatch.setattr(cli_module, "get_skills_dir", lambda: skills_dir)
+
+    scratch = tmp_path / "scratch"
+    remote_skill = scratch / "repo" / "demo-skill"
+    remote_skill.mkdir(parents=True)
+    (remote_skill / "SKILL.md").write_text("fresh remote content")
+    _stub_fixed_tempdir(monkeypatch, scratch)
+
+    git_calls: list[list[str]] = []
+
+    def _fake_run_git(args, cwd=None):
+        git_calls.append(args)
+        return _FakeCompletedProcess(returncode=0)
+
+    monkeypatch.setattr(cli_module, "run_git", _fake_run_git)
+
+    args = argparse.Namespace(name="demo-skill", force=True)
+    cmd_pull(args)
+
+    clone_calls = [call for call in git_calls if "clone" in call]
+    assert clone_calls, "expected at least one clone call"
+    assert all(call[:2] == ["-c", "core.autocrlf=false"] for call in clone_calls)
+
+
+# --- cmd_list（0.1.0-W3-039：clone 呼叫需帶 -c core.autocrlf=false） ----------
+
+
+def test_cmd_list_clone_disables_autocrlf(monkeypatch):
+    """list 用的暫存 clone 同樣需要 -c core.autocrlf=false（0.1.0-W3-039）。"""
+    import skill_sync.cli as cli_module
+
+    git_calls: list[list[str]] = []
+
+    def _fake_run_git(args, cwd=None):
+        git_calls.append(args)
+        return _FakeCompletedProcess(returncode=0)
+
+    monkeypatch.setattr(cli_module, "run_git", _fake_run_git)
+
+    cmd_list(argparse.Namespace())
+
+    clone_calls = [call for call in git_calls if "clone" in call]
+    assert clone_calls, "expected at least one clone call"
+    assert all(call[:2] == ["-c", "core.autocrlf=false"] for call in clone_calls)
 
 
 # --- cmd_pull_all 依 direction 分組列印（0.2.1-W3-668） -----------------------

@@ -550,7 +550,7 @@ def compute_content_hash(skill_dir: Path) -> str | None:
     for f in skill_dir.rglob("*"):
         if not f.is_file():
             continue
-        rel = str(f.relative_to(skill_dir))
+        rel = f.relative_to(skill_dir).as_posix()
         if _should_exclude_file(rel):
             continue
         rel_paths.append(rel)
@@ -878,7 +878,7 @@ def compute_diff(src: Path, dst: Path) -> dict[str, list[str]]:  # i18n-exempt
     src_files: set[str] = set()
     for f in src.rglob("*"):
         if f.is_file():
-            rel = str(f.relative_to(src))
+            rel = f.relative_to(src).as_posix()
             if _should_exclude_file(rel):
                 continue
             src_files.add(rel)
@@ -893,7 +893,7 @@ def compute_diff(src: Path, dst: Path) -> dict[str, list[str]]:  # i18n-exempt
     if dst.exists():
         for f in dst.rglob("*"):
             if f.is_file():
-                rel = str(f.relative_to(dst))
+                rel = f.relative_to(dst).as_posix()
                 if _should_exclude_file(rel):
                     continue
                 if rel not in src_files:
@@ -1048,7 +1048,7 @@ def prune_dst_only(dst: Path, diff: dict[str, list[str]]) -> int:
     if removed:
         directories = [p for p in dst.rglob("*") if p.is_dir()]
         for directory in sorted(directories, key=lambda p: len(p.parts), reverse=True):
-            rel = str(directory.relative_to(dst))
+            rel = directory.relative_to(dst).as_posix()
             if _should_exclude_file(rel):
                 continue
             try:
@@ -1104,7 +1104,9 @@ def cmd_pull(args: argparse.Namespace) -> None:
         tmp = Path(tmpdir) / "repo"
         print(f"Pulling skill '{name}' from {repo_url} ...")
 
-        run_git(["clone", "--depth", "1", "--filter=blob:none", "--sparse", repo_url, str(tmp)])
+        run_git(
+            ["-c", "core.autocrlf=false", "clone", "--depth", "1", "--filter=blob:none", "--sparse", repo_url, str(tmp)]
+        )
         run_git(["sparse-checkout", "set", f"{name}/"], cwd=tmp)
 
         source = tmp / name
@@ -1168,7 +1170,7 @@ def cmd_push(args: argparse.Namespace) -> None:
 
         # depth-1 full clone (not sparse) — push needs complete repo for git add/commit/push.
         # Sparse checkout would reduce download but git add -A behavior differs on sparse repos.
-        run_git(["clone", "--depth", "1", repo_url, str(tmp)])
+        run_git(["-c", "core.autocrlf=false", "clone", "--depth", "1", repo_url, str(tmp)])
 
         target = tmp / name
 
@@ -1535,7 +1537,9 @@ def cmd_list(args: argparse.Namespace) -> None:
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir) / "repo"
-        run_git(["clone", "--depth", "1", "--filter=blob:none", "--sparse", repo_url, str(tmp)])
+        run_git(
+            ["-c", "core.autocrlf=false", "clone", "--depth", "1", "--filter=blob:none", "--sparse", repo_url, str(tmp)]
+        )
         run_git(["sparse-checkout", "set", "--no-cone", "*/SKILL.md"], cwd=tmp)
 
         result = run_git(["ls-tree", "--name-only", "HEAD"], cwd=tmp)
