@@ -687,7 +687,7 @@
           },
           {
             "type": "command",
-            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/compositional-writing/hooks/comment-qa-hook.py"
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/dart-comment-traceability/hooks/comment-qa-hook.py"
           },
           {
             "type": "command",
@@ -756,7 +756,7 @@
           },
           {
             "type": "command",
-            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/compositional-writing/hooks/comment-qa-hook.py"
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/dart-comment-traceability/hooks/comment-qa-hook.py"
           },
           {
             "type": "command",
