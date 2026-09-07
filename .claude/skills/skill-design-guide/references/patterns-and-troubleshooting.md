@@ -326,6 +326,6 @@ With skill:
 **症狀**：Skill 變慢或回應品質下降
 
 **解決**：
-1. SKILL.md body 保持在兩個門檻內——門檻值、量測指令與語言換算表見 `SKILL.md`〈Progressive Disclosure — 三層載入〉；詳細文件移到 references/
+1. SKILL.md body 保持在兩個門檻內——門檻值、量測指令與分段估算表見 `SKILL.md`〈Progressive Disclosure — 三層載入〉；詳細文件移到 references/
 2. 評估是否同時啟用太多 Skill（20-50 個以上需考慮精簡）
 3. 考慮將相關 Skill 打包為 "packs"
