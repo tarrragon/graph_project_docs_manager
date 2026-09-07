@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-08"
-version: "1.19"
+version: "1.20"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.19（第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.19 落成 4.1–4.7）
+**版本**: 1.20（第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.19 落成 4.1–4.7、1.20 落成 4.8–4.14）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -365,7 +365,8 @@ depends_on_domains: [layout]
 
 ### 3.7 核定記錄（2026-09-02）
 
-PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶簽核」者由專案擁有者裁示。第 4-5 章依本表填寫；§3.1 總表中與本表不一致處以本表為準，由 044.2 回填總表。第 4 章契約欄位依方法論〈元件契約欄位表〉（本檔不以數字描述欄位表大小，DOC-GPD-003）：用戶補充「操作機制」（每形態的操作動作與精度，本專案單一形態為指標 + 鍵盤，仍須逐元件填一列）與「無障礙」（朗讀標籤、狀態播報、非視覺替代、焦點與鍵盤操作路徑；不得填不適用）為必填。
+PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶簽核」者由專案擁有者裁示。第 4-5 章依本表填寫；§3.1 總表中與本表不一致處以本表為準，由 044.2 回填總表。第 4 章契約欄位依方法論〈元件契約欄位表〉：用戶補充「操作機制」（每形態的操作動作與精度，本專案單一形態為指標 + 鍵盤，仍須逐元件填一列）與「無障礙」（朗讀標籤、狀態播報、非視覺替代、焦點與鍵盤操作路徑；不得填不適用）為必填。
+<!-- 本檔不以數字描述欄位表大小（DOC-GPD-003）；欄位集合以方法論〈元件契約欄位表〉為準 -->
 
 | # | 項目 | 核定 | 理由 |
 |---|------|------|------|
@@ -417,7 +418,7 @@ PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶�
 > | slot 契約 | slot 契約 + i18n |
 > | 組合規則 | 組合規則 |
 > | 無障礙 | 無障礙 |
-> | 回饋契約 | 回饋契約（原「互動反應」子節，依範本改名並展開為回饋事件六類；4.1–4.7 由 `0.1.0-W3-060.2` 落成，4.8 以後由 `060.3`–`060.5` 逐票落成，落成前的條目暫以「互動反應」名承載） |
+> | 回饋契約 | 回饋契約（原「互動反應」子節，依範本改名並展開為回饋事件六類；4.1–4.7 由 `0.1.0-W3-060.2`、4.8–4.14 由 `060.3` 落成，4.15 以後由 `060.4`–`060.5` 逐票落成，落成前的條目暫以「互動反應」名承載） |
 > | 測試契約 | 測試點（widget test） |
 > | 反例 | 反例 |
 > | —（本檔額外） | 使用 design token |
@@ -433,7 +434,9 @@ PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶�
 | focused | 元件祖先鏈存在 `decoration` 非 `null` 的 `DecoratedBox`（SPEC-003 §2.10 焦點裝飾斷言）；裝飾為 `AppColors.accent` 外框、圓角同元件 | 存在性抄錄 SPEC-003 §2.10；顏色為提案 |
 | disabled | `enabled` 為 `false`；文字與圖示改 `AppColors.textDisabled`（停用態專用 token，§3.7 第 25 項；SC 1.4.3 對非作用中元件豁免），無 hover overlay；同列以常駐文字（非 tooltip，`AppText.caption`，`textSecondary`）說明原因（SPEC-003 §2.2、FR-06） | SPEC-003（抄錄）；token 名依 `0.1.0-W1-058` 方案 C |
 
-狀態矩陣中 hover / pressed / focused 三列為「互動瞬態」，不改變元件語意狀態，退出路徑恆為「指標離開／放開／焦點移走」，來源欄恆為「互動瞬態」、同步策略恆為「本地即時」。各條目依範本拆為 hover（僅指標形態）／pressed／focused 三列，「顯示」欄以「依 §4.0.1」代之不重述視覺（4.1–4.7 已拆，`0.1.0-W3-060.2`；4.8 以後由 `060.3`–`060.5` 逐票拆列，落成前暫為合併一列）。
+狀態矩陣中 hover / pressed / focused 三列為「互動瞬態」，不改變元件語意狀態，退出路徑恆為「指標離開／放開／焦點移走」，來源欄恆為「互動瞬態」、同步策略恆為「本地即時」。各條目依範本拆為 hover（僅指標形態）／pressed／focused 三列，「顯示」欄以「依 §4.0.1」代之不重述視覺（4.1–4.14 已拆，`0.1.0-W3-060.2`、`060.3`；4.15 以後由 `060.4`–`060.5` 逐票拆列，落成前暫為合併一列）。
+
+「來源」欄的值只有三種：「互動瞬態」（輸入裝置驅動、本地處理）、「資料態：{provider 名}」（provider 驅動，寫明 provider 與檔案路徑；provider 尚未建立者標由對應畫面票補填）、「—」（建構即渲染的預設列：值由呼叫端傳值、元件不 watch，括號內說明傳值來源）。default／enabled 這類建構即進入的列填「—」，不填「互動瞬態」（該詞保留給輸入裝置驅動的瞬態）。
 
 #### 4.0.2 對比約定（WCAG 2.1 SC 1.4.3，AA：一般字 4.5:1、大字 3:1）
 
@@ -606,7 +609,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 依變體渲染 | 無（純顯示） | 建構 | 不適用：無自身狀態集（純顯示元件，狀態只有 enabled） | 互動瞬態（建構即渲染；`text` 值由呼叫端傳入，元件不 watch 任何 provider，§2） | 本地即時 |
+| default | 依變體渲染 | 無（純顯示） | 建構 | 不適用：無自身狀態集（純顯示元件，狀態只有 enabled） | —（建構即渲染；`text` 值由呼叫端傳入，元件不 watch 任何 provider，§2） | 本地即時 |
 
 #### 回饋契約
 
@@ -727,7 +730,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 依 `icon` / `size` / `color` 渲染 | 無 | 建構 | 不適用：純顯示元件，無自身狀態集 | 互動瞬態（建構即渲染；三個參數由呼叫端傳值，元件不 watch 任何 provider，§2） | 本地即時 |
+| default | 依 `icon` / `size` / `color` 渲染 | 無 | 建構 | 不適用：純顯示元件，無自身狀態集 | —（建構即渲染；三個參數由呼叫端傳值，元件不 watch 任何 provider，§2） | 本地即時 |
 
 #### 回饋契約
 
@@ -838,7 +841,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 水平實線 | 無 | 建構 | 不適用：純顯示，無狀態集 | 互動瞬態（建構即渲染；無 slot、無 provider） | 本地即時 |
+| default | 水平實線 | 無 | 建構 | 不適用：純顯示，無狀態集 | —（建構即渲染；無 slot、無 provider） | 本地即時 |
 
 #### 回饋契約
 
@@ -846,7 +849,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
-| 不適用（六類事件全部） | — | 理由：純顯示且無資料態變更——裝飾性分隔線，排除於語意樹（`ExcludeSemantics`）、無互動、無狀態集；群組分隔的語意由群組小標或 header 承載（無障礙子節） | — | — | 不適用 | 不適用 | 規格撰寫者 |
+| 不適用（六類事件全部） | — | 理由：純顯示且無資料態變更——裝飾性分隔線，排除於語意樹（`ExcludeSemantics`）、無互動、無狀態集；群組分隔的語意由群組小標或 header 承載（無障礙子節） | — | — | 不適用（無互動，無承載者） | 不適用 | 規格撰寫者 |
 
 #### 操作機制
 
@@ -948,11 +951,11 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| enabled | 依變體 | 點選（指標 / Space / Enter） | `enabled` 為 `true`（預設） | 呼叫端改 `enabled` → disabled | 互動瞬態（預設狀態，建構即進入；`enabled` 由呼叫端傳值，元件不 watch，§2） | 本地即時 |
+| enabled | 依變體 | 點選（指標 / Space / Enter） | `enabled` 為 `true`（預設） | 呼叫端改 `enabled` → disabled | —（預設狀態，建構即進入；`enabled` 由呼叫端傳值，元件不 watch，§2） | 本地即時 |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
-| disabled | 依 §4.0.1；`disabledReason` 以 `AppText.caption` 顯示於 label 右側（同列常駐文字，SPEC-003 §2.2） | 無 | `enabled` 為 `false`（此時 `disabledReason` 必填） | 呼叫端改 `enabled` → enabled | 資料態：呼叫端 provider 的「取消進行中」欄位——0.1 唯一停用場景為 4.24 `LoadingState` 取消鈕（SPEC-003 §2.5 C2）；破洞掃描為 `gapReportProvider`（`lib/screens/gap_report/gap_report_provider.dart`）的 `GapReportScanning.isCancelling`；Domain 視圖與 Ticket 清單的載入 provider 尚未建立，欄位名由對應畫面票補填本格 | 本地即時（C2：按下取消後 `Motion.feedback` 內即轉 `false`，不等資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| disabled | 依 §4.0.1；`disabledReason` 以 `AppText.caption` 顯示於 label 右側（同列常駐文字，SPEC-003 §2.2） | 無 | `enabled` 為 `false`（此時 `disabledReason` 必填） | 呼叫端改 `enabled` → enabled | 資料態：呼叫端 provider 的「取消進行中」欄位——0.1 唯一停用場景為 4.24 `LoadingState` 取消鈕（SPEC-003 §2.5 C2）；破洞掃描為 `GapReportScanning.isCancelling`（`lib/screens/gap_report/gap_report_models.dart`，由 `gapReportProvider` 持有，`lib/screens/gap_report/gap_report_provider.dart`）；Domain 視圖與 Ticket 清單的載入 provider 尚未建立，欄位名由對應畫面票補填本格 | 本地即時（C2：按下取消後 `Motion.feedback` 內即轉 `false`，不等資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
 
 無 loading 狀態：等待指示為畫面級（SPEC-003 §2.2），按鈕內不放 spinner。取消鈕按下後的「取消中」由 4.24 `LoadingState` 以 `enabled=false` + label 換文案承載，不是本元件的狀態。
 
@@ -1090,7 +1093,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 依變體 / tone / 格位 | 無（非互動；點擊不產生反應且不呈按鈕形態，SPEC-003 §3.7） | 建構 | 不適用：純顯示元件，無自身狀態集 | 互動瞬態（建構即渲染；`label` / `count` / `tone` 由呼叫端傳值，值變更由所在列重建，元件不 watch 任何 provider，§2） | 本地即時 |
+| default | 依變體 / tone / 格位 | 無（非互動；點擊不產生反應且不呈按鈕形態，SPEC-003 §3.7） | 建構 | 不適用：純顯示元件，無自身狀態集 | —（建構即渲染；`label` / `count` / `tone` 由呼叫端傳值，值變更由所在列重建，元件不 watch 任何 provider，§2） | 本地即時 |
 
 #### 回饋契約
 
@@ -1360,7 +1363,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 焦點 focus | 使用者／輔助技術 | 焦點環（§4.0.1 focused）；位於 Tab 順序第二區段（六個導覽項，SPEC-003 §2.10）；朗讀 label + `selected` 旗標（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言裝飾存在，不設時限；提案） | §1 子表「焦點」列 | unselected / selected → focused → 原狀態 | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
 | 按下確認 press-ack | 使用者 | pressed 態 + Material ripple（§4.0.1）；呼叫 `onTap` 恰一次；呼叫端執行 rail 切換：`nav-page-<d>` 成為可見頁、`returnTo` 設為 `null`（SPEC-003 §1.2、§2.3 規則 1）；點選已選項仍有 pressed 態但無狀態改變 | Material 內建 ripple | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列 | unselected → pressed → selected（本項）；selected → pressed → selected（已選項） | 反應／時限：UX 審查（SPEC-003 §2.2、§2.3）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 由容器承載（`AppShell` 側欄 slot）：0.1 無定位至導覽項的場景——系統通知點擊導向（SPEC-003 §2.2）定位的是破洞報告內的項目，導覽項只隨 `selectedDestinationProvider` 轉為 selected | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：`AppShell` 依 `selectedDestinationProvider` 改 `isSelected` 傳值；含 SPEC-003 §2.2 系統通知導向、§2.4 jump 等非本項點選引起的切換） | selected 視覺切換（底色 `surfaceIconTint`、字與 icon `accentStrong`、半粗）；`selected` 旗標改變由輔助技術播報（原生旗標，不另組字，無障礙子節） | 無（SPEC-003 未定義導覽項選中過渡；頁面切換無轉場（`IndexedStack`，SPEC-003 §2.8），選中視覺與之同步瞬切；提案） | 無（本地即時；SPEC-003 無對應時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙狀態變化播報適用；不升級系統通知） | unselected → selected（本項被選）/ selected → unselected（他項被選） | 反應：規格撰寫者（提案；SPEC-003 §2.3 只定 rail 語意，未定導覽項視覺過渡）；通道／狀態邊：規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：`AppShell` 依 `selectedDestinationProvider` 改 `isSelected` 傳值；含 SPEC-003 §2.2 系統通知導向、§2.4 jump 等非本項點選引起的切換） | selected 視覺切換（底色 `surfaceIconTint`、字與 icon `accentStrong`、半粗）；`selected` 旗標改變由輔助技術播報（原生旗標，不另組字，無障礙子節） | 無（SPEC-003 未定義導覽項選取過渡；頁面切換無轉場（`IndexedStack`，SPEC-003 §2.8），選取視覺與之同步瞬切；提案） | 無（本地即時；SPEC-003 無對應時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙狀態變化播報適用；不升級系統通知） | unselected → selected（本項被選）/ selected → unselected（他項被選） | 反應：規格撰寫者（提案；SPEC-003 §2.3 只定 rail 語意，未定導覽項視覺過渡）；通道／狀態邊：規格撰寫者 |
 | 等待與結果 | 系統 | 本元件承載三層中的**點擊確認**層（pressed 態）；結果通知為 rail 切換的狀態轉換本身（可見頁更換 + 本項轉 selected，SPEC-003 §2.2 結果通知列）；無等待指示（`IndexedStack` 六頁已建構，SPEC-003 §2.8） | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.8）；通道：規格撰寫者 |
 
 #### 操作機制
@@ -1464,21 +1467,29 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 狀態矩陣
 
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
-|------|------|---------|---------|---------|
-| collapsed | 圖示 + 專案名（無專案時顯示 `projectSwitcherEntryLabel`）+ 向下箭頭 | 點選 → 展開浮層 | 浮層未展開（常態） | 點選 → expanded |
-| expanded | 同上，箭頭朝上；本元件維持可見（浮層自其下方展開） | 點選 → 收合浮層 | `SwitcherOverlay` 展開中 | Esc / 點外部 / 選取專案 → collapsed（SPEC-003 §3.7） |
-| hover / pressed / focused | 依 §4.0.1 | 點選 | | |
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| collapsed | 圖示 + 專案名（無專案時顯示 `projectSwitcherEntryLabel`）+ 向下箭頭 | 點選 → 展開浮層 | 浮層未展開（常態） | 點選 → expanded | 資料態：`switcherOpenProvider`（`StateProvider<bool>`，`lib/screens/project_switcher/project_switcher_providers.dart`）為 `false`；專案名為 `currentProjectNameProvider`（同檔）；`AppShell` watch 兩者後以 `isExpanded` / `projectName` 傳值，元件不 watch（§2） | 本地即時（浮層開合為本地 UI 狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| expanded | 同上，箭頭朝上；本元件維持可見（浮層自其下方展開） | 點選 → 收合浮層 | `SwitcherOverlay` 展開中 | Esc / 點外部 / 選取專案 → collapsed（SPEC-003 §3.7） | 資料態：`switcherOpenProvider` 為 `true`（同上） | 本地即時 |
+| hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
 無 disabled：三個阻擋狀態下 `enabled` 恆為 `true`（SPEC-003 §2.7 浮層可用性斷言）。
 
-#### 互動反應
+#### 回饋契約
 
-| 互動 | 反應 | 動畫 | 時間門檻 |
-|------|------|------|---------|
-| 點選（collapsed） | 呼叫 `onTap`；`state-switcher-collapsed` 消失、`state-switcher-expanded` 或 `state-switcher-no-recent` 出現（SPEC-003 §3.7） | 浮層淡入 + 向下展開 `Motion.overlay`（由 `SwitcherOverlay` 承載） | pressed 態 `Motion.feedback` |
-| 點選（expanded） | 浮層收合 | `Motion.overlay` | 同上 |
-| Esc（浮層展開時） | 浮層收合，焦點回到本元件（SPEC-003 §2.10） | `Motion.overlay` | — |
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
+> 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | hover 態（§4.0.1：Material `InkWell` 內建 overlay）；指標形狀 `SystemMouseCursors.click`；三個阻擋狀態下同樣有 hover（`enabled` 恆為 `true`，SPEC-003 §2.7） | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文；提案） | §1 子表「可互動提示」列 | 不適用 | 反應：規格撰寫者（抄 §4.0.1 提案列）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 焦點環（§4.0.1 focused）；位於 Tab 第一區段（SPEC-003 §2.10）；浮層 Esc 收合後焦點回到本元件（SPEC-003 §2.10「浮層展開時按 Esc」列）；朗讀「`projectSwitcherEntryLabel`，{projectName}」+ `expanded` 旗標（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言裝飾存在，不設時限；提案） | §1 子表「焦點」列 | collapsed / expanded → focused → 原狀態 | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | pressed 態 + Material ripple（§4.0.1）；呼叫 `onTap` 恰一次；呼叫端執行：collapsed 時 `state-switcher-collapsed` 消失、`state-switcher-expanded` 或 `state-switcher-no-recent` 出現，expanded 時浮層收合（SPEC-003 §3.7）；浮層的淡入 + 向下展開／反向收合由 `SwitcherOverlay` 承載，本元件不播 | Material 內建 ripple（浮層 `Motion.overlay` 由 4.42 `SwitcherOverlay` 承載） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列 | collapsed → pressed → expanded / expanded → pressed → collapsed | 反應／時限：UX 審查（SPEC-003 §2.2、§3.7）；通道／狀態邊：規格撰寫者 |
+| 定位提示 locate | 系統 | 由容器承載（`AppShell` 側欄頂端 slot）：0.1 無定位至本元件的場景——側欄常駐不捲動，阻擋狀態的出口按鈕開啟浮層時本元件維持可見不需定位；Esc 後焦點回到本元件屬焦點列，非 locate | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：`AppShell` 依 `switcherOpenProvider` 改 `isExpanded` 傳值、依 `currentProjectNameProvider` 改 `projectName` 傳值；含 Esc／點外部／選取專案等非本元件點選引起的收合，SPEC-003 §3.7） | 箭頭方向切換（向下 ↔ 朝上）與 `expanded` 旗標同步，旗標改變由輔助技術播報（原生旗標，不另組字）；專案名改變隨重建唸出（無障礙子節）；箭頭切換本身不做動畫，浮層的展開／收合動畫由 `SwitcherOverlay` 承載 | 無（箭頭為離散替換；SPEC-003 §3.7 動畫提示只定浮層的 `Motion.overlay`，未定入口箭頭；提案） | 無（本地即時，與浮層狀態同步瞬切；SPEC-003 無對應時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙狀態變化播報適用；不升級系統通知） | collapsed → expanded / expanded → collapsed | 反應：規格撰寫者（提案；SPEC-003 §3.7 只定浮層轉換，未定入口視覺）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | 本元件承載三層中的**點擊確認**層（pressed 態）；結果通知為浮層出現／收合的狀態轉換本身（SPEC-003 §2.2 結果通知列）；無等待指示（浮層清單為本地 fixture／已探測結果，探測逾時期間浮層仍可操作，SPEC-003 §3.7） | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§3.7）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -1579,19 +1590,28 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 狀態矩陣
 
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
-|------|------|---------|---------|---------|
-| enabled | 圖示 `AppColors.textSecondary`、名稱 `textTitle`、摘要 caption | 點選 → 切換至該專案 | 可用性探測成功 | 點選 → 浮層收合（本元件隨浮層消失） |
-| selected（目前專案） | 底 `AppColors.surfaceIconTint`、圖示與名稱 `accentStrong`（畫布為準）、摘要 `textPrimary`（§4.0.2 帶色表面規則：`textSecondary` / `surfaceIconTint` 3.98:1 未達 AA，`0.1.0-W1-060` 改） | 點選（重載同一專案，SPEC-003 §3.7 未區分，視同選取） | 為目前開啟的專案 | 同上 |
-| disabled | 依 §4.0.1；同列常駐 `reason` 文字（不用 tooltip，SPEC-003 §3.7） | 無 | 探測失敗或逾時（reason 含 `probeTimeoutReason`） | 探測結果更新 → enabled（其餘項不受本項探測影響） |
-| hover / pressed / focused | 依 §4.0.1 | 點選 | | |
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| enabled | 圖示 `AppColors.textSecondary`、名稱 `textTitle`、摘要 caption | 點選 → 切換至該專案 | 可用性探測成功 | 點選 → 浮層收合（本元件隨浮層消失） | 資料態：`recentProjectsProvider`（`Provider<List<RecentProjectFixture>>`，`lib/screens/project_switcher/project_switcher_providers.dart`）各項的 `enabled` 欄位；`SwitcherOverlay` watch 後以 `enabled` 傳值，元件不 watch（§2）。0.1 為 fixture 固定值，真實探測由 workspace domain 後續票承接（該檔檔頭註記） | 等確認才顯示（可用性為探測完成後的資料態；探測未完成前不得預設為 enabled，SPEC-003 §3.7「探測逾時的處理」；§2 樂觀更新政策：0.1 無樂觀操作） |
+| selected（目前專案） | 底 `AppColors.surfaceIconTint`、圖示與名稱 `accentStrong`（畫布為準）、摘要 `textPrimary`（§4.0.2 帶色表面規則：`textSecondary` / `surfaceIconTint` 3.98:1 未達 AA，`0.1.0-W1-060` 改） | 點選（重載同一專案，SPEC-003 §3.7 未區分，視同選取） | 為目前開啟的專案 | 同上 | 資料態：`currentProjectIndexProvider`（`StateProvider<int?>`，同檔）等於本項索引；`SwitcherOverlay` watch 後以 `isCurrent` 傳值 | 本地即時（目前專案索引為本地狀態；切換專案的重載由 Domain 視圖載入態承載，不回寫本項） |
+| disabled | 依 §4.0.1；同列常駐 `reason` 文字（不用 tooltip，SPEC-003 §3.7） | 無 | 探測失敗或逾時（reason 含 `probeTimeoutReason`） | 探測結果更新 → enabled（其餘項不受本項探測影響） | 資料態：`recentProjectsProvider` 各項的 `enabled` 為 `false`（同 enabled 列） | 等確認才顯示（同 enabled 列） |
+| hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
-#### 互動反應
+#### 回饋契約
 
-| 互動 | 反應 | 動畫 | 時間門檻 |
-|------|------|------|---------|
-| 點選（enabled / selected） | 呼叫 `onTap`；呼叫端執行：浮層收合 → 六頁重置 → `state-domain-loading`（SPEC-003 §3.7，兩段不重疊） | 浮層收合 `Motion.overlay`；pressed 內建 | `Motion.feedback` |
-| 點選（disabled） | 無反應（FR-06 合法形態 b） | — | — |
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
+> 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | hover 態（§4.0.1：Material `InkWell` 內建 overlay）；指標形狀 `SystemMouseCursors.click`；disabled 時無 hover overlay（§4.0.1 disabled 列） | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文；提案） | §1 子表「可互動提示」列 | 不適用 | 反應：規格撰寫者（抄 §4.0.1 提案列）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 焦點環（§4.0.1 focused）；浮層展開時焦點限制於浮層內，Tab 依序走過各項（SPEC-003 §2.10「浮層展開時」列）；朗讀「{name}，{summary}」+ `selected` / `enabled` 旗標，disabled 時 `hint` 為 `reason`（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言裝飾存在，不設時限；提案） | §1 子表「焦點」列 | enabled / selected / disabled → focused → 原狀態 | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | pressed 態 + Material ripple（§4.0.1）；呼叫 `onTap` 恰一次；呼叫端執行：浮層收合 → 六頁重置 → `state-domain-loading`（SPEC-003 §3.7，兩段不重疊）；disabled 時無反應、無 SnackBar（SPEC-003 §2.2 FR-06 合法形態 b） | Material 內建 ripple（浮層收合 `Motion.overlay` 由 4.42 `SwitcherOverlay` 承載） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列 | enabled / selected → pressed →（隨浮層消失） | 反應／時限：UX 審查（SPEC-003 §2.2、§3.7）；通道／狀態邊：規格撰寫者 |
+| 定位提示 locate | 系統 | 由容器承載（`SwitcherOverlay` 清單 slot）：0.1 無定位至專案項的場景——浮層收合後 `scroll-switcher-recent` 的 offset 不保留、下次展開自頂端（SPEC-003 §3.7 生命週期），不對目前專案項執行 scroll-into-view；展開時的焦點落點屬焦點列 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：`SwitcherOverlay` 依 `recentProjectsProvider` 的 `enabled` 改 `enabled` / `reason` 傳值，依 `currentProjectIndexProvider` 改 `isCurrent` 傳值） | enabled ↔ disabled：視覺依 §4.0.1 disabled（`textDisabled`、無 hover overlay）+ 同列常駐 `reason`；語意樹 `enabled` 旗標隨重建更新，不設 live region（無障礙子節）；其餘項不受本項探測影響（SPEC-003 §3.7）。selected 切換：0.1 只在切換專案後重載時發生，重載前浮層已收合，本元件不呈現該過渡 | 無（探測結果為離散替換；SPEC-003 §3.7 無專案項過渡動畫條文；提案） | 無（探測逾時值屬 workspace domain、不在 SPEC-003 定義，且該值為探測時限非回饋時限；旗標與常駐文字隨重建瞬切；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙狀態變化播報適用（旗標隨重建更新）；不升級系統通知） | disabled → enabled（探測結果更新）/ enabled → disabled（探測失敗或逾時） | 反應：UX 審查（SPEC-003 §3.7）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | 本元件承載三層中的**點擊確認**層（pressed 態）；等待指示為 Domain 視圖畫面級載入態 `state-domain-loading`（4.24 `LoadingState`，SPEC-003 §2.6、§3.7），結果通知為專案切換後六頁重置的狀態轉換本身，皆不由本元件承載；探測進行中的等待亦不由本元件承載（探測未完成的項依 enabled 列「等確認才顯示」處理，浮層其餘項可操作） | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§3.7）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -1699,20 +1719,29 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 狀態矩陣
 
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
-|------|------|---------|---------|---------|
-| segment selected | 段底 `AppColors.surfaceBase`、字 `accentStrong` 半粗；軌道底 `surfaceSegmentTrack` | 點選（無狀態改變） | `selectedIndex` 等於本段 | 點選他段 → unselected |
-| segment unselected | 段透明、字 `textPrimary` | 點選 | 非選中段 | 點選本段 → selected |
-| hover / pressed / focused（每段） | 依 §4.0.1 | 點選 | | |
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| segment selected | 段底 `AppColors.surfaceBase`、字 `accentStrong` 半粗；軌道底 `surfaceSegmentTrack` | 點選（無狀態改變） | `selectedIndex` 等於本段 | 點選他段 → unselected | 資料態：所在畫面的雙模式 provider——Domain 視圖（矩陣／泳道）與 Ticket 清單（列表／主題）的模式 provider 尚未建立（`lib/screens/` 無對應目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `selectedIndex` 傳值，元件不 watch（§2 頁面狀態保留：雙模式選擇存於 provider） | 本地即時（模式切換為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| segment unselected | 段透明、字 `textPrimary` | 點選 | 非選中段 | 點選本段 → selected | 資料態：同上 | 本地即時 |
+| hover（僅指標形態，每段） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed（每段） | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused（每段） | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
 無 disabled：雙模式切換恆可用（SPEC-001 §1、§4 可用操作）。
 
-#### 互動反應
+#### 回饋契約
 
-| 互動 | 反應 | 動畫 | 時間門檻 |
-|------|------|------|---------|
-| 點選未選段 | 呼叫 `onChanged(index)`；呼叫端執行同畫面狀態轉換：`state-<screen>-<a>` 消失、`state-<screen>-<b>` 出現，各模式 offset 各自保留（SPEC-003 §1.2、§3.1、§3.4） | 內容 cross-fade `Motion.transition`（由畫面承載）；段的選中態切換無動畫 | `Motion.feedback` |
-| 點選已選段 | 無狀態改變 | — | — |
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
+> 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 每段各自 hover 態（§4.0.1：Material `InkWell` 內建 overlay）；指標形狀 `SystemMouseCursors.click`；已選段同樣有 hover（點選已選段無狀態改變，但仍為可點） | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文；提案） | §1 子表「可互動提示」列 | 不適用 | 反應：規格撰寫者（抄 §4.0.1 提案列）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 焦點環（§4.0.1 focused）；每段各為 Tab 內容區段的一個停留點，方向鍵不列入 0.1 下界（SPEC-003 §2.10）；朗讀段 label + `hint`（`semanticLabel`）+ `selected` 旗標（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言裝飾存在，不設時限；提案） | §1 子表「焦點」列 | selected / unselected → focused → 原狀態（每段） | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | pressed 態 + Material ripple（§4.0.1）；點選未選段呼叫 `onChanged(index)` 恰一次，呼叫端執行同畫面狀態轉換：`state-<screen>-<a>` 消失、`state-<screen>-<b>` 出現，各模式 offset 各自保留（SPEC-003 §1.2、§3.1、§3.4）；點選已選段仍有 pressed 態但不呼叫、無狀態改變 | Material 內建 ripple | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列 | unselected → pressed → selected（本段）；selected → pressed → selected（已選段） | 反應／時限：UX 審查（SPEC-003 §2.2、§3.1、§3.4）；通道／狀態邊：規格撰寫者 |
+| 定位提示 locate | 系統 | 由容器承載（`SplitRow.header` 右格）：0.1 無定位至切換段的場景——頁首列常駐不捲動，模式切換不改變本元件位置 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：頁面層依模式 provider 改 `selectedIndex` 傳值；0.1 模式只由本元件點選改變，切換專案時重置為預設模式屬 SPEC-003 §2.8 L2 的畫面級重置） | 段的選取視覺切換（段底 `surfaceBase`、字 `accentStrong` 半粗）為離散替換無動畫；畫面內容的 cross-fade `Motion.transition` 由所在畫面承載（SPEC-003 §3.1、§3.4 動畫提示「列表 ↔ 主題」），本元件不播；`selected` 旗標改變由輔助技術播報（原生旗標，不另組字，無障礙子節） | 無（段的選取態切換無動畫；畫面內容 `Motion.transition` 由畫面承載） | 無（本地即時，段視覺與 `selectedIndex` 同步瞬切；SPEC-003 無段視覺時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡由畫面承載，本元件不適用；無障礙狀態變化播報適用；不升級系統通知） | unselected → selected（本段被選）/ selected → unselected（他段被選） | 反應：規格撰寫者（提案；SPEC-003 §3.1、§3.4 只定畫面內容 cross-fade，未定段視覺過渡）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | 本元件承載三層中的**點擊確認**層（pressed 態）；結果通知為同畫面狀態轉換本身（`state-<screen>-<b>` 出現 + 本段轉 selected，SPEC-003 §2.2 結果通知列）；無等待指示（兩模式內容為同一份已載入資料的不同視圖，切換不觸發載入） | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§3.1、§3.4）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -1815,15 +1844,17 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 狀態矩陣
 
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
-|------|------|---------|---------|---------|
-| default | `AppText.subtitle`（畫面名）上、`AppText.body`（`secondary: true`、`maxLines: 1`，副標）下，間距 `Space.xxs`；無副標時只一行。副標著色寫法取 `secondary` 而非 `tone: textSecondary`：兩者結果同色，依 4.1 優先序 `tone` 只在需覆蓋 `secondary` 或變體預設色時才傳入，本元件無此需求，採較低優先序的 `secondary`（與 `lib/components/page_title.dart` 一致） | 無 | 建構 | 不適用：純顯示，無狀態集 |
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| default | `AppText.subtitle`（畫面名）上、`AppText.body`（`secondary: true`、`maxLines: 1`，副標）下，間距 `Space.xxs`；無副標時只一行。副標著色寫法取 `secondary` 而非 `tone: textSecondary`：兩者結果同色，依 4.1 優先序 `tone` 只在需覆蓋 `secondary` 或變體預設色時才傳入，本元件無此需求，採較低優先序的 `secondary`（與 `lib/components/page_title.dart` 一致） | 無 | 建構 | 不適用：純顯示，無狀態集 | —（建構即渲染；`title` / `subtitle` 由呼叫端傳值，副標的選取摘要值變更由頁面層重建，元件不 watch 任何 provider，§2） | 本地即時 |
 
-#### 互動反應
+#### 回饋契約
 
-| 互動 | 反應 | 動畫 | 時間門檻 |
-|------|------|------|---------|
-| 不適用 | 純顯示 | — | — |
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉；本元件為純顯示且無資料態變更，依範本整節填一列。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 不適用（六類事件全部） | — | 理由：純顯示且無資料態變更——不可點、不進入 Tab 順序（無障礙子節）、狀態矩陣僅 default 一列；副標更新（選取摘要）不主動播報（無障礙子節），選中的回饋由產生選取的元件（`MatrixCell` / `SwimlaneNode`）與所在畫面承載，非本元件的回饋事件 | — | — | 不適用（§1 子表六列皆由所屬可點元件或容器承載） | 不適用 | 規格撰寫者 |
 
 #### 操作機制
 
@@ -1923,22 +1954,29 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 狀態矩陣
 
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
-|------|------|---------|---------|---------|
-| empty | 搜尋圖示（`textDisabled`，純裝飾）+ placeholder（`searchPlaceholder`，`textSecondary`）；無清除鈕 | 輸入 | 值為空字串 | 輸入 → filled |
-| filled | 搜尋圖示 + 值 + 清除鈕（內部 affordance，朗讀 `searchClearAction`） | 輸入、清除 | 值非空 | 清除或刪除至空 → empty |
-| focused | 邊框 `AppColors.accent`（焦點裝飾，§4.0.1）；可與 empty / filled 並存 | 輸入 | 取得焦點 | 焦點移走 |
-| hover | 依 §4.0.1 | | | |
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| empty | 搜尋圖示（`textDisabled`，純裝飾）+ placeholder（`searchPlaceholder`，`textSecondary`）；無清除鈕 | 輸入 | 值為空字串 | 輸入 → filled | 資料態：受控 `value` 來自 Ticket 清單畫面的搜尋詞 provider——該畫面的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `value` 傳值，元件不 watch（§2 頁面狀態保留：搜尋詞存於 provider） | 本地即時（輸入即回顯，不等資料層；過濾結果的清單筆數更新由畫面於 `Motion.searchDebounce` 後承載，非本元件狀態；§2 樂觀更新政策：0.1 無樂觀操作） |
+| filled | 搜尋圖示 + 值 + 清除鈕（內部 affordance，朗讀 `searchClearAction`） | 輸入、清除 | 值非空 | 清除或刪除至空 → empty | 資料態：同上 | 本地即時 |
+| hover（僅指標形態） | 依 §4.0.1（`TextField` 的 `InputDecoration` hover 底色取 `ThemeData` 預設；清除鈕為 Material `InkWell` 內建 overlay） | 輸入 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 不適用：`TextField` 無 pressed 態；清除鈕的 pressed 依 §4.0.1（Material 內建，由清除鈕的 `InkWell` 承載） | 清除 | 按下清除鈕 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 邊框 `AppColors.accent`（焦點裝飾，§4.0.1）；可與 empty / filled 並存 | 輸入 | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
 無 disabled：搜尋於正常態恆可用（SPEC-001 §4）。
 
-#### 互動反應
+#### 回饋契約
 
-| 互動 | 反應 | 動畫 | 時間門檻 |
-|------|------|------|---------|
-| 輸入字元 | 值即時顯示；輸入停止 `Motion.searchDebounce` 後呼叫 `onChanged(value)` 一次（防抖動，不逐字元） | 無 | `Motion.searchDebounce`（SPEC-003 §3.4） |
-| 清除（清除鈕或刪至空） | 立即呼叫 `onChanged('')`，不等待防抖動（SPEC-003 §3.4「清空輸入立即還原」） | 無 | 立即 |
-| IME 組字中 | 組字未確定前不觸發 `onChanged`（Flutter `TextEditingValue.composing` 非空時視為輸入進行中） | — | — |
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
+> 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 欄位：`TextField` 內建 hover（`InputDecoration` hover 底色，`ThemeData` 預設，不自繪）、指標形狀 `SystemMouseCursors.text`；清除鈕（filled 時存在）：hover 態（§4.0.1：Material `InkWell` 內建 overlay）、指標形狀 `SystemMouseCursors.click` | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文；提案） | §1 子表「可互動提示」列 | 不適用 | 反應：規格撰寫者（延伸 §4.0.1 提案列至 `TextField`）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 邊框 `AppColors.accent`（§4.0.1 focused）+ 文字游標；位於 Tab 內容區段首個（工具列首格），filled 時 Tab 至清除鈕（SPEC-003 §2.10）；朗讀 `Semantics.textField` 的 label（`searchPlaceholder`）與 value（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言裝飾存在，不設時限；提案） | §1 子表「焦點」列 | empty / filled → focused → 原狀態 | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 輸入字元：值即時回顯即為確認（原生 `TextField`，無 pressed 態）；IME 組字中（`TextEditingValue.composing` 非空）值顯示為組字狀態，組字未確定前不觸發 `onChanged`；清除鈕：pressed 態 + Material ripple（§4.0.1），呼叫 `onChanged('')` 恰一次 | Material 內建 ripple（清除鈕）；輸入無動畫 | 清除鈕 pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1）；輸入回顯無時限條文（原生行為；提案） | §1 子表「按下確認」列 | filled → pressed（清除鈕）→ empty；empty / filled →（輸入）→ filled | 反應／時限：UX 審查（SPEC-003 §2.2）；輸入回顯：規格撰寫者（提案）；通道／狀態邊：規格撰寫者 |
+| 定位提示 locate | 系統 | 由容器承載：本元件是搜尋的**來源**而非被定位目標，位於 `Toolbar` 首格常駐不捲動；§1 子表 locate 列適用場景「搜尋命中列」的 scroll-into-view + 高亮由 Ticket 清單的資料視圖容器（4.36 `DataTable`）執行，本元件不參與 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：頁面層依搜尋詞 provider 改 `value` 傳值；含切換專案時搜尋詞清空，SPEC-003 §3.4 生命週期） | empty ↔ filled：清除鈕出現／消失為離散替換無動畫；值改變由 `Semantics.textField` 語意自動播報，清單筆數變化的播報由畫面（`SplitRow.footer` 摘要）承載，本元件不播報（無障礙子節）；`onChanged(value)` 於輸入停止 `Motion.searchDebounce` 後呼叫一次（防抖動，不逐字元）、清除或刪至空立即呼叫 `onChanged('')` 不等防抖動（SPEC-003 §3.4 搜尋列「清空輸入立即還原」） | 無（清除鈕出現／消失無動畫；SPEC-003 §3.4 無對應動畫條文；提案） | `onChanged`：輸入停止後 `Motion.searchDebounce`（SPEC-003 §3.4、§2.1）；清除：立即；empty ↔ filled 視覺：無（本地即時；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報由 textField 語意承載；不升級系統通知） | empty → filled（輸入）/ filled → empty（清除或刪至空） | 反應／時限：UX 審查（SPEC-003 §3.4）；視覺切換：規格撰寫者（提案）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | 本元件承載三層中的**點擊確認**層（值回顯 + 清除鈕 pressed 態）；無等待指示（過濾為本地已載入資料的同步運算，防抖動期間不顯示 spinner，SPEC-003 §2.6「0.1 無非狀態級短暫等待」）；結果通知為清單筆數更新的狀態轉換本身（SPEC-003 §2.2 結果通知列），由畫面承載 | Material 內建（清除鈕） | `Motion.feedback`（清除鈕）；`Motion.searchDebounce`（結果出現） | §1 子表「等待與結果」列 | 不適用 | 反應／時限：UX 審查（SPEC-003 §2.2、§2.6、§3.4）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -2041,25 +2079,29 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 狀態矩陣
 
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
-|------|------|---------|---------|---------|
-| default（全部） | 「{label}：{filterAllOption}」+ 向下箭頭；底 `surfaceBase`、框 `border` | 點選 → open | `selected` 為 `null` | 選取非全部 → active |
-| active（有篩選值） | 「{label}：{value}」；框 `accent`（SPEC-003「該篩選呈選中態」的視覺落點） | 點選 → open | `selected` 非 `null` | 選取全部 → default |
-| open | 選單以覆蓋層展開（F1、F4）；觸發器選中態不受影響，`open` 是疊加於 default／active 之上的修飾非第三個互斥狀態（F2） | 走選項（↑↓Home/End）、選取（Enter/Space/點擊）、Esc、點外部、再點觸發器、Tab/Shift+Tab | 點選觸發器（收合時）或聚焦時 Enter／Space／↓ | 選取且值改變 → 收合回 active／default；選取值相同、Esc、點外部、再點觸發器、Tab 離開 → 收合回原態（`selected` 不變） |
-| hover / pressed / focused | 依 §4.0.1 | 點選 | | |
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| default（全部） | 「{label}：{filterAllOption}」+ 向下箭頭；底 `surfaceBase`、框 `border` | 點選 → open | `selected` 為 `null` | 選取非全部 → active | 資料態：受控 `selected` 來自 Ticket 清單畫面的篩選 provider（每個 `<key>` 一個值）——該畫面的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `selected` 傳值，元件不 watch（§2 頁面狀態保留：篩選值存於 provider） | 本地即時（篩選為本地已載入資料的子集運算，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| active（有篩選值） | 「{label}：{value}」；框 `accent`（SPEC-003「該篩選呈選中態」的視覺落點） | 點選 → open | `selected` 非 `null` | 選取全部 → default | 資料態：同上 | 本地即時 |
+| open | 選單以覆蓋層展開（F1、F4）；觸發器選中態不受影響，`open` 是疊加於 default／active 之上的修飾非第三個互斥狀態（F2） | 走選項（↑↓Home/End）、選取（Enter/Space/點擊）、Esc、點外部、再點觸發器、Tab/Shift+Tab | 點選觸發器（收合時）或聚焦時 Enter／Space／↓ | 選取且值改變 → 收合回 active／default；選取值相同、Esc、點外部、再點觸發器、Tab 離開 → 收合回原態（`selected` 不變） | 互動瞬態（選單開合為元件內部 overlay 狀態，不存於 provider：選單展開期間不會發生導覽切換或專案切換（F7），故切換導覽項時選單必為收合態，不需依 §2 頁面狀態保留） | 本地即時 |
+| hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 依 §4.0.1 | 點選（Enter / Space / ↓ 展開） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
-#### 互動反應
+#### 回饋契約
 
-| 互動 | 反應 | 動畫 | 時間門檻 |
-|------|------|------|---------|
-| 點選觸發器（選單收合時）；或聚焦時按 Enter／Space／↓ | 選單展開（`menu-tickets-filter-<key>`）；焦點移至目前值對應選項（`selected` 為 `null` 時為「全部」項）；`onChanged` 不被呼叫 | `Motion.overlay` | — |
-| 選單內 ↑／↓／Home／End | 焦點在選項間移動（不循環：首項按 ↑ 與末項按 ↓ 不動）；`onChanged` 不被呼叫 | 無 | — |
-| 選取一個選項（值改變） | 呼叫 `onChanged(value)` 恰一次；呼叫端執行：該篩選呈選中態、清單筆數改變（SPEC-003 §3.4）；選單收合；焦點回觸發器 | 無 | `Motion.feedback` |
-| 選取一個選項（值相同） | 選單收合；`onChanged` 不被呼叫 | 無 | — |
-| Esc | 選單收合；`onChanged` 不被呼叫；`selected` 不變；焦點回觸發器 | 無 | — |
-| 點選單與觸發器以外任一處 | 選單收合；`onChanged` 不被呼叫；該次點擊被選單吸收、不傳遞至下層（F7） | 無 | — |
-| 再點觸發器（展開時） | 選單收合；`onChanged` 不被呼叫；焦點停在觸發器 | 無 | — |
-| Tab／Shift+Tab | 選單收合；`onChanged` 不被呼叫；焦點依序移至觸發器之後／之前元素 | 無 | — |
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
+> 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
+> 選單內的逐操作反應（走選項、Esc、點外部、再點觸發器、Tab 離開）為本元件的操作路徑而非六類回饋事件，規格在 SPEC-003 §3.4 篩選七列與本條目〈選單的元件級契約〉F1–F7；下表只填六類事件在各操作上的回饋。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 觸發器 hover 態（§4.0.1：Material `InkWell` 內建 overlay）；指標形狀 `SystemMouseCursors.click`；選單展開時各選項各自有 hover 態（同機制） | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文；提案） | §1 子表「可互動提示」列 | 不適用 | 反應：規格撰寫者（抄 §4.0.1 提案列）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 觸發器：焦點環（§4.0.1 focused），進入 Tab 內容區段（SPEC-003 §2.10），朗讀 `filterA11yLabel` + `expanded` 旗標（無障礙子節）。選單展開時：焦點移至目前值對應選項（`selected` 為 `null` 時為「全部」項），↑／↓／Home／End 在選項間移動不循環，`onChanged` 不被呼叫（SPEC-003 §3.4 走選項列）；Esc／選取後焦點回觸發器，Tab／Shift+Tab 收合並依 §2.10 順序離開（選單不限制焦點，與浮層不同，SPEC-003 §2.10 篩選選單兩列）；每個選項 `role` 為 `menuItem`、目前值項 `selected` 為 `true`（F6） | 無 | 無（SPEC-003 §2.10 只斷言裝飾存在，不設時限；提案） | §1 子表「焦點」列 | default / active → focused → 原狀態；open 期間焦點在選項間移動不改變 default／active（F2） | 反應：UX 審查（SPEC-003 §2.10、§3.4）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 觸發器：pressed 態 + Material ripple（§4.0.1）；收合時點選或聚焦時 Enter／Space／↓ → 選單展開（`menu-tickets-filter-<key>`，淡入 + 自觸發器向下展開），`onChanged` 不被呼叫；展開時再點觸發器 → 收合，焦點停在觸發器。選項：pressed 態 + ripple；選取且值改變 → 呼叫 `onChanged(value)` 恰一次，選單收合，焦點回觸發器；值相同 → 只收合，不呼叫（F5）。點選單與觸發器以外任一處 → 收合且該次點擊被吸收不穿透（F7）（SPEC-003 §3.4 篩選七列） | Material 內建 ripple；選單展開／收合 `Motion.overlay`（SPEC-003 §3.4 動畫提示，與 §3.7 浮層同一手法；`disableAnimations` 下依 §2.1 歸零） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1）；選單出現／收合於 `Motion.overlay` 內（SPEC-003 §3.4 篩選 · 開啟／選取列） | §1 子表「按下確認」列 | default / active → pressed → open；open → pressed（選項，值改變）→ active / default；open → pressed（選項值相同／再點觸發器／點外部）→ 原態 | 反應／時限：UX 審查（SPEC-003 §2.2、§3.4）；通道／狀態邊：規格撰寫者 |
+| 定位提示 locate | 系統 | 由容器承載（`Toolbar` 第 2..N 格）：本元件是篩選的**來源**而非被定位目標，工具列常駐不捲動；選單為覆蓋層、`options` 全數展開不捲動（F4），選單內無 scroll-into-view 需求；展開時焦點移至目前值對應選項屬焦點列 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：頁面層依篩選 provider 改 `selected` 傳值；含切換專案時篩選清空，SPEC-003 §3.4 生命週期）；open 開合為元件自有瞬態，非本列事件 | default ↔ active：觸發器文字改為新選項文字、框色 `border` ↔ `accent` 為離散替換無動畫；重建即唸出新值（`filterA11yLabel` 的 `{value}` 為新選項文字，重建即為播報載體，不另發 `SemanticsService.announce`，F6）；清單筆數改變與 offset 歸零由畫面承載（SPEC-003 §3.4 篩選 · 選取列） | 無（觸發器視覺為離散替換；SPEC-003 §3.4 動畫提示未定觸發器過渡；提案） | 無（本地即時，觸發器文字與框色隨 `selected` 同步瞬切；SPEC-003 無對應時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙狀態變化播報適用（重建唸出）；不升級系統通知） | default → active（選取非全部）/ active → default（選取全部）/ active → active（換另一非全部值） | 反應：UX 審查（SPEC-003 §3.4 F6）；視覺切換：規格撰寫者（提案）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | 本元件承載三層中的**點擊確認**層（觸發器與選項的 pressed 態）；無等待指示（篩選為本地已載入資料的子集運算，SPEC-003 §2.6「0.1 無非狀態級短暫等待」）；結果通知為清單筆數改變 + offset 歸零的狀態轉換本身（SPEC-003 §2.2 結果通知列），由畫面承載；篩選或排序後的列表重繪無 cross-fade（SPEC-003 §3.4 動畫提示） | Material 內建；`Motion.overlay`（選單） | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.6、§3.4）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -2182,18 +2224,29 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 狀態矩陣
 
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 |
-|------|------|---------|---------|---------|
-| default（`static` / `twoLine`） | label | 無 | 建構 | 不適用：純顯示變體無狀態集 |
-| unsorted（`sortable`） | label，無指示 | 點選 | `order` 為 `none` | 點選 → 呼叫 `onSort`；下一個 `order`（`asc`）由呼叫端依 SPEC-003 §3.4 S2 決定 |
-| asc / desc（`sortable`） | label + 向上／向下指示（`AppIcon.sm`，`accentStrong`） | 點選 | `order` 為 `asc` / `desc` | 點選 → 呼叫 `onSort`；下一個 `order`（`desc` / `none`）由呼叫端依 SPEC-003 §3.4 S2 決定 |
-| hover / pressed / focused（`sortable`） | 依 §4.0.1 | 點選 | | |
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| default（`static` / `twoLine`） | label | 無 | 建構 | 不適用：純顯示變體無狀態集 | —（建構即渲染；`label` / `secondLine` 由呼叫端傳值，元件不 watch 任何 provider，§2） | 本地即時 |
+| unsorted（`sortable`） | label，無指示 | 點選 | `order` 為 `none` | 點選 → 呼叫 `onSort`；下一個 `order`（`asc`）由呼叫端依 SPEC-003 §3.4 S2 決定 | 資料態：受控 `order` 來自 Ticket 清單畫面的排序 provider（單欄排序，S1：`order` 非 `none` 的欄至多一個）——該畫面的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `order` 傳值，元件不 watch（§2 頁面狀態保留：排序存於 provider） | 本地即時（排序為本地已載入資料的重排，列表直接重建，SPEC-003 §3.4 動畫提示；§2 樂觀更新政策：0.1 無樂觀操作） |
+| asc / desc（`sortable`） | label + 向上／向下指示（`AppIcon.sm`，`accentStrong`） | 點選 | `order` 為 `asc` / `desc` | 點選 → 呼叫 `onSort`；下一個 `order`（`desc` / `none`）由呼叫端依 SPEC-003 §3.4 S2 決定 | 資料態：同上 | 本地即時 |
+| hover（僅指標形態，`sortable`） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed（`sortable`） | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused（`sortable`） | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
-#### 互動反應
+#### 回饋契約
 
-| 互動 | 反應 | 動畫 | 時間門檻 |
-|------|------|------|---------|
-| 點選（`sortable`） | 呼叫 `onSort` 恰一次；呼叫端執行：依 SPEC-003 §3.4 S1–S2（`none→asc→desc→none`，換欄自 `asc` 起算，單欄排序）推進該欄 `order`；首列與末列內容改變、offset 歸零 | 無 | `Motion.feedback` |
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
+> 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
+> 六列皆只適用 `sortable` 變體；`static` / `twoLine` 為非互動元素（SPEC-003 §3.4 S7：點擊不產生反應且不呈按鈕形態、不進入 Tab 順序），其回饋於各列內註明不適用，不另立整節不適用列（本元件有可互動變體，不符範本「純顯示且無資料態變更」的唯一不適用情境）。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | `sortable`：hover 態（§4.0.1：Material `InkWell` 內建 overlay）、指標形狀 `SystemMouseCursors.click`；`static` / `twoLine`：無 hover、無 `InkWell`（S7） | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文；提案） | §1 子表「可互動提示」列（`static` / `twoLine` 不適用：非互動元素） | 不適用 | 反應：規格撰寫者（抄 §4.0.1 提案列）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | `sortable`：焦點環（§4.0.1 focused），進入 Tab 內容區段（SPEC-003 §2.10），朗讀 `sortA11yLabel(label, order)`（無障礙子節）；`static` / `twoLine`：不進入 Tab 順序，`Semantics.header` 由輔助技術逐項朗讀 | 無 | 無（SPEC-003 §2.10 只斷言裝飾存在，不設時限；提案） | §1 子表「焦點」列（`static` / `twoLine` 不適用） | unsorted / asc / desc → focused → 原狀態 | 反應：UX 審查（SPEC-003 §2.10、§3.4 S7）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | `sortable`：pressed 態 + Material ripple（§4.0.1）；呼叫 `onSort` 恰一次；呼叫端執行：依 SPEC-003 §3.4 S1–S2（`none → asc → desc → none`，換欄自 `asc` 起算，單欄排序）推進該欄 `order`，首列與末列內容改變、offset 歸零；`static` / `twoLine`：點擊不產生任何反應且不呈按鈕形態（S7） | Material 內建 ripple | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列（`static` / `twoLine` 不適用） | unsorted → pressed → asc；asc → pressed → desc；desc → pressed → unsorted（推進由呼叫端決定，本元件只回呼） | 反應／時限：UX 審查（SPEC-003 §2.2、§3.4 S1–S2）；通道／狀態邊：規格撰寫者 |
+| 定位提示 locate | 系統 | 由容器承載（`TableRow.header` / `MatrixGrid` 欄首格）：0.1 無定位至欄首的場景——表格欄首列常駐於資料視圖頂端，矩陣欄首隨 `MatrixGrid` 二維捲動固定於頂列（4.37）；排序後 offset 歸零屬結果通知，非定位 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：頁面層依排序 provider 改 `order` 傳值；含換欄時前欄回 `none`（S1）與切換專案時全部欄首重置為 `none`，SPEC-003 §3.4 排序 · 換欄列與生命週期） | 排序指示圖示直接替換（出現／方向切換／消失），無動畫（SPEC-003 §3.4 動畫提示「排序指示切換」）；欄首重建後 `Semantics.button` 的 label 等於 `sortA11yLabel(label, order)`，焦點停在該欄首，重建即為播報載體，不另發 `SemanticsService.announce`（S4）；列序改變與 offset 歸零由畫面承載，篩選或排序後的列表重繪無 cross-fade | 無（SPEC-003 §3.4 明訂無動畫） | 指示與朗讀標籤於 `Motion.feedback` 內更新（SPEC-003 §3.4 排序 · 循環列） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙狀態變化播報適用（重建唸出）；不升級系統通知） | unsorted → asc / asc → desc / desc → unsorted（本欄點選）；asc / desc → unsorted（他欄點選，S1） | 反應／時限：UX 審查（SPEC-003 §3.4 S3–S4、動畫提示）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | `sortable` 承載三層中的**點擊確認**層（pressed 態）；無等待指示（排序為本地已載入資料的重排，SPEC-003 §2.6「0.1 無非狀態級短暫等待」）；結果通知為列序改變 + 指示更新 + offset 歸零的狀態轉換本身（SPEC-003 §2.2 結果通知列），列序由畫面承載；`static` / `twoLine` 不適用 | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.6、§3.4）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -5869,6 +5922,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.20 | 2026-09-08 | `0.1.0-W3-060.3`：4.8–4.14 七條目「互動反應」子節依範本 1.13.0 改名「回饋契約」並展開為回饋事件六類（欄位同 1.19）；通道欄逐列引用 §1〈回饋通道子表〉不重抄，反應與時間門檻抄 SPEC-003（§2.1、§2.2、§2.6、§2.10、§3.1、§3.4 篩選七列／F1–F7／S1–S7／動畫提示、§3.7），通道與對應狀態邊由本票填。純顯示元件 4.11 `PageTitle` 整節填一列「不適用 + 理由」；可互動元件 4.8 `ProjectSwitcherEntry`／4.9 `RecentProjectItem`／4.10 `SegmentedControl`／4.12 `SearchField`／4.13 `FilterDropdown`／4.14 `TableColumnHeader` 六列全填，locate 列一律「由容器承載」（4.12 為搜尋來源，命中列定位由 4.36 `DataTable` 執行；4.14 `static`／`twoLine` 依 S7 逐列註明不適用，不另立整節不適用列）。4.12 state-change 時限抄 SPEC-003 §3.4（`Motion.searchDebounce`／清除立即），4.13 press-ack 選單開合 `Motion.overlay`，4.14 state-change 指示更新於 `Motion.feedback` 內；hover／focus／選取切換等本地即時列時間門檻填「無」標提案（PM 裁決自 060.2 驗收），未建待決票。七條目狀態矩陣加「來源」「同步策略」兩欄：4.8 `switcherOpenProvider`／`currentProjectNameProvider`、4.9 `recentProjectsProvider.enabled`（等確認才顯示）／`currentProjectIndexProvider`、4.13 open 為元件內部 overlay 瞬態（F7 保證切頁時必為收合態）；4.10／4.12／4.13／4.14 的 Ticket 清單與 Domain 視圖 provider 未建者標由畫面票補填；合併瞬態列拆為範本三列（4.12 pressed 列註明 `TextField` 無 pressed 態、由清除鈕承載）。併修 060.2 二次審查（basil-writing-critic）三項 warning：狀態矩陣「來源」欄枚舉值收斂為互動瞬態／資料態／—，4.1／4.2／4.3／4.5 default 與 4.4 enabled 五處建構即渲染列改「—」並於 §4.0.1 末段明文三種值；§3.7 引言的 DOC-GPD-003 字面移為段末 HTML 註解；4.7 state-change 列兩處「選中」改「選取」（本票新增段落一律用「選取」，既有 27 處另票）。info 兩項一併採納：4.3 `Divider` 通道格改「不適用（無互動，無承載者）」、4.4 disabled 來源欄 `isCancelling` 改寫為 `GapReportScanning.isCancelling`（`gap_report_models.dart`，由 `gapReportProvider` 持有）。§4.0 對應表與 §4.0.1 末段的落成範圍同步；檔頭版本段對齊 frontmatter。4.15 以後條目不動（`060.4`–`060.5`） |
 | 1.19 | 2026-09-08 | `0.1.0-W3-060.2`：4.1–4.7 七條目「互動反應」子節依範本 1.13.0 改名「回饋契約」並展開為回饋事件六類（欄：事件／觸發者／反應／動畫 token／時間門檻／回饋通道（桌機）／對應狀態邊／填寫者）；通道欄逐列引用 §1〈回饋通道子表〉不重抄，反應與時間門檻抄 SPEC-003（§2.1、§2.2、§2.5 C2、§2.10、§3.3、§3.4），通道與對應狀態邊由本票填，填寫者欄逐列標明。純顯示元件 4.1 `AppText`／4.2 `AppIcon`／4.3 `Divider`／4.5 `Badge` 整節填一列「不適用 + 理由」；可點元件 4.4 `AppButton`／4.6 `IssueMarker`／4.7 `NavItem` 六列全填，locate 列填「由容器承載」（非資料視圖容器不執行 scroll-into-view）。SPEC-003 無時限條文的 hover／focus／導覽項選中切換，時間門檻填「無」標提案（機制為本地即時，不另設數值），未建待決票。七條目狀態矩陣加「來源」「同步策略」兩欄：互動瞬態填「互動瞬態／本地即時」，資料態填 provider 名（4.7 `selectedDestinationProvider`、4.4 disabled 為 `gapReportProvider` 的 `isCancelling`、4.6 `gap` 為 `traceabilityStateProvider`；Domain／Ticket 載入 provider 未建者標由畫面票補填）；既有合併列「hover / pressed / focused」拆為範本三列，§4.0.1 末段規則同步改寫。併入 060.1 SR-2：§3.7 引言與 §4.0 引言三處欄位計數字面改引用方法論〈元件契約欄位表〉，§4.0 引言下補「方法論欄位 ↔ 本檔子節」對應表取代不存在的檔頭註解（DOC-GPD-003）；檔頭版本段由陳舊的 1.17 對齊 frontmatter。4.8 以後條目不動（`060.3`–`060.5`） |
 | 1.18 | 2026-09-08 | `0.1.0-W3-063`：§1〈回饋通道子表〉state-change 列的「不在視野時是否升級 macOS 系統通知」由**待核定**改為已簽核（用戶簽核 2026-09-08）——升級條件「掃描完成 AND（視窗非前景 OR 已離開觸發頁）」，規格引用 SPEC-003 §2.2「系統層通知」（v1.9），0.1 僅此一處升級；本表狀態段移除待核定句。只動 §1 一列與狀態段，第 4 章逐元件條目不動（`060.2`–`060.5`） |
 | 1.17 | 2026-09-08 | `0.1.0-W3-060.1`：依範本 1.13.0 與方法論 1.14.0，§1「回饋通道」列展開為〈回饋通道子表〉（回饋事件六類 × 桌機單欄，提案）：affordance = hover、focus = 焦點環 + 鍵盤導覽、press-ack = pressed + ripple 於 `Motion.feedback` 內、locate = scroll-into-view + 短暫高亮 + 輔助技術焦點移入、state-change = `Motion.*` 過渡 + 無障礙播報（不在視野時升級 macOS 系統通知列標**待核定**，0.1 預設不用）、等待與結果 = SPEC-003 §2.2 三層；無觸覺、無聲音。§2 新增「過渡提示觸發點」（提案：呼叫端顯式觸發，容器例外於 `ref.listen` 內比對新舊值後觸發仍屬呼叫端）與「樂觀更新政策」（提案：0.1 不允許，同步策略欄不得填「樂觀更新後確認」；重評綁定 PROP-005〈0.x — 編輯〉落為提案票時）兩列。檔頭版本段由陳舊的 1.10 對齊 frontmatter；層級定位段「十一欄位」字面改為引用方法論〈元件契約欄位表〉（DOC-GPD-003）。第 4 章逐元件條目不動（`060.2`–`060.5`） |
