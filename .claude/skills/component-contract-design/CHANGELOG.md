@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.0.0 — 方法論 1.14.0〈元件契約判準〉新增「回饋契約」欄後，將此欄投影到本 skill 判準層全部八檔（`SKILL.md`、`field-questions.md`、`adjacent-assets.md`、`mode-c.md`、`modes-a-b.md`、`dispatch-language.md`、`examples-troubleshooting.md`、`addresses.md`），欄位集合變更視為破壞性版本。逐檔：`SKILL.md` description 欄名清單加回饋契約，契約齊全定義第 1 條分母、第 5 條通道要求、最小適用集替代判準三處同步；`field-questions.md` 新增回饋契約問句列與正例列、狀態集問句加來源／同步策略、佔位值分組改語意命名、多形態共用範圍表加回饋契約；`adjacent-assets.md` 補 ux-design-evaluation 分工的填寫者拆分（時間門檻／通知形式歸 UX 審查，通道／狀態來源歸規格撰寫者）；`mode-c.md` 步驟 1 三態對照補回饋契約證據常見落點提醒；`dispatch-language.md` 元件票 acceptance 投影加回饋契約欄；`addresses.md` 元件庫規格範本列的欄位對應表改稱。**計數字面去化**（DOC-GPD-003）：全八檔內描述欄位表大小的計數字面（「十一欄位」「六欄」「五欄」「三欄制」）改為引用權威名稱「元件契約欄位表」或分組語意名（「可填不適用的欄位」「不得填不適用的欄位」「最小適用集」），避免欄位集合下次增減時再度大量失效；血緣檔數：本次修法涉及本目錄全部八檔，另有方法論本體（外部）與 doc 範本（外部）各一份同批落成，三者版本各自獨立。經 basil-writing-critic 二次審查合格。可攜性閘門複驗：`skill-sync push component-contract-design < /dev/null` 全八檔零違規（無 `.claude/` 路徑、無本專案 ticket 編號）。
+
 **Version**: 1.9.1 — 修 `references/project-integration/README.md`〈依賴方向〉節的方向宣告：原文主張 `addresses.md` 不得引用本目錄且方向單向，與 v1.5.3 起的三次實作（`addresses.md` 方法論／元件庫規格範本／agent 派發範本三列皆指向本目錄）相反，三次未被任何機制擋下。判定實作對、條文錯——`addresses.md` 三處引用的是本 skill 內部相對路徑，不含專案識別符，引用穩定性規則 8 明列此類「框架檔案路徑」屬允許引用，故改條文以符合實作，未回改 `addresses.md`。同節記錄不需執法層的理由：可攜性的實質不變量已由規則 8 的 hook 與 `skill-sync` portability gate 守住，這條方向宣告只是敘述性文字，改到一致後無再違反空間。
 
 **Version**: 1.9.0 — 補範例層四類正例，承接框架 issue tarrragon/claude#82「待調整清單」第 1-5 項（範例先於拆分，因為拆分邊界取決於範例放哪裡；內容分層第 6-10 項與族內接線第 11-14 項已由另一 consumer 於本票之前完成，見該 issue 觀測記錄）。
