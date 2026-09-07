@@ -1,3 +1,100 @@
+## [2.54.1] - 2026-09-07
+
+### Summary
+docs: 修復 .claude/CHANGELOG.md L5535 的 3 個 U+FFFD 替換字元; chore: pull .claude 更新（上游 fa305e8aa，某版本）
+
+Changes: 1 docs, 1 chore
+
+- docs: 修復 .claude/CHANGELOG.md L5535 的 3 個 U+FFFD 替換字元
+- chore: pull .claude 更新（上游 fa305e8aa，某版本）
+
+---
+
+## [2.54.0] - 2026-09-07
+
+### Summary
+feat: push 加版號未變閘門，偵測內容變更但版號未 bump; fix: 修復 Windows 上 skill-sync 內容雜湊的分隔符與 autocrlf 缺陷; fix: 明示 push --force 旁路 portability 閘門的效果 (+15 more)
+
+Changes: 1 feat, 4 fix, 9 docs, 4 chore
+
+- feat: push 加版號未變閘門，偵測內容變更但版號未 bump
+- fix: 修復 Windows 上 skill-sync 內容雜湊的分隔符與 autocrlf 缺陷
+- fix: 明示 push --force 旁路 portability 閘門的效果
+- fix: 修正 commit-first 警告的風險方向並列出受阻檔案
+- fix: gitignore 斷言改驗 git check-ignore 行為而非字面 pattern
+- docs: CHANGELOG 補 某版本 條目
+- docs: 修三節外移造成的三處跨檔指涉失效
+- docs: 依 (a) 判準外移三節，SKILL.md 降至 5k 預算的 72%
+- docs: 重設 skill-design-guide 的 (a)(g) 兩組判準
+- docs: 說明兩支 push 工具的分別（框架 canonical vs skill 發佈庫）
+- docs: 同步一跳可達判準與分段估算表名稱至三處範圍外位置
+- docs: 刪除 SKILL.md「Base ref 與隔離邊界」表重複列
+- docs: 重新設計 skill-design-guide 五組判準
+- docs: addresses.md 兩列地址改指 project-integration
+- chore: 補記 1.14.0 版本紀錄（--force 雙重語意可見性修正）
+- chore: 六支 skill 補上未 bump 的版號並推送至發佈庫
+- chore: bump 1.5.3, add project-integration README
+- chore: .claude/VERSION 回寫 某版本
+
+---
+
+## [2.53.2] - 2026-09-07
+
+### Summary
+chore: 拉取 multi-round-review 1.75.1 與 compositional-writing 1.7.1; chore: .claude/VERSION 回寫 某版本
+
+Changes: 2 chore
+
+- chore: 拉取 multi-round-review 1.75.1 與 compositional-writing 1.7.1
+- chore: .claude/VERSION 回寫 某版本
+
+---
+
+## [2.53.1] - 2026-09-07
+
+### Summary
+chore: .claude/VERSION 回寫 某版本
+
+Changes: 1 chore
+
+- chore: .claude/VERSION 回寫 某版本
+
+---
+
+## [2.53.0] - 2026-09-07
+
+### Summary
+refactor: 拆分為 SKILL.md + references 六份（某版本）; refactor: 拆分為 SKILL.md + references/ 五份（某版本）; fix: 500 的四處硬值副本改路由，三層載入節名統一 (+21 more)
+
+Changes: 2 refactor, 16 fix, 5 docs, 1 chore
+
+- refactor: 拆分為 SKILL.md + references 六份（某版本）
+- refactor: 拆分為 SKILL.md + references/ 五份（某版本）
+- fix: 500 的四處硬值副本改路由，三層載入節名統一
+- fix: 走查段的「上一節」改具名
+- fix: 來源併入溯源段，消掉兩份的來源重複與檔尾三形式
+- fix: 修重組後遺症方向 3 的五則（某版本 續）
+- fix: 修 Round 4 三個 frame 的 finding（某版本）
+- fix: 修 Round 3 嚴重必修中可機械執行的五項（某版本）
+- fix: 修 Round 3 抓到的四項，含前一批的不實驗收宣稱
+- fix: 補雙向路由驗證，修修法自身造出的孤兒節
+- fix: Round 2 修可機械驗證的三類（某版本）
+- fix: 多輪審查 Round 1 修法（某版本）
+- fix: 地址表宣稱改為與實際相符（某版本）
+- fix: 整體通讀抓到的三處合成缺陷（某版本）
+- fix: 多輪審查 Round 4 修法（某版本）
+- fix: 多輪審查 Round 3 修法（某版本）
+- fix: 多輪審查 Round 2 修法（某版本）
+- fix: 多輪審查 Round 1 的 20 項修法（某版本）
+- docs: 某版本 修 Round 4 第四 frame 復跑後的三則殘留
+- docs: CHANGELOG 內一條被推翻的判定補上時效與方法標註
+- docs: 新增拆分既有 skill 的程序（某版本）
+- docs: 新增 DOC-GPD-001 並修正契約齊全定義的計數殘留
+- docs: 第 2 層體量判準由行數改為字元數（某版本）
+- chore: pull .claude 更新（上游 dbbf8c2f5036）
+
+---
+
 ## [2.52.2] - 2026-09-04
 
 ### Summary
@@ -700,12 +797,12 @@ Changes: 1 chore
 ## [2.39.0] - 2026-08-24
 
 ### Summary
-revert: chore: metadata sync post-completion (原 commit: 0.2.1-W3-868); revert: 還原 readme_index 欄位級 upsert 至基線，契約歸屬轉 決策 (原 commit: 0.2.1-W3-878); feat: 新增 set-parent 命令修正 parent_id 並同步上游 children (+165 more)
+revert: chore: metadata sync post-completion (原 commit); revert: 還原 readme_index 欄位級 upsert 至基線，契約歸屬轉 決策 (原 commit); feat: 新增 set-parent 命令修正 parent_id 並同步上游 children (+165 more)
 
 Changes: 2 revert, 21 feat, 5 refactor, 49 fix, 82 docs, 4 chore, 3 test, 2 other
 
-- revert: chore: metadata sync post-completion (原 commit: 0.2.1-W3-868)
-- revert: 還原 readme_index 欄位級 upsert 至基線，契約歸屬轉 決策 (原 commit: 0.2.1-W3-878)
+- revert: chore: metadata sync post-completion (原 commit)
+- revert: 還原 readme_index 欄位級 upsert 至基線，契約歸屬轉 決策 (原 commit)
 - feat: 新增 set-parent 命令修正 parent_id 並同步上游 children
 - feat: 新增 --discovered-during 旗標區分規劃衍生與發現衍生的建票語意
 - feat: portability-check 排除誤報並依 §2.4 分類輸出
@@ -1850,13 +1947,13 @@ error-pattern（consumer screen_clock 於 v1.4.0 捕獲，上游先前無 SCLK �
 程式碼修復：
 - hooks/hook-completeness-check.py：新增 extract_merge_declarations()，解析
   hook docstring 的合併宣告，偵測已合併卻仍與合併版共同註冊的 hook
-  （screen_clock 1.4.0-W2-029 實證：三個 hook 每次 commit 重複執行）
+  （screen_clock 消費端實證：三個 hook 每次 commit 重複執行）
 - skills/doc/doc_system/commands/validate.py + tests：修 _fixed_name_exemptions
-  對無對應模板之固定命名文件的推導盲區（1.4.0-W1-013）
+  對無對應模板之固定命名文件的推導盲區（screen_clock 消費端案例）
 
 框架知識：
 - references/agent-dispatch-decision.md：新增 isolation:worktree 派發的
-  complete 收尾限制專節，含逐字阻擋原文與探針證據（1.4.0-W1-023）
+  complete 收尾限制專節，含逐字阻擋原文與探針證據（screen_clock 消費端案例）
 
 ---
 
@@ -2752,7 +2849,7 @@ fix: 同步孤兒檔 sample_events.jsonl 測試 fixture
 ## [2.8.3] - 2026-07-01
 
 ### Summary
-feat: 新增 design-system-spec-template.md 範本（W8-002）
+feat: 新增 design-system-spec-template.md 範本
 
 ---
 
@@ -5447,7 +5544,7 @@ Changes: 126 feat, 43 refactor, 103 fix, 228 docs, 39 chore, 5 test, 1 perf
 - docs: 記錄 PC-055 Ticket AC 與實況漂移未被系統偵測
 - docs: IMP-059 auto-compaction UTF-8 截斷導致文件亂碼
 - docs: PC-054 分析視角錨定防禦性而非品質目標
-- docs: tool call 預算閾值校準 ��� 15 次為安全預算非硬斷（.3）
+- docs: tool call 預算閾值校準：15 次為安全預算非硬斷（.3）
 - docs: 補充子任務 vs 獨立 Ticket 決策流程圖和案例（.2）
 - docs: 新增 task-splitting 策略 8 — 按依賴鏈序列拆分（.1）
 - docs: IMP-058 YAML 欄位型別假設錯誤（）
@@ -6082,14 +6179,14 @@ release(v0.1.0): 同步 v0.1.0 版本發布配置 — 語言感知版本檢查�
 ## [1.1.48] - 2026-03-13
 
 ### Summary
-docs(0.1.0-W51-001): 標準化 complete 前主動勾選驗收條件流程
+docs: 標準化 complete 前主動勾選驗收條件流程
 
 ---
 
 ## [1.1.47] - 2026-03-12
 
 ### Summary
-sync: W45-001 完成後同步 .claude 配置
+sync: 上游 ticket 完成後同步 .claude 配置
 
 ---
 
@@ -6206,7 +6303,7 @@ refactor: 移除舊 sync .sh 腳本，統一使用 .py 版本
 ## [1.1.31] - 2026-03-05
 
 ### Summary
-chore: W1-014/015/016 sync 腳本修正、project-init Python 3.14、IMP-016 error-pattern
+chore: sync 腳本修正、project-init Python 3.14、IMP-016 error-pattern
 
 ---
 
@@ -6245,7 +6342,7 @@ fix: sync-claude-pull.sh 修復自我刪除風險、untracked 誤判、clone tim
 ## [1.1.26] - 2026-03-05
 
 ### Summary
-feat: 新增 incident-response 修復三階段規則 + 測試金字塔驗證順序 + PC-004 error-pattern (W1-009)
+feat: 新增 incident-response 修復三階段規則 + 測試金字塔驗證順序 + PC-004 error-pattern
 
 ---
 
@@ -6285,7 +6382,7 @@ feat: 新增 Go 代理人 + i18n/常數規範 + 移除 emoji
 ## [1.1.21] - 2026-03-05
 
 ### Summary
-feat: W5-006 handoff 驗收前置檢查 + W5-007 resume --list stale 過濾修復
+feat: handoff 驗收前置檢查 + resume --list stale 過濾修復
 
 ---
 
