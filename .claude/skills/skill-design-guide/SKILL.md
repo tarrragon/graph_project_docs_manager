@@ -26,8 +26,12 @@ metadata:
 
 | 自問 | 通過標準 |
 |------|---------|
-| Claude 真的不知道這個嗎？ | 通用程式知識 / 框架慣例 → 移除；專案特有 / 反直覺 → 保留 |
+| 刪掉這段，Claude 的預設輸出會變嗎？ | 會變 → 保留；不會 → 移除 |
 | 這段文字值得它的 token 成本嗎？ | 表格 / 範例優於散文，散文優於不存在 |
+
+**第一問問的是行為差異，不是知識空缺。** 「Claude 知不知道」與「Claude 預設會不會這樣做」是兩個獨立維度，四種組合都存在；把它們寫成一條線的兩端（通用知識 → 移除、專案特有 → 保留），「知道但預設不會做」那一格會被判成移除。本檔的 `wc -l` 與分段估算指令正落在該格——量測工具是通用程式知識，而 Claude 預設不會在寫 skill 前去量體量，它會憑印象判斷；刪掉那兩行，輸出會變。
+
+**Action**：判不準時做刪除測試——把該段拿掉，在乾淨 session 對同一任務重跑，比對兩次產出。這一問可外部驗證，「Claude 知不知道」不能。
 
 **Why**：兩層各有各的成本，機制不同，不可混談。**第 1 層**（description）常駐 system prompt，冗長會排擠其他 skill 的 description budget，讓自動觸發失敗——這是唯一會傷到別人的一層。**第 2 層**（body）只在本 skill 被觸發後載入，不影響他人；但它一旦載入就與對話歷史及其餘 context 競爭，冗長會壓縮讀者當下真正需要的空間。官方原文：「once Claude loads it, every token competes with conversation history and other context」。
 
@@ -35,31 +39,40 @@ metadata:
 
 | 層 | 載入時機 | 預算 | 寫什麼 |
 |----|---------|------|-------|
-| 1. frontmatter（name + description） | 常駐 system prompt | ~100 tokens / skill | 何時觸發 + 做什麼 |
-| 2. SKILL.md body | 觸發後載入 | < 5k tokens **且** < 500 行 | 核心工作流 + 路由 |
-| 3. references/ + scripts/ + assets/ | Claude 按需 read / exec | 無上限 | 細節、範例、模板、可執行腳本 |
+| 1. frontmatter（name + description） | 常駐 system prompt | 250 字元（唯一閘門，另兩個口徑不換算，見 `references/frontmatter-and-description.md` 的〈Description 寫作（最重要的一節）〉） | 何時觸發 + 做什麼 |
+| 2. SKILL.md body | 觸發後載入 | < 5k tokens；另須符合官方 < 500 行 | 核心工作流 + 路由 |
+| 3. references/ + scripts/ + assets/ | Claude 按需 read / exec | 目錄總量無上限；單檔見下 | 細節、範例、模板、可執行腳本 |
 
-**兩個門檻都是官方值，且來自不同頁**：`< 5k tokens` 出自 spec overview 的 Level 2 表格（逐字 "Under 5k tokens"）；`< 500 行` 出自 best-practices，該頁三處重述（Progressive disclosure patterns、Token budgets、Checklist，皆為 "Keep SKILL.md body under 500 lines for optimal performance"）。兩者互補而非互相取代——tokens 是真正的成本，行數是它在英文內容下的可靠代理。
+**這三個預算的適用對象各不相同，先認對象再量。** 第 2 層的兩個數字只管 `SKILL.md` body 這一個檔，因為它是觸發即載入、成本無條件支付的那一份；第 3 層的「無上限」講的是**目錄總量**——bundle 幾份 reference 都不預先付費，官方逐字寫 "no context penalty until accessed"——不是說單檔可以無限大。把「無上限」讀成單檔沒有判準，reference 會長成沒人讀得完的一份。
 
-**Action**：兩個門檻都量，任一超標即須外移。
+**Action**：第 2 層的主判準是分段 token 估算，直接與 5k 比較。
 
 ```bash
-wc -l .claude/skills/<name>/SKILL.md   # > 500 即須外移（官方值，直接可判）
-wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
+python3 -c "import sys;t=open(sys.argv[1],encoding='utf-8').read();a=sum(1 for c in t if ord(c)<128);print(round(a/4+(len(t)-a)/1.3),'tokens (est)')" .claude/skills/<name>/SKILL.md
+wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 ```
 
-**字元數要換算才能判**，因為 chars/token 隨語言差四倍：
+**估算要分段加總，不是全檔比例內插。** token 數是各段落的和；「混合內容取兩者之間」把它算成全檔比例的內插，運算形狀就是錯的，而且判不出結論——落在兩個換算值之間即無答案，區間本身就是不判。分段法對兩端的純語言檔案退化成單一係數，對混合檔案才是唯一給得出數字的方法。
 
-| 內容 | chars/token | 5k tokens 約當 | 依據 |
-|------|------------|---------------|------|
-| 繁中為主 | 1.3 | 6,500 字元 | `file-size-guardian-hook.py` 的 `CHARS_PER_TOKEN`，2026-06-12 以 `/context` 實測校準（該註解逐字寫「繁中為主集合」） |
-| 英文為主 | 約 4 | 約 20,000 字元 | 一般 BPE 分詞的常見比值 |
+| 字元類別 | chars/token | 依據 |
+|---------|------------|------|
+| 非 ASCII（繁中） | 1.3 | `file-size-guardian-hook.py` 的 `CHARS_PER_TOKEN`，2026-06-12 以 `/context` 實測校準 |
+| ASCII | 取 4 | **無實測**，一般 BPE 分詞落在 3–4；取寬鬆側的 4 會低估 token 數，誤差方向是放行而非誤擋。要收緊改填 3，並在此註明改動 |
 
-混合內容取兩者之間，或直接以行數門檻判。**不可把 6,500 無條件套用於 ASCII 為主的 skill**——實測本庫一份 100% ASCII、7,584 字元的 skill 依 6,500 判超標，而它約 1,896 tokens，僅官方預算的 38%。
+分段法同時解掉舊寫法的兩類誤判。純 ASCII：本庫一份 100% ASCII、7,584 字元的 skill 依單一 6,500 字元門檻判超標，分段法算出約 1,896 tokens、僅預算的 38%。混合內容：本檔在改寫為分段法的當下量得 7,773 字元、ASCII 佔 60%（2026-09-07 量測），套 6,500 判超標、套「取兩者之間」落在區間內判不出來，分段法算出約 3,522 tokens 並直接與 5k 比較。**不要把這兩個數字當現況**——執行上面那行指令即得當下值。
 
 超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。**拆分既有 skill 另有程序**，見 `references/splitting-an-existing-skill.md`：搬移正確不等於拆分後可用，兩者要用不同方法驗。
 
-**Why 兩個都要量**：行數對繁中失效——每行字元數沒有上界，兩者在長行處脫鉤。一份實測案例（該 skill 已於此後拆分，以下為拆分前的量測值）：245 行（**通過** 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。反向地，字元數對英文失效（見上表）。單量一個必有一類漏網。
+**行數是官方合規項，不是體量判準。** 官方 best-practices 三處重述 "Keep SKILL.md body under 500 lines"，故仍須量、仍須符合；但它不攜帶 token 資訊——每行字元數沒有上界，兩者在長行處脫鉤。一份實測案例（該 skill 已於此後拆分，以下為拆分前的量測值）：245 行（**通過** 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。**兩個都量、取較嚴者；行數通過不代表體量合格，只代表官方那一項沒違反。**
+
+**第 3 層的單檔判準是讀取方式，不是行數。** 判別依據是〈按需讀取〉路由表那一列的措辭：明令「讀這一份再繼續」者為整份執行，其餘為選段查閱（本 skill 六份現況皆為後者）。
+
+| 讀取方式 | 量什麼 | 門檻 |
+|---------|-------|------|
+| 整份執行 | 全檔分段估算 | 5k tokens——它與 SKILL.md 一樣是整份進 context |
+| 選段查閱 | 最大單節的分段估算 | 5k tokens |
+
+這與 `references/writing-the-body.md`〈Body 寫作〉裡「決定要不要 TOC 的是讀取方式、行數只是成本」是同一個維度，不是新增判準：要不要 TOC 與該量什麼，答案由同一件事決定。
 
 **Consequence**：本層目前**無 hook 執法**——`file-size-guardian-hook.py` 的 `SCAN_CONFIG` 涵蓋 pm-rules / rules / references 三處，不含 `.claude/skills/`；`skill-description-length-check-hook.py` 只查第 1 層的 description（250 字元）。第 2 層判準完全依賴撰寫者自查，寫錯代理指標即等同無判準。
 
@@ -71,7 +84,12 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 | 中 | 有偏好模式、容許變化 | 虛擬碼 / 帶參數腳本 | 「依照範本但可調整章節順序」 |
 | 低 | 操作脆弱、一致性關鍵 | 具體腳本、固定步驟 | 「執行 `scripts/validate.py`，不可改寫」 |
 
-**判準**：「Claude 走錯一步會壞掉嗎？」會 → 低自由度；不會 → 高自由度。中自由度是這兩者的中間帶——**有一條偏好路徑，但偏離它不會壞**。
+**判準是兩問，依序問**：
+
+1. **產物有機械消費者，或動作不可逆嗎？** 機械消費者指腳本 parse、hook 檢查、另一支 skill 的輸入欄位；不可逆指寫檔、commit、刪除。有 → 低自由度。
+2. 都沒有的話，**多次執行的產物要互相比對或彙總嗎？** 要 → 中自由度（給骨架、明示可調）；不要 → 高自由度。
+
+**「壞掉」是消費端拿不到它要的東西，不是產物長得不一樣。** 兩者必須分開，三級表才有三格：形態不一致只有在存在消費者時才構成損害；把不一致本身算成壞，每個有偏好形態的任務都會落到低自由度，中與高一起併入低，三級表塌成一格。第一問可外部驗證——指得出那個消費者是誰（哪支腳本、哪個 hook、哪一欄）才算「有」，指不出就是沒有。
 
 **同一個任務寫成三種自由度**（任務：讓 skill 產出一份審查報告）：
 
@@ -88,7 +106,11 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
     「全部命中位置」不可寫「多處」，須逐一列出或註明抽樣方式。
 ```
 
-差別不在字數，在**偏離的空間**：高只給目標，中給骨架並明示可調，低把每個欄位的合法值也定死。選錯的代價是不對稱的——該低而給高，產物形態每次都不同；該高而給低，執行者會在不適用的情境硬填。
+差別不在字數，在**偏離的空間**：高只給目標，中給骨架並明示可調，低把每個欄位的合法值也定死。
+
+**上例三段套上面兩問**：低那一段的「全部命中位置」有消費者——`references/splitting-an-existing-skill.md`〈收尾〉要拿它逐項對照實例數與已修數，欄位缺了就核不了——故低正確；中那一段的嚴重度兩級是為了讓多份報告可彙總，指不出機械消費者，故中；高那一段的產出只給人讀，故高。舊判準對這三段問「欄位少一格會壞掉嗎」，三段都答不出來，因為「壞掉」沒有定義。
+
+選錯的代價不對稱：該低而給高，消費端拿不到必要欄位；該高而給低，執行者會在不適用的情境硬填。
 
 ### Opinionated Defaults — 預設路徑引導正確做法
 
@@ -140,7 +162,7 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 - [ ] `SKILL.md` 大小寫正確
 - [ ] 無 `README.md`（任何層級，含子目錄）
 - [ ] 無 `INSTALLATION_GUIDE.md` / `QUICK_REFERENCE.md`（`CHANGELOG.md` 不在此列，見 `references/writing-the-body.md` 的〈嚴禁清單〉）
-- [ ] SKILL.md body 通過兩個門檻（門檻值、量測指令與語言換算表見〈Progressive Disclosure — 三層載入〉）
+- [ ] SKILL.md body 通過兩個門檻（5k tokens 與 500 行）；各 reference 通過第 3 層的單檔判準。門檻的適用對象、量測指令與分段估算表見〈Progressive Disclosure — 三層載入〉
 - [ ] skill 帶 CLI 入口點時，另走 `skill-cli-sync-check` 規則。**不涵蓋**：本清單不問「CLI 行為變更後 SKILL.md 與 pm-rules 是否同步」，走完本清單全綠不代表那件事被問過
 
 ### YAML
@@ -156,8 +178,15 @@ wc -m .claude/skills/<name>/SKILL.md   # 字元數，需依語言換算，見下
 - [ ] 無「When to Use This Skill」段（觸發資訊只放 description）
 - [ ] 指令具體可操作、含錯誤處理
 - [ ] 含至少 1 個範例
-- [ ] 引用只一層深
-- [ ] 100+ 行的 reference 有 TOC
+- [ ] 每份 reference 一跳可達（判準與例外見 `references/writing-the-body.md` 的〈Body 寫作〉）。機械檢查：下列指令列出「在 reference 裡出現、但入口路由表沒有」的檔名，每個命中須逐一判定——說明用的示意路徑與被討論的對象不算違規，其餘即是（本 skill 現況命中 3 個，皆為示意路徑）
+
+```bash
+# 在該 skill 的目錄下執行
+LC_ALL=C comm -13 <(grep -o 'references/[a-z-]*\.md' SKILL.md | LC_ALL=C sort -u) \
+                  <(grep -rho 'references/[a-z-]*\.md' references/ | LC_ALL=C sort -u)
+```
+
+- [ ] 100+ 行**且被選段查閱**的 reference 有 TOC（整份執行者不適用，理由見 `references/writing-the-body.md` 的〈Body 寫作〉；同一個讀取方式維度也決定第 3 層量什麼）
 - [ ] 術語一致
 - [ ] 無時間敏感字串
 - [ ] **外部引用以身分指名，不寫檔案路徑**（見 `references/writing-the-body.md` 的〈外部引用：指名身分，不用檔案路徑〉）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬該節列出的例外之一，逐一說明；說不出屬於哪一類就是該改。**不涵蓋**：裸檔名（`file-size-guardian-hook.py` 這種寫法不帶 `.claude/` 前綴，零命中），以及反引號後不是緊接 `.claude/` 的片段（`` `node .claude/…` `` 這種寫法同樣零命中）——兩類皆須人工核
