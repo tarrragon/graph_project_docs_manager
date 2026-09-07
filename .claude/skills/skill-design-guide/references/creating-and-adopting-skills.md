@@ -59,7 +59,7 @@ your-skill-name/
 | 4a | 先寫 bundled resources（scripts / references / assets） |
 | 4b | 寫 SKILL.md frontmatter（依 `frontmatter-and-description.md`〈YAML Frontmatter〉） |
 | 4c | 寫 SKILL.md body（依 `writing-the-body.md`〈Body 寫作〉的骨架） |
-| 4d | 量兩個門檻：`wc -l` < 500，且 `wc -m` 在該語言的換算值內（見 `SKILL.md`〈Progressive Disclosure — 三層載入〉）；超標即依 `splitting-an-existing-skill.md` 外移 |
+| 4d | 量兩個門檻（門檻值、量測指令與語言換算表見 `SKILL.md`〈Progressive Disclosure — 三層載入〉）；超標即依 `splitting-an-existing-skill.md` 外移 |
 | 4e | 測試 scripts 實際可跑 |
 | 4f | 走一遍 `SKILL.md`〈發布前檢查清單〉四組 |
 

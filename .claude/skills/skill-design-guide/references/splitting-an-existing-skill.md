@@ -1,8 +1,8 @@
 # 拆分既有 skill
 
-> 何時讀：既有 skill 超出第 2 層預算（`SKILL.md` body 的兩個門檻：**< 500 行**，且 `wc -m` 在該語言的換算值內——門檻值、換算表與量測指令見 `SKILL.md`〈Progressive Disclosure — 三層載入〉）、要把內容外移時。**新建 skill 不適用**——它的內容從一開始就分層放，沒有既成的內部關係要保。
+> 何時讀：既有 skill 超出第 2 層預算（門檻值、量測指令與語言換算表見 `SKILL.md`〈Progressive Disclosure — 三層載入〉）、要把內容外移時。**新建 skill 不適用**——它的內容從一開始就分層放，沒有既成的內部關係要保。
 >
-> **亦由此進入**——`writing-the-body.md`〈外部引用〉要求拆分後重寫指標，檔頭三段式與路由表「涵蓋章節」欄的寫法在本檔〈結構約定〉；`SKILL.md`〈Progressive Disclosure〉的正文也直接把超標的讀者送到這裡。
+> **亦由此進入**——`writing-the-body.md`〈外部引用〉要求拆分後重寫指標，檔頭三段式與路由表「涵蓋章節」欄的寫法在本檔〈結構約定〉；`SKILL.md`〈Progressive Disclosure — 三層載入〉的正文也直接把超標的讀者送到這裡。
 >
 > 同目錄：拆完要照 `writing-the-body.md` 的引用規則重寫指標；量測指令與語言換算表留在 `SKILL.md`〈Progressive Disclosure — 三層載入〉；新建流程見 `creating-and-adopting-skills.md`，frontmatter 寫法見 `frontmatter-and-description.md`，工作流範本與問題排除見 `patterns-and-troubleshooting.md`，設計哲學見 `seeing-like-an-agent.md`。
 >
