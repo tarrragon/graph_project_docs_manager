@@ -96,7 +96,13 @@ macos/Podfile.lock
 # 框架執行期鎖檔的類別式涵蓋。上兩行的 dispatch-active.lock / scheduled_tasks.lock
 # 為逐檔列舉，屬「遇到才補」——error-patterns/.allocator.lock 即因未列而漏網。
 # 改以此行涵蓋整個類別，新增的框架鎖檔不需再逐一追加。
+#
+# 但 .lock 這個副檔名底下有兩種語意相反的檔案：執行期鎖檔（該忽略）與依賴
+# 鎖定檔（該納版控）。以副檔名分類會把兩者歸為一類，實測後果是 uv.lock 不進
+# git archive HEAD，使 sync-push 的孤兒偵測判定本專案沒有該檔並建議清除。
+# 故採 blanket + 白名單：類別式涵蓋維持，合法的依賴鎖定檔逐一放行。
 .claude/**/*.lock
+!.claude/**/uv.lock
 .claude/sync-preserve.yaml
 .claude/sync-skills.yaml
 .claude/worktrees
