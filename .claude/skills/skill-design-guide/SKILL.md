@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.11.0
+  version: 1.11.1
 ---
 
 # Skill Design Guide
@@ -131,7 +131,7 @@ LC_ALL=C comm -13 <(grep -o 'references/[a-z-]*\.md' SKILL.md | LC_ALL=C sort -u
                   <(grep -rho 'references/[a-z-]*\.md' references/ | LC_ALL=C sort -u)
 ```
 
-- [ ] 100+ 行**且被選段查閱**的 reference 有 TOC（整份執行者不適用，理由見 `references/writing-the-body.md` 的〈Body 寫作〉；同一個讀取方式維度也決定第 3 層量什麼）
+- [ ] 100+ 行**且被選段查閱**的 reference 有 TOC（整份執行者不適用，理由見 `references/writing-the-body.md` 的〈Body 寫作〉；同一個讀取方式維度也決定第 3 層量什麼）。**本判準不涵蓋 SKILL.md 自身**：入口檔正是〈Progressive Disclosure〉表列「整份執行」的範例本身（見該節「它與 SKILL.md 一樣是整份進 context」），觸發後全檔一次讀完，不存在選段查閱情境；其〈按需讀取〉路由表解決的是「該去讀哪一份其他檔案」，與 TOC 解決的「這份檔案內部跳去哪一節」是不同問題，前者存在不代表後者也要有
 - [ ] 術語一致
 - [ ] 無時間敏感字串
 - [ ] **外部引用以身分指名，不寫檔案路徑**（見 `references/writing-the-body.md` 的〈外部引用：指名身分，不用檔案路徑〉）。機械檢查：`grep -nE '\`\.claude/[^\`]*\`' SKILL.md`，每個命中須屬該節列出的例外之一，逐一說明；說不出屬於哪一類就是該改。**不涵蓋**：裸檔名（`file-size-guardian-hook.py` 這種寫法不帶 `.claude/` 前綴，零命中），以及反引號後不是緊接 `.claude/` 的片段（`` `node .claude/…` `` 這種寫法同樣零命中）——兩類皆須人工核
