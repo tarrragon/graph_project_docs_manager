@@ -2,7 +2,7 @@
 
 > 何時讀：寫或修一個 skill 的 frontmatter 時——name、description、標準與 Claude Code 擴展欄位、觸發控制矩陣、資料夾命名。**亦由此進入**——`SKILL.md`〈發布前檢查清單〉的「YAML」與「觸發測試」兩組；`creating-and-adopting-skills.md` 的 〈Step 4：撰寫內容〉的 4b（寫 frontmatter）與〈Step 6：迭代〉（該觸發沒觸發時修 description）。
 >
-> 同目錄：正文寫法在 `writing-the-body.md`，新建流程與類型速查在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，工作流範本與問題排除在 `patterns-and-troubleshooting.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉〈三類 bundled resource 的分工〉〈發布前檢查清單〉留在 `SKILL.md`。
+> 同目錄：正文寫法在 `writing-the-body.md`，新建流程、類型速查與三類 bundled resource 的分工在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，工作流範本、自由度與預設值、問題排除在 `patterns-and-troubleshooting.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉的前兩則與〈發布前檢查清單〉留在 `SKILL.md`。
 >
 > 溯源：自 SKILL.md 搬移（v1.6.0，因兩個官方門檻皆超標）。
 

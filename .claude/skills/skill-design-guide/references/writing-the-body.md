@@ -2,7 +2,7 @@
 
 > 何時讀：寫或修 SKILL.md 正文時——骨架、內容品質、什麼不該放進去、引用形式（skill 內用相對路徑、指向外部用指名身分）、字串替換與動態 context 注入。**亦由此進入**——`SKILL.md`〈發布前檢查清單〉的「結構」與「Body」兩組（尤其外部引用的機械檢查）；`creating-and-adopting-skills.md`〈Step 4：撰寫內容〉的 4c（寫 body）；`splitting-an-existing-skill.md` 的結構約定（拆完要照本檔的引用規則重寫指標）。
 >
-> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，新建流程在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，工作流範本與問題排除在 `patterns-and-troubleshooting.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉〈三類 bundled resource 的分工〉〈發布前檢查清單〉留在 `SKILL.md`。
+> 同目錄：frontmatter 與 description 在 `frontmatter-and-description.md`，新建流程與三類 bundled resource 的分工在 `creating-and-adopting-skills.md`，拆分程序在 `splitting-an-existing-skill.md`，工作流範本、自由度與預設值、問題排除在 `patterns-and-troubleshooting.md`，設計哲學在 `seeing-like-an-agent.md`；〈核心心法〉的前兩則與〈發布前檢查清單〉留在 `SKILL.md`。
 >
 > 溯源：自 SKILL.md 搬移（v1.6.0，因兩個官方門檻皆超標）。
 
@@ -163,7 +163,7 @@ description: [...]
 
 ## 一則完整走查：兩個判準只有一個附了可執行動作
 
-本節與〈Claude Code 特有功能〉無關，示範的是把 `SKILL.md`〈Opinionated Defaults — 預設路徑引導正確做法〉那張判準表套到一段既有條文上。對象是本 skill 自己的體量門檻。
+本節與〈Claude Code 特有功能〉無關，示範的是把 `patterns-and-troubleshooting.md`〈Opinionated Defaults — 預設路徑引導正確做法〉那張判準表套到一段既有條文上。對象是本 skill 自己的體量門檻。
 
 | 階段 | 內容 |
 |------|------|
