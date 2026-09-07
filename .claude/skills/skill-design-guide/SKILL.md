@@ -41,7 +41,7 @@ metadata:
 |----|---------|------|-------|
 | 1. frontmatter（name + description） | 常駐 system prompt | 250 字元（唯一閘門，另兩個口徑不換算，見 `references/frontmatter-and-description.md` 的〈Description 寫作（最重要的一節）〉） | 何時觸發 + 做什麼 |
 | 2. SKILL.md body | 觸發後載入 | < 5k tokens；另須符合官方 < 500 行 | 核心工作流 + 路由 |
-| 3. references/ + scripts/ + assets/ | Claude 按需 read / exec | 目錄總量無上限；單檔見下 | 細節、範例、模板、可執行腳本 |
+| 3. references/ + scripts/ + assets/ | Claude 按需 read / exec | 目錄總量無上限；單檔判準見〈第 3 層的單檔判準是讀取方式〉 | 細節、範例、模板、可執行腳本 |
 
 **這三個預算的適用對象各不相同，先認對象再量。** 第 2 層的兩個數字只管 `SKILL.md` body 這一個檔，因為它是觸發即載入、成本無條件支付的那一份；第 3 層的「無上限」講的是**目錄總量**——bundle 幾份 reference 都不預先付費，官方逐字寫 "no context penalty until accessed"——不是說單檔可以無限大。把「無上限」讀成單檔沒有判準，reference 會長成沒人讀得完的一份。
 
@@ -52,18 +52,18 @@ python3 -c "import sys;t=open(sys.argv[1],encoding='utf-8').read();a=sum(1 for c
 wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 ```
 
-**估算要分段加總，不是全檔比例內插。** token 數是各段落的和；「混合內容取兩者之間」把它算成全檔比例的內插，運算形狀就是錯的，而且判不出結論——落在兩個換算值之間即無答案，區間本身就是不判。分段法對兩端的純語言檔案退化成單一係數，對混合檔案才是唯一給得出數字的方法。
+**估算要分段加總，不是全檔比例內插。** token 數是各段落的和；把它算成全檔比例的內插判不出結論——落在兩個換算值之間即無答案，區間本身就是不判。
 
 | 字元類別 | chars/token | 依據 |
 |---------|------------|------|
 | 非 ASCII（繁中） | 1.3 | `file-size-guardian-hook.py` 的 `CHARS_PER_TOKEN`，2026-06-12 以 `/context` 實測校準 |
 | ASCII | 取 4 | **無實測**，一般 BPE 分詞落在 3–4；取寬鬆側的 4 會低估 token 數，誤差方向是放行而非誤擋。要收緊改填 3，並在此註明改動 |
 
-分段法同時解掉舊寫法的兩類誤判。純 ASCII：本庫一份 100% ASCII、7,584 字元的 skill 依單一 6,500 字元門檻判超標，分段法算出約 1,896 tokens、僅預算的 38%。混合內容：本檔在改寫為分段法的當下量得 7,773 字元、ASCII 佔 60%（2026-09-07 量測），套 6,500 判超標、套「取兩者之間」落在區間內判不出來，分段法算出約 3,522 tokens 並直接與 5k 比較。**不要把這兩個數字當現況**——執行上面那行指令即得當下值。
+分段法解掉單一字元門檻的兩類誤判：純 ASCII 檔在 6,500 字元門檻下判超標，分段法算出僅預算的 38%；混合內容套 6,500 判超標、套「取兩者之間」落在區間內判不出來。**任何寫在文件裡的量測值都是當時的**——執行 **Action** 的量測指令即得當下值。
 
-超標時外移「一次只用其中一段」的內容——互斥的模式分支、填表問句、句型範本、Examples、Troubleshooting；SKILL.md 留路由與判準。外移時必在 SKILL.md 留路由訊號（何時讀該檔）。**拆分既有 skill 另有程序**，見 `references/splitting-an-existing-skill.md`：搬移正確不等於拆分後可用，兩者要用不同方法驗。
+超標時該外移什麼，判準見 `references/splitting-an-existing-skill.md` 的〈外移什麼、留什麼〉。它以「這段用在讀者選路之前還是之後」定位，**不以「一次只用其中一段」定位**——互斥性對本檔每一張判準表都成立，當不了外移訊號。同檔另有拆分程序：搬移正確不等於拆分後可用，兩者要用不同方法驗。
 
-**行數是官方合規項，不是體量判準。** 官方 best-practices 三處重述 "Keep SKILL.md body under 500 lines"，故仍須量、仍須符合；但它不攜帶 token 資訊——每行字元數沒有上界，兩者在長行處脫鉤。一份實測案例（該 skill 已於此後拆分，以下為拆分前的量測值）：245 行（**通過** 500 行門檻）但 15,015 字元 ≈ 11.5k tokens，超標 2.3 倍，最長單行 548 字。**兩個都量、取較嚴者；行數通過不代表體量合格，只代表官方那一項沒違反。**
+**行數是官方合規項，不是體量判準。** 官方 best-practices 三處重述 "Keep SKILL.md body under 500 lines"，故仍須量、仍須符合；但它不攜帶 token 資訊——每行字元數沒有上界，兩者在長行處脫鉤（一份實測：245 行通過門檻，卻是 ≈ 11.5k tokens、最長單行 548 字）。**兩個都量、取較嚴者；行數通過不代表體量合格，只代表官方那一項沒違反。**
 
 **第 3 層的單檔判準是讀取方式，不是行數。** 判別依據是〈按需讀取〉路由表那一列的措辭：明令「讀這一份再繼續」者為整份執行，其餘為選段查閱（本 skill 六份現況皆為後者）。
 
@@ -148,7 +148,7 @@ wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 | 寫或修 frontmatter：name、description、擴展欄位、觸發控制、命名 | `references/frontmatter-and-description.md` | 〈YAML Frontmatter〉〈Description 寫作（最重要的一節）〉〈命名規則〉〈觸發控制矩陣〉 |
 | 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（含〈外部引用：指名身分，不用檔案路徑〉）〈Claude Code 特有功能〉〈一則完整走查：兩個判準只有一個附了可執行動作〉 |
 | 從零建一個新 skill、判斷它屬哪一類型、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈Skill 建立流程〉〈Skill 類型速查〉〈安全考量〉 |
-| 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 〈為什麼需要專屬程序〉〈拆分特有的必查項〉〈兩種驗證，方法不同〉〈拆分特有的高頻缺陷〉〈結構約定〉〈收尾〉〈一則最小走查〉〈相關〉 |
+| 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 〈為什麼需要專屬程序〉〈外移什麼、留什麼〉〈拆分特有的必查項〉〈兩種驗證，方法不同〉〈拆分特有的高頻缺陷〉〈結構約定〉〈收尾〉〈一則最小走查〉〈相關〉 |
 | 設計多步驟工作流、要進階範本、規劃測試方法、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈Skill 設計模式〉〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉 |
 | 想理解工具設計哲學與 agent 視角的演進 | `references/seeing-like-an-agent.md` | 〈核心哲學〉〈Claude Code 團隊的演進教訓〉〈進階 Skill 設計模式〉〈觀察 Claude 如何使用 Skill〉〈反模式〉 |
 
