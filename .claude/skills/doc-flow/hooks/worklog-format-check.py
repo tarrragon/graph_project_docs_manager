@@ -7,13 +7,19 @@
 工作日誌格式檢查 Hook
 
 PostToolUse Hook: 檢測工作日誌中表格內的問題 emoji 模式
-觸發時機: Edit/Write 操作 docs/work-logs/ 目錄下的 markdown 檔案
+觸發時機: Edit/Write 操作作用域目錄下的 markdown 檔案（預設 docs/work-logs/，
+可用環境變數 WORKLOG_FORMAT_CHECK_SCOPE 覆寫，供不同 consumer 各指自己的路徑）
 行為: 警告（非阻擋），輸出問題位置到 stderr
 
-參考規範: .claude/skills/compositional-writing/references/writing-documents.md（portability-allow: 本 skill 自我引用，consumer 共通安裝位置）
+參考規範: .claude/skills/compositional-writing/references/writing-documents.md
+（portability-allow: 跨 skill 引用——寫作規範文件的權威版本仍在
+compositional-writing，本 hook 遷入 doc-flow 後兩者分屬不同 skill，
+consumer 未安裝 compositional-writing 時此連結會失效，屬已知限制而非
+可攜性違規）
 """
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -36,24 +42,45 @@ except ImportError:
 # 這些 emoji 在 markdown 表格單元格中會導致 Claude Code CLI crash
 # 重要：輸出時只使用純文字描述，不輸出原始 emoji
 PROBLEMATIC_EMOJI_PATTERNS = [
-    (r'\|\s*\u23F3\s*\|', 'hourglass', '待處理'),       # ⏳
-    (r'\|\s*\U0001F504\s*\|', 'cycle', '進行中'),       # 🔄
-    (r'\|\s*\u274C\s*\|', 'cross-mark', '取消'),        # ❌
-    (r'\|\s*\U0001F6AB\s*\|', 'prohibited', '阻塞'),    # 🚫
-    (r'\|\s*\u23F8\s*\|', 'pause', '暫停'),             # ⏸
-    (r'\|\s*\u23ED\uFE0F?\s*\|', 'skip', '跳過'),       # ⏭️
-    (r'\|\s*\U0001F4A5\s*\|', 'collision', '失敗'),     # 💥
-    (r'\|\s*\u2705\s*\|', 'check-mark', '已完成'),      # ✅
+    (r'\|\s*\u23F3\s*\|', 'hourglass', '待處理'),       # \u23F3
+    (r'\|\s*\U0001F504\s*\|', 'cycle', '進行中'),       # \U0001F504
+    (r'\|\s*\u274C\s*\|', 'cross-mark', '取消'),        # \u274C
+    (r'\|\s*\U0001F6AB\s*\|', 'prohibited', '阻塞'),    # \U0001F6AB
+    (r'\|\s*\u23F8\s*\|', 'pause', '暫停'),             # \u23F8
+    (r'\|\s*\u23ED\uFE0F?\s*\|', 'skip', '跳過'),       # \u23ED\uFE0F
+    (r'\|\s*\U0001F4A5\s*\|', 'collision', '失敗'),     # \U0001F4A5
+    (r'\|\s*\u2705\s*\|', 'check-mark', '已完成'),      # \u2705
 ]
 
 
-def is_worklog_file(file_path: str) -> bool:
-    """檢查是否為工作日誌檔案"""
+# 作用域設定：預設 docs/work-logs，可用環境變數覆寫（每個 consumer 在
+# 自己的 settings.json 命令列各指自己的路徑，不需改程式碼）
+DEFAULT_WORKLOG_SCOPE = "docs/work-logs"
+WORKLOG_SCOPE_ENV_VAR = "WORKLOG_FORMAT_CHECK_SCOPE"
+
+
+def get_worklog_scope() -> tuple[str, ...]:
+    """讀取作用域設定，回傳正規化後的路徑片段（去除前後斜線並切分）。"""
+    scope = os.environ.get(WORKLOG_SCOPE_ENV_VAR, DEFAULT_WORKLOG_SCOPE)
+    return tuple(part for part in scope.strip("/").split("/") if part)
+
+
+def is_worklog_file(file_path: str, scope: tuple[str, ...] | None = None) -> bool:
+    """檢查是否為工作日誌檔案（依作用域設定判斷路徑）"""
     if not file_path:
         return False
     path = Path(file_path)
-    # 檢查是否在 docs/work-logs/ 目錄下且為 .md 檔案
-    return 'work-logs' in path.parts and path.suffix == '.md'
+    if path.suffix != '.md':
+        return False
+    scope_parts = scope if scope is not None else get_worklog_scope()
+    if not scope_parts:
+        return False
+    parts = path.parts
+    window = len(scope_parts)
+    return any(
+        parts[i:i + window] == scope_parts
+        for i in range(len(parts) - window + 1)
+    )
 
 
 def check_file_content(file_path: str) -> list[dict]:
@@ -173,7 +200,7 @@ def main():
     # 獲取檔案路徑
     file_path = tool_input.get('file_path', '')
 
-    # 檢查是否為工作日誌檔案
+    # 檢查是否為工作日誌檔案（作用域可設定，見 get_worklog_scope）
     if not is_worklog_file(file_path):
         return 0
 
