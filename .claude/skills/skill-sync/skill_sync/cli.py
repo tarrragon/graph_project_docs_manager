@@ -415,13 +415,25 @@ def _skill_exists_in_canonical(name: str, repo_url: str) -> bool:
     return isinstance(manifest, dict) and name in manifest
 
 
+def _format_violation_lines(violations: list[PortabilityViolation]) -> list[str]:
+    """把違規清單格式化為顯示行（不含輸出目的地），供 stderr 完整報告與
+    --force 旁路時的 stdout 摘要共用同一格式，避免兩處各自維護一份「前 20
+    筆 + ... and N more」的截斷邏輯而彼此漂移。
+    """
+    lines = [f"    {v.file}:{v.line}  [{v.kind}]  {v.text}" for v in violations[:20]]
+    if len(violations) > 20:
+        lines.append(f"    ... and {len(violations) - 20} more")
+    return lines
+
+
 def _report_portability(
     skill_dir: Path, name: str, force: bool, repo_url: str | None = None
 ) -> None:
     """push 前的可攜性閘門。
 
     宣告 portable 的 skill 命中即中止（--force 可覆蓋但仍列出違規並落地
-    force-log）。未宣告者只列出摘要，不論它是否已存在於 canonical repo——
+    force-log，另見下方 stdout 摘要說明）。未宣告者只列出摘要，不論它是否已
+    存在於 canonical repo——
     「存在於 canonical」只證明「曾被 push 過」，不證明「其他 consumer 真的
     裝了它」（實測：canonical 現有 64 個 skill，某一線消費專案僅裝 23 個；
     `doc` / `ticket` / `worktree` 等框架專屬工具全都在 canonical 裡但該專案
@@ -437,6 +449,11 @@ def _report_portability(
     這是資訊，不是判決；中止沒有可靠依據就不該做。
 
     repo_url 預設 None：省略時完全不查詢遠端，行為與未傳時完全一致。
+
+    --force 旁路時額外印一份 stdout 摘要：既有的完整違規列表只印在 stderr，
+    若呼叫端只收集 stdout（如管線只轉存 stdout 供事後稽核），--force 的效果
+    會只留下 hook-logs 的 jsonl 這一條痕跡，使用者不會主動去看。stdout 摘要
+    與 stderr 版共用 _format_violation_lines，不重複維護格式。
     """
     violations = check_portability(skill_dir)
     if not violations:
@@ -468,10 +485,8 @@ def _report_portability(
         f"{len(violations)} consumer-specific reference(s):",
         file=sys.stderr,
     )
-    for v in violations[:20]:
-        print(f"    {v.file}:{v.line}  [{v.kind}]  {v.text}", file=sys.stderr)
-    if len(violations) > 20:
-        print(f"    ... and {len(violations) - 20} more", file=sys.stderr)
+    for line in _format_violation_lines(violations):
+        print(line, file=sys.stderr)
     print(
         "  A portable skill must not name another project's files: keep the point "
         "in the sentence and drop the path, or move the passage into "
@@ -481,6 +496,15 @@ def _report_portability(
     if force:
         _write_portability_force_log(name, declared, already_shared, violations)
         print("  --force given: pushing anyway.", file=sys.stderr)
+        # 同一份摘要另印到 stdout：上面的完整報告只在 stderr，只收集 stdout
+        # 的呼叫端（如管線只轉存 stdout）原本除了 hook-logs 的 jsonl 外看不到
+        # 任何痕跡。
+        print(
+            f"  [Portability] --force bypassed {len(violations)} "
+            f"consumer-specific reference(s) in '{name}':"
+        )
+        for line in _format_violation_lines(violations):
+            print(line)
         return
     print("  Aborted. Use --force to push regardless.", file=sys.stderr)
     sys.exit(1)
@@ -1561,7 +1585,9 @@ def build_parser() -> argparse.ArgumentParser:
     push_parser.add_argument("name", help="Skill name to push")
     push_parser.add_argument("-m", "--message", help="Commit message", default=None)
     push_parser.add_argument("--force", "-f", action="store_true",
-                             help="Apply changes without confirmation")
+                             help="Apply changes without confirmation; also bypasses the "
+                                  "portability gate for a declared-portable skill (violations "
+                                  "are still printed to stdout/stderr and logged)")
     push_parser.add_argument("--prune", action="store_true",
                              help="Delete remote-only files (default: keep them)")
 

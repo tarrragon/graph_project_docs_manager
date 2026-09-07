@@ -2116,6 +2116,58 @@ def test_push_with_force_on_declared_violation_writes_force_log(tmp_path, monkey
     assert record["violation_count"] == 1
 
 
+# --- --force 的雙重語意：旁路閘門的痕跡不能只留在 jsonl（0.1.0-W3-038）--------
+#
+# `--force` 同時控制「跳過互動確認」與「旁路 portability 閘門」兩件事，但
+# --help 只寫前者。既有的完整違規列表只印在 stderr；只收集 stdout 的呼叫端
+# （管線只轉存 stdout 供事後稽核）在旁路發生時，除了 hook-logs 的 jsonl 外
+# 看不到任何痕跡，而後者不是使用者會主動去看的地方。
+
+
+def test_force_bypass_prints_violation_summary_to_stdout(tmp_path, monkeypatch, capsys):
+    skills = tmp_path / "skills"
+    _write_portable_skill(
+        skills,
+        "demo",
+        PORTABLE_FRONTMATTER + "\nSee `.claude/pm-rules/tdd-flow.md`.\n",
+    )
+    monkeypatch.setattr("skill_sync.cli.get_skills_dir", lambda: skills)
+    monkeypatch.setenv("HOOK_LOGS_DIR", str(tmp_path / "hook-logs"))
+
+    _report_portability(skills / "demo", "demo", force=True)
+
+    out = capsys.readouterr().out
+    assert "demo" in out
+    assert "SKILL.md:9" in out
+    assert "consumer-path" in out
+
+
+def test_force_bypass_stdout_summary_truncates_like_stderr(tmp_path, monkeypatch, capsys):
+    """stdout 摘要與 stderr 共用同一份截斷邏輯（前 20 筆 + `... and N more`），
+    不是各自維護一份會漂移的格式。"""
+    skills = tmp_path / "skills"
+    many_refs = "\n".join(f"See `.claude/pm-rules/x{i}.md`." for i in range(25))
+    _write_portable_skill(skills, "demo", PORTABLE_FRONTMATTER + "\n" + many_refs + "\n")
+    monkeypatch.setattr("skill_sync.cli.get_skills_dir", lambda: skills)
+    monkeypatch.setenv("HOOK_LOGS_DIR", str(tmp_path / "hook-logs"))
+
+    _report_portability(skills / "demo", "demo", force=True)
+
+    out = capsys.readouterr().out
+    assert "... and 5 more" in out
+
+
+def test_push_force_help_text_covers_portability_bypass(capsys):
+    """--help 文字須涵蓋 --force 的全部語意，不只跳過確認。"""
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["push", "--help"])
+
+    out = capsys.readouterr().out
+    assert "portability" in out.lower()
+
+
 # --- 已跨 consumer 使用但未宣告 portable（0.2.1-W3-635 缺口二） ----------------
 #
 # 未宣告 portable 但已存在於 canonical repo 的 skill，代表它已經在被跨
