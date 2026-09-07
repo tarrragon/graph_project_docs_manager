@@ -272,11 +272,16 @@ def check_identity(
         )
         return None
 
-    # 情境 4：不符 deny（含 who.current 空值）
+    # 情境 4：不符 deny（含 who.current 空值）。訊息含合法出口的具體指令
+    # （非僅陳述拒絕理由），對稱於 command 未提供 --as 分支已有的補救提示
+    # （情境 1a）——who 是權責歸屬欄位，出口由 PM 執行 set-who，不由執行者
+    # 自行改（多起同型死結收斂後的修復：多名代理人各自撞上此無出口死結）。
     who_display = who_current if who_current is not None else "(未指派)"
     sys.stderr.write(
-        f"[identity-guard] deny：身份 {as_value} 與指派執行者 {who_display} 不符，"
-        f"請回報 PM（PC-V1-002 前提一）\n"
+        f"[identity-guard] deny：身份 {as_value} 與指派執行者 {who_display} 不符。"
+        f"合法出口：回報 PM 執行 "
+        f"`ticket track set-who {ticket_id} --current {as_value}` 重新指派後再 "
+        f"{command}（PC-V1-002 前提一）\n"
     )
     _write_telemetry(
         command=command,

@@ -142,6 +142,25 @@ class TestMatchingIdentityUnaffected:
             )
         assert result == identity_guard.IDENTITY_DENY_EXIT
 
+    def test_mismatched_as_deny_message_includes_concrete_exit(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """情境 4 deny 訊息須含合法出口的具體指令（set-who），非僅陳述拒絕理由。"""
+        monkeypatch.setenv("HOOK_LOGS_DIR", str(tmp_path))
+        with patch.object(
+            identity_guard, "load_ticket", return_value=_fake_ticket("other-agent")
+        ):
+            identity_guard.check_identity(
+                "0.0.0",
+                "0.0.0-W0-001",
+                "thyme-python-developer",
+                command="complete",
+            )
+        stderr = capsys.readouterr().err
+        assert "set-who" in stderr
+        assert "0.0.0-W0-001" in stderr
+        assert "thyme-python-developer" in stderr
+
 
 # ============================================================
 # 過渡期監測腳本測試（identity_guard_adoption.py）

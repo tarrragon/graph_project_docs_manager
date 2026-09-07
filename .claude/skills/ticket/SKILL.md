@@ -119,6 +119,24 @@ ticket create --version 0.31.0 --wave 4 --action "實作" --target "XXX"  # 建�
 
 > **半成功歷史背景**：早期 `claim --yes` 在 subagent 無 TTY 環境曾因互動受限出現 metadata 部分寫入、需 `--skip-verify` 二次嘗試確認的半成功狀態。此 root cause 已由「claim 預設不驗證」+「移除 `--skip-verify`」兩階段修正消除；現行裸 `claim` 路徑無此問題。
 
+### PM 先 claim 再派發時的身份死結（已修復）
+
+PM 依 pm-role 流程先 `claim`（無 `--as` 或 `--as rosemary-project-manager`）
+再派發時，`who.current` 停在 PM。派發的代理人執行 `complete --as <self>` 曾
+兩條路徑皆被擋：帶 `--as` 被 identity-guard 以身份不符拒絕，不帶 `--as`
+則被要求必須提供——且 who 是權責歸屬欄位，不該由執行者自行 `set-who` 繞過。
+三個代理人各自獨立撞上同一狀態後，補上兩道防線：
+
+| 防線 | 機制 | 生效時機 |
+|------|------|---------|
+| 派發時自動重新綁定 | `dispatch-identity-bind-hook.py` 的 `UNBOUND_WHO_VALUES` 併入 PM 身份字面值，派發 Agent 工具呼叫成功後（PostToolUse）自動將 `who.current` 由 PM 改綁為實際派發的 subagent_type | 每次派發（常態路徑，事前預防） |
+| complete 前置自動讓出 | `complete`/`finish` 執行 identity 對照前，若 `who.current` 仍是 PM 且 `--as` 申報為具名非 PM 執行者，自動重新指派 `who.current` 為該執行者後再走既有比對 | 每次 complete/finish（worktree 隔離派發等前者未觸發的場景之保底） |
+
+兩道防線皆不需執行者自行 `set-who`，也不需 PM 代跑 `complete`。若仍出現
+`who.current` 與具名執行者不符的 deny，訊息本身已含具體指令（`ticket track
+set-who <id> --current <agent>`）——回報 PM 執行該指令重新指派，而非執行者
+自行執行。
+
 ---
 
 ## 無子命令時的預設行為（dashboard-first，v2.7.0 起）
