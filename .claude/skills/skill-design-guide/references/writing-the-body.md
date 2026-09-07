@@ -159,7 +159,7 @@ description: [...]
 
 ## 一則完整走查：兩個判準只有一個附了可執行動作
 
-本節與上一節的 Claude Code 語法無關，示範的是把 `SKILL.md`〈Opinionated Defaults — 預設路徑引導正確做法〉那張判準表套到一段既有條文上。對象是本 skill 自己的體量門檻。
+本節與〈Claude Code 特有功能〉無關，示範的是把 `SKILL.md`〈Opinionated Defaults — 預設路徑引導正確做法〉那張判準表套到一段既有條文上。對象是本 skill 自己的體量門檻。
 
 | 階段 | 內容 |
 |------|------|
