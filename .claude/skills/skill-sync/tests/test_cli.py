@@ -24,6 +24,7 @@ from skill_sync.cli import (  # noqa: E402
     _resolve_hook_logs_dir,
     _scan_line_for_violations,
     _skill_exists_in_canonical,
+    _stale_version_warning,
     _write_portability_force_log,
     _write_sync_base,
     check_portability,
@@ -1566,6 +1567,45 @@ def test_diverge_warning_conflict_mentions_both_sides():
     assert "independently" in warning
 
 
+# --- _stale_version_warning（純函式，0.1.0-W3-031） ---------------------------
+#
+# W3-025 判定的六支分歧全數是同一形態：內容改了、版號沒動。版號相同時它不只
+# 無鑑別力，而是主動宣稱兩邊一致，使分歧不會被例行同步檢查發現。
+
+
+def test_stale_version_warning_none_when_versions_differ(tmp_path):
+    """版號已經跟著內容一起 bump：不該每次 push 都跳警告。"""
+    source = _write_skill(tmp_path, "demo-skill", "1.1.0", "body")
+
+    assert _stale_version_warning(source, "1.1.0", "1.0.0") is None
+
+
+def test_stale_version_warning_none_when_no_base_recorded(tmp_path):
+    """從未走過本機制的既有 skill（無 .skill-sync-base）：無從判定是否變更過，維持靜默。"""
+    source = _write_skill(tmp_path, "demo-skill", "1.0.0", "body")
+
+    assert _stale_version_warning(source, "1.0.0", "1.0.0") is None
+
+
+def test_stale_version_warning_none_when_content_matches_base(tmp_path):
+    """內容雜湊與 .skill-sync-base 相同：自上次同步後未變更，無需警告。"""
+    source = _write_skill(tmp_path, "demo-skill", "1.0.0", "body")
+    _write_sync_base(source, compute_content_hash(source))
+
+    assert _stale_version_warning(source, "1.0.0", "1.0.0") is None
+
+
+def test_stale_version_warning_fires_when_content_drifted_and_version_same(tmp_path):
+    """內容雜湊與 .skill-sync-base 不同、版號與遠端相同：命中六支分歧的共通形態。"""
+    source = _write_skill(tmp_path, "demo-skill", "1.0.0", "body")
+    _write_sync_base(source, "0" * 64)  # 任意不同雜湊，代表上次同步時內容並非現狀
+
+    warning = _stale_version_warning(source, "1.0.0", "1.0.0")
+
+    assert warning is not None
+    assert "1.0.0" in warning
+
+
 # --- cmd_pull / cmd_push 方向警示整合（0.2.1-W3-671） ------------------------
 
 
@@ -1676,6 +1716,57 @@ def test_cmd_push_silent_when_direction_matches_push(tmp_path, monkeypatch, caps
     _write_sync_base(local_skill, base_hash)
 
     args = _RecordingArgs(name="demo-skill", prune=False, force=False)
+    cmd_push(args)
+
+    err = capsys.readouterr().err
+    assert "WARNING" not in err
+
+
+# --- cmd_push 版號未變閘門整合（0.1.0-W3-031） --------------------------------
+
+
+def test_cmd_push_warns_when_version_unchanged_but_content_drifted(tmp_path, monkeypatch, capsys):
+    """W3-025 六支分歧的共通形態重現：內容自上次同步已變更，但版號與遠端相同時，
+    push preview 必須警告——版號相同不只無鑑別力，還主動宣稱兩邊一致。"""
+    import skill_sync.cli as cli_module
+
+    skills_dir = tmp_path / "skills"
+    source = _write_skill(skills_dir, "demo-skill", "1.0.0", "local modified body")
+    monkeypatch.setattr(cli_module, "get_skills_dir", lambda: skills_dir)
+
+    scratch = tmp_path / "scratch"
+    remote_skill = _write_skill(scratch / "repo", "demo-skill", "1.0.0", "original body")
+    _stub_fixed_tempdir(monkeypatch, scratch)
+    _stub_git_recording(monkeypatch)
+
+    _write_sync_base(source, compute_content_hash(remote_skill))
+
+    args = _RecordingArgs(name="demo-skill", prune=False, force=True)
+    cmd_push(args)
+
+    err = capsys.readouterr().err
+    assert "WARNING" in err
+    assert "1.0.0" in err
+
+
+def test_cmd_push_silent_when_version_already_bumped_despite_content_drift(
+    tmp_path, monkeypatch, capsys
+):
+    """版號已跟著內容一起 bump 時不觸發警告，避免每次 push 都跳（第二條驗收）。"""
+    import skill_sync.cli as cli_module
+
+    skills_dir = tmp_path / "skills"
+    source = _write_skill(skills_dir, "demo-skill", "1.1.0", "local modified body")
+    monkeypatch.setattr(cli_module, "get_skills_dir", lambda: skills_dir)
+
+    scratch = tmp_path / "scratch"
+    remote_skill = _write_skill(scratch / "repo", "demo-skill", "1.0.0", "original body")
+    _stub_fixed_tempdir(monkeypatch, scratch)
+    _stub_git_recording(monkeypatch)
+
+    _write_sync_base(source, compute_content_hash(remote_skill))
+
+    args = _RecordingArgs(name="demo-skill", prune=False, force=True)
     cmd_push(args)
 
     err = capsys.readouterr().err

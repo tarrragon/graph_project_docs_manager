@@ -614,6 +614,44 @@ def _diverge_warning(direction: str, expected: str) -> str | None:
     )
 
 
+def _stale_version_warning(
+    source: Path, local_ver: str | None, remote_ver: str | None
+) -> str | None:
+    """版號與遠端相同、但內容雜湊自 .skill-sync-base 已變更時，回傳警告文字；否則 None。
+
+    內容改了、版號沒動是一種容易累積的分歧形態：版號相同時它不只無鑑別力，而是
+    主動宣稱兩邊一致，使分歧不會被例行同步檢查發現，須等到事後逐一讀 diff 才判
+    得出方向。閘門放在 push 端最便宜——寫入者當下仍握有變更脈絡，事後比對端已經
+    沒有。
+
+    版號不同（已 bump）或任一版號缺失時直接放行：本函式只鎖定「版號相同」這個
+    誤導性訊號，版號已跟著內容變更時不該每次 push 都跳警告。無 base 記錄（從未
+    走過本機制的既有 skill）維持向後相容的靜默，與 `_diverge_warning` 同一哲學。
+    """
+    if local_ver is None or remote_ver is None or local_ver != remote_ver:
+        return None
+    base_hash = _read_sync_base(source)
+    if base_hash is None:
+        return None
+    current_hash = compute_content_hash(source)
+    if current_hash is None or current_hash == base_hash:
+        return None
+    return (
+        f"Content changed since last sync (hash differs from {SKILL_SYNC_BASE_MARKER}) "
+        f"but version is still {local_ver}, same as remote. Bump the version before "
+        "pushing, or confirm this push intentionally keeps it unchanged."
+    )
+
+
+def _print_stale_version_warning(
+    source: Path, local_ver: str | None, remote_ver: str | None
+) -> None:
+    """push preview 內印出 `_stale_version_warning` 的結果（若有）。"""
+    warning = _stale_version_warning(source, local_ver, remote_ver)
+    if warning:
+        print(f"  [WARNING] {warning}", file=sys.stderr)
+
+
 def _print_divergence_warning(
     local_skill_dir: Path,
     local_hash: str | None,
@@ -1121,6 +1159,7 @@ def cmd_push(args: argparse.Namespace) -> None:
         _print_divergence_warning(
             source, compute_content_hash(source), compute_content_hash(target), "push"
         )
+        _print_stale_version_warning(source, local_ver, remote_ver)
         print_diff_preview(plan, direction="push", src=source, dst=target)
 
         prunable = plan["prunable"]
