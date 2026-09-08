@@ -30,6 +30,8 @@ UseCase 層每個 UseCase 至少涵蓋：1 個正常流程 + 2 個異常流程 +
 4. **Interface 層**：不測試，不問
 5. **Domain 層**：這裡有複雜業務規則嗎？→ 是：寫單元測試 / 否：跳過，純資料容器由上層覆蓋
 
+本判斷流程判定完成後，若專案已導入測試對象目錄，將判定結果登載為對應測試對象的「測試形態」欄（見 `references/test-object-catalogue.md` 契約欄位表）。
+
 ---
 
 ## 覆蓋率語意
@@ -70,6 +72,8 @@ UseCase 層每個 UseCase 至少涵蓋：1 個正常流程 + 2 個異常流程 +
 驗證形態是雙軌並行，不是二選一：**fake 覆蓋 App 端邏輯**——App 呼叫平台 API 前後的判斷、狀態轉換、錯誤處理，用 fake（非回放級 stub）驗證邏輯正確性，可自動化、可在既有測試套件中執行；**實機驗證覆蓋平台端事實**——平台 API 實際回傳什麼、UI 實際如何反應、授權流程實際如何運作，只有在真實裝置/真實作業系統上操作才能確認，無法以自動化測試替代。兩軌覆蓋不同的正確性面向：純自動化測試驗不出平台行為是否符合假設（假設本身可能是錯的），純實機操作則無法在每次變更後重複執行；只做其中一軌都會留下分層測試觸及不到的盲區。
 
 產出回寫規格：實機驗證測得的平台事實，不是量測完就結束的一次性動作——須回填對應規格文件的驗證章節，成為已確認事實供後續實作與測試引用；尚未完成實機驗證的項目，應在規格中明確標記為待驗證，不得以 fake 測試通過視為已驗證。
+
+驗證形態（fake / 實機 / 兩者）判定完成後，若專案已導入測試對象目錄，登載為對應測試對象的「驗證形態」欄（見 `references/test-object-catalogue.md` 契約欄位表）。
 
 ---
 
@@ -118,10 +122,12 @@ monitor 專案非典型 Clean Architecture（monorepo 含多語言 SDK + collect
 - `references/doc-handoff.md` — doc→TDD 銜接（UC 場景的整合/單元分工標準）
 - `references/bdd-behavior-testing.md` — BDD 行為測試深度指引（Sociable/Solitary、分層 Mock）
 - `references/protocol-integration-testing.md` — Protocol integration 三層策略（Mock 遮蔽機制）
+- `references/test-object-catalogue.md` — 測試對象目錄（本文件回答「該層怎麼測」，該檔回答「要測哪些對象」；本文件的測試形態判定、驗證形態判定分別對應該檔契約欄位表的兩欄）
 
 ---
 
 **Last Updated**: 2026-09-08
+**Version**: 1.3.0 — 「判斷流程」節與「跨邊界驗證」節各補一句反向路由：判定完成後登載為新增的 `references/test-object-catalogue.md` 對應契約欄位（測試形態欄、驗證形態欄），相關文件補一列。
 **Version**: 1.2.0 — 節名「分層之外的兩個補位形態」改為不寫數字（reference-stability-rules 規則 10：計數會隨補位形態增減而失效）；新增第三個補位形態「跨邊界驗證」：判準（呼叫離開 app process／需人工回應系統 UI／依賴平台授權狀態／依賴外部程序）、正交屬性定位（與既有兩形態同性質，不新增第六層）、雙軌驗證（fake 覆蓋 App 端邏輯 + 實機驗證覆蓋平台端事實）、產出回寫規格驗證章節。
 **Version**: 1.1.0 — 新增「分層之外的兩個補位形態」：stub 盲區與語意級假後端（假設與斷言同源、stub 結構上驗不出假設錯誤；補位是有狀態假後端跑流程測試 + 真實後端驗證配對）、characterization test（重構與 legacy 適配、斷言現狀不斷言正確、安全網用完即退場）。同步上游 testing 教材在分層策略之後長出的內容。
 **Version**: 1.0.0 — 從 blog hybrid-testing-strategy-methodology 提煉，整合 monitor 專案對應

@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.3.0 — 新增 `references/test-object-catalogue.md`：doc-handoff 回答「規格如何映射為測試輸入」、layered-test-strategy 回答「該層用什麼方法測」，兩者皆假設「要測哪些對象」已定，本檔補上這一步——測試對象單位判定（規格條目，附與元件契約不重複的論證）、來源類別表、契約欄位表（各欄問句與缺失後果）、齊全判準 C1-C4（與既有覆蓋率判準為補充關係）、三種起點（有規格／有測試無契約／有程式碼無測試）推導程序、派發語言句型。doc-handoff 與 layered-test-strategy 各補一句反向路由指向本檔（避免既有資產指向新資產、新資產不指回的單向接線）。SKILL.md 相關資源補一行路由。
+
 **Version**: 2.2.9 — 清理 1 處 language-constraints.md 規則 2 禁用詞基線債務（`數據` → 資料，`references/cases/cross-module-shared-strategy-gaps.md` 段落標題），純用語修正，內容與判準未改。
 
 **Version**: 2.2.8 — 補記 2.2.7 之後累積但未 bump 版號的變更（版號未動使發佈庫與本庫的內容分歧無法由版號察覺）。`hooks/layer-boundary-validator-hook.py` 與 `references/phase4-refactor.md` 移除註解／版本紀錄行內的專案 ticket ID，指令行為未變。同時清掉只存在於發佈庫、本庫已不再持有的 `examples/flutter-sdk-tdd-walkthrough.md`——該檔以另一專案的 SPEC 與 ticket 編號逐段敘述，本 skill 宣告 `metadata.portable: true`，此類內容正是可攜性閘門要擋的形態
