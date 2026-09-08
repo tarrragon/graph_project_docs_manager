@@ -1051,11 +1051,6 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 ---
 
 **Last Updated**: 2026-09-08
-**Version**: 1.34.0 — 撞號合併：本地與上游各自將不同變更標為 1.33.0，兩側內容皆已在本檔並存，讓號至 1.34.0。下列兩則 1.33.0 分屬不同來源，非重複條目
-
-**Version**: 1.33.1 — 「元件票／畫面票的票型專屬必含項」句內「十一欄位投影」改「元件契約欄位表投影」，同步 component-contract-design 方法論欄位表計數去數字化（DOC-GPD-003）
-**Version**: 1.33.0 — 「Solution 自檢結果子章節義務」節後補一句路由，指向 `component-contract-design` skill〈派發語言〉表格的「派發 prompt 必含」列（元件票／畫面票的票型專屬對照，不重複展開）；本檔既有的骨架固定句（測試前台執行、`run_in_background` 限旁路任務）不變，該列僅回指本檔，不複製內容
-
 **Version**: 1.33.0 — 「Dispatch-Plan Template」欄位要求表 `commit policy` 列改寫：與上節「精準 staging 制式句」（`ticket track commit` 為主路徑）同步，消解檔內矛盾（該列原僅寫精確 add 三步，與上節相反）；精確 add 降為該命令失敗或不可用時的 fallback。
 **Last Updated**: 2026-09-02
 **Version**: 1.32.0 — 「骨架（權威版）」段「停手上報而非定義優先序」後新增一行提醒：Edit/Write 被非專案來源（harness auto mode classifier、permissionMode、OS 權限）拒絕時同理停手回報 NeedsContext，禁改用 Bash 內嵌腳本繞過，引用 `tool-selection.md` 規則二；不動 `track_dispatch.py` 骨架常數
