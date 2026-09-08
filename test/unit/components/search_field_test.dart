@@ -119,10 +119,12 @@ void main() {
     }
   });
 
-  group('互動反應：防抖動與清除', () {
-    testWidgets('輸入後 pump 前 onChanged 零次；pump(searchDebounce) 後恰一次', (
-      tester,
-    ) async {
+  group('互動反應：輸入即通知與清除', () {
+    // 防抖已移出本元件（`0.1.0-W3-110`）：元件每次文字變更即通知，何時實際
+    // 過濾由呼叫端服務層以 Motion.searchDebounce 決定。原「pump 前零次」與
+    // 「連續輸入只呼叫一次」兩則測試驗的是元件內 Timer 的排程行為，該行為
+    // 已不存在，改寫為下列兩則「輸入即呼叫」斷言。
+    testWidgets('輸入後 pump 即呼叫 onChanged 一次，不需等待任何延遲', (tester) async {
       var callCount = 0;
       String? lastValue;
       await pumpHarness(
@@ -139,35 +141,33 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'query');
       await tester.pump();
-      expect(callCount, 0);
 
-      await pumpContract(tester, Motion.searchDebounce);
       expect(callCount, 1);
       expect(lastValue, 'query');
     });
 
-    testWidgets('連續輸入只在防抖動結束後呼叫一次', (tester) async {
-      var callCount = 0;
+    testWidgets('連續輸入逐次呼叫 onChanged，不合併', (tester) async {
+      final calls = <String>[];
       await pumpHarness(
         tester,
         child: SearchField(
           value: '',
-          onChanged: (_) => callCount++,
+          onChanged: calls.add,
           testKey: testKey,
         ),
       );
 
       await tester.enterText(find.byType(TextField), 'a');
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
       await tester.enterText(find.byType(TextField), 'ab');
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
       await tester.enterText(find.byType(TextField), 'abc');
-      await pumpContract(tester, Motion.searchDebounce);
+      await tester.pump();
 
-      expect(callCount, 1);
+      expect(calls, ['a', 'ab', 'abc']);
     });
 
-    testWidgets('清除鈕立即呼叫 onChanged("")，不等待防抖動', (tester) async {
+    testWidgets('清除鈕立即呼叫 onChanged("")', (tester) async {
       final calls = <String>[];
       await pumpHarness(
         tester,
@@ -184,7 +184,7 @@ void main() {
       expect(calls, ['']);
     });
 
-    testWidgets('刪至空立即呼叫 onChanged("")，不等待防抖動', (tester) async {
+    testWidgets('刪至空立即呼叫 onChanged("")', (tester) async {
       final calls = <String>[];
       await pumpHarness(
         tester,
