@@ -131,3 +131,7 @@ hook-logs/
 # 框架 sync-pull 前的本機穩定備份（sync-pull.md 流程的「先建備份」選項產生）。
 # 屬一次性還原素材，驗證拉取無誤後即可刪除，不入庫。
 .claude-backup-*/
+
+# Dart & Flutter DevTools 的擴充啟用狀態，由 DevTools 首次開啟時自動產生。
+# 屬個別開發者的工具設定，非專案組態（Flutter 官方 gitignore 範本亦排除）。
+devtools_options.yaml
