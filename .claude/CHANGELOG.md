@@ -1,3 +1,51 @@
+## [2.59.1] - 2026-09-08
+
+### Summary
+docs: PC-BAL-069/074 補互指 multi-round-review 2.3.0 的「事實型判斷」上位描述; chore: 拉取 2.3.0（第三格事實型判斷、射程外第四類）; chore: 回寫 .claude/VERSION -> 某版本
+
+Changes: 1 docs, 2 chore
+
+- docs: PC-BAL-069/074 補互指 multi-round-review 2.3.0 的「事實型判斷」上位描述
+- chore: 拉取 2.3.0（第三格事實型判斷、射程外第四類）
+- chore: 回寫 .claude/VERSION -> 某版本
+
+---
+
+## [2.59.0] - 2026-09-08
+
+### Summary
+feat: 取回 canonical 的 PM 暫代管票自動讓出 who.current，補號 2.32.0; docs: 新增 PC-BAL-074 通道不承載作者身分；PC-BAL-069 補版號的順序語意風險; docs: 6.3.1 UI 列括注去除內嵌欄位數（取回 canonical 改寫） (+2 more)
+
+Changes: 1 feat, 3 docs, 1 chore
+
+- feat: 取回 canonical 的 PM 暫代管票自動讓出 who.current，補號 2.32.0
+- docs: 新增 PC-BAL-074 通道不承載作者身分；PC-BAL-069 補版號的順序語意風險
+- docs: 6.3.1 UI 列括注去除內嵌欄位數（取回 canonical 改寫）
+- docs: PC-BAL-069 補共同結構節（低維表徵代理高維事實）
+- chore: 自發佈庫拉取五支（另一 consumer 推進）
+
+---
+
+## [2.58.1] - 2026-09-08
+
+### Summary
+docs: 新增 PC-GPD-007、PC-GPD-006 補反方向判準、三處撞號讓號條目
+
+新增 PC-GPD-007（樣本中一致的部分被讀成機制，對不上的那一格被歸類為
+補充證據而非機制的邊界），盲區指向既有的計數投影 pattern，不重複造判準。
+
+PC-GPD-006 補「反方向：把引用寫出去」小節：跨 consumer 引用的合法性取
+決於被引物是否已到達共用通道，不取決於它是否真實存在；三態表第二列以
+送達與否而非歸屬哪一層判定，涵蓋共用層已建未推的時間窗。
+
+三處撞號讓號（內容早已在檔內，條目在同步中被覆蓋後回補）：
+agent-dispatch-template 1.34.0、document-writing-style 1.6.0、
+ux-design-evaluation 1.4.5。
+
+另含本次 sync-pull 至 2.58.0 的 11 處三方合併衝突處置結果。
+
+---
+
 ## [2.58.0] - 2026-09-08
 
 ### Summary
