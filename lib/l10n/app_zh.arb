@@ -76,6 +76,11 @@
     "description": "選取資料夾成功但持久化寫入失敗時的提示"
   },
 
+  "chooseFolderUnavailableMessage": "無法開啟資料夾選取面板，請稍後再試",
+  "@chooseFolderUnavailableMessage": {
+    "description": "系統面板本身開不起來時的固定提示；不顯示原始例外訊息"
+  },
+
   "domainLoading": "正在解析圖譜節點…",
   "@domainLoading": {
     "description": "SPEC-001 §1 Domain 視圖·載入中狀態的顯示文案"

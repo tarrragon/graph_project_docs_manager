@@ -170,6 +170,12 @@ abstract class AppLocalizations {
   /// **'已選定，但下次啟動需重新選擇'**
   String get workspaceNotRemembered;
 
+  /// 系統面板本身開不起來時的固定提示；不顯示原始例外訊息
+  ///
+  /// In zh, this message translates to:
+  /// **'無法開啟資料夾選取面板，請稍後再試'**
+  String get chooseFolderUnavailableMessage;
+
   /// SPEC-001 §1 Domain 視圖·載入中狀態的顯示文案
   ///
   /// In zh, this message translates to:

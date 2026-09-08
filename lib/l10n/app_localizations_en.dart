@@ -61,6 +61,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Selected, but you will need to choose again next time';
 
   @override
+  String get chooseFolderUnavailableMessage =>
+      'Could not open the folder picker. Please try again later';
+
+  @override
   String get domainLoading => 'Resolving graph nodes…';
 
   @override

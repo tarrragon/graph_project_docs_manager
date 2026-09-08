@@ -189,6 +189,13 @@ class _HomePageState extends State<HomePage> {
 
   WorkspaceState _workspace = const WorkspaceUnset();
 
+  /// 上次選取「已選定但未能記住」時顯示提醒；選取成功或取消即清除。
+  /// 裁決 A 的呼叫端義務：NotRemembered 不得只記 log，必須有使用者可見
+  /// 提示（不互相抵扣）。文案走 ARB key，不顯示 [ChooseFolderResult.reason]
+  /// —— reason 可能是例外字串（見 workspace_repository.dart 的
+  /// ChooseFolderNotRemembered 建構處），僅供日誌診斷，不可外露給使用者。
+  bool _showNotRememberedNotice = false;
+
   @override
   void initState() {
     super.initState();
@@ -202,16 +209,27 @@ class _HomePageState extends State<HomePage> {
   Future<void> _chooseFolder() async {
     final result = await _repository.chooseFolder();
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     switch (result) {
       case ChooseFolderCancelled():
         break;
       case ChooseFolderUnavailable():
-        break;
+        // reason 不外露：可能含平台例外字串，使用者只看到固定文案。
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.chooseFolderUnavailableMessage)),
+        );
       case ChooseFolderSelected(:final state):
-        setState(() => _workspace = state);
+        setState(() {
+          _workspace = state;
+          _showNotRememberedNotice = false;
+        });
       case ChooseFolderNotRemembered(:final state):
-        // 提示留待 3b-D 批次實作（decision-trigger-binding 規則 1 狀態 b）。
-        setState(() => _workspace = state);
+        // 裁決 A 呼叫端義務：state 攜帶而非取代，另加使用者可見提示，
+        // 與 log（見 workspace_repository.dart）分別成立，不互相抵扣。
+        setState(() {
+          _workspace = state;
+          _showNotRememberedNotice = true;
+        });
     }
   }
 
@@ -234,6 +252,13 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _WorkspaceBanner(state: _workspace, onChoose: _chooseFolder),
+              if (_showNotRememberedNotice) ...[
+                SizedBox(height: Space.sm.h),
+                AppText(
+                  l10n.workspaceNotRemembered,
+                  variant: AppTextVariant.body,
+                ),
+              ],
               SizedBox(height: Space.md.h),
               const _StatsRow(),
               SizedBox(height: Space.lg.h),

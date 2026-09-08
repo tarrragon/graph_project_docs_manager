@@ -58,6 +58,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceNotRemembered => '已選定，但下次啟動需重新選擇';
 
   @override
+  String get chooseFolderUnavailableMessage => '無法開啟資料夾選取面板，請稍後再試';
+
+  @override
   String get domainLoading => '正在解析圖譜節點…';
 
   @override
