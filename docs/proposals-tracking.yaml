@@ -99,3 +99,8 @@ specs:
   status: draft
   domain: ui
   source_proposal: PROP-004
+- id: SPEC-004
+  title: 元件庫規格：元件目錄、逐元件契約與容器排列不變式
+  status: draft
+  domain: ui
+  source_proposal: PROP-004

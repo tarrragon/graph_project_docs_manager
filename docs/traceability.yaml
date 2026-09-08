@@ -182,6 +182,52 @@ data_contract_tests:
     tests:
       - test/unit/tokens/motion_test.dart
 
+  - contract_ref: SPEC-004 §4（元件契約欄位表）
+    description: 逐元件的契約（狀態矩陣／回饋契約／尺寸契約等）與 lib/components/ 實作須一致，否則規格與程式碼各自演進而無人察覺；widget test 與 lib/components/ 一比一對應（barrel 檔 components.dart 除外）
+    tests:
+      - test/unit/components/app_button_test.dart
+      - test/unit/components/app_data_table_test.dart
+      - test/unit/components/app_icon_test.dart
+      - test/unit/components/app_shell_test.dart
+      - test/unit/components/app_snack_bar_test.dart
+      - test/unit/components/app_table_row_test.dart
+      - test/unit/components/app_text_test.dart
+      - test/unit/components/badge_row_test.dart
+      - test/unit/components/badge_test.dart
+      - test/unit/components/blocked_state_test.dart
+      - test/unit/components/button_row_test.dart
+      - test/unit/components/divider_test.dart
+      - test/unit/components/document_body_test.dart
+      - test/unit/components/empty_state_test.dart
+      - test/unit/components/expander_icon_test.dart
+      - test/unit/components/filter_dropdown_test.dart
+      - test/unit/components/issue_marker_test.dart
+      - test/unit/components/list_row_test.dart
+      - test/unit/components/load_prompt_test.dart
+      - test/unit/components/loading_state_test.dart
+      - test/unit/components/matrix_cell_test.dart
+      - test/unit/components/matrix_grid_test.dart
+      - test/unit/components/missing_source_state_test.dart
+      - test/unit/components/nav_item_test.dart
+      - test/unit/components/page_column_test.dart
+      - test/unit/components/page_title_test.dart
+      - test/unit/components/panel_test.dart
+      - test/unit/components/project_switcher_entry_test.dart
+      - test/unit/components/recent_project_item_test.dart
+      - test/unit/components/relation_item_test.dart
+      - test/unit/components/search_field_test.dart
+      - test/unit/components/section_test.dart
+      - test/unit/components/segmented_control_test.dart
+      - test/unit/components/split_row_test.dart
+      - test/unit/components/step_number_test.dart
+      - test/unit/components/swimlane_grid_test.dart
+      - test/unit/components/swimlane_node_test.dart
+      - test/unit/components/switcher_overlay_test.dart
+      - test/unit/components/table_column_header_test.dart
+      - test/unit/components/toolbar_test.dart
+      - test/unit/components/tree_test.dart
+      - test/unit/components/two_column_layout_test.dart
+
   - contract_ref: docs/tech-decisions.md 補記段 2026-08-27（W1-016：全域錯誤攔截三層）
     description: 框架層／平台層／非同步層三層攔截皆抵達單一錯誤出口 fatalErrorNotifier
     tests:
@@ -209,4 +255,4 @@ runtime_tests:
       - test/unit/screens/gap_report_test.dart
     status: 僅涵蓋「檔案不存在」的失敗分支（呼叫真實 Process.run 但目標路徑刻意不存在）；成功開啟外部編輯器的路徑與 doc CLI 呼叫路徑皆無實機驗證
 
-last_updated: "2026-09-08"
+last_updated: "2026-09-09"
