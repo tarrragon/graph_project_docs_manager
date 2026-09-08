@@ -26,7 +26,7 @@ Claude Code Bash 工具的使用規範，涵蓋工作目錄、輸出處理、git
 
 > **規則七核對步驟的粒度邊界（檔案內夾帶）**：`git diff --cached --name-only` 只列檔名，核對粒度為檔案層級——`git add` 的最小單位即整個檔案，目標檔本身已含他人未 stage 的編輯時，該編輯隨精確 add 一併進入 index，核對必然通過，對此無鑑別力（機制與 PC-BAL-008「變體：檔案級共用」同源）。**不改變規則七既有禁止事項**，pathspec / `--only` / `-o` / `-i` 仍全數禁用。append-only 共用檔（如 `docs/work-logs/topic-assignments.txt`，每次 `ticket create` 皆追加一行，屬結構性熱點）建議：`git add --patch` 逐 hunk 挑選，或約定由單一方負責提交該檔。完整機制見 details.md「規則七詳細」。
 
-> **規則七核對步驟的版本邊界（過期 index 快照）**：核對步驟驗證 index 含哪些檔案，不驗證這些 entry 有多新。`git add` 後 HEAD 若由其他路徑前進（他方以隔離索引 CAS 提交同一檔案、`merge` / `rebase` / `pull`），既有 index entry 相對新 HEAD 即成舊版本，檔名層級與最新內容無從區分——核對通過、裸 commit 回滾檔案內容、`git log` 外觀正常，全程無訊號。此路徑不需任何一方違反規則七（另一條路徑是 pathspec 提交後不寫回共用 index，殘留過期 entry）。**偵測**：`git show :<path>` 與 `git show HEAD:<path>` 比對，難判斷時加 `cat <path>` 構成三平面。**處置**：`git restore --staged <path>` 重設回 HEAD 後重新精確 add。**不改變規則七既有禁止事項**。完整機制與最小重現見 details.md「規則七詳細」。
+> **規則七核對步驟的版本邊界（過期 index 快照）**：核對步驟驗證 index 含哪些檔案，不驗證這些 entry 有多新。`git add` 後 HEAD 若由其他路徑前進（他方以隔離索引 CAS 提交同一檔案、`merge` / `rebase` / `pull`），既有 index entry 相對新 HEAD 即成舊版本，檔名層級與最新內容無從區分——核對通過、裸 commit 回滾檔案內容、`git log` 外觀正常，全程無訊號。此路徑不需任何一方違反規則七（另一條路徑是 pathspec 提交後不寫回共用 index，殘留過期 entry）。**偵測**：`git show :<path>` 與 `git show HEAD:<path>` 比對，難判斷時加 `cat <path>` 構成三平面。**處置**：`git restore --staged <path>` 重設回 HEAD 後重新精確 add。**不改變規則七既有禁止事項**。完整機制與最小重現見 details.md「規則七詳細」。**隔離索引 CAS 路徑不僅有同型風險、且會主動製造它**：CAS 推進 HEAD 後，共用 index 中與該次提交重疊的既有 entry 全部相對新 HEAD 過期，成因是自己剛完成的 CAS，非他方並行寫入；防線分別在配方步驟內（基準一律釘選 `$OLD_HEAD` 變數，不寫 `HEAD` 符號）與配方收尾（CAS 成功後清理過期 entry）。完整條文見 details.md「隔離索引 CAS 的時間維度要件」。
 
 ---
 
@@ -67,6 +67,7 @@ Claude Code Bash 工具的使用規範，涵蓋工作目錄、輸出處理、git
 
 ---
 
+**Last Updated**: 2026-09-08 | **Version**: 3.11.0 — 規則七「版本邊界（過期 index 快照）」邊界段補一句交叉引用：隔離索引 CAS 路徑不僅有同型風險、且會主動製造它（CAS 推進 HEAD 後，共用 index 中重疊的既有 entry 全部過期）；防線分別是配方步驟內的基準釘選（`$OLD_HEAD` 變數，禁用 `HEAD` 符號）與配方收尾的過期 entry 清理，完整條文見 details.md「隔離索引 CAS 的時間維度要件」。
 **Last Updated**: 2026-09-08 | **Version**: 3.10.0 — 規則七高衝突路徑加強做法段改寫為「規則七與代理人票務提交的預設關係」：代理人票務提交場景改以 `ticket track commit`（隔離索引）為預設，規則七三步降為其 fallback；手動／無票務 CLI 之高衝突路徑仍以規則七三步或隔離索引 CAS 為並列加強選項，不受影響。呼應副本漂移收斂評估後的裁決，與 `parallel-dispatch.md`／`agent-dispatch-template.md`／ticket skill〈track commit 子命令〉措辭一致；字數同步減少。
 **Last Updated**: 2026-09-04 | **Version**: 3.9.0 — 規則二「截斷方向」條款泛化為「輸出過濾方向」：`tail` 截斷只是選擇性過濾的一種，grep 白名單／`grep -v` 同樣更容易濾掉警告行，與輸出長度無關（實測第二、三實例：3 行輸出中 `tail -2` 正好切掉第 1 行 `[Error]`）；速查表與統一檢查清單同步改寫，grep 白名單須含 `WARNING\|Error\|Traceback`。完整第二、三實例最小重現見 details.md「規則二詳細」新增小節。
 **Last Updated**: 2026-09-02 | **Version**: 3.8.0 — 規則二新增「截斷方向」條款：CLI 參數驗證錯誤（argparse 等）error 前綴在頭、回吐內容在尾，單取 `tail` 會截掉唯一判別依據使失敗與成功回音同形（最小重現：argparse `unrecognized arguments` 錯誤在 `tail -20` 下完全不可見）；不確定輸出屬性時改用 `head` 或 `head`+`tail` 兩段皆取。速查表與統一檢查清單同步新增。完整重現數據見 details.md「規則二詳細」新增小節。
