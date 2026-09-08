@@ -55,6 +55,20 @@ void main() {
     expect(find.byKey(const Key('action-domain-back')), findsNothing);
   });
 
+  // SPEC-004 §4.28 slot 契約：content 不接受 PageColumn，頁首恰由
+  // AppShell 為每個導覽項建一個 PageColumn 單一渲染。以數量鎖定而非鎖定
+  // 某一畫面的外觀——畫面自建巢狀 PageColumn 時，元件樹下的 PageColumn
+  // 數量會多於導覽項數（0.1.0-W3-127：追溯視圖曾自建一個，命中 7 而非 6）。
+  testWidgets('AppShell 元件樹下 PageColumn 數量等於導覽項數', (tester) async {
+    await _pumpShell(tester);
+
+    expect(
+      find.byType(components.PageColumn, skipOffstage: false),
+      findsNWidgets(AppDestination.values.length),
+      reason: '畫面若自建巢狀 PageColumn，會使數量多於導覽項數（頁首重複渲染）',
+    );
+  });
+
   // SPEC-004 §4.29「使用 design token」間距列：頁首水平內距 Space.xl。頁首由
   // 六個畫面共用同一個 SplitRow.header，本測試逐頁量標題文字左緣到頁面容器
   // 左緣的距離，鎖定「六個畫面一致」而非只驗單一畫面。

@@ -15,6 +15,11 @@ import 'trace_providers.dart';
 import 'trace_state.dart';
 
 /// `nav-page-traceability` 的內容（追溯視圖）。
+///
+/// 只回傳 `PageColumn` 的 `content` slot 該有的子件（SPEC-004 §4.28 slot
+/// 契約）——頁首由 `AppShell`（`lib/app/shell.dart`）為六個導覽項各建一個
+/// `PageColumn` 單一渲染，畫面不得自建 `PageColumn` 外殼（`0.1.0-W3-127`：
+/// 自建外殼曾造成頁首重複渲染與內容區內距疊加）。
 class TraceabilityScreen extends ConsumerWidget {
   const TraceabilityScreen({super.key});
 
@@ -23,33 +28,29 @@ class TraceabilityScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final state = ref.watch(traceabilityStateProvider);
 
-    return PageColumn(
-      semanticLabel: l10n.navTraceability,
-      header: SplitRow.header(leading: PageTitle(title: l10n.navTraceability)),
-      content: switch (state) {
-        TraceabilityNormal(:final roots) => _TraceTree(
-            key: const Key('state-traceability-normal'),
-            roots: roots,
-          ),
-        TraceabilityBroken(:final roots) => _TraceTree(
-            key: const Key('state-traceability-broken'),
-            roots: roots,
-          ),
-        TraceabilityNoProposal() => EmptyState(
-            variant: EmptyStateVariant.page,
-            testKey: const Key('state-traceability-no-proposal'),
-            message: l10n.emptyProposalMessage,
-            actions: [
-              AppButton(
-                label: l10n.gotoGapsReportAction,
-                testKey: const Key('action-traceability-goto-gaps'),
-                onPressed: () =>
-                    navigateTo(ref.read, AppDestination.gaps, NavIntent.jump),
-              ),
-            ],
-          ),
-      },
-    );
+    return switch (state) {
+      TraceabilityNormal(:final roots) => _TraceTree(
+          key: const Key('state-traceability-normal'),
+          roots: roots,
+        ),
+      TraceabilityBroken(:final roots) => _TraceTree(
+          key: const Key('state-traceability-broken'),
+          roots: roots,
+        ),
+      TraceabilityNoProposal() => EmptyState(
+          variant: EmptyStateVariant.page,
+          testKey: const Key('state-traceability-no-proposal'),
+          message: l10n.emptyProposalMessage,
+          actions: [
+            AppButton(
+              label: l10n.gotoGapsReportAction,
+              testKey: const Key('action-traceability-goto-gaps'),
+              onPressed: () =>
+                  navigateTo(ref.read, AppDestination.gaps, NavIntent.jump),
+            ),
+          ],
+        ),
+    };
   }
 }
 
