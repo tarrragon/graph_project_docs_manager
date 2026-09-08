@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-08"
-version: "1.9"
+version: "1.10"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -605,7 +605,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 載入中 → 正常 / 空圖 / 三個阻擋狀態 | cross-fade，`Motion.transition` |
 | 矩陣首次渲染 | **不做逐格入場動畫**。真實規模下（不低於 1300 筆）逐格動畫無資訊量且成本高 |
 | 矩陣 → 泳道的定位 | 以 `jumpTo` 即時定位，**不用** `animateTo`。定位是導航結果不是動畫；長泳道上的 animateTo 會產生數秒捲動且中途無法斷言 |
-| 格選中態出現 | 點擊確認用 `InkWell` 內建 pressed 態（§2.2），選中態本身無入場動畫（持續性標記） |
+| 矩陣格的選取標記出現 | 點擊確認用 `InkWell` 內建 pressed 態（§2.2），選中態本身無入場動畫（持續性標記） |
 | 右欄提示 ↔ 詳情卡、詳情卡內容換選 | cross-fade，`Motion.transition`；資料為本地已解析內容，切換耗時落在「幾乎即時帶」內，不顯示任何等待指示 |
 | `panel-domain-schema-detail` 展開 | 高度變化 `Motion.transition` |
 
@@ -1136,6 +1136,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.10 | 2026-09-08 | `0.1.0-W3-069`：§3.1 動畫提示表列名「格選中態出現」改為自足形式「矩陣格的選取標記出現」（原列名壓縮掉三個限定語——哪種格、選取標記為持續性標記、出現指狀態從無到有的時機，讀者須跨節查 §3.1 標題與元件才能還原；判準見 DOC-GPD-004）。「形式」欄內容不動。全檔其餘表格列名逐一判定後皆保留（判定表見票 `0.1.0-W3-069` Solution）：§3.3 動畫提示「缺口虛線框」、§3.4「損壞徽章出現」「已解析筆數文字」、§3.6「損壞欄位標示」、§2.2「不發送」、§2.8「六頁建構時機」、§2.10「按 Esc」等，皆在所屬子節的表頭語境內自足或為跨檔引用錨點，不改。本改動同步 SPEC-004 三處逐字引用錨點（v1.26） |
 | 1.9 | 2026-09-08 | 系統層通知定案（`0.1.0-W3-063`，用戶簽核 2026-09-08：0.1 掃描完成時元件不在視野則升級 macOS 系統通知）：§2.2 新增「系統層通知」子節——適用範圍限破洞掃描完成；觸發條件為完成當下視窗非前景（`AppLifecycleState` 非 `resumed`）或可見頁非 `nav-page-gaps`，兩者皆否則不發；不發送情境（取消、切換專案、未完成、已發過）；通知內容 key（`scanCompleteNotificationTitle` / `scanCompleteNotificationBody` / `scanCompleteNoGapsNotificationBody`，不含路徑與明細、無動作按鈕）；點擊導向（切至 `nav-page-gaps`、`returnTo` 為 `null`、依 SPEC-004 §1 locate 列定位第一個 `card-gaps-<itemId>`）；不重複發送與三種撤回時機（回頁、重掃、切換專案）；權限 gate 三路徑（`granted` 發送；`denied` 不再請求、0.1 不引導系統設定、fallback 為 `AppSnackBar.withAction` `scanCompleteSnackbarMessage` + `viewGapsAction`、非前景時延後至 `resumed`；`notDetermined` 於首次觸發時即時請求；其他結果視為 `denied`）；`ScanNotifier` 抽象與 fake 斷言十二列；i18n 六個 key；實作票驗證清單（`UNUserNotificationCenter` 沙盒關閉可用性、Flutter 載體、macOS 生命週期對應、撤回 API）。持續性 App 內指示（Banner／導覽項徽章）0.1 不提供，元件庫缺件交 PM 核定。§2.11 補 `AppSnackBar.withAction` 承擔列；§3.5 互動反應補系統通知本體與 SnackBar 動作兩列、生命週期補完成時非前景列並於切換專案列補撤回；新增 FR-11；概述 FR 範圍同步為 FR-01～FR-11。不改 SPEC-001；SPEC-004 §1 state-change 列由同票改為引用本節 |
 | 1.8 | 2026-09-03 | 外部開啟落地定案（`0.1.0-W1-036`）：§2.2 新增「外部開啟契約」（`ExternalOpener` 介面與 `opened` / `notFound` / `failed` 三結果、前置存在檢查、`/usr/bin/open` 實作、不新增依賴、失敗 log、無等待指示、0.1 不定位行號、fake 斷言方式、i18n key；實作票 `0.1.0-W1-068`）。§3.1 開啟 docs 目錄、§3.2 與 §3.6 開啟原始檔、§3.5 破洞項四處的既有列改為引用契約結果值，並各新增一列「無預設應用程式或其他開啟失敗」→ SnackBar `externalOpenFailedMessage`；§3.5 明示 0.1 不定位至行號（追蹤票 `0.1.0-W1-070`）；§3.6 檔案不存在列補「不出現 SnackBar」。新增 i18n key `externalOpenFailedMessage`（補齊票 `0.1.0-W1-069`）。不改其他列；不改 SPEC-001 與 SPEC-004 |
 | 1.7 | 2026-09-03 | 降級策略同步（`0.1.0-W1-035`，對應 SPEC-001 v1.5）：§3.1 導航跳轉「無可消費的型別表」列由「0.1 不渲染」改為條件式渲染 `action-domain-degraded-view`（同畫面轉換至正常／空圖，疊加 `badge-domain-degraded-schema`）；§4 第 7 列同步；§5 判讀註記該列改為現行判讀並保留沿革。不新增狀態、錨點類別與時間 token。不改 SPEC-004（其 `BlockedState` 三處「0.1 不渲染」引用由後續 DOC 票同步） |
