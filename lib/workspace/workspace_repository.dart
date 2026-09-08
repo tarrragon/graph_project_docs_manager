@@ -164,19 +164,65 @@ class WorkspaceRepository {
 
   /// 開啟系統面板讓使用者選取資料夾。
   Future<ChooseFolderResult> chooseFolder() async {
-    final path = await _pickDirectoryPath();
-    if (path == null) return const ChooseFolderCancelled();
+    _log('開啟資料夾選取面板'); // i18n-exempt: 開發者 debug log
+    String? path;
+    try {
+      path = await _pickDirectoryPath();
+    } catch (e) {
+      _log('面板不可用', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      return ChooseFolderUnavailable('$e');
+    }
+    if (path == null) {
+      _log('使用者取消選取'); // i18n-exempt: 開發者 debug log
+      return const ChooseFolderCancelled();
+    }
+    _log('已選取：$path'); // i18n-exempt: 開發者 debug log
 
-    final handle = await _preferencesPort.open();
-    await handle.writeString(_pathKey, path);
-    return ChooseFolderSelected(await _inspect(path));
+    _log(
+      '準備持久化，key=$_pathKey，path=$path', // i18n-exempt: 開發者 debug log
+    );
+    try {
+      final handle = await _preferencesPort.open();
+      _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
+      final success = await handle.writeString(_pathKey, path);
+      if (!success) {
+        _log(
+          '持久化失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
+          level: 900,
+        );
+        return ChooseFolderNotRemembered(
+          state: await _inspect(path),
+          reason: '寫入回報 false', // i18n-exempt: 開發者 debug log
+        );
+      }
+      _log('已持久化'); // i18n-exempt: 開發者 debug log
+      return ChooseFolderSelected(await _inspect(path));
+    } catch (e) {
+      _log('持久化失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      return ChooseFolderNotRemembered(state: await _inspect(path), reason: '$e');
+    }
   }
 
   /// App 啟動時呼叫，還原先前選定的資料夾。
   Future<WorkspaceState> restore() async {
-    final handle = await _preferencesPort.open();
+    _log('還原工作資料夾，key=$_pathKey'); // i18n-exempt: 開發者 debug log
+    WorkspacePreferencesHandle handle;
+    try {
+      handle = await _preferencesPort.open();
+    } catch (e) {
+      _log('還原失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      return WorkspaceUnavailable(
+        lastKnownPath: null,
+        reason: '$e', // i18n-exempt: 例外訊息，非固定使用者文案
+      );
+    }
+    _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
     final path = handle.readString(_pathKey);
-    if (path == null) return const WorkspaceUnset();
+    if (path == null) {
+      _log('無已儲存路徑'); // i18n-exempt: 開發者 debug log
+      return const WorkspaceUnset();
+    }
+    _log('已還原：$path'); // i18n-exempt: 開發者 debug log
     return _inspect(path);
   }
 
@@ -187,12 +233,14 @@ class WorkspaceRepository {
   /// 檔案系統節點、能跟著搬移，路徑字串不能。對開發者工具而言可接受 ——
   /// 專案資料夾被搬走時，讓使用者重選一次是合理的。
   Future<WorkspaceState> _inspect(String path) async {
+    _log('探測資料夾是否存在：$path'); // i18n-exempt: 開發者 debug log
     if (!await _directoryProbe.exists(path)) {
       return WorkspaceUnavailable(
         lastKnownPath: path,
         reason: '資料夾不存在或所在磁碟未掛載', // i18n-exempt: 既有欄位，本票未變更其 i18n 狀態
       );
     }
+    _log('讀取資料夾內容：$path'); // i18n-exempt: 開發者 debug log
     try {
       await _directoryProbe.readFirstEntry(path);
     } on FileSystemException catch (e) {
