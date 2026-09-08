@@ -1077,3 +1077,55 @@ URL scheme 與偵測，另立 W1-070 追蹤 SPEC-001 §5 的承諾。
 
 **落地**：SPEC-003 v1.7 §2.2 新增「外部開啟契約」，§3.1／§3.2／§3.5／§3.6 四處引用；
 實作票 W1-068、i18n 補齊票 W1-069。
+
+### 2026-09-08：跨邊界驗證形態定案，本專案三呼叫點現況盤點（W3-074／W3-079／W3-081）
+
+`.claude/skills/tdd/references/layered-test-strategy.md`〈分層之外的補位形態〉新增
+粗體詞條「**跨邊界驗證**」（W3-079）：五層分工表以架構層級為軸，隱含假設是「行為
+留在 app process 內、由測試框架完整操控」；功能一旦滿足下列任一判準即跳出此假設——
+呼叫離開 app process、需人工回應系統 UI、依賴平台授權狀態、依賴外部程序。判準命中
+時不論所在層級為何都須疊加此驗證形態，**正交屬性，不是新增第六層**，五層分工表
+本身不變。
+
+**正交屬性的判定依據**：本專案三個呼叫點分屬三個不同架構層級，同時命中跨邊界判準：
+
+| 呼叫點 | 架構層級 | 判準命中理由 |
+|--------|---------|-------------|
+| `lib/services/macos_scan_notifier.dart`（`MacosScanNotifier`） | Interface 層對平台 API（Service） | `MethodChannel` 呼叫原生 `UNUserNotificationCenter`；依賴系統通知授權狀態 |
+| `lib/workspace/workspace_repository.dart`（`WorkspaceRepository`） | Infrastructure | `file_selector.getDirectoryPath()` 需人工回應系統資料夾選取器；`dart:io Directory` 存取真實檔案系統 |
+| `lib/screens/gap_report/gap_report_screen.dart`（`_openItem`） | UI | `Process.run('open', ...)` 依賴外部程序（作業系統 `open` 指令） |
+
+三者散落於三個不同層級，若跨邊界驗證是否必要依所在層級而定，三者理應落在「已覆蓋」
+與「未覆蓋」的不同結論；但下表實查顯示三者在平台端事實這一軌**一致地零覆蓋**，與
+所在層級無關——支持「正交屬性」定性而非新層。
+
+**三呼叫點驗證形態現況**（實查 `test/`、`integration_test/`，2026-09-08）：
+
+| 呼叫點 | App 端邏輯軌（fake） | 平台端事實軌（實機） | 承接票 |
+|--------|---------------------|---------------------|--------|
+| `MacosScanNotifier` | 有——`FakeScanNotifier`（`test/unit/screens/scan_notification_controller_test.dart`）驗證 controller 決策；`MethodChannel` 橋接本身零覆蓋，fake 未觸及這層 | 零覆蓋，SPEC-003 §2.2 v1.9「實作票驗證清單」四項（`UNUserNotificationCenter` 沙盒關閉可用性、Flutter 載體、macOS 生命週期對應、撤回 API）待驗 | `0.1.0-W3-078` |
+| `WorkspaceRepository` | 有，但為介面級整體替身——`_StubWorkspaceRepository`（`integration_test/app_test.dart`）直接覆寫 `chooseFolder`／`restore`；`WorkspaceRepository` 本身（含 `_inspect` 的真實檔案系統存取）無任何 unit test 檔 | 零覆蓋，`getDirectoryPath()` 原生選取器與 `Directory.exists()`／`.list()` 的真實平台行為皆未驗證 | 無（本補記段記錄的現況，見下段 SR-1） |
+| `gap_report_screen._openItem` | 無——`test/unit/screens/gap_report_test.dart` 未觸及 `_openItem` 或 `Process.run` | 零覆蓋 | `0.1.0-W1-068`（建立可注入 `ExternalOpener` 抽象，待處理）／`0.1.0-W1-069`（對應 i18n key，待處理）；現行程式碼尚未套用該抽象，為未經抽象的直接呼叫 |
+
+**平台端事實零覆蓋的現況**：三個呼叫點的平台端事實軌**全數零覆蓋**——沒有一處曾經
+實機驗證過。App 端邏輯軌覆蓋率不一（前兩者以介面替身覆蓋，`gap_report_screen` 全無），
+但這一軌本來就只驗證 App 自己的判斷分支，驗不出「平台實際回傳什麼」，與
+layered-test-strategy.md 的雙軌並行判準一致：只做 fake 軌會留下分層測試觸及不到的
+盲區，此盲區在本專案三處皆已成立且尚未回填。`WorkspaceRepository` 與
+`gap_report_screen._openItem` 目前無對應的實機驗證承接票。`0.1.0-W1-068`／
+`0.1.0-W1-069` 承接的是抽象建立與 i18n，不是實機驗證本身。此缺口已於
+`0.1.0-W3-081` 以 `add-spawn-request`（SR-1）登記，交 PM 判斷是否需比照
+`0.1.0-W3-078` 開對應票。
+
+**CLAUDE.md §6 測試策略列不需修改**：該列描述的是自動化測試分層基礎設施（`test/`
+契約 + `integration_test/` 行為），跨邊界驗證的 App 端邏輯軌本就落在這兩層之內
+（上表可查證：`FakeScanNotifier` 在 `test/unit`、`_StubWorkspaceRepository` 在
+`integration_test`），並未新增第三層，雙層描述仍然成立；平台端事實軌是實機手動
+驗證，不寫在 `test/` 或 `integration_test/` 目錄下，本來就不屬於「自動化測試分層」
+這個概念的涵蓋範圍，因此不會反映在這張表列。依「已補完的原待決項」等既有三段的
+慣例，改在該列之後新增一則指標式補記段落作為同步（見 CLAUDE.md §6 對應變更），
+與表列並存、不重疊。
+
+**落地**：本補記段盤點 W3-074 提出的框架層缺口（tdd 五層分工表缺測試形態軸）如何
+落在專案層；CLAUDE.md §6 依上段方式同步；`WorkspaceRepository`／`gap_report_screen`
+的實機驗證缺口以 spawn request 交 PM 裁決，不在本票內開票。
