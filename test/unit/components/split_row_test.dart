@@ -191,6 +191,63 @@ void main() {
     });
   });
 
+  group('水平內距（§4.29「使用 design token」間距列）', () {
+    testWidgets('header：標題文字左緣與容器左緣的距離為 Space.xl', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const SplitRow.header(leading: PageTitle(title: 'Domain 視圖')),
+      );
+
+      final rowRect = tester.getRect(find.byType(SplitRow));
+      final titleRect = tester.getRect(find.text('Domain 視圖'));
+      expect(titleRect.left - rowRect.left, Space.xl);
+    });
+
+    testWidgets('header：trailing 右緣與容器右緣的距離為 Space.xl', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const SplitRow.header(
+          leading: PageTitle(title: 'Domain 視圖'),
+          trailing: AppText('矩陣', variant: AppTextVariant.caption),
+        ),
+      );
+
+      final rowRect = tester.getRect(find.byType(SplitRow));
+      final trailingRect = tester.getRect(find.text('矩陣'));
+      expect(rowRect.right - trailingRect.right, Space.xl);
+    });
+
+    testWidgets('compactHeader（詳情卡標題列）：水平內距為 Space.sm', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const SplitRow.header(
+          leading: AppText('詳情卡標題', variant: AppTextVariant.subtitle),
+          compactHeader: true,
+        ),
+      );
+
+      final rowRect = tester.getRect(find.byType(SplitRow));
+      final titleRect = tester.getRect(find.text('詳情卡標題'));
+      expect(titleRect.left - rowRect.left, Space.sm);
+    });
+
+    testWidgets('footer（摘要底列）：左右水平內距皆為 Space.sm', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const SplitRow.footer(
+          leading: AppText('摘要', variant: AppTextVariant.body),
+          trailing: AppText('虛擬捲動，不分頁', variant: AppTextVariant.caption),
+        ),
+      );
+
+      final rowRect = tester.getRect(find.byType(SplitRow));
+      final leadingRect = tester.getRect(find.text('摘要'));
+      final trailingRect = tester.getRect(find.text('虛擬捲動，不分頁'));
+      expect(leadingRect.left - rowRect.left, Space.sm);
+      expect(rowRect.right - trailingRect.right, Space.sm);
+    });
+  });
+
   group('尺寸與顏色 token', () {
     testWidgets('header 底邊框與底色使用 AppColors token', (tester) async {
       await pumpHarness(

@@ -153,11 +153,13 @@ void main() {
       );
       expectNoOverflow(tester);
 
+      // 本容器只承載內容區內距（§4.28 token 表僅列此一項）；頁首 slot 的
+      // 水平內距由 SplitRow 自己承載（§4.29），故取內容區那一個 Padding。
       final padding = tester.widget<Padding>(
-        find.descendant(
-          of: find.byType(PageColumn),
+        find.ancestor(
+          of: find.byType(AnimatedSwitcher),
           matching: find.byType(Padding),
-        ),
+        ).first,
       );
       expect(padding.padding, EdgeInsets.all(Space.xl));
     });

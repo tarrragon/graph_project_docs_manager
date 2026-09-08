@@ -13,7 +13,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart';
+// `components.dart` 與 `app/shell.dart` 各有一個 `AppShell`（元件庫的殼與
+// 應用層的殼），不加前綴會撞名。
+import 'package:graph_project_docs_manager/components/components.dart'
+    as components;
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
+import 'package:graph_project_docs_manager/tokens/tokens.dart';
 
 void main() {
   testWidgets('returnTo 為 null 時 action-<screen>-back 不存在於元件樹', (
@@ -48,6 +53,50 @@ void main() {
     );
     expect(container.read(returnToProvider), isNull);
     expect(find.byKey(const Key('action-domain-back')), findsNothing);
+  });
+
+  // SPEC-004 §4.29「使用 design token」間距列：頁首水平內距 Space.xl。頁首由
+  // 六個畫面共用同一個 SplitRow.header，本測試逐頁量標題文字左緣到頁面容器
+  // 左緣的距離，鎖定「六個畫面一致」而非只驗單一畫面。
+  testWidgets('六個畫面的頁首標題左緣與頁面容器左緣距離皆為 Space.xl', (tester) async {
+    await _pumpShell(tester);
+
+    // 逐頁取 AppShell 實際持有的 PageColumn 與其 header slot 實例（而非
+    // 按型別搜尋）：型別搜尋會連畫面內容自建的巢狀 PageColumn 一併命中。
+    // IndexedStack 只繪製目前頁，其餘五頁在元件樹中已完成佈局，量測有效，
+    // 但預設 finder 會跳過，故各處 skipOffstage: false。
+    final shell = tester.widget<components.AppShell>(
+      find.byType(components.AppShell),
+    );
+    expect(shell.pages, hasLength(AppDestination.values.length));
+
+    for (final page in shell.pages) {
+      final pageRect = tester.getRect(find.byWidget(page, skipOffstage: false));
+      final titleFinder = find.descendant(
+        of: find.byWidget(page.header, skipOffstage: false),
+        matching: find.byType(components.PageTitle, skipOffstage: false),
+        skipOffstage: false,
+      );
+      expect(
+        titleFinder,
+        findsOneWidget,
+        reason: '畫面「${page.semanticLabel}」的頁首沒有唯一的 PageTitle',
+      );
+      final title = tester.widget<components.PageTitle>(titleFinder).title;
+      final textRect = tester.getRect(
+        find.descendant(
+          of: titleFinder,
+          matching: find.text(title, skipOffstage: false),
+          skipOffstage: false,
+        ),
+      );
+
+      expect(
+        textRect.left - pageRect.left,
+        Space.xl,
+        reason: '畫面「${page.semanticLabel}」的頁首標題內距不符',
+      );
+    }
   });
 }
 
