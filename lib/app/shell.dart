@@ -11,6 +11,8 @@
 /// provider 值接進 [components.AppShell] 的 `overlay` slot。
 library;
 
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart' show Icons, Scaffold;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +24,11 @@ import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../screens/project_switcher/project_switcher_providers.dart';
 import 'app_lifecycle.dart';
 import 'router.dart';
+
+/// 可觀測性（observability 規則 5）：`didChangeAppLifecycleState`
+/// 屬生命週期回調，狀態轉換以 `developer.log` 記錄（開發者診斷字串，
+/// 非使用者可見文字，不進 i18n）。
+const String _tag = 'AppShell';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -61,6 +68,12 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final previous = ref.read(appLifecycleStateProvider);
+    developer.log(
+      '生命週期狀態轉換：$previous -> $state', // i18n-exempt: 開發者診斷 log
+      name: _tag,
+      level: 500,
+    );
     ref.read(appLifecycleStateProvider.notifier).state = state;
   }
 
