@@ -1,0 +1,212 @@
+version: "1.0"
+
+# 本檔結構為 doc skill 的 TRACEABILITY_SCHEMA（唯一權威：
+# .claude/skills/doc/doc_system/core/tracking_schema.py）。頂層鍵、
+# 每軸的必填/選填欄位一律以該常數為準，禁止在本檔另立新頂層鍵或
+# 猜測欄位名——test_tracking_schema_conformance.py 會在本檔存在後
+# 對頂層鍵與 domain_bundle_tests / data_contract_tests 逐條目做
+# 真實一致性檢查。
+#
+# 回填依據與缺口分析：0.1.0-W3-076 Solution。W3-075/W3-083 定案的
+# 「規格條目為單位、六來源類別、九欄契約」設計是測試對象目錄
+# （test-object-catalogue.md）的方法論，與本檔的四軸結構是不同形狀
+# 的兩份產出——本檔不強行塞入該設計的欄位，兩者的落差與後續處置
+# 見 0.1.0-W3-076 Solution「schema 落差說明」。
+
+mappings:
+  - spec: SPEC-001
+    usecase: UC-01
+    title: 開啟專案並抵達可用狀態
+    main_flow:
+      - select-folder
+      - load-schema
+      - parse-nodes
+      - reach-domain-view
+    alt_scenarios:
+      - folder-unavailable
+      - empty-graph
+      - schema-rejected
+    tests: []
+
+  - spec: SPEC-001
+    usecase: UC-02
+    title: 依 domain 盤點變更影響面
+    main_flow:
+      - locate-domain
+      - read-traversal-count
+      - switch-to-swimlane
+      - inspect-steps
+    alt_scenarios:
+      - matrix-overview-only
+      - enter-from-ticket
+      - flow-not-structured
+    tests: []
+
+  - spec: SPEC-001
+    usecase: UC-03
+    title: 理解一條 flow 貫穿哪些 domain
+    main_flow:
+      - select-uc
+      - view-steps
+      - jump-to-node
+    alt_scenarios:
+      - jump-to-domain
+      - inspect-event-flow
+      - flow-block-absent
+    tests: []
+
+  - spec: SPEC-001
+    usecase: UC-04
+    title: 追溯一項需求的實現鏈
+    main_flow:
+      - select-proposal
+      - expand-downstream
+      - inspect-status
+      - jump-to-detail
+    alt_scenarios:
+      - reverse-trace
+      - chain-broken
+    tests:
+      - test/unit/screens/traceability_test.dart
+
+  - spec: SPEC-001
+    usecase: UC-05
+    title: 找出被阻擋的工作
+    main_flow:
+      - enter-ticket-list
+      - trigger-load
+      - switch-to-topic
+      - locate-blocked
+    alt_scenarios:
+      - filter-in-list-mode
+      - cancel-loading
+      - damaged-tickets
+    tests: []
+
+  - spec: SPEC-001
+    usecase: UC-06
+    title: 找出並修復文件破洞
+    main_flow:
+      - enter-gap-report
+      - view-categories
+      - locate-item
+      - open-source-file
+    alt_scenarios:
+      - rescan
+      - no-gaps
+    tests:
+      - test/unit/screens/gap_report_test.dart
+
+# 水平 domain 規則軸：docs/domain-map.md §3 的 8 個 bundle。
+# invariants 取自該表「唯一變更理由」欄；layer 取自 §2 分層圖。
+# tests 全數為空——8 個 domain 的業務邏輯尚未實作（專案現處於
+# UI/token/元件庫基礎建設階段，僅 Workspace 有部分程式碼
+# lib/workspace/workspace_repository.dart 且無專屬測試檔），
+# 這是設計期落差，非缺陷；見 Solution「規格有而測試無」表。
+domain_bundle_tests:
+  - bundle: Workspace
+    layer: L0
+    invariants:
+      - 資料夾存取方式改變是唯一合法變更理由（domain-map.md §3）
+    tests: []
+
+  - bundle: Schema
+    layer: L0
+    invariants:
+      - 上游 schema 格式或版本語意改變是唯一合法變更理由（domain-map.md §3）
+    tests: []
+
+  - bundle: Corpus
+    layer: L1
+    invariants:
+      - 文件格式或解析寬容度改變是唯一合法變更理由（domain-map.md §3）
+      - frontmatter 邊界判定採逐行語意，既有語料解析失敗數應為 0（domain-map.md §7）
+    tests: []
+
+  - bundle: Graph
+    layer: L2
+    invariants:
+      - 圖語意改變（如 symmetric union 規則）是唯一合法變更理由（domain-map.md §3）
+    tests: []
+
+  - bundle: TicketDetail
+    layer: L2
+    invariants:
+      - ticket 的 5W1H 結構語意改變是唯一合法變更理由（domain-map.md §3）
+    tests: []
+
+  - bundle: Diagnostics
+    layer: L2
+    invariants:
+      - 「什麼算破洞」的定義改變是唯一合法變更理由（domain-map.md §3）
+      - 只有落在節點 carrier 路徑下卻缺 frontmatter 的檔案才進破洞報告（domain-map.md §7）
+    tests: []
+
+  - bundle: History
+    layer: L2
+    invariants:
+      - git 查詢方式或歷史語意改變是唯一合法變更理由（domain-map.md §3）
+    tests: []
+
+  - bundle: Layout
+    layer: L3
+    invariants:
+      - 布局演算法或版型規則改變是唯一合法變更理由（domain-map.md §3）
+    tests: []
+
+# 資料契約軸：跨語言/平台/token 層的不變式，皆已有契約測試覆蓋。
+data_contract_tests:
+  - contract_ref: CLAUDE.md §6 minSize（960x640）／macos/Runner/MainFlutterWindow.swift
+    description: Dart kMinWindowSize 與 Swift minimumSize 須一致，否則整合測試全綠但實機拉窄後跑版
+    tests:
+      - test/window_size_contract_test.dart
+      - integration_test/app_test.dart
+
+  - contract_ref: CLAUDE.md §6 App Sandbox 關閉
+    description: sandbox 關閉為能力性約束——開啟後 Process.run 無法執行專案內的 doc CLI
+    tests:
+      - test/entitlements_contract_test.dart
+
+  - contract_ref: SPEC-002 §已知的顏色分佈／無障礙對比例外（2026-09-02）
+    description: AppColors 語意色組合須達 WCAG 2.x 相對亮度對比門檻
+    tests:
+      - test/unit/tokens/colors_test.dart
+
+  - contract_ref: 0.1.0-W1-047／0.1.0-W1-044.1
+    description: lib/tokens/layout.dart 語意名回溯 NeedsContext 記錄的原始實測值
+    tests:
+      - test/unit/tokens/layout_test.dart
+
+  - contract_ref: SPEC-003 §2.1
+    description: 十個 Duration token 值與 disableAnimations 下三類/七類 token 的行為契約
+    tests:
+      - test/unit/tokens/motion_test.dart
+
+  - contract_ref: docs/tech-decisions.md 補記段 2026-08-27（W1-016：全域錯誤攔截三層）
+    description: 框架層／平台層／非同步層三層攔截皆抵達單一錯誤出口 fatalErrorNotifier
+    tests:
+      - test/unit/app/global_error_handling_test.dart
+      - test/widget/app/fatal_error_gate_test.dart
+
+# Runtime on-device 軸：0.1.0-W3-074 盤點的三個跨邊界呼叫點。
+# status 說明驗證形態現況（fake / 實機 / 兩者，定義見
+# .claude/skills/tdd/references/layered-test-strategy.md「跨邊界驗證」）。
+runtime_tests:
+  - scenario: 選擇資料夾建立 workspace（真實 file_selector 系統對話框）
+    covers_uc: UC-01
+    tests: []
+    status: 無 fake 測試涵蓋、無實機驗證——WorkspaceRepository 無專屬測試檔，僅於 integration_test/app_test.dart 以 _StubWorkspaceRepository 繞過真實選取
+
+  - scenario: 掃描完成的系統層通知
+    covers_uc: UC-06
+    tests:
+      - test/unit/screens/scan_notification_controller_test.dart
+    status: fake-only；實機驗證待補（SPEC-003 §2.2／0.1.0-W3-064 acceptance 2、3 未勾）
+
+  - scenario: 開啟原始檔（Process.run('open', ...)）與 doc CLI 呼叫
+    covers_uc: UC-06
+    tests:
+      - test/unit/screens/gap_report_test.dart
+    status: 僅涵蓋「檔案不存在」的失敗分支（呼叫真實 Process.run 但目標路徑刻意不存在）；成功開啟外部編輯器的路徑與 doc CLI 呼叫路徑皆無實機驗證
+
+last_updated: "2026-09-08"

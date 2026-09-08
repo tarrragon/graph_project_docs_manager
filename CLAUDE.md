@@ -159,7 +159,7 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 | `docs/app-use-cases.md` | UC 白名單 SSOT（`doc uc verify` 依此驗證） | 已建立 |
 | `docs/proposals-tracking.yaml` | 提案索引 | 已建立 |
 | `docs/tech-decisions.md` | 設計決策記錄（append-only，以最後的補記為準） | 已建立 |
-| `docs/traceability.yaml` | 四軸追溯矩陣（FR → UC 場景 → tests） | **尚未建立** |
+| `docs/traceability.yaml` | 四軸追溯矩陣（mappings／domain_bundle_tests／data_contract_tests／runtime_tests，schema 見 `tracking_schema.py`） | 已建立，回填現況與已知缺口見 `0.1.0-W3-076` Solution |
 
 ### 上游 schema（唯一權威，禁止另建副本）
 
