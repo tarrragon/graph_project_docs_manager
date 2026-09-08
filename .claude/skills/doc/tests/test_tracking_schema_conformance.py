@@ -30,7 +30,7 @@ from doc_system.core.tracking_schema import (
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 PROPOSALS_TRACKING_PATH = PROJECT_ROOT / "docs" / "proposals-tracking.yaml"
 TRACEABILITY_PATH = PROJECT_ROOT / "docs" / "traceability.yaml"
-EVT_BALANCE_DIR = PROJECT_ROOT / "docs" / "events" / "balance"
+EVT_ROOT_DIR = PROJECT_ROOT / "docs" / "events"
 UC_01_PATH_CANDIDATES = list((PROJECT_ROOT / "docs" / "usecases").glob("UC-01-*.md"))
 
 
@@ -252,14 +252,35 @@ class TestGraphTypeTablesWellFormed:
         )
 
 
+def _discover_evt_files() -> list[Path]:
+    """掃描 docs/events/ 下所有子目錄的 EVT-*.md，不假設任何 domain 名稱。
+
+    依 reference-stability-rules 規則 8（框架禁引用專案層級識別符）：本檔會
+    sync 至各消費專案，domain 名稱（如 balance、corpus）僅存在於本專案，不
+    可寫死於框架測試中。
+    """
+    if not EVT_ROOT_DIR.is_dir():
+        return []
+    return sorted(EVT_ROOT_DIR.glob("*/EVT-*.md"))
+
+
 class TestGraphTypeTablesRealEvtConformance:
-    """以 UC-01 回填的首批真實 EVT 資料驗證 EVT 節點常數。"""
+    """以真實 EVT 資料驗證 EVT 節點常數，EVT 目錄由檔案系統掃描推導。
+
+    決策：EVT 目錄不存在，或存在但無任何 EVT-*.md 檔時一律 skip（而非
+    fail）。理由：EVT 屬 B 層 proposed 節點（tracking_schema.GRAPH_LAYER_
+    PROPOSED），非每個消費專案在導入本框架當下就已回填 EVT 資料——與
+    TestTraceabilityRealFileConformance 對「按需建立檔」採 skip 語意一致。
+    fail 語意保留給「目錄存在、有檔案，但內容不符 schema」的真實違規。
+    """
 
     @pytest.fixture(scope="class")
     def evt_entries(self):
-        assert EVT_BALANCE_DIR.is_dir(), f"真實 EVT 目錄不存在：{EVT_BALANCE_DIR}"
-        files = sorted(EVT_BALANCE_DIR.glob("EVT-BALANCE-*.md"))
-        assert files, "docs/events/balance/ 下無 EVT-BALANCE-*.md"
+        files = _discover_evt_files()
+        if not files:
+            pytest.skip(
+                f"{EVT_ROOT_DIR} 下尚無任何 EVT-*.md（EVT 為按需回填的 B 層節點）"
+            )
         return [(f, parse_frontmatter(str(f))) for f in files]
 
     def test_at_least_five_real_evt_files(self, evt_entries):
@@ -301,10 +322,12 @@ class TestGraphTypeTablesRealFlowStepConformance:
 
     def test_emits_and_consumes_reference_existing_evt_ids(self, flow_steps):
         """emission / consumption 語意邊：FlowStep.emits / consumes 須指向真實存在的 EVT id。"""
-        real_evt_ids = {
-            parse_frontmatter(str(f))["id"]
-            for f in EVT_BALANCE_DIR.glob("EVT-BALANCE-*.md")
-        }
+        evt_files = _discover_evt_files()
+        if not evt_files:
+            pytest.skip(
+                f"{EVT_ROOT_DIR} 下尚無任何 EVT-*.md，無法比對 FlowStep 引用"
+            )
+        real_evt_ids = {parse_frontmatter(str(f))["id"] for f in evt_files}
         assert real_evt_ids, "無法從檔名衍生真實 EVT id 集合"
         for step in flow_steps:
             for evt_id in step.get("emits", []) or []:
