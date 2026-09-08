@@ -15,9 +15,36 @@ private let scanCompleteNotificationIdentifier = "scan-complete-notification"
 class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
   private var scanNotifierChannel: FlutterMethodChannel?
 
-  override func applicationDidFinishLaunching(_ notification: Notification) {
-    super.applicationDidFinishLaunching(notification)
+  /// 建立 `scan_notifier` channel 的時機。
+  ///
+  /// **不可改回 `applicationDidFinishLaunching`**：實測（0.1.0-W3-097）該
+  /// callback 在本 app 從未被呼叫——以 `forName: nil` 的全域觀察者掃過整段啟動
+  /// 序列，只見 `WillFinishLaunching`、`DidFinishRestoringWindows`、
+  /// `WillBecomeActive`、`DidBecomeActive`，`NSApplicationDidFinishLaunching`
+  /// 一次都沒有發出。原本掛在該 callback 的註冊因此整段不執行，Dart 端四個方法
+  /// 全部拿到 `MissingPluginException`。
+  ///
+  /// `applicationWillFinishLaunching` 則實測必定執行，且此時 nib 已載入完畢
+  /// （`MainFlutterWindow.awakeFromNib` 先於本 callback），`mainFlutterWindow`
+  /// 與其 `contentViewController` 皆已就緒——`FlutterAppDelegate` 自己也是在這個
+  /// 時點讀 `mainFlutterWindow` 來設定視窗標題。
+  override func applicationWillFinishLaunching(_ notification: Notification) {
+    super.applicationWillFinishLaunching(notification)
+    registerScanNotifierChannel()
+  }
+
+  /// 取得 `FlutterViewController` 並掛上 channel handler。
+  ///
+  /// 取不到 controller 時必須留下可見訊號（quality-baseline 規則 4）：這條路徑
+  /// 失敗會讓整套系統通知在實機零可用，而 Dart 端依 SPEC-003 §2.2 把
+  /// `MissingPluginException` 收斂為 `denied`，畫面上與「使用者拒絕授權」完全同形。
+  /// 沒有這行 log，缺陷就只剩 DevTools Logging 裡一行 WARNING 可循。
+  private func registerScanNotifierChannel() {
     guard let controller = mainFlutterWindow?.contentViewController as? FlutterViewController else {
+      NSLog(
+        "[AppDelegate] 找不到 FlutterViewController，%@ channel 未註冊；"
+          + "系統通知（授權查詢／請求／發送／撤回／點擊回傳）將全面失效",
+        scanNotifierChannelName)
       return
     }
     UNUserNotificationCenter.current().delegate = self
@@ -29,6 +56,7 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
       self?.handle(call, result: result)
     }
     scanNotifierChannel = channel
+    NSLog("[AppDelegate] %@ channel 已註冊", scanNotifierChannelName)
   }
 
   private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

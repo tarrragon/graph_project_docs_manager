@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/main.dart';
+import 'package:graph_project_docs_manager/services/macos_scan_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 
 /// App 啟動後的預設落地畫面錨點（導覽殼的預設項目：Domain 視圖）。
@@ -39,6 +41,23 @@ const List<Viewport> kViewports = [
   (name: 'desktop-large', size: Size(1920, 1080), dpr: 2),
 ];
 
+/// 原生端 `authorizationStatus` 的合法回傳值
+/// （`macos/Runner/AppDelegate.swift` 的 `authorizationString(for:)`，
+/// SPEC-003 §2.2）。
+const Set<String> kAuthorizationResults = {
+  'granted',
+  'denied',
+  'notDetermined',
+};
+
+/// 外層測試全部集中在本檔，**新增測試請加在這裡而不是新增檔案**。
+///
+/// macOS 上一次 `flutter test` 呼叫只能啟動一次 app：`integration_test/` 下放
+/// 第二個檔案時，先跑完的那個佔住 app，後跑的必定以
+/// `Unable to start the app on the device` 收場（實測 0.1.0-W3-097，與檔案內容
+/// 無關，兩種順序皆重現）。`README.md` 記載的
+/// `fvm flutter test integration_test/ -d macos` 會因此變紅，而紅燈的原因與被
+/// 測功能無關，最容易被誤診。
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -116,6 +135,57 @@ void main() {
     });
   });
 
+  group('scan_notifier 原生端接線', () {
+    const MethodChannel channel = MethodChannel(scanNotifierChannelName);
+
+    testWidgets('withdraw 有原生端回應（handler 已註冊）', (tester) async {
+      final error = await _invokeAndCaptureError(
+        () => channel.invokeMethod<void>('withdraw'),
+      );
+
+      expect(
+        error,
+        isNot(isA<MissingPluginException>()),
+        reason:
+            '原生端未註冊 $scanNotifierChannelName 的 handler；'
+            '檢查 macos/Runner/AppDelegate.swift 的 channel 註冊時機',
+      );
+      expect(error, isNull, reason: 'withdraw 不應拋出任何例外');
+    });
+
+    testWidgets('authorizationStatus 回傳真實授權狀態而非接線失敗', (tester) async {
+      String? status;
+      final error = await _invokeAndCaptureError(() async {
+        status = await channel.invokeMethod<String>('authorizationStatus');
+      });
+
+      expect(
+        error,
+        isNot(isA<MissingPluginException>()),
+        reason: '授權查詢打不到原生端；這是接線缺陷，不是 SPEC-003 §2.2 的 denied 降級',
+      );
+      expect(error, isNull, reason: 'authorizationStatus 不應拋出任何例外');
+      expect(
+        status,
+        isIn(kAuthorizationResults),
+        reason: '原生端回傳值須為 AppDelegate.authorizationString(for:) 的三個值之一',
+      );
+    });
+  });
+}
+
+/// 執行 [action] 並回傳它拋出的例外；沒有例外時回傳 `null`。
+///
+/// 直接 `await` 讓例外冒出來也能讓測試變紅，但失敗訊息會是原始的
+/// `MissingPluginException` 堆疊，讀者得自行推斷「這代表原生端沒接線」。
+/// 捕捉後交給 `expect` 的 `reason` 陳述，是為了讓紅燈直接說出診斷結論。
+Future<Object?> _invokeAndCaptureError(Future<void> Function() action) async {
+  try {
+    await action();
+    return null;
+  } catch (error) {
+    return error;
+  }
 }
 
 /// 套用螢幕尺寸，並登記還原，避免污染後續測試。
