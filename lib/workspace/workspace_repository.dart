@@ -210,10 +210,12 @@ class WorkspaceRepository {
     try {
       handle = await _preferencesPort.open();
     } catch (e) {
+      // 不互相抵扣：例外細節留給日誌診斷，reason 是使用者可能看見的欄位，
+      // 固定為穩定文案（與 _inspect() 既有形態一致），不外露原始例外字串。
       _log('還原失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
-      return WorkspaceUnavailable(
+      return const WorkspaceUnavailable(
         lastKnownPath: null,
-        reason: '$e', // i18n-exempt: 例外訊息，非固定使用者文案
+        reason: '無法讀取已儲存的工作資料夾設定', // i18n-exempt: 既有欄位，與 _inspect() 固定文案同形態
       );
     }
     _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log

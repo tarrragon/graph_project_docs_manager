@@ -308,6 +308,25 @@ void main() {
       );
     });
 
+    // 3b-E 回歸鎖：restore() 例外路徑的 reason 曾直接插值原始例外字串
+    // （'$e'），使 _WorkspaceBanner 顯示例外型別名給使用者看。日誌拿例外
+    // 細節、reason 拿固定文案，兩者不互相抵扣，此測試鎖住這條界線。
+    test('G3-2b restore() 例外路徑的 reason 不含例外型別名（不外露原始例外字串）',
+        () async {
+      final repo = WorkspaceRepository(
+        preferencesPort:
+            _FakePreferencesPort(openError: Exception('儲存層失效：磁碟已拔除')),
+      );
+
+      final result = await repo.restore();
+
+      expect(result, isA<WorkspaceUnavailable>());
+      final reason = (result as WorkspaceUnavailable).reason;
+      expect(reason, isNot(contains('Exception')));
+      expect(reason, isNot(contains('Error')));
+      expect(reason, isNot(contains('儲存層失效：磁碟已拔除')));
+    });
+
     test('G3-3 路徑存在且可讀', () async {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
