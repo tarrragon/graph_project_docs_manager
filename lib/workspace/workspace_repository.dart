@@ -31,6 +31,111 @@ class WorkspaceUnavailable extends WorkspaceState {
   final String reason;
 }
 
+/// `chooseFolder()` 的結局。與 [WorkspaceState] 正交：
+/// [WorkspaceState] 描述「資料夾現在能不能用」，本型別描述「這次選取這個
+/// 動作的結局」。
+sealed class ChooseFolderResult {
+  const ChooseFolderResult();
+}
+
+/// 使用者關閉面板未選取。對應現行 null 回傳。
+class ChooseFolderCancelled extends ChooseFolderResult {
+  const ChooseFolderCancelled();
+}
+
+/// 選取面板本身開不起來（MissingPluginException、PlatformException）。
+class ChooseFolderUnavailable extends ChooseFolderResult {
+  const ChooseFolderUnavailable(this.reason);
+  final String reason;
+}
+
+/// 已選定且已持久化：下次啟動 restore() 讀得回來。
+class ChooseFolderSelected extends ChooseFolderResult {
+  const ChooseFolderSelected(this.state);
+  final WorkspaceState state;
+}
+
+/// 已選定但未能記住：本次可用，下次啟動會回到 WorkspaceUnset，使用者需重選。
+class ChooseFolderNotRemembered extends ChooseFolderResult {
+  const ChooseFolderNotRemembered({required this.state, required this.reason});
+  final WorkspaceState state;
+  final String reason;
+}
+
+/// 開啟系統面板讓使用者選取資料夾（file_selector 平台通道）的介面。
+/// 生產預設為 [getDirectoryPath]。
+typedef DirectoryPathPicker = Future<String?> Function();
+
+/// 包裝一個已開啟的偏好設定儲存管道，讓讀寫動作可被替換或觀察。
+abstract interface class WorkspacePreferencesHandle {
+  String? readString(String key);
+  Future<bool> writeString(String key, String value);
+}
+
+/// 開啟偏好設定儲存管道的介面。對應 [SharedPreferences.getInstance] 這個
+/// 「取得儲存管道」的受理時刻載體。
+abstract interface class WorkspacePreferencesPort {
+  Future<WorkspacePreferencesHandle> open();
+}
+
+/// 包裝 dart:io 的資料夾探測動作，讓 `_inspect()` 的兩個呼叫可被觀察或替換。
+abstract interface class WorkspaceDirectoryProbePort {
+  Future<bool> exists(String path);
+  Future<void> readFirstEntry(String path);
+}
+
+/// 日誌投影的接縫。生產預設轉呼 `developer.log(name: 'WorkspaceRepository')`。
+typedef WorkspaceLogSink = void Function(
+  String message, {
+  int? level,
+  Object? error,
+});
+
+class _DefaultWorkspacePreferencesHandle
+    implements WorkspacePreferencesHandle {
+  _DefaultWorkspacePreferencesHandle(this._prefs);
+  final SharedPreferences _prefs;
+
+  @override
+  String? readString(String key) => _prefs.getString(key);
+
+  @override
+  Future<bool> writeString(String key, String value) =>
+      _prefs.setString(key, value);
+}
+
+class _DefaultWorkspacePreferencesPort implements WorkspacePreferencesPort {
+  const _DefaultWorkspacePreferencesPort();
+
+  @override
+  Future<WorkspacePreferencesHandle> open() async {
+    final prefs = await SharedPreferences.getInstance();
+    return _DefaultWorkspacePreferencesHandle(prefs);
+  }
+}
+
+class _DefaultWorkspaceDirectoryProbePort
+    implements WorkspaceDirectoryProbePort {
+  const _DefaultWorkspaceDirectoryProbePort();
+
+  @override
+  Future<bool> exists(String path) => Directory(path).exists();
+
+  @override
+  Future<void> readFirstEntry(String path) async {
+    await Directory(path).list().first;
+  }
+}
+
+void _defaultLogSink(String message, {int? level, Object? error}) {
+  developer.log(
+    message, // i18n-exempt: 開發者 debug log
+    name: 'WorkspaceRepository',
+    level: level ?? 0,
+    error: error,
+  );
+}
+
 /// 管理「使用者選定的工作資料夾」。
 ///
 /// App Sandbox 已關閉（見 macos/Runner/*.entitlements），因此不需要
@@ -38,22 +143,39 @@ class WorkspaceUnavailable extends WorkspaceState {
 /// 代價是 App 無法上架 Mac App Store，那是刻意的取捨：本 App 需要執行
 /// 專案內的 doc CLI，沙盒下做不到。
 class WorkspaceRepository {
+  WorkspaceRepository({
+    DirectoryPathPicker? pickDirectoryPath,
+    WorkspacePreferencesPort? preferencesPort,
+    WorkspaceDirectoryProbePort? directoryProbe,
+    WorkspaceLogSink? logSink,
+  })  : _pickDirectoryPath = pickDirectoryPath ?? getDirectoryPath,
+        _preferencesPort =
+            preferencesPort ?? const _DefaultWorkspacePreferencesPort(),
+        _directoryProbe =
+            directoryProbe ?? const _DefaultWorkspaceDirectoryProbePort(),
+        _log = logSink ?? _defaultLogSink;
+
   static const _pathKey = 'workspace.path';
 
-  /// 開啟系統面板讓使用者選取資料夾。回傳 null 表示使用者取消。
-  Future<WorkspaceState?> chooseFolder() async {
-    final path = await getDirectoryPath();
-    if (path == null) return null;
+  final DirectoryPathPicker _pickDirectoryPath;
+  final WorkspacePreferencesPort _preferencesPort;
+  final WorkspaceDirectoryProbePort _directoryProbe;
+  final WorkspaceLogSink _log;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_pathKey, path);
-    return _inspect(path);
+  /// 開啟系統面板讓使用者選取資料夾。
+  Future<ChooseFolderResult> chooseFolder() async {
+    final path = await _pickDirectoryPath();
+    if (path == null) return const ChooseFolderCancelled();
+
+    final handle = await _preferencesPort.open();
+    await handle.writeString(_pathKey, path);
+    return ChooseFolderSelected(await _inspect(path));
   }
 
   /// App 啟動時呼叫，還原先前選定的資料夾。
   Future<WorkspaceState> restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString(_pathKey);
+    final handle = await _preferencesPort.open();
+    final path = handle.readString(_pathKey);
     if (path == null) return const WorkspaceUnset();
     return _inspect(path);
   }
@@ -65,22 +187,20 @@ class WorkspaceRepository {
   /// 檔案系統節點、能跟著搬移，路徑字串不能。對開發者工具而言可接受 ——
   /// 專案資料夾被搬走時，讓使用者重選一次是合理的。
   Future<WorkspaceState> _inspect(String path) async {
-    final dir = Directory(path);
-    if (!await dir.exists()) {
+    if (!await _directoryProbe.exists(path)) {
       return WorkspaceUnavailable(
         lastKnownPath: path,
-        reason: '資料夾不存在或所在磁碟未掛載',
+        reason: '資料夾不存在或所在磁碟未掛載', // i18n-exempt: 既有欄位，本票未變更其 i18n 狀態
       );
     }
     try {
-      await dir.list().first;
+      await _directoryProbe.readFirstEntry(path);
     } on FileSystemException catch (e) {
       // 降級為 WorkspaceUnavailable 前先留下診斷日誌（觀測性規則 1）：
       // 這裡吞掉的是使用者可自行排除的環境問題（磁碟未掛載、權限被收回），
       // 不是需要中斷 App 的致命例外。
-      developer.log(
+      _log(
         '資料夾探測失敗：$path', // i18n-exempt: 開發者 debug log，非使用者可見文字
-        name: 'WorkspaceRepository',
         level: 900,
         error: e,
       );

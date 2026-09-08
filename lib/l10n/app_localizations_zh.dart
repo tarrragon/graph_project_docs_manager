@@ -55,6 +55,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get changeWorkspaceFolder => '變更資料夾';
 
   @override
+  String get workspaceNotRemembered => '已選定，但下次啟動需重新選擇';
+
+  @override
   String get domainLoading => '正在解析圖譜節點…';
 
   @override

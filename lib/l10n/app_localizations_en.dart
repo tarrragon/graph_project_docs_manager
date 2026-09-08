@@ -57,6 +57,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changeWorkspaceFolder => 'Change Folder';
 
   @override
+  String get workspaceNotRemembered =>
+      'Selected, but you will need to choose again next time';
+
+  @override
   String get domainLoading => 'Resolving graph nodes…';
 
   @override

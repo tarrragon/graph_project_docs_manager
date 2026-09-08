@@ -164,6 +164,12 @@ abstract class AppLocalizations {
   /// **'變更資料夾'**
   String get changeWorkspaceFolder;
 
+  /// 選取資料夾成功但持久化寫入失敗時的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'已選定，但下次啟動需重新選擇'**
+  String get workspaceNotRemembered;
+
   /// SPEC-001 §1 Domain 視圖·載入中狀態的顯示文案
   ///
   /// In zh, this message translates to:

@@ -12,6 +12,7 @@
   "workspaceReady": "Workspace: {path}",
   "workspaceUnavailable": "Cannot access the previous folder: {reason}",
   "changeWorkspaceFolder": "Change Folder",
+  "workspaceNotRemembered": "Selected, but you will need to choose again next time",
   "domainLoading": "Resolving graph nodes…",
   "cancelLoadingAction": "Cancel loading",
   "emptyGraphMessage": "This project has no graph nodes yet",

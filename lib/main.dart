@@ -200,8 +200,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _chooseFolder() async {
-    final state = await _repository.chooseFolder();
-    if (state != null && mounted) setState(() => _workspace = state);
+    final result = await _repository.chooseFolder();
+    if (!mounted) return;
+    switch (result) {
+      case ChooseFolderCancelled():
+        break;
+      case ChooseFolderUnavailable():
+        break;
+      case ChooseFolderSelected(:final state):
+        setState(() => _workspace = state);
+      case ChooseFolderNotRemembered(:final state):
+        // 提示留待 3b-D 批次實作（decision-trigger-binding 規則 1 狀態 b）。
+        setState(() => _workspace = state);
+    }
   }
 
   @override
