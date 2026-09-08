@@ -754,7 +754,7 @@ rg "[一二三四五六七八九十0-9]+(欄位|檔|條|項|類|步)" .claude/ru
 - `.claude/rules/README.md` — 規則系統導引
 - `.claude/references/framework-asset-separation.md` — 框架資產與專案產物職責分離原則
 - `.claude/error-patterns/documentation/DOC-010-framework-references-project-tickets.md` — 框架誤引用專案 ticket 的錯誤模式
-- `.claude/error-patterns/documentation/DOC-GPD-003-variable-count-instantiated-in-prose.md` — 規則 10 的固化來源（可變計數實例化的完整實證與同型前例）
+- `.claude/error-patterns/documentation/DOC-GPD-003-variable-count-instantiated-in-prose.md` — 規則 10 的固化來源（可變計數實例化的完整實證與同型前例）。**該檔另載讀者側處置**：本規則是撰寫端的預防（不寫死可變計數），讀者遇到「計數與其列舉並存且不一致」時該信哪一個，見該檔〈變體：計數與其列舉同時寫下卻不一致〉——結論為列舉是事實、計數是衍生值，分歧本身即衍生值出錯的證據，不得據以推論列舉有缺漏
 - `.claude/error-patterns/documentation/DOC-V1-001-positional-number-reference-stale.md` — 規則 10 的同源前例（位置編號的衍生值失效，規則 10 為計數的衍生值失效，兩者互為交叉引用）
 - `.claude/error-patterns/process-compliance/PC-098-pm-rule-content-contains-current-ticket-id.md` — 第 1 類（論證依據型）引用的執行面 error-pattern（PM 撰寫規則本能引用當下 ticket ID）
 - `.claude/methodologies/comment-writing-methodology.md` — inline comment 記錄決策脈絡（框架 code comment 改依兩層分流指引寫自足 WHY 或引用方法論）
@@ -762,7 +762,8 @@ rg "[一二三四五六七八九十0-9]+(欄位|檔|條|項|類|步)" .claude/ru
 
 ---
 
-**Last Updated**: 2026-09-08
+**Last Updated**: 2026-09-09
+**Version**: 1.14.1 — 相關文件的 `DOC-GPD-003` 列補讀者側處置路由：本規則管撰寫端預防（不寫死可變計數），計數與其列舉並存且不一致時該信哪一個屬處置面，指向該檔新增的〈變體：計數與其列舉同時寫下卻不一致〉，維持「預防在規則、處置在 pattern」的分工
 **Version**: 1.14.0 — 新增規則 10「可變計數不實例化」：文件敘述引用集合大小（欄位數/檔案數/條文數/步驟數）時禁寫死數字，改引用權威名稱，數字只在權威表定義一次；含判準問句、兩類例外（凍結承諾數字／規則 9 實測記錄）、偵測 pattern、強制層邊界（目前無 hook）。檔頭定義句、適用情境表、補充檢查清單、相關文件同步更新；與 DOC-V1-001（位置編號）、DOC-GPD-003（規則來源）互相交叉引用。
 **Version**: 1.13.0 — 「守衛的實際執法邊界」節的逃生閥合法 category 由兩個擴充為三個，新增 `relocation`（既有內容的逐字位置搬移，reason 須含來源檔路徑）；並補一段適用邊界說明——僅限逐字位置搬移，內容經任何編修即不適用，因本類別可驗證性建立在 diff 可比對的機械基準上，編修後即失去此基準，須改走一般五類分類判準。
 **Version**: 1.12.0 — 規則 8 末段邊界群新增「與 decision-trigger-binding 規則 2 的邊界」：說明「框架檔案內的條件式條文想綁 ticket ID」這個交集的處置為收窄規則 2 適用範圍而非在本規則開豁免，判準全文指向 `decision-trigger-binding-details.md` 規則 2.5（論證不在本檔重複）；置於邊界群而非判準章之前，避免邊界內容先於核心操作內容。
