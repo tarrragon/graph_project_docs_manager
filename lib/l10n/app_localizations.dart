@@ -416,6 +416,12 @@ abstract class AppLocalizations {
   /// **'找不到檔案'**
   String get sourceFileNotFoundSnackbarMessage;
 
+  /// SPEC-003 §2.2 外部開啟契約 failed 結果的 SnackBar 文案（§3.1／§3.2／§3.5／§3.6 四處共用）：檔案存在但系統開啟失敗，畫面狀態不變
+  ///
+  /// In zh, this message translates to:
+  /// **'無法以系統預設方式開啟'**
+  String get externalOpenFailedMessage;
+
   /// SPEC-003 §3.2 SnackBar 動作／§3.6 action-nodeDetail-refresh 共用的重新整理文案
   ///
   /// In zh, this message translates to:

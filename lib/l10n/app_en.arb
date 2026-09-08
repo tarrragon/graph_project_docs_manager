@@ -54,6 +54,7 @@
   "gotoGapsReportAction": "Go to Gap Report",
   "openSourceFileAction": "Open Source File",
   "sourceFileNotFoundSnackbarMessage": "File not found",
+  "externalOpenFailedMessage": "Could not open with the default application",
   "refreshAction": "Refresh",
   "viewRelationsAction": "View Relations",
   "backToDomainAction": "Back to Domain View",
