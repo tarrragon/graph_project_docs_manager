@@ -269,5 +269,6 @@ class _StubWorkspaceRepository implements WorkspaceRepository {
   Future<WorkspaceState> restore() async => _state;
 
   @override
-  Future<WorkspaceState?> chooseFolder() async => _state;
+  Future<ChooseFolderResult> chooseFolder() async =>
+      ChooseFolderSelected(_state);
 }
