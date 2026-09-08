@@ -7,6 +7,8 @@
 // （取消、重新掃描、破洞項）可實際操作走通。
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart' show SnackBar;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -169,6 +171,90 @@ void main() {
       await tester.pump();
 
       expect(find.byType(SnackBar), findsOneWidget);
+    });
+  });
+
+  // 檔案存在時的兩種結局（SPEC-003 §3.5 破洞項兩列）。三種結局各驗一次，
+  // 因為缺任何一則回饋都不會使畫面出錯——假成功與靜默失敗都是全綠的
+  // （ARCH-GPD-001）。`gapItemProcessRunnerProvider` 為此存在：真實
+  // `Process.run` 無法被指使失敗，失敗路徑就無從斷言。
+  group('破洞項外部開啟（state-gaps-found）', () {
+    late Directory tempDir;
+    late GapReportFound stateWithExistingFile;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('gap_report_open_');
+      // 用真實暫存檔而非 repo 內路徑：`_openItem` 的存在檢查走真實檔案
+      // 系統，測試不該依賴 repo 目前有哪些檔案。
+      final file = File('${tempDir.path}/README.md')..writeAsStringSync('# x');
+      stateWithExistingFile = GapReportFound([
+        GapReportCategory(
+          id: 'missing-frontmatter',
+          items: [
+            GapReportItem(
+              id: 'spec-readme',
+              filePath: file.path,
+              lineNumber: 1,
+            ),
+          ],
+        ),
+      ]);
+    });
+
+    tearDown(() => tempDir.deleteSync(recursive: true));
+
+    Future<void> tapItem(
+      WidgetTester tester,
+      Future<ProcessResult> Function(String, List<String>) runner,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(
+            () => _FixedNotifier(stateWithExistingFile),
+          ),
+          gapItemProcessRunnerProvider.overrideWithValue(runner),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('card-gaps-spec-readme')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('exitCode 0：提示已在外部開啟', (tester) async {
+      await tapItem(
+        tester,
+        (executable, arguments) async => ProcessResult(1, 0, '', ''),
+      );
+
+      expect(find.text('已在外部開啟'), findsOneWidget);
+      expect(find.text('無法以系統預設方式開啟'), findsNothing);
+    });
+
+    testWidgets('exitCode 非零：提示無法開啟，不回報成功', (tester) async {
+      await tapItem(
+        tester,
+        (executable, arguments) async =>
+            ProcessResult(1, 1, '', 'no application'),
+      );
+
+      expect(find.text('無法以系統預設方式開啟'), findsOneWidget);
+      expect(find.text('已在外部開啟'), findsNothing);
+    });
+
+    testWidgets('呼叫拋例外：提示無法開啟，例外不外傳（不轉阻擋狀態）', (tester) async {
+      await tapItem(
+        tester,
+        (executable, arguments) async =>
+            throw ProcessException(executable, arguments, 'spawn failed', 2),
+      );
+
+      expect(find.text('無法以系統預設方式開啟'), findsOneWidget);
+      expect(find.text('已在外部開啟'), findsNothing);
+      // 例外若外傳會被 FatalErrorGate 收成 BlockedState；此處斷言它停在
+      // `_runOpen` 內，畫面仍是有破洞狀態。
+      expectNoOverflow(tester);
+      expect(AnchorFinder.state(Screen.gaps, 'found'), findsOneWidget);
     });
   });
 }

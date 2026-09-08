@@ -1,13 +1,12 @@
 /// 搜尋輸入框（SPEC-004 §4.12）。
 ///
 /// Ticket 清單工具列搜尋（`input-tickets-search`）。受控輸入：值由呼叫端
-/// 狀態（provider）持有，本元件輸入停止 [Motion.searchDebounce] 後呼叫
-/// [onChanged] 一次（防抖動），清除（清除鈕或刪至空）立即呼叫，不等待
-/// 防抖動（SPEC-004 4.12 互動反應）。IME 組字中（`TextEditingValue.composing`
-/// 非空）不觸發 [onChanged]。
+/// 狀態（provider）持有，本元件每次非組字的文字變更即呼叫 [onChanged] 一
+/// 次，不含防抖動——防抖歸屬服務層，由呼叫端 provider 消費
+/// `Motion.searchDebounce` 決定何時實際過濾（`0.1.0-W3-105` 裁示：防抖由
+/// 服務提供而非元件提供）。IME 組字中（`TextEditingValue.composing` 非空）
+/// 不觸發 [onChanged]。
 library;
-
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -19,7 +18,7 @@ import '../tokens/tokens.dart';
 /// | slot | 必填 | 說明 |
 /// |------|------|------|
 /// | [value] | 是（受控） | 呼叫端狀態持有的目前值 |
-/// | [onChanged] | 是 | 防抖動後（或清除時立即）呼叫一次 |
+/// | [onChanged] | 是 | 每次非組字的文字變更呼叫一次（不防抖動） |
 /// | [placeholder] | 否 | 預設 [AppLocalizations.searchPlaceholder]（強語意預設） |
 /// | [testKey] | 是（`input-tickets-search`） | 呼叫端依 slot 契約提供的定址 key |
 class SearchField extends StatefulWidget {
@@ -34,7 +33,7 @@ class SearchField extends StatefulWidget {
   /// 呼叫端狀態持有的目前值（受控）。
   final String value;
 
-  /// 防抖動後（或清除時立即）呼叫一次；清空傳入空字串。
+  /// 每次非組字的文字變更呼叫一次；清空傳入空字串。防抖由呼叫端服務層承擔。
   final ValueChanged<String> onChanged;
 
   /// 呼叫端定址 key（SPEC-004 4.12 slot 契約）。
@@ -50,7 +49,6 @@ class SearchField extends StatefulWidget {
 class _SearchFieldState extends State<SearchField> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
-  Timer? _debounceTimer;
   bool _hasFocus = false;
 
   /// 上一次視為「文字實際變更」的值，供 [_handleTextChanged] 分辨真正的
@@ -79,7 +77,6 @@ class _SearchFieldState extends State<SearchField> {
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
     _controller
       ..removeListener(_handleTextChanged)
       ..dispose();
@@ -93,10 +90,10 @@ class _SearchFieldState extends State<SearchField> {
     setState(() => _hasFocus = _focusNode.hasFocus);
   }
 
-  /// 值改變後排程防抖動；清空（清除鈕或刪至空）立即觸發，不排程。
-  /// 組字中（[TextEditingValue.composing] 為非塌陷範圍）不觸發任何呼叫
-  /// （SPEC-004 4.12 互動反應「IME 組字中」）。純選取或焦點變更（`text`
-  /// 未變）不視為文字變更，不觸發 [SearchField.onChanged]（見 [_lastKnownText]）。
+  /// 值改變即呼叫 [SearchField.onChanged] 一次（含清空為空字串），不排程延遲
+  /// ——防抖由呼叫端服務層承擔。組字中（[TextEditingValue.composing] 為非塌陷
+  /// 範圍）不觸發任何呼叫（SPEC-004 4.12「IME 組字中」）。純選取或焦點變更
+  /// （`text` 未變）不視為文字變更，不觸發（見 [_lastKnownText]）。
   void _handleTextChanged() {
     setState(() {}); // 更新清除鈕顯示與 Semantics.value
 
@@ -108,14 +105,7 @@ class _SearchFieldState extends State<SearchField> {
     if (isComposing) return;
 
     _lastKnownText = text;
-    _debounceTimer?.cancel();
-    if (text.isEmpty) {
-      widget.onChanged('');
-      return;
-    }
-    _debounceTimer = Timer(Motion.searchDebounce, () {
-      widget.onChanged(text);
-    });
+    widget.onChanged(text);
   }
 
   void _handleClear() {

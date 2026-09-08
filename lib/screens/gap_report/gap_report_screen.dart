@@ -5,6 +5,7 @@
 /// 承載，本畫面只處理狀態內的退出路徑（取消、重新掃描、破洞項）。
 library;
 
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/material.dart' show Icons;
@@ -16,6 +17,22 @@ import '../../l10n/app_localizations.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
 import 'scan_notification_controller.dart';
+
+const String _tag = 'GapReportScreen';
+
+/// 外部開啟的行程執行接縫（暫時）。
+///
+/// 存在理由是可測性：`_openItem` 的兩條失敗路徑（exitCode 非零、呼叫本身
+/// 拋例外）在 `Process.run` 直接寫死時無法以替身抵達，而失敗路徑正是本畫面
+/// 過去回報假成功的地方。此 provider 只把 `dart:io` 的呼叫拉成可覆寫的一級
+/// 函式，**不定義結果語意**——三結果契約（`opened` / `notFound` / `failed`）
+/// 屬 `ExternalOpener`（SPEC-003 §2.2），由 `0.1.0-W1-068` 落地；該票落地後
+/// 本 provider 與 `_openItem` 內的分支一併由注入的 `ExternalOpener` 取代。
+@visibleForTesting
+final gapItemProcessRunnerProvider =
+    Provider<Future<ProcessResult> Function(String, List<String>)>(
+      (ref) => Process.run,
+    );
 
 /// 破洞報告畫面。
 class GapReportScreen extends ConsumerWidget {
@@ -170,9 +187,10 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
     );
   }
 
-  /// 破洞項（SPEC-003 §3.5）：檔案存在則以系統預設方式開啟並提示已開啟；
-  /// 不存在則提示找不到檔案，帶重新掃描動作，停留 `Motion.snackBarWithAction`
-  /// （由 [AppSnackBar.show] 承載，本函式不重複時限決策）。
+  /// 破洞項（SPEC-003 §3.5）：三種結局各有一則對應的回饋，缺任一則即為
+  /// 靜默失敗或假成功（ARCH-GPD-001）——檔案不存在提示找不到檔案並帶重新
+  /// 掃描動作；開啟成功提示已開啟；開啟失敗提示無法以系統預設方式開啟。
+  /// 停留時間由 [AppSnackBar.show] 承載，本函式不重複時限決策。
   Future<void> _openItem(BuildContext context, GapReportItem item) async {
     final l10n = AppLocalizations.of(context);
     final exists = File(item.filePath).existsSync();
@@ -188,9 +206,41 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
       );
       return;
     }
-    await Process.run('open', [item.filePath]);
+    final failure = await _runOpen(item.filePath);
+    if (failure != null) {
+      developer.log(
+        '外部開啟失敗（${item.filePath}）：$failure', // i18n-exempt: 開發者診斷 log
+        name: _tag,
+        level: 900,
+      );
+    }
     if (!context.mounted) return;
-    AppSnackBar.show(context, message: l10n.openedExternallyMessage);
+    AppSnackBar.show(
+      context,
+      message: failure == null
+          ? l10n.openedExternallyMessage
+          : l10n.externalOpenFailedMessage,
+    );
+  }
+
+  /// 以系統預設方式開啟 [path]，成功回傳 `null`，失敗回傳診斷字串。
+  ///
+  /// 兩種失敗在此合為同一個結局：非零 exitCode 與呼叫本身拋出的例外，對
+  /// 使用者而言都是「這個檔案沒有被打開」。例外不外傳的理由是比例——讓它
+  /// 傳播會由 `FatalErrorGate` 把整個畫面轉為阻擋狀態，而收斂之後的狀態
+  /// 必須有可見表現（ARCH-GPD-001 解決方案 3），此處即那一則失敗 SnackBar。
+  Future<String?> _runOpen(String path) async {
+    developer.log('外部開啟：$path', name: _tag); // i18n-exempt: 開發者診斷 log
+    try {
+      final result = await ref.read(gapItemProcessRunnerProvider)('open', [
+        path,
+      ]);
+      if (result.exitCode == 0) return null;
+      // i18n-exempt: 開發者診斷字串，只進 developer.log 不進畫面
+      return 'exitCode=${result.exitCode} stderr=${result.stderr}';
+    } catch (error) {
+      return '$error';
+    }
   }
 }
 

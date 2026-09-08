@@ -85,6 +85,37 @@ void main() {
       final box = tester.getSize(find.byKey(testKey));
       expect(box.height, greaterThanOrEqualTo(LayoutSize.hitTargetMin));
     });
+
+    // hitTargetMin 是命中區下界，不是內容容器高度上界。把它當固定高度用會讓
+    // 內容（iconLg + 內距 2 × Space.sm）被壓進 28 邏輯像素內靜默裁切，實機上
+    // 表現為工作區名的中文字形上下緣被切。上面的「高不小於 hitTargetMin」與
+    // 所有 expectNoOverflow 對此形態皆恆成立，故另立本測試（W3-094）。
+    for (final locale in kTestLocales) {
+      testWidgetsAtEachSize(
+        '內容不被固定高度裁切 locale=${locale.languageCode}',
+        (tester, size) async {
+          await pumpHarness(
+            tester,
+            size: size,
+            locale: locale,
+            child: ProjectSwitcherEntry(
+              projectName: TestCopy.projectName,
+              isExpanded: false,
+              onTap: () {},
+              testKey: testKey,
+            ),
+          );
+
+          expectNoVerticalClip(
+            tester,
+            find.descendant(
+              of: find.byKey(testKey),
+              matching: find.byType(Row),
+            ),
+          );
+        },
+      );
+    }
   });
 
   group('最長測試文案截斷', () {

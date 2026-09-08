@@ -198,6 +198,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sourceFileNotFoundSnackbarMessage => 'File not found';
 
   @override
+  String get externalOpenFailedMessage =>
+      'Could not open with the default application';
+
+  @override
   String get refreshAction => 'Refresh';
 
   @override

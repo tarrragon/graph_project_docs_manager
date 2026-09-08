@@ -194,6 +194,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sourceFileNotFoundSnackbarMessage => '找不到檔案';
 
   @override
+  String get externalOpenFailedMessage => '無法以系統預設方式開啟';
+
+  @override
   String get refreshAction => '重新整理';
 
   @override

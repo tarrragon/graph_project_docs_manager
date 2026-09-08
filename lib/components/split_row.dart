@@ -3,7 +3,9 @@
 /// 兩個變體：[SplitRow.header]（固定高 [LayoutSize.headerHeight]、底邊框、
 /// `surfaceBase` 底）、[SplitRow.footer]（固定高 [LayoutSize.rowHeightRelaxed]、
 /// 頂邊框）。leading 填滿剩餘寬並截斷，trailing 固有寬，兩者間最小間距
-/// [Space.md]（§5.3 排列不變式，呼叫端不得覆寫）。
+/// [Space.md]（§5.3 排列不變式，呼叫端不得覆寫）。水平內距由本容器承載
+/// （頁首 [Space.xl]、底列與詳情卡 [Space.sm]）——父容器 `PageColumn` 的
+/// [Space.xl] 只包內容 slot，不及於頁首 slot。
 ///
 /// `compactHeader` 修飾參數：詳情卡內的 `header` 變體不套固定高與邊框
 /// （SPEC-004 §4.29「變體」表 `header` 列）。
@@ -83,14 +85,28 @@ class SplitRow extends StatelessWidget {
     return null;
   }
 
+  /// 水平內距（§4.29「使用 design token」間距列）。
+  ///
+  /// 頁首 [Space.xl]；底列與詳情卡標題列 [Space.sm]。垂直方向不設內距——
+  /// 兩個固定高變體的高由 [_fixedHeight] 鎖定，內距會壓縮子件可用高。
+  double get _horizontalPadding {
+    if (variant == SplitRowVariant.header && !compactHeader) {
+      return Space.xl;
+    }
+    return Space.sm;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final row = Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(child: leading),
-        if (trailing != null) ...[SizedBox(width: Space.md), trailing!],
-      ],
+    final row = Padding(
+      padding: EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(child: leading),
+          if (trailing != null) ...[SizedBox(width: Space.md), trailing!],
+        ],
+      ),
     );
 
     final height = _fixedHeight;
