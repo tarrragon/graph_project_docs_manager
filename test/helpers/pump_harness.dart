@@ -125,6 +125,41 @@ void expectNoOverflow(WidgetTester tester) {
   expect(tester.takeException(), isNull, reason: '渲染拋出例外（多為溢位）');
 }
 
+/// 佈局比較容差：固有高度與實際高度可能落在同一值的浮點誤差兩側，
+/// 0.01 邏輯像素遠小於任何可見裁切（最小可見量為 1 邏輯像素）。
+const double _kLayoutEpsilon = 0.01;
+
+/// 斷言 [content] 命中的節點沒有被祖先壓得比自身內容所需高度還矮。
+///
+/// [expectNoOverflow] 對這一類缺陷零鑑別力：`SizedBox(height:)` 給子項的是
+/// **緊約束**，子項只會照做並把超出的部分靜默裁切，不拋 `FlutterError`，於是
+/// 「不溢位」測試全綠而畫面上字形與圖示被切掉上下緣。本函式改問另一個問題
+/// ——這個節點拿到的高度，夠不夠放下它自己的內容（`getMaxIntrinsicHeight`）？
+///
+/// | 參數 | 說明 |
+/// |------|------|
+/// | `content` | 被固定高度祖先包住的內容節點，通常是最內層的 `Row` / `Column` |
+///
+/// [content] 必須落在固定高度容器**之內**：對容器本身求固有高度會被它自己的
+/// `additionalConstraints` 夾回同一個值，斷言恆成立而沒有鑑別力。
+///
+/// 文字裁切在 widget test 裡不會自行顯形——測試字型每個字符高度恰等於
+/// `fontSize`，中文字形較高的 ascender／descender 只在實機出現。本斷言驗的是
+/// 造成裁切的**結構**（容器高度小於內容固有高度），與字型無關，因此在測試
+/// 環境同樣紅燈。
+void expectNoVerticalClip(WidgetTester tester, Finder content) {
+  final box = tester.renderObject<RenderBox>(content);
+  final intrinsicHeight = box.getMaxIntrinsicHeight(box.size.width);
+  expect(
+    box.size.height,
+    greaterThanOrEqualTo(intrinsicHeight - _kLayoutEpsilon),
+    // i18n-exempt: 測試紅燈訊息，讀者是開發者，不進 App 的 ARB
+    reason:
+        '內容固有高度 $intrinsicHeight，實得 ${box.size.height}：' // i18n-exempt
+        '祖先的固定高度把內容壓小，超出的部分被靜默裁切', // i18n-exempt
+  );
+}
+
 /// 與 `DocsManagerApp` 同序的外殼，但 body 由測試提供。
 class _AppChrome extends StatelessWidget {
   const _AppChrome({

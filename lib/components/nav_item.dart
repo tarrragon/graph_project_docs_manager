@@ -67,8 +67,14 @@ class NavItem extends StatelessWidget {
       button: true,
       label: label,
       selected: isSelected,
-      child: SizedBox(
-        height: LayoutSize.hitTargetMin,
+      // `hitTargetMin` 是**命中區下界**（SPEC-004 §1「可點元件的最小尺寸不得
+      // 小於之」），不是內容容器的高度上界。以 `SizedBox(height:)` 釘死等於把
+      // 無障礙下限反過來當排版上限用：內容（`iconLg` + 2 × `Space.sm`）需要的
+      // 高度超過它，`SizedBox` 對超出部分是靜默裁切而非拋例外，實機上表現為
+      // 中文字形上下緣被切。改為下界約束後高度隨內容固有值增長，SPEC-004 4.7
+      // 尺寸契約的「高固有」與「最小命中區」同時成立。
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: LayoutSize.hitTargetMin),
         child: InkWell(
           key: testKey,
           onTap: onTap,

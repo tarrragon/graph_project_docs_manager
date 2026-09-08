@@ -84,8 +84,12 @@ class _ProjectSwitcherEntryState extends State<ProjectSwitcherEntry> {
       button: true,
       label: semanticsLabel,
       expanded: widget.isExpanded,
-      child: SizedBox(
-        height: LayoutSize.hitTargetMin,
+      // 與 `NavItem` 同一形態：`hitTargetMin` 是命中區下界而非高度上界，釘死
+      // 會把內容（`iconLg` + 2 × `Space.sm`）壓進 28 邏輯像素內靜默裁切，實機
+      // 上工作區名的中文字形上下緣被切。改下界約束後高度隨內容增長，符合
+      // SPEC-004 4.8 尺寸契約的「高固有」。
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: LayoutSize.hitTargetMin),
         child: Shortcuts(
           shortcuts: const {
             SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
