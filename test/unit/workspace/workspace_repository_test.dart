@@ -437,6 +437,33 @@ void main() {
       );
     });
 
+    // Phase 4b 回歸鎖：_inspect() 的 FileSystemException 分支曾把
+    // e.osError?.message（OS 語系文字）塞進 reason；改為固定文案常數後，
+    // 用一個帶有明顯可辨識訊息的 OSError 驗證該訊息不會外露到 reason。
+    // 比照 G3-2b 的裝置，鎖住 WorkspaceUnavailable.reason 契約的第二條
+    // 產生路徑（restore() 例外路徑已由 G3-2b 鎖定）。
+    test(
+        'G6-2b _inspect 的 FileSystemException 分支 reason 不含 OSError '
+        '原始訊息（不外露 OS 語系文字）', () async {
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakePreferencesPort(readValue: '/tmp/broken'),
+        directoryProbe: _FakeDirectoryProbe(
+          readFirstEntryError: const FileSystemException(
+            '讀取失敗',
+            '/tmp/broken',
+            OSError('Operation not permitted', 1),
+          ),
+        ),
+      );
+
+      final result = await repo.restore();
+
+      expect(result, isA<WorkspaceUnavailable>());
+      final reason = (result as WorkspaceUnavailable).reason;
+      expect(reason, isNot(contains('Operation not permitted')));
+      expect(reason, isNotEmpty);
+    });
+
     test('G6-3 readFirstEntry 拋 StateError（空資料夾）→ WorkspaceReady（不是失敗）',
         () async {
       final log = _LogRecorder();

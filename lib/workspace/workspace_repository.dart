@@ -22,6 +22,11 @@ class WorkspaceReady extends WorkspaceState {
 
 /// 先前選過資料夾，但現在無法使用（已刪除、外接磁碟未掛載、權限變更）。
 /// [lastKnownPath] 供 UI 提示使用者是哪一個。
+///
+/// [reason] 是使用者可見欄位（`main.dart` 的 `_WorkspaceBanner` 直接以
+/// `l10n.workspaceUnavailable(reason)` 渲染）：契約規定只能是固定文案
+/// 常數（見本檔 `_reasonFolderMissing` 等），禁止插值原始例外字串或
+/// 平台回傳的 OS 語系訊息——那些內容語言不受控，且對使用者無行動意義。
 class WorkspaceUnavailable extends WorkspaceState {
   const WorkspaceUnavailable({
     required this.lastKnownPath,
@@ -44,6 +49,11 @@ class ChooseFolderCancelled extends ChooseFolderResult {
 }
 
 /// 選取面板本身開不起來（MissingPluginException、PlatformException）。
+///
+/// [reason] 是診斷用欄位（例外字串或訊息），`main.dart` 的呼叫端目前不
+/// 消費此欄位——使用者看到的是固定文案 SnackBar，不是 [reason] 本身。
+/// 保留 [reason] 是為了讓 `workspace_repository_test.dart` 的失敗分支
+/// 斷言（不互相抵扣：日誌與回傳分別驗證）有內容可比對，非死程式碼。
 class ChooseFolderUnavailable extends ChooseFolderResult {
   const ChooseFolderUnavailable(this.reason);
   final String reason;
@@ -56,6 +66,9 @@ class ChooseFolderSelected extends ChooseFolderResult {
 }
 
 /// 已選定但未能記住：本次可用，下次啟動會回到 WorkspaceUnset，使用者需重選。
+///
+/// [reason] 是診斷用欄位，`main.dart` 的呼叫端目前不消費此欄位（見
+/// [ChooseFolderUnavailable] 文件同一契約）。
 class ChooseFolderNotRemembered extends ChooseFolderResult {
   const ChooseFolderNotRemembered({required this.state, required this.reason});
   final WorkspaceState state;
@@ -136,6 +149,21 @@ void _defaultLogSink(String message, {int? level, Object? error}) {
   );
 }
 
+/// [WorkspaceUnavailable.reason] 固定文案：資料夾整個不存在或所在磁碟未掛載。
+// i18n-exempt: 使用者可見欄位，本票沿用既有中文字面慣例，未接 ARB。
+const _reasonFolderMissing = '資料夾不存在或所在磁碟未掛載';
+
+/// [WorkspaceUnavailable.reason] 固定文案：資料夾存在但內容讀取失敗
+/// （權限被收回、磁碟 I/O 異常等）。刻意不插入 [FileSystemException] 的
+/// `osError?.message`——那是 OS 語系文字，不受應用程式語系控制。
+// i18n-exempt: 使用者可見欄位，本票沿用既有中文字面慣例，未接 ARB。
+const _reasonFolderUnreadable = '無法讀取資料夾內容';
+
+/// [WorkspaceUnavailable.reason] 固定文案：偏好設定儲存管道本身開不起來
+/// （`SharedPreferences.getInstance()` 拋例外）。
+// i18n-exempt: 使用者可見欄位，本票沿用既有中文字面慣例，未接 ARB。
+const _reasonPreferencesUnavailable = '無法讀取已儲存的工作資料夾設定';
+
 /// 管理「使用者選定的工作資料夾」。
 ///
 /// App Sandbox 已關閉（見 macos/Runner/*.entitlements），因此不需要
@@ -177,30 +205,43 @@ class WorkspaceRepository {
       return const ChooseFolderCancelled();
     }
     _log('已選取：$path'); // i18n-exempt: 開發者 debug log
+    return _persistAndInspect(path);
+  }
 
+  /// 持久化 [path] 並探測其可用性，回傳對應的 [ChooseFolderResult]。
+  ///
+  /// [_inspect] 刻意放在 try/catch **之外**、且只呼叫一次：持久化的
+  /// 成敗與資料夾本身是否可用是兩件事，若把 [_inspect] 留在同一個 try
+  /// 內，它拋出的非吞型例外會被本函式的 catch 誤判為「持久化失敗」，
+  /// 且該 catch 分支若仍呼叫一次 `_inspect(path)` 組裝回傳值，就會對
+  /// 同一個 path 探測兩次。
+  Future<ChooseFolderResult> _persistAndInspect(String path) async {
     _log(
       '準備持久化，key=$_pathKey，path=$path', // i18n-exempt: 開發者 debug log
     );
+    String? failureReason;
     try {
       final handle = await _preferencesPort.open();
       _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
       final success = await handle.writeString(_pathKey, path);
-      if (!success) {
+      if (success) {
+        _log('已持久化'); // i18n-exempt: 開發者 debug log
+      } else {
         _log(
           '持久化失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
           level: 900,
         );
-        return ChooseFolderNotRemembered(
-          state: await _inspect(path),
-          reason: '寫入回報 false', // i18n-exempt: 開發者 debug log
-        );
+        failureReason = '寫入回報 false'; // i18n-exempt: 診斷用回傳值，非 log
       }
-      _log('已持久化'); // i18n-exempt: 開發者 debug log
-      return ChooseFolderSelected(await _inspect(path));
     } catch (e) {
       _log('持久化失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
-      return ChooseFolderNotRemembered(state: await _inspect(path), reason: '$e');
+      failureReason = '$e'; // i18n-exempt: 診斷用回傳值，非 log
     }
+    final state = await _inspect(path);
+    if (failureReason == null) {
+      return ChooseFolderSelected(state);
+    }
+    return ChooseFolderNotRemembered(state: state, reason: failureReason);
   }
 
   /// App 啟動時呼叫，還原先前選定的資料夾。
@@ -211,11 +252,12 @@ class WorkspaceRepository {
       handle = await _preferencesPort.open();
     } catch (e) {
       // 不互相抵扣：例外細節留給日誌診斷，reason 是使用者可能看見的欄位，
-      // 固定為穩定文案（與 _inspect() 既有形態一致），不外露原始例外字串。
+      // 固定為穩定文案常數（見 WorkspaceUnavailable 契約），不外露原始
+      // 例外字串。
       _log('還原失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
       return const WorkspaceUnavailable(
         lastKnownPath: null,
-        reason: '無法讀取已儲存的工作資料夾設定', // i18n-exempt: 既有欄位，與 _inspect() 固定文案同形態
+        reason: _reasonPreferencesUnavailable,
       );
     }
     _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
@@ -239,7 +281,7 @@ class WorkspaceRepository {
     if (!await _directoryProbe.exists(path)) {
       return WorkspaceUnavailable(
         lastKnownPath: path,
-        reason: '資料夾不存在或所在磁碟未掛載', // i18n-exempt: 既有欄位，本票未變更其 i18n 狀態
+        reason: _reasonFolderMissing,
       );
     }
     _log('讀取資料夾內容：$path'); // i18n-exempt: 開發者 debug log
@@ -248,7 +290,8 @@ class WorkspaceRepository {
     } on FileSystemException catch (e) {
       // 降級為 WorkspaceUnavailable 前先留下診斷日誌（觀測性規則 1）：
       // 這裡吞掉的是使用者可自行排除的環境問題（磁碟未掛載、權限被收回），
-      // 不是需要中斷 App 的致命例外。
+      // 不是需要中斷 App 的致命例外。原始 OSError 訊息只進日誌，不進
+      // reason——那是 OS 語系文字，不受應用程式語系控制。
       _log(
         '資料夾探測失敗：$path', // i18n-exempt: 開發者 debug log，非使用者可見文字
         level: 900,
@@ -256,7 +299,7 @@ class WorkspaceRepository {
       );
       return WorkspaceUnavailable(
         lastKnownPath: path,
-        reason: e.osError?.message ?? '無法讀取資料夾內容', // i18n-exempt: 既有欄位，本票未變更其 i18n 狀態
+        reason: _reasonFolderUnreadable,
       );
     } on StateError {
       // 空資料夾：list().first 找不到元素，但資料夾本身可讀。

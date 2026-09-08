@@ -1,8 +1,9 @@
 // G7｜UI 消費端四分支（0.1.0-W3-121 Solution Phase 2 §2.3）：驗證
 // `_HomePageState._chooseFolder()` 對 [ChooseFolderResult] 四個 variant 的
-// exhaustive switch 反應。裁決 A 的呼叫端義務要求 NotRemembered／Unavailable
-// 兩分支各自要有使用者可見的提示；3b-A 只完成 state 更新，提示留待 3b-D，
-// 故 G7-2／G7-4 的提示斷言在本批預期紅燈。
+// exhaustive switch 反應。落實裁決 A 的呼叫端義務——NotRemembered／
+// Unavailable 兩分支各自鎖定一個使用者可見提示的契約：NotRemembered 顯示
+// 「下次啟動需重新選擇」文字提示（G7-2），Unavailable 顯示 SnackBar
+// 錯誤提示（G7-4），皆與 3b-C 的日誌事件分別成立、互不抵扣。
 library;
 
 import 'package:flutter/material.dart';
@@ -59,7 +60,8 @@ void main() {
         find.text(l10n.workspaceReady('/tmp/g7-not-remembered')),
         findsOneWidget,
       );
-      // 提示留待 3b-D 實作（decision-trigger-binding 規則 1 狀態 b）。
+      // 鎖定裁決 A 的呼叫端義務：state 攜帶而非取代（見上方斷言），
+      // 且另有獨立的使用者可見提示（與 3b-C 的日誌事件分別成立）。
       expect(find.text(l10n.workspaceNotRemembered), findsOneWidget);
     });
 
@@ -98,7 +100,8 @@ void main() {
 
       // 狀態不變：初始文案仍在。
       expect(find.text(l10n.folderAccessRationale), findsOneWidget);
-      // 錯誤提示：3b-D 實作前預期找不到，紅燈鎖定裁決 A 的呼叫端義務。
+      // 鎖定裁決 A 的呼叫端義務：面板不可用時仍要有使用者可見的錯誤提示，
+      // 不能只更新內部狀態或只寫日誌。
       expect(find.byType(SnackBar), findsOneWidget);
     });
   });
