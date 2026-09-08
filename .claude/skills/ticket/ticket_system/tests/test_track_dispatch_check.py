@@ -15,6 +15,12 @@
 `--prune`（3-F M-6）：清理「[STALE] 且 session 不存在」的條目，取代文件
 原載「見 [STALE] 手動清理 dispatch-active.json」的無痕跡做法，見
 TestPruneFlag。
+
+`--prune` 票終態判準（0.2.1-W3-1371）：新增第二條獨立清理判準——
+ticket_id 非空且對應票已為終態（completed/closed）即清理，不要求
+[STALE] 或 session 存在性（票已終態代表對應派發不可能仍在進行，判準
+權威來源是票狀態本身，不需 session 存活佐證）。此判準不受 registry
+是否可用影響，見 TestPruneTerminalTicket / TestIsTicketTerminal。
 """
 
 from __future__ import annotations
@@ -213,6 +219,41 @@ class TestPruneFlag:
         remaining = json.loads(dispatch_path.read_text(encoding="utf-8"))
         assert remaining["dispatches"] == []
 
+    def test_prune_removes_empty_ticket_id_entry_after_session_confirmed_gone(
+        self, tmp_path, monkeypatch
+    ):
+        """反事實測試（0.2.1-W3-1371 acceptance）：空 `ticket_id`（無票
+        派發）記錄，agent 終止後（session 已不在 pm-registry）立即消失，
+        不等 24 小時的 `cleanup_expired` TTL——本測試全程不呼叫
+        `cleanup_expired`，`dispatched_at` 僅 65 分鐘前（距 24 小時 TTL
+        邊界甚遠，僅剛過 [STALE] 60 分鐘門檻），故條目消失唯一可能原因
+        是本函式的 session 存活判準（既有機制，獨立於 ticket 事件），
+        非 24 小時逾時路徑。"""
+        from datetime import datetime, timedelta, timezone
+
+        just_past_stale_threshold = (
+            datetime.now(timezone.utc) - timedelta(minutes=65)
+        ).isoformat()
+        dispatch_path = _write_dispatch_file(tmp_path, {
+            "dispatches": [
+                {
+                    "agent_description": "no-ticket-reviewer",
+                    "ticket_id": "",
+                    "dispatched_at": just_past_stale_threshold,
+                    "session_id": "sess-terminated",
+                },
+            ],
+        })
+        monkeypatch.setattr(mod, "_load_registry_session_ids", lambda: set())
+        monkeypatch.setattr(mod, "_get_prune_logger", lambda: None)
+
+        rc, out, err = _run(tmp_path, monkeypatch, prune=True)
+
+        assert rc == 0
+        assert "[PASS]" in out
+        remaining = json.loads(dispatch_path.read_text(encoding="utf-8"))
+        assert remaining["dispatches"] == []
+
     def test_prune_keeps_stale_entry_with_existing_session(self, tmp_path, monkeypatch):
         """session_id 仍在 registry 內（heartbeat 慢但仍存活）→ 不清理，
         即使該條目年齡已逾 [STALE] 門檻。"""
@@ -338,3 +379,259 @@ class TestPruneFlag:
         content = log_files[0].read_text(encoding="utf-8")
         assert "logged-agent" in content
         assert "sess-dead" in content
+
+
+class TestIsTicketTerminal:
+    """`mod._is_ticket_terminal` 單元測試（0.2.1-W3-1371）：判斷 ticket_id
+    對應的票是否為終態，保守失敗（查不到 / 例外一律回傳 False）。"""
+
+    def test_ticket_id_without_version_returns_false(self):
+        assert mod._is_ticket_terminal("not-a-ticket-id") is False
+
+    def test_ticket_not_found_returns_false(self, monkeypatch):
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_loader.load_ticket",
+            lambda version, tid: None,
+        )
+        assert mod._is_ticket_terminal("0.2.1-W3-1") is False
+
+    def test_completed_status_returns_true(self, monkeypatch):
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_loader.load_ticket",
+            lambda version, tid: {"status": "completed"},
+        )
+        assert mod._is_ticket_terminal("0.2.1-W3-1") is True
+
+    def test_closed_status_returns_true(self, monkeypatch):
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_loader.load_ticket",
+            lambda version, tid: {"status": "closed"},
+        )
+        assert mod._is_ticket_terminal("0.2.1-W3-1") is True
+
+    def test_in_progress_status_returns_false(self, monkeypatch):
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_loader.load_ticket",
+            lambda version, tid: {"status": "in_progress"},
+        )
+        assert mod._is_ticket_terminal("0.2.1-W3-1") is False
+
+    def test_load_ticket_exception_returns_false(self, monkeypatch):
+        def _raise(version, tid):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_loader.load_ticket", _raise
+        )
+        assert mod._is_ticket_terminal("0.2.1-W3-1") is False
+
+
+class TestPruneTerminalTicket:
+    """`--prune` 的票終態判準（0.2.1-W3-1371）：獨立於 [STALE]／session
+    存在性，ticket_id 對應票已終態即清理。"""
+
+    def test_removes_terminal_ticket_entry_even_when_not_stale(
+        self, tmp_path, monkeypatch
+    ):
+        """未逾 [STALE] 門檻的新近記錄，只要對應票已終態即清理——票終態
+        判準不要求時間新鮮度。"""
+        from datetime import datetime, timezone
+
+        recent = datetime.now(timezone.utc).isoformat()
+        _write_dispatch_file(tmp_path, {
+            "dispatches": [
+                {
+                    "agent_description": "fresh-but-ticket-done",
+                    "ticket_id": "0.2.1-W3-1275",
+                    "dispatched_at": recent,
+                },
+            ],
+        })
+        monkeypatch.setattr(mod, "_load_registry_session_ids", lambda: None)
+        monkeypatch.setattr(mod, "_is_ticket_terminal", lambda tid: tid == "0.2.1-W3-1275")
+        monkeypatch.setattr(mod, "_get_prune_logger", lambda: None)
+
+        rc, out, err = _run(tmp_path, monkeypatch, prune=True)
+
+        assert rc == 0
+        assert "[PASS]" in out
+        assert "已清理 1 筆" in out
+
+    def test_removes_terminal_ticket_entry_even_when_session_still_alive(
+        self, tmp_path, monkeypatch
+    ):
+        """session 仍在 registry 內（原判準會保留）不影響票終態判準——
+        票已完成即代表對應派發不可能仍在進行，不需 session 存活佐證。"""
+        from datetime import datetime, timedelta, timezone
+
+        old = (datetime.now(timezone.utc) - timedelta(minutes=90)).isoformat()
+        dispatch_path = _write_dispatch_file(tmp_path, {
+            "dispatches": [
+                {
+                    "agent_description": "ticket-done-session-alive",
+                    "ticket_id": "0.2.1-W3-1275",
+                    "dispatched_at": old,
+                    "session_id": "sess-alive",
+                },
+            ],
+        })
+        monkeypatch.setattr(mod, "_load_registry_session_ids", lambda: {"sess-alive"})
+        monkeypatch.setattr(mod, "_is_ticket_terminal", lambda tid: True)
+        monkeypatch.setattr(mod, "_get_prune_logger", lambda: None)
+
+        rc, out, err = _run(tmp_path, monkeypatch, prune=True)
+
+        assert rc == 0
+        remaining = json.loads(dispatch_path.read_text(encoding="utf-8"))
+        assert remaining["dispatches"] == []
+
+    def test_keeps_entry_with_non_terminal_ticket(self, tmp_path, monkeypatch):
+        """非終態票 + 不符合原判準（session 存在）→ 保留。"""
+        from datetime import datetime, timedelta, timezone
+
+        old = (datetime.now(timezone.utc) - timedelta(minutes=90)).isoformat()
+        _write_dispatch_file(tmp_path, {
+            "dispatches": [
+                {
+                    "agent_description": "still-in-progress",
+                    "ticket_id": "0.2.1-W3-2000",
+                    "dispatched_at": old,
+                    "session_id": "sess-alive",
+                },
+            ],
+        })
+        monkeypatch.setattr(mod, "_load_registry_session_ids", lambda: {"sess-alive"})
+        monkeypatch.setattr(mod, "_is_ticket_terminal", lambda tid: False)
+
+        rc, out, err = _run(tmp_path, monkeypatch, prune=True)
+
+        assert rc == 1
+        assert "無符合" in out
+        assert "still-in-progress" in out
+
+    def test_terminal_ticket_criterion_works_when_registry_unavailable(
+        self, tmp_path, monkeypatch
+    ):
+        """registry 不可用（session 存活判準完全無法判定）不影響票終態
+        判準——兩者為獨立判準，不因其一不可用而互相拖累。"""
+        from datetime import datetime, timedelta, timezone
+
+        old = (datetime.now(timezone.utc) - timedelta(minutes=90)).isoformat()
+        dispatch_path = _write_dispatch_file(tmp_path, {
+            "dispatches": [
+                {
+                    "agent_description": "ticket-done-no-registry",
+                    "ticket_id": "0.2.1-W3-1275",
+                    "dispatched_at": old,
+                    "session_id": "sess-unknown",
+                },
+            ],
+        })
+        monkeypatch.setattr(mod, "_load_registry_session_ids", lambda: None)
+        monkeypatch.setattr(mod, "_is_ticket_terminal", lambda tid: True)
+        monkeypatch.setattr(mod, "_get_prune_logger", lambda: None)
+
+        rc, out, err = _run(tmp_path, monkeypatch, prune=True)
+
+        assert rc == 0
+        assert "已清理 1 筆" in out
+        remaining = json.loads(dispatch_path.read_text(encoding="utf-8"))
+        assert remaining["dispatches"] == []
+
+    def test_empty_ticket_id_never_checked_against_terminal_criterion(
+        self, tmp_path, monkeypatch
+    ):
+        """空 ticket_id 一律不查票終態（無票派發不受 ticket 事件驅動，
+        清除路徑是 agent 終止事件，非本判準涵蓋範圍）。"""
+        from datetime import datetime, timedelta, timezone
+
+        old = (datetime.now(timezone.utc) - timedelta(minutes=90)).isoformat()
+        _write_dispatch_file(tmp_path, {
+            "dispatches": [
+                {
+                    "agent_description": "no-ticket-reviewer",
+                    "ticket_id": "",
+                    "dispatched_at": old,
+                    "session_id": "sess-alive",
+                },
+            ],
+        })
+        monkeypatch.setattr(mod, "_load_registry_session_ids", lambda: {"sess-alive"})
+        calls = []
+
+        def _tracking_is_terminal(tid):
+            calls.append(tid)
+            return False
+
+        monkeypatch.setattr(mod, "_is_ticket_terminal", _tracking_is_terminal)
+
+        rc, out, err = _run(tmp_path, monkeypatch, prune=True)
+
+        assert rc == 1
+        assert calls == []
+
+
+class TestPruneConcurrency:
+    """0.2.1-W3-1380：`--prune` 的讀-改-寫必須與 `record_dispatch` 共用
+    同一把鎖，否則兩者交錯時任一方的寫入可能被另一方持有的舊快照覆寫
+    （lost update）。修復前 `--prune` 完全在鎖外讀取/計算/寫入，本測試
+    人工延長 `--prune` 的判準執行時間製造交錯窗口，斷言交錯期間
+    `record_dispatch` 寫入的記錄不會消失。"""
+
+    def test_prune_interleaved_with_record_dispatch_no_lost_update(
+        self, tmp_path, monkeypatch
+    ):
+        import threading
+        import time
+
+        from lib.dispatch_tracker import get_active_dispatches, record_dispatch
+
+        monkeypatch.setattr(mod, "get_ticket_state_root", lambda: tmp_path)
+        (tmp_path / ".claude").mkdir(parents=True, exist_ok=True)
+
+        record_dispatch(tmp_path, agent_description="gone-agent", ticket_id="A")
+
+        entered_predicate = threading.Event()
+        release_predicate = threading.Event()
+
+        def _blocking_is_terminal(ticket_id):
+            # 模擬 --prune 判準執行期間，另一 session 同時呼叫
+            # record_dispatch——鎖若正確涵蓋整個讀-改-寫週期，
+            # record_dispatch 應被阻塞至此函式返回、寫入完成為止。
+            entered_predicate.set()
+            release_predicate.wait(timeout=5)
+            return True
+
+        monkeypatch.setattr(mod, "_is_ticket_terminal", _blocking_is_terminal)
+        monkeypatch.setattr(mod, "_load_registry_session_ids", lambda: None)
+        monkeypatch.setattr(mod, "_get_prune_logger", lambda: None)
+
+        prune_thread = threading.Thread(
+            target=lambda: _run(tmp_path, monkeypatch, prune=True)
+        )
+        prune_thread.start()
+        assert entered_predicate.wait(timeout=5), "prune 判準未如預期開始執行"
+
+        record_thread = threading.Thread(
+            target=lambda: record_dispatch(
+                tmp_path, agent_description="new-agent-during-prune", ticket_id="B"
+            )
+        )
+        record_thread.start()
+        # 給 record_dispatch 機會嘗試取得鎖（此時應被 prune 持有的鎖阻塞，
+        # 直到 release_predicate 被設定才可能取得）
+        time.sleep(0.2)
+
+        release_predicate.set()
+        prune_thread.join(timeout=5)
+        record_thread.join(timeout=5)
+
+        assert not prune_thread.is_alive(), "prune 執行緒未如預期結束"
+        assert not record_thread.is_alive(), "record_dispatch 執行緒未如預期結束"
+
+        remaining = get_active_dispatches(tmp_path)
+        descriptions = {e.get("agent_description") for e in remaining}
+        assert "new-agent-during-prune" in descriptions, (
+            "record_dispatch 於 --prune 執行期間寫入的記錄不應遺失；"
+            f"實際: {descriptions}"
+        )

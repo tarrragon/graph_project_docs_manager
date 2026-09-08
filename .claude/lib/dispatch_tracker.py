@@ -8,6 +8,8 @@ Active Dispatch Tracker 共用模組
 公開 API：
 - record_dispatch: 記錄新派發
 - clear_dispatch: 清理已完成派發（description 比對，非 SubagentStop 路徑）
+- clear_dispatch_by_ticket_id: 清理已轉終態 ticket 的所有派發記錄（ticket
+  complete 事件驅動，非 SubagentStop 路徑）
 - mark_turn_ended_by_handle: 依 agent_handle 錨定比對標記回合結束（named
   派發的精準路徑，先於 mark_turn_ended_by_id 呼叫）
 - mark_turn_ended_by_id: 標記 agent_id 對應 entry 的回合結束時刻（不刪除，
@@ -16,6 +18,9 @@ Active Dispatch Tracker 共用模組
 - get_active_dispatches: 取得所有活躍派發
 - is_file_under_dispatch: 檢查檔案是否在派發中
 - cleanup_expired: 清理超時記錄
+- prune_dispatches: 依呼叫端提供的判準清理條目（`_state_lock` 保護的
+  read-modify-write 週期，供 track_dispatch_check.py `--prune` 等
+  需要自訂清理判準的呼叫端使用，不需各自重新實作鎖與原子寫）
 - detect_orphan_branches: 偵測 orphan worktree 分支
 
 turn_ended_at 欄位：
@@ -78,7 +83,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 from .git_utils import get_worktree_list
 
@@ -339,6 +344,47 @@ def clear_dispatch(project_root: Path, agent_description: str) -> bool:
             _write_state(project_root, state)
             return True
         return False
+
+
+def clear_dispatch_by_ticket_id(project_root: Path, ticket_id: str) -> int:
+    """Ticket 轉終態（complete）時清除其對應的所有 dispatch 記錄。
+
+    與 `clear_dispatch`（依 `agent_description` 比對，非 SubagentStop
+    路徑）並列的另一條清除路徑：本函式由 ticket 生命週期事件驅動（見
+    `ticket_system.commands.lifecycle.LifecycleCommands.complete`），非
+    由代理人回合結束驅動。ticket-bound 派發在此之前完全沒有清除路徑——
+    `clear_dispatch_by_id` / `clear_oldest_null_agent_id_entry` 已停用
+    （見本模組 docstring「turn_ended_at 欄位」段），只剩 `cleanup_expired`
+    的 24 小時 TTL 兜底，導致已完成票的派發宣告可殘留最長 24 小時，期間
+    持續使 `bare-commit-guard-hook.py` 等消費端誤判為活躍派發（0.2.1-W3-
+    1371 Problem Analysis 實測：119 筆記錄全數對應已完成或無票派發）。
+
+    Args:
+        project_root: 專案根目錄
+        ticket_id: 已轉終態的 ticket ID。空字串一律視為無操作、回傳 0——
+            空 `ticket_id` 代表無票派發（見 `record_dispatch` docstring
+            的 `ticket_id` 說明），這批記錄沒有 ticket 事件可依附，其
+            清除路徑是 agent 終止事件（`mark_turn_ended_by_handle` /
+            `mark_turn_ended_by_id` 標記 + `cleanup_expired` 的 TTL 回
+            收），與本函式無關；若不排除空字串，呼叫端誤傳空值會清空
+            全部無票派發記錄。
+
+    Returns:
+        int: 清理的記錄數量（同一 ticket 可能有多筆派發記錄，如重派）。
+    """
+    if not ticket_id:
+        return 0
+    with _state_lock(project_root):
+        state = _read_state(project_root)
+        original_count = len(state["dispatches"])
+        state["dispatches"] = [
+            d for d in state["dispatches"]
+            if d.get("ticket_id") != ticket_id
+        ]
+        removed = original_count - len(state["dispatches"])
+        if removed > 0:
+            _write_state(project_root, state)
+        return removed
 
 
 def update_dispatch_agent_id(
@@ -654,6 +700,51 @@ def cleanup_expired(project_root: Path, max_age_hours: int = 1) -> int:
             _write_state(project_root, state)
 
         return removed_count
+
+
+def prune_dispatches(
+    project_root: Path,
+    should_remove: Callable[[Dict], bool],
+) -> Tuple[List[Dict], List[Dict]]:
+    """依呼叫端提供的判準，在 `_state_lock` 保護下清理 dispatches 條目。
+
+    供需要自訂清理判準的呼叫端（如 `track_dispatch_check.py` `--prune`）
+    使用，取代各自在鎖外讀取狀態、鎖外直接 `write_text` 覆寫的做法（兩個
+    獨立缺陷：未持 `_state_lock` 導致與 `record_dispatch` 等寫入路徑交錯
+    時 lost update；`write_text` 直寫非原子，無鎖讀端可能讀到截斷內容）。
+    整個 read-modify-write 週期在本函式內完成並共用 `_state_lock`，寫入
+    沿用 `_write_state` 既有的暫存檔 + `os.replace` 原子替換，呼叫端不需
+    重新實作鎖與原子寫。
+
+    Args:
+        project_root: 專案根目錄
+        should_remove: 對單一 dispatch 條目（dict）判斷是否應移除的謂詞。
+            非 dict 條目一律保留，不會被傳入此謂詞。
+
+    Returns:
+        (kept, removed) 二元組。`kept` 為套用判準後的最終 dispatches
+        清單（無論是否有條目被移除，皆為鎖內讀到的最新資料，供呼叫端
+        後續判斷/顯示，不需再次讀檔）；`removed` 為被移除的條目清單
+        （供呼叫端做後續記錄輸出，如 stderr/hook-logs——該記錄輸出不需
+        鎖保護，故留給呼叫端在鎖外處理）。
+    """
+    with _state_lock(project_root):
+        state = _read_state(project_root)
+        dispatches = state.get("dispatches", [])
+
+        kept: List[Dict] = []
+        removed: List[Dict] = []
+        for entry in dispatches:
+            if isinstance(entry, dict) and should_remove(entry):
+                removed.append(entry)
+            else:
+                kept.append(entry)
+
+        if removed:
+            state["dispatches"] = kept
+            _write_state(project_root, state)
+
+    return kept, removed
 
 
 def _parse_agent_worktree_branches(project_root: Path) -> List[str]:

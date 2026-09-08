@@ -1,3 +1,139 @@
+## [2.59.9] - 2026-09-08
+
+### Summary
+fix: hook-liveness 以檔名 stem 查詢時解析到內部名稱; chore: 補號 2.34.0（hook-liveness 以檔名查詢可解析）; chore: 回寫 .claude/VERSION -> 某版本
+
+Changes: 1 fix, 2 chore
+
+- fix: hook-liveness 以檔名 stem 查詢時解析到內部名稱
+- chore: 補號 2.34.0（hook-liveness 以檔名查詢可解析）
+- chore: 回寫 .claude/VERSION -> 某版本
+
+---
+
+## [2.59.8] - 2026-09-08
+
+### Summary
+fix: --prune 寫入改用共用鎖與原子替換; chore: 補號 2.33.1（--prune 寫入改走共用鎖與原子替換）; chore: 回寫 .claude/VERSION -> 某版本
+
+Changes: 1 fix, 2 chore
+
+- fix: --prune 寫入改用共用鎖與原子替換
+- chore: 補號 2.33.1（--prune 寫入改走共用鎖與原子替換）
+- chore: 回寫 .claude/VERSION -> 某版本
+
+---
+
+## [2.59.7] - 2026-09-08
+
+### Summary
+chore: 回寫 .claude/VERSION -> 某版本; chore: framework-issue 2.3.0、ticket 2.33.0 補號並記錄變更
+
+Changes: 2 chore
+
+- chore: 回寫 .claude/VERSION -> 某版本
+- chore: framework-issue 2.3.0、ticket 2.33.0 補號並記錄變更
+
+---
+
+## [2.59.6] - 2026-09-08
+
+### Summary
+fix: ticket complete 時清除對應 dispatch-active 條目; fix: 修正 bare-commit-guard 阻擋訊息代理人數失真與補救指令整段複製誤導; docs: PC-BAL-069 修正自查有效範圍——時機而非有無外部指涉物 (+3 more)
+
+Changes: 2 fix, 3 docs, 1 chore
+
+- fix: ticket complete 時清除對應 dispatch-active 條目
+- fix: 修正 bare-commit-guard 阻擋訊息代理人數失真與補救指令整段複製誤導
+- docs: PC-BAL-069 修正自查有效範圍——時機而非有無外部指涉物
+- docs: PC-BAL-069 補「明確知道該失效模式也擋不住它落在自己產出裡」
+- docs: 待條件加進入門檻，禁止作為無法歸類時的收容值
+- chore: 回寫 .claude/VERSION -> 某版本
+
+---
+
+## [2.59.5] - 2026-09-08
+
+### Summary
+docs: PC-BAL-069 補同號異容的第二種成因（無行為者）與該查的時機; chore: 回寫 .claude/VERSION -> 某版本; chore: 補號 2.2.10（canonical 帶入他方對兩份 reference 的變更後同號異容） (+2 more)
+
+Changes: 1 docs, 4 chore
+
+- docs: PC-BAL-069 補同號異容的第二種成因（無行為者）與該查的時機
+- chore: 回寫 .claude/VERSION -> 某版本
+- chore: 補號 2.2.10（canonical 帶入他方對兩份 reference 的變更後同號異容）
+- chore: SKILL.md frontmatter 補號 2.32.1
+- chore: CHANGELOG 補號 2.32.1（canonical 帶入他方變更後同號異容）
+
+---
+
+## [2.59.4] - 2026-09-08
+
+### Summary
+docs: PC-BAL-069 補交叉核對的糾正方向與實驗設計判準; chore: pull canonical 某版本（規則 8 判準改送達與否、新增 DOC-GPD-005）
+
+Changes: 1 docs, 1 chore
+
+- docs: PC-BAL-069 補交叉核對的糾正方向與實驗設計判準
+- chore: pull canonical 某版本（規則 8 判準改送達與否、新增 DOC-GPD-005）
+
+---
+
+## [2.59.3] - 2026-09-08
+
+### Summary
+fix: 規則 8 識別符類型表判準由類別改為送達與否；新增 DOC-GPD-005
+
+引用穩定性規則 8 的識別符類型表原列「框架 error-pattern ID -> 是（框架
+內部分類）」，判準綁在識別符的類別上。該寫法早於 consumer 分域編號且未
+隨之更新，照其字面會把一個本地剛建、尚未推上共用通道的分域編號判為可
+引；寫進會擴散的框架檔案後，落到其他 consumer 手上即為懸空引用。
+
+規則 8 改動：
+- error-pattern ID 拆為兩列（已到達共用通道／尚未到達），後者含分域形式
+ 的佔位範例，並明示共用層已建但未推同樣不可引
+- 補三段說明：判準是送達與否不是歸屬哪一層；「我確認過它真的存在」是最
+ 容易讓人放行的理由而存在性恰好不是判準；自查問句改為「這個檔案會傳到
+ 哪些地方，那些地方有沒有這個編號」
+- 與 PC-GPD-006〈反方向：把引用寫出去〉建立雙向綁定並註明分工
+
+新增 DOC-GPD-005（判準以類別名為鍵，類別後來獲得性質不同的新成員，新成
+員繼承舊裁決而被誤放行）。與 DOC-GPD-003 同源於集合演進但失效對象相反：
+計數過期會自我暴露，判準脫鉤不會。兩檔已雙向交叉引用。
+
+缺口由跨 consumer 協作中的另一方在寫入引用時察覺，非守衛、測試或審查發
+現——判準脫鉤期間零訊號。
+
+---
+
+## [2.59.2] - 2026-09-08
+
+### Summary
+fix: 還原被 某版本/2.59.1 全樹 overlay 覆蓋的 12 處內容
+
+某版本 推上的下列內容在後續兩次推送中遺失，本次還原。遺失形態一致：
+新增檔存活，對既有檔的修改被回滾。成因經推送方確認為：其樹是上次拉取時
+的快照，從未含本次遺失的內容，全樹 overlay 因而將其自 canonical 移除。
+不需任何一方解過衝突（原記為衝突解決所致，該敘述已更正）。
+
+- 身分死結修復的 hook 側（來自另一 consumer 的修復票）：dispatch-identity-bind-hook 的 PM
+ 暫代管重新綁定（PM_AGENT_NAME 常數與相鄰邏輯）、其測試、以及
+ ticket skill 的 test_identity_guard 中 --as 建議訊息測試
+- 引用穩定性規則 10（可變計數不實例化）全節，與 document-format-rules
+ 的對應路由與檢查清單列
+- PC-GPD-006 的「反方向：把引用寫出去」小節（跨 consumer 引用的合法性
+ 取決於被引物是否已到達共用通道）
+- DOC-V1-001 的「與相關模式的關係」章節
+- settings.json 中 variable-count-literal-guard-hook 的註冊
+- component-library 方法論的欄位表去數字化與回饋契約欄
+- document-writing-style 1.6.0、agent-dispatch-template 1.34.0 讓號條目
+
+本次推送保留 某版本 的全部內容（PC-BAL-068/069/074、ticket 2.32.0、
+foundation-design 6.3.1、multi-round-review 2.3.0），error-patterns
+索引為兩側合併結果。
+
+---
+
 ## [2.59.1] - 2026-09-08
 
 ### Summary

@@ -20,6 +20,7 @@ from lib.dispatch_tracker import (
     get_state_file_path,
     record_dispatch,
     clear_dispatch,
+    clear_dispatch_by_ticket_id,
     get_active_dispatches,
     is_file_under_dispatch,
     cleanup_expired,
@@ -27,6 +28,7 @@ from lib.dispatch_tracker import (
     mark_turn_ended_by_handle,
     mark_turn_ended_by_id,
     mark_oldest_active_null_agent_id_entry_turn_ended,
+    prune_dispatches,
 )
 
 
@@ -131,6 +133,53 @@ class TestClearDispatch:
         result = clear_dispatch(project_root, "Task X")
         assert result is False
         assert len(get_active_dispatches(project_root)) == 1
+
+
+class TestClearDispatchByTicketId:
+    """0.2.1-W3-1371：ticket 轉終態（complete）時清除其對應的
+    dispatch-active 條目，取代目前完全沒有清除路徑的狀態（見模組
+    docstring「turn_ended_at 欄位」段——`clear_dispatch_by_id` 等舊有
+    刪除式函式已不由 SubagentStop 呼叫，ticket 綁定派發缺一條由 ticket
+    事件驅動的清除路徑）。"""
+
+    def test_removes_all_entries_matching_ticket_id(self, project_root: Path):
+        """同一 ticket 有多筆派發記錄（如重派）時全部清除。"""
+        record_dispatch(project_root, "Attempt 1", ticket_id="0.2.1-W3-1371")
+        record_dispatch(project_root, "Attempt 2", ticket_id="0.2.1-W3-1371")
+        record_dispatch(project_root, "Other ticket", ticket_id="0.2.1-W3-9999")
+
+        removed = clear_dispatch_by_ticket_id(project_root, "0.2.1-W3-1371")
+
+        assert removed == 2
+        remaining = get_active_dispatches(project_root)
+        assert len(remaining) == 1
+        assert remaining[0]["ticket_id"] == "0.2.1-W3-9999"
+
+    def test_no_match_returns_zero_and_does_not_mutate(self, project_root: Path):
+        record_dispatch(project_root, "Task A", ticket_id="0.2.1-W3-1")
+        removed = clear_dispatch_by_ticket_id(project_root, "0.2.1-W3-does-not-exist")
+        assert removed == 0
+        assert len(get_active_dispatches(project_root)) == 1
+
+    def test_empty_ticket_id_is_noop_does_not_clear_untagged_entries(
+        self, project_root: Path
+    ):
+        """空字串 ticket_id 一律視為無操作——空 ticket_id 代表無票派發
+        （見 record_dispatch docstring），若不排除會誤刪所有無票派發
+        記錄，這批記錄的清除路徑是 agent 終止事件，不受 ticket 事件
+        驅動（見 TestTurnEndedTtl）。"""
+        record_dispatch(project_root, "No-ticket reviewer", ticket_id="")
+        record_dispatch(project_root, "No-ticket reviewer 2", ticket_id="")
+
+        removed = clear_dispatch_by_ticket_id(project_root, "")
+
+        assert removed == 0
+        assert len(get_active_dispatches(project_root)) == 2
+
+    def test_no_state_file_returns_zero(self, project_root: Path):
+        """狀態檔不存在（尚無任何派發記錄）時不報錯，回傳 0。"""
+        removed = clear_dispatch_by_ticket_id(project_root, "0.2.1-W3-1371")
+        assert removed == 0
 
 
 class TestMarkTurnEndedByHandle:
@@ -818,3 +867,102 @@ class TestAtomicWrite:
             reader_thread.join(timeout=5)
 
         assert errors == []
+
+
+class TestPruneDispatches:
+    """`prune_dispatches`（0.2.1-W3-1380）：供 `track_dispatch_check.py`
+    `--prune` 呼叫的共用寫入入口，取代該檔曾經在鎖外直接 `write_text`
+    覆寫的做法。整個 read-modify-write 週期在 `_state_lock` 內完成，
+    寫入沿用 `_write_state` 的暫存檔 + `os.replace` 原子替換。"""
+
+    def test_removes_entries_matching_predicate_and_persists_atomically(
+        self, project_root: Path
+    ):
+        record_dispatch(project_root, "keep-me")
+        record_dispatch(project_root, "drop-me")
+
+        kept, removed = prune_dispatches(
+            project_root,
+            lambda entry: entry["agent_description"] == "drop-me",
+        )
+
+        assert [e["agent_description"] for e in removed] == ["drop-me"]
+        assert [e["agent_description"] for e in kept] == ["keep-me"]
+        on_disk = json.loads(get_state_file_path(project_root).read_text(encoding="utf-8"))
+        assert [e["agent_description"] for e in on_disk["dispatches"]] == ["keep-me"]
+
+    def test_no_write_when_nothing_matches_predicate(self, project_root: Path):
+        record_dispatch(project_root, "keep-me")
+        state_file = get_state_file_path(project_root)
+        before_mtime = state_file.stat().st_mtime
+
+        kept, removed = prune_dispatches(project_root, lambda entry: False)
+
+        assert removed == []
+        assert [e["agent_description"] for e in kept] == ["keep-me"]
+        assert state_file.stat().st_mtime == before_mtime, (
+            "無條目符合清理判準時不應觸發寫入"
+        )
+
+    def test_non_dict_entries_are_preserved(self, project_root: Path):
+        """畸形（非 dict）條目一律保留，不納入判準（與呼叫端既有的保守
+        容錯行為一致）。"""
+        state_file = get_state_file_path(project_root)
+        state_file.write_text(
+            json.dumps({"dispatches": ["not-a-dict", {"agent_description": "real"}]}),
+            encoding="utf-8",
+        )
+
+        kept, removed = prune_dispatches(
+            project_root, lambda entry: entry.get("agent_description") == "real"
+        )
+
+        assert removed == [{"agent_description": "real"}]
+        assert kept == ["not-a-dict"]
+
+    def test_holds_lock_across_predicate_evaluation_blocking_concurrent_writer(
+        self, project_root: Path
+    ):
+        """`prune_dispatches` 於判準執行期間持有鎖，並行的 `record_dispatch`
+        必須等待鎖釋放才能寫入——不會發生 lost update。"""
+        import threading
+
+        record_dispatch(project_root, "stale-entry")
+
+        entered = threading.Event()
+        release = threading.Event()
+
+        def _slow_predicate(entry):
+            entered.set()
+            release.wait(timeout=5)
+            return True
+
+        result = {}
+
+        def _run_prune():
+            result["kept"], result["removed"] = prune_dispatches(
+                project_root, _slow_predicate
+            )
+
+        prune_thread = threading.Thread(target=_run_prune)
+        prune_thread.start()
+        assert entered.wait(timeout=5), "prune_dispatches 判準未如預期開始執行"
+
+        record_thread = threading.Thread(
+            target=lambda: record_dispatch(project_root, "concurrent-entry")
+        )
+        record_thread.start()
+
+        release.set()
+        prune_thread.join(timeout=5)
+        record_thread.join(timeout=5)
+
+        assert not prune_thread.is_alive()
+        assert not record_thread.is_alive()
+        assert [e["agent_description"] for e in result["removed"]] == ["stale-entry"]
+        final_descriptions = {
+            e["agent_description"] for e in get_active_dispatches(project_root)
+        }
+        assert final_descriptions == {"concurrent-entry"}, (
+            f"record_dispatch 的新記錄應存活；實際: {final_descriptions}"
+        )

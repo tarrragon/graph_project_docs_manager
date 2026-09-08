@@ -2,11 +2,33 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
-**Version**: 2.32.0
+**Version**: 2.34.0
 **Last Updated**: 2026-09-08
 **Status**: Completed
 
 **Change Log**:
+
+- v2.34.0 (2026-09-08): `hook-liveness` 以檔名查詢不再回 0 筆，且查無時的訊息不再與「hook 未觸發」同形
+  - **成因**：`resolve_hook_name` 只認 `HOOK_NAME` 常數，但 82/122 個 `.claude/hooks/*.py` 是把字面字串直接傳給 `run_hook_safely(main, "...")`（與常數寫法互斥不重疊）；輸入為不含 `.py` 的檔名 stem 時完全不觸發檔案解析。實測 82 個有內部名稱的 hook：30 個檔名與內部名稱一致、51 個僅差 `-hook` 後綴、1 個結構性不同（`task-dispatch-readiness-check` 對 `agent-dispatch-check`）
+  - **修法**：改以掃描 `run_hook_safely` 呼叫的字面參數為第一優先權威來源（那正是 liveness `hook` 欄位的實際寫入值），並新增「輸入不含副檔名時嘗試 `.claude/hooks/<輸入>.py`」的解析層。兩類不一致收斂到同一條「找到真實檔案、讀真實原始碼」路徑，**未採去後綴啟發式或硬編碼對照表**——啟發式涵蓋 51 個但會在第 52 個身上靜默回 0，複製本次要消除的失效
+  - **訊息**：0 筆結果依解析來源是否「已由原始碼確認」分流。未確認時列出已嘗試的全部解析形式並明寫「0 筆不代表 hook 未觸發」，不再把 hook 未觸發列為候選解釋。查詢工具的失敗形態不得與它要偵測的失敗形態同形——否則驗證者可能去修一個沒壞的 hook，或撤掉一個正在運作的防護
+  - TDD：還原舊實作驗證 11 個新測試 RED，修復後 21/21 GREEN
+
+- v2.33.1 (2026-09-08): `--prune` 的寫入路徑改走框架 lib 的共用協定，修掉兩個獨立缺陷。前一版新增票終態判準提高了 `--prune` 的使用頻率，使既有缺口的暴露面隨之放大
+  - **lost update**：原本 `_prune_stale_orphan_entries` 是無鎖純函式，其輸出直接餵進 `dispatch_file.write_text(...)`，讀取到寫入之間他方 `record_dispatch` 新增的記錄被整批覆蓋。紅燈測試先重現此競態（謂詞在鎖內卡住、另一執行緒同時寫入，修法前 `descriptions` 被清空）
+  - **非原子寫入**：`write_text` 直寫在同一檔案系統內非原子，無鎖讀端（`is_file_under_dispatch` 等查詢路徑）可能讀到截斷內容。此問題在框架 lib 的 `_write_state` 早已改為暫存檔 + `os.replace` 修掉，本路徑仍停在修掉之前的形態
+  - **修法**：刪除 `_prune_stale_orphan_entries`，改以 `_make_prune_predicate`（同一 A/B 判準，改為逐條 closure）傳入框架 lib 新增的 `prune_dispatches`，由後者在既有 `_state_lock` 內完成整個 read-modify-write 並沿用 `_write_state`。**不在本 skill 重新實作鎖與原子寫**——同一份狀態檔已有兩個寫入者，再加一份實作只會讓下一個寫入者重蹈覆轍
+  - 模組不可用時 fail-open（跳過清理並寫 stderr），不回退到舊的不安全寫入
+  - 已知取捨：謂詞 `_is_ticket_terminal` 會讀票檔，該 I/O 現在在鎖內執行，鎖持有時間變長。對 `--prune` 這類手動低頻命令方向正確；若日後搬到高頻路徑需重新評估
+
+- v2.33.0 (2026-09-08): 派發記錄的清除改由事件觸發，不再只靠逾時。既有的 `cleanup_expired`（`turn_ended_at` 已設者 TTL 24 小時、未設者以 `dispatched_at` 起算 1 小時）會把記錄清光，但清光之前的窗口內，共用 git index 的並行守衛把已完成票的宣告當現行範圍，落在該範圍內的提交被誤擋且訊息指向早已結束的票（實測一次提交被迫拆成三次）
+  - `complete()` 成功路徑呼叫 `_clear_dispatch_for_completed_ticket(ticket_id)`，fail-open（模組不可用或例外皆寫 stderr，不阻擋 complete）
+  - `dispatch-check --prune` 新增獨立的票終態判準（`_is_ticket_terminal`），與既有「`[STALE]` 且 session 確認不存在」判準為 OR、互不依賴，且不受 registry 可用性影響
+  - 驗收採反事實形式而非「全量記錄清空」：後者在不修任何東西的情況下等滿 TTL 也會成立，分不出修法生效與時間到了。落地的兩則測試各自構造距 TTL 邊界甚遠的記錄（`turn_ended_at` 設為呼叫當下；空 `ticket_id` + `dispatched_at` 65 分鐘前），斷言事件觸發後立即消失，全程不呼叫 `cleanup_expired`
+  - 新增 `tests/test_complete_dispatch_cleanup.py`；`test_track_dispatch_check.py` 增 `TestIsTicketTerminal`／`TestPruneTerminalTicket`
+  - 配套的 `clear_dispatch_by_ticket_id` 在框架 lib（非本 skill），空字串一律無操作以保護無票派發記錄那一類
+
+- v2.32.1 (2026-09-08): `fields.py`／`test_fields_set_where.py`／`test_identity_guard.py` 隨框架 canonical 更新（由另一 consumer 撰寫並經 canonical 傳入）；本專案取回後補號，前一版兩側同號而內容不同
 
 - v2.32.0 (2026-09-08): PM 先 claim 再派發時的身份死結補上自動出口。**本批由另一個 consumer 專案撰寫並經框架 canonical 傳入**，本專案取回後補號——兩側先前同標 2.31.1 而內容不同，依版號無從察覺
   - `complete`／`finish` 在身份對照之前，若 `who.current` 仍是 PM 且 `--as` 申報為具名非 PM 執行者，自動把 `who.current` 讓給該執行者再走既有比對（`reassign_who_from_pm_if_takeover`）。原本兩條路都不通：帶 `--as` 被判身份不符，不帶 `--as` 被要求必須提供，而 `who` 是權責歸屬欄位不該由執行者自行 `set-who` 繞過
