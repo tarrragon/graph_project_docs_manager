@@ -120,5 +120,11 @@
   "ticketsSummaryLabel": "Showing {from}–{to} of {total}",
   "ticketsVirtualScrollNote": "Virtual scrolling, no pagination",
   "topicSectionSummary": "({count} tasks, top priority={priority})",
-  "gapSectionCount": "{count} items"
+  "gapSectionCount": "{count} items",
+  "scanCompleteNotificationTitle": "Gap scan complete",
+  "scanCompleteNotificationBody": "{count} gaps detected",
+  "scanCompleteNoGapsNotificationBody": "No gaps detected",
+  "scanCompleteSnackbarMessage": "Scan complete: {count} gaps detected",
+  "scanCompleteNoGapsSnackbarMessage": "Scan complete: no gaps detected",
+  "viewGapsAction": "View"
 }

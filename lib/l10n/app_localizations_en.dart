@@ -439,4 +439,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String gapItemLineLabel(int lineNumber) {
     return '第 $lineNumber 行';
   }
+
+  @override
+  String get scanCompleteNotificationTitle => 'Gap scan complete';
+
+  @override
+  String scanCompleteNotificationBody(int count) {
+    return '$count gaps detected';
+  }
+
+  @override
+  String get scanCompleteNoGapsNotificationBody => 'No gaps detected';
+
+  @override
+  String scanCompleteSnackbarMessage(int count) {
+    return 'Scan complete: $count gaps detected';
+  }
+
+  @override
+  String get scanCompleteNoGapsSnackbarMessage =>
+      'Scan complete: no gaps detected';
+
+  @override
+  String get viewGapsAction => 'View';
 }

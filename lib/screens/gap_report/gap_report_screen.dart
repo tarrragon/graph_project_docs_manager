@@ -15,6 +15,7 @@ import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
+import 'scan_notification_controller.dart';
 
 /// 破洞報告畫面。
 class GapReportScreen extends ConsumerWidget {
@@ -147,20 +148,23 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
       ),
       items: [
         for (final item in widget.category.items)
-          ListRow.item(
-            primary: AppText(item.filePath, variant: AppTextVariant.mono),
-            secondary: AppText(
-              l10n.gapItemLineLabel(item.lineNumber),
-              variant: AppTextVariant.caption,
-              secondary: true,
+          _LocatableGapItem(
+            item: item,
+            child: ListRow.item(
+              primary: AppText(item.filePath, variant: AppTextVariant.mono),
+              secondary: AppText(
+                l10n.gapItemLineLabel(item.lineNumber),
+                variant: AppTextVariant.caption,
+                secondary: true,
+              ),
+              trailing: AppIcon(
+                icon: Icons.open_in_new,
+                size: IconSize.sm,
+                semanticLabel: l10n.openExternallyA11yLabel,
+              ),
+              onTap: () => _openItem(context, item),
+              testKey: Key('card-gaps-${item.id}'),
             ),
-            trailing: AppIcon(
-              icon: Icons.open_in_new,
-              size: IconSize.sm,
-              semanticLabel: l10n.openExternallyA11yLabel,
-            ),
-            onTap: () => _openItem(context, item),
-            testKey: Key('card-gaps-${item.id}'),
           ),
       ],
     );
@@ -187,6 +191,43 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
     await Process.run('open', [item.filePath]);
     if (!context.mounted) return;
     AppSnackBar.show(context, message: l10n.openedExternallyMessage);
+  }
+}
+
+/// 點擊系統通知後的定位載體（SPEC-004 §1 locate 列；SPEC-003 §2.2「點擊
+/// 通知的導向」）：命中 [pendingLocateGapItemProvider] 時 scroll-into-view
+/// 並移入焦點，處理後清空該 provider，避免重複觸發。
+class _LocatableGapItem extends ConsumerStatefulWidget {
+  const _LocatableGapItem({required this.item, required this.child});
+
+  final GapReportItem item;
+  final Widget child;
+
+  @override
+  ConsumerState<_LocatableGapItem> createState() => _LocatableGapItemState();
+}
+
+class _LocatableGapItemState extends ConsumerState<_LocatableGapItem> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingId = ref.watch(pendingLocateGapItemProvider);
+    if (pendingId == widget.item.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Scrollable.ensureVisible(context, alignment: 0.1);
+        _focusNode.requestFocus();
+        ref.read(pendingLocateGapItemProvider.notifier).state = null;
+      });
+    }
+    return Focus(focusNode: _focusNode, child: widget.child);
   }
 }
 

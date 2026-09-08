@@ -829,6 +829,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'第 {lineNumber} 行'**
   String gapItemLineLabel(int lineNumber);
+
+  /// SPEC-003 §2.2 系統層通知：macOS 通知標題
+  ///
+  /// In zh, this message translates to:
+  /// **'破洞掃描完成'**
+  String get scanCompleteNotificationTitle;
+
+  /// SPEC-003 §2.2 系統層通知：state-gaps-found 時的通知內文
+  ///
+  /// In zh, this message translates to:
+  /// **'偵測到 {count} 個破洞'**
+  String scanCompleteNotificationBody(int count);
+
+  /// SPEC-003 §2.2 系統層通知：state-gaps-none 時的通知內文
+  ///
+  /// In zh, this message translates to:
+  /// **'未偵測到破洞'**
+  String get scanCompleteNoGapsNotificationBody;
+
+  /// SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字
+  ///
+  /// In zh, this message translates to:
+  /// **'掃描完成，偵測到 {count} 個破洞'**
+  String scanCompleteSnackbarMessage(int count);
+
+  /// SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字（無破洞）
+  ///
+  /// In zh, this message translates to:
+  /// **'掃描完成，未偵測到破洞'**
+  String get scanCompleteNoGapsSnackbarMessage;
+
+  /// SPEC-003 §2.2 系統層通知：App 內 SnackBar 的動作按鈕文字
+  ///
+  /// In zh, this message translates to:
+  /// **'檢視'**
+  String get viewGapsAction;
 }
 
 class _AppLocalizationsDelegate

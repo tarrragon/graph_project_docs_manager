@@ -774,5 +774,45 @@
         "type": "int"
       }
     }
+  },
+
+  "scanCompleteNotificationTitle": "破洞掃描完成",
+  "@scanCompleteNotificationTitle": {
+    "description": "SPEC-003 §2.2 系統層通知：macOS 通知標題"
+  },
+
+  "scanCompleteNotificationBody": "偵測到 {count} 個破洞",
+  "@scanCompleteNotificationBody": {
+    "description": "SPEC-003 §2.2 系統層通知：state-gaps-found 時的通知內文",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "scanCompleteNoGapsNotificationBody": "未偵測到破洞",
+  "@scanCompleteNoGapsNotificationBody": {
+    "description": "SPEC-003 §2.2 系統層通知：state-gaps-none 時的通知內文"
+  },
+
+  "scanCompleteSnackbarMessage": "掃描完成，偵測到 {count} 個破洞",
+  "@scanCompleteSnackbarMessage": {
+    "description": "SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "scanCompleteNoGapsSnackbarMessage": "掃描完成，未偵測到破洞",
+  "@scanCompleteNoGapsSnackbarMessage": {
+    "description": "SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字（無破洞）"
+  },
+
+  "viewGapsAction": "檢視",
+  "@viewGapsAction": {
+    "description": "SPEC-003 §2.2 系統層通知：App 內 SnackBar 的動作按鈕文字"
   }
 }

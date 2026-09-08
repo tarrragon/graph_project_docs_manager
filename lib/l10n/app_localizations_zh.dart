@@ -435,4 +435,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String gapItemLineLabel(int lineNumber) {
     return '第 $lineNumber 行';
   }
+
+  @override
+  String get scanCompleteNotificationTitle => '破洞掃描完成';
+
+  @override
+  String scanCompleteNotificationBody(int count) {
+    return '偵測到 $count 個破洞';
+  }
+
+  @override
+  String get scanCompleteNoGapsNotificationBody => '未偵測到破洞';
+
+  @override
+  String scanCompleteSnackbarMessage(int count) {
+    return '掃描完成，偵測到 $count 個破洞';
+  }
+
+  @override
+  String get scanCompleteNoGapsSnackbarMessage => '掃描完成，未偵測到破洞';
+
+  @override
+  String get viewGapsAction => '檢視';
 }

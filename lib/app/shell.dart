@@ -11,14 +11,16 @@
 /// provider 值接進 [components.AppShell] 的 `overlay` slot。
 library;
 
-import 'package:flutter/material.dart' show Icons, Material;
+import 'package:flutter/material.dart' show Icons, Scaffold;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/components.dart' as components;
 import '../l10n/app_localizations.dart';
+import '../screens/gap_report/scan_notification_controller.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../screens/project_switcher/project_switcher_providers.dart';
+import 'app_lifecycle.dart';
 import 'router.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -35,20 +37,52 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends ConsumerState<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver {
+  late final ScanNotificationController _scanNotificationController;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // `AppShell` 是應用程式常駐殼：以 `context` 作為系統通知 fallback
+    // SnackBar 的載體，掛載期間內恆有效（SPEC-003 §2.2）。
+    _scanNotificationController = ScanNotificationController(
+      ref,
+      () => context,
+    )..start();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scanNotificationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    ref.read(appLifecycleStateProvider.notifier).state = state;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    _scanNotificationController.syncLocalizedStrings(l10n);
     final destination = ref.watch(selectedDestinationProvider);
     final isSwitcherOpen = ref.watch(switcherOpenProvider);
     final projectName = ref.watch(currentProjectNameProvider);
 
-    // `MaterialApp.home` 不自動提供 Material 祖先（過去由 shell.dart 自建
-    // 的 `Scaffold` 承接）；`components.AppShell` 是純骨架容器不含
-    // `Scaffold`，故在此補上唯一一層 `Material`，讓子件（`InkWell` 等）
-    // 的 ink 效果有著落。
-    return Material(
-      child: components.AppShell(
+    // `MaterialApp.home` 不自動提供 Material／Scaffold 祖先；
+    // `components.AppShell` 是純骨架容器不含 `Scaffold`，故在此補上唯一
+    // 一層 `Scaffold`（取代先前的 `Material`）——`Scaffold` 內建
+    // `Material`，子件（`InkWell` 等）的 ink 效果同樣有著落，額外提供
+    // `ScaffoldMessenger` 呈現 SnackBar 所需的至少一個已掛載 `Scaffold`
+    // （0.1.0-W3-064：系統通知 denied fallback 走 `AppSnackBar.show`，
+    // 若樹上無任何 `Scaffold`，`ScaffoldMessengerState.showSnackBar` 會
+    // 因 `_scaffolds.isEmpty` 直接拋出斷言錯誤——純 `Material` 無法滿足
+    // 此前提，屬既有設計缺口，隨本票一併修正）。
+    return Scaffold(
+      body: components.AppShell(
         switcherEntry: components.ProjectSwitcherEntry(
           projectName: projectName,
           isExpanded: isSwitcherOpen,
