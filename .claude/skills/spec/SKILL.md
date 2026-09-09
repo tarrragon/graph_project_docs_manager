@@ -3,7 +3,7 @@ name: spec
 description: "需求完善度品質閘門。Use for: (1) Phase 1 開始時初始化功能規格骨架 (/spec init), (2) 驗證功能規格的需求完善度 (/spec validate), (3) 判斷需求是否足夠清晰可進入實作。Use when: Phase 1 功能設計代理人在進行功能設計時，作為內部工具使用。不是流程入口——/tdd 管流程編排，/spec 管產出物品質。"
 metadata:
   portable: true
-  version: 1.7.0
+  version: 1.8.0
 
 ---
 
@@ -157,6 +157,7 @@ metadata:
 | Purpose 簡潔性 | 不超過 200 字（Lite）/ 500 字（Full） |
 | API surface 完整性（Full only） | 每個 `### FR-XX:` 段落若提及 HTTP API 行為（`GET`/`POST`/`PUT`/`DELETE`/`endpoint`/`API 回`/`status code` 類訊號），須有對應 `/v1/...` endpoint 路徑定義；缺者列為提醒 |
 | domain-map 覆蓋（規劃波 domain spec） | spec 每個 `### FR-XX:` 須在對應 domain map 的 FR→bundle 覆蓋表歸屬；domain map 缺失、或有未覆蓋 FR，列為提醒 |
+| 事件流標定（可選，`--check-event-flow-labeling`） | spec 每個 `### FR-XX:` 段落若命中事件流訊號詞（清單見下，與 Layer 2 維度 5 共用同一份），須在 domain map「通道與協調圖」節之「到達類別與級別實例」子表找到對應 FR 引用；缺者列為提醒 |
 
 **結構檢查失敗**：輸出缺失清單，不進入 Layer 2。
 
@@ -175,6 +176,14 @@ python3 .claude/skills/spec/scripts/check_domain_coverage.py {spec-file-path} [-
 ```
 
 domain map 定位：省略 `--domain-map` 時自動找 spec 同目錄 `domain-map.md`，退化找 `docs/domain-map.md`。輸出：domain map 缺失（提示先走 Step 2.5 產出）、未覆蓋 FR 清單（`FR-NN`，請於 domain map §7 補歸屬）、或「檢核通過」。exit code 0 = 通過、1 = 缺失或有未覆蓋 FR。FR token 展開支援逗號續列（`FR-01,02,03`）與範圍（`FR-13~17`）。
+
+**事件流標定檢核**（可選，動機：Layer 2 維度 5「資源競爭」需要規格逐條標定事件流的到達類別與級別，靠 AI 語意判讀成本高，本檢核先以機械掃描做第一輪篩選）：以同一支 `check_domain_coverage.py` 加 `--check-event-flow-labeling` 執行，掃描 spec 每個 `### FR-XX:` 段落是否命中事件流訊號詞（`事件`、`通知`、`提示`、`背景`、`排程`、`佇列`、`推送`、`webhook`、`isolate`——與上方 Layer 2 維度 5 掃描說明共用同一份清單，程式碼側集中於 `check_domain_coverage.py` 的 `EVENT_FLOW_SIGNAL_WORDS` 常數，避免兩處各自維護而漂移）。命中的 FR 須在 domain map「通道與協調圖」節（**以標題文字定位，不依編號**——章節編號在既有專案可能已被其他內容佔用）之「到達類別與級別實例」子表找到對應 FR 引用，缺者列為提醒。命令：
+
+```bash
+python3 .claude/skills/spec/scripts/check_domain_coverage.py {spec-file-path} [--domain-map {path}] --check-event-flow-labeling  # portability-allow: consumer 共通安裝位置
+```
+
+輸出：命中訊號詞但未見通道標定的 FR 清單（`FR-NN`，請於「通道與協調圖」節之「到達類別與級別實例」子表補上標定），或「檢核通過」。**性質為啟發式提醒**（依訊號詞比對，非語意理解），不構成強制阻擋，僅供撰寫者複核；無事件流訊號的 spec 不受影響（與 Layer 2 維度 5 同形的條件式觸發）。
 
 ### Layer 2：AI 語義推演（深度，需思考）
 
