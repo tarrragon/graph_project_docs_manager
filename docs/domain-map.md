@@ -75,7 +75,7 @@ domain 的節點：它要回答「這算不算破洞」，而該判斷需要解�
 另有一個同義動詞「橫向穿過」出現在 SPEC-001 §1 與 PROP-004 §版型定案，
 語意等同「貫穿」。
 
-## 2.6 注意力軸與通道
+## 2.6 通道與協調圖
 
 > 判準見《事件流負載仲裁方法論》
 > `.claude/methodologies/event-flow-load-arbitration-methodology.md`
