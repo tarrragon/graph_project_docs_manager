@@ -57,7 +57,7 @@
 | 正式 load test       | 首次可預期高峰前、或容量決策需要數字依據          |
 | 自動擴縮             | 流量波動大到人工調整跟不上、且 stateless 前提成立 |
 | 成本工程（右算規格） | 月帳單成長率連續超過用戶成長率                    |
-| 連線池／worker pool 分池或擴容 | 仲裁器回報不可棄請求無法服務（等待型無法服務、或推送型延後至接收視窗填滿），判準見 `.claude/methodologies/event-flow-load-arbitration-methodology.md` 第 6 節 |
+| 連線池／worker pool 分池或擴容 | 仲裁器回報不可棄請求無法服務（等待型無法服務、或推送型延後至接收視窗填滿），判準見 `.claude/methodologies/event-flow-load-arbitration-methodology.md`〈讓步與卸載順序〉 |
 
 ---
 

@@ -17,7 +17,7 @@
 | 同一個工作被執行兩次會怎樣？                                                                | at-least-once 是預設世界觀 — 重複投遞必然發生、消費端要 idempotent           |
 | 工作量級與延遲容忍？（每分鐘幾個、可以等多久）                                              | 量級小 + 容忍高的場景、DB-backed queue 就夠、broker 是過度配備               |
 | 即時推送（聊天、通知）是硬需求嗎？                                                          | 推送走 pub/sub + 長連線、跟可靠工作佇列是不同機制、混用會兩邊都做不好        |
-| 同一 partition 或佇列是否混流不同級別的事件（例如付款完成與心跳）？                        | 有序消費的通道上、級別搶佔只在拉取批次內成立、混流須依級別分流至不同通道，判準見 `.claude/methodologies/event-flow-load-arbitration-methodology.md` 第 6 節 |
+| 同一 partition 或佇列是否混流不同級別的事件（例如付款完成與心跳）？                        | 有序消費的通道上、級別搶佔只在拉取批次內成立、混流須依級別分流至不同通道，判準見 `.claude/methodologies/event-flow-load-arbitration-methodology.md`〈讓步與卸載順序〉 |
 
 **反向問**：「寄信服務連續失敗一小時、這一小時的信會怎樣 — 補發、丟掉、還是塞爆重試把服務拖垮？」— 暴露重試策略、退避、與死信的設計缺口。
 
