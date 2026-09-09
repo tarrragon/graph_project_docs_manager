@@ -315,9 +315,12 @@ abstract final class AppSnackBar {
                   label: actionLabel!,
                   onPressed: () {
                     // 順序：記錄 -> 帶原因清除 -> 回呼（0.1.0-W3-205
-                    // 觀察 B 處置）。清除移到 onAction 之前——即使
-                    // onAction 同步再顯示一則，reason: action 已作用於
-                    // 舊的那一則，新的一則不會被誤記為使用者一眼未見即
+                    // 觀察 B 處置）。清除移到 onAction 之前保證的是「新的
+                    // 一則」不被誤記——若 onAction 同步再顯示一則，此處的
+                    // hide(reason: action) 對應的 completer 因 Flutter
+                    // TickerFuture 取消語意（見 T-205-11 dartdoc 更正）
+                    // 恆不完成，故舊的一則最終記為 reason: hide 而非
+                    // action；新的一則因此不會被誤記為使用者一眼未見即
                     // 以 action 關掉（T-205-11）。此處帶引數清除不計入
                     // INV-SNACKBAR-NOQUEUE 的「無引數清除恰 1 次」。
                     logSink(AppSnackBarLogEvent.actionPressed, {

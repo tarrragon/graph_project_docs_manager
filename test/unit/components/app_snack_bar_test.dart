@@ -803,7 +803,8 @@ void main() {
     );
 
     // 12 格裁決窮舉矩陣（P2.3）：期望值為獨立宣告的事實表，不由被測規則
-    // 推導——實作寫錯時期望值不會同步寫錯。
+    // 推導——實作寫錯時期望值不會同步寫錯（0.1.0-W3-205 R3：由鏡像函式改為
+    // 12 列顯式常數表，迴圈結構照舊）。
     const holderLevels = <AttentionLevel?>[
       null,
       AttentionLevel.discardable,
@@ -812,12 +813,33 @@ void main() {
     ];
     const newLevels = AttentionLevel.values;
 
-    String decisionOf(AttentionLevel? holder, AttentionLevel incoming) {
-      if (holder == null) return 'holderUnknown';
-      if (holder.index < incoming.index) return 'preemptLower';
-      if (holder.index == incoming.index) return 'replaceSameLevel';
-      return 'yieldToHolder';
-    }
+    const decisionTable = <(AttentionLevel?, AttentionLevel, String)>[
+      (null, AttentionLevel.discardable, 'holderUnknown'),
+      (null, AttentionLevel.mustLeaveTrace, 'holderUnknown'),
+      (null, AttentionLevel.undroppable, 'holderUnknown'),
+      (AttentionLevel.discardable, AttentionLevel.discardable, 'replaceSameLevel'),
+      (AttentionLevel.discardable, AttentionLevel.mustLeaveTrace, 'preemptLower'),
+      (AttentionLevel.discardable, AttentionLevel.undroppable, 'preemptLower'),
+      (AttentionLevel.mustLeaveTrace, AttentionLevel.discardable, 'yieldToHolder'),
+      (
+        AttentionLevel.mustLeaveTrace,
+        AttentionLevel.mustLeaveTrace,
+        'replaceSameLevel',
+      ),
+      (AttentionLevel.mustLeaveTrace, AttentionLevel.undroppable, 'preemptLower'),
+      (AttentionLevel.undroppable, AttentionLevel.discardable, 'yieldToHolder'),
+      (AttentionLevel.undroppable, AttentionLevel.mustLeaveTrace, 'yieldToHolder'),
+      (
+        AttentionLevel.undroppable,
+        AttentionLevel.undroppable,
+        'replaceSameLevel',
+      ),
+    ];
+
+    String decisionOf(AttentionLevel? holder, AttentionLevel incoming) =>
+        decisionTable
+            .firstWhere((row) => row.$1 == holder && row.$2 == incoming)
+            .$3;
 
     for (final holderLevel in holderLevels) {
       for (final newLevel in newLevels) {
@@ -1359,11 +1381,15 @@ void main() {
       final firstClosed = closedRecords.singleWhere(
         (r) => r.fields['showId'] == firstShowId,
       );
-      // 舊 showId 應恰被關閉一次（改序後由 action 觸發的清除搶先發生，實際
-      // 完成原因可能因 Material 內部動畫控制器重入而記為 hide——這是框架層
-      // 的競態，非本票控制範圍；核心不變式是「新 showId 不得被 action
-      // 誤殺」，見下方斷言）。
-      expect(firstClosed.fields['showId'], firstShowId);
+      // 舊 showId 的 reason 恆為 hide，非競態（0.1.0-W3-205 Phase 4a 更正）：
+      // Flutter 3.47.1 原始碼證實 hideCurrentSnackBar 對同一 completer 註冊
+      // reverse().then(...)（material/scaffold.dart:450），_animateToInternal
+      // 進入時 stop() 取消前一 ticker（animation/animation_controller.dart:
+      // 671），TickerFuture._cancel 只完成 secondary completer、primary 永不
+      // 完成（scheduler/ticker.dart:459-463）——第一次 hide(reason: action)
+      // 註冊的 .then 因此必然不執行，最終 reason 恆為 hide。核心不變式是
+      // 「新 showId 不得被 action 誤殺」，見下方斷言。
+      expect(firstClosed.fields['reason'], SnackBarClosedReason.hide);
       final secondShown = records
           .where((r) => r.event == AppSnackBarLogEvent.shown)
           .toList();
