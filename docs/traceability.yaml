@@ -245,19 +245,20 @@ data_contract_tests:
 runtime_tests:
   - scenario: 選擇資料夾建立 workspace（真實 file_selector 系統對話框）
     covers_uc: UC-01
-    tests: []
-    status: 無 fake 測試涵蓋、無實機驗證——WorkspaceRepository 無專屬測試檔，僅於 integration_test/app_test.dart 以 _StubWorkspaceRepository 繞過真實選取
+    tests:
+      - test/unit/workspace/workspace_repository_test.dart
+    status: 邏輯軌（fake）已有專屬單元測試 test/unit/workspace/workspace_repository_test.dart（五個 group：G1｜呼叫發出時刻（INV-PORT-OBSERVE-001 覆蓋）、G2｜chooseFolder 結局與四個 variant、G3｜restore 結局三分支、G4｜受理時刻、G6｜_inspect 探測結局）；平台端事實軌（真實 file_selector 系統對話框）仍零覆蓋——真實選取路徑於 integration_test/app_test.dart 被 _StubWorkspaceRepository（4 處）繞過
 
   - scenario: 掃描完成的系統層通知
     covers_uc: UC-06
     tests:
       - test/unit/screens/scan_notification_controller_test.dart
-    status: fake-only；實機驗證待補（SPEC-003 §2.2／0.1.0-W3-064 acceptance 2、3 未勾）
+    status: 邏輯軌（fake）已覆蓋：SPEC-003 §2.2 斷言十二列全綠；平台端事實軌（實機驗證）仍零覆蓋——SPEC-003 §2.2「實作票驗證」段四項平台事實尚未回填實測，承接票 0.1.0-W3-078（進行中，9/10 子票完成）以回填該段為其驗收項之一
 
   - scenario: 開啟原始檔（Process.run('open', ...)）與 doc CLI 呼叫
     covers_uc: UC-06
     tests:
       - test/unit/screens/gap_report_test.dart
-    status: 僅涵蓋「檔案不存在」的失敗分支（呼叫真實 Process.run 但目標路徑刻意不存在）；成功開啟外部編輯器的路徑與 doc CLI 呼叫路徑皆無實機驗證
+    status: 邏輯軌（fake）已覆蓋 _openItem 三個結局分支（exitCode 0 成功、exitCode 非零失敗、呼叫拋例外，皆以注入 gapItemProcessRunnerProvider 替身驗證）與「檔案不存在」情境（真實 Process.run 對刻意不存在路徑）；平台端事實軌仍零覆蓋——真正開啟外部編輯器與 doc CLI 呼叫路徑皆無實機驗證，且 doc CLI 呼叫於 lib/ 尚無對應實作（rescan() 現讀寫死 fixture，非真實呼叫）
 
 last_updated: "2026-09-09"
