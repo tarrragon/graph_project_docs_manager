@@ -17,8 +17,8 @@ const _shellPath = 'lib/app/shell.dart';
 const _specPath = 'docs/spec/ui/SPEC-003-interaction-response.md';
 
 /// 剝除 `///`／`//` 行尾、`/* */` 跨行區塊；字串字面量內的 `//` 不解析
-/// （已知限制，見 T-205-21(a)）。單趟字元狀態機，換行一律保留（行數守恆，
-/// Phase 3a P3a.5.1）。
+/// （已知限制，見 T-205-21(a-characterize)／T-205-21(a-scan)）。單趟字元
+/// 狀態機，換行一律保留（行數守恆，Phase 3a P3a.5.1）。
 String _stripComments(String source) {
   final buffer = StringBuffer();
   var i = 0;
@@ -122,6 +122,43 @@ String _extractBracedBody(String text, int start) {
     i += 1;
   }
   fail('0.1.0-W3-205 原始碼契約守衛：大括號未配對完成（$start 起）。');
+}
+
+/// 掃描 [text] 至 [index]（不含）為止的大括號巢狀深度，處理引號（單／雙
+/// 引號、跳脫字元），避免字串字面量內的大括號污染深度計算——與
+/// [_extractBracedBody] 共用同一套字串狀態機（0.1.0-W3-205 R1：原
+/// `depthAt` 為 T-205-16 內聯閉包，quote-blind）。
+int _depthAt(String text, int index) {
+  var depth = 0;
+  var i = 0;
+  const codeState = 0;
+  const stringState = 1;
+  var state = codeState;
+  var quote = '';
+  while (i < index) {
+    final c = text[i];
+    switch (state) {
+      case codeState:
+        if (c == "'" || c == '"') {
+          state = stringState;
+          quote = c;
+        } else if (c == '{') {
+          depth += 1;
+        } else if (c == '}') {
+          depth -= 1;
+        }
+      case stringState:
+        if (c == '\\') {
+          i += 1;
+        } else if (c == quote) {
+          state = codeState;
+        }
+      default:
+        break;
+    }
+    i += 1;
+  }
+  return depth;
 }
 
 void main() {
@@ -238,19 +275,11 @@ void main() {
       // T-205-16(e)：兩者的大括號巢狀深度相等——排除「hide 被包進條件
       // 分支而 show 在分支外」這種「不 hide 就 show」的形態。不得以放寬
       // 本斷言消紅燈（Phase 3a P3a.1.1 明文禁止），紅燈時應把條件改寫為
-      // 前置護衛。
-      int depthAt(int index) {
-        var depth = 0;
-        for (var i = 0; i < index; i++) {
-          if (stripped[i] == '{') depth += 1;
-          if (stripped[i] == '}') depth -= 1;
-        }
-        return depth;
-      }
-
+      // 前置護衛。深度計算改用共用的 [_depthAt]（0.1.0-W3-205 R1：原內聯
+      // 閉包不處理引號，字串字面量內的大括號會污染深度計算）。
       expect(
-        depthAt(hideIndex),
-        depthAt(showIndex),
+        _depthAt(stripped, hideIndex),
+        _depthAt(stripped, showIndex),
         reason:
             '0.1.0-W3-205 T-205-16(e) INV-SNACKBAR-NOQUEUE：清除與呈現的'
             '大括號巢狀深度須相等（兩者皆為 show 函式主體的直屬語句）。'
@@ -310,8 +339,10 @@ void main() {
     test('static 成員與 enum 名稱集合恰為既定白名單', () {
       final stripped = _stripComments(_readFile(_snackBarPath));
 
+      // R2（0.1.0-W3-205 Phase 4b）：捕獲組改 (\w+)，不再侷限於 _ 前綴或
+      // 明列名稱——問題在擷取器語意過窄，白名單本身十一項不動。
       final staticNames = RegExp(
-        r'static\s+(?:const\s+)?(?:[\w?<>,\s]+?)\s+(_\w+|logSink|show)\s*[=(]',
+        r'static\s+(?:const\s+)?(?:[\w?<>,\s]+?)\s+(\w+)\s*[=(]',
       ).allMatches(stripped).map((m) => m.group(1)!).toSet();
       const expectedStatic = {
         '_actionSlotAssertMessage',
@@ -446,23 +477,7 @@ void main() {
   });
 
   group('T-205-21：守衛自身的守衛', () {
-    test('T-205-21(a)：剝除器對四種形態產出預期結果', () {
-      expect(_stripComments('// line comment\ncode();'), '\ncode();');
-      expect(_stripComments('/// doc comment\ncode();'), '\ncode();');
-      expect(
-        _stripComments('code(); // trailing\nmore();'),
-        'code(); \nmore();',
-      );
-      expect(
-        _stripComments('before();\n/* block\n comment */\nafter();'),
-        'before();\n\n\nafter();',
-      );
-    }, skip: '已知限制（P2.4／P3a.5.1）：剝除器不解析字串字面量，字串內含 '
-        '// 時會被誤剝。lib/ 現況零命中（實測 2026-09-10），形態出現時本'
-        '測試為發現點，不得因此「修好」剝除器——修好會使本測試預期值失效，'
-        '其職責是讓限制可見。');
-
-    test('T-205-21(a-verified)：三種可驗證形態的剝除結果', () {
+    test('T-205-21(a)：三種可驗證形態的剝除結果', () {
       expect(_stripComments('// line comment\ncode();'), '\ncode();');
       expect(_stripComments('/// doc comment\ncode();'), '\ncode();');
       expect(
@@ -484,6 +499,49 @@ void main() {
       const noComment = 'final x = 1;\nfinal y = 2;\n';
       expect(_stripComments(noComment), noComment);
     });
+
+    // 0.1.0-W3-205 Phase 4b（D1）：原 T-205-21(a) 的 skip 為空掛——
+    // `--run-skipped` 實測全綠，且不含任何字串字面量 fixture，等於沒有
+    // 特徵化任何限制。改為不 skip 的特徵化測試，鎖定剝除器對字串內 `//`
+    // 的現行（錯誤）輸出：不解析字串字面量，`//` 之後直到行尾（或字串
+    // 結尾）皆被當作行註解剝除。紅燈代表剝除器行為已變更，需重新特徵化
+    // 或改寫剝除器，不得放寬本斷言消紅燈。
+    test(
+      'T-205-21(a-characterize)：字串字面量內的 // 目前被誤剝（已知限制）',
+      () {
+        expect(
+          _stripComments('final url = "http://x";'),
+          'final url = "http:',
+        );
+      },
+    );
+
+    // 真正的發現點：掃描 lib/**/*.dart，斷言無字串字面量含 // 或 /*——
+    // 這是「剝除器不解析字串字面量」限制在本專案是否已被觸發的唯一守衛。
+    test(
+      'T-205-21(a-scan)：lib/ 內無字串字面量含 // 或 /*（剝除器限制的發現點）',
+      () {
+        // 字元類需排除 \n——否則配對跨行貫穿到後續無關的引號，把中間任意
+        // 內容（含真正的 // 或註解）誤判為同一字串字面量的一部分。
+        final literalWithCommentMarker = RegExp(
+          r'"(?:[^"\\\n]|\\.)*(?:\/\/|\/\*)(?:[^"\\\n]|\\.)*"'
+          r"|'(?:[^'\\\n]|\\.)*(?:\/\/|\/\*)(?:[^'\\\n]|\\.)*'",
+        );
+        final offenders = <String>[
+          for (final file in _dartFilesUnder(_libDir))
+            if (literalWithCommentMarker.hasMatch(file.readAsStringSync()))
+              file.path,
+        ];
+        expect(
+          offenders,
+          isEmpty,
+          reason: '0.1.0-W3-205 T-205-21(a-scan)：發現字串字面量內含 // 或 '
+              '/*（$offenders）——剝除器不解析字串字面量，此形態會被誤剝。'
+              '不得以放寬 T-205-21(a-characterize) 消紅燈；正確處置是改寫'
+              '剝除器為引號感知，或改該字串內容避開 // ／ /*。',
+        );
+      },
+    );
 
     test('T-205-21(b)：正向對照——shell.dart 剝除後 ScaffoldMessenger 命中為 0', () {
       final raw = _readFile(_shellPath);
