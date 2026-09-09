@@ -1129,3 +1129,102 @@ layered-test-strategy.md 的雙軌並行判準一致：只做 fake 軌會留下�
 **落地**：本補記段盤點 W3-074 提出的框架層缺口（tdd 五層分工表缺測試形態軸）如何
 落在專案層；CLAUDE.md §6 依上段方式同步；`WorkspaceRepository`／`gap_report_screen`
 的實機驗證缺口以 spawn request 交 PM 裁決，不在本票內開票。
+
+### 2026-09-09：driven port 接縫形態約定（W3-133／W3-146）
+
+`0.1.0-W3-133` 就「是否為 driven port 建立獨立 adapter 層與 `ports/`／`adapters/`
+目錄」裁定為結論 A（維持現狀），成立條件是補一份接縫形態約定，供
+`0.1.0-W1-068`（`ExternalOpener`）、`0.1.0-W3-112`、`0.1.0-W1-014` 三個 driven
+port 依循，避免各自發明接縫。本節即為該約定，並補上 PM 覆核裁定時實查發現、
+`0.1.0-W3-133` Q3 結論未涵蓋的第三種介面形態與第四個接縫。
+
+**adapter 是角色標籤，不是類別要求**。方法論〈Port 回饋契約〉的承擔者表原文：
+
+| 時刻 | 定義 | 承擔者 |
+|------|------|--------|
+| 呼叫發出 | 呼叫端調用 port 方法的那一刻即為事件；不依賴外部系統是否回應、是否可達、是否逾時 | 呼叫端程式碼 |
+| 外部系統受理 | 連線建立、檔案控制碼取得、請求被接收（acknowledged 狀態或 progress callback） | adapter 實作 |
+| 結果 | 外部操作的結局：成功、失敗、逾時、不可達 | adapter 實作的回傳值或例外 |
+
+「adapter 實作」在此表中標註的是一個角色：實作 port 介面、與外部系統互動的
+程式碼。方法論全文未要求 adapter 必須是獨立於呼叫端檔案的頂層類別、獨立檔案、
+或特定目錄結構（`0.1.0-W3-133` Q1 已對此逐條查證）。四層架構表另有兩列可對照：
+「**Interface Adapters** | Controller、Presenter、Repository 介面 | 依賴 Use
+Cases」與「**Frameworks & Drivers** | DB、Web、UI 具體實作 | 依賴 Interface
+Adapters」——`WorkspaceRepository` 現行的 private `_Default*` 類別是後者對前者
+的具體填充，不因與 port 介面同檔案而喪失 adapter 身分。
+
+**更正**：`0.1.0-W3-133` why 段記載「repository 直接寫
+`SharedPreferences.getInstance()`／`Directory(path).list()`」，此描述來自 Phase
+4a 的 linux 視角前提，已被該票 Q1 查證推翻，與現行程式碼不符，本約定不沿用。
+實際情形：`SharedPreferences.getInstance()` 只出現在
+`_DefaultWorkspacePreferencesPort.open()` 內；`Directory(path).exists()`／
+`.list()` 只出現在 `_DefaultWorkspaceDirectoryProbePort` 內。`WorkspaceRepository`
+本體只持有四個注入欄位（`_pickDirectoryPath`／`_preferencesPort`／
+`_directoryProbe`／`_log`），不直接呼叫任何外部 SDK。下列判準表建立在這個更正
+後的事實上。
+
+#### 判準一：介面形態（`abstract interface class` 或 `typedef`）
+
+機械規則：計算該接縫互動所需的**獨立可觀察操作總數**——port 自身宣告的方法數，
+加上（若某方法回傳一個需要後續呼叫的 handle）該 handle 自身的方法數。總數 = 1
+時用 `typedef` 函式型別；總數 >= 2 時用 `abstract interface class`。這不是風格
+選擇：Dart 的函式型別 `typedef` 只能描述單一呼叫簽章，容納不下第二個方法，總數
+>= 2 時語言層面就沒有 typedef 可用的空間。當總數分佈於「port 本身」與「port
+回傳的 handle」兩個物件時（`WorkspacePreferencesPort`／`Handle`），兩者一併採
+介面 class，使呼叫端看到的形態一致，不會一半是函式一半是介面。
+
+`typedef` 分支內另分兩種生產預設寫法，一併列入判準表（回應 PM 覆核發現的第四個
+接縫 `WorkspaceLogSink`，不留在判準之外）：
+
+| # | 介面形態 | 適用判準 | 生產預設寫法 |
+|---|---------|---------|-------------|
+| 1 | `abstract interface class`（含 port 與其 handle 各自一個介面） | 操作總數 >= 2 | private `_Default*` **類別**實作該介面 |
+| 2 | `typedef` 函式型別，指派第三方函式 | 操作總數 = 1，且第三方套件已提供簽章完全相符的函式 | 生產預設直接指派為該第三方函式，不寫 adapter |
+| 3 | `typedef` 函式型別，自撰 private 頂層函式 | 操作總數 = 1，但無簽章相符的第三方函式（互動需綁定專案慣例，如固定 log 標籤） | 生產預設為專案自寫的 private 頂層**函式**，實作該簽章 |
+
+#### 判準二：兩步 API（`port.open()` -> handle）的使用時機
+
+僅當外部系統本身存在一個獨立、可能單獨失敗的「取得管道」步驟——對應方法論承擔
+者表「外部系統受理」時刻定義的「連線建立、檔案控制碼取得、請求被接收」——且後
+續操作都建立在這個已取得的管道上時，才把該 port 拆為兩步（`open()` 取得
+handle，handle 承載後續操作）。若各操作彼此獨立、不共用需要先取得的管道，即使
+port 有 2 個以上方法，仍用扁平的單一 `abstract interface class`，不建 handle。
+
+#### 四個接縫現況對照
+
+依符號名定位（`lib/workspace/workspace_repository.dart`）；行號會因
+`0.1.0-W3-147` 提取 value types 而位移，不引用：
+
+| 接縫 | port 方法數 | 有無獨立取得管道步驟 | handle 方法數 | 操作總數 | 適用判準列 | 生產預設 |
+|------|-----------|---------------------|--------------|---------|-----------|---------|
+| `WorkspacePreferencesPort`（含 `WorkspacePreferencesHandle`） | 1（`open`） | 有——對應 `SharedPreferences.getInstance()` | 2（`readString`／`writeString`） | 3 | 第 1 列 | private `_DefaultWorkspacePreferencesPort` ＋ `_DefaultWorkspacePreferencesHandle` 兩個類別 |
+| `WorkspaceDirectoryProbePort` | 2（`exists`／`readFirstEntry`） | 無——存在檢查與列目錄各自獨立，不共用已取得的管道 | — | 2 | 第 1 列 | private `_DefaultWorkspaceDirectoryProbePort` 類別 |
+| `DirectoryPathPicker` | 1 | 無 | — | 1 | 第 2 列 | 直接指派 `getDirectoryPath`（`file_selector` 套件函式） |
+| `WorkspaceLogSink` | 1 | 無 | — | 1 | 第 3 列 | private 頂層函式 `_defaultLogSink`（綁定專案 log 標籤慣例，轉呼 `developer.log`） |
+
+#### 測試替身紀律
+
+替身角色依 `.claude/skills/tdd/references/layered-test-strategy.md`〈分層之外
+的補位形態〉小節「角色化替身（依回饋分層分工）」的三層分工，對應本約定的判準
+列而非一律套用同一組角色：
+
+- **呼叫發出層**：四個接縫皆適用，用**記錄器**（spy）確認方法被呼叫、參數為
+  何，不模擬任何行為。現行測試已依此建立 `_PickerRecorder`／
+  `_PreferencesRecorder`＋`_HandleRecorder`／`_DirectoryProbeRecorder`／
+  `_LogRecorder`（`test/unit/workspace/workspace_repository_test.dart`）。
+- **外部系統受理層**：僅第 1 列且有獨立取得管道步驟的接縫適用（本專案現況僅
+  `WorkspacePreferencesPort`）——需要可停留狀態的替身（已受理／處理中／永不
+  受理）。扁平多方法 port（`WorkspaceDirectoryProbePort`）與 typedef 接縫
+  （`DirectoryPathPicker`／`WorkspaceLogSink`）沒有獨立的受理時刻，不需要此
+  層角色。
+- **結果層**：四個接縫皆適用，用**扮演各種結局**的替身（成功、失敗、逾時、
+  拋出平台例外，依接縫實際可能的結局子集選用）。現行測試已建立
+  `_FakePicker`／`_FakePreferencesPort`＋`_FakePreferencesHandle`／
+  `_FakeDirectoryProbe`。
+
+#### 對下游三票的落地
+
+`0.1.0-W1-068`（`ExternalOpener`）、`0.1.0-W3-112`、`0.1.0-W1-014` 設計新
+driven port 時，依序套用判準一（介面形態）與判準二（是否需要兩步 handle），
+不再各自決定；命名與測試替身紀律依上述現況表與角色分工比照辦理。
