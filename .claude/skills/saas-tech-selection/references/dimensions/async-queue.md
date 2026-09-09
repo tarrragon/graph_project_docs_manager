@@ -4,6 +4,8 @@
 
 選型的第一個區分沿用 catalog 的失敗語意欄：**可丟（重算就好）的 event 用最簡單的背景 job；不可丟（錢 / 合約 / 通知義務）的 event 才值得 durable queue 與 outbox 的複雜度**。
 
+多條事件流競爭同一個 worker pool 或連線池時、誰先讓步、誰被丟、丟了怎麼留痕的判準不在本維度、見 `.claude/methodologies/event-flow-load-arbitration-methodology.md`（其級別「不可棄 / 須留痕 / 可棄」對應本維度的失敗語意欄）。
+
 ---
 
 ## 訪談問題
