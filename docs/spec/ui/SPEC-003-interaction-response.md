@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-09"
-version: "1.12"
+version: "1.13"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -296,6 +296,67 @@ Developer ID 簽章下的可用性，以及 debug build 未簽章時授權請求
 Flutter 端載體（原生 channel 或第三方套件）的選擇；macOS 上 `AppLifecycleState`
 的 `inactive` / `hidden` 對應視窗失焦與最小化的實際行為；撤回已送達通知的 API 與
 其對「通知中心已收合」狀態的效果。
+
+#### 兩個 port 的三時刻覆蓋（`0.1.0-W3-139` 裁定：ScanNotifier 與 ExternalOpener 留在本節）
+
+上述「外部開啟契約」與「系統層通知」定義的 `ExternalOpener` 與 `ScanNotifier`
+是本 App 的兩個 driven port（服務向外呼叫的接縫）。本子節補上兩者的三時刻
+覆蓋——各時刻由什麼承載、哪些時刻不適用及其理由。三時刻（呼叫發出／受理／
+結果）的定義、`INV-PORT-OBSERVE-001`、以及「不互相抵扣規則」屬跨專案通則，
+見 `.claude/methodologies/clean-architecture-implementation-methodology.md`
+的〈Port 回饋契約〉，本節不重述，只寫本專案這兩個 port 的事實與義務。
+workspace domain 的三個 driven port 不在本節，見 `docs/spec/workspace/`。
+
+**回饋消費者三欄中的監控追蹤欄**：兩個 port 皆依 `docs/tech-decisions.md`
+補記段「2026-08-27：執行期 log 的裁決」，structured log 於 0.1 **維持延後**，
+重評條件為「出現無法由破洞報告解釋的故障」，tripwire 總表對應列指向該重評。
+此欄不寫 N/A——延後是已定策略、有觸發條件，與「不適用」的決策語意不同。
+以下兩表因此只列呼叫端與日誌兩個消費者。
+
+**`ScanNotifier` 四個方法**（實作 `lib/services/macos_scan_notifier.dart`）：
+
+| 方法 | 呼叫發出 | 受理 | 結果（呼叫端） | 結果（日誌） |
+|------|---------|------|---------------|-------------|
+| `authorizationStatus()` | 入口 info log（`查詢授權狀態`） | 不適用：MethodChannel 為 fire-and-wait，平台端不回中間 acknowledge | `NotificationAuthorization` 三值；`provisional`／逾時／拋錯／API 不可用於抽象邊界內收斂為 `denied`（權限 gate「其他」列） | 成功記結果值 info；`PlatformException` 與 `MissingPluginException` 各記 warning 並標明「視為 denied」 |
+| `requestAuthorization()` | 入口 info log（`請求授權`） | 同上 | 同上 | 同上 |
+| `show(notification)` | 入口 info log，**含 `gapCount`** | 同上 | `Future<void>`——呼叫端不被告知成敗（見下方設計選擇） | 成功不另記（入口 log 已足以定位）；兩類例外各記 warning，含 `code` 與 `message` |
+| `withdraw()` | 入口 info log（`撤回通知`） | 同上 | `Future<void>`——同上 | 同上，warning 文字須標明「不阻擋、不轉狀態」 |
+
+**`show` 與 `withdraw` 回傳 `void` 是設計選擇，不是遺漏的回傳值。** 兩者是
+非同步旁路動作：畫面在掃描完成當下已依 §3.5 走完「掃描中 → 結果」的
+cross-fade，通知送不送得出去都不改變該狀態，「等待指示」列因此規定發送與
+撤回期間不顯示任何等待指示，「不重複發送」列亦規定撤回失敗不阻擋、不轉狀態。
+呼叫端拿到結果也沒有任何分支可走，故刻意不回傳——**此處是呼叫端消費者被刻意
+排除，非以日誌抵扣呼叫端**（前者是需求上不需要，後者是把兩個獨立消費者混為
+一談）。相對地 `authorizationStatus` 與 `requestAuthorization` 的結果決定
+走 `granted` 發送或 `denied` fallback（權限 gate 三路徑），呼叫端必須被告知，
+故回傳 enum。往後若出現「通知送出失敗須改走 SnackBar fallback」的需求，
+此設計選擇即失效，須連同本段一併修訂。
+
+**`ExternalOpener` 三時刻**（介面見「外部開啟契約」列；實作票 `0.1.0-W1-068`）：
+
+| 時刻 | 承載 | 義務 |
+|------|------|------|
+| 呼叫發出 | 日誌（本次新增的契約義務，見下表）；呼叫端為 `open(path)` 的呼叫本身 | 見下方「呼叫發出日誌」表 |
+| 受理 | 不適用：`Process.run` 為 fire-and-wait，外部程序不回中間 acknowledge | — |
+| 結果 | 呼叫端收 `ExternalOpenResult` 三值（`opened` / `notFound` / `failed`）；日誌見下 | `failed` 依「失敗可觀測」列記 warning（stderr 與路徑）；`notFound` 記 warning（路徑）；`opened` 記 info（路徑） |
+
+**呼叫發出日誌**（可驗收形態，`0.1.0-W1-068` 依此實作，測試依此斷言）：
+
+| 項目 | 要求 |
+|------|------|
+| 記錄時機 | 進入 `open(path)` 之後、執行「前置檢查」列的 `FileSystemEntity.type(path)` **之前**。前置檢查與外部程序呼叫皆在此之後，故無論走哪條結果分支，該次呼叫都已產生一筆記錄 |
+| 手段 | `developer.log`，`name` 為 `ExternalOpener` 實作的 `_tag` |
+| 等級 | info（`developer.log` 預設 level，不帶 `level:` 參數） |
+| 欄位 | 傳入的絕對路徑一項（`path` 原值，不截斷、不改寫） |
+| 為何不可省 | `INV-PORT-OBSERVE-001`：每次呼叫必須產生可觀測事件，且該事件不得依賴外部系統是否回應。外部程序掛住不回時，只有結果分支的日誌等於整次呼叫零記錄——診斷者無法區分「呼叫了但沒回來」與「根本沒呼叫」 |
+| 驗收 | `0.1.0-W1-068` 的實作中，`open` 方法體的第一個語句為此 `developer.log`，且其位置在任何 `return` 與任何 `FileSystemEntity` / `Process` 呼叫之前（靜態可讀出，不需執行） |
+
+上表對現行臨時實作的關係：`lib/screens/gap_report/gap_report_screen.dart`
+的 `_runOpen` 已有入口 log（`外部開啟：$path`），但該 log 在 `_openItem` 的
+`File(...).existsSync()` 前置檢查**之後**——`notFound` 分支提早返回，走該分支
+的呼叫不會留下任何入口記錄。`0.1.0-W1-068` 以正式 `ExternalOpener` 取代此
+臨時接縫時，須依上表把記錄時機移到前置檢查之前。
 
 ### 2.3 導航模型：六項平行 + 單槽來源記錄
 
@@ -1307,6 +1368,7 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.13 | 2026-09-09 | §2.2 追加子節「兩個 port 的三時刻覆蓋」（`0.1.0-W3-149`，來源 `0.1.0-W3-139` SR-2）：`ScanNotifier` 與 `ExternalOpener` 是本 App 的兩個 driven port，其契約已在 §2.2 但缺三時刻的顯式覆蓋。新增內容為——`ScanNotifier` 四個方法（`authorizationStatus` / `requestAuthorization` / `show` / `withdraw`）逐一列出各時刻承載者（受理時刻不適用，MethodChannel 為 fire-and-wait）；`show` 與 `withdraw` 回傳 `void` 明寫為設計選擇（畫面已完成 cross-fade、呼叫端無分支可走，屬呼叫端消費者被刻意排除，非以日誌抵扣呼叫端）並附失效條件；`ExternalOpener` 新增**呼叫發出時刻的日誌義務**，寫為可驗收形態（記錄時機須在「前置檢查」列的 `FileSystemEntity.type` 之前、`developer.log` info 等級、欄位為傳入絕對路徑一項、驗收為 `open` 方法體第一個語句），依 `INV-PORT-OBSERVE-001`——原「失敗可觀測」列只涵蓋 `failed`，外部程序掛住不回時整次呼叫零記錄；並記錄現行臨時實作（`gap_report_screen.dart` 的 `_runOpen`）入口 log 在 `existsSync` 前置檢查之後、`notFound` 分支無記錄，`0.1.0-W1-068` 須移前。監控追蹤欄依 `docs/tech-decisions.md`「2026-08-27：執行期 log 的裁決」寫為 structured log 於 0.1 維持延後並保留重評條件，不寫 N/A。三時刻定義與 `INV-PORT-OBSERVE-001` 以標題文字引用方法論不重述。**未後移既有 §2.x 編號**（`0.1.0-W3-108` 實證 SPEC-004 有大量 `SPEC-003 §2.x` 跨檔引用）；不改 SPEC-001 與 SPEC-004；不新增時間 token、狀態與錨點類別 |
 | 1.12 | 2026-09-09 | §2.12 的功能需求條目補齊（`0.1.0-W3-145`，來源 `0.1.0-W3-108` SR-1，PM 裁定新增）：v1.11 寫入 §2.12 但該章不在 FR-01～FR-11 任一條的驗收範圍內。經逐項判定 §2.12 的四項規範主張皆未被既有條目涵蓋且兩兩可獨立失效，新增四條——FR-12（第一層回饋不因服務狀態而免除，驗收含「注入永不受理的服務替身後 pressed 視覺仍存在」「防抖窗口內連按 N 次回調累計 N 次」「防抖窗口內 `input-tickets-search` 恆 `enabled`」「無元件以服務側防抖為 `disabledReason`」）、FR-13（逐服務類型的回饋形式，長時操作三處載入態錨點、短暫非同步四錨點 × 三結果值共十二組合的第三層回饋皆非空且等於 §3.x 對應列所指定者、延遲觸發與本地即時皆無載入態錨點）、FR-14（輸入阻擋範圍，長時操作期間內容區正常態錨點不存在而六個 `nav-item-<d>` 恆 `enabled`，其餘三類不阻擋）、FR-15（重複觸發防護由服務承擔，`lib/components/` 靜態掃描不出現 `Timer(`、`SearchField` 每次變更呼叫 `onChanged` 恰一次且不延遲、防抖在 provider 層可驗、外部開啟冪等）。**「阻擋頁面內容時必須同時提供取消」不另立條目**，其驗收落在既有 FR-02，於 §2.12 該段與新增的「本節的功能需求對應」表明列歸屬。編號續接以 `rg -o 'FR-[0-9]+' docs/ lib/ test/` 實查得出（排除 `test/fixtures/corpus/` 的假語料庫，其 FR-12／FR-013 屬另一專案的編號空間），既有最大號為 FR-11。概述的 FR 範圍句同步為 FR-01～FR-15；§5 判讀註記新增兩列（「阻擋狀態」與「輸入阻擋範圍」用字相同但驗收不共用；載入中的取消判讀為長時操作類阻擋政策）。不改 SPEC-001 與 SPEC-004；不新增時間 token、狀態與錨點類別 |
 | 1.11 | 2026-09-09 | 服務類型與等待期政策定案（`0.1.0-W3-108`，來源 `0.1.0-W3-105` 用戶裁示 2026-09-08）：新增 §2.12「服務類型與等待期政策」——以「使用者感知的等待長度」與「失敗形態」兩軸（不以同步／非同步切）分出本地即時／延遲觸發／短暫非同步／長時操作四類，各附與相鄰類的政策差異點；政策對照表逐類型定回饋形式（依 §2.2 承擔者欄分列第二層與第三層）、輸入阻擋範圍、重複觸發防護三欄；輸入阻擋三選一判準（不阻擋／禁用觸發來源／阻擋頁面內容），阻擋範圍限內容區不含導覽列，阻擋頁面內容者必須同時提供取消（由 §2.5 C1／C4 承擔）；重複觸發防護的承擔者一律是服務，元件不實作防抖／節流／冪等，並記 `Motion.searchDebounce` 改由 provider 消費（`0.1.0-W3-110`）；不變式 INV-FEEDBACK-001（元件每一次互動都必須發出第一層回饋，即使服務丟棄該次呼叫）含三列可觀察條件、Why（`ARCH-GPD-001` 形態）、Consequence 與三條規格層判準，機械檢查方式引用 `layered-test-strategy.md`〈不變式 INV-FEEDBACK-001 的驗證形態〉段而不在本規格重複定義（`DOC-005`）。§2.2 三層回饋落地表新增「承擔者」欄（互動元件自身／服務／event 處理路徑），並明寫第一層不因服務不可用或呼叫被丟棄而免除，與 §2.12 對接。回饋形式全部對應既有元件，不新增元件；§2.11 元件庫對應的載入態與 SnackBar 兩列各補 §2.12 承擔範圍。不改 SPEC-001 與 SPEC-004；不新增時間 token、狀態、錨點類別與 FR（§2.12 是否需獨立 FR 交 PM 核定，見 `0.1.0-W3-108` spawn request） |
 | 1.10 | 2026-09-08 | `0.1.0-W3-069`：§3.1 動畫提示表列名「格選中態出現」改為自足形式「矩陣格的選取標記出現」（原列名壓縮掉三個限定語——哪種格、選取標記為持續性標記、出現指狀態從無到有的時機，讀者須跨節查 §3.1 標題與元件才能還原；判準見 DOC-GPD-004）。「形式」欄內容不動。全檔其餘表格列名逐一判定後皆保留（判定表見票 `0.1.0-W3-069` Solution）：§3.3 動畫提示「缺口虛線框」、§3.4「損壞徽章出現」「已解析筆數文字」、§3.6「損壞欄位標示」、§2.2「不發送」、§2.8「六頁建構時機」、§2.10「按 Esc」等，皆在所屬子節的表頭語境內自足或為跨檔引用錨點，不改。本改動同步 SPEC-004 三處逐字引用錨點（v1.26） |
