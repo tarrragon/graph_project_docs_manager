@@ -4,6 +4,7 @@ title: 驗證器驗的維度與缺陷所在的維度不同軸，每次都是「�
 category: process-compliance
 severity: high
 created: 2026-09-08
+canonical_issue: tarrragon/claude#105
 ---
 # PC-GPD-009: 驗證器驗的維度與缺陷所在的維度不同軸，每次都是「查了，而且通過了」
 
