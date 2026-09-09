@@ -2,7 +2,7 @@
 name: event-flow-arbitration-design
 description: "落實事件流負載仲裁方法論的執行流程、訪談問題、套用範例與產出物範本（通道清單表、九格卸載順序表）。方法論管判準，本 skill 管怎麼問、怎麼套、產出長什麼樣。Use when: 事件流仲裁、負載仲裁、load shedding、卸載順序、backpressure、通道清單、九格表、isolate 仲裁、worker pool 競爭、connection pool 競爭、佔用量閾值設計、到達類別標定、級別標定時。"
 metadata:
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # Event Flow Arbitration Design
@@ -54,7 +54,7 @@ metadata:
 | 情境 | 讀 | 涵蓋內容 |
 |------|-----|---------|
 | 執行〈執行流程〉任一步的訪談，需要具體問句 | `references/interview-questions.md` | 各步數題，每題附「為什麼問」 |
-| 需要參考已套用過的案例，理解判準如何落地到具體系統 | `references/worked-examples.md` | 三個場景（HTTP API 共用連線池、多 isolate 應用程式、訊息消費者混流），各含套用結果、易誤套形態、方法論對應判準 |
+| 需要參考已套用過的案例，理解判準如何落地到具體系統 | `references/worked-examples.md` | 三個場景（HTTP API 共用連線池、多 isolate 應用程式、訊息消費者混流），各含套用結果、易誤套形態、方法論對應判準；末節另有三個不繫於特定場景的常見誤解 |
 | 需要填產出物，要現成表格骨架 | `references/templates.md` | 〈執行流程〉各步對應的範本表格，欄位與方法論條文一致 |
 
 ## Example
