@@ -54,6 +54,19 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 框架資產的 `sync-push`（推 `tarrragon/claude`）與 `skill-sync push`（推發佈庫）**不在此授權內**
 ——那兩者影響其他 consumer 專案，屬跨專案動作。
 
+**框架 issue 的觀測與建立**（`section_comment.py` 的 `observe` / `init` / `add` / `update` 自有區段，
+含前置的 `dedup` / `show` / `check` / `todo`）已由用戶授權，**不需逐次徵詢**（2026-09-09 裁示）。
+
+生效條件兩項，缺一即回到逐次徵詢：(1) 框架問題的兩條 AND 判準（抽象可攜 + 根源在 `.claude/`
+通用資產，見 `.claude/skills/framework-issue/references/escalation-flow.md`）**已在票面逐條套過**，
+不是憑印象；(2) **已跑 `dedup`** 且關係判定（重複／切分／引用）有記錄。
+
+授權理由：框架缺陷存在於每一個 consumer 專案，逐次徵詢會使發現停在本地，而本地修會被下次
+`sync-pull` 以上游舊版覆蓋且無 canonical 記錄。判準客觀可查，且 observe 可刪。
+
+**仍不在授權內**：`sync-push` 與 `skill-sync push`（同上段理由，那是改資產本體不是留一則可刪的觀測）、
+改他人 owner 的區段或 issue body、其他 remote 與其他 repo。
+
 ---
 
 ## 2. 核心價值
