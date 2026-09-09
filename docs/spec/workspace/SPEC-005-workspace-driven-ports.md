@@ -5,7 +5,7 @@ status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
 updated: "2026-09-09"
-version: "1.0"
+version: "1.1"
 owner: star-anise-system-designer
 
 domain: "workspace"
@@ -31,11 +31,21 @@ depends_on_domains: []
 〈回饋消費者與投影關係〉〈時序約束〉〈測試義務〉）。本規格**不重述**上述內容，只寫本專案
 事實：有哪些 port、各時刻由什麼承載、哪些不適用及原因、缺口與承接票。
 
-**載體**：全部五個接縫與其呼叫端集中於 `lib/workspace/workspace_repository.dart`。
-value types（`WorkspaceState` / `ChooseFolderResult` 及其 variant）將移至
-`lib/workspace/workspace_types.dart`（`0.1.0-W3-147` 分離後；該檔於本規格撰寫時尚不存在），
-且該票已裁定**不由 `workspace_repository.dart` re-export**——僅在檔案系統上分離而主檔仍
-輸出兩個責任的公開介面已被否決。本規格一律以符號名稱引用，不寫行號。
+**載體**（以下三條為契約，不是某次搬移的紀錄）：
+
+1. **接縫的落點**：全部五個接縫與其呼叫端位於 `lib/workspace/workspace_repository.dart`
+   ——三個 port 介面、其 private `_Default*` adapter、兩個 typedef 皆在該檔。
+2. **value types 的落點**：`lib/workspace/workspace_types.dart` 承載九個 value type
+   （`WorkspaceState` 與其三個 variant `WorkspaceUnset`／`WorkspaceReady`／
+   `WorkspaceUnavailable`；`ChooseFolderResult` 與其四個 variant `ChooseFolderCancelled`／
+   `ChooseFolderUnavailable`／`ChooseFolderSelected`／`ChooseFolderNotRemembered`）。
+3. **不 re-export**：`workspace_repository.dart` 只 `import 'workspace_types.dart'`，
+   **不 `export`** 它（`0.1.0-W3-147` 裁定：僅在檔案系統上分離而主檔仍輸出兩個責任的
+   公開介面已被否決）。**對呼叫端的約束**：需要這九個 value type 的程式碼必須直接
+   import `workspace_types.dart`，不得靠 import `workspace_repository.dart` 間接取得。
+
+第 3 條是本規格的可否證條款——主檔一旦出現 `export 'workspace_types.dart'`，即為違反，
+與檔案如何演進無關。本規格一律以符號名稱引用，不寫行號。
 
 ## 一、本專案的接縫清單與三種形態
 
@@ -49,6 +59,26 @@ value types（`WorkspaceState` / `ChooseFolderResult` 及其 variant）將移至
 | `WorkspaceDirectoryProbePort` | `abstract interface class` + private adapter | `_DefaultWorkspaceDirectoryProbePort` | 本專案自撰 |
 | `DirectoryPathPicker` | `typedef`，預設為第三方 API | `getDirectoryPath`（file_selector 套件函式） | 無自撰程式碼 |
 | `WorkspaceLogSink` | `typedef`，預設為本專案自撰實作 | `_defaultLogSink`（private 頂層函式，轉呼 `developer.log`） | 本專案自撰 |
+
+**上表的列與 `0.1.0-W3-146` 對照表的列不是同一種東西**：`docs/tech-decisions.md` 補記段
+「2026-09-09：driven port 接縫形態約定（W3-133／W3-146）」的「四個接縫現況對照」表把
+`WorkspacePreferencesPort` 與 `WorkspacePreferencesHandle` 放在同一列，上表則分列。兩邊
+都不是待修正狀態，因為兩種列定義的是不同的單位：
+
+| | 上表的列 | 146 對照表的列 |
+|---|---|---|
+| 列 = 什麼 | 回饋點承擔者的**歸屬單位** | 形態判準的**計算單位** |
+| 為何如此切 | `Handle` 承擔結果時刻、`Port` 承擔受理時刻，兩者須分別記載（見 §2.2） | 判準一算的是「port 方法數 ＋ 其 handle 方法數」的操作總數，兩者的操作數必須合計才得出形態 |
+
+**把 146 那一列拆成兩列會使判準給出相反結論**（本段的實質內容，不只是宣告兩者不同）：
+併列時的計算是 `open` 1 個 ＋ `readString`／`writeString` 2 個 ＝ 總數 3，落在「總數 >= 2
+→ `abstract interface class`」。拆開後 `WorkspacePreferencesPort` 單獨只有 `open` 一個
+方法，總數 = 1，落進「typedef 函式型別」那一支——本專案最複雜的接縫會被判成函式型別。
+拆列的動機通常是「對齊另一份文件、消除不一致」，看起來正當，實際是拆掉了計數的定義域。
+**因此：不得依本規格的粒度去改 146 的分組，亦不得依 146 的分組去合併上表的列。**
+
+同一份說明在 `docs/tech-decisions.md` 補記段「2026-09-09：上節與 SPEC-005 的軸別對照
+（W3-157）」有對稱一份，供從該側進入的讀者取用；兩處任一被修改時另一處須同步。
 
 `WorkspaceRepository` 本體只持有這五個接縫中的四個注入欄位（`_pickDirectoryPath` /
 `_preferencesPort` / `_directoryProbe` / `_log`），**不直接觸碰任何外部 SDK**：
@@ -87,6 +117,20 @@ value types（`WorkspaceState` / `ChooseFolderResult` 及其 variant）將移至
 2. **它是投影載體而非被投影對象**。方法論〈回饋消費者與投影關係〉把日誌列為三個消費者投影
    之一；`WorkspaceLogSink` 是該投影在本專案的實體接縫。盤點對象是「呼叫被投影到哪裡」，
    投影管道自身不是同一層次的盤點對象——如同不會為「回傳值」這個機制盤點它的回傳值。
+
+**本節的排除與 `0.1.0-W3-146` 的形態判定正交**（本段是邊界宣告，不新增結論，作用是阻斷
+一個錯誤推論；刪除本段的代價寫在段末）：這裡排除的軸是**可觀測性義務**——把
+`WorkspaceLogSink` 列為受盤點 port，會要求「記錄它自己的呼叫發出」，而該記錄的投影載體
+仍是它自己，判準因此遞迴。146 的判準表所在的軸是**介面形態**：其機械輸入為操作總數，
+`WorkspaceLogSink` 的操作總數為 1，正常落在第 3 列（`typedef` ＋ 自撰 private 頂層函式
+`_defaultLogSink`），該計數不觸發任何遞迴。兩份文件的結論可並存：本規格排除它於回饋點
+盤點之外，146 給它一個形態，兩者不是同一個問題的兩種答案。
+
+**本段擋的推論**：讀者見本節排除 `WorkspaceLogSink`，推論 146 的「四個接縫現況對照」表
+也該把它移除（或反向推論本節的排除有誤，因為 146 收了它）。該推論會刪掉 146 判準表唯一
+的第 3 列實例，使「`typedef` ＋ 自撰 private 頂層函式」這個形態失去現況對照，下游三票
+（`0.1.0-W1-068`／`0.1.0-W3-112`／`0.1.0-W1-014`）套用判準時無例可循。刪除本段前請先
+確認該推論已由別處擋住。
 
 **排除的代價與其承接**：排除意味著日誌管道自身故障（`developer.log` 拋例外、輸出被丟棄）
 在本 domain 內無可觀測事件。此為已知取捨，其消費者是進程層的全域錯誤攔截（`0.1.0-W1-016`
@@ -193,4 +237,5 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.1 | 2026-09-09 | 對齊 `0.1.0-W3-146`／`0.1.0-W3-147` 落地後的現況：載體段由遷移事件敘述改寫為三條契約（接縫落點／value types 落點／不 re-export 與呼叫端 import 約束），時態問題隨之消解；§1 補與 146 對照表的列定義差異（歸屬單位 vs 計算單位）並寫出拆列會使判準把 `WorkspacePreferencesPort` 判成 typedef 的失效機制；§1.1 補軸別釐清並寫明所擋的推論與刪除代價。`docs/tech-decisions.md` 補記段有對稱一份（`0.1.0-W3-157`） |
 | 1.0 | 2026-09-09 | 初始版本：workspace 五個接縫與三種形態、受盤點的四個 port 的回饋點承擔者、`WorkspaceLogSink` 排除判定與理由（§1.1）、兩項現況缺口、測試替身紀律（`0.1.0-W3-148`） |
