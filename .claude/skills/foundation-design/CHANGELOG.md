@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 6.4.0 — 維度表新增一列「事件流仲裁」：權威為事件流負載仲裁方法論（判準在此，本 skill 不複述），預設產物為通道清單＋每通道的仲裁器落層＋九格卸載順序表，適用條件為有兩條以上事件流的專案（不限 SaaS）。`references/dimension-product-notes.md` 補該維度的四種答案形態範例，改寫產物的典型為單線程桌面 App 只有注意力通道。frontmatter description 同步補列；「本表列的是五個常見維度」改為不寫死數字（新增一列後原數字即失真，依〈集合命名用角色、不內嵌數量〉同一判準）；移植前置條件的權威清點勾選項同理改為不寫死 skill／方法論數量。動因：事件流負載仲裁方法論定稿後，地基盤點原無一格問「多條事件流搶同一通道時誰裁決」。
+
 **Version**: 6.3.1 — 〈維度與產物〉UI 列指向元件契約程序的括注由「十一欄位」改為「元件契約欄位表」。該欄位數已因 `component-contract-design` 改版而變動，內嵌數量在成員數改變時即失真——與本庫〈集合命名用角色、不內嵌數量〉同一判準。改寫由另一個 consumer 專案完成並經框架 canonical 傳入，本專案取回。
 
 **Version**: 6.3.0 — token 收斂（6,615 -> 4,795，門檻 5,000）：〈維度與產物〉節的非 SaaS 處置細節、複合產物、多子樹分列、改寫產物範例、無 UI 框架元件庫產物外移至新建 `references/dimension-product-notes.md`；〈接手模式〉整節外移至 `references/handoff-mode.md`；〈Examples〉五則案例外移至 `references/examples.md`。入口檔三處保留短版路由並補內文提醒，判準表（維度表、四種合法答案、權威缺席時）因跨處被大量引用而全數留在入口檔。跨檔指涉逐一改具名（`SKILL.md`〈某節〉／`references/<檔名>.md`〈某節〉），不留位置詞。

@@ -1,9 +1,9 @@
 ---
 name: foundation-design
-description: "地基工作的單一入口與路由層。逐維度決定「本專案的地基產物是什麼」，權威只提供預設產物，形態不符時改寫產物而非跳過維度。維度含 UI／測試／資料庫／DevOps／可觀測性，各指名既有權威並標明權威缺席時的處置。新舊專案一體適用：接手他人專案先盤點萃取再命名固化。觸發詞：地基、地基波、元件庫、design token、fixture、seed、migration、scaffold、鷹架、腳手架、接手老專案。Do NOT use for 環境安裝（用 project-init）。"
+description: "地基工作的單一入口與路由層。逐維度決定「本專案的地基產物是什麼」，權威只提供預設產物，形態不符時改寫產物而非跳過維度。維度含 UI／測試／資料庫／DevOps／可觀測性／事件流仲裁，各指名既有權威並標明權威缺席時的處置。新舊專案一體適用：接手他人專案先盤點萃取再命名固化。觸發詞：地基、地基波、元件庫、design token、fixture、seed、migration、scaffold、鷹架、腳手架、接手老專案。Do NOT use for 環境安裝（用 project-init）。"
 license: MIT
 metadata:
-  version: 6.3.1
+  version: 6.4.0
   category: engineering-workflow
 ---
 
@@ -49,8 +49,9 @@ metadata:
 | **資料庫** | `saas-tech-selection` skill 的 state-storage 維度（migration 版本化紀律、多租戶資料模型、**防護底線的自動備份與還原驗證**） | migration baseline、**備份與還原驗證**。seed 見〈權威缺席時〉形態 3 | SaaS/伺服器端專案照預設；非 SaaS 專案見下方處置 |
 | **DevOps** | `saas-tech-selection` skill 的 reliability 維度（CI gate 構成與起始門檻） | CI gate、部署與還原配方 | SaaS/伺服器端專案照預設；非 SaaS 專案見下方處置 |
 | **可觀測性** | 專案的可觀測性規則（統一 log 入口、catch 區塊要求；屬自動載入層，多半已在 context 中），以及 `saas-tech-selection` skill 的 observability 維度（錯誤分類） | log 接線點、錯誤分類骨架 | log 接線點不限；`saas-tech-selection` 的錯誤分類部分限 SaaS/伺服器端，非 SaaS 專案見下方處置 |
+| **事件流仲裁** | 事件流負載仲裁方法論（判準在此，本 skill 不複述） | 通道清單＋每通道的仲裁器落層＋九格卸載順序表 | 有兩條以上事件流的專案，不限 SaaS |
 
-**本表列的是五個常見維度，不宣稱窮盡地基的全部外延。** 專案若有本表未涵蓋的地基工作（如協定契約、資料匯入匯出格式），照同一形式增列一行。
+**本表列的是常見維度，不宣稱窮盡地基的全部外延。** 專案若有本表未涵蓋的地基工作（如協定契約、資料匯入匯出格式），照同一形式增列一行。
 
 **資料庫／DevOps／可觀測性三維度的非 SaaS 專案處置**：這三列的權威來源以 SaaS/伺服器端專案為預設形態，對非 SaaS 專案形態不符時走〈權威缺席時〉「權威存在但形態不符」，先取權威中與形態無關的部分；**不新增第二套權威**。完整處置流程與範例見 `references/dimension-product-notes.md`〈非 SaaS 專案的形態轉換〉。
 
@@ -131,7 +132,7 @@ metadata:
 
 本 skill 是**框架綁定**的：它以框架資產的路徑為主題，路由到的權威不隨它一起移動（同 `version-bootstrap`、`ticket`、`doc`，皆不宣告 `portable`）。開始前確認：
 
-- [ ] **執行本流程的 session** 有維度表指名的全部權威？（三個 skill、一份方法論、一份可觀測性規則）缺者走〈權威缺席時〉形態 1
+- [ ] **執行本流程的 session** 有維度表逐列指名的全部權威（skill／方法論／可觀測性規則）？缺者走〈權威缺席時〉形態 1
 - [ ] **被盤點的 repo** 有具 `blockedBy` 語意的 ticket 系統？步驟 4 與〈權威缺席時〉的建票動作依賴它
 - [ ] **被盤點的 repo** 有執法載體，且**其掃描範圍涵蓋本專案實際存在的檔案**？只問「有沒有」會通過一個只認 `.dart` 的 hook 裝在零 `.dart` 檔的專案上，該載體結構上永不觸發
 - [ ] **被盤點的 repo** 有決策文件（任何形式的持久記錄，且進版控）？〈權威缺席時〉的形態 1、形態 4、`references/handoff-mode.md`〈萃取的前提是既有 artifact 可信〉表第四列、以及下方的降級記錄都落在它上面
