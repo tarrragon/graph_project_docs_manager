@@ -300,4 +300,104 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
     });
   });
+
+  group('診斷日誌（0.1.0-W3-165）', () {
+    // 斷言只依 AppSnackBarLogEvent 列舉與呼叫次數，不比對日誌散文字面——
+    // `0.1.0-W3-132` 尚未把日誌訊息改為事件識別碼，比對字面會與其目標衝突
+    // （how.strategy 決策點 4 的測試規範）。
+    late AppSnackBarLogSink originalSink;
+    final events = <AppSnackBarLogEvent>[];
+    final levels = <int?>[];
+
+    setUp(() {
+      originalSink = AppSnackBar.logSink;
+      events.clear();
+      levels.clear();
+      AppSnackBar.logSink = (event, fields, {level}) {
+        events.add(event);
+        levels.add(level);
+      };
+    });
+
+    tearDown(() {
+      AppSnackBar.logSink = originalSink;
+    });
+
+    // SnackBar 進出動畫為 Flutter Material 內建 250ms transition（同「停留
+    // 時間與退出路徑」群組），未待其跑完就 tap/斷言會落在動畫中間幀。
+    const materialTransition = Duration(milliseconds: 250);
+
+    testWidgets('plain 顯示後自然逾時：記錄 shown 接著 closed', (tester) async {
+      await pumpHarness(
+        tester,
+        child: _triggerHarness(message: 'plain-message'),
+      );
+
+      await tester.tap(find.byKey(_triggerPlainKey));
+      await tester.pump();
+
+      expect(events, [AppSnackBarLogEvent.shown]);
+      expect(levels, [null]);
+
+      await _pumpBy(tester, materialTransition);
+      await _pumpBy(
+        tester,
+        Motion.snackBar + materialTransition + materialTransition,
+      );
+
+      expect(events, [AppSnackBarLogEvent.shown, AppSnackBarLogEvent.closed]);
+    });
+
+    testWidgets('withAction 按下動作：記錄 shown、actionPressed、closed', (
+      tester,
+    ) async {
+      var actionCalled = 0;
+      await pumpHarness(
+        tester,
+        child: _triggerHarness(
+          message: 'action-message',
+          variant: AppSnackBarVariant.withAction,
+          actionLabel: 'action-label',
+          onAction: () => actionCalled++,
+        ),
+      );
+
+      await tester.tap(find.byKey(_triggerActionKey));
+      await tester.pump();
+      expect(events, [AppSnackBarLogEvent.shown]);
+
+      await _pumpBy(tester, materialTransition);
+      await tester.tap(find.byKey(_snackBarActionKey));
+      await _pumpBy(tester, materialTransition + materialTransition);
+
+      expect(events, [
+        AppSnackBarLogEvent.shown,
+        AppSnackBarLogEvent.actionPressed,
+        AppSnackBarLogEvent.closed,
+      ]);
+      expect(actionCalled, 1);
+    });
+
+    testWidgets('context 已卸載時記錄 skippedUnmounted（warning）且不顯示', (tester) async {
+      late BuildContext capturedContext;
+      await pumpHarness(
+        tester,
+        child: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+
+      // 以整棵替換的方式卸載 capturedContext 所屬的 Element。
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      AppSnackBar.show(capturedContext, message: 'unused');
+
+      expect(events, [AppSnackBarLogEvent.skippedUnmounted]);
+      expect(levels, [900]);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+  });
 }

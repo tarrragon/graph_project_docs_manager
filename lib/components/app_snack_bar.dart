@@ -8,6 +8,8 @@
 /// 靜態入口。
 library;
 
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -22,13 +24,68 @@ enum AppSnackBarVariant {
   withAction,
 }
 
+/// [AppSnackBar] 診斷日誌的事件類別（0.1.0-W3-165）。
+///
+/// 測試斷言依此列舉與 [AppSnackBarLogSink] 的 `fields` 結構化欄位判斷「發生
+/// 了什麼」，不比對日誌散文字面——`0.1.0-W3-132` 尚未把日誌訊息改為事件識別
+/// 碼，比對字面會與其目標衝突。
+enum AppSnackBarLogEvent {
+  /// 顯示入口：variant／訊息／停留時長／動作標籤已決定，即將呼叫
+  /// [ScaffoldMessenger.showSnackBar]。
+  shown,
+
+  /// 靜默早退：`context` 已卸載，未呼叫 [ScaffoldMessenger]（元件加掛日誌前
+  /// 唯一無痕跡的失敗路徑；`0.1.0-W3-078` 起因）。
+  skippedUnmounted,
+
+  /// 動作按鈕被按下（`withAction` 變體，第三層回饋的消費點）。
+  actionPressed,
+
+  /// SnackBar 結束，[SnackBarClosedReason] 可由 `closed` future 判定時記錄。
+  closed,
+}
+
+/// 日誌投影的接縫。生產預設轉呼 `developer.log(name: 'AppSnackBar')`；
+/// `fields` 攜帶結構化欄位（測試取用），組句給人閱讀由接收端自行處理。
+typedef AppSnackBarLogSink = void Function(
+  AppSnackBarLogEvent event,
+  Map<String, Object?> fields, {
+  int? level,
+});
+
 /// SnackBar 唯一承載元件（SPEC-004 §4.26）。
 ///
 /// 呼叫端以 [show] 觸發；`withAction` 變體必須提供 [actionLabel]、
 /// [onAction]、[actionTestKey]（slot 契約）。
 abstract final class AppSnackBar {
-  static const String _actionSlotAssertMessage = // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
+  static const String
+  _actionSlotAssertMessage = // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
       'actionLabel 與 onAction 於 withAction 變體為必填（SPEC-004 §4.26 slot 契約）';
+
+  static const String _tag = 'AppSnackBar';
+
+  static void _defaultLogSink(
+    AppSnackBarLogEvent event,
+    Map<String, Object?> fields, {
+    int? level,
+  }) {
+    final detail = fields.entries
+        .map((entry) => '${entry.key}=${entry.value}')
+        .join(', ');
+    if (level != null) {
+      developer.log(
+        '$event：$detail',
+        name: _tag,
+        level: level,
+      ); // i18n-exempt: 開發者診斷 log
+      return;
+    }
+    developer.log('$event：$detail', name: _tag); // i18n-exempt: 開發者診斷 log
+  }
+
+  /// 日誌投影的接縫（測試替身注入點；正式路徑固定用 [_defaultLogSink]）。
+  @visibleForTesting
+  static AppSnackBarLogSink logSink = _defaultLogSink;
 
   /// 顯示一則 SnackBar，取代目前顯示的任何 SnackBar。
   ///
@@ -49,11 +106,30 @@ abstract final class AppSnackBar {
       _actionSlotAssertMessage,
     );
 
+    // 靜默早退（唯一無痕跡的失敗路徑，0.1.0-W3-078 起因）：context 已卸載時
+    // ScaffoldMessenger.of 查找不安全，記錄 warning 後直接返回。
+    if (!context.mounted) {
+      logSink(AppSnackBarLogEvent.skippedUnmounted, {
+        'variant': variant,
+        'message': message,
+      }, level: 900);
+      return;
+    }
+
     final messenger = ScaffoldMessenger.of(context);
     // 新的 SnackBar 取代 → dismissed（SPEC-004 §4.26 狀態矩陣退出路徑）。
     messenger.hideCurrentSnackBar();
     final isWithAction = variant == AppSnackBarVariant.withAction;
-    messenger.showSnackBar(
+    final durationToken = isWithAction
+        ? 'Motion.snackBarWithAction'
+        : 'Motion.snackBar';
+    logSink(AppSnackBarLogEvent.shown, {
+      'variant': variant,
+      'message': message,
+      'duration': durationToken,
+      if (isWithAction) 'actionLabel': actionLabel,
+    });
+    final controller = messenger.showSnackBar(
       SnackBar(
         // content 自組文字＋動作：Material 內建 SnackBarAction 的 Text 無
         // overflow 設定，單一不可斷詞的長 token 會使 Row 溢位；改由本元件
@@ -83,6 +159,9 @@ abstract final class AppSnackBar {
                   key: actionTestKey,
                   label: actionLabel!,
                   onPressed: () {
+                    logSink(AppSnackBarLogEvent.actionPressed, {
+                      'actionLabel': actionLabel,
+                    });
                     onAction!();
                     messenger.hideCurrentSnackBar(
                       reason: SnackBarClosedReason.action,
@@ -104,6 +183,12 @@ abstract final class AppSnackBar {
         duration: isWithAction ? Motion.snackBarWithAction : Motion.snackBar,
       ),
     );
+    // 結束原因可由 Material 的 closed future 判定（SnackBarClosedReason：
+    // action／dismiss／hide／remove／swipe／timeout），故記錄而非省略
+    // （how.strategy 決策點 4）。
+    controller.closed.then((reason) {
+      logSink(AppSnackBarLogEvent.closed, {'reason': reason});
+    });
   }
 }
 
