@@ -381,6 +381,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | IMP-BAL-019 | hook-logs 相對路徑解析疊加 uv run --directory shim，稽核紀錄寫入錯誤位置 | 中 | v0.2.1 |
 | IMP-BAL-020 | 未錨定行首的 code fence 正則讓行內三反引號字面翻轉守衛判定 | 中 | 0.2.1 |
 | IMP-BAL-021 | 查詢型命令暗含歸檔副作用且無持久日誌，加上檔名鍵與查找鍵不一致，讓正常歸檔被誤判為資料遺失 | 中 | 0.2.1 |
+| IMP-GPD-001 | 隔離索引 CAS 的鎖重試字串比對不涵蓋 update-ref 的 ref lock 錯誤 | 高 | 0.1.0 |
 
 ### 流程 (PROC)
 
