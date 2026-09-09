@@ -228,6 +228,11 @@ data_contract_tests:
       - test/unit/components/tree_test.dart
       - test/unit/components/two_column_layout_test.dart
 
+  - contract_ref: SPEC-005 §2（workspace driven port 的回饋點承擔者）
+    description: workspace 四個接縫（DirectoryPathPicker／WorkspacePreferencesPort／WorkspacePreferencesHandle／WorkspaceDirectoryProbePort）各時刻的呼叫端與日誌兩個投影須與 lib/workspace/workspace_repository.dart 一致；兩投影不互相抵扣，同一分支分別斷言
+    tests:
+      - test/unit/workspace/workspace_repository_test.dart
+
   - contract_ref: docs/tech-decisions.md 補記段 2026-08-27（W1-016：全域錯誤攔截三層）
     description: 框架層／平台層／非同步層三層攔截皆抵達單一錯誤出口 fatalErrorNotifier
     tests:
