@@ -442,7 +442,7 @@
           },
           {
             "type": "command",
-            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/hook-completeness-check.py"
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/hook-registration-coverage-check.py"
           },
           {
             "type": "command",
