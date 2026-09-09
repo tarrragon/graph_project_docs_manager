@@ -114,6 +114,11 @@ void main() {
       await tester.pump();
 
       expectNoOverflow(tester);
+
+      // `_FixedNotifier` 不覆寫 rescan()，走真實排程（Motion.spinnerMinVisible，
+      // SPEC-003 §2.6），須推進假時鐘讓計時器落地，否則測試結束時仍有
+      // pending timer（flutter_test 不變量檢查）。
+      await pumpContract(tester, Motion.spinnerMinVisible);
     });
   });
 
@@ -154,6 +159,11 @@ void main() {
       await tester.pump();
 
       expectNoOverflow(tester);
+
+      // `_FixedNotifier` 不覆寫 rescan()，走真實排程（Motion.spinnerMinVisible，
+      // SPEC-003 §2.6），須推進假時鐘讓計時器落地，否則測試結束時仍有
+      // pending timer（flutter_test 不變量檢查）。
+      await pumpContract(tester, Motion.spinnerMinVisible);
     });
 
     testWidgets('card-gaps-<itemId>：檔案不存在時顯示提示（開啟原始檔退出路徑可操作）', (

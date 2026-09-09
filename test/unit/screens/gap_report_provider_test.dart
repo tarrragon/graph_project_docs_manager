@@ -13,7 +13,6 @@
 library;
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
@@ -67,7 +66,10 @@ void main() {
         tester,
         child: const SizedBox.shrink(),
       );
-      // 讓首次掃描先完成，回到穩定的結果態。
+      // 強制建構（觸發 build() 排定首次掃描），再讓它先完成，回到穩定的
+      // 結果態——若在此之前先推進假時鐘，provider 尚未建構、計時器根本
+      // 還沒排定，pump 會落空。
+      container.read(gapReportProvider.notifier);
       await pumpContract(tester, Motion.spinnerMinVisible);
       expect(container.read(gapReportProvider), isA<GapReportFound>());
 
@@ -100,9 +102,10 @@ void main() {
           tester,
           child: const SizedBox.shrink(),
         );
-        await pumpContract(tester, Motion.spinnerMinVisible);
-
         final notifier = container.read(gapReportProvider.notifier);
+        await pumpContract(tester, Motion.spinnerMinVisible);
+        expect(container.read(gapReportProvider), isA<GapReportFound>());
+
         notifier.rescan();
         // 在第一輪完成前再次 rescan：第一輪的延遲回呼觸發時世代號已過期。
         await tester.pump(const Duration(milliseconds: 50));
@@ -135,6 +138,12 @@ void main() {
       final state = container.read(gapReportProvider);
       expect(state, isA<GapReportScanning>());
       expect((state as GapReportScanning).isCancelling, isTrue);
+
+      // 排乾 cancelScan() 自身的 Motion.cancelDeadline 計時器（相對
+      // cancelScan() 呼叫當下起算，此時虛擬時鐘已在
+      // Motion.spinnerMinVisible，還差一截才到 500 ms），避免測試結束時
+      // 仍有 pending timer 觸發 flutter_test 的不變量檢查失敗。
+      await tester.pump(Motion.cancelDeadline);
     });
   });
 }
