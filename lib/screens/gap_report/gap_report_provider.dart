@@ -64,6 +64,11 @@ const _missingFrontmatterItems = [
 /// 有破洞；再次可見不重新掃描；`rescan()` 對應 `action-gaps-rescan`，
 /// 重新掃描時現有結果立即被骨架取代（不做兩段淡出淡入）。
 class GapReportNotifier extends Notifier<GapReportState> {
+  /// 目前這一輪掃描的世代號。`_scheduleScan()` 每次呼叫遞增；延遲完成
+  /// 回呼觸發時比對世代號，避免 `rescan()` 疊代排程時較舊一輪蓋過較新
+  /// 一輪的結果（見 [_completeScan]）。
+  int _scanGeneration = 0;
+
   @override
   GapReportState build() {
     _scheduleScan();
@@ -98,15 +103,28 @@ class GapReportNotifier extends Notifier<GapReportState> {
     });
   }
 
-  /// 延後到 microtask 完成掃描，避免在 [build] 同步過程中改寫自身狀態
-  /// （與 `router.dart` `firstVisibleProvider` 同一慣例）。
+  /// 延後至少 `Motion.spinnerMinVisible` 後完成掃描（SPEC-003 §2.6「最短
+  /// 顯示時間適用」）。`state-gaps-scanning` 一旦渲染，即使掃描本身
+  /// （現階段由 [_missingFrontmatterItems] 常數驅動，耗時趨近於零）更快
+  /// 完成，也至少存續此契約時長——這同時是骨架可被觀測、以及取消／重新
+  /// 掃描可在完成前介入的最短視窗。真實掃描串接後，此處應改為與真實耗時
+  /// 取兩者較長者（而非疊加），不在本票範圍。
   void _scheduleScan() {
-    Future.microtask(_completeScan);
+    final generation = ++_scanGeneration;
+    Future<void>.delayed(
+      Motion.spinnerMinVisible,
+      () => _completeScan(generation),
+    );
   }
 
-  void _completeScan() {
-    if (state is! GapReportScanning) {
-      // 掃描期間已被 rescan() 或 cancelScan() 改變狀態，本次結果作廢。
+  void _completeScan(int generation) {
+    if (generation != _scanGeneration) {
+      // 已被更新一輪的 rescan() 取代，本次（較舊）結果作廢。
+      return;
+    }
+    final current = state;
+    if (current is! GapReportScanning || current.isCancelling) {
+      // 掃描期間已被 rescan() 改變狀態，或正在取消中，本次結果作廢。
       return;
     }
     if (_missingFrontmatterItems.isEmpty) {
