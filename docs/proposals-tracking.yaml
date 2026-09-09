@@ -99,8 +99,23 @@ specs:
   status: draft
   domain: ui
   source_proposal: PROP-004
+- id: SPEC-002
+  title: Design token 與元件庫：所有顏色、尺寸、元件皆具名
+  status: draft
+  domain: ui
+  source_proposal: PROP-004
+- id: SPEC-003
+  title: 互動反應規格：七畫面的反應、動畫、導航與生命週期
+  status: draft
+  domain: ui
+  source_proposal: PROP-004
 - id: SPEC-004
   title: 元件庫規格：元件目錄、逐元件契約與容器排列不變式
   status: draft
   domain: ui
   source_proposal: PROP-004
+- id: SPEC-005
+  title: Workspace driven port 回饋契約
+  status: draft
+  domain: workspace
+  source_proposal: null
