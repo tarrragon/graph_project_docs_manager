@@ -12,6 +12,7 @@ import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/attention_level.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import 'gap_report_models.dart';
@@ -199,6 +200,8 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
       AppSnackBar.show(
         context,
         message: l10n.sourceFileNotFoundSnackbarMessage,
+        level: AttentionLevel.discardable,
+        origin: AppSnackBarOrigin.userInitiated,
         variant: AppSnackBarVariant.withAction,
         actionLabel: l10n.rescanAction,
         actionTestKey: Key('action-gaps-rescan-snackbar-${item.id}'),
@@ -220,6 +223,8 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
       message: failure == null
           ? l10n.openedExternallyMessage
           : l10n.externalOpenFailedMessage,
+      level: AttentionLevel.discardable,
+      origin: AppSnackBarOrigin.userInitiated,
     );
   }
 

@@ -14,6 +14,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_lifecycle.dart';
+import '../../app/attention_level.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
@@ -202,6 +203,7 @@ class ScanNotificationController {
     AppSnackBar.show(
       context,
       message: message,
+      level: AttentionLevel.discardable,
       variant: AppSnackBarVariant.withAction,
       actionLabel: l10n.viewGapsAction,
       actionTestKey: const Key('action-scan-complete-view-gaps'),

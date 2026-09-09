@@ -13,6 +13,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../app/attention_level.dart';
 import '../tokens/tokens.dart';
 
 /// [AppSnackBar] 的兩種變體（SPEC-004 §4.26「變體」）。
@@ -57,6 +58,52 @@ enum AppSnackBarLogEvent {
 
   /// SnackBar 結束，[SnackBarClosedReason] 可由 `closed` future 判定時記錄。
   closed,
+
+  /// 截斷發生的當下，由截斷者記錄（0.1.0-W3-205）。攜帶「誰截斷了誰」的
+  /// 關聯（[preemptedShowId]），與被截斷者自身的 `closed{reason: hide}`
+  /// 合起來回答「被截斷的是哪一則」。
+  preempted,
+
+  /// 低級別讓步、決定不呈現時記錄（0.1.0-W3-205）。被丟棄的請求從未進入
+  /// [shown]，此事件是它唯一的痕跡——`0.1.0-W3-239` 裁定不引入佇列，讓步
+  /// 的處置是不呈現並留痕，不是排隊等待。
+  yielded,
+}
+
+/// 呼叫端已知的當前通道持有者快照（0.1.0-W3-205，過渡形態）。
+///
+/// `currentHolder == null` 的語意是**未知**，不是「通道為空」——過渡期
+/// 呼叫端無資訊來源，一律傳 null，此時行為與現況一致（截斷後呈現），但
+/// 事件必帶 `holderUnknown: true`，使「這個判斷還沒有輸入」本身可被搜尋。
+///
+/// 過渡形態：`0.1.0-W3-207` 的仲裁器合併後，本型別與 `currentHolder` 參數
+/// 一併由 `AttentionAccepted.preempted` 取代（收斂由該票承擔）。
+final class AttentionHolderHint {
+  const AttentionHolderHint({required this.showId, required this.level});
+
+  /// 被截斷者的識別，與本檔 [AppSnackBarLogSink] 的 `showId` 同一空間。
+  final int showId;
+
+  /// 持有者目前顯示中訊息的級別。
+  final AttentionLevel level;
+}
+
+/// 截斷裁決結果（0.1.0-W3-205）。私有——不進入公開面。
+///
+/// 把「要不要清除」與「事件欄位怎麼填」由同一個值決定，避免兩處各自判斷
+/// 而漂移。
+enum _Preemption {
+  /// 持有者未知（過渡期正式路徑恆走此值）。
+  holderUnknown,
+
+  /// 持有者級別低於新請求，可被搶佔。
+  preemptLower,
+
+  /// 持有者級別與新請求相同，截斷並留痕（`0.1.0-W3-239` 具名例外）。
+  replaceSameLevel,
+
+  /// 持有者級別高於新請求，新請求須讓步（不清除、不呈現）。
+  yieldToHolder,
 }
 
 /// 日誌投影的接縫。生產預設轉呼 `developer.log(name: 'AppSnackBar')`；
@@ -110,6 +157,26 @@ abstract final class AppSnackBar {
     return _levelInfo;
   }
 
+  // 截斷裁決純函式（唯一裁決點，0.1.0-W3-205 T-205-17）：輸入恰兩項，
+  // 不接受 variant／origin／message／錨點，函式體因此不可能引用它們
+  // （結構性可讀出）。比較鍵恆為級別的序，不得以載體型別、變體或呼叫
+  // 路徑為鍵。
+  static _Preemption _resolvePreemption(
+    AttentionLevel incoming,
+    AttentionHolderHint? holder,
+  ) {
+    if (holder == null) {
+      return _Preemption.holderUnknown;
+    }
+    if (holder.level.index < incoming.index) {
+      return _Preemption.preemptLower;
+    }
+    if (holder.level.index == incoming.index) {
+      return _Preemption.replaceSameLevel;
+    }
+    return _Preemption.yieldToHolder;
+  }
+
   static void _defaultLogSink(
     AppSnackBarLogEvent event,
     Map<String, Object?> fields, {
@@ -133,19 +200,25 @@ abstract final class AppSnackBar {
   @visibleForTesting
   static AppSnackBarLogSink logSink = _defaultLogSink;
 
-  /// 顯示一則 SnackBar，取代目前顯示的任何 SnackBar。
+  /// 顯示一則 SnackBar，依級別裁決是否取代目前顯示的任何 SnackBar
+  /// （0.1.0-W3-205〈截斷條件綁級別〉）。
   ///
   /// [message] 為必填內容 slot（呼叫端傳入已取好值的 i18n 字串）。
   /// [variant] 為 [AppSnackBarVariant.withAction] 時，[actionLabel]、
-  /// [onAction]、[actionTestKey] 為必填。
+  /// [onAction]、[actionTestKey] 為必填。[level] 取值以標題文字引用
+  /// SPEC-003〈注意力通道的到達類別與級別指派表〉，本元件內不另立一套
+  /// 級別定義。[currentHolder] 為過渡形態（`0.1.0-W3-207` 合併前）：呼叫端
+  /// 已知的當前通道持有者快照，`null` 語意為未知。
   static void show(
     BuildContext context, {
     required String message,
+    required AttentionLevel level,
     AppSnackBarVariant variant = AppSnackBarVariant.plain,
     String? actionLabel,
     VoidCallback? onAction,
     Key? actionTestKey,
     AppSnackBarOrigin origin = AppSnackBarOrigin.background,
+    AttentionHolderHint? currentHolder,
   }) {
     assert(
       variant != AppSnackBarVariant.withAction ||
@@ -157,7 +230,8 @@ abstract final class AppSnackBar {
     final showId = _nextShowId();
     final baseFields = <String, Object?>{'showId': showId, 'origin': origin};
 
-    // 靜默早退（唯一無痕跡的失敗路徑，0.1.0-W3-078 起因）：context 已卸載時
+    // 早退關卡 1（必須位於裁決之前，T-205-8／既有 M7／M15）：靜默早退
+    // （唯一無痕跡的失敗路徑，0.1.0-W3-078 起因）：context 已卸載時
     // ScaffoldMessenger.of 查找不安全，記錄 warning 後直接返回。
     if (!context.mounted) {
       logSink(AppSnackBarLogEvent.skippedUnmounted, {
@@ -168,9 +242,37 @@ abstract final class AppSnackBar {
       return;
     }
 
+    // 裁決（唯一裁決點，輸入恰兩項）。
+    final decision = _resolvePreemption(level, currentHolder);
+
+    // 早退關卡 2（讓步，不清除、不呈現、不排隊，`0.1.0-W3-239` 裁決）：
+    // 出口 1／出口 2 皆早於下方唯一的清除，使 INV-SNACKBAR-NOQUEUE
+    // （T-205-16(c)(d)(e)）結構性成立——本區塊之後不得再出現任何 return。
+    if (decision == _Preemption.yieldToHolder) {
+      logSink(AppSnackBarLogEvent.yielded, {
+        ...baseFields,
+        'level': level,
+        'holderShowId': currentHolder?.showId,
+        'holderLevel': currentHolder?.level,
+        'variant': variant,
+        'message': message,
+      }, level: origin == AppSnackBarOrigin.background ? _levelWarning : _levelInfo);
+      return;
+    }
+
     final messenger = ScaffoldMessenger.of(context);
     // 新的 SnackBar 取代 → dismissed（SPEC-004 §4.26 狀態矩陣退出路徑）。
+    // 全檔唯一的「無引數清除」，緊接於本函式主體，其後恰接一次呈現
+    // （INV-SNACKBAR-NOQUEUE，T-205-16）。
     messenger.hideCurrentSnackBar();
+    logSink(AppSnackBarLogEvent.preempted, {
+      ...baseFields,
+      'level': level,
+      'preemptedShowId': currentHolder?.showId,
+      'preemptedLevel': currentHolder?.level,
+      'sameLevelReplace': decision == _Preemption.replaceSameLevel,
+      'holderUnknown': decision == _Preemption.holderUnknown,
+    });
     final isWithAction = variant == AppSnackBarVariant.withAction;
     final durationToken = isWithAction
         ? 'Motion.snackBarWithAction'
@@ -212,14 +314,20 @@ abstract final class AppSnackBar {
                   key: actionTestKey,
                   label: actionLabel!,
                   onPressed: () {
+                    // 順序：記錄 -> 帶原因清除 -> 回呼（0.1.0-W3-205
+                    // 觀察 B 處置）。清除移到 onAction 之前——即使
+                    // onAction 同步再顯示一則，reason: action 已作用於
+                    // 舊的那一則，新的一則不會被誤記為使用者一眼未見即
+                    // 以 action 關掉（T-205-11）。此處帶引數清除不計入
+                    // INV-SNACKBAR-NOQUEUE 的「無引數清除恰 1 次」。
                     logSink(AppSnackBarLogEvent.actionPressed, {
                       ...baseFields,
                       'actionLabel': actionLabel,
                     });
-                    onAction!();
                     messenger.hideCurrentSnackBar(
                       reason: SnackBarClosedReason.action,
                     );
+                    onAction!();
                   },
                 ),
               ),
