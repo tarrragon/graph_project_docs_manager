@@ -34,6 +34,7 @@ Widget _triggerHarness({
   AppSnackBarVariant variant = AppSnackBarVariant.plain,
   String? actionLabel,
   VoidCallback? onAction,
+  AppSnackBarOrigin origin = AppSnackBarOrigin.background,
 }) {
   return Builder(
     builder: (context) => Column(
@@ -50,6 +51,7 @@ Widget _triggerHarness({
             actionLabel: actionLabel,
             onAction: onAction,
             actionTestKey: _snackBarActionKey,
+            origin: origin,
           ),
           child: const Text('trigger'),
         ),
@@ -398,6 +400,306 @@ void main() {
       expect(events, [AppSnackBarLogEvent.skippedUnmounted]);
       expect(levels, [900]);
       expect(find.byType(SnackBar), findsNothing);
+    });
+  });
+
+  group('關聯識別與截斷等級判別（0.1.0-W3-176）', () {
+    // 新群組自裝替身，既有群組的 events／levels 不被觸及（acceptance A8）。
+    late AppSnackBarLogSink originalSink;
+    final records =
+        <({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})>[];
+
+    setUp(() {
+      originalSink = AppSnackBar.logSink;
+      records.clear();
+      AppSnackBar.logSink = (event, fields, {level}) {
+        records.add((event: event, fields: Map.of(fields), level: level));
+      };
+    });
+
+    tearDown(() {
+      AppSnackBar.logSink = originalSink;
+    });
+
+    const materialTransition = Duration(milliseconds: 250);
+    const anchorKey = Key('anchor-176');
+
+    int showIdOf(
+      ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})
+      record,
+    ) => record.fields['showId']! as int;
+
+    Object? originOf(
+      ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})
+      record,
+    ) => record.fields['origin'];
+
+    ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})
+    closedWithReason(SnackBarClosedReason reason) => records.singleWhere(
+      (record) =>
+          record.event == AppSnackBarLogEvent.closed &&
+          record.fields['reason'] == reason,
+    );
+
+    Widget anchorHarness() => Builder(
+      builder: (context) =>
+          ElevatedButton(key: anchorKey, onPressed: () {}, child: const Text('anchor')),
+    );
+
+    testWidgets('T-1 基準線：plain 自然逾時', (tester) async {
+      await pumpHarness(tester, child: anchorHarness());
+      final anchor = tester.element(find.byKey(anchorKey));
+
+      expect(records, isEmpty);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(anchor.mounted, isTrue);
+
+      AppSnackBar.show(anchor, message: 'plain-message');
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      await _pumpBy(
+        tester,
+        Motion.snackBar + materialTransition + materialTransition,
+      );
+
+      expect(records.map((record) => record.event), [
+        AppSnackBarLogEvent.shown,
+        AppSnackBarLogEvent.closed,
+      ]);
+      expect(showIdOf(records[0]), showIdOf(records[1]));
+      expect(records[1].fields['reason'], SnackBarClosedReason.timeout);
+      expect(records[1].level, isNull);
+      expect(records[0].level, isNull);
+    });
+
+    testWidgets('T-2 同步區塊內連續兩次 show 的配對', (tester) async {
+      await pumpHarness(tester, child: anchorHarness());
+      final anchor = tester.element(find.byKey(anchorKey));
+      expect(records, isEmpty);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(anchor.mounted, isTrue);
+
+      AppSnackBar.show(anchor, message: 'first');
+      AppSnackBar.show(anchor, message: 'second');
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      await _pumpBy(
+        tester,
+        Motion.snackBar + materialTransition + materialTransition,
+      );
+
+      final shownRecords = records
+          .where((record) => record.event == AppSnackBarLogEvent.shown)
+          .toList();
+      expect(shownRecords, hasLength(2));
+      final firstShowId = showIdOf(shownRecords[0]);
+      final secondShowId = showIdOf(shownRecords[1]);
+      expect(secondShowId, greaterThan(firstShowId));
+
+      final hideClosed = closedWithReason(SnackBarClosedReason.hide);
+      expect(showIdOf(hideClosed), firstShowId);
+      final timeoutClosed = closedWithReason(SnackBarClosedReason.timeout);
+      expect(showIdOf(timeoutClosed), secondShowId);
+    });
+
+    testWidgets('T-3 配對不依賴出現順序的佐證', (tester) async {
+      await pumpHarness(tester, child: anchorHarness());
+      final anchor = tester.element(find.byKey(anchorKey));
+
+      AppSnackBar.show(anchor, message: 'first');
+      AppSnackBar.show(anchor, message: 'second');
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      await _pumpBy(
+        tester,
+        Motion.snackBar + materialTransition + materialTransition,
+      );
+
+      final secondShownIndex = records.indexWhere(
+        (record) =>
+            record.event == AppSnackBarLogEvent.shown &&
+            record.fields['message'] == 'second',
+      );
+      final hideClosedIndex = records.indexWhere(
+        (record) =>
+            record.event == AppSnackBarLogEvent.closed &&
+            record.fields['reason'] == SnackBarClosedReason.hide,
+      );
+      expect(hideClosedIndex, greaterThan(secondShownIndex));
+    });
+
+    testWidgets('T-4 顯示中途被截斷的配對', (tester) async {
+      await pumpHarness(tester, child: anchorHarness());
+      final anchor = tester.element(find.byKey(anchorKey));
+
+      AppSnackBar.show(anchor, message: 'first');
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        records.where((record) => record.event == AppSnackBarLogEvent.shown),
+        hasLength(1),
+      );
+      final firstShowId = showIdOf(records.single);
+
+      AppSnackBar.show(anchor, message: 'second');
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      await _pumpBy(
+        tester,
+        Motion.snackBar + materialTransition + materialTransition,
+      );
+
+      final hideClosed = closedWithReason(SnackBarClosedReason.hide);
+      expect(showIdOf(hideClosed), firstShowId);
+    });
+
+    // T-5 截斷等級矩陣：variant × origin（level 對 variant 不敏感的窮舉）。
+    final levelMatrix = <(AppSnackBarVariant, AppSnackBarOrigin, int)>[
+      (AppSnackBarVariant.plain, AppSnackBarOrigin.background, 900),
+      (AppSnackBarVariant.plain, AppSnackBarOrigin.userInitiated, 800),
+      (AppSnackBarVariant.withAction, AppSnackBarOrigin.background, 900),
+      (AppSnackBarVariant.withAction, AppSnackBarOrigin.userInitiated, 800),
+    ];
+
+    for (final (variant, origin, expectedLevel) in levelMatrix) {
+      testWidgets(
+        'T-5 截斷等級矩陣：variant=$variant origin=$origin -> level=$expectedLevel',
+        (tester) async {
+          await pumpHarness(
+            tester,
+            child: _triggerHarness(
+              message: 'first',
+              variant: variant,
+              actionLabel: variant == AppSnackBarVariant.withAction
+                  ? 'action-label'
+                  : null,
+              onAction: variant == AppSnackBarVariant.withAction
+                  ? () {}
+                  : null,
+              origin: origin,
+            ),
+          );
+          final triggerKey = variant == AppSnackBarVariant.plain
+              ? _triggerPlainKey
+              : _triggerActionKey;
+          await tester.tap(find.byKey(triggerKey));
+          await tester.pump();
+          expect(find.byType(SnackBar), findsOneWidget);
+
+          AppSnackBar.show(
+            tester.element(find.byKey(triggerKey)),
+            message: 'second',
+          );
+          await tester.pump();
+          await _pumpBy(tester, materialTransition);
+          await _pumpBy(
+            tester,
+            Motion.snackBar + materialTransition + materialTransition,
+          );
+
+          final hideClosed = closedWithReason(SnackBarClosedReason.hide);
+          expect(hideClosed.fields['reason'], SnackBarClosedReason.hide);
+          expect(originOf(hideClosed), origin);
+          expect(hideClosed.level, expectedLevel);
+        },
+      );
+    }
+
+    testWidgets('T-6 origin 預設值', (tester) async {
+      await pumpHarness(tester, child: anchorHarness());
+      final anchor = tester.element(find.byKey(anchorKey));
+
+      AppSnackBar.show(anchor, message: 'first');
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      expect(find.byType(SnackBar), findsOneWidget);
+
+      AppSnackBar.show(anchor, message: 'second');
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      await _pumpBy(
+        tester,
+        Motion.snackBar + materialTransition + materialTransition,
+      );
+
+      final hideClosed = closedWithReason(SnackBarClosedReason.hide);
+      expect(originOf(hideClosed), AppSnackBarOrigin.background);
+      expect(hideClosed.level, 900);
+    });
+
+    testWidgets('T-7 withAction 按下動作', (tester) async {
+      var actionCalled = 0;
+      await pumpHarness(
+        tester,
+        child: _triggerHarness(
+          message: 'action-message',
+          variant: AppSnackBarVariant.withAction,
+          actionLabel: 'action-label',
+          onAction: () => actionCalled++,
+        ),
+      );
+      expect(find.byKey(_triggerActionKey), findsOneWidget);
+
+      await tester.tap(find.byKey(_triggerActionKey));
+      await tester.pump();
+      await _pumpBy(tester, materialTransition);
+      expect(find.byKey(_snackBarActionKey), findsOneWidget);
+
+      await tester.tap(find.byKey(_snackBarActionKey));
+      await _pumpBy(tester, materialTransition + materialTransition);
+
+      expect(records.map((record) => record.event), [
+        AppSnackBarLogEvent.shown,
+        AppSnackBarLogEvent.actionPressed,
+        AppSnackBarLogEvent.closed,
+      ]);
+      final showId = showIdOf(records[0]);
+      expect(showIdOf(records[1]), showId);
+      expect(showIdOf(records[2]), showId);
+      expect(records[2].fields['reason'], SnackBarClosedReason.action);
+      expect(records[2].level, isNull);
+      expect(actionCalled, 1);
+    });
+
+    testWidgets('T-8 context 已卸載', (tester) async {
+      late BuildContext capturedContext;
+      await pumpHarness(
+        tester,
+        child: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(capturedContext.mounted, isFalse);
+
+      AppSnackBar.show(capturedContext, message: 'unused');
+
+      expect(records, hasLength(1));
+      expect(records.single.event, AppSnackBarLogEvent.skippedUnmounted);
+      expect(records.single.level, 900);
+      expect(records.single.fields['showId'], isNotNull);
+      expect(records.single.fields['origin'], AppSnackBarOrigin.background);
+      expect(find.byType(SnackBar), findsNothing);
+
+      await _pumpBy(
+        tester,
+        Motion.snackBar + materialTransition + materialTransition,
+      );
+      expect(records, hasLength(1));
+    });
+
+    test('T-9 事件列舉結構', () {
+      expect(AppSnackBarLogEvent.values, [
+        AppSnackBarLogEvent.shown,
+        AppSnackBarLogEvent.skippedUnmounted,
+        AppSnackBarLogEvent.actionPressed,
+        AppSnackBarLogEvent.closed,
+      ]);
     });
   });
 }
