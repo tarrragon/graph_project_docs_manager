@@ -24,6 +24,20 @@ enum AppSnackBarVariant {
   withAction,
 }
 
+/// 一次 [AppSnackBar.show] 的發起者（SPEC-003〈截斷事件的日誌等級〉）。
+///
+/// 截斷日誌的等級以本列舉為鍵，不以 [AppSnackBarVariant] 為鍵——變體會
+/// 同時誤判兩邊（`withAction` 亦可能是使用者發起；背景發起亦可能是 `plain`）。
+enum AppSnackBarOrigin {
+  /// 呼叫來自使用者互動回呼（`onTap` / `onPressed` 路徑）。截斷時使用者
+  /// 剛做過動作、沒反應會注意到，故為 info。
+  userInitiated,
+
+  /// 呼叫來自背景 listener（如掃描完成）。截斷後使用者無任何線索指出
+  /// 曾發生過什麼，故為 warning。
+  background,
+}
+
 /// [AppSnackBar] 診斷日誌的事件類別（0.1.0-W3-165）。
 ///
 /// 測試斷言依此列舉與 [AppSnackBarLogSink] 的 `fields` 結構化欄位判斷「發生
@@ -64,6 +78,38 @@ abstract final class AppSnackBar {
 
   static const String _tag = 'AppSnackBar';
 
+  // dart:developer 承自 package:logging 的 Level 值（INFO=800、WARNING=900）；
+  // 專案既有 warning 皆為 900（2.4 日誌等級規則表）。
+  static const int _levelInfo = 800;
+  static const int _levelWarning = 900;
+
+  // 一次 show 呼叫的關聯識別（D1）：process 內單調遞增，供四個日誌事件
+  // 共享同一值以配對；不重置、不提供重置 API（少一個公開面）。單執行緒事件
+  // 迴圈、遞增之間無 await，無競態。
+  static int _lastShowId = 0;
+
+  static int _nextShowId() {
+    _lastShowId += 1;
+    return _lastShowId;
+    // 不記錄任何日誌事件（C-1）——可稽核性已由 shown／skippedUnmounted 兩者
+    // 之一必然攜帶本次 showId 達成，不需額外一筆「show 被呼叫」事件。
+  }
+
+  // 等級判定純函式（M3，D3）：輸入恰為 (reason, origin)，不接受 variant，
+  // 故其函式體不可能引用 variant（V-2 的結構性可讀出性質）。
+  static int? _resolveClosedLevel(
+    SnackBarClosedReason reason,
+    AppSnackBarOrigin origin,
+  ) {
+    if (reason != SnackBarClosedReason.hide) {
+      return null;
+    }
+    if (origin == AppSnackBarOrigin.background) {
+      return _levelWarning;
+    }
+    return _levelInfo;
+  }
+
   static void _defaultLogSink(
     AppSnackBarLogEvent event,
     Map<String, Object?> fields, {
@@ -99,6 +145,7 @@ abstract final class AppSnackBar {
     String? actionLabel,
     VoidCallback? onAction,
     Key? actionTestKey,
+    AppSnackBarOrigin origin = AppSnackBarOrigin.background,
   }) {
     assert(
       variant != AppSnackBarVariant.withAction ||
@@ -106,13 +153,18 @@ abstract final class AppSnackBar {
       _actionSlotAssertMessage,
     );
 
+    // showId 在 mounted 判定之前產生（D1），使 skippedUnmounted 也有識別。
+    final showId = _nextShowId();
+    final baseFields = <String, Object?>{'showId': showId, 'origin': origin};
+
     // 靜默早退（唯一無痕跡的失敗路徑，0.1.0-W3-078 起因）：context 已卸載時
     // ScaffoldMessenger.of 查找不安全，記錄 warning 後直接返回。
     if (!context.mounted) {
       logSink(AppSnackBarLogEvent.skippedUnmounted, {
+        ...baseFields,
         'variant': variant,
         'message': message,
-      }, level: 900);
+      }, level: _levelWarning);
       return;
     }
 
@@ -124,6 +176,7 @@ abstract final class AppSnackBar {
         ? 'Motion.snackBarWithAction'
         : 'Motion.snackBar';
     logSink(AppSnackBarLogEvent.shown, {
+      ...baseFields,
       'variant': variant,
       'message': message,
       'duration': durationToken,
@@ -160,6 +213,7 @@ abstract final class AppSnackBar {
                   label: actionLabel!,
                   onPressed: () {
                     logSink(AppSnackBarLogEvent.actionPressed, {
+                      ...baseFields,
                       'actionLabel': actionLabel,
                     });
                     onAction!();
@@ -187,7 +241,13 @@ abstract final class AppSnackBar {
     // action／dismiss／hide／remove／swipe／timeout），故記錄而非省略
     // （how.strategy 決策點 4）。
     controller.closed.then((reason) {
-      logSink(AppSnackBarLogEvent.closed, {'reason': reason});
+      // baseFields／origin 由本次呼叫的區域繫結經閉包捕獲，不讀取模組級
+      // 現值——closed 完成時計數器可能已被後續 show 遞增（C-2、語言注意
+      // 事項段）。
+      logSink(AppSnackBarLogEvent.closed, {
+        ...baseFields,
+        'reason': reason,
+      }, level: _resolveClosedLevel(reason, origin));
     });
   }
 }
