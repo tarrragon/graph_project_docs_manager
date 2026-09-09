@@ -88,11 +88,11 @@ abstract final class AppSnackBar {
   // 迴圈、遞增之間無 await，無競態。
   static int _lastShowId = 0;
 
+  // 不記錄任何日誌事件（C-1）——可稽核性已由 shown／skippedUnmounted 兩者
+  // 之一必然攜帶本次 showId 達成，不需額外一筆「show 被呼叫」事件。
   static int _nextShowId() {
     _lastShowId += 1;
     return _lastShowId;
-    // 不記錄任何日誌事件（C-1）——可稽核性已由 shown／skippedUnmounted 兩者
-    // 之一必然攜帶本次 showId 達成，不需額外一筆「show 被呼叫」事件。
   }
 
   // 等級判定純函式（M3，D3）：輸入恰為 (reason, origin)，不接受 variant，

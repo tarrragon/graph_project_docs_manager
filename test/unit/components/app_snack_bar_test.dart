@@ -13,6 +13,18 @@ const _triggerPlainKey = Key('trigger-plain');
 const _triggerActionKey = Key('trigger-action');
 const _snackBarActionKey = Key('snackbar-action');
 
+// SnackBar 進出動畫為 Flutter Material 內建 250ms transition，非本專案 token
+// （SPEC-004 §4.26「Material 預設進出，不覆寫」）；顯示期間長度由 AppSnackBar
+// 傳入的 Motion.snackBar / Motion.snackBarWithAction 決定。全檔共用一份宣告
+// （0.1.0-W3-176 Phase 4b：原三個群組各自宣告同值常數，改用單一檔案級常數，
+// 避免改一處忘另兩處而靜默失準）。
+const _materialTransition = Duration(milliseconds: 250);
+
+/// 一次 [AppSnackBarLogSink] 呼叫的紀錄快照（0.1.0-W3-176 Phase 4b：原為
+/// 四處重複的匿名 record 型別字面，改用檔案私有 typedef 收斂）。
+typedef _SnackBarLogRecord =
+    ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level});
+
 /// SnackBar 的進出動畫由 Material 內建 [Timer] + [AnimationController] 驅動
 /// （SPEC-004 §4.26「Material 預設進出，不覆寫」）；`flutter_test` 的
 /// fake clock 需以小步距（<= 100ms）反覆 pump 才能讓 Timer 觸發與動畫逐幀
@@ -226,11 +238,6 @@ void main() {
   });
 
   group('停留時間與退出路徑', () {
-    // SnackBar 進出動畫為 Flutter Material 內建 250ms transition，非本專案
-    // token（SPEC-004 §4.26「Material 預設進出，不覆寫」）；顯示期間長度由
-    // AppSnackBar 傳入的 Motion.snackBar / Motion.snackBarWithAction 決定。
-    const materialTransition = Duration(milliseconds: 250);
-
     testWidgets('pump(Motion.snackBar) 後 plain 消失', (tester) async {
       await pumpHarness(
         tester,
@@ -239,12 +246,12 @@ void main() {
 
       await tester.tap(find.byKey(_triggerPlainKey));
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       expect(find.byType(SnackBar), findsOneWidget);
 
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
       expect(find.byType(SnackBar), findsNothing);
     });
@@ -264,7 +271,7 @@ void main() {
 
         await tester.tap(find.byKey(_triggerActionKey));
         await tester.pump();
-        await _pumpBy(tester, materialTransition);
+        await _pumpBy(tester, _materialTransition);
         expect(find.byType(SnackBar), findsOneWidget);
 
         await _pumpBy(tester, Motion.snackBar);
@@ -273,7 +280,7 @@ void main() {
         final remaining = Motion.snackBarWithAction - Motion.snackBar;
         await _pumpBy(
           tester,
-          remaining + materialTransition + materialTransition,
+          remaining + _materialTransition + _materialTransition,
         );
         expect(find.byType(SnackBar), findsNothing);
       },
@@ -293,10 +300,10 @@ void main() {
 
       await tester.tap(find.byKey(_triggerActionKey));
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
 
       await tester.tap(find.byKey(_snackBarActionKey));
-      await _pumpBy(tester, materialTransition + materialTransition);
+      await _pumpBy(tester, _materialTransition + _materialTransition);
 
       expect(actionCalled, 1);
       expect(find.byType(SnackBar), findsNothing);
@@ -325,10 +332,6 @@ void main() {
       AppSnackBar.logSink = originalSink;
     });
 
-    // SnackBar 進出動畫為 Flutter Material 內建 250ms transition（同「停留
-    // 時間與退出路徑」群組），未待其跑完就 tap/斷言會落在動畫中間幀。
-    const materialTransition = Duration(milliseconds: 250);
-
     testWidgets('plain 顯示後自然逾時：記錄 shown 接著 closed', (tester) async {
       await pumpHarness(
         tester,
@@ -341,10 +344,10 @@ void main() {
       expect(events, [AppSnackBarLogEvent.shown]);
       expect(levels, [null]);
 
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
 
       expect(events, [AppSnackBarLogEvent.shown, AppSnackBarLogEvent.closed]);
@@ -368,9 +371,9 @@ void main() {
       await tester.pump();
       expect(events, [AppSnackBarLogEvent.shown]);
 
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       await tester.tap(find.byKey(_snackBarActionKey));
-      await _pumpBy(tester, materialTransition + materialTransition);
+      await _pumpBy(tester, _materialTransition + _materialTransition);
 
       expect(events, [
         AppSnackBarLogEvent.shown,
@@ -406,8 +409,7 @@ void main() {
   group('關聯識別與截斷等級判別（0.1.0-W3-176）', () {
     // 新群組自裝替身，既有群組的 events／levels 不被觸及（acceptance A8）。
     late AppSnackBarLogSink originalSink;
-    final records =
-        <({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})>[];
+    final records = <_SnackBarLogRecord>[];
 
     setUp(() {
       originalSink = AppSnackBar.logSink;
@@ -421,30 +423,24 @@ void main() {
       AppSnackBar.logSink = originalSink;
     });
 
-    const materialTransition = Duration(milliseconds: 250);
     const anchorKey = Key('anchor-176');
 
-    int showIdOf(
-      ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})
-      record,
-    ) => record.fields['showId']! as int;
+    int showIdOf(_SnackBarLogRecord record) => record.fields['showId']! as int;
 
-    Object? originOf(
-      ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})
-      record,
-    ) => record.fields['origin'];
+    Object? originOf(_SnackBarLogRecord record) => record.fields['origin'];
 
-    ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level})
-    closedWithReason(SnackBarClosedReason reason) => records.singleWhere(
-      (record) =>
-          record.event == AppSnackBarLogEvent.closed &&
-          record.fields['reason'] == reason,
-    );
+    _SnackBarLogRecord closedWithReason(SnackBarClosedReason reason) =>
+        records.singleWhere(
+          (record) =>
+              record.event == AppSnackBarLogEvent.closed &&
+              record.fields['reason'] == reason,
+        );
 
-    Widget anchorHarness() => Builder(
-      builder: (context) =>
-          ElevatedButton(key: anchorKey, onPressed: () {}, child: const Text('anchor')),
-    );
+    // 直接回傳 ElevatedButton，不用 Builder 包裝——測試以
+    // tester.element(find.byKey(anchorKey)) 取得 context，Builder 的
+    // context 參數未被使用（0.1.0-W3-176 Phase 4b：移除無作用外殼）。
+    Widget anchorHarness() =>
+        ElevatedButton(key: anchorKey, onPressed: () {}, child: const Text('anchor'));
 
     testWidgets('T-1 基準線：plain 自然逾時', (tester) async {
       await pumpHarness(tester, child: anchorHarness());
@@ -456,10 +452,10 @@ void main() {
 
       AppSnackBar.show(anchor, message: 'plain-message');
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
 
       expect(records.map((record) => record.event), [
@@ -482,10 +478,10 @@ void main() {
       AppSnackBar.show(anchor, message: 'first');
       AppSnackBar.show(anchor, message: 'second');
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
 
       final shownRecords = records
@@ -509,10 +505,10 @@ void main() {
       AppSnackBar.show(anchor, message: 'first');
       AppSnackBar.show(anchor, message: 'second');
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
 
       final secondShownIndex = records.indexWhere(
@@ -534,7 +530,7 @@ void main() {
 
       AppSnackBar.show(anchor, message: 'first');
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       expect(find.byType(SnackBar), findsOneWidget);
       expect(
         records.where((record) => record.event == AppSnackBarLogEvent.shown),
@@ -544,10 +540,10 @@ void main() {
 
       AppSnackBar.show(anchor, message: 'second');
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
 
       final hideClosed = closedWithReason(SnackBarClosedReason.hide);
@@ -592,14 +588,16 @@ void main() {
             message: 'second',
           );
           await tester.pump();
-          await _pumpBy(tester, materialTransition);
+          await _pumpBy(tester, _materialTransition);
           await _pumpBy(
             tester,
-            Motion.snackBar + materialTransition + materialTransition,
+            Motion.snackBar + _materialTransition + _materialTransition,
           );
 
+          // reason==hide 由 closedWithReason 的選取條件保證，不重複斷言
+          // （0.1.0-W3-176 Phase 4b：移除恆真斷言，reason 已定案無其他可驗證
+          // 性質可替代）。
           final hideClosed = closedWithReason(SnackBarClosedReason.hide);
-          expect(hideClosed.fields['reason'], SnackBarClosedReason.hide);
           expect(originOf(hideClosed), origin);
           expect(hideClosed.level, expectedLevel);
         },
@@ -612,15 +610,15 @@ void main() {
 
       AppSnackBar.show(anchor, message: 'first');
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       expect(find.byType(SnackBar), findsOneWidget);
 
       AppSnackBar.show(anchor, message: 'second');
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
 
       final hideClosed = closedWithReason(SnackBarClosedReason.hide);
@@ -643,11 +641,11 @@ void main() {
 
       await tester.tap(find.byKey(_triggerActionKey));
       await tester.pump();
-      await _pumpBy(tester, materialTransition);
+      await _pumpBy(tester, _materialTransition);
       expect(find.byKey(_snackBarActionKey), findsOneWidget);
 
       await tester.tap(find.byKey(_snackBarActionKey));
-      await _pumpBy(tester, materialTransition + materialTransition);
+      await _pumpBy(tester, _materialTransition + _materialTransition);
 
       expect(records.map((record) => record.event), [
         AppSnackBarLogEvent.shown,
@@ -688,7 +686,7 @@ void main() {
 
       await _pumpBy(
         tester,
-        Motion.snackBar + materialTransition + materialTransition,
+        Motion.snackBar + _materialTransition + _materialTransition,
       );
       expect(records, hasLength(1));
     });
