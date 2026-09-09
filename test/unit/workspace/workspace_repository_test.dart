@@ -14,6 +14,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 void main() {
   group('G1｜呼叫發出時刻（INV-PORT-OBSERVE-001 覆蓋）', () {

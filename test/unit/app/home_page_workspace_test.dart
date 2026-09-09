@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/pump_harness.dart';
 

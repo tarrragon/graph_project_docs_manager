@@ -13,6 +13,7 @@ import 'components/components.dart' show BlockedState;
 import 'l10n/app_localizations.dart';
 import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
+import 'workspace/workspace_types.dart';
 
 /// 設計稿基準尺寸（logical pixels）。
 ///
