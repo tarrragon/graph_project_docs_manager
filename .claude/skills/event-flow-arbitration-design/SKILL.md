@@ -1,13 +1,13 @@
 ---
 name: event-flow-arbitration-design
-description: "落實事件流負載仲裁方法論的六步流程、訪談問題、套用範例與產出物範本（通道清單表、九格卸載順序表）。方法論管判準，本 skill 管怎麼問、怎麼套、產出長什麼樣。Use when: 事件流仲裁、負載仲裁、load shedding、卸載順序、backpressure、通道清單、九格表、isolate 仲裁、worker pool 競爭、connection pool 競爭、佔用量閾值設計、到達類別標定、級別標定時。"
+description: "落實事件流負載仲裁方法論的執行流程、訪談問題、套用範例與產出物範本（通道清單表、九格卸載順序表）。方法論管判準，本 skill 管怎麼問、怎麼套、產出長什麼樣。Use when: 事件流仲裁、負載仲裁、load shedding、卸載順序、backpressure、通道清單、九格表、isolate 仲裁、worker pool 競爭、connection pool 競爭、佔用量閾值設計、到達類別標定、級別標定時。"
 metadata:
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # Event Flow Arbitration Design
 
-把《事件流負載仲裁方法論》的判準轉成可執行的六步訪談與六步各自的產出物範本。
+把《事件流負載仲裁方法論》的判準轉成可執行的訪談流程與各步的產出物範本。
 
 ## 定位（與方法論的分工）
 
@@ -26,9 +26,9 @@ metadata:
 - 已完成 `saas-tech-selection` 的 async-queue／capacity-performance／observability 維度訪談，發現有「不可丟」或「須留痕」的 event，需要決定它與其他事件流在同一通道上的取捨順序
 - 使用者提到：backpressure、load shedding、卸載順序、通道競爭、佔用量閾值、isolate 仲裁、connection pool 打滿、訊息混流不同級別
 
-## 六步流程
+## 執行流程
 
-六步對應方法論的〈執行步驟〉，每步的訪談問題在 `references/interview-questions.md`、產出物範本在 `references/templates.md`。
+各步逐一對應方法論〈執行步驟〉的清單，步數以該清單為準；每步的訪談問題在 `references/interview-questions.md`、產出物範本在 `references/templates.md`。
 
 | 步驟 | 要做的事 | 對應方法論章節 | 產出物 |
 |------|---------|--------------|-------|
@@ -37,7 +37,7 @@ metadata:
 | 3. 定佔用量 | 選佔用量單位，成本異質時分池；定進入與離開卸載的兩個閾值 | 〈競爭與佔用量〉〈資源成本異質〉 | 佔用量與卸載閾值表 |
 | 4. 填卸載順序表 | 九格（到達類別 × 級別）各填動作；推送型定緩衝上限，不可棄的推送型定持久佇列 | 〈讓步與卸載順序〉 | 九格卸載順序表 |
 | 5. 定 deadline 來源 | 三類到達類別各自的 deadline 來源與逾期動作；自發型分狀態驅動與窗口驅動 | 〈Deadline 傳播〉 | Deadline 來源表 |
-| 6. 定可觀測事件與最小指標集 | 定義仲裁決策事件的七項欄位、留痕粒度與載體、告警綁定的狀態變遷 | 〈可觀測性〉 | 可觀測事件欄位範本 |
+| 6. 定可觀測事件與最小指標集 | 定義仲裁決策事件的欄位、留痕粒度與載體、告警綁定的狀態變遷 | 〈可觀測性〉 | 可觀測事件欄位範本 |
 
 **執行順序不可跳步**：第 4 步依賴第 2、3 步的分類與閾值結果，第 6 步的指標欄位（佔用量分解、卸載計數）依賴第 1-4 步已定義的通道與級別。訪談時仍可按需求先問使用者熟悉的部分，但填範本時依此順序回填。
 
@@ -47,15 +47,15 @@ metadata:
 |------|-------|------------------|
 | `saas-tech-selection` 的 async-queue／capacity-performance／observability 維度 | 機制選型（用什麼佇列送）、容量假設與高峰 readiness、訊號源的 day-one 底線 | 這些維度訪談發現「不可丟」事件或「同一佇列混流不同級別」時，路由到本 skill 做仲裁設計；本 skill 的容量失敗訊號（不可棄請求無法服務）路由回 capacity-performance 的 tripwire 表 |
 | `foundation-design` | 地基波的整體定位與各維度權威指名 | 本 skill 是其事件流仲裁維度的執行入口，不重複 foundation-design 的路由邏輯 |
-| `doc` 的 domain-map | domain 邊界與依賴圖 | 依賴圖描述資料方向；本 skill〈通道與仲裁器〉的協調圖與之正交（互不呼叫的兩個 domain 仍可能競爭同一通道），兩者不互相取代 |
+| `doc` 的 domain-map 範本（`.claude/skills/doc/templates/domain-map-template.md` 的通道與協調圖節） | domain 邊界與依賴方向；該節是協調圖的結構載體 | 依賴方向描述資料流向；方法論〈通道與仲裁器〉的協調圖與之正交（互不呼叫的兩個 domain 仍可能競爭同一通道），兩者不互相取代。判準的權威在方法論，DAG 的權威在 `domain-bundle-mapping-methodology.md`，本表只說分工 |
 
 ## 何時讀哪份 reference
 
 | 情境 | 讀 | 涵蓋內容 |
 |------|-----|---------|
-| 執行第 1-6 步的訪談，需要具體問句 | `references/interview-questions.md` | 每步 3-5 題，各附「為什麼問」 |
+| 執行〈執行流程〉任一步的訪談，需要具體問句 | `references/interview-questions.md` | 各步數題，每題附「為什麼問」 |
 | 需要參考已套用過的案例，理解判準如何落地到具體系統 | `references/worked-examples.md` | 三個場景（HTTP API 共用連線池、Flutter 多 isolate、訊息消費者混流），各含套用結果、當時卡住處、方法論現行對應判準 |
-| 需要填產出物，要現成表格骨架 | `references/templates.md` | 六步流程對應的六份範本表格，欄位與方法論條文一致 |
+| 需要填產出物，要現成表格骨架 | `references/templates.md` | 〈執行流程〉各步對應的範本表格，欄位與方法論條文一致 |
 
 ## Example
 
