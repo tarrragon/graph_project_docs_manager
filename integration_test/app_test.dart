@@ -8,6 +8,7 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/services/macos_scan_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 /// App 啟動後的預設落地畫面錨點（導覽殼的預設項目：Domain 視圖）。
 ///
