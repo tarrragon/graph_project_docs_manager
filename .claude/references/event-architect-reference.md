@@ -135,5 +135,6 @@ basil-event-architect 的詳細技術參考、設計模板和最佳實踐。
 
 ---
 
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-09-09
+**Version**: 1.1.0 - 〈優先級分類〉表後補一句邊界：本表的優先級以產生方視角分段，事件流競爭同一稀缺通道時的取捨改依接收方負擔分級並另標到達類別，判準與流程分別路由至事件流負載仲裁方法論與 `event-flow-arbitration-design` skill；本表數值區間僅供事件總線排序，不作卸載依據
 **Version**: 1.0.0 - 從 basil-event-architect.md v1.1.0 提取
