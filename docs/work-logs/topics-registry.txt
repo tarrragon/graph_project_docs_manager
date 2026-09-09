@@ -7,3 +7,4 @@ git 變更記錄
 框架 skill 撰寫
 0.1 App 地基
 編輯能力提案
+ticket CLI create lock 釋放路徑
