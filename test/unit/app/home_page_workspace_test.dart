@@ -104,6 +104,14 @@ void main() {
       // 鎖定裁決 A 的呼叫端義務：面板不可用時仍要有使用者可見的錯誤提示，
       // 不能只更新內部狀態或只寫日誌。
       expect(find.byType(SnackBar), findsOneWidget);
+      // T-205-22（0.1.0-W3-205 G-A）：main.dart 分支改走 AppSnackBar 後，
+      // 需驗證確實呈現同一 i18n key，否則「接錯訊息」不會紅燈——原測試只
+      // 驗型別。M17 風險項已實跑確認：pumpAndSettle 在進場動畫結束即停止，
+      // 未推進到 Motion.snackBar 逾時，未觀察到逾時或提前消失。
+      expect(
+        find.text(l10n.chooseFolderUnavailableMessage),
+        findsOneWidget,
+      );
     });
   });
 }

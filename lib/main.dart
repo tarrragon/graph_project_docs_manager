@@ -7,9 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'app/attention_level.dart';
 import 'app/shell.dart';
 import 'components/app_text.dart';
-import 'components/components.dart' show BlockedState;
+import 'components/components.dart'
+    show AppSnackBar, AppSnackBarOrigin, BlockedState;
 import 'l10n/app_localizations.dart';
 import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
@@ -216,8 +218,13 @@ class _HomePageState extends State<HomePage> {
         break;
       case ChooseFolderUnavailable():
         // reason 不外露：可能含平台例外字串，使用者只看到固定文案。
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.chooseFolderUnavailableMessage)),
+        // level 為過渡值：chooseFolderUnavailableMessage 尚未登記於
+        // SPEC-003 §2.14 指派表，收斂 trigger 為 0.1.0-W3-248。
+        AppSnackBar.show(
+          context,
+          message: l10n.chooseFolderUnavailableMessage,
+          level: AttentionLevel.discardable,
+          origin: AppSnackBarOrigin.userInitiated,
         );
       case ChooseFolderSelected(:final state):
         setState(() {
