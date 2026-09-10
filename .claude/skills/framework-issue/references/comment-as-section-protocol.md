@@ -112,6 +112,8 @@ body 的區段索引表格式：
 觀測 comment 不列入索引。
 ```
 
+標題與表頭之間可放一段導言（入口宣稱、索引重生指令等）。`init`／`add` 每次重渲染索引時會回讀該導言並寫回原位置——導言若不回讀，`upsert_section` 的整段替換會在下一次執行時把它靜默抹除。issue 原本是無工具標記的手寫索引（標題＋導言＋表格）時，三者整塊處理：列併入工具索引、導言遷至標題與表頭之間、原處的標題與導言一併移除，body 內因此只留一份標題與一張表（`tarrragon/claude#82` 曾出現兩個標題而第一個底下沒有表格，即此處未整塊處理的後果）。
+
 **owner 識別格式**：`<專案目錄 kebab-case>-<session 序號>`，如 `flutter-balance-77`。值取 `ListAgents` 輸出首行「This session is <name>」的名稱，即其他 session 定址本 session 用的字串；不自行編號、不用代理人名。序號段記錄的是「哪一次 session 寫的」，不是「現在該找誰」：session 結束後該名稱不再可定址，擁有關係實質屬於專案（前綴段），有事以 `observe` 留在 issue 上，不以訊息找 owner。SessionStart 的擁有 issue 檢查在登記檔缺失時以專案目錄名推導前綴粗篩，`flutter_balance-pm` 這類形態會被漏檢。`init`／`add`／`transfer-owner` 三者在 CLI 層即以 `^[a-z0-9]+(-[a-z0-9]+)*-[0-9]+$` 驗證此格式，不合法（如代理人名稱 `framework-issue-curator`、含底線的 `flutter_balance-pm`）一律 exit 3。
 
 ### 待辦表欄位與列舉

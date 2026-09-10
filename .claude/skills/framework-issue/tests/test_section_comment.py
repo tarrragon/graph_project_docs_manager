@@ -650,6 +650,143 @@ def test_add_merges_hand_written_index_table_without_duplicating_rows(tmp_path):
     assert written_body.count("issuecomment-2") == 1
 
 
+def test_add_leaves_single_index_heading_when_hand_written_index_has_preamble(tmp_path):
+    """acceptance 1：手寫索引為「標題＋導言＋表格」三件一組（標題與表格之間
+    隔著導言，非緊鄰）時，add 併入後 body 內索引標題只出現一次。
+
+    修法前標題移除的條件是「表格正上方最多隔一個空行」，導言卡在中間即使
+    表格被搬走，標題仍留在原處，於是出現兩個標題而第一個底下沒有表格。
+    """
+    content_file = tmp_path / "content.md"
+    content_file.write_text("## 方案評估\n新內容", encoding="utf-8")
+    existing_body = (
+        "## 摘要\n\n"
+        "## 區段索引\n\n"
+        "**入口從此處進，不從 comment 列表找**\n\n"
+        "索引由工具維護，遺失時以下列指令重生：\n\n"
+        "```bash\ngh api repos/tarrragon/claude/issues/81/comments\n```\n\n"
+        "| 區段 | 永久連結 |\n"
+        "|------|---------|\n"
+        "| 當前結論 | https://github.com/tarrragon/claude/issues/81#issuecomment-1 |\n"
+    )
+    captured = {}
+    with mock.patch.object(
+        section_comment.subprocess,
+        "run",
+        side_effect=_add_side_effect(
+            ("https://github.com/tarrragon/claude/issues/81#issuecomment-2", 2),
+            existing_body,
+            captured,
+        ),
+    ):
+        rc = section_comment.main(
+            [
+                "add", "81", "--owner", "test-session-1", "--name", "方案評估",
+                "--content-file", str(content_file),
+            ]
+        )
+    assert rc == 0
+    written_body = captured["body"]
+    assert written_body.count("## 區段索引") == 1
+    assert written_body.count(section_comment.INDEX_BEGIN) == 1
+
+
+def test_add_migrates_hand_written_index_preamble_into_marked_block(tmp_path):
+    """acceptance 2：手寫索引的導言（含入口宣稱與重生指令）於併入時遷移至
+    工具索引區塊內，位於標題與表格之間，不留在失去表格的舊標題下。"""
+    content_file = tmp_path / "content.md"
+    content_file.write_text("內容", encoding="utf-8")
+    existing_body = (
+        "## 摘要\n\n"
+        "## 區段索引\n\n"
+        "**入口從此處進，不從 comment 列表找**\n\n"
+        "| 區段 | 永久連結 |\n"
+        "|------|---------|\n"
+        "| 當前結論 | https://github.com/tarrragon/claude/issues/81#issuecomment-1 |\n"
+    )
+    captured = {}
+    with mock.patch.object(
+        section_comment.subprocess,
+        "run",
+        side_effect=_add_side_effect(
+            ("https://github.com/tarrragon/claude/issues/81#issuecomment-2", 2),
+            existing_body,
+            captured,
+        ),
+    ):
+        rc = section_comment.main(
+            [
+                "add", "81", "--owner", "test-session-1", "--name", "方案評估",
+                "--content-file", str(content_file),
+            ]
+        )
+    assert rc == 0
+    written_body = captured["body"]
+    assert "**入口從此處進，不從 comment 列表找**" in written_body
+    begin = written_body.index(section_comment.INDEX_BEGIN)
+    end = written_body.index(section_comment.INDEX_END)
+    block = written_body[begin:end]
+    assert "**入口從此處進，不從 comment 列表找**" in block
+    assert block.index("## 區段索引") < block.index("**入口從此處進")
+    assert block.index("**入口從此處進") < block.index("| 區段 | 永久連結 |")
+
+
+def test_add_preserves_migrated_preamble_on_subsequent_add(tmp_path):
+    """遷移後的導言必須在後續 add 存活：`upsert_section` 對標記區塊是整段
+    替換，導言若只在遷移當次被寫入而不被回讀重渲染，第二次 add 即靜默抹除。
+
+    正向對照輸入（test-assertion-design-rules E2）：本測試的鑑別力來自
+    「跑第二次」——只驗第一次的測試對這個失效方向完全不會翻紅。
+    """
+    content_file = tmp_path / "content.md"
+    content_file.write_text("內容", encoding="utf-8")
+    first_body = (
+        "## 摘要\n\n"
+        "## 區段索引\n\n"
+        "**入口從此處進，不從 comment 列表找**\n\n"
+        "| 區段 | 永久連結 |\n"
+        "|------|---------|\n"
+        "| 當前結論 | https://github.com/tarrragon/claude/issues/81#issuecomment-1 |\n"
+    )
+    first_captured = {}
+    with mock.patch.object(
+        section_comment.subprocess,
+        "run",
+        side_effect=_add_side_effect(
+            ("https://github.com/tarrragon/claude/issues/81#issuecomment-2", 2),
+            first_body,
+            first_captured,
+        ),
+    ):
+        assert section_comment.main(
+            [
+                "add", "81", "--owner", "test-session-1", "--name", "方案評估",
+                "--content-file", str(content_file),
+            ]
+        ) == 0
+
+    second_captured = {}
+    with mock.patch.object(
+        section_comment.subprocess,
+        "run",
+        side_effect=_add_side_effect(
+            ("https://github.com/tarrragon/claude/issues/81#issuecomment-3", 3),
+            first_captured["body"],
+            second_captured,
+        ),
+    ):
+        assert section_comment.main(
+            [
+                "add", "81", "--owner", "test-session-1", "--name", "待調整清單",
+                "--content-file", str(content_file),
+            ]
+        ) == 0
+
+    written_body = second_captured["body"]
+    assert written_body.count("**入口從此處進，不從 comment 列表找**") == 1
+    assert written_body.count("## 區段索引") == 1
+
+
 def test_add_dedupes_existing_duplicate_rows_by_comment_id(tmp_path):
     """既有索引表因修法前的殘留缺陷已含重複列（相同 comment id 出現兩次）
     時，add 合併後的索引表以 comment id 去重，不延續既有重複（自我修復，

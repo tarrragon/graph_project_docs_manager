@@ -49,7 +49,7 @@ python3 .claude/skills/framework-issue/scripts/section_comment.py dedup \
 |---------|------|------|
 | 主題已有 open issue、無區段、body 無任何索引表（舊 body-only issue） | 該 issue | `init`（對既有 issue 可執行，追加區段並回填索引；body 缺 `fw-issue-schema` 標記時同一次 PATCH 內自動補上首行，不需再手動 `gh issue edit`） |
 | 主題已有 open issue 且已被他方 `init` | 該 issue | `add --owner <本方識別>` 建本方擁有的區段（每個區段一次 `add`），既有索引列不受影響；一般仍建議用 `add`（不需重新查重）而非 `init --force`，即使後者現已改為合併而非覆寫 |
-| 主題已有 open issue，body 有手寫索引表（無工具標記） | 該 issue | `add --owner <本方識別>`（issue 已有區段 comment 時改 `init --force`）；`add`／`init` 現已正確併入手寫表既有列，不再產生第二張索引表 |
+| 主題已有 open issue，body 有手寫索引表（無工具標記） | 該 issue | `add --owner <本方識別>`（issue 已有區段 comment 時改 `init --force`）；`add`／`init` 現已整塊處理手寫索引（標題＋導言＋表格）：既有列併入工具索引、導言遷移至標題與表頭之間、原處的標題與導言一併移除，故標題與表格各只留一份 |
 | 命中的是同領域不同層級 | 新 issue | `create` 後 `init`，分工邊界寫入雙方各自「當前結論」末段 |
 | 無命中 | 新 issue | `create` 後 `init` |
 

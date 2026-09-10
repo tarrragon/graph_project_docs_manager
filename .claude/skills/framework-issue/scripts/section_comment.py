@@ -272,18 +272,61 @@ def classify_comments(comments: list) -> tuple:
     return sections, stream
 
 
-def render_index_table(rows: list) -> str:
+def render_index_table(rows: list, preamble: str = "") -> str:
     """把 [{"name":, "url":}, ...] 渲染為可 upsert 的索引區段（表格列）。
 
     `init`／`add` 共用：`init` 一次性渲染全部剛建立的區段；`add` 併入既有
     索引列（來自 `parse_index_table`）與新增的一列後整段重渲染，兩者欄位
     統一為 name/url，呼叫端各自映射（`init` 的來源為 html_url）。
+
+    `preamble` 為索引標題與表頭之間的導言（來自 `extract_index_preamble`）。
+    它必須每次重渲染時一併寫回：`upsert_section` 對標記區塊是整段替換，
+    導言若只在遷移當次寫入而不回讀，第二次 `add` 即靜默抹除。
     """
-    lines = [INDEX_BEGIN, INDEX_TABLE_HEADER]
+    heading, table_header = INDEX_TABLE_HEADER.split("\n\n", 1)
+    lines = [INDEX_BEGIN, heading, ""]
+    if preamble:
+        lines.extend([preamble, ""])
+    lines.append(table_header)
     for row in rows:
         lines.append(f"| {row['name']} | {row['url']} |")
     lines.append(INDEX_END)
     return "\n".join(lines)
+
+
+def extract_index_preamble(body: str) -> str:
+    """取出索引標題與其表頭之間的導言，找不到回傳空字串。
+
+    兩個來源合流於同一函式：手寫索引（標題＋導言＋表格，無工具標記）的
+    導言於首次併入時遷移進標記區塊；已在標記區塊內的導言於每次重渲染時
+    回讀保留。兩者的形狀相同——都是「索引標題底下、表頭之前的內容」。
+
+    掃描時遇 `## ` 開頭的另一個標題或 `INDEX_END` 即中止該標題的搜尋：
+    這代表該標題底下沒有表格（例如修法前殘留的孤兒標題），不是索引區塊，
+    續掃下一個同名標題。
+    """
+    heading_line = INDEX_TABLE_HEADER.splitlines()[0]
+    lines = (body or "").splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() != heading_line:
+            continue
+        preamble = _preamble_until_table(lines[i + 1:])
+        if preamble:
+            return preamble
+    return ""
+
+
+def _preamble_until_table(lines: list) -> str:
+    """取索引標題之後、表頭之前的內容；該標題底下沒有表格則回傳空字串。"""
+    block = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("|"):
+            return "\n".join(block).strip()
+        if stripped == INDEX_END or stripped.startswith("## "):
+            return ""
+        block.append(line)
+    return ""
 
 
 def render_index(posted_sections: list) -> str:
@@ -341,17 +384,31 @@ def _strip_raw_index_rows(body: str) -> str:
         return body
     heading_line = INDEX_TABLE_HEADER.splitlines()[0]
     table_top = min(remove)
-    cursor = table_top - 1
-    if cursor >= 0 and lines[cursor].strip() == "":
-        blank_idx = cursor
-        cursor -= 1
-        if cursor >= 0 and lines[cursor].strip() == heading_line:
-            remove.add(cursor)
-            remove.add(blank_idx)
-    elif cursor >= 0 and lines[cursor].strip() == heading_line:
-        remove.add(cursor)
+    heading_idx = _find_index_heading_above(lines, table_top, heading_line)
+    if heading_idx is not None:
+        remove.update(range(heading_idx, table_top))
     kept = [line for idx, line in enumerate(lines) if idx not in remove]
     return "\n".join(kept)
+
+
+def _find_index_heading_above(lines: list, table_top: int, heading_line: str):
+    """由表格頂端往上找同屬一組的索引標題，找不到回傳 None。
+
+    不要求標題緊貼表格：手寫索引常寫成「標題＋導言＋表格」三件一組，導言
+    （入口宣稱、重生指令）夾在中間。原本只容許最多一個空行，導言存在時
+    標題即不被移除，表格搬走後留下宣稱是入口卻沒有表格的孤兒標題
+    （`tarrragon/claude#82` 實例）。導言本身另由 `extract_index_preamble`
+    取出遷移，故此處連同標題與導言一併自原處移除。
+
+    往上遇到另一個 `## ` 標題即中止——那是別的章節，其內容不屬於索引。
+    """
+    for idx in range(table_top - 1, -1, -1):
+        stripped = lines[idx].strip()
+        if stripped == heading_line:
+            return idx
+        if stripped.startswith("## "):
+            return None
+    return None
 
 
 def _ensure_schema_marker(body: str) -> str:
@@ -803,9 +860,12 @@ def cmd_init(
     existing_rows = parse_index_table(body)
     new_rows = [{"name": p["name"], "id": p["id"], "url": p["html_url"]} for p in posted]
     merged_rows = _merge_index_rows(existing_rows, new_rows)
+    preamble = extract_index_preamble(body)
     body = _strip_raw_index_rows(body)
     body = _ensure_schema_marker(body)
-    new_body = upsert_section(body, INDEX_SECTION_RE, render_index_table(merged_rows))
+    new_body = upsert_section(
+        body, INDEX_SECTION_RE, render_index_table(merged_rows, preamble)
+    )
     return write_body(issue_ref, new_body)
 
 
@@ -848,9 +908,12 @@ def cmd_add(issue_ref: str, owner: str, name: str, content_file: str) -> int:
     existing_rows = parse_index_table(body)
     new_row = {"name": name, "id": result.get("id"), "url": result.get("html_url", "")}
     merged_rows = _merge_index_rows(existing_rows, [new_row])
+    preamble = extract_index_preamble(body)
     body = _strip_raw_index_rows(body)
     body = _ensure_schema_marker(body)
-    new_body = upsert_section(body, INDEX_SECTION_RE, render_index_table(merged_rows))
+    new_body = upsert_section(
+        body, INDEX_SECTION_RE, render_index_table(merged_rows, preamble)
+    )
     return write_body(
         issue_ref, new_body,
         success_msg=f"區段「{name}」已建立 @ {issue_ref}，owner={owner}",
