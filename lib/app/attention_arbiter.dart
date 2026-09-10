@@ -193,17 +193,18 @@ final class AttentionHolder {
   /// 起算，逾期判定的基準才是 `presentedAt`（兩者回答不同問題）。
   Duration ageAt(DateTime now) => now.difference(handle.acceptedAt);
 
+  // 唯一呼叫點（presented()）恆無條件覆寫 naturalLifespan（含覆寫為
+  // null，即清除自然存活期），不與既有值合併；不設可選旗標，因為從未
+  // 有第二種呼法（F-5：原 clearNaturalLifespan 參數恆為 true 且命名與
+  // 「已指派 true 卻讀作清除」互相矛盾，故直接移除）。
   AttentionHolder _copyWith({
     DateTime? presentedAt,
-    Duration? naturalLifespan,
-    bool clearNaturalLifespan = false,
+    required Duration? naturalLifespan,
   }) {
     return AttentionHolder(
       handle: handle,
       presentedAt: presentedAt ?? this.presentedAt,
-      naturalLifespan: clearNaturalLifespan
-          ? naturalLifespan
-          : (naturalLifespan ?? this.naturalLifespan),
+      naturalLifespan: naturalLifespan,
     );
   }
 }
@@ -251,17 +252,10 @@ void _defaultLogSink(
   final detail = fields.entries
       .map((entry) => '${entry.key}=${entry.value}')
       .join(', ');
-  if (level != null) {
-    developer.log(
-      '$event：$detail',
-      name: 'AttentionArbiter',
-      level: level,
-    ); // i18n-exempt: 開發者診斷 log
-    return;
-  }
   developer.log(
     '$event：$detail',
     name: 'AttentionArbiter',
+    level: level ?? 0,
   ); // i18n-exempt: 開發者診斷 log
 }
 
@@ -325,7 +319,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
     // 觸發任何狀態變更（含逾期清除）。設計選擇，無測試覆蓋此順序
     // （Phase 3a 3a.8 第 6 列）。
     if (r.id.isEmpty) {
-      _emit(AttentionArbiterLogEvent.rejected, {
+      _logSink(AttentionArbiterLogEvent.rejected, {
         'requestId': '',
         'arrival': r.arrival,
         'level': r.level,
@@ -334,7 +328,14 @@ class AttentionArbiterImpl implements AttentionArbiter {
         'occupancy': _occupancySnapshot(),
         ..._deadlineFields(r.deadline),
       }, level: _levelWarning);
-      return AttentionRejected(blockedBy: null, retryAfter: consumed);
+      // blockedBy 為 null（純輸入驗證失敗，非被任何持有者阻擋），
+      // retryAfter 因此不對應任何特定持有者的消費事件；回傳空串流而非
+      // 未過濾的 consumed 全量廣播，避免呼叫端誤把無關的釋放事件當成
+      // 「可以重試了」的訊號（F-9）。
+      return AttentionRejected(
+        blockedBy: null,
+        retryAfter: const Stream<AttentionConsumed>.empty(),
+      );
     }
 
     // 步驟 1：逾期懶檢查（唯一會改狀態的前置步驟）。
@@ -351,7 +352,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
     final holderAfterExpiry = _holder;
     if (holderAfterExpiry != null &&
         holderAfterExpiry.handle.requestId == r.id) {
-      _emit(AttentionArbiterLogEvent.heldAndRequested, {
+      _logSink(AttentionArbiterLogEvent.heldAndRequested, {
         'requestId': r.id,
         'arrival': r.arrival,
         'level': r.level,
@@ -370,9 +371,9 @@ class AttentionArbiterImpl implements AttentionArbiter {
 
     // 步驟 3：級別傳播單調不升（先於裁決表）。
     var effectiveLevel = r.level;
-    if (r.parentLevel != null && r.level.index > r.parentLevel!.index) {
+    if (r.parentLevel != null && _isHigher(r.level, r.parentLevel!)) {
       effectiveLevel = r.parentLevel!;
-      _emit(AttentionArbiterLogEvent.levelClamped, {
+      _logSink(AttentionArbiterLogEvent.levelClamped, {
         'requestId': r.id,
         'arrival': r.arrival,
         'level': effectiveLevel,
@@ -396,10 +397,9 @@ class AttentionArbiterImpl implements AttentionArbiter {
       );
     }
 
-    final holderLevel = holderForDecision.handle.level.index;
-    final requestLevel = effectiveLevel.index;
+    final holderLevel = holderForDecision.handle.level;
 
-    if (holderLevel < requestLevel) {
+    if (_isHigher(effectiveLevel, holderLevel)) {
       return _accept(
         r,
         effectiveLevel,
@@ -407,7 +407,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
         sameLevelReplace: false,
       );
     }
-    if (holderLevel == requestLevel) {
+    if (holderLevel == effectiveLevel) {
       return _accept(
         r,
         effectiveLevel,
@@ -416,11 +416,11 @@ class AttentionArbiterImpl implements AttentionArbiter {
       );
     }
 
-    // holderLevel > requestLevel
+    // holderLevel 較高（_isHigher(holderLevel, effectiveLevel)）
     switch (r.arrival) {
       case AttentionArrival.spontaneous:
         if (effectiveLevel == AttentionLevel.discardable) {
-          _emit(AttentionArbiterLogEvent.skipped, {
+          _logSink(AttentionArbiterLogEvent.skipped, {
             'requestId': r.id,
             'arrival': r.arrival,
             'level': effectiveLevel,
@@ -435,7 +435,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
           final signal = consumed.where(
             (c) => c.handle.requestId == holderForDecision.handle.requestId,
           );
-          _emit(AttentionArbiterLogEvent.deferred, {
+          _logSink(AttentionArbiterLogEvent.deferred, {
             'requestId': r.id,
             'arrival': r.arrival,
             'level': effectiveLevel,
@@ -454,7 +454,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
         throw StateError(_unreachableSpontaneousUndroppableMessage);
       case AttentionArrival.waiting:
         final level = _levelForOrigin(r.arrival);
-        _emit(AttentionArbiterLogEvent.rejected, {
+        _logSink(AttentionArbiterLogEvent.rejected, {
           'requestId': r.id,
           'arrival': r.arrival,
           'level': effectiveLevel,
@@ -487,7 +487,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
     AttentionHandle? preemptedHandle;
     if (preemptedHolder != null) {
       preemptedHandle = preemptedHolder.handle;
-      _emit(
+      _logSink(
         sameLevelReplace
             ? AttentionArbiterLogEvent.sameLevelReplaced
             : AttentionArbiterLogEvent.preempted,
@@ -498,7 +498,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
           'channel': _channelUserFocus,
           'reason': 'preempted',
           'occupancy': occupancyBeforeDecision,
-          ..._deadlineFieldsUnassigned(),
+          ..._deadlineFields(null),
         },
       );
       _holder = null;
@@ -517,7 +517,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
       presentedAt: null,
       naturalLifespan: null,
     );
-    _emit(AttentionArbiterLogEvent.accepted, {
+    _logSink(AttentionArbiterLogEvent.accepted, {
       'requestId': r.id,
       'arrival': r.arrival,
       'level': effectiveLevel,
@@ -542,7 +542,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
     final currentHolder = _holder;
     if (currentHolder == null ||
         currentHolder.handle.requestId != handle.requestId) {
-      _emit(AttentionArbiterLogEvent.releasedNonHolder, {
+      _logSink(AttentionArbiterLogEvent.releasedNonHolder, {
         'requestId': handle.requestId,
         'arrival': handle.arrival,
         'level': handle.level,
@@ -550,7 +550,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
         'reason': 'releasedNonHolder',
         'occupancy': _occupancySnapshot(),
         'op': 'presented',
-        ..._deadlineFieldsUnassigned(),
+        ..._deadlineFields(null),
       }, level: _levelWarning);
       return;
     }
@@ -561,9 +561,8 @@ class AttentionArbiterImpl implements AttentionArbiter {
     _holder = currentHolder._copyWith(
       presentedAt: _now(),
       naturalLifespan: effectiveLifespan,
-      clearNaturalLifespan: true,
     );
-    _emit(AttentionArbiterLogEvent.presented, {
+    _logSink(AttentionArbiterLogEvent.presented, {
       'requestId': handle.requestId,
       'arrival': handle.arrival,
       'level': handle.level,
@@ -572,7 +571,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
       'occupancy': _occupancySnapshot(),
       'naturalLifespanRaw': naturalLifespan,
       'carrierEventId': carrierEventId,
-      ..._deadlineFieldsUnassigned(),
+      ..._deadlineFields(null),
     });
   }
 
@@ -581,7 +580,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
     final currentHolder = _holder;
     if (currentHolder == null ||
         currentHolder.handle.requestId != handle.requestId) {
-      _emit(AttentionArbiterLogEvent.releasedNonHolder, {
+      _logSink(AttentionArbiterLogEvent.releasedNonHolder, {
         'requestId': handle.requestId,
         'arrival': handle.arrival,
         'level': handle.level,
@@ -589,7 +588,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
         'reason': 'releasedNonHolder',
         'occupancy': _occupancySnapshot(),
         'op': 'release',
-        ..._deadlineFieldsUnassigned(),
+        ..._deadlineFields(null),
       }, level: _levelWarning);
       return;
     }
@@ -616,18 +615,23 @@ class AttentionArbiterImpl implements AttentionArbiter {
       return;
     }
     final leaving = currentHolder.handle;
-    _emit(
+    // 等級僅在 expired（步驟 1 懶檢查自動觸發）依發起者判定；released
+    // 是持有者生命的正常終點，不論發起者一律 info（PM 裁決 F-1）。
+    final level = event == AttentionArbiterLogEvent.expired
+        ? _levelForOrigin(leaving.arrival)
+        : null;
+    _logSink(
       event,
       {
         'requestId': leaving.requestId,
         'arrival': leaving.arrival,
         'level': leaving.level,
         'channel': _channelUserFocus,
-        'reason': _reasonName(reason),
+        'reason': reason.name,
         'occupancy': _occupancySnapshotFor(currentHolder),
-        ..._deadlineFieldsUnassigned(),
+        ..._deadlineFields(null),
       },
-      level: _levelForOrigin(leaving.arrival),
+      level: level,
     );
     // 先清空再廣播（3a.4：即使日後改為同步投遞，訂閱者看到的也是「通道
     // 已空」而非中間態）。
@@ -652,14 +656,6 @@ class AttentionArbiterImpl implements AttentionArbiter {
     });
   }
 
-  void _emit(
-    AttentionArbiterLogEvent event,
-    Map<String, Object?> fields, {
-    int? level,
-  }) {
-    _logSink(event, fields, level: level);
-  }
-
   Map<String, Object?> _occupancySnapshot() {
     final currentHolder = _holder;
     if (currentHolder == null) {
@@ -676,6 +672,9 @@ class AttentionArbiterImpl implements AttentionArbiter {
     };
   }
 
+  // 傳入 null 亦用於「事件不直接對應單一請求的 deadline」情形（如離開類
+  // 事件描述的是離開者，不是觸發者）——一律以「未指派」形態補齊七欄位中
+  // 的 deadlineRemaining 鍵，與請求本身缺席 deadline 同一形態（F-7）。
   Map<String, Object?> _deadlineFields(Duration? deadline) {
     if (deadline == null) {
       return {'deadlineRemaining': null, 'deadlineAssigned': true};
@@ -683,32 +682,12 @@ class AttentionArbiterImpl implements AttentionArbiter {
     return {'deadlineRemaining': deadline};
   }
 
-  // 事件不直接對應單一請求的 deadline（如離開類事件描述的是離開者，不是
-  // 觸發者），一律以「未指派」形態補齊七欄位中的 deadlineRemaining 鍵。
-  Map<String, Object?> _deadlineFieldsUnassigned() {
-    return {'deadlineRemaining': null, 'deadlineAssigned': true};
-  }
-
   int? _levelForOrigin(AttentionArrival arrival) {
     return arrival == AttentionArrival.spontaneous ? _levelWarning : null;
   }
 
-  String _reasonName(AttentionReleaseReason reason) {
-    switch (reason) {
-      case AttentionReleaseReason.responded:
-        return 'responded';
-      case AttentionReleaseReason.dismissed:
-        return 'dismissed';
-      case AttentionReleaseReason.expired:
-        return 'expired';
-      case AttentionReleaseReason.preempted:
-        return 'preempted';
-      case AttentionReleaseReason.notPresented:
-        return 'notPresented';
-      case AttentionReleaseReason.withdrawn:
-        return 'withdrawn';
-    }
-  }
+  /// 級別比較恰在此一處（V-4），比較鍵為列舉序值。
+  bool _isHigher(AttentionLevel a, AttentionLevel b) => a.index > b.index;
 }
 
 /// 單一實例暴露（T-30 只驗單例契約）。

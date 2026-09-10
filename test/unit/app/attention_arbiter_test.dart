@@ -36,7 +36,7 @@ class _Recorder {
   }
 }
 
-void expectSevenFields(_Record record) {
+void _expectSevenFields(_Record record) {
   final fields = record.fields;
   expect(fields.containsKey('requestId'), isTrue);
   expect(fields.containsKey('arrival'), isTrue);
@@ -166,7 +166,7 @@ void main() {
       expect(arbiter.holder!.handle.requestId, 'r1');
       final record = recorder.singleOf(AttentionArbiterLogEvent.accepted);
       expect(record.fields['arrival'], AttentionArrival.spontaneous);
-      expect(record.level == null || record.level != 900, isTrue);
+      expect(record.level != 900, isTrue);
     });
 
     test('T-3 呈現、消費、訊號', () async {
@@ -191,7 +191,16 @@ void main() {
       expect(released.length, 1);
       expect(released.single.fields['requestId'], 'r1');
       expect(released.single.fields['reason'], 'expired');
-      expectSevenFields(released.single);
+      _expectSevenFields(released.single);
+    });
+
+    test('F-1 released 對 spontaneous 持有者的等級為 null 或 800', () {
+      final handle = hold(
+        req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+      );
+      arbiter.release(handle, AttentionReleaseReason.responded);
+      final released = recorder.singleOf(AttentionArbiterLogEvent.released);
+      expect(released.level == null || released.level == 800, isTrue);
     });
 
     test('T-4 序列重借合法', () {
@@ -581,6 +590,20 @@ void main() {
       expect(record.level, 900);
       expect(arbiter.holder, isNull);
     });
+
+    test('3a.8 空 id 驗證先於逾期懶檢查（順序覆蓋）', () {
+      hold(
+        req('old', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        naturalLifespan: Motion.snackBar,
+      );
+      clock.advance(Motion.snackBar + Motion.feedback);
+
+      final decision = arbiter.request(req(''));
+
+      expect(decision, isA<AttentionRejected>());
+      expect(recorder.of(AttentionArbiterLogEvent.expired), isEmpty);
+      expect(arbiter.holder!.handle.requestId, 'old');
+    });
   });
 
   group('G-C 逾期懶檢查', () {
@@ -772,7 +795,7 @@ void main() {
           .toSet();
       for (final reason in AttentionReleaseReason.values) {
         expect(
-          reasonsSeen.contains(_reasonName(reason)),
+          reasonsSeen.contains(reason.name),
           isTrue,
           reason: '$reason 未出現於任何事件的 fields[reason]',
         );
@@ -784,7 +807,7 @@ void main() {
       expect(recorder.of(AttentionArbiterLogEvent.deferred), isNotEmpty);
 
       for (final record in recorder.records) {
-        expectSevenFields(record);
+        _expectSevenFields(record);
       }
     });
 
@@ -987,21 +1010,4 @@ void main() {
       expect(viewLog.single.reason, AttentionReleaseReason.preempted);
     });
   });
-}
-
-String _reasonName(AttentionReleaseReason reason) {
-  switch (reason) {
-    case AttentionReleaseReason.responded:
-      return 'responded';
-    case AttentionReleaseReason.dismissed:
-      return 'dismissed';
-    case AttentionReleaseReason.expired:
-      return 'expired';
-    case AttentionReleaseReason.preempted:
-      return 'preempted';
-    case AttentionReleaseReason.notPresented:
-      return 'notPresented';
-    case AttentionReleaseReason.withdrawn:
-      return 'withdrawn';
-  }
 }
