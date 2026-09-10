@@ -53,6 +53,7 @@ from ticket_system.lib.field_validators import (
     validate_where_files,
 )
 from ticket_system.lib.topic_inference import (
+    NO_TOPIC,
     infer_topic,
     requires_topic_assignment,
     validate_topic_selection,
@@ -796,9 +797,13 @@ def execute(args: argparse.Namespace) -> int:
         )))
         return 1
 
-    # 判準 S1/S2 自動推導：僅在兩個顯式旗標皆未給時啟動，不改寫顯式選擇
+    # 判準 S1/S2 自動推導：僅在三個顯式旗標皆未給時啟動，不改寫顯式選擇
     # （0.2.1-W3-826 判準；顯式優先是 Never break userspace 的要求）。
-    if topic is None:
+    # --no-topic 以 NO_TOPIC 哨兵表達，在此即短路推導：若改由推導後的
+    # 報告分支攔截，旗標只能在推導本來就落空時生效，命中時反被覆蓋。
+    if topic is NO_TOPIC:
+        topic = None
+    elif topic is None:
         topic, topic_basis = infer_topic(args)
 
     if is_child:
