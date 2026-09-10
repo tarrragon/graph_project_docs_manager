@@ -1,19 +1,18 @@
 ---
 id: PC-GPD-022
-title: 跨間接層的驗證錯誤可能指向被檢查層而非損壞層（待驗證假說）
+title: 跨間接層的驗證錯誤指向被檢查層而非損壞層
 category: process-compliance
 severity: medium
 created: 2026-09-10
+updated: 2026-09-10
 ---
-# PC-GPD-022: 跨間接層的驗證錯誤可能指向被檢查層而非損壞層（待驗證假說）
+# PC-GPD-022: 跨間接層的驗證錯誤指向被檢查層而非損壞層
 
-## 狀態：待驗證假說，非已確立模式
+## 狀態：git worktree 形態已由最小重現確立；跨載體泛化仍為假說
 
-**本檔記錄的是一個尚未被實證支持的假說。** 它由一次觀測激發，但該次觀測的原始物證已被刪除，且事後重現產出的是**不同的**錯誤訊息，因此原假說既未被證實也未被證偽。
+本檔原記錄為待驗證假說（原始物證已刪除、事後重現產出不同訊息）。**2026-09-10 以最小重現實驗確立了 git worktree 形態**：原始訊息可被穩定重現，且可證偽條件四項全部滿足（見「最小重現」節）。
 
-保留本檔的理由是它有明確的可證偽條件（見下節），而該條件在框架日常操作中會反覆出現；若不記錄，下一個撞到的人會從零開始猜。**引用本檔時必須連同本節一起引用**，不得當作已確立的判準使用。
-
-若累積到三個經查證的獨立實例，升級為正式模式並移除本節；若反覆嘗試重現而條件不成立，刪除本檔並在 `PC-GPD-021` 註記結果。
+仍為假說的部分是**跨載體的泛化**——本檔列舉的其他間接層（CLI shim 與解析目標、hook 註冊表與被註冊檔案、error-pattern canonical issue 欄位與 issue 本體、skill 路由表與被路由檔案）尚無任一經查證的實例。引用本檔套用到 git worktree 以外的載體時，須連同本節一起引用。
 
 ## 基本資訊
 
@@ -21,11 +20,11 @@ created: 2026-09-10
 |------|------|
 | 編號 | PC-GPD-022 |
 | 類別 | process-compliance |
-| 風險等級 | 中（未確立，暫不列高） |
+| 風險等級 | 中 |
 | 提出日期 | 2026-09-10 |
-| 證據強度 | 一次未完整診斷的觀測；重現失敗（產出不同訊息） |
+| 證據強度 | git worktree 形態：確定性最小重現（git 2.50.1）。其他載體：無實例 |
 
-## 假說內容
+## 模式內容
 
 當一個驗證動作跨越間接層——命名對象 A 內含指向 B 的指標，而驗證需要 A 與 B 兩側都成立——失敗訊息可能只指出 A，因為 A 是驗證器直接持有的參數。若實際損壞在 B，則：
 
@@ -34,50 +33,52 @@ created: 2026-09-10
 3. 操作者的結論落向「損壞無法理解」，而非「訊息指的不是損壞的那一層」
 4. 正確的下一步（沿指標檢視 B）不會被想到，因為訊息從未提及 B 存在
 
-**框架內的間接層實例**（皆為潛在適用面，非已觀測到的失效）：git worktree 的 gitfile 與 admin 目錄互指、cwd-resolving CLI shim 與其解析目標、hook 註冊表與被註冊檔案、error-pattern 的 canonical issue 欄位與 issue 本體、skill 的路由表與被路由檔案。
+**Consequence**：操作者停在「壞到看不懂」，處置退化為整個刪掉重來。刪除同時銷毀了唯一的物證，使該次失效無法被歸因，下一次撞到的人仍從零開始。
 
-## 激發本假說的觀測（未完整診斷）
+**Action**：驗證錯誤指名一個對象、而該對象逐項比對後確實完好時，在下「無法理解」的結論之前，**先沿該對象持有的指標檢視一層**。成本是一次 `cat` 或 `ls`，收益是把「不可理解」與「指標另一端損壞」區分開。
 
-一次 `worktree create` 因子行程逾時中止，留下殘骸。`git worktree remove` 回：
+## 最小重現（git worktree 形態，git 2.50.1 / Apple Git-155）
 
-```
-fatal: validation failed, cannot remove working tree:
-'<worktree>/.git' is not a .git file, error code 7
-```
+`worktree create` 被逾時中止時，殘骸的形狀取決於中止時點。全程**不改動** worktree 側的 `.git` gitfile（內容為形式完好的 `gitdir:` 指向存在的 admin 路徑），僅移除 admin 側（`<repo>/.git/worktrees/<name>/`）的單一檔案：
 
-該 `.git` 檔實際內容為形式完好的 gitfile（`gitdir:` 指向存在的 admin 路徑）。`git worktree prune` 亦不清除。作者當時未沿指標檢視 admin 側，結論為「壞到看不懂」，直接刪除目錄後 `prune` 成功。
+| admin 側殘缺 | `git worktree remove` 訊息 | `git worktree prune -v` |
+|---|---|---|
+| 目錄整個不存在 | `is not a working tree` | 靜默 |
+| 缺 `gitdir` | `is not a working tree` | `Removing worktrees/<name>: gitdir file does not exist` |
+| 缺 `commondir` | `validation failed ... '<worktree>/.git' is not a .git file, error code 7` | 靜默 |
+| 缺 `HEAD` | `validation failed ... '<worktree>/.git' is not a .git file, error code 7` | 靜默 |
 
-**未能確立的原因**：
+`error code 7` 是 git `read_gitfile_gently()` 的 `READ_GITFILE_ERR_NOT_A_REPO`：gitfile 讀得到、格式合法、目標路徑存在，但目標不被認可為 repo。**錯誤碼本身就編碼了「壞在指標另一端」，訊息文字未將其翻出**。
 
-| 項目 | 狀況 |
+**可證偽條件的滿足情形**：
+
+| 條件 | 滿足 |
 |------|------|
-| 原始殘骸 | 已刪除，無法回查 admin 側當時狀態 |
-| 事後重現 | 成功重現逾時，但該次的 `remove` 訊息為 `contains modified or untracked files`，**與原訊息不同** |
-| 重現版的 admin 側 | 完整（`commondir` `gitdir` `HEAD` `locked` `logs` `refs`），僅缺 `index` |
-| 兩側指標 | 重現版兩側皆正確 |
-| 原訊息的真正成因 | **未知** |
+| 1. 訊息指名一個具體對象 A | 指名 `<worktree>/.git` |
+| 2. A 經檢視確實形式完好 | A 全程未被改動，與健康樣本逐位元組相同 |
+| 3. 實際損壞在 B 且可獨立確認 | admin 側缺 `commondir` / `HEAD`，`ls` 與健康樣本比對即見 |
+| 4. 訊息完全未提及 B 或指標關係 | 訊息無 admin 路徑、無 `gitdir:` 字樣 |
 
-兩次的差異僅在檢出進度（原始 0 個檔、重現版 3101 個檔），故訊息隨中止時點而變。這說明原訊息可能根本不是「指錯層」，而是另一種尚未辨識的狀態。
+## 反直覺點：prune 不是這個形態的診斷手段
 
-## 可證偽條件
+**`prune` 會說話的形狀，正好是不會產生原始訊息的形狀。**產生 `error code 7` 時，`git worktree prune -v` 與 `prune -v --dry-run` 皆為 0 行輸出、rc=0，且 prune 之後 `remove` 仍以同一訊息失敗；只有「缺 `gitdir`」那一種形狀 prune 才有輸出，而該形狀的 `remove` 訊息並非 `error code 7`。
 
-支持本假說需要一個實例同時滿足：
+**Why 值得單獨記**：事後回述容易把「後來清掉了」壓縮成「prune 說出了原因」。這兩件事在此形態下互斥——本節即為該回述的實測反例（`tool-output-trust-rules` 規則 5：對話記憶屬記錄平面，不是 ground truth）。
 
-1. 驗證失敗訊息**指名**一個具體對象 A
-2. A 經檢視**確實形式完好**（非「看起來像好的」，而是與健康樣本逐項比對後相同）
-3. 實際損壞在 A 指向的 B，且 B 的損壞**可被獨立確認**
-4. 訊息**完全未提及** B 或指標關係
+**真正自動指名 B 的診斷**，從 worktree 內部問：
 
-反證條件：反覆重現同類失敗，訊息皆能正確指出實際損壞層，或訊息的指名對象與損壞對象一致。
+```
+$ git -C <worktree> rev-parse --git-dir
+fatal: not a git repository: <repo>/.git/worktrees/<name>
+```
 
-## 暫行操作建議（低成本，即使假說不成立亦無害）
+此訊息直接印出 admin 路徑。次級訊號：`git worktree list` 中損壞的那一列 commit 欄顯示 `0000000`。
 
-驗證錯誤指名一個對象而該對象檢視後完好時，**在下結論為「無法理解」之前，先沿該對象持有的指標檢視一層**。成本是一次 `cat` 或 `ls`，收益是把「不可理解」與「指標另一端損壞」區分開。
-
-同時記錄：若沿指標檢視後兩側皆完好，該次即為本假說的**反例**，請回填至本檔。
+**處置**：確認 admin 側殘缺後，刪除 worktree 目錄與 admin 目錄兩側，再 `prune`。刪除前先 `ls` admin 側並記錄缺哪些檔案——那是唯一的物證。
 
 ## 相關
 
-- `PC-GPD-021`——本假說的提出過程本身即該模式的實例（機制解釋未經查證而以已查證語氣呈現）；本檔的「待驗證假說」框架是該模式預防措施第 4 列（明示標示）的實作
-- `PC-GPD-019`——形狀相符終止查證；本假說若成立，屬其一個特化情境：訊息指名的對象形狀相符（是個真的 gitfile），因而終止了往下的查證
-- `.claude/rules/core/tool-output-trust-rules.md` 規則 6——驗證器警告與工具自動產出衝突時先查建立端；本假說與其同屬「驗證輸出本身需要被判讀」的家族，但斷點不同（規則 6 是判準過期，本假說是指向錯層）
+- `PC-GPD-021`——本檔原假說的提出過程即該模式的實例（機制解釋未經查證而以已查證語氣呈現）；本次以最小重現取代推測，是該模式預防措施的正向實作
+- `PC-GPD-019`——形狀相符終止查證；本模式為其特化情境：訊息指名的對象形狀相符（是個真的 gitfile），因而終止了往下的查證
+- `.claude/rules/core/tool-output-trust-rules.md` 規則 5——記錄平面（含自己的對話記憶）不是 ground truth；「反直覺點」節為其實例
+- `.claude/rules/core/tool-output-trust-rules.md` 規則 6——驗證器警告與工具自動產出衝突時先查建立端；與本模式同屬「驗證輸出本身需要被判讀」的家族，斷點不同（規則 6 是判準過期，本模式是指向錯層）
