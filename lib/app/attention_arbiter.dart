@@ -125,6 +125,12 @@ final class AttentionSkipped extends AttentionDecision {
 }
 
 /// 拒絕：等待型在通道被高級別持有時的動作，附可重試資訊。
+///
+/// 診斷日誌對應 [AttentionArbiterLogEvent.rejected]，僅用於本類別建構時
+/// 經過裁決表判定的仲裁結局；請求識別為空或協定違規（持有期間再次請求）
+/// 雖然也回傳本類別，日誌事件另記 [AttentionArbiterLogEvent.invalidRequest]
+/// ——兩者不對應任何裁決表結果，是請求本身不合法而非在通道競爭中落敗
+/// （SPEC-003 §2.17，`0.1.0-W3-277`）。
 final class AttentionRejected extends AttentionDecision {
   const AttentionRejected({required this.blockedBy, required this.retryAfter});
 
@@ -215,6 +221,15 @@ final class AttentionHolder {
 }
 
 /// 仲裁器診斷日誌的事件類別（PM 裁決缺口 3：新增 `presented`，共 12 值）。
+///
+/// `rejected` 與 `invalidRequest` 皆是「拒絕」大類，兩者在 `fields` 中
+/// 皆帶 `outcome: 'rejected'`，故消費端可用單一條件
+/// `fields['outcome'] == 'rejected'` 取得全部拒絕，不需同時比對兩個事件名
+/// （`0.1.0-W3-277`）。`invalidRequest` 統一原本互斥的兩組欄位（請求識別
+/// 為空、持有期間再次請求），兩者皆非仲裁結局，故不帶 `decision` 欄；
+/// `rejected` 專用於裁決表判定的仲裁結局，帶 `decision` 而不帶 `reason`，
+/// 藉此與 `invalidRequest`（帶 `reason` 不帶 `decision`）互斥區分「仲裁
+/// 結局」與「請求不合法」兩條語意線。
 enum AttentionArbiterLogEvent {
   accepted,
   preempted,
@@ -226,7 +241,7 @@ enum AttentionArbiterLogEvent {
   released,
   expired,
   releasedNonHolder,
-  heldAndRequested,
+  invalidRequest,
   levelClamped,
 }
 
@@ -324,12 +339,13 @@ class AttentionArbiterImpl implements AttentionArbiter {
     // 觸發任何狀態變更（含逾期清除）。設計選擇，無測試覆蓋此順序
     // （Phase 3a 3a.8 第 6 列）。
     if (r.id.isEmpty) {
-      _logSink(AttentionArbiterLogEvent.rejected, {
+      _logSink(AttentionArbiterLogEvent.invalidRequest, {
         'requestId': '',
         'arrival': r.arrival,
         'level': r.level,
         'channel': _channelUserFocus,
         'reason': 'emptyId',
+        'outcome': 'rejected',
         'occupancy': _occupancySnapshot(),
         ..._deadlineFields(r.deadline),
       }, level: _levelWarning);
@@ -357,12 +373,13 @@ class AttentionArbiterImpl implements AttentionArbiter {
     final holderAfterExpiry = _holder;
     if (holderAfterExpiry != null &&
         holderAfterExpiry.handle.requestId == r.id) {
-      _logSink(AttentionArbiterLogEvent.heldAndRequested, {
+      _logSink(AttentionArbiterLogEvent.invalidRequest, {
         'requestId': r.id,
         'arrival': r.arrival,
         'level': r.level,
         'channel': _channelUserFocus,
         'reason': 'heldAndRequested',
+        'outcome': 'rejected',
         'occupancy': _occupancySnapshot(),
         ..._deadlineFields(r.deadline),
       }, level: _levelWarning);
@@ -465,6 +482,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
           'level': effectiveLevel,
           'channel': _channelUserFocus,
           'decision': 'rejected',
+          'outcome': 'rejected',
           'occupancy': _occupancySnapshot(),
           ..._deadlineFields(r.deadline),
         }, level: level);

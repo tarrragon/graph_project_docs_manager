@@ -220,7 +220,7 @@ void main() {
       );
       expect(decision, isA<AttentionAccepted>());
       expect((decision as AttentionAccepted).preempted, isNull);
-      expect(recorder.of(AttentionArbiterLogEvent.heldAndRequested), isEmpty);
+      expect(recorder.of(AttentionArbiterLogEvent.invalidRequest), isEmpty);
       expect(arbiter.holder!.handle.requestId, 'r2');
     });
 
@@ -550,7 +550,7 @@ void main() {
       expect(decision, isA<AttentionRejected>());
       expect((decision as AttentionRejected).blockedBy!.requestId, 'r1');
       expect(arbiter.holder!.handle.requestId, 'r1');
-      expect(recorder.singleOf(AttentionArbiterLogEvent.heldAndRequested).level, 900);
+      expect(recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).level, 900);
       expect(recorder.of(AttentionArbiterLogEvent.preempted), isEmpty);
       expect(recorder.of(AttentionArbiterLogEvent.sameLevelReplaced), isEmpty);
       expect(consumedLog, isEmpty);
@@ -564,7 +564,7 @@ void main() {
       expect(decision, isA<AttentionRejected>());
       expect((decision as AttentionRejected).blockedBy!.requestId, 'r1');
       expect(arbiter.holder!.handle.requestId, 'r1');
-      expect(recorder.singleOf(AttentionArbiterLogEvent.heldAndRequested).fields['requestId'], 'r1');
+      expect(recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).fields['requestId'], 'r1');
     });
 
     test('T-15 級別傳播單調不升（四列）', () {
@@ -615,10 +615,84 @@ void main() {
     test('T-16 空 id 被拒', () {
       final decision = arbiter.request(req(''));
       expect(decision, isA<AttentionRejected>());
-      final record = recorder.singleOf(AttentionArbiterLogEvent.rejected);
+      final record = recorder.singleOf(AttentionArbiterLogEvent.invalidRequest);
       expect(record.fields['reason'], 'emptyId');
+      expect(record.fields['outcome'], 'rejected');
+      expect(record.fields.containsKey('decision'), isFalse);
       expect(record.level, 900);
       expect(arbiter.holder, isNull);
+    });
+
+    test('T-16b 三個拒絕點可被單一條件取得，且兩條語意線可區分', () {
+      // 拒絕點 1：請求識別為空（輸入驗證，非仲裁結局）。
+      arbiter.request(req(''));
+
+      // 拒絕點 2：持有期間再次請求（協定違規，非仲裁結局）。
+      final holder1Handle = hold(
+        req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+      );
+      arbiter.request(
+        req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+      );
+
+      // 拒絕點 3：等待型被更高級別持有（裁決表判定的仲裁結局）。
+      arbiter.release(holder1Handle, AttentionReleaseReason.responded);
+      hold(req('gate', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
+      arbiter.request(req('user', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+
+      // 單一篩選條件：fields['outcome'] == 'rejected' 取得全部三筆拒絕，
+      // 不需同時比對事件名 rejected 與 invalidRequest 兩者。
+      final allRejections = recorder.records
+          .where((r) => r.fields['outcome'] == 'rejected')
+          .toList();
+      expect(allRejections.length, 3);
+
+      // 兩條語意線可區分：invalidRequest（請求不合法）帶 reason 不帶
+      // decision；rejected（仲裁結局）帶 decision 不帶 reason。
+      final invalidRequestRejections = allRejections
+          .where((r) => r.event == AttentionArbiterLogEvent.invalidRequest)
+          .toList();
+      final arbitrationOutcomeRejections = allRejections
+          .where((r) => r.event == AttentionArbiterLogEvent.rejected)
+          .toList();
+      expect(invalidRequestRejections.length, 2);
+      expect(arbitrationOutcomeRejections.length, 1);
+      for (final r in invalidRequestRejections) {
+        expect(r.fields.containsKey('reason'), isTrue);
+        expect(r.fields.containsKey('decision'), isFalse);
+      }
+      for (final r in arbitrationOutcomeRejections) {
+        expect(r.fields.containsKey('decision'), isTrue);
+        expect(r.fields.containsKey('reason'), isFalse);
+      }
+    });
+
+    test('T-16c 輸入驗證失敗與協定違規共用 invalidRequest 事件與欄位集', () {
+      // 拒絕點 1：請求識別為空。
+      arbiter.request(req(''));
+      final emptyIdRecord = recorder.singleOf(AttentionArbiterLogEvent.invalidRequest);
+      expect(emptyIdRecord.fields['reason'], 'emptyId');
+      expect(emptyIdRecord.fields['outcome'], 'rejected');
+      expect(emptyIdRecord.fields.containsKey('decision'), isFalse);
+
+      // 拒絕點 2：持有期間再次請求。
+      setUp2();
+      hold(req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      arbiter.request(
+        req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+      );
+      final heldAndRequestedRecord =
+          recorder.singleOf(AttentionArbiterLogEvent.invalidRequest);
+      expect(heldAndRequestedRecord.fields['reason'], 'heldAndRequested');
+      expect(heldAndRequestedRecord.fields['outcome'], 'rejected');
+      expect(heldAndRequestedRecord.fields.containsKey('decision'), isFalse);
+
+      // 兩者欄位集一致（皆為 requestId/arrival/level/channel/reason/outcome/
+      // occupancy/deadlineRemaining 或 deadlineAssigned），不再互斥。
+      expect(
+        emptyIdRecord.fields.keys.toSet(),
+        heldAndRequestedRecord.fields.keys.toSet(),
+      );
     });
 
     test('3a.8 空 id 驗證先於逾期懶檢查（順序覆蓋）', () {
@@ -881,11 +955,11 @@ void main() {
       final expiredLevel = recorder.singleOf(AttentionArbiterLogEvent.expired).level;
       expect(expiredLevel == null || expiredLevel == 800, isTrue);
 
-      // 列 6：heldAndRequested，持有者為 waiting -> 恆 900
+      // 列 6：invalidRequest（協定違規），持有者為 waiting -> 恆 900
       setUp2();
       hold(req('gate6', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
       arbiter.request(req('gate6', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
-      expect(recorder.singleOf(AttentionArbiterLogEvent.heldAndRequested).level, 900);
+      expect(recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).level, 900);
 
       // 列 7：levelClamped，請求 waiting -> 恆 900
       setUp2();
@@ -978,7 +1052,7 @@ void main() {
         AttentionArbiterLogEvent.released,
         AttentionArbiterLogEvent.expired,
         AttentionArbiterLogEvent.releasedNonHolder,
-        AttentionArbiterLogEvent.heldAndRequested,
+        AttentionArbiterLogEvent.invalidRequest,
         AttentionArbiterLogEvent.levelClamped,
       ]);
     });
