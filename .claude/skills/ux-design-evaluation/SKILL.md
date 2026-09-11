@@ -1,10 +1,10 @@
 ---
 name: ux-design-evaluation
-description: "UX / UI 設計的系統性評估方法：把「使用者被困住」類缺口從實機測試提前到設計階段。Use for: (1) 設計或審查畫面狀態（狀態矩陣四欄：顯示 / 可用操作 / 進入條件 / 退出路徑，退出路徑為空 = 死胡同）, (2) Gate 設計（biometric / network / permission / 環境條件的成功、失敗、不確定路徑與 fallback）, (3) 輸入機制（keyboard type / submit model / IME policy / special keys 四維決策、IME 安全）, (4) 錯誤恢復（錯誤訊息、retry、error loop 逃生口、degraded mode）, (5) 導航（go/push 語意、tab / drawer / deep link、iOS vs Material 慣例）, (6) 互動回饋（回饋分層、時間門檻、spinner vs skeleton、SnackBar / Dialog / Banner 選擇、元件語意與版面：切換標籤 / 可點性辨識 / 選中態對比 / 溢出 affordance / 版面保障 / 完成宣告）。Use when: 設計新畫面或流程、審查 UI 實作、UX review、使用者反映被卡住 / 按了沒反應 / 標籤被讀反 / 選中看不到字 / 文字被壓成省略號 / 宣告完成但資料不全 / 通知被忽略。Triggers: UX 設計, UI 設計, 畫面設計, 狀態矩陣, 退出路徑, 死胡同, initializing, gate, fallback, 生物辨識, 權限請求, 破壞性操作, 輸入框, 鍵盤, IME, 表單, 搜尋框, 錯誤訊息, retry, 重試, 降級, degraded, 導航, back 行為, deep link, hash 路由, tab bar, service worker, loading, spinner, skeleton, SnackBar, Dialog, Banner, Bottom Sheet, 通知形式, 按鈕狀態, 切換模式, 標籤語意, 選中態, 對比, 溢出, 截斷, 省略號, ellipsis, 佔位, placeholder, 完成宣告, debounce, 防連點, 回饋."
+description: "UX / UI 設計的系統性評估：把「使用者被困住」類缺口從實機測試提前到設計階段。六維度各有可機械執行的表格——畫面狀態矩陣、gate fallback、輸入機制、錯誤恢復、導航、互動回饋，空白格即缺口。觸發詞：UX 設計、狀態矩陣、退出路徑、死胡同、gate、IME、錯誤訊息、retry、降級、deep link、back 行為、spinner、SnackBar、選中態、溢出。Do NOT use for 元件級契約（用 component-contract-design）。"
 license: MIT
 metadata:
   portable: true
-  version: 1.4.5
+  version: 1.5.0
   category: ux-design
 ---
 
@@ -12,7 +12,9 @@ metadata:
 
 UX / UI 設計的系統性評估方法。這個 skill 的出發點是一類反覆出現的事故：功能邏輯完整、實機測試才發現使用者被困在畫面裡出不去、按鈕按了沒有任何回饋、Face ID 失敗後沒有替代路徑。加一顆 back 按鈕是 5 分鐘的事，問題在設計階段沒有工具強制回答「每個狀態怎麼離開、每道關卡失敗怎麼辦、每個動作使用者怎麼知道系統收到了」。
 
-本 skill 把 UX 設計從「靠經驗想到」變成「靠方法查到」：每個評估維度都有可機械執行的表格或提問清單，填完表格、空白格自動暴露缺口。適用於任何前端 surface（mobile app、web、桌面），範例以 mobile 為主；不涵蓋視覺風格設計（品牌色、字型、間距美學）與使用者研究方法 — 可讀性對比（WCAG）屬本 skill 的互動回饋檢查範圍。
+本 skill 把 UX 設計從「靠經驗想到」變成「靠方法查到」：每個評估維度都有可機械執行的表格或提問清單，填完表格、空白格自動暴露缺口。適用於任何前端 surface（mobile app、web、桌面），範例以 mobile 為主。
+
+**兩件事不在本 skill，但各有去處**——寫明去處是因為「不涵蓋」若沒有下一句，讀者會停在這裡：視覺風格（品牌色、字型階、間距階）屬 design token 體系，走 `foundation-design` skill 的 UI 維度，其執法層在 Dart 專案是 `dart-style-guardian` skill；使用者研究方法（訪談、可用性測試、問卷）本框架目前無承接者，需自行取用外部方法。**可讀性對比（WCAG）是例外，它屬本 skill 的互動回饋檢查範圍**，不要因為它看起來像視覺風格就轉出去。
 
 ---
 
@@ -96,6 +98,19 @@ ux-design-evaluation/
     ├── navigation-patterns.md            # 導航模式分類、go/push/pushReplacement 語意、平台慣例差異、deep link
     └── interaction-feedback.md           # 回饋三層模型、時間門檻、按鈕狀態、spinner vs skeleton、通知形式選擇
 ```
+
+---
+
+## 與相鄰資產的交界
+
+執行時不需要先讀本節。不確定某件事該由本 skill 還是相鄰資產處理時再查。
+
+| 相鄰資產 | 它管什麼 | 交界落在哪 |
+|---------|---------|-----------|
+| `component-contract-design` skill | 元件級契約：元件契約欄位表、容器排列不變式 | 本 skill 只到**畫面級狀態**。同一類失效在那邊寫成契約欄位（內容政策、空間不足策略）而非審查項。**本 skill 判定的回饋時間門檻與通知形式，是它填回饋契約時的輸入**——它不重新判斷門檻，所以本 skill 的產出必須是可被引用的具體值，不能只寫「要有回饋」 |
+| `foundation-design` skill | 地基入口與路由；design token 體系是它 UI 維度的產物 | 品牌色、字型階、間距階在那裡定義。本 skill 的〈interaction-feedback〉談對比與版面保障時**消費那些階，不新增階**——需要一個不存在的色階或字級時，那是地基缺口，回去建票而不是在畫面設計裡就地決定 |
+| `dart-style-guardian` skill（Dart／Flutter 的執法工具） | 掃裸色碼、裸間距、裸字級、寫死文字 | 它只看程式碼字面。**「按鈕沒有 loading 態」「選中態對比不足」它掃不到**——那些是本 skill 的檢查項，執法工具全綠不代表本 skill 的自檢清單過了 |
+| `version-bootstrap` skill 地基波 | 編排 i18n → design-system → UX 審查 → 元件庫四塊的順序 | 本 skill 是第 3 塊。**它的輸入是前兩塊（i18n 與 design-system）已完成**——token 與文案 key 還沒有時，本 skill 產出的回饋設計會指向不存在的值 |
 
 ---
 

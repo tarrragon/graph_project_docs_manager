@@ -1,13 +1,63 @@
 ---
 name: dart-style-guardian
-description: "Style Guardian - Unified Design System Enforcement Tool. Use for: (1) Preventing hardcoded styles (colors, spacing, typography), (2) Preventing hardcoded text (i18n violations), (3) Guiding unified configuration usage, (4) Detecting and fixing style violations"
+description: "Dart／Flutter 專案樣式與文字的執法工具：掃出裸色碼、裸間距、裸字級、裸圓角與寫死文字，指出各自該改用哪個 token 或 i18n key，並以 PostEdit hook 擋下新增違規。觸發詞：裸值、硬編碼顏色、寫死文字、樣式違規、style guardian、token 沒用到、i18n 漏翻。Do NOT use for 建立 token 體系（用 foundation-design）或元件契約設計（用 component-contract-design）。"
 metadata:
-  version: 1.1.1
+  version: 1.2.0
+  category: ui-design
 ---
 
-# Style Guardian - Unified Design System Enforcement
+# Dart Style Guardian
 
-> 元件層約束原則（禁自製元件、豁免三條件、白名單治理、WARNING 升阻擋判準）見 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`；本 skill 為其「工具執法」層的專案實作。本 skill 只抓「不該怎麼做」（裸值、寫死文字、原生元件直用）；正面對應的「該怎麼做」——元件契約欄位表、容器排列不變式——由 `component-contract-design` skill 承接，被本 skill 的違規擋下後，正確做法在該處定義。
+掃出程式碼裡沒有走 design token 與 i18n 的地方，並指出每一處該改成什麼。
+
+**產出是兩樣東西**：掃描器輸出的違規清單（檔案、行號、違規類別、建議改法、豁免計數），以及依該清單改完的程式碼。清單本身不是交付物——違規歸零或每一條剩餘違規都有豁免標記，才算做完。
+
+**本 skill 只回答「不該怎麼做」。** 正面的「該怎麼做」分屬兩處：token 體系該有哪些階、怎麼命名，是 `foundation-design` 的 UI 維度；元件該有哪些契約欄位、容器怎麼承載排列，是 `component-contract-design`。被本 skill 擋下之後要查的是那兩處，不是本檔。元件層約束原則（禁自製元件、豁免三條件、白名單治理、WARNING 升阻擋判準）見 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`，本 skill 是它的「工具執法」層實作。
+
+## 起手
+
+**第一個動作是讀 `.claude/config/dart-style-guardian.json`**，確認本專案的 token 類別名（`tokens` 欄位）與 i18n 存取子形態（`i18n.accessor`）。不先讀它就掃，拿到的建議會是「改用專案 design system 的 color token」這種無法直接照做的描述性敘述。
+
+校準檔缺席時**不要自己編一組類別名**——指名一套不存在的命名，讀者照做會寫出編譯不過的程式碼。缺席的正確處置見〈Project Calibration〉。
+
+確認之後跑掃描：
+
+```bash
+uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
+```
+
+## 全程
+
+| 步 | 做什麼 | 在哪 |
+|----|--------|------|
+| 起手 | 讀校準檔，確認 token 類別名與 i18n 存取子 | 本檔上一節、〈Project Calibration〉 |
+| 1 | 跑掃描，取得違規清單 | 〈Detection Script Usage〉 |
+| 2 | 逐條對照違規類別，查該類的正確寫法 | 下方〈五類約束〉表 |
+| 3 | 改碼；改不動而確有正當理由者加豁免標記 | 〈Common Violations and Fixes〉、〈Project Calibration〉的 `exempt_markers` |
+| 4 | 重掃確認歸零，並確認豁免計數與你標的數量相符 | 〈Detection Script Usage〉 |
+
+## 五類約束與按需讀取
+
+正文的五節給的是速查與判定；要改的東西落在邊界上、或要新增階與新寫法時，讀對應的完整規範。
+
+| 約束類別 | 正文速查 | 完整規範 | 什麼時候要讀完整規範 |
+|---------|---------|---------|-------------------|
+| 顏色 | 〈Color System〉 | `references/color-system.md` | 要新增色階、或判不出某個顏色該歸 primary／positive／negative 哪一類 |
+| 間距 | 〈Spacing System〉 | `references/spacing-system.md` | 需要的值不在 4dp 網格上，要判斷是該取近似值還是該加一階 |
+| 字級 | 〈Typography System〉 | `references/typography-system.md` | 要加響應式字級、新字重，或處理跨形態的字級縮放 |
+| 圓角 | 〈Border Radius System〉 | 無獨立 reference，正文即全部 | — |
+| i18n | 〈Internationalization (i18n)〉 | `references/i18n-guidelines.md` | 寫使用者可見文字、ViewModel 要回傳訊息、或要判斷某段文字算不算使用者可見 |
+
+## 與相鄰資產的交界
+
+執行時不需要先讀本節。不確定某件事該由本 skill 還是別處處理時再查。
+
+| 相鄰資產 | 它管什麼 | 交界落在哪 |
+|---------|---------|-----------|
+| `foundation-design` skill | 地基入口與路由；token 體系是它 UI 維度的產物 | 本 skill 消費 token 名並執法，不決定該有哪些 token。**掃不到東西時先查這裡**——token 層還沒建，本 skill 的掃描範圍就是空的 |
+| `component-contract-design` skill | 元件契約欄位表、容器排列不變式 | 本 skill 抓裸值與原生元件直用，屬元件層；**組合層的重疊與截斷本 skill 掃不到**，那要靠該 skill 的判別問句 |
+| `ux-design-evaluation` skill | 畫面級狀態、回饋的時間門檻與通知形式 | 本 skill 只看程式碼字面，不判斷回饋設計是否合理。「按鈕沒有 loading 態」不是本 skill 的違規類別 |
+| `version-bootstrap` skill 地基波 | 編排 i18n → design-system → UX 審查 → 元件庫四塊的順序 | 本 skill 是四塊完成後的常態執法層。**四塊未完成時先不要接 hook**——見〈Project Calibration〉的 baseline 說明 |
 
 ## Core Principles
 
@@ -290,9 +340,9 @@ The style checker is integrated into PostEdit Hook:
 同上節，以角色而非路徑指涉：design system token 定義、theme 組裝入口、`l10n.yaml` 與其指向的 ARB、設計規格文件。要知道本專案的實際位置，讀 `.claude/config/dart-style-guardian.json` 與 `l10n.yaml`，或直接搜尋 token 類別名的定義處。
 
 ### Reference Files (in this SKILL)
-- [Color System Reference](./references/color-system.md)
-- [Spacing System Reference](./references/spacing-system.md)
-- [Typography System Reference](./references/typography-system.md)
+
+四份，各自該在什麼時候讀見本檔上方〈五類約束與按需讀取〉表——此處只列存在，不重複判準：
+`references/color-system.md`、`references/spacing-system.md`、`references/typography-system.md`、`references/i18n-guidelines.md`。
 
 ### External Resources
 - [Flat Design Explained - MasterClass](https://www.masterclass.com/articles/flat-design-explained)

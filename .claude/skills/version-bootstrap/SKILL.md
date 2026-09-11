@@ -1,8 +1,9 @@
 ---
 name: version-bootstrap
-description: "版本規劃波 orchestrator。封裝「提案→spec→教學比對→UC→紅燈測試→建票」6 步 pipeline，標準化每版的規劃波啟動流程。Use for: (1) 新版本開始時的規劃波啟動, (2) 從提案到可執行 ticket 的標準化轉換, (3) 確保教學比對不被跳過。Use when: todolist.yaml 中有新版本的 proposals 待展開、準備進入新版本的 W1 規劃波時。"
+description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.5.1
+  version: 1.6.0
+  category: engineering-workflow
 ---
 
 # /version-bootstrap — 版本規劃波 Orchestrator
@@ -11,15 +12,47 @@ metadata:
 
 ---
 
-## 定位
+## 全程
 
-| 工具 | 問的問題 | 關係 |
-|------|---------|------|
-| /version-bootstrap | 「這個版本要做什麼？怎麼拆成可執行單位？」 | 規劃波 orchestrator |
-| /doc | 「文件建好了沒？格式對嗎？」 | 文件系統工具（被呼叫） |
-| /spec validate | 「規格夠清楚嗎？和教學一致嗎？」 | 品質閘門（被呼叫） |
-| /tdd | 「測試怎麼設計？」 | TDD 流程（Phase 2 被呼叫） |
-| /ticket | 「工作怎麼追蹤？」 | 票務系統（被呼叫） |
+九步，由上而下。編號帶小數的是後來插入既有序列之間的步驟，**不是選配**——除了標「僅 UI」者之外每一步都要跑。
+
+| 步 | 做什麼 | 產出 | 適用 |
+|----|--------|------|------|
+| 1 | 列出提案清單、跑跨提案依賴檢查 | 提案 ID／標題／狀態表 | 全部 |
+| 2 | 建 spec 骨架、填 FR；UI 類提案過三項前置檢查 | spec 檔、UI 前置齊備 | 全部 |
+| 2.5 | Domain 規劃 | 每個 domain 一份 domain map | 全部 |
+| 2.6 | 資料契約產出（兩旗標皆否時合法跳過文件） | 資料契約文件或跳過理由 | 全部 |
+| 3 | 教學比對 | 維度 4 無高嚴重度偏移 | 全部 |
+| 4 | 建 UC + traceability | UC 場景、映射無 TODO | 全部 |
+| 4.5 | 地基波：i18n → design-system → UX 審查 → 元件契約 → 元件庫 | 五塊各自的實作票與依賴 | **僅含 UI 提案的版本** |
+| 5 | 紅燈測試設計（5a 外圈、5b 內圈） | 紅燈測試規格 | 全部 |
+| 6 | 匯總建票 | W2／W3 實作票、W4 驗收票 | 全部 |
+
+**一條分支不在上表**：決定把某個提案移到別的版本時，走〈按需讀取〉的移版 SOP，跑完回到原本那一步。
+
+## 按需讀取
+
+正文走得完九步。下表是走到特定情況才需要的依據。
+
+| 什麼時候讀 | 檔案 | 涵蓋 |
+|-----------|------|------|
+| 決定把某個提案移到別的版本（不論理由，含 Step 1 依賴檢查報 `[WARNING]`） | `references/version-shift-sop.md` | 契約掃描、凍結時序確認、硬耦合分級、定形票建立、教學比對、交叉標記六步；硬耦合四類判斷準則 |
+
+## 與相鄰資產的交界
+
+執行時不需要先讀本節。不確定某件事該由本 skill 還是相鄰資產處理時再查。
+
+**被本 skill 呼叫的工具**（它們回答「怎麼做」，本 skill 回答「什麼時候做、做完算不算數」）：`doc`（建檔與格式）、`spec validate`（規格品質與教學一致性）、`tdd`（Phase 2 測試設計）、`ticket`（票務）。
+
+**與本 skill 對接的規劃層 skill**：
+
+| 相鄰資產 | 它管什麼 | 交界落在哪 |
+|---------|---------|-----------|
+| `foundation-design` skill | 地基工作的單一入口；逐維度定產物 | **它會把東西交過來**：情境判定為「規劃波進行中」時，它為 DevOps 與可觀測性各建盤點票後交回本 skill。**本 skill 的九步對這兩個維度沒有承接段落**——收到這類票時不要以為它們該在某一步被吸收，它們是獨立的地基票。規劃波之後由它繼續驅動，不回本 skill |
+| `version-sequencing` skill | 版本序列、首版開票 | 它決定票屬於哪一版；本 skill 決定本版的票有哪些。同一批票不是兩批 |
+| `ux-design-evaluation` skill | Step 4.5 第 3 塊（UX 審查）的執行方法 | 本 skill 只編排順序與依賴，畫面狀態矩陣、gate、回饋門檻全在該處 |
+| `component-contract-design` skill | Step 4.5 第 3.5 塊（元件契約）的程序 | 本 skill 只編排；元件庫實作票的前置 checkpoint 是該 skill 的〈契約齊全的定義〉 |
+| `dart-style-guardian` skill（Dart／Flutter 的執法工具） | 掃裸值與寫死文字 | Step 4.5 第 2 塊（design-system）與第 4 塊（元件庫）完成後才接它。**四塊未完成就接，掃描範圍是空的** |
 
 ---
 
@@ -29,13 +62,15 @@ metadata:
 /version-bootstrap --version <version>
 ```
 
-PM 執行後，依 6 步流程逐步推進。每步有 checkpoint（PM 確認後才進下一步），不是全自動 pipeline。
+**整條 pipeline 不會自己跑完。** 每一步結束都有 checkpoint，PM 確認後才進下一步——這對九個步驟一律成立，沒有例外。
+
+各步標題括號裡的標籤講的是另一件事：**這一步需不需要 PM 填內容**。「無需人工填內容」指跑完指令就有產出，PM 只需在 checkpoint 確認；「需人工填內容」指指令只產骨架，內容要 PM 自己寫。兩個標籤都不影響 checkpoint——**沒有任何一步會自動進入下一步**。
 
 ---
 
-## 6 步流程
+## 各步驟細節
 
-### Step 1：列出提案清單（全自動）
+### Step 1：列出提案清單（無需人工填內容）
 
 **動作**：讀取 `docs/todolist.yaml` 中指定版本的 `proposals` 欄位，列出提案清單和摘要。
 
@@ -53,11 +88,13 @@ uv run .claude/skills/version-bootstrap/scripts/check_proposal_dependencies.py -
 
 腳本讀 `docs/proposals-tracking.yaml` 各提案的 `depends_on` 欄位（選填，list of str，元素為本提案依賴的前置提案 id）比對 `target_version` 排序；若專案已採用 `doc` skill，該欄位格式定義的權威來源見 doc skill 的 `tracking_schema.py`（`PROPOSALS_TRACKING_SCHEMA["proposal_entry_optional"]`），非本 yaml 檔案本身的頭部註解。若未採用 doc skill，本腳本仍可正常運作（腳本本身不 import 該檔，以執行期讀取的 list 格式驗證取代靜態 import），只是欄位格式需自行依上方括號說明推斷，無法查閱該權威定義檔案。輸出 `[WARNING]` 時，PM 必須在本 Checkpoint 前二擇一處理：(1) 把依賴提案移入本版或更早版本一起排入，(2) 把本提案移至依賴提案完成之後的版本。**動機案例**：曾有版本以雙提案啟動，其中一提案依賴另一個排在更晚版本的提案，卻仍排入本版，矛盾拖到規劃波中段才由用戶手動發現，最終將該提案移至依賴對象所在的版本節點。若此檢查在 Step 1 就位，矛盾可在提案確認階段被攔截。
 
-**Checkpoint**：PM 確認版本範圍——哪些提案納入本版、哪些延後；依賴檢查腳本無 `[WARNING]` 輸出，或警告已處理（移版/補前置）。
+**選 (2) 移版時不得整包搬走**：提案在本版可能已留下 schema／DDL／契約級的殘留耦合，必須先盤點並在本版定形，否則兩個提案沒有真正解耦。六步盤點程序見 `references/version-shift-sop.md`。
+
+**Checkpoint**：PM 確認版本範圍——哪些提案納入本版、哪些延後；依賴檢查腳本無 `[WARNING]` 輸出，或警告已處理（移版且已跑完移版 SOP／補前置）。
 
 ---
 
-### Step 2：建 Spec 骨架（半自動）
+### Step 2：建 Spec 骨架（需人工填內容）
 
 **動作**：用 `/doc batch-init` 批量建立 spec 骨架。
 
@@ -69,7 +106,7 @@ doc batch-init --proposals PROP-XXX,PROP-YYY --domain <domain>
 
 **PM 工作**：填寫每份 spec 的 FR 列表、介面定義、約束條件。這是規劃波最耗時的人工步驟。
 
-**UI 類提案元件庫前置檢查（強制，元件庫雙向約束方法論落地）**：Why——UI 類提案若跳過 design token 層與元件庫規劃直接進入實作，設計端與工程端會各自決定元件形狀，產生重複造輪與樣式漂移，已上線元件難以回溯套用 token 體系。Consequence——未在本步驟攔截，UI 實作票會在 Step 6 匯總建票時直接開出，等到 Phase 3b 實作階段才發現缺 token 層或元件庫章節，需回頭補規劃甚至推翻已完成的實作。Action——填寫 spec FR 時逐一判別提案是否涉及 UI/頁面/元件（FR 描述含「畫面」「頁面」「元件」「介面」「UI」等關鍵字），判為 UI 類提案者須先確認下列兩項存在，缺則先補齊才可繼續本提案的 UI 實作票規劃：
+**UI 類提案元件庫前置檢查（強制）**：填寫 spec FR 時逐一判別提案是否涉及 UI／頁面／元件（FR 描述含「畫面」「頁面」「元件」「介面」「UI」等關鍵字），判為 UI 類者須先確認下列**三項**存在，缺則先補齊才可繼續本提案的 UI 實作票規劃。為什麼這道閘門擋在這裡見 `references/step-rationale.md`〈Step 2 的 UI 前置檢查〉：
 
 | 檢查項 | 對應載體 | 缺失時動作 |
 |--------|---------|-----------|
@@ -79,15 +116,13 @@ doc batch-init --proposals PROP-XXX,PROP-YYY --domain <domain>
 
 判準與分層依據（L1/L2/L3 分層、狀態綁定判準、流程整合點）見 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`。非 UI 類提案略過本檢查。
 
-> **Why 加 design-system spec 檢查**：doc skill 已提供 `design-system-spec-template`，但 `batch-init` 只產一般功能 spec，UI 版本易漏產 design system 專屬 spec。**Consequence**：漏產則 Step 4.5 地基波的 design-system 實作無契約可依（實證：PM 用 batch-init 產一般功能 spec 卻未產 design-system spec，經指正後才補）。**Action**：UI 版本填 spec 時一併用 design-system-spec-template 產出 design system spec，作為 Step 4.5 design-system 實作的契約。
-
 **Checkpoint**：所有 spec FR 填寫完成；UI 類提案已完成元件庫前置檢查（design token 層、L3 元件庫章節、design-system spec 三者存在或已補齊），非 UI 類提案略過本項。
 
 ---
 
-### Step 2.5：Domain 規劃（半自動）
+### Step 2.5：Domain 規劃（需人工填內容）
 
-> **Why**：spec 定義 FR（系統做什麼）、UC 定義使用者場景（誰怎麼用），兩者皆為垂直視角，不界定 domain 的水平聚合邊界——aggregate / kernel / read-model 分類、依賴方向、層測試策略。**Consequence**：跳過本步驟，domain 邊界會在實作階段臨場拍板（退化為「哪個檔案太大就拆」），依賴方向底線無文件可依，易出現 read-model 互相耦合、持久化細節混入 domain；測試設計（Step 5）也無 per-bundle 依據。需事後補 domain map（實證：某個移動應用實作案例中於實作前補建）。**Action**：spec FR 填完後、測試設計前，為每個 domain 產出或更新 domain map。
+**時機**：spec FR 填完後、測試設計前。為什麼這一步不能省見 `references/step-rationale.md`〈Step 2.5〉。
 
 **動作**：用 doc skill 的 domain-map-template 為每個 domain 產出 domain map（多 domain 專案放 domain 子目錄，單 domain 專案放 `docs/` 根層）：
 
@@ -108,9 +143,9 @@ cp .claude/skills/doc/templates/domain-map-template.md docs/domain-map.md
 
 ---
 
-### Step 2.6：資料契約產出（半自動）
+### Step 2.6：資料契約產出（需人工填內容）
 
-> **Why**：spec FR 定義欄位存在，不定義欄位的值域、狀態責任分層、不變式、交易邊界、錯誤語意與恢復模型；domain map §3 Bundle 界定表的 data/infrastructure 列只標「持久化細節屬 data 層」，未展開細節。**Consequence**：跳過本步驟，資料層設計意圖（為何選這個約束、哪些不變式由 DB 保證）無專屬載體，散落於 DDL 註解與 repository 程式碼各處；Step 5 測試設計對資料層契約條目無盤點依據，覆蓋缺口不可審計（見 `.claude/methodologies/data-layer-contract-methodology.md` 第 6 節）。**Action**：spec FR 與 domain map 完成後、紅燈測試設計前，依兩旗標判準決定是否產出資料契約文件。
+**時機**：spec FR 與 domain map 完成後、紅燈測試設計前。為什麼這一步不能省見 `references/step-rationale.md`〈Step 2.6〉。
 
 **動作**：先依 `.claude/methodologies/data-layer-contract-methodology.md` 第 2 節兩正交旗標（契約文件 / migration 治理）判定（本步驟不複寫判準內容，僅引用）。**兩旗標皆否時，僅維持 schema 約束 + DDL 註解即為合法終態，本步驟到此結束**（合法跳過文件產出，非偷懶）。任一旗標為要時，cp 模板產出：
 
@@ -129,7 +164,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 ---
 
-### Step 3：教學比對（半自動）
+### Step 3：教學比對（需人工填內容）
 
 **動作**：對每份完成的 spec 執行 `/spec validate`（Full 模式，含維度 4 教學一致性）。
 
@@ -143,7 +178,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 ---
 
-### Step 4：建 UC + traceability（半自動）
+### Step 4：建 UC + traceability（需人工填內容）
 
 **動作**：Step 2 的 `batch-init` 已同時建立 UC 骨架和 traceability 映射佔位。
 
@@ -153,9 +188,9 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 ---
 
-### Step 4.5：地基波（半自動，僅含 UI 提案的版本）
+### Step 4.5：地基波（需人工填內容；僅含 UI 提案的版本）
 
-> **Why**：測試設計（Step 5）需驗 zh/en overflow 與元件互動反應，這些依賴 i18n 系統與元件實體先存在；若 Step 4 後直接進 Step 5，UI 版本會在 i18n / design-system / 元件庫尚未 build 時進測試設計，無可驗對象。**Consequence**：跳過本步驟，測試票會假設不存在的 i18n key 與元件，Phase 3b 才暴露缺地基，需回頭補甚至推翻測試設計（實證：地基波經指正後手動插入）。**Action**：對含 UI 提案的版本，於測試設計前編排地基波實作波。
+**時機**：含 UI 提案的版本，於測試設計前。為什麼這一步不能省見 `references/step-rationale.md`〈Step 4.5〉。
 
 **動作**：依 component-library 方法論〈地基波 build 順序〉為權威，編排四塊地基實作：
 
@@ -173,7 +208,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 ---
 
-### Step 5：紅燈測試設計（半自動，可並行）
+### Step 5：紅燈測試設計（需人工填內容；可並行）
 
 **動作**：對每份 spec 派發 sage-test-architect 做 Phase 2 紅燈測試設計，依紅燈層級順序分兩段產出：
 
@@ -197,7 +232,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 ---
 
-### Step 6：匯總建票（半自動）
+### Step 6：匯總建票（需人工填內容）
 
 **動作**：根據 Step 2-5 的產出，建立 W2/W3/W4 的 IMP ticket。
 
@@ -227,45 +262,6 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 | 流程改善發現 | 建 ANA ticket，排入後續 Wave |
 
 ---
-
-## 移版硬耦合盤點 SOP
-
-提案因跨提案依賴矛盾（Step 1 檢查結果）或其他理由決定移版時，禁止整包提案原封不動搬到新版本——必須先盤點該提案在**本版**留下的 schema / DDL / 契約級殘留耦合，比照下方動機案例「契約先定形、業務邏輯後移版」的模式先行定形，斬斷後才能讓移出的主體與留在本版的部分變成獨立軌道。
-
-**動機**：曾有版本規劃雙提案，其中一提案因依賴另一個排在更晚版本的提案而整體移版，但其變更清單第一項會動到契約 SOT 檔案（如 schema 定義）並牽動資料庫 DDL——若放任不管、等本版 DDL 凍結後才在移版目標版本定形該欄位，會重演過往「先上線、後補契約定義」造成的多階段漂移。提前在 DDL 凍結前定形該欄位形狀，才讓兩個提案真正解耦。
-
-**盤點步驟**：
-
-| 步驟 | 動作 | 產出 |
-|------|------|------|
-| 1. 契約掃描 | 對照移版提案的 checklist，逐項檢查是否觸及 `schema/*.schema.json`、`docs/spec/**/*.md` 的 DDL 章節、或其他跨版本共用契約檔案 | 觸及項清單 |
-| 2. 凍結時序確認 | 確認本版是否有「DDL 凍結」「schema 定案」類的既定時間點（通常在 PG/儲存實作票之前） | 凍結時間點 + 是否早於移版提案原訂完成時間 |
-| 3. 硬耦合分級 | 觸及項逐一判斷：純程式邏輯（無耦合，可整包移版）vs 契約形狀（硬耦合，需本版先定形） | 硬耦合項清單 |
-| 4. 定形票建立 | 對每個硬耦合項建立獨立 IMP ticket（比照上方動機案例的定形票模式），範圍限定「只定形契約形狀，不含業務邏輯實作」 | 定形 ticket（本版 Wave 排入） |
-| 5. 教學比對 | 依 CLAUDE.md 強制操作 2，定形前讀 blog 對應模組確認欄位設計是否已有教學定義；有則優先採用，無則先在 blog 補完 | Solution 段落記錄教學比對結論 |
-| 6. Ticket 交叉標記 | 定形票 `why` 欄位引用移版提案 ID + 目標版本；移版提案的 `checklist` 對應項標記 `verified_by` 指向定形票 | 雙向可追溯 |
-
-**判斷準則（步驟 3 分級）**：
-
-| 觸及類型 | 是否硬耦合 | 處理方式 |
-|---------|-----------|---------|
-| 修改 `schema/event.schema.json` 等契約 SOT 檔案 | 是 | 建定形票，本版執行 |
-| 修改 DDL（`CREATE TABLE` 欄位定義） | 是 | 建定形票，本版執行 |
-| 純業務邏輯（middleware、演算法、UI） | 否 | 整包隨提案移版 |
-| 僅讀取既有契約、不新增欄位 | 否 | 整包隨提案移版 |
-
----
-
-## 與早期手動流程的對照
-
-| 早期手動流程 | /version-bootstrap |
-|----------------|-------------------|
-| 手動 cp 模板建 spec | Step 2 `/doc batch-init` |
-| 手動讀 blog 比對 | Step 3 `/spec validate --dim 4` |
-| 手動 cp 模板建 UC | Step 2 `/doc batch-init`（同步建立） |
-| 手動編輯 traceability | Step 2 自動佔位 + Step 4 填寫 |
-| 逐一派 sage | Step 5 批量並行派發 |
-| 手動建票 | Step 6 依產出匯總 |
 
 ---
 
