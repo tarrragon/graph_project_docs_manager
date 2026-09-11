@@ -192,7 +192,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 **時機**：含 UI 提案的版本，於測試設計前。為什麼這一步不能省見 `references/step-rationale.md`〈Step 4.5〉。
 
-**動作**：依 component-library 方法論〈地基波 build 順序〉為權威，編排四塊地基實作：
+**動作**：依 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`〈地基波 build 順序〉為權威（與 Step 2 UI 前置檢查同一份方法論），編排四塊地基實作：
 
 | 順序 | 地基塊 | 產出 |
 |------|--------|------|
