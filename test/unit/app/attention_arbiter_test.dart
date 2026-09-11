@@ -376,6 +376,36 @@ void main() {
       }
     });
 
+    test('F-3 帶 deadline 的請求被搶佔後，preempted 事件據實回報剩餘預算', () async {
+      hold(
+        req(
+          'low',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+          deadline: Motion.snackBar,
+        ),
+      );
+
+      arbiter.request(
+        req(
+          'high',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+          source: AttentionSource.schema,
+        ),
+      );
+      await pumpEventQueue();
+
+      final preemptedRecord = recorder.singleOf(AttentionArbiterLogEvent.preempted);
+      expect(preemptedRecord.fields['requestId'], 'low');
+      expect(preemptedRecord.fields['deadlineRemaining'], Motion.snackBar);
+      expect(
+        preemptedRecord.fields['deadlineAssigned'] == null ||
+            preemptedRecord.fields['deadlineAssigned'] == false,
+        isTrue,
+      );
+    });
+
     test('T-10 同級別取代（三列）', () async {
       final cases = <(AttentionLevel, AttentionArrival, AttentionArrival)>[
         (AttentionLevel.discardable, AttentionArrival.waiting, AttentionArrival.spontaneous),

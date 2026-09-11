@@ -81,6 +81,7 @@ final class AttentionHandle {
     required this.arrival,
     required this.source,
     required this.acceptedAt,
+    this.deadline,
   });
 
   final String requestId;
@@ -88,6 +89,10 @@ final class AttentionHandle {
   final AttentionArrival arrival;
   final AttentionSource source;
   final DateTime acceptedAt;
+
+  /// 接受時由 [AttentionRequest.deadline] 帶入的原始預算；離場型事件據此
+  /// 記錄該持有者實際有沒有帶預算，取代對所有持有者一律回報「未指派」。
+  final Duration? deadline;
 }
 
 /// 仲裁決策。動作集取自方法論〈讓步與卸載順序〉卸載順序表，本專案只用到
@@ -498,7 +503,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
           'channel': _channelUserFocus,
           'reason': 'preempted',
           'occupancy': occupancyBeforeDecision,
-          ..._deadlineFields(null),
+          ..._deadlineFields(preemptedHandle.deadline),
         },
       );
       _holder = null;
@@ -511,6 +516,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
       arrival: r.arrival,
       source: r.source,
       acceptedAt: _now(),
+      deadline: r.deadline,
     );
     _holder = AttentionHolder(
       handle: handle,
@@ -550,7 +556,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
         'reason': 'releasedNonHolder',
         'occupancy': _occupancySnapshot(),
         'op': 'presented',
-        ..._deadlineFields(null),
+        ..._deadlineFields(handle.deadline),
       }, level: _levelWarning);
       return;
     }
@@ -571,7 +577,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
       'occupancy': _occupancySnapshot(),
       'naturalLifespanRaw': naturalLifespan,
       'carrierEventId': carrierEventId,
-      ..._deadlineFields(null),
+      ..._deadlineFields(handle.deadline),
     });
   }
 
@@ -588,7 +594,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
         'reason': 'releasedNonHolder',
         'occupancy': _occupancySnapshot(),
         'op': 'release',
-        ..._deadlineFields(null),
+        ..._deadlineFields(handle.deadline),
       }, level: _levelWarning);
       return;
     }
@@ -629,7 +635,7 @@ class AttentionArbiterImpl implements AttentionArbiter {
         'channel': _channelUserFocus,
         'reason': reason.name,
         'occupancy': _occupancySnapshotFor(currentHolder),
-        ..._deadlineFields(null),
+        ..._deadlineFields(leaving.deadline),
       },
       level: level,
     );
@@ -672,9 +678,9 @@ class AttentionArbiterImpl implements AttentionArbiter {
     };
   }
 
-  // 傳入 null 亦用於「事件不直接對應單一請求的 deadline」情形（如離開類
-  // 事件描述的是離開者，不是觸發者）——一律以「未指派」形態補齊七欄位中
-  // 的 deadlineRemaining 鍵，與請求本身缺席 deadline 同一形態（F-7）。
+  // 呼叫端一律傳入該事件對應主體（請求或持有者）實際攜帶的 deadline；
+  // null 代表該主體確實未帶預算，非事件類別造成的代填（0.1.0-W3-262 修正
+  // 前，離開類事件不論持有者是否帶預算一律傳 null，見該票 F-3）。
   Map<String, Object?> _deadlineFields(Duration? deadline) {
     if (deadline == null) {
       return {'deadlineRemaining': null, 'deadlineAssigned': true};
