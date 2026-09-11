@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.12.0
+  version: 1.12.1
 ---
 
 # Skill Design Guide
@@ -16,7 +16,15 @@ metadata:
 - Claude Code skills: <https://code.claude.com/docs/en/skills>
 - 官方 `skill-creator`: 已安裝於本環境的 plugin marketplace
 
-**先認你在做哪一件事**：從零建一個 skill、改既有 skill 的某一部分、或既有 skill 超標要處理。三者的起點不同，下方〈按需讀取〉依此路由。本檔留下的是三者共用的判準——正文與 references 的分工、三層預算、超標的診斷、發布前檢查清單。
+**先認你在做哪一件事，三者的第一個動作不同**：
+
+| 你在做的事 | 第一個動作 |
+|-----------|-----------|
+| 從零建一個 skill | 開 `references/creating-and-adopting-skills.md`，照〈Skill 建立流程〉走 |
+| 改既有 skill 的某一部分 | 依下方〈按需讀取〉表選一份開；改完走〈發布前檢查清單〉 |
+| 既有 skill 疑似超標 | 先跑〈Progressive Disclosure〉的量測指令確認，超標才進〈超標了怎麼辦〉 |
+
+本檔留下的是三者共用的判準——正文與 references 的分工、三層預算、超標的診斷、發布前檢查清單。
 
 ---
 
@@ -62,7 +70,7 @@ metadata:
 | 2. SKILL.md 全檔 | 觸發後載入 | < 5k tokens；另須符合官方 < 500 行 | 核心工作流 + 路由 |
 | 3. references/ + scripts/ + assets/ | Claude 按需 read / exec | 目錄總量無上限；單檔判準見〈第 3 層的單檔判準是讀取方式〉 | 細節、範例、模板、可執行腳本 |
 
-**本層無 hook 執法，寫錯不會有人擋你。** `file-size-guardian-hook.py` 的 `SCAN_CONFIG` 涵蓋 pm-rules / rules / references 三處，不含 `.claude/skills/`；`skill-description-length-check-hook.py` 只查第 1 層的 250 字元。第 2 層完全依賴撰寫者自查，量錯或不量，結果一樣。
+**第 2 層與第 3 層都沒有 hook 會擋你，寫錯不會有人告訴你。** 唯一有執法的是第 1 層的 250 字元（`skill-description-length-check-hook.py`）。`file-size-guardian-hook.py` 掃的是 pm-rules / rules / references 三個目錄，**不掃 `.claude/skills/`**——所以第 2 層與第 3 層完全依賴撰寫者自查，量錯或不量，結果一樣。
 
 **三個預算的適用對象各不相同，先認對象再量。** 第 2 層的兩個數字只管 `SKILL.md` **全檔**這一個檔，**含 frontmatter**——觸發後整份檔案會原樣再讀入一次，量測不扣除它。第 3 層的「無上限」講的是**目錄總量**（官方："no context penalty until accessed"），**不是單檔無上限**；單檔判準見下方〈第 3 層的單檔判準是讀取方式〉。
 
@@ -73,7 +81,7 @@ python3 -c "import sys;t=open(sys.argv[1],encoding='utf-8').read();a=sum(1 for c
 wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 ```
 
-**估算要分段加總，不是全檔比例內插。** token 數是各段落的和；把它算成全檔比例的內插判不出結論——落在兩個換算值之間即無答案，區間本身就是不判。
+**估算要分段加總，不是全檔比例內插。** 中文與 ASCII 的 chars/token 差三倍，混合內容用單一比例算會落在兩個換算值之間——那不是答案，是不判。分開算再相加才有結論。
 
 | 字元類別 | chars/token | 依據 |
 |---------|------------|------|
@@ -89,17 +97,17 @@ wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 | 診斷 | 處置 |
 |------|------|
 | 正文塞了論證與實證敘事（「為什麼判準是這樣」「一次實測發現…」） | 壓縮成主張句，敘事移入 `CHANGELOG.md` 或 ticket。這是最常見的一種，也該最先做 |
-| 正文含選路之後才用到的細節 | 外移到對應的 reference，正文留路由。判準見 `references/splitting-an-existing-skill.md` 的〈外移什麼、留什麼〉——它以「這段用在讀者選路之前還是之後」定位，**不以「一次只用其中一段」定位**，互斥性對每一張判準表都成立、當不了外移訊號 |
+| 正文含選路之後才用到的細節 | 外移到對應的 reference，正文留路由。判準見 `references/splitting-an-existing-skill.md` 的〈外移什麼、留什麼〉：問**這段用在讀者選路之前還是之後**。**別用「反正一次只會用到其中一段」當理由**——每一張判準表都是這樣（讀者一次只查一列），照這個推下去整份正文都該外移 |
 | 正文承載了兩個以上不相干的工作流 | **依 SRP 拆成多個 skill，彼此指名互相引用**，不是把一個 skill 拆成更多檔。見下段 |
 | 上述三項都不成立，內容全是選路前必需且已無冗餘 | **超標是設計問題，不是編輯問題。** 不得為了達標而刪判斷條件或把它搬進 references——那會讓 agent 選不了路，而預算數字漂亮 |
 
-**SRP 的單位是 skill，不只是檔案。** 正文超長最常見的成因是這個 skill 承擔了兩件事；把兩件事的細節各自外移到 references，職責數量沒有變——正文仍要同時交代兩條路，讀者仍要在不屬於自己的那條路上跳過一半。正確的處置是拆成兩個 skill，**各自有完整的正文與自己的 references**，彼此以指名方式互相引用（「做完 X 之後走 `Y` skill」）。這與元件庫的作法同構：一個元件一份契約、組合關係由容器承載，而不是把所有元件的細節塞進同一份條目再靠參數分岔。
+**SRP 的單位是 skill，不只是檔案。** 正文超長最常見的成因是這個 skill 承擔了兩件事；把兩件事的細節各自外移到 references，職責數量沒有變——正文仍要同時交代兩條路，讀者仍要在不屬於自己的那條路上跳過一半。正確的處置是**建立第二個 skill 目錄**（新的 `SKILL.md` 加它自己的 `references/`），兩個 skill 各自完整、彼此以指名方式互相引用（「做完 X 之後走 `Y` skill」）。這不是把 references 拆成兩份——那樣仍然只有一個 skill。這與元件庫的作法同構：一個元件一份契約、組合關係由容器承載，而不是把所有元件的細節塞進同一份條目再靠參數分岔。
 
 **兩種拆法的判別在讀者要不要換任務。** 換任務（做完這件事才做那件事，或根本是不同的人在做）→ 拆 skill；同一個任務的不同階段或不同分支 → 拆檔案。兩邊判錯各有代價：該拆 skill 而拆了檔案，得到一份要同時服務兩種讀者的正文，誰都走不完；該拆檔案而拆了 skill，得到兩個互相依賴到無法單獨使用的 skill，每次用都要開兩份。
 
 **過度拆解與超標是同一個判準的兩端，不是一個要避開另一個。** 拆到讀者接不住線索，跟塞到讀者讀不完，兩者都違反「agent 照正文走得完嗎」這一條；預算只是其中一端的代理指標，不是目標本身。
 
-**為了達標而外移的內容，正是造成閱讀割裂的那一批。** 一次實測：一份 skill 為壓進預算把內容依角色切成七份 references，過三輪高階 reviewer 之後仍留五類割裂缺陷——讀者不知道有第三條路徑、走完不知道下一步、入口檔沒有起手動作、用詞定義與使用分屬兩檔、受管詞的指路寫在檔頭而讀者不會回頭查。**預算合格不代表拆分可用，兩者要分別驗**（`references/splitting-an-existing-skill.md`〈兩種驗證，方法不同〉）。
+**為了達標而外移的內容，正是造成閱讀割裂的那一批**——一次實測，為壓進預算而切成七份的 skill 過了三輪高階 reviewer 仍留五類割裂缺陷（清單與實證見 `CHANGELOG.md`）。**預算合格不代表拆分可用，兩者要分別驗**（`references/splitting-an-existing-skill.md`〈兩種驗證，方法不同〉）。
 
 **行數是官方合規項，不是體量判準。** 每行字元數沒有上界，兩者在長行處脫鉤（實測有 245 行通過而 token 逾兩倍預算的檔）。**兩個都量、取較嚴者；行數通過只代表官方那一項沒違反。**
 
@@ -109,10 +117,6 @@ wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 |---------|-------|------|
 | 整份執行 | 全檔分段估算 | 5k tokens——它與 SKILL.md 一樣是整份進 context |
 | 選段查閱 | 最大單節的分段估算 | 5k tokens |
-
-### 表達方式與預設值：兩則心法住在 reference
-
-自由度三級（高／中／低，判準為「有無機械消費者、產物要不要彙總」）與 opinionated default（預設路徑要引導正確做法）都只在**設計工作流的表達方式時**用得到，見 `references/patterns-and-troubleshooting.md` 的〈Degrees of Freedom — 自由度匹配脆弱性〉〈Opinionated Defaults — 預設路徑引導正確做法〉。
 
 ---
 
@@ -131,7 +135,7 @@ wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 | 決定工作流該給多少自由度或要不要設預設值、設計多步驟工作流、要進階範本、規劃測試方法、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈Degrees of Freedom — 自由度匹配脆弱性〉〈Opinionated Defaults — 預設路徑引導正確做法〉〈Skill 設計模式〉〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉 |
 | 某個設計取捨說不出理由、想理解工具設計哲學與 agent 視角的演進，或需要可貼用的進階設計模式（評估驅動開發、Feedback Loop 等）與程式碼片段 | `references/seeing-like-an-agent.md` | 〈核心哲學〉〈Claude Code 團隊的演進教訓〉〈進階 Skill 設計模式〉〈觀察 Claude 如何使用 Skill〉〈反模式〉 |
 
-**兩個近同名章節的消歧義**：〈Skill 設計模式〉（`patterns-and-troubleshooting.md`，三個控制流形狀加一個跨形狀可附加階段）與〈進階 Skill 設計模式〉（`seeing-like-an-agent.md`，工具設計方法論層的六則模式，不是控制流模板）不是同一節。要控制流模板去前者，要設計方法論或設計理由去後者。
+> 表中兩個近同名章節不是同一節：要**控制流模板**去〈Skill 設計模式〉（`patterns-and-troubleshooting.md`），要**設計方法論或理由**去〈進階 Skill 設計模式〉（`seeing-like-an-agent.md`）。
 
 ## 發布前檢查清單
 
@@ -189,7 +193,7 @@ LC_ALL=C comm -13 <(grep -o 'references/[a-z-]*\.md' SKILL.md | LC_ALL=C sort -u
 - [ ] 主關鍵字觸發成功
 - [ ] 改述查詢仍觸發
 - [ ] 無關主題不觸發
-- [ ] Haiku / Sonnet / Opus 行為一致 —— 跨模型比對的做法不在本 skill 任何一份檔案內，也未見於官方文件
+- [ ] Haiku / Sonnet / Opus 行為一致 —— **本項無可執行程序**（做法不在本 skill 任何一份檔案內，也未見於官方文件），保留為已知缺口，不是待辦
 
 ---
 
