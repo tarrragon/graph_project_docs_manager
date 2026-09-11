@@ -38,15 +38,16 @@ framework issue 的一般協作寫法。適用於「問題的分析與方案 con
 # init：--dedup-keywords 必填（可多值，每組可含空白，逐一加引號）
 # --sections-file 為 JSON 陣列 [{"name": "區段名", "content": "內容"}, ...]
 # issue 已有區段 comment 時預設拒絕（exit 3）；--force 略過拒絕檢查並與既有索引列合併
+# owner 預設自行推導，不需指定；--owner 僅供覆寫確認，給值須與推導值相符
 python3 .claude/skills/framework-issue/scripts/section_comment.py init <issue-ref> \
-  --owner <session識別> \
   --sections-file <path/to/sections.json> \
   --dedup-keywords "關鍵字組一" "關鍵字組二" \
-  [--force]
+  [--force] [--owner <推導值，僅供覆寫確認>]
 
 # add：對已 init 過的 issue 追加單一區段，content-file 內容不含首行標記
+# owner 預設自行推導，不需指定；--owner 僅供覆寫確認，給值須與推導值相符
 python3 .claude/skills/framework-issue/scripts/section_comment.py add <issue-ref> \
-  --owner <session識別> --name "<區段名>" --content-file <path/to/content.md>
+  --name "<區段名>" --content-file <path/to/content.md> [--owner <推導值，僅供覆寫確認>]
 
 # dedup：唯讀，不需 issue-ref（查整個框架 repo），僅列命中清單
 python3 .claude/skills/framework-issue/scripts/section_comment.py dedup \
@@ -114,7 +115,25 @@ body 的區段索引表格式：
 
 標題與表頭之間可放一段導言（入口宣稱、索引重生指令等）。`init`／`add` 每次重渲染索引時會回讀該導言並寫回原位置——導言若不回讀，`upsert_section` 的整段替換會在下一次執行時把它靜默抹除。issue 原本是無工具標記的手寫索引（標題＋導言＋表格）時，三者整塊處理：列併入工具索引、導言遷至標題與表頭之間、原處的標題與導言一併移除，body 內因此只留一份標題與一張表（`tarrragon/claude#82` 曾出現兩個標題而第一個底下沒有表格，即此處未整塊處理的後果）。
 
-**owner 識別格式**：`init`／`add` 錨定 `<本專案 kebab-case 推導前綴>-<session uuid 前 8 碼十六進位>`（占位形態，換成本次實際值，不寫任何具體 consumer 的字面值）；前綴取本專案主 repo 目錄名 kebab 化（同 `_project_owner_prefix()` 邏輯），尾碼取本 session `CLAUDE_CODE_SESSION_ID` 環境變數前 8 碼十六進位，不自行編號、不用代理人名。尾碼段記錄的是「哪一次 session 寫的」，不是「現在該找誰」：session 結束後該識別不再可定址，擁有關係實質屬於專案（前綴段），有事以 `observe` 留在 issue 上，不以訊息找 owner。SessionStart 的擁有 issue 檢查在登記檔缺失時以專案目錄名推導前綴粗篩，`flutter_balance-pm` 這類形態會被漏檢。`init`／`add` 在 CLI 層以「前綴須等於推導值、尾碼須為 8 碼十六進位」驗證此格式，不合法（如代理人名稱 `framework-issue-curator`、含底線的值、其他專案的前綴）一律 exit 3；前綴推導失敗時降級為僅檢查通用形狀，不因推導失敗硬擋合法 owner。`transfer-owner` 為跨 consumer 移交的逃生口，改走獨立驗證，不錨定本專案前綴，僅檢查同一通用形狀。
+**owner 識別格式**：`init`／`add` 現預設自行推導 owner，格式為
+`<本專案 kebab-case 推導前綴>-<session uuid 前 8 碼十六進位>`（占位形態，
+不寫任何具體 consumer 的字面值）；前綴取本專案主 repo 目錄名 kebab 化
+（同 `_project_owner_prefix()` 邏輯），尾碼取本 session
+`CLAUDE_CODE_SESSION_ID` 環境變數前 8 碼十六進位，不自行編號、不用代理
+人名。`--owner` 降為覆寫確認用途——省略不填即自動組出正確值，給值時須
+與推導值完全相符，不符一律 exit 3 並印診斷（推導值／傳入值／不符欄
+位）；推導失敗（`CLAUDE_CODE_SESSION_ID` 環境變數缺席）時同樣 exit 3
+並印三項診斷（環境變數是否存在、推導出的前綴、該 uuid 是否在
+`pm-registry.json` 中），無任何靜默降級路徑——此為刻意設計：先前允許
+以純格式檢查通過任意傳入值的降級路徑，正是派發者需代填 owner 而導致
+漏填的根源，本版本消滅此路徑，改由 CLI 承擔取值責任。尾碼段記錄的是
+「哪一次 session 寫的」，不是「現在該找誰」：session 結束後該識別不再
+可定址，擁有關係實質屬於專案（前綴段），有事以 `observe` 留在 issue
+上，不以訊息找 owner。SessionStart 的擁有 issue 檢查在登記檔缺失時以
+專案目錄名推導前綴粗篩，`flutter_balance-pm` 這類形態會被漏檢。
+`transfer-owner` 為跨 consumer 移交的逃生口，不受本次改動影響，仍走
+獨立的 `validate_owner_for_transfer`，不錨定本專案前綴、不依賴 session
+id 推導，僅檢查通用形狀。
 
 ### 待辦表欄位與列舉
 

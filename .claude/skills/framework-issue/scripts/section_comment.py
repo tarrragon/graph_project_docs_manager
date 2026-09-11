@@ -24,10 +24,13 @@ session 可隨時附加，不需 owner、不需協商。
 - `transfer-owner`：PATCH 首行標記的 owner 欄，內容不變，供 owner 移交。
 - `observe`：附加一則觀測 comment，不需 owner、不改 body、不影響既有 comment。
 
-`init`／`add` 共用 `validate_owner` 驗證 owner 識別格式，錨定本專案推導
-前綴（`<kebab-case 前綴>-<session uuid 前 8 碼十六進位>`）；`transfer-owner`
-改用 `validate_owner_for_transfer`（跨 consumer 移交逃生口，不錨定前綴）。
-不合法一律 exit 3（見 `EXIT_DEGRADED`）。
+`init`／`add` 共用 `resolve_write_owner` 自行推導 owner 識別（預設不需
+`--owner`），推導值錨定本專案前綴（`<kebab-case 前綴>-<session uuid 前
+8 碼十六進位>`）；`--owner` 降為覆寫確認用途，給值須與推導值相符，否則
+exit 3。推導失敗（環境變數缺席）時同樣 exit 3，無任何靜默降級路徑——
+派發者不再需要提供 owner，「漏填」不存在。`transfer-owner` 改用
+`validate_owner_for_transfer`（跨 consumer 移交逃生口，不錨定前綴、不
+依賴 session id 推導）。不合法一律 exit 3（見 `EXIT_DEGRADED`）。
 
 區段與觀測以 comment 首行 HTML 註解標記區分（GitHub 渲染時不可見）：
 
@@ -100,6 +103,18 @@ from gh_common import (
 )
 from owned_issues_registry import owned_issue_numbers, record_owned_issue
 from section_table import upsert_section
+
+# init／add 自行推導 owner 用：與既有 hook 共用同一 session id 取得入口
+# （`.claude/lib/hook_logging.py::resolve_session_id`），避免另立一份
+# 環境變數讀取邏輯——取值管道改為 CLI 自行推導，使漏填模式就地消滅。
+# 本檔為獨立腳本（非 hook），故以 sys.path 掛載 `.claude` 根目錄後
+# import，路徑深度：scripts -> framework-issue -> skills -> .claude
+# （parents[3]）。
+_CLAUDE_ROOT = Path(__file__).resolve().parents[3]
+if str(_CLAUDE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_CLAUDE_ROOT))
+
+from lib import resolve_session_id  # noqa: E402
 
 # 區段 comment 首行標記：抓 "section:" 與 "owner:" 之間、"owner:" 之後至
 # " -->" 為止的內容。非貪婪比對，不限制字元集合（owner 常含連字號，如
@@ -264,6 +279,104 @@ def validate_owner_for_transfer(owner: str) -> None:
         "或含底線如 'flutter_balance-pm'）"
     )
 
+
+
+def _registry_path() -> Optional[Path]:
+    """`pm-registry.json` 的路徑（PM SessionStart hook 寫入處），透過
+    `git rev-parse --git-common-dir` 定位以支援 worktree（與
+    `_project_owner_prefix` 相同定位方式）。取不到時回傳 None，供診斷
+    訊息呈現「無法確認」而非拋錯——此為唯讀查詢，不影響主流程判定。
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return Path(result.stdout.strip()) / "pm-registry.json"
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return None
+
+
+def _session_in_registry(session_id: str) -> Optional[bool]:
+    """查 `session_id` 是否在 `pm-registry.json` 的 `sessions` 鍵中；
+    registry 不存在或無法解析時回傳 None（診斷用途，缺失不視為錯誤）。
+    """
+    path = _registry_path()
+    if path is None or not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return session_id in data.get("sessions", {})
+
+
+def _derivation_failure_message() -> str:
+    """owner 推導失敗（`CLAUDE_CODE_SESSION_ID` 缺席）時的三項診斷訊息：
+    環境變數是否存在、推導出的前綴、該 uuid 是否在 `pm-registry.json` 中。
+    無任何靜默降級路徑——即使 `--owner` 有給值，推導失敗時仍一律 exit 3，
+    因為缺推導值即無法驗證傳入值是否正確。
+    """
+    session_id = resolve_session_id()
+    prefix = _project_owner_prefix()
+    if session_id:
+        in_registry = _session_in_registry(session_id)
+        registry_line = (
+            "無法確認（pm-registry.json 不存在或無法解析）"
+            if in_registry is None
+            else ("是" if in_registry else "否")
+        )
+    else:
+        registry_line = "無 uuid 可查（環境變數缺席）"
+    return (
+        "owner 推導失敗，無任何靜默降級路徑，須待環境變數就緒後重試。診斷：\n"
+        f"- 環境變數 CLAUDE_CODE_SESSION_ID 是否存在：{'是' if session_id else '否'}\n"
+        f"- 推導出的前綴：{prefix}\n"
+        f"- 該 uuid 是否在 pm-registry.json 中：{registry_line}"
+    )
+
+
+def _diff_owner_fields(given: str, expected: str) -> str:
+    """比對傳入 owner 與推導值的前綴／尾碼何者不符，供 exit 3 診斷訊息
+    指出具體不符欄位（而非只印兩個完整字串要求人工比對）。
+    """
+    given_prefix, _, given_suffix = given.rpartition("-")
+    expected_prefix, _, expected_suffix = expected.rpartition("-")
+    mismatches = []
+    if given_prefix != expected_prefix:
+        mismatches.append(f"前綴（傳入 '{given_prefix}' / 推導 '{expected_prefix}'）")
+    if given_suffix != expected_suffix:
+        mismatches.append(f"尾碼（傳入 '{given_suffix}' / 推導 '{expected_suffix}'）")
+    return "、".join(mismatches) if mismatches else "無法拆解比對，請逐字核對兩值"
+
+
+def resolve_write_owner(explicit_owner: Optional[str]) -> str:
+    """`init`／`add` 共用的 owner 取得邏輯：預設自行推導（取值管道與既有
+    hook 共用的 `resolve_session_id` 同源），`--owner` 降為覆寫確認用途、
+    須與推導值相符，否則拋 ValueError（呼叫端既有 except 區塊轉 exit 3）。
+    推導失敗時同樣拋 ValueError，不因取不到值而靜默採用傳入值——這正是
+    要消滅的漏填模式：派發者不再需要提供 owner，故本函式是唯一決定 owner
+    值的入口，`--owner` 不再是可獨立成立的來源。
+    """
+    session_id = resolve_session_id()
+    if not session_id:
+        raise ValueError(_derivation_failure_message())
+
+    expected = f"{_project_owner_prefix()}-{session_id[:8]}"
+    if explicit_owner is None:
+        return expected
+    if explicit_owner != expected:
+        raise ValueError(
+            "owner 與推導值不符（--owner 僅供覆寫確認，須與推導值一致）。診斷：\n"
+            f"- 推導值：{expected}\n"
+            f"- 傳入值：{explicit_owner}\n"
+            f"- 不符欄位：{_diff_owner_fields(explicit_owner, expected)}"
+        )
+    return expected
 
 
 def extract_section_marker(comment_body: str):
@@ -831,17 +944,24 @@ def cmd_dedup(keywords: list) -> int:
 
 
 def cmd_init(
-    issue_ref: str, owner: str, sections_file: str, dedup_keywords: list, force: bool = False
+    issue_ref: str,
+    owner: Optional[str],
+    sections_file: str,
+    dedup_keywords: list,
+    force: bool = False,
 ) -> int:
     """查重後建立全部區段 comment，取得 id 後與既有索引列合併回填一次 body
     區段索引表。issue 已有任何區段 comment 時預設拒絕（`init` 僅供建立初始
     索引，重複建立應改用 `add`），`--force` 可略過此檢查（見本 ticket why：
     第二個 session 對已 `init` 過的 issue 再次 `init` 會整段覆寫索引，導致
     第一個 session 的既有區段從 `show` 消失）。
+
+    `owner` 未給時自行推導（見 `resolve_write_owner`），給值時須與推導值
+    相符，否則視為前置檢查失敗（exit 3）。
     """
     try:
         issue_ref = normalize_issue_ref(issue_ref)
-        validate_owner(owner)
+        owner = resolve_write_owner(owner)
         sections = load_sections_spec(sections_file)
         for section in sections:
             validate_todo_table(section["name"], section["content"])
@@ -917,14 +1037,17 @@ def cmd_init(
     return write_body(issue_ref, new_body)
 
 
-def cmd_add(issue_ref: str, owner: str, name: str, content_file: str) -> int:
+def cmd_add(issue_ref: str, owner: Optional[str], name: str, content_file: str) -> int:
     """建立單一區段 comment，於既有索引表追加一列（不存在索引表時建立）；
     其他既有列的 comment id／連結不受影響（供 `init` 之後對同一 issue
     追加新區段，見本 ticket why 段：init 每張 issue 只能跑一次的缺口）。
+
+    `owner` 未給時自行推導（見 `resolve_write_owner`），給值時須與推導值
+    相符，否則視為前置檢查失敗（exit 3）。
     """
     try:
         issue_ref = normalize_issue_ref(issue_ref)
-        validate_owner(owner)
+        owner = resolve_write_owner(owner)
         content = Path(content_file).read_text(encoding="utf-8")
         validate_todo_table(name, content)
     except (ValueError, OSError) as exc:
@@ -1608,7 +1731,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_init = sub.add_parser("init", help="查重後建立全部區段 comment 並回填 body 區段索引（僅執行一次）")
     p_init.add_argument("issue_ref", help="framework issue ref（如 tarrragon/claude#81 或純號 81）")
-    p_init.add_argument("--owner", required=True, help="區段建立者/維護者 session 識別")
+    p_init.add_argument(
+        "--owner", required=False, default=None,
+        help="區段建立者/維護者 session 識別；未給時自行推導，給值須與推導值相符（否則 exit 3）",
+    )
     p_init.add_argument(
         "--sections-file", required=True,
         help='JSON 檔，格式 [{"name": "當前結論", "content": "..."}]',
@@ -1627,7 +1753,10 @@ def build_parser() -> argparse.ArgumentParser:
         "add", help="建立單一區段 comment，於既有索引表追加一列（不存在索引表時建立）"
     )
     p_add.add_argument("issue_ref", help="framework issue ref（如 tarrragon/claude#81 或純號 81）")
-    p_add.add_argument("--owner", required=True, help="區段建立者/維護者 session 識別")
+    p_add.add_argument(
+        "--owner", required=False, default=None,
+        help="區段建立者/維護者 session 識別；未給時自行推導，給值須與推導值相符（否則 exit 3）",
+    )
     p_add.add_argument("--name", required=True, help="區段名稱")
     p_add.add_argument("--content-file", required=True, help="區段內容檔（不含首行標記）")
 
