@@ -46,12 +46,20 @@ def _stub_owned_issues_registry(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _stub_project_owner_prefix(monkeypatch):
-    """owner 驗證錨定本專案推導前綴（0.1.0-W3-315／319 裁決），本檔既有測試
-    的 owner 字面值非驗證器焦點——固定回傳 "test-session"，使既有
-    "test-session-<8 碼十六進位>" 字面值通過錨定檢查。錨定機制本身的專屬
-    測試（見「owner 格式驗證」節）另行覆蓋此 stub 以驗證真實推導與降級
-    路徑。"""
+    """owner 驗證錨定本專案推導前綴，本檔既有測試的 owner 字面值非驗證器
+    焦點——固定回傳 "test-session"，使既有 "test-session-<8 碼十六進位>"
+    字面值通過錨定檢查。錨定機制本身的專屬測試（見「owner 格式驗證」節）
+    另行覆蓋此 stub 以驗證真實推導與降級路徑。
+
+    同步 stub `resolve_session_id`：`init`／`add` 改為自行推導 owner
+    （見「owner 自行推導」節），推導值為 `<前綴>-<session id 前 8 碼>`；
+    固定回傳以 "1a2b3c4d" 起首的字串，使推導值與既有測試沿用的
+    "test-session-1a2b3c4d" 字面值一致，既有測試不需逐一改寫。推導失敗
+    （環境變數缺席）路徑由專屬測試各自覆蓋此 stub 為回傳空字串。"""
     monkeypatch.setattr(section_comment, "_project_owner_prefix", lambda: "test-session")
+    monkeypatch.setattr(
+        section_comment, "resolve_session_id", lambda: "1a2b3c4d-0000-0000-0000-000000000000"
+    )
 
 
 # --- 純函式：標記渲染與抽取 ---
@@ -196,6 +204,170 @@ def test_validate_owner_for_transfer_rejects_agent_name():
     """逃生口不等於全放行：仍拒絕不符通用格式的值。"""
     with pytest.raises(ValueError, match="owner 格式不符"):
         section_comment.validate_owner_for_transfer("framework-issue-curator")
+
+
+# --- resolve_write_owner：init/add 自行推導 owner，使漏填模式就地消滅
+# （acceptance：未給 --owner 時自行推導；--owner 與推導值不符時 exit 3；
+# 推導失敗時 exit 3 印三項診斷，無任何靜默降級路徑；transfer-owner 不受
+# 影響）。
+
+
+def test_resolve_write_owner_derives_value_when_not_given():
+    """未給 explicit owner 時，回傳 `<前綴>-<session id 前 8 碼>`。"""
+    assert section_comment.resolve_write_owner(None) == "test-session-1a2b3c4d"
+
+
+def test_resolve_write_owner_accepts_explicit_owner_matching_derived_value():
+    """`--owner` 給值且與推導值相符時通過，回傳推導值。"""
+    assert (
+        section_comment.resolve_write_owner("test-session-1a2b3c4d")
+        == "test-session-1a2b3c4d"
+    )
+
+
+def test_resolve_write_owner_rejects_explicit_owner_not_matching_derived_value():
+    """正向對照輸入：`--owner` 與推導值不符時被擋，診斷含推導值／傳入值／
+    不符欄位三項。"""
+    with pytest.raises(ValueError) as exc_info:
+        section_comment.resolve_write_owner("other-prefix-deadbeef")
+    message = str(exc_info.value)
+    assert "owner 與推導值不符" in message
+    assert "推導值：test-session-1a2b3c4d" in message
+    assert "傳入值：other-prefix-deadbeef" in message
+    assert "不符欄位" in message
+    assert "前綴" in message
+    assert "尾碼" in message
+
+
+def test_resolve_write_owner_raises_on_session_id_env_missing(monkeypatch):
+    """正向對照輸入：環境變數缺席（`resolve_session_id` 回傳空字串）時
+    exit 3（呼叫端轉換），無論是否有給 --owner，皆無靜默降級路徑——缺
+    推導值即無法驗證傳入值是否正確。診斷含三項：環境變數是否存在、推導
+    出的前綴、該 uuid 是否在 pm-registry.json 中。"""
+    monkeypatch.setattr(section_comment, "resolve_session_id", lambda: "")
+    with pytest.raises(ValueError) as exc_info:
+        section_comment.resolve_write_owner(None)
+    message = str(exc_info.value)
+    assert "owner 推導失敗" in message
+    assert "環境變數 CLAUDE_CODE_SESSION_ID 是否存在：否" in message
+    assert "推導出的前綴：test-session" in message
+    assert "pm-registry.json 中" in message
+
+
+def test_resolve_write_owner_raises_on_session_id_env_missing_even_with_explicit_owner(
+    monkeypatch,
+):
+    """環境變數缺席時，即使 `--owner` 提供了看似合法的值，仍一律 exit 3
+    ——不得因無法驗證而靜默採用傳入值（禁止的靜默降級路徑）。"""
+    monkeypatch.setattr(section_comment, "resolve_session_id", lambda: "")
+    with pytest.raises(ValueError, match="owner 推導失敗"):
+        section_comment.resolve_write_owner("test-session-1a2b3c4d")
+
+
+def test_init_derives_owner_when_not_given(tmp_path):
+    """acceptance：未給 --owner 時 init 自行推導，推導值格式為
+    `<前綴>-<uuid 前 8 碼>`，寫入的區段 comment 首行標記帶此值。"""
+    sections_file = tmp_path / "sections.json"
+    sections_file.write_text(
+        json.dumps([{"name": "當前結論", "content": "內容"}]), encoding="utf-8"
+    )
+    post_urls = [("https://github.com/tarrragon/claude/issues/81#issuecomment-1", 1)]
+    captured = {}
+
+    with mock.patch.object(
+        section_comment.subprocess, "run", side_effect=_init_side_effect(post_urls, captured)
+    ) as run:
+        rc = section_comment.main(
+            ["init", "81", "--sections-file", str(sections_file), "--dedup-keywords", "測試關鍵字"]
+        )
+    assert rc == 0
+    post_calls = [
+        c for c in run.call_args_list
+        if c.args[0][:2] == ["gh", "api"] and c.args[0][2].endswith("/comments")
+        and "--method" not in c.args[0] and "--paginate" not in c.args[0]
+    ]
+    assert len(post_calls) == 1
+    assert "owner: test-session-1a2b3c4d -->" in post_calls[0].args[0][-1]
+
+
+def test_add_derives_owner_when_not_given(tmp_path):
+    """acceptance：未給 --owner 時 add 自行推導。"""
+    content_file = tmp_path / "content.md"
+    content_file.write_text("內容", encoding="utf-8")
+    captured = {}
+
+    with mock.patch.object(
+        section_comment.subprocess,
+        "run",
+        side_effect=_add_side_effect(
+            ("https://github.com/tarrragon/claude/issues/81#issuecomment-1", 1),
+            "",
+            captured,
+        ),
+    ) as run:
+        rc = section_comment.main(
+            ["add", "81", "--name", "當前結論", "--content-file", str(content_file)]
+        )
+    assert rc == 0
+    post_calls = [
+        c for c in run.call_args_list
+        if c.args[0][:2] == ["gh", "api"] and c.args[0][2].endswith("/comments")
+        and "--method" not in c.args[0] and "--paginate" not in c.args[0]
+    ]
+    assert len(post_calls) == 1
+    assert "owner: test-session-1a2b3c4d -->" in post_calls[0].args[0][-1]
+
+
+def test_init_rejects_when_session_id_env_missing(tmp_path, capsys, monkeypatch):
+    """正向對照輸入：環境變數缺席時 init exit 3，不建立任何區段 comment。"""
+    monkeypatch.setattr(section_comment, "resolve_session_id", lambda: "")
+    sections_file = tmp_path / "sections.json"
+    sections_file.write_text(
+        json.dumps([{"name": "當前結論", "content": "內容"}]), encoding="utf-8"
+    )
+    rc = section_comment.main(
+        [
+            "init", "81", "--sections-file", str(sections_file),
+            "--dedup-keywords", "測試關鍵字",
+        ]
+    )
+    assert rc == gh_common.EXIT_DEGRADED
+    assert "owner 推導失敗" in capsys.readouterr().err
+
+
+def test_add_rejects_when_session_id_env_missing(tmp_path, capsys, monkeypatch):
+    """正向對照輸入：環境變數缺席時 add exit 3，不建立任何區段 comment。"""
+    monkeypatch.setattr(section_comment, "resolve_session_id", lambda: "")
+    content_file = tmp_path / "content.md"
+    content_file.write_text("內容", encoding="utf-8")
+    rc = section_comment.main(
+        ["add", "81", "--name", "當前結論", "--content-file", str(content_file)]
+    )
+    assert rc == gh_common.EXIT_DEGRADED
+    assert "owner 推導失敗" in capsys.readouterr().err
+
+
+def test_transfer_owner_unaffected_by_session_id_derivation(monkeypatch):
+    """acceptance：`transfer-owner` 走既有的 `validate_owner_for_transfer`，
+    不受本票改動影響——即使環境變數缺席（`resolve_session_id` 回傳空字串，
+    模擬 init/add 推導失敗的同一情境），`transfer-owner` 仍應成功，證明其
+    路徑不呼叫 `resolve_write_owner`／`resolve_session_id`。"""
+    monkeypatch.setattr(section_comment, "resolve_session_id", lambda: "")
+    existing_comment = {
+        "id": 5,
+        "body": "<!-- section: 當前結論 owner: old-owner-1a2b3c4d -->\n內容",
+    }
+
+    def _run(args, **kwargs):
+        if args[:2] == ["gh", "api"] and args[2].endswith("/comments/5") and "--method" not in args:
+            return _completed(stdout=json.dumps(existing_comment))
+        if args[:2] == ["gh", "api"] and "--method" in args and "PATCH" in args:
+            return _completed(stdout="{}")
+        raise AssertionError(f"未預期的 gh 呼叫：{args}")
+
+    with mock.patch.object(section_comment.subprocess, "run", side_effect=_run):
+        rc = section_comment.main(["transfer-owner", "5", "--to", "blog-cd-af3d9b12"])
+    assert rc == 0
 
 
 def test_load_sections_spec_rejects_missing_content_field(tmp_path):
@@ -460,7 +632,10 @@ def test_init_requires_dedup_keywords_flag(tmp_path):
 
 
 @pytest.mark.parametrize("bad_owner", ["framework-issue-curator", "flutter_balance-pm"])
-def test_init_rejects_invalid_owner_format(tmp_path, capsys, bad_owner):
+def test_init_rejects_owner_mismatch_with_derived_value(tmp_path, capsys, bad_owner):
+    """acceptance：`--owner` 與推導值不符時 exit 3 並印診斷（推導值／
+    傳入值／不符欄位），不再是純格式檢查（owner 現由 CLI 自行推導，
+    `--owner` 只是覆寫確認用途）。"""
     sections_file = tmp_path / "sections.json"
     sections_file.write_text(
         json.dumps([{"name": "當前結論", "content": "內容"}]), encoding="utf-8"
@@ -473,8 +648,10 @@ def test_init_rejects_invalid_owner_format(tmp_path, capsys, bad_owner):
     )
     assert rc == gh_common.EXIT_DEGRADED
     err = capsys.readouterr().err
-    assert "owner 格式不符" in err
-    assert "test-session" in err
+    assert "owner 與推導值不符" in err
+    assert "推導值：test-session-1a2b3c4d" in err
+    assert f"傳入值：{bad_owner}" in err
+    assert "不符欄位" in err
 
 
 # --- owned-issues 登記檔寫入：init／update 成功後同步落地一筆登記 ---
@@ -531,7 +708,7 @@ def test_init_rejects_when_sections_already_exist_without_force(tmp_path, capsys
     with mock.patch.object(section_comment.subprocess, "run", side_effect=_run):
         rc = section_comment.main(
             [
-                "init", "81", "--owner", "test-session-2b3c4d5e", "--sections-file", str(sections_file),
+                "init", "81", "--owner", "test-session-1a2b3c4d", "--sections-file", str(sections_file),
                 "--dedup-keywords", "測試關鍵字",
             ]
         )
@@ -588,7 +765,7 @@ def test_init_force_merges_with_existing_index_when_sections_present(tmp_path):
     with mock.patch.object(section_comment.subprocess, "run", side_effect=_run):
         rc = section_comment.main(
             [
-                "init", "81", "--owner", "test-session-2b3c4d5e", "--sections-file", str(sections_file),
+                "init", "81", "--owner", "test-session-1a2b3c4d", "--sections-file", str(sections_file),
                 "--dedup-keywords", "測試關鍵字", "--force",
             ]
         )
@@ -988,7 +1165,10 @@ def test_add_records_owned_issue_after_successful_section_creation(tmp_path):
 
 
 @pytest.mark.parametrize("bad_owner", ["framework-issue-curator", "flutter_balance-pm"])
-def test_add_rejects_invalid_owner_format(tmp_path, capsys, bad_owner):
+def test_add_rejects_owner_mismatch_with_derived_value(tmp_path, capsys, bad_owner):
+    """acceptance：`--owner` 與推導值不符時 exit 3 並印診斷（推導值／
+    傳入值／不符欄位），不再是純格式檢查（owner 現由 CLI 自行推導，
+    `--owner` 只是覆寫確認用途）。"""
     content_file = tmp_path / "content.md"
     content_file.write_text("內容", encoding="utf-8")
     rc = section_comment.main(
@@ -996,8 +1176,10 @@ def test_add_rejects_invalid_owner_format(tmp_path, capsys, bad_owner):
     )
     assert rc == gh_common.EXIT_DEGRADED
     err = capsys.readouterr().err
-    assert "owner 格式不符" in err
-    assert "test-session" in err
+    assert "owner 與推導值不符" in err
+    assert "推導值：test-session-1a2b3c4d" in err
+    assert f"傳入值：{bad_owner}" in err
+    assert "不符欄位" in err
 
 
 # --- dedup：查重（token 聯集查詢，避免跨 comment AND 語意漏判） ---

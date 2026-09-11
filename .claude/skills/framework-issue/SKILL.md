@@ -71,7 +71,7 @@ exit code：`0` 成功、`3` 降級（gh 未安裝／未登入／Issues 停用�
 
 ## Owner 與派發
 
-區段 owner 是實際執行該工作的 session，他方以 `observe` 附加或 `add` 自己的區段。owner 識別固定為 `<專案目錄 kebab-case>-<session 序號>`（如 `flutter-balance-77`），CLI 對其他形態 exit 3；理由見協定檔〈區段與觀測標記格式〉。
+區段 owner 是實際執行該工作的 session，他方以 `observe` 附加或 `add` 自己的區段。`init`／`add` 預設自行推導 owner（不需指定），推導值為 `<專案目錄 kebab-case>-<session uuid 前 8 碼十六進位>`；`--owner` 降為覆寫確認用途，給值不符或推導失敗一律 exit 3，無靜默降級路徑；理由見協定檔〈owner 識別格式〉。
 
 收束與區段撰寫派 `framework-issue-curator`（opus、effort medium）；一個主題一個 curator 並行，派發票列明範圍內的 ticket ID，curator 只對這些票 close。純 `observe`／`check` 類輕量操作不需派發。
 
