@@ -53,6 +53,8 @@
 
 **發現任何問題，無論優先級，都必須建立 Ticket 追蹤。發現即建立，不詢問確認。** 執行期間發現（Ticket 執行中）直接 `/ticket create`，不需詢問用戶確認。高→當前版本（IMP Ticket）；中→pending Ticket 排後續 Wave/版本；低→pending Ticket 排技術債務清理。**禁止行為**：以「進階」「非急需」「後續再說」省略 Ticket；分析結論只追蹤高優先級忽略中低；口頭記錄取代正式 Ticket。
 
+**接縫**：上列「高→當前版本（IMP Ticket）」應讀作「高＝本版處理」，票型（分析票／實作票）由證據狀態決定而非由優先級決定，判準見 `.claude/skills/framework-issue/references/escalation-flow.md`〈修法時點分離：發現票何時能寫定修法〉。
+
 **適用場景**：Ticket 執行中發現技術債/bug/回歸、多視角分析結論、Phase 4 技術債務、incident 分析、SA 審查發現、任何代理人分析報告。完整識別條件見 `.claude/pm-rules/plan-to-ticket-flow.md`。
 
 **ANA Solution 內 spawn 規劃**：Solution 含 IMP/DOC/ANA spawn 規劃表格時，規劃項目即屬「發現」，必須由**執行者**在 complete 前逐項落地。落地形式三選一：建票、登記 spawn request 並 resolve 為終態、逐項標註豁免理由。
@@ -105,7 +107,8 @@
 - `.claude/skills/framework-issue/SKILL.md` - 規則 5 框架問題升級流程（介入判斷、兩條路徑、issue 關閉協議、回報前查重 SOP）
 
 ---
-**Last Updated**: 2026-08-23 | **Version**: 3.5.0 — 規則 5「ANA Solution 內 spawn 規劃」情境表對齊強制層：原第 3 列「由無 create 權限代理人執行 → complete 後 PM 補建」與同節引言句（complete 前）時點相反，且該類別經全量盤點無實例（無任何 agent 定義禁止建票），刪除後改列「工具清單不含 Bash」此一實際受限條件。新增 spawn request 通道列（先登記、complete 前 resolve 為終態，pending 不算落地）；豁免列改為逐項宣告。強制層註記補「保證方為執行者」與新的落地數計算式，PM 事後驗收降為冗餘檢查。
+**Last Updated**: 2026-09-11 | **Version**: 3.6.0 — 規則 5 補一行接縫註記（不展開三明示，僅路由）：優先級對應表「高→當前版本（IMP Ticket）」應讀作「高＝本版處理」，票型由證據狀態決定而非優先級，判準主文見 `.claude/skills/framework-issue/references/escalation-flow.md`〈修法時點分離：發現票何時能寫定修法〉（發現時點與修法定案時點分離，來源用戶裁示）。
+**Version**: 3.5.0 — 規則 5「ANA Solution 內 spawn 規劃」情境表對齊強制層：原第 3 列「由無 create 權限代理人執行 → complete 後 PM 補建」與同節引言句（complete 前）時點相反，且該類別經全量盤點無實例（無任何 agent 定義禁止建票），刪除後改列「工具清單不含 Bash」此一實際受限條件。新增 spawn request 通道列（先登記、complete 前 resolve 為終態，pending 不算落地）；豁免列改為逐項宣告。強制層註記補「保證方為執行者」與新的落地數計算式，PM 事後驗收降為冗餘檢查。
 **Version**: 3.4.0 — 新增「第一原則：誤差預算」章節於核心價值之前：生成式產出逼近正確、品質機制為已定價成本、禁道歉自責敘事、檢討唯二目標（降低復核成本／提高逼近精度）。規則 1、2、4、6 定位為其直接實例化（3、5 屬時序／完整性，經 Layer 2 審查收窄）。用戶裁示定為框架基本原則，隨 .claude/ sync 擴散至所有 consumer 專案。
 **Version**: 3.3.0 — 規則 5 補一行框架問題分流路由，指向 `framework-issue/SKILL.md`「框架問題升級流程」章節（僅路由不展開，自動載入預算原則）。
 **Version**: 3.2.0 — 規則 6 落地通道由「memory feedback 雙通道」改為捕獲時分流（框架相關進 error-patterns／規則／方法論／references；專案相關進 docs／CLAUDE.md；兩者皆非不記錄）；教訓落地載體由「ANA + memory」改為「ANA + error-pattern」。memory 不再列為合法目的地，判準權威來源見 `pm-quality-baseline.md` 規則 7。
