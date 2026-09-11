@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.5.0 — 依一輪低階 model 讀者探針（3 個實例，指令逐字相同）處置三項。**description 由 989 字元收斂至 242**（門檻 250）：原值為門檻近四倍，且已被凍結於 `.claude/hooks/skill-description-baseline.json`，本次修正後同步移除該 baseline 條目——凍結值留著等於替回退預先簽名。收斂捨棄的觸發詞見下段。**排除項補轉介地址**：原文「不涵蓋視覺風格設計與使用者研究方法」為明示排除但無去向，兩名探針在無提示下各自指出不知道該找誰；改為視覺風格走 `foundation-design` 的 UI 維度（執法層在 Dart 專案為 `dart-style-guardian`）、使用者研究本框架無承接者需自行取用外部方法，並明寫 WCAG 對比是例外仍屬本 skill。**新增〈與相鄰資產的交界〉表**：探針 Q5 三份皆只找到 `component-contract-design` 一個。四列各自寫出「交界處讀者會踩到什麼」而非只寫職責分界——例如本 skill 判定的時間門檻是元件契約〈回饋契約〉欄的輸入，所以產出必須是可被引用的具體值。**description 捨棄的觸發詞**：死胡同以外的同義詞、`initializing`、`hash 路由`、`tab bar`、`service worker`、`Bottom Sheet`、`debounce`、`防連點`、`佔位`、`placeholder`、`ellipsis`、`省略號`、`截斷`、`完成宣告`、`可點性`。捨棄判準為「保留的上位詞已能命中同一情境」，其中`完成宣告`與`防連點`為唯一兩個無上位詞可代者，兩者仍留在正文〈跨維度快速自檢〉可被全文檢索命中，但**skill 選用階段的匹配力確有下降**，此為 250 字元預算下的取捨，不宣稱無損。
+
 **Version**: 1.4.5 — 讓號並補記本地兩項變更：其一，「十一欄位齊全」改「元件契約欄位表齊全」，並於 `references/interaction-feedback.md` 六種按鈕狀態表下補與元件契約〈回饋契約〉欄的分工句——時間門檻與通知形式仍由本 skill 產出，每形態的回饋通道與狀態來源由 `component-contract-design` skill 承接；其二，評估流程補一句反向路由：畫面狀態矩陣填完、進入元件級實作前，元件契約由該 skill 承接。動因是本 skill 對該 skill 只有入度無出度，使用者做完畫面級狀態設計後沒有訊號接上元件層契約。兩項原標 1.4.4 與 1.4.3，其中後者與上游同日獨立標記的 1.4.3 撞號；兩側內容皆在本 skill，本地兩項合併讓號至本版。
 
 **Version**: 1.4.3 — 清理 2 處 language-constraints.md 規則 2 禁用詞基線債務（`代碼` → 程式碼，`references/input-mechanism.md`），純用語修正，內容與判準未改。
