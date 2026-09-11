@@ -157,7 +157,7 @@ IMP 票被 close 後，執行內容住在「待辦與來源」；之後依階段
 任務：把主題「<主題名>」的 <N> 張 pending 票收束為 tarrragon/claude#<M> 的區段（或新 issue）。
 範圍票：<ID 清單>（只對這些票 close，其他票不動）。
 落點：<既有 issue 編號 / 新開，關係判定結果>。
-owner 識別：<專案 kebab>-<session 序號>（範例格式：`graph-project-docs-manager-5d`；換成本次派發的實際值，不得留占位符）。
+owner 識別：<前綴須等於 `_project_owner_prefix()` 推導值>-<本 session `CLAUDE_CODE_SESSION_ID` 環境變數前 8 碼十六進位>（換成本次派發的實際值，不得留占位符；前綴推導值可執行 `git rev-parse --path-format=absolute --git-common-dir` 取父目錄名核對）。
 步驟：讀票 → 依 references/ticket-intake.md〈步驟三：時序改狀態〉改寫 → sections.json 寫 scratchpad → init／add／observe（依〈步驟二：查重與落點〉）→ 依〈步驟五：ticket 處置〉範圍規則 close → show/check → 來源票對照與關係判定皆以 append-log 寫回派發票 Solution。
 禁止：貼入時序敘事、對已有索引的 issue 再 init、close 範圍外或被依賴的票、更新他方 owner 的區段、寫專案內任何檔案、對 ticket md 裸 commit（`git commit` 讀共用 index，會把並行 session 暫存的檔案一併帶走，實測三個 curator 兩個命中）。
 提交：`append-log` 逐命令 auto-commit；`close` 不會——它只由 Stop 事件的兜底 hook 提交，而該 hook 在有背景代理人時跳過，且該 hook 只納入本 session 認領過的票，收束時 close 的票從未被認領，兩層都不涵蓋。範圍票全部 close 後由 curator 自行提交，優先用 `ticket track commit <本票 ID> -m "<訊息>" <票檔…>`（走隔離索引，檔案須為本票 `where.files` 子集）；該命令不適用時才退回手動隔離索引 CAS（`GIT_INDEX_FILE` 指臨時 index → `read-tree HEAD` → `add` 精確檔案 → `write-tree` → `commit-tree` → `diff --name-only` 自驗範圍 → `update-ref HEAD <new> <old>`，配方見 Bash 工具使用規則參考文件的〈規則七詳細〉）。兩者皆禁裸 commit。
@@ -168,6 +168,6 @@ scratchpad 檔名帶派發票 ID（如 sections-<ticket-id>.json）：scratchpad
 驗收：show 顯示「當前結論」為第一則且全部區段在索引內、check 三項未命中、範圍票依範圍規則處置完畢且 reason-note 含 issue ref、git status 無專案檔變更。
 ```
 
-**owner 識別行的填寫紀律**：此行已是範本明文要求，但實測至少兩次派發在複製本範本時漏填，使 curator 執行到 `init`／`add` 才被 CLI exit 3 擋下，只能降級為 `observe`（降級後果：結論落在觀測流，不受 `check` 主警訊涵蓋）。**Why**：`ListAgents` 對子代理人不可得，識別值只能由派發者（PM）在複製本範本時代填，是唯一可行來源；協定本身未記載這條代派通道。**Consequence**：漏填不會在派發當下報錯——成本延後到 curator 執行時才顯現，此時已耗掉一輪派發，且降級為 `observe` 對消費端無任何訊號標示「這則其實該是區段」。**Action**：複製本範本時把 `<專案 kebab>-<session 序號>` 換成實際值，不留占位符；不確定序號時取 `ListAgents` 對本 session 自身輸出的首行名稱。
+**owner 識別行的填寫紀律**：此行已是範本明文要求，但實測至少兩次派發在複製本範本時漏填，使 curator 執行到 `init`／`add` 才被 CLI exit 3 擋下，只能降級為 `observe`（降級後果：結論落在觀測流，不受 `check` 主警訊涵蓋）。**Why**：`ListAgents` 對子代理人不可得，識別值只能由派發者（PM）在複製本範本時代填，是唯一可行來源；協定本身未記載這條代派通道。**Consequence**：漏填不會在派發當下報錯——成本延後到 curator 執行時才顯現，此時已耗掉一輪派發，且降級為 `observe` 對消費端無任何訊號標示「這則其實該是區段」；`init`／`add` 現已錨定本專案推導前綴，尾碼收窄為 session uuid 前 8 碼十六進位，寫錯前綴或尾碼形狀不符一律 exit 3，不再是純數字或任意字元集即可通過。**Action**：複製本範本時把 owner 識別換成實際值，不留占位符；前綴以 `_project_owner_prefix()` 邏輯核對（本專案主 repo 目錄名 kebab 化），尾碼取本 session `CLAUDE_CODE_SESSION_ID` 環境變數前 8 碼十六進位。
 
 curator 回報後 PM 只做兩件事：讀「當前結論」判斷是否能作為下一階段裁票依據；抽一張來源票比對「來源票對照」的處置是否與票面一致。

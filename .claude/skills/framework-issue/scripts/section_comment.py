@@ -24,8 +24,10 @@ session 可隨時附加，不需 owner、不需協商。
 - `transfer-owner`：PATCH 首行標記的 owner 欄，內容不變，供 owner 移交。
 - `observe`：附加一則觀測 comment，不需 owner、不改 body、不影響既有 comment。
 
-`init`／`add`／`transfer-owner` 共用 `validate_owner` 驗證 owner 識別格式
-（`<kebab-case 前綴>-<數字序號>`），不合法一律 exit 3（見 `EXIT_DEGRADED`）。
+`init`／`add` 共用 `validate_owner` 驗證 owner 識別格式，錨定本專案推導
+前綴（`<kebab-case 前綴>-<session uuid 前 8 碼十六進位>`）；`transfer-owner`
+改用 `validate_owner_for_transfer`（跨 consumer 移交逃生口，不錨定前綴）。
+不合法一律 exit 3（見 `EXIT_DEGRADED`）。
 
 區段與觀測以 comment 首行 HTML 註解標記區分（GitHub 渲染時不可見）：
 
@@ -133,11 +135,14 @@ INDEX_ROW_URL_RE = re.compile(r"https://\S*?issuecomment-\d+")
 # 「當前結論」區段名稱字串集中於此常數，check／show 皆引用，不散落。
 CURRENT_CONCLUSION_SECTION_NAME = "當前結論"
 
-# owner 識別格式：<專案目錄 kebab-case 前綴>-<session 序號>，如
-# "flutter-balance-77"。init／add／transfer-owner 共用同一驗證（見
-# validate_owner）——判準明確而執法只掛在單一入口，存量會從另一入口累積
-# （同儕以代理人名稱 "framework-issue-curator" init 七張未被攔下即為一例）。
-OWNER_FORMAT_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*-[0-9]+$")
+# owner 識別格式：<專案目錄 kebab-case 前綴>-<session uuid 前 8 碼十六進位>，
+# 如 "flutter-balance-1a2b3c4d"。init／add 錨定 `_project_owner_prefix()`
+# 推導值（見 validate_owner），使寫入端與三個既有讀取端（皆前綴比對）共用
+# 同一判準；transfer-owner 為跨 consumer 移交的逃生口，不錨定前綴，改用
+# `validate_owner_for_transfer` 僅檢查下列通用形狀。判準明確而執法只掛在
+# 單一入口，存量會從另一入口累積（同儕以代理人名稱
+# "framework-issue-curator" init 七張未被攔下即為一例）。
+GENERIC_OWNER_FORMAT_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*-[0-9a-f]{8}$")
 
 # check 的兩項閾值：規格（tarrragon/claude#81「增長語意與早期警訊」）定性
 # 描述「輔助訊號」與「某期間」，未給出精確數字。以下為可運作的初始預設
@@ -208,14 +213,57 @@ def render_observation_comment(summary: str, session: str, content: str) -> str:
 
 def validate_owner(owner: str) -> None:
     """驗證 owner 識別格式；不合法時拋 ValueError（呼叫端捕捉後轉為 exit 3
-    降級提示），訊息含格式規則與範例。"""
-    if not OWNER_FORMAT_RE.match(owner):
+    降級提示），訊息含推導出的前綴與範例（不印任何 consumer 的字面值）。
+
+    預設錨定 `_project_owner_prefix()` 推導值，使寫入端與三個既有讀取端
+    （皆前綴比對）共用同一判準——僅尾碼形狀相符（如代理人角色名以外的
+    其他 consumer 值）仍會被擋，維持消費端「必須是自己這個 consumer」的
+    過濾能力。前綴推導失敗（拋例外）時降級為通用格式檢查，不因推導失敗
+    硬擋合法 owner——該函式現行只用於讀取路徑，推錯僅漏篩，移到寫入路徑
+    後推錯會拒絕合法 owner。transfer-owner 走獨立的
+    `validate_owner_for_transfer`（跨 consumer 移交逃生口），不呼叫本函式。
+    """
+    try:
+        prefix = _project_owner_prefix()
+    except Exception:
+        prefix = None
+
+    if prefix is None:
+        if GENERIC_OWNER_FORMAT_RE.match(owner):
+            return
         raise ValueError(
             f"owner 格式不符：'{owner}'。"
-            "須為 <kebab-case 前綴>-<數字序號>，如 'flutter-balance-77'"
+            "前綴推導失敗，降級為通用格式檢查：須為 "
+            "<kebab-case 前綴>-<session uuid 前 8 碼十六進位>"
             "（不可為代理人名稱如 'framework-issue-curator'，"
             "或含底線如 'flutter_balance-pm'）"
         )
+
+    if re.match(rf"^{re.escape(prefix)}-[0-9a-f]{{8}}$", owner):
+        return
+    raise ValueError(
+        f"owner 格式不符：'{owner}'。"
+        f"須為 '{prefix}-<session uuid 前 8 碼十六進位>'，如 '{prefix}-1a2b3c4d'"
+        "（不可為代理人名稱如 'framework-issue-curator'，"
+        "不可含底線如 'flutter_balance-pm'，"
+        "亦不可為其他專案的前綴）"
+    )
+
+
+def validate_owner_for_transfer(owner: str) -> None:
+    """`transfer-owner` 專用的 owner 格式驗證：跨 consumer 移交的逃生口，
+    不錨定本專案推導前綴，僅檢查通用形狀（<kebab-case 前綴>-<8 碼十六
+    進位>）。不合法時拋 ValueError（呼叫端捕捉後轉為 exit 3 降級提示）。
+    """
+    if GENERIC_OWNER_FORMAT_RE.match(owner):
+        return
+    raise ValueError(
+        f"owner 格式不符：'{owner}'。"
+        "須為 <kebab-case 前綴>-<session uuid 前 8 碼十六進位>"
+        "（不可為代理人名稱如 'framework-issue-curator'，"
+        "或含底線如 'flutter_balance-pm'）"
+    )
+
 
 
 def extract_section_marker(comment_body: str):
@@ -966,11 +1014,12 @@ def cmd_update(comment_id: str, content_file: str) -> int:
 
 
 def cmd_transfer_owner(comment_id: str, new_owner: str) -> int:
-    """PATCH 首行標記的 owner 欄，內容不變；同步登記檔（供 owner 移交，見
-    本 ticket why 段：update 保留首行 owner 標記不變，無命令可改 owner）。
+    """PATCH 首行標記的 owner 欄，內容不變；同步登記檔（供 owner 移交，
+    含跨 consumer 移交——不錨定本專案推導前綴，見
+    `validate_owner_for_transfer`）。
     """
     try:
-        validate_owner(new_owner)
+        validate_owner_for_transfer(new_owner)
     except ValueError as exc:
         return emit_degraded(str(exc), "確認 --to 為合法 owner 格式後重試")
 
@@ -1421,7 +1470,7 @@ def _filter_todo_rows(
 ) -> List[dict]:
     """依 `--status`／`--stage`／`--priority`／`--consumer` 篩選列（皆選
     填，未提供者不篩）。`--consumer` 比對 owner 前綴（owner 格式為
-    `<consumer>-<序號>`，見 `OWNER_FORMAT_RE`）。"""
+    `<consumer>-<session uuid 前 8 碼十六進位>`，見 `GENERIC_OWNER_FORMAT_RE`）。"""
     def _matches(row: dict) -> bool:
         if status and row.get("狀態") != status:
             return False
