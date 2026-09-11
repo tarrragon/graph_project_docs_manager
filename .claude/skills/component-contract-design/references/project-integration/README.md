@@ -16,7 +16,7 @@
 |------|----------------|
 | 方法論 | `.claude/methodologies/component-library-bidirectional-constraint-methodology.md` |
 | 元件庫規格範本 | 源檔 `.claude/skills/doc/templates/component-library-spec-template.md`；副本在專案 spec 目錄 |
-| agent 派發範本 | `.claude/references/agent-dispatch-template.md`（〈骨架（權威版）〉與〈Solution 自檢結果子章節義務〉兩節為 `dispatch-language.md`「派發 prompt 必含」列的權威） |
+| agent 派發範本 | `.claude/references/agent-dispatch-template.md`（〈骨架（權威版）〉與〈Solution 自檢結果子章節義務〉兩節為 `step-5-write-tickets.md`〈派發 prompt 的三項固定句〉的權威） |
 
 ## 其他專案沿用時
 
