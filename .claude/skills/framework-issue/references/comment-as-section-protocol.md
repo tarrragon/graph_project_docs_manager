@@ -30,7 +30,7 @@ framework issue 的一般協作寫法。適用於「問題的分析與方案 con
 
 **`init` 兩階段順序**：comment id 在區段建立後才存在，索引無法在建立時一併寫入，故 `init` 必為「查重 → （無 `--force` 時先掃描既有區段 comment，已有則拒絕）→ 建區段 comment → 取得 id → 讀 body 與既有索引列合併 → PATCH 一次」。body 其後不再由工具改寫，`update` 只動區段 comment。區段 comment 全數建立成功即把 `(issue number, owner, updated_at)` 落地到本地擁有登記檔 `.claude/state/framework-issue-owned.json`（per-worktree、不入版控），不等索引回填；回填失敗時登記仍成立，供 SessionStart 檢查省去搜尋往返。`init` 原本以本次區段清單整段覆寫索引，第二個 session 對已 `init` 過的 issue 再次執行會使第一個 session 的既有區段從 `show` 消失（見 #81 事故）；現改為與既有索引列合併，且預設拒絕已有區段的 issue（避免誤用），`--force` 才會略過拒絕檢查並執行合併。
 
-**`add` 補上「`init` 預設每張 issue 只能跑一次」的缺口**：後續 session 要在同一 issue 新增區段時仍建議用 `add`（不需重新查重），流程為「POST 單一區段 comment → 讀 body → 合併既有索引列與新列 → PATCH 一次」，既有列的 comment id／連結不變；成功後同樣落地擁有登記檔。`init`／`add`／`transfer-owner` 三者共用同一 owner 格式驗證（見下方〈owner 識別格式〉），不合法一律 exit 3 並印格式說明。`add`／`init` 合併索引列時皆以 comment id 去重，並把 body 內未加 `<!-- section-index -->` 標記的手寫索引表視為既有列來源（讀 `parse_index_table` 結果）整段移除後併入合併結果，不再於其後追加第二張表。`add` 成功時比照 `transfer-owner` 逐字印出結果（`區段「<名稱>」已建立 @ <issue-ref>，owner=<值>`），操作者不需另開 comment 即可確認建立結果。
+**`add` 補上「`init` 預設每張 issue 只能跑一次」的缺口**：後續 session 要在同一 issue 新增區段時仍建議用 `add`（不需重新查重），流程為「POST 單一區段 comment → 讀 body → 合併既有索引列與新列 → PATCH 一次」，既有列的 comment id／連結不變；成功後同樣落地擁有登記檔。`init`／`add` 共用同一 owner 格式驗證（見下方〈owner 識別格式〉），`transfer-owner` 另有獨立的跨 consumer 逃生口驗證，不合法一律 exit 3 並印格式說明。`add`／`init` 合併索引列時皆以 comment id 去重，並把 body 內未加 `<!-- section-index -->` 標記的手寫索引表視為既有列來源（讀 `parse_index_table` 結果）整段移除後併入合併結果，不再於其後追加第二張表。`add` 成功時比照 `transfer-owner` 逐字印出結果（`區段「<名稱>」已建立 @ <issue-ref>，owner=<值>`），操作者不需另開 comment 即可確認建立結果。
 
 ## CLI 語法
 
@@ -114,7 +114,7 @@ body 的區段索引表格式：
 
 標題與表頭之間可放一段導言（入口宣稱、索引重生指令等）。`init`／`add` 每次重渲染索引時會回讀該導言並寫回原位置——導言若不回讀，`upsert_section` 的整段替換會在下一次執行時把它靜默抹除。issue 原本是無工具標記的手寫索引（標題＋導言＋表格）時，三者整塊處理：列併入工具索引、導言遷至標題與表頭之間、原處的標題與導言一併移除，body 內因此只留一份標題與一張表（`tarrragon/claude#82` 曾出現兩個標題而第一個底下沒有表格，即此處未整塊處理的後果）。
 
-**owner 識別格式**：`<專案目錄 kebab-case>-<session 序號>`，如 `flutter-balance-77`。值取 `ListAgents` 輸出首行「This session is <name>」的名稱，即其他 session 定址本 session 用的字串；不自行編號、不用代理人名。序號段記錄的是「哪一次 session 寫的」，不是「現在該找誰」：session 結束後該名稱不再可定址，擁有關係實質屬於專案（前綴段），有事以 `observe` 留在 issue 上，不以訊息找 owner。SessionStart 的擁有 issue 檢查在登記檔缺失時以專案目錄名推導前綴粗篩，`flutter_balance-pm` 這類形態會被漏檢。`init`／`add`／`transfer-owner` 三者在 CLI 層即以 `^[a-z0-9]+(-[a-z0-9]+)*-[0-9]+$` 驗證此格式，不合法（如代理人名稱 `framework-issue-curator`、含底線的 `flutter_balance-pm`）一律 exit 3。
+**owner 識別格式**：`init`／`add` 錨定 `<本專案 kebab-case 推導前綴>-<session uuid 前 8 碼十六進位>`（占位形態，換成本次實際值，不寫任何具體 consumer 的字面值）；前綴取本專案主 repo 目錄名 kebab 化（同 `_project_owner_prefix()` 邏輯），尾碼取本 session `CLAUDE_CODE_SESSION_ID` 環境變數前 8 碼十六進位，不自行編號、不用代理人名。尾碼段記錄的是「哪一次 session 寫的」，不是「現在該找誰」：session 結束後該識別不再可定址，擁有關係實質屬於專案（前綴段），有事以 `observe` 留在 issue 上，不以訊息找 owner。SessionStart 的擁有 issue 檢查在登記檔缺失時以專案目錄名推導前綴粗篩，`flutter_balance-pm` 這類形態會被漏檢。`init`／`add` 在 CLI 層以「前綴須等於推導值、尾碼須為 8 碼十六進位」驗證此格式，不合法（如代理人名稱 `framework-issue-curator`、含底線的值、其他專案的前綴）一律 exit 3；前綴推導失敗時降級為僅檢查通用形狀，不因推導失敗硬擋合法 owner。`transfer-owner` 為跨 consumer 移交的逃生口，改走獨立驗證，不錨定本專案前綴，僅檢查同一通用形狀。
 
 ### 待辦表欄位與列舉
 
