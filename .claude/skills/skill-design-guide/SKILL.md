@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.12.2
+  version: 1.12.3
 ---
 
 # Skill Design Guide
@@ -45,7 +45,6 @@ metadata:
 
 **判準只有一條：agent 照正文走得完嗎。** 走不完有兩種形態，修法相反——正文只給結論而把判斷條件外移，讀者選不了路，把條件搬回正文；正文塞進完整論證，讀者在該動手時還在讀理由，把論證外移只留主張句。
 
-這與〈超標了怎麼辦〉的診斷是同一個判準的兩面：那裡問「這段該不該搬走」，這裡問「搬走之後 agent 還走得完嗎」。
 
 ### Concise is Key — context 是公共資源
 
@@ -80,14 +79,7 @@ python3 -c "import sys;t=open(sys.argv[1],encoding='utf-8').read();a=sum(1 for c
 wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 ```
 
-**估算要分段加總，不是全檔比例內插。** 中文與 ASCII 的 chars/token 差三倍，混合內容用單一比例算會落在兩個換算值之間——那不是答案，是不判。分開算再相加才有結論。
-
-| 字元類別 | chars/token | 依據 |
-|---------|------------|------|
-| 非 ASCII（繁中） | 1.3 | `file-size-guardian-hook.py` 的 `CHARS_PER_TOKEN`，已實測校準 |
-| ASCII | 取 4 | **無實測**，取寬鬆側，誤差方向是放行而非誤擋 |
-
-**任何寫在文件裡的量測值都是當時的**——執行上方 **Action** 的指令即得當下值。（分段法取代單一字元門檻的兩類誤判實證，見 `CHANGELOG.md`。）
+上面那行指令已經做完分段加總（繁中與 ASCII 的 chars/token 差三倍，不能用單一比例算），直接跑就好。**任何寫在文件裡的量測值都是當時的**——要現值就跑指令。換算常數的來源與校準記錄見 `CHANGELOG.md`。
 
 ### 超標了怎麼辦——不是刪，也不是硬搬
 
@@ -195,7 +187,6 @@ LC_ALL=C comm -13 <(grep -o 'references/[a-z-]*\.md' SKILL.md | LC_ALL=C sort -u
 - [ ] 改述查詢仍觸發
 - [ ] 無關主題不觸發
 
-> **跨模型行為一致（Haiku / Sonnet / Opus）不列為檢查項**：做法不在本 skill 任何一份檔案內，也未見於官方文件。記在這裡是為了讓「沒有這一項」是刻意的而不是遺漏。
 
 ---
 
