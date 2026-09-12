@@ -103,6 +103,7 @@ from gh_common import (
 )
 from owned_issues_registry import owned_issue_numbers, record_owned_issue
 from section_table import upsert_section
+from todo_pending_registry import sync_section_rows
 
 # init／add 自行推導 owner 用：與既有 hook 共用同一 session id 取得入口
 # （`.claude/lib/hook_logging.py::resolve_session_id`），避免另立一份
@@ -675,6 +676,21 @@ def validate_todo_table(name: str, content: str) -> None:
             )
 
 
+def _todo_rows_from_content(name: str, content: str) -> List[dict]:
+    """從一段已通過 `validate_todo_table` 驗證的內容抽取表格列（純本地
+    解析，不發任何 gh 呼叫），供 `todo_pending_registry.sync_section_rows`
+    的寫入端增量同步使用。名稱不以 `TODO_SECTION_NAME_PREFIX` 開頭者回傳
+    空清單（非待辦表區段，不參與同步）。
+    """
+    if not name.startswith(TODO_SECTION_NAME_PREFIX):
+        return []
+    parsed = parse_markdown_table(content)
+    if parsed is None:
+        return []
+    header, rows = parsed
+    return [dict(zip(header, row)) for row in rows]
+
+
 def post_comment(issue_ref: str, body: str) -> dict:
     """POST 一則 comment（mock 攔截點），回傳 gh api JSON（含 id、html_url）。"""
     result = subprocess.run(
@@ -1015,7 +1031,24 @@ def cmd_init(
     # 即使後續 body 索引回填失敗，登記檔仍應反映此事實（見
     # owned_issues_registry 模組 docstring：best-effort 快取，寫入失敗不
     # 影響已完成的 GitHub 寫入結果）。
-    record_owned_issue(int(issue_ref), owner, _now_iso())
+    written_at = _now_iso()
+    record_owned_issue(int(issue_ref), owner, written_at)
+
+    # todo delta 待處理清單同步（輔通道）：init 建立的區段皆為新區段，逐一
+    # 對「待辦與來源*」區段做一次全量同步並即時回印新增數（見
+    # todo_pending_registry 模組 docstring「同步模型」）。純本地寫入，
+    # 不發任何額外 gh 呼叫。
+    for section in sections:
+        rows = _todo_rows_from_content(section["name"], section["content"])
+        if not rows:
+            continue
+        added, removed = sync_section_rows(
+            int(issue_ref), owner, rows, written_at, _CLAUDE_ROOT.parent
+        )
+        sys.stderr.write(
+            f"[framework-issue] todo pending 已同步：+{added} -{removed}"
+            f"（issue #{issue_ref}／區段「{section['name']}」）\n"
+        )
 
     try:
         body = fetch_body(issue_ref)
@@ -1065,7 +1098,20 @@ def cmd_add(issue_ref: str, owner: Optional[str], name: str, content_file: str) 
     # 區段 comment 已建立成功，owner 對此區段的擁有關係已確立——即使後續
     # body 索引回填失敗，登記檔仍應反映此事實（同 cmd_init 取向，見
     # owned_issues_registry 模組 docstring）。
-    record_owned_issue(int(issue_ref), owner, _now_iso())
+    written_at = _now_iso()
+    record_owned_issue(int(issue_ref), owner, written_at)
+
+    # todo delta 待處理清單同步（輔通道，同 cmd_init 取向）：此區段為新建
+    # 立，內容即該區段目前的完整列集合。
+    rows = _todo_rows_from_content(name, content)
+    if rows:
+        added, removed = sync_section_rows(
+            int(issue_ref), owner, rows, written_at, _CLAUDE_ROOT.parent
+        )
+        sys.stderr.write(
+            f"[framework-issue] todo pending 已同步：+{added} -{removed}"
+            f"（issue #{issue_ref}／區段「{name}」）\n"
+        )
 
     try:
         body = fetch_body(issue_ref)
@@ -1129,8 +1175,26 @@ def cmd_update(comment_id: str, content_file: str) -> int:
     # issue_url 回推；回推失敗（欄位缺失/格式不符）不影響本次更新結果，
     # 僅略過登記檔寫入。
     issue_number = _issue_number_from_comment(existing)
+    written_at = _now_iso()
     if issue_number is not None:
-        record_owned_issue(issue_number, marker["owner"], _now_iso())
+        record_owned_issue(issue_number, marker["owner"], written_at)
+
+    # todo delta 待處理清單同步（輔通道）：`content` 為此區段更新後的完整
+    # 列集合，`sync_section_rows` 對 (issue_number, owner) 範圍做全量同步
+    # ——原本 pending 但這次不再是「待裁票」的項目視為已處理並移除（見
+    # todo_pending_registry 模組 docstring「同步模型」，這是 ack 訊號的
+    # 實際落地位置）。issue_number 回推失敗時略過同步，不影響已完成的
+    # GitHub 更新（同上方登記檔刷新的取向）。
+    if issue_number is not None and marker["name"].startswith(TODO_SECTION_NAME_PREFIX):
+        rows = _todo_rows_from_content(marker["name"], content)
+        added, removed = sync_section_rows(
+            issue_number, marker["owner"], rows, written_at, _CLAUDE_ROOT.parent
+        )
+        if added or removed:
+            sys.stderr.write(
+                f"[framework-issue] todo pending 已同步：+{added} -{removed}"
+                f"（issue #{issue_number}／區段「{marker['name']}」）\n"
+            )
 
     sys.stderr.write(f"[framework-issue] 區段「{marker['name']}」已更新 @ comment {comment_id}\n")
     return 0
