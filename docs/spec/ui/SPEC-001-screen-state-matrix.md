@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-09-14"
-version: "1.9"
+version: "1.10"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -101,9 +101,15 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 未選還是未填。本列不渲染泳道列、只顯示說明，與 §2 同一狀態的呈現一致。「開啟原始檔」為
 > 外部開啟，不改變畫面狀態，不計為退出路徑（同 §2 判讀，見 SPEC-003 §5）。
 >
+> **矩陣格與泳道列的判定依據 `FlowStep.traverses`**（`0.1.0-W3-345`，用戶裁示 2026-09-14）：
+> 某 UC 的某步驟 `traverses` **包含**某 domain，該步驟即屬該 domain × UC 格、並置於該 domain
+> 的泳道列；`traverses` 為 0..n 個 domain 名，一步驟可同時落入多格，`[]`（純畫面步驟）不落入任何格。
+> 列末小計「被直接貫穿的 UC 數」＝至少一步驟 `traverses` 包含該 domain 的 UC 數，由 Graph
+> 公開面「貫穿數」提供（`docs/domain-map.md` §3）。
+>
 > **格詳情卡的內容以假資料驅動**（本規格設計約束）。真實資料下「個別 domain 的
-> 步驟與事件」的來源屬 CLAUDE.md §6 現行待決（Domain 視圖的列與格無來源；
-> `FlowStep` 無 `domain` 欄位），本規格只定顯示與行為，不定資料來源。因此卡內
+> 步驟與事件」的來源為上段 `FlowStep.traverses` 包含比對；個別 domain 的清單與說明
+> 不是圖節點，仍屬 CLAUDE.md §6 待決，本規格只定顯示與行為。因此卡內
 > 說明、步驟、事件標籤三個區塊皆為**可缺**：缺哪一塊就不渲染那一塊，標題與關係
 > 種類恆在。「無關」格亦可選，卡內顯示標題 + 「此 domain 不參與此 UC」，理由是
 > 可點性一致（同形的格不得一部分可點一部分不可點），且「無關」也是資訊。
@@ -246,11 +252,13 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 有消費無發出 | 某 EVT 被至少一個 FlowStep `consumes`；全專案無任何 FlowStep `emits` 該 EVT；EVT 節點 `producers` 為空 |
 >
 > 類別字面值 `orphan-event`。§2 事件流小表中符合本判準的列帶問題標記。
+> **排除 `category: process_event` 的 EVT**：上游 `EVT_CATEGORIES` 定義 process_event 允許
+> 無 consumer，「有發出無消費」對其不構成破洞（`0.1.0-W3-345`）。
 >
 > **破洞類別「事件宣告與 flow 不符」**（`0.1.0-W3-335.19` 第二輪裁示，與孤立事件分開，
 > 字面值 `event-declaration-mismatch`）：EVT 節點 `consumers`（或 `producers`）列出的某 domain，
-> 全專案無任何屬於該 domain 的 FlowStep `consumes`（或 `emits`）該 EVT。每個未對應的宣告
-> domain 一項。判準全文見 SPEC-003 §3.5。
+> 全專案無任何 `traverses` **包含**該 domain 的 FlowStep `consumes`（或 `emits`）該 EVT。
+> 每個未對應的宣告 domain 一項。判準全文見 SPEC-003 §3.5。
 
 ## 6. 節點詳情
 
@@ -516,6 +524,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.10 | 2026-09-14 | `FlowStep.traverses` 回寫（`0.1.0-W3-345`，用戶裁示 2026-09-14）：§1 新增註記「矩陣格與泳道列的判定依據 `FlowStep.traverses`」（格＝步驟 traverses 包含該 domain，小計由 Graph 貫穿數提供），格詳情卡註記的資料來源改引用 traverses；§5 孤立事件判準排除 `category: process_event`，事件宣告與 flow 不符判準改為 traverses 包含比對。狀態總數不變；SPEC-003 同步 |
 | 1.9 | 2026-09-14 | 用戶裁示回寫（`0.1.0-W3-335.19`，SR-2／SR-3／SR-4，2026-09-14）：§1 新增「泳道 · flow 未結構化」列（四欄齊全）與成列註記；§2 正常態顯示欄補事件流小表，新增小表定義註記（位置、欄位、資料來源、「本 UC 外」、不渲染條件、問題標記）；§4 正常 · 列表票列補 blockedBy 欄與註記（排序／篩選列舉不變）；§5 有破洞可用操作改為依指向節點型別跳轉（ticket／其他圖節點／事件類／無指向四種，含第二輪裁示），有指向者開啟原始檔降為次要操作，新增「孤立事件」（`orphan-event`）與「事件宣告與 flow 不符」（`event-declaration-mismatch`）兩個破洞類別；§8.1 補一列（判否）、§8.2 補泳道開啟原始檔與帶目標跳入清除篩選兩列並改寫破洞項列。狀態總數 33 → 34；SPEC-003 同步 |
 | 1.8 | 2026-09-14 | 選定 UC 共用模型與 UC 步驟對應（`0.1.0-W3-335.18`，依用戶裁示 2026-09-14）：選定 UC 定為 App 層共用值，定義在 SPEC-003 §2.8；§1 新增「泳道 · 尚未選定 UC」、§2 新增「尚未選定 UC」兩列（四欄齊全），移除 §2 v1.7「不另計狀態」判讀並改寫註記；§8.1 補兩列（皆判否）。UC-01～UC-06 步驟對應後回寫兩處：§1 正常 · 矩陣顯示補每列小計（UC-02 步驟 2，出處 SPEC-004 `MatrixGrid`）、§3 正常顯示補節點 status（UC-04 步驟 3，出處 SPEC-004 `ListRow.tree`）；其餘未對應步驟的理由記於該票。狀態總數 31 → 33；SPEC-003 同步，SPEC-002 與 SPEC-004 另行登記 |
 | 1.7 | 2026-09-14 | 上游缺描述回寫（`0.1.0-W3-335.13`）：§4 未載入移除「預估耗時」，與 SPEC-003 §3.4 覆寫一致；§4 正常 · 列表補票列欄位、篩選維度、可排序欄；§2 補 UC 基本資訊欄位與步驟表欄位；§1 正常 · 泳道補結構描述；§5 無破洞補掃描範圍說明的內容形態；§8.2 補兩則外部開啟事件並明示本表對 0.1 為窮盡清單及判別方式。新增四則出處註記（值取自 SPEC-004 畫布盤點與核定記錄）；右欄寬度、事件標籤排列、泳道視覺值、樹的縮排明示留給 SPEC-004 並寫出指向。依用戶簽核（2026-09-14）：§2 可用操作補「選擇 UC」、正常與 flow 未結構化的進入條件改為以已選定 UC 判定，並補未選定時的前置呈現（依 UC-03 步驟 1）；§3 鏈路斷裂改為每個缺下游的父節點一個標示，註記補初始展開（預設只顯示 PROP 層、含缺口分支自動展開至缺口層）。狀態總數不變（31） |

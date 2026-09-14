@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-14"
-version: "1.28"
+version: "1.29"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1428,7 +1428,8 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 在泳道中檢視 | 恆在 | `action-domain-cell-goto-swimlane` 存在且 `enabled` 為 `true` |
 | 關閉 | 恆在 | `action-domain-cell-clear` 存在 |
 
-三個可缺區塊的資料來源屬 CLAUDE.md §6 待決（Domain 視圖的列與格無來源），
+格內步驟的判定為該 UC 的 FlowStep `traverses` **包含**該 domain（SPEC-001 §1，`0.1.0-W3-345`）；
+說明區塊的資料來源（個別 domain 不是圖節點）仍屬 CLAUDE.md §6 待決，
 0.1 以假資料驅動；假資料須至少含一格「三區塊皆有」、一格「僅標題與關係種類」、
 一格「步驟數足以觸發 `scroll-domain-cell-detail` 捲動」。
 
@@ -1517,7 +1518,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 項目 | 錨點 | 可觀察結果 |
 |------|------|-----------|
 | 小表 | `panel-ucFlow-event-flow` | 僅於 `state-ucFlow-normal` 且本 UC 的 FlowStep `emits`／`consumes` 聯集非空時存在，位於步驟表下方；聯集為空時此錨點不存在。步驟表（`card-ucFlow-step-*`）的列數與內容不因小表存在與否而改變 |
-| 列 | 小表內，以事件欄文字（EVT ID）識別 | 列數等於本 UC `emits`／`consumes` 聯集內相異 EVT ID 數；每列三格依序為事件（EVT ID）、發出（步驟序號 · domain）、消費（步驟序號 · domain）；同一事件有多個消費步驟時消費格列出全部 |
+| 列 | 小表內，以事件欄文字（EVT ID）識別 | 列數等於本 UC `emits`／`consumes` 聯集內相異 EVT ID 數；每列三格依序為事件（EVT ID）、發出（步驟序號 · domain）、消費（步驟序號 · domain）；同一事件有多個消費步驟時消費格列出全部；「domain」取該步驟 `FlowStep.traverses` 全部元素，為 `[]` 時只列步驟序號 |
 | 「本 UC 外」 | 發出格或消費格 | 判定：某 EVT 在本 UC 的 FlowStep 中只出現於 `emits`（無 `consumes`）時消費格為「本 UC 外」，附該 EVT 節點 frontmatter `consumers` 所列 domain；只出現於 `consumes`（無 `emits`）時發出格為「本 UC 外」，附 `producers` 所列 domain。判定範圍僅本 UC，與其他 UC 是否發出或消費無關 |
 | 孤立事件標記 | `badge-ucFlow-event-orphan-<evtId>` | 該 EVT 符合 §3.5〈孤立事件判準〉時存在於該列；不符合時不存在。標記元件由 SPEC-004 承接 |
 
@@ -1767,6 +1768,10 @@ SnackBar 的訊息與「復原」動作文案 key 由 SPEC-004 承接（`0.1.0-W
 | 有發出無消費 | 某 EVT 被至少一個 FlowStep `emits`；全專案無任何 FlowStep `consumes` 該 EVT；EVT 節點 frontmatter `consumers` 為空 |
 | 有消費無發出 | 某 EVT 被至少一個 FlowStep `consumes`；全專案無任何 FlowStep `emits` 該 EVT；EVT 節點 frontmatter `producers` 為空 |
 
+**排除 `category: process_event` 的 EVT**（`0.1.0-W3-345`）：上游 tracking_schema 的
+`EVT_CATEGORIES` 定義 process_event 允許無 consumer，故不列入本類別；本判準只對
+`category: domain_event` 的 EVT 生效。
+
 每個符合的 EVT 一項。符合判準的 EVT 在 §3.2 事件流小表中帶 `badge-ucFlow-event-orphan-<evtId>`。
 EVT 節點已宣告 `consumers`／`producers` 的情形不屬本類別，由下節判定。
 
@@ -1777,12 +1782,25 @@ EVT 節點已宣告 `consumers`／`producers` 的情形不屬本類別，由下�
 
 | 形態 | 判準 |
 |------|------|
-| 宣告的消費 domain 無 flow | EVT 節點 `consumers` 列出的某 domain，全專案無任何屬於該 domain 的 FlowStep `consumes` 該 EVT |
-| 宣告的發出 domain 無 flow | EVT 節點 `producers` 列出的某 domain，全專案無任何屬於該 domain 的 FlowStep `emits` 該 EVT |
+| 宣告的消費 domain 無 flow | EVT 節點 `consumers` 列出的某 domain，全專案無任何 `traverses` 包含該 domain 的 FlowStep `consumes` 該 EVT |
+| 宣告的發出 domain 無 flow | EVT 節點 `producers` 列出的某 domain，全專案無任何 `traverses` 包含該 domain 的 FlowStep `emits` 該 EVT |
 
-粒度：每個未對應的宣告 domain 一項（同一 EVT 兩個 domain 未對應即兩項）。「FlowStep 屬於
-某 domain」與 §3.2 事件流小表「步驟序號 · domain」同一判定，其資料來源屬 CLAUDE.md §6 待決
-（`FlowStep` 無 `domain` 欄位），本規格只定判準與行為。
+粒度：每個未對應的宣告 domain 一項（同一 EVT 兩個 domain 未對應即兩項）。比對為**包含比對**：
+FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公開面），宣告 domain 為其任一
+元素即算對應，不要求 `traverses` 恰為單一值。與 §3.2 事件流小表「步驟序號 · domain」同源
+（`0.1.0-W3-345`）。
+
+#### `traverses` 機械檢查需求
+
+`0.1.0-W3-345`，用戶裁示 2026-09-14。對全專案所有 UC 的 FlowStep 執行下列檢查，皆為**警告**不阻擋：
+
+| 檢查 | 條件 | 理由 |
+|------|------|------|
+| 有事件卻無 domain | 步驟 `emits` 或 `consumes` 非空，而 `traverses` 為 `[]` | 發出或消費事件的步驟通常直接觸及某 domain；為空時上方兩判準會漏判 |
+| domain 過多 | 單步 `traverses` 元素數 > 3 | 步驟粒度可能過粗，應檢查是否需拆步 |
+
+`traverses` 欄位存在性與值域（必須為 `docs/domain-map.md` 已定義的 domain 名）的 schema
+驗證由 `0.1.0-W3-346` 提供，不在本規格定義。
 
 #### 動畫提示
 
@@ -2138,6 +2156,7 @@ EVT 節點已宣告 `consumers`／`producers` 的情形不屬本類別，由下�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.29 | 2026-09-14 | `FlowStep.traverses` 回寫（`0.1.0-W3-345`，對應 SPEC-001 v1.10）：§3.1 格詳情卡步驟判定改引用 traverses 包含比對；§3.2 事件流小表「domain」取步驟 traverses 全部元素；§3.5 孤立事件排除 `category: process_event`，事件宣告與 flow 不符改為包含比對，新增子節〈`traverses` 機械檢查需求〉（有事件卻為空、單步超過 3 個，皆警告；schema 驗證由 `0.1.0-W3-346` 提供）。不新增狀態與錨點 |
 | 1.28 | 2026-09-14 | §1.1 捲動處 11 → 12：新增 `scroll-ucFlow-uc-list`（UC Flow 右欄 UC 選擇清單，SPEC-004 v1.35 定案該清單可捲動而本節無錨點，`0.1.0-W3-335.16` SR-5）；FR-08 驗收同步 12 |
 | 1.27 | 2026-09-14 | 用戶裁示回寫（`0.1.0-W3-335.19`，對應 SPEC-001 v1.9，SR-2／SR-3／SR-4，2026-09-14）：§1.2 Domain 雙模式與 §2.8〈選定 UC〉讀取方補第三個泳道態；§3.1 切至矩陣／切至泳道兩列補 `state-domain-swimlane-unstructured` 分支，新增「泳道開啟原始檔」列（`action-domain-open-source`，沿用外部開啟契約三結果），導航退出與生命週期同步第三個泳道態；§3.2 新增子節〈事件流小表〉（`panel-ucFlow-event-flow`、列識別與欄位、「本 UC 外」判定、`badge-ucFlow-event-orphan-<evtId>`）；§3.4 key 值域註明 blockedBy 欄無排序與篩選錨點；§3.4 新增子節〈帶目標跳入〉（未載入自動載入後定位、取消即作廢、目標被隱藏時清除搜尋與篩選並展開主題節、SnackBar「復原」只還原輸入不撤銷定位）；§3.5 破洞項點擊依指向節點型別分四列（ticket → `nav-page-tickets`；其他圖節點 → `nav-page-nodeDetail`；`orphan-event`／`event-declaration-mismatch` → 寫入選定 UC 後 `nav-page-ucFlow` 定位事件列；無指向 → 開啟原始檔），有指向者外部開啟三列改掛次要操作錨點 `action-gaps-open-source-<itemId>`（三結果與 SnackBar 不變），新增子節〈破洞項的指向節點〉〈孤立事件判準（`orphan-event`）〉〈事件宣告與 flow 不符判準（`event-declaration-mismatch`）〉，導航退出同步；§4 新增第 34 列、第 23 列補三種 jump，標題、覆蓋完整性算式、同步提醒、FR-01 驗收、§0 概述、設計約束由 33 改 34 |
 | 1.26 | 2026-09-14 | 選定 UC 共用模型回寫（`0.1.0-W3-335.18`，對應 SPEC-001 v1.8，依用戶裁示 2026-09-14）：§2.8 新增子節〈選定 UC：App 層共用值〉（初始值、兩個設定入口、讀取方、跨導覽保留、清除時機僅切換專案，並寫明選中格清除不連帶清除選定 UC 的取捨與斷言形式）；§1.2 Domain 雙模式可觀察結果補泳道模式兩態；§3.1 切至矩陣／切至泳道／選格三列補選定 UC 分支與寫入，導航退出補「泳道 · 尚未選定 UC」列，生命週期補切換專案清除選定 UC 與回到本畫面時值被改寫兩列；§3.2 互動反應新增「選擇 UC」列（`action-ucFlow-select-uc-<ucId>`），動畫、導航退出、生命週期同步第四態；§4 新增第 32 列 `state-domain-swimlane-uc-unset`、第 33 列 `state-ucFlow-uc-unset`，標題、覆蓋完整性算式、同步提醒、FR-01 驗收、§0 概述、設計約束由 31 改 33 |

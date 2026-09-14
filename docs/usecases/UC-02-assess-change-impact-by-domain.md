@@ -71,6 +71,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
+    traverses: []
   - id: "read-traversal-count"
     name: "讀取貫穿數"
     next: ["switch-to-swimlane"]
@@ -78,6 +79,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
+    traverses: ["Graph"]
   - id: "switch-to-swimlane"
     name: "切換至泳道"
     next: ["inspect-steps"]
@@ -85,6 +87,7 @@ flow:
     return_to: null
     emits: []
     consumes: ["EVT-LAYOUT-001"]
+    traverses: ["Layout"]
   - id: "inspect-steps"
     name: "檢視步驟"
     next: []
@@ -92,6 +95,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
+    traverses: []
   - id: "matrix-overview-only"
     name: "僅檢視全貌"
     next: []
@@ -99,6 +103,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
+    traverses: []
   - id: "enter-from-ticket"
     name: "由 ticket 切入"
     next: ["read-traversal-count"]
@@ -106,6 +111,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
+    traverses: ["Graph", "TicketDetail"]
   - id: "flow-not-structured"
     name: "flow 未結構化"
     next: []
@@ -113,6 +119,7 @@ flow:
     return_to: "locate-domain"
     emits: []
     consumes: []
+    traverses: ["Corpus"]
     implements: ["FR-06"]
 ```
 

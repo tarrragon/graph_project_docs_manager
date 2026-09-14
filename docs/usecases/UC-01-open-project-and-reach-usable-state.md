@@ -68,6 +68,7 @@ flow:
     return_to: null
     emits: ["EVT-WORKSPACE-001"]
     consumes: []
+    traverses: ["Workspace"]
   - id: "load-schema"
     name: "載入型別表"
     next: ["parse-nodes"]
@@ -75,6 +76,7 @@ flow:
     return_to: null
     emits: ["EVT-SCHEMA-001"]
     consumes: ["EVT-WORKSPACE-001"]
+    traverses: ["Schema"]
   - id: "parse-nodes"
     name: "解析節點"
     next: ["reach-domain-view"]
@@ -82,6 +84,7 @@ flow:
     return_to: null
     emits: ["EVT-CORPUS-001"]
     consumes: ["EVT-SCHEMA-001"]
+    traverses: ["Corpus"]
   - id: "reach-domain-view"
     name: "抵達 Domain 視圖"
     next: []
@@ -89,6 +92,7 @@ flow:
     return_to: null
     emits: []
     consumes: ["EVT-CORPUS-001"]
+    traverses: []
   - id: "folder-unavailable"
     name: "資料夾不可用"
     next: []
@@ -96,6 +100,7 @@ flow:
     return_to: "select-folder"
     emits: []
     consumes: []
+    traverses: ["Workspace"]
   - id: "empty-graph"
     name: "空專案"
     next: []
@@ -103,6 +108,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
+    traverses: ["Graph"]
   - id: "schema-rejected"
     name: "版本不符拒絕渲染"
     next: []
@@ -110,6 +116,7 @@ flow:
     return_to: "select-folder"
     emits: ["EVT-SCHEMA-002"]
     consumes: []
+    traverses: ["Schema"]
     implements: ["FR-04"]
 ```
 
