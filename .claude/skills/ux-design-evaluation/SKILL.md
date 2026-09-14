@@ -4,7 +4,7 @@ description: "UX / UI 設計的系統性評估：把「使用者被困住」類�
 license: MIT
 metadata:
   portable: true
-  version: 1.8.0
+  version: 1.9.0
   category: ux-design
 ---
 
@@ -111,6 +111,39 @@ ux-design-evaluation/
 | `foundation-design` skill | 地基入口與路由；design token 體系是它 UI 維度的產物 | 品牌色、字型階、間距階在那裡定義。本 skill 的〈interaction-feedback〉談對比與版面保障時**消費那些階，不新增階**——需要一個不存在的色階或字級時，那是地基缺口，回去建票而不是在畫面設計裡就地決定 |
 | `dart-style-guardian` skill（Dart／Flutter 的執法工具） | 掃裸色碼、裸間距、裸字級、寫死文字 | 它只看程式碼字面。**「按鈕沒有 loading 態」「選中態對比不足」它掃不到**——那些是本 skill 的檢查項，執法工具全綠不代表本 skill 的自檢清單過了 |
 | `version-bootstrap` skill 地基波 | 編排 i18n → design-system → UX 審查 → 元件庫四塊的順序 | 本 skill 是第 3 塊。**它的輸入是前兩塊（i18n 與 design-system）已完成**——token 與文案 key 還沒有時，本 skill 產出的回饋設計會指向不存在的值 |
+
+### 三段鏈式範例：本 skill 的產出必須是可被引用的具體值
+
+情境：一個非同步操作，`component-contract-design` skill 填元件契約〈回饋契約〉欄時需要一個明確的時間門檻與回饋形式，而非本 skill 自行留白讓對方猜。驗證段的判定屬「設計產出物」（見 `.claude/skills/skill-design-guide/references/chained-examples.md`〈各段允許與禁止內容〉【驗證】段的判定規則）。
+
+【輸入】
+
+```
+SPEC 片段：一個非同步查詢操作，實測延遲 p90 為 600ms
+```
+
+【產出】
+
+```
+形態：決策表
+判斷依據                       | 結果
+600ms 落在〈時間門檻與回饋策略〉哪個帶 | 400ms-1s（短暫等待）
+該帶對應的回饋策略             | Spinner／按鈕 loading 狀態
+結論                           | 回饋契約〈回饋通道〉欄填「按鈕 loading 狀態」，
+                                 不是「要有回饋」這種無法直接寫入契約表的抽象敘述
+```
+
+【驗證】
+
+```
+檢驗問句
+Q 本 skill 的產出是否為封閉列舉中的具體值？
+  預期：是——「按鈕 loading 狀態」是〈時間門檻與回饋策略〉表已定義的策略之一，
+  `component-contract-design` 可直接引用，不需要再判斷一次門檻
+Q 產出是否停留在「要有回饋」這類抽象敘述？
+  預期：否——停在抽象敘述等於把門檻判斷丟回給填寫元件契約的人，
+  兩位不同的填寫者可能各自選出不同的回饋形式，產出分岔
+```
 
 ---
 
