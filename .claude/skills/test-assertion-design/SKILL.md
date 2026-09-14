@@ -2,7 +2,7 @@
 name: test-assertion-design
 description: "Assertion design judgment framework for flaky and design-quality issues. Use when writing tests, reviewing assertions, diagnosing flaky tests, or deciding if a timing/float/cache assertion is appropriate. Do NOT use for API syntax or refactoring."
 metadata:
-  version: 1.3.0
+  version: 1.4.0
 ---
 
 # Test Assertion Design
@@ -32,6 +32,8 @@ metadata:
 | 結構驗證 | 驗證欄位存在、型別正確、陣列長度 |
 | 資源清理 | 驗證洩漏偵測差值（前後 count 差值 = 0），用差值而非絕對值 |
 
+功能正確性的預期值必須取自 spec 條文或 UC 預期結果，並依 `.claude/skills/tdd/references/test-object-catalogue.md`〈三、契約欄位表〉斷言來源欄的格式記錄出處；預期值取自現有實作執行結果者不屬此類，屬 characterization test，依同檔〈五、三種起點的推導程序〉起點 B 標記，不可與 spec/UC 來源的斷言混記同一類型。
+
 ## 9 類型問題斷言分類決策表
 
 ### 判斷軸
@@ -49,7 +51,7 @@ metadata:
 |------|---------|---------|---------|------|
 | 1. 計時硬門檻 | 使用單次計時值與絕對毫秒數比較作為 pass/fail | 計時差值對比 `N ms` 常數 | 受機器負載影響；功能測試套件禁用；效能門檻移至隔離執行環境 | 實證驗證 |
 | 2. 高精度浮點 | 浮點計算結果用超過 2 位小數精度斷言 | `toBeCloseTo(x, numDigits)` 其中 numDigits 超過 2 | IEEE 754 浮點路徑在跨 JIT 環境下末位數字不保證一致；超過 2 位精度需附確定性計算理由 | 實證驗證 |
-| 3. 相對計時比較 | 以兩次執行時間的差距或倍數比較驗證快取效果 | `secondRunTime < firstRunTime * K` | 相對計時同樣受 GC/JIT 影響；改用快取命中率或物件參考等價（identity equality）驗證 | 實證驗證 |
+| 3. 相對計時比較 | 以兩次執行時間的差距或倍數比較驗證快取效果 | `secondRunTime < firstRunTime * K` | 相對計時同樣受 GC/JIT 影響；改用快取命中率或物件參考等價（identity equality）驗證——被驗證對象對外承諾「重複取得同一實例」時用參考等價，只承諾「不重算」（結果值相同、不保證同一實例）時用命中率 | 實證驗證 |
 | 4. 記憶體絕對值 | 用堆積記憶體使用絕對上限作為 pass/fail | `heapUsed < N MB` 在功能測試套件 | 記憶體使用受 GC 時機影響；改用前後差值偵測洩漏（差值 = 0）而非絕對上限 | 實證驗證 |
 | 5. 非同步時序 | 斷言非同步操作尚未完成時的中間狀態 | 斷言位置在觸發事件之後但等待機制之前；結果隨執行速度改變 | 等待最終狀態再斷言；等待機制因框架而異但「等完成再斷言」原則跨語言一致 | W1-024 推導 |
 | 6. 亂數輸出 | 斷言由不可控隨機源驅動的特定輸出值 | 斷言依賴具體的隨機生成值（特定 ID、特定排序、特定分組） | 隨機源必須可控；斷言驗證演算法行為（分佈特性、邊界條件），不斷言特定隨機輸出 | W1-024 推導 |
