@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-15"
-version: "1.42"
+version: "1.43"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -169,7 +169,7 @@ depends_on_domains: [layout]
 | `TableRow`（表格列） | 容器 | L2 | 欄寬對齊表頭的水平格線列；子件 ∈ {`TableColumnHeader`, `AppText`, `Badge`, `StepNumber`, `BadgeRow`, `IssueMarker`, `RelationItem`（步驟列 domain 欄，可點）} | §2、§4 | `header`（`TableColumnHeader` × N）/ `ticket`（ID mono、標題、狀態徽章、優先、blockedBy、損壞標記；列表與主題模式共用同一欄序，§3.7 第 15 項；blockedBy 欄出處 SPEC-001 §4）/ `step`（序號、步驟名、domain 標籤、事件徽章列）/ `eventFlow`（事件 ID mono、發出、消費、孤立事件標記；非互動，可被定位；SPEC-001 §2〈事件流小表〉） |
 | `DataTable`（資料表） | 容器 | L2（資料視圖） | `TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`） | §2、§4 | `virtual` / `plain` |
 | `MatrixGrid`（矩陣） | 容器 | L3（資料視圖） | domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`） | §1 | `default` |
-| `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列；0.1 以寫死座標的假資料靜態排版（SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
+| `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列；0.1 以假資料靜態排版（節點所屬列依 traverses，列序與欄序由假資料給定；SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
 | `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3 | `default` |
 | `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption`，可選）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
 | `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono` × 2） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
@@ -3626,7 +3626,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 ### 4.24 LoadingState
 
-**用途**：骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（SPEC-003 §2.5、§2.8，共 10 條）由本元件單一承擔，三處以「目標態」與「進度型別」參數差異化。
+**用途**：骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（SPEC-003 §2.5、§2.8，共 10 條）由本元件單一承擔，三處以目標態、進度型別與骨架版位差異化（SPEC-003 §2.11）。
 **內容角色**：內文（訊息 + 計數）+ 數值（進度）+ 動作（取消）。
 **何時不用**：非狀態級的短暫等待（0.1 無，SPEC-003 §2.6）；按鈕內 spinner（禁止，§2.2）。
 **出現畫面**：§1（載入中）、§4（載入中）、§5（掃描中）。
@@ -5335,7 +5335,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 ### 4.38 SwimlaneGrid（容器，資料視圖）
 
-**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；0.1 以寫死座標的假資料靜態排版（SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。列首 `AppText` 由本容器包成可點（`InkWell` + `action-domain-select-<domainId>`，同 4.37，`0.1.0-W3-335.38` S-14）。得為 `ConsumerWidget`。
+**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；0.1 以假資料靜態排版（節點所屬列依 traverses，列序與欄序由假資料給定；SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。列首 `AppText` 由本容器包成可點（`InkWell` + `action-domain-select-<domainId>`，同 4.37，`0.1.0-W3-335.38` S-14）。得為 `ConsumerWidget`。
 **內容角色**：容器。
 **何時不用**：矩陣（`MatrixGrid`）；有布局演算法的泳道（0.1 之後）。
 **出現畫面**：§1（泳道）。
@@ -5351,7 +5351,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（`state-domain-swimlane`；或 `state-domain-swimlane-uc-unset`，零個節點，`0.1.0-W3-335.47` D8） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為寫死座標的假資料）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——皆尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格（以畫面名為鍵）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isActive`（該步驟 `traverses` 含 `selectedDomainId`，`0.1.0-W3-335.47` D6）向 4.16 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（`state-domain-swimlane`；或 `state-domain-swimlane-uc-unset`，零個節點，`0.1.0-W3-335.47` D8） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為假資料，欄序由假資料給定）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——皆尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格（以畫面名為鍵）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isActive`（該步驟 `traverses` 含 `selectedDomainId`，`0.1.0-W3-335.47` D6）向 4.16 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
 
 無互動瞬態：節點不可點、不可焦點（4.16、無障礙子節），本容器可聚焦以承載鍵盤捲動（SPEC-003 §2.10 內容區段含捲動容器），焦點環見回饋契約焦點列。
 
@@ -5387,7 +5387,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 最小命中區 | 不適用 |
 | 最大尺寸 | 無（二維捲動） |
 | 列高 | `LayoutSize.laneRowHeight` |
-| 步驟欄寬 | 由假資料座標決定（SPEC-001 設計約束「寫死座標」），不設 token |
+| 步驟欄寬 | 由假資料座標決定（SPEC-001 設計約束：欄寬靜態），不設 token |
 | `kMinWindowSize` 下的行為 | 維持（二維捲動） |
 | `kDesignSize` 下的行為 | 維持 |
 
@@ -6373,6 +6373,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.43 | 2026-09-15 | 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`，依 `0.1.0-W3-335.65` WRAP 裁決 SPEC-004 組 4-01～4-03，對應 SPEC-001 v1.16、SPEC-003 v1.37）：§3.1 總表 `SwimlaneGrid` 列用途欄與 4.38〈用途〉「0.1 以寫死座標的假資料靜態排版」改「0.1 以假資料靜態排版（節點所屬列依 `FlowStep.traverses` 計算，列序與欄序由假資料給定；SPEC-001 設計約束）」（4-01，落實 `0.1.0-W3-345` traverses 定案的同步缺漏）；4.38〈狀態矩陣〉default 列資料態「泳道資料（`lanes`，0.1 為寫死座標的假資料）」改「（0.1 為假資料，欄序由假資料給定）」、步驟欄寬列「由假資料座標決定（SPEC-001 設計約束「寫死座標」）」改「（SPEC-001 設計約束：欄寬靜態）」（4-02）；4.24 `LoadingState`〈用途〉「三處以『目標態』與『進度型別』參數差異化」改「三處以目標態、進度型別與骨架版位差異化（SPEC-003 §2.11）」（4-03，回應 SPEC-004 已定 `skeletonLayout` slot 契約與 `enum SkeletonLayout` 實作事實）。全檔「寫死座標」字面已無殘留（`grep -c` 為 0）；§3.3 第 20 項「靜態座標泳道」為提案原文記錄（節首理由欄涵蓋，不隨上游改版回改），不屬本次處置範圍 |
 | 1.42 | 2026-09-15 | 同步稽核追修票（`0.1.0-W3-335.62`，依 `0.1.0-W3-335.59` WRAP 裁決最終追修清單 SPEC-004 組 4-01～4-20，對應 SPEC-001 v1.15、SPEC-003 v1.36）：§3.1 總表 `LoadingState` 用途改引用 C1–C8 與生命週期 L1–L2（共 10 條，4-01）；`ButtonRow` 用途刪返回、返回 Domain（4-02）；`AppSnackBar` 出現畫面補 §4、§7 並註記 `denied` fallback（4-04，同步 4.26〈出現畫面〉）；`MatrixCell` 用途改「可點擊選格」、狀態補 selected（4-09）；`AppButton` 用途補以 App 內建型別表檢視／前往追溯視圖／前往 Ticket 清單／切換專案（阻擋狀態本體，4-15）；`Panel` 變體欄改引用 SPEC-003 §1.1〈捲動處清單〉不逐列錨點（4-14）。§3.5 畫布漂移表「十個捲動處」改引用〈捲動處清單〉不寫數字（4-13）。§3.6 §6 原始檔已消失列歸屬改 `MissingSourceState` 單顆按鈕、返回改由頁面框架渲染（4-03）；§1 空圖列顯示欄改「前往破洞報告；切換專案由殼層入口承載」（4-19）；〈SPEC-001 狀態列顯示欄 → 本檔〉表前刪「本版對齊 SPEC-001 v1.11」（4-17）；〈UC 選擇入口〉排位列 `Panel.scrollable` 補 scrollKey `scroll-ucFlow-uc-list`、上游缺口列改記已補（SPEC-003 §1.1 SR-5 落地，4-12）。§3.3 標題下首段補理由欄記錄提案當時（2026-09-02）行為與計數、不隨上游改版回改（4-18）；§3.7 前導句改「§3.1 總表與本表核定欄不一致處以本表為準；理由欄記錄核定當時的行為與計數，現行值以 §3.1 與 SPEC-001／SPEC-003 條文為準，不回改」（4-18）。4.15 MatrixCell 詳細段已一致，不改。4.18 `ExpanderIcon` slot 契約 testKey 補 `expander-tickets-unassigned`（4-11）。4.21 `EmptyState` 變體表 `section` 何時選用補泳道 · 尚未選定 UC／泳道 · flow 未結構化／§2 尚未選定 UC、i18n `message` 補 `ucUnsetPrompt`／`swimlaneUcUnsetPrompt`（4-10）。4.23 `BlockedState` 狀態矩陣表下說明改列切換專案／檢視詳情／降級檢視三動作、不寫顆數（4-16）。4.26 `AppSnackBar`〈變體〉`plain` 補外部開啟失敗、`withAction` 補系統通知 `denied` fallback 與清除搜尋篩選（4-05）；slot 契約 `message`／`actionLabel` 與 i18n 訊息／動作兩列補 `externalOpenFailedMessage`／`scanCompleteNoGapsSnackbarMessage`／`scanCompleteSnackbarMessage`／`ticketsFiltersClearedSnackbarMessage`／`viewGapsAction`／`undoAction`（4-06）；回饋契約按下確認列改引用重新掃描／`viewGapsAction`／`undoAction`、狀態變更提示列補四則觸發（4-07）。4.28 `PageColumn` 與 4.10 `SegmentedControl` 狀態變更提示列改引用 SPEC-003 §2.1〈未列轉換的預設〉取代「三個狀態之間」等舊字面（4-20）。4.40 `ListRow`〈回饋契約〉按下確認列 `item` 分支依指向節點型別改四分支：ticket → jump Ticket 清單、其他圖節點 → jump 節點詳情、事件類 → 寫入選定 UC 後 jump UC Flow、無指向 → 外部開啟三結果（4-08）。稽核腳本 `matrix.py`／`counts.py` 由 `0.1.0-W3-335.54` scratchpad 移入 `docs/spec/ui/audit/` 並新增 `README.md`，重跑結果記錄於本票 Completion Info |
 | 1.41 | 2026-09-14 | V4 第四輪前追修票 C（`0.1.0-W3-335.57`，依 `0.1.0-W3-335.53` WRAP 裁決 E1／E2／E3／E5／E8／E9，對應 SPEC-001 v1.14、SPEC-003 v1.35，承 `0.1.0-W3-335.55`／`.56` 留下的連動點）：§3.1 元件總表 `LoadPrompt` 列、`ButtonRow` 列與 §3.6 §4 未載入列刪「返回」字樣（4.25 用途段「返回由頁面框架承載」為準，ButtonRow 子件同步改 `[AppButton.primary]`，E1，含 `0.1.0-W3-335.55` 連動點 1）；§3.6 §1 無可消費的型別表列顯示欄補「降級說明（條件）」、4.23 slot `version` 文字來源改「呼叫端（專案 `.claude/VERSION`）」、`explanation` 補無可消費的型別表降級分支（新增 `schemaUnconsumableDegradedExplanation`，placeholder `builtinVersion`）（E2）；4.27 `AppShell` 狀態變更提示列與實作註記補降級徽章 `badge-<screen>-degraded-schema` 依降級旗標與返回列同一列常駐渲染（新增 `degradedSchemaBadgeLabel`，placeholder `builtinVersion`／`projectVersion`）（E3）；4.25 狀態變更提示列與狀態矩陣同步策略欄「切換專案重置」補「（下次可見且圖已建立時）」（E5）；§3.6 §1 正常 · 泳道、泳道 · flow 未結構化兩列 `AppText.subtitle` 補文字組成（新增 `swimlanePanelTitle`，placeholder `ucId`／`ucTitle`）（E8）；4.23 slot 契約 `testKey` 列補切換專案按鈕 `action-domain-switch-project`，既有實作 `lib/components/blocked_state.dart`／`test/unit/components/blocked_state_test.dart` 已使用，本票落檔與既有實作一致（E9）。§4.0.6 新增〈1.41 新增〉key 表 3 個 key，皆已 grep `lib/l10n/` 確認無同名既存 key。追修時核對項：4.24 狀態變更提示列「骨架」字樣 3 處經覆核非缺漏（同段落已提及「進度條推進為 determinate 值變化無動畫」涵蓋 Ticket 清單形式），維持現狀不改（`0.1.0-W3-335.55` 連動點 3）。票 A（`0.1.0-W3-335.55`）／票 B（`0.1.0-W3-335.56`）／票 C（本票）合計完成本輪 SPEC-004 6 項全部 |
 | 1.40 | 2026-09-14 | V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`，依 `0.1.0-W3-335.47` WRAP 裁決 D2／D6／D8／D9／D13／D14，對應 SPEC-003 v1.33、SPEC-001 v1.13）：§3.6 對照表 §2 尚未選定 UC 顯示欄限定措辭「步驟表屬正常態、UC 基本資訊屬 flow 未結構化態」（D9）；§4 含損壞列末欄補錨點 `badge-tickets-corrupted-<ticketId>`（D2）；§1 正常 · 泳道列 `BadgeRow.legend` 補圖例內容，沿用既有 key `laneNodeActive`／`laneNodeInactive`（不新增 key，D6）；4.6 `IssueMarker` 變體表 `damagedDetail`、slot 契約 `testKey` 補列末錨點（D2）；4.16 `SwimlaneNode` 變體表何時選用改依 `traverses` 含選中 domain 判定、狀態矩陣來源欄「isActive 隨選中 domain 改變」（D6）；4.27 `AppShell` 狀態矩陣 overlayOpen 顯示欄、4.42 `SwitcherOverlay` 回饋契約按下確認列與等待結果列，「背景導覽項不可點」改「點擊背景任一處被吸收：浮層收合、不切頁」（同 SPEC-003 §3.4 F7，D13）；4.38 `SwimlaneGrid` 狀態矩陣 default 進入條件補 `state-domain-swimlane-uc-unset` 零節點分支（D8）、來源欄寫明 `isActive` 判定依據（D6）；4.42 `SwitcherOverlay` 狀態矩陣 noRecent 列可用操作與退出路徑補「點外部」（D14）。票 A（`0.1.0-W3-335.48`）／票 B（`0.1.0-W3-335.49`）／票 C（本票）合計完成 SPEC-004 14 項全部 |
