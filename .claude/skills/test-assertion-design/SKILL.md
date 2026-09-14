@@ -2,7 +2,7 @@
 name: test-assertion-design
 description: "Assertion design judgment framework for flaky and design-quality issues. Use when writing tests, reviewing assertions, diagnosing flaky tests, or deciding if a timing/float/cache assertion is appropriate. Do NOT use for API syntax or refactoring."
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # Test Assertion Design
@@ -18,6 +18,8 @@ metadata:
 | 確定性 | 同一程式碼在任何執行環境下，pass/fail 結果一致？ | 類型 1–6（確定性失效） |
 | 聚焦性 | 此測試案例只驗證一個行為面向？ | 類型 8–9（設計問題） |
 | 隔離性 | 此測試不依賴其他測試建立的狀態或執行順序？ | 類型 7（隔離違反） |
+
+確定性問題細分兩種處置：類型 1–4 屬環境依賴 flaky 族，處置為隔離執行環境或改用差值；類型 5、6 雖同樣呈現確定性症狀，但依〈判斷軸〉歸屬斷言設計族，處置依個別設計原則（等待最終狀態／固定可控隨機源），不套用類型 1–4 的環境隔離做法。
 
 ## 確定性斷言的基礎形態（無問題，作為對比基線）
 
@@ -39,7 +41,7 @@ metadata:
 - **環境依賴 flaky 族**（類型 1–4）：斷言結果受執行環境影響，核心問題是「確定性」
 - **斷言設計族**（類型 5–9）：斷言內容設計不當，核心問題是「驗什麼」
 
-此分族與斷言品質三問為不同視角：三問是快速分流入口（任一否即識別問題族群）；分族是依問題本質歸類（幫助理解根因、選擇對應設計原則）。
+此分族與斷言品質三問為不同視角且邊界不完全重疊：三問是初篩症狀分流（任一問答否即先歸入對應症狀組，類型 5、6 會先被「確定性」問題篩出）；分族才是依問題本質與處置方式的最終歸類（類型 5、6 因處置屬「驗什麼」而非「環境隔離」，最終歸斷言設計族）。讀者判斷處置時以分族為準。
 
 ### 問題類型表
 
@@ -66,7 +68,7 @@ metadata:
 | 精度數字規定（numDigits <= 2）、目錄結構規定（tests/perf/） | 專案 rules 層 |
 | 效能測試 SLA 門檻設定 | 專案決策層 |
 
-專案 rules 層：`.claude/rules/core/test-assertion-design-rules.md`（本專案 Chrome Extension/JS/Jest 專屬規則）
+專案 rules 層：`.claude/rules/core/test-assertion-design-rules.md`（consumer 專案內的具體規則落地，依語言分節：JS/Jest 落地規則、Dart/Flutter 落地規則、跨語言鑑別力規則）
 
 ## 專案類型脈絡（按需讀取）
 
@@ -89,7 +91,7 @@ metadata:
 | `test-assertion-design` skill（本檔） | 斷言內容設計的判斷概念（驗什麼、設計是否合理），跨語言通用 |
 | `tdd` skill | TDD 流程管理（Red/Green/Refactor 階段推進） |
 | `dart-test-async-guardian` skill | 非同步資源清理的生命週期防護（清理洩漏，非斷言設計） |
-| `.claude/rules/core/test-assertion-design-rules.md` | 本專案（Chrome Extension/JS/Jest）專屬規則，含具體精度數字與目錄規定 |
+| `.claude/rules/core/test-assertion-design-rules.md` | consumer 專案內的具體規則落地層，依語言分節（JS/Jest／Dart/Flutter／跨語言），含具體精度數字與目錄規定 |
 
 ---
 
