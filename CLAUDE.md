@@ -135,8 +135,10 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 
 - **UC → Ticket 在上游 16 條語意邊中無對應邊**。追溯視圖（UC-04）承諾的
   四層鏈，第三跳沒有資料來源
-- **Domain 視圖的列與格無來源**：個別 domain 不是圖節點（`DomainBundle`
-  的 carrier 是整份 domain-map.md），`FlowStep` 亦無 `domain` 欄位
+- **Domain 視圖的列無來源**：個別 domain 不是圖節點（`DomainBundle`
+  的 carrier 是整份 domain-map.md）。格的來源已定案（`0.1.0-W3-341`，2026-09-14）：
+  `FlowStep` 新增必填 `domain` 欄位（事件推導類覆蓋率均低於 21%，排除），
+  上游 schema 變更走 framework issue，本專案規格與 UC 文件先依新欄位回填
 - 五項空殼判準：「App 已知範圍」「間接依賴」「破洞分類」「預估耗時」「資源上限」
 - 泳道布局演算法（唯一的差異化元件）
 - 編輯能力與 git 邊層級歷史已定案但未落為提案與規格
