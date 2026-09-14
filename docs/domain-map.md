@@ -67,7 +67,7 @@ domain 的節點：它要回答「這算不算破洞」，而該判斷需要解�
 
 | 詞 | 語意 | 用在哪 |
 |----|------|--------|
-| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」） | Domain 視圖矩陣的格、UC-02、UC-03 |
+| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（L4 畫面狀態層）為 `[]`。計數由 Graph 聚合（§3） | Domain 視圖矩陣的格、UC-02、UC-03 |
 | **穿透**（drill-through） | 使用者在兩個視圖之間**雙向導覽**的操作行為（domain → UC、UC → domain） | PROP-004 §核心場景、`tech-decisions.md` §3.1 |
 | **鄰接查詢** | Graph domain 的公開 API，沿邊取相鄰節點。**簽章待定**——本批未定義它吃什麼、回什麼 | §3 Graph 的公開面 |
 
@@ -165,7 +165,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 | **Workspace** | 資料夾存取方式改變 | 目前路徑、可用性狀態、開啟原始檔 | 路徑持久化、可用性探測 |
 | **Schema** | 上游 schema 格式或版本語意改變 | 型別表（節點／邊定義）、版本相容判定 | JSON 解析、`.claude/VERSION` 讀取 |
 | **Corpus** | 文件格式或解析寬容度改變 | 原始節點與邊、解析錯誤清單 | 掃描策略、YAML 容錯、檔案監看 |
-| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（簽章待定） | 索引結構、遍歷演算法 |
+| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（簽章待定）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
 | **TicketDetail** | ticket 的 5W1H 結構語意改變 | 單張 ticket 全文與生命週期欄位 | 欄位解讀、佔位值處理 |
 | **Layout** | 布局演算法或版型規則改變 | 泳道／矩陣的座標與尺寸 | 排列演算法、碰撞處理 |
 | **Diagnostics** | 「什麼算破洞」的定義改變 | 破洞清單（分類、嚴重度、跳轉目標） | 各類偵測規則 |
@@ -392,15 +392,17 @@ frontmatter 解析語意——見下方「解析器語意是規格的一部分�
 - `Diagnostics` 的破洞類別權威清單見 `EVT-DIAGNOSTICS-001`（本檔不複述計數），
   各類別下的具體項目與嚴重度尚未列舉。UC-06 的驗收條件依賴此清單
 - 泳道布局演算法的具體形態（排序、泳道指派、邊繞線）尚未設計
-- 矩陣的列（domain 清單）與格（step → domain）皆無資料來源：上游 schema 中
-  `DomainBundle` 的 carrier 是整份 domain-map.md，個別 domain 不是圖節點；
-  `FLOWSTEP_REQUIRED_FIELDS` 亦無 `domain` 欄位
+- 矩陣的**格**（step → domain）來源已定案（2026-09-14 用戶裁決，0.1.0-W3-346／
+  0.1.0-W3-347）：FlowStep 的 `traverses` 欄位（語意見 §2.5），貫穿數由 Graph
+  聚合（§3）。矩陣的**列**（domain 清單）仍無資料來源：上游 schema 中
+  `DomainBundle` 的 carrier 是整份 domain-map.md，個別 domain 不是圖節點
 - UC → Ticket 在上游 16 條語意邊中無對應邊。追溯視圖（UC-04）第四層的
   資料來源未定
-- **「路徑模式 → domain」對照表不存在。** PROP-004 的「以 ticket 切入」
-  模式要求用 `where.files` 反查 domain，並指名對照本檔推導；但本檔全篇
-  以「唯一變更理由」定義 domain，未標註任何 domain 涵蓋哪些路徑。
-  該表建立前，UC-02 的「無法定位」判定與矩陣的 ticket 高亮皆不可實作
+- **「路徑模式 → domain」對照表：歸屬已定、內容未建。** PROP-004 的「以 ticket
+  切入」模式要求用 `where.files` 反查 domain。歸屬已定案（2026-09-14，
+  0.1.0-W3-347）：由 Graph 持有與查詢（§3）。表內容待 lib 分層命名定案後填入，
+  承接票 0.1.0-W3-352（blockedBy 0.1.0-W3-351）。表內容建立前，UC-02 的
+  「無法定位」判定與矩陣的 ticket 高亮仍不可實作
 - **檔案級 carrier 的破洞判定**：§7 的判準寫成「所在目錄是否為某節點型別的
   carrier」，但 `DomainBundle` 的 carrier 是整份 `domain-map.md`
   這**一個檔案**，非目錄。碰到檔案級 carrier 時該判準無法套用
