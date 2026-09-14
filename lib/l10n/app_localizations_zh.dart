@@ -194,6 +194,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gotoGapsReportAction => '前往破洞報告';
 
   @override
+  String get gotoDomainAction => '前往 Domain 視圖';
+
+  @override
+  String get projectUnreadyMessage => '尚未進入 Domain 視圖';
+
+  @override
   String get openSourceFileAction => '開啟原始檔';
 
   @override
@@ -441,6 +447,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gapCategoryMissingFrontmatter => '缺少 Frontmatter';
 
   @override
+  String get gapCategoryOrphanEvent => '孤立事件';
+
+  @override
+  String get gapCategoryEventDeclarationMismatch => '事件宣告與 flow 不符';
+
+  @override
   String gapItemLineLabel(int lineNumber) {
     return '第 $lineNumber 行';
   }
@@ -466,4 +478,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get viewGapsAction => '檢視';
+
+  @override
+  String get projectUnreadyReasonNotSelected => '尚未選擇專案';
+
+  @override
+  String get projectUnreadyReasonLoading => '圖譜載入中';
+
+  @override
+  String get projectUnreadyReasonIncompatible => '此專案不適用本 App';
+
+  @override
+  String get gotoDomainViewAction => '前往 Domain 視圖';
+
+  @override
+  String get gotoTicketsListAction => '前往 Ticket 清單';
 }

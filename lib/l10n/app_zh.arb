@@ -314,6 +314,16 @@
     "description": "SPEC-003 §3.1／§3.2／§3.3／§3.4：各畫面前往破洞報告的前進動作文案"
   },
 
+  "gotoDomainAction": "前往 Domain 視圖",
+  "@gotoDomainAction": {
+    "description": "SPEC-003 §3.2～§3.6：五個非 Domain 畫面「專案未就緒」狀態的 action-<screen>-goto-domain 前進動作文案（SPEC-001 §5 之後共用定義）"
+  },
+
+  "projectUnreadyMessage": "尚未進入 Domain 視圖",
+  "@projectUnreadyMessage": {
+    "description": "SPEC-001 §5 之後共用定義：五個非 Domain 畫面「專案未就緒」狀態的顯示文案（0.1 未區分尚未選擇專案／載入中／此專案不適用本 App 三個原因，待 Domain 視圖與 workspace 狀態整合後細分）"
+  },
+
   "openSourceFileAction": "開啟原始檔",
   "@openSourceFileAction": {
     "description": "SPEC-003 §3.2 UC Flow／§3.6 節點詳情：action-*-open-source 按鈕文案"
@@ -781,6 +791,16 @@
     "description": "SPEC-001 §5 破洞報告·有破洞狀態：以真實 repo 快照缺 frontmatter 樣本驅動的分節類別名稱"
   },
 
+  "gapCategoryOrphanEvent": "孤立事件",
+  "@gapCategoryOrphanEvent": {
+    "description": "SPEC-001 §5／SPEC-003 §3.5：破洞類別 orphan-event 的分節標籤"
+  },
+
+  "gapCategoryEventDeclarationMismatch": "事件宣告與 flow 不符",
+  "@gapCategoryEventDeclarationMismatch": {
+    "description": "SPEC-001 §5／SPEC-003 §3.5：破洞類別 event-declaration-mismatch 的分節標籤"
+  },
+
   "gapItemLineLabel": "第 {lineNumber} 行",
   "@gapItemLineLabel": {
     "description": "SPEC-001 §5 破洞報告·有破洞狀態：ListRow.item 次文字，破洞所在行號",
@@ -829,5 +849,30 @@
   "viewGapsAction": "檢視",
   "@viewGapsAction": {
     "description": "SPEC-003 §2.2 系統層通知：App 內 SnackBar 的動作按鈕文字"
+  },
+
+  "projectUnreadyReasonNotSelected": "尚未選擇專案",
+  "@projectUnreadyReasonNotSelected": {
+    "description": "SPEC-001「專案未就緒」共用定義：Domain 視圖未選專案時的顯示文案"
+  },
+
+  "projectUnreadyReasonLoading": "圖譜載入中",
+  "@projectUnreadyReasonLoading": {
+    "description": "SPEC-001「專案未就緒」共用定義：Domain 視圖載入中時的顯示文案"
+  },
+
+  "projectUnreadyReasonIncompatible": "此專案不適用本 App",
+  "@projectUnreadyReasonIncompatible": {
+    "description": "SPEC-001「專案未就緒」共用定義：Domain 視圖處於三個阻擋狀態（不是框架專案／無可消費的型別表／schema 不相容）之一時的顯示文案，本畫面不區分三者"
+  },
+
+  "gotoDomainViewAction": "前往 Domain 視圖",
+  "@gotoDomainViewAction": {
+    "description": "SPEC-001「專案未就緒」共用定義：前往 Domain 視圖的動作文案（SPEC-003 §2.9 `action-<screen>-goto-domain`）"
+  },
+
+  "gotoTicketsListAction": "前往 Ticket 清單",
+  "@gotoTicketsListAction": {
+    "description": "SPEC-003 §3.3 追溯視圖：Ticket 清單未載入時的前往動作文案（`0.1.0-W3-335.38` S-28）"
   }
 }

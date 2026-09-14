@@ -54,6 +54,8 @@
   "openedExternallyMessage": "Opened externally",
   "viewSchemaDetailAction": "View Details",
   "gotoGapsReportAction": "Go to Gap Report",
+  "gotoDomainAction": "Go to Domain View",
+  "projectUnreadyMessage": "Domain view not entered yet",
   "openSourceFileAction": "Open Source File",
   "sourceFileNotFoundSnackbarMessage": "File not found",
   "externalOpenFailedMessage": "Could not open with the default application",
@@ -124,10 +126,17 @@
   "ticketsVirtualScrollNote": "Virtual scrolling, no pagination",
   "topicSectionSummary": "({count} tasks, top priority={priority})",
   "gapSectionCount": "{count} items",
+  "gapCategoryOrphanEvent": "Orphan Events",
+  "gapCategoryEventDeclarationMismatch": "Event Declaration Mismatch",
   "scanCompleteNotificationTitle": "Gap scan complete",
   "scanCompleteNotificationBody": "{count} gaps detected",
   "scanCompleteNoGapsNotificationBody": "No gaps detected",
   "scanCompleteSnackbarMessage": "Scan complete: {count} gaps detected",
   "scanCompleteNoGapsSnackbarMessage": "Scan complete: no gaps detected",
-  "viewGapsAction": "View"
+  "viewGapsAction": "View",
+  "projectUnreadyReasonNotSelected": "No project selected yet",
+  "projectUnreadyReasonLoading": "Graph loading",
+  "projectUnreadyReasonIncompatible": "This project is not usable with this app",
+  "gotoDomainViewAction": "Go to Domain View",
+  "gotoTicketsListAction": "Go to Ticket List"
 }

@@ -13,6 +13,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
+import '../../app/router.dart';
+import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import 'gap_report_models.dart';
@@ -43,10 +45,34 @@ class GapReportScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(gapReportProvider);
     return switch (state) {
+      GapReportProjectUnready() => const _ProjectUnreadyView(),
       GapReportScanning() => _ScanningView(state: state),
       GapReportNoGaps() => const _NoGapsView(),
       GapReportFound() => _FoundView(state: state),
     };
+  }
+}
+
+/// 專案未就緒：`EmptyState.page`（SPEC-001 §5 共用定義）。
+class _ProjectUnreadyView extends ConsumerWidget {
+  const _ProjectUnreadyView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return EmptyState(
+      variant: EmptyStateVariant.page,
+      message: l10n.projectUnreadyMessage,
+      testKey: const Key('state-gaps-project-unready'),
+      actions: [
+        AppButton(
+          label: l10n.gotoDomainAction,
+          onPressed: () =>
+              navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
+          testKey: const Key('action-gaps-goto-domain'),
+        ),
+      ],
+    );
   }
 }
 
@@ -170,16 +196,31 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
             item: item,
             child: ListRow.item(
               primary: AppText(item.filePath, variant: AppTextVariant.mono),
+              // 有值時附行號，無值時不顯示佔位（SPEC-001 §5、`0.1.0-W3-335.37`
+              // R11）：`ListRow.item` 的 `secondary` 為必填 slot（SPEC-004
+              // §5.14 子件契約），無行號時以空文字滿足契約而不渲染可見內容。
               secondary: AppText(
-                l10n.gapItemLineLabel(item.lineNumber),
+                item.lineNumber != null
+                    ? l10n.gapItemLineLabel(item.lineNumber!)
+                    : '',
                 variant: AppTextVariant.caption,
                 secondary: true,
               ),
-              trailing: AppIcon(
-                icon: Icons.open_in_new,
-                size: IconSize.sm,
-                semanticLabel: l10n.openExternallyA11yLabel,
-              ),
+              trailing: item.hasSecondaryOpenSource
+                  ? GestureDetector(
+                      key: Key('action-gaps-open-source-${item.id}'),
+                      onTap: () => _openExternally(context, item),
+                      child: AppIcon(
+                        icon: Icons.open_in_new,
+                        size: IconSize.sm,
+                        semanticLabel: l10n.openExternallyA11yLabel,
+                      ),
+                    )
+                  : AppIcon(
+                      icon: Icons.open_in_new,
+                      size: IconSize.sm,
+                      semanticLabel: l10n.openExternallyA11yLabel,
+                    ),
               onTap: () => _openItem(context, item),
               testKey: Key('card-gaps-${item.id}'),
             ),
@@ -188,11 +229,39 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
     );
   }
 
-  /// 破洞項（SPEC-003 §3.5）：三種結局各有一則對應的回饋，缺任一則即為
+  /// 破洞項主操作（SPEC-001 §5〈破洞項的主操作與次要操作〉；SPEC-003 §3.5）：
+  /// 依 [GapReportItem.pointerType] 分派四條路徑——指向 ticket／其他圖節點
+  /// ／事件類分別 jump 至對應畫面，無指向者開啟原始檔（既有行為）。
+  Future<void> _openItem(BuildContext context, GapReportItem item) async {
+    switch (item.pointerType) {
+      case GapItemPointerType.ticket:
+        navigateTo(ref.read, AppDestination.tickets, NavIntent.jump);
+        return;
+      case GapItemPointerType.otherNode:
+        navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+        return;
+      case GapItemPointerType.event:
+        final ucId = item.eventUcId;
+        if (ucId != null) {
+          ref.read(selectedUcProvider.notifier).state = ucId;
+          navigateTo(ref.read, AppDestination.ucFlow, NavIntent.jump);
+        } else {
+          // 無任何 UC 引用該 EVT：依「指向其他圖節點」處理
+          // （`0.1.0-W3-335.38` S-31）。
+          navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+        }
+        return;
+      case GapItemPointerType.none:
+        await _openExternally(context, item);
+    }
+  }
+
+  /// 開啟原始檔（SPEC-003 §3.5）：三種結局各有一則對應的回饋，缺任一則即為
   /// 靜默失敗或假成功（ARCH-GPD-001）——檔案不存在提示找不到檔案並帶重新
   /// 掃描動作；開啟成功提示已開啟；開啟失敗提示無法以系統預設方式開啟。
-  /// 停留時間由 [AppSnackBar.show] 承載，本函式不重複時限決策。
-  Future<void> _openItem(BuildContext context, GapReportItem item) async {
+  /// 停留時間由 [AppSnackBar.show] 承載，本函式不重複時限決策。無指向節點
+  /// 的破洞項由主操作直接呼叫本函式；有指向節點者由次要操作呼叫。
+  Future<void> _openExternally(BuildContext context, GapReportItem item) async {
     final l10n = AppLocalizations.of(context);
     final exists = File(item.filePath).existsSync();
     if (!exists) {
@@ -286,10 +355,14 @@ class _LocatableGapItemState extends ConsumerState<_LocatableGapItem> {
   }
 }
 
-/// 類別識別碼 → 語系化標籤。0.1 只有一個真實類別（缺 frontmatter），
-/// 保留 switch 形式供後續類別擴充時集中查表。
+/// 類別識別碼 → 語系化標籤。0.1 只以真實資料驅動「缺 frontmatter」一類，
+/// 「孤立事件」「事件宣告與 flow 不符」兩個破洞類別
+/// （SPEC-001 §5、SPEC-003 §3.5）依賴 CLAUDE.md §6 待決的「破洞分類」，
+/// 尚無資料來源產生對應項；標籤先行補齊供未來資料接線時直接使用。
 String _categoryLabel(AppLocalizations l10n, String categoryId) =>
     switch (categoryId) {
       'missing-frontmatter' => l10n.gapCategoryMissingFrontmatter,
+      'orphan-event' => l10n.gapCategoryOrphanEvent,
+      'event-declaration-mismatch' => l10n.gapCategoryEventDeclarationMismatch,
       _ => categoryId,
     };

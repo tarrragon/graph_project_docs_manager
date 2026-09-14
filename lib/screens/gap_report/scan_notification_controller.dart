@@ -94,10 +94,7 @@ class ScanNotificationController {
     }
   }
 
-  void _onGapReportStateChange(
-    GapReportState? previous,
-    GapReportState next,
-  ) {
+  void _onGapReportStateChange(GapReportState? previous, GapReportState next) {
     // 新一輪掃描開始：舊結果待汰換，撤回尚未被點擊的系統通知
     // （SPEC-003 §2.2「不重複發送」列「新一輪掃描開始」）。
     if (next is GapReportScanning && _pendingWithdrawableState != null) {
@@ -122,10 +119,7 @@ class ScanNotificationController {
     }
   }
 
-  void _onLifecycleChange(
-    AppLifecycleState? previous,
-    AppLifecycleState next,
-  ) {
+  void _onLifecycleChange(AppLifecycleState? previous, AppLifecycleState next) {
     if (next != AppLifecycleState.resumed) return;
     final pending = _pendingDeniedNotification;
     if (pending == null) return;
@@ -142,6 +136,7 @@ class ScanNotificationController {
     ),
     GapReportNoGaps() => 0,
     GapReportScanning() => 0,
+    GapReportProjectUnready() => 0,
   };
 
   bool _isVisibleForeground() {

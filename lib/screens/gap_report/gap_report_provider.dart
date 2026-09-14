@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/graph_status.dart';
 import '../../app/router.dart';
 import '../../tokens/motion.dart';
 import 'gap_report_models.dart';
@@ -71,6 +72,13 @@ class GapReportNotifier extends Notifier<GapReportState> {
 
   @override
   GapReportState build() {
+    // SPEC-003 §3.5〈生命週期〉「首次可見但圖未建立」：不自動掃描，渲染
+    // 共用「專案未就緒」定義；watch 使圖建立完成時 build() 重跑，依「首次
+    // 可見且圖已建立」列重新判定（SPEC-001 §5 共用定義，`0.1.0-W3-335.37`
+    // R9）。
+    if (!ref.watch(graphBuiltProvider)) {
+      return const GapReportProjectUnready();
+    }
     _scheduleScan();
     return const GapReportScanning();
   }
@@ -141,7 +149,6 @@ class GapReportNotifier extends Notifier<GapReportState> {
 }
 
 /// 破洞報告畫面狀態 provider。
-final gapReportProvider =
-    NotifierProvider<GapReportNotifier, GapReportState>(
+final gapReportProvider = NotifierProvider<GapReportNotifier, GapReportState>(
   GapReportNotifier.new,
 );
