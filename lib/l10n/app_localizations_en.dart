@@ -79,7 +79,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notFrameworkProjectExplanation =>
-      'This app requires a docs/ directory at the project root, organized per framework conventions';
+      'This app needs either .claude/VERSION or the type table (tracking_schema.json) at the project root to determine this project\'s framework version';
 
   @override
   String schemaUnconsumableMessage(String version) {
