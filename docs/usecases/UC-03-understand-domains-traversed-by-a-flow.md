@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-09-14"
-version: "1.1"
+version: "1.2"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -51,7 +51,7 @@ ticket_refs: []
 
 ### 檢視事件流
 
-使用者沿 emits 與 consumes 欄理解 domain 之間傳遞的事實
+使用者沿發送事件欄理解該步驟發出的事件；消費資訊見事件流小表
 
 ## 流程拓撲（結構化 Flow 區塊）
 
@@ -137,5 +137,6 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.2 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` .36 #15）：替代場景〈檢視事件流〉改「沿發送事件欄」，消費資訊改指向事件流小表（步驟表僅有發送事件欄，消費資訊由 SPEC-003 §3.2〈事件流小表〉承載） |
 | 1.1 | 2026-09-14 | 驗收前提改為已定案：步驟 domain 來源為 `FlowStep.traverses`（`0.1.0-W3-345` SR-2） |
 | 1.0 | 2026-08-26 | 初版，`saas-tech-selection` Stage 6 產出 |

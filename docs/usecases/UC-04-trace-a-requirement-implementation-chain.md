@@ -4,8 +4,8 @@ title: "追溯一項需求的實現鏈"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-08-26"
-version: "1.0"
+updated: "2026-09-14"
+version: "1.1"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -35,8 +35,8 @@ ticket_refs: []
 
 ## 主要成功場景
 
-1. **選定提案**
-   - 使用者在追溯視圖選擇一個 PROP
+1. **展開提案**
+   - 使用者在追溯視圖展開一個 PROP
 
 2. **展開下游**
    - 系統以樹狀呈現 PROP → SPEC → UC → Ticket
@@ -53,6 +53,10 @@ ticket_refs: []
 
 使用者自 Ticket 出發，沿 source_ticket 與 implements_requirements 往上追溯至來源提案
 
+**0.1 規格未涵蓋**：前提為各層向上欄位對照表與 UC → Ticket 語意邊尚未建立，
+見 `docs/domain-map.md` §9；UC → Ticket 資料來源定案（`0.1.0-W3-365`）後
+重評本場景是否可規格化
+
 ## 流程拓撲（結構化 Flow 區塊）
 
 > 本 flow 全程不發送也不消費事件——它是純檢視操作。`emits` / `consumes`
@@ -61,7 +65,7 @@ ticket_refs: []
 ```yaml
 flow:
   - id: "select-proposal"
-    name: "選定提案"
+    name: "展開提案"
     next: ["expand-downstream"]
     branch_from: null
     return_to: null
@@ -138,4 +142,5 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.1 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` R8）：主要成功場景步驟 1「選定提案」改「展開提案」，flow 區塊 `select-proposal` 的 `name` 同步；替代場景〈反向追溯〉標「0.1 規格未涵蓋」並補缺的前提，重評條件綁 `0.1.0-W3-365` |
 | 1.0 | 2026-08-26 | 初版，`saas-tech-selection` Stage 6 產出 |
