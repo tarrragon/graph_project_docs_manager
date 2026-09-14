@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
@@ -71,6 +72,33 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
+    });
+
+    testWidgets('點背景導覽項：浮層收合、不切換頁面（0.1.0-W3-335.47 D13）', (
+      tester,
+    ) async {
+      // 用「無最近專案」清單將浮層高度收到最小（僅標題＋按鈕），確保浮層
+      // 不會視覺覆蓋到最後一個導覽項，本測試才能斷言「點在浮層外的導覽
+      // 項」而非「點在浮層自身空白區」。
+      await pumpApp(
+        tester,
+        overrides: [recentProjectsProvider.overrideWithValue(const [])],
+      );
+      final element = tester.element(find.byType(app_shell.AppShell));
+      final container = ProviderScope.containerOf(element);
+      final before = container.read(selectedDestinationProvider);
+
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('nav-item-nodeDetail')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('state-switcher-no-recent')), findsNothing);
+      expect(container.read(selectedDestinationProvider), before);
     });
 
     testWidgets('選擇項目後浮層收合且 currentProjectIndexProvider 改變', (
