@@ -367,7 +367,7 @@ class TestGraphTypeTablesRealFlowStepConformance:
 
     @pytest.fixture(scope="class")
     def flows(self):
-        found_uc_ids = {path.name[: len("UC-00")] for path in UC_PATHS}
+        found_uc_ids = {"-".join(path.name.split("-")[:2]) for path in UC_PATHS}
         missing_uc_ids = REQUIRED_UC_IDS - found_uc_ids
         assert not missing_uc_ids, f"docs/usecases/ 下找不到：{sorted(missing_uc_ids)}"
         return [(path.name, _extract_flow_block(path.read_text(encoding="utf-8"))) for path in UC_PATHS]
