@@ -4,8 +4,8 @@ title: "理解一條 flow 貫穿哪些 domain"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-09-14"
-version: "1.2"
+updated: "2026-09-15"
+version: "1.3"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -15,7 +15,7 @@ extension_status: "not-applicable"
 
 runtime_surface: "yes"
 
-related_specs: [SPEC-001]
+related_specs: [SPEC-001, SPEC-003]
 related_usecases: []
 ticket_refs: []
 ---
@@ -137,6 +137,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.3 | 2026-09-15 | 追修同步稽核裁決議題 P2（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：`related_specs` 補 SPEC-003（內文〈檢視事件流〉引用 SPEC-003 §3.2 而 frontmatter 未列） |
 | 1.2 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` .36 #15）：替代場景〈檢視事件流〉改「沿發送事件欄」，消費資訊改指向事件流小表（步驟表僅有發送事件欄，消費資訊由 SPEC-003 §3.2〈事件流小表〉承載） |
 | 1.1 | 2026-09-14 | 驗收前提改為已定案：步驟 domain 來源為 `FlowStep.traverses`（`0.1.0-W3-345` SR-2） |
 | 1.0 | 2026-08-26 | 初版，`saas-tech-selection` Stage 6 產出 |

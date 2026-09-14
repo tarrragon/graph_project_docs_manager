@@ -4,15 +4,15 @@ title: "Design token 與元件庫：所有顏色、尺寸、元件皆具名"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-27"
-updated: "2026-09-14"
-version: "1.6"
+updated: "2026-09-15"
+version: "1.7"
 owner: star-anise-system-designer
 
 domain: "ui"
 subdomain: null
 
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06]
-related_specs: [SPEC-001, SPEC-004]
+related_specs: [SPEC-001, SPEC-003, SPEC-004]
 implements_requirements: []
 depends_on_domains: [layout]
 ---
@@ -263,3 +263,4 @@ FR-01 檢查範圍。
 | 1.2 | 2026-09-02 | 狀態數依 SPEC-001 v1.4（§1 新增「已選格」疊加態）更正為 31（`0.1.0-W1-048`） |
 | 1.5 | 2026-09-02 | 對比重算發現 `textSecondary`／`textPrimary` 兩組合未達 WCAG AA，裁決方案 C：`textSecondary` 調深、新增 `textDisabled`、`surfaceSegmentTrack` 調淺；新增〈設計約束〉「無障礙對比例外」條款與〈無障礙對比例外（2026-09-02）〉小節 |
 | 1.6 | 2026-09-14 | §元件庫的範圍 的狀態數改為引用 SPEC-001〈狀態總數〉而不寫數字（`0.1.0-W3-335.16`，承 `0.1.0-W3-335.18` SR-1）：SPEC-001 已由 31 增至 34（v1.8／v1.9 新增兩個泳道態與 UC Flow「尚未選定 UC」），本檔 1.1、1.2 兩次逐版同步數字皆隨上游增列而失效，改為引用權威節避免第三次；新增狀態的元件對照在 SPEC-004 §3.6 |
+| 1.7 | 2026-09-15 | 追修同步稽核裁決 UC-P2（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：`related_specs` 補 SPEC-003（內文引用 SPEC-003 而 frontmatter 未列） |
