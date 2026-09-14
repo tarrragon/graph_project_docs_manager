@@ -101,6 +101,53 @@ void main() {
       expectNoOverflow(tester);
     });
 
+    testWidgetsAtEachSize(
+      'overlayOpen 態點擊背景導覽項：吸收收合、不觸發原 onTap（0.1.0-W3-335.47 D13）',
+      (tester, size) async {
+        var navTapped = false;
+        var dismissed = false;
+        await pumpHarness(
+          tester,
+          size: size,
+          child: AppShell(
+            switcherEntry: _buildSwitcherEntry(),
+            navItems: [
+              for (final destination in AppDestination.values)
+                NavItem(
+                  icon: const AppIcon(icon: Icons.circle),
+                  label: destination.name,
+                  isSelected: destination == AppDestination.domain,
+                  onTap: () => navTapped = true,
+                  testKey: Key('nav-item-${destination.name}'),
+                ),
+            ],
+            pages: _buildPages(),
+            overlay: SwitcherOverlay(
+              items: const [],
+              chooseOther: AppButton(
+                label: 'choose other',
+                onPressed: () {},
+                testKey: const Key('action-switcher-choose-other'),
+                variant: AppButtonVariant.text,
+              ),
+              onDismiss: () => dismissed = true,
+              testKey: const ValueKey('switcher-overlay'),
+              scrollKey: const Key('scroll-switcher-overlay-test'),
+            ),
+          ),
+        );
+
+        await tester.tap(
+          find.byKey(Key('nav-item-${AppDestination.tickets.name}')),
+          warnIfMissed: false,
+        );
+        await tester.pump();
+
+        expect(navTapped, isFalse);
+        expect(dismissed, isTrue);
+      },
+    );
+
     testWidgetsAtEachSize('側欄寬等於 LayoutSize.sidebarWidth', (tester, size) async {
       await pumpHarness(
         tester,

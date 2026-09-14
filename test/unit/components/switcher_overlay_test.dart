@@ -243,6 +243,47 @@ void main() {
       expect(dismissed, isTrue);
     });
 
+    testWidgets('noRecent 態點外部呼叫 onDismiss（0.1.0-W3-335.47 D14）', (
+      tester,
+    ) async {
+      var dismissed = false;
+      await pumpHarness(
+        tester,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                key: const ValueKey('outside'),
+                onTap: () {},
+                child: const SizedBox.expand(),
+              ),
+            ),
+            Align(
+              alignment: Alignment.topLeft,
+              child: SwitcherOverlay(
+                items: const [],
+                chooseOther: buildChooseOther(label: '選擇資料夾…'),
+                onDismiss: () => dismissed = true,
+                testKey: noRecentKey,
+                scrollKey: scrollKey,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byKey(noRecentKey));
+      await tester.pump();
+      expect(dismissed, isFalse);
+
+      await tester.tap(
+        find.byKey(const ValueKey('outside')),
+        warnIfMissed: false,
+      );
+      await tester.pump();
+      expect(dismissed, isTrue);
+    });
+
     testWidgets('Tab 序列不含浮層外元件', (tester) async {
       await pumpHarness(
         tester,
