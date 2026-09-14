@@ -3,7 +3,7 @@
 // 涵蓋：
 //   正常      state-traceability-normal      Panel.scrollable[Tree[ListRow.tree]]
 //   鏈路斷裂  state-traceability-broken       同上，缺口列 IssueMarker.gap
-//   無提案    state-traceability-no-proposal  EmptyState.page
+//   無提案    state-traceability-empty       EmptyState.page
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
@@ -80,16 +80,20 @@ void main() {
       );
 
       expect(AnchorFinder.state(Screen.traceability, 'broken'), findsOneWidget);
-      expect(find.byType(IssueMarker), findsOneWidget);
+      expect(find.byType(IssueMarker), findsNWidgets(2));
       expect(
-        find.byKey(const Key('badge-traceability-broken-spec')),
+        find.byKey(const Key('badge-traceability-broken-PROP-005')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('badge-traceability-broken-PROP-006')),
         findsOneWidget,
       );
       expectNoOverflow(tester);
     });
 
     testWidgets(
-        'badge-traceability-broken-<layer> → jump 至破洞報告，returnTo 設為 traceability',
+        'badge-traceability-broken-<nodeId> → jump 至破洞報告，returnTo 設為 traceability',
         (tester) async {
       final container = await pumpHarness(
         tester,
@@ -105,7 +109,30 @@ void main() {
       );
 
       await tester.tap(
-        find.byKey(const Key('badge-traceability-broken-spec')),
+        find.byKey(const Key('badge-traceability-broken-PROP-005')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(container.read(selectedDestinationProvider), AppDestination.gaps);
+      expect(container.read(returnToProvider), AppDestination.traceability);
+    });
+
+    testWidgets('多父節點各自獨立 key，第二個缺口列亦可觸發跳轉', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [
+          traceabilityStateProvider.overrideWith(
+            (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
+          ),
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.traceability,
+          ),
+        ],
+      );
+
+      await tester.tap(
+        find.byKey(const Key('badge-traceability-broken-PROP-006')),
       );
       await tester.pumpAndSettle();
 
@@ -114,7 +141,7 @@ void main() {
     });
   });
 
-  group('無提案態 state-traceability-no-proposal', () {
+  group('無提案態 state-traceability-empty', () {
     testWidgetsAtEachSize('渲染 EmptyState.page', (tester, size) async {
       await pumpHarness(
         tester,
@@ -128,7 +155,7 @@ void main() {
       );
 
       expect(
-        AnchorFinder.state(Screen.traceability, 'no-proposal'),
+        AnchorFinder.state(Screen.traceability, 'empty'),
         findsOneWidget,
       );
       expect(find.byType(EmptyState), findsOneWidget);

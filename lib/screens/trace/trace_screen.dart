@@ -39,7 +39,7 @@ class TraceabilityScreen extends ConsumerWidget {
         ),
       TraceabilityNoProposal() => EmptyState(
           variant: EmptyStateVariant.page,
-          testKey: const Key('state-traceability-no-proposal'),
+          testKey: const Key('state-traceability-empty'),
           message: l10n.emptyProposalMessage,
           actions: [
             AppButton(
@@ -78,7 +78,7 @@ class _TraceTree extends ConsumerWidget {
       navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
     }
 
-    void onTapGap(String gapLayer) {
+    void onTapGap(String nodeId) {
       navigateTo(ref.read, AppDestination.gaps, NavIntent.jump);
     }
 
@@ -114,7 +114,7 @@ TreeNode _buildTreeNode(
   required Set<String> expanded,
   required void Function(String nodeId) onToggle,
   required void Function(String nodeId) onTapNode,
-  required void Function(String gapLayer) onTapGap,
+  required void Function(String nodeId) onTapGap,
 }) {
   final isLeaf = node.children.isEmpty;
   final row = ListRow.tree(
@@ -131,8 +131,8 @@ TreeNode _buildTreeNode(
     ),
     trailing: node.hasGap
         ? IssueMarker.gap(
-            onTap: () => onTapGap(node.gapLayer!),
-            testKey: Key('badge-traceability-broken-${node.gapLayer}'),
+            onTap: () => onTapGap(node.id),
+            testKey: Key('badge-traceability-broken-${node.id}'),
           )
         : Badge.status(label: node.status),
     onTap: () => onTapNode(node.id),

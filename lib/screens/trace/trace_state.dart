@@ -9,8 +9,9 @@ library;
 /// 追溯樹的一個節點（PROP／SPEC／UC 三層之一）。
 ///
 /// [hasGap] 為 `true` 時，[gapLayer] 必填——標示本節點缺少的下游層級
-/// （`'spec'` / `'uc'` / `'ticket'`），對應 `badge-traceability-broken-<layer>`
-/// 錨點（SPEC-003 §3.3）。有 [hasGap] 的節點應視為葉節點（呼叫端不傳
+/// （`'spec'` / `'uc'` / `'ticket'`），本節點的 [id] 對應
+/// `badge-traceability-broken-<nodeId>` 錨點（SPEC-003 §3.3／§4，
+/// `<nodeId>` 為缺下游的父節點，用戶簽核 2026-09-14）。有 [hasGap] 的節點應視為葉節點（呼叫端不傳
 /// [children]），trailing 格顯示 `IssueMarker.gap` 而非 `Badge.status`；
 /// 此不變式僅由 fixture 撰寫者保證，不可 const-evaluable，故未以 assert
 /// 強制。
@@ -43,7 +44,8 @@ class TraceNode {
   final bool hasGap;
 
   /// 缺口所在的下游層級（`'spec'` / `'uc'` / `'ticket'`）；[hasGap] 為
-  /// `true` 時必填，對應 `badge-traceability-broken-<gapLayer>`。
+  /// `true` 時必填。錨點以 [id] 產生（`badge-traceability-broken-<id>`），
+  /// 本欄僅供缺口分類使用。
   final String? gapLayer;
 
   /// 子節點（PROP 的 SPEC、SPEC 的 UC）；[hasGap] 節點恆為空。
