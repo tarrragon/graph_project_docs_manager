@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-14"
-version: "1.39"
+version: "1.40"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -335,7 +335,7 @@ depends_on_domains: [layout]
 | §1 | 載入中 | 骨架版面 + 進度 + 取消 | `LoadingState.skeleton`（版位 `matrix`） |
 | §1 | 正常 · 矩陣 | domain × UC 交叉表 + 右欄格詳情卡區（未選格常駐提示） | `PageColumn`[`SplitRow.header`[`PageTitle`, `SegmentedControl`], `TwoColumnLayout`[`Panel`[`MatrixGrid`, `BadgeRow.legend`], `Panel.scrollable`[`EmptyState.section`（`panel-domain-cell-detail-empty`，訊息 `cellDetailPrompt`，無動作）]]] |
 | §1 | 已選格（疊加於正常 · 矩陣） | 右欄格詳情卡：標題、關係種類、說明、編號步驟、事件標籤、在泳道中檢視、關閉 | 底層同上 + 右欄 `Panel.scrollable`[`SplitRow.header`[`AppText.subtitle`, `AppButton.text`（關閉，`action-domain-cell-clear`）], `AppText.caption`（關係種類）, `AppText.body`（說明，可缺）, `ListRow.numbered` × N（可缺）, `BadgeRow`[`Badge.event` × N]（可缺）, `ButtonRow`[`AppButton.secondary`（在泳道中檢視，`action-domain-cell-goto-swimlane`）]]（`panel-domain-cell-detail`，`scroll-domain-cell-detail`）；`MatrixCell` 呈 `selected` |
-| §1 | 正常 · 泳道 | flow 橫向穿過 domain 泳道 | `Panel`[`AppText.subtitle`, `SwimlaneGrid`, `BadgeRow.legend`] |
+| §1 | 正常 · 泳道 | flow 橫向穿過 domain 泳道 | `Panel`[`AppText.subtitle`, `SwimlaneGrid`, `BadgeRow.legend`[`Badge.legend` × 2：`laneNodeActive` / `laneNodeInactive`，沿用 4.16 既有 key（`0.1.0-W3-335.47` D6）]] |
 | §1 | 泳道 · 尚未選定 UC | domain 泳道列（不含步驟節點）+ 提示需先選定 UC 並指出選定方式；無 UC 標題 | `Panel`[`EmptyState.section`（`state-domain-swimlane-uc-unset` 內，訊息 `swimlaneUcUnsetPrompt`，無動作——SPEC-001 §1 註記：泳道內不提供 UC 選擇入口，提示指向矩陣點格與 UC Flow 視圖）, `SwimlaneGrid`（零個 `SwimlaneNode`，泳道列與列首照常渲染）]；不渲染 `BadgeRow.legend`（無節點可圖例）。提示置於泳道列之上，理由：泳道列數隨 domain 數成長，置下方時提示可能被捲出可見範圍（提案） |
 | §1 | 泳道 · flow 未結構化 | 面板標題為選定 UC + 「此 UC 尚未填寫結構化 flow」；不渲染泳道列 | `Panel`[`AppText.subtitle`（選定 UC）, `EmptyState.section`（訊息 `flowUnstructuredMessage`，與 §2 同一狀態共用 key；動作 `ButtonRow`[`AppButton.secondary` 開啟原始檔 `action-domain-open-source`]）]；切回矩陣由頁首 `SegmentedControl` 承載不另設按鈕 |
 | §1 | 空圖 | 訊息 + 說明 + 開啟 docs（條件）+ 切換專案 | `EmptyState.page`（`ButtonRow`[`AppButton` 開啟 docs（目錄存在時）, `AppButton` 前往破洞報告]） |
@@ -344,7 +344,7 @@ depends_on_domains: [layout]
 | §1 | schema 不相容 | 版本不符說明 + 兩個版本值 + 檢視詳情 | `BlockedState.withDetail`（面板 `Section.static`[`AppText.caption`, `AppText.mono` × 2]） |
 | §2 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-ucFlow-goto-domain`） |
 | §2 | 無 UC | 訊息 + 導覽至破洞報告 | `EmptyState.page` |
-| §2 | 尚未選定 UC | UC 選擇入口 + 「選擇一條 UC 以檢視 flow」提示；不渲染步驟表與 UC 基本資訊 | `TwoColumnLayout`[`Panel`[`EmptyState.section`（訊息 `ucUnsetPrompt`，無動作——前進動作即右欄選擇入口）], 〈UC 選擇入口〉] |
+| §2 | 尚未選定 UC | UC 選擇入口 + 「選擇一條 UC 以檢視 flow」提示；不渲染步驟表（屬正常態）與 UC 基本資訊（屬 flow 未結構化態，`0.1.0-W3-335.47` D9） | `TwoColumnLayout`[`Panel`[`EmptyState.section`（訊息 `ucUnsetPrompt`，無動作——前進動作即右欄選擇入口）], 〈UC 選擇入口〉] |
 | §2 | flow 未結構化 | UC 基本資訊 + 訊息 + 選擇 UC／開啟原始檔／檢視關聯 | `TwoColumnLayout`[`Panel`[`ListRow.meta`, `AppText.title`, `EmptyState.section`（`ButtonRow` 動作：開啟原始檔、檢視關聯；不含返回 Domain 視圖，退出改由選擇 UC、通用返回、導覽列承擔，`0.1.0-W3-335.37` R7）], 〈UC 選擇入口〉] |
 | §2 | 正常 | 垂直步驟表，domain 與事件成欄 + 事件流小表 | `TwoColumnLayout`[`Panel`[`DataTable.plain`（步驟表，`scroll-ucFlow-steps`）[`TableRow.header`, `TableRow.step` × N, `appendix`: `DataTable.plain`（事件流小表，`panel-ucFlow-event-flow`，本 UC 無事件時不渲染；不持有捲動）[`TableRow.header`（事件／發出／消費／標記）, `TableRow.eventFlow` × N]]], 〈UC 選擇入口〉]；事件流小表以步驟表的 `appendix` slot 接在最後一列之下、共用 `scroll-ucFlow-steps`（提案：`Panel.default` 資料視圖恰 1 的組合規則因此不變；兩個獨立捲動區垂直堆疊時，下方表的可見高會被步驟列數擠壓至零）；孤立事件標記見 4.35 `eventFlow` |
 | §3 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-traceability-goto-domain`） |
@@ -357,7 +357,7 @@ depends_on_domains: [layout]
 | §4 | 正常 · 列表 | 密集表格 + 虛擬捲動 + 搜尋／篩選／排序；票列含 blockedBy 欄 | `Panel`[`Toolbar`, `DataTable.virtual`[`TableRow.header`（ID／標題／狀態／優先為 `sortable`，blockedBy 與標記欄為 `static`——SPEC-001 §4 排序列舉不含 blockedBy）, `TableRow.ticket` × N], `SplitRow.footer`]。帶目標跳入（SPEC-003 §3.4〈帶目標跳入〉）清除搜尋與篩選時：`AppSnackBar.withAction`（訊息 `ticketsFiltersClearedSnackbarMessage`、動作 `undoAction`），目標列經 §4.0.10 定位（4.36 承載捲動，4.35 `ticket` 承載高亮） |
 | §4 | 正常 · 主題 | 主題節 + 未歸屬節 | `Panel.scrollable`[`Section.collapsible` × N（含未歸屬）, `AppText.caption`] |
 | §4 | 無 ticket | 訊息 + 導覽至破洞報告 | `EmptyState.page` |
-| §4 | 含損壞（疊加態） | 正常視圖 + 損壞徽章與計數 | 底層正常態 + `Toolbar` 右側 `IssueMarker.damagedDetail`（可點 `badge-tickets-corrupted`，§3.7 第 14 項）+ 各損壞列末欄 `IssueMarker.damagedDetail`（圖示） |
+| §4 | 含損壞（疊加態） | 正常視圖 + 損壞徽章與計數 | 底層正常態 + `Toolbar` 右側 `IssueMarker.damagedDetail`（可點 `badge-tickets-corrupted`，§3.7 第 14 項）+ 各損壞列末欄 `IssueMarker.damagedDetail`（圖示，可點 `badge-tickets-corrupted-<ticketId>`，不觸發開票、不定位破洞項，`0.1.0-W3-335.47` D2） |
 | §5 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-gaps-goto-domain`） |
 | §5 | 掃描中 | 骨架 + 進度 + 取消 | `LoadingState.skeleton`（版位 `sections`） |
 | §5 | 無破洞 | 訊息 + 掃描範圍說明 + 重新掃描 | `EmptyState.page`（說明 slot；無動作）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項，`0.1.0-W3-335.37` R10） |
@@ -570,7 +570,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `legendDirect` / `legendIndirect` / `legendNone` | 直接貫穿 / 間接依賴 / 無關 | Direct / Indirect / None | — | 4.5（legend）、4.15、§1 畫面（W1-048） |
 | `matrixSubtotalA11yLabel` | 小計 {count} | Subtotal {count} | count | 4.37 |
 | `laneA11yLabel` | 泳道 {name} | Lane {name} | name | 4.38 |
-| `laneNodeActive` / `laneNodeInactive` | 作用中 / 非作用中 | Active / Inactive | — | 4.16 |
+| `laneNodeActive` / `laneNodeInactive` | 作用中 / 非作用中 | Active / Inactive | — | 4.16（朗讀）、§1 畫面正常 · 泳道圖例（`BadgeRow.legend`，沿用既有 key 不新增，`0.1.0-W3-335.47` D6） |
 | `stepNumberA11yLabel` | 步驟 {number} | Step {number} | number | 4.17 |
 | `gapMarkerLabel` | 缺口 | Gap | — | 4.6（可見文字） |
 | `damagedEdgeMarkerLabel` / `damagedDetailMarkerLabel` | 邊損壞 / 詳情損壞 | Edge damaged / Detail damaged | — | 4.6（朗讀） |
@@ -1392,7 +1392,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
 | `damagedEdge` | 包住 `child`：虛線框 `AppColors.error`，child 文字色維持 `AppColors.textPrimary`（規格「虛線框／降低不透明度」取虛線框，不引入不透明度值，提案；原提案改 `textSecondary` 於 `0.1.0-W1-060` 撤回：child 底為 `surfaceChip`，4.02:1 未達 AA，損壞語意已由虛線框與朗讀標籤承載） | 點擊 → jump 破洞報告 | 邊損壞（`RelationItem.damaged`） |
-| `damagedDetail` | `AppIcon`（warning 圖示，`AppColors.error`）+ 可選 `Badge.count` + 可選說明 `AppText.caption` | 點擊 → jump 破洞報告（`badge-tickets-corrupted`、`action-nodeDetail-goto-gaps`）；票列末欄的圖示形態亦可點（同結果） | 詳情損壞：工具列右側計數、票列末欄圖示、節點詳情欄位級標示 |
+| `damagedDetail` | `AppIcon`（warning 圖示，`AppColors.error`）+ 可選 `Badge.count` + 可選說明 `AppText.caption` | 點擊 → jump 破洞報告：工具列計數 `badge-tickets-corrupted`；票列末欄圖示 `badge-tickets-corrupted-<ticketId>`（不觸發開票 `card-tickets-<ticketId>`、不定位破洞項，`0.1.0-W3-335.47` D2）；節點詳情欄位級 `action-nodeDetail-goto-gaps` | 詳情損壞：工具列右側計數、票列末欄圖示、節點詳情欄位級標示 |
 | `gap` | 虛線框 `AppColors.error` + 文字 `gapMarkerLabel`（`AppColors.error`） | 點擊 → jump 破洞報告（`badge-traceability-broken-<nodeId>`，`<nodeId>` 為缺下游的父節點；SPEC-003 §3.3，用戶簽核 2026-09-14） | 追溯缺口：每個缺下游的父節點一個，置於該父節點之下的缺口列 trailing（4.39） |
 
 #### 狀態矩陣
@@ -1453,7 +1453,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `count` | `int?`（`damagedDetail`） | 否 | 不適用 |
 | `explanation` | `String?`（`damagedDetail`） | 否 | 呼叫端（`fieldCorruptedMessage`） |
 | `onTap` | `VoidCallback` | 是 | 不適用 |
-| `testKey` | `Key` | 是（`badge-tickets-corrupted` / `badge-traceability-broken-<nodeId>`（父節點 ID）/ 欄位級 `action-nodeDetail-goto-gaps`） | 不適用 |
+| `testKey` | `Key` | 是（`badge-tickets-corrupted` / `badge-tickets-corrupted-<ticketId>`（票列末欄，`0.1.0-W3-335.47` D2）/ `badge-traceability-broken-<nodeId>`（父節點 ID）/ 欄位級 `action-nodeDetail-goto-gaps`） | 不適用 |
 
 #### 使用 design token
 
@@ -2664,14 +2664,14 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `active` | 底 `AppColors.accent`、字 `surfaceBase` | 無 | 屬於選定 UC flow 的步驟 |
-| `inactive` | 底 `AppColors.surfaceChip`、字 `textPrimary` | 無 | 其他步驟 |
+| `active` | 底 `AppColors.accent`、字 `surfaceBase` | 無 | `traverses` 含選中 domain 的步驟（`0.1.0-W3-335.47` D6） |
+| `inactive` | 底 `AppColors.surfaceChip`、字 `textPrimary` | 無 | 其餘步驟（未選 domain 時為全部，`0.1.0-W3-335.47` D6） |
 
 #### 狀態矩陣
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 依變體 | 無（不可點、不可拖，SPEC-003 §1.3） | 建構 | 不適用：純顯示元件（active / inactive 為變體非狀態） | —（建構即渲染；`label` / `isActive` 由 `SwimlaneGrid`（資料視圖容器，§2 容器例外）傳值，`isActive` 隨選定 UC 改變時由容器重建本元件，元件不 watch 任何 provider，§2） | 本地即時 |
+| default | 依變體 | 無（不可點、不可拖，SPEC-003 §1.3） | 建構 | 不適用：純顯示元件（active / inactive 為變體非狀態） | —（建構即渲染；`label` / `isActive` 由 `SwimlaneGrid`（資料視圖容器，§2 容器例外）傳值，`isActive` 隨選中 domain 改變時由容器重建本元件（`0.1.0-W3-335.47` D6），元件不 watch 任何 provider，§2） | 本地即時 |
 
 #### 回饋契約
 
@@ -4019,7 +4019,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
 | default | 三格 + 當前可見頁 | 導覽、專案切換入口、內容區 | App 啟動（落地 `nav-page-domain`，SPEC-003 §2.8） | 開啟浮層 → overlayOpen | 資料態：`switcherOpenProvider`（`StateProvider<bool>`，`lib/screens/project_switcher/project_switcher_providers.dart`）為 `false`；當前可見頁為 `selectedDestinationProvider`、返回列存在與否為 `returnToProvider`（皆 `lib/app/router.dart`）；本容器為 `ConsumerWidget` 自行 watch（§2 導覽狀態列） | 本地即時（導覽與浮層開合皆為本地 UI 狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
-| overlayOpen | `SwitcherOverlay` 覆蓋於側欄入口下方；背景導覽項不可點、焦點限制於浮層（SPEC-003 §3.7、§2.10） | 浮層內操作、Esc、點外部 | `project-switcher-entry` 或阻擋狀態出口 | 收合 → default | 資料態：`switcherOpenProvider` 為 `true`（同上） | 本地即時 |
+| overlayOpen | `SwitcherOverlay` 覆蓋於側欄入口下方；點擊背景任一處（含導覽項）依 4.42〈按下確認〉「點浮層外部」列被吸收：浮層收合、不切頁（同 SPEC-003 §3.4 F7，`0.1.0-W3-335.47` D13）；焦點限制於浮層（SPEC-003 §3.7、§2.10） | 浮層內操作、Esc、點外部 | `project-switcher-entry` 或阻擋狀態出口 | 收合 → default | 資料態：`switcherOpenProvider` 為 `true`（同上） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由子件（4.7 `NavItem`、4.8 `ProjectSwitcherEntry`、內容區各元件）承載，本容器不另列。
 
@@ -5343,7 +5343,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（已選定一條 UC） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為寫死座標的假資料）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——皆尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格（以畫面名為鍵）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isActive` 向 4.16 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（`state-domain-swimlane`；或 `state-domain-swimlane-uc-unset`，零個節點，`0.1.0-W3-335.47` D8） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為寫死座標的假資料）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——皆尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格（以畫面名為鍵）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isActive`（該步驟 `traverses` 含 `selectedDomainId`，`0.1.0-W3-335.47` D6）向 4.16 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
 
 無互動瞬態：節點不可點、不可焦點（4.16、無障礙子節），本容器可聚焦以承載鍵盤捲動（SPEC-003 §2.10 內容區段含捲動容器），焦點環見回饋契約焦點列。
 
@@ -5865,7 +5865,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
 | expanded（`state-switcher-expanded`） | 標題 + 專案項 + 分隔線 + 選擇其他 | 選專案、選資料夾、Esc、點外部、捲動 | `project-switcher-entry` 或阻擋狀態出口 | 選取 → 收合並重載；Esc / 點外部 → 收合（SPEC-001 §7）；系統通知點擊（視同點外部，見 4.27 locate 列）→ 收合 | 資料態：`switcherOpenProvider`（`StateProvider<bool>`，`lib/screens/project_switcher/project_switcher_providers.dart`）為 `true` 且 `recentProjectsProvider`（`Provider<List<RecentProjectFixture>>`，同檔）非空；`AppShell` watch 後渲染本容器並以 `items` 傳值，本容器不 watch（§2）；清單 offset 為本容器內部 `ScrollController`，收合即釋放（SPEC-003 §3.7 捲動列：收合後不保留） | 本地即時（浮層開合為本地 UI 狀態；專案項的 `enabled` 為探測結果，等確認才顯示，見 4.9；§2 樂觀更新政策：0.1 無樂觀操作） |
-| noRecent（`state-switcher-no-recent`） | 標題 + 選擇其他 | 選資料夾、Esc | 首次使用（無最近專案） | 選取 → 收合並載入；Esc → 收合；系統通知點擊（視同點外部，見 4.27 locate 列）→ 收合 | 資料態：`switcherOpenProvider` 為 `true` 且 `recentProjectsProvider` 為空（同上） | 本地即時 |
+| noRecent（`state-switcher-no-recent`） | 標題 + 選擇其他 | 選資料夾、Esc、點外部（`0.1.0-W3-335.47` D14） | 首次使用（無最近專案） | 選取 → 收合並載入；Esc／點外部 → 收合（`0.1.0-W3-335.47` D14）；系統通知點擊（視同點外部，見 4.27 locate 列）→ 收合 | 資料態：`switcherOpenProvider` 為 `true` 且 `recentProjectsProvider` 為空（同上） | 本地即時 |
 
 收合態不是本容器的狀態（本容器不存在），由 `ProjectSwitcherEntry` 承載。展開／收合的過渡（淡入 + 向下展開及其反向）為本容器自身的出場／退場動畫，由 `AppShell` 渲染或移除本容器時觸發，屬 §2 呼叫端觸發，不構成本容器的第三個狀態。
 
@@ -5881,10 +5881,10 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
 | 可互動提示 affordance | 使用者接近 | 由子件承載：專案項 hover 4.9、選擇其他 hover 4.4 `text`；標題、分隔線、健康徽章無 hover（SPEC-003 §3.7 健康徽章列：非互動元素、不呈按鈕形態）；浮層外部無 hover | 無（Material 內建，經子件） | 無（同 4.9 / 4.4） | §1 子表「可互動提示」列（由 4.9 / 4.4 承載） | 不適用 | 規格撰寫者 |
 | 焦點 focus | 使用者／輔助技術 | 展開時焦點移入浮層首個可聚焦項（專案項或選擇其他）並唸出 `switcherTitle`（`Semantics(scopesRoute: true)`，無障礙子節）；焦點限制於浮層（`FocusScope` + `FocusTraversalGroup`）、Tab 依序項目 × N → 選擇其他、不離開浮層（SPEC-003 §2.10「浮層展開時」列）；收合時焦點回到 `project-switcher-entry`，三條收合路徑皆同——Esc（SPEC-003 §2.10、§3.7 按 Esc 列）、點浮層外部（§3.7 點浮層外部列）、系統通知點擊（視同點外部，見 4.27 locate 列；該路徑下焦點交回入口後再由定位段移入被定位項，最終落點為被定位項）；各停留點焦點環由 4.9 / 4.4 依 §4.0.1 承載 | 無 | 無（SPEC-003 §2.10 只斷言限制與落點，不設時限；提案） | §1 子表「焦點」列（焦點限制與三條收合路徑的焦點歸位由本容器承載；焦點環由子件承載） | expanded / noRecent → Esc／點外部／通知點擊 →（本容器消失，入口回 collapsed，4.8；焦點回入口，通知點擊路徑再移入被定位項） | 反應：UX 審查（SPEC-003 §2.10、§3.7）；通道／狀態邊：規格撰寫者 |
-| 按下確認 press-ack | 使用者 | 專案項經 4.9（pressed + ripple，`onTap` 恰一次）→ 呼叫端先收合浮層再由 Domain 視圖轉入 `state-domain-loading`，兩段不重疊（SPEC-003 §3.7 動畫提示「選取專案後的重載」、§2.8 L2 全部導覽頁重置）；選擇其他經 4.4 `text`（`action-switcher-choose-folder`）→ 開啟系統資料夾選擇器，選定後收合並載入、取消則維持展開（SPEC-003 §3.7）；點浮層外部 → 呼叫 `onDismiss` 恰一次，收合、不改變當前專案、無 pressed 態（barrier 非按鈕；SPEC-003 §3.7 點浮層外部列）；展開期間背景導覽項不可點（SPEC-003 §3.7 生命週期） | Material 內建 ripple（經子件）；收合 `Motion.overlay`（本容器承載） | pressed 態出現於 `Motion.feedback` 內（經子件）；收合於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「按下確認」列（由 4.9 / 4.4 承載；點外部由本容器 barrier 承載） | expanded → pressed（專案項）→ 收合並重載；expanded / noRecent → pressed（選擇其他）→ 收合並載入或維持原狀態；expanded → 點外部 → 收合 | 反應／時限：UX 審查（SPEC-003 §2.2、§2.8、§3.7）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 專案項經 4.9（pressed + ripple，`onTap` 恰一次）→ 呼叫端先收合浮層再由 Domain 視圖轉入 `state-domain-loading`，兩段不重疊（SPEC-003 §3.7 動畫提示「選取專案後的重載」、§2.8 L2 全部導覽頁重置）；選擇其他經 4.4 `text`（`action-switcher-choose-folder`）→ 開啟系統資料夾選擇器，選定後收合並載入、取消則維持展開（SPEC-003 §3.7）；點浮層外部 → 呼叫 `onDismiss` 恰一次，收合、不改變當前專案、無 pressed 態（barrier 非按鈕；SPEC-003 §3.7 點浮層外部列）；展開期間點擊背景任一處（含導覽項）同被吸收：浮層收合、不切頁（同 SPEC-003 §3.4 F7，`0.1.0-W3-335.47` D13；SPEC-003 §3.7 生命週期） | Material 內建 ripple（經子件）；收合 `Motion.overlay`（本容器承載） | pressed 態出現於 `Motion.feedback` 內（經子件）；收合於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「按下確認」列（由 4.9 / 4.4 承載；點外部由本容器 barrier 承載） | expanded → pressed（專案項）→ 收合並重載；expanded / noRecent → pressed（選擇其他）→ 收合並載入或維持原狀態；expanded → 點外部 → 收合 | 反應／時限：UX 審查（SPEC-003 §2.2、§2.8、§3.7）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 不適用（無承載場景）：本容器為覆蓋層，每次展開自頂端、offset 不保留（SPEC-003 §3.7 捲動列），無定位至專案項的場景；目前專案項以 `selected` 態（4.9）標示，非定位；本容器不是被定位目標（§1 子表 locate 列適用場景皆在導覽頁內） | — | — | 不適用（覆蓋層無定位場景） | expanded／noRecent → 消失（通知點擊視同點外部，見 4.27 locate 列） | 規格撰寫者 |
 | 狀態變更提示 state-change | 呼叫端（`AppShell` 為 `ConsumerWidget`，依 `switcherOpenProvider` 渲染／移除本容器，依 `recentProjectsProvider` 傳 `items`；含 Esc、點外部、選取專案、選擇資料夾後的收合） | 展開：淡入 + 自入口向下展開；收合：反向（SPEC-003 §3.7 動畫提示）；`disableAnimations` 下依 §2.1 歸零；展開時焦點移入並唸出標題、收合時焦點回入口（無障礙子節）；expanded ↔ noRecent 不在同一次展開內切換（`items` 於展開時已定）；專案項 `enabled` 隨探測結果更新由 4.9 承載（SPEC-003 §3.7 探測逾時） | `Motion.overlay`（展開與收合，本容器承載） | 浮層出現／收合於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「狀態變更提示」列（`Motion.*` 過渡適用（本容器）；無障礙播報適用（`scopesRoute` 唸出標題）；不升級系統通知） | （不存在）→ expanded / noRecent（入口或阻擋狀態出口）/ expanded / noRecent →（不存在）（Esc、點外部、選取、選定資料夾） | 反應／時限：UX 審查（SPEC-003 §2.1、§3.7）；通道／狀態邊：規格撰寫者 |
-| 等待與結果 | 系統 | 掛載點：第一層（互動元件層）由子件 4.9／4.4 承載；點外部的 barrier dismiss（`onDismiss`）為本容器自身的第一層（無 pressed 態，barrier 非按鈕）——第二層與第三層依觸發動作而定：浮層自身開合的第三層即結果通知本身（收合的狀態轉換）；選取專案後的重載委派 4.24（`state-domain-loading`）；選擇資料夾為系統 UI，無等待指示。服務類型：浮層自身開合為本地即時（依兩軸：使用者感知的等待為零、不可能失敗，清單為本地 fixture／已探測結果，探測逾時期間浮層仍可操作、其餘項不受影響，SPEC-003 §3.7）；選取專案後的重載為長時操作，委派 4.24（見 4.9 條目）；第一層本身不隨後續服務類型變動。成功：浮層出現／收合；選取專案後 4.24 完成載入的目標態；失敗：浮層開合依兩軸判定不可能發生（純本地狀態操作）；選取專案的失敗由 4.24 依長時操作類政策呈現，本容器不重述；逾時：浮層開合同不可能發生；選取專案同由 4.24 承載；服務不可用：浮層開合同不可能發生；選取專案同由 4.24 承載。輸入阻擋範圍：浮層開合不阻擋（本地即時類政策）；展開期間背景導覽項不可點屬焦點限制機制（`FocusScope`），非服務類阻擋（SPEC-003 §3.7 生命週期）。重複觸發防護：浮層開合無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12） | `Motion.overlay`（收合） | 收合於 `Motion.overlay` 內；載入態的等待由 4.24 承載 | §1 子表「等待與結果」列（結果通知＝收合 + 載入態轉換） | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.12、§3.7）；通道：規格撰寫者 |
+| 等待與結果 | 系統 | 掛載點：第一層（互動元件層）由子件 4.9／4.4 承載；點外部的 barrier dismiss（`onDismiss`）為本容器自身的第一層（無 pressed 態，barrier 非按鈕）——第二層與第三層依觸發動作而定：浮層自身開合的第三層即結果通知本身（收合的狀態轉換）；選取專案後的重載委派 4.24（`state-domain-loading`）；選擇資料夾為系統 UI，無等待指示。服務類型：浮層自身開合為本地即時（依兩軸：使用者感知的等待為零、不可能失敗，清單為本地 fixture／已探測結果，探測逾時期間浮層仍可操作、其餘項不受影響，SPEC-003 §3.7）；選取專案後的重載為長時操作，委派 4.24（見 4.9 條目）；第一層本身不隨後續服務類型變動。成功：浮層出現／收合；選取專案後 4.24 完成載入的目標態；失敗：浮層開合依兩軸判定不可能發生（純本地狀態操作）；選取專案的失敗由 4.24 依長時操作類政策呈現，本容器不重述；逾時：浮層開合同不可能發生；選取專案同由 4.24 承載；服務不可用：浮層開合同不可能發生；選取專案同由 4.24 承載。輸入阻擋範圍：浮層開合不阻擋（本地即時類政策）；展開期間點擊背景任一處（含導覽項）被吸收（浮層收合、不切頁，`0.1.0-W3-335.47` D13）屬焦點限制機制（`FocusScope`），非服務類阻擋（SPEC-003 §3.7 生命週期）。重複觸發防護：浮層開合無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12） | `Motion.overlay`（收合） | 收合於 `Motion.overlay` 內；載入態的等待由 4.24 承載 | §1 子表「等待與結果」列（結果通知＝收合 + 載入態轉換） | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.12、§3.7）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -6365,6 +6365,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.40 | 2026-09-14 | V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`，依 `0.1.0-W3-335.47` WRAP 裁決 D2／D6／D8／D9／D13／D14，對應 SPEC-003 v1.33、SPEC-001 v1.13）：§3.6 對照表 §2 尚未選定 UC 顯示欄限定措辭「步驟表屬正常態、UC 基本資訊屬 flow 未結構化態」（D9）；§4 含損壞列末欄補錨點 `badge-tickets-corrupted-<ticketId>`（D2）；§1 正常 · 泳道列 `BadgeRow.legend` 補圖例內容，沿用既有 key `laneNodeActive`／`laneNodeInactive`（不新增 key，D6）；4.6 `IssueMarker` 變體表 `damagedDetail`、slot 契約 `testKey` 補列末錨點（D2）；4.16 `SwimlaneNode` 變體表何時選用改依 `traverses` 含選中 domain 判定、狀態矩陣來源欄「isActive 隨選中 domain 改變」（D6）；4.27 `AppShell` 狀態矩陣 overlayOpen 顯示欄、4.42 `SwitcherOverlay` 回饋契約按下確認列與等待結果列，「背景導覽項不可點」改「點擊背景任一處被吸收：浮層收合、不切頁」（同 SPEC-003 §3.4 F7，D13）；4.38 `SwimlaneGrid` 狀態矩陣 default 進入條件補 `state-domain-swimlane-uc-unset` 零節點分支（D8）、來源欄寫明 `isActive` 判定依據（D6）；4.42 `SwitcherOverlay` 狀態矩陣 noRecent 列可用操作與退出路徑補「點外部」（D14）。票 A（`0.1.0-W3-335.48`）／票 B（`0.1.0-W3-335.49`）／票 C（本票）合計完成 SPEC-004 14 項全部 |
 | 1.39 | 2026-09-14 | V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`，依 `0.1.0-W3-335.47` WRAP 裁決 D3／D4／D5，對應 SPEC-003 v1.32）：§3.1 元件總表 `EmptyState` 列出現畫面補「泳道 · 尚未選定 UC」「泳道 · flow 未結構化」「尚未選定 UC」與 §2–§6 專案未就緒，用途補「`page` 列舉狀態；無破洞與 `section` 例外見 SPEC-003 §2.7」；`BlockedState` 列補「版本值（不是框架專案無）」。4.21 `EmptyState`〈用途〉同步補例外句、〈出現畫面〉同步補齊、變體表 `page` 行為差異與 slot 契約 `actions` 必填列舉補「專案未就緒」、狀態矩陣 default 顯示欄「動作列（`page` 必有）」改「動作列（`page` 依 §2.7 列舉）」。4.23 `BlockedState`〈用途〉補「版本值（不是框架專案無）」。本票範圍外的 §3.6 三列、4.6、4.16、4.27、4.38、4.42 留待 `0.1.0-W3-335.51` |
 | 1.38 | 2026-09-14 | `0.1.0-W3-335.38` 真缺口追修（票 C，對應 SPEC-001 v1.12、SPEC-003 v1.31）15 項（對應 12 改動點）：S-07（4.35 `ticket` 內容政策補解析失敗列：ID 取檔名、其餘欄「—」）；S-24（4.35 `eventFlow` 發出格多個以「、」串接）；S-11／S-13／S-38（4.26 i18n 表與 §4.0.6 新增 `ticketsTargetNotFoundMessage`／`folderPickerUnavailableMessage`／`folderUnavailableMessage`）；S-18／S-22（4.26 `withAction` 用例與動作列移除 `refreshAction`，泳道／UC Flow 開啟原始檔找不到檔案改用 `plain` 不帶動作，`refreshAction` 僅保留為 4.22 自身按鈕標籤）；S-14（4.38 用途補列首可點 `action-domain-select-<domainId>`、焦點列改列首依序為停留點、拖曳不變式補位移閾值判準）；S-15（併入 1.37：§3.6 §1 表下補 `SplitRow.header` 與 `SegmentedControl` 僅渲染五列）；S-16（併入 1.37：4.23 焦點列引用 SPEC-003 §2.10 新列）；S-20（§4.0.10 定位場景表補 (f) 由 UC Flow domain 欄 jump 進入 Domain 視圖，矩陣由 4.37、泳道由 4.38 執行）；S-27（4.39 補展開集合以節點 ID 為鍵，多父節點出現位置共用）；S-28（§3.6 §3 正常／鏈路斷裂列補 Ticket 未載入常駐說明列歸屬，§4.0.6 新增 `traceabilityTicketsNotLoadedHint`／`gotoTicketsAction`）；S-34（4.9 slot 契約增 `isDegraded`、內容政策增降級標籤、§4.0.6 新增 `degradedSchemaShortLabel`、測試點補有／無降級）；S-37（4.9 disabled 列進入條件補探測未完成、§4.0.6 新增 `probingReason`）。S-18／S-22／S-13／S-38 另涉 SPEC-001 §8.2、i18n 提案沿革已於 .37／.38 分析票記錄，本檔僅落 SPEC-004 承接部分 |
 | 1.37 | 2026-09-14 | `0.1.0-W3-335.37` 矛盾裁決追修 SPEC-004 剩餘 7 項（票 C，對應 SPEC-001 v1.12、SPEC-003 v1.31）：R4（4.23 `withDetail` 變體表補兩值有意冗餘註記）；R7（刪除「返回 Domain 視圖」與 `backToDomainAction`：§3.1 總表、§3.6 §2 flow 未結構化列、4.4 變體表與 i18n `label` 列、4.21 i18n 動作列共 5 處）；R10 三處（§3.6 §5 無破洞列改「`EmptyState.page` 無動作 + `SplitRow.header` 重新掃描」；4.21 變體表 `page`／slot 契約 `actions`／測試點改動作必填範圍為 FR-03 列舉狀態與未選專案、未選節點，無破洞為 0；§3.7 出處補記第 18 項補「涵蓋無破洞與有破洞兩狀態」）；R11（4.40 `ListRow.item` 變體表與 slot 契約 `secondary` 補「檔案路徑，來源含行號時附行號」）；附帶（4.23 用途段、元件清單總表、反例表移除「0.1 不渲染以純檔案模式檢視，待 `0.1.0-W1-035`」，改引用 `0.1.0-W1-035` 已定案的 `action-domain-degraded-view`，`plain` 變體補該條件式渲染出口與 `onDegradedView` slot、`useBuiltinSchemaAction` key）；併入 `0.1.0-W3-335.38` S-16（4.23 焦點列「Esc 後焦點落點」由提案改引用 SPEC-003 §2.10 新列）。本版不含 .38 其餘 S 項（票 C 15 項，另於 1.38 落檔） |
