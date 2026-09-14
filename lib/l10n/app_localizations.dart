@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// SPEC-001 §1 Domain 視圖·不是框架專案狀態的補充說明文案（說明本 App 需要什麼）
   ///
   /// In zh, this message translates to:
-  /// **'本 App 需要專案根目錄下含 docs/ 目錄，並依循框架文件慣例組織文件'**
+  /// **'本 App 需要專案根目錄下的 .claude/VERSION 或型別表（tracking_schema.json）其中一項存在，才能判讀此專案的框架版本'**
   String get notFrameworkProjectExplanation;
 
   /// SPEC-001 §1 Domain 視圖·無可消費的型別表狀態的顯示文案
