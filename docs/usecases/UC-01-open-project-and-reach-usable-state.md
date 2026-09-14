@@ -92,7 +92,7 @@ flow:
     return_to: null
     emits: []
     consumes: ["EVT-CORPUS-001"]
-    traverses: []
+    traverses: ["Corpus"]
   - id: "folder-unavailable"
     name: "資料夾不可用"
     next: []

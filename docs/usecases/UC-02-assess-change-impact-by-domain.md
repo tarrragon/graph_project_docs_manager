@@ -4,8 +4,8 @@ title: "依 domain 盤點變更影響面"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-08-26"
-version: "1.0"
+updated: "2026-09-14"
+version: "1.1"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -135,10 +135,12 @@ where.files 無法對應到任何 domain 時標記為無法定位，並列入破
 
 ## 驗收條件
 
-> **前提未滿足，本 UC 的第 1、4 條驗收目前不可實作。** 矩陣的列（domain 清單）
-> 與格（step → domain）皆無資料來源：個別 domain 不是圖節點、`FlowStep` 無
-> `domain` 欄位；「路徑模式 → domain」對照表亦不存在。三項皆列於
-> `docs/domain-map.md` §9。排版本順序時，這些前置必須先綠燈。
+> **前提部分未滿足，本 UC 的第 1、4 條驗收目前不可實作。** 矩陣的格
+> （step → domain）已定案為 `FlowStep.traverses`（`docs/domain-map.md` §2.5，
+> 2026-09-14）。仍未滿足兩項：矩陣的列（domain 清單）無資料來源——個別 domain
+> 不是圖節點；「路徑模式 → domain」對照表歸屬已定（Graph）但內容未建
+> （`0.1.0-W3-352`）。兩項皆列於 `docs/domain-map.md` §9。排版本順序時，
+> 這些前置必須先綠燈。
 
 - [ ] 矩陣的每一格明確區分直接貫穿、間接依賴、無關三種狀態
       （「直接貫穿」與「間接依賴」的判定式皆未定義，見 §9）
@@ -152,4 +154,5 @@ where.files 無法對應到任何 domain 時標記為無法定位，並列入破
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.1 | 2026-09-14 | 驗收前提更新：格的來源已定案為 `FlowStep.traverses`，列的來源與路徑對照表內容仍未滿足（`0.1.0-W3-345` SR-2） |
 | 1.0 | 2026-08-26 | 初版，`saas-tech-selection` Stage 6 產出 |

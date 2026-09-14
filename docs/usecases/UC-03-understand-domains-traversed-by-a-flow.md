@@ -4,8 +4,8 @@ title: "理解一條 flow 貫穿哪些 domain"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-08-26"
-version: "1.0"
+updated: "2026-09-14"
+version: "1.1"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -124,12 +124,12 @@ flow:
 
 ## 驗收條件
 
-> **前提未滿足，本 UC 的第 1、2 條驗收目前不可實作。** 「所屬 domain」不是
-> `FlowStep` 的欄位（`FLOWSTEP_REQUIRED_FIELDS` 無 `domain`），本 UC 自身的
-> flow 區塊亦未帶。該欄的推導方式未定，見 `docs/domain-map.md` §9。
+> **前提已定案（2026-09-14）。** 步驟的 domain 來源為 `FlowStep.traverses`
+> （步驟直接觸及的 domain 清單，0..n，純畫面步驟為空），定義見
+> `docs/domain-map.md` §2.5；本 UC 的 flow 區塊已回填。schema 驗證由
+> `0.1.0-W3-346` 提供。
 
-- [ ] 步驟表的每一列同時呈現步驟名稱、所屬 domain 與發送事件
-      （「所屬 domain」的來源未定，見 §9）
+- [ ] 步驟表的每一列同時呈現步驟名稱、該步驟 `traverses` 所列 domain 與發送事件
 - [ ] 點選 domain 欄可跳轉至 Domain 視圖且定位正確
 - [ ] 無結構化 flow 的 UC 仍可開啟，不顯示錯誤
 
@@ -137,4 +137,5 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.1 | 2026-09-14 | 驗收前提改為已定案：步驟 domain 來源為 `FlowStep.traverses`（`0.1.0-W3-345` SR-2） |
 | 1.0 | 2026-08-26 | 初版，`saas-tech-selection` Stage 6 產出 |
