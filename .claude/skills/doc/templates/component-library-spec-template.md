@@ -240,7 +240,9 @@ related_specs: []              # 應含 design system spec（token 來源）
 #### slot 契約
 
 > 使用者可見文字依方法論〈元件文字歸屬〉三層規則：由呼叫端傳入者走 i18n key；
-> 強語意預設文案得由元件引用 i18n key 且參數可覆蓋；非語意排版字元可內嵌。
+> 強語意預設文案得由元件引用 i18n key，三條件 AND：走 i18n 系統非字面、參數可覆蓋、
+> key 列入元件 API 契約——key 本身由元件持有不開放替換，可覆蓋的是插值參數（無插值參數的
+> 文案即無可覆蓋對象，非「禁止覆蓋」）；非語意排版字元可內嵌。
 >
 > 範例：「強語意」預設文案的判準，見 `examples/component-library-chained-examples.md`
 > 〈slot 契約「文字來源」強語意預設判準〉。
