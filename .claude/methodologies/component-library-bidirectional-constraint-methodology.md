@@ -394,7 +394,7 @@ HTML/CSS 缺乏原生元件邊界，元件化必須由約定補足。本節屬�
 - `.claude/skills/component-contract-design/SKILL.md` - 〈元件契約判準〉的程序層：規格推導 / 畫布拆解 / 程式碼萃取三種起點走到契約齊全
 - `.claude/skills/version-bootstrap/SKILL.md` - 地基波 build 順序的 orchestration 落地端（消費本方法論作為權威來源）
 - `.claude/error-patterns/architecture/ARCH-GPD-001-feedback-coupled-to-service-success-path.md` - 掛載點／失敗路徑覆蓋／降級不解除回饋義務三條款的權威來源與完整案例
-- `.claude/skills/ux-design-evaluation/references/interaction-feedback.md` - 「關鍵回饋文字要有版面保障」，元件層回饋日誌不取代此項行為斷言
+- `.claude/skills/ux-design-evaluation/references/interaction-feedback-component-semantics.md` - 「關鍵回饋文字要有版面保障」，元件層回饋日誌不取代此項行為斷言
 - 各專案 spec 的元件庫章節（L3 實例）
 
 ---

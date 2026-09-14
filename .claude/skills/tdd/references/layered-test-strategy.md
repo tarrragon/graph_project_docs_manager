@@ -233,7 +233,8 @@ monitor 專案非典型 Clean Architecture（monorepo 含多語言 SDK + collect
 ## 相關文件
 
 - `references/phase2-test-design.md` — Phase 2 測試設計指引（通用三層金字塔，本文是五層展開的 refinement）
-- `references/doc-handoff.md` — doc→TDD 銜接（UC 場景的整合/單元分工標準）
+- `references/doc-handoff.md` — doc→TDD 銜接入口
+- `references/doc-handoff-test-tier-assignment.md` — UC 場景的整合／單元分工標準
 - `references/bdd-behavior-testing.md` — BDD 行為測試深度指引（Sociable/Solitary、分層 Mock）
 - `references/protocol-integration-testing.md` — Protocol integration 三層策略（Mock 遮蔽機制）
 - `references/test-object-catalogue.md` — 測試對象目錄（本文件回答「該層怎麼測」，該檔回答「要測哪些對象」；本文件的測試形態判定、驗證形態判定分別對應該檔契約欄位表的兩欄）

@@ -32,7 +32,7 @@ metadata:
 | 結構驗證 | 驗證欄位存在、型別正確、陣列長度 |
 | 資源清理 | 驗證洩漏偵測差值（前後 count 差值 = 0），用差值而非絕對值 |
 
-功能正確性的預期值必須取自 spec 條文或 UC 預期結果，並依 `.claude/skills/tdd/references/test-object-catalogue.md`〈三、契約欄位表〉斷言來源欄的格式記錄出處；預期值取自現有實作執行結果者不屬此類，屬 characterization test，依同檔〈五、三種起點的推導程序〉起點 B 標記，不可與 spec/UC 來源的斷言混記同一類型。
+功能正確性的預期值必須取自 spec 條文或 UC 預期結果，並依 `.claude/skills/tdd/references/test-object-catalogue.md`〈三、契約欄位表〉斷言來源欄的格式記錄出處；預期值取自現有實作執行結果者不屬此類，屬 characterization test，依 `.claude/skills/tdd/references/test-object-catalogue-starting-points.md` 起點 B 標記，不可與 spec/UC 來源的斷言混記同一類型。
 
 ## 9 類型問題斷言分類決策表
 
