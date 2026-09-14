@@ -42,14 +42,24 @@ abstract final class TraceabilityFixtures {
     ),
   ];
 
-  /// 鏈路斷裂態：在正常態的樹之外，另有 PROP-005 的 `outputs.spec_refs`
-  /// 為空清單——真實存在於 `test/fixtures/corpus/monitor/` 的缺口形態。
+  /// 鏈路斷裂態：在正常態的樹之外，另有 PROP-005、PROP-006 的
+  /// `outputs.spec_refs` 皆為空清單——真實存在於
+  /// `test/fixtures/corpus/monitor/` 的缺口形態，兩個各自獨立的缺下游父
+  /// 節點用以驗證 key 以 nodeId 產生時彼此不衝突（本票 acceptance 第一項）。
   static const List<TraceNode> broken = [
     ...normal,
     TraceNode(
       id: 'PROP-005',
       label:
           'PROP-005 JSONL 匯出與備份', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      status: 'draft',
+      hasGap: true,
+      gapLayer: 'spec',
+    ),
+    TraceNode(
+      id: 'PROP-006',
+      label:
+          'PROP-006 容器化部署', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       hasGap: true,
       gapLayer: 'spec',
