@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.4.0 — 補齊 spec/UC 轉測試四處缺引導（審查與走查子票命中，agent 依此推導時被迫猜測或讀出兩種做法）。`references/doc-handoff.md`：新增〈無 UC 步驟的 FR → GWT 種子〉節（FR 前提/觸發條件/宣告結果對映 Given/When/Then 的表格，無觸發條件時標「僅整合測試覆蓋」，同步泛化種子包表格的來源欄以容納 FR 來源）、〈轉換注意事項〉補「替代／例外場景歸屬」條款（歸屬分岔點所在步驟的種子，跨步驟分岔另立獨立種子）、〈新專案起手模式〉新增〈模組群組切法〉節（以 spec `domain` 為單位，超出任務拆分閾值再依架構層切分）。`references/test-object-catalogue.md`：「四、齊全判準」補「多來源取最具體」段（C3 的判斷依據——具體性順序：畫面狀態矩陣列優先於使用案例步驟、使用案例步驟優先於規格功能需求，其餘同義來源括號附註不另立行）。四處原僅有映射方向、範例或「不重複」要求，未定義判斷規則。
+
 **Version**: 2.3.0 — 新增 `references/test-object-catalogue.md`：doc-handoff 回答「規格如何映射為測試輸入」、layered-test-strategy 回答「該層用什麼方法測」，兩者皆假設「要測哪些對象」已定，本檔補上這一步——測試對象單位判定（規格條目，附與元件契約不重複的論證）、來源類別表、契約欄位表（各欄問句與缺失後果）、齊全判準 C1-C4（與既有覆蓋率判準為補充關係）、三種起點（有規格／有測試無契約／有程式碼無測試）推導程序、派發語言句型。doc-handoff 與 layered-test-strategy 各補一句反向路由指向本檔（避免既有資產指向新資產、新資產不指回的單向接線）。SKILL.md 相關資源補一行路由。
 
 **Version**: 2.2.10 — `references/doc-handoff.md` 與 `layered-test-strategy.md` 隨框架 canonical 更新（由另一 consumer 撰寫並經 canonical 傳入）；本專案取回後補號，前一版兩側同號而內容不同，依版號無從察覺
