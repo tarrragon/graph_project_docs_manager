@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-14"
-version: "1.34"
+version: "1.35"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -535,7 +535,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 |------|-----------|-------------|
 | 語意 | 這裡目前沒有東西；含圖尚未建立（專案未就緒）——版本值與切換專案出口由 Domain 視圖的阻擋狀態承載，其他畫面只導向 | 這個專案不適用本 App |
 | 覆蓋狀態 | 全頁（`page`）：未選專案、空圖、專案未就緒（§2–§6）、無 UC、無提案、無 ticket、無破洞、未選節點；區塊（`section`）：未選格右欄、泳道 · 尚未選定 UC、泳道 · flow 未結構化、尚未選定 UC、flow 未結構化 | 不是框架專案、無可消費的型別表、schema 不相容 |
-| 必備動作 | `page`：SPEC-001 FR-03 列舉狀態、未選專案、未選節點、專案未就緒至少一個非「返回」的前進動作；無破洞為 0（重新掃描為頁面級動作，置 `SplitRow.header`，§2.4、`0.1.0-W3-335.37` R10）。`section`：可無（前進動作在區塊外） | 至少一個出口（切換專案），且該出口恆可用 |
+| 必備動作 | `page`：SPEC-001 FR-03 列舉狀態、未選專案、未選節點、專案未就緒至少一個非「返回」的前進動作；無破洞為 0（重新掃描為頁面級動作，置 `SplitRow.header`，§2.4、`0.1.0-W3-335.37` R10）。`section`：可無（前進動作在區塊外） | 至少一個出口（切換專案，錨點 `action-domain-switch-project`；三個阻擋狀態皆有，與 `project-switcher-entry` 同結果），且該出口恆可用 |
 | 動作觸發後 | 內容跳轉（jump，設 `returnTo`）或同畫面轉換（選擇資料夾）（`0.1.0-W3-335.37` R10） | 開啟專案切換浮層，不改變 `IndexedStack` 索引 |
 | 是否顯示版本值 | 否 | 無可消費的型別表、schema 不相容：是（無可消費的型別表：專案 `.claude/VERSION`；schema 不相容：App 支援版本與專案版本兩值；SPEC-001 FR-04／FR-07）；不是框架專案：否（無 `.claude/VERSION` 可讀） |
 
@@ -578,7 +578,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 
 **斷言形式（共用值）**：於 `state-ucFlow-uc-unset` 點 `action-ucFlow-select-uc-<ucId>`
 → 點 `nav-item-domain` → 點 `mode-domain-swimlane` → `state-domain-swimlane` 存在且
-面板標題為該 UC；再經浮層切換專案 → `nav-item-ucFlow` → `state-ucFlow-uc-unset` 存在。
+面板標題文字為 `<UC id> <UC 標題>`；再經浮層切換專案 → `nav-item-ucFlow` →
+`state-ucFlow-uc-unset` 存在。
 
 **斷言形式（狀態保留）**：於 Ticket 清單捲動至 offset X → 點 `nav-item-gaps`
 → 點 `nav-item-tickets` → `scroll-tickets-list` 的 offset 仍為 X。
@@ -1443,7 +1444,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 選定資料夾不可讀或不存在 | 同上 | 於選擇器選定後判定失敗 | 仍為 `state-domain-unset`，不轉狀態、不寫入已存路徑；SnackBar `folderUnavailableMessage`（placeholder `reason`，取 `WorkspaceUnavailable.reason`），停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13、S-38） |
 | 取消載入 | `action-domain-cancel-load` | 點擊 | 依 §2.5，目標態 `state-domain-unset`；已存路徑清除（下次啟動落 `state-domain-unset`），最近專案清單不變（`0.1.0-W3-335.38` S-21） |
 | 切至矩陣 | `mode-domain-matrix` | 點擊 | `state-domain-swimlane`、`state-domain-swimlane-uc-unset` 或 `state-domain-swimlane-unstructured` 消失、`state-domain-matrix` 出現 |
-| 切至泳道 | `mode-domain-swimlane` | 點擊 | `state-domain-matrix` 消失；選定 UC 為空 → `state-domain-swimlane-uc-unset` 出現；非空且該 UC 含 FlowStep → `state-domain-swimlane` 出現；非空且該 UC 無 FlowStep → `state-domain-swimlane-unstructured` 出現（泳道面板標題為選定 UC，不渲染泳道列）；矩陣的捲動 offset 被保留，切回時還原 |
+| 切至泳道 | `mode-domain-swimlane` | 點擊 | `state-domain-matrix` 消失；選定 UC 為空 → `state-domain-swimlane-uc-unset` 出現；非空且該 UC 含 FlowStep → `state-domain-swimlane` 出現；非空且該 UC 無 FlowStep → `state-domain-swimlane-unstructured` 出現（泳道面板標題文字為 `<UC id> <UC 標題>`，不渲染泳道列）；矩陣的捲動 offset 被保留，切回時還原 |
 | 泳道開啟原始檔 | `action-domain-open-source` | 點擊（僅於 `state-domain-swimlane-unstructured` 渲染） | 對選定 UC 的原始檔依 §2.2「外部開啟契約」：`opened` → SnackBar `openedExternallyMessage`，停留 `Motion.snackBar`；`notFound` → SnackBar `sourceFileNotFoundSnackbarMessage`，不帶動作，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-18，取代原 `refreshAction`）；`failed` → SnackBar `externalOpenFailedMessage`，停留 `Motion.snackBar`；三者畫面狀態皆不變（與 §3.2 開啟原始檔三列同一契約） |
 | 矩陣格子（選格） | `cell-domain-<rowId>-<colId>` | 單擊 | `Motion.feedback` 內該格呈選中態、其所在列呈列高亮（選中 domain 同步為該列）；選定 UC 寫入該格所屬 UC（§2.8〈選定 UC〉設定入口 1，換選同）；`panel-domain-cell-detail-empty` 消失、`panel-domain-cell-detail` 出現且其標題文字等於「`<domain 名> × <UC id>`」；`state-domain-matrix` 仍存在（疊加態）；矩陣 offset 不變；`IndexedStack` 索引不變 |
 | 矩陣格子（換選） | 另一個 `cell-domain-*` | 已選格下單擊 | 前一格失去選中態、新格取得；`panel-domain-cell-detail` 內容替換為新格；`scroll-domain-cell-detail` 的 offset 歸零（新格的舊 offset 無意義） |
@@ -1463,6 +1464,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 檢視 schema 詳情 | `action-domain-schema-detail` | 點擊 | `panel-domain-schema-detail` 出現，內容恰為兩列「標籤 + 版本值」（App 支援版本、專案版本），不含其他說明文字或動作——下一步的出口仍只有 `project-switcher-entry`（元件組成見 SPEC-004 §4.23 `BlockedState` 的 `withDetail` 變體）；再次點擊或 Esc 收合 |
 | 導覽至破洞報告 | `action-domain-goto-gaps` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `domain` |
 | 切換專案 | `project-switcher-entry`（既有） | 點擊 | 浮層展開（§3.7） |
+| 阻擋狀態切換專案 | `action-domain-switch-project` | 點擊（僅於三個阻擋狀態渲染） | 浮層展開（§3.7），不改變 `IndexedStack` 索引；結果同 `project-switcher-entry` |
 
 **格詳情卡的內容契約**（`panel-domain-cell-detail`）：
 
@@ -1472,7 +1474,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 關係種類 | 恆在 | 文字等於圖例三值之一（`l10n.legendDirect` / `legendIndirect` / `legendNone`），與該格符號一致 |
 | 說明 | 該格有說明資料時 | 一段文字；無資料時該 slot 不渲染，不留空白列 |
 | 編號步驟 | 該格步驟數 > 0 | 依 flow 順序的編號列；序號從 1 起連續 |
-| 事件標籤 | 該格步驟的 `emits` / `consumes` 聯集非空 | 每個事件一個標籤，前綴 `emits` 或 `consumes` |
+| 事件標籤 | 該格步驟的 `emits` / `consumes` 聯集非空 | 每個（事件, 方向）一個標籤，前綴 `emits` 或 `consumes`；同一事件在該格步驟中兼有發出與消費時渲染兩個標籤，`emits` 在前 |
 | 在泳道中檢視 | 恆在 | `action-domain-cell-goto-swimlane` 存在且 `enabled` 為 `true` |
 | 關閉 | 恆在 | `action-domain-cell-clear` 存在 |
 
@@ -1525,9 +1527,9 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 泳道 · 尚未選定 UC | `mode-domain-matrix` → 矩陣（點格即設定選定 UC）；`nav-item-<d>` → 其他畫面（含 `nav-item-ucFlow` 於 UC Flow 選擇 UC）；`project-switcher-entry` → 浮層 |
 | 泳道 · flow 未結構化 | `mode-domain-matrix` → 矩陣；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層。`action-domain-open-source` 是外部動作，**不改變畫面狀態**，不計為退出路徑（同 §5 對 SPEC-001 §2 flow 未結構化的判讀） |
 | 空圖 | `action-domain-goto-gaps` → `nav-page-gaps`（jump）；`project-switcher-entry` → 浮層 |
-| 不是框架專案 | `project-switcher-entry` → 浮層（唯一出口，恆可用） |
-| 無可消費的型別表 | `project-switcher-entry` → 浮層；`action-domain-degraded-view` → `state-domain-matrix` 或 `state-domain-empty`（同畫面轉換，疊加 `badge-domain-degraded-schema`，SPEC-001 v1.5 §1 註記「降級型別表」）。轉換**不經** `state-domain-loading`：節點重新解析屬幾乎即時帶（圖譜節點檔數量級見 `docs/tech-decisions.md`〈載入策略：依視圖惰性〉，`0.1.0-W3-335.38` S-19）。該動作僅在 `.claude/VERSION` 不高於 App 內建型別表產生版本時渲染；高於時不渲染，退出只剩浮層。降級旗標於切換專案時重置（§2.8）。定案來源 `0.1.0-W1-035` |
-| schema 不相容 | `action-domain-schema-detail` → 同畫面展開；`project-switcher-entry` → 浮層 |
+| 不是框架專案 | `project-switcher-entry` → 浮層；`action-domain-switch-project` → 浮層（兩入口同結果，恆可用） |
+| 無可消費的型別表 | `project-switcher-entry` → 浮層；`action-domain-switch-project` → 浮層；`action-domain-degraded-view` → `state-domain-matrix` 或 `state-domain-empty`（同畫面轉換，疊加 `badge-domain-degraded-schema`，SPEC-001 v1.5 §1 註記「降級型別表」）。轉換**不經** `state-domain-loading`：節點重新解析屬幾乎即時帶（圖譜節點檔數量級見 `docs/tech-decisions.md`〈載入策略：依視圖惰性〉，`0.1.0-W3-335.38` S-19）。該動作僅在 `.claude/VERSION` 不高於 App 內建型別表產生版本時渲染；高於時不渲染，退出只剩浮層。降級旗標於切換專案時重置（§2.8）。定案來源 `0.1.0-W1-035` |
+| schema 不相容 | `action-domain-schema-detail` → 同畫面展開；`project-switcher-entry` → 浮層；`action-domain-switch-project` → 浮層 |
 
 #### 生命週期
 
@@ -1634,7 +1636,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 轉換 | 形式 |
 |------|------|
 | 展開收合 | 子層高度變化 `Motion.transition`；`disableAnimations` 時瞬間展開 |
-| 三個狀態之間 | cross-fade，`Motion.transition` |
+| 正常、鏈路斷裂、無提案之間 | cross-fade，`Motion.transition` |
 | 缺口虛線框 | **靜態**，不做閃爍或呼吸動畫（持續性標記用動畫會成為長駐干擾） |
 
 #### 導航跳轉與退出
@@ -1653,7 +1655,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 首次可見但圖未建立 | 渲染 `state-traceability-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）；不進入下列三態；圖建立完成後依「首次可見」列重新判定 |
 | 首次可見 | 依已建立的圖判定三個狀態之一，無載入態 |
 | 展開集合初始值 | 首次可見與切換專案後：只顯示 PROP 層（全部 PROP 收合）；含缺口的分支自動展開至缺口所在層，使每個 `badge-traceability-broken-<nodeId>` 的全部祖先於首次渲染時皆在展開集合內（結構可見；不要求與 viewport 相交，斷言時先捲動至該列，`0.1.0-W3-335.38` S-29）；不含缺口的分支維持收合（用戶簽核 2026-09-14） |
-| Ticket 清單載入完成後再次可見（`0.1.0-W3-335.38` S-28） | Ticket 層出現，展開集合依上列初始值規則對新增缺口補展開 |
+| Ticket 清單載入完成後再次可見（`0.1.0-W3-335.38` S-28） | Ticket 層出現，展開集合依上列初始值規則對新增缺口補展開；新增缺口使狀態可由 `state-traceability-normal` 轉為 `state-traceability-broken` |
 | 切至其他導覽項 | 樹的展開集合與 offset 保留 |
 | 切換專案 | 展開集合重設為初始值（見上列）、offset 歸零、重新判定狀態 |
 
@@ -1774,7 +1776,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 首次切至主題（`0.1.0-W3-335.38` S-08） | 全部節（含未歸屬）收合；之後展開狀態依 §2.8 保留；切換專案重置為全部收合 |
 | 切至其他導覽項 | 載入繼續（見 §2.8 L1）；搜尋詞、篩選、排序、模式、offset 全部保留；篩選選單展開時點導覽項只收合選單、不切換（F7），故切換發生時選單必為收合態 |
 | 再次可見 | 已載入者直接顯示正常態，不重新解析；0.1 不提供畫面內重新載入，需反映外部修改時經 `project-switcher-entry` 選取目前專案（§3.7，全頁重置，`0.1.0-W3-335.38` S-10） |
-| 切換專案 | 中止載入；重置為 `state-tickets-unloaded`；搜尋詞與篩選清空；全部欄首 `order` 重置為 `none` |
+| 切換專案 | 中止載入；頁面狀態重置為初始，下次可見時依「首次可見但圖未建立」與「首次可見」兩列判定；搜尋詞與篩選清空；全部欄首 `order` 重置為 `none` |
 
 **未載入態不顯示預估耗時。** SPEC-001 §4 顯示欄原含「預估耗時」（v1.7 已回寫移除），預估耗時的
 計算依據屬 CLAUDE.md 現行待決的五項空殼判準之一，尚無定義。依 §2.6 誠實性硬規則，
@@ -1905,7 +1907,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 再次可見 | 有既有結果時**不重新掃描**，顯示既有結果，要重掃須按 `action-gaps-rescan`；無既有結果（上一輪被取消）時自動進入 `state-gaps-scanning`（`0.1.0-W3-335.38` S-30） |
 | 掃描中切至其他導覽項 | 掃描繼續（見 §2.8 L1）；回來時顯示當時進度 |
 | 掃描完成時視窗非前景或已離開本頁 | 依 §2.2「系統層通知」發送（權限 `denied` 時走 App 內 SnackBar fallback）；使用者回到本頁時撤回未點擊的通知 |
-| 切換專案 | 中止掃描；結果清空；下次可見時重新自動掃描；撤回未點擊的系統通知 |
+| 切換專案 | 中止掃描；結果清空；下次可見時依「首次可見但圖未建立」與「首次可見且圖已建立」兩列判定；撤回未點擊的系統通知 |
 
 ### 3.6 節點詳情（`nav-page-nodeDetail`）
 
@@ -1920,7 +1922,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 關聯項 | `card-nodeDetail-relation-<nodeId>` | 點擊 | 主欄內容替換為該節點；`returnTo` **不變**（同一畫面內的節點切換不是跨畫面跳轉） |
 | 主欄捲動 | `scroll-nodeDetail-content` | drag / 捲軸 | 主欄 offset 改變、右欄 offset 不變 |
 | 右欄捲動 | `scroll-nodeDetail-relations` | drag / 捲軸 | 右欄 offset 改變、主欄 offset 不變 |
-| 跳轉破洞報告 | `action-nodeDetail-goto-gaps` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `nodeDetail` |
+| 欄位級損壞標記（`IssueMarker.damagedDetail`，每個損失欄位一個） | `action-nodeDetail-goto-gaps` | 點擊（僅於 `state-nodeDetail-partial` 渲染；同一錨點多實例，斷言以祖先限定 finder，同 §3.3〈多父節點〉） | jump 至 `nav-page-gaps`；`returnTo` 設為 `nodeDetail`。不另設頁首跳轉按鈕 |
 | 重新整理 | `action-nodeDetail-refresh` | 點擊 | 見下方三分支 |
 | 前往 Domain 視圖（專案未就緒） | `action-nodeDetail-goto-domain` | 點擊 | jump 至 `nav-page-domain`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.37` R9，SPEC-001 共用定義） |
 
@@ -1941,7 +1943,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 轉換 | 形式 |
 |------|------|
-| 三個狀態之間 | cross-fade，`Motion.transition` |
+| 未選節點、正常、部分損壞、原始檔已消失之間 | cross-fade，`Motion.transition` |
 | 關聯項點擊造成的主欄內容替換 | cross-fade，`Motion.transition`；主欄 offset 歸零（新節點的舊 offset 無意義），右欄 offset 保留 |
 | 損壞欄位標示 | 靜態，不做閃爍 |
 
@@ -1951,7 +1953,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 |------|----------------|
 | 專案未就緒 | `action-nodeDetail-goto-domain` → `nav-page-domain`（jump）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層 |
 | 正常 | `action-nodeDetail-back` → `returnTo`；`card-nodeDetail-relation-*` → 同畫面替換內容；`nav-item-<d>` → 其他畫面 |
-| 部分損壞 | 同正常，另加 `action-nodeDetail-goto-gaps` → jump |
+| 部分損壞 | 同正常，另加欄位級標記 `action-nodeDetail-goto-gaps` → jump |
 | 原始檔已消失 | `action-nodeDetail-refresh` → 三分支；`action-nodeDetail-back` → `returnTo`；`nav-item-<d>` |
 
 **經導覽列直接進入本畫面且無選定節點時**，SPEC-001 §6「未選節點」（v1.3 新增，
@@ -1971,7 +1973,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 建構 | 隨 `IndexedStack` 建構，內容為空（無選定節點） |
 | 經導覽列進入且圖未建立 | 渲染 `state-nodeDetail-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9；優先於「未選節點」判定，見上方註記）；圖建立完成後依有無選定節點回到「由 jump 進入」或「未選節點」 |
 | 由 jump 進入 | 主欄與右欄依 payload 的 nodeId 渲染 |
-| 切至其他導覽項 | 選定節點、兩欄 offset 保留；`returnTo` 保留 |
+| 切至其他導覽項 | 選定節點、兩欄 offset 保留；`returnTo` 依 §2.3 規則 1 設為 `null`（回到本畫面時 `action-nodeDetail-back` 不渲染） |
 | 切換專案 | 選定節點清除；`returnTo` 設為 `null` |
 
 ### 3.7 專案切換浮層（覆蓋層，非 `AppDestination`）
@@ -2016,7 +2018,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 事件 | 規格 |
 |------|------|
-| 展開時機 | 僅由 `project-switcher-entry` 或阻擋狀態的出口觸發，不自動展開 |
+| 展開時機 | 僅由 `project-switcher-entry` 或阻擋狀態的出口（`action-domain-switch-project`）觸發，不自動展開 |
 | 展開時（`0.1.0-W3-335.38` S-37） | 對每個最近專案項發起可用性探測；探測未完成的項 `enabled` 為 `false`、同列常駐 `probingReason` 文字；各項探測互不阻塞；完成後依結果轉 `enabled` 或維持 `disabled`（附原因） |
 | 展開期間 | 焦點限制於浮層內（§2.10）；點擊背景任一處（含導覽項）依〈互動反應〉「點浮層外部」列被吸收：浮層收合、不切頁（同 §3.4 F7，`0.1.0-W3-335.47` D13） |
 | 收合後 | `scroll-switcher-recent` 的 offset 不保留（下次展開自頂端） |
@@ -2042,9 +2044,9 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 3 | Domain | 正常 · 矩陣 | `state-domain-matrix` | 導覽至其他畫面、切換專案 | rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded` |
 | 4 | Domain | 正常 · 泳道 | `state-domain-swimlane` | 切回矩陣、導覽、切換專案 | 同畫面轉換：`mode-domain-matrix` → `state-domain-matrix`；rail；覆蓋層 |
 | 5 | Domain | 空圖 | `state-domain-empty` | 切換專案、導覽至破洞報告 | 覆蓋層：`project-switcher-entry`；jump：`action-domain-goto-gaps` → `nav-page-gaps`，`returnTo`=domain |
-| 6 | Domain | 不是框架專案 | `state-domain-not-framework` | 切換專案（浮層維持可用） | 覆蓋層：`project-switcher-entry`（`enabled` 恆為 `true`） |
-| 7 | Domain | 無可消費的型別表 | `state-domain-schema-unconsumable` | 切換專案；以 App 內建型別表檢視 → 正常／空圖 | 覆蓋層：`project-switcher-entry`；同畫面轉換：`action-domain-degraded-view` → `state-domain-matrix`／`state-domain-empty` 疊加 `badge-domain-degraded-schema`（§3.1，條件式渲染） |
-| 8 | Domain | schema 不相容 | `state-domain-schema-incompatible` | 切換專案（浮層維持可用） | 覆蓋層：`project-switcher-entry`；同畫面展開：`action-domain-schema-detail` → `panel-domain-schema-detail` |
+| 6 | Domain | 不是框架專案 | `state-domain-not-framework` | 切換專案（浮層維持可用） | 覆蓋層：`project-switcher-entry`（`enabled` 恆為 `true`）；本體按鈕：`action-domain-switch-project` → 浮層（結果同上） |
+| 7 | Domain | 無可消費的型別表 | `state-domain-schema-unconsumable` | 切換專案；以 App 內建型別表檢視 → 正常／空圖 | 覆蓋層：`project-switcher-entry`；本體按鈕：`action-domain-switch-project` → 浮層（結果同上）；同畫面轉換：`action-domain-degraded-view` → `state-domain-matrix`／`state-domain-empty` 疊加 `badge-domain-degraded-schema`（§3.1，條件式渲染） |
+| 8 | Domain | schema 不相容 | `state-domain-schema-incompatible` | 切換專案（浮層維持可用） | 覆蓋層：`project-switcher-entry`；本體按鈕：`action-domain-switch-project` → 浮層（結果同上）；同畫面展開：`action-domain-schema-detail` → `panel-domain-schema-detail` |
 | 9 | UC Flow | 無 UC | `state-ucFlow-empty` | 導覽、切換專案 | jump：`action-ucFlow-goto-gaps` → `nav-page-gaps`；rail；覆蓋層 |
 | 10 | UC Flow | flow 未結構化 | `state-ucFlow-unstructured` | 選擇 UC、導覽、切換專案（`0.1.0-W3-335.37` R7，`action-ucFlow-back-to-domain` 已刪除） | 同畫面轉換：`action-ucFlow-select-uc-<ucId>`；rail；覆蓋層；R2 通用返回 `action-ucFlow-back` → `returnTo`（非 null 時渲染）。`action-ucFlow-open-source` 為外部動作，不計為導航反應 |
 | 11 | UC Flow | 正常 | `state-ucFlow-normal` | 導覽、切換專案 | rail；jump：`card-ucFlow-step-*` → `nav-page-nodeDetail`、`action-ucFlow-goto-domain-*` → `nav-page-domain`；覆蓋層 |
@@ -2061,7 +2063,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 22 | 破洞 | 無破洞 | `state-gaps-none` | 導覽、切換專案 | 同畫面轉換：`action-gaps-rescan` → `state-gaps-scanning`；rail；覆蓋層 |
 | 23 | 破洞 | 有破洞 | `state-gaps-found` | 導覽、切換專案 | 同 #22，另加 jump（`returnTo`=gaps）：`card-gaps-*` 依指向節點型別 → `nav-page-tickets`（§3.4〈帶目標跳入〉）／`nav-page-nodeDetail`／`nav-page-ucFlow`（事件流小表定位）；無指向節點者為外部開啟，不計為導航反應。`action-gaps-open-source-*` 為外部開啟動作，不計為導航反應 |
 | 24 | 節點詳情 | 正常 | `state-nodeDetail-normal` | 返回來源畫面、點關聯跳轉 | 返回：`action-nodeDetail-back` → `returnTo`；同畫面替換：`card-nodeDetail-relation-*`；rail |
-| 25 | 節點詳情 | 部分損壞 | `state-nodeDetail-partial` | 同正常 | 同 #24，另加 jump：`action-nodeDetail-goto-gaps` → `nav-page-gaps` |
+| 25 | 節點詳情 | 部分損壞 | `state-nodeDetail-partial` | 同正常 | 同 #24，另加 jump：欄位級標記 `action-nodeDetail-goto-gaps` → `nav-page-gaps` |
 | 26 | 節點詳情 | 原始檔已消失 | `state-nodeDetail-missing` | 返回、重新整理 | 返回：`action-nodeDetail-back` → `returnTo`；同畫面轉換：`action-nodeDetail-refresh` → 三分支（§3.6） |
 | 27 | 浮層 | 收合 | `state-switcher-collapsed` | 靜止態（SPEC-001 FR-01 唯一例外） | 進入：`project-switcher-entry` → `state-switcher-expanded`。本列不要求退出路徑 |
 | 28 | 浮層 | 展開 | `state-switcher-expanded` | 選取 → 收合並重載；Esc／點外部 → 收合 | 覆蓋層關閉：`card-switcher-recent-*` → 收合 + 全域重置 + `state-domain-loading`；Esc／點外部 → `state-switcher-collapsed` |
@@ -2257,6 +2259,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.35 | 2026-09-14 | V4 第四輪前追修票 B（`0.1.0-W3-335.56`，依 `0.1.0-W3-335.53` WRAP 裁決 E5／E7／E8／E9／E11（§3.3／§3.6 部分）／E12／E13／E15，範圍限 §3–§4 逐畫面）：§3.4、§3.5〈生命週期〉切換專案列改為「頁面狀態重置為初始，下次可見時依『首次可見但圖未建立』與『首次可見（且圖已建立）』兩列判定」，消解與「專案未就緒」共用定義的落點矛盾（E5）；§3.1〈格詳情卡的內容契約〉事件標籤改「每個（事件, 方向）一個標籤，兼有時兩個、`emits` 在前」（E7）；§3.1 切至泳道列與§2.8〈斷言形式（共用值）〉面板標題改「面板標題文字為 `<UC id> <UC 標題>`」（E8）；§3.1〈互動反應〉新增「阻擋狀態切換專案」列（`action-domain-switch-project`）、〈導航跳轉與退出〉三個阻擋狀態列補該錨點且「不是框架專案」列「唯一出口」改「兩入口同結果」、§2.7 必備動作阻擋欄補錨點名、§3.7〈生命週期〉展開時機補錨點、§4 #6–#8 覆蓋層欄補本體按鈕（E9）；§3.3、§3.6〈動畫提示〉「三個狀態之間」改列狀態名（分別為「正常、鏈路斷裂、無提案之間」「未選節點、正常、部分損壞、原始檔已消失之間」，E11 §3.3／§3.6 部分，§2.1 段已由 `0.1.0-W3-335.55` 落檔）；§3.3〈生命週期〉「Ticket 清單載入完成後再次可見」列補新增缺口可使狀態由 `state-traceability-normal` 轉 `state-traceability-broken`（E12）；§3.6〈生命週期〉切至其他導覽項改「`returnTo` 依 §2.3 規則 1 設為 `null`」，與規則 1 通則一致（E13）；§3.6〈互動反應〉「跳轉破洞報告」列元素改為「欄位級損壞標記（`IssueMarker.damagedDetail`）」、觸發改僅 `state-nodeDetail-partial` 渲染且多實例斷言以祖先限定 finder、補「不另設頁首跳轉按鈕」，〈導航跳轉與退出〉部分損壞列與 §4 #25 同步補「欄位級標記」（E15）。同步點逐項 grep 核對記錄於本票 Problem Analysis；`lib/components/blocked_state.dart`／`test/unit/components/blocked_state_test.dart` 已使用 `action-domain-switch-project` 錨點，E9 落檔與既有實作一致。SPEC-001 全部 7 項同批次落檔（同一票）；留待 `0.1.0-W3-335.57` 的連動點見 `0.1.0-W3-335.55` 變更歷史 |
 | 1.34 | 2026-09-14 | V4 第四輪前追修票 A（`0.1.0-W3-335.55`，依 `0.1.0-W3-335.53` WRAP 裁決 E1／E2／E3／E4／E10／E11 §2.1 段，範圍限 §2 通用機制）：§2.1〈減少動態效果〉段後新增「專案未就緒進出的轉場」段（五個非 Domain 畫面 `state-<screen>-project-unready` 與該畫面其他任一狀態之間一律整體 cross-fade，各畫面〈動畫提示〉不逐列列出，E11，§3.3／§3.6 計數詞改列狀態名留待 `0.1.0-W3-335.56`）；§2.4〈渲染位置統一〉段末補降級徽章由頁面框架渲染與斷言（`badge-<screen>-degraded-schema`，旗標生效時 `findsOneWidget`、L2 後 `findsNothing`，E3）；§2.5 C3 條件欄改「按下取消後至目標態錨點出現之前」、可觀察結果改引 §2.6 所列形式（Domain 與破洞為骨架、Ticket 為進度條），〈C3 的斷言方式〉改為「目標態錨點出現前後」兩段式斷言且「載入態骨架根錨點」改「載入態根錨點」（E4）；§2.7 表前導句補「未載入不屬空狀態與阻擋狀態，由載入提示元件承載」、「是否顯示版本值」阻擋欄補兩狀態各自顯示哪個版本值（E2 之 SPEC-003 部分，SPEC-001／SPEC-004 部分留待 `0.1.0-W3-335.56`／`.57`）；§2.11 阻擋狀態列類別名補「說明（可缺）」（E10），阻擋狀態列後新增「載入提示」元件類別列（E1）。同步點逐項 grep 核對記錄於 `0.1.0-W3-335.55` Completion Info；發現 SPEC-004 三處（§1 總表、§3.6 §4、4.34）「開始載入 + 返回」與 4.25 用途段「返回由頁面框架承載」不一致，留待 `0.1.0-W3-335.57`；arb `schemaUnconsumableMessage` 與 `BlockedState.version` slot 是否雙重顯示同值待 `0.1.0-W3-335.56` 判定 |
 | 1.33 | 2026-09-14 | V4 第二輪矛盾追修票 B（`0.1.0-W3-335.49`，依 `0.1.0-W3-335.47` WRAP 裁決 D2／D6／D7／D8／D12／D13／D14）：§1.1 #2 位置欄與 §1.3 首段標明適用狀態（`state-domain-swimlane`、`state-domain-swimlane-uc-unset`；`state-domain-swimlane-unstructured` 不渲染泳道列，D8）；§2.3 首段刪「§5 掃描中的取消返回」列舉、補取消（`action-gaps-cancel-scan`）與通則返回鍵（`action-gaps-back`）並存說明（D12）；§3.1〈互動反應〉「選 domain」列補泳道模式 `active`／`inactive` 判定（D6）、泳道拖曳與泳道捲動兩列觸發欄補渲染狀態（D8）；§3.4〈互動反應〉損壞徽章列後新增「損壞列標記」列（`badge-tickets-corrupted-<ticketId>`，不觸發開票、不定位破洞項）、〈導航跳轉與退出〉含損壞列同步（D2）；§3.5〈互動反應〉取消掃描列補「抵達後 `returnTo` 設為 `null`」（D12）；§3.7〈生命週期〉展開期間列與〈互動反應〉點浮層外部列改為「吸收收合、不切頁」（同 §3.4 F7，D13）、〈導航跳轉與退出〉無最近專案列補「點外部」（D14）；§4 #20 導航反應欄補損壞列標記 jump（D2）、#21 導航反應欄改「中止後前往並清空 `returnTo`；通則返回另計」（D12）、#29 兩欄補「點外部」（D14）；§5 判讀註記〈§5 掃描中「取消 → 返回」〉列補「此返回指取消後落點，非通則返回鍵」（D12）。SPEC-001 v1.13 同批同步；本票範圍外的 UC 3 項已由 `0.1.0-W3-335.50` 完成，SPEC-004 其餘 14 項留待 `0.1.0-W3-335.51` |
 | 1.32 | 2026-09-14 | V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`，依 `0.1.0-W3-335.47` WRAP 裁決 D3／D4／D5／D15／D16）：§2.7「語意」空狀態欄補「含圖尚未建立（專案未就緒）」並註記版本值與切換專案出口由 Domain 視圖阻擋狀態承載；「覆蓋狀態」空狀態欄分 `page`（補未選專案、專案未就緒、未選節點）／`section` 兩層；「必備動作」空狀態欄改依變體與狀態列舉（無破洞為 0），「動作觸發後」例示刪「重新掃描」；「是否顯示版本值」阻擋狀態欄依狀態分「不是框架專案否、其餘兩者是」。§2.11 阻擋狀態列類別名補「版本值（可缺）」。§2.13 判準 T 表 T2 輸入擴為三種形式（(i) `state-*` 錨點變更、(ii) 元件內容值／選取／`enabled` 改變且常駐顯示原因、(iii) 使用者取消動作關閉系統選擇器）；對照表新增 #8–#14（選擇器取消、最近專案項探測完成、與 `0.1.0-W3-335.41` 新增而本表漏列的 5 則 SnackBar：`sourceFileNotFoundSnackbarMessage`〈§3.1／§3.2〉、`folderPickerUnavailableMessage`、`folderUnavailableMessage`、`ticketsTargetNotFoundMessage`、`ticketsFiltersClearedSnackbarMessage`），恢復 FR-16(b) 成立；跨畫面驗證點段補 #1／#10 同 key 依 T4 分流說明。〈T1 判否的三個承接〉(b) 標題改「延後至可見時機」，(b2) 定義補「視窗已在前景時即時顯示於當前可見頁，顯示時刻依 T3、T4 決定載體」；對照表 #5、#6 T1 改「否」、T2 改「—」、判準結論改為「承接 (a) 不可行 → (b2)；顯示時刻 T3 否、T4 是 → `withAction`」，結論值不變。SPEC-004 §3.1 元件總表、4.21、4.23 同步（見該檔變更歷史）；本票範圍外的 SPEC-001 全部 9 項與 SPEC-003 其餘 20 項留待 `0.1.0-W3-335.49`、SPEC-004 其餘 14 項留待 `0.1.0-W3-335.51`、UC 3 項留待 `0.1.0-W3-335.50` |
