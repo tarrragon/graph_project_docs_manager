@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-14"
-version: "1.25"
+version: "1.26"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -21,7 +21,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 
 ## 概述
 
-SPEC-001 界定七個畫面的 31 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
+SPEC-001 界定七個畫面的 33 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
 
 | 類別 | 界定什麼 |
@@ -95,7 +95,7 @@ offset 不變，反之亦然。#1 與 #11 同此禁令：捲動矩陣時格詳�
 | 類別 | 錨點 | 可觀察結果 |
 |------|------|-----------|
 | 六項導覽切換 | `nav-item-<destination>`（既有，`AppDestination.name`） | `nav-page-<destination>` 成為 `IndexedStack` 的可見頁 |
-| Domain 視圖雙模式 | `mode-domain-matrix` / `mode-domain-swimlane` | `state-domain-matrix` 與 `state-domain-swimlane` 互斥存在 |
+| Domain 視圖雙模式 | `mode-domain-matrix` / `mode-domain-swimlane` | `state-domain-matrix` 與泳道模式互斥存在；泳道模式依選定 UC（§2.8〈選定 UC〉）為 `state-domain-swimlane` 或 `state-domain-swimlane-uc-unset`，兩者亦互斥 |
 | Ticket 清單雙模式 | `mode-tickets-list` / `mode-tickets-topic` | `state-tickets-list` 與 `state-tickets-topic` 互斥存在 |
 
 樹狀節點的展開收合、schema 詳情面板的展開收合**不是換頁**——它們不改變
@@ -520,6 +520,29 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 視窗尺寸變更 | 不重置任何狀態、不重新載入；捲動容器以「當前 offset 夾在新的可捲範圍內」處理，不歸零 |
 | 視窗失焦 / 前景切換 | 不觸發任何重新載入（0.1 無檔案監看） |
 | 語系 | 0.1 由啟動參數決定，執行期不切換；本規格不定義執行期語系切換行為 |
+
+#### 選定 UC：App 層共用值（用戶裁示 2026-09-14）
+
+「目前選定的 UC」是 **App 層的單一共用值**（UC 節點 id 或空），不屬於任一畫面的
+頁面狀態。Domain 視圖泳道模式與 UC Flow 視圖讀同一個值，兩處設定入口寫同一個值，
+後寫者覆蓋先寫者。
+
+| 項目 | 規格 |
+|------|------|
+| 初始值 | 空（App 啟動、切換專案之後） |
+| 設定入口 1 | Domain 視圖矩陣點交叉格（`cell-domain-<rowId>-<colId>`，§3.1「矩陣格子（選格）」與「換選」兩列）：寫入該格所屬 UC。「無關」格亦寫入 |
+| 設定入口 2 | UC Flow 視圖選擇 UC（`action-ucFlow-select-uc-<ucId>`，§3.2）：寫入所選 UC |
+| 讀取方 | Domain 視圖泳道模式（值為空 → `state-domain-swimlane-uc-unset`，非空 → `state-domain-swimlane`）；UC Flow 視圖（專案有 UC 節點時，值為空 → `state-ucFlow-uc-unset`，非空 → 依該 UC 是否含 FlowStep 落 `state-ucFlow-normal` 或 `state-ucFlow-unstructured`） |
+| 跨導覽保留 | 切換導覽項不改變此值；兩畫面間往返時，另一畫面讀到的是最後一次寫入的值 |
+| 清除時機 | **僅切換專案**（L2）清除為空。Esc／`action-domain-cell-clear` 清除選中格、點另一列列首清除選中格，皆**不**清除選定 UC——選中格與選定 UC 是兩個值，前者屬 Domain 視圖頁面狀態 |
+
+**不清除的後果與取捨**：選中格清除後，泳道仍呈現先前選定的 UC。這是裁示「切換專案
+清除」的直接結果，也使「在 UC Flow 選定 → 切到 Domain 泳道」這條路徑成立；若清除
+時機擴及選中格，由 UC Flow 寫入的值會被 Domain 視圖一次 Esc 抹掉，兩個入口不再對等。
+
+**斷言形式（共用值）**：於 `state-ucFlow-uc-unset` 點 `action-ucFlow-select-uc-<ucId>`
+→ 點 `nav-item-domain` → 點 `mode-domain-swimlane` → `state-domain-swimlane` 存在且
+面板標題為該 UC；再經浮層切換專案 → `nav-item-ucFlow` → `state-ucFlow-uc-unset` 存在。
 
 **斷言形式（狀態保留）**：於 Ticket 清單捲動至 offset X → 點 `nav-item-gaps`
 → 點 `nav-item-tickets` → `scroll-tickets-list` 的 offset 仍為 X。
@@ -1370,9 +1393,9 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 選擇資料夾 | `action-domain-choose-folder` | 點擊 | 開啟系統資料夾選擇器；選定後 `state-domain-unset` 消失、`state-domain-loading` 出現 |
 | 選擇器被使用者取消 | 同上 | 於選擇器按取消 | 仍為 `state-domain-unset`；不出現 SnackBar、不出現錯誤文字；既有專案（若有）不被清除 |
 | 取消載入 | `action-domain-cancel-load` | 點擊 | 依 §2.5，目標態 `state-domain-unset` |
-| 切至矩陣 | `mode-domain-matrix` | 點擊 | `state-domain-swimlane` 消失、`state-domain-matrix` 出現 |
-| 切至泳道 | `mode-domain-swimlane` | 點擊 | 反向；矩陣的捲動 offset 被保留，切回時還原 |
-| 矩陣格子（選格） | `cell-domain-<rowId>-<colId>` | 單擊 | `Motion.feedback` 內該格呈選中態、其所在列呈列高亮（選中 domain 同步為該列）；`panel-domain-cell-detail-empty` 消失、`panel-domain-cell-detail` 出現且其標題文字等於「`<domain 名> × <UC id>`」；`state-domain-matrix` 仍存在（疊加態）；矩陣 offset 不變；`IndexedStack` 索引不變 |
+| 切至矩陣 | `mode-domain-matrix` | 點擊 | `state-domain-swimlane` 或 `state-domain-swimlane-uc-unset` 消失、`state-domain-matrix` 出現 |
+| 切至泳道 | `mode-domain-swimlane` | 點擊 | `state-domain-matrix` 消失；選定 UC 非空 → `state-domain-swimlane` 出現，為空 → `state-domain-swimlane-uc-unset` 出現；矩陣的捲動 offset 被保留，切回時還原 |
+| 矩陣格子（選格） | `cell-domain-<rowId>-<colId>` | 單擊 | `Motion.feedback` 內該格呈選中態、其所在列呈列高亮（選中 domain 同步為該列）；選定 UC 寫入該格所屬 UC（§2.8〈選定 UC〉設定入口 1，換選同）；`panel-domain-cell-detail-empty` 消失、`panel-domain-cell-detail` 出現且其標題文字等於「`<domain 名> × <UC id>`」；`state-domain-matrix` 仍存在（疊加態）；矩陣 offset 不變；`IndexedStack` 索引不變 |
 | 矩陣格子（換選） | 另一個 `cell-domain-*` | 已選格下單擊 | 前一格失去選中態、新格取得；`panel-domain-cell-detail` 內容替換為新格；`scroll-domain-cell-detail` 的 offset 歸零（新格的舊 offset 無意義） |
 | 矩陣格子（再點同一格） | 同一 `cell-domain-*` | 已選格下單擊 | 無狀態改變（不切換為取消選取——取消由 Esc 承擔，同一元素不得依狀態改變語意） |
 | 矩陣格子（「無關」格） | 關係種類為 `none` 的 `cell-domain-*` | 單擊 | 同「選格」；`panel-domain-cell-detail` 內步驟清單與事件標籤不渲染，說明 slot 為 `l10n.cellDetailNotInvolved` 的值 |
@@ -1448,6 +1471,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 正常 · 矩陣 | `nav-item-<d>` → 其他畫面（rail）；`project-switcher-entry` → 浮層；`cell-domain-*` → 已選格（同畫面疊加） |
 | 已選格（疊加） | Esc / `action-domain-cell-clear` → 正常 · 矩陣（未選格）；另一 `cell-domain-*` → 已選格（換內容）；`action-domain-cell-goto-swimlane` → 正常 · 泳道；其餘繼承正常 · 矩陣 |
 | 正常 · 泳道 | `mode-domain-matrix` → 矩陣；其餘同上 |
+| 泳道 · 尚未選定 UC | `mode-domain-matrix` → 矩陣（點格即設定選定 UC）；`nav-item-<d>` → 其他畫面（含 `nav-item-ucFlow` 於 UC Flow 選擇 UC）；`project-switcher-entry` → 浮層 |
 | 空圖 | `action-domain-goto-gaps` → `nav-page-gaps`（jump）；`project-switcher-entry` → 浮層 |
 | 不是框架專案 | `project-switcher-entry` → 浮層（唯一出口，恆可用） |
 | 無可消費的型別表 | `project-switcher-entry` → 浮層；`action-domain-degraded-view` → `state-domain-matrix` 或 `state-domain-empty`（同畫面轉換，疊加 `badge-domain-degraded-schema`，SPEC-001 v1.5 §1 註記「降級型別表」）。該動作僅在 `.claude/VERSION` 不高於 App 內建型別表產生版本時渲染；高於時不渲染，退出只剩浮層。降級旗標於切換專案時重置（§2.8）。定案來源 `0.1.0-W1-035` |
@@ -1462,7 +1486,8 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 本畫面非惰性 | 它是預設落地頁，啟動即可見，不套用首次可見延遲 |
 | 切至其他導覽項 | 載入繼續；矩陣／泳道的 offset、選中 domain、選中格與 `scroll-domain-cell-detail` 的 offset、當前模式保留 |
 | 矩陣 ↔ 泳道切換 | 選中格保留；由泳道切回矩陣時 `panel-domain-cell-detail` 仍存在且內容不變 |
-| 切換專案 | 中止載入；重置為 `state-domain-loading`（新專案）或 `state-domain-unset`；選中格清除 |
+| 切換專案 | 中止載入；重置為 `state-domain-loading`（新專案）或 `state-domain-unset`；選中格清除；選定 UC 清除（§2.8〈選定 UC〉） |
+| 回到本畫面時選定 UC 已被 UC Flow 改寫 | 泳道模式依新值呈現（`state-domain-swimlane` 標題換為新 UC，或由 `state-domain-swimlane-uc-unset` 轉為 `state-domain-swimlane`）；選中格不隨之改變 |
 | 視窗尺寸變更 | 矩陣以左上角為錨定保留 offset；不重新解析 |
 
 ### 3.2 UC Flow 視圖（`nav-page-ucFlow`）
@@ -1471,6 +1496,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 | 元素 | 錨點 | 觸發 | 可觀察結果 |
 |------|------|------|-----------|
+| 選擇 UC | `action-ucFlow-select-uc-<ucId>` | 點擊（於 `state-ucFlow-uc-unset`、`state-ucFlow-unstructured`、`state-ucFlow-normal` 三態皆渲染） | 選定 UC 寫入 `<ucId>`（§2.8〈選定 UC〉設定入口 2）；該 UC 含 FlowStep → `state-ucFlow-normal` 出現，否則 `state-ucFlow-unstructured` 出現；換選時 `scroll-ucFlow-steps` offset 歸零。選擇入口的元件與排位由 SPEC-004 承接 |
 | 步驟列 | `card-ucFlow-step-<stepId>` | 點擊 | jump 至 `nav-page-nodeDetail`；`returnTo` 設為 `ucFlow` |
 | domain 欄 | `action-ucFlow-goto-domain-<domainId>` | 點擊 | jump 至 `nav-page-domain` 且該 domain 呈選中態；`returnTo` 設為 `ucFlow` |
 | 步驟捲動 | `scroll-ucFlow-steps` | drag / 捲軸 | offset 改變 |
@@ -1485,7 +1511,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 | 轉換 | 形式 |
 |------|------|
-| 無 UC / flow 未結構化 / 正常 三者之間 | cross-fade，`Motion.transition` |
+| 無 UC / 尚未選定 UC / flow 未結構化 / 正常 四者之間 | cross-fade，`Motion.transition` |
 | 步驟表首次渲染 | 不做逐列入場動畫 |
 | SnackBar 進出 | 由 Material 預設，不覆寫 |
 
@@ -1494,6 +1520,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 狀態 | 退出動作 → 目標 |
 |------|----------------|
 | 無 UC | `action-ucFlow-goto-gaps` → `nav-page-gaps`（jump）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層 |
+| 尚未選定 UC | `action-ucFlow-select-uc-<ucId>` → `state-ucFlow-normal` 或 `state-ucFlow-unstructured`（同畫面轉換）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層 |
 | flow 未結構化 | `action-ucFlow-back-to-domain` → `nav-page-domain`。`action-ucFlow-open-source` 是外部動作，**不改變畫面狀態**，不計為退出路徑（見 §5 註記） |
 | 正常 | `nav-item-<d>` → 其他畫面；`card-ucFlow-step-*` / `action-ucFlow-goto-domain-*` → jump；`project-switcher-entry` → 浮層 |
 
@@ -1501,10 +1528,11 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 | 事件 | 規格 |
 |------|------|
-| 首次可見 | 依已建立的圖直接判定三個狀態之一，不另有載入態（SPEC-001 §2 無載入中狀態） |
-| 切至其他導覽項 | `scroll-ucFlow-steps` 的 offset、當前選定的 UC 保留 |
-| 切換專案 | 重置為初始（依新專案的圖判定狀態）；當前選定的 UC 清除 |
-| 圖尚未建立即被選為可見頁 | 顯示 `state-ucFlow-empty` 之外的第四種呈現屬 SPEC-001 未定義範圍；0.1 的假資料一律預先建立圖，此路徑不出現 |
+| 首次可見 | 依已建立的圖與選定 UC 直接判定四個狀態之一，不另有載入態（SPEC-001 §2 無載入中狀態）：無 UC 節點 → `state-ucFlow-empty`；選定 UC 為空 → `state-ucFlow-uc-unset`；否則依該 UC 是否含 FlowStep |
+| 切至其他導覽項 | `scroll-ucFlow-steps` 的 offset 保留；選定 UC 為 App 層共用值，不屬本頁狀態（§2.8〈選定 UC〉） |
+| 回到本畫面時選定 UC 已被 Domain 視圖點格改寫 | 依新值重新判定狀態；值與離開時不同則 `scroll-ucFlow-steps` offset 歸零 |
+| 切換專案 | 重置為初始（依新專案的圖判定狀態）；選定 UC 清除，專案有 UC 節點時落 `state-ucFlow-uc-unset` |
+| 圖尚未建立即被選為可見頁 | 顯示 `state-ucFlow-empty` 之外的其他呈現屬 SPEC-001 未定義範圍；0.1 的假資料一律預先建立圖，此路徑不出現 |
 
 ### 3.3 追溯視圖（`nav-page-traceability`）
 
@@ -1809,7 +1837,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 ---
 
-## 4. SPEC-001 全 31 狀態的導航反應對照
+## 4. SPEC-001 全 33 狀態的導航反應對照
 
 本表逐一列出 SPEC-001 §1–§7 的每一個狀態，**無一遺漏**，並將其退出路徑欄
 對應到本規格定義的導航反應與觸發錨點。此表即 acceptance「每個狀態的退出路徑
@@ -1848,13 +1876,15 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 29 | 浮層 | 無最近專案 | `state-switcher-no-recent` | 選取 → 收合並載入；Esc → 收合 | 覆蓋層關閉：`action-switcher-choose-folder` → 收合 + `state-domain-loading`；Esc → `state-switcher-collapsed` |
 | 30 | 節點詳情 | 未選節點 | `state-nodeDetail-unset` | 前往追溯視圖 | jump：`action-nodeDetail-goto-traceability` → `nav-page-traceability`，`returnTo`=nodeDetail；rail；`action-nodeDetail-back` 不渲染 |
 | 31 | Domain | 已選格（疊加於 #3） | `panel-domain-cell-detail` | 點其他格 → 換內容；Esc → 未選格；在泳道中檢視 → 正常 · 泳道；導覽、切換專案 | 同畫面轉換：Esc / `action-domain-cell-clear` → `panel-domain-cell-detail-empty`；`cell-domain-*` → 內容替換；`action-domain-cell-goto-swimlane` → `state-domain-swimlane`；繼承 #3 的 rail 與覆蓋層 |
+| 32 | Domain | 泳道 · 尚未選定 UC | `state-domain-swimlane-uc-unset` | 切回矩陣、導覽、切換專案 | 同畫面轉換：`mode-domain-matrix` → `state-domain-matrix`；rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded` |
+| 33 | UC Flow | 尚未選定 UC | `state-ucFlow-uc-unset` | 選擇 UC → 正常／flow 未結構化；導覽、切換專案 | 同畫面轉換：`action-ucFlow-select-uc-<ucId>` → `state-ucFlow-normal` 或 `state-ucFlow-unstructured`；rail；覆蓋層 |
 
-**覆蓋完整性**：31 列，對應 SPEC-001 §1（9）+ §2（3）+ §3（3）+ §4（6）+ §5（3）
-+ §6（4）+ §7（3）= 31。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
-#30、#31 為 SPEC-001 v1.3／v1.4 新增，依 SPEC-001 §狀態總數 的順序編號，不重排既有列。
+**覆蓋完整性**：33 列，對應 SPEC-001 §1（10）+ §2（4）+ §3（3）+ §4（6）+ §5（3）
++ §6（4）+ §7（3）= 33。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
+#30、#31 為 SPEC-001 v1.3／v1.4 新增，#32、#33 為 SPEC-001 v1.8 新增，依 SPEC-001 §狀態總數 的順序編號，不重排既有列。
 
 **同步提醒**：本節標題、本段算式、下方 FR-01 驗收、§0 概述四處皆耦合 SPEC-001
-§狀態總數 的狀態數字（現為 31）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
+§狀態總數 的狀態數字（現為 33）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
 缺一處會使對照表列數與 FR-01 驗收範圍失去覆蓋完整性保證。
 
 ---
@@ -1887,7 +1917,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | §4 對照表 31 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
+| 驗收 | §4 對照表 33 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
 
 ### FR-02: 取消契約的十條行為全部成立
 
@@ -2012,7 +2042,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 - 導航來源記錄為單槽而非堆疊；若日後導入 deep link 或多視窗，此決策須重新評估，
   屆時 §2.3 的四條規則是重評的起點
 - 0.1 的互動全部以假資料驅動。假資料須使每個狀態可被單獨渲染（狀態注入而非
-  等待真實解析），否則 §4 對照表的 31 列無法逐列斷言
+  等待真實解析），否則 §4 對照表的 33 列無法逐列斷言
 - 泳道的拖曳是版型行為，與布局演算法無關；0.1 的泳道以寫死座標的假資料畫出，
   拖曳只驗證平移，不驗證排列品質（SPEC-001 §設計約束已定案）
 - 用語決定：本規格全文統一使用「渲染」描述元件樹的產出動作，不改為「算繪」
@@ -2026,6 +2056,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.26 | 2026-09-14 | 選定 UC 共用模型回寫（`0.1.0-W3-335.18`，對應 SPEC-001 v1.8，依用戶裁示 2026-09-14）：§2.8 新增子節〈選定 UC：App 層共用值〉（初始值、兩個設定入口、讀取方、跨導覽保留、清除時機僅切換專案，並寫明選中格清除不連帶清除選定 UC 的取捨與斷言形式）；§1.2 Domain 雙模式可觀察結果補泳道模式兩態；§3.1 切至矩陣／切至泳道／選格三列補選定 UC 分支與寫入，導航退出補「泳道 · 尚未選定 UC」列，生命週期補切換專案清除選定 UC 與回到本畫面時值被改寫兩列；§3.2 互動反應新增「選擇 UC」列（`action-ucFlow-select-uc-<ucId>`），動畫、導航退出、生命週期同步第四態；§4 新增第 32 列 `state-domain-swimlane-uc-unset`、第 33 列 `state-ucFlow-uc-unset`，標題、覆蓋完整性算式、同步提醒、FR-01 驗收、§0 概述、設計約束由 31 改 33 |
 | 1.25 | 2026-09-14 | 上游缺描述回寫（`0.1.0-W3-335.13`，對應 SPEC-001 v1.7）：§3.4 新增子節〈篩選與排序的 key 值域〉，列舉 `action-tickets-filter-<key>` 與 `action-tickets-sort-<key>` 的取值並標出處；§3.4〈未載入態不顯示預估耗時〉段註記 SPEC-001 已回寫；§3.1 檢視 schema 詳情列補面板內容恰為兩列版本值、無其他說明或動作；§3.6 重新整理三分支補「`Motion.cancelDeadline` 是品質保證而非逾時觸發條件，無逾時結果」。依用戶簽核（2026-09-14）：§3.3 缺口標示錨點由 `badge-traceability-broken-<layer>` 改為 `badge-traceability-broken-<nodeId>`（每個缺下游的父節點一個；完成矩陣第 13 列的萬用字元形式 `badge-traceability-broken-*` 仍成立不需改字）；§3.3 生命週期新增「展開集合初始值」列（只顯示 PROP 層、含缺口分支自動展開至缺口層），切換專案列改為重設為初始值。狀態不變 |
 | 1.20 | 2026-09-10 | 補寫仲裁決策事件與測試義務對照（`0.1.0-W3-243`，承 `0.1.0-W3-207` 的 Phase 1 輸入需求）：**追加 §2.17**（不插入、不後移任何既有 §2.x 編號，不改動 §2.13～§2.16 任一既有條文）。內容分兩部分——(1) 定義本專案注意力通道的仲裁決策事件七項欄位（請求識別／到達類別／級別／通道／決策／佔用量快照／deadline 剩餘），deadline 剩餘標「不適用」並附三項既有結論引用作理由（〈Deadline 傳播〉判準原文「上界取自載體自然存活期」、仲裁決策發生於載體存活期倒數開始之前、§2.16 已證本通道無佇列滯留）；決策欄五值（立即呈現／升級呈現／延後呈現／狀態承載不另發／不顯示且留痕）與方法論通用動作集對應，並說明「拒絕」「合併」「降級」三值本專案不使用之理由（降級一項直接引用方法論〈部分降級〉「不可切分的資源只有讓步沒有降級」）。與 `0.1.0-W3-176` `AppSnackBarLogSink` 的關係明寫為「同一請求生命週期的兩個觀測點，非另立事件線」——仲裁決策事件涵蓋通道全部到達請求（含從未進入任何載體者），`AppSnackBarLogSink` 僅涵蓋被分派至 `AppSnackBar` 載體的子集合之內部生命週期，兩者以請求識別關聯，具體關聯機制留待 `0.1.0-W3-207` Phase 1 設計，本票不代為決定。(2) 七項測試義務逐項裁決：第 1／5／7 項適用，第 4 項不適用（引 §2.16 既有結論），第 2 項規則 1／3 空成立（引 §2.15 既有證據鏈）、規則 2 不適用（引 §2.15／`0.1.0-W3-239` 既有裁決），第 3／6 項依到達類別×級別交叉盤點分列 3 格適用、6 格空成立，並附推送型／須留痕空集合的完整證據鏈（形態比照 §2.15 跨級別空成立證據鏈，非「目前沒觀察到」的消極陳述）。與功能需求的對應：本節為 FR-17 精神在仲裁層的擴充，不新增 FR 條目。不改 SPEC-001 與 SPEC-004；不新增時間 token、狀態與錨點類別 |
 | 1.21 | 2026-09-10 | 更正五處「無條件 `hideCurrentSnackBar()`」事實斷言（`0.1.0-W3-261`）。`0.1.0-W3-205` 合併後，該呼叫位於裁決分支之內：`_resolvePreemption` 比較新請求與目前佔用者的級別，低於佔用者走讓步分支提前返回（不清除、不呈現、不排隊），相等或更高才清除後呈現。受影響五處為 §2.13 現況形態句、§2.15 兩列可棄事件共用載體的行為描述、§2.15 規則 2 驗收的靜態證據、§2.16 佇列深度依據、§2.17〈佔用量快照〉依據欄。**結論全數維持**：佇列深度仍恆為 0 或 1（讓步分支不呈現、取代分支替換舊的一則，兩條路徑皆不產生第二則），§2.17 值域不動。**一處證據更換而非僅措辭調整**：§2.15 規則 2 原以「原始碼不含任何比較級別的邏輯」為靜態證據，該陳述現已為假；改以「同級別落在取代分支，既不排隊也不合併，而本節兩列同為可棄級別恆走該分支」為證據，規則 2 未被滿足的結論不變。另移除兩處失效行號引用（`app_snack_bar.dart:121`，現行該行為無關的 `static const`），改為符號指涉。§2.13 被否決選項標籤「佇列排隊（移除無條件 `hideCurrentSnackBar`）」描述未採用方案非現況斷言，維持原文；§2.15〈鑑別綁級別與綁呼叫路徑〉靜態檢查判準為通用判準非現況斷言，維持原文 |
