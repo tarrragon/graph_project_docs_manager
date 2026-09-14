@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-14"
-version: "1.27"
+version: "1.28"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -66,7 +66,7 @@ PROP-004 §首個整合測試的契約 要求斷言「應可捲動處能捲動�
 應可拖拉處能拖拉」。該句的三個「處」在本節窮舉——**清單之外沒有第四處**，
 整合測試依此枚舉即為完整覆蓋。
 
-### 1.1 捲動處（11 個）
+### 1.1 捲動處（12 個）
 
 | # | 位置 | 錨點 | 軸 | 備註 |
 |---|------|------|----|------|
@@ -81,6 +81,7 @@ PROP-004 §首個整合測試的契約 要求斷言「應可捲動處能捲動�
 | 9 | 節點詳情 · 關聯右欄 | `scroll-nodeDetail-relations` | 垂直 | 不與主欄連動 |
 | 10 | 專案切換浮層 | `scroll-switcher-recent` | 垂直 | 最近專案清單 |
 | 11 | Domain 視圖 · 矩陣右欄格詳情卡 | `scroll-domain-cell-detail` | 垂直 | 與 #1 各自獨立；步驟清單為異常長內容時的承載處 |
+| 12 | UC Flow · UC 清單 | `scroll-ucFlow-uc-list` | 垂直 | UC 選擇入口（SPEC-004 右欄 `option` 列清單），於 `state-ucFlow-uc-unset`／`state-ucFlow-unstructured`／`state-ucFlow-normal` 三態渲染；與 #3 各自獨立 |
 
 **斷言形式**：對錨點執行 `tester.drag(finder, Offset(dx, dy))` 後
 `pumpAndSettle()`，該容器的 `ScrollController.offset` 與拖曳前不相等；
@@ -2047,7 +2048,7 @@ EVT 節點已宣告 `consumers`／`producers` 的情形不屬本類別，由下�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P1 |
-| 驗收 | §1.1 的 11 個捲動錨點各自通過「drag 後 offset 改變」；§1.2 的三類換頁各自通過「觸發後目標錨點存在且來源錨點不存在」；§1.3 的 `drag-domain-swimlane` 通過「平移量等於位移」；對非拖曳元素 drag 的結果是其所在容器捲動 |
+| 驗收 | §1.1 的 12 個捲動錨點各自通過「drag 後 offset 改變」；§1.2 的三類換頁各自通過「觸發後目標錨點存在且來源錨點不存在」；§1.3 的 `drag-domain-swimlane` 通過「平移量等於位移」；對非拖曳元素 drag 的結果是其所在容器捲動 |
 
 ### FR-09: 焦點與鍵盤下界
 
@@ -2137,6 +2138,7 @@ EVT 節點已宣告 `consumers`／`producers` 的情形不屬本類別，由下�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.28 | 2026-09-14 | §1.1 捲動處 11 → 12：新增 `scroll-ucFlow-uc-list`（UC Flow 右欄 UC 選擇清單，SPEC-004 v1.35 定案該清單可捲動而本節無錨點，`0.1.0-W3-335.16` SR-5）；FR-08 驗收同步 12 |
 | 1.27 | 2026-09-14 | 用戶裁示回寫（`0.1.0-W3-335.19`，對應 SPEC-001 v1.9，SR-2／SR-3／SR-4，2026-09-14）：§1.2 Domain 雙模式與 §2.8〈選定 UC〉讀取方補第三個泳道態；§3.1 切至矩陣／切至泳道兩列補 `state-domain-swimlane-unstructured` 分支，新增「泳道開啟原始檔」列（`action-domain-open-source`，沿用外部開啟契約三結果），導航退出與生命週期同步第三個泳道態；§3.2 新增子節〈事件流小表〉（`panel-ucFlow-event-flow`、列識別與欄位、「本 UC 外」判定、`badge-ucFlow-event-orphan-<evtId>`）；§3.4 key 值域註明 blockedBy 欄無排序與篩選錨點；§3.4 新增子節〈帶目標跳入〉（未載入自動載入後定位、取消即作廢、目標被隱藏時清除搜尋與篩選並展開主題節、SnackBar「復原」只還原輸入不撤銷定位）；§3.5 破洞項點擊依指向節點型別分四列（ticket → `nav-page-tickets`；其他圖節點 → `nav-page-nodeDetail`；`orphan-event`／`event-declaration-mismatch` → 寫入選定 UC 後 `nav-page-ucFlow` 定位事件列；無指向 → 開啟原始檔），有指向者外部開啟三列改掛次要操作錨點 `action-gaps-open-source-<itemId>`（三結果與 SnackBar 不變），新增子節〈破洞項的指向節點〉〈孤立事件判準（`orphan-event`）〉〈事件宣告與 flow 不符判準（`event-declaration-mismatch`）〉，導航退出同步；§4 新增第 34 列、第 23 列補三種 jump，標題、覆蓋完整性算式、同步提醒、FR-01 驗收、§0 概述、設計約束由 33 改 34 |
 | 1.26 | 2026-09-14 | 選定 UC 共用模型回寫（`0.1.0-W3-335.18`，對應 SPEC-001 v1.8，依用戶裁示 2026-09-14）：§2.8 新增子節〈選定 UC：App 層共用值〉（初始值、兩個設定入口、讀取方、跨導覽保留、清除時機僅切換專案，並寫明選中格清除不連帶清除選定 UC 的取捨與斷言形式）；§1.2 Domain 雙模式可觀察結果補泳道模式兩態；§3.1 切至矩陣／切至泳道／選格三列補選定 UC 分支與寫入，導航退出補「泳道 · 尚未選定 UC」列，生命週期補切換專案清除選定 UC 與回到本畫面時值被改寫兩列；§3.2 互動反應新增「選擇 UC」列（`action-ucFlow-select-uc-<ucId>`），動畫、導航退出、生命週期同步第四態；§4 新增第 32 列 `state-domain-swimlane-uc-unset`、第 33 列 `state-ucFlow-uc-unset`，標題、覆蓋完整性算式、同步提醒、FR-01 驗收、§0 概述、設計約束由 31 改 33 |
 | 1.25 | 2026-09-14 | 上游缺描述回寫（`0.1.0-W3-335.13`，對應 SPEC-001 v1.7）：§3.4 新增子節〈篩選與排序的 key 值域〉，列舉 `action-tickets-filter-<key>` 與 `action-tickets-sort-<key>` 的取值並標出處；§3.4〈未載入態不顯示預估耗時〉段註記 SPEC-001 已回寫；§3.1 檢視 schema 詳情列補面板內容恰為兩列版本值、無其他說明或動作；§3.6 重新整理三分支補「`Motion.cancelDeadline` 是品質保證而非逾時觸發條件，無逾時結果」。依用戶簽核（2026-09-14）：§3.3 缺口標示錨點由 `badge-traceability-broken-<layer>` 改為 `badge-traceability-broken-<nodeId>`（每個缺下游的父節點一個；完成矩陣第 13 列的萬用字元形式 `badge-traceability-broken-*` 仍成立不需改字）；§3.3 生命週期新增「展開集合初始值」列（只顯示 PROP 層、含缺口分支自動展開至缺口層），切換專案列改為重設為初始值。狀態不變 |
