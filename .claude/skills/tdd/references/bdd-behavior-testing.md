@@ -157,7 +157,7 @@ Phase 4 品質判斷：替換實作不讓測試失敗 = 正確；改變業務規
 | Domain 層出現複雜分支邏輯（> 3 條件組合） | 拆為 Domain 單元測試，驗證分支覆蓋           |
 | 值物件驗證規則多（> 5 個邊界條件）        | 拆為 Value Object 單元測試                   |
 | BDD 測試的 Given 設置過長（> 10 行 Mock） | Module 過大，考慮拆分 Module 而非加測試      |
-| 步驟正確性由元件自身決定（非串接決定）    | 拆為單元測試（見 `doc-handoff.md` 分工框架） |
+| 步驟正確性由元件自身決定（非串接決定）    | 拆為單元測試（見 `doc-handoff-test-tier-assignment.md` 分工框架） |
 | 步驟正確性由串接決定                      | 留在整合測試                                 |
 | 步驟正確性由配置決定                      | 拆為參數化測試                               |
 
@@ -208,11 +208,11 @@ Given 設置過長（> 10 行 Mock） | 次要訊號：單元測試拆出後，�
 
 - `references/phase2-test-design.md` — GWT 格式、場景設計原則（Phase 2 操作層）
 - `references/layered-test-strategy.md` — 依架構層級選測試方法的決策樹
-- `references/doc-handoff.md`「整合測試 vs 單元測試分工」— 整合/單元判斷框架
+- `references/doc-handoff-test-tier-assignment.md`「整合測試 vs 單元測試分工」— 整合/單元判斷框架
 - `references/test-naming-conventions.md` — 測試命名規範
 
 ---
 
 **Last Updated**: 2026-09-14
-**Version**: 2.1.0 — 〈BDD→單元拆分標準〉補〈訊號優先序範例〉：示範「Given 設置過長」與「步驟正確性由自己決定」兩訊號同時成立時的優先序（先拆單元測試，Module 是否需要拆分留待其後再判斷）。原表僅列訊號與動作對照，兩訊號同時成立時何者優先未言明，讀者須自行發明順序（審查子票命中）。
-**Version**: 2.0.0 — Sociable/Solitary 選擇框架改寫。舊版寫「只在演算法、加密等場景使用 Solitary」並把「任何測試需跟著改」判為要重新設計邊界，等於把 Solitary 判成錯誤。新版三件事：(1) 三個症狀取代進入訊號清單，並明說它們是**診斷工具而非選型公式**——都要有一套跑著的測試才觀察得到；(2) 每個症狀的處方第一順位是不移動邊界的解法（集中替身設定 / 補可觀察性 / 只換慢的那一個）；(3) 明說射程是維護經濟性、而那已經是古典派立場，倫敦學派的設計發現主張不被這三個症狀裁決。判別程序加上 verdict rule：判的是耦合在什麼上、不判對錯
+
+版本紀錄在同目錄的 `CHANGELOG.md`。
