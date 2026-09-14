@@ -97,7 +97,7 @@ class IssueMarker extends StatelessWidget {
   final VoidCallback onTap;
 
   /// 呼叫端定址 key（`badge-tickets-corrupted` /
-  /// `badge-traceability-broken-<layer>` / 欄位級 `action-nodeDetail-goto-gaps`）。
+  /// `badge-traceability-broken-<nodeId>` / 欄位級 `action-nodeDetail-goto-gaps`）。
   final Key testKey;
 
   /// `damagedEdge` 必填：被包住的節點。契約型別為 `RelationItem`
