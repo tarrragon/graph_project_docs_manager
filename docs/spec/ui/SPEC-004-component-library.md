@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-14"
-version: "1.37"
+version: "1.38"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.37（1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響）
+**版本**: 1.38（1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -623,6 +623,24 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `projectUnreadyBlockedMessage` | 此專案不適用本 App | This project is not usable with this app | — | §2–§6「專案未就緒」（4.21 `page` 呼叫端；Domain 視圖為三個阻擋狀態之一時，訊息不重述阻擋原因細節——細節僅在 Domain 視圖本身呈現） |
 | `gotoDomainAction` | 前往 Domain 視圖 | Go to Domain view | — | 4.21 `page`（`AppButton.primary` 呼叫端，`action-<screen>-goto-domain`） |
 
+**1.37 新增（`0.1.0-W3-335.37` 附帶，對齊 SPEC-003 §3.1；ARB 實檔狀態待建，由對應畫面票加入）**：
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `useBuiltinSchemaAction` | 以 App 內建型別表檢視 | View with the app's built-in schema | — | 4.23 `BlockedState.plain`（`AppButton.secondary` 呼叫端，`action-domain-degraded-view`） |
+
+**1.38 新增（`0.1.0-W3-335.38` S-11／S-13／S-38／S-28／S-34／S-37，對齊 SPEC-003 §3.1／§3.4／§3.3／§3.7；ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案）**：
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `ticketsTargetNotFoundMessage` | 找不到該 ticket，可能已被移除 | Ticket not found; it may have been removed | — | 4.26 `AppSnackBar.plain`（Ticket 帶目標跳入目標不在清單，SPEC-003 §3.4〈帶目標跳入〉，S-11） |
+| `folderPickerUnavailableMessage` | 無法開啟選擇器 | Unable to open the folder picker | — | 4.26 `AppSnackBar.plain`（選擇器無法開啟，SPEC-003 §3.1／§3.7，S-13／S-38） |
+| `folderUnavailableMessage` | 資料夾無法使用：{reason} | Folder unavailable: {reason} | reason | 4.26 `AppSnackBar.plain`（選定資料夾不可讀或不存在，`reason` 取 `WorkspaceUnavailable.reason`，SPEC-003 §3.1／§3.7，S-13／S-38） |
+| `traceabilityTicketsNotLoadedHint` | Ticket 尚未載入 | Tickets not loaded yet | — | §3 正常／鏈路斷裂常駐說明列（4.40 `sectionHeader` 型式的說明列呼叫端，SPEC-003 §3.3，S-28） |
+| `gotoTicketsAction` | 前往 Ticket 清單 | Go to ticket list | — | §3 常駐說明列動作（`AppButton.text` 呼叫端，`action-traceability-goto-tickets`，S-28） |
+| `degradedSchemaShortLabel` | 內建型別表 | Built-in schema | — | 4.9 `RecentProjectItem`（`Badge.tag`，`isDegraded` 為 `true` 時，S-34） |
+| `probingReason` | 檢查中… | Checking… | — | 4.9 `RecentProjectItem`（disabled 列 `reason`，探測未完成時，S-37） |
+
 畫面票另需的頁面副標等文案由畫面票自行宣告，不列於此。
 
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
@@ -659,7 +677,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 輔助技術 | 焦點移入被定位項（§1 子表 locate 列）；該項為 `Semantics.button` 者由既有 label 朗讀，高亮本身不另播報、不另組字 |
 | 定位失敗 | 目標不存在（所在分節收合中、專案已切換、結果已清空、新一輪掃描已開始）→ 只切頁、不捲動、不高亮、不拋錯（SPEC-003 §2.2 點擊導向列末兩句）；定位不得改變展開集合（收合中的分節不自動展開） |
 | 減少動態效果 | 無影響：本節無動畫，`jumpTo` 本身即瞬間（SPEC-003 §2.1） |
-| 0.1 場景 | (a) 系統通知點擊／`viewGapsAction` → 第一個分節的第一個 `card-gaps-<itemId>`：4.30 `Panel.scrollable` 執行捲動，目標位於 4.41 `Section.collapsible` 內，4.40 `ListRow.item` 依 `isLocated` 渲染高亮；(b) 矩陣 → 泳道 → 該格對應的泳道列：4.38 `SwimlaneGrid` 執行 `jumpTo`，高亮由 `laneHighlight`（選取 domain）承載、為持續性標記非短暫高亮；(c) 樹節點展開後的子項：4.39 `Tree` 決定目標（子層第一列）、4.30 執行最小捲動，不高亮（焦點停在展開器，SPEC-003 §3.3 未移焦點，高亮無焦點承載者）。(d) 破洞項（指向 ticket）→ Ticket 清單目標票（SPEC-003 §3.4〈帶目標跳入〉）：4.36 `DataTable.virtual` 以列索引 × `itemExtent` 捲動（主題模式為 4.30 `scroll-tickets-topics`，所在主題節收合時由頁面層先展開——此為 SPEC-003 明訂的例外，不適用本表「定位失敗」列的「不自動展開」），4.35 `TableRow.ticket` 依 `isLocated` 高亮；(e) 事件類破洞項 → UC Flow 事件流小表的事件列（SPEC-003 §3.5）：4.36 步驟表以 `scroll-ucFlow-steps` 捲動至 `appendix` 內目標列，4.35 `TableRow.eventFlow` 依 `isLocated` 高亮。(d)(e) 的高亮時長同場景 a。搜尋命中列在 0.1 為子集重建（SPEC-003 §3.4 搜尋列），不是定位場景 |
+| 0.1 場景 | (a) 系統通知點擊／`viewGapsAction` → 第一個分節的第一個 `card-gaps-<itemId>`：4.30 `Panel.scrollable` 執行捲動，目標位於 4.41 `Section.collapsible` 內，4.40 `ListRow.item` 依 `isLocated` 渲染高亮；(b) 矩陣 → 泳道 → 該格對應的泳道列：4.38 `SwimlaneGrid` 執行 `jumpTo`，高亮由 `laneHighlight`（選取 domain）承載、為持續性標記非短暫高亮；(c) 樹節點展開後的子項：4.39 `Tree` 決定目標（子層第一列）、4.30 執行最小捲動，不高亮（焦點停在展開器，SPEC-003 §3.3 未移焦點，高亮無焦點承載者）。(d) 破洞項（指向 ticket）→ Ticket 清單目標票（SPEC-003 §3.4〈帶目標跳入〉）：4.36 `DataTable.virtual` 以列索引 × `itemExtent` 捲動（主題模式為 4.30 `scroll-tickets-topics`，所在主題節收合時由頁面層先展開——此為 SPEC-003 明訂的例外，不適用本表「定位失敗」列的「不自動展開」），4.35 `TableRow.ticket` 依 `isLocated` 高亮；(e) 事件類破洞項 → UC Flow 事件流小表的事件列（SPEC-003 §3.5）：4.36 步驟表以 `scroll-ucFlow-steps` 捲動至 `appendix` 內目標列，4.35 `TableRow.eventFlow` 依 `isLocated` 高亮。(d)(e) 的高亮時長同場景 a。(f) 由 UC Flow domain 欄 jump 進入 Domain 視圖 → 該 domain 列首（SPEC-003 §3.1〈生命週期〉「由 jump 帶 domain 進入」列，`0.1.0-W3-335.38` S-20）：矩陣模式由 4.37 `MatrixGrid` 執行 `jumpTo`（列高亮持續性標記，同場景本容器既有列高亮機制，非短暫高亮）；泳道模式由 4.38 `SwimlaneGrid` 執行 `jumpTo`（`laneHighlight` 持續性標記，同場景 b）。搜尋命中列在 0.1 為子集重建（SPEC-003 §3.4 搜尋列），不是定位場景 |
 
 #### 4.0.11 終端回饋元件的元件層回饋日誌
 
@@ -1761,10 +1779,12 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 |------|------|---------|---------|---------|------|---------|
 | enabled | 圖示 `AppColors.textSecondary`、名稱 `textTitle`、摘要 caption | 點選 → 切換至該專案 | 可用性探測成功 | 點選 → 浮層收合（本元件隨浮層消失） | 資料態：`recentProjectsProvider`（`Provider<List<RecentProjectFixture>>`，`lib/screens/project_switcher/project_switcher_providers.dart`）各項的 `enabled` 欄位；`SwitcherOverlay` watch 後以 `enabled` 傳值，元件不 watch（§2）。0.1 為 fixture 固定值，真實探測由 workspace domain 後續票承接（該檔檔頭註記） | 等確認才顯示（可用性為探測完成後的資料態；探測未完成前不得預設為 enabled，SPEC-003 §3.7「探測逾時的處理」；§2 樂觀更新政策：0.1 無樂觀操作） |
 | selected（目前專案） | 底 `AppColors.surfaceIconTint`、圖示與名稱 `accentStrong`（畫布為準）、摘要 `textPrimary`（§4.0.2 帶色表面規則：`textSecondary` / `surfaceIconTint` 3.98:1 未達 AA，`0.1.0-W1-060` 改） | 點選（重載同一專案，SPEC-003 §3.7 未區分，視同選取） | 為目前開啟的專案 | 同上 | 資料態：`currentProjectIndexProvider`（`StateProvider<int?>`，同檔）等於本項索引；`SwitcherOverlay` watch 後以 `isCurrent` 傳值 | 本地即時（目前專案索引為本地狀態；切換專案的重載由 Domain 視圖載入態承載，不回寫本項） |
-| disabled | 依 §4.0.1；同列常駐 `reason` 文字（不用 tooltip，SPEC-003 §3.7） | 無 | 探測失敗或逾時（reason 含 `probeTimeoutReason`） | 探測結果更新 → enabled（其餘項不受本項探測影響） | 資料態：`recentProjectsProvider` 各項的 `enabled` 為 `false`（同 enabled 列） | 等確認才顯示（同 enabled 列） |
+| disabled | 依 §4.0.1；同列常駐 `reason` 文字（不用 tooltip，SPEC-003 §3.7） | 無 | 探測失敗或逾時（reason 含 `probeTimeoutReason`）；探測未完成（reason 為 `probingReason`，`0.1.0-W3-335.38` S-37） | 探測結果更新 → enabled（其餘項不受本項探測影響） | 資料態：`recentProjectsProvider` 各項的 `enabled` 為 `false`（同 enabled 列） | 等確認才顯示（同 enabled 列） |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
+
+`isDegraded` 為 `true` 時，摘要列後加 `Badge.tag`（`degradedSchemaShortLabel`），enabled／selected／disabled 三態皆適用；徽章本身不影響 `enabled` / `selected` / `disabled` 判定（`0.1.0-W3-335.38` S-34）。
 
 #### 回饋契約
 
@@ -1804,6 +1824,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `name` | 否 | 1 | 截斷 | `TestCopy.projectName`；`TestCopy.longToken` |
 | `summary` | 否 | 1 | 截斷 | `projectSummaryLabel`（nodes 237、tickets 2419；en 較長）；`TestCopy.longEn` |
 | `reason`（disabled） | 是 | 2 | 末行截斷（提案：浮層寬有限，原因須可讀） | `projectUnavailableReasonLabel`（reason 代入 `probeTimeoutReason`）；`TestCopy.longZh` |
+| 降級標籤（`isDegraded`） | 否 | 1 | 截斷 | `degradedSchemaShortLabel`；`TestCopy.longToken`（`0.1.0-W3-335.38` S-34） |
 
 #### slot 契約
 
@@ -1814,6 +1835,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `health` | `Badge.health?` | 否（問題數為 0 時不傳） | 不適用 |
 | `enabled` / `isCurrent` | `bool` | 是 | 不適用 |
 | `reason` | `String?` | `enabled` 為 `false` 時必填 | 呼叫端（`projectUnavailableReasonLabel` 取值） |
+| `isDegraded` | `bool` | 否（預設 `false`） | 不適用（`0.1.0-W3-335.38` S-34） |
 | `onTap` | `VoidCallback` | 是 | 不適用 |
 | `testKey` | `Key` | 是（`card-switcher-recent-<index>`） | 不適用 |
 
@@ -1832,7 +1854,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 文字 | i18n key |
 |------|---------|
 | `summary` | `projectSummaryLabel`（呼叫端取值） |
-| `reason` | `projectUnavailableReasonLabel` + `probeTimeoutReason`（既有） |
+| `reason` | `projectUnavailableReasonLabel` + `probeTimeoutReason`（既有）；探測未完成時 `probingReason`（新增，§4.0.6，`0.1.0-W3-335.38` S-37） |
+| 降級標籤 | `degradedSchemaShortLabel`（新增，§4.0.6，`0.1.0-W3-335.38` S-34） |
 | 朗讀「目前專案」 | `currentProjectA11yLabel` |
 
 #### 組合規則
@@ -1856,11 +1879,11 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染 enabled / selected / disabled（含 reason）× 有無 `health`
+- [ ] 一支測試渲染 enabled / selected / disabled（含 reason；含探測未完成 `probingReason` 一支）× 有無 `health` × 有／無 `isDegraded`
 - [ ] 兩種視窗尺寸下不溢位（寬固定於 `LayoutSize.overlayWidth` 內）
-- [ ] 最長測試文案：名稱與摘要截斷、原因兩行末截斷
+- [ ] 最長測試文案：名稱與摘要截斷、原因兩行末截斷、降級標籤截斷
 - [ ] zh / en 兩語系值皆不溢位
-- [ ] enabled 點選呼叫 `onTap` 恰一次；disabled 零次；`Semantics.selected` / `enabled` 與參數一致
+- [ ] enabled 點選呼叫 `onTap` 恰一次；disabled 零次；`Semantics.selected` / `enabled` 與參數一致；`isDegraded` 為 `true` 時 `Badge.tag` 存在且不影響 `onTap` 行為
 - [ ] 顏色、內距、圓角引用 token 非硬編碼
 
 #### 反例
@@ -3860,8 +3883,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `plain` | 文字 | 停留 `Motion.snackBar` | 已在外部開啟、檔案仍不存在 |
-| `withAction` | 文字 + 一個動作（`AppButton.text` 形態） | 停留 `Motion.snackBarWithAction` | 找不到檔案 + 重新整理／重新掃描 |
+| `plain` | 文字 | 停留 `Motion.snackBar` | 已在外部開啟、檔案仍不存在、Ticket 目標不在清單、選擇器無法開啟、資料夾不可讀或不存在；泳道／UC Flow 開啟原始檔找不到檔案（`0.1.0-W3-335.38` S-18／S-22：改為不帶動作） |
+| `withAction` | 文字 + 一個動作（`AppButton.text` 形態） | 停留 `Motion.snackBarWithAction` | 破洞項外部開啟找不到檔案 + 重新掃描（`rescanAction`，見 4.40 `item`） |
 
 #### 狀態矩陣
 
@@ -3911,7 +3934,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
 | `message` | 是 | 2 | 末行截斷 | `sourceFileStillMissingMessage`（en「File still not found」）；`TestCopy.longEn` |
-| 動作 label | 否 | 1 | 截斷 | `refreshAction` / `rescanAction`；`TestCopy.longToken` |
+| 動作 label | 否 | 1 | 截斷 | `rescanAction`；`TestCopy.longToken` |
 
 > 本表定行數與超出處置；**文案本身該含哪些成分、多長、placeholder 怎麼放，見 §4.0.12**（M1／M2／M3）。M2 明訂「觸發截斷時改寫文案，不放寬本表的行數上限」，且 `withAction` 下訊息與動作競爭列寬時由動作 label 先讓步——本表「最長測試文案」欄的核對對象因此是**全部語系的最長值**，不只來源語系。
 
@@ -3919,8 +3942,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `message` | `String` | 是 | 呼叫端（`openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage`） |
-| `actionLabel` / `onAction` | `String` / `VoidCallback`（`withAction`） | `withAction` 必填 | 呼叫端（`refreshAction` / `rescanAction`） |
+| `message` | `String` | 是 | 呼叫端（`openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage` / `ticketsTargetNotFoundMessage` / `folderPickerUnavailableMessage` / `folderUnavailableMessage`） |
+| `actionLabel` / `onAction` | `String` / `VoidCallback`（`withAction`） | `withAction` 必填 | 呼叫端（`rescanAction`） |
 
 #### 使用 design token
 
@@ -3936,8 +3959,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 文字 | i18n key |
 |------|---------|
-| 訊息 | `openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage`（既有，呼叫端傳入） |
-| 動作 | `refreshAction` / `rescanAction`（既有）；`viewGapsAction`（SPEC-003 §2.2 系統層通知 `denied` fallback，§4.0.6 新 key 總表，ARB 實檔由 `0.1.0-W3-064` 加） |
+| 訊息 | `openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage`（既有，呼叫端傳入）；`ticketsTargetNotFoundMessage`（Ticket 帶目標跳入目標不在清單，SPEC-003 §3.4）／`folderPickerUnavailableMessage`（選擇器無法開啟）／`folderUnavailableMessage`（資料夾不可讀或不存在，placeholder `reason`）（新增，§4.0.6 新 key 總表，`0.1.0-W3-335.38` S-11／S-13／S-38） |
+| 動作 | `rescanAction`（既有，破洞項外部開啟找不到檔案，見 4.40 `item`）；`viewGapsAction`（SPEC-003 §2.2 系統層通知 `denied` fallback，§4.0.6 新 key 總表，ARB 實檔由 `0.1.0-W3-064` 加）；`refreshAction` 已移出本元件動作列——泳道／UC Flow 開啟原始檔找不到檔案改用 `plain`（`sourceFileNotFoundSnackbarMessage`，不帶動作），`refreshAction` 僅保留為 4.22 `MissingSourceState` 自身「重新整理」按鈕的標籤，非 SnackBar 動作（`0.1.0-W3-335.38` S-18／S-22） |
 
 > 本表列的是**哪些 key**；key 的命名規則與 ARB `@<key>.description` 的填寫要求見 §4.0.12 M5。新增經本元件顯示的 key 時，§4.0.12 的 M1–M5 五項須同批核對——文案是 0.1 唯一沒有型別檢查也沒有編譯期徵兆的介面。
 
@@ -4920,7 +4943,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 |------|---------|---------|---------|
 | `header` | 底邊框 `AppColors.borderStrong`；格為 `TableColumnHeader` | 無 | 表頭 |
 | `ticket` | 底邊框 `AppColors.border`；格：`AppText.mono`（ID）、`AppText.body`（標題）、`Badge.status`（inline）、`AppText.caption`（優先）、`AppText.mono`（blockedBy：被阻擋的 ticket ID 以「, 」串接，無則「—」，單行截斷）、`IssueMarker.damagedDetail?`（標記） | 整列可點 → 開票（`card-tickets-<ticketId>`）；可被定位（located，SPEC-003 §3.4〈帶目標跳入〉） | Ticket 清單列表與主題模式 |
-| `eventFlow` | 底邊框 `AppColors.border`；格：`AppText.mono`（EVT ID）、`AppText.body`（發出：`eventFlowStepDomain`，缺則 `eventOutsideUc`）、`AppText.body`（消費：同上，多個以「、」串接）、`AppIcon?`（孤立事件標記：warning 圖示 `AppColors.error`，非互動，testKey `badge-ucFlow-event-orphan-<evtId>`，朗讀 `orphanEventMarkerLabel`） | **非互動列**（SPEC-003 §3.2〈事件流小表〉無列點擊條文）；格內 domain 值的資料來源依賴 FlowStep 所屬 domain 的定案（`0.1.0-W3-341`，CLAUDE.md §6 現行待決），本變體只定呈現；可被定位（located，SPEC-003 §3.5 事件類破洞項） | UC Flow 事件流小表 |
+| `eventFlow` | 底邊框 `AppColors.border`；格：`AppText.mono`（EVT ID）、`AppText.body`（發出：`eventFlowStepDomain`，多個發出步驟時以「、」串接，缺則 `eventOutsideUc`，`0.1.0-W3-335.38` S-24）、`AppText.body`（消費：同上，多個以「、」串接）、`AppIcon?`（孤立事件標記：warning 圖示 `AppColors.error`，非互動，testKey `badge-ucFlow-event-orphan-<evtId>`，朗讀 `orphanEventMarkerLabel`） | **非互動列**（SPEC-003 §3.2〈事件流小表〉無列點擊條文）；格內 domain 值的資料來源依賴 FlowStep 所屬 domain 的定案（`0.1.0-W3-341`，CLAUDE.md §6 現行待決），本變體只定呈現；可被定位（located，SPEC-003 §3.5 事件類破洞項） | UC Flow 事件流小表 |
 | `step` | 底邊框 `AppColors.border`；格：`StepNumber`、`AppText.body`（步驟名）、`RelationItem`（domain，`isMono=false`）、`BadgeRow`（事件） | 整列可點 → 節點詳情（`card-ucFlow-step-<stepId>`）；domain 格另有自己的點擊 | UC Flow 步驟表 |
 
 #### 狀態矩陣
@@ -4975,6 +4998,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
 | 不適用 | 無自有文字 slot（格文字依各子件契約：ID `TestCopy.nodeId`、標題 `TestCopy.nodeTitle`、步驟名 `TestCopy.stepName`） | | | |
+
+`ticket` 解析失敗列（`0.1.0-W3-335.38` S-07）：ID 格取檔名；其餘文字格（標題、狀態、優先、blockedBy）顯示「—」；標記格 `IssueMarker.damagedDetail`。
 
 #### slot 契約
 
@@ -5302,7 +5327,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 ### 4.38 SwimlaneGrid（容器，資料視圖）
 
-**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；0.1 以寫死座標的假資料靜態排版（SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。得為 `ConsumerWidget`。
+**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；0.1 以寫死座標的假資料靜態排版（SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。列首 `AppText` 由本容器包成可點（`InkWell` + `action-domain-select-<domainId>`，同 4.37，`0.1.0-W3-335.38` S-14）。得為 `ConsumerWidget`。
 **內容角色**：容器。
 **何時不用**：矩陣（`MatrixGrid`）；有布局演算法的泳道（0.1 之後）。
 **出現畫面**：§1（泳道）。
@@ -5331,13 +5356,13 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
 | 可互動提示 affordance | 使用者接近 | 不適用：無可點元素（節點不可點，SPEC-003 §1.3、4.16）；畫布可拖曳性不以指標形狀提示（Flutter 預設指標，提案：不自訂 grab 游標，桌機捲軸為等價路徑，操作機制子節）；可捲性由雙軸捲軸指示承載 | — | — | 不適用（無可互動子件；拖曳為操作機制，捲軸指示為其回饋通道） | 不適用 | 規格撰寫者 |
-| 焦點 focus | 使用者／輔助技術 | 本容器為二維 scrollable 語意節點、可聚焦後以捲軸／滾輪捲動（無障礙子節），焦點環依 §4.0.1（提案，同 4.30）；節點不可焦點（0.1 無節點動作）；每列朗讀 `laneA11yLabel`，箭頭列排除於語意樹（無障礙子節） | 無 | 無（SPEC-003 §2.10 不設時限；提案） | §1 子表「焦點」列（容器本身為唯一停留點） | 不適用（本容器單一狀態） | 反應：UX 審查（SPEC-003 §2.10）；容器焦點環：規格撰寫者（提案）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 列首依序為停留點，其後為容器本身（可聚焦後以捲軸／滾輪捲動，無障礙子節），焦點環依 §4.0.1（提案，同 4.30；列首焦點環同 4.37）；節點不可焦點（0.1 無節點動作）；每列朗讀 `laneA11yLabel`，箭頭列排除於語意樹（無障礙子節） | 無 | 無（SPEC-003 §2.10 不設時限；提案） | §1 子表「焦點」列（列首依序為停留點，其後為容器本身，`0.1.0-W3-335.38` S-14） | 不適用（本容器單一狀態） | 反應：UX 審查（SPEC-003 §2.10）；容器焦點環：規格撰寫者（提案）；通道：規格撰寫者 |
 | 按下確認 press-ack | 使用者 | 不適用：無可點元素；對節點按下並拖曳不產生 pressed 態、節點不移動、觸發畫布平移（SPEC-003 §1.3；4.16 回饋契約） | — | — | 不適用（無可點元素；拖曳見表後不變式） | 不適用 | 規格撰寫者 |
 | 定位提示 locate | 系統 | 依 §4.0.10 執行場景 b：自詳情卡 `action-domain-cell-goto-swimlane` 進入時，頁面層以已選格對應的泳道列為目標呼叫定位入口，本容器 `jumpTo` 使該列 rect 與 viewport 有交集（不用 `animateTo`，SPEC-003 §3.1 動畫提示「矩陣 → 泳道的定位」）；高亮由 `laneHighlight`（該列即選取 domain 的列，底 `surfaceIconTint`）承載，為持續性標記非短暫高亮，不另加 §4.0.10 的焦點綁定高亮；焦點停在本容器（提案：SPEC-003 §3.1 未定焦點落點，泳道列非停留點）；目標列不存在（選格已清除）時不捲動、不拋錯（§4.0.10 定位失敗列） | 無（`jumpTo` 瞬間） | 無（SPEC-003 §3.1 定形式不設時限；提案） | §1 子表「定位提示」列（二維執行端；高亮由 `laneHighlight` 承載） | 不適用（本容器單一狀態） | 反應：UX 審查（SPEC-003 §3.1）；焦點落點：規格撰寫者（提案）；通道：規格撰寫者 |
 | 狀態變更提示 state-change | 呼叫端（本容器為 `ConsumerWidget`，於 `ref.listen` 依選取 provider 改 `laneHighlight` 與向 4.16 傳 `isActive`；含切換專案清除、切回矩陣後再切回泳道） | 列高亮的出現、移動、消失為離散替換，無入場動畫（持續性標記，同 4.37）；節點 active ↔ inactive 隨重建替換、不播報（4.16）；列高亮改變不播報（`laneA11yLabel` 不含選取旗標，提案：沿用無障礙子節「狀態變化播報不適用」） | 無 | 無（本地即時；SPEC-003 §3.1 無泳道列高亮時限條文；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報不適用（列高亮無旗標）；不升級系統通知） | 不適用（本容器單一狀態） | 反應：規格撰寫者（提案）；通道：規格撰寫者 |
 | 等待與結果 | 系統 | 掛載點：不適用於服務三層模型——本容器無可點元素（節點不可點，SPEC-003 §1.3），自身互動限於捲動與拖曳（畫布平移），已另由〈拖曳與捲動操作路徑的不變式〉（表後）承載，不落入六類回饋事件的「等待與結果」範疇；模式切換（矩陣 ↔ 泳道）由 4.10 `SegmentedControl` 觸發，非本容器自身事件，其三層歸屬見 4.10 條目；泳道定位機制依 §4.0.10，屬定位提示列非本列。服務類型：不適用——本容器無自身服務觸發行為，不落入 SPEC-003 §2.12 四類分類。成功／失敗／逾時／服務不可用：不適用（同上，無服務觸發行為，無四種結局概念）。輸入阻擋範圍：不適用——本容器無自身觸發動作，不受阻擋政策管轄。重複觸發防護：不適用——本容器無自身觸發動作，不落入重複觸發防護模型 | — | — | 不適用 | 不適用 | 規格撰寫者 |
 
-**拖曳與捲動操作路徑的不變式**（非六類回饋事件，供測試點引用）：拖曳（`drag-domain-swimlane`）內容平移量等於位移、比例 1:1，至內容邊界生硬停止（無回彈）、無慣性，與捲軸共用同一 offset（SPEC-003 §1.3）；對節點 drag 節點不移動、觸發畫布平移（SPEC-003 §1.3）；捲動（`scroll-domain-swimlane`）offset 改變；切換導覽項時 offset 保留、切換專案時重置（SPEC-003 §3.1 生命週期）。
+**拖曳與捲動操作路徑的不變式**（非六類回饋事件，供測試點引用）：拖曳（`drag-domain-swimlane`）內容平移量等於位移、比例 1:1，至內容邊界生硬停止（無回彈）、無慣性，與捲軸共用同一 offset（SPEC-003 §1.3）；對節點 drag 節點不移動、觸發畫布平移（SPEC-003 §1.3）；捲動（`scroll-domain-swimlane`）offset 改變；切換導覽項時 offset 保留、切換專案時重置（SPEC-003 §3.1 生命週期）；在列首按下後位移未超過拖曳閾值時視為點擊（觸發 `action-domain-select-<domainId>`），超過閾值則視為拖曳（觸發畫布平移，`0.1.0-W3-335.38` S-14）。
 
 #### 操作機制
 
@@ -5457,6 +5482,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 預設 | 空集合：只顯示 PROP 層（全部 PROP 收合） |
 | 含缺口的分支 | 自根 PROP 至每個缺下游父節點的路徑上，所有祖先與該父節點本身皆加入展開集合，使其下的缺口列首次渲染即可見；不含缺口的分支不加入 |
 | 缺口列 | 位於缺下游父節點之下一層：`ListRow.tree`，leading 為 `ExpanderIcon.leaf`（保留寬度不渲染箭頭）、主文字 `traceabilityNoDownstream`（`layer` 代入缺的那一層型別名）、trailing `IssueMarker.gap`（testKey `badge-traceability-broken-<父節點 nodeId>`）；缺口列本身不可點（整列 `onTap` 為 null，點擊由 trailing `IssueMarker.gap` 承載），不帶 `card-traceability-*` testKey |
+| 展開集合鍵 | 以節點 ID 為鍵（`Set<String>`）；多父節點下同一節點 ID 的全部出現位置共用同一筆展開狀態，展開其一即展開全部出現位置（SPEC-001 §3 註記〈多父節點〉、SPEC-003 §3.3〈互動反應〉表下段，`0.1.0-W3-335.38` S-27） |
 | 由本容器計算的理由 | 缺口位置由節點樹資料決定，本容器已 watch 節點樹（§2 容器例外）；由頁面層計算須再讀一次同一份樹 |
 
 #### 回饋契約
@@ -6339,6 +6365,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.38 | 2026-09-14 | `0.1.0-W3-335.38` 真缺口追修（票 C，對應 SPEC-001 v1.12、SPEC-003 v1.31）15 項（對應 12 改動點）：S-07（4.35 `ticket` 內容政策補解析失敗列：ID 取檔名、其餘欄「—」）；S-24（4.35 `eventFlow` 發出格多個以「、」串接）；S-11／S-13／S-38（4.26 i18n 表與 §4.0.6 新增 `ticketsTargetNotFoundMessage`／`folderPickerUnavailableMessage`／`folderUnavailableMessage`）；S-18／S-22（4.26 `withAction` 用例與動作列移除 `refreshAction`，泳道／UC Flow 開啟原始檔找不到檔案改用 `plain` 不帶動作，`refreshAction` 僅保留為 4.22 自身按鈕標籤）；S-14（4.38 用途補列首可點 `action-domain-select-<domainId>`、焦點列改列首依序為停留點、拖曳不變式補位移閾值判準）；S-15（併入 1.37：§3.6 §1 表下補 `SplitRow.header` 與 `SegmentedControl` 僅渲染五列）；S-16（併入 1.37：4.23 焦點列引用 SPEC-003 §2.10 新列）；S-20（§4.0.10 定位場景表補 (f) 由 UC Flow domain 欄 jump 進入 Domain 視圖，矩陣由 4.37、泳道由 4.38 執行）；S-27（4.39 補展開集合以節點 ID 為鍵，多父節點出現位置共用）；S-28（§3.6 §3 正常／鏈路斷裂列補 Ticket 未載入常駐說明列歸屬，§4.0.6 新增 `traceabilityTicketsNotLoadedHint`／`gotoTicketsAction`）；S-34（4.9 slot 契約增 `isDegraded`、內容政策增降級標籤、§4.0.6 新增 `degradedSchemaShortLabel`、測試點補有／無降級）；S-37（4.9 disabled 列進入條件補探測未完成、§4.0.6 新增 `probingReason`）。S-18／S-22／S-13／S-38 另涉 SPEC-001 §8.2、i18n 提案沿革已於 .37／.38 分析票記錄，本檔僅落 SPEC-004 承接部分 |
 | 1.37 | 2026-09-14 | `0.1.0-W3-335.37` 矛盾裁決追修 SPEC-004 剩餘 7 項（票 C，對應 SPEC-001 v1.12、SPEC-003 v1.31）：R4（4.23 `withDetail` 變體表補兩值有意冗餘註記）；R7（刪除「返回 Domain 視圖」與 `backToDomainAction`：§3.1 總表、§3.6 §2 flow 未結構化列、4.4 變體表與 i18n `label` 列、4.21 i18n 動作列共 5 處）；R10 三處（§3.6 §5 無破洞列改「`EmptyState.page` 無動作 + `SplitRow.header` 重新掃描」；4.21 變體表 `page`／slot 契約 `actions`／測試點改動作必填範圍為 FR-03 列舉狀態與未選專案、未選節點，無破洞為 0；§3.7 出處補記第 18 項補「涵蓋無破洞與有破洞兩狀態」）；R11（4.40 `ListRow.item` 變體表與 slot 契約 `secondary` 補「檔案路徑，來源含行號時附行號」）；附帶（4.23 用途段、元件清單總表、反例表移除「0.1 不渲染以純檔案模式檢視，待 `0.1.0-W1-035`」，改引用 `0.1.0-W1-035` 已定案的 `action-domain-degraded-view`，`plain` 變體補該條件式渲染出口與 `onDegradedView` slot、`useBuiltinSchemaAction` key）；併入 `0.1.0-W3-335.38` S-16（4.23 焦點列「Esc 後焦點落點」由提案改引用 SPEC-003 §2.10 新列）。本版不含 .38 其餘 S 項（票 C 15 項，另於 1.38 落檔） |
 | 1.36 | 2026-09-14 | R9 追修回寫（`0.1.0-W3-335.37` WRAP 裁決，對應 SPEC-001 v1.11、SPEC-003 v1.30；`0.1.0-W3-335.40` 落地）：§3.6 對照表新增 §2–§6 各一列「專案未就緒」（`EmptyState.page`，動作 `AppButton.primary` 前往 Domain 視圖，`action-<screen>-goto-domain`），標頭已改引用 SPEC-001〈狀態總數〉不寫死數字（`0.1.0-W3-335.16`），故只需補列；4.21 `EmptyState`〈出現畫面〉補五處、i18n `message`／動作兩列補新 key 引用；§4.0.6 新增〈1.36 新增〉key 表：`projectUnreadyUnsetMessage`／`projectUnreadyLoadingMessage`／`projectUnreadyBlockedMessage`（依 Domain 視圖當時狀態三選一，五畫面共用）、`gotoDomainAction`（ARB 實檔待建，由對應畫面票加入） |
 | 1.35 | 2026-09-14 | 對齊上游回寫（`0.1.0-W3-335.16`，對應 SPEC-001 v1.9、SPEC-003 v1.27；承 `0.1.0-W3-335.13`／`.18`／`.19` 與 `0.1.0-W3-335.14` 稽核清單）：(1) §3.7 新增〈出處補記〉，為 11 項無上游出處的核定逐項補出處或標撰寫期決策並指向相接的 SPEC-001／003 章節，核定結論不變；(2) UC Flow 視圖新增〈UC 選擇入口〉（§3.6）：`TwoColumnLayout` 右欄 `Panel.scrollable`[`Section.static`[`ListRow.option` × N]]，出處 UC-03 步驟 1，不採下拉的理由為 SPEC-003 §3.2 每 UC 一個直接可點錨點；`ListRow` 新增 `option` 變體（selected 態）；(3) `IssueMarker.gap` 錨點 `<layer>` → `<nodeId>`（缺下游的父節點）；(4) 4.39 `Tree` 新增〈展開集合初始值與缺口列〉（預設只顯示 PROP 層、含缺口分支自動展開至缺口層；缺口列不可點）；(5) §3.6 標題與列數改引用 SPEC-001〈狀態總數〉不寫數字，新增 §1 泳道 · 尚未選定 UC、§1 泳道 · flow 未結構化、§2 尚未選定 UC 三列並改寫 §2、§3、§4、§5 相關列；§2 樂觀更新政策列同改引用；(6) 事件流小表：`TableRow` 新增 `eventFlow` 變體（非互動、可被定位；孤立事件標記為非互動 `AppIcon`——SPEC-003 §3.2 無標記點擊條文，故不用恆可點的 `IssueMarker`），`DataTable.plain` 新增 `appendix` slot 使小表接在步驟表之下共用 `scroll-ucFlow-steps`；(7) `TableRow.ticket` 補 blockedBy 欄（`flex(1)`，欄首 `static`）與 located 態；(8) 破洞項 `ListRow.item` 主操作依指向節點型別，有指向者 trailing 為次要操作 `AppButton.text`（`action-gaps-open-source-<itemId>`）；(9) §4.0.10 新增定位場景 d（ticket 帶目標跳入）、e（事件流列）；(10) §4.0.6 新增 key 表（ARB 待建）。FlowStep 所屬 domain 的來源未定案（`0.1.0-W3-341`），事件流小表發出／消費格的 domain 值依賴該票，本檔只定呈現不定來源。SPEC-002 同步 1.6 |
