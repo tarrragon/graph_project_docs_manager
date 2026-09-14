@@ -2,6 +2,13 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 3.5.0 — 補範例後的體量重評估：`step-2-extract-components.md`、`step-3-fill-contract.md` 依讀者任務重切，不刪範例、不壓縮規則文字。
+
+1. `step-2-extract-components.md` 三條路徑（A 規格推導、B 畫布拆解、C 程式碼萃取）各自獨立成檔——`step-2-path-a-spec-derivation.md`、`step-2-path-b-canvas-decomposition.md`、`step-2-path-c-code-extraction.md`。判準：三種起點互斥，讀者進入 step 2 之前已由 step 1 判定屬於哪一條路徑；四份路徑檔互斥、單一讀者只需其中一份。入口檔（原檔名保留）留下三路徑共用內容：〈這一步在解什麼〉（補「在哪份檔」欄作路由）、〈中間產出物的形態與落點〉、〈共用規則一：存在必要性檢視〉、〈共用規則二：同型歸併〉。
+2. `step-3-fill-contract.md`〈路徑 C 專屬：證據順序與漂移判定〉〈多形態專案〉兩節外移至新檔 `step-3-fill-contract-conditional-cases.md`——前者僅 step 2 走路徑 C 的讀者需要，後者僅支援多形態的專案需要，兩者互不相依。入口檔（原檔名保留）保留全體讀者共用的〈元件契約欄位填寫問句〉〈回饋契約的填寫順序〉〈容器元件另答排列不變式三項〉〈範本中元件契約欄位表以外的章節〉。
+3. `addresses.md` 三列（統一匯出入口、事故對照、特徵測試）原指向 `step-2-extract-components.md` 路徑 C 步驟的地址，改指向新檔 `step-2-path-c-code-extraction.md`。
+4. 全部為既有內容依讀者任務搬移或補跨檔指涉的具名指標，未改動任何欄位集合、判準文字或範例內容，非破壞性版本。
+
 **Version**: 3.4.0 — 承接上一輪審查子票核實既有位置表時發現的最後五處缺範例位置與一處缺引導，對帳結果：位置表全 26 列已全數對到承接票或判定未命中不需範例。全部為新增段落或補齊公式，不改既有欄位集合或判準本身，非破壞性版本。
 
 1. `SKILL.md`〈判定起點〉A 列：補範例，示範「全域狀態清單可拆成逐畫面者亦算」的判定依據是清單有無「畫面」欄可供分組，而非其他訊號。
