@@ -2,7 +2,7 @@
 name: test-assertion-design
 description: "Assertion design judgment framework for flaky and design-quality issues. Use when writing tests, reviewing assertions, diagnosing flaky tests, or deciding if a timing/float/cache assertion is appropriate. Do NOT use for API syntax or refactoring."
 metadata:
-  version: 1.6.0
+  version: 1.7.0
 ---
 
 # Test Assertion Design
@@ -252,8 +252,8 @@ And   斷言對應【產出】表「空」列的結構驗證（存在性判定�
 
 Given 資料來源回傳 25 筆項目
 When  畫面渲染完成，狀態轉為「正常」
-Then  清單容器顯示的筆數為 20
-And   斷言對應【產出】表「正常」列的邏輯不變式（筆數小於等於 20 的關係），不斷言「筆數等於 20」這個固定值——固定值斷言會在內容政策上限調整時無謂失敗
+Then  清單容器顯示的筆數不超過內容政策上限（目前上限為 20）
+And   斷言對應【產出】表「正常」列的邏輯不變式（筆數小於等於上限的關係，見〈確定性斷言的基礎形態〉邏輯不變式列），不斷言「筆數等於 20」這個固定值——固定值斷言會在內容政策上限調整時無謂失敗
 ```
 
 ## 不在範圍聲明
