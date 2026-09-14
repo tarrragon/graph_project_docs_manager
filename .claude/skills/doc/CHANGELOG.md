@@ -2,6 +2,15 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.17.0 — FlowStep 新增必填欄位 `traverses`：本步驟直接觸及的 domain 公開面，domain 名字串清單
+（0..n）。欄位必存在，純畫面步驟（畫面狀態屬 layer 而非 domain）填空清單；經依賴邊間接到達的 domain 不列；
+語意對應 domain map 的「貫穿」，貫穿數由消費端聚合。取代「每步單一 domain」的設計——單值無法表達一步觸及
+多個 domain，也迫使純畫面步驟硬塞 domain。`FLOWSTEP_REQUIRED_FIELDS` 納入本欄位並於 schema 註解寫明語意；
+conformance 測試改為檢查 `docs/usecases/` 下全部已回填的 UC（原只檢查一份），新增欄位契約檢查（缺欄位、
+非清單、元素非字串皆攔下，空清單合法）與對應的正向對照測試；`references/usecases.md` 欄位表與
+`templates/usecase-template.md` 骨架及範例補上本欄位。`tracking_schema.json` 不含必填欄位常數，無需重新
+export。doc CLI 尚無 FlowStep 欄位驗證入口，本版不新增。
+
 **Version**: 1.16.0 — 補齊元件庫規格範本兩處「判準藏在範例、條文沒有」的缺口（複驗發現讀者只讀範本主文
 時各自代入不同架構假設，範例雖已內含判準但未反映到條文本身）：
 (1) 狀態矩陣「來源」欄條文明寫判準——以值的儲存位置與可讀取範圍判定，推導值（如表單驗證結果）依其推導結果
