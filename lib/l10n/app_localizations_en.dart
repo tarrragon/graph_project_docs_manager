@@ -200,6 +200,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gotoGapsReportAction => 'Go to Gap Report';
 
   @override
+  String get gotoDomainAction => 'Go to Domain View';
+
+  @override
+  String get projectUnreadyMessage => 'Domain view not entered yet';
+
+  @override
   String get openSourceFileAction => 'Open Source File';
 
   @override
@@ -446,6 +452,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gapCategoryMissingFrontmatter => '缺少 Frontmatter';
+
+  @override
+  String get gapCategoryOrphanEvent => 'Orphan Events';
+
+  @override
+  String get gapCategoryEventDeclarationMismatch =>
+      'Event Declaration Mismatch';
 
   @override
   String gapItemLineLabel(int lineNumber) {

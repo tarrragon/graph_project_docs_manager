@@ -416,6 +416,18 @@ abstract class AppLocalizations {
   /// **'前往破洞報告'**
   String get gotoGapsReportAction;
 
+  /// SPEC-003 §3.2～§3.6：五個非 Domain 畫面「專案未就緒」狀態的 action-<screen>-goto-domain 前進動作文案（SPEC-001 §5 之後共用定義）
+  ///
+  /// In zh, this message translates to:
+  /// **'前往 Domain 視圖'**
+  String get gotoDomainAction;
+
+  /// SPEC-001 §5 之後共用定義：五個非 Domain 畫面「專案未就緒」狀態的顯示文案（0.1 未區分尚未選擇專案／載入中／此專案不適用本 App 三個原因，待 Domain 視圖與 workspace 狀態整合後細分）
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未進入 Domain 視圖'**
+  String get projectUnreadyMessage;
+
   /// SPEC-003 §3.2 UC Flow／§3.6 節點詳情：action-*-open-source 按鈕文案
   ///
   /// In zh, this message translates to:
@@ -841,6 +853,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'缺少 Frontmatter'**
   String get gapCategoryMissingFrontmatter;
+
+  /// SPEC-001 §5／SPEC-003 §3.5：破洞類別 orphan-event 的分節標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'孤立事件'**
+  String get gapCategoryOrphanEvent;
+
+  /// SPEC-001 §5／SPEC-003 §3.5：破洞類別 event-declaration-mismatch 的分節標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'事件宣告與 flow 不符'**
+  String get gapCategoryEventDeclarationMismatch;
 
   /// SPEC-001 §5 破洞報告·有破洞狀態：ListRow.item 次文字，破洞所在行號
   ///
