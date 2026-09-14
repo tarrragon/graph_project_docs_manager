@@ -4,7 +4,7 @@ description: "UX / UI 設計的系統性評估：把「使用者被困住」類�
 license: MIT
 metadata:
   portable: true
-  version: 1.10.1
+  version: 1.11.0
   category: ux-design
 ---
 
@@ -124,7 +124,7 @@ ux-design-evaluation/
 【輸入】
 
 ```
-SPEC 片段：一個非同步查詢操作，實測延遲 p90 為 600ms
+SPEC 片段：一個非同步查詢操作，由按鈕觸發，實測延遲 p90 為 600ms
 ```
 
 【產出】
@@ -134,15 +134,19 @@ SPEC 片段：一個非同步查詢操作，實測延遲 p90 為 600ms
 判斷依據                       | 結果
 600ms 落在 `interaction-feedback-waiting-and-notification.md`〈時間門檻與回饋策略〉哪個帶 | 400ms-1s（短暫等待）
 該帶對應的回饋策略             | Spinner／按鈕 loading 狀態
-結論                           | 回饋契約〈回饋通道〉欄填「按鈕 loading 狀態」，
-                                 不是「要有回饋」這種無法直接寫入契約表的抽象敘述
+結論                           | 回饋契約表「等待與結果」列：時間門檻欄填「p90 600ms
+                                 （400ms-1s 帶）」，選用的統計量隨值標明；反應欄的等待段
+                                 填「按鈕 loading 狀態」。反應欄須同格涵蓋的成功／失敗／
+                                 逾時／服務不可用四段，由 `interaction-feedback-waiting-
+                                 and-notification.md`〈結果通知的形式選擇〉產出，不在本例
+                                 範圍；回饋通道欄由規格撰寫者填，本 skill 不填
 ```
 
 【驗證】
 
 ```
 檢驗問句
-Q 本 skill 的產出是否為封閉列舉中的具體值？
+Q 本 skill 產出的「反應欄等待段」是否為封閉列舉中的具體值？
   預期：是——「按鈕 loading 狀態」是 `interaction-feedback-waiting-and-notification.md`〈時間門檻與回饋策略〉表已定義的策略之一，
   `component-contract-design` 可直接引用，不需要再判斷一次門檻
 Q 產出是否停留在「要有回饋」這類抽象敘述？
