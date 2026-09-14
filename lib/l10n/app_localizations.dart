@@ -883,6 +883,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'檢視'**
   String get viewGapsAction;
+
+  /// SPEC-001「專案未就緒」共用定義：Domain 視圖未選專案時的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未選擇專案'**
+  String get projectUnreadyReasonNotSelected;
+
+  /// SPEC-001「專案未就緒」共用定義：Domain 視圖載入中時的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'圖譜載入中'**
+  String get projectUnreadyReasonLoading;
+
+  /// SPEC-001「專案未就緒」共用定義：Domain 視圖處於三個阻擋狀態（不是框架專案／無可消費的型別表／schema 不相容）之一時的顯示文案，本畫面不區分三者
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案不適用本 App'**
+  String get projectUnreadyReasonIncompatible;
+
+  /// SPEC-001「專案未就緒」共用定義：前往 Domain 視圖的動作文案（SPEC-003 §2.9 `action-<screen>-goto-domain`）
+  ///
+  /// In zh, this message translates to:
+  /// **'前往 Domain 視圖'**
+  String get gotoDomainViewAction;
+
+  /// SPEC-003 §3.3 追溯視圖：Ticket 清單未載入時的前往動作文案（`0.1.0-W3-335.38` S-28）
+  ///
+  /// In zh, this message translates to:
+  /// **'前往 Ticket 清單'**
+  String get gotoTicketsListAction;
 }
 
 class _AppLocalizationsDelegate

@@ -77,3 +77,25 @@ class TraceabilityBroken extends TraceabilityScreenState {
 class TraceabilityNoProposal extends TraceabilityScreenState {
   const TraceabilityNoProposal();
 }
+
+/// 「專案未就緒」的三個原因（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）。
+enum ProjectUnreadyReason {
+  /// Domain 視圖尚未選擇專案。
+  notSelected,
+
+  /// Domain 視圖圖譜載入中。
+  loading,
+
+  /// Domain 視圖處於三個阻擋狀態之一（不是框架專案／無可消費的型別表／
+  /// schema 不相容），本畫面不區分三者，統一顯示「此專案不適用本 App」。
+  incompatible,
+}
+
+/// 專案未就緒：五個非 Domain 畫面共用狀態（SPEC-001 共用定義），取代本
+/// 畫面原本依圖判定的三個狀態。
+class TraceabilityProjectUnready extends TraceabilityScreenState {
+  const TraceabilityProjectUnready(this.reason);
+
+  /// 三選一原因，決定顯示文案。
+  final ProjectUnreadyReason reason;
+}

@@ -474,4 +474,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewGapsAction => 'View';
+
+  @override
+  String get projectUnreadyReasonNotSelected => 'No project selected yet';
+
+  @override
+  String get projectUnreadyReasonLoading => 'Graph loading';
+
+  @override
+  String get projectUnreadyReasonIncompatible =>
+      'This project is not usable with this app';
+
+  @override
+  String get gotoDomainViewAction => 'Go to Domain View';
+
+  @override
+  String get gotoTicketsListAction => 'Go to Ticket List';
 }

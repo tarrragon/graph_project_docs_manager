@@ -1,8 +1,11 @@
 /// 追溯視圖（SPEC-001 §3；SPEC-003 §3.3）。
 ///
-/// 三個狀態（正常／鏈路斷裂／無提案）皆由 [traceabilityStateProvider]
-/// 決定，元件 import 只來自 `lib/components/components.dart`（本票
-/// acceptance 第一項）。
+/// 四個狀態（專案未就緒／正常／鏈路斷裂／無提案）皆由
+/// [traceabilityStateProvider] 決定，元件 import 只來自
+/// `lib/components/components.dart`（本票 acceptance 第一項）。
+/// 「專案未就緒」為 SPEC-001 五個非 Domain 畫面共用定義
+/// （`0.1.0-W3-335.37` R9），本畫面只交狀態渲染（見
+/// [ProjectUnreadyReason]），不接真實 Domain 視圖建圖狀態。
 library;
 
 import 'package:flutter/widgets.dart';
@@ -50,6 +53,25 @@ class TraceabilityScreen extends ConsumerWidget {
             ),
           ],
         ),
+      TraceabilityProjectUnready(:final reason) => EmptyState(
+          variant: EmptyStateVariant.page,
+          testKey: const Key('state-traceability-project-unready'),
+          message: switch (reason) {
+            ProjectUnreadyReason.notSelected =>
+              l10n.projectUnreadyReasonNotSelected,
+            ProjectUnreadyReason.loading => l10n.projectUnreadyReasonLoading,
+            ProjectUnreadyReason.incompatible =>
+              l10n.projectUnreadyReasonIncompatible,
+          },
+          actions: [
+            AppButton(
+              label: l10n.gotoDomainViewAction,
+              testKey: const Key('action-traceability-goto-domain'),
+              onPressed: () =>
+                  navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
+            ),
+          ],
+        ),
     };
   }
 }
@@ -63,7 +85,9 @@ class _TraceTree extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final expanded = ref.watch(expandedTraceNodesProvider);
+    final ticketsLoaded = ref.watch(ticketsLoadedProvider);
 
     void onToggle(String nodeId) {
       final notifier = ref.read(expandedTraceNodesProvider.notifier);
@@ -85,6 +109,22 @@ class _TraceTree extends ConsumerWidget {
     return Panel.scrollable(
       scrollKey: const Key('scroll-traceability-tree'),
       children: [
+        if (!ticketsLoaded)
+          ButtonRow(
+            alignment: ButtonRowAlignment.end,
+            children: [
+              AppButton(
+                label: l10n.gotoTicketsListAction,
+                testKey: const Key('action-traceability-goto-tickets'),
+                variant: AppButtonVariant.secondary,
+                onPressed: () => navigateTo(
+                  ref.read,
+                  AppDestination.tickets,
+                  NavIntent.jump,
+                ),
+              ),
+            ],
+          ),
         Tree(
           nodes: [
             for (final root in roots)

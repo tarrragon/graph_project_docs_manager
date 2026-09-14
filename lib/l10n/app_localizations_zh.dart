@@ -466,4 +466,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get viewGapsAction => '檢視';
+
+  @override
+  String get projectUnreadyReasonNotSelected => '尚未選擇專案';
+
+  @override
+  String get projectUnreadyReasonLoading => '圖譜載入中';
+
+  @override
+  String get projectUnreadyReasonIncompatible => '此專案不適用本 App';
+
+  @override
+  String get gotoDomainViewAction => '前往 Domain 視圖';
+
+  @override
+  String get gotoTicketsListAction => '前往 Ticket 清單';
 }

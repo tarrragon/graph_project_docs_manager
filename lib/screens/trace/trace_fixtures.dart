@@ -64,5 +64,21 @@ abstract final class TraceabilityFixtures {
       hasGap: true,
       gapLayer: 'spec',
     ),
+    TraceNode(
+      id: 'PROP-007',
+      label:
+          'PROP-007 稽核軌跡匯出', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      status: 'draft',
+      children: [
+        TraceNode(
+          id: 'SPEC-007',
+          label:
+              'SPEC-007 稽核事件格式', // i18n-exempt: fixture 節點標題，非 App UI 文案
+          status: 'draft',
+          hasGap: true,
+          gapLayer: 'uc',
+        ),
+      ],
+    ),
   ];
 }
