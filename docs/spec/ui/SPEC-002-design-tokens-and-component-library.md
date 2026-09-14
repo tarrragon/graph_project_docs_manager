@@ -4,8 +4,8 @@ title: "Design token 與元件庫：所有顏色、尺寸、元件皆具名"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-27"
-updated: "2026-09-02"
-version: "1.4"
+updated: "2026-09-14"
+version: "1.6"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -177,7 +177,7 @@ token。列高歸併與右欄寬收斂的完整推導記於 `lib/tokens/layout.d
 
 ## 元件庫的範圍
 
-**各畫面的材料一律取自元件庫，不自行組裝。** SPEC-001 的 31 個狀態橫跨七個
+**各畫面的材料一律取自元件庫，不自行組裝。** SPEC-001 的全部狀態（總數見其〈狀態總數〉節）橫跨七個
 畫面，若各畫面自行拼裝，同一個概念會長出七種樣子。
 
 **元件清單與逐元件契約自 2026-09-02 起由 `SPEC-004-component-library.md` 承載**
@@ -262,3 +262,4 @@ FR-01 檢查範圍。
 | 1.4 | 2026-09-02 | 新增〈時間 token〉節：`lib/tokens/motion.dart` 落地 SPEC-003 §2.1 十個 `Motion` token（七個契約類 `static const`、三個動畫類依 context 求值），FR-01 檢查式擴及 `Duration(milliseconds:`／`Duration(seconds:` 字面值 |
 | 1.2 | 2026-09-02 | 狀態數依 SPEC-001 v1.4（§1 新增「已選格」疊加態）更正為 31（`0.1.0-W1-048`） |
 | 1.5 | 2026-09-02 | 對比重算發現 `textSecondary`／`textPrimary` 兩組合未達 WCAG AA，裁決方案 C：`textSecondary` 調深、新增 `textDisabled`、`surfaceSegmentTrack` 調淺；新增〈設計約束〉「無障礙對比例外」條款與〈無障礙對比例外（2026-09-02）〉小節 |
+| 1.6 | 2026-09-14 | §元件庫的範圍 的狀態數改為引用 SPEC-001〈狀態總數〉而不寫數字（`0.1.0-W3-335.16`，承 `0.1.0-W3-335.18` SR-1）：SPEC-001 已由 31 增至 34（v1.8／v1.9 新增兩個泳道態與 UC Flow「尚未選定 UC」），本檔 1.1、1.2 兩次逐版同步數字皆隨上游增列而失效，改為引用權威節避免第三次；新增狀態的元件對照在 SPEC-004 §3.6 |
