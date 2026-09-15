@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.6.3
+  version: 1.6.4
   category: engineering-workflow
 ---
 
@@ -37,6 +37,7 @@ metadata:
 | 什麼時候讀 | 檔案 | 涵蓋 |
 |-----------|------|------|
 | 決定把某個提案移到別的版本（不論理由，含 Step 1 依賴檢查報 `[WARNING]`） | `references/version-shift-sop.md` | 契約掃描、契約鎖定點確認、硬耦合分級、定形票建立、教學比對、交叉標記六步；硬耦合四類判斷準則 |
+| Step 2／4.5／5／6 的判準允許分歧、需要具體範例校準（UI 類判別、三項前置的「存在」判準、地基波依賴編排、兩軸測試交集去重、GREEN 票粒度、並行安全的共用檔案） | `examples/v02-walkthrough.md` | 對應步驟段落的三段鏈式範例（【輸入】【產出】【驗證】），全篇亦可作為九步流程的假想演練 |
 
 ## 與相鄰資產的交界
 
