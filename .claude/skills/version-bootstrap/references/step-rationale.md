@@ -42,6 +42,8 @@
 
 **Why**：Step 4.5 地基波順序表把元件契約（3.5）排在 UX 審查（3）之後、元件庫（4）之前，PM 工作句只寫「元件契約依賴 UX 審查」，沒有交代是否也依賴 i18n（1）與 design-system（2）；`component-contract-design` skill 自身的前置檢查表另外把 design token 層列為該規格票的直接前置，兩處對「元件契約是否依賴 design-system」各自表述，容易讓讀者誤以為 i18n 完全不在元件契約的依賴範圍內。**Consequence**：若誤判元件契約不依賴 i18n，可能在 i18n 尚未 build 完成時開放元件契約票；填元件契約欄位表的內容政策時（`component-contract-design` skill 的 step-3〈內容政策〉要求填「最長測試文案」，來源為 i18n 資源檔既有譯文）無資源可查，需回頭等待或用臆測值頂替，事後還要重測。**Action**：UX 審查的 `blockedBy` 已含 i18n 與 design-system（見 SKILL.md Step 4.5 PM 工作句），元件契約的 `blockedBy` 只需列 UX 審查一項——UX 審查完成即代表 i18n 與 design-system 皆已完成，元件契約經此鏈已遞移取得兩者，不必重複列出；重複列出反而製造兩條可能不同步的依賴宣告。
 
+**去重原則的射程**：上段「不必重複列出」僅限元件契約自身的 `blockedBy` 列舉，因為元件契約對 i18n／design-system 只是經 UX 審查遞移取得完成訊號，並未直接消費兩者產出。此原則不適用於 Step 4.5 元件庫的 `blockedBy`：元件庫「套 token + i18n + UX 反應，依契約實作」（SKILL.md Step 4.5 產出欄；方法論〈地基波 build 順序〉第 4 塊「文字經 i18n key 傳入、樣式取 design token」），直接消費 design token、i18n key 與 UX 反應三項產出，非僅取得完成訊號，故元件庫的 `blockedBy` 仍需並列前三塊與元件契約四項，不受本節去重原則約束。
+
 ## GREEN 票分組依據
 
 Step 6「每個 spec FR 或功能模組 1 張」的「或」由三條依據共同決定，各管不同判準對象：
