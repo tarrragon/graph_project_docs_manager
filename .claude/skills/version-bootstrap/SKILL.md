@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.6.1
+  version: 1.6.2
   category: engineering-workflow
 ---
 
@@ -160,7 +160,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 **被誰消費（feed Step 5）**：每條契約條目（不變式/欄位語意/邊界行為）登錄至 `docs/traceability.yaml` 第三軸 `data_contract_tests`；Step 5 派發 sage 時一併帶入此軸，供測試設計逐條盤點覆蓋缺口，避免資料層規則只靠「剛好被某測試涵蓋」被動覆蓋。
 
-**Checkpoint**：兩旗標已判定並記錄理由（含合法跳過情形）；旗標=要時，資料契約文件已產出且 `doc query` 查詢成功；`traceability.yaml` 第三軸 `data_contract_tests` 已初始化，契約條目與測試對應無 TODO 佔位。
+**Checkpoint**：兩旗標已判定並記錄理由（含合法跳過情形）；旗標=要時，資料契約文件已產出且 `doc query` 查詢成功；`traceability.yaml` 第三軸 `data_contract_tests` 已初始化，每條契約條目的 `contract_ref`／`description`（schema 必要欄位）皆已填齊。`tests` 依 `tracking_schema.py` 的 `data_contract_entry_optional` 屬選填欄位，測試設計要到 Step 5 才進行，本步驟合法留空，不視為 TODO 佔位——測試對應是否補齊的判準移至 Step 5 Checkpoint。
 
 ---
 
@@ -168,13 +168,15 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 **動作**：對每份完成的 spec 執行 `/spec validate`（Full 模式，含維度 4 教學一致性）。
 
-**前置**：確認 CLAUDE.md「教學模組對應表」中有對應模組。
+**前置**：確認 CLAUDE.md 是否含「教學模組對應表」章節。
+- 有此表且列出對應模組 → 依下方 PM 工作處理維度 4 掃描結果
+- 無此表（專案未採用教學對應慣例，或本版無 blog 教學內容）→ `/spec validate` 依其既有降級條款（`spec` skill〈維度 4 教學一致性掃描說明〉）自動跳過維度 4，輸出「維度 4 skipped：無教學模組對應表」，不計入失敗；本步驟以該輸出作為 Checkpoint 通過依據，不需額外處理
 
-**PM 工作**：
+**PM 工作**（CLAUDE.md 有教學模組對應表時）：
 - 偏移（高/中）：對齊教學設計或先在 blog 補完
-- 教學缺口：在 blog 對應模組補完後再回來
+- 教學缺口：在 blog 對應模組補完後再回來；無法立即補完時登記到 `docs/sync-pending.md`（`teaching-sync` skill 維護的 SOT，見該 skill〈sync-pending 是 SOT〉），標記優先級（P0/P1/P2），不以口頭記憶取代
 
-**Checkpoint**：維度 4 無高嚴重度偏移。教學缺口已處理或標記 sync-pending。
+**Checkpoint**：CLAUDE.md 有教學模組對應表時，維度 4 無高嚴重度偏移，教學缺口已處理或已登記於 `docs/sync-pending.md`；CLAUDE.md 無教學模組對應表時，`/spec validate` 已輸出「維度 4 skipped：無教學模組對應表」。
 
 ---
 
@@ -228,7 +230,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 **PM 工作**：驗收 sage 產出——確認 FR↔AC 覆蓋矩陣（Q12）無空行。
 
-**Checkpoint**：所有 spec 的 Phase 2 完成，紅燈測試規格已提交。
+**Checkpoint**：所有 spec 的 Phase 2 完成，紅燈測試規格已提交；`traceability.yaml` 第三軸 `data_contract_tests` 每條契約條目已補上 `tests` 或標記 `no_test_needed`＋`reason`，不留缺口（Step 2.6 合法留空的欄位在此軸收斂）。
 
 ---
 
