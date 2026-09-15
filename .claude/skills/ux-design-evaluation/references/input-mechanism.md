@@ -253,7 +253,7 @@ IME 個人化學習把輸入存進跨 app 共用的詞庫 — 處理 secret 的�
 
 適用欄位：密碼 / PIN、API key / token、伺服器位址 / 連線字串、CLI 指令（可能含前述任何一類）、信用卡號、任何 confidential 欄位。
 
-confidential 的判準是使用者不希望內容被 IME 詞庫記住。其中 secret（密碼／PIN、API key／token、伺服器位址／連線字串、CLI 指令、信用卡號：被他人看到即可冒用或取得存取權的值）四項全關（見下表）。非 secret 的 confidential 內容（如日記、私人備忘），兩項控制分屬不同判準、互不影響：個人化學習只依是否為 confidential 決定，一律強制明確關閉；自動校正與輸入建議與是否 confidential 無關，改依內容是否為自然語言決定。平台沒有獨立的學習開關時（如 iOS），在規格中顯式記錄「此平台無法單獨關閉學習」與接受的風險，不以關閉全部輸入輔助代替。
+confidential 的判準是使用者不希望內容被 IME 詞庫記住。其中 secret（密碼／PIN、API key／token、伺服器位址／連線字串、CLI 指令、信用卡號：被他人看到即可冒用或取得存取權的值）四項全關，設定見下表——**下表只適用 secret 類欄位**，非 secret 的 confidential 欄位規則見表後段。
 
 | 控制項     | secret 類欄位設定        | 理由                       |
 | ---------- | ------------------------ | -------------------------- |
@@ -262,7 +262,9 @@ confidential 的判準是使用者不希望內容被 IME 詞庫記住。其中 s
 | 輸入建議   | 關閉                     | 防止 secret 出現在建議列   |
 | 密碼欄位   | 依需求設定 obscure text  | 畫面不顯示明文             |
 
-非 secret 的 confidential 欄位，兩項控制分屬不同判準、互不影響：個人化學習只依是否為 confidential 決定，僅比照上表關閉；自動校正與輸入建議與是否 confidential 無關，改依內容是否為自然語言決定——自然語言時兩者保留開啟，非自然語言時依上方〈四個決策維度〉IME policy 所述「非自然語言內容會被破壞」而應關閉，見下方範例。
+平台沒有獨立的學習開關時（如 iOS），在規格中顯式記錄「此平台無法單獨關閉學習」與接受的風險，不以關閉全部輸入輔助代替。
+
+非 secret 的 confidential 欄位（如日記、私人備忘）不比照上表，兩項控制分屬不同判準、互不影響：個人化學習只依是否為 confidential 決定，一律明確關閉；自動校正與輸入建議與是否 confidential 無關，改依內容是否為自然語言決定，結果為自然語言時兩者保留開啟、非自然語言時依上方〈四個決策維度〉IME policy 所述「非自然語言內容會被破壞」而應關閉，見下方範例。
 
 平台邊界：這些設定對應 iOS 的 spell checking attribute 與 Android 的 no-suggestions flag，不同 IME app 的遵守程度不一 — app 端控制是「盡力而為」，設定正確的 flag 是必要條件、不是充分保證，安全敏感場景另配 secure text entry。
 
