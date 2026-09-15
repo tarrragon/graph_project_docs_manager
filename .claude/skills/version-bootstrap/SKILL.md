@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.7.0
+  version: 1.7.1
   category: engineering-workflow
 ---
 
@@ -39,6 +39,7 @@ metadata:
 | 決定把某個提案移到別的版本（不論理由，含 Step 1 依賴檢查報 `[WARNING]`） | `references/version-shift-sop.md` | 契約掃描、契約鎖定點確認、硬耦合分級、定形票建立、教學比對、交叉標記六步；契約檔案界定三問；硬耦合三類判斷準則 |
 | Step 2／4.5／5／6 的判準允許分歧、需要具體範例校準（UI 類判別、三項前置的「存在」判準、地基波依賴編排、兩軸測試交集去重、GREEN 票粒度、並行安全的共用檔案） | `examples/v02-walkthrough.md` | 對應步驟段落的三段鏈式範例（【輸入】【產出】【驗證】），全篇亦可作為九步流程的假想演練 |
 | 不確定某件事該由本 skill 還是相鄰資產（`foundation-design`／`version-sequencing`／`ux-design-evaluation`／`component-contract-design`／`dart-style-guardian`）處理 | `references/adjacent-assets-boundary.md` | 被本 skill 呼叫的工具清單；與本 skill 對接的規劃層 skill 交界表 |
+| 規劃波過程中發生非 pipeline 內工作（既有測試回歸／Spec 約束邊界發現／流程改善發現） | `references/reactive-work.md` | 三類反應式工作的處理方式對照表 |
 
 ---
 
@@ -72,7 +73,7 @@ doc list proposals  # 確認提案狀態
 uv run .claude/skills/version-bootstrap/scripts/check_proposal_dependencies.py --version <version>
 ```
 
-腳本讀 `docs/proposals-tracking.yaml` 各提案的 `depends_on` 欄位（選填，list of str，元素為本提案依賴的前置提案 id）比對 `target_version` 排序；若專案已採用 `doc` skill，該欄位格式定義的權威來源見 doc skill 的 `tracking_schema.py`（`PROPOSALS_TRACKING_SCHEMA["proposal_entry_optional"]`），非本 yaml 檔案本身的頭部註解。若未採用 doc skill，本腳本仍可正常運作（腳本本身不 import 該檔，以執行期讀取的 list 格式驗證取代靜態 import），只是欄位格式需自行依上方括號說明推斷，無法查閱該權威定義檔案。輸出 `[WARNING]` 時，PM 必須在本 Checkpoint 前二擇一處理：(1) 把依賴提案移入本版或更早版本一起排入，(2) 把本提案移至依賴提案完成之後的版本。**動機案例**：曾有版本以雙提案啟動，其中一提案依賴另一個排在更晚版本的提案，卻仍排入本版，矛盾拖到規劃波中段才由用戶手動發現，最終將該提案移至依賴對象所在的版本節點。若此檢查在 Step 1 就位，矛盾可在提案確認階段被攔截。
+腳本讀 `docs/proposals-tracking.yaml` 各提案的 `depends_on` 欄位（選填，list of str，元素為本提案依賴的前置提案 id）比對 `target_version` 排序。欄位格式權威來源（含專案未採用 doc skill 時的腳本行為）與此檢查為何在 Step 1 就位的動機案例，見 `references/step-rationale.md`〈Step 1：跨提案依賴檢查腳本〉。輸出 `[WARNING]` 時，PM 必須在本 Checkpoint 前二擇一處理：(1) 把依賴提案移入本版或更早版本一起排入，(2) 把本提案移至依賴提案完成之後的版本。
 
 **選 (2) 移版時不得整包搬走**：提案在本版可能已留下 schema／DDL／契約級的殘留耦合，必須先盤點並在本版定形，否則兩個提案沒有真正解耦。六步盤點程序見 `references/version-shift-sop.md`。
 
@@ -247,17 +248,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 ---
 
-## 反應式工作（不納入 bootstrap）
-
-以下工作在規劃波過程中可能發生，但不屬於 bootstrap pipeline：
-
-| 類型 | 處理方式 |
-|------|---------|
-| 既有測試回歸 | incident-responder 分析，建 ANA/IMP ticket |
-| Spec 約束邊界發現 | 建 ANA ticket，可在 Step 2 填寫時順帶處理 |
-| 流程改善發現 | 建 ANA ticket，排入後續 Wave |
-
----
+規劃波過程中可能發生但不屬於 bootstrap pipeline 的反應式工作，見〈按需讀取〉`references/reactive-work.md`。
 
 ---
 

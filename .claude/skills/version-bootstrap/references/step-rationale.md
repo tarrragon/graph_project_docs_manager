@@ -2,9 +2,15 @@
 
 > **什麼時候讀本檔**：想跳過某一步、或要判斷某一步在本專案是否適用時。SKILL.md 的九步表給的是做什麼與時機，本檔給的是跳過的後果。
 >
-> 同目錄另有 `version-shift-sop.md`（提案移版時的契約殘留盤點）。
+> 同目錄另有 `version-shift-sop.md`（提案移版時的契約殘留盤點）、`reactive-work.md`（不納入 bootstrap 的反應式工作）、`adjacent-assets-boundary.md`（與相鄰資產的交界）。
 
 每一節的 Why 說明該步驟填補的是哪一種空隙，Consequence 是跳過它的實測後果——括號標「實證」者為已發生過的案例，非推想。
+
+## Step 1：跨提案依賴檢查腳本
+
+**背景**：`check_proposal_dependencies.py` 讀 `docs/proposals-tracking.yaml` 各提案的 `depends_on` 欄位（選填，list of str，元素為本提案依賴的前置提案 id）比對 `target_version` 排序；若專案已採用 `doc` skill，該欄位格式定義的權威來源見 doc skill 的 `tracking_schema.py`（`PROPOSALS_TRACKING_SCHEMA["proposal_entry_optional"]`），非本 yaml 檔案本身的頭部註解。若未採用 doc skill，本腳本仍可正常運作（腳本本身不 import 該檔，以執行期讀取的 list 格式驗證取代靜態 import），只是欄位格式需自行依上方括號說明推斷，無法查閱該權威定義檔案。
+
+**Why**：本版提案依賴的提案若排在更晚版本，屬排序矛盾，本檢查在提案確認階段就攔截，不留到規劃波中段。**Consequence（動機案例，實證）**：曾有版本以雙提案啟動，其中一提案依賴另一個排在更晚版本的提案，卻仍排入本版，矛盾拖到規劃波中段才由用戶手動發現，最終將該提案移至依賴對象所在的版本節點。若此檢查在 Step 1 就位，矛盾可在提案確認階段被攔截。**Action**：見 SKILL.md Step 1 的依賴檢查腳本指令與輸出 `[WARNING]` 時的二擇一處理（移入本版或更早版本一起排入／移至依賴提案完成之後的版本）。
 
 ## Step 2.5：Domain 規劃
 

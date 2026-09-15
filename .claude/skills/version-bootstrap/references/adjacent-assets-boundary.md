@@ -2,7 +2,7 @@
 
 > **什麼時候讀本檔**：不確定某件事該由本 skill 還是相鄰資產處理時。執行本 skill 九步流程時不需要先讀本檔。
 >
-> 同目錄另有 `step-rationale.md`（各步驟為什麼存在）、`version-shift-sop.md`（移版硬耦合盤點 SOP）。
+> 同目錄另有 `step-rationale.md`（各步驟為什麼存在）、`version-shift-sop.md`（移版硬耦合盤點 SOP）、`reactive-work.md`（不納入 bootstrap 的反應式工作）。
 
 **被本 skill 呼叫的工具**（它們回答「怎麼做」，本 skill 回答「什麼時候做、做完算不算數」）：`doc`（建檔與格式）、`spec validate`（規格品質與教學一致性）、`tdd`（Phase 2 測試設計）、`ticket`（票務）。
 
