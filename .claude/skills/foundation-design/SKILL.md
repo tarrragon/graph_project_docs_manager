@@ -3,7 +3,7 @@ name: foundation-design
 description: "地基工作的單一入口與路由層。逐維度決定「本專案的地基產物是什麼」，權威只提供預設產物，形態不符時改寫產物而非跳過維度。維度含 UI／測試／資料庫／DevOps／可觀測性／事件流仲裁，各指名既有權威並標明權威缺席時的處置。新舊專案一體適用：接手他人專案先盤點萃取再命名固化。觸發詞：地基、地基波、元件庫、design token、fixture、seed、migration、scaffold、鷹架、腳手架、接手老專案。Do NOT use for 環境安裝（用 project-init）。"
 license: MIT
 metadata:
-  version: 6.6.2
+  version: 6.6.3
   category: engineering-workflow
 ---
 
@@ -33,6 +33,8 @@ metadata:
 | orchestration skill | `version-bootstrap`（「建 Spec 骨架」與「地基波」兩步） | 在規劃流程的某一步編排 |
 | 執法工具 | CI 的裸值檢查、專案的 PreToolUse guard | 掃描既成違規 |
 | 範本 skill | `doc` 的 design-system spec 範本 | 提供產出物契約 |
+
+（可發現性缺口見 `references/entry-point-rationale.md`）
 
 > **本文件指名權威用名字，不用檔案路徑。** skill 以名字載入（走 Skill 工具），方法論與規則以標題檢索（`grep -rl "<標題>" .claude/`）。
 
@@ -91,9 +93,9 @@ metadata:
 | **規劃波之後** | 該版票已建（不論是否已開工） | **仍由本 skill 驅動**，逐維度補判未被既有票涵蓋的產物。不重排既有票。這是真實 repo 最常見的狀態，不是收手 |
 | **其餘** | 以上皆不命中 | 依維度表逐維度定產物，產物交給 `version-sequencing` 排版本 |
 
-**判別不用身份也不用二元存在性。** **「該版 `todolist.yaml` 填了 `proposals` 欄位」不等於規劃波進行中**，提案登記與 pipeline 執行是兩件事，誤判的代價是整個盤點被跳過。
+**判別不用身份也不用二元存在性**（見 `references/situation-judgment-notes.md`）。**「該版 `todolist.yaml` 填了 `proposals` 欄位」不等於規劃波進行中**，提案登記與 pipeline 執行是兩件事，誤判的代價是整個盤點被跳過。
 
-**交回下游不等於下游覆蓋全部維度。** 交回前先為這兩個維度各建一張盤點票（產物欄可填「待定」），口頭明示不構成交接。
+**交回下游不等於下游覆蓋全部維度。** 實查 `version-bootstrap` 的步驟，`DevOps` 與 `可觀測性` 兩個維度在其全文 0 命中。交回前先為這兩個維度各建一張盤點票（產物欄可填「待定」），口頭明示不構成交接。
 
 **盤點票的驗收條件與完成定義依循本節既有規則，不另立新判準。** 驗收條件為完成〈工作流〉步驟 2 對該維度重新判定產物欄；完成定義依判定結果套用〈產物欄的五種合法答案〉與步驟 4：判定為「已存在」或「無」時，本票即完成，產出為該判定記錄本身，不建後續票；判定為「照預設」「改寫產物」或「待定」時，依各答案形態表列的必附項（改寫產物須附改寫後的產物與不適用理由；待定須附缺的是什麼與一張補票）落為地基票並登記 `blockedBy` 依賴，本票完成標準為該登記動作已完成。
 
@@ -153,7 +155,7 @@ metadata:
 | 情境判定命中「文件回答不了地基問題的既有實作」 | `references/handoff-mode.md` | 盤點→命名→固化→補文件四步、既有 artifact 可信度的四種例外、命名前置的規模閘門 |
 | 做下去發現不對勁，要照症狀查處置 | `references/troubleshooting.md` | 十一種症狀與各自的成因與處置 |
 | 想看別人怎麼填的，或想知道本 skill 在哪些專案形態上實跑過 | `references/examples.md`、`references/examples-process.md` | 維度判斷與流程操作的實測案例；已驗證與未驗證的專案形態 |
-| 不確定某件事該由本 skill 還是相鄰資產處理 | `references/adjacent-assets-boundary.md` | 與 `version-bootstrap`／`version-sequencing`／`ux-design-evaluation`／`component-contract-design`／`dart-style-guardian` 相鄰資產的交界表 |
+| 不確定該由本 skill 或相鄰資產處理 | `references/adjacent-assets-boundary.md` | 相鄰資產的交界表 |
 
 ---
 
