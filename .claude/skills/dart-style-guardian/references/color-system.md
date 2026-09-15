@@ -250,7 +250,7 @@ Shadows use the primary blue color with varying opacity:
 
 ## Theme 與 Token 判準（第 4 項「Prefer theme colors」與「一律用 token」的交界）
 
-`SKILL.md`〈Key Files〉已定義 Theme 是「組裝 tokens 為 ThemeData 的入口」——Theme 的值來自 token，兩者不是互斥的兩套系統，判準是「Flutter 內建語意插槽是否已覆蓋這個 token 語意」。
+`SKILL.md`〈Key Files〉已定義 Theme 是「組裝 tokens 為 ThemeData 的入口」——Theme 的值來自 token，兩者不是互斥的兩套系統，判準是「Flutter 內建語意插槽是否已覆蓋這個 token 語意」。對應的內建語意插槽存在時用主題插槽，不存在時用 token。無法確定某語意是否有內建插槽時，查閱當前框架版本的 ColorScheme／TextTheme 官方欄位清單再判定，不憑記憶。
 
 【輸入】
 
