@@ -4,7 +4,7 @@ description: "從規格狀態表、設計畫布或既有程式碼推導元件目
 license: MIT
 metadata:
   portable: true
-  version: 3.9.1
+  version: 3.9.2
   category: ui-design
 ---
 

@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 3.9.2 — 同步修正 `references/addresses.md`〈這張表管什麼〉「執法工具」列，移除「偵測原生元件直用」的失實歸屬——3.9.1 已修正 `SKILL.md`〈與相鄰資產的交界〉同一失實引用，但 `addresses.md` 本身當時不在該票 where.files 範圍內未同步，兩處曾互相矛盾。現改為與 `SKILL.md`／`dart-style-guardian/SKILL.md` 一致的措辭：執法工具只抓裸值與寫死文字，原生元件直用的定義與判定權威在本 skill 的 step-3〈原生元件禁用對照表〉。純澄清既有歸屬，不改欄位集合。
+
 **Version**: 3.9.1 — 同步修正 `SKILL.md`〈與相鄰資產的交界〉「執法工具」列，移除「偵測原生元件直用」的失實歸屬——3.9.0 已修正 `step-3-fill-contract.md` 同一失實引用，但 `SKILL.md` 本身的交界表當時不在該票 where.files 範圍內未同步，兩處曾互相矛盾。現改為與 `dart-style-guardian/SKILL.md` 交界表一致的措辭：執法工具只抓裸值與寫死文字，原生元件直用的定義與判定權威在本 skill。純澄清既有歸屬，不改欄位集合。
 
 **Version**: 3.9.0 — 修正與 `dart-style-guardian` 交界的失實引用（G21，dart-style-guardian 缺引導修補票同批處理）。`step-3-fill-contract.md`〈範本中元件契約欄位表以外的章節〉「原生元件禁用對照表」列原寫來源含「執法工具的偵測 pattern」，但該工具目前無此偵測；改為明訂判定與清點的權威在本 skill（方法論〈禁自製元件〉+ 本檔〈用詞〉「元件庫」邊界定義），執法工具僅在未來建立自動化掃描時才回頭更新本列來源。純澄清既有歸屬，不改欄位集合。
