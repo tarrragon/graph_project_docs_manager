@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.7.4
+  version: 1.7.5
   category: engineering-workflow
 ---
 
@@ -98,7 +98,7 @@ doc batch-init --proposals PROP-XXX,PROP-YYY --domain <domain>
 | 呈現通道 | 判定 | 動作 |
 |---|---|---|
 | 圖形介面：由本應用程式渲染的視窗、頁面、彈窗、疊層、應用內提示，含唯讀畫面 | UI 類 | 過下列三項前置檢查 |
-| 非圖形的人讀呈現：終端文字輸出與終端互動、匯出文件版面、由作業系統或宿主程式渲染的通知 | 非 UI 類，不過三項前置 | Checkpoint 記錄該提案的呈現通道，交 `foundation-design` UI 維度判改寫產物；不得只記「非 UI 類」 |
+| 非圖形的人讀呈現：終端文字輸出與終端互動、匯出文件版面（優先本列）、由作業系統或宿主程式渲染的通知 | 非 UI 類，不過三項前置 | Checkpoint 記錄該提案的呈現通道，交 `foundation-design` UI 維度判改寫產物；不得只記「非 UI 類」 |
 | 無人直接觀看：API 回應、供機器讀取的資料格式 | 非 UI 類 | 略過 |
 
 **UI 類提案元件庫前置檢查（強制）**：判為 UI 類者須先確認下列**三項**存在，缺則先補齊才可繼續本提案的 UI 實作票規劃。為什麼這道閘門擋在這裡、為何以通道而非字面判定見 `references/step-rationale.md`〈Step 2 的 UI 前置檢查〉：
@@ -106,7 +106,7 @@ doc batch-init --proposals PROP-XXX,PROP-YYY --domain <domain>
 | 檢查項 | 對應載體 | 缺失時動作 |
 |--------|---------|-----------|
 | design token 層 | 專案 design-system 樣式檔（顏色/間距/字體/圓角/陰影參數集中管理） | 先建立 design token 層 |
-| L3 元件庫章節 | spec 文件的元件庫章節（元件清單 + 原生元件禁用對照表 + 豁免清單；本步驟得先只到此，逐元件元件契約欄位表與容器條目於 Step 4.5 第 3 塊後補齊） | 先建立或補齊 L3 元件庫章節（用 doc skill `component-library-spec-template`） |
+| L3 元件庫章節 | spec 文件的元件庫章節；僅元件清單 + 原生元件禁用對照表 + 豁免清單三項屬本步驟範圍，契約欄位表與容器條目於 Step 4.5 補齊 | 先建立或補齊 L3 元件庫章節（用 doc skill `component-library-spec-template`） |
 | design-system spec 文件 | 用 doc skill `design-system-spec-template` 產出的 design system 專屬 spec（如 `docs/spec/design-system-spec.md`），非混入一般功能 spec | 用 design-system-spec-template 補產 |
 
 判準與分層依據（L1/L2/L3 分層、狀態綁定判準、流程整合點）見 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`。非 UI 類提案略過本檢查。
