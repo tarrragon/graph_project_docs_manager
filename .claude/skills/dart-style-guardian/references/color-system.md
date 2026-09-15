@@ -270,7 +270,15 @@ Shadows use the primary blue color with varying opacity:
 內建主題插槽未覆蓋這個顏色語意（如細分色階、專案自訂語意） | 直接採用元件庫顏色 token | 主題沒有這個語意插槽，繞過 token 會失去單一事實來源
 ```
 
-對應本專案語法（Dart／Flutter）：
+【驗證】
+
+```
+檢驗問句
+Q 該顏色語意在內建主題插槽是否有對應標準欄位？
+  預期：有 → 採用主題插槽；無 → 採用元件庫 token
+```
+
+附註（本專案語法查表，非三段鏈式範例本身；用途是讓讀者比對自己手上的 Dart 程式碼，不承載本判準的判定依據）：
 
 ```dart
 // 內建主題插槽已覆蓋（ColorScheme.primary 對應 token 的 primary）
@@ -278,14 +286,4 @@ Theme.of(context).colorScheme.primary
 
 // 內建主題插槽未覆蓋（token 的 positive／negative 無對應標準欄位）
 UIColors.positive
-```
-
-【驗證】
-
-```
-檢驗問句
-Q 該顏色語意在內建主題插槽（如 ColorScheme／TextTheme）是否有對應標準欄位？
-  預期：有 → 採用主題插槽；無 → 採用元件庫 token
-Q 採用內建主題插槽是否算掃描器的裸值違規？
-  預期：否——主題存取不在掃描器 pattern 群組內，屬合規寫法之一，不是繞過 token
 ```
