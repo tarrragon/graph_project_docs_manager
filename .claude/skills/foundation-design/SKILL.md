@@ -3,7 +3,7 @@ name: foundation-design
 description: "地基工作的單一入口與路由層。逐維度決定「本專案的地基產物是什麼」，權威只提供預設產物，形態不符時改寫產物而非跳過維度。維度含 UI／測試／資料庫／DevOps／可觀測性／事件流仲裁，各指名既有權威並標明權威缺席時的處置。新舊專案一體適用：接手他人專案先盤點萃取再命名固化。觸發詞：地基、地基波、元件庫、design token、fixture、seed、migration、scaffold、鷹架、腳手架、接手老專案。Do NOT use for 環境安裝（用 project-init）。"
 license: MIT
 metadata:
-  version: 6.6.15
+  version: 6.6.16
   category: engineering-workflow
 ---
 
@@ -49,7 +49,7 @@ metadata:
 | **資料庫** | `saas-tech-selection` skill 的 state-storage 維度（migration 版本化紀律、多租戶資料模型、**防護底線的自動備份與還原驗證**） | migration baseline、**備份與還原驗證**。seed 見〈權威缺席時〉形態 3 | SaaS/伺服器端專案照預設；非 SaaS 專案見下方處置 |
 | **DevOps** | `saas-tech-selection` skill 的 reliability 維度（CI gate 構成與起始門檻） | CI gate、部署與還原配方 | SaaS/伺服器端專案照預設；非 SaaS 專案見下方處置 |
 | **可觀測性** | 專案的可觀測性規則（統一 log 入口、catch 區塊要求；屬自動載入層，多半已在 context 中），以及 `saas-tech-selection` skill 的 observability 維度（錯誤分類） | log 接線點、錯誤分類骨架 | log 接線點不限；`saas-tech-selection` 的錯誤分類部分限 SaaS/伺服器端，非 SaaS 專案見下方處置 |
-| **事件流仲裁** | 事件流負載仲裁方法論（判準在此，本 skill 不複述） | 通道清單＋每通道的仲裁器落層＋九格卸載順序表 | 有兩條以上事件流的專案，不限 SaaS |
+| **事件流仲裁** | 事件流負載仲裁方法論（判準在此，本 skill 不複述） | 通道清單＋每通道的仲裁器落層＋九格卸載順序表 | 有兩個以上的請求來源會對同一個稀缺通道發出請求的專案，不限 SaaS |
 
 **本表列的是常見維度，不宣稱窮盡地基的全部外延。** 專案若有本表未涵蓋的地基工作（如協定契約、資料匯入匯出格式），照同一形式增列一行。
 
