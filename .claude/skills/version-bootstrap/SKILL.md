@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.6.0
+  version: 1.6.1
   category: engineering-workflow
 ---
 
@@ -51,7 +51,7 @@ metadata:
 | `foundation-design` skill | 地基工作的單一入口；逐維度定產物 | **它會把東西交過來**：情境判定為「規劃波進行中」時，它為 DevOps 與可觀測性各建盤點票後交回本 skill。**本 skill 的九步對這兩個維度沒有承接段落**——收到這類票時不要以為它們該在某一步被吸收，它們是獨立的地基票。規劃波之後由它繼續驅動，不回本 skill |
 | `version-sequencing` skill | 版本序列、首版開票 | 它決定票屬於哪一版；本 skill 決定本版的票有哪些。同一批票不是兩批 |
 | `ux-design-evaluation` skill | Step 4.5 第 3 塊（UX 審查）的執行方法 | 本 skill 只編排順序與依賴，畫面狀態矩陣、gate、回饋門檻全在該處 |
-| `component-contract-design` skill | Step 4.5 第 3.5 塊（元件契約）的程序 | 本 skill 只編排；元件庫實作票的前置 checkpoint 是該 skill 的〈契約齊全的定義〉 |
+| `component-contract-design` skill | Step 4.5 元件契約銜接步驟（介於 UX 審查與元件庫之間，不計入四塊地基實作）的程序 | 本 skill 只編排；元件庫實作票的前置 checkpoint 是該 skill 的〈契約齊全的定義〉 |
 | `dart-style-guardian` skill（Dart／Flutter 的執法工具） | 掃裸值與寫死文字 | Step 4.5 第 2 塊（design-system）與第 4 塊（元件庫）完成後才接它。**四塊未完成就接，掃描範圍是空的** |
 
 ---
@@ -192,19 +192,19 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 **時機**：含 UI 提案的版本，於測試設計前。為什麼這一步不能省見 `references/step-rationale.md`〈Step 4.5〉。
 
-**動作**：依 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`〈地基波 build 順序〉為權威（與 Step 2 UI 前置檢查同一份方法論），編排四塊地基實作：
+**動作**：依 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`〈地基波 build 順序〉為權威（與 Step 2 UI 前置檢查同一份方法論），編排四塊地基實作，外加一個介於第 3 塊與第 4 塊之間、不計入四塊的元件契約銜接步驟：
 
-| 順序 | 地基塊 | 產出 |
+| 順序 | 地基塊／銜接步驟 | 產出 |
 |------|--------|------|
 | 1 | i18n 系統 | 多語系資源檔 + 產生器（元件文字取 i18n key，測試可驗 zh/en overflow） |
 | 2 | design-system 實作 | design token 集中檔（消費 Step 2 的 design-system spec） |
 | 3 | UX 審查 | 每個互動元件的反應/動畫/提示 + 頁面跳轉/退出/生命週期完整性審查（產出反應規格供元件庫與測試點） |
-| 3.5 | 元件契約 | L3 元件庫章節補齊逐元件元件契約欄位表與容器條目（程序見 `component-contract-design` skill，判準見方法論〈元件契約判準〉）；checkpoint 為該 skill 的〈契約齊全的定義〉 |
+| 3.5（銜接，不計入四塊） | 元件契約 | L3 元件庫章節補齊逐元件元件契約欄位表與容器條目（程序見 `component-contract-design` skill，判準見方法論〈元件契約判準〉）；checkpoint 為該 skill 的〈契約齊全的定義〉 |
 | 4 | 元件庫實作 | 集中元件庫（套 token + i18n + UX 反應，依契約實作），barrel 匯出 |
 
-**PM 工作**：為四塊各建實作票，另為元件契約建 DOC 票——i18n 與 design-system 可並行；UX 審查產出反應規格；元件契約依賴 UX 審查；元件庫依賴前三塊與元件契約為 `blockedBy`。順序與依賴依方法論〈地基波 build 順序〉，本 skill 不重複判準只做 orchestration。
+**PM 工作**：為四塊各建實作票，另為元件契約銜接步驟建 DOC 票——i18n 與 design-system 可並行；UX 審查產出反應規格；元件契約依賴 UX 審查；元件庫依賴前三塊與元件契約為 `blockedBy`。順序與依賴依方法論〈地基波 build 順序〉，本 skill 不重複判準只做 orchestration。
 
-**Checkpoint**：UI 版本的 i18n / design-system / UX 審查 / 元件庫四塊實作完成並測試綠；非 UI 版本略過本步驟（比照 Step 2 UI 判別）。
+**Checkpoint**：UI 版本的 i18n / design-system / UX 審查 / 元件庫四塊實作完成並測試綠（元件契約銜接步驟以 `component-contract-design` skill 的〈契約齊全的定義〉為完成判準，是元件庫實作的前置條件）；非 UI 版本略過本步驟（比照 Step 2 UI 判別）。
 
 ---
 
