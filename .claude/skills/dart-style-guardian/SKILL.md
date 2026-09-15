@@ -2,7 +2,7 @@
 name: dart-style-guardian
 description: "Dart／Flutter 專案樣式與文字的執法工具：掃出裸色碼、裸間距、裸字級、裸圓角與寫死文字，指出各自該改用哪個 token 或 i18n key，並以 PostEdit hook 擋下新增違規。觸發詞：裸值、硬編碼顏色、寫死文字、樣式違規、style guardian、token 沒用到、i18n 漏翻。Do NOT use for 建立 token 體系（用 foundation-design）或元件契約設計（用 component-contract-design）。"
 metadata:
-  version: 1.3.0
+  version: 1.4.0
   category: ui-design
 ---
 
@@ -36,6 +36,8 @@ uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
 | 3 | 改碼；改不動而確有正當理由者加豁免標記 | 〈Common Violations and Fixes〉、〈Project Calibration〉的 `exempt_markers` |
 | 4 | 重掃確認歸零，並確認豁免計數與你標的數量相符 | 〈Detection Script Usage〉 |
 
+**步 3「正當理由」不是自行判斷即可成立**：豁免須滿足 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`〈豁免三條件〉（結構性無法收斂／記錄理由／列入工具白名單，AND 全滿足），且由 PM 於票驗收時核可；執行端不得自行認定滿足三條件就加標記。
+
 ## 五類約束與按需讀取
 
 正文的五節給的是速查與判定；要改的東西落在邊界上、或要新增階與新寫法時，讀對應的完整規範。
@@ -55,9 +57,9 @@ uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
 | 相鄰資產 | 它管什麼 | 交界落在哪 |
 |---------|---------|-----------|
 | `foundation-design` skill | 地基入口與路由；token 體系是它 UI 維度的產物 | 本 skill 消費 token 名並執法，不決定該有哪些 token。**掃不到東西時先查這裡**——token 層還沒建，本 skill 的掃描範圍就是空的 |
-| `component-contract-design` skill | 元件契約欄位表、容器排列不變式 | 本 skill 抓裸值與原生元件直用，屬元件層；**組合層的重疊與截斷本 skill 掃不到**，那要靠該 skill 的判別問句 |
+| `component-contract-design` skill | 元件契約欄位表、容器排列不變式；**原生元件直用的定義與判定權威在此**（見其〈用詞〉「元件庫」邊界與方法論〈禁自製元件〉判準） | 本 skill 的五類約束（顏色／間距／字級／圓角／i18n）不含原生元件直用；`scripts/style_checker.py` 目前沒有偵測它的 pattern，判定與清點由 `component-contract-design` 的 step-3〈原生元件禁用對照表〉承接，不是本 skill。**組合層的重疊與截斷本 skill 也掃不到**，同樣要靠該 skill 的判別問句 |
 | `ux-design-evaluation` skill | 畫面級狀態、回饋的時間門檻與通知形式 | 本 skill 只看程式碼字面，不判斷回饋設計是否合理。「按鈕沒有 loading 態」不是本 skill 的違規類別 |
-| `version-bootstrap` skill 地基波 | 編排 i18n → design-system → UX 審查 → 元件庫四塊的順序 | 本 skill 是四塊完成後的常態執法層。**四塊未完成時先不要接 hook**——見〈Project Calibration〉的 baseline 說明 |
+| `version-bootstrap` skill 地基波 | 編排 i18n → design-system → UX 審查 → 元件庫四塊的順序 | 本 skill 是四塊完成後的常態執法層。**四塊未完成時先不要接 hook**——baseline 表達形式（違規計數上限或檔案清單白名單）見 `foundation-design/SKILL.md`〈工作流〉步驟 5「首次接入執法載體必然大量失敗」段，本檔〈Project Calibration〉不重複定義 |
 
 ## Core Principles
 
@@ -83,6 +85,8 @@ uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
 | UI 設計規格 | 設計稿與元件規範文件（如有） |
 
 ---
+
+**下方〈Color System〉〈Spacing System〉〈Typography System〉〈Border Radius System〉〈Common Violations and Fixes〉〈Quick Reference Card〉出現的 `UIColors`／`UISpacing`／`UIFontSizes`／`UIBorderRadius` 一律是示意類別名，不是本專案的真實類別**——本 skill 為跨專案共用資產，正文用統一的示意名稱維持表格可讀，實際類別名以 `.claude/config/dart-style-guardian.json`〈Project Calibration〉的 `tokens` 欄位為準：套用建議寫法時，把示意類別名換成該欄位對應的真實類別，階名（`primary`／`md`／`bodyMedium` 等）若校準檔沒有另外覆寫則沿用正文所列。
 
 ## Color System
 
@@ -199,6 +203,10 @@ TextStyle(fontSize: 14.sp)   // 尾綴錯誤，非本專案的縮放機制
 
 所有使用者可見文字必須取自 ARB 產生的 localization 類別，禁止硬編碼字串。存取方式依專案的 `l10n.yaml` 設定而定，常見兩種：`AppLocalizations.of(context).keyName`（`nullable-getter: false`）或 `context.l10n!.keyName`（專案自建 extension）。動手前先讀專案的 `l10n.yaml` 與既有呼叫點確認慣例，勿沿用他專案的寫法。
 
+**元件庫內建預設文案的 key 由誰擁有，本節不判定**——這是設計層問題，判準見 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`〈元件文字歸屬（i18n-first）〉的三條件 AND（走 i18n 系統非字面／參數可覆蓋／key 列入元件 API 契約）。本 skill 只確認呼叫端是否已改用 localization 存取，不判斷該 key 該掛在元件還是呼叫端名下。
+
+**掃描器對元件庫目錄的既知盲區**：`scripts/style_checker.py` 的 `EXCLUDE_PATTERNS` 排除 `/design_system/`（或功能對等的目錄名）等整檔略過的路徑；元件庫實作若落在被排除的目錄，其內建預設文案不會被本掃描器檢查，i18n-first 是否合規需人工核對，不能以「掃描通過」當作已驗證。
+
 ---
 
 ## Common Violations and Fixes
@@ -310,6 +318,8 @@ Text(ErrorHandler.getUserMessage(context, state.errorCode))
 **缺此檔時**：掃描器仍偵測硬編碼，但建議改為描述性敘述（「改用專案 design system 的 color token」），並在 stderr 提示。這是刻意的——指名某套命名等於斷言它是對的，而讀者照著不存在的類別動手會寫出編譯不過的程式碼。
 
 **豁免的可見性**：被標記豁免的行不列為違規，但計數會出現在報告（`Exempt (marked in source): N`）。靜默略過的行與掃描器看不見的行無法區分，讀者也就無從判斷標記是否真的生效。
+
+**兩種略過機制不是同一件事，不要混用**：`exempt_markers`（`magic-exempt`、`i18n-exempt`）與行內的 `// OK:`、`// ignore:` 都會讓那一行不被列為違規，但可見度不同——`exempt_markers` 命中會計入上面〈豁免的可見性〉的 exempt 計數，出現在報告裡；`// OK:`／`// ignore:` 屬於「視為該行已合規」的判斷（與校準檔 `tokens.*` 類別名同一機制），命中即整行跳過，**不計入任何計數**，報告上完全看不到痕跡。需要「這裡不是違規，但我要留下可稽核的紀錄」時用 `exempt_markers`；只是「這行本來就合規、掃描器判斷失準」時才用 `// OK:`／`// ignore:`。
 
 **單一規則來源**：PostEdit hook（`.claude/hooks/dart-style-guardian-hook.py`）匯入 `style_checker` 的規則與校準，不另維護一份。兩套規則各自演化的結果是 hook 與 skill 給出互相矛盾的建議。
 
