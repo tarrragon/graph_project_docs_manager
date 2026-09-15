@@ -99,7 +99,7 @@ UITypography.lineHeightRelaxed  // 1.6 - Long-form content
 
 ## 字級判準：headline 與 title 同值時如何選
 
-`headline4`（20.rsp）與 `titleLarge`（20.rsp）數值相同但用途不同——〈UIFontSizes Constants〉的定義註解已分別標「Subsection headings」與「Card titles, dialog headers」，數值相同不代表語意相同。
+`headline4`（20.rsp）與 `titleLarge`（20.rsp）數值相同但用途不同——〈UIFontSizes Constants〉的定義註解已分別標「Subsection headings」與「Card titles, dialog headers」，數值相同不代表語意相同。依上方〈Headlines〉與〈Titles〉區塊的定義註解：頁面內的階層子節標題對映 `headline4`（「Subsection headings」）；卡片或對話框等容器元件內的標題對映 `titleLarge`（「Card titles, dialog headers」）。
 
 【輸入】
 
