@@ -326,7 +326,7 @@ Q 整句「ISBN: 9789571234567」是否整體豁免 i18n？
 
 ### 判準：錯誤碼與使用者可見錯誤訊息的交界
 
-錯誤碼豁免的對象是識別符值本身：在層間傳遞（`throw AppException(AppErrorCode.loadFailed)`）、寫入日誌、作為 `ErrorHandler` 查表的鍵，都不進 ARB。使用者可見的錯誤訊息不在豁免範圍內，依〈Violation 2: Hardcoded Error Messages〉由呈現層轉譯後顯示。**錯誤碼不得取代訊息單獨顯示**，因為呈現層跳過轉譯就等於把未翻譯的內部值交給使用者。需要讓使用者看到錯誤碼（例如回報問題用的參考編號）時，錯誤碼必須跟在轉譯後的訊息旁，組合方式依上一節走參數化翻譯，只有錯誤碼值本身豁免。
+錯誤碼豁免的對象是識別符值本身：在層間傳遞（`throw AppException(AppErrorCode.loadFailed)`）、寫入日誌、作為 `ErrorHandler` 查表的鍵，都不進 ARB。使用者可見的錯誤訊息不在豁免範圍內，依〈Violation 2: Hardcoded Error Messages〉由呈現層轉譯後顯示。**錯誤碼不得取代訊息單獨顯示**，因為呈現層跳過轉譯就等於把未翻譯的內部值交給使用者。需要讓使用者看到錯誤碼（例如回報問題用的參考編號）時，錯誤碼必須跟在轉譯後的訊息旁，組合方式依〈Exceptions〉清單後「標籤與識別符／數值組合出現時」一段，照〈Violation 3: String Interpolation〉走參數化翻譯，只有錯誤碼值本身豁免。
 
 ```dart
 // Violation（呈現層把錯誤碼當訊息直接顯示）
