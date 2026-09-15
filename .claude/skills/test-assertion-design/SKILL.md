@@ -2,7 +2,7 @@
 name: test-assertion-design
 description: "Assertion design judgment framework for flaky and design-quality issues. Use when writing tests, reviewing assertions, diagnosing flaky tests, or deciding if a timing/float/cache assertion is appropriate. Do NOT use for API syntax or refactoring."
 metadata:
-  version: 1.9.1
+  version: 1.9.2
 ---
 
 # Test Assertion Design
@@ -74,6 +74,8 @@ metadata:
 - 以測試內指定的固定序列替換隨機源，且預期輸出可由驗收條件規定的對應規則從該序列推導者，屬功能正確性，可比對具體輸出值；此時斷言不依賴隨機生成值，不命中類型 6。
 - 以固定種子驅動實際亂數演算法、預期值取自執行結果者，屬 characterization，依〈確定性斷言的基礎形態〉標記，與功能正確性測試分開；其預期值綁定亂數演算法實作，函式庫升級可能整批改變。
 - 驗收條件只規定格式或分佈、未規定對應規則者，只斷言該性質，不比對具體值（聚焦性）。
+
+**類型 8 與確定性斷言基礎形態的關係**：兩條分類軸不互斥。〈確定性斷言的基礎形態〉開宗明義為「無問題，作為對比基線」，四種類型回答的是「這個斷言該用哪一種比對邏輯」；類型 8 屬於問題類型表，其設計原則要求「快照粒度匹配驗證意圖」，回答的是「斷言粒度該用全結構快照還是逐一欄位」。兩者回答不同問題：決定採用欄位/屬性斷言只解決粒度問題，粒度內每一個欄位斷言仍依既有判準「選用哪一種確定性類型，依預期值所對應的規格宣告語句形態決定」，從功能正確性、邏輯不變式、結構驗證、資源清理中選一種。例如驗收條件為兩欄位間的大小關係時（如本檔前述 a < b 例），該欄位斷言取邏輯不變式形態，而非把邏輯不變式當成與欄位/屬性斷言並列、可互相替代的另一個選項。
 
 ## 判讀範例
 
