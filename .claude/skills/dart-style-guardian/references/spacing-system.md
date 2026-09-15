@@ -201,16 +201,23 @@ Card(
 
 ### Non-Standard Values
 
-For values not in the standard scale, round to the nearest:
+值不在〈Spacing Scale〉的八階上時，先判斷這個值從哪裡來，再決定取近似階還是加一階：
 
-| Hardcoded | Nearest UISpacing |
-|-----------|-------------------|
-| `6` | `UISpacing.xs` (8) |
-| `10` | `UISpacing.sm` (12) or `UISpacing.xs` (8) |
-| `14` | `UISpacing.md` (16) or `UISpacing.sm` (12) |
+| 值的來源 | 處置 |
+|---------|------|
+| 設計來源（設計稿、元件規範）刻意指定此值 | 不取近似。這是缺 token：停下走 design-system 前置票提案加階，不在元件或頁面內就地寫值（元件庫雙向約束方法論「缺件前置範圍擴充」） |
+| 設計畫布實測值，屬產生器輸出、看不出尺度 | 萃取時歸納進離散階，映射記入決策文件（`foundation-design` skill `references/examples.md`〈萃取不等於照抄〉） |
+| 既有程式碼已在使用的裸值 | 取近似會改變畫面，屬行為變更：候選階記入決策文件，收斂另開票，驗收含改動前後畫面或特徵測試比對（`foundation-design` skill `references/handoff-mode.md`〈命名與收斂分兩步〉） |
+| 無設計來源的新寫程式碼 | 取下表候選。與相鄰兩階距離不等時只列較近的一階；距離相等時兩階並列，兩者皆合規 |
+
+| Hardcoded | Candidate UISpacing |
+|-----------|---------------------|
+| `6` | `UISpacing.xxs` (4) or `UISpacing.xs` (8) |
+| `10` | `UISpacing.xs` (8) or `UISpacing.sm` (12) |
+| `14` | `UISpacing.sm` (12) or `UISpacing.md` (16) |
 | `18` | `UISpacing.md` (16) |
-| `20` | `UISpacing.lg` (24) or `UISpacing.md` (16) |
-| `28` | `UISpacing.xl` (32) or `UISpacing.lg` (24) |
+| `20` | `UISpacing.md` (16) or `UISpacing.lg` (24) |
+| `28` | `UISpacing.lg` (24) or `UISpacing.xl` (32) |
 
 ---
 
