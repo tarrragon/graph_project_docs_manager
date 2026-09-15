@@ -166,15 +166,16 @@ uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
 
 ### Responsive Font Sizes
 
-Use `.rsp` suffix for responsive scaling:
+優先使用 `UIFontSizes` token（getter 已內建 `.rsp`）。token 涵蓋不到的自訂字級才手動加 `.rsp`，完整判準見 `references/typography-system.md`〈Manual Responsive Text〉。
 
 ```dart
 // Correct
 TextStyle(fontSize: UIFontSizes.bodyMedium)  // Already includes .rsp
+TextStyle(fontSize: 14.rsp)  // token 涵蓋不到時的正確手動寫法
 
 // Incorrect
-TextStyle(fontSize: 14)
-TextStyle(fontSize: 14.sp)  // Manual scaling
+TextStyle(fontSize: 14)      // 未縮放
+TextStyle(fontSize: 14.sp)   // 尾綴錯誤，非本專案的縮放機制
 ```
 
 ---

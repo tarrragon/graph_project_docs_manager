@@ -201,7 +201,6 @@ Card(
 | `12.0` | `UISpacing.sm` |
 | `16` | `UISpacing.md` |
 | `16.0` | `UISpacing.md` |
-| `20` | `UISpacing.md` |
 | `24` | `UISpacing.lg` |
 | `24.0` | `UISpacing.lg` |
 | `32` | `UISpacing.xl` |
