@@ -2,7 +2,7 @@
 name: test-assertion-design
 description: "Assertion design judgment framework for flaky and design-quality issues. Use when writing tests, reviewing assertions, diagnosing flaky tests, or deciding if a timing/float/cache assertion is appropriate. Do NOT use for API syntax or refactoring."
 metadata:
-  version: 1.8.0
+  version: 1.9.0
 ---
 
 # Test Assertion Design
@@ -33,6 +33,8 @@ metadata:
 | 邏輯不變式 | 驗證數學/邏輯關係（a < b、rate < 1.0），兩側均非環境依賴值 |
 | 結構驗證 | 驗證欄位存在、型別正確、陣列長度 |
 | 資源清理 | 驗證洩漏偵測差值（前後 count 差值 = 0），用差值而非絕對值 |
+
+選用哪一種確定性類型，依預期值所對應的規格宣告語句形態決定：宣告某結構顯示或不顯示者，以結構驗證斷言該結構存在與否，不以長度或筆數代替——「長度為 0」在「顯示但內容為空」時同樣成立，驗不到「不顯示」；宣告上限、下限或大小關係（「最多」「至少」「不超過」）者，以邏輯不變式斷言該關係，不以某個符合關係的固定值代替；宣告具體值者（「顯示前 20 筆」「共 3 筆」），以功能正確性比對該值。
 
 功能正確性的預期值必須取自 spec 條文或 UC 預期結果，並依 `.claude/skills/tdd/references/test-object-catalogue.md`〈三、契約欄位表〉斷言來源欄的格式記錄出處；預期值取自現有實作執行結果者不屬此類，屬 characterization test，依 `.claude/skills/tdd/references/test-object-catalogue-starting-points.md` 起點 B 標記，不可與 spec/UC 來源的斷言混記同一類型。
 
@@ -256,12 +258,12 @@ Q 判斷該採哪一策略的依據是什麼？                  預期：驗收
 Given 資料來源回傳空清單
 When  畫面渲染完成，狀態轉為「空」
 Then  畫面只含空狀態提示文字，清單容器不存在於畫面樹中
-And   斷言對應【產出】表「空」列的結構驗證（存在性判定），不斷言清單容器「長度為 0」——內容政策定義的是「不顯示」，與「顯示但為空」是不同的結構
+And   斷言對應【產出】表「空」列的結構驗證：內容政策宣告「不顯示清單容器」，依〈確定性斷言的基礎形態〉選用段「宣告某結構顯示或不顯示者，以結構驗證斷言該結構存在與否，不以長度或筆數代替」，不斷言清單容器「長度為 0」
 
 Given 資料來源回傳 25 筆項目
 When  畫面渲染完成，狀態轉為「正常」
 Then  清單容器顯示的筆數不超過內容政策上限（目前上限為 20）
-And   斷言對應【產出】表「正常」列的邏輯不變式（筆數小於等於上限的關係，見〈確定性斷言的基礎形態〉邏輯不變式列），不斷言「筆數等於 20」這個固定值——固定值斷言會在內容政策上限調整時無謂失敗
+And   斷言對應【產出】表「正常」列的邏輯不變式：內容政策宣告「最多顯示 20 筆」，依同段「宣告上限、下限或大小關係者，以邏輯不變式斷言該關係，不以某個符合關係的固定值代替」，不斷言「筆數等於 20」
 ```
 
 ## 不在範圍聲明
