@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.6.6
+  version: 1.7.0
   category: engineering-workflow
 ---
 
@@ -92,7 +92,15 @@ doc batch-init --proposals PROP-XXX,PROP-YYY --domain <domain>
 
 **PM 工作**：填寫每份 spec 的 FR 列表、介面定義、約束條件。這是規劃波最耗時的人工步驟。
 
-**UI 類提案元件庫前置檢查（強制）**：填寫 spec FR 時逐一判別提案是否涉及 UI／頁面／元件（FR 描述含「畫面」「頁面」「元件」「介面」「UI」等關鍵字），判為 UI 類者須先確認下列**三項**存在，缺則先補齊才可繼續本提案的 UI 實作票規劃。為什麼這道閘門擋在這裡見 `references/step-rationale.md`〈Step 2 的 UI 前置檢查〉：
+**UI 類判別**：依 FR 產物在哪裡被使用者看到或操作來判定，不以字面關鍵字為準。「畫面」「頁面」「元件」「介面」「UI」只是常見寫法，其涵蓋範圍由下表的呈現通道決定。FR 未寫明呈現通道時，先補寫通道再判定，不以猜測歸類。
+
+| 呈現通道 | 判定 | 動作 |
+|---|---|---|
+| 圖形介面：由本應用程式渲染的視窗、頁面、彈窗、疊層、應用內提示，含唯讀畫面 | UI 類 | 過下列三項前置檢查 |
+| 非圖形的人讀呈現：終端文字輸出與終端互動、匯出文件版面、由作業系統或宿主程式渲染的通知 | 非 UI 類，不過三項前置 | Checkpoint 記錄該提案的呈現通道，交 `foundation-design` UI 維度判改寫產物；不得只記「非 UI 類」 |
+| 無人直接觀看：API 回應、供機器讀取的資料格式 | 非 UI 類 | 略過 |
+
+**UI 類提案元件庫前置檢查（強制）**：判為 UI 類者須先確認下列**三項**存在，缺則先補齊才可繼續本提案的 UI 實作票規劃。為什麼這道閘門擋在這裡、為何以通道而非字面判定見 `references/step-rationale.md`〈Step 2 的 UI 前置檢查〉：
 
 | 檢查項 | 對應載體 | 缺失時動作 |
 |--------|---------|-----------|
@@ -102,7 +110,7 @@ doc batch-init --proposals PROP-XXX,PROP-YYY --domain <domain>
 
 判準與分層依據（L1/L2/L3 分層、狀態綁定判準、流程整合點）見 `.claude/methodologies/component-library-bidirectional-constraint-methodology.md`。非 UI 類提案略過本檢查。
 
-**Checkpoint**：所有 spec FR 填寫完成；UI 類提案已完成元件庫前置檢查（design token 層、L3 元件庫章節、design-system spec 三者存在或已補齊），非 UI 類提案略過本項。
+**Checkpoint**：所有 spec FR 填寫完成；UI 類提案已完成元件庫前置檢查（design token 層、L3 元件庫章節、design-system spec 三者存在或已補齊），非 UI 類提案略過本項；第二類（非圖形的人讀呈現）提案已記錄呈現通道並交 foundation-design。
 
 ---
 
