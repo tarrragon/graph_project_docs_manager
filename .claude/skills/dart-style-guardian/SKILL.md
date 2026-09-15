@@ -2,7 +2,7 @@
 name: dart-style-guardian
 description: "Dart／Flutter 專案樣式與文字的執法工具：掃出裸色碼、裸間距、裸字級、裸圓角與寫死文字，指出各自該改用哪個 token 或 i18n key，並以 PostEdit hook 擋下新增違規。觸發詞：裸值、硬編碼顏色、寫死文字、樣式違規、style guardian、token 沒用到、i18n 漏翻。Do NOT use for 建立 token 體系（用 foundation-design）或元件契約設計（用 component-contract-design）。"
 metadata:
-  version: 1.6.0
+  version: 1.7.0
   category: ui-design
 ---
 
@@ -46,7 +46,7 @@ uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
 |---------|---------|---------|-------------------|
 | 顏色 | 〈Color System〉 | `references/color-system.md` | 要新增色階、或判不出某個顏色該歸 primary／positive／negative 哪一類 |
 | 間距 | 〈Spacing System〉 | `references/spacing-system.md` | 需要的值不在〈Spacing Scale〉的八階上，要判斷是該取近似值還是該加一階 |
-| 字級 | 〈Typography System〉 | `references/typography-system.md` | 要加響應式字級、新字重，或處理跨形態的字級縮放 |
+| 字級 | 〈Typography System〉 | `references/typography-system.md` | 需要的值不在〈Type Scale〉離散階上，要判斷是該取近似值還是該加一階；或要加響應式字級、新字重，處理跨形態的字級縮放 |
 | 圓角 | 〈Border Radius System〉 | 無獨立 reference，正文即全部 | — |
 | i18n | 〈Internationalization (i18n)〉 | `references/i18n-guidelines.md` | 寫使用者可見文字、ViewModel 要回傳訊息、或要判斷某段文字算不算使用者可見 |
 

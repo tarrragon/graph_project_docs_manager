@@ -227,21 +227,33 @@ TextStyle(fontSize: 14.sp)  // Wrong suffix
 | Hardcoded | UIFontSizes |
 |-----------|-------------|
 | `fontSize: 10` | `UIFontSizes.overline` |
-| `fontSize: 11` | `UIFontSizes.overline` |
 | `fontSize: 12` | `UIFontSizes.bodySmall` |
-| `fontSize: 13` | `UIFontSizes.bodySmall` |
 | `fontSize: 14` | `UIFontSizes.bodyMedium` |
-| `fontSize: 15` | `UIFontSizes.bodyMedium` |
 | `fontSize: 16` | `UIFontSizes.bodyLarge` |
-| `fontSize: 17` | `UIFontSizes.bodyLarge` |
 | `fontSize: 18` | `UIFontSizes.titleMedium` |
-| `fontSize: 19` | `UIFontSizes.titleMedium` |
 | `fontSize: 20` | `UIFontSizes.titleLarge` |
 | `fontSize: 24` | `UIFontSizes.headline3` |
 | `fontSize: 28` | `UIFontSizes.headline2` |
 | `fontSize: 32` | `UIFontSizes.headline1` |
 
-上表已依「相鄰兩階等距時，一律取較小一階」規則產生（見 `13`／`15`／`17`／`19` 皆取低階：12／14／16／18），不需另外判斷方向。
+### Non-Standard Values
+
+字級不在〈Type Scale〉離散階上時，先判斷這個值從哪裡來，再決定取近似階還是加一階：
+
+| 值的來源 | 處置 |
+|---------|------|
+| 設計來源（設計稿、元件規範）刻意指定此值 | 不取近似。這是缺 token：停下走 design-system 前置票提案加階，不在元件或頁面內就地寫值（元件庫雙向約束方法論「缺件前置範圍擴充」） |
+| 設計畫布實測值，屬產生器輸出、看不出尺度 | 萃取時歸納進離散階，映射記入決策文件（`foundation-design` skill `references/examples.md`〈萃取不等於照抄〉） |
+| 既有程式碼已在使用的裸值 | 取近似會改變畫面（文字大小視覺變動），屬行為變更：候選階記入決策文件，收斂另開票，驗收含改動前後畫面或特徵測試比對（`foundation-design` skill `references/handoff-mode.md`〈命名與收斂分兩步〉） |
+| 無設計來源的新寫程式碼 | 取下表候選。與相鄰兩階距離不等時只列較近的一階；距離相等時兩階並列，兩者皆合規 |
+
+| Hardcoded | Candidate UIFontSizes |
+|-----------|------------------------|
+| `fontSize: 11` | `UIFontSizes.overline` (10) or `UIFontSizes.bodySmall` (12) |
+| `fontSize: 13` | `UIFontSizes.bodySmall` (12) or `UIFontSizes.bodyMedium` (14) |
+| `fontSize: 15` | `UIFontSizes.bodyMedium` (14) or `UIFontSizes.bodyLarge` (16) |
+| `fontSize: 17` | `UIFontSizes.bodyLarge` (16) or `UIFontSizes.titleMedium` (18) |
+| `fontSize: 19` | `UIFontSizes.titleMedium` (18) or `UIFontSizes.titleLarge` (20) |
 
 ### Weight Replacements
 
