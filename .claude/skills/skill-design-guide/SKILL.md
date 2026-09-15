@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.17.0
+  version: 1.18.0
 ---
 
 # Skill Design Guide
@@ -166,6 +166,7 @@ wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 - [ ] 無「When to Use This Skill」段（觸發資訊只放 description）
 - [ ] 指令具體可操作、含錯誤處理
 - [ ] 含至少 1 個範例
+- [ ] 新增或修改範例的【驗證】段時，`chained-examples.md`〈驗證段機械檢查：依據句可溯性〉的逐問句表由非撰寫者複核「引文位置在範例之外？」與「只讀引文推得出預期答案？」兩項確認欄；撰寫者自檢無鑑別力，不可省略此步驟
 - [ ] 每份 reference 一跳可達（判準與例外見 `references/writing-the-body.md` 的〈Body 寫作〉）。機械檢查如下，每個命中逐一判定——說明用的示意路徑與被討論的對象不算違規，其餘即是
 
 ```bash
