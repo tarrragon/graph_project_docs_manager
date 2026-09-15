@@ -44,7 +44,7 @@
 
 - loading 期間 disabled（防重複提交 — UI 層降低發生率、最終防線是伺服器端冪等，兩層都要做）
 - 按鈕文字可變（「送出」→「送出中...」）
-- 結束後必須恢復 idle — 不論成功失敗；配 timeout 兜底（取值略大於 client / 後端逾時值，讓後端的明確錯誤先回來，同 `interaction-feedback-waiting-and-notification.md`〈畫面級回饋〉末段 connecting timeout 句；逾時後恢復 + 錯誤訊息）
+- 結束後必須恢復 idle — 不論成功失敗；配 timeout 兜底（取值略大於 client / 後端逾時值即可，沒有固定公式或倍數可推導出具體秒數，只要求晚於後端逾時值、讓後端的明確錯誤先回來，同 `interaction-feedback-waiting-and-notification.md`〈畫面級回饋〉末段 connecting timeout 句；逾時後恢復 + 錯誤訊息）
 - 結果通知獨立於按鈕（SnackBar 或畫面更新），不塞在按鈕裡
 
 ### 三段鏈式範例：非同步按鈕 timeout 取值
