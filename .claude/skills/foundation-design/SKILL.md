@@ -3,7 +3,7 @@ name: foundation-design
 description: "地基工作的單一入口與路由層。逐維度決定「本專案的地基產物是什麼」，權威只提供預設產物，形態不符時改寫產物而非跳過維度。維度含 UI／測試／資料庫／DevOps／可觀測性／事件流仲裁，各指名既有權威並標明權威缺席時的處置。新舊專案一體適用：接手他人專案先盤點萃取再命名固化。觸發詞：地基、地基波、元件庫、design token、fixture、seed、migration、scaffold、鷹架、腳手架、接手老專案。Do NOT use for 環境安裝（用 project-init）。"
 license: MIT
 metadata:
-  version: 6.5.3
+  version: 6.6.0
   category: engineering-workflow
 ---
 
@@ -152,7 +152,7 @@ metadata:
 | 產物欄填不下去——複合產物、多子樹要不要分列、改寫產物長什麼樣、非 SaaS 專案怎麼轉換、無 UI 框架的元件庫產物 | `references/dimension-product-notes.md` | 〈非 SaaS 專案的形態轉換〉〈填完產物欄仍應翻原文〉〈改寫產物是主路徑〉 |
 | 情境判定命中「文件回答不了地基問題的既有實作」 | `references/handoff-mode.md` | 盤點→命名→固化→補文件四步、既有 artifact 可信度的四種例外、命名前置的規模閘門 |
 | 做下去發現不對勁，要照症狀查處置 | `references/troubleshooting.md` | 十一種症狀與各自的成因與處置 |
-| 想看別人怎麼填的，或想知道本 skill 在哪些專案形態上實跑過 | `references/examples.md` | 五則實測案例；已驗證與未驗證的專案形態 |
+| 想看別人怎麼填的，或想知道本 skill 在哪些專案形態上實跑過 | `references/examples.md`、`references/examples-process.md` | 維度判斷與流程操作的實測案例；已驗證與未驗證的專案形態 |
 
 ## 與相鄰資產的交界
 
