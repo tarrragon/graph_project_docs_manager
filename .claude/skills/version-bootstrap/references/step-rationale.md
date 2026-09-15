@@ -34,4 +34,20 @@
 
 **Why 加 design-system spec 檢查**：doc skill 已提供 `design-system-spec-template`，但 `batch-init` 只產一般功能 spec，UI 版本易漏產 design system 專屬 spec。**Consequence**：漏產則 Step 4.5 地基波的 design-system 實作無契約可依（實證：PM 用 batch-init 產一般功能 spec 卻未產 design-system spec，經指正後才補）。**Action**：UI 版本填 spec 時一併用 design-system-spec-template 產出 design system spec，作為 Step 4.5 design-system 實作的契約。
 
+## 元件契約遞移依賴
+
+**Why**：Step 4.5 地基波順序表把元件契約（3.5）排在 UX 審查（3）之後、元件庫（4）之前，PM 工作句只寫「元件契約依賴 UX 審查」，沒有交代是否也依賴 i18n（1）與 design-system（2）；`component-contract-design` skill 自身的前置檢查表另外把 design token 層列為該規格票的直接前置，兩處對「元件契約是否依賴 design-system」各自表述，容易讓讀者誤以為 i18n 完全不在元件契約的依賴範圍內。**Consequence**：若誤判元件契約不依賴 i18n，可能在 i18n 尚未 build 完成時開放元件契約票；填元件契約欄位表的內容政策時（`component-contract-design` skill 的 step-3〈內容政策〉要求填「最長測試文案」，來源為 i18n 資源檔既有譯文）無資源可查，需回頭等待或用臆測值頂替，事後還要重測。**Action**：UX 審查的 `blockedBy` 已含 i18n 與 design-system（見 SKILL.md Step 4.5 PM 工作句），元件契約的 `blockedBy` 只需列 UX 審查一項——UX 審查完成即代表 i18n 與 design-system 皆已完成，元件契約經此鏈已遞移取得兩者，不必重複列出；重複列出反而製造兩條可能不同步的依賴宣告。
+
+## GREEN 票分組依據
+
+Step 6「每個 spec FR 或功能模組 1 張」的「或」由三條依據共同決定，各管不同判準對象：
+
+1. `.claude/pm-rules/task-splitting.md`〈拆分後檢查清單〉B——`where.files` 有交集者合併到同一票。
+2. `.claude/rules/core/cognitive-load.md`〈速查三閾值〉——合併後功能職責數 > 2 須再拆分。
+3. 同檔〈策略 7〉——「不以依賴為由合併」：兩個 FR 僅共用狀態、`where.files` 無交集時不合併，改依 `blockedBy` 序列派發。
+
+**Why**：依據 1 判準對象是「檔案是否重疊」，依據 3 判準對象是「僅有邏輯依賴、檔案不重疊」——兩者結論相反（前者合併、後者不合併）但不衝突，因為判準對象本就不同；SKILL.md 原僅路由依據 1、2，未路由依據 3，讀者遇到僅共用狀態、無檔案交集的 FR 組合時無條文可查。**Consequence**：未路由依據 3，讀者可能誤把依據 1 的「合併」結論套到「僅共用狀態」情境，將不該合併的 FR 併成一票；或反過來每次重新判斷，判斷標準因人而異。**Action**：SKILL.md Step 6 三條依據並列，本節列出各自管轄的判準對象；三者是否構成同一套一致的「拆分單位」定義（尤其依據 3 的「GWT scenario group」與 Step 6 的「spec FR 或功能模組」是否為同一粒度）屬另案裁決範圍，本節僅路由三條依據各自的條文，不代為判定何者為權威。
+
+**依據 1 與依據 2 同時命中時，交界尚未裁決**：先依依據 1 合併之後，若合併後的功能職責數依依據 2 超過閾值須再拆分，拆開後的子票可能重新持有原本因檔案交集而合併的那些檔案，方向與依據 1「共用檔案的問題已合併到同一 ticket」相反。**Consequence**：這條交界目前沒有裁決依據，若逕自選邊（一律優先合併或一律優先拆分），會與另一條依據的字面要求牴觸，且牴觸不會在當下顯露，要到下一次同型情境才會被發現處理不一致。**Action**：遇到依據 1 與依據 2 同時命中，本檔不代為判定合併優先或拆分優先，停手交 PM 判斷，不自行選邊。
+
 
