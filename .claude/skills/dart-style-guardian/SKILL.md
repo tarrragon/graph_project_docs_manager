@@ -2,7 +2,7 @@
 name: dart-style-guardian
 description: "Dart／Flutter 專案樣式與文字的執法工具：掃出裸色碼、裸間距、裸字級、裸圓角與寫死文字，指出各自該改用哪個 token 或 i18n key，並以 PostEdit hook 擋下新增違規。觸發詞：裸值、硬編碼顏色、寫死文字、樣式違規、style guardian、token 沒用到、i18n 漏翻。Do NOT use for 建立 token 體系（用 foundation-design）或元件契約設計（用 component-contract-design）。"
 metadata:
-  version: 1.2.0
+  version: 1.3.0
   category: ui-design
 ---
 
@@ -128,25 +128,27 @@ uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
 
 ### SizedBox Spacing
 
-| Hardcoded | UISpacing | Responsive |
-|-----------|-----------|------------|
-| `SizedBox(height: 4)` | `SizedBox(height: UISpacing.xxs)` | `.h` suffix |
-| `SizedBox(height: 8)` | `SizedBox(height: UISpacing.xs)` | `.h` suffix |
-| `SizedBox(height: 12)` | `SizedBox(height: UISpacing.sm)` | `.h` suffix |
-| `SizedBox(height: 16)` | `SizedBox(height: UISpacing.md)` | `.h` suffix |
-| `SizedBox(height: 24)` | `SizedBox(height: UISpacing.lg)` | `.h` suffix |
-| `SizedBox(height: 32)` | `SizedBox(height: UISpacing.xl)` | `.h` suffix |
-| `SizedBox(width: 8)` | `SizedBox(width: UISpacing.xs)` | `.w` suffix |
+`UISpacing.<階>` 是基礎常數，不含方向或尾綴；需要響應式縮放時依方向外加尾綴（垂直 `.h`、水平 `.w`），完整規則見 `references/spacing-system.md`〈UISpacing Constants〉。
+
+| Hardcoded | UISpacing |
+|-----------|-----------|
+| `SizedBox(height: 4)` | `SizedBox(height: UISpacing.xxs.h)` |
+| `SizedBox(height: 8)` | `SizedBox(height: UISpacing.xs.h)` |
+| `SizedBox(height: 12)` | `SizedBox(height: UISpacing.sm.h)` |
+| `SizedBox(height: 16)` | `SizedBox(height: UISpacing.md.h)` |
+| `SizedBox(height: 24)` | `SizedBox(height: UISpacing.lg.h)` |
+| `SizedBox(height: 32)` | `SizedBox(height: UISpacing.xl.h)` |
+| `SizedBox(width: 8)` | `SizedBox(width: UISpacing.xs.w)` |
 
 ### EdgeInsets Padding
 
 | Hardcoded | UISpacing |
 |-----------|-----------|
-| `EdgeInsets.all(4)` | `EdgeInsets.all(UISpacing.xxs)` |
-| `EdgeInsets.all(8)` | `EdgeInsets.all(UISpacing.xs)` |
-| `EdgeInsets.all(16)` | `EdgeInsets.all(UISpacing.md)` |
-| `EdgeInsets.symmetric(horizontal: 16)` | `EdgeInsets.symmetric(horizontal: UISpacing.md)` |
-| `EdgeInsets.symmetric(vertical: 8)` | `EdgeInsets.symmetric(vertical: UISpacing.xs)` |
+| `EdgeInsets.all(4)` | `EdgeInsets.all(UISpacing.xxs.w)` |
+| `EdgeInsets.all(8)` | `EdgeInsets.all(UISpacing.xs.w)` |
+| `EdgeInsets.all(16)` | `EdgeInsets.all(UISpacing.md.w)` |
+| `EdgeInsets.symmetric(horizontal: 16)` | `EdgeInsets.symmetric(horizontal: UISpacing.md.w)` |
+| `EdgeInsets.symmetric(vertical: 8)` | `EdgeInsets.symmetric(vertical: UISpacing.xs.h)` |
 
 ---
 
@@ -254,20 +256,23 @@ BorderRadius.circular(UIBorderRadius.sm)
 
 **Detection Pattern**: String literals assigned to error/message state properties
 
+ViewModel 不持有 `BuildContext`，不可呼叫 `context.l10n!`。錯誤狀態只存錯誤碼或例外物件，翻譯留給持有 context 的呈現層以 `ErrorHandler` 轉譯（分層規則呼應 `references/i18n-guidelines.md`〈Violation 2〉）。
+
 ```dart
 // Violation - Hardcoded user messages in ViewModel
 state = state.copyWith(errorMessage: 'Invalid file format');
 state = state.copyWith(errorMessage: '網路連線失敗');
 _errorMessage = 'Something went wrong';
 
-// Fix - Use i18n or ErrorHandler
-state = state.copyWith(errorMessage: context.l10n!.invalidFileFormat);
-state = state.copyWith(errorMessage: ErrorHandler.getUserMessage(exception));
+// Fix - ViewModel 只存錯誤碼，不在此處翻譯
+state = state.copyWith(errorCode: AppErrorCode.invalidFileFormat);
+
+// Fix - 呈現層持有 context，在此處轉譯後才顯示
+Text(ErrorHandler.getUserMessage(context, state.errorCode))
 ```
 
 **Allowed Exceptions**:
-- `e.toString()` for unknown system exceptions
-- String interpolation with i18n: `context.l10n!.errorWithCode(code)`
+- `e.toString()` for unknown system exceptions（僅供記錄，不對使用者顯示）
 
 **Related**（Flutter 專案適用）: ViewModel 層使用者訊息規範見專案根目錄 `FLUTTER.md`（僅 Flutter 專案存在；非 Flutter 專案略過 Violation 6）
 

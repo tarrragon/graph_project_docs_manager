@@ -279,14 +279,19 @@ AppBar(title: Text(context.l10n!.settingsTitle))
 
 ### Violation 2: Hardcoded Error Messages
 
+錯誤訊息的翻譯只發生在持有 `BuildContext`（或等價 localization 存取）的呈現層。拋出例外或回傳錯誤的位置（Repository／UseCase／ViewModel 等非 widget 層）通常不持有 context，不可在該處呼叫 `context.l10n!`；改丟未翻譯的錯誤碼或例外型別，交由呈現層以 `ErrorHandler` 轉譯（分層規則呼應 `SKILL.md`〈Violation 6〉）。
+
 ```dart
 // Violation
 throw Exception('An error occurred');
 showError('Failed to load');
 
-// Fix
-throw Exception(context.l10n!.genericError);
-showError(context.l10n!.loadError);
+// Fix（非 widget 層：只丟錯誤碼，不在此處翻譯）
+throw AppException(AppErrorCode.generic);
+showError(AppErrorCode.loadFailed);
+
+// Fix（呈現層：持有 context，在此處轉譯後才顯示）
+Text(ErrorHandler.getUserMessage(context, errorCode))
 ```
 
 ### Violation 3: String Interpolation

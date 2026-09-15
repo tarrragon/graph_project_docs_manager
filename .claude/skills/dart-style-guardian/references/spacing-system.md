@@ -26,28 +26,20 @@ All spacing in this project follows a **4dp grid system**. This ensures:
 
 ## UISpacing Constants
 
-### Horizontal Spacing (use with `.w`)
+基礎間距常數對應〈Spacing Scale〉的離散階，常數本身不含方向或縮放尾綴：
 
 ```dart
-UISpacing.xs    // 8.w   - Small horizontal gaps
-UISpacing.sm    // 12.w  - Medium-small horizontal gaps
-UISpacing.md    // 16.w  - Standard horizontal padding
-UISpacing.lg    // 24.w  - Large horizontal gaps
-UISpacing.xl    // 32.w  - Extra large horizontal gaps
-UISpacing.xxl   // 48.w  - Major horizontal spacing
-UISpacing.xxxl  // 64.w  - Maximum horizontal spacing
+UISpacing.xxs   // 4   - Tight gaps, icon margins
+UISpacing.xs    // 8   - Small gaps, list item padding
+UISpacing.sm    // 12  - Medium-small gaps
+UISpacing.md    // 16  - Standard padding, card margins
+UISpacing.lg    // 24  - Large gaps, section spacing
+UISpacing.xl    // 32  - Extra large gaps
+UISpacing.xxl   // 48  - Section dividers
+UISpacing.xxxl  // 64  - Major section spacing
 ```
 
-### Vertical Spacing (use with `.h`)
-
-```dart
-UISpacing.verticalXs   // 4.h  - Tight vertical gaps
-UISpacing.verticalSm   // 8.h  - Small vertical gaps
-UISpacing.verticalMd   // 16.h - Standard vertical spacing
-UISpacing.verticalLg   // 24.h - Large vertical gaps
-UISpacing.verticalXl   // 32.h - Extra large vertical gaps
-UISpacing.verticalXxl  // 48.h - Major vertical spacing
-```
+需要響應式縮放時，由呼叫端依方向外加尾綴：水平（`width`／`horizontal`）加 `.w`，垂直（`height`／`vertical`）加 `.h`——`UISpacing.md.w`、`UISpacing.md.h`。同一階不分水平垂直另立第二組常數（不存在 `UISpacing.verticalMd` 這類命名）。
 
 ---
 
@@ -60,7 +52,7 @@ UISpacing.verticalXxl  // 48.h - Major vertical spacing
 SizedBox(height: 16)
 
 // After (configuration)
-SizedBox(height: UISpacing.md)
+SizedBox(height: UISpacing.md.h)
 ```
 
 ### Horizontal Spacing
@@ -70,7 +62,7 @@ SizedBox(height: UISpacing.md)
 SizedBox(width: 8)
 
 // After (configuration)
-SizedBox(width: UISpacing.xs)
+SizedBox(width: UISpacing.xs.w)
 ```
 
 ### Common Patterns
@@ -78,7 +70,7 @@ SizedBox(width: UISpacing.xs)
 ```dart
 // List item spacing
 ListView.separated(
-  separatorBuilder: (_, __) => SizedBox(height: UISpacing.xs),
+  separatorBuilder: (_, __) => SizedBox(height: UISpacing.xs.h),
   ...
 )
 
@@ -86,7 +78,7 @@ ListView.separated(
 Row(
   children: [
     ElevatedButton(...),
-    SizedBox(width: UISpacing.sm),
+    SizedBox(width: UISpacing.sm.w),
     TextButton(...),
   ],
 )
@@ -95,9 +87,9 @@ Row(
 Column(
   children: [
     Text('Title'),
-    SizedBox(height: UISpacing.xs),
+    SizedBox(height: UISpacing.xs.h),
     Text('Subtitle'),
-    SizedBox(height: UISpacing.md),
+    SizedBox(height: UISpacing.md.h),
     Text('Body content'),
   ],
 )
@@ -114,7 +106,7 @@ Column(
 Padding(padding: EdgeInsets.all(16))
 
 // After
-Padding(padding: EdgeInsets.all(UISpacing.md))
+Padding(padding: EdgeInsets.all(UISpacing.md.w))
 ```
 
 ### Symmetric
@@ -131,8 +123,8 @@ Padding(
 // After
 Padding(
   padding: EdgeInsets.symmetric(
-    horizontal: UISpacing.md,
-    vertical: UISpacing.xs,
+    horizontal: UISpacing.md.w,
+    vertical: UISpacing.xs.h,
   ),
 )
 ```
@@ -153,10 +145,10 @@ Padding(
 // After
 Padding(
   padding: EdgeInsets.only(
-    left: UISpacing.md,
-    top: UISpacing.xs,
-    right: UISpacing.md,
-    bottom: UISpacing.lg,
+    left: UISpacing.md.w,
+    top: UISpacing.xs.h,
+    right: UISpacing.md.w,
+    bottom: UISpacing.lg.h,
   ),
 )
 ```
