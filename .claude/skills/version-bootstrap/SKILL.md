@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.7.3
+  version: 1.7.4
   category: engineering-workflow
 ---
 
@@ -199,7 +199,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 | 3.5（銜接，不計入四塊） | 元件契約 | L3 元件庫章節補齊逐元件元件契約欄位表與容器條目（程序見 `component-contract-design` skill，判準見方法論〈元件契約判準〉）；checkpoint 為該 skill 的〈契約齊全的定義〉 |
 | 4 | 元件庫實作 | 集中元件庫（套 token + i18n + UX 反應，依契約實作），barrel 匯出 |
 
-**PM 工作**：為四塊各建實作票，另為元件契約銜接步驟建 DOC 票——唯 i18n 與 design-system 可並行，其餘依順序表預設相依（UX 審查因此以兩者為 `blockedBy`）；元件契約依賴 UX 審查；元件庫依賴前三塊與元件契約為 `blockedBy`。順序與依賴依方法論〈地基波 build 順序〉，本 skill 不重複判準只做 orchestration。
+**PM 工作**：為四塊各建實作票，另為元件契約銜接步驟建 DOC 票——唯 i18n 與 design-system 可並行，其餘依順序表預設相依（UX 審查因此以兩者為 `blockedBy`）；元件契約依賴 UX 審查，經此鏈已含 i18n／design-system（見 `references/step-rationale.md`〈元件契約遞移依賴〉）；元件庫依賴前三塊與元件契約為 `blockedBy`。順序與依賴依方法論〈地基波 build 順序〉，本 skill 不重複判準只做 orchestration。
 
 **Checkpoint**：UI 版本的 i18n / design-system / UX 審查 / 元件庫四塊實作完成並測試綠（元件契約銜接步驟以 `component-contract-design` skill 的〈契約齊全的定義〉為完成判準，是元件庫實作的前置條件）；非 UI 版本略過本步驟（比照 Step 2 UI 判別）。
 
@@ -233,7 +233,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 **動作**：根據 Step 2-5 的產出，建立 W2/W3/W4 的 IMP ticket。
 
-- W2/W3：GREEN 實作票（每個 spec FR 或功能模組 1 張——「或」依 `.claude/pm-rules/task-splitting.md`〈拆分後檢查清單〉B 合併共用檔案者、依 `.claude/rules/core/cognitive-load.md`〈速查三閾值〉拆超標者）
+- W2/W3：GREEN 實作票（每個 spec FR 或功能模組 1 張，分組依據見 `references/step-rationale.md`〈GREEN 票分組依據〉）
 - W4：驗收票（E2E + Phase 4）
 
 **建票來源**：
