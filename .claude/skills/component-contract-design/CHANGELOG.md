@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 3.9.3 — 3.9.0-3.9.2 的修正方向錯了：先前查證只 grep 了批次掃描腳本 `scripts/style_checker.py`（確實無此偵測），漏看 `dart-style-guardian` 的 PostEdit hook——該 hook 的 pattern 常數含八個 pattern，會攔下新增的原生元件直用。`SKILL.md`〈與相鄰資產的交界〉、`references/addresses.md`〈這張表管什麼〉「執法工具」列、`references/step-3-fill-contract.md`〈範本中元件契約欄位表以外的章節〉「原生元件禁用對照表」列三處同步改寫：PostEdit hook 攔新增違規、批次掃描腳本不偵測既有存量；判定與清點的定義權威不變，仍在本 skill 的 step-3〈原生元件禁用對照表〉，hook 的 pattern 屬執法實作不是定義權威。事實更正，不改變任何判準。
+
 **Version**: 3.9.2 — 同步修正 `references/addresses.md`〈這張表管什麼〉「執法工具」列，移除「偵測原生元件直用」的失實歸屬——3.9.1 已修正 `SKILL.md`〈與相鄰資產的交界〉同一失實引用，但 `addresses.md` 本身當時不在該票 where.files 範圍內未同步，兩處曾互相矛盾。現改為與 `SKILL.md`／`dart-style-guardian/SKILL.md` 一致的措辭：執法工具只抓裸值與寫死文字，原生元件直用的定義與判定權威在本 skill 的 step-3〈原生元件禁用對照表〉。純澄清既有歸屬，不改欄位集合。
 
 **Version**: 3.9.1 — 同步修正 `SKILL.md`〈與相鄰資產的交界〉「執法工具」列，移除「偵測原生元件直用」的失實歸屬——3.9.0 已修正 `step-3-fill-contract.md` 同一失實引用，但 `SKILL.md` 本身的交界表當時不在該票 where.files 範圍內未同步，兩處曾互相矛盾。現改為與 `dart-style-guardian/SKILL.md` 交界表一致的措辭：執法工具只抓裸值與寫死文字，原生元件直用的定義與判定權威在本 skill。純澄清既有歸屬，不改欄位集合。

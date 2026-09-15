@@ -2,7 +2,7 @@
 name: dart-style-guardian
 description: "Dart／Flutter 專案樣式與文字的執法工具：掃出裸色碼、裸間距、裸字級、裸圓角與寫死文字，指出各自該改用哪個 token 或 i18n key，並以 PostEdit hook 擋下新增違規。觸發詞：裸值、硬編碼顏色、寫死文字、樣式違規、style guardian、token 沒用到、i18n 漏翻。Do NOT use for 建立 token 體系（用 foundation-design）或元件契約設計（用 component-contract-design）。"
 metadata:
-  version: 1.9.0
+  version: 1.10.0
   category: ui-design
 ---
 
@@ -57,7 +57,7 @@ uv run .claude/skills/dart-style-guardian/scripts/style_checker.py scan lib/
 | 相鄰資產 | 它管什麼 | 交界落在哪 |
 |---------|---------|-----------|
 | `foundation-design` skill | 地基入口與路由；token 體系是它 UI 維度的產物 | 本 skill 消費 token 名並執法，不決定該有哪些 token。**掃不到東西時先查這裡**——token 層還沒建，本 skill 的掃描範圍就是空的 |
-| `component-contract-design` skill | 元件契約欄位表、容器排列不變式；**原生元件直用的定義與判定權威在此**（見其〈用詞〉「元件庫」邊界與方法論〈禁自製元件〉判準） | 本 skill 的五類約束（顏色／間距／字級／圓角／i18n）不含原生元件直用；`scripts/style_checker.py` 目前沒有偵測它的 pattern，判定與清點由 `component-contract-design` 的 step-3〈原生元件禁用對照表〉承接，不是本 skill。**組合層的重疊與截斷本 skill 也掃不到**，同樣要靠該 skill 的判別問句 |
+| `component-contract-design` skill | 元件契約欄位表、容器排列不變式；**原生元件直用的定義與判定權威在此**（見其〈用詞〉「元件庫」邊界與方法論〈禁自製元件〉判準） | 本 skill 的五類約束（顏色／間距／字級／圓角／i18n）不含原生元件直用；PostEdit hook（`dart-style-guardian-hook.py`）另含八個 pattern 攔下新增的原生元件直用，但批次掃描腳本 `scripts/style_checker.py` 不偵測。定義與清點權威仍在 `component-contract-design` 的 step-3〈原生元件禁用對照表〉——hook 的 pattern 屬執法實作，不是定義權威。**組合層的重疊與截斷本 skill 也掃不到**，同樣要靠該 skill 的判別問句 |
 | `ux-design-evaluation` skill | 畫面級狀態、回饋的時間門檻與通知形式 | 本 skill 只看程式碼字面，不判斷回饋設計是否合理。「按鈕沒有 loading 態」不是本 skill 的違規類別 |
 | `version-bootstrap` skill 地基波 | 編排 i18n → design-system → UX 審查 → 元件庫四塊的順序 | 本 skill 是四塊完成後的常態執法層。**四塊未完成時先不要接 hook**——baseline 表達形式（違規計數上限或檔案清單白名單）見 `foundation-design/SKILL.md`〈工作流〉步驟 5「首次接入執法載體必然大量失敗」段，本檔〈Project Calibration〉不重複定義 |
 
