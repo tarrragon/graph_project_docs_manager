@@ -2,42 +2,15 @@
 
 ## Overview
 
-This project supports **10 languages** and uses Flutter's built-in localization system. All user-facing text must be internationalized.
+本 skill 為跨專案共用資產，支援語系數量與清單依各專案的 `l10n.yaml` 與實際 ARB 檔案為準，不在此列舉——寫死一份語系清單，其他專案讀到的就是一份與己身設定不符的清單。所有使用者可見文字必須經 Flutter 內建 localization 系統國際化。
 
-### Supported Languages
-
-| Code | Language | Primary Markets |
-|------|----------|-----------------|
-| `en` | English | Global |
-| `en_US` | English (US) | United States |
-| `zh_TW` | Traditional Chinese | Taiwan, Hong Kong |
-| `zh_CN` | Simplified Chinese | Mainland China |
-| `zh` | Chinese (fallback) | General Chinese |
-| `es` | Spanish | Spain, Latin America |
-| `fr` | French | France, Canada |
-| `hi` | Hindi | India |
-| `ja` | Japanese | Japan |
-| `ko` | Korean | South Korea |
+**下方範例統一以 `context.l10n!.keyName` 示範存取語法，此為示意寫法之一。** 實際存取子形態（`AppLocalizations.of(context).keyName` 或專案自建 extension）以 `.claude/config/dart-style-guardian.json`〈i18n.accessor〉與專案 `l10n.yaml` 為準，套用前先確認本專案慣例（見 `SKILL.md`〈Internationalization〉）。
 
 ---
 
 ## File Structure
 
-### ARB Files Location
-
-```
-lib/l10n/
-├── app_en.arb      # English (base)
-├── app_en_US.arb   # English (US)
-├── app_zh_TW.arb   # Traditional Chinese
-├── app_zh_CN.arb   # Simplified Chinese
-├── app_zh.arb      # Chinese (fallback)
-├── app_es.arb      # Spanish
-├── app_fr.arb      # French
-├── app_hi.arb      # Hindi
-├── app_ja.arb      # Japanese
-└── app_ko.arb      # Korean
-```
+ARB 檔案位置與語系清單因專案而異，不在此列出實際路徑——實際位置讀專案的 `l10n.yaml`（`arb-dir` 欄位）。以下為 `l10n.yaml` 的通用設定範例（非本專案語系清單）：
 
 ### Configuration
 
@@ -236,33 +209,6 @@ if (items.isEmpty)
 
 ---
 
-## Validation Tools
-
-### Check i18n Keys
-
-```bash
-# Using make command
-make check-i18n
-
-# Using script directly
-dart scripts/check_i18n_keys.dart
-
-# Using shell script
-./scripts/check_i18n.sh
-```
-
-### Run i18n Tests
-
-```bash
-# Using make command
-make test-i18n
-
-# Using flutter test
-flutter test test/widget/localization/
-```
-
----
-
 ## Common Violations
 
 ### Violation 1: Hardcoded UI Text
@@ -327,15 +273,58 @@ TextField(
 Some strings may NOT need i18n:
 
 1. **Technical identifiers** - Error codes, keys
-2. **Brand names** - "Flutter", "Google Books"
+2. **Brand names** - "Flutter"
 3. **Formatting characters** - `/`, `-`, `:`
 4. **Numbers and units** - When culture-independent
 
+標籤與識別符／數值組合出現時（如「標籤：值」），僅數值本身列入本豁免；標籤文字仍是使用者可見文字，需依〈Violation 3: String Interpolation〉的參數化翻譯方式處理，不得以字串插值直接拼接整句。
+
 ```dart
-// These are OK without i18n
-Text('ISBN: $isbn')  // Technical identifier
+// These are OK without i18n（無標籤、無插值、值本身文化無關）
 Text('Flutter')      // Brand name
 Text('v1.0.0')       // Version number
+
+// Violation（標籤與數值以字串插值直接拼接，整句誤判為豁免）
+Text('ISBN: $isbn')
+
+// Fix（標籤走 l10n 參數化翻譯；數值本身豁免不需要 i18n）
+Text(context.l10n!.isbnLabel(isbn))
+// ARB: "isbnLabel": "ISBN: {isbn}"
+```
+
+### 判準：標籤＋識別符組合時如何分割（culture-independent 的判定）
+
+【輸入】
+
+```
+Exceptions 清單：技術識別符／品牌／格式字元／文化無關的數字單位免 i18n
+規則：標籤與識別符組合時，僅數值本身豁免，標籤文字依 Violation 3 走參數化翻譯
+情境：畫面需顯示「ISBN: 9789571234567」
+```
+
+【產出】
+
+```
+形態：決策表
+
+片段                  | 是否豁免 | 理由
+------------------------|----------|--------------------------------
+「ISBN:」標籤          | 否       | 使用者可見文字，非識別符本身
+「9789571234567」數值  | 是       | 技術識別符，文化無關（顯示形式不隨語系改變）
+組合方式                | —        | 走 l10n 參數化翻譯（Violation 3 模式），不得字串插值直接拼接
+```
+
+【驗證】
+
+```
+檢驗問句
+Q 整句「ISBN: 9789571234567」是否整體豁免 i18n？
+  預期：否——只有數值片段豁免，標籤仍需翻譯
+Q 組合標籤與數值時能否用字串插值（如 'ISBN: $isbn'）？
+  預期：否——依 Violation 3，需用 ARB 參數化翻譯
+Q 「文化無關」的判定依據是什麼？
+  預期：值本身的顯示形式在任何語系下都不需要改寫（如 ISBN、版本號）才算文化無關；
+        貨幣、日期等因語系而顯示形式不同者不算文化無關，需走格式化 API 而非本豁免
 ```
 
 ---

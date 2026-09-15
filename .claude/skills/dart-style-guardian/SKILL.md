@@ -2,7 +2,7 @@
 name: dart-style-guardian
 description: "Dart／Flutter 專案樣式與文字的執法工具：掃出裸色碼、裸間距、裸字級、裸圓角與寫死文字，指出各自該改用哪個 token 或 i18n key，並以 PostEdit hook 擋下新增違規。觸發詞：裸值、硬編碼顏色、寫死文字、樣式違規、style guardian、token 沒用到、i18n 漏翻。Do NOT use for 建立 token 體系（用 foundation-design）或元件契約設計（用 component-contract-design）。"
 metadata:
-  version: 1.4.0
+  version: 1.5.0
   category: ui-design
 ---
 
@@ -368,12 +368,6 @@ The style checker is integrated into PostEdit Hook:
 ---
 
 ## Quick Reference Card
-
-### Import Statement
-
-```dart
-import 'package:book_overview_app/core/ui/ui_config.dart';
-```
 
 ### Common Replacements
 

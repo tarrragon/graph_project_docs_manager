@@ -97,6 +97,42 @@ UITypography.lineHeightRelaxed  // 1.6 - Long-form content
 
 ---
 
+## 字級判準：headline 與 title 同值時如何選
+
+`headline4`（20.rsp）與 `titleLarge`（20.rsp）數值相同但用途不同——〈UIFontSizes Constants〉的定義註解已分別標「Subsection headings」與「Card titles, dialog headers」，數值相同不代表語意相同。
+
+【輸入】
+
+```
+定義註解：
+  headline4  // 20.rsp - Subsection headings
+  titleLarge // 20.rsp - Card titles, dialog headers
+情境：畫面上有一段文字，字級寫死為 20
+```
+
+【產出】
+
+```
+形態：決策表
+
+情境                                    | 判定       | 理由
+------------------------------------------|------------|------------------------------
+文字是文件層級的子節標題（頁面內的階層標題） | headline4  | 定義註解「Subsection headings」
+文字是卡片或對話框內的標題（元件情境內）     | titleLarge | 定義註解「Card titles, dialog headers」
+```
+
+【驗證】
+
+```
+檢驗問句
+Q 該文字是否位於某個容器元件（卡片／對話框）內、作為該容器的標題？
+  預期：是 → titleLarge；否，是頁面文件階層的子標題 → headline4
+Q 兩個 token 是否因數值相同（皆 20.rsp）而可互換？
+  預期：否——定義註解已區分文件階層與元件情境兩種語意，數值相同不代表語意相同
+```
+
+---
+
 ## TextStyle Examples
 
 ### Page Title
@@ -205,6 +241,8 @@ TextStyle(fontSize: 14.sp)  // Wrong suffix
 | `fontSize: 28` | `UIFontSizes.headline2` |
 | `fontSize: 32` | `UIFontSizes.headline1` |
 
+上表已依「相鄰兩階等距時，一律取較小一階」規則產生（見 `13`／`15`／`17`／`19` 皆取低階：12／14／16／18），不需另外判斷方向。
+
 ### Weight Replacements
 
 | Hardcoded | UITypography |
@@ -224,4 +262,4 @@ TextStyle(fontSize: 14.sp)  // Wrong suffix
 3. **Maintain hierarchy** - Headlines > Titles > Body > Captions
 4. **Consider readability** - Minimum 12.rsp for body text
 5. **Test on devices** - Verify scaling works correctly
-6. **Use theme when available** - `Theme.of(context).textTheme` for consistency
+6. **Use theme when available** - `Theme.of(context).textTheme` for consistency；Theme 與 token 該用哪一個的判準見 `color-system.md`〈Theme 與 Token 判準〉，字級語意同適用（不重複列一份決策表）
