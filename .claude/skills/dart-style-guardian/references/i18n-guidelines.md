@@ -240,6 +240,8 @@ showError(AppErrorCode.loadFailed);
 Text(ErrorHandler.getUserMessage(context, errorCode))
 ```
 
+此處丟出的錯誤碼本身屬〈Exceptions〉的技術識別符，不進 ARB；豁免只到錯誤碼值為止，顯示給使用者的訊息仍須轉譯（交界見〈判準：錯誤碼與使用者可見錯誤訊息的交界〉）。
+
 ### Violation 3: String Interpolation
 
 ```dart
@@ -272,7 +274,7 @@ TextField(
 
 Some strings may NOT need i18n:
 
-1. **Technical identifiers** - Error codes, keys
+1. **Technical identifiers** - Error codes, keys（僅指識別符值本身：層間傳遞、寫入日誌、作為查表鍵；錯誤碼要讓使用者看到時，見〈判準：錯誤碼與使用者可見錯誤訊息的交界〉）
 2. **Brand names** - "Flutter"
 3. **Formatting characters** - `/`, `-`, `:`
 4. **Numbers and units** - When culture-independent
@@ -321,6 +323,31 @@ Exceptions 清單：技術識別符／品牌／格式字元／文化無關的數
 Q 整句「ISBN: 9789571234567」是否整體豁免 i18n？
   預期：否——只有數值片段豁免，標籤仍需翻譯
 ```
+
+### 判準：錯誤碼與使用者可見錯誤訊息的交界
+
+錯誤碼豁免的對象是識別符值本身：在層間傳遞（`throw AppException(AppErrorCode.loadFailed)`）、寫入日誌、作為 `ErrorHandler` 查表的鍵，都不進 ARB。使用者可見的錯誤訊息不在豁免範圍內，依〈Violation 2: Hardcoded Error Messages〉由呈現層轉譯後顯示。**錯誤碼不得取代訊息單獨顯示**，因為呈現層跳過轉譯就等於把未翻譯的內部值交給使用者。需要讓使用者看到錯誤碼（例如回報問題用的參考編號）時，錯誤碼必須跟在轉譯後的訊息旁，組合方式依上一節走參數化翻譯，只有錯誤碼值本身豁免。
+
+```dart
+// Violation（呈現層把錯誤碼當訊息直接顯示）
+Text(state.errorCode.name)
+
+// Fix（呈現層轉譯後顯示）
+Text(ErrorHandler.getUserMessage(context, state.errorCode))
+
+// Fix（需附參考編號：訊息轉譯，錯誤碼值以參數帶入）
+Text(context.l10n!.errorWithReference(
+  ErrorHandler.getUserMessage(context, state.errorCode),
+  state.errorCode.name,
+))
+// ARB: "errorWithReference": "{message}（錯誤代碼：{code}）"
+```
+
+片段                         | 是否豁免 | 理由
+-----------------------------|----------|------------------------------------------
+層間傳遞的錯誤碼             | 是       | 技術識別符值，不對使用者顯示
+呈現層只顯示錯誤碼、沒有訊息 | 否       | 使用者可見錯誤訊息被錯誤碼取代，違反〈Violation 2〉的呈現層轉譯
+訊息旁附帶的錯誤碼值         | 是       | 識別符值本身；外圍文字走參數化翻譯
 
 ---
 
