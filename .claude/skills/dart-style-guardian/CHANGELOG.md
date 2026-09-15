@@ -2,6 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.11.1 — 1.11.0 修正後由非撰寫者第二輪複核，兩問仍無法由引文逐詞推出，依修補輪數上限直接刪除，不再改寫：`i18n-guidelines.md`〈判準：標籤＋識別符組合時如何分割〉Q2（預期答案「由呼叫端自行」不在引文內；保留的 Q1 仍檢驗分割核心推導）；`color-system.md`〈Theme 與 Token 判準〉Q1（預期答案「元件庫 token」不在引文內，且以條件式回答「有沒有」問句）。color 範例因此無驗證問句，以註記指向判準段方向句——該方向句即條文依據句，缺口在問句寫法而非條文，故不另立缺引導。
 **Version**: 1.11.0 — 以 `chained-examples.md`〈驗證段機械檢查：依據句可溯性〉逐問表獨立複核 1.9.0 修正後範例，兩問不合格：`i18n-guidelines.md`〈判準：標籤＋識別符組合時如何分割〉Q2 預期答案含「ARB」（Flutter 在地化檔案格式名），改寫為技術中立敘述「依 Violation 3，需走參數化翻譯，不得由呼叫端自行拼接整句」，依據句（〈Exceptions〉分割規則段）不變。`color-system.md`〈Theme 與 Token 判準〉Q1 原判依據句只給判準對象、不給方向，已由 1.9.0 新增的方向句「對應的內建語意插槽存在時用主題插槽，不存在時用 token」解決，本版核對該句範例外 `grep -F` 命中且可單獨推出 Q1 預期答案，未再改動 `color-system.md` 正文。
 **Version**: 1.10.0 — G21（1.4.0）的修正方向錯了：當時查證只 grep 了批次掃描腳本 `scripts/style_checker.py`（確實無此偵測），漏看 `.claude/hooks/dart-style-guardian-hook.py` 的 PostEdit hook——該 hook 的 pattern 常數含八個 pattern，會攔下新增的原生元件直用。〈與相鄰資產的交界〉改寫為：PostEdit hook 攔新增違規、批次掃描腳本不偵測既有存量；「哪些算原生元件」「用什麼替代」的定義權威不變，仍在 `component-contract-design` 的 step-3〈原生元件禁用對照表〉，hook 的 pattern 屬執法實作不是定義權威。hook 內替代名（App* 元件）與註解章節號屬其他專案殘留，另立票處理，本版不動 hook 程式。事實更正，不改變任何判準。
 
