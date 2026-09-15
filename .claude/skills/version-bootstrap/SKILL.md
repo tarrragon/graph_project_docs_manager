@@ -2,7 +2,7 @@
 name: version-bootstrap
 description: "版本規劃波 orchestrator：把版本提案展開成可執行的 ticket，中間不漏教學比對。依序走提案清單與依賴檢查、spec、domain map、資料契約、教學比對、UC、地基波（僅 UI 版本）、紅燈測試、匯總建票；每步有 checkpoint，PM 確認才前進。觸發詞：規劃波、版本啟動、bootstrap、提案展開、建票、地基波。Do NOT use for 決定票屬於哪一版（用 version-sequencing）或地基逐維度盤點（用 foundation-design）。"
 metadata:
-  version: 1.7.2
+  version: 1.7.3
   category: engineering-workflow
 ---
 
@@ -233,7 +233,7 @@ cp .claude/skills/doc/templates/data-contract-template.md docs/spec/{domain}/{na
 
 **動作**：根據 Step 2-5 的產出，建立 W2/W3/W4 的 IMP ticket。
 
-- W2/W3：GREEN 實作票（每個 spec FR 或功能模組 1 張——「或」由 `.claude/rules/core/cognitive-load.md`〈速查三閾值〉決定，非任意選擇）
+- W2/W3：GREEN 實作票（每個 spec FR 或功能模組 1 張——「或」依 `.claude/pm-rules/task-splitting.md`〈拆分後檢查清單〉B 合併共用檔案者、依 `.claude/rules/core/cognitive-load.md`〈速查三閾值〉拆超標者）
 - W4：驗收票（E2E + Phase 4）
 
 **建票來源**：
