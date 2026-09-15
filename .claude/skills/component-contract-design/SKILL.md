@@ -4,7 +4,7 @@ description: "從規格狀態表、設計畫布或既有程式碼推導元件目
 license: MIT
 metadata:
   portable: true
-  version: 3.9.0
+  version: 3.9.1
   category: ui-design
 ---
 
@@ -138,7 +138,7 @@ metadata:
 |---------|---------|-----------|
 | `foundation-design` skill | 地基入口與路由：token 萃取、接手模式的盤點→命名→固化順序、特徵測試閘門、測試基座 | 本 skill 消費 token 名，不自行歸納 token 階；step 2 的路徑 C 沿用其接手順序 |
 | `ux-design-evaluation` skill | 畫面級：狀態矩陣、gate、輸入、錯誤恢復、導航；回饋的時間門檻與通知形式由它判斷 | 本 skill 只管元件級契約。同一類失效在這裡寫成契約欄位（內容政策、空間不足策略）而非審查項；回饋契約的通道與狀態集來源由規格撰寫者查形態因素矩陣填寫，不重新判斷時間門檻 |
-| 執法工具（Dart 專案為 `dart-style-guardian` skill） | 抓裸值與寫死文字、偵測原生元件直用 | 執法工具掃元件層、不掃組合層，所以它全綠仍可能重疊——容器缺件要靠本 skill 的判別問句抓 |
+| 執法工具（Dart 專案為 `dart-style-guardian` skill） | 抓裸值與寫死文字 | 原生元件直用的定義與判定權威在本 skill，不在執法工具——執法工具目前沒有偵測它的 pattern，判定與清點由本 skill 的 step-3〈原生元件禁用對照表〉承接。執法工具掃元件層、不掃組合層，所以它全綠仍可能重疊——容器缺件要靠本 skill 的判別問句抓 |
 | `version-bootstrap` skill 地基波 | 編排 i18n → design-system → UX 審查 → 元件庫四塊的順序 | 本 skill 落在第三塊之後、第四塊之前；第四塊的前置 checkpoint 是〈契約齊全的定義〉 |
 
 ---
