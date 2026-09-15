@@ -125,8 +125,9 @@ Q 本表是否重複列出可用操作或退出路徑欄的值？
   只在 `screen-state-matrix.md` 定義一處
 
 Q error 與 disconnected 兩狀態的 UI 呈現是否都包含「重連按鈕」？
-  預期：是——error 和 disconnected 必須同時提供重新連線和返回兩個選項，
-  只有重新連線會把使用者鎖在錯誤迴圈
+  預期：是——【輸入】SPEC 片段第 4、5 項兩狀態皆寫明重連按鈕，本表照錄。兩狀態還需要
+  哪些退出路徑（如返回）不在本表判定，依本範例情境句歸 `screen-state-matrix.md`〈填寫範例〉
+  修復後矩陣定義
 ```
 
 timeout 是 connecting 的隱形退出路徑：取消靠使用者主動、timeout 是系統兜底（取值略大於 client / 後端逾時、讓真正的失敗先回來），逾時後轉入 error。
