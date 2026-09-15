@@ -28,6 +28,8 @@
 
 **UI 類提案元件庫前置檢查（強制，元件庫雙向約束方法論落地）**：Why——UI 類提案若跳過 design token 層與元件庫規劃直接進入實作，設計端與工程端會各自決定元件形狀，產生重複造輪與樣式漂移，已上線元件難以回溯套用 token 體系。三項前置檢查的產物（design token 層、L3 元件庫章節、design-system spec）本身就是圖形介面的組成，判準因此鎖定「FR 產物是否為圖形介面」這個呈現通道，不以字面關鍵字判定——同一個彈窗換一種寫法就會漏掉字面比對，但呈現通道不會變。Consequence——未在本步驟攔截，UI 實作票會在 Step 6 匯總建票時直接開出，等到 Phase 3b 實作階段才發現缺 token 層或元件庫章節，需回頭補規劃甚至推翻已完成的實作。Action——UI 類判別依 SKILL.md Step 2〈UI 類判別〉的呈現通道表，本檔不逐字複寫判準本文（避免兩處各自演化、逐字不同步）；判為 UI 類提案者須先確認 SKILL.md Step 2〈UI 類提案元件庫前置檢查（強制）〉表列各檢查項存在，缺則先補齊才可繼續本提案的 UI 實作票規劃（檢查項清單以該表為準，本檔不重複列舉以免計數隨表格增減而過期）。
 
+**三項檢查的「存在」判準**：檢查的是內容是否符合 SKILL.md 表格「對應載體」欄的定義，不是檔案或章節是否存在——標題存在但內容為空殼（如僅一句「待補」）不算通過。存在性檢查對有效性零鑑別力的通用原則見 `.claude/skills/foundation-design/SKILL.md`〈判準的通用形式：問作用，不問存在〉：「文件存在不代表它回答得了問題」。
+
 ## Step 2 為什麼多一項 design-system spec
 
 **Why 加 design-system spec 檢查**：doc skill 已提供 `design-system-spec-template`，但 `batch-init` 只產一般功能 spec，UI 版本易漏產 design system 專屬 spec。**Consequence**：漏產則 Step 4.5 地基波的 design-system 實作無契約可依（實證：PM 用 batch-init 產一般功能 spec 卻未產 design-system spec，經指正後才補）。**Action**：UI 版本填 spec 時一併用 design-system-spec-template 產出 design system spec，作為 Step 4.5 design-system 實作的契約。
