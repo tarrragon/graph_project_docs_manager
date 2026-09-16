@@ -347,8 +347,8 @@ G1 至 G4 機械可查（查事實、查欄位、數份數、查票）；**G5 �
 
 ## 7. 引用本規格的 skill
 
-下表是**預期引用者**，各 skill 的接線尚未完成——在該 skill 加上 4.2 的引用句之前，本規格
-對它不生效，使用者在那個 skill 裡讀到的仍是「建票」字面。
+下表是**預期引用者**，標記「已接線」者除外，其餘 skill 的接線尚未完成——在該 skill 加上
+4.2 的引用句之前，本規格對它不生效，使用者在那個 skill 裡讀到的仍是「建票」字面。
 
 雙向引用要求：引用本規格的 skill 增減時，同步更新本表。**Consequence**：不同步時本表會
 變成一份過時清單，改動本規格的人據它判斷影響範圍，就會漏掉真正的下游。**Action**：改本表
@@ -357,9 +357,13 @@ G1 至 G4 機械可查（查事實、查欄位、數份數、查票）；**G5 �
 
 | skill / 檔案 | 引用的節 |
 |-------------|---------|
+| `project-analysis` | 入口的模式宣告與外接資料夾建立、盤點步驟的產物落點、彙整與交付 → 〈適用範圍〉〈外接資料夾結構〉〈盤點工作項表規格〉〈讀法映射〉〈匯入方式對照〉（**已接線**） |
+| `doc`（`SKILL.md`） | 模板表與參考資料表的索引列 → 全篇（**已接線**） |
+| `doc`（`templates/inventory-worksheet-template.md`） | 範本表頭指回欄位規格 → 〈盤點工作項表規格〉（**已接線**） |
 | `foundation-design` | 移植前置條件、降級段、工作流建票步驟 → 第 1 節、第 4 節 |
 | `component-contract-design` | 前置條件、step-5 執行者表 → 第 1 節、第 4 節 |
-| `doc`（`references/legacy-code-workflow.md`、`templates/legacy-assessment-report-template.md`） | 接手流程前置、後續行動表 → 第 2 節、第 3 節 |
+| `doc`（`references/legacy-code-workflow.md`） | 開頭的模式分流與相關文件表 → 〈適用範圍〉（**已接線**；其〈前置步驟〉〈追蹤整合〉的二擇一改寫尚未完成） |
+| `doc`（`templates/legacy-assessment-report-template.md`） | 接手評估報告的 Ticket 欄與後續行動表 → 〈盤點工作項表規格〉 |
 | `version-sequencing` | 移植前置條件、降級段 → 第 1 節、第 4 節 |
 | `version-bootstrap` | 匯總建票步驟 → 第 4 節 |
 | `parallel-evaluation`／`pre-fix-eval`／`multi-round-review`／`ux-design-evaluation`／`dart-style-guardian` | 建票綁觸發之處 → 第 4 節（產物欄位另見 4.4） |
@@ -377,11 +381,17 @@ G1 至 G4 機械可查（查事實、查欄位、數份數、查票）；**G5 �
 | `.claude/rules/core/decision-trigger-binding.md` 規則 2 | 射程邊界一行 |
 | `.claude/references/decision-trigger-binding-details.md` | 閘門 G1–G5 完整條文（本檔 4.3 的權威） |
 | `.claude/rules/core/quality-baseline.md` 規則 5 | 追蹤載體的射程邊界 |
-| `references/legacy-code-workflow.md` | 接手流程；前置條件與本規格二擇一 |
+| `references/legacy-code-workflow.md` | 接手流程（吸收模式）；前置條件與本規格二擇一 |
+| `project-analysis` skill | 分析模式的工序；其入口的模式宣告與各步驟產物落點依本規格 |
 | `templates/legacy-assessment-report-template.md` | 接手評估報告；後續行動表引用工作項表 |
 
 ---
 
-**Last Updated**: 2026-09-16 | **Version**: 1.0.0 — 初始建立。外接資料夾結構與工具限制
+**Last Updated**: 2026-09-16 | **Version**: 1.1.0 — 第 7 節新增 `project-analysis` 列並標記
+已接線（該 skill 為分析模式的工序入口，依本規格宣告模式與決定產物落點），表前敘述同步加
+「標記已接線者除外」；相關文件表增列該 skill、接手流程列補「吸收模式」。同次依本節 Action
+實跑字串比對校正該表：補上實際已引用而未入表的 `doc/SKILL.md` 與工作項表範本兩列，原
+`doc` 合併列拆為接手流程（已接線）與評估報告範本（未接線）兩列，引用欄一律改為章節名。
+**Version**: 1.0.0 — 初始建立。外接資料夾結構與工具限制
 承接讀寫點盤點的實測結論；讀法映射與閘門 G1–G5 承接規則層裁決。**Source**: framework
 issue `claude#109`（SR-1）。

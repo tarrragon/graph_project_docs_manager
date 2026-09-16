@@ -155,7 +155,7 @@ cp .claude/skills/doc/templates/component-library-spec-template.md docs/spec/com
 | `references/usecases.md` | 用例規範、UC 測試對應要求、資訊鏈驗證 |
 | `references/tracking.md` | 追蹤索引格式、跨文件導航機制 |
 | `references/proposal-evaluation-guide.md` | 提案評估指南（跨專案通用的三關式審查） |
-| `references/legacy-code-workflow.md` | Legacy Code 接手處理標準化流程（前置 + 步驟 0~6） |
+| `references/legacy-code-workflow.md` | Legacy Code 接手處理標準化流程（前置 + 步驟 0~6）。服務**吸收**模式；被操作專案不會用本框架開發時改走 `project-analysis` skill |
 | `references/external-workspace-spec.md` | 協作專案外接資料夾規格：資料夾結構與強制約束、盤點工作項表欄位與順序層、對帳紀錄、匯入方式，以及無 ticket 系統時建票指令的**讀法映射單一權威** |
 
 ---
