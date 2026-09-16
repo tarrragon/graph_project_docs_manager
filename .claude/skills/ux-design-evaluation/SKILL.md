@@ -4,7 +4,7 @@ description: "UX / UI 設計的系統性評估：把「使用者被困住」類�
 license: MIT
 metadata:
   portable: true
-  version: 1.11.10
+  version: 1.11.11
   category: ux-design
 ---
 
@@ -82,6 +82,7 @@ UX / UI 設計的系統性評估方法。這個 skill 的出發點是一類反�
 - [ ] 切換元件標籤是動作語意（或已拆成狀態顯示 + 動作按鈕）？
 - [ ] 非互動指示與按鈕形態可區分、選中態對比成對設計？
 - [ ] 關鍵回饋文字有版面保障（窄幕驗收）？
+- [ ] 靠顏色區分的語意，顏色之外另有訊號或文字？
 - [ ] 無佔位 handler（dev toast / log-only）殘留？
 
 ---
@@ -156,6 +157,6 @@ Q 產出是否停留在「要有回饋」這類抽象敘述？
 
 ---
 
-**Last Updated**: 2026-09-14
+**Last Updated**: 2026-09-16
 
 版本紀錄在同目錄的 `CHANGELOG.md`。

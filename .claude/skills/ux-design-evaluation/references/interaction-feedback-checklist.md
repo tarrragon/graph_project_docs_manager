@@ -40,7 +40,7 @@
 | 關鍵回饋文字被版面壓成省略號     | 回饋存在、使用者拿到零資訊     | 最小寬度保障、縮格式優於 ellipsis      |
 | 佔位 handler 上線（toast / log） | 可點的假按鈕、被讀成壞掉       | 隱藏或 disabled + 說明、release 前掃描 |
 
-前 8 行對應 `interaction-feedback.md`〈按鈕級回饋〉與 `interaction-feedback-waiting-and-notification.md`〈時間門檻與回饋策略〉〈Spinner vs Skeleton〉；中段 6 行對應 `interaction-feedback-waiting-and-notification.md`〈畫面級回饋〉〈結果通知的形式選擇〉；末 4 行對應 `interaction-feedback-component-semantics.md`〈七項判準〉。
+前 8 行對應 `interaction-feedback.md`〈按鈕級回饋〉與 `interaction-feedback-waiting-and-notification.md`〈時間門檻與回饋策略〉〈Spinner vs Skeleton〉；中段 6 行對應 `interaction-feedback-waiting-and-notification.md`〈畫面級回饋〉〈結果通知的形式選擇〉；末 4 行對應 `interaction-feedback-component-semantics.md`〈八項判準〉。
 
 ## 檢查清單
 
@@ -75,6 +75,7 @@
 - [ ] 水平溢出清單有捲動 affordance（或已消除溢出）？
 - [ ] 關鍵狀態文字有版面保障（窄幕不被壓成省略號）？
 - [ ] 版面擠壓的診斷分過層（換算錯 vs 分配錯）、沒把 sizing 套件當空間分配的保證、設計層空間競爭規格已路由至 `component-contract-design`〈空間不足策略〉欄？
+- [ ] 靠顏色區分的語意，顏色之外另有訊號或文字？
 - [ ] 無佔位 handler（dev toast / log-only）殘留（統一佔位標記 + release 前 grep 掃描）、未接線功能已隱藏或 disabled + 說明？
 
 ## 參考來源
