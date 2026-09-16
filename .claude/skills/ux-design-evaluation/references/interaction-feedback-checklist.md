@@ -40,7 +40,7 @@
 | 關鍵回饋文字被版面壓成省略號     | 回饋存在、使用者拿到零資訊     | 最小寬度保障、縮格式優於 ellipsis      |
 | 佔位 handler 上線（toast / log） | 可點的假按鈕、被讀成壞掉       | 隱藏或 disabled + 說明、release 前掃描 |
 
-前 8 行對應 `interaction-feedback.md`〈按鈕級回饋〉與 `interaction-feedback-waiting-and-notification.md`〈時間門檻與回饋策略〉〈Spinner vs Skeleton〉；中段 6 行對應 `interaction-feedback-waiting-and-notification.md`〈畫面級回饋〉〈結果通知的形式選擇〉；末 4 行對應 `interaction-feedback-component-semantics.md`〈六項判準〉。
+前 8 行對應 `interaction-feedback.md`〈按鈕級回饋〉與 `interaction-feedback-waiting-and-notification.md`〈時間門檻與回饋策略〉〈Spinner vs Skeleton〉；中段 6 行對應 `interaction-feedback-waiting-and-notification.md`〈畫面級回饋〉〈結果通知的形式選擇〉；末 4 行對應 `interaction-feedback-component-semantics.md`〈七項判準〉。
 
 ## 檢查清單
 
