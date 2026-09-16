@@ -112,6 +112,7 @@ doc domain <name>   # 帶 domain 名稱：列出該 domain 下的 spec 清單與
 | 元件庫規格模板 | `templates/component-library-spec-template.md` | 建立 L3 元件庫章節：逐元件依元件契約欄位表填寫（含回饋契約）、容器元件排列不變式、禁用對照、豁免清單（依元件庫雙向約束方法論）；缺範例位置的三段鏈式範例集見 `examples/component-library-chained-examples.md` |
 | 用例模板 | `templates/usecase-template.md` | 建立新用例 |
 | 事件模板 | `templates/event-template.md` | 建立新領域事件（producers/consumers 建立時選填） |
+| 盤點工作項表範本 | `templates/inventory-worksheet-template.md` | 協作或接手專案且對方無本框架 ticket 系統時，替代 ticket 的任務追蹤產物（摘要／工作項表／項目詳情／對帳紀錄四段）。欄位與讀法映射見 `references/external-workspace-spec.md` |
 
 ### 使用方式
 
@@ -155,6 +156,7 @@ cp .claude/skills/doc/templates/component-library-spec-template.md docs/spec/com
 | `references/tracking.md` | 追蹤索引格式、跨文件導航機制 |
 | `references/proposal-evaluation-guide.md` | 提案評估指南（跨專案通用的三關式審查） |
 | `references/legacy-code-workflow.md` | Legacy Code 接手處理標準化流程（前置 + 步驟 0~6） |
+| `references/external-workspace-spec.md` | 協作專案外接資料夾規格：資料夾結構與強制約束、盤點工作項表欄位與順序層、對帳紀錄、匯入方式，以及無 ticket 系統時建票指令的**讀法映射單一權威** |
 
 ---
 
