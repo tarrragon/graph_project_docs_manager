@@ -4,7 +4,7 @@ description: "Composes atomic, intent-revealing, grep-friendly writing (Zettelka
 license: MIT
 metadata:
   portable: true
-  version: 1.12.0
+  version: 1.19.0
   category: writing-methodology
 ---
 
@@ -18,7 +18,7 @@ metadata:
 
 SKILL.md 給的是原則、判別線與邊界；**可執行的操作在兩個地方**——本檔的「字句層 keyword bank」那一節（有可直接跑的 rg 指令），以及 `references/` 底下各情境的 reference（有步驟與範例）。
 
-所以讀本檔各原則時，「我的第一個動作是什麼」的答案幾乎都是同一個：**到觸發路由表找自己的情境，打開對應的 reference**。原則本身不指定動作，那是設計、不是缺漏——原則要跨情境成立，動作只在情境裡才有意義。要直接動手的人先跳到觸發路由表。
+所以讀本檔各原則時，「我的第一個動作是什麼」的答案幾乎都是同一個：**到觸發路由表找自己的情境，打開對應的 reference**。原則要跨情境成立，而動作只在情境裡才有意義，所以動作住在 reference 裡、不住在原則旁邊。要直接動手的人先跳到觸發路由表。
 
 ## 動手之前先定這一份的定位
 
@@ -56,9 +56,11 @@ SKILL.md 給的是原則、判別線與邊界；**可執行的操作在兩個地
 
 一張卡一個概念：能獨立理解、可跨情境重用。拆分依據是**認知負擔與情境匹配度** — 讀者要同時記住的概念數、以及這張卡是否符合讀者當下的情境需求。常見的誤判依據是「行數」（卡太長就拆）、行數只反映表面字數、不反映概念數：一張 200 行的卡可能只講一個概念、一張 30 行的卡可能塞了三個概念。判別問題是「讀者要同時 hold 幾個概念才讀得懂這張卡」、超過 7 個就要拆。
 
-**內容壓力的出口是擴充結構、不是壓縮內容**：內容超出容器的自然大小時（判斷標準裝不進表格格、概念裝不進標題、範例讓段落過長）、合法出口都在結構層——就地展開（延伸段、本篇專屬內容）、外部化成卡（跨篇可用的支撐 / 背景概念、範例寫進卡片、文章引用卡片承接論證）、或換成連結（概念在內容集合裡已有卡或專章承載時、刪掉格內自撰的 gloss 改放連結）；裁內容遷就容器違規、終點形態是簡報式文章（表格當主體、格內殘語、條列連綴——簡報的正當性來自講者在場補完、文章沒有講者）。邊界：主線概念必須行內展開（外部化斷論證線）；擴充的對象是結構不是句長（句層另由消費單位分配管）；checklist、規格表與查表型段落（判讀徵兆表 / 對照表）的表格形態合法——消費單位是逐項執行或逐列查詢、同一機制豁免；拆卡淨收益待試點驗證、先小規模再全面。選出口前先搜內容集合有沒有既有落點（有落點就是換成連結、不寫 gloss；但**程序要逐項消耗的列舉**留在本篇、只有定義外部化——一次獨立冷讀顯示三篇裡「不點就接不下去」的連結全是這一類，而所有背景術語卡都判可選）。判「換成連結」之前要打開目的地把成員並排：它與「先收斂載體」在外觀上無法分辨、差別在切法對不對得上，而一次第二人分診（同一批 29 列、一致率 86%）的四處分歧有三處就出在這裡、方向全部偏向連結。，並跑一個前置檢查：**查這個概念在別篇有沒有不相容的版本**——用雙向對映測試（兩篇的成員並排、逐項問能不能互相對映完整、只存在於一側的成員就是不相容的證據）與動作測試（讀者會不會為這件事做同一個動作兩次：一篇的產出是另一篇的輸入是互補、兩篇是同一個動作的兩份指示是衝突）；有衝突就先收斂單一權威載體——判斷標準完整度決定哪一套內容留下（殘缺的那套當載體會擴散殘缺）、引用數只決定住址搬不搬（遷移成本、非品質、而且要數指向那組成員的引用不是指向那一頁的：整頁入連由該頁主題帶來、一次實測相差一個量級而據此選錯了理由）、同一對象已有卡時卡通常是住址（理由是成員定義本來就是卡的責任）、而兩套各有對方缺的成員時載體要先補齊才有資格當載體（收斂不是挑一套刪掉另一套、補齊時檢查新成員的名字在載體上有沒有被佔用的近義詞、否則會把同名異義搬進唯一的住址）——其餘各篇沿用它的語彙並重新界定 scope，「同步成一份」與「兩套並陳」都不是修法。搜尋別篇版本時掃的是「宣告一組固定成員、要求逐項填寫的段落」、不論它排成表格、清單或散文（寫成「掃表格」會漏掉全部——一次實測的六個住址全是編號清單），而計數只算同層的住址（不同層的分解對齊語彙、不收斂）。這種矛盾單篇視角下不落空（每篇單獨讀都自洽）、要在分診階段查。兩次實測的出口分布差異很大（一次以換成連結為主、另一次以收斂載體為主），分布隨卡層覆蓋與跨章關係變動、不可推廣——每次改寫重跑分診。文章要短、讓細節搬進卡片、別讓細節消失。詳見 [content-pressure-resolves-by-expansion-not-compression](references/principles/content-pressure-resolves-by-expansion-not-compression.md)。
+**內容壓力的出口是擴充結構、不是壓縮內容**：內容超出容器的自然大小時（判斷標準裝不進表格格、概念裝不進標題、範例讓段落過長）、合法出口都在結構層——就地展開（延伸段、本篇專屬內容）、外部化成卡（跨篇可用的支撐 / 背景概念、範例寫進卡片、文章引用卡片承接論證）、或換成連結（概念在內容集合裡已有卡或專章承載時、刪掉格內自撰的 gloss 改放連結）；裁內容遷就容器違規、終點形態是簡報式文章（表格當主體、格內殘語、條列連綴——簡報的正當性來自講者在場補完、文章沒有講者）。邊界：主線概念必須行內展開（外部化斷論證線）；擴充的對象是結構不是句長（句層另由消費單位分配管）；checklist、規格表與查表型段落（判讀徵兆表 / 對照表）的表格形態合法——消費單位是逐項執行或逐列查詢、同一機制豁免；拆卡淨收益待試點驗證、先小規模再全面。選出口前先搜內容集合有沒有既有落點（有落點就是換成連結、不寫 gloss；但**程序要逐項消耗的列舉**留在本篇、只有定義外部化——一次獨立冷讀顯示三篇裡「不點就接不下去」的連結全是這一類，而所有背景術語卡都判可選）。判「換成連結」之前要打開目的地把成員並排：它與「先收斂載體」在外觀上無法分辨、差別在切法對不對得上，而一次第二人分診（同一批 29 列、一致率 86%）的四處分歧有三處就出在這裡、方向全部偏向連結。，並跑一個前置檢查：**查這個概念在別篇有沒有不相容的版本**——用雙向對映測試（兩篇的成員並排、逐項問能不能互相對映完整、只存在於一側的成員就是不相容的證據）與動作測試（讀者會不會為這件事做同一個動作兩次：一篇的產出是另一篇的輸入是互補、兩篇是同一個動作的兩份指示是衝突）；有衝突就先收斂單一權威載體——判斷標準完整度決定哪一套內容留下（殘缺的那套當載體會擴散殘缺）、引用數只決定住址搬不搬（遷移成本、非品質、而且要數指向那組成員的引用不是指向那一頁的：整頁入連由該頁主題帶來、一次實測相差一個量級而據此選錯了理由）、同一對象已有卡時卡通常是住址（理由是成員定義本來就是卡的責任）、而兩套各有對方缺的成員時載體要先補齊才有資格當載體（收斂不是挑一套刪掉另一套、補齊時檢查新成員的名字在載體上有沒有被佔用的近義詞、否則會把同名異義搬進唯一的住址）——其餘各篇沿用它的語彙並重新界定 scope，「同步成一份」與「兩套並陳」都不是修法。搜尋別篇版本時掃的是「宣告一組固定成員、要求逐項填寫的段落」、不論它排成表格、清單或散文（寫成「掃表格」會漏掉全部——一次實測的六個住址全是編號清單），而計數只算同層的住址（不同層的分解對齊語彙、不收斂）。這種矛盾單篇視角下不落空（每篇單獨讀都自洽）、要在分診階段查。兩次實測的出口分布差異很大（一次以換成連結為主、另一次以收斂載體為主），分布隨卡層覆蓋與跨章關係變動、不可推廣——每次改寫重跑分診。文章要短、讓細節搬進卡片、別讓細節消失。**壓縮論證的下界是一句話的理由、不是零**——把論證外移只留主張句是合法的壓縮方向，而主張句旁邊要留得住「為什麼」的那一句：一次冷讀在依此壓縮後的稿件上直指「這是對做法的否定，但沒立即說明為什麼」，**沒有理由的禁令讀者記不住，也判不出邊界**（邊界是從理由推出來的，理由不在場時他只能照字面套用或整條忽略）。詳見 [content-pressure-resolves-by-expansion-not-compression](references/principles/content-pressure-resolves-by-expansion-not-compression.md)。
 
 **串連佔掉的是本篇的篇幅，順序是先自足再往外開門**：相互引用的集合會讓串連看起來像義務，而每一條引用都佔掉本來要用來講自己的位置——上一條的「換成連結」出口因此有個前提，**本篇的主線不能靠它**。驗收是把所有往外的連結當成不存在重讀一次，剩下定義加屬性清單就代表判斷做錯了；遮住連結之後第一個要查的是那個貫穿全篇的詞（承重術語在自己的主場最容易沒有定義，作者寫得越多陌生感消失得越早）。串連寫成條件分支（換掉哪一項會變成什麼）讓它成為本篇的內容，而**分支不會順便交代目的地，承諾要另外寫**——判斷標準是遮住目的地之後讀者預測不預測得出那一篇會給什麼，句型只影響命中率、不是判定條件（寫成謂語命中率高，但照句法規則判會產生假陰性）。症狀是讀得懂而說不出要交付什麼，只有問「這一篇讓你具備什麼能力」分得開。詳見 [cross-links-eat-the-article-they-live-in](references/principles/cross-links-eat-the-article-they-live-in.md)。
+
+**拆完之後有一組新的檢查，對象是拆分自己造出來的交界**：一份文件拆成多檔之後多出一個原本不存在的位置——讀者在這裡離開一份檔案、進入另一份，或者不知道還有另一份可以進。**每一份單獨讀都是對的，所以逐檔的自審與逐檔的冷讀對這一類一律回報通過**，要另外查。六條逐項檢查（互指對稱、位置座標不寫總數、層級不混疊、定義與使用同檔、內嵌計數改分組名、指路在首次用點）、切法怎麼決定層級混疊會不會發生、以及外移之後殘餘要自足到什麼程度，都在 `references/structuring-with-solid.md` 的〈拆完之後的交界檢查〉，判定與實測見 [split-defects-land-between-the-files](references/principles/split-defects-land-between-the-files.md)。
 
 **拆分標準的核心問題**：「這張卡聚焦在什麼問題、議題切完整了嗎？」— 判斷標準是 **focus 完整度**。常見的次級訊號是「卡之間是否衝突」「邊界是否清晰」、兩者都不夠：兩張卡互不衝突、仍可能各切了一半同樣議題；一張卡邊界清晰、仍可能塞了兩個獨立議題。focus 完整度問的是「這張卡有沒有把它聲稱要解決的議題講完」、是 contrast 上面那兩個訊號抓不到的死角。
 
@@ -116,6 +118,10 @@ SKILL.md 給的是原則、判別線與邊界；**可執行的操作在兩個地
 
 **規則要指到一個打得開的東西**：寫會被別人照著執行的文件（規範、手冊、skill、spec、agent 指令）時，每個步驟的可執行性由「照它工作的人第一個動作指得出來嗎」決定、不由它寫得清不清楚決定。三種失效成因不同而後果相同——名字指向不存在的東西（改名後沒跟著改的路徑）、名字從來不是實體（像專有名詞但查無對應檔案的詞）、根本沒指名（步驟寫成形容詞並列，「核心先行、正向陳述、案例補足」）。第三種最難發現，因為前兩種至少有一個錯的名字可以查。這類缺陷通得過任意多輪人工審查，理由是**規則文件的讀者全部自帶答案**：讀的人知道自己打開的是哪個檔，補完發生在讀者那一側而且無聲。判斷標準是一句話——照這一條工作，第一個動作是打開什麼檔、執行什麼指令、叫用哪一個具名的東西；答得出名字就驗它現在還在不在。修法對應形態：名字錯了就換掉並搜全庫的舊名、名字不是實體就換成實體（查無對應實體代表規則要求的東西還不存在，處置是建立它或刪掉規則）、沒指名就把形容詞換成動作加對象。概念層的定位宣告不適用。詳見 [rule-must-point-at-something-openable](references/principles/rule-must-point-at-something-openable.md)。
 
+**規則的要件不要寫成讀者的主觀狀態**：「無法判定時」「有疑義時」「不確定時」這類條件要讀者先承認自己處於那個狀態，而**誤讀的定義就是他不認為自己誤讀**——一次量測裡三份讀者的自陳欄都填「沒有讀出兩種以上可能判定」而判定值全錯。處置是換成外部可查的條件（去查文件就有答案的那種），並加一句「判定者自認顯然成立，不改變本款結果」擋住回流。同族的兩個形態是極性詞（讀者會替直述句自行加回「成立／不成立」，所以要廢除並禁用、不是改寫）與雙重否定（會連帶擴散，要全庫一次清完）。詳見 [subjective-precondition-never-fires-for-the-misreader](references/principles/subjective-precondition-never-fires-for-the-misreader.md)。
+
+**禁止某條推理捷徑的那句話，不要交代那條捷徑需要的前提**：寫出「這裡有幾種、互斥、窮盡」等於交給讀者一張走排除法的地圖，而讀者取用結構說明比逐格查觸發條件便宜。實測一句「結論只有三種、互斥且窮盡、不得由排除其中一種逕行認定另一種」零效力——同一輪的兩名判定者走的正是它禁止的那條路；刪除後三輪皆以正面觸發條件命中。**要防排除法靠的是每一格各有正面觸發條件。**同一張卡另記一條盤點紀律：評估一款的零引用之前先問它被引用會發生什麼——有一類的處置是刪除而不是搬位置。詳見 [rule-text-can-have-negative-effect](references/principles/rule-text-can-have-negative-effect.md)。
+
 **教材的脈絡由三件事決定，而三件都靠自審檢查不到**：這一篇在序列裡的位置（說得出讀者手上已經有什麼、交付什麼、刻意不碰什麼；深度看第一項不看題材的表面複雜度）、論證用得到的材料有沒有就地寫進去（承重術語當場定義、承重機制寫進正文、每一句的指涉能從已讀文字解出來）、以及往外的連結綁在什麼上面（綁在本篇模型的一個可動項上——「把其中一項換掉會變成什麼」，而不是「遇到 X 去讀 Y」，也不只是列舉相鄰主題；做不到代表本篇還沒建立帶可動項的模型，而這條推論只適用於模型有兩個以上可動項的教材）。`description` 與第一段決定整篇形狀，所以從要交付的觀念發想、不從假想的讀者問題發想，查閱型內容不受這一條約束。偏移的成因固定是規則錯配——為執行者或查閱型內容設計的規則被套到教材上，而觸發條件只看形狀；一份原則的射程限制放在它自己身上沒有效力，適用邊界要由引用它的規範寫出來。詳見 [teaching-article-context](references/principles/teaching-article-context.md)。
 
 **知識卡建卡標準用「最不熟悉的讀者」**：知識卡的建卡標準是「目標讀者群裡最不熟悉的那端能不能理解這個術語」，不是「作者覺得夠不夠常見」。常識是相對於背景的——.htaccess 對 PHP 工程師是常識、對 Node.js 工程師完全陌生。跨背景讀者群的教材裡，幾乎所有領域特定術語都需要建卡。建卡的邊際成本低（40-50 行）、讀者缺卡的代價高（離開教材去 Google、可能找到不一致的解釋）。per [常識是相對於讀者背景的](references/principles/common-knowledge-is-relative-to-reader-background.md)。
@@ -150,6 +156,8 @@ SKILL.md 給的是原則、判別線與邊界；**可執行的操作在兩個地
 
 同一份文件的不同欄位，從不同角度觀察同一件事，不重複撰寫。`what` 描述動作、`why` 陳述動機、`acceptance` 定義可驗證條件；混淆欄位會讓讀者在多處讀到相同內容。
 
+**欄位集合是一個關於「會有哪些結果」的宣稱，而欄位不足時的失真是結構強制的**：一份自檢表的結果欄只容得下「發現問題 → 修正」時，「本來就對」的項目沒有格子，於是被虛構成有問題（實測有人把「初稿即為現況」寫成「發現後已修正」）或被整列跳過——**兩種失真方向相反，彙總時抵銷不了也看不出來**。驗收是逐欄列舉它可能的值，問有沒有一種真實情形落在全部的值之外；修法是補值而不是補說明，因為填表的人選的是清單裡有的那一個。同一張卡另記報告結論要分兩類（正面命中不依賴涵蓋完整性、窮舉宣稱依賴），不分類則涵蓋數被修正時無從判斷哪幾項要重看。詳見 [field-shape-induces-false-reporting](references/principles/field-shape-induces-false-reporting.md)。
+
 ### 6. 多輪 Re-read Pass（Multi-pass Review）
 
 完稿即進入 review 階段。一次寫對全部維度違反 working memory、實際結果是「每維度都做一半」。設計 N 輪 re-read、每輪用不同 frame：
@@ -174,6 +182,8 @@ Naming 是這條原則最容易跳的子場景 — 第一版命名幾乎不對�
 
 **批量 sibling 寫作的生成端輪替**：一次寫多份同類文件時、cadence 同質化會在六個層發生（title 形式 / 開場句式 / 章節標題 / 敘事骨架 / 條目形態 / 跨檔引用句）、單份 review 全部抓不到、且 review 端抓過的同骨會在下一批復發 — 同類 finding 第二次出現、就把規則升到生成端：寫之前排好開場 frame 輪替（規則先行 / 後果先行 / 動作先行 / 反差先行）、條目形態輪替、敘事視角輪替、引用句去重。詳見 [cadence-homogenization](references/principles/cadence-homogenization.md)。
 
+**驗證手段要對齊錯誤的層次**：字面攔截（掃得到的固定字串）與行為精煉（要看行為才判得出的）是兩種錯誤層次，用錯層的手段驗不出東西而報告看起來正常。詳見 [literal-interception-vs-behavioral-refinement](references/principles/literal-interception-vs-behavioral-refinement.md)，那裡給兩層的分界與各自該用的驗證手段。
+
 **Instance 軸：跨 reviewer instance 隔離**：Instance 軸是 multi-pass review 的另一條擴展軸 — N 個獨立 reviewer instance 各自獨立 context、各自跑 background、解「單一 reviewer 同時看多維度容易維度盲點 + context 污染」的問題。Instance 指獨立 reviewer 程式實體（如 agent tool spawn 出的 subagent）、跟同一 reviewer 換輪次 frame（frame 軸）正交可疊加。適用 production 教學文章 / 高 stakes 內容 / 跨章節教學模組這類維度複雜度高的審查場景。詳見 [agent-team-context-isolation](references/principles/agent-team-context-isolation.md)。
 
 詳見 [Writing 的 multi-pass review](references/principles/writing-multi-pass-review.md)、[Methodology 的 multi-pass 該 embed 在 pillar](references/principles/methodology-multi-pass-embedding.md)、[Metadata surface 要納入寫作 review 範圍](references/principles/metadata-surface-in-writing-review.md)、[False sense of security 是高 stakes 寫作的主要失敗模式](references/principles/false-sense-of-security-as-primary-failure.md)、[Risk-asymmetric audit standard](references/principles/risk-asymmetric-audit-standard.md)、[colloquial-rhetoric-erodes-technical-precision](references/principles/colloquial-rhetoric-erodes-technical-precision.md)、[prose-self-contained-without-code-reference](references/principles/prose-self-contained-without-code-reference.md)、[regional-terminology-alignment](references/principles/regional-terminology-alignment.md)、[multi-pass-review-frame-granularity](references/principles/multi-pass-review-frame-granularity.md)、[design-flaw-by-current-axes-not-hindsight](references/principles/design-flaw-by-current-axes-not-hindsight.md)、[agent-team-context-isolation](references/principles/agent-team-context-isolation.md)、[decorative-symbols-keyword-bank](references/principles/decorative-symbols-keyword-bank.md)、[teaching-prose-neutral-register](references/principles/teaching-prose-neutral-register.md)。
@@ -192,7 +202,7 @@ Naming 是這條原則最容易跳的子場景 — 第一版命名幾乎不對�
 | 要把外部分析文章 / 產業評論 / 投資人備忘錄 / 高密度研究材料轉成教學型分析文章，把從業者經驗談（訪談 / 社群貼文 / 口述）轉成分析教學（機制重建），或把 AI 改寫稿從摘要升級成可遷移框架                | `references/source-to-teaching-analysis.md`                                                                        |
 | 要翻譯 / 轉譯文章、把英文材料改寫成中文、檢查術語誤譯、中文譯名放回句子後是否成立、或譯文有沒有超譯（強度被拉高成口號）                                                                              | `references/translation-review.md`                                                                                 |
 | 要管理多篇相關文章的結構（系列、文集、知識庫、素材庫比例、MOC、跨篇引用、何時抽抽象層 / Pattern 卡片）                                                                                               | `references/managing-article-collections.md`                                                                       |
-| 要做文章 / 模組 / 系列的結構決策（該不該拆篇、擴充點設計、方法論與案例的依賴方向、多讀者分流）、或用結構原則 review 既有文集                                                                         | `references/structuring-with-solid.md`                                                                             |
+| 要做文章 / 模組 / 系列的結構決策（該不該拆篇、擴充點設計、方法論與案例的依賴方向、多讀者分流）、剛把一份文件拆成多檔要查交界、或用結構原則 review 既有文集                                           | `references/structuring-with-solid.md`                                                                             |
 | 要對既有高 stakes 內容（資安 / concurrency / distributed / financial / medical）做 reviewer-style audit、找 false sense of security / 對位失效 / context 缺 / citation 過時 / 強度失準（誇飾或降格） | `references/auditing-articles.md`                                                                                  |
 | 要寫或檢查判讀 / 選型 / 決策類內容（回答「該怎麼判斷」那一層），或讀者提問「什麼情況會需要這個」「什麼樣的系統會這樣做」「沒有範例看不懂」                                                           | `references/judgment-content-needs-scenarios.md`                                                                   |
 | 要設計 ticket 欄位 / schema frontmatter / 表單欄位                                                                                                                                                   | `references/designing-fields.md`                                                                                   |
@@ -237,7 +247,7 @@ Naming 是這條原則最容易跳的子場景 — 第一版命名幾乎不對�
 
 - **multi-round-review** 規劃 frame 切換結構（Round 1 compliance / Round 2 cadence / Round 3 self-application）跟跨輪 finding 整合工作流
 - **本 skill（compositional-writing）** 提供每輪 frame 的字句層 keyword bank — Round 1-A 寫作規範 reviewer 必須跑：
-  - **正向陳述優先 grep**：`rg "不[行可是要能該支對符夠必]|無法|沒[做有]|而非|而不是"`、加上**否定起手定義句**（原 pattern 漏「而是」、抓不到「不是 X、而是 Y」的後半）：`rg "不是.{0,30}而是|不是.{0,20}、是|不是.{0,25}，\s*是|與其.{0,20}不如|不只.{0,15}更"` — 主要敘述要正向、反例對照的少量負向可保留；判別在「核心概念第一次正面出現在句首、還是被擠到『而是』之後」。**合規邊界**：糾正已文件化誤讀的「不是 A、而是 B」仍列可改——修法保留糾正語意（例如改寫成「條件是 B；A 不是判斷條件」），概念前置不因糾正目的豁免
+  - **正向陳述優先 grep**：`rg "不[行可是要能該支對符夠必]|無法|沒[做有]|而非|而不是"`、加上**否定起手定義句**（原 pattern 漏「而是」、抓不到「不是 X、而是 Y」的後半）：`rg "不是[^。「」]{0,30}而是|不是[^。「」—–]{0,25}[—–]\s*是|不是[^。「」，、]{1,25}[，、]\s*是|不在[^。「」]{0,30}而在|與其[^。「」]{0,25}不如|不只.{0,15}更"` — **連接詞家族不只「不是…而是」**：`不在…而在`、破折號形式 `不是 X — 是 Y`、以及裸逗號形式 `不是 X，是 Y` 各自漏過一次才被補上，所以手寫這條 pattern 時會系統性地只想到最典型的那一個。字元類的 `[^。「」]` 護欄不可省——少了它會跨句配對並命中引號內的引用，產生假陽性。**這一類若已由某個 lint 工具強制執行，工具那一份 regex 是權威**，手動掃描要取它的涵蓋範圍而不是自己重編；兩份並存時會各自腐爛，而腐爛的方向固定是手寫那一份較窄 — 主要敘述要正向、反例對照的少量負向可保留；判別在「核心概念第一次正面出現在句首、還是被擠到『而是』之後」。**合規邊界**：糾正已文件化誤讀的「不是 A、而是 B」仍列可改——修法保留糾正語意（例如改寫成「條件是 B；A 不是判斷條件」），概念前置不因糾正目的豁免
   - **口語修辭 grep**：`rg "其實|實務上|真的|碰巧|立刻撞牆|沒事"`
   - **地區用語 grep**：單詞層 `rg "集群|默認|質量|視頻|函數|文件夾|接口"`（封閉集合、掃得到）；慣用語層 `rg "拍腦袋|拍板|靠譜|給力|接地氣|一波|死磕|躺平|內卷"`（已知個案、**非窮舉**——慣用語是開放集合、grep 追不完、新個案要靠目標地區讀者冷讀，同源 reviewer 回報「地區用語 clean」對慣用語層不可當真，見 [`regional-idioms-evade-keyword-bank`](references/principles/regional-idioms-evade-keyword-bank.md)）
   - **廢話前綴 grep**：`rg "值得注意的是|需要說明的是|實際上|基本上|事實上"`
