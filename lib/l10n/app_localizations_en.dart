@@ -527,6 +527,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gotoTicketsListAction => 'Go to Ticket List';
 
   @override
+  String get ticketsFiltersClearedSnackbarMessage =>
+      'Search and filters cleared to show the target ticket';
+
+  @override
+  String get undoAction => 'Undo';
+
+  @override
   String get columnEvent => 'Event';
 
   @override

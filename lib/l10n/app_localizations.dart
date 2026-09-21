@@ -980,6 +980,18 @@ abstract class AppLocalizations {
   /// **'前往 Ticket 清單'**
   String get gotoTicketsListAction;
 
+  /// SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉目標被搜尋詞或篩選隱藏時清除後的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除搜尋與篩選以顯示目標 ticket'**
+  String get ticketsFiltersClearedSnackbarMessage;
+
+  /// SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉的 AppSnackBar.withAction 動作，還原清除前的搜尋詞與全部篩選值
+  ///
+  /// In zh, this message translates to:
+  /// **'復原'**
+  String get undoAction;
+
   /// SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）
   ///
   /// In zh, this message translates to:
