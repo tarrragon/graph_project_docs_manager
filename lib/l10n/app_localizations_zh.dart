@@ -96,6 +96,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get flowUnstructuredMessage => '尚未填寫結構化 flow';
 
   @override
+  String get ucUnsetPrompt => '選擇一條 UC 以檢視 flow';
+
+  @override
+  String get ucSelectorTitle => '選擇 UC';
+
+  @override
   String get emptyProposalMessage => '此專案尚無提案';
 
   @override
