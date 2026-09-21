@@ -8,10 +8,11 @@
 /// 不串真實資料）。頁首模式切換（`SegmentedControl`）由 [DomainHeaderTrailing]
 /// 承載，經 `lib/app/shell.dart` 接線至 `SplitRow.header` 右格（僅
 /// `AppDestination.domain` 一行條件式 trailing，其餘五個目的地不受影響）。
-/// 降級型別表旗標（[DomainReady.isDegraded] 等）暫無渲染入口——依賴的
-/// `action-domain-degraded-view`（`BlockedState.plain.onDegradedView` slot
-/// 缺件）與 `badge-domain-degraded-schema`（「頁面框架返回列」容器尚未
-/// 建立）皆為元件庫缺件，見本票 NeedsContext，不在頁面層繞路自製。
+/// 降級型別表旗標（[DomainReady.isDegraded]）的觸發入口
+/// `action-domain-degraded-view` 已接線（`0.1.0-W2-011`，見
+/// [_SchemaUnconsumableView]）；常駐徽章 `badge-domain-degraded-schema`
+/// 仍缺件——依賴「頁面框架返回列」容器（`0.1.0-W2-009`，尚未建立），
+/// 不在頁面層繞路自製，見本票 NeedsContext。
 library;
 
 import 'dart:developer' as developer;
@@ -188,12 +189,40 @@ class _NotFrameworkView extends ConsumerWidget {
   }
 }
 
+/// 內建型別表副本的產生版本（對應 `tracking_schema.json` 之
+/// `schema_generated_at_framework_version`，SPEC-001 §1／SPEC-003 §3.1）。
+/// 0.1 資產化本身（build 內嵌 JSON 副本）不在本票範圍——畫面全域仍為
+/// fixture 驅動（見檔頭與 [domainViewStateProvider]），此處只接線版本
+/// 閘門判斷；[_SchemaUnconsumableView] 進入降級檢視後只渲染 established
+/// 邊（矩陣模式，見 `DomainReady` 預設值）。
+const String _builtinSchemaVersion = '2.40.3';
+
+/// [version] 是否高於 [_builtinSchemaVersion]（逐段整數比較，段數不足
+/// 補零；任一段無法解析為整數時視為高於——安全預設拒絕提供降級出口，
+/// 呼應 SPEC-001 §1「無可消費的型別表」顯式關卡精神：不確定時不自動
+/// 降級）。
+bool _isHigherThanBuiltinSchemaVersion(String version) {
+  final target = version.split('.').map(int.tryParse).toList();
+  final builtin = _builtinSchemaVersion.split('.').map(int.tryParse).toList();
+  final length = target.length > builtin.length
+      ? target.length
+      : builtin.length;
+  for (var i = 0; i < length; i++) {
+    final t = i < target.length ? target[i] : 0;
+    final b = i < builtin.length ? builtin[i] : 0;
+    if (t == null || b == null) return true;
+    if (t != b) return t > b;
+  }
+  return false;
+}
+
 /// 無可消費的型別表：`BlockedState.plain`（版本值 slot）。
 ///
-/// 缺件：`BlockedState.plain` 尚無 `onDegradedView` slot（SPEC-004 §3.6
-/// 本列要求「降級說明 `onDegradedView` 非 null 時渲染」），本畫面因此無法
-/// 渲染「以 App 內建型別表檢視」動作（`action-domain-degraded-view`）；
-/// 見本票 NeedsContext，未就地在 `lib/components/` 增補 slot。
+/// `.claude/VERSION` 值（[state.version]）不高於 [_builtinSchemaVersion]
+/// 時傳入 `onDegradedView`，渲染「以 App 內建型別表檢視」動作
+/// （`action-domain-degraded-view`，`0.1.0-W1-035`／`0.1.0-W2-011`）；
+/// 按下後轉為 [DomainReady]（矩陣模式）並設 `isDegraded` 為真。高於時
+/// 不傳入，退出路徑只剩切換專案（SPEC-001 §1）。
 class _SchemaUnconsumableView extends ConsumerWidget {
   const _SchemaUnconsumableView({required this.state});
 
@@ -202,11 +231,16 @@ class _SchemaUnconsumableView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final canDegrade = !_isHigherThanBuiltinSchemaVersion(state.version);
     return BlockedState.plain(
       message: l10n.schemaUnconsumableMessage(state.version),
       version: state.version,
       onSwitchProject: () =>
           ref.read(switcherOpenProvider.notifier).state = true,
+      onDegradedView: canDegrade
+          ? () => ref.read(domainViewStateProvider.notifier).state =
+                const DomainReady(mode: DomainMode.matrix, isDegraded: true)
+          : null,
       testKey: const Key('state-domain-schema-unconsumable'),
     );
   }
