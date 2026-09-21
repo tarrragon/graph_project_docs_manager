@@ -74,6 +74,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emptyGraphMessage => 'This project has no graph nodes yet';
 
   @override
+  String get noUcNodesMessage => 'This project has no UC nodes yet';
+
+  @override
   String get notFrameworkProjectMessage =>
       'This folder has no docs/ — it does not use this framework';
 

@@ -194,6 +194,12 @@ abstract class AppLocalizations {
   /// **'此專案尚無圖譜節點'**
   String get emptyGraphMessage;
 
+  /// SPEC-001 §2 UC Flow 視圖·無 UC 狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案尚無 UC 節點'**
+  String get noUcNodesMessage;
+
   /// SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案
   ///
   /// In zh, this message translates to:

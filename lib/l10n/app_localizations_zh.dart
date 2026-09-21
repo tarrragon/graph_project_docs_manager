@@ -70,6 +70,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get emptyGraphMessage => '此專案尚無圖譜節點';
 
   @override
+  String get noUcNodesMessage => '此專案尚無 UC 節點';
+
+  @override
   String get notFrameworkProjectMessage => '此資料夾沒有 docs/，不是使用本框架的專案';
 
   @override
