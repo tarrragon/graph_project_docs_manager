@@ -505,4 +505,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gotoTicketsListAction => '前往 Ticket 清單';
+
+  @override
+  String get columnEvent => '事件';
+
+  @override
+  String get columnEmitter => '發出';
+
+  @override
+  String get columnConsumer => '消費';
+
+  @override
+  String eventFlowStepDomain(String step, String domain) {
+    return '$step · $domain';
+  }
+
+  @override
+  String eventOutsideUc(String domains) {
+    return '本 UC 外（$domains）';
+  }
+
+  @override
+  String get orphanEventMarkerLabel => '孤立事件';
 }

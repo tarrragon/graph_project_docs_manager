@@ -1,6 +1,7 @@
 /// AppTableRow 元件測試（SPEC-004 4.35、5.9，契約名 `TableRow`）。
 library;
 
+import 'package:flutter/material.dart' show Icons, InkWell;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,9 @@ void main() {
   const priorityKey = ValueKey('cell-priority');
   const domainKey = ValueKey('cell-domain');
   const stepNameKey = ValueKey('cell-step-name');
+  const eventKey = ValueKey('cell-event');
+  const emittedByKey = ValueKey('cell-emitted-by');
+  const consumedByKey = ValueKey('cell-consumed-by');
 
   Widget wrapPanelWidth({required Widget child, double width = 700}) =>
       SizedBox(width: width, child: child);
@@ -163,6 +167,113 @@ void main() {
       );
 
       expectNoOverflow(tester);
+    });
+  });
+
+  AppTableRow buildEventFlowRow({
+    AppIcon? marker,
+    bool isLocated = false,
+    String emittedBy = TestCopy.stepName,
+    String consumedBy = TestCopy.stepName,
+  }) {
+    return AppTableRow.eventFlow(
+      event: AppText(TestCopy.nodeId, key: eventKey, variant: AppTextVariant.mono),
+      emittedBy: AppText(emittedBy, key: emittedByKey),
+      consumedBy: AppText(consumedBy, key: consumedByKey),
+      marker: marker,
+      isLocated: isLocated,
+    );
+  }
+
+  group('變體：eventFlow（含 / 不含孤立事件標記）', () {
+    testWidgetsAtEachSize('eventFlow：不含標記不溢位', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: wrapPanelWidth(child: buildEventFlowRow()),
+      );
+
+      expectNoOverflow(tester);
+      expect(find.byKey(eventKey), findsOneWidget);
+    });
+
+    testWidgetsAtEachSize('eventFlow：含孤立事件標記不溢位', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: wrapPanelWidth(
+          child: buildEventFlowRow(
+            marker: const AppIcon(
+              icon: Icons.warning,
+              color: AppColors.error,
+              semanticLabel: '孤立事件',
+            ),
+          ),
+        ),
+      );
+
+      expectNoOverflow(tester);
+    });
+
+    testWidgetsAtEachSize('eventFlow：發出或消費為本 UC 外文案不溢位', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: wrapPanelWidth(
+          child: buildEventFlowRow(
+            emittedBy: '本 UC 外（version-management）',
+            consumedBy: TestCopy.stepName,
+          ),
+        ),
+      );
+
+      expectNoOverflow(tester);
+    });
+  });
+
+  group('eventFlow：非互動與定位高亮', () {
+    testWidgets('eventFlow 點擊不呼叫任何回呼（非互動）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(child: buildEventFlowRow()),
+      );
+
+      // 非互動列不接受 onTap，直接驗證找不到可點擊的 InkWell。
+      expect(find.byType(InkWell), findsNothing);
+    });
+
+    testWidgets('isLocated 為 true 時整列底色為 surfaceIconTint', (tester) async {
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(child: buildEventFlowRow(isLocated: true)),
+      );
+
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find.ancestor(
+          of: find.byKey(eventKey),
+          matching: find.byType(DecoratedBox),
+        ).first,
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
+
+      expect(decoration.color, AppColors.surfaceIconTint);
+    });
+
+    testWidgets('isLocated 為 false（預設）時整列無底色', (tester) async {
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(child: buildEventFlowRow()),
+      );
+
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find.ancestor(
+          of: find.byKey(eventKey),
+          matching: find.byType(DecoratedBox),
+        ).first,
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
+
+      expect(decoration.color, isNull);
     });
   });
 
