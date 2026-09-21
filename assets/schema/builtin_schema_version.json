@@ -1,0 +1,4 @@
+{
+  "_comment": "0.1.0-W2-012：App 內建降級檢視（SPEC-001 §1／SPEC-003 §3.1）的型別表版本閘門資產。schema_generated_at_framework_version 欄複製自 .claude/skills/doc/doc_system/core/tracking_schema.json 同名欄位，非隨意寫死。此檔只承載版本閘門判斷，不是 tracking_schema.json 的完整內嵌副本（完整內嵌副本資產化不在本票範圍）。異動 tracking_schema.json 的該欄時應同步更新本檔。",
+  "schema_generated_at_framework_version": "2.40.3"
+}

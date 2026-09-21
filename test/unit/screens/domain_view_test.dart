@@ -13,6 +13,8 @@
 //   不是框架專案                state-domain-not-framework          BlockedState.plain
 //   無可消費的型別表            state-domain-schema-unconsumable    BlockedState.plain
 //   schema 不相容               state-domain-schema-incompatible    BlockedState.withDetail
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -484,6 +486,38 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      '以現行 .claude/VERSION 實值驅動：高於內建資產版本時不提供降級出口'
+      '（0.1.0-W2-012：防止只用遠低於門檻的 fixture 值掩蓋真實漂移）',
+      (tester) async {
+        final liveVersion = File(
+          '.claude/VERSION',
+        ).readAsStringSync().trim();
+
+        await pumpHarness(
+          tester,
+          child: const DomainViewScreen(),
+          overrides: [
+            domainViewStateProvider.overrideWith(
+              (ref) => DomainSchemaUnconsumable(version: liveVersion),
+            ),
+          ],
+        );
+
+        // 本 repo 現行 .claude/VERSION 已高於內建資產版本
+        // （assets/schema/builtin_schema_version.json，見同名 provider），
+        // SPEC-001 §1／SPEC-003 §3.1 此時不提供降級出口。
+        expect(
+          find.byKey(const Key('action-domain-degraded-view')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('action-domain-switch-project')),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('schema 不相容 state-domain-schema-incompatible', () {
