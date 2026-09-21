@@ -98,7 +98,9 @@ class _ScanningView extends ConsumerWidget {
   }
 }
 
-/// 無破洞：`EmptyState.page`（說明 slot 放掃描範圍說明；動作放重新掃描）。
+/// 無破洞：`EmptyState.page`（說明 slot 放掃描範圍說明；無動作——重新掃描
+/// 移至 `SplitRow.header` 右側，見 [GapReportHeaderTrailing]，SPEC-004
+/// §3.7 第 18 項／`0.1.0-W3-335.37` R10）。
 class _NoGapsView extends ConsumerWidget {
   const _NoGapsView();
 
@@ -110,24 +112,14 @@ class _NoGapsView extends ConsumerWidget {
       message: l10n.noGapsMessage,
       explanation: l10n.noGapsScanScope,
       testKey: const Key('state-gaps-none'),
-      actions: [
-        AppButton(
-          label: l10n.rescanAction,
-          onPressed: () => ref.read(gapReportProvider.notifier).rescan(),
-          testKey: const Key('action-gaps-rescan'),
-          variant: AppButtonVariant.secondary,
-        ),
-      ],
+      actionsOptedOut: true,
     );
   }
 }
 
 /// 有破洞：`Panel.scrollable`[`Section.collapsible`[`ListRow.sectionHeader`,
-/// `ListRow.item` × N] × N]；重新掃描鈕與內容同置於可捲動面板頂部（元件庫
-/// 尚無「每頁頁首右側可依畫面自訂內容」的 slot——`lib/app/shell.dart` 的
-/// `SplitRow.header` 對六個畫面共用同一份 `leading: PageTitle`，無 per-screen
-/// trailing 掛點；SPEC-004 §3.7 第 18 項核定的頁首位置需要該掛點才能落地，
-/// 已於本票 Solution 記錄並提報後續票）。
+/// `ListRow.item` × N] × N]；重新掃描鈕於 `SplitRow.header` 右側（見
+/// [GapReportHeaderTrailing]，SPEC-004 §3.7 第 18 項）。
 class _FoundView extends ConsumerWidget {
   const _FoundView({required this.state});
 
@@ -135,22 +127,10 @@ class _FoundView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
     return Panel.scrollable(
       key: const Key('state-gaps-found'),
       scrollKey: const Key('scroll-gaps-sections'),
       children: [
-        ButtonRow(
-          alignment: ButtonRowAlignment.end,
-          children: [
-            AppButton(
-              label: l10n.rescanAction,
-              onPressed: () => ref.read(gapReportProvider.notifier).rescan(),
-              testKey: const Key('action-gaps-rescan'),
-              variant: AppButtonVariant.secondary,
-            ),
-          ],
-        ),
         for (final category in state.categories)
           _CategorySection(category: category),
       ],
@@ -315,6 +295,34 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
     } catch (error) {
       return '$error';
     }
+  }
+}
+
+/// `SplitRow.header` 右格內容（`lib/app/shell.dart` 接線，同
+/// `DomainHeaderTrailing`／`TicketsHeaderTrailing` 慣例）：僅無破洞與有
+/// 破洞兩列渲染重新掃描鈕，其餘列（專案未就緒、掃描中）不渲染（SPEC-004
+/// §3.7 第 18 項，`0.1.0-W3-335.37` R10：涵蓋無破洞與有破洞兩狀態）。
+class GapReportHeaderTrailing extends ConsumerWidget {
+  const GapReportHeaderTrailing({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(gapReportProvider);
+    if (state is! GapReportNoGaps && state is! GapReportFound) {
+      return const SizedBox.shrink();
+    }
+    final l10n = AppLocalizations.of(context);
+    return ButtonRow(
+      alignment: ButtonRowAlignment.end,
+      children: [
+        AppButton(
+          label: l10n.rescanAction,
+          onPressed: () => ref.read(gapReportProvider.notifier).rescan(),
+          testKey: const Key('action-gaps-rescan'),
+          variant: AppButtonVariant.secondary,
+        ),
+      ],
+    );
   }
 }
 
