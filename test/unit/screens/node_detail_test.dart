@@ -140,18 +140,29 @@ void main() {
       expect(AnchorFinder.state(Screen.nodeDetail, 'partial'), findsOneWidget);
     });
 
-    testWidgets('action-nodeDetail-open-source（檔案不存在）：同畫面轉為原始檔已消失', (
-      tester,
-    ) async {
-      await pumpHarness(tester, child: const NodeDetailScreen());
+    testWidgets(
+      'action-nodeDetail-open-source（SplitRow.header 右格；檔案不存在）：同畫面轉為原始檔已消失',
+      (tester) async {
+        await pumpApp(
+          tester,
+          overrides: [
+            selectedDestinationProvider.overrideWith(
+              (ref) => AppDestination.nodeDetail,
+            ),
+          ],
+        );
 
-      await tester.tap(
-        AnchorFinder.action(Screen.nodeDetail, 'open-source'),
-      );
-      await tester.pump();
+        await tester.tap(
+          AnchorFinder.action(Screen.nodeDetail, 'open-source'),
+        );
+        await tester.pump();
 
-      expect(AnchorFinder.state(Screen.nodeDetail, 'missing'), findsOneWidget);
-    });
+        expect(
+          AnchorFinder.state(Screen.nodeDetail, 'missing'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('部分損壞（state-nodeDetail-partial）', () {
@@ -283,6 +294,22 @@ void main() {
         container.read(nodeDetailStateProvider),
         isA<NodeDetailReady>(),
       );
+    });
+  });
+
+  group('頁首開啟原始檔鈕（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
+    testWidgets('未選節點不渲染開啟原始檔鈕（正向對照）', (tester) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.nodeDetail,
+          ),
+          nodeDetailStateProvider.overrideWith((ref) => const NodeDetailUnset()),
+        ],
+      );
+
+      expect(AnchorFinder.action(Screen.nodeDetail, 'open-source'), findsNothing);
     });
   });
 }

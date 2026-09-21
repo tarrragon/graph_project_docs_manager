@@ -165,11 +165,15 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets('action-gaps-rescan：可操作，觸發後不拋出例外', (tester) async {
-      await pumpHarness(
+    testWidgets('action-gaps-rescan（SplitRow.header 右格）：可操作，觸發後不拋出例外', (
+      tester,
+    ) async {
+      await pumpApp(
         tester,
-        child: const GapReportScreen(),
         overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.gaps,
+          ),
           gapReportProvider.overrideWith(
             () => _FixedNotifier(const GapReportNoGaps()),
           ),
@@ -214,11 +218,15 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets('action-gaps-rescan：可操作，觸發後不拋出例外', (tester) async {
-      await pumpHarness(
+    testWidgets('action-gaps-rescan（SplitRow.header 右格）：可操作，觸發後不拋出例外', (
+      tester,
+    ) async {
+      await pumpApp(
         tester,
-        child: const GapReportScreen(),
         overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.gaps,
+          ),
           gapReportProvider.overrideWith(() => _FixedNotifier(_foundState)),
         ],
         settle: false,
@@ -499,6 +507,41 @@ void main() {
       // `_runOpen` 內，畫面仍是有破洞狀態。
       expectNoOverflow(tester);
       expect(AnchorFinder.state(Screen.gaps, 'found'), findsOneWidget);
+    });
+  });
+
+  group('頁首重新掃描鈕（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
+    testWidgets('掃描中不渲染重新掃描鈕（正向對照）', (tester) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.gaps,
+          ),
+          gapReportProvider.overrideWith(
+            () => _FixedNotifier(const GapReportScanning()),
+          ),
+        ],
+        settle: false,
+      );
+
+      expect(AnchorFinder.action(Screen.gaps, 'rescan'), findsNothing);
+    });
+
+    testWidgets('專案未就緒不渲染重新掃描鈕（正向對照）', (tester) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.gaps,
+          ),
+          gapReportProvider.overrideWith(
+            () => _FixedNotifier(const GapReportProjectUnready()),
+          ),
+        ],
+      );
+
+      expect(AnchorFinder.action(Screen.gaps, 'rescan'), findsNothing);
     });
   });
 }

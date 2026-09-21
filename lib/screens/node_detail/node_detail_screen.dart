@@ -3,15 +3,9 @@
 /// 五個狀態列依 [NodeDetailState] 切換，內容由 [NodeDetailFixtures] 供給
 /// （本票決策：假資料驅動，不串真實資料）。返回鍵（`action-nodeDetail-back`）
 /// 由 `AppShell` 之下的頁面框架統一渲染，本畫面不重複渲染（SPEC-003
-/// §2.4）。
-///
-/// 缺件：「開啟原始檔」依 SPEC-004 §3.7 第 17 項核定應置於
-/// `SplitRow.header` 右側 `ButtonRow`，但元件庫尚無「每頁頁首右側可依
-/// 畫面自訂內容」的 per-screen trailing 掛點（`lib/app/shell.dart` 的
-/// `SplitRow.header` 對六個畫面共用同一份 `leading: PageTitle`）；暫比照
-/// `gap_report_screen.dart`（`0.1.0-W2-004`）的既有做法，將該按鈕改置於
-/// 主欄內容頂部，待 `0.1.0-W2-008` 落地共用掛點後再遷移，見本票
-/// NeedsContext。
+/// §2.4）。「開啟原始檔」依 SPEC-004 §3.7 第 17 項核定置於
+/// `SplitRow.header` 右側 `ButtonRow`，見 [NodeDetailHeaderTrailing]
+/// （`lib/app/shell.dart` 接線）。
 library;
 
 import 'dart:developer' as developer;
@@ -126,18 +120,6 @@ class _ReadyView extends ConsumerWidget {
     final main = Panel.scrollable(
       scrollKey: const Key('scroll-nodeDetail-content'),
       children: [
-        // 開啟原始檔按鈕：暫代 per-screen 頁首掛點，見檔頭說明。
-        ButtonRow(
-          alignment: ButtonRowAlignment.end,
-          children: [
-            AppButton(
-              label: l10n.openSourceFileAction,
-              variant: AppButtonVariant.secondary,
-              onPressed: () => _openSource(context, ref, node),
-              testKey: const Key('action-nodeDetail-open-source'),
-            ),
-          ],
-        ),
         ListRow.meta(
           leading: isTypeDamaged
               ? IssueMarker.damagedDetail(
@@ -187,6 +169,35 @@ class _ReadyView extends ConsumerWidget {
       ),
       main: main,
       detail: detail,
+    );
+  }
+}
+
+/// `SplitRow.header` 右格內容（`lib/app/shell.dart` 接線，同
+/// `DomainHeaderTrailing`／`TicketsHeaderTrailing`／`GapReportHeaderTrailing`
+/// 慣例）：僅「正常／部分損壞」列渲染開啟原始檔鈕（SPEC-004 §3.7 第 17
+/// 項；返回鍵由 `AppShell` 之下的頁面框架單一渲染，不在此重複）。
+class NodeDetailHeaderTrailing extends ConsumerWidget {
+  const NodeDetailHeaderTrailing({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(nodeDetailStateProvider);
+    if (state is! NodeDetailReady) {
+      return const SizedBox.shrink();
+    }
+    final l10n = AppLocalizations.of(context);
+    final node = NodeDetailFixtures.nodes[state.nodeId]!;
+    return ButtonRow(
+      alignment: ButtonRowAlignment.end,
+      children: [
+        AppButton(
+          label: l10n.openSourceFileAction,
+          variant: AppButtonVariant.secondary,
+          onPressed: () => _openSource(context, ref, node),
+          testKey: const Key('action-nodeDetail-open-source'),
+        ),
+      ],
     );
   }
 

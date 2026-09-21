@@ -20,7 +20,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../components/components.dart' as components;
 import '../l10n/app_localizations.dart';
 import '../screens/domain_view/domain_view_screen.dart';
+import '../screens/gap_report/gap_report_screen.dart';
 import '../screens/gap_report/scan_notification_controller.dart';
+import '../screens/node_detail/node_detail_screen.dart';
 import '../screens/ticket_list/ticket_list_screen.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../screens/project_switcher/project_switcher_providers.dart';
@@ -120,14 +122,17 @@ class _AppShellState extends ConsumerState<AppShell>
               semanticLabel: item.label(l10n),
               header: components.SplitRow.header(
                 leading: components.PageTitle(title: item.label(l10n)),
-                // Domain 視圖／Ticket 清單為 0.1 需要頁首右格的畫面
-                // （`SegmentedControl` 矩陣／泳道與列表／主題切換，
-                // SPEC-004 §3.6 §1／§4 表）；其餘四個目的地 trailing 仍為
-                // null，渲染不受影響（`0.1.0-W2-008` 追蹤之後其他畫面票
-                // 落地時的共用掛點需求）。
+                // 四個目的地已接線頁首右格內容（`SegmentedControl` 矩陣／
+                // 泳道切換、Ticket 清單主題切換、破洞報告重新掃描、節點
+                // 詳情開啟原始檔，SPEC-004 §3.6 §1／§4／§5／§6 表、§3.7
+                // 第 17、18 項）；泳道與追溯視圖 trailing 仍為 null，渲染
+                // 不受影響。
                 trailing: switch (item) {
                   AppDestination.domain => const DomainHeaderTrailing(),
                   AppDestination.tickets => const TicketsHeaderTrailing(),
+                  AppDestination.gaps => const GapReportHeaderTrailing(),
+                  AppDestination.nodeDetail =>
+                    const NodeDetailHeaderTrailing(),
                   _ => null,
                 },
               ),

@@ -3,7 +3,10 @@
 /// 「這裡目前沒有內容」+ 至少一個非返回的前進動作（SPEC-001 FR-03）；
 /// 訊息、說明、動作為 slot。[EmptyStateVariant.page] 置中於內容區，動作
 /// 必填（FR-03）；[EmptyStateVariant.section] 靠上對齊，動作可缺（前進
-/// 動作在區塊外時，例：未選格右欄由點格本身承載前進）。
+/// 動作在區塊外時，例：未選格右欄由點格本身承載前進）。`page` 動作必填
+/// 有一個明式例外——破洞報告「無破洞」列：前進動作改置於
+/// `SplitRow.header` 右側（SPEC-004 §3.7 第 18 項、`0.1.0-W3-335.37`
+/// R10），呼叫端須以 [actionsOptedOut] 明式標示，非隱式放行。
 library;
 
 import 'package:flutter/widgets.dart';
@@ -30,7 +33,7 @@ enum EmptyStateVariant {
 /// |------|------|------|
 /// | [message] | 是 | 呼叫端傳入（i18n key 取值） |
 /// | [explanation] | 否 | 呼叫端傳入 |
-/// | [actions] | `page` 必填（1..3）；`section` 可空 | 經 [ButtonRow]，首個非 `backAction`（FR-03，由呼叫端保證） |
+/// | [actions] | `page` 必填（1..3），[actionsOptedOut] 為 `true` 時可空；`section` 可空 | 經 [ButtonRow]，首個非 `backAction`（FR-03，由呼叫端保證） |
 /// | [testKey] | 是 | `state-<screen>-<state>` / `panel-domain-cell-detail-empty` |
 class EmptyState extends StatelessWidget {
   EmptyState({
@@ -40,10 +43,12 @@ class EmptyState extends StatelessWidget {
     required this.testKey,
     this.explanation,
     this.actions = const [],
+    this.actionsOptedOut = false,
   }) : assert(
-         variant != EmptyStateVariant.page || actions.isNotEmpty,
-         // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'page 變體動作必填（SPEC-004 §4.21 slot 契約，FR-03）',
+         variant != EmptyStateVariant.page ||
+             actions.isNotEmpty ||
+             actionsOptedOut,
+         'page 變體動作必填，明式例外需以 actionsOptedOut 標示（SPEC-004 §4.21）', // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
        ),
        assert(
          actions.length <= 3,
@@ -62,6 +67,11 @@ class EmptyState extends StatelessWidget {
 
   /// 動作按鈕（經 [ButtonRow]，1..3 個）；`page` 必填、`section` 可空。
   final List<AppButton> actions;
+
+  /// `page` 動作必填的明式例外標示：呼叫端已將前進動作置於畫面外的其他
+  /// 掛點（例：`SplitRow.header`，SPEC-004 §3.7 第 18 項）時設為 `true`，
+  /// 以繞過必填斷言；預設 `false`（隱式放行禁止）。
+  final bool actionsOptedOut;
 
   /// 呼叫端定址 key（`Key`）。
   final Key testKey;
