@@ -263,6 +263,44 @@ void main() {
       expect(find.byType(BadgeRow), findsWidgets);
       expectNoOverflow(tester);
     });
+
+    testWidgets(
+      'action-domain-select-<domainId> 點列首 → selectedDomainId 改變，'
+      '與矩陣模式共用同一選中值',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const DomainViewScreen(),
+          overrides: [
+            domainViewStateProvider.overrideWith(
+              (ref) => const DomainReady(mode: DomainMode.swimlane),
+            ),
+            selectedUcProvider.overrideWith((ref) => 'UC-02'),
+          ],
+        );
+
+        var state = container.read(domainViewStateProvider) as DomainReady;
+        expect(state.selectedDomainId, isNull);
+
+        await tester.tap(find.byKey(const Key('action-domain-select-graph')));
+        await tester.pumpAndSettle();
+
+        state = container.read(domainViewStateProvider) as DomainReady;
+        expect(state.selectedDomainId, 'graph');
+
+        // 矩陣與泳道共用同一 domainViewStateProvider：模式切換不重置
+        // selectedDomainId（頁首 SegmentedControl 由 lib/app/shell.dart 接線，
+        // 不在 DomainViewScreen 樹內，此處直接切換 mode 驗證同一 provider
+        // 承載的值不因模式切換清除）。
+        container.read(domainViewStateProvider.notifier).state = state
+            .copyWith(mode: DomainMode.matrix);
+        await tester.pumpAndSettle();
+
+        state = container.read(domainViewStateProvider) as DomainReady;
+        expect(state.mode, DomainMode.matrix);
+        expect(state.selectedDomainId, 'graph');
+      },
+    );
   });
 
   group('泳道 · 尚未選定 UC state-domain-swimlane-uc-unset', () {
