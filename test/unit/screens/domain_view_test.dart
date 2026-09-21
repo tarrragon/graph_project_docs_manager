@@ -285,8 +285,16 @@ void main() {
         AnchorFinder.state(Screen.domain, 'swimlane-uc-unset'),
         findsOneWidget,
       );
+      // EmptyState 存在：與「空圖」等其他 EmptyState.page 狀態共用型別，
+      // 鑑別力來自 SwimlaneGrid 同時存在（下一行）——僅 EmptyState 本身
+      // 不足以區分此狀態與其他 EmptyState 狀態。
+      expect(find.byType(EmptyState), findsOneWidget);
       expect(find.byType(SwimlaneGrid), findsOneWidget);
       expect(find.byType(SwimlaneNode), findsNothing);
+      // BadgeRow.legend 不存在：SPEC-004 §3.6 §1 明訂「不渲染
+      // BadgeRow.legend（無節點可圖例）」，此為與「正常 · 泳道」狀態
+      // （同樣渲染 SwimlaneGrid，但額外渲染 BadgeRow.legend）的鑑別點。
+      expect(find.byType(BadgeRow), findsNothing);
       expectNoOverflow(tester);
     });
   });
@@ -312,6 +320,10 @@ void main() {
         AnchorFinder.state(Screen.domain, 'swimlane-unstructured'),
         findsOneWidget,
       );
+      // EmptyState 存在 + SwimlaneGrid 不存在：兩者合看才有鑑別力——
+      // 「泳道 · 尚未選定 UC」同樣有 EmptyState 但 SwimlaneGrid 存在，
+      // 「正常 · 泳道」則兩者相反（無 EmptyState、有 SwimlaneGrid）。
+      expect(find.byType(EmptyState), findsOneWidget);
       expect(find.byType(SwimlaneGrid), findsNothing);
       expectNoOverflow(tester);
     });
