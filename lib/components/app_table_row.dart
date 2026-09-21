@@ -87,7 +87,8 @@ class AppTableRow extends StatelessWidget {
 
   /// 票列。欄序 ID / 標題 / 狀態 / 優先 / blockedBy / 標記（blockedBy 欄
   /// 出處 SPEC-001 §4），[marker] 可為 `null`（欄位保留但不渲染內容，維持
-  /// 欄寬對齊）。整列可點。
+  /// 欄寬對齊）。整列可點；可依 [isLocated] 高亮（SPEC-003 §3.4〈帶目標
+  /// 跳入〉、§4.0.10 定位提示）。
   AppTableRow.ticket({
     Key? key,
     required AppText id,
@@ -98,6 +99,7 @@ class AppTableRow extends StatelessWidget {
     IssueMarker? marker,
     required VoidCallback onTap,
     required Key testKey,
+    bool isLocated = false,
   }) : this._(
          key: key,
          variant: _TableRowVariant.ticket,
@@ -112,6 +114,7 @@ class AppTableRow extends StatelessWidget {
          ],
          onTap: onTap,
          testKey: testKey,
+         isLocated: isLocated,
        );
 
   /// 步驟列。欄序 序號 / 步驟名 / domain / 事件。整列可點；domain 格另有
@@ -204,8 +207,8 @@ class AppTableRow extends StatelessWidget {
   /// `card-ucFlow-step-<stepId>`）；`ticket` / `step` 必填。
   final Key? testKey;
 
-  /// 定位高亮（`ticket` 尚未接線，僅 `eventFlow` 使用；§4.0.10 高亮傳值，
-  /// 預設 `false`）。
+  /// 定位高亮（`ticket` / `eventFlow` 使用；§4.0.10 高亮傳值，預設
+  /// `false`）。
   final bool isLocated;
 
   bool get _isTappable =>
