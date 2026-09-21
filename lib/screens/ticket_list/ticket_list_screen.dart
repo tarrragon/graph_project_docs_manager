@@ -285,6 +285,8 @@ class _ReadyListView extends ConsumerWidget {
               onChanged: (value) =>
                   update((s) => s.copyWith(statusFilter: () => value)),
               testKey: const Key('action-tickets-filter-status'),
+              screen: 'tickets',
+              kind: 'filter-status',
             ),
             FilterDropdown(
               label: l10n.filterPriorityLabel,
@@ -296,6 +298,8 @@ class _ReadyListView extends ConsumerWidget {
               onChanged: (value) =>
                   update((s) => s.copyWith(priorityFilter: () => value)),
               testKey: const Key('action-tickets-filter-priority'),
+              screen: 'tickets',
+              kind: 'filter-priority',
             ),
           ],
           marker: corrupted > 0

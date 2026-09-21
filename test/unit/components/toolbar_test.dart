@@ -29,6 +29,8 @@ List<FilterDropdown> _buildFilters(int count) {
         selected: null,
         onChanged: (_) {},
         testKey: Key('action-tickets-filter-$i'),
+        screen: 'tickets',
+        kind: 'filter-$i',
       ),
   ];
 }
