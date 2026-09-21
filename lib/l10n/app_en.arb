@@ -118,6 +118,8 @@
   "cellDetailNotInvolved": "This domain is not involved in this UC",
   "cellDetailCloseAction": "Close",
   "cellDetailViewInSwimlaneAction": "View in swimlane",
+  "swimlaneUcUnsetPrompt": "No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view",
+  "degradedSchemaBadgeLabel": "Degraded schema",
   "modeMatrixLabel": "Matrix",
   "modeSwimlaneLabel": "Swimlane",
   "modeListLabel": "List",

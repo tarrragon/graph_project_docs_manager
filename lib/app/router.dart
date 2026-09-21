@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
+import '../screens/domain_view/domain_view_screen.dart';
 import '../screens/trace/trace_screen.dart';
 import '../screens/gap_report/gap_report_screen.dart';
 
@@ -35,13 +36,13 @@ enum AppDestination {
 
   /// 導覽列上顯示的語系化文字。
   String label(AppLocalizations l10n) => switch (this) {
-        AppDestination.domain => l10n.navDomain,
-        AppDestination.ucFlow => l10n.navUcFlow,
-        AppDestination.traceability => l10n.navTraceability,
-        AppDestination.tickets => l10n.navTickets,
-        AppDestination.gaps => l10n.navGaps,
-        AppDestination.nodeDetail => l10n.navNodeDetail,
-      };
+    AppDestination.domain => l10n.navDomain,
+    AppDestination.ucFlow => l10n.navUcFlow,
+    AppDestination.traceability => l10n.navTraceability,
+    AppDestination.tickets => l10n.navTickets,
+    AppDestination.gaps => l10n.navGaps,
+    AppDestination.nodeDetail => l10n.navNodeDetail,
+  };
 
   /// 整合測試與 widget 測試用來定位個別佔位頁的錨點。
   ///
@@ -131,26 +132,30 @@ final visitedDestinationsProvider = StateProvider<Set<AppDestination>>(
 /// microtask）把 [destination] 併入已見集合，故同一個 destination 不會
 /// 重複觸發——切走再切回只會再次讀到 `false`。副作用延後到 microtask
 /// 執行，避免在其他 provider 的 build 過程中同步改寫本 provider 狀態。
-final firstVisibleProvider = Provider.family<bool, AppDestination>(
-  (ref, destination) {
-    final current = ref.watch(selectedDestinationProvider);
-    final visited = ref.watch(visitedDestinationsProvider);
-    final isFirst = current == destination && !visited.contains(destination);
-    if (isFirst) {
-      Future.microtask(() {
-        final notifier = ref.read(visitedDestinationsProvider.notifier);
-        notifier.state = {...notifier.state, destination};
-      });
-    }
-    return isFirst;
-  },
-);
+final firstVisibleProvider = Provider.family<bool, AppDestination>((
+  ref,
+  destination,
+) {
+  final current = ref.watch(selectedDestinationProvider);
+  final visited = ref.watch(visitedDestinationsProvider);
+  final isFirst = current == destination && !visited.contains(destination);
+  if (isFirst) {
+    Future.microtask(() {
+      final notifier = ref.read(visitedDestinationsProvider.notifier);
+      notifier.state = {...notifier.state, destination};
+    });
+  }
+  return isFirst;
+});
 
 /// 依 [destination] 產生對應的畫面內容。
 ///
 /// 目前六項全部渲染標示畫面名的佔位頁——各畫面的實際內容由後續票逐一
 /// 實作，本票只交出「可切換」這件事本身。
 Widget buildDestinationPage(BuildContext context, AppDestination destination) {
+  if (destination == AppDestination.domain) {
+    return DomainViewScreen(key: destination.pageKey);
+  }
   if (destination == AppDestination.traceability) {
     return TraceabilityScreen(key: destination.pageKey);
   }
