@@ -191,6 +191,44 @@ ticket create --wave 1 --action "實作" --target "XXX" --allow-duplicate \
 
 > **batch-create 差異**：`batch-create` 僅套用 Tier 1 警告層，**不套用** Tier 2 阻擋層——批次內部同質性高，阻擋誤報風險大。
 
+## 可攜問題分流硬閘門
+
+`--where` 提供的路徑（逗號分隔的 where.files）非空且**全數**以 `.claude/` 開頭時，判定為「可攜問題」：替換掉專案名稱與路徑後仍成立、根源在框架通用資產的問題（見 `framework-issue` skill〈決策入口〉）。此類問題的合法收件方是 canonical framework issue（`tarrragon/claude`），非本地 ticket；命中時 `[ERROR]` + `exit 1` 阻擋，須附 `--dedup-checked` 查重結論才放行。
+
+| 情境 | 行為 |
+|------|------|
+| where.files 含任一非 `.claude/` 路徑（如 `lib/`、`src/`、`test/`） | 不觸發，正常建票 |
+| where.files 全數 `.claude/` 下 + 未帶 `--dedup-checked` | 阻擋，印出查重指令範本與二擇一處置 |
+| where.files 全數 `.claude/` 下 + `--dedup-checked ""`（空字串） | 阻擋（只給旗標不給結論仍視為未查重） |
+| where.files 全數 `.claude/` 下 + `--dedup-checked <issue號或 none>` | 放行 |
+
+`--dedup-checked` 的值即查重結論本身（命中的 issue 號如 `#102`，或確認未命中的 `none`），不是純存在性旗標。
+
+**命中 issue 不等於不該建票**：`framework-issue` skill 的核心模型是「ticket 記執行，issue 記問題」。命中既有 issue 後要先判斷本票性質：
+
+| 本票性質 | 命中 issue 時的處置 |
+|---------|---------------------|
+| 記錄/分析問題本身（問題可完整寫進 issue 文字，如 ANA/DOC） | 以 `observe` 附加既有 issue，**不建本地票** |
+| 執行程式碼變更（該 issue 解法在本 consumer 的落地實作，如本票這類 IMP） | issue 號本身就是查重結論，**仍應建票**，加 `--dedup-checked <issue 號>` 放行 |
+
+```bash
+# 查重指令範本（阻擋訊息會原樣印出）
+python3 .claude/skills/framework-issue/scripts/section_comment.py dedup \
+  --keywords "關鍵字一" "關鍵字二"
+
+# 情境 a：本票只記錄/分析問題 → 命中既有 issue 以 observe 附加，不呼叫 create
+python3 .claude/skills/framework-issue/scripts/section_comment.py observe \
+  <issue-ref> --body "..."
+
+# 情境 b：本票要執行程式碼變更 → 命中 issue 仍建票，issue 號即查重結論
+ticket create --wave 3 --action "修復" --target "XXX" \
+  --where ".claude/hooks/foo.py" \
+  --dedup-checked "#102" \
+  --why "..."
+```
+
+只做路徑層級的機械判準（where.files 是否全數 `.claude/` 開頭），不判斷 why 欄語意、同根因計次、或本票是分析票還是執行票；這些需要語意判斷，誤擋成本高會推高建票摩擦力，故不在此閘門範圍——判斷交還給建票者，訊息只負責把分流提問講清楚。
+
 ## --source-ticket 參數（衍生關係）
 
 `--source-ticket <SOURCE-ID>` 用於建立「衍生 Ticket」關係（spawned_tickets），典型場景為 ANA 衍生 IMP / ADJ、執行中發現的獨立技術債。

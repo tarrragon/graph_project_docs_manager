@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.36.0 — 新增 `create` 的可攜問題分流硬閘門：`--where` 全數落在 `.claude/` 之下時視為可攜問題（根源在框架通用資產，合法收件方是 canonical framework issue 非本地 ticket），未帶 `--dedup-checked` 查重結論即 `[ERROR]` + `exit 1` 阻擋。動機：單一 session 內新建多張票，其中半數以上的問題在 canonical 已有 open issue 卻全程未查重；既有的 where.files 撞檔熱度提示（僅警告）已證實對此類失效無效。`--dedup-checked` 的值即查重結論本身（issue 號或 `none`），純旗標存在不放行。新增 `is_portable_where_files` / `validate_portable_issue_gate`（`field_validators.py`），僅做路徑層級機械判準，不判斷 why 欄語意。**阻擋訊息明寫「命中 issue 不等於不該建票」**：`framework-issue` 的模型是「ticket 記執行，issue 記問題」，命中既有 issue 後仍須判斷本票是記錄/分析問題（observe 附加、不建票）還是執行該 issue 解法的程式碼變更（issue 號即查重結論，仍應建票）——此區分本身無法自動判準，發生在本票初次落地時：路徑判準字面上會擋下這張票自己（`where.files` 是純 `.claude/` 的 `create.py`），原始訊息文字誤導成「命中即不建票」，經一次誤關閉票的實例修正。詳見 `references/create-command.md`〈可攜問題分流硬閘門〉。
+
 **Version**: 2.35.0 — 累積四項先前已落地但版號未遞增的修法，本次補記。(1) `create --no-topic` 改以哨兵短路 S1／S2 自動推導：原本旗標只在報告層生效，上游繼承路徑仍會指派主題，旗標對該路徑等同空操作。(2) ref 鎖重試條件與鎖齡判讀（`lib/git_ops.py`）：區分並行活鎖與崩潰殘骸，殘骸不自行移除而是回報鎖檔內容與鎖齡供溯源，並在 HEAD 於提交期間被並行移動時給出明確訊息。(3) `add-acceptance` 剝除誤帶入的核取方塊前綴並補 help 說明，附迴歸測試。(4) `create` 一律回報本次存入的驗收條數與逐條內容，使「存進去的與打算存的是否相同」不需另外查詢即可核對。另含 `track_dispatch_validate` 合理性檢查的判準調整與 `topic_inference` 的對應更新，測試同步新增。
 
 **Version**: 2.34.0
