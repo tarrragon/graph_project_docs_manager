@@ -10,21 +10,23 @@
 /// 後，元件庫缺件已補齊。〈UC 選擇入口〉（三態共用）由 [_UcSelectorPanel]
 /// 承載。
 ///
-/// **已知簡化（記於本票 Solution，非元件庫缺件）**：`flow 未結構化`態的
-/// SPEC-004 §3.6 §2 對應行完整組成含 `ListRow.meta`（型別標籤 + 原始檔
-/// 路徑）與 `AppText.title`（UC 標題），並支援「開啟原始檔」「檢視關聯」
-/// 兩個動作；本票依 Context Bundle 的 `how` 欄簡化為與「尚未選定 UC」
-/// 同一組成（`EmptyState.section` + UC 選擇入口），理由：兩動作依賴的
-/// UC 節點資料（型別、原始檔路徑、關聯清單）屬 `node_detail` 畫面的
-/// fixture，超出本票「只動 `lib/screens/uc_flow/`」範圍，且該資料尚未
-/// 涵蓋 UC 節點（`node_detail_fixtures.dart` 目前僅 SPEC 節點）。步驟表
-/// 「點步驟→節點詳情」同理簡化為空操作（`onTap: () {}`），domain 欄
-/// 「點 domain→Domain 視圖」不依賴節點資料，已依規格完整實作。
+/// **`0.1.0-W2-013` 補齊**：`flow 未結構化`態依 SPEC-004 §3.6 §2 對應行
+/// 補齊 `ListRow.meta`（型別標籤 + 原始檔路徑）與 `AppText.title`
+/// （UC 標題），並接上「開啟原始檔」「檢視關聯」兩個動作
+/// （[_UnstructuredView]）；所需 UC 基本資訊擴充於 [UcFlowFixtures]
+/// （新增 `filePath`）。步驟表「點步驟→節點詳情」亦接上真實跳轉
+/// （[_stepRow]，沿用 `trace_screen.dart` `onTapNode` 既有簡化：跳轉不
+/// 額外設定 `nodeDetailStateProvider`，節點詳情固定顯示其預設值，0.1
+/// 假資料階段步驟未帶對應節點 id，見本票 Solution）。
 library;
+
+import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/attention_level.dart';
 import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
@@ -32,6 +34,16 @@ import '../../l10n/app_localizations.dart';
 import 'uc_flow_fixtures.dart';
 import 'uc_flow_providers.dart';
 import 'uc_flow_state.dart';
+
+const String _tag = 'UcFlowScreen';
+
+/// 開啟原始檔的行程執行接縫（暫時，同 `domain_view_screen.dart`
+/// `domainOpenSourceProcessRunnerProvider` 慣例）。
+@visibleForTesting
+final ucFlowOpenSourceProcessRunnerProvider =
+    Provider<Future<ProcessResult> Function(String, List<String>)>(
+      (ref) => Process.run,
+    );
 
 /// UC Flow 視圖畫面。
 class UcFlowScreen extends ConsumerWidget {
@@ -44,7 +56,7 @@ class UcFlowScreen extends ConsumerWidget {
       UcFlowProjectUnready() => const _ProjectUnreadyView(),
       UcFlowEmpty() => const _EmptyView(),
       UcFlowUcUnset() => const _UcUnsetView(),
-      UcFlowUnstructured() => const _UnstructuredView(),
+      UcFlowUnstructured(ucId: final ucId) => _UnstructuredView(ucId: ucId),
       UcFlowNormal(ucId: final ucId) => _NormalView(ucId: ucId),
     };
   }
@@ -120,27 +132,106 @@ class _UcUnsetView extends ConsumerWidget {
   }
 }
 
-/// flow 未結構化：`TwoColumnLayout`[`Panel`[`EmptyState.section`], 〈UC
-/// 選擇入口〉]（簡化組成，見檔頭「已知簡化」）。
+/// flow 未結構化：`TwoColumnLayout`[`Panel`[`ListRow.meta`, `AppText.title`,
+/// `EmptyState.section`（`ButtonRow` 動作：開啟原始檔、檢視關聯）], 〈UC
+/// 選擇入口〉]（SPEC-004 §3.6 §2）。
 class _UnstructuredView extends ConsumerWidget {
-  const _UnstructuredView();
+  const _UnstructuredView({required this.ucId});
+
+  final String ucId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final uc = UcFlowFixtures.ucList.firstWhere((uc) => uc.id == ucId);
     return TwoColumnLayout(
       key: const Key('state-ucFlow-unstructured'),
       main: Panel(
         children: [
+          ListRow.meta(
+            key: const Key('panel-ucFlow-unstructured-meta'),
+            leading: Badge.type(label: 'UC'), // i18n-exempt: 節點型別代碼
+            primary: AppText(uc.filePath, variant: AppTextVariant.mono),
+          ),
+          AppText(uc.title, variant: AppTextVariant.title),
           EmptyState(
             variant: EmptyStateVariant.section,
             message: l10n.flowUnstructuredMessage,
             testKey: const Key('panel-ucFlow-unstructured-message'),
+            actions: [
+              AppButton(
+                label: l10n.openSourceFileAction,
+                variant: AppButtonVariant.secondary,
+                onPressed: () => _openSource(context, ref, uc),
+                testKey: const Key('action-ucFlow-open-source'),
+              ),
+              AppButton(
+                label: l10n.viewRelationsAction,
+                variant: AppButtonVariant.secondary,
+                onPressed: () => navigateTo(
+                  ref.read,
+                  AppDestination.nodeDetail,
+                  NavIntent.jump,
+                ),
+                testKey: const Key('action-ucFlow-view-relations'),
+              ),
+            ],
           ),
         ],
       ),
       detail: const _UcSelectorPanel(),
     );
+  }
+
+  /// 開啟選定 UC 的原始檔（同 `domain_view_screen.dart` `_openSource`
+  /// 慣例：0.1 假資料路徑不對應磁碟上任何檔案，恆走「找不到檔案」分支，
+  /// 存在性檢查與行程呼叫仍走真實 `dart:io`）。
+  Future<void> _openSource(
+    BuildContext context,
+    WidgetRef ref,
+    UcFlowFixtureUc uc,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final exists = File(uc.filePath).existsSync();
+    if (!exists) {
+      if (!context.mounted) return;
+      AppSnackBar.show(
+        context,
+        message: l10n.sourceFileNotFoundSnackbarMessage,
+        level: AttentionLevel.discardable,
+        origin: AppSnackBarOrigin.userInitiated,
+      );
+      return;
+    }
+    developer.log('外部開啟：${uc.filePath}', name: _tag); // i18n-exempt: 開發者診斷 log
+    try {
+      final result = await ref.read(ucFlowOpenSourceProcessRunnerProvider)(
+        'open',
+        [uc.filePath],
+      );
+      if (!context.mounted) return;
+      AppSnackBar.show(
+        context,
+        message: result.exitCode == 0
+            ? l10n.openedExternallyMessage
+            : l10n.externalOpenFailedMessage,
+        level: AttentionLevel.discardable,
+        origin: AppSnackBarOrigin.userInitiated,
+      );
+    } catch (error) {
+      developer.log(
+        '外部開啟失敗：$error', // i18n-exempt: 開發者診斷 log
+        name: _tag,
+        level: 900,
+      );
+      if (!context.mounted) return;
+      AppSnackBar.show(
+        context,
+        message: l10n.externalOpenFailedMessage,
+        level: AttentionLevel.discardable,
+        origin: AppSnackBarOrigin.userInitiated,
+      );
+    }
   }
 }
 
@@ -240,8 +331,10 @@ class _NormalView extends ConsumerWidget {
           for (final event in step.consumes) Badge.event(label: event),
         ],
       ),
-      // 點步驟→節點詳情：本票簡化為空操作，見檔頭「已知簡化」。
-      onTap: () {},
+      // 點步驟→節點詳情（沿用 `trace_screen.dart` `onTapNode` 既有簡化，
+      // 見檔頭說明）。
+      onTap: () =>
+          navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump),
       testKey: Key('card-ucFlow-step-$ucId-${index + 1}'),
     );
   }

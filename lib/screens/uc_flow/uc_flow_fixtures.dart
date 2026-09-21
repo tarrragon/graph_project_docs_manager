@@ -29,18 +29,23 @@ class UcFlowFixtureStep {
 }
 
 /// UC 清單項：id + 標題 + 是否含結構化 flow（`hasFlowStep`，決定選定後落
-/// 「flow 未結構化」或「正常」）+ 步驟（`hasFlowStep` 為 `false` 時為空）。
+/// 「flow 未結構化」或「正常」）+ 步驟（`hasFlowStep` 為 `false` 時為空）
+/// + 原始檔路徑（`filePath`，`0.1.0-W2-013` 新增：flow 未結構化態
+/// `ListRow.meta` 主文字與「開啟原始檔」動作的目標路徑，SPEC-004
+/// §3.6 §2）。
 class UcFlowFixtureUc {
   const UcFlowFixtureUc({
     required this.id,
     required this.title,
     required this.hasFlowStep,
+    required this.filePath,
     this.steps = const [],
   });
 
   final String id;
   final String title;
   final bool hasFlowStep;
+  final String filePath;
   final List<UcFlowFixtureStep> steps;
 }
 
@@ -52,6 +57,7 @@ abstract final class UcFlowFixtures {
       id: 'UC-02',
       title: '依 domain 盤點變更影響面', // i18n-exempt: fixture UC 標題，非 App UI 文案
       hasFlowStep: true,
+      filePath: 'docs/usecases/UC-02.md', // i18n-exempt: fixture 路徑字面
       steps: [
         UcFlowFixtureStep(
           label: '選擇資料夾', // i18n-exempt: fixture 步驟標籤
@@ -73,6 +79,7 @@ abstract final class UcFlowFixtures {
       id: 'UC-04',
       title: '追溯一項需求的實現鏈', // i18n-exempt: fixture UC 標題，非 App UI 文案
       hasFlowStep: true,
+      filePath: 'docs/usecases/UC-04.md', // i18n-exempt: fixture 路徑字面
       steps: [
         UcFlowFixtureStep(
           label: '讀取 schema 定義', // i18n-exempt: fixture 步驟標籤
@@ -92,6 +99,7 @@ abstract final class UcFlowFixtures {
       id: 'UC-06',
       title: '找出並修復文件破洞', // i18n-exempt: fixture UC 標題，非 App UI 文案
       hasFlowStep: false,
+      filePath: 'docs/usecases/UC-06.md', // i18n-exempt: fixture 路徑字面
     ),
   ];
 }
