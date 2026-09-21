@@ -310,6 +310,7 @@ class _ReadyListView extends ConsumerWidget {
           ticket,
           onOpenTicket: onOpenTicket,
           onCorruptedTap: onCorruptedTap,
+          targetId: targetId,
         ),
     ];
 
@@ -428,6 +429,7 @@ class _ReadyTopicView extends ConsumerWidget {
             onToggle: () => toggle(group.topic ?? 'unassigned'),
             onOpenTicket: onOpenTicket,
             onCorruptedTap: onCorruptedTap,
+            targetId: state.targetTicketId,
           ),
         AppText(
           l10n.ticketsVirtualScrollNote,
@@ -446,6 +448,7 @@ class _TopicSection extends StatelessWidget {
     required this.onToggle,
     required this.onOpenTicket,
     required this.onCorruptedTap,
+    this.targetId,
   });
 
   final TicketTopicGroup group;
@@ -453,6 +456,7 @@ class _TopicSection extends StatelessWidget {
   final VoidCallback onToggle;
   final void Function(String ticketId) onOpenTicket;
   final VoidCallback onCorruptedTap;
+  final String? targetId;
 
   @override
   Widget build(BuildContext context) {
@@ -488,6 +492,7 @@ class _TopicSection extends StatelessWidget {
             ticket,
             onOpenTicket: onOpenTicket,
             onCorruptedTap: onCorruptedTap,
+            targetId: targetId,
           ),
       ],
     );
@@ -496,15 +501,14 @@ class _TopicSection extends StatelessWidget {
 
 /// 票列（列表模式與主題模式共用）：欄序 ID／標題／狀態／優先／blockedBy／
 /// 損壞標記（SPEC-004 §3.2 `TicketListA` 票列；blockedBy 值為被阻擋的
-/// ticket ID 以「, 」串接，無則「—」，SPEC-001 §4）。
-// NOTE(0.1.0-W3-640 NeedsContext)：`isLocated` 參數暫不接入
-// `AppTableRow.ticket`——該工廠建構式未暴露 `isLocated` slot（僅
-// `.eventFlow` 有），依票面約束「不改 lib/components/」不自製，詳見票面
-// NeedsContext。
+/// ticket ID 以「, 」串接，無則「—」，SPEC-001 §4）。[targetId] 與
+/// `ticket.id` 相同時渲染定位高亮（SPEC-003 §3.4〈帶目標跳入〉，
+/// SPEC-004 §4.0.10 場景 d，`0.1.0-W1-080`）。
 AppTableRow _ticketRow(
   TicketFixtureItem ticket, {
   required void Function(String ticketId) onOpenTicket,
   required VoidCallback onCorruptedTap,
+  String? targetId,
 }) {
   const placeholder = '—'; // i18n-exempt: 解析失敗票欄位的資料態佔位符，非 UI 文案
   return AppTableRow.ticket(
@@ -527,6 +531,7 @@ AppTableRow _ticketRow(
         : null,
     onTap: () => onOpenTicket(ticket.id),
     testKey: Key('card-tickets-${ticket.id}'),
+    isLocated: targetId != null && targetId == ticket.id,
   );
 }
 

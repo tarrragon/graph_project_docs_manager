@@ -17,6 +17,7 @@ import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_screen.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
+import 'package:graph_project_docs_manager/tokens/tokens.dart';
 
 import '../../helpers/helpers.dart';
 
@@ -419,6 +420,63 @@ void main() {
 
         final state = container.read(ticketListStateProvider) as TicketsReady;
         expect(state.statusFilter, 'pending');
+      },
+    );
+
+    testWidgets(
+      '帶目標跳入（未被篩選隱藏）→ 目標列呈定位高亮（0.1.0-W1-080）',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: const TicketListScreen(),
+          overrides: [
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsReady(
+                tickets: _readyTickets,
+                targetTicketId: '0.1.0-W1-001',
+              ),
+            ),
+          ],
+        );
+
+        final decoratedBox = tester.widget<DecoratedBox>(
+          find
+              .descendant(
+                of: find.byKey(const Key('card-tickets-0.1.0-W1-001')),
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        );
+        final decoration = decoratedBox.decoration as BoxDecoration;
+
+        expect(decoration.color, AppColors.surfaceIconTint);
+      },
+    );
+
+    testWidgets(
+      '無目標跳入 → 票列無定位高亮（E1 對照，0.1.0-W1-080）',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: const TicketListScreen(),
+          overrides: [
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsReady(tickets: _readyTickets),
+            ),
+          ],
+        );
+
+        final decoratedBox = tester.widget<DecoratedBox>(
+          find
+              .descendant(
+                of: find.byKey(const Key('card-tickets-0.1.0-W1-001')),
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        );
+        final decoration = decoratedBox.decoration as BoxDecoration;
+
+        expect(decoration.color, isNull);
       },
     );
   });

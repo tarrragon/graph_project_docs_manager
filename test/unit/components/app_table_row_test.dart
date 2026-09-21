@@ -32,6 +32,7 @@ void main() {
     required VoidCallback onTap,
     String title = TestCopy.nodeTitle,
     String blockedBy = '—',
+    bool isLocated = false,
   }) {
     return AppTableRow.ticket(
       id: AppText(TestCopy.nodeId, key: idKey, variant: AppTextVariant.mono),
@@ -50,6 +51,7 @@ void main() {
       marker: marker,
       onTap: onTap,
       testKey: ticketKey,
+      isLocated: isLocated,
     );
   }
 
@@ -308,6 +310,88 @@ void main() {
           of: find.byKey(eventKey),
           matching: find.byType(DecoratedBox),
         ).first,
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
+
+      expect(decoration.color, isNull);
+    });
+  });
+
+  group('ticket：定位高亮', () {
+    testWidgets('isLocated 傳與不傳的底色不同（E1 對照）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(
+          child: buildTicketRow(onTap: () {}, isLocated: true),
+        ),
+      );
+      final locatedDecoration =
+          (tester
+                  .widget<DecoratedBox>(
+                    find
+                        .ancestor(
+                          of: find.byKey(idKey),
+                          matching: find.byType(DecoratedBox),
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration);
+
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(child: buildTicketRow(onTap: () {})),
+      );
+      final defaultDecoration =
+          (tester
+                  .widget<DecoratedBox>(
+                    find
+                        .ancestor(
+                          of: find.byKey(idKey),
+                          matching: find.byType(DecoratedBox),
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration);
+
+      expect(locatedDecoration.color, isNot(defaultDecoration.color));
+    });
+
+    testWidgets('isLocated 為 true 時整列底色為 surfaceIconTint', (tester) async {
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(
+          child: buildTicketRow(onTap: () {}, isLocated: true),
+        ),
+      );
+
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find
+            .ancestor(
+              of: find.byKey(idKey),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
+
+      expect(decoration.color, AppColors.surfaceIconTint);
+    });
+
+    testWidgets('isLocated 為 false（預設）時整列無底色', (tester) async {
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(child: buildTicketRow(onTap: () {})),
+      );
+
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find
+            .ancestor(
+              of: find.byKey(idKey),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
       );
       final decoration = decoratedBox.decoration as BoxDecoration;
 
