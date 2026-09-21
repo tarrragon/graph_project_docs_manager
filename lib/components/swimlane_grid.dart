@@ -43,10 +43,14 @@ import 'swimlane_node.dart';
 
 /// 一條泳道：泳道名 + 節點（節點與其所在步驟欄，0 起算）。
 class SwimlaneLane {
-  const SwimlaneLane({required this.name, required this.nodes});
+  const SwimlaneLane({required this.name, required this.nodes, this.domainId});
 
   /// 泳道名（資料值），對映 [AppText.body] 泳道名 slot。
   final String name;
+
+  /// 該泳道對映的 domain 識別碼；`null` 時泳道名格維持唯讀（無
+  /// [SwimlaneGrid.onSelectDomain] 輸入端，呼叫端未提供 domain 對映關係）。
+  final String? domainId;
 
   /// 該泳道的節點清單：`(節點, 所在步驟欄索引)`。假資料須保證每欄至多
   /// 一節點（SPEC-004 5.12「不重疊」，由測試斷言，非本元件強制）。
@@ -59,6 +63,9 @@ class SwimlaneLane {
 /// |------|------|------|
 /// | [lanes] | 是（1..無上限） | 泳道清單，垂直排列 |
 /// | [laneHighlight] | 否 | 選中 domain 的泳道名；命中列底改 [AppColors.surfaceIconTint] |
+/// | [onSelectDomain] | 否 | 點泳道名格觸發，傳入該列 [SwimlaneLane.domainId]；`null`
+/// 或該列 `domainId` 為 `null` 時泳道名格維持唯讀（與 `MatrixGrid.onSelectDomain`
+/// 同一「選 domain」動作，兩模式共用同一點擊區域與焦點行為） |
 /// | [scrollKey] | 是 | `scroll-domain-swimlane` 定址 key |
 /// | [dragKey] | 是 | `drag-domain-swimlane` 定址 key |
 class SwimlaneGrid extends StatefulWidget {
@@ -68,6 +75,7 @@ class SwimlaneGrid extends StatefulWidget {
     required this.scrollKey,
     required this.dragKey,
     this.laneHighlight,
+    this.onSelectDomain,
   });
 
   /// 泳道清單（1..無上限）。
@@ -76,6 +84,10 @@ class SwimlaneGrid extends StatefulWidget {
   /// 選中 domain 的泳道名；`null` 時無列高亮。容器無自身狀態集，本欄位
   /// 由呼叫端傳入（SPEC-004 4.38「狀態矩陣」）。
   final String? laneHighlight;
+
+  /// 點泳道名格觸發，傳入該列 [SwimlaneLane.domainId]。`null` 時泳道名格
+  /// 維持既有唯讀樣式（既有呼叫點不受影響）。
+  final ValueChanged<String>? onSelectDomain;
 
   /// `scroll-domain-swimlane` 捲動互動定址 key，掛在 [TableView] 本身
   /// （滾輪與捲軸互動的定址對象）。
@@ -219,6 +231,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
               l10n,
               widget.lanes[vicinity.row],
               vicinity.column,
+              widget.onSelectDomain,
             ),
           );
         },
@@ -231,16 +244,38 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     AppLocalizations l10n,
     SwimlaneLane lane,
     int column,
+    ValueChanged<String>? onSelectDomain,
   ) {
     if (column == 0) {
+      final domainId = lane.domainId;
+      if (domainId == null || onSelectDomain == null) {
+        return Semantics(
+          label: l10n.laneA11yLabel(lane.name),
+          container: true,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: AppText(lane.name, maxLines: 1),
+            ),
+          ),
+        );
+      }
+      // 與 MatrixGrid._DomainHeaderCell 同一「選 domain」動作，共用點擊
+      // 區域與焦點行為（SPEC-003 §3.1）。
       return Semantics(
+        key: Key('action-domain-select-$domainId'),
+        button: true,
         label: l10n.laneA11yLabel(lane.name),
-        container: true,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: AppText(lane.name, maxLines: 1),
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: () => onSelectDomain(domainId),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: AppText(lane.name, maxLines: 1),
+            ),
           ),
         ),
       );

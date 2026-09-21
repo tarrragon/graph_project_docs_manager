@@ -1,7 +1,7 @@
 /// SwimlaneGrid 元件測試（SPEC-004 4.38、5.12）。
 library;
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
@@ -256,6 +256,73 @@ void main() {
       await tester.pump();
       expectNoOverflow(tester);
       expect(find.byKey(const ValueKey('node-19-19')), findsOneWidget);
+    });
+  });
+
+  group('onSelectDomain（SPEC-003 §3.1，比照 MatrixGrid.onSelectDomain）', () {
+    List<SwimlaneLane> buildLanesWithDomainId() => [
+      const SwimlaneLane(name: 'lane-0', domainId: 'domain-0', nodes: []),
+      const SwimlaneLane(name: 'lane-1', domainId: 'domain-1', nodes: []),
+    ];
+
+    testWidgets('不傳 onSelectDomain：泳道名格維持唯讀，無 button 語意、無 InkWell（對照組）', (
+      tester,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: SwimlaneGrid(
+          lanes: buildLanesWithDomainId(),
+          scrollKey: scrollKey,
+          dragKey: dragKey,
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey('action-domain-select-domain-0')),
+        findsNothing,
+      );
+      expect(find.byType(InkWell), findsNothing);
+    });
+
+    testWidgets('傳 onSelectDomain：泳道名格為可點 button 語意，點擊觸發回呼傳出該列 domainId', (
+      tester,
+    ) async {
+      String? tapped;
+
+      await pumpHarness(
+        tester,
+        child: SwimlaneGrid(
+          lanes: buildLanesWithDomainId(),
+          scrollKey: scrollKey,
+          dragKey: dragKey,
+          onSelectDomain: (domainId) => tapped = domainId,
+        ),
+      );
+
+      final selectKey = find.byKey(
+        const ValueKey('action-domain-select-domain-0'),
+      );
+      expect(selectKey, findsOneWidget);
+      final semantics = tester.getSemantics(selectKey);
+      expect(semantics.flagsCollection.isButton, isTrue);
+
+      await tester.tap(selectKey);
+      await tester.pump();
+      expect(tapped, 'domain-0');
+    });
+
+    testWidgets('domainId 為 null 時維持唯讀，即使有傳 onSelectDomain', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SwimlaneGrid(
+          lanes: buildLanes(laneCount: 1, columnCount: 1),
+          scrollKey: scrollKey,
+          dragKey: dragKey,
+          onSelectDomain: (_) {},
+        ),
+      );
+
+      expect(find.byType(InkWell), findsNothing);
     });
   });
 }
