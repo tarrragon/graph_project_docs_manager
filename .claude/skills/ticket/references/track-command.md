@@ -21,6 +21,7 @@
 | `finish` | `complete` 別名（worktree 派發避開 runtime guard 對 `complete` 的 basename 誤判） | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `close` | 關閉 Ticket（已在其他 Ticket 一併解決） | --help |
 | `set-closed-by` | 修正已 closed 票的 `closed_by` 欄位 | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
+| `restore` | 還原 closed 票為 pending（closed 態唯一合法出邊，需 `--reason`） | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `release` | 釋放 Ticket（退回等待態） | 〈UPDATE 操作〉 |
 | `reclaim` | 回收 STALE session 持有的 in_progress 票（鑑識三查） | 〈track reclaim 子命令〉 |
 | `verify` | 單獨執行 AC 驗證，不變更狀態 | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
@@ -495,6 +496,16 @@ ticket track set-closed-by <id> --value <ticket-id>
 
 僅適用 `status=closed` 的票；`--value` 須為合法且存在的 Ticket ID，格式錯誤或指向不存在的 Ticket 皆拒絕。修正動作輸出舊值與新值並走 auto-commit。
 
+### closed 票還原 — `restore`
+
+`closed` 為 `STATUS_TRANSITIONS` 定義的終態，`release` 與 `claim` 皆被 enum-gate 擋下、ticket md 直接 Edit 亦被 `ticket-file-access-guard-hook` 阻擋——誤關票原本無合法還原路徑。`restore <id> --reason <text> [--as <agent>]` 補上這條缺口，且刻意設計為 `closed -> pending` 唯一可觸發入口：`STATUS_TRANSITIONS` 只對 `closed` 開放 `pending` 這一個出邊，`release` 另有明確的 app-level guard 拒絕 closed 票，`claim` 恆將 closed 導向 `in_progress`（不在開放出邊內），兩者對 closed 票仍被擋下。
+
+```bash
+ticket track restore <id> --reason <text> [--as <agent>]
+```
+
+僅適用 `status=closed` 的票；`--reason` 必填（禁止靜默還原）。落地時清除 `close_reason` / `close_reason_note` / `closed_by` / `closed_at` / `completed_at` 五個 close 相關欄位，並寫入 `restored_at` / `restored_by` / `restore_reason` 三個還原記錄欄位，走 auto-commit。
+
 ### 身份申報（`--as`）判定邏輯
 
 `complete` / `check-acceptance` / `set-acceptance` 三個寫入命令支援選用 `--as <agent-name>`，與 ticket `who.current` 精確對照。**Why**：防 generic agent 收 Ticket ID 即越權收尾（PC-V1-002 前提一，探針實證）。**判定邏輯**：`--as` 值 ≠ `who.current`（含空值）→ deny（exit 1，純前置檢查不寫入狀態）；`--as rosemary-project-manager` 一律放行（PM bookkeeping 豁免，如代收尾 / stale cleanup）；未提供 `--as` 時 `complete`（`finish` 別名同列）已轉強制 deny，`check-acceptance` / `set-acceptance` 仍維持 warn-only（僅輸出 stderr 訊息，不阻擋；過渡期設計，見 `identity_guard.py` 的 `ENFORCED_COMMANDS`）。**Action**：subagent 收尾時帶自身身份，例 `ticket track complete <id> --as thyme-python-developer`；其餘 warn-only 命令轉強制的結束條件與偵測承擔者已明訂（7 日滾動 warn 率 < 5% 且樣本數 >= 30，由 PM 於 `version-release` 發布前檢查階段執行 `identity_guard_adoption.py` 判定），非待評估的無 trigger 狀態。
@@ -771,7 +782,7 @@ ticket track set-exit-status <ticket_id> --status needs_context --reason "缺少
 | 欄位                        | CLI 命令                                        | 備註                                                 |
 | --------------------------- | ----------------------------------------------- | ---------------------------------------------------- |
 | who/what/when/where/why/how | `set-who` ~ `set-how`                           | 僅此 6 個 set-\* 命令                                |
-| status                      | `claim` / `complete` / `release`                | 由生命週期命令管理，禁止手動編輯                     |
+| status                      | `claim` / `complete` / `release` / `restore`（僅 closed→pending） | 由生命週期命令管理，禁止手動編輯                     |
 | tdd_phase                   | `phase <id> <phase> <agent>`                    | Phase 進度更新                                       |
 | children                    | `add-child <parent> <child>`                    | 父子關係                                             |
 | parent_id                   | `set-parent <child> <new-parent>\|--clear`      | 改寫或清除，自動同步上游 `children`（雙向一致性）    |
