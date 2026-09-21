@@ -36,10 +36,13 @@ enum BlockedStateVariant {
 /// | [version] | 選填（純顯示版本值） | 不使用 |
 /// | [appVersion] / [projectVersion] | 不使用 | 必填 |
 /// | [onSwitchProject] | 必填 | 必填 |
+/// | [onDegradedView] | 選填（非 null 時渲染降級檢視出口） | 不使用 |
 /// | [isDetailExpanded] / [onToggleDetail] | 不使用 | 必填 |
 /// | [testKey] | 必填 | 必填 |
 class BlockedState extends StatelessWidget {
   /// `plain` 變體：無展開能力，[version] 為選填的純顯示版本值。
+  /// [onDegradedView] 非 null 時另渲染「以 App 內建型別表檢視」次要按鈕
+  /// （SPEC-004 §1、`action-domain-degraded-view`，`0.1.0-W1-035`）。
   const BlockedState.plain({
     super.key,
     required this.message,
@@ -47,6 +50,7 @@ class BlockedState extends StatelessWidget {
     required this.testKey,
     this.explanation,
     this.version,
+    this.onDegradedView,
   }) : variant = BlockedStateVariant.plain,
        appVersion = null,
        projectVersion = null,
@@ -66,7 +70,8 @@ class BlockedState extends StatelessWidget {
     required this.testKey,
     this.explanation,
   }) : variant = BlockedStateVariant.withDetail,
-       version = null;
+       version = null,
+       onDegradedView = null;
 
   /// 兩種變體之一。
   final BlockedStateVariant variant;
@@ -79,6 +84,12 @@ class BlockedState extends StatelessWidget {
 
   /// `plain` 的純顯示版本值（選填），單行截斷。`withDetail` 不使用。
   final String? version;
+
+  /// 降級檢視回呼（`plain` 選填，`withDetail` 不使用）；非 null 時渲染
+  /// 「以 App 內建型別表檢視」次要按鈕（`action-domain-degraded-view`，
+  /// SPEC-004 §1／SPEC-003 §3.1，`0.1.0-W1-035` 定案）。呼叫端負責同畫面
+  /// 轉換，不改變本元件狀態。
+  final VoidCallback? onDegradedView;
 
   /// App 支援版本值（`withDetail` 必填），單行截斷。
   final String? appVersion;
@@ -187,9 +198,19 @@ class BlockedState extends StatelessWidget {
     );
 
     if (!_isWithDetail) {
+      final onDegraded = onDegradedView;
       return ButtonRow(
         alignment: ButtonRowAlignment.center,
-        children: [switchButton],
+        children: [
+          switchButton,
+          if (onDegraded != null)
+            AppButton(
+              label: l10n.useBuiltinSchemaAction,
+              variant: AppButtonVariant.secondary,
+              onPressed: onDegraded,
+              testKey: const ValueKey('action-domain-degraded-view'),
+            ),
+        ],
       );
     }
 

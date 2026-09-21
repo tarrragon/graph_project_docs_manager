@@ -194,6 +194,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get viewSchemaDetailAction => '檢視詳情';
 
   @override
+  String get useBuiltinSchemaAction => '以 App 內建型別表檢視';
+
+  @override
   String get gotoGapsReportAction => '前往破洞報告';
 
   @override

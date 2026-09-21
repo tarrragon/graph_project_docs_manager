@@ -416,6 +416,12 @@ abstract class AppLocalizations {
   /// **'檢視詳情'**
   String get viewSchemaDetailAction;
 
+  /// SPEC-003 §3.1 Domain 視圖：action-domain-degraded-view 按鈕文案（0.1.0-W1-035 降級策略）
+  ///
+  /// In zh, this message translates to:
+  /// **'以 App 內建型別表檢視'**
+  String get useBuiltinSchemaAction;
+
   /// SPEC-003 §3.1／§3.2／§3.3／§3.4：各畫面前往破洞報告的前進動作文案
   ///
   /// In zh, this message translates to:

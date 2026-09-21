@@ -54,6 +54,7 @@
   "openDocsFolderAction": "Open docs Folder",
   "openedExternallyMessage": "Opened externally",
   "viewSchemaDetailAction": "View Details",
+  "useBuiltinSchemaAction": "View with the app's built-in schema",
   "gotoGapsReportAction": "Go to Gap Report",
   "gotoDomainAction": "Go to Domain View",
   "projectUnreadyMessage": "Domain view not entered yet",

@@ -314,6 +314,11 @@
     "description": "SPEC-003 §3.1 Domain 視圖：action-domain-schema-detail 按鈕文案"
   },
 
+  "useBuiltinSchemaAction": "以 App 內建型別表檢視",
+  "@useBuiltinSchemaAction": {
+    "description": "SPEC-003 §3.1 Domain 視圖：action-domain-degraded-view 按鈕文案（0.1.0-W1-035 降級策略）"
+  },
+
   "gotoGapsReportAction": "前往破洞報告",
   "@gotoGapsReportAction": {
     "description": "SPEC-003 §3.1／§3.2／§3.3／§3.4：各畫面前往破洞報告的前進動作文案"
