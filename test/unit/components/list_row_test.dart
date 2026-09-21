@@ -1,6 +1,8 @@
 /// [ListRow] widget test（SPEC-004 §4.40「測試點」、§5.14 排列不變式）。
 library;
 
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,10 +14,11 @@ import '../../helpers/helpers.dart';
 
 const _treeKey = ValueKey('card-traceability-DOMAIN-MAP-version-management');
 const _itemKey = ValueKey('card-gaps-item-1');
+const _optionKey = ValueKey('action-ucFlow-select-uc-UC-01');
 
-/// 建構每個變體的一個代表性實例，供「五變體 × trailing 有無」矩陣展開。
+/// 建構每個變體的一個代表性實例，供「六變體 × trailing 有無」矩陣展開。
 /// `withTrailing` 只影響有 trailing 的變體；leading 依契約固定必填
-/// （`item` 恆無 leading）。
+/// （`item` / `option` 恆無 leading）。
 ListRow _buildVariant(ListRowVariant variant, {required bool withTrailing}) {
   return switch (variant) {
     ListRowVariant.tree => ListRow.tree(
@@ -46,6 +49,11 @@ ListRow _buildVariant(ListRowVariant variant, {required bool withTrailing}) {
             : null,
         onTap: () {},
         testKey: _itemKey,
+      ),
+    ListRowVariant.option => ListRow.option(
+        primary: AppText(TestCopy.nodeTitle),
+        onTap: () {},
+        testKey: _optionKey,
       ),
     ListRowVariant.meta => ListRow.meta(
         leading: const Badge.type(label: 'PROP'),
@@ -144,6 +152,26 @@ void main() {
       );
 
       await tester.tap(find.byKey(_itemKey));
+      await tester.pump();
+
+      expect(callCount, 1);
+    });
+
+    testWidgets('option 列點選呼叫 onTap 恰一次', (tester) async {
+      var callCount = 0;
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          child: ListRow.option(
+            primary: AppText(TestCopy.nodeTitle),
+            onTap: () => callCount++,
+            testKey: _optionKey,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(_optionKey));
       await tester.pump();
 
       expect(callCount, 1);
@@ -331,6 +359,45 @@ void main() {
       );
       expect(textWidget.style?.color, AppColors.accentStrong);
     });
+
+    testWidgets(
+      'option selected 與非 selected 的底色渲染不同（test-assertion-design E1）',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: SizedBox(
+            width: 300,
+            child: ListRow.option(
+              primary: AppText(TestCopy.nodeTitle),
+              onTap: () {},
+              testKey: _optionKey,
+            ),
+          ),
+        );
+        final selectedTintFinder = find.byWidgetPredicate(
+          (widget) =>
+              widget is ColoredBox && widget.color == AppColors.surfaceIconTint,
+        );
+        final unselectedTintCount = tester.widgetList(selectedTintFinder).length;
+
+        await pumpHarness(
+          tester,
+          child: SizedBox(
+            width: 300,
+            child: ListRow.option(
+              primary: AppText(TestCopy.nodeTitle),
+              onTap: () {},
+              testKey: _optionKey,
+              isSelected: true,
+            ),
+          ),
+        );
+        final selectedTintCount = tester.widgetList(selectedTintFinder).length;
+
+        expect(unselectedTintCount, 0);
+        expect(selectedTintCount, 1);
+      },
+    );
   });
 
   group('無障礙', () {
@@ -374,5 +441,41 @@ void main() {
       final semantics = tester.getSemantics(find.byKey(_treeKey));
       expect(semantics.flagsCollection.isButton, isTrue);
     });
+
+    testWidgets(
+      'option 的 Semantics.selected 隨 isSelected 對照不同（test-assertion-design E1）',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: SizedBox(
+            width: 300,
+            child: ListRow.option(
+              primary: AppText(TestCopy.nodeTitle),
+              onTap: () {},
+              testKey: _optionKey,
+            ),
+          ),
+        );
+        final unselected = tester.getSemantics(find.byKey(_optionKey));
+
+        await pumpHarness(
+          tester,
+          child: SizedBox(
+            width: 300,
+            child: ListRow.option(
+              primary: AppText(TestCopy.nodeTitle),
+              onTap: () {},
+              testKey: _optionKey,
+              isSelected: true,
+            ),
+          ),
+        );
+        final selected = tester.getSemantics(find.byKey(_optionKey));
+
+        expect(unselected.flagsCollection.isSelected, Tristate.isFalse);
+        expect(selected.flagsCollection.isSelected, Tristate.isTrue);
+        expect(selected.flagsCollection.isButton, isTrue);
+      },
+    );
   });
 }
