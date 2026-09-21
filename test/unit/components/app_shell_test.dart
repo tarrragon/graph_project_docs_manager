@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
@@ -260,6 +261,101 @@ void main() {
         ),
         findsNothing,
       );
+    });
+
+    // --- SPEC-001 §1〈降級型別表〉疊加旗標；SPEC-004 §4.27 state-change 列 ---
+
+    for (final destination in AppDestination.values) {
+      testWidgetsAtEachSize(
+        '降級旗標為真時 badge-${destination.name}-degraded-schema 常駐可見'
+        '（returnTo 為 null 亦然）',
+        (tester, size) async {
+          await pumpHarness(
+            tester,
+            size: size,
+            overrides: [
+              selectedDestinationProvider.overrideWith((ref) => destination),
+              degradedSchemaProvider.overrideWith((ref) => true),
+            ],
+            child: AppShell(
+              switcherEntry: _buildSwitcherEntry(),
+              navItems: _buildNavItems(selected: destination),
+              pages: _buildPages(),
+            ),
+          );
+          expectNoOverflow(tester);
+
+          expect(
+            find.byKey(Key('badge-${destination.name}-degraded-schema')),
+            findsOneWidget,
+          );
+          // 未觸發返回動作時該畫面無來源記錄，返回鍵不與徽章並存。
+          expect(
+            find.byKey(Key('action-${destination.name}-back')),
+            findsNothing,
+          );
+        },
+      );
+    }
+
+    testWidgetsAtEachSize('降級旗標為假時徽章不渲染', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        overrides: [degradedSchemaProvider.overrideWith((ref) => false)],
+        child: AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(selected: AppDestination.domain),
+          pages: _buildPages(),
+        ),
+      );
+      expectNoOverflow(tester);
+
+      expect(
+        find.byKey(const Key('badge-domain-degraded-schema')),
+        findsNothing,
+      );
+    });
+
+    testWidgetsAtEachSize('降級旗標為真且 returnTo 非 null 時，徽章與返回鍵同列並存', (
+      tester,
+      size,
+    ) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.tickets,
+          ),
+          returnToProvider.overrideWith((ref) => AppDestination.domain),
+          degradedSchemaProvider.overrideWith((ref) => true),
+        ],
+        child: AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(selected: AppDestination.tickets),
+          pages: _buildPages(),
+        ),
+      );
+      expectNoOverflow(tester);
+
+      expect(
+        find.byKey(const Key('badge-tickets-degraded-schema')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('action-tickets-back')),
+        findsOneWidget,
+      );
+
+      final badgeRect = tester.getRect(
+        find.byKey(const Key('badge-tickets-degraded-schema')),
+      );
+      final backRect = tester.getRect(
+        find.byKey(const Key('action-tickets-back')),
+      );
+      // 徽章（左）與返回鍵（右）同一列不重疊。
+      expect(badgeRect.right, lessThanOrEqualTo(backRect.left));
     });
 
     // --- SPEC-004 §5.1 排列不變式 ---
