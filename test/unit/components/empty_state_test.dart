@@ -247,6 +247,37 @@ void main() {
         throwsAssertionError,
       );
     });
+
+    testWidgets(
+      'pageActionsException 為 none（非例外清單內狀態）時傳空 actions 仍觸發 assert',
+      (tester) async {
+        expect(
+          () => EmptyState(
+            variant: EmptyStateVariant.page,
+            message: '訊息',
+            testKey: testKey,
+            pageActionsException: EmptyStatePageActionsException.none,
+          ),
+          throwsAssertionError,
+        );
+      },
+    );
+
+    testWidgets(
+      'pageActionsException 為 actionsRelocatedToHeader 時傳空 actions 不觸發 assert',
+      (tester) async {
+        expect(
+          () => EmptyState(
+            variant: EmptyStateVariant.page,
+            message: '訊息',
+            testKey: testKey,
+            pageActionsException:
+                EmptyStatePageActionsException.actionsRelocatedToHeader,
+          ),
+          returnsNormally,
+        );
+      },
+    );
   });
 
   group('間距引用 token（非硬編碼）', () {

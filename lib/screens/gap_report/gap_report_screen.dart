@@ -112,7 +112,8 @@ class _NoGapsView extends ConsumerWidget {
       message: l10n.noGapsMessage,
       explanation: l10n.noGapsScanScope,
       testKey: const Key('state-gaps-none'),
-      actionsOptedOut: true,
+      pageActionsException:
+          EmptyStatePageActionsException.actionsRelocatedToHeader,
     );
   }
 }
