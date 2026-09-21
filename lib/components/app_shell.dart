@@ -13,11 +13,13 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../app/degraded_schema.dart';
 import '../app/router.dart';
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_button.dart';
 import 'app_text.dart';
+import 'badge.dart';
 import 'nav_item.dart';
 import 'page_column.dart';
 import 'project_switcher_entry.dart';
@@ -85,6 +87,7 @@ class AppShell extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final destination = ref.watch(selectedDestinationProvider);
     final returnTo = ref.watch(returnToProvider);
+    final isDegraded = ref.watch(degradedSchemaProvider);
 
     Widget body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -108,6 +111,7 @@ class AppShell extends ConsumerWidget {
             returnTo: returnTo,
             pages: pages,
             onBack: () => consumeReturnTo(ref.read),
+            isDegraded: isDegraded,
           ),
         ),
       ],
@@ -211,18 +215,23 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
-/// 主區：返回列（`returnTo` 非 `null` 時）+ 六頁 `IndexedStack`
-/// （SPEC-004 4.27 互動反應「返回鍵」）。
+/// 主區：返回列（`returnTo` 非 `null` 或 `isDegraded` 為真時常駐）+ 六頁
+/// `IndexedStack`（SPEC-004 4.27 互動反應「返回鍵」；state-change 列降級
+/// 徽章「與返回列同一列常駐」）。
 ///
 /// 既有 `PageColumn` 已建構完成，本容器不改寫其內部——以獨立返回列疊於
 /// 內容之上呈現同一份對外行為（`action-<screen>-back` 錨點與行為不變），
-/// 沿用 `lib/app/shell.dart` 既有的 `_ReturnToHeader` 佈局慣例。
+/// 沿用 `lib/app/shell.dart` 既有的 `_ReturnToHeader` 佈局慣例。降級徽章
+/// （`badge-<screen>-degraded-schema`）比照同一實作方式疊於本列左側，
+/// 兩者互不覆蓋——`isDegraded` 為真且 `returnTo` 亦非 `null` 時，本列同時
+/// 顯示徽章（左）與返回鍵（右）（SPEC-004 §4.27〈實作註記〉）。
 class _MainArea extends StatelessWidget {
   const _MainArea({
     required this.destination,
     required this.returnTo,
     required this.pages,
     required this.onBack,
+    required this.isDegraded,
   });
 
   final AppDestination destination;
@@ -230,26 +239,43 @@ class _MainArea extends StatelessWidget {
   final List<PageColumn> pages;
   final VoidCallback onBack;
 
+  /// 降級型別表旗標（`lib/app/degraded_schema.dart`）。為真時本列常駐渲染
+  /// `badge-<screen>-degraded-schema`，即使 `returnTo` 為 `null`。
+  final bool isDegraded;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final hasBackAction = returnTo != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (returnTo != null)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Space.md,
-                vertical: Space.sm,
-              ),
-              child: AppButton(
-                label: l10n.backAction,
-                onPressed: onBack,
-                testKey: Key('action-${destination.name}-back'),
-                variant: AppButtonVariant.secondary,
-              ),
+        if (hasBackAction || isDegraded)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Space.md,
+              vertical: Space.sm,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (isDegraded)
+                  Badge.tag(
+                    key: Key('badge-${destination.name}-degraded-schema'),
+                    label: l10n.degradedSchemaBadgeLabel,
+                  )
+                else
+                  const SizedBox.shrink(),
+                if (hasBackAction)
+                  AppButton(
+                    label: l10n.backAction,
+                    onPressed: onBack,
+                    testKey: Key('action-${destination.name}-back'),
+                    variant: AppButtonVariant.secondary,
+                  )
+                else
+                  const SizedBox.shrink(),
+              ],
             ),
           ),
         Expanded(
