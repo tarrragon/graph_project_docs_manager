@@ -17,6 +17,7 @@ void main() {
   const titleKey = ValueKey('cell-title');
   const statusKey = ValueKey('cell-status');
   const priorityKey = ValueKey('cell-priority');
+  const blockedByKey = ValueKey('cell-blocked-by');
   const domainKey = ValueKey('cell-domain');
   const stepNameKey = ValueKey('cell-step-name');
   const eventKey = ValueKey('cell-event');
@@ -30,6 +31,7 @@ void main() {
     IssueMarker? marker,
     required VoidCallback onTap,
     String title = TestCopy.nodeTitle,
+    String blockedBy = '—',
   }) {
     return AppTableRow.ticket(
       id: AppText(TestCopy.nodeId, key: idKey, variant: AppTextVariant.mono),
@@ -39,6 +41,11 @@ void main() {
         'P1',
         key: priorityKey,
         variant: AppTextVariant.caption,
+      ),
+      blockedBy: AppText(
+        blockedBy,
+        key: blockedByKey,
+        variant: AppTextVariant.mono,
       ),
       marker: marker,
       onTap: onTap,
@@ -73,7 +80,7 @@ void main() {
   }
 
   group('變體：header / ticket（含 / 不含標記）/ step（事件欄 0 / 5 個徽章）', () {
-    testWidgetsAtEachSize('header：ticket 欄規格，5 個欄首格不溢位', (tester, size) async {
+    testWidgetsAtEachSize('header：ticket 欄規格，6 個欄首格不溢位', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -85,6 +92,7 @@ void main() {
               AppText('標題', variant: AppTextVariant.caption),
               AppText('狀態', variant: AppTextVariant.caption),
               AppText('優先', variant: AppTextVariant.caption),
+              AppText('blockedBy', variant: AppTextVariant.caption),
               AppText('', variant: AppTextVariant.caption),
             ],
           ),
@@ -143,6 +151,36 @@ void main() {
 
       expectNoOverflow(tester);
       expect(find.byKey(ticketKey), findsOneWidget);
+    });
+
+    testWidgetsAtEachSize('ticket：blockedBy 空值渲染「—」', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: wrapPanelWidth(child: buildTicketRow(onTap: () {})),
+      );
+
+      expectNoOverflow(tester);
+      expect(
+        tester.widget<AppText>(find.byKey(blockedByKey)).text,
+        '—',
+      );
+    });
+
+    testWidgetsAtEachSize('ticket：blockedBy 多值截斷不溢位', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: wrapPanelWidth(
+          child: buildTicketRow(
+            onTap: () {},
+            blockedBy: '${TestCopy.nodeId}, ${TestCopy.nodeId}, '
+                '${TestCopy.nodeId}, ${TestCopy.nodeId}',
+          ),
+        ),
+      );
+
+      expectNoOverflow(tester);
     });
 
     testWidgetsAtEachSize('step：事件欄 0 個徽章不溢位', (tester, size) async {
@@ -343,7 +381,7 @@ void main() {
         child: wrapPanelWidth(child: buildTicketRow(onTap: () {})),
       );
 
-      final cellKeys = [idKey, titleKey, statusKey, priorityKey];
+      final cellKeys = [idKey, titleKey, statusKey, priorityKey, blockedByKey];
       final rects = cellKeys.map((k) => tester.getRect(find.byKey(k))).toList();
 
       for (var i = 0; i < rects.length - 1; i++) {

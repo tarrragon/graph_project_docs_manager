@@ -9,12 +9,9 @@
 /// `DomainHeaderTrailing` 慣例，僅 `AppDestination.tickets` 一行條件式
 /// trailing）。
 ///
-/// 缺件：`blockedBy` 欄（SPEC-001 §4 現行版本票列欄位之一）在 SPEC-004
-/// §3.6 `TicketListA` 契約中無對應 slot（`AppTableRow.ticket` 固定欄序為
-/// ID／標題／狀態／優先／損壞標記，見 `app_table_row.dart`）；本票依
-/// 元件現有契約實作（不含 blockedBy 欄渲染），資料保留於
-/// [TicketFixtureItem.blockedBy]，見本票 NeedsContext，不在頁面層繞路
-/// 自製欄位。
+/// `blockedBy` 欄（SPEC-001 §4 v1.9；SPEC-004 §3.6／4.35）已由
+/// `AppTableRow.ticket` 補齊（欄序 ID／標題／狀態／優先／blockedBy／損壞
+/// 標記，見 `app_table_row.dart`），本頁渲染 [TicketFixtureItem.blockedBy]。
 library;
 
 import 'package:flutter/widgets.dart';
@@ -253,6 +250,7 @@ class _ReadyListView extends ConsumerWidget {
           onSort: () => onSort(TicketSortKey.priority),
           testKey: const Key('action-tickets-sort-priority'),
         ),
+        TableColumnHeader.plain(label: l10n.columnBlockedBy),
         const SizedBox.shrink(),
       ],
     );
@@ -443,8 +441,9 @@ class _TopicSection extends StatelessWidget {
   }
 }
 
-/// 票列（列表模式與主題模式共用）：欄序 ID／標題／狀態／優先／損壞標記
-/// （SPEC-004 §3.2 `TicketListA` 票列，見檔頭「缺件」說明）。
+/// 票列（列表模式與主題模式共用）：欄序 ID／標題／狀態／優先／blockedBy／
+/// 損壞標記（SPEC-004 §3.2 `TicketListA` 票列；blockedBy 值為被阻擋的
+/// ticket ID 以「, 」串接，無則「—」，SPEC-001 §4）。
 AppTableRow _ticketRow(
   TicketFixtureItem ticket, {
   required void Function(String ticketId) onOpenTicket,
@@ -458,6 +457,10 @@ AppTableRow _ticketRow(
     priority: AppText(
       ticket.priority ?? placeholder,
       variant: AppTextVariant.caption,
+    ),
+    blockedBy: AppText(
+      ticket.blockedBy.isEmpty ? placeholder : ticket.blockedBy.join(', '), // i18n-exempt: 串接分隔字面與規則同，非 UI 文案
+      variant: AppTextVariant.mono,
     ),
     marker: ticket.corrupted
         ? IssueMarker.damagedDetail(

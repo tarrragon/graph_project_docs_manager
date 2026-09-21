@@ -319,6 +319,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get columnPriority => 'Priority';
 
   @override
+  String get columnBlockedBy => 'blockedBy';
+
+  @override
   String get columnStep => 'Step';
 
   @override

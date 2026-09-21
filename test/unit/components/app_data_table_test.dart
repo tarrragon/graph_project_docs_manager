@@ -24,6 +24,7 @@ void main() {
           SizedBox.shrink(),
           SizedBox.shrink(),
           SizedBox.shrink(),
+          SizedBox.shrink(),
         ],
       );
 
@@ -33,6 +34,7 @@ void main() {
         title: AppText(TestCopy.longZh),
         status: Badge.status(label: 'in_progress'),
         priority: AppText('P0'),
+        blockedBy: const AppText('—'),
         onTap: () {},
         testKey: ValueKey('card-tickets-$index'),
       );

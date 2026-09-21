@@ -312,6 +312,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get columnPriority => '優先';
 
   @override
+  String get columnBlockedBy => 'blockedBy';
+
+  @override
   String get columnStep => '步驟';
 
   @override

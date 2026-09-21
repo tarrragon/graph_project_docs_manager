@@ -1,7 +1,8 @@
 /// 表格列容器（SPEC-004 §4.35、§5.9）。
 ///
 /// 欄寬對齊表頭的水平格線列，四變體：`header`（欄首，配合 `columns` 決定
-/// 欄數與寬度）、`ticket`（票列，欄序 ID / 標題 / 狀態 / 優先 / 標記）、
+/// 欄數與寬度）、`ticket`（票列，欄序 ID / 標題 / 狀態 / 優先 / blockedBy /
+/// 標記，blockedBy 欄出處 SPEC-001 §4）、
 /// `step`（步驟列，欄序 序號 / 步驟名 / domain / 事件）、`eventFlow`（事件
 /// 流小表列，欄序 事件 / 發出 / 消費 / 孤立事件標記，非互動、可被定位）。
 /// 子件依變體固定型別序列（SPEC-004 4.35「slot 契約」），非任意 `Widget`
@@ -84,14 +85,16 @@ class AppTableRow extends StatelessWidget {
          cells: cells,
        );
 
-  /// 票列。欄序 ID / 標題 / 狀態 / 優先 / 標記，[marker] 可為 `null`
-  /// （欄位保留但不渲染內容，維持欄寬對齊）。整列可點。
+  /// 票列。欄序 ID / 標題 / 狀態 / 優先 / blockedBy / 標記（blockedBy 欄
+  /// 出處 SPEC-001 §4），[marker] 可為 `null`（欄位保留但不渲染內容，維持
+  /// 欄寬對齊）。整列可點。
   AppTableRow.ticket({
     Key? key,
     required AppText id,
     required AppText title,
     required Badge status,
     required AppText priority,
+    required AppText blockedBy,
     IssueMarker? marker,
     required VoidCallback onTap,
     required Key testKey,
@@ -99,7 +102,14 @@ class AppTableRow extends StatelessWidget {
          key: key,
          variant: _TableRowVariant.ticket,
          columns: ticketColumns,
-         cells: [id, title, status, priority, marker ?? const SizedBox.shrink()],
+         cells: [
+           id,
+           title,
+           status,
+           priority,
+           blockedBy,
+           marker ?? const SizedBox.shrink(),
+         ],
          onTap: onTap,
          testKey: testKey,
        );
@@ -148,12 +158,15 @@ class AppTableRow extends StatelessWidget {
        );
 
   /// `ticket` 欄規格（SPEC-004 4.35「尺寸契約」欄規格 `ticket`）：ID 固定寬、
-  /// 標題填滿、狀態固定寬、優先固定寬、標記固定寬。
+  /// 標題填滿、狀態固定寬、優先固定寬、blockedBy 填滿（無專屬寬度 token；
+  /// ID 清單長度不定，固定寬會在多值時全部截斷，填滿欄以比例讓標題優先，
+  /// SPEC-004 4.35 提案）、標記固定寬。
   static const List<ColumnSpec> ticketColumns = [
     ColumnSpec.fixed(LayoutSize.ticketIdColumnWidth),
-    ColumnSpec.flex(),
+    ColumnSpec.flex(2),
     ColumnSpec.fixed(LayoutSize.ticketStatusColumnWidth),
     ColumnSpec.fixed(LayoutSize.ticketPriorityColumnWidth),
+    ColumnSpec.flex(),
     ColumnSpec.fixed(LayoutSize.ticketMarkerColumnWidth),
   ];
 
@@ -273,8 +286,9 @@ class AppTableRow extends StatelessWidget {
   }
 
   /// `ticket` / `step` / `eventFlow` 的朗讀標籤：各格文字依序串接
-  /// （SPEC-004 4.35「無障礙」朗讀標籤，ticket 例：ID，標題，狀態，優先；
-  /// eventFlow 例：事件，發出，消費，有標記時附標記朗讀文字）。
+  /// （SPEC-004 4.35「無障礙」朗讀標籤，ticket 例：ID，標題，狀態，優先，
+  /// blockedBy（完整值不截斷）；eventFlow 例：事件，發出，消費，有標記時
+  /// 附標記朗讀文字）。
   String get _semanticLabel {
     final parts = switch (_variant) {
       _TableRowVariant.ticket => [
@@ -282,6 +296,7 @@ class AppTableRow extends StatelessWidget {
           (cells[1] as AppText).text,
           (cells[2] as Badge).label ?? '',
           (cells[3] as AppText).text,
+          (cells[4] as AppText).text,
         ],
       _TableRowVariant.step => [
           '${(cells[0] as StepNumber).number}',
