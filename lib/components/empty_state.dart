@@ -4,9 +4,12 @@
 /// 訊息、說明、動作為 slot。[EmptyStateVariant.page] 置中於內容區，動作
 /// 必填（FR-03）；[EmptyStateVariant.section] 靠上對齊，動作可缺（前進
 /// 動作在區塊外時，例：未選格右欄由點格本身承載前進）。`page` 動作必填
-/// 有一個明式例外——破洞報告「無破洞」列：前進動作改置於
-/// `SplitRow.header` 右側（SPEC-004 §3.7 第 18 項、`0.1.0-W3-335.37`
-/// R10），呼叫端須以 [actionsOptedOut] 明式標示，非隱式放行。
+/// 只對 [EmptyStatePageActionsException] 明列的例外狀態成立——目前唯一
+/// 成員 [EmptyStatePageActionsException.actionsRelocatedToHeader]
+/// 對應破洞報告「無破洞」列：前進動作改置於 `SplitRow.header` 右側
+/// （SPEC-004 §3.7 第 18 項、`0.1.0-W3-335.37` R10、SPEC-003 §2.7）。
+/// 呼叫端須傳入該具名狀態識別，非任意布林旗標；新增例外需在此
+/// enum 新增具名成員並引用對應 SPEC 條款，不可隱式放行。
 library;
 
 import 'package:flutter/widgets.dart';
@@ -27,13 +30,28 @@ enum EmptyStateVariant {
   section,
 }
 
+/// `page` 動作必填斷言的明列例外狀態清單（SPEC-004 §4.21、SPEC-003 §2.7）。
+///
+/// 非任意布林旗標——每個非 [none] 成員對應一個 SPEC 明列的例外狀態，
+/// 呼叫端須傳入具體識別以繞過必填斷言。新增例外需在此新增具名成員並
+/// 於註解引用 SPEC 條款，不可以泛用布林隱式放行。
+enum EmptyStatePageActionsException {
+  /// 無例外，`page` 動作必填斷言正常生效。
+  none,
+
+  /// 前進動作已置於畫面外的其他掛點（例：`SplitRow.header` 右側，
+  /// SPEC-004 §3.7 第 18 項），如破洞報告「無破洞」列
+  /// （`0.1.0-W3-335.37` R10、SPEC-003 §2.7）。
+  actionsRelocatedToHeader,
+}
+
 /// SPEC-001 FR-03 空狀態承載元件：訊息 + 說明（可缺）+ 動作列（依變體）。
 ///
 /// | slot | 必填 | 說明 |
 /// |------|------|------|
 /// | [message] | 是 | 呼叫端傳入（i18n key 取值） |
 /// | [explanation] | 否 | 呼叫端傳入 |
-/// | [actions] | `page` 必填（1..3），[actionsOptedOut] 為 `true` 時可空；`section` 可空 | 經 [ButtonRow]，首個非 `backAction`（FR-03，由呼叫端保證） |
+/// | [actions] | `page` 必填（1..3），[pageActionsException] 非 [EmptyStatePageActionsException.none] 時可空；`section` 可空 | 經 [ButtonRow]，首個非 `backAction`（FR-03，由呼叫端保證） |
 /// | [testKey] | 是 | `state-<screen>-<state>` / `panel-domain-cell-detail-empty` |
 class EmptyState extends StatelessWidget {
   EmptyState({
@@ -43,12 +61,12 @@ class EmptyState extends StatelessWidget {
     required this.testKey,
     this.explanation,
     this.actions = const [],
-    this.actionsOptedOut = false,
+    this.pageActionsException = EmptyStatePageActionsException.none,
   }) : assert(
          variant != EmptyStateVariant.page ||
              actions.isNotEmpty ||
-             actionsOptedOut,
-         'page 變體動作必填，明式例外需以 actionsOptedOut 標示（SPEC-004 §4.21）', // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
+             pageActionsException != EmptyStatePageActionsException.none,
+         'page 變體動作必填，明式例外需以 pageActionsException 標示 SPEC 明列狀態（SPEC-004 §4.21）', // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
        ),
        assert(
          actions.length <= 3,
@@ -68,10 +86,10 @@ class EmptyState extends StatelessWidget {
   /// 動作按鈕（經 [ButtonRow]，1..3 個）；`page` 必填、`section` 可空。
   final List<AppButton> actions;
 
-  /// `page` 動作必填的明式例外標示：呼叫端已將前進動作置於畫面外的其他
-  /// 掛點（例：`SplitRow.header`，SPEC-004 §3.7 第 18 項）時設為 `true`，
-  /// 以繞過必填斷言；預設 `false`（隱式放行禁止）。
-  final bool actionsOptedOut;
+  /// `page` 動作必填斷言的例外狀態識別（SPEC-004 §4.21、SPEC-003 §2.7）；
+  /// 預設 [EmptyStatePageActionsException.none]（隱式放行禁止），
+  /// 只有 SPEC 明列的具名狀態可繞過必填斷言。
+  final EmptyStatePageActionsException pageActionsException;
 
   /// 呼叫端定址 key（`Key`）。
   final Key testKey;
