@@ -505,6 +505,12 @@ class _SwimlaneBody extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final selectedUcId = ref.watch(selectedUcProvider);
 
+    void onSelectDomain(String domainId) {
+      ref.read(domainViewStateProvider.notifier).state = state.copyWith(
+        selectedDomainId: () => domainId,
+      );
+    }
+
     if (selectedUcId == null) {
       return Panel(
         children: [
@@ -520,11 +526,13 @@ class _SwimlaneBody extends ConsumerWidget {
                   SwimlaneLane(
                     name: DomainViewFixtures.domainNames[domainId]!,
                     nodes: const [],
+                    domainId: domainId,
                   ),
               ],
               laneHighlight: state.selectedDomainId != null
                   ? DomainViewFixtures.domainNames[state.selectedDomainId]
                   : null,
+              onSelectDomain: onSelectDomain,
               scrollKey: const Key('scroll-domain-swimlane'),
               dragKey: const Key('drag-domain-swimlane'),
             ),
@@ -589,11 +597,13 @@ class _SwimlaneBody extends ConsumerWidget {
                         node.column,
                       ),
                   ],
+                  domainId: lane.domainId,
                 ),
             ],
             laneHighlight: state.selectedDomainId != null
                 ? DomainViewFixtures.domainNames[state.selectedDomainId]
                 : null,
+            onSelectDomain: onSelectDomain,
             scrollKey: const Key('scroll-domain-swimlane'),
             dragKey: const Key('drag-domain-swimlane'),
           ),
