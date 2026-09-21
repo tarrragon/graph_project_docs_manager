@@ -200,6 +200,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewSchemaDetailAction => 'View Details';
 
   @override
+  String get useBuiltinSchemaAction => 'View with the app\'s built-in schema';
+
+  @override
   String get gotoGapsReportAction => 'Go to Gap Report';
 
   @override

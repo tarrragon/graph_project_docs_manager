@@ -14,6 +14,7 @@ void main() {
   const switchKey = ValueKey('action-domain-switch-project');
   const detailButtonKey = ValueKey('action-domain-schema-detail');
   const detailPanelKey = ValueKey('panel-domain-schema-detail');
+  const degradedViewKey = ValueKey('action-domain-degraded-view');
 
   group('變體與狀態矩陣：plain（版本值有／無、說明有／無）', () {
     testWidgetsAtEachSize('plain 全欄位（訊息＋說明＋版本值）不溢位', (tester, size) async {
@@ -48,6 +49,67 @@ void main() {
 
       expectNoOverflow(tester);
       expect(find.byKey(plainKey), findsOneWidget);
+    });
+  });
+
+  group('對照組：onDegradedView slot（傳與不傳，E1）', () {
+    testWidgetsAtEachSize('不傳 onDegradedView 時不渲染降級檢視按鈕', (
+      tester,
+      size,
+    ) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: BlockedState.plain(
+          message: 'schema unavailable',
+          version: '1.0.0',
+          onSwitchProject: () {},
+          testKey: plainKey,
+        ),
+      );
+
+      expectNoOverflow(tester);
+      expect(find.byKey(switchKey), findsOneWidget);
+      expect(find.byKey(degradedViewKey), findsNothing);
+    });
+
+    testWidgetsAtEachSize('傳 onDegradedView 時渲染降級檢視按鈕（產物與不傳不同）', (
+      tester,
+      size,
+    ) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: BlockedState.plain(
+          message: 'schema unavailable',
+          version: '1.0.0',
+          onSwitchProject: () {},
+          onDegradedView: () {},
+          testKey: plainKey,
+        ),
+      );
+
+      expectNoOverflow(tester);
+      expect(find.byKey(switchKey), findsOneWidget);
+      expect(find.byKey(degradedViewKey), findsOneWidget);
+    });
+
+    testWidgets('點擊降級檢視按鈕呼叫 onDegradedView 恰一次', (tester) async {
+      var count = 0;
+      await pumpHarness(
+        tester,
+        child: BlockedState.plain(
+          message: 'schema unavailable',
+          onSwitchProject: () {},
+          onDegradedView: () => count++,
+          testKey: plainKey,
+        ),
+      );
+
+      await tester.tap(find.byKey(degradedViewKey));
+      await tester.pumpAndSettle();
+
+      expect(count, 1);
     });
   });
 
