@@ -49,6 +49,7 @@ from ticket_system.lib.field_validators import (
     missing_where_paths,
     validate_blocked_by_references,
     validate_discovered_during_arg,
+    validate_portable_issue_gate,
     validate_source_ticket_arg,
     validate_where_files,
 )
@@ -201,6 +202,13 @@ def _parse_cli_args_to_config(
             CreateMessages.WHERE_PATH_NOT_FOUND_WARNING,
             path=missing,
         ))
+
+    # 可攜問題分流硬閘門：where.files 全數落在 .claude/ 下時，須先查重並
+    # 附查重結論（--dedup-checked）才放行，否則阻擋建票（詳見
+    # validate_portable_issue_gate docstring）。
+    dedup_checked = getattr(args, "dedup_checked", None)
+    if not validate_portable_issue_gate(where_files, dedup_checked):
+        return None
 
     # 處理 blocked_by
     blocked_by = [b.strip() for b in args.blocked_by.split(",")] if args.blocked_by else []
@@ -1096,6 +1104,15 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     parser.add_argument("--where", "--where-files", dest="where_files", help="影響檔案（逗號分隔，如 'file1.py,file2.py'）")
     parser.add_argument("--why", help="需求依據（IMP/ANA/ADJ 類型必填）")
+    parser.add_argument(
+        "--dedup-checked",
+        dest="dedup_checked",
+        help=(
+            "可攜問題分流硬閘門的查重結論：where.files 全數落在 .claude/ 下時"
+            "必填，值為命中的 issue 號（如 '#102'）或 'none'；僅給旗標不給"
+            "結論仍阻擋建票"
+        ),
+    )
     # --how / --ho 攔截：exact match 優先於縮寫展開，給友善提示
     # （1.0.0-W1-024.1 A3 + 1.0.0-W1-028 模式化）。--ho 為更短前綴同類誤打，
     # 共用同一中文提示（約束 2 落地：攔截而非懸而未決）。
