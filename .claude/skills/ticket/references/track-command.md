@@ -42,6 +42,7 @@
 | `add-acceptance` | 追加驗收條件 | --help |
 | `remove-acceptance` | 移除驗收條件（按編號） | --help |
 | `add-spawned` | 追加 `spawned_tickets` 項目 | 〈UPDATE 操作〉 |
+| `remove-spawned` | 移除 `spawned_tickets` 項目（按 ID，非索引；對不存在的 ID 回報而非靜默；成功移除時同步清除目標票回指本票的 `source_ticket`） | 〈UPDATE 操作〉 |
 | `set-decision-tree` | 設定 `decision_tree_path` 欄位 | --help |
 | `batch-claim` | 批量認領 Tickets | 〈UPDATE 操作〉 |
 | `batch-complete` | 批量完成 Tickets | 〈UPDATE 操作〉 |
@@ -423,6 +424,12 @@ Live in_progress 票（非 stale，`staleness.is_live_occupied` 判準）以 see
 /ticket track add-spawned <id> <spawned-id>                    # 單一 ID
 /ticket track add-spawned <id> <spawned-1> <spawned-2> <s-3>   # 多 ID 空白分隔（W17-008.1）
 # 重複 ID 會自動去重並列入「已存在略過」
+
+# 移除 spawned_tickets（按 ID 非索引，介面對稱 add-spawned；補齊寫錯後的更正路徑）
+/ticket track remove-spawned <id> <spawned-id>                     # 單一 ID
+/ticket track remove-spawned <id> <spawned-1> <spawned-2>          # 多 ID
+# 找不到的 ID 回報於 stderr（非靜默），rc 非 0；部分找到時已找到者照常移除
+# 移除成功時，若目標票 source_ticket 恰回指本票，同步清除該反向欄位
 ```
 
 ## UPDATE 操作補充：commit 副作用與欄位語意
@@ -546,6 +553,8 @@ ticket track resolve-spawn-request <id> SR-N --status dismissed --reason "<評�
 ```
 
 `--status` 限 `processed`（已建 ticket，`--spawned-ticket` 可傳多個）／`dismissed`（評估後不建，建議附 `--reason`）；兩者皆支援 `--force` 逃生閥旁路 status precondition 檢查（記入 hook-logs）。與上方「complete 前置清單」表「Spawn Requests 未處理條目」列對應——本命令是該檢查項的唯一合法收尾路徑。
+
+`--spawned-ticket` 接受任意既有 ticket ID，不驗證其血緣——`processed` 回填 `spawned_tickets` 時（與 `add-spawned` 同），若目標票已有不同於本票的 `source_ticket`，會於 stderr 印出 WARNING（僅提示、不擋寫入，因「刻意關聯一張已有主的既有票」屬合法情境）。誤植血緣事後可用 `remove-spawned` 更正。
 
 ### td-status — 校準 TD 清單（PC-094）
 

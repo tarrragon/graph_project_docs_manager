@@ -383,6 +383,7 @@ class TrackMessages:
     HELP_ADD_ACCEPTANCE = "追加驗收條件"
     HELP_REMOVE_ACCEPTANCE = "移除驗收條件（按編號）"
     HELP_ADD_SPAWNED = "追加 spawned_tickets 項目"
+    HELP_REMOVE_SPAWNED = "移除 spawned_tickets 項目（按 ID，非索引；對不存在的 ID 回報而非靜默）"
     HELP_SET_DECISION_TREE = "設定 decision_tree_path 欄位"
     HELP_WHO = "查詢 Ticket 的 who 欄位"
     HELP_TITLE = "查詢 Ticket 的 title 欄位"

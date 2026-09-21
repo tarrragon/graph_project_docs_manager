@@ -117,9 +117,11 @@
 
 | 屬性 | 值 |
 |------|---|
-| 維護方式 | CLI 自動維護（建立衍生 ticket 時自動追加） |
+| 維護方式 | CLI 自動維護（建立衍生 ticket 時自動追加）；亦可手動維護（見下） |
 | 阻擋語意 | 視本 ticket type 而定（見「阻擋語意對照表」） |
 | 業務語意 | 「衍生副產品，獨立排程」 |
+| CLI 手動寫入 | `add-spawned <id> <spawned-id...>`／`resolve-spawn-request ... --spawned-ticket <id...>`（皆接受任意既有 ID，不驗證血緣，僅於目標票 `source_ticket` 衝突時 WARNING） |
+| CLI 手動移除 | `remove-spawned <id> <spawned-id...>`（按 ID 非索引；找不到的條目回報而非靜默；成功移除時若目標票 `source_ticket` 恰回指本票，同步清除該反向欄位） |
 
 ### blockedBy（陣列，array of IDs）
 

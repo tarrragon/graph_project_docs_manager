@@ -93,6 +93,7 @@ from .fields import (
     execute_add_acceptance,
     execute_remove_acceptance,
     execute_add_spawned,
+    execute_remove_spawned,
     execute_set_decision_tree,
 )
 # 導入批量操作模組
@@ -533,6 +534,7 @@ def _create_command_handlers() -> dict:
         "add-acceptance": execute_add_acceptance,
         "remove-acceptance": execute_remove_acceptance,
         "add-spawned": execute_add_spawned,
+        "remove-spawned": execute_remove_spawned,
         "set-decision-tree": execute_set_decision_tree,
         "audit": execute_audit,
         "audit-version": execute_audit_version,
@@ -1021,6 +1023,12 @@ def _register_field_write_commands(
     p_add_spawned.add_argument("ticket_id", help=TrackMessages.ARG_TICKET_ID)
     p_add_spawned.add_argument("value", nargs="+", help="Spawned Ticket ID（可一次傳多個，對齊 Unix 慣例如 rm a b c）")
     p_add_spawned.add_argument("--version", help=TrackMessages.ARG_VERSION)
+
+    # remove-spawned 操作（補齊 add-spawned 的對稱移除介面，按 ID 而非索引）
+    p_rm_spawned = subparsers.add_parser("remove-spawned", help=TrackMessages.HELP_REMOVE_SPAWNED)
+    p_rm_spawned.add_argument("ticket_id", help=TrackMessages.ARG_TICKET_ID)
+    p_rm_spawned.add_argument("value", nargs="+", help="要移除的 Spawned Ticket ID（可一次傳多個，對齊 add-spawned）")
+    p_rm_spawned.add_argument("--version", help=TrackMessages.ARG_VERSION)
 
     # set-decision-tree 操作
     p_set_dt = subparsers.add_parser("set-decision-tree", help=TrackMessages.HELP_SET_DECISION_TREE)
