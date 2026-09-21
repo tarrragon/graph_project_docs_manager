@@ -102,6 +102,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'No structured flow has been written yet';
 
   @override
+  String get ucUnsetPrompt => 'Select a UC to view its flow';
+
+  @override
+  String get ucSelectorTitle => 'Select UC';
+
+  @override
   String get emptyProposalMessage => 'This project has no proposals yet';
 
   @override

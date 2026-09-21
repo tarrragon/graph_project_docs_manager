@@ -144,6 +144,16 @@
     "description": "SPEC-001 §2 UC Flow 視圖·flow 未結構化狀態的顯示文案"
   },
 
+  "ucUnsetPrompt": "選擇一條 UC 以檢視 flow",
+  "@ucUnsetPrompt": {
+    "description": "SPEC-001 §2 UC Flow 視圖·尚未選定 UC 狀態的顯示文案"
+  },
+
+  "ucSelectorTitle": "選擇 UC",
+  "@ucSelectorTitle": {
+    "description": "SPEC-004 §3.6〈UC 選擇入口〉Section.static 節首文案"
+  },
+
   "emptyProposalMessage": "此專案尚無提案",
   "@emptyProposalMessage": {
     "description": "SPEC-001 §3 追溯視圖·無提案狀態的顯示文案"

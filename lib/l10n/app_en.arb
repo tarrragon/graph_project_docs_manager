@@ -24,6 +24,8 @@
   "schemaIncompatibleMessage": "This app supports schema version {appVersion}; this project uses {projectVersion}, which is incompatible",
   "emptyUcMessage": "This project has no UC nodes yet",
   "flowUnstructuredMessage": "No structured flow has been written yet",
+  "ucUnsetPrompt": "Select a UC to view its flow",
+  "ucSelectorTitle": "Select UC",
   "emptyProposalMessage": "This project has no proposals yet",
   "ticketsLoadPrompt": "Load {count} tickets",
   "ticketsLoadingProgress": "Parsed {parsed} so far",

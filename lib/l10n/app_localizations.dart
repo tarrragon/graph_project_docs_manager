@@ -236,6 +236,18 @@ abstract class AppLocalizations {
   /// **'尚未填寫結構化 flow'**
   String get flowUnstructuredMessage;
 
+  /// SPEC-001 §2 UC Flow 視圖·尚未選定 UC 狀態的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇一條 UC 以檢視 flow'**
+  String get ucUnsetPrompt;
+
+  /// SPEC-004 §3.6〈UC 選擇入口〉Section.static 節首文案
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇 UC'**
+  String get ucSelectorTitle;
+
   /// SPEC-001 §3 追溯視圖·無提案狀態的顯示文案
   ///
   /// In zh, this message translates to:
