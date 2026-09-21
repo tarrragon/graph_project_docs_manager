@@ -525,6 +525,11 @@
     "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"
   },
 
+  "columnBlockedBy": "blockedBy",
+  "@columnBlockedBy": {
+    "description": "SPEC-004 §4.0.6：欄名沿用欄位字面，SPEC-001 §4（4.35 ticket）"
+  },
+
   "columnStep": "步驟",
   "@columnStep": {
     "description": "SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）"

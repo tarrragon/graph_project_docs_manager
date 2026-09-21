@@ -632,6 +632,12 @@ abstract class AppLocalizations {
   /// **'優先'**
   String get columnPriority;
 
+  /// SPEC-004 §4.0.6：欄名沿用欄位字面，SPEC-001 §4（4.35 ticket）
+  ///
+  /// In zh, this message translates to:
+  /// **'blockedBy'**
+  String get columnBlockedBy;
+
   /// SPEC-004 §2、§4：欄位標題文案（4.14 呼叫端）
   ///
   /// In zh, this message translates to:

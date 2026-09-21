@@ -90,6 +90,7 @@
   "columnTitle": "Title",
   "columnStatus": "Status",
   "columnPriority": "Priority",
+  "columnBlockedBy": "blockedBy",
   "columnStep": "Step",
   "columnDomain": "Domain",
   "columnEvents": "Events",
