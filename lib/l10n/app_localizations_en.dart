@@ -513,4 +513,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gotoTicketsListAction => 'Go to Ticket List';
+
+  @override
+  String get columnEvent => 'Event';
+
+  @override
+  String get columnEmitter => 'Emitted by';
+
+  @override
+  String get columnConsumer => 'Consumed by';
+
+  @override
+  String eventFlowStepDomain(String step, String domain) {
+    return '$step · $domain';
+  }
+
+  @override
+  String eventOutsideUc(String domains) {
+    return 'Outside this UC ($domains)';
+  }
+
+  @override
+  String get orphanEventMarkerLabel => 'Orphan event';
 }

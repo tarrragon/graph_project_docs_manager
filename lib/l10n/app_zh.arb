@@ -889,5 +889,48 @@
   "gotoTicketsListAction": "前往 Ticket 清單",
   "@gotoTicketsListAction": {
     "description": "SPEC-003 §3.3 追溯視圖：Ticket 清單未載入時的前往動作文案（`0.1.0-W3-335.38` S-28）"
+  },
+
+  "columnEvent": "事件",
+  "@columnEvent": {
+    "description": "SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）"
+  },
+
+  "columnEmitter": "發出",
+  "@columnEmitter": {
+    "description": "SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）"
+  },
+
+  "columnConsumer": "消費",
+  "@columnConsumer": {
+    "description": "SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）"
+  },
+
+  "eventFlowStepDomain": "{step} · {domain}",
+  "@eventFlowStepDomain": {
+    "description": "SPEC-004 4.35 `eventFlow` 發出／消費格（多個以「、」串接）",
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+
+  "eventOutsideUc": "本 UC 外（{domains}）",
+  "@eventOutsideUc": {
+    "description": "SPEC-004 4.35 `eventFlow`（SPEC-003 §3.2「本 UC 外」列；domains 為空時仍顯示括號內空值，提案）",
+    "placeholders": {
+      "domains": {
+        "type": "String"
+      }
+    }
+  },
+
+  "orphanEventMarkerLabel": "孤立事件",
+  "@orphanEventMarkerLabel": {
+    "description": "SPEC-004 4.35 `eventFlow` 標記格朗讀"
   }
 }

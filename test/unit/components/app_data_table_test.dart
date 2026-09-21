@@ -69,6 +69,36 @@ void main() {
   List<AppTableRow> buildStepRows(int count) =>
       List.generate(count, buildStepRow);
 
+  const eventFlowHeaderKey = ValueKey('panel-ucFlow-event-flow-header');
+
+  AppTableRow buildEventFlowHeader() => AppTableRow.header(
+        key: eventFlowHeaderKey,
+        columns: AppTableRow.eventFlowColumns,
+        cells: const [
+          SizedBox.shrink(),
+          SizedBox.shrink(),
+          SizedBox.shrink(),
+          SizedBox.shrink(),
+        ],
+      );
+
+  AppTableRow buildEventFlowRow(int index) => AppTableRow.eventFlow(
+        key: ValueKey('event-flow-row-$index'),
+        event: AppText('EVT-$index'),
+        emittedBy: AppText(TestCopy.stepName),
+        consumedBy: AppText(TestCopy.stepName),
+      );
+
+  List<AppTableRow> buildEventFlowRows(int count) =>
+      List.generate(count, buildEventFlowRow);
+
+  AppDataTable buildEventFlowAppendix(int count) => AppDataTable(
+        variant: AppDataTableVariant.plain,
+        columns: AppTableRow.eventFlowColumns,
+        header: buildEventFlowHeader(),
+        rows: buildEventFlowRows(count),
+      );
+
   group('變體與規模：virtual（1313 列）與 plain（39 列）', () {
     testWidgetsAtEachSize('virtual 渲染 1313 列假資料不溢位', (tester, size) async {
       await pumpHarness(
@@ -293,6 +323,87 @@ void main() {
           .dy;
 
       expect(row1Top - row0Top, LayoutSize.rowHeightRelaxed.h);
+    });
+  });
+
+  group('appendix slot（SPEC-004 §5.10，事件流小表）', () {
+    testWidgets('無 appendix 時不渲染事件流小表', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          height: 400,
+          child: AppDataTable(
+            variant: AppDataTableVariant.plain,
+            columns: AppTableRow.stepColumns,
+            header: buildStepHeader(),
+            rows: buildStepRows(2),
+            scrollKey: scrollKeyUcFlow,
+          ),
+        ),
+      );
+
+      expect(find.byKey(eventFlowHeaderKey), findsNothing);
+    });
+
+    testWidgets('有 appendix 時渲染事件流小表（表頭 + 列），與無 appendix 產物不同', (
+      tester,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          height: 400,
+          child: AppDataTable(
+            variant: AppDataTableVariant.plain,
+            columns: AppTableRow.stepColumns,
+            header: buildStepHeader(),
+            rows: buildStepRows(2),
+            scrollKey: scrollKeyUcFlow,
+            appendix: buildEventFlowAppendix(3),
+          ),
+        ),
+        settle: false,
+      );
+
+      expectNoOverflow(tester);
+      expect(find.byKey(eventFlowHeaderKey), findsOneWidget);
+      expect(find.byKey(const ValueKey('event-flow-row-0')), findsOneWidget);
+    });
+
+    testWidgets('appendix 內的表不持有自身捲動 key', (tester) async {
+      const appendixScrollKey = ValueKey('scroll-ucFlow-steps');
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          height: 400,
+          child: AppDataTable(
+            variant: AppDataTableVariant.plain,
+            columns: AppTableRow.stepColumns,
+            header: buildStepHeader(),
+            rows: buildStepRows(1),
+            scrollKey: appendixScrollKey,
+            appendix: buildEventFlowAppendix(1),
+          ),
+        ),
+      );
+
+      // 只有外層表持有 scroll-ucFlow-steps；appendix 內的表未持有自身
+      // scrollKey（不建立額外 Scrollable）。
+      expect(find.byKey(appendixScrollKey), findsOneWidget);
+      expect(find.byType(Scrollable), findsOneWidget);
+    });
+
+    testWidgets('virtual 變體拒絕 appendix 參數', (tester) async {
+      expect(
+        () => AppDataTable(
+          variant: AppDataTableVariant.virtual,
+          columns: AppTableRow.ticketColumns,
+          header: buildTicketHeader(),
+          rows: buildTicketRows(1),
+          scrollKey: scrollKeyTickets,
+          appendix: buildEventFlowAppendix(1),
+        ),
+        throwsA(isA<AssertionError>()),
+      );
     });
   });
 }

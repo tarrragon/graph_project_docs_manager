@@ -955,6 +955,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'前往 Ticket 清單'**
   String get gotoTicketsListAction;
+
+  /// SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）
+  ///
+  /// In zh, this message translates to:
+  /// **'事件'**
+  String get columnEvent;
+
+  /// SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）
+  ///
+  /// In zh, this message translates to:
+  /// **'發出'**
+  String get columnEmitter;
+
+  /// SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）
+  ///
+  /// In zh, this message translates to:
+  /// **'消費'**
+  String get columnConsumer;
+
+  /// SPEC-004 4.35 `eventFlow` 發出／消費格（多個以「、」串接）
+  ///
+  /// In zh, this message translates to:
+  /// **'{step} · {domain}'**
+  String eventFlowStepDomain(String step, String domain);
+
+  /// SPEC-004 4.35 `eventFlow`（SPEC-003 §3.2「本 UC 外」列；domains 為空時仍顯示括號內空值，提案）
+  ///
+  /// In zh, this message translates to:
+  /// **'本 UC 外（{domains}）'**
+  String eventOutsideUc(String domains);
+
+  /// SPEC-004 4.35 `eventFlow` 標記格朗讀
+  ///
+  /// In zh, this message translates to:
+  /// **'孤立事件'**
+  String get orphanEventMarkerLabel;
 }
 
 class _AppLocalizationsDelegate

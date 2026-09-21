@@ -141,5 +141,11 @@
   "projectUnreadyReasonLoading": "Graph loading",
   "projectUnreadyReasonIncompatible": "This project is not usable with this app",
   "gotoDomainViewAction": "Go to Domain View",
-  "gotoTicketsListAction": "Go to Ticket List"
+  "gotoTicketsListAction": "Go to Ticket List",
+  "columnEvent": "Event",
+  "columnEmitter": "Emitted by",
+  "columnConsumer": "Consumed by",
+  "eventFlowStepDomain": "{step} · {domain}",
+  "eventOutsideUc": "Outside this UC ({domains})",
+  "orphanEventMarkerLabel": "Orphan event"
 }
