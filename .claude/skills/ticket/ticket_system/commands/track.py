@@ -125,6 +125,8 @@ from .track_artifacts import (
 from .track_set_acceptance import execute_set_acceptance
 # 導入 set-closed-by 子命令（closed 票 frontmatter 欄位修正路徑）
 from .track_set_closed_by import execute_set_closed_by
+# 導入 restore 子命令（closed 票唯一合法出邊：closed -> pending 還原路徑）
+from .track_restore import execute_restore
 # 導入 set-exit-status / set-completion-info 子命令（1.5.0-W5-021 制式化內容生成）
 from .track_structured_body import (
     execute_set_exit_status,
@@ -512,6 +514,7 @@ def _create_command_handlers() -> dict:
         "check-acceptance": execute_check_acceptance,
         "set-acceptance": execute_set_acceptance,
         "set-closed-by": execute_set_closed_by,
+        "restore": execute_restore,
         "set-exit-status": execute_set_exit_status,
         "set-completion-info": execute_set_completion_info,
         "validate": execute_validate,
@@ -752,6 +755,22 @@ def _register_lifecycle_commands(
         help="新的 closed_by 值，須為合法且存在的 Ticket ID",
     )
     p_set_closed_by.add_argument("--version", help=TrackMessages.ARG_VERSION)
+
+    # restore 操作（closed 票唯一合法出邊：closed -> pending 還原路徑）
+    p_restore = subparsers.add_parser(
+        "restore",
+        help="還原 closed 票為 pending（closed 態唯一合法出邊，需 --reason）",
+    )
+    p_restore.add_argument("ticket_id", help=TrackMessages.ARG_TICKET_ID)
+    p_restore.add_argument(
+        "--reason", required=True,
+        help="還原理由（必填，禁止靜默還原）",
+    )
+    p_restore.add_argument(
+        "--as", dest="as_agent", default="",
+        help="還原者身份（選填，寫入 restored_by；未提供時記為 PM）",
+    )
+    p_restore.add_argument("--version", help=TrackMessages.ARG_VERSION)
 
     # release 操作
     p_release = subparsers.add_parser("release", help=TrackMessages.HELP_RELEASE)
