@@ -9,7 +9,6 @@
 //   正常 · 主題          state-tickets-topic             Panel.scrollable[Section.collapsible...]
 //   無 ticket           state-tickets-empty             EmptyState.page
 //   含損壞（疊加）        badge-tickets-corrupted         IssueMarker.damagedDetail
-import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
@@ -272,11 +271,10 @@ void main() {
     testWidgets('action-tickets-filter-status 選狀態 → 清單依狀態過濾', (
       tester,
     ) async {
-      // 缺件：`FilterDropdown`（`lib/components/filter_dropdown.dart`）未
-      // 實作 SPEC-003 §3.4 F3 的 `menu-tickets-filter-<key>` /
-      // `option-tickets-filter-<key>-<value>` 測試錨點（元件本身無對應
-      // `Key`），見本票 NeedsContext；此處改以 `Semantics.menuItem` 的
-      // label 定位選項，驗證篩選行為本身可操作。
+      // SPEC-003 §3.4 F3 的 `menu-tickets-filter-<key>` /
+      // `option-tickets-filter-<key>-<value>` 測試錨點已由
+      // `0.1.0-W1-077` 補齊（見 `lib/components/filter_dropdown.dart`），
+      // 改以錨點定位選項（取代先前的 Semantics.menuItem label 定位）。
       await pumpHarness(
         tester,
         child: const TicketListScreen(),
@@ -290,12 +288,7 @@ void main() {
       await tester.tap(AnchorFinder.action(Screen.tickets, 'filter-status'));
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Semantics &&
-              widget.properties.role == SemanticsRole.menuItem &&
-              widget.properties.label == 'pending',
-        ),
+        find.byKey(const Key('option-tickets-filter-status-pending')),
       );
       await tester.pumpAndSettle();
 

@@ -43,6 +43,9 @@ class FilterOption {
 /// | [selected] | 是 | `null` = 全部 |
 /// | [onChanged] | 是 | 選取且值改變時呼叫恰一次；選「全部」傳 `null` |
 /// | [testKey] | 是（`action-tickets-filter-<key>`） | 觸發器定址 key |
+/// | [screen] | 是 | 選單錨點命名表的 `<screen>`（SPEC-003 §2.9），呼叫端傳入，
+///   不由元件寫死（同一元件將用於其他畫面） |
+/// | [kind] | 是 | 選單錨點命名表的 `<kind>`（如 `filter-status`） |
 class FilterDropdown extends StatefulWidget {
   const FilterDropdown({
     super.key,
@@ -51,6 +54,8 @@ class FilterDropdown extends StatefulWidget {
     required this.selected,
     required this.onChanged,
     required this.testKey,
+    required this.screen,
+    required this.kind,
     this.allOptionLabel,
   });
 
@@ -68,6 +73,13 @@ class FilterDropdown extends StatefulWidget {
 
   /// 呼叫端定址 key（SPEC-004 4.13 slot 契約）。
   final Key testKey;
+
+  /// 選單錨點命名表（SPEC-003 §2.9）的 `<screen>`。由呼叫端傳入，元件不寫死
+  /// 特定畫面名稱。
+  final String screen;
+
+  /// 選單錨點命名表（SPEC-003 §2.9）的 `<kind>`（如 `filter-status`）。
+  final String kind;
 
   /// 「全部」文字覆寫；`null` 時取 [AppLocalizations.filterAllOption]。
   final String? allOptionLabel;
@@ -350,6 +362,7 @@ class _FilterDropdownState extends State<FilterDropdown> {
           targetAnchor: Alignment.bottomLeft,
           followerAnchor: Alignment.topLeft,
           child: Semantics(
+            key: Key('menu-${widget.screen}-${widget.kind}'),
             role: SemanticsRole.menu,
             child: Focus(
               autofocus: false,
@@ -394,8 +407,10 @@ class _FilterDropdownState extends State<FilterDropdown> {
     required String label,
   }) {
     final isSelected = value == widget.selected;
+    final optionValue = value ?? 'all';
 
     return Semantics(
+      key: Key('option-${widget.screen}-${widget.kind}-$optionValue'),
       role: SemanticsRole.menuItem,
       label: label,
       selected: isSelected,
