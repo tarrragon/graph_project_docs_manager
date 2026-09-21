@@ -96,6 +96,11 @@
     "description": "SPEC-001 §1 Domain 視圖·空圖狀態的顯示文案"
   },
 
+  "noUcNodesMessage": "此專案尚無 UC 節點",
+  "@noUcNodesMessage": {
+    "description": "SPEC-001 §2 UC Flow 視圖·無 UC 狀態的顯示文案"
+  },
+
   "notFrameworkProjectMessage": "此資料夾沒有 docs/，不是使用本框架的專案",
   "@notFrameworkProjectMessage": {
     "description": "SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案"
