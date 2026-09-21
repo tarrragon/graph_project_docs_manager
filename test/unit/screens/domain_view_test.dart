@@ -428,6 +428,62 @@ void main() {
       expect(find.text('0.0.3'), findsOneWidget);
       expectNoOverflow(tester);
     });
+
+    testWidgets(
+      'VERSION 不高於內建型別表版本 → action-domain-degraded-view 按下後轉為降級檢視',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const DomainViewScreen(),
+          overrides: [
+            domainViewStateProvider.overrideWith(
+              (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
+            ),
+          ],
+        );
+
+        expect(
+          find.byKey(const Key('action-domain-degraded-view')),
+          findsOneWidget,
+        );
+
+        await tester.tap(
+          find.byKey(const Key('action-domain-degraded-view')),
+        );
+        await tester.pump();
+
+        final state = container.read(domainViewStateProvider);
+        expect(state, isA<DomainReady>());
+        expect((state as DomainReady).isDegraded, isTrue);
+        expect(
+          AnchorFinder.state(Screen.domain, 'matrix'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('VERSION 高於內建型別表版本 → 不提供 action-domain-degraded-view', (
+      tester,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainSchemaUnconsumable(version: '9.99.9'),
+          ),
+        ],
+      );
+
+      expect(
+        find.byKey(const Key('action-domain-degraded-view')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('action-domain-switch-project')),
+        findsOneWidget,
+      );
+    });
   });
 
   group('schema 不相容 state-domain-schema-incompatible', () {
