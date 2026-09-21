@@ -414,6 +414,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cellDetailViewInSwimlaneAction => '在泳道中檢視';
 
   @override
+  String get swimlaneUcUnsetPrompt => '尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC';
+
+  @override
+  String get degradedSchemaBadgeLabel => '降級型別表';
+
+  @override
   String get modeMatrixLabel => '矩陣';
 
   @override

@@ -421,6 +421,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cellDetailViewInSwimlaneAction => 'View in swimlane';
 
   @override
+  String get swimlaneUcUnsetPrompt =>
+      'No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view';
+
+  @override
+  String get degradedSchemaBadgeLabel => 'Degraded schema';
+
+  @override
   String get modeMatrixLabel => 'Matrix';
 
   @override

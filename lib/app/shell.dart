@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/components.dart' as components;
 import '../l10n/app_localizations.dart';
+import '../screens/domain_view/domain_view_screen.dart';
 import '../screens/gap_report/scan_notification_controller.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../screens/project_switcher/project_switcher_providers.dart';
@@ -44,7 +45,8 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   late final ScanNotificationController _scanNotificationController;
 
   @override
@@ -53,10 +55,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     // `AppShell` 是應用程式常駐殼：以 `context` 作為系統通知 fallback
     // SnackBar 的載體，掛載期間內恆有效（SPEC-003 §2.2）。
-    _scanNotificationController = ScanNotificationController(
-      ref,
-      () => context,
-    )..start();
+    _scanNotificationController = ScanNotificationController(ref, () => context)
+      ..start();
   }
 
   @override
@@ -99,8 +99,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         switcherEntry: components.ProjectSwitcherEntry(
           projectName: projectName,
           isExpanded: isSwitcherOpen,
-          onTap: () => ref.read(switcherOpenProvider.notifier).state =
-              !isSwitcherOpen,
+          onTap: () =>
+              ref.read(switcherOpenProvider.notifier).state = !isSwitcherOpen,
           testKey: AppShell.projectSwitcherEntryKey,
         ),
         navItems: [
@@ -119,6 +119,13 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
               semanticLabel: item.label(l10n),
               header: components.SplitRow.header(
                 leading: components.PageTitle(title: item.label(l10n)),
+                // Domain 視圖為 0.1 唯一需要頁首右格的畫面（`SegmentedControl`
+                // 矩陣／泳道切換，SPEC-004 §3.6 §1 表）；其餘五個目的地
+                // trailing 仍為 null，渲染不受影響（`0.1.0-W2-008` 追蹤
+                // 之後其他畫面票落地時的共用掛點需求）。
+                trailing: item == AppDestination.domain
+                    ? const DomainHeaderTrailing()
+                    : null,
               ),
               content: buildDestinationPage(context, item),
             ),
@@ -134,10 +141,10 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 /// 六個導覽項的裝飾性圖示（純顯示，不承載語意——`NavItem` 已以 `label`
 /// 承載朗讀內容）。依畫面性質挑選語意相近的圖示，元件庫契約未限定圖示集。
 IconData _iconFor(AppDestination destination) => switch (destination) {
-      AppDestination.domain => Icons.grid_view_outlined,
-      AppDestination.ucFlow => Icons.timeline_outlined,
-      AppDestination.traceability => Icons.route_outlined,
-      AppDestination.tickets => Icons.checklist_outlined,
-      AppDestination.gaps => Icons.report_problem_outlined,
-      AppDestination.nodeDetail => Icons.description_outlined,
-    };
+  AppDestination.domain => Icons.grid_view_outlined,
+  AppDestination.ucFlow => Icons.timeline_outlined,
+  AppDestination.traceability => Icons.route_outlined,
+  AppDestination.tickets => Icons.checklist_outlined,
+  AppDestination.gaps => Icons.report_problem_outlined,
+  AppDestination.nodeDetail => Icons.description_outlined,
+};

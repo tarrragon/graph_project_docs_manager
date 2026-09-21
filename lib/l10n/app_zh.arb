@@ -722,6 +722,16 @@
     "description": "SPEC-004 §1 畫面（4.4 secondary 呼叫端）：格詳情卡跳轉泳道動作文案"
   },
 
+  "swimlaneUcUnsetPrompt": "尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC",
+  "@swimlaneUcUnsetPrompt": {
+    "description": "SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-003 §3.1）：泳道尚未選定 UC 提示文案"
+  },
+
+  "degradedSchemaBadgeLabel": "降級型別表",
+  "@degradedSchemaBadgeLabel": {
+    "description": "SPEC-001 §1〈降級型別表〉疊加旗標：`badge-domain-degraded-schema` 徽章文案（0.1 暫置於畫面內容頂端，真正歸屬「頁面框架返回列」為 `0.1.0-W2-008` 同型缺口，見本票 NeedsContext）"
+  },
+
   "modeMatrixLabel": "矩陣",
   "@modeMatrixLabel": {
     "description": "SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案"
