@@ -37,3 +37,7 @@ flutter:
   # 依 l10n.yaml 從 lib/l10n/*.arb 生成 AppLocalizations。
   # Flutter 3.32 起不再走 synthetic package，產物直接落在 lib/l10n/。
   generate: true
+  # 內建型別表版本閘門資產（0.1.0-W2-012），見
+  # domain_view/domain_view_schema_version.dart。
+  assets:
+    - assets/schema/builtin_schema_version.json
