@@ -9,6 +9,7 @@
 //   正常 · 主題          state-tickets-topic             Panel.scrollable[Section.collapsible...]
 //   無 ticket           state-tickets-empty             EmptyState.page
 //   含損壞（疊加）        badge-tickets-corrupted         IssueMarker.damagedDetail
+import 'package:flutter/material.dart' show SnackBar;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
@@ -347,6 +348,79 @@ void main() {
       );
     });
 
+    testWidgets(
+      '帶目標跳入（SPEC-003 §3.4）且目標被篩選隱藏 → 清除篩選並顯示 AppSnackBar.withAction',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const TicketListScreen(),
+          overrides: [
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsReady(
+                tickets: _readyTickets,
+                statusFilter: 'pending',
+                targetTicketId: '0.1.0-W1-001',
+              ),
+            ),
+          ],
+          settle: false,
+        );
+
+        // postFrameCallback 排程的清除與 AppSnackBar.show 需額外幾次
+        // pump 才落地（狀態更新 → 重建 → SnackBar 進場動畫）；不用
+        // pumpAndSettle 是因為 SnackBar 停留時間到會自動消失，settle
+        // 會推進假時鐘直到它消失後才回傳，斷言時已找不到。
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        final state = container.read(ticketListStateProvider) as TicketsReady;
+        expect(state.statusFilter, isNull);
+        expect(state.searchQuery, isEmpty);
+
+        expect(find.byType(SnackBar), findsOneWidget);
+        expect(find.byKey(const Key('undoAction')), findsOneWidget);
+
+        // 篩選已清除，目標列（原被 statusFilter 隱藏）重新可見。
+        expect(
+          find.byKey(const Key('card-tickets-0.1.0-W1-001')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      '帶目標跳入按 undoAction → 還原清除前的搜尋詞與篩選（不撤銷定位）',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const TicketListScreen(),
+          overrides: [
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsReady(
+                tickets: _readyTickets,
+                statusFilter: 'pending',
+                targetTicketId: '0.1.0-W1-001',
+              ),
+            ),
+          ],
+          settle: false,
+          size: WindowSize.design,
+        );
+
+        await tester.pump();
+        await tester.pump();
+        // 讓 SnackBar 進場動畫完全落地，避免動作按鈕仍在位移中導致命中
+        // 測試失準（不用 pumpAndSettle：停留計時到會自動消失）。
+        await tester.pump(const Duration(milliseconds: 300));
+
+        await tester.tap(find.byKey(const Key('undoAction')));
+        await tester.pump();
+
+        final state = container.read(ticketListStateProvider) as TicketsReady;
+        expect(state.statusFilter, 'pending');
+      },
+    );
   });
 
   group('頁首模式切換（SplitRow.header 右格，lib/app/shell.dart 接線）', () {

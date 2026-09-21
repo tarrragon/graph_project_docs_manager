@@ -17,6 +17,7 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/attention_level.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
@@ -207,8 +208,15 @@ class _ReadyListView extends ConsumerWidget {
     final visible = visibleListTickets(state);
     final corrupted = state.corruptedCount;
 
+    // 讀目前 provider 值而非閉包捕捉的 build 時 `state`——`AppSnackBar`
+    // 的 `onAction`（復原）在較晚的一輪呼叫，若仍套用捕捉當下的舊
+    // `state`，會把中途已寫入的 `targetFiltersAutoCleared: true` 覆寫回
+    // 舊值，使一次性清除誤判為未清除而重新觸發（SPEC-003 §3.4〈帶目標
+    // 跳入〉「復原」段）。
     void update(TicketsReady Function(TicketsReady) transform) {
-      ref.read(ticketListStateProvider.notifier).state = transform(state);
+      final current = ref.read(ticketListStateProvider);
+      if (current is! TicketsReady) return;
+      ref.read(ticketListStateProvider.notifier).state = transform(current);
     }
 
     SortOrder orderFor(TicketSortKey key) => state.sortKey == key
@@ -222,6 +230,47 @@ class _ReadyListView extends ConsumerWidget {
 
     void onCorruptedTap() =>
         navigateTo(ref.read, AppDestination.gaps, NavIntent.jump);
+
+    // 帶目標跳入（SPEC-003 §3.4〈帶目標跳入〉）：目標存在於已載入票但被
+    // 搜尋詞或篩選隱藏時，清除搜尋與篩選（`order` 不變）並顯示
+    // `AppSnackBar.withAction`（`undoAction` 還原清除前的值，不撤銷定位）。
+    // 目標僅因主題節收合而不可見的分支屬主題模式，不在本視圖範圍。
+    final targetId = state.targetTicketId;
+    if (targetId != null &&
+        !state.targetFiltersAutoCleared &&
+        state.tickets.any((t) => t.id == targetId) &&
+        !visible.any((t) => t.id == targetId)) {
+      final restoreSearch = state.searchQuery;
+      final restoreStatus = state.statusFilter;
+      final restorePriority = state.priorityFilter;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        update(
+          (s) => s.copyWith(
+            searchQuery: '',
+            statusFilter: () => null,
+            priorityFilter: () => null,
+            targetFiltersAutoCleared: true,
+          ),
+        );
+        AppSnackBar.show(
+          context,
+          message: l10n.ticketsFiltersClearedSnackbarMessage,
+          level: AttentionLevel.discardable,
+          origin: AppSnackBarOrigin.userInitiated,
+          variant: AppSnackBarVariant.withAction,
+          actionLabel: l10n.undoAction,
+          actionTestKey: const Key('undoAction'),
+          onAction: () => update(
+            (s) => s.copyWith(
+              searchQuery: restoreSearch,
+              statusFilter: () => restoreStatus,
+              priorityFilter: () => restorePriority,
+            ),
+          ),
+        );
+      });
+    }
 
     final header = AppTableRow.header(
       columns: AppTableRow.ticketColumns,
@@ -448,6 +497,10 @@ class _TopicSection extends StatelessWidget {
 /// 票列（列表模式與主題模式共用）：欄序 ID／標題／狀態／優先／blockedBy／
 /// 損壞標記（SPEC-004 §3.2 `TicketListA` 票列；blockedBy 值為被阻擋的
 /// ticket ID 以「, 」串接，無則「—」，SPEC-001 §4）。
+// NOTE(0.1.0-W3-640 NeedsContext)：`isLocated` 參數暫不接入
+// `AppTableRow.ticket`——該工廠建構式未暴露 `isLocated` slot（僅
+// `.eventFlow` 有），依票面約束「不改 lib/components/」不自製，詳見票面
+// NeedsContext。
 AppTableRow _ticketRow(
   TicketFixtureItem ticket, {
   required void Function(String ticketId) onOpenTicket,

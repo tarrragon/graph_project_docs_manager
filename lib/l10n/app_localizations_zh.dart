@@ -516,6 +516,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gotoTicketsListAction => '前往 Ticket 清單';
 
   @override
+  String get ticketsFiltersClearedSnackbarMessage => '已清除搜尋與篩選以顯示目標 ticket';
+
+  @override
+  String get undoAction => '復原';
+
+  @override
   String get columnEvent => '事件';
 
   @override

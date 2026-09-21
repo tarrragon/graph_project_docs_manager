@@ -911,6 +911,16 @@
     "description": "SPEC-003 §3.3 追溯視圖：Ticket 清單未載入時的前往動作文案（`0.1.0-W3-335.38` S-28）"
   },
 
+  "ticketsFiltersClearedSnackbarMessage": "已清除搜尋與篩選以顯示目標 ticket",
+  "@ticketsFiltersClearedSnackbarMessage": {
+    "description": "SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉目標被搜尋詞或篩選隱藏時清除後的提示"
+  },
+
+  "undoAction": "復原",
+  "@undoAction": {
+    "description": "SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉的 AppSnackBar.withAction 動作，還原清除前的搜尋詞與全部篩選值"
+  },
+
   "columnEvent": "事件",
   "@columnEvent": {
     "description": "SPEC-004 §2 事件流小表欄位標題（4.35 `header` / `eventFlow`；SPEC-001 §2〈事件流小表〉欄位）"

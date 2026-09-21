@@ -146,6 +146,8 @@
   "projectUnreadyReasonIncompatible": "This project is not usable with this app",
   "gotoDomainViewAction": "Go to Domain View",
   "gotoTicketsListAction": "Go to Ticket List",
+  "ticketsFiltersClearedSnackbarMessage": "Search and filters cleared to show the target ticket",
+  "undoAction": "Undo",
   "columnEvent": "Event",
   "columnEmitter": "Emitted by",
   "columnConsumer": "Consumed by",

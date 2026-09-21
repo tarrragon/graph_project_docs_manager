@@ -128,6 +128,8 @@ class TicketsReady extends TicketListState {
     this.sortKey,
     this.sortOrder = TicketSortOrder.none,
     this.expandedTopics = const {},
+    this.targetTicketId,
+    this.targetFiltersAutoCleared = false,
   });
 
   /// 全部已載入票（未經搜尋／篩選／排序）。
@@ -155,6 +157,17 @@ class TicketsReady extends TicketListState {
   /// （避免與同名主題撞名，`0.1.0-W3-335.38` S-08 同慣例）。
   final Set<String> expandedTopics;
 
+  /// 帶目標跳入（SPEC-003 §3.4〈帶目標跳入〉）的目標 ticket ID；`null`
+  /// 代表非帶目標進入。定位完成後仍保留（供 [targetTicketId] 對應列持續
+  /// 高亮判定），不因清除搜尋／篩選而重置。
+  final String? targetTicketId;
+
+  /// 是否已因帶目標跳入自動清除過一次搜尋與篩選（SPEC-003 §3.4〈帶目標
+  /// 跳入〉：清除為進入時的一次性動作，非持續性不變式——按「復原」還原
+  /// 舊篩選後即使目標因此再次被隱藏，亦不得重新觸發自動清除，否則會與
+  /// 「不撤銷定位」的復原語意互相抵銷）。
+  final bool targetFiltersAutoCleared;
+
   /// 解析失敗票數（SPEC-001 §4「含損壞」疊加態的計入依據）。
   int get corruptedCount => tickets.where((t) => t.corrupted).length;
 
@@ -167,6 +180,8 @@ class TicketsReady extends TicketListState {
     TicketSortKey? Function()? sortKey,
     TicketSortOrder? sortOrder,
     Set<String>? expandedTopics,
+    String? Function()? targetTicketId,
+    bool? targetFiltersAutoCleared,
   }) {
     return TicketsReady(
       tickets: tickets ?? this.tickets,
@@ -179,6 +194,11 @@ class TicketsReady extends TicketListState {
       sortKey: sortKey != null ? sortKey() : this.sortKey,
       sortOrder: sortOrder ?? this.sortOrder,
       expandedTopics: expandedTopics ?? this.expandedTopics,
+      targetTicketId: targetTicketId != null
+          ? targetTicketId()
+          : this.targetTicketId,
+      targetFiltersAutoCleared:
+          targetFiltersAutoCleared ?? this.targetFiltersAutoCleared,
     );
   }
 }
