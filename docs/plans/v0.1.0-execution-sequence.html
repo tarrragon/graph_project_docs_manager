@@ -1,0 +1,277 @@
+<title>0.1.0 Shell 執行序列</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --surface-alt: #f3f2ee;
+  --text: #1a1a18;
+  --text-secondary: #5c5b56;
+  --border: #e0dfda;
+  --accent: #2563eb;
+  --accent-light: #eff4ff;
+  --tag-must: #166534;
+  --tag-must-bg: #dcfce7;
+  --tag-polish: #854d0e;
+  --tag-polish-bg: #fef9c3;
+  --tag-defer: #6b21a8;
+  --tag-defer-bg: #f3e8ff;
+  --tag-fw: #475569;
+  --tag-fw-bg: #f1f5f9;
+  --tag-done: #0f766e;
+  --tag-done-bg: #ccfbf1;
+  --batch-line: #cbd5e1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18181b;
+    --surface: #27272a;
+    --surface-alt: #1e1e22;
+    --text: #e4e4e7;
+    --text-secondary: #a1a1aa;
+    --border: #3f3f46;
+    --accent: #60a5fa;
+    --accent-light: #1e293b;
+    --tag-must: #86efac;
+    --tag-must-bg: #14532d;
+    --tag-polish: #fde047;
+    --tag-polish-bg: #422006;
+    --tag-defer: #c4b5fd;
+    --tag-defer-bg: #3b0764;
+    --tag-fw: #94a3b8;
+    --tag-fw-bg: #1e293b;
+    --tag-done: #5eead4;
+    --tag-done-bg: #134e4a;
+    --batch-line: #52525b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #18181b;
+  --surface: #27272a;
+  --surface-alt: #1e1e22;
+  --text: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --border: #3f3f46;
+  --accent: #60a5fa;
+  --accent-light: #1e293b;
+  --tag-must: #86efac;
+  --tag-must-bg: #14532d;
+  --tag-polish: #fde047;
+  --tag-polish-bg: #422006;
+  --tag-defer: #c4b5fd;
+  --tag-defer-bg: #3b0764;
+  --tag-fw: #94a3b8;
+  --tag-fw-bg: #1e293b;
+  --tag-done: #5eead4;
+  --tag-done-bg: #134e4a;
+  --batch-line: #52525b;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  line-height: 1.6;
+  padding-inline: 20px;
+  padding-block: 0;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 1.5rem; font-weight: 600; margin: 1.5rem 0 0.25rem; text-wrap: balance; }
+h2 { font-size: 1.15rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--accent); text-wrap: balance; }
+h3 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+.subtitle { color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 1.5rem; }
+
+.tag { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 500; padding: 0.15em 0.5em; border-radius: 3px; vertical-align: middle; white-space: nowrap; }
+.tag-must { color: var(--tag-must); background: var(--tag-must-bg); }
+.tag-polish { color: var(--tag-polish); background: var(--tag-polish-bg); }
+.tag-defer { color: var(--tag-defer); background: var(--tag-defer-bg); }
+.tag-fw { color: var(--tag-fw); background: var(--tag-fw-bg); }
+.tag-done { color: var(--tag-done); background: var(--tag-done-bg); }
+
+.def-box { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 4px 4px 0; font-size: 0.9rem; }
+.def-box strong { font-weight: 600; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.75rem; text-align: center; }
+.stat-num { font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); }
+.stat-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem; }
+
+.batch { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin: 1rem 0; overflow: hidden; }
+.batch-hd { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 1rem; background: var(--surface-alt); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+.batch-hd strong { font-size: 0.95rem; }
+.batch-hd span:last-child { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--text-secondary); }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { text-align: left; padding: 0.4rem 0.75rem; font-weight: 500; font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.id { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; white-space: nowrap; }
+.ag { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
+.ox { overflow-x: auto; }
+.arrow { display: flex; justify-content: center; padding: 0.5rem 0; color: var(--batch-line); font-size: 1.25rem; }
+
+.rule { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin: 0.75rem 0; }
+.rule p { margin: 0.3rem 0; font-size: 0.9rem; }
+.rule code { font-family: 'IBM Plex Mono', monospace; background: var(--surface-alt); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; }
+
+.sg { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 1rem 0; }
+@media (max-width: 500px) { .sg { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+.sc { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; }
+.sc h4 { font-size: 0.85rem; font-weight: 600; margin: 0 0 0.4rem; }
+.sc ul { margin: 0; padding-left: 1.2rem; font-size: 0.85rem; }
+.sc li { margin: 0.2rem 0; }
+
+.st { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0.5rem 0; }
+.st th { text-align: left; padding: 0.4rem 0.6rem; font-weight: 500; background: var(--surface-alt); border: 1px solid var(--border); font-size: 0.8rem; }
+.st td { padding: 0.4rem 0.6rem; border: 1px solid var(--border); vertical-align: top; }
+</style>
+
+<h1>0.1.0 Shell — 執行序列規劃</h1>
+<p class="subtitle">版本交付定義 &#8594; 依賴鏈 &#8594; 批次排序 &#8594; 溢出分流</p>
+
+<div class="def-box">
+  <strong>0.1.0 交付定義</strong>：七個畫面與浮層的全部狀態皆可渲染，不串真實資料。<br>
+  <strong>整合測試</strong>：SPEC-001 &sect;1-7 全部狀態渲染且不溢位；捲動、換頁、拖拉皆可操作。<br>
+  <strong>溢出原則</strong>：實作中新發現的問題開 0.1.x 票，不回頭膨脹 0.1.0。
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-num">83</div><div class="stat-label">pending 總數</div></div>
+  <div class="stat"><div class="stat-num">8</div><div class="stat-label">0.1.0 必要</div></div>
+  <div class="stat"><div class="stat-num">75</div><div class="stat-label">溢出 / 延後</div></div>
+  <div class="stat"><div class="stat-num">3</div><div class="stat-label">批次</div></div>
+</div>
+
+<h2>判斷邏輯</h2>
+<p style="font-size:0.9rem;">對每張票問三個問題，任一為「否」即溢出：</p>
+<ol style="font-size:0.9rem; padding-left:1.5rem;">
+  <li>不做這張票，畫面能正確渲染嗎？</li>
+  <li>不做這張票，0.1.0 整合測試能通過嗎？</li>
+  <li>這張票是 persistence / scan / real data 相關嗎？（是 = 0.2.0）</li>
+</ol>
+
+<h2>批次執行計畫</h2>
+
+<div class="batch">
+  <div class="batch-hd">
+    <strong>Batch 0 <span class="tag tag-done">IN FLIGHT</span></strong>
+    <span>1 ticket &middot; already dispatched</span>
+  </div>
+  <div class="ox"><table>
+    <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Status</th></tr>
+    <tr><td class="id">W2-014</td><td><span class="tag tag-must">IMP</span></td><td>degradedSchemaProvider 寫入端接線 + 切換專案重置</td><td class="ag">parsley</td><td><span class="tag tag-done">dispatched</span></td></tr>
+  </table></div>
+</div>
+
+<div class="arrow">&#8595;</div>
+
+<div class="batch">
+  <div class="batch-hd">
+    <strong>Batch 1 <span class="tag tag-must">PARALLEL</span></strong>
+    <span>4 tickets &middot; no inter-dependency &middot; after Batch 0 merge</span>
+  </div>
+  <div class="ox"><table>
+    <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Notes</th></tr>
+    <tr><td class="id">W1-068</td><td><span class="tag tag-must">IMP</span></td><td>ExternalOpener 抽象 + macOS open 實作（4 畫面共用）</td><td class="ag">parsley</td><td style="font-size:0.8rem;">AC2 實機驗證由 PM 收尾</td></tr>
+    <tr><td class="id">W1-067</td><td><span class="tag tag-must">IMP</span></td><td>TwoColumnLayout main/detail 收窄為 Panel</td><td class="ag">parsley</td><td style="font-size:0.8rem;">視覺正確性</td></tr>
+    <tr><td class="id">W1-071</td><td><span class="tag tag-must">DOC</span></td><td>SPEC-004 BlockedState 降級條款對齊</td><td class="ag">PM</td><td style="font-size:0.8rem;">主線程直接執行</td></tr>
+    <tr><td class="id">W1-027</td><td><span class="tag tag-must">DOC</span></td><td>SPEC-001 &sect;7 健康徽章文案 + ARB key</td><td class="ag">star-anise</td><td style="font-size:0.8rem;">文案定義</td></tr>
+  </table></div>
+</div>
+
+<div class="arrow">&#8595;</div>
+
+<div class="batch">
+  <div class="batch-hd">
+    <strong>Batch 2 <span class="tag tag-must">PARALLEL</span></strong>
+    <span>3 tickets &middot; after Batch 1</span>
+  </div>
+  <div class="ox"><table>
+    <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Notes</th></tr>
+    <tr><td class="id">W1-028</td><td><span class="tag tag-must">ADJ</span></td><td>HomePage 裁決：移除或改造</td><td class="ag">PM &#8594; parsley</td><td style="font-size:0.8rem;">需 W1-067 Panel 落地</td></tr>
+    <tr><td class="id">W3-382</td><td><span class="tag tag-must">IMP</span></td><td>notFrameworkProjectMessage 文案對齊</td><td class="ag">parsley</td><td style="font-size:0.8rem;">畫面文案正確性</td></tr>
+    <tr><td class="id">W3-383</td><td><span class="tag tag-must">IMP</span></td><td>追溯視圖多父節點展開狀態</td><td class="ag">parsley</td><td style="font-size:0.8rem;">渲染正確性</td></tr>
+  </table></div>
+</div>
+
+<div class="arrow">&#8595;</div>
+<div style="text-align:center; padding:0.75rem; font-weight:600; color:var(--tag-must); font-size:0.95rem;">0.1.0 version-release check &#8594; 整合測試 &#8594; 發版</div>
+
+<h2>溢出分流（75 tickets）</h2>
+
+<h3>W1 溢出（5 tickets）</h3>
+<div class="ox"><table class="st">
+  <tr><th>ID</th><th>Title</th><th>Dest</th><th>Reason</th></tr>
+  <tr><td class="id">W1-014</td><td>shared_preferences key 版本化</td><td><span class="tag tag-defer">0.2.0</span></td><td>Persistence，0.1.0 不串資料</td></tr>
+  <tr><td class="id">W1-015</td><td>Developer ID 簽章</td><td><span class="tag tag-polish">0.1.1</span></td><td>發布基礎設施，不影響渲染</td></tr>
+  <tr><td class="id">W1-037</td><td>預估耗時計算依據</td><td><span class="tag tag-polish">0.1.1</span></td><td>分析票，不阻塞渲染</td></tr>
+  <tr><td class="id">W1-049</td><td>a11y 動態字級重評</td><td><span class="tag tag-polish">0.1.1</span></td><td>品質改善</td></tr>
+  <tr><td class="id">W1-070</td><td>編輯器 URL scheme</td><td><span class="tag tag-defer">0.2.0</span></td><td>需真實資料</td></tr>
+</table></div>
+
+<h3>W3 溢出摘要（70 tickets）</h3>
+<div class="sg">
+  <div class="sc">
+    <h4><span class="tag tag-defer">0.2.0</span> Scan / Real Data</h4>
+    <ul>
+      <li>W3-078, 096, 113, 122 — 掃描修復</li>
+      <li>W3-135, 160 — workspace / 真實資料源</li>
+      <li>W3-340, 357 — 事件偵測 / FlowStep 驗證</li>
+    </ul>
+  </div>
+  <div class="sc">
+    <h4><span class="tag tag-fw">Framework</span> CLI / Hook</h4>
+    <ul>
+      <li>W3-274, 275, 276 — issue / ticket CLI</li>
+      <li>W3-327, 330 — 旗標 / 待裁列</li>
+      <li>W3-334, 375 — guardian / audit</li>
+      <li>W3-633, 648 — 收斂 / 硬閘門</li>
+    </ul>
+  </div>
+  <div class="sc">
+    <h4><span class="tag tag-polish">0.1.1</span> Polish</h4>
+    <ul>
+      <li>W3-123, 124 — clip / 防抖</li>
+      <li>W3-132, 134 — 斷言品質</li>
+      <li>W3-177, 252 — 重構</li>
+      <li>W3-241, 242, 245 — SnackBar 欄位</li>
+      <li>W3-507, 520 — release / UX 探針</li>
+    </ul>
+  </div>
+  <div class="sc">
+    <h4><span class="tag tag-fw">ANA / DOC</span> 分析與文件</h4>
+    <ul>
+      <li>22 ANA — 分析票</li>
+      <li>18 DOC — 文件票</li>
+      <li>4 ADJ — 調整票</li>
+      <li style="color:var(--text-secondary);">0.1.0 後依主題分流</li>
+    </ul>
+  </div>
+</div>
+
+<h2>紀律規則</h2>
+
+<div class="rule">
+  <h3 style="margin-top:0;">Rule 1: 0.1.0 凍結，不再新增</h3>
+  <p>Batch 1-2 期間發現的問題，一律開到 <code>0.1.1</code>（品質）或 <code>0.2.0</code>（資料）。</p>
+  <p>判斷：不修復，畫面能渲染嗎？能 = 不在 0.1.0。</p>
+</div>
+
+<div class="rule">
+  <h3 style="margin-top:0;">Rule 2: 批次內不逐票確認</h3>
+  <p>同批票全數並行派發。整批完成後一次 merge + push，再啟動下一批。</p>
+</div>
+
+<div class="rule">
+  <h3 style="margin-top:0;">Rule 3: 框架問題走 issue</h3>
+  <p>create-time hard gate 已上線。框架問題 <code>observe</code> 到 canonical issue，不開本地票。</p>
+</div>
+
+<div class="rule">
+  <h3 style="margin-top:0;">Rule 4: 發版後再 triage 溢出池</h3>
+  <p>0.1.0 完成後，再把 75 張溢出票更新 <code>version</code> 欄位。先發版，再規劃 0.1.1。</p>
+</div>
