@@ -73,6 +73,7 @@ versions:
     codename: "Shell"
     description: "展示介面：七個畫面與浮層的全部狀態皆可渲染，不串真實資料"
     status: "active"
+    scope: "frozen"    # 2026-09-22 凍結：必要 8 張見 docs/plans/v0.1.0-execution-sequence.html；新根票走 0.1.1／0.2.0（0.1.0-W3-651 閘門）
     proposals:
       - PROP-004
       - PROP-005
