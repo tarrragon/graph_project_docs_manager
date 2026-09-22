@@ -573,3 +573,71 @@ def validate_discovered_during_arg(args: argparse.Namespace) -> bool:
         return False
 
     return True
+
+
+def validate_version_scope_gate(
+    version: str,
+    ticket_type: str,
+    action: str,
+    scope_blocker: Optional[str],
+) -> bool:
+    """版本範圍凍結硬閘門（僅根票，子票由呼叫端不經此函式）。
+
+    todolist.yaml 版本條目標 `scope: frozen` 時，該版本判定為「範圍已凍結
+    不再收新根票」——與可攜問題分流閘門同形：預設路徑（建票）需被硬擋，
+    才能逼出「這張票該不該進這個版本」的判斷，而非靜默流入既有池。
+
+    `--scope-blocker` 須帶非空理由才放行，僅給旗標或給空字串仍視為未給
+    理由（與 `validate_portable_issue_gate` 的 `--dedup-checked` 同一設計：
+    只給旗標不給結論等同宣稱評估過但未留下可覆核的理由）。
+
+    Args:
+        version: 已解析的版本號（無 v 前綴，如 "0.1.0"）
+        ticket_type: Ticket 類型（IMP, ANA, DOC 等）
+        action: --action 參數值
+        scope_blocker: `--scope-blocker` 參數值（放行理由；未提供或空字串
+            視為未給理由）
+
+    Returns:
+        bool: True 表示通過（版本未凍結，或已凍結但附放行理由）；
+        False 表示應阻擋建票（已印出錯誤與二擇一處置，呼叫端應 return 1）
+    """
+    from ticket_system.lib.version import (
+        is_version_scope_frozen,
+        suggest_overflow_version,
+    )
+
+    if not is_version_scope_frozen(version):
+        return True
+
+    if scope_blocker:
+        print(format_warning(
+            "[版本範圍凍結] {version} 已標記 scope: frozen，以 --scope-blocker "
+            "理由放行：{reason}",
+            version=version,
+            reason=scope_blocker,
+        ))
+        return True
+
+    overflow = suggest_overflow_version(version, ticket_type, action)
+    overflow_hint = (
+        f"建議溢出目標: {overflow[0]}（{overflow[1]}）"
+        if overflow
+        else "無法計算溢出目標（版本格式異常）"
+    )
+
+    print(format_error(ErrorEnvelope(
+        component="create",
+        action="version_scope_gate",
+        errno="VERSION_SCOPE_FROZEN",
+        hint=(
+            f"版本 {version} 已標記 scope: frozen（範圍已凍結，不再收新根"
+            f"票）。{overflow_hint}\n\n"
+            "請二擇一：\n"
+            f"  1) --version {overflow[0] if overflow else '<溢出目標>'}"
+            "（若尚未在 todolist.yaml 註冊，須先登記該版本條目）\n"
+            "  2) --scope-blocker \"<理由>\"（帶非空理由才放行，說明為何"
+            "這張票必須進入已凍結的版本）"
+        ),
+    )))
+    return False

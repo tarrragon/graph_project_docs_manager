@@ -51,6 +51,7 @@ from ticket_system.lib.field_validators import (
     validate_discovered_during_arg,
     validate_portable_issue_gate,
     validate_source_ticket_arg,
+    validate_version_scope_gate,
     validate_where_files,
 )
 from ticket_system.lib.topic_inference import (
@@ -892,6 +893,13 @@ def execute(args: argparse.Namespace) -> int:
             )))
             return 1
 
+        # 版本範圍凍結硬閘門（僅根票；子票繼承父票版本，屬已在範圍內
+        # 工作的細分，不經此閘門）。--version 明示指向凍結版本仍須經過，
+        # 避免習慣性繞過（詳見 validate_version_scope_gate docstring）。
+        scope_blocker = getattr(args, "scope_blocker", None)
+        if not validate_version_scope_gate(version, ticket_type, action, scope_blocker):
+            return 1
+
     # IMP-072 方案 A：Step 1（ID 分配）到 Step 3（落盤）之間原本無鎖，跨
     # process / 跨 session 並行 create 會同讀相同 max seq 配出同一 ID，後寫者
     # 靜默覆寫前者。目錄級 fcntl lock 將整段臨界區序列化；lock 取得失敗時
@@ -1111,6 +1119,14 @@ def register(subparsers: argparse._SubParsersAction) -> None:
             "可攜問題分流硬閘門的查重結論：where.files 全數落在 .claude/ 下時"
             "必填，值為命中的 issue 號（如 '#102'）或 'none'；僅給旗標不給"
             "結論仍阻擋建票"
+        ),
+    )
+    parser.add_argument(
+        "--scope-blocker",
+        dest="scope_blocker",
+        help=(
+            "版本範圍凍結硬閘門的放行理由：目標版本 scope: frozen 時"
+            "必填，須帶非空理由才放行；僅給旗標不給理由仍阻擋建票"
         ),
     )
     # --how / --ho 攔截：exact match 優先於縮寫展開，給友善提示

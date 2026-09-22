@@ -229,6 +229,47 @@ ticket create --wave 3 --action "修復" --target "XXX" \
 
 只做路徑層級的機械判準（where.files 是否全數 `.claude/` 開頭），不判斷 why 欄語意、同根因計次、或本票是分析票還是執行票；這些需要語意判斷，誤擋成本高會推高建票摩擦力，故不在此閘門範圍——判斷交還給建票者，訊息只負責把分流提問講清楚。
 
+## 版本範圍凍結硬閘門
+
+`docs/todolist.yaml` 的版本條目新增選填欄位 `scope`（值 `frozen`；缺席即開放，向後相容）。目標版本 `scope: frozen` 時，判定為「範圍已凍結不再收新根票」——與可攜問題分流閘門同形：預設路徑（建票）需被硬擋，逼出「這張票該不該進這個版本」的判斷，非靜默流入既有池。僅套用於**根票**；`--parent` 子票繼承父票版本，屬已在範圍內工作的細分，不經此閘門。`--version` 明示指向凍結版本仍須經過，避免習慣性繞過。
+
+| 情境 | 行為 |
+|------|------|
+| 目標版本 `scope` 欄位缺席或非 `frozen` | 不觸發，正常建票 |
+| 目標版本 `scope: frozen` + 未帶 `--scope-blocker` | 阻擋，印出相對凍結版本計算的溢出目標與二擇一處置 |
+| 目標版本 `scope: frozen` + `--scope-blocker ""`（空字串） | 阻擋（只給旗標不給理由仍視為未給） |
+| 目標版本 `scope: frozen` + `--scope-blocker "<理由>"` | 放行（`[WARNING]` 印出放行理由） |
+| `--parent <父票 ID>`（子票） | 不經此閘門，繼承父票版本 |
+
+`--scope-blocker` 的值即放行理由本身，不是純存在性旗標，須帶非空文字才放行。
+
+**溢出目標計算**（相對被擋下的凍結版本本身，與 `_FEAT_ACTIONS` 分類一致）：
+
+| 條件 | 溢出目標 |
+|------|---------|
+| IMP 且 `--action` 屬新功能動詞（實作/新增/建立/開發） | minor+1.0（如 `0.1.0` → `0.2.0`） |
+| 其餘（含修復/改善/分析/文件） | patch+1（如 `0.1.0` → `0.1.1`） |
+
+```bash
+# 情境 a：todolist.yaml 中 0.1.0 標記 scope: frozen，直接建票被阻擋
+ticket create --wave 3 --action "新增" --target "XXX" \
+  --where "lib/screens/x.dart" --why "..."
+# [ERROR] VERSION_SCOPE_FROZEN: 版本 0.1.0 已標記 scope: frozen...
+#   建議溢出目標: 0.2.0（新功能歸下一個小版本...）
+
+# 情境 b：改投溢出目標版本（該版本須先在 todolist.yaml 註冊）
+ticket create --version 0.2.0 --wave 1 --action "新增" --target "XXX" \
+  --where "lib/screens/x.dart" --why "..."
+
+# 情境 c：必要 bugfix 須進已凍結版本，附放行理由
+ticket create --wave 3 --action "修復" --target "XXX" \
+  --where "lib/screens/x.dart" \
+  --scope-blocker "阻擋發佈的回歸缺陷，須在 0.1.0 修復" \
+  --why "..."
+```
+
+只做 `scope` 欄位的機械檢查，不判斷 why 欄語意或票的緊急程度；`--scope-blocker` 的理由是否合理留給後續審查（如版本回顧），閘門本身不做語意判斷。
+
 ## --source-ticket 參數（衍生關係）
 
 `--source-ticket <SOURCE-ID>` 用於建立「衍生 Ticket」關係（spawned_tickets），典型場景為 ANA 衍生 IMP / ADJ、執行中發現的獨立技術債。
