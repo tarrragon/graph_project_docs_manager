@@ -432,7 +432,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get swimlaneUcUnsetPrompt => '尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC';
 
   @override
-  String get degradedSchemaBadgeLabel => '降級型別表';
+  String degradedSchemaBadgeLabel(
+    String builtinVersion,
+    String projectVersion,
+  ) {
+    return '降級型別表（內建 $builtinVersion / 專案 $projectVersion）';
+  }
 
   @override
   String get modeMatrixLabel => '矩陣';

@@ -752,9 +752,17 @@
     "description": "SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-003 §3.1）：泳道尚未選定 UC 提示文案"
   },
 
-  "degradedSchemaBadgeLabel": "降級型別表",
+  "degradedSchemaBadgeLabel": "降級型別表（內建 {builtinVersion} / 專案 {projectVersion}）",
   "@degradedSchemaBadgeLabel": {
-    "description": "SPEC-001 §1〈降級型別表〉疊加旗標：`badge-domain-degraded-schema` 徽章文案（0.1 暫置於畫面內容頂端，真正歸屬「頁面框架返回列」為 `0.1.0-W2-008` 同型缺口，見本票 NeedsContext）"
+    "description": "SPEC-001 §1〈降級型別表〉疊加旗標：`badge-<screen>-degraded-schema` 徽章文案，含內建型別表版本與觸發降級時的專案 VERSION（`0.1.0-W2-014` 接線寫入端）",
+    "placeholders": {
+      "builtinVersion": {
+        "type": "String"
+      },
+      "projectVersion": {
+        "type": "String"
+      }
+    }
   },
 
   "modeMatrixLabel": "矩陣",

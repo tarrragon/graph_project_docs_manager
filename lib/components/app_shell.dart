@@ -88,6 +88,7 @@ class AppShell extends ConsumerWidget {
     final destination = ref.watch(selectedDestinationProvider);
     final returnTo = ref.watch(returnToProvider);
     final isDegraded = ref.watch(degradedSchemaProvider);
+    final degradedVersions = ref.watch(degradedSchemaVersionsProvider);
 
     Widget body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,6 +113,7 @@ class AppShell extends ConsumerWidget {
             pages: pages,
             onBack: () => consumeReturnTo(ref.read),
             isDegraded: isDegraded,
+            degradedVersions: degradedVersions,
           ),
         ),
       ],
@@ -232,6 +234,7 @@ class _MainArea extends StatelessWidget {
     required this.pages,
     required this.onBack,
     required this.isDegraded,
+    required this.degradedVersions,
   });
 
   final AppDestination destination;
@@ -242,6 +245,11 @@ class _MainArea extends StatelessWidget {
   /// 降級型別表旗標（`lib/app/degraded_schema.dart`）。為真時本列常駐渲染
   /// `badge-<screen>-degraded-schema`，即使 `returnTo` 為 `null`。
   final bool isDegraded;
+
+  /// 徽章文字所需的兩個版本值；[isDegraded] 為真時應非 `null`
+  /// （寫入端同步設定，見 `lib/app/degraded_schema.dart`）。`null` 時徽章
+  /// 版本文字退回空字串，不阻擋渲染（防禦性處理，非預期路徑）。
+  final DegradedSchemaVersions? degradedVersions;
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +270,10 @@ class _MainArea extends StatelessWidget {
                 if (isDegraded)
                   Badge.tag(
                     key: Key('badge-${destination.name}-degraded-schema'),
-                    label: l10n.degradedSchemaBadgeLabel,
+                    label: l10n.degradedSchemaBadgeLabel(
+                      degradedVersions?.builtinVersion ?? '',
+                      degradedVersions?.projectVersion ?? '',
+                    ),
                   )
                 else
                   const SizedBox.shrink(),

@@ -836,11 +836,11 @@ abstract class AppLocalizations {
   /// **'尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC'**
   String get swimlaneUcUnsetPrompt;
 
-  /// SPEC-001 §1〈降級型別表〉疊加旗標：`badge-domain-degraded-schema` 徽章文案（0.1 暫置於畫面內容頂端，真正歸屬「頁面框架返回列」為 `0.1.0-W2-008` 同型缺口，見本票 NeedsContext）
+  /// SPEC-001 §1〈降級型別表〉疊加旗標：`badge-<screen>-degraded-schema` 徽章文案，含內建型別表版本與觸發降級時的專案 VERSION（`0.1.0-W2-014` 接線寫入端）
   ///
   /// In zh, this message translates to:
-  /// **'降級型別表'**
-  String get degradedSchemaBadgeLabel;
+  /// **'降級型別表（內建 {builtinVersion} / 專案 {projectVersion}）'**
+  String degradedSchemaBadgeLabel(String builtinVersion, String projectVersion);
 
   /// SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案
   ///

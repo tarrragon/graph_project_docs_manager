@@ -10,6 +10,7 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/degraded_schema.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import 'project_switcher_providers.dart';
@@ -81,6 +82,10 @@ RecentProjectItem _buildRecentProjectItem({
 void _selectProject(WidgetRef ref, int index) {
   ref.read(currentProjectIndexProvider.notifier).state = index;
   ref.read(switcherOpenProvider.notifier).state = false;
+  // 寫入端接線（0.1.0-W2-014）：切換專案重置降級旗標（SPEC-001 §1「切換
+  // 專案時旗標重置」）。
+  ref.read(degradedSchemaProvider.notifier).state = false;
+  ref.read(degradedSchemaVersionsProvider.notifier).state = null;
 }
 
 void _dismiss(WidgetRef ref) {

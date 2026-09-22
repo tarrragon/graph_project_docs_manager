@@ -124,7 +124,7 @@
   "cellDetailCloseAction": "Close",
   "cellDetailViewInSwimlaneAction": "View in swimlane",
   "swimlaneUcUnsetPrompt": "No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view",
-  "degradedSchemaBadgeLabel": "Degraded schema",
+  "degradedSchemaBadgeLabel": "Degraded schema (builtin {builtinVersion} / project {projectVersion})",
   "modeMatrixLabel": "Matrix",
   "modeSwimlaneLabel": "Swimlane",
   "modeListLabel": "List",

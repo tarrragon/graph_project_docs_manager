@@ -440,7 +440,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view';
 
   @override
-  String get degradedSchemaBadgeLabel => 'Degraded schema';
+  String degradedSchemaBadgeLabel(
+    String builtinVersion,
+    String projectVersion,
+  ) {
+    return 'Degraded schema (builtin $builtinVersion / project $projectVersion)';
+  }
 
   @override
   String get modeMatrixLabel => 'Matrix';

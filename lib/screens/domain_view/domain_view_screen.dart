@@ -11,8 +11,9 @@
 /// 降級型別表旗標（[DomainReady.isDegraded]）的觸發入口
 /// `action-domain-degraded-view` 已接線（`0.1.0-W2-011`，見
 /// [_SchemaUnconsumableView]）；常駐徽章 `badge-domain-degraded-schema`
-/// 仍缺件——依賴「頁面框架返回列」容器（`0.1.0-W2-009`，尚未建立），
-/// 不在頁面層繞路自製，見本票 NeedsContext。
+/// 的寫入端已接線（`0.1.0-W2-014`）——觸發時同步寫入
+/// `app/degraded_schema.dart` 的 `degradedSchemaProvider` /
+/// `degradedSchemaVersionsProvider`，由 `components.AppShell` 常駐渲染。
 library;
 
 import 'dart:developer' as developer;
@@ -22,6 +23,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
+import '../../app/degraded_schema.dart';
 import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
@@ -211,9 +213,12 @@ class _SchemaUnconsumableView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final builtinVersionAsync = ref.watch(builtinSchemaVersionProvider);
+    String? builtinVersion;
     final canDegrade = builtinVersionAsync.maybeWhen(
-      data: (builtinVersion) =>
-          !isHigherThanBuiltinSchemaVersion(state.version, builtinVersion),
+      data: (version) {
+        builtinVersion = version;
+        return !isHigherThanBuiltinSchemaVersion(state.version, version);
+      },
       orElse: () => false,
     );
     return BlockedState.plain(
@@ -222,8 +227,20 @@ class _SchemaUnconsumableView extends ConsumerWidget {
       onSwitchProject: () =>
           ref.read(switcherOpenProvider.notifier).state = true,
       onDegradedView: canDegrade
-          ? () => ref.read(domainViewStateProvider.notifier).state =
-                const DomainReady(mode: DomainMode.matrix, isDegraded: true)
+          ? () {
+              ref.read(domainViewStateProvider.notifier).state =
+                  const DomainReady(mode: DomainMode.matrix, isDegraded: true);
+              // 寫入端接線（0.1.0-W2-014）：同步設定 app 層降級旗標與版本
+              // 文字，供 `components.AppShell` 於返回列常駐渲染
+              // `badge-domain-degraded-schema`（SPEC-001 §1／SPEC-004
+              // §4.27）。
+              ref.read(degradedSchemaProvider.notifier).state = true;
+              ref.read(degradedSchemaVersionsProvider.notifier).state =
+                  DegradedSchemaVersions(
+                    builtinVersion: builtinVersion ?? '',
+                    projectVersion: state.version,
+                  );
+            }
           : null,
       testKey: const Key('state-domain-schema-unconsumable'),
     );

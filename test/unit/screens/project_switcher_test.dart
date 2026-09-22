@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -120,6 +121,39 @@ void main() {
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
       expect(container.read(currentProjectIndexProvider), 1);
+    });
+
+    testWidgets('選擇項目後降級旗標重置為假（0.1.0-W2-014 寫入端接線）', (
+      tester,
+    ) async {
+      late ProviderContainer container;
+      await pumpApp(
+        tester,
+        overrides: [
+          degradedSchemaProvider.overrideWith((ref) => true),
+          degradedSchemaVersionsProvider.overrideWith(
+            (ref) => const DegradedSchemaVersions(
+              builtinVersion: '0.0.1',
+              projectVersion: '0.0.1',
+            ),
+          ),
+        ],
+      );
+      final element = tester.element(find.byType(app_shell.AppShell));
+      container = ProviderScope.containerOf(element);
+
+      // 本斷言在寫入端未接線時應翻紅——切換前旗標為真，若重置端未接線，
+      // 選擇專案後旗標仍維持真。
+      expect(container.read(degradedSchemaProvider), isTrue);
+
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+      await tester.pumpAndSettle();
+
+      expect(container.read(degradedSchemaProvider), isFalse);
+      expect(container.read(degradedSchemaVersionsProvider), isNull);
     });
   });
 

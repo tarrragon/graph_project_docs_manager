@@ -18,6 +18,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -511,6 +512,15 @@ void main() {
           AnchorFinder.state(Screen.domain, 'matrix'),
           findsOneWidget,
         );
+
+        // 寫入端接線（0.1.0-W2-014）：觸發降級檢視時，app 層旗標與版本
+        // 文字須同步寫入——此斷言在寫入端未接線時應翻紅（旗標維持預設
+        // 值 false / null）。
+        expect(container.read(degradedSchemaProvider), isTrue);
+        final versions = container.read(degradedSchemaVersionsProvider);
+        expect(versions, isNotNull);
+        expect(versions!.projectVersion, '0.0.3');
+        expect(versions.builtinVersion, isNotEmpty);
       },
     );
 
@@ -652,6 +662,46 @@ void main() {
       expect(find.byKey(const Key('mode-domain-matrix')), findsNothing);
       expect(find.byKey(const Key('mode-domain-swimlane')), findsNothing);
     });
+  });
+
+  group('降級旗標寫入端真實執行路徑（0.1.0-W2-014）', () {
+    testWidgets(
+      '真實 App（非 degradedSchemaProvider override）：觸發降級檢視後'
+      'badge-domain-degraded-schema 可見，徽章文字含兩個版本值',
+      (tester) async {
+        // 僅覆寫 domainViewStateProvider 以抵達「無可消費的型別表」列，
+        // 與同檔其餘測試同一慣例；degradedSchemaProvider /
+        // degradedSchemaVersionsProvider 完全不覆寫，走真實寫入路徑。
+        await pumpApp(
+          tester,
+          overrides: [
+            domainViewStateProvider.overrideWith(
+              (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
+            ),
+          ],
+        );
+
+        expect(
+          find.byKey(const Key('badge-domain-degraded-schema')),
+          findsNothing,
+        );
+
+        await tester.tap(
+          find.byKey(const Key('action-domain-degraded-view')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('badge-domain-degraded-schema')),
+          findsOneWidget,
+        );
+
+        final label = tester
+            .widget<Badge>(find.byKey(const Key('badge-domain-degraded-schema')))
+            .label;
+        expect(label, contains('0.0.3'));
+      },
+    );
   });
 
   group('假資料一致性（本票 acceptance 第四項）', () {
