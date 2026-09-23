@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-23"
-version: "1.44"
+version: "1.45"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.43（1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
+**版本**: 1.45（1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -149,7 +149,7 @@ depends_on_domains: [layout]
 | `DocumentBody`（文件內文） | 元件 | L3 | 節點詳情主欄的 markdown 渲染內容（段落、行內 code、FR 引用區塊）；由 0.0.3 選定的 `flutter_markdown_plus` 承載，渲染器內部 widget 列第 7 章豁免 | §6 | `default`；屬元件庫（§3.7 第 7 項） |
 | `EmptyState`（空狀態） | 元件 | L3 | 「這裡目前沒有內容」+ 至少一個非返回的前進動作（FR-03，`page` 列舉狀態；無破洞與 `section` 例外見 SPEC-003 §2.7）；訊息、說明、動作為 slot | §1（未選專案、空圖、未選格右欄、泳道 · 尚未選定 UC、泳道 · flow 未結構化）、§2（專案未就緒、無 UC、尚未選定 UC、flow 未結構化）、§3（專案未就緒、無提案）、§4（專案未就緒、無 ticket）、§5（專案未就緒、無破洞）、§6（專案未就緒、未選節點） | `page`（全頁）/ `section`（區塊內：與 UC 基本資訊並列、未選格右欄、泳道 · 尚未選定 UC、泳道 · flow 未結構化、§2 尚未選定 UC）；`missing` 改為獨立元件 `MissingSourceState`、`compact` 刪除（§3.7 第 3 項） |
 | `MissingSourceState`（原始檔已消失） | 元件 | L3 | 「原始檔已不存在」+ 最後已知路徑 + 重新整理／返回；退出留在畫面內（重新整理三分支，SPEC-003 §3.6），與 `EmptyState.page` 的跳轉層級不同故獨立 | §6（原始檔已消失） | `default` |
-| `BlockedState`（阻擋狀態） | 元件 | L3 | 「這個專案不適用本 App」+ 版本值（不是框架專案無）+ 說明 + 切換專案出口（恆可用，FR-07）；無可消費的型別表時另提供「以 App 內建型別表檢視」條件式渲染出口（`action-domain-degraded-view`，SPEC-003 §3.1，`0.1.0-W1-035` 定案） | §1（不是框架專案、無可消費的型別表、schema 不相容） | `plain` / `withDetail`（附「檢視詳情」展開 `panel-domain-schema-detail`，內容為兩個版本值的 `Section`） |
+| `BlockedState`（阻擋狀態） | 元件 | L3 | 「這個專案不適用本 App」+ 版本值（不是框架專案無）+ 說明 + 切換專案出口（恆可用，FR-07）；無可消費的型別表時另提供「以 App 內建型別表檢視」條件式渲染出口（`action-domain-degraded-view`，SPEC-003 §3.1，`0.1.0-W1-035` 定案） | §1（不是框架專案、無可消費的型別表、schema 不相容） | `plain` / `withDetail`（附「檢視詳情」展開 `panel-domain-schema-detail`，內容為「App 已知版本範圍」一列標籤 + 值的 `Section`） |
 | `LoadingState`（載入態） | 元件 | L3 | 骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（共 10 條，SPEC-003 §2.5、§2.8）由本元件單一承擔 | §1（載入中）、§4（載入中）、§5（掃描中） | `skeleton`（indeterminate + 計數文字；骨架版位 slot：`matrix` / `sections`）/ `progressBar`（determinate + 已解析筆數／總數 N） |
 | `LoadPrompt`（待載入提示） | 元件 | L3 | 「載入 N 張 ticket」+ 開始載入；不顯示預估耗時（SPEC-003 §3.4）；返回由頁面框架承載（4.25，`0.1.0-W3-335.57` E1） | §4（未載入） | `default`；獨立元件為提案（3.3 第 4 項） |
 | `AppSnackBar`（即時訊息） | 元件 | L2 | 「已在外部開啟」「找不到檔案」類的暫時訊息，Material 預設動畫不覆寫 | §1、§2、§4、§5、§6、§7（`denied` fallback 於任一畫面） | `plain`（停留 `Motion.snackBar`）/ `withAction`（帶一個動作，停留 `Motion.snackBarWithAction`）；封裝為元件（§3.7 第 8 項） |
@@ -172,7 +172,7 @@ depends_on_domains: [layout]
 | `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列；0.1 以假資料靜態排版（節點所屬列依 traverses，列序與欄序由假資料給定；SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
 | `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3 | `default` |
 | `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption`，可選）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
-| `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono` × 2） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
+| `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
 | `SwitcherOverlay`（專案切換浮層） | 容器 | L3 | 覆蓋層：`AppText.caption` 標題 + `RecentProjectItem` × N（垂直捲動 `scroll-switcher-recent`）+ `Divider` + `AppButton.text`（選擇其他資料夾）；自入口向下展開，Esc／點外部收合，焦點限制於浮層內 | §7（展開、無最近專案） | `default`；`RecentProjectItem` 數量無上限 → 空間不足策略為捲動 |
 
 **定案數（§3.7 核定後）**：元件 26（原 25 加 `MissingSourceState`）、容器 16（其中資料視圖 4：`DataTable`、`MatrixGrid`、`SwimlaneGrid`、`Tree`；0.1 版原記「17」為計數誤差，本表實列 16）。
@@ -275,7 +275,7 @@ depends_on_domains: [layout]
 | §6 右欄 | 垂直：關聯群 × 4；群內垂直：小標 / 關聯項 × N | 群間 `Space.sm`；群內 `Space.xs` | `Panel.scrollable` + `Section.static` |
 | §7 | 浮層垂直：標題 / 專案項 × N / 分隔線 / 選擇其他 | `Space.xxs`；浮層內距 `Space.sm` | `SwitcherOverlay` |
 | §1、§2、§4、§6 | 狀態元件動作區水平：按鈕 × 2–3（畫布未畫，依 SPEC-001 可用操作欄） | `Space.sm`（提案） | `ButtonRow` |
-| §1 schema 不相容 | 詳情面板垂直：小標 / 版本值 × 2（畫布未畫） | `Space.xs`（提案） | `Section.static` |
+| §1 schema 不相容 | 詳情面板垂直：小標 / 範圍值（不高於內建版本；畫布未畫） | `Space.xs`（提案） | `Section.static` |
 
 ### 3.5 模式 A 步驟 5：同型歸併記錄與畫布漂移
 
@@ -341,7 +341,7 @@ depends_on_domains: [layout]
 | §1 | 空圖 | 訊息 + 說明 + 開啟 docs（條件）+ 前往破洞報告；切換專案由殼層入口承載 | `EmptyState.page`（`ButtonRow`[`AppButton` 開啟 docs（目錄存在時）, `AppButton` 前往破洞報告]） |
 | §1 | 不是框架專案 | 訊息 + 說明本 App 需要什麼 + 出口 | `BlockedState.plain` |
 | §1 | 無可消費的型別表 | 版本值 + 訊息 + 降級說明（條件）+ 出口 | `BlockedState.plain`（版本值 slot；降級說明 `onDegradedView` 非 null 時渲染，`0.1.0-W3-335.57` E2） |
-| §1 | schema 不相容 | 版本不符說明 + 兩個版本值 + 檢視詳情 | `BlockedState.withDetail`（面板 `Section.static`[`AppText.caption`, `AppText.mono` × 2]） |
+| §1 | schema 不相容 | 版本不符說明 + 兩個版本值 + 檢視詳情 | `BlockedState.withDetail`（面板 `Section.static`[`AppText.caption`, `AppText.mono`]，內容為 App 已知版本範圍） |
 | §2 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-ucFlow-goto-domain`） |
 | §2 | 無 UC | 訊息 + 導覽至破洞報告 | `EmptyState.page` |
 | §2 | 尚未選定 UC | UC 選擇入口 + 「選擇一條 UC 以檢視 flow」提示；不渲染步驟表（屬正常態）與 UC 基本資訊（屬 flow 未結構化態，`0.1.0-W3-335.47` D9） | `TwoColumnLayout`[`Panel`[`EmptyState.section`（訊息 `ucUnsetPrompt`，無動作——前進動作即右欄選擇入口）], 〈UC 選擇入口〉] |
@@ -579,7 +579,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `projectSummaryLabel` | {nodes} 節點 · {tickets} 票 | {nodes} nodes · {tickets} tickets | nodes, tickets | 4.9 |
 | `healthBadgeA11yLabel` | {count} 個問題 | 單複數：1 issue／{count} issues | count | 4.5（health）；計數 0 時徽章不渲染（SPEC-001 §7） |
 | `switcherTitle` | 切換專案 | Switch project | — | 4.42 |
-| `schemaAppVersionLabel` / `schemaProjectVersionLabel` | App 支援版本 / 專案版本 | Supported schema version / Project version | — | 4.23 |
+| `schemaAppVersionLabel` / `schemaProjectVersionLabel` | App 支援版本 / 專案版本 | Supported schema version / Project version | — | 原 4.23 面板小標；1.45 起面板改放 App 已知版本範圍（見〈1.45 新增〉`schemaKnownRangeLabel`／`schemaKnownRangeValue`），本二 key 不再有使用處，ARB 實檔的移除由對應實作票處理 |
 | `treeDepthA11yLabel` | 第 {depth} 層 | Level {depth} | depth | 4.39 |
 | `openExternallyA11yLabel` | 在外部開啟 | Opens externally | — | 4.40（`item`） |
 | `loadingSkeletonA11yLabel` | 載入中 | Loading | — | 4.24 |
@@ -650,6 +650,14 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `swimlanePanelTitle` | {ucId} {ucTitle} | {ucId} {ucTitle} | ucId, ucTitle | §1 正常 · 泳道、泳道 · flow 未結構化（`AppText.subtitle`，SPEC-001 §1、SPEC-003 §3.1／§2.8，E8） |
 
 畫面票另需的頁面副標等文案由畫面票自行宣告，不列於此。
+
+**1.45 新增（對齊 SPEC-001 v1.19 〈推定版本〉註記與 schema 不相容面板重評；ARB 實檔狀態待建，由對應實作票加入，zh 值為本檔提案文案）**：
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `schemaKnownRangeLabel` | App 已知版本範圍 | Supported schema version range | — | 4.23 `BlockedState.withDetail` 面板小標（`AppText.caption`），取代 `schemaAppVersionLabel`／`schemaProjectVersionLabel` |
+| `schemaKnownRangeValue` | 不高於 {appVersion} | Up to {appVersion} | appVersion | 4.23 `BlockedState.withDetail` 面板值（`AppText.mono`）；`appVersion` 為 App 內建型別表產生版本，與 `message` 代入的同一值 |
+| `inferredVersionBadgeLabel` | 版本推定自型別表 (v{inferredVersion}) | Version inferred from schema (v{inferredVersion}) | inferredVersion | 4.27 `AppShell`（`badge-<screen>-inferred-version`，`Badge.tag`，推定版本旗標生效期間與返回列同一列常駐，SPEC-001 §1〈推定版本〉註記） |
 
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
@@ -3501,16 +3509,16 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
 | `plain` | 訊息 + 說明（可缺）+ 版本值（可缺）+ `ButtonRow`[切換專案 `primary`；無可消費的型別表且 `VERSION` 條件成立時另加「以 App 內建型別表檢視」`AppButton.secondary`（`action-domain-degraded-view`，條件式渲染，依 SPEC-003 §3.1）] | 無展開；`action-domain-degraded-view` 觸發同畫面轉換，不改變本元件狀態（元件隨畫面轉換一併消失） | 不是框架專案、無可消費的型別表 |
-| `withDetail` | 加 `AppButton.secondary`「檢視詳情」（`action-domain-schema-detail`）與可展開的 `Section.static`[`AppText.caption` × 2, `AppText.mono` × 2]（`panel-domain-schema-detail`） | 展開／收合（再次點擊或 Esc） | schema 不相容 |
+| `withDetail` | 加 `AppButton.secondary`「檢視詳情」（`action-domain-schema-detail`）與可展開的 `Section.static`[`AppText.caption`, `AppText.mono`]（`panel-domain-schema-detail`，內容為「App 已知版本範圍：不高於 <內建版本>」一列） | 展開／收合（再次點擊或 Esc） | schema 不相容 |
 
-`withDetail` 面板兩值為有意冗餘：本體 `message`（`schemaIncompatibleMessage`）已代入 `appVersion` / `projectVersion` 兩值，面板為帶標籤的單行值（`schemaAppVersionLabel` / `schemaProjectVersionLabel`），兩者呈現形式不同但資料同源（`0.1.0-W3-335.37` R4）。
+`withDetail` 面板改放本體沒有的資訊（`0.1.0-W3-335.37` R4 的重評條件於「App 已知範圍」判準定案時觸發，SPEC-001 v1.19 §1 註記為重評結果）：本體 `message`（`schemaIncompatibleMessage`）已代入 `appVersion` / `projectVersion` 兩值；面板原為同兩值的帶標籤單行版本（R4 判為有意冗餘），現改為一列小標 `schemaKnownRangeLabel` + 值 `schemaKnownRangeValue`（代入 `appVersion`），告知「已知範圍」的判準（上界為 App 內建型別表產生版本，不高於者可載入），不再重複兩個版本值。`projectVersion` 為推定值（呼叫端 `isVersionInferred`）時本體與面板字面不變，推定來源由 4.27 `AppShell` 的 `badge-<screen>-inferred-version` 承載，本元件不另標示。
 
 #### 狀態矩陣
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
 | collapsed | 依變體，詳情面板不存在 | 切換專案；`withDetail`：檢視詳情；`plain`（無可消費的型別表，`VERSION` 條件成立時）：以 App 內建型別表檢視 | 呼叫端渲染 | 切換專案 → 浮層展開（覆蓋層，不改變本狀態）；檢視詳情 → expanded；以 App 內建型別表檢視 → 同畫面轉換至 `state-domain-matrix` 或 `state-domain-empty`（疊加 `badge-domain-degraded-schema`，不經 `state-domain-loading`，SPEC-003 §3.1） | 資料態：受控 `isDetailExpanded` 存於 Domain 視圖頁面層（slot 契約：§2 頁面狀態保留）——該畫面的 provider 尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `isDetailExpanded` 傳值，元件不 watch。是否渲染本元件（三個阻擋狀態）同為該畫面 provider 的資料態 | 本地即時（面板開合為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作）；是否渲染由頁面 provider 等確認才決定（阻擋判定為載入完成後的結果） |
-| expanded（`withDetail`） | 詳情面板出現於同一狀態根節點內，含 App 支援版本與專案版本兩值 | 同上 + 再次點擊 / Esc 收合 | 點擊檢視詳情 | 再次點擊 / Esc → collapsed（SPEC-003 §1.4、§2.10） | 資料態：同上（`isDetailExpanded` 為 `true`） | 本地即時 |
+| expanded（`withDetail`） | 詳情面板出現於同一狀態根節點內，含「App 已知版本範圍：不高於 <內建版本>」一列 | 同上 + 再次點擊 / Esc 收合 | 點擊檢視詳情 | 再次點擊 / Esc → collapsed（SPEC-003 §1.4、§2.10） | 資料態：同上（`isDetailExpanded` 為 `true`） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由切換專案、檢視詳情、降級檢視（`action-domain-degraded-view`，條件式渲染）各 4.4 `AppButton` 承載，本元件不另列。
 
@@ -3526,7 +3534,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 按下確認 press-ack | 使用者 | 切換專案：經 4.4 `AppButton`（pressed 態 + ripple），呼叫 `onSwitchProject` 恰一次，呼叫端開啟 `SwitcherOverlay`（`state-switcher-expanded` 或 `state-switcher-no-recent` 出現，不改變 `IndexedStack` 索引，SPEC-003 §2.7 阻擋狀態動作列、§3.7）；檢視詳情（`withDetail`）：經 4.4 `AppButton`，呼叫 `onToggleDetail` 恰一次，呼叫端改 `isDetailExpanded`，`panel-domain-schema-detail` 出現／消失（SPEC-003 §3.1 檢視 schema 詳情列） | Material 內建 ripple（經 `AppButton`）；浮層 `Motion.overlay` 由 4.42 `SwitcherOverlay` 承載；面板高度變化 `Motion.transition`（SPEC-003 §3.1 動畫提示） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2，經 4.4）；浮層出現於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「按下確認」列（由 4.4 `AppButton` 承載） | collapsed → pressed（檢視詳情）→ expanded / expanded → pressed → collapsed；切換專案不改變本狀態（浮層為覆蓋層） | 反應／時限：UX 審查（SPEC-003 §2.2、§2.7、§3.1、§3.7）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 由容器承載（4.28 `PageColumn`）：0.1 無定位至本元件的場景——阻擋狀態為全頁內容；面板展開後若超出 viewport 由 `PageColumn` 的捲動承載，不對面板執行 scroll-into-view（SPEC-003 §3.1 未定義；提案）；後續版本若新增定位至本元件的場景，機制依 §4.0.10 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
 | 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：頁面層依 `isDetailExpanded` 改傳值，含 Esc 引起的收合；進入本狀態由頁面層依載入結果渲染） | collapsed ↔ expanded：面板高度變化 `Motion.transition`（SPEC-003 §3.1 動畫提示「`panel-domain-schema-detail` 展開」），面板展開由檢視詳情按鈕的 `expanded` 旗標播報（無障礙子節）；進入本狀態時訊息以 `liveRegion` 播報一次（無障礙子節）；自 `state-domain-loading` cross-fade `Motion.transition`（SPEC-003 §3.1 動畫提示「載入中 → 三個阻擋狀態」）由畫面承載 | `Motion.transition`（面板高度，本元件承載；進入本狀態的 cross-fade 由畫面承載；`disableAnimations` 下皆歸零，SPEC-003 §2.1） | 無（SPEC-003 §3.1 動畫提示只定形式不設時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡適用（面板）；無障礙播報適用（`expanded` 旗標、進入時 `liveRegion` 一次）；不升級系統通知） | collapsed → expanded（檢視詳情）/ expanded → collapsed（再次點擊、Esc） | 反應：UX 審查（SPEC-003 §3.1）；通道／狀態邊：規格撰寫者 |
-| 等待與結果 | 系統 | 掛載點：第一層（互動元件層）由兩顆 4.4 `AppButton` 承載，本元件不另有自身互動層——第二層不適用（浮層開合與面板展開皆無服務受理階段），第三層即結果通知本身（浮層出現 / 面板出現的狀態轉換，SPEC-003 §2.2 結果通知列）。服務類型：本地即時（依兩軸判定：使用者感知的等待為零，面板兩值為載入時已判定的資料、浮層清單為本地 fixture／已探測結果；失敗形態為不可能失敗，純本地開合切換，SPEC-003 §2.12、§3.7）。成功：浮層出現或面板展開／收合；失敗：依兩軸判定不可能發生（純本地狀態操作），故本元件無失敗態需呈現；逾時：同（不可能發生）；服務不可用：同（不可能發生，開合切換無外部依賴）。輸入阻擋範圍：不阻擋（本地即時類政策，SPEC-003 §2.12）。重複觸發防護：無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12） | Material 內建（經 `AppButton`）；`Motion.overlay`（浮層，由 4.42 承載） | `Motion.feedback`（經 4.4） | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.7、§2.12）；通道：規格撰寫者 |
+| 等待與結果 | 系統 | 掛載點：第一層（互動元件層）由兩顆 4.4 `AppButton` 承載，本元件不另有自身互動層——第二層不適用（浮層開合與面板展開皆無服務受理階段），第三層即結果通知本身（浮層出現 / 面板出現的狀態轉換，SPEC-003 §2.2 結果通知列）。服務類型：本地即時（依兩軸判定：使用者感知的等待為零，面板值為載入時已判定的資料、浮層清單為本地 fixture／已探測結果；失敗形態為不可能失敗，純本地開合切換，SPEC-003 §2.12、§3.7）。成功：浮層出現或面板展開／收合；失敗：依兩軸判定不可能發生（純本地狀態操作），故本元件無失敗態需呈現；逾時：同（不可能發生）；服務不可用：同（不可能發生，開合切換無外部依賴）。輸入阻擋範圍：不阻擋（本地即時類政策，SPEC-003 §2.12）。重複觸發防護：無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12） | Material 內建（經 `AppButton`）；`Motion.overlay`（浮層，由 4.42 承載） | `Motion.feedback`（經 4.4） | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.7、§2.12）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -3552,8 +3560,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `message` | 是 | 3 | 末行截斷 | `schemaIncompatibleMessage`（appVersion / projectVersion 代入 `2.42.1`；en 較長）；`TestCopy.longZh` |
 | `explanation` | 是 | 4 | 末行截斷 | `notFrameworkProjectExplanation`（zh 較長，不是框架專案）／`schemaUnconsumableDegradedExplanation`（無可消費的型別表降級時，`0.1.0-W3-335.57` E2）；`TestCopy.longEn` |
 | `version`（`plain` 的版本值） | 否 | 1 | 截斷 | 人工值 `2.42.1-rc.1+build.20260902`；`TestCopy.longToken` |
-| 詳情面板兩值 | 否 | 1 | 截斷 | 同上 |
-| 面板兩個小標 | 否 | 1 | 截斷 | `schemaAppVersionLabel`（en「Supported schema version」） |
+| 詳情面板範圍值（`schemaKnownRangeValue`） | 否 | 1 | 截斷 | 同上（`appVersion` 代入 `2.42.1-rc.1+build.20260902`） |
+| 面板小標（`schemaKnownRangeLabel`） | 否 | 1 | 截斷 | `schemaKnownRangeLabel`（en「Supported schema version range」） |
 
 #### slot 契約
 
@@ -3586,7 +3594,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 切換專案 | `projectSwitcherEntryLabel`（既有，元件預設，參數可覆蓋） |
 | 以 App 內建型別表檢視 | `useBuiltinSchemaAction`（新增，元件預設，§4.0.6 新 key 總表） |
 | 檢視詳情 | `viewSchemaDetailAction`（既有，元件預設） |
-| 面板小標 | `schemaAppVersionLabel` / `schemaProjectVersionLabel`（元件預設） |
+| 面板小標 / 面板值 | `schemaKnownRangeLabel` / `schemaKnownRangeValue`（新增，元件預設，§4.0.6〈1.45 新增〉；取代原 `schemaAppVersionLabel` / `schemaProjectVersionLabel`） |
 
 #### 組合規則
 
@@ -4043,10 +4051,10 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 焦點 focus | 使用者／輔助技術 | Tab 三區段依序：入口 → 全部導覽項 → 內容區，區段內依 `ReadingOrderTraversalPolicy`（SPEC-003 §2.10）；overlayOpen 時焦點限制於浮層、Tab 不離開（`FocusScope`，由 4.42 承載）、Esc 收合後焦點回 `project-switcher-entry`（SPEC-003 §2.10 浮層兩列）；各停留點的焦點環由子件依 §4.0.1 承載，本容器不另繪；側欄與主區以 `Semantics(container: true)` 分組（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言順序與裝飾存在，不設時限；提案） | §1 子表「焦點」列（焦點環由子件承載；本容器承載三區段順序） | default ↔ overlayOpen 皆不改變（焦點路徑隨狀態切換：overlayOpen 時限制於浮層） | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
 | 按下確認 press-ack | 使用者 | 由子件承載：導覽項 4.7（`selectedDestinationProvider` 改變，`IndexedStack` 索引切換無轉場，SPEC-003 §2.8）、入口 4.8（`switcherOpenProvider` 改 `true` → overlayOpen）、返回鍵 4.4 `secondary`（`action-<screen>-back`，讀 `returnToProvider` 切回來源頁並清為 `null`，SPEC-003 §2.3、§2.4）；本容器不渲染 ripple | Material 內建 ripple（經子件） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2，經子件） | §1 子表「按下確認」列（由 4.7 / 4.8 / 4.4 承載） | default → overlayOpen（入口）；切頁不改變本狀態 | 反應／時限：UX 審查（SPEC-003 §2.2、§2.3、§2.4、§2.8）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 本容器承載跨畫面定位的**切頁**段：系統通知點擊／`viewGapsAction` 時將 `selectedDestinationProvider` 設為 `AppDestination.gaps`、`returnToProvider` 設為 `null`（SPEC-003 §2.2「點擊通知的導向」列、§2.3 規則 1）；頁內 scroll-into-view 與高亮不由本容器執行，依 §4.0.10 由 4.30 `Panel.scrollable`（`scroll-gaps-sections`）承載；本容器自身（側欄、標題列）常駐不捲動，不是被定位目標；overlayOpen 時通知點擊視同點外部（4.42 退出路徑）：先收合浮層（`switcherOpenProvider` 改 `false`，焦點依 4.42 收合契約回 `project-switcher-entry`）再執行切頁段與定位段，使焦點移入被定位項不與浮層 `FocusScope` 衝突；定位段的焦點移入覆蓋收合的焦點歸位（收合先把焦點交回入口，定位段隨後移入被定位項，最終落點為被定位項）（提案） | 無（`IndexedStack` 切頁無轉場，SPEC-003 §2.8） | 無（SPEC-003 §2.2 未設切頁時限；提案） | §1 子表「定位提示」列（切頁段由本容器承載，定位段依 §4.0.10） | overlayOpen → default（通知點擊先收合浮層，提案）；default 下切頁不改變本狀態 | 反應：UX 審查（SPEC-003 §2.2）；分工：規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（本容器為 `ConsumerWidget`，於 `ref.listen` 依 `switcherOpenProvider` 渲染／移除 `overlay` slot、依 `returnToProvider` 渲染／移除返回列、依 `selectedDestinationProvider` 切換 `IndexedStack` 索引並對首次成為 index 的頁發首次可見訊號（provider 層 visited set，`visitedDestinationsProvider` / `firstVisibleProvider`，`lib/app/router.dart`；W1-031、SPEC-003 §2.8「六頁建構時機」）） | 浮層出現／收合為 `Motion.overlay`，由 4.42 承載；返回列出現／消失為離散替換（`action-<screen>-back` 依 `returnTo` 存在／消失，SPEC-003 §2.3 規則 4）；降級徽章 `badge-<screen>-degraded-schema` 依降級旗標渲染／移除，與返回列同一列常駐（`Badge.tag`，文字含 App 內建型別表產生版本與專案 `.claude/VERSION` 兩個值，SPEC-001 §1 降級註記 (4)、SPEC-003 §2.4，`0.1.0-W3-335.57` E3）；切頁無轉場，當前頁的 `PageTitle` header 承載播報（無障礙子節）；視窗尺寸變更不重置任何狀態、捲動容器 offset 夾在新範圍（SPEC-003 §2.8，由各捲動容器承載） | `Motion.overlay`（浮層，由 4.42 承載）；其餘無 | 返回列於 `Motion.feedback` 內出現／消失（W1-031 契約，沿用既有）；浮層於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「狀態變更提示」列（`Motion.*` 過渡由 4.42 承載；無障礙播報由當前頁 `PageTitle` header 承載；不升級系統通知——通知的發送由頁面層依 SPEC-003 §2.2 承載，本容器只執行導向的切頁段） | default → overlayOpen（入口／阻擋狀態出口）/ overlayOpen → default（Esc、點外部、選取專案） | 反應：UX 審查（SPEC-003 §2.3、§2.8、§3.7）；通道／狀態邊：規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（本容器為 `ConsumerWidget`，於 `ref.listen` 依 `switcherOpenProvider` 渲染／移除 `overlay` slot、依 `returnToProvider` 渲染／移除返回列、依 `selectedDestinationProvider` 切換 `IndexedStack` 索引並對首次成為 index 的頁發首次可見訊號（provider 層 visited set，`visitedDestinationsProvider` / `firstVisibleProvider`，`lib/app/router.dart`；W1-031、SPEC-003 §2.8「六頁建構時機」）） | 浮層出現／收合為 `Motion.overlay`，由 4.42 承載；返回列出現／消失為離散替換（`action-<screen>-back` 依 `returnTo` 存在／消失，SPEC-003 §2.3 規則 4）；降級徽章 `badge-<screen>-degraded-schema` 依降級旗標渲染／移除，與返回列同一列常駐（`Badge.tag`，文字含 App 內建型別表產生版本與專案 `.claude/VERSION` 兩個值，SPEC-001 §1 降級註記 (4)、SPEC-003 §2.4，`0.1.0-W3-335.57` E3）；推定版本徽章 `badge-<screen>-inferred-version` 依推定版本旗標（`inferredVersion` 非 `null`）渲染／移除，位置與方式同降級徽章（`Badge.tag`，文字 `inferredVersionBadgeLabel` 含推定版本值，SPEC-001 §1〈推定版本〉註記；兩旗標互斥，不會同時出現）；切頁無轉場，當前頁的 `PageTitle` header 承載播報（無障礙子節）；視窗尺寸變更不重置任何狀態、捲動容器 offset 夾在新範圍（SPEC-003 §2.8，由各捲動容器承載） | `Motion.overlay`（浮層，由 4.42 承載）；其餘無 | 返回列於 `Motion.feedback` 內出現／消失（W1-031 契約，沿用既有）；浮層於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「狀態變更提示」列（`Motion.*` 過渡由 4.42 承載；無障礙播報由當前頁 `PageTitle` header 承載；不升級系統通知——通知的發送由頁面層依 SPEC-003 §2.2 承載，本容器只執行導向的切頁段） | default → overlayOpen（入口／阻擋狀態出口）/ overlayOpen → default（Esc、點外部、選取專案） | 反應：UX 審查（SPEC-003 §2.3、§2.8、§3.7）；通道／狀態邊：規格撰寫者 |
 | 等待與結果 | 系統 | 掛載點：不適用——本容器不承載三層中任一層，全部由子件承載（點擊確認：4.7／4.8／4.4 返回鈕；等待指示：各頁內容 slot 的 4.24 `LoadingState`，SPEC-003 §2.6；結果通知：切頁／浮層開合的狀態轉換本身，或 4.26 經 `ScaffoldMessenger` 承載，本容器提供 `Scaffold` 宿主）。服務類型：不適用於本容器本身——本容器只協調子件的顯示與切換，不直接觸發服務，各子件的服務類型見其各自條目（SPEC-003 §2.12）。成功／失敗／逾時／服務不可用：皆不適用於本容器本身，四段結局由承載對應層級的子件各自呈現，本容器不重述。輸入阻擋範圍：不適用於本容器——阻擋範圍由觸發長時操作的內容 slot（4.24）自行決定，本容器（側欄、標題列）本身恆可互動不受阻擋（切換導覽項不因內容區載入中而阻擋，SPEC-003 §2.8 L1）。重複觸發防護：不適用於本容器——本容器無自身觸發動作，防護判斷在各子件與其服務層 | — | — | 不適用（三層皆由子件或內容 slot 承載；`Scaffold` 宿主非回饋通道） | 不適用 | 規格撰寫者 |
 
-**實作註記**：state-change 列「返回列」契約寫「注入當前 `PageColumn` 的頁面級動作列」，但 `pages` slot 是呼叫端已建構完成的 `List<PageColumn>`，容器無法改寫其內部結構。實作改為獨立的返回列疊於 `IndexedStack` 內容之上（沿用既有版面慣例），對外可觀察行為（`action-<screen>-back` 錨點依 `returnTo` 存在/消失）與契約一致，僅視覺層級（注入 vs 疊加）不同。降級徽章 `badge-<screen>-degraded-schema` 比照同一實作方式，與返回列同一列疊於 `IndexedStack` 內容之上，依降級旗標渲染／移除（`0.1.0-W3-335.57` E3）。
+**實作註記**：state-change 列「返回列」契約寫「注入當前 `PageColumn` 的頁面級動作列」，但 `pages` slot 是呼叫端已建構完成的 `List<PageColumn>`，容器無法改寫其內部結構。實作改為獨立的返回列疊於 `IndexedStack` 內容之上（沿用既有版面慣例），對外可觀察行為（`action-<screen>-back` 錨點依 `returnTo` 存在/消失）與契約一致，僅視覺層級（注入 vs 疊加）不同。降級徽章 `badge-<screen>-degraded-schema` 比照同一實作方式，與返回列同一列疊於 `IndexedStack` 內容之上，依降級旗標渲染／移除（`0.1.0-W3-335.57` E3）。推定版本徽章 `badge-<screen>-inferred-version` 同此方式，依推定版本旗標渲染／移除（SPEC-001 v1.19）。
 
 #### 操作機制
 
@@ -5733,7 +5741,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 ### 4.41 Section（容器）
 
-**用途**：節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、schema 詳情面板（`AppText.caption` × 2 + `AppText.mono` × 2）。
+**用途**：節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`）。
 **內容角色**：容器。
 **何時不用**：有層級縮排的樹（`Tree`）；帶表面的堆疊（`Panel`）。
 **出現畫面**：§1（詳情面板）、§4、§5、§6。
@@ -5793,7 +5801,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
-| 不適用 | 無自有文字 slot（`static` 節首為 `AppText.caption`，文案如關聯群名 `implements`、`schemaAppVersionLabel`） | | | |
+| 不適用 | 無自有文字 slot（`static` 節首為 `AppText.caption`，文案如關聯群名 `implements`、`schemaKnownRangeLabel`） | | | |
 
 #### slot 契約
 
@@ -6373,6 +6381,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.45 | 2026-09-23 | 對齊 SPEC-001 v1.19（`0.2.0-W1-040`，承 `0.2.0-W1-038` 方案 A 與 `0.2.0-W1-024`「App 已知範圍」定案）：4.23 `withDetail` 變體表面板組成由 `AppText.caption` × 2 + `AppText.mono` × 2 改為各一，內容改放「App 已知版本範圍：不高於 <內建版本>」；R4 有意冗餘註記改寫為已重評（面板改放本體沒有的資訊，推定值時字面不變、來源由 4.27 徽章承載）；狀態矩陣 expanded 列、回饋契約等待與結果列、內容政策面板兩列、i18n 面板小標列同步；§3.1 元件總表 `BlockedState` 列、§3.4 排列關係盤點 §1 schema 不相容列、§3.6 對照表 §1 schema 不相容列、4.41 `Section` 用途段與 i18n 列同步；§4.0.6 新增〈1.45 新增〉key 表（`schemaKnownRangeLabel`／`schemaKnownRangeValue`／`inferredVersionBadgeLabel`），既有 `schemaAppVersionLabel`／`schemaProjectVersionLabel` 列標記不再使用（ARB 移除交實作票）；4.27 `AppShell` 回饋契約 state-change 列與實作註記補推定版本徽章 `badge-<screen>-inferred-version`（位置與方式同降級徽章，兩旗標互斥）。檔頭版本段對齊 frontmatter（1.44 時未同步，一併校正）。SPEC-003 §3.1「檢視 schema 詳情」列面板內容描述另票同步 |
 | 1.44 | 2026-09-23 | §4.0.6 `healthBadgeA11yLabel` en 改單複數形，備註補計數 0 不渲染（`0.1.0-W1-027`，SPEC-001 1.17 §7） |
 | 1.43 | 2026-09-15 | 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`，依 `0.1.0-W3-335.65` WRAP 裁決 SPEC-004 組 4-01～4-03，對應 SPEC-001 v1.16、SPEC-003 v1.37）：§3.1 總表 `SwimlaneGrid` 列用途欄與 4.38〈用途〉「0.1 以寫死座標的假資料靜態排版」改「0.1 以假資料靜態排版（節點所屬列依 `FlowStep.traverses` 計算，列序與欄序由假資料給定；SPEC-001 設計約束）」（4-01，落實 `0.1.0-W3-345` traverses 定案的同步缺漏）；4.38〈狀態矩陣〉default 列資料態「泳道資料（`lanes`，0.1 為寫死座標的假資料）」改「（0.1 為假資料，欄序由假資料給定）」、步驟欄寬列「由假資料座標決定（SPEC-001 設計約束「寫死座標」）」改「（SPEC-001 設計約束：欄寬靜態）」（4-02）；4.24 `LoadingState`〈用途〉「三處以『目標態』與『進度型別』參數差異化」改「三處以目標態、進度型別與骨架版位差異化（SPEC-003 §2.11）」（4-03，回應 SPEC-004 已定 `skeletonLayout` slot 契約與 `enum SkeletonLayout` 實作事實）。全檔「寫死座標」字面已無殘留（`grep -c` 為 0）；§3.3 第 20 項「靜態座標泳道」為提案原文記錄（節首理由欄涵蓋，不隨上游改版回改），不屬本次處置範圍 |
 | 1.42 | 2026-09-15 | 同步稽核追修票（`0.1.0-W3-335.62`，依 `0.1.0-W3-335.59` WRAP 裁決最終追修清單 SPEC-004 組 4-01～4-20，對應 SPEC-001 v1.15、SPEC-003 v1.36）：§3.1 總表 `LoadingState` 用途改引用 C1–C8 與生命週期 L1–L2（共 10 條，4-01）；`ButtonRow` 用途刪返回、返回 Domain（4-02）；`AppSnackBar` 出現畫面補 §4、§7 並註記 `denied` fallback（4-04，同步 4.26〈出現畫面〉）；`MatrixCell` 用途改「可點擊選格」、狀態補 selected（4-09）；`AppButton` 用途補以 App 內建型別表檢視／前往追溯視圖／前往 Ticket 清單／切換專案（阻擋狀態本體，4-15）；`Panel` 變體欄改引用 SPEC-003 §1.1〈捲動處清單〉不逐列錨點（4-14）。§3.5 畫布漂移表「十個捲動處」改引用〈捲動處清單〉不寫數字（4-13）。§3.6 §6 原始檔已消失列歸屬改 `MissingSourceState` 單顆按鈕、返回改由頁面框架渲染（4-03）；§1 空圖列顯示欄改「前往破洞報告；切換專案由殼層入口承載」（4-19）；〈SPEC-001 狀態列顯示欄 → 本檔〉表前刪「本版對齊 SPEC-001 v1.11」（4-17）；〈UC 選擇入口〉排位列 `Panel.scrollable` 補 scrollKey `scroll-ucFlow-uc-list`、上游缺口列改記已補（SPEC-003 §1.1 SR-5 落地，4-12）。§3.3 標題下首段補理由欄記錄提案當時（2026-09-02）行為與計數、不隨上游改版回改（4-18）；§3.7 前導句改「§3.1 總表與本表核定欄不一致處以本表為準；理由欄記錄核定當時的行為與計數，現行值以 §3.1 與 SPEC-001／SPEC-003 條文為準，不回改」（4-18）。4.15 MatrixCell 詳細段已一致，不改。4.18 `ExpanderIcon` slot 契約 testKey 補 `expander-tickets-unassigned`（4-11）。4.21 `EmptyState` 變體表 `section` 何時選用補泳道 · 尚未選定 UC／泳道 · flow 未結構化／§2 尚未選定 UC、i18n `message` 補 `ucUnsetPrompt`／`swimlaneUcUnsetPrompt`（4-10）。4.23 `BlockedState` 狀態矩陣表下說明改列切換專案／檢視詳情／降級檢視三動作、不寫顆數（4-16）。4.26 `AppSnackBar`〈變體〉`plain` 補外部開啟失敗、`withAction` 補系統通知 `denied` fallback 與清除搜尋篩選（4-05）；slot 契約 `message`／`actionLabel` 與 i18n 訊息／動作兩列補 `externalOpenFailedMessage`／`scanCompleteNoGapsSnackbarMessage`／`scanCompleteSnackbarMessage`／`ticketsFiltersClearedSnackbarMessage`／`viewGapsAction`／`undoAction`（4-06）；回饋契約按下確認列改引用重新掃描／`viewGapsAction`／`undoAction`、狀態變更提示列補四則觸發（4-07）。4.28 `PageColumn` 與 4.10 `SegmentedControl` 狀態變更提示列改引用 SPEC-003 §2.1〈未列轉換的預設〉取代「三個狀態之間」等舊字面（4-20）。4.40 `ListRow`〈回饋契約〉按下確認列 `item` 分支依指向節點型別改四分支：ticket → jump Ticket 清單、其他圖節點 → jump 節點詳情、事件類 → 寫入選定 UC 後 jump UC Flow、無指向 → 外部開啟三結果（4-08）。稽核腳本 `matrix.py`／`counts.py` 由 `0.1.0-W3-335.54` scratchpad 移入 `docs/spec/ui/audit/` 並新增 `README.md`，重跑結果記錄於本票 Completion Info |
