@@ -65,6 +65,23 @@ void main() {
 
       expect(result, ExternalOpenResult.notFound);
     });
+
+    test('G2-2 執行檔無法 spawn 時（ProcessException）回傳 failed', () async {
+      // 可注入的執行檔路徑指向不存在的路徑，模擬 /usr/bin/open 在權限／
+      // 沙盒限制下無法被 spawn 的情況（AC2 實機驗證要驗的失敗成因）。
+      final opener = MacosExternalOpener(
+        executable: '/no/such/executable-for-test',
+      );
+      final tempDir = Directory.systemTemp.createTempSync(
+        'external_opener_test_',
+      );
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+      final target = File('${tempDir.path}/target.md')..writeAsStringSync('');
+
+      final result = await opener.open(target.path);
+
+      expect(result, ExternalOpenResult.failed);
+    });
   });
 
   group('G3｜呼叫發出日誌的靜態結構驗證（INV-PORT-OBSERVE-001）', () {
@@ -78,7 +95,7 @@ void main() {
         'developer.log(path, name: _tag);',
       );
       final precheckIndex = source.indexOf('FileSystemEntity.type(path)');
-      final processRunIndex = source.indexOf("Process.run('/usr/bin/open'");
+      final processRunIndex = source.indexOf('Process.run(_executable, [path])');
 
       expect(methodStart, greaterThanOrEqualTo(0));
       expect(entryLogIndex, greaterThan(methodStart));

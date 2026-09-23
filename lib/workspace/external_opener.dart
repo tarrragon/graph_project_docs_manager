@@ -41,6 +41,12 @@ abstract interface class ExternalOpener {
 /// 不新增第三方依賴——`url_launcher_macos` 等價於 `NSWorkspace.open(URL)`，
 /// 回傳同為成功／失敗二值，無額外資訊（SPEC-003 §2.2「實作（macOS）」列）。
 class MacosExternalOpener implements ExternalOpener {
+  MacosExternalOpener({this._executable = '/usr/bin/open'});
+
+  /// 可注入的執行檔路徑，預設 `/usr/bin/open`；測試藉此觸發
+  /// `ProcessException`（傳入不存在的執行檔路徑）驗證例外處理分支。
+  final String _executable;
+
   @override
   Future<ExternalOpenResult> open(String path) async {
     // 呼叫發出日誌：必須在前置檢查之前，使無論走哪條結果分支都留下一筆
@@ -57,7 +63,21 @@ class MacosExternalOpener implements ExternalOpener {
       return ExternalOpenResult.notFound;
     }
 
-    final result = await Process.run('/usr/bin/open', [path]);
+    final ProcessResult result;
+    try {
+      result = await Process.run(_executable, [path]);
+    } on ProcessException catch (e) {
+      // Process.run 無法 spawn 執行檔時（權限、沙盒等）拋 ProcessException，
+      // 不會回傳非零 exitCode——三值契約必須在此攔截，否則例外會繞過
+      // ExternalOpenResult 直接傳到呼叫端。
+      developer.log(
+        '呼叫失敗：$path，${e.message}', // i18n-exempt: 開發者診斷字串，非使用者可見文字
+        name: _tag,
+        level: 900, // warning
+      );
+      return ExternalOpenResult.failed;
+    }
+
     if (result.exitCode == 0) {
       developer.log(
         '已開啟：$path', // i18n-exempt: 開發者診斷字串，非使用者可見文字
