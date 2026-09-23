@@ -81,4 +81,73 @@ abstract final class TraceabilityFixtures {
       ],
     ),
   ];
+
+  /// 共用子樹：SPEC-008（含子節點 UC-08），供 [multiParent] 於兩個父節點
+  /// （PROP-008、PROP-009）下重複使用——驗證同一 [TraceNode.id] 於多個
+  /// 出現位置共用展開狀態（SPEC-003 §3.3〈多父節點〉，`0.1.0-W3-383`）。
+  static const TraceNode _sharedSpec008 = TraceNode(
+    id: 'SPEC-008',
+    label:
+        'SPEC-008 共用契約（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
+    status: 'draft',
+    children: [
+      TraceNode(
+        id: 'UC-08',
+        label:
+            'UC-08 共用流程（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
+        status: 'draft',
+      ),
+    ],
+  );
+
+  /// 共用缺口節點：SPEC-009（`hasGap`），供 [multiParent] 於兩個父節點
+  /// （PROP-010、PROP-011）下重複使用——驗證同一缺口 [TraceNode.id] 於多個
+  /// 出現位置各自渲染一個 `badge-traceability-broken-<id>`
+  /// （SPEC-003 §3.3〈多父節點〉，`0.1.0-W3-383`）。
+  static const TraceNode _sharedGapSpec009 = TraceNode(
+    id: 'SPEC-009',
+    label:
+        'SPEC-009 缺口示例（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
+    status: 'draft',
+    hasGap: true,
+    gapLayer: 'uc',
+  );
+
+  /// 多父節點態：同一 [TraceNode.id] 於不同父節點下各出現一次
+  /// （SPEC-003 §3.3〈多父節點〉，`0.1.0-W3-383` acceptance）。
+  ///
+  /// - PROP-008 / PROP-009 各掛一份 [_sharedSpec008]（非缺口，驗證展開
+  ///   狀態共用）。
+  /// - PROP-010 / PROP-011 各掛一份 [_sharedGapSpec009]（缺口，驗證缺口
+  ///   標示按出現位置各自渲染）。
+  static const List<TraceNode> multiParent = [
+    TraceNode(
+      id: 'PROP-008',
+      label:
+          'PROP-008 多父節點示例 A', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      status: 'draft',
+      children: [_sharedSpec008],
+    ),
+    TraceNode(
+      id: 'PROP-009',
+      label:
+          'PROP-009 多父節點示例 B', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      status: 'draft',
+      children: [_sharedSpec008],
+    ),
+    TraceNode(
+      id: 'PROP-010',
+      label:
+          'PROP-010 多父節點缺口示例 A', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      status: 'draft',
+      children: [_sharedGapSpec009],
+    ),
+    TraceNode(
+      id: 'PROP-011',
+      label:
+          'PROP-011 多父節點缺口示例 B', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      status: 'draft',
+      children: [_sharedGapSpec009],
+    ),
+  ];
 }

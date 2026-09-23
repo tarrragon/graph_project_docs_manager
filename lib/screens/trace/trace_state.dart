@@ -15,6 +15,14 @@ library;
 /// [children]），trailing 格顯示 `IssueMarker.gap` 而非 `Badge.status`；
 /// 此不變式僅由 fixture 撰寫者保證，不可 const-evaluable，故未以 assert
 /// 強制。
+///
+/// **多父節點**（`0.1.0-W3-335.38` S-27，SPEC-003 §3.3〈多父節點〉）：[id]
+/// 不要求全樹唯一——同一 [id] 可於不同父節點下各出現一次，各出現位置的
+/// [children] 與展開狀態相同（展開集合以 [id] 為鍵，全部出現位置共用，
+/// 見 `trace_providers.dart` 的 `expandedTraceNodesProvider`）；缺口標示
+/// 則以出現位置為單位各自渲染一個。錨點（`card-traceability-<id>` /
+/// `expander-traceability-<id>` / `badge-traceability-broken-<id>`）維持
+/// 字面 `<id>` 不變，只需兄弟節點間唯一，不要求全樹唯一。
 class TraceNode {
   const TraceNode({
     required this.id,

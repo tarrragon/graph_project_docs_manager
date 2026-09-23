@@ -298,6 +298,102 @@ void main() {
     });
   });
 
+  group('多父節點（SPEC-003 §3.3〈多父節點〉，0.1.0-W3-383）', () {
+    /// 找出 `card-traceability-<rootId>` 所在節點自身的子樹容器（`_buildNode`
+    /// 為非葉節點回傳的 `Column`），供後續 `find.descendant` 依出現位置
+    /// 區分特定實例（AC3：斷言以祖先限定 finder，不使用 findsOneWidget）。
+    Finder rootSubtree(String rootId) => find
+        .ancestor(
+          of: find.byKey(Key('card-traceability-$rootId')),
+          matching: find.byType(Column),
+        )
+        .first;
+
+    testWidgets('展開集合共用：展開 PROP-008 下的 SPEC-008 後，'
+        'PROP-009 下的 SPEC-008 亦已展開（無需再次點擊，E1 對照）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [
+          traceabilityStateProvider.overrideWith(
+            (ref) =>
+                const TraceabilityBroken(TraceabilityFixtures.multiParent),
+          ),
+        ],
+      );
+
+      // 展開 PROP-008，露出其下的 SPEC-008（此時 SPEC-008 只有一個實例，
+      // PROP-009 分支仍收合）。
+      await tester.tap(find.byKey(const Key('expander-traceability-PROP-008')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('expander-traceability-SPEC-008')),
+        findsOneWidget,
+      );
+
+      // 展開 SPEC-008（PROP-008 分支），露出 UC-08。
+      await tester.tap(find.byKey(const Key('expander-traceability-SPEC-008')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: rootSubtree('PROP-008'),
+          matching: find.byKey(const Key('card-traceability-UC-08')),
+        ),
+        findsOneWidget,
+      );
+
+      // 對照：展開 PROP-009（另一出現位置），其下的 SPEC-008 應已是展開
+      // 狀態（未對 PROP-009 分支的 SPEC-008 額外點擊），UC-08 直接可見——
+      // 證明展開集合以節點 ID 為鍵、跨出現位置共用（SPEC-004 4.39）。
+      await tester.tap(find.byKey(const Key('expander-traceability-PROP-009')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: rootSubtree('PROP-009'),
+          matching: find.byKey(const Key('card-traceability-UC-08')),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('缺口標示按出現位置各自渲染：PROP-010／PROP-011 下的 '
+        'SPEC-009 各有獨立的 badge-traceability-broken-SPEC-009', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [
+          traceabilityStateProvider.overrideWith(
+            (ref) =>
+                const TraceabilityBroken(TraceabilityFixtures.multiParent),
+          ),
+        ],
+      );
+
+      // 缺口分支依「展開集合初始值」規則自動展開至缺口所在層，兩個
+      // 出現位置皆不需手動點擊即可見（SPEC-003 §3.3〈生命週期〉）。
+      expect(
+        find.byKey(const Key('badge-traceability-broken-SPEC-009')),
+        findsNWidgets(2),
+      );
+      expect(
+        find.descendant(
+          of: rootSubtree('PROP-010'),
+          matching:
+              find.byKey(const Key('badge-traceability-broken-SPEC-009')),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: rootSubtree('PROP-011'),
+          matching:
+              find.byKey(const Key('badge-traceability-broken-SPEC-009')),
+        ),
+        findsOneWidget,
+      );
+    });
+  });
+
   group('無提案態 state-traceability-empty', () {
     testWidgetsAtEachSize('渲染 EmptyState.page', (tester, size) async {
       await pumpHarness(
