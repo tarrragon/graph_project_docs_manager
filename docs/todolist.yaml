@@ -100,6 +100,7 @@ versions:
     codename: "Gate"
     description: "Workspace + Schema：三路 gate，17 個真實專案各自進入正確分支"
     status: "active"    # 2026-09-23 啟用：0.1.0 已發，PROP-005 序列主軸；列於 0.1.1 之前使其為 get_current_version 的預設
+    scope: "frozen"     # 2026-09-23 Batch 0 完成後凍結：必要票七張已標 scope_blocker；新票須帶 --scope-blocker 理由，否則溢出至最近開放後繼版本
     proposals:
       - PROP-002
       - PROP-003
