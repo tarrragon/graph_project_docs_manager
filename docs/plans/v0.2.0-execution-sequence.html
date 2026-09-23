@@ -1,0 +1,151 @@
+<title>Gate 執行序列</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f6f4ef;--surface:#fffdf9;--ink:#1f2a2e;--muted:#5d6b70;--line:#d9d3c7;
+  --accent:#0f6e6a;--accent-ink:#ffffff;--warn:#9a5b00;--warn-bg:#fff3dd;
+  --done:#2f6f3e;--done-bg:#e3f1e5;--run:#0f6e6a;--run-bg:#dff0ee;--wait:#7a7368;--wait-bg:#ece8df;
+  --over:#8a3b3b;--over-bg:#f6e3e3;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#171b1d;--surface:#1f2528;--ink:#e7e4dc;--muted:#a3a89f;--line:#37403f;
+  --accent:#5fc4bd;--accent-ink:#0f1a19;--warn:#f0b85a;--warn-bg:#3a2d12;
+  --done:#8fd39c;--done-bg:#1f3524;--run:#5fc4bd;--run-bg:#173634;--wait:#a39d92;--wait-bg:#2c2f2c;
+  --over:#e39a9a;--over-bg:#3c2323;
+}}
+:root[data-theme="dark"]{
+  --bg:#171b1d;--surface:#1f2528;--ink:#e7e4dc;--muted:#a3a89f;--line:#37403f;
+  --accent:#5fc4bd;--accent-ink:#0f1a19;--warn:#f0b85a;--warn-bg:#3a2d12;
+  --done:#8fd39c;--done-bg:#1f3524;--run:#5fc4bd;--run-bg:#173634;--wait:#a39d92;--wait-bg:#2c2f2c;
+  --over:#e39a9a;--over-bg:#3c2323;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding-block:32px 64px;padding-inline:16px}
+h1{font-size:1.7rem;font-weight:600;margin:0 0 4px;text-wrap:balance}
+h2{font-size:1.1rem;font-weight:600;margin:36px 0 10px;text-wrap:balance}
+.eyebrow{font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lede{color:var(--muted);max-width:65ch;margin:0}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+.scroll{overflow-x:auto}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:.82rem;letter-spacing:.03em}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+code{font-family:var(--mono);font-size:.86em}
+.pill{display:inline-block;font-family:var(--mono);font-size:.74rem;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.done{background:var(--done-bg);color:var(--done)}
+.run{background:var(--run-bg);color:var(--run)}
+.wait{background:var(--wait-bg);color:var(--wait)}
+.over{background:var(--over-bg);color:var(--over)}
+.banner{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:12px 16px;margin:20px 0;display:grid;gap:4px}
+.banner strong{font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0}
+.stat{background:var(--surface);border:1px solid var(--line);padding:12px 14px}
+.stat .k{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.stat .v{font-size:1.5rem;font-weight:600;font-variant-numeric:tabular-nums}
+.stat .s{font-size:.85rem;color:var(--muted)}
+.batch{background:var(--surface);border:1px solid var(--line);margin:12px 0;padding:12px 16px}
+.batch header{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;margin-bottom:6px}
+.batch header h3{margin:0;font-size:1rem;font-weight:600}
+.batch .meta{color:var(--muted);font-size:.85rem}
+ol.rules{padding-left:1.2em;margin:8px 0}
+ol.rules li{margin:4px 0}
+.note{color:var(--muted);font-size:.88rem}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">graph_project_docs_manager · 0.2.0 Gate · 2026-09-23</div>
+  <h1>Gate 執行序列</h1>
+  <p class="lede">0.2.0 的契約只有一句：本機 17 個有 <code>.claude/</code> 的專案各自進入正確的 gate 分支。本頁記錄契約、實測 manifest、五步程序的分批結果與各批進度。</p>
+
+  <div class="banner">
+    <strong>目前狀態：Batch 0 進行中（4 張，決策與文件）</strong>
+    <span>SA 審查 W1-032 已完成。凍結（步驟 5）延至 Batch 0 完成後執行，因兩張決策票可能再生必要票。</span>
+  </div>
+
+  <h2>契約</h2>
+  <div class="grid">
+    <div class="stat"><div class="k">整合測試</div><div class="v">17</div><div class="s">真實專案，逐專案斷言分支，凍結 fixture 驅動</div></div>
+    <div class="stat"><div class="k">斷言來源</div><div class="v">FR-04 / FR-07</div><div class="s">SPEC-001 v1.17〈Gate 三問對照〉判定順序</div></div>
+    <div class="stat"><div class="k">阻擋清單</div><div class="v">無</div><div class="s">PROP-005 §0.2；判準對齊與計數更新由 W1-034 落檔</div></div>
+  </div>
+
+  <h2>實測 manifest（2026-09-23）</h2>
+  <p class="note">兩訊號：<code>.claude/VERSION</code> 值與 <code>.claude/skills/doc/doc_system/core/tracking_schema.json</code> 存在。判定順序：兩者皆缺 → 不是框架專案；JSON 缺 → 無可消費的型別表；JSON 有 → 依版本範圍分正常／schema 不相容。</p>
+  <div class="scroll"><table>
+    <thead><tr><th>分支</th><th class="num">PROP-005 原值</th><th class="num">實測</th><th>專案</th></tr></thead>
+    <tbody>
+      <tr><td>不是框架專案</td><td class="num">6</td><td class="num">6</td><td>adb_install、blog、cc-statusline、japanese_learning_blog、translate、unipos</td></tr>
+      <tr><td>無可消費的型別表</td><td class="num">10</td><td class="num">9</td><td>app_tunnel、book_overview_app、book_overview_v1、c2c_website、ccsession ×3、monitor、screen_clock（VERSION 皆低於內建 2.40.3，降級出口可提供）</td></tr>
+      <tr><td>正常（可載入）</td><td class="num">1</td><td class="num">2</td><td>flutter_balance、graph_project_docs_manager（JSON 產生版本 2.40.3 = 內建）</td></tr>
+      <tr><td>schema 不相容</td><td class="num">—</td><td class="num">0</td><td>無實例；由 fixture 邊界案例覆蓋</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>三問判定</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>判定</th><th>票</th><th>依據</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill run">必要</span></td><td>W1-019、021、022、023、024、033、034、035、037、038</td><td>缺任一項，17 專案無法被選入、探測、路由，或契約文字本身不一致</td></tr>
+      <tr><td><span class="pill over">溢出</span></td><td>W1-015、020、025、026、027、028、W3-124、242、340</td><td>屬 0.3 Corpus 以後（破洞真資料、掃描通知、防抖）或發布通路（簽章）；留池不標 blocker，發版時前移</td></tr>
+      <tr><td><span class="pill done">已關</span></td><td>W1-036</td><td>與 W1-035 同改 SPEC-001，併入</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>批次</h2>
+
+  <div class="batch">
+    <header><h3>Batch 0 · 決策與文件</h3><span class="pill run">進行中</span><span class="meta">四張互不同檔，並行</span></header>
+    <div class="scroll"><table>
+      <thead><tr><th>票</th><th>內容</th><th>代理人</th><th>狀態</th></tr></thead>
+      <tbody>
+        <tr><td><code>W1-024</code></td><td>定案「App 已知範圍」判準（gate step 3 的版本範圍定義，寫入 domain-map §9）</td><td>saffron</td><td><span class="pill run">執行中</span></td></tr>
+        <tr><td><code>W1-038</code></td><td>定案 VERSION 缺＋JSON 有的 state 載體與畫面標示</td><td>saffron</td><td><span class="pill run">執行中</span></td></tr>
+        <tr><td><code>W1-034</code></td><td>PROP-005 §0.2 判準對齊 SPEC-001、計數 6／9／2、status confirmed、todolist notes 同步</td><td>thyme</td><td><span class="pill run">執行中</span></td></tr>
+        <tr><td><code>W1-035</code></td><td>SPEC-001 Gate 段補 JSON 全路徑、判定順序第 2 列括號改寫（含原 W1-036）</td><td>thyme</td><td><span class="pill run">執行中</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="batch">
+    <header><h3>Batch 1 · 實作</h3><span class="pill wait">待 Batch 0</span><span class="meta">parsley worktree ×4；W1-033 blockedBy 024／038</span></header>
+    <div class="scroll"><table>
+      <thead><tr><th>票</th><th>內容</th><th>檔案落點</th></tr></thead>
+      <tbody>
+        <tr><td><code>W1-033</code></td><td>gate 偵測 notifier：filesystem 探測 port → 依判定順序路由 DomainViewState；17 列凍結 manifest 整合測試</td><td>workspace/、domain_view/、test/integration/</td></tr>
+        <tr><td><code>W1-019</code></td><td>專案切換器「選擇其他資料夾」接線 WorkspaceRepository，ChooseFolderResult 四變體</td><td>project_switcher/</td></tr>
+        <tr><td><code>W1-021</code></td><td>shared_preferences key 版本化與遷移策略</td><td>main.dart、pubspec、tech-decisions</td></tr>
+        <tr><td><code>W1-037</code></td><td>l10n「不是框架專案」說明措辭對齊 SPEC-001 §1</td><td>l10n/</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="batch">
+    <header><h3>Batch 2 · 驗證與接縫</h3><span class="pill wait">待 Batch 1</span><span class="meta">W1-023 與 W1-024 同改 domain-map，序列在後</span></header>
+    <div class="scroll"><table>
+      <thead><tr><th>票</th><th>內容</th><th>形態</th></tr></thead>
+      <tbody>
+        <tr><td><code>W1-022</code></td><td>WorkspaceRepository 與 gap_report 外部開啟的平台端事實盤點，決定是否建實機驗證票</td><td>PM 前台</td></tr>
+        <tr><td><code>W1-023</code></td><td>workspace domain 三接縫定案（清除已存路徑、健康徽章計數來源、最近專案清單持久化）</td><td>saffron</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <h2>規則</h2>
+  <ol class="rules">
+    <li>新發現一律 <code>ticket create --version 0.2.0</code>；框架問題走 dedup → observe，不建本地票。</li>
+    <li>Batch 0 完成後執行凍結兩步：todolist <code>scope: frozen</code>，必要票逐張 <code>set-scope-blocker</code>。凍結後新票須帶 <code>--scope-blocker</code> 理由，否則溢出到最近開放後繼版本。</li>
+    <li>同批派發前跑 <code>ticket track conflicts</code>；有交集者合併或序列。</li>
+    <li>發版走 <code>version-release finish</code>：只讀帶 blocker 的 pending 子集，其餘自動前移；0.1.x 不再開 patch。</li>
+    <li>每批 ≤ 4 張，PM 一輪可逐份驗收；代理人回報一律以 git／ticket 狀態核對後才接受。</li>
+  </ol>
+
+  <h2>發版條件</h2>
+  <ol class="rules">
+    <li>17 列 manifest 整合測試全數通過（逐專案斷言，非僅計數）。</li>
+    <li><code>version-release check</code> 對 0.2.0 無帶 scope_blocker 的 pending 票。</li>
+    <li>PROP-005 §0.2 已對齊 SPEC-001 且 status confirmed（W1-034）。</li>
+  </ol>
+</div>
