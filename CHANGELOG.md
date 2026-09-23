@@ -5,8 +5,25 @@
 開發中的版本以 `In Development` 標記，發版時由 `version-release finish` 換為日期。
 
 ## [0.2.0] - In Development
+**Gate**：Workspace + Schema 三路 gate。使用者選取的真實資料夾依兩個訊號（`.claude/VERSION` 值、`.claude/skills/doc/doc_system/core/tracking_schema.json` 存在與其產生版本）進入正確分支（PROP-005 §0.2、SPEC-001 FR-04／FR-07）。整合測試：本機 17 個有 `.claude/` 的專案各自進入正確 gate 分支（凍結 manifest 逐專案斷言，6／9／2）；實機以三個真實資料夾各進一個分支。
 
-（待補充）
+### Added
+
+- gate 偵測：filesystem 探測 port（可 mock）與 `GateDetectionNotifier`，依 SPEC-001〈Gate 三問對照〉判定順序路由 DomainViewState 四個子類別；「App 已知範圍」定為 JSON 產生版本不高於 App 內建版本。
+- 啟動時 `WorkspaceRepository.restore()` 讀回選定路徑並接 gate 偵測；切換／選擇資料夾成功後重置降級與推定旗標再偵測。
+- 專案切換器「選擇其他」接線至真實資料夾選取器，`ChooseFolderResult` 四變體依 SPEC-003 回饋。
+- 推定版本旗標（`.claude/VERSION` 缺、JSON 有）：既有狀態疊加 `inferredVersion`，返回列徽章與降級徽章互斥。
+- shared_preferences key 版本化與遷移（`workspace.schemaVersion`），遷移失敗降級為未選定、不阻擋啟動。
+- 17 列凍結 manifest 整合測試與兩個邊界案例（推定版本、JSON 版本高於內建）。
+
+### Changed
+
+- 「不是框架專案」說明文字改為 PROP-002 全路徑，與 SPEC-001 §1 字面一致。
+- SPEC-001 1.18／1.19、SPEC-004 1.45、PROP-005 §0.2（判準對齊兩訊號、計數 6／9／2、status confirmed）。
+
+### Process
+
+- 版本 scope 凍結模型首次完整走完：Batch 0 決策後凍結，7 張契約票帶 `scope_blocker`，溢出票由 `finish` 前移；規格領先實作的票由凍結閘門擋下並路由至新登記的 0.2.1。
 
 ---
 

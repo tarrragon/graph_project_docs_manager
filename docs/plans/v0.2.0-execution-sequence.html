@@ -61,8 +61,8 @@ ol.rules li{margin:4px 0}
   <p class="lede">0.2.0 的契約只有一句：本機 17 個有 <code>.claude/</code> 的專案各自進入正確的 gate 分支。本頁記錄契約、實測 manifest、五步程序的分批結果與各批進度。</p>
 
   <div class="banner">
-    <strong>目前狀態：Batch 1 進行中（4 張實作，parsley worktree）</strong>
-    <span>Batch 0 四張完成並驗收。scope 已凍結：7 張必要票帶 scope_blocker，<code>version-release check</code> 列出 10 張溢出票將於發版時前移（6 張 → 0.2.1、4 張 → 0.3.0）。</span>
+    <strong>目前狀態：契約清空，<code>version-release check</code> 全過，待發版</strong>
+    <span>三批次全部完成並驗收；實機以三個真實資料夾各進一個 gate 分支。11 張溢出票將於 finish 時前移（0.2.1／0.3.0）；0.2.1 已登記並收了三張規格領先實作的票。</span>
   </div>
 
   <h2>契約</h2>
@@ -110,7 +110,7 @@ ol.rules li{margin:4px 0}
   </div>
 
   <div class="batch">
-    <header><h3>Batch 1 · 實作</h3><span class="pill run">進行中</span><span class="meta">parsley worktree ×4；W1-033 的兩張前置決策已完成</span></header>
+    <header><h3>Batch 1 · 實作</h3><span class="pill done">完成</span><span class="meta">parsley worktree ×4，PM 逐張覆核重跑（27/27、32/32、16/16）</span></header>
     <div class="scroll"><table>
       <thead><tr><th>票</th><th>內容</th><th>檔案落點</th></tr></thead>
       <tbody>
@@ -123,13 +123,15 @@ ol.rules li{margin:4px 0}
   </div>
 
   <div class="batch">
-    <header><h3>Batch 2 · 驗證與接縫</h3><span class="pill wait">待 Batch 1</span><span class="meta">W1-023 與 W1-024 同改 domain-map，序列在後</span></header>
+    <header><h3>Batch 2 · 驗證與接縫</h3><span class="pill done">完成</span><span class="meta">含實作中新立的兩張契約票 W1-041／042</span></header>
     <div class="scroll"><table>
-      <thead><tr><th>票</th><th>內容</th><th>形態</th></tr></thead>
+      <thead><tr><th>票</th><th>內容</th><th>結果</th></tr></thead>
       <tbody>
-        <tr><td><code>W1-022</code></td><td>WorkspaceRepository 與 gap_report 外部開啟的平台端事實盤點，決定是否建實機驗證票</td><td>PM 前台</td></tr>
-        <tr><td><code>W1-023</code></td><td>workspace domain 三接縫定案（清除已存路徑、健康徽章計數來源、最近專案清單持久化）</td><td>saffron</td></tr>
-        <tr><td><code>W1-040</code></td><td>SPEC-001 追修：inferredVersion 語意註記（W1-038）＋ schema 不相容面板改放「App 已知版本範圍」（W1-024 R4 重評）</td><td>lavender</td></tr>
+        <tr><td><code>W1-022</code></td><td>平台端事實盤點</td><td>file_selector 原生選取器為唯一高風險缺口 → W1-041；其餘不建票</td></tr>
+        <tr><td><code>W1-023</code></td><td>workspace 三接縫定案</td><td>domain-map §3；SPEC-005 追修 W1-043（非契約，溢出）</td></tr>
+        <tr><td><code>W1-040</code></td><td>SPEC-001 追修</td><td>1.19：推定版本徽章、面板改放已知範圍；SPEC-004 1.45</td></tr>
+        <tr><td><code>W1-042</code></td><td>啟動 restore → detect、切換後重置再 detect、推定徽章</td><td>51/51；首驗發現 restore() 零呼叫者，由此票補</td></tr>
+        <tr><td><code>W1-041</code></td><td>file_selector 實機驗證（PM＋用戶在機）</td><td>四條通過；同機抽驗三個 gate 分支各進正確畫面</td></tr>
       </tbody>
     </table></div>
   </div>
