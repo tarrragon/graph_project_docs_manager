@@ -4,7 +4,7 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號依 `docs/todolist.yaml` 的版本序列。
 開發中的版本以 `In Development` 標記，發版時由 `version-release finish` 換為日期。
 
-## [0.2.0] - In Development
+## [0.2.0] - 2026-09-23
 **Gate**：Workspace + Schema 三路 gate。使用者選取的真實資料夾依兩個訊號（`.claude/VERSION` 值、`.claude/skills/doc/doc_system/core/tracking_schema.json` 存在與其產生版本）進入正確分支（PROP-005 §0.2、SPEC-001 FR-04／FR-07）。整合測試：本機 17 個有 `.claude/` 的專案各自進入正確 gate 分支（凍結 manifest 逐專案斷言，6／9／2）；實機以三個真實資料夾各進一個分支。
 
 ### Added
