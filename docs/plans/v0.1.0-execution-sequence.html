@@ -132,6 +132,9 @@ tr:last-child td { border-bottom: none; }
 
 <h1>0.1.0 Shell — 執行序列規劃</h1>
 <p class="subtitle">版本交付定義 &#8594; 依賴鏈 &#8594; 批次排序 &#8594; 溢出分流</p>
+<div class="def-box" style="border-left-color:var(--tag-done);background:var(--tag-done-bg);color:var(--tag-done);">
+  <strong>已發版</strong>：tag <code>v0.1.0</code>，2026-09-23。契約 blocker 0；77 張前移（72 &#8594; 0.1.1、5 &#8594; 0.2.0），後經 triage：15 張框架票 &#8594; canonical issue、10 張 &#8594; 0.2.0、13 張規劃前置 &#8594; domain-map &sect;9、42 張留 0.1.1。0.2.0 為主軸 active，0.1.1 凍結容器。
+</div>
 
 <div class="def-box">
   <strong>0.1.0 交付定義</strong>：七個畫面與浮層的全部狀態皆可渲染，不串真實資料。<br>
@@ -140,10 +143,10 @@ tr:last-child td { border-bottom: none; }
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="stat-num">3</div><div class="stat-label">剩餘契約 blocker</div></div>
-  <div class="stat"><div class="stat-num">2/3</div><div class="stat-label">批次完成</div></div>
-  <div class="stat"><div class="stat-num">75</div><div class="stat-label">發版時自動前移</div></div>
-  <div class="stat"><div class="stat-num">4</div><div class="stat-label">0.1.1 已溢出</div></div>
+  <div class="stat"><div class="stat-num">0</div><div class="stat-label">契約 blocker</div></div>
+  <div class="stat"><div class="stat-num">3/3</div><div class="stat-label">批次完成</div></div>
+  <div class="stat"><div class="stat-num">77</div><div class="stat-label">發版時前移</div></div>
+  <div class="stat"><div class="stat-num">42</div><div class="stat-label">0.1.1 實際範圍</div></div>
 </div>
 
 <h2>判斷邏輯</h2>
@@ -188,14 +191,14 @@ tr:last-child td { border-bottom: none; }
 
 <div class="batch">
   <div class="batch-hd">
-    <strong>Batch 2 <span class="tag tag-must">NEXT</span></strong>
-    <span>3 tickets &middot; 剩餘全部契約 blocker &middot; `check` 阻擋數 3</span>
+    <strong>Batch 2 <span class="tag tag-done">DONE</span></strong>
+    <span>2026-09-23 &middot; session 94 &middot; origin 558b8f8fa &middot; `check` exit 0</span>
   </div>
   <div class="ox"><table>
-    <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Notes</th></tr>
-    <tr><td class="id">W1-028</td><td><span class="tag tag-must">ADJ</span></td><td>HomePage 裁決：移除或改造</td><td class="ag">PM &#8594; parsley</td><td style="font-size:0.8rem;">需 W1-067 Panel 落地</td></tr>
-    <tr><td class="id">W3-382</td><td><span class="tag tag-must">IMP</span></td><td>notFrameworkProjectMessage 文案對齊</td><td class="ag">parsley</td><td style="font-size:0.8rem;">畫面文案正確性</td></tr>
-    <tr><td class="id">W3-383</td><td><span class="tag tag-must">IMP</span></td><td>追溯視圖多父節點展開狀態</td><td class="ag">parsley</td><td style="font-size:0.8rem;">渲染正確性</td></tr>
+    <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Result</th></tr>
+    <tr><td class="id">W1-028</td><td><span class="tag tag-must">ADJ</span></td><td>HomePage 裁決</td><td class="ag">PM &#8594; parsley</td><td style="font-size:0.8rem;"><span class="tag tag-done">completed</span> 刪除；ChooseFolderResult 接線 &#8594; 0.1.1-W1-005</td></tr>
+    <tr><td class="id">W3-382</td><td><span class="tag tag-must">IMP</span></td><td>notFrameworkProjectMessage 文案對齊</td><td class="ag">parsley</td><td style="font-size:0.8rem;"><span class="tag tag-done">completed</span> zh 照 SPEC-001 &sect;1 字面、en 同判準</td></tr>
+    <tr><td class="id">W3-383</td><td><span class="tag tag-must">IMP</span></td><td>追溯視圖多父節點展開狀態</td><td class="ag">parsley</td><td style="font-size:0.8rem;"><span class="tag tag-done">completed</span> 既有實作已以 nodeId 為鍵，補 fixture + E1 對照</td></tr>
   </table></div>
 </div>
 
