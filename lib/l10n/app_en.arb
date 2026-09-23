@@ -18,7 +18,7 @@
   "cancelLoadingAction": "Cancel loading",
   "emptyGraphMessage": "This project has no graph nodes yet",
   "noUcNodesMessage": "This project has no UC nodes yet",
-  "notFrameworkProjectMessage": "This folder has no docs/ — it does not use this framework",
+  "notFrameworkProjectMessage": "This folder is missing the configuration this framework requires (both .claude/VERSION and the type table are absent) — it does not use this framework",
   "notFrameworkProjectExplanation": "This app needs either .claude/VERSION or the type table (tracking_schema.json) at the project root to determine this project's framework version",
   "schemaUnconsumableMessage": "This project's framework version ({version}) predates the machine-readable export of the graph type table",
   "schemaIncompatibleMessage": "This app supports schema version {appVersion}; this project uses {projectVersion}, which is incompatible",

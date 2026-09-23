@@ -101,7 +101,7 @@
     "description": "SPEC-001 §2 UC Flow 視圖·無 UC 狀態的顯示文案"
   },
 
-  "notFrameworkProjectMessage": "此資料夾沒有 docs/，不是使用本框架的專案",
+  "notFrameworkProjectMessage": "此資料夾缺少本框架所需的設定檔（.claude/VERSION 與型別表皆缺），不是使用本框架的專案",
   "@notFrameworkProjectMessage": {
     "description": "SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案"
   },

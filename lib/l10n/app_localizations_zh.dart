@@ -73,7 +73,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noUcNodesMessage => '此專案尚無 UC 節點';
 
   @override
-  String get notFrameworkProjectMessage => '此資料夾沒有 docs/，不是使用本框架的專案';
+  String get notFrameworkProjectMessage =>
+      '此資料夾缺少本框架所需的設定檔（.claude/VERSION 與型別表皆缺），不是使用本框架的專案';
 
   @override
   String get notFrameworkProjectExplanation =>
