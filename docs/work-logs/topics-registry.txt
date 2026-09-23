@@ -9,3 +9,4 @@ git 變更記錄
 編輯能力提案
 ticket CLI create lock 釋放路徑
 0.2 三路 gate
+0.2.1 gate 品質改善
