@@ -441,6 +441,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String inferredVersionBadgeLabel(String inferredVersion) {
+    return '版本推定自型別表 (v$inferredVersion)';
+  }
+
+  @override
   String get modeMatrixLabel => '矩陣';
 
   @override

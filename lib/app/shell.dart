@@ -11,6 +11,7 @@
 /// provider 值接進 [components.AppShell] 的 `overlay` slot。
 library;
 
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart' show Icons, Scaffold;
@@ -20,12 +21,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../components/components.dart' as components;
 import '../l10n/app_localizations.dart';
 import '../screens/domain_view/domain_view_screen.dart';
+import '../screens/domain_view/gate_detection_notifier.dart';
 import '../screens/gap_report/gap_report_screen.dart';
 import '../screens/gap_report/scan_notification_controller.dart';
 import '../screens/node_detail/node_detail_screen.dart';
 import '../screens/ticket_list/ticket_list_screen.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../screens/project_switcher/project_switcher_providers.dart';
+import '../workspace/workspace_types.dart';
 import 'app_lifecycle.dart';
 import 'router.dart';
 
@@ -60,6 +63,22 @@ class _AppShellState extends ConsumerState<AppShell>
     // SnackBar 的載體，掛載期間內恆有效（SPEC-003 §2.2）。
     _scanNotificationController = ScanNotificationController(ref, () => context)
       ..start();
+    // App 啟動：還原先前選定的工作資料夾並執行 gate 偵測（0.2.0-W1-042，
+    // W1-019 接線的上游進入點）。`unawaited`：initState 不可為 async，
+    // 結果透過 provider 寫回，畫面依 domainViewStateProvider 反應變化。
+    unawaited(_restoreWorkspaceAndDetect());
+  }
+
+  /// [WorkspaceRepository.restore] 任何失敗皆降級為非 [WorkspaceReady]
+  /// （見該檔契約），此時不執行 [GateDetectionNotifier.detect]——沿用
+  /// 「restore() 不阻擋 App」的既有契約，畫面維持預設狀態。
+  Future<void> _restoreWorkspaceAndDetect() async {
+    final repository = ref.read(workspaceRepositoryProvider);
+    final state = await repository.restore();
+    if (!mounted) return;
+    if (state case WorkspaceReady(:final path)) {
+      await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
+    }
   }
 
   @override

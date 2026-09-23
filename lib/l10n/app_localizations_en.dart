@@ -454,6 +454,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String inferredVersionBadgeLabel(String inferredVersion) {
+    return 'Version inferred from schema (v$inferredVersion)';
+  }
+
+  @override
   String get modeMatrixLabel => 'Matrix';
 
   @override

@@ -16,6 +16,7 @@ import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/workspace_repository.dart';
 import '../../workspace/workspace_types.dart';
+import '../domain_view/gate_detection_notifier.dart';
 import 'project_switcher_providers.dart';
 
 /// [WorkspaceRepository] 的接縫；測試可覆寫以注入替身，避免碰觸真實檔案
@@ -92,9 +93,14 @@ void _selectProject(WidgetRef ref, int index) {
   ref.read(currentProjectIndexProvider.notifier).state = index;
   ref.read(switcherOpenProvider.notifier).state = false;
   // 寫入端接線（0.1.0-W2-014）：切換專案重置降級旗標（SPEC-001 §1「切換
-  // 專案時旗標重置」）。
+  // 專案時旗標重置」）。0.2.0-W1-042 同步重置推定版本旗標——與降級旗標
+  // 同一契約（比照 `gate_detection_notifier.dart` 的
+  // `inferredVersionProvider` 文件）。最近專案清單為 fixture 資料
+  // （`project_switcher_providers.dart`）不帶真實路徑，故本路徑不呼叫
+  // detect()：無路徑可偵測。
   ref.read(degradedSchemaProvider.notifier).state = false;
   ref.read(degradedSchemaVersionsProvider.notifier).state = null;
+  ref.read(inferredVersionProvider.notifier).state = null;
 }
 
 void _dismiss(WidgetRef ref) {
@@ -122,9 +128,10 @@ Future<void> _chooseFolder(BuildContext context, WidgetRef ref) async {
         origin: AppSnackBarOrigin.userInitiated,
       );
     case ChooseFolderSelected(:final state):
-      _handleChosenState(context, ref, l10n, state);
+      await _handleChosenState(context, ref, l10n, state);
     case ChooseFolderNotRemembered(:final state):
-      _handleChosenState(context, ref, l10n, state);
+      await _handleChosenState(context, ref, l10n, state);
+      if (!context.mounted) return;
       AppSnackBar.show(
         context,
         message: l10n.workspaceNotRemembered,
@@ -135,16 +142,22 @@ Future<void> _chooseFolder(BuildContext context, WidgetRef ref) async {
 }
 
 /// 依 [state]（[ChooseFolderSelected] / [ChooseFolderNotRemembered] 共用的
-/// 內層狀態）決定浮層是否收合：可用即切換專案並收合，不可用則維持展開並
-/// 提示原因（SPEC-003 §3.7「選擇其他（選定資料夾不可讀或不存在）」列）。
-void _handleChosenState(
+/// 內層狀態）決定浮層是否收合：可用即重置降級／推定旗標、執行 gate 偵測
+/// 並收合（`0.2.0-W1-042`），不可用則維持展開並提示原因（SPEC-003 §3.7
+/// 「選擇其他（選定資料夾不可讀或不存在）」列）。
+Future<void> _handleChosenState(
   BuildContext context,
   WidgetRef ref,
   AppLocalizations l10n,
   WorkspaceState state,
-) {
+) async {
   switch (state) {
-    case WorkspaceReady():
+    case WorkspaceReady(:final path):
+      ref.read(degradedSchemaProvider.notifier).state = false;
+      ref.read(degradedSchemaVersionsProvider.notifier).state = null;
+      ref.read(inferredVersionProvider.notifier).state = null;
+      await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
+      if (!context.mounted) return;
       _dismiss(ref);
     case WorkspaceUnavailable(:final reason):
       AppSnackBar.show(
