@@ -86,7 +86,10 @@ def update_documents(version: str):
 def git_merge_and_push(version: str, dry_run: bool = False):
     """
     3.1 提交所有變更（如果有未提交的）
-        git add docs/todolist.yaml CHANGELOG.md
+        staged 範圍 = 執行前 baseline（finish/release 入口的 git status 快照）
+        與目前狀態的差集，過濾出屬 docs/ 或 CHANGELOG.md 者，逐檔 add
+        （不用 -A／目錄）——涵蓋 Step 0 前移產生的 ticket rename，取代舊版
+        寫死的 `git add docs/todolist.yaml CHANGELOG.md`
         git commit -m "docs: 版本 {version} 發布準備"
 
     3.2 切換到 main 分支
@@ -114,15 +117,28 @@ def git_merge_and_push(version: str, dry_run: bool = False):
         讀取 todolist.yaml，找第一個 status: planned 的版本
         將其 status 改為 active（保留引號格式）
         若無 planned 版本，跳過（非錯誤）
+
+    3.9 第二次收尾提交（Commit Version Activation）
+        Mark Version Completed 與 Activate Next Version 在 3.1 之後才寫入
+        todolist.yaml，故對同一 baseline 差集再跑一次 3.1 的 add + commit
+        邏輯，把這兩步的變更一併納入版本控制
+
+    3.10 exit 前殘留守衛
+        對 baseline 差集（不限 docs/ 或 CHANGELOG.md）做最終檢查；非空即
+        列出殘留路徑並以非 0 結束，不自動 add——避免吸入非本次 finish
+        產生的變更
     """
 ```
 
 **Git 操作順序**:
 
-1. 提交檔案變更
+1. 提交檔案變更（差集範圍）
 2. 切換到 main 分支
 3. 拉取最新 main
 4. 合併 feature 分支（保留合併記錄）
 5. 建立 Tag
 6. 推送 main + Tag
 7. 刪除本地/遠端 feature 分支
+8. 標記版本完成、推進下一版本為 active
+9. 第二次收尾提交（涵蓋標記完成與版本啟用的變更）
+10. exit 前殘留守衛（非空即非 0 退出並列殘留清單）
