@@ -1,6 +1,7 @@
 /// 專案切換浮層三個狀態測試（SPEC-001 §7；SPEC-004 §3.6；SPEC-003 §3.7）。
 library;
 
+import 'package:flutter/material.dart' show SnackBar;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,9 +10,83 @@ import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
+
+/// 固定回傳 [handle] 的假偏好設定管道；[handle] 為 `null` 時模擬
+/// `open()` 拋例外（對應 [ChooseFolderNotRemembered] 的持久化失敗分支）。
+class _FakePreferencesPort implements WorkspacePreferencesPort {
+  _FakePreferencesPort({this.handle});
+  final WorkspacePreferencesHandle? handle;
+
+  @override
+  Future<WorkspacePreferencesHandle> open() async {
+    final h = handle;
+    if (h == null) {
+      throw StateError('fake: preferences unavailable');
+    }
+    return h;
+  }
+}
+
+class _FakePreferencesHandle implements WorkspacePreferencesHandle {
+  @override
+  String? readString(String key) => null;
+
+  @override
+  Future<bool> writeString(String key, String value) async => true;
+}
+
+/// 固定回傳 [probeExists] 的假資料夾探測；`readFirstEntry` 恆為空資料夾成功路徑。
+class _FakeDirectoryProbePort implements WorkspaceDirectoryProbePort {
+  _FakeDirectoryProbePort({required bool probeExists}) : _exists = probeExists;
+  final bool _exists;
+
+  @override
+  Future<bool> exists(String path) async => _exists;
+
+  @override
+  Future<void> readFirstEntry(String path) async {
+    throw StateError('empty'); // 空資料夾路徑：workspace_repository 吞 StateError
+  }
+}
+
+/// 組成一個回傳 [ChooseFolderSelected]／[ChooseFolderNotRemembered]（皆包
+/// [WorkspaceReady]）的假 repository：選取固定路徑、探測回報可用。
+WorkspaceRepository _fakeRepositoryReady({bool rememberSucceeds = true}) {
+  return WorkspaceRepository(
+    pickDirectoryPath: () async => '/fake/workspace',
+    preferencesPort: rememberSucceeds
+        ? _FakePreferencesPort(handle: _FakePreferencesHandle())
+        : _FakePreferencesPort(),
+    directoryProbe: _FakeDirectoryProbePort(probeExists: true),
+  );
+}
+
+/// 選取後探測失敗（資料夾不存在）的假 repository。
+WorkspaceRepository _fakeRepositoryUnavailable() {
+  return WorkspaceRepository(
+    pickDirectoryPath: () async => '/fake/missing',
+    preferencesPort: _FakePreferencesPort(handle: _FakePreferencesHandle()),
+    directoryProbe: _FakeDirectoryProbePort(probeExists: false),
+  );
+}
+
+/// 使用者取消選取的假 repository（`pickDirectoryPath` 回傳 `null`）。
+WorkspaceRepository _fakeRepositoryCancelled() {
+  return WorkspaceRepository(pickDirectoryPath: () async => null);
+}
+
+/// 選取面板本身開不起來的假 repository（`pickDirectoryPath` 拋例外）。
+WorkspaceRepository _fakeRepositoryPickerUnavailable() {
+  return WorkspaceRepository(
+    pickDirectoryPath: () async => throw PlatformException(code: 'unavailable'),
+  );
+}
 
 void main() {
   group('收合態', () {
@@ -200,11 +275,16 @@ void main() {
       );
     });
 
-    testWidgets('選擇資料夾按鈕收合浮層', (tester) async {
+    testWidgets('選擇資料夾按鈕接線 WorkspaceRepository，選定可用資料夾後收合浮層', (
+      tester,
+    ) async {
       await pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWithValue(const []),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryReady(),
+          ),
         ],
       );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
@@ -217,6 +297,136 @@ void main() {
         find.byKey(const Key('state-switcher-no-recent')),
         findsNothing,
       );
+    });
+  });
+
+  group('選擇其他資料夾（ChooseFolderResult 四變體，SPEC-003 §3.7）', () {
+    testWidgets('ChooseFolderCancelled：浮層維持展開，不顯示 AppSnackBar', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryCancelled(),
+          ),
+        ],
+        settle: false,
+      );
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('state-switcher-expanded')), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('ChooseFolderUnavailable：浮層維持展開，顯示 AppSnackBar', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryPickerUnavailable(),
+          ),
+        ],
+        settle: false,
+      );
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('state-switcher-expanded')), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('ChooseFolderSelected(WorkspaceReady)：浮層收合，不顯示 AppSnackBar', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryReady(),
+          ),
+        ],
+        settle: false,
+      );
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets(
+      'ChooseFolderSelected(WorkspaceUnavailable)：浮層維持展開，顯示 AppSnackBar',
+      (tester) async {
+        await pumpApp(
+          tester,
+          overrides: [
+            workspaceRepositoryProvider.overrideWithValue(
+              _fakeRepositoryUnavailable(),
+            ),
+          ],
+          settle: false,
+        );
+        await tester.tap(
+          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.byKey(const Key('action-switcher-choose-folder')),
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        expect(
+          find.byKey(const Key('state-switcher-expanded')),
+          findsOneWidget,
+        );
+        expect(find.byType(SnackBar), findsOneWidget);
+      },
+    );
+
+    testWidgets('ChooseFolderNotRemembered：浮層收合，顯示 AppSnackBar', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryReady(rememberSucceeds: false),
+          ),
+        ],
+        settle: false,
+      );
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
+      expect(find.byType(SnackBar), findsOneWidget);
     });
   });
 }
