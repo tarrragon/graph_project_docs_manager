@@ -3322,12 +3322,95 @@ def update_documents(version: str, dry_run: bool = False) -> bool:
     return all_ok
 
 
-def commit_changes(version: str, dry_run: bool = False) -> bool:
-    """提交檔案變更"""
+def snapshot_git_status_paths(root: Path) -> set:
+    """回傳目前 git status --porcelain 中出現的路徑集合（rename 兩側皆納入）。
+
+    用途：作為 finish 收尾差集比對的基準快照。
+    """
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    paths = set()
+    for line in result.stdout.splitlines():
+        if not line:
+            continue
+        body = line[3:] if len(line) > 3 else line.strip()
+        if " -> " in body:
+            old, new = body.split(" -> ", 1)
+            paths.add(old.strip().strip('"'))
+            paths.add(new.strip().strip('"'))
+        else:
+            paths.add(body.strip().strip('"'))
+    return paths
+
+
+def _diff_new_paths(root: Path, baseline: set) -> List[str]:
+    """回傳目前工作區相對 baseline 新增的路徑（sorted，可重現）。"""
+    current = snapshot_git_status_paths(root)
+    return sorted(p for p in current if p not in baseline)
+
+
+def check_residual_after_finish(root: Path, baseline: set) -> List[str]:
+    """finish 收尾前的殘留守衛：回傳排除 baseline 已存在項目後的殘留路徑清單。
+
+    不自動 add——避免吸入非本次 finish 產生的變更（bash 規則七精神）。
+    """
+    return _diff_new_paths(root, baseline)
+
+
+def commit_changes(
+    version: str,
+    dry_run: bool = False,
+    baseline: Optional[set] = None,
+    commit_message: Optional[str] = None,
+) -> bool:
+    """提交檔案變更。
+
+    若提供 baseline（執行前的 git status 快照），staged 範圍改為「目前狀態
+    相對 baseline 的差集」中屬 docs/ 或 CHANGELOG.md 者，逐檔 add（不用
+    -A／目錄），取代舊版寫死的 `git add docs/todolist.yaml CHANGELOG.md`
+    ——寫死清單在副作用集合成長時（如前移 ticket 產生的 rename）必然落
+    後，差集是自描述的。未提供 baseline 時退回舊版寫死清單行為（相容既
+    有呼叫點）。
+    """
     root = get_project_root()
+    message = commit_message or f"docs: 版本 {version} 發布準備"
 
     try:
-        # 檢查是否有待提交的變更
+        if baseline is not None:
+            stage_targets = [
+                p
+                for p in _diff_new_paths(root, baseline)
+                if p == "CHANGELOG.md" or p.startswith("docs/")
+            ]
+            if not stage_targets:
+                return True
+
+            if dry_run:
+                print_info(f"[SYNC] [預覽] 將提交檔案變更: {stage_targets}", 2)
+                return True
+
+            for path in stage_targets:
+                subprocess.run(["git", "add", path], cwd=root, timeout=10)
+
+            result = subprocess.run(
+                ["git", "commit", "-m", message],
+                cwd=root,
+                capture_output=True,
+                timeout=10,
+            )
+
+            if result.returncode == 0:
+                print_success("檔案變更已提交")
+                return True
+            print_error("提交變更失敗")
+            return False
+
+        # 相容路徑：未提供 baseline 時維持舊版寫死清單行為
         result = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=root,
@@ -3337,25 +3420,17 @@ def commit_changes(version: str, dry_run: bool = False) -> bool:
         )
 
         if result.returncode == 0 and result.stdout.strip():
-            # 有未提交的變更
             if dry_run:
                 print_info("[SYNC] [預覽] 將提交檔案變更", 2)
             else:
-                # 加入檔案
                 subprocess.run(
                     ["git", "add", "docs/todolist.yaml", "CHANGELOG.md"],
                     cwd=root,
                     timeout=10,
                 )
 
-                # 提交
                 result = subprocess.run(
-                    [
-                        "git",
-                        "commit",
-                        "-m",
-                        f"docs: 版本 {version} 發布準備",
-                    ],
+                    ["git", "commit", "-m", message],
                     cwd=root,
                     capture_output=True,
                     timeout=10,
@@ -3374,7 +3449,9 @@ def commit_changes(version: str, dry_run: bool = False) -> bool:
         return False
 
 
-def git_merge_and_push(version: str, dry_run: bool = False) -> bool:
+def git_merge_and_push(
+    version: str, dry_run: bool = False, baseline: Optional[set] = None
+) -> bool:
     """執行 Git 操作"""
     print_section("Step 3: Git Operations")
 
@@ -3398,7 +3475,7 @@ def git_merge_and_push(version: str, dry_run: bool = False) -> bool:
     try:
         # 3.1 提交變更
         print_info("[SYNC] 提交所有變更")
-        if not commit_changes(version, dry_run):
+        if not commit_changes(version, dry_run, baseline=baseline):
             return False
 
         # 3.2 切換到 main 分支
@@ -3725,6 +3802,14 @@ def main():
             if dry_run:
                 print_warning("預覽模式：不會執行實際的 git 操作\n")
 
+            # 差集比對基準：finish/release 執行前的 git status 快照。
+            # 收尾 commit 的 staged 範圍與 exit 前殘留守衛皆以此為準，
+            # 取代舊版寫死清單（寫死清單在副作用集合成長時必然落後）。
+            finish_root = get_project_root()
+            finish_baseline = (
+                snapshot_git_status_paths(finish_root) if not dry_run else set()
+            )
+
             # finish：先對前移清單逐張 migrate，任一張失敗即中止（不留半搬狀態）
             if args.command == "finish":
                 print_section("Step 0: Migrate Overflow Tickets")
@@ -3757,7 +3842,7 @@ def main():
                 return 1
 
             # Git 操作
-            git_ok = git_merge_and_push(version, dry_run)
+            git_ok = git_merge_and_push(version, dry_run, baseline=finish_baseline)
 
             if not git_ok:
                 print_error("\nGit 操作失敗（todolist 狀態更新仍會繼續）")
@@ -3782,6 +3867,28 @@ def main():
                 print_warning(
                     "下一版本自動推進失敗（不中止發布，請手動設定 todolist.yaml active 版本）"
                 )
+
+            # 第二次收尾提交：Mark Completed / Activate Next Version 在 Step 3
+            # commit 之後才寫入 todolist.yaml，兩者的變更需要一次追加提交才
+            # 能讓 exit 前殘留守衛通過。以同一 baseline 差集比對，僅新增的
+            # docs/ 或 CHANGELOG.md 才會被納入。
+            print_section("Step: Commit Version Activation")
+            if not commit_changes(
+                version,
+                dry_run,
+                baseline=finish_baseline,
+                commit_message=f"docs: 版本 {version} 標記完成並啟用下一版本",
+            ):
+                print_warning("版本啟用變更提交失敗（請手動確認 todolist.yaml 狀態）")
+
+            # exit 前殘留守衛：不自動 add，避免吸入非本次 finish 產生的變更
+            if not dry_run:
+                residual = check_residual_after_finish(finish_root, finish_baseline)
+                if residual:
+                    print_error("發版收尾完成但工作區有殘留未提交變更：")
+                    for path in residual:
+                        print_info(f"- {path}", 1)
+                    return 1
 
             # 打印摘要
             print_summary(version, git_ok, dry_run)

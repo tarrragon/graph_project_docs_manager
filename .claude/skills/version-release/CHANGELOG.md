@@ -2,6 +2,9 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.3.0 - finish 收尾提交改以「執行前後 git status 差集」定 staged 範圍（過濾 docs/ 與 CHANGELOG.md），取代舊版寫死清單 `git add docs/todolist.yaml CHANGELOG.md`——寫死清單在 Step 0 前移產生 ticket rename 等副作用時必然落後；Mark Version Completed / Activate Next Version 之後新增第二次收尾提交涵蓋其變更；finish 流程結尾加入 exit 前殘留守衛，工作區有非本次產生的殘留即列清單並以非 0 退出（不自動 add）
+**Last Updated**: 2026-09-23
+
 **Version**: 2.2.0 - 改寫發版判準：pending Ticket 不再以「池清空」為門檻，改為帶 scope_blocker（依賴 ticket skill 的版本範圍凍結硬閘門欄位）者阻擋、其餘列為前移清單不阻擋；新增 `finish` 子命令，成功前移全部清單後接續既有 `release` 流程；目標版本未在 todolist.yaml 登記時整批阻擋且不自動登記
 **Last Updated**: 2026-09-23
 
