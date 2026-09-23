@@ -452,6 +452,14 @@ frontmatter 解析語意——見下方「解析器語意是規格的一部分�
   並回答三個今天沒有答案的問題：型別表缺席時 Corpus 用什麼掃描、
   `id_pattern` 隨版本變動時舊語料的不合法 id 歸哪一類破洞、
   選到非框架專案時走哪條退出路徑
+- **「App 已知範圍」判準已定案**（`0.2.0-W1-024`，2026-09-23 WRAP 快速模式）：
+  `tracking_schema.json` 的 `schema_generated_at_framework_version` 不高於
+  App 內建資產 `builtin_schema_version.json` 同名欄位時，版本在範圍內（正常）；
+  高於時超出已知範圍（schema 不相容）。判定式為
+  `!isHigherThanBuiltinSchemaVersion(jsonSchemaVersion, builtinSchemaVersion)`
+  ——重用既有函式，僅第一運算元改為 JSON 版本。CLAUDE.md §6 五項空殼判準
+  原列有此項，定案後應移除。依賴本判準的重評項：SPEC-001 §1 L67-68 註記
+  （面板改放 App 已知版本範圍，trigger 已滿足）、W3-335.37 R4（O4 重評）
 - **`*_REQUIRED_FIELDS` 的語意本身未定，`lostFields` 在裁決前不可實作。**
   上游複驗（票 `0.2.1-W3-1131`）指出問題有三層，比「5 型缺定義」更基本：
 
