@@ -8,3 +8,4 @@ git 變更記錄
 0.1 App 地基
 編輯能力提案
 ticket CLI create lock 釋放路徑
+0.2 三路 gate
