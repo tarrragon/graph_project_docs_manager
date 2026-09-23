@@ -80,8 +80,7 @@ versions:
   - version: "0.1.0"
     codename: "Shell"
     description: "展示介面：七個畫面與浮層的全部狀態皆可渲染，不串真實資料"
-    status: completed
-    scope: "frozen"    # 2026-09-22 凍結：必要 8 張見 docs/plans/v0.1.0-execution-sequence.html；新根票走 0.1.1／0.2.0（0.1.0-W3-651 閘門）
+    status: "completed"
     proposals:
       - PROP-004
       - PROP-005
@@ -97,19 +96,10 @@ versions:
       實作中撞到 SPEC-001 未預估的文件變體或畫面情況時，開 0.1.x 的票修正
       並回填狀態表，不回頭改版本規劃。
 
-  - version: "0.1.1"
-    codename: "Runoff"
-    description: "0.1.0 scope 凍結後，凍結閘門路由至此的品質改善票（patch+1）"
-    status: "active"
-    worklog: "docs/work-logs/v0/v0.1/v0.1.1/"
-    notes: |
-      範圍 = 凍結閘門路由至此的票；整合測試 = 上層 minor（0.1.0）的整合
-      測試仍通過。依 patch 版本登記規則（本檔開頭）登記，不需要 PROP。
-
   - version: "0.2.0"
     codename: "Gate"
     description: "Workspace + Schema：三路 gate，17 個真實專案各自進入正確分支"
-    status: "planned"
+    status: "active"    # 2026-09-23 啟用：0.1.0 已發，PROP-005 序列主軸；列於 0.1.1 之前使其為 get_current_version 的預設
     proposals:
       - PROP-002
       - PROP-003
@@ -125,4 +115,17 @@ versions:
       實測得出、涵蓋 94% 過去沒有定義行為的輸入，且指名的是外部固定值，
       沒有省力路徑可走。
 
-      本條目登記範圍，不代表已排入實作。實作順序仍待 0.1.0 收斂後決定。
+      2026-09-23：0.1.0 發版當日啟用為主軸。0.1.x 不再開新 patch——依 PROP-005
+      「patch 是該 minor 實作期撞到變體的修正」原意，minor 發布即關閉其 patch 新收件。
+
+  - version: "0.1.1"
+    codename: "Runoff"
+    description: "0.1.0 發版時前移至此的品質改善票；範圍凍結，不再收新票"
+    status: "active"
+    scope: "frozen"    # 2026-09-23 凍結：範圍 = 發版時前移的 72 張 + 實作期衍生 7 張；新發現一律進 0.2.0（開放後繼）
+    worklog: "docs/work-logs/v0/v0.1/v0.1.1/"
+    notes: |
+      範圍 = 凍結閘門路由至此的票；整合測試 = 上層 minor（0.1.0）的整合
+      測試仍通過。依 patch 版本登記規則（本檔開頭）登記，不需要 PROP。
+      列於 0.2.0 之後：主軸是 0.2.0，本版是固定容器，做多少算多少；發版時
+      剩餘者前移至 0.2.0（不開 0.1.2）。
