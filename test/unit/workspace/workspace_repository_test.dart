@@ -402,6 +402,101 @@ void main() {
     });
   });
 
+  group('G5｜schema 版本化與遷移（0.2.0-W1-021）', () {
+    test('G5-1 v0 舊資料（有 path 無版號 key）→ 遷移後仍還原出同一個 path',
+        () async {
+      final log = _LogRecorder();
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(
+          values: {'workspace.path': '/tmp/legacy'},
+        ),
+        directoryProbe: _FakeDirectoryProbe(),
+        logSink: log.call,
+      );
+
+      final result = await repo.restore();
+
+      expect(result, isA<WorkspaceReady>());
+      expect((result as WorkspaceReady).path, '/tmp/legacy');
+      expect(log.contains('偵測到舊版資料，已就地遷移'), isTrue);
+    });
+
+    test('G5-2 目前版號（path + 版號皆存在且相符）→ 直接還原，不觸發遷移日誌',
+        () async {
+      final log = _LogRecorder();
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(
+          values: {
+            'workspace.path': '/tmp/current',
+            'workspace.schemaVersion': '1',
+          },
+        ),
+        directoryProbe: _FakeDirectoryProbe(),
+        logSink: log.call,
+      );
+
+      final result = await repo.restore();
+
+      expect(result, isA<WorkspaceReady>());
+      expect((result as WorkspaceReady).path, '/tmp/current');
+      expect(log.contains('偵測到舊版資料，已就地遷移'), isFalse);
+    });
+
+    test('G5-3 無 path 無版號（真正首次啟動）→ WorkspaceUnset，不判定為遷移',
+        () async {
+      final log = _LogRecorder();
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(values: const {}),
+        logSink: log.call,
+      );
+
+      final result = await repo.restore();
+
+      expect(result, isA<WorkspaceUnset>());
+      expect(log.contains('偵測到舊版資料，已就地遷移'), isFalse);
+    });
+
+    test('G5-4 版號比目前版本更新（未來格式）→ 遷移失敗，降級為 WorkspaceUnset，不阻擋 App',
+        () async {
+      final log = _LogRecorder();
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(
+          values: {
+            'workspace.path': '/tmp/future',
+            'workspace.schemaVersion': '2',
+          },
+        ),
+        directoryProbe: _FakeDirectoryProbe(),
+        logSink: log.call,
+      );
+
+      final result = await repo.restore();
+
+      expect(result, isA<WorkspaceUnset>());
+      expect(
+        log.entries.any((e) => e.level == 900),
+        isTrue,
+      );
+    });
+
+    test('G5-5 chooseFolder 成功時版號 key 與 path key 同一次操作寫入',
+        () async {
+      final preferences = _PreferencesRecorder();
+      final repo = WorkspaceRepository(
+        pickDirectoryPath: _FakePicker(path: '/tmp/ws').call,
+        preferencesPort: preferences,
+      );
+
+      await repo.chooseFolder();
+
+      final writeCalls =
+          preferences.calls.where((c) => c.method == 'writeString').toList();
+      expect(writeCalls.length, 2);
+      expect(writeCalls[0].args, ['workspace.path', '/tmp/ws']);
+      expect(writeCalls[1].args, ['workspace.schemaVersion', '1']);
+    });
+  });
+
   group('G6｜_inspect 探測結局', () {
     test('G6-1 資料夾不存在 → WorkspaceUnavailable(lastKnownPath: path)',
         () async {
@@ -648,6 +743,33 @@ class _FakePreferencesHandle implements WorkspacePreferencesHandle {
     final err = writeError;
     if (err != null) throw err;
     return writeResult;
+  }
+}
+
+/// 支援多個獨立 key 的偏好設定假資料（G5 遷移測試專用）。與
+/// [_FakePreferencesPort] 不同：後者不分 key 一律回同一個 `readValue`，
+/// 無法表達「path 存在但版號 key 不存在」這種舊資料形狀，故另立獨立類別
+/// 而非把可配置性塞進既有 fake（module 檔頭紀律 1）。
+class _FakeKeyedPreferencesPort implements WorkspacePreferencesPort {
+  _FakeKeyedPreferencesPort({required this.values});
+  final Map<String, String?> values;
+
+  @override
+  Future<WorkspacePreferencesHandle> open() async =>
+      _FakeKeyedPreferencesHandle(values);
+}
+
+class _FakeKeyedPreferencesHandle implements WorkspacePreferencesHandle {
+  _FakeKeyedPreferencesHandle(this.values);
+  final Map<String, String?> values;
+
+  @override
+  String? readString(String key) => values[key];
+
+  @override
+  Future<bool> writeString(String key, String value) async {
+    values[key] = value;
+    return true;
   }
 }
 

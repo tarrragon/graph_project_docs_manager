@@ -78,7 +78,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notFrameworkProjectExplanation =>
-      '本 App 需要專案根目錄下的 .claude/VERSION 或型別表（tracking_schema.json）其中一項存在，才能判讀此專案的框架版本';
+      '本 App 需要 .claude/VERSION 或型別表（.claude/skills/doc/doc_system/core/tracking_schema.json）其中一項存在，才能判讀此專案的框架版本';
 
   @override
   String schemaUnconsumableMessage(String version) {

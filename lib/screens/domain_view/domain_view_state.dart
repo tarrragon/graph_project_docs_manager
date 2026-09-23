@@ -145,6 +145,7 @@ class DomainReady extends DomainViewState {
     this.selectedDomainId,
     this.selectedCell,
     this.isDegraded = false,
+    this.inferredVersion,
   });
 
   /// 目前檢視模式（矩陣／泳道，SPEC-004 §4.10）。
@@ -159,11 +160,18 @@ class DomainReady extends DomainViewState {
   /// 降級型別表旗標（`0.1.0-W1-035`，疊加旗標非新狀態）。
   final bool isDegraded;
 
+  /// 推定版本旗標（`0.2.0-W1-038` 方案 A）：`.claude/VERSION` 缺失時，
+  /// 由 gate 偵測 notifier 以 `tracking_schema.json` 的
+  /// `schema_generated_at_framework_version` 推定並寫入此欄；`null`
+  /// 代表版本為 VERSION 真實值（非推定）。
+  final String? inferredVersion;
+
   DomainReady copyWith({
     DomainMode? mode,
     (String, String)? Function()? selectedCell,
     String? Function()? selectedDomainId,
     bool? isDegraded,
+    String? Function()? inferredVersion,
   }) {
     return DomainReady(
       mode: mode ?? this.mode,
@@ -172,18 +180,29 @@ class DomainReady extends DomainViewState {
           : this.selectedDomainId,
       selectedCell: selectedCell != null ? selectedCell() : this.selectedCell,
       isDegraded: isDegraded ?? this.isDegraded,
+      inferredVersion: inferredVersion != null
+          ? inferredVersion()
+          : this.inferredVersion,
     );
   }
 }
 
 /// 空圖：節點數為 0。
 class DomainEmpty extends DomainViewState {
-  const DomainEmpty({this.docsDirExists = true, this.isDegraded = false});
+  const DomainEmpty({
+    this.docsDirExists = true,
+    this.isDegraded = false,
+    this.inferredVersion,
+  });
 
   /// `docs/` 目錄是否存在（僅在存在時提供「開啟 docs 目錄」動作）。
   final bool docsDirExists;
 
   final bool isDegraded;
+
+  /// 推定版本旗標，語意同 [DomainReady.inferredVersion]（`0.2.0-W1-038`
+  /// 方案 A）。
+  final String? inferredVersion;
 }
 
 /// 不是框架專案：`.claude/VERSION` 與 `tracking_schema.json` 皆缺。
@@ -206,11 +225,19 @@ class DomainSchemaIncompatible extends DomainViewState {
     required this.appVersion,
     required this.projectVersion,
     this.isDetailExpanded = false,
+    this.isVersionInferred = false,
   });
 
   final String appVersion;
+
+  /// 專案框架版本（真實 `.claude/VERSION` 值，或 [isVersionInferred] 為
+  /// `true` 時的推定值，`0.2.0-W1-038` 方案 A）。
   final String projectVersion;
 
   /// 「檢視詳情」面板展開態，狀態存於呼叫端（`BlockedState.withDetail`）。
   final bool isDetailExpanded;
+
+  /// [projectVersion] 是否為推定值（`.claude/VERSION` 缺失時以
+  /// `tracking_schema.json` 版本推定，`0.2.0-W1-038` 方案 A）。
+  final bool isVersionInferred;
 }

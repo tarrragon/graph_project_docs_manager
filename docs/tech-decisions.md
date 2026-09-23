@@ -1462,3 +1462,42 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 | 「五項皆為結論，無延後項」 | C-2 的 Action 曾綁 `0.1.0-W1-016`，而該票已完成、無執行時機，屬綁在無法承接的 ticket 上的延後。現改為約束位置在寫入層，不綁該票 | 證據視角 |
 
 **tripwire 狀態**：「加入編輯能力」一條的規定 action 至此執行完畢。該條的偵測承擔者欄指向 `0.1.0-W3-072`，本票完成即該條結案；未定項已各有承接票。
+
+---
+
+## 補記：2026-09-23 — shared_preferences 的 key 版本化與遷移策略（`0.2.0-W1-021`）
+
+### 為何這條 key-value 儲存也需要遷移紀律
+
+本專案唯一的持久化是 `shared_preferences`（`WorkspaceRepository`），存的是使用者選定的專案路徑字串。沒有 schema 檔案，直覺會把這個維度判成不適用。但地基設計判的是「權威投影後的產物」而非「維度本身的字面形態」——`migration` 版本化紀律投影到 key-value 儲存，就是「key 名或值格式變更時如何辨識舊資料並轉換」。這條若缺席，失效是靜默的：日後若把單一路徑字串改成清單結構，既有使用者開啟 App 只會看到空的專案清單，不會有例外、不會有紅燈可觀察。
+
+### Key 命名與版號規則
+
+| Key | 用途 |
+|---|---|
+| `workspace.path` | 使用者選定的專案路徑字串（既有 key，未變更） |
+| `workspace.schemaVersion` | `workspace.path` 的資料結構版號，整數字串 |
+
+命名規則：`<domain>.<field>`，與既有 `workspace.path` 一致。**每個獨立持久化欄位各自一個版號 key**（而非全域單一版號），因為不同欄位的格式變更時機不同步——目前只有一個欄位，此規則約束的是未來新增欄位時的做法。
+
+版號規則：`_currentSchemaVersion` 常數與遷移函式集中在 `WorkspaceRepository`（`lib/workspace/workspace_repository.dart`）同一檔案。改動 `workspace.path` 的值格式時必須遞增此常數，並在 `_migrateSchema()` 補上對應版本的轉換分支——版號常數與轉換邏輯不可分離存放，否則遷移涵蓋率會隨檔案數增長而失去單一可稽核入口。
+
+### 版號讀取失敗與首次啟動：決定不區分
+
+`SharedPreferences` 對「key 從未寫過」與「key 曾寫過但值無法解析（例如被截斷、被其他版本的 App 寫入非整數字串）」都回傳 `null` 或不可解析值，兩者在讀取層面無法區分。決定：**不特別區分**，統一視為「無版號」，改用 `workspace.path` 是否存在作為代理判斷——有 path 無版號 -> 判定為 `0.2.0-W1-021` 之前的 v0 舊資料，走遷移路徑；path 與版號皆無 -> 判定為真正首次啟動，不視為遷移。
+
+**風險**：若版號 key 是因寫入中途損毀而非「從未寫過」，會被誤判為「未曾寫過版號的舊格式」而非「本應是新格式但寫壞了」。此風險可接受的理由：`_persistAndInspect()` 的寫入順序是先寫 `workspace.path`、後寫 `workspace.schemaVersion`（見下段），寫入中途失敗的唯一組合是「有 path 無版號」，與 v0 舊資料的形狀天然一致，不會產生「有版號無 path」這種需要額外分支處理的中間態。
+
+### 遷移回傳型別：三種結局不同形
+
+`SchemaMigrationResult`（`lib/workspace/workspace_types.dart`）定義三個子型別：`SchemaCurrent`（版號已是最新，無需轉換）、`SchemaMigrated`（已就地轉換為最新結構）、`SchemaMigrationFailed`（版號無法辨識，例如版號比目前版本更新——代表資料是被未來版本的 App 寫入，本版邏輯不認得其結構，不嘗試猜測式讀取）。三者刻意不共用同一個欄位形狀：`SchemaMigrationFailed` 不攜帶任何 `path`，避免遷移失敗與「無需遷移」在回傳值上同形而被呼叫端誤用未經驗證的資料。
+
+### 遷移失敗時的降級策略：不阻擋 App，且與既有 restore() 契約一致
+
+`0.1.0-W3-121` 已裁決 `restore()` 任何失敗皆不阻擋 App 啟動（降級為 `WorkspaceUnset` / `WorkspaceUnavailable`，不丟例外）。`SchemaMigrationFailed` 遵循同一契約：判定遷移失敗時，`restore()` 直接回傳 `WorkspaceUnset`（視為「從未選過資料夾」），而非嘗試沿用可能已不相容的舊結構、也不中斷 App 啟動。選擇 `WorkspaceUnset` 而非 `WorkspaceUnavailable` 的理由：後者需要 `lastKnownPath` 才有意義，但無法辨識的版號代表連 path 本身的結構是否仍是字串都不確定，強行讀出來當 `lastKnownPath` 顯示給使用者反而可能是誤導資訊。
+
+### 版號 key 與 path key 的首次寫入為同一次操作
+
+`_persistAndInspect()` 在持久化路徑成功後，於同一個函式呼叫、同一個已開啟的 `WorkspacePreferencesHandle` 上，依序寫入 `workspace.path` 後緊接寫入 `workspace.schemaVersion`——不存在「path 已寫入但版號 key 尚未建立」的持久化中間態（除非寫入本身在兩次呼叫之間失敗，此情形已在前段「版號讀取失敗與首次啟動」納入分析）。此設計滿足 `0.1.0-W3-121` 裁決 B 的交叉判據前提：兩個 key 的存在性彼此可推論，`restore()` 端不需要處理「path 存在超過一個版本週期、但版號 key 從未被建立過」這種歷史包袱以外的額外分支。
+
+**與 restore() 契約的一致性檢查**：「遷移失敗是否阻擋」與「W3-121 定案的 restore() 任何失敗皆不阻擋 App」不互斥——遷移失敗只是 `restore()` 內部判定的其中一種失敗分支，走的是既有的降級路徑，未新增一種「阻擋」的結局。
