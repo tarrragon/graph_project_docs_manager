@@ -2,6 +2,9 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.5.0 - 新增 `ensure_version_activated`：版本啟用的三項副作用（todolist status active、worklog 主檔存在、版本檔版號一致）加 CHANGELOG In Development 骨架，抽成單一冪等常式，逐項檢查只補缺項並印 `[OK]`／`[補]`。`start` 對已 active／planned／pending 版本改呼叫此常式補齊，不再對 active 版本 FAIL；`finish` 的 `activate_next_planned_version` 改呼叫同一常式（取代原本只翻 todolist status 的 `_apply_version_activation`），避免副作用集合與執行路徑不對齊（與 `finish` 收尾 add 清單缺陷同型）
+**Last Updated**: 2026-09-23
+
 **Version**: 2.4.0 - `check`／`finish` 新增發版前置關卡：目標版本須於 `docs/todolist.yaml` 標 `scope: frozen`，否則 exit 非 0 並印「版本未凍結，契約 blocker 在凍結前恆為 0，本判定無鑑別力」；`finish` 的此關卡在 Step 0（migrate overflow tickets）之前，未凍結不產生 migrate 副作用。修復 0.2.0 剛啟用即實測 `check` 恆判可發布（scope_blocker 只在凍結後才存在，未凍結時 blocker 恆 0 對判定無鑑別力）
 **Last Updated**: 2026-09-23
 

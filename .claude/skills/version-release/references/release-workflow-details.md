@@ -120,10 +120,14 @@ def git_merge_and_push(version: str, dry_run: bool = False):
         git branch -d feature/v{VERSION}
         git push origin --delete feature/v{VERSION}
 
-    3.8 推進下一版本為 active
-        讀取 todolist.yaml，找第一個 status: planned 的版本
-        將其 status 改為 active（保留引號格式）
-        若無 planned 版本，跳過（非錯誤）
+    3.8 推進下一版本為 active（啟動，冪等）
+        讀取 todolist.yaml，依 semver 排序選最小的 planned/pending 候選版本
+        呼叫 ensure_version_activated(next_version)：逐項檢查 todolist
+        status、worklog 主檔、版本檔版號、CHANGELOG In Development 段落，
+        只補缺的項目並印 [OK]/[補]；全部就位時不改動任何檔案（含 mtime）
+        （與 start 對既有版本走的補齊路徑共用同一常式，避免副作用集合與
+        執行路徑不對齊）
+        若無 planned/pending 候選版本，跳過（非錯誤）
 
     3.9 第二次收尾提交（Commit Version Activation）
         Mark Version Completed 與 Activate Next Version 在 3.1 之後才寫入

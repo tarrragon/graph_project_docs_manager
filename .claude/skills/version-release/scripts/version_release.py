@@ -2502,6 +2502,171 @@ def mark_version_completed(
     return True
 
 
+def _infer_root_from_todolist_path(todolist_path: Path) -> Path:
+    """由 todolist.yaml 路徑反推專案根目錄。
+
+    生產路徑固定為 <root>/docs/todolist.yaml，故父目錄名為 "docs" 時取
+    祖父目錄；測試以扁平臨時路徑（tmp_path/todolist.yaml）呼叫時視父目錄
+    本身為隔離根，避免誤觸真實專案檔案。
+    """
+    if todolist_path.parent.name == "docs":
+        return todolist_path.parent.parent
+    return todolist_path.parent
+
+
+def ensure_version_activated(
+    version: str,
+    dry_run: bool = False,
+    *,
+    todolist_path: Optional[Path] = None,
+) -> bool:
+    """冪等確保指定版本已完整啟用：逐項檢查，只補缺的項目。
+
+    版本啟用有多項副作用（todolist status active、worklog 主檔存在、版本檔
+    版號一致、CHANGELOG In Development 骨架），但過去只有 start 的「全新版本」
+    路徑會全套執行；start 對已規劃/已啟用版本、finish 的自動推進，各自只做
+    一部分且做一半後無法補齊——與 finish 收尾 add 清單缺陷同型：副作用集合
+    與執行路徑不對齊。本函式為單一收斂點，start／finish 皆呼叫它，已就位
+    項目維持不動（不觸碰檔案內容或 mtime），僅補缺項。
+
+    Args:
+        version: 目標版本號（已 normalize，不含 build metadata）
+        dry_run: 預覽模式，[補] 動作僅印出不寫入
+        todolist_path: 明確指定 todolist.yaml 路徑（測試隔離用）；None 時
+            取 get_project_root() / "docs" / "todolist.yaml"。專案根目錄
+            由此路徑反推（見 _infer_root_from_todolist_path），worklog／
+            版本檔／CHANGELOG 檢查皆在同一根目錄下進行，維持單一 root 語意
+
+    Returns:
+        True 全部就位或成功補齊；False 遇無法復原的錯誤（todolist 找不到
+        該版本、或版本 status 為 completed 等不可逆狀態）
+    """
+    if todolist_path is None:
+        root = get_project_root()
+        todolist_path = root / "docs" / "todolist.yaml"
+    else:
+        root = _infer_root_from_todolist_path(todolist_path)
+    all_ok = True
+    any_gap = False
+
+    # (a) todolist status
+    if not todolist_path.exists():
+        print_error(f"找不到 {todolist_path}")
+        return False
+    with open(todolist_path, encoding="utf-8") as f:
+        content = f.read()
+    major_minor = extract_major_minor(version)
+    entry_start = -1
+    for ver_str in (version, major_minor):
+        pos = content.find(f'- version: "{ver_str}"')
+        if pos != -1:
+            entry_start = pos
+            break
+    if entry_start == -1:
+        print_error(f"todolist.yaml 找不到版本 {version}，無法啟用")
+        return False
+    next_entry = content.find("- version:", entry_start + 1)
+    search_end = next_entry if next_entry != -1 else len(content)
+    status_match = re.search(
+        r"^(\s*status:\s*)(\S+)", content[entry_start:search_end], re.MULTILINE
+    )
+    current_status = status_match.group(2).strip('"') if status_match else None
+    if current_status == "active":
+        print_success(f"[OK] todolist.yaml 版本 {version} 已為 active")
+    elif current_status in ("planned", "pending"):
+        any_gap = True
+        print_info(f"[補] todolist.yaml 版本 {version}: {current_status} -> active")
+        if not activate_existing_version(todolist_path, version, dry_run):
+            all_ok = False
+    else:
+        print_error(
+            f"版本 {version} 狀態為 {current_status}，無法啟用（僅 active/planned/pending 可處理）"
+        )
+        return False
+
+    # (b) worklog 主檔
+    config = load_version_release_config(root)
+    project_type = config.get("project_type") or detect_project_type(root)
+    worklog_pattern = _resolve_worklog_pattern(root, config, project_type)
+    version_dir = resolve_worklog_dir(root, version, worklog_pattern)
+    worklog_file = version_dir / f"v{version}-main.md"
+    if worklog_file.exists():
+        print_success(f"[OK] worklog 主檔已存在: {worklog_file.relative_to(root)}")
+    else:
+        any_gap = True
+        print_info(f"[補] worklog 主檔不存在，建立: {worklog_file.relative_to(root)}")
+        ok, _created = create_worklog_structure(
+            version, "待定義", dry_run, worklog_path_pattern=worklog_pattern, root=root
+        )
+        if not ok:
+            all_ok = False
+
+    # (c) 版本檔（僅檢查主要版本源，不含 chrome-ext sync_targets 同步）
+    version_file, parser_type = resolve_version_source(root, config)
+    bump_dispatch = {
+        "json": bump_json_version,
+        "yaml": bump_yaml_version,
+        "toml": bump_toml_version,
+    }
+    if version_file and parser_type in bump_dispatch:
+        current_version = extract_version_from_file(version_file, parser_type)
+        current_stripped = strip_build_metadata(current_version) if current_version else None
+        if current_stripped == version:
+            print_success(f"[OK] {version_file.name} 版號已為 {version}")
+        else:
+            any_gap = True
+            print_info(f"[補] {version_file.name}: {current_version} -> {version}")
+            if not bump_dispatch[parser_type](version_file, version, dry_run):
+                all_ok = False
+    elif parser_type == "git-tag":
+        print_info("版本由 git tag 管理，跳過版本檔檢查")
+    else:
+        print_warning(f"未知 parser 類型 {parser_type}，跳過版本檔檢查")
+
+    # (d) CHANGELOG In Development 骨架（可選但建議）
+    changelog_path = root / "CHANGELOG.md"
+    if changelog_path.exists():
+        changelog_content = changelog_path.read_text(encoding="utf-8")
+        has_dev_section = bool(
+            re.search(
+                r"^## \[v?" + re.escape(version) + r"\] - In Development\s*$",
+                changelog_content,
+                re.MULTILINE,
+            )
+        )
+        has_final_section = bool(
+            re.search(
+                r"^## \[v?" + re.escape(version) + r"\]\s*-\s*\d{4}-\d{2}-\d{2}",
+                changelog_content,
+                re.MULTILINE,
+            )
+        )
+        if has_dev_section or has_final_section:
+            print_success(f"[OK] CHANGELOG.md 已有 {version} 段")
+        else:
+            any_gap = True
+            print_info(f"[補] CHANGELOG.md 插入 {version} In Development 骨架")
+            if not dry_run:
+                skeleton = f"## [{version}] - In Development\n\n（待補充）\n\n---\n\n"
+                insert_pos = changelog_content.find("## [")
+                if insert_pos > 0:
+                    new_content = (
+                        changelog_content[:insert_pos]
+                        + skeleton
+                        + changelog_content[insert_pos:]
+                    )
+                    changelog_path.write_text(new_content, encoding="utf-8")
+                else:
+                    print_warning("CHANGELOG.md 找不到插入點，跳過骨架插入")
+    else:
+        print_warning("找不到 CHANGELOG.md，跳過 CHANGELOG 檢查")
+
+    if not any_gap:
+        print_success(f"版本 {version} 各項副作用皆已就位，無缺漏")
+
+    return all_ok
+
+
 def activate_existing_version(
     todolist_path: Path,
     version: str,
@@ -2671,40 +2836,6 @@ def _print_cross_major_block_notice(
     )
 
 
-def _apply_version_activation(
-    todolist_path: Path,
-    content: str,
-    selected: dict,
-    completed_version: str,
-    dry_run: bool,
-) -> None:
-    """將選定候選條目的 status 欄位原地替換為 active（或 dry_run 僅印出預覽）。"""
-    next_version = selected["version"]
-    status_match = selected["status_match"]
-    entry_start = selected["entry_start"]
-    was_quoted = status_match.group(2).startswith('"')
-    active_value = '"active"' if was_quoted else "active"
-    abs_start = entry_start + status_match.start(1)
-    abs_end = entry_start + status_match.end()
-
-    if dry_run:
-        current_status = status_match.group(2).strip('"')
-        print_info(
-            f"[DRY RUN] 將推進 todolist.yaml 版本 {next_version}: "
-            f"{current_status} → active"
-        )
-        return
-
-    new_content = (
-        content[:abs_start] + status_match.group(1) + active_value + content[abs_end:]
-    )
-    with open(todolist_path, "w", encoding="utf-8") as f:
-        f.write(new_content)
-    print_success(
-        f"todolist.yaml 版本 {next_version} 已推進 active（接續 {completed_version}）"
-    )
-
-
 def activate_next_planned_version(
     todolist_path: Path,
     completed_version: str,
@@ -2753,13 +2884,14 @@ def activate_next_planned_version(
         )
         return True
 
-    _apply_version_activation(todolist_path, content, selected, completed_version, dry_run)
-    return True
+    print_info(f"候選版本 {next_version} 將啟用（接續 {completed_version}）")
+    return ensure_version_activated(next_version, dry_run, todolist_path=todolist_path)
 
 
 def create_worklog_structure(
     version: str, description: str, dry_run: bool = False,
     worklog_path_pattern: Optional[str] = None,
+    root: Optional[Path] = None,
 ) -> Tuple[bool, List[str]]:
     """建立版本 worklog 目錄結構和主檔案。
 
@@ -2771,11 +2903,12 @@ def create_worklog_structure(
         description: 版本描述
         dry_run: 預覽模式
         worklog_path_pattern: worklog 路徑範本（None 時從 config 讀取）
+        root: 明確指定專案根目錄（測試隔離用）；None 時取 get_project_root()
 
     Returns:
         (是否成功, 建立的檔案/目錄清單)
     """
-    root = get_project_root()
+    root = root if root is not None else get_project_root()
     major_minor = extract_major_minor(version)
 
     if not worklog_path_pattern:
@@ -3117,14 +3250,19 @@ def cmd_start_version(
             existing_entry = entry
             break
 
-    activate_existing = False
     if existing_entry is not None:
         existing_status = existing_entry.get("status")
-        if existing_status in ("planned", "pending"):
+        if existing_status in ("planned", "pending", "active"):
             print_info(
-                f"版本 {version} 已規劃於 todolist.yaml（狀態: {existing_status}），走啟動路徑"
+                f"版本 {version} 已存在於 todolist.yaml（狀態: {existing_status}），"
+                "走冪等補齊路徑"
             )
-            activate_existing = True
+            print_section("Step 3-5: 確保版本啟用（冪等補齊）")
+            ok = ensure_version_activated(version, dry_run, todolist_path=todolist_path)
+            print_section("摘要")
+            mode_label = " (DRY RUN)" if dry_run else ""
+            print_info(f"版本 {version} 啟用/補齊{'完成' if ok else '失敗'}{mode_label}")
+            return ok
         else:
             print_error(f"版本 {version} 已存在於 todolist.yaml（狀態: {existing_status}）")
             return False
@@ -3140,12 +3278,9 @@ def cmd_start_version(
     # ── Step 3: 更新 todolist.yaml ──
     print_section("Step 3: 更新 todolist.yaml")
 
-    if activate_existing:
-        ok = activate_existing_version(todolist_path, version, dry_run)
-    else:
-        ok = insert_version_to_todolist(
-            todolist_path, version, from_version, description or "待定義", dry_run
-        )
+    ok = insert_version_to_todolist(
+        todolist_path, version, from_version, description or "待定義", dry_run
+    )
     if not ok:
         return False
     print_success("todolist.yaml 已更新")
