@@ -89,6 +89,21 @@ versions:
       「App 已知版本範圍」（SPEC-001 1.19 領先實作）。0.2.0 發版時，0.2.0 的
       非 blocker pending 依動詞前移至此或 0.3.0。
 
+  - version: "0.3.0"
+    codename: "Corpus"
+    description: "解析與破洞判定：逐行 frontmatter 語意解析既有語料，真破洞與合法非節點分類正確"
+    status: "planned"
+    proposals:
+      - PROP-005
+    worklog: "docs/work-logs/v0/v0.3/v0.3.0/"
+    notes: |
+      範圍由 PROP-005〈版本序列〉§0.3 定義，依本檔開頭第三類登記（PROP-005 於
+      2026-09-23 confirmed）：整合測試為 (1) 逐行 frontmatter 語意解析既有語料失敗數
+      0（split("---") 為 130，差值即鑑別力）；(2) 五個語料專案 7106 份文件中真破洞
+      47、合法非節點 1243 分類正確。斷言來源與阻擋清單見 PROP-005 §0.3（阻擋含
+      上游 *_REQUIRED_FIELDS 語意裁決，開工前須先解）。
+      2026-09-23 登記：0.2.0 發版前移的新功能票之收件目標（凍結閘門 minor+1）。
+
   - version: "0.1.0"
     codename: "Shell"
     description: "展示介面：七個畫面與浮層的全部狀態皆可渲染，不串真實資料"
