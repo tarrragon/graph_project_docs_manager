@@ -100,7 +100,7 @@ versions:
   - version: "0.1.1"
     codename: "Runoff"
     description: "0.1.0 scope 凍結後，凍結閘門路由至此的品質改善票（patch+1）"
-    status: "planned"
+    status: "active"
     worklog: "docs/work-logs/v0/v0.1/v0.1.1/"
     notes: |
       範圍 = 凍結閘門路由至此的票；整合測試 = 上層 minor（0.1.0）的整合
