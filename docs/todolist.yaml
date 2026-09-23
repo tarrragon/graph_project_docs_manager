@@ -14,11 +14,19 @@
 # 一致：但書的排除對象是「範圍未定」，而非「尚未開始」。0.2.0 的範圍由
 # PROP-005 完整定義（阻擋為無）卻因前兩類的字面而無處登記，使 confirmed
 # 提案 PROP-002 / PROP-003 的 target_version 指向不存在的條目。
+#
+# patch 版本登記規則（2026-09-23 補，scope 凍結模型落地後新增）：
+# x.y.z（z>0）的 patch 版本不受上述第三類判準約束，不需要 PROP 定義範圍——
+# patch 版本的範圍由上層 minor（x.y.0）scope 凍結後，凍結閘門路由至此的票
+# 組成，不是預先規劃的功能範圍。登記時 notes 只需寫「範圍 = 凍結閘門路由
+# 至此的票；整合測試 = 上層 minor（x.y.0）的整合測試仍通過」，不需另立
+# 整合測試或阻擋清單。scope 凍結分流規則見
+# .claude/pm-rules/version-progression.md〈版本生命週期〉。
 
 meta:
   project: "graph_project_docs_manager"
   architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
-  last_updated: "2026-08-27"
+  last_updated: "2026-09-23"
   maintainer: "rosemary-project-manager"
 
 versions:
@@ -88,6 +96,15 @@ versions:
 
       實作中撞到 SPEC-001 未預估的文件變體或畫面情況時，開 0.1.x 的票修正
       並回填狀態表，不回頭改版本規劃。
+
+  - version: "0.1.1"
+    codename: "Runoff"
+    description: "0.1.0 scope 凍結後，凍結閘門路由至此的品質改善票（patch+1）"
+    status: "planned"
+    worklog: "docs/work-logs/v0/v0.1/v0.1.1/"
+    notes: |
+      範圍 = 凍結閘門路由至此的票；整合測試 = 上層 minor（0.1.0）的整合
+      測試仍通過。依 patch 版本登記規則（本檔開頭）登記，不需要 PROP。
 
   - version: "0.2.0"
     codename: "Gate"
