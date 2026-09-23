@@ -241,7 +241,9 @@ ticket create --wave 3 --action "修復" --target "XXX" \
 | 目標版本 `scope: frozen` + `--scope-blocker "<理由>"` | 放行（`[WARNING]` 印出放行理由） |
 | `--parent <父票 ID>`（子票） | 不經此閘門，繼承父票版本 |
 
-`--scope-blocker` 的值即放行理由本身，不是純存在性旗標，須帶非空文字才放行。
+`--scope-blocker` 的值即放行理由本身，不是純存在性旗標，須帶非空文字才放行；放行時理由同時持久化為 frontmatter `scope_blocker` 欄位（選填字串），供發版側後續查詢「哪些票是被明確放行進已凍結版本」，`ticket track full` 可直接查看。
+
+`--version` 指向的版本狀態須為 `planned` 或 `active` 才收票（`completed` 仍拒）；情境 b 改投的溢出目標版本若尚未在 todolist.yaml 註冊，登記為 `planned` 即可直接建票，不須等該版本轉為 `active`。
 
 **溢出目標計算**（相對被擋下的凍結版本本身，與 `_FEAT_ACTIONS` 分類一致）：
 

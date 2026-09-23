@@ -339,7 +339,12 @@ def require_version(explicit_version: Optional[str] = None) -> str:
 
 def validate_version_registered(version: str) -> tuple[bool, str]:
     """
-    驗證版本是否在 todolist.yaml 中註冊且狀態為 active。
+    驗證版本是否在 todolist.yaml 中註冊且狀態為 planned 或 active。
+
+    背景：執行早已與版本解耦（lifecycle.py 對版本狀態零檢查），planned
+    版本的票今天就能做，「planned = 要等啟用才能執行」的前提不成立。
+    原僅收 active 的判準使版本範圍凍結閘門提示的出路「先登記下一版本
+    再建票」成為死路——剛登記的版本狀態必為 planned，仍會被本函式拒絕。
 
     Args:
         version: 版本號（無 v 前綴，如 "0.17.4"）
@@ -347,9 +352,9 @@ def validate_version_registered(version: str) -> tuple[bool, str]:
     Returns:
         tuple[bool, str]: (是否通過驗證, 錯誤訊息)
         - todolist.yaml 不存在 → (True, "") — 向後相容
-        - 版本已註冊且 active → (True, "")
+        - 版本已註冊且 planned 或 active → (True, "")
         - 版本未註冊 → (False, 錯誤訊息)
-        - 版本已註冊但非 active → (False, 錯誤訊息)
+        - 版本已註冊但非 planned/active（如 completed） → (False, 錯誤訊息)
     """
     from .messages import ErrorMessages
 
@@ -375,7 +380,7 @@ def validate_version_registered(version: str) -> tuple[bool, str]:
         entry_version = str(entry.get("version", ""))
         if entry_version == version:
             status = entry.get("status", "")
-            if status == "active":
+            if status in ("planned", "active"):
                 return (True, "")
             error_msg = ErrorMessages.VERSION_NOT_ACTIVE.format(
                 version=version, status=status
@@ -516,15 +521,25 @@ def suggest_version_for_ticket(
 def _suggest_next_patch(
     versions: list[dict],
 ) -> Optional[tuple[str, str]]:
-    """找最新已完成版本，回傳 patch +1。"""
-    completed = [
+    """找目前 active 版本，回傳 patch +1（基準與 suggest_overflow_version 一致）。
+
+    原實作相對「最新已完成版本」計算。版本推進後，completed 停留在舊
+    版號而 active 已前進，對非功能動詞根票恆建議一個未在 todolist.yaml
+    註冊的版本（如 completed 停在 0.0.3、active 已是 0.1.0 時建議
+    0.0.4），且與版本範圍凍結閘門印出的溢出目標互相矛盾——兩者基準不
+    同源。改為相對 active 版本計算，與 suggest_overflow_version 的
+    patch+1 分支同一基準。
+    """
+    active = [
         v for v in versions
-        if v.get("status") == "completed"
+        if v.get("status") == "active"
     ]
-    if not completed:
+    if not active:
         return None
 
-    latest = completed[-1]
+    # 取第一個 active（與 _parse_todolist_active_version 的「當前版本」
+    # 定義一致：多個 active 並行分支開發時，第一個為主線）
+    latest = active[0]
     ver_str = str(latest.get("version", ""))
     parts = ver_str.split(".")
     if len(parts) != 3:
@@ -537,7 +552,7 @@ def _suggest_next_patch(
 
     suggested = f"{major}.{minor}.{patch + 1}"
 
-    # 若建議版本已存在（active 或 completed），直接回傳該版本
+    # 若建議版本已存在（不限狀態），直接回傳該版本
     for v in versions:
         if str(v.get("version", "")) == suggested:
             return (suggested, "修復/改善/分析/文件類型歸小版本")

@@ -25,8 +25,10 @@ import pytest
 from ticket_system.commands.create import execute
 from ticket_system.lib.field_validators import validate_version_scope_gate
 from ticket_system.lib.version import (
+    _suggest_next_patch,
     is_version_scope_frozen,
     suggest_overflow_version,
+    validate_version_registered,
 )
 
 
@@ -495,3 +497,206 @@ class TestExecuteWithTmpTodolistFixture:
 
         assert rc == 0
         build_mock.assert_called_once()
+
+
+# ============================================================
+# F 層：validate_version_registered 放寬收 planned（0.1.0-W3-652）
+# ============================================================
+
+
+class TestValidateVersionRegisteredAcceptsPlanned:
+    def test_planned_version_passes(self, monkeypatch, tmp_path):
+        _write_todolist(
+            tmp_path,
+            [{"version": "0.2.0", "status": "planned"}],
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+        )
+        is_valid, error_msg = validate_version_registered("0.2.0")
+        assert is_valid is True
+        assert error_msg == ""
+
+    def test_completed_version_still_rejected(self, monkeypatch, tmp_path):
+        """E2：completed 版本作紅輸入，放寬後仍須被拒。"""
+        _write_todolist(
+            tmp_path,
+            [{"version": "0.0.9", "status": "completed"}],
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+        )
+        is_valid, error_msg = validate_version_registered("0.0.9")
+        assert is_valid is False
+        assert "只有 planned 或 active 版本可建票" in error_msg
+
+
+class TestExecuteCreatesTicketInPlannedVersion:
+    """E2：以 tmp fixture 的 planned 版本作根票版本，驗證 create 真正放行
+    （非僅靠單元測試，而是走完整 execute() CLI 整合路徑）。
+    """
+
+    def _install_mocks_without_version_registered_stub(self, monkeypatch, resolved_version):
+        """比照 TestExecuteWithTmpTodolistFixture：不覆寫
+        validate_version_registered，讓它走真實 yaml 讀取路徑。"""
+        monkeypatch.setattr(
+            "ticket_system.commands.create.resolve_version",
+            lambda v: resolved_version,
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.field_validators.list_tickets",
+            lambda v: [],
+        )
+        stub_ticket = {
+            "id": "stub",
+            "title": "stub",
+            "what": "stub",
+            "type": "IMP",
+            "who": {"current": "thyme-python-developer"},
+            "where": {"files": ["src/test.py"]},
+            "how": {"strategy": "測試策略"},
+            "acceptance": ["驗收條件 A"],
+        }
+        build_mock = MagicMock(return_value=stub_ticket)
+        monkeypatch.setattr(
+            "ticket_system.commands.create._build_and_save_ticket", build_mock
+        )
+        monkeypatch.setattr(
+            "ticket_system.commands.create.get_ticket_path",
+            lambda v, tid: f"/tmp/tickets/{tid}.md",
+        )
+        monkeypatch.setattr(
+            "ticket_system.commands.create.update_parent_children",
+            lambda v, pid, tid: True,
+        )
+        monkeypatch.setattr(
+            "ticket_system.commands.create.update_source_spawned_tickets",
+            lambda sid, tid: True,
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_id_allocator.get_next_seq",
+            lambda v, w: 1,
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_id_allocator.get_next_child_seq",
+            lambda pid: 1,
+        )
+        monkeypatch.setattr(
+            "ticket_system.commands.create._auto_extract_context_bundle_post_create",
+            lambda *a, **kw: True,
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.git_utils._auto_commit_ticket_md",
+            lambda *a, **kw: "not_git_repo",
+        )
+        return build_mock
+
+    def test_planned_version_allows_root_ticket_create(self, monkeypatch, capsys, tmp_path):
+        _write_todolist(
+            tmp_path,
+            [{"version": "0.2.0", "status": "planned"}],
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+        )
+        build_mock = self._install_mocks_without_version_registered_stub(
+            monkeypatch, "0.2.0"
+        )
+        args = _make_args(version="0.2.0")
+
+        rc = execute(args)
+
+        assert rc == 0
+        build_mock.assert_called_once()
+
+    def test_completed_version_blocks_root_ticket_create(self, monkeypatch, capsys, tmp_path):
+        """E2：completed 版本作紅輸入，create 整合路徑仍被拒。"""
+        _write_todolist(
+            tmp_path,
+            [{"version": "0.0.9", "status": "completed"}],
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+        )
+        build_mock = self._install_mocks_without_version_registered_stub(
+            monkeypatch, "0.0.9"
+        )
+        args = _make_args(version="0.0.9")
+
+        rc = execute(args)
+
+        assert rc == 1
+        build_mock.assert_not_called()
+
+
+# ============================================================
+# G 層：_suggest_next_patch 基準改為 active（0.1.0-W3-652）
+# ============================================================
+
+
+class TestSuggestNextPatchBasisChangedToActive:
+    def test_no_active_version_returns_none(self):
+        """僅有 completed、無 active：放寬前會回傳 0.0.4，放寬後回傳 None
+        （E1：改前改後輸出不同——舊基準有結果，新基準無 active 可算）。"""
+        versions = [{"version": "0.0.3", "status": "completed"}]
+        assert _suggest_next_patch(versions) is None
+
+    def test_uses_active_not_completed_as_basis(self):
+        """completed 停留舊版號、active 已推進：新基準採 active+1，
+        非舊基準的 completed+1（E1：改前改後輸出不同）。"""
+        versions = [
+            {"version": "0.0.3", "status": "completed"},
+            {"version": "0.1.0", "status": "active"},
+        ]
+        result = _suggest_next_patch(versions)
+        assert result is not None
+        suggested, _reason = result
+        # 舊基準（completed+1）會得到 0.0.4；新基準（active+1）得到 0.1.1
+        assert suggested == "0.1.1"
+        assert suggested != "0.0.4"
+
+    def test_suggested_version_already_registered_returns_existing(self):
+        versions = [
+            {"version": "0.1.0", "status": "active"},
+            {"version": "0.1.1", "status": "planned"},
+        ]
+        result = _suggest_next_patch(versions)
+        assert result == ("0.1.1", "修復/改善/分析/文件類型歸小版本")
+
+
+# ============================================================
+# H 層：--scope-blocker 理由持久化為 frontmatter scope_blocker 欄位
+# ============================================================
+
+
+class TestScopeBlockerPersistedToFrontmatter:
+    def test_scope_blocker_written_to_config_and_frontmatter(self, monkeypatch, capsys):
+        from ticket_system.lib.ticket_builder import create_ticket_frontmatter
+
+        build_mock = _install_common_mocks(monkeypatch, frozen=True)
+        args = _make_args(scope_blocker="必要 bugfix，需進已凍結版本")
+
+        rc = execute(args)
+
+        assert rc == 0
+        build_mock.assert_called_once()
+        config = build_mock.call_args[0][2]
+        assert config["scope_blocker"] == "必要 bugfix，需進已凍結版本"
+
+        frontmatter = create_ticket_frontmatter(config)
+        assert frontmatter["scope_blocker"] == "必要 bugfix，需進已凍結版本"
+
+    def test_no_scope_blocker_persists_none(self, monkeypatch, capsys):
+        from ticket_system.lib.ticket_builder import create_ticket_frontmatter
+
+        build_mock = _install_common_mocks(monkeypatch, frozen=False)
+        args = _make_args()
+
+        rc = execute(args)
+
+        assert rc == 0
+        config = build_mock.call_args[0][2]
+        assert config.get("scope_blocker") is None
+
+        frontmatter = create_ticket_frontmatter(config)
+        assert frontmatter["scope_blocker"] is None

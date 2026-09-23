@@ -272,6 +272,7 @@ def _parse_cli_args_to_config(
         "related_to": related_to if related_to else None,
         "source_ticket": args.source_ticket,
         "discovered_during": getattr(args, "discovered_during", None),
+        "scope_blocker": getattr(args, "scope_blocker", None) or None,
         "acceptance": acceptance,
         "tdd_phase": tdd_phase,
         "tdd_stage": tdd_result.phases,
