@@ -452,28 +452,36 @@ void main() {
   });
 
   group('T-205-20：main.dart 收斂（票面 acceptance 1 靜態面）', () {
-    test('ScaffoldMessenger／showSnackBar 各 0 次，AppSnackBar.show 至少 1 次', () {
-      final stripped = _stripComments(_readFile(_mainPath));
-      expect(
-        _countOccurrences(stripped, 'ScaffoldMessenger'),
-        0,
-        reason: '0.1.0-W3-205 T-205-20：main.dart 不應再直接引用 '
-            'ScaffoldMessenger（票面 acceptance 1）。',
-      );
-      expect(
-        _countOccurrences(stripped, 'showSnackBar'),
-        0,
-        reason: '0.1.0-W3-205 T-205-20：main.dart 不應再直接呼叫 '
-            'showSnackBar。',
-      );
-      expect(
-        _countOccurrences(stripped, 'AppSnackBar.show'),
-        greaterThanOrEqualTo(1),
-        reason: '0.1.0-W3-205 T-205-20：main.dart 應至少一處經 '
-            'AppSnackBar.show 呈現提示——若計數下降為 0，代表剝除器或分支'
-            '本身被誤刪，而非收斂完成。',
-      );
-    });
+    test(
+      'ScaffoldMessenger／showSnackBar 各 0 次，DocsManagerApp 至少 1 次（非空哨兵）',
+      () {
+        final stripped = _stripComments(_readFile(_mainPath));
+        expect(
+          _countOccurrences(stripped, 'ScaffoldMessenger'),
+          0,
+          reason: '0.1.0-W3-205 T-205-20：main.dart 不應再直接引用 '
+              'ScaffoldMessenger（票面 acceptance 1）。',
+        );
+        expect(
+          _countOccurrences(stripped, 'showSnackBar'),
+          0,
+          reason: '0.1.0-W3-205 T-205-20：main.dart 不應再直接呼叫 '
+              'showSnackBar。',
+        );
+        // 0.1.0-W1-028：HomePage（main.dart 內唯一的 AppSnackBar.show
+        // 呼叫點）已隨死碼清理移除，原「AppSnackBar.show >= 1」斷言因此
+        // 恆為 0，無法再作為「剝除器未把整份檔案剝空」的非空哨兵。改用
+        // main.dart 必然存在的頂層類別 DocsManagerApp 頂替同一哨兵職責
+        // ——若計數降為 0，代表剝除器或本檔內容被誤刪，而非收斂完成。
+        expect(
+          _countOccurrences(stripped, 'class DocsManagerApp'),
+          greaterThanOrEqualTo(1),
+          reason: '0.1.0-W3-205 T-205-20（0.1.0-W1-028 改寫）：非空哨兵'
+              '——main.dart 應至少一處宣告 DocsManagerApp；若計數降為 0，'
+              '代表剝除器把整份檔案剝空或本檔內容被誤刪，而非收斂完成。',
+        );
+      },
+    );
   });
 
   group('T-205-21：守衛自身的守衛', () {
