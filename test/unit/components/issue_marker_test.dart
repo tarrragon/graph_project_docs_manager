@@ -9,6 +9,17 @@ import 'package:graph_project_docs_manager/tokens/tokens.dart';
 
 import '../../helpers/helpers.dart';
 
+/// `damagedEdge` 的 child 契約型別為 [RelationItem]（SPEC-004 §4.6 slot
+/// 契約）；`onTap` 為 no-op，因巢狀於 `damagedEdge` 內時本身的 `InkWell`
+/// 被 [IgnorePointer] 停用（見 issue_marker.dart child 欄位文件）。
+RelationItem _buildChildRelationItem() {
+  return RelationItem(
+    id: 'relation-item',
+    onTap: () {},
+    testKey: const ValueKey('relation-item-in-damaged-edge-test'),
+  );
+}
+
 void main() {
   const damagedEdgeKey = ValueKey('issue-marker-damaged-edge-test');
   const damagedDetailKey = ValueKey('issue-marker-damaged-detail-test');
@@ -22,7 +33,7 @@ void main() {
         child: IssueMarker.damagedEdge(
           testKey: damagedEdgeKey,
           onTap: () {},
-          child: const Text('relation-item'),
+          child: _buildChildRelationItem(),
         ),
       );
 
@@ -134,18 +145,28 @@ void main() {
   group('互動與命中區', () {
     testWidgets('點擊 damagedEdge 呼叫 onTap 恰一次', (tester) async {
       var callCount = 0;
+      var childTapCount = 0;
       await pumpHarness(
         tester,
         child: IssueMarker.damagedEdge(
           testKey: damagedEdgeKey,
           onTap: () => callCount++,
-          child: const Text('relation-item'),
+          child: RelationItem(
+            id: 'relation-item',
+            onTap: () => childTapCount++,
+            testKey: const ValueKey('relation-item-in-damaged-edge-test'),
+          ),
         ),
       );
 
       await tester.tap(find.byKey(damagedEdgeKey));
       await tester.pump();
       expect(callCount, 1);
+      expect(
+        childTapCount,
+        0,
+        reason: 'child 的 InkWell 被 IgnorePointer 停用，不應收到點擊',
+      );
     });
 
     testWidgets('點擊 damagedDetail 呼叫 onTap 恰一次', (tester) async {
@@ -221,7 +242,7 @@ void main() {
         child: IssueMarker.damagedEdge(
           testKey: damagedEdgeKey,
           onTap: () {},
-          child: const Text('relation-item'),
+          child: _buildChildRelationItem(),
         ),
       );
 
