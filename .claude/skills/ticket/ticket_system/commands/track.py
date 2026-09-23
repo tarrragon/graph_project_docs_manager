@@ -90,6 +90,7 @@ from .fields import (
     execute_get_how,
     execute_set_how,
     execute_set_priority,
+    execute_set_scope_blocker,
     execute_add_acceptance,
     execute_remove_acceptance,
     execute_add_spawned,
@@ -502,6 +503,7 @@ def _create_command_handlers() -> dict:
         "set-where": execute_set_where,
         "set-why": execute_set_why,
         "set-how": execute_set_how,
+        "set-scope-blocker": execute_set_scope_blocker,
         "who": execute_get_who,
         "title": execute_get_title,
         "what": execute_get_what,
@@ -1007,6 +1009,16 @@ def _register_field_write_commands(
     p_set_priority.add_argument("ticket_id", help=TrackMessages.ARG_TICKET_ID)
     p_set_priority.add_argument("value", choices=PRIORITY_LEVELS, help=TrackMessages.ARG_VALUE)
     p_set_priority.add_argument("--version", help=TrackMessages.ARG_VERSION)
+
+    # set-scope-blocker 操作（--reason/--clear 互斥；事後設定或清除發版阻擋理由）
+    p_set_scope_blocker = subparsers.add_parser(
+        "set-scope-blocker", help=TrackMessages.HELP_SET_SCOPE_BLOCKER
+    )
+    p_set_scope_blocker.add_argument("ticket_id", help=TrackMessages.ARG_TICKET_ID)
+    p_scope_blocker_group = p_set_scope_blocker.add_mutually_exclusive_group(required=True)
+    p_scope_blocker_group.add_argument("--reason", help="發版阻擋理由（非空字串）")
+    p_scope_blocker_group.add_argument("--clear", action="store_true", help="清除 scope_blocker 欄位")
+    p_set_scope_blocker.add_argument("--version", help=TrackMessages.ARG_VERSION)
 
     # add-acceptance 操作
     p_add_acc = subparsers.add_parser("add-acceptance", help=TrackMessages.HELP_ADD_ACCEPTANCE)

@@ -380,6 +380,7 @@ class TrackMessages:
     HELP_SET_WHY = "設定 Ticket 的 why 欄位"
     HELP_SET_HOW = "設定 Ticket 的 how 欄位"
     HELP_SET_PRIORITY = "設定 Ticket 的 priority 欄位"
+    HELP_SET_SCOPE_BLOCKER = "事後設定或清除 Ticket 的 scope_blocker 欄位（--reason/--clear 互斥）"
     HELP_ADD_ACCEPTANCE = "追加驗收條件"
     HELP_REMOVE_ACCEPTANCE = "移除驗收條件（按編號）"
     HELP_ADD_SPAWNED = "追加 spawned_tickets 項目"

@@ -597,6 +597,64 @@ def execute_set_priority(args: argparse.Namespace, version: str) -> int:
     return execute_set_field(args, version, "priority")
 
 
+def execute_set_scope_blocker(args: argparse.Namespace, version: str) -> int:
+    """事後設定或清除 Ticket 的 scope_blocker 欄位。
+
+    scope_blocker 原僅在建立當下可寫入；凍結前已存在的必要票沒有建立
+    時機補這個欄位。本命令補上事後設定路徑，使發版檢查的分組邏輯（依
+    scope_blocker 區分阻擋與前移）能把既有必要票歸入阻擋組而非前移清單。
+
+    --reason 與 --clear 互斥（argparse mutually exclusive group 強制）；
+    空字串理由視同未給——不寫入空字串，避免下游「scope_blocker and ...」
+    的判斷因空字串為 falsy 而靜默落入前移分支，造成「CLI 回報寫入成功但
+    發版側視同未設定」的落差。
+    """
+    reason = getattr(args, "reason", None)
+    clear = bool(getattr(args, "clear", False))
+
+    if not clear and not (isinstance(reason, str) and reason.strip()):
+        print(format_error(ErrorMessages.MISSING_FIELD_VALUE, ticket_id=args.ticket_id, field_name="scope_blocker"))
+        return 1
+
+    lock_target = Path(get_ticket_path(version, args.ticket_id))
+    with file_lock(lock_target):
+        ticket, error = load_and_validate_ticket(version, args.ticket_id)
+        if error:
+            return 1
+
+        if clear:
+            ticket["scope_blocker"] = None
+        else:
+            ticket["scope_blocker"] = reason.strip()
+
+        ticket_path = resolve_ticket_path(ticket, version, args.ticket_id)
+        ticket_loader.save_ticket(ticket, ticket_path)
+
+        import sys as _sys
+        from ticket_system.lib import git_utils
+        try:
+            commit_status = git_utils._auto_commit_ticket_md(
+                str(ticket_path), args.ticket_id, "scope_blocker",
+                operation="set-scope-blocker",
+            )
+            if commit_status in ("not_git_repo", "git_failed"):
+                _sys.stderr.write(
+                    f"[set-scope-blocker] auto-commit skipped（{commit_status}，非致命）；"
+                    f"body 已保留 working tree，可手動 git commit 持久化。\n"
+                )
+        except Exception as exc:
+            _sys.stderr.write(
+                f"[set-scope-blocker] auto-commit 失敗（非致命，body 已保留 working tree）：{exc}\n"
+            )
+
+    print(format_info(InfoMessages.FIELD_UPDATED, ticket_id=args.ticket_id, field_name="scope_blocker"))
+    if clear:
+        print("   scope_blocker 已清除")
+    else:
+        print(f"   scope_blocker: {ticket['scope_blocker']}")
+    return 0
+
+
 def execute_add_acceptance(args: argparse.Namespace, version: str) -> int:
     """追加驗收條件到 Ticket。
 

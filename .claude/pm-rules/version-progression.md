@@ -66,6 +66,8 @@
 | 開發中，scope 凍結 | `status: active`，`scope: frozen` | 僅收帶 `--scope-blocker <理由>` 的根票（理由持久化為 ticket frontmatter `scope_blocker` 欄位，供發版側查詢）；`--parent` 子票不受影響 | 可執行（既有票不受收件閘門限制） |
 | 已完成 | `status: completed` | 不可建根票（依情境回報 `VERSION_NOT_ACTIVE` 或 `VERSION_NOT_REGISTERED`） | 不適用（無待執行票） |
 
+**凍結動作含兩步，不只標記版本條目**：凍結 = (1) `docs/todolist.yaml` 標 `scope: frozen`；(2) 對凍結前已存在、且屬版本契約必要的 `pending` 票逐張執行 `ticket track set-scope-blocker <id> --reason <對應契約項>`。**Why**：發版檢查（見 `.claude/skills/version-release/SKILL.md`）以 `scope_blocker` 欄位區分阻擋與前移，只覆蓋凍結後才建立的根票（`--scope-blocker` 建票時寫入）；凍結前既有的必要票沒有這個建立時機，若不回溯標記，發版檢查會把它們誤判為可前移，必要工作因此被搬到下一版本。**規劃頁面（`docs/plans/` 等）不是 CLI 的資料來源**——「這張票是必要的」只寫在規劃文件不會被發版檢查讀到，必要性須進票面 `scope_blocker` 欄位才算數。
+
 **scope 凍結後的分流去向**（對應上方強制規則表）：
 
 | 問題性質 | 去向 | 說明 |
@@ -215,4 +217,5 @@ Wave 是相互隔離的執行單位。禁止跨 Wave 依賴和並行派發。
 ---
 
 **Last Updated**: 2026-09-23
+**Version**: 4.1.0 — 〈版本生命週期〉凍結列補「凍結動作含兩步」說明：凍結不只標記版本條目，還須對凍結前已存在的必要 pending 票逐張 `ticket track set-scope-blocker` 回溯標記，否則發版檢查會把它們誤判為可前移；補一句規劃頁面不是 CLI 資料來源，必要性須進票面欄位。
 **Version**: 4.0.0 — 衍生問題歸屬規則改為 scope 凍結模型：強制規則表舊有三列免版本判斷、一律無條件收入 active 版本的規則改寫為「scope 開放時進本版本」「scope 凍結後依品質/能力/框架三性質分流」兩列；快速判斷檢查清單新增第 1 項 scope 凍結檢查；新增〈版本生命週期〉段，明寫版本歸屬／收件資格／執行資格三軸解耦，以及執行早已與版本狀態解耦（claim 不查版本狀態）的事實。舊制在實測中造成 pending 池膨脹至遠超必要交付範圍的規模，且與版本範圍凍結硬閘門（`ticket create` 子命令的可攜問題分流閘門旁側機制）的路由結論直接衝突——同一 create 路徑上，凍結閘門引導改投下一版本，而本文件舊制要求免判斷收入本版本。`PC-121-pm-recommends-framework-ticket-to-future-version.md` 因前提（框架 ticket 當時無版本收件資格路由選項）改變已標 superseded，見該檔 Superseded 註記段。歷史 1.0–3.4 版見 git log。

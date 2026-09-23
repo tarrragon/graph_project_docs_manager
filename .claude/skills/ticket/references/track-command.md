@@ -40,6 +40,7 @@
 | `set-who`/`set-what`/`set-when`/`set-where`/`set-why`/`set-how` | 設定對應 5W1H 欄位 | 〈UPDATE 操作〉 |
 | `set-title` | 設定清單顯示用短標籤（與 `what` 刻意分離） | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `set-priority` | 設定 `priority` 欄位（`P0`-`P3`） | 〈CLI 可修改欄位 vs 手動編輯欄位〉 |
+| `set-scope-blocker` | 事後設定或清除 `scope_blocker` 欄位（`--reason <text>`/`--clear` 互斥；供凍結前已存在的必要票回溯標記） | 〈UPDATE 操作〉 |
 | `add-acceptance` | 追加驗收條件 | --help |
 | `remove-acceptance` | 移除驗收條件（按編號） | --help |
 | `add-spawned` | 追加 `spawned_tickets` 項目 | 〈UPDATE 操作〉 |
@@ -338,6 +339,11 @@ Live in_progress 票（非 stale，`staleness.is_live_occupied` 判準）以 see
 # 使其失去意義且操作者不會察覺（CLI 回報只顯示 files 已同步）
 /ticket track set-why <id> <value>
 /ticket track set-how <id> <value>
+
+# 事後設定或清除 scope_blocker（凍結前已存在的必要票回溯標記用）
+/ticket track set-scope-blocker <id> --reason "<發版阻擋理由>"
+/ticket track set-scope-blocker <id> --clear
+# --reason 與 --clear 互斥；空字串理由視同未給，同樣拒絕
 
 # 追加執行日誌
 # 有效 section: 見 constants.CANONICAL_BODY_SECTIONS（Task Summary / Problem Analysis /
@@ -793,6 +799,7 @@ ticket track set-exit-status <ticket_id> --status needs_context --reason "缺少
 | title                       | `set-title <id> <value>`                        | 清單顯示用短標籤，與 `what` 刻意分離；範圍變更時兩者需個別更新（見「UPDATE 操作補充」章節） |
 | priority                    | `set-priority <id> <value>`                     | value 限 `PRIORITY_LEVELS`（P0-P3）                  |
 | closed_by                   | `set-closed-by <id> --value <ticket-id>`        | 僅 `status=closed` 適用，修正 close 時填錯的值        |
+| scope_blocker                | `set-scope-blocker <id> --reason <text>\|--clear` | 建票時可用 `--scope-blocker` 一併寫入；事後補標或清除用本命令，`--reason`/`--clear` 互斥，空理由視同未給 |
 | dispatch_reason             | 無 CLI 命令                                     | 依上方「其餘 frontmatter 欄位若無對應命令，不要手動編輯」處置：不可手動編輯，應建 ticket 回報補上命令 |
 
 **不存在的操作**（禁止嘗試）：

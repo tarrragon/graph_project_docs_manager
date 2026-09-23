@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.40.0 — 新增 `set-scope-blocker <id> --reason <text>|--clear` 子命令：事後設定或清除 frontmatter `scope_blocker` 欄位，`--reason`/`--clear` 互斥、空字串理由視同未給同樣拒絕。動機：`scope_blocker` 原僅在 `create` 建票當下可寫入（`--scope-blocker`），凍結前已存在的必要 pending 票沒有建立時機補這個欄位，發版檢查（依 `scope_blocker` 區分阻擋與前移）會把它們誤判為可前移，必要工作因此被搬到下一版本。配套 `.claude/pm-rules/version-progression.md`〈版本生命週期〉凍結步驟補「回溯標記既有必要票」動作。詳見 `references/track-command.md`〈UPDATE 操作〉、〈CLI 可修改欄位 vs 手動編輯欄位〉。
+
 **Version**: 2.39.0 — `create` 版本註冊檢查放寬收 `planned` 版本（原僅收 `active`），修補 2.38.0 版本範圍凍結閘門提示的出路「先登記下一版本再建票」成為死路的問題——剛登記的版本狀態必為 `planned`，原判準仍會拒絕。動機：執行早已與版本解耦（生命週期模組對版本狀態零檢查），「planned = 要等啟用才能執行」的前提不成立。`VERSION_NOT_ACTIVE` 訊息改寫為「只有 planned 或 active 版本可建票」；`completed` 版本仍拒。同時退役 `_suggest_next_patch` 相對「最新已完成版本」計算版本歸屬引導的舊基準——版本推進後對非功能動詞根票恆建議未註冊版本，且與凍結閘門印出的溢出目標互相矛盾（基準不同源），改為相對 active 版本 patch+1，與 `suggest_overflow_version` 同一基準。`--scope-blocker` 放行理由新增持久化為 frontmatter 選填欄位 `scope_blocker`，供發版側查詢哪些票被明確放行進已凍結版本。詳見 `references/create-command.md`〈版本範圍凍結硬閘門〉、`references/field-semantics.md`〈scope_blocker 欄位語意〉。
 
 **Version**: 2.38.0 — 新增 `create` 的版本範圍凍結硬閘門：`docs/todolist.yaml` 版本條目新增選填欄位 `scope`（值 `frozen`；缺席即開放，向後相容），目標版本凍結時，無 `--parent` 的根票被阻擋，訊息含相對凍結版本計算的溢出目標（IMP 且新功能動詞 → minor+1.0，其餘 → patch+1）與二擇一處置；`--scope-blocker` 須帶非空理由才放行，僅給旗標或空字串仍阻擋；`--parent` 子票繼承父票版本不經此閘門。動機：0.1.0 pending 池 83 張無法分辨必要與非必要，現有版本歸屬引導只有「功能 vs 修復」一個軸，缺「目標版本現在還收不收票」的軸。形態比照 2.36.0 可攜問題分流閘門（正交，同在 create 驗證層）。新增 `is_version_scope_frozen` / `suggest_overflow_version`（`lib/version.py`）、`validate_version_scope_gate`（`lib/field_validators.py`）。詳見 `references/create-command.md`〈版本範圍凍結硬閘門〉。
