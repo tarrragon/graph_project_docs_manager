@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-09-15"
-version: "1.43"
+updated: "2026-09-23"
+version: "1.44"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -577,7 +577,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `relationItemA11yLabel` | 關聯節點 {id} | Related node {id} | id | 4.19 |
 | `currentProjectA11yLabel` | 目前專案 | Current project | — | 4.9 |
 | `projectSummaryLabel` | {nodes} 節點 · {tickets} 票 | {nodes} nodes · {tickets} tickets | nodes, tickets | 4.9 |
-| `healthBadgeA11yLabel` | {count} 個問題 | {count} issues | count | 4.5（health） |
+| `healthBadgeA11yLabel` | {count} 個問題 | 單複數：1 issue／{count} issues | count | 4.5（health）；計數 0 時徽章不渲染（SPEC-001 §7） |
 | `switcherTitle` | 切換專案 | Switch project | — | 4.42 |
 | `schemaAppVersionLabel` / `schemaProjectVersionLabel` | App 支援版本 / 專案版本 | Supported schema version / Project version | — | 4.23 |
 | `treeDepthA11yLabel` | 第 {depth} 層 | Level {depth} | depth | 4.39 |
@@ -6373,6 +6373,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.44 | 2026-09-23 | §4.0.6 `healthBadgeA11yLabel` en 改單複數形，備註補計數 0 不渲染（`0.1.0-W1-027`，SPEC-001 1.17 §7） |
 | 1.43 | 2026-09-15 | 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`，依 `0.1.0-W3-335.65` WRAP 裁決 SPEC-004 組 4-01～4-03，對應 SPEC-001 v1.16、SPEC-003 v1.37）：§3.1 總表 `SwimlaneGrid` 列用途欄與 4.38〈用途〉「0.1 以寫死座標的假資料靜態排版」改「0.1 以假資料靜態排版（節點所屬列依 `FlowStep.traverses` 計算，列序與欄序由假資料給定；SPEC-001 設計約束）」（4-01，落實 `0.1.0-W3-345` traverses 定案的同步缺漏）；4.38〈狀態矩陣〉default 列資料態「泳道資料（`lanes`，0.1 為寫死座標的假資料）」改「（0.1 為假資料，欄序由假資料給定）」、步驟欄寬列「由假資料座標決定（SPEC-001 設計約束「寫死座標」）」改「（SPEC-001 設計約束：欄寬靜態）」（4-02）；4.24 `LoadingState`〈用途〉「三處以『目標態』與『進度型別』參數差異化」改「三處以目標態、進度型別與骨架版位差異化（SPEC-003 §2.11）」（4-03，回應 SPEC-004 已定 `skeletonLayout` slot 契約與 `enum SkeletonLayout` 實作事實）。全檔「寫死座標」字面已無殘留（`grep -c` 為 0）；§3.3 第 20 項「靜態座標泳道」為提案原文記錄（節首理由欄涵蓋，不隨上游改版回改），不屬本次處置範圍 |
 | 1.42 | 2026-09-15 | 同步稽核追修票（`0.1.0-W3-335.62`，依 `0.1.0-W3-335.59` WRAP 裁決最終追修清單 SPEC-004 組 4-01～4-20，對應 SPEC-001 v1.15、SPEC-003 v1.36）：§3.1 總表 `LoadingState` 用途改引用 C1–C8 與生命週期 L1–L2（共 10 條，4-01）；`ButtonRow` 用途刪返回、返回 Domain（4-02）；`AppSnackBar` 出現畫面補 §4、§7 並註記 `denied` fallback（4-04，同步 4.26〈出現畫面〉）；`MatrixCell` 用途改「可點擊選格」、狀態補 selected（4-09）；`AppButton` 用途補以 App 內建型別表檢視／前往追溯視圖／前往 Ticket 清單／切換專案（阻擋狀態本體，4-15）；`Panel` 變體欄改引用 SPEC-003 §1.1〈捲動處清單〉不逐列錨點（4-14）。§3.5 畫布漂移表「十個捲動處」改引用〈捲動處清單〉不寫數字（4-13）。§3.6 §6 原始檔已消失列歸屬改 `MissingSourceState` 單顆按鈕、返回改由頁面框架渲染（4-03）；§1 空圖列顯示欄改「前往破洞報告；切換專案由殼層入口承載」（4-19）；〈SPEC-001 狀態列顯示欄 → 本檔〉表前刪「本版對齊 SPEC-001 v1.11」（4-17）；〈UC 選擇入口〉排位列 `Panel.scrollable` 補 scrollKey `scroll-ucFlow-uc-list`、上游缺口列改記已補（SPEC-003 §1.1 SR-5 落地，4-12）。§3.3 標題下首段補理由欄記錄提案當時（2026-09-02）行為與計數、不隨上游改版回改（4-18）；§3.7 前導句改「§3.1 總表與本表核定欄不一致處以本表為準；理由欄記錄核定當時的行為與計數，現行值以 §3.1 與 SPEC-001／SPEC-003 條文為準，不回改」（4-18）。4.15 MatrixCell 詳細段已一致，不改。4.18 `ExpanderIcon` slot 契約 testKey 補 `expander-tickets-unassigned`（4-11）。4.21 `EmptyState` 變體表 `section` 何時選用補泳道 · 尚未選定 UC／泳道 · flow 未結構化／§2 尚未選定 UC、i18n `message` 補 `ucUnsetPrompt`／`swimlaneUcUnsetPrompt`（4-10）。4.23 `BlockedState` 狀態矩陣表下說明改列切換專案／檢視詳情／降級檢視三動作、不寫顆數（4-16）。4.26 `AppSnackBar`〈變體〉`plain` 補外部開啟失敗、`withAction` 補系統通知 `denied` fallback 與清除搜尋篩選（4-05）；slot 契約 `message`／`actionLabel` 與 i18n 訊息／動作兩列補 `externalOpenFailedMessage`／`scanCompleteNoGapsSnackbarMessage`／`scanCompleteSnackbarMessage`／`ticketsFiltersClearedSnackbarMessage`／`viewGapsAction`／`undoAction`（4-06）；回饋契約按下確認列改引用重新掃描／`viewGapsAction`／`undoAction`、狀態變更提示列補四則觸發（4-07）。4.28 `PageColumn` 與 4.10 `SegmentedControl` 狀態變更提示列改引用 SPEC-003 §2.1〈未列轉換的預設〉取代「三個狀態之間」等舊字面（4-20）。4.40 `ListRow`〈回饋契約〉按下確認列 `item` 分支依指向節點型別改四分支：ticket → jump Ticket 清單、其他圖節點 → jump 節點詳情、事件類 → 寫入選定 UC 後 jump UC Flow、無指向 → 外部開啟三結果（4-08）。稽核腳本 `matrix.py`／`counts.py` 由 `0.1.0-W3-335.54` scratchpad 移入 `docs/spec/ui/audit/` 並新增 `README.md`，重跑結果記錄於本票 Completion Info |
 | 1.41 | 2026-09-14 | V4 第四輪前追修票 C（`0.1.0-W3-335.57`，依 `0.1.0-W3-335.53` WRAP 裁決 E1／E2／E3／E5／E8／E9，對應 SPEC-001 v1.14、SPEC-003 v1.35，承 `0.1.0-W3-335.55`／`.56` 留下的連動點）：§3.1 元件總表 `LoadPrompt` 列、`ButtonRow` 列與 §3.6 §4 未載入列刪「返回」字樣（4.25 用途段「返回由頁面框架承載」為準，ButtonRow 子件同步改 `[AppButton.primary]`，E1，含 `0.1.0-W3-335.55` 連動點 1）；§3.6 §1 無可消費的型別表列顯示欄補「降級說明（條件）」、4.23 slot `version` 文字來源改「呼叫端（專案 `.claude/VERSION`）」、`explanation` 補無可消費的型別表降級分支（新增 `schemaUnconsumableDegradedExplanation`，placeholder `builtinVersion`）（E2）；4.27 `AppShell` 狀態變更提示列與實作註記補降級徽章 `badge-<screen>-degraded-schema` 依降級旗標與返回列同一列常駐渲染（新增 `degradedSchemaBadgeLabel`，placeholder `builtinVersion`／`projectVersion`）（E3）；4.25 狀態變更提示列與狀態矩陣同步策略欄「切換專案重置」補「（下次可見且圖已建立時）」（E5）；§3.6 §1 正常 · 泳道、泳道 · flow 未結構化兩列 `AppText.subtitle` 補文字組成（新增 `swimlanePanelTitle`，placeholder `ucId`／`ucTitle`）（E8）；4.23 slot 契約 `testKey` 列補切換專案按鈕 `action-domain-switch-project`，既有實作 `lib/components/blocked_state.dart`／`test/unit/components/blocked_state_test.dart` 已使用，本票落檔與既有實作一致（E9）。§4.0.6 新增〈1.41 新增〉key 表 3 個 key，皆已 grep `lib/l10n/` 確認無同名既存 key。追修時核對項：4.24 狀態變更提示列「骨架」字樣 3 處經覆核非缺漏（同段落已提及「進度條推進為 determinate 值變化無動畫」涵蓋 Ticket 清單形式），維持現狀不改（`0.1.0-W3-335.55` 連動點 3）。票 A（`0.1.0-W3-335.55`）／票 B（`0.1.0-W3-335.56`）／票 C（本票）合計完成本輪 SPEC-004 6 項全部 |

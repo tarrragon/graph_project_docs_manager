@@ -395,7 +395,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String healthBadgeA11yLabel(int count) {
-    return '$count issues';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count issues',
+      one: '1 issue',
+    );
+    return '$_temp0';
   }
 
   @override
