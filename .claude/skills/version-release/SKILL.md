@@ -2,7 +2,7 @@
 name: version-release
 description: "版本發布整合工具。Use for: (1) 發布新版本（合併到 main、打 Tag、推送）, (2) 發布前健康檢查（所有 Ticket 完成？CHANGELOG 更新？）, (3) 更新版本文件（worklog 狀態、CHANGELOG）。Use when: 準備發布版本、執行 /version-release check 確認發布前狀態、完成所有 Ticket 後要收尾時。"
 metadata:
-  version: 2.3.0
+  version: 2.4.0
 ---
 
 # Version Release Skill
@@ -49,6 +49,22 @@ metadata:
 | `check` | 只執行 Pre-flight 檢查（發版判準見下方〈發版判準：blocker 阻擋、其餘前移〉） |
 | `finish` | 發版收尾：對前移清單逐張 `ticket migrate` 至目標版本，成功後接續 `release` 同一套流程（Options 同 `release`） |
 | `update-docs` | 只更新文件 |
+
+### 發版前置關卡：版本必須已凍結
+
+`check`／`finish` 在進入下方 blocker 判準之前，先呼叫 `check_version_frozen`
+確認目標版本於 `docs/todolist.yaml` 已標 `scope: frozen`；`finish` 的此關卡
+在 Step 0（`migrate_overflow_tickets`）之前，未凍結中止且不產生 migrate 副
+作用。未凍結時 exit 非 0 並印：
+
+```
+版本 v0.2.0 未凍結，契約 blocker 在凍結前恆為 0，本判定無鑑別力。
+請先於 todolist.yaml 標 scope: frozen，並對必要票 set-scope-blocker
+```
+
+**Why**：`scope_blocker` 只在凍結後才會被賦值（凍結是「範圍不再開放新收件」
+的宣告，blocker 是「凍結範圍內尚未處理」的標記）；凍結前 blocker 恆為 0，
+「blocker 清空即可發布」的判準對未凍結版本沒有鑑別力，會恆判可發布。
 
 ### 發版判準：blocker 阻擋、其餘前移
 

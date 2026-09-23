@@ -380,3 +380,61 @@ class TestFinishCommitScopeAndResidualGuard:
         residual = vr.check_residual_after_finish(tmp_path, baseline)
 
         assert residual == []
+
+
+class TestCheckVersionFrozenGate:
+    """0.2.0-W1-029：check／finish 的凍結前置關卡。"""
+
+    def _write_todolist(self, tmp_path, versions_yaml: str) -> None:
+        _write(tmp_path / "docs" / "todolist.yaml", versions_yaml)
+
+    def test_e2_unfrozen_version_fails_with_explicit_message(self, tmp_path):
+        """E2 紅輸入：未凍結版本 exit 非 0 且訊息含「未凍結」處置。"""
+        self._write_todolist(
+            tmp_path,
+            "versions:\n  - version: \"0.2.0\"\n    status: active\n",
+        )
+
+        with patch.object(vr, "get_project_root", return_value=tmp_path):
+            ok, errors = vr.check_version_frozen("0.2.0")
+
+        assert ok is False
+        assert any("未凍結" in e for e in errors)
+
+    def test_e1_frozen_version_passes(self, tmp_path):
+        """E1 對照：加 scope: frozen 後通過前置關卡，進入既有判定。"""
+        self._write_todolist(
+            tmp_path,
+            "versions:\n  - version: \"0.1.1\"\n    status: active\n    scope: \"frozen\"\n",
+        )
+
+        with patch.object(vr, "get_project_root", return_value=tmp_path):
+            ok, errors = vr.check_version_frozen("0.1.1")
+
+        assert ok is True
+        assert errors == []
+
+    def test_missing_version_registration_fails(self, tmp_path):
+        """目標版本未登記於 todolist.yaml 時同樣視為未通過凍結前置關卡。"""
+        self._write_todolist(tmp_path, "versions:\n  - version: \"0.1.0\"\n")
+
+        with patch.object(vr, "get_project_root", return_value=tmp_path):
+            ok, errors = vr.check_version_frozen("0.2.0")
+
+        assert ok is False
+        assert any("未登記" in e for e in errors)
+
+    def test_finish_aborts_before_migrate_when_unfrozen(self, tmp_path):
+        """finish 對未凍結版本於 Step 0（migrate）之前中止，無 migrate 副作用。"""
+        self._write_todolist(
+            tmp_path,
+            "versions:\n  - version: \"0.2.0\"\n    status: active\n",
+        )
+
+        with patch.object(vr, "get_project_root", return_value=tmp_path), \
+                patch("sys.argv", ["version_release.py", "finish", "--version", "0.2.0"]), \
+                patch.object(vr, "migrate_overflow_tickets") as mock_migrate:
+            exit_code = vr.main()
+
+        assert exit_code == 1
+        mock_migrate.assert_not_called()

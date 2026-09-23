@@ -2,6 +2,9 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.4.0 - `check`／`finish` 新增發版前置關卡：目標版本須於 `docs/todolist.yaml` 標 `scope: frozen`，否則 exit 非 0 並印「版本未凍結，契約 blocker 在凍結前恆為 0，本判定無鑑別力」；`finish` 的此關卡在 Step 0（migrate overflow tickets）之前，未凍結不產生 migrate 副作用。修復 0.2.0 剛啟用即實測 `check` 恆判可發布（scope_blocker 只在凍結後才存在，未凍結時 blocker 恆 0 對判定無鑑別力）
+**Last Updated**: 2026-09-23
+
 **Version**: 2.3.0 - finish 收尾提交改以「執行前後 git status 差集」定 staged 範圍（過濾 docs/ 與 CHANGELOG.md），取代舊版寫死清單 `git add docs/todolist.yaml CHANGELOG.md`——寫死清單在 Step 0 前移產生 ticket rename 等副作用時必然落後；Mark Version Completed / Activate Next Version 之後新增第二次收尾提交涵蓋其變更；finish 流程結尾加入 exit 前殘留守衛，工作區有非本次產生的殘留即列清單並以非 0 退出（不自動 add）
 **Last Updated**: 2026-09-23
 
