@@ -1848,6 +1848,50 @@ def _detect_silent_placeholder(
                 break
 
 
+def check_version_frozen(version: str) -> Tuple[bool, List[str]]:
+    """檢查目標版本是否已於 todolist.yaml 標記 scope: frozen。
+
+    scope_blocker 判定只在版本凍結後才有意義（凍結才會產生非空的
+    scope_blocker 集合）；未凍結版本的 blocker 恆為 0，對「可發布」
+    判定沒有鑑別力，故列為 check／finish 的前置關卡，不進入既有
+    blocker 計算（collect_ticket_scope_groups 之前）。
+    """
+    root = get_project_root()
+    todolist_path = root / "docs" / "todolist.yaml"
+
+    if not todolist_path.exists():
+        return False, [f"找不到 {todolist_path}"]
+
+    try:
+        with open(todolist_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except Exception as e:
+        return False, [f"讀取 {todolist_path} 失敗: {e}"]
+
+    versions = data.get("versions", []) if isinstance(data, dict) else []
+    entry = None
+    for v in versions:
+        if not isinstance(v, dict):
+            continue
+        try:
+            if normalize_version(str(v.get("version", ""))) == version:
+                entry = v
+                break
+        except ValueError:
+            continue
+
+    if entry is None:
+        return False, [f"todolist.yaml 未登記版本 v{version}，無法判定凍結狀態"]
+
+    if entry.get("scope") != "frozen":
+        return False, [
+            f"版本 v{version} 未凍結，契約 blocker 在凍結前恆為 0，本判定無鑑別力。"
+            "請先於 todolist.yaml 標 scope: frozen，並對必要票 set-scope-blocker"
+        ]
+
+    return True, []
+
+
 def preflight_check(version: str) -> Tuple[bool, Dict[str, Tuple[bool, List[str]]]]:
     """執行 Pre-flight 檢查"""
     print_section("Step 1: Pre-flight Check")
@@ -3757,6 +3801,13 @@ def main():
             print_header(f"Version Release - Pre-flight Check ({version})")
             print_config_disclosure(get_project_root())
 
+            frozen_ok, frozen_errors = check_version_frozen(version)
+            if not frozen_ok:
+                for error in frozen_errors:
+                    print_error(error)
+                print_error("檢查失敗，請修正上述問題")
+                return 1
+
             ok, results = preflight_check(version)
 
             if ok:
@@ -3809,6 +3860,15 @@ def main():
             finish_baseline = (
                 snapshot_git_status_paths(finish_root) if not dry_run else set()
             )
+
+            # finish：凍結前置關卡須在 Step 0 之前，未凍結中止且無 migrate 副作用
+            if args.command == "finish":
+                frozen_ok, frozen_errors = check_version_frozen(version)
+                if not frozen_ok:
+                    for error in frozen_errors:
+                        print_error(error)
+                    print_error("\n版本未凍結，發版收尾已中止")
+                    return 1
 
             # finish：先對前移清單逐張 migrate，任一張失敗即中止（不留半搬狀態）
             if args.command == "finish":

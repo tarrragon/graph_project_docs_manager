@@ -8,6 +8,13 @@
 
 驗證發布前置條件是否滿足：
 
+**前置關卡（Step 1 之前）**：`check_version_frozen(version)` 先確認目標版本
+於 `todolist.yaml` 已標 `scope: frozen`。scope_blocker 判定只在凍結後才有
+意義——未凍結版本的 blocker 恆為 0，對「可發布」判定沒有鑑別力。未凍結時
+`check` 與 `finish` 皆印 FAIL 並 exit 非 0，不進入 blocker 計算；`finish`
+的此關卡在 Step 0（migrate overflow tickets）之前，未凍結不產生 migrate
+副作用。
+
 ```python
 def preflight_check(version: str):
     """
