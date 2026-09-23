@@ -61,8 +61,8 @@ ol.rules li{margin:4px 0}
   <p class="lede">0.2.0 的契約只有一句：本機 17 個有 <code>.claude/</code> 的專案各自進入正確的 gate 分支。本頁記錄契約、實測 manifest、五步程序的分批結果與各批進度。</p>
 
   <div class="banner">
-    <strong>目前狀態：Batch 0 進行中（4 張，決策與文件）</strong>
-    <span>SA 審查 W1-032 已完成。凍結（步驟 5）延至 Batch 0 完成後執行，因兩張決策票可能再生必要票。</span>
+    <strong>目前狀態：Batch 1 進行中（4 張實作，parsley worktree）</strong>
+    <span>Batch 0 四張完成並驗收。scope 已凍結：7 張必要票帶 scope_blocker，<code>version-release check</code> 列出 10 張溢出票將於發版時前移（6 張 → 0.2.1、4 張 → 0.3.0）。</span>
   </div>
 
   <h2>契約</h2>
@@ -88,8 +88,8 @@ ol.rules li{margin:4px 0}
   <div class="scroll"><table>
     <thead><tr><th>判定</th><th>票</th><th>依據</th></tr></thead>
     <tbody>
-      <tr><td><span class="pill run">必要</span></td><td>W1-019、021、022、023、024、033、034、035、037、038</td><td>缺任一項，17 專案無法被選入、探測、路由，或契約文字本身不一致</td></tr>
-      <tr><td><span class="pill over">溢出</span></td><td>W1-015、020、025、026、027、028、W3-124、242、340</td><td>屬 0.3 Corpus 以後（破洞真資料、掃描通知、防抖）或發布通路（簽章）；留池不標 blocker，發版時前移</td></tr>
+      <tr><td><span class="pill run">必要</span></td><td>W1-019、021、022、023、024、033、034、035、037、038、040</td><td>缺任一項，17 專案無法被選入、探測、路由，或契約文字本身不一致；未完成者已標 scope_blocker</td></tr>
+      <tr><td><span class="pill over">溢出</span></td><td>W1-015、020、025、026、027、028、039、W3-124、242、340</td><td>屬 0.3 Corpus 以後（破洞真資料、掃描通知、防抖）、發布通路（簽章）或提案完整度（PROP-005 heavy 級章節）；留池不標 blocker，發版時前移</td></tr>
       <tr><td><span class="pill done">已關</span></td><td>W1-036</td><td>與 W1-035 同改 SPEC-001，併入</td></tr>
     </tbody>
   </table></div>
@@ -97,20 +97,20 @@ ol.rules li{margin:4px 0}
   <h2>批次</h2>
 
   <div class="batch">
-    <header><h3>Batch 0 · 決策與文件</h3><span class="pill run">進行中</span><span class="meta">四張互不同檔，並行</span></header>
+    <header><h3>Batch 0 · 決策與文件</h3><span class="pill done">完成</span><span class="meta">四張互不同檔，並行；全部驗收</span></header>
     <div class="scroll"><table>
-      <thead><tr><th>票</th><th>內容</th><th>代理人</th><th>狀態</th></tr></thead>
+      <thead><tr><th>票</th><th>內容</th><th>代理人</th><th>結果</th></tr></thead>
       <tbody>
-        <tr><td><code>W1-024</code></td><td>定案「App 已知範圍」判準（gate step 3 的版本範圍定義，寫入 domain-map §9）</td><td>saffron</td><td><span class="pill run">執行中</span></td></tr>
-        <tr><td><code>W1-038</code></td><td>定案 VERSION 缺＋JSON 有的 state 載體與畫面標示</td><td>saffron</td><td><span class="pill run">執行中</span></td></tr>
-        <tr><td><code>W1-034</code></td><td>PROP-005 §0.2 判準對齊 SPEC-001、計數 6／9／2、status confirmed、todolist notes 同步</td><td>thyme</td><td><span class="pill run">執行中</span></td></tr>
-        <tr><td><code>W1-035</code></td><td>SPEC-001 Gate 段補 JSON 全路徑、判定順序第 2 列括號改寫（含原 W1-036）</td><td>thyme</td><td><span class="pill run">執行中</span></td></tr>
+        <tr><td><code>W1-024</code></td><td>定案「App 已知範圍」判準</td><td>saffron</td><td><span class="pill done">完成</span> 已知範圍 = JSON 產生版本不高於內建（domain-map §9）；面板重評與 CLAUDE.md §6 移除由 W1-040／PM 承接</td></tr>
+        <tr><td><code>W1-038</code></td><td>定案 VERSION 缺＋JSON 有的 state 載體</td><td>saffron</td><td><span class="pill done">完成</span> 方案 A：既有 state 加 inferredVersion 旗標；SPEC-001 同步 → W1-040</td></tr>
+        <tr><td><code>W1-034</code></td><td>PROP-005 §0.2 對齊 SPEC-001、計數 6／9／2、tracking status confirmed</td><td>thyme</td><td><span class="pill done">完成</span> md 自身 status 仍 draft（heavy 級章節缺）→ W1-039 溢出</td></tr>
+        <tr><td><code>W1-035</code></td><td>SPEC-001 1.18：Gate 段補 JSON 全路徑、判定順序第 2 列括號改寫（含原 W1-036）</td><td>thyme</td><td><span class="pill done">完成</span></td></tr>
       </tbody>
     </table></div>
   </div>
 
   <div class="batch">
-    <header><h3>Batch 1 · 實作</h3><span class="pill wait">待 Batch 0</span><span class="meta">parsley worktree ×4；W1-033 blockedBy 024／038</span></header>
+    <header><h3>Batch 1 · 實作</h3><span class="pill run">進行中</span><span class="meta">parsley worktree ×4；W1-033 的兩張前置決策已完成</span></header>
     <div class="scroll"><table>
       <thead><tr><th>票</th><th>內容</th><th>檔案落點</th></tr></thead>
       <tbody>
@@ -129,6 +129,7 @@ ol.rules li{margin:4px 0}
       <tbody>
         <tr><td><code>W1-022</code></td><td>WorkspaceRepository 與 gap_report 外部開啟的平台端事實盤點，決定是否建實機驗證票</td><td>PM 前台</td></tr>
         <tr><td><code>W1-023</code></td><td>workspace domain 三接縫定案（清除已存路徑、健康徽章計數來源、最近專案清單持久化）</td><td>saffron</td></tr>
+        <tr><td><code>W1-040</code></td><td>SPEC-001 追修：inferredVersion 語意註記（W1-038）＋ schema 不相容面板改放「App 已知版本範圍」（W1-024 R4 重評）</td><td>lavender</td></tr>
       </tbody>
     </table></div>
   </div>
@@ -136,7 +137,7 @@ ol.rules li{margin:4px 0}
   <h2>規則</h2>
   <ol class="rules">
     <li>新發現一律 <code>ticket create --version 0.2.0</code>；框架問題走 dedup → observe，不建本地票。</li>
-    <li>Batch 0 完成後執行凍結兩步：todolist <code>scope: frozen</code>，必要票逐張 <code>set-scope-blocker</code>。凍結後新票須帶 <code>--scope-blocker</code> 理由，否則溢出到最近開放後繼版本。</li>
+    <li>已凍結（Batch 0 後）：todolist <code>scope: frozen</code>，七張必要票帶 <code>scope_blocker</code>。新票須帶 <code>--scope-blocker</code> 理由，否則溢出到最近開放後繼版本（目前算出 0.2.1／0.3.0）。</li>
     <li>同批派發前跑 <code>ticket track conflicts</code>；有交集者合併或序列。</li>
     <li>發版走 <code>version-release finish</code>：只讀帶 blocker 的 pending 子集，其餘自動前移；0.1.x 不再開 patch。</li>
     <li>每批 ≤ 4 張，PM 一輪可逐份驗收；代理人回報一律以 git／ticket 狀態核對後才接受。</li>
