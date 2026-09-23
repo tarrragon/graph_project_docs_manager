@@ -116,6 +116,19 @@ class WorkspaceRepository {
 
   static const _pathKey = 'workspace.path';
 
+  /// 版號 key。與 [_pathKey] 分開儲存（而非合併成單一 JSON 值）是刻意的：
+  /// 分開儲存讓「版號讀取失敗」與「path 讀取失敗」在 SharedPreferences 層
+  /// 可各自觀察（雖然目前的判定邏輯不利用此區別，見
+  /// `docs/tech-decisions.md` 補記「shared_preferences key 版本化與遷移
+  /// 策略」）。
+  static const _schemaVersionKey = 'workspace.schemaVersion';
+
+  /// 目前的 schema 版本。改動 [_pathKey] 對應的值格式（例如從單一路徑字串
+  /// 改成清單）時，必須遞增此常數並在 [_migrateSchema] 補上對應版本的轉換
+  /// 分支——版號常數與遷移函式集中於此檔是決策的一部分，見
+  /// `docs/tech-decisions.md` 同一補記段。
+  static const _currentSchemaVersion = 1;
+
   final DirectoryPathPicker _pickDirectoryPath;
   final WorkspacePreferencesPort _preferencesPort;
   final WorkspaceDirectoryProbePort _directoryProbe;
@@ -154,8 +167,20 @@ class WorkspaceRepository {
     try {
       final handle = await _preferencesPort.open();
       _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
+      // 版號 key 與 path key 的首次寫入是同一次操作（0.2.0-W1-021 acceptance
+      // 第 3 條、呼應 0.1.0-W3-121 裁決 B 的交叉判據前提）：只要 path 曾被
+      // 寫入，版號一定同時存在，不會出現「有 path 但版號 key 從未寫過」這種
+      // 中間態，讓 restore() 端的判定邏輯（見 [_migrateSchema]）少一種要
+      // 處理的組合。寫入順序刻意 path 在前、版號在後——若寫到一半失敗，
+      // 寧可「有 path 無版號」（會被判為 v0 舊資料而觸發遷移路徑，仍可讀出
+      // path）也不要「有版號無 path」（版號對不上任何資料，判定邏輯無從
+      // 補救）。
       final success = await handle.writeString(_pathKey, path);
       if (success) {
+        await handle.writeString(
+          _schemaVersionKey,
+          '$_currentSchemaVersion',
+        );
         _log('已持久化'); // i18n-exempt: 開發者 debug log
       } else {
         _log(
@@ -192,13 +217,76 @@ class WorkspaceRepository {
       );
     }
     _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
-    final path = handle.readString(_pathKey);
+    final rawPath = handle.readString(_pathKey);
+    final rawVersion = handle.readString(_schemaVersionKey);
+    final migration = _migrateSchema(
+      storedVersion: _parseSchemaVersion(rawVersion),
+      storedPath: rawPath,
+    );
+    final path = switch (migration) {
+      SchemaCurrent(:final path) => path,
+      SchemaMigrated(:final path) => path,
+      SchemaMigrationFailed() => null,
+    };
+    if (migration is SchemaMigrated) {
+      _log('偵測到舊版資料，已就地遷移'); // i18n-exempt: 開發者 debug log
+    }
+    if (migration is SchemaMigrationFailed) {
+      // 遷移失敗不阻擋 App：與 0.1.0-W3-121 裁決一致（restore() 任何失敗
+      // 皆降級為 WorkspaceUnset/WorkspaceUnavailable，不丟例外、不中斷
+      // App 啟動）。因不信任舊結構，選擇當作「從未選過資料夾」而非嘗試
+      // 沿用可能已損毀的值——見 tech-decisions.md 同一補記段的決策記錄。
+      _log(
+        '版號無法辨識，判定遷移失敗（storedVersion=${migration.storedVersion}）', // i18n-exempt: 開發者 debug log
+        level: 900,
+      );
+      return const WorkspaceUnset();
+    }
     if (path == null) {
       _log('無已儲存路徑'); // i18n-exempt: 開發者 debug log
       return const WorkspaceUnset();
     }
     _log('已還原：$path'); // i18n-exempt: 開發者 debug log
     return _inspect(path);
+  }
+
+  /// 判定版號並在需要時就地轉換資料結構。純函式：只依賴輸入引數，方便以
+  /// 假資料測試「舊版資料能被讀成新版結構」（acceptance 第 1 條）。
+  ///
+  /// 版號讀取失敗（SharedPreferences 本身有值但解析失敗）與「首次啟動、
+  /// 從未寫過版號」在此函式的輸入層面無法區分——兩者對呼叫端而言都是
+  /// `storedVersion == null`。決策：不特別區分，統一視為「無版號」，再用
+  /// `storedPath` 是否存在判斷是 v0 舊資料（有 path）還是真的沒資料（無
+  /// path）。理由與風險見 tech-decisions.md 同一補記段。
+  SchemaMigrationResult _migrateSchema({
+    required int? storedVersion,
+    required String? storedPath,
+  }) {
+    if (storedVersion == null) {
+      if (storedPath == null) {
+        // 無版號也無 path：乾淨的首次啟動，無需遷移。
+        return SchemaCurrent(storedPath);
+      }
+      // 有 path 無版號：0.2.0-W1-021 之前寫入的舊資料（v0，單一路徑字串，
+      // 與目前的 v1 儲存格式相同），就地判定為 v1，無需轉換內容本身。
+      return SchemaMigrated(storedPath);
+    }
+    if (storedVersion == _currentSchemaVersion) {
+      return SchemaCurrent(storedPath);
+    }
+    if (storedVersion < _currentSchemaVersion) {
+      // 尚無 v1 以外的舊版本存在，此分支預留給下一次格式變更時填入實際
+      // 轉換邏輯（例如單一路徑字串 -> 清單）。
+      return SchemaMigrated(storedPath);
+    }
+    // storedVersion > _currentSchemaVersion：資料是被更新版本的 App 寫入
+    // 的，本版邏輯不認得其結構，不嘗試猜測式讀取。
+    return SchemaMigrationFailed(storedVersion);
+  }
+
+  int? _parseSchemaVersion(String? raw) {
+    if (raw == null) return null;
+    return int.tryParse(raw);
   }
 
   /// 路徑字串會過期（資料夾被搬移、重新命名、刪除，或位於未掛載的磁碟），

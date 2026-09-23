@@ -77,3 +77,33 @@ class ChooseFolderNotRemembered extends ChooseFolderResult {
   final WorkspaceState state;
   final String reason;
 }
+
+/// `workspace.schemaVersion` 讀取後的遷移判定結果（`0.2.0-W1-021`）。
+///
+/// 三種結局刻意不共用同一個 `path` 欄位形狀（見 [SchemaMigrationFailed]
+/// 沒有攜帶任何 path）——遷移失敗與「無需遷移」若在回傳值上同形，呼叫端
+/// 就會誤把失敗當成正常的舊資料而繼續使用未經驗證的內容。
+sealed class SchemaMigrationResult {
+  const SchemaMigrationResult();
+}
+
+/// 版號已是目前版本，資料結構不需轉換，[path] 可直接使用。
+class SchemaCurrent extends SchemaMigrationResult {
+  const SchemaCurrent(this.path);
+  final String? path;
+}
+
+/// 版號落後（含「無版號但已有 path，判定為 v0 舊資料」的情形），已就地轉換
+/// 為目前版本的結構，[path] 可直接使用。
+class SchemaMigrated extends SchemaMigrationResult {
+  const SchemaMigrated(this.path);
+  final String? path;
+}
+
+/// 版號無法辨識或轉換邏輯本身失敗（例如版號比目前版本更新，代表資料是被
+/// 未來版本寫入的，本版邏輯不認得其結構）。[storedVersion] 保留供日誌診斷，
+/// 不做為使用者可見文案。
+class SchemaMigrationFailed extends SchemaMigrationResult {
+  const SchemaMigrationFailed(this.storedVersion);
+  final int? storedVersion;
+}
