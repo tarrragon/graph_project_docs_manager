@@ -140,10 +140,10 @@ tr:last-child td { border-bottom: none; }
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="stat-num">83</div><div class="stat-label">pending 總數</div></div>
-  <div class="stat"><div class="stat-num">8</div><div class="stat-label">0.1.0 必要</div></div>
-  <div class="stat"><div class="stat-num">75</div><div class="stat-label">溢出 / 延後</div></div>
-  <div class="stat"><div class="stat-num">3</div><div class="stat-label">批次</div></div>
+  <div class="stat"><div class="stat-num">3</div><div class="stat-label">剩餘契約 blocker</div></div>
+  <div class="stat"><div class="stat-num">2/3</div><div class="stat-label">批次完成</div></div>
+  <div class="stat"><div class="stat-num">75</div><div class="stat-label">發版時自動前移</div></div>
+  <div class="stat"><div class="stat-num">4</div><div class="stat-label">0.1.1 已溢出</div></div>
 </div>
 
 <h2>判斷邏輯</h2>
@@ -158,12 +158,12 @@ tr:last-child td { border-bottom: none; }
 
 <div class="batch">
   <div class="batch-hd">
-    <strong>Batch 0 <span class="tag tag-done">IN FLIGHT</span></strong>
-    <span>1 ticket &middot; already dispatched</span>
+    <strong>Batch 0 <span class="tag tag-done">DONE</span></strong>
+    <span>1 ticket &middot; 2026-09-22</span>
   </div>
   <div class="ox"><table>
     <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Status</th></tr>
-    <tr><td class="id">W2-014</td><td><span class="tag tag-must">IMP</span></td><td>degradedSchemaProvider 寫入端接線 + 切換專案重置</td><td class="ag">parsley</td><td><span class="tag tag-done">dispatched</span></td></tr>
+    <tr><td class="id">W2-014</td><td><span class="tag tag-must">IMP</span></td><td>degradedSchemaProvider 寫入端接線 + 切換專案重置</td><td class="ag">parsley</td><td><span class="tag tag-done">completed</span></td></tr>
   </table></div>
 </div>
 
@@ -171,15 +171,16 @@ tr:last-child td { border-bottom: none; }
 
 <div class="batch">
   <div class="batch-hd">
-    <strong>Batch 1 <span class="tag tag-must">PARALLEL</span></strong>
-    <span>4 tickets &middot; no inter-dependency &middot; after Batch 0 merge</span>
+    <strong>Batch 1 <span class="tag tag-done">DONE</span></strong>
+    <span>2026-09-23 &middot; session 94 &middot; origin bb89f3715</span>
   </div>
   <div class="ox"><table>
-    <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Notes</th></tr>
-    <tr><td class="id">W1-068</td><td><span class="tag tag-must">IMP</span></td><td>ExternalOpener 抽象 + macOS open 實作（4 畫面共用）</td><td class="ag">parsley</td><td style="font-size:0.8rem;">AC2 實機驗證由 PM 收尾</td></tr>
-    <tr><td class="id">W1-067</td><td><span class="tag tag-must">IMP</span></td><td>TwoColumnLayout main/detail 收窄為 Panel</td><td class="ag">parsley</td><td style="font-size:0.8rem;">視覺正確性</td></tr>
-    <tr><td class="id">W1-071</td><td><span class="tag tag-must">DOC</span></td><td>SPEC-004 BlockedState 降級條款對齊</td><td class="ag">PM</td><td style="font-size:0.8rem;">主線程直接執行</td></tr>
-    <tr><td class="id">W1-027</td><td><span class="tag tag-must">DOC</span></td><td>SPEC-001 &sect;7 健康徽章文案 + ARB key</td><td class="ag">star-anise</td><td style="font-size:0.8rem;">文案定義</td></tr>
+    <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Result</th></tr>
+    <tr><td class="id">W1-068</td><td><span class="tag tag-must">IMP</span></td><td>ExternalOpener 抽象 + macOS open 實作（4 畫面共用）</td><td class="ag">parsley</td><td style="font-size:0.8rem;"><span class="tag tag-done">completed</span> AC2 改 debug .app 整合測試；簽章版驗證 &#8594; 0.1.1-W1-002</td></tr>
+    <tr><td class="id">W1-067</td><td><span class="tag tag-must">IMP</span></td><td>IssueMarker 巢狀命中衝突（契約部分）</td><td class="ag">parsley</td><td style="font-size:0.8rem;"><span class="tag tag-done">completed</span> IgnorePointer 解決；TwoColumnLayout 收窄遇設計問題 &#8594; 0.1.1-W1-003</td></tr>
+    <tr><td class="id">W1-071</td><td><span class="tag tag-must">DOC</span></td><td>SPEC-004 BlockedState 降級條款對齊</td><td class="ag">—</td><td style="font-size:0.8rem;"><span class="tag tag-fw">closed</span> W3-335.42 已做，superseded</td></tr>
+    <tr><td class="id">W1-027</td><td><span class="tag tag-must">DOC</span></td><td>SPEC-001 &sect;7 健康徽章文案</td><td class="ag">star-anise</td><td style="font-size:0.8rem;"><span class="tag tag-done">completed</span> 問題計數兩類；SPEC-001 1.17、SPEC-004 1.44；無新 ARB key</td></tr>
+    <tr><td class="id">W1-081</td><td><span class="tag tag-must">IMP</span></td><td>探針併入 app_test.dart，修批次整合測試紅燈</td><td class="ag">parsley</td><td style="font-size:0.8rem;"><span class="tag tag-done">completed</span> 執行中新增，帶 blocker 進 0.1.0</td></tr>
   </table></div>
 </div>
 
@@ -187,8 +188,8 @@ tr:last-child td { border-bottom: none; }
 
 <div class="batch">
   <div class="batch-hd">
-    <strong>Batch 2 <span class="tag tag-must">PARALLEL</span></strong>
-    <span>3 tickets &middot; after Batch 1</span>
+    <strong>Batch 2 <span class="tag tag-must">NEXT</span></strong>
+    <span>3 tickets &middot; 剩餘全部契約 blocker &middot; `check` 阻擋數 3</span>
   </div>
   <div class="ox"><table>
     <tr><th>ID</th><th>Type</th><th>Task</th><th>Agent</th><th>Notes</th></tr>
@@ -272,6 +273,11 @@ tr:last-child td { border-bottom: none; }
 </div>
 
 <div class="rule">
-  <h3 style="margin-top:0;">Rule 4: 發版後再 triage 溢出池</h3>
-  <p>0.1.0 完成後，再把 75 張溢出票更新 <code>version</code> 欄位。先發版，再規劃 0.1.1。</p>
+  <h3 style="margin-top:0;">Rule 4: 溢出票由 finish 自動前移</h3>
+  <p>不再手動 triage。<code>version-release check</code> 只以帶 <code>scope_blocker</code> 的 pending 阻擋；<code>finish</code> 把其餘 pending 依類型 migrate 至 0.1.1（品質）或 0.2.0（能力）。</p>
+</div>
+
+<div class="rule">
+  <h3 style="margin-top:0;">Rule 5: 進凍結版本須同時給 --version</h3>
+  <p><code>--scope-blocker</code> 不帶 <code>--version 0.1.0</code> 時，版本引導會先把票分到 0.1.1，blocker 理由被靜默忽略。已 observe 至 canonical #55。</p>
 </div>
