@@ -100,7 +100,7 @@ SPEC 定狀態、UC 定流程、ticket 承載開發資訊。改一層不必動�
 | 分支 | 預期數量 | 判定訊號 |
 |------|:---:|---------|
 | 不是框架專案 | 6 | `.claude/VERSION` 與 `tracking_schema.json` 皆缺 |
-| 無可消費的型別表 | 9 | `tracking_schema.json` 不存在（`.claude/VERSION` 存在與否皆同此列） |
+| 無可消費的型別表 | 9 | `tracking_schema.json` 不存在（此處只看 JSON 存在性，不看 VERSION 值） |
 | 可載入 | 2 | `tracking_schema.json` 存在，且版本在範圍內 |
 
 > 判定訊號欄字面對齊 `SPEC-001` v1.17〈Gate 三問對照〉判定順序段
