@@ -78,7 +78,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notFrameworkProjectMessage =>
-      'This folder has no docs/ — it does not use this framework';
+      'This folder is missing the configuration this framework requires (both .claude/VERSION and the type table are absent) — it does not use this framework';
 
   @override
   String get notFrameworkProjectExplanation =>

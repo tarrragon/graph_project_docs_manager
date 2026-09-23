@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案
   ///
   /// In zh, this message translates to:
-  /// **'此資料夾沒有 docs/，不是使用本框架的專案'**
+  /// **'此資料夾缺少本框架所需的設定檔（.claude/VERSION 與型別表皆缺），不是使用本框架的專案'**
   String get notFrameworkProjectMessage;
 
   /// SPEC-001 §1 Domain 視圖·不是框架專案狀態的補充說明文案（說明本 App 需要什麼）
