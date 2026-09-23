@@ -2,7 +2,7 @@
 name: version-release
 description: "版本發布整合工具。Use for: (1) 發布新版本（合併到 main、打 Tag、推送）, (2) 發布前健康檢查（所有 Ticket 完成？CHANGELOG 更新？）, (3) 更新版本文件（worklog 狀態、CHANGELOG）。Use when: 準備發布版本、執行 /version-release check 確認發布前狀態、完成所有 Ticket 後要收尾時。"
 metadata:
-  version: 2.4.0
+  version: 2.5.0
 ---
 
 # Version Release Skill
@@ -103,11 +103,15 @@ patch+1）；`finish` 對此清單逐張執行 `ticket migrate <source_id> <targ
 **執行步驟**：
 1. 前版本驗證（檢查 completed 狀態和 git tag）
 2. 專案類型偵測（自動或讀取 `.version-release.yaml` 配置）
-3. 重複檢查（確認新版本不存在）
-4. 更新 todolist.yaml（插入新版本條目，字串操作保留格式）
-5. 建立 worklog 目錄結構和主檔案（從模板生成，路徑依專案類型決定）
-6. Bump 版本檔案（依專案類型選擇對應的版本源 + sync targets）
+3. 重複檢查：todolist.yaml 已有該版本條目（狀態為 `active`／`planned`／
+   `pending`）時，改走 `ensure_version_activated` 冪等補齊路徑（見下），
+   不再視為錯誤；狀態為其他值（如 `completed`）才 FAIL
+4. 全新版本：更新 todolist.yaml（插入新版本條目，字串操作保留格式）
+5. 全新版本：建立 worklog 目錄結構和主檔案（從模板生成，路徑依專案類型決定）
+6. 全新版本：Bump 版本檔案（依專案類型選擇對應的版本源 + sync targets）
 7. 輸出摘要報告和下一步建議
+
+**`ensure_version_activated` 冪等補齊**（既有版本走此路徑，`finish` 自動推進下一版本時亦共用同一常式）：逐項檢查 todolist status、worklog 主檔、版本檔版號、CHANGELOG In Development 段落，只補缺的項目並逐項印出 `[OK]`／`[補]`；全部就位時印「無缺漏」且不改動任何檔案（含 mtime）。version status 為 `completed` 時視為不可逆錯誤，不會被本路徑復原。
 
 ## 多專案類型支援
 
