@@ -18,6 +18,7 @@ import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_icon.dart';
 import 'badge.dart';
+import 'relation_item.dart';
 
 /// 三個變體（SPEC-004 4.6「變體」表）。
 enum IssueMarkerVariant {
@@ -50,7 +51,7 @@ class IssueMarker extends StatelessWidget {
   /// `textPrimary`，不由本元件覆寫（SPEC-004 4.6「使用 design token」）。
   const IssueMarker.damagedEdge({
     Key? key,
-    required Widget child,
+    required RelationItem child,
     required VoidCallback onTap,
     required Key testKey,
   }) : this._(
@@ -100,12 +101,13 @@ class IssueMarker extends StatelessWidget {
   /// `badge-traceability-broken-<nodeId>` / 欄位級 `action-nodeDetail-goto-gaps`）。
   final Key testKey;
 
-  /// `damagedEdge` 必填：被包住的節點。契約型別為 `RelationItem`
-  /// （SPEC-004 §4.6 slot 契約），但 `RelationItem` 自身持有可互動
-  /// `InkWell`，巢狀於本元件的 `InkWell` 內時內層攔截 tap 命中測試，
-  /// 導致本元件 [onTap] 不觸發（實測驗證）。收窄為 `RelationItem` 型別
-  /// 在實作上不可行，維持 `Widget?` 承接。
-  final Widget? child;
+  /// `damagedEdge` 必填：被包住的節點，契約型別為 `RelationItem`
+  /// （SPEC-004 §4.6 slot 契約）。`RelationItem` 自身持有可互動
+  /// `InkWell`，巢狀於本元件的 `InkWell` 內時內層攔截 tap 命中——以
+  /// [IgnorePointer] 包裹 [child] 解決：損壞邊的點擊語意一律由本元件
+  /// 的外層 `InkWell` 承接（jump 破洞報告），`RelationItem` 在此情境下
+  /// 只作視覺呈現，不接受自身的 `onTap`。
+  final RelationItem? child;
 
   /// `damagedDetail` 可選：損壞計數（經 `Badge.count` 顯示）。
   final int? count;
@@ -143,7 +145,7 @@ class IssueMarker extends StatelessWidget {
               painter: const _DashedBoxPainter(),
               child: Padding(
                 padding: EdgeInsets.all(Space.xxs.w),
-                child: child,
+                child: IgnorePointer(child: child),
               ),
             ),
           ),

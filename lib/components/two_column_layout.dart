@@ -23,9 +23,14 @@ class TwoColumnLayout extends StatelessWidget {
   const TwoColumnLayout({super.key, required this.main, required this.detail});
 
   /// 主欄內容，契約型別為 `Panel` 或 `Panel.scrollable`（SPEC-004 §4.31
-  /// slot 契約，恰 1）。維持 `Widget` 承接：既有測試以 `ListView` 型別
-  /// 斷言（`tester.widget<ListView>`）直接驗證捲動子件本身，改用 `Panel`
-  /// 需同步重寫該類斷言，非本票範圍。
+  /// slot 契約，恰 1）。維持 `Widget` 承接：收窄為 `Panel` 會使
+  /// `domain_view_screen.dart` 的 `_CellDetailPanel`（`ConsumerWidget`，
+  /// 承載 AnimatedSwitcher 過場所需的動態 `Key`）與
+  /// `uc_flow_screen.dart` 的 `_UcSelectorPanel` 型別不相容（`0.1.0-W1-067`
+  /// 實測：`dart analyze`／`flutter test` 編譯失敗，5 處呼叫點），此二檔
+  /// 案不在本票 `where.files` 範圍，且 `_CellDetailPanel` 的過場觸發鍵與
+  /// 測試定址鍵分居兩個 widget 層級，收窄需要额外的識別鍵架構決策，非
+  /// 機械改型別可解，故回報 PM 另立票處理（見本票 NeedsContext）。
   final Widget main;
 
   /// 右欄內容，契約型別為 `Panel.scrollable`（SPEC-004 §4.31 slot 契約，

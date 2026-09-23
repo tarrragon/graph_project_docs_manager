@@ -5,10 +5,10 @@
 /// skill「只是目的地不同者為 slot」合為一件）；字型以 [isMono] 參數區分。
 ///
 /// `damaged` 狀態不是本元件的內部變體：損壞邊由呼叫端在外層包
-/// `IssueMarker.damagedEdge`（尚未建立，SPEC-004 4.6），本元件的視覺與
-/// `onTap` 皆由呼叫端決定，一律以同一份 chip 外觀渲染（SPEC-004 §4.19
-/// 「狀態矩陣」default／damaged 同色，差異僅在外包裝與呼叫端傳入的
-/// `onTap` 語意）。
+/// `IssueMarker.damagedEdge`（SPEC-004 4.6），一律以同一份 chip 外觀渲染
+/// （SPEC-004 §4.19「狀態矩陣」default／damaged 同色，差異僅在外包裝）。
+/// 巢狀於 `damagedEdge` 內時本元件的 `InkWell` 被外層以 `IgnorePointer`
+/// 停用，點擊語意改由 `damagedEdge` 的外層 `onTap` 承接（jump 破洞報告）。
 library;
 
 import 'package:flutter/material.dart' show InkWell, Colors;
