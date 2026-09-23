@@ -125,6 +125,7 @@
   "cellDetailViewInSwimlaneAction": "View in swimlane",
   "swimlaneUcUnsetPrompt": "No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view",
   "degradedSchemaBadgeLabel": "Degraded schema (builtin {builtinVersion} / project {projectVersion})",
+  "inferredVersionBadgeLabel": "Version inferred from schema (v{inferredVersion})",
   "modeMatrixLabel": "Matrix",
   "modeSwimlaneLabel": "Swimlane",
   "modeListLabel": "List",

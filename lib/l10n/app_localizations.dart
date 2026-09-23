@@ -842,6 +842,12 @@ abstract class AppLocalizations {
   /// **'降級型別表（內建 {builtinVersion} / 專案 {projectVersion}）'**
   String degradedSchemaBadgeLabel(String builtinVersion, String projectVersion);
 
+  /// SPEC-001 §1〈推定版本〉疊加旗標：`badge-<screen>-inferred-version` 徽章文案（SPEC-004 §4.0.6 1.45 新增，`0.2.0-W1-042` 接線寫入端與渲染），與降級徽章互斥
+  ///
+  /// In zh, this message translates to:
+  /// **'版本推定自型別表 (v{inferredVersion})'**
+  String inferredVersionBadgeLabel(String inferredVersion);
+
   /// SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案
   ///
   /// In zh, this message translates to:

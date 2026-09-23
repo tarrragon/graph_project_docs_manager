@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/degraded_schema.dart';
 import '../app/router.dart';
 import '../l10n/app_localizations.dart';
+import '../screens/domain_view/gate_detection_notifier.dart' show inferredVersionProvider;
 import '../tokens/tokens.dart';
 import 'app_button.dart';
 import 'app_text.dart';
@@ -89,6 +90,7 @@ class AppShell extends ConsumerWidget {
     final returnTo = ref.watch(returnToProvider);
     final isDegraded = ref.watch(degradedSchemaProvider);
     final degradedVersions = ref.watch(degradedSchemaVersionsProvider);
+    final inferredVersion = ref.watch(inferredVersionProvider);
 
     Widget body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,6 +116,7 @@ class AppShell extends ConsumerWidget {
             onBack: () => consumeReturnTo(ref.read),
             isDegraded: isDegraded,
             degradedVersions: degradedVersions,
+            inferredVersion: inferredVersion,
           ),
         ),
       ],
@@ -217,16 +220,19 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
-/// 主區：返回列（`returnTo` 非 `null` 或 `isDegraded` 為真時常駐）+ 六頁
-/// `IndexedStack`（SPEC-004 4.27 互動反應「返回鍵」；state-change 列降級
-/// 徽章「與返回列同一列常駐」）。
+/// 主區：返回列（`returnTo` 非 `null`、`isDegraded` 或推定版本旗標為真時
+/// 常駐）+ 六頁 `IndexedStack`（SPEC-004 4.27 互動反應「返回鍵」；
+/// state-change 列降級／推定版本徽章「與返回列同一列常駐」）。
 ///
 /// 既有 `PageColumn` 已建構完成，本容器不改寫其內部——以獨立返回列疊於
 /// 內容之上呈現同一份對外行為（`action-<screen>-back` 錨點與行為不變），
 /// 沿用 `lib/app/shell.dart` 既有的 `_ReturnToHeader` 佈局慣例。降級徽章
 /// （`badge-<screen>-degraded-schema`）比照同一實作方式疊於本列左側，
 /// 兩者互不覆蓋——`isDegraded` 為真且 `returnTo` 亦非 `null` 時，本列同時
-/// 顯示徽章（左）與返回鍵（右）（SPEC-004 §4.27〈實作註記〉）。
+/// 顯示徽章（左）與返回鍵（右）（SPEC-004 §4.27〈實作註記〉）。推定版本
+/// 徽章（`badge-<screen>-inferred-version`）同一實作方式疊於本列左側，
+/// 與降級徽章互斥（SPEC-001 v1.19〈推定版本〉註記：兩旗標不會同時出現，
+/// `0.2.0-W1-042`）。
 class _MainArea extends StatelessWidget {
   const _MainArea({
     required this.destination,
@@ -235,6 +241,7 @@ class _MainArea extends StatelessWidget {
     required this.onBack,
     required this.isDegraded,
     required this.degradedVersions,
+    required this.inferredVersion,
   });
 
   final AppDestination destination;
@@ -251,14 +258,21 @@ class _MainArea extends StatelessWidget {
   /// 版本文字退回空字串，不阻擋渲染（防禦性處理，非預期路徑）。
   final DegradedSchemaVersions? degradedVersions;
 
+  /// 推定版本旗標（`inferredVersionProvider`，
+  /// `lib/screens/domain_view/gate_detection_notifier.dart`）。非 `null`
+  /// 時本列常駐渲染 `badge-<screen>-inferred-version`；與 [isDegraded] 互斥
+  /// （SPEC-001 v1.19〈推定版本〉註記）。
+  final String? inferredVersion;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final hasBackAction = returnTo != null;
+    final hasInferredVersion = inferredVersion != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (hasBackAction || isDegraded)
+        if (hasBackAction || isDegraded || hasInferredVersion)
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: Space.md,
@@ -273,6 +287,13 @@ class _MainArea extends StatelessWidget {
                     label: l10n.degradedSchemaBadgeLabel(
                       degradedVersions?.builtinVersion ?? '',
                       degradedVersions?.projectVersion ?? '',
+                    ),
+                  )
+                else if (hasInferredVersion)
+                  Badge.tag(
+                    key: Key('badge-${destination.name}-inferred-version'),
+                    label: l10n.inferredVersionBadgeLabel(
+                      inferredVersion ?? '',
                     ),
                   )
                 else

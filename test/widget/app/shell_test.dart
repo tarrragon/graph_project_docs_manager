@@ -18,7 +18,13 @@ import 'package:graph_project_docs_manager/app/shell.dart';
 import 'package:graph_project_docs_manager/components/components.dart'
     as components;
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
+import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 
 void main() {
   testWidgets('returnTo 為 null 時 action-<screen>-back 不存在於元件樹', (
@@ -112,15 +118,122 @@ void main() {
       );
     }
   });
+
+  // 0.2.0-W1-042：App 啟動 restore() 回 WorkspaceReady 後，detect() 應被
+  // 呼叫且 domainViewStateProvider 反映結果——證明 initState 的接線確實
+  // 執行到底，不只是呼叫 restore() 而已。
+  testWidgets(
+    'App 啟動 restore() 回 WorkspaceReady 後 detect() 被呼叫，'
+    'domainViewStateProvider 反映結果',
+    (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(
+            WorkspaceRepository(
+              preferencesPort: _FakeReadyPreferencesPort(),
+              directoryProbe: _FakeDirectoryProbePort(),
+            ),
+          ),
+          frameworkSignalProbeProvider.overrideWithValue(
+            const _FakeSignalProbe(),
+          ),
+        ],
+        onReady: (c) => container = c,
+      );
+
+      expect(
+        container.read(domainViewStateProvider),
+        isA<DomainNotFramework>(),
+      );
+    },
+  );
+
+  // 0.2.0-W1-042：推定版本旗標非 null 時，AppShell 返回列常駐渲染
+  // `badge-<screen>-inferred-version`；null 時不渲染（SPEC-001 v1.19
+  // 〈推定版本〉註記）。
+  testWidgets('inferredVersionProvider 非 null 時渲染推定版本徽章，null 時不渲染', (
+    tester,
+  ) async {
+    await _pumpShell(tester);
+
+    expect(
+      find.byKey(const Key('badge-domain-inferred-version')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('inferredVersionProvider 非 null 時渲染推定版本徽章', (tester) async {
+    await _pumpShell(
+      tester,
+      overrides: [inferredVersionProvider.overrideWith((ref) => '2.40.3')],
+    );
+
+    expect(
+      find.byKey(const Key('badge-domain-inferred-version')),
+      findsOneWidget,
+    );
+  });
+}
+
+/// 固定回傳已記住路徑 `/fake/workspace` 的假偏好設定管道，模擬
+/// `restore()` 找到先前選定的資料夾（0.2.0-W1-042）。
+class _FakeReadyPreferencesPort implements WorkspacePreferencesPort {
+  @override
+  Future<WorkspacePreferencesHandle> open() async =>
+      _FakeReadyPreferencesHandle();
+}
+
+class _FakeReadyPreferencesHandle implements WorkspacePreferencesHandle {
+  @override
+  String? readString(String key) {
+    if (key == 'workspace.path') return '/fake/workspace';
+    if (key == 'workspace.schemaVersion') return '1';
+    return null;
+  }
+
+  @override
+  Future<bool> writeString(String key, String value) async => true;
+}
+
+/// 固定回報資料夾可用的假探測；`readFirstEntry` 走空資料夾成功路徑
+/// （`workspace_repository.dart` 吞 [StateError]）。
+class _FakeDirectoryProbePort implements WorkspaceDirectoryProbePort {
+  @override
+  Future<bool> exists(String path) async => true;
+
+  @override
+  Future<void> readFirstEntry(String path) async {
+    throw StateError('empty');
+  }
+}
+
+/// 固定回傳兩訊號皆缺的假 gate 訊號探測；避免 `detect()` 呼叫碰觸真實
+/// 檔案系統（0.2.0-W1-042）。
+class _FakeSignalProbe implements FrameworkSignalProbePort {
+  const _FakeSignalProbe();
+
+  @override
+  Future<String?> readVersion(String workspacePath) async => null;
+
+  @override
+  Future<bool> schemaJsonExists(String workspacePath) async => false;
+
+  @override
+  Future<String?> readSchemaJsonVersion(String workspacePath) async => null;
 }
 
 Future<void> _pumpShell(
   WidgetTester tester, {
   void Function(ProviderContainer container)? onReady,
+  List<Override> overrides = const [],
+  bool settle = true,
 }) async {
   late BuildContext capturedContext;
   await tester.pumpWidget(
     ProviderScope(
+      overrides: overrides,
       child: ScreenUtilInit(
         designSize: const Size(1280, 800),
         builder: (context, child) => MaterialApp(
@@ -138,6 +251,10 @@ Future<void> _pumpShell(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
   onReady?.call(ProviderScope.containerOf(capturedContext));
 }

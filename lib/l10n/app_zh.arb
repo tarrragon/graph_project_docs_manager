@@ -765,6 +765,16 @@
     }
   },
 
+  "inferredVersionBadgeLabel": "版本推定自型別表 (v{inferredVersion})",
+  "@inferredVersionBadgeLabel": {
+    "description": "SPEC-001 §1〈推定版本〉疊加旗標：`badge-<screen>-inferred-version` 徽章文案（SPEC-004 §4.0.6 1.45 新增，`0.2.0-W1-042` 接線寫入端與渲染），與降級徽章互斥",
+    "placeholders": {
+      "inferredVersion": {
+        "type": "String"
+      }
+    }
+  },
+
   "modeMatrixLabel": "矩陣",
   "@modeMatrixLabel": {
     "description": "SPEC-004 §1、§4 畫面（4.10 可見標籤）：檢視模式文案"

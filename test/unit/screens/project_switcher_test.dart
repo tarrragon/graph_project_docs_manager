@@ -10,8 +10,13 @@ import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
@@ -54,6 +59,29 @@ class _FakeDirectoryProbePort implements WorkspaceDirectoryProbePort {
     throw StateError('empty'); // 空資料夾路徑：workspace_repository 吞 StateError
   }
 }
+
+/// 固定回傳兩訊號皆缺的假 gate 訊號探測；避免 `_handleChosenState` 的
+/// `detect()` 呼叫碰觸真實檔案系統（0.2.0-W1-042：真實 [File] I/O 不受
+/// `pumpAndSettle` 的假時鐘控制，曾導致本檔測試 flaky）。
+class _FakeSignalProbe implements FrameworkSignalProbePort {
+  const _FakeSignalProbe();
+
+  @override
+  Future<String?> readVersion(String workspacePath) async => null;
+
+  @override
+  Future<bool> schemaJsonExists(String workspacePath) async => false;
+
+  @override
+  Future<String?> readSchemaJsonVersion(String workspacePath) async => null;
+}
+
+/// `_handleChosenState` 呼叫 `detect()` 所需的確定性 provider 覆寫
+/// （0.2.0-W1-042）：避免碰觸真實檔案系統與內嵌資產。
+final _gateDetectionOverrides = <Override>[
+  frameworkSignalProbeProvider.overrideWithValue(const _FakeSignalProbe()),
+  builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+];
 
 /// 組成一個回傳 [ChooseFolderSelected]／[ChooseFolderNotRemembered]（皆包
 /// [WorkspaceReady]）的假 repository：選取固定路徑、探測回報可用。
@@ -198,38 +226,44 @@ void main() {
       expect(container.read(currentProjectIndexProvider), 1);
     });
 
-    testWidgets('選擇項目後降級旗標重置為假（0.1.0-W2-014 寫入端接線）', (
-      tester,
-    ) async {
-      late ProviderContainer container;
-      await pumpApp(
-        tester,
-        overrides: [
-          degradedSchemaProvider.overrideWith((ref) => true),
-          degradedSchemaVersionsProvider.overrideWith(
-            (ref) => const DegradedSchemaVersions(
-              builtinVersion: '0.0.1',
-              projectVersion: '0.0.1',
+    testWidgets(
+      '選擇項目後降級與推定版本旗標重置（0.1.0-W2-014／0.2.0-W1-042 寫入端接線）',
+      (tester) async {
+        late ProviderContainer container;
+        await pumpApp(
+          tester,
+          overrides: [
+            degradedSchemaProvider.overrideWith((ref) => true),
+            degradedSchemaVersionsProvider.overrideWith(
+              (ref) => const DegradedSchemaVersions(
+                builtinVersion: '0.0.1',
+                projectVersion: '0.0.1',
+              ),
             ),
-          ),
-        ],
-      );
-      final element = tester.element(find.byType(app_shell.AppShell));
-      container = ProviderScope.containerOf(element);
+            inferredVersionProvider.overrideWith((ref) => '0.0.1'),
+          ],
+        );
+        final element = tester.element(find.byType(app_shell.AppShell));
+        container = ProviderScope.containerOf(element);
 
-      // 本斷言在寫入端未接線時應翻紅——切換前旗標為真，若重置端未接線，
-      // 選擇專案後旗標仍維持真。
-      expect(container.read(degradedSchemaProvider), isTrue);
+        // 本斷言在寫入端未接線時應翻紅——切換前旗標為真，若重置端未接線，
+        // 選擇專案後旗標仍維持真。
+        expect(container.read(degradedSchemaProvider), isTrue);
+        expect(container.read(inferredVersionProvider), isNotNull);
 
-      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+        await tester.pumpAndSettle();
 
-      expect(container.read(degradedSchemaProvider), isFalse);
-      expect(container.read(degradedSchemaVersionsProvider), isNull);
-    });
+        expect(container.read(degradedSchemaProvider), isFalse);
+        expect(container.read(degradedSchemaVersionsProvider), isNull);
+        expect(container.read(inferredVersionProvider), isNull);
+      },
+    );
   });
 
   group('無最近專案態', () {
@@ -285,6 +319,7 @@ void main() {
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryReady(),
           ),
+          ..._gateDetectionOverrides,
         ],
       );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
@@ -358,6 +393,7 @@ void main() {
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryReady(),
           ),
+          ..._gateDetectionOverrides,
         ],
         settle: false,
       );
@@ -368,10 +404,54 @@ void main() {
       await tester.pump();
       await tester.pump();
       await tester.pump();
+      await tester.pump();
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
       expect(find.byType(SnackBar), findsNothing);
     });
+
+    testWidgets(
+      'ChooseFolderSelected(WorkspaceReady)：detect() 被呼叫，domainViewStateProvider '
+      '與 inferredVersionProvider 反映結果（0.2.0-W1-042）',
+      (tester) async {
+        late ProviderContainer container;
+        await pumpApp(
+          tester,
+          overrides: [
+            workspaceRepositoryProvider.overrideWithValue(
+              _fakeRepositoryReady(),
+            ),
+            frameworkSignalProbeProvider.overrideWithValue(
+              const _FakeSignalProbe(),
+            ),
+          ],
+          settle: false,
+        );
+        final element = tester.element(find.byType(app_shell.AppShell));
+        container = ProviderScope.containerOf(element);
+
+        await tester.tap(
+          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.byKey(const Key('action-switcher-choose-folder')),
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        // `_FakeSignalProbe` 回傳兩訊號皆缺 → DomainNotFramework，證明
+        // `_handleChosenState` 確實呼叫了 `detect()`（而非只重置旗標）。
+        expect(
+          container.read(domainViewStateProvider),
+          isA<DomainNotFramework>(),
+        );
+        expect(container.read(inferredVersionProvider), isNull);
+      },
+    );
 
     testWidgets(
       'ChooseFolderSelected(WorkspaceUnavailable)：浮層維持展開，顯示 AppSnackBar',
@@ -414,6 +494,7 @@ void main() {
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryReady(rememberSucceeds: false),
           ),
+          ..._gateDetectionOverrides,
         ],
         settle: false,
       );
@@ -421,6 +502,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+      await tester.pump();
       await tester.pump();
       await tester.pump();
       await tester.pump();
