@@ -255,17 +255,17 @@ ticket create --wave 3 --action "修復" --target "XXX" \
 ```bash
 # 情境 a：todolist.yaml 中 0.1.0 標記 scope: frozen，直接建票被阻擋
 ticket create --wave 3 --action "新增" --target "XXX" \
-  --where "lib/screens/x.dart" --why "..."
+  --where "<path>" --why "..."
 # [ERROR] VERSION_SCOPE_FROZEN: 版本 0.1.0 已標記 scope: frozen...
 #   建議溢出目標: 0.2.0（新功能歸下一個小版本...）
 
 # 情境 b：改投溢出目標版本（該版本須先在 todolist.yaml 註冊）
 ticket create --version 0.2.0 --wave 1 --action "新增" --target "XXX" \
-  --where "lib/screens/x.dart" --why "..."
+  --where "<path>" --why "..."
 
 # 情境 c：必要 bugfix 須進已凍結版本，附放行理由
 ticket create --wave 3 --action "修復" --target "XXX" \
-  --where "lib/screens/x.dart" \
+  --where "<path>" \
   --scope-blocker "阻擋發佈的回歸缺陷，須在 0.1.0 修復" \
   --why "..."
 ```

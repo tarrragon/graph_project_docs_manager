@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.40.1 — `references/create-command.md`〈版本範圍凍結硬閘門〉三個範例的 `--where` 值由具體檔名改為 `<path>` 佔位符：具體檔名在 consumer 專案不存在，sync 守衛判為失效引用而中止推送；佔位符同時避免讀者把示意值當可複製的實值（2026-09-23）。
+
 **Version**: 2.40.0 — 新增 `set-scope-blocker <id> --reason <text>|--clear` 子命令：事後設定或清除 frontmatter `scope_blocker` 欄位，`--reason`/`--clear` 互斥、空字串理由視同未給同樣拒絕。動機：`scope_blocker` 原僅在 `create` 建票當下可寫入（`--scope-blocker`），凍結前已存在的必要 pending 票沒有建立時機補這個欄位，發版檢查（依 `scope_blocker` 區分阻擋與前移）會把它們誤判為可前移，必要工作因此被搬到下一版本。配套 `.claude/pm-rules/version-progression.md`〈版本生命週期〉凍結步驟補「回溯標記既有必要票」動作。詳見 `references/track-command.md`〈UPDATE 操作〉、〈CLI 可修改欄位 vs 手動編輯欄位〉。
 
 **Version**: 2.39.0 — `create` 版本註冊檢查放寬收 `planned` 版本（原僅收 `active`），修補 2.38.0 版本範圍凍結閘門提示的出路「先登記下一版本再建票」成為死路的問題——剛登記的版本狀態必為 `planned`，原判準仍會拒絕。動機：執行早已與版本解耦（生命週期模組對版本狀態零檢查），「planned = 要等啟用才能執行」的前提不成立。`VERSION_NOT_ACTIVE` 訊息改寫為「只有 planned 或 active 版本可建票」；`completed` 版本仍拒。同時退役 `_suggest_next_patch` 相對「最新已完成版本」計算版本歸屬引導的舊基準——版本推進後對非功能動詞根票恆建議未註冊版本，且與凍結閘門印出的溢出目標互相矛盾（基準不同源），改為相對 active 版本 patch+1，與 `suggest_overflow_version` 同一基準。`--scope-blocker` 放行理由新增持久化為 frontmatter 選填欄位 `scope_blocker`，供發版側查詢哪些票被明確放行進已凍結版本。詳見 `references/create-command.md`〈版本範圍凍結硬閘門〉、`references/field-semantics.md`〈scope_blocker 欄位語意〉。
