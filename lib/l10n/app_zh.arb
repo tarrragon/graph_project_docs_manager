@@ -684,14 +684,19 @@
     "description": "SPEC-004 §4.42：專案切換器標題文案"
   },
 
-  "schemaAppVersionLabel": "App 支援版本",
-  "@schemaAppVersionLabel": {
-    "description": "SPEC-004 §4.23：Schema 版本標籤文案"
+  "schemaKnownRangeLabel": "App 已知版本範圍",
+  "@schemaKnownRangeLabel": {
+    "description": "SPEC-004 §4.23：BlockedState.withDetail 面板小標，取代 schemaAppVersionLabel／schemaProjectVersionLabel"
   },
 
-  "schemaProjectVersionLabel": "專案版本",
-  "@schemaProjectVersionLabel": {
-    "description": "SPEC-004 §4.23：Schema 版本標籤文案"
+  "schemaKnownRangeValue": "不高於 {appVersion}",
+  "@schemaKnownRangeValue": {
+    "description": "SPEC-004 §4.23：BlockedState.withDetail 面板值；appVersion 為 App 內建型別表產生版本",
+    "placeholders": {
+      "appVersion": {
+        "type": "String"
+      }
+    }
   },
 
   "treeDepthA11yLabel": "第 {depth} 層",

@@ -770,17 +770,17 @@ abstract class AppLocalizations {
   /// **'切換專案'**
   String get switcherTitle;
 
-  /// SPEC-004 §4.23：Schema 版本標籤文案
+  /// SPEC-004 §4.23：BlockedState.withDetail 面板小標，取代 schemaAppVersionLabel／schemaProjectVersionLabel
   ///
   /// In zh, this message translates to:
-  /// **'App 支援版本'**
-  String get schemaAppVersionLabel;
+  /// **'App 已知版本範圍'**
+  String get schemaKnownRangeLabel;
 
-  /// SPEC-004 §4.23：Schema 版本標籤文案
+  /// SPEC-004 §4.23：BlockedState.withDetail 面板值；appVersion 為 App 內建型別表產生版本
   ///
   /// In zh, this message translates to:
-  /// **'專案版本'**
-  String get schemaProjectVersionLabel;
+  /// **'不高於 {appVersion}'**
+  String schemaKnownRangeValue(String appVersion);
 
   /// SPEC-004 §4.39：Tree 深度朗讀標籤
   ///

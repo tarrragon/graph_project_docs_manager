@@ -251,15 +251,13 @@ class BlockedState extends StatelessWidget {
                   testKey: const ValueKey('section-domain-schema-detail'),
                   items: [
                     AppText(
-                      l10n.schemaAppVersionLabel,
+                      l10n.schemaKnownRangeLabel,
                       variant: AppTextVariant.caption,
                     ),
-                    AppText(appVersion!, variant: AppTextVariant.mono),
                     AppText(
-                      l10n.schemaProjectVersionLabel,
-                      variant: AppTextVariant.caption,
+                      l10n.schemaKnownRangeValue(appVersion!),
+                      variant: AppTextVariant.mono,
                     ),
-                    AppText(projectVersion!, variant: AppTextVariant.mono),
                   ],
                 ),
               ),

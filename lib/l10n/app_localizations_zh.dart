@@ -396,10 +396,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get switcherTitle => '切換專案';
 
   @override
-  String get schemaAppVersionLabel => 'App 支援版本';
+  String get schemaKnownRangeLabel => 'App 已知版本範圍';
 
   @override
-  String get schemaProjectVersionLabel => '專案版本';
+  String schemaKnownRangeValue(String appVersion) {
+    return '不高於 $appVersion';
+  }
 
   @override
   String treeDepthA11yLabel(int depth) {
