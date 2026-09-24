@@ -408,10 +408,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switcherTitle => 'Switch project';
 
   @override
-  String get schemaAppVersionLabel => 'Supported schema version';
+  String get schemaKnownRangeLabel => 'Supported schema version range';
 
   @override
-  String get schemaProjectVersionLabel => 'Project version';
+  String schemaKnownRangeValue(String appVersion) {
+    return 'Up to $appVersion';
+  }
 
   @override
   String treeDepthA11yLabel(int depth) {

@@ -627,6 +627,10 @@ void main() {
         find.byKey(const Key('panel-domain-schema-detail')),
         findsOneWidget,
       );
+      expect(find.text('App 已知版本範圍'), findsOneWidget);
+      expect(find.text('不高於 2.60.1'), findsOneWidget);
+      expect(find.text('App 支援版本'), findsNothing);
+      expect(find.text('專案版本'), findsNothing);
     });
   });
 

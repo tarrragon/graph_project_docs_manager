@@ -139,7 +139,7 @@ void main() {
       expect(find.byKey(detailPanelKey), findsNothing);
     });
 
-    testWidgetsAtEachSize('withDetail expanded 渲染詳情面板兩值且不溢位', (
+    testWidgetsAtEachSize('withDetail expanded 渲染 App 已知版本範圍單列且不溢位', (
       tester,
       size,
     ) async {
@@ -159,7 +159,7 @@ void main() {
 
       expectNoOverflow(tester);
       expect(find.byKey(detailPanelKey), findsOneWidget);
-      expect(find.text(TestCopy.longToken), findsNWidgets(2));
+      expect(find.textContaining(TestCopy.longToken), findsOneWidget);
     });
   });
 
