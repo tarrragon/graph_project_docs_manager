@@ -35,6 +35,12 @@ const List<int> _invalidUtf8Bytes = [0x80, 0x81];
 TypeTable _tableWithoutCarrier() =>
     TypeTableBuilder().addType('Alpha', idPattern: r'^A-\d+$').build();
 
+/// 測試專用投影：[ParseOutcome] 為 sealed class，僅 [Unreadable] 帶
+/// `reason`。呼叫端已在呼叫處確認結果為無法讀取，此處以型別轉型（非 `!`
+/// 或 throw 分支）取出欄位。
+UnreadableReason unreadableReasonOf(ParseOutcome outcome) =>
+    (outcome as Unreadable).reason;
+
 void main() {
   group('scanCorpus 掃描範圍（SPEC-006-test-design §3.2 C8, FR-02）', () {
     test('C8-1 無 docs/：掃描完成，全部計數 0，無錯誤', () async {
@@ -169,7 +175,7 @@ void main() {
 
       final error = result.parseErrors.single;
       expect(error.outcome.kind, ParseResultKind.unreadable);
-      expect(error.outcome.unreadableReason, UnreadableReason.encoding);
+      expect(unreadableReasonOf(error.outcome), UnreadableReason.encoding);
       expect(result.parseFailureEvents, hasLength(1));
     });
 
@@ -184,7 +190,7 @@ void main() {
 
       expect(result.parseErrors, hasLength(1));
       expect(
-        result.parseErrors.single.outcome.unreadableReason,
+        unreadableReasonOf(result.parseErrors.single.outcome),
         UnreadableReason.encoding,
       );
       expect(result.parseFailureEvents, isEmpty);
@@ -202,7 +208,7 @@ void main() {
 
       final error = result.parseErrors.single;
       expect(error.outcome.kind, ParseResultKind.unreadable);
-      expect(error.outcome.unreadableReason, UnreadableReason.permission);
+      expect(unreadableReasonOf(error.outcome), UnreadableReason.permission);
     });
 
     test('C9-4 列出後、讀取前消失：無法讀取／檔案消失；掃描完成', () async {
@@ -217,7 +223,7 @@ void main() {
 
       final error = result.parseErrors.single;
       expect(error.outcome.kind, ParseResultKind.unreadable);
-      expect(error.outcome.unreadableReason, UnreadableReason.fileDeleted);
+      expect(unreadableReasonOf(error.outcome), UnreadableReason.fileDeleted);
     });
   });
 

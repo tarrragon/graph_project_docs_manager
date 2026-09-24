@@ -43,9 +43,9 @@ class RawNode {
 
 /// EVT-CORPUS-001 的一筆 `parseErrors`（FR-04：路徑、原因、行號）。保留
 /// 原始 [ParseOutcome] 值型別，不重複組裝事件負載才需要的文字（見
-/// `parse_failure_event.dart` 的 `_reasonForOutcome`，該檔非本票可修改
-/// 範圍）——呼叫端可依 [outcome.kind]／[outcome.yamlErrorLine]／
-/// [outcome.unreadableReason] 自行投影所需的顯示文字。
+/// `parse_failure_event.dart` 的 `_reasonForOutcome`）——呼叫端可依
+/// [outcome.kind] 或對 [outcome] 做 sealed class pattern matching（如
+/// `YamlSyntaxError`、`Unreadable`）自行投影所需的顯示文字。
 class ParseError {
   const ParseError({required this.path, required this.outcome});
 
@@ -89,10 +89,11 @@ Future<CorpusScanResult> scanCorpus({
 
   for (final path in paths) {
     final outcome = await _readAndClassify(fileSystem, path);
-    if (outcome.kind == ParseResultKind.available) {
-      acc.addAvailable(table, path, outcome.frontmatter!);
-    } else {
-      acc.addFailure(table, path, outcome, carrierPathQueryAvailable);
+    switch (outcome) {
+      case Available(:final frontmatter):
+        acc.addAvailable(table, path, frontmatter);
+      default:
+        acc.addFailure(table, path, outcome, carrierPathQueryAvailable);
     }
   }
 
