@@ -71,6 +71,12 @@ Set<String> _missingRequiredSamples(
   Set<String> requiredNames,
 ) => requiredNames.difference(presentNames.toSet());
 
+/// 測試專用投影：[ParseOutcome] 為 sealed class，僅 [Available] 帶
+/// frontmatter。呼叫端已在呼叫處確認結果為可用，此處以型別轉型（非 `!`
+/// 或 throw 分支）取出欄位。
+Map<String, dynamic> _frontmatterOf(ParseOutcome outcome) =>
+    (outcome as Available).frontmatter;
+
 void main() {
   late Map<String, dynamic> fixture;
   late List<Map<String, dynamic>> samples;
@@ -114,7 +120,7 @@ void main() {
           // 鍵集合相等（test-design 明文「不比值」，僅比鍵）。
           final expectedKeys = (sample['keys'] as List).cast<String>().toSet();
           expect(
-            result.frontmatter!.keys.toSet(),
+            _frontmatterOf(result).keys.toSet(),
             expectedKeys,
             reason: '${sample['name']} 鍵集合不符',
           );
@@ -126,7 +132,7 @@ void main() {
             reparsed is YamlMap
                 ? Map<String, dynamic>.from(reparsed)
                 : reparsed,
-            result.frontmatter,
+            _frontmatterOf(result),
             reason: '${sample['name']} frontmatter_text 語意不等價',
           );
         } else {
@@ -160,7 +166,7 @@ void main() {
 
         final naiveYamlError = sample['naive_yaml_error'] as bool;
         final naiveKeyCount = sample['naive_key_count'] as int?;
-        final actualKeyCount = result.frontmatter!.keys.length;
+        final actualKeyCount = _frontmatterOf(result).keys.length;
 
         final hasDiscriminatingPower =
             naiveYamlError ||
@@ -253,7 +259,7 @@ void main() {
         expect(result.kind, ParseResultKind.available);
         final naiveYamlError = sample['naive_yaml_error'] as bool;
         final naiveKeyCount = sample['naive_key_count'] as int?;
-        final actualKeyCount = result.frontmatter!.keys.length;
+        final actualKeyCount = _frontmatterOf(result).keys.length;
         expect(
           naiveYamlError ||
               (naiveKeyCount != null && naiveKeyCount < actualKeyCount),

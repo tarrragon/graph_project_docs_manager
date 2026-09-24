@@ -83,7 +83,7 @@ ParseFailureEvent? buildParseFailureEvent({
   required ParseOutcome outcome,
   required TypeTable table,
 }) {
-  if (outcome.kind == ParseResultKind.available) {
+  if (outcome is Available) {
     return null;
   }
   if (!_isCarrierPathQueryAvailable(table)) {
@@ -123,7 +123,7 @@ ParseFailureEvent _buildEvent({
   return ParseFailureEvent(
     path: path,
     reason: _reasonForOutcome(outcome),
-    line: outcome.yamlErrorLine,
+    line: _yamlErrorLineOf(outcome),
     nodeType: nodeType,
     candidateTypes: candidateTypes,
     schemaAmbiguous: schemaAmbiguous,
@@ -148,16 +148,24 @@ bool _isCarrierPathQueryAvailable(TypeTable table) =>
 /// 需求：[SPEC-006 FR-01、FR-05；EVT-CORPUS-003〈負載結構〉] `reason` 值域。
 ///
 /// 這些字串是事件負載的資料值（`reason` 值域，非畫面顯示文字），對應
-/// SPEC-006／EVT-CORPUS-003 明文列出的中文值域，非 UI Text 字面。
-String _reasonForOutcome(ParseOutcome outcome) => switch (outcome.kind) {
-  ParseResultKind.noFrontmatter => '無 frontmatter', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
-  ParseResultKind.unclosed => 'frontmatter 未閉合', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
-  ParseResultKind.emptyOrNotMap => 'frontmatter 為空或非 map', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
-  ParseResultKind.yamlSyntaxError => 'YAML 語法錯誤', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
-  ParseResultKind.unreadable =>
-    '無法讀取（${_unreadableSubReasonText(outcome.unreadableReason!)}）', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
-  ParseResultKind.available =>
-    throw StateError('available 結果不應呼叫 buildParseFailureEvent'), // i18n-exempt: 開發期例外訊息，非 UI 顯示字串
+/// SPEC-006／EVT-CORPUS-003 明文列出的中文值域，非 UI Text 字面。[Available]
+/// 分支結構上不會被呼叫（呼叫端 [buildParseFailureEvent] 已在進入此函式前
+/// 排除 available 結果），switch 仍須窮舉六種子類別以取得編譯器保證，
+/// 因此回傳空字串而非 throw（Phase 4 審查：消費端不應含執行期 throw 分支）。
+String _reasonForOutcome(ParseOutcome outcome) => switch (outcome) {
+  Available() => '', // i18n-exempt: 結構上不可達，見上方說明
+  NoFrontmatter() => '無 frontmatter', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
+  Unclosed() => 'frontmatter 未閉合', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
+  EmptyOrNotMap() => 'frontmatter 為空或非 map', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
+  YamlSyntaxError() => 'YAML 語法錯誤', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
+  Unreadable(:final reason) =>
+    '無法讀取（${_unreadableSubReasonText(reason)}）', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
+};
+
+/// YAML 語法錯誤時解析器提供的行號（1-indexed）；其餘結果為 `null`。
+int? _yamlErrorLineOf(ParseOutcome outcome) => switch (outcome) {
+  YamlSyntaxError(:final lineNumber) => lineNumber,
+  _ => null,
 };
 
 String _unreadableSubReasonText(UnreadableReason reason) => switch (reason) {

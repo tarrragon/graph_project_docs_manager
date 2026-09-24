@@ -10,12 +10,18 @@ import 'package:yaml/yaml.dart';
 void main() {
   Uint8List bytesOf(String text) => Uint8List.fromList(utf8.encode(text));
 
+  /// 測試專用投影：[ParseOutcome] 為 sealed class，僅 [Available] 帶
+  /// frontmatter。呼叫端已在呼叫處確認結果為可用，此處以型別轉型（非 `!`
+  /// 或 throw 分支）取出欄位。
+  Map<String, dynamic> frontmatterOf(ParseOutcome outcome) =>
+      (outcome as Available).frontmatter;
+
   group('結果分類', () {
     test('C1-1 合法 frontmatter 為可用', () {
       final result = classifyFrontmatter(bytesOf('---\ntitle: hello\n---\nbody'));
 
       expect(result.kind, ParseResultKind.available);
-      expect(result.frontmatter, {'title': 'hello'});
+      expect(frontmatterOf(result), {'title': 'hello'});
     });
 
     test('C1-2 第一行為 # title 時為無 frontmatter', () {
@@ -50,9 +56,9 @@ void main() {
       final result = classifyFrontmatter(invalidUtf8);
 
       expect(result.kind, ParseResultKind.unreadable);
-      expect(result.unreadableReason, UnreadableReason.encoding);
+      expect(result, isA<Unreadable>());
       // 不做寬鬆解碼：斷言沒有 U+FFFD 進入任何輸出。
-      expect(result.frontmatter, isNull);
+      expect((result as Unreadable).reason, UnreadableReason.encoding);
     });
 
     test('C1-7 帶 BOM 的合法 frontmatter 為可用，第一個鍵名不含 BOM', () {
@@ -64,8 +70,8 @@ void main() {
       final result = classifyFrontmatter(withBom);
 
       expect(result.kind, ParseResultKind.available);
-      expect(result.frontmatter!.keys.first, 'title');
-      expect(result.frontmatter!.keys.first.codeUnitAt(0), isNot(0xFEFF));
+      expect(frontmatterOf(result).keys.first, 'title');
+      expect(frontmatterOf(result).keys.first.codeUnitAt(0), isNot(0xFEFF));
     });
 
     test('C1-8 單一 \\r\\n 檔與同內容 \\n 檔結果相同', () {
@@ -76,7 +82,7 @@ void main() {
 
       expect(crlfResult.kind, ParseResultKind.available);
       expect(crlfResult.kind, lfResult.kind);
-      expect(crlfResult.frontmatter, lfResult.frontmatter);
+      expect(frontmatterOf(crlfResult), frontmatterOf(lfResult));
     });
 
     test('C1-9 行內含 \\x0c 或 U+2028 不作為行分隔（對照 C1-8）', () {
@@ -85,7 +91,7 @@ void main() {
       );
 
       expect(result.kind, ParseResultKind.available);
-      expect(result.frontmatter!['title'], 'a\x0cb c');
+      expect(frontmatterOf(result)['title'], 'a\x0cb c');
     });
 
     test('C1-10 每個輸入恰得一種結果，結果型別為封閉枚舉（六種）', () {
@@ -118,8 +124,8 @@ void main() {
         final result = classifyFrontmatter(bytesOf(content));
 
         expect(result.kind, ParseResultKind.available);
-        expect(result.frontmatter!.keys.toSet(), {'title', 'author'});
-        expect(result.frontmatter!['title'], '|---|---|');
+        expect(frontmatterOf(result).keys.toSet(), {'title', 'author'});
+        expect(frontmatterOf(result)['title'], '|---|---|');
       },
     );
 
@@ -129,7 +135,7 @@ void main() {
       final result = classifyFrontmatter(bytesOf(content));
 
       expect(result.kind, ParseResultKind.available);
-      expect(result.frontmatter, {'title': 'hello'});
+      expect(frontmatterOf(result), {'title': 'hello'});
     });
 
     test('C2-3（E1 鑑別）split("---") 天真語意取得的鍵數與正確結果不同', () {
@@ -138,7 +144,7 @@ void main() {
 
       final result = classifyFrontmatter(bytesOf(content));
       expect(result.kind, ParseResultKind.available);
-      final correctKeyCount = result.frontmatter!.keys.length;
+      final correctKeyCount = frontmatterOf(result).keys.length;
 
       // 天真語意：直接以字串分隔取中段當 frontmatter 內容再解析。
       final naiveSegments = content.split('---');
@@ -194,7 +200,69 @@ void main() {
       final result = classifyFrontmatter(bytesOf('---\na: 1\n---\n'));
 
       expect(result.kind, ParseResultKind.available);
-      expect(result.frontmatter, {'a': 1});
+      expect(frontmatterOf(result), {'a': 1});
+    });
+
+    test(
+      'C3-7 頂層鍵非字串（YAML 布林鍵 true:）歸入空或非 map，'
+      '不拋出 TypeError（0.3.0-W4-001 Phase 4 linux 審查）',
+      () {
+        final result = classifyFrontmatter(bytesOf('---\ntrue: value\n---\n'));
+
+        expect(result.kind, ParseResultKind.emptyOrNotMap);
+      },
+    );
+
+    test('C3-8（正向對照）頂層鍵皆為字串時仍可用（對照 C3-7）', () {
+      final result = classifyFrontmatter(bytesOf('---\n"true": value\n---\n'));
+
+      expect(result.kind, ParseResultKind.available);
+      expect(frontmatterOf(result), {'true': 'value'});
+    });
+  });
+
+  group('巢狀 YAML 與不可變性（0.3.0-W4-001 Phase 4 parsley 審查）', () {
+    test('C4-1 巢狀 map 轉為一般 Map，不外洩 YamlMap', () {
+      final result = classifyFrontmatter(
+        bytesOf('---\nnested:\n  a: 1\n  b: 2\n---\n'),
+      );
+
+      expect(result.kind, ParseResultKind.available);
+      final nested = frontmatterOf(result)['nested'];
+      expect(nested, isA<Map<String, dynamic>>());
+      expect(nested, isNot(isA<YamlMap>()));
+      expect(nested, {'a': 1, 'b': 2});
+    });
+
+    test('C4-2 巢狀清單轉為一般 List，不外洩 YamlList', () {
+      final result = classifyFrontmatter(
+        bytesOf('---\nitems:\n  - a\n  - b\n---\n'),
+      );
+
+      expect(result.kind, ParseResultKind.available);
+      final items = frontmatterOf(result)['items'];
+      expect(items, isA<List<dynamic>>());
+      expect(items, isNot(isA<YamlList>()));
+      expect(items, ['a', 'b']);
+    });
+
+    test('C4-3 frontmatter map 不可變：寫入丟出 UnsupportedError', () {
+      final result = classifyFrontmatter(bytesOf('---\na: 1\n---\n'));
+
+      expect(
+        () => frontmatterOf(result)['a'] = 2,
+        throwsUnsupportedError,
+      );
+    });
+
+    test('C4-4 巢狀 map 亦不可變：寫入丟出 UnsupportedError（對照 C4-1）', () {
+      final result = classifyFrontmatter(
+        bytesOf('---\nnested:\n  a: 1\n---\n'),
+      );
+
+      final nested =
+          frontmatterOf(result)['nested'] as Map<String, dynamic>;
+      expect(() => nested['a'] = 2, throwsUnsupportedError);
     });
   });
 }

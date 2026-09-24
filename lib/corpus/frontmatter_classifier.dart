@@ -76,7 +76,9 @@ int? _findClosingDelimiterIndex(List<String> lines) {
 
 /// 需求：[SPEC-006 FR-01 規則 5、6] 以 YAML 解析分隔線之間的內容，禁止字串
 /// 切分（不使用 `split('---')`，直接對定位出的行範圍解析）。結果分類：
-/// 語法錯誤 → yamlSyntaxError；非空 map → available；其餘 → emptyOrNotMap。
+/// 語法錯誤 → yamlSyntaxError；非空 map 且頂層鍵皆為字串 → available；
+/// 其餘（含頂層鍵非字串，Phase 4 linux 審查：不再讓非字串鍵的 TypeError
+/// 被誤判為讀取失敗）→ emptyOrNotMap。
 ParseOutcome _parseYamlContent(List<String> contentLines) {
   final content = contentLines.join('\n');
   Object? parsed;
@@ -87,9 +89,45 @@ ParseOutcome _parseYamlContent(List<String> contentLines) {
   }
 
   if (parsed is YamlMap && parsed.isNotEmpty) {
-    return ParseOutcome.available(Map<String, dynamic>.from(parsed));
+    final converted = _toImmutableFrontmatter(parsed);
+    if (converted != null) {
+      return ParseOutcome.available(converted);
+    }
   }
   return ParseOutcome.emptyOrNotMap();
+}
+
+/// 需求：[SPEC-006 FR-01] 頂層鍵不是字串時回傳 `null`（呼叫端歸入空或非
+/// map）；否則回傳不含 `YamlMap`／`YamlList` 的不可變 `Map<String, dynamic>`
+/// （Phase 4 parsley 審查：frontmatter 不外洩 yaml 套件內部型別，且對外
+/// 不可變）。
+Map<String, dynamic>? _toImmutableFrontmatter(YamlMap map) {
+  final result = <String, dynamic>{};
+  for (final entry in map.entries) {
+    final key = entry.key;
+    if (key is! String) {
+      return null;
+    }
+    result[key] = _toPlainValue(entry.value);
+  }
+  return Map<String, dynamic>.unmodifiable(result);
+}
+
+/// 遞迴轉換 [YamlMap]／[YamlList] 為一般不可變 Map／List；巢狀鍵非字串時
+/// 以字串化保留內容（頂層鍵是否為字串才是 FR-01 的判定範圍，見
+/// [_toImmutableFrontmatter]）。
+Object? _toPlainValue(Object? value) {
+  if (value is YamlMap) {
+    final nested = <String, dynamic>{
+      for (final entry in value.entries)
+        entry.key.toString(): _toPlainValue(entry.value),
+    };
+    return Map<String, dynamic>.unmodifiable(nested);
+  }
+  if (value is YamlList) {
+    return List.unmodifiable(value.map(_toPlainValue));
+  }
+  return value;
 }
 
 /// 需求：[SPEC-006 FR-01] YAML 語法錯誤帶行號（解析器提供時）。內容區段的
