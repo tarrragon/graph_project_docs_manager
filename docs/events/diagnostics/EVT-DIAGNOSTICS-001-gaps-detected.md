@@ -6,7 +6,7 @@ category: domain_event
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-08-27"
+updated: "2026-09-24"
 
 payload: null
 
@@ -35,7 +35,7 @@ PROP-004）使用該詞時皆以此為準，不另立外延。
 
 | 類別 | 內容 | 判定輸入 |
 |------|------|---------|
-| `parseFailure` | 解析失敗 | `EVT-CORPUS-003`：YAML 錯誤，或落在節點 carrier 路徑下卻缺 frontmatter |
+| `parseFailure` | 解析失敗 | `EVT-CORPUS-003`：落在節點 carrier 路徑內，且沒拿到可用 frontmatter 的檔案（無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取）。carrier 外的失敗檔不算，YAML 語法錯誤也一樣（2026-09-24 用戶裁決，SPEC-006 D6） |
 | `graphDefect` | 圖結構缺陷 | 斷邊（指向不存在節點）、孤島、缺必要邊 |
 | `traceGap` | 追溯缺口 | 無 SPEC 的 PROP、無測試的 UC |
 | `unlocatable` | ticket 無法定位 | `where.files` 對應不到任何 domain（PROP-004「以 ticket 切入」模式） |

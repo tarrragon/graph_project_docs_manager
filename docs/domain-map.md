@@ -349,7 +349,10 @@ frontmatter 解析語意——見下方「解析器語意是規格的一部分�
 > （`0.2.1-W3-1130`）斷言全部型別的 `id_pattern` 兩兩互斥，
 > 未來新增型別若造成重疊會紅燈。
 >
-> **carrier-first 比對是唯一會踩到歧義的路徑，本 App 不採用。**
+> **carrier-first 比對是唯一會踩到歧義的路徑，有 frontmatter 的檔案不採用。**
+> 例外是破洞偵測：它的對象正好是沒拿到可用 frontmatter、也就沒有 `id` 的檔案，
+> 只能靠 carrier 判型。兩個 carrier 同時命中時，依具體度二層比較取一型，
+> 平手時標記 schema 歧義（2026-09-24 用戶裁決，SPEC-006 FR-06 規則 6）。
 > 實測 per-domain domain-map 份數：`monitor` 3、`book_overview_v1` 9、
 > `book_overview_app` 9、**`flutter_balance` 0**——最後那個 0 是關鍵：
 > schema 是對著一份兩個 carrier 從不碰撞的語料寫出來的，缺陷不在推導
