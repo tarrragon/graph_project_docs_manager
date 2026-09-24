@@ -41,6 +41,7 @@ SwitcherOverlay buildProjectSwitcherOverlay({
     items: [
       for (var i = 0; i < projects.length; i++)
         _buildRecentProjectItem(
+          context: context,
           l10n: l10n,
           ref: ref,
           project: projects[i],
@@ -65,6 +66,7 @@ SwitcherOverlay buildProjectSwitcherOverlay({
 }
 
 RecentProjectItem _buildRecentProjectItem({
+  required BuildContext context,
   required AppLocalizations l10n,
   required WidgetRef ref,
   required RecentProject project,
@@ -83,22 +85,25 @@ RecentProjectItem _buildRecentProjectItem({
     isCurrent: isCurrent,
     reason: null,
     health: null,
-    onTap: () => _selectProject(ref, project),
+    onTap: () => _selectProject(context, ref, project),
     testKey: Key('card-switcher-recent-$index'),
   );
 }
 
-void _selectProject(WidgetRef ref, RecentProject project) {
-  ref.read(currentWorkspaceStateProvider.notifier).state =
-      WorkspaceReady(project.path);
-  ref.read(switcherOpenProvider.notifier).state = false;
-  // 寫入端接線（0.1.0-W2-014）：切換專案重置降級旗標（SPEC-001 §1「切換
-  // 專案時旗標重置」）。0.2.0-W1-042 同步重置推定版本旗標——與降級旗標
-  // 同一契約（比照 `gate_detection_notifier.dart` 的
-  // `inferredVersionProvider` 文件）。
-  ref.read(degradedSchemaProvider.notifier).state = false;
-  ref.read(degradedSchemaVersionsProvider.notifier).state = null;
-  ref.read(inferredVersionProvider.notifier).state = null;
+/// 點擊最近專案項（SPEC-003 §3.7 最近專案項列）：與「選擇其他資料夾」
+/// 選定後走同一段載入路徑（[WorkspaceRepository.openPath] 共用
+/// `_persistAndInspect`，本函式共用 [_handleChooseFolderResult]），差別
+/// 只在路徑來源不經系統選擇器（`0.2.1-W1-054`，修復先前只改標籤、不載入
+/// 的缺口）。
+Future<void> _selectProject(
+  BuildContext context,
+  WidgetRef ref,
+  RecentProject project,
+) async {
+  final repository = ref.read(workspaceRepositoryProvider);
+  final result = await repository.openPath(project.path);
+  if (!context.mounted) return;
+  await _handleChooseFolderResult(context, ref, result);
 }
 
 void _dismiss(WidgetRef ref) {
@@ -111,6 +116,17 @@ Future<void> _chooseFolder(BuildContext context, WidgetRef ref) async {
   final repository = ref.read(workspaceRepositoryProvider);
   final result = await repository.chooseFolder();
   if (!context.mounted) return;
+  await _handleChooseFolderResult(context, ref, result);
+}
+
+/// [ChooseFolderResult] 四變體的共用回饋處理（SPEC-003 §3.7）。由
+/// [_chooseFolder]（選擇其他資料夾）與 [_selectProject]（點擊最近專案項）
+/// 共用，避免同一組分支重複兩份（`0.2.1-W1-054`）。
+Future<void> _handleChooseFolderResult(
+  BuildContext context,
+  WidgetRef ref,
+  ChooseFolderResult result,
+) async {
   final l10n = AppLocalizations.of(context);
   switch (result) {
     case ChooseFolderCancelled():

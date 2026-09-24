@@ -205,6 +205,17 @@ class WorkspaceRepository {
     return ChooseFolderNotRemembered(state: state, reason: failureReason);
   }
 
+  /// 依既有路徑重新載入（點擊最近專案項，SPEC-003 §3.7 最近專案項列）：
+  /// 與 [chooseFolder] 共用持久化與探測邏輯（[_persistAndInspect]），差別
+  /// 只在路徑來源不經系統選擇器——不呼叫 [_pickDirectoryPath]，直接以
+  /// [path] 走同一段「寫入已存路徑並探測」流程，因此失敗時的回饋（浮層
+  /// 維持展開、不轉狀態、不寫已存路徑、清單不變）與「選擇其他資料夾」
+  /// 選定後失敗完全一致（`0.2.1-W1-054`）。
+  Future<ChooseFolderResult> openPath(String path) async {
+    _log('依最近專案路徑重新載入：$path'); // i18n-exempt: 開發者 debug log
+    return _persistAndInspect(path);
+  }
+
   /// App 啟動時呼叫，還原先前選定的資料夾。
   Future<WorkspaceState> restore() async {
     _log('還原工作資料夾，key=$_pathKey'); // i18n-exempt: 開發者 debug log

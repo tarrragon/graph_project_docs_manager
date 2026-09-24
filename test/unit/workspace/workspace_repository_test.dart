@@ -268,6 +268,57 @@ void main() {
     });
   });
 
+  group('G2b｜openPath 與 chooseFolder 共用 _persistAndInspect（0.2.1-W1-054）', () {
+    test('G2b-1 成功：寫入已存路徑，探測可用 → ChooseFolderSelected(WorkspaceReady)',
+        () async {
+      final values = <String, String?>{};
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(values: values),
+        directoryProbe: _FakeDirectoryProbe(),
+      );
+
+      final result = await repo.openPath('/tmp/recent-project');
+
+      expect(result, isA<ChooseFolderSelected>());
+      final selected = result as ChooseFolderSelected;
+      expect(selected.state, isA<WorkspaceReady>());
+      expect((selected.state as WorkspaceReady).path, '/tmp/recent-project');
+      // 已存路徑確實被寫入（下次 restore() 可讀回，非僅回傳值正確）。
+      expect(values['workspace.path'], '/tmp/recent-project');
+    });
+
+    test(
+      'G2b-2 探測失敗（不可讀或不存在）→ WorkspaceUnavailable，'
+      '已存路徑仍被寫入但呼叫端依此判定失敗回饋（不轉狀態、清單不變由呼叫端負責）',
+      () async {
+        final values = <String, String?>{};
+        final repo = WorkspaceRepository(
+          preferencesPort: _FakeKeyedPreferencesPort(values: values),
+          directoryProbe: _FakeDirectoryProbe(existsResult: false),
+        );
+
+        final result = await repo.openPath('/tmp/missing-project');
+
+        expect(result, isA<ChooseFolderSelected>());
+        final selected = result as ChooseFolderSelected;
+        expect(selected.state, isA<WorkspaceUnavailable>());
+      },
+    );
+
+    test('G2b-3 不呼叫 pickDirectoryPath（路徑來源不經系統選擇器）', () async {
+      final picker = _PickerRecorder();
+      final repo = WorkspaceRepository(
+        pickDirectoryPath: picker.call,
+        preferencesPort: _FakeKeyedPreferencesPort(values: {}),
+        directoryProbe: _FakeDirectoryProbe(),
+      );
+
+      await repo.openPath('/tmp/recent-project');
+
+      expect(picker.calls, isEmpty);
+    });
+  });
+
   group('G3｜restore 結局三分支', () {
     test('G3-1 從未設定過', () async {
       final log = _LogRecorder();

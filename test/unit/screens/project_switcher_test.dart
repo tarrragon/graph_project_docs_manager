@@ -89,13 +89,46 @@ class _SeededPreferencesHandle implements WorkspacePreferencesHandle {
   Future<bool> writeString(String key, String value) async => true;
 }
 
-/// 只用於固定 `loadRecentProjects()` 結果的假 repository（不涉及
-/// `chooseFolder()` 行為），供只需渲染最近專案清單的測試使用。
-WorkspaceRepository _fakeRepositoryWithRecents(List<RecentProject> recents) {
+/// 有狀態的假偏好設定管道：寫入真的被記住（存進 [values]），供需要驗證
+/// 「寫入後重讀」語意的測試使用（`_SeededPreferencesPort` 的 `writeString`
+/// 是無狀態 no-op，驗證不了 `addRecentProject` 成功後 `loadRecentProjects()`
+/// 重排的效果，`0.2.1-W1-054`）。
+class _StatefulPreferencesPort implements WorkspacePreferencesPort {
+  _StatefulPreferencesPort({Map<String, String?>? seed}) : values = seed ?? {};
+  final Map<String, String?> values;
+
+  @override
+  Future<WorkspacePreferencesHandle> open() async =>
+      _StatefulPreferencesHandle(values);
+}
+
+class _StatefulPreferencesHandle implements WorkspacePreferencesHandle {
+  _StatefulPreferencesHandle(this.values);
+  final Map<String, String?> values;
+
+  @override
+  String? readString(String key) => values[key];
+
+  @override
+  Future<bool> writeString(String key, String value) async {
+    values[key] = value;
+    return true;
+  }
+}
+
+/// 供最近專案清單測試使用的假 repository：`loadRecentProjects()` 固定回傳
+/// [recents]，`directoryProbe` 固定回報可用（`0.2.1-W1-054` 起，點擊最近
+/// 專案項會經 [WorkspaceRepository.openPath] 走與「選擇其他資料夾」相同的
+/// 探測路徑，故預設須可用，測試才能斷言成功載入）。
+WorkspaceRepository _fakeRepositoryWithRecents(
+  List<RecentProject> recents, {
+  bool directoryProbeExists = true,
+}) {
   return WorkspaceRepository(
     preferencesPort: _SeededPreferencesPort(
       recentProjectsJson: _encodeRecentProjects(recents),
     ),
+    directoryProbe: _FakeDirectoryProbePort(probeExists: directoryProbeExists),
   );
 }
 
@@ -324,6 +357,7 @@ void main() {
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
+          ..._gateDetectionOverrides,
         ],
       );
       final element = tester.element(find.byType(app_shell.AppShell));
@@ -345,6 +379,112 @@ void main() {
     });
 
     testWidgets(
+      '點擊最近專案項走真實載入路徑：實際開啟該路徑、寫已存路徑、成功後'
+      '該項移至清單頂端（SPEC-003 §3.7；SPEC-005 §2.4；0.2.1-W1-054 契約 C3）',
+      (tester) async {
+        late ProviderContainer container;
+        // 有狀態偏好設定：驗證「移至頂端」須讓 addRecentProject 的寫入真的
+        // 被 loadRecentProjects() 重讀到（_SeededPreferencesPort 是
+        // no-op，驗證不了這一步）。
+        final preferences = _StatefulPreferencesPort(
+          seed: {
+            'workspace.recentProjects': _encodeRecentProjects(
+              _testRecentProjects,
+            ),
+          },
+        );
+        final repository = WorkspaceRepository(
+          preferencesPort: preferences,
+          directoryProbe: _FakeDirectoryProbePort(probeExists: true),
+        );
+        await pumpApp(
+          tester,
+          overrides: [
+            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+            workspaceRepositoryProvider.overrideWithValue(repository),
+            ..._gateDetectionOverrides,
+          ],
+        );
+        final element = tester.element(find.byType(app_shell.AppShell));
+        container = ProviderScope.containerOf(element);
+
+        await tester.tap(
+          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
+        );
+        await tester.pumpAndSettle();
+
+        // 點擊非頂端項（index 1，非目前排序第一的項，即 unipos）。
+        await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+        await tester.pumpAndSettle();
+
+        // 實際載入：目前工作狀態改為該路徑（非僅標籤變更）。
+        final state = container.read(currentWorkspaceStateProvider);
+        expect(state, isA<WorkspaceReady>());
+        expect((state as WorkspaceReady).path, _testRecentProjects[1].path);
+
+        // 已存路徑改為該 path（下次啟動可讀回）。
+        expect(
+          preferences.values['workspace.path'],
+          _testRecentProjects[1].path,
+        );
+
+        // 成功後該項移至清單頂端（addRecentProject 依 lastOpenedAt 降冪）。
+        final updatedList = container.read(recentProjectsProvider);
+        expect(updatedList.first.path, _testRecentProjects[1].path);
+      },
+    );
+
+    testWidgets(
+      '點擊最近專案項但該路徑不可讀或不存在：依選擇其他失敗列回饋，不轉'
+      '狀態、不寫已存路徑、清單不變（SPEC-003 §3.7；0.2.1-W1-054）',
+      (tester) async {
+        late ProviderContainer container;
+        final repository = WorkspaceRepository(
+          preferencesPort: _SeededPreferencesPort(
+            recentProjectsJson: _encodeRecentProjects(_testRecentProjects),
+          ),
+          directoryProbe: _FakeDirectoryProbePort(probeExists: false),
+        );
+        await pumpApp(
+          tester,
+          overrides: [
+            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+            workspaceRepositoryProvider.overrideWithValue(repository),
+          ],
+          settle: false,
+        );
+        final element = tester.element(find.byType(app_shell.AppShell));
+        container = ProviderScope.containerOf(element);
+        final before = container.read(currentWorkspaceStateProvider);
+
+        await tester.tap(
+          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        // 浮層維持展開，不轉狀態，顯示 AppSnackBar。
+        expect(
+          find.byKey(const Key('state-switcher-expanded')),
+          findsOneWidget,
+        );
+        expect(container.read(currentWorkspaceStateProvider), before);
+        expect(find.byType(SnackBar), findsOneWidget);
+
+        // 清單不變（未觸發 addRecentProject 重排；RecentProject 無值相等，
+        // 比對 path 順序，非物件實例）。
+        expect(
+          container.read(recentProjectsProvider).map((p) => p.path).toList(),
+          _testRecentProjects.map((p) => p.path).toList(),
+        );
+      },
+    );
+
+    testWidgets(
       '選擇項目後降級與推定版本旗標重置（0.1.0-W2-014／0.2.0-W1-042 寫入端接線）',
       (tester) async {
         late ProviderContainer container;
@@ -355,6 +495,7 @@ void main() {
             workspaceRepositoryProvider.overrideWithValue(
               _fakeRepositoryWithRecents(_testRecentProjects),
             ),
+            ..._gateDetectionOverrides,
             degradedSchemaProvider.overrideWith((ref) => true),
             degradedSchemaVersionsProvider.overrideWith(
               (ref) => const DegradedSchemaVersions(
