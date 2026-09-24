@@ -4,8 +4,8 @@ title: "Workspace driven port 回饋契約"
 status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
-updated: "2026-09-09"
-version: "1.1"
+updated: "2026-09-24"
+version: "1.2"
 owner: star-anise-system-designer
 
 domain: "workspace"
@@ -173,6 +173,9 @@ tripwire 總表有對應一列（「出現無法由破洞報告解釋的故障 �
 | 呼叫發出 | 呼叫端 | Y（呼叫 `_preferencesPort.open()`） | Y（持久化路徑與還原路徑各一筆入口日誌） |
 | 受理 | `WorkspacePreferencesPort.open()` 的回傳型別 | Y（取得 `WorkspacePreferencesHandle` 即代表管道已可用；`open()` 拋例外代表未受理） | Y（成功時「偏好設定儲存已就緒」；失敗時 level 900 一筆） |
 | 結果 | `WorkspacePreferencesHandle.writeString` 的 `bool` 回傳與例外 | Y（成功／回報 false／拋例外三分支，對應 `ChooseFolderSelected`／`ChooseFolderNotRemembered`） | Y（三分支各一筆） |
+| 結果（`remove`，清除已存路徑） | `WorkspacePreferencesHandle.remove(String key)` 的 `bool` 回傳與例外 | 契約（`clearStoredPath()` 依序移除 `_schemaVersionKey` 再移除 `_pathKey`；兩者皆回 true 為成功，任一回 false 或拋例外為失敗，失敗時不中止後續移除、以單一失敗結果回報呼叫端） | 契約（成功一筆；回 false 與拋例外各一筆 level 900，含 key 名與原始例外） |
+
+**`remove` 列的來源與現況**：依 `0.2.0-W1-023` S-21 定案方案 A（Handle 新增 `Future<bool> remove(String key)`，與 `writeString` 對稱，不以寫空字串代替）。表中「契約」表示規格已定、實作尚未存在，非 Y／N 判定；實作落地後改記 Y 或 N。觸發來源為 SPEC-003 §3.1「取消載入」（已存路徑清除、最近專案清單不變）——`clearStoredPath()` 不得觸碰 §2.4 的 `workspace.recentProjects`。
 
 **受理時刻的載體是介面切分本身**：把「取得儲存管道」與「寫入」拆成兩個型別（Port 與
 Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別消費的時刻。若合併為單一
@@ -202,6 +205,63 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 **`StateError` 分支的日誌不適用**：空資料夾不是失敗，其結果時刻已由呼叫端投影
 （回傳 `WorkspaceReady`）完整承載，日誌無診斷對象。此為設計選擇，非缺口。
+
+### 2.4 最近專案清單持久化（`workspace.recentProjects`）
+
+來源：`0.2.0-W1-023` S-36 定案方案 A。本節是新接縫的規格，實作尚未存在，下列表格的
+「契約」欄意同 §2.2 `remove` 列。消費方為切換器（SPEC-003 §3.7，承接票 `0.2.1-W1-003`）。
+
+**載體**：沿用 §2.2 的 `WorkspacePreferencesPort`／`WorkspacePreferencesHandle`，不新增 port。
+清單持久化只是同一個偏好設定儲存上的另一個 key，受理時刻因此與 §2.2 相同，不重複定義。
+
+**key 與 value 結構**：
+
+| 項目 | 定義 |
+|------|------|
+| key | `workspace.recentProjects` |
+| value | 以 `writeString` 寫入的 JSON 字串；頂層為陣列 |
+| 陣列元素 | 物件，兩欄皆必存在：`path`（string，資料夾絕對路徑）、`lastOpenedAt`（string，ISO 8601 UTC，例 `2026-09-24T01:25:50.000Z`） |
+| 唯一性 | 以 `path` 字串完全相等判定；同一 `path` 至多一項 |
+| 排序 | 依 `lastOpenedAt` 降冪；讀取端不信任儲存順序，載入後自行排序 |
+| 上限 | 本版不截斷 |
+
+```json
+[
+  {"path": "/Users/example/project-a", "lastOpenedAt": "2026-09-24T01:25:50.000Z"},
+  {"path": "/Users/example/project-b", "lastOpenedAt": "2026-09-20T08:00:00.000Z"}
+]
+```
+
+**型別與方法**（落點依〈載體〉三條契約）：
+
+| 符號 | 落點 | 定義 |
+|------|------|------|
+| `RecentProject` | `lib/workspace/workspace_types.dart` | value type，欄位 `path`（`String`）、`lastOpenedAt`（`DateTime`，UTC） |
+| `loadRecentProjects()` | `WorkspaceRepository` | 回傳 `Future<List<RecentProject>>`，已依 `lastOpenedAt` 降冪；不拋例外，失敗一律回空清單（分支見下表） |
+| `addRecentProject(String path)` | `WorkspaceRepository` | 讀出現有清單，移除同 `path` 項，以當下時刻為 `lastOpenedAt` 插入頂端後整份寫回；回傳 `Future<bool>`（寫入成功與否） |
+
+**寫入時機**：專案**成功載入**後呼叫 `addRecentProject`（SPEC-003 §3.7：成功載入後該項移至頂端）。
+選取後載入失敗、取消載入、`clearStoredPath()` 皆不寫入、不刪除清單項。清單項的資料夾
+不可用時不從清單移除——可用性由切換器展開時逐項探測（SPEC-003 §3.7〈生命週期〉），
+探測沿用 §2.3 `WorkspaceDirectoryProbePort`，不屬本節。
+
+**回饋點承擔者**：
+
+| 時刻 | 承擔者 | 呼叫端投影 | 日誌投影 |
+|------|--------|-----------|---------|
+| 呼叫發出（讀／寫） | 呼叫端 `loadRecentProjects()`／`addRecentProject()` | 契約 | 契約（各一筆入口日誌） |
+| 受理 | `WorkspacePreferencesPort.open()` 的回傳型別（同 §2.2） | 契約（`open()` 拋例外 → 讀回空清單、寫回 false） | 契約（level 900 一筆） |
+| 結果（讀，key 不存在） | `readString` 回 null | 契約（空清單） | 契約（一筆，非錯誤級） |
+| 結果（讀，JSON 解析失敗或元素缺欄／型別不符） | 呼叫端解析 | 契約（整份視為損壞，回空清單；不部分採用） | 契約（level 900，含原始例外或首個不符元素索引） |
+| 結果（讀，成功） | `readString` 回傳值經解析 | 契約（排序後清單） | 契約（一筆，含項數） |
+| 結果（寫） | `writeString` 的 `bool` 回傳與例外 | 契約（成功／回 false／拋例外三分支，後兩者回 false） | 契約（成功一筆；失敗兩分支各一筆 level 900） |
+
+**損壞時不覆寫的邊界**：讀取判為損壞時，`loadRecentProjects()` 不回寫、不清除該 key；
+`addRecentProject()` 讀到損壞內容時以空清單為基底寫入新項（損壞內容因此被取代），
+該次日誌須記錄「以損壞內容為基底被取代」一筆 level 900，使資料遺失可被觀測。
+
+**不互相抵扣**：讀取失敗分支呼叫端只得空清單（切換器落 `state-switcher-no-recent`），
+失敗原因只進日誌；兩投影各自完整，同 §2.2。
 
 ## 三、現況缺口
 
@@ -237,5 +297,6 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.2 | 2026-09-24 | §2.2 回饋點表新增 `remove` 結果時刻列（`clearStoredPath()` 清除已存路徑，S-21）；新增 §2.4 最近專案清單持久化：key `workspace.recentProjects`、JSON 陣列 schema（`path` + `lastOpenedAt`）、`RecentProject` 與兩個 repository 方法、寫入時機、回饋點承擔者表、損壞處理邊界（S-36）。來源 `0.2.0-W1-023`，承接票 `0.2.1-W1-043` |
 | 1.1 | 2026-09-09 | 對齊 `0.1.0-W3-146`／`0.1.0-W3-147` 落地後的現況：載體段由遷移事件敘述改寫為三條契約（接縫落點／value types 落點／不 re-export 與呼叫端 import 約束），時態問題隨之消解；§1 補與 146 對照表的列定義差異（歸屬單位 vs 計算單位）並寫出拆列會使判準把 `WorkspacePreferencesPort` 判成 typedef 的失效機制；§1.1 補軸別釐清並寫明所擋的推論與刪除代價。`docs/tech-decisions.md` 補記段有對稱一份（`0.1.0-W3-157`） |
 | 1.0 | 2026-09-09 | 初始版本：workspace 五個接縫與三種形態、受盤點的四個 port 的回饋點承擔者、`WorkspaceLogSink` 排除判定與理由（§1.1）、兩項現況缺口、測試替身紀律（`0.1.0-W3-148`） |
