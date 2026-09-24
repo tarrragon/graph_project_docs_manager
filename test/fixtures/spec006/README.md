@@ -38,14 +38,14 @@ FR-01（切分與五類分類）、FR-02（掃描範圍）、FR-03（節點判�
 
 ## 兩組重新量測的數字
 
-### FR-07 全量分類計數（`freeze-it2` 產出，真實列，不含 5 筆合成補充）
+### FR-07 全量分類計數（`freeze-it2` 產出，真實列，不含 6 筆合成補充）
 
 | 指標 | 2026-08-27（domain-map §7，舊語意：可解析/YAML錯誤/無frontmatter） | 2026-09-24（本次，FR-01/FR-06 語意：node/non_node/gap/unmatched） |
 |------|------|------|
 | 檔案總數 | 7106 | 7466 |
 | 可解析（舊）／node+non_node（新） | 5815 | 6174（node 4676 + non_node 1498，含 1 筆合成，真實 1497） |
 | YAML 錯誤 | 1 | 1（真實，book_overview_app 語料中唯一一筆，路徑不變） |
-| 無 frontmatter（舊）／failure 總數（新） | 1290 | 1292（no_frontmatter，僅真實列） |
+| 無 frontmatter（舊）／no_frontmatter（新，僅此類） | 1290 | 1292（僅真實列） |
 
 差異來源：語料已演進（新增 360 份文件，五專案持續開發），非量測方法變更。
 2026-08-27 的三分類（可解析／YAML錯誤／無frontmatter）不區分「命中 carrier
@@ -59,8 +59,10 @@ FR-01（切分與五類分類）、FR-02（掃描範圍）、FR-03（節點判�
 
 真破洞的原因分布（真實）：`no_frontmatter` 40、`yaml_error` 1。語料中未出現
 `unclosed`、`empty_or_non_map`、`unreadable_encoding`（命中 carrier 者）、
-`schema_ambiguous`（平手或 id 衝突）之真實案例，此五類以 5 筆合成列補齊
-（見下表）。無法讀取（編碼）之真實案例僅 1 筆，命中於 carrier 外（未命中）。
+`schema_ambiguous`（平手、id 互斥衝突，兩類）之真實案例，此五類以 5 筆
+合成列補齊（見下表），另加 1 筆合成列示範多型別命中但依具體度判定為
+非平手的情形，共 6 筆。無法讀取（編碼）之真實案例僅 1 筆，命中於
+carrier 外（未命中）。
 
 ### IT-1 判別樣本數 N（`freeze-it1` 產出）
 

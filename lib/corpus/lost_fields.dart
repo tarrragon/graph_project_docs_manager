@@ -6,7 +6,7 @@ library;
 /// 純函式，不讀檔案或型別表，輸入即為 EVT-CORPUS-003〈lostFields 的算法〉
 /// 描述的三個判斷依據：
 /// - [completenessFields]：該節點型別在 `tracking_schema.json` 的完整性
-///   集合；`null` 代表型別表沒有這個鍵（W1-079 之前的 JSON），視同無集合
+///   集合；`null` 代表型別表未匯出該型別的完整性集合，視同無集合
 /// - [writtenFields]：實際寫出的鍵與值。**「已寫出」依鍵是否存在於此
 ///   map 判斷，不依值是否為真**——值為 `null` 或空清單（`[]`）的鍵仍算
 ///   已寫出，代表明確沒有，不列入 `lostFields`（C6-2 鑑別；若改用真值
