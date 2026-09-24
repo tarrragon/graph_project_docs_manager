@@ -16,6 +16,16 @@ library;
 /// 職責內——本函式要求兩個非 null 字串參數；呼叫端（如
 /// `schema_source_resolver.dart` 的 `resolveSchemaSource`）在任一版本
 /// 缺席時，應直接判定路徑模式查詢不可用，不呼叫本函式比較。
+/// [version] 是否在 App 已知範圍內（不高於 [builtinVersion]），供 schema
+/// 不相容關卡（`gate_detection_notifier.dart`）與型別表來源 resolver
+/// （`schema_source_resolver.dart`）共用（`0.3.0-W3-543`）。
+///
+/// [version] 為 `null`、任一段無法解析為整數、或高於 [builtinVersion]
+/// 時回傳 `false`（不在範圍）；等於或低於時回傳 `true`。取代兩處各自
+/// 重複的「null 檢查加比較」，使兩者結構上不可能分歧。
+bool isWithinKnownSchemaRange(String? version, String builtinVersion) =>
+    version != null && !isHigherThanBuiltinSchemaVersion(version, builtinVersion);
+
 bool isHigherThanBuiltinSchemaVersion(String version, String builtinVersion) {
   final target = version.split('.').map(int.tryParse).toList();
   final builtin = builtinVersion.split('.').map(int.tryParse).toList();

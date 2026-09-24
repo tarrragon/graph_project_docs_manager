@@ -8,8 +8,9 @@
 ///    [DomainSchemaUnconsumable]
 /// 3. JSON 存在 → 依版本範圍判定分 [DomainReady]／[DomainSchemaIncompatible]。
 ///    範圍判定恆以 JSON 的 `schema_generated_at_framework_version` 與 App
-///    內建版本比較（`0.2.0-W1-024` 定案：`!isHigherThanBuiltinSchemaVersion
-///    (jsonVersion, builtinVersion)`），`.claude/VERSION` 是否存在只決定
+///    內建版本比較（`0.2.0-W1-024` 定案，`0.3.0-W3-543` 改呼叫與型別表
+///    來源 resolver 共用的 `isWithinKnownSchemaRange(jsonVersion,
+///    builtinVersion)`），`.claude/VERSION` 是否存在只決定
 ///    「顯示版本是否為推定值」（`0.2.0-W1-038` 方案 A），不參與範圍比較——
 ///    兩個「兩訊號皆有」的凍結 manifest 案例（`VERSION` 遠高於 builtin）
 ///    因 JSON 版本等於 builtin 而正常載入，即為此設計的直接驗證。
@@ -67,9 +68,7 @@ class GateDetectionNotifier extends Notifier<void> {
     final isInferred = version == null;
     final displayVersion = version ?? jsonVersion;
 
-    final inRange =
-        jsonVersion != null &&
-        !isHigherThanBuiltinSchemaVersion(jsonVersion, builtinVersion);
+    final inRange = isWithinKnownSchemaRange(jsonVersion, builtinVersion);
 
     if (inRange) {
       final inferred = isInferred ? jsonVersion : null;

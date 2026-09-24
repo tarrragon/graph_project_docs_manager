@@ -27,7 +27,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// （L4 畫面狀態層）以 export 轉呼叫保留同名公開符號，供既有消費端
 /// （`domain_view_screen.dart` 等 6 檔）不改動即可繼續使用。
 export 'package:graph_project_docs_manager/schema/schema_version.dart'
-    show isHigherThanBuiltinSchemaVersion;
+    show isHigherThanBuiltinSchemaVersion, isWithinKnownSchemaRange;
 
 /// 內嵌資產路徑（見 `pubspec.yaml` 的 `flutter.assets` 宣告）。
 const String builtinSchemaVersionAssetPath =
