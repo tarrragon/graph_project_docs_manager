@@ -548,24 +548,30 @@ void main() {
     });
 
     testWidgets(
-      '以現行 .claude/VERSION 實值驅動：高於內建資產版本時不提供降級出口'
-      '（0.1.0-W2-012：防止只用遠低於門檻的 fixture 值掩蓋真實漂移）',
+      '以現行 .claude/VERSION 實值為底、次版號 +1 驅動：高於內建資產版本時不提供降級出口'
+      '（0.1.0-W2-012：防止只用遠低於門檻的 fixture 值掩蓋真實漂移；'
+      '0.3.0-W2-001 起 builtin_schema_version.json 與現行 VERSION 同步，'
+      '直接讀 VERSION 已不保證嚴格高於內建版本，改以其為底再遞增確保恆高於）',
       (tester) async {
         final liveVersion = File(
           '.claude/VERSION',
         ).readAsStringSync().trim();
+        final segments = liveVersion.split('.').map(int.parse).toList();
+        segments[1] += 1;
+        final higherThanBuiltinVersion = segments.join('.');
 
         await pumpHarness(
           tester,
           child: const DomainViewScreen(),
           overrides: [
             domainViewStateProvider.overrideWith(
-              (ref) => DomainSchemaUnconsumable(version: liveVersion),
+              (ref) =>
+                  DomainSchemaUnconsumable(version: higherThanBuiltinVersion),
             ),
           ],
         );
 
-        // 本 repo 現行 .claude/VERSION 已高於內建資產版本
+        // 以現行 .claude/VERSION 次版號 +1 的版本，保證高於內建資產版本
         // （assets/schema/builtin_schema_version.json，見同名 provider），
         // SPEC-001 §1／SPEC-003 §3.1 此時不提供降級出口。
         expect(

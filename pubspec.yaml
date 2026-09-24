@@ -43,3 +43,5 @@ flutter:
   # domain_view/domain_view_schema_version.dart。
   assets:
     - assets/schema/builtin_schema_version.json
+    # 0.3.0-W2-001：型別表來源三分（FR-06 規則 7）的內建副本。
+    - assets/schema/builtin_tracking_schema.json
