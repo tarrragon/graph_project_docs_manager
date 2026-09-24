@@ -57,8 +57,8 @@ class ParseFailureGap {
 /// （SPEC-004 v1.46 已有對應 key），Diagnostics 不產生在地化字串
 /// （用戶裁決 2026-09-24，SPEC-006 v1.6 FR-08）。
 enum UndeterminedGapReason {
-  /// 專案型別表版本高於 App 內建版本。
-  projectVersionHigherThanBuiltin,
+  /// 專案型別表版本不在 App 已知範圍（高於內建、缺席或無法解析）。
+  projectVersionOutOfKnownRange,
 
   /// 型別表沒有路徑模式。
   noPathPattern,
