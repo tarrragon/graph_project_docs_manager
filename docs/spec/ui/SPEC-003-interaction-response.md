@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-09-15"
-version: "1.37"
+updated: "2026-09-24"
+version: "1.38"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -458,6 +458,13 @@ SPEC-001 退出路徑欄的所有措辭，歸為四類反應，不存在第五�
 六畫面任一狀態皆存在，切換專案後不存在（斷言：旗標生效時 `findsOneWidget`，
 L2 後 `findsNothing`）。
 
+推定版本徽章 `badge-<screen>-inferred-version` 由同一頁面框架渲染，位置與方式同
+降級徽章：推定版本旗標（正常／空圖的 `inferredVersion` 非 `null`、schema 不相容的
+`isVersionInferred` 為 `true`）生效期間六畫面任一狀態皆存在，切換專案後不存在
+（斷言同上）。**與降級徽章互斥，不會同時出現**——推定版本路徑的前提是
+`tracking_schema.json` 存在，降級的進入條件是該檔不存在，兩個旗標的成立條件
+互斥（SPEC-001 §1〈推定版本〉註記）。
+
 > **與 SPEC-004 4.27 實作註記的核對**（`0.1.0-W3-335.37` R2 補充事證）：SPEC-004
 > 4.27 `AppShell` 實作註記描述返回列「疊於 `IndexedStack` 內容之上」，本段描述為
 > 「置於 `SplitRow.header` 右側 `ButtonRow`」；兩處描述的視覺層級用語不同，但對外
@@ -553,7 +560,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 覆蓋狀態 | 全頁（`page`）：未選專案、空圖、專案未就緒（§2–§6）、無 UC、無提案、無 ticket、無破洞、未選節點；區塊（`section`）：未選格右欄、泳道 · 尚未選定 UC、泳道 · flow 未結構化、尚未選定 UC、flow 未結構化 | 不是框架專案、無可消費的型別表、schema 不相容 |
 | 必備動作 | `page`：SPEC-001 FR-03 列舉狀態、未選專案、未選節點、專案未就緒至少一個非「返回」的前進動作；無破洞為 0（重新掃描為頁面級動作，置 `SplitRow.header`，§2.4、`0.1.0-W3-335.37` R10）。`section`：可無（前進動作在區塊外） | 至少一個出口（切換專案，錨點 `action-domain-switch-project`；三個阻擋狀態皆有，與 `project-switcher-entry` 同結果），且該出口恆可用 |
 | 動作觸發後 | 內容跳轉（jump，設 `returnTo`）或同畫面轉換（選擇資料夾）（`0.1.0-W3-335.37` R10） | 開啟專案切換浮層，不改變 `IndexedStack` 索引；無可消費的型別表另有條件式降級出口：`action-domain-degraded-view` 同畫面轉換至正常／空圖（`0.1.0-W3-335.59` S3-10） |
-| 是否顯示版本值 | 否 | 無可消費的型別表、schema 不相容：是（無可消費的型別表：專案 `.claude/VERSION`；schema 不相容：App 支援版本與專案版本兩值；SPEC-001 FR-04／FR-07）；不是框架專案：否（無 `.claude/VERSION` 可讀） |
+| 是否顯示版本值 | 否 | 無可消費的型別表、schema 不相容：是（無可消費的型別表：專案 `.claude/VERSION`；schema 不相容：App 支援版本與專案版本兩值，`projectVersion` 可能為推定值——本體與面板字面不因推定而變，推定來源改由 §2.4 推定版本徽章 `badge-<screen>-inferred-version` 常駐告知，與降級徽章互斥；SPEC-001 FR-04／FR-07、〈推定版本〉註記）；不是框架專案：否（無 `.claude/VERSION` 可讀） |
 
 **阻擋狀態的浮層可用性斷言**：三個阻擋狀態任一渲染時，
 `find.byKey(AppShell.projectSwitcherEntryKey)` 為 `findsOneWidget` 且
@@ -1496,7 +1503,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 開啟 docs 目錄 | `action-domain-open-docs` | 點擊 | **0.1 落地**（`0.1.0-W1-036` 定案，契約見 §2.2「外部開啟契約」）：`ExternalOpener.open(path)` 以系統預設方式開啟該目錄（Finder）；結果 `opened` → SnackBar `openedExternallyMessage`，停留 `Motion.snackBar`；畫面狀態不變 |
 | 開啟 docs 目錄（渲染時目錄不存在） | 同上 | — | **該錨點不渲染**（SPEC-001 §1「僅在該目錄存在時提供」） |
 | 開啟 docs 目錄（點擊時目錄已消失，或系統無法開啟） | 同上 | 點擊 | 結果 `notFound` 或 `failed` → SnackBar `externalOpenFailedMessage`，停留 `Motion.snackBar`；畫面狀態不變（目錄消失屬外部變更，由下一次重新載入承接，本畫面不設偵測點） |
-| 檢視 schema 詳情 | `action-domain-schema-detail` | 點擊 | `panel-domain-schema-detail` 出現，內容恰為兩列「標籤 + 版本值」（App 支援版本、專案版本），不含其他說明文字或動作——下一步的出口仍只有 `project-switcher-entry`（元件組成見 SPEC-004 §4.23 `BlockedState` 的 `withDetail` 變體）；再次點擊或 Esc 收合 |
+| 檢視 schema 詳情 | `action-domain-schema-detail` | 點擊 | `panel-domain-schema-detail` 出現，內容改為一列「標籤 + 版本值」——`schemaKnownRangeLabel`（App 已知版本範圍）+ `schemaKnownRangeValue`（不高於 <App 內建型別表產生版本>），不再重複本體已顯示的 App 支援版本、專案版本兩值，不含其他說明文字或動作——下一步的出口仍只有 `project-switcher-entry`（元件組成見 SPEC-004 §4.23 `BlockedState` 的 `withDetail` 變體：面板為 `Section.static`[`AppText.caption`, `AppText.mono`] 各一；`projectVersion` 為推定值時面板字面不變，推定來源由 §2.4 推定版本徽章承載）；再次點擊或 Esc 收合 |
 | 導覽至破洞報告 | `action-domain-goto-gaps` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `domain` |
 | 切換專案 | `project-switcher-entry`（既有） | 點擊 | 浮層展開（§3.7） |
 | 阻擋狀態切換專案 | `action-domain-switch-project` | 點擊（僅於三個阻擋狀態渲染） | 浮層展開（§3.7），不改變 `IndexedStack` 索引；結果同 `project-switcher-entry` |
@@ -2300,6 +2307,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.38 | 2026-09-24 | 對齊 SPEC-001 v1.19／SPEC-004 v1.45（`0.2.1-W1-002`，承 `0.2.0-W1-040` 推定版本語意與 schema 不相容面板重評）：§3.1「檢視 schema 詳情」列面板內容描述由「恰為兩列（App 支援版本、專案版本）」改為一列 `schemaKnownRangeLabel`＋`schemaKnownRangeValue`（App 已知版本範圍：不高於 <內建版本>），元件組成註記改列 SPEC-004 §4.23 `withDetail` 面板 `Section.static`[`AppText.caption`, `AppText.mono`] 各一，並補 `projectVersion` 為推定值時面板字面不變、推定來源由 §2.4 徽章承載；§2.7「是否顯示版本值」列 schema 不相容欄補 `projectVersion` 可能為推定值、推定來源由 §2.4 推定版本徽章常駐告知、與降級徽章互斥；§2.4〈渲染位置統一〉降級徽章段後新增推定版本徽章 `badge-<screen>-inferred-version` 段，位置與方式同降級徽章、生效條件（正常／空圖 `inferredVersion` 非 `null`、schema 不相容 `isVersionInferred` 為 `true`）與互斥規則對齊 SPEC-001 §1〈推定版本〉註記。SPEC-001、SPEC-004 為本票唯讀權威，未改動 |
 | 1.37 | 2026-09-15 | V4 第四輪門檻外矛盾追修（`0.1.0-W3-335.67`，依 `0.1.0-W3-335.65` WRAP 裁決 K6／K7／K8／K9／K11）：§2.9 表後補〈動態 ID 段取值〉段（`<domainId>`／`<rowId>`／`<ucId>`／`<colId>`／`<nodeId>`／`<evtId>`／`<stepId>`／`<itemId>` 各自取值來源，`<itemId>` 取 `GapReportItem.id`，K6）；§2.8〈選定 UC〉首段「兩處設定入口」改「下表各設定入口」、設定入口表新增「設定入口 4」（破洞報告事件類破洞項），§3.5 事件類列同步補「設定入口 4」（K7）；§2.11「三處載入態的差異只有『目標態』與『進度型別』兩個參數」改為目標態、進度型別、骨架版位三項差異並註明破洞目標態為執行期 `returnTo`（K8）；§2.13〈(b1) 的可行條件是可機械判定的〉段後補「具名例外」（(a) 適用範圍內的事件不走 (b1)），〈判準與既有條文的對照〉#5、#6 判準結論欄同步（K9）；§2.4〈渲染位置統一〉括號改列重新掃描與開啟原始檔、刪重新整理，並註明狀態元件自身動作不屬頁面級動作（K11）；另補破洞項 `<itemId>` 取值規則（§2.9，取 `lib/screens/gap_report/gap_report_models.dart` `GapReportItem.id` 字面值，0.1 由 fixture 給定），並於 §3.5〈破洞項的指向節點〉補交叉引用；核對 SPEC-003 內 `寫死座標`／`設定入口`／`(b1)`／`兩個參數`／`頁面級動作`／`domainId`／`itemId` 全部命中，`0.1.0-W3-335.60` 稽核腳本 `matrix.py`／`counts.py` 重跑無新增缺格或計數不符。SPEC-001（K1–K5、K10）與 UC-02（K2 可同步部分）留待 `0.1.0-W3-335.68`；SPEC-004（K3、K8 對應段）留待 `0.1.0-W3-335.69` |
 | 1.35 | 2026-09-14 | V4 第四輪前追修票 B（`0.1.0-W3-335.56`，依 `0.1.0-W3-335.53` WRAP 裁決 E5／E7／E8／E9／E11（§3.3／§3.6 部分）／E12／E13／E15，範圍限 §3–§4 逐畫面）：§3.4、§3.5〈生命週期〉切換專案列改為「頁面狀態重置為初始，下次可見時依『首次可見但圖未建立』與『首次可見（且圖已建立）』兩列判定」，消解與「專案未就緒」共用定義的落點矛盾（E5）；§3.1〈格詳情卡的內容契約〉事件標籤改「每個（事件, 方向）一個標籤，兼有時兩個、`emits` 在前」（E7）；§3.1 切至泳道列與§2.8〈斷言形式（共用值）〉面板標題改「面板標題文字為 `<UC id> <UC 標題>`」（E8）；§3.1〈互動反應〉新增「阻擋狀態切換專案」列（`action-domain-switch-project`）、〈導航跳轉與退出〉三個阻擋狀態列補該錨點且「不是框架專案」列「唯一出口」改「兩入口同結果」、§2.7 必備動作阻擋欄補錨點名、§3.7〈生命週期〉展開時機補錨點、§4 #6–#8 覆蓋層欄補本體按鈕（E9）；§3.3、§3.6〈動畫提示〉「三個狀態之間」改列狀態名（分別為「正常、鏈路斷裂、無提案之間」「未選節點、正常、部分損壞、原始檔已消失之間」，E11 §3.3／§3.6 部分，§2.1 段已由 `0.1.0-W3-335.55` 落檔）；§3.3〈生命週期〉「Ticket 清單載入完成後再次可見」列補新增缺口可使狀態由 `state-traceability-normal` 轉 `state-traceability-broken`（E12）；§3.6〈生命週期〉切至其他導覽項改「`returnTo` 依 §2.3 規則 1 設為 `null`」，與規則 1 通則一致（E13）；§3.6〈互動反應〉「跳轉破洞報告」列元素改為「欄位級損壞標記（`IssueMarker.damagedDetail`）」、觸發改僅 `state-nodeDetail-partial` 渲染且多實例斷言以祖先限定 finder、補「不另設頁首跳轉按鈕」，〈導航跳轉與退出〉部分損壞列與 §4 #25 同步補「欄位級標記」（E15）。同步點逐項 grep 核對記錄於本票 Problem Analysis；`lib/components/blocked_state.dart`／`test/unit/components/blocked_state_test.dart` 已使用 `action-domain-switch-project` 錨點，E9 落檔與既有實作一致。SPEC-001 全部 7 項同批次落檔（同一票）；留待 `0.1.0-W3-335.57` 的連動點見 `0.1.0-W3-335.55` 變更歷史 |
 | 1.36 | 2026-09-15 | 同步稽核追修票（`0.1.0-W3-335.61`，依 `0.1.0-W3-335.59` WRAP 裁決最終追修清單 SPEC-003 組 3-01～3-23）：§3.1〈互動反應〉補「以 App 內建型別表檢視」列（`action-domain-degraded-view`，S3-1）；〈導航跳轉與退出〉正常 · 矩陣列補切至泳道同畫面轉換（S3-2）；§3.4〈導航跳轉與退出〉正常 · 列表／正常 · 主題兩列補模式切換同畫面轉換（S3-2）、未載入列補開始載入轉換與 `project-switcher-entry` 恆可點明文、載入中列補 `project-switcher-entry` 恆可點明文；§3.2〈導航跳轉與退出〉正常列補選擇 UC 同畫面轉換（S3-3）、flow 未結構化列補檢視關聯 jump（S3-4）；§3.4 載入中列與〈動畫提示〉完成分支補「或無 ticket」（S3-5）；§3.6〈互動反應〉補「前往追溯視圖（未選節點）」列、〈導航跳轉與退出〉補「未選節點」列、段落改引用該列（S3-6）；§3.6〈重新整理的三分支〉檔案仍不存在列具名 `sourceFileStillMissingMessage`（S3-7）；§3.7〈導航跳轉與退出〉展開列補選擇其他轉場（S3-8）；§1.4 標題移除計數字面、補 Ticket 主題節與破洞報告分節兩列（S3-9 + C3）；§2.7 首段補原始檔已消失承載說明、阻擋狀態欄補降級檢視出口（S3-10）；§2.11 阻擋狀態列組成補降級檢視出口、補「原始檔已消失」列（S3-11）；§2.13 #2、#3 現行條文欄與段末「四處」改列全部位置且不寫數字（S3-12 + 部分 C 系列）；§2.2 外部開啟契約首段補泳道開啟原始檔且不寫「四處」（S3-13 + C4）；FR-13 驗收錨點集擴為六項且不寫「十二個組合」（S3-14 + C6）；§3.4／§2.11 兩處「S1–S7」改「S1–S8」（S3-15 + C7）；§2.1 新增〈未列轉換的預設〉段（S3-P1）；§2.4 段前補殼層常駐出口通則句、§4 表前「各列另含通則返回」段改列三項殼層通則出口（S1-P2）；§3.3〈互動反應〉跳轉破洞報告列觸發欄限定渲染條件、〈導航跳轉與退出〉鏈路斷裂列刪 `action-traceability-goto-gaps`（S3-P2）；frontmatter `related_specs` 補 SPEC-004（UC-P2）；§4 表 #3、#9～#11、#13～#19、#22～#24、#26、#31 的「SPEC-001 退出路徑」欄以 `0.1.0-W3-335.60` 落檔後的 SPEC-001 v1.15 原文逐字重抄（3-21），對應「導航反應」欄同步補齊各列缺列項（3-02～3-04、3-18～3-20、3-22）。另依本票 Problem Analysis PM 併入項：§3.4〈導航跳轉與退出〉載入中列、§3.5〈導航跳轉與退出〉掃描中列與 §4 #16、#21 補 `project-switcher-entry` 恆可點明文（S1-P2 前提補明文）；「無提案」狀態錨點（產品碼 `state-traceability-no-proposal` vs 本檔 `state-traceability-empty`）因需改動產品碼，本票不動，見票面 NeedsContext。重跑 `0.1.0-W3-335.54` `matrix.py`／`counts.py` 稽核腳本結果記錄於本票 Completion Info |
