@@ -42,6 +42,7 @@ void main() {
         events: events,
         carrierPathQueryAvailable: true,
         undeterminedCount: 0,
+        reason: UndeterminedGapReason.noPathPattern,
       );
 
       expect(result, isA<GapsDetected>());
@@ -70,6 +71,7 @@ void main() {
         events: const [],
         carrierPathQueryAvailable: true,
         undeterminedCount: 0,
+        reason: UndeterminedGapReason.noPathPattern,
       );
 
       expect(result, isA<GapsDetected>());
@@ -91,6 +93,7 @@ void main() {
         events: events,
         carrierPathQueryAvailable: true,
         undeterminedCount: 0,
+        reason: UndeterminedGapReason.noPathPattern,
       );
 
       expect(result, isA<GapsDetected>());
@@ -104,6 +107,7 @@ void main() {
         events: [_singleMatchEvent(path: 'docs/a.md', type: 'Proposal')],
         carrierPathQueryAvailable: true,
         undeterminedCount: 0,
+        reason: UndeterminedGapReason.noPathPattern,
       );
 
       expect(result, isA<GapsDetected>());
@@ -177,6 +181,7 @@ void main() {
         events: events,
         carrierPathQueryAvailable: true,
         undeterminedCount: 0,
+        reason: UndeterminedGapReason.noPathPattern,
       );
 
       expect(result, isA<GapsDetected>());

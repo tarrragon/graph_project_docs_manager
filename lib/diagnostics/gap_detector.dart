@@ -18,12 +18,16 @@ import 'parse_failure_gap.dart';
 /// （FR-08〈規則〉第 2 項）；[undeterminedCount] 對應 FR-07「失敗檔中
 /// 未判定的數量」，直接採信呼叫端提供的計數，改為必填避免預設值 0
 /// 靜默吃掉真實數量（0.3.0-W4-001 Phase 4 耦合審查）。[reason] 為無法
-/// 判定的原因碼，由呼叫端依實際觸發情境指定；查詢可用時不使用本參數。
+/// 判定的原因碼，同樣改為必填：預設值會讓「專案版本高於內建」與「無
+/// 路徑模式」兩種情境在呼叫端漏傳時被靜默標成錯的原因碼，與
+/// [undeterminedCount] 的必填理由相同（不因查詢可用時本參數不生效而
+/// 放寬）。兩種原因的實際判定邏輯在 Schema domain（Diagnostics 不
+/// import Schema，依賴邊已刪），映射交由編排層負責。
 GapDetectionResult detectParseFailureGaps({
   required List<ParseFailureEvent> events,
   required bool carrierPathQueryAvailable,
   required int undeterminedCount,
-  UndeterminedGapReason reason = UndeterminedGapReason.noPathPattern,
+  required UndeterminedGapReason reason,
 }) {
   if (!carrierPathQueryAvailable) {
     return Undetermined(undeterminedCount: undeterminedCount, reason: reason);
