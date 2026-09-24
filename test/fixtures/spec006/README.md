@@ -117,10 +117,10 @@ usable 檔案逐一比對後的獨立量測結果。
 `classify_file`（依附加測試專用合成型別 `SyntheticTie`／`ClashB` 的型別表，
 兩者模式皆只命中特定合成路徑／id，不影響真實語料分類）分類，`path` 欄位帶
 `<專案>/<相對路徑>` 前綴、`project` 欄位記來源專案，`synthetic: false`；再
-以 `_synthetic_it2_rows()` 附加 5 筆合成補充列（`synthetic: true`），補齊
+以 `_synthetic_it2_rows()` 附加 6 筆合成補充列（`synthetic: true`），補齊
 語料中缺席的類別。
 
-**列數**：7471（真實 7466 + 合成 5）。
+**列數**：7472（真實 7466 + 合成 6）。
 
 **合成補充列涵蓋的缺席類別**（語料全量掃描後確認缺席，見上節「差異來源」）：
 
@@ -131,6 +131,7 @@ usable 檔案逐一比對後的獨立量測結果。
 | 命中 carrier 的 `unreadable_encoding` | `docs/usecases/UC-99-synthetic.md` → UC |
 | 多型別衝突（平手，`gap`） | `docs/proposals/PROP-998-tie.md`，PROP 與 SyntheticTie 具體度打平 |
 | `id_pattern` 互斥被打破（`non_node`） | `docs/spec/corpus/id-clash-synthetic.md`，`id: SPEC-999` 同時命中 SPEC 與 ClashB |
+| 多型別命中、依具體度分出型別的失敗檔（`gap`，0.3.0-W3-530） | `docs/spec/synthetic-domain/domain-map.md`，無 frontmatter，同時命中 DomainBundle（[3,0]）與 SPEC（[2,0]），依具體度歸 DomainBundle（非平手，`schema_ambiguous: false`） |
 
 真實語料已涵蓋的類別（不需合成）：`no_frontmatter` 命中 carrier（40 筆真破洞）、
 `yaml_error` 命中 carrier（1 筆）、`unreadable_encoding` 未命中（1 筆）、
@@ -143,14 +144,14 @@ SPEC 62、Ticket 4497、EVT 5、UC 39、PROP 48、FlowStep 1，`FlowStep` 命中
 assert 驗證，見下方實測結果）：
 
 ```
-total_files=7471, real_files=7466, synthetic_files=5
+total_files=7472, real_files=7466, synthetic_files=6
 node_count=4676, non_node_count=1498
-failure_reason_counts={no_frontmatter:1292, yaml_error:1, unreadable_encoding:2, unclosed:1, empty_or_non_map:1}
-gap_count=45, unmatched_count=1252, unjudged_count=0
+failure_reason_counts={no_frontmatter:1293, yaml_error:1, unreadable_encoding:2, unclosed:1, empty_or_non_map:1}
+gap_count=46, unmatched_count=1252, unjudged_count=0
 ```
 
-守恆式 1：7471 = 4676 + 1498 + (1292+1+2+1+1=1297) 。
-守恆式 2：1297 = 45 + 1252 + 0 。兩者皆由程式內 `assert` 通過。
+守恆式 1：7472 = 4676 + 1498 + (1293+1+2+1+1=1298) 。
+守恆式 2：1298 = 46 + 1252 + 0 。兩者皆由程式內 `assert` 通過。
 
 **型別表凍結副本**：`header.type_table` 為凍結時所用的完整型別表（真實
 `tracking_schema.json` 的 `node_types` + 兩個合成型別），避免上游改動使凍結

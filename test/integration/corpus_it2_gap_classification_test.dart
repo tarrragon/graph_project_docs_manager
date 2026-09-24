@@ -3,7 +3,7 @@
 /// 獨立參照實作輸出比對，需求：[SPEC-006 FR-01、FR-05、FR-06、FR-08；
 /// SPEC-006 D3；test-design §2.2 IT2-A1～IT2-A6]。
 ///
-/// 測資：`test/fixtures/spec006/it2/manifest.json`（凍結，7471 列，見同
+/// 測資：`test/fixtures/spec006/it2/manifest.json`（凍結，7472 列，見同
 /// 目錄 `test/fixtures/spec006/README.md`）。manifest `path` 欄帶
 /// `<專案>/<相對路徑>` 前綴（`synthetic` 專案除外，本身已是 `docs/...`），
 /// 每個專案需要獨立工作區根才能各自只掃該專案的 `docs/`（[scanCorpus]
@@ -11,12 +11,12 @@
 /// 再以專案前綴回組出與 manifest `path` 一致的鍵集合做逐列比對。
 ///
 /// manifest 未保留真實 `id`（`shape: usable` 且 `node` 的 6174 列，見
-/// `manifest_materializer.dart` `kSyntheticNodeIds`），本檔的 [_missingCoverageCategories]
-/// 亦因此發現一項 test-design §2.2〈樣本覆蓋〉表列的真實缺口：真實語料
-/// 與 W2-002 的 5 筆合成補充皆未涵蓋「多型別命中、具體度可分出者」的
-/// 失敗檔類別（`docs/spec/<d>/domain-map.md` 無 frontmatter 同時命中
-/// DomainBundle 與 SPEC、以具體度分出 DomainBundle 的案例）——IT2-A5 對此
-/// 據實斷言缺口存在，不掩蓋，回報見票面。
+/// `manifest_materializer.dart` `kSyntheticNodeIds`）。0.3.0-W3-530 已在
+/// `_synthetic_it2_rows()` 補第 6 筆合成列，涵蓋 test-design §2.2〈樣本
+/// 覆蓋〉表列的「多型別命中、具體度可分出者」失敗檔類別（
+/// `docs/spec/<d>/domain-map.md` 無 frontmatter 同時命中 DomainBundle 與
+/// SPEC、以具體度分出 DomainBundle 的案例）；本檔 [_missingCoverageCategories]
+/// 七類自此齊全，見 IT2-A5。
 library;
 
 import 'dart:io';
@@ -431,25 +431,34 @@ void main() {
   });
 
   group('IT2-A5 manifest 覆蓋檢查（守衛，E2）', () {
-    test('已知涵蓋類別齊全；唯一已知缺口為「多型別命中、具體度可分出者」', () {
+    test('七類齊全；0.3.0-W3-530 已補「多型別命中、具體度可分出者」合成列', () {
       final missing = _missingCoverageCategories(manifest.rows, typeTable);
 
-      // 已知缺口（票面回報，非本票可修改範圍：manifest.json 由
-      // 0.3.0-W2-002 凍結）：真實語料的 5 個 domain-map.md 皆有可用
-      // frontmatter，5 筆合成補充也未涵蓋此類，test-design §2.2〈樣本
-      // 覆蓋〉表要求的「docs/spec/<d>/domain-map.md 無 frontmatter →
-      // DomainBundle（不是 SPEC）」案例目前不存在於凍結 manifest 中。
-      expect(missing, {'多型別命中、具體度可分出者的失敗檔'});
+      // 0.3.0-W3-530：manifest 新增第 6 筆合成列
+      // `docs/spec/synthetic-domain/domain-map.md`（無 frontmatter，同時
+      // 命中 DomainBundle [3,0] 與 SPEC [2,0]，依具體度歸 DomainBundle，
+      // 非平手）。test-design §2.2〈樣本覆蓋〉七類自此齊全。
+      expect(missing, isEmpty);
     });
 
-    test('正向對照：移除平手列後，覆蓋檢查回報缺漏（含新缺口）', () {
-      final withoutTie = manifest.rows
-          .where(
-            (r) => !(r.expected.kind == 'gap' && r.expected.schemaAmbiguous),
-          )
-          .toList();
+    test('正向對照：移除平手列與具體度分出列後，覆蓋檢查回報缺漏（含新缺口）', () {
+      // 0.3.0-W3-530：具體度分出列（gap、schema_ambiguous=false、命中路徑
+      // 多型別）與平手列（gap、schema_ambiguous=true）分屬不同缺口類別，
+      // 須一併移除才能同時觸發兩者缺漏。
+      final withoutTieOrSpecificity = manifest.rows.where((r) {
+        if (r.expected.kind != 'gap') return true;
+        if (r.expected.schemaAmbiguous) return false;
+        final hitTypes = typeTable.pathParticipatingTypes.where(
+          (entry) => (entry.carrierPathPatterns ?? const <CarrierPathPattern>[])
+              .any((pattern) => pattern.toRegExp().hasMatch(r.relativePath)),
+        );
+        return hitTypes.length <= 1;
+      }).toList();
 
-      final missing = _missingCoverageCategories(withoutTie, typeTable);
+      final missing = _missingCoverageCategories(
+        withoutTieOrSpecificity,
+        typeTable,
+      );
 
       expect(
         missing,
