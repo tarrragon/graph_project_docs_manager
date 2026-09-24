@@ -2,16 +2,17 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
-**Version**: 1.22.4 — 依 #99 第三項裁決（2026-09-24）實作圖譜 schema 完整性集合語意（`tracking_schema.py` 端）：
-新增 `find_missing_completeness_fields()` 共用判斷（欄位必須存在，值可為 `None`／`[]`，用鍵存在而
-非真值判斷），並新增 PROP／SPEC／UC＝{id,title,status}、DomainBundle＝{id,domain} 識別與顯示最小集，
-連同既有 EVT／FlowStep 完整性集合併入 `COMPLETENESS_FIELDS` 總表；`validate.py` 的 EVT 完整性判定
-改讀 schema 集合，producers/consumers 非空規則保留為 EVT 附加規則；`test_tracking_schema_conformance.py`
-新增鑑別對照測試（鍵缺漏應紅、null／[] 應綠，改回真值判斷時 12 項翻紅）；`references/usecases.md` 的
-next／branch_from／return_to／emits／consumes 欄位表改寫為「欄位必須存在、值可為空」。Ticket 型別不在
-此設完整性集合，欄位權威在 ticket skill。**JSON 匯出未落地**：`doc schema export`（`commands/schema.py`）
-不在本票 where.files 宣告範圍內，`ticket track commit` 拒絕含此檔的提交；`completeness_fields`／
-`empty_allowed` 語意匯出至 `tracking_schema.json` 待補票擴大範圍後接續（見票 NeedsContext）。
+**Version**: 1.22.4 — 依 #99 第三項裁決（2026-09-24）實作圖譜 schema 完整性集合語意：
+`tracking_schema.py` 新增 `find_missing_completeness_fields()` 共用判斷（欄位必須存在，值可為
+`None`／`[]`，用鍵存在而非真值判斷），並新增 PROP／SPEC／UC＝{id,title,status}、DomainBundle＝
+{id,domain} 識別與顯示最小集，連同既有 EVT／FlowStep 完整性集合併入 `COMPLETENESS_FIELDS` 總表；
+`doc schema export` 匯出新增 `completeness_fields` 與 `completeness_semantics` 兩鍵，明示空值合法
+語意，`tracking_schema.json` 已重產同步；`validate.py` 的 EVT 完整性判定改讀 schema 集合，
+producers/consumers 非空規則保留為 EVT 附加規則；`test_tracking_schema_conformance.py` 新增鑑別
+對照測試（鍵缺漏應紅、null／[] 應綠，改回真值判斷時 12 項翻紅），`test_schema_export.py` 新增斷言
+確認 JSON 含兩鍵且 FlowStep 集合含 traverses；`references/usecases.md` 的 next／branch_from／
+return_to／emits／consumes 欄位表改寫為「欄位必須存在、值可為空」。Ticket 型別不在此設完整性集
+合，欄位權威在 ticket skill。
 
 **Version**: 1.22.3 — 修 doc 第 5 批出題判定發現的 8 則條文讀歪點（`component-library-spec-template.md`）：
 〈1. 形態因素矩陣〉多形態契約結構句改列 (1)(2)(3) 三類並補容器與子節加欄的差異理由（避免誤讀為容器

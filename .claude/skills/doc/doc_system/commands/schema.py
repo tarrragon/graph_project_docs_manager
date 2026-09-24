@@ -16,7 +16,21 @@ import json
 from pathlib import Path
 
 from doc_system.core.file_locator import FileLocator
-from doc_system.core.tracking_schema import GRAPH_EDGE_TYPES, GRAPH_NODE_TYPES
+from doc_system.core.tracking_schema import (
+    COMPLETENESS_FIELDS,
+    GRAPH_EDGE_TYPES,
+    GRAPH_NODE_TYPES,
+)
+
+# 完整性集合語意說明（#99 第三項裁決，2026-09-24）：隨 JSON 一併匯出，
+# 避免消費端只看到欄位清單、照字面實作成「值不能為空」。鍵名刻意避免
+# 使用單獨的 `required`，因為該詞在其他 schema 生態常隱含「非空」語意。
+COMPLETENESS_SEMANTICS = (
+    "completeness_fields 內每個型別的欄位清單代表：欄位必須存在於文件，"
+    "值可為 null 或空清單 []，代表明確沒有。這不是「值不能為空」——"
+    "更嚴格的值規則（例如 EVT 的 producers/consumers 不得為空）屬各型別"
+    "獨立的 validator 附加規則，不在此表示。"
+)
 
 # id_pattern 欄位的正則語法方言。這些字串是 Python `re` 語法，在 Dart
 # `RegExp` 下多數情況語意相同，但具名群組 / lookbehind / `\p{}` 等處語法
@@ -70,6 +84,10 @@ def build_schema_dict(project_root: Path | None = None) -> dict:
         "edge_types": {
             name: dict(fields) for name, fields in GRAPH_EDGE_TYPES.items()
         },
+        "completeness_fields": {
+            name: sorted(fields) for name, fields in COMPLETENESS_FIELDS.items()
+        },
+        "completeness_semantics": COMPLETENESS_SEMANTICS,
     }
 
 
