@@ -253,7 +253,7 @@ class _ScanAccumulator {
     }
 
     final lookup = lookupCarrierPath(table, path);
-    if (lookup is CarrierPathNoMatch) {
+    if (lookup is! CarrierPathHit) {
       noHitCount++;
       return;
     }

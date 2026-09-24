@@ -519,4 +519,18 @@ void main() {
       expect(table.isPathQueryAvailable, isFalse);
     });
   });
+
+  group('id_pattern 建構時預編譯（0.3.0-W3-540）', () {
+    test('同一 NodeTypeEntry 兩次取用 idRegExp 回傳同一個 RegExp 實例', () {
+      final entry = NodeTypeEntry(name: 'SPEC', idPattern: r'^SPEC-\d+$');
+
+      expect(identical(entry.idRegExp, entry.idRegExp), isTrue);
+    });
+
+    test('idPattern 為 null 時 idRegExp 亦為 null', () {
+      final entry = NodeTypeEntry(name: 'FlowStep');
+
+      expect(entry.idRegExp, isNull);
+    });
+  });
 }

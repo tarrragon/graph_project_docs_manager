@@ -56,13 +56,18 @@ class CarrierPathPattern {
 }
 
 /// 單一節點型別的型別表條目。
+///
+/// 建構時即編譯 [idPattern] 為 [idRegExp]（0.3.0-W3-540，比照
+/// [CarrierPathPattern] 的規則 2 做法）：呼叫端須確保 [idPattern] 可
+/// 編譯——`typeTableFromJson` 在解析時已驗證並拒收不合法的模式，不會建出
+/// 帶壞模式的 [NodeTypeEntry]（0.3.0-W3-531）。
 class NodeTypeEntry {
-  const NodeTypeEntry({
+  NodeTypeEntry({
     required this.name,
     this.carrierPathPatterns,
     this.idPattern,
     this.completenessFields = const <String>{},
-  });
+  }) : idRegExp = idPattern == null ? null : RegExp(idPattern);
 
   /// 型別名稱（如 `SPEC`、`DomainBundle`）。
   final String name;
@@ -75,11 +80,17 @@ class NodeTypeEntry {
   /// 語意不同（0.3.0-W3-531：壞模式拒收，不影響同型別其他合法模式）。
   final List<CarrierPathPattern>? carrierPathPatterns;
 
-  /// 判型用的 `id_pattern`（FR-03 使用，FR-06 查詢不需要）。
+  /// 判型用的 `id_pattern` 原始字串（FR-03 使用，FR-06 查詢不需要）。
   ///
   /// `typeTableFromJson` 於解析時已驗證此字串可被 [RegExp] 編譯；不合法
   /// 者拒收為 `null`，不會把無法編譯的字串交給消費端（0.3.0-W3-531）。
+  /// 對外 API 保留字串形態；判型時應改用 [idRegExp] 以避免重複編譯
+  /// （0.3.0-W3-540）。
   final String? idPattern;
+
+  /// 建構時已編譯好的 [idPattern]，重複取用為同一實例，不重新編譯
+  /// （0.3.0-W3-540）。`idPattern` 為 `null` 時本欄位亦為 `null`。
+  final RegExp? idRegExp;
 
   /// 完整性集合（FR-04 `lostFields` 使用，FR-06 查詢不需要）。
   final Set<String> completenessFields;
