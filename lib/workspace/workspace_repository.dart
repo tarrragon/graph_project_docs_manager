@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
@@ -128,6 +129,10 @@ class WorkspaceRepository {
   /// 分支——版號常數與遷移函式集中於此檔是決策的一部分，見
   /// `docs/tech-decisions.md` 同一補記段。
   static const _currentSchemaVersion = 1;
+
+  /// 最近專案清單 key（SPEC-005 §2.4）。與 [_pathKey] 分開儲存——沿用同一
+  /// 個偏好設定管道，不新增 port。
+  static const _recentProjectsKey = 'workspace.recentProjects';
 
   final DirectoryPathPicker _pickDirectoryPath;
   final WorkspacePreferencesPort _preferencesPort;
@@ -287,6 +292,133 @@ class WorkspaceRepository {
   int? _parseSchemaVersion(String? raw) {
     if (raw == null) return null;
     return int.tryParse(raw);
+  }
+
+  /// 讀取最近專案清單（SPEC-005 §2.4）。不拋例外：管道開不起來或內容損壞
+  /// 一律回空清單，失敗原因只進日誌（不互相抵扣，同 [restore] 契約）。
+  Future<List<RecentProject>> loadRecentProjects() async {
+    _log(
+      '讀取最近專案清單，key=$_recentProjectsKey', // i18n-exempt: 開發者 debug log
+    );
+    WorkspacePreferencesHandle handle;
+    try {
+      handle = await _preferencesPort.open();
+    } catch (e) {
+      _log(
+        '讀取最近專案清單失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
+        level: 900,
+        error: e,
+      );
+      return const [];
+    }
+    return _readRecentProjects(handle);
+  }
+
+  /// 新增或更新一筆最近專案（成功載入後呼叫，SPEC-005 §2.4「寫入時機」）：
+  /// 讀出現有清單、移除同 [path] 項、以目前時刻為 `lastOpenedAt` 插入頂端後
+  /// 整份寫回。清單損壞時以空清單為基底寫入（損壞內容被取代，見規格
+  /// 「損壞時不覆寫的邊界」），並記一筆 level 900 日誌使遺失可被觀測。
+  Future<bool> addRecentProject(String path) async {
+    _log('新增最近專案，path=$path'); // i18n-exempt: 開發者 debug log
+    WorkspacePreferencesHandle handle;
+    try {
+      handle = await _preferencesPort.open();
+    } catch (e) {
+      _log(
+        '新增最近專案失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
+        level: 900,
+        error: e,
+      );
+      return false;
+    }
+    final existing = _readRecentProjectsForWrite(handle);
+    final updated = [
+      RecentProject(path: path, lastOpenedAt: DateTime.now().toUtc()),
+      for (final project in existing)
+        if (project.path != path) project,
+    ];
+    final encoded = jsonEncode([
+      for (final project in updated)
+        {
+          'path': project.path,
+          'lastOpenedAt': project.lastOpenedAt.toIso8601String(),
+        },
+    ]);
+    try {
+      final success = await handle.writeString(_recentProjectsKey, encoded);
+      if (success) {
+        _log('已寫入最近專案清單，項數=${updated.length}'); // i18n-exempt: 開發者 debug log
+      } else {
+        _log(
+          '新增最近專案失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
+          level: 900,
+        );
+      }
+      return success;
+    } catch (e) {
+      _log('新增最近專案失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      return false;
+    }
+  }
+
+  /// [loadRecentProjects] 的讀取＋排序邏輯，共用已開啟的 [handle]。
+  List<RecentProject> _readRecentProjects(WorkspacePreferencesHandle handle) {
+    final raw = handle.readString(_recentProjectsKey);
+    if (raw == null) {
+      _log('最近專案清單不存在，回空清單'); // i18n-exempt: 開發者 debug log
+      return const [];
+    }
+    final parsed = _parseRecentProjects(raw);
+    if (parsed == null) {
+      _log(
+        '最近專案清單格式損壞，回空清單', // i18n-exempt: 開發者 debug log
+        level: 900,
+      );
+      return const [];
+    }
+    _log('已讀取最近專案清單，項數=${parsed.length}'); // i18n-exempt: 開發者 debug log
+    parsed.sort((a, b) => b.lastOpenedAt.compareTo(a.lastOpenedAt));
+    return parsed;
+  }
+
+  /// [addRecentProject] 用：讀取現有清單作為新項的基底，損壞時回空清單並
+  /// 記錄「以損壞內容為基底被取代」（SPEC-005 §2.4「損壞時不覆寫的邊界」）。
+  List<RecentProject> _readRecentProjectsForWrite(
+    WorkspacePreferencesHandle handle,
+  ) {
+    final raw = handle.readString(_recentProjectsKey);
+    if (raw == null) return const [];
+    final parsed = _parseRecentProjects(raw);
+    if (parsed == null) {
+      _log(
+        '既有最近專案清單損壞，以空清單為基底被取代', // i18n-exempt: 開發者 debug log
+        level: 900,
+      );
+      return const [];
+    }
+    return parsed;
+  }
+
+  /// 解析 `workspace.recentProjects` 的 JSON 內容；任何結構或型別不符皆
+  /// 視為整份損壞（不部分採用），回傳 `null` 供呼叫端統一處理。
+  List<RecentProject>? _parseRecentProjects(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return null;
+      final result = <RecentProject>[];
+      for (final item in decoded) {
+        if (item is! Map) return null;
+        final path = item['path'];
+        final lastOpenedAtRaw = item['lastOpenedAt'];
+        if (path is! String || lastOpenedAtRaw is! String) return null;
+        final lastOpenedAt = DateTime.tryParse(lastOpenedAtRaw);
+        if (lastOpenedAt == null) return null;
+        result.add(RecentProject(path: path, lastOpenedAt: lastOpenedAt));
+      }
+      return result;
+    } catch (e) {
+      return null;
+    }
   }
 
   /// 路徑字串會過期（資料夾被搬移、重新命名、刪除，或位於未掛載的磁碟），

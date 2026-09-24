@@ -1,6 +1,8 @@
 /// 專案切換浮層三個狀態測試（SPEC-001 §7；SPEC-004 §3.6；SPEC-003 §3.7）。
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart' show SnackBar;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -22,28 +24,79 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
 
-/// 固定回傳 [handle] 的假偏好設定管道；[handle] 為 `null` 時模擬
-/// `open()` 拋例外（對應 [ChooseFolderNotRemembered] 的持久化失敗分支）。
+/// 開啟即拋例外的假偏好設定管道，模擬管道本身不可用（對應
+/// [ChooseFolderNotRemembered] 的持久化失敗分支）。
 class _FakePreferencesPort implements WorkspacePreferencesPort {
-  _FakePreferencesPort({this.handle});
-  final WorkspacePreferencesHandle? handle;
+  const _FakePreferencesPort();
 
   @override
   Future<WorkspacePreferencesHandle> open() async {
-    final h = handle;
-    if (h == null) {
-      throw StateError('fake: preferences unavailable');
-    }
-    return h;
+    throw StateError('fake: preferences unavailable');
   }
 }
 
-class _FakePreferencesHandle implements WorkspacePreferencesHandle {
+/// 一組固定的 [RecentProject] 測試資料（SPEC-005 §2.4），取代先前的
+/// fixture（`0.2.1-W1-003`）。
+final _testRecentProjects = [
+  RecentProject(
+    path: '/fake/graph_project_docs_manager',
+    lastOpenedAt: DateTime.utc(2026, 9, 24),
+  ),
+  RecentProject(
+    path: '/fake/unipos',
+    lastOpenedAt: DateTime.utc(2026, 9, 20),
+  ),
+];
+
+/// 依 SPEC-005 §2.4 schema 編碼 [projects]，供假偏好設定管道回傳
+/// `workspace.recentProjects` key 的值。
+String _encodeRecentProjects(List<RecentProject> projects) => jsonEncode([
+      for (final project in projects)
+        {
+          'path': project.path,
+          'lastOpenedAt': project.lastOpenedAt.toIso8601String(),
+        },
+    ]);
+
+/// 固定回傳 [recentProjectsJson] 於 `workspace.recentProjects` key 的假
+/// 偏好設定管道，其餘 key 一律回傳 `null`（對應「從未選過資料夾」）。
+///
+/// `AppShell._restoreWorkspaceAndDetect` 啟動時一定會呼叫一次
+/// `loadRecentProjects()` 並覆寫 `recentProjectsProvider`（`0.2.1-W1-003`）
+/// ——測試若只用 `recentProjectsProvider.overrideWith(...)` 注入初始值，
+/// 會被這次啟動覆寫競態取代（未指定 `workspaceRepositoryProvider` 時預設
+/// 建構的 [WorkspaceRepository] 走真實 SharedPreferences，結果不可預期）。
+/// 本類別讓假 repository 的 `loadRecentProjects()` 收斂到與測試斷言一致
+/// 的清單，避免依賴計時。
+class _SeededPreferencesPort implements WorkspacePreferencesPort {
+  const _SeededPreferencesPort({this.recentProjectsJson});
+  final String? recentProjectsJson;
+
   @override
-  String? readString(String key) => null;
+  Future<WorkspacePreferencesHandle> open() async =>
+      _SeededPreferencesHandle(recentProjectsJson);
+}
+
+class _SeededPreferencesHandle implements WorkspacePreferencesHandle {
+  const _SeededPreferencesHandle(this.recentProjectsJson);
+  final String? recentProjectsJson;
+
+  @override
+  String? readString(String key) =>
+      key == 'workspace.recentProjects' ? recentProjectsJson : null;
 
   @override
   Future<bool> writeString(String key, String value) async => true;
+}
+
+/// 只用於固定 `loadRecentProjects()` 結果的假 repository（不涉及
+/// `chooseFolder()` 行為），供只需渲染最近專案清單的測試使用。
+WorkspaceRepository _fakeRepositoryWithRecents(List<RecentProject> recents) {
+  return WorkspaceRepository(
+    preferencesPort: _SeededPreferencesPort(
+      recentProjectsJson: _encodeRecentProjects(recents),
+    ),
+  );
 }
 
 /// 固定回傳 [probeExists] 的假資料夾探測；`readFirstEntry` 恆為空資料夾成功路徑。
@@ -84,35 +137,58 @@ final _gateDetectionOverrides = <Override>[
 ];
 
 /// 組成一個回傳 [ChooseFolderSelected]／[ChooseFolderNotRemembered]（皆包
-/// [WorkspaceReady]）的假 repository：選取固定路徑、探測回報可用。
-WorkspaceRepository _fakeRepositoryReady({bool rememberSucceeds = true}) {
+/// [WorkspaceReady]）的假 repository：選取固定路徑、探測回報可用；
+/// `loadRecentProjects()` 回傳 [recentProjects]（預設空清單，見
+/// `_SeededPreferencesPort` 文件的競態說明）。
+WorkspaceRepository _fakeRepositoryReady({
+  bool rememberSucceeds = true,
+  List<RecentProject> recentProjects = const [],
+}) {
   return WorkspaceRepository(
     pickDirectoryPath: () async => '/fake/workspace',
     preferencesPort: rememberSucceeds
-        ? _FakePreferencesPort(handle: _FakePreferencesHandle())
+        ? _SeededPreferencesPort(
+            recentProjectsJson: _encodeRecentProjects(recentProjects),
+          )
         : _FakePreferencesPort(),
     directoryProbe: _FakeDirectoryProbePort(probeExists: true),
   );
 }
 
 /// 選取後探測失敗（資料夾不存在）的假 repository。
-WorkspaceRepository _fakeRepositoryUnavailable() {
+WorkspaceRepository _fakeRepositoryUnavailable({
+  List<RecentProject> recentProjects = const [],
+}) {
   return WorkspaceRepository(
     pickDirectoryPath: () async => '/fake/missing',
-    preferencesPort: _FakePreferencesPort(handle: _FakePreferencesHandle()),
+    preferencesPort: _SeededPreferencesPort(
+      recentProjectsJson: _encodeRecentProjects(recentProjects),
+    ),
     directoryProbe: _FakeDirectoryProbePort(probeExists: false),
   );
 }
 
 /// 使用者取消選取的假 repository（`pickDirectoryPath` 回傳 `null`）。
-WorkspaceRepository _fakeRepositoryCancelled() {
-  return WorkspaceRepository(pickDirectoryPath: () async => null);
+WorkspaceRepository _fakeRepositoryCancelled({
+  List<RecentProject> recentProjects = const [],
+}) {
+  return WorkspaceRepository(
+    pickDirectoryPath: () async => null,
+    preferencesPort: _SeededPreferencesPort(
+      recentProjectsJson: _encodeRecentProjects(recentProjects),
+    ),
+  );
 }
 
 /// 選取面板本身開不起來的假 repository（`pickDirectoryPath` 拋例外）。
-WorkspaceRepository _fakeRepositoryPickerUnavailable() {
+WorkspaceRepository _fakeRepositoryPickerUnavailable({
+  List<RecentProject> recentProjects = const [],
+}) {
   return WorkspaceRepository(
     pickDirectoryPath: () async => throw PlatformException(code: 'unavailable'),
+    preferencesPort: _SeededPreferencesPort(
+      recentProjectsJson: _encodeRecentProjects(recentProjects),
+    ),
   );
 }
 
@@ -134,7 +210,15 @@ void main() {
     });
 
     testWidgets('點擊入口展開浮層', (tester) async {
-      await pumpApp(tester);
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+        ],
+      );
 
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
       await tester.pumpAndSettle();
@@ -144,8 +228,16 @@ void main() {
   });
 
   group('展開態', () {
-    testWidgets('渲染 fixture 最近專案清單，每項為 RecentProjectItem', (tester) async {
-      await pumpApp(tester);
+    testWidgets('渲染持久化最近專案清單，每項為 RecentProjectItem', (tester) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+        ],
+      );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
       await tester.pumpAndSettle();
 
@@ -156,7 +248,15 @@ void main() {
     });
 
     testWidgets('Esc 收合浮層', (tester) async {
-      await pumpApp(tester);
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+        ],
+      );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
       await tester.pumpAndSettle();
 
@@ -167,7 +267,15 @@ void main() {
     });
 
     testWidgets('點外部收合浮層', (tester) async {
-      await pumpApp(tester);
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+        ],
+      );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
       await tester.pumpAndSettle();
 
@@ -186,7 +294,7 @@ void main() {
       // 項」而非「點在浮層自身空白區」。
       await pumpApp(
         tester,
-        overrides: [recentProjectsProvider.overrideWithValue(const [])],
+        overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
       );
       final element = tester.element(find.byType(app_shell.AppShell));
       final container = ProviderScope.containerOf(element);
@@ -205,13 +313,18 @@ void main() {
       expect(container.read(selectedDestinationProvider), before);
     });
 
-    testWidgets('選擇項目後浮層收合且 currentProjectIndexProvider 改變', (
+    testWidgets('選擇項目後浮層收合且 currentWorkspaceStateProvider 改變為該項路徑', (
       tester,
     ) async {
       late ProviderContainer container;
       await pumpApp(
         tester,
-        overrides: [],
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+        ],
       );
       final element = tester.element(find.byType(app_shell.AppShell));
       container = ProviderScope.containerOf(element);
@@ -223,7 +336,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
-      expect(container.read(currentProjectIndexProvider), 1);
+      final state = container.read(currentWorkspaceStateProvider);
+      expect(state, isA<WorkspaceReady>());
+      expect(
+        (state as WorkspaceReady).path,
+        _testRecentProjects[1].path,
+      );
     });
 
     testWidgets(
@@ -233,6 +351,10 @@ void main() {
         await pumpApp(
           tester,
           overrides: [
+            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+            workspaceRepositoryProvider.overrideWithValue(
+              _fakeRepositoryWithRecents(_testRecentProjects),
+            ),
             degradedSchemaProvider.overrideWith((ref) => true),
             degradedSchemaVersionsProvider.overrideWith(
               (ref) => const DegradedSchemaVersions(
@@ -271,7 +393,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWithValue(const []),
+          recentProjectsProvider.overrideWith((ref) => const []),
         ],
       );
 
@@ -294,7 +416,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWithValue(const []),
+          recentProjectsProvider.overrideWith((ref) => const []),
         ],
       );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
@@ -315,7 +437,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWithValue(const []),
+          recentProjectsProvider.overrideWith((ref) => const []),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryReady(),
           ),
@@ -342,8 +464,9 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
           workspaceRepositoryProvider.overrideWithValue(
-            _fakeRepositoryCancelled(),
+            _fakeRepositoryCancelled(recentProjects: _testRecentProjects),
           ),
         ],
         settle: false,
@@ -366,8 +489,11 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
           workspaceRepositoryProvider.overrideWithValue(
-            _fakeRepositoryPickerUnavailable(),
+            _fakeRepositoryPickerUnavailable(
+              recentProjects: _testRecentProjects,
+            ),
           ),
         ],
         settle: false,
@@ -459,8 +585,9 @@ void main() {
         await pumpApp(
           tester,
           overrides: [
+            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
             workspaceRepositoryProvider.overrideWithValue(
-              _fakeRepositoryUnavailable(),
+              _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
             ),
           ],
           settle: false,

@@ -32,7 +32,9 @@ SwitcherOverlay buildProjectSwitcherOverlay({
 }) {
   final l10n = AppLocalizations.of(context);
   final projects = ref.watch(recentProjectsProvider);
-  final currentIndex = ref.watch(currentProjectIndexProvider);
+  final workspaceState = ref.watch(currentWorkspaceStateProvider);
+  final currentPath =
+      workspaceState is WorkspaceReady ? workspaceState.path : null;
   final hasItems = projects.isNotEmpty;
 
   return SwitcherOverlay(
@@ -43,7 +45,7 @@ SwitcherOverlay buildProjectSwitcherOverlay({
           ref: ref,
           project: projects[i],
           index: i,
-          isCurrent: i == currentIndex,
+          isCurrent: projects[i].path == currentPath,
         ),
     ],
     chooseOther: AppButton(
@@ -65,39 +67,35 @@ SwitcherOverlay buildProjectSwitcherOverlay({
 RecentProjectItem _buildRecentProjectItem({
   required AppLocalizations l10n,
   required WidgetRef ref,
-  required RecentProjectFixture project,
+  required RecentProject project,
   required int index,
   required bool isCurrent,
 }) {
+  // 節點數／票數摘要與健康徽章計數來源為真實 domain 掃描結果，0.1 尚未
+  // 接線（SPEC-001 §7 註記：「計數來源... 不在本輪範圍」）；可用性探測
+  // （SPEC-003 §3.7〈生命週期〉展開時逐項探測）亦非本票範圍——本票只把
+  // 標籤與清單資料來源改為 [WorkspaceRepository] 持久化資料，故本票一律
+  // `enabled: true`、不渲染健康徽章（`0.2.1-W1-003`）。
   return RecentProjectItem(
-    name: project.name,
-    summary: l10n.projectSummaryLabel(project.nodeCount, project.ticketCount),
-    enabled: project.enabled,
+    name: folderNameOf(project.path),
+    summary: l10n.projectSummaryLabel(0, 0),
+    enabled: true,
     isCurrent: isCurrent,
-    reason: project.enabled
-        ? null
-        : l10n.projectUnavailableReasonLabel(l10n.probeTimeoutReason),
-    health: project.healthIssueCount > 0
-        ? Badge.health(
-            key: Key('badge-switcher-health-$index'),
-            count: project.healthIssueCount,
-            semanticLabel: l10n.healthBadgeA11yLabel(project.healthIssueCount),
-          )
-        : null,
-    onTap: () => _selectProject(ref, index),
+    reason: null,
+    health: null,
+    onTap: () => _selectProject(ref, project),
     testKey: Key('card-switcher-recent-$index'),
   );
 }
 
-void _selectProject(WidgetRef ref, int index) {
-  ref.read(currentProjectIndexProvider.notifier).state = index;
+void _selectProject(WidgetRef ref, RecentProject project) {
+  ref.read(currentWorkspaceStateProvider.notifier).state =
+      WorkspaceReady(project.path);
   ref.read(switcherOpenProvider.notifier).state = false;
   // 寫入端接線（0.1.0-W2-014）：切換專案重置降級旗標（SPEC-001 §1「切換
   // 專案時旗標重置」）。0.2.0-W1-042 同步重置推定版本旗標——與降級旗標
   // 同一契約（比照 `gate_detection_notifier.dart` 的
-  // `inferredVersionProvider` 文件）。最近專案清單為 fixture 資料
-  // （`project_switcher_providers.dart`）不帶真實路徑，故本路徑不呼叫
-  // detect()：無路徑可偵測。
+  // `inferredVersionProvider` 文件）。
   ref.read(degradedSchemaProvider.notifier).state = false;
   ref.read(degradedSchemaVersionsProvider.notifier).state = null;
   ref.read(inferredVersionProvider.notifier).state = null;
@@ -153,10 +151,12 @@ Future<void> _handleChosenState(
 ) async {
   switch (state) {
     case WorkspaceReady(:final path):
+      ref.read(currentWorkspaceStateProvider.notifier).state = state;
       ref.read(degradedSchemaProvider.notifier).state = false;
       ref.read(degradedSchemaVersionsProvider.notifier).state = null;
       ref.read(inferredVersionProvider.notifier).state = null;
       await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
+      await _persistRecentProjectSelection(ref, path);
       if (!context.mounted) return;
       _dismiss(ref);
     case WorkspaceUnavailable(:final reason):
@@ -171,4 +171,16 @@ Future<void> _handleChosenState(
       // 不做動作（sealed class 窮盡分支，非預期路徑僅為編譯期保證）。
       break;
   }
+}
+
+/// 成功載入後寫入最近專案清單（SPEC-005 §2.4「寫入時機：成功載入後」；
+/// SPEC-003 §3.7〈互動反應〉「成功載入後該項移至頂端」）。寫入失敗
+/// （`addRecentProject` 回 `false`）不影響本次載入結果，失敗原因已由
+/// repository 內部記錄，此處不重試、不改變浮層或畫面狀態。
+Future<void> _persistRecentProjectSelection(WidgetRef ref, String path) async {
+  final repository = ref.read(workspaceRepositoryProvider);
+  final success = await repository.addRecentProject(path);
+  if (!success) return;
+  final updated = await repository.loadRecentProjects();
+  ref.read(recentProjectsProvider.notifier).state = updated;
 }

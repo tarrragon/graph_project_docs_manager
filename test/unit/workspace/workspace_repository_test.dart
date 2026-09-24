@@ -589,6 +589,153 @@ void main() {
       expect((result as WorkspaceReady).path, '/tmp/ok');
     });
   });
+
+  group('G7｜loadRecentProjects／addRecentProject（SPEC-005 §2.4）', () {
+    test('G7-1 key 不存在 → 空清單', () async {
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(values: {}),
+      );
+
+      final result = await repo.loadRecentProjects();
+
+      expect(result, isEmpty);
+    });
+
+    test('G7-2 成功讀取，依 lastOpenedAt 降冪排序（不信任儲存順序）', () async {
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(
+          values: {
+            'workspace.recentProjects': '''
+[
+  {"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z"},
+  {"path": "/tmp/b", "lastOpenedAt": "2026-09-24T01:25:50.000Z"}
+]
+''',
+          },
+        ),
+      );
+
+      final result = await repo.loadRecentProjects();
+
+      expect(result.map((p) => p.path).toList(), ['/tmp/b', '/tmp/a']);
+    });
+
+    test('G7-3 JSON 解析失敗（非陣列）→ 空清單 + level 900 日誌', () async {
+      final log = _LogRecorder();
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(
+          values: {'workspace.recentProjects': '{"not": "an array"}'},
+        ),
+        logSink: log.call,
+      );
+
+      final result = await repo.loadRecentProjects();
+
+      expect(result, isEmpty);
+      expect(log.entries.any((e) => e.level == 900), isTrue);
+    });
+
+    test('G7-4 元素缺欄位（型別不符）→ 整份視為損壞，回空清單', () async {
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(
+          values: {
+            'workspace.recentProjects': '[{"path": "/tmp/a"}]',
+          },
+        ),
+      );
+
+      final result = await repo.loadRecentProjects();
+
+      expect(result, isEmpty);
+    });
+
+    test('G7-5 開啟儲存管道例外 → 空清單', () async {
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakePreferencesPort(
+          openError: Exception('讀取失敗'),
+        ),
+      );
+
+      final result = await repo.loadRecentProjects();
+
+      expect(result, isEmpty);
+    });
+
+    test('G7-6 addRecentProject 首次寫入（原清單為空）', () async {
+      final values = <String, String?>{};
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(values: values),
+      );
+
+      final success = await repo.addRecentProject('/tmp/new');
+
+      expect(success, isTrue);
+      final reloaded = await repo.loadRecentProjects();
+      expect(reloaded.map((p) => p.path).toList(), ['/tmp/new']);
+    });
+
+    test('G7-7 addRecentProject 同 path 去重並移至頂端', () async {
+      final values = <String, String?>{
+        'workspace.recentProjects': '''
+[
+  {"path": "/tmp/a", "lastOpenedAt": "2026-09-24T01:00:00.000Z"},
+  {"path": "/tmp/b", "lastOpenedAt": "2026-09-20T01:00:00.000Z"}
+]
+''',
+      };
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(values: values),
+      );
+
+      final success = await repo.addRecentProject('/tmp/b');
+
+      expect(success, isTrue);
+      final reloaded = await repo.loadRecentProjects();
+      expect(reloaded.length, 2);
+      expect(reloaded.first.path, '/tmp/b');
+    });
+
+    test('G7-8 addRecentProject 讀到損壞內容以空清單為基底寫入 + level 900 日誌',
+        () async {
+      final log = _LogRecorder();
+      final values = <String, String?>{
+        'workspace.recentProjects': '{"not": "an array"}',
+      };
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(values: values),
+        logSink: log.call,
+      );
+
+      final success = await repo.addRecentProject('/tmp/new');
+
+      expect(success, isTrue);
+      final reloaded = await repo.loadRecentProjects();
+      expect(reloaded.map((p) => p.path).toList(), ['/tmp/new']);
+      expect(log.entries.any((e) => e.level == 900), isTrue);
+    });
+
+    test('G7-9 addRecentProject 開啟儲存管道例外 → false', () async {
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakePreferencesPort(
+          openError: Exception('開不起來'),
+        ),
+      );
+
+      final success = await repo.addRecentProject('/tmp/new');
+
+      expect(success, isFalse);
+    });
+
+    test('G7-10 addRecentProject 寫入回報 false → false', () async {
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakePreferencesPort(writeResult: false),
+      );
+
+      final success = await repo.addRecentProject('/tmp/new');
+
+      expect(success, isFalse);
+    });
+  });
 }
 
 // ============================================================

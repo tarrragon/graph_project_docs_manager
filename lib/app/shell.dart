@@ -76,6 +76,12 @@ class _AppShellState extends ConsumerState<AppShell>
     final repository = ref.read(workspaceRepositoryProvider);
     final state = await repository.restore();
     if (!mounted) return;
+    ref.read(currentWorkspaceStateProvider.notifier).state = state;
+    // 最近專案清單與目前資料夾是否還原成功正交——即使 restore() 未還原到
+    // WorkspaceReady，清單本身（SPEC-005 §2.4）仍應載入供切換浮層使用。
+    final recentProjects = await repository.loadRecentProjects();
+    if (!mounted) return;
+    ref.read(recentProjectsProvider.notifier).state = recentProjects;
     if (state case WorkspaceReady(:final path)) {
       await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
     }

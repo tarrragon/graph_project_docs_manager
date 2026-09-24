@@ -78,6 +78,15 @@ class ChooseFolderNotRemembered extends ChooseFolderResult {
   final String reason;
 }
 
+/// 最近開啟過的專案（`workspace.recentProjects` JSON 陣列的單一元素，
+/// SPEC-005 §2.4）。[path] 為資料夾絕對路徑，[lastOpenedAt] 為 UTC 時間，
+/// 供清單依最近一次開啟時間降冪排序。
+class RecentProject {
+  const RecentProject({required this.path, required this.lastOpenedAt});
+  final String path;
+  final DateTime lastOpenedAt;
+}
+
 /// `workspace.schemaVersion` 讀取後的遷移判定結果（`0.2.0-W1-021`）。
 ///
 /// 三種結局刻意不共用同一個 `path` 欄位形狀（見 [SchemaMigrationFailed]
