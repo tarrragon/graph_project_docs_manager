@@ -24,6 +24,11 @@ enum DocsFileSystemEntryKind {
   /// 符號連結（不論指向檔案或目錄）：掃描器不追蹤、不列入結果（FR-02
   /// 規則：不追符號連結，避免迴圈與重複計數）。
   symlink,
+
+  /// 非目錄、非檔案、非符號連結的項目（如具名管線、socket）。掃描器待遇
+  /// 與 [symlink] 相同（略過、不遞迴、不列入結果），但不冒稱 [symlink]，
+  /// 避免掃描結果誤導「這是一個連結」（0.3.0-W4-001 Phase 4 linux 審查）。
+  other,
 }
 
 /// 目錄底下的一個直接子項。
@@ -96,13 +101,16 @@ class DefaultDocsFileSystem implements DocsFileSystem {
 
   /// [FileSystemEntity.type] 以 `followLinks: false` 查詢，讓符號連結（不論
   /// 指向檔案或目錄）回報為 [FileSystemEntityType.link]，與 [directory.list]
-  /// 同一份 `followLinks: false` 語意一致，避免兩處判斷不同步。
+  /// 同一份 `followLinks: false` 語意一致，避免兩處判斷不同步。其餘型別
+  /// （具名管線、socket、`notFound` 等）歸為 [DocsFileSystemEntryKind.other]，
+  /// 不冒稱 symlink（0.3.0-W4-001 Phase 4 linux 審查）。
   Future<DocsFileSystemEntryKind> _kindOf(FileSystemEntity entity) async {
     final type = await FileSystemEntity.type(entity.path, followLinks: false);
     return switch (type) {
       FileSystemEntityType.directory => DocsFileSystemEntryKind.directory,
       FileSystemEntityType.file => DocsFileSystemEntryKind.file,
-      _ => DocsFileSystemEntryKind.symlink,
+      FileSystemEntityType.link => DocsFileSystemEntryKind.symlink,
+      _ => DocsFileSystemEntryKind.other,
     };
   }
 
@@ -126,16 +134,22 @@ class DefaultDocsFileSystem implements DocsFileSystem {
         level: 900,
         error: e,
       );
-      return DocsReadFailure(_reasonFor(e));
+      return DocsReadFailure(reasonForFileSystemFailure(e));
     }
   }
+}
 
-  /// errno 對照：13 = EACCES（權限不足）；其餘（含 2 = ENOENT）保守歸類為
-  /// 檔案消失——列出後、讀取前變動的最常見表現即是檔案已不存在（FR-05）。
-  UnreadableReason _reasonFor(FileSystemException e) {
-    if (e.osError?.errorCode == 13) {
+/// errno 對照：1 = EPERM、13 = EACCES，兩者皆判為權限不足；其餘（含
+/// 2 = ENOENT、非 [FileSystemException] 的非預期例外）保守歸類為檔案
+/// 消失——列出後、讀取前變動的最常見表現即是檔案已不存在（FR-05）。與
+/// [CorpusScanner] 的兜底 catch（`corpus_scanner.dart`）共用同一份判斷，
+/// 避免非預期例外被兩處各自邏輯誤分類（0.3.0-W4-001 Phase 4 linux 審查）。
+UnreadableReason reasonForFileSystemFailure(Object error) {
+  if (error is FileSystemException) {
+    final errno = error.osError?.errorCode;
+    if (errno == 1 || errno == 13) {
       return UnreadableReason.permission;
     }
-    return UnreadableReason.fileDeleted;
   }
+  return UnreadableReason.fileDeleted;
 }

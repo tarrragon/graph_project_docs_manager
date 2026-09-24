@@ -6,6 +6,7 @@
 /// 消失，不重用任何真實 `dart:io` 物件。
 library;
 
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:graph_project_docs_manager/corpus/docs_file_system.dart';
@@ -17,6 +18,8 @@ class FakeDocsFileSystem implements DocsFileSystem {
   final Map<String, Uint8List> _files = <String, Uint8List>{};
   final Set<String> _permissionDenied = <String>{};
   final Set<String> _disappeared = <String>{};
+  final Map<String, int> _listDenied = <String, int>{};
+  final Map<String, Object> _readThrows = <String, Object>{};
 
   /// 新增一份檔案；沿途祖先目錄自動註冊為 [DocsFileSystemEntryKind.directory]。
   void addFile(String path, List<int> bytes) {
@@ -29,6 +32,45 @@ class FakeDocsFileSystem implements DocsFileSystem {
   void addSymlinkDirectory(String path) {
     _registerAncestorDirectories(path);
     _entries[path] = DocsFileSystemEntryKind.symlink;
+  }
+
+  /// 新增一個非目錄非檔案的項目（[DocsFileSystemEntryKind.other]，如具名
+  /// 管線或 socket）：會被列出，掃描器待遇與符號連結相同（略過、不遞迴），
+  /// 但不冒稱符號連結（0.3.0-W3-535）。
+  void addOtherEntry(String path) {
+    _registerAncestorDirectories(path);
+    _entries[path] = DocsFileSystemEntryKind.other;
+  }
+
+  /// 新增一個空目錄（沿途祖先目錄與自身皆註冊為
+  /// [DocsFileSystemEntryKind.directory]），供 [denyListPermission] 標記
+  /// 「無法列出」使用——沒有可讀內容，不需經由 [addFile] 間接註冊。
+  void addDirectory(String path) {
+    _registerAncestorDirectories('$path/_placeholder');
+  }
+
+  /// [path] 的列出回報無法列出（FR-02、NFR-01：目錄權限拒絕）。[errno]
+  /// 對照 POSIX errno：預設 13（EACCES），亦可傳 1（EPERM）——掃描器須將
+  /// 兩者皆判為權限不足（0.3.0-W3-535）。呼叫前 [path] 須已透過
+  /// [addDirectory] 或 [addFile] 的祖先自動註冊為目錄。
+  void denyListPermission(String path, {int errno = 13}) {
+    assert(
+      _entries[path] == DocsFileSystemEntryKind.directory,
+      'denyListPermission 前必須先是已知目錄：$path', // i18n-exempt: 測試 assert 訊息，非 UI 顯示字串
+    );
+    _listDenied[path] = errno;
+  }
+
+  /// [path] 的讀取直接拋出 [error]（而非回傳 [DocsReadFailure]），模擬
+  /// [DocsFileSystem] 實作違反 [DocsReadResult] 契約的非預期例外，供驗證
+  /// `corpus_scanner.dart` 兜底 catch 的分類邏輯（0.3.0-W3-535）。呼叫前
+  /// [path] 須已透過 [addFile] 加入，讓它仍出現在列出結果中。
+  void throwOnRead(String path, Object error) {
+    assert(
+      _entries[path] == DocsFileSystemEntryKind.file,
+      'throwOnRead 前必須先 addFile：$path', // i18n-exempt: 測試 assert 訊息，非 UI 顯示字串
+    );
+    _readThrows[path] = error;
   }
 
   /// [path] 的讀取回報權限拒絕（C9-3）。呼叫前 [path] 須已透過 [addFile]
@@ -67,6 +109,14 @@ class FakeDocsFileSystem implements DocsFileSystem {
 
   @override
   Future<List<DocsFileSystemEntry>> listEntries(String relativePath) async {
+    final deniedErrno = _listDenied[relativePath];
+    if (deniedErrno != null) {
+      throw FileSystemException(
+        '模擬列出失敗', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+        relativePath,
+        OSError('模擬列出失敗', deniedErrno), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+      );
+    }
     final children = _entries.entries
         .where((entry) => _parentOf(entry.key) == relativePath)
         .map((entry) => DocsFileSystemEntry(path: entry.key, kind: entry.value))
@@ -77,6 +127,10 @@ class FakeDocsFileSystem implements DocsFileSystem {
 
   @override
   Future<DocsReadResult> readBytes(String relativePath) async {
+    final thrown = _readThrows[relativePath];
+    if (thrown != null) {
+      throw thrown;
+    }
     if (_disappeared.contains(relativePath)) {
       return const DocsReadFailure(UnreadableReason.fileDeleted);
     }

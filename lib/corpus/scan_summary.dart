@@ -14,6 +14,7 @@ class ScanSummary {
     required this.noHitCount,
     required this.undeterminedCount,
     required this.carrierPathQueryAvailable,
+    this.unlistableDirectories = const <String>[],
   });
 
   /// 掃描到的檔案總數。刻意作為獨立觀測值傳入、不由其他欄位推導——讓
@@ -43,6 +44,11 @@ class ScanSummary {
   /// FR-06 規則 7：路徑對型別查詢是否可用（串接要求：供 Diagnostics 的
   /// `detectParseFailureGaps` 使用）。
   final bool carrierPathQueryAvailable;
+
+  /// FR-02：本輪掃描中無法列出的目錄（相對路徑），如沒有讀取權限。目錄內
+  /// 有幾個檔案本來就無從得知，不計入 [totalFilesScanned]，不影響守恆式
+  /// （用戶裁決 2026-09-24，Phase 4 審查）。
+  final List<String> unlistableDirectories;
 
   int get totalFailureCount =>
       failureReasonCounts.values.fold(0, (sum, count) => sum + count);
