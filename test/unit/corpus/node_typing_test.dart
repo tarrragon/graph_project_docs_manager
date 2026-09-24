@@ -54,6 +54,7 @@ void main() {
 
         expect(result, isA<NodeTypingNonNode>());
         expect((result as NodeTypingNonNode).schemaAmbiguous, isTrue);
+        expect(result.candidateTypes, ['Alpha', 'Beta']);
 
         // 正向對照：只留一型時，同一個 id 應判為該型（證明歧義來自「兩型
         // 同時命中」，不是 id 本身有問題）。
