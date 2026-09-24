@@ -84,6 +84,20 @@ versions:
       （本檔開頭）登記，不需要 PROP。首張路由票：schema 不相容面板改放
       「App 已知版本範圍」（SPEC-001 1.19 領先實作）。0.2.0 發版時，0.2.0 的
       非 blocker pending 依動詞前移至此或 0.3.0。
+      契約（2026-09-24 補寫，patch 契約形態依交辦 session 裁決 B，方法論條文另票）：
+      (1) 不變式：0.2.0 的 17 專案 gate manifest 整合測試仍通過。
+      (2) 收斂承諾（規格領先實作，逐條可 grep 對照）：
+        C1 SPEC-001 §1 schema 不相容列 +〈檢視詳情面板〉註記（1.19）、SPEC-004 4.23
+           withDetail 與 §4.0.6 schemaKnownRangeLabel（1.45）——面板為「App 已知版本
+           範圍：不高於 <內建版本>」一列；lib/ 無 schemaKnownRange 引用
+        C2 SPEC-003 §3.1「檢視 schema 詳情」列、§2.7 版本值顯示列、§2.4 降級徽章段
+           與 SPEC-001 1.19／SPEC-004 1.45 一致（規格間不一致亦屬條款未收斂）
+        C3 SPEC-001 §7 收合「側欄頂端顯示目前專案名」、展開「最近專案清單」——現行
+           由 RecentProjectFixture 驅動，與 WorkspaceState 無關
+        C4 SPEC-005 補 remove 回饋點與 §2.4 最近專案清單持久化（0.2.0-W1-023 S-21／
+           S-36 已定案未落規格），為 C3 實作的規格前置
+      (3) 缺陷修復：對 0.2.0 契約行為的回歸或缺陷——2026-09-24 審查（0.2.1-W1-048）
+          無已知項。
 
   - version: "0.3.0"
     codename: "Corpus"
