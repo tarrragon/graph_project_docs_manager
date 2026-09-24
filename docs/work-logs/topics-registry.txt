@@ -11,3 +11,4 @@ ticket CLI create lock 釋放路徑
 0.2 三路 gate
 0.2.1 gate 品質改善
 0.3.0 框架文件
+框架修復
