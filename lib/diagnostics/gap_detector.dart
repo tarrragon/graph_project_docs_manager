@@ -21,7 +21,7 @@ import 'parse_failure_gap.dart';
 /// PM 退回意見）。[undeterminedCount] 對應 FR-07「失敗檔中未判定的
 /// 數量」，直接採信呼叫端提供的計數，改為必填避免預設值 0 靜默吃掉
 /// 真實數量（0.3.0-W4-001 Phase 4 耦合審查）。兩種原因碼
-/// （[UndeterminedGapReason.projectVersionHigherThanBuiltin]／
+/// （[UndeterminedGapReason.projectVersionOutOfKnownRange]／
 /// [UndeterminedGapReason.noPathPattern]）的實際判定邏輯在 Schema
 /// domain（Diagnostics 不 import Schema，依賴邊已刪），映射交由編排層
 /// 負責。

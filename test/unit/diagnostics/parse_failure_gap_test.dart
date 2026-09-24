@@ -151,7 +151,7 @@ void main() {
         final result = detectParseFailureGaps(
           events: const [],
           undeterminedCount: 5,
-          unavailableReason: UndeterminedGapReason.projectVersionHigherThanBuiltin,
+          unavailableReason: UndeterminedGapReason.projectVersionOutOfKnownRange,
         );
 
         expect(result, isA<Undetermined>());
@@ -159,7 +159,7 @@ void main() {
         expect(undetermined.undeterminedCount, 5);
         expect(
           undetermined.reason,
-          UndeterminedGapReason.projectVersionHigherThanBuiltin,
+          UndeterminedGapReason.projectVersionOutOfKnownRange,
         );
       },
     );
