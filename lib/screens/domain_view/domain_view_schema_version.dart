@@ -23,6 +23,12 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// 版本比較單一實作住在 L0（`lib/schema/schema_version.dart`），本檔
+/// （L4 畫面狀態層）以 export 轉呼叫保留同名公開符號，供既有消費端
+/// （`domain_view_screen.dart` 等 6 檔）不改動即可繼續使用。
+export 'package:graph_project_docs_manager/schema/schema_version.dart'
+    show isHigherThanBuiltinSchemaVersion;
+
 /// 內嵌資產路徑（見 `pubspec.yaml` 的 `flutter.assets` 宣告）。
 const String builtinSchemaVersionAssetPath =
     'assets/schema/builtin_schema_version.json';
@@ -45,24 +51,6 @@ final builtinSchemaVersionProvider = FutureProvider<String>((ref) async {
   final data = jsonDecode(raw) as Map<String, dynamic>;
   return data['schema_generated_at_framework_version'] as String;
 });
-
-/// [version] 是否高於 [builtinVersion]（逐段整數比較，段數不足補零；
-/// 任一段無法解析為整數時視為高於——安全預設拒絕提供降級出口，呼應
-/// SPEC-001 §1「無可消費的型別表」顯式關卡精神：不確定時不自動降級）。
-bool isHigherThanBuiltinSchemaVersion(String version, String builtinVersion) {
-  final target = version.split('.').map(int.tryParse).toList();
-  final builtin = builtinVersion.split('.').map(int.tryParse).toList();
-  final length = target.length > builtin.length
-      ? target.length
-      : builtin.length;
-  for (var i = 0; i < length; i++) {
-    final t = i < target.length ? target[i] : 0;
-    final b = i < builtin.length ? builtin[i] : 0;
-    if (t == null || b == null) return true;
-    if (t != b) return t > b;
-  }
-  return false;
-}
 
 /// [liveVersion]（本 repo 現行 `.claude/VERSION`）與 [assetVersion]
 /// （內嵌資產版本）的次版號（第二段）差距。任一版本字串段數不足兩段
