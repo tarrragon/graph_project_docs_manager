@@ -336,6 +336,10 @@ class _StubWorkspaceRepository implements WorkspaceRepository {
       ChooseFolderSelected(_state);
 
   @override
+  Future<ChooseFolderResult> openPath(String path) async =>
+      ChooseFolderSelected(_state);
+
+  @override
   Future<List<RecentProject>> loadRecentProjects() async => const [];
 
   @override
