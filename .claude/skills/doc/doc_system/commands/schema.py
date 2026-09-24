@@ -17,6 +17,7 @@ from pathlib import Path
 
 from doc_system.core.file_locator import FileLocator
 from doc_system.core.tracking_schema import (
+    CARRIER_PATH_TYPES,
     COMPLETENESS_FIELDS,
     GRAPH_EDGE_TYPES,
     GRAPH_NODE_TYPES,
@@ -36,8 +37,21 @@ COMPLETENESS_SEMANTICS = (
 # `RegExp` 下多數情況語意相同，但具名群組 / lookbehind / `\p{}` 等處語法
 # 並非全等。此鍵給未來新增 pattern 的人看：目前安全不代表加了 lookbehind
 # 之後仍安全，屆時失效的是消費端而非本專案，不會有紅燈（見 Context Bundle
-# 陷阱三）。
+# 陷阱三）。carrier_path_pattern 沿用同一方言，不另設欄位。
 ID_PATTERN_DIALECT = "python-re"
+
+# carrier_path_specificity 的比對演算法說明，隨 JSON 一併匯出（呼應
+# COMPLETENESS_SEMANTICS 的匯出理由：避免消費端只看到數字組、猜測比對規
+# 則）。完整定義與計算依據見 tracking_schema.py GRAPH_NODE_TYPES 前的
+# 說明區塊，此處為消費端摘要。
+CARRIER_PATH_SPECIFICITY_SEMANTICS = (
+    "carrier_path_specificity 為三元組 [literal_segment_count, "
+    "cross_segment_wildcard_count, literal_char_count]，比對時先比 "
+    "literal_segment_count（多者優先），再比 cross_segment_wildcard_count"
+    "（少者優先），最後比 literal_char_count（多者優先）；三項全同視為無"
+    "法區分（schema 歧義）。只有 carrier 是檔案路徑的型別才有本欄位，見"
+    "node_types 是否含 carrier_path_pattern 判斷。"
+)
 
 # 本產物不可被直接編輯的提醒鍵值，呼應 tracking_schema.py 檔頭「Markdown
 # 表格內容不可再被引用為權威來源」的精神延伸。
@@ -88,6 +102,8 @@ def build_schema_dict(project_root: Path | None = None) -> dict:
             name: sorted(fields) for name, fields in COMPLETENESS_FIELDS.items()
         },
         "completeness_semantics": COMPLETENESS_SEMANTICS,
+        "carrier_path_types": sorted(CARRIER_PATH_TYPES),
+        "carrier_path_specificity_semantics": CARRIER_PATH_SPECIFICITY_SEMANTICS,
     }
 
 

@@ -130,6 +130,31 @@ GRAPH_EDGE_CLASSES = frozenset(
 # 語意邊的維護方值域。
 GRAPH_EDGE_MAINTAINERS = frozenset({"手動", "CLI 自動", "手動/CLI"})
 
+# 路徑模式與具體度（機器可比對的 carrier 補充，人讀 carrier 描述保留不動）。
+#
+# 只有 carrier 是「檔案路徑」的型別才有 carrier_path_pattern／
+# carrier_path_specificity；FlowStep 的 carrier 是 UC 文件內的區塊，不適用。
+#
+# carrier_path_pattern：與 id_pattern 同一正則方言（見匯出端
+# ID_PATTERN_DIALECT，"python-re"）。比對對象是相對於工作區根目錄、以
+# "/" 分隔的完整路徑（含檔名），區分大小寫。
+#
+# carrier_path_specificity：三元組 [literal_segment_count,
+# cross_segment_wildcard_count, literal_char_count]，由路徑樣板（非最終
+# 正則字串）以 "/" 切分計算：
+#   1. literal_segment_count：整段皆為固定文字才算「字面段」；只要該段
+#      含任何萬用成分（例如 {slug}.md、PROP-*-*.md）即整段不算，不採部
+#      分計分。
+#   2. cross_segment_wildcard_count：能一次跨越多個路徑段的萬用成分數
+#      （例如樣板中的 "..."）；單一路徑段內的萬用字元不計入本項。
+#   3. literal_char_count：前兩項相同時的第三層次——字面段文字長度總
+#      和，僅用於保證本表現有型別兩兩不平手，不代表比對演算法有第三個
+#      獨立語意層次；新增型別若與既有型別在前兩項打平，需以此項或調整
+#      路徑深度化解，仍平手則為 schema 歧義。
+# 消費端比對時：先比 literal_segment_count（多者優先），再比
+# cross_segment_wildcard_count（少者優先），最後比 literal_char_count
+# （多者優先）；三項全同才視為無法區分。
+
 # 節點型別表：A 層 5 節點 + B 層 2 節點。FR 與 Test 不列為獨立節點型別
 # （無獨立檔案/ID 空間，語意由 SPEC / traceability 節點欄位承載）。
 GRAPH_NODE_TYPES = {
@@ -137,6 +162,8 @@ GRAPH_NODE_TYPES = {
         "layer": GRAPH_LAYER_ESTABLISHED,
         "id_pattern": r"^PROP-\d{3}$",
         "carrier": "docs/proposals/PROP-NNN-{slug}.md frontmatter",
+        "carrier_path_pattern": r"^docs/proposals/PROP-\d{3}-[^/]+\.md$",
+        "carrier_path_specificity": [2, 0, 13],  # "docs"(4)+"proposals"(9)
     },
     "SPEC": {
         "layer": GRAPH_LAYER_ESTABLISHED,
@@ -144,11 +171,18 @@ GRAPH_NODE_TYPES = {
         # 不強制配發數字別名。
         "id_pattern": r"^SPEC-([0-9]{3}|[A-Z0-9-]+)$",
         "carrier": "docs/spec/{domain}/{slug}.md frontmatter",
+        # README.md 排除在外（domain 目錄的說明文件非 SPEC）；domain-map.md
+        # 未排除——與 DomainBundle 的巢狀 carrier 刻意重疊，由具體度分出優先
+        # 序（domain-map.md 的字面段數較高，見 DomainBundle 具體度）。
+        "carrier_path_pattern": r"^docs/spec/[^/]+/(?!README\.md$)[^/]+\.md$",
+        "carrier_path_specificity": [2, 0, 8],  # "docs"(4)+"spec"(4)
     },
     "UC": {
         "layer": GRAPH_LAYER_ESTABLISHED,
         "id_pattern": r"^UC-\d{2,}$",
         "carrier": "docs/usecases/UC-NN-{slug}.md frontmatter",
+        "carrier_path_pattern": r"^docs/usecases/UC-\d{2,}-[^/]+\.md$",
+        "carrier_path_specificity": [2, 0, 12],  # "docs"(4)+"usecases"(8)
     },
     "Ticket": {
         "layer": GRAPH_LAYER_ESTABLISHED,
@@ -156,11 +190,18 @@ GRAPH_NODE_TYPES = {
         "carrier": "docs/work-logs/.../tickets/{id}.md frontmatter",
         # Ticket 欄位/驗證器歸屬 ticket_system（field-semantics.md 為權
         # 威），本節僅收錄 doc_system 消費圖譜所需的 id_pattern 與 carrier。
+        # "..." 為可變版本/波次目錄，對應 cross_segment_wildcard_count=1。
+        "carrier_path_pattern": r"^docs/work-logs/(?:[^/]+/)+tickets/[^/]+\.md$",
+        "carrier_path_specificity": [3, 1, 20],  # "docs"+"work-logs"+"tickets"
     },
     "DomainBundle": {
         "layer": GRAPH_LAYER_ESTABLISHED,
         "id_pattern": r"^DOMAIN-MAP-[a-z0-9-]+$",
         "carrier": "docs/spec/{domain}/domain-map.md 或 docs/domain-map.md frontmatter",
+        # 兩種合法路徑形態；具體度取巢狀形態（字面段數較高的一支），用
+        # 於與 SPEC 的重疊消歧（domain-map.md 同時符合兩型別的路徑模式）。
+        "carrier_path_pattern": r"^(docs/spec/[^/]+/domain-map\.md|docs/domain-map\.md)$",
+        "carrier_path_specificity": [3, 0, 21],  # "docs"+"spec"+"domain-map.md"
     },
     "FlowStep": {
         "layer": GRAPH_LAYER_PROPOSED,
@@ -168,6 +209,7 @@ GRAPH_NODE_TYPES = {
         # return_to 表達。kebab-case，與首批真實資料一致。
         "id_pattern": r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
         "carrier": "UC 文件內結構化 flow 區塊（YAML list）",
+        # 無 carrier_path_pattern：carrier 非獨立檔案路徑，見本節前言。
     },
     "EVT": {
         "layer": GRAPH_LAYER_PROPOSED,
@@ -180,8 +222,16 @@ GRAPH_NODE_TYPES = {
             "目錄掃描滿足。改採 registry 屬 schema 變更，需先提出 per-file 無法"
             "滿足的具體查詢或一致性需求。）"
         ),
+        "carrier_path_pattern": r"^docs/events/[^/]+/EVT-[A-Z0-9]+-\d{3}-[^/]+\.md$",
+        "carrier_path_specificity": [2, 0, 10],  # "docs"(4)+"events"(6)
     },
 }
+
+# 具備 carrier_path_pattern 的型別集合（供匯出與測試查表，避免各處自行
+# 枚舉 FlowStep 是否排除而彼此漂移）。
+CARRIER_PATH_TYPES = frozenset(
+    name for name, entry in GRAPH_NODE_TYPES.items() if "carrier_path_pattern" in entry
+)
 
 # 完整性集合的共通語意（#99 第三項裁決，2026-09-24）：欄位必須存在；值
 # 可為 None（單值）或空清單 []（多值），代表「明確沒有」。此語意對應

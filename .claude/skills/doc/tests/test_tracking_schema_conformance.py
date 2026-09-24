@@ -14,6 +14,7 @@ import yaml
 
 from doc_system.core.frontmatter_parser import parse_frontmatter
 from doc_system.core.tracking_schema import (
+    CARRIER_PATH_TYPES,
     COMPLETENESS_FIELDS,
     DOMAINBUNDLE_REQUIRED_FIELDS,
     EVT_CATEGORIES,
@@ -246,7 +247,13 @@ class TestGraphTypeTablesWellFormed:
         def layer_field_names(table):
             layer_values = {GRAPH_LAYER_ESTABLISHED, GRAPH_LAYER_PROPOSED}
             return {
-                frozenset(k for k, val in entry.items() if val in layer_values)
+                frozenset(
+                    k
+                    for k, val in entry.items()
+                    # carrier_path_specificity 等欄位值為 list（unhashable），
+                    # isinstance 先排除避免 `val in layer_values` 拋例外。
+                    if isinstance(val, str) and val in layer_values
+                )
                 for entry in table.values()
             }
 
@@ -258,6 +265,92 @@ class TestGraphTypeTablesWellFormed:
         assert len(node_layer_keys) == 1 and len(next(iter(node_layer_keys))) == 1, (
             "每張表的層級欄位名應唯一且單一"
         )
+
+
+class TestCarrierPathPatternConformance:
+    """carrier_path_pattern／carrier_path_specificity 機器可比對的路徑模式。
+
+    只有 carrier 是檔案路徑的型別（PROP／SPEC／UC／Ticket／DomainBundle／EVT）
+    有本欄位；FlowStep 的 carrier 是 UC 文件內區塊，不適用。
+    """
+
+    def test_carrier_path_types_excludes_flowstep(self):
+        assert CARRIER_PATH_TYPES == {
+            "PROP",
+            "SPEC",
+            "UC",
+            "Ticket",
+            "DomainBundle",
+            "EVT",
+        }
+
+    def test_every_carrier_path_type_has_pattern_and_specificity(self):
+        for name in CARRIER_PATH_TYPES:
+            entry = GRAPH_NODE_TYPES[name]
+            assert entry.get("carrier_path_pattern"), f"{name} 缺少 carrier_path_pattern"
+            specificity = entry.get("carrier_path_specificity")
+            assert specificity and len(specificity) == 3, (
+                f"{name} 的 carrier_path_specificity 須為三元組"
+            )
+
+    def test_flowstep_has_no_carrier_path_pattern(self):
+        """拿掉本測試會漏偵測 FlowStep 誤加路徑模式（其 carrier 非檔案路徑）。"""
+        assert "carrier_path_pattern" not in GRAPH_NODE_TYPES["FlowStep"]
+
+    def test_specificities_pairwise_distinct(self):
+        """改壞任一型別的具體度使兩型別打平時，本測試翻紅（schema 歧義判準）。"""
+        specificities = [
+            tuple(GRAPH_NODE_TYPES[name]["carrier_path_specificity"])
+            for name in CARRIER_PATH_TYPES
+        ]
+        assert len(specificities) == len(set(specificities)), (
+            f"具體度不得兩兩平手：{sorted(specificities)}"
+        )
+
+    def test_domain_readme_not_matched_by_spec_pattern(self):
+        """拿掉 SPEC pattern 的 README 排除規則時，本測試翻紅。"""
+        pattern = re.compile(GRAPH_NODE_TYPES["SPEC"]["carrier_path_pattern"])
+        assert pattern.match("docs/spec/example-domain/README.md") is None
+        assert pattern.match("docs/spec/README.md") is None
+
+    def test_spec_pattern_matches_ordinary_spec_file(self):
+        """正向對照：一般 SPEC 檔案仍應命中，避免 README 排除規則過度擴張。"""
+        pattern = re.compile(GRAPH_NODE_TYPES["SPEC"]["carrier_path_pattern"])
+        assert pattern.match("docs/spec/example-domain/SPEC-001-example.md")
+
+    def test_domain_map_matches_both_spec_and_domainbundle(self):
+        """domain-map.md 同時命中 SPEC 與 DomainBundle，具體度由 DomainBundle 勝出。
+
+        拿掉 SPEC 或 DomainBundle 任一型別的 carrier_path_pattern，或把
+        DomainBundle 的具體度改成低於或等於 SPEC，本測試翻紅。
+        """
+        path = "docs/spec/example-domain/domain-map.md"
+        spec_pattern = re.compile(GRAPH_NODE_TYPES["SPEC"]["carrier_path_pattern"])
+        domainbundle_pattern = re.compile(
+            GRAPH_NODE_TYPES["DomainBundle"]["carrier_path_pattern"]
+        )
+        assert spec_pattern.match(path), "domain-map.md 應仍命中 SPEC 模式"
+        assert domainbundle_pattern.match(path), "domain-map.md 應命中 DomainBundle 模式"
+
+        spec_specificity = tuple(GRAPH_NODE_TYPES["SPEC"]["carrier_path_specificity"])
+        domainbundle_specificity = tuple(
+            GRAPH_NODE_TYPES["DomainBundle"]["carrier_path_specificity"]
+        )
+        assert domainbundle_specificity > spec_specificity, (
+            "DomainBundle 具體度須高於 SPEC，domain-map.md 才會歸類為 DomainBundle"
+        )
+
+    def test_ticket_pattern_matches_nested_version_dirs(self):
+        """Ticket carrier 的可變版本/波次目錄須被多段萬用成分覆蓋。"""
+        pattern = re.compile(GRAPH_NODE_TYPES["Ticket"]["carrier_path_pattern"])
+        assert pattern.match(
+            "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W3-641.md"
+        )
+
+    def test_prop_pattern_does_not_match_other_type_directory(self):
+        """反向對照：PROP 模式不應命中其他型別的目錄（不同萬用字元污染彼此命中範圍）。"""
+        pattern = re.compile(GRAPH_NODE_TYPES["PROP"]["carrier_path_pattern"])
+        assert pattern.match("docs/usecases/UC-01-example.md") is None
 
 
 class TestCompletenessFieldsWellFormed:

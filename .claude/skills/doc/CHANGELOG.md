@@ -2,6 +2,18 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.22.6 — 每個以檔案為 carrier 的節點型別（PROP／SPEC／UC／Ticket／DomainBundle／EVT）
+新增機器可比對的 `carrier_path_pattern`（與 `id_pattern` 同一 python-re 方言）與
+`carrier_path_specificity`（三元組 `[literal_segment_count, cross_segment_wildcard_count,
+literal_char_count]`）；FlowStep 因 carrier 非檔案路徑不適用，新增 `CARRIER_PATH_TYPES`
+集合供查表。`doc schema export` 匯出新增 `carrier_path_types` 與
+`carrier_path_specificity_semantics` 兩鍵。`test_tracking_schema_conformance.py` 新增
+`TestCarrierPathPatternConformance`：domain 目錄內 README.md 不命中 SPEC 模式、
+`docs/spec/{domain}/domain-map.md` 同時命中 SPEC 與 DomainBundle 且 DomainBundle 具體度較高、
+六個型別的具體度兩兩不平手（拿掉任一型別模式或改壞具體度即翻紅）。既有
+`test_node_and_edge_tables_share_same_layer_field_name` 因新欄位值為 list（unhashable）
+補 `isinstance` 防護。`tracking_schema.json` 已重產同步。
+
 **Version**: 1.22.5 — 覆核修正 1.22.4 引入的行為退化：`validate.py` 的 EVT 完整性判定改讀
 schema 的 `find_missing_completeness_fields`（只判斷欄位是否存在）後，id/name/canonical_name/
 category 四個識別／顯示欄位原有的「值不能為空」規則遺失，`category: null` 或 `name: ""` 會誤
