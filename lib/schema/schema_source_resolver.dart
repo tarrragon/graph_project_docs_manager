@@ -23,9 +23,12 @@ enum PathPatternSource {
   /// 專案 JSON 缺欄位，但版本不高於內建版本，從內建表補上。
   builtinTable,
 
-  /// 專案 JSON 缺欄位，內建表有路徑模式，但專案版本高於內建版本（或版本缺席
-  /// 無法確認安全），查詢不可用（FR-08 原因碼：專案型別表版本高於內建版本）。
-  projectVersionHigherThanBuiltin,
+  /// 專案 JSON 缺欄位，內建表有路徑模式，但專案版本不在 App 已知範圍
+  /// （高於內建版本、版本缺席、或無法解析），查詢不可用（FR-08 原因碼：
+  /// 版本不在 App 已知範圍）。判定式與 schema 不相容關卡
+  /// （`gate_detection_notifier.dart`）共用 `isWithinKnownSchemaRange`
+  /// （`0.3.0-W3-543`）。
+  projectVersionOutOfKnownRange,
 
   /// 專案 JSON 缺欄位，且內建表本身也沒有路徑模式，查詢不可用（FR-08 原因碼：
   /// 型別表沒有路徑模式）。與版本無關——內建表沒有可補的內容。
@@ -52,7 +55,7 @@ class SchemaSourceResolution {
 
   /// FR-06 查詢是否可用（規則 7：兩者都取不到時查詢不可用）。
   bool get isQueryAvailable =>
-      pathPatternSource != PathPatternSource.projectVersionHigherThanBuiltin &&
+      pathPatternSource != PathPatternSource.projectVersionOutOfKnownRange &&
       pathPatternSource != PathPatternSource.noPathPattern;
 }
 
@@ -109,13 +112,13 @@ SchemaSourceResolution _resolveWithoutProjectPathPatterns({
   required String? builtinVersion,
 }) {
   final builtinHasPatterns = builtinTable.pathParticipatingTypes.isNotEmpty;
-  // 版本缺席（任一為 null）時直接判定查詢不可用，不呼叫版本比較
-  // （`isHigherThanBuiltinSchemaVersion` 要求兩個非 null 字串參數；
-  // 沒有版本可比較時沒有「補內建表是否安全」可言）。
+  // 內建版本缺席時直接判定查詢不可用（不呼叫版本比較，恆為不在範圍）；
+  // 有內建版本時交由與 schema 不相容關卡共用的單一判定式
+  // （`isWithinKnownSchemaRange`：版本缺席／無法解析／高於內建皆判不在
+  // 範圍，等於或低於判在範圍）。
   final versionAllowsBuiltin =
-      projectVersion != null &&
       builtinVersion != null &&
-      !isHigherThanBuiltinSchemaVersion(projectVersion, builtinVersion);
+      isWithinKnownSchemaRange(projectVersion, builtinVersion);
 
   if (builtinHasPatterns && versionAllowsBuiltin) {
     return SchemaSourceResolution(
@@ -128,9 +131,10 @@ SchemaSourceResolution _resolveWithoutProjectPathPatterns({
   }
 
   // 內建表本身沒有路徑模式可補時，與版本無關，原因是「沒有路徑模式」；
-  // 內建表有路徑模式但版本判定不安全（或版本缺席）時，原因是「版本高於內建」。
+  // 內建表有路徑模式但版本不在已知範圍（含版本缺席或無法解析）時，
+  // 原因是「版本不在 App 已知範圍」。
   final unavailableSource = builtinHasPatterns
-      ? PathPatternSource.projectVersionHigherThanBuiltin
+      ? PathPatternSource.projectVersionOutOfKnownRange
       : PathPatternSource.noPathPattern;
 
   return SchemaSourceResolution(

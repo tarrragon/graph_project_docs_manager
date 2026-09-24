@@ -129,7 +129,7 @@ void main() {
 
       expect(
         result.pathPatternSource,
-        PathPatternSource.projectVersionHigherThanBuiltin,
+        PathPatternSource.projectVersionOutOfKnownRange,
       );
       expect(result.isQueryAvailable, isFalse);
       expect(result.isPathPatternFromBuiltin, isFalse);
@@ -150,6 +150,49 @@ void main() {
 
       expect(result.pathPatternSource, PathPatternSource.builtinTable);
       expect(result.isQueryAvailable, isTrue);
+    });
+  });
+
+  group('S5-4b（0.3.0-W3-543）專案 JSON 缺欄位，版本缺席或無法解析', () {
+    test('版本缺席：查詢不可用，原因為版本不在已知範圍', () {
+      final projectJson = _schemaJson(
+        version: '2.40.3',
+        nodeTypes: {
+          'SPEC': {'id_pattern': r'^SPEC-\d+-project$'},
+        },
+      );
+      projectJson.remove('schema_generated_at_framework_version');
+
+      final result = resolveSchemaSource(
+        projectSchemaJson: projectJson,
+        builtinSchemaJson: builtinJson,
+      );
+
+      expect(
+        result.pathPatternSource,
+        PathPatternSource.projectVersionOutOfKnownRange,
+      );
+      expect(result.isQueryAvailable, isFalse);
+    });
+
+    test('版本無法解析：查詢不可用，原因為版本不在已知範圍', () {
+      final projectJson = _schemaJson(
+        version: '2.x.0',
+        nodeTypes: {
+          'SPEC': {'id_pattern': r'^SPEC-\d+-project$'},
+        },
+      );
+
+      final result = resolveSchemaSource(
+        projectSchemaJson: projectJson,
+        builtinSchemaJson: builtinJson,
+      );
+
+      expect(
+        result.pathPatternSource,
+        PathPatternSource.projectVersionOutOfKnownRange,
+      );
+      expect(result.isQueryAvailable, isFalse);
     });
   });
 

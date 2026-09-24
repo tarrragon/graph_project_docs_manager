@@ -28,4 +28,26 @@ void main() {
       expect(isHigherThanBuiltinSchemaVersion('2.x.0', '2.40.3'), isTrue);
     });
   });
+
+  group('isWithinKnownSchemaRange（0.3.0-W3-543：與 schema 不相容關卡共用的單一判定式）', () {
+    test('version 為 null 判為不在範圍', () {
+      expect(isWithinKnownSchemaRange(null, '2.40.3'), isFalse);
+    });
+
+    test('version 無法解析判為不在範圍', () {
+      expect(isWithinKnownSchemaRange('2.x.0', '2.40.3'), isFalse);
+    });
+
+    test('version 高於內建判為不在範圍', () {
+      expect(isWithinKnownSchemaRange('2.41.0', '2.40.3'), isFalse);
+    });
+
+    test('version 等於內建判為在範圍', () {
+      expect(isWithinKnownSchemaRange('2.40.3', '2.40.3'), isTrue);
+    });
+
+    test('version 低於內建判為在範圍', () {
+      expect(isWithinKnownSchemaRange('2.30.0', '2.40.3'), isTrue);
+    });
+  });
 }
