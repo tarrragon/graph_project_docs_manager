@@ -39,7 +39,7 @@ class CarrierPathTie extends CarrierPathLookupResult {
 /// 只用於沒拿到可用 frontmatter 的檔案；有可用 frontmatter 的檔案依
 /// FR-03 以 `id_pattern` 判型，不經本查詢。
 CarrierPathLookupResult lookupCarrierPathType(TypeTable table, String path) {
-  final matches = <MapEntry<String, List<int>>>[];
+  final matches = <MapEntry<String, PathSpecificity>>[];
   for (final entry in table.pathParticipatingTypes) {
     final best = _bestSpecificityFor(entry, path);
     if (best != null) {
@@ -51,18 +51,12 @@ CarrierPathLookupResult lookupCarrierPathType(TypeTable table, String path) {
     return const CarrierPathNoMatch();
   }
 
-  // 排序依規則 6：先比字面段數（多者優先），再比跨段萬用成分數
-  // （少者優先）。
-  matches.sort((a, b) {
-    if (a.value[0] != b.value[0]) {
-      return b.value[0] - a.value[0];
-    }
-    return a.value[1] - b.value[1];
-  });
+  // 排序依規則 6，比較邏輯統一由 comparePathSpecificity 提供。
+  matches.sort((a, b) => comparePathSpecificity(a.value, b.value));
 
   final top = matches.first.value;
   final winners = matches
-      .where((m) => _specificityEquals(m.value, top))
+      .where((m) => comparePathSpecificity(m.value, top) == 0)
       .map((m) => m.key)
       .toList(growable: false);
 
@@ -74,24 +68,15 @@ CarrierPathLookupResult lookupCarrierPathType(TypeTable table, String path) {
 
 /// 一個型別可能有多個路徑模式元素，取其中命中路徑且具體度最高者
 /// （規則 6 附註：「以該型命中元素中最高的具體度參與比較」，S2-4）。
-List<int>? _bestSpecificityFor(NodeTypeEntry entry, String path) {
-  List<int>? best;
+PathSpecificity? _bestSpecificityFor(NodeTypeEntry entry, String path) {
+  PathSpecificity? best;
   for (final candidate in entry.carrierPathPatterns ?? const <CarrierPathPattern>[]) {
     if (!candidate.toRegExp().hasMatch(path)) {
       continue;
     }
-    if (best == null || _isMoreSpecific(candidate.specificity, best)) {
+    if (best == null || comparePathSpecificity(candidate.specificity, best) < 0) {
       best = candidate.specificity;
     }
   }
   return best;
 }
-
-bool _isMoreSpecific(List<int> a, List<int> b) {
-  if (a[0] != b[0]) {
-    return a[0] > b[0];
-  }
-  return a[1] < b[1];
-}
-
-bool _specificityEquals(List<int> a, List<int> b) => a[0] == b[0] && a[1] == b[1];
