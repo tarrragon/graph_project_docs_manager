@@ -33,10 +33,10 @@ import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 import '../helpers/spec006/manifest_materializer.dart';
 
-/// `EVT-CORPUS-003` 的 `reason` 文字（`lib/corpus/parse_failure_event.dart`
-/// `_reasonForOutcome`）與 manifest `shape`／`expected.reason` 詞彙的對照，
-/// 兩邊詞彙表刻意分離維護——manifest 用 FR-01/FR-05 英文列舉詞彙，事件
-/// 負載用中文顯示文字，本表是測試專屬的橋接，不改動任一邊的權威定義。
+/// `EVT-CORPUS-003` 的 `reason` 文字（`lib/corpus/parse_failure_event_builder.dart`
+/// `parseOutcomeReasonText`）與 manifest `shape`／`expected.reason` 詞彙的
+/// 對照，兩邊詞彙表刻意分離維護——manifest 用 FR-01/FR-05 英文列舉詞彙，
+/// 事件負載用中文顯示文字，本表是測試專屬的橋接，不改動任一邊的權威定義。
 const _reasonTextByShape = <String, String>{
   'no_frontmatter': '無 frontmatter',
   'unclosed': 'frontmatter 未閉合',
@@ -76,6 +76,10 @@ Future<_ProjectScanOutcome> _scanProject({
     carrierPathQueryAvailable: result.summary.carrierPathQueryAvailable,
     undeterminedCount: result.summary.undeterminedCount,
   );
+  final gaps = switch (gapResult) {
+    GapsDetected(gaps: final g) => g,
+    Undetermined() => const <ParseFailureGap>[],
+  };
 
   String fullPath(String relative) =>
       project == 'synthetic' ? relative : '$project/$relative';
@@ -85,7 +89,7 @@ Future<_ProjectScanOutcome> _scanProject({
   };
 
   final gapByPath = <String, ParseFailureGap>{
-    for (final gap in gapResult.gaps) fullPath(gap.path): gap,
+    for (final gap in gaps) fullPath(gap.path): gap,
   };
 
   final unmatchedFailurePaths = <String>{
@@ -513,10 +517,9 @@ void main() {
         carrierPathQueryAvailable: outcome.summary.carrierPathQueryAvailable,
         undeterminedCount: outcome.summary.undeterminedCount,
       );
-      expect(gapResult.gaps, isEmpty);
-      expect(gapResult.undetermined, isNotNull, reason: '應回報無法判定');
+      expect(gapResult, isA<Undetermined>(), reason: '應回報無法判定');
       expect(
-        gapResult.undetermined!.undeterminedCount,
+        (gapResult as Undetermined).undeterminedCount,
         outcome.summary.undeterminedCount,
       );
 

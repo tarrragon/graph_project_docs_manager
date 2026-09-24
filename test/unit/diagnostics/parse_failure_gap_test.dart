@@ -41,14 +41,16 @@ void main() {
       final result = detectParseFailureGaps(
         events: events,
         carrierPathQueryAvailable: true,
+        undeterminedCount: 0,
       );
 
-      expect(result.undetermined, isNull);
-      expect(result.gaps, hasLength(3));
+      expect(result, isA<GapsDetected>());
+      final gaps = (result as GapsDetected).gaps;
+      expect(gaps, hasLength(3));
 
       for (var i = 0; i < events.length; i++) {
         final event = events[i];
-        final gap = result.gaps[i];
+        final gap = gaps[i];
         expect(gap.path, event.path);
         expect(gap.reason, event.reason);
         expect(gap.nodeType, event.nodeType);
@@ -57,7 +59,7 @@ void main() {
       }
 
       // 平手者帶候選型別與歧義標記。
-      final tieGap = result.gaps[2];
+      final tieGap = gaps[2];
       expect(tieGap.nodeType, isNull);
       expect(tieGap.candidateTypes, ['EventNode', 'SpecNode']);
       expect(tieGap.schemaAmbiguous, isTrue);
@@ -67,10 +69,11 @@ void main() {
       final result = detectParseFailureGaps(
         events: const [],
         carrierPathQueryAvailable: true,
+        undeterminedCount: 0,
       );
 
-      expect(result.gaps, isEmpty);
-      expect(result.undetermined, isNull);
+      expect(result, isA<GapsDetected>());
+      expect((result as GapsDetected).gaps, isEmpty);
     });
 
     test('D1-3 破洞數等於輸入事件數，等於以同一構造獨立計數的命中 carrier 數', () {
@@ -87,19 +90,24 @@ void main() {
       final result = detectParseFailureGaps(
         events: events,
         carrierPathQueryAvailable: true,
+        undeterminedCount: 0,
       );
 
-      expect(result.gaps, hasLength(events.length));
-      expect(result.gaps, hasLength(independentlyCountedCarrierHits));
+      expect(result, isA<GapsDetected>());
+      final gaps = (result as GapsDetected).gaps;
+      expect(gaps, hasLength(events.length));
+      expect(gaps, hasLength(independentlyCountedCarrierHits));
     });
 
     test('D1-4 破洞類別：本版只產生 parseFailure，不產生其餘三類', () {
       final result = detectParseFailureGaps(
         events: [_singleMatchEvent(path: 'docs/a.md', type: 'Proposal')],
         carrierPathQueryAvailable: true,
+        undeterminedCount: 0,
       );
 
-      for (final gap in result.gaps) {
+      expect(result, isA<GapsDetected>());
+      for (final gap in (result as GapsDetected).gaps) {
         expect(gap.category, GapCategory.parseFailure);
       }
       expect(
@@ -115,24 +123,48 @@ void main() {
   });
 
   group('detectParseFailureGaps 查詢不可用（SPEC-006-test-design §3.3 D2，FR-08）', () {
-    test('D2-1（守衛）查詢不可用、未判定數 3 → 零筆 parseFailure，回報無法判定並帶原因', () {
-      final events = [
-        _singleMatchEvent(path: 'docs/a.md', type: 'Proposal'),
-        _singleMatchEvent(path: 'docs/b.md', type: 'Proposal'),
-        _singleMatchEvent(path: 'docs/c.md', type: 'Proposal'),
-      ];
+    test(
+      'D2-1a（守衛）查詢不可用、原因碼=沒有路徑模式 → 零筆 parseFailure，回報無法判定並帶原因碼',
+      () {
+        final events = [
+          _singleMatchEvent(path: 'docs/a.md', type: 'Proposal'),
+          _singleMatchEvent(path: 'docs/b.md', type: 'Proposal'),
+          _singleMatchEvent(path: 'docs/c.md', type: 'Proposal'),
+        ];
 
-      final result = detectParseFailureGaps(
-        events: events,
-        carrierPathQueryAvailable: false,
-        undeterminedCount: 3,
-      );
+        final result = detectParseFailureGaps(
+          events: events,
+          carrierPathQueryAvailable: false,
+          undeterminedCount: 3,
+          reason: UndeterminedGapReason.noPathPattern,
+        );
 
-      expect(result.gaps, isEmpty);
-      expect(result.undetermined, isNotNull);
-      expect(result.undetermined!.undeterminedCount, 3);
-      expect(result.undetermined!.reason, isNotEmpty);
-    });
+        expect(result, isA<Undetermined>());
+        final undetermined = result as Undetermined;
+        expect(undetermined.undeterminedCount, 3);
+        expect(undetermined.reason, UndeterminedGapReason.noPathPattern);
+      },
+    );
+
+    test(
+      'D2-1b（守衛）查詢不可用、原因碼=專案版本高於內建 → 回報無法判定並帶對應原因碼',
+      () {
+        final result = detectParseFailureGaps(
+          events: const [],
+          carrierPathQueryAvailable: false,
+          undeterminedCount: 5,
+          reason: UndeterminedGapReason.projectVersionHigherThanBuiltin,
+        );
+
+        expect(result, isA<Undetermined>());
+        final undetermined = result as Undetermined;
+        expect(undetermined.undeterminedCount, 5);
+        expect(
+          undetermined.reason,
+          UndeterminedGapReason.projectVersionHigherThanBuiltin,
+        );
+      },
+    );
 
     test('D2-2（正向對照）同一輸入但查詢可用、命中 3 → 三筆破洞，不回報無法判定', () {
       final events = [
@@ -144,10 +176,11 @@ void main() {
       final result = detectParseFailureGaps(
         events: events,
         carrierPathQueryAvailable: true,
+        undeterminedCount: 0,
       );
 
-      expect(result.gaps, hasLength(3));
-      expect(result.undetermined, isNull);
+      expect(result, isA<GapsDetected>());
+      expect((result as GapsDetected).gaps, hasLength(3));
     });
   });
 }
