@@ -24,6 +24,8 @@ dependencies:
   re_editor: ^0.10.0
   re_highlight: ^0.0.3
   two_dimensional_scrollables: ^0.5.4
+  # Corpus frontmatter 解析：Dart 官方 YAML 套件（0.3.0-W2-005，SPEC-006 FR-01）
+  yaml: ^3.1.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
