@@ -51,27 +51,41 @@ class ParseFailureGap {
   final bool schemaAmbiguous;
 }
 
+/// FR-06 查詢不可用時「無法判定破洞」的原因碼（FR-08〈規則〉第 2 項）。
+///
+/// 原因碼是資料值，不是顯示字串；顯示文字由畫面經 l10n 投影
+/// （SPEC-004 v1.46 已有對應 key），Diagnostics 不產生在地化字串
+/// （用戶裁決 2026-09-24，SPEC-006 v1.6 FR-08）。
+enum UndeterminedGapReason {
+  /// 專案型別表版本高於 App 內建版本。
+  projectVersionHigherThanBuiltin,
+
+  /// 型別表沒有路徑模式。
+  noPathPattern,
+}
+
+/// 一輪 `parseFailure` 破洞偵測的結果（sealed）：查詢可用時為
+/// [GapsDetected]，查詢不可用時為 [Undetermined]，兩種結局由編譯器保證
+/// 互斥（0.3.0-W4-001 Phase 4 linux：先前互斥關係只寫在註解）。
+sealed class GapDetectionResult {
+  const GapDetectionResult();
+}
+
+/// 查詢可用：[gaps] 為本輪產生的破洞，可為空清單（零筆事件時）。
+class GapsDetected extends GapDetectionResult {
+  const GapsDetected(this.gaps);
+
+  final List<ParseFailureGap> gaps;
+}
+
 /// FR-06 查詢不可用時的「無法判定破洞」回報（FR-08〈規則〉第 2 項）。
-class UndeterminedGapsReport {
-  const UndeterminedGapsReport({
-    required this.undeterminedCount,
-    required this.reason,
-  });
+class Undetermined extends GapDetectionResult {
+  const Undetermined({required this.undeterminedCount, required this.reason});
 
   /// FR-07「失敗檔中未判定的數量」，本結構不重新計算，直接採信呼叫端
   /// 提供的掃描摘要計數。
   final int undeterminedCount;
 
-  /// 無法判定的原因說明，供畫面直接顯示。
-  final String reason;
-}
-
-/// 一輪 `parseFailure` 破洞偵測的結果。[gaps] 與 [undetermined] 恰有一個
-/// 非空／非 `null`：查詢可用時只填 [gaps]（可為空清單），查詢不可用時
-/// [gaps] 恆為空清單且 [undetermined] 非 `null`。
-class GapDetectionResult {
-  const GapDetectionResult({required this.gaps, this.undetermined});
-
-  final List<ParseFailureGap> gaps;
-  final UndeterminedGapsReport? undetermined;
+  /// 無法判定的原因碼（資料值，顯示文字由畫面經 l10n 投影）。
+  final UndeterminedGapReason reason;
 }
