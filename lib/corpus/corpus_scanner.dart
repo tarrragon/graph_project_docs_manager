@@ -110,11 +110,17 @@ Future<CorpusScanResult> scanCorpus({
   required TypeTable table,
   CarrierPathLookupFn lookupCarrierPath = lookupCarrierPathType,
 }) async {
-  final paths = await _listMarkdownFiles(fileSystem, _docsRoot);
+  developer.log(
+    'scanCorpus 開始：root=$_docsRoot', // i18n-exempt: 開發者 debug log
+    name: 'CorpusScanner',
+    level: 500,
+  );
+
+  final listing = await _listMarkdownFiles(fileSystem, _docsRoot);
   final carrierPathQueryAvailable = table.pathParticipatingTypes.isNotEmpty;
   final acc = _ScanAccumulator();
 
-  for (final path in paths) {
+  for (final path in listing.paths) {
     final outcome = await _readAndClassify(fileSystem, path);
     switch (outcome) {
       case Available(:final frontmatter):
@@ -130,7 +136,35 @@ Future<CorpusScanResult> scanCorpus({
     }
   }
 
-  return acc.toResult(paths.length, carrierPathQueryAvailable);
+  final result = acc.toResult(
+    listing.paths.length,
+    carrierPathQueryAvailable,
+    listing.unlistableDirectories,
+  );
+
+  developer.log(
+    _scanEndLogMessage(listing, result),
+    name: 'CorpusScanner',
+    level: 500,
+  );
+
+  return result;
+}
+
+/// scanCorpus 結束日誌訊息組裝，抽出避免長字串拼接觸發格式檢查（開發者
+/// debug log，非 UI 顯示字串，可觀測性規則 4：關鍵流程起訖日誌）。
+String _scanEndLogMessage(
+  ({List<String> paths, List<String> unlistableDirectories}) listing,
+  CorpusScanResult result,
+) {
+  final fileCount = listing.paths.length; // i18n-exempt: 開發者 debug log
+  final nodeCount = result.rawNodes.length; // i18n-exempt: 開發者 debug log
+  final failureCount =
+      result.parseErrors.length; // i18n-exempt: 開發者 debug log
+  final unlistableCount =
+      listing.unlistableDirectories.length; // i18n-exempt: 開發者 debug log
+  return 'scanCorpus 結束：檔案數=$fileCount、節點數=$nodeCount、'
+      '失敗數=$failureCount、無法列出目錄數=$unlistableCount'; // i18n-exempt: 開發者 debug log
 }
 
 /// 需求：[SPEC-006 FR-01、FR-05、NFR-01] 讀取單一檔案並分類；讀取失敗直接
@@ -156,38 +190,80 @@ Future<ParseOutcome> _readAndClassify(
       level: 900,
       error: e,
     );
-    return ParseOutcome.unreadable(UnreadableReason.fileDeleted);
+    return ParseOutcome.unreadable(reasonForFileSystemFailure(e));
   }
 }
 
-/// 需求：[SPEC-006 FR-02] 遞迴列出 [root] 底下所有副檔名為小寫 `.md` 的
-/// 檔案；不進入符號連結目錄（規則：不追符號連結，C8-4）；[root] 不存在時
-/// [DocsFileSystem.listEntries] 回傳空清單，等同 0 檔（C8-1）。回傳結果
-/// 排序後回傳，讓掃描結果與檔案系統列舉順序無關（C11-3 順序不影響結果）。
-Future<List<String>> _listMarkdownFiles(
-  DocsFileSystem fileSystem,
-  String root,
-) async {
+/// 需求：[SPEC-006 FR-02、NFR-01] 遞迴列出 [root] 底下所有副檔名為小寫
+/// `.md` 的檔案；不進入符號連結目錄（規則：不追符號連結，C8-4）；[root]
+/// 不存在時 [DocsFileSystem.listEntries] 回傳空清單，等同 0 檔（C8-1）。
+/// 回傳結果排序後回傳，讓掃描結果與檔案系統列舉順序無關（C11-3 順序不
+/// 影響結果）。單一目錄無法列出（例如沒有權限）時不中止整輪掃描：記入
+/// `unlistableDirectories`，該目錄底下有幾個檔案無從得知，不計入回傳的
+/// `paths`（FR-02 規則：目錄無法列出時不進守恆式）。
+Future<({List<String> paths, List<String> unlistableDirectories})>
+_listMarkdownFiles(DocsFileSystem fileSystem, String root) async {
   final matches = <String>[];
+  final unlistable = <String>[];
   final queue = <String>[root];
   while (queue.isNotEmpty) {
     final current = queue.removeLast();
-    final entries = await fileSystem.listEntries(current);
+    final entries = await _listEntriesOrRecordFailure(
+      fileSystem,
+      current,
+      unlistable,
+    );
     for (final entry in entries) {
-      switch (entry.kind) {
-        case DocsFileSystemEntryKind.directory:
-          queue.add(entry.path);
-        case DocsFileSystemEntryKind.file:
-          if (entry.path.endsWith(_markdownExtension)) {
-            matches.add(entry.path);
-          }
-        case DocsFileSystemEntryKind.symlink:
-          break;
-      }
+      _classifyEntry(entry, queue, matches);
     }
   }
   matches.sort();
-  return matches;
+  unlistable.sort();
+  return (paths: matches, unlistableDirectories: unlistable);
+}
+
+/// 列出 [path] 底下的直接子項；無法列出時記入 [unlistable] 並寫 warning
+/// 日誌，回傳空清單讓呼叫端當作「此目錄沒有可遞迴的子項」處理，不中止
+/// 整輪掃描（FR-02、NFR-01）。
+Future<List<DocsFileSystemEntry>> _listEntriesOrRecordFailure(
+  DocsFileSystem fileSystem,
+  String path,
+  List<String> unlistable,
+) async {
+  try {
+    return await fileSystem.listEntries(path);
+  } catch (e) {
+    developer.log(
+      '目錄無法列出，記入無法列出清單並略過：$path', // i18n-exempt: 開發者 debug log
+      name: 'CorpusScanner',
+      level: 900,
+      error: e,
+    );
+    unlistable.add(path);
+    return const <DocsFileSystemEntry>[];
+  }
+}
+
+/// 依 [entry] 的種類分派：目錄加入待遞迴佇列 [queue]；副檔名為小寫 `.md`
+/// 的檔案加入 [matches]；符號連結與其他非目錄非檔案項目（[other]）皆略過，
+/// 不遞迴、不列入結果（FR-02 規則：不追符號連結；`other` 不冒稱符號連結
+/// 但待遇相同）。
+void _classifyEntry(
+  DocsFileSystemEntry entry,
+  List<String> queue,
+  List<String> matches,
+) {
+  switch (entry.kind) {
+    case DocsFileSystemEntryKind.directory:
+      queue.add(entry.path);
+    case DocsFileSystemEntryKind.file:
+      if (entry.path.endsWith(_markdownExtension)) {
+        matches.add(entry.path);
+      }
+    case DocsFileSystemEntryKind.symlink:
+    case DocsFileSystemEntryKind.other:
+      break;
+  }
 }
 
 /// 一輪掃描的累加器：把「可用」與「失敗」兩種分支各自的計數與產出集中在
@@ -272,6 +348,7 @@ class _ScanAccumulator {
   CorpusScanResult toResult(
     int totalFilesScanned,
     bool carrierPathQueryAvailable,
+    List<String> unlistableDirectories,
   ) {
     return CorpusScanResult(
       rawNodes: rawNodes,
@@ -287,6 +364,7 @@ class _ScanAccumulator {
         noHitCount: noHitCount,
         undeterminedCount: undeterminedCount,
         carrierPathQueryAvailable: carrierPathQueryAvailable,
+        unlistableDirectories: List.unmodifiable(unlistableDirectories),
       ),
     );
   }

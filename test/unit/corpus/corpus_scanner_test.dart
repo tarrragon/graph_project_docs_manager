@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
@@ -148,6 +149,48 @@ void main() {
 
         expect(resultA.summary.totalFilesScanned, 1);
         expect(resultB.summary.totalFilesScanned, 0);
+      },
+    );
+
+    test(
+      'C8-7 子目錄沒有權限：記入「無法列出的目錄」清單、不中止、不計入'
+      '總數，守恆式成立；同層正常子目錄照常計數（正向對照）',
+      () async {
+        final fs = FakeDocsFileSystem()
+          ..addFile('docs/normal/a.md', _noFrontmatterBytes)
+          ..addDirectory('docs/denied')
+          ..denyListPermission('docs/denied');
+
+        final result = await scanCorpus(
+          fileSystem: fs,
+          table: _tableWithoutCarrier(),
+        );
+
+        expect(result.summary.unlistableDirectories, ['docs/denied']);
+        expect(
+          result.parseErrors.map((e) => e.path),
+          ['docs/normal/a.md'],
+        );
+        expect(result.summary.totalFilesScanned, 1);
+        expect(checkScanSummaryConservation(result.summary), isTrue);
+      },
+    );
+
+    test(
+      'C8-8 非目錄非檔案項目（other）：不進入結果、不遞迴、不冒稱 symlink；'
+      '同目錄檔案照常計數（正向對照）',
+      () async {
+        final fs = FakeDocsFileSystem()
+          ..addFile('docs/normal.md', _noFrontmatterBytes)
+          ..addOtherEntry('docs/weird');
+
+        final result = await scanCorpus(
+          fileSystem: fs,
+          table: _tableWithoutCarrier(),
+        );
+
+        expect(result.parseErrors.map((e) => e.path), ['docs/normal.md']);
+        expect(result.summary.totalFilesScanned, 1);
       },
     );
   });
@@ -593,17 +636,116 @@ void main() {
         );
       },
     );
+
+    test(
+      'NFR-01 兜底 catch：errno 1（EPERM）經非預期例外拋出時判為權限不足，'
+      '不誤歸檔案消失（0.3.0-W3-535）',
+      () async {
+        final throwing = _ThrowingDocsFileSystem(
+          delegate: baselineFixture()
+            ..addFile('docs/carrier/eperm.md', _validFrontmatter('A-9')),
+          throwOnReadPath: 'docs/carrier/eperm.md',
+          readError: () => FileSystemException(
+            '模擬 EPERM', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+            'docs/carrier/eperm.md',
+            OSError('模擬 EPERM', 1), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+          ),
+        );
+
+        final result = await scanCorpus(fileSystem: throwing, table: table());
+        final error = result.parseErrors.singleWhere(
+          (e) => e.path == 'docs/carrier/eperm.md',
+        );
+
+        expect(
+          unreadableReasonOf(error.outcome),
+          UnreadableReason.permission,
+        );
+      },
+    );
+
+    test(
+      'NFR-01 兜底 catch：errno 13（EACCES）經非預期例外拋出時判為權限'
+      '不足，不誤歸檔案消失（0.3.0-W3-535）',
+      () async {
+        final throwing = _ThrowingDocsFileSystem(
+          delegate: baselineFixture()
+            ..addFile('docs/carrier/eacces.md', _validFrontmatter('A-9')),
+          throwOnReadPath: 'docs/carrier/eacces.md',
+          readError: () => FileSystemException(
+            '模擬 EACCES', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+            'docs/carrier/eacces.md',
+            OSError('模擬 EACCES', 13), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+          ),
+        );
+
+        final result = await scanCorpus(fileSystem: throwing, table: table());
+        final error = result.parseErrors.singleWhere(
+          (e) => e.path == 'docs/carrier/eacces.md',
+        );
+
+        expect(
+          unreadableReasonOf(error.outcome),
+          UnreadableReason.permission,
+        );
+      },
+    );
+  });
+
+  group('reasonForFileSystemFailure（NFR-01 錯誤路徑判斷共用邏輯）', () {
+    test('errno 1（EPERM）判為權限不足', () {
+      final error = FileSystemException(
+        '模擬 EPERM', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+        'x',
+        OSError('模擬 EPERM', 1), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+      );
+      expect(reasonForFileSystemFailure(error), UnreadableReason.permission);
+    });
+
+    test('errno 13（EACCES）判為權限不足', () {
+      final error = FileSystemException(
+        '模擬 EACCES', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+        'x',
+        OSError('模擬 EACCES', 13), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+      );
+      expect(reasonForFileSystemFailure(error), UnreadableReason.permission);
+    });
+
+    test('errno 2（ENOENT）非權限不足，保守歸類為檔案消失', () {
+      final error = FileSystemException(
+        '模擬 ENOENT', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+        'x',
+        OSError('模擬 ENOENT', 2), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+      );
+      expect(reasonForFileSystemFailure(error), UnreadableReason.fileDeleted);
+    });
+
+    test('非 FileSystemException 的非預期例外：保守歸類為檔案消失（正向'
+        '對照：不會被誤判為權限不足）', () {
+      expect(
+        reasonForFileSystemFailure(StateError('boom')),
+        UnreadableReason.fileDeleted,
+      );
+    });
   });
 }
 
 /// C11-4 專用：包裝一個 [DocsFileSystem]，讀取 [throwOnReadPath] 時拋出一個
-/// 非 [DocsReadResult] 契約內的非預期例外型別（[StateError]），驗證
-/// [scanCorpus] 不因此整輪中止（NFR-01 最後一道防線）。
+/// 非 [DocsReadResult] 契約內的非預期例外（預設 [StateError]；[readError]
+/// 可自訂例外型別，供驗證兜底 catch 對 [FileSystemException] errno 的分類
+/// 邏輯，0.3.0-W3-535），驗證 [scanCorpus] 不因此整輪中止（NFR-01 最後一
+/// 道防線）。
 class _ThrowingDocsFileSystem implements DocsFileSystem {
-  _ThrowingDocsFileSystem({required this.delegate, required this.throwOnReadPath});
+  _ThrowingDocsFileSystem({
+    required this.delegate,
+    required this.throwOnReadPath,
+    Object Function()? readError,
+  }) : readError =
+           readError ?? (() => StateError('非預期例外（C11-4 測試用）'));
 
   final DocsFileSystem delegate;
   final String throwOnReadPath;
+  final Object Function() readError;
 
   @override
   Future<List<DocsFileSystemEntry>> listEntries(String relativePath) =>
@@ -612,7 +754,7 @@ class _ThrowingDocsFileSystem implements DocsFileSystem {
   @override
   Future<DocsReadResult> readBytes(String relativePath) {
     if (relativePath == throwOnReadPath) {
-      throw StateError('非預期例外（C11-4 測試用）');
+      throw readError();
     }
     return delegate.readBytes(relativePath);
   }
