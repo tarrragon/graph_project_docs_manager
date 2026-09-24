@@ -25,6 +25,12 @@ import 'scan_summary.dart';
 /// PROP-005 §0.3 量測時一致）。
 const _docsRoot = 'docs';
 
+/// 分批並行讀檔的批次大小（0.3.0-W3-537）：以 IT-2 實體化樹（2869 檔案
+/// 的最大專案分組）量測，32 相較循序版本有穩定改善且未在小量檔案的其他
+/// 測試情境放大排程開銷（批次數以外的並行度受作業系統檔案描述符與
+/// event loop 排程限制，過大的批次反而讓改善收斂）。
+const _readBatchSize = 32;
+
 /// 副檔名比對只認小寫 `.md`（FR-02 規則）。
 const _markdownExtension = '.md';
 
@@ -120,19 +126,25 @@ Future<CorpusScanResult> scanCorpus({
   final carrierPathQueryAvailable = table.pathParticipatingTypes.isNotEmpty;
   final acc = _ScanAccumulator();
 
-  for (final path in listing.paths) {
-    final outcome = await _readAndClassify(fileSystem, path);
-    switch (outcome) {
-      case Available(:final frontmatter):
-        acc.addAvailable(table, path, frontmatter);
-      default:
-        acc.addFailure(
-          table,
-          path,
-          outcome,
-          carrierPathQueryAvailable,
-          lookupCarrierPath,
-        );
+  for (final batch in _batches(listing.paths, _readBatchSize)) {
+    final outcomes = await Future.wait(
+      batch.map((path) => _readAndClassify(fileSystem, path)),
+    );
+    for (var i = 0; i < batch.length; i++) {
+      final path = batch[i];
+      final outcome = outcomes[i];
+      switch (outcome) {
+        case Available(:final frontmatter):
+          acc.addAvailable(table, path, frontmatter);
+        default:
+          acc.addFailure(
+            table,
+            path,
+            outcome,
+            carrierPathQueryAvailable,
+            lookupCarrierPath,
+          );
+      }
     }
   }
 
@@ -149,6 +161,17 @@ Future<CorpusScanResult> scanCorpus({
   );
 
   return result;
+}
+
+/// 將 [items] 依 [size] 切成連續子清單（最後一批可能較短），維持原始
+/// 順序——[scanCorpus] 以此分批並行讀檔：批次內用 [Future.wait] 平行
+/// 發起讀取，批次之間仍循序處理，讓 `Future.wait` 回傳的結果索引與批次
+/// 內路徑一一對應，掃描結果與循序版本逐項相同（0.3.0-W3-537）。
+Iterable<List<String>> _batches(List<String> items, int size) sync* {
+  for (var start = 0; start < items.length; start += size) {
+    final end = start + size < items.length ? start + size : items.length;
+    yield items.sublist(start, end);
+  }
 }
 
 /// scanCorpus 結束日誌訊息組裝，抽出避免長字串拼接觸發格式檢查（開發者
