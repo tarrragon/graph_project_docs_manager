@@ -187,7 +187,8 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 | Schema | 路徑對型別查詢比對完整相對路徑、區分大小寫；`docs/spec/<d>/README.md` 不命中 SPEC | FR-06 規則 1、4 |
 | Schema | 多型命中時具體度高者勝：整段固定文字才算字面段；先比字面段數，再比跨多段萬用成分數 | FR-06 規則 6 |
 | Schema | 具體度相同時回傳平手，列出全部候選並標記 schema 歧義，不擅自取一型 | FR-06 規則 5、6 |
-| Schema | FlowStep 不參與路徑比對 | FR-06 規則 3 |
+| Schema | 型別表中不帶 `carrier_path_patterns` 的型別（例如 FlowStep）不參與路徑比對；依欄位判定，不依型別名 | FR-06 規則 3、D9 |
+| Schema | 路徑模式以 ASCII 語意比對：`\d` 不匹配全形數字 | FR-06 規則 2、D9 |
 | Schema | 型別表來源三分：JSON 有路徑模式用 JSON；缺欄位且 JSON 版本不高於內建版本，只補路徑模式；其餘情況查詢不可用 | FR-06 規則 7 |
 | Corpus | 每個檔案恰好落入一種結果：可用、無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取 | FR-01、FR-05 |
 | Corpus | 結尾取第一個 `---` 行；frontmatter 引號字串內的 `|---|` 不造成截斷 | FR-01 規則 4、6 |

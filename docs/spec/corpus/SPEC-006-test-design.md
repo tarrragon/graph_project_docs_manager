@@ -218,18 +218,17 @@ manifest 檔頭另記：凍結日期、參照實作版本、所用型別表的 `
 | S3-3 | S3-1 的型別表把 B 改為 `[3,0]` | 回傳 B（S3-1 的鑑別對照：平手判定只在打平時觸發） |
 | S3-4 | 回傳值型別 | 三種結果（未命中、一型、平手）可被窮舉區分，無第四種 |
 
-#### S4 FlowStep 排除（FR-06 規則 3）
+#### S4 無路徑模式的型別不參與（FR-06 規則 3）
 
 **測試檔**：同上，group `FlowStep`
 
+排除依據為型別表中是否帶 `carrier_path_patterns` 欄位，不依型別名（SPEC-006 D9，用戶裁決 N2）。
+
 | # | Given | Then |
 |---|-------|------|
-| S4-1（守衛） | 測試型別表：FlowStep 條目帶一個會命中 `docs/usecases/UC-01-x.md` 的路徑模式（刻意違反上游約定），UC 條目正常 | 回傳 UC，不回傳 FlowStep、不回傳平手 |
-| S4-2 | 同上但路徑只命中 FlowStep 的模式 | 未命中 |
-| S4-3（正向對照） | 同一模式掛在非 FlowStep 的測試型別上 | 會命中（證明 S4-1/2 的結果來自 FlowStep 排除而非模式本身不匹配） |
-
-排除依據為「型別表中 carrier 是檔案路徑的型別」。實作若以 JSON 缺 `carrier_path_patterns` 判斷，
-S4-1 不會通過；是否應以型別名排除或以欄位存在排除，見 §6 NeedsContext N2。
+| S4-1（守衛） | 測試型別表：FlowStep 條目**不帶** `carrier_path_patterns`，UC 條目正常；查詢 `docs/usecases/UC-01-x.md` | 回傳 UC，候選中沒有 FlowStep |
+| S4-2 | 測試型別表：新增一個名為 `Widget` 的測試型別，不帶 `carrier_path_patterns`；查詢任一路徑 | 該型別從不出現在結果中（證明排除依欄位而非型別名） |
+| S4-3（正向對照） | 同一個名為 `FlowStep` 的條目，改為**帶**一個會命中 `docs/usecases/UC-01-x.md` 的模式 | 會命中並與 UC 形成候選（證明 S4-1 的結果來自欄位缺席，而不是寫死排除型別名） |
 
 #### S5 型別表來源三分（FR-06 規則 7；契約 K4）
 
@@ -447,7 +446,8 @@ lostFields 以純函式測（輸入：完整性集合、實際寫出的鍵與值
 | Schema | 完整路徑、區分大小寫、README 不命中 SPEC | S1 |
 | Schema | 具體度二層比較 | S2、IT-2 |
 | Schema | 打平回傳平手與候選 | S3、C5-3、IT-2 |
-| Schema | FlowStep 不參與 | S4、K2-1 |
+| Schema | 不帶 `carrier_path_patterns` 的型別不參與（依欄位，不依型別名） | S4、K2-1 |
+| Schema | 路徑模式以 ASCII 語意比對 | K2-5 |
 | Schema | 型別表來源三分 | S5、K4 |
 | Corpus | 恰好一種結果 | C1 |
 | Corpus | 結尾取第一個 `---`；`|---|` 不截斷 | C2、IT-1 |
@@ -461,7 +461,7 @@ lostFields 以純函式測（輸入：完整性集合、實際寫出的鍵與值
 | Diagnostics | 一事件一破洞，數量等於命中數 | D1、IT-2 A2 |
 | Diagnostics | 查詢不可用時不產生破洞、回報無法判定 | D2、IT-2 A6 |
 
-16 條不變式全數對應。
+domain-map §3〈Bundle 不變式清單〉每一條都有對應測試。
 
 ### 4.3 UC 場景 × 不變式去重
 
@@ -489,9 +489,11 @@ C6-2、C8-3、C8-4、C10-4、D2-1、K2-3、K4-2，均已附正向對照輸入。
 
 ### 6.1 NeedsContext（已寫入票面）
 
-- **N1**：lostFields 的「null／`[]` 算寫出」在 0.3.0 無法經掃描流程觸及——失敗檔沒有可用 frontmatter，寫出鍵恆為空。本規格以純函式測（C6-2）。若 SPEC-006 意圖是該語意須經流程驗證，需另定觸發形態。
-- **N2**：FR-06 規則 3「只有 carrier 是檔案路徑的型別參與」的判定依據未指明：以型別名排除 FlowStep，或以型別表缺 `carrier_path_patterns` 欄位判斷。S4-1 以前者寫成；若採後者，S4-1 應改為「FlowStep 無該欄位時不參與」。
-- **N3**：`carrier_path_patterns` 的正則方言為 `python-re`，Python 3 `re` 的 `\d` 對 str 預設匹配 Unicode 數字，Dart `RegExp` 只匹配 ASCII。SPEC-006 未規定以哪一邊為準；K2-5 暫以「全形數字不命中」（Dart 行為）寫成，需裁決。
+三項已於 2026-09-24 由用戶裁決：
+
+- **N1（接受）**：lostFields 的「null／`[]` 算寫出」在 0.3.0 無法經掃描流程觸及——失敗檔沒有可用 frontmatter，寫出鍵恆為空。以純函式測（C6-2）；流程層的觸發形態待 0.4 建圖時才出現。
+- **N2（以欄位判定）**：參與路徑比對的型別依型別表是否帶 `carrier_path_patterns` 判定，不依型別名（SPEC-006 FR-06 規則 3、D9）。S4 已依此改寫。
+- **N3（以 ASCII 為準）**：路徑模式以 ASCII 語意比對，K2-5「全形數字不命中」維持；`0.3.0-W2-002` 的 Python 參照實作須以 `re.ASCII` 編譯。框架方言標示的缺口另由 `0.3.0-W1-086` 追蹤。
 
 ### 6.2 Spawn Request（已登記）
 
