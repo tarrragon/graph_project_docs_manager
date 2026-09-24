@@ -39,7 +39,10 @@ class TypeTableBuilder {
           ?.map(
             (spec) => CarrierPathPattern(
               pattern: spec.pattern,
-              specificity: spec.specificity,
+              specificity: (
+                literalSegmentCount: spec.specificity[0],
+                crossSegmentWildcardCount: spec.specificity[1],
+              ),
             ),
           )
           .toList(growable: false),

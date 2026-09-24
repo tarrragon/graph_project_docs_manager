@@ -9,6 +9,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/schema/carrier_path_lookup.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
+import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 import '../../helpers/spec006/type_table_builder.dart';
 
@@ -348,6 +349,174 @@ void main() {
       final result = lookupCarrierPathType(table, 'docs/usecases/UC-01-x.md');
       expect(result, isA<CarrierPathTie>());
       expect((result as CarrierPathTie).candidateTypeNames, ['FlowStep', 'UC']);
+    });
+  });
+
+  group('載入時驗證壞模式（規則 1、NFR-01，0.3.0-W3-531）', () {
+    test('壞的 pattern 被拒收，不中止整輪掃描，同批合法模式照常載入', () {
+      final json = {
+        'node_types': {
+          'Broken': {
+            'carrier_path_patterns': [
+              {
+                'pattern': r'^docs/broken/(.md$', // 括號未閉合，非法 regex
+                'specificity': [1, 0],
+              },
+            ],
+          },
+          'Good': {
+            'carrier_path_patterns': [
+              {
+                'pattern': r'^docs/good/[^/]+\.md$',
+                'specificity': [2, 0],
+              },
+            ],
+          },
+        },
+      };
+
+      final table = typeTableFromJson(json);
+
+      expect(table.nodeTypes['Broken']!.carrierPathPatterns, isEmpty);
+      expect(table.nodeTypes['Good']!.carrierPathPatterns, hasLength(1));
+
+      final result = lookupCarrierPathType(table, 'docs/good/x.md');
+      expect(result, isA<CarrierPathSingleMatch>());
+      expect((result as CarrierPathSingleMatch).typeName, 'Good');
+    });
+
+    test('（正向對照）全部型別皆合法時，壞模式路徑不存在，兩型皆正常載入', () {
+      final json = {
+        'node_types': {
+          'A': {
+            'carrier_path_patterns': [
+              {
+                'pattern': r'^docs/a/[^/]+\.md$',
+                'specificity': [2, 0],
+              },
+            ],
+          },
+          'B': {
+            'carrier_path_patterns': [
+              {
+                'pattern': r'^docs/b/[^/]+\.md$',
+                'specificity': [2, 0],
+              },
+            ],
+          },
+        },
+      };
+
+      final table = typeTableFromJson(json);
+
+      expect(table.nodeTypes['A']!.carrierPathPatterns, hasLength(1));
+      expect(table.nodeTypes['B']!.carrierPathPatterns, hasLength(1));
+    });
+
+    test('specificity 長度不對的模式在解析時被拒收，不影響其他合法模式', () {
+      final json = {
+        'node_types': {
+          'Broken': {
+            'carrier_path_patterns': [
+              {
+                'pattern': r'^docs/broken/[^/]+\.md$',
+                'specificity': [1], // 長度應為 2
+              },
+            ],
+          },
+          'Good': {
+            'carrier_path_patterns': [
+              {
+                'pattern': r'^docs/good/[^/]+\.md$',
+                'specificity': [2, 0],
+              },
+            ],
+          },
+        },
+      };
+
+      final table = typeTableFromJson(json);
+
+      expect(table.nodeTypes['Broken']!.carrierPathPatterns, isEmpty);
+      expect(table.nodeTypes['Good']!.carrierPathPatterns, hasLength(1));
+    });
+
+    test('壞的 id_pattern 被拒收為 null，不影響其他欄位', () {
+      final json = {
+        'node_types': {
+          'Broken': {
+            'id_pattern': r'^SPEC-(\d+$', // 括號未閉合
+          },
+        },
+      };
+
+      final table = typeTableFromJson(json);
+
+      expect(table.nodeTypes['Broken']!.idPattern, isNull);
+    });
+
+    test('（正向對照）合法 id_pattern 正常載入', () {
+      final json = {
+        'node_types': {
+          'Good': {'id_pattern': r'^SPEC-\d+$'},
+        },
+      };
+
+      final table = typeTableFromJson(json);
+
+      expect(table.nodeTypes['Good']!.idPattern, r'^SPEC-\d+$');
+    });
+  });
+
+  group('查詢不重編 RegExp（規則 2，0.3.0-W3-531）', () {
+    test('同一 CarrierPathPattern 兩次 toRegExp() 回傳同一個 RegExp 實例', () {
+      final pattern = CarrierPathPattern(
+        pattern: r'^docs/x\.md$',
+        specificity: (literalSegmentCount: 1, crossSegmentWildcardCount: 0),
+      );
+
+      expect(identical(pattern.toRegExp(), pattern.toRegExp()), isTrue);
+    });
+  });
+
+  group('具體度比較單一來源（規則 6，0.3.0-W3-531）', () {
+    test('comparePathSpecificity：字面段數多者優先', () {
+      const a = (literalSegmentCount: 3, crossSegmentWildcardCount: 1);
+      const b = (literalSegmentCount: 2, crossSegmentWildcardCount: 0);
+      expect(comparePathSpecificity(a, b), lessThan(0));
+    });
+
+    test('comparePathSpecificity：字面段數相同時，跨段萬用少者優先', () {
+      const a = (literalSegmentCount: 2, crossSegmentWildcardCount: 0);
+      const b = (literalSegmentCount: 2, crossSegmentWildcardCount: 1);
+      expect(comparePathSpecificity(a, b), lessThan(0));
+    });
+
+    test('comparePathSpecificity：完全相同時回傳 0（平手）', () {
+      const a = (literalSegmentCount: 2, crossSegmentWildcardCount: 1);
+      const b = (literalSegmentCount: 2, crossSegmentWildcardCount: 1);
+      expect(comparePathSpecificity(a, b), 0);
+    });
+  });
+
+  group('isPathQueryAvailable（規則 3/7，0.3.0-W3-531）', () {
+    test('有帶 carrierPathPatterns 的型別時為 true', () {
+      final table = TypeTableBuilder()
+          .addType(
+            'SPEC',
+            carrierPathPatterns: const [
+              PathPatternSpec(pattern: r'^docs/spec/.+\.md$', specificity: [1, 0]),
+            ],
+          )
+          .build();
+
+      expect(table.isPathQueryAvailable, isTrue);
+    });
+
+    test('（守衛，正向對照）沒有任何型別帶 carrierPathPatterns 時為 false', () {
+      final table = TypeTableBuilder().addType('FlowStep').build();
+
+      expect(table.isPathQueryAvailable, isFalse);
     });
   });
 }

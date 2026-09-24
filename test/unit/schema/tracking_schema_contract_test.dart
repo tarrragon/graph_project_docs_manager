@@ -176,6 +176,54 @@ void main() {
     });
   });
 
+  group('K2-6 所有 pattern 皆以 ^ 與 \$ 錨定（0.3.0-W3-531，Dart hasMatch 為搜尋語意）', () {
+    test('carrier_path_patterns 的每個 pattern 開頭為 ^、結尾為 \$', () {
+      final table = readRealTypeTable();
+
+      for (final entry in table.pathParticipatingTypes) {
+        for (final pattern in entry.carrierPathPatterns!) {
+          expect(
+            pattern.pattern.startsWith('^'),
+            isTrue,
+            reason: '${entry.name} 的 pattern 未以 ^ 開頭錨定：${pattern.pattern}',
+          );
+          expect(
+            pattern.pattern.endsWith(r'$'),
+            isTrue,
+            reason: '${entry.name} 的 pattern 未以 \$ 結尾錨定：${pattern.pattern}',
+          );
+        }
+      }
+    });
+
+    test('id_pattern（存在者）以 ^ 與 \$ 錨定', () {
+      final table = readRealTypeTable();
+
+      for (final entry in table.nodeTypes.values) {
+        final idPattern = entry.idPattern;
+        if (idPattern == null) {
+          continue;
+        }
+        expect(
+          idPattern.startsWith('^'),
+          isTrue,
+          reason: '${entry.name} 的 id_pattern 未以 ^ 開頭錨定：$idPattern',
+        );
+        expect(
+          idPattern.endsWith(r'$'),
+          isTrue,
+          reason: '${entry.name} 的 id_pattern 未以 \$ 結尾錨定：$idPattern',
+        );
+      }
+    });
+
+    test('（守衛，負向構造）未錨定的 pattern 對子字串命中，證明錨定判斷有鑑別力', () {
+      const unanchored = r'docs/x\.md';
+      expect(RegExp(unanchored).hasMatch('other/docs/x.md/extra'), isTrue);
+      expect(unanchored.startsWith('^'), isFalse);
+    });
+  });
+
   group('completeness', () {
     test(
       'K3-1 真實 JSON 含 completeness_fields，各值為字串清單',
