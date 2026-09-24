@@ -140,14 +140,25 @@ def _validate_data_contract(text: str) -> list[str]:
 def _validate_event(frontmatter: dict) -> list[str]:
     """驗證 EVT frontmatter，回傳缺失項清單（空清單代表通過）。
 
-    producers/consumers 在建立模板時為選填，但 validate 對已存在的 EVT
-    文件強制檢查兩者皆非空——這是本型別的核心價值：缺任一端代表事件的
-    發送方或接收方未被記錄，交叉驗證正是為了在文件層攔截這類缺口。
+    完整性（欄位存在）與值非空是兩條獨立規則（#99 第三項裁決）：
+    `find_missing_completeness_fields` 只判斷欄位是否存在，id/name/
+    canonical_name/category 這四個識別/顯示欄位額外要求值非空——這是
+    EVT 型別的附加規則，不屬圖譜 schema 的通用完整性語意（該語意允許
+    FlowStep 等型別的欄位為 null/[]）。producers/consumers 同屬附加規則，
+    是本型別的核心價值：缺任一端代表事件的發送方或接收方未被記錄，交叉
+    驗證正是為了在文件層攔截這類缺口。
     """
     missing: list[str] = []
 
     missing_fields = find_missing_completeness_fields(EVT_REQUIRED_FIELDS, frontmatter)
     missing.extend(f"缺少必填欄位: {field}" for field in sorted(missing_fields))
+
+    empty_fields = sorted(
+        field
+        for field in EVT_REQUIRED_FIELDS - missing_fields
+        if not frontmatter.get(field)
+    )
+    missing.extend(f"必填欄位值不可為空: {field}" for field in empty_fields)
 
     category = frontmatter.get("category")
     if category and category not in EVENT_VALID_CATEGORIES:
