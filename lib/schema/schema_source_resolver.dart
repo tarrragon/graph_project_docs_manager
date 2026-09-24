@@ -5,11 +5,13 @@
 /// 影響，永遠取自專案 JSON（S5-6：只補路徑模式，非整表替換）。
 ///
 /// 依賴方向：本檔屬 Schema domain（L0），不得 import 任何上層 domain
-/// （`docs/domain-map.md` §2）；版本比較邏輯獨立實作，不重用
-/// `lib/screens/domain_view/domain_view_schema_version.dart`（L4 畫面狀態層）
-/// 的 `isHigherThanBuiltinSchemaVersion`，避免 L0 反向依賴 L4。
+/// （`docs/domain-map.md` §2）。版本比較邏輯住在同層的
+/// `schema_version.dart`（L0），`lib/screens/domain_view/domain_view_schema_version.dart`
+/// （L4 畫面狀態層）經 import／export 取用同一份實作——L4 依賴 L0 為
+/// 允許方向，不是「避免反向依賴」（先前檔頭說法有誤，已更正）。
 library;
 
+import 'package:graph_project_docs_manager/schema/schema_version.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
@@ -101,10 +103,13 @@ SchemaSourceResolution _resolveWithoutProjectPathPatterns({
   required String? builtinVersion,
 }) {
   final builtinHasPatterns = builtinTable.pathParticipatingTypes.isNotEmpty;
+  // 版本缺席（任一為 null）時直接判定查詢不可用，不呼叫版本比較
+  // （`isHigherThanBuiltinSchemaVersion` 要求兩個非 null 字串參數；
+  // 沒有版本可比較時沒有「補內建表是否安全」可言）。
   final versionAllowsBuiltin =
       projectVersion != null &&
       builtinVersion != null &&
-      !_isHigherVersion(projectVersion, builtinVersion);
+      !isHigherThanBuiltinSchemaVersion(projectVersion, builtinVersion);
 
   if (builtinHasPatterns && versionAllowsBuiltin) {
     return SchemaSourceResolution(
@@ -122,7 +127,11 @@ SchemaSourceResolution _resolveWithoutProjectPathPatterns({
   );
 }
 
-/// 合併：路徑模式取自內建表，`id_pattern`／完整性集合取自專案（S5-2、S5-6）。
+/// 合併：路徑模式取自內建表，`id_pattern`／完整性集合固定取自專案 JSON
+/// （S5-2、S5-6）——只補路徑模式，非整表替換。專案 JSON 該型別缺
+/// `id_pattern` 時，結果保留 `null`（[NodeTypeEntry.idPattern] 本為
+/// nullable），不退回內建表：內建表的 `id_pattern` 屬另一來源（可能與
+/// 專案定義衝突），S5-6 鑑別的正是「不可混用」。
 TypeTable _mergeBuiltinPathPatterns({
   required TypeTable? projectTable,
   required TypeTable builtinTable,
@@ -139,32 +148,11 @@ TypeTable _mergeBuiltinPathPatterns({
     merged[name] = NodeTypeEntry(
       name: name,
       carrierPathPatterns: builtinEntry?.carrierPathPatterns,
-      idPattern: projectEntry?.idPattern ?? builtinEntry?.idPattern,
-      completenessFields:
-          projectEntry?.completenessFields ??
-          builtinEntry?.completenessFields ??
-          const <String>{},
+      idPattern: projectEntry?.idPattern,
+      completenessFields: projectEntry?.completenessFields ?? const <String>{},
     );
   }
 
   return TypeTable(Map.unmodifiable(merged));
 }
 
-/// [version] 是否高於 [builtinVersion]（逐段整數比較，段數不足補零；
-/// S5-7：`2.40.3` 對 `2.40.10` 判為低於，數值逐段比較非字串比較）。
-///
-/// 任一段無法解析為整數時視為高於（安全預設拒絕降級出口）。
-bool _isHigherVersion(String version, String builtinVersion) {
-  final target = version.split('.').map(int.tryParse).toList();
-  final builtin = builtinVersion.split('.').map(int.tryParse).toList();
-  final length = target.length > builtin.length
-      ? target.length
-      : builtin.length;
-  for (var i = 0; i < length; i++) {
-    final t = i < target.length ? target[i] : 0;
-    final b = i < builtin.length ? builtin[i] : 0;
-    if (t == null || b == null) return true;
-    if (t != b) return t > b;
-  }
-  return false;
-}
