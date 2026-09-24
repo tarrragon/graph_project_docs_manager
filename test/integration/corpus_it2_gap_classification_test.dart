@@ -71,13 +71,17 @@ Future<_ProjectScanOutcome> _scanProject({
 
   final fileSystem = DefaultDocsFileSystem(workspaceRoot.path);
   final result = await scanCorpus(fileSystem: fileSystem, table: table);
+  // 兩種原因碼（專案版本高於內建／無路徑模式）的映射屬編排層職責
+  // （0.1.0-W1-025），Diagnostics 不 import Schema。本輪各專案掃描恆用
+  // 可路徑查詢的型別表（IT2-A6 另建不可用型別表獨立測試，見下方），
+  // 查詢不可用時暫依 [ScanSummary.carrierPathQueryAvailable] 直接映射為
+  // 「無路徑模式」。
   final gapResult = detectParseFailureGaps(
     events: result.parseFailureEvents,
-    carrierPathQueryAvailable: result.summary.carrierPathQueryAvailable,
     undeterminedCount: result.summary.undeterminedCount,
-    // 本輪各專案掃描恆用可路徑查詢的型別表（IT2-A6 另建不可用型別表
-    // 獨立測試，見下方），查詢不可用時屬「無路徑模式」情境。
-    reason: UndeterminedGapReason.noPathPattern,
+    unavailableReason: result.summary.carrierPathQueryAvailable
+        ? null
+        : UndeterminedGapReason.noPathPattern,
   );
   final gaps = switch (gapResult) {
     GapsDetected(gaps: final g) => g,
@@ -517,11 +521,10 @@ void main() {
 
       final gapResult = detectParseFailureGaps(
         events: const [],
-        carrierPathQueryAvailable: outcome.summary.carrierPathQueryAvailable,
         undeterminedCount: outcome.summary.undeterminedCount,
         // unavailableTable 移除了所有 carrierPathPatterns（見上方建構），
         // 屬「無路徑模式」情境，非版本比較。
-        reason: UndeterminedGapReason.noPathPattern,
+        unavailableReason: UndeterminedGapReason.noPathPattern,
       );
       expect(gapResult, isA<Undetermined>(), reason: '應回報無法判定');
       expect(

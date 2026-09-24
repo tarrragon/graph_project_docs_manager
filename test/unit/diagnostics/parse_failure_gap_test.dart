@@ -40,9 +40,8 @@ void main() {
 
       final result = detectParseFailureGaps(
         events: events,
-        carrierPathQueryAvailable: true,
         undeterminedCount: 0,
-        reason: UndeterminedGapReason.noPathPattern,
+        unavailableReason: null,
       );
 
       expect(result, isA<GapsDetected>());
@@ -69,9 +68,8 @@ void main() {
     test('D1-2 零筆事件 → 零筆破洞，非「無法判定」', () {
       final result = detectParseFailureGaps(
         events: const [],
-        carrierPathQueryAvailable: true,
         undeterminedCount: 0,
-        reason: UndeterminedGapReason.noPathPattern,
+        unavailableReason: null,
       );
 
       expect(result, isA<GapsDetected>());
@@ -91,9 +89,8 @@ void main() {
 
       final result = detectParseFailureGaps(
         events: events,
-        carrierPathQueryAvailable: true,
         undeterminedCount: 0,
-        reason: UndeterminedGapReason.noPathPattern,
+        unavailableReason: null,
       );
 
       expect(result, isA<GapsDetected>());
@@ -105,9 +102,8 @@ void main() {
     test('D1-4 破洞類別：本版只產生 parseFailure，不產生其餘三類', () {
       final result = detectParseFailureGaps(
         events: [_singleMatchEvent(path: 'docs/a.md', type: 'Proposal')],
-        carrierPathQueryAvailable: true,
         undeterminedCount: 0,
-        reason: UndeterminedGapReason.noPathPattern,
+        unavailableReason: null,
       );
 
       expect(result, isA<GapsDetected>());
@@ -138,9 +134,8 @@ void main() {
 
         final result = detectParseFailureGaps(
           events: events,
-          carrierPathQueryAvailable: false,
           undeterminedCount: 3,
-          reason: UndeterminedGapReason.noPathPattern,
+          unavailableReason: UndeterminedGapReason.noPathPattern,
         );
 
         expect(result, isA<Undetermined>());
@@ -155,9 +150,8 @@ void main() {
       () {
         final result = detectParseFailureGaps(
           events: const [],
-          carrierPathQueryAvailable: false,
           undeterminedCount: 5,
-          reason: UndeterminedGapReason.projectVersionHigherThanBuiltin,
+          unavailableReason: UndeterminedGapReason.projectVersionHigherThanBuiltin,
         );
 
         expect(result, isA<Undetermined>());
@@ -179,9 +173,8 @@ void main() {
 
       final result = detectParseFailureGaps(
         events: events,
-        carrierPathQueryAvailable: true,
         undeterminedCount: 0,
-        reason: UndeterminedGapReason.noPathPattern,
+        unavailableReason: null,
       );
 
       expect(result, isA<GapsDetected>());
