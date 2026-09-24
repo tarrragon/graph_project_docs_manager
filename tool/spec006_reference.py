@@ -753,6 +753,13 @@ def _synthetic_it2_rows() -> list[dict[str, Any]]:
             schema_ambiguous=True, reason="no_frontmatter"),
         row("docs/spec/corpus/id-clash-synthetic.md", "usable", id_="SPEC-999",
             kind="non_node", candidate_types=["ClashB", "SPEC"], schema_ambiguous=True),
+        # 多型別命中、依具體度分出型別的失敗檔（0.3.0-W3-530）：路徑同時命中
+        # DomainBundle（specificity [3, 0]）與 SPEC（specificity [2, 0]），
+        # 具體度不同故非平手，query_path 回傳 "hit"（node_type=DomainBundle，
+        # candidate_types 空、schema_ambiguous=False），與平手列（schema_ambiguous
+        # =True）刻意區分。
+        row("docs/spec/synthetic-domain/domain-map.md", "no_frontmatter",
+            kind="gap", node_type="DomainBundle", reason="no_frontmatter"),
     ]
 
 

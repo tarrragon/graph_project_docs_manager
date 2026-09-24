@@ -129,19 +129,19 @@
       }
     },
     "expected_counts": {
-      "total_files": 7471,
+      "total_files": 7472,
       "real_files": 7466,
-      "synthetic_files": 5,
+      "synthetic_files": 6,
       "node_count": 4676,
       "non_node_count": 1498,
       "failure_reason_counts": {
-        "no_frontmatter": 1292,
+        "no_frontmatter": 1293,
         "yaml_error": 1,
         "unreadable_encoding": 2,
         "unclosed": 1,
         "empty_or_non_map": 1
       },
-      "gap_count": 45,
+      "gap_count": 46,
       "unmatched_count": 1252,
       "unjudged_count": 0
     },
@@ -112216,6 +112216,21 @@
         ],
         "schema_ambiguous": true,
         "reason": null
+      },
+      "synthetic": true,
+      "source": null
+    },
+    {
+      "path": "docs/spec/synthetic-domain/domain-map.md",
+      "project": "synthetic",
+      "shape": "no_frontmatter",
+      "id": null,
+      "expected": {
+        "kind": "gap",
+        "node_type": "DomainBundle",
+        "candidate_types": [],
+        "schema_ambiguous": false,
+        "reason": "no_frontmatter"
       },
       "synthetic": true,
       "source": null
