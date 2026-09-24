@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-09-24"
-version: "1.3"
+version: "1.4"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -58,6 +58,7 @@ Corpus 沿既有的依賴邊 Corpus → Schema 呼叫路徑查詢，因此能在
 | 原始邊（`rawEdges`）的抽取 | 建圖屬 0.4（Graph），兩項整合測試都不需要邊 | PROP-005 §0.4 |
 | 破洞類別 `graphDefect`／`traceGap`／`unlocatable` | 需要圖或追溯資料；本版只實作 `parseFailure` | EVT-DIAGNOSTICS-001、PROP-005 §0.4／§0.6+ |
 | frontmatter 可用、位於 carrier 路徑內，但 `id` 缺席或不符合任何型別的 `id_pattern` | 歸哪一類破洞仍待決（`docs/domain-map.md` §9） | `0.3.0-W1-081` |
+| 掃描中途取消（UC-05）與重新掃描（UC-06、EVT-CORPUS-002） | 屬畫面接真實資料的互動，排在 0.6+；兩項整合測試都只跑單輪完整掃描 | PROP-005 §0.6+ |
 | YAML 損壞檔的部分欄位救回 | 語料中 YAML 錯誤僅 1 件（`docs/domain-map.md` §7，2026-08-27 對五個語料專案 7106 份文件量測），部分救回的演算法沒有樣本可以校準 | 本版只回報、不救回（FR-04） |
 
 ## 功能需求
@@ -106,8 +107,12 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 - 範圍與 PROP-005 §0.3 量測時一致（`docs/**/*.md`）；carrier 路徑模式全部落在 `docs/` 之下
 - 工作區根目錄取自 Workspace domain（`docs/domain-map.md` §2 依賴邊 Corpus → Workspace）
 - 路徑一律以相對於工作區根目錄、以 `/` 分隔的形式參與後續比對
+- 工作區沒有 `docs/` 目錄時，掃描 0 檔，所有計數為 0，不視為錯誤：能走到 Corpus，代表 gate 已確認這是框架專案
+- 不追符號連結（避免迴圈與重複計數）；副檔名只認小寫 `.md`，與框架量測時一致
 
 **驗收條件**：
+- [ ] Given 工作區沒有 `docs/` 目錄，Then 掃描完成，所有計數為 0，不產生錯誤
+- [ ] Given `docs/` 內有指向其他目錄的符號連結，以及副檔名為 `.MD` 的檔案，Then 兩者都不進入掃描結果
 - [ ] Given 工作區含 `docs/` 以外的 `.md`，Then 不進入掃描結果
 - [ ] Given `docs/` 下多層子目錄內的 `.md`，Then 全部進入掃描結果
 
@@ -119,11 +124,13 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 - 型別判別以 `id_pattern` 為準，不以 carrier 為準（`docs/domain-map.md` §7）
 - 各型別 `id_pattern` 兩兩互斥，由上游 conformance 測試保證，一個 `id` 至多命中一型
 - `id` 缺席或不命中任何型別：計入「有 frontmatter 的非節點」，本版不產生節點，也不產生破洞（見〈本版範圍外〉第三列）
+- 互斥保證被打破（上游錯誤使一個 `id` 同時命中多型）：不產生節點，計入「有 frontmatter 的非節點」並標記 schema 歧義，與 FR-06 平手的處理一致，不擅自取一型
 
 **驗收條件**：
 - [ ] Given frontmatter `id: SPEC-001`，Then 判為 SPEC；Given `id: DOMAIN-MAP-docs-graph`，Then 判為 DomainBundle
 - [ ] Given frontmatter 無 `id`，Then 不產生節點也不產生破洞，計入「有 frontmatter 的非節點」
 - [ ] Given frontmatter `id: v0.1.0-note`（不符合任何 `id_pattern`），Then 同上
+- [ ] Given 測試用型別表中兩型的 `id_pattern` 都命中同一個 `id`，Then 不產生節點，計入「有 frontmatter 的非節點」並標記 schema 歧義
 
 ### FR-04：解析錯誤與事件
 
@@ -147,15 +154,18 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 
 ### FR-05：讀取失敗
 
-**描述**：檔案無法以 UTF-8 解碼時（用戶裁決 D4），結果為「無法讀取」，和 FR-01 的四種失敗一樣走 FR-04。
+**描述**：檔案內容取不到時，結果為「無法讀取」，和 FR-01 的四種失敗一樣走 FR-04。
 
 **規則**：
+- 「無法讀取」附子原因：編碼（無法以 UTF-8 解碼，用戶裁決 D4）、權限（沒有讀取權限）、檔案消失（列出後、讀取前被刪除或移走）
 - 不以寬鬆解碼（取代無效位元組）繼續解析，避免亂碼進入圖譜
 - 讀取失敗不中止整輪掃描
 
 **驗收條件**：
 - [ ] Given carrier 路徑內一份非 UTF-8 的 `.md`，Then 發出原因為「無法讀取」的 EVT-CORPUS-003，並成為破洞
 - [ ] Given carrier 路徑外一份非 UTF-8 的 `.md`，Then 不發事件、不產生破洞，且掃描完成
+- [ ] Given carrier 路徑內一份沒有讀取權限的 `.md`，Then 結果為「無法讀取」，子原因為權限
+- [ ] Given 檔案在列出後、讀取前被刪除，Then 結果為「無法讀取」，子原因為檔案消失，掃描完成
 
 ### FR-06：路徑對型別查詢（Schema 公開面）
 
@@ -258,6 +268,7 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.4 | 2026-09-24 | 依 `/spec validate`（規劃波 Step 3）的五個未回答問題補齊，全部採用預設答案（用戶確認）：沒有 `docs/` 時掃描 0 檔；不追符號連結，只認小寫 `.md`；「無法讀取」擴為三個子原因（編碼、權限、檔案消失）；`id` 互斥保證被打破時標記 schema 歧義；取消與重掃列入範圍外 |
 | 1.3 | 2026-09-24 | 依 v1.2 覆核修正：FR-07 明寫「命中 carrier」含平手；〈前置依賴〉把「無法判定破洞」畫面一併交 `0.3.0-W1-082`；版本條件統一措辭為「不高於內建版本」。同步：domain-map §2 刪除 Diagnostics → Schema 依賴邊（用戶裁決）並改寫 Corpus → Schema 理由、§2.6.3、§4.2；EVT-CORPUS-003 負載補歸屬型別三欄；EVT-DIAGNOSTICS-001 補無法判定狀態 |
 | 1.2 | 2026-09-24 | 依 v1.1 覆核修正：路徑對型別改為 Schema 公開查詢（FR-06，裁決 N1），破洞產生獨立為 FR-08；JSON 缺路徑模式欄位時從內建表補（規則 7，裁決 N3）；「未判定」計入守恆式；「空或非 map」條件改為「不是非空 map」；字面段定義寫明；`severity` 本版固定；IT-1 預期值與樣本凍結入庫，CI 不依賴 Python |
 | 1.1 | 2026-09-24 | 依兩份審查（文字、技術）修正：失敗分類擴為五種並統一走 carrier 分流（裁決 A）；具體度二層比較，平手標記 schema 歧義（裁決 B）；IT-2 改為實體化檔案樹，預期值由參照實作產生（裁決 C）；IT-1 改為與框架函式逐檔比對；新增〈前置依賴〉節；FR-07 加總數守恆；補齊各 FR 驗收 |

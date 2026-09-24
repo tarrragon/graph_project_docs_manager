@@ -27,7 +27,7 @@ consumers: ['Diagnostics']
 `salvagedFields: List<String>`、`lostFields: List<String>`、
 `severity: edgeAffecting | detailOnly`
 
-- `reason` 值域：無 frontmatter／frontmatter 未閉合／frontmatter 為空或非 map／YAML 語法錯誤／無法讀取（SPEC-006 FR-01、FR-05）
+- `reason` 值域：無 frontmatter／frontmatter 未閉合／frontmatter 為空或非 map／YAML 語法錯誤／無法讀取（SPEC-006 FR-01、FR-05）；「無法讀取」另帶子原因：編碼、權限、檔案消失
 - `nodeType`：「路徑對型別」查詢命中一型時為該型；平手時為 null，`candidateTypes` 列出全部候選，`schemaAmbiguous` 為 true
 - 0.3.0 的 `salvagedFields` 恆為空清單，`severity` 恆為 `edgeAffecting`（SPEC-006 FR-04）
 
