@@ -23,11 +23,48 @@ class NodeTypingMatch extends NodeTypingResult {
 
 /// 不產生節點：`id` 缺席、不命中任何型別、或互斥被打破。
 class NodeTypingNonNode extends NodeTypingResult {
-  const NodeTypingNonNode({this.schemaAmbiguous = false});
+  const NodeTypingNonNode({
+    this.schemaAmbiguous = false,
+    this.candidateTypes = const <String>[],
+  });
 
   /// true 代表互斥保證被打破——一個 `id` 同時命中多個型別的 `id_pattern`
   /// （上游 conformance 測試理應保證互斥，此為防禦性標記，FR-03 規則）。
   final bool schemaAmbiguous;
+
+  /// [schemaAmbiguous] 為 true 時，全部命中的候選型別名稱（依名稱排序，
+  /// 供 `CorpusScanResult` 的 FR-03 歧義清單使用，0.3.0-W3-534）；否則為
+  /// 空清單。
+  final List<String> candidateTypes;
+}
+
+/// 型別名稱與其 `id_pattern` 預先編譯出的 [RegExp]（0.3.0-W3-534）。
+class _CompiledIdPattern {
+  const _CompiledIdPattern(this.typeName, this.regex);
+
+  final String typeName;
+  final RegExp regex;
+}
+
+/// 依 [TypeTable] 物件身分快取已編譯的 `id_pattern`，同一次掃描重複呼叫
+/// [classifyNodeType] 不再逐檔重新編譯（0.3.0-W3-534：判型改用預編譯
+/// regex）。`Expando` 不阻止 [table] 被回收，快取生命週期與 [table] 相同。
+final _compiledIdPatternsCache = Expando<List<_CompiledIdPattern>>(
+  'node_typer.compiledIdPatterns',
+);
+
+List<_CompiledIdPattern> _compiledIdPatternsOf(TypeTable table) {
+  final cached = _compiledIdPatternsCache[table];
+  if (cached != null) {
+    return cached;
+  }
+  final compiled = <_CompiledIdPattern>[
+    for (final entry in table.nodeTypes.values)
+      if (entry.idPattern != null)
+        _CompiledIdPattern(entry.name, RegExp(entry.idPattern!)),
+  ];
+  _compiledIdPatternsCache[table] = compiled;
+  return compiled;
 }
 
 /// 需求：[SPEC-006 FR-03] 以 frontmatter 的 `id` 比對型別表各型的
@@ -45,9 +82,8 @@ NodeTypingResult classifyNodeType(
   }
 
   final matchedTypeNames = <String>[
-    for (final entry in table.nodeTypes.values)
-      if (entry.idPattern != null && RegExp(entry.idPattern!).hasMatch(id))
-        entry.name,
+    for (final compiled in _compiledIdPatternsOf(table))
+      if (compiled.regex.hasMatch(id)) compiled.typeName,
   ];
 
   if (matchedTypeNames.isEmpty) {
@@ -56,5 +92,9 @@ NodeTypingResult classifyNodeType(
   if (matchedTypeNames.length == 1) {
     return NodeTypingMatch(matchedTypeNames.single);
   }
-  return const NodeTypingNonNode(schemaAmbiguous: true);
+  matchedTypeNames.sort();
+  return NodeTypingNonNode(
+    schemaAmbiguous: true,
+    candidateTypes: matchedTypeNames,
+  );
 }

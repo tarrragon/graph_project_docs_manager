@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/corpus/parse_failure_event_builder.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
+import 'package:graph_project_docs_manager/schema/carrier_path_lookup.dart';
 
 import '../../helpers/spec006/real_type_table.dart';
 import '../../helpers/spec006/type_table_builder.dart';
@@ -17,29 +19,14 @@ void main() {
           final event = buildParseFailureEvent(
             path: 'docs/domain-map.md',
             outcome: ParseOutcome.noFrontmatter(),
+            lookup: const CarrierPathSingleMatch('DomainBundle'),
             table: table,
           );
 
-          expect(event, isNotNull);
-          expect(event!.nodeType, 'DomainBundle');
+          expect(event.nodeType, 'DomainBundle');
           expect(event.candidateTypes, ['DomainBundle']);
           expect(event.schemaAmbiguous, isFalse);
           expect(event.reason, contains('無 frontmatter'));
-        },
-      );
-
-      test(
-        'C5-2（守衛，C5-1 為正向對照）docs/work-logs/v0/note.md YAML 錯誤：不發事件',
-        () {
-          final table = readRealTypeTable();
-
-          final event = buildParseFailureEvent(
-            path: 'docs/work-logs/v0/note.md',
-            outcome: ParseOutcome.yamlSyntaxError(lineNumber: 3),
-            table: table,
-          );
-
-          expect(event, isNull);
         },
       );
 
@@ -68,11 +55,11 @@ void main() {
         final event = buildParseFailureEvent(
           path: 'docs/tied.md',
           outcome: ParseOutcome.noFrontmatter(),
+          lookup: CarrierPathTie(['Alpha', 'Beta']),
           table: tiedTable,
         );
 
-        expect(event, isNotNull);
-        expect(event!.nodeType, isNull);
+        expect(event.nodeType, isNull);
         expect(event.candidateTypes, unorderedEquals(['Alpha', 'Beta']));
         expect(event.schemaAmbiguous, isTrue);
         expect(event.lostFields, isEmpty);
@@ -84,11 +71,11 @@ void main() {
         final event = buildParseFailureEvent(
           path: 'docs/domain-map.md',
           outcome: ParseOutcome.yamlSyntaxError(lineNumber: 5),
+          lookup: const CarrierPathSingleMatch('DomainBundle'),
           table: table,
         );
 
-        expect(event, isNotNull);
-        expect(event!.nodeType, 'DomainBundle');
+        expect(event.nodeType, 'DomainBundle');
         expect(event.line, 5);
         expect(event.reason, contains('YAML 語法錯誤'));
       });
@@ -96,6 +83,7 @@ void main() {
       test('C5-5 carrier 內五種失敗原因各一：各發一筆，reason 對應值域', () {
         final table = readRealTypeTable();
         const path = 'docs/domain-map.md';
+        const lookup = CarrierPathSingleMatch('DomainBundle');
 
         final outcomes = <ParseOutcome>[
           ParseOutcome.noFrontmatter(),
@@ -107,11 +95,15 @@ void main() {
 
         final events = [
           for (final outcome in outcomes)
-            buildParseFailureEvent(path: path, outcome: outcome, table: table),
+            buildParseFailureEvent(
+              path: path,
+              outcome: outcome,
+              lookup: lookup,
+              table: table,
+            ),
         ];
 
-        expect(events, everyElement(isNotNull));
-        final reasons = events.map((e) => e!.reason).toList();
+        final reasons = events.map((e) => e.reason).toList();
         expect(reasons[0], contains('無 frontmatter'));
         expect(reasons[1], contains('未閉合'));
         expect(reasons[2], contains('空或非 map'));
@@ -119,33 +111,23 @@ void main() {
         expect(reasons[4], contains('無法讀取'));
       });
 
-      test('C5-6 查詢不可用（S5-4 的型別表）：不發事件', () {
-        // 型別表中沒有任何型別帶 carrier_path_patterns 欄位，代表專案 JSON
-        // 與內建表都取不到路徑模式（FR-06 規則 7 下界情形）。
-        final unavailableTable = TypeTableBuilder()
-            .addType('SPEC', idPattern: r'^SPEC-\d{3}$')
-            .build();
+      test(
+        'C5-8（守衛）lookup 為 CarrierPathNoMatch：拋出契約違反例外，'
+        '證明呼叫端未篩除未命中檔案時不會靜默產生錯誤事件',
+        () {
+          final table = readRealTypeTable();
 
-        final event = buildParseFailureEvent(
-          path: 'docs/domain-map.md',
-          outcome: ParseOutcome.noFrontmatter(),
-          table: unavailableTable,
-        );
-
-        expect(event, isNull);
-      });
-
-      test('C5-7 可用檔：不發事件（事件只對失敗檔）', () {
-        final table = readRealTypeTable();
-
-        final event = buildParseFailureEvent(
-          path: 'docs/domain-map.md',
-          outcome: ParseOutcome.available(const {'id': 'DOMAIN-MAP-docs-graph'}),
-          table: table,
-        );
-
-        expect(event, isNull);
-      });
+          expect(
+            () => buildParseFailureEvent(
+              path: 'docs/domain-map.md',
+              outcome: ParseOutcome.noFrontmatter(),
+              lookup: const CarrierPathNoMatch(),
+              table: table,
+            ),
+            throwsStateError,
+          );
+        },
+      );
     },
   );
 
@@ -155,6 +137,7 @@ void main() {
       test('C7-1 C5-5 的五筆事件：salvagedFields 皆為 []，severity 皆為 edgeAffecting', () {
         final table = readRealTypeTable();
         const path = 'docs/domain-map.md';
+        const lookup = CarrierPathSingleMatch('DomainBundle');
 
         final outcomes = <ParseOutcome>[
           ParseOutcome.noFrontmatter(),
@@ -168,11 +151,11 @@ void main() {
           final event = buildParseFailureEvent(
             path: path,
             outcome: outcome,
+            lookup: lookup,
             table: table,
           );
 
-          expect(event, isNotNull);
-          expect(event!.salvagedFields, isEmpty);
+          expect(event.salvagedFields, isEmpty);
           expect(event.severity, ParseFailureSeverity.edgeAffecting);
         }
       });
@@ -183,11 +166,11 @@ void main() {
         final event = buildParseFailureEvent(
           path: 'docs/domain-map.md',
           outcome: ParseOutcome.yamlSyntaxError(lineNumber: 4),
+          lookup: const CarrierPathSingleMatch('DomainBundle'),
           table: table,
         );
 
-        expect(event, isNotNull);
-        expect(event!.salvagedFields, isEmpty);
+        expect(event.salvagedFields, isEmpty);
       });
     },
   );

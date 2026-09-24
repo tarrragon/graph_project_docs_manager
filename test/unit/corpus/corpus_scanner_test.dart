@@ -5,6 +5,7 @@ import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/docs_file_system.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
 import 'package:graph_project_docs_manager/corpus/scan_summary.dart';
+import 'package:graph_project_docs_manager/schema/carrier_path_lookup.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 
 import '../../helpers/spec006/fake_docs_fs.dart';
@@ -394,6 +395,82 @@ void main() {
         expect(node.path, 'docs/node.md');
         expect(node.typeName, 'Alpha');
         expect(node.frontmatter, {'id': 'A-1', 'extra': 'value'});
+      },
+    );
+  });
+
+  group('scanCorpus FR-03 歧義檔案（0.3.0-W3-534）', () {
+    test(
+      '互斥被打破的可用檔案：以路徑與候選型別出現在 schemaAmbiguousNodes，'
+      '並仍計入 nonNodeWithFrontmatterCount（先前只計數，歧義檔案本身不可追溯）',
+      () async {
+        final ambiguousTable = TypeTableBuilder()
+            .addType('Alpha', idPattern: r'^X-\d+$')
+            .addType('Beta', idPattern: r'^X-\d+$')
+            .build();
+        final fs = FakeDocsFileSystem()
+          ..addFile('docs/ambiguous.md', _validFrontmatter('X-1'));
+
+        final result = await scanCorpus(fileSystem: fs, table: ambiguousTable);
+
+        expect(result.schemaAmbiguousNodes, hasLength(1));
+        final node = result.schemaAmbiguousNodes.single;
+        expect(node.path, 'docs/ambiguous.md');
+        expect(node.candidateTypes, ['Alpha', 'Beta']);
+        expect(result.summary.nonNodeWithFrontmatterCount, 1);
+        expect(result.rawNodes, isEmpty);
+      },
+    );
+
+    test('正向對照：只留一型時同一個 id 判為節點，不進入歧義清單', () async {
+      final singleTable = TypeTableBuilder()
+          .addType('Alpha', idPattern: r'^X-\d+$')
+          .build();
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/single.md', _validFrontmatter('X-1'));
+
+      final result = await scanCorpus(fileSystem: fs, table: singleTable);
+
+      expect(result.schemaAmbiguousNodes, isEmpty);
+      expect(result.rawNodes, hasLength(1));
+    });
+  });
+
+  group('scanCorpus carrier 查詢單次呼叫（0.3.0-W3-534）', () {
+    TypeTable tableWithCarrier() => TypeTableBuilder()
+        .addType(
+          'CarrierType',
+          carrierPathPatterns: [
+            PathPatternSpec(pattern: r'^docs/carrier/.*\.md$', specificity: [
+              2,
+              0,
+            ]),
+          ],
+        )
+        .build();
+
+    test(
+      '每個失敗檔只呼叫一次 lookupCarrierPath：命中 carrier（組裝事件）與'
+      '未命中 carrier 各只查一次，不因後續組裝事件而重查',
+      () async {
+        var callCount = 0;
+        CarrierPathLookupResult countingLookup(TypeTable table, String path) {
+          callCount++;
+          return lookupCarrierPathType(table, path);
+        }
+
+        final fs = FakeDocsFileSystem()
+          ..addFile('docs/carrier/hit.md', _noFrontmatterBytes)
+          ..addFile('docs/other/miss.md', _noFrontmatterBytes);
+
+        final result = await scanCorpus(
+          fileSystem: fs,
+          table: tableWithCarrier(),
+          lookupCarrierPath: countingLookup,
+        );
+
+        expect(callCount, 2);
+        expect(result.parseFailureEvents, hasLength(1));
       },
     );
   });
