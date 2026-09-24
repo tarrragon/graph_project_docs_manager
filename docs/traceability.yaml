@@ -257,6 +257,20 @@ data_contract_tests:
       - test/unit/app/global_error_handling_test.dart
       - test/widget/app/fatal_error_gate_test.dart
 
+  # 0.3.0 規劃波 Step 2.6：以下四條是跨語言契約（Python 產出／Dart 消費），
+  # 改錯時沒有編譯期徵兆。tests 待 Step 5 紅燈設計時補齊。
+  - contract_ref: SPEC-006 FR-01（frontmatter 切分語意）／.claude/skills/doc/doc_system/core/frontmatter_parser.py
+    description: Dart 端的切分結果與鍵集合須與框架 Python 函式一致（IT-1）；行分隔只認 \n 與 \r\n，值的型別不在等價範圍內（YAML 1.1 對 1.2）
+
+  - contract_ref: SPEC-006 FR-06／tracking_schema.json 的 carrier 路徑模式與具體度欄位
+    description: Dart 端讀取的鍵名、regex 方言與二層具體度語意須與框架匯出一致；鍵名或語意漂移時分類會全數判為未命中而無任何錯誤
+
+  - contract_ref: EVT-CORPUS-003〈lostFields 的算法〉／tracking_schema.json 的 completeness_fields 與 completeness_semantics
+    description: 完整性集合語意為「欄位必須存在，值可為 null 或空清單」；Dart 端若以真值判斷實作，合法的 null 與空清單會被誤報為缺漏
+
+  - contract_ref: SPEC-006〈前置依賴〉App 內建型別表／assets/schema/builtin_schema_version.json
+    description: 內建型別表副本的 schema_generated_at_framework_version 須與 builtin_schema_version.json 同值，否則「版本不高於內建版本」的補欄位判定會用錯基準
+
 # Runtime on-device 軸：0.1.0-W3-074 盤點的三個跨邊界呼叫點。
 # status 說明驗證形態現況（fake / 實機 / 兩者，定義見
 # .claude/skills/tdd/references/layered-test-strategy.md「跨邊界驗證」）。
@@ -279,4 +293,4 @@ runtime_tests:
       - test/unit/screens/gap_report_test.dart
     status: 邏輯軌（fake）已覆蓋 _openItem 三個結局分支（exitCode 0 成功、exitCode 非零失敗、呼叫拋例外，皆以注入 gapItemProcessRunnerProvider 替身驗證）與「檔案不存在」情境（真實 Process.run 對刻意不存在路徑）；平台端事實軌仍零覆蓋——真正開啟外部編輯器與 doc CLI 呼叫路徑皆無實機驗證，且 doc CLI 呼叫於 lib/ 尚無對應實作（rescan() 現讀寫死 fixture，非真實呼叫）
 
-last_updated: "2026-09-09"
+last_updated: "2026-09-24"
