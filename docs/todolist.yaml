@@ -160,8 +160,8 @@ versions:
 
   - version: "0.1.1"
     codename: "Runoff"
-    description: "0.1.0 發版時前移至此的品質改善票；範圍凍結，不再收新票"
-    status: "active"
+    description: "0.1.0 發版時前移至此的品質改善票；零交付，2026-09-24 以分流結案（不打 tag）"
+    status: "completed"    # 2026-09-24 結案不發版：79 張經分流後 27 關閉、1 完成（分流票本身）、42 張前移 0.3.0；無產品變更，finish 會把 v0.1.1 tag 落在已含 0.2.x 的 commit，故不打 tag（用戶裁決）
     scope: "frozen"    # 2026-09-23 凍結：範圍 = 發版時前移的 72 張 + 實作期衍生 7 張；新發現一律進 0.2.0（開放後繼）
     worklog: "docs/work-logs/v0/v0.1/v0.1.1/"
     notes: |
