@@ -183,8 +183,51 @@ GRAPH_NODE_TYPES = {
     },
 }
 
-# EVT 節點必填欄位。
+# 完整性集合的共通語意（#99 第三項裁決，2026-09-24）：欄位必須存在；值
+# 可為 None（單值）或空清單 []（多值），代表「明確沒有」。此語意對應
+# JSON Schema 的 `required`（只管鍵存在，不管值是否為空）。更嚴格的值
+# 規則（例如 EVT 的 producers/consumers 不得為空）屬各型別 validator 的
+# 附加規則，不放進本節的完整性集合。判斷一律用 `in`（鍵是否存在），不
+# 用真值判斷，否則合法的 null/[] 會被誤判為缺漏。
+
+
+def find_missing_completeness_fields(fields: frozenset[str], entry: dict) -> set[str]:
+    """回傳 entry 缺漏的完整性欄位（值為 None 或 [] 仍算存在，非缺漏）。
+
+    共用實作供 validate.py 與其他消費端引用，避免各自重寫「用 `in` 而非
+    真值判斷」這條件，一旦分散重寫，某處退化為 `if not entry.get(field)`
+    會把合法空值誤判為缺漏卻無測試攔截（見 test_tracking_schema_conformance
+    的鑑別對照測試）。
+    """
+    return {field for field in fields if field not in entry}
+
+
+# EVT 節點必填欄位（完整性集合，語意見上方共通說明）。
 EVT_REQUIRED_FIELDS = frozenset({"id", "name", "canonical_name", "category"})
+
+# PROP／SPEC／UC 識別與顯示最小集（#99 第三項裁決 Q2：c 選項）。
+PROP_REQUIRED_FIELDS = frozenset({"id", "title", "status"})
+SPEC_REQUIRED_FIELDS = frozenset({"id", "title", "status"})
+UC_REQUIRED_FIELDS = frozenset({"id", "title", "status"})
+
+# DomainBundle 識別最小集。個別 domain 的 carrier 是整份 domain-map.md，
+# 本集合僅描述單一 bundle 的識別欄位，不含 domain-map 全域結構。
+DOMAINBUNDLE_REQUIRED_FIELDS = frozenset({"id", "domain"})
+
+# Ticket 型別不在此設完整性集合：欄位權威在 ticket skill
+# （field-semantics.md），本模組僅收錄圖譜消費所需的 id_pattern/carrier
+# （見 GRAPH_NODE_TYPES["Ticket"] 的既有註解）。
+
+# 完整性集合總表，供 JSON 匯出與消費端查表使用（單一入口，避免各處各自
+# 列舉型別名稱清單而彼此漂移）。FlowStep 完整性集合定義在下方（含
+# traverses 的詳細語意說明），此處以底部賦值方式併入，故本行不重複列出。
+COMPLETENESS_FIELDS: dict[str, frozenset[str]] = {
+    "PROP": PROP_REQUIRED_FIELDS,
+    "SPEC": SPEC_REQUIRED_FIELDS,
+    "UC": UC_REQUIRED_FIELDS,
+    "DomainBundle": DOMAINBUNDLE_REQUIRED_FIELDS,
+    "EVT": EVT_REQUIRED_FIELDS,
+}
 
 # EVT category 值域：domain_event（狀態變更事實，必有 consumer）或
 # process_event（步驟進行中標記，允許無 consumer）。
@@ -203,6 +246,10 @@ EVT_CATEGORIES = frozenset({"domain_event", "process_event"})
 FLOWSTEP_REQUIRED_FIELDS = frozenset(
     {"id", "name", "next", "branch_from", "return_to", "emits", "consumes", "traverses"}
 )
+
+# 併入完整性集合總表（FlowStep 定義晚於 COMPLETENESS_FIELDS 賦值處，故
+# 於此補登記，不在上方重複宣告 FLOWSTEP_REQUIRED_FIELDS 的內容）。
+COMPLETENESS_FIELDS["FlowStep"] = FLOWSTEP_REQUIRED_FIELDS
 
 # 語意邊表：A 層 12 條 + B 層 4 條，欄位齊全：class / 正向欄位（儲存
 # 側）/ 反向欄位 / 維護方 / status。
