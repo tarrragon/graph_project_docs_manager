@@ -57,10 +57,16 @@ consumers: ['Diagnostics']
 > 量測結論**——支撐它的欄位損失分佈已隨該 artifact 失效。完整說明見
 > `docs/domain-map.md` §7。
 
-**真正的高頻形態是「無 frontmatter」**（1290 / 7106），但其中 1243 個是
-README、工作日誌等合法非節點檔。只有落在節點 carrier 路徑下卻缺 frontmatter
-的 47 個檔案才應發此事件——判定依據為 `tracking_schema.json` 的 `carrier` 欄位。
-不做這個區分，破洞報告會有 96% 是雜訊。
+**真正的高頻形態是「無 frontmatter」**（2026-08-27 量測：1290 / 7106），其中
+1243 個是 README、工作日誌等合法非節點檔。不做區分，破洞報告會有 96% 是雜訊。
+
+**發送條件**（2026-09-24 依 SPEC-006 v1.2 改寫）：檔案沒拿到可用 frontmatter
+（無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取五種之一），**且**
+其路徑經 Schema 的「路徑對型別」查詢命中某個節點型別的 carrier，Corpus 才發出本事件。
+路徑模式取自型別表的機器可比對欄位（專案 JSON 缺此欄位、版本在範圍內時由 App
+內建表補），不解析人讀的 `carrier` 描述文字。負載另帶歸屬型別；`severity` 在
+0.3.0 一律為 `edgeAffecting`。詳見 SPEC-006 FR-04、FR-06。上方數字是舊量測，
+0.3.0 的整合測試改用重新量測並凍結的測資。
 
 ## 來源
 
