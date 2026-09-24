@@ -5,8 +5,8 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 
 /// 路徑對型別查詢的結果。三選一，窮舉區分（規則 5、S3-4）：
 /// - [CarrierPathNoMatch]：未命中任何型別
-/// - [CarrierPathSingleMatch]：命中恰好一型
-/// - [CarrierPathTie]：多個型別同時命中且具體度打平（schema 歧義）
+/// - [CarrierPathHit]：命中至少一型（[CarrierPathSingleMatch] 或
+///   [CarrierPathTie]）
 sealed class CarrierPathLookupResult {
   const CarrierPathLookupResult();
 }
@@ -16,15 +16,24 @@ class CarrierPathNoMatch extends CarrierPathLookupResult {
   const CarrierPathNoMatch();
 }
 
+/// 命中至少一型（0.3.0-W3-540）：把「命中」收斂成型別層可表達的
+/// 中介型別，讓只接受命中結果的消費端（如 `buildParseFailureEvent`）以
+/// 參數型別表達契約，不需在執行期以 [CarrierPathNoMatch] 分支的
+/// `StateError` 防禦——呼叫端先以 `lookup is CarrierPathNoMatch` 篩除未
+/// 命中結果後，剩餘型別即被編譯器收斂為本型別。
+sealed class CarrierPathHit extends CarrierPathLookupResult {
+  const CarrierPathHit();
+}
+
 /// 命中恰好一型。
-class CarrierPathSingleMatch extends CarrierPathLookupResult {
+class CarrierPathSingleMatch extends CarrierPathHit {
   const CarrierPathSingleMatch(this.typeName);
 
   final String typeName;
 }
 
 /// 具體度打平，多個候選型別（schema 歧義，規則 5、6）。
-class CarrierPathTie extends CarrierPathLookupResult {
+class CarrierPathTie extends CarrierPathHit {
   CarrierPathTie(Iterable<String> candidateTypeNames)
       : candidateTypeNames = List.unmodifiable(
           [...candidateTypeNames]..sort(),

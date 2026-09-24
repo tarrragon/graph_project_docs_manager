@@ -38,35 +38,6 @@ class NodeTypingNonNode extends NodeTypingResult {
   final List<String> candidateTypes;
 }
 
-/// 型別名稱與其 `id_pattern` 預先編譯出的 [RegExp]（0.3.0-W3-534）。
-class _CompiledIdPattern {
-  const _CompiledIdPattern(this.typeName, this.regex);
-
-  final String typeName;
-  final RegExp regex;
-}
-
-/// 依 [TypeTable] 物件身分快取已編譯的 `id_pattern`，同一次掃描重複呼叫
-/// [classifyNodeType] 不再逐檔重新編譯（0.3.0-W3-534：判型改用預編譯
-/// regex）。`Expando` 不阻止 [table] 被回收，快取生命週期與 [table] 相同。
-final _compiledIdPatternsCache = Expando<List<_CompiledIdPattern>>(
-  'node_typer.compiledIdPatterns',
-);
-
-List<_CompiledIdPattern> _compiledIdPatternsOf(TypeTable table) {
-  final cached = _compiledIdPatternsCache[table];
-  if (cached != null) {
-    return cached;
-  }
-  final compiled = <_CompiledIdPattern>[
-    for (final entry in table.nodeTypes.values)
-      if (entry.idPattern != null)
-        _CompiledIdPattern(entry.name, RegExp(entry.idPattern!)),
-  ];
-  _compiledIdPatternsCache[table] = compiled;
-  return compiled;
-}
-
 /// 需求：[SPEC-006 FR-03] 以 frontmatter 的 `id` 比對型別表各型的
 /// `id_pattern`，判定這份可用檔案是否為節點、屬於哪個型別。
 ///
@@ -82,8 +53,8 @@ NodeTypingResult classifyNodeType(
   }
 
   final matchedTypeNames = <String>[
-    for (final compiled in _compiledIdPatternsOf(table))
-      if (compiled.regex.hasMatch(id)) compiled.typeName,
+    for (final entry in table.nodeTypes.values)
+      if (entry.idRegExp?.hasMatch(id) ?? false) entry.name,
   ];
 
   if (matchedTypeNames.isEmpty) {

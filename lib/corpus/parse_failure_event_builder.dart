@@ -15,11 +15,13 @@ import 'parse_outcome.dart';
 ///
 /// 呼叫端（`corpus_scanner.dart`）負責先行篩選才呼叫本函式：[outcome] 已
 /// 排除 [Available]（事件只對失敗檔，FR-04〈觸發條件〉）、查詢可用性已
-/// 確認（FR-06 規則 7）、[lookup] 已排除 [CarrierPathNoMatch]（carrier 外
-/// 的失敗檔不發事件，`docs/domain-map.md` §7〈觸發條件比原本設想的窄得
-/// 多〉）。呼叫端算出 [lookup] 的同一次 `lookupCarrierPathType` 呼叫是本輪
-/// 唯一一次查詢，本函式不重查（0.3.0-W3-534：先前掃描器判斷命中與否、與
-/// 建構事件各自呼叫一次，同一檔查兩次）。
+/// 確認（FR-06 規則 7）、[lookup] 的型別 [CarrierPathHit] 本身即排除
+/// 未命中結果（carrier 外的失敗檔不發事件，`docs/domain-map.md` §7
+/// 〈觸發條件比原本設想的窄得多〉；0.3.0-W3-540：未命中不再是執行期
+/// 才發現的契約違反，而是編譯期即不可傳入）。呼叫端算出 [lookup] 的同一
+/// 次 `lookupCarrierPathType` 呼叫是本輪唯一一次查詢，本函式不重查
+/// （0.3.0-W3-534：先前掃描器判斷命中與否、與建構事件各自呼叫一次，同一
+/// 檔查兩次）。
 ///
 /// `lostFields` 依 [lostFields] 純函式計算，失敗檔沒有可用 frontmatter，
 /// 「實際寫出的鍵」恆為空（見 `test/unit/corpus/lost_fields_test.dart`
@@ -27,7 +29,7 @@ import 'parse_outcome.dart';
 ParseFailureEvent buildParseFailureEvent({
   required String path,
   required ParseOutcome outcome,
-  required CarrierPathLookupResult lookup,
+  required CarrierPathHit lookup,
   required TypeTable table,
 }) {
   final String? nodeType;
@@ -46,14 +48,6 @@ ParseFailureEvent buildParseFailureEvent({
       candidateTypes = candidateTypeNames;
       schemaAmbiguous = true;
       completenessFields = null;
-    case CarrierPathNoMatch():
-      // 結構上不可達：呼叫端契約保證 lookup 不為 CarrierPathNoMatch 才會
-      // 呼叫本函式（見上方 dartdoc）。CarrierPathLookupResult 定義在
-      // lib/schema/carrier_path_lookup.dart（本票範圍外），switch 仍須
-      // 窮舉三個子類別以取得編譯器保證；本分支沒有合理的負載可組裝
-      // （不同於 parse_outcome.dart 的 Available 分支能回傳空字串
-      // sentinel），違反契約時以明確錯誤中止而非靜默產生錯誤事件。
-      throw StateError(_noMatchContractViolationMessage);
   }
 
   return ParseFailureEvent(
@@ -74,14 +68,6 @@ ParseFailureEvent buildParseFailureEvent({
     severity: ParseFailureSeverity.edgeAffecting,
   );
 }
-
-/// [buildParseFailureEvent] 契約違反時的開發者診斷訊息（開發者診斷用途，
-/// 非 UI 顯示字串，i18n-exempt）。獨立成常數避免呼叫處該行過長。
-const _noMatchContractViolationMessage = // i18n-exempt: 開發者診斷例外訊息
-    '$_devDiagPrefix：呼叫端須先篩除未命中 carrier 的檔案才呼叫本函式'; // i18n-exempt: 開發者診斷例外訊息
-
-const _devDiagPrefix = // i18n-exempt: 開發者診斷例外訊息
-    'buildParseFailureEvent 收到 CarrierPathNoMatch（0.3.0-W3-534 契約）'; // i18n-exempt: 開發者診斷例外訊息
 
 /// 需求：[SPEC-006 FR-01、FR-05；EVT-CORPUS-003〈負載結構〉] `reason` 值域。
 ///

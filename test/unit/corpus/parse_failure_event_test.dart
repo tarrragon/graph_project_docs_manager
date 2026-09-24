@@ -110,24 +110,6 @@ void main() {
         expect(reasons[3], contains('YAML 語法錯誤'));
         expect(reasons[4], contains('無法讀取'));
       });
-
-      test(
-        'C5-8（守衛）lookup 為 CarrierPathNoMatch：拋出契約違反例外，'
-        '證明呼叫端未篩除未命中檔案時不會靜默產生錯誤事件',
-        () {
-          final table = readRealTypeTable();
-
-          expect(
-            () => buildParseFailureEvent(
-              path: 'docs/domain-map.md',
-              outcome: ParseOutcome.noFrontmatter(),
-              lookup: const CarrierPathNoMatch(),
-              table: table,
-            ),
-            throwsStateError,
-          );
-        },
-      );
     },
   );
 
