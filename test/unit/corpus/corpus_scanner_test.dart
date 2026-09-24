@@ -692,6 +692,52 @@ void main() {
     );
   });
 
+  group('scanCorpus 分批並行讀檔（0.3.0-W3-537）', () {
+    test(
+      '批次內確實並行讀檔：同一批次的檔案在讀取期間互相重疊（有一刻同時'
+      '進行中的讀取數 > 1），非逐一等待前一筆完成才開始下一筆',
+      () async {
+        final delegate = FakeDocsFileSystem();
+        final paths = List.generate(8, (i) => 'docs/p/f$i.md');
+        for (final p in paths) {
+          delegate.addFile(p, _validFrontmatter('A-1'));
+        }
+        final tracking = _ConcurrencyTrackingDocsFileSystem(delegate);
+
+        await scanCorpus(fileSystem: tracking, table: _tableWithoutCarrier());
+
+        expect(
+          tracking.maxConcurrentReads,
+          greaterThan(1),
+          reason:
+              '批次大小 > 1 且同批次內以 Future.wait 併發發起讀取時，讀取'
+              '期間應有重疊；若退化為逐一循序讀檔，最大並行數恆為 1',
+        );
+      },
+    );
+
+    test('分批並行讀檔後，結果順序與循序讀檔完全相同（含失敗與可用混合）', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/a/1.md', _validFrontmatter('A-1'))
+        ..addFile('docs/a/2.md', _noFrontmatterBytes)
+        ..addFile('docs/a/3.md', _validFrontmatter('A-1'))
+        ..addFile('docs/b/4.md', _unclosedBytes)
+        ..addFile('docs/b/5.md', _validFrontmatter('A-1'));
+
+      final result = await scanCorpus(fileSystem: fs, table: _tableWithoutCarrier());
+
+      expect(
+        result.rawNodes.map((n) => n.path).toList(),
+        ['docs/a/1.md', 'docs/a/3.md', 'docs/b/5.md'],
+      );
+      expect(
+        result.parseErrors.map((e) => e.path).toList(),
+        ['docs/a/2.md', 'docs/b/4.md'],
+      );
+      expect(result.summary.totalFilesScanned, 5);
+    });
+  });
+
   group('reasonForFileSystemFailure（NFR-01 錯誤路徑判斷共用邏輯）', () {
     test('errno 1（EPERM）判為權限不足', () {
       final error = FileSystemException(
@@ -757,5 +803,34 @@ class _ThrowingDocsFileSystem implements DocsFileSystem {
       throw readError();
     }
     return delegate.readBytes(relativePath);
+  }
+}
+
+/// 0.3.0-W3-537 專用：包裝一個 [DocsFileSystem]，每次 [readBytes] 以微小
+/// 延遲（`Future.delayed`）模擬 I/O 耗時，並追蹤同時進行中的讀取數峰值
+/// [maxConcurrentReads]。若 [CorpusScanner] 對同一批次以 [Future.wait]
+/// 併發發起讀取，峰值會 > 1；若退化為逐一循序 await，峰值恆為 1——藉此
+/// 區分「真的並行讀檔」與「看起來並行但實際仍循序」。
+class _ConcurrencyTrackingDocsFileSystem implements DocsFileSystem {
+  _ConcurrencyTrackingDocsFileSystem(this.delegate);
+
+  final DocsFileSystem delegate;
+  int _inFlight = 0;
+  int maxConcurrentReads = 0;
+
+  @override
+  Future<List<DocsFileSystemEntry>> listEntries(String relativePath) =>
+      delegate.listEntries(relativePath);
+
+  @override
+  Future<DocsReadResult> readBytes(String relativePath) async {
+    _inFlight++;
+    if (_inFlight > maxConcurrentReads) {
+      maxConcurrentReads = _inFlight;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    final result = await delegate.readBytes(relativePath);
+    _inFlight--;
+    return result;
   }
 }
