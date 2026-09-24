@@ -13,6 +13,10 @@ from pathlib import Path
 from doc_system.commands.create import DOC_TYPE_CONFIG, _get_templates_dir
 from doc_system.core.file_locator import FileLocator
 from doc_system.core.frontmatter_parser import parse_frontmatter
+from doc_system.core.tracking_schema import (
+    EVT_REQUIRED_FIELDS,
+    find_missing_completeness_fields,
+)
 
 
 # 錨點關鍵字：容忍章節標題的合理變體（如「A.1 表/欄位語意」「A.1：xxx」等），
@@ -37,8 +41,9 @@ FLAG_ROW_KEYWORDS = ["契約文件", "migration 治理"]
 # 判定「旗標未填」的佔位符樣式（模板留白），非空但仍視為未填
 _PLACEHOLDER_PATTERN = re.compile(r"^\{.*\}$")
 
-# EVT 型別必填 frontmatter 欄位（定案於節點型別表，見 doc SKILL.md）
-EVENT_REQUIRED_FIELDS = ["id", "name", "canonical_name", "category"]
+# EVT 型別必填 frontmatter 欄位改讀 tracking_schema.EVT_REQUIRED_FIELDS
+# （單一 SSOT，見 #99 第三項裁決：完整性集合語意為「欄位必須存在，值可
+# 為 null 或 []」）。category 值域維持本檔獨立常數，不在本票範圍調整。
 EVENT_VALID_CATEGORIES = ("domain_event", "process_event")
 
 
@@ -141,9 +146,8 @@ def _validate_event(frontmatter: dict) -> list[str]:
     """
     missing: list[str] = []
 
-    for field in EVENT_REQUIRED_FIELDS:
-        if not frontmatter.get(field):
-            missing.append(f"缺少必填欄位: {field}")
+    missing_fields = find_missing_completeness_fields(EVT_REQUIRED_FIELDS, frontmatter)
+    missing.extend(f"缺少必填欄位: {field}" for field in sorted(missing_fields))
 
     category = frontmatter.get("category")
     if category and category not in EVENT_VALID_CATEGORIES:

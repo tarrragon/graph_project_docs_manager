@@ -14,6 +14,8 @@ import yaml
 
 from doc_system.core.frontmatter_parser import parse_frontmatter
 from doc_system.core.tracking_schema import (
+    COMPLETENESS_FIELDS,
+    DOMAINBUNDLE_REQUIRED_FIELDS,
     EVT_CATEGORIES,
     EVT_REQUIRED_FIELDS,
     FLOWSTEP_REQUIRED_FIELDS,
@@ -23,8 +25,12 @@ from doc_system.core.tracking_schema import (
     GRAPH_LAYER_ESTABLISHED,
     GRAPH_LAYER_PROPOSED,
     GRAPH_NODE_TYPES,
+    PROP_REQUIRED_FIELDS,
     PROPOSALS_TRACKING_SCHEMA,
+    SPEC_REQUIRED_FIELDS,
     TRACEABILITY_SCHEMA,
+    UC_REQUIRED_FIELDS,
+    find_missing_completeness_fields,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -252,6 +258,64 @@ class TestGraphTypeTablesWellFormed:
         assert len(node_layer_keys) == 1 and len(next(iter(node_layer_keys))) == 1, (
             "每張表的層級欄位名應唯一且單一"
         )
+
+
+class TestCompletenessFieldsWellFormed:
+    """完整性集合最小集本身（#99 第三項裁決 Q2：識別與顯示最小集）。"""
+
+    def test_prop_spec_uc_are_identity_display_minimal_set(self):
+        assert PROP_REQUIRED_FIELDS == {"id", "title", "status"}
+        assert SPEC_REQUIRED_FIELDS == {"id", "title", "status"}
+        assert UC_REQUIRED_FIELDS == {"id", "title", "status"}
+
+    def test_domainbundle_minimal_set(self):
+        assert DOMAINBUNDLE_REQUIRED_FIELDS == {"id", "domain"}
+
+    def test_completeness_fields_table_covers_all_defined_types(self):
+        """總表須涵蓋 PROP/SPEC/UC/DomainBundle/EVT/FlowStep 六型（Ticket 不設集合，權威在 ticket skill）。"""
+        assert set(COMPLETENESS_FIELDS.keys()) == {
+            "PROP",
+            "SPEC",
+            "UC",
+            "DomainBundle",
+            "EVT",
+            "FlowStep",
+        }
+
+
+class TestFindMissingCompletenessFieldsDiscrimination:
+    """find_missing_completeness_fields 的鑑別對照：鍵缺漏應紅、null／[] 應綠。
+
+    改回舊語意（`if not entry.get(field)` 真值判斷）時，
+    test_null_value_is_not_missing 與 test_empty_list_value_is_not_missing
+    會翻紅：真值判斷會把合法的 None／[] 誤判為缺漏。
+    """
+
+    @pytest.mark.parametrize("type_name,fields", sorted(COMPLETENESS_FIELDS.items()))
+    def test_missing_key_is_rejected(self, type_name, fields):
+        field_to_drop = sorted(fields)[0]
+        entry = {f: "placeholder" for f in fields}
+        del entry[field_to_drop]
+
+        missing = find_missing_completeness_fields(fields, entry)
+
+        assert missing == {field_to_drop}, f"{type_name}: 鍵缺漏未被偵測到"
+
+    @pytest.mark.parametrize("type_name,fields", sorted(COMPLETENESS_FIELDS.items()))
+    def test_null_value_is_not_missing(self, type_name, fields):
+        entry = dict.fromkeys(fields)  # 所有欄位存在，值皆為 None
+
+        missing = find_missing_completeness_fields(fields, entry)
+
+        assert missing == set(), f"{type_name}: 合法的 None 值被誤判為缺漏"
+
+    @pytest.mark.parametrize("type_name,fields", sorted(COMPLETENESS_FIELDS.items()))
+    def test_empty_list_value_is_not_missing(self, type_name, fields):
+        entry = {f: [] for f in fields}
+
+        missing = find_missing_completeness_fields(fields, entry)
+
+        assert missing == set(), f"{type_name}: 合法的空清單值被誤判為缺漏"
 
 
 def _discover_evt_files() -> list[Path]:
