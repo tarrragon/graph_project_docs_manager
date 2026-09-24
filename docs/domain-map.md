@@ -176,6 +176,31 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 **畫面狀態不是 domain，是 layer。** 布局演算法（有真實規則與演算法）與
 畫面狀態（純 UI）分開 —— 前者可獨立測試，後者依賴 widget tree。
 
+### Bundle 不變式清單（0.3.0 範圍：Schema／Corpus／Diagnostics）
+
+供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」
+被動覆蓋。規則權威在 SPEC-006，本表只列可獨立斷言的不變式；目標路徑為 `lib/schema/`、
+`lib/corpus/`、`lib/diagnostics/`（此為目標邊界，非現況：三個目錄尚不存在）。
+
+| Bundle | 不變式（每條可轉一個 unit test） | SPEC-006 |
+|---|---|---|
+| Schema | 路徑對型別查詢比對完整相對路徑、區分大小寫；`docs/spec/<d>/README.md` 不命中 SPEC | FR-06 規則 1、4 |
+| Schema | 多型命中時具體度高者勝：整段固定文字才算字面段；先比字面段數，再比跨多段萬用成分數 | FR-06 規則 6 |
+| Schema | 具體度相同時回傳平手，列出全部候選並標記 schema 歧義，不擅自取一型 | FR-06 規則 5、6 |
+| Schema | FlowStep 不參與路徑比對 | FR-06 規則 3 |
+| Schema | 型別表來源三分：JSON 有路徑模式用 JSON；缺欄位且 JSON 版本不高於內建版本，只補路徑模式；其餘情況查詢不可用 | FR-06 規則 7 |
+| Corpus | 每個檔案恰好落入一種結果：可用、無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取 | FR-01、FR-05 |
+| Corpus | 結尾取第一個 `---` 行；frontmatter 引號字串內的 `|---|` 不造成截斷 | FR-01 規則 4、6 |
+| Corpus | 「可用」要求解析結果是非空 map；`{}`、清單、純量、只有註解都不是 | FR-01 |
+| Corpus | 可用檔的 `id` 至多命中一型；無 `id` 或不命中歸「有 frontmatter 的非節點」，不產生節點也不產生破洞 | FR-03 |
+| Corpus | EVT-CORPUS-003 只對命中 carrier（含平手）的失敗檔發出；未命中者只記入 `parseErrors` | FR-04 |
+| Corpus | `lostFields` = 歸屬型別完整性集合 − 實際寫出的鍵；值為 null 或 `[]` 算寫出；平手或取不到集合時為 `[]` | FR-04、EVT-CORPUS-003 |
+| Corpus | 0.3.0 的 `salvagedFields` 恆為 `[]`，`severity` 恆為 `edgeAffecting` | FR-04 |
+| Corpus | 守恆：總數 = 節點 + 有 frontmatter 的非節點 + 各失敗原因總和；各失敗原因總和 = 命中 + 未命中 + 未判定 | FR-07 |
+| Corpus | 任一單檔失敗不中止整輪、不改變其他檔案的結果 | NFR-01 |
+| Diagnostics | 一筆 EVT-CORPUS-003 對應一筆 `parseFailure` 破洞；破洞數等於命中 carrier 數 | FR-08 |
+| Diagnostics | 查詢不可用時不產生 `parseFailure` 破洞，回報「無法判定」 | FR-08 |
+
 ## 4. 邊界決策
 
 ### 4.1 Ticket 分兩層持有
@@ -261,6 +286,11 @@ CLI 的職責改為驗證：`doc validate`、`uc verify`、`validate-filenames`
 - Corpus 的票必須帶容錯情境（舊框架版本的殘缺文件是常態，非例外）
 - Graph 的票不得依賴 UI —— 遍歷與 symmetric union 皆為純函式，可獨立測試
 - Layout 的票分兩類：矩陣（委派套件、票薄）、泳道（自建、票厚）
+- 0.3.0 新建 `lib/schema/`、`lib/corpus/`、`lib/diagnostics/` 時，import 方向必須符合 §2：
+  `lib/diagnostics/` 只可 import `lib/corpus/`（不得 import `lib/schema/`，該邊已刪除）；
+  `lib/corpus/` 只可 import `lib/schema/` 與 `lib/workspace/`；三者皆不得 import `lib/screens/`。
+  2026-09-24 規劃時三個目錄都不存在，import 鏈無從驗證；各實作票的驗收須含
+  `grep -rn "^import" lib/<bundle>/` 的方向檢查
 
 ## 6. Commodity check（本專案的退化形式）
 
@@ -390,7 +420,23 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 
 ## 8. FR → Bundle 覆蓋對照
 
-待 SPEC 產出後回填。
+SPEC-003 的 FR 待 `0.3.0-W3-238` 回填。
+
+### SPEC-006（0.3.0 Corpus）
+
+| FR | 內容 | Bundle | 測試層 |
+|----|------|--------|-------|
+| FR-01 | frontmatter 切分與結果分類 | Corpus | domain unit；IT-1 |
+| FR-02 | 掃描範圍 `docs/**/*.md` | Corpus（經 Workspace 取根目錄） | unit（檔案系統以 port 注入） |
+| FR-03 | 以 `id_pattern` 判型 | Corpus（讀 Schema 型別表） | domain unit |
+| FR-04 | 解析錯誤與 EVT-CORPUS-003 | Corpus | domain unit |
+| FR-05 | 讀取失敗（非 UTF-8） | Corpus | unit；IT-2 |
+| FR-06 | 路徑對型別查詢 | Schema | domain unit；IT-2 |
+| FR-07 | 掃描結果摘要與守恆 | Corpus | domain unit；IT-2 |
+| FR-08 | 由 EVT-CORPUS-003 產生破洞 | Diagnostics | domain unit；IT-2 |
+| NFR-01 | 失敗隔離 | Corpus | domain unit |
+
+全部 FR 皆有歸屬，無標為非 domain 者（破洞報告畫面接真實資料屬 0.6+，不在本版）。
 
 ## 9. 待決事項
 
