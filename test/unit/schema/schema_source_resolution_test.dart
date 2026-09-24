@@ -114,7 +114,7 @@ void main() {
   });
 
   group('S5-4（守衛）專案 JSON 缺欄位，JSON 版本高於內建版本', () {
-    test('查詢不可用', () {
+    test('查詢不可用；原因為版本高於內建（非沒有路徑模式）', () {
       final projectJson = _schemaJson(
         version: '2.41.0',
         nodeTypes: {
@@ -127,7 +127,10 @@ void main() {
         builtinSchemaJson: builtinJson,
       );
 
-      expect(result.pathPatternSource, PathPatternSource.unavailable);
+      expect(
+        result.pathPatternSource,
+        PathPatternSource.projectVersionHigherThanBuiltin,
+      );
       expect(result.isQueryAvailable, isFalse);
       expect(result.isPathPatternFromBuiltin, isFalse);
     });
@@ -151,7 +154,7 @@ void main() {
   });
 
   group('S5-5 專案 JSON 與內建表都沒有路徑模式', () {
-    test('查詢不可用', () {
+    test('查詢不可用；原因為沒有路徑模式（非版本高於內建）', () {
       final emptyBuiltinJson = _schemaJson(version: '2.40.3', nodeTypes: {
         'SPEC': {'id_pattern': r'^SPEC-\d+$'},
       });
@@ -167,8 +170,25 @@ void main() {
         builtinSchemaJson: emptyBuiltinJson,
       );
 
-      expect(result.pathPatternSource, PathPatternSource.unavailable);
+      expect(result.pathPatternSource, PathPatternSource.noPathPattern);
       expect(result.isQueryAvailable, isFalse);
+    });
+
+    test('正向對照：內建表若有路徑模式（版本允許）即可用，鑑別「沒有路徑模式」與版本無關', () {
+      final projectJson = _schemaJson(
+        version: '1.0.0',
+        nodeTypes: {
+          'SPEC': {'id_pattern': r'^SPEC-\d+-project$'},
+        },
+      );
+
+      final result = resolveSchemaSource(
+        projectSchemaJson: projectJson,
+        builtinSchemaJson: builtinJson,
+      );
+
+      expect(result.pathPatternSource, PathPatternSource.builtinTable);
+      expect(result.isQueryAvailable, isTrue);
     });
   });
 
