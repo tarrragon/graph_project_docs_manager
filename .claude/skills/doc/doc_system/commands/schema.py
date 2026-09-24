@@ -37,20 +37,23 @@ COMPLETENESS_SEMANTICS = (
 # `RegExp` 下多數情況語意相同，但具名群組 / lookbehind / `\p{}` 等處語法
 # 並非全等。此鍵給未來新增 pattern 的人看：目前安全不代表加了 lookbehind
 # 之後仍安全，屆時失效的是消費端而非本專案，不會有紅燈（見 Context Bundle
-# 陷阱三）。carrier_path_pattern 沿用同一方言，不另設欄位。
+# 陷阱三）。carrier_path_patterns 內每個 pattern 沿用同一方言，不另設欄位。
 ID_PATTERN_DIALECT = "python-re"
 
-# carrier_path_specificity 的比對演算法說明，隨 JSON 一併匯出（呼應
+# carrier_path_patterns 的比對演算法說明，隨 JSON 一併匯出（呼應
 # COMPLETENESS_SEMANTICS 的匯出理由：避免消費端只看到數字組、猜測比對規
 # 則）。完整定義與計算依據見 tracking_schema.py GRAPH_NODE_TYPES 前的
 # 說明區塊，此處為消費端摘要。
 CARRIER_PATH_SPECIFICITY_SEMANTICS = (
-    "carrier_path_specificity 為三元組 [literal_segment_count, "
-    "cross_segment_wildcard_count, literal_char_count]，比對時先比 "
-    "literal_segment_count（多者優先），再比 cross_segment_wildcard_count"
-    "（少者優先），最後比 literal_char_count（多者優先）；三項全同視為無"
-    "法區分（schema 歧義）。只有 carrier 是檔案路徑的型別才有本欄位，見"
-    "node_types 是否含 carrier_path_pattern 判斷。"
+    "carrier_path_patterns 為清單，每個元素含 pattern（正則字串）與 "
+    "specificity（二元組 [literal_segment_count, "
+    "cross_segment_wildcard_count]）。同一型別的多個合法路徑形態各自一"
+    "個元素，各自計算具體度，不合併成單一具體度。具體度比較僅在同一路"
+    "徑可能同時命中多個型別時才有意義：先比 literal_segment_count（多"
+    "者優先），再比 cross_segment_wildcard_count（少者優先）；兩項皆同"
+    "視為打平——打平即為 schema 歧義，由消費端回報，不得以任何額外層次"
+    "悄悄選出一型。只有 carrier 是檔案路徑的型別才有本欄位，見"
+    "node_types 是否含 carrier_path_patterns 判斷。"
 )
 
 # 本產物不可被直接編輯的提醒鍵值，呼應 tracking_schema.py 檔頭「Markdown

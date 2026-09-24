@@ -3,16 +3,20 @@
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
 **Version**: 1.22.6 — 每個以檔案為 carrier 的節點型別（PROP／SPEC／UC／Ticket／DomainBundle／EVT）
-新增機器可比對的 `carrier_path_pattern`（與 `id_pattern` 同一 python-re 方言）與
-`carrier_path_specificity`（三元組 `[literal_segment_count, cross_segment_wildcard_count,
-literal_char_count]`）；FlowStep 因 carrier 非檔案路徑不適用，新增 `CARRIER_PATH_TYPES`
-集合供查表。`doc schema export` 匯出新增 `carrier_path_types` 與
-`carrier_path_specificity_semantics` 兩鍵。`test_tracking_schema_conformance.py` 新增
-`TestCarrierPathPatternConformance`：domain 目錄內 README.md 不命中 SPEC 模式、
-`docs/spec/{domain}/domain-map.md` 同時命中 SPEC 與 DomainBundle 且 DomainBundle 具體度較高、
-六個型別的具體度兩兩不平手（拿掉任一型別模式或改壞具體度即翻紅）。既有
-`test_node_and_edge_tables_share_same_layer_field_name` 因新欄位值為 list（unhashable）
-補 `isinstance` 防護。`tracking_schema.json` 已重產同步。
+新增機器可比對的 `carrier_path_patterns`（清單，每項為 `{pattern, specificity}`，pattern 與
+`id_pattern` 同一 python-re 方言；specificity 為二元組 `[literal_segment_count,
+cross_segment_wildcard_count]`，不設第三層）；FlowStep 因 carrier 非檔案路徑不適用，新增
+`CARRIER_PATH_TYPES` 集合供查表。同一型別的多個替代路徑（DomainBundle 的 per-domain 巢狀
+形態與根層形態）拆成清單中的獨立項，各自計算具體度。具體度比較僅在同一路徑可能同時命中
+多個型別時才有意義（目錄不重疊的型別對打平不影響分類）；兩層皆同視為打平即為 schema 歧義，
+交由消費端回報，不引入任何額外層次悄悄消歧。`doc schema export` 匯出新增
+`carrier_path_types` 與 `carrier_path_specificity_semantics` 兩鍵。
+`test_tracking_schema_conformance.py` 新增 `TestCarrierPathPatternConformance`：domain 目錄內
+README.md 不命中 SPEC 模式、`docs/spec/{domain}/domain-map.md` 同時命中 SPEC 與 DomainBundle
+且 DomainBundle 巢狀形態具體度較高、對「正向樣本會命中對方模式」的型別對斷言二層具體度不
+平手、示範兩個重疊且二層相同的模式會被判為打平、DomainBundle 具體度回歸測試（改成 <= SPEC
+即翻紅）。既有 `test_node_and_edge_tables_share_same_layer_field_name` 因新欄位值為 list
+（unhashable）補 `isinstance` 防護。`tracking_schema.json` 已重產同步。
 
 **Version**: 1.22.5 — 覆核修正 1.22.4 引入的行為退化：`validate.py` 的 EVT 完整性判定改讀
 schema 的 `find_missing_completeness_fields`（只判斷欄位是否存在）後，id/name/canonical_name/
