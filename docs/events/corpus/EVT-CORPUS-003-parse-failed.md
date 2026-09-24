@@ -6,7 +6,7 @@ category: domain_event
 status: draft
 source_proposal: PROP-003
 created: "2026-08-26"
-updated: "2026-08-27"
+updated: "2026-09-24"
 
 payload: null
 
@@ -32,6 +32,12 @@ consumers: ['Diagnostics']
 
 本事件回報的是**這個檔案救回了哪些欄位、損失了哪些**，而不是「這個檔案沒了」。
 單檔失敗不中止整輪解析。
+
+`lostFields` 的算法（2026-09-24 依 `tarrragon/claude#99` 第三項裁決）：
+該節點型別在 `tracking_schema.json` 的完整性集合，減去實際寫出的鍵。
+值為 `null` 或空清單的鍵算「已寫出」（代表明確沒有），不列入 `lostFields`。
+型別沒有集合時（Ticket 的權威在 ticket skill），`lostFields` 為空清單。
+集合匯出到 JSON 之前不實作（`0.3.0-W1-079`）。
 
 `severity` 區分兩級：`edgeAffecting`（損失的欄位含邊，影響圖結構）與
 `detailOnly`（僅影響詳情內容），對應 UI 上兩種不同強度的標記。

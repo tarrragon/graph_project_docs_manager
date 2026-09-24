@@ -129,8 +129,15 @@ SPEC 定狀態、UC 定流程、ticket 承載開發資訊。改一層不必動�
 **斷言來源**：`domain-map.md` §7、`EVT-CORPUS-001`、`EVT-CORPUS-003`。
 
 **阻擋**：
-- 【上游 `0.2.1-W3-1131`】`*_REQUIRED_FIELDS` 的語意裁決——
-  裁決前不得實作「缺欄位即破洞」，否則每個不分支的 FlowStep 都會誤報
+- ~~【上游 `0.2.1-W3-1131`】`*_REQUIRED_FIELDS` 的語意裁決——
+  裁決前不得實作「缺欄位即破洞」，否則每個不分支的 FlowStep 都會誤報~~
+  **已裁決**（2026-09-24，框架 owner 裁定，記錄於 `0.3.0-W1-078` 與
+  `tarrragon/claude#99`）：欄位必須存在，值可為 `null` 或空清單（代表明確
+  沒有）；PROP／SPEC／UC 的集合為 {id, title, status}，DomainBundle 為 {id, domain}，
+  Ticket 的欄位權威在 ticket skill；FlowStep 保留 `traverses`。
+  **仍然擋住的部分**：集合要匯出到 `tracking_schema.json`，App 才讀得到
+  （`0.3.0-W1-079`）。擋住的只有 `lostFields`，兩項整合測試不受影響——
+  兩項的判定依據是 carrier 完整路徑模式與 frontmatter 有無，不讀欄位集合
 - 【本地】檔案級 carrier 的破洞判定（`DomainBundle` 的 carrier 是單一檔案）
 
 ### 0.4 — Graph：建圖

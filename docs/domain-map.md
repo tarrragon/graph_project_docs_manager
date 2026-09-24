@@ -460,7 +460,15 @@ frontmatter 解析語意——見下方「解析器語意是規格的一部分�
   ——重用既有函式，僅第一運算元改為 JSON 版本。CLAUDE.md §6 五項空殼判準
   原列有此項，定案後應移除。依賴本判準的重評項：SPEC-001 §1 L67-68 註記
   （面板改放 App 已知版本範圍，trigger 已滿足）、W3-335.37 R4（O4 重評）
-- **`*_REQUIRED_FIELDS` 的語意本身未定，`lostFields` 在裁決前不可實作。**
+- **`*_REQUIRED_FIELDS` 的語意已裁決**（2026-09-24，`0.3.0-W1-078`，
+  `tarrragon/claude#99`）：欄位必須存在，值可為 `null` 或空清單（代表明確
+  沒有），對應 JSON Schema 的 `required`；更嚴格的值規則屬各型別 validator。
+  五型最小集：PROP／SPEC／UC = {id, title, status}、DomainBundle = {id, domain}，
+  Ticket 的權威在 ticket skill；FlowStep 保留 `traverses`。`lostFields` =
+  該型別集合 − 實際寫出的鍵；落地前提是集合匯出到 `tracking_schema.json`
+  （`0.3.0-W1-079`）。本專案 39 個 FlowStep「補齊欄位、值為空陣列」的做法，
+  在裁決後的語意下是正確填法。以下是裁決前的問題描述，保留作為脈絡：
+
   上游複驗（票 `0.2.1-W3-1131`）指出問題有三層，比「5 型缺定義」更基本：
 
   1. `PROP` / `SPEC` / `UC` / `Ticket` / `DomainBundle` 五型無定義
