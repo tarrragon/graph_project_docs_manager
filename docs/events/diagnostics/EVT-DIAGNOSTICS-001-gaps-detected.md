@@ -35,7 +35,7 @@ PROP-004）使用該詞時皆以此為準，不另立外延。
 
 | 類別 | 內容 | 判定輸入 |
 |------|------|---------|
-| `parseFailure` | 解析失敗 | `EVT-CORPUS-003`：落在節點 carrier 路徑內，且沒拿到可用 frontmatter 的檔案（無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取）。carrier 外的失敗檔不算，YAML 語法錯誤也一樣（2026-09-24 用戶裁決，SPEC-006 D6） |
+| `parseFailure` | 解析失敗 | `EVT-CORPUS-003`：落在節點 carrier 路徑內，且沒拿到可用 frontmatter 的檔案（無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取）。carrier 外的失敗檔不算，YAML 語法錯誤也一樣（2026-09-24 用戶裁決，SPEC-006 D6）。型別表取不到路徑模式時不產生本類破洞，報告改顯示「無法判定破洞」（SPEC-006 FR-08） |
 | `graphDefect` | 圖結構缺陷 | 斷邊（指向不存在節點）、孤島、缺必要邊 |
 | `traceGap` | 追溯缺口 | 無 SPEC 的 PROP、無測試的 UC |
 | `unlocatable` | ticket 無法定位 | `where.files` 對應不到任何 domain（PROP-004「以 ticket 切入」模式） |

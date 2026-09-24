@@ -23,14 +23,20 @@ consumers: ['Diagnostics']
 ## 負載結構
 
 `path: String`、`reason: String`、`line: int?`、
+`nodeType: String?`、`candidateTypes: List<String>`、`schemaAmbiguous: bool`、
 `salvagedFields: List<String>`、`lostFields: List<String>`、
 `severity: edgeAffecting | detailOnly`
+
+- `reason` 值域：無 frontmatter／frontmatter 未閉合／frontmatter 為空或非 map／YAML 語法錯誤／無法讀取（SPEC-006 FR-01、FR-05）
+- `nodeType`：「路徑對型別」查詢命中一型時為該型；平手時為 null，`candidateTypes` 列出全部候選，`schemaAmbiguous` 為 true
+- 0.3.0 的 `salvagedFields` 恆為空清單，`severity` 恆為 `edgeAffecting`（SPEC-006 FR-04）
 
 > 具體型別待 SPEC 產出後定案。
 
 ## 設計註記
 
-本事件回報的是**這個檔案救回了哪些欄位、損失了哪些**，而不是「這個檔案沒了」。
+本事件的設計目標是回報**這個檔案救回了哪些欄位、損失了哪些**，而不是「這個檔案沒了」。
+0.3.0 尚未實作部分救回（語料中沒有足夠樣本校準），因此救回清單恆為空，損失清單為該型別的完整性集合。
 單檔失敗不中止整輪解析。
 
 `lostFields` 的算法（2026-09-24 依 `tarrragon/claude#99` 第三項裁決）：
@@ -63,7 +69,7 @@ consumers: ['Diagnostics']
 **發送條件**（2026-09-24 依 SPEC-006 v1.2 改寫）：檔案沒拿到可用 frontmatter
 （無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取五種之一），**且**
 其路徑經 Schema 的「路徑對型別」查詢命中某個節點型別的 carrier，Corpus 才發出本事件。
-路徑模式取自型別表的機器可比對欄位（專案 JSON 缺此欄位、版本在範圍內時由 App
+路徑模式取自型別表的機器可比對欄位（專案 JSON 缺此欄位、版本不高於內建版本時由 App
 內建表補），不解析人讀的 `carrier` 描述文字。負載另帶歸屬型別；`severity` 在
 0.3.0 一律為 `edgeAffecting`。詳見 SPEC-006 FR-04、FR-06。上方數字是舊量測，
 0.3.0 的整合測試改用重新量測並凍結的測資。

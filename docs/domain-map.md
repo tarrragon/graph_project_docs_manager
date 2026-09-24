@@ -40,26 +40,28 @@ L1   Corpus
 L0   Schema     Workspace
 ```
 
-**依賴邊（完整列舉，共 8 條）**：
+**依賴邊（完整列舉）**：
 
 | 來源 | 目標 | 為什麼 |
 |------|------|--------|
 | Layout | Graph | 布局的輸入是圖 |
 | Graph | Corpus | 圖建自解析產物 |
 | TicketDetail | Corpus | 詳情取自同一份解析產物 |
-| Diagnostics | Corpus | 取解析錯誤清單 |
-| **Diagnostics** | **Schema** | 依 `carrier` 判定「這個沒有 frontmatter 的檔案是否應為節點」（見 §7） |
-| Corpus | Schema | 依 `carrier` 決定掃描哪些路徑（見 §4.2） |
+| Diagnostics | Corpus | 取解析錯誤事件（EVT-CORPUS-003），由此產生破洞 |
+| Corpus | Schema | 以 `id_pattern` 為有 frontmatter 的檔案判型；以「路徑對型別」查詢分流沒拿到可用 frontmatter 的檔案（SPEC-006 FR-03、FR-06，見 §7） |
 | Corpus | Workspace | 取得專案根路徑 |
 | History | Workspace | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見 §4.3） |
 
 Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影其產出——
 若讓三者各自解析同一份檔案，容錯規則會分歧。
 
-**Diagnostics 同時依賴 Corpus 與 Schema**，這是本圖唯一一個依賴兩個下層
-domain 的節點：它要回答「這算不算破洞」，而該判斷需要解析結果（Corpus）
-與節點型別的 carrier 定義（Schema）兩者才成立。單靠 Corpus 會把 1243 個
-合法的非節點檔誤報為破洞（§7）。
+**「這算不算破洞」在 Corpus 內就判定**：它需要解析結果與節點型別的 carrier
+路徑模式兩者才成立，而 Corpus 已依賴 Schema，因此由 Corpus 呼叫 Schema 的
+「路徑對型別」查詢，只對命中 carrier 的失敗檔發出 EVT-CORPUS-003；Diagnostics
+只消費事件。不做這個判定，破洞報告會把 1243 個合法的非節點檔誤報為破洞（§7）。
+本表原有一條 Diagnostics → Schema，理由正是這個判定；判定移給 Corpus 後這條邊
+沒有用途，2026-09-24 刪除（SPEC-006 D7，用戶裁決）。日後若有破洞類別需要型別表，
+附上理由再加回。
 
 ## 2.5 三個易混淆詞的定義
 
@@ -145,7 +147,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 |--------|:---:|------|
 | **Workspace × Diagnostics** | 否 | 本節存在理由的具體反例：兩者互不依賴，但都會佔用同一呈現焦點通道（破洞掃描完成、資料夾不可用），僅查 §2 依賴圖會得到「無關係」的結論，而這個結論在注意力軸上是錯的 |
 | Workspace × Schema | 否 | 同上，兩者在 §2 亦無邊，但同樣競爭同一通道 |
-| Schema × Diagnostics | 是（`Diagnostics → Schema`，見 §2） | 這一對恰好與依賴邊重疊，證明「正交」指的是兩張圖的判斷依據互不涵蓋、各自獨立成立——不是指兩張圖的邊集合必然不相交。有依賴邊不代表不需要在協調圖上再確認一次，兩張圖各自回答各自的問題 |
+| Schema × Diagnostics | 否（原有的 `Diagnostics → Schema` 已於 2026-09-24 刪除，見 §2） | 這一對原本與依賴邊重疊，當時用來說明「正交」指的是兩張圖的判斷依據互不涵蓋，不是指兩張圖的邊集合必然不相交。邊刪除後三對都不在 §2 上相鄰，但這個說明仍然成立：協調圖是否相鄰只看是否競爭同一通道，與依賴圖有沒有邊無關 |
 
 ### 2.6.4 到達類別與級別實例（例示，非窮舉）
 
@@ -194,7 +196,7 @@ ticket 新增欄位只動 TicketDetail；YAML 壞掉只動 Corpus。
 
 Schema 是最薄的 domain，曾考慮併入 Corpus。否決理由：兩者變更來源完全不同
 （上游改 JSON 結構 vs 專案文件寫壞），合併會讓 Corpus 承擔兩個變更理由。
-Corpus 讀取 Schema 的 carrier 定義來決定掃描哪些路徑，這是依賴關係而非合併理由。
+Corpus 呼叫 Schema 的判型與「路徑對型別」查詢，這是依賴關係，不構成合併理由。
 
 ### 4.3 History 不併入 Corpus
 
