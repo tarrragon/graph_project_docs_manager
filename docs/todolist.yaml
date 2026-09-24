@@ -22,7 +22,7 @@
 meta:
   project: "graph_project_docs_manager"
   architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
-  last_updated: "2026-09-23"
+  last_updated: "2026-09-24"
   maintainer: "rosemary-project-manager"
 
 versions:
@@ -76,7 +76,7 @@ versions:
   - version: "0.2.1"
     codename: "Runoff-2"
     description: "0.2.0 凍結後由閘門路由至此的品質改善票；0.2.0 發版即關閉新收件"
-    status: "active"
+    status: completed
     scope: "frozen"    # 2026-09-24 決策批次完成後凍結：必要票五張（W1-001／002／003／043／052），pending 者 W1-001（C1）、W1-003（C3）已標 scope_blocker；溢出六張發版時前移 0.3.0
     worklog: "docs/work-logs/v0/v0.2/v0.2.1/"
     notes: |
