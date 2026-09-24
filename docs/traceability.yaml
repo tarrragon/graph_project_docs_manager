@@ -115,6 +115,39 @@ mappings:
     tests:
       - test/unit/screens/gap_report_test.dart
 
+  # SPEC-006（0.3.0 Corpus）只涵蓋各流程中解析、判型、破洞分類的 domain 行為；
+  # 畫面接真實資料屬 0.6+。UC-05 damaged-tickets 的「可讀欄位仍呈現」依賴
+  # 部分救回，SPEC-006 列為範圍外，本版只涵蓋「偵測到損壞票」這一段。
+  - spec: SPEC-006
+    usecase: UC-01
+    title: 開啟專案並抵達可用狀態（解析節點）
+    main_flow:
+      - parse-nodes
+    alt_scenarios:
+      - empty-graph
+    tests: []
+
+  - spec: SPEC-006
+    usecase: UC-05
+    title: 找出被阻擋的工作（損壞票偵測）
+    main_flow:
+      - trigger-load
+    alt_scenarios:
+      - damaged-tickets
+    tests: []
+
+  - spec: SPEC-006
+    usecase: UC-06
+    title: 找出並修復文件破洞（破洞分類）
+    main_flow:
+      - enter-gap-report
+      - view-categories
+      - locate-item
+    alt_scenarios:
+      - no-gaps
+      - gaps-undeterminable
+    tests: []
+
 # 水平 domain 規則軸：docs/domain-map.md §3 的 8 個 bundle。
 # invariants 取自該表「唯一變更理由」欄；layer 取自 §2 分層圖。
 # tests 全數為空——8 個 domain 的業務邏輯尚未實作（專案現處於
