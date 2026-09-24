@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-24"
-version: "1.38"
+version: "1.39"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -21,7 +21,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 
 ## 概述
 
-SPEC-001 界定七個畫面的 39 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
+SPEC-001 界定七個畫面的 40 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
 
 | 類別 | 界定什麼 |
@@ -240,10 +240,10 @@ gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 stat
 
 | 項目 | 契約 |
 |------|------|
-| 觸發條件 | `state-gaps-scanning` 轉換至 `state-gaps-none` 或 `state-gaps-found` 的當下，**且**下列任一成立：(a) 視窗非前景——`AppLifecycleState` 不為 `resumed`；(b) 目前可見頁不是 `nav-page-gaps`——`selectedDestinationProvider` 的值不為 `AppDestination.gaps`。兩者皆不成立（使用者正看著破洞報告）時**不發送**，狀態轉換本身即結果 |
+| 觸發條件 | `state-gaps-scanning` 轉換至 `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable` 的當下，**且**下列任一成立：(a) 視窗非前景——`AppLifecycleState` 不為 `resumed`；(b) 目前可見頁不是 `nav-page-gaps`——`selectedDestinationProvider` 的值不為 `AppDestination.gaps`。兩者皆不成立（使用者正看著破洞報告）時**不發送**，狀態轉換本身即結果 |
 | 不發送 | 掃描被取消（§2.5 C5：取消完成不通知）；切換專案中止掃描（§2.8 L2）；掃描未抵達完成態；同一次掃描結果已發送過（見「不重複發送」列） |
-| 通知內容 | 標題 `scanCompleteNotificationTitle`；內文依結果二擇一：`state-gaps-found` → `scanCompleteNotificationBody`（placeholder `count`，型別 `int`，值為破洞總數）、`state-gaps-none` → `scanCompleteNoGapsNotificationBody`。不含檔案路徑、不含逐項明細（明細由畫面承載；含關鍵資訊的結果不走自動消失的通道）；不附通知動作按鈕，唯一互動是點擊通知本體 |
-| 點擊通知的導向 | 系統將 App 帶到前景後，App 執行 rail 語意切換至 `nav-page-gaps`（`returnTo` 設為 `null`，§2.3 規則 1），並依 SPEC-004 §1 回饋通道子表 locate 列定位：`state-gaps-found` → `scroll-gaps-sections` scroll-into-view 至第一個分節的第一個 `card-gaps-<itemId>` 並短暫高亮、焦點移入該項（高亮 token 與時長由 SPEC-004 第 4 章對應容器條目定義）；`state-gaps-none` → 焦點移入 `state-gaps-none` 根節點，不高亮。點擊時若已進入新一輪 `state-gaps-scanning`，只切頁、顯示當時進度、不定位；若專案已切換（結果已清空），只切頁、不定位 |
+| 通知內容 | 標題 `scanCompleteNotificationTitle`；內文依結果二擇一：`state-gaps-found` → `scanCompleteNotificationBody`（placeholder `count`，型別 `int`，值為破洞總數）、`state-gaps-none` → `scanCompleteNoGapsNotificationBody`、`state-gaps-undeterminable` → `scanCompleteUndeterminableNotificationBody`（三擇一；key 見本節文案表，`0.3.0-W1-082` 起，內文須明示「無法判定」而非沿用無破洞文案，理由同 SPEC-001 §5〈無法判定破洞〉成列註記）。不含檔案路徑、不含逐項明細（明細由畫面承載；含關鍵資訊的結果不走自動消失的通道）；不附通知動作按鈕，唯一互動是點擊通知本體 |
+| 點擊通知的導向 | 系統將 App 帶到前景後，App 執行 rail 語意切換至 `nav-page-gaps`（`returnTo` 設為 `null`，§2.3 規則 1），並依 SPEC-004 §1 回饋通道子表 locate 列定位：`state-gaps-found` → `scroll-gaps-sections` scroll-into-view 至第一個分節的第一個 `card-gaps-<itemId>` 並短暫高亮、焦點移入該項（高亮 token 與時長由 SPEC-004 第 4 章對應容器條目定義）；`state-gaps-none` → 焦點移入 `state-gaps-none` 根節點，不高亮；`state-gaps-undeterminable` → 焦點移入 `state-gaps-undeterminable` 根節點，不高亮。點擊時若已進入新一輪 `state-gaps-scanning`，只切頁、顯示當時進度、不定位；若專案已切換（結果已清空），只切頁、不定位 |
 | 不重複發送 | 每一次掃描完成至多發送一則；同一結果不因視窗前景／背景往返而再發。以下事件由 App 撤回尚未被點擊的通知：使用者自行回到 `nav-page-gaps`（結果已被看見）、新一輪掃描開始（舊結果已判定待汰換，與 §3.5「重新掃描」列同一理由）、切換專案（§2.8 L2）。撤回失敗不阻擋、不轉狀態，只記 log |
 | 權限 gate | 見下方三路徑表。授權狀態於**每次**觸發條件成立時重新查詢（使用者可在系統設定隨時改動，不快取上一次結果） |
 | 等待指示 | 發送與撤回期間不顯示任何等待指示：兩者皆為非同步旁路動作，不改變畫面狀態，畫面已依 §3.5 完成掃描中 → 結果的 cross-fade |
@@ -254,7 +254,7 @@ gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 stat
 | 授權狀態 | 分類 | App 行為 | fallback |
 |---------|------|---------|----------|
 | `granted` | 成功 | 發送系統通知 | 不適用 |
-| `denied`（使用者拒絕請求，或事後於系統設定關閉） | 失敗 | 不發送、**不再請求**（系統不會再彈對話框）；0.1 **不引導至系統設定**——App 無設定畫面可承載入口，SPEC-001 亦無對應狀態 | App 內 SnackBar `AppSnackBar.withAction`：文字 `scanCompleteSnackbarMessage`（placeholder `count`；無破洞時 `scanCompleteNoGapsSnackbarMessage`），動作 `viewGapsAction`，停留 `Motion.snackBarWithAction`；動作觸發等同「點擊通知的導向」列。顯示時機：視窗在前景且可見頁不是 `nav-page-gaps` → 立即；視窗非前景 → **延後至視窗下一次回到 `resumed`** 時顯示（SnackBar 會自動消失，背景時顯示等於沒顯示）；回到前景前使用者已自行進入 `nav-page-gaps` → 不顯示。持續性的 App 內指示（Banner、導覽項徽章）0.1 **不提供**：SPEC-004 元件庫無 Banner、`NavItem` 無徽章 slot，依元件庫優先原則不就地發明；是否補元件由 `0.1.0-W3-063` spawn request 交 PM 核定 |
+| `denied`（使用者拒絕請求，或事後於系統設定關閉） | 失敗 | 不發送、**不再請求**（系統不會再彈對話框）；0.1 **不引導至系統設定**——App 無設定畫面可承載入口，SPEC-001 亦無對應狀態 | App 內 SnackBar `AppSnackBar.withAction`：文字 `scanCompleteSnackbarMessage`（placeholder `count`；無破洞時 `scanCompleteNoGapsSnackbarMessage`；無法判定破洞時 `scanCompleteUndeterminableSnackbarMessage`），動作 `viewGapsAction`，停留 `Motion.snackBarWithAction`；動作觸發等同「點擊通知的導向」列。顯示時機：視窗在前景且可見頁不是 `nav-page-gaps` → 立即；視窗非前景 → **延後至視窗下一次回到 `resumed`** 時顯示（SnackBar 會自動消失，背景時顯示等於沒顯示）；回到前景前使用者已自行進入 `nav-page-gaps` → 不顯示。持續性的 App 內指示（Banner、導覽項徽章）0.1 **不提供**：SPEC-004 元件庫無 Banner、`NavItem` 無徽章 slot，依元件庫優先原則不就地發明；是否補元件由 `0.1.0-W3-063` spawn request 交 PM 核定 |
 | `notDetermined` | 不確定（尚未詢問） | 於**首次**觸發條件成立的當下請求授權（功能使用時即時請求，使用者剛經歷一次「離開後掃描才完成」的情境，理解為何需要）；**不**於 App 啟動時請求、不於掃描開始時請求。請求回覆 `granted` → 立即補發本次通知；回覆 `denied` → 本次即走 `denied` 列的 fallback | 請求對話框由系統呈現，App 不另加前置說明畫面（0.1 唯一權限，且請求時機已在操作 context 內） |
 | 其他（`provisional`、查詢或請求逾時／拋錯、API 不可用） | 不確定（結果未知） | 一律**視為 `denied`** 處理，記 warning log；不重試、不阻塞掃描結果的渲染 | 同 `denied` 列 |
 
@@ -308,6 +308,8 @@ abstract class ScanNotifier {
 | `scanCompleteNoGapsNotificationBody` | 未偵測到破洞 | No gaps detected |
 | `scanCompleteSnackbarMessage` | 掃描完成，偵測到 {count} 個破洞 | Scan complete: {count} gaps detected |
 | `scanCompleteNoGapsSnackbarMessage` | 掃描完成，未偵測到破洞 | Scan complete: no gaps detected |
+| `scanCompleteUndeterminableNotificationBody` | 無法判定破洞：型別表缺路徑模式 | Gaps could not be determined: schema lacks path patterns |
+| `scanCompleteUndeterminableSnackbarMessage` | 掃描完成，無法判定破洞 | Scan complete: gaps could not be determined |
 | `viewGapsAction` | 檢視 | View |
 
 **實作票驗證**（本節只寫規格，下列平台事實由實作票以實機確認並回填本節，不得
@@ -464,6 +466,14 @@ L2 後 `findsNothing`）。
 （斷言同上）。**與降級徽章互斥，不會同時出現**——推定版本路徑的前提是
 `tracking_schema.json` 存在，降級的進入條件是該檔不存在，兩個旗標的成立條件
 互斥（SPEC-001 §1〈推定版本〉註記）。
+
+路徑模式來源徽章 `badge-gaps-builtin-path-pattern` 由同一頁面框架渲染，位置與方式同
+降級徽章，**只在 `nav-page-gaps`**：旗標 `isPathPatternFromBuiltin` 為 `true`（專案
+`tracking_schema.json` 存在、版本不高於內建版本、缺 carrier 路徑模式，路徑模式取自 App
+內建型別表）期間破洞報告任一狀態皆存在，其餘五頁 `findsNothing`，切換專案後不存在
+（斷言同上）。與降級徽章互斥；可與推定版本徽章並存；與 `state-gaps-undeterminable`
+互斥（SPEC-001 §1〈路徑模式取自內建表〉註記）。本旗標自動生效，不經阻擋狀態或
+使用者按鈕，與 `action-domain-degraded-view` 的顯式降級不同。
 
 > **與 SPEC-004 4.27 實作註記的核對**（`0.1.0-W3-335.37` R2 補充事證）：SPEC-004
 > 4.27 `AppShell` 實作註記描述返回列「疊於 `IndexedStack` 內容之上」，本段描述為
@@ -1059,7 +1069,7 @@ PM 裁定移除該則提示時，本項即刻適用於該事件。**此處明寫
 |---|--------------|---------|------|-------|---------|------|
 | 1 | 破洞掃描完成，T1 判是（使用者正看 `nav-page-gaps` 且前景） | 自發型 | 可棄（可補查，L3） | 發起點：`state-gaps-scanning` 首次進入的當下（SPEC-001 §5〈進入條件〉） | — | 狀態轉換本身（`state-gaps-none` / `state-gaps-found`） |
 | 2 | 破洞掃描完成，T1 判否，承接 (a) 可行（權限 `granted`） | 自發型 | 可棄 | 同列 1 發起點；`show()` 呼叫發出時（§2.2〈可觀測性〉入口 log）再次確認未升級 | 子呼叫，不高於列 1 | macOS 系統通知（`ScanNotifier.show`） |
-| 3 | 破洞掃描完成，T1 判否，承接 (a) 不可行（權限 `denied`），承接 (b2) 延後顯示 | 自發型 | 可棄 | 同列 1 發起點；視窗回到 `resumed` 時不重新標定，只重新檢查可行條件（§2.2 權限 gate `denied` 列「顯示時機」） | 子呼叫，不高於列 1 | `AppSnackBar.withAction`（`scanCompleteSnackbarMessage` / `scanCompleteNoGapsSnackbarMessage`） |
+| 3 | 破洞掃描完成，T1 判否，承接 (a) 不可行（權限 `denied`），承接 (b2) 延後顯示 | 自發型 | 可棄 | 同列 1 發起點；視窗回到 `resumed` 時不重新標定，只重新檢查可行條件（§2.2 權限 gate `denied` 列「顯示時機」） | 子呼叫，不高於列 1 | `AppSnackBar.withAction`（`scanCompleteSnackbarMessage` / `scanCompleteNoGapsSnackbarMessage` / `scanCompleteUndeterminableSnackbarMessage`） |
 | 4 | 通知授權請求（`notDetermined`，列 1–3 事件的子請求） | 自發型（我方決定於首次觸發條件成立時發起，不等待外部發起者） | 可棄 | 發起點：`ScanNotifier.requestAuthorization()` 呼叫發出前（§2.2 權限 gate `notDetermined` 列「於首次觸發條件成立的當下請求」） | 子呼叫，fallback 齊全、拒絕不造成不可回復後果，不高於列 1–3 | 系統權限對話框（macOS 原生 `UNUserNotificationCenter` 請求；不落於 §2.2／§2.12／§2.13 既定的三種載體形式內，仍佔用使用者呈現焦點） |
 | 5 | 開啟原始檔：`opened`（§3.1／§3.2／§3.5／§3.6 四處共用） | 等待型 | 可棄 | 進入邊界時：`ExternalOpener.open(path)` 呼叫發出當下（與 §2.2〈呼叫發出日誌〉記錄時機一致） | — | `AppSnackBar.plain`（`openedExternallyMessage`；§2.13 對照表第 2 列現行條文為準，待裁決見該表） |
 | 6 | 開啟原始檔：`failed`（四處共用） | 等待型 | 可棄 | 同列 5 | — | `AppSnackBar.plain`（`externalOpenFailedMessage`） |
@@ -1852,7 +1862,7 @@ SnackBar 的訊息與「復原」動作文案 key 由 SPEC-004 承接（`0.1.0-W
 | 元素 | 錨點 | 觸發 | 可觀察結果 |
 |------|------|------|-----------|
 | 取消掃描 | `action-gaps-cancel-scan` | 點擊 | 依 §2.5，目標態為 `returnTo` 指定畫面；`returnTo` 為 `null` 時為 `nav-page-domain`；抵達後 `returnTo` 設為 `null`（`0.1.0-W3-335.47` D12） |
-| 重新掃描 | `action-gaps-rescan` | 點擊 | `state-gaps-none` 或 `state-gaps-found` 消失、`state-gaps-scanning` 出現 |
+| 重新掃描 | `action-gaps-rescan` | 點擊 | `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable` 消失、`state-gaps-scanning` 出現 |
 | 破洞項（指向 ticket） | `card-gaps-<itemId>` | 點擊 | jump 至 `nav-page-tickets`，`returnTo` 設為 `gaps`；依 §3.4〈帶目標跳入〉定位該票的 `card-tickets-<ticketId>`（含清單未載入與目標被隱藏兩種情形）；不呼叫 `ExternalOpener`（以 UC-05 替代場景〈自破洞報告切入〉為準） |
 | 破洞項（指向其他圖節點：提案、規格、UC 等） | `card-gaps-<itemId>` | 點擊 | jump 至 `nav-page-nodeDetail`，`jump` payload 為指向節點 ID，`returnTo` 設為 `gaps`；依 §3.6 生命週期「由 jump 進入」渲染該節點 |
 | 破洞項（類別 `orphan-event` 或 `event-declaration-mismatch`） | `card-gaps-<itemId>` | 點擊 | 選定 UC 寫入引用該 EVT（任一 FlowStep `emits` 或 `consumes` 含之）的 UC，多條時取 UC 編號最小者（§2.8〈選定 UC〉設定入口 4）；jump 至 `nav-page-ucFlow`，`returnTo` 設為 `gaps`；`state-ucFlow-normal` 出現，`panel-ucFlow-event-flow` 內事件欄等於該 EVT ID 的列 scroll-into-view 並短暫高亮（定位手法同 §2.2「系統層通知」點擊導向列）。**無任何 UC 引用該 EVT 時**，依「指向其他圖節點」列處理：jump 至 `nav-page-nodeDetail`，payload 為該 EVT ID；次要操作（開啟原始檔）不變（`0.1.0-W3-335.38` S-31） |
@@ -1938,8 +1948,9 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 狀態 | 退出動作 → 目標 |
 |------|----------------|
 | 專案未就緒 | `action-gaps-goto-domain` → `nav-page-domain`（jump）；`nav-item-<d>`；`project-switcher-entry` → 浮層 |
-| 掃描中 | `action-gaps-cancel-scan` → `returnTo` 或 `nav-page-domain`；完成 → `state-gaps-none` 或 `state-gaps-found`；`project-switcher-entry` 恆可點（浮層展開，切換專案中止掃描，同 §2.8 L1，`0.1.0-W3-335.61` 補明文） |
+| 掃描中 | `action-gaps-cancel-scan` → `returnTo` 或 `nav-page-domain`；完成 → `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable`；`project-switcher-entry` 恆可點（浮層展開，切換專案中止掃描，同 §2.8 L1，`0.1.0-W3-335.61` 補明文） |
 | 無破洞 | `action-gaps-rescan` → `state-gaps-scanning`；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層 |
+| 無法判定破洞 | `action-gaps-rescan` → `state-gaps-scanning`；其餘類別有項目時 `card-gaps-*` 與 `action-gaps-open-source-*` 同「有破洞」列（解析失敗類別無項目）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層（`0.3.0-W1-082`） |
 | 有破洞 | `action-gaps-rescan` → `state-gaps-scanning`；`card-gaps-*` 依指向節點型別 → jump 至 `nav-page-tickets`（定位該票）／`nav-page-nodeDetail`／`nav-page-ucFlow`（定位事件列），無指向者為外部開啟（不改變畫面狀態）；`action-gaps-open-source-*` → 外部開啟（不改變畫面狀態）；`nav-item-<d>`；`project-switcher-entry` |
 
 #### 生命週期
@@ -2072,7 +2083,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 ---
 
-## 4. SPEC-001 全 39 狀態的導航反應對照
+## 4. SPEC-001 全 40 狀態的導航反應對照
 
 本表逐一列出 SPEC-001 §1–§7 的每一個狀態，**無一遺漏**，並將其退出路徑欄
 對應到本規格定義的導航反應與觸發錨點。此表即 acceptance「每個狀態的退出路徑
@@ -2107,7 +2118,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 18 | Ticket | 正常 · 主題 | `state-tickets-topic` | 切回列表 → 正常 · 列表；導覽、切換專案 | 同 #17，另加同畫面轉換 `mode-tickets-list` → `state-tickets-list`（`0.1.0-W3-335.59` S3-2） |
 | 19 | Ticket | 無 ticket | `state-tickets-empty` | 導覽至破洞報告、導覽、切換專案 | jump：`action-tickets-goto-gaps` → `nav-page-gaps`；rail；覆蓋層 |
 | 20 | Ticket | 含損壞（疊加於 #17／#18） | `badge-tickets-corrupted` | 同正常 | 繼承其底層正常態的全部退出路徑，另加 jump：`badge-tickets-corrupted` 或 `badge-tickets-corrupted-<ticketId>` → `nav-page-gaps`（後者不觸發 `card-tickets-<ticketId>`、不定位破洞項，`0.1.0-W3-335.47` D2） |
-| 21 | 破洞 | 掃描中 | `state-gaps-scanning` | 取消 → 返回；完成 → 有／無破洞 | 中止後前往：`action-gaps-cancel-scan` → `returnTo` 指定頁並設為 `null`（`null` 時 → `nav-page-domain`）；通則返回 `action-gaps-back` 另計（掃描繼續，§2.8 L1）；同畫面轉換：掃描完成 → `state-gaps-none` 或 `state-gaps-found`（`0.1.0-W3-335.47` D12）；覆蓋層：`project-switcher-entry` 恆可點（`0.1.0-W3-335.61` 補明文） |
+| 21 | 破洞 | 掃描中 | `state-gaps-scanning` | 取消 → 返回；完成 → 有／無破洞／無法判定破洞 | 中止後前往：`action-gaps-cancel-scan` → `returnTo` 指定頁並設為 `null`（`null` 時 → `nav-page-domain`）；通則返回 `action-gaps-back` 另計（掃描繼續，§2.8 L1）；同畫面轉換：掃描完成 → `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable`（`0.1.0-W3-335.47` D12；第三落點 `0.3.0-W1-082`）；覆蓋層：`project-switcher-entry` 恆可點（`0.1.0-W3-335.61` 補明文） |
 | 22 | 破洞 | 無破洞 | `state-gaps-none` | 重新掃描 → 掃描中；導覽、切換專案 | 同畫面轉換：`action-gaps-rescan` → `state-gaps-scanning`；rail；覆蓋層 |
 | 23 | 破洞 | 有破洞 | `state-gaps-found` | 重新掃描 → 掃描中；導覽、切換專案 | 同 #22，另加 jump（`returnTo`=gaps）：`card-gaps-*` 依指向節點型別 → `nav-page-tickets`（§3.4〈帶目標跳入〉）／`nav-page-nodeDetail`／`nav-page-ucFlow`（事件流小表定位）；無指向節點者為外部開啟，不計為導航反應。`action-gaps-open-source-*` 為外部開啟動作，不計為導航反應 |
 | 24 | 節點詳情 | 正常 | `state-nodeDetail-normal` | 開啟原始檔（檔案不存在）→ 原始檔已消失；點關聯 → 本畫面顯示該節點（正常／部分損壞）；返回來源畫面 | 返回：`action-nodeDetail-back` → `returnTo`；同畫面替換：`card-nodeDetail-relation-*`；同畫面轉換：`action-nodeDetail-open-source`（結果 `notFound`）→ `state-nodeDetail-missing`；rail |
@@ -2126,15 +2137,17 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 37 | Ticket | 專案未就緒 | `state-tickets-project-unready` | 前往 Domain 視圖、導覽、切換專案 | jump：`action-tickets-goto-domain` → `nav-page-domain`；rail；覆蓋層 |
 | 38 | 破洞 | 專案未就緒 | `state-gaps-project-unready` | 前往 Domain 視圖、導覽、切換專案 | jump：`action-gaps-goto-domain` → `nav-page-domain`；rail；覆蓋層 |
 | 39 | 節點詳情 | 專案未就緒 | `state-nodeDetail-project-unready` | 前往 Domain 視圖、導覽、切換專案 | jump：`action-nodeDetail-goto-domain` → `nav-page-domain`；rail；覆蓋層 |
+| 40 | 破洞 | 無法判定破洞 | `state-gaps-undeterminable` | 重新掃描 → 掃描中；導覽、切換專案 | 同畫面轉換：`action-gaps-rescan` → `state-gaps-scanning`；rail；覆蓋層；其餘類別有項目時另加 #23 的 `card-gaps-*` jump（解析失敗類別無項目） |
 
-**覆蓋完整性**：39 列，對應 SPEC-001 §1（11）+ §2（5）+ §3（4）+ §4（7）+ §5（4）
-+ §6（5）+ §7（3）= 39。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
+**覆蓋完整性**：40 列，對應 SPEC-001 §1（11）+ §2（5）+ §3（4）+ §4（7）+ §5（5）
++ §6（5）+ §7（3）= 40。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
 #30、#31 為 SPEC-001 v1.3／v1.4 新增，#32、#33 為 SPEC-001 v1.8 新增，#34 為 SPEC-001 v1.9
 新增，#35–#39 為 SPEC-001 v1.11 新增（五個非 Domain 畫面共用同一則「專案未就緒」
-定義，`0.1.0-W3-335.37` R9），依 SPEC-001 §狀態總數 的順序編號，不重排既有列。
+定義，`0.1.0-W3-335.37` R9），#40 為 SPEC-001 v1.21 新增（`0.3.0-W1-082`），依 SPEC-001
+§狀態總數 的順序編號，不重排既有列。
 
 **同步提醒**：本節標題、本段算式、下方 FR-01 驗收、§0 概述四處皆耦合 SPEC-001
-§狀態總數 的狀態數字（現為 39）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
+§狀態總數 的狀態數字（現為 40）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
 缺一處會使對照表列數與 FR-01 驗收範圍失去覆蓋完整性保證。
 
 ---
@@ -2168,7 +2181,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | §4 對照表 39 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
+| 驗收 | §4 對照表 40 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
 
 ### FR-02: 取消契約的十條行為全部成立
 
@@ -2293,7 +2306,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 - 導航來源記錄為單槽而非堆疊；若日後導入 deep link 或多視窗，此決策須重新評估，
   屆時 §2.3 的四條規則是重評的起點
 - 0.1 的互動全部以假資料驅動。假資料須使每個狀態可被單獨渲染（狀態注入而非
-  等待真實解析），否則 §4 對照表的 39 列無法逐列斷言
+  等待真實解析），否則 §4 對照表的 40 列無法逐列斷言
 - 泳道的拖曳是版型行為，與布局演算法無關；0.1 的泳道以寫死座標的假資料畫出，
   拖曳只驗證平移，不驗證排列品質（SPEC-001 §設計約束已定案）
 - 用語決定：本規格全文統一使用「渲染」描述元件樹的產出動作，不改為「算繪」
@@ -2307,6 +2320,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.39 | 2026-09-24 | 對齊 SPEC-001 v1.21（`0.3.0-W1-082`，SPEC-006 FR-06 規則 7／FR-08）：§2.4 推定版本徽章段後新增路徑模式來源徽章 `badge-gaps-builtin-path-pattern` 段（只在 `nav-page-gaps`、自動生效、共存與互斥關係）；§2.2 系統層通知觸發條件、通知內容（新增 `scanCompleteUndeterminableNotificationBody` 分支）、點擊導向補 `state-gaps-undeterminable`，權限 `denied` fallback 與提示仲裁表列 3 補 `scanCompleteUndeterminableSnackbarMessage`，文案表新增兩 key；§3.5 重新掃描列、〈導航跳轉與退出〉掃描中列補第三落點並新增「無法判定破洞」列；§4 第 21 列補第三落點、新增第 40 列 `state-gaps-undeterminable`。狀態數字 39 → 40 同步四處（§0 概述、§4 標題與覆蓋完整性算式、FR-01 驗收）與設計約束一處 |
 | 1.38 | 2026-09-24 | 對齊 SPEC-001 v1.19／SPEC-004 v1.45（`0.2.1-W1-002`，承 `0.2.0-W1-040` 推定版本語意與 schema 不相容面板重評）：§3.1「檢視 schema 詳情」列面板內容描述由「恰為兩列（App 支援版本、專案版本）」改為一列 `schemaKnownRangeLabel`＋`schemaKnownRangeValue`（App 已知版本範圍：不高於 <內建版本>），元件組成註記改列 SPEC-004 §4.23 `withDetail` 面板 `Section.static`[`AppText.caption`, `AppText.mono`] 各一，並補 `projectVersion` 為推定值時面板字面不變、推定來源由 §2.4 徽章承載；§2.7「是否顯示版本值」列 schema 不相容欄補 `projectVersion` 可能為推定值、推定來源由 §2.4 推定版本徽章常駐告知、與降級徽章互斥；§2.4〈渲染位置統一〉降級徽章段後新增推定版本徽章 `badge-<screen>-inferred-version` 段，位置與方式同降級徽章、生效條件（正常／空圖 `inferredVersion` 非 `null`、schema 不相容 `isVersionInferred` 為 `true`）與互斥規則對齊 SPEC-001 §1〈推定版本〉註記。SPEC-001、SPEC-004 為本票唯讀權威，未改動 |
 | 1.37 | 2026-09-15 | V4 第四輪門檻外矛盾追修（`0.1.0-W3-335.67`，依 `0.1.0-W3-335.65` WRAP 裁決 K6／K7／K8／K9／K11）：§2.9 表後補〈動態 ID 段取值〉段（`<domainId>`／`<rowId>`／`<ucId>`／`<colId>`／`<nodeId>`／`<evtId>`／`<stepId>`／`<itemId>` 各自取值來源，`<itemId>` 取 `GapReportItem.id`，K6）；§2.8〈選定 UC〉首段「兩處設定入口」改「下表各設定入口」、設定入口表新增「設定入口 4」（破洞報告事件類破洞項），§3.5 事件類列同步補「設定入口 4」（K7）；§2.11「三處載入態的差異只有『目標態』與『進度型別』兩個參數」改為目標態、進度型別、骨架版位三項差異並註明破洞目標態為執行期 `returnTo`（K8）；§2.13〈(b1) 的可行條件是可機械判定的〉段後補「具名例外」（(a) 適用範圍內的事件不走 (b1)），〈判準與既有條文的對照〉#5、#6 判準結論欄同步（K9）；§2.4〈渲染位置統一〉括號改列重新掃描與開啟原始檔、刪重新整理，並註明狀態元件自身動作不屬頁面級動作（K11）；另補破洞項 `<itemId>` 取值規則（§2.9，取 `lib/screens/gap_report/gap_report_models.dart` `GapReportItem.id` 字面值，0.1 由 fixture 給定），並於 §3.5〈破洞項的指向節點〉補交叉引用；核對 SPEC-003 內 `寫死座標`／`設定入口`／`(b1)`／`兩個參數`／`頁面級動作`／`domainId`／`itemId` 全部命中，`0.1.0-W3-335.60` 稽核腳本 `matrix.py`／`counts.py` 重跑無新增缺格或計數不符。SPEC-001（K1–K5、K10）與 UC-02（K2 可同步部分）留待 `0.1.0-W3-335.68`；SPEC-004（K3、K8 對應段）留待 `0.1.0-W3-335.69` |
 | 1.35 | 2026-09-14 | V4 第四輪前追修票 B（`0.1.0-W3-335.56`，依 `0.1.0-W3-335.53` WRAP 裁決 E5／E7／E8／E9／E11（§3.3／§3.6 部分）／E12／E13／E15，範圍限 §3–§4 逐畫面）：§3.4、§3.5〈生命週期〉切換專案列改為「頁面狀態重置為初始，下次可見時依『首次可見但圖未建立』與『首次可見（且圖已建立）』兩列判定」，消解與「專案未就緒」共用定義的落點矛盾（E5）；§3.1〈格詳情卡的內容契約〉事件標籤改「每個（事件, 方向）一個標籤，兼有時兩個、`emits` 在前」（E7）；§3.1 切至泳道列與§2.8〈斷言形式（共用值）〉面板標題改「面板標題文字為 `<UC id> <UC 標題>`」（E8）；§3.1〈互動反應〉新增「阻擋狀態切換專案」列（`action-domain-switch-project`）、〈導航跳轉與退出〉三個阻擋狀態列補該錨點且「不是框架專案」列「唯一出口」改「兩入口同結果」、§2.7 必備動作阻擋欄補錨點名、§3.7〈生命週期〉展開時機補錨點、§4 #6–#8 覆蓋層欄補本體按鈕（E9）；§3.3、§3.6〈動畫提示〉「三個狀態之間」改列狀態名（分別為「正常、鏈路斷裂、無提案之間」「未選節點、正常、部分損壞、原始檔已消失之間」，E11 §3.3／§3.6 部分，§2.1 段已由 `0.1.0-W3-335.55` 落檔）；§3.3〈生命週期〉「Ticket 清單載入完成後再次可見」列補新增缺口可使狀態由 `state-traceability-normal` 轉 `state-traceability-broken`（E12）；§3.6〈生命週期〉切至其他導覽項改「`returnTo` 依 §2.3 規則 1 設為 `null`」，與規則 1 通則一致（E13）；§3.6〈互動反應〉「跳轉破洞報告」列元素改為「欄位級損壞標記（`IssueMarker.damagedDetail`）」、觸發改僅 `state-nodeDetail-partial` 渲染且多實例斷言以祖先限定 finder、補「不另設頁首跳轉按鈕」，〈導航跳轉與退出〉部分損壞列與 §4 #25 同步補「欄位級標記」（E15）。同步點逐項 grep 核對記錄於本票 Problem Analysis；`lib/components/blocked_state.dart`／`test/unit/components/blocked_state_test.dart` 已使用 `action-domain-switch-project` 錨點，E9 落檔與既有實作一致。SPEC-001 全部 7 項同批次落檔（同一票）；留待 `0.1.0-W3-335.57` 的連動點見 `0.1.0-W3-335.55` 變更歷史 |
