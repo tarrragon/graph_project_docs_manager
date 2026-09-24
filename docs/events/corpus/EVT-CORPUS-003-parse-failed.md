@@ -31,7 +31,7 @@ consumers: ['Diagnostics']
 - `nodeType`：「路徑對型別」查詢命中一型時為該型；平手時為 null，`candidateTypes` 列出全部候選，`schemaAmbiguous` 為 true
 - 0.3.0 的 `salvagedFields` 恆為空清單，`severity` 恆為 `edgeAffecting`（SPEC-006 FR-04）
 
-> 具體型別待 SPEC 產出後定案。
+> 型別與取值規則依 SPEC-006 FR-04、FR-06。
 
 ## 設計註記
 
@@ -42,7 +42,9 @@ consumers: ['Diagnostics']
 `lostFields` 的算法（2026-09-24 依 `tarrragon/claude#99` 第三項裁決）：
 該節點型別在 `tracking_schema.json` 的完整性集合，減去實際寫出的鍵。
 值為 `null` 或空清單的鍵算「已寫出」（代表明確沒有），不列入 `lostFields`。
-型別沒有集合時（Ticket 的權威在 ticket skill），`lostFields` 為空清單。
+以下情況 `lostFields` 為空清單：型別沒有集合（Ticket 的權威在 ticket skill）；
+路徑對型別平手（`schemaAmbiguous` 為 true，`nodeType` 為 null）；型別表取不到完整性集合
+（W1-079 之前產生的 JSON 都沒有這個鍵）。
 集合匯出到 JSON 之前不實作（`0.3.0-W1-079`）。
 
 `severity` 區分兩級：`edgeAffecting`（損失的欄位含邊，影響圖結構）與
