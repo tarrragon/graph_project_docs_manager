@@ -103,7 +103,7 @@ versions:
   - version: "0.3.0"
     codename: "Corpus"
     description: "解析與破洞判定：逐行 frontmatter 語意解析既有語料，真破洞與合法非節點分類正確"
-    status: "planned"
+    status: "active"
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.3/v0.3.0/"

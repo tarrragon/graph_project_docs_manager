@@ -4,6 +4,12 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號依 `docs/todolist.yaml` 的版本序列。
 開發中的版本以 `In Development` 標記，發版時由 `version-release finish` 換為日期。
 
+## [0.3.0] - In Development
+
+（待補充）
+
+---
+
 ## [0.2.1] - 2026-09-24
 （待補充）
 
