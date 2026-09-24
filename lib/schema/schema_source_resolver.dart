@@ -23,8 +23,13 @@ enum PathPatternSource {
   /// 專案 JSON 缺欄位，但版本不高於內建版本，從內建表補上。
   builtinTable,
 
-  /// 專案 JSON 缺欄位，且（版本高於內建版本，或內建表也沒有），查詢不可用。
-  unavailable,
+  /// 專案 JSON 缺欄位，內建表有路徑模式，但專案版本高於內建版本（或版本缺席
+  /// 無法確認安全），查詢不可用（FR-08 原因碼：專案型別表版本高於內建版本）。
+  projectVersionHigherThanBuiltin,
+
+  /// 專案 JSON 缺欄位，且內建表本身也沒有路徑模式，查詢不可用（FR-08 原因碼：
+  /// 型別表沒有路徑模式）。與版本無關——內建表沒有可補的內容。
+  noPathPattern,
 }
 
 /// 型別表來源三分的結果。
@@ -47,7 +52,8 @@ class SchemaSourceResolution {
 
   /// FR-06 查詢是否可用（規則 7：兩者都取不到時查詢不可用）。
   bool get isQueryAvailable =>
-      pathPatternSource != PathPatternSource.unavailable;
+      pathPatternSource != PathPatternSource.projectVersionHigherThanBuiltin &&
+      pathPatternSource != PathPatternSource.noPathPattern;
 }
 
 /// 決議型別表來源（規則 7）。
@@ -121,9 +127,15 @@ SchemaSourceResolution _resolveWithoutProjectPathPatterns({
     );
   }
 
+  // 內建表本身沒有路徑模式可補時，與版本無關，原因是「沒有路徑模式」；
+  // 內建表有路徑模式但版本判定不安全（或版本缺席）時，原因是「版本高於內建」。
+  final unavailableSource = builtinHasPatterns
+      ? PathPatternSource.projectVersionHigherThanBuiltin
+      : PathPatternSource.noPathPattern;
+
   return SchemaSourceResolution(
     typeTable: projectTable ?? const TypeTable(<String, NodeTypeEntry>{}),
-    pathPatternSource: PathPatternSource.unavailable,
+    pathPatternSource: unavailableSource,
   );
 }
 
