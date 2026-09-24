@@ -2,6 +2,14 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.22.5 — 覆核修正 1.22.4 引入的行為退化：`validate.py` 的 EVT 完整性判定改讀
+schema 的 `find_missing_completeness_fields`（只判斷欄位是否存在）後，id/name/canonical_name/
+category 四個識別／顯示欄位原有的「值不能為空」規則遺失，`category: null` 或 `name: ""` 會誤
+通過驗證。補回這四個欄位的值非空附加規則（EVT 型別專屬，不屬圖譜 schema 通用完整性語意），
+錯誤訊息「必填欄位值不可為空」與「缺少必填欄位」區分；`test_validate_event.py` 新增 3 個正
+向對照測試（`category: null` 拒絕、`name: ""` 拒絕、欄位完全缺漏走缺少欄位訊息不與空值訊息
+混淆），已實測拿掉附加規則後前兩項翻紅。
+
 **Version**: 1.22.4 — 依 #99 第三項裁決（2026-09-24）實作圖譜 schema 完整性集合語意：
 `tracking_schema.py` 新增 `find_missing_completeness_fields()` 共用判斷（欄位必須存在，值可為
 `None`／`[]`，用鍵存在而非真值判斷），並新增 PROP／SPEC／UC＝{id,title,status}、DomainBundle＝
