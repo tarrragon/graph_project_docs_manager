@@ -224,6 +224,12 @@ abstract class AppLocalizations {
   /// **'App 支援的 schema 版本為 {appVersion}，此專案為 {projectVersion}，版本不相容'**
   String schemaIncompatibleMessage(String appVersion, String projectVersion);
 
+  /// SPEC-001 §1 Domain 視圖·schema 不相容且型別表版本無法判讀時的顯示文案
+  ///
+  /// In zh, this message translates to:
+  /// **'無法判讀此專案型別表的版本，請在該專案重新產生型別表後再開啟'**
+  String get schemaVersionUnreadableMessage;
+
   /// SPEC-001 §2 UC Flow 視圖·無 UC 狀態的顯示文案
   ///
   /// In zh, this message translates to:

@@ -91,6 +91,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get schemaVersionUnreadableMessage => '無法判讀此專案型別表的版本，請在該專案重新產生型別表後再開啟';
+
+  @override
   String get emptyUcMessage => '此專案尚無 UC 節點';
 
   @override
