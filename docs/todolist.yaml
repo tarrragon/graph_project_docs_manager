@@ -104,15 +104,17 @@ versions:
     codename: "Corpus"
     description: "解析與破洞判定：逐行 frontmatter 語意解析既有語料，真破洞與合法非節點分類正確"
     status: "active"
+    scope: "frozen"    # 2026-09-25 凍結：契約票（IT-1 W3-527、IT-2 W3-528、W4-001 驗收）與用戶裁決「發版前修」的 Phase 4 修正波（W3-531～548 中的承接票）皆已 completed，無 pending 必要票故不另標 scope_blocker；其餘 pending 為溢出，發版時前移
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.3/v0.3.0/"
     notes: |
       範圍由 PROP-005〈版本序列〉§0.3 定義，依本檔開頭第三類登記（PROP-005 於
-      2026-09-23 confirmed）：整合測試為 (1) 逐行 frontmatter 語意解析既有語料失敗數
-      0（split("---") 為 130，差值即鑑別力）；(2) 五個語料專案 7106 份文件中真破洞
-      47、合法非節點 1243 分類正確。斷言來源與阻擋清單見 PROP-005 §0.3（阻擋含
-      上游 *_REQUIRED_FIELDS 語意裁決，開工前須先解）。
+      2026-09-23 confirmed）：整合測試為 (1) 逐行 frontmatter 語意解析既有語料與框架
+      函式不一致數 0，split("---") 在 6173 份可解析文件中 176 份判定不同（鑑別力）；
+      (2) 五個語料專案 7466 份文件中真破洞 41、合法非節點 1252 分類正確（2026-09-24
+      凍結值；原記 130／7106／47／1243 為 2026-08-27 量測，見 PROP-005 §0.3）。
+      斷言來源與阻擋清單見 PROP-005 §0.3（上游 *_REQUIRED_FIELDS 語意已裁決）。
       2026-09-23 登記：0.2.0 發版前移的新功能票之收件目標（凍結閘門 minor+1）。
 
   - version: "0.1.0"
