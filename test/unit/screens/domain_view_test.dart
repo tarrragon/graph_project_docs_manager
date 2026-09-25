@@ -22,6 +22,7 @@ import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
@@ -638,6 +639,57 @@ void main() {
       expect(find.text('App 支援版本'), findsNothing);
       expect(find.text('專案版本'), findsNothing);
     });
+
+    testWidgets(
+      'projectVersion 為 null（版本無法判讀）→ 本體顯示 schemaVersionUnreadableMessage'
+      '（0.3.0-W3-542）',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: const DomainViewScreen(),
+          overrides: [
+            domainViewStateProvider.overrideWith(
+              (ref) => const DomainSchemaIncompatible(
+                appVersion: '2.60.1',
+                projectVersion: null,
+              ),
+            ),
+          ],
+        );
+
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(DomainViewScreen)),
+        );
+        expect(find.text(l10n.schemaVersionUnreadableMessage), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'projectVersion 非 null（版本太新）→ 本體照舊顯示 schemaIncompatibleMessage'
+      '（0.3.0-W3-542）',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: const DomainViewScreen(),
+          overrides: [
+            domainViewStateProvider.overrideWith(
+              (ref) => const DomainSchemaIncompatible(
+                appVersion: '2.60.1',
+                projectVersion: '9.99.9',
+              ),
+            ),
+          ],
+        );
+
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(DomainViewScreen)),
+        );
+        expect(
+          find.text(l10n.schemaIncompatibleMessage('2.60.1', '9.99.9')),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('頁首模式切換（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
