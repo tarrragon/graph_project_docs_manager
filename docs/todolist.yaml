@@ -119,7 +119,7 @@ versions:
   - version: "0.3.1"
     codename: "Corpus-2"
     description: "0.3.0 凍結後由閘門與發版前移路由至此的修復／改善／分析／文件類票"
-    status: "planned"
+    status: "active"
     worklog: "docs/work-logs/v0/v0.3/v0.3.1/"
     notes: |
       依版本登記規則 patch 列登記（2026-09-25，0.3.0 finish 的前移目標）。
