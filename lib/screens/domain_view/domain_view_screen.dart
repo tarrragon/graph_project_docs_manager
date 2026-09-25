@@ -256,13 +256,13 @@ class _SchemaIncompatibleView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final projectVersion = state.projectVersion;
     return BlockedState.withDetail(
-      message: l10n.schemaIncompatibleMessage(
-        state.appVersion,
-        state.projectVersion,
-      ),
+      message: projectVersion == null
+          ? l10n.schemaVersionUnreadableMessage
+          : l10n.schemaIncompatibleMessage(state.appVersion, projectVersion),
       appVersion: state.appVersion,
-      projectVersion: state.projectVersion,
+      projectVersion: projectVersion,
       onSwitchProject: () =>
           ref.read(switcherOpenProvider.notifier).state = true,
       isDetailExpanded: state.isDetailExpanded,

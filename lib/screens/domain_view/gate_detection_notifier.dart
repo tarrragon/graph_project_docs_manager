@@ -7,17 +7,19 @@
 /// 2. JSON 缺（此處只看 JSON 存在性，不看 VERSION 值）→
 ///    [DomainSchemaUnconsumable]
 /// 3. JSON 存在 → 依版本範圍判定分 [DomainReady]／[DomainSchemaIncompatible]。
-///    範圍判定恆以 JSON 的 `schema_generated_at_framework_version` 與 App
-///    內建版本比較（`0.2.0-W1-024` 定案，`0.3.0-W3-543` 改呼叫與型別表
-///    來源 resolver 共用的 `isWithinKnownSchemaRange(jsonVersion,
-///    builtinVersion)`），`.claude/VERSION` 是否存在只決定
-///    「顯示版本是否為推定值」（`0.2.0-W1-038` 方案 A），不參與範圍比較——
-///    兩個「兩訊號皆有」的凍結 manifest 案例（`VERSION` 遠高於 builtin）
-///    因 JSON 版本等於 builtin 而正常載入，即為此設計的直接驗證。
+///    範圍判定恆呼叫 `classifySchemaVersion(jsonVersion, builtinVersion)`
+///    （`0.2.0-W1-024` 定案，`0.3.0-W3-545` 拆出分類函式，`0.3.0-W3-542`
+///    接線：[Unreadable] 時 `DomainSchemaIncompatible.projectVersion` 為
+///    `null`，不以 `.claude/VERSION` 值代位），`.claude/VERSION` 是否存在
+///    只決定「顯示版本是否為推定值」（`0.2.0-W1-038` 方案 A），不參與範圍
+///    比較——兩個「兩訊號皆有」的凍結 manifest 案例（`VERSION` 遠高於
+///    builtin）因 JSON 版本等於 builtin 而正常載入，即為此設計的直接驗證。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../schema/schema_version.dart'
+    show InKnownRange, Unreadable, classifySchemaVersion;
 import '../../workspace/framework_signal_probe.dart';
 import 'domain_view_providers.dart';
 import 'domain_view_schema_version.dart';
@@ -68,9 +70,9 @@ class GateDetectionNotifier extends Notifier<void> {
     final isInferred = version == null;
     final displayVersion = version ?? jsonVersion;
 
-    final inRange = isWithinKnownSchemaRange(jsonVersion, builtinVersion);
+    final classification = classifySchemaVersion(jsonVersion, builtinVersion);
 
-    if (inRange) {
+    if (classification is InKnownRange) {
       final inferred = isInferred ? jsonVersion : null;
       _apply(
         DomainReady(mode: DomainMode.matrix, inferredVersion: inferred),
@@ -82,7 +84,7 @@ class GateDetectionNotifier extends Notifier<void> {
     _apply(
       DomainSchemaIncompatible(
         appVersion: builtinVersion,
-        projectVersion: displayVersion ?? '',
+        projectVersion: classification is Unreadable ? null : displayVersion,
         isVersionInferred: isInferred,
       ),
       inferredVersion: null,

@@ -151,5 +151,40 @@ void main() {
         isA<DomainSchemaIncompatible>(),
       );
     });
+
+    test(
+      'JSON 版本無法判讀（null）且 VERSION 缺 → projectVersion 為 null（0.3.0-W3-542）',
+      () async {
+        final container = _buildContainer(
+          _FakeProbe(jsonExists: true),
+        );
+
+        await container
+            .read(gateDetectionNotifierProvider.notifier)
+            .detect('/fake');
+
+        final state = container.read(domainViewStateProvider);
+        expect(state, isA<DomainSchemaIncompatible>());
+        expect((state as DomainSchemaIncompatible).projectVersion, isNull);
+      },
+    );
+
+    test(
+      'JSON 版本無法判讀（null）且 VERSION 存在 → 不以 VERSION 代位，projectVersion 仍為 null'
+      '（0.3.0-W3-542）',
+      () async {
+        final container = _buildContainer(
+          _FakeProbe(version: '2.10.0', jsonExists: true),
+        );
+
+        await container
+            .read(gateDetectionNotifierProvider.notifier)
+            .detect('/fake');
+
+        final state = container.read(domainViewStateProvider);
+        expect(state, isA<DomainSchemaIncompatible>());
+        expect((state as DomainSchemaIncompatible).projectVersion, isNull);
+      },
+    );
   });
 }

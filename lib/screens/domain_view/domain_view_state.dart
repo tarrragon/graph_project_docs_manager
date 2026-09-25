@@ -231,8 +231,11 @@ class DomainSchemaIncompatible extends DomainViewState {
   final String appVersion;
 
   /// 專案框架版本（真實 `.claude/VERSION` 值，或 [isVersionInferred] 為
-  /// `true` 時的推定值，`0.2.0-W1-038` 方案 A）。
-  final String projectVersion;
+  /// `true` 時的推定值，`0.2.0-W1-038` 方案 A）。`null` 代表型別表版本
+  /// 無法判讀（`classifySchemaVersion` 回傳 `Unreadable`）：不以
+  /// `.claude/VERSION` 值代位，避免出現「專案版本低於內建卻判不相容」的
+  /// 自相矛盾說明（`0.3.0-W3-542`，WRAP 方案 D；SPEC-001 v1.23 §1）。
+  final String? projectVersion;
 
   /// 「檢視詳情」面板展開態，狀態存於呼叫端（`BlockedState.withDetail`）。
   final bool isDetailExpanded;
