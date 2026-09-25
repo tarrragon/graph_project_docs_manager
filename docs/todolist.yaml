@@ -115,6 +115,29 @@ versions:
       (2) 五個語料專案 7466 份文件中真破洞 41、合法非節點 1252 分類正確（2026-09-24
       凍結值；原記 130／7106／47／1243 為 2026-08-27 量測，見 PROP-005 §0.3）。
       斷言來源與阻擋清單見 PROP-005 §0.3（上游 *_REQUIRED_FIELDS 語意已裁決）。
+
+  - version: "0.3.1"
+    codename: "Corpus-2"
+    description: "0.3.0 凍結後由閘門與發版前移路由至此的修復／改善／分析／文件類票"
+    status: "planned"
+    worklog: "docs/work-logs/v0/v0.3/v0.3.1/"
+    notes: |
+      依版本登記規則 patch 列登記（2026-09-25，0.3.0 finish 的前移目標）。
+      範圍 = 凍結閘門與發版前移路由至此的票；整合測試 = 上層 minor（0.3.0）的
+      IT-1、IT-2 仍通過。凍結前補收斂承諾與缺陷清單。
+
+  - version: "0.4.0"
+    codename: "Graph"
+    description: "建圖：relatedTo 的 1-hop symmetric union 正確，斷邊交給 Diagnostics，輕節點與 5W1H 全文分離"
+    status: "planned"
+    proposals:
+      - PROP-005
+    worklog: "docs/work-logs/v0/v0.4/v0.4.0/"
+    notes: |
+      依版本登記規則 minor 列登記（2026-09-25，0.3.0 finish 的前移目標）：PROP-005
+      confirmed，§0.4 已寫定整合測試（relatedTo 1-hop symmetric union 正確、斷邊交給
+      Diagnostics、輕節點與 5W1H 全文分離）、斷言來源（EVT-GRAPH-001、domain-map §4.1）、
+      阻擋（上游 0.2.1-W3-1121 反向邊該存還是該推導）。
       2026-09-23 登記：0.2.0 發版前移的新功能票之收件目標（凍結閘門 minor+1）。
 
   - version: "0.1.0"
