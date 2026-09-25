@@ -69,8 +69,16 @@ class DefaultFrameworkSignalProbe implements FrameworkSignalProbePort {
     if (!await file.exists()) return null;
     try {
       final raw = await file.readAsString();
-      final data = jsonDecode(raw) as Map<String, dynamic>;
-      final version = data['schema_generated_at_framework_version'];
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        developer.log(
+          'tracking_schema.json 最上層非物件：$workspacePath', // i18n-exempt: 開發者 debug log
+          name: 'FrameworkSignalProbe',
+          level: 900,
+        );
+        return null;
+      }
+      final version = decoded['schema_generated_at_framework_version'];
       return version is String ? version : null;
     } on FileSystemException catch (e) {
       developer.log(
