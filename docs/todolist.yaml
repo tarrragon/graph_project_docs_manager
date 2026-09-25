@@ -22,7 +22,7 @@
 meta:
   project: "graph_project_docs_manager"
   architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
-  last_updated: "2026-09-24"
+  last_updated: "2026-09-25"
   maintainer: "rosemary-project-manager"
 
 versions:
@@ -103,7 +103,7 @@ versions:
   - version: "0.3.0"
     codename: "Corpus"
     description: "解析與破洞判定：逐行 frontmatter 語意解析既有語料，真破洞與合法非節點分類正確"
-    status: "active"
+    status: completed
     scope: "frozen"    # 2026-09-25 凍結：契約票（IT-1 W3-527、IT-2 W3-528、W4-001 驗收）與用戶裁決「發版前修」的 Phase 4 修正波（W3-531～548 中的承接票）皆已 completed，無 pending 必要票故不另標 scope_blocker；其餘 pending 為溢出，發版時前移
     proposals:
       - PROP-005
