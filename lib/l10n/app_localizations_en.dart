@@ -95,6 +95,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get schemaVersionUnreadableMessage =>
+      'The version of this project\'s schema file cannot be read. Regenerate the schema in that project and open it again';
+
+  @override
   String get emptyUcMessage => 'This project has no UC nodes yet';
 
   @override
