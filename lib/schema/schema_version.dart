@@ -21,10 +21,60 @@ library;
 /// （`schema_source_resolver.dart`）共用（`0.3.0-W3-543`）。
 ///
 /// [version] 為 `null`、任一段無法解析為整數、或高於 [builtinVersion]
-/// 時回傳 `false`（不在範圍）；等於或低於時回傳 `true`。取代兩處各自
-/// 重複的「null 檢查加比較」，使兩者結構上不可能分歧。
+/// 時回傳 `false`（不在範圍）；等於或低於時回傳 `true`。由
+/// [classifySchemaVersion] 推導（`InKnownRange` 才回傳 `true`），使
+/// 「不在範圍」與「無法判讀」共用同一個分類來源，不可能分歧
+/// （`0.3.0-W3-545`；SPEC-001 v1.23 §1 schema 不相容列）。
 bool isWithinKnownSchemaRange(String? version, String builtinVersion) =>
-    version != null && !isHigherThanBuiltinSchemaVersion(version, builtinVersion);
+    classifySchemaVersion(version, builtinVersion) is InKnownRange;
+
+/// 型別表版本分類結果（`0.3.0-W3-545`；SPEC-001 v1.23 §1）。
+///
+/// 區分「版本太新」（[HigherThanBuiltin]）與「版本無法判讀」（[Unreadable]）
+/// 兩種不在已知範圍的原因，供 schema 不相容畫面選用不同文案
+/// （`schemaVersionUnreadableMessage` vs 一般版本不符說明）。
+sealed class SchemaVersionClass {
+  const SchemaVersionClass();
+}
+
+/// 版本在 App 已知範圍內（不高於 builtin，含相等與較低）。
+final class InKnownRange extends SchemaVersionClass {
+  const InKnownRange();
+}
+
+/// 版本高於 builtin，但可正常解析。
+final class HigherThanBuiltin extends SchemaVersionClass {
+  const HigherThanBuiltin();
+}
+
+/// 版本無法判讀：[version] 為 `null`，或任一段無法解析為整數。
+final class Unreadable extends SchemaVersionClass {
+  const Unreadable();
+}
+
+/// 對 [version] 相對 [builtinVersion] 分類（規則 7 逐段整數比較）。
+///
+/// [version] 為 `null` 或任一段無法解析為整數時回傳 [Unreadable]；
+/// 高於 [builtinVersion] 時回傳 [HigherThanBuiltin]；否則（等於或低於）
+/// 回傳 [InKnownRange]。
+SchemaVersionClass classifySchemaVersion(String? version, String builtinVersion) {
+  if (version == null) return const Unreadable();
+
+  final target = version.split('.').map(int.tryParse).toList();
+  final builtin = builtinVersion.split('.').map(int.tryParse).toList();
+  final length = target.length > builtin.length
+      ? target.length
+      : builtin.length;
+  for (var i = 0; i < length; i++) {
+    final t = i < target.length ? target[i] : 0;
+    final b = i < builtin.length ? builtin[i] : 0;
+    if (t == null || b == null) return const Unreadable();
+    if (t != b) {
+      return t > b ? const HigherThanBuiltin() : const InKnownRange();
+    }
+  }
+  return const InKnownRange();
+}
 
 bool isHigherThanBuiltinSchemaVersion(String version, String builtinVersion) {
   final target = version.split('.').map(int.tryParse).toList();
