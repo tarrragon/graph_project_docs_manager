@@ -235,7 +235,7 @@ versions:
   - version: "0.3.3"
     codename: "Corpus-4"
     description: "0.3.x 第三個 patch：規格與實作一致性"
-    status: "planned"
+    status: "active"
     worklog: "docs/work-logs/v0/v0.3/v0.3.3/"
     notes: |
       2026-09-29 發版後分診登記（0.3.1-W1-089）。topic = 規格與實作一致性。
