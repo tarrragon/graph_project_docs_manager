@@ -245,6 +245,8 @@ versions:
       先查規格要求再定補 UI 或移除；源自 0.3.2-W1-009）。
       執行期收件（P1，開工優先）：W3-379（DocsManagerApp.repository 未接線，integration_test 的替身無效、
       實際讀寫執行者 UserDefaults；源自 0.3.2-W3-236）。
+      執行期收件（topic 契合）：W3-380（§2.13 判準對照表缺 workspaceNotRemembered 列）、
+      W3-381（ticketsTargetNotFoundMessage 已定規格未實作）；皆源自 0.3.2-W3-248。
       不變式 = 0.3.0 IT-1、IT-2 仍通過。0.3.x 最後一個 patch。
 
   - version: "0.4.0"
@@ -310,6 +312,8 @@ versions:
       （本批記錄見 0.3.1-W1-089 Solution 分診表）。major 規劃時為必讀輸入，逐張裁決
       做、併入或關閉。已知限制：票號版本無關化（0.3.1-W1-090）落地前，搬入即改名；
       0.x 全數凍結後「最近開放後繼」路由會把新票自動吸入，屆時須手動指定版本。
+      停放：W3-552（openedExternallyMessage 改為抵達時依 T1 條件式顯示以取代具名例外；源自 0.3.2-W3-210
+      設計觀察，與用戶 2026-09-29「保留、一律顯示」裁決不同的替代，非缺陷，延後經 e1 判定）。
 
   - version: "0.1.0"
     codename: "Shell"
