@@ -151,6 +151,24 @@ void main() {
       expect(decoratedBoxes, isNotEmpty);
     });
 
+    testWidgets('點列首後焦點落在 MatrixGrid 子樹', (tester) async {
+      await pumpHarness(tester, child: buildGrid());
+
+      await tester.tap(
+        find.byKey(const ValueKey('action-domain-select-domain-0')),
+      );
+      await tester.pump();
+
+      final focus = FocusManager.instance.primaryFocus;
+      expect(focus, isNotNull);
+      var found = false;
+      focus!.context!.visitAncestorElements((e) {
+        if (e.widget is MatrixGrid) found = true;
+        return !found;
+      });
+      expect(found, isTrue);
+    });
+
     testWidgets('Esc 有選格時呼叫 onClearSelection', (tester) async {
       var cleared = false;
       await pumpHarness(
@@ -161,6 +179,9 @@ void main() {
         ),
       );
 
+      // 前提：先點選（取得焦點）再按 Esc；無 autofocus（0.3.3-W3-397）。
+      await tester.tap(find.byKey(const ValueKey('cell-domain-domain-0-1')));
+      await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pump();
 

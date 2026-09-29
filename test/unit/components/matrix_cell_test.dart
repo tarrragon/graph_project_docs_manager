@@ -88,6 +88,20 @@ void main() {
       expect(callCount, 1);
     });
 
+    testWidgets('點選未選格後該格取得焦點', (tester) async {
+      await pumpHarness(tester, child: _sized(_cell()));
+
+      await tester.tap(find.byKey(_directKey));
+      await tester.pump();
+
+      var inCell = false;
+      FocusManager.instance.primaryFocus?.context?.visitAncestorElements((e) {
+        if (e.widget.key == _directKey) inCell = true;
+        return !inCell;
+      });
+      expect(inCell, isTrue);
+    });
+
     testWidgets('已選格再點零次', (tester) async {
       var callCount = 0;
       await pumpHarness(
