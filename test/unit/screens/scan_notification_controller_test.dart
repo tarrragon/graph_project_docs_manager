@@ -273,6 +273,54 @@ void main() {
       expect(fixture.fake.requestAuthorizationCalls, 0);
     });
   });
+
+  group('SPEC-003 §2.2 granted 但發送失敗', () {
+    testWidgets('failed 前景：出 SnackBar，之後進 gaps 頁 withdraw 為 0', (tester) async {
+      final fake = FakeScanNotifier(showResult: ScanNotificationDelivery.failed);
+      final fixture = await _pumpFixture(tester, fake: fake);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
+
+      expect(fake.showCalls, 1);
+      expect(find.byType(SnackBar), findsOneWidget);
+      await tester.tap(find.byKey(const Key('nav-item-gaps')));
+      await tester.pump();
+      expect(fake.withdrawCalls, 0);
+    });
+
+    testWidgets('delivered 對照組：無 SnackBar，進 gaps 頁 withdraw 恰一次', (tester) async {
+      final fake = FakeScanNotifier();
+      final fixture = await _pumpFixture(tester, fake: fake);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
+
+      expect(find.byType(SnackBar), findsNothing);
+      await tester.tap(find.byKey(const Key('nav-item-gaps')));
+      await tester.pump();
+      expect(fake.withdrawCalls, 1);
+    });
+
+    testWidgets('failed 非前景：完成當下無 SnackBar，resumed 後出現', (tester) async {
+      final fake = FakeScanNotifier(showResult: ScanNotificationDelivery.failed);
+      final fixture = await _pumpFixture(tester, fake: fake);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.container.read(appLifecycleStateProvider.notifier).state =
+          AppLifecycleState.paused;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
+      expect(find.byType(SnackBar), findsNothing);
+
+      fixture.container.read(appLifecycleStateProvider.notifier).state =
+          AppLifecycleState.resumed;
+      await tester.pump();
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+  });
 }
 
 class _Fixture {
@@ -331,7 +379,10 @@ class FakeScanNotifier implements ScanNotifier {
   FakeScanNotifier({
     this.authorization = NotificationAuthorization.granted,
     this.requestResult = NotificationAuthorization.granted,
+    this.showResult = ScanNotificationDelivery.delivered,
   });
+
+  ScanNotificationDelivery showResult;
 
   NotificationAuthorization authorization;
   NotificationAuthorization requestResult;
@@ -370,10 +421,13 @@ class FakeScanNotifier implements ScanNotifier {
   }
 
   @override
-  Future<void> show(ScanCompleteNotification notification) async {
+  Future<ScanNotificationDelivery> show(
+    ScanCompleteNotification notification,
+  ) async {
     showCalls++;
     showOrder = _callSequence++;
     lastGapCount = notification.gapCount;
+    return showResult;
   }
 
   @override
