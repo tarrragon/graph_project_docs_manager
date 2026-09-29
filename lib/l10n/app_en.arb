@@ -11,6 +11,7 @@
   "folderAccessRationale": "Pick a folder for the app to read and edit documents in. This permission is remembered, so you won't need to select it again.",
   "workspaceReady": "Workspace: {path}",
   "workspaceUnavailable": "Cannot access the previous folder: {reason}",
+  "folderUnavailableMessage": "Folder unavailable: {reason}",
   "changeWorkspaceFolder": "Change Folder",
   "workspaceNotRemembered": "Selected, but you will need to choose again next time",
   "chooseFolderUnavailableMessage": "Could not open the folder picker. Please reinstall the app and restart",

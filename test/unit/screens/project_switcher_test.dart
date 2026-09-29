@@ -12,6 +12,7 @@ import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
@@ -42,21 +43,18 @@ final _testRecentProjects = [
     path: '/fake/graph_project_docs_manager',
     lastOpenedAt: DateTime.utc(2026, 9, 24),
   ),
-  RecentProject(
-    path: '/fake/unipos',
-    lastOpenedAt: DateTime.utc(2026, 9, 20),
-  ),
+  RecentProject(path: '/fake/unipos', lastOpenedAt: DateTime.utc(2026, 9, 20)),
 ];
 
 /// 依 SPEC-005 §2.4 schema 編碼 [projects]，供假偏好設定管道回傳
 /// `workspace.recentProjects` key 的值。
 String _encodeRecentProjects(List<RecentProject> projects) => jsonEncode([
-      for (final project in projects)
-        {
-          'path': project.path,
-          'lastOpenedAt': project.lastOpenedAt.toIso8601String(),
-        },
-    ]);
+  for (final project in projects)
+    {
+      'path': project.path,
+      'lastOpenedAt': project.lastOpenedAt.toIso8601String(),
+    },
+]);
 
 /// 固定回傳 [recentProjectsJson] 於 `workspace.recentProjects` key 的假
 /// 偏好設定管道，其餘 key 一律回傳 `null`（對應「從未選過資料夾」）。
@@ -226,19 +224,17 @@ WorkspaceRepository _fakeRepositoryPickerUnavailable({
 }
 
 void main() {
+  _restoreContrastTest();
   group('收合態', () {
     testWidgets('側欄入口存在，浮層未掛載', (tester) async {
       await pumpApp(tester);
 
-      expect(find.byKey(app_shell.AppShell.projectSwitcherEntryKey), findsOneWidget);
       expect(
-        find.byKey(const Key('state-switcher-expanded')),
-        findsNothing,
+        find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
+        findsOneWidget,
       );
-      expect(
-        find.byKey(const Key('state-switcher-no-recent')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
+      expect(find.byKey(const Key('state-switcher-no-recent')), findsNothing);
       expectNoOverflow(tester);
     });
 
@@ -319,9 +315,7 @@ void main() {
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
     });
 
-    testWidgets('點背景導覽項：浮層收合、不切換頁面（0.1.0-W3-335.47 D13）', (
-      tester,
-    ) async {
+    testWidgets('點背景導覽項：浮層收合、不切換頁面（0.1.0-W3-335.47 D13）', (tester) async {
       // 用「無最近專案」清單將浮層高度收到最小（僅標題＋按鈕），確保浮層
       // 不會視覺覆蓋到最後一個導覽項，本測試才能斷言「點在浮層外的導覽
       // 項」而非「點在浮層自身空白區」。
@@ -372,179 +366,154 @@ void main() {
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
       final state = container.read(currentWorkspaceStateProvider);
       expect(state, isA<WorkspaceReady>());
+      expect((state as WorkspaceReady).path, _testRecentProjects[1].path);
+    });
+
+    testWidgets('點擊最近專案項走真實載入路徑：實際開啟該路徑、寫已存路徑、成功後'
+        '該項移至清單頂端（SPEC-003 §3.7；SPEC-005 §2.4；0.2.1-W1-054 契約 C3）', (
+      tester,
+    ) async {
+      late ProviderContainer container;
+      // 有狀態偏好設定：驗證「移至頂端」須讓 addRecentProject 的寫入真的
+      // 被 loadRecentProjects() 重讀到（_SeededPreferencesPort 是
+      // no-op，驗證不了這一步）。
+      final preferences = _StatefulPreferencesPort(
+        seed: {
+          'workspace.recentProjects': _encodeRecentProjects(
+            _testRecentProjects,
+          ),
+        },
+      );
+      final repository = WorkspaceRepository(
+        preferencesPort: preferences,
+        directoryProbe: _FakeDirectoryProbePort(probeExists: true),
+      );
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(repository),
+          ..._gateDetectionOverrides,
+        ],
+      );
+      final element = tester.element(find.byType(app_shell.AppShell));
+      container = ProviderScope.containerOf(element);
+
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      // 點擊非頂端項（index 1，非目前排序第一的項，即 unipos）。
+      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+      await tester.pumpAndSettle();
+
+      // 實際載入：目前工作狀態改為該路徑（非僅標籤變更）。
+      final state = container.read(currentWorkspaceStateProvider);
+      expect(state, isA<WorkspaceReady>());
+      expect((state as WorkspaceReady).path, _testRecentProjects[1].path);
+
+      // 已存路徑改為該 path（下次啟動可讀回）。
+      expect(preferences.values['workspace.path'], _testRecentProjects[1].path);
+
+      // 成功後該項移至清單頂端（addRecentProject 依 lastOpenedAt 降冪）。
+      final updatedList = container.read(recentProjectsProvider);
+      expect(updatedList.first.path, _testRecentProjects[1].path);
+    });
+
+    testWidgets('點擊最近專案項但該路徑不可讀或不存在：依選擇其他失敗列回饋，不轉'
+        '狀態、不寫已存路徑、清單不變（SPEC-003 §3.7；0.2.1-W1-054）', (tester) async {
+      late ProviderContainer container;
+      final repository = WorkspaceRepository(
+        preferencesPort: _SeededPreferencesPort(
+          recentProjectsJson: _encodeRecentProjects(_testRecentProjects),
+        ),
+        directoryProbe: _FakeDirectoryProbePort(probeExists: false),
+      );
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(repository),
+        ],
+        settle: false,
+      );
+      final element = tester.element(find.byType(app_shell.AppShell));
+      container = ProviderScope.containerOf(element);
+      final before = container.read(currentWorkspaceStateProvider);
+
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      // 浮層維持展開，不轉狀態，顯示 AppSnackBar。
+      expect(find.byKey(const Key('state-switcher-expanded')), findsOneWidget);
+      expect(container.read(currentWorkspaceStateProvider), before);
+      expect(find.byType(SnackBar), findsOneWidget);
+
+      // 清單不變（未觸發 addRecentProject 重排；RecentProject 無值相等，
+      // 比對 path 順序，非物件實例）。
       expect(
-        (state as WorkspaceReady).path,
-        _testRecentProjects[1].path,
+        container.read(recentProjectsProvider).map((p) => p.path).toList(),
+        _testRecentProjects.map((p) => p.path).toList(),
       );
     });
 
-    testWidgets(
-      '點擊最近專案項走真實載入路徑：實際開啟該路徑、寫已存路徑、成功後'
-      '該項移至清單頂端（SPEC-003 §3.7；SPEC-005 §2.4；0.2.1-W1-054 契約 C3）',
-      (tester) async {
-        late ProviderContainer container;
-        // 有狀態偏好設定：驗證「移至頂端」須讓 addRecentProject 的寫入真的
-        // 被 loadRecentProjects() 重讀到（_SeededPreferencesPort 是
-        // no-op，驗證不了這一步）。
-        final preferences = _StatefulPreferencesPort(
-          seed: {
-            'workspace.recentProjects': _encodeRecentProjects(
-              _testRecentProjects,
-            ),
-          },
-        );
-        final repository = WorkspaceRepository(
-          preferencesPort: preferences,
-          directoryProbe: _FakeDirectoryProbePort(probeExists: true),
-        );
-        await pumpApp(
-          tester,
-          overrides: [
-            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
-            workspaceRepositoryProvider.overrideWithValue(repository),
-            ..._gateDetectionOverrides,
-          ],
-        );
-        final element = tester.element(find.byType(app_shell.AppShell));
-        container = ProviderScope.containerOf(element);
-
-        await tester.tap(
-          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
-        );
-        await tester.pumpAndSettle();
-
-        // 點擊非頂端項（index 1，非目前排序第一的項，即 unipos）。
-        await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
-        await tester.pumpAndSettle();
-
-        // 實際載入：目前工作狀態改為該路徑（非僅標籤變更）。
-        final state = container.read(currentWorkspaceStateProvider);
-        expect(state, isA<WorkspaceReady>());
-        expect((state as WorkspaceReady).path, _testRecentProjects[1].path);
-
-        // 已存路徑改為該 path（下次啟動可讀回）。
-        expect(
-          preferences.values['workspace.path'],
-          _testRecentProjects[1].path,
-        );
-
-        // 成功後該項移至清單頂端（addRecentProject 依 lastOpenedAt 降冪）。
-        final updatedList = container.read(recentProjectsProvider);
-        expect(updatedList.first.path, _testRecentProjects[1].path);
-      },
-    );
-
-    testWidgets(
-      '點擊最近專案項但該路徑不可讀或不存在：依選擇其他失敗列回饋，不轉'
-      '狀態、不寫已存路徑、清單不變（SPEC-003 §3.7；0.2.1-W1-054）',
-      (tester) async {
-        late ProviderContainer container;
-        final repository = WorkspaceRepository(
-          preferencesPort: _SeededPreferencesPort(
-            recentProjectsJson: _encodeRecentProjects(_testRecentProjects),
+    testWidgets('選擇項目後降級與推定版本旗標重置（0.1.0-W2-014／0.2.0-W1-042 寫入端接線）', (
+      tester,
+    ) async {
+      late ProviderContainer container;
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
           ),
-          directoryProbe: _FakeDirectoryProbePort(probeExists: false),
-        );
-        await pumpApp(
-          tester,
-          overrides: [
-            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
-            workspaceRepositoryProvider.overrideWithValue(repository),
-          ],
-          settle: false,
-        );
-        final element = tester.element(find.byType(app_shell.AppShell));
-        container = ProviderScope.containerOf(element);
-        final before = container.read(currentWorkspaceStateProvider);
-
-        await tester.tap(
-          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
-        );
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
-        await tester.pump();
-        await tester.pump();
-        await tester.pump();
-
-        // 浮層維持展開，不轉狀態，顯示 AppSnackBar。
-        expect(
-          find.byKey(const Key('state-switcher-expanded')),
-          findsOneWidget,
-        );
-        expect(container.read(currentWorkspaceStateProvider), before);
-        expect(find.byType(SnackBar), findsOneWidget);
-
-        // 清單不變（未觸發 addRecentProject 重排；RecentProject 無值相等，
-        // 比對 path 順序，非物件實例）。
-        expect(
-          container.read(recentProjectsProvider).map((p) => p.path).toList(),
-          _testRecentProjects.map((p) => p.path).toList(),
-        );
-      },
-    );
-
-    testWidgets(
-      '選擇項目後降級與推定版本旗標重置（0.1.0-W2-014／0.2.0-W1-042 寫入端接線）',
-      (tester) async {
-        late ProviderContainer container;
-        await pumpApp(
-          tester,
-          overrides: [
-            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
-            workspaceRepositoryProvider.overrideWithValue(
-              _fakeRepositoryWithRecents(_testRecentProjects),
+          ..._gateDetectionOverrides,
+          degradedSchemaProvider.overrideWith((ref) => true),
+          degradedSchemaVersionsProvider.overrideWith(
+            (ref) => const DegradedSchemaVersions(
+              builtinVersion: '0.0.1',
+              projectVersion: '0.0.1',
             ),
-            ..._gateDetectionOverrides,
-            degradedSchemaProvider.overrideWith((ref) => true),
-            degradedSchemaVersionsProvider.overrideWith(
-              (ref) => const DegradedSchemaVersions(
-                builtinVersion: '0.0.1',
-                projectVersion: '0.0.1',
-              ),
-            ),
-            inferredVersionProvider.overrideWith((ref) => '0.0.1'),
-          ],
-        );
-        final element = tester.element(find.byType(app_shell.AppShell));
-        container = ProviderScope.containerOf(element);
+          ),
+          inferredVersionProvider.overrideWith((ref) => '0.0.1'),
+        ],
+      );
+      final element = tester.element(find.byType(app_shell.AppShell));
+      container = ProviderScope.containerOf(element);
 
-        // 本斷言在寫入端未接線時應翻紅——切換前旗標為真，若重置端未接線，
-        // 選擇專案後旗標仍維持真。
-        expect(container.read(degradedSchemaProvider), isTrue);
-        expect(container.read(inferredVersionProvider), isNotNull);
+      // 本斷言在寫入端未接線時應翻紅——切換前旗標為真，若重置端未接線，
+      // 選擇專案後旗標仍維持真。
+      expect(container.read(degradedSchemaProvider), isTrue);
+      expect(container.read(inferredVersionProvider), isNotNull);
 
-        await tester.tap(
-          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
-        );
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+      await tester.pumpAndSettle();
 
-        expect(container.read(degradedSchemaProvider), isFalse);
-        expect(container.read(degradedSchemaVersionsProvider), isNull);
-        expect(container.read(inferredVersionProvider), isNull);
-      },
-    );
+      expect(container.read(degradedSchemaProvider), isFalse);
+      expect(container.read(degradedSchemaVersionsProvider), isNull);
+      expect(container.read(inferredVersionProvider), isNull);
+    });
   });
 
   group('無最近專案態', () {
     testWidgets('清單為空時渲染 SwitcherOverlay 零項 + 選擇資料夾按鈕', (tester) async {
       await pumpApp(
         tester,
-        overrides: [
-          recentProjectsProvider.overrideWith((ref) => const []),
-        ],
+        overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
       );
 
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const Key('state-switcher-no-recent')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('state-switcher-no-recent')), findsOneWidget);
       expect(find.byType(RecentProjectItem), findsNothing);
       expect(
         find.byKey(const Key('action-switcher-choose-folder')),
@@ -556,9 +525,7 @@ void main() {
     testWidgets('Esc 收合浮層', (tester) async {
       await pumpApp(
         tester,
-        overrides: [
-          recentProjectsProvider.overrideWith((ref) => const []),
-        ],
+        overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
       );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
       await tester.pumpAndSettle();
@@ -566,22 +533,15 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const Key('state-switcher-no-recent')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('state-switcher-no-recent')), findsNothing);
     });
 
-    testWidgets('選擇資料夾按鈕接線 WorkspaceRepository，選定可用資料夾後收合浮層', (
-      tester,
-    ) async {
+    testWidgets('選擇資料夾按鈕接線 WorkspaceRepository，選定可用資料夾後收合浮層', (tester) async {
       await pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => const []),
-          workspaceRepositoryProvider.overrideWithValue(
-            _fakeRepositoryReady(),
-          ),
+          workspaceRepositoryProvider.overrideWithValue(_fakeRepositoryReady()),
           ..._gateDetectionOverrides,
         ],
       );
@@ -591,17 +551,12 @@ void main() {
       await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const Key('state-switcher-no-recent')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('state-switcher-no-recent')), findsNothing);
     });
   });
 
   group('選擇其他資料夾（ChooseFolderResult 四變體，SPEC-003 §3.7）', () {
-    testWidgets('ChooseFolderCancelled：浮層維持展開，不顯示 AppSnackBar', (
-      tester,
-    ) async {
+    testWidgets('ChooseFolderCancelled：浮層維持展開，不顯示 AppSnackBar', (tester) async {
       await pumpApp(
         tester,
         overrides: [
@@ -657,9 +612,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          workspaceRepositoryProvider.overrideWithValue(
-            _fakeRepositoryReady(),
-          ),
+          workspaceRepositoryProvider.overrideWithValue(_fakeRepositoryReady()),
           ..._gateDetectionOverrides,
         ],
         settle: false,
@@ -677,48 +630,39 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets(
-      'ChooseFolderSelected(WorkspaceReady)：detect() 被呼叫，domainViewStateProvider '
-      '與 inferredVersionProvider 反映結果（0.2.0-W1-042）',
-      (tester) async {
-        late ProviderContainer container;
-        await pumpApp(
-          tester,
-          overrides: [
-            workspaceRepositoryProvider.overrideWithValue(
-              _fakeRepositoryReady(),
-            ),
-            frameworkSignalProbeProvider.overrideWithValue(
-              const _FakeSignalProbe(),
-            ),
-          ],
-          settle: false,
-        );
-        final element = tester.element(find.byType(app_shell.AppShell));
-        container = ProviderScope.containerOf(element);
+    testWidgets('ChooseFolderSelected(WorkspaceReady)：detect() 被呼叫，domainViewStateProvider '
+        '與 inferredVersionProvider 反映結果（0.2.0-W1-042）', (tester) async {
+      late ProviderContainer container;
+      await pumpApp(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(_fakeRepositoryReady()),
+          frameworkSignalProbeProvider.overrideWithValue(
+            const _FakeSignalProbe(),
+          ),
+        ],
+        settle: false,
+      );
+      final element = tester.element(find.byType(app_shell.AppShell));
+      container = ProviderScope.containerOf(element);
 
-        await tester.tap(
-          find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
-        );
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
 
-        await tester.tap(
-          find.byKey(const Key('action-switcher-choose-folder')),
-        );
-        await tester.pump();
-        await tester.pump();
-        await tester.pump();
-        await tester.pump();
+      await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
 
-        // `_FakeSignalProbe` 回傳兩訊號皆缺 → DomainNotFramework，證明
-        // `_handleChosenState` 確實呼叫了 `detect()`（而非只重置旗標）。
-        expect(
-          container.read(domainViewStateProvider),
-          isA<DomainNotFramework>(),
-        );
-        expect(container.read(inferredVersionProvider), isNull);
-      },
-    );
+      // `_FakeSignalProbe` 回傳兩訊號皆缺 → DomainNotFramework，證明
+      // `_handleChosenState` 確實呼叫了 `detect()`（而非只重置旗標）。
+      expect(
+        container.read(domainViewStateProvider),
+        isA<DomainNotFramework>(),
+      );
+      expect(container.read(inferredVersionProvider), isNull);
+    });
 
     testWidgets(
       'ChooseFolderSelected(WorkspaceUnavailable)：浮層維持展開，顯示 AppSnackBar',
@@ -750,6 +694,8 @@ void main() {
           findsOneWidget,
         );
         expect(find.byType(SnackBar), findsOneWidget);
+        expect(find.text('資料夾無法使用：資料夾不存在或所在磁碟未掛載'), findsOneWidget);
+        expect(find.textContaining('先前的資料夾'), findsNothing);
       },
     );
 
@@ -778,5 +724,16 @@ void main() {
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
       expect(find.byType(SnackBar), findsOneWidget);
     });
+  });
+}
+
+/// restore 路徑（啟動還原先前資料夾）沿用 `workspaceUnavailable` 文案：
+/// 現況 lib 內已無 UI 掛載點（`_WorkspaceBanner` 不存在），此處以 l10n 值
+/// 作正向對照，確認新增 key 未改動既有 key（0.3.2-W1-009）。
+void _restoreContrastTest() {
+  test('restore 路徑文案 workspaceUnavailable 維持「先前的資料夾」', () {
+    final l10n = AppLocalizationsZh();
+    expect(l10n.workspaceUnavailable('X'), '無法存取先前的資料夾：X');
+    expect(l10n.folderUnavailableMessage('X'), '資料夾無法使用：X');
   });
 }

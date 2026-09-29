@@ -33,8 +33,9 @@ SwitcherOverlay buildProjectSwitcherOverlay({
   final l10n = AppLocalizations.of(context);
   final projects = ref.watch(recentProjectsProvider);
   final workspaceState = ref.watch(currentWorkspaceStateProvider);
-  final currentPath =
-      workspaceState is WorkspaceReady ? workspaceState.path : null;
+  final currentPath = workspaceState is WorkspaceReady
+      ? workspaceState.path
+      : null;
   final hasItems = projects.isNotEmpty;
 
   return SwitcherOverlay(
@@ -178,7 +179,7 @@ Future<void> _handleChosenState(
     case WorkspaceUnavailable(:final reason):
       AppSnackBar.show(
         context,
-        message: l10n.workspaceUnavailable(reason),
+        message: l10n.folderUnavailableMessage(reason),
         level: AttentionLevel.discardable,
         origin: AppSnackBarOrigin.userInitiated,
       );

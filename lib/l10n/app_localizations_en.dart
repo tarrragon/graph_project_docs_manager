@@ -54,6 +54,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String folderUnavailableMessage(String reason) {
+    return 'Folder unavailable: $reason';
+  }
+
+  @override
   String get changeWorkspaceFolder => 'Change Folder';
 
   @override
