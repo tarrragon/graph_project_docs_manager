@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.42.1（本地變更，指向 tarrragon/claude#102）— `acceptance_auditor._check_spawned_recursive` 改以衍生票自身 ID 的版本前綴載入 spawned（`extract_version_from_ticket_id`，取不到才退回父票版本），修復建在其他版本的合法衍生票在 complete ANA 票時一律被判 `not_found` 的問題（此前只能整批 `--yes-spawned` 放行）。`_check_children_recursive` 不受影響（children ID 恆以父票 ID 為前綴）。E1 對照測試：同批 fixture 下跨版本存在與真不存在兩案結果不同。
+
 **Version**: 2.42.0 — `migrate` 碰撞行為改為改號而非拒絕：實際執行階段（無 `--force-overwrite`）目標 ID 已存在時，改取目標版本同 Wave 下一可用序號完成遷移，並於改號後票面寫入 `migrated_from: <原目標 ID>`；dry-run 對碰撞改判 FAIL（原為可放行的 WARNING）並印改號預覽，供 `version-release finish --dry-run` 對前移撞號提早止血。`--force-overwrite` 覆寫語意不變（仍記錄 audit log 後覆寫）。批量遷移移除碰撞 pre-scan fail-fast——碰撞不再是需要整批擋下的失敗，改由每筆遷移各自對當下檔案系統狀態判斷並改號，天然支援批次內連環碰撞（前一筆改號後的新目標仍會被下一筆的碰撞檢查看見）。動機：多 PM 或跨版本並行建票時，`finish` 只換版本前綴保留原序號，撞號必然發生；過渡期僅能人工遷到空號。
 
 **Version**: 2.41.0 — 版本溢出目標規則改為優先路由至最近的「開放後繼版本」（todolist.yaml 中版本號較大、狀態 planned/active 且未 `scope: frozen` 者），未命中才依動詞算 patch+1／minor+1；`_suggest_next_patch` 對未凍結的 active 版本同步改為直接建議該 active，不再誤算未在 todolist.yaml 註冊的 patch+1（新增 `find_open_successor`，`references/create-command.md`〈版本範圍凍結硬閘門〉溢出目標表同步更新，WRAP canonical #55，2026-09-23）。
