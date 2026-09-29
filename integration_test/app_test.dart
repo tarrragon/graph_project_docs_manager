@@ -8,8 +8,11 @@ import 'package:integration_test/integration_test.dart';
 
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/main.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/services/macos_scan_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
+import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
@@ -147,6 +150,38 @@ void main() {
     });
   });
 
+  group('DomainReady（內建矩陣）', () {
+    // 矩陣內容來自 App 內建 fixtures，工作資料夾只決定 gate 結果；
+    // 以 WorkspaceReady 替身 + 訊號探測替身讓 gate 判 DomainReady。
+    // 不涵蓋真實磁碟上的 gate 偵測（見 0.3.3-W3-383 Problem Analysis）。
+    for (final viewport in kViewports) {
+      testWidgets('${viewport.name} (${viewport.size.width.toInt()}'
+          'x${viewport.size.height.toInt()}) 矩陣狀態無溢位', (tester) async {
+        _applyViewport(tester, viewport);
+        final builtinVersion = await _readBuiltinSchemaVersion();
+
+        final errors = await _pumpAppAndCollectErrors(
+          tester,
+          repository: _StubWorkspaceRepository(
+            const WorkspaceReady('/fixture/ready-project'),
+          ),
+          overrides: [
+            frameworkSignalProbeProvider.overrideWithValue(
+              _ReadyFrameworkSignalProbe(builtinVersion),
+            ),
+          ],
+        );
+
+        expect(
+          find.byKey(const Key('state-domain-matrix')),
+          findsOneWidget,
+          reason: '[${viewport.name}] 應渲染矩陣而非阻擋態',
+        );
+        _expectNoErrors(errors, context: 'DomainReady ${viewport.name}');
+      });
+    }
+  });
+
   group('scan_notifier 原生端接線', () {
     const MethodChannel channel = MethodChannel(scanNotifierChannelName);
 
@@ -269,6 +304,7 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
   WidgetTester tester, {
   Locale? locale,
   WorkspaceRepository? repository,
+  List<Override> overrides = const [],
 }) async {
   final captured = <FlutterErrorDetails>[];
   final previousHandler = FlutterError.onError;
@@ -279,6 +315,7 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
       // pump DocsManagerApp 時，導覽殼（AppShell 為 ConsumerWidget）需要
       // 自行補上這層祖先，否則 ref.watch 會找不到 ProviderScope 而拋錯。
       ProviderScope(
+        overrides: overrides,
         child: DocsManagerApp(
           locale: locale,
           // 預設也注入替身：真實 repository 會讀寫使用者的 UserDefaults，
@@ -320,6 +357,33 @@ void _expectNoErrors(
     reason: '[$context] 啟動期間出現 framework 錯誤：\n'
         '${errors.map((e) => e.exceptionAsString()).join('\n')}',
   );
+}
+
+/// 讀取內建型別表版本（與 gate 偵測同源：builtinSchemaVersionProvider）。
+Future<String> _readBuiltinSchemaVersion() async {
+  final container = ProviderContainer();
+  try {
+    return await container.read(builtinSchemaVersionProvider.future);
+  } finally {
+    container.dispose();
+  }
+}
+
+/// 訊號皆齊備且 JSON 版本等於內建版本的探測替身，使 gate 判 DomainReady。
+class _ReadyFrameworkSignalProbe implements FrameworkSignalProbePort {
+  const _ReadyFrameworkSignalProbe(this._version);
+
+  final String _version;
+
+  @override
+  Future<String?> readVersion(String workspacePath) async => _version;
+
+  @override
+  Future<bool> schemaJsonExists(String workspacePath) async => true;
+
+  @override
+  Future<String?> readSchemaJsonVersion(String workspacePath) async =>
+      _version;
 }
 
 /// 回傳固定狀態的替身，讓版面測試不受真實檔案系統與偏好設定影響。
