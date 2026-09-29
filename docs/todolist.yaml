@@ -252,6 +252,9 @@ versions:
       實際讀寫執行者 UserDefaults；源自 0.3.2-W3-236）。
       執行期收件（topic 契合）：W3-380（§2.13 判準對照表缺 workspaceNotRemembered 列）、
       W3-381（ticketsTargetNotFoundMessage 已定規格未實作）；皆源自 0.3.2-W3-248。
+      框架修正（用戶裁示 2026-09-29，本專案為 component-contract-design 開發上游）：W1-007（接手既有規格時
+      的變體差異判別）、W1-008（值對映四形與存量／流量上色判準）；flutter_balance 回報，canonical #82。
+      與 topic 工作並行，完成後 sync-push。
       不變式 = 0.3.0 IT-1、IT-2 仍通過。0.3.x 最後一個 patch。
 
   - version: "0.4.0"
