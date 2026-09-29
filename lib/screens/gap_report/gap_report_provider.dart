@@ -88,10 +88,12 @@ class GapReportNotifier extends Notifier<GapReportState> {
     // SPEC-003 §3.5〈生命週期〉「首次可見但圖未建立」：不自動掃描，渲染
     // 共用「專案未就緒」定義；watch 使圖建立完成時 build() 重跑，依「首次
     // 可見且圖已建立」列重新判定（SPEC-001 §5 共用定義，`0.1.0-W3-335.37`
-    // R9）。
+    // R9）。此分支刻意不寫入 [_lastResult]：`IndexedStack` 一次建構六頁
+    // （SPEC-003 §2.8），本畫面即使未被選取也持續存在，圖建立狀態可能在
+    // 已觸發過掃描後又反覆變化（例如切換專案）；若在此覆寫 `_lastResult`，
+    // 圖重新建立後會錯誤地卡在本狀態，而非恢復已完成的掃描結果。
     if (!ref.watch(graphBuiltProvider)) {
-      _lastResult = const GapReportProjectUnready();
-      return _lastResult;
+      return const GapReportProjectUnready();
     }
     // 0.3.1-W3-122：掃描觸發改掛在「首次可見 nav-page-gaps」，不再掛在
     // provider 的 build()（原本一經 ScanNotificationController.start() 於
@@ -104,10 +106,16 @@ class GapReportNotifier extends Notifier<GapReportState> {
       return _lastResult;
     }
     if (!_hasTriggeredScan) {
-      // 圖已建立但尚未首次造訪 nav-page-gaps：不掃描，維持骨架佔位
-      // （畫面未渲染本狀態，因該畫面本身尚未被選取）。
-      _lastResult = const GapReportScanning();
-      return _lastResult;
+      // 圖已建立但尚未首次造訪 nav-page-gaps：本頁尚未被選取，`IndexedStack`
+      // 仍在背景持續建構本 widget tree。若回傳 [GapReportScanning]，
+      // `_ScanningView` 的 shimmer `AnimationController` 會在背景無限
+      // `repeat()`，使涉及完整 App（`pumpApp`）的 `pumpAndSettle` 永不收斂
+      // （0.3.1-W3-122 根因；重現：`project_switcher_test.dart` 等未曾
+      // 導覽至 gaps 頁的測試逐一 timeout）。改用 [GapReportProjectUnready]
+      // （`EmptyState`，靜態無動畫）作為佔位——使用者尚未選取本頁，畫面
+      // 文字不會被實際看見；選取當下 `isFirstVisible` 已於同一次 provider
+      // 重算中翻為 `true`（見上一分支），不會有此佔位文字的殘影閃現。
+      return const GapReportProjectUnready();
     }
     // 已觸發過掃描：保留目前結果，不因 firstVisibleProvider 的後續讀值
     // （例如已見集合寫回導致的 rebuild）重置狀態。
