@@ -165,6 +165,9 @@ versions:
       ExternalOpener 絕對路徑前提，實機恆 notFound；topic 契合、契約行為錯誤，且 W3-236 量前程序
       要求開檔入口的 opened 取樣。預期變更：四入口收到的路徑改為專案根目錄組成的絕對路徑；
       fixture 內容不動，接真資料屬 0.5／0.6）。
+      例外閥：W1-009（W3-368 執行中發現：專案切換浮層對剛選定的資料夾顯示「無法存取先前的資料夾」，
+      SPEC-003 §3.7 規定用 folderUnavailableMessage 而 ARB 無此 key；契約行為錯誤、topic 契合。
+      預期變紅：無；預期改變：選定資料夾不可讀時的文案，restore 路徑不變）。
       契約與實際的差異（發版前檢討輸入）：
         - W1-004 出現 2 則契約外紅燈（gap_report、node_detail 的「檔案不存在」測試）。契約只列覆寫
           runner 的測試，漏算未覆寫 provider、隱式走真實檔案系統的測試；同步 File.existsSync 移進
@@ -225,6 +228,8 @@ versions:
       用戶裁示不擋 0.3.1，依 topic 契合由 0.3.2 移入；源自 0.3.1-W1-028 實機量測）。
       執行期收件（topic 契合）：W3-376（SPEC-004 §4.0.6 key 表缺 gapCategoryOrphanEvent／
       gapCategoryEventDeclarationMismatch 兩列，與 ARB 不同步；源自 0.3.2-W3-548 Phase 4）。
+      執行期收件（topic 契合）：W3-377（chooseFolderUnavailableMessage 文案含操作指引違反 SPEC-004 M1，
+      與 ARB 刻意設計的優先序待用戶裁決；源自 0.3.2-W3-368）。
       不變式 = 0.3.0 IT-1、IT-2 仍通過。0.3.x 最後一個 patch。
 
   - version: "0.4.0"
