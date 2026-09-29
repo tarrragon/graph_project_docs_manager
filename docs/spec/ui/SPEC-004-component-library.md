@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-29"
-version: "1.60"
+version: "1.61"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.60（1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
+**版本**: 1.61（1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -2382,7 +2382,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `allOptionLabel` | `String?` | 否 | 元件預設 `filterAllOption`（強語意預設，參數可覆蓋） |
 | `selected` | `String?`（`null` = 全部） | 是 | 不適用 |
 | `onChanged` | `ValueChanged<String?>` | 是 | 不適用 |
-| `testKey` | `Key` | 是（`action-tickets-filter-<key>`） | 不適用 |
+| `testKey` | `Key` | 是（觸發器 `action-tickets-filter-<key>`；選單根 `menu-tickets-filter-<key>` 與選項 `option-tickets-filter-<key>-<value>`／`option-tickets-filter-<key>-all` 由元件依 `<key>` 推導，呼叫端不另傳） | 不適用 |
 
 #### 使用 design token
 
@@ -2408,7 +2408,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 |---|------|-----------|
 | F1 | 任一時刻 | 同時至多一個選單展開；開啟另一個下拉的第一次點擊只收合不開啟，需再點一次 |
 | F2 | 選單展開時 | 觸發器選取態只由 `selected` 決定，不因展開改變 |
-| F3 | 選單展開時（內容） | 首項為「全部」（文字 `filterAllOption`），其後依 `options` 順序；`options` 的 `value` 不得為 `all`（保留給「全部」） |
+| F3 | 選單展開時（內容） | 首項為「全部」（文字 `filterAllOption`，錨點 `option-tickets-filter-<key>-all`），其後依 `options` 順序（文字 `options[i].label`，錨點 `option-tickets-filter-<key>-<options[i].value>`）；`options` 的 `value` 不得為 `all`（保留給「全部」）；與 SPEC-003 §3.4 F3 一致（`0.3.3-W3-403`） |
 | F4 | 選單展開時（幾何） | 選單為覆蓋層：頂緣貼觸發器底緣、左緣貼觸發器左緣；工具列其餘元素 rect 展開前後不變（不擠壓版面）；`options` 全數展開不捲動；`kMinWindowSize` 下選單底緣仍在視窗內 |
 | F5 | 展開／走選項／收合（任一方式） | 皆不呼叫 `onChanged`；唯一呼叫點是「選取且值改變」——篩選在選取時一次套用，不在焦點移動時即時套用 |
 | F6 | 選單展開時（播報） | 選單根節點 `role` 為 `menu`；每個選項 `role` 為 `menuItem`、label 為選項文字、`selected` 於目前值項為 `true`；觸發器 `expanded` 展開時 `true`、收合後 `false` |
@@ -2442,6 +2442,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 - [ ] 最長測試文案截斷
 - [ ] zh / en 兩語系值皆不溢位
 - [ ] 選取選項呼叫 `onChanged` 恰一次；選「全部」傳 `null`；值相同不呼叫
+- [ ] 選單展開時選單根 `menu-tickets-filter-<key>`、首項 `option-tickets-filter-<key>-all`、其後各項 `option-tickets-filter-<key>-<value>` 錨點存在且順序與 `options` 一致（F3）
 - [ ] F1：開啟另一個下拉時前一個先收合；F4：選單幾何（頂緣貼底緣、左緣對齊、不擠壓版面、`kMinWindowSize` 底緣在視窗內）；F6：選單根 `role=menu`、選項 `role=menuItem`、`selected` 對應目前值；F7：點外部收合且吸收點擊
 - [ ] 顏色、內距、圓角引用 token 非硬編碼
 
@@ -6421,6 +6422,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.61 | 2026-09-30 | `0.3.3-W3-403`（承 `0.3.3-W3-392` 判讀 #45、#46）：SPEC-003 §3.4 F1–F7 委派本檔 4.13 單一承擔且其 F3 含選項錨點，本檔 4.13 缺——F3 補錨點子句（首項 `option-tickets-filter-<key>-all`、其後 `option-tickets-filter-<key>-<value>`）、slot `testKey` 列補選單根與選項錨點由 `<key>` 推導、測試點補選項錨點斷言。`lib/components/filter_dropdown.dart` 既有實作（`menu-…`、`option-…-<value>`）與 `filter_dropdown_test` 既有斷言已符合，規格補登，實作不變 |
 | 1.60 | 2026-09-29 | 用戶裁決（2026-09-29，經 e1 以 AUQ）兩項落規格：(1) `0.3.3-W3-377` 候選 C——§4.0.6 `chooseFolderUnavailableMessage` 改為 zh「無法開啟資料夾選取面板，應用程式可能安裝不完整」／en「Could not open the folder picker; the app may not be installed correctly」，衝突註記改寫為已決（結果陳述＋一般語言原因符合 M1，不開例外）；(2) `0.3.3-W3-378` 候選 B——§4.0.6 登記既有 `workspaceUnavailable` 為 §1 未選專案說明區的常駐文字（還原失敗降級時顯示，取代 `folderAccessRationale`），對齊 SPEC-001 v1.24、SPEC-003 v1.51。ARB 與畫面實作由實作票承接 |
 | 1.59 | 2026-09-29 | `0.3.3-W3-389`：§2（uc_flow）、§5（gap_report）、§6（node_detail）「專案未就緒」改為與 §3、§4 相同的依原因三選一（`projectUnreadyReason*`）與 `gotoDomainViewAction`，五畫面共用 `ProjectUnreadyView`；ARB 移除 `projectUnreadyMessage`、`gotoDomainAction`。本檔同步：〈1.36 新增〉表 `gotoDomainAction` 列改為 `gotoDomainViewAction`（括號留原名）、〈1.56 補登〉表刪除 `projectUnreadyMessage` 與 `gotoDomainViewAction` 兩列（前者已移除、後者併入 1.36 表）、4.4 `label` 列與 4.21 動作列的引用改名。歷史變更列不改 |
 | 1.58 | 2026-09-29 | `0.3.3-W3-391`（承 `0.3.3-W3-382` SPEC-003 v1.48）：§4.0.1 互動瞬態表 focused 列原寫「元件祖先鏈存在 `decoration` 非 `null` 的 `DecoratedBox`」的存在性抄錄（未取得焦點時亦成立，無鑑別力），改為焦點環承載於 `BoxDecoration.border`、取得焦點時 `AppColors.accent` 外框／焦點移走後無或透明，斷言引用 SPEC-003 §2.10〈焦點裝飾（斷言方式，對照形）〉不重述；§1 子表「焦點」列「存在性斷言」改「兩態對照斷言」；各條目回饋契約「焦點」列時間門檻欄的「SPEC-003 §2.10 只斷言裝飾存在」共 19 處改為「只斷言焦點兩態裝飾可區分」（語意為不設時限的理由，未改其結論） |
