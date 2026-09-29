@@ -3595,24 +3595,28 @@ def snapshot_git_status_paths(root: Path) -> set:
 
     用途：作為 finish 收尾差集比對的基準快照。
     """
+    # -z：NUL 分隔且不做 quotepath 跳脫（CJK 路徑保持原文）。
+    # 記錄格式 "XY path"；X 或 Y 為 R/C 時後接一段 "origPath"。
     result = subprocess.run(
-        ["git", "status", "--porcelain"],
+        ["git", "status", "--porcelain", "-z"],
         cwd=root,
         capture_output=True,
         text=True,
         timeout=10,
     )
     paths = set()
-    for line in result.stdout.splitlines():
-        if not line:
+    fields = result.stdout.split("\0")
+    idx = 0
+    while idx < len(fields):
+        record = fields[idx]
+        idx += 1
+        if len(record) < 4:
             continue
-        body = line[3:] if len(line) > 3 else line.strip()
-        if " -> " in body:
-            old, new = body.split(" -> ", 1)
-            paths.add(old.strip().strip('"'))
-            paths.add(new.strip().strip('"'))
-        else:
-            paths.add(body.strip().strip('"'))
+        paths.add(record[3:])
+        if record[0] in "RC" or record[1] in "RC":
+            if idx < len(fields) and fields[idx]:
+                paths.add(fields[idx])
+            idx += 1
     return paths
 
 
@@ -3663,7 +3667,17 @@ def commit_changes(
                 return True
 
             for path in stage_targets:
-                subprocess.run(["git", "add", path], cwd=root, timeout=10)
+                add_result = subprocess.run(
+                    ["git", "add", "--", path],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if add_result.returncode != 0:
+                    print_warning(
+                        f"git add 失敗（{path}）：{(add_result.stderr or '').strip()}"
+                    )
 
             result = subprocess.run(
                 ["git", "commit", "-m", message],
