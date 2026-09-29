@@ -117,7 +117,7 @@ MASKS = {
     'N7': ('W3-407（W3-392 判讀；SPEC-003 §2.7 覆蓋狀態、SPEC-001 §2–§4）', '由結果進入的空狀態（無 UC／無提案／無 ticket／無破洞）與鏈路斷裂，不以狀態錨點出現於互動反應表，進入由導航表與 §4 承載（R2 的同判準延伸）'),  # i18n-exempt
     'N8': ('W3-407（W3-392 判讀；SPEC-003 §2.7 首段）', '§2.7 只涵蓋空狀態與阻擋狀態元件：資料視圖降級類（鏈路斷裂、有破洞、無法判定破洞、部分損壞）與浮層畫面（§7）不在範圍（R4 的同判準延伸）'),  # i18n-exempt
     'N9': ('W3-407（W3-392 判讀；SPEC-004 §3.1 總表）', '§3.1 資料視圖降級類狀態由容器列以畫面節號標示，不寫狀態名（R6 的同判準延伸）'),  # i18n-exempt
-    'N10': ('W3-407（W3-392 判讀；SPEC-003 §2.13 對照表〈既有條文〉欄）', 'SnackBar key 在 §2.13 有列且〈既有條文〉欄以「§N.N：」指名承載節：該承載節即權威處，S3 §2.2 或畫面節不重述 key（無列或欄內無指名者不適用，仍為缺漏）'),  # i18n-exempt
+    'N10': ('W3-407（W3-392 判讀；SPEC-003 §2.13 對照表〈既有條文〉欄）', 'SnackBar key 在 §2.13 有列且〈既有條文〉欄以「§N.N：」指名承載節：該承載節即權威處，S3 §2.2 或畫面節不重述 key（無列或欄內無指名者不適用，仍為缺漏；前提是承載節確實含有該 key，指名而未含者不遮蔽，另報「承載節宣告不實」）'),  # i18n-exempt
     'N11': ('W3-407（W3-392 判讀；SPEC-003 殼層通則、NAV_EXCLUDE_PREFIX）', '殼層導航錨點（nav-item-／nav-page-）由殼層通則承載，不入互動反應表，SPEC-004 亦以通式承載'),  # i18n-exempt
     'N12': ('W3-407（W3-392 判讀；W3-395 已修）', '具體錨點被同欄某個通式錨點（含 *）以 fnmatch 涵蓋：腳本不展開通式，涵蓋範圍由通式決定'),  # i18n-exempt
 }
@@ -294,10 +294,23 @@ def carrier_section(key):
     return None
 
 
+def carrier_holds(key):
+    """N10 前提：§2.13 指名的承載節（§N.N 標題段）確實含有 key。"""
+    sec = carrier_section(key)
+    return bool(sec) and has(section(L3, rf'^### {re.escape(sec)} ', 3), key)
+
+
+def carrier_false_claims(matrix, key):
+    """§2.13 指名承載節（§2.2 除外，該節由 S3§2.2 欄自行檢查）但該節未含 key：登記「承載節宣告不實」。"""  # i18n-exempt
+    sec = carrier_section(key)
+    if sec and sec != '2.2' and not carrier_holds(key):
+        GAPS.append((matrix, f'`{key}`', f'承載節宣告不實（§2.13 指名 §{sec}）'))  # i18n-exempt
+
+
 def snack_screen_cells(matrix, key):
     """S3 §3.x 畫面節分欄（N2）：任一節出現即其餘 . 為合理不出現；全無則整列真缺漏（N10 承載節指名者除外）。"""  # i18n-exempt
     found = [has(section(L3, rf'^### 3\.{n} ', 3), key) for n in SNACK_SCREEN_NODES]
-    if not any(found) and carrier_section(key):
+    if not any(found) and carrier_holds(key):
         MASK_USED['N10'] += 1
         return ['~N10'] * len(found)
     if not any(found):
@@ -324,9 +337,10 @@ def snack_matrix():
         mk = f'`{k}`'
         row = [mk,
                cell(m, mk, 'S3§2.2', has(s3_22, k), 'R9' if k in NOT_IN_S3_22 else
-                    ('N10' if carrier_section(k) not in (None, '2.2') else None)),
+                    ('N10' if carrier_holds(k) and carrier_section(k) != '2.2' else None)),
                cell(m, mk, 'S3§2.13', has(s3_213, k))]
         row += snack_screen_cells(m, k)
+        carrier_false_claims(m, k)
         row += [cell(m, mk, 'S1§8.2', False, 'R8'),
                 cell(m, mk, 'S4§4.26變體', has(variants, k), None if k.endswith('Action') else 'N1'),  # i18n-exempt
                 cell(m, mk, 'S4§4.26一致', variant_consistent(variants, k, conclusions), None if k in conclusions and has(variants, k) else 'N5'),  # i18n-exempt
@@ -429,6 +443,36 @@ def authority_diffs():
     return diffs
 
 
+SAME_AS = re.compile(r'同 #(\d+)')  # i18n-exempt
+# §4 表頭段明文：殼層通則出口（返回、導覽列、切換專案入口）不逐列列出；state-* 為轉換目標，非觸發錨點。
+SHELL_ANCHORS = ('project-switcher-entry',)
+
+
+def nav_row_gaps():
+    """S3§4 逐列比對（畫面, 狀態, 錨點）：§3.x〈導航跳轉與退出〉每列的觸發錨點須出現在 §4 同（畫面, 狀態）列；
+    §4 列以「同 #N」承接者，併入被承接列的錨點。缺者逐列登記。"""  # i18n-exempt
+    rows4 = {c[0]: c for c in parse_table_rows(section(L3, r'^## 4\. ', 2), '#')}
+    by_key = {(c[1], norm_state(c[2])): c for c in rows4.values()}
+
+    def row_anchors(c):
+        got = collect([c[4]])
+        for ref in SAME_AS.findall(c[4]):
+            if ref in rows4 and rows4[ref] is not c:
+                got |= row_anchors(rows4[ref])
+        return got
+
+    for n in range(1, 8):
+        nav = sub(section(L3, rf'^### 3\.{n} ', 3), r'導航跳轉與退出')  # i18n-exempt
+        for cells in parse_table_rows(nav, '狀態'):  # i18n-exempt
+            key = (SCREEN[n][0], norm_state(cells[0]))
+            want = {a for a in collect([' | '.join(cells)])
+                    if not a.startswith(NAV_EXCLUDE_PREFIX + SHELL_ANCHORS + ('state-',))
+                    and not NAV_EXCLUDE_EXTERNAL.match(a)}
+            got = row_anchors(by_key[key]) if key in by_key else set()
+            for a in sorted(want - got):
+                GAPS.append(('C 錨點', f'`{a}`', f'S3§4 逐列（{key[0]} / {key[1]}）'))  # i18n-exempt
+
+
 def anchor_matrix():
     s3_int = set()
     for n in range(1, 8):
@@ -446,6 +490,7 @@ def anchor_matrix():
             continue
         row = [cell('C 錨點', f'`{a}`', c, a in st, anchor_mask(c, a), warn=(c == 'S3§1.4')) for c, st in zip(ANCHOR_COLS, sets)]  # i18n-exempt
         print('| ' + ' | '.join([f'`{a}`'] + row) + ' |')
+    nav_row_gaps()
 
 
 def parse_table_rows(section_lines, first_cell_header):
