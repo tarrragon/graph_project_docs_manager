@@ -75,7 +75,7 @@ python3 docs/spec/ui/audit/counts.py > /tmp/spec-audit-counts.txt
 - 只收「已判定且有追修票」的真缺漏。基線只記指標（比對鍵加票號），判讀理由留在該票面，本目錄不記錄判定結論。
 - 「合理不出現」**不進基線**，一律寫成帶判準與出處的遮罩規則（`MASKS`）；逐格白名單會遮住同欄新成員，
   重演 `N1` 的失效模式（`0.3.3-W3-392` 基線機制定案；`0.3.3-W3-407` 已把原 47 列改寫為 `N6`–`N12` 與 `N3` 擴充）。
-- 現況：基線只有表頭（無列）。`scanCompleteUndeterminableSnackbarMessage` 四欄由 `0.3.3-W3-405` 登記（追修票 `0.6.0-W1-025`）。
+- 現況：基線 4 列，皆為 `scanCompleteUndeterminableSnackbarMessage` 的四欄缺漏（`0.3.3-W3-405` 登記，追修票 `0.6.0-W1-025`；0.6 實作「無法判定」時四欄同批補齊並刪除這 4 列，未刪則以 exit 2 報出）。
 - 維護：發現票加列（必帶票號）；追修票在同一 commit 修規格並刪除該列；過期列由腳本以 exit 2 提示。
 
 **權威表推導差**：`SNACK_KEYS`、`R10_ANCHORS` 兩份寫死清單由規格推導聯集（SnackBar key：SPEC-003 §2.13 對照表首欄、

@@ -1,1 +1,5 @@
 key	ticket	note
+[B SnackBar] `scanCompleteUndeterminableSnackbarMessage` x S3§2.13	0.6.0-W1-025	0.6 破洞「無法判定」功能的規格；實作時四欄同批補齊並移除本列（e1 分流 2026-09-30）
+[B SnackBar] `scanCompleteUndeterminableSnackbarMessage` x S3§3.x 任一節	0.6.0-W1-025	0.6 破洞「無法判定」功能的規格；實作時四欄同批補齊並移除本列（e1 分流 2026-09-30）
+[B SnackBar] `scanCompleteUndeterminableSnackbarMessage` x S4§4.26slot	0.6.0-W1-025	0.6 破洞「無法判定」功能的規格；實作時四欄同批補齊並移除本列（e1 分流 2026-09-30）
+[B SnackBar] `scanCompleteUndeterminableSnackbarMessage` x S4§4.26i18n	0.6.0-W1-025	0.6 破洞「無法判定」功能的規格；實作時四欄同批補齊並移除本列（e1 分流 2026-09-30）

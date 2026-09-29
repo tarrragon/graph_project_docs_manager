@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-09-29"
-version: "1.52"
+updated: "2026-09-30"
+version: "1.53"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -978,7 +978,7 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 | 12 | `folderUnavailableMessage` | 是 | 否 | 否（`reason` 為單句原因，非需抄錄明細） | 否 | `plain` | §3.1、§3.7：`plain` | 是 |
 | 13 | `ticketsTargetNotFoundMessage` | 是 | 否 | 否 | 否 | `plain` | §3.4：`plain` | 是 |
 | 14 | `ticketsFiltersClearedSnackbarMessage`（§3.4 帶目標跳入清除搜尋與篩選） | 是 | 否（清單改變但未說明原因） | 否 | 是（`undoAction`） | `withAction` | §3.4：`withAction` | 是 |
-| 15 | `workspaceNotRemembered`（§3.7 選定資料夾成功但偏好設定寫入失敗，`ChooseFolderNotRemembered`，SPEC-005） | 是（同列 11、12：使用者剛於浮層完成選擇，觸發頁即可見頁） | 否（選定成功的可見變化——浮層收合、入口專案名更新——說明的是「已選定」，不說明「未能記住」） | 否 | 否（無使用者可執行的補救動作） | `plain` | §3.1、§3.7 無此分支的條文；呼叫點僅見 §2.14 列 16 | 判準與實作（`plain`）一致；互動反應表缺此分支 |
+| 15 | `workspaceNotRemembered`（§3.7 選定資料夾成功但偏好設定寫入失敗，`ChooseFolderNotRemembered`，SPEC-005） | 是（同列 11、12：使用者剛於浮層完成選擇，觸發頁即可見頁） | 否（選定成功的可見變化——浮層收合、入口專案名更新——說明的是「已選定」，不說明「未能記住」） | 否 | 否（無使用者可執行的補救動作） | `plain` | §3.7：`plain`（v1.53 補列，`0.3.3-W3-405`） | 是 |
 | 16 | `externalOpenFailedMessage`（§3.1 開啟 docs 目錄 `notFound`，與 `failed` 共用同一則訊息） | 是 | 否（畫面狀態不變） | 否 | 否 | `plain` | §3.1：`plain` | 是 |
 
 **`sourceFileNotFoundSnackbarMessage` 那一列與 §3.6 開啟原始檔 `notFound` 那一列是判準 T
@@ -2114,6 +2114,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 選擇其他 | `action-switcher-choose-folder` | 點擊 | 開啟系統資料夾選擇器；選定後浮層收合並載入，`IndexedStack` 可見頁為 `nav-page-domain`（`0.1.0-W3-335.38` S-39）；選擇器被取消則浮層維持展開 |
 | 選擇其他（選擇器無法開啟） | 同上 | 點擊，選擇器啟動失敗 | 浮層維持展開；不轉狀態、不寫入已存路徑；SnackBar `chooseFolderUnavailableMessage`，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13、S-38） |
 | 選擇其他（選定資料夾不可讀或不存在） | 同上 | 於選擇器選定後判定失敗 | 浮層維持展開；不轉狀態、不寫入已存路徑、清單不變；SnackBar `folderUnavailableMessage`（placeholder `reason`，取 `WorkspaceUnavailable.reason`），停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13、S-38） |
+| 選擇其他／最近專案項（選定成功但未能記住） | `action-switcher-choose-folder`、`card-switcher-recent-<index>` | 選定或點擊後資料夾可用，但偏好設定寫入失敗（`ChooseFolderNotRemembered`） | 同「選擇其他」選定成功與「最近專案項」列：浮層收合並載入，`IndexedStack` 可見頁為 `nav-page-domain`；另顯示 SnackBar `workspaceNotRemembered`（`AppSnackBar.plain`，§2.13 列 15、§2.14 列 16），停留 `Motion.snackBar`；已存路徑維持原值，下次啟動不會還原本次選定（`0.3.3-W3-405`） |
 | 點浮層外部 | — | 點擊浮層外任一處 | 浮層收合；不改變當前專案；該次點擊被吸收、不傳遞至下層（點在 `nav-item-<d>` 上時 `IndexedStack` 可見頁不變，`0.1.0-W3-335.47` D13） |
 | 按 Esc | — | 按鍵 | 浮層收合；焦點回到 `project-switcher-entry` |
 | 清單捲動 | `scroll-switcher-recent` | drag / 捲軸 | offset 改變 |
@@ -2391,6 +2392,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.53 | 2026-09-30 | `0.3.3-W3-405`（承 `0.3.3-W3-404` 稽核浮出）：§3.7〈互動反應〉補「選擇其他／最近專案項（選定成功但未能記住）」列——`ChooseFolderNotRemembered` 時照常收合並載入，另顯示 `AppSnackBar.plain`（`workspaceNotRemembered`）；§2.13 對照表列 15〈既有條文〉改為 §3.7：`plain`、一致欄改為「是」。行為依現行實作（`project_switcher_overlay.dart` 的 `_handleChooseFolderResult`，選擇其他與最近專案項共用）照實記載，實作不變；對應 SPEC-004 v1.63 |
 | 1.52 | 2026-09-30 | `0.3.3-W3-402`（承 `0.3.3-W3-392` 稽核判讀）三處真缺漏：(1) §3.7〈動畫提示〉兩列涵蓋「無最近專案」——原只列收合 ↔ 展開，依 §2.1〈未列轉換的預設〉「收合 → 無最近專案」會落 cross-fade，與 SPEC-004 4.42 淡入展開衝突；(2) §3.2〈互動反應〉補 `scroll-ucFlow-uc-list` 捲動列，§1.1〈捲動連動禁令〉補 #3／#12（表列 #12 已註「與 #3 各自獨立」，實作為兩個獨立 `Panel.scrollable`）；(3) §4 #3「正常 · 矩陣」導航反應欄補 `mode-domain-swimlane` 出口（§3.1〈導航跳轉與退出〉已有，§4 #4 已列反向 `mode-domain-matrix`） |
 | 1.51 | 2026-09-29 | `0.3.3-W3-378`（用戶裁決 B，2026-09-29，經 e1 以 AUQ）：§3.1〈生命週期〉新增「App 啟動且有已存路徑但還原失敗」列——降級為 `state-domain-unset`、常駐原因文字 `workspaceUnavailable(reason)`、不發暫態提示；與 SPEC-001 v1.24 §1 未選專案列一致。實作由新建實作票承接（blockedBy `0.3.3-W3-398`） |
 | 1.50 | 2026-09-29 | `0.3.3-W3-388`（用戶裁決 D，經 e1 AUQ）：§2.10 新增「App 啟動」列——任一啟動狀態皆不預設焦點、第一次 Tab 落在 `project-switcher-entry`；「矩陣已選格時按 Esc」列補前提「焦點在矩陣內」與已知代價（啟動後須先點選矩陣 Esc 才生效）。實作（移除 `MatrixGrid` autofocus）由 `0.3.3-W3-397` 承接 |

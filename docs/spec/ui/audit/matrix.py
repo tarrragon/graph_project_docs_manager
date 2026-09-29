@@ -233,10 +233,12 @@ def state_matrix():
 SNACK_KEYS = ['openedExternallyMessage', 'externalOpenFailedMessage', 'sourceFileNotFoundSnackbarMessage',
               'sourceFileStillMissingMessage', 'scanCompleteNoGapsSnackbarMessage', 'scanCompleteSnackbarMessage',
               'chooseFolderUnavailableMessage', 'folderUnavailableMessage', 'ticketsTargetNotFoundMessage',
-              'ticketsFiltersClearedSnackbarMessage', 'rescanAction', 'viewGapsAction', 'undoAction']
+              'ticketsFiltersClearedSnackbarMessage', 'rescanAction', 'viewGapsAction', 'undoAction',
+              'workspaceNotRemembered', 'scanCompleteUndeterminableSnackbarMessage']  # W3-405：補 W3-404 推導浮出的 2 key
 # R9：選擇器／資料夾／Ticket 類 key（undoAction 屬 ticketsFiltersCleared 的復原動作）不在 S3 §2.2 範圍。
+# workspaceNotRemembered 屬資料夾類（W3-405 延伸；SPEC-003 §2.13 列 15、§3.7）。
 NOT_IN_S3_22 = {'chooseFolderUnavailableMessage', 'folderUnavailableMessage', 'ticketsTargetNotFoundMessage',
-                'ticketsFiltersClearedSnackbarMessage', 'undoAction'}
+                'ticketsFiltersClearedSnackbarMessage', 'undoAction', 'workspaceNotRemembered'}
 SNACK_SCREEN_NODES = (1, 2, 4, 5, 6, 7)
 SNACK_ANY_SCREEN = 'S3§3.x 任一節'  # i18n-exempt
 ARB_LINES = open(ARB, encoding='utf-8').read().splitlines() if ARB.exists() else []
