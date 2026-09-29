@@ -18,6 +18,7 @@ import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 
@@ -79,6 +80,8 @@ void main() {
 
       expect(AnchorFinder.state(Screen.ucFlow, 'empty'), findsOneWidget);
       expect(find.byType(EmptyState), findsOneWidget);
+      final l10n = AppLocalizations.of(tester.element(find.byType(UcFlowScreen)));
+      expect(find.text(l10n.emptyUcMessage), findsOneWidget);
       expectNoOverflow(tester);
     });
 

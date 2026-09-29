@@ -45,9 +45,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get emptyGraphMessage => '此專案尚無圖譜節點';
 
   @override
-  String get noUcNodesMessage => '此專案尚無 UC 節點';
-
-  @override
   String get notFrameworkProjectMessage =>
       '此資料夾缺少本框架所需的設定檔（.claude/VERSION 與型別表皆缺），不是使用本框架的專案';
 
@@ -200,9 +197,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get viewRelationsAction => '檢視關聯';
-
-  @override
-  String get backToDomainAction => '返回 Domain 視圖';
 
   @override
   String get backAction => '返回';
@@ -407,6 +401,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get swimlaneUcUnsetPrompt => '尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC';
+
+  @override
+  String swimlanePanelTitle(String ucId, String ucTitle) {
+    return '$ucId $ucTitle';
+  }
 
   @override
   String degradedSchemaBadgeLabel(

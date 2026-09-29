@@ -158,12 +158,6 @@ abstract class AppLocalizations {
   /// **'此專案尚無圖譜節點'**
   String get emptyGraphMessage;
 
-  /// SPEC-001 §2 UC Flow 視圖·無 UC 狀態的顯示文案
-  ///
-  /// In zh, this message translates to:
-  /// **'此專案尚無 UC 節點'**
-  String get noUcNodesMessage;
-
   /// SPEC-001 §1 Domain 視圖·不是框架專案狀態的顯示文案
   ///
   /// In zh, this message translates to:
@@ -439,12 +433,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'檢視關聯'**
   String get viewRelationsAction;
-
-  /// SPEC-003 §3.2 UC Flow：action-ucFlow-back-to-domain 固定目標按鈕文案，不循 returnTo 語意
-  ///
-  /// In zh, this message translates to:
-  /// **'返回 Domain 視圖'**
-  String get backToDomainAction;
 
   /// SPEC-003 §2.3／§3.4／§3.6：returnTo 語意的返回按鈕共用文案。返回鍵未來將由 AppShell 單一承擔，故此 key 不逐畫面分立
   ///
@@ -793,6 +781,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC'**
   String get swimlaneUcUnsetPrompt;
+
+  /// SPEC-004 §4.0.6：泳道面板標題（正常 · 泳道、泳道 · flow 未結構化，AppText.subtitle）
+  ///
+  /// In zh, this message translates to:
+  /// **'{ucId} {ucTitle}'**
+  String swimlanePanelTitle(String ucId, String ucTitle);
 
   /// SPEC-001 §1〈降級型別表〉疊加旗標：`badge-<screen>-degraded-schema` 徽章文案，含內建型別表版本與觸發降級時的專案 VERSION（`0.1.0-W2-014` 接線寫入端）
   ///
