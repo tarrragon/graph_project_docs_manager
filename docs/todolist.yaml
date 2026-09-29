@@ -223,6 +223,8 @@ versions:
       缺陷清單：W3-128、W3-129、W3-245、W3-282、W3-238、W3-374、W3-375。
       執行期收件（topic 契合）：W1-006（Tab 焦點跳過左側導覽列，實作偏離 SPEC-003 §2.10；契約行為錯誤，
       用戶裁示不擋 0.3.1，依 topic 契合由 0.3.2 移入；源自 0.3.1-W1-028 實機量測）。
+      執行期收件（topic 契合）：W3-376（SPEC-004 §4.0.6 key 表缺 gapCategoryOrphanEvent／
+      gapCategoryEventDeclarationMismatch 兩列，與 ARB 不同步；源自 0.3.2-W3-548 Phase 4）。
       不變式 = 0.3.0 IT-1、IT-2 仍通過。0.3.x 最後一個 patch。
 
   - version: "0.4.0"
