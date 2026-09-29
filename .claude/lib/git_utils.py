@@ -219,7 +219,7 @@ def run_git_command(
         _log_bare_index_operation(args, cwd)
     try:
         result = subprocess.run(
-            ["git", "--no-optional-locks"] + args,
+            ["git", "--no-optional-locks", "-c", "core.quotepath=false"] + args,
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -429,13 +429,28 @@ def _get_uncommitted_status_lines(cwd: Optional[str] = None) -> list[str]:
         for line in status_lines:
             print(f"  {line}")
     """
-    success, output = run_git_command(["status", "--porcelain"], cwd=cwd)
+    # -z：路徑不加引號、不跳脫，以 NUL 分隔；Renamed/Copied 為 "XY new\0old\0"
+    success, output = run_git_command(["status", "--porcelain", "-z"], cwd=cwd)
 
     if not success or not output:
         return []
 
-    lines = output.split("\n")
-    return [line for line in lines if line.strip()]
+    entries = output.split("\0")
+    lines: list[str] = []
+    index = 0
+    while index < len(entries):
+        entry = entries[index]
+        index += 1
+        if not entry.strip():
+            continue
+        status = entry[:GIT_STATUS_CODE_LEN]
+        if ("R" in status or "C" in status) and index < len(entries):
+            # 沿用非 -z 輸出的 "old -> new" 形式，維持 FileStatus 契約
+            new_path = entry[GIT_STATUS_CODE_LEN + 1:]
+            entry = f"{status} {entries[index]} -> {new_path}"
+            index += 1
+        lines.append(entry)
+    return lines
 
 
 def get_worktree_list(
