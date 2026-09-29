@@ -20,8 +20,10 @@ import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.dart';
+import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
 
@@ -459,10 +461,7 @@ void main() {
 
     tearDown(() => tempDir.deleteSync(recursive: true));
 
-    Future<void> tapItem(
-      WidgetTester tester,
-      FakeExternalOpener opener,
-    ) async {
+    Future<void> tapItem(WidgetTester tester, FakeExternalOpener opener) async {
       await pumpHarness(
         tester,
         child: const GapReportScreen(),
@@ -511,6 +510,56 @@ void main() {
       // opener 內，畫面仍是有破洞狀態。
       expectNoOverflow(tester);
       expect(AnchorFinder.state(Screen.gaps, 'found'), findsOneWidget);
+    });
+  });
+
+  group('破洞項相對路徑解析（W1-007）', () {
+    Future<FakeExternalOpener> tapRelative(
+      WidgetTester tester,
+      WorkspaceState workspace,
+    ) async {
+      final opener = FakeExternalOpener();
+      await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(
+            () => _FixedNotifier(
+              const GapReportFound([
+                GapReportCategory(
+                  id: 'missing-frontmatter',
+                  items: [
+                    GapReportItem(
+                      id: 'spec-readme',
+                      filePath: 'docs/spec/README.md',
+                      lineNumber: 1,
+                    ),
+                  ],
+                ),
+              ]),
+            ),
+          ),
+          externalOpenerProvider.overrideWithValue(opener),
+          currentWorkspaceStateProvider.overrideWith((ref) => workspace),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('card-gaps-spec-readme')));
+      await tester.pumpAndSettle();
+      return opener;
+    }
+
+    testWidgets('Ready：傳給 opener 的是專案根目錄組成的絕對路徑', (tester) async {
+      final opener = await tapRelative(
+        tester,
+        const WorkspaceReady('/ws/proj'),
+      );
+      expect(opener.calls, ['/ws/proj/docs/spec/README.md']);
+    });
+
+    testWidgets('非 Ready：不呼叫 opener，走 notFound 回饋', (tester) async {
+      final opener = await tapRelative(tester, const WorkspaceUnset());
+      expect(opener.calls, isEmpty);
+      expect(find.byType(SnackBar), findsOneWidget);
     });
   });
 

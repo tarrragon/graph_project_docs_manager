@@ -18,6 +18,8 @@ import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
+import '../../workspace/open_path_resolver.dart';
+import '../project_switcher/project_switcher_providers.dart';
 import 'node_detail_fixtures.dart';
 import 'node_detail_providers.dart';
 import 'node_detail_state.dart';
@@ -196,7 +198,13 @@ class NodeDetailHeaderTrailing extends ConsumerWidget {
     NodeDetailFixture node,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final result = await ref.read(externalOpenerProvider).open(node.filePath);
+    final path = resolveOpenPath(
+      ref.read(currentWorkspaceStateProvider),
+      node.filePath,
+    );
+    final result = path == null
+        ? ExternalOpenResult.notFound
+        : await ref.read(externalOpenerProvider).open(path);
     if (result == ExternalOpenResult.notFound) {
       ref.read(nodeDetailStateProvider.notifier).state = NodeDetailMissing(
         nodeId: node.id,

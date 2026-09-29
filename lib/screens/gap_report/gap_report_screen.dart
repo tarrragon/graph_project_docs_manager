@@ -15,6 +15,8 @@ import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
+import '../../workspace/open_path_resolver.dart';
+import '../project_switcher/project_switcher_providers.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
 import 'scan_notification_controller.dart';
@@ -228,7 +230,13 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
   /// 的破洞項由主操作直接呼叫本函式；有指向節點者由次要操作呼叫。
   Future<void> _openExternally(BuildContext context, GapReportItem item) async {
     final l10n = AppLocalizations.of(context);
-    final result = await ref.read(externalOpenerProvider).open(item.filePath);
+    final path = resolveOpenPath(
+      ref.read(currentWorkspaceStateProvider),
+      item.filePath,
+    );
+    final result = path == null
+        ? ExternalOpenResult.notFound
+        : await ref.read(externalOpenerProvider).open(path);
     if (!context.mounted) return;
     if (result == ExternalOpenResult.notFound) {
       AppSnackBar.show(
