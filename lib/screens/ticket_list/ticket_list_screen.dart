@@ -18,6 +18,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
+import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
@@ -33,7 +34,11 @@ class TicketListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ticketListStateProvider);
     return switch (state) {
-      TicketsProjectUnready() => _ProjectUnreadyView(state: state),
+      TicketsProjectUnready(:final reason) => ProjectUnreadyView(
+        reason: reason,
+        stateKey: const Key('state-tickets-project-unready'),
+        actionKey: const Key('action-tickets-goto-domain'),
+      ),
       TicketsUnloaded() => _UnloadedView(state: state),
       TicketsLoading() => _LoadingView(state: state),
       TicketsEmpty() => const _EmptyView(),
@@ -74,37 +79,6 @@ class TicketsHeaderTrailing extends ConsumerWidget {
           ref.read(ticketListStateProvider.notifier).state = state.copyWith(
             mode: index == 0 ? TicketListMode.list : TicketListMode.topic,
           ),
-    );
-  }
-}
-
-/// 專案未就緒：`EmptyState.page`（SPEC-001 §4 共用定義）。
-class _ProjectUnreadyView extends ConsumerWidget {
-  const _ProjectUnreadyView({required this.state});
-
-  final TicketsProjectUnready state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    return EmptyState(
-      variant: EmptyStateVariant.page,
-      testKey: const Key('state-tickets-project-unready'),
-      message: switch (state.reason) {
-        ProjectUnreadyReason.notSelected =>
-          l10n.projectUnreadyReasonNotSelected,
-        ProjectUnreadyReason.loading => l10n.projectUnreadyReasonLoading,
-        ProjectUnreadyReason.incompatible =>
-          l10n.projectUnreadyReasonIncompatible,
-      },
-      actions: [
-        AppButton(
-          label: l10n.gotoDomainViewAction,
-          testKey: const Key('action-tickets-goto-domain'),
-          onPressed: () =>
-              navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
-        ),
-      ],
     );
   }
 }

@@ -29,13 +29,17 @@ void main() {
       await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [graphBuiltProvider.overrideWithValue(false)],
+        overrides: [
+          projectUnreadyReasonProvider.overrideWithValue(
+            ProjectUnreadyReason.notSelected,
+          ),
+        ],
         size: size,
       );
 
       expect(AnchorFinder.state(Screen.ucFlow, 'project-unready'), findsOneWidget);
       expect(find.byType(EmptyState), findsOneWidget);
-      expect(find.text('尚未進入 Domain 視圖'), findsOneWidget);
+      expect(find.text('尚未選擇專案'), findsOneWidget);
       expectNoOverflow(tester);
     });
 
@@ -44,7 +48,9 @@ void main() {
         tester,
         child: const UcFlowScreen(),
         overrides: [
-          graphBuiltProvider.overrideWithValue(false),
+          projectUnreadyReasonProvider.overrideWithValue(
+            ProjectUnreadyReason.notSelected,
+          ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.ucFlow,
           ),

@@ -6,6 +6,9 @@
 /// 語意邊中無對應邊（CLAUDE.md §6「現行待決」），故樹狀資料填至 UC 層。
 library;
 
+import '../../app/graph_status.dart';
+export '../../app/graph_status.dart' show ProjectUnreadyReason;
+
 /// 追溯樹的一個節點（PROP／SPEC／UC 三層之一）。
 ///
 /// [hasGap] 為 `true` 時，[gapLayer] 必填——標示本節點缺少的下游層級
@@ -84,19 +87,6 @@ class TraceabilityBroken extends TraceabilityScreenState {
 /// 無提案：專案無任何 PROP 節點。
 class TraceabilityNoProposal extends TraceabilityScreenState {
   const TraceabilityNoProposal();
-}
-
-/// 「專案未就緒」的三個原因（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）。
-enum ProjectUnreadyReason {
-  /// Domain 視圖尚未選擇專案。
-  notSelected,
-
-  /// Domain 視圖圖譜載入中。
-  loading,
-
-  /// Domain 視圖處於三個阻擋狀態之一（不是框架專案／無可消費的型別表／
-  /// schema 不相容），本畫面不區分三者，統一顯示「此專案不適用本 App」。
-  incompatible,
 }
 
 /// 專案未就緒：五個非 Domain 畫面共用狀態（SPEC-001 共用定義），取代本

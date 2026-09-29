@@ -48,7 +48,7 @@ void main() {
         child: const GapReportScreen(),
         overrides: [
           gapReportProvider.overrideWith(
-            () => _FixedNotifier(const GapReportProjectUnready()),
+            () => _FixedNotifier(const GapReportProjectUnready(ProjectUnreadyReason.notSelected)),
           ),
         ],
         size: size,
@@ -70,7 +70,7 @@ void main() {
         child: const GapReportScreen(),
         overrides: [
           gapReportProvider.overrideWith(
-            () => _FixedNotifier(const GapReportProjectUnready()),
+            () => _FixedNotifier(const GapReportProjectUnready(ProjectUnreadyReason.notSelected)),
           ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.gaps,
@@ -88,13 +88,13 @@ void main() {
       expect(container.read(returnToProvider), AppDestination.gaps);
     });
 
-    testWidgets('真實 Notifier：graphBuiltProvider 為 false 時不自動掃描、直接落在專案未就緒', (
+    testWidgets('真實 Notifier：projectUnreadyReasonProvider 為非 null 時不自動掃描、直接落在專案未就緒', (
       tester,
     ) async {
       final container = await pumpHarness(
         tester,
         child: const SizedBox.shrink(),
-        overrides: [graphBuiltProvider.overrideWithValue(false)],
+        overrides: [projectUnreadyReasonProvider.overrideWithValue(ProjectUnreadyReason.notSelected)],
       );
 
       expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
@@ -589,7 +589,7 @@ void main() {
             (ref) => AppDestination.gaps,
           ),
           gapReportProvider.overrideWith(
-            () => _FixedNotifier(const GapReportProjectUnready()),
+            () => _FixedNotifier(const GapReportProjectUnready(ProjectUnreadyReason.notSelected)),
           ),
         ],
       );

@@ -186,12 +186,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gotoGapsReportAction => 'Go to Gap Report';
 
   @override
-  String get gotoDomainAction => 'Go to Domain View';
-
-  @override
-  String get projectUnreadyMessage => 'Domain view not entered yet';
-
-  @override
   String get openSourceFileAction => 'Open Source File';
 
   @override

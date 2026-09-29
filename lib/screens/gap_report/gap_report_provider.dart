@@ -92,8 +92,9 @@ class GapReportNotifier extends Notifier<GapReportState> {
     // （SPEC-003 §2.8），本畫面即使未被選取也持續存在，圖建立狀態可能在
     // 已觸發過掃描後又反覆變化（例如切換專案）；若在此覆寫 `_lastResult`，
     // 圖重新建立後會錯誤地卡在本狀態，而非恢復已完成的掃描結果。
-    if (!ref.watch(graphBuiltProvider)) {
-      return const GapReportProjectUnready();
+    final unreadyReason = ref.watch(projectUnreadyReasonProvider);
+    if (unreadyReason != null) {
+      return GapReportProjectUnready(unreadyReason);
     }
     // 0.3.1-W3-122：掃描觸發改掛在「首次可見 nav-page-gaps」，不再掛在
     // provider 的 build()（原本一經 ScanNotificationController.start() 於
@@ -115,7 +116,8 @@ class GapReportNotifier extends Notifier<GapReportState> {
       // （`EmptyState`，靜態無動畫）作為佔位——使用者尚未選取本頁，畫面
       // 文字不會被實際看見；選取當下 `isFirstVisible` 已於同一次 provider
       // 重算中翻為 `true`（見上一分支），不會有此佔位文字的殘影閃現。
-      return const GapReportProjectUnready();
+      // 使用者看不到此分支（本頁未被選取），reason 取 notSelected 僅為填滿必填欄位。
+      return const GapReportProjectUnready(ProjectUnreadyReason.notSelected);
     }
     // 已觸發過掃描：保留目前結果，不因 firstVisibleProvider 的後續讀值
     // （例如已見集合寫回導致的 rebuild）重置狀態。

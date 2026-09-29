@@ -15,12 +15,12 @@ final ucFlowUcListProvider = Provider<List<UcFlowFixtureUc>>(
   (ref) => UcFlowFixtures.ucList,
 );
 
-/// 目前畫面狀態：依 [graphBuiltProvider]、[ucFlowUcListProvider]、
+/// 目前畫面狀態：依 [projectUnreadyReasonProvider]、[ucFlowUcListProvider]、
 /// [selectedUcProvider] 三者計算（SPEC-001 §2）。
 final ucFlowStateProvider = Provider<UcFlowState>((ref) {
-  final graphBuilt = ref.watch(graphBuiltProvider);
-  if (!graphBuilt) {
-    return const UcFlowProjectUnready();
+  final unreadyReason = ref.watch(projectUnreadyReasonProvider);
+  if (unreadyReason != null) {
+    return UcFlowProjectUnready(unreadyReason);
   }
   final ucList = ref.watch(ucFlowUcListProvider);
   if (ucList.isEmpty) {

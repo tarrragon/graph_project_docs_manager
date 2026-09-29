@@ -52,8 +52,6 @@
   "viewSchemaDetailAction": "View Details",
   "useBuiltinSchemaAction": "View with the app's built-in schema",
   "gotoGapsReportAction": "Go to Gap Report",
-  "gotoDomainAction": "Go to Domain View",
-  "projectUnreadyMessage": "Domain view not entered yet",
   "openSourceFileAction": "Open Source File",
   "sourceFileNotFoundSnackbarMessage": "File not found",
   "externalOpenFailedMessage": "Could not open with the default application",
