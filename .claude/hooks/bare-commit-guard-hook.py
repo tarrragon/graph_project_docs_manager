@@ -376,11 +376,11 @@ def _with_live_declared_files(
 def _get_staged_files(project_root: Path) -> List[str]:
     """取得目前 staged 檔案清單，讀取失敗時回傳空清單（fail-open）。"""
     success, output = run_git_command(
-        ["diff", "--cached", "--name-only"], cwd=str(project_root)
+        ["diff", "--cached", "--name-only", "-z"], cwd=str(project_root)
     )
     if not success or not output:
         return []
-    return [line.strip() for line in output.splitlines() if line.strip()]
+    return [path for path in output.split("\0") if path]
 
 
 def _get_unstaged_tracked_files(project_root: Path) -> List[str]:
@@ -391,10 +391,12 @@ def _get_unstaged_tracked_files(project_root: Path) -> List[str]:
     （fail-open，與 `_get_staged_files` 相同語意：讀不到內容時保守視為
     無額外風險內容，不阻擋，僅可能低估 `-a` 實際提交範圍）。
     """
-    success, output = run_git_command(["diff", "--name-only"], cwd=str(project_root))
+    success, output = run_git_command(
+        ["diff", "--name-only", "-z"], cwd=str(project_root)
+    )
     if not success or not output:
         return []
-    return [line.strip() for line in output.splitlines() if line.strip()]
+    return [path for path in output.split("\0") if path]
 
 
 def _staged_scope_is_safe_for_bare_commit(

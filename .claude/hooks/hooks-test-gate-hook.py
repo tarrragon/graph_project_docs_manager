@@ -220,19 +220,19 @@ def _touched_hook_filenames(command: str, host_root: str, logger) -> Set[str]:
     filenames: Set[str] = set()
 
     success, output = run_git_command(
-        ["diff", "--cached", "--name-status"], cwd=host_root
+        ["diff", "--cached", "--name-status", "-z"], cwd=host_root
     )
     if success and output:
-        for line in output.split("\n"):
-            line = line.strip()
-            if not line:
+        segments = [seg for seg in output.split("\0") if seg]
+        index = 0
+        while index < len(segments):
+            status = segments[index]
+            path_count = 2 if status[0] in ("R", "C") else 1
+            paths = segments[index + 1 : index + 1 + path_count]
+            index += 1 + path_count
+            if status.startswith("D") or not paths:
                 continue
-            fields = line.split("\t")
-            status = fields[0]
-            if status.startswith("D"):
-                continue
-            path = fields[-1].strip()
-            m = re.fullmatch(r"\.claude/hooks/([\w.\-]+\.py)", path)
+            m = re.fullmatch(r"\.claude/hooks/([\w.\-]+\.py)", paths[-1])
             if m:
                 filenames.add(m.group(1))
     elif not success:
