@@ -238,6 +238,8 @@ versions:
       與 ARB 刻意設計的優先序待用戶裁決；源自 0.3.2-W3-368）。
       執行期收件（topic 契合）：W3-378（啟動還原失敗無 UI 呈現、workspaceUnavailable 成孤兒 key，
       先查規格要求再定補 UI 或移除；源自 0.3.2-W1-009）。
+      執行期收件（P1，開工優先）：W3-379（DocsManagerApp.repository 未接線，integration_test 的替身無效、
+      實際讀寫執行者 UserDefaults；源自 0.3.2-W3-236）。
       不變式 = 0.3.0 IT-1、IT-2 仍通過。0.3.x 最後一個 patch。
 
   - version: "0.4.0"
@@ -275,6 +277,8 @@ versions:
     notes: |
       2026-09-29 依「major 起始即定 minor 清單」登記（0.4.0-W1-040；PROP-005 §0.6，原「0.6+」
       收斂為單一 minor）。阻擋見 PROP-005 §0.6 表；SPEC 於本版規劃波產出。
+      預先收件（topic 契合）：W1-071（UC Flow 畫面資料直讀靜態 fixture、繞過 ucFlowUcListProvider；
+      源自 0.3.2-W3-236，接真資料時一併處理）。
 
   - version: "0.7.0"
     codename: "History"
