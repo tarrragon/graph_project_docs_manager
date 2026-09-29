@@ -44,6 +44,20 @@ void defaultClickPathLogSink(String message, String name) =>
 void logClickPath(String event, String detail, String name) =>
     clickPathLogSink('$clickPathLogPrefix$event $detail', name);
 
+/// 撤回通知的觸發條件（SPEC-003 §2.2「可觀測性」列）。
+enum WithdrawTrigger { destination, lifecycle, rescan, projectSwitch }
+
+/// 撤回日誌前綴；事件格式為 `withdraw-trigger:<條件名>`。
+const String withdrawLogPrefix = 'withdraw-trigger:';
+
+/// 撤回觸發日誌的輸出點；預設寫入 `developer.log`，測試可替換為記錄器
+/// 斷言四值（結束後須還原為 [defaultWithdrawLogSink]）。
+void Function(String message, String name) withdrawLogSink =
+    defaultWithdrawLogSink;
+
+void defaultWithdrawLogSink(String message, String name) =>
+    developer.log(message, name: name); // i18n-exempt: 開發者診斷 log
+
 /// 命中時定位到的破洞項 id（SPEC-004 §1 locate 列）；`null` 表示無待定位
 /// 項。[GapReportScreen] 消費本值捲動並移入焦點後，清空回 `null`。
 final pendingLocateGapItemProvider = StateProvider<String?>((ref) => null);
@@ -118,7 +132,11 @@ class ScanNotificationController {
     // 新一輪掃描開始：舊結果待汰換，撤回尚未被點擊的系統通知
     // （SPEC-003 §2.2「不重複發送」列「新一輪掃描開始」）。
     if (next is GapReportScanning && _pendingWithdrawableState != null) {
-      _withdraw();
+      _withdraw(WithdrawTrigger.rescan);
+    }
+    // 專案切換使圖重建而回到未就緒：舊專案的結果通知同樣失效。
+    if (next is GapReportProjectUnready && _pendingWithdrawableState != null) {
+      _withdraw(WithdrawTrigger.projectSwitch);
     }
 
     // 觸發條件僅「state-gaps-scanning 轉換至 state-gaps-none 或
@@ -135,12 +153,17 @@ class ScanNotificationController {
     // 使用者自行回到 nav-page-gaps：結果已被看見。
     _pendingDeniedNotification = null;
     if (_pendingWithdrawableState != null) {
-      _withdraw();
+      _withdraw(WithdrawTrigger.destination);
     }
   }
 
   void _onLifecycleChange(AppLifecycleState? previous, AppLifecycleState next) {
     if (next != AppLifecycleState.resumed) return;
+    // 回到前景時可見頁已是 gaps：結果已被看見（SPEC-003 §2.2 時刻 ii）。
+    if (_pendingWithdrawableState != null &&
+        _ref.read(selectedDestinationProvider) == AppDestination.gaps) {
+      _withdraw(WithdrawTrigger.lifecycle);
+    }
     final pending = _pendingDeniedNotification;
     if (pending == null) return;
     // 回到前景前使用者已自行進入 nav-page-gaps：_onDestinationChange 已
@@ -254,7 +277,8 @@ class ScanNotificationController {
     );
   }
 
-  void _withdraw() {
+  void _withdraw(WithdrawTrigger trigger) {
+    withdrawLogSink('$withdrawLogPrefix${trigger.name}', _tag);
     _pendingWithdrawableState = null;
     unawaited(_ref.read(scanNotifierProvider).withdraw());
   }

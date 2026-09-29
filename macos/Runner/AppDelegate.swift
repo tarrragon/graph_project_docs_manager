@@ -99,6 +99,10 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
       UNUserNotificationCenter.current().removeDeliveredNotifications(
         withIdentifiers: [scanCompleteNotificationIdentifier]
       )
+      // 結果值：撤回後本 App 仍在通知中心的通知數（於 completion 內取值）。
+      UNUserNotificationCenter.current().getDeliveredNotifications { remaining in
+        NSLog("[AppDelegate] withdraw-result: remaining=%d", remaining.count)
+      }
       result(nil)
     default:
       result(FlutterMethodNotImplemented)
