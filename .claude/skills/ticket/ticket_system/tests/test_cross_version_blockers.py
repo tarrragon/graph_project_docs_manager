@@ -84,6 +84,26 @@ def test_complete_cross_version_blocker_reverse_unblocks_other_version(capsys):
     assert BLOCKED_ID in capsys.readouterr().out
 
 
+def test_todolist_parse_failure_warns_on_stderr(tmp_path, capsys):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "todolist.yaml").write_text("versions: [unclosed", encoding="utf-8")
+    with patch.object(blocker_resolution, "get_project_root", return_value=tmp_path):
+        assert blocker_resolution.list_open_versions() == []
+    assert "[blocker_resolution] WARNING" in capsys.readouterr().err
+
+
+def test_blocker_load_failure_warns_on_stderr(capsys):
+    def boom(version, tid):
+        raise OSError("disk")
+
+    target = _blocked(BLOCKER_ID)
+    with patch.object(blocker_resolution, "load_ticket", boom):
+        assert track_runqueue._unresolved_blockers(target, {BLOCKED_ID: target}) == [
+            BLOCKER_ID
+        ]
+    assert "disk" in capsys.readouterr().err
+
+
 def test_reverse_unblock_ignores_other_version_blocked_by_unrelated_ticket():
     """對照：被擋票的 blockedBy 不含剛完成的票時，不被解鎖。"""
     completed = _t(BLOCKER_ID, "completed")

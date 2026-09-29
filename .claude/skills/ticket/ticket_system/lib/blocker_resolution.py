@@ -14,6 +14,7 @@ unblock / 建議列表）與 track_runqueue（list 視圖可執行判定）共�
 
 from __future__ import annotations
 
+import sys
 from typing import Any, Dict, List, Optional
 
 from ticket_system.lib.constants import STATUS_COMPLETED, STATUS_CLOSED
@@ -39,8 +40,11 @@ def resolve_blocker(
         return None
     try:
         return load_ticket(version, blocker_id)
-    except Exception:
-        # 載入失敗等同查無：維持「未解除」的保守判定
+    except Exception as err:
+        sys.stderr.write(
+            f"[blocker_resolution] WARNING: 載入 blocker {blocker_id} 失敗"
+            f"（{err}），視為未解除\n"
+        )
         return None
 
 
@@ -62,8 +66,11 @@ def list_open_versions() -> List[str]:
             for v in data.get("versions", [])
             if v.get("status") != VERSION_STATUS_COMPLETED
         ]
-    except Exception:
-        # 解析失敗：退化為僅掃同版本，不阻斷 complete
+    except Exception as err:
+        sys.stderr.write(
+            f"[blocker_resolution] WARNING: 解析 todolist.yaml 失敗（{err}），"
+            "跨版本反向解鎖退化為僅掃同版本（略過）\n"
+        )
         return []
 
 
