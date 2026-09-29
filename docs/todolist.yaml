@@ -152,7 +152,7 @@ versions:
   - version: "0.3.2"
     codename: "Corpus-3"
     description: "0.3.x 第二個 patch：提示訊息與外部開啟"
-    status: "active"
+    status: completed
     scope: "frozen"    # 2026-09-29 凍結：版本內票全數已完成或關閉，無待標 scope_blocker 的必要票；新票路由至 0.3.3
     worklog: "docs/work-logs/v0/v0.3/v0.3.2/"
     notes: |
