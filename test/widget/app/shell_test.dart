@@ -20,6 +20,7 @@ import 'package:graph_project_docs_manager/components/components.dart'
     as components;
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
@@ -375,6 +376,38 @@ Future<void> _focusSwitcherEntry(WidgetTester tester) async {
 }
 
 void _registerFocusTests() {
+  // 0.3.3-W3-397：SPEC-003 §2.10「App 啟動」列——不預設焦點，首次 Tab
+  // 落在 project-switcher-entry。
+  testWidgets('DomainReady 矩陣啟動後首次 Tab 焦點為 project-switcher-entry', (
+    tester,
+  ) async {
+    await _pumpShell(tester, overrides: _readyOverrides());
+    expect(find.byKey(const Key('state-domain-matrix')), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(
+      _ancestorKeys(FocusManager.instance.primaryFocus),
+      contains(AppShell.projectSwitcherEntryKey),
+    );
+  });
+
+  testWidgets('點選矩陣格後按 Esc 清除選取，焦點停在原格', (tester) async {
+    await _pumpShell(tester, overrides: _readyOverrides());
+    const cellKey = Key('cell-domain-workspace-UC-02');
+    await tester.tap(find.byKey(cellKey));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('panel-domain-cell-detail')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('panel-domain-cell-detail-empty')),
+      findsOneWidget,
+    );
+    expect(_ancestorKeys(FocusManager.instance.primaryFocus), contains(cellKey));
+  });
+
   testWidgets('Tab 依序走過六個導覽項（SPEC-003 §2.10）', (tester) async {
     await _pumpShell(tester);
     await _focusSwitcherEntry(tester);
@@ -437,3 +470,14 @@ void _expectInMainArea(FocusNode? node) {
     greaterThanOrEqualTo(LayoutSize.sidebarWidth),
   );
 }
+
+/// 經 shell 啟動並判為 DomainReady 的注入（0.3.3-W3-398 起的標準做法）。
+List<Override> _readyOverrides() => [
+  workspaceRepositoryProvider.overrideWithValue(
+    StubWorkspaceRepository(const WorkspaceReady('/ws')),
+  ),
+  frameworkSignalProbeProvider.overrideWithValue(
+    const StubFrameworkSignalProbe(version: '0.0.1', schemaJson: true),
+  ),
+  builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+];

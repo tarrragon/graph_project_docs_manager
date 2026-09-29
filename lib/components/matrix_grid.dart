@@ -95,7 +95,6 @@ class MatrixGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Focus(
-      autofocus: true,
       onKeyEvent: (node, event) => _handleKey(event),
       child: TableView.builder(
         key: scrollKey,
