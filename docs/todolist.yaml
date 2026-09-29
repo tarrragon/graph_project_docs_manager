@@ -326,6 +326,8 @@ versions:
       baseline.tsv 與三值 exit，排在 402／403 之後）。scanCompleteUndeterminableSnackbarMessage 併入 0.6.0-W1-025。
       W3-404 出貨浮出 10 筆：W3-405（workspaceNotRemembered 補 §3.7 與 4.26、R9 遮罩延伸、SNACK_KEYS 補兩 key；
       scanCompleteUndeterminable 四欄以 baseline 列登記 0.6.0-W1-025）、W3-406（P3 錨點逐列粒度，非發版前置）。
+      W3-407（baseline.tsv 語意錯置追修：47 列「合理不出現」改寫為帶出處遮罩、baseline 清空至表頭；成因為派發備註引 W3-392
+      初始 what 未對照 Solution 定案，W3-404 不回退）。W3-405 blockedBy W3-407。
       W3-397 表外紅燈（選格後 onTap 為 null 使元件停用失焦）屬 (a) 範圍內實作細節，代理人當場修正、斷言未改；未依停手規則回報，
       e1 事後接受並記錄——發版前檢討輸入：表外紅燈的停手規則是否區分「範圍內實作細節」。
       發版時待辦（用戶裁示 2026-09-29）：skill-sync push component-contract-design（W1-007～009 累計，本地 3.12.0／
