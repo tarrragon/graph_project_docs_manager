@@ -503,6 +503,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gotoTicketsListAction => '前往 Ticket 清單';
 
   @override
+  String traceabilityNoDownstream(String layer) {
+    return '（尚無 $layer）';
+  }
+
+  @override
+  String get traceabilityTicketsNotLoadedHint => 'Ticket 尚未載入';
+
+  @override
   String get ticketsFiltersClearedSnackbarMessage => '已清除搜尋與篩選以顯示目標 ticket';
 
   @override
