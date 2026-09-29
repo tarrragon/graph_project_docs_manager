@@ -262,8 +262,39 @@ def _git(repo: Path, *args) -> subprocess.CompletedProcess:
     )
 
 
-def _main_status() -> str:
-    return _git(_PROJECT_ROOT, "status", "--porcelain").stdout
+def _main_status(repo: Path = _PROJECT_ROOT) -> str:
+    """只比對測試可能碰到的路徑（doc skill 目錄），避免並行 session 的無關編輯誤報。"""
+    return _git(repo, "status", "--porcelain", "--", str(_DOC_SKILL_REL)).stdout
+
+
+def _make_status_repo(tmp_path: Path) -> Path:
+    """建立含 doc skill 目錄檔與一個無關檔的 tmp repo，供守衛對照測試使用。"""
+    repo = tmp_path / "status_repo"
+    (repo / _DOC_SKILL_REL).mkdir(parents=True)
+    (repo / _DOC_SKILL_REL / "tracking_schema.json").write_text("{}\n")
+    (repo / "unrelated.txt").write_text("a\n")
+    assert _git(repo.parent, "init", "-q", str(repo)).returncode == 0
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "t")
+    _git(repo, "add", ".")
+    assert _git(repo, "commit", "-q", "-m", "baseline").returncode == 0
+    return repo
+
+
+def test_main_status_guard_detects_target_path_change(tmp_path):
+    """E2 正向對照：目標路徑（doc skill 目錄）被改動 → 守衛偵測到差異。"""
+    repo = _make_status_repo(tmp_path)
+    baseline = _main_status(repo)
+    (repo / _DOC_SKILL_REL / "tracking_schema.json").write_text('{"x": 1}\n')
+    assert _main_status(repo) != baseline
+
+
+def test_main_status_guard_ignores_unrelated_change(tmp_path):
+    """對照：只有無關檔被改動（並行 session 編輯）→ 守衛不報差異。"""
+    repo = _make_status_repo(tmp_path)
+    baseline = _main_status(repo)
+    (repo / "unrelated.txt").write_text("changed\n")
+    assert _main_status(repo) == baseline
 
 
 @pytest.fixture
