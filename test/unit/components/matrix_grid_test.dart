@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
 
 import '../../helpers/helpers.dart';
@@ -117,6 +118,22 @@ void main() {
 
       expectNoOverflow(tester);
       expect(find.byKey(const ValueKey('action-domain-select-d0')), findsOneWidget);
+    });
+  });
+
+  group('無障礙：列首朗讀含小計（SPEC-004 4.37）', () {
+    testWidgets('列首 Semantics label 為「{domain}，小計 N」，不只 domainName', (
+      tester,
+    ) async {
+      await pumpHarness(tester, child: buildGrid());
+
+      final l10n = AppLocalizations.of(tester.element(find.byType(MatrixGrid)));
+      final label = tester
+          .getSemantics(find.byKey(const ValueKey('action-domain-select-domain-1')))
+          .label;
+
+      expect(label, 'domain-1 名稱，${l10n.matrixSubtotalA11yLabel(1)}');
+      expect(label, isNot('domain-1 名稱'));
     });
   });
 

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 
+import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_text.dart';
 import 'matrix_cell.dart';
@@ -180,6 +181,7 @@ class MatrixGrid extends StatelessWidget {
       return _DomainHeaderCell(
         domainId: matrixRow.domainId,
         domainName: matrixRow.domainName,
+        subtotal: matrixRow.subtotal,
         onSelectDomain: onSelectDomain,
       );
     }
@@ -201,11 +203,13 @@ class _DomainHeaderCell extends StatelessWidget {
   const _DomainHeaderCell({
     required this.domainId,
     required this.domainName,
+    required this.subtotal,
     required this.onSelectDomain,
   });
 
   final String domainId;
   final String domainName;
+  final int subtotal;
   final ValueChanged<String> onSelectDomain;
 
   @override
@@ -213,7 +217,8 @@ class _DomainHeaderCell extends StatelessWidget {
     return Semantics(
       key: Key('action-domain-select-$domainId'),
       button: true,
-      label: domainName,
+      label: '$domainName，'
+          '${AppLocalizations.of(context).matrixSubtotalA11yLabel(subtotal)}', // i18n-exempt: 分隔符字面，SPEC-004 4.37 朗讀格式「{domain}，小計 N」
       excludeSemantics: true,
       child: InkWell(
         onTap: () {

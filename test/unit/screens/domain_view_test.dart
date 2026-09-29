@@ -275,6 +275,14 @@ void main() {
       );
 
       expect(AnchorFinder.state(Screen.domain, 'swimlane'), findsOneWidget);
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(DomainViewScreen)),
+      );
+      final uc = DomainViewFixtures.ucColumns.firstWhere((u) => u.id == 'UC-02');
+      expect(
+        find.text(l10n.swimlanePanelTitle(uc.id, uc.title)),
+        findsOneWidget,
+      );
       expect(find.byType(SwimlaneGrid), findsOneWidget);
       expect(
         find.byType(SwimlaneNode),
@@ -381,6 +389,14 @@ void main() {
       // 「正常 · 泳道」則兩者相反（無 EmptyState、有 SwimlaneGrid）。
       expect(find.byType(EmptyState), findsOneWidget);
       expect(find.byType(SwimlaneGrid), findsNothing);
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(DomainViewScreen)),
+      );
+      final uc = DomainViewFixtures.ucColumns.firstWhere((u) => u.id == 'UC-06');
+      expect(
+        find.text(l10n.swimlanePanelTitle(uc.id, uc.title)),
+        findsOneWidget,
+      );
       expectNoOverflow(tester);
     });
   });

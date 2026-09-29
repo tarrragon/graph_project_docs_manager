@@ -47,9 +47,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emptyGraphMessage => 'This project has no graph nodes yet';
 
   @override
-  String get noUcNodesMessage => 'This project has no UC nodes yet';
-
-  @override
   String get notFrameworkProjectMessage =>
       'This folder is missing the configuration this framework requires (both .claude/VERSION and the type table are absent) — it does not use this framework';
 
@@ -205,9 +202,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewRelationsAction => 'View Relations';
-
-  @override
-  String get backToDomainAction => 'Back to Domain View';
 
   @override
   String get backAction => 'Back';
@@ -419,6 +413,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get swimlaneUcUnsetPrompt =>
       'No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view';
+
+  @override
+  String swimlanePanelTitle(String ucId, String ucTitle) {
+    return '$ucId $ucTitle';
+  }
 
   @override
   String degradedSchemaBadgeLabel(

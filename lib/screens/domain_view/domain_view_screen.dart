@@ -559,7 +559,7 @@ class _SwimlaneBody extends ConsumerWidget {
       return Panel(
         children: [
           AppText(
-            '${uc.id} ${uc.title}', // i18n-exempt: 資料值組字，非 UI 文案
+            l10n.swimlanePanelTitle(uc.id, uc.title),
             variant: AppTextVariant.subtitle,
           ),
           EmptyState(
@@ -584,7 +584,7 @@ class _SwimlaneBody extends ConsumerWidget {
       key: const Key('state-domain-swimlane'),
       children: [
         AppText(
-          '${uc.id} ${uc.title}', // i18n-exempt: 資料值組字，非 UI 文案
+          l10n.swimlanePanelTitle(uc.id, uc.title),
           variant: AppTextVariant.subtitle,
         ),
         Expanded(

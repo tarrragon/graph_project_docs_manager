@@ -66,7 +66,7 @@ class _EmptyView extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     return EmptyState(
       variant: EmptyStateVariant.page,
-      message: l10n.noUcNodesMessage,
+      message: l10n.emptyUcMessage,
       testKey: const Key('state-ucFlow-empty'),
       actions: [
         AppButton(
