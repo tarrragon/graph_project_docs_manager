@@ -150,6 +150,7 @@
   "gotoDomainViewAction": "Go to Domain View",
   "gotoTicketsListAction": "Go to Ticket List",
   "ticketsFiltersClearedSnackbarMessage": "Search and filters cleared to show the target ticket",
+  "ticketsTargetNotFoundMessage": "Ticket not found; it may have been removed",
   "undoAction": "Undo",
   "columnEvent": "Event",
   "columnEmitter": "Emitted by",

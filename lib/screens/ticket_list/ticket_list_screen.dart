@@ -272,6 +272,24 @@ class _ReadyListView extends ConsumerWidget {
       });
     }
 
+    // 目標不在已載入清單（SPEC-003 §3.4〈帶目標跳入〉末列）：不捲動、不切
+    // 模式、不清篩選，僅顯示 `ticketsTargetNotFoundMessage`（plain）；
+    // `targetNotFoundNotified` 防重入，同一次進入只發送一次。
+    if (targetId != null &&
+        !state.targetNotFoundNotified &&
+        !state.tickets.any((t) => t.id == targetId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        update((s) => s.copyWith(targetNotFoundNotified: true));
+        AppSnackBar.show(
+          context,
+          message: l10n.ticketsTargetNotFoundMessage,
+          level: AttentionLevel.discardable,
+          origin: AppSnackBarOrigin.userInitiated,
+        );
+      });
+    }
+
     final header = AppTableRow.header(
       columns: AppTableRow.ticketColumns,
       cells: [

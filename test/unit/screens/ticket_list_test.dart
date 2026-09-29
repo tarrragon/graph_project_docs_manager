@@ -43,6 +43,9 @@ const _readyTickets = [
   ),
 ];
 
+// SPEC-004 §4.0.6 ticketsTargetNotFoundMessage zh 值（預設測試語系 zh）。
+const _targetNotFoundZh = '找不到該 ticket，可能已被移除';
+
 void main() {
   group('專案未就緒 state-tickets-project-unready', () {
     testWidgetsAtEachSize('渲染 EmptyState.page', (tester, size) async {
@@ -450,6 +453,98 @@ void main() {
         final decoration = decoratedBox.decoration as BoxDecoration;
 
         expect(decoration.color, AppColors.surfaceIconTint);
+      },
+    );
+
+    testWidgets(
+      '帶目標跳入且目標不在清單 → 顯示 ticketsTargetNotFoundMessage，搜尋／篩選／模式不變、無定位高亮（0.3.3-W3-381）',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const TicketListScreen(),
+          overrides: [
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsReady(
+                tickets: _readyTickets,
+                searchQuery: 'Alpha',
+                statusFilter: 'completed',
+                targetTicketId: 'no-such-ticket',
+              ),
+            ),
+          ],
+          settle: false,
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.byType(SnackBar), findsOneWidget);
+        expect(find.text(_targetNotFoundZh), findsOneWidget);
+        expect(find.byKey(const Key('undoAction')), findsNothing);
+
+        final state = container.read(ticketListStateProvider) as TicketsReady;
+        expect(state.searchQuery, 'Alpha');
+        expect(state.statusFilter, 'completed');
+        expect(state.mode, TicketListMode.list);
+        expect(state.targetFiltersAutoCleared, isFalse);
+      },
+    );
+
+    testWidgets(
+      '帶目標跳入且目標存在且可見 → 不顯示 ticketsTargetNotFoundMessage（E1 對照，0.3.3-W3-381）',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: const TicketListScreen(),
+          overrides: [
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsReady(
+                tickets: _readyTickets,
+                targetTicketId: '0.1.0-W1-001',
+              ),
+            ),
+          ],
+          settle: false,
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text(_targetNotFoundZh), findsNothing);
+        expect(find.byType(SnackBar), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '目標不在清單的提示同一次進入只顯示一次（重建不重複，0.3.3-W3-381）',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const TicketListScreen(),
+          overrides: [
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsReady(
+                tickets: _readyTickets,
+                targetTicketId: 'no-such-ticket',
+              ),
+            ),
+          ],
+          settle: false,
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        expect(find.text(_targetNotFoundZh), findsOneWidget);
+
+        // 觸發重建（搜尋詞變更）後，提示不得再發送第二次。
+        final current = container.read(ticketListStateProvider) as TicketsReady;
+        container.read(ticketListStateProvider.notifier).state = current
+            .copyWith(searchQuery: 'x');
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        expect(find.text(_targetNotFoundZh), findsOneWidget);
+        expect(find.byType(SnackBar), findsOneWidget);
       },
     );
 

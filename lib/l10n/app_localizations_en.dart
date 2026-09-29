@@ -558,6 +558,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Search and filters cleared to show the target ticket';
 
   @override
+  String get ticketsTargetNotFoundMessage =>
+      'Ticket not found; it may have been removed';
+
+  @override
   String get undoAction => 'Undo';
 
   @override

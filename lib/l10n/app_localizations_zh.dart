@@ -540,6 +540,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ticketsFiltersClearedSnackbarMessage => '已清除搜尋與篩選以顯示目標 ticket';
 
   @override
+  String get ticketsTargetNotFoundMessage => '找不到該 ticket，可能已被移除';
+
+  @override
   String get undoAction => '復原';
 
   @override
