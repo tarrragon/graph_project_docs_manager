@@ -8,7 +8,6 @@
 /// （`lib/app/shell.dart` 接線）。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -18,20 +17,10 @@ import '../../app/attention_level.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
+import '../../workspace/external_opener.dart';
 import 'node_detail_fixtures.dart';
 import 'node_detail_providers.dart';
 import 'node_detail_state.dart';
-
-const String _tag = 'NodeDetailScreen';
-
-/// 外部開啟的行程執行接縫（暫時，同 `gap_report_screen.dart`
-/// `gapItemProcessRunnerProvider`／`domain_view_screen.dart`
-/// `domainOpenSourceProcessRunnerProvider` 慣例）。
-@visibleForTesting
-final nodeDetailProcessRunnerProvider =
-    Provider<Future<ProcessResult> Function(String, List<String>)>(
-      (ref) => Process.run,
-    );
 
 /// 節點詳情畫面。
 class NodeDetailScreen extends ConsumerWidget {
@@ -91,11 +80,8 @@ class _UnsetView extends ConsumerWidget {
       actions: [
         AppButton(
           label: l10n.gotoTraceabilityAction,
-          onPressed: () => navigateTo(
-            ref.read,
-            AppDestination.traceability,
-            NavIntent.jump,
-          ),
+          onPressed: () =>
+              navigateTo(ref.read, AppDestination.traceability, NavIntent.jump),
           testKey: const Key('action-nodeDetail-goto-traceability'),
         ),
       ],
@@ -201,54 +187,32 @@ class NodeDetailHeaderTrailing extends ConsumerWidget {
     );
   }
 
-  /// 開啟原始檔（SPEC-003 §3.6）：0.1 假資料路徑不對應磁碟上任何檔案，
-  /// 恆走 `notFound` 分支——結果不出現 SnackBar，狀態轉換即回饋（同畫面
-  /// 轉為 `state-nodeDetail-missing`，此為對外部變更的第一手偵測點）。
-  /// 檔案存在時的兩種結局（`opened`／`failed`）由 [nodeDetailProcessRunnerProvider]
-  /// 可覆寫，供測試指使 `Process.run` 結果，同 `gap_report_screen.dart`
-  /// `_runOpen` 慣例。
+  /// 開啟原始檔（SPEC-003 §3.6）：經 `ExternalOpener` 開啟；`notFound`
+  /// 不出現 SnackBar，狀態轉換即回饋（同畫面轉為
+  /// `state-nodeDetail-missing`，此為對外部變更的第一手偵測點）。
   Future<void> _openSource(
     BuildContext context,
     WidgetRef ref,
     NodeDetailFixture node,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final exists = File(node.filePath).existsSync();
-    if (!exists) {
+    final result = await ref.read(externalOpenerProvider).open(node.filePath);
+    if (result == ExternalOpenResult.notFound) {
       ref.read(nodeDetailStateProvider.notifier).state = NodeDetailMissing(
         nodeId: node.id,
         lastKnownPath: node.filePath,
       );
       return;
     }
-    developer.log('外部開啟：${node.filePath}', name: _tag); // i18n-exempt: 開發者診斷 log
-    try {
-      final result = await ref.read(nodeDetailProcessRunnerProvider)('open', [
-        node.filePath,
-      ]);
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: result.exitCode == 0
-            ? l10n.openedExternallyMessage
-            : l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-    } catch (error) {
-      developer.log(
-        '外部開啟失敗：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-    }
+    if (!context.mounted) return;
+    AppSnackBar.show(
+      context,
+      message: result == ExternalOpenResult.opened
+          ? l10n.openedExternallyMessage
+          : l10n.externalOpenFailedMessage,
+      level: AttentionLevel.discardable,
+      origin: AppSnackBarOrigin.userInitiated,
+    );
   }
 }
 

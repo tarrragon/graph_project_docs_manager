@@ -17,7 +17,6 @@
 library;
 
 import 'dart:developer' as developer;
-import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +27,8 @@ import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
+import '../../workspace/external_opener.dart';
+import '../../workspace/workspace_types.dart';
 import '../project_switcher/project_switcher_providers.dart';
 import 'domain_view_fixtures.dart';
 import 'domain_view_providers.dart';
@@ -35,14 +36,6 @@ import 'domain_view_schema_version.dart';
 import 'domain_view_state.dart';
 
 const String _tag = 'DomainViewScreen';
-
-/// 泳道開啟原始檔的行程執行接縫（暫時，同 `gap_report_screen.dart`
-/// `gapItemProcessRunnerProvider` 慣例）。
-@visibleForTesting
-final domainOpenSourceProcessRunnerProvider =
-    Provider<Future<ProcessResult> Function(String, List<String>)>(
-      (ref) => Process.run,
-    );
 
 /// Domain 視圖畫面。
 class DomainViewScreen extends ConsumerWidget {
@@ -143,35 +136,26 @@ class _EmptyView extends ConsumerWidget {
 
   Future<void> _openDocsFolder(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
-    developer.log('外部開啟 docs 目錄', name: _tag); // i18n-exempt: 開發者診斷 log
-    try {
-      final result = await ref.read(domainOpenSourceProcessRunnerProvider)(
-        'open',
-        ['docs'],
-      );
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: result.exitCode == 0
-            ? l10n.openedExternallyMessage
-            : l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-    } catch (error) {
+    final workspace = ref.read(currentWorkspaceStateProvider);
+    if (workspace is! WorkspaceReady) {
       developer.log(
-        '外部開啟 docs 目錄失敗：$error', // i18n-exempt: 開發者診斷 log
+        '未開啟 docs 目錄：workspace 非 WorkspaceReady（${workspace.runtimeType}）', // i18n-exempt: 開發者診斷 log
         name: _tag,
         level: 900,
       );
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
+      return;
     }
+    final path = '${workspace.path}/docs'; // i18n-exempt: 路徑組成
+    final result = await ref.read(externalOpenerProvider).open(path);
+    if (!context.mounted) return;
+    AppSnackBar.show(
+      context,
+      message: result == ExternalOpenResult.opened
+          ? l10n.openedExternallyMessage
+          : l10n.externalOpenFailedMessage,
+      level: AttentionLevel.discardable,
+      origin: AppSnackBarOrigin.userInitiated,
+    );
   }
 }
 
@@ -235,11 +219,12 @@ class _SchemaUnconsumableView extends ConsumerWidget {
               // `badge-domain-degraded-schema`（SPEC-001 §1／SPEC-004
               // §4.27）。
               ref.read(degradedSchemaProvider.notifier).state = true;
-              ref.read(degradedSchemaVersionsProvider.notifier).state =
-                  DegradedSchemaVersions(
-                    builtinVersion: builtinVersion ?? '',
-                    projectVersion: state.version,
-                  );
+              ref
+                  .read(degradedSchemaVersionsProvider.notifier)
+                  .state = DegradedSchemaVersions(
+                builtinVersion: builtinVersion ?? '',
+                projectVersion: state.version,
+              );
             }
           : null,
       testKey: const Key('state-domain-schema-unconsumable'),
@@ -649,46 +634,19 @@ class _SwimlaneBody extends ConsumerWidget {
   ) async {
     final l10n = AppLocalizations.of(context);
     final path = 'docs/usecases/$ucId.md'; // i18n-exempt: fixture 路徑字面
-    final exists = File(path).existsSync();
-    if (!exists) {
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: l10n.sourceFileNotFoundSnackbarMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-      return;
-    }
-    developer.log('外部開啟：$path', name: _tag); // i18n-exempt: 開發者診斷 log
-    try {
-      final result = await ref.read(domainOpenSourceProcessRunnerProvider)(
-        'open',
-        [path],
-      );
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: result.exitCode == 0
-            ? l10n.openedExternallyMessage
-            : l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-    } catch (error) {
-      developer.log(
-        '外部開啟失敗：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-    }
+    final result = await ref.read(externalOpenerProvider).open(path);
+    if (!context.mounted) return;
+    final message = switch (result) {
+      ExternalOpenResult.opened => l10n.openedExternallyMessage,
+      ExternalOpenResult.notFound => l10n.sourceFileNotFoundSnackbarMessage,
+      ExternalOpenResult.failed => l10n.externalOpenFailedMessage,
+    };
+    AppSnackBar.show(
+      context,
+      message: message,
+      level: AttentionLevel.discardable,
+      origin: AppSnackBarOrigin.userInitiated,
+    );
   }
 }
 
