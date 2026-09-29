@@ -366,9 +366,22 @@ R2_STATE_ANCHORS = {anc for _, name, anc in STATES
 
 ANCHOR_SETS = {}     # anchor_matrix 填入：欄名 -> 該欄出現的錨點集合（N12 通式涵蓋判定）
 NAV_ANCHORS = set()   # anchor_matrix 填入：S3 §3.x〈導航跳轉與退出〉出現的錨點（S3§4 欄的檢查對象）
-# S3§4 欄排除：殼層導航三出口（SPEC-003 殼層通則承載）與標明外部動作者不屬 §4 導航反應欄。
+# S3§4 欄排除：殼層導航出口（SPEC-003 殼層通則承載）與規格明文宣告的外部動作不屬 §4 導航反應欄。
 NAV_EXCLUDE_PREFIX = ('nav-item-', 'nav-page-')
-NAV_EXCLUDE_EXTERNAL = re.compile(r'^action-[A-Za-z]+-open-')
+# 外部動作不以名稱判定（open-* 中 action-nodeDetail-open-source 規格算同畫面轉換），
+# 改由規格推導：SPEC-003 內與下列宣告語同一子句（以「。」「；」切分）出現的錨點。
+EXTERNAL_DECLARATION = re.compile(r'不計為導航反應|不計為退出路徑')  # i18n-exempt
+CLAUSE_SPLIT = re.compile(r'[。；]')  # i18n-exempt
+
+
+def derive_external_anchors():
+    """SPEC-003 中被明文宣告為外部動作（不計為導航反應／退出路徑）的錨點集合。"""
+    found = set()
+    for line in L3:
+        for clause in CLAUSE_SPLIT.split(line):
+            if EXTERNAL_DECLARATION.search(clause):
+                found |= collect([clause])
+    return found
 
 
 def anchor_mask(col, a):
@@ -378,7 +391,7 @@ def anchor_mask(col, a):
     if col == 'S3§1.4':  # i18n-exempt
         return None if a.startswith(('expander-', 'menu-')) else 'N1'
     if col == 'S3§4':  # i18n-exempt
-        excluded = a.startswith(NAV_EXCLUDE_PREFIX) or NAV_EXCLUDE_EXTERNAL.match(a)
+        excluded = a.startswith(NAV_EXCLUDE_PREFIX) or a in derive_external_anchors()
         return None if a in NAV_ANCHORS and not excluded else 'N1'
     if col == 'S1任一':  # i18n-exempt
         return 'N4'
@@ -444,13 +457,18 @@ def authority_diffs():
 
 
 SAME_AS = re.compile(r'同 #(\d+)')  # i18n-exempt
-# §4 表頭段明文：殼層通則出口（返回、導覽列、切換專案入口）不逐列列出；state-* 為轉換目標，非觸發錨點。
+# 排除出處：
+# - nav-item-／nav-page-（NAV_EXCLUDE_PREFIX）與 project-switcher-entry（SHELL_ANCHORS）：
+#   SPEC-003 §4 表頭段「本表不逐列列出『返回』『導覽』『切換專案』這三項」。
+# - state- 前綴：轉換目標（→ 右側），不是觸發錨點，本身不需出現在 §4 觸發欄。
+# - 外部動作：由 derive_external_anchors() 自規格明文推導，非名稱規則。
 SHELL_ANCHORS = ('project-switcher-entry',)
 
 
 def nav_row_gaps():
     """S3§4 逐列比對（畫面, 狀態, 錨點）：§3.x〈導航跳轉與退出〉每列的觸發錨點須出現在 §4 同（畫面, 狀態）列；
     §4 列以「同 #N」承接者，併入被承接列的錨點。缺者逐列登記。"""  # i18n-exempt
+    external = derive_external_anchors()
     rows4 = {c[0]: c for c in parse_table_rows(section(L3, r'^## 4\. ', 2), '#')}
     by_key = {(c[1], norm_state(c[2])): c for c in rows4.values()}
 
@@ -467,7 +485,7 @@ def nav_row_gaps():
             key = (SCREEN[n][0], norm_state(cells[0]))
             want = {a for a in collect([' | '.join(cells)])
                     if not a.startswith(NAV_EXCLUDE_PREFIX + SHELL_ANCHORS + ('state-',))
-                    and not NAV_EXCLUDE_EXTERNAL.match(a)}
+                    and a not in external}
             got = row_anchors(by_key[key]) if key in by_key else set()
             for a in sorted(want - got):
                 GAPS.append(('C 錨點', f'`{a}`', f'S3§4 逐列（{key[0]} / {key[1]}）'))  # i18n-exempt
