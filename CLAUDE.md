@@ -67,7 +67,8 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 **本專案是 `component-contract-design` skill 的開發上游**（2026-09-29 用戶裁示）。其他 consumer 回報該 skill 的條文缺口時，除了觀測 canonical issue，也須在 active 版本建實作票、在本專案修正。完成後 sync-push 到 canonical；推送 skill 發佈庫（`skill-sync push`）仍需逐次授權。
 
 **仍不在授權內**：`sync-push` 與 `skill-sync push`（同上段理由，那是改資產本體不是留一則可刪的觀測）、
-改他人 owner 的區段或 issue body、其他 remote 與其他 repo。
+改他人 owner 的區段或 issue body、其他 remote 與其他 repo、以 `create_issue.py` 新開 issue
+（上段「建立」指 `init`／`add` 建立區段 comment，不含新開 issue；新開須逐次授權，例：#111）。
 
 ---
 
