@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.42"
+version: "1.43"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1049,6 +1049,21 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 **以變體為鍵會同時誤判兩邊**：`sourceFileNotFoundSnackbarMessage` 是 `withAction`
 但屬使用者發起（截斷不需 warning）；日後若有背景發起的 `plain` 提示，以變體為鍵會
 漏記。日誌欄位載體見 `0.1.0-W3-176`。
+
+**已按動作者不是截斷**（`0.3.2-W3-253` 裁定方向 2，實作 `0.3.2-W3-549`）：使用者按下
+一則 `withAction` 提示的動作後，該則的關閉由使用者造成，**不論其 `origin` 為何、不論
+框架最終回報的 `reason` 為何，都不套用上表的截斷等級**，比照 `reason: action` 的關閉
+記錄。判別輸入為「該則是否已記錄 `actionPressed` 事件」，由提示元件自身取得，呼叫端
+不需傳入。**為何需要此條**：`onAction` 內同步再顯示新一則時，Flutter 的 ticker 取消
+語意使舊一則的 `hide(reason: action)` 永不完成，最終回報 `reason: hide`（實測，
+`0.3.2-W3-253`）；若只看 `(reason, origin)`，`origin` 為背景的呼叫點（如 §2.2 掃描完成
+fallback 的「檢視」動作）會把使用者自己按下的動作記成 warning——正是上表要避免的誤判
+方向。日誌的 `reason` 欄照記框架實際回報值（`hide`），只修正等級判定。
+
+| 測試斷言 | 期望 |
+|---------|------|
+| `origin` 為背景的 `withAction` 提示按動作，`onAction` 同步再顯示一則 | 舊一則 `closed` 的 `reason` 為 `hide`、等級不為 warning |
+| `origin` 為背景的提示未按動作、被更高級別的新提示截斷（正向對照） | 舊一則 `closed` 等級為 warning |
 
 #### 因判準而不顯示時的日誌承接
 
@@ -2348,6 +2363,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.43 | 2026-09-29 | §2.13〈截斷事件的日誌等級〉補「已按動作者不是截斷」條文與測試斷言兩列（`0.3.2-W3-253` 裁定方向 2，實作 `0.3.2-W3-549`）：使用者按下 `withAction` 動作後的關閉不論 `origin`、不論框架回報的 `reason`，皆不套用截斷等級；判別輸入由提示元件自身取得。依據為實測：`onAction` 同步再顯示時舊一則回報 `reason: hide`，背景發起者被記為 warning |
 | 1.42 | 2026-09-29 | §2.2 系統層通知「不重複發送」列的撤回事件消除歧義（`0.3.2-W1-005`，用戶裁決 2026-09-29 候選 B）：原「使用者自行回到 `nav-page-gaps`」可讀為導覽切換或可見狀態成立兩種；改以 §2.13 判準 T1 可見式為準，於導覽切換進入 gaps 與 App 回到前景時可見頁已是 gaps 兩個時刻判定。「可觀測性」列補撤回觸發條件與撤回後仍在通知中心的通知數；測試斷言表補回前景撤回與非 gaps 正向對照兩列；「撤回 API」實測列改記量測當時行為與裁決；§3.5 生命週期表與 FR 驗收列同步措辭，驗收列移除寫死的列數 |
 | 1.41 | 2026-09-29 | §2.2 系統層通知兩處：(1)「點擊通知的導向」列改為 App 自行前景化（原生 unhide＋activate 並 NSLog 前後狀態），點擊路徑日誌改記結果值（`0.3.1-W1-097`；該票合併時未升版，於本版補記）；(2)「實作票驗證」段由待驗清單改為實測記錄表（`0.3.1-W1-028`）：兩種簽章的 debug build 可用、授權狀態依 bundle id 保存與簽章無關、未簽章首次請求回應未量到及原因、ncprefs.plist 不可作判據、載體為原生 MethodChannel、`inactive` 為過渡態、撤回 API 在收合狀態有效、系統不替已隱藏 App 前景化，並補量測前置條件（單一實例、單一 LaunchServices 登記、非權限類以日誌或測試驗證）。Developer ID 可用性轉 `1.0.0-W1-027` |
 | 1.40 | 2026-09-29 | 系統通知發送失敗的 fallback（`0.3.1-W3-113`，用戶裁決 2026-09-29：`show` 改回傳結果列舉）：§2.2 權限 gate 表新增「`granted` 但發送失敗」列，fallback 同 `denied` 列且不列入撤回對象；介面新增 `enum ScanNotificationDelivery { delivered, failed }`，`show` 改回傳該型別，介面後說明段補發送錯誤的收斂方式；測試斷言表新增三列（`failed` 前景、`delivered` 對照組、`failed` 非前景）；〈兩個 port 的三時刻覆蓋〉`show` 列結果欄改寫，設計選擇段拆為 `withdraw`（維持 `void`）與 `show`（前提失效、已改回傳）兩段 |
