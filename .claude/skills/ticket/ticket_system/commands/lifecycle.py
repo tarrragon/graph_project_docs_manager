@@ -955,7 +955,9 @@ class TicketLifecycle:
 
         # 自動追加 worklog 進度行
         ticket_title = ticket.get("title", "")
-        append_worklog_progress(self.version, ticket_id, ticket_title)
+        worklog_written = append_worklog_progress(
+            self.version, ticket_id, ticket_title
+        )
 
         # 驗收提示
         _print_stage_separator("驗收提示")
@@ -1015,12 +1017,15 @@ class TicketLifecycle:
                 modified_paths.append(str(ticket_path))
             except Exception:
                 pass
-            try:
-                modified_paths.append(_build_worklog_path_for_stage(self.version))
-            except Exception as exc:
-                sys.stderr.write(
-                    f"[auto-commit] worklog 路徑解析失敗（略過）：{exc}\n"
-                )
+            # 只有本次確實寫入工作日誌才列入提交範圍：未寫入的檔案無變更，
+            # 列入會使 commit_files_isolated 自我驗證失敗而整批放棄
+            if worklog_written:
+                try:
+                    modified_paths.append(_build_worklog_path_for_stage(self.version))
+                except Exception as exc:
+                    sys.stderr.write(
+                        f"[auto-commit] worklog 路徑解析失敗（略過）：{exc}\n"
+                    )
             _auto_commit_completion_files(ticket_id, modified_paths)
 
         return 0
