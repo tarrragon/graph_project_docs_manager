@@ -52,6 +52,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String folderUnavailableMessage(String reason) {
+    return '資料夾無法使用：$reason';
+  }
+
+  @override
   String get changeWorkspaceFolder => '變更資料夾';
 
   @override

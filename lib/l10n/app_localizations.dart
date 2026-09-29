@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'無法存取先前的資料夾：{reason}'**
   String workspaceUnavailable(String reason);
 
+  /// 剛在選擇器選定的資料夾不可讀或不存在時的提示，reason 為 WorkspaceUnavailable.reason 固定文案
+  ///
+  /// In zh, this message translates to:
+  /// **'資料夾無法使用：{reason}'**
+  String folderUnavailableMessage(String reason);
+
   /// 已有工作資料夾時的重新選取按鈕
   ///
   /// In zh, this message translates to:
