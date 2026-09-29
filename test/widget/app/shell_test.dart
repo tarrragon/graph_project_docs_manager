@@ -292,6 +292,25 @@ bool _navHasAccentBorder(WidgetTester tester, String key) {
   });
 }
 
+String? _navKeyOf(FocusNode? node) {
+  for (final k in _ancestorKeys(node)) {
+    if (k is ValueKey<String> && k.value.startsWith('nav-item-')) {
+      return k.value;
+    }
+  }
+  return null;
+}
+
+List<Key> _ancestorKeys(FocusNode? node) {
+  final keys = <Key>[];
+  node?.context?.visitAncestorElements((e) {
+    final k = e.widget.key;
+    if (k != null) keys.add(k);
+    return true;
+  });
+  return keys;
+}
+
 /// 將焦點放到專案切換入口（SPEC-003 §2.10 Tab 序列的起點）。
 Future<void> _focusSwitcherEntry(WidgetTester tester) async {
   final inner = find
@@ -333,4 +352,39 @@ void _registerFocusTests() {
     expect(_navHasAccentBorder(tester, first), isTrue);
     expect(_navHasAccentBorder(tester, 'nav-item-ucFlow'), isFalse);
   });
+
+  testWidgets('Tab 從專案切換入口依序經六個導覽項後進入內容區', (tester) async {
+    await _pumpShell(tester);
+    await _focusSwitcherEntry(tester);
+    final stops = <FocusNode?>[];
+    for (var i = 0; i < 8; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      stops.add(FocusManager.instance.primaryFocus);
+    }
+    expect(
+      [for (var i = 0; i < 6; i++) _navKeyOf(stops[i])],
+      [for (final d in AppDestination.values) 'nav-item-${d.name}'],
+    );
+    for (final stop in [stops[6], stops[7]]) {
+      _expectInMainArea(stop);
+    }
+  });
+}
+
+/// 內容區判定：祖先不含 nav-item-* 與入口 key，且全域左緣位於主區。
+void _expectInMainArea(FocusNode? node) {
+  final ancestors = _ancestorKeys(node);
+  expect(ancestors, isNot(contains(AppShell.projectSwitcherEntryKey)));
+  expect(
+    ancestors.whereType<ValueKey<String>>().where(
+      (k) => k.value.startsWith('nav-item-'),
+    ),
+    isEmpty,
+  );
+  final box = node!.context!.findRenderObject()! as RenderBox;
+  expect(
+    box.localToGlobal(Offset.zero).dx,
+    greaterThanOrEqualTo(LayoutSize.sidebarWidth),
+  );
 }

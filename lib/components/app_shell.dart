@@ -97,7 +97,15 @@ class AppShell extends ConsumerWidget {
       children: [
         SizedBox(
           width: LayoutSize.sidebarWidth,
-          child: _Sidebar(switcherEntry: switcherEntry, navItems: navItems),
+          child: FocusTraversalOrder(
+            order: const NumericFocusOrder(0),
+            child: FocusTraversalGroup(
+              child: _Sidebar(
+                switcherEntry: switcherEntry,
+                navItems: navItems,
+              ),
+            ),
+          ),
         ),
         // 側欄與主區分隔線（§4.0.3 邊框線寬；「側欄與主區之間」明列於
         // `Divider`（4.3）「何時不用」，故不借用該元件，直接以本容器內部
@@ -109,18 +117,26 @@ class AppShell extends ConsumerWidget {
           child: SizedBox.shrink(),
         ),
         Expanded(
-          child: _MainArea(
-            destination: destination,
-            returnTo: returnTo,
-            pages: pages,
-            onBack: () => consumeReturnTo(ref.read),
-            isDegraded: isDegraded,
-            degradedVersions: degradedVersions,
-            inferredVersion: inferredVersion,
+          child: FocusTraversalOrder(
+            order: const NumericFocusOrder(1),
+            child: FocusTraversalGroup(
+              child: _MainArea(
+                destination: destination,
+                returnTo: returnTo,
+                pages: pages,
+                onBack: () => consumeReturnTo(ref.read),
+                isDegraded: isDegraded,
+                degradedVersions: degradedVersions,
+                inferredVersion: inferredVersion,
+              ),
+            ),
           ),
         ),
       ],
     );
+
+    // SPEC-003 §2.10 Tab 區段順序：側欄整段先於主區；區段內沿用閱讀順序。
+    body = FocusTraversalGroup(policy: OrderedTraversalPolicy(), child: body);
 
     if (_isOverlayOpen) {
       // overlayOpen：背景導覽項不可點、焦點限制於浮層（SPEC-004 4.27
