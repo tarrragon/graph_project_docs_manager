@@ -182,6 +182,12 @@ abstract class AppLocalizations {
   /// **'此專案的框架版本（{version}）早於圖譜型別表的機器可讀匯出'**
   String schemaUnconsumableMessage(String version);
 
+  /// SPEC-004 §4.0.6〈1.41 新增〉：Domain 視圖無可消費的型別表阻擋態，與降級動作同條件渲染的降級說明（explanation slot）
+  ///
+  /// In zh, this message translates to:
+  /// **'可改用 App 內建型別表（v{builtinVersion}）檢視，B 層邊不渲染'**
+  String schemaUnconsumableDegradedExplanation(String builtinVersion);
+
   /// SPEC-001 §1 Domain 視圖·schema 不相容狀態的顯示文案
   ///
   /// In zh, this message translates to:
