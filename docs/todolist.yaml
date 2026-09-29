@@ -230,6 +230,8 @@ versions:
       gapCategoryEventDeclarationMismatch 兩列，與 ARB 不同步；源自 0.3.2-W3-548 Phase 4）。
       執行期收件（topic 契合）：W3-377（chooseFolderUnavailableMessage 文案含操作指引違反 SPEC-004 M1，
       與 ARB 刻意設計的優先序待用戶裁決；源自 0.3.2-W3-368）。
+      執行期收件（topic 契合）：W3-378（啟動還原失敗無 UI 呈現、workspaceUnavailable 成孤兒 key，
+      先查規格要求再定補 UI 或移除；源自 0.3.2-W1-009）。
       不變式 = 0.3.0 IT-1、IT-2 仍通過。0.3.x 最後一個 patch。
 
   - version: "0.4.0"
