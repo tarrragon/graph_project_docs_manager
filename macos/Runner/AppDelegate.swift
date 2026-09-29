@@ -112,6 +112,15 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
     if response.notification.request.identifier == scanCompleteNotificationIdentifier {
+      // 系統不會替已隱藏的執行中 App 前景化（0.3.1-W1-028 實機），由 App 自行承擔。
+      NSLog(
+        "[AppDelegate] click-path:foreground before isHidden=%d isActive=%d",
+        NSApp.isHidden, NSApp.isActive)
+      NSApp.unhide(nil)
+      NSApp.activate(ignoringOtherApps: true)
+      NSLog(
+        "[AppDelegate] click-path:foreground after isHidden=%d isActive=%d",
+        NSApp.isHidden, NSApp.isActive)
       scanNotifierChannel?.invokeMethod("onActivated", arguments: nil)
     }
     completionHandler()

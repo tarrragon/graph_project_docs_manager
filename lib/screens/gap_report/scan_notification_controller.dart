@@ -27,6 +27,23 @@ import 'gap_report_provider.dart';
 
 const String _tag = 'ScanNotificationController';
 
+/// 點擊通知路徑的日誌事件前綴（SPEC-003 §2.2「點擊通知的導向」列）。
+/// 事件依序為 `activated`、`navigate`、`locate-set`（或 `locate-skip`）、
+/// `locate-scroll`、`locate-focus`。
+const String clickPathLogPrefix = 'click-path:';
+
+/// 點擊路徑日誌的輸出點；預設寫入 `developer.log`，測試可替換為記錄器
+/// 以機械驗證事件順序（結束後須還原為 [defaultClickPathLogSink]）。
+void Function(String message, String name) clickPathLogSink =
+    defaultClickPathLogSink;
+
+void defaultClickPathLogSink(String message, String name) =>
+    developer.log(message, name: name); // i18n-exempt: 開發者診斷 log
+
+/// 記錄一則點擊路徑事件。
+void logClickPath(String event, String detail, String name) =>
+    clickPathLogSink('$clickPathLogPrefix$event $detail', name);
+
 /// 命中時定位到的破洞項 id（SPEC-004 §1 locate 列）；`null` 表示無待定位
 /// 項。[GapReportScreen] 消費本值捲動並移入焦點後，清空回 `null`。
 final pendingLocateGapItemProvider = StateProvider<String?>((ref) => null);
@@ -245,13 +262,23 @@ class ScanNotificationController {
   /// 使用者點擊系統通知本體（SPEC-003 §2.2「點擊通知的導向」列）。
   void _onActivated(void _) {
     final state = _ref.read(gapReportProvider);
+    logClickPath('activated', 'state=${state.runtimeType}', _tag);
     _pendingWithdrawableState = null;
     navigateTo(_ref.read, AppDestination.gaps, NavIntent.rail);
+    logClickPath(
+      'navigate',
+      'destination=${_ref.read(selectedDestinationProvider).name} '
+          'returnTo=${_ref.read(returnToProvider)}',
+      _tag,
+    );
     if (state is GapReportFound &&
         state.categories.isNotEmpty &&
         state.categories.first.items.isNotEmpty) {
       final itemId = state.categories.first.items.first.id;
       _ref.read(pendingLocateGapItemProvider.notifier).state = itemId;
+      logClickPath('locate-set', 'itemId=$itemId', _tag);
+    } else {
+      logClickPath('locate-skip', 'state=${state.runtimeType}', _tag);
     }
     // 若專案已切換或已進入新一輪掃描，`gapReportProvider` 讀到的已非原本
     // 完成結果（`GapReportScanning` 或已重置），上式的型別檢查天然只在

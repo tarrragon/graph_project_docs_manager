@@ -18,6 +18,8 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' show AppShell;
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
+import 'package:graph_project_docs_manager/screens/gap_report/scan_notification_controller.dart'
+    show clickPathLogSink, defaultClickPathLogSink;
 import 'package:graph_project_docs_manager/services/scan_notifier.dart';
 import 'package:graph_project_docs_manager/services/scan_notifier_provider.dart';
 
@@ -255,6 +257,34 @@ void main() {
         expect(fixture.container.read(returnToProvider), isNull);
       },
     );
+
+    testWidgets('點擊通知：點擊路徑日誌事件依序出現', (tester) async {
+      final logs = <String>[];
+      clickPathLogSink = (message, name) => logs.add(message);
+      addTearDown(() => clickPathLogSink = defaultClickPathLogSink);
+      final fixture = await _pumpFixture(tester);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
+
+      fixture.fake.fireActivated();
+      await tester.pump();
+      await tester.pump();
+
+      const expected = [
+        'click-path:activated',
+        'click-path:navigate destination=gaps returnTo=null',
+        'click-path:locate-set itemId=a',
+        'click-path:locate-scroll itemId=a',
+        'click-path:locate-focus itemId=a requested=true',
+      ];
+      expect(logs.length, expected.length, reason: logs.join('\n'));
+      for (var i = 0; i < expected.length; i++) {
+        expect(logs[i], startsWith(expected[i]));
+      }
+      await tester.pump();
+    });
 
     testWidgets('掃描中按 action-gaps-cancel-scan：show 為 0、requestAuthorization 為 0', (
       tester,

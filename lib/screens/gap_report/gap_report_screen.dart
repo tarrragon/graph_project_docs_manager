@@ -356,7 +356,14 @@ class _LocatableGapItemState extends ConsumerState<_LocatableGapItem> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Scrollable.ensureVisible(context, alignment: 0.1);
+        logClickPath('locate-scroll', 'itemId=${widget.item.id}', _tag);
         _focusNode.requestFocus();
+        logClickPath(
+          'locate-focus',
+          // i18n-exempt: 開發者診斷 log
+          'itemId=${widget.item.id} requested=true',
+          _tag,
+        );
         ref.read(pendingLocateGapItemProvider.notifier).state = null;
       });
     }
