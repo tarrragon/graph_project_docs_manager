@@ -2,6 +2,9 @@
 """0.1.0-W3-335 系列集合同步稽核：計數敘述擷取（可重跑）。
 輸出：每一處含集合計數字樣的片段（檔名 行號 片段），排除「變更歷史」表列。
 用法：python3 docs/spec/ui/audit/counts.py > /tmp/counts_raw.txt
+stderr 印命中筆數；本檔只列疑似片段，不自動判定，exit code 恆為 0。
+排除項：C1–C8、L1–L2、F1–F7、S1–S8、M1–M5 等契約代號範圍是識別碼而非集合大小，
+不列入樣式；契約集合的大小敘述（如「共 10 條」）仍由其他樣式擷取。
 （或於任意工作目錄執行：python3 <此檔絕對路徑> > ...）
 判讀方式：本檔只列出「疑似寫死計數」的片段，不判定是否為缺漏——多數列屬合理的
 固定計數（如「三個阻擋狀態」為 SPEC-001 已定案且不常變動的集合），逐項比對
@@ -10,6 +13,7 @@
 （本檔為稽核腳本，正則內中文為比對樣式非 user-facing 字串）
 """
 import re
+import sys
 import glob
 import os
 from pathlib import Path
@@ -24,12 +28,12 @@ P = re.compile('|'.join([
     r'[三四五六七]畫面', r'[二三四五六兩]態',  # i18n-exempt
     NUM + r' ?條(?!件|目)',  # i18n-exempt
     NUM + r' ?(?:處|類|種)(?![別型])',  # i18n-exempt
-    r'[CFSLTM]1[–-][CFSLTM]\d+',
     r'捲動處|換頁處|拖拉處|同畫面內展開',  # i18n-exempt
     r'共 ?\d+',  # i18n-exempt
     r'\d+ ?個',  # i18n-exempt
 ]))
 
+hits = 0
 for path in FILES:
     name = os.path.basename(path)[:8]
     for i, line in enumerate(open(path, encoding='utf-8'), 1):
@@ -39,3 +43,5 @@ for path in FILES:
             s = max(0, m.start() - 30)
             frag = line[s:m.end() + 20].rstrip('\n')
             print(f'{name}\t{i}\t{frag}')
+            hits += 1
+sys.stderr.write(f'counts.py：疑似寫死計數片段 {hits} 筆（僅供人工判讀，exit 0）\n')  # i18n-exempt
