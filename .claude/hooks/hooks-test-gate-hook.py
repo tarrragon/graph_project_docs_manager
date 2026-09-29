@@ -90,7 +90,7 @@ from lib import (  # noqa: E402
     emit_hook_output,
     get_project_root,
 )
-from lib.git_utils import run_git_command  # noqa: E402
+from lib.git_utils import parse_name_status_z, run_git_command  # noqa: E402
 
 HOOK_NAME = "hooks-test-gate"
 
@@ -223,16 +223,10 @@ def _touched_hook_filenames(command: str, host_root: str, logger) -> Set[str]:
         ["diff", "--cached", "--name-status", "-z"], cwd=host_root
     )
     if success and output:
-        segments = [seg for seg in output.split("\0") if seg]
-        index = 0
-        while index < len(segments):
-            status = segments[index]
-            path_count = 2 if status[0] in ("R", "C") else 1
-            paths = segments[index + 1 : index + 1 + path_count]
-            index += 1 + path_count
-            if status.startswith("D") or not paths:
+        for status, _old_path, new_path in parse_name_status_z(output):
+            if status.startswith("D"):
                 continue
-            m = re.fullmatch(r"\.claude/hooks/([\w.\-]+\.py)", paths[-1])
+            m = re.fullmatch(r"\.claude/hooks/([\w.\-]+\.py)", new_path)
             if m:
                 filenames.add(m.group(1))
     elif not success:

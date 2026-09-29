@@ -111,7 +111,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin  # noqa: E402
 from lib.git_command_parse import find_git_invocations, contains_git_word  # noqa: E402
-from lib.git_utils import get_project_root, run_git_command  # noqa: E402
+from lib.git_utils import (  # noqa: E402
+    get_project_root,
+    parse_name_status_z,
+    run_git_command,
+)
 from lib.commit_content_guards import (  # noqa: E402
     Finding,
     StagedFile,
@@ -170,17 +174,11 @@ def _get_staged_rename_map(project_root: Path) -> Dict[str, str]:
     )
     if not success or not output:
         return {}
-    rename_map: Dict[str, str] = {}
-    segments = [seg for seg in output.split("\0") if seg]
-    index = 0
-    while index < len(segments):
-        status = segments[index]
-        path_count = 2 if status[0] in ("R", "C") else 1
-        paths = segments[index + 1 : index + 1 + path_count]
-        index += 1 + path_count
-        if status.startswith("R") and len(paths) == 2:
-            rename_map[paths[1]] = paths[0]
-    return rename_map
+    return {
+        new_path: old_path
+        for status, old_path, new_path in parse_name_status_z(output)
+        if status.startswith("R") and old_path is not None
+    }
 
 
 def _git_show(rev_spec: str, project_root: Path) -> str:
