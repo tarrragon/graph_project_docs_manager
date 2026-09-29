@@ -190,6 +190,11 @@ versions:
          - W3-210、W3-248、W3-368：規格與程式碼一致性以 grep 產出呼叫點清單，差集為零。
       4. 人工實測時段：無。W3-236 與 W1-005 需要啟動真實 App 產生日誌時，比照人工實測的前置檢查：
          實例數為 1、同 bundle id 只登記一份現存 .app、log show 或 DevTools Logging 已接上。
+         W1-005 另需「終端機已獲輔助使用權限」：前後景切換只能由腳本觸發（掃描在 gaps 可見後
+         300 ms 內完成，人手來不及），腳本見 0.3.1-W1-028〈重現實驗結果〉；本機已允許，不構成人工時段。
+         觸發結果一律讀 App 的 Shell 生命週期日誌，不讀腳本回傳值（W1-028 實測 hide() 回 false 但 App 已隱藏）。
+         macOS 的 inactive 只是過渡態（W1-028 實測：離開一律 resumed -> inactive -> hidden），
+         「離開前景」的時間點以 resumed -> inactive 為準。
       5. 結果值日誌事件
          - ExternalOpener 結果事件（opened／notFound／failed＋絕對路徑）：W1-004 後四個入口皆須
            產生（現況四個畫面皆直接呼叫 Process.run，不產生此事件）。
