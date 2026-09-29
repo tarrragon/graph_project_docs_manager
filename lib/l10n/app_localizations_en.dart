@@ -63,6 +63,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String schemaUnconsumableDegradedExplanation(String builtinVersion) {
+    return 'You can view this with the app\'s built-in schema (v$builtinVersion); tier-B edges will not render';
+  }
+
+  @override
   String schemaIncompatibleMessage(String appVersion, String projectVersion) {
     return 'This app supports schema version $appVersion; this project uses $projectVersion, which is incompatible';
   }

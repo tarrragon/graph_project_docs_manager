@@ -61,6 +61,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String schemaUnconsumableDegradedExplanation(String builtinVersion) {
+    return '可改用 App 內建型別表（v$builtinVersion）檢視，B 層邊不渲染';
+  }
+
+  @override
   String schemaIncompatibleMessage(String appVersion, String projectVersion) {
     return 'App 支援的 schema 版本為 $appVersion，此專案為 $projectVersion，版本不相容';
   }
