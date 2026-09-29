@@ -91,7 +91,7 @@ def _build_worklog_path_for_stage(version: str) -> str:
     return str(_build_worklog_path(version))
 from ticket_system.lib.ui_constants import SEPARATOR_PRIMARY
 from ticket_system.lib.project_root import resolve_project_cwd
-from ticket_system.lib.blocker_resolution import is_fully_unblocked
+from ticket_system.lib.blocker_resolution import is_fully_unblocked, list_open_versions
 from ticket_system.lib.machine_path_detector import scan_ticket_file_for_machine_paths
 from ticket_system.commands.claim_verification import (
     collect_ac_verifications,
@@ -2253,6 +2253,29 @@ def _cascade_unblock_children(
     return unblocked, warnings
 
 
+def _reverse_unblock_candidates(
+    version: str, ticket_map: Dict[str, Any]
+) -> List[Tuple[str, str, Dict[str, Any]]]:
+    """回傳反向解鎖的候選票 (版本, id, ticket)：本版本全集 + 其他未完成版本。
+
+    其他版本以 id 去重（本版本全集優先），避免同一票重複 save／印出。
+    掃描範圍取 todolist 中尚未 completed 的版本：已完成版本不再有 blocked 票，
+    全掃所有版本目錄則每次 complete 都要載入歷史全部 ticket。
+    """
+    candidates = [(version, tid, t) for tid, t in ticket_map.items()]
+    seen = set(ticket_map)
+    for other in list_open_versions():
+        if other == version:
+            continue
+        for t in list_tickets(other):
+            tid = t.get("id")
+            if tid in seen:
+                continue
+            seen.add(tid)
+            candidates.append((other, tid, t))
+    return candidates
+
+
 def _reverse_unblock_blockedby(
     completed_ticket_id: str,
     version: str,
@@ -2283,7 +2306,9 @@ def _reverse_unblock_blockedby(
     """
     unblocked: List[Dict[str, Any]] = []
 
-    for tid, candidate in ticket_map.items():
+    for cand_version, tid, candidate in _reverse_unblock_candidates(
+        version, ticket_map
+    ):
         if tid == completed_ticket_id:
             continue
         if candidate.get("status") != STATUS_BLOCKED:
@@ -2297,7 +2322,7 @@ def _reverse_unblock_blockedby(
 
         candidate["status"] = STATUS_PENDING
         try:
-            save_ticket(candidate, resolve_ticket_path(candidate, version, tid))
+            save_ticket(candidate, resolve_ticket_path(candidate, cand_version, tid))
             unblocked.append({"id": tid, "title": candidate.get("title", "")})
         except Exception as err:
             # §6.7 non-fail-fast：列入 stderr 警告而非隱藏
