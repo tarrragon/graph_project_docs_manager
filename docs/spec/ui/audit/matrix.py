@@ -6,7 +6,10 @@
 輸出三張機械矩陣（狀態、SnackBar key、錨點）、狀態集合相等檢查與真缺漏清單。
 格值：Y=出現；~<id>=未出現但屬合理不出現（id 見 MASKS，附出處與理由）；
 X=未出現且無遮罩，即真缺漏候選（是否真為缺漏由對應 ticket 判讀）。
-結尾輸出真缺漏數；真缺漏加狀態集合對稱差大於 0 時 exit 1，否則 exit 0。
+結尾輸出真缺漏數。基線 baseline.tsv 內的缺漏（key、ticket 必填）不計入。
+exit 0＝無基線外缺漏、無過期或不全的基線列、狀態集合差 0、權威表推導差 0；
+exit 1＝有基線外新缺漏，或狀態集合／權威表推導差大於 0；
+exit 2＝僅基線有過期列（key 已不在輸出）或欄位不全（同時有 1 的條件時取 1）。
 遮罩只收有理由的項目：R 編號來自 0.1.0-W3-335.54 Solution〈4. 合理不出現〉，
 N 編號為 0.3.3-W3-375 新判定；不得為了歸零而擴大遮罩。
 比對一律為固定字串（去除 ** 粗體標記後），範圍以章節標題切段；變更歷史表列排除。
@@ -23,6 +26,8 @@ ROOT = Path(__file__).resolve().parents[4]
 S1 = str(ROOT / 'docs/spec/ui/SPEC-001-screen-state-matrix.md')
 S3 = str(ROOT / 'docs/spec/ui/SPEC-003-interaction-response.md')
 S4 = str(ROOT / 'docs/spec/ui/SPEC-004-component-library.md')
+ARB = ROOT / 'lib/l10n/app_zh.arb'
+BASELINE = Path(__file__).resolve().parent / 'baseline.tsv'
 UCS = sorted(glob.glob(str(ROOT / 'docs/usecases/UC-*.md')))
 HIST = re.compile(r'^\| *\d+\.\d+ *\| *20')
 
@@ -101,23 +106,32 @@ MASKS = {
     'R10': ('.54 R10', '非互動元素錨點由各自子表或殼層通則承載，不入互動反應表'),  # i18n-exempt
     'R11': ('.54 R11', '通則返回鍵 action-<screen>-back 為頁面框架通則（S3 §2.3），不逐狀態列'),  # i18n-exempt
     'R12': ('.54 R12', 'action-ucFlow-back-to-domain 為「已刪除」註記，不應出現於互動表'),  # i18n-exempt
-    'N1': ('W3-375 新判定', '子集欄：該節／該表本身定義成員子集（捲動處、同畫面展開、退出觸發、S1 任一、S4 變體、S4 §4.0.6 新 key 總表），非全集必列；副作用：子集欄漏列新成員不會被本腳本發現'),  # i18n-exempt
+    'N1': ('W3-375 新判定；W3-404 收窄', '子集欄：該節／該表本身定義成員子集，非全集必列（現用於 S3§1.1 的非 scroll- 前綴、S3§4 的非導航錨點、S4§4.26 變體的 *Message key）；副作用：子集欄漏列新成員不會被本腳本發現'),  # i18n-exempt
+    'N4': ('W3-404（W3-392 遮罩複核）', 'SPEC-001 明文不承載錨點，S1 任一欄宣告不適用'),  # i18n-exempt
+    'N5': ('W3-404（W3-392 遮罩複核）', '§2.13 判準結論非 plain／withAction，或為動作文字 key、或不在 §2.13 對照表：無變體歸屬可比'),  # i18n-exempt
     'N2': ('W3-375 新判定', '畫面節分欄：key 只在觸發它的畫面節出現，改以「S3 §3.x 任一節出現」作行層檢查'),  # i18n-exempt
     'N3': ('W3-375 新判定', '通式錨點（含 *）為命名通則，具體成員各自成列於同矩陣，本欄不逐通式要求'),  # i18n-exempt
 }
 GAPS = []            # (矩陣, 成員, 位置)：無遮罩的未出現格
+WARNS = []           # 同上，警告等級：列出但不計入合計
 MASK_USED = Counter()
 
 
-def cell(matrix, member, col, present, mask=None):
-    """Y／~<id>／X 三態格值；X 同時登記為真缺漏。"""
+def cell(matrix, member, col, present, mask=None, warn=False):
+    """Y／~<id>／X（warn 時為 W）格值；X 登記為真缺漏，W 只登記警告。"""
     if present:
         return 'Y'
     if mask:
         MASK_USED[mask] += 1
         return '~' + mask
-    GAPS.append((matrix, member, col))
-    return 'X'
+    (WARNS if warn else GAPS).append((matrix, member, col))
+    return 'W' if warn else 'X'
+
+
+def gap_key(gap):
+    """基線比對鍵：與真缺漏清單輸出行字面（去除行首 '- '）一致。"""
+    m, member, col = gap
+    return f'[{m}] {member} x {col}'
 
 
 def row_has(ls, cell_prefix):
@@ -198,6 +212,45 @@ NOT_IN_S3_22 = {'chooseFolderUnavailableMessage', 'folderUnavailableMessage', 't
                 'ticketsFiltersClearedSnackbarMessage', 'undoAction'}
 SNACK_SCREEN_NODES = (1, 2, 4, 5, 6, 7)
 SNACK_ANY_SCREEN = 'S3§3.x 任一節'  # i18n-exempt
+ARB_LINES = open(ARB, encoding='utf-8').read().splitlines() if ARB.exists() else []
+KEY_TOKEN = re.compile(r'`([a-z][A-Za-z0-9]+)(?:\([^)]*\))?`')
+VARIANT_NAMES = ('plain', 'withAction')
+
+
+def derive_snack_keys():
+    """由規格推導 SnackBar key 聯集：§2.13 對照表首欄 key、§2.2 i18n 表的 *SnackbarMessage／*Action、4.26 變體的 *Action。"""
+    keys = set()
+    for cells in parse_table_rows(section(L3, r'^### 2\.13', 3), '#'):
+        if len(cells) > 1 and cells[1].startswith('`'):
+            keys.add(KEY_TOKEN.match(cells[1]).group(1))
+    for cells in parse_table_rows(section(L3, r'^### 2\.2 ', 3), 'key'):
+        k = cells[0].strip('`')
+        if k.endswith(('SnackbarMessage', 'Action')):
+            keys.add(k)
+    variants = sub(section(L4, r'^### 4\.26', 3), r'^#### 變體')  # i18n-exempt
+    keys |= {k for l in variants for k in KEY_TOKEN.findall(l) if k.endswith('Action')}
+    return keys - set(VARIANT_NAMES)  # withAction 是變體名，不是 i18n key
+
+
+def snack_keys_effective():
+    """矩陣列 = 寫死清單 ∪ 推導聯集（推導多出的成員也逐列核對）。"""
+    return SNACK_KEYS + sorted(derive_snack_keys() - set(SNACK_KEYS))
+
+
+def variant_conclusions():
+    """§2.13 對照表判準結論為 plain／withAction 者：key -> 結論集合。"""
+    out = {}
+    for cells in parse_table_rows(section(L3, r'^### 2\.13', 3), '#'):
+        if len(cells) > 6 and cells[1].startswith('`') and cells[6].strip('`') in VARIANT_NAMES:
+            out.setdefault(KEY_TOKEN.match(cells[1]).group(1), set()).add(cells[6].strip('`'))
+    return out
+
+
+def variant_consistent(variants_ls, key, conclusions):
+    """key 若在 4.26 變體表被具名，只能出現在其判準結論對應的變體列，且結論列必須有。"""
+    rows = {c[0].strip('`'): ' '.join(c) for c in parse_table_rows(variants_ls, '變體')}  # i18n-exempt
+    want = conclusions.get(key, set())
+    return all((f'`{key}`' in rows.get(v, '')) == (v in want) for v in VARIANT_NAMES)
 
 
 def snack_screen_cells(matrix, key):
@@ -217,28 +270,34 @@ def snack_matrix():
     variants = sub(s4_426, r'^#### 變體')  # i18n-exempt
     slots = sub(s4_426, r'^#### slot 契約')  # i18n-exempt
     i18n = sub(s4_426, r'^#### i18n')
-    head = ['key', 'S3§2.2', 'S3§2.13', 'S3§3.1', 'S3§3.2', 'S3§3.4', 'S3§3.5', 'S3§3.6', 'S3§3.7', 'S1§8.2', 'S4§4.26變體', 'S4§4.26slot', 'S4§4.26i18n', 'S4§4.0.6']  # i18n-exempt
+    union_406 = s4_406 + s3_22 + ARB_LINES
+    conclusions = variant_conclusions()
+    head = ['key', 'S3§2.2', 'S3§2.13', 'S3§3.1', 'S3§3.2', 'S3§3.4', 'S3§3.5', 'S3§3.6', 'S3§3.7', 'S1§8.2', 'S4§4.26變體', 'S4§4.26一致', 'S4§4.26slot', 'S4§4.26i18n', 'S4§4.0.6聯集']  # i18n-exempt
     print('| ' + ' | '.join(head) + ' |')
     print('|' + '---|' * len(head))
     m = 'B SnackBar'
-    for k in SNACK_KEYS:
+    for k in snack_keys_effective():
         mk = f'`{k}`'
         row = [mk,
                cell(m, mk, 'S3§2.2', has(s3_22, k), 'R9' if k in NOT_IN_S3_22 else None),
                cell(m, mk, 'S3§2.13', has(s3_213, k))]
         row += snack_screen_cells(m, k)
         row += [cell(m, mk, 'S1§8.2', False, 'R8'),
-                cell(m, mk, 'S4§4.26變體', has(variants, k), 'N1'),  # i18n-exempt
+                cell(m, mk, 'S4§4.26變體', has(variants, k), None if k.endswith('Action') else 'N1'),  # i18n-exempt
+                cell(m, mk, 'S4§4.26一致', variant_consistent(variants, k, conclusions), None if k in conclusions and has(variants, k) else 'N5'),  # i18n-exempt
                 cell(m, mk, 'S4§4.26slot', has(slots, k)),
                 cell(m, mk, 'S4§4.26i18n', has(i18n, k)),
-                cell(m, mk, 'S4§4.0.6', has(s4_406, k), 'N1')]
+                cell(m, mk, 'S4§4.0.6聯集', has(union_406, k))]  # i18n-exempt
         print('| ' + ' | '.join(row) + ' |')
 
 
 ANCHOR = re.compile(r'`((?:state|action|mode|scroll|drag|badge|panel|menu|option|card|cell|expander|input|nav|project)-[A-Za-z0-9<>\-_*.]+)`')
 PLACEHOLDER = re.compile(r'<[^>]+>')
 # R10：非互動錨點（佔位符正規化為 * 後）不入互動反應表。
-R10_ANCHORS = {'badge-domain-degraded-schema', 'badge-ucFlow-event-orphan-*', 'panel-ucFlow-event-flow', 'badge-switcher-health-*'}
+# 與 derive_r10()（規格中非狀態錨點的 badge-／panel-）比對，差異計入合計（W3-404 對齊，補入推導多出的 5 項）。
+R10_ANCHORS = {'badge-domain-degraded-schema', 'badge-ucFlow-event-orphan-*', 'panel-ucFlow-event-flow', 'badge-switcher-health-*',
+               'badge-gaps-builtin-path-pattern', 'badge-tickets-corrupted-*', 'badge-traceability-broken-*',
+               'panel-domain-cell-detail-empty', 'panel-domain-schema-detail'}
 CONTRACT_BACK = re.compile(r'^action-[A-Za-z]+-back$')
 # R2 適用的 state 錨點（阻擋三態、空圖、正常類、專案未就緒），與 state_mask 的 R2 判定同源。
 R2_STATE_ANCHORS = {anc for _, name, anc in STATES
@@ -246,10 +305,23 @@ R2_STATE_ANCHORS = {anc for _, name, anc in STATES
                     or anc in BLOCKED_ANCHORS or anc.endswith('-project-unready')}
 
 
+NAV_ANCHORS = set()   # anchor_matrix 填入：S3 §3.x〈導航跳轉與退出〉出現的錨點（S3§4 欄的檢查對象）
+# S3§4 欄排除：殼層導航三出口（SPEC-003 殼層通則承載）與標明外部動作者不屬 §4 導航反應欄。
+NAV_EXCLUDE_PREFIX = ('nav-item-', 'nav-page-')
+NAV_EXCLUDE_EXTERNAL = re.compile(r'^action-[A-Za-z]+-open-')
+
+
 def anchor_mask(col, a):
     """錨點矩陣某欄的合理不出現遮罩 id；無則 None。"""
-    if col in ('S3§1.1', 'S3§1.4', 'S3§4', 'S1任一'):  # i18n-exempt
-        return 'N1'
+    if col == 'S3§1.1':  # i18n-exempt
+        return None if a.startswith('scroll-') else 'N1'
+    if col == 'S3§1.4':  # i18n-exempt
+        return None if a.startswith(('expander-', 'menu-')) else 'N1'
+    if col == 'S3§4':  # i18n-exempt
+        excluded = a.startswith(NAV_EXCLUDE_PREFIX) or NAV_EXCLUDE_EXTERNAL.match(a)
+        return None if a in NAV_ANCHORS and not excluded else 'N1'
+    if col == 'S1任一':  # i18n-exempt
+        return 'N4'
     if col == 'S3互動':  # i18n-exempt
         if a in R10_ANCHORS:
             return 'R10'
@@ -270,18 +342,43 @@ ANCHOR_COLS = ['S3互動', 'S3§1.1', 'S3§1.4', 'S3§4', 'S3任一', 'S4任一'
 ANCHOR_SKIP = ('nav-item-', 'nav-page-', 'nav-item-*','nav-page-*', 'state-*', 'mode-*', 'scroll-*', 'expander-*', 'state-*-*')
 
 
+def collect(ls):
+    s = set()
+    for l in ls:
+        for a in ANCHOR.findall(l):
+            a = a.rstrip('.')
+            if '<screen>' not in a:
+                s.add(PLACEHOLDER.sub('*', a))  # <itemId> 與 * 視為同一通式錨點
+    return s
+
+
+def derive_r10():
+    """由規格推導非互動錨點：badge-／panel- 前綴、不是狀態錨點（STATES）者。"""
+    state_anchors = {anc for _, _, anc in STATES}
+    found = collect(L1) | collect(L3) | collect(L4)
+    return {a for a in found if a.startswith(('badge-', 'panel-')) and a not in state_anchors and a not in ANCHOR_SKIP}
+
+
+def authority_diffs():
+    """SNACK_KEYS、R10_ANCHORS 寫死清單與規格推導值的對稱差；逐項印出並回傳項數。"""
+    diffs = 0
+    for label, pinned, derived in (('SNACK_KEYS', set(SNACK_KEYS), derive_snack_keys()),
+                                   ('R10_ANCHORS', set(R10_ANCHORS), derive_r10())):
+        for name in sorted(derived - pinned):
+            print(f'- [權威表差] {label}：規格推導有、寫死清單缺 `{name}`')  # i18n-exempt
+            diffs += 1
+        for name in sorted(pinned - derived):
+            print(f'- [權威表差] {label}：寫死清單有、規格推導缺 `{name}`')  # i18n-exempt
+            diffs += 1
+    print(f'權威表推導對稱差：{diffs}')  # i18n-exempt
+    return diffs
+
+
 def anchor_matrix():
-    def collect(ls):
-        s = set()
-        for l in ls:
-            for a in ANCHOR.findall(l):
-                a = a.rstrip('.')
-                if '<screen>' not in a:
-                    s.add(PLACEHOLDER.sub('*', a))  # <itemId> 與 * 視為同一通式錨點
-        return s
     s3_int = set()
     for n in range(1, 8):
         s3_int |= collect(sub(section(L3, rf'^### 3\.{n} ', 3), r'互動反應'))  # i18n-exempt
+        NAV_ANCHORS.update(collect(sub(section(L3, rf'^### 3\.{n} ', 3), r'導航跳轉與退出')))  # i18n-exempt
     s3_all, s4_all, s1_all = collect(L3), collect(L4), collect(L1)
     sets = [s3_int, collect(section(L3, r'^### 1\.1 ', 3)), collect(section(L3, r'^### 1\.4 ', 3)),
             collect(section(L3, r'^## 4\. ', 2)), s3_all, s4_all, s1_all]
@@ -291,7 +388,7 @@ def anchor_matrix():
     for a in sorted(s3_all | s4_all | s1_all):
         if a in ANCHOR_SKIP:
             continue
-        row = [cell('C 錨點', f'`{a}`', c, a in st, anchor_mask(c, a)) for c, st in zip(ANCHOR_COLS, sets)]  # i18n-exempt
+        row = [cell('C 錨點', f'`{a}`', c, a in st, anchor_mask(c, a), warn=(c == 'S3§1.4')) for c, st in zip(ANCHOR_COLS, sets)]  # i18n-exempt
         print('| ' + ' | '.join([f'`{a}`'] + row) + ' |')
 
 
@@ -343,16 +440,49 @@ def state_set_check():
     return diffs
 
 
-def summary(state_diffs):
-    print('\n## 真缺漏清單（成員 x 位置）\n')  # i18n-exempt
-    for m, member, col in GAPS:
-        print(f'- [{m}] {member} x {col}')
+def load_baseline():
+    """讀 baseline.tsv（欄位 key／ticket／note，ticket 必填）；回傳 (key -> ticket, 欄位不全的列描述)。"""
+    entries, bad = {}, []
+    if not BASELINE.exists():
+        return entries, bad
+    for no, raw in enumerate(open(BASELINE, encoding='utf-8'), 1):
+        line = raw.rstrip('\n')
+        if not line.strip() or line.startswith('#') or line.startswith('key\t'):
+            continue
+        f = line.split('\t')
+        key, ticket = f[0].strip(), (f[1].strip() if len(f) > 1 else '')
+        if not key or not ticket:
+            bad.append(f'baseline.tsv 第 {no} 列 ticket 欄缺漏：{key or line!r}')  # i18n-exempt
+        entries[key] = ticket
+    return entries, bad
+
+
+def summary(state_diffs, auth_diffs):
+    """輸出真缺漏（基線外）、基線狀態與合計；回傳 exit code（0／1／2）。"""
+    baseline, bad = load_baseline()
+    current = {gap_key(g) for g in GAPS}
+    new = [g for g in GAPS if gap_key(g) not in baseline]
+    stale = sorted(k for k in baseline if k not in current)
+    print('\n## 真缺漏清單（成員 x 位置；基線外）\n')  # i18n-exempt
+    for g in new:
+        print(f'- {gap_key(g)}')
+    print('\n## 警告（不計入合計）\n')  # i18n-exempt
+    for g in WARNS:
+        print(f'- {gap_key(g)}')
+    print('\n## 基線（baseline.tsv）\n')  # i18n-exempt
+    print(f'基線列數：{len(baseline)}；命中：{len(baseline) - len(stale)}；過期：{len(stale)}；欄位不全：{len(bad)}')  # i18n-exempt
+    for k in stale:
+        print(f'- [基線過期] {k}（ticket {baseline[k] or "-"}）')  # i18n-exempt
+    for msg in bad:
+        print(f'- [基線欄位不全] {msg}')  # i18n-exempt
     print('\n## 遮罩使用（id：次數：出處：理由）\n')  # i18n-exempt
     for k in sorted(MASK_USED, key=lambda x: (x[0], int(x[1:]))):
         print(f'- {k}：{MASK_USED[k]}：{MASKS[k][0]}：{MASKS[k][1]}')  # i18n-exempt
-    total = len(GAPS) + state_diffs
-    print(f'\n真缺漏數：{len(GAPS)}；狀態集合對稱差：{state_diffs}；合計：{total}（大於 0 則 exit 1）')  # i18n-exempt
-    return total
+    total = len(new) + state_diffs + auth_diffs
+    code = 1 if total else (2 if stale or bad else 0)
+    print(f'\n真缺漏數（基線外）：{len(new)}；基線內：{len(GAPS) - len(new)}；狀態集合對稱差：{state_diffs}；'  # i18n-exempt
+          f'權威表推導對稱差：{auth_diffs}；合計：{total}；exit={code}（0 乾淨／1 新缺漏或漂移／2 基線過期或不全）')  # i18n-exempt
+    return code
 
 
 if __name__ == '__main__':
@@ -363,4 +493,6 @@ if __name__ == '__main__':
     print('\n## C. 錨點 x 位置\n')  # i18n-exempt
     anchor_matrix()
     print('\n## D. 狀態集合相等檢查\n')  # i18n-exempt
-    sys.exit(1 if summary(state_set_check()) else 0)
+    state_diffs = state_set_check()
+    print('\n## E. 權威表推導對稱差\n')  # i18n-exempt
+    sys.exit(summary(state_diffs, authority_diffs()))
