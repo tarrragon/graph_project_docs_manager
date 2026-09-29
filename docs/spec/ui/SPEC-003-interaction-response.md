@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.41"
+version: "1.42"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -244,10 +244,10 @@ gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 stat
 | 不發送 | 掃描被取消（§2.5 C5：取消完成不通知）；切換專案中止掃描（§2.8 L2）；掃描未抵達完成態；同一次掃描結果已發送過（見「不重複發送」列） |
 | 通知內容 | 標題 `scanCompleteNotificationTitle`；內文依結果二擇一：`state-gaps-found` → `scanCompleteNotificationBody`（placeholder `count`，型別 `int`，值為破洞總數）、`state-gaps-none` → `scanCompleteNoGapsNotificationBody`、`state-gaps-undeterminable` → `scanCompleteUndeterminableNotificationBody`（三擇一；key 見本節文案表，`0.3.0-W1-082` 起，內文須明示「無法判定」而非沿用無破洞文案，理由同 SPEC-001 §5〈無法判定破洞〉成列註記）。不含檔案路徑、不含逐項明細（明細由畫面承載；含關鍵資訊的結果不走自動消失的通道）；不附通知動作按鈕，唯一互動是點擊通知本體 |
 | 點擊通知的導向 | App 於收到點擊時自行前景化（原生 `NSApp.unhide` 並 `activate`，NSLog 記錄前後 `isHidden`／`isActive`；實機顯示系統不替已隱藏的執行中 App 前景化，`0.3.1-W1-097`），再執行 rail 語意切換至 `nav-page-gaps`（`returnTo` 設為 `null`，§2.3 規則 1），並依 SPEC-004 §1 回饋通道子表 locate 列定位：`state-gaps-found` → `scroll-gaps-sections` scroll-into-view 至第一個分節的第一個 `card-gaps-<itemId>` 並短暫高亮、焦點移入該項（高亮 token 與時長由 SPEC-004 第 4 章對應容器條目定義）；`state-gaps-none` → 焦點移入 `state-gaps-none` 根節點，不高亮；`state-gaps-undeterminable` → 焦點移入 `state-gaps-undeterminable` 根節點，不高亮。點擊時若已進入新一輪 `state-gaps-scanning`，只切頁、顯示當時進度、不定位；若專案已切換（結果已清空），只切頁、不定位。點擊路徑必須依序產生 `developer.log` 事件（前綴 `click-path:`）：`activated`（含狀態型別）、`navigate`（目的頁與 `returnTo`）、`locate-set`（含 `itemId`；不定位時為 `locate-skip`）、`locate-scroll`（捲動完成後記錄，含 `visible`：目標項與 viewport 是否相交）、`locate-focus`（下一幀記錄實際 `hasFocus`，已卸載則記 `unmounted`），測試以日誌 sink 斷言順序 |
-| 不重複發送 | 每一次掃描完成至多發送一則；同一結果不因視窗前景／背景往返而再發。以下事件由 App 撤回尚未被點擊的通知：使用者自行回到 `nav-page-gaps`（結果已被看見）、新一輪掃描開始（舊結果已判定待汰換，與 §3.5「重新掃描」列同一理由）、切換專案（§2.8 L2）。撤回失敗不阻擋、不轉狀態，只記 log |
+| 不重複發送 | 每一次掃描完成至多發送一則；同一結果不因視窗前景／背景往返而再發。以下事件由 App 撤回尚未被點擊的通知：結果已被看見——以 §2.13 判準 T1 的可見式（`AppLifecycleState == resumed` AND `selectedDestinationProvider == AppDestination.gaps`）為準，於兩個時刻判定：(i) 導覽切換進入 `nav-page-gaps`；(ii) App 回到前景（生命週期轉為 `resumed`）當下可見頁已是 `nav-page-gaps`（`0.3.2-W1-005`，用戶裁決 2026-09-29；短暫經過本 App 若產生 `resumed` 亦撤回，代價僅為通知中心少一則紀錄，結果仍在畫面上）——、新一輪掃描開始（舊結果已判定待汰換，與 §3.5「重新掃描」列同一理由）、切換專案（§2.8 L2）。撤回失敗不阻擋、不轉狀態，只記 log |
 | 權限 gate | 見下方三路徑表。授權狀態於**每次**觸發條件成立時重新查詢（使用者可在系統設定隨時改動，不快取上一次結果） |
 | 等待指示 | 發送與撤回期間不顯示任何等待指示：兩者皆為非同步旁路動作，不改變畫面狀態，畫面已依 §3.5 完成掃描中 → 結果的 cross-fade |
-| 可觀測性 | 授權查詢入口與結果、授權請求入口與結果、發送與撤回的入口與成功／失敗，皆以 `developer.log`（info；失敗為 warning）記錄，含破洞總數與觸發原因（非前景／已離開頁）（observability 規則 5：權限 check／request 與平台 API 呼叫逐點記錄） |
+| 可觀測性 | 授權查詢入口與結果、授權請求入口與結果、發送與撤回的入口與成功／失敗，皆以 `developer.log`（info；失敗為 warning）記錄，含破洞總數與觸發原因（非前景／已離開頁）；撤回另記觸發條件（`destination`：導覽切換進入 `nav-page-gaps`／`lifecycle`：回到前景時可見頁已是 `nav-page-gaps`／`rescan`／`projectSwitch`）與撤回後仍在通知中心的本 App 通知數（結果值，取自原生端撤回後的已遞送通知查詢）（observability 規則 5：權限 check／request 與平台 API 呼叫逐點記錄） |
 
 **權限 gate 三路徑**（gate-fallback：每道 gate 必答成功／失敗／不確定）：
 
@@ -295,6 +295,8 @@ abstract class ScanNotifier {
 | 掃描完成時已切至 `nav-page-tickets`，fake 回 `granted` | `show` 恰一次，`gapCount` 等於假資料破洞數；`authorizationStatus` 在 `show` 之前被呼叫 |
 | 上一情境後視窗背景 → 前景往返兩次 | `show` 仍為一次 |
 | 上一情境後點 `nav-item-gaps` | `withdraw` 恰一次 |
+| 掃描完成時視窗非前景、可見頁為 `nav-page-gaps`，fake 回 `granted`；之後模擬 `resumed` | `show` 恰一次；`resumed` 後 `withdraw` 恰一次，觸發條件日誌為 `lifecycle`（`0.3.2-W1-005`） |
+| 掃描完成時視窗非前景、可見頁為 `nav-page-tickets`，fake 回 `granted`；之後模擬 `resumed`（正向對照） | `show` 恰一次；`resumed` 後 `withdraw` 為 0 |
 | 上一情境後點 `action-gaps-rescan` | `withdraw` 恰一次；新一輪完成且條件成立時 `show` 累計兩次 |
 | fake 回 `denied`，視窗前景、可見頁為 `nav-page-tickets` | `show` 為 0、`requestAuthorization` 為 0；SnackBar 文字等於 `scanCompleteSnackbarMessage` 帶入破洞數的值，動作文字等於 `viewGapsAction` |
 | fake 回 `denied`，視窗非前景 | 完成當下 `findsNothing`；模擬 `resumed` 後 SnackBar 出現 |
@@ -332,7 +334,7 @@ Test Results。
 | 未簽章 build 的首次授權請求回應 | **未量到**：本機在第一輪量測前已存有本 bundle id 的「不允許」使用者記錄，`notDetermined` 已不可達，`requestAuthorization` 從未被呼叫。`~/Library/Preferences/com.apple.ncprefs.plist` 不是本機 macOS 版本存放此記錄之處，不可作為「是否已請求過」的判據；以「系統設定 → 通知」清單為準 |
 | Flutter 端載體 | 原生 `MethodChannel`（`macos/Runner/AppDelegate.swift` + `lib/services/macos_scan_notifier.dart`），無第三方套件；channel 於啟動時註冊並存活至 runtime，授權查詢、發送、撤回、點擊回傳四條路徑皆實測通過 |
 | `AppLifecycleState` 對應 | `inactive` 為過渡態而非可停留狀態：離開前景（失焦、最小化或隱藏）一律 `resumed → inactive → hidden`，返回一律 `hidden → inactive → resumed`，兩段間隔 0–531 ms 不具語意；失焦與最小化在此值上不可區分。以 `inactive` 為判斷分支的邏輯在 macOS 上為死碼 |
-| 撤回 API | `removeDeliveredNotifications(withIdentifiers:)`：通知中心收合狀態下撤回後，該則通知自通知中心消失。App 回到前景但未發生導覽切換（本就停在 `nav-page-gaps`）時不撤回，是否應撤回由 `0.3.2-W1-005` 釐清 |
+| 撤回 API | `removeDeliveredNotifications(withIdentifiers:)`：通知中心收合狀態下撤回後，該則通知自通知中心消失。量測當時的實作在 App 回到前景但未發生導覽切換（本就停在 `nav-page-gaps`）時不撤回；此為規格歧義所致，`0.3.2-W1-005` 已裁決應撤回（見「不重複發送」列時刻 (ii)），實作由承接票落地 |
 | 點擊通知的前景化 | 系統**不會**替已隱藏的執行中 App 前景化（單一實例實測），由 App 自行承擔，見「點擊通知的導向」列 |
 
 **量測前置條件**（下次實機驗證沿用）：同一 bundle id 的執行中實例數為 1，且
@@ -1987,7 +1989,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 首次可見但圖未建立 | 不自動掃描；渲染 `state-gaps-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）；圖建立完成後依「首次可見且圖已建立」列重新判定 |
 | 再次可見 | 有既有結果時**不重新掃描**，顯示既有結果，要重掃須按 `action-gaps-rescan`；無既有結果（上一輪被取消）時自動進入 `state-gaps-scanning`（`0.1.0-W3-335.38` S-30） |
 | 掃描中切至其他導覽項 | 掃描繼續（見 §2.8 L1）；回來時顯示當時進度 |
-| 掃描完成時視窗非前景或已離開本頁 | 依 §2.2「系統層通知」發送（權限 `denied` 時走 App 內 SnackBar fallback）；使用者回到本頁時撤回未點擊的通知 |
+| 掃描完成時視窗非前景或已離開本頁 | 依 §2.2「系統層通知」發送（權限 `denied` 時走 App 內 SnackBar fallback）；結果已被看見時撤回未點擊的通知（導覽切換進入本頁，或 App 回到前景時可見頁已是本頁；判定見 §2.2「不重複發送」列） |
 | 切換專案 | 中止掃描；結果清空；下次可見時依「首次可見但圖未建立」與「首次可見且圖已建立」兩列判定；撤回未點擊的系統通知 |
 
 ### 3.6 節點詳情（`nav-page-nodeDetail`）
@@ -2277,7 +2279,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P1 |
-| 驗收 | §2.2「系統層通知」測試斷言表十二列全部成立：觸發條件（非前景或已離開頁）成立才發送、每次掃描至多一則、回頁／重掃／切換專案撤回、權限三路徑各走對應 fallback、點擊通知切頁並定位 |
+| 驗收 | §2.2「系統層通知」測試斷言表各列全部成立：觸發條件（非前景或已離開頁）成立才發送、每次掃描至多一則、回頁（導覽切換或回到前景時已在頁）／重掃／切換專案撤回、權限三路徑各走對應 fallback、點擊通知切頁並定位 |
 
 ### FR-12: 第一層回饋不因服務狀態而免除（INV-FEEDBACK-001）
 
@@ -2346,6 +2348,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.42 | 2026-09-29 | §2.2 系統層通知「不重複發送」列的撤回事件消除歧義（`0.3.2-W1-005`，用戶裁決 2026-09-29 候選 B）：原「使用者自行回到 `nav-page-gaps`」可讀為導覽切換或可見狀態成立兩種；改以 §2.13 判準 T1 可見式為準，於導覽切換進入 gaps 與 App 回到前景時可見頁已是 gaps 兩個時刻判定。「可觀測性」列補撤回觸發條件與撤回後仍在通知中心的通知數；測試斷言表補回前景撤回與非 gaps 正向對照兩列；「撤回 API」實測列改記量測當時行為與裁決；§3.5 生命週期表與 FR 驗收列同步措辭，驗收列移除寫死的列數 |
 | 1.41 | 2026-09-29 | §2.2 系統層通知兩處：(1)「點擊通知的導向」列改為 App 自行前景化（原生 unhide＋activate 並 NSLog 前後狀態），點擊路徑日誌改記結果值（`0.3.1-W1-097`；該票合併時未升版，於本版補記）；(2)「實作票驗證」段由待驗清單改為實測記錄表（`0.3.1-W1-028`）：兩種簽章的 debug build 可用、授權狀態依 bundle id 保存與簽章無關、未簽章首次請求回應未量到及原因、ncprefs.plist 不可作判據、載體為原生 MethodChannel、`inactive` 為過渡態、撤回 API 在收合狀態有效、系統不替已隱藏 App 前景化，並補量測前置條件（單一實例、單一 LaunchServices 登記、非權限類以日誌或測試驗證）。Developer ID 可用性轉 `1.0.0-W1-027` |
 | 1.40 | 2026-09-29 | 系統通知發送失敗的 fallback（`0.3.1-W3-113`，用戶裁決 2026-09-29：`show` 改回傳結果列舉）：§2.2 權限 gate 表新增「`granted` 但發送失敗」列，fallback 同 `denied` 列且不列入撤回對象；介面新增 `enum ScanNotificationDelivery { delivered, failed }`，`show` 改回傳該型別，介面後說明段補發送錯誤的收斂方式；測試斷言表新增三列（`failed` 前景、`delivered` 對照組、`failed` 非前景）；〈兩個 port 的三時刻覆蓋〉`show` 列結果欄改寫，設計選擇段拆為 `withdraw`（維持 `void`）與 `show`（前提失效、已改回傳）兩段 |
 | 1.39 | 2026-09-24 | 對齊 SPEC-001 v1.21（`0.3.0-W1-082`，SPEC-006 FR-06 規則 7／FR-08）：§2.4 推定版本徽章段後新增路徑模式來源徽章 `badge-gaps-builtin-path-pattern` 段（只在 `nav-page-gaps`、自動生效、共存與互斥關係）；§2.2 系統層通知觸發條件、通知內容（新增 `scanCompleteUndeterminableNotificationBody` 分支）、點擊導向補 `state-gaps-undeterminable`，權限 `denied` fallback 與提示仲裁表列 3 補 `scanCompleteUndeterminableSnackbarMessage`，文案表新增兩 key；§3.5 重新掃描列、〈導航跳轉與退出〉掃描中列補第三落點並新增「無法判定破洞」列；§4 第 21 列補第三落點、新增第 40 列 `state-gaps-undeterminable`。狀態數字 39 → 40 同步四處（§0 概述、§4 標題與覆蓋完整性算式、FR-01 驗收）與設計約束一處 |
