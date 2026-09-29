@@ -17,6 +17,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
@@ -27,9 +28,26 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_fixtu
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
+import '../../helpers/stub_workspace_repository.dart';
+
+/// 讓經 shell 啟動的測試抵達 DomainReady：restore 回 Ready，gate 訊號齊備
+/// 且版本等於（覆寫的）內建版本。
+List<Override> _readyGateOverrides() => [
+  workspaceRepositoryProvider.overrideWithValue(
+    StubWorkspaceRepository(const WorkspaceReady('/ws')),
+  ),
+  frameworkSignalProbeProvider.overrideWithValue(
+    const StubFrameworkSignalProbe(version: '0.0.1', schemaJson: true),
+  ),
+  builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+];
 
 void main() {
   group('未選專案 state-domain-unset', () {
@@ -266,43 +284,41 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets(
-      'action-domain-select-<domainId> 點列首 → selectedDomainId 改變，'
-      '與矩陣模式共用同一選中值',
-      (tester) async {
-        final container = await pumpHarness(
-          tester,
-          child: const DomainViewScreen(),
-          overrides: [
-            domainViewStateProvider.overrideWith(
-              (ref) => const DomainReady(mode: DomainMode.swimlane),
-            ),
-            selectedUcProvider.overrideWith((ref) => 'UC-02'),
-          ],
-        );
+    testWidgets('action-domain-select-<domainId> 點列首 → selectedDomainId 改變，'
+        '與矩陣模式共用同一選中值', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainReady(mode: DomainMode.swimlane),
+          ),
+          selectedUcProvider.overrideWith((ref) => 'UC-02'),
+        ],
+      );
 
-        var state = container.read(domainViewStateProvider) as DomainReady;
-        expect(state.selectedDomainId, isNull);
+      var state = container.read(domainViewStateProvider) as DomainReady;
+      expect(state.selectedDomainId, isNull);
 
-        await tester.tap(find.byKey(const Key('action-domain-select-graph')));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('action-domain-select-graph')));
+      await tester.pumpAndSettle();
 
-        state = container.read(domainViewStateProvider) as DomainReady;
-        expect(state.selectedDomainId, 'graph');
+      state = container.read(domainViewStateProvider) as DomainReady;
+      expect(state.selectedDomainId, 'graph');
 
-        // 矩陣與泳道共用同一 domainViewStateProvider：模式切換不重置
-        // selectedDomainId（頁首 SegmentedControl 由 lib/app/shell.dart 接線，
-        // 不在 DomainViewScreen 樹內，此處直接切換 mode 驗證同一 provider
-        // 承載的值不因模式切換清除）。
-        container.read(domainViewStateProvider.notifier).state = state
-            .copyWith(mode: DomainMode.matrix);
-        await tester.pumpAndSettle();
+      // 矩陣與泳道共用同一 domainViewStateProvider：模式切換不重置
+      // selectedDomainId（頁首 SegmentedControl 由 lib/app/shell.dart 接線，
+      // 不在 DomainViewScreen 樹內，此處直接切換 mode 驗證同一 provider
+      // 承載的值不因模式切換清除）。
+      container.read(domainViewStateProvider.notifier).state = state.copyWith(
+        mode: DomainMode.matrix,
+      );
+      await tester.pumpAndSettle();
 
-        state = container.read(domainViewStateProvider) as DomainReady;
-        expect(state.mode, DomainMode.matrix);
-        expect(state.selectedDomainId, 'graph');
-      },
-    );
+      state = container.read(domainViewStateProvider) as DomainReady;
+      expect(state.mode, DomainMode.matrix);
+      expect(state.selectedDomainId, 'graph');
+    });
   });
 
   group('泳道 · 尚未選定 UC state-domain-swimlane-uc-unset', () {
@@ -483,47 +499,41 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets(
-      'VERSION 不高於內建型別表版本 → action-domain-degraded-view 按下後轉為降級檢視',
-      (tester) async {
-        final container = await pumpHarness(
-          tester,
-          child: const DomainViewScreen(),
-          overrides: [
-            domainViewStateProvider.overrideWith(
-              (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
-            ),
-          ],
-        );
+    testWidgets('VERSION 不高於內建型別表版本 → action-domain-degraded-view 按下後轉為降級檢視', (
+      tester,
+    ) async {
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
+          ),
+        ],
+      );
 
-        expect(
-          find.byKey(const Key('action-domain-degraded-view')),
-          findsOneWidget,
-        );
+      expect(
+        find.byKey(const Key('action-domain-degraded-view')),
+        findsOneWidget,
+      );
 
-        await tester.tap(
-          find.byKey(const Key('action-domain-degraded-view')),
-        );
-        await tester.pump();
+      await tester.tap(find.byKey(const Key('action-domain-degraded-view')));
+      await tester.pump();
 
-        final state = container.read(domainViewStateProvider);
-        expect(state, isA<DomainReady>());
-        expect((state as DomainReady).isDegraded, isTrue);
-        expect(
-          AnchorFinder.state(Screen.domain, 'matrix'),
-          findsOneWidget,
-        );
+      final state = container.read(domainViewStateProvider);
+      expect(state, isA<DomainReady>());
+      expect((state as DomainReady).isDegraded, isTrue);
+      expect(AnchorFinder.state(Screen.domain, 'matrix'), findsOneWidget);
 
-        // 寫入端接線（0.1.0-W2-014）：觸發降級檢視時，app 層旗標與版本
-        // 文字須同步寫入——此斷言在寫入端未接線時應翻紅（旗標維持預設
-        // 值 false / null）。
-        expect(container.read(degradedSchemaProvider), isTrue);
-        final versions = container.read(degradedSchemaVersionsProvider);
-        expect(versions, isNotNull);
-        expect(versions!.projectVersion, '0.0.3');
-        expect(versions.builtinVersion, isNotEmpty);
-      },
-    );
+      // 寫入端接線（0.1.0-W2-014）：觸發降級檢視時，app 層旗標與版本
+      // 文字須同步寫入——此斷言在寫入端未接線時應翻紅（旗標維持預設
+      // 值 false / null）。
+      expect(container.read(degradedSchemaProvider), isTrue);
+      final versions = container.read(degradedSchemaVersionsProvider);
+      expect(versions, isNotNull);
+      expect(versions!.projectVersion, '0.0.3');
+      expect(versions.builtinVersion, isNotEmpty);
+    });
 
     testWidgets('VERSION 高於內建型別表版本 → 不提供 action-domain-degraded-view', (
       tester,
@@ -548,43 +558,38 @@ void main() {
       );
     });
 
-    testWidgets(
-      '以現行 .claude/VERSION 實值為底、次版號 +1 驅動：高於內建資產版本時不提供降級出口'
-      '（0.1.0-W2-012：防止只用遠低於門檻的 fixture 值掩蓋真實漂移；'
-      '0.3.0-W2-001 起 builtin_schema_version.json 與現行 VERSION 同步，'
-      '直接讀 VERSION 已不保證嚴格高於內建版本，改以其為底再遞增確保恆高於）',
-      (tester) async {
-        final liveVersion = File(
-          '.claude/VERSION',
-        ).readAsStringSync().trim();
-        final segments = liveVersion.split('.').map(int.parse).toList();
-        segments[1] += 1;
-        final higherThanBuiltinVersion = segments.join('.');
+    testWidgets('以現行 .claude/VERSION 實值為底、次版號 +1 驅動：高於內建資產版本時不提供降級出口'
+        '（0.1.0-W2-012：防止只用遠低於門檻的 fixture 值掩蓋真實漂移；'
+        '0.3.0-W2-001 起 builtin_schema_version.json 與現行 VERSION 同步，'
+        '直接讀 VERSION 已不保證嚴格高於內建版本，改以其為底再遞增確保恆高於）', (tester) async {
+      final liveVersion = File('.claude/VERSION').readAsStringSync().trim();
+      final segments = liveVersion.split('.').map(int.parse).toList();
+      segments[1] += 1;
+      final higherThanBuiltinVersion = segments.join('.');
 
-        await pumpHarness(
-          tester,
-          child: const DomainViewScreen(),
-          overrides: [
-            domainViewStateProvider.overrideWith(
-              (ref) =>
-                  DomainSchemaUnconsumable(version: higherThanBuiltinVersion),
-            ),
-          ],
-        );
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) =>
+                DomainSchemaUnconsumable(version: higherThanBuiltinVersion),
+          ),
+        ],
+      );
 
-        // 以現行 .claude/VERSION 次版號 +1 的版本，保證高於內建資產版本
-        // （assets/schema/builtin_schema_version.json，見同名 provider），
-        // SPEC-001 §1／SPEC-003 §3.1 此時不提供降級出口。
-        expect(
-          find.byKey(const Key('action-domain-degraded-view')),
-          findsNothing,
-        );
-        expect(
-          find.byKey(const Key('action-domain-switch-project')),
-          findsOneWidget,
-        );
-      },
-    );
+      // 以現行 .claude/VERSION 次版號 +1 的版本，保證高於內建資產版本
+      // （assets/schema/builtin_schema_version.json，見同名 provider），
+      // SPEC-001 §1／SPEC-003 §3.1 此時不提供降級出口。
+      expect(
+        find.byKey(const Key('action-domain-degraded-view')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('action-domain-switch-project')),
+        findsOneWidget,
+      );
+    });
   });
 
   group('schema 不相容 state-domain-schema-incompatible', () {
@@ -664,39 +669,37 @@ void main() {
       },
     );
 
-    testWidgets(
-      'projectVersion 非 null（版本太新）→ 本體照舊顯示 schemaIncompatibleMessage'
-      '（0.3.0-W3-542）',
-      (tester) async {
-        await pumpHarness(
-          tester,
-          child: const DomainViewScreen(),
-          overrides: [
-            domainViewStateProvider.overrideWith(
-              (ref) => const DomainSchemaIncompatible(
-                appVersion: '2.60.1',
-                projectVersion: '9.99.9',
-              ),
+    testWidgets('projectVersion 非 null（版本太新）→ 本體照舊顯示 schemaIncompatibleMessage'
+        '（0.3.0-W3-542）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainSchemaIncompatible(
+              appVersion: '2.60.1',
+              projectVersion: '9.99.9',
             ),
-          ],
-        );
+          ),
+        ],
+      );
 
-        final l10n = AppLocalizations.of(
-          tester.element(find.byType(DomainViewScreen)),
-        );
-        expect(
-          find.text(l10n.schemaIncompatibleMessage('2.60.1', '9.99.9')),
-          findsOneWidget,
-        );
-      },
-    );
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(DomainViewScreen)),
+      );
+      expect(
+        find.text(l10n.schemaIncompatibleMessage('2.60.1', '9.99.9')),
+        findsOneWidget,
+      );
+    });
   });
 
   group('頁首模式切換（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
     testWidgets('mode-domain-swimlane → 切至泳道；mode-domain-matrix → 切回矩陣', (
       tester,
     ) async {
-      await pumpApp(tester);
+      // 啟動改寫（0.3.3-W3-398）：注入 Ready 替身，gate 判 DomainReady。
+      await pumpApp(tester, overrides: _readyGateOverrides());
 
       expect(find.byKey(const Key('mode-domain-matrix')), findsOneWidget);
       expect(find.byKey(const Key('mode-domain-swimlane')), findsOneWidget);
@@ -727,43 +730,41 @@ void main() {
   });
 
   group('降級旗標寫入端真實執行路徑（0.1.0-W2-014）', () {
-    testWidgets(
-      '真實 App（非 degradedSchemaProvider override）：觸發降級檢視後'
-      'badge-domain-degraded-schema 可見，徽章文字含兩個版本值',
-      (tester) async {
-        // 僅覆寫 domainViewStateProvider 以抵達「無可消費的型別表」列，
-        // 與同檔其餘測試同一慣例；degradedSchemaProvider /
-        // degradedSchemaVersionsProvider 完全不覆寫，走真實寫入路徑。
-        await pumpApp(
-          tester,
-          overrides: [
-            domainViewStateProvider.overrideWith(
-              (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
-            ),
-          ],
-        );
+    testWidgets('真實 App（非 degradedSchemaProvider override）：觸發降級檢視後'
+        'badge-domain-degraded-schema 可見，徽章文字含兩個版本值', (tester) async {
+      // 僅覆寫 domainViewStateProvider 以抵達「無可消費的型別表」列，
+      // 與同檔其餘測試同一慣例；degradedSchemaProvider /
+      // degradedSchemaVersionsProvider 完全不覆寫，走真實寫入路徑。
+      await pumpApp(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(
+            StubWorkspaceRepository(const WorkspaceReady('/ws')),
+          ),
+          frameworkSignalProbeProvider.overrideWithValue(
+            const StubFrameworkSignalProbe(version: '0.0.3', schemaJson: false),
+          ),
+        ],
+      );
 
-        expect(
-          find.byKey(const Key('badge-domain-degraded-schema')),
-          findsNothing,
-        );
+      expect(
+        find.byKey(const Key('badge-domain-degraded-schema')),
+        findsNothing,
+      );
 
-        await tester.tap(
-          find.byKey(const Key('action-domain-degraded-view')),
-        );
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('action-domain-degraded-view')));
+      await tester.pumpAndSettle();
 
-        expect(
-          find.byKey(const Key('badge-domain-degraded-schema')),
-          findsOneWidget,
-        );
+      expect(
+        find.byKey(const Key('badge-domain-degraded-schema')),
+        findsOneWidget,
+      );
 
-        final label = tester
-            .widget<Badge>(find.byKey(const Key('badge-domain-degraded-schema')))
-            .label;
-        expect(label, contains('0.0.3'));
-      },
-    );
+      final label = tester
+          .widget<Badge>(find.byKey(const Key('badge-domain-degraded-schema')))
+          .label;
+      expect(label, contains('0.0.3'));
+    });
   });
 
   group('假資料一致性（本票 acceptance 第四項）', () {

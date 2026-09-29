@@ -26,25 +26,21 @@ import 'package:graph_project_docs_manager/screens/project_switcher/project_swit
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
+
+import '../../helpers/stub_workspace_repository.dart';
 
 void main() {
   _registerFocusTests();
-  testWidgets('returnTo 為 null 時 action-<screen>-back 不存在於元件樹', (
-    tester,
-  ) async {
+  testWidgets('returnTo 為 null 時 action-<screen>-back 不存在於元件樹', (tester) async {
     await _pumpShell(tester);
 
     expect(find.byKey(const Key('action-domain-back')), findsNothing);
   });
 
-  testWidgets('jump 後 returnTo 非 null，渲染來源畫面的返回錨點；點擊後消費並清空', (
-    tester,
-  ) async {
+  testWidgets('jump 後 returnTo 非 null，渲染來源畫面的返回錨點；點擊後消費並清空', (tester) async {
     late ProviderContainer container;
-    await _pumpShell(
-      tester,
-      onReady: (c) => container = c,
-    );
+    await _pumpShell(tester, onReady: (c) => container = c);
 
     // 模擬畫面內 jump：domain → nodeDetail，returnTo 應變為 domain。
     navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
@@ -55,10 +51,7 @@ void main() {
     await tester.tap(find.byKey(const Key('action-nodeDetail-back')));
     await tester.pump();
 
-    expect(
-      container.read(selectedDestinationProvider),
-      AppDestination.domain,
-    );
+    expect(container.read(selectedDestinationProvider), AppDestination.domain);
     expect(container.read(returnToProvider), isNull);
     expect(find.byKey(const Key('action-domain-back')), findsNothing);
   });
@@ -124,33 +117,91 @@ void main() {
   // 0.2.0-W1-042：App 啟動 restore() 回 WorkspaceReady 後，detect() 應被
   // 呼叫且 domainViewStateProvider 反映結果——證明 initState 的接線確實
   // 執行到底，不只是呼叫 restore() 而已。
-  testWidgets(
-    'App 啟動 restore() 回 WorkspaceReady 後 detect() 被呼叫，'
-    'domainViewStateProvider 反映結果',
-    (tester) async {
-      late ProviderContainer container;
-      await _pumpShell(
-        tester,
-        overrides: [
-          workspaceRepositoryProvider.overrideWithValue(
-            WorkspaceRepository(
-              preferencesPort: _FakeReadyPreferencesPort(),
-              directoryProbe: _FakeDirectoryProbePort(),
+  testWidgets('App 啟動 restore() 回 WorkspaceReady 後 detect() 被呼叫，'
+      'domainViewStateProvider 反映結果', (tester) async {
+    late ProviderContainer container;
+    await _pumpShell(
+      tester,
+      overrides: [
+        workspaceRepositoryProvider.overrideWithValue(
+          WorkspaceRepository(
+            preferencesPort: _FakeReadyPreferencesPort(),
+            directoryProbe: _FakeDirectoryProbePort(),
+          ),
+        ),
+        frameworkSignalProbeProvider.overrideWithValue(
+          const _FakeSignalProbe(),
+        ),
+      ],
+      onReady: (c) => container = c,
+    );
+
+    expect(container.read(domainViewStateProvider), isA<DomainNotFramework>());
+  });
+
+  // 0.3.3-W3-398：SPEC-003 §3.1〈生命週期〉——無已存路徑或還原失敗時
+  // Domain 視圖進入 state-domain-unset，不停在預設 fixture 矩陣。
+  testWidgets('啟動 restore() 回 WorkspaceUnset → state-domain-unset', (
+    tester,
+  ) async {
+    late ProviderContainer container;
+    await _pumpShell(
+      tester,
+      overrides: [
+        workspaceRepositoryProvider.overrideWithValue(
+          StubWorkspaceRepository(const WorkspaceUnset()),
+        ),
+      ],
+      onReady: (c) => container = c,
+    );
+
+    expect(container.read(domainViewStateProvider), isA<DomainUnset>());
+    expect(find.byKey(const Key('state-domain-unset')), findsOneWidget);
+    expect(find.byKey(const Key('state-domain-matrix')), findsNothing);
+  });
+
+  testWidgets('啟動 restore() 回 WorkspaceUnavailable → state-domain-unset', (
+    tester,
+  ) async {
+    late ProviderContainer container;
+    await _pumpShell(
+      tester,
+      overrides: [
+        workspaceRepositoryProvider.overrideWithValue(
+          StubWorkspaceRepository(
+            const WorkspaceUnavailable(
+              lastKnownPath: '/gone',
+              reason: 'missing',
             ),
           ),
-          frameworkSignalProbeProvider.overrideWithValue(
-            const _FakeSignalProbe(),
-          ),
-        ],
-        onReady: (c) => container = c,
-      );
+        ),
+      ],
+      onReady: (c) => container = c,
+    );
 
-      expect(
-        container.read(domainViewStateProvider),
-        isA<DomainNotFramework>(),
-      );
-    },
-  );
+    expect(container.read(domainViewStateProvider), isA<DomainUnset>());
+    expect(find.byKey(const Key('state-domain-unset')), findsOneWidget);
+    expect(find.byKey(const Key('state-domain-matrix')), findsNothing);
+  });
+
+  testWidgets('啟動 restore() 回 WorkspaceReady → 不改寫為 Unset，由 gate 判定（對照）', (
+    tester,
+  ) async {
+    late ProviderContainer container;
+    await _pumpShell(
+      tester,
+      overrides: [
+        workspaceRepositoryProvider.overrideWithValue(
+          StubWorkspaceRepository(const WorkspaceReady('/ws')),
+        ),
+        frameworkSignalProbeProvider.overrideWithValue(
+          const StubFrameworkSignalProbe(version: null, schemaJson: false),
+        ),
+      ],
+      onReady: (c) => container = c,
+    );
+    expect(container.read(domainViewStateProvider), isA<DomainNotFramework>());
+  });
 
   // 0.2.0-W1-042：推定版本旗標非 null 時，AppShell 返回列常駐渲染
   // `badge-<screen>-inferred-version`；null 時不渲染（SPEC-001 v1.19
@@ -334,9 +385,7 @@ void _registerFocusTests() {
       final k = _focusedNavKey();
       if (k != null && !seen.contains(k)) seen.add(k);
     }
-    expect(seen, [
-      for (final d in AppDestination.values) 'nav-item-${d.name}',
-    ]);
+    expect(seen, [for (final d in AppDestination.values) 'nav-item-${d.name}']);
   });
 
   testWidgets('導覽項取得焦點時有 accent 外框，未取得時無（對照）', (tester) async {
