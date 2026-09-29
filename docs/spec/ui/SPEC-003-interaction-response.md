@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-09-24"
-version: "1.39"
+updated: "2026-09-29"
+version: "1.40"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -257,11 +257,14 @@ gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 stat
 | `denied`（使用者拒絕請求，或事後於系統設定關閉） | 失敗 | 不發送、**不再請求**（系統不會再彈對話框）；0.1 **不引導至系統設定**——App 無設定畫面可承載入口，SPEC-001 亦無對應狀態 | App 內 SnackBar `AppSnackBar.withAction`：文字 `scanCompleteSnackbarMessage`（placeholder `count`；無破洞時 `scanCompleteNoGapsSnackbarMessage`；無法判定破洞時 `scanCompleteUndeterminableSnackbarMessage`），動作 `viewGapsAction`，停留 `Motion.snackBarWithAction`；動作觸發等同「點擊通知的導向」列。顯示時機：視窗在前景且可見頁不是 `nav-page-gaps` → 立即；視窗非前景 → **延後至視窗下一次回到 `resumed`** 時顯示（SnackBar 會自動消失，背景時顯示等於沒顯示）；回到前景前使用者已自行進入 `nav-page-gaps` → 不顯示。持續性的 App 內指示（Banner、導覽項徽章）0.1 **不提供**：SPEC-004 元件庫無 Banner、`NavItem` 無徽章 slot，依元件庫優先原則不就地發明；是否補元件由 `0.1.0-W3-063` spawn request 交 PM 核定 |
 | `notDetermined` | 不確定（尚未詢問） | 於**首次**觸發條件成立的當下請求授權（功能使用時即時請求，使用者剛經歷一次「離開後掃描才完成」的情境，理解為何需要）；**不**於 App 啟動時請求、不於掃描開始時請求。請求回覆 `granted` → 立即補發本次通知；回覆 `denied` → 本次即走 `denied` 列的 fallback | 請求對話框由系統呈現，App 不另加前置說明畫面（0.1 唯一權限，且請求時機已在操作 context 內） |
 | 其他（`provisional`、查詢或請求逾時／拋錯、API 不可用） | 不確定（結果未知） | 一律**視為 `denied`** 處理，記 warning log；不重試、不阻塞掃描結果的渲染 | 同 `denied` 列 |
+| `granted`（或請求回覆 `granted`）但發送失敗——`show` 回傳 `failed`（平台拋錯、原生 handler 未註冊） | 失敗（授權已過，失敗在發送層） | 不重試發送、不重新查詢或請求授權；本次結果**不列入**「不重複發送」列的撤回對象（沒有已送達的通知可撤回）；記 warning log（見「可觀測性」列） | 同 `denied` 列：文案、停留、顯示時機（前景立即／非前景延後至 `resumed`／回到前景前已自行進入 `nav-page-gaps` 則不顯示）完全相同。§2.13 判準 T 對照表列 5／6、§2.14 列 3 所寫的 `denied` 分支皆涵蓋本路徑，不另立列（`0.3.1-W3-113`，用戶裁決 2026-09-29） |
 
 **介面（供實作票與測試注入）**：
 
 ```dart
 enum NotificationAuthorization { notDetermined, granted, denied }
+
+enum ScanNotificationDelivery { delivered, failed }
 
 class ScanCompleteNotification {
   const ScanCompleteNotification({required this.gapCount});
@@ -271,7 +274,7 @@ class ScanCompleteNotification {
 abstract class ScanNotifier {
   Future<NotificationAuthorization> authorizationStatus();
   Future<NotificationAuthorization> requestAuthorization();
-  Future<void> show(ScanCompleteNotification notification);
+  Future<ScanNotificationDelivery> show(ScanCompleteNotification notification);
   Future<void> withdraw();                 // 撤回尚未被點擊的通知；無通知時為 no-op
   Stream<void> get activated;              // 使用者點擊通知
 }
@@ -279,7 +282,9 @@ abstract class ScanNotifier {
 
 查詢、請求、發送、撤回四個動作由同一個可注入的抽象承擔，畫面層只消費
 `activated` 串流執行「點擊通知的導向」列；三個授權值以外的平台結果（`provisional`、
-錯誤）由實作端在抽象邊界內收斂為 `denied`，不外洩至畫面層。
+錯誤）由實作端在抽象邊界內收斂為 `denied`，不外洩至畫面層。發送的平台錯誤同樣在
+抽象邊界內收斂，但收斂為 `ScanNotificationDelivery.failed` 回傳給呼叫端，不以例外
+外洩、也不靜默回傳——呼叫端據此走權限 gate 表「發送失敗」列的 fallback。
 
 **測試斷言**（整合測試注入 fake，記錄各方法呼叫次數與參數，概述表「外部程序呼叫」
 形式；系統通知本身不在測試中驗證）：
@@ -296,6 +301,9 @@ abstract class ScanNotifier {
 | fake 回 `denied`，視窗非前景，`resumed` 前已點 `nav-item-gaps` | `resumed` 後仍 `findsNothing` |
 | fake 回 `notDetermined`，請求回 `granted` | `requestAuthorization` 恰一次且在 `show` 之前；`show` 恰一次 |
 | fake 回 `notDetermined`，請求回 `denied` | `requestAuthorization` 恰一次；`show` 為 0；SnackBar 依 `denied` 列出現 |
+| fake 回 `granted`、`show` 回 `failed`，視窗前景、可見頁為 `nav-page-tickets` | `show` 恰一次；SnackBar 文字等於 `scanCompleteSnackbarMessage` 帶入破洞數的值，動作文字等於 `viewGapsAction`；之後點 `nav-item-gaps` 時 `withdraw` 為 0 |
+| 同上但 `show` 回 `delivered`（對照組） | `show` 恰一次；`find.byType(SnackBar)` 為 `findsNothing`；之後點 `nav-item-gaps` 時 `withdraw` 恰一次 |
+| fake 回 `granted`、`show` 回 `failed`，視窗非前景 | 完成當下 `findsNothing`；模擬 `resumed` 後 SnackBar 出現 |
 | fake 於 `activated` 發事件（`state-gaps-found`） | `selectedDestinationProvider` 等於 `AppDestination.gaps`、`returnToProvider` 為 `null`；第一個 `card-gaps-<itemId>` 的 rect 與 `scroll-gaps-sections` viewport rect 有交集且 `Focus.hasFocus` 為 `true` |
 | 掃描中按 `action-gaps-cancel-scan` | `show` 為 0、`requestAuthorization` 為 0 |
 
@@ -341,19 +349,23 @@ workspace domain 的三個 driven port 不在本節，見 `docs/spec/workspace/`
 |------|---------|------|---------------|-------------|
 | `authorizationStatus()` | 入口 info log（`查詢授權狀態`） | 不適用：MethodChannel 為 fire-and-wait，平台端不回中間 acknowledge | `NotificationAuthorization` 三值；`provisional`／逾時／拋錯／API 不可用於抽象邊界內收斂為 `denied`（權限 gate「其他」列） | 成功記結果值 info；`PlatformException` 與 `MissingPluginException` 各記 warning 並標明「視為 denied」 |
 | `requestAuthorization()` | 入口 info log（`請求授權`） | 同上 | 同上 | 同上 |
-| `show(notification)` | 入口 info log，**含 `gapCount`** | 同上 | `Future<void>`——呼叫端不被告知成敗（見下方設計選擇） | 成功不另記（入口 log 已足以定位）；兩類例外各記 warning，含 `code` 與 `message` |
+| `show(notification)` | 入口 info log，**含 `gapCount`** | 同上 | `ScanNotificationDelivery` 二值：`delivered`／`failed`（兩類例外於抽象邊界內收斂為 `failed`）；`failed` 時呼叫端走權限 gate 表「發送失敗」列 | 成功不另記（入口 log 已足以定位）；兩類例外各記 warning，含 `code` 與 `message` |
 | `withdraw()` | 入口 info log（`撤回通知`） | 同上 | `Future<void>`——同上 | 同上，warning 文字須標明「不阻擋、不轉狀態」 |
 
-**`show` 與 `withdraw` 回傳 `void` 是設計選擇，不是遺漏的回傳值。** 兩者是
-非同步旁路動作：畫面在掃描完成當下已依 §3.5 走完「掃描中 → 結果」的
-cross-fade，通知送不送得出去都不改變該狀態，「等待指示」列因此規定發送與
-撤回期間不顯示任何等待指示，「不重複發送」列亦規定撤回失敗不阻擋、不轉狀態。
-呼叫端拿到結果也沒有任何分支可走，故刻意不回傳——**此處是呼叫端消費者被刻意
-排除，非以日誌抵扣呼叫端**（前者是需求上不需要，後者是把兩個獨立消費者混為
-一談）。相對地 `authorizationStatus` 與 `requestAuthorization` 的結果決定
-走 `granted` 發送或 `denied` fallback（權限 gate 三路徑），呼叫端必須被告知，
-故回傳 enum。往後若出現「通知送出失敗須改走 SnackBar fallback」的需求，
-此設計選擇即失效，須連同本段一併修訂。
+**`withdraw` 回傳 `void` 是設計選擇，不是遺漏的回傳值；`show` 原本同為 `void`，
+已於 v1.40 改回傳 `ScanNotificationDelivery`。** 兩者都是非同步旁路動作：畫面在
+掃描完成當下已依 §3.5 走完「掃描中 → 結果」的 cross-fade，通知送不送得出去都不
+改變該狀態，「等待指示」列因此規定發送與撤回期間不顯示任何等待指示。
+
+`withdraw` 的呼叫端拿到結果沒有任何分支可走（「不重複發送」列規定撤回失敗不阻擋、
+不轉狀態），故刻意不回傳——**此處是呼叫端消費者被刻意排除，非以日誌抵扣呼叫端**
+（前者是需求上不需要，後者是把兩個獨立消費者混為一談）。
+
+`show` 的前提在 v1.40 失效：本段舊版預告的「通知送出失敗須改走 SnackBar
+fallback」需求已由 `0.3.1-W3-113` 提出並經用戶裁決（2026-09-29）。發送失敗時
+若只記日誌，使用者在非 `nav-page-gaps` 頁面就收不到任何掃描完成的訊號——那是以
+日誌抵扣使用者回饋。呼叫端因此有了分支可走（權限 gate 表「發送失敗」列），必須被
+告知，與 `authorizationStatus`／`requestAuthorization` 回傳 enum 同理。
 
 **`ExternalOpener` 三時刻**（介面見「外部開啟契約」列；實作票 `0.1.0-W1-068`）：
 
@@ -2320,6 +2332,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.40 | 2026-09-29 | 系統通知發送失敗的 fallback（`0.3.1-W3-113`，用戶裁決 2026-09-29：`show` 改回傳結果列舉）：§2.2 權限 gate 表新增「`granted` 但發送失敗」列，fallback 同 `denied` 列且不列入撤回對象；介面新增 `enum ScanNotificationDelivery { delivered, failed }`，`show` 改回傳該型別，介面後說明段補發送錯誤的收斂方式；測試斷言表新增三列（`failed` 前景、`delivered` 對照組、`failed` 非前景）；〈兩個 port 的三時刻覆蓋〉`show` 列結果欄改寫，設計選擇段拆為 `withdraw`（維持 `void`）與 `show`（前提失效、已改回傳）兩段 |
 | 1.39 | 2026-09-24 | 對齊 SPEC-001 v1.21（`0.3.0-W1-082`，SPEC-006 FR-06 規則 7／FR-08）：§2.4 推定版本徽章段後新增路徑模式來源徽章 `badge-gaps-builtin-path-pattern` 段（只在 `nav-page-gaps`、自動生效、共存與互斥關係）；§2.2 系統層通知觸發條件、通知內容（新增 `scanCompleteUndeterminableNotificationBody` 分支）、點擊導向補 `state-gaps-undeterminable`，權限 `denied` fallback 與提示仲裁表列 3 補 `scanCompleteUndeterminableSnackbarMessage`，文案表新增兩 key；§3.5 重新掃描列、〈導航跳轉與退出〉掃描中列補第三落點並新增「無法判定破洞」列；§4 第 21 列補第三落點、新增第 40 列 `state-gaps-undeterminable`。狀態數字 39 → 40 同步四處（§0 概述、§4 標題與覆蓋完整性算式、FR-01 驗收）與設計約束一處 |
 | 1.38 | 2026-09-24 | 對齊 SPEC-001 v1.19／SPEC-004 v1.45（`0.2.1-W1-002`，承 `0.2.0-W1-040` 推定版本語意與 schema 不相容面板重評）：§3.1「檢視 schema 詳情」列面板內容描述由「恰為兩列（App 支援版本、專案版本）」改為一列 `schemaKnownRangeLabel`＋`schemaKnownRangeValue`（App 已知版本範圍：不高於 <內建版本>），元件組成註記改列 SPEC-004 §4.23 `withDetail` 面板 `Section.static`[`AppText.caption`, `AppText.mono`] 各一，並補 `projectVersion` 為推定值時面板字面不變、推定來源由 §2.4 徽章承載；§2.7「是否顯示版本值」列 schema 不相容欄補 `projectVersion` 可能為推定值、推定來源由 §2.4 推定版本徽章常駐告知、與降級徽章互斥；§2.4〈渲染位置統一〉降級徽章段後新增推定版本徽章 `badge-<screen>-inferred-version` 段，位置與方式同降級徽章、生效條件（正常／空圖 `inferredVersion` 非 `null`、schema 不相容 `isVersionInferred` 為 `true`）與互斥規則對齊 SPEC-001 §1〈推定版本〉註記。SPEC-001、SPEC-004 為本票唯讀權威，未改動 |
 | 1.37 | 2026-09-15 | V4 第四輪門檻外矛盾追修（`0.1.0-W3-335.67`，依 `0.1.0-W3-335.65` WRAP 裁決 K6／K7／K8／K9／K11）：§2.9 表後補〈動態 ID 段取值〉段（`<domainId>`／`<rowId>`／`<ucId>`／`<colId>`／`<nodeId>`／`<evtId>`／`<stepId>`／`<itemId>` 各自取值來源，`<itemId>` 取 `GapReportItem.id`，K6）；§2.8〈選定 UC〉首段「兩處設定入口」改「下表各設定入口」、設定入口表新增「設定入口 4」（破洞報告事件類破洞項），§3.5 事件類列同步補「設定入口 4」（K7）；§2.11「三處載入態的差異只有『目標態』與『進度型別』兩個參數」改為目標態、進度型別、骨架版位三項差異並註明破洞目標態為執行期 `returnTo`（K8）；§2.13〈(b1) 的可行條件是可機械判定的〉段後補「具名例外」（(a) 適用範圍內的事件不走 (b1)），〈判準與既有條文的對照〉#5、#6 判準結論欄同步（K9）；§2.4〈渲染位置統一〉括號改列重新掃描與開啟原始檔、刪重新整理，並註明狀態元件自身動作不屬頁面級動作（K11）；另補破洞項 `<itemId>` 取值規則（§2.9，取 `lib/screens/gap_report/gap_report_models.dart` `GapReportItem.id` 字面值，0.1 由 fixture 給定），並於 §3.5〈破洞項的指向節點〉補交叉引用；核對 SPEC-003 內 `寫死座標`／`設定入口`／`(b1)`／`兩個參數`／`頁面級動作`／`domainId`／`itemId` 全部命中，`0.1.0-W3-335.60` 稽核腳本 `matrix.py`／`counts.py` 重跑無新增缺格或計數不符。SPEC-001（K1–K5、K10）與 UC-02（K2 可同步部分）留待 `0.1.0-W3-335.68`；SPEC-004（K3、K8 對應段）留待 `0.1.0-W3-335.69` |
