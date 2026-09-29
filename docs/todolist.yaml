@@ -118,8 +118,31 @@ versions:
     worklog: "docs/work-logs/v0/v0.3/v0.3.1/"
     notes: |
       依版本登記規則 patch 列登記（2026-09-25，0.3.0 finish 的前移目標）。
-      範圍 = 凍結閘門與發版前移路由至此的票；整合測試 = 上層 minor（0.3.0）的
-      IT-1、IT-2 仍通過。凍結前補收斂承諾與缺陷清單。
+      2026-09-29 發版後分診（0.3.1-W1-089，試行「minor 完成後依 topic 定固定數量
+      patch」，見 tech-decisions 同日補記）：0.3.x 固定三個 patch，本版 topic =
+      掃描通知與破洞判定。缺陷清單：W3-122（已完成）、W1-028、W1-081、W3-113。
+      不變式 = 0.3.0 IT-1、IT-2 仍通過。分診後新發現一律登記至 1.0.0 停放，
+      唯「契約行為或資料錯誤」可經例外閥插入本版並標 scope_blocker。
+
+  - version: "0.3.2"
+    codename: "Corpus-3"
+    description: "0.3.x 第二個 patch：提示訊息與外部開啟"
+    status: "planned"
+    worklog: "docs/work-logs/v0/v0.3/v0.3.2/"
+    notes: |
+      2026-09-29 發版後分診登記（0.3.1-W1-089）。topic = 提示訊息與外部開啟。
+      缺陷清單：W1-004、W3-210、W3-236、W3-253、W3-548、W3-368、W3-248。
+      不變式 = 0.3.0 IT-1、IT-2 仍通過。數量固定，不再新增 0.3.x patch。
+
+  - version: "0.3.3"
+    codename: "Corpus-4"
+    description: "0.3.x 第三個 patch：規格與實作一致性"
+    status: "planned"
+    worklog: "docs/work-logs/v0/v0.3/v0.3.3/"
+    notes: |
+      2026-09-29 發版後分診登記（0.3.1-W1-089）。topic = 規格與實作一致性。
+      缺陷清單：W3-128、W3-129、W3-245、W3-282、W3-238、W3-374、W3-375。
+      不變式 = 0.3.0 IT-1、IT-2 仍通過。0.3.x 最後一個 patch。
 
   - version: "0.4.0"
     codename: "Graph"
@@ -134,6 +157,18 @@ versions:
       Diagnostics、輕節點與 5W1H 全文分離）、斷言來源（EVT-GRAPH-001、domain-map §4.1）、
       阻擋（上游 0.2.1-W3-1121 反向邊該存還是該推導）。
       2026-09-23 登記：0.2.0 發版前移的新功能票之收件目標（凍結閘門 minor+1）。
+
+  - version: "1.0.0"
+    codename: "Next-Major"
+    description: "下一個 major：暫行停放區，承接經分診決定不在 0.x 已規劃版本處理的項目"
+    status: "planned"
+    worklog: "docs/work-logs/v1/v1.0/v1.0.0/"
+    notes: |
+      2026-09-29 登記（0.3.1-W1-089，用戶裁決 C1 暫行載體；見 tech-decisions 同日兩則補記）。
+      性質：停放區，不是已規劃範圍。每張進入的票須有「經討論後決定延後」的記錄
+      （本批記錄見 0.3.1-W1-089 Solution 分診表）。major 規劃時為必讀輸入，逐張裁決
+      做、併入或關閉。已知限制：票號版本無關化（0.3.1-W1-090）落地前，搬入即改名；
+      0.x 全數凍結後「最近開放後繼」路由會把新票自動吸入，屆時須手動指定版本。
 
   - version: "0.1.0"
     codename: "Shell"
