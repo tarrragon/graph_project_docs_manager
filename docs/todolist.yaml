@@ -135,6 +135,8 @@ versions:
       （ticket skill，canonical #102／#55／#77，本地修並記 skill CHANGELOG）。
       例外閥第二次：W1-096（W1-028 實機量測發現原生 show 丟棄 error，W3-113 的 failed 分支對平台層
       失敗無效；契約行為錯誤，已標 scope_blocker）。
+      例外閥第三次：W1-097（點擊掃描完成通知後，已隱藏的 App 不回前景，SPEC-003 §2.2 前提在實機不成立；
+      契約行為錯誤，用戶裁示；一併補點擊路徑日誌）。三次例外閥皆屬本版 topic（掃描通知）且源自實機量測。
 
   - version: "0.3.2"
     codename: "Corpus-3"
