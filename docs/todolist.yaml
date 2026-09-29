@@ -160,6 +160,42 @@ versions:
       執行期收件（topic 契合）：W1-005（App 回前景且 gaps 已可見時不撤回通知，先釐清 SPEC-003 §2.2 歧義；
       源自 0.3.1-W1-028 實機量測）。
       不變式 = 0.3.0 IT-1、IT-2 仍通過。數量固定，不再新增 0.3.x patch。
+      開工前置：0.3.2-W1-006（ticket 關聯命令支援跨版本 ID；W3-253 的 blockedBy 指向 0.1.0-W3-205）。
+      版本契約（2026-09-29，開工前寫定，實作後逐項對照）：
+      1. 範圍與執行順序
+         - 外部開啟鏈：W1-004 → W3-236 → W3-210 → W3-248；W3-368 → W3-248。
+           W3-236 量測須在四個入口都經 ExternalOpener 之後（W1-004 前 Domain 開 docs 傳相對路徑，
+           量到的不是最終路徑）；W3-368 決定 key 沿用與否，會改 W3-248 的登記範圍。
+         - 獨立：W3-548、W3-253、W1-005。
+         - 用戶簽核點：W3-210 若裁定「移除」§2.2 opened 提示（PM 無權逕改）；W1-005 候選裁決。
+      2. 預期變更
+         - 預期變紅：test/unit/screens/gap_report_test.dart 覆寫 gapItemProcessRunnerProvider 的
+           群組（W1-004 移除該 provider 後編譯失敗），改以 FakeExternalOpener 覆寫，案例數不減；
+           Domain／UC Flow／節點詳情三畫面新增 FakeExternalOpener 測試。
+         - 預期改變的值：Domain 開 docs 目錄的路徑由相對 'docs' 改為專案根目錄組成的絕對路徑；
+           app_localizations_en.dart 兩個 getter 由樣板回退改為英文文案，gen-l10n 不再輸出
+           「en: 2 untranslated message(s)」（W3-548）。
+         - 視裁決而變（裁決後於票面補列預期紅燈再實作）：W3-253 選方向 2／3 時 _resolveClosedLevel
+           相關斷言；W1-005 選撤回時 scan_notification_controller 測試新增 resumed+gaps 可見案例；
+           W3-210 裁定移除時 0.1.0-W1-068 的 opened 提示斷言（由 210 列出，不在本版改 test）。
+         - 預期不變：IT-1 expected.json；IT-2 gap 46、failure_unmatched 1252、總列數 7472；
+           K4 內嵌版本 2.60.13；integration_test/app_test.dart 的 ExternalOpener 探針；
+           測試總數不低於 0.3.1 的 1762。
+      3. 驗證方式（本版無權限類項目，全部機械驗證）
+         - W1-004、W3-548、W3-253：flutter test／dart analyze rc、gen-l10n 輸出、ARB 鍵集合比對。
+         - W3-236：原票寫「/run 目視」，改為日誌查詢；三項判定準則不變，只換觀測管道。
+           「可被觀察」對應為：AppSnackBar shown 與 closed 之間存在生命週期為 resumed 的區間。
+           判定對應於量測前寫入該票，量測後不得修改。
+         - W1-005：controller 單元測試 + 撤回結果值日誌；不需人工確認通知中心。
+         - W3-210、W3-248、W3-368：規格與程式碼一致性以 grep 產出呼叫點清單，差集為零。
+      4. 人工實測時段：無。W3-236 與 W1-005 需要啟動真實 App 產生日誌時，比照人工實測的前置檢查：
+         實例數為 1、同 bundle id 只登記一份現存 .app、log show 或 DevTools Logging 已接上。
+      5. 結果值日誌事件
+         - ExternalOpener 結果事件（opened／notFound／failed＋絕對路徑）：W1-004 後四個入口皆須
+           產生（現況四個畫面皆直接呼叫 Process.run，不產生此事件）。
+         - AppSnackBar shown／closed{reason, level}／preempted：既有，W3-236、W3-253 依此判定。
+         - Shell 生命週期轉換（previous -> state）：既有，W3-236 以此界定 resumed 區間。
+         - W1-005 選撤回時新增：撤回觸發條件（destination 或 lifecycle）與撤回後仍遞送的通知數。
 
   - version: "0.3.3"
     codename: "Corpus-4"
