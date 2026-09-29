@@ -19,7 +19,12 @@ import 'package:graph_project_docs_manager/app/shell.dart' show AppShell;
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/scan_notification_controller.dart'
-    show clickPathLogSink, defaultClickPathLogSink;
+    show
+        clickPathLogSink,
+        defaultClickPathLogSink,
+        defaultWithdrawLogSink,
+        withdrawLogPrefix,
+        withdrawLogSink;
 import 'package:graph_project_docs_manager/services/scan_notifier.dart';
 import 'package:graph_project_docs_manager/services/scan_notifier_provider.dart';
 
@@ -304,6 +309,89 @@ void main() {
       expect(fixture.fake.showCalls, 0);
       expect(fixture.fake.requestAuthorizationCalls, 0);
     });
+  });
+
+  group('SPEC-003 v1.42 §2.2 回前景撤回與撤回觸發日誌', () {
+    Future<_Fixture> pendingWhilePaused(
+      WidgetTester tester,
+      AppDestination visible,
+    ) async {
+      final fixture = await _pumpFixture(tester);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          visible;
+      fixture.container.read(appLifecycleStateProvider.notifier).state =
+          AppLifecycleState.paused;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
+      expect(fixture.fake.showCalls, 1);
+      return fixture;
+    }
+
+    void resume(_Fixture fixture) {
+      fixture.container.read(appLifecycleStateProvider.notifier).state =
+          AppLifecycleState.resumed;
+    }
+
+    testWidgets('非前景且可見頁為 gaps：resumed 後 withdraw 恰一次，日誌 lifecycle', (
+      tester,
+    ) async {
+      final logs = <String>[];
+      withdrawLogSink = (message, name) => logs.add(message);
+      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
+      final fixture = await pendingWhilePaused(tester, AppDestination.gaps);
+
+      resume(fixture);
+      await tester.pump();
+
+      expect(fixture.fake.withdrawCalls, 1);
+      expect(logs, ['${withdrawLogPrefix}lifecycle']);
+    });
+
+    testWidgets('可見頁為 tickets：resumed 後 withdraw 為 0（正向對照）', (tester) async {
+      final logs = <String>[];
+      withdrawLogSink = (message, name) => logs.add(message);
+      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
+      final fixture = await pendingWhilePaused(tester, AppDestination.tickets);
+
+      resume(fixture);
+      await tester.pump();
+
+      expect(fixture.fake.withdrawCalls, 0);
+      expect(logs, isEmpty);
+    });
+
+    Future<List<String>> withdrawLogsAfter(
+      WidgetTester tester,
+      Future<void> Function(_Fixture fixture) action,
+    ) async {
+      final logs = <String>[];
+      withdrawLogSink = (message, name) => logs.add(message);
+      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
+      final fixture = await _pumpFixture(tester);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
+      await action(fixture);
+      await tester.pump();
+      return logs;
+    }
+
+    testWidgets('撤回觸發日誌 destination', (tester) async {
+      final logs = await withdrawLogsAfter(tester, (_) async {
+        await tester.tap(find.byKey(const Key('nav-item-gaps')));
+      });
+      expect(logs, ['${withdrawLogPrefix}destination']);
+    });
+
+    testWidgets('撤回觸發日誌 rescan', (tester) async {
+      final logs = await withdrawLogsAfter(
+        tester,
+        (fixture) async => fixture.gapNotifier.rescan(),
+      );
+      expect(logs, ['${withdrawLogPrefix}rescan']);
+    });
+
   });
 
   group('SPEC-003 §2.2 granted 但發送失敗', () {
