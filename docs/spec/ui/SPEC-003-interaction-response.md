@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.40"
+version: "1.41"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -320,12 +320,26 @@ abstract class ScanNotifier {
 | `scanCompleteUndeterminableSnackbarMessage` | 掃描完成，無法判定破洞 | Scan complete: gaps could not be determined |
 | `viewGapsAction` | 檢視 | View |
 
-**實作票驗證**（本節只寫規格，下列平台事實由實作票以實機確認並回填本節，不得
-以規格文字取代實測）：`UNUserNotificationCenter` 在沙盒關閉（PROP-001）與
-Developer ID 簽章下的可用性，以及 debug build 未簽章時授權請求是否直接回錯；
-Flutter 端載體（原生 channel 或第三方套件）的選擇；macOS 上 `AppLifecycleState`
-的 `inactive` / `hidden` 對應視窗失焦與最小化的實際行為；撤回已送達通知的 API 與
-其對「通知中心已收合」狀態的效果。
+**實作票驗證（實測記錄，`0.3.1-W1-028`）**：以下為實機量測結果，非規格推論。
+量測環境：macOS 26.5（Darwin 25.5.0，arm64）、Flutter 3.47.1（FVM）、debug
+build、App Sandbox 關閉（PROP-001）、bundle id `com.example.graphProjectDocsManager`；
+量測日期 2026-09-08（生命週期）與 2026-09-29（其餘）。完整時間序列見該票
+Test Results。
+
+| 平台事實 | 實測結果 |
+|---------|---------|
+| `UNUserNotificationCenter` 可用性 | ad-hoc 簽章與 Apple Development 簽章的 debug build 皆可用：授權為允許時 `authorizationStatus` 回 `granted`、`add` 送達通知。授權狀態由系統依 bundle id 保存，與簽章種類無關（兩種簽章在同一使用者記錄下回相同狀態）。**Developer ID 簽章下的可用性未量**，由 `1.0.0-W1-027` 承接 |
+| 未簽章 build 的首次授權請求回應 | **未量到**：本機在第一輪量測前已存有本 bundle id 的「不允許」使用者記錄，`notDetermined` 已不可達，`requestAuthorization` 從未被呼叫。`~/Library/Preferences/com.apple.ncprefs.plist` 不是本機 macOS 版本存放此記錄之處，不可作為「是否已請求過」的判據；以「系統設定 → 通知」清單為準 |
+| Flutter 端載體 | 原生 `MethodChannel`（`macos/Runner/AppDelegate.swift` + `lib/services/macos_scan_notifier.dart`），無第三方套件；channel 於啟動時註冊並存活至 runtime，授權查詢、發送、撤回、點擊回傳四條路徑皆實測通過 |
+| `AppLifecycleState` 對應 | `inactive` 為過渡態而非可停留狀態：離開前景（失焦、最小化或隱藏）一律 `resumed → inactive → hidden`，返回一律 `hidden → inactive → resumed`，兩段間隔 0–531 ms 不具語意；失焦與最小化在此值上不可區分。以 `inactive` 為判斷分支的邏輯在 macOS 上為死碼 |
+| 撤回 API | `removeDeliveredNotifications(withIdentifiers:)`：通知中心收合狀態下撤回後，該則通知自通知中心消失。App 回到前景但未發生導覽切換（本就停在 `nav-page-gaps`）時不撤回，是否應撤回由 `0.3.2-W1-005` 釐清 |
+| 點擊通知的前景化 | 系統**不會**替已隱藏的執行中 App 前景化（單一實例實測），由 App 自行承擔，見「點擊通知的導向」列 |
+
+**量測前置條件**（下次實機驗證沿用）：同一 bundle id 的執行中實例數為 1，且
+LaunchServices 上現存的 `.app` 只有一份（worktree 內的 `flutter build` 會新增
+登記，點擊通知時可能啟動錯的那一份）；觀測以 DevTools Logging 或
+`log show` 取得日誌，非權限類行為以日誌或測試驗證，不以人工目視判定
+（`docs/tech-decisions.md` 2026-09-29 補記）。
 
 #### 兩個 port 的三時刻覆蓋（`0.1.0-W3-139` 裁定：ScanNotifier 與 ExternalOpener 留在本節）
 
@@ -2332,6 +2346,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.41 | 2026-09-29 | §2.2 系統層通知兩處：(1)「點擊通知的導向」列改為 App 自行前景化（原生 unhide＋activate 並 NSLog 前後狀態），點擊路徑日誌改記結果值（`0.3.1-W1-097`；該票合併時未升版，於本版補記）；(2)「實作票驗證」段由待驗清單改為實測記錄表（`0.3.1-W1-028`）：兩種簽章的 debug build 可用、授權狀態依 bundle id 保存與簽章無關、未簽章首次請求回應未量到及原因、ncprefs.plist 不可作判據、載體為原生 MethodChannel、`inactive` 為過渡態、撤回 API 在收合狀態有效、系統不替已隱藏 App 前景化，並補量測前置條件（單一實例、單一 LaunchServices 登記、非權限類以日誌或測試驗證）。Developer ID 可用性轉 `1.0.0-W1-027` |
 | 1.40 | 2026-09-29 | 系統通知發送失敗的 fallback（`0.3.1-W3-113`，用戶裁決 2026-09-29：`show` 改回傳結果列舉）：§2.2 權限 gate 表新增「`granted` 但發送失敗」列，fallback 同 `denied` 列且不列入撤回對象；介面新增 `enum ScanNotificationDelivery { delivered, failed }`，`show` 改回傳該型別，介面後說明段補發送錯誤的收斂方式；測試斷言表新增三列（`failed` 前景、`delivered` 對照組、`failed` 非前景）；〈兩個 port 的三時刻覆蓋〉`show` 列結果欄改寫，設計選擇段拆為 `withdraw`（維持 `void`）與 `show`（前提失效、已改回傳）兩段 |
 | 1.39 | 2026-09-24 | 對齊 SPEC-001 v1.21（`0.3.0-W1-082`，SPEC-006 FR-06 規則 7／FR-08）：§2.4 推定版本徽章段後新增路徑模式來源徽章 `badge-gaps-builtin-path-pattern` 段（只在 `nav-page-gaps`、自動生效、共存與互斥關係）；§2.2 系統層通知觸發條件、通知內容（新增 `scanCompleteUndeterminableNotificationBody` 分支）、點擊導向補 `state-gaps-undeterminable`，權限 `denied` fallback 與提示仲裁表列 3 補 `scanCompleteUndeterminableSnackbarMessage`，文案表新增兩 key；§3.5 重新掃描列、〈導航跳轉與退出〉掃描中列補第三落點並新增「無法判定破洞」列；§4 第 21 列補第三落點、新增第 40 列 `state-gaps-undeterminable`。狀態數字 39 → 40 同步四處（§0 概述、§4 標題與覆蓋完整性算式、FR-01 驗收）與設計約束一處 |
 | 1.38 | 2026-09-24 | 對齊 SPEC-001 v1.19／SPEC-004 v1.45（`0.2.1-W1-002`，承 `0.2.0-W1-040` 推定版本語意與 schema 不相容面板重評）：§3.1「檢視 schema 詳情」列面板內容描述由「恰為兩列（App 支援版本、專案版本）」改為一列 `schemaKnownRangeLabel`＋`schemaKnownRangeValue`（App 已知版本範圍：不高於 <內建版本>），元件組成註記改列 SPEC-004 §4.23 `withDetail` 面板 `Section.static`[`AppText.caption`, `AppText.mono`] 各一，並補 `projectVersion` 為推定值時面板字面不變、推定來源由 §2.4 徽章承載；§2.7「是否顯示版本值」列 schema 不相容欄補 `projectVersion` 可能為推定值、推定來源由 §2.4 推定版本徽章常駐告知、與降級徽章互斥；§2.4〈渲染位置統一〉降級徽章段後新增推定版本徽章 `badge-<screen>-inferred-version` 段，位置與方式同降級徽章、生效條件（正常／空圖 `inferredVersion` 非 `null`、schema 不相容 `isVersionInferred` 為 `true`）與互斥規則對齊 SPEC-001 §1〈推定版本〉註記。SPEC-001、SPEC-004 為本票唯讀權威，未改動 |
