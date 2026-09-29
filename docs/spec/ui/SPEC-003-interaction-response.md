@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.47"
+version: "1.48"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -703,11 +703,22 @@ fixture 直接給定；該項指向哪個圖節點屬 CLAUDE.md §6「破洞分�
 取得焦點元件的位置（`renderBox.localToGlobal(Offset.zero)`）其 `dy` 不小於前一個
 取得焦點的元件；`dy` 相同時 `dx` 不小於前一個。
 
-**焦點裝飾（斷言方式）**：取得焦點的元件祖先鏈中，存在至少一個 `decoration`
-屬性非 `null` 的 `Container` 或 `DecoratedBox`（
-`find.ancestor(of: <該元素 finder>, matching: find.byWidgetPredicate((w) => (w is Container && w.decoration != null) || (w is DecoratedBox && w.decoration != null)))`
-為 `findsAtLeastNWidgets(1)`）。本規格不規定裝飾的顏色、形狀或元件名稱，僅要求
-裝飾存在。
+**焦點裝飾（斷言方式，對照形）**：對同一元件比較兩態——(1) 該元件取得焦點
+（`primaryFocus` 位於該元素子樹內）；(2) 焦點移至他處後。比對屬性指名為該元素祖先鏈
+（`find.ancestor(of: <該元素 finder>, matching: find.byType(DecoratedBox))`，含
+`Container.decoration`）上各 `BoxDecoration.border`：(1) 態至少一個 `border` 的邊色
+為非透明，(2) 態同一位置的 `border` 不存在或邊色為透明。兩態 `border` 無差異即判
+紅。本規格不規定焦點環的顏色、粗細或元件名稱（顏色見 SPEC-004 §4.0.1 focused 列），
+只規定兩態可區分、差異落在外框。
+
+**舊條文放行、本條文攔下的反例**：舊條文只要求「取得焦點的元件祖先鏈存在
+`decoration` 非 `null` 的 `Container` 或 `DecoratedBox`」。`NavItem` 在
+`0.3.3-W1-006` 修正前沒有焦點環，但其內部 `DecoratedBox` 為
+`BoxDecoration(color: null, borderRadius: …)`（選中底色的承載者，未選中時
+`decoration` 仍非 `null`），側欄容器亦帶 `decoration`——焦點環缺席時舊條文照樣
+成立。本條文比對兩態 `border`：修正前兩態皆無 `border`，判紅；修正後取得焦點時出現
+`AppColors.accent` 外框、未取得焦點時為透明，判綠。對應測試：
+`test/widget/app/shell_test.dart`〈導覽項取得焦點時有 accent 外框，未取得時無（對照）〉。
 
 方向鍵捲動、快捷鍵切換導覽項不列入 0.1 下界，亦不得以無回饋的方式部分實作。
 篩選選單內以方向鍵走選項是選單元件的固有行為（§3.4 走選項列），不在此排除範圍。
@@ -2375,6 +2386,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.48 | 2026-09-29 | `0.3.3-W3-382`：§2.10〈焦點裝飾（斷言方式）〉改為對照形——同一元件取得焦點與焦點移走兩態，比對祖先鏈 `BoxDecoration.border`，兩態無差異即判紅；舊條文「祖先鏈存在 `decoration` 非 `null`」對焦點環無鑑別力（`NavItem` 未選中底色 `BoxDecoration(color: null)` 與側欄容器即滿足），附 `0.3.3-W1-006` 修正前後作為舊條文放行、本條文攔下的反例，對應 `shell_test.dart` 對照測試。SPEC-004 §4.0.1 focused 列有同型存在性抄錄，另報 |
 | 1.47 | 2026-09-29 | §2.13〈判準與既有條文的對照〉補列 15 `workspaceNotRemembered`（T1 是、T2 否、T3 否、T4 否 → `plain`，與實作一致；§3.1、§3.7 互動反應表缺此分支，另報）與列 16 §3.1 開啟 docs 目錄 `notFound`（與 `failed` 共用 `externalOpenFailedMessage`，§2.14 列 8 已登記而本表缺列）；§2.14 列 16 的「尚無此結局的列」改指本表列 15。lib 提示呼叫點對本表的全量差集記於 `0.3.3-W3-380` |
 | 1.46 | 2026-09-29 | §2.14 指派表補登 lib 內已實作但未登記的提示呼叫點（`0.3.2-W3-248`，以 `grep AppSnackBar.show(` 列出全部呼叫點，逐一比對本表與排除清單）：新增列 14 `chooseFolderUnavailableMessage`、列 15 `folderUnavailableMessage(reason)`、列 16 `workspaceNotRemembered`、列 17 `ticketsFiltersClearedSnackbarMessage`，五欄齊備；列 7 補 §3.1 Domain 泳道的 `notFound`（與 §2.13 對照表列 10 一致）；「與功能需求的對應」段涵蓋列 14–17。排除清單不變 |
 | 1.45 | 2026-09-29 | `openedExternallyMessage` 的判準與條文衝突裁定為**保留**（`0.3.2-W3-210`，用戶裁定 2026-09-29，經 e1 以 AUQ 詢問）：§2.13 對照表第 2 列的「一致」欄由「待裁決」改為「判準的具名例外：條文為準（保留）」；表下段落改寫為具名理由，說明 T1 前提「結果抵達時我方已非前景」只在目標應用已執行時成立（`0.3.2-W3-236`，12/12 不可觀察），冷啟動時不成立（`0.3.2-W3-550` S2，12/12 於 `shown` 之後仍 `resumed` 0.46–0.80 s），並附可否證條件與涵蓋限制；「落 (c) 的事件集合」段與 §2.14 列 5 移除待裁決語意；FR 驗收列改為「待裁決標記或已裁定的具名例外理由」。§2.2、§3.1／§3.2／§3.5／§3.6、SPEC-004 §4.26、§2.12 四處條文維持顯示，不需同步 |
