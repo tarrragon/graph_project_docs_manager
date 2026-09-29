@@ -29,7 +29,8 @@ void main() {
       await repo.chooseFolder();
 
       expect(picker.calls.length, 1);
-      expect(log.contains('開啟資料夾選取面板'), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.chooseFolderPanelOpening),
+          isTrue);
     });
 
     test('G1-2 使用者取消時「呼叫發出」事件仍存在（提早返回路徑）', () async {
@@ -41,8 +42,10 @@ void main() {
 
       await repo.chooseFolder();
 
-      expect(log.contains('開啟資料夾選取面板'), isTrue);
-      expect(log.contains('使用者取消選取'), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.chooseFolderPanelOpening),
+          isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.chooseFolderCancelled),
+          isTrue);
     });
 
     test('G1-3 面板拋例外時「呼叫發出」事件仍存在（提早返回路徑）', () async {
@@ -54,8 +57,10 @@ void main() {
 
       await repo.chooseFolder();
 
-      final issuedIndex = log.indexOfSubstring('開啟資料夾選取面板');
-      final failureIndex = log.indexOfSubstring('面板不可用');
+      final issuedIndex =
+          log.indexOfEvent(WorkspaceLogEvent.chooseFolderPanelOpening);
+      final failureIndex =
+          log.indexOfEvent(WorkspaceLogEvent.chooseFolderPanelUnavailable);
       expect(issuedIndex, greaterThanOrEqualTo(0));
       expect(failureIndex, greaterThan(issuedIndex));
     });
@@ -72,7 +77,14 @@ void main() {
       await repo.chooseFolder();
 
       expect(preferences.calls.any((c) => c.method == 'open'), isTrue);
-      expect(log.containsAll(['準備持久化', 'workspace.path', '/tmp/ws']), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.persistIssuing), isTrue);
+      expect(
+        log.entries
+            .where((e) => e.event == WorkspaceLogEvent.persistIssuing)
+            .every((e) => e.message.contains('workspace.path') &&
+                e.message.contains('/tmp/ws')),
+        isTrue,
+      );
     });
 
     test('G1-5 restore() 進入即發出呼叫事件', () async {
@@ -85,7 +97,13 @@ void main() {
 
       await repo.restore();
 
-      expect(log.containsAll(['還原工作資料夾', 'workspace.path']), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.restoreIssuing), isTrue);
+      expect(
+        log.entries
+            .where((e) => e.event == WorkspaceLogEvent.restoreIssuing)
+            .every((e) => e.message.contains('workspace.path')),
+        isTrue,
+      );
       expect(preferences.calls.any((c) => c.method == 'open'), isTrue);
     });
 
@@ -102,7 +120,8 @@ void main() {
       await repo.restore();
 
       expect(probe.calls.any((c) => c.method == 'exists'), isTrue);
-      expect(log.contains('探測資料夾是否存在'), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.inspectExistsIssuing),
+          isTrue);
     });
 
     test('G1-7 _inspect 的 dir.list().first 有呼叫發出事件（acceptance 第 5 條）',
@@ -118,7 +137,8 @@ void main() {
       await repo.restore();
 
       expect(probe.calls.any((c) => c.method == 'readFirstEntry'), isTrue);
-      expect(log.contains('讀取資料夾內容'), isTrue);
+      expect(
+          log.containsEvent(WorkspaceLogEvent.inspectReadIssuing), isTrue);
     });
 
     test('G1-8 restore() 儲存層拋例外時「呼叫發出」事件仍存在（提早返回路徑）',
@@ -131,7 +151,7 @@ void main() {
 
       await repo.restore();
 
-      expect(log.contains('還原工作資料夾'), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.restoreIssuing), isTrue);
     });
   });
 
@@ -153,11 +173,11 @@ void main() {
       expect((selected.state as WorkspaceReady).path, '/tmp/ws');
 
       final indices = [
-        log.indexOfSubstring('開啟資料夾選取面板'),
-        log.indexOfSubstring('已選取'),
-        log.indexOfSubstring('準備持久化'),
-        log.indexOfSubstring('偏好設定儲存已就緒'),
-        log.indexOfSubstring('已持久化'),
+        log.indexOfEvent(WorkspaceLogEvent.chooseFolderPanelOpening),
+        log.indexOfEvent(WorkspaceLogEvent.chooseFolderPathSelected),
+        log.indexOfEvent(WorkspaceLogEvent.persistIssuing),
+        log.indexOfEvent(WorkspaceLogEvent.persistPreferencesReady),
+        log.indexOfEvent(WorkspaceLogEvent.persistCompleted),
       ];
       expect(indices, everyElement(greaterThanOrEqualTo(0)));
       for (var i = 1; i < indices.length; i++) {
@@ -182,7 +202,7 @@ void main() {
       expect(notRemembered.state, isA<WorkspaceReady>());
       // G5：日誌與回傳分別斷言，不互相抵扣。
       expect(
-        log.entries.any((e) => e.level == 900 && e.message.contains('持久化失敗')),
+        log.containsEvent(WorkspaceLogEvent.persistWriteReturnedFalse),
         isTrue,
       );
     });
@@ -331,9 +351,9 @@ void main() {
 
       expect(result, isA<WorkspaceUnset>());
       final indices = [
-        log.indexOfSubstring('還原工作資料夾'),
-        log.indexOfSubstring('偏好設定儲存已就緒'),
-        log.indexOfSubstring('無已儲存路徑'),
+        log.indexOfEvent(WorkspaceLogEvent.restoreIssuing),
+        log.indexOfEvent(WorkspaceLogEvent.restorePreferencesReady),
+        log.indexOfEvent(WorkspaceLogEvent.restoreNoStoredPath),
       ];
       expect(indices, everyElement(greaterThanOrEqualTo(0)));
       for (var i = 1; i < indices.length; i++) {
@@ -391,7 +411,7 @@ void main() {
 
       expect(result, isA<WorkspaceReady>());
       expect((result as WorkspaceReady).path, '/tmp/ws');
-      expect(log.contains('已還原'), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.restoreCompleted), isTrue);
     });
 
     test('G3-4 路徑已消失（既有行為，不變更）', () async {
@@ -417,9 +437,11 @@ void main() {
 
       await repo.restore();
 
-      final issuedIndex = log.indexOfSubstring('還原工作資料夾');
-      final acceptedIndex = log.indexOfSubstring('偏好設定儲存已就緒');
-      final resultIndex = log.indexOfSubstring('無已儲存路徑');
+      final issuedIndex = log.indexOfEvent(WorkspaceLogEvent.restoreIssuing);
+      final acceptedIndex =
+          log.indexOfEvent(WorkspaceLogEvent.restorePreferencesReady);
+      final resultIndex =
+          log.indexOfEvent(WorkspaceLogEvent.restoreNoStoredPath);
       expect(acceptedIndex, greaterThan(issuedIndex));
       expect(resultIndex, greaterThan(acceptedIndex));
     });
@@ -433,7 +455,8 @@ void main() {
 
       await repo.restore();
 
-      expect(log.contains('偏好設定儲存已就緒'), isFalse);
+      expect(log.containsEvent(WorkspaceLogEvent.restorePreferencesReady),
+          isFalse);
     });
 
     test('G4-3 file_selector 無受理事件（負向，鎖定裁決 C 的不適用判定）',
@@ -449,7 +472,8 @@ void main() {
 
       // 記錄器只回中性 null，chooseFolder 走取消路徑，不觸碰 preferences；
       // picker 相關的日誌只有「呼叫發出」與「使用者取消」兩類，無受理事件。
-      expect(log.contains('偏好設定儲存已就緒'), isFalse);
+      expect(log.containsEvent(WorkspaceLogEvent.persistPreferencesReady),
+          isFalse);
     });
   });
 
@@ -469,7 +493,7 @@ void main() {
 
       expect(result, isA<WorkspaceReady>());
       expect((result as WorkspaceReady).path, '/tmp/legacy');
-      expect(log.contains('偵測到舊版資料，已就地遷移'), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.restoreMigrated), isTrue);
     });
 
     test('G5-2 目前版號（path + 版號皆存在且相符）→ 直接還原，不觸發遷移日誌',
@@ -490,7 +514,7 @@ void main() {
 
       expect(result, isA<WorkspaceReady>());
       expect((result as WorkspaceReady).path, '/tmp/current');
-      expect(log.contains('偵測到舊版資料，已就地遷移'), isFalse);
+      expect(log.containsEvent(WorkspaceLogEvent.restoreMigrated), isFalse);
     });
 
     test('G5-3 無 path 無版號（真正首次啟動）→ WorkspaceUnset，不判定為遷移',
@@ -504,7 +528,7 @@ void main() {
       final result = await repo.restore();
 
       expect(result, isA<WorkspaceUnset>());
-      expect(log.contains('偵測到舊版資料，已就地遷移'), isFalse);
+      expect(log.containsEvent(WorkspaceLogEvent.restoreMigrated), isFalse);
     });
 
     test('G5-4 版號比目前版本更新（未來格式）→ 遷移失敗，降級為 WorkspaceUnset，不阻擋 App',
@@ -855,28 +879,36 @@ class _DirectoryProbeRecorder implements WorkspaceDirectoryProbePort {
   }
 }
 
-/// 日誌記錄器：累積 (訊息, 等級, 錯誤)，供索引順序斷言。
+/// 日誌記錄器：累積 (事件識別碼, 訊息, 等級, 錯誤)，供索引順序斷言。
+///
+/// 斷言應綁 [WorkspaceLogEvent]（穩定契約），不綁 `message`（可自由改寫的
+/// 除錯文案）——0.3.1-W3-132 解除文字內容耦合，時序驗證的量測手段從
+/// `indexOfSubstring` 改為 [indexOfEvent]，語意不變。
 class _LogRecorder {
   final entries = <_LogEntry>[];
 
-  void call(String message, {int? level, Object? error}) {
-    entries.add(_LogEntry(message, level, error));
+  void call(
+    String message, {
+    required WorkspaceLogEvent event,
+    int? level,
+    Object? error,
+  }) {
+    entries.add(_LogEntry(message, event, level, error));
   }
 
-  bool contains(String substring) =>
-      entries.any((e) => e.message.contains(substring));
+  /// 是否存在任何一筆識別碼為 [event] 的日誌。
+  bool containsEvent(WorkspaceLogEvent event) =>
+      entries.any((e) => e.event == event);
 
-  bool containsAll(List<String> substrings) =>
-      substrings.every(contains);
-
-  /// 第一個包含 [substring] 的日誌項索引；找不到回傳 -1。
-  int indexOfSubstring(String substring) =>
-      entries.indexWhere((e) => e.message.contains(substring));
+  /// 第一個識別碼為 [event] 的日誌項索引；找不到回傳 -1。
+  int indexOfEvent(WorkspaceLogEvent event) =>
+      entries.indexWhere((e) => e.event == event);
 }
 
 class _LogEntry {
-  const _LogEntry(this.message, this.level, this.error);
+  const _LogEntry(this.message, this.event, this.level, this.error);
   final String message;
+  final WorkspaceLogEvent event;
   final int? level;
   final Object? error;
 }
