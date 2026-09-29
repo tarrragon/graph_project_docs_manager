@@ -313,6 +313,10 @@ versions:
       （含 version_release 對 CJK 路徑 git add 失敗被忽略、靜默漏出版本 commit）。.claude 修改類並行 ≤2。
       發版前置：W1-011 全數完成前不發 0.3.3，因 .5 修的是 version-release 本身。
       框架：W1-013（bash-git-protected-branch-guard：跨專案 deny 訊息殘留 checkout -b〔#101 觀測〕、合併短旗標值誤判為 pathspec〔只修本地〕）。
+      框架（flutter_balance 回報，#55 觀測）：W1-015（check 前移清單非空時仍建議 release；release 改為拒絕並提示 finish）、
+      W1-016（finish 啟用提交漏版本檔：commit_changes 只 stage docs/ 與 CHANGELOG；本專案 0.3.0～0.3.2 三度需手動補交）。
+      兩張為 0.3.3 發版前置，0.3.3 finish 後工作區乾淨即為 W1-016 的實機驗證。
+      W1-014（P3 技術債：三支守衛重複的 rename -z 解析抽至 .claude/lib）非發版前置，未完成則由 finish 前移。
       W3-397 範圍擴充（e1 裁定 (a)，2026-09-30）：移除 autofocus 暴露矩陣格／列首點選不取得焦點，點選後 Esc 不生效，
       與用戶裁決 D 被告知的代價不符；併入 W3-397 使「點選即取得焦點」成立。W3-395 待 W3-397 合入後再派（同改 matrix_grid）。
       執行期收件：W3-401（ListRow.tree onTap 可為 null 與 leaf 圖示，取代 W3-394 的 no-op 近似）；
