@@ -158,14 +158,50 @@ versions:
       阻擋（上游 0.2.1-W3-1121 反向邊該存還是該推導）。
       2026-09-23 登記：0.2.0 發版前移的新功能票之收件目標（凍結閘門 minor+1）。
 
-  - version: "1.0.0"
-    codename: "Next-Major"
-    description: "下一個 major：暫行停放區，承接經分診決定不在 0.x 已規劃版本處理的項目"
+  - version: "0.5.0"
+    codename: "Layout"
+    description: "Domain 視圖接真資料：矩陣的列與格由真實資料驅動，點交叉格定位至泳道"
     status: "planned"
+    proposals:
+      - PROP-005
+    worklog: "docs/work-logs/v0/v0.5/v0.5.0/"
+    notes: |
+      2026-09-29 依「major 起始即定 minor 清單」登記（0.4.0-W1-040；PROP-005 §0.5）。
+      阻擋四項見 PROP-005 §0.5；SPEC 於本版規劃波產出。
+
+  - version: "0.6.0"
+    codename: "Screens"
+    description: "其餘畫面接真資料：UC Flow、Ticket 清單、破洞報告、節點詳情、追溯視圖"
+    status: "planned"
+    proposals:
+      - PROP-005
+    worklog: "docs/work-logs/v0/v0.6/v0.6.0/"
+    notes: |
+      2026-09-29 依「major 起始即定 minor 清單」登記（0.4.0-W1-040；PROP-005 §0.6，原「0.6+」
+      收斂為單一 minor）。阻擋見 PROP-005 §0.6 表；SPEC 於本版規劃波產出。
+
+  - version: "0.7.0"
+    codename: "History"
+    description: "git 邊層級變更記錄；0.x 的最後一個 minor"
+    status: "planned"
+    proposals:
+      - PROP-005
+    worklog: "docs/work-logs/v0/v0.7/v0.7.0/"
+    notes: |
+      2026-09-29 依「major 起始即定 minor 清單」登記（0.4.0-W1-040；PROP-005 §0.7）。
+      尚未落為提案與規格，於本版規劃波產出。0.x 到此結束，不再新增 minor。
+
+  - version: "1.0.0"
+    codename: "Edit"
+    description: "編輯能力：直接改檔 + CLI 驗證（PROP-005 §1.0）；兼作下一個 major 的暫行停放區"
+    status: "planned"
+    proposals:
+      - PROP-005
     worklog: "docs/work-logs/v1/v1.0/v1.0.0/"
     notes: |
-      2026-09-29 登記（0.3.1-W1-089，用戶裁決 C1 暫行載體；見 tech-decisions 同日兩則補記）。
-      性質：停放區，不是已規劃範圍。每張進入的票須有「經討論後決定延後」的記錄
+      2026-09-29 定為編輯能力 major（0.4.0-W1-040，用戶裁決：唯讀 → 可寫屬系統基本能力改變）。
+      同日先以停放區身分登記（0.3.1-W1-089，用戶裁決 C1 暫行載體；見 tech-decisions 同日兩則補記）。
+      停放票不是已規劃範圍。每張進入的票須有「經討論後決定延後」的記錄
       （本批記錄見 0.3.1-W1-089 Solution 分診表）。major 規劃時為必讀輸入，逐張裁決
       做、併入或關閉。已知限制：票號版本無關化（0.3.1-W1-090）落地前，搬入即改名；
       0.x 全數凍結後「最近開放後繼」路由會把新票自動吸入，屆時須手動指定版本。
