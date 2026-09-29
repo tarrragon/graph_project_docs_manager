@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.45"
+version: "1.46"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1122,15 +1122,19 @@ T1 判否且三個承接落到 (c) 時，該事件對使用者完全不可見。
 | 4 | 通知授權請求（`notDetermined`，列 1–3 事件的子請求） | 自發型（我方決定於首次觸發條件成立時發起，不等待外部發起者） | 可棄 | 發起點：`ScanNotifier.requestAuthorization()` 呼叫發出前（§2.2 權限 gate `notDetermined` 列「於首次觸發條件成立的當下請求」） | 子呼叫，fallback 齊全、拒絕不造成不可回復後果，不高於列 1–3 | 系統權限對話框（macOS 原生 `UNUserNotificationCenter` 請求；不落於 §2.2／§2.12／§2.13 既定的三種載體形式內，仍佔用使用者呈現焦點） |
 | 5 | 開啟原始檔：`opened`（§3.1／§3.2／§3.5／§3.6 四處共用） | 等待型 | 可棄 | 進入邊界時：`ExternalOpener.open(path)` 呼叫發出當下（與 §2.2〈呼叫發出日誌〉記錄時機一致） | — | `AppSnackBar.plain`（`openedExternallyMessage`；§2.13 對照表第 2 列判準的具名例外，已裁定保留） |
 | 6 | 開啟原始檔：`failed`（四處共用） | 等待型 | 可棄 | 同列 5 | — | `AppSnackBar.plain`（`externalOpenFailedMessage`） |
-| 7 | 開啟原始檔：`notFound`（§3.2 UC Flow、§3.5 破洞報告） | 等待型 | 可棄 | 同列 5 | — | §3.5 破洞報告：`AppSnackBar.withAction`（`sourceFileNotFoundSnackbarMessage`，動作 `rescanAction`）；§3.2 UC Flow：`AppSnackBar.plain`（`sourceFileNotFoundSnackbarMessage`，不帶動作，取代原 `refreshAction`，`0.1.0-W3-335.38` S-18、S-22） |
+| 7 | 開啟原始檔：`notFound`（§3.1 Domain 泳道、§3.2 UC Flow、§3.5 破洞報告） | 等待型 | 可棄 | 同列 5 | — | §3.5 破洞報告：`AppSnackBar.withAction`（`sourceFileNotFoundSnackbarMessage`，動作 `rescanAction`）；§3.1 Domain 泳道與 §3.2 UC Flow：`AppSnackBar.plain`（`sourceFileNotFoundSnackbarMessage`，不帶動作；UC Flow 取代原 `refreshAction`，`0.1.0-W3-335.38` S-18、S-22；§3.1 泳道由 `0.3.2-W3-248` 補登，與 §2.13 對照表列 10 一致） |
 | 8 | 開啟原始檔：`notFound`（§3.1 Domain 開啟 docs 目錄，與 `failed` 共用同一則訊息） | 等待型 | 可棄 | 同列 5 | — | `AppSnackBar.plain`（`externalOpenFailedMessage`） |
 | 9 | 開啟原始檔：`notFound`（§3.6 節點詳情） | 等待型 | 可棄 | 同列 5 | — | 狀態轉換本身（`state-nodeDetail-missing`），不出現 SnackBar |
 | 10 | §3.6〈重新整理的三分支〉：重新整理後檔案仍不存在 | 等待型（使用者按下 `action-nodeDetail-refresh` 觸發） | 可棄 | 進入邊界時：`action-nodeDetail-refresh` 觸發重新解析呼叫發出當下 | — | `AppSnackBar.plain`（`sourceFileStillMissingMessage`） |
 | 11 | 型別表缺席降級關卡 | 自發型 | 不可棄（必須決策，L1） | 發起點：Domain 視圖載入完成判定 gate 三問「schema 版本相容」分支的當下（SPEC-001〈Gate 三問對照〉） | — | 顯式關卡狀態（三個阻擋狀態之一），非 SnackBar／系統通知 |
 | 12 | 不是框架專案（阻擋狀態） | 自發型 | 不可棄 | 同列 11 | — | 同列 11 |
 | 13 | schema 不相容（阻擋狀態） | 自發型 | 不可棄 | 同列 11 | — | 同列 11 |
+| 14 | 選擇器無法開啟（`ChooseFolderUnavailable`：系統資料夾選擇器本身開不起來） | 等待型（使用者按下選擇資料夾觸發） | 可棄 | 進入邊界時：`WorkspaceRepository.chooseFolder()` 呼叫發出當下（該方法的「呼叫發出」事件） | — | `AppSnackBar.plain`（`chooseFolderUnavailableMessage`，§2.13 對照表列 11）。呼叫點：§3.7 專案切換浮層「選擇其他」（`project_switcher_overlay.dart` 的 `_handleChooseFolderResult`；「最近專案項」雖共用同一處理函式，但走 `openPath`，不經選擇器，不會產生本結局）；§3.1 Domain 未選專案「選擇器無法開啟」列（規格已定，Domain 的選擇資料夾按鈕目前仍為 fixture，尚未接上 `chooseFolder`）。`0.3.2-W3-248` 補登 |
+| 15 | 選定資料夾不可讀或不存在（`WorkspaceUnavailable`，含 `reason`） | 等待型（同列 14 的後續結局；或使用者點擊最近專案項觸發） | 可棄 | 同列 14；最近專案項為 `WorkspaceRepository.openPath()` 呼叫發出當下 | — | `AppSnackBar.plain`（`folderUnavailableMessage(reason)`，§2.13 對照表列 12；`0.3.2-W1-009` 起實作改用此 key）。呼叫點：`_handleChosenState` 的 `WorkspaceUnavailable` 分支（「選擇其他」與「最近專案項」共用）；§3.1 對應列規格已定、尚未接上。`0.3.2-W3-248` 補登 |
+| 16 | 選定成功但未能記住（`ChooseFolderNotRemembered`：偏好設定寫入失敗） | 等待型（同列 15） | 可棄 | 同列 15 | — | `AppSnackBar.plain`（`workspaceNotRemembered`）。呼叫點：`_handleChooseFolderResult` 的 `ChooseFolderNotRemembered` 分支。§2.13 對照表尚無此結局的列，已另報 PM 決定落點。`0.3.2-W3-248` 補登 |
+| 17 | 帶目標跳入時清除搜尋與篩選（§3.4） | 等待型（使用者自他畫面帶目標跳入觸發） | 可棄 | 進入邊界時：Ticket 清單以帶目標的跳轉意圖抵達、判定需清除搜尋與篩選的當下 | — | `AppSnackBar.withAction`（`ticketsFiltersClearedSnackbarMessage`，動作 `undoAction`，§2.13 對照表列 14）。`0.3.2-W3-248` 補登 |
 
-**與功能需求的對應**：列 1–4 的驗收落在 FR-11；列 5–10 的載體選擇，同時落在
+**與功能需求的對應**：列 1–4 的驗收落在 FR-11；列 5–10 與列 14–17 的載體選擇，同時落在
 FR-16（判準 T 推導）與 FR-17（截斷與不顯示皆有紀錄）的驗收範圍內，兩者不
 重複本表結論。列 11–13 的驗收落在 SPEC-001 FR-07（非本規格 FR 清單所轄），
 本表僅記其到達類別與級別，不因此新增 SPEC-003 的 FR 條目。
@@ -2369,6 +2373,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.46 | 2026-09-29 | §2.14 指派表補登 lib 內已實作但未登記的提示呼叫點（`0.3.2-W3-248`，以 `grep AppSnackBar.show(` 列出全部呼叫點，逐一比對本表與排除清單）：新增列 14 `chooseFolderUnavailableMessage`、列 15 `folderUnavailableMessage(reason)`、列 16 `workspaceNotRemembered`、列 17 `ticketsFiltersClearedSnackbarMessage`，五欄齊備；列 7 補 §3.1 Domain 泳道的 `notFound`（與 §2.13 對照表列 10 一致）；「與功能需求的對應」段涵蓋列 14–17。排除清單不變 |
 | 1.45 | 2026-09-29 | `openedExternallyMessage` 的判準與條文衝突裁定為**保留**（`0.3.2-W3-210`，用戶裁定 2026-09-29，經 e1 以 AUQ 詢問）：§2.13 對照表第 2 列的「一致」欄由「待裁決」改為「判準的具名例外：條文為準（保留）」；表下段落改寫為具名理由，說明 T1 前提「結果抵達時我方已非前景」只在目標應用已執行時成立（`0.3.2-W3-236`，12/12 不可觀察），冷啟動時不成立（`0.3.2-W3-550` S2，12/12 於 `shown` 之後仍 `resumed` 0.46–0.80 s），並附可否證條件與涵蓋限制；「落 (c) 的事件集合」段與 §2.14 列 5 移除待裁決語意；FR 驗收列改為「待裁決標記或已裁定的具名例外理由」。§2.2、§3.1／§3.2／§3.5／§3.6、SPEC-004 §4.26、§2.12 四處條文維持顯示，不需同步 |
 | 1.44 | 2026-09-29 | 選擇器無法開啟的提示 key 改沿用既有 `chooseFolderUnavailableMessage`（`0.3.2-W3-368`：原提案 `folderPickerUnavailableMessage` 與之語意完全重疊，後者已由專案切換浮層實作使用）：§2.13 判準 T 對照表列 11、§3.1「選擇器無法開啟」列、§3.7「選擇其他（選擇器無法開啟）」列同步改名；`folderUnavailableMessage` 保留（理由見 SPEC-004 v1.50） |
 | 1.43 | 2026-09-29 | §2.13〈截斷事件的日誌等級〉補「已按動作者不是截斷」條文與測試斷言兩列（`0.3.2-W3-253` 裁定方向 2，實作 `0.3.2-W3-549`）：使用者按下 `withAction` 動作後的關閉不論 `origin`、不論框架回報的 `reason`，皆不套用截斷等級；判別輸入由提示元件自身取得。依據為實測：`onAction` 同步再顯示時舊一則回報 `reason: hide`，背景發起者被記為 warning |
