@@ -271,13 +271,15 @@ void main() {
       fixture.fake.fireActivated();
       await tester.pump();
       await tester.pump();
+      await tester.pump();
+      await tester.pump();
 
       const expected = [
         'click-path:activated',
         'click-path:navigate destination=gaps returnTo=null',
         'click-path:locate-set itemId=a',
-        'click-path:locate-scroll itemId=a',
-        'click-path:locate-focus itemId=a requested=true',
+        'click-path:locate-scroll itemId=a visible=true',
+        'click-path:locate-focus itemId=a hasFocus=true',
       ];
       expect(logs.length, expected.length, reason: logs.join('\n'));
       for (var i = 0; i < expected.length; i++) {
