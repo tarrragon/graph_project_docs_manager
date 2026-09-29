@@ -392,14 +392,6 @@ void main() {
       expect(logs, ['${withdrawLogPrefix}rescan']);
     });
 
-    testWidgets('撤回觸發日誌 projectSwitch', (tester) async {
-      final logs = await withdrawLogsAfter(
-        tester,
-        (fixture) async =>
-            fixture.gapNotifier.complete(const GapReportProjectUnready()),
-      );
-      expect(logs, ['${withdrawLogPrefix}projectSwitch']);
-    });
   });
 
   group('SPEC-003 §2.2 granted 但發送失敗', () {

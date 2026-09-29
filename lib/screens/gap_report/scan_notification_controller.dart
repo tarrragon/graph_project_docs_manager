@@ -45,6 +45,7 @@ void logClickPath(String event, String detail, String name) =>
     clickPathLogSink('$clickPathLogPrefix$event $detail', name);
 
 /// 撤回通知的觸發條件（SPEC-003 §2.2「可觀測性」列）。
+// projectSwitch 呼叫點由 0.3.2-W1-010 承接（目前無呼叫點）。
 enum WithdrawTrigger { destination, lifecycle, rescan, projectSwitch }
 
 /// 撤回日誌前綴；事件格式為 `withdraw-trigger:<條件名>`。
@@ -133,10 +134,6 @@ class ScanNotificationController {
     // （SPEC-003 §2.2「不重複發送」列「新一輪掃描開始」）。
     if (next is GapReportScanning && _pendingWithdrawableState != null) {
       _withdraw(WithdrawTrigger.rescan);
-    }
-    // 專案切換使圖重建而回到未就緒：舊專案的結果通知同樣失效。
-    if (next is GapReportProjectUnready && _pendingWithdrawableState != null) {
-      _withdraw(WithdrawTrigger.projectSwitch);
     }
 
     // 觸發條件僅「state-gaps-scanning 轉換至 state-gaps-none 或
