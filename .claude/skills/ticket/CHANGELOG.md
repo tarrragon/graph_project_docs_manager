@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.42.3（本地變更，指向 tarrragon/claude#77）— `complete` 內建 auto-commit 只在工作日誌本次確實寫入時才把它列入提交範圍：`append_worklog_progress` 回傳 bool（True＝本次寫入；檔案不存在、冪等跳過、無日期標題區段、寫後驗證失敗、例外皆 False），`complete()` 據此決定 `modified_paths`。此前無條件列入，工作日誌未變更時 `commit_files_isolated` 自我驗證（實際變更須等於預期）失敗，整批提交放棄，連票面 md 也未提交。`commit_files_isolated` 的自我驗證不放寬（影響所有呼叫端）。`track_batch` 忽略回傳值，不受影響。E1 對照測試：同批 fixture 下追加回傳 True／False 兩案，提交範圍的工作日誌成員不同。
+
 **Version**: 2.42.2（本地變更，指向 tarrragon/claude#55）— `ticket track commit` 將票自身 md 視為隱含可寫範圍：ANA 票 where.files 預設唯讀，導致無法提交自己的票面（誤報「未宣告任何寫入路徑」）。輸入僅票自身 md 時放行；輸入含其他路徑時判定不變（宣告為空仍沿用原錯誤與 ANA `::write` 說明，非票面路徑仍整批拒絕）。E2 對照測試：票自身 md 放行、票自身 md 搭配非票面路徑拒絕。
 
 **Version**: 2.42.1（本地變更，指向 tarrragon/claude#102）— `acceptance_auditor._check_spawned_recursive` 改以衍生票自身 ID 的版本前綴載入 spawned（`extract_version_from_ticket_id`，取不到才退回父票版本），修復建在其他版本的合法衍生票在 complete ANA 票時一律被判 `not_found` 的問題（此前只能整批 `--yes-spawned` 放行）。`_check_children_recursive` 不受影響（children ID 恆以父票 ID 為前綴）。E1 對照測試：同批 fixture 下跨版本存在與真不存在兩案結果不同。
