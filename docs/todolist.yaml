@@ -152,7 +152,7 @@ versions:
   - version: "0.3.2"
     codename: "Corpus-3"
     description: "0.3.x 第二個 patch：提示訊息與外部開啟"
-    status: "planned"
+    status: "active"
     worklog: "docs/work-logs/v0/v0.3/v0.3.2/"
     notes: |
       2026-09-29 發版後分診登記（0.3.1-W1-089）。topic = 提示訊息與外部開啟。
