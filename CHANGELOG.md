@@ -4,8 +4,7 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號依 `docs/todolist.yaml` 的版本序列。
 開發中的版本以 `In Development` 標記，發版時由 `version-release finish` 換為日期。
 
-## [0.3.1] - In Development
-
+## [0.3.1] - 2026-09-29
 **Topic**：掃描通知與破洞判定。0.3.x 發版後分診的第一個 patch（固定三個：0.3.1／0.3.2／0.3.3）。不變式：0.3.0 的 IT-1、IT-2 仍通過。
 
 ### Fixed
