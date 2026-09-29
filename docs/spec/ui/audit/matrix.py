@@ -11,7 +11,8 @@ exit 0＝無基線外缺漏、無過期或不全的基線列、狀態集合差 0
 exit 1＝有基線外新缺漏，或狀態集合／權威表推導差大於 0；
 exit 2＝僅基線有過期列（key 已不在輸出）或欄位不全（同時有 1 的條件時取 1）。
 遮罩只收有理由的項目：R 編號來自 0.1.0-W3-335.54 Solution〈4. 合理不出現〉，
-N 編號為 0.3.3-W3-375 新判定；不得為了歸零而擴大遮罩。
+N 編號為 0.3.3-W3-375 新判定；N6 起為 0.3.3-W3-407 由 baseline 改寫的遮罩（判準見 MASKS）；
+不得為了歸零而擴大遮罩。合理不出現一律寫成遮罩，baseline.tsv 只收有追修票的真缺漏。
 比對一律為固定字串（去除 ** 粗體標記後），範圍以章節標題切段；變更歷史表列排除。
 權威表定義（STATES／SNACK_KEYS／ANCHOR 三個集合的來源）見同目錄 README.md。
 （本檔為稽核腳本，字串內中文為比對樣式非 user-facing 字串）  # i18n-exempt
@@ -19,6 +20,7 @@ N 編號為 0.3.3-W3-375 新判定；不得為了歸零而擴大遮罩。
 import re
 import sys
 import glob
+from fnmatch import fnmatchcase
 from collections import Counter
 from pathlib import Path
 
@@ -110,7 +112,14 @@ MASKS = {
     'N4': ('W3-404（W3-392 遮罩複核）', 'SPEC-001 明文不承載錨點，S1 任一欄宣告不適用'),  # i18n-exempt
     'N5': ('W3-404（W3-392 遮罩複核）', '§2.13 判準結論非 plain／withAction，或為動作文字 key、或不在 §2.13 對照表：無變體歸屬可比'),  # i18n-exempt
     'N2': ('W3-375 新判定', '畫面節分欄：key 只在觸發它的畫面節出現，改以「S3 §3.x 任一節出現」作行層檢查'),  # i18n-exempt
-    'N3': ('W3-375 新判定', '通式錨點（含 *）為命名通則，具體成員各自成列於同矩陣，本欄不逐通式要求'),  # i18n-exempt
+    'N3': ('W3-375 新判定；W3-407 擴及 S3任一／S4任一', '通式錨點（含 *）為命名通則，具體成員各自成列於同矩陣，本欄不逐通式要求'),  # i18n-exempt
+    'N6': ('W3-407（W3-392 判讀；SPEC-003 §2.1〈未列轉換的預設〉）', 'S3 動畫提示欄只列與預設 cross-fade 不同的轉場：疊加態、阻擋三態、正常類、泳道衍生態、無法判定破洞屬預設，不逐列'),  # i18n-exempt
+    'N7': ('W3-407（W3-392 判讀；SPEC-003 §2.7 覆蓋狀態、SPEC-001 §2–§4）', '由結果進入的空狀態（無 UC／無提案／無 ticket／無破洞）與鏈路斷裂，不以狀態錨點出現於互動反應表，進入由導航表與 §4 承載（R2 的同判準延伸）'),  # i18n-exempt
+    'N8': ('W3-407（W3-392 判讀；SPEC-003 §2.7 首段）', '§2.7 只涵蓋空狀態與阻擋狀態元件：資料視圖降級類（鏈路斷裂、有破洞、無法判定破洞、部分損壞）與浮層畫面（§7）不在範圍（R4 的同判準延伸）'),  # i18n-exempt
+    'N9': ('W3-407（W3-392 判讀；SPEC-004 §3.1 總表）', '§3.1 資料視圖降級類狀態由容器列以畫面節號標示，不寫狀態名（R6 的同判準延伸）'),  # i18n-exempt
+    'N10': ('W3-407（W3-392 判讀；SPEC-003 §2.13 對照表〈既有條文〉欄）', 'SnackBar key 在 §2.13 有列且〈既有條文〉欄以「§N.N：」指名承載節：該承載節即權威處，S3 §2.2 或畫面節不重述 key（無列或欄內無指名者不適用，仍為缺漏）'),  # i18n-exempt
+    'N11': ('W3-407（W3-392 判讀；SPEC-003 殼層通則、NAV_EXCLUDE_PREFIX）', '殼層導航錨點（nav-item-／nav-page-）由殼層通則承載，不入互動反應表，SPEC-004 亦以通式承載'),  # i18n-exempt
+    'N12': ('W3-407（W3-392 判讀；W3-395 已修）', '具體錨點被同欄某個通式錨點（含 *）以 fnmatch 涵蓋：腳本不展開通式，涵蓋範圍由通式決定'),  # i18n-exempt
 }
 GAPS = []            # (矩陣, 成員, 位置)：無遮罩的未出現格
 WARNS = []           # 同上，警告等級：列出但不計入合計
@@ -144,6 +153,10 @@ def has(ls, s):
 
 
 
+# N7：由結果進入的空狀態名（SPEC-003 §2.7 覆蓋狀態列舉）加鏈路斷裂；N8／N9：資料視圖降級類錨點。
+RESULT_EMPTY_ANCHORS = {anc for _, name, anc in STATES if name in ('無 UC', '無提案', '無 ticket', '無破洞')} | {'state-traceability-broken'}  # i18n-exempt
+DATA_DEGRADED_ANCHORS = {'state-traceability-broken', 'state-gaps-found', 'state-gaps-undeterminable',
+                         'state-nodeDetail-partial', 'badge-tickets-corrupted'}
 STATE_COLS = ['S1表', 'S1§8.1', 'S3§4', 'S3導航', 'S3生命週期', 'S3動畫', 'S3互動', 'S3§2.7', 'S4§3.6', 'S4錨點', 'S4§3.1', 'UC']  # i18n-exempt
 BLOCKED_ANCHORS = ('state-domain-not-framework', 'state-domain-schema-unconsumable', 'state-domain-schema-incompatible')
 
@@ -169,6 +182,20 @@ def state_mask(col, name, anc):
         return 'R6'
     if col == 'UC':
         return 'R7'
+    return state_mask_n(col, anc, normal, blocked, overlay)
+
+
+def state_mask_n(col, anc, normal, blocked, overlay):
+    """W3-407 自 baseline 改寫的狀態遮罩（N6–N9）。"""  # i18n-exempt
+    if col == 'S3動畫' and (blocked or overlay or normal  # i18n-exempt
+                           or anc.startswith('state-domain-swimlane') or anc == 'state-gaps-undeterminable'):
+        return 'N6'
+    if col == 'S3互動' and anc in RESULT_EMPTY_ANCHORS:  # i18n-exempt
+        return 'N7'
+    if col == 'S3§2.7' and (anc in DATA_DEGRADED_ANCHORS or anc.startswith('state-switcher-')):
+        return 'N8'
+    if col == 'S4§3.1' and anc in DATA_DEGRADED_ANCHORS:
+        return 'N9'
     return None
 
 
@@ -253,9 +280,24 @@ def variant_consistent(variants_ls, key, conclusions):
     return all((f'`{key}`' in rows.get(v, '')) == (v in want) for v in VARIANT_NAMES)
 
 
+CARRIER = re.compile(r'§(\d+(?:\.\d+)*)：')
+
+
+def carrier_section(key):
+    """§2.13 對照表中含 key 的列，其〈既有條文〉欄（第 8 欄）以「§N.N：」指名的承載節；無則 None（N10）。"""  # i18n-exempt
+    for cells in parse_table_rows(section(L3, r'^### 2\.13', 3), '#'):
+        m = CARRIER.match(cells[7]) if len(cells) > 7 else None
+        if m and re.search(rf'`{key}(?:\([^)]*\))?`', ' '.join(cells[1:6])):
+            return m.group(1)
+    return None
+
+
 def snack_screen_cells(matrix, key):
-    """S3 §3.x 畫面節分欄（N2）：任一節出現即其餘 . 為合理不出現；全無則整列真缺漏。"""
+    """S3 §3.x 畫面節分欄（N2）：任一節出現即其餘 . 為合理不出現；全無則整列真缺漏（N10 承載節指名者除外）。"""  # i18n-exempt
     found = [has(section(L3, rf'^### 3\.{n} ', 3), key) for n in SNACK_SCREEN_NODES]
+    if not any(found) and carrier_section(key):
+        MASK_USED['N10'] += 1
+        return ['~N10'] * len(found)
     if not any(found):
         GAPS.append((matrix, f'`{key}`', SNACK_ANY_SCREEN))
         return ['X'] * len(found)
@@ -279,7 +321,8 @@ def snack_matrix():
     for k in snack_keys_effective():
         mk = f'`{k}`'
         row = [mk,
-               cell(m, mk, 'S3§2.2', has(s3_22, k), 'R9' if k in NOT_IN_S3_22 else None),
+               cell(m, mk, 'S3§2.2', has(s3_22, k), 'R9' if k in NOT_IN_S3_22 else
+                    ('N10' if carrier_section(k) not in (None, '2.2') else None)),
                cell(m, mk, 'S3§2.13', has(s3_213, k))]
         row += snack_screen_cells(m, k)
         row += [cell(m, mk, 'S1§8.2', False, 'R8'),
@@ -305,6 +348,7 @@ R2_STATE_ANCHORS = {anc for _, name, anc in STATES
                     or anc in BLOCKED_ANCHORS or anc.endswith('-project-unready')}
 
 
+ANCHOR_SETS = {}     # anchor_matrix 填入：欄名 -> 該欄出現的錨點集合（N12 通式涵蓋判定）
 NAV_ANCHORS = set()   # anchor_matrix 填入：S3 §3.x〈導航跳轉與退出〉出現的錨點（S3§4 欄的檢查對象）
 # S3§4 欄排除：殼層導航三出口（SPEC-003 殼層通則承載）與標明外部動作者不屬 §4 導航反應欄。
 NAV_EXCLUDE_PREFIX = ('nav-item-', 'nav-page-')
@@ -333,8 +377,17 @@ def anchor_mask(col, a):
             return 'R2'
         if '*' in a:
             return 'N3'
+        if a in RESULT_EMPTY_ANCHORS:
+            return 'N7'
+    if col in ('S3任一', 'S4任一') and '*' in a:  # i18n-exempt
+        return 'N3'
     if col == 'S4任一' and a.startswith(('state-', 'action-', 'mode-')):  # i18n-exempt
         return 'R5'
+    if col in ('S3互動', 'S4任一'):  # i18n-exempt
+        if a.startswith(NAV_EXCLUDE_PREFIX):
+            return 'N11'
+        if '*' not in a and any('*' in p and fnmatchcase(a, p) for p in ANCHOR_SETS.get(col, ())):
+            return 'N12'
     return None
 
 
@@ -382,6 +435,7 @@ def anchor_matrix():
     s3_all, s4_all, s1_all = collect(L3), collect(L4), collect(L1)
     sets = [s3_int, collect(section(L3, r'^### 1\.1 ', 3)), collect(section(L3, r'^### 1\.4 ', 3)),
             collect(section(L3, r'^## 4\. ', 2)), s3_all, s4_all, s1_all]
+    ANCHOR_SETS.update(zip(ANCHOR_COLS, sets))
     head = ['錨點', 'S3§3.x互動', 'S3§1.1', 'S3§1.4', 'S3§4', 'S3任一', 'S4任一', 'S1任一']  # i18n-exempt
     print('| ' + ' | '.join(head) + ' |')
     print('|' + '---|' * len(head))
