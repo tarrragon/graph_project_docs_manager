@@ -121,8 +121,12 @@ versions:
       2026-09-29 發版後分診（0.3.1-W1-089，試行「minor 完成後依 topic 定固定數量
       patch」，見 tech-decisions 同日補記）：0.3.x 固定三個 patch，本版 topic =
       掃描通知與破洞判定。缺陷清單：W3-122（已完成）、W1-028、W1-081、W3-113。
-      不變式 = 0.3.0 IT-1、IT-2 仍通過。分診後新發現一律登記至 1.0.0 停放，
-      唯「契約行為或資料錯誤」可經例外閥插入本版並標 scope_blocker。
+      不變式 = 0.3.0 IT-1、IT-2 仍通過。分診後新發現依 topic 契合度進未開工 patch，
+      都不契合才進 1.0.0 停放；「契約行為或資料錯誤」可經例外閥插入本版並標 scope_blocker。
+      例外閥：W1-092（子票 ID 被判非節點；預期變更 = IT-2 凍結 manifest 1249 列 non_node→node，
+      gap 46／failure_unmatched 1252 不變，實測相符）。
+      前置工具修正（2026-09-29 用戶裁示，延後既有 patch 規劃先修）：W1-093、W1-094、W1-095
+      （ticket skill，canonical #102／#55／#77，本地修並記 skill CHANGELOG）。
 
   - version: "0.3.2"
     codename: "Corpus-3"
