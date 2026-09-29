@@ -182,12 +182,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gotoGapsReportAction => '前往破洞報告';
 
   @override
-  String get gotoDomainAction => '前往 Domain 視圖';
-
-  @override
-  String get projectUnreadyMessage => '尚未進入 Domain 視圖';
-
-  @override
   String get openSourceFileAction => '開啟原始檔';
 
   @override

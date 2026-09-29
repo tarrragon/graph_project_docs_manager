@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtures.dart';
@@ -28,7 +29,7 @@ void main() {
         child: const NodeDetailScreen(),
         overrides: [
           nodeDetailStateProvider.overrideWith(
-            (ref) => const NodeDetailProjectUnready(),
+            (ref) => const NodeDetailProjectUnready(ProjectUnreadyReason.notSelected),
           ),
         ],
         size: size,
@@ -50,7 +51,7 @@ void main() {
         child: const NodeDetailScreen(),
         overrides: [
           nodeDetailStateProvider.overrideWith(
-            (ref) => const NodeDetailProjectUnready(),
+            (ref) => const NodeDetailProjectUnready(ProjectUnreadyReason.notSelected),
           ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.nodeDetail,

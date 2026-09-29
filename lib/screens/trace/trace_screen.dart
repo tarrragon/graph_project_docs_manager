@@ -11,6 +11,7 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
@@ -53,25 +54,11 @@ class TraceabilityScreen extends ConsumerWidget {
             ),
           ],
         ),
-      TraceabilityProjectUnready(:final reason) => EmptyState(
-          variant: EmptyStateVariant.page,
-          testKey: const Key('state-traceability-project-unready'),
-          message: switch (reason) {
-            ProjectUnreadyReason.notSelected =>
-              l10n.projectUnreadyReasonNotSelected,
-            ProjectUnreadyReason.loading => l10n.projectUnreadyReasonLoading,
-            ProjectUnreadyReason.incompatible =>
-              l10n.projectUnreadyReasonIncompatible,
-          },
-          actions: [
-            AppButton(
-              label: l10n.gotoDomainViewAction,
-              testKey: const Key('action-traceability-goto-domain'),
-              onPressed: () =>
-                  navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
-            ),
-          ],
-        ),
+      TraceabilityProjectUnready(:final reason) => ProjectUnreadyView(
+        reason: reason,
+        stateKey: const Key('state-traceability-project-unready'),
+        actionKey: const Key('action-traceability-goto-domain'),
+      ),
     };
   }
 }

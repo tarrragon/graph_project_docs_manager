@@ -14,6 +14,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
+import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
@@ -32,7 +33,11 @@ class NodeDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(nodeDetailStateProvider);
     return switch (state) {
-      NodeDetailProjectUnready() => const _ProjectUnreadyView(),
+      NodeDetailProjectUnready(:final reason) => ProjectUnreadyView(
+        reason: reason,
+        stateKey: const Key('state-nodeDetail-project-unready'),
+        actionKey: const Key('action-nodeDetail-goto-domain'),
+      ),
       NodeDetailUnset() => const _UnsetView(),
       NodeDetailReady(:final nodeId) => _ReadyView(nodeId: nodeId),
       NodeDetailMissing(:final nodeId, :final lastKnownPath) => _MissingView(
@@ -40,30 +45,6 @@ class NodeDetailScreen extends ConsumerWidget {
         lastKnownPath: lastKnownPath,
       ),
     };
-  }
-}
-
-/// 專案未就緒：`EmptyState.page`（SPEC-001 §6 共用定義；優先於「未選
-/// 節點」判定，SPEC-003 §3.6）。
-class _ProjectUnreadyView extends ConsumerWidget {
-  const _ProjectUnreadyView();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    return EmptyState(
-      variant: EmptyStateVariant.page,
-      message: l10n.projectUnreadyMessage,
-      testKey: const Key('state-nodeDetail-project-unready'),
-      actions: [
-        AppButton(
-          label: l10n.gotoDomainAction,
-          onPressed: () =>
-              navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
-          testKey: const Key('action-nodeDetail-goto-domain'),
-        ),
-      ],
-    );
   }
 }
 

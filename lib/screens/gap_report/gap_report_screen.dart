@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
+import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
@@ -31,34 +32,15 @@ class GapReportScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(gapReportProvider);
     return switch (state) {
-      GapReportProjectUnready() => const _ProjectUnreadyView(),
+      GapReportProjectUnready(:final reason) => ProjectUnreadyView(
+        reason: reason,
+        stateKey: const Key('state-gaps-project-unready'),
+        actionKey: const Key('action-gaps-goto-domain'),
+      ),
       GapReportScanning() => _ScanningView(state: state),
       GapReportNoGaps() => const _NoGapsView(),
       GapReportFound() => _FoundView(state: state),
     };
-  }
-}
-
-/// 專案未就緒：`EmptyState.page`（SPEC-001 §5 共用定義）。
-class _ProjectUnreadyView extends ConsumerWidget {
-  const _ProjectUnreadyView();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    return EmptyState(
-      variant: EmptyStateVariant.page,
-      message: l10n.projectUnreadyMessage,
-      testKey: const Key('state-gaps-project-unready'),
-      actions: [
-        AppButton(
-          label: l10n.gotoDomainAction,
-          onPressed: () =>
-              navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
-          testKey: const Key('action-gaps-goto-domain'),
-        ),
-      ],
-    );
   }
 }
 

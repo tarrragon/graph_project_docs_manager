@@ -5,6 +5,8 @@
 /// 真實 repo 快照的缺 frontmatter 樣本驅動（見 gap_report_provider.dart）。
 library;
 
+import '../../app/graph_status.dart';
+
 /// 破洞項指向的節點型別（SPEC-001 §5〈破洞項的主操作與次要操作〉，
 /// `0.1.0-W3-335.19` 用戶裁示 2026-09-14）。點擊行為依此分派：
 /// [ticket]／[otherNode]／[event] 三類跳轉，主操作外另有次要操作
@@ -85,7 +87,10 @@ sealed class GapReportState {
 /// 專案未就緒：Domain 視圖尚未建立圖（SPEC-001 §5 共用定義，
 /// `0.1.0-W3-335.37` R9）。對應 `EmptyState.page` + 前往 Domain 視圖動作。
 class GapReportProjectUnready extends GapReportState {
-  const GapReportProjectUnready();
+  const GapReportProjectUnready(this.reason);
+
+  /// Three-way reason (shared enum).
+  final ProjectUnreadyReason reason;
 }
 
 /// 掃描中：對應 `LoadingState.skeleton`（版位 `sections`）。

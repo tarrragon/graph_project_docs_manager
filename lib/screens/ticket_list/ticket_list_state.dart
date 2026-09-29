@@ -7,6 +7,9 @@
 /// 獨立的第七種狀態（SPEC-001 §4 表下段落）。
 library;
 
+import '../../app/graph_status.dart';
+export '../../app/graph_status.dart' show ProjectUnreadyReason;
+
 /// 列表／主題雙模式（SPEC-004 §4.10 `SegmentedControl`）。
 enum TicketListMode {
   /// 正常 · 列表：密集表格 + 虛擬捲動。
@@ -14,20 +17,6 @@ enum TicketListMode {
 
   /// 正常 · 主題：主題節 + 未歸屬節。
   topic,
-}
-
-/// 「專案未就緒」的三個原因（SPEC-001 §4 共用定義，`0.1.0-W3-335.37`
-/// R9）。與 `trace_state.dart` 的同名列舉語意相同，各畫面獨立宣告以維持
-/// 每個畫面只依賴自己的狀態檔（既有專案慣例）。
-enum ProjectUnreadyReason {
-  /// Domain 視圖尚未選擇專案。
-  notSelected,
-
-  /// Domain 視圖圖譜載入中。
-  loading,
-
-  /// Domain 視圖處於三個阻擋狀態之一。
-  incompatible,
 }
 
 /// 可排序欄（SPEC-003 §3.4〈篩選與排序的 key 值域〉：id／title／status／

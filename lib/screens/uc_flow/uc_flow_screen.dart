@@ -24,6 +24,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
+import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
@@ -43,35 +44,16 @@ class UcFlowScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ucFlowStateProvider);
     return switch (state) {
-      UcFlowProjectUnready() => const _ProjectUnreadyView(),
+      UcFlowProjectUnready(:final reason) => ProjectUnreadyView(
+        reason: reason,
+        stateKey: const Key('state-ucFlow-project-unready'),
+        actionKey: const Key('action-ucFlow-goto-domain'),
+      ),
       UcFlowEmpty() => const _EmptyView(),
       UcFlowUcUnset() => const _UcUnsetView(),
       UcFlowUnstructured(ucId: final ucId) => _UnstructuredView(ucId: ucId),
       UcFlowNormal(ucId: final ucId) => _NormalView(ucId: ucId),
     };
-  }
-}
-
-/// 專案未就緒：`EmptyState.page`（SPEC-001 §5 之後共用定義）。
-class _ProjectUnreadyView extends ConsumerWidget {
-  const _ProjectUnreadyView();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    return EmptyState(
-      variant: EmptyStateVariant.page,
-      message: l10n.projectUnreadyMessage,
-      testKey: const Key('state-ucFlow-project-unready'),
-      actions: [
-        AppButton(
-          label: l10n.gotoDomainAction,
-          onPressed: () =>
-              navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
-          testKey: const Key('action-ucFlow-goto-domain'),
-        ),
-      ],
-    );
   }
 }
 

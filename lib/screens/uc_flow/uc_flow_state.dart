@@ -15,6 +15,8 @@
 /// `uc_flow_screen.dart` 檔頭說明。
 library;
 
+import '../../app/graph_status.dart';
+
 /// UC Flow 視圖的五個畫面狀態（SPEC-001 §2）。
 sealed class UcFlowState {
   const UcFlowState();
@@ -22,7 +24,10 @@ sealed class UcFlowState {
 
 /// 專案未就緒：`EmptyState.page`（SPEC-001 §5 之後共用定義）。
 class UcFlowProjectUnready extends UcFlowState {
-  const UcFlowProjectUnready();
+  const UcFlowProjectUnready(this.reason);
+
+  /// Three-way reason (shared enum).
+  final ProjectUnreadyReason reason;
 }
 
 /// 無 UC：`EmptyState.page`（專案無 UC 型別節點）。
