@@ -71,15 +71,23 @@ def extract_spec_frs(spec_text):
 
 
 SPEC_ID_RE = re.compile(r"SPEC-\d+")
-FRONTMATTER_ID_RE = re.compile(r"\A---\s*\n(?:.*\n)*?id:\s*[\"']?([^\s\"']+)", re.MULTILINE)
+FRONTMATTER_BLOCK_RE = re.compile(r"\A---\s*\n(.*?)^---\s*$", re.MULTILINE | re.DOTALL)
+FRONTMATTER_ID_LINE_RE = re.compile(r"^id:\s*[\"']?([^\s\"']+)", re.MULTILINE)
 HEADING_RE = re.compile(r"^(#{1,6})\s")
 
 
 def extract_spec_id(spec_text, spec_path=None):
-    """spec 識別：先取 frontmatter id，缺時取檔名的 SPEC-NNN 前綴，都沒有回 None。"""
-    fm = FRONTMATTER_ID_RE.match(spec_text)
+    """spec 識別：先取 frontmatter id，缺時取檔名的 SPEC-NNN 前綴，都沒有回 None。
+
+    只接受 SPEC-NNN 形式：domain map 的歸屬鍵由 SPEC_ID_RE 抽出，其他形式的 id
+    （如 SPEC-UI-001）在 map 端永遠對不上，回 None 讓呼叫端走相容模式並警告，
+    而不是把該 spec 的全部 FR 報成未覆蓋。frontmatter 只看收尾 --- 之前的區塊。
+    """
+    block = FRONTMATTER_BLOCK_RE.match(spec_text)
+    fm = FRONTMATTER_ID_LINE_RE.search(block.group(1)) if block else None
     if fm:
-        return fm.group(1).upper()
+        candidate = fm.group(1).upper()
+        return candidate if SPEC_ID_RE.fullmatch(candidate) else None
     if spec_path is not None:
         name = SPEC_ID_RE.match(Path(spec_path).name)
         if name:

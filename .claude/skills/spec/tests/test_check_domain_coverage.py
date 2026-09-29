@@ -273,3 +273,16 @@ def test_spec_id_from_filename_when_no_frontmatter_id(tmp_path):
     p = tmp_path / "SPEC-202-name.md"
     p.write_text("### FR-01: a\n", encoding="utf-8")
     assert cdc.extract_spec_id("### FR-01: a\n", p) == "SPEC-202"
+
+
+def test_spec_id_not_read_from_body_after_frontmatter():
+    """frontmatter 無 id 時，不得把收尾 --- 之後正文的 id: 行當成 spec 識別。"""
+    spec = "---\ntitle: x\n---\nid: SPEC-999\n### FR-01: a\n"
+    assert cdc.extract_spec_id(spec) is None
+
+
+def test_spec_id_outside_spec_nnn_form_falls_back_to_compat(capsys):
+    """id 不是 SPEC-NNN 形式時 map 的歸屬鍵對不上，須走相容模式並警告，不得全數報未覆蓋。"""
+    spec = "---\nid: SPEC-UI-001\n---\n### FR-01: a\n"
+    assert cdc.check_domain_coverage(spec, MAP_UNDER_B) == []
+    assert "WARNING" in capsys.readouterr().err
