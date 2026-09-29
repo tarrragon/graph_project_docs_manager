@@ -306,6 +306,9 @@ versions:
       W3-398（源自 W3-378 調查：無已存路徑啟動時停在 fixture 矩陣，違反 SPEC-003 §3.1；新使用者首見假資料，P1）。
       規格已同步：SPEC-001 v1.24、SPEC-003 v1.51、SPEC-004 v1.60；W3-377、W3-378 結案。
       框架：W1-010（spec skill check_domain_coverage FR 比對加入 spec 識別，1.9.0；canonical #107 引用）。
+      框架（flutter_balance 回報）：W1-011（CJK 檔名在 core.quotepath 下路徑比對失敗；canonical #111 經用戶逐次授權新開；
+      父票先分類 44 檔 146 處呼叫點再依套件拆子票）、W1-012（bare-commit-guard 改讀票面現行 where.files；canonical #89 觀測）。
+      W1-012 先做，W1-011 的 hooks 子票排其後（同改 bare-commit-guard-hook.py）。
       發版時待辦（用戶裁示 2026-09-29）：skill-sync push component-contract-design（W1-007～009 累計，本地 3.12.0／
       發佈庫 3.11.0；canonical 已同步 v2.63.3），於 0.3.3 finish 後與 sync-push 一併執行。
       分診輸入（0.3.2 發版前對照）：三次例外閥共同形態為「規格有寫、實作未做、測試未擋」。本版 topic 即此類，
