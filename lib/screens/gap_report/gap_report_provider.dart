@@ -70,22 +70,62 @@ class GapReportNotifier extends Notifier<GapReportState> {
   /// 一輪的結果（見 [_completeScan]）。
   int _scanGeneration = 0;
 
+  /// 掃描是否已被觸發過一次（0.3.1-W3-122：觸發時機改為消費
+  /// [firstVisibleProvider]）。`firstVisibleProvider` 本身對重複讀取已
+  /// 冪等（讀到 `true` 後即透過 microtask 寫回已見集合），本欄位額外
+  /// 防止「已見集合更新」觸發的重建 rebuild build() 時，因
+  /// `firstVisibleProvider` 短暫仍可能與前次同為 `true`（同一次事件迴圈
+  /// 內的中間態）而重複呼叫 [_scheduleScan]。
+  bool _hasTriggeredScan = false;
+
+  /// build() 上一次回傳的結果，供本次 rebuild 在「未觸發新一輪掃描」時
+  /// 原樣回傳（不可讀取 [Notifier.state]：首次 build() 呼叫時該 getter
+  /// 尚未初始化）。
+  GapReportState _lastResult = const GapReportScanning();
+
   @override
   GapReportState build() {
     // SPEC-003 §3.5〈生命週期〉「首次可見但圖未建立」：不自動掃描，渲染
     // 共用「專案未就緒」定義；watch 使圖建立完成時 build() 重跑，依「首次
     // 可見且圖已建立」列重新判定（SPEC-001 §5 共用定義，`0.1.0-W3-335.37`
-    // R9）。
+    // R9）。此分支刻意不寫入 [_lastResult]：`IndexedStack` 一次建構六頁
+    // （SPEC-003 §2.8），本畫面即使未被選取也持續存在，圖建立狀態可能在
+    // 已觸發過掃描後又反覆變化（例如切換專案）；若在此覆寫 `_lastResult`，
+    // 圖重新建立後會錯誤地卡在本狀態，而非恢復已完成的掃描結果。
     if (!ref.watch(graphBuiltProvider)) {
       return const GapReportProjectUnready();
     }
-    _scheduleScan();
-    return const GapReportScanning();
+    // 0.3.1-W3-122：掃描觸發改掛在「首次可見 nav-page-gaps」，不再掛在
+    // provider 的 build()（原本一經 ScanNotificationController.start() 於
+    // App 啟動時掛上監聽即觸發，早於使用者看過破洞報告頁）。
+    final isFirstVisible = ref.watch(firstVisibleProvider(AppDestination.gaps));
+    if (isFirstVisible && !_hasTriggeredScan) {
+      _hasTriggeredScan = true;
+      _scheduleScan();
+      _lastResult = const GapReportScanning();
+      return _lastResult;
+    }
+    if (!_hasTriggeredScan) {
+      // 圖已建立但尚未首次造訪 nav-page-gaps：本頁尚未被選取，`IndexedStack`
+      // 仍在背景持續建構本 widget tree。若回傳 [GapReportScanning]，
+      // `_ScanningView` 的 shimmer `AnimationController` 會在背景無限
+      // `repeat()`，使涉及完整 App（`pumpApp`）的 `pumpAndSettle` 永不收斂
+      // （0.3.1-W3-122 根因；重現：`project_switcher_test.dart` 等未曾
+      // 導覽至 gaps 頁的測試逐一 timeout）。改用 [GapReportProjectUnready]
+      // （`EmptyState`，靜態無動畫）作為佔位——使用者尚未選取本頁，畫面
+      // 文字不會被實際看見；選取當下 `isFirstVisible` 已於同一次 provider
+      // 重算中翻為 `true`（見上一分支），不會有此佔位文字的殘影閃現。
+      return const GapReportProjectUnready();
+    }
+    // 已觸發過掃描：保留目前結果，不因 firstVisibleProvider 的後續讀值
+    // （例如已見集合寫回導致的 rebuild）重置狀態。
+    return _lastResult;
   }
 
   /// `action-gaps-rescan`：現有結果立即被骨架取代，重新掃描。
   void rescan() {
     state = const GapReportScanning();
+    _lastResult = state;
     _scheduleScan();
   }
 
@@ -101,6 +141,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
       return;
     }
     state = const GapReportScanning(isCancelling: true);
+    _lastResult = state;
     Future<void>.delayed(Motion.cancelDeadline, () {
       final returnTo = ref.read(returnToProvider);
       if (returnTo != null) {
@@ -137,6 +178,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
     }
     if (_missingFrontmatterItems.isEmpty) {
       state = const GapReportNoGaps();
+      _lastResult = state;
       return;
     }
     state = const GapReportFound([
@@ -145,6 +187,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
         items: _missingFrontmatterItems,
       ),
     ]);
+    _lastResult = state;
   }
 }
 
