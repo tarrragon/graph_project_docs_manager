@@ -10,6 +10,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'app/shell.dart';
 import 'components/components.dart' show BlockedState;
 import 'l10n/app_localizations.dart';
+import 'screens/project_switcher/project_switcher_overlay.dart'
+    show workspaceRepositoryProvider;
 import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
 
@@ -114,7 +116,7 @@ class DocsManagerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // ScreenUtilInit 必須位於 MaterialApp 之上：它需要先取得 MediaQuery
     // 完成換算表初始化，底下的 widget 才能安全使用 .w / .h / .sp。
-    return ScreenUtilInit(
+    final app = ScreenUtilInit(
       designSize: kDesignSize,
       // 字級取寬／高縮放的較小值，避免視窗被拉寬時字級跟著暴增。
       minTextAdapt: true,
@@ -128,13 +130,18 @@ class DocsManagerApp extends StatelessWidget {
         supportedLocales: AppLocalizations.supportedLocales,
         locale: locale,
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorSchemeSeed: AppColors.accent,
-        ),
+        theme: ThemeData(useMaterial3: true, colorSchemeSeed: AppColors.accent),
         home: child,
       ),
       child: const FatalErrorGate(child: AppShell()),
+    );
+    final injected = repository;
+    if (injected == null) return app;
+    // 注入替身時以巢狀 ProviderScope 覆寫接縫（0.3.3-W3-379）；null 不覆寫，
+    // main() 與 pumpApp 走預設實作。
+    return ProviderScope(
+      overrides: [workspaceRepositoryProvider.overrideWithValue(injected)],
+      child: app,
     );
   }
 }
