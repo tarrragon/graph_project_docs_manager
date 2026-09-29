@@ -171,6 +171,8 @@ versions:
       例外閥：W1-010（W1-008 執行中發現：SPEC-003 §2.2／§3.5 要求切換專案時撤回通知，lib 從未實作；
       代理人以 GapReportProjectUnready 代理，因 graphBuilt 為固定 true 而執行期不可達，e1 裁定退回，
       改以真實訊號 currentWorkspaceStateProvider 路徑變更實作。預期變紅：無）。
+      簽核點（W3-210，2026-09-29）：W3-236 十二輪有效樣本皆命中「支持移除」，但目標皆已開啟且同 Space；
+      用戶裁示先補量再決定 → W3-550（其他 Space、目標未啟動兩情境，沿用 W3-236 方法與準則），W3-210 blockedBy 之。
       契約與實際的差異（發版前檢討輸入）：
         - W1-004 出現 2 則契約外紅燈（gap_report、node_detail 的「檔案不存在」測試）。契約只列覆寫
           runner 的測試，漏算未覆寫 provider、隱式走真實檔案系統的測試；同步 File.existsSync 移進
