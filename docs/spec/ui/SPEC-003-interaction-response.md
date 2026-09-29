@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-30"
-version: "1.53"
+version: "1.54"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1915,8 +1915,8 @@ jump payload 帶目標 `<ticketId>`。
 | 帶目標觸發的載入期間按 `action-tickets-cancel-load` | 依 §2.5 回到 `state-tickets-unloaded`；不定位，目標作廢 |
 | `state-tickets-loading`（使用者先前已觸發的載入） | 載入完成後定位目標（沿用上兩列的「完成後定位」與「取消即作廢」） |
 | 已載入且目標可見 | scroll-into-view 至 `card-tickets-<ticketId>`，短暫高亮、焦點移入（定位手法同 §2.2「系統層通知」點擊導向列） |
-| 已載入但目標被搜尋詞或篩選隱藏（限**列表模式**，`0.1.0-W3-335.37` R1） | 清除搜尋詞與全部篩選（`order` 不變）、**不切換模式**；而後定位。同時顯示 SnackBar 告知已清除，帶「復原」動作，停留 `Motion.snackBarWithAction`。主題模式的隱藏處理見下方「目標僅因主題節收合而不可見」列 |
-| 按 SnackBar「復原」 | 還原清除前的搜尋詞與全部篩選值；**不撤銷定位**（焦點與 offset 不因復原而回到跳入前）；主題節展開狀態不還原 |
+| 已載入但目標被搜尋詞或篩選隱藏（限**列表模式**，`0.1.0-W3-335.37` R1） | 清除搜尋詞與全部篩選（`order` 不變）、**不切換模式**；而後定位。同時顯示 SnackBar `ticketsFiltersClearedSnackbarMessage`（`AppSnackBar.withAction`，動作 `undoAction`；§2.13 列 14、§2.14 列 17），停留 `Motion.snackBarWithAction`（key 名 `0.3.3-W3-408` 補登）。主題模式的隱藏處理見下方「目標僅因主題節收合而不可見」列 |
+| 按 SnackBar「復原」（`undoAction`） | 還原清除前的搜尋詞與全部篩選值；**不撤銷定位**（焦點與 offset 不因復原而回到跳入前）；主題節展開狀態不還原 |
 | 目標僅因主題節收合而不可見（無搜尋與篩選隱藏） | 展開該主題節後定位；不顯示 SnackBar（未清除任何使用者輸入） |
 | 載入完成後目標 `<ticketId>` 不在清單（`0.1.0-W3-335.38` S-11） | 不捲動、不切模式、不清除搜尋篩選；SnackBar `ticketsTargetNotFoundMessage`，停留 `Motion.snackBar` |
 
@@ -2197,7 +2197,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 25 | 節點詳情 | 部分損壞 | `state-nodeDetail-partial` | 同 #24，另加 jump：欄位級標記 `action-nodeDetail-goto-gaps` → `nav-page-gaps` |
 | 26 | 節點詳情 | 原始檔已消失 | `state-nodeDetail-missing` | 返回：`action-nodeDetail-back` → `returnTo`；同畫面轉換：`action-nodeDetail-refresh` → 三分支（§3.6） |
 | 27 | 浮層 | 收合 | `state-switcher-collapsed` | 進入：`project-switcher-entry` → `state-switcher-expanded`。本列不要求退出路徑（靜止態，SPEC-001 FR-01 唯一例外） |
-| 28 | 浮層 | 展開 | `state-switcher-expanded` | 覆蓋層關閉：`card-switcher-recent-*` → 收合 + 全域重置 + `state-domain-loading`；Esc／點外部 → `state-switcher-collapsed` |
+| 28 | 浮層 | 展開 | `state-switcher-expanded` | 覆蓋層關閉：`card-switcher-recent-*` → 收合 + 全域重置 + `state-domain-loading`；`action-switcher-choose-folder` → 收合 + `state-domain-loading`（同 §3.7 導航表「展開」列，`0.3.3-W3-408` 補登）；Esc／點外部 → `state-switcher-collapsed` |
 | 29 | 浮層 | 無最近專案 | `state-switcher-no-recent` | 覆蓋層關閉：`action-switcher-choose-folder` → 收合 + `state-domain-loading`；Esc／點外部 → `state-switcher-collapsed`（`0.1.0-W3-335.47` D14） |
 | 30 | 節點詳情 | 未選節點 | `state-nodeDetail-unset` | jump：`action-nodeDetail-goto-traceability` → `nav-page-traceability`，`returnTo`=nodeDetail；rail；`action-nodeDetail-back` 不渲染 |
 | 31 | Domain | 已選格（疊加於正常 · 矩陣） | `panel-domain-cell-detail` | 同畫面轉換：Esc / `action-domain-cell-clear` → `panel-domain-cell-detail-empty`；`cell-domain-*` → 內容替換；`action-domain-cell-goto-swimlane` → `state-domain-swimlane` 或 `state-domain-swimlane-unstructured`（依該格 UC 是否含 FlowStep，`0.1.0-W3-335.37` R5）；繼承 #3 的 rail 與覆蓋層 |
@@ -2392,6 +2392,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.54 | 2026-09-30 | `0.3.3-W3-408`（承 `0.3.3-W3-406` 稽核逐列比對與 N10 承載節驗證浮出）：§3.4〈帶目標跳入〉「目標被搜尋詞或篩選隱藏」列寫明 SnackBar key `ticketsFiltersClearedSnackbarMessage`（`AppSnackBar.withAction`，動作 `undoAction`），「按 SnackBar 復原」列標註 `undoAction`——原文只描述行為，與 §2.13 列 14 宣告「§3.4：`withAction`」不一致；§4 列 28（浮層／展開）補 `action-switcher-choose-folder` → 收合 + `state-domain-loading`，對齊 §3.7 導航表「展開」列與 §4 列 29。均依現行實作照實記載，實作不變 |
 | 1.53 | 2026-09-30 | `0.3.3-W3-405`（承 `0.3.3-W3-404` 稽核浮出）：§3.7〈互動反應〉補「選擇其他／最近專案項（選定成功但未能記住）」列——`ChooseFolderNotRemembered` 時照常收合並載入，另顯示 `AppSnackBar.plain`（`workspaceNotRemembered`）；§2.13 對照表列 15〈既有條文〉改為 §3.7：`plain`、一致欄改為「是」。行為依現行實作（`project_switcher_overlay.dart` 的 `_handleChooseFolderResult`，選擇其他與最近專案項共用）照實記載，實作不變；對應 SPEC-004 v1.63 |
 | 1.52 | 2026-09-30 | `0.3.3-W3-402`（承 `0.3.3-W3-392` 稽核判讀）三處真缺漏：(1) §3.7〈動畫提示〉兩列涵蓋「無最近專案」——原只列收合 ↔ 展開，依 §2.1〈未列轉換的預設〉「收合 → 無最近專案」會落 cross-fade，與 SPEC-004 4.42 淡入展開衝突；(2) §3.2〈互動反應〉補 `scroll-ucFlow-uc-list` 捲動列，§1.1〈捲動連動禁令〉補 #3／#12（表列 #12 已註「與 #3 各自獨立」，實作為兩個獨立 `Panel.scrollable`）；(3) §4 #3「正常 · 矩陣」導航反應欄補 `mode-domain-swimlane` 出口（§3.1〈導航跳轉與退出〉已有，§4 #4 已列反向 `mode-domain-matrix`） |
 | 1.51 | 2026-09-29 | `0.3.3-W3-378`（用戶裁決 B，2026-09-29，經 e1 以 AUQ）：§3.1〈生命週期〉新增「App 啟動且有已存路徑但還原失敗」列——降級為 `state-domain-unset`、常駐原因文字 `workspaceUnavailable(reason)`、不發暫態提示；與 SPEC-001 v1.24 §1 未選專案列一致。實作由新建實作票承接（blockedBy `0.3.3-W3-398`） |
