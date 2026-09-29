@@ -22,6 +22,8 @@ import '../../l10n/app_localizations.dart';
 import '../../services/macos_scan_notifier.dart';
 import '../../services/scan_notifier.dart';
 import '../../services/scan_notifier_provider.dart';
+import '../../workspace/workspace_types.dart';
+import '../project_switcher/project_switcher_providers.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
 
@@ -45,7 +47,6 @@ void logClickPath(String event, String detail, String name) =>
     clickPathLogSink('$clickPathLogPrefix$event $detail', name);
 
 /// 撤回通知的觸發條件（SPEC-003 §2.2「可觀測性」列）。
-// projectSwitch 呼叫點由 0.3.2-W1-010 承接（目前無呼叫點）。
 enum WithdrawTrigger { destination, lifecycle, rescan, projectSwitch }
 
 /// 撤回日誌前綴；事件格式為 `withdraw-trigger:<條件名>`。
@@ -85,6 +86,7 @@ class ScanNotificationController {
   late final ProviderSubscription<GapReportState> _gapReportSubscription;
   late final ProviderSubscription<AppDestination> _destinationSubscription;
   late final ProviderSubscription<AppLifecycleState> _lifecycleSubscription;
+  late final ProviderSubscription<WorkspaceState> _workspaceSubscription;
   late final Stream<void> _activatedStream;
   void Function()? _cancelActivatedSubscription;
 
@@ -102,6 +104,10 @@ class ScanNotificationController {
       appLifecycleStateProvider,
       _onLifecycleChange,
     );
+    _workspaceSubscription = _ref.listenManual<WorkspaceState>(
+      currentWorkspaceStateProvider,
+      _onWorkspaceChange,
+    );
     final notifier = _ref.read(scanNotifierProvider);
     _activatedStream = notifier.activated;
     final subscription = _activatedStream.listen(_onActivated);
@@ -112,6 +118,7 @@ class ScanNotificationController {
     _gapReportSubscription.close();
     _destinationSubscription.close();
     _lifecycleSubscription.close();
+    _workspaceSubscription.close();
     _cancelActivatedSubscription?.call();
   }
 
@@ -152,6 +159,16 @@ class ScanNotificationController {
     if (_pendingWithdrawableState != null) {
       _withdraw(WithdrawTrigger.destination);
     }
+  }
+
+  /// 專案切換撤回（SPEC-003 §2.2 不重複發送列、§3.5 切換專案列）：僅
+  /// `WorkspaceReady(A)` 變為不同路徑或非 Ready 時撤回；首次設定與同路徑
+  /// 重設不撤回。
+  void _onWorkspaceChange(WorkspaceState? previous, WorkspaceState next) {
+    if (previous is! WorkspaceReady) return;
+    if (next is WorkspaceReady && next.path == previous.path) return;
+    if (_pendingWithdrawableState == null) return;
+    _withdraw(WithdrawTrigger.projectSwitch);
   }
 
   void _onLifecycleChange(AppLifecycleState? previous, AppLifecycleState next) {

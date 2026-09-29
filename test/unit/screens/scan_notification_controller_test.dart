@@ -26,16 +26,16 @@ import 'package:graph_project_docs_manager/screens/gap_report/scan_notification_
         withdrawLogPrefix,
         withdrawLogSink;
 import 'package:graph_project_docs_manager/services/scan_notifier.dart';
+import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/services/scan_notifier_provider.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
 
 const _foundOneItem = GapReportFound([
   GapReportCategory(
     id: 'missing-frontmatter',
-    items: [
-      GapReportItem(id: 'a', filePath: 'a.md', lineNumber: 1),
-    ],
+    items: [GapReportItem(id: 'a', filePath: 'a.md', lineNumber: 1)],
   ),
 ]);
 
@@ -65,22 +65,19 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets(
-      '已切至 nav-page-tickets，fake 回 granted：show 恰一次且 gapCount 正確；'
-      'authorizationStatus 先於 show',
-      (tester) async {
-        final fixture = await _pumpFixture(tester);
-        fixture.container.read(selectedDestinationProvider.notifier).state =
-            AppDestination.tickets;
-        fixture.gapNotifier.complete(_foundThreeItems);
-        await tester.pump();
+    testWidgets('已切至 nav-page-tickets，fake 回 granted：show 恰一次且 gapCount 正確；'
+        'authorizationStatus 先於 show', (tester) async {
+      final fixture = await _pumpFixture(tester);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
 
-        expect(fixture.fake.showCalls, 1);
-        expect(fixture.fake.lastGapCount, 3);
-        expect(fixture.fake.authorizationStatusCalls, 1);
-        expect(fixture.fake.showOrder, greaterThan(fixture.fake.authOrder));
-      },
-    );
+      expect(fixture.fake.showCalls, 1);
+      expect(fixture.fake.lastGapCount, 3);
+      expect(fixture.fake.authorizationStatusCalls, 1);
+      expect(fixture.fake.showOrder, greaterThan(fixture.fake.authOrder));
+    });
 
     testWidgets('視窗背景 → 前景往返兩次：show 仍為一次', (tester) async {
       final fixture = await _pumpFixture(tester);
@@ -114,49 +111,45 @@ void main() {
       expect(fixture.fake.withdrawCalls, 1);
     });
 
-    testWidgets(
-      '點 action-gaps-rescan：withdraw 恰一次；新一輪完成且條件成立時 show 累計兩次',
-      (tester) async {
-        final fixture = await _pumpFixture(tester);
-        fixture.container.read(selectedDestinationProvider.notifier).state =
-            AppDestination.tickets;
-        fixture.gapNotifier.complete(_foundThreeItems);
-        await tester.pump();
-        expect(fixture.fake.showCalls, 1);
+    testWidgets('點 action-gaps-rescan：withdraw 恰一次；新一輪完成且條件成立時 show 累計兩次', (
+      tester,
+    ) async {
+      final fixture = await _pumpFixture(tester);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
+      expect(fixture.fake.showCalls, 1);
 
-        fixture.gapNotifier.rescan();
-        await tester.pump();
-        expect(fixture.fake.withdrawCalls, 1);
+      fixture.gapNotifier.rescan();
+      await tester.pump();
+      expect(fixture.fake.withdrawCalls, 1);
 
-        fixture.gapNotifier.complete(_foundOneItem);
-        await tester.pump();
+      fixture.gapNotifier.complete(_foundOneItem);
+      await tester.pump();
 
-        expect(fixture.fake.showCalls, 2);
-      },
-    );
+      expect(fixture.fake.showCalls, 2);
+    });
 
-    testWidgets(
-      'fake 回 denied，視窗前景、可見頁為 nav-page-tickets：'
-      'show 為 0、requestAuthorization 為 0；SnackBar 文字與動作正確',
-      (tester) async {
-        final fake = FakeScanNotifier(
-          authorization: NotificationAuthorization.denied,
-        );
-        final fixture = await _pumpFixture(tester, fake: fake);
-        fixture.container.read(selectedDestinationProvider.notifier).state =
-            AppDestination.tickets;
-        fixture.gapNotifier.complete(_foundThreeItems);
-        await tester.pump();
+    testWidgets('fake 回 denied，視窗前景、可見頁為 nav-page-tickets：'
+        'show 為 0、requestAuthorization 為 0；SnackBar 文字與動作正確', (tester) async {
+      final fake = FakeScanNotifier(
+        authorization: NotificationAuthorization.denied,
+      );
+      final fixture = await _pumpFixture(tester, fake: fake);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(_foundThreeItems);
+      await tester.pump();
 
-        expect(fake.showCalls, 0);
-        expect(fake.requestAuthorizationCalls, 0);
-        expect(find.byType(SnackBar), findsOneWidget);
-        expect(
-          find.byKey(const Key('action-scan-complete-view-gaps')),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(fake.showCalls, 0);
+      expect(fake.requestAuthorizationCalls, 0);
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        find.byKey(const Key('action-scan-complete-view-gaps')),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('fake 回 denied，視窗非前景：完成當下 findsNothing；resumed 後 SnackBar 出現', (
       tester,
@@ -225,23 +218,24 @@ void main() {
       },
     );
 
-    testWidgets('fake 回 notDetermined，請求回 denied：requestAuthorization 恰一次；show 為 0', (
-      tester,
-    ) async {
-      final fake = FakeScanNotifier(
-        authorization: NotificationAuthorization.notDetermined,
-        requestResult: NotificationAuthorization.denied,
-      );
-      final fixture = await _pumpFixture(tester, fake: fake);
-      fixture.container.read(selectedDestinationProvider.notifier).state =
-          AppDestination.tickets;
-      fixture.gapNotifier.complete(_foundThreeItems);
-      await tester.pump();
+    testWidgets(
+      'fake 回 notDetermined，請求回 denied：requestAuthorization 恰一次；show 為 0',
+      (tester) async {
+        final fake = FakeScanNotifier(
+          authorization: NotificationAuthorization.notDetermined,
+          requestResult: NotificationAuthorization.denied,
+        );
+        final fixture = await _pumpFixture(tester, fake: fake);
+        fixture.container.read(selectedDestinationProvider.notifier).state =
+            AppDestination.tickets;
+        fixture.gapNotifier.complete(_foundThreeItems);
+        await tester.pump();
 
-      expect(fake.requestAuthorizationCalls, 1);
-      expect(fake.showCalls, 0);
-      expect(find.byType(SnackBar), findsOneWidget);
-    });
+        expect(fake.requestAuthorizationCalls, 1);
+        expect(fake.showCalls, 0);
+        expect(find.byType(SnackBar), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'fake 於 activated 發事件：selectedDestinationProvider 等於 gaps、returnToProvider 為 null',
@@ -293,22 +287,23 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('掃描中按 action-gaps-cancel-scan：show 為 0、requestAuthorization 為 0', (
-      tester,
-    ) async {
-      final fixture = await _pumpFixture(tester);
-      fixture.container.read(selectedDestinationProvider.notifier).state =
-          AppDestination.tickets;
+    testWidgets(
+      '掃描中按 action-gaps-cancel-scan：show 為 0、requestAuthorization 為 0',
+      (tester) async {
+        final fixture = await _pumpFixture(tester);
+        fixture.container.read(selectedDestinationProvider.notifier).state =
+            AppDestination.tickets;
 
-      fixture.gapNotifier.cancelScan();
-      // 模擬原排定的完成任務仍在取消之後回報結果——SPEC-003 §2.5 C5：
-      // 取消完成不通知，controller 須依 `previous.isCancelling` 判別跳過。
-      fixture.gapNotifier.complete(_foundThreeItems);
-      await tester.pump();
+        fixture.gapNotifier.cancelScan();
+        // 模擬原排定的完成任務仍在取消之後回報結果——SPEC-003 §2.5 C5：
+        // 取消完成不通知，controller 須依 `previous.isCancelling` 判別跳過。
+        fixture.gapNotifier.complete(_foundThreeItems);
+        await tester.pump();
 
-      expect(fixture.fake.showCalls, 0);
-      expect(fixture.fake.requestAuthorizationCalls, 0);
-    });
+        expect(fixture.fake.showCalls, 0);
+        expect(fixture.fake.requestAuthorizationCalls, 0);
+      },
+    );
   });
 
   group('SPEC-003 v1.42 §2.2 回前景撤回與撤回觸發日誌', () {
@@ -391,12 +386,122 @@ void main() {
       );
       expect(logs, ['${withdrawLogPrefix}rescan']);
     });
+  });
 
+  group('SPEC-003 §2.2／§3.5 切換專案撤回', () {
+    const unavailable = WorkspaceUnavailable(
+      lastKnownPath: '/a',
+      reason: 'folder-missing', // i18n-exempt: 測試固定值
+    );
+
+    Future<(_Fixture, List<String>)> setup(
+      WidgetTester tester, {
+      required WorkspaceState initial,
+      required bool pending,
+    }) async {
+      final logs = <String>[];
+      withdrawLogSink = (message, name) => logs.add(message);
+      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
+      final fixture = await _pumpFixture(tester);
+      fixture.container.read(currentWorkspaceStateProvider.notifier).state =
+          initial;
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      if (pending) {
+        fixture.gapNotifier.complete(_foundThreeItems);
+        await tester.pump();
+        expect(fixture.fake.showCalls, 1);
+      }
+      return (fixture, logs);
+    }
+
+    void switchTo(_Fixture fixture, WorkspaceState next) {
+      fixture.container.read(currentWorkspaceStateProvider.notifier).state =
+          next;
+    }
+
+    testWidgets('Ready(A) 至 Ready(B) 且有待撤回通知：撤回並記 projectSwitch', (
+      tester,
+    ) async {
+      final (fixture, logs) = await setup(
+        tester,
+        initial: const WorkspaceReady('/a'),
+        pending: true,
+      );
+      switchTo(fixture, const WorkspaceReady('/b'));
+      await tester.pump();
+      expect(fixture.fake.withdrawCalls, 1);
+      expect(logs, ['${withdrawLogPrefix}projectSwitch']);
+    });
+
+    testWidgets('Ready(A) 至 Unset 且有待撤回通知：撤回並記 projectSwitch', (tester) async {
+      final (fixture, logs) = await setup(
+        tester,
+        initial: const WorkspaceReady('/a'),
+        pending: true,
+      );
+      switchTo(fixture, const WorkspaceUnset());
+      await tester.pump();
+      expect(fixture.fake.withdrawCalls, 1);
+      expect(logs, ['${withdrawLogPrefix}projectSwitch']);
+    });
+
+    testWidgets('Ready(A) 至 Unavailable 且有待撤回通知：撤回並記 projectSwitch', (
+      tester,
+    ) async {
+      final (fixture, logs) = await setup(
+        tester,
+        initial: const WorkspaceReady('/a'),
+        pending: true,
+      );
+      switchTo(fixture, unavailable);
+      await tester.pump();
+      expect(fixture.fake.withdrawCalls, 1);
+      expect(logs, ['${withdrawLogPrefix}projectSwitch']);
+    });
+
+    testWidgets('正向對照：Unset 至 Ready（首次設定）不撤回', (tester) async {
+      final (fixture, logs) = await setup(
+        tester,
+        initial: const WorkspaceUnset(),
+        pending: true,
+      );
+      switchTo(fixture, const WorkspaceReady('/a'));
+      await tester.pump();
+      expect(fixture.fake.withdrawCalls, 0);
+      expect(logs, isEmpty);
+    });
+
+    testWidgets('正向對照：Ready(A) 同路徑重設不撤回', (tester) async {
+      final (fixture, logs) = await setup(
+        tester,
+        initial: const WorkspaceReady('/a'),
+        pending: true,
+      );
+      switchTo(fixture, const WorkspaceReady('/a'));
+      await tester.pump();
+      expect(fixture.fake.withdrawCalls, 0);
+      expect(logs, isEmpty);
+    });
+
+    testWidgets('正向對照：Ready(A) 至 Ready(B) 但無待撤回通知不呼叫 withdraw', (tester) async {
+      final (fixture, logs) = await setup(
+        tester,
+        initial: const WorkspaceReady('/a'),
+        pending: false,
+      );
+      switchTo(fixture, const WorkspaceReady('/b'));
+      await tester.pump();
+      expect(fixture.fake.withdrawCalls, 0);
+      expect(logs, isEmpty);
+    });
   });
 
   group('SPEC-003 §2.2 granted 但發送失敗', () {
     testWidgets('failed 前景：出 SnackBar，之後進 gaps 頁 withdraw 為 0', (tester) async {
-      final fake = FakeScanNotifier(showResult: ScanNotificationDelivery.failed);
+      final fake = FakeScanNotifier(
+        showResult: ScanNotificationDelivery.failed,
+      );
       final fixture = await _pumpFixture(tester, fake: fake);
       fixture.container.read(selectedDestinationProvider.notifier).state =
           AppDestination.tickets;
@@ -410,7 +515,9 @@ void main() {
       expect(fake.withdrawCalls, 0);
     });
 
-    testWidgets('delivered 對照組：無 SnackBar，進 gaps 頁 withdraw 恰一次', (tester) async {
+    testWidgets('delivered 對照組：無 SnackBar，進 gaps 頁 withdraw 恰一次', (
+      tester,
+    ) async {
       final fake = FakeScanNotifier();
       final fixture = await _pumpFixture(tester, fake: fake);
       fixture.container.read(selectedDestinationProvider.notifier).state =
@@ -425,7 +532,9 @@ void main() {
     });
 
     testWidgets('failed 非前景：完成當下無 SnackBar，resumed 後出現', (tester) async {
-      final fake = FakeScanNotifier(showResult: ScanNotificationDelivery.failed);
+      final fake = FakeScanNotifier(
+        showResult: ScanNotificationDelivery.failed,
+      );
       final fixture = await _pumpFixture(tester, fake: fake);
       fixture.container.read(selectedDestinationProvider.notifier).state =
           AppDestination.tickets;
@@ -451,7 +560,10 @@ class _Fixture {
   final _ControllableGapReportNotifier gapNotifier;
 }
 
-Future<_Fixture> _pumpFixture(WidgetTester tester, {FakeScanNotifier? fake}) async {
+Future<_Fixture> _pumpFixture(
+  WidgetTester tester, {
+  FakeScanNotifier? fake,
+}) async {
   final resolvedFake = fake ?? FakeScanNotifier();
   final gapNotifierInstance = _ControllableGapReportNotifier();
   await pumpApp(
