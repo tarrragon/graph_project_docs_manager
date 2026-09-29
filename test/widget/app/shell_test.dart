@@ -357,7 +357,7 @@ void _registerFocusTests() {
     await _pumpShell(tester);
     await _focusSwitcherEntry(tester);
     final stops = <FocusNode?>[];
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < 8; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
       stops.add(FocusManager.instance.primaryFocus);
@@ -366,14 +366,25 @@ void _registerFocusTests() {
       [for (var i = 0; i < 6; i++) _navKeyOf(stops[i])],
       [for (final d in AppDestination.values) 'nav-item-${d.name}'],
     );
-    final ancestors = _ancestorKeys(stops[6]);
-    expect(ancestors, contains(AppDestination.domain.pageKey));
-    expect(ancestors, isNot(contains(AppShell.projectSwitcherEntryKey)));
-    expect(
-      ancestors.whereType<ValueKey<String>>().where(
-        (k) => k.value.startsWith('nav-item-'),
-      ),
-      isEmpty,
-    );
+    for (final stop in [stops[6], stops[7]]) {
+      _expectInMainArea(stop);
+    }
   });
+}
+
+/// 內容區判定：祖先不含 nav-item-* 與入口 key，且全域左緣位於主區。
+void _expectInMainArea(FocusNode? node) {
+  final ancestors = _ancestorKeys(node);
+  expect(ancestors, isNot(contains(AppShell.projectSwitcherEntryKey)));
+  expect(
+    ancestors.whereType<ValueKey<String>>().where(
+      (k) => k.value.startsWith('nav-item-'),
+    ),
+    isEmpty,
+  );
+  final box = node!.context!.findRenderObject()! as RenderBox;
+  expect(
+    box.localToGlobal(Offset.zero).dx,
+    greaterThanOrEqualTo(LayoutSize.sidebarWidth),
+  );
 }
