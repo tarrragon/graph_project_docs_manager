@@ -19,6 +19,15 @@ enum NotificationAuthorization {
   denied,
 }
 
+/// 系統通知發送結果（SPEC-003 §2.2 權限 gate「發送失敗」列）。
+enum ScanNotificationDelivery {
+  /// 已送出。
+  delivered,
+
+  /// 授權為 granted 但發送失敗：controller 走與 denied 相同的 SnackBar fallback。
+  failed,
+}
+
 /// 掃描完成通知的內容（SPEC-003 §2.2「通知內容」列）。
 class ScanCompleteNotification {
   const ScanCompleteNotification({required this.gapCount});
@@ -36,8 +45,8 @@ abstract class ScanNotifier {
   /// 觸發條件成立的當下呼叫一次。
   Future<NotificationAuthorization> requestAuthorization();
 
-  /// 發送掃描完成通知。
-  Future<void> show(ScanCompleteNotification notification);
+  /// 發送掃描完成通知；失敗於抽象邊界內收斂為 [ScanNotificationDelivery.failed]。
+  Future<ScanNotificationDelivery> show(ScanCompleteNotification notification);
 
   /// 撤回尚未被點擊的通知；無通知時為 no-op。撤回失敗不阻擋、不轉狀態
   /// （SPEC-003 §2.2「不重複發送」列）。

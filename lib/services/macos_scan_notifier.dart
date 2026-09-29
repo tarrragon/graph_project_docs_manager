@@ -129,7 +129,9 @@ class MacosScanNotifier implements ScanNotifier {
   }
 
   @override
-  Future<void> show(ScanCompleteNotification notification) async {
+  Future<ScanNotificationDelivery> show(
+    ScanCompleteNotification notification,
+  ) async {
     final gapCount = notification.gapCount;
     developer.log(
       '發送通知：gapCount=$gapCount', // i18n-exempt: 開發者診斷 log
@@ -143,18 +145,21 @@ class MacosScanNotifier implements ScanNotifier {
         'title': title,
         'body': body,
       });
+      return ScanNotificationDelivery.delivered;
     } on PlatformException catch (error) {
       developer.log(
         '發送通知失敗：${error.code} ${error.message}', // i18n-exempt: 開發者診斷 log
         name: _tag,
         level: 900,
       );
+      return ScanNotificationDelivery.failed;
     } on MissingPluginException catch (error) {
       developer.log(
         '發送通知失敗，原生端未註冊 handler：$error', // i18n-exempt: 開發者診斷 log
         name: _tag,
         level: 900,
       );
+      return ScanNotificationDelivery.failed;
     }
   }
 

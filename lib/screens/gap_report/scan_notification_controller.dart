@@ -9,6 +9,7 @@
 library;
 
 import 'dart:async' show unawaited;
+import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +24,8 @@ import '../../services/scan_notifier.dart';
 import '../../services/scan_notifier_provider.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
+
+const String _tag = 'ScanNotificationController';
 
 /// 命中時定位到的破洞項 id（SPEC-004 §1 locate 列）；`null` 表示無待定位
 /// 項。[GapReportScreen] 消費本值捲動並移入焦點後，清空回 `null`。
@@ -160,19 +163,39 @@ class ScanNotificationController {
     final gapCount = _gapCountOf(completed);
     switch (authorization) {
       case NotificationAuthorization.granted:
-        await notifier.show(ScanCompleteNotification(gapCount: gapCount));
-        _pendingWithdrawableState = completed;
+        await _showOrFallback(notifier, gapCount, completed);
       case NotificationAuthorization.notDetermined:
         final requested = await notifier.requestAuthorization();
         if (requested == NotificationAuthorization.granted) {
-          await notifier.show(ScanCompleteNotification(gapCount: gapCount));
-          _pendingWithdrawableState = completed;
+          await _showOrFallback(notifier, gapCount, completed);
         } else {
           _fallbackToSnackbar(gapCount);
         }
       case NotificationAuthorization.denied:
         _fallbackToSnackbar(gapCount);
     }
+  }
+
+  /// 發送系統通知；`delivered` 才記為待撤回，`failed` 走與 `denied` 相同
+  /// 的 SnackBar fallback（SPEC-003 §2.2 權限 gate「發送失敗」列）。
+  Future<void> _showOrFallback(
+    ScanNotifier notifier,
+    int gapCount,
+    GapReportState completed,
+  ) async {
+    final result = await notifier.show(
+      ScanCompleteNotification(gapCount: gapCount),
+    );
+    if (result == ScanNotificationDelivery.delivered) {
+      _pendingWithdrawableState = completed;
+      return;
+    }
+    developer.log(
+      '系統通知發送失敗（gapCount=$gapCount），改走 SnackBar fallback', // i18n-exempt: 開發者診斷 log
+      name: _tag,
+      level: 900,
+    );
+    _fallbackToSnackbar(gapCount);
   }
 
   /// `denied` fallback（SPEC-003 §2.2 權限 gate `denied` 列）：視窗在前景
@@ -190,7 +213,14 @@ class ScanNotificationController {
 
   void _showDeniedSnackbar(ScanCompleteNotification notification) {
     final context = _contextProvider();
-    if (!context.mounted) return;
+    if (!context.mounted) {
+      developer.log(
+        'SnackBar fallback 略過：context 已卸載', // i18n-exempt: 開發者診斷 log
+        name: _tag,
+        level: 900,
+      );
+      return;
+    }
     final l10n = AppLocalizations.of(context);
     final message = notification.gapCount == 0
         ? l10n.scanCompleteNoGapsSnackbarMessage
