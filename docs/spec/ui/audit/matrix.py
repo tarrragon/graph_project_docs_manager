@@ -126,7 +126,7 @@ def state_matrix():
 # 本清單為權威表之一（見 README.md），新增或移除 SnackBar key 時須同步更新。
 SNACK_KEYS = ['openedExternallyMessage', 'externalOpenFailedMessage', 'sourceFileNotFoundSnackbarMessage',
               'sourceFileStillMissingMessage', 'scanCompleteNoGapsSnackbarMessage', 'scanCompleteSnackbarMessage',
-              'folderPickerUnavailableMessage', 'folderUnavailableMessage', 'ticketsTargetNotFoundMessage',
+              'chooseFolderUnavailableMessage', 'folderUnavailableMessage', 'ticketsTargetNotFoundMessage',
               'ticketsFiltersClearedSnackbarMessage', 'rescanAction', 'viewGapsAction', 'undoAction']
 
 

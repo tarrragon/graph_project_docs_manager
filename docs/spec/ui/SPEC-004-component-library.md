@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-29"
-version: "1.49"
+version: "1.50"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.49（1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
+**版本**: 1.50（1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -635,8 +635,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
 | `ticketsTargetNotFoundMessage` | 找不到該 ticket，可能已被移除 | Ticket not found; it may have been removed | — | 4.26 `AppSnackBar.plain`（Ticket 帶目標跳入目標不在清單，SPEC-003 §3.4〈帶目標跳入〉，S-11） |
-| `folderPickerUnavailableMessage` | 無法開啟選擇器 | Unable to open the folder picker | — | 4.26 `AppSnackBar.plain`（選擇器無法開啟，SPEC-003 §3.1／§3.7，S-13／S-38） |
-| `folderUnavailableMessage` | 資料夾無法使用：{reason} | Folder unavailable: {reason} | reason | 4.26 `AppSnackBar.plain`（選定資料夾不可讀或不存在，`reason` 取 `WorkspaceUnavailable.reason`，SPEC-003 §3.1／§3.7，S-13／S-38） |
+| `chooseFolderUnavailableMessage`（既有 key；原提案 `folderPickerUnavailableMessage` 與之語意完全重疊，`0.3.2-W3-368` 裁定沿用既有 key、不另立） | 無法開啟資料夾選取面板，請確認應用程式安裝完整後重新啟動（ARB 現值） | Could not open the folder picker. Please reinstall the app and restart（ARB 現值） | — | 4.26 `AppSnackBar.plain`（選擇器無法開啟，SPEC-003 §3.1／§3.7，S-13／S-38）。ARB 現值後半為操作指引，與 §4.0.12 M1 衝突，文案修正另案處理 |
+| `folderUnavailableMessage` | 資料夾無法使用：{reason} | Folder unavailable: {reason} | reason | 4.26 `AppSnackBar.plain`（選定資料夾不可讀或不存在，`reason` 取 `WorkspaceUnavailable.reason`，SPEC-003 §3.1／§3.7，S-13／S-38）。與既有 `workspaceUnavailable`（「無法存取先前的資料夾：{reason}」，啟動時還原上次資料夾的情境）語意不同——本 key 的對象是剛在選擇器選定的資料夾，不是「先前的」，`0.3.2-W3-368` 裁定保留新 key |
 | `traceabilityTicketsNotLoadedHint` | Ticket 尚未載入 | Tickets not loaded yet | — | §3 正常／鏈路斷裂常駐說明列（4.40 `sectionHeader` 型式的說明列呼叫端，SPEC-003 §3.3，S-28） |
 | `gotoTicketsAction` | 前往 Ticket 清單 | Go to ticket list | — | §3 常駐說明列動作（`AppButton.text` 呼叫端，`action-traceability-goto-tickets`，S-28） |
 | `degradedSchemaShortLabel` | 內建型別表 | Built-in schema | — | 4.9 `RecentProjectItem`（`Badge.tag`，`isDegraded` 為 `true` 時，S-34） |
@@ -3981,7 +3981,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `message` | `String` | 是 | 呼叫端（`openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage` / `ticketsTargetNotFoundMessage` / `folderPickerUnavailableMessage` / `folderUnavailableMessage` / `externalOpenFailedMessage` / `scanCompleteNoGapsSnackbarMessage` / `scanCompleteSnackbarMessage` / `ticketsFiltersClearedSnackbarMessage`） |
+| `message` | `String` | 是 | 呼叫端（`openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage` / `ticketsTargetNotFoundMessage` / `chooseFolderUnavailableMessage` / `folderUnavailableMessage` / `externalOpenFailedMessage` / `scanCompleteNoGapsSnackbarMessage` / `scanCompleteSnackbarMessage` / `ticketsFiltersClearedSnackbarMessage`） |
 | `actionLabel` / `onAction` | `String` / `VoidCallback`（`withAction`） | `withAction` 必填 | 呼叫端（`rescanAction` / `viewGapsAction` / `undoAction`） |
 
 #### 使用 design token
@@ -3998,7 +3998,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 文字 | i18n key |
 |------|---------|
-| 訊息 | `openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage`（既有，呼叫端傳入）；`ticketsTargetNotFoundMessage`（Ticket 帶目標跳入目標不在清單，SPEC-003 §3.4）／`folderPickerUnavailableMessage`（選擇器無法開啟）／`folderUnavailableMessage`（資料夾不可讀或不存在，placeholder `reason`）（新增，§4.0.6 新 key 總表，`0.1.0-W3-335.38` S-11／S-13／S-38）；`externalOpenFailedMessage`（外部開啟失敗，SPEC-003 §2.2〈外部開啟契約〉）／`scanCompleteNoGapsSnackbarMessage`／`scanCompleteSnackbarMessage`（掃描完成系統通知 `denied` fallback，SPEC-003 §2.2〈系統層通知〉）／`ticketsFiltersClearedSnackbarMessage`（清除搜尋與篩選，SPEC-003 §3.4〈帶目標跳入〉，§4.0.6 新 key 總表 1.35） |
+| 訊息 | `openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage`（既有，呼叫端傳入）；`ticketsTargetNotFoundMessage`（Ticket 帶目標跳入目標不在清單，SPEC-003 §3.4）／`chooseFolderUnavailableMessage`（選擇器無法開啟）／`folderUnavailableMessage`（資料夾不可讀或不存在，placeholder `reason`）（新增，§4.0.6 新 key 總表，`0.1.0-W3-335.38` S-11／S-13／S-38）；`externalOpenFailedMessage`（外部開啟失敗，SPEC-003 §2.2〈外部開啟契約〉）／`scanCompleteNoGapsSnackbarMessage`／`scanCompleteSnackbarMessage`（掃描完成系統通知 `denied` fallback，SPEC-003 §2.2〈系統層通知〉）／`ticketsFiltersClearedSnackbarMessage`（清除搜尋與篩選，SPEC-003 §3.4〈帶目標跳入〉，§4.0.6 新 key 總表 1.35） |
 | 動作 | `rescanAction`（既有，破洞項外部開啟找不到檔案，見 4.40 `item`）；`viewGapsAction`（SPEC-003 §2.2 系統層通知 `denied` fallback，§4.0.6 新 key 總表，ARB 實檔由 `0.1.0-W3-064` 加）；`undoAction`（清除搜尋與篩選復原，SPEC-003 §3.4，§4.0.6 新 key 總表 1.35）；`refreshAction` 已移出本元件動作列——泳道／UC Flow 開啟原始檔找不到檔案改用 `plain`（`sourceFileNotFoundSnackbarMessage`，不帶動作），`refreshAction` 僅保留為 4.22 `MissingSourceState` 自身「重新整理」按鈕的標籤，非 SnackBar 動作（`0.1.0-W3-335.38` S-18／S-22） |
 
 > 本表列的是**哪些 key**；key 的命名規則與 ARB `@<key>.description` 的填寫要求見 §4.0.12 M5。新增經本元件顯示的 key 時，§4.0.12 的 M1–M5 五項須同批核對——文案是 0.1 唯一沒有型別檢查也沒有編譯期徵兆的介面。
@@ -6404,6 +6404,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.50 | 2026-09-29 | `0.3.2-W3-368` 核對：§4.0.6〈1.38 新增〉表的 `folderPickerUnavailableMessage` 與既有 `chooseFolderUnavailableMessage`（`project_switcher_overlay.dart` 的 `ChooseFolderUnavailable` 分支已使用）語意完全重疊，改列既有 key 並記 ARB 現值；4.26 `message` 來源兩處同步改名。ARB 現值後半為操作指引，與 §4.0.12 M1 衝突，另案處理。`folderUnavailableMessage` 保留並補理由：對象為剛選定的資料夾，與既有 `workspaceUnavailable`（啟動還原「先前的資料夾」）語意不同 |
 | 1.49 | 2026-09-29 | §4.0.6 新增〈1.49 補登〉表：`gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個 key 自 `0.1.0-W2-004` 起只存在 `app_zh.arb`，en 語系回退為繁中樣板、gen-l10n 每次警告 2 則未翻譯；zh 取 ARB 現值，en 新擬，ARB 實檔由 `0.3.2-W3-548` 加入 |
 | 1.48 | 2026-09-25 | 對齊 SPEC-001 v1.23（用戶裁決 2026-09-25，WRAP 方案 D）：§4.0.6 新增〈1.48 新增〉key `schemaVersionUnreadableMessage`（schema 不相容且型別表版本無法判讀時的本體訊息，不代入版本值）；4.23 `BlockedState` `message` 來源列補此 key |
 | 1.47 | 2026-09-25 | 對齊 SPEC-001 v1.22（用戶裁決 2026-09-25，WRAP）：§4.0.6〈1.46 新增〉表的 `gapsUndeterminableReasonVersionTooNew` 改名為 `gapsUndeterminableReasonVersionOutOfRange`，zh／en 文案改為「版本不在 App 已知範圍」（涵蓋高於、缺席、無法解析）；§3.6 §5「無法判定破洞」列同步 key 名。ARB 實檔尚未建立，改名無既有消費端 |

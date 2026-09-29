@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.43"
+version: "1.44"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -962,7 +962,7 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 | 8 | 選擇器被使用者取消（§3.1、§3.7） | 是 | 是 (iii) | — | — | 不用暫態提示 | §3.1、§3.7：不出現 SnackBar | 是 |
 | 9 | 最近專案項探測完成（§3.7〈生命週期〉） | 是 | 是 (ii) | — | — | 不用暫態提示 | §3.7：無提示 | 是 |
 | 10 | `sourceFileNotFoundSnackbarMessage`（§3.1 泳道、§3.2 開啟原始檔 `notFound`） | 是 | 否 | 否 | 否 | `plain` | §3.1、§3.2：`plain`（`0.1.0-W3-335.38` S-18） | 是 |
-| 11 | `folderPickerUnavailableMessage` | 是 | 否 | 否 | 否 | `plain` | §3.1、§3.7：`plain` | 是 |
+| 11 | `chooseFolderUnavailableMessage`（原提案 `folderPickerUnavailableMessage`，`0.3.2-W3-368` 裁定沿用既有 key） | 是 | 否 | 否 | 否 | `plain` | §3.1、§3.7：`plain` | 是 |
 | 12 | `folderUnavailableMessage` | 是 | 否 | 否（`reason` 為單句原因，非需抄錄明細） | 否 | `plain` | §3.1、§3.7：`plain` | 是 |
 | 13 | `ticketsTargetNotFoundMessage` | 是 | 否 | 否 | 否 | `plain` | §3.4：`plain` | 是 |
 | 14 | `ticketsFiltersClearedSnackbarMessage`（§3.4 帶目標跳入清除搜尋與篩選） | 是 | 否（清單改變但未說明原因） | 否 | 是（`undoAction`） | `withAction` | §3.4：`withAction` | 是 |
@@ -1535,7 +1535,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 |------|------|------|-----------|
 | 選擇資料夾 | `action-domain-choose-folder` | 點擊 | 開啟系統資料夾選擇器；選定後 `state-domain-unset` 消失、`state-domain-loading` 出現 |
 | 選擇器被使用者取消 | 同上 | 於選擇器按取消 | 仍為 `state-domain-unset`；不出現 SnackBar、不出現錯誤文字；既有專案（若有）不被清除 |
-| 選擇器無法開啟 | 同上 | 點擊，選擇器啟動失敗 | 仍為 `state-domain-unset`，不轉狀態、不寫入已存路徑；SnackBar `folderPickerUnavailableMessage`，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13） |
+| 選擇器無法開啟 | 同上 | 點擊，選擇器啟動失敗 | 仍為 `state-domain-unset`，不轉狀態、不寫入已存路徑；SnackBar `chooseFolderUnavailableMessage`，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13） |
 | 選定資料夾不可讀或不存在 | 同上 | 於選擇器選定後判定失敗 | 仍為 `state-domain-unset`，不轉狀態、不寫入已存路徑；SnackBar `folderUnavailableMessage`（placeholder `reason`，取 `WorkspaceUnavailable.reason`），停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13、S-38） |
 | 取消載入 | `action-domain-cancel-load` | 點擊 | 依 §2.5，目標態 `state-domain-unset`；已存路徑清除（下次啟動落 `state-domain-unset`），最近專案清單不變（`0.1.0-W3-335.38` S-21） |
 | 切至矩陣 | `mode-domain-matrix` | 點擊 | `state-domain-swimlane`、`state-domain-swimlane-uc-unset` 或 `state-domain-swimlane-unstructured` 消失、`state-domain-matrix` 出現 |
@@ -2086,7 +2086,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 | 最近專案項 | `card-switcher-recent-<index>` | 點擊 | 浮層收合；六頁狀態全部重置；Domain 視圖進入 `state-domain-loading`；`IndexedStack` 可見頁為 `nav-page-domain`（`0.1.0-W3-335.38` S-39）。清單依最近一次開啟時間降冪排序，目前專案列於清單內，成功載入後該項移至頂端（`0.1.0-W3-335.38` S-36） |
 | 不可用的專案項 | 同上 | — | 該項 `enabled` 為 `false`，同列以常駐文字顯示不可用原因（**不用 tooltip**）；其餘項仍 `enabled` 為 `true` |
 | 選擇其他 | `action-switcher-choose-folder` | 點擊 | 開啟系統資料夾選擇器；選定後浮層收合並載入，`IndexedStack` 可見頁為 `nav-page-domain`（`0.1.0-W3-335.38` S-39）；選擇器被取消則浮層維持展開 |
-| 選擇其他（選擇器無法開啟） | 同上 | 點擊，選擇器啟動失敗 | 浮層維持展開；不轉狀態、不寫入已存路徑；SnackBar `folderPickerUnavailableMessage`，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13、S-38） |
+| 選擇其他（選擇器無法開啟） | 同上 | 點擊，選擇器啟動失敗 | 浮層維持展開；不轉狀態、不寫入已存路徑；SnackBar `chooseFolderUnavailableMessage`，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13、S-38） |
 | 選擇其他（選定資料夾不可讀或不存在） | 同上 | 於選擇器選定後判定失敗 | 浮層維持展開；不轉狀態、不寫入已存路徑、清單不變；SnackBar `folderUnavailableMessage`（placeholder `reason`，取 `WorkspaceUnavailable.reason`），停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-13、S-38） |
 | 點浮層外部 | — | 點擊浮層外任一處 | 浮層收合；不改變當前專案；該次點擊被吸收、不傳遞至下層（點在 `nav-item-<d>` 上時 `IndexedStack` 可見頁不變，`0.1.0-W3-335.47` D13） |
 | 按 Esc | — | 按鍵 | 浮層收合；焦點回到 `project-switcher-entry` |
@@ -2363,6 +2363,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.44 | 2026-09-29 | 選擇器無法開啟的提示 key 改沿用既有 `chooseFolderUnavailableMessage`（`0.3.2-W3-368`：原提案 `folderPickerUnavailableMessage` 與之語意完全重疊，後者已由專案切換浮層實作使用）：§2.13 判準 T 對照表列 11、§3.1「選擇器無法開啟」列、§3.7「選擇其他（選擇器無法開啟）」列同步改名；`folderUnavailableMessage` 保留（理由見 SPEC-004 v1.50） |
 | 1.43 | 2026-09-29 | §2.13〈截斷事件的日誌等級〉補「已按動作者不是截斷」條文與測試斷言兩列（`0.3.2-W3-253` 裁定方向 2，實作 `0.3.2-W3-549`）：使用者按下 `withAction` 動作後的關閉不論 `origin`、不論框架回報的 `reason`，皆不套用截斷等級；判別輸入由提示元件自身取得。依據為實測：`onAction` 同步再顯示時舊一則回報 `reason: hide`，背景發起者被記為 warning |
 | 1.42 | 2026-09-29 | §2.2 系統層通知「不重複發送」列的撤回事件消除歧義（`0.3.2-W1-005`，用戶裁決 2026-09-29 候選 B）：原「使用者自行回到 `nav-page-gaps`」可讀為導覽切換或可見狀態成立兩種；改以 §2.13 判準 T1 可見式為準，於導覽切換進入 gaps 與 App 回到前景時可見頁已是 gaps 兩個時刻判定。「可觀測性」列補撤回觸發條件與撤回後仍在通知中心的通知數；測試斷言表補回前景撤回與非 gaps 正向對照兩列；「撤回 API」實測列改記量測當時行為與裁決；§3.5 生命週期表與 FR 驗收列同步措辭，驗收列移除寫死的列數 |
 | 1.41 | 2026-09-29 | §2.2 系統層通知兩處：(1)「點擊通知的導向」列改為 App 自行前景化（原生 unhide＋activate 並 NSLog 前後狀態），點擊路徑日誌改記結果值（`0.3.1-W1-097`；該票合併時未升版，於本版補記）；(2)「實作票驗證」段由待驗清單改為實測記錄表（`0.3.1-W1-028`）：兩種簽章的 debug build 可用、授權狀態依 bundle id 保存與簽章無關、未簽章首次請求回應未量到及原因、ncprefs.plist 不可作判據、載體為原生 MethodChannel、`inactive` 為過渡態、撤回 API 在收合狀態有效、系統不替已隱藏 App 前景化，並補量測前置條件（單一實例、單一 LaunchServices 登記、非權限類以日誌或測試驗證）。Developer ID 可用性轉 `1.0.0-W1-027` |
