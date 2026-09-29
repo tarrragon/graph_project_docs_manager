@@ -495,7 +495,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get gapCategoryMissingFrontmatter => '缺少 Frontmatter';
+  String get gapCategoryMissingFrontmatter => 'Missing Frontmatter';
 
   @override
   String get gapCategoryOrphanEvent => 'Orphan Events';
@@ -506,7 +506,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String gapItemLineLabel(int lineNumber) {
-    return '第 $lineNumber 行';
+    return 'Line $lineNumber';
   }
 
   @override

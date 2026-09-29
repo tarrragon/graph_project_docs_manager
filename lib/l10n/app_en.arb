@@ -155,5 +155,7 @@
   "columnConsumer": "Consumed by",
   "eventFlowStepDomain": "{step} · {domain}",
   "eventOutsideUc": "Outside this UC ({domains})",
-  "orphanEventMarkerLabel": "Orphan event"
+  "orphanEventMarkerLabel": "Orphan event",
+  "gapCategoryMissingFrontmatter": "Missing Frontmatter",
+  "gapItemLineLabel": "Line {lineNumber}"
 }
