@@ -518,6 +518,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gotoTicketsListAction => 'Go to Ticket List';
 
   @override
+  String traceabilityNoDownstream(String layer) {
+    return '(No $layer yet)';
+  }
+
+  @override
+  String get traceabilityTicketsNotLoadedHint => 'Tickets not loaded yet';
+
+  @override
   String get ticketsFiltersClearedSnackbarMessage =>
       'Search and filters cleared to show the target ticket';
 

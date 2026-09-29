@@ -30,8 +30,7 @@ final expandedTraceNodesProvider = StateProvider<Set<String>>(
 );
 
 /// 計算首次渲染（或狀態重新計算）時應展開的節點 id 集合：只有「子樹含
-/// 缺口且自身有子節點」的節點才需要展開——缺口節點本身為葉節點，展開
-/// 它沒有意義；PROP 層若不含缺口分支則維持收合（用戶簽核 2026-09-14）。
+/// 缺口」的節點需要展開（缺口父節點本身亦展開，其下為缺口列）；PROP 層若不含缺口分支則維持收合（用戶簽核 2026-09-14）。
 Set<String> _initialExpansion(TraceabilityScreenState state) {
   final roots = switch (state) {
     TraceabilityNormal(:final roots) => roots,
@@ -55,7 +54,8 @@ bool _markGapAncestors(TraceNode node, Set<String> expand) {
       subtreeHasGap = true;
     }
   }
-  if (subtreeHasGap && node.children.isNotEmpty) {
+  // 缺口父節點本身亦展開，使其下缺口列首次渲染即可見（SPEC-004 4.39）。
+  if (subtreeHasGap && (node.children.isNotEmpty || node.hasGap)) {
     expand.add(node.id);
   }
   return subtreeHasGap;
