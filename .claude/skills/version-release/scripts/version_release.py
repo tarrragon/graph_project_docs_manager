@@ -925,6 +925,21 @@ def print_overflow_migration_plan(overflow: List[Dict]) -> None:
         print_info(f"  - {t['id']} -> v{t['target_version']}（{t['target_reason']}）", 2)
 
 
+def collect_overflow_tickets(version: str) -> List[Dict]:
+    """取得版本的前移清單（pending 且無 scope_blocker 的 Ticket）。
+
+    check 用以切換結尾建議、release 用以拒絕執行；清單來源與
+    migrate_overflow_tickets 相同（collect_ticket_scope_groups 的 overflow 組）。
+    """
+    root = get_project_root()
+    config = load_version_release_config(root)
+    pattern = config.get(
+        "worklog_path_pattern", DEFAULT_VERSION_RELEASE_CONFIG["worklog_path_pattern"]
+    )
+    tickets_dir = resolve_worklog_dir(root, version, pattern) / "tickets"
+    return collect_ticket_scope_groups(tickets_dir, version)["overflow"]
+
+
 def check_worklog_completed(version: str) -> Tuple[bool, List[str]]:
     """檢查工作日誌是否完成"""
     root = get_project_root()
@@ -4050,14 +4065,23 @@ def main():
 
             if ok:
                 print_success("所有檢查通過！該版本已準備好發布")
-                print_info("\n發布指令:", 1)
+                overflow = collect_overflow_tickets(version)
+                # 前移清單非空時 release 會被拒絕，建議必須改為 finish（由 finish 執行前移）
+                subcommand = "finish" if overflow else "release"
+                if overflow:
+                    print_info(
+                        f"\n前移 {len(overflow)} 張 pending Ticket 須先遷出，請用 finish（release 會拒絕）:",
+                        1,
+                    )
+                else:
+                    print_info("\n發布指令:", 1)
                 print_info(
-                    f"uv run .claude/skills/version-release/scripts/version_release.py release",
+                    f"uv run .claude/skills/version-release/scripts/version_release.py {subcommand}",
                     2,
                 )
                 print_info("\n或預覽:", 1)
                 print_info(
-                    f"uv run .claude/skills/version-release/scripts/version_release.py release --dry-run",
+                    f"uv run .claude/skills/version-release/scripts/version_release.py {subcommand} --dry-run",
                     2,
                 )
             else:
@@ -4090,6 +4114,18 @@ def main():
 
             if dry_run:
                 print_warning("預覽模式：不會執行實際的 git 操作\n")
+
+            # release：前移清單非空即拒絕。release 不做前移，照做會把 pending 票
+            # 留在已 completed 的版本下成為懸空票；此為資料正確性判定，--force 不覆蓋。
+            if args.command == "release":
+                overflow = collect_overflow_tickets(version)
+                if overflow:
+                    print_error(
+                        f"版本 {version} 有 {len(overflow)} 張待前移 pending Ticket，release 不執行前移，已中止"
+                    )
+                    print_overflow_migration_plan(overflow)
+                    print_info("請改用 finish（先前移再發布）；--force 不覆蓋此判定", 1)
+                    return 1
 
             # 差集比對基準：finish/release 執行前的 git status 快照。
             # 收尾 commit 的 staged 範圍與 exit 前殘留守衛皆以此為準，
