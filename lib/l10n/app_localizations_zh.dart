@@ -13,38 +13,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => '專案文件流';
 
   @override
-  String get sectionRecentDocuments => '近期文件';
-
-  @override
-  String get statInProgress => '進行中';
-
-  @override
-  String get statPendingReview => '待審閱';
-
-  @override
-  String get statArchived => '已歸檔';
-
-  @override
-  String documentCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count 份文件',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get chooseWorkspaceFolder => '選擇工作資料夾';
 
   @override
   String get folderAccessRationale =>
       '請選擇一個資料夾，App 將在其中讀取與編輯文件。此授權會被記住，下次開啟不需重選。';
-
-  @override
-  String workspaceReady(String path) {
-    return '工作資料夾：$path';
-  }
 
   @override
   String workspaceUnavailable(String reason) {
@@ -55,9 +28,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String folderUnavailableMessage(String reason) {
     return '資料夾無法使用：$reason';
   }
-
-  @override
-  String get changeWorkspaceFolder => '變更資料夾';
 
   @override
   String get workspaceNotRemembered => '已選定，但下次啟動需重新選擇';
@@ -183,9 +153,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get projectSwitcherEntryLabel => '切換專案';
-
-  @override
-  String get projectSwitcherPlaceholderTitle => '專案切換';
 
   @override
   String get domainSwitchToMatrixAction => '切換至矩陣';

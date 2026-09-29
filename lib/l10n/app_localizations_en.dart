@@ -13,40 +13,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Docs Flow';
 
   @override
-  String get sectionRecentDocuments => 'Recent Documents';
-
-  @override
-  String get statInProgress => 'In Progress';
-
-  @override
-  String get statPendingReview => 'Pending Review';
-
-  @override
-  String get statArchived => 'Archived';
-
-  @override
-  String documentCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count documents',
-      one: '1 document',
-      zero: 'No documents',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get chooseWorkspaceFolder => 'Choose Workspace Folder';
 
   @override
   String get folderAccessRationale =>
       'Pick a folder for the app to read and edit documents in. This permission is remembered, so you won\'t need to select it again.';
-
-  @override
-  String workspaceReady(String path) {
-    return 'Workspace: $path';
-  }
 
   @override
   String workspaceUnavailable(String reason) {
@@ -57,9 +28,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String folderUnavailableMessage(String reason) {
     return 'Folder unavailable: $reason';
   }
-
-  @override
-  String get changeWorkspaceFolder => 'Change Folder';
 
   @override
   String get workspaceNotRemembered =>
@@ -189,9 +157,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectSwitcherEntryLabel => 'Switch project';
-
-  @override
-  String get projectSwitcherPlaceholderTitle => 'Project switcher';
 
   @override
   String get domainSwitchToMatrixAction => 'Switch to Matrix';
