@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,7 @@ import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 
 void main() {
+  _registerFocusTests();
   testWidgets('returnTo 為 null 時 action-<screen>-back 不存在於元件樹', (
     tester,
   ) async {
@@ -257,4 +259,78 @@ Future<void> _pumpShell(
     await tester.pump();
   }
   onReady?.call(ProviderScope.containerOf(capturedContext));
+}
+
+/// primaryFocus 祖先鏈上第一個 `nav-item-*` key 的名稱；不在導覽項內回 null。
+String? _focusedNavKey() {
+  final ctx = FocusManager.instance.primaryFocus?.context;
+  if (ctx == null) return null;
+  String? found;
+  ctx.visitAncestorElements((e) {
+    final k = e.widget.key;
+    if (k is ValueKey<String> && k.value.startsWith('nav-item-')) {
+      found = k.value;
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
+bool _navHasAccentBorder(WidgetTester tester, String key) {
+  final boxes = tester.widgetList<DecoratedBox>(
+    find.ancestor(
+      of: find.byKey(Key(key)),
+      matching: find.byType(DecoratedBox),
+    ),
+  );
+  return boxes.any((b) {
+    final d = b.decoration;
+    return d is BoxDecoration &&
+        d.border is Border &&
+        (d.border! as Border).top.color == AppColors.accent;
+  });
+}
+
+/// 將焦點放到專案切換入口（SPEC-003 §2.10 Tab 序列的起點）。
+Future<void> _focusSwitcherEntry(WidgetTester tester) async {
+  final inner = find
+      .descendant(
+        of: find.byKey(AppShell.projectSwitcherEntryKey),
+        matching: find.byType(Padding),
+      )
+      .first;
+  Focus.of(tester.element(inner)).requestFocus();
+  await tester.pump();
+}
+
+void _registerFocusTests() {
+  testWidgets('Tab 依序走過六個導覽項（SPEC-003 §2.10）', (tester) async {
+    await _pumpShell(tester);
+    await _focusSwitcherEntry(tester);
+    final seen = <String>[];
+    for (var i = 0; i < 12; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final k = _focusedNavKey();
+      if (k != null && !seen.contains(k)) seen.add(k);
+    }
+    expect(seen, [
+      for (final d in AppDestination.values) 'nav-item-${d.name}',
+    ]);
+  });
+
+  testWidgets('導覽項取得焦點時有 accent 外框，未取得時無（對照）', (tester) async {
+    await _pumpShell(tester);
+    await _focusSwitcherEntry(tester);
+    const first = 'nav-item-domain';
+    expect(_navHasAccentBorder(tester, first), isFalse);
+    for (var i = 0; i < 12 && _focusedNavKey() != first; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+    }
+    expect(_focusedNavKey(), first);
+    expect(_navHasAccentBorder(tester, first), isTrue);
+    expect(_navHasAccentBorder(tester, 'nav-item-ucFlow'), isFalse);
+  });
 }

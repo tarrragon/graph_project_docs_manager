@@ -21,7 +21,7 @@ import 'app_text.dart';
 /// | [isSelected] | 是 | 選中態旗標，決定底色與字色 |
 /// | [onTap] | 是 | 點選（含 Space / Enter）觸發的回呼 |
 /// | [testKey] | 是 | 呼叫端依 SPEC-004 4.7 slot 契約提供的定址 key（`nav-item-<destination>`） |
-class NavItem extends StatelessWidget {
+class NavItem extends StatefulWidget {
   const NavItem({
     super.key,
     required this.icon,
@@ -49,7 +49,37 @@ class NavItem extends StatelessWidget {
   final Key testKey;
 
   @override
+  State<NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<NavItem> {
+  /// 未聚焦時的邊框色：透明，僅焦點時 [AppColors.accent] 可見（與
+  /// `ProjectSwitcherEntry` 同範式）。非語意色彩，不進 token 表。
+  static const Color _unfocusedBorder = Colors.transparent; // color-exempt
+
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode(debugLabel: 'NavItem');
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() => setState(() {});
+
+  @override
   Widget build(BuildContext context) {
+    final icon = widget.icon;
+    final label = widget.label;
+    final isSelected = widget.isSelected;
     final foreground = isSelected
         ? AppColors.accentStrong
         : AppColors.textPrimary;
@@ -75,40 +105,49 @@ class NavItem extends StatelessWidget {
       // 尺寸契約的「高固有」與「最小命中區」同時成立。
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: LayoutSize.hitTargetMin),
-        child: InkWell(
-          key: testKey,
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(Radius.md),
-          excludeFromSemantics: true,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.surfaceIconTint : null,
-              borderRadius: BorderRadius.circular(Radius.md),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _focusNode.hasFocus ? AppColors.accent : _unfocusedBorder,
             ),
-            // 外層 Semantics 已提供 label / button / selected；內部視覺
-            // 內容（icon、Text）排除於語意樹，避免 Text 自帶語意節點與外層
-            // label 合併重複。
-            child: ExcludeSemantics(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Space.md,
-                  vertical: Space.sm,
-                ),
-                child: Row(
-                  children: [
-                    effectiveIcon,
-                    SizedBox(width: Space.sm),
-                    Flexible(
-                      child: AppText(
-                        label,
-                        maxLines: 1,
-                        emphasis: isSelected,
-                        tone: isSelected
-                            ? AppTextTone.accentStrong
-                            : AppTextTone.textPrimary,
+            borderRadius: BorderRadius.circular(Radius.md),
+          ),
+          child: InkWell(
+            key: widget.testKey,
+            focusNode: _focusNode,
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(Radius.md),
+            excludeFromSemantics: true,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.surfaceIconTint : null,
+                borderRadius: BorderRadius.circular(Radius.md),
+              ),
+              // 外層 Semantics 已提供 label / button / selected；內部視覺
+              // 內容（icon、Text）排除於語意樹，避免 Text 自帶語意節點與外層
+              // label 合併重複。
+              child: ExcludeSemantics(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Space.md,
+                    vertical: Space.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      effectiveIcon,
+                      SizedBox(width: Space.sm),
+                      Flexible(
+                        child: AppText(
+                          label,
+                          maxLines: 1,
+                          emphasis: isSelected,
+                          tone: isSelected
+                              ? AppTextTone.accentStrong
+                              : AppTextTone.textPrimary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
