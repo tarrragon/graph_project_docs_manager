@@ -142,13 +142,17 @@ abstract final class AppSnackBar {
     return _lastShowId;
   }
 
-  // 等級判定純函式（M3，D3）：輸入恰為 (reason, origin)，不接受 variant，
-  // 故其函式體不可能引用 variant（V-2 的結構性可讀出性質）。
+  // 等級判定純函式（M3，D3）：輸入恰為 (reason, origin, actionPressed)，
+  // 不接受 variant，故其函式體不可能引用 variant（V-2 的結構性可讀出性質）。
+  // actionPressed 為該則是否已記錄 actionPressed（SPEC-003 §2.13〈已按動作者
+  // 不是截斷〉）：使用者按動作後的關閉由使用者造成，比照非 hide 不套用截斷
+  // 等級。
   static int? _resolveClosedLevel(
     SnackBarClosedReason reason,
     AppSnackBarOrigin origin,
+    bool actionPressed,
   ) {
-    if (reason != SnackBarClosedReason.hide) {
+    if (actionPressed || reason != SnackBarClosedReason.hide) {
       return null;
     }
     if (origin == AppSnackBarOrigin.background) {
@@ -284,6 +288,8 @@ abstract final class AppSnackBar {
       'duration': durationToken,
       if (isWithAction) 'actionLabel': actionLabel,
     });
+    // 本則是否已按動作：閉包區域變數，不使用 static（T-205-18 白名單）。
+    var actionPressed = false;
     final controller = messenger.showSnackBar(
       SnackBar(
         // content 自組文字＋動作：Material 內建 SnackBarAction 的 Text 無
@@ -323,6 +329,7 @@ abstract final class AppSnackBar {
                     // action；新的一則因此不會被誤記為使用者一眼未見即
                     // 以 action 關掉（T-205-11）。此處帶引數清除不計入
                     // INV-SNACKBAR-NOQUEUE 的「無引數清除恰 1 次」。
+                    actionPressed = true;
                     logSink(AppSnackBarLogEvent.actionPressed, {
                       ...baseFields,
                       'actionLabel': actionLabel,
@@ -358,7 +365,7 @@ abstract final class AppSnackBar {
       logSink(AppSnackBarLogEvent.closed, {
         ...baseFields,
         'reason': reason,
-      }, level: _resolveClosedLevel(reason, origin));
+      }, level: _resolveClosedLevel(reason, origin, actionPressed));
     });
   }
 }

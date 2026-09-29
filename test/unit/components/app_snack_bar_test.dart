@@ -1413,6 +1413,78 @@ void main() {
       await _pumpBy(tester, Motion.snackBar * 2);
     });
 
+    testWidgets('T-549-1：background 已按動作後同步再顯示，舊一則 closed 不為 900', (
+      tester,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: _triggerHarness(
+          message: 'first-message',
+          variant: AppSnackBarVariant.withAction,
+          actionLabel: 'action-label',
+          onAction: () {
+            AppSnackBar.show(
+              tester.element(find.byKey(_triggerActionKey)),
+              message: 'second-message',
+              level: AttentionLevel.discardable,
+            );
+          },
+        ),
+      );
+      await tester.tap(find.byKey(_triggerActionKey));
+      await tester.pump();
+      await _pumpBy(tester, _materialTransition);
+      await tester.tap(find.byKey(_snackBarActionKey));
+      await _pumpBy(tester, _materialTransition * 2);
+
+      final firstShowId = records
+          .firstWhere((r) => r.event == AppSnackBarLogEvent.shown)
+          .fields['showId'];
+      final firstClosed = records.singleWhere(
+        (r) =>
+            r.event == AppSnackBarLogEvent.closed &&
+            r.fields['showId'] == firstShowId,
+      );
+      expect(firstClosed.fields['reason'], SnackBarClosedReason.hide);
+      expect(firstClosed.level, isNot(900));
+      await _pumpBy(tester, Motion.snackBar * 2);
+    });
+
+    testWidgets('T-549-2：background 未按動作而被截斷仍為 900（正向對照）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: _triggerHarness(
+          message: 'first-message',
+          variant: AppSnackBarVariant.withAction,
+          actionLabel: 'action-label',
+          onAction: () {},
+        ),
+      );
+      await tester.tap(find.byKey(_triggerActionKey));
+      await tester.pump();
+      await _pumpBy(tester, _materialTransition);
+
+      AppSnackBar.show(
+        tester.element(find.byKey(_triggerActionKey)),
+        message: 'second-message',
+        level: AttentionLevel.discardable,
+      );
+      await tester.pump();
+      await _pumpBy(tester, _materialTransition * 3);
+
+      final firstShowId = records
+          .firstWhere((r) => r.event == AppSnackBarLogEvent.shown)
+          .fields['showId'];
+      final firstClosed = records.singleWhere(
+        (r) =>
+            r.event == AppSnackBarLogEvent.closed &&
+            r.fields['showId'] == firstShowId,
+      );
+      expect(firstClosed.fields['reason'], SnackBarClosedReason.hide);
+      expect(firstClosed.level, 900);
+      await _pumpBy(tester, Motion.snackBar * 2);
+    });
+
     testWidgets('T-205-12：onAction 未 await 同步段不顯示則不受影響（現況鎖定）', (
       tester,
     ) async {
