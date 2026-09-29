@@ -1,4 +1,5 @@
-// 破洞掃描完成時機測試（0.1.0-W3-096）。
+// 破洞掃描完成時機測試（0.1.0-W3-096；觸發時機於 0.3.1-W3-122 改為消費
+// firstVisibleProvider）。
 //
 // `gap_report_test.dart` 與 `scan_notification_controller_test.dart` 皆以
 // `gapReportProvider.overrideWith` 注入替身，刻意繞過真實完成時機（見兩檔
@@ -10,16 +11,29 @@
 // 本檔反向操作：保留正式 `GapReportNotifier`（不 override），斷言完成
 // 時機依 SPEC-003 §2.6「最短顯示時間適用」規則，在轉換序列中確實先觀測到
 // `GapReportScanning`，而非僅斷言最終態。
+//
+// 0.3.1-W3-122：掃描觸發改掛在「首次可見 nav-page-gaps」而非 build()
+// 本身，故本檔全數 override `selectedDestinationProvider` 為
+// `AppDestination.gaps`，模擬使用者已在破洞報告頁的前提（本檔關注的是
+// 「掃描一旦被觸發後」的完成時機序列，不是觸發時機本身——後者由
+// `gap_report_startup_notification_test.dart` 專責覆蓋）。
 library;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 
 import '../../helpers/helpers.dart';
+
+/// 本檔共用：模擬使用者已在破洞報告頁，使 `firstVisibleProvider(gaps)`
+/// 於 build() 首次讀取時為 `true`。
+final _onGapsPage = [
+  selectedDestinationProvider.overrideWith((ref) => AppDestination.gaps),
+];
 
 void main() {
   group('掃描完成時機（SPEC-003 §2.6 最短顯示時間適用）', () {
@@ -30,6 +44,7 @@ void main() {
         final container = await pumpHarness(
           tester,
           child: const SizedBox.shrink(),
+          overrides: _onGapsPage,
         );
         final observed = <GapReportState>[];
         container.listen<GapReportState>(
@@ -65,6 +80,7 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const SizedBox.shrink(),
+        overrides: _onGapsPage,
       );
       // 強制建構（觸發 build() 排定首次掃描），再讓它先完成，回到穩定的
       // 結果態——若在此之前先推進假時鐘，provider 尚未建構、計時器根本
@@ -101,6 +117,7 @@ void main() {
         final container = await pumpHarness(
           tester,
           child: const SizedBox.shrink(),
+          overrides: _onGapsPage,
         );
         final notifier = container.read(gapReportProvider.notifier);
         await pumpContract(tester, Motion.spinnerMinVisible);
@@ -127,6 +144,7 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const SizedBox.shrink(),
+        overrides: _onGapsPage,
       );
       final notifier = container.read(gapReportProvider.notifier);
       // build() 已排程掃描（尚未完成，Motion.spinnerMinVisible 內）。
