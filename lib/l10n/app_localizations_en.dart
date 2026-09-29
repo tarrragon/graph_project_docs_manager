@@ -35,7 +35,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chooseFolderUnavailableMessage =>
-      'Could not open the folder picker. Please reinstall the app and restart';
+      'Could not open the folder picker; the app may not be installed correctly';
 
   @override
   String get domainLoading => 'Resolving graph nodes…';

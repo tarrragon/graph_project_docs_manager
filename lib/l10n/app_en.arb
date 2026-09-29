@@ -7,7 +7,7 @@
   "workspaceUnavailable": "Cannot access the previous folder: {reason}",
   "folderUnavailableMessage": "Folder unavailable: {reason}",
   "workspaceNotRemembered": "Selected, but you will need to choose again next time",
-  "chooseFolderUnavailableMessage": "Could not open the folder picker. Please reinstall the app and restart",
+  "chooseFolderUnavailableMessage": "Could not open the folder picker; the app may not be installed correctly",
   "domainLoading": "Resolving graph nodes…",
   "cancelLoadingAction": "Cancel loading",
   "emptyGraphMessage": "This project has no graph nodes yet",
