@@ -317,6 +317,9 @@ versions:
       W1-016（finish 啟用提交漏版本檔：commit_changes 只 stage docs/ 與 CHANGELOG；本專案 0.3.0～0.3.2 三度需手動補交）。
       兩張為 0.3.3 發版前置，0.3.3 finish 後工作區乾淨即為 W1-016 的實機驗證。
       W1-014（P3 技術債：三支守衛重複的 rename -z 解析抽至 .claude/lib）非發版前置，未完成則由 finish 前移。
+      W1-017（staleness guard 整合測試改在 tmp repo 執行）、W1-018（W1-011.1 造成的 lib 測試迴歸；hooks testpaths 納入 lib/tests）。
+      W1-019（P0 發版前置：W1-017 新增的守衛比對整個主 repo git status，共用工作樹並行時必誤報，e1 發版前覆核實測；
+      改為只比對 doc skill 目錄並補無關檔變動對照）。
       W3-397 範圍擴充（e1 裁定 (a)，2026-09-30）：移除 autofocus 暴露矩陣格／列首點選不取得焦點，點選後 Esc 不生效，
       與用戶裁決 D 被告知的代價不符；併入 W3-397 使「點選即取得焦點」成立。W3-395 待 W3-397 合入後再派（同改 matrix_grid）。
       執行期收件：W3-401（ListRow.tree onTap 可為 null 與 leaf 圖示，取代 W3-394 的 no-op 近似）；
