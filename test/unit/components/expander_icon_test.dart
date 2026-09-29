@@ -122,6 +122,15 @@ void main() {
       expect(data.flagsCollection.isExpanded, Tristate.isTrue);
     });
 
+    testWidgets('ExpanderIcon.leaf 尺寸為 hitTargetMin 且無語意', (tester) async {
+      await pumpHarness(tester, child: ExpanderIcon.leaf(testKey: testKey));
+
+      final box = tester.getSize(find.byKey(testKey));
+      expect(box.width, LayoutSize.hitTargetMin);
+      expect(box.height, LayoutSize.hitTargetMin);
+      expect(find.bySemanticsLabel('展開或收合'), findsNothing);
+    });
+
     testWidgets('leaf 無語意節點', (tester) async {
       await pumpHarness(
         tester,

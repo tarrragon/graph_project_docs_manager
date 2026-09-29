@@ -71,13 +71,15 @@ class ListRow extends StatelessWidget {
          'isSelected 僅 option 變體接受（SPEC-004 §4.40 slot 契約）',
        );
 
-  /// 追溯樹列。leading／onTap／testKey 必填（SPEC-004 4.40 slot 契約）。
+  /// 追溯樹列。leading／testKey 必填（SPEC-004 4.40 slot 契約）。
+  /// [onTap] 為 `null` 時整列不可點：不掛 `InkWell`、不給 button 語意
+  /// （追溯視圖缺口列，SPEC-004 4.39／4.40）。
   const ListRow.tree({
     Key? key,
     required Widget leading,
     required AppText primary,
     Widget? trailing,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     required Key testKey,
   }) : this._(
          key: key,
@@ -170,7 +172,8 @@ class ListRow extends StatelessWidget {
   /// `IssueMarker`）。
   final Widget? trailing;
 
-  /// 整列點選回呼；`tree` / `item` 必填，其餘變體不使用。
+  /// 整列點選回呼；`item` 必填，`tree` 可為 `null`（整列不可點），
+  /// 其餘變體不使用。
   final VoidCallback? onTap;
 
   /// 呼叫端定址 key；`tree` / `item` / `option` 必填（SPEC-004 4.40 slot
@@ -222,6 +225,10 @@ class ListRow extends StatelessWidget {
 
     if (variant == ListRowVariant.sectionHeader) {
       return Semantics(header: true, child: sized);
+    }
+
+    if (variant == ListRowVariant.tree && onTap == null) {
+      return KeyedSubtree(key: testKey, child: sized);
     }
 
     if (_isTappableRow) {

@@ -5,6 +5,7 @@
 //   正常      state-traceability-normal      Panel.scrollable[Tree[ListRow.tree]]
 //   鏈路斷裂  state-traceability-broken       同上，缺口列 IssueMarker.gap
 //   無提案    state-traceability-empty       EmptyState.page
+import 'package:flutter/material.dart' show InkWell;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
@@ -18,8 +19,10 @@ import '../../helpers/helpers.dart';
 
 void main() {
   group('正常態 state-traceability-normal', () {
-    testWidgetsAtEachSize('渲染 Panel.scrollable[Tree[ListRow.tree]]',
-        (tester, size) async {
+    testWidgetsAtEachSize('渲染 Panel.scrollable[Tree[ListRow.tree]]', (
+      tester,
+      size,
+    ) async {
       await pumpHarness(tester, child: const TraceabilityScreen(), size: size);
 
       expect(AnchorFinder.state(Screen.traceability, 'normal'), findsOneWidget);
@@ -43,32 +46,36 @@ void main() {
       );
     });
 
-    testWidgets('card-traceability-<id> → jump 至節點詳情，returnTo 設為 traceability',
-        (tester) async {
-      final container = await pumpHarness(
-        tester,
-        child: const TraceabilityScreen(),
-        overrides: [
-          selectedDestinationProvider.overrideWith(
-            (ref) => AppDestination.traceability,
-          ),
-        ],
-      );
+    testWidgets(
+      'card-traceability-<id> → jump 至節點詳情，returnTo 設為 traceability',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const TraceabilityScreen(),
+          overrides: [
+            selectedDestinationProvider.overrideWith(
+              (ref) => AppDestination.traceability,
+            ),
+          ],
+        );
 
-      await tester.tap(find.byKey(const Key('card-traceability-PROP-001')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('card-traceability-PROP-001')));
+        await tester.pumpAndSettle();
 
-      expect(
-        container.read(selectedDestinationProvider),
-        AppDestination.nodeDetail,
-      );
-      expect(container.read(returnToProvider), AppDestination.traceability);
-    });
+        expect(
+          container.read(selectedDestinationProvider),
+          AppDestination.nodeDetail,
+        );
+        expect(container.read(returnToProvider), AppDestination.traceability);
+      },
+    );
   });
 
   group('鏈路斷裂態 state-traceability-broken', () {
-    testWidgetsAtEachSize('缺口列 trailing 顯示 IssueMarker.gap',
-        (tester, size) async {
+    testWidgetsAtEachSize('缺口列 trailing 顯示 IssueMarker.gap', (
+      tester,
+      size,
+    ) async {
       await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
@@ -100,8 +107,7 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets(
-        '展開集合初始值：不含缺口的 PROP-001 分支維持收合，'
+    testWidgets('展開集合初始值：不含缺口的 PROP-001 分支維持收合，'
         '含缺口的 PROP-007 分支自動展開至缺口層', (tester) async {
       await pumpHarness(
         tester,
@@ -121,29 +127,33 @@ void main() {
     });
 
     testWidgets(
-        'badge-traceability-broken-<nodeId> → jump 至破洞報告，returnTo 設為 traceability',
-        (tester) async {
-      final container = await pumpHarness(
-        tester,
-        child: const TraceabilityScreen(),
-        overrides: [
-          traceabilityStateProvider.overrideWith(
-            (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
-          ),
-          selectedDestinationProvider.overrideWith(
-            (ref) => AppDestination.traceability,
-          ),
-        ],
-      );
+      'badge-traceability-broken-<nodeId> → jump 至破洞報告，returnTo 設為 traceability',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const TraceabilityScreen(),
+          overrides: [
+            traceabilityStateProvider.overrideWith(
+              (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
+            ),
+            selectedDestinationProvider.overrideWith(
+              (ref) => AppDestination.traceability,
+            ),
+          ],
+        );
 
-      await tester.tap(
-        find.byKey(const Key('badge-traceability-broken-PROP-005')),
-      );
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.byKey(const Key('badge-traceability-broken-PROP-005')),
+        );
+        await tester.pumpAndSettle();
 
-      expect(container.read(selectedDestinationProvider), AppDestination.gaps);
-      expect(container.read(returnToProvider), AppDestination.traceability);
-    });
+        expect(
+          container.read(selectedDestinationProvider),
+          AppDestination.gaps,
+        );
+        expect(container.read(returnToProvider), AppDestination.traceability);
+      },
+    );
 
     testWidgets('多父節點各自獨立 key，第二個缺口列亦可觸發跳轉', (tester) async {
       final container = await pumpHarness(
@@ -195,6 +205,31 @@ void main() {
         ),
         findsOneWidget,
       );
+      // 缺口列整列不可點：無 InkWell（IssueMarker 自身的除外）、無 button 語意。
+      final gapRowInkWells = find.descendant(
+        of: gapRow,
+        matching: find.byType(InkWell),
+      );
+      expect(
+        gapRowInkWells,
+        findsOneWidget,
+        reason: '僅 trailing IssueMarker 可點',
+      );
+      // 列層級 button 語意：gapRow 本身（key 所在的 Semantics）非 button。
+      expect(
+        find.descendant(
+          of: gapRow,
+          matching: find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.button == true,
+          ),
+        ),
+        findsOneWidget,
+        reason: '僅 trailing IssueMarker 帶 button 語意',
+      );
+      expect(
+        (tester.widget(gapRow) as KeyedSubtree).key,
+        const Key('row-traceability-gap-PROP-005'),
+      );
       // 父列自身 trailing 不再是缺口標記。
       expect(
         find.descendant(
@@ -214,8 +249,7 @@ void main() {
       expect(find.byType(IssueMarker), findsNothing);
     });
 
-    testWidgets('Ticket 未載入：樹上方常駐說明文字，前往動作為 text 變體',
-        (tester) async {
+    testWidgets('Ticket 未載入：樹上方常駐說明文字，前往動作為 text 變體', (tester) async {
       await pumpHarness(tester, child: const TraceabilityScreen());
 
       expect(find.text('Ticket 尚未載入'), findsOneWidget);
@@ -267,17 +301,15 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets(
-        'action-traceability-goto-domain → jump 至 Domain 視圖，'
+    testWidgets('action-traceability-goto-domain → jump 至 Domain 視圖，'
         'returnTo 設為 traceability', (tester) async {
       final container = await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
         overrides: [
           traceabilityStateProvider.overrideWith(
-            (ref) => const TraceabilityProjectUnready(
-              ProjectUnreadyReason.loading,
-            ),
+            (ref) =>
+                const TraceabilityProjectUnready(ProjectUnreadyReason.loading),
           ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.traceability,
@@ -290,7 +322,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(container.read(selectedDestinationProvider), AppDestination.domain);
+      expect(
+        container.read(selectedDestinationProvider),
+        AppDestination.domain,
+      );
       expect(container.read(returnToProvider), AppDestination.traceability);
     });
   });
@@ -309,9 +344,7 @@ void main() {
       await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
-        overrides: [
-          ticketsLoadedProvider.overrideWith((ref) => true),
-        ],
+        overrides: [ticketsLoadedProvider.overrideWith((ref) => true)],
       );
 
       expect(
@@ -320,8 +353,9 @@ void main() {
       );
     });
 
-    testWidgets('點擊 → jump 至 Ticket 清單，returnTo 設為 traceability',
-        (tester) async {
+    testWidgets('點擊 → jump 至 Ticket 清單，returnTo 設為 traceability', (
+      tester,
+    ) async {
       final container = await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
@@ -346,8 +380,7 @@ void main() {
   });
 
   group('展開集合切換專案重設（0.1.0-W3-335.38 S-28）', () {
-    testWidgets('狀態改變（模擬切換專案）後展開集合重新計算為初始值',
-        (tester) async {
+    testWidgets('狀態改變（模擬切換專案）後展開集合重新計算為初始值', (tester) async {
       final container = await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
@@ -361,7 +394,10 @@ void main() {
       // 手動展開 PROP-001（不含缺口分支，非初始展開集合成員）。
       await tester.tap(find.byKey(const Key('expander-traceability-PROP-001')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('card-traceability-SPEC-001')), findsOneWidget);
+      expect(
+        find.byKey(const Key('card-traceability-SPEC-001')),
+        findsOneWidget,
+      );
 
       // 模擬切換專案：狀態改回正常態（新的樹），展開集合應重設為該態
       // 的初始值（正常態無缺口，故全部收合）。
@@ -391,8 +427,7 @@ void main() {
         child: const TraceabilityScreen(),
         overrides: [
           traceabilityStateProvider.overrideWith(
-            (ref) =>
-                const TraceabilityBroken(TraceabilityFixtures.multiParent),
+            (ref) => const TraceabilityBroken(TraceabilityFixtures.multiParent),
           ),
         ],
       );
@@ -438,8 +473,7 @@ void main() {
         child: const TraceabilityScreen(),
         overrides: [
           traceabilityStateProvider.overrideWith(
-            (ref) =>
-                const TraceabilityBroken(TraceabilityFixtures.multiParent),
+            (ref) => const TraceabilityBroken(TraceabilityFixtures.multiParent),
           ),
         ],
       );
@@ -453,16 +487,14 @@ void main() {
       expect(
         find.descendant(
           of: rootSubtree('PROP-010'),
-          matching:
-              find.byKey(const Key('badge-traceability-broken-SPEC-009')),
+          matching: find.byKey(const Key('badge-traceability-broken-SPEC-009')),
         ),
         findsOneWidget,
       );
       expect(
         find.descendant(
           of: rootSubtree('PROP-011'),
-          matching:
-              find.byKey(const Key('badge-traceability-broken-SPEC-009')),
+          matching: find.byKey(const Key('badge-traceability-broken-SPEC-009')),
         ),
         findsOneWidget,
       );
@@ -482,37 +514,38 @@ void main() {
         size: size,
       );
 
-      expect(
-        AnchorFinder.state(Screen.traceability, 'empty'),
-        findsOneWidget,
-      );
+      expect(AnchorFinder.state(Screen.traceability, 'empty'), findsOneWidget);
       expect(find.byType(EmptyState), findsOneWidget);
       expectNoOverflow(tester);
     });
 
     testWidgets(
-        'action-traceability-goto-gaps → jump 至破洞報告，returnTo 設為 traceability',
-        (tester) async {
-      final container = await pumpHarness(
-        tester,
-        child: const TraceabilityScreen(),
-        overrides: [
-          traceabilityStateProvider.overrideWith(
-            (ref) => const TraceabilityNoProposal(),
-          ),
-          selectedDestinationProvider.overrideWith(
-            (ref) => AppDestination.traceability,
-          ),
-        ],
-      );
+      'action-traceability-goto-gaps → jump 至破洞報告，returnTo 設為 traceability',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const TraceabilityScreen(),
+          overrides: [
+            traceabilityStateProvider.overrideWith(
+              (ref) => const TraceabilityNoProposal(),
+            ),
+            selectedDestinationProvider.overrideWith(
+              (ref) => AppDestination.traceability,
+            ),
+          ],
+        );
 
-      await tester.tap(
-        find.byKey(const Key('action-traceability-goto-gaps')),
-      );
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.byKey(const Key('action-traceability-goto-gaps')),
+        );
+        await tester.pumpAndSettle();
 
-      expect(container.read(selectedDestinationProvider), AppDestination.gaps);
-      expect(container.read(returnToProvider), AppDestination.traceability);
-    });
+        expect(
+          container.read(selectedDestinationProvider),
+          AppDestination.gaps,
+        );
+        expect(container.read(returnToProvider), AppDestination.traceability);
+      },
+    );
   });
 }
