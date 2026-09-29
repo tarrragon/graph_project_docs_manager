@@ -29,9 +29,125 @@ abstract interface class WorkspaceDirectoryProbePort {
   Future<void> readFirstEntry(String path);
 }
 
+/// [WorkspaceRepository] 每個日誌呼叫點的事件識別碼。
+///
+/// 獨立於 [WorkspaceLogSink] 的 `message` 文案：`message` 是人類可讀、可自由
+/// 改寫的除錯文字（標 `i18n-exempt: 開發者 debug log`），`event` 才是測試
+/// 斷言應綁定的穩定契約。改一句 `message` 文案不得使任何測試翻紅——這是
+/// 本列舉存在的理由（0.1.0-W3-121 Phase 4a 三視角發現：測試曾直接比對
+/// `message` 子字串，使文案與測試耦合）。
+///
+/// 命名分組對應各方法；`persist*` 與 `restore*` 刻意分開命名——
+/// [_persistAndInspect]（[chooseFolder]／[openPath] 共用）與 [restore] 各自
+/// 有一個「偏好設定儲存已就緒」時刻，訊息文字相同但屬不同流程的不同時刻，
+/// 混用會讓「改一處文案、兩個流程的測試同時翻紅」看似其中一個受理事件壞了。
+enum WorkspaceLogEvent {
+  /// [chooseFolder] 開啟系統面板前的「呼叫發出」事件。
+  chooseFolderPanelOpening,
+
+  /// [chooseFolder] 面板呼叫拋例外。
+  chooseFolderPanelUnavailable,
+
+  /// [chooseFolder] 使用者取消選取。
+  chooseFolderCancelled,
+
+  /// [chooseFolder] 已取得使用者選取的路徑。
+  chooseFolderPathSelected,
+
+  /// [_persistAndInspect] 持久化前的「呼叫發出」事件
+  /// （[chooseFolder]／[openPath] 共用）。
+  persistIssuing,
+
+  /// [_persistAndInspect] 偏好設定儲存管道已開啟（受理時刻）。
+  persistPreferencesReady,
+
+  /// [_persistAndInspect] 寫入成功完成。
+  persistCompleted,
+
+  /// [_persistAndInspect] 寫入回報 `false`。
+  persistWriteReturnedFalse,
+
+  /// [_persistAndInspect] 寫入拋例外。
+  persistWriteThrew,
+
+  /// [openPath] 進入時的「呼叫發出」事件（不經 [_pickDirectoryPath]）。
+  openPathIssuing,
+
+  /// [restore] 進入時的「呼叫發出」事件。
+  restoreIssuing,
+
+  /// [restore] 開啟儲存管道拋例外。
+  restoreOpenThrew,
+
+  /// [restore] 偏好設定儲存管道已開啟（受理時刻，與 [persistPreferencesReady]
+  /// 為不同流程的不同時刻，訊息文字相同但事件識別碼刻意分開）。
+  restorePreferencesReady,
+
+  /// [restore] 偵測到舊版資料並就地遷移。
+  restoreMigrated,
+
+  /// [restore] 版號無法辨識，判定遷移失敗。
+  restoreMigrationFailed,
+
+  /// [restore] 無已儲存路徑。
+  restoreNoStoredPath,
+
+  /// [restore] 已還原出路徑（結果時刻）。
+  restoreCompleted,
+
+  /// [loadRecentProjects] 進入時的「呼叫發出」事件。
+  recentProjectsLoadIssuing,
+
+  /// [loadRecentProjects] 開啟儲存管道拋例外。
+  recentProjectsLoadOpenThrew,
+
+  /// [addRecentProject] 進入時的「呼叫發出」事件。
+  recentProjectsAddIssuing,
+
+  /// [addRecentProject] 開啟儲存管道拋例外。
+  recentProjectsAddOpenThrew,
+
+  /// [addRecentProject] 寫入成功完成。
+  recentProjectsAddWriteSucceeded,
+
+  /// [addRecentProject] 寫入回報 `false`。
+  recentProjectsAddWriteReturnedFalse,
+
+  /// [addRecentProject] 寫入拋例外。
+  recentProjectsAddWriteThrew,
+
+  /// [_readRecentProjects] key 不存在，回空清單。
+  recentProjectsMissing,
+
+  /// [_readRecentProjects] 內容格式損壞，回空清單。
+  recentProjectsCorrupted,
+
+  /// [_readRecentProjects] 成功讀取並排序完成。
+  recentProjectsLoaded,
+
+  /// [_readRecentProjectsForWrite] 既有清單損壞，以空清單為基底被取代。
+  recentProjectsWriteBaseCorrupted,
+
+  /// [_inspect] 探測資料夾是否存在前的「呼叫發出」事件。
+  inspectExistsIssuing,
+
+  /// [_inspect] 讀取資料夾內容前的「呼叫發出」事件。
+  inspectReadIssuing,
+
+  /// [_inspect] 讀取資料夾內容拋 [FileSystemException]。
+  inspectReadFailed,
+}
+
 /// 日誌投影的接縫。生產預設轉呼 `developer.log(name: 'WorkspaceRepository')`。
+///
+/// [event] 是測試斷言應綁定的穩定契約，[message] 只是可自由改寫的除錯文案
+/// （見 [WorkspaceLogEvent] doc comment）。「呼叫發出」事件（[WorkspaceLogEvent]
+/// 命名含 `Issuing` 者）的 [message] 措辭一律採「動詞片語 + 具名參數」，
+/// 不加「準備」前綴——五則呼叫發出事件曾有三種句型（僅一則帶「準備」），
+/// 統一後日誌讀者可用單一措辭特徵撈出所有呼叫發出點。
 typedef WorkspaceLogSink = void Function(
   String message, {
+  required WorkspaceLogEvent event,
   int? level,
   Object? error,
 });
@@ -72,9 +188,14 @@ class _DefaultWorkspaceDirectoryProbePort
   }
 }
 
-void _defaultLogSink(String message, {int? level, Object? error}) {
+void _defaultLogSink(
+  String message, {
+  required WorkspaceLogEvent event,
+  int? level,
+  Object? error,
+}) {
   developer.log(
-    message, // i18n-exempt: 開發者 debug log
+    '[${event.name}] $message', // i18n-exempt: 開發者 debug log
     name: 'WorkspaceRepository',
     level: level ?? 0,
     error: error,
@@ -141,19 +262,33 @@ class WorkspaceRepository {
 
   /// 開啟系統面板讓使用者選取資料夾。
   Future<ChooseFolderResult> chooseFolder() async {
-    _log('開啟資料夾選取面板'); // i18n-exempt: 開發者 debug log
+    _log(
+      '開啟資料夾選取面板', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.chooseFolderPanelOpening,
+    );
     String? path;
     try {
       path = await _pickDirectoryPath();
     } catch (e) {
-      _log('面板不可用', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      _log(
+        '面板不可用', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.chooseFolderPanelUnavailable,
+        level: 900,
+        error: e,
+      );
       return ChooseFolderUnavailable('$e');
     }
     if (path == null) {
-      _log('使用者取消選取'); // i18n-exempt: 開發者 debug log
+      _log(
+        '使用者取消選取', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.chooseFolderCancelled,
+      );
       return const ChooseFolderCancelled();
     }
-    _log('已選取：$path'); // i18n-exempt: 開發者 debug log
+    _log(
+      '已選取：$path', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.chooseFolderPathSelected,
+    );
     return _persistAndInspect(path);
   }
 
@@ -166,12 +301,16 @@ class WorkspaceRepository {
   /// 同一個 path 探測兩次。
   Future<ChooseFolderResult> _persistAndInspect(String path) async {
     _log(
-      '準備持久化，key=$_pathKey，path=$path', // i18n-exempt: 開發者 debug log
+      '持久化，key=$_pathKey，path=$path', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.persistIssuing,
     );
     String? failureReason;
     try {
       final handle = await _preferencesPort.open();
-      _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
+      _log(
+        '偏好設定儲存已就緒', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.persistPreferencesReady,
+      );
       // 版號 key 與 path key 的首次寫入是同一次操作（0.2.0-W1-021 acceptance
       // 第 3 條、呼應 0.1.0-W3-121 裁決 B 的交叉判據前提）：只要 path 曾被
       // 寫入，版號一定同時存在，不會出現「有 path 但版號 key 從未寫過」這種
@@ -186,16 +325,25 @@ class WorkspaceRepository {
           _schemaVersionKey,
           '$_currentSchemaVersion',
         );
-        _log('已持久化'); // i18n-exempt: 開發者 debug log
+        _log(
+          '已持久化', // i18n-exempt: 開發者 debug log
+          event: WorkspaceLogEvent.persistCompleted,
+        );
       } else {
         _log(
           '持久化失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
+          event: WorkspaceLogEvent.persistWriteReturnedFalse,
           level: 900,
         );
         failureReason = '寫入回報 false'; // i18n-exempt: 診斷用回傳值，非 log
       }
     } catch (e) {
-      _log('持久化失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      _log(
+        '持久化失敗（例外）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.persistWriteThrew,
+        level: 900,
+        error: e,
+      );
       failureReason = '$e'; // i18n-exempt: 診斷用回傳值，非 log
     }
     final state = await _inspect(path);
@@ -212,13 +360,19 @@ class WorkspaceRepository {
   /// 維持展開、不轉狀態、不寫已存路徑、清單不變）與「選擇其他資料夾」
   /// 選定後失敗完全一致（`0.2.1-W1-054`）。
   Future<ChooseFolderResult> openPath(String path) async {
-    _log('依最近專案路徑重新載入：$path'); // i18n-exempt: 開發者 debug log
+    _log(
+      '依最近專案路徑重新載入：$path', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.openPathIssuing,
+    );
     return _persistAndInspect(path);
   }
 
   /// App 啟動時呼叫，還原先前選定的資料夾。
   Future<WorkspaceState> restore() async {
-    _log('還原工作資料夾，key=$_pathKey'); // i18n-exempt: 開發者 debug log
+    _log(
+      '還原工作資料夾，key=$_pathKey', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.restoreIssuing,
+    );
     WorkspacePreferencesHandle handle;
     try {
       handle = await _preferencesPort.open();
@@ -226,13 +380,21 @@ class WorkspaceRepository {
       // 不互相抵扣：例外細節留給日誌診斷，reason 是使用者可能看見的欄位，
       // 固定為穩定文案常數（見 WorkspaceUnavailable 契約），不外露原始
       // 例外字串。
-      _log('還原失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      _log(
+        '還原失敗（例外）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.restoreOpenThrew,
+        level: 900,
+        error: e,
+      );
       return const WorkspaceUnavailable(
         lastKnownPath: null,
         reason: _reasonPreferencesUnavailable,
       );
     }
-    _log('偏好設定儲存已就緒'); // i18n-exempt: 開發者 debug log
+    _log(
+      '偏好設定儲存已就緒', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.restorePreferencesReady,
+    );
     final rawPath = handle.readString(_pathKey);
     final rawVersion = handle.readString(_schemaVersionKey);
     final migration = _migrateSchema(
@@ -245,7 +407,10 @@ class WorkspaceRepository {
       SchemaMigrationFailed() => null,
     };
     if (migration is SchemaMigrated) {
-      _log('偵測到舊版資料，已就地遷移'); // i18n-exempt: 開發者 debug log
+      _log(
+        '偵測到舊版資料，已就地遷移', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.restoreMigrated,
+      );
     }
     if (migration is SchemaMigrationFailed) {
       // 遷移失敗不阻擋 App：與 0.1.0-W3-121 裁決一致（restore() 任何失敗
@@ -254,15 +419,22 @@ class WorkspaceRepository {
       // 沿用可能已損毀的值——見 tech-decisions.md 同一補記段的決策記錄。
       _log(
         '版號無法辨識，判定遷移失敗（storedVersion=${migration.storedVersion}）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.restoreMigrationFailed,
         level: 900,
       );
       return const WorkspaceUnset();
     }
     if (path == null) {
-      _log('無已儲存路徑'); // i18n-exempt: 開發者 debug log
+      _log(
+        '無已儲存路徑', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.restoreNoStoredPath,
+      );
       return const WorkspaceUnset();
     }
-    _log('已還原：$path'); // i18n-exempt: 開發者 debug log
+    _log(
+      '已還原：$path', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.restoreCompleted,
+    );
     return _inspect(path);
   }
 
@@ -310,6 +482,7 @@ class WorkspaceRepository {
   Future<List<RecentProject>> loadRecentProjects() async {
     _log(
       '讀取最近專案清單，key=$_recentProjectsKey', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.recentProjectsLoadIssuing,
     );
     WorkspacePreferencesHandle handle;
     try {
@@ -317,6 +490,7 @@ class WorkspaceRepository {
     } catch (e) {
       _log(
         '讀取最近專案清單失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.recentProjectsLoadOpenThrew,
         level: 900,
         error: e,
       );
@@ -330,13 +504,17 @@ class WorkspaceRepository {
   /// 整份寫回。清單損壞時以空清單為基底寫入（損壞內容被取代，見規格
   /// 「損壞時不覆寫的邊界」），並記一筆 level 900 日誌使遺失可被觀測。
   Future<bool> addRecentProject(String path) async {
-    _log('新增最近專案，path=$path'); // i18n-exempt: 開發者 debug log
+    _log(
+      '新增最近專案，path=$path', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.recentProjectsAddIssuing,
+    );
     WorkspacePreferencesHandle handle;
     try {
       handle = await _preferencesPort.open();
     } catch (e) {
       _log(
         '新增最近專案失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.recentProjectsAddOpenThrew,
         level: 900,
         error: e,
       );
@@ -358,16 +536,25 @@ class WorkspaceRepository {
     try {
       final success = await handle.writeString(_recentProjectsKey, encoded);
       if (success) {
-        _log('已寫入最近專案清單，項數=${updated.length}'); // i18n-exempt: 開發者 debug log
+        _log(
+          '已寫入最近專案清單，項數=${updated.length}', // i18n-exempt: 開發者 debug log
+          event: WorkspaceLogEvent.recentProjectsAddWriteSucceeded,
+        );
       } else {
         _log(
           '新增最近專案失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
+          event: WorkspaceLogEvent.recentProjectsAddWriteReturnedFalse,
           level: 900,
         );
       }
       return success;
     } catch (e) {
-      _log('新增最近專案失敗（例外）', level: 900, error: e); // i18n-exempt: 開發者 debug log
+      _log(
+        '新增最近專案失敗（例外）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.recentProjectsAddWriteThrew,
+        level: 900,
+        error: e,
+      );
       return false;
     }
   }
@@ -376,18 +563,25 @@ class WorkspaceRepository {
   List<RecentProject> _readRecentProjects(WorkspacePreferencesHandle handle) {
     final raw = handle.readString(_recentProjectsKey);
     if (raw == null) {
-      _log('最近專案清單不存在，回空清單'); // i18n-exempt: 開發者 debug log
+      _log(
+        '最近專案清單不存在，回空清單', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.recentProjectsMissing,
+      );
       return const [];
     }
     final parsed = _parseRecentProjects(raw);
     if (parsed == null) {
       _log(
         '最近專案清單格式損壞，回空清單', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.recentProjectsCorrupted,
         level: 900,
       );
       return const [];
     }
-    _log('已讀取最近專案清單，項數=${parsed.length}'); // i18n-exempt: 開發者 debug log
+    _log(
+      '已讀取最近專案清單，項數=${parsed.length}', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.recentProjectsLoaded,
+    );
     parsed.sort((a, b) => b.lastOpenedAt.compareTo(a.lastOpenedAt));
     return parsed;
   }
@@ -403,6 +597,7 @@ class WorkspaceRepository {
     if (parsed == null) {
       _log(
         '既有最近專案清單損壞，以空清單為基底被取代', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.recentProjectsWriteBaseCorrupted,
         level: 900,
       );
       return const [];
@@ -439,14 +634,20 @@ class WorkspaceRepository {
   /// 檔案系統節點、能跟著搬移，路徑字串不能。對開發者工具而言可接受 ——
   /// 專案資料夾被搬走時，讓使用者重選一次是合理的。
   Future<WorkspaceState> _inspect(String path) async {
-    _log('探測資料夾是否存在：$path'); // i18n-exempt: 開發者 debug log
+    _log(
+      '探測資料夾是否存在：$path', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.inspectExistsIssuing,
+    );
     if (!await _directoryProbe.exists(path)) {
       return WorkspaceUnavailable(
         lastKnownPath: path,
         reason: _reasonFolderMissing,
       );
     }
-    _log('讀取資料夾內容：$path'); // i18n-exempt: 開發者 debug log
+    _log(
+      '讀取資料夾內容：$path', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.inspectReadIssuing,
+    );
     try {
       await _directoryProbe.readFirstEntry(path);
     } on FileSystemException catch (e) {
@@ -456,6 +657,7 @@ class WorkspaceRepository {
       // reason——那是 OS 語系文字，不受應用程式語系控制。
       _log(
         '資料夾探測失敗：$path', // i18n-exempt: 開發者 debug log，非使用者可見文字
+        event: WorkspaceLogEvent.inspectReadFailed,
         level: 900,
         error: e,
       );
