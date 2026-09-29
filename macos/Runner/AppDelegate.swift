@@ -81,7 +81,18 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
         content: content,
         trigger: nil
       )
-      UNUserNotificationCenter.current().add(request) { _ in
+      UNUserNotificationCenter.current().add(request) { error in
+        if let error = error {
+          NSLog("scan_notifier show failed: %@", error.localizedDescription)
+          result(
+            FlutterError(
+              code: "SHOW_FAILED",
+              message: error.localizedDescription,
+              details: nil
+            )
+          )
+          return
+        }
         result(nil)
       }
     case "withdraw":
