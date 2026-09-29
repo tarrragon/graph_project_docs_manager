@@ -165,6 +165,12 @@ versions:
       ExternalOpener 絕對路徑前提，實機恆 notFound；topic 契合、契約行為錯誤，且 W3-236 量前程序
       要求開檔入口的 opened 取樣。預期變更：四入口收到的路徑改為專案根目錄組成的絕對路徑；
       fixture 內容不動，接真資料屬 0.5／0.6）。
+      契約與實際的差異（發版前檢討輸入）：
+        - W1-004 出現 2 則契約外紅燈（gap_report、node_detail 的「檔案不存在」測試）。契約只列覆寫
+          runner 的測試，漏算未覆寫 provider、隱式走真實檔案系統的測試；同步 File.existsSync 移進
+          ExternalOpener 的非同步檢查後因 FakeAsync 時序而紅。處置：以 runAsync 確認根因後改注入
+          FakeExternalOpener(notFound)，斷言不動（e1 裁定）。教訓：預期變更盤點須含「依賴預設 provider
+          的測試」，不只列有覆寫者。
       版本契約（2026-09-29，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
          - 外部開啟鏈：W1-004 → W1-007 → W3-236 → W3-210 → W3-248；W3-368 → W3-248。
