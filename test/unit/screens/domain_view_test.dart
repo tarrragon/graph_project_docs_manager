@@ -558,6 +558,47 @@ void main() {
       );
     });
 
+    // 降級說明（schemaUnconsumableDegradedExplanation）與降級動作同條件渲染。
+    Finder degradedExplanation() => find.byWidgetPredicate(
+      (w) => w is Text && (w.data ?? '').contains(RegExp(r'tier-B edges|B 層邊')),
+    );
+
+    testWidgets('有降級動作時降級說明同時渲染且含內建版本', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
+          ),
+        ],
+      );
+
+      expect(
+        find.byKey(const Key('action-domain-degraded-view')),
+        findsOneWidget,
+      );
+      expect(degradedExplanation(), findsOneWidget);
+    });
+
+    testWidgets('無降級動作時降級說明與動作皆不渲染', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainSchemaUnconsumable(version: '9.99.9'),
+          ),
+        ],
+      );
+
+      expect(
+        find.byKey(const Key('action-domain-degraded-view')),
+        findsNothing,
+      );
+      expect(degradedExplanation(), findsNothing);
+    });
+
     testWidgets('以現行 .claude/VERSION 實值為底、次版號 +1 驅動：高於內建資產版本時不提供降級出口'
         '（0.1.0-W2-012：防止只用遠低於門檻的 fixture 值掩蓋真實漂移；'
         '0.3.0-W2-001 起 builtin_schema_version.json 與現行 VERSION 同步，'

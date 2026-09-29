@@ -83,4 +83,69 @@ void main() {
       expect(result, isNull);
     });
   });
+
+  group('DefaultFrameworkSignalProbe.readVersion 與 schemaJsonExists', () {
+    late Directory tempDir;
+    const probe = DefaultFrameworkSignalProbe();
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp(
+        'framework_signal_probe_disk_test_',
+      );
+    });
+
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        // 還原可能被 chmod 000 的檔案權限，避免刪除失敗。
+        await Process.run('chmod', ['-R', 'u+rwx', tempDir.path]);
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    Future<File> writeAt(String relativePath, String content) async {
+      final file = File('${tempDir.path}/$relativePath');
+      await file.parent.create(recursive: true);
+      await file.writeAsString(content);
+      return file;
+    }
+
+    const versionPath = DefaultFrameworkSignalProbe.versionRelativePath;
+    const schemaPath = DefaultFrameworkSignalProbe.schemaJsonRelativePath;
+
+    test('readVersion：檔案不存在時回傳 null', () async {
+      expect(await probe.readVersion(tempDir.path), isNull);
+    });
+
+    test('readVersion：空內容（含純空白）回傳 null', () async {
+      await writeAt(versionPath, '  \n');
+
+      expect(await probe.readVersion(tempDir.path), isNull);
+    });
+
+    test('readVersion：正常值回傳去除前後空白的版本字串', () async {
+      await writeAt(versionPath, '1.2.3\n');
+
+      expect(await probe.readVersion(tempDir.path), '1.2.3');
+    });
+
+    // 讀取失敗做法：檔案存在但以 chmod 000 移除讀取權限，
+    // exists() 為 true 而 readAsString 拋 FileSystemException，走 catch 分支。
+    // 路徑為目錄的做法無效：File.exists() 對目錄回傳 false，只會走「不存在」分支。
+    test('readVersion：讀取失敗（無讀取權限）回傳 null 而非拋出', () async {
+      final file = await writeAt(versionPath, '9.9.9');
+      await Process.run('chmod', ['000', file.path]);
+
+      expect(await probe.readVersion(tempDir.path), isNull);
+    }, skip: Platform.isWindows ? '需要 POSIX 權限語意' : false);
+
+    test('schemaJsonExists：檔案存在回傳 true', () async {
+      await writeAt(schemaPath, '{}');
+
+      expect(await probe.schemaJsonExists(tempDir.path), isTrue);
+    });
+
+    test('schemaJsonExists：檔案不存在回傳 false', () async {
+      expect(await probe.schemaJsonExists(tempDir.path), isFalse);
+    });
+  });
 }

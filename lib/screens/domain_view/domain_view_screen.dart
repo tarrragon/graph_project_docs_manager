@@ -208,6 +208,9 @@ class _SchemaUnconsumableView extends ConsumerWidget {
     );
     return BlockedState.plain(
       message: l10n.schemaUnconsumableMessage(state.version),
+      explanation: canDegrade
+          ? l10n.schemaUnconsumableDegradedExplanation(builtinVersion ?? '')
+          : null,
       version: state.version,
       onSwitchProject: () =>
           ref.read(switcherOpenProvider.notifier).state = true,
