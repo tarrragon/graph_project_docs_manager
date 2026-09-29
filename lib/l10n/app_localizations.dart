@@ -1004,6 +1004,12 @@ abstract class AppLocalizations {
   /// **'已清除搜尋與篩選以顯示目標 ticket'**
   String get ticketsFiltersClearedSnackbarMessage;
 
+  /// SPEC-004 §4.26 AppSnackBar.plain；SPEC-003 §3.4〈帶目標跳入〉目標 ticketId 不在清單時的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到該 ticket，可能已被移除'**
+  String get ticketsTargetNotFoundMessage;
+
   /// SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉的 AppSnackBar.withAction 動作，還原清除前的搜尋詞與全部篩選值
   ///
   /// In zh, this message translates to:

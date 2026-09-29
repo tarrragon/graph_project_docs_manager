@@ -954,6 +954,11 @@
     "description": "SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉目標被搜尋詞或篩選隱藏時清除後的提示"
   },
 
+  "ticketsTargetNotFoundMessage": "找不到該 ticket，可能已被移除",
+  "@ticketsTargetNotFoundMessage": {
+    "description": "SPEC-004 §4.26 AppSnackBar.plain；SPEC-003 §3.4〈帶目標跳入〉目標 ticketId 不在清單時的提示"
+  },
+
   "undoAction": "復原",
   "@undoAction": {
     "description": "SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉的 AppSnackBar.withAction 動作，還原清除前的搜尋詞與全部篩選值"

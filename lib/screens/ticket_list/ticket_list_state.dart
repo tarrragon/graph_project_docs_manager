@@ -130,6 +130,7 @@ class TicketsReady extends TicketListState {
     this.expandedTopics = const {},
     this.targetTicketId,
     this.targetFiltersAutoCleared = false,
+    this.targetNotFoundNotified = false,
   });
 
   /// 全部已載入票（未經搜尋／篩選／排序）。
@@ -168,6 +169,10 @@ class TicketsReady extends TicketListState {
   /// 「不撤銷定位」的復原語意互相抵銷）。
   final bool targetFiltersAutoCleared;
 
+  /// 是否已因目標不在清單顯示過一次 `ticketsTargetNotFoundMessage`
+  /// （SPEC-003 §3.4〈帶目標跳入〉末列）；防重入旗標，避免重建重複發送。
+  final bool targetNotFoundNotified;
+
   /// 解析失敗票數（SPEC-001 §4「含損壞」疊加態的計入依據）。
   int get corruptedCount => tickets.where((t) => t.corrupted).length;
 
@@ -182,6 +187,7 @@ class TicketsReady extends TicketListState {
     Set<String>? expandedTopics,
     String? Function()? targetTicketId,
     bool? targetFiltersAutoCleared,
+    bool? targetNotFoundNotified,
   }) {
     return TicketsReady(
       tickets: tickets ?? this.tickets,
@@ -199,6 +205,8 @@ class TicketsReady extends TicketListState {
           : this.targetTicketId,
       targetFiltersAutoCleared:
           targetFiltersAutoCleared ?? this.targetFiltersAutoCleared,
+      targetNotFoundNotified:
+          targetNotFoundNotified ?? this.targetNotFoundNotified,
     );
   }
 }
