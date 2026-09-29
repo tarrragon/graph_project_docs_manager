@@ -624,7 +624,7 @@ commit 前快速掃描禁用字（數據/代碼/默認/文檔/軟件/硬件/信�
 
 > **用途**：派發實作代理人執行**唯讀規劃/分析階段**（如 TDD Phase 3a 只讀不寫）時，prompt 首行宣告 `Dispatch-Mode: readonly` 可豁免 worktree 強制，不需先建立/切換 worktree 即可派發。
 >
-> **權威來源**：完整判準（聲明方式三條件 AND、反例、與 review mode 的 OR 關係、與 Agent 工具 `dispatch_mode` 參數失效的實測結論）見 `.claude/pm-rules/worktree-operations.md`「唯讀派發豁免 worktree 強制」節；本節僅提供派發 prompt 骨架速查。
+> **權威來源**：完整判準（聲明方式三條件 AND、反例、關鍵字豁免已移除、與 Agent 工具 `dispatch_mode` 參數失效的實測結論）見 `.claude/pm-rules/worktree-operations.md`「唯讀派發豁免 worktree 強制」節；本節僅提供派發 prompt 骨架速查。
 
 **聲明方式**：prompt **首行**（strip 後第一行，非文中任意位置）逐字寫 `Dispatch-Mode: readonly`：
 
@@ -653,7 +653,7 @@ Ticket: {ticket_id}
 | 外部（非本專案）`.claude/` 路徑 | 不可用（不受本豁免影響，判斷序列中先於本豁免被阻擋） |
 | Agent 工具 `dispatch_mode: "readonly"` 結構化參數 | 無效——CC runtime 剝離 Agent tool_input 自訂欄位，唯一有效聲明方式是本節的 prompt 首行文字 |
 
-**與既有審查模式豁免（W10-084）的關係**：兩者為 OR 關係，任一命中即豁免；審查模式是 prompt 全文關鍵字比對（「審查/review/掃描/scan/評估/evaluate」），本豁免是首行固定格式協議，判準互相獨立、互不取代。
+**與既有審查模式豁免（W10-084）的關係**：關鍵字豁免已移除，審查派發唯一路徑為首行宣告。理由：實作票收尾標準用語「Phase 4 評估」必然命中子字串，守衛失效方向為放行；改為未宣告即阻擋。
 
 ---
 
