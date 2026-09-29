@@ -2,6 +2,9 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.8.0 - 本地變更，指向 tarrragon/claude#55：`check` 通過後的結尾建議依前移清單切換（非空建議 `finish` 並說明前移張數，空則維持 `release`）；`release` 遇前移清單非空拒絕執行（exit 1、列清單、提示改用 `finish`），`--force` 不覆蓋此判定（前移是資料正確性，非可略過的警告）。修復根因：`release` 不做前移，照 `check` 舊建議發版會把 pending 票留在已 completed 的版本下成為懸空票。新增 `collect_overflow_tickets`
+**Last Updated**: 2026-09-30
+
 **Version**: 2.7.1 - 本地變更，指向 tarrragon/claude#111：`snapshot_git_status_paths` 改讀 `git status --porcelain -z`（NUL 分隔、不做 quotepath 跳脫，rename 兩側皆納入），修復 CJK 檔名被 git 加引號並八進位跳脫後，差集比對與 `docs/` 前綴判斷失效、CJK 文件被靜默排除在 `finish` 收尾提交之外；`commit_changes` 逐檔 `git add` 補檢查回傳值，失敗時輸出 warning 含路徑與 stderr（原本忽略回傳值，漏檔無任何訊號）
 **Last Updated**: 2026-09-30
 
