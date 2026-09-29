@@ -21,6 +21,7 @@ import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
+import 'package:graph_project_docs_manager/workspace/external_opener.dart';
 
 import '../../helpers/helpers.dart';
 
@@ -249,6 +250,9 @@ void main() {
         child: const GapReportScreen(),
         overrides: [
           gapReportProvider.overrideWith(() => _FixedNotifier(_foundState)),
+          externalOpenerProvider.overrideWithValue(
+            FakeExternalOpener(defaultResult: ExternalOpenResult.notFound),
+          ),
         ],
       );
 
@@ -428,8 +432,8 @@ void main() {
 
   // 檔案存在時的兩種結局（SPEC-003 §3.5 破洞項兩列）。三種結局各驗一次，
   // 因為缺任何一則回饋都不會使畫面出錯——假成功與靜默失敗都是全綠的
-  // （ARCH-GPD-001）。`gapItemProcessRunnerProvider` 為此存在：真實
-  // `Process.run` 無法被指使失敗，失敗路徑就無從斷言。
+  // （ARCH-GPD-001）。以 `FakeExternalOpener` 指使三值結果：真實
+  // `open` 無法被指使失敗，失敗路徑就無從斷言。
   group('破洞項外部開啟（state-gaps-found）', () {
     late Directory tempDir;
     late GapReportFound stateWithExistingFile;
@@ -457,7 +461,7 @@ void main() {
 
     Future<void> tapItem(
       WidgetTester tester,
-      Future<ProcessResult> Function(String, List<String>) runner,
+      FakeExternalOpener opener,
     ) async {
       await pumpHarness(
         tester,
@@ -466,7 +470,7 @@ void main() {
           gapReportProvider.overrideWith(
             () => _FixedNotifier(stateWithExistingFile),
           ),
-          gapItemProcessRunnerProvider.overrideWithValue(runner),
+          externalOpenerProvider.overrideWithValue(opener),
         ],
       );
       await tester.tap(find.byKey(const Key('card-gaps-spec-readme')));
@@ -474,10 +478,10 @@ void main() {
     }
 
     testWidgets('exitCode 0：提示已在外部開啟', (tester) async {
-      await tapItem(
-        tester,
-        (executable, arguments) async => ProcessResult(1, 0, '', ''),
-      );
+      final opener = FakeExternalOpener();
+      await tapItem(tester, opener);
+
+      expect(opener.calls, ['${tempDir.path}/README.md']);
 
       expect(find.text('已在外部開啟'), findsOneWidget);
       expect(find.text('無法以系統預設方式開啟'), findsNothing);
@@ -486,25 +490,25 @@ void main() {
     testWidgets('exitCode 非零：提示無法開啟，不回報成功', (tester) async {
       await tapItem(
         tester,
-        (executable, arguments) async =>
-            ProcessResult(1, 1, '', 'no application'),
+        FakeExternalOpener(defaultResult: ExternalOpenResult.failed),
       );
 
       expect(find.text('無法以系統預設方式開啟'), findsOneWidget);
       expect(find.text('已在外部開啟'), findsNothing);
     });
 
-    testWidgets('呼叫拋例外：提示無法開啟，例外不外傳（不轉阻擋狀態）', (tester) async {
+    testWidgets('failed（含 ProcessException 由 opener 攔截）：提示無法開啟，不轉阻擋狀態', (
+      tester,
+    ) async {
       await tapItem(
         tester,
-        (executable, arguments) async =>
-            throw ProcessException(executable, arguments, 'spawn failed', 2),
+        FakeExternalOpener(defaultResult: ExternalOpenResult.failed),
       );
 
       expect(find.text('無法以系統預設方式開啟'), findsOneWidget);
       expect(find.text('已在外部開啟'), findsNothing);
       // 例外若外傳會被 FatalErrorGate 收成 BlockedState；此處斷言它停在
-      // `_runOpen` 內，畫面仍是有破洞狀態。
+      // opener 內，畫面仍是有破洞狀態。
       expectNoOverflow(tester);
       expect(AnchorFinder.state(Screen.gaps, 'found'), findsOneWidget);
     });

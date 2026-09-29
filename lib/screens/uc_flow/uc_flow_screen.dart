@@ -20,9 +20,6 @@
 /// 假資料階段步驟未帶對應節點 id，見本票 Solution）。
 library;
 
-import 'dart:developer' as developer;
-import 'dart:io';
-
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,19 +28,10 @@ import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
+import '../../workspace/external_opener.dart';
 import 'uc_flow_fixtures.dart';
 import 'uc_flow_providers.dart';
 import 'uc_flow_state.dart';
-
-const String _tag = 'UcFlowScreen';
-
-/// 開啟原始檔的行程執行接縫（暫時，同 `domain_view_screen.dart`
-/// `domainOpenSourceProcessRunnerProvider` 慣例）。
-@visibleForTesting
-final ucFlowOpenSourceProcessRunnerProvider =
-    Provider<Future<ProcessResult> Function(String, List<String>)>(
-      (ref) => Process.run,
-    );
 
 /// UC Flow 視圖畫面。
 class UcFlowScreen extends ConsumerWidget {
@@ -184,54 +172,26 @@ class _UnstructuredView extends ConsumerWidget {
   }
 
   /// 開啟選定 UC 的原始檔（同 `domain_view_screen.dart` `_openSource`
-  /// 慣例：0.1 假資料路徑不對應磁碟上任何檔案，恆走「找不到檔案」分支，
-  /// 存在性檢查與行程呼叫仍走真實 `dart:io`）。
+  /// 慣例：經 `ExternalOpener` 開啟，三值對應 SPEC-003 §3.2）。
   Future<void> _openSource(
     BuildContext context,
     WidgetRef ref,
     UcFlowFixtureUc uc,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final exists = File(uc.filePath).existsSync();
-    if (!exists) {
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: l10n.sourceFileNotFoundSnackbarMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-      return;
-    }
-    developer.log('外部開啟：${uc.filePath}', name: _tag); // i18n-exempt: 開發者診斷 log
-    try {
-      final result = await ref.read(ucFlowOpenSourceProcessRunnerProvider)(
-        'open',
-        [uc.filePath],
-      );
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: result.exitCode == 0
-            ? l10n.openedExternallyMessage
-            : l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-    } catch (error) {
-      developer.log(
-        '外部開啟失敗：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: l10n.externalOpenFailedMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
-      );
-    }
+    final result = await ref.read(externalOpenerProvider).open(uc.filePath);
+    if (!context.mounted) return;
+    final message = switch (result) {
+      ExternalOpenResult.opened => l10n.openedExternallyMessage,
+      ExternalOpenResult.notFound => l10n.sourceFileNotFoundSnackbarMessage,
+      ExternalOpenResult.failed => l10n.externalOpenFailedMessage,
+    };
+    AppSnackBar.show(
+      context,
+      message: message,
+      level: AttentionLevel.discardable,
+      origin: AppSnackBarOrigin.userInitiated,
+    );
   }
 }
 
@@ -357,7 +317,10 @@ class _UcSelectorPanel extends ConsumerWidget {
         Section(
           variant: SectionVariant.static,
           testKey: const Key('panel-ucFlow-uc-selector'),
-          header: AppText(l10n.ucSelectorTitle, variant: AppTextVariant.caption),
+          header: AppText(
+            l10n.ucSelectorTitle,
+            variant: AppTextVariant.caption,
+          ),
           items: [
             for (final uc in ucList)
               ListRow.option(
