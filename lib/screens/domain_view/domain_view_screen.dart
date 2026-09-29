@@ -64,10 +64,14 @@ class _UnsetView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    // SPEC-001 v1.24 §1：還原失敗降級時常駐顯示原因，取代權限說明。
+    final workspace = ref.watch(currentWorkspaceStateProvider);
     return EmptyState(
       variant: EmptyStateVariant.page,
       message: l10n.chooseWorkspaceFolder,
-      explanation: l10n.folderAccessRationale,
+      explanation: workspace is WorkspaceUnavailable
+          ? l10n.workspaceUnavailable(workspace.reason)
+          : l10n.folderAccessRationale,
       testKey: const Key('state-domain-unset'),
       actions: [
         AppButton(

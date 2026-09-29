@@ -25,7 +25,7 @@ class WorkspaceReady extends WorkspaceState {
 /// 先前選過資料夾，但現在無法使用（已刪除、外接磁碟未掛載、權限變更）。
 /// [lastKnownPath] 供 UI 提示使用者是哪一個。
 ///
-/// [reason] 是使用者可見欄位（`main.dart` 的 `_WorkspaceBanner` 直接以
+/// [reason] 是使用者可見欄位（Domain 視圖未選專案畫面 `_UnsetView` 直接以
 /// `l10n.workspaceUnavailable(reason)` 渲染）：契約規定只能是固定文案
 /// 常數（見 `workspace_repository.dart` 的 `_reasonFolderMissing` 等），
 /// 禁止插值原始例外字串或平台回傳的 OS 語系訊息——那些內容語言不受控，

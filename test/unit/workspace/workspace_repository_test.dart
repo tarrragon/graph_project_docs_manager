@@ -381,7 +381,7 @@ void main() {
     });
 
     // 3b-E 回歸鎖：restore() 例外路徑的 reason 曾直接插值原始例外字串
-    // （'$e'），使 _WorkspaceBanner 顯示例外型別名給使用者看。日誌拿例外
+    // （'$e'），使未選專案畫面（_UnsetView）顯示例外型別名給使用者看。日誌拿例外
     // 細節、reason 拿固定文案，兩者不互相抵扣，此測試鎖住這條界線。
     test('G3-2b restore() 例外路徑的 reason 不含例外型別名（不外露原始例外字串）',
         () async {
