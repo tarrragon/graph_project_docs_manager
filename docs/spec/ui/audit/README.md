@@ -19,7 +19,7 @@ SPEC-004 定義元件層 slot／i18n）、可點擊錨點（testKey，三份文�
 與目前工作目錄無關，但仍建議在根目錄執行以符合下方相對路徑輸出範例）：
 
 ```bash
-python3 docs/spec/ui/audit/matrix.py > /tmp/spec-audit-matrix.md
+python3 docs/spec/ui/audit/matrix.py > /tmp/spec-audit-matrix.md; echo "exit=$?"
 python3 docs/spec/ui/audit/counts.py > /tmp/spec-audit-counts.txt
 ```
 
@@ -27,7 +27,7 @@ python3 docs/spec/ui/audit/counts.py > /tmp/spec-audit-counts.txt
 
 | 集合 | 權威表位置（本腳本內） | 上游權威來源 |
 |------|----------------------|-------------|
-| 狀態（節、狀態名、狀態錨點） | `matrix.py` 模組層級 `STATES` list | SPEC-001 §1–§7 逐節表列序；新增或移除狀態須同步改 `STATES` |
+| 狀態（節、狀態名、狀態錨點） | `matrix.py` 模組層級 `STATES` list | SPEC-001 §1–§7 逐節表列序；新增或移除狀態須同步改 `STATES`（腳本的狀態集合相等檢查會報出 `STATES` 與 SPEC-001 的差異） |
 | SnackBar key | `matrix.py` 模組層級 `SNACK_KEYS` list | SPEC-003 §2.13〈判準與既有條文的對照〉與 SPEC-004 §4.0.6 新 key 總表；新增或移除 key 須同步改 `SNACK_KEYS` |
 | 可點擊錨點（testKey） | `matrix.py` 模組層級 `ANCHOR` 正則（前綴白名單） | 三份 SPEC 與 UC 文件內以 backtick 包裹的 `state-` / `action-` / `mode-` / `scroll-` / `drag-` / `badge-` / `panel-` / `menu-` / `option-` / `card-` / `cell-` / `expander-` / `input-` / `nav-` / `project-` 開頭字串；矩陣為全集聯集（`S3任一` / `S4任一` / `S1任一` 三欄），非白名單式列舉 |
 | 疑似寫死計數 | `counts.py` 模組層級 `NUM` / `P` 正則 | `document-format-rules.md` 規則 10〈可變計數不實例化〉；正則為啟發式樣式，非精確語意判斷 |
@@ -38,20 +38,25 @@ python3 docs/spec/ui/audit/counts.py > /tmp/spec-audit-counts.txt
 
 ## 如何判讀輸出
 
-### `matrix.py`（三張矩陣：A 狀態、B SnackBar key、C 錨點）
+### `matrix.py`（三張矩陣 A 狀態、B SnackBar key、C 錨點，加 D 狀態集合相等檢查）
 
-- 格值 `Y` = 該成員的字面（狀態中文名／key 名／錨點字面）出現於該欄對應章節區段；`.` = 未出現。
-- **`.` 不等於缺漏**：多數狀態或 key 本來就不該出現在每一欄——例如「無最近專案」
-  合理沒有動畫提示（S3動畫欄可以是 `.`）、`S1§8.2` 只寫事件敘述不寫 key 名字面
-  （該欄整欄 `.` 為預期，見矩陣 B 表末的固定註記）。
-- **合理不出現的判斷依據**：對照該狀態／key 在上游 SPEC 條文中的定義範圍——
-  若條文本身就只涵蓋部分章節（如某 SnackBar key 依設計只在特定畫面觸發），對應
-  空格即為合理不出現，不需修補。
-- **真缺漏的判斷依據**：條文語意上該集合成員理應出現於某章節（如狀態總數在
-  SPEC-001／SPEC-003／SPEC-004 三處皆應可交叉核對到同一組錨點），但矩陣顯示
-  `.`，且找不到「合理不出現」的條文依據——此時才是需要修補的缺漏。
-- 判讀結果（哪些 `.` 是缺漏、哪些是合理不出現）記錄於對應 ticket 的
-  Problem Analysis / Solution，本目錄的腳本本身不記錄判定結論，只產生原始矩陣。
+- 格值三態：`Y` = 該成員字面出現於該欄對應章節區段；`~<id>` = 未出現但屬合理不出現
+  （id 指向腳本內 `MASKS`，每項附出處與理由）；`X` = 未出現且無遮罩，即真缺漏候選。
+- 遮罩來源兩類：`R1`–`R12` 取自 `0.1.0-W3-335.54` Solution〈4. 合理不出現〉；`N1`–`N3`
+  為 `0.3.3-W3-375` 新判定。**遮罩只收有理由的項目，不得為了讓缺漏歸零而擴大**；新增遮罩
+  須附出處或判定理由，並列入所屬 ticket 供核對。`N1`（子集欄）的副作用：子集欄漏列新成員
+  不會被本腳本發現。
+- `X` 只是候選：是否真為缺漏須對照上游 SPEC 條文語意，判定結果記錄於對應 ticket，
+  本目錄不記錄判定結論。矩陣 A 與 C 對同一狀態錨點可能重複列出同一發現。
+- **D 狀態集合相等檢查**：SPEC-001 §1–§7 各表狀態集合、SPEC-003 §4 的（畫面, 狀態）集合、
+  `STATES` 三者兩兩比對（狀態名去除 `**` 與全形括號疊加註記後比對）；有對稱差時逐項列出
+  缺漏方向與名稱。
+- 結尾輸出 `真缺漏數；狀態集合對稱差；合計`。
+
+**exit code 語意**：`0` = 合計為 0（無真缺漏、集合相等）；`1` = 合計大於 0，須讀「真缺漏清單」
+與「集合差」逐項判讀。腳本讀檔失敗等例外由 Python 直接以非零結束。作為追修票驗收閘門時，
+比較「修改前後的真缺漏數」而非只看 exit code：現行 spec 若本就有缺漏，exit 恆為 1，
+單看 exit 無法鑑別新增缺漏。
 
 ### `counts.py`（疑似寫死計數片段清單）
 
@@ -64,6 +69,10 @@ python3 docs/spec/ui/audit/counts.py > /tmp/spec-audit-counts.txt
 - 每一筆命中都需要人工核對是否真為「集合大小寫死」（`document-format-rules.md`
   規則 10 判準：欄位數／檔案數／條文數／步驟數等會演進的集合大小才算，凍結承諾
   數字與規則 9 實測記錄兩類例外不算）。
+- 契約代號範圍（`C1–C8`、`L1–L2`、`F1–F7`、`S1–S8`、`M1–M5`）是識別碼而非集合大小，已自樣式排除；
+  契約集合的大小敘述（如「共 10 條」）仍會被擷取。
+- **exit code 語意**：恆為 `0`（本檔只列疑似片段，不自動判定）；stderr 印命中筆數，
+  可用「修改前後筆數差」確認新增的寫死計數會被擷取。
 - 判定結果記錄於對應 ticket，不在本目錄留存。
 
 ## 已知侷限
@@ -81,3 +90,4 @@ python3 docs/spec/ui/audit/counts.py > /tmp/spec-audit-counts.txt
 - `0.1.0-W3-335.60`：SPEC-001 追修
 - `0.1.0-W3-335.61`：SPEC-003 追修
 - `0.1.0-W3-335.62`：SPEC-004 追修，腳本入庫本目錄（本檔案由此票建立）
+- `0.3.3-W3-375`：加入合理不出現遮罩、真缺漏數與 exit code、狀態集合相等檢查、counts 契約代號排除
