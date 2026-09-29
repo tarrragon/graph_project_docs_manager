@@ -104,36 +104,6 @@ abstract class AppLocalizations {
   /// **'專案文件流'**
   String get appTitle;
 
-  /// 首頁文件列表的區塊標題
-  ///
-  /// In zh, this message translates to:
-  /// **'近期文件'**
-  String get sectionRecentDocuments;
-
-  /// 統計卡片：處理中的文件數
-  ///
-  /// In zh, this message translates to:
-  /// **'進行中'**
-  String get statInProgress;
-
-  /// 統計卡片：等待審閱的文件數
-  ///
-  /// In zh, this message translates to:
-  /// **'待審閱'**
-  String get statPendingReview;
-
-  /// 統計卡片：已封存的文件數
-  ///
-  /// In zh, this message translates to:
-  /// **'已歸檔'**
-  String get statArchived;
-
-  /// 文件數量。中文無單複數變化，故僅有 other 分支
-  ///
-  /// In zh, this message translates to:
-  /// **'{count, plural, other{{count} 份文件}}'**
-  String documentCount(int count);
-
   /// 引導使用者授權本機資料夾存取的按鈕
   ///
   /// In zh, this message translates to:
@@ -146,12 +116,6 @@ abstract class AppLocalizations {
   /// **'請選擇一個資料夾，App 將在其中讀取與編輯文件。此授權會被記住，下次開啟不需重選。'**
   String get folderAccessRationale;
 
-  /// 已取得授權時顯示的目前資料夾
-  ///
-  /// In zh, this message translates to:
-  /// **'工作資料夾：{path}'**
-  String workspaceReady(String path);
-
   /// 授權失效時的說明，reason 由原生端提供
   ///
   /// In zh, this message translates to:
@@ -163,12 +127,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'資料夾無法使用：{reason}'**
   String folderUnavailableMessage(String reason);
-
-  /// 已有工作資料夾時的重新選取按鈕
-  ///
-  /// In zh, this message translates to:
-  /// **'變更資料夾'**
-  String get changeWorkspaceFolder;
 
   /// 選取資料夾成功但持久化寫入失敗時的提示
   ///
@@ -391,12 +349,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'切換專案'**
   String get projectSwitcherEntryLabel;
-
-  /// 專案切換浮層的佔位標題，浮層內容由後續票實作
-  ///
-  /// In zh, this message translates to:
-  /// **'專案切換'**
-  String get projectSwitcherPlaceholderTitle;
 
   /// SPEC-003 §3.1 Domain 視圖：mode-domain-matrix 切換按鈕文案
   ///
