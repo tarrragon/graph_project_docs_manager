@@ -20,7 +20,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/components.dart' as components;
 import '../l10n/app_localizations.dart';
+import '../screens/domain_view/domain_view_providers.dart';
 import '../screens/domain_view/domain_view_screen.dart';
+import '../screens/domain_view/domain_view_state.dart';
 import '../screens/domain_view/gate_detection_notifier.dart';
 import '../screens/gap_report/gap_report_screen.dart';
 import '../screens/gap_report/scan_notification_controller.dart';
@@ -70,8 +72,8 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   /// [WorkspaceRepository.restore] 任何失敗皆降級為非 [WorkspaceReady]
-  /// （見該檔契約），此時不執行 [GateDetectionNotifier.detect]——沿用
-  /// 「restore() 不阻擋 App」的既有契約，畫面維持預設狀態。
+  /// （見該檔契約），此時不執行 [GateDetectionNotifier.detect]，Domain 視圖
+  /// 改寫為 [DomainUnset]；仍不阻擋 App 啟動。
   Future<void> _restoreWorkspaceAndDetect() async {
     final repository = ref.read(workspaceRepositoryProvider);
     final state = await repository.restore();
@@ -82,8 +84,13 @@ class _AppShellState extends ConsumerState<AppShell>
     final recentProjects = await repository.loadRecentProjects();
     if (!mounted) return;
     ref.read(recentProjectsProvider.notifier).state = recentProjects;
-    if (state case WorkspaceReady(:final path)) {
-      await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
+    switch (state) {
+      case WorkspaceReady(:final path):
+        await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
+      case WorkspaceUnset() || WorkspaceUnavailable():
+        // SPEC-003 §3.1〈生命週期〉：無已存路徑或還原失敗，Domain 視圖進入
+        // state-domain-unset，不停在預設的 fixture 矩陣（0.3.3-W3-398）。
+        ref.read(domainViewStateProvider.notifier).state = const DomainUnset();
     }
   }
 
@@ -156,8 +163,7 @@ class _AppShellState extends ConsumerState<AppShell>
                   AppDestination.domain => const DomainHeaderTrailing(),
                   AppDestination.tickets => const TicketsHeaderTrailing(),
                   AppDestination.gaps => const GapReportHeaderTrailing(),
-                  AppDestination.nodeDetail =>
-                    const NodeDetailHeaderTrailing(),
+                  AppDestination.nodeDetail => const NodeDetailHeaderTrailing(),
                   _ => null,
                 },
               ),
