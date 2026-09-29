@@ -4,6 +4,7 @@ library;
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart' as material;
+import 'package:flutter/rendering.dart' show RenderMouseRegion;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -477,5 +478,62 @@ void main() {
         expect(selected.flagsCollection.isButton, isTrue);
       },
     );
+  });
+
+  group('tree onTap 為 null（SPEC-004 4.40 缺口列契約）', () {
+    Future<void> pumpTree(WidgetTester tester, {VoidCallback? onTap}) {
+      return pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          child: ListRow.tree(
+            leading: const ExpanderIcon.leaf(
+              testKey: ValueKey('tree-leaf-expander'),
+            ),
+            primary: AppText(TestCopy.nodeTitle),
+            onTap: onTap,
+            testKey: _treeKey,
+          ),
+        ),
+      );
+    }
+
+    testWidgets('onTap 為 null：無 InkWell、無 button 語意、無命中區', (tester) async {
+      await pumpTree(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(ListRow),
+          matching: find.byType(material.InkWell),
+        ),
+        findsNothing,
+      );
+      final data = tester.getSemantics(find.text(TestCopy.nodeTitle));
+      expect(data.flagsCollection.isButton, isFalse);
+      expect(find.byKey(_treeKey), findsOneWidget);
+      final hit = tester.hitTestOnBinding(tester.getCenter(find.byKey(_treeKey)));
+      expect(
+        hit.path.any((e) => e.target is RenderMouseRegion),
+        isFalse,
+        reason: '無 InkWell 即無 MouseRegion 命中區',
+      );
+    });
+
+    testWidgets('onTap 非 null：有 InkWell、button 語意、可命中', (tester) async {
+      var callCount = 0;
+      await pumpTree(tester, onTap: () => callCount++);
+
+      expect(
+        find.descendant(
+          of: find.byType(ListRow),
+          matching: find.byType(material.InkWell),
+        ),
+        findsOneWidget,
+      );
+      final data = tester.getSemantics(find.byKey(_treeKey));
+      expect(data.flagsCollection.isButton, isTrue);
+      await tester.tap(find.byKey(_treeKey));
+      expect(callCount, 1);
+    });
   });
 }

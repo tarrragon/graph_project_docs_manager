@@ -198,9 +198,7 @@ TreeNode _buildGapNode(
   required AppLocalizations l10n,
 }) {
   final row = ListRow.tree(
-    leading: ExpanderIcon(
-      isExpanded: false,
-      isLeaf: true,
+    leading: ExpanderIcon.leaf(
       testKey: Key('expander-traceability-gap-${parent.id}'),
     ),
     primary: AppText(
@@ -211,8 +209,8 @@ TreeNode _buildGapNode(
       onTap: () => onTapGap(parent.id),
       testKey: Key('badge-traceability-broken-${parent.id}'),
     ),
-    // ListRow.tree 的 onTap 為必填；缺口列整列不可點，跳轉由 trailing 承載。
-    onTap: () {},
+    // 缺口列整列不可點（SPEC-004 4.40），跳轉由 trailing 承載。
+    onTap: null,
     testKey: Key('row-traceability-gap-${parent.id}'),
   );
   return TreeNode(id: 'gap-${parent.id}', row: row, depth: depth);

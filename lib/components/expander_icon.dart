@@ -29,6 +29,12 @@ class ExpanderIcon extends StatefulWidget {
     this.onToggle,
   });
 
+  /// 無子層的前置佔位：等同 `isLeaf: true`，不渲染箭頭、排除於語意樹。
+  const ExpanderIcon.leaf({super.key, required this.testKey})
+    : isExpanded = false,
+      isLeaf = true,
+      onToggle = null;
+
   /// 展開態旗標；`isLeaf` 為 `true` 時本值不影響顯示。
   final bool isExpanded;
 
