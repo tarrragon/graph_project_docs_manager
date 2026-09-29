@@ -140,6 +140,8 @@
   "projectUnreadyReasonIncompatible": "This project is not usable with this app",
   "gotoDomainViewAction": "Go to Domain View",
   "gotoTicketsListAction": "Go to Ticket List",
+  "traceabilityNoDownstream": "(No {layer} yet)",
+  "traceabilityTicketsNotLoadedHint": "Tickets not loaded yet",
   "ticketsFiltersClearedSnackbarMessage": "Search and filters cleared to show the target ticket",
   "ticketsTargetNotFoundMessage": "Ticket not found; it may have been removed",
   "undoAction": "Undo",

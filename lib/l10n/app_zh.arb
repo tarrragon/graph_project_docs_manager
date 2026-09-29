@@ -898,6 +898,21 @@
     "description": "SPEC-003 §3.3 追溯視圖：Ticket 清單未載入時的前往動作文案（`0.1.0-W3-335.38` S-28）"
   },
 
+  "traceabilityNoDownstream": "（尚無 {layer}）",
+  "@traceabilityNoDownstream": {
+    "description": "SPEC-004 §4.0.6：追溯視圖鏈路斷裂缺口列主文字，layer 為缺的下游層型別名",
+    "placeholders": {
+      "layer": {
+        "type": "String"
+      }
+    }
+  },
+
+  "traceabilityTicketsNotLoadedHint": "Ticket 尚未載入",
+  "@traceabilityTicketsNotLoadedHint": {
+    "description": "SPEC-004 §4.0.6：追溯視圖 Ticket 清單未載入時樹上方常駐說明文字（S-28）"
+  },
+
   "ticketsFiltersClearedSnackbarMessage": "已清除搜尋與篩選以顯示目標 ticket",
   "@ticketsFiltersClearedSnackbarMessage": {
     "description": "SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉目標被搜尋詞或篩選隱藏時清除後的提示"

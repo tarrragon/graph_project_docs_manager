@@ -169,6 +169,81 @@ void main() {
     });
   });
 
+  group('缺口列與 Ticket 未載入說明（0.3.3-W3-394）', () {
+    final brokenOverride = traceabilityStateProvider.overrideWith(
+      (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
+    );
+
+    testWidgets('缺下游父節點下方為獨立缺口列：主文字含 layer 名，'
+        'trailing 為 IssueMarker，父列 trailing 為 Badge', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [brokenOverride],
+      );
+
+      final gapRow = find.byKey(const Key('row-traceability-gap-PROP-005'));
+      expect(gapRow, findsOneWidget);
+      expect(
+        find.descendant(of: gapRow, matching: find.text('（尚無 SPEC）')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: gapRow,
+          matching: find.byKey(const Key('badge-traceability-broken-PROP-005')),
+        ),
+        findsOneWidget,
+      );
+      // 父列自身 trailing 不再是缺口標記。
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('card-traceability-PROP-005')),
+          matching: find.byType(IssueMarker),
+        ),
+        findsNothing,
+      );
+      // UC 層缺口以 layer 名代入。
+      expect(find.text('（尚無 UC）'), findsWidgets);
+    });
+
+    testWidgets('無缺口時不渲染缺口列（正向對照，正常態）', (tester) async {
+      await pumpHarness(tester, child: const TraceabilityScreen());
+
+      expect(find.textContaining('尚無'), findsNothing);
+      expect(find.byType(IssueMarker), findsNothing);
+    });
+
+    testWidgets('Ticket 未載入：樹上方常駐說明文字，前往動作為 text 變體',
+        (tester) async {
+      await pumpHarness(tester, child: const TraceabilityScreen());
+
+      expect(find.text('Ticket 尚未載入'), findsOneWidget);
+      // testKey 落在 AppButton 內部按鈕上，向上取 AppButton 本體。
+      final button = tester.widget<AppButton>(
+        find.ancestor(
+          of: find.byKey(const Key('action-traceability-goto-tickets')),
+          matching: find.byType(AppButton),
+        ),
+      );
+      expect(button.variant, AppButtonVariant.text);
+    });
+
+    testWidgets('Ticket 已載入：說明文字與動作皆不渲染（正向對照）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [ticketsLoadedProvider.overrideWith((ref) => true)],
+      );
+
+      expect(find.text('Ticket 尚未載入'), findsNothing);
+      expect(
+        find.byKey(const Key('action-traceability-goto-tickets')),
+        findsNothing,
+      );
+    });
+  });
+
   group('專案未就緒態 state-traceability-project-unready', () {
     testWidgetsAtEachSize('渲染 EmptyState.page', (tester, size) async {
       await pumpHarness(

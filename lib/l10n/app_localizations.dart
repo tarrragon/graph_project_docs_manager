@@ -944,6 +944,18 @@ abstract class AppLocalizations {
   /// **'前往 Ticket 清單'**
   String get gotoTicketsListAction;
 
+  /// SPEC-004 §4.0.6：追溯視圖鏈路斷裂缺口列主文字，layer 為缺的下游層型別名
+  ///
+  /// In zh, this message translates to:
+  /// **'（尚無 {layer}）'**
+  String traceabilityNoDownstream(String layer);
+
+  /// SPEC-004 §4.0.6：追溯視圖 Ticket 清單未載入時樹上方常駐說明文字（S-28）
+  ///
+  /// In zh, this message translates to:
+  /// **'Ticket 尚未載入'**
+  String get traceabilityTicketsNotLoadedHint;
+
   /// SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉目標被搜尋詞或篩選隱藏時清除後的提示
   ///
   /// In zh, this message translates to:

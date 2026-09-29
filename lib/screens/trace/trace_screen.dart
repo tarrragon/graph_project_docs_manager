@@ -96,14 +96,18 @@ class _TraceTree extends ConsumerWidget {
     return Panel.scrollable(
       scrollKey: const Key('scroll-traceability-tree'),
       children: [
-        if (!ticketsLoaded)
+        if (!ticketsLoaded) ...[
+          AppText(
+            l10n.traceabilityTicketsNotLoadedHint,
+            variant: AppTextVariant.caption,
+          ),
           ButtonRow(
             alignment: ButtonRowAlignment.end,
             children: [
               AppButton(
                 label: l10n.gotoTicketsListAction,
                 testKey: const Key('action-traceability-goto-tickets'),
-                variant: AppButtonVariant.secondary,
+                variant: AppButtonVariant.text,
                 onPressed: () => navigateTo(
                   ref.read,
                   AppDestination.tickets,
@@ -112,6 +116,7 @@ class _TraceTree extends ConsumerWidget {
               ),
             ],
           ),
+        ],
         Tree(
           nodes: [
             for (final root in roots)
@@ -122,6 +127,7 @@ class _TraceTree extends ConsumerWidget {
                 onToggle: onToggle,
                 onTapNode: onTapNode,
                 onTapGap: onTapGap,
+                l10n: l10n,
               ),
           ],
           expanded: expanded,
@@ -142,8 +148,9 @@ TreeNode _buildTreeNode(
   required void Function(String nodeId) onToggle,
   required void Function(String nodeId) onTapNode,
   required void Function(String nodeId) onTapGap,
+  required AppLocalizations l10n,
 }) {
-  final isLeaf = node.children.isEmpty;
+  final isLeaf = node.children.isEmpty && !node.hasGap;
   final row = ListRow.tree(
     leading: ExpanderIcon(
       isExpanded: expanded.contains(node.id),
@@ -156,12 +163,7 @@ TreeNode _buildTreeNode(
       variant: AppTextVariant.body,
       emphasis: depth == 0,
     ),
-    trailing: node.hasGap
-        ? IssueMarker.gap(
-            onTap: () => onTapGap(node.id),
-            testKey: Key('badge-traceability-broken-${node.id}'),
-          )
-        : Badge.status(label: node.status),
+    trailing: Badge.status(label: node.status),
     onTap: () => onTapNode(node.id),
     testKey: Key('card-traceability-${node.id}'),
   );
@@ -171,6 +173,8 @@ TreeNode _buildTreeNode(
     row: row,
     depth: depth,
     children: [
+      if (node.hasGap)
+        _buildGapNode(node, depth: depth + 1, onTapGap: onTapGap, l10n: l10n),
       for (final child in node.children)
         _buildTreeNode(
           child,
@@ -179,7 +183,45 @@ TreeNode _buildTreeNode(
           onToggle: onToggle,
           onTapNode: onTapNode,
           onTapGap: onTapGap,
+          l10n: l10n,
         ),
     ],
   );
 }
+
+/// 缺下游父節點之下的獨立缺口列（SPEC-004 4.39／4.40）：主文字
+/// `traceabilityNoDownstream`、trailing `IssueMarker.gap`。
+TreeNode _buildGapNode(
+  TraceNode parent, {
+  required int depth,
+  required void Function(String nodeId) onTapGap,
+  required AppLocalizations l10n,
+}) {
+  final row = ListRow.tree(
+    leading: ExpanderIcon(
+      isExpanded: false,
+      isLeaf: true,
+      testKey: Key('expander-traceability-gap-${parent.id}'),
+    ),
+    primary: AppText(
+      l10n.traceabilityNoDownstream(_gapLayerName(parent.gapLayer)),
+      variant: AppTextVariant.body,
+    ),
+    trailing: IssueMarker.gap(
+      onTap: () => onTapGap(parent.id),
+      testKey: Key('badge-traceability-broken-${parent.id}'),
+    ),
+    // ListRow.tree 的 onTap 為必填；缺口列整列不可點，跳轉由 trailing 承載。
+    onTap: () {},
+    testKey: Key('row-traceability-gap-${parent.id}'),
+  );
+  return TreeNode(id: 'gap-${parent.id}', row: row, depth: depth);
+}
+
+/// 缺口層級（`spec` / `uc` / `ticket`）對應的型別名。
+String _gapLayerName(String? gapLayer) => switch (gapLayer) {
+  'spec' => 'SPEC',
+  'uc' => 'UC',
+  'ticket' => 'Ticket',
+  _ => gapLayer ?? '',
+};

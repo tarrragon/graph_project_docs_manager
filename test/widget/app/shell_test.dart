@@ -19,6 +19,7 @@ import 'package:graph_project_docs_manager/app/shell.dart';
 import 'package:graph_project_docs_manager/components/components.dart'
     as components;
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
@@ -183,6 +184,50 @@ void main() {
     expect(container.read(domainViewStateProvider), isA<DomainUnset>());
     expect(find.byKey(const Key('state-domain-unset')), findsOneWidget);
     expect(find.byKey(const Key('state-domain-matrix')), findsNothing);
+  });
+
+  // 0.3.3-W3-400：還原失敗原因常駐於未選專案畫面（SPEC-001 v1.24 §1）。
+  testWidgets('啟動 Unavailable：未選專案畫面顯示 workspaceUnavailable(reason)', (
+    tester,
+  ) async {
+    await _pumpShell(
+      tester,
+      overrides: [_unavailableRepoOverride()],
+      onReady: (_) {},
+    );
+    final l10n = AppLocalizationsZh();
+    expect(find.text(l10n.workspaceUnavailable('missing')), findsOneWidget);
+    expect(find.text(l10n.folderAccessRationale), findsNothing);
+  });
+
+  testWidgets('啟動 Unset：顯示 folderAccessRationale，無原因文字（對照）', (
+    tester,
+  ) async {
+    await _pumpShell(
+      tester,
+      overrides: [
+        workspaceRepositoryProvider.overrideWithValue(
+          StubWorkspaceRepository(const WorkspaceUnset()),
+        ),
+      ],
+      onReady: (_) {},
+    );
+    final l10n = AppLocalizationsZh();
+    expect(find.text(l10n.folderAccessRationale), findsOneWidget);
+    expect(find.text(l10n.workspaceUnavailable('missing')), findsNothing);
+  });
+
+  testWidgets('Unavailable 降級後選定資料夾：原因文字消失', (tester) async {
+    await _pumpShell(
+      tester,
+      overrides: [_unavailableRepoOverride()],
+      onReady: (_) {},
+    );
+    final l10n = AppLocalizationsZh();
+    expect(find.text(l10n.workspaceUnavailable('missing')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
+    await tester.pump();
+    expect(find.text(l10n.workspaceUnavailable('missing')), findsNothing);
   });
 
   testWidgets('啟動 restore() 回 WorkspaceReady → 不改寫為 Unset，由 gate 判定（對照）', (
@@ -374,6 +419,13 @@ Future<void> _focusSwitcherEntry(WidgetTester tester) async {
   Focus.of(tester.element(inner)).requestFocus();
   await tester.pump();
 }
+
+Override _unavailableRepoOverride() =>
+    workspaceRepositoryProvider.overrideWithValue(
+      StubWorkspaceRepository(
+        const WorkspaceUnavailable(lastKnownPath: '/gone', reason: 'missing'),
+      ),
+    );
 
 void _registerFocusTests() {
   // 0.3.3-W3-397：SPEC-003 §2.10「App 啟動」列——不預設焦點，首次 Tab
