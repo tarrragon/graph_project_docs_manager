@@ -2,6 +2,9 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.9.0 - 本地變更，指向 tarrragon/claude#55：`finish` 的 Commit Version Activation 提交納入本次啟用步驟 bump 的版本檔（Flutter 為 `pubspec.yaml`，含 config 指定的 monorepo 子目錄版本檔）。`commit_changes` 新增 `extra_paths` 參數，路徑須同時在 baseline 差集內才 stage，非版本檔的非 docs 變更仍不納入；新增 `resolve_activation_version_paths` 取得版本檔集合（與 `ensure_version_activated` 同源）。修復根因：stage 範圍只收 `CHANGELOG.md` 與 `docs/`，版本檔殘留於工作區使 exit 前殘留守衛 rc=1。
+**Last Updated**: 2026-09-30
+
 **Version**: 2.8.0 - 本地變更，指向 tarrragon/claude#55：`check` 通過後的結尾建議依前移清單切換（非空建議 `finish` 並說明前移張數，空則維持 `release`）；`release` 遇前移清單非空拒絕執行（exit 1、列清單、提示改用 `finish`），`--force` 不覆蓋此判定（前移是資料正確性，非可略過的警告）。修復根因：`release` 不做前移，照 `check` 舊建議發版會把 pending 票留在已 completed 的版本下成為懸空票。新增 `collect_overflow_tickets`
 **Last Updated**: 2026-09-30
 
