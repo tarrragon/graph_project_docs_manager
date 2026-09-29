@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.50"
+version: "1.51"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1657,6 +1657,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 |------|------|
 | App 啟動且有已存路徑 | 直接進入 `state-domain-loading` |
 | App 啟動且無已存路徑 | 進入 `state-domain-unset` |
+| App 啟動且有已存路徑但還原失敗（`WorkspaceUnavailable`） | 降級進入 `state-domain-unset`，不寫入已存路徑、最近專案清單不變；說明區常駐「無法存取先前的資料夾：{reason}」（`workspaceUnavailable`，SPEC-001 §1），選定資料夾後消失；不發暫態提示（常駐狀態承載，§2.13 T1 承接 (b1)）（`0.3.3-W3-378` 用戶裁決 B） |
 | 本畫面非惰性 | 它是預設落地頁，啟動即可見，不套用首次可見延遲 |
 | 切至其他導覽項 | 載入繼續；矩陣／泳道的 offset、選中 domain、選中格與 `scroll-domain-cell-detail` 的 offset、當前模式保留 |
 | 矩陣 ↔ 泳道切換 | 選中格保留，除非期間已依「選 domain」列被清除（`0.1.0-W3-335.37` R6）；由泳道切回矩陣時 `panel-domain-cell-detail` 仍存在且內容不變（未被清除時） |
@@ -2389,6 +2390,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.51 | 2026-09-29 | `0.3.3-W3-378`（用戶裁決 B，2026-09-29，經 e1 以 AUQ）：§3.1〈生命週期〉新增「App 啟動且有已存路徑但還原失敗」列——降級為 `state-domain-unset`、常駐原因文字 `workspaceUnavailable(reason)`、不發暫態提示；與 SPEC-001 v1.24 §1 未選專案列一致。實作由新建實作票承接（blockedBy `0.3.3-W3-398`） |
 | 1.50 | 2026-09-29 | `0.3.3-W3-388`（用戶裁決 D，經 e1 AUQ）：§2.10 新增「App 啟動」列——任一啟動狀態皆不預設焦點、第一次 Tab 落在 `project-switcher-entry`；「矩陣已選格時按 Esc」列補前提「焦點在矩陣內」與已知代價（啟動後須先點選矩陣 Esc 才生效）。實作（移除 `MatrixGrid` autofocus）由 `0.3.3-W3-397` 承接 |
 | 1.49 | 2026-09-29 | `0.3.3-W3-390`（依 `0.3.3-W3-374` 定案 C）：§4 對照表刪除「SPEC-001 退出路徑」欄（表頭與 40 列），「畫面」「狀態」兩欄改作指向 SPEC-001 列的參照鍵，引言改寫；刪欄前逐列核對編修性差異的住處——#7 降級旗標已在導航反應欄 `badge-domain-degraded-schema`、#12「前往 Ticket 清單」已在導航反應欄 `action-traceability-goto-tickets`、#30／#32 為 SPEC-001 原文的子集、#27「SPEC-001 FR-01 唯一例外」搬入同列導航反應欄；#20 狀態名改為「含損壞（疊加態）」（「疊加於 #17／#18」搬入導航反應欄）、#31 改為「已選格（疊加於正常 · 矩陣）」，與 SPEC-001 一致；#13 導航反應欄「退出路徑欄」明示為 SPEC-001 的欄。刪欄後（畫面, 狀態）集合與 SPEC-001 §1–§7 狀態集合相等（40 = 40，對稱差為空） |
 | 1.48 | 2026-09-29 | `0.3.3-W3-382`：§2.10〈焦點裝飾（斷言方式）〉改為對照形——同一元件取得焦點與焦點移走兩態，比對祖先鏈 `BoxDecoration.border`，兩態無差異即判紅；舊條文「祖先鏈存在 `decoration` 非 `null`」對焦點環無鑑別力（`NavItem` 未選中底色 `BoxDecoration(color: null)` 與側欄容器即滿足），附 `0.3.3-W1-006` 修正前後作為舊條文放行、本條文攔下的反例，對應 `shell_test.dart` 對照測試。SPEC-004 §4.0.1 focused 列有同型存在性抄錄，另報 |
