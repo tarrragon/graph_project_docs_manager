@@ -115,9 +115,15 @@ versions:
     codename: "Corpus-2"
     description: "0.3.0 凍結後由閘門與發版前移路由至此的修復／改善／分析／文件類票"
     status: "active"
+    scope: "frozen"    # 2026-09-29 凍結：必要票 W1-028、W1-093、W1-094、W1-095 已標 scope_blocker；新票須帶 --scope-blocker 理由，否則路由至 0.3.2
     worklog: "docs/work-logs/v0/v0.3/v0.3.1/"
     notes: |
       依版本登記規則 patch 列登記（2026-09-25，0.3.0 finish 的前移目標）。
+      預期變更（2026-09-29 規則：每版事先寫明）：
+        - 預期變：破洞掃描不在 App 啟動時觸發（W3-122，啟動路徑通知測試改斷言 0 次）；
+          IT-2 凍結 manifest 子票 1249 列 non_node→node（W1-092）；ticket skill 測試隨
+          W1-093～095 增修（各票票面列預期會紅的既有測試）。
+        - 預期不變：IT-1 expected.json；IT-2 gap 46、failure_unmatched 1252、總列數 7472；K4 內嵌版本 2.60.13。
       2026-09-29 發版後分診（0.3.1-W1-089，試行「minor 完成後依 topic 定固定數量
       patch」，見 tech-decisions 同日補記）：0.3.x 固定三個 patch，本版 topic =
       掃描通知與破洞判定。缺陷清單：W3-122（已完成）、W1-028、W1-081、W3-113。
