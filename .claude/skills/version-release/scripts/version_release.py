@@ -3649,11 +3649,29 @@ def check_residual_after_finish(root: Path, baseline: set) -> List[str]:
     return _diff_new_paths(root, baseline)
 
 
+def resolve_activation_version_paths(root: Path) -> set:
+    """回傳啟用步驟會 bump 的版本檔，相對 root 的 posix 路徑集合。
+
+    與 ensure_version_activated 的 (c) 同源（resolve_version_source），含
+    config 指定的 monorepo 子目錄版本檔；git-tag 策略或找不到版本檔時為空集合。
+    """
+    version_file, _parser = resolve_version_source(
+        root, load_version_release_config(root)
+    )
+    if version_file is None:
+        return set()
+    try:
+        return {version_file.resolve().relative_to(root.resolve()).as_posix()}
+    except ValueError:
+        return set()
+
+
 def commit_changes(
     version: str,
     dry_run: bool = False,
     baseline: Optional[set] = None,
     commit_message: Optional[str] = None,
+    extra_paths: Optional[set] = None,
 ) -> bool:
     """提交檔案變更。
 
@@ -3663,16 +3681,20 @@ def commit_changes(
     ——寫死清單在副作用集合成長時（如前移 ticket 產生的 rename）必然落
     後，差集是自描述的。未提供 baseline 時退回舊版寫死清單行為（相容既
     有呼叫點）。
+
+    extra_paths：額外納入的明確路徑（如啟用步驟 bump 的版本檔），仍須同時
+    出現在差集內才會 stage，不擴大到任意路徑。
     """
     root = get_project_root()
     message = commit_message or f"docs: 版本 {version} 發布準備"
+    extra = extra_paths or set()
 
     try:
         if baseline is not None:
             stage_targets = [
                 p
                 for p in _diff_new_paths(root, baseline)
-                if p == "CHANGELOG.md" or p.startswith("docs/")
+                if p == "CHANGELOG.md" or p.startswith("docs/") or p in extra
             ]
             if not stage_targets:
                 return True
@@ -4212,6 +4234,7 @@ def main():
                 dry_run,
                 baseline=finish_baseline,
                 commit_message=f"docs: 版本 {version} 標記完成並啟用下一版本",
+                extra_paths=resolve_activation_version_paths(finish_root),
             ):
                 print_warning("版本啟用變更提交失敗（請手動確認 todolist.yaml 狀態）")
 
