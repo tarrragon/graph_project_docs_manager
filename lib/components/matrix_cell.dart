@@ -84,6 +84,23 @@ class MatrixCell extends StatefulWidget {
 class _MatrixCellState extends State<MatrixCell> {
   bool _focused = false;
 
+  /// 點選時取得焦點的節點（InkWell 點擊本身不 requestFocus；SPEC-003
+  /// §2.10「點選即取得焦點」，0.3.3-W3-397）。
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  /// 已選格再點不呼叫 onTap（無狀態改變），但仍保持可聚焦：InkWell 的
+  /// onTap 為 null 即停用並丟失焦點，使 Esc 無法再抵達 MatrixGrid。
+  void _handleTap() {
+    _focusNode.requestFocus();
+    if (!widget.isSelected) widget.onTap();
+  }
+
   void _onFocusChange(bool focused) => setState(() => _focused = focused);
 
   Color get _background {
@@ -112,7 +129,8 @@ class _MatrixCellState extends State<MatrixCell> {
     );
 
     final inkCell = InkWell(
-      onTap: widget.isSelected ? null : widget.onTap,
+      focusNode: _focusNode,
+      onTap: _handleTap,
       onFocusChange: _onFocusChange,
       child: ConstrainedBox(
         constraints: BoxConstraints(

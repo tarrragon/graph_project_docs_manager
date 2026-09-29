@@ -95,7 +95,6 @@ class MatrixGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Focus(
-      autofocus: true,
       onKeyEvent: (node, event) => _handleKey(event),
       child: TableView.builder(
         key: scrollKey,
@@ -217,7 +216,12 @@ class _DomainHeaderCell extends StatelessWidget {
       label: domainName,
       excludeSemantics: true,
       child: InkWell(
-        onTap: () => onSelectDomain(domainId),
+        onTap: () {
+          // InkWell 點擊不取焦；焦點落進 MatrixGrid 的 Focus 使 Esc 生效
+          // （0.3.3-W3-397）。
+          Focus.of(context).requestFocus();
+          onSelectDomain(domainId);
+        },
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: Space.xs),
           child: AppText(
