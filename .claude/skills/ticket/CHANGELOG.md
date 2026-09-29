@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.42.4（本地變更，指向 tarrragon/claude#55）— `set-related-to`、`set-blocked-by`、`create --blocked-by` 改以被引用 ID 自身的版本前綴驗證存在性（新增 `field_validators.resolve_reference_version`，取不到版本前綴才退回目標票版本），修復引用建在其他版本的 ticket 時一律回報找不到的問題。載入仍經 `track_relations` 與 `field_validators` 模組層的 `load_ticket`。不變：`validate_blocked_by_references` 的循環偵測仍只看單一版本。E1／E2 對照測試：替身以 `(version, id)` 為鍵，兩個方向的跨版本引用成功，真不存在的 ID 仍報找不到。讀取端（blocker 解除判定、runqueue、complete 反向解鎖）由後續子票處理。
+
 **Version**: 2.42.3（本地變更，指向 tarrragon/claude#77）— `complete` 內建 auto-commit 只在工作日誌本次確實寫入時才把它列入提交範圍：`append_worklog_progress` 回傳 bool（True＝本次寫入；檔案不存在、冪等跳過、無日期標題區段、寫後驗證失敗、例外皆 False），`complete()` 據此決定 `modified_paths`。此前無條件列入，工作日誌未變更時 `commit_files_isolated` 自我驗證（實際變更須等於預期）失敗，整批提交放棄，連票面 md 也未提交。`commit_files_isolated` 的自我驗證不放寬（影響所有呼叫端）。`track_batch` 忽略回傳值，不受影響。E1 對照測試：同批 fixture 下追加回傳 True／False 兩案，提交範圍的工作日誌成員不同。
 
 **Version**: 2.42.2（本地變更，指向 tarrragon/claude#55）— `ticket track commit` 將票自身 md 視為隱含可寫範圍：ANA 票 where.files 預設唯讀，導致無法提交自己的票面（誤報「未宣告任何寫入路徑」）。輸入僅票自身 md 時放行；輸入含其他路徑時判定不變（宣告為空仍沿用原錯誤與 ANA `::write` 說明，非票面路徑仍整批拒絕）。E2 對照測試：票自身 md 放行、票自身 md 搭配非票面路徑拒絕。
