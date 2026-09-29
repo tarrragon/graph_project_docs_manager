@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.46"
+version: "1.47"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -966,6 +966,8 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 | 12 | `folderUnavailableMessage` | 是 | 否 | 否（`reason` 為單句原因，非需抄錄明細） | 否 | `plain` | §3.1、§3.7：`plain` | 是 |
 | 13 | `ticketsTargetNotFoundMessage` | 是 | 否 | 否 | 否 | `plain` | §3.4：`plain` | 是 |
 | 14 | `ticketsFiltersClearedSnackbarMessage`（§3.4 帶目標跳入清除搜尋與篩選） | 是 | 否（清單改變但未說明原因） | 否 | 是（`undoAction`） | `withAction` | §3.4：`withAction` | 是 |
+| 15 | `workspaceNotRemembered`（§3.7 選定資料夾成功但偏好設定寫入失敗，`ChooseFolderNotRemembered`，SPEC-005） | 是（同列 11、12：使用者剛於浮層完成選擇，觸發頁即可見頁） | 否（選定成功的可見變化——浮層收合、入口專案名更新——說明的是「已選定」，不說明「未能記住」） | 否 | 否（無使用者可執行的補救動作） | `plain` | §3.1、§3.7 無此分支的條文；呼叫點僅見 §2.14 列 16 | 判準與實作（`plain`）一致；互動反應表缺此分支 |
+| 16 | `externalOpenFailedMessage`（§3.1 開啟 docs 目錄 `notFound`，與 `failed` 共用同一則訊息） | 是 | 否（畫面狀態不變） | 否 | 否 | `plain` | §3.1：`plain` | 是 |
 
 **`sourceFileNotFoundSnackbarMessage` 那一列與 §3.6 開啟原始檔 `notFound` 那一列是判準 T
 目前唯一的跨畫面驗證點**：同一個 `ExternalOpenResult.notFound`
@@ -1131,7 +1133,7 @@ T1 判否且三個承接落到 (c) 時，該事件對使用者完全不可見。
 | 13 | schema 不相容（阻擋狀態） | 自發型 | 不可棄 | 同列 11 | — | 同列 11 |
 | 14 | 選擇器無法開啟（`ChooseFolderUnavailable`：系統資料夾選擇器本身開不起來） | 等待型（使用者按下選擇資料夾觸發） | 可棄 | 進入邊界時：`WorkspaceRepository.chooseFolder()` 呼叫發出當下（該方法的「呼叫發出」事件） | — | `AppSnackBar.plain`（`chooseFolderUnavailableMessage`，§2.13 對照表列 11）。呼叫點：§3.7 專案切換浮層「選擇其他」（`project_switcher_overlay.dart` 的 `_handleChooseFolderResult`；「最近專案項」雖共用同一處理函式，但走 `openPath`，不經選擇器，不會產生本結局）；§3.1 Domain 未選專案「選擇器無法開啟」列（規格已定，Domain 的選擇資料夾按鈕目前仍為 fixture，尚未接上 `chooseFolder`）。`0.3.2-W3-248` 補登 |
 | 15 | 選定資料夾不可讀或不存在（`WorkspaceUnavailable`，含 `reason`） | 等待型（同列 14 的後續結局；或使用者點擊最近專案項觸發） | 可棄 | 同列 14；最近專案項為 `WorkspaceRepository.openPath()` 呼叫發出當下 | — | `AppSnackBar.plain`（`folderUnavailableMessage(reason)`，§2.13 對照表列 12；`0.3.2-W1-009` 起實作改用此 key）。呼叫點：`_handleChosenState` 的 `WorkspaceUnavailable` 分支（「選擇其他」與「最近專案項」共用）；§3.1 對應列規格已定、尚未接上。`0.3.2-W3-248` 補登 |
-| 16 | 選定成功但未能記住（`ChooseFolderNotRemembered`：偏好設定寫入失敗） | 等待型（同列 15） | 可棄 | 同列 15 | — | `AppSnackBar.plain`（`workspaceNotRemembered`）。呼叫點：`_handleChooseFolderResult` 的 `ChooseFolderNotRemembered` 分支。§2.13 對照表尚無此結局的列，已另報 PM 決定落點。`0.3.2-W3-248` 補登 |
+| 16 | 選定成功但未能記住（`ChooseFolderNotRemembered`：偏好設定寫入失敗） | 等待型（同列 15） | 可棄 | 同列 15 | — | `AppSnackBar.plain`（`workspaceNotRemembered`）。呼叫點：`_handleChooseFolderResult` 的 `ChooseFolderNotRemembered` 分支。§2.13 對照表列 15（`0.3.3-W3-380`）。`0.3.2-W3-248` 補登 |
 | 17 | 帶目標跳入時清除搜尋與篩選（§3.4） | 等待型（使用者自他畫面帶目標跳入觸發） | 可棄 | 進入邊界時：Ticket 清單以帶目標的跳轉意圖抵達、判定需清除搜尋與篩選的當下 | — | `AppSnackBar.withAction`（`ticketsFiltersClearedSnackbarMessage`，動作 `undoAction`，§2.13 對照表列 14）。`0.3.2-W3-248` 補登 |
 
 **與功能需求的對應**：列 1–4 的驗收落在 FR-11；列 5–10 與列 14–17 的載體選擇，同時落在
@@ -2373,6 +2375,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.47 | 2026-09-29 | §2.13〈判準與既有條文的對照〉補列 15 `workspaceNotRemembered`（T1 是、T2 否、T3 否、T4 否 → `plain`，與實作一致；§3.1、§3.7 互動反應表缺此分支，另報）與列 16 §3.1 開啟 docs 目錄 `notFound`（與 `failed` 共用 `externalOpenFailedMessage`，§2.14 列 8 已登記而本表缺列）；§2.14 列 16 的「尚無此結局的列」改指本表列 15。lib 提示呼叫點對本表的全量差集記於 `0.3.3-W3-380` |
 | 1.46 | 2026-09-29 | §2.14 指派表補登 lib 內已實作但未登記的提示呼叫點（`0.3.2-W3-248`，以 `grep AppSnackBar.show(` 列出全部呼叫點，逐一比對本表與排除清單）：新增列 14 `chooseFolderUnavailableMessage`、列 15 `folderUnavailableMessage(reason)`、列 16 `workspaceNotRemembered`、列 17 `ticketsFiltersClearedSnackbarMessage`，五欄齊備；列 7 補 §3.1 Domain 泳道的 `notFound`（與 §2.13 對照表列 10 一致）；「與功能需求的對應」段涵蓋列 14–17。排除清單不變 |
 | 1.45 | 2026-09-29 | `openedExternallyMessage` 的判準與條文衝突裁定為**保留**（`0.3.2-W3-210`，用戶裁定 2026-09-29，經 e1 以 AUQ 詢問）：§2.13 對照表第 2 列的「一致」欄由「待裁決」改為「判準的具名例外：條文為準（保留）」；表下段落改寫為具名理由，說明 T1 前提「結果抵達時我方已非前景」只在目標應用已執行時成立（`0.3.2-W3-236`，12/12 不可觀察），冷啟動時不成立（`0.3.2-W3-550` S2，12/12 於 `shown` 之後仍 `resumed` 0.46–0.80 s），並附可否證條件與涵蓋限制；「落 (c) 的事件集合」段與 §2.14 列 5 移除待裁決語意；FR 驗收列改為「待裁決標記或已裁定的具名例外理由」。§2.2、§3.1／§3.2／§3.5／§3.6、SPEC-004 §4.26、§2.12 四處條文維持顯示，不需同步 |
 | 1.44 | 2026-09-29 | 選擇器無法開啟的提示 key 改沿用既有 `chooseFolderUnavailableMessage`（`0.3.2-W3-368`：原提案 `folderPickerUnavailableMessage` 與之語意完全重疊，後者已由專案切換浮層實作使用）：§2.13 判準 T 對照表列 11、§3.1「選擇器無法開啟」列、§3.7「選擇其他（選擇器無法開啟）」列同步改名；`folderUnavailableMessage` 保留（理由見 SPEC-004 v1.50） |
