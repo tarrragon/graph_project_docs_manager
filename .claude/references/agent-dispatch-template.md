@@ -780,6 +780,8 @@ ticket track complete <ticket-id> --as <自身 agent 名稱>
 
 ## tests/ 修改派發 SOP（W1-051）
 
+> **已被取代**：本 SOP 在共用主工作樹以 `git checkout -b` 建 feat branch，違反 `.claude/pm-rules/parallel-dispatch.md`〈禁止在共用主工作樹切換或建立分支（強制）〉。涉及 tests/ 的實作派發改用 `isolation: "worktree"`，派發位置查該檔〈派發位置判準（強制）〉；本節保留為歷史記錄，不再作為派發選項。
+
 **用途**：派發涉及 tests/ 修改的 agent 前，PM 必須先建立 feat branch，避免代理人在受保護的 main branch 上被 branch-verify-hook 阻擋。
 
 **Why**：`.claude/hooks/branch-verify-hook.py` 的 `exempt_prefixes = [.claude/, docs/, scripts/experiments/]`，tests/ 不在豁免清單。tests/ 與 src/ 是緊耦合對偶——tests/ 變更通常反映「規格變更」需要對應 src/ 變更才完整，允許 tests/ 在 main 上直接修改會增加紅燈直接進 main 的風險，違反 quality-baseline 規則 1。
@@ -1063,7 +1065,8 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 
 ---
 
-**Last Updated**: 2026-09-14
+**Last Updated**: 2026-09-29
+**Version**: 1.36.0 — 〈tests/ 修改派發 SOP〉加註已被 `.claude/pm-rules/parallel-dispatch.md`〈禁止在共用主工作樹切換或建立分支（強制）〉取代，改路由至〈派發位置判準（強制）〉；push-first 與 finish 兩節內容不變，由該判準表引用（框架 issue 101）。
 **Version**: 1.35.0 — 「既有失敗歸因約束句（PC-BAL-022）」後新增「派發裁示不留未定義行為約束句（PC-GPD-026）」子節：觸發條件（裁示句「補 X」型句型只指名決策點、未給具體內容）+ Why/Consequence（執行者填空後外觀取得裁決權威，與既有先例矛盾要等事後審查才浮現）+ 正反例對照表；「填空檢查清單」同步補一列。實證來源：一次規格回寫派發裁示留白「並補未選定時的呈現」未寫內容，執行者自行決定「不另計狀態」與同規格既有先例（另一過渡行為被提升為一級狀態）矛盾，另建 `PC-GPD-026` 記錄。
 
 **Last Updated**: 2026-09-08
