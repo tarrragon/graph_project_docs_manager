@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.49"
+version: "1.50"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -685,11 +685,12 @@ fixture 直接給定；該項指向哪個圖節點屬 CLAUDE.md §6「破洞分�
 
 | 條件 | 可觀察結果 |
 |------|-----------|
+| App 啟動（任一啟動狀態：未選專案、Domain 矩陣等） | 不預設焦點：`primaryFocus` 不落在任何可操作元件上、畫面上無焦點環；第一次按 Tab 焦點落在 `project-switcher-entry`（`0.3.3-W3-388` 用戶裁決 D） |
 | 按 Tab | 焦點依序走過三個區段：專案切換入口 → 六個導覽項 → 內容區（可用動作與捲動容器）；同一區段內的順序見下方「Tab 內容區順序」斷言方式 |
 | 任一元素取得焦點 | 具可見焦點指示（WCAG SC 2.4.7）；斷言為該元素的 `Focus.hasFocus` 為 `true`，且渲染出焦點裝飾（可執行斷言見下方「焦點裝飾」斷言方式） |
 | 浮層展開時按 Esc | 浮層收合，焦點回到 `project-switcher-entry` |
 | `panel-domain-schema-detail` 展開時按 Esc | 面板收合，其餘狀態不變 |
-| 矩陣已選格（`panel-domain-cell-detail` 存在）時按 Esc | 選取清除，右欄回到 `panel-domain-cell-detail-empty`；焦點停在原格，矩陣 offset 不變 |
+| 矩陣已選格（`panel-domain-cell-detail` 存在）時按 Esc | 選取清除，右欄回到 `panel-domain-cell-detail-empty`；焦點停在原格，矩陣 offset 不變。前提：焦點在矩陣內——選格以點選取得，點選即使焦點移入矩陣；因啟動不預設焦點，啟動後須先點選矩陣（或以 Tab 進入）Esc 才生效（`0.3.3-W3-388` 裁決 D 的已知代價） |
 | `action-domain-cell-clear` 觸發後（`0.1.0-W3-335.38` S-16） | 選取清除，右欄回到 `panel-domain-cell-detail-empty`；焦點移至原選中格，矩陣 offset 不變（與上列 Esc 同結果） |
 | `panel-domain-schema-detail` 收合後（Esc 或再次點擊 `action-domain-schema-detail`）（`0.1.0-W3-335.38` S-16） | 焦點停在 `action-domain-schema-detail` |
 | 浮層展開時 | 焦點被限制在浮層內（Tab 不會跑到背景的導覽列） |
@@ -2388,6 +2389,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.50 | 2026-09-29 | `0.3.3-W3-388`（用戶裁決 D，經 e1 AUQ）：§2.10 新增「App 啟動」列——任一啟動狀態皆不預設焦點、第一次 Tab 落在 `project-switcher-entry`；「矩陣已選格時按 Esc」列補前提「焦點在矩陣內」與已知代價（啟動後須先點選矩陣 Esc 才生效）。實作（移除 `MatrixGrid` autofocus）由 `0.3.3-W3-397` 承接 |
 | 1.49 | 2026-09-29 | `0.3.3-W3-390`（依 `0.3.3-W3-374` 定案 C）：§4 對照表刪除「SPEC-001 退出路徑」欄（表頭與 40 列），「畫面」「狀態」兩欄改作指向 SPEC-001 列的參照鍵，引言改寫；刪欄前逐列核對編修性差異的住處——#7 降級旗標已在導航反應欄 `badge-domain-degraded-schema`、#12「前往 Ticket 清單」已在導航反應欄 `action-traceability-goto-tickets`、#30／#32 為 SPEC-001 原文的子集、#27「SPEC-001 FR-01 唯一例外」搬入同列導航反應欄；#20 狀態名改為「含損壞（疊加態）」（「疊加於 #17／#18」搬入導航反應欄）、#31 改為「已選格（疊加於正常 · 矩陣）」，與 SPEC-001 一致；#13 導航反應欄「退出路徑欄」明示為 SPEC-001 的欄。刪欄後（畫面, 狀態）集合與 SPEC-001 §1–§7 狀態集合相等（40 = 40，對稱差為空） |
 | 1.48 | 2026-09-29 | `0.3.3-W3-382`：§2.10〈焦點裝飾（斷言方式）〉改為對照形——同一元件取得焦點與焦點移走兩態，比對祖先鏈 `BoxDecoration.border`，兩態無差異即判紅；舊條文「祖先鏈存在 `decoration` 非 `null`」對焦點環無鑑別力（`NavItem` 未選中底色 `BoxDecoration(color: null)` 與側欄容器即滿足），附 `0.3.3-W1-006` 修正前後作為舊條文放行、本條文攔下的反例，對應 `shell_test.dart` 對照測試。SPEC-004 §4.0.1 focused 列有同型存在性抄錄，另報 |
 | 1.47 | 2026-09-29 | §2.13〈判準與既有條文的對照〉補列 15 `workspaceNotRemembered`（T1 是、T2 否、T3 否、T4 否 → `plain`，與實作一致；§3.1、§3.7 互動反應表缺此分支，另報）與列 16 §3.1 開啟 docs 目錄 `notFound`（與 `failed` 共用 `externalOpenFailedMessage`，§2.14 列 8 已登記而本表缺列）；§2.14 列 16 的「尚無此結局的列」改指本表列 15。lib 提示呼叫點對本表的全量差集記於 `0.3.3-W3-380` |
