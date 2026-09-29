@@ -604,6 +604,10 @@ void main() {
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsOneWidget);
       expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        find.text('無法開啟資料夾選取面板，應用程式可能安裝不完整'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('ChooseFolderSelected(WorkspaceReady)：浮層收合，不顯示 AppSnackBar', (
