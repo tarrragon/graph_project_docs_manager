@@ -4,7 +4,7 @@ domain: "docs-graph"
 source_specs: [SPEC-001]
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06]
 created: "2026-08-26"
-updated: "2026-09-09"
+updated: "2026-09-29"
 ---
 
 # Domain Map — graph_project_docs_manager
@@ -505,6 +505,14 @@ SPEC-003 的 FR 待 `0.3.0-W3-238` 回填。
   並回答三個今天沒有答案的問題：型別表缺席時 Corpus 用什麼掃描、
   `id_pattern` 隨版本變動時舊語料的不合法 id 歸哪一類破洞、
   選到非框架專案時走哪條退出路徑
+
+  **其中第二問已定案**（`0.3.1-W1-081`，用戶裁決 2026-09-29）：frontmatter 可用、
+  位於 carrier 內，但 `id` 缺席或不匹配任何 `id_pattern` 的檔案，歸
+  `parseFailure`，新增原因碼 `idMissing`／`idPatternMismatch`（實作
+  `1.0.0-W1-084`）。五個語料專案實測目標集合 1465 筆，其中 1257 筆（85.8%）
+  是子票 ID（`NNN.M`）被 Ticket 型 `id_pattern` 漏收，屬 schema 缺陷，另由
+  `0.3.1-W1-092` 修正；修正後剩 208 筆（`id` 缺席 183、歷史格式 25）才是
+  本問題的實際對象。第一、三問仍待決
 - **「App 已知範圍」判準已定案**（`0.2.0-W1-024`，2026-09-23 WRAP 快速模式）：
   `tracking_schema.json` 的 `schema_generated_at_framework_version` 不高於
   App 內建資產 `builtin_schema_version.json` 同名欄位時，版本在範圍內（正常）；

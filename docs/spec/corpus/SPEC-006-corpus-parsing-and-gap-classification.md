@@ -4,8 +4,8 @@ title: "Corpus 解析與破洞判定"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
-updated: "2026-09-24"
-version: "1.7"
+updated: "2026-09-29"
+version: "1.8"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -57,7 +57,7 @@ Corpus 沿既有的依賴邊 Corpus → Schema 呼叫路徑查詢，因此能在
 |------|--------------|------|
 | 原始邊（`rawEdges`）的抽取 | 建圖屬 0.4（Graph），兩項整合測試都不需要邊 | PROP-005 §0.4 |
 | 破洞類別 `graphDefect`／`traceGap`／`unlocatable` | 需要圖或追溯資料；本版只實作 `parseFailure` | EVT-DIAGNOSTICS-001、PROP-005 §0.4／§0.6+ |
-| frontmatter 可用、位於 carrier 路徑內，但 `id` 缺席或不符合任何型別的 `id_pattern` | 歸哪一類破洞仍待決（`docs/domain-map.md` §9） | `0.3.0-W1-081` |
+| frontmatter 可用、位於 carrier 路徑內，但 `id` 缺席或不符合任何型別的 `id_pattern` | 已定案（`0.3.1-W1-081`，用戶裁決 2026-09-29）：歸 `parseFailure`，新增原因碼 `idMissing`／`idPatternMismatch`，不另立類別。本版 FR-03 維持「不產生破洞」，FR 修訂與實作不在本版。另：量測中 85.8% 是子票 ID（`NNN.M`）被 Ticket 型 `id_pattern` 漏收，屬 schema 缺陷而非歸類問題，由 `0.3.1-W1-092` 修正 | 歸類實作 `1.0.0-W1-084`；pattern 修正 `0.3.1-W1-092` |
 | 掃描中途取消（UC-05）與重新掃描（UC-06、EVT-CORPUS-002） | 屬畫面接真實資料的互動，排在 0.6+；兩項整合測試都只跑單輪完整掃描 | PROP-005 §0.6+ |
 | YAML 損壞檔的部分欄位救回 | 語料中 YAML 錯誤僅 1 件（`docs/domain-map.md` §7，2026-08-27 對五個語料專案 7106 份文件量測），部分救回的演算法沒有樣本可以校準 | 本版只回報、不救回（FR-04） |
 
@@ -271,6 +271,7 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.8 | 2026-09-29 | 〈本版範圍外〉第三列回填 `0.3.1-W1-081` 結論（用戶裁決）：歸 `parseFailure` 新原因碼 `idMissing`／`idPatternMismatch`，實作 `1.0.0-W1-084`；並記錄量測發現的 Ticket 型 `id_pattern` 漏收子票 ID（修正 `0.3.1-W1-092`）。承接欄的舊票號 `0.3.0-W1-081` 更正為遷移後的 `0.3.1-W1-081`。FR-03 本文不變 |
 | 1.7 | 2026-09-25 | FR-06 規則 7、FR-08、邊界表：版本條件改為「在 App 已知範圍內」，無法判定原因碼改為「版本不在 App 已知範圍」（涵蓋高於、缺席、無法解析），判定式與 SPEC-001 schema 不相容關卡相同（用戶裁決 2026-09-25，WRAP；`0.3.0-W3-541` 驗收發現） |
 | 1.6 | 2026-09-24 | 依 0.3.0 W4 Phase 4 多視角審查的用戶裁決：FR-02 補無法列出的目錄（另列清單、不進守恆式）；FR-03 明寫 schema 歧義的檔案須出現在掃描結果；FR-08 無法判定的原因為原因碼資料值，顯示文字由畫面投影 |
 | 1.5 | 2026-09-24 | 依 `0.3.0-W1-084`（紅燈測試設計）的 NeedsContext 用戶裁決：FR-06 規則 3 改為依型別表是否帶 `carrier_path_patterns` 判定參與比對；規則 2 補 ASCII 比對語意；新增 D9 |
