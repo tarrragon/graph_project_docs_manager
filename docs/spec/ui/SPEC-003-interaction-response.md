@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-09-29"
-version: "1.51"
+version: "1.52"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -89,7 +89,7 @@ PROP-004 §首個整合測試的契約 要求斷言「應可捲動處能捲動�
 
 **捲動連動禁令**：#8 與 #9 是兩個獨立 `ScrollController`。捲動主欄時右欄
 offset 不變，反之亦然。#1 與 #11 同此禁令：捲動矩陣時格詳情卡 offset 不變，
-反之亦然。
+反之亦然。#3 與 #12 同此禁令：捲動步驟表時 UC 清單 offset 不變，反之亦然（表列 #12 備註「與 #3 各自獨立」的禁令化，`0.3.3-W3-402`）。
 
 ### 1.2 換頁處（3 類）
 
@@ -1676,6 +1676,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 步驟列 | `card-ucFlow-step-<stepId>` | 點擊 | jump 至 `nav-page-nodeDetail`；`returnTo` 設為 `ucFlow` |
 | domain 欄 | `action-ucFlow-goto-domain-<domainId>` | 點擊 | jump 至 `nav-page-domain` 且該 domain 呈選中態；`returnTo` 設為 `ucFlow` |
 | 步驟捲動 | `scroll-ucFlow-steps` | drag / 捲軸 | offset 改變 |
+| UC 清單捲動 | `scroll-ucFlow-uc-list` | drag / 捲軸（`state-ucFlow-uc-unset`／`state-ucFlow-unstructured`／`state-ucFlow-normal`） | 右欄 UC 清單 offset 改變、`scroll-ucFlow-steps` offset 不變（§1.1 連動禁令，`0.3.3-W3-402`） |
 | 開啟原始檔 | `action-ucFlow-open-source` | 點擊 | **0.1 落地**（`0.1.0-W1-036` 定案，契約見 §2.2「外部開啟契約」）：`ExternalOpener.open(path)` 以系統預設方式開啟該檔；結果 `opened` → SnackBar `openedExternallyMessage`，停留 `Motion.snackBar` |
 | 開啟原始檔（檔案不存在） | 同上 | 點擊 | 結果 `notFound` → SnackBar `sourceFileNotFoundSnackbarMessage`，不帶動作，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-18、S-22，取代原 `refreshAction`；圖的整體更新改經浮層選取目前專案，同 §3.4〈生命週期〉「再次可見」S-10） |
 | 開啟原始檔（無預設應用程式或其他開啟失敗） | 同上 | 點擊 | 結果 `failed` → SnackBar `externalOpenFailedMessage`，停留 `Motion.snackBar`；畫面狀態不變 |
@@ -2122,8 +2123,8 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 | 轉換 | 形式 |
 |------|------|
-| 收合 → 展開 | 淡入 + 自入口向下展開，`Motion.overlay` |
-| 展開 → 收合 | 反向，`Motion.overlay` |
+| 收合 → 展開／無最近專案 | 淡入 + 自入口向下展開，`Motion.overlay`（無最近專案為同一浮層的零項形態，SPEC-004 4.42，`0.3.3-W3-402`） |
+| 展開／無最近專案 → 收合 | 反向，`Motion.overlay` |
 | 選取專案後的重載 | 浮層先收合（`Motion.overlay`），再由 Domain 視圖轉入載入態；兩段不重疊，使「已選取」與「開始載入」可分別斷言 |
 
 #### 導航跳轉與退出
@@ -2170,7 +2171,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 |---|------|------|---------|---------------------------|
 | 1 | Domain | 未選專案 | `state-domain-unset` | 同畫面轉換：`action-domain-choose-folder` → `state-domain-loading` |
 | 2 | Domain | 載入中 | `state-domain-loading` | 同畫面轉換：`action-domain-cancel-load` → `state-domain-unset`（§2.5）；解析完成 → `state-domain-matrix`、`state-domain-empty`，或三個阻擋狀態之一（`state-domain-not-framework` / `state-domain-schema-unconsumable` / `state-domain-schema-incompatible`，三者進入條件皆發生於資料夾已選定之後，見 SPEC-001 §1 註記） |
-| 3 | Domain | 正常 · 矩陣 | `state-domain-matrix` | rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded`；同畫面疊加：`cell-domain-*` → `panel-domain-cell-detail`（已選格，`0.1.0-W3-335.59` S1-P1(a)） |
+| 3 | Domain | 正常 · 矩陣 | `state-domain-matrix` | rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded`；同畫面疊加：`cell-domain-*` → `panel-domain-cell-detail`（已選格，`0.1.0-W3-335.59` S1-P1(a)）；同畫面轉換：`mode-domain-swimlane` → 泳道三態之一（依 §2.8〈選定 UC〉，§3.1〈導航跳轉與退出〉，`0.3.3-W3-402`） |
 | 4 | Domain | 正常 · 泳道 | `state-domain-swimlane` | 同畫面轉換：`mode-domain-matrix` → `state-domain-matrix`；rail；覆蓋層 |
 | 5 | Domain | 空圖 | `state-domain-empty` | 覆蓋層：`project-switcher-entry`；jump：`action-domain-goto-gaps` → `nav-page-gaps`，`returnTo`=domain |
 | 6 | Domain | 不是框架專案 | `state-domain-not-framework` | 覆蓋層：`project-switcher-entry`（`enabled` 恆為 `true`）；本體按鈕：`action-domain-switch-project` → 浮層（結果同上） |
@@ -2390,6 +2391,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.52 | 2026-09-30 | `0.3.3-W3-402`（承 `0.3.3-W3-392` 稽核判讀）三處真缺漏：(1) §3.7〈動畫提示〉兩列涵蓋「無最近專案」——原只列收合 ↔ 展開，依 §2.1〈未列轉換的預設〉「收合 → 無最近專案」會落 cross-fade，與 SPEC-004 4.42 淡入展開衝突；(2) §3.2〈互動反應〉補 `scroll-ucFlow-uc-list` 捲動列，§1.1〈捲動連動禁令〉補 #3／#12（表列 #12 已註「與 #3 各自獨立」，實作為兩個獨立 `Panel.scrollable`）；(3) §4 #3「正常 · 矩陣」導航反應欄補 `mode-domain-swimlane` 出口（§3.1〈導航跳轉與退出〉已有，§4 #4 已列反向 `mode-domain-matrix`） |
 | 1.51 | 2026-09-29 | `0.3.3-W3-378`（用戶裁決 B，2026-09-29，經 e1 以 AUQ）：§3.1〈生命週期〉新增「App 啟動且有已存路徑但還原失敗」列——降級為 `state-domain-unset`、常駐原因文字 `workspaceUnavailable(reason)`、不發暫態提示；與 SPEC-001 v1.24 §1 未選專案列一致。實作由新建實作票承接（blockedBy `0.3.3-W3-398`） |
 | 1.50 | 2026-09-29 | `0.3.3-W3-388`（用戶裁決 D，經 e1 AUQ）：§2.10 新增「App 啟動」列——任一啟動狀態皆不預設焦點、第一次 Tab 落在 `project-switcher-entry`；「矩陣已選格時按 Esc」列補前提「焦點在矩陣內」與已知代價（啟動後須先點選矩陣 Esc 才生效）。實作（移除 `MatrixGrid` autofocus）由 `0.3.3-W3-397` 承接 |
 | 1.49 | 2026-09-29 | `0.3.3-W3-390`（依 `0.3.3-W3-374` 定案 C）：§4 對照表刪除「SPEC-001 退出路徑」欄（表頭與 40 列），「畫面」「狀態」兩欄改作指向 SPEC-001 列的參照鍵，引言改寫；刪欄前逐列核對編修性差異的住處——#7 降級旗標已在導航反應欄 `badge-domain-degraded-schema`、#12「前往 Ticket 清單」已在導航反應欄 `action-traceability-goto-tickets`、#30／#32 為 SPEC-001 原文的子集、#27「SPEC-001 FR-01 唯一例外」搬入同列導航反應欄；#20 狀態名改為「含損壞（疊加態）」（「疊加於 #17／#18」搬入導航反應欄）、#31 改為「已選格（疊加於正常 · 矩陣）」，與 SPEC-001 一致；#13 導航反應欄「退出路徑欄」明示為 SPEC-001 的欄。刪欄後（畫面, 狀態）集合與 SPEC-001 §1–§7 狀態集合相等（40 = 40，對稱差為空） |
