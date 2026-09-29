@@ -73,6 +73,9 @@ void main() {
         child: const DomainViewScreen(),
         overrides: [
           externalOpenerProvider.overrideWithValue(fake),
+          currentWorkspaceStateProvider.overrideWith(
+            (ref) => const WorkspaceReady('/ws/proj'),
+          ),
           domainViewStateProvider.overrideWith(
             (ref) => const DomainReady(mode: DomainMode.swimlane),
           ),
@@ -86,7 +89,7 @@ void main() {
 
     testWidgets('opened', (tester) async {
       final fake = await tapSource(tester, ExternalOpenResult.opened);
-      expect(fake.calls, ['docs/usecases/UC-06.md']);
+      expect(fake.calls, ['/ws/proj/docs/usecases/UC-06.md']);
       expect(find.text(_opened), findsOneWidget);
     });
 
@@ -112,6 +115,9 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           externalOpenerProvider.overrideWithValue(fake),
+          currentWorkspaceStateProvider.overrideWith(
+            (ref) => const WorkspaceReady('/ws/proj'),
+          ),
           selectedUcProvider.overrideWith((ref) => 'UC-06'),
         ],
       );
@@ -122,7 +128,7 @@ void main() {
 
     testWidgets('opened', (tester) async {
       final fake = await tapSource(tester, ExternalOpenResult.opened);
-      expect(fake.calls, ['docs/usecases/UC-06.md']);
+      expect(fake.calls, ['/ws/proj/docs/usecases/UC-06.md']);
       expect(find.text(_opened), findsOneWidget);
     });
 
@@ -147,6 +153,9 @@ void main() {
         tester,
         overrides: [
           externalOpenerProvider.overrideWithValue(fake),
+          currentWorkspaceStateProvider.overrideWith(
+            (ref) => const WorkspaceReady('/ws/proj'),
+          ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.nodeDetail,
           ),
@@ -160,6 +169,7 @@ void main() {
     testWidgets('opened：提示已開啟，畫面不轉消失態', (tester) async {
       final fake = await tapSource(tester, ExternalOpenResult.opened);
       expect(fake.calls, hasLength(1));
+      expect(fake.calls.single, startsWith('/ws/proj/'));
       expect(find.text(_opened), findsOneWidget);
       expect(AnchorFinder.state(Screen.nodeDetail, 'missing'), findsNothing);
     });

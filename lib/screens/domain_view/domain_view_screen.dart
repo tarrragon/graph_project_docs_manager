@@ -28,6 +28,7 @@ import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
+import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
 import '../project_switcher/project_switcher_providers.dart';
 import 'domain_view_fixtures.dart';
@@ -633,8 +634,13 @@ class _SwimlaneBody extends ConsumerWidget {
     String ucId,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final path = 'docs/usecases/$ucId.md'; // i18n-exempt: fixture 路徑字面
-    final result = await ref.read(externalOpenerProvider).open(path);
+    final path = resolveOpenPath(
+      ref.read(currentWorkspaceStateProvider),
+      'docs/usecases/$ucId.md', // i18n-exempt: fixture 路徑字面,
+    );
+    final result = path == null
+        ? ExternalOpenResult.notFound
+        : await ref.read(externalOpenerProvider).open(path);
     if (!context.mounted) return;
     final message = switch (result) {
       ExternalOpenResult.opened => l10n.openedExternallyMessage,

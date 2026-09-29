@@ -29,6 +29,8 @@ import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
+import '../../workspace/open_path_resolver.dart';
+import '../project_switcher/project_switcher_providers.dart';
 import 'uc_flow_fixtures.dart';
 import 'uc_flow_providers.dart';
 import 'uc_flow_state.dart';
@@ -179,7 +181,13 @@ class _UnstructuredView extends ConsumerWidget {
     UcFlowFixtureUc uc,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final result = await ref.read(externalOpenerProvider).open(uc.filePath);
+    final path = resolveOpenPath(
+      ref.read(currentWorkspaceStateProvider),
+      uc.filePath,
+    );
+    final result = path == null
+        ? ExternalOpenResult.notFound
+        : await ref.read(externalOpenerProvider).open(path);
     if (!context.mounted) return;
     final message = switch (result) {
       ExternalOpenResult.opened => l10n.openedExternallyMessage,
