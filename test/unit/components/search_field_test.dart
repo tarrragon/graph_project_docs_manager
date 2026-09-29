@@ -29,7 +29,11 @@ void main() {
       expect(find.text('搜尋'), findsOneWidget);
 
       final box = tester.getSize(find.byKey(testKey));
-      expect(box.height, LayoutSize.hitTargetMin);
+      expect(box.height, greaterThanOrEqualTo(LayoutSize.hitTargetMin));
+      expectNoVerticalClip(
+        tester,
+        find.descendant(of: find.byKey(testKey), matching: find.byType(Row)),
+      );
     });
 
     testWidgetsAtEachSize('filled 態渲染清除鈕，不溢位', (tester, size) async {
@@ -47,7 +51,11 @@ void main() {
       expect(find.byIcon(Icons.clear), findsOneWidget);
 
       final box = tester.getSize(find.byKey(testKey));
-      expect(box.height, LayoutSize.hitTargetMin);
+      expect(box.height, greaterThanOrEqualTo(LayoutSize.hitTargetMin));
+      expectNoVerticalClip(
+        tester,
+        find.descendant(of: find.byKey(testKey), matching: find.byType(Row)),
+      );
     });
 
     testWidgets('focused 態邊框改為 accent 色', (tester) async {

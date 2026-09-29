@@ -38,7 +38,11 @@ void main() {
       expect(find.text('狀態：全部'), findsOneWidget);
 
       final box = tester.getSize(find.byKey(testKey));
-      expect(box.height, LayoutSize.hitTargetMin);
+      expect(box.height, greaterThanOrEqualTo(LayoutSize.hitTargetMin));
+      expectNoVerticalClip(
+        tester,
+        find.descendant(of: find.byKey(testKey), matching: find.byType(Row)),
+      );
     });
 
     testWidgetsAtEachSize('active 態顯示目前值且不溢位', (tester, size) async {
@@ -60,7 +64,11 @@ void main() {
       expect(find.text('狀態：待處理'), findsOneWidget);
 
       final box = tester.getSize(find.byKey(testKey));
-      expect(box.height, LayoutSize.hitTargetMin);
+      expect(box.height, greaterThanOrEqualTo(LayoutSize.hitTargetMin));
+      expectNoVerticalClip(
+        tester,
+        find.descendant(of: find.byKey(testKey), matching: find.byType(Row)),
+      );
     });
 
     testWidgets('選取不同值時觸發器寬不變', (tester) async {

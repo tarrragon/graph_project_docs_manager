@@ -87,6 +87,35 @@ void main() {
     }
   });
 
+  group('固定高度容器不裁切內容', () {
+    // Toolbar 自身的 Row 直接子樹含 FilterDropdown（內部以 LayoutBuilder 解析
+    // 觸發器寬度），Flutter intrinsic 查詢不支援跨越 LayoutBuilder 的祖先節點
+    // （`LayoutBuilder does not support returning intrinsic dimensions`），故
+    // 無法對 Toolbar 的整條 Row 直接呼叫 expectNoVerticalClip。改測
+    // SearchField 內容在巢狀於 Toolbar 固定高度容器下是否被壓縮——
+    // Toolbar 高度公式（`hitTargetMin + 2 * Space.xs`）扣除自身垂直內距後
+    // 恆等於 `hitTargetMin`，與 SearchField 自身容器高度相同，故此斷言足以
+    // 攔截「Toolbar 外層再壓一層」的裁切風險。
+    testWidgets('SearchField 巢狀於 Toolbar 固定高度容器下不裁切', (tester) async {
+      await pumpHarness(
+        tester,
+        child: Toolbar(
+          testKey: const Key('toolbar'),
+          search: _buildSearch(),
+          filters: _buildFilters(1),
+        ),
+      );
+
+      expectNoVerticalClip(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('toolbar-search')),
+          matching: find.byType(Row),
+        ),
+      );
+    });
+  });
+
   group('SearchField 吸收剩餘寬', () {
     testWidgets('search 寬 = toolbar 寬 - 篩選器與間距', (tester) async {
       await pumpHarness(

@@ -73,7 +73,11 @@ void main() {
           .child;
       expect(track, isNotNull);
       final segmentBox = tester.getSize(find.byKey(matrixKey));
-      expect(segmentBox.height, LayoutSize.hitTargetMin);
+      expect(segmentBox.height, greaterThanOrEqualTo(LayoutSize.hitTargetMin));
+      expectNoVerticalClip(
+        tester,
+        find.descendant(of: find.byKey(matrixKey), matching: find.byType(Text)),
+      );
     });
   });
 
