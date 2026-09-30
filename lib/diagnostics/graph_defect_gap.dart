@@ -9,7 +9,7 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 
 import 'parse_failure_gap.dart';
 
-/// `graphDefect` 破洞的四種子類（FR-09〈子類〉）。
+/// `graphDefect` 破洞的子類（子類清單以 SPEC-007 FR-09〈子類〉為準）。
 enum GraphDefectKind { danglingRef, malformedRef, duplicateId, multiSource }
 
 /// 一筆 `graphDefect` 破洞的共同基底；負載只含原因碼與原始值，

@@ -1,4 +1,4 @@
-/// EVT-GRAPH-001 GraphBuilt 與建圖結果型別（SPEC-007 FR-04～FR-06）。
+/// EVT-GRAPH-001 GraphBuilt 與建圖結果型別（SPEC-007 FR-01～FR-06：建圖不可用、缺陷、邊、事件）。
 library;
 
 import 'package:graph_project_docs_manager/graph/light_node.dart';
@@ -7,8 +7,9 @@ import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 enum DirectedDeclarationShape { fromOnly, toOnly, both }
 
-/// 一條邊。有向邊 `from`→`to`；無向邊（`association`）`from`／`to` 依 ID
-/// codepoint 排序，不代表方向。
+/// 一條邊。有向邊 `from`→`to`；無向邊（`association`，FR-05〈無向的判定〉）
+/// `from`／`to` 依 `String.compareTo`（UTF-16 碼元序；ID 為 ASCII 時等同
+/// 字典序）排序，不代表方向。
 class GraphEdge {
   const GraphEdge({
     required this.edgeType,

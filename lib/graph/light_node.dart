@@ -1,4 +1,4 @@
-/// SPEC-007 FR-02 輕節點：圖只持有建圖需要的五個欄位，不保留 frontmatter。
+/// SPEC-007 FR-02 輕節點：圖只持有建圖需要的欄位（見 [LightNode]），不保留 frontmatter。
 ///
 /// 依賴方向：Graph domain，只 import Corpus 的事件型別（`RawNode`）。
 library;
