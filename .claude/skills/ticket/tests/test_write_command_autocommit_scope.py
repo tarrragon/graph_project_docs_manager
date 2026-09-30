@@ -100,6 +100,11 @@ def repo(tmp_path, monkeypatch):
             _FM.format(tid=tid, status=status, spawned=spawned, extra=extra.replace("\\n", "\n")),
             encoding="utf-8",
         )
+    # 比照真實 consumer repo：hook-logs 已被 gitignore。identity_guard 會呼叫
+    # mark_hook_entry 寫入 .claude/hook-logs/_liveness/<session>.jsonl；若測試行程
+    # 帶有 Claude session 環境變數，該檔會出現在 fixture repo，使「工作區乾淨」
+    # 斷言依執行環境而定（在 session 內跑紅、在 session 外跑綠）。
+    (tmp_path / ".gitignore").write_text(".claude/hook-logs/\n", encoding="utf-8")
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-q", "-m", "seed")
     monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BUDGET_SECONDS", 0.0)
