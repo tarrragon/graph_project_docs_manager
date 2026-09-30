@@ -1,0 +1,499 @@
+{
+ "header": {
+  "reference_version": "1.0.0",
+  "frozen_date": "2026-09-30",
+  "note": "expected values produced by tool/spec007_reference.py; CI does not run it"
+ },
+ "corpora": {
+  "flutter_balance": [
+   {
+    "kind": "malformedRef",
+    "source_id": "0.2.1-W3-1077",
+    "path": "docs/work-logs/v0/v0.2/v0.2.1/tickets/0.2.1-W3-1077.md",
+    "field": "discovered_during",
+    "raw_value": "0.2.1-W3-1076 根因查證（tracker hook import 失敗）",
+    "edge_type": "discovery",
+    "reason": "patternMismatch"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.2.1-W3-1078",
+    "path": "docs/work-logs/v0/v0.2/v0.2.1/tickets/0.2.1-W3-1078.md",
+    "field": "discovered_during",
+    "raw_value": "0.2.1-W3-1076 根因查證（tracker hook 崩潰 5 日零訊號）",
+    "edge_type": "discovery",
+    "reason": "patternMismatch"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.2.1-W3-1079",
+    "path": "docs/work-logs/v0/v0.2/v0.2.1/tickets/0.2.1-W3-1079.md",
+    "field": "discovered_during",
+    "raw_value": "0.2.1-W3-1057 驗收",
+    "edge_type": "discovery",
+    "reason": "patternMismatch"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.2.1-W3-1058",
+    "path": "docs/work-logs/v0/v0.2/v0.2.1/tickets/0.2.1-W3-1058.md",
+    "field": "spawned_tickets",
+    "raw_value": "PENDING",
+    "edge_type": "spawn",
+    "reason": "patternMismatch"
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-1009",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-1007",
+      "declared_by": [
+       "0.2.1-W3-1007",
+       "0.2.1-W3-1009"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-1018",
+      "declared_by": [
+       "0.2.1-W3-1018"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-1011",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-1007",
+      "declared_by": [
+       "0.2.1-W3-1007",
+       "0.2.1-W3-1011"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-1018",
+      "declared_by": [
+       "0.2.1-W3-1018"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-137",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-124",
+      "declared_by": [
+       "0.2.1-W3-124"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-134",
+      "declared_by": [
+       "0.2.1-W3-134",
+       "0.2.1-W3-137"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-138",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-124",
+      "declared_by": [
+       "0.2.1-W3-124"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-133",
+      "declared_by": [
+       "0.2.1-W3-133",
+       "0.2.1-W3-138"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-141",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-124",
+      "declared_by": [
+       "0.2.1-W3-124"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-133",
+      "declared_by": [
+       "0.2.1-W3-133",
+       "0.2.1-W3-141"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-362",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-361",
+      "declared_by": [
+       "0.2.1-W3-361"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-361.1",
+      "declared_by": [
+       "0.2.1-W3-361.1",
+       "0.2.1-W3-362"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-526",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-524",
+      "declared_by": [
+       "0.2.1-W3-524",
+       "0.2.1-W3-526"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-525",
+      "declared_by": [
+       "0.2.1-W3-525"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-589",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-560",
+      "declared_by": [
+       "0.2.1-W3-560",
+       "0.2.1-W3-589"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-586",
+      "declared_by": [
+       "0.2.1-W3-586"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.2.1-W3-911",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.2.1-W3-678",
+      "declared_by": [
+       "0.2.1-W3-678",
+       "0.2.1-W3-911"
+      ]
+     },
+     {
+      "to": "0.2.1-W3-904",
+      "declared_by": [
+       "0.2.1-W3-904"
+      ]
+     }
+    ]
+   }
+  ],
+  "graph_project_docs_manager": [
+   {
+    "kind": "danglingRef",
+    "source_id": "9.9.9-W9-002",
+    "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-002.md",
+    "field": "relatedTo",
+    "raw_value": "9.9.9-W9-001",
+    "edge_type": "association",
+    "reason": "targetDuplicated"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.1.0-W3-008",
+    "path": "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W3-008.md",
+    "field": "relatedTo",
+    "raw_value": "0.1.0-W1-072 0.1.0-W1-073",
+    "edge_type": "association",
+    "reason": "patternMismatch"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "9.9.9-W9-003",
+    "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-003.md",
+    "field": "relatedTo",
+    "raw_value": "9.9.9-W9-003",
+    "edge_type": "association",
+    "reason": "selfReference"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "9.9.9-W9-004",
+    "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-004.md",
+    "field": "relatedTo",
+    "raw_value": [
+     "x"
+    ],
+    "edge_type": "association",
+    "reason": "invalidShape"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "9.9.9-W9-004",
+    "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-004.md",
+    "field": "blockedBy",
+    "raw_value": 42,
+    "edge_type": "blocking",
+    "reason": "invalidShape"
+   },
+   {
+    "kind": "danglingRef",
+    "source_id": "0.1.0-W3-189",
+    "path": "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W3-189.md",
+    "field": "discovered_during",
+    "raw_value": "0.1.0-W3-182",
+    "edge_type": "discovery",
+    "reason": "targetMissing"
+   },
+   {
+    "kind": "danglingRef",
+    "source_id": "0.1.0-W3-211",
+    "path": "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W3-211.md",
+    "field": "discovered_during",
+    "raw_value": "0.1.0-W3-181",
+    "edge_type": "discovery",
+    "reason": "targetMissing"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "9.9.9-W9-004",
+    "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-004.md",
+    "field": "discovered_during",
+    "raw_value": true,
+    "edge_type": "discovery",
+    "reason": "invalidShape"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "PROP-901",
+    "path": "docs/proposals/PROP-901-synthetic.md",
+    "field": "outputs",
+    "raw_value": "x",
+    "edge_type": "provenance",
+    "reason": "invalidShape"
+   },
+   {
+    "kind": "danglingRef",
+    "source_id": "0.1.0-W3-196",
+    "path": "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W3-196.md",
+    "field": "source_ticket",
+    "raw_value": "0.1.0-W3-181",
+    "edge_type": "spawn",
+    "reason": "targetMissing"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "9.9.9-W9-004",
+    "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-004.md",
+    "field": "source_ticket",
+    "raw_value": {
+     "a": "b"
+    },
+    "edge_type": "spawn",
+    "reason": "invalidShape"
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.1.0-W3-152",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-144",
+      "declared_by": [
+       "0.1.0-W3-144",
+       "0.1.0-W3-152"
+      ]
+     },
+     {
+      "to": "0.1.0-W3-148",
+      "declared_by": [
+       "0.1.0-W3-148"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.1.0-W3-170",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-167",
+      "declared_by": [
+       "0.1.0-W3-167",
+       "0.1.0-W3-170"
+      ]
+     },
+     {
+      "to": "0.1.0-W3-169",
+      "declared_by": [
+       "0.1.0-W3-169"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.1.0-W3-318",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-304",
+      "declared_by": [
+       "0.1.0-W3-304",
+       "0.1.0-W3-318"
+      ]
+     },
+     {
+      "to": "0.1.0-W3-307",
+      "declared_by": [
+       "0.1.0-W3-307"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.1.0-W3-335.16",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-335.13",
+      "declared_by": [
+       "0.1.0-W3-335.13"
+      ]
+     },
+     {
+      "to": "0.1.0-W3-335.18",
+      "declared_by": [
+       "0.1.0-W3-335.18"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.1.0-W3-382",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-373",
+      "declared_by": [
+       "0.1.0-W3-373",
+       "0.1.0-W3-382"
+      ]
+     },
+     {
+      "to": "0.1.0-W3-380",
+      "declared_by": [
+       "0.1.0-W3-380"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.1.0-W3-418",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-423",
+      "declared_by": [
+       "0.1.0-W3-423"
+      ]
+     },
+     {
+      "to": "0.3.1-W3-417",
+      "declared_by": [
+       "0.1.0-W3-418",
+       "0.3.1-W3-417"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.1.0-W3-430",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-424",
+      "declared_by": [
+       "0.1.0-W3-424"
+      ]
+     },
+     {
+      "to": "0.1.0-W3-426",
+      "declared_by": [
+       "0.1.0-W3-426",
+       "0.1.0-W3-430"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.3.3-W3-245",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.1.0-W3-176",
+      "declared_by": [
+       "0.1.0-W3-176",
+       "0.3.3-W3-245"
+      ]
+     },
+     {
+      "to": "0.1.0-W3-205",
+      "declared_by": [
+       "0.1.0-W3-205"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "duplicateId",
+    "id": "9.9.9-W9-001",
+    "paths": [
+     "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-001-copy.md",
+     "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-001.md"
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,553 @@
+{
+ "header": {
+  "note": "IT-3 samples; every sample is an existing manifest row (same corpus and path)",
+  "status_values": {
+   "graph_project_docs_manager": {
+    "blocked": 3,
+    "closed": 236,
+    "completed": 874,
+    "in_progress": 4,
+    "pending": 57
+   },
+   "flutter_balance": {
+    "closed": 328,
+    "completed": 1352,
+    "pending": 54
+   }
+  },
+  "tickets_without_string_status": {
+   "graph_project_docs_manager": 0,
+   "flutter_balance": 0
+  }
+ },
+ "samples": [
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W3-284.md",
+   "id": "0.1.0-W3-284",
+   "frontmatter": {
+    "id": "0.1.0-W3-284",
+    "title": "修復 日誌與狀態兩個 root 解析的錯配，範圍由 issue 97 comment 5629167716 界定",
+    "type": "IMP",
+    "status": "blocked",
+    "version": "0.1.0",
+    "wave": 3,
+    "priority": "P2",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [
+     "0.1.0-W3-316"
+    ],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": "0.1.0-W3-273",
+    "discovered_during": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "0.1.0-W3-273 Phase 4 補做審查（linux）實測四處同型錯配，與該票範圍判準的結論相反",
+     "final_decision": "獨立成票，不回頭改 W3-273——該票修法正確且全套件已綠，屬範圍不足非修法錯誤",
+     "rationale": "根源在 .claude/ 通用資產（hook_logging 的 project_root 契約）且敘述可攜，具框架問題形態；但四處接線與工廠收斂是本專案 ticket skill 的具體修復，先在本專案落地，框架層契約問題另行判定是否升級"
+    },
+    "who": {
+     "current": "主線程",
+     "history": {}
+    },
+    "what": "修復 日誌與狀態兩個 root 解析的錯配，範圍由 issue 97 comment 5629167716 界定",
+    "when": "0.1.0-W3-273 的 Phase 4 補做審查發現（2026-09-11）",
+    "where": {
+     "layer": "Infrastructure",
+     "files": [
+      ".claude/skills/ticket/ticket_system/lib/paths.py",
+      ".claude/skills/ticket/hooks/handoff-auto-resume-stop-hook.py",
+      ".claude/skills/ticket/hooks/handoff-prompt-reminder-hook.py",
+      ".claude/skills/ticket/hooks/handoff-reminder-hook.py",
+      ".claude/skills/ticket/hooks/stop-worklog-handoff-sync-check-hook.py",
+      ".claude/skills/ticket/ticket_system/commands/track_dashboard.py",
+      ".claude/skills/ticket/ticket_system/commands/track_dispatch_check.py"
+     ]
+    },
+    "why": "0.1.0-W3-273 修掉兩個 CLI 呼叫點的日誌 root 錯配（狀態讀寫走 get_ticket_state_root、日誌落回 hook_base.get_project_root，linked worktree 內解析方向相反）。該票的範圍盤點判準是「檔案內是否直接 import get_ticket_state_root」，該判準只抓直接 import，漏掉經 lib 模組傳遞的解析。\n\nPhase 4 補做審查實測四個 hook 今天處於同一錯配：handoff-auto-resume-stop-hook / handoff-prompt-reminder-hook / handoff-reminder-hook 三者經 handoff_utils（paths.py 的 get_ticket_state_root）讀寫狀態，stop-worklog-handoff-sync-check-hook 經 worklog_appender，四者的 setup_hook_logging 呼叫點皆未傳 project_root。\n\n後果與 W3-273 修掉的同一類無聲：動作寫主倉庫、日誌落 worktree 自己的 hook-logs，在主倉庫查不到。偵測難度更高——那四處沒有任何測試斷言日誌落點，無斷言、無紅燈、無 stderr 差異，可無限期潛伏。W3-273 之所以被發現，純粹因為剛好有三個測試斷言了落點。\n\n觸發條件是 hook 在 linked worktree 內被觸發，而本專案 worktree 派發是常態。\n\n根本問題是正確性押在呼叫者記性上，且該路徑已失敗過一次：hook_logging.py 的 project_root 參數 docstring 早已逐字記載此失效模式，參數為此而加、文件寫得清楚，兩個呼叫點照樣漏接。故本票除接線四處外，另要求把配對固定在函式邊界（單一 logger 工廠），使未來新模組不需記得傳參數。\n\n否決的兩個方案（Phase 4 審查已評估，不重新評估）：合併兩個 root 函式會犧牲其中一個已驗證的修復；讓 project_root 改必填需編輯框架全域 166 個非測試呼叫點且破壞所有 consumer 的 hook。",
+    "how": {
+     "task_type": "Implementation",
+     "strategy": "**修法權威為 `tarrragon/claude#97` 的觀測 comment 5629167716**（`0.1.0-W3-288` 產出），不由本票面界定。派發前必須讀該則。\n\n`0.1.0-W3-288` 對本票原修法的處置為**改寫**，逐項如下：\n\n- **保留**：四處 handoff hook 的接線（`0.1.0-W3-288` 複掃確認為真陽）。\n- **否決**：consumer 側的單一 logger 工廠。涵蓋 4/320（1.3%），抽象落在 consumer 側而契約在 `.claude/lib/`，對錯配類二的 12 個呼叫檔零效益，且不改變下一個新增呼叫點的預設結果。\n- **擴充**：範圍納入錯配類二（狀態走 `lib/git_utils.py::get_project_root`，環境變數優先，與日誌走的 `hook_base` worktree 優先方向相反）的 12 個呼叫檔，以及 `save_check_log`／`get_hook_log_dir` 完全沒有 root 參數的 11 個呼叫點。\n- **改寫**：原票否決方案 A 的理由由「呼叫點數量」改為「fail 模式（`TypeError`）落在 `#97` 形態 1 的無訊號區」——數量是成本可攤平，fail 模式落在無訊號區不可攤平。\n\n**選定方案為候選 E**：root 綁進日誌入口使 import 語句表達選擇 + 補齊兩個 root 洞 + 語法判準守衛。舊入口保留，遷移期兩套並存，守衛須為 WARN 不阻擋。\n\n**本票的前置是 `0.1.0-W3-292` 而非 `0.1.0-W3-288`**：候選 E 的承重點是「每個會寫狀態的呼叫端，其 state root 來源是模組級的選擇，而非執行期才決定的值」。目前 93/159 檔可指名、66 檔未判定；若那 66 檔中存在依 payload 決定 root 的類別，import 綁定表達不出該選擇，候選 E 對該類退化為只剩守衛，整個選擇崩。**292 是承重點的驗證，也是實作的真正第一步。**\n\n**注意目標檔為活體**：`track.py` 於模組層 import `track_dashboard` 與 `track_dispatch_check`，每次 `ticket track` 皆載入；四個 handoff hook 均於 `settings.json` 註冊。有其他 agent 在跑時改這些檔，危險窗口是寫入未完成的期間，受害者是他人的收尾而錯誤訊息會指向 ticket CLI。派發前確認無並行代理人。"
+    },
+    "acceptance": [
+     "[ ] 四個 hook 的日誌 root 與其經 lib 取得的狀態 root 對齊，以 linked worktree 實測日誌落點而非僅斷言函式呼叫",
+     "[ ] ticket skill 內新增單一 logger 工廠（狀態 root 與日誌 root 的配對在函式邊界固定），兩個 CLI 呼叫點與四個 hook 皆改走該工廠",
+     "[ ] 盤點判準改為可追傳遞路徑者：不以檔案內是否直接 import get_ticket_state_root 為判準，須涵蓋經 lib 模組取得狀態 root 的情形，並記錄盤點手段",
+     "[ ] track_dashboard.py 的 local import 與 track_dispatch_check.py 的模組層 import 風格統一，使 monkeypatch 在兩處行為一致",
+     "[ ] 三項日誌落點斷言改為計算式（log_dir 由狀態 root 推導），不再依賴 conftest 讓 CLAUDE_PROJECT_DIR 與 tmp_path 相異這一巧合",
+     "[ ] 真正的 worktree 分歧路徑取得覆蓋，或明確記錄不覆蓋的理由：現行測試經 TICKET_SYSTEM_TEST_ISOLATION 逃生艙繞過 _linked_worktree_root()，驗的是「兩個 root 對齊」而非「worktree 下對齊」，原始 bug 的那條路徑零覆蓋，改計算式斷言不會補上這一項",
+     "[ ] 收斂後的註解須寫進 hook_logging.py 的 project_root docstring 早已描述此失效模式這項事實（使下一位讀者去改結構而非再抄一份說明），且不以日期標記變更來源，改標票號（本專案票號慣例；日期在 append-only 註解內會累積且不可追溯）"
+    ],
+    "tdd_phase": "phase1",
+    "tdd_stage": [
+     "phase1",
+     "phase2",
+     "phase3a",
+     "phase3b",
+     "phase4"
+    ],
+    "assigned": false,
+    "creation_accepted": false,
+    "started_at": null,
+    "completed_at": null,
+    "created": "2026-09-11",
+    "updated": "2026-09-11",
+    "protocol_version": "2.0"
+   }
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W1-011.md",
+   "id": "0.1.0-W1-011",
+   "frontmatter": {
+    "id": "0.1.0-W1-011",
+    "title": "盤點 框架地基權威的三處缺口",
+    "type": "ANA",
+    "status": "closed",
+    "version": "0.1.0",
+    "wave": 1,
+    "priority": "P2",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": "0.1.0-W1-008",
+    "discovered_during": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "分析類任務",
+     "final_decision": "框架層問題，建 ANA 分析",
+     "rationale": "三處缺口的處置方向未定，需先分析再決定是否補實作"
+    },
+    "who": {
+     "current": "主線程",
+     "history": {}
+    },
+    "what": "盤點 框架地基權威的三處缺口",
+    "when": "0.1.0-W1-008 多輪審查完成後",
+    "where": {
+     "layer": "待定義",
+     "files": [
+      ".claude/skills/foundation-design/SKILL.md",
+      ".claude/skills/saas-tech-selection/references/dimensions/state-storage.md",
+      ".claude/skills/wrap-decision/SKILL.md",
+      ".claude/skills/design-decision-framework/SKILL.md"
+     ]
+    },
+    "why": "foundation-design 多輪審查實測出三處框架層缺口，皆已寫入該 skill 作為已知限制，但無承接者：\n(1) 資料庫 seed 全框架 0 命中（種子資料／seed data／seeding 皆無），而 seed 是使用者原始需求點名的四項之一；\n(2) DB／DevOps／可觀測性三維度的權威全指向 saas-tech-selection，非 SaaS 專案一次全失效，實跑證實 Go CLI 工具照該權威走會毀掉產品；\n(3) wrap-decision 與 design-decision-framework 對同一類「多方案取捨」互為替代卻彼此零引用。\n三者難在都不是寫錯字，是框架缺一塊：要判斷該補權威、該收窄宣稱、還是該接受並明示邊界。",
+    "how": {
+     "task_type": "Implementation",
+     "strategy": "逐項判定處置（補權威／收窄宣稱／明示邊界），每項結論需指名一個可重跑的驗證命令"
+    },
+    "acceptance": [
+     "[ ] 三處缺口各有明確處置結論與可重跑的驗證命令；需實作者產出 IMP spawn 規劃並於 complete 前落地"
+    ],
+    "tdd_phase": null,
+    "tdd_stage": [],
+    "assigned": false,
+    "creation_accepted": false,
+    "started_at": null,
+    "completed_at": null,
+    "created": "2026-08-27",
+    "updated": "2026-08-27",
+    "protocol_version": "2.0",
+    "closed_at": "2026-09-02T15:29:42",
+    "closed_by": "flutter_balance:W4-007",
+    "close_reason": "cancelled_by_user",
+    "close_reason_note": "用戶裁示移交 flutter_balance 執行。標的 .claude/skills/ 下四個 skill（foundation-design / saas-tech-selection / wrap-decision / design-decision-framework） 為共用框架資產，兩專案各自修改會造成 sync 衝突，故集中單一 session 處理，修好後經 sync-pull 回流本專案。對應票：flutter_balance v0.2.1 Wave 4 的 W4-007。"
+   }
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.0/v0.0.3/tickets/0.0.3-W1-001.md",
+   "id": "0.0.3-W1-001",
+   "frontmatter": {
+    "id": "0.0.3-W1-001",
+    "title": "選定 markdown 渲染套件",
+    "type": "ANA",
+    "status": "completed",
+    "version": "0.0.3",
+    "wave": 1,
+    "priority": "P2",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": null,
+    "discovered_during": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "選型評估：訪談階段未涵蓋的 markdown 渲染議題",
+     "final_decision": "ANA 實測比較兩個候選套件，不憑套件描述決定",
+     "rationale": "flutter_markdown 官方已 discontinued；gpt_markdown 更新最頻繁但為 LLM 輸出場景設計，通用性待驗。本專案有現成真實語料，可直接實測"
+    },
+    "who": {
+     "current": "parsley-flutter-developer",
+     "history": {}
+    },
+    "what": "選定 markdown 渲染套件",
+    "when": "訪談階段（0.0.2）未涵蓋 markdown 渲染選型；節點詳情畫面依賴此決定",
+    "where": {
+     "layer": "Infrastructure",
+     "files": [
+      "pubspec.yaml",
+      "lib/",
+      "docs/tech-decisions.md"
+     ]
+    },
+    "why": "flutter_markdown 已被 Flutter 官方標記 discontinued，pub.dev metadata 指定接替者為 flutter_markdown_plus。節點詳情（UC-04、SPEC-001 §6）需渲染 markdown 內文，選型未定則該畫面無法實作。本專案有現成真實語料可實測，不需憑套件描述推測。",
+    "how": {
+     "task_type": "Analysis",
+     "strategy": "兩套件各建一個最小 spike：安裝 -> 以 docs/ 真實檔案渲染 -> 記錄缺陷。測資刻意涵蓋四類難處：markdown 表格（domain-map §3）、YAML flow block（UC-01 流程拓撲）、行內程式碼與區塊、中文長段落換行。比較 API 表面、節點層級樣式覆寫能力、文字可選取性。spike 程式碼不併入主線，結論寫入 docs/tech-decisions.md 後移除。"
+    },
+    "acceptance": [
+     "[x] 兩個套件皆能安裝於本專案並成功建置 macOS app",
+     "[x] 以本專案 docs/ 的真實檔案渲染，涵蓋表格、YAML flow block、程式碼區塊、中文長段落",
+     "[x] 記錄各自的渲染缺陷與不支援語法，附具體差異描述",
+     "[x] 比較 API 表面、節點層級樣式覆寫能力、文字可選取性",
+     "[x] 產出選型結論與理由並寫入 docs/tech-decisions.md"
+    ],
+    "tdd_phase": "phase3b",
+    "tdd_stage": [],
+    "assigned": true,
+    "creation_accepted": false,
+    "started_at": "2026-08-26T23:56:06",
+    "completed_at": "2026-08-26T23:57:36",
+    "created": "2026-08-26",
+    "updated": "2026-08-26",
+    "protocol_version": "2.0",
+    "tdd_phase_source": "auto"
+   }
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.4/v0.4.0/tickets/0.4.0-W2-002.md",
+   "id": "0.4.0-W2-002",
+   "frontmatter": {
+    "id": "0.4.0-W2-002",
+    "title": "實作 Schema 邊型解碼（SPEC-007 FR-01）",
+    "type": "IMP",
+    "status": "in_progress",
+    "version": "0.4.0",
+    "wave": 2,
+    "priority": "P1",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": "0.4.0-W1-059",
+    "discovered_during": null,
+    "scope_blocker": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "version-bootstrap Step 6（W1-059 §6.2）",
+     "final_decision": "建 IMP，派實作代理人",
+     "rationale": "依測試規格切票；先寫紅燈再實作"
+    },
+    "who": {
+     "current": "主線程",
+     "history": {}
+    },
+    "what": "依 docs/spec/graph/SPEC-007-test-design.md §3.1 S6（S6-1～S6-10）：型別表 codec 解碼 edge_types（鍵名、class、forward_field、reverse_field、正向基數、layer），提供使用中邊型集合（established 扣 domain_dependency，D6 唯一鍵名例外）；缺 edge_types 或缺正向基數時依版本判定從內建表補或回報建圖不可用原因碼（與 SPEC-006 FR-08 同一套）",
+    "when": "W2-001 完成後（內建型別表含 forward_cardinality）",
+    "where": {
+     "layer": "Domain",
+     "files": [
+      "lib/schema/type_table.dart",
+      "lib/schema/type_table_json_codec.dart",
+      "lib/schema/edge_type.dart",
+      "test/unit/schema/edge_type_decoding_test.dart",
+      "test/helpers/spec007/edge_table_builder.dart"
+     ]
+    },
+    "why": "SPEC-007 FR-01：Graph 的邊型、欄位名、基數一律取自型別表（D6）",
+    "how": {
+     "task_type": "Implementation",
+     "strategy": "先依 S6 寫紅燈測試（含 E2 正向對照 S6-7／S6-8）→ 實作 → S6-10 驗既有 node_types 解碼不變；§1.3 import 方向檢查"
+    },
+    "acceptance": [
+     "[ ] S6-1～S6-10 全綠；實作前 S6 新案例全紅，既有 schema 測試 0 紅",
+     "[ ] §1.3：test/unit/schema/ 不 import graph／ticket_detail／corpus／diagnostics",
+     "[ ] flutter analyze 與全套 flutter test 綠",
+     "[ ] Phase 4 評估記錄於 Solution"
+    ],
+    "tdd_phase": "phase1",
+    "tdd_stage": [
+     "phase1",
+     "phase2",
+     "phase3a",
+     "phase3b",
+     "phase4"
+    ],
+    "assigned": true,
+    "creation_accepted": false,
+    "started_at": "2026-09-30T16:21:12",
+    "completed_at": null,
+    "created": "2026-09-30",
+    "updated": "2026-09-30",
+    "protocol_version": "2.0"
+   }
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.4/v0.4.0/tickets/0.4.0-W1-039.md",
+   "id": "0.4.0-W1-039",
+   "frontmatter": {
+    "id": "0.4.0-W1-039",
+    "title": "補齊 PROP-005 heavy 級完整評估章節，使檔案本身 status 可由 draft 升級為 confirmed",
+    "type": "ANA",
+    "status": "pending",
+    "version": "0.4.0",
+    "wave": 1,
+    "priority": "P3",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": null,
+    "discovered_during": "0.2.0-W1-034",
+    "scope_blocker": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "Layer 1 版本規劃",
+     "final_decision": "列為 P3 低優先技術債；不阻擋 0.2.0 gate 實作，因契約已由 SPEC-001 與 tracking.yaml 承接",
+     "rationale": "proposal-evaluation-gate-hook 只在升級轉換當下擋，維護編輯（本次 §0.2 表更新）不受影響；PROP-005 檔案本身升級為 confirmed 需要完整 heavy 評估，成本與價值不對等於本次 DOC ticket 範圍"
+    },
+    "who": {
+     "current": "saffron-system-analyst",
+     "history": {}
+    },
+    "what": "補齊 PROP-005 heavy 級完整評估章節，使檔案本身 status 可由 draft 升級為 confirmed",
+    "when": "0.2.0 後續 Wave；非阻擋，PROP-005 §0.1／§0.2 契約已由 SPEC-001 與 proposals-tracking.yaml 承接",
+    "where": {
+     "layer": "Domain",
+     "files": [
+      "docs/proposals/PROP-005-version-sequence-by-data-pipeline.md"
+     ]
+    },
+    "why": "0.2.0-W1-034 已將 docs/proposals-tracking.yaml 的 PROP-005 status 改為 confirmed（供 version-tracking guard 解除 stale 警示），但 PROP-005 md 檔案自身 frontmatter 的 status 仍為 draft——proposal-evaluation-gate-hook 於嘗試升級時擋下，因 evaluation_level: heavy 要求的替代方案（3 候選+評估表）／失敗防護（3 情境+防護）／多視角審查記錄／分階段實施計畫四章節尚未撰寫。tracking.yaml 與檔案自身 status 目前不同步，是刻意的範圍決策（見 0.2.0-W1-034 討論記錄 2026-09-23 條目），非缺陷，但長期應收斂。",
+    "how": {
+     "task_type": "Analysis",
+     "strategy": "PM 執行完整 WRAP 四階段（依 .claude/pm-rules/proposal-evaluation-gate.md 規則 2 heavy 級流程）→ 派發多視角審查（至少 linux + 1 領域視角）→ 補齊四項必填章節 → 檔案 status 由 draft 升級為 confirmed，屆時與 proposals-tracking.yaml 的 confirmed 對齊。"
+    },
+    "acceptance": [
+     "[ ] PROP-005 md 補齊替代方案／失敗防護／多視角審查記錄／分階段實施計畫四章節；status 由 draft 升級為 confirmed 且 proposal-evaluation-gate-hook 不再阻擋"
+    ],
+    "tdd_phase": null,
+    "tdd_stage": [],
+    "assigned": false,
+    "creation_accepted": false,
+    "started_at": null,
+    "completed_at": null,
+    "created": "2026-09-23",
+    "updated": "2026-09-23",
+    "protocol_version": "2.0",
+    "chain": {
+     "root": "0.4.0-W1-039",
+     "parent": null,
+     "depth": 0,
+     "sequence": [
+      39
+     ]
+    }
+   }
+  },
+  {
+   "corpus": "flutter_balance",
+   "path": "docs/work-logs/v0/v0.0/v0.0.2/tickets/0.0.2-W1-001.md",
+   "id": "0.0.2-W1-001",
+   "frontmatter": {
+    "id": "0.0.2-W1-001",
+    "title": "執行 設計理念與需求訪談並產出需求追蹤文件",
+    "type": "ANA",
+    "status": "closed",
+    "version": "0.0.2",
+    "wave": 1,
+    "priority": "P1",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "第一層：任務性質判定（需求層建立，需訪談與決策非實作）",
+     "final_decision": "建立 ANA Ticket 承接訪談與文件產出，排入 0.0.2",
+     "rationale": "需求層建立是 0.1.0 實作的前置條件，且輸入必須來自用戶而非開發端推測；依用戶指示採 saas-tech-selection 到 doc skill 的標準流程，與 0.0.1 的框架維護性質不同故獨立版本追蹤"
+    },
+    "who": {
+     "current": "主線程（訪談主持）",
+     "history": {}
+    },
+    "what": "執行 設計理念與需求訪談並產出需求追蹤文件",
+    "when": "用戶提供設計理念與需求資訊後；v0.0.1 框架問題收斂完畢為前置條件",
+    "where": {
+     "layer": "Domain",
+     "files": [
+      "docs/proposals",
+      "docs/spec",
+      "docs/use-cases.md",
+      "CLAUDE.md"
+     ]
+    },
+    "why": "專案需求層完全空缺——docs/proposals 與 docs/spec 與 use-cases.md 皆不存在，CLAUDE.md 技術選型表的架構模式與狀態管理兩欄標待定。現有 flutter_handoff 是已決定的設計產出（資料模型、SQLite schema、五畫面線稿），但產出背後的需求脈絡與選型依據無文件承載，直接進入實作會使後續架構決策失去可追溯依據。本 ticket 的輸入為用戶提供的設計理念與需求資訊，非由開發端推測",
+    "how": {
+     "task_type": "Analysis",
+     "strategy": "接收用戶提供的設計理念與需求資訊 -> 依 saas-tech-selection skill 執行：定錨、交付形態 gate（確認自建成立）、BDD 使用者操作盤點、DDD domain 與 event 切分、技術維度逐項確認含防護底線 -> 轉入 doc skill 產出 proposals 與 spec 與 usecases 並建立追蹤索引 -> 回填 CLAUDE.md 技術選型表的架構模式與狀態管理兩欄 -> 產出的 UC 作為 0.1.0 實作票的來源"
+    },
+    "acceptance": [
+     "[ ] saas-tech-selection 的交付形態 gate 已執行且自建決策有明確依據記錄",
+     "[ ] 使用者操作情境已依 BDD 盤點涵蓋 flutter_handoff 五個畫面",
+     "[ ] domain 與 event 切分已完成且與 CLAUDE.md 第 6 節四條領域規則一致",
+     "[ ] 技術維度逐項有決策記錄每項附選擇理由而非僅列結論",
+     "[ ] docs 下已產出 proposals 與 spec 與 usecases 且追蹤索引可查",
+     "[ ] CLAUDE.md 技術選型表的架構模式與狀態管理兩欄已回填具體選擇與理由",
+     "[ ] 產出的 UC 編號可被 doc uc verify 驗證通過"
+    ],
+    "tdd_phase": null,
+    "tdd_stage": [],
+    "assigned": false,
+    "creation_accepted": false,
+    "started_at": null,
+    "completed_at": null,
+    "created": "2026-07-20",
+    "updated": "2026-07-20",
+    "protocol_version": "2.0",
+    "closed_at": "2026-07-20T16:48:58",
+    "closed_by": "主線程",
+    "close_reason": "not_executable_knowledge_captured",
+    "close_reason_note": "本票不應存在於 ticket 層。ticket CLI 限制「只能在 active 版本建票」是流程守衛而非技術限制，保護「未啟動版本不應有承諾層級任務」；建票時以雙 active 繞過該守衛屬誤判。框架規劃流程為 todolist proposals -> version-bootstrap 展開 -> spec -> UC -> ticket，ticket 是 pipeline 產出而非輸入。知識已捕獲至 PROP-001（docs/proposals/PROP-001-asset-liability-app-requirements.md）：原七項 acceptance 的意圖併入其驗收條件與討論記錄，已驗證的四項現況缺口併入其 Reality Test 章節。待用戶提供設計理念後由 version-bootstrap --version 0.0.2 重新展開為票"
+   }
+  },
+  {
+   "corpus": "flutter_balance",
+   "path": "docs/work-logs/v0/v0.0/v0.0.1/tickets/0.0.1-W1-001.md",
+   "id": "0.0.1-W1-001",
+   "frontmatter": {
+    "id": "0.0.1-W1-001",
+    "title": "清理 settings.local.json 幽靈 hook 註冊",
+    "type": "ADJ",
+    "status": "completed",
+    "version": "0.0.1",
+    "wave": 1,
+    "priority": "P1",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [
+     "0.0.1-W1-002"
+    ],
+    "source_ticket": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "第一層：任務性質判定（環境設定修正，非產品程式碼）",
+     "final_decision": "建立 ADJ Ticket 由主線程直接執行",
+     "rationale": "修改範圍為單一 JSON 設定檔的殘留註冊移除，認知負擔指數低於 5，不涉及產品程式碼實作，符合 pm-role 允許的設定檔維護範圍"
+    },
+    "who": {
+     "current": "主線程（環境維護）",
+     "history": {}
+    },
+    "what": "清理 settings.local.json 幽靈 hook 註冊",
+    "when": "SessionStart hook-completeness-check 偵測到幽靈註冊後",
+    "where": {
+     "layer": "Infrastructure",
+     "files": [
+      ".claude/settings.local.json"
+     ]
+    },
+    "why": "settings.local.json 內兩筆 hook 註冊指向不存在的檔案（handoff-auto-resume-stop-hook.py、agent-dispatch-validation-hook.py），會導致 runtime 崩潰；同時違反 hook 註冊單一來源原則（註冊應集中於 settings.json，settings.local.json 僅放 permissions/env/mcp/outputStyle）",
+    "how": {
+     "task_type": "Implementation",
+     "strategy": "讀取 settings.local.json -> 確認兩筆註冊的 command 路徑檔案確實不存在 -> 移除 Stop 與 PreToolUse 兩筆殘留註冊 -> 驗證 JSON 格式有效 -> 重跑 hook 完整性檢查確認警告消失"
+    },
+    "acceptance": [
+     "[x] settings.local.json 內不再包含任何 hook 註冊（hooks 區塊移除或為空）",
+     "[x] JSON 格式有效可被 python json.load 解析",
+     "[x] SessionStart hook-completeness-check 不再回報幽靈註冊與單一來源違規警告",
+     "[x] settings.local.json 的 permissions/env/mcp/outputStyle 設定完整保留未受影響"
+    ],
+    "tdd_phase": "phase2",
+    "tdd_stage": [
+     "phase2",
+     "phase3a",
+     "phase3b",
+     "phase4"
+    ],
+    "assigned": true,
+    "creation_accepted": false,
+    "started_at": "2026-07-20T15:04:18",
+    "completed_at": "2026-07-20T15:06:54",
+    "created": "2026-07-20",
+    "updated": "2026-07-20",
+    "protocol_version": "2.0"
+   }
+  },
+  {
+   "corpus": "flutter_balance",
+   "path": "docs/work-logs/v0/v0.0/v0.0.2/tickets/0.0.2-W1-003.md",
+   "id": "0.0.2-W1-003",
+   "frontmatter": {
+    "id": "0.0.2-W1-003",
+    "title": "評估 UC 白名單 SSOT (app-use-cases.md) 手維護 vs 自動生成",
+    "type": "ANA",
+    "status": "pending",
+    "version": "0.0.2",
+    "wave": 1,
+    "priority": "P3",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": null,
+    "dispatch_reason": "",
+    "decision_tree_path": {
+     "entry_point": "第一層：任務性質判定（治理層設計評估，pipeline 中發現）",
+     "final_decision": "建立 ANA Ticket 評估",
+     "rationale": "SSOT 手維護的漂移風險屬設計問題非即時 bug；首版已手動建立 SSOT 不阻塞交付，改善方向需評估故走 ANA"
+    },
+    "who": {
+     "current": "待派發",
+     "history": {}
+    },
+    "what": "評估 UC 白名單 SSOT (app-use-cases.md) 手維護 vs 自動生成",
+    "when": "0.0.2 首次建 UC 時 SSOT 為空暴露",
+    "where": {
+     "layer": "Infrastructure",
+     "files": [
+      "docs/app-use-cases.md",
+      ".claude/skills/doc/doc_system/core/uc_registry.py"
+     ]
+    },
+    "why": "doc uc verify 依 docs/app-use-cases.md 為 UC 白名單 SSOT，但該檔與 per-UC 檔案 docs/usecases/UC-XX-*.md 分開維護，每個 UC 的主流程須同時存在於兩處。這是本 session 反覆記錄的「兩份定義易漂移」模式（PC-BAL-001/004）的又一實例——手維護的合併清單與來源檔案會漂移。首次建 UC-01 時 SSOT 為空使 verify 中止，已手動建立 SSOT 繞過，但長期須決定：SSOT 該手維護，或由 per-UC 檔案自動生成",
+    "how": {
+     "task_type": "Analysis",
+     "strategy": "確認 uc_registry.py 是否已有從 per-UC 檔案生成 SSOT 的機制或僅解析既有 SSOT -> 評估自動生成的可行性（per-UC 檔案已有 ## UC-XX 標題與主流程，可作生成來源）-> 依 opinionated-default-design 主張 1，手維護重複清單是工具預設不足的信號，若可生成則優於手維護 -> 產出結論與落地建議"
+    },
+    "acceptance": [
+     "[ ] 已釐清 SSOT 目前為手維護或有生成機制",
+     "[ ] 已評估由 per-UC 檔案自動生成 SSOT 的可行性並附結論",
+     "[ ] 需落地者已建對應 ticket 或標註無需建的理由"
+    ],
+    "tdd_phase": null,
+    "tdd_stage": [],
+    "assigned": false,
+    "creation_accepted": false,
+    "started_at": null,
+    "completed_at": null,
+    "created": "2026-07-21",
+    "updated": "2026-07-21",
+    "protocol_version": "2.0"
+   }
+  }
+ ]
+}
