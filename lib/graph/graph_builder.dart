@@ -9,9 +9,6 @@ import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
-/// 無向邊以鍵名識別（SPEC-007 FR-04 表格：`association`）。
-const undirectedEdgeName = 'association';
-
 /// 需求：[SPEC-007 FR-01、FR-06] 建圖入口。
 ///
 /// 邊型不可用時回傳 [GraphBuildUnavailable] 並記「建圖不可用」；可用時建圖並
@@ -77,7 +74,11 @@ GraphBuiltEvent buildGraphFromInputs({
     nodeTypes: nodeTypes,
     onIdLookup: onIdLookup,
   );
-  final edges = _buildEdges(classified.resolved);
+  final undirectedTypes = {
+    for (final t in edgeList)
+      if (t.isUndirected) t.name,
+  };
+  final edges = _buildEdges(classified.resolved, undirectedTypes);
   final defects = <GraphDefect>[
     for (final d in classified.dangling) DanglingRefGraphDefect(d),
     for (final m in classified.malformed) MalformedRefGraphDefect(m),
@@ -94,10 +95,13 @@ GraphBuiltEvent buildGraphFromInputs({
 }
 
 /// 同一條邊（型別、起點、終點；無向為端點集合）只建一次，宣告來源取聯集。
-List<GraphEdge> _buildEdges(List<ResolvedRef> resolved) {
+List<GraphEdge> _buildEdges(
+  List<ResolvedRef> resolved,
+  Set<String> undirectedTypes,
+) {
   final merged = <String, GraphEdge>{};
   for (final r in resolved) {
-    final edge = _edgeOf(r);
+    final edge = _edgeOf(r, undirectedTypes);
     final key = '${edge.edgeType}\u0000${edge.from}\u0000${edge.to}';
     final existing = merged[key];
     merged[key] = existing == null
@@ -113,11 +117,12 @@ List<GraphEdge> _buildEdges(List<ResolvedRef> resolved) {
   return merged.values.toList()..sort(_compareEdges);
 }
 
-GraphEdge _edgeOf(ResolvedRef r) {
+/// 無向與否取自 [undirectedTypes]（`EdgeTypeEntry.isUndirected`，D6）。
+GraphEdge _edgeOf(ResolvedRef r, Set<String> undirectedTypes) {
   final source = r.ref.sourceId;
   final target = r.targetId;
   final type = r.ref.edgeTypeName;
-  if (type == undirectedEdgeName) {
+  if (undirectedTypes.contains(type)) {
     final ordered = source.compareTo(target) <= 0
         ? (source, target)
         : (target, source);
@@ -153,8 +158,7 @@ List<MultiSourceGraphDefect> _multiSourceDefects(
 ) {
   final oneTypes = {
     for (final t in edgeTypes)
-      if (t.forwardCardinality == EdgeCardinality.one &&
-          t.name != undirectedEdgeName)
+      if (t.forwardCardinality == EdgeCardinality.one && !t.isUndirected)
         t.name,
   };
   final groups = <String, List<GraphEdge>>{};

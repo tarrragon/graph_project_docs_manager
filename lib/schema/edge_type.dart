@@ -1,7 +1,9 @@
 /// SPEC-007 FR-01 邊型模型與解碼結果（設計約束 D6）。
 ///
-/// 欄位名、基數、是否有反向欄位一律取自型別表；程式內唯一的鍵名例外是
-/// 排除 `domain_dependency`（由 `0.5.0-W1-001` 移除）。
+/// 欄位名、基數、是否有反向欄位一律取自型別表；程式內的鍵名例外集中在本檔
+/// 兩處：排除 `domain_dependency`（[EdgeTypeResolution.activeEdgeTypes]）、
+/// 認定 `association` 為無向（`isUndirected`，FR-05〈無向的判定〉）。
+/// 兩處皆由 `0.5.0-W1-001` 移除；Graph 只讀旗標，不再比對鍵名。
 ///
 /// 依賴方向：Schema domain（L0），不得 import 上層 domain。
 library;
@@ -22,6 +24,7 @@ class EdgeTypeEntry {
     required this.reverseField,
     required this.forwardCardinality,
     required this.layer,
+    this.isUndirected = false,
   });
 
   final String name;
@@ -30,6 +33,9 @@ class EdgeTypeEntry {
   final String? reverseField;
   final EdgeCardinality forwardCardinality;
   final String layer;
+
+  /// 無向邊（端點集合，無方向）；由 [resolveEdgeTypes] 依鍵名填入（D6）。
+  final bool isUndirected;
 }
 
 /// 建圖不可用的原因碼（與 SPEC-006 FR-08「版本不在已知範圍」同一套）。
@@ -60,6 +66,9 @@ class EdgeTypeResolution {
 }
 
 const _excludedByKeyName = 'domain_dependency';
+
+/// D6 鍵名例外：`association` 為無向邊（FR-05）。
+const _undirectedByKeyName = 'association';
 
 /// 決議邊型（FR-01）：專案表有完整 `edge_types` 直接用；缺席或缺正向基數時，
 /// 版本在已知範圍內從內建表補，否則回報原因碼。
@@ -107,7 +116,10 @@ EdgeTypeResolution _fillMissingCardinality(
       missing = true;
       continue;
     }
-    result[raw.name] = raw.toEntry(cardinality);
+    result[raw.name] = raw.toEntry(
+      cardinality,
+      isUndirected: raw.name == _undirectedByKeyName,
+    );
   }
   return EdgeTypeResolution(
     edgeTypes: result,
