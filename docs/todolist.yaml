@@ -407,7 +407,7 @@ versions:
 
   - version: "0.4.1"
     codename: "Graph-2"
-    description: "0.4.0 Phase 4 多視角審查（W4-001）的延後追蹤項：Graph／Schema 可維護性、Panel 基數驗證、返回鈕實畫面測試、SPEC-006 追溯回填"
+    description: "兩個 topic：Graph 可維護性（0.4.0 Phase 4 延後九項）與框架修復（0.4.0 期間的框架新發現、#114 版本規則落地）"
     status: "planned"
     worklog: "docs/work-logs/v0/v0.4/v0.4.1/"
     notes: |
@@ -415,6 +415,9 @@ versions:
       來源：0.4.0-W4-001 並行評估報告「延後追蹤」九項（原 0.4.0-W4-006～014，以 ticket migrate 遷入）。
       發版前修的四項（W4-002～005）留在 0.4.0；Graph 編排層接線屬 0.6（0.6.0-W1-073）。
       九項皆為可維護性或測試覆蓋補強，不改 0.4.0 已凍結的 IT 值；版本契約於 0.4.1 開工前依 2026-09-29 規則寫定。
+      2026-10-01 補登 topic「框架修復」（用戶裁決 0.4.0 等框架票結案後 finish，新發現改掛 0.4.1）：W1-010（原 0.4.0-W1-077，其餘寫入路徑的提交語意）、
+      W1-011（原 0.4.0-W1-070.2，guard 預驗證快取）、W1-012（add-spawned 不寫反向 source_ticket，#102）、W1-013（#114 版本生命週期規則落地，方案 4 先經 WRAP）。
+      topic 以外的新發現依 2026-09-29 規則處理，不自動收進本版。
 
   - version: "0.5.0"
     codename: "Layout"
