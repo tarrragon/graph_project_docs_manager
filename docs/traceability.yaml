@@ -190,13 +190,26 @@ domain_bundle_tests:
     layer: L2
     invariants:
       - 圖語意改變（如 symmetric union 規則）是唯一合法變更理由（domain-map.md §3）
-    tests: []
+    tests:  # 測試規格：docs/spec/graph/SPEC-007-test-design.md（0.4.0-W1-059），實作前為紅燈
+      - test/unit/graph/light_node_test.dart
+      - test/unit/graph/reference_extraction_test.dart
+      - test/unit/graph/reference_classification_test.dart
+      - test/unit/graph/edge_declaration_test.dart
+      - test/unit/graph/association_union_test.dart
+      - test/unit/graph/graph_build_result_test.dart
+      - test/unit/graph/adjacency_query_test.dart
+      - test/unit/graph/defect_isolation_test.dart
+      - test/unit/graph/graph_log_events_test.dart
+      - test/integration/graph_it1_edge_union_test.dart
+      - test/integration/graph_it2_defects_to_diagnostics_test.dart
 
   - bundle: TicketDetail
     layer: L2
     invariants:
       - ticket 的 5W1H 結構語意改變是唯一合法變更理由（domain-map.md §3）
-    tests: []
+    tests:  # 測試規格：docs/spec/graph/SPEC-007-test-design.md（0.4.0-W1-059），實作前為紅燈
+      - test/unit/ticket_detail/ticket_detail_query_test.dart
+      - test/integration/graph_it3_light_node_separation_test.dart
 
   - bundle: Diagnostics
     layer: L2
