@@ -372,6 +372,10 @@ versions:
       2026-09-30 規劃波開始，阻擋解除：用戶經 WRAP 裁決建圖讀邊規則為「有反向欄位的邊取兩側聯集並記錄宣告來源，
       Diagnostics 只報衝突與斷邊」（tech-decisions 同日補記），不依賴上游 #98。附帶 W1-045（PROP→SPEC 反向資料校正）；
       框架前置 W1-043（hooks-test-gate 逾時）、W1-044（settings.json timeout 單位查證）由 83 處理。
+      2026-09-30 component-contract-design 原生佈局掃描判準（flutter_balance 回報）：W1-048 裁決三項判準，
+      W1-049 修 skill 至 3.13.0（83）；本專案頁面層依新判準轉置 W3-001 經用戶裁決留在 0.4.0（非 Graph 主題，
+      理由：本專案為該 skill 上游，發布新判準時自身應已符合）。W1-046＋W1-047 定案一起 sync-push；
+      timeout 單位問題開 canonical #112（用戶授權）。
 
   - version: "0.5.0"
     codename: "Layout"
