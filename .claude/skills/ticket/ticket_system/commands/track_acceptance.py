@@ -26,6 +26,7 @@ if __name__ == "__main__":
 
 import argparse
 import re
+from ticket_system.lib.list_args import expand_list_arg
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -945,7 +946,7 @@ def _execute_add_spawn_request_locked(args: argparse.Namespace, version: str) ->
     sr_label = f"SR-{next_id}"
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    files_value = args.files if args.files else ""
+    files_value = ",".join(expand_list_arg(args.files))
     context_value = args.context if args.context else ""
     new_entry = (
         f"\n- **{sr_label}** ({timestamp})\n"

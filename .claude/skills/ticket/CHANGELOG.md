@@ -2,7 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
-**Version**: 2.44.4（本地變更）— `ticket create` 的 `--blocked-by`、`--related-to`、`--where` 改 `action="append"`，可重複給且相容逗號分隔（共用 `expand_list_arg`：去空白、去空項、保序去重）。此前重複給只保留最後一個值且無警告，blockedBy 缺漏會讓 runqueue 誤判票可執行。E1 對照測試：重複旗標與逗號寫法結果相同、混合寫法保序去重。
+**Version**: 2.44.4（本地變更）— `ticket create` 的 `--blocked-by`、`--related-to`、`--where` 改 `action="append"`，同批 `track set-where --files`、`track add-spawn-request --files` 一併處理（重複給同樣靜默丟值；set-where 整次呼叫仍整體覆寫 where.files），可重複給且相容逗號分隔（共用 `ticket_system/lib/list_args.py` 的 `expand_list_arg`：去空白、去空項、保序去重）。此前重複給只保留最後一個值且無警告，blockedBy 缺漏會讓 runqueue 誤判票可執行。E1 對照測試：重複旗標與逗號寫法結果相同、混合寫法保序去重。
 
 **Version**: 2.44.3（本地變更，指向 tarrragon/claude#55）— `ticket create` 的可攜問題分流閘門（`PORTABLE_ISSUE_UNDEDUPED`）改以「路徑是否會被 sync-push 推到 canonical」判定，不再只看 `.claude/` 前綴：`field_validators.is_portable_where_files` 對每條 `.claude/` 路徑經 `claude_lib_loader.load_claude_lib` 載入 `sync_exclude_manifest`，重用 `load_sync_skills_config`／`should_exclude_skill(direction="push")`／`should_exclude`，sync-skills.yaml 宣告 private（或 mode=select 下不在 include、mode=none）的 skill 路徑與同步排除清單內路徑不算可攜；全數 `.claude/` 路徑皆不推送時不觸發閘門，含任一會推送的路徑仍觸發。manifest 不可用或設定檔解析失敗時退回原行為（視為會推送，stderr 留訊息）。E1／E2 對照測試：全在 private skill 下不觸發、同路徑無 private 宣告觸發、混入非 private `.claude/` 路徑仍觸發、mode=select 下 include 內外 skill 各異。版號取 2.44.3 而非 2.44.2：2.44.2 尚待推送，不論其是否已推送皆不撞號。
 

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ticket_system.constants import PRIORITY_LEVELS, TICKET_TYPES
+from ticket_system.lib.list_args import expand_list_arg
 from ticket_system.lib.ticket_loader import (
     get_tickets_dir,
     save_ticket,
@@ -153,23 +154,6 @@ def _inherit_parent_where_layer(parent_ticket: Optional[Dict[str, Any]]) -> str:
 
 
 
-
-
-def expand_list_arg(raw: Any) -> list[str]:
-    """展開可重複且可逗號分隔的 CLI 參數：去空白、去空項、保序去重。
-
-    接受 None、單一字串（舊寫法）或 append 產生的字串清單。
-    """
-    if not raw:
-        return []
-    chunks = [raw] if isinstance(raw, str) else list(raw)
-    result: list[str] = []
-    for chunk in chunks:
-        for item in chunk.split(","):
-            item = item.strip()
-            if item and item not in result:
-                result.append(item)
-    return result
 
 
 def _parse_cli_args_to_config(

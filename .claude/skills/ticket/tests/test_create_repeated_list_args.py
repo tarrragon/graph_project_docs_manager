@@ -8,7 +8,8 @@ import argparse
 
 import pytest
 
-from ticket_system.commands.create import expand_list_arg, register
+from ticket_system.commands.create import register
+from ticket_system.lib.list_args import expand_list_arg
 
 
 def _parse(argv):
@@ -46,3 +47,22 @@ class TestRepeatedListArgs:
 
 def test_expand_accepts_legacy_string():
     assert expand_list_arg("A, B,,A") == ["A", "B"]
+
+
+def _track_parse(argv):
+    from ticket_system.commands.track import register as track_register
+
+    root = argparse.ArgumentParser()
+    track_register(root.add_subparsers(dest="command"))
+    return root.parse_args(["track", *argv])
+
+
+@pytest.mark.parametrize("sub,extra", [
+    ("set-where", []),
+    ("add-spawn-request", ["--what", "w", "--why", "y", "--type", "IMP", "--priority", "P2"]),
+])
+class TestTrackFilesRepeated:
+    def test_repeated_equals_comma(self, sub, extra):
+        rep = _track_parse([sub, "T-1", *extra, "--files", "a.py", "--files", "b.py"])
+        com = _track_parse([sub, "T-1", *extra, "--files", "a.py,b.py"])
+        assert expand_list_arg(rep.files) == expand_list_arg(com.files) == ["a.py", "b.py"]
