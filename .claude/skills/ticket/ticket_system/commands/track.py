@@ -11,6 +11,7 @@ if __name__ == "__main__":
 
 
 import argparse
+from typing import Optional
 
 
 def _parse_wave_arg(value: str) -> int:
@@ -564,6 +565,24 @@ def _create_command_handlers() -> dict:
     }
 
 
+# 位置參數名各異的 track 子命令：依序取第一個存在者作為版本來源
+# ticket_id（多數）/ child_id（set-parent）/ parent_id（add-child）/ ticket_ids（batch-*，逗號分隔）
+_TICKET_ID_ARG_NAMES = ("ticket_id", "child_id", "parent_id", "ticket_ids")
+
+
+def _ticket_id_arg_version(args: argparse.Namespace) -> Optional[str]:
+    """從命令的 ticket ID 位置參數解析版本；解析不出時回傳 None（退回自動偵測）。"""
+    for name in _TICKET_ID_ARG_NAMES:
+        raw = getattr(args, name, None)
+        if not raw:
+            continue
+        first_id = str(raw).split(",")[0].strip()
+        version = extract_version_from_ticket_id(first_id)
+        if version:
+            return version
+    return None
+
+
 def execute(args: argparse.Namespace) -> int:
     """執行 track 命令"""
     operation = args.operation
@@ -596,10 +615,8 @@ def execute(args: argparse.Namespace) -> int:
             return 1
 
     # 如果未明確指定版本，嘗試從 Ticket ID 提取
-    if not explicit_version and hasattr(args, 'ticket_id'):
-        extracted_version = extract_version_from_ticket_id(args.ticket_id)
-        if extracted_version:
-            version = extracted_version
+    if not explicit_version:
+        version = _ticket_id_arg_version(args)
 
     # 如果仍未取得版本，使用自動偵測
     if not version:
