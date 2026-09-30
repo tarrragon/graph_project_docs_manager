@@ -128,6 +128,27 @@ void main() {
       );
     });
 
+    test('L2-4 邊型值為字串且版本高於內建：原因碼與 L2-1、L2-2 皆不同', () {
+      final table = buildEdgeTableJson(version: '99.0.0', edges: const {});
+      (table['edge_types'] as Map<String, dynamic>)['association'] = 'oops';
+      final recorder = LogRecorder();
+      final result = _build(recorder, const [], table);
+      expect(result, isA<GraphBuildUnavailable>());
+      final reason = recorder
+          .ofEvent(GraphLogEvent.buildUnavailable)
+          .single
+          .payload[GraphLogKeys.reason];
+      expect(reason, EdgeTypeUnavailableReason.invalidEdgeTypeEntry.name);
+      expect(
+        reason,
+        isNot(EdgeTypeUnavailableReason.projectVersionOutOfKnownRange.name),
+      );
+      expect(
+        reason,
+        isNot(EdgeTypeUnavailableReason.missingForwardCardinality.name),
+      );
+    });
+
     test('L2-3 守衛：可用型別表不記建圖不可用；正向對照為 L2-1', () {
       final ok = LogRecorder();
       final result = _build(ok, const [], loadBuiltinSchemaJson());

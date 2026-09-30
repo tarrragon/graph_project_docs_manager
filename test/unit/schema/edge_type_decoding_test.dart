@@ -8,11 +8,9 @@ import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 import '../../helpers/spec007/edge_table_builder.dart';
 
-Map<String, dynamic> _builtinJson() =>
-    jsonDecode(
-          File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
-        )
-        as Map<String, dynamic>;
+Map<String, dynamic> _builtinJson() => jsonDecode(
+  File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
+) as Map<String, dynamic>;
 
 Set<String> _keys(EdgeTypeResolution r) => r.edgeTypes.keys.toSet();
 
@@ -224,6 +222,61 @@ void main() {
       );
     });
   }
+
+  // 0.4.0-W4-016：SPEC-007 v1.7～v1.9 FR-01，被拒收的邊型視同缺席。
+  Map<String, dynamic> tableWithBadAssociation(
+    String version, {
+    Map<String, EdgeSpec> extra = const {},
+  }) {
+    final table = buildEdgeTableJson(version: version, edges: extra);
+    (table['edge_types'] as Map<String, dynamic>)['association'] = 'oops';
+    return table;
+  }
+
+  test('W4-016 壞邊型、版本等於內建：取內建表定義，建圖可用', () {
+    final result = _resolve(tableWithBadAssociation(builtinVersion));
+    expect(result.isGraphAvailable, isTrue);
+    final raw = builtinEdges['association'] as Map<String, dynamic>;
+    final edge = result.edgeTypes['association']!;
+    expect(edge.forwardField, raw['forward_field']);
+    expect(edge.edgeClass, raw['class']);
+    expect(edge.layer, raw['layer']);
+    expect(edge.forwardCardinality.name, raw['forward_cardinality']);
+  });
+
+  test('W4-016 壞邊型、版本高於內建：不可用且為 invalidEdgeTypeEntry，node_types 照常', () {
+    final table = tableWithBadAssociation('999.0.0');
+    final result = _resolve(table);
+    expect(result.isGraphAvailable, isFalse);
+    expect(
+      result.unavailableReason,
+      EdgeTypeUnavailableReason.invalidEdgeTypeEntry,
+    );
+    final decoded = typeTableFromJson(table);
+    expect(decoded.nodeTypes.keys, ['SPEC']);
+    expect(decoded.nodeTypes['SPEC']!.idPattern, r'^SPEC-\d+$');
+  });
+
+  test('W4-016 正向對照：去掉壞條目、版本高於內建 -> 可用', () {
+    final table = buildEdgeTableJson(
+      version: '999.0.0',
+      edges: {'association': const EdgeSpec(forwardField: 'relatedTo')},
+    );
+    expect(_resolve(table).isGraphAvailable, isTrue);
+  });
+
+  test('W4-016 並存壞條目與缺正向基數、版本高於內建：只回報 invalidEdgeTypeEntry', () {
+    final table = tableWithBadAssociation(
+      '999.0.0',
+      extra: {
+        'custom': const EdgeSpec(forwardField: 'f', forwardCardinality: null),
+      },
+    );
+    expect(
+      _resolve(table).unavailableReason,
+      EdgeTypeUnavailableReason.invalidEdgeTypeEntry,
+    );
+  });
 
   for (final card in <dynamic>[1, 'weird']) {
     test('W4-004 F forward_cardinality=$card 保留為 null，不拒收', () {
