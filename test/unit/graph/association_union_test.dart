@@ -11,7 +11,12 @@ void main() {
     test('G5-1 E1 鑑別：A 列出 B、B 未列出 A，邊 {A,B} 存在，宣告來源 {A}', () {
       final nodeB = buildRawNode(id: _b);
       final event = buildGraphEvent([
-        buildRawNode(id: _a, extra: {'relatedTo': [_b]}),
+        buildRawNode(
+          id: _a,
+          extra: {
+            'relatedTo': [_b],
+          },
+        ),
         nodeB,
       ]);
       expect(edgeKeys(event), {'association|$_a|$_b|$_a'});
@@ -27,15 +32,30 @@ void main() {
 
     test('G5-2 A、B 互列：一條邊，宣告來源 {A, B}', () {
       final event = buildGraphEvent([
-        buildRawNode(id: _a, extra: {'relatedTo': [_b]}),
-        buildRawNode(id: _b, extra: {'relatedTo': [_a]}),
+        buildRawNode(
+          id: _a,
+          extra: {
+            'relatedTo': [_b],
+          },
+        ),
+        buildRawNode(
+          id: _b,
+          extra: {
+            'relatedTo': [_a],
+          },
+        ),
       ]);
       expect(edgeKeys(event), {'association|$_a|$_b|$_a,$_b'});
       expect(event.edgeCount, 1);
     });
 
     test('G5-3 端點依字典序：(B,A) 與 (A,B) 宣告順序建圖，比對鍵相同', () {
-      final nodeA = buildRawNode(id: _a, extra: {'relatedTo': [_b]});
+      final nodeA = buildRawNode(
+        id: _a,
+        extra: {
+          'relatedTo': [_b],
+        },
+      );
       final nodeB = buildRawNode(id: _b);
       final ab = buildGraphEvent([nodeA, nodeB]);
       final ba = buildGraphEvent([nodeB, nodeA]);
@@ -44,7 +64,12 @@ void main() {
       // B 單向列出 A：起點排序仍為 (A, B)，宣告來源為 {B}。
       final reversed = buildGraphEvent([
         buildRawNode(id: _a),
-        buildRawNode(id: _b, extra: {'relatedTo': [_a]}),
+        buildRawNode(
+          id: _b,
+          extra: {
+            'relatedTo': [_a],
+          },
+        ),
       ]);
       expect(edgeKeys(reversed), {'association|$_a|$_b|$_b'});
     });

@@ -15,7 +15,10 @@ void main() {
       expect(event.edgeCount, known.edgeCount);
       expect(event.edgesByType, known.edgesByType);
       final directed = event.directedShapeCounts;
-      expect(directed[DirectedDeclarationShape.fromOnly], known.directedFromOnly);
+      expect(
+        directed[DirectedDeclarationShape.fromOnly],
+        known.directedFromOnly,
+      );
       expect(directed[DirectedDeclarationShape.toOnly], known.directedToOnly);
       expect(directed[DirectedDeclarationShape.both], known.directedBoth);
       expect(event.undirectedOneEndCount, known.undirectedOneEnd);

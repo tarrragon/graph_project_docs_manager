@@ -25,7 +25,9 @@ Map<String, dynamic> _missingEdgeTypesHigherVersion() =>
 
 Map<String, dynamic> _missingCardinalityHigherVersion() => buildEdgeTableJson(
   version: '99.0.0',
-  edges: {'custom': const EdgeSpec(forwardField: 'f', forwardCardinality: null)},
+  edges: {
+    'custom': const EdgeSpec(forwardField: 'f', forwardCardinality: null),
+  },
 );
 
 void main() {
@@ -51,18 +53,32 @@ void main() {
     test('L1-2 E1 鑑別：空 rawNodes 的計數全為 0，且與 L1-1 負載不同', () {
       final empty = LogRecorder();
       _build(empty, const [], loadBuiltinSchemaJson());
-      final emptyPayload = empty.ofEvent(GraphLogEvent.buildCompleted).single.payload;
+      final emptyPayload = empty
+          .ofEvent(GraphLogEvent.buildCompleted)
+          .single
+          .payload;
       expect(emptyPayload.values.every((v) => v == 0), isTrue);
 
       final filled = LogRecorder();
-      _build(filled, buildKnownGraphDistribution().rawNodes, loadBuiltinSchemaJson());
-      final filledPayload = filled.ofEvent(GraphLogEvent.buildCompleted).single.payload;
+      _build(
+        filled,
+        buildKnownGraphDistribution().rawNodes,
+        loadBuiltinSchemaJson(),
+      );
+      final filledPayload = filled
+          .ofEvent(GraphLogEvent.buildCompleted)
+          .single
+          .payload;
       expect(filledPayload, isNot(emptyPayload));
     });
 
     test('L1-3 不存在只記開始而無結果值的事件：每筆事件皆帶結果負載', () {
       final recorder = LogRecorder();
-      _build(recorder, buildKnownGraphDistribution().rawNodes, loadBuiltinSchemaJson());
+      _build(
+        recorder,
+        buildKnownGraphDistribution().rawNodes,
+        loadBuiltinSchemaJson(),
+      );
       expect(recorder.entries, isNotEmpty);
       for (final entry in recorder.entries) {
         expect(entry.payload, isNotEmpty);
@@ -77,23 +93,37 @@ void main() {
   group('L2 建圖不可用日誌', () {
     test('L2-1 缺 edge_types 且版本不在已知範圍：恰一筆，原因碼為版本不在已知範圍', () {
       final recorder = LogRecorder();
-      final result = _build(recorder, const [], _missingEdgeTypesHigherVersion());
+      final result = _build(
+        recorder,
+        const [],
+        _missingEdgeTypesHigherVersion(),
+      );
       expect(result, isA<GraphBuildUnavailable>());
       final logs = recorder.ofEvent(GraphLogEvent.buildUnavailable);
       expect(recorder.entries.length, 1);
       expect(logs.single.payload, {
-        GraphLogKeys.reason: EdgeTypeUnavailableReason.versionOutOfKnownRange.name,
+        GraphLogKeys.reason:
+            EdgeTypeUnavailableReason.versionOutOfKnownRange.name,
       });
     });
 
     test('L2-2 缺正向基數：原因碼與 L2-1 不同', () {
       final recorder = LogRecorder();
-      final result = _build(recorder, const [], _missingCardinalityHigherVersion());
+      final result = _build(
+        recorder,
+        const [],
+        _missingCardinalityHigherVersion(),
+      );
       expect(result, isA<GraphBuildUnavailable>());
-      final reason = recorder.ofEvent(GraphLogEvent.buildUnavailable).single
+      final reason = recorder
+          .ofEvent(GraphLogEvent.buildUnavailable)
+          .single
           .payload[GraphLogKeys.reason];
       expect(reason, EdgeTypeUnavailableReason.missingForwardCardinality.name);
-      expect(reason, isNot(EdgeTypeUnavailableReason.versionOutOfKnownRange.name));
+      expect(
+        reason,
+        isNot(EdgeTypeUnavailableReason.versionOutOfKnownRange.name),
+      );
     });
 
     test('L2-3 守衛：可用型別表不記建圖不可用；正向對照為 L2-1', () {
