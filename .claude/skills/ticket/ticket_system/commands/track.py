@@ -397,7 +397,12 @@ def _reclaim_landing_report_hook(version: str, ticket_id: str, report_text: str,
         replace=False,
     )
     result = execute_append_log(append_args, version)
-    if result != 0:
+    if result == EXIT_AUTO_COMMIT_FAILED:
+        sys.stderr.write(
+            f"[reclaim] {ticket_id}: 鑑識報告日誌已寫入，自動提交失敗"
+            f"（append-log exit {result}，補救指令見上方 WARNING）；reclaim 狀態轉換已完成\n"
+        )
+    elif result != 0:
         sys.stderr.write(
             f"[reclaim] {ticket_id}: 鑑識報告落票失敗（append-log exit {result}），"
             "reclaim 狀態轉換已完成，僅稽核記錄缺失\n"
