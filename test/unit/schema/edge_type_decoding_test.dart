@@ -278,6 +278,23 @@ void main() {
     );
   });
 
+  // 0.4.0-W4-017：SPEC-007 v1.10 FR-01，版本在已知範圍內、被拒收且內建表
+  // 也沒有該鍵名：不建邊、建圖可用。日誌不斷言（同 W4-004 註記）。
+  test('W4-017 壞邊型、版本等於內建、內建表無此鍵名：不建邊，建圖可用', () {
+    const unknownKey = 'notInBuiltin';
+    expect(builtinEdges.containsKey(unknownKey), isFalse);
+    final table = buildEdgeTableJson(
+      version: builtinVersion,
+      edges: {'liveEdge': const EdgeSpec(forwardField: 'l')},
+    );
+    (table['edge_types'] as Map<String, dynamic>)[unknownKey] = 'oops';
+    final result = _resolve(table);
+    expect(result.isGraphAvailable, isTrue);
+    expect(result.unavailableReason, isNull);
+    expect(result.edgeTypes.containsKey(unknownKey), isFalse);
+    expect(result.edgeTypes.containsKey('liveEdge'), isTrue);
+  });
+
   for (final card in <dynamic>[1, 'weird']) {
     test('W4-004 F forward_cardinality=$card 保留為 null，不拒收', () {
       final table = tableWithBad(validEdge()..['forward_cardinality'] = card);
