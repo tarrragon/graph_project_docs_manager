@@ -24,7 +24,8 @@ const _corpora = ['graph_project_docs_manager', 'flutter_balance'];
 UndeterminedGapReason _toUndeterminedReason(EdgeTypeUnavailableReason reason) =>
     switch (reason) {
       EdgeTypeUnavailableReason.projectVersionOutOfKnownRange ||
-      EdgeTypeUnavailableReason.missingForwardCardinality =>
+      EdgeTypeUnavailableReason.missingForwardCardinality ||
+      EdgeTypeUnavailableReason.invalidEdgeTypeEntry =>
         UndeterminedGapReason.projectVersionOutOfKnownRange,
     };
 

@@ -45,6 +45,10 @@ enum EdgeTypeUnavailableReason {
 
   /// `edge_types` 有邊型缺正向基數且無法從內建表補。
   missingForwardCardinality,
+
+  /// `edge_types` 有條目不合法被拒收，且版本高於內建表而無法補回
+  /// （SPEC-007 v1.8 FR-01）；優先於 [missingForwardCardinality]（v1.9）。
+  invalidEdgeTypeEntry,
 }
 
 /// 邊型解碼結果。
@@ -86,19 +90,34 @@ EdgeTypeResolution resolveEdgeTypes({
   final inRange =
       builtinVersion != null &&
       isWithinKnownSchemaRange(projectVersion, builtinVersion);
-  final project = projectSchemaJson == null
+  final projectTable = projectSchemaJson == null
       ? null
-      : typeTableFromJson(projectSchemaJson).edgeTypes;
+      : typeTableFromJson(projectSchemaJson);
+  final project = projectTable?.edgeTypes;
 
   if (project == null) {
     return inRange
         ? _fillMissingCardinality(builtin, builtin, true)
         : EdgeTypeResolution(
             edgeTypes: const {},
-            unavailableReason: EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
+            unavailableReason:
+                EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
           );
   }
-  return _fillMissingCardinality(project, builtin, inRange);
+  final rejected = projectTable!.rejectedEdgeTypes;
+  if (rejected.isNotEmpty && !inRange) {
+    // v1.9：解碼階段的拒收先於基數補值判定，只回報本原因碼。
+    return EdgeTypeResolution(
+      edgeTypes: const {},
+      unavailableReason: EdgeTypeUnavailableReason.invalidEdgeTypeEntry,
+    );
+  }
+  final restored = <String, EdgeTypeDecl>{
+    for (final name in rejected)
+      if (builtin[name] != null) name: builtin[name]!,
+    ...project,
+  };
+  return _fillMissingCardinality(restored, builtin, inRange);
 }
 
 EdgeTypeResolution _fillMissingCardinality(

@@ -42,48 +42,74 @@ TypeTable typeTableFromJson(Map<String, dynamic> json) {
     );
   }
 
+  final parsedEdges = _parseEdgeTypes(json['edge_types']);
   return TypeTable(
     Map.unmodifiable(entries),
-    edgeTypes: _parseEdgeTypes(json['edge_types']),
+    edgeTypes: parsedEdges.edges,
+    rejectedEdgeTypes: parsedEdges.rejected,
   );
 }
 
-/// `null` 代表缺 `edge_types` 鍵；缺必要欄位的邊型拒收並寫日誌，正向基數
-/// 缺席保留為 `null`（SPEC-007 FR-01）。
-Map<String, EdgeTypeDecl>? _parseEdgeTypes(dynamic raw) {
+/// `edges` 為 `null` 代表缺 `edge_types` 鍵；缺必要欄位的邊型拒收並寫日誌，
+/// 鍵名交給 `rejected`（視同缺席，由 `resolveEdgeTypes` 依版本補回或判不可用，
+/// SPEC-007 v1.7 FR-01）。正向基數缺席保留為 `null`。
+({Map<String, EdgeTypeDecl>? edges, Set<String> rejected}) _parseEdgeTypes(
+  dynamic raw,
+) {
   if (raw is! Map<String, dynamic>) {
-    return null;
+    return (edges: null, rejected: const <String>{});
   }
   final result = <String, EdgeTypeDecl>{};
+  final rejected = <String>{};
   for (final entry in raw.entries) {
-    final map = entry.value;
-    final forwardField = map is Map ? map['forward_field'] : null;
-    final edgeClass = map is Map ? map['class'] : null;
-    final layer = map is Map ? map['layer'] : null;
-    final reverseField = map is Map ? map['reverse_field'] : null;
-    if (forwardField is! String ||
-        edgeClass is! String ||
-        layer is! String ||
-        (reverseField != null && reverseField is! String)) {
-      developer.log(
-        '邊型 ${entry.key} 不是 map，或 class／forward_field／layer 缺席或非字串，或 reverse_field 非字串，已拒收', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
-      continue;
+    final decl = _parseEdgeTypeEntry(entry.key, entry.value);
+    if (decl == null) {
+      rejected.add(entry.key);
+    } else {
+      result[entry.key] = decl;
     }
-    result[entry.key] = EdgeTypeDecl(
-      name: entry.key,
-      edgeClass: edgeClass,
-      forwardField: forwardField,
-      reverseField: reverseField as String?,
-      forwardCardinality: EdgeCardinality.values
-          .where((value) => value.name == (map as Map)['forward_cardinality'])
-          .firstOrNull,
-      layer: layer,
-    );
   }
-  return Map.unmodifiable(result);
+  return (
+    edges: Map.unmodifiable(result),
+    rejected: Set.unmodifiable(rejected),
+  );
+}
+
+/// 單一邊型條目；不合法回傳 `null` 並寫日誌。
+EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
+  if (value is! Map) {
+    _logRejectedEdgeType(name);
+    return null;
+  }
+  final forwardField = value['forward_field'];
+  final edgeClass = value['class'];
+  final layer = value['layer'];
+  final reverseField = value['reverse_field'];
+  if (forwardField is! String ||
+      edgeClass is! String ||
+      layer is! String ||
+      (reverseField != null && reverseField is! String)) {
+    _logRejectedEdgeType(name);
+    return null;
+  }
+  return EdgeTypeDecl(
+    name: name,
+    edgeClass: edgeClass,
+    forwardField: forwardField,
+    reverseField: reverseField as String?,
+    forwardCardinality: EdgeCardinality.values
+        .where((v) => v.name == value['forward_cardinality'])
+        .firstOrNull,
+    layer: layer,
+  );
+}
+
+void _logRejectedEdgeType(String name) {
+  developer.log(
+    '邊型 $name 不是 map，或 class／forward_field／layer 缺席或非字串，或 reverse_field 非字串，已拒收', // i18n-exempt: 開發者診斷 log
+    name: _tag,
+    level: 900,
+  );
 }
 
 /// `null` 代表型別表中不帶 `carrier_path_patterns` 欄位（規則 3）；

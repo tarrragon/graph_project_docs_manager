@@ -139,13 +139,21 @@ class EdgeTypeDecl {
 
 /// 型別表：型別名稱對條目的對照。
 class TypeTable {
-  const TypeTable(this.nodeTypes, {this.edgeTypes});
+  const TypeTable(
+    this.nodeTypes, {
+    this.edgeTypes,
+    this.rejectedEdgeTypes = const <String>{},
+  });
 
   final Map<String, NodeTypeEntry> nodeTypes;
 
   /// 邊型宣告；`null` 代表型別表缺 `edge_types` 鍵（與空 map 語意不同）。
   /// 缺席不影響 [nodeTypes] 解碼（SPEC-007 FR-01）。
   final Map<String, EdgeTypeDecl>? edgeTypes;
+
+  /// 解碼時被拒收的邊型鍵名（SPEC-007 v1.7 FR-01）；視同缺席，
+  /// 由 `resolveEdgeTypes` 依版本補回或判建圖不可用。
+  final Set<String> rejectedEdgeTypes;
 
   /// 只回傳帶 `carrierPathPatterns` 欄位的型別（規則 3）。
   Iterable<NodeTypeEntry> get pathParticipatingTypes =>
