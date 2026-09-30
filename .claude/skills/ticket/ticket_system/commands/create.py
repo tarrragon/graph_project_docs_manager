@@ -957,7 +957,15 @@ def execute(args: argparse.Namespace) -> int:
                 _assignments_path,
                 append_assignment,
             )
+            from ticket_system.lib.topic_registry import (
+                _registry_path,
+                append_topic,
+            )
             try:
+                # 先註冊主題名（append_assignment 內部的註冊隨後冪等跳過），
+                # 才知道本次是否真的追加了 registry 行。
+                if append_topic(topic):
+                    topic_append_lines[str(_registry_path())] = f"{topic.strip()}\n"
                 if append_assignment(ticket_id, topic):
                     topic_append_lines[str(_assignments_path())] = (
                         f"{ticket_id}\t{topic.strip()}\n"
@@ -1075,24 +1083,28 @@ def execute(args: argparse.Namespace) -> int:
 
 
 def _source_backfill_paths(args: argparse.Namespace, ticket_id: str) -> list:
-    """--source-ticket 回填（spawned_tickets）改到的來源票 md 路徑，供併入 auto-commit。
+    """回填改到的關聯票 md 路徑，供併入 auto-commit。
 
-    回填在 execute 前段已落盤；此處只解析路徑。無 --source-ticket、版本無法
-    解析、檔案不存在或來源票內容不含新票 ID（回填失敗，檔案無變更）時回傳
-    空清單——納入無變更的檔案會使提交範圍自我驗證失敗、整批放棄。
+    涵蓋 --source-ticket（spawned_tickets）與 --parent（children）兩種回填
+    （兩者互斥）。回填在 execute 前段已落盤；此處只解析路徑。未指定、版本無法
+    解析、檔案不存在或內容不含新票 ID（回填失敗，檔案無變更）的項目略過——
+    納入無變更的檔案會使提交範圍自我驗證失敗、整批放棄。
     """
-    source_id = getattr(args, "source_ticket", None)
-    if not source_id:
-        return []
-    source_version = extract_version_from_ticket_id(source_id)
-    if source_version is None:
-        return []
-    source_path = get_ticket_path(source_version, source_id)
-    try:
-        backfilled = ticket_id in Path(source_path).read_text(encoding="utf-8")
-    except OSError:
-        return []
-    return [str(source_path)] if backfilled else []
+    paths: list = []
+    for related_id in (getattr(args, "source_ticket", None), getattr(args, "parent", None)):
+        if not related_id:
+            continue
+        related_version = extract_version_from_ticket_id(related_id)
+        if related_version is None:
+            continue
+        related_path = get_ticket_path(related_version, related_id)
+        try:
+            backfilled = ticket_id in Path(related_path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if backfilled and str(related_path) not in paths:
+            paths.append(str(related_path))
+    return paths
 
 
 # 1.0.0-W1-028: 縮寫歧義攔截已抽為共用 helper，泛化原 _AmbiguousHowAction。

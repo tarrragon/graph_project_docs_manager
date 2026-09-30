@@ -132,3 +132,66 @@ class TestSourceTicketBackfillCommitted:
             f"tickets/{source_id}.md",
             TOPIC_REL,
         }
+
+
+class TestNewTopicRegistryCommitted:
+    def test_e1_new_topic_registry_line_in_same_commit(self, topic_repo):
+        from ticket_system.commands.create import execute
+
+        repo = topic_repo
+        before = _commit_count(repo)
+        assert execute(_make_args(new_topic="全新主題")) == 0
+
+        assert _commit_count(repo) == before + 1
+        assert _porcelain(repo, REGISTRY_REL) == "", "registry 行不應殘留工作區"
+        assert _porcelain(repo, TOPIC_REL) == ""
+        committed = _run_git(repo, "show", f"HEAD:{REGISTRY_REL}").stdout
+        assert committed == "既有主題\n全新主題\n"
+
+    def test_e2_existing_topic_does_not_commit_registry(self, topic_repo):
+        from ticket_system.commands.create import execute
+
+        assert execute(_make_args(topic="既有主題")) == 0
+        changed = _run_git(topic_repo, "show", "--name-only", "--pretty=format:", "HEAD")
+        assert REGISTRY_REL not in changed.stdout.split()
+
+    def test_others_uncommitted_registry_lines_not_absorbed(self, topic_repo):
+        from ticket_system.commands.create import execute
+
+        repo = topic_repo
+        with (repo / REGISTRY_REL).open("a", encoding="utf-8") as f:
+            f.write("他人未提交主題\n")
+        assert execute(_make_args(new_topic="全新主題")) == 0
+
+        committed = _run_git(repo, "show", f"HEAD:{REGISTRY_REL}").stdout
+        assert "全新主題" in committed and "他人未提交主題" not in committed
+        assert "他人未提交主題" in (repo / REGISTRY_REL).read_text(encoding="utf-8")
+
+
+class TestParentChildrenBackfillCommitted:
+    def test_e1_parent_children_in_same_commit(self, topic_repo, monkeypatch):
+        from ticket_system.commands.create import execute
+
+        repo = topic_repo
+        tickets_dir = repo / "tickets"
+        parent_id = "0.0.0-W1-999"
+        _write_source_ticket_for_bundle(tickets_dir, parent_id)
+        _install_context_bundle_path_mocks(monkeypatch, tickets_dir)
+        monkeypatch.setattr(
+            "ticket_system.lib.ticket_builder.get_ticket_path",
+            lambda v, tid: tickets_dir / f"{tid}.md",
+        )
+        _run_git(repo, "add", f"tickets/{parent_id}.md")
+        _run_git(repo, "commit", "-m", "seed parent ticket")
+
+        assert execute(_make_args(parent=parent_id, topic="既有主題")) == 0
+
+        child_id = _new_ticket_id(tickets_dir, exclude=(parent_id,))
+        assert _porcelain(repo, f"tickets/{parent_id}.md") == "", "母票回填不應殘留"
+        assert child_id in _run_git(repo, "show", f"HEAD:tickets/{parent_id}.md").stdout
+        changed = _run_git(repo, "show", "--name-only", "--pretty=format:", "HEAD")
+        assert set(changed.stdout.split()) == {
+            f"tickets/{child_id}.md",
+            f"tickets/{parent_id}.md",
+            TOPIC_REL,
+        }
