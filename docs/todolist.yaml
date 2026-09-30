@@ -370,6 +370,9 @@ versions:
       W1-042 改為守衛放行純版本行 bump）——確認「Commit Version Activation」成功、pubspec 在啟用 commit 內、工作區乾淨；
       驗證通過後才 skill-sync push version-release（用戶裁示，本地 2.10.0／發佈庫 2.7.0）。
       亦待實地驗證：0.3.3-W1-015「前移清單非空時 check 建議 finish」。
+      2026-10-01 發版結果：W1-042 實地驗證通過（activation commit 3141d18f7 成功、含 pubspec 0.4.0→0.4.1、工作區乾淨）。
+      W1-015 未能觸發（前移清單為空），驗證移至 0.4.1 finish。tag v0.4.0（7e000b157）內 CHANGELOG 仍為 In Development：
+      git add 撞並行 index.lock 只 WARN 仍打 tag，定版內容落入 activation commit；缺陷由 0.4.1-W1-017 承接。
       2026-09-30 規劃波開始，阻擋解除：用戶經 WRAP 裁決建圖讀邊規則為「有反向欄位的邊取兩側聯集並記錄宣告來源，
       Diagnostics 只報衝突與斷邊」（tech-decisions 同日補記），不依賴上游 #98。附帶 W1-045（PROP→SPEC 反向資料校正）；
       框架前置 W1-043（hooks-test-gate 逾時）、W1-044（settings.json timeout 單位查證）由 83 處理。
