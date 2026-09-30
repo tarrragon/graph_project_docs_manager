@@ -407,6 +407,7 @@ Live in_progress 票（非 stale，`staleness.is_live_occupied` 判準）以 see
 /ticket track set-blocked-by <id> <id2> --add          # 追加（去重）
 /ticket track set-blocked-by <id> <id2> --remove       # 移除指定 blockedBy
 /ticket track set-blocked-by <id> "<id2> <id3>" --add  # 一次追加多個：value 是單一位置參數，須引號包成一個字串（否則 argparse 報 unrecognized arguments）
+# 覆寫與 --add 指向有非終態 children 的 ANA 時，stderr 印 [HINT] 說明 ANA 將保持開啟；只提示，exit code 不變（見 create-command.md〈指向 ANA 的耦合後果提示〉）
 
 # 設定相關關係（relatedTo 欄位）
 /ticket track set-related-to <id> <related-id>         # 覆寫（設定單一 relatedTo）
