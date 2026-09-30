@@ -216,6 +216,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | S6-10 | 既有 `node_types` 解碼 | 解碼含 `edge_types` 的表 | 節點型別解碼結果與未含 `edge_types` 時相同（版本契約第 2 欄「既有 node_types 解碼測試不變」） |
 | S6-11（守衛） | 專案型別表整份缺席（`projectSchemaJson` 為 null） | 解碼 | 建圖不可用，原因碼為版本不在已知範圍；正向對照為 S6-12（SPEC-007 v1.3） |
 | S6-12 | 降級模式：內建表 asset 作為專案型別表傳入 | 解碼 | 建圖可用；使用中邊型等於 asset 的 established 邊型扣除 `domain_dependency`（SPEC-007 v1.3） |
+| S6-13（守衛） | 真實內建型別表 asset | 讀 `edge_types` | established 且 `class` 為 `see-also` 的邊型集合恰為 `association`、`spec_association`、`uc_association`、`proposal_association`；`association` 的 `forward_field` 為 `relatedTo`、`reverse_field` 為 null；Graph 認定為無向的邊型集合恰為 {`association`}。正向對照：測試用型別表新增一個 established see-also 邊型時，斷言翻紅（SPEC-007 v1.6 FR-05、D6）。測試檔放 `test/unit/graph/undirected_edge_contract_test.dart`：需讀 Graph 的無向認定，§1.3 不允許 schema 測試 import graph |
 
 ### 3.2 Graph bundle
 
@@ -387,7 +388,7 @@ G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷�
 
 | FR | 驗收條件數 | 5a | 5b | 日誌 |
 |----|-----------|----|----|------|
-| FR-01 | 7 | IT2-A5 | S6-1～S6-12、G2-9、G2-10 | L2 |
+| FR-01 | 7 | IT2-A5 | S6-1～S6-13、G2-9、G2-10 | L2 |
 | FR-02 | 3 | IT-3（A1、A3）；IT-1 合成 `duplicate_id` 列 | G1-1～G1-6 | — |
 | FR-03 | 8 | IT-2（A1～A4） | G2-1～G2-8、G3-1～G3-9 | L1 |
 | FR-04 | 6 | IT-1（A1、A3、A4） | G4-1～G4-9 | — |
@@ -451,7 +452,7 @@ FR 驗收（5b）與 IT（5a）交集的處理：5b 為規則分支的權威，I
 | 日誌 | L1～L3 | 8 |
 | 合計 | | 100 |
 
-守衛型案例與正向對照：IT1-A5、IT1-A6、IT2-A4、IT3-A4、IT3-A6、S6-7、S6-8、S6-11、G1-4、G3-5、G3-6、G3-9、G4-4、
+守衛型案例與正向對照：IT1-A5、IT1-A6、IT2-A4、IT3-A4、IT3-A6、S6-7、S6-8、S6-11、S6-13、G1-4、G3-5、G3-6、G3-9、G4-4、
 G7-2、G7-5、T1-3、D3-4、L2-3、L3-2，均已附正向對照輸入。E1 鑑別對照：IT1-A2、IT2-A5、IT2-A6、G2-9、G2-10、
 G4-8、G5-1、L1-2。
 
