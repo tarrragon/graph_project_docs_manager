@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ticket_system.constants import PRIORITY_LEVELS, TICKET_TYPES
+from ticket_system.lib.list_args import expand_list_arg
 from ticket_system.lib.ticket_loader import (
     get_tickets_dir,
     save_ticket,
@@ -175,7 +176,7 @@ def _parse_cli_args_to_config(
         TicketConfig 或 None（失敗）
     """
     # 處理 where_files
-    where_files = [f.strip() for f in args.where_files.split(",")] if args.where_files else []
+    where_files = expand_list_arg(args.where_files)
 
     # 驗證路徑 token：reject 非路徑髒值（如 src=.claude/x、layer=core）。
     # 髒值若寫入 where.files 會致下游派發路徑分類誤判，故前置攔下。
@@ -213,10 +214,10 @@ def _parse_cli_args_to_config(
         return None
 
     # 處理 blocked_by
-    blocked_by = [b.strip() for b in args.blocked_by.split(",")] if args.blocked_by else []
+    blocked_by = expand_list_arg(args.blocked_by)
 
     # 處理 related_to
-    related_to = [r.strip() for r in args.related_to.split(",")] if args.related_to else []
+    related_to = expand_list_arg(args.related_to)
 
     # 處理 acceptance（支援多次 --acceptance 和分隔符拆條 + 反斜線跳脫 + 拆條警告）
     acceptance = None
@@ -1157,7 +1158,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     parser.add_argument(
         "--where-layer", help="架構層級: Domain, Application, Infrastructure, Presentation"
     )
-    parser.add_argument("--where", "--where-files", dest="where_files", help="影響檔案（逗號分隔，如 'file1.py,file2.py'）")
+    parser.add_argument("--where", "--where-files", dest="where_files", action="append", help="影響檔案（逗號分隔，如 'file1.py,file2.py'；可重複給）")
     parser.add_argument("--why", help="需求依據（IMP/ANA/ADJ 類型必填）")
     parser.add_argument(
         "--dedup-checked",
@@ -1217,8 +1218,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="明示本票不指派主題（略過自動推導未命中時的警告；與 --topic / --new-topic 互斥）",
     )
-    parser.add_argument("--blocked-by", help="依賴的 Ticket IDs（逗號分隔，如 'ID1,ID2'）")
-    parser.add_argument("--related-to", help="相關的 Ticket IDs（逗號分隔，如 'ID1,ID2'）")
+    parser.add_argument("--blocked-by", action="append", help="依賴的 Ticket IDs（逗號分隔，如 'ID1,ID2'；可重複給）")
+    parser.add_argument("--related-to", action="append", help="相關的 Ticket IDs（逗號分隔，如 'ID1,ID2'；可重複給）")
     parser.add_argument("--acceptance", action="append", help="驗收條件（多次 --acceptance 或 | 分隔，如 '條件A|條件B'）")
     # --decision-tree 攔截：撞 --decision-tree-entry/-decision/-rationale（1.0.0-W1-028）
     register_ambiguous_prefix(

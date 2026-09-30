@@ -984,7 +984,7 @@ def _register_field_write_commands(
         help=TrackMessages.ARG_VALUE + "（與 --layer/--files 二擇一或合併使用）",
     )
     p_set_where.add_argument("--layer", help="僅寫入 where.layer 子欄位（保留 files）")
-    p_set_where.add_argument("--files", help="僅寫入 where.files 子欄位（逗號分隔多路徑，直接覆寫）")
+    p_set_where.add_argument("--files", action="append", help="僅寫入 where.files 子欄位（逗號分隔多路徑，可重複給，整體直接覆寫）")
     p_set_where.add_argument("--version", help=TrackMessages.ARG_VERSION)
 
     # set-why 操作
@@ -1348,7 +1348,7 @@ def _register_acceptance_commands(
     p_add_spawn_request.add_argument(
         "--priority", required=True, help="建議優先級（P0/P1/P2/P3）"
     )
-    p_add_spawn_request.add_argument("--files", default=None, help="相關檔案路徑，逗號分隔")
+    p_add_spawn_request.add_argument("--files", action="append", default=None, help="相關檔案路徑，逗號分隔，可重複給")
     p_add_spawn_request.add_argument("--context", default=None, help="補充 context（可選）")
     p_add_spawn_request.add_argument("--version", help=TrackMessages.ARG_VERSION)
     p_add_spawn_request.add_argument(
