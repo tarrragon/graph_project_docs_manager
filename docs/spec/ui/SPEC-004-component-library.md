@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-09-30"
-version: "1.63"
+version: "1.64"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.63（1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
+**版本**: 1.64（1.64 4.30 Panel `default` 改具名 `leading`／`fill`／`trailing` slot、4.14 TableColumnHeader 新增 `blank` 變體（`0.4.0-W3-001`）；1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -2468,6 +2468,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `static` | 一行 caption | 無 | UC Flow 步驟表欄首 |
 | `sortable` | 一行 caption + 排序指示圖示（asc / desc 時） | 點選 → 排序（循環待決） | Ticket 清單欄首（`action-tickets-sort-<key>`） |
 | `twoLine` | 第一行 `AppText.mono`（UC ID）、第二行 caption（名稱） | 無 | 矩陣欄首 |
+| `blank` | 無文字、無圖示；佔該欄欄寬、高同列內其他欄首 | 無 | 該欄沒有標題時（Ticket 清單損壞標記欄、UC Flow 步驟表首欄與事件表末欄）；取代呼叫端自放 `SizedBox.shrink()`（`0.4.0-W3-001`，用戶裁決：不包子件的空節點不是佈局輔助，表頭空白格屬元件層缺口） |
 
 #### 狀態矩陣
 
@@ -2523,7 +2524,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `label` | `String` | 是 | 呼叫端（`column*`；`twoLine` 第一行為 UC ID 資料值） |
+| `label` | `String` | `blank` 以外必填；`blank` 無此 slot | 呼叫端（`column*`；`twoLine` 第一行為 UC ID 資料值） |
 | `secondLine` | `String`（`twoLine`） | `twoLine` 必填 | 呼叫端（資料值） |
 | `order` | `SortOrder { none, asc, desc }`（`sortable`） | `sortable` 必填 | 不適用 |
 | `onSort` | `VoidCallback`（`sortable`） | `sortable` 必填 | 不適用 |
@@ -2559,7 +2560,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 面向 | 要求 |
 |------|------|
-| 朗讀標籤 | `static` / `twoLine`：`Semantics.header`，唸出 label（`twoLine` 唸「{ID}，{名稱}」）；`sortable`：`Semantics.button`，label 為 `sortA11yLabel`（order 代入 `sortNone` / `sortAscending` / `sortDescending`） |
+| 朗讀標籤 | `static` / `twoLine`：`Semantics.header`，唸出 label（`twoLine` 唸「{ID}，{名稱}」）；`sortable`：`Semantics.button`，label 為 `sortA11yLabel`（order 代入 `sortNone` / `sortAscending` / `sortDescending`）；`blank`：不產生語意節點（無可朗讀內容） |
 | 狀態變化播報 | `sortable` 點選後 `order` 改變時欄首重建，`Semantics.button` 的 label 等於 `sortA11yLabel(label, order)`，`{order}` 依新 `order` 取 `sortNone` / `sortAscending` / `sortDescending`（SPEC-003 §3.4 S4）；焦點停留於該欄首，重建即為播報載體，不另發 `SemanticsService.announce` |
 | 非視覺替代訊號 | 排序方向由朗讀標籤的 order 值承載，圖示非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | `sortable` 進入 Tab 順序，Space / Enter 觸發；其餘不進入 |
@@ -2567,7 +2568,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染三個變體 × `sortable` 三種 order
+- [ ] 一支測試渲染四個變體 × `sortable` 三種 order
+- [ ] `blank`：不含文字與圖示、無語意節點；置於 `TableRow.header` 時該欄寬與同欄資料格相同、列高與其他欄首相同
 - [ ] 兩種視窗尺寸下不溢位（置於固定寬欄）
 - [ ] 最長測試文案截斷（含第二行）
 - [ ] zh / en 七個 `column*` key 皆不溢位
@@ -4425,7 +4427,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `default` | 無捲動 | 子件中恰一個為填滿高的資料視圖或狀態元件，吸收剩餘高 | 矩陣、泳道、Ticket 列表、UC 步驟表 |
+| `default` | 無捲動 | `fill` slot 的子件吸收剩餘高；「恰一個填滿」由 slot 型別保證（單一 `Widget`，必填），呼叫端不包 `Expanded`；`leading`／`trailing` 依內容高排在其上下 | 矩陣、泳道、Ticket 列表、UC 步驟表，以及以 `EmptyState.section` 為主體的面板 |
 | `scrollable` | 主體垂直捲動（`scroll-*` 錨點） | 子件總高超過面板高時捲動 | 追溯樹、破洞分節、主題分節、節點詳情主欄與右欄、格詳情卡 |
 
 #### 狀態矩陣
@@ -4480,7 +4482,10 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `children` | 具名清單：`Toolbar` \| `SplitRow` \| `DataTable` \| `MatrixGrid` \| `SwimlaneGrid` \| `Tree` \| `Section` \| `BadgeRow` \| `Divider` \| `AppText` \| `DocumentBody` \| `ListRow` \| `EmptyState.section` \| `ButtonRow`（順序即堆疊順序；`default` 變體中資料視圖恰 1） | 是（1..12） | 不適用 |
+| `leading` | 具名清單（`default`）：`Toolbar` \| `AppText` \| `ListRow.meta` \| `EmptyState.section`（順序即堆疊順序，位於 `fill` 之上） | 否（0..4） | 不適用 |
+| `fill` | `Widget`（`default`）：`DataTable` \| `MatrixGrid` \| `SwimlaneGrid` \| `EmptyState.section`（吸收剩餘高；容器以 `Expanded` 承載，呼叫端不包） | `default` 必填（恰 1） | 不適用 |
+| `trailing` | 具名清單（`default`）：`SplitRow.footer` \| `BadgeRow`（順序即堆疊順序，位於 `fill` 之下） | 否（0..2） | 不適用 |
+| `children` | 具名清單（`scrollable`）：`Toolbar` \| `SplitRow` \| `Tree` \| `Section` \| `BadgeRow` \| `Divider` \| `AppText` \| `DocumentBody` \| `ListRow` \| `EmptyState.section` \| `ButtonRow`（順序即堆疊順序；總高超過面板高時捲動，無填滿子件） | `scrollable` 必填（1..12） | 不適用 |
 | `scrollKey` | `Key`（`scrollable`） | `scrollable` 必填（`scroll-<screen>-<area>`） | 不適用 |
 | `panelKey` | `Key?` | 否（`panel-domain-cell-detail` / `panel-domain-cell-detail-empty`） | 不適用 |
 | `locateTarget` | `Key?`（`scrollable`；§4.0.10 定位入口：值自 `null` 變為某子件 key 的那次 build，本容器於 post-frame 對該 key 執行捲動；焦點移入與高亮只於被定位子件接受 `isLocated` 時執行（§4.0.10 場景 a，4.40 `ListRow.item`），頁面層於高亮結束時改回 `null`；場景 c（4.39 樹展開後子項）只做最小捲動、不移焦點，頁面層於捲動完成的 post-frame 改回 `null`；同值不重複定位） | 否（提案） | 不適用 |
@@ -4522,7 +4527,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染 `default`（含一個填滿高資料視圖）與 `scrollable`（子件總高超過與不足一屏）
+- [ ] 一支測試渲染 `default`（`fill` 為資料視圖，`leading`／`trailing` 各有與皆空兩種）與 `scrollable`（子件總高超過與不足一屏）
+- [ ] `default`：`fill` 子件的高等於面板內高扣除內距、`leading`／`trailing` 內容高與子件間距；`fill` 為靠上對齊的 `EmptyState.section` 時，訊息上緣與不經 `fill` 直接堆疊時相同
 - [ ] 兩種視窗尺寸下不溢位；`scrollable` 超出時 drag 後 offset 改變、不足時 offset 為 0 且無錯誤
 - [ ] 無自有文字（本項不適用）
 - [ ] 兩個獨立 `Panel.scrollable` 並排時捲動互不影響
@@ -4534,6 +4540,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 |---------------|--------|
 | 主欄 + 右欄並排 | `TwoColumnLayout` |
 | 分節（節首 + 項目） | `Section` |
+| 呼叫端以 `Expanded` 包裹某個子件來指定填滿（容器看不到也驗不了「恰一個」，且頁面依賴容器內部為 Flex） | `default` 的 `fill` slot（component-contract-design 路徑 C 步驟 3〈佈局輔助的歸屬轉置〉） |
 
 ### 4.31 TwoColumnLayout（容器）
 
@@ -6422,6 +6429,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.64 | 2026-09-30 | `0.4.0-W3-001`（component-contract-design 3.13.0 路徑 C 步驟 3〈佈局輔助的歸屬轉置〉；本專案頁面層掃描見票面）：(1) 4.30 Panel `default` 的 `children` 拆為 `leading`（0..4）／`fill`（恰 1）／`trailing`（0..2）三個具名 slot，「恰一個填滿」由 `fill` 的單一型別保證，呼叫端不再包 `Expanded`；`scrollable` 維持 `children`。變體表、slot 契約、測試點、反例同步。原條文「子件中恰一個填滿」在三處以 `EmptyState.section` 為主體的面板上實際為 0 個填滿子件，改由 `fill` 承載後渲染不變（`section` 靠上對齊）；(2) 4.14 TableColumnHeader 新增 `blank` 變體（無文字、無語意節點），取代表頭空白格的 `SizedBox.shrink()`（用戶裁決 B：不包子件的空節點不是佈局輔助；表頭空白格屬元件層缺口）；`label` 必填性、朗讀標籤、測試點同步 |
 | 1.63 | 2026-09-30 | `0.3.3-W3-405`（承 `0.3.3-W3-404` 稽核浮出）：4.26 slot 契約 `message` 列的呼叫端清單與 i18n 訊息列補 `workspaceNotRemembered`（選定成功但偏好設定寫入失敗，對齊 SPEC-003 v1.53 §3.7 新增列與 §2.13 列 15）。該 key 已登於 §4.0.6〈1.56 補登〉表，本次只補 4.26 內的兩處清單 |
 | 1.62 | 2026-09-30 | `0.3.3-W3-395`（承 `0.3.3-W3-386` 分流）：ARB 同步四項 key 後規格對齊——§4.0.6〈1.56 補登〉表 `noUcNodesMessage` 列改登 `emptyUcMessage`（同文案；UC Flow 無 UC 改用 4.21 `message` 列既列的 key，`noUcNodesMessage` 自 ARB 移除）。`swimlanePanelTitle`（ARB 新增）、`matrixSubtotalA11yLabel`（MatrixGrid 列首 label「{domain}，小計 N」）本檔既有列已符合，未改；`backToDomainAction` 自 ARB 移除，4.4 `label` 列與 4.21 動作列既有「已移除」註記維持 |
 | 1.61 | 2026-09-30 | `0.3.3-W3-403`（承 `0.3.3-W3-392` 判讀 #45、#46）：SPEC-003 §3.4 F1–F7 委派本檔 4.13 單一承擔且其 F3 含選項錨點，本檔 4.13 缺——F3 補錨點子句（首項 `option-tickets-filter-<key>-all`、其後 `option-tickets-filter-<key>-<value>`）、slot `testKey` 列補選單根與選項錨點由 `<key>` 推導、測試點補選項錨點斷言。`lib/components/filter_dropdown.dart` 既有實作（`menu-…`、`option-…-<value>`）與 `filter_dropdown_test` 既有斷言已符合，規格補登，實作不變 |
