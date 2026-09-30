@@ -183,4 +183,53 @@ void main() {
     expect(result.activeEdgeTypes.map((e) => e.name).toSet(), expected);
     expect(expected, isNotEmpty);
   });
+
+  // 0.4.0-W4-004：壞邊型條目拒收，不擴散到整張型別表。
+  // 專案內無 developer.log 攔截做法，故不斷言日誌，只斷言不拋例外與拒收結果。
+  Map<String, dynamic> tableWithBad(dynamic badEntry) {
+    final table = buildEdgeTableJson(
+      version: builtinVersion,
+      edges: {'liveEdge': const EdgeSpec(forwardField: 'l')},
+    );
+    (table['edge_types'] as Map<String, dynamic>)['badEdge'] = badEntry;
+    return table;
+  }
+
+  Map<String, dynamic> validEdge() =>
+      const EdgeSpec(forwardField: 'x').toJson();
+
+  final badCases = <String, dynamic>{
+    'A 邊型值為字串': 'oops',
+    'B forward_field 為數字': validEdge()..['forward_field'] = 1,
+    'C1 class 為數字': validEdge()..['class'] = 1,
+    'C2 layer 為數字': validEdge()..['layer'] = 1,
+    'D reverse_field 為數字': validEdge()..['reverse_field'] = 1,
+  };
+
+  for (final entry in badCases.entries) {
+    test('W4-004 ${entry.key}：拒收該邊型，其餘保留，node_types 不受影響', () {
+      final table = tableWithBad(entry.value);
+      final decoded = typeTableFromJson(table);
+      expect(decoded.edgeTypes!.keys, ['liveEdge']);
+      final baseline = typeTableFromJson(
+        buildEdgeTableJson(
+          version: builtinVersion,
+          edges: {'liveEdge': const EdgeSpec(forwardField: 'l')},
+        ),
+      );
+      expect(decoded.nodeTypes.keys, baseline.nodeTypes.keys);
+      expect(
+        decoded.nodeTypes['SPEC']!.idPattern,
+        baseline.nodeTypes['SPEC']!.idPattern,
+      );
+    });
+  }
+
+  for (final card in <dynamic>[1, 'weird']) {
+    test('W4-004 F forward_cardinality=$card 保留為 null，不拒收', () {
+      final table = tableWithBad(validEdge()..['forward_cardinality'] = card);
+      final edge = typeTableFromJson(table).edgeTypes!['badEdge']!;
+      expect(edge.forwardCardinality, isNull);
+    });
+  }
 }
