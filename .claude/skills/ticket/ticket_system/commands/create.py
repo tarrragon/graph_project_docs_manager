@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ticket_system.constants import PRIORITY_LEVELS, TICKET_TYPES
+from ticket_system.lib.git_utils import EXIT_AUTO_COMMIT_FAILED
 from ticket_system.lib.list_args import expand_list_arg
 from ticket_system.lib.ticket_loader import (
     get_tickets_dir,
@@ -1016,6 +1017,7 @@ def execute(args: argparse.Namespace) -> int:
     # Step 4 (W17-002.2)：Context Bundle 自動抽取（post-persist enhancement）
     # --dry-run 時 ticket 未落盤，抽取與 auto-commit 的對象不存在，一併略過。
     ticket_intact = True
+    commit_failed = False
     if rc == 0 and not dry_run:
         try:
             ticket_intact = _auto_extract_context_bundle_post_create(
@@ -1052,21 +1054,29 @@ def execute(args: argparse.Namespace) -> int:
                 from ticket_system.lib import git_utils
                 extra_paths = _source_backfill_paths(args, ticket_id)
                 try:
-                    commit_status = git_utils._auto_commit_ticket_md(
+                    commit_result = git_utils.auto_commit_ticket_md_with_retry(
                         ticket_path, ticket_id, "Task Summary", operation="create",
                         extra_paths=extra_paths,
                         append_lines=topic_append_lines or None,
                     )
-                    if commit_status in ("not_git_repo", "git_failed"):
+                    commit_status = commit_result["status"]
+                    if commit_status == "not_git_repo":
                         sys.stderr.write(
-                            f"[create] auto-commit skipped（{commit_status}，非致命）；"
-                            f"ticket md 已保留 working tree，可手動 git commit 持久化。\n"
+                            "[create] auto-commit skipped（not_git_repo，非致命）；"
+                            "ticket md 已保留 working tree，可手動 git commit 持久化。\n"
                         )
+                    elif commit_status == "git_failed":
+                        commit_failed = True
+                        sys.stderr.write(_format_commit_failure_warning(
+                            ticket_path, ticket_id,
+                            str(commit_result.get("error") or ""),
+                            int(commit_result.get("attempts") or 1),
+                        ))
                 except Exception as exc:
-                    sys.stderr.write(
-                        f"[create] auto-commit 失敗（非致命，ticket md 已保留 "
-                        f"working tree）：{exc}\n"
-                    )
+                    commit_failed = True
+                    sys.stderr.write(_format_commit_failure_warning(
+                        ticket_path, ticket_id, f"{type(exc).__name__}: {exc}", 1,
+                    ))
             else:
                 sys.stderr.write(
                     "[create] 偵測到 ticket 檔案受損，已略過 auto-commit 避免"
@@ -1078,8 +1088,38 @@ def execute(args: argparse.Namespace) -> int:
         # 不可讓 CLI 以成功狀態結束（先前故障：訊息宣稱不影響、退出碼 0，
         # 連續四次相同失敗都被讀成成功）。
         rc = 1
+    elif commit_failed and rc == 0:
+        # 票已建但未入庫：以專用 exit code 反映，與建票失敗（1）區分。
+        rc = EXIT_AUTO_COMMIT_FAILED
 
     return rc
+
+
+def _format_commit_failure_warning(
+    ticket_path: str, ticket_id: str, error: str, attempts: int
+) -> str:
+    """組出 auto-commit 最終失敗的可見警告：原因、鎖檔路徑、補救指令。"""
+    from ticket_system.lib.git_ops import _lock_paths_from_error
+
+    lock_paths = _lock_paths_from_error(error, str(Path(ticket_path).parent))
+    lines = [
+        f"[WARNING] [create] {ticket_id} 已建立但 auto-commit 失敗"
+        f"（嘗試 {attempts} 次）；票檔保留在 working tree 尚未入庫，"
+        f"exit code {EXIT_AUTO_COMMIT_FAILED}。",
+        f"失敗原因：{error or '（git 未回報原因）'}",
+    ]
+    if lock_paths:
+        lines.append("鎖檔路徑：" + "；".join(lock_paths))
+        lines.append(
+            "鎖檔處置：工具不會自動刪除鎖。先確認沒有任何 git 行程在執行"
+            "（例如 `pgrep -lf git`），再依鎖檔內容與時間判斷是否為殘骸，"
+            "確認後才可手動移除。"
+        )
+    lines.append(
+        f"補救指令（鎖排除後）：git add {ticket_path} && "
+        f"git commit -m \"chore({ticket_id}): create Task Summary\""
+    )
+    return "\n".join(lines) + "\n"
 
 
 
