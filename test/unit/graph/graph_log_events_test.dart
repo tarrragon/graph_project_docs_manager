@@ -105,7 +105,7 @@ void main() {
       expect(recorder.entries.length, 1);
       expect(logs.single.payload, {
         GraphLogKeys.reason:
-            EdgeTypeUnavailableReason.versionOutOfKnownRange.name,
+            EdgeTypeUnavailableReason.projectVersionOutOfKnownRange.name,
       });
     });
 
@@ -124,7 +124,7 @@ void main() {
       expect(reason, EdgeTypeUnavailableReason.missingForwardCardinality.name);
       expect(
         reason,
-        isNot(EdgeTypeUnavailableReason.versionOutOfKnownRange.name),
+        isNot(EdgeTypeUnavailableReason.projectVersionOutOfKnownRange.name),
       );
     });
 
@@ -161,7 +161,7 @@ void main() {
       expect(recorder.entries, hasLength(1));
       expect(logs.single.payload, {
         GraphLogKeys.reason:
-            EdgeTypeUnavailableReason.versionOutOfKnownRange.name,
+            EdgeTypeUnavailableReason.projectVersionOutOfKnownRange.name,
       });
     });
 

@@ -41,7 +41,7 @@ class EdgeTypeEntry {
 /// 建圖不可用的原因碼（與 SPEC-006 FR-08「版本不在已知範圍」同一套）。
 enum EdgeTypeUnavailableReason {
   /// 缺 `edge_types`，且版本不在 App 已知範圍。
-  versionOutOfKnownRange,
+  projectVersionOutOfKnownRange,
 
   /// `edge_types` 有邊型缺正向基數且無法從內建表補。
   missingForwardCardinality,
@@ -95,7 +95,7 @@ EdgeTypeResolution resolveEdgeTypes({
         ? _fillMissingCardinality(builtin, builtin, true)
         : EdgeTypeResolution(
             edgeTypes: const {},
-            unavailableReason: EdgeTypeUnavailableReason.versionOutOfKnownRange,
+            unavailableReason: EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
           );
   }
   return _fillMissingCardinality(project, builtin, inRange);
