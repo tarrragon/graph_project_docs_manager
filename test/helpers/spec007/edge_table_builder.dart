@@ -25,7 +25,7 @@ class EdgeSpec {
     'forward_field': forwardField,
     'reverse_field': reverseField,
     'layer': layer,
-    if (forwardCardinality != null) 'forward_cardinality': forwardCardinality,
+    'forward_cardinality': ?forwardCardinality,
   };
 }
 
@@ -36,7 +36,7 @@ Map<String, dynamic> buildEdgeTableJson({
   Map<String, EdgeSpec>? edges,
 }) {
   return <String, dynamic>{
-    if (version != null) 'schema_generated_at_framework_version': version,
+    'schema_generated_at_framework_version': ?version,
     'node_types': <String, dynamic>{
       'SPEC': <String, dynamic>{'id_pattern': r'^SPEC-\d+$'},
     },

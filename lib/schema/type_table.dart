@@ -6,6 +6,9 @@
 /// 判定（專案 JSON／內建表三分）屬另一票範圍（FR-06 規則 7）。
 library;
 
+import 'package:graph_project_docs_manager/schema/edge_type.dart'
+    show EdgeTypeEntry;
+
 /// 路徑模式具體度（規則 6）：字面段數與跨段萬用成分數的具名組合。
 ///
 /// 取代先前的 `List<int>` 索引存取（`[0]`／`[1]` 易誤用、長度不對時只能在
@@ -39,7 +42,7 @@ int comparePathSpecificity(PathSpecificity a, PathSpecificity b) {
 /// 模式的 [CarrierPathPattern]（0.3.0-W3-531）。
 class CarrierPathPattern {
   CarrierPathPattern({required this.pattern, required this.specificity})
-      : _compiled = RegExp(pattern);
+    : _compiled = RegExp(pattern);
 
   /// 比對相對路徑（含檔名）用的正則字串，與 `id_pattern` 同一方言
   /// （`python-re`）。ASCII 語意由 Dart [RegExp] 預設提供：未啟用
@@ -96,11 +99,49 @@ class NodeTypeEntry {
   final Set<String> completenessFields;
 }
 
+/// 邊型正向基數：`one` 最多指向一個終點，`many` 可指向多個（SPEC-007 FR-01）。
+enum EdgeCardinality { one, many }
+
+/// 型別表 `edge_types` 的原始宣告（SPEC-007 FR-01）。
+///
+/// [forwardCardinality] 為 `null` 代表 JSON 缺該欄位（由 `resolveEdgeTypes`
+/// 依版本從內建表補或回報不可用）。
+class EdgeTypeDecl {
+  const EdgeTypeDecl({
+    required this.name,
+    required this.edgeClass,
+    required this.forwardField,
+    required this.reverseField,
+    required this.forwardCardinality,
+    required this.layer,
+  });
+
+  final String name;
+  final String edgeClass;
+  final String forwardField;
+  final String? reverseField;
+  final EdgeCardinality? forwardCardinality;
+  final String layer;
+
+  EdgeTypeEntry toEntry(EdgeCardinality cardinality) => EdgeTypeEntry(
+    name: name,
+    edgeClass: edgeClass,
+    forwardField: forwardField,
+    reverseField: reverseField,
+    forwardCardinality: cardinality,
+    layer: layer,
+  );
+}
+
 /// 型別表：型別名稱對條目的對照。
 class TypeTable {
-  const TypeTable(this.nodeTypes);
+  const TypeTable(this.nodeTypes, {this.edgeTypes});
 
   final Map<String, NodeTypeEntry> nodeTypes;
+
+  /// 邊型宣告；`null` 代表型別表缺 `edge_types` 鍵（與空 map 語意不同）。
+  /// 缺席不影響 [nodeTypes] 解碼（SPEC-007 FR-01）。
+  final Map<String, EdgeTypeDecl>? edgeTypes;
 
   /// 只回傳帶 `carrierPathPatterns` 欄位的型別（規則 3）。
   Iterable<NodeTypeEntry> get pathParticipatingTypes =>

@@ -43,11 +43,12 @@ void main() {
   });
 
   test('S6-2 使用中邊型 = established 扣 domain_dependency', () {
-    final expected = builtinEdges.entries
-        .where((e) => (e.value as Map)['layer'] == 'established')
-        .map((e) => e.key)
-        .toSet()
-      ..remove('domain_dependency');
+    final expected =
+        builtinEdges.entries
+            .where((e) => (e.value as Map)['layer'] == 'established')
+            .map((e) => e.key)
+            .toSet()
+          ..remove('domain_dependency');
     final result = _resolve(builtin);
     expect(result.activeEdgeTypes.map((e) => e.name).toSet(), expected);
     expect(expected, isNotEmpty);
