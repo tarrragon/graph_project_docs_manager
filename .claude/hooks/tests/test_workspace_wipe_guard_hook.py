@@ -876,6 +876,28 @@ class TestTargetRepoResolution:
         code = _run_target_hook(monkeypatch, f"git -C {wt} stash", main_repo, str(main_repo))
         assert code == 2
 
+    @pytest.mark.parametrize(
+        "template",
+        [
+            "(cd {o} && git stash create); git checkout -- .",
+            "(cd {o} && git stash list)\ngit checkout -- .",
+            "(cd {o} && ls) ; git reset --hard",
+            "(cd {o}); git checkout -- .",
+            "cd {o} && git stash create; cd -; git checkout -- .",
+            "cd {o} && git stash create; cd ..; git checkout -- .",
+        ],
+    )
+    def test_e2_cd_scope_leak_denied(self, monkeypatch, capsys, two_repos, template):
+        """子 shell 結束後或 cd 無法解析後的清空操作作用於主工作區，必須擋。"""
+        main_repo, other = two_repos
+        command = template.format(o=other)
+        assert _run_target_hook(monkeypatch, command, main_repo, str(main_repo)) == 2
+
+    def test_e1_plain_cd_chain_other_repo_allowed(self, monkeypatch, capsys, two_repos):
+        main_repo, other = two_repos
+        command = f"cd {other} && git stash create"
+        assert _run_target_hook(monkeypatch, command, main_repo, str(main_repo)) == 0
+
     def test_resolution_result_logged(self, monkeypatch, caplog, two_repos):
         """liveness：放行路徑須留下目標 repo 解析日誌。"""
         main_repo, other = two_repos

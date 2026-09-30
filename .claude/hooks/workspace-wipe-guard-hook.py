@@ -324,6 +324,35 @@ def _detect_operation(command: str) -> Optional[Tuple[str, Optional[str]]]:
 _WIPE_SUBCOMMANDS = frozenset({"stash", "checkout", "reset", "clean", "restore"})
 
 
+def _space_parens(command: str) -> str:
+    """在引號外的 `(` `)` 兩側補空白。
+
+    tokenizer 會把 `create);` 這類黏著括號的 token 視為單一 token，使括號後
+    接的 `git checkout -- .` 語句偵測不到（偵測盲點，fail-open）。補空白後
+    括號成為獨立 token，語句切分正確。引號內文字不動。
+    """
+    out = []
+    quote = ""
+    prev = ""
+    for ch in command:
+        if quote:
+            if ch == quote and prev != "\\":
+                quote = ""
+            out.append(ch)
+        elif ch in ("'", '"') and prev != "\\":
+            quote = ch
+            out.append(ch)
+        elif ch in "()":
+            out.append(" " + ch + " ")
+        else:
+            out.append(ch)
+        prev = ch
+    return "".join(out)
+
+
+_SINGLE_SUBSHELL_RE =re.compile(r"^\(\s*cd\s+[^\s()]+\s*&&[^()]*\)$")
+
+
 def _run_rev_parse(target_dir: str, *flags: str) -> Optional[List[str]]:
     """在 target_dir 執行 `git rev-parse <flags>`，回傳輸出行；任何失敗回傳 None。"""
     try:
@@ -390,12 +419,21 @@ def _command_targets_only_other_repos(
     invocations = find_git_invocations(command, _WIPE_SUBCOMMANDS)
     if not statements or not invocations:
         return False
+    # cd 作用域：tokenizer 會丟括號，無法得知子 shell 何時結束，故含括號時
+    # 只接受「整個命令恰為單一 ( cd X && ... ) 且內部無其他括號」，其餘不採用
+    # cd 推導（fail-closed，視為主 repo）。
+    cd_scope_known = "(" not in command and ")" not in command
+    if not cd_scope_known:
+        cd_scope_known = bool(_SINGLE_SUBSHELL_RE.match(command.strip()))
     cd_by_statement = {}
     current_cd = None
     for stmt in statements:
         if len(stmt) >= 2 and stmt[0] == "cd":
-            current_cd = stmt[1]
+            # 相對路徑或 `-` 無法可靠解析，標為無法解析
+            current_cd = stmt[1] if os.path.isabs(stmt[1]) else "$"
             continue
+        if not cd_scope_known:
+            current_cd = None
         key = tuple(stmt)
         if key in cd_by_statement and cd_by_statement[key] != current_cd:
             cd_by_statement[key] = "$"  # 同語句在不同目錄重複出現：無法區分，視為無法解析
@@ -549,7 +587,7 @@ def main() -> int:
         return 0
 
     tool_input = input_data.get("tool_input") or {}
-    command = tool_input.get("command", "") or ""
+    command = _space_parens(tool_input.get("command", "") or "")
 
     detected = _detect_operation(command)
     if detected is None:
