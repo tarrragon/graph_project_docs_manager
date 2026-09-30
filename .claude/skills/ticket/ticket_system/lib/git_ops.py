@@ -54,6 +54,9 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 _GIT_TIMEOUT = 10
+# 哨兵：呼叫端未指定 timeout 時，於呼叫當下讀取模組層 _GIT_TIMEOUT（而非定義當下綁定
+# 的預設值），使 timeout 可被測試與設定覆寫。None 代表不設 timeout。
+_DEFAULT_TIMEOUT = object()
 _MAX_RETRIES = 2
 _RETRY_WAIT_SECONDS = 1
 
@@ -72,10 +75,12 @@ def _run_git(
     args: List[str],
     cwd: Optional[str] = None,
     env: Optional[dict] = None,
-    timeout: int = _GIT_TIMEOUT,
+    timeout=_DEFAULT_TIMEOUT,
     input_text: Optional[str] = None,
 ) -> Tuple[bool, str, str]:
     """執行單次 git 命令，回傳 (success, stdout, stderr)。"""
+    if timeout is _DEFAULT_TIMEOUT:
+        timeout = _GIT_TIMEOUT
     try:
         result = subprocess.run(
             args,
@@ -200,7 +205,7 @@ def _run_git_with_lock_retry(
     args: List[str],
     cwd: Optional[str] = None,
     env: Optional[dict] = None,
-    timeout: int = _GIT_TIMEOUT,
+    timeout=_DEFAULT_TIMEOUT,
     max_retries: int = _MAX_RETRIES,
     wait_seconds: int = _RETRY_WAIT_SECONDS,
     input_text: Optional[str] = None,
@@ -465,8 +470,15 @@ def commit_files_isolated(
             }
 
         locks_before_update_ref = set(_scan_ref_lock_files(cwd))
+        # update-ref 持有 HEAD.lock／<branch>.lock 期間會執行 reference-transaction
+        # hook；高負載下 hook 可超過 _GIT_TIMEOUT，逾時會殺掉 git，鎖即殘留，其後
+        # 每次提交撞鎖失敗（實測根因，見 CHANGELOG 2.44.6）。故此步驟不設 timeout：
+        # 寧可等待，不可在持鎖中殺行程。其餘持鎖步驟（read-tree／add／write-tree 作用於
+        # 私有臨時 index；共用 index 同步為毫秒級且不觸發 hook）不同型，維持預設 timeout。
         ok, _, err = _run_git_with_lock_retry(
-            ["git", "update-ref", "HEAD", commit_sha, old_head], cwd=cwd
+            ["git", "update-ref", "HEAD", commit_sha, old_head],
+            cwd=cwd,
+            timeout=None,
         )
         if not ok:
             return {
