@@ -95,7 +95,7 @@ void main() {
     expect(result.isGraphAvailable, isFalse);
     expect(
       result.unavailableReason,
-      EdgeTypeUnavailableReason.versionOutOfKnownRange,
+      EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
     );
     final positive = _resolve(buildEdgeTableJson(version: builtinVersion));
     expect(positive.isGraphAvailable, isTrue);
@@ -165,7 +165,7 @@ void main() {
     expect(result.isGraphAvailable, isFalse);
     expect(
       result.unavailableReason,
-      EdgeTypeUnavailableReason.versionOutOfKnownRange,
+      EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
     );
     expect(result.edgeTypes, isEmpty);
     expect(_resolve(builtin).isGraphAvailable, isTrue);

@@ -23,7 +23,7 @@ const _corpora = ['graph_project_docs_manager', 'flutter_balance'];
 /// 一律回報「專案版本不在已知範圍」。
 UndeterminedGapReason _toUndeterminedReason(EdgeTypeUnavailableReason reason) =>
     switch (reason) {
-      EdgeTypeUnavailableReason.versionOutOfKnownRange ||
+      EdgeTypeUnavailableReason.projectVersionOutOfKnownRange ||
       EdgeTypeUnavailableReason.missingForwardCardinality =>
         UndeterminedGapReason.projectVersionOutOfKnownRange,
     };
