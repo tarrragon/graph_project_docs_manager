@@ -2,6 +2,7 @@
 id: PROP-001
 title: "交付形態與發布通路：關閉 App Sandbox，改走 Developer ID"
 status: confirmed
+evaluation_level: heavy
 source: development
 proposed_by: saas-tech-selection 訪談
 proposed_date: "2026-08-26"

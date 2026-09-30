@@ -2,6 +2,7 @@
 id: PROP-002
 title: "圖譜 schema 消費方式：讀取框架隨附的 tracking_schema.json"
 status: confirmed
+evaluation_level: heavy
 source: development
 proposed_by: saas-tech-selection 訪談
 proposed_date: "2026-08-26"
