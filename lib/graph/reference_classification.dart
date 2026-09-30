@@ -69,6 +69,7 @@ ReferenceClassification classifyGraphReferences({
   required List<RawNode> rawNodes,
   required Iterable<EdgeTypeEntry> edgeTypes,
   required Map<String, NodeTypeEntry> nodeTypes,
+  void Function()? onIdLookup,
 }) {
   final build = buildLightNodes(rawNodes);
   final graphIds = {for (final node in build.nodes) node.id};
@@ -96,7 +97,7 @@ ReferenceClassification classifyGraphReferences({
       final reason = _malformedReason(ref, patterns);
       if (reason != null) {
         malformed.add(MalformedRef(ref: ref, reason: reason));
-      } else if (graphIds.contains(ref.value)) {
+      } else if (_lookupId(graphIds, ref.value, onIdLookup)) {
         resolved.add(ResolvedRef(ref: ref, targetId: ref.value! as String));
       } else {
         dangling.add(
@@ -113,6 +114,12 @@ ReferenceClassification classifyGraphReferences({
     malformed: malformed,
     totalReferences: total,
   );
+}
+
+/// ID 索引查詢；每次查詢通知 [onIdLookup]（G9 計數注入點）。
+bool _lookupId(Set<String> graphIds, Object? id, void Function()? onIdLookup) {
+  onIdLookup?.call();
+  return graphIds.contains(id);
 }
 
 MalformedReason? _malformedReason(ReferenceValue ref, List<RegExp> patterns) {

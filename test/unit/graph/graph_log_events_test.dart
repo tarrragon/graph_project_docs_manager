@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
@@ -8,6 +9,7 @@ import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import '../../helpers/spec007/edge_table_builder.dart';
 import '../../helpers/spec007/known_distribution_fixture.dart';
 import '../../helpers/spec007/log_recorder.dart';
+import '../../helpers/spec007/raw_node_builder.dart';
 
 GraphBuildResult _build(
   LogRecorder recorder,
@@ -135,6 +137,51 @@ void main() {
       final bad = LogRecorder();
       _build(bad, const [], _missingEdgeTypesHigherVersion());
       expect(bad.ofEvent(GraphLogEvent.buildUnavailable), hasLength(1));
+    });
+  });
+
+  group('L3 鄰接查詢圖不可用日誌', () {
+    AdjacencyQuery unavailableQuery(LogRecorder recorder) => AdjacencyQuery(
+      buildResult: buildGraph(
+        rawNodes: const [],
+        projectSchemaJson: _missingEdgeTypesHigherVersion(),
+        builtinSchemaJson: loadBuiltinSchemaJson(),
+      ),
+      logSink: recorder.sink,
+    );
+
+    test('L3-1 圖不可用時連續三次查詢：事件恰記一次，帶原因碼', () {
+      final recorder = LogRecorder();
+      final q = unavailableQuery(recorder);
+      for (var i = 0; i < 3; i++) {
+        expect(q.query('0.1.0-W1-001'), isA<AdjacencyUnavailable>());
+      }
+      final logs = recorder.ofEvent(GraphLogEvent.adjacencyUnavailable);
+      expect(logs, hasLength(1));
+      expect(recorder.entries, hasLength(1));
+      expect(logs.single.payload, {
+        GraphLogKeys.reason:
+            EdgeTypeUnavailableReason.versionOutOfKnownRange.name,
+      });
+    });
+
+    test('L3-2 守衛：可用圖查詢十次（含查無鄰居）不記事件；正向對照為 L3-1', () {
+      final recorder = LogRecorder();
+      final q = AdjacencyQuery(
+        buildResult: buildGraph(
+          rawNodes: [buildRawNode(id: '0.1.0-W1-001')],
+          projectSchemaJson: loadBuiltinSchemaJson(),
+          builtinSchemaJson: loadBuiltinSchemaJson(),
+        ),
+        logSink: recorder.sink,
+      );
+      for (var i = 0; i < 10; i++) {
+        q.query(i.isEven ? '0.1.0-W1-001' : '0.9.9-W9-999');
+      }
+      expect(recorder.ofEvent(GraphLogEvent.adjacencyUnavailable), isEmpty);
+      final bad = LogRecorder();
+      unavailableQuery(bad).query('0.1.0-W1-001');
+      expect(bad.ofEvent(GraphLogEvent.adjacencyUnavailable), hasLength(1));
     });
   });
 }
