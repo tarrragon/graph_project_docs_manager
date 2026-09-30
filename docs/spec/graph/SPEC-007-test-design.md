@@ -86,7 +86,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | 欄位 | 值域 | 說明 |
 |------|------|------|
 | `corpus` | `graph_project_docs_manager`／`flutter_balance`／`synthetic` | 來源語料 |
-| `path` | 相對路徑，`/` 分隔，位於 `docs/` 下 | 實體化目標；兩語料以 `<corpus>/` 前綴分成兩棵子樹（見實體化流程第 1 步） |
+| `path` | 相對於該語料工作區根的路徑，以 `docs/` 開頭，`/` 分隔，不加語料前綴 | 實體化目標；寫入哪一棵樹由 `corpus` 欄（合成列為 `synthetic_host`）決定（見實體化流程第 1 步），使 Corpus 的完整相對路徑比對（SPEC-006 FR-06 規則 1）與真實語料一致 |
 | `id` | 字串 | 原值 |
 | `node_type` | 型別名 | 凍結時參照實作判定的型別（實體化器不使用，供斷言對照） |
 | `status`、`title` | 原值或缺席 | 原值保留型別（非字串原樣保留，供 FR-02 null 化驗證） |
@@ -123,8 +123,8 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 
 #### 2.2.2 實體化流程
 
-1. 每個語料建立一個暫存目錄作為工作區根
-2. 依 `path` 建目錄，寫出最小 frontmatter：`id`、`status`／`title`（有則寫）、`edge_fields` 全部鍵，以 YAML 序列化原值（保留非字串型別、null、空字串、帶空白的字串、`outputs` map）；並寫入使 Corpus 判型成立所需的最小欄位（`id` 已足，依 SPEC-006 FR-03）
+1. 每個語料建立一個暫存目錄作為工作區根；每列依 `corpus`（合成列依 `synthetic_host`）歸入其中一棵樹
+2. 在該樹的根下依 `path`（本身以 `docs/` 開頭，不加前綴）建目錄，寫出最小 frontmatter：`id`、`status`／`title`（有則寫）、`edge_fields` 全部鍵，以 YAML 序列化原值（保留非字串型別、null、空字串、帶空白的字串、`outputs` map）；並寫入使 Corpus 判型成立所需的最小欄位（`id` 已足，依 SPEC-006 FR-03）
 3. 經 Workspace 根路徑來源與真實檔案系統 port 執行一輪 Corpus 掃描（SPEC-006），取得 EVT-CORPUS-001 的 `rawNodes`
 4. 以 `type_table.json` 注入 Schema，Graph 由 `rawNodes` 建圖；Diagnostics 收 EVT-GRAPH-001
 5. 測試不得把 manifest 直接餵給 Graph；Graph、Corpus 皆不讀 manifest
@@ -174,8 +174,12 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 **測試檔**：`test/integration/graph_it3_light_node_separation_test.dart`
 
 **測資**：`ticket_detail_samples.json`：ticket 完整 frontmatter 樣本（原樣 map，含 5W1H 與生命週期欄位），
-凍結時對語料中出現的每一種 `status` 值至少選一張（README 列出 status 值集合與各選中張數）；
-樣本與 graph manifest 同樹實體化（樣本寫完整 frontmatter 而非最小 frontmatter）。
+凍結時對語料中出現的每一種 `status` 值至少選一張（README 列出 status 值集合與各選中張數）。
+
+**樣本與 manifest 的關係**：每張樣本必須是 graph manifest 既有的一列（同 `corpus`、同 `path`），不另增檔案。
+實體化時先依 manifest 寫最小 frontmatter，再以樣本的完整 frontmatter 覆寫同一路徑（每個路徑最終只有一份檔案）。
+凍結時斷言樣本的 `id`、`status`、`title` 與全部使用中邊型欄位原值，逐一等於該 manifest 列；因此覆寫不改變
+任何引用值，參照實作的 expected 值不受樣本影響。
 
 | # | Given | When | Then |
 |---|-------|------|------|
@@ -184,6 +188,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | IT3-A3 | 每張樣本 ticket | 從圖節點取值 | 圖節點不暴露 `what`／`how`／`who` 等任何非輕節點欄位 |
 | IT3-A4（守衛，E2） | status 覆蓋檢查器 | 比對樣本 status 值集合與 README 記錄的語料 status 集合 | 相等時通過；以缺一種 status 的測試內建樣本集作正向對照，斷言回報缺漏 |
 | IT3-A5 | 非 Ticket 節點 ID（例如 SPEC） | 查 TicketDetail | 回傳「不存在」 |
+| IT3-A6（守衛，E2） | 樣本與 manifest 一致性檢查器 | 對每張樣本比對同 `path` 的 manifest 列（`id`、`status`、`title`、全部使用中邊型欄位原值），並確認該列存在 | 全部相等時通過；以測試內建、某張樣本 `relatedTo` 與 manifest 列不同的樣本集作正向對照，斷言回報不一致；另以 `path` 不在 manifest 的樣本作正向對照，斷言回報缺列 |
 
 ## 3. 5b 內圈：逐 bundle 測試案例
 
@@ -432,15 +437,15 @@ FR 驗收（5b）與 IT（5a）交集的處理：5b 為規則分支的權威，I
 
 | Bundle／圈 | 群組 | 案例數 |
 |-----------|------|-------|
-| 5a 外圈 | IT-1、IT-2、IT-3 | 16 |
+| 5a 外圈 | IT-1、IT-2、IT-3 | 17 |
 | Schema | S6 | 10 |
 | Graph | G1～G9 | 52 |
 | TicketDetail | T1 | 5 |
 | Diagnostics | D3 | 5 |
 | 日誌 | L1～L3 | 8 |
-| 合計 | | 96 |
+| 合計 | | 97 |
 
-守衛型案例與正向對照：IT1-A5、IT1-A6、IT2-A4、IT3-A4、S6-7、S6-8、G1-4、G3-5、G3-6、G3-9、G4-4、
+守衛型案例與正向對照：IT1-A5、IT1-A6、IT2-A4、IT3-A4、IT3-A6、S6-7、S6-8、G1-4、G3-5、G3-6、G3-9、G4-4、
 G7-2、G7-5、T1-3、D3-4、L2-3、L3-2，均已附正向對照輸入。E1 鑑別對照：IT1-A2、IT2-A5、G2-9、G2-10、
 G4-8、G5-1、L1-2。
 
