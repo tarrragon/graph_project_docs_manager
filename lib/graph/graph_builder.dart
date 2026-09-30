@@ -68,12 +68,14 @@ GraphBuiltEvent buildGraphFromInputs({
   required List<RawNode> rawNodes,
   required Iterable<EdgeTypeEntry> edgeTypes,
   required Map<String, NodeTypeEntry> nodeTypes,
+  void Function()? onIdLookup,
 }) {
   final edgeList = edgeTypes.toList();
   final classified = classifyGraphReferences(
     rawNodes: rawNodes,
     edgeTypes: edgeList,
     nodeTypes: nodeTypes,
+    onIdLookup: onIdLookup,
   );
   final edges = _buildEdges(classified.resolved);
   final defects = <GraphDefect>[

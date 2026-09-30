@@ -13,6 +13,9 @@ enum GraphLogEvent {
 
   /// 建圖不可用，負載帶原因碼（[GraphLogKeys.reason]）。
   buildUnavailable,
+
+  /// 鄰接查詢時圖不可用（每個查詢實例只記一次），負載帶原因碼。
+  adjacencyUnavailable,
 }
 
 /// 事件負載鍵（具名常數，測試以常數比對）。
