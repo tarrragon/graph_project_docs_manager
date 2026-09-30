@@ -6,7 +6,8 @@
 """
 Merge Staged Index Guard Hook - PreToolUse(Bash)
 
-功能: 主工作區的 index 有 staged 變更（index != HEAD）時，擋下 `git merge`。
+功能: 主工作區的 index 有 staged 變更（index != HEAD）時，擋下需建 merge commit 的
+      `git merge`；可快轉（HEAD 為目標 ref 的祖先且無 --no-ff）的 merge 放行。
 
 Hook Event: PreToolUse
 Matcher: Bash
@@ -15,10 +16,13 @@ Decision: DENY（exit 2，stderr 訊息）| allow（無輸出，exit 0）
 ============================================================
 為何擋
 ============================================================
-index != HEAD 時 ort merge 必然失敗；失敗路徑以 read-tree --reset -u 把
+index != HEAD 時，需建 merge commit 的 ort merge 必然失敗（merge_start 檢查
+index 是否等於 HEAD）；失敗路徑以 read-tree --reset -u 把
 index 與工作區重設為「merge 開始時的 HEAD」。他方在這段期間 commit 時，
 重設目標是過期 tree，檔案與 index 雙雙退回舊值（實例：版本檔
 2.66.0 -> 2.65.0）。擋下這類 merge 不損失任何能成功的合併。
+快轉走 checkout_fast_forward（兩樹 unpack），staged 變更在不相干檔案上時會成功，
+即使失敗也無 read-tree 回舊 HEAD 的收尾路徑，故放行。
 
 ============================================================
 生成路徑盤點
@@ -27,6 +31,8 @@ index 與工作區重設為「merge 開始時的 HEAD」。他方在這段期間
 | Bash 直下 git merge（主工作區） | 是 |
 | git -C <主 repo> merge | 是 |
 | 目標位於 .claude/worktrees/* 或為 linked worktree | 否，放行（獨立 index） |
+| 可快轉的 merge（HEAD 是 ref 祖先且無 --no-ff） | 否，放行 |
+| ref 無法解析 / 多 ref（octopus） / --no-ff | 是，照 staged 判定 |
 | git merge --abort / --continue / --quit | 否，放行（收拾中斷合併，擋下會卡住 repo） |
 | CLI 內部 subprocess merge | 否（PreToolUse 看不到字面命令，已知邊界） |
 
@@ -78,6 +84,17 @@ def _is_worktree(target: str) -> bool:
     return (base / gd.stdout.strip()).resolve() != (base / cd.stdout.strip()).resolve()
 
 
+def _is_fast_forward(target: str, args: List[str]) -> bool:
+    """單一 ref、無 --no-ff，且 HEAD 為該 ref 的祖先才算可快轉；其餘保守回 False。"""
+    if "--no-ff" in args:
+        return False
+    refs = [a for a in args if not a.startswith("-")]
+    if len(refs) != 1:
+        return False
+    result = _run_git(target, ["merge-base", "--is-ancestor", "HEAD", refs[0]])
+    return result.returncode == 0
+
+
 def _resolve_target(cwd: str, dash_c: Optional[str]) -> str:
     if not dash_c:
         return cwd
@@ -91,7 +108,7 @@ def _build_deny_message(command: str, staged: List[str]) -> str:
     return (
         "[git merge 被阻擋：主工作區 index 有 staged 變更]\n\n"
         f"被攔截的命令：{command}\n\n"
-        "理由：index != HEAD 時 merge 必然失敗，而失敗路徑會以 read-tree 把 "
+        "理由：index != HEAD 時，需建 merge commit 的 merge 必然失敗，而失敗路徑會以 read-tree 把 "
         "index 與工作區重設為 merge 開始時的 HEAD。若他方在這段期間 commit，"
         "重設目標是過期 tree，檔案與 index 雙雙退回舊值。\n\n"
         f"目前 staged 檔：\n{shown}\n\n"
@@ -128,6 +145,9 @@ def main() -> int:
             staged = _staged_files(target)
             if not staged:
                 logger.debug("index 乾淨，放行: %s", target)
+                continue
+            if _is_fast_forward(target, inv.args):
+                logger.debug("可快轉 merge，放行: %s", target)
                 continue
             logger.warning("git merge 被阻擋（staged=%d）: %s", len(staged), command)
             print(_build_deny_message(" ".join(inv.statement), staged), file=sys.stderr)

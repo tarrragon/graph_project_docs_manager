@@ -135,3 +135,44 @@ def test_fail_open_on_internal_exception(monkeypatch, repo, capsys):
     monkeypatch.setattr(hook_module, "_staged_files", boom)
     assert _run(monkeypatch, "git merge x", repo) == 0
     assert "boom" in capsys.readouterr().err
+
+
+# ---- 快轉 merge：不走 merge commit 路徑，staged 不相干檔時放行 ----
+
+_COMMIT = ["-c", "user.email=t@example.com", "-c", "user.name=t"]
+
+
+def _branch_with_commit(repo: Path, name: str) -> None:
+    """從目前 HEAD 建分支並在其上加一個 commit，切回原分支。"""
+    _git(repo, "checkout", "-q", "-b", name)
+    (repo / f"{name}.txt").write_text(name + "\n")
+    _git(repo, "add", f"{name}.txt")
+    _git(repo, *_COMMIT, "commit", "-q", "-m", name)
+    _git(repo, "checkout", "-q", "-")
+
+
+def test_e1_fast_forward_merge_allowed_when_staged(monkeypatch, repo):
+    _branch_with_commit(repo, "ffbranch")
+    _stage(repo)
+    assert _run(monkeypatch, "git merge ffbranch", repo) == 0
+
+
+def test_e2_diverged_merge_denied_when_staged(monkeypatch, repo, capsys):
+    _branch_with_commit(repo, "side")
+    (repo / "main-only.txt").write_text("m\n")
+    _git(repo, "add", "main-only.txt")
+    _git(repo, *_COMMIT, "commit", "-q", "-m", "main-advance")
+    _stage(repo)
+    assert _run(monkeypatch, "git merge side", repo) == 2
+    assert "merge commit" in capsys.readouterr().err
+
+
+def test_e2_fast_forward_with_no_ff_denied_when_staged(monkeypatch, repo):
+    _branch_with_commit(repo, "ffbranch")
+    _stage(repo)
+    assert _run(monkeypatch, "git merge --no-ff ffbranch", repo) == 2
+
+
+def test_unresolvable_ref_treated_as_staged_denied(monkeypatch, repo):
+    _stage(repo)
+    assert _run(monkeypatch, "git merge no-such-ref", repo) == 2
