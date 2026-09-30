@@ -31,15 +31,9 @@ void main() {
     });
 
     final cases = <String, (String, Object)>{
-      'G3-2': (
-        'relatedTo',
-        ['0.1.0-W1-072 0.1.0-W1-073'],
-      ),
+      'G3-2': ('relatedTo', ['0.1.0-W1-072 0.1.0-W1-073']),
       'G3-3': ('discovered_during', '0.2.1-W3-1057 驗收'),
-      'G3-4': (
-        'spawned_tickets',
-        ['PENDING'],
-      ),
+      'G3-4': ('spawned_tickets', ['PENDING']),
     };
     for (final entry in cases.entries) {
       test('${entry.key} 不部分救回：patternMismatch', () {
@@ -58,16 +52,24 @@ void main() {
 
     test('G3-5 前導空白不去除；無空白版本解析成功', () {
       final target = buildRawNode(id: '0.1.0-W1-001');
-      final bad = _run([target, _withRelated('0.1.0-W1-002', [' 0.1.0-W1-001'])]);
+      final bad = _run([
+        target,
+        _withRelated('0.1.0-W1-002', [' 0.1.0-W1-001']),
+      ]);
       expect(bad.malformed.single.reason, MalformedReason.patternMismatch);
       expect(bad.resolved, isEmpty);
-      final ok = _run([target, _withRelated('0.1.0-W1-002', ['0.1.0-W1-001'])]);
+      final ok = _run([
+        target,
+        _withRelated('0.1.0-W1-002', ['0.1.0-W1-001']),
+      ]);
       expect(ok.resolved, hasLength(1));
       expect(ok.malformed, isEmpty);
     });
 
     test('G3-6 自我引用為 selfReference；列出他人則解析成功', () {
-      final self = _run([_withRelated('0.1.0-W1-001', ['0.1.0-W1-001'])]);
+      final self = _run([
+        _withRelated('0.1.0-W1-001', ['0.1.0-W1-001']),
+      ]);
       expect(self.malformed.single.reason, MalformedReason.selfReference);
       expect(self.resolved, isEmpty);
       final other = _run([
@@ -79,7 +81,9 @@ void main() {
     });
 
     test('G3-7 格式錯且不存在：歸格式錯誤', () {
-      final r = _run([_withRelated('0.1.0-W1-001', ['not an id'])]);
+      final r = _run([
+        _withRelated('0.1.0-W1-001', ['not an id']),
+      ]);
       expect(r.malformed, hasLength(1));
       expect(r.dangling, isEmpty);
     });
