@@ -166,3 +166,72 @@ def auto_commit_ticket_md_with_retry(*args, **kwargs) -> Dict[str, object]:
         if not _is_retryable_commit_failure(error) or time.monotonic() + delay > deadline:
             return {"status": status, "error": error, "attempts": attempts}
         time.sleep(delay)
+
+
+def format_write_command_commit_failure(
+    label: str, ticket_path: str, ticket_id: str, section: str,
+    operation: str, error: str, attempts: int,
+) -> str:
+    """寫入命令 auto-commit 最終失敗的可見警告：原因、鎖檔路徑、補救指令。
+
+    與 create 的警告同形（見 ``create._format_commit_failure_warning``），差別是
+    寫入已落在 working tree 的既有票檔，補救指令的 commit message 依 operation 組出。
+    """
+    from .git_ops import _lock_paths_from_error
+
+    lines = [
+        f"[WARNING] [{label}] {ticket_id} 已寫入 working tree 但 auto-commit 失敗"
+        f"（嘗試 {attempts} 次）；尚未入庫，exit code {EXIT_AUTO_COMMIT_FAILED}。",
+        f"失敗原因：{error or '（git 未回報原因）'}",
+    ]
+    lock_paths = _lock_paths_from_error(error, str(Path(ticket_path).parent))
+    if lock_paths:
+        lines.append("鎖檔路徑：" + "；".join(lock_paths))
+        lines.append(
+            "鎖檔處置：工具不會自動刪除鎖。先確認沒有任何 git 行程在執行"
+            "（例如 `pgrep -lf git`），再依鎖檔內容與時間判斷是否為殘骸，"
+            "確認後才可手動移除。"
+        )
+    lines.append(
+        f"補救指令（鎖排除後）：git add {ticket_path} && "
+        f"git commit -m \"chore({ticket_id}): {operation} {section}\""
+    )
+    return "\n".join(lines) + "\n"
+
+
+def commit_ticket_md_reporting(
+    label: str, ticket_path: str, ticket_id: str, section: str,
+    operation: str = "append-log", **kwargs,
+) -> bool:
+    """寫入命令共用的 auto-commit 收尾：提交、重試、失敗時輸出 WARNING。
+
+    Returns:
+        True 表最終失敗（git_failed 或例外），呼叫端應以 ``EXIT_AUTO_COMMIT_FAILED``
+        結束。``not_git_repo`` 印 skipped 訊息但不算失敗（無 repo 可提交）。
+    """
+    import sys
+
+    try:
+        result = auto_commit_ticket_md_with_retry(
+            ticket_path, ticket_id, section, operation=operation, **kwargs
+        )
+    except Exception as exc:
+        sys.stderr.write(format_write_command_commit_failure(
+            label, ticket_path, ticket_id, section, operation,
+            f"{type(exc).__name__}: {exc}", 1,
+        ))
+        return True
+    status = result["status"]
+    if status == "not_git_repo":
+        sys.stderr.write(
+            f"[{label}] auto-commit skipped（not_git_repo，非致命）；"
+            "body 已保留 working tree，可手動 git commit 持久化。\n"
+        )
+        return False
+    if status == "git_failed":
+        sys.stderr.write(format_write_command_commit_failure(
+            label, ticket_path, ticket_id, section, operation,
+            str(result.get("error") or ""), int(result.get("attempts") or 1),
+        ))
+        return True
+    return False
