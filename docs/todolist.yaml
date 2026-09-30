@@ -355,7 +355,7 @@ versions:
   - version: "0.4.0"
     codename: "Graph"
     description: "建圖：relatedTo 的 1-hop symmetric union 正確，斷邊交給 Diagnostics，輕節點與 5W1H 全文分離"
-    status: "planned"
+    status: "active"
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.4/v0.4.0/"
