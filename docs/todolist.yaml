@@ -376,6 +376,10 @@ versions:
       W1-049 修 skill 至 3.13.0（83）；本專案頁面層依新判準轉置 W3-001 經用戶裁決留在 0.4.0（非 Graph 主題，
       理由：本專案為該 skill 上游，發布新判準時自身應已符合）。W1-046＋W1-047 定案一起 sync-push；
       timeout 單位問題開 canonical #112（用戶授權）。
+      2026-09-30 SPEC-007 v1.1（兩份審查修正＋來源邊多值裁決）；上游 schema 加 forward_cardinality（W1-056，doc 1.23.0）。
+      排程注意：W1-056 依用戶 AUQ 將 schema_generated_at_framework_version 維持 2.60.13（App 不讀 edge_types，
+      升版會使所有 consumer 被判不相容）。SPEC-007 FR-01 的補值規則（缺基數且版本在已知範圍→從內建表補）在此前提下成立；
+      日後若 schema 有 App 會讀到的不相容變更，產生版本須與 builtin_schema_version.json 同批升（W2-001 與建圖實作票驗收時確認）。
 
   - version: "0.5.0"
     codename: "Layout"
