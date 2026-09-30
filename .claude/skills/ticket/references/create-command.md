@@ -288,7 +288,7 @@ ANA 掛著非終態 children 時不能 complete，被 blockedBy 的 ANA 不 comp
 
 ## --source-ticket 參數（衍生關係）
 
-`--source-ticket <SOURCE-ID>` 用於建立「衍生 Ticket」關係（spawned_tickets），典型場景為 ANA 衍生 IMP / ADJ、執行中發現的獨立技術債。
+`--source-ticket <SOURCE-ID>` 用於建立「衍生 Ticket」關係（spawned_tickets），典型場景為執行中發現、結論未要求的獨立工作（獨立 bug、技術債）。ANA 結論要求的落地不屬此參數，改用 `--parent`（PC-091）。
 
 ### --discovered-during vs --source-ticket（發現衍生 vs 規劃衍生）
 
@@ -296,7 +296,7 @@ ANA 掛著非終態 children 時不能 complete，被 blockedBy 的 ANA 不 comp
 
 | 旗標 | 適用情境 | 上游主題的意義 | 對 S1 判準的影響 |
 |------|---------|---------------|-----------------|
-| `--source-ticket` | 規劃衍生：ANA 拆 IMP、父票拆子票，上游本就決定了新票主題 | 主題必然相同 | S1 正常繼承 |
+| `--source-ticket` | 規劃衍生：上游本就決定了新票主題的獨立延伸工作（ANA 結論要求的落地用 `--parent`，PC-091；父票拆子票同用 `--parent`） | 主題必然相同 | S1 正常繼承 |
 | `--discovered-during` | 發現衍生：執行中撞到跨主題問題，主題取決於撞到什麼，與上游無關 | 只反映「當時剛好在改哪個檔案」 | S1 短路不觸發 |
 
 新票的 `discovered_during` frontmatter 欄位記錄血緣供追溯，但不驅動任何主題指派——S2 檔案叢集判準不受影響，仍依新票自身 `--where` 正常運作（可能命中，也可能未命中）。
