@@ -327,13 +327,13 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 
 #### G9 計算量（NFR-02）
 
-**測試檔**：`test/performance/graph_build_scaling_test.dart`（D1：計時斷言不進主套件）
+**測試檔**：`test/performance/graph_build_scaling_test.dart`
 
 | # | Given | Then |
 |---|-------|------|
 | G9-1 | 引用值數 N 與 10N 的合成語料 | 以操作計數（ID 索引查詢次數，經注入計數器取得）斷言與引用值總數成正比；不以牆鐘時間作 pass-fail |
 
-主套件不含 NFR-02 案例；G9 走獨立指令執行。
+G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷言，隨 `flutter test` 主套件執行（專案無 `dart_test.yaml` 排除 `test/performance/`）。NFR-02 若日後需要牆鐘時間量測，該案例須另以 tag 排除於主套件之外。
 
 ### 3.3 TicketDetail bundle
 
