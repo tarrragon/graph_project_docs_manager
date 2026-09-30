@@ -123,13 +123,17 @@ class EdgeTypeDecl {
   final EdgeCardinality? forwardCardinality;
   final String layer;
 
-  EdgeTypeEntry toEntry(EdgeCardinality cardinality) => EdgeTypeEntry(
+  EdgeTypeEntry toEntry(
+    EdgeCardinality cardinality, {
+    bool isUndirected = false,
+  }) => EdgeTypeEntry(
     name: name,
     edgeClass: edgeClass,
     forwardField: forwardField,
     reverseField: reverseField,
     forwardCardinality: cardinality,
     layer: layer,
+    isUndirected: isUndirected,
   );
 }
 
