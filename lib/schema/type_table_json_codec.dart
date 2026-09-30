@@ -56,13 +56,17 @@ Map<String, EdgeTypeDecl>? _parseEdgeTypes(dynamic raw) {
   }
   final result = <String, EdgeTypeDecl>{};
   for (final entry in raw.entries) {
-    final map = entry.value as Map<String, dynamic>;
-    final forwardField = map['forward_field'] as String?;
-    final edgeClass = map['class'] as String?;
-    final layer = map['layer'] as String?;
-    if (forwardField == null || edgeClass == null || layer == null) {
+    final map = entry.value;
+    final forwardField = map is Map ? map['forward_field'] : null;
+    final edgeClass = map is Map ? map['class'] : null;
+    final layer = map is Map ? map['layer'] : null;
+    final reverseField = map is Map ? map['reverse_field'] : null;
+    if (forwardField is! String ||
+        edgeClass is! String ||
+        layer is! String ||
+        (reverseField != null && reverseField is! String)) {
       developer.log(
-        '邊型 ${entry.key} 缺 class／forward_field／layer，已拒收', // i18n-exempt: 開發者診斷 log
+        '邊型 ${entry.key} 不是 map，或 class／forward_field／layer 缺席或非字串，或 reverse_field 非字串，已拒收', // i18n-exempt: 開發者診斷 log
         name: _tag,
         level: 900,
       );
@@ -72,9 +76,9 @@ Map<String, EdgeTypeDecl>? _parseEdgeTypes(dynamic raw) {
       name: entry.key,
       edgeClass: edgeClass,
       forwardField: forwardField,
-      reverseField: map['reverse_field'] as String?,
+      reverseField: reverseField as String?,
       forwardCardinality: EdgeCardinality.values
-          .where((value) => value.name == map['forward_cardinality'])
+          .where((value) => value.name == (map as Map)['forward_cardinality'])
           .firstOrNull,
       layer: layer,
     );
