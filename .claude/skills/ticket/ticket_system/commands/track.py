@@ -129,6 +129,7 @@ from .track_set_closed_by import execute_set_closed_by
 # 導入 restore 子命令（closed 票唯一合法出邊：closed -> pending 還原路徑）
 from .track_restore import execute_restore
 # 導入 set-exit-status / set-completion-info 子命令（1.5.0-W5-021 制式化內容生成）
+from ticket_system.lib.git_utils import EXIT_AUTO_COMMIT_FAILED
 from .track_structured_body import (
     execute_set_exit_status,
     execute_set_completion_info,
@@ -320,7 +321,8 @@ def _execute_complete(args: argparse.Namespace, version: str) -> int:
     if deny is not None:
         return deny
     rc = execute_complete(args, version)
-    if rc == 0:
+    # EXIT_AUTO_COMMIT_FAILED：complete 已完成、僅 metadata 未入庫，lease 仍須釋放
+    if rc in (0, EXIT_AUTO_COMMIT_FAILED):
         release_lease(version, args.ticket_id)
     return rc
 
