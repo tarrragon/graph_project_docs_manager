@@ -28,7 +28,7 @@
 meta:
   project: "graph_project_docs_manager"
   architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
-  last_updated: "2026-09-29"
+  last_updated: "2026-09-30"
   maintainer: "rosemary-project-manager"
 
 versions:
@@ -235,7 +235,7 @@ versions:
   - version: "0.3.3"
     codename: "Corpus-4"
     description: "0.3.x 第三個 patch：規格與實作一致性"
-    status: "active"
+    status: completed
     scope: "frozen"    # 2026-09-30 凍結：版本內票全數已完成，無待標 scope_blocker 的必要票
     worklog: "docs/work-logs/v0/v0.3/v0.3.3/"
     notes: |
