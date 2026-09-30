@@ -380,6 +380,29 @@ versions:
       排程注意：W1-056 依用戶 AUQ 將 schema_generated_at_framework_version 維持 2.60.13（App 不讀 edge_types，
       升版會使所有 consumer 被判不相容）。SPEC-007 FR-01 的補值規則（缺基數且版本在已知範圍→從內建表補）在此前提下成立；
       日後若 schema 有 App 會讀到的不相容變更，產生版本須與 builtin_schema_version.json 同批升（W2-001 與建圖實作票驗收時確認）。
+      版本契約（2026-09-30，開工前寫定，實作後逐項對照；規格 SPEC-007 v1.2）：
+      1. 範圍與執行順序
+         - 主題（Graph，SPEC-007）：W2-001（內建型別表副本＋UC-01 兩來源）→ Step 5 測試設計（兩軸：FR 驗收＋
+           IT-1～3；含 Python 參照實作與兩語料凍結 manifest）→ Step 6 建實作票（Schema 邊型解碼 FR-01、Graph FR-02～06／08、
+           TicketDetail FR-07、Diagnostics FR-09）。
+         - 非主題、經用戶裁決留本版：W3-001（頁面層佈局輔助轉置，依 component-contract-design 3.13.0）。
+         - 框架前置（83）：W1-057 進行中；W1-055（P3 ANA）。流程類：W1-039、W1-041、W1-054。
+      2. 預期變更
+         - 預期新增（不應有既有測試變紅）：lib/ 目前無 Graph 程式碼，FR-02～09 全為新增；Schema 型別表 codec 加解碼 edge_types，
+           既有 node_types 解碼測試不變。
+         - W2-001：內建型別表副本換成含 forward_cardinality 的版本，node_types 內容不變，產生版本維持 2.60.13；
+           K4 契約測試維持綠。預期不變：0.3.0 IT-1／IT-2 的凍結值與 SPEC-006 各計數。
+         - W3-001：Panel 改具名填滿 slot，預期變紅的是以 Panel(children: [Expanded(...)]) 呼叫的 widget 測試與頁面測試，
+           調整方式為改用新 slot，斷言內容（版面與狀態錨點）不變；golden 若有差異須逐張確認僅為同構重排。
+         - 預期數值（凍結時重量，以下為 2026-09-30 規劃量測）：兩語料節點 1179／1690；斷邊 3／0；格式錯誤 1／4；
+           spawn 只在反向 38／52；spawn multiSource 7／9；provenance multiSource 0（W2-001 後 UC-01 為合法兩來源）；
+           重複 ID 與自我引用 0（以合成列覆蓋）。
+      3. 驗證方式：全部機械驗證（單元測試、IT-1～3、日誌查詢）。本版無權限類平台事實，無人工實測。
+      4. 人工實測：無。
+      5. 日誌事件（結果值）：
+         - 建圖完成：nodeCount、edgeCount、各缺陷子類計數、FR-03 三類計數（記實際值，非「開始建圖」）
+         - 建圖不可用：原因碼（型別表缺 edge_types／基數且版本不在已知範圍）
+         - 鄰接查詢回傳「圖不可用」時：記錄一次原因碼（不逐次記錄正常查詢）
 
   - version: "0.5.0"
     codename: "Layout"
