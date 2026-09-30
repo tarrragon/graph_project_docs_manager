@@ -142,8 +142,11 @@ def check_missing_entries(gitignore_entries: Set[str], logger) -> List[str]:
 DEFAULT_TICKET_ROOT_DIR = "docs/work-logs"
 _TICKET_CONSTANTS_RELATIVE = ".claude/skills/ticket/ticket_system/constants.py"
 
-# 等價涵蓋票庫 *.md.lock 的裸 pattern（經 _normalize_ignore_token 後比對）
-_LOCK_WILDCARD_EQUIVALENTS = frozenset({"*.md.lock", "*.lock"})
+# 無目錄前綴、可涵蓋任意位置票庫 *.md.lock 的全域寫法（前導 `/` 可選）。
+# 不用 _normalize_ignore_token：它為 .claude 內項目設計，會把 `.claude/**/*.lock`
+# 剝成 `*.lock` 而誤判為全域涵蓋。
+_LOCK_GLOBAL_PATTERNS = frozenset({"*.lock", "*.md.lock", "**/*.lock", "**/*.md.lock"})
+_LOCK_SUFFIXES = ("/**/*.md.lock", "/**/*.lock")
 
 
 def resolve_ticket_root_dir(project_root: Path, logger) -> str:
@@ -185,17 +188,21 @@ def check_ticket_lock_entry(gitignore_entries: Set[str], project_root: Path, log
     if root_dir == ".claude" or root_dir.startswith(".claude/"):
         logger.info("gitignore-check: 票庫在 .claude/ 下，既有規則已涵蓋 (%s)", required)
         return []
-    normalized = {_normalize_ignore_token(e) for e in gitignore_entries}
-    covered = (
-        required in gitignore_entries
-        or f"{root_dir}/**/*.lock" in gitignore_entries
-        or bool(normalized & _LOCK_WILDCARD_EQUIVALENTS)
-        # `docs/**/*.md.lock`：任一祖先目錄的 **/ 形式
-        or any(
-            e.endswith("/**/*.md.lock") and (root_dir + "/").startswith(e[: -len("**/*.md.lock")])
-            for e in gitignore_entries
-        )
-    )
+    covered = False
+    for raw in gitignore_entries:
+        e = raw[1:] if raw.startswith("/") else raw
+        if e in _LOCK_GLOBAL_PATTERNS:
+            covered = True
+            break
+        # 帶目錄前綴：僅 `<P>/**/*.lock|*.md.lock` 且 P 為票庫根目錄或其祖先才算涵蓋
+        for suffix in _LOCK_SUFFIXES:
+            if e.endswith(suffix):
+                prefix = e[: -len(suffix)]
+                if prefix and (root_dir == prefix or root_dir.startswith(prefix + "/")):
+                    covered = True
+                    break
+        if covered:
+            break
     logger.info(
         "gitignore-check: 票庫 lock 必要項 %s -> %s", required, "已涵蓋" if covered else "缺失"
     )

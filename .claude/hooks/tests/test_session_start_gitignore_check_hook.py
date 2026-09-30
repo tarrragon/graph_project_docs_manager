@@ -278,3 +278,22 @@ def test_run_checks_includes_ticket_lock(tmp_path):
     with patch.object(hook.subprocess, "run", return_value=_mk_ls_files("")):
         missing, _, _ = hook.run_checks(tmp_path, MagicMock())
     assert "docs/work-logs/**/*.md.lock" in missing
+
+
+def test_claude_scoped_lock_rules_do_not_cover_ticket_root(tmp_path):
+    """E2：只含 .claude/ 範圍 lock 規則（框架預設）時，票庫在 docs/ 下必須檢出缺失。"""
+    hook = load_hook_module()
+    for i, line in enumerate(
+        [".claude/**/*.lock", ".claude/*.lock", "/.claude/**/*.lock", "other/**/*.md.lock", "docs/*.lock"]
+    ):
+        sub = tmp_path / f"m{i}"
+        sub.mkdir()
+        assert _lock_missing(hook, sub, line + "\n") == ["docs/work-logs/**/*.md.lock"], line
+
+
+def test_leading_slash_global_forms_cover(tmp_path):
+    hook = load_hook_module()
+    for i, line in enumerate(["/*.lock", "/**/*.md.lock", "docs/work-logs/**/*.lock"]):
+        sub = tmp_path / f"s{i}"
+        sub.mkdir()
+        assert _lock_missing(hook, sub, line + "\n") == [], line
