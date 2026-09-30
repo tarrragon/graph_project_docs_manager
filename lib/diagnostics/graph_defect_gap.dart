@@ -94,23 +94,38 @@ class GraphDefectUndetermined extends GraphDefectGapResult {
   final UndeterminedGapReason reason;
 }
 
+/// `graphDefect` 偵測的輸入（sealed）：建圖可用帶事件、不可用帶原因，
+/// 兩種狀態互斥，非法組合（兩者皆無）在型別上不可表達。
+///
+/// 由 Diagnostics 自有；schema 原因碼轉換屬編排層。
+sealed class GraphDefectInput {
+  const GraphDefectInput();
+}
+
+class GraphDefectInputAvailable extends GraphDefectInput {
+  const GraphDefectInputAvailable(this.event);
+
+  final GraphBuiltEvent event;
+}
+
+class GraphDefectInputUnavailable extends GraphDefectInput {
+  const GraphDefectInputUnavailable(this.reason);
+
+  final UndeterminedGapReason reason;
+}
+
 /// 需求：[SPEC-007 FR-09〈規則〉] 一筆缺陷一筆破洞。
 ///
-/// [unavailableReason] 非 `null` 代表建圖不可用，回傳
-/// [GraphDefectUndetermined]；schema 原因碼轉換屬編排層，本函式不判定。
-/// 可用時 [event] 不得為 `null`。
-GraphDefectGapResult detectGraphDefectGaps({
-  required GraphBuiltEvent? event,
-  required UndeterminedGapReason? unavailableReason,
-}) {
-  if (unavailableReason != null) {
-    return GraphDefectUndetermined(reason: unavailableReason);
-  }
-  assert(event != null, '建圖可用時必須提供 EVT-GRAPH-001');
-  return GraphDefectsDetected([
-    for (final defect in event!.graphDefects) _toGap(defect),
-  ]);
-}
+/// 不可用輸入回傳 [GraphDefectUndetermined]，不產生任何 `graphDefect`。
+GraphDefectGapResult detectGraphDefectGaps(GraphDefectInput input) =>
+    switch (input) {
+      GraphDefectInputUnavailable(:final reason) => GraphDefectUndetermined(
+        reason: reason,
+      ),
+      GraphDefectInputAvailable(:final event) => GraphDefectsDetected([
+        for (final defect in event.graphDefects) _toGap(defect),
+      ]),
+    };
 
 GraphDefectGap _toGap(GraphDefect defect) => switch (defect) {
   DanglingRefGraphDefect(:final detail) => RefGraphDefectGap(

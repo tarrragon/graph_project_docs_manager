@@ -32,12 +32,10 @@ GraphDefectGapResult _diagnose(CorpusGraphRun run) {
   final result = run.buildResult;
   return switch (result) {
     GraphBuildAvailable(:final event) => detectGraphDefectGaps(
-      event: event,
-      unavailableReason: null,
+      GraphDefectInputAvailable(event),
     ),
     GraphBuildUnavailable(:final reason) => detectGraphDefectGaps(
-      event: null,
-      unavailableReason: _toUndeterminedReason(reason),
+      GraphDefectInputUnavailable(_toUndeterminedReason(reason)),
     ),
   };
 }
