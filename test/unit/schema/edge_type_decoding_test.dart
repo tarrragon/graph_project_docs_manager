@@ -159,4 +159,28 @@ void main() {
       (builtin['node_types'] as Map).keys.toSet(),
     );
   });
+
+  test('S6-11 守衛：型別表整份缺席（null）-> 不可用（對照 S6-12）', () {
+    final result = _resolve(null);
+    expect(result.isGraphAvailable, isFalse);
+    expect(
+      result.unavailableReason,
+      EdgeTypeUnavailableReason.versionOutOfKnownRange,
+    );
+    expect(result.edgeTypes, isEmpty);
+    expect(_resolve(builtin).isGraphAvailable, isTrue);
+  });
+
+  test('S6-12 降級模式：內建表 asset 作為專案表傳入 -> 可用', () {
+    final result = _resolve(builtin);
+    final expected =
+        builtinEdges.entries
+            .where((e) => (e.value as Map)['layer'] == 'established')
+            .map((e) => e.key)
+            .toSet()
+          ..remove('domain_dependency');
+    expect(result.isGraphAvailable, isTrue);
+    expect(result.activeEdgeTypes.map((e) => e.name).toSet(), expected);
+    expect(expected, isNotEmpty);
+  });
 }
