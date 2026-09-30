@@ -151,44 +151,16 @@ final firstVisibleProvider = Provider.family<bool, AppDestination>((
   return isFirst;
 });
 
-/// 依 [destination] 產生對應的畫面內容。
-///
-/// 目前六項全部渲染標示畫面名的佔位頁——各畫面的實際內容由後續票逐一
-/// 實作，本票只交出「可切換」這件事本身。
+
+/// 依 [destination] 產生對應的畫面內容（窮舉，六項皆有畫面）。
 Widget buildDestinationPage(BuildContext context, AppDestination destination) {
-  if (destination == AppDestination.domain) {
-    return DomainViewScreen(key: destination.pageKey);
-  }
-  if (destination == AppDestination.traceability) {
-    return TraceabilityScreen(key: destination.pageKey);
-  }
-  if (destination == AppDestination.gaps) {
-    return GapReportScreen(key: destination.pageKey);
-  }
-  if (destination == AppDestination.tickets) {
-    return TicketListScreen(key: destination.pageKey);
-  }
-  if (destination == AppDestination.nodeDetail) {
-    return NodeDetailScreen(key: destination.pageKey);
-  }
-  if (destination == AppDestination.ucFlow) {
-    return UcFlowScreen(key: destination.pageKey);
-  }
-  final l10n = AppLocalizations.of(context);
-  return _DestinationPlaceholderPage(
-    key: destination.pageKey,
-    label: destination.label(l10n),
-  );
-}
-
-/// 標示畫面名稱的佔位頁。
-class _DestinationPlaceholderPage extends StatelessWidget {
-  const _DestinationPlaceholderPage({super.key, required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text(label));
-  }
+  final key = destination.pageKey;
+  return switch (destination) {
+    AppDestination.domain => DomainViewScreen(key: key),
+    AppDestination.traceability => TraceabilityScreen(key: key),
+    AppDestination.gaps => GapReportScreen(key: key),
+    AppDestination.tickets => TicketListScreen(key: key),
+    AppDestination.nodeDetail => NodeDetailScreen(key: key),
+    AppDestination.ucFlow => UcFlowScreen(key: key),
+  };
 }

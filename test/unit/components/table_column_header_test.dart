@@ -322,6 +322,30 @@ void main() {
     });
   });
 
+  group('blank', () {
+    testWidgets('渲染不溢位，無文字、無圖示、無語意節點', (tester) async {
+      const key = ValueKey('blank-header-test');
+      await pumpHarness(
+        tester,
+        child: _column(const TableColumnHeader.blank(key: key)),
+      );
+
+      expectNoOverflow(tester);
+      expect(
+        find.descendant(of: find.byKey(key), matching: find.byType(Text)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: find.byKey(key), matching: find.byType(Icon)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: find.byKey(key), matching: find.byType(Semantics)),
+        findsNothing,
+      );
+    });
+  });
+
   group('plain / twoLine 非互動', () {
     testWidgets('plain 無 Semantics.button，Semantics.header 為 true', (
       tester,

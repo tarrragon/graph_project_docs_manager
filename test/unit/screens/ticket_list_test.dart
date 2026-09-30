@@ -117,43 +117,6 @@ void main() {
 
       expect(container.read(ticketListStateProvider), isA<TicketsLoading>());
     });
-
-    testWidgets('returnTo 非 null 時渲染 action-tickets-back 並可返回', (
-      tester,
-    ) async {
-      final container = await pumpHarness(
-        tester,
-        child: const TicketListScreen(),
-        overrides: [
-          ticketListStateProvider.overrideWith(
-            (ref) => const TicketsUnloaded(count: 3),
-          ),
-          returnToProvider.overrideWith((ref) => AppDestination.gaps),
-        ],
-      );
-
-      expect(AnchorFinder.action(Screen.tickets, 'back'), findsOneWidget);
-
-      await tester.tap(AnchorFinder.action(Screen.tickets, 'back'));
-      await tester.pump();
-
-      expect(container.read(selectedDestinationProvider), AppDestination.gaps);
-      expect(container.read(returnToProvider), isNull);
-    });
-
-    testWidgets('returnTo 為 null 時不渲染 action-tickets-back', (tester) async {
-      await pumpHarness(
-        tester,
-        child: const TicketListScreen(),
-        overrides: [
-          ticketListStateProvider.overrideWith(
-            (ref) => const TicketsUnloaded(count: 3),
-          ),
-        ],
-      );
-
-      expect(AnchorFinder.action(Screen.tickets, 'back'), findsNothing);
-    });
   });
 
   group('載入中 state-tickets-loading', () {

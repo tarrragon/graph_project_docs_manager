@@ -83,8 +83,8 @@ class TicketsHeaderTrailing extends ConsumerWidget {
   }
 }
 
-/// 未載入：`LoadPrompt`；返回動作由頁面框架承載（元件檔頭說明），僅
-/// `returnTo` 非 `null` 時渲染（SPEC-003 §2.3 規則 4）。
+/// 未載入：`LoadPrompt`；返回動作由頁面框架（`AppShell`）通則承載，本畫面
+/// 不重複渲染（SPEC-004 §4.25、SPEC-003 §2.4）。
 class _UnloadedView extends ConsumerWidget {
   const _UnloadedView({required this.state});
 
@@ -92,32 +92,12 @@ class _UnloadedView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final returnTo = ref.watch(returnToProvider);
-    return Column(
-      children: [
-        Expanded(
-          child: LoadPrompt(
-            count: state.count,
-            onStart: () => ref.read(ticketListStateProvider.notifier).state =
-                TicketsLoading(total: state.count),
-            testKey: const Key('state-tickets-unloaded'),
-            startKey: const Key('action-tickets-start-load'),
-          ),
-        ),
-        if (returnTo != null)
-          ButtonRow(
-            alignment: ButtonRowAlignment.end,
-            children: [
-              AppButton(
-                label: l10n.backAction,
-                variant: AppButtonVariant.secondary,
-                onPressed: () => consumeReturnTo(ref.read),
-                testKey: const Key('action-tickets-back'),
-              ),
-            ],
-          ),
-      ],
+    return LoadPrompt(
+      count: state.count,
+      onStart: () => ref.read(ticketListStateProvider.notifier).state =
+          TicketsLoading(total: state.count),
+      testKey: const Key('state-tickets-unloaded'),
+      startKey: const Key('action-tickets-start-load'),
     );
   }
 }
@@ -292,7 +272,7 @@ class _ReadyListView extends ConsumerWidget {
           testKey: const Key('action-tickets-sort-priority'),
         ),
         TableColumnHeader.plain(label: l10n.columnBlockedBy),
-        const SizedBox.shrink(),
+        const TableColumnHeader.blank(),
       ],
     );
 
@@ -308,7 +288,7 @@ class _ReadyListView extends ConsumerWidget {
 
     return Panel(
       key: const Key('state-tickets-list'),
-      children: [
+      leading: [
         Toolbar(
           search: SearchField(
             value: state.searchQuery,
@@ -353,15 +333,15 @@ class _ReadyListView extends ConsumerWidget {
               : null,
           testKey: const Key('toolbar-tickets-list'),
         ),
-        Expanded(
-          child: AppDataTable(
-            variant: AppDataTableVariant.virtual,
-            columns: AppTableRow.ticketColumns,
-            header: header,
-            rows: rows,
-            scrollKey: const Key('scroll-tickets-list'),
-          ),
-        ),
+      ],
+      fill: AppDataTable(
+        variant: AppDataTableVariant.virtual,
+        columns: AppTableRow.ticketColumns,
+        header: header,
+        rows: rows,
+        scrollKey: const Key('scroll-tickets-list'),
+      ),
+      trailing: [
         SplitRow.footer(
           leading: AppText(
             l10n.ticketsSummaryLabel(

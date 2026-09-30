@@ -91,13 +91,11 @@ class _UcUnsetView extends ConsumerWidget {
     return TwoColumnLayout(
       key: const Key('state-ucFlow-uc-unset'),
       main: Panel(
-        children: [
-          EmptyState(
-            variant: EmptyStateVariant.section,
-            message: l10n.ucUnsetPrompt,
-            testKey: const Key('panel-ucFlow-uc-unset-prompt'),
-          ),
-        ],
+        fill: EmptyState(
+          variant: EmptyStateVariant.section,
+          message: l10n.ucUnsetPrompt,
+          testKey: const Key('panel-ucFlow-uc-unset-prompt'),
+        ),
       ),
       detail: const _UcSelectorPanel(),
     );
@@ -119,37 +117,37 @@ class _UnstructuredView extends ConsumerWidget {
     return TwoColumnLayout(
       key: const Key('state-ucFlow-unstructured'),
       main: Panel(
-        children: [
+        leading: [
           ListRow.meta(
             key: const Key('panel-ucFlow-unstructured-meta'),
             leading: Badge.type(label: 'UC'), // i18n-exempt: 節點型別代碼
             primary: AppText(uc.filePath, variant: AppTextVariant.mono),
           ),
           AppText(uc.title, variant: AppTextVariant.title),
-          EmptyState(
-            variant: EmptyStateVariant.section,
-            message: l10n.flowUnstructuredMessage,
-            testKey: const Key('panel-ucFlow-unstructured-message'),
-            actions: [
-              AppButton(
-                label: l10n.openSourceFileAction,
-                variant: AppButtonVariant.secondary,
-                onPressed: () => _openSource(context, ref, uc),
-                testKey: const Key('action-ucFlow-open-source'),
-              ),
-              AppButton(
-                label: l10n.viewRelationsAction,
-                variant: AppButtonVariant.secondary,
-                onPressed: () => navigateTo(
-                  ref.read,
-                  AppDestination.nodeDetail,
-                  NavIntent.jump,
-                ),
-                testKey: const Key('action-ucFlow-view-relations'),
-              ),
-            ],
-          ),
         ],
+        fill: EmptyState(
+          variant: EmptyStateVariant.section,
+          message: l10n.flowUnstructuredMessage,
+          testKey: const Key('panel-ucFlow-unstructured-message'),
+          actions: [
+            AppButton(
+              label: l10n.openSourceFileAction,
+              variant: AppButtonVariant.secondary,
+              onPressed: () => _openSource(context, ref, uc),
+              testKey: const Key('action-ucFlow-open-source'),
+            ),
+            AppButton(
+              label: l10n.viewRelationsAction,
+              variant: AppButtonVariant.secondary,
+              onPressed: () => navigateTo(
+                ref.read,
+                AppDestination.nodeDetail,
+                NavIntent.jump,
+              ),
+              testKey: const Key('action-ucFlow-view-relations'),
+            ),
+          ],
+        ),
       ),
       detail: const _UcSelectorPanel(),
     );
@@ -202,7 +200,7 @@ class _NormalView extends ConsumerWidget {
     final header = AppTableRow.header(
       columns: AppTableRow.stepColumns,
       cells: [
-        const SizedBox.shrink(),
+        const TableColumnHeader.blank(),
         TableColumnHeader.plain(label: l10n.columnStep),
         TableColumnHeader.plain(label: l10n.columnDomain),
         TableColumnHeader.plain(label: l10n.columnEvents),
@@ -225,7 +223,7 @@ class _NormalView extends ConsumerWidget {
                 TableColumnHeader.plain(label: l10n.columnEvent),
                 TableColumnHeader.plain(label: l10n.columnEmitter),
                 TableColumnHeader.plain(label: l10n.columnConsumer),
-                const SizedBox.shrink(),
+                const TableColumnHeader.blank(),
               ],
             ),
             rows: [
@@ -242,18 +240,14 @@ class _NormalView extends ConsumerWidget {
     return TwoColumnLayout(
       key: const Key('state-ucFlow-normal'),
       main: Panel(
-        children: [
-          Expanded(
-            child: AppDataTable(
-              variant: AppDataTableVariant.plain,
-              columns: AppTableRow.stepColumns,
-              header: header,
-              rows: rows,
-              scrollKey: const Key('scroll-ucFlow-steps'),
-              appendix: eventFlowTable,
-            ),
-          ),
-        ],
+        fill: AppDataTable(
+          variant: AppDataTableVariant.plain,
+          columns: AppTableRow.stepColumns,
+          header: header,
+          rows: rows,
+          scrollKey: const Key('scroll-ucFlow-steps'),
+          appendix: eventFlowTable,
+        ),
       ),
       detail: const _UcSelectorPanel(),
     );
