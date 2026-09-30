@@ -3,12 +3,15 @@
 library;
 
 /// EVT-DIAGNOSTICS-001〈設計註記〉定義的破洞四類。0.3.0 只實際產生
-/// [parseFailure]；其餘三類保留列舉位置供後續版本擴充。
+/// [parseFailure]；0.4.0 起另產生 [graphDefect]（SPEC-007 FR-09，產生端
+/// `lib/diagnostics/graph_defect_gap.dart`）；其餘兩類保留列舉位置供後續
+/// 版本擴充。
 enum GapCategory {
-  /// 解析失敗（本版唯一會產生的類別）。
+  /// 解析失敗（由 `parse_failure_gap.dart` 產生）。
   parseFailure,
 
-  /// 圖結構缺陷（本版不產生）。
+  /// 圖結構缺陷（0.4.0 起產生，SPEC-007 FR-09；產生端
+  /// `lib/diagnostics/graph_defect_gap.dart`）。
   graphDefect,
 
   /// 追溯缺口（本版不產生）。
