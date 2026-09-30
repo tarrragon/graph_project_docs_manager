@@ -295,8 +295,9 @@ def _collect_hits(prefix: str, logger) -> List[Tuple[int, str]]:
 
 def _collect_registry_hits(owned_numbers: List[int], logger) -> List[Tuple[int, str]]:
     """快速路徑：owned-issues 登記檔內容已由寫入端（section_comment.py
-    init／update）確定為真，逐張直接呼叫既有 check，省略舊路徑的候選發現
-    與本地 owner 驗證兩步驟。"""
+    init／update）確定為真，省略舊路徑的候選發現與本地 owner 驗證兩步驟。
+    先以一次批次查詢略過已關閉的 issue，其餘以 MAX_CHECK_WORKERS 個 worker
+    並行呼叫既有 check；結果依 issue 編號排序，單張失敗以標記字串回傳、不中斷其餘張。"""
     closed = _closed_issue_numbers(logger)
     targets = sorted(n for n in owned_numbers if n not in closed)
     skipped = sorted(set(owned_numbers) - set(targets))
