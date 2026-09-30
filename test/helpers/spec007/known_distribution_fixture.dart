@@ -130,3 +130,110 @@ KnownDistribution buildKnownDistribution() {
     malformed: 4,
   );
 }
+
+/// 擴充的分布已知 fixture（W2-004）：在 [buildKnownDistribution] 的 rawNodes
+/// 之後加五個節點，涵蓋僅終點、兩端、`multiSource`、無向兩端。
+///
+/// 既有 [KnownDistribution] 計數常數不動（G1～G3 依賴）；本類計數為整組
+/// rawNodes 的手算值：
+///
+/// - 基準邊 3：`association {W1-001,W1-002}` 一端、`blocking W1-001→W1-002`
+///   僅起點、`provenance SPEC-001→PROP-001` 兩端
+/// - 新增邊 5：`spawn W2-002→W2-001` 兩端、`spawn W2-003→W2-001` 僅終點、
+///   `spawn W2-004→W2-001` 僅起點、`spawn W2-004→W2-005` 僅終點、
+///   `association {W2-002,W2-003}` 兩端
+/// - `multiSource`：W2-004（`spawn` 基數 one，兩終點）
+class KnownGraphDistribution {
+  const KnownGraphDistribution({
+    required this.rawNodes,
+    required this.nodeCount,
+    required this.edgeCount,
+    required this.edgesByType,
+    required this.directedFromOnly,
+    required this.directedToOnly,
+    required this.directedBoth,
+    required this.undirectedOneEnd,
+    required this.undirectedBoth,
+    required this.duplicateIdCount,
+    required this.totalReferences,
+    required this.resolved,
+    required this.dangling,
+    required this.malformed,
+    required this.multiSourceCount,
+    required this.graphDefectCount,
+  });
+
+  final List<RawNode> rawNodes;
+  final int nodeCount;
+  final int edgeCount;
+  final Map<String, int> edgesByType;
+  final int directedFromOnly;
+  final int directedToOnly;
+  final int directedBoth;
+  final int undirectedOneEnd;
+  final int undirectedBoth;
+  final int duplicateIdCount;
+  final int totalReferences;
+  final int resolved;
+  final int dangling;
+  final int malformed;
+  final int multiSourceCount;
+  final int graphDefectCount;
+}
+
+KnownGraphDistribution buildKnownGraphDistribution() {
+  return KnownGraphDistribution(
+    rawNodes: [
+      ...buildKnownDistribution().rawNodes,
+      buildRawNode(
+        id: '0.2.0-W1-001',
+        extra: {
+          'spawned_tickets': ['0.2.0-W1-002', '0.2.0-W1-003'],
+        },
+      ),
+      buildRawNode(
+        id: '0.2.0-W1-002',
+        extra: {
+          'source_ticket': '0.2.0-W1-001',
+          'relatedTo': ['0.2.0-W1-003'],
+        },
+      ),
+      buildRawNode(
+        id: '0.2.0-W1-003',
+        extra: {
+          'relatedTo': ['0.2.0-W1-002'],
+        },
+      ),
+      buildRawNode(
+        id: '0.2.0-W1-004',
+        extra: {'source_ticket': '0.2.0-W1-001'},
+      ),
+      buildRawNode(
+        id: '0.2.0-W1-005',
+        extra: {
+          'spawned_tickets': ['0.2.0-W1-004'],
+        },
+      ),
+    ],
+    nodeCount: 9,
+    edgeCount: 8,
+    edgesByType: const {
+      'association': 2,
+      'blocking': 1,
+      'provenance': 1,
+      'spawn': 4,
+    },
+    directedFromOnly: 2,
+    directedToOnly: 2,
+    directedBoth: 2,
+    undirectedOneEnd: 1,
+    undirectedBoth: 1,
+    duplicateIdCount: 1,
+    totalReferences: 18,
+    resolved: 11,
+    dangling: 3,
+    malformed: 4,
+    multiSourceCount: 1,
+    graphDefectCount: 9,
+  );
+}
