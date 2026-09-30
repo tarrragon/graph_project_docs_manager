@@ -1588,3 +1588,17 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 **已知代價與絆腳索**：若將來出現「反向過期且指向錯誤目標」的資料，聯集會建出錯邊。偵測訊號：PROP→SPEC 邊型出現衝突類 Diagnostics（一個 SPEC 有兩個來源提案）即為此情形，屆時改評估該邊型只讀正向。寫入端缺口已觀測至 canonical #102（comment 5902300045）。
 
 **落點**：規則寫入 0.4.0 規劃波產出的建圖 SPEC；本段為決策理由。
+
+## 補記：2026-09-30 — 來源邊支援多值，邊型基數由 schema 宣告（用戶裁決，WRAP）
+
+**決定**：上游 schema 的邊型表為每個邊型宣告正向基數（`one`／`many`）。`provenance`（`source_proposal`）為 `many`：一個節點可有多個來源提案，`source_proposal` 可寫清單，寫純量時視為一項；`spawn`、`blood`、`discovery` 為 `one`。消費端（SPEC-007 FR-04）以基數判定多來源衝突，不看 frontmatter 的寫法，也不在程式內寫死。實作：`0.4.0-W1-056`（上游 schema）、`0.4.0-W2-001`（內建副本與 UC-01）。
+
+**為什麼**：
+- 觸發實例：UC-01「開啟專案並抵達可用狀態」同時實現 PROP-003（工作區存取）與 PROP-002（schema 關卡）。單值時只能選一個，另一個只能退為 `related_proposals`，沿來源鏈從 PROP-002 追溯不到 UC-01；而 `PROP → SPEC → UC → Ticket` 因果鏈是本產品的核心價值。
+- 本專案是 doc skill 的上游，schema 可在此修改；`source_proposal` 在框架程式中只有欄位常數與邊型表兩處讀取點，驗證器不檢查其形狀，改動面小。需求追溯的通例（如 W3C PROV 的 `wasDerivedFrom`）本就允許多個來源。
+- 同時解決 SPEC-007 技術與文字兩份審查共同指出的阻擋：「單值」原本靠 frontmatter 寫法或程式寫死判定，改由 schema 宣告後判準唯一。
+- `spawn` 維持單值：`ticket track add-spawned` 允許登記第二張父票，但會提示「可能誤植」，寫入端本身把多父票視為異常；且 `source_ticket` 在 ticket CLI 有百餘處讀取點，改多值成本高。
+
+**被放棄的選項**：維持單值、次要來源改用 `related_proposals`——不改 schema、來源鏈保持為樹，但沿來源鏈追溯會漏掉次要來源。
+
+**已知代價與絆腳索**：UC-04 追溯視圖需處理同一節點出現在兩個提案下（樹變成 DAG）。其他 consumer 若有工具把 `source_proposal` 當字串讀，遇到清單會失效，由 `0.4.0-W1-056` 在 canonical #98 公告。多值來源的節點比例若超過 10%，視為提案切分粒度的問題，回頭檢查提案而非繼續放寬。

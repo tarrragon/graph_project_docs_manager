@@ -470,7 +470,7 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 | FR-01 | 邊型表 | Schema | domain unit |
 | FR-02 | 輕節點（含重複 ID） | Graph（讀 Corpus `rawNodes`） | domain unit；IT-3 |
 | FR-03 | 引用值抽取與三類分類、守恆 | Graph | domain unit；IT-2 |
-| FR-04 | 有反向欄位的邊：兩側聯集、宣告來源、多來源衝突 | Graph | domain unit；IT-1 |
+| FR-04 | 邊的方向與建邊來源：反向欄位兩側聯集、宣告來源、依正向基數判多來源衝突 | Graph | domain unit；IT-1 |
 | FR-05 | `relatedTo` 1-hop 對稱聯集 | Graph | domain unit；IT-1 |
 | FR-06 | 建圖結果、計數與 EVT-GRAPH-001 | Graph | domain unit |
 | FR-07 | TicketDetail 以 ID 查詢全文 | TicketDetail（讀 Corpus `rawNodes`） | domain unit；IT-3 |
