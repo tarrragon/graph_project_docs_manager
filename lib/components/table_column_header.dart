@@ -40,6 +40,9 @@ enum TableColumnHeaderVariant {
 
   /// 第一行 `AppText.mono`（UC ID）、第二行 caption（名稱）。矩陣欄首。
   twoLine,
+
+  /// 無文字、無圖示、無語意節點的空白欄首（無標題欄格）。
+  blank,
 }
 
 /// 表格與矩陣欄首元件（SPEC-004 §4.14）。
@@ -56,12 +59,16 @@ class TableColumnHeader extends StatelessWidget {
   const TableColumnHeader._({
     super.key,
     required this.variant,
-    required this.label,
+    this.label = '',
     this.secondLine,
     this.order,
     this.onSort,
     this.testKey,
   });
+
+  /// 空白欄首：無文字、無圖示、無語意節點。
+  const TableColumnHeader.blank({Key? key})
+    : this._(key: key, variant: TableColumnHeaderVariant.blank);
 
   /// 一行 caption，無互動（UC Flow 步驟表欄首）。
   const TableColumnHeader.plain({Key? key, required String label})
@@ -119,6 +126,7 @@ class TableColumnHeader extends StatelessWidget {
     return switch (variant) {
       TableColumnHeaderVariant.plain => _buildPlain(),
       TableColumnHeaderVariant.twoLine => _buildTwoLine(),
+      TableColumnHeaderVariant.blank => const SizedBox.shrink(),
       TableColumnHeaderVariant.sortable => _SortableHeader(
         label: label,
         order: order!,

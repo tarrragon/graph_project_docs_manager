@@ -36,15 +36,10 @@ void main() {
       await pumpHarness(
         tester,
         size: size,
-        child: const SizedBox(
+        child: SizedBox(
           width: 400,
           height: 300,
-          child: Panel(
-            children: [
-              _FixedChild(),
-              Expanded(child: _FakeDataView()),
-            ],
-          ),
+          child: Panel(leading: [_FixedChild()], fill: _FakeDataView()),
         ),
       );
       expectNoOverflow(tester);
@@ -199,14 +194,61 @@ void main() {
     });
   });
 
+  group('slot 契約（§4.30 default）', () {
+    testWidgets('fill 吸收剩餘高；leading 在上、trailing 在下，順序固定', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          height: 300,
+          child: Panel(
+            leading: [_FixedChild(height: 30)],
+            fill: _FakeDataView(),
+            trailing: [_FixedChild(height: 20)],
+          ),
+        ),
+      );
+
+      final fixed = tester
+          .widgetList<_FixedChild>(find.byType(_FixedChild))
+          .map((w) => tester.getRect(find.byWidget(w)))
+          .toList();
+      final fill = tester.getRect(find.byType(_FakeDataView));
+      expect(fixed[0].bottom + Space.sm, fill.top);
+      expect(fill.bottom + Space.sm, fixed[1].top);
+      final panel = tester.getRect(find.byType(Panel));
+      expect(
+        fill.height,
+        closeTo(panel.height - 2 * Space.md - 30 - 20 - 2 * Space.sm, 0.5),
+      );
+      expectNoOverflow(tester);
+    });
+
+    testWidgets('僅 fill：填滿內距後的可用高', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          height: 200,
+          child: Panel(fill: _FakeDataView()),
+        ),
+      );
+
+      final panel = tester.getRect(find.byType(Panel));
+      final fill = tester.getRect(find.byType(_FakeDataView));
+      expect(fill.height, closeTo(panel.height - 2 * Space.md, 0.5));
+      expectNoOverflow(tester);
+    });
+  });
+
   group('無自有文字', () {
     testWidgets('本項不適用（Panel 無文字 slot）', (tester) async {
       await pumpHarness(
         tester,
-        child: const SizedBox(
+        child: SizedBox(
           width: 300,
           height: 200,
-          child: Panel(children: [_FixedChild()]),
+          child: Panel(fill: _FixedChild()),
         ),
       );
       expectNoOverflow(tester);
@@ -217,10 +259,10 @@ void main() {
     testWidgets('顏色、內距、圓角引用 token 非硬編碼', (tester) async {
       await pumpHarness(
         tester,
-        child: const SizedBox(
+        child: SizedBox(
           width: 300,
           height: 200,
-          child: Panel(children: [_FixedChild()]),
+          child: Panel(fill: _FixedChild()),
         ),
       );
 
@@ -243,15 +285,12 @@ void main() {
     testWidgets('不重疊：子件垂直堆疊、填滿寬，兩兩不相交', (tester) async {
       await pumpHarness(
         tester,
-        child: const SizedBox(
+        child: SizedBox(
           width: 300,
           height: 300,
           child: Panel(
-            children: [
-              _FixedChild(height: 50),
-              _FixedChild(height: 60),
-              _FixedChild(height: 70),
-            ],
+            leading: [_FixedChild(height: 50), _FixedChild(height: 60)],
+            fill: _FixedChild(height: 70),
           ),
         ),
       );
@@ -281,14 +320,12 @@ void main() {
     testWidgets('最小間距：子件兩兩垂直間距為 Space.sm', (tester) async {
       await pumpHarness(
         tester,
-        child: const SizedBox(
+        child: SizedBox(
           width: 300,
           height: 300,
           child: Panel(
-            children: [
-              _FixedChild(height: 50),
-              _FixedChild(height: 60),
-            ],
+            leading: [_FixedChild(height: 50)],
+            fill: _FixedChild(height: 60),
           ),
         ),
       );
@@ -304,14 +341,12 @@ void main() {
     testWidgets('standard：資料視圖吸收剩餘高', (tester) async {
       await pumpHarness(
         tester,
-        child: const SizedBox(
+        child: SizedBox(
           width: 300,
           height: 300,
           child: Panel(
-            children: [
-              _FixedChild(height: 50),
-              Expanded(child: _FakeDataView()),
-            ],
+            leading: [_FixedChild(height: 50)],
+            fill: _FakeDataView(),
           ),
         ),
       );
@@ -385,13 +420,11 @@ void main() {
           width: 300,
           height: 200,
           child: Panel(
-            children: [
-              Text(
-                TestCopy.longZh,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            fill: Text(
+              TestCopy.longZh,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ),
       );

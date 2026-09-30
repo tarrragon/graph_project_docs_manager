@@ -17,8 +17,8 @@ import '../tokens/tokens.dart';
 /// 面板變體（SPEC-004 §4.30「變體」表）。規格值 `default` 為 Dart 保留字，
 /// 改名 [standard]。
 enum PanelVariant {
-  /// 規格 `default`：無自身捲動，子件中恰一個為填滿高的資料視圖，吸收
-  /// 剩餘高——呼叫端把該子件以 `Expanded` 包裹後放入 [Panel.children]。
+  /// 規格 `default`：無自身捲動，具名 slot `leading`／`fill`／`trailing`；
+  /// `fill`（恰 1）由容器以 `Expanded` 承載，吸收剩餘高。
   standard,
 
   /// 主體垂直捲動；子件總高超過面板高時捲動。
@@ -31,10 +31,23 @@ enum PanelVariant {
 /// 放入提供定高定寬的父格位（`PageColumn` 內容 slot、`TwoColumnLayout`
 /// 主欄／右欄），本元件不自行指定 `width`／`height`。
 class Panel extends StatelessWidget {
-  /// `standard` 變體（規格 `default`）：子件中恰一個資料視圖吸收剩餘高，
-  /// 由呼叫端以 `Expanded` 包裹該子件後放入 [children]（1..12 項）。
-  const Panel({Key? key, required List<Widget> children})
-    : this._(key: key, variant: PanelVariant.standard, children: children);
+  /// `standard` 變體（規格 `default`）：[leading]（0..4）依序在上、
+  /// [fill]（必填，恰 1）吸收剩餘高、[trailing]（0..2）在下。`Expanded`
+  /// 由本容器內部承載，呼叫端不得自行包裹。
+  Panel({
+    Key? key,
+    List<Widget> leading = const [],
+    required Widget fill,
+    List<Widget> trailing = const [],
+  }) : this._(
+         key: key,
+         variant: PanelVariant.standard,
+         children: [
+           ...leading,
+           Expanded(child: fill),
+           ...trailing,
+         ],
+       );
 
   /// `scrollable` 變體：主體垂直捲動，無子件數量上限。[scrollKey] 為
   /// 必填錨點（`scroll-<screen>-<area>`，§4.30 slot 契約）。

@@ -378,20 +378,16 @@ class _MatrixBody extends ConsumerWidget {
     ];
 
     final main = Panel(
-      children: [
-        Expanded(
-          child: MatrixGrid(
-            columnHeaders: columnHeaders,
-            rows: matrixRows,
-            selectedDomainId: state.selectedDomainId,
-            selectedCell: state.selectedCell,
-            onSelectDomain: onSelectDomain,
-            onClearSelection: onClearSelection,
-            scrollKey: const Key('scroll-domain-matrix'),
-          ),
-        ),
-        _legendBadgeRow(l10n),
-      ],
+      fill: MatrixGrid(
+        columnHeaders: columnHeaders,
+        rows: matrixRows,
+        selectedDomainId: state.selectedDomainId,
+        selectedCell: state.selectedCell,
+        onSelectDomain: onSelectDomain,
+        onClearSelection: onClearSelection,
+        scrollKey: const Key('scroll-domain-matrix'),
+      ),
+      trailing: [_legendBadgeRow(l10n)],
     );
 
     final selectedCell = state.selectedCell;
@@ -523,31 +519,29 @@ class _SwimlaneBody extends ConsumerWidget {
 
     if (selectedUcId == null) {
       return Panel(
-        children: [
+        leading: [
           EmptyState(
             variant: EmptyStateVariant.section,
             message: l10n.swimlaneUcUnsetPrompt,
             testKey: const Key('state-domain-swimlane-uc-unset'),
           ),
-          Expanded(
-            child: SwimlaneGrid(
-              lanes: [
-                for (final domainId in DomainViewFixtures.domainIds)
-                  SwimlaneLane(
-                    name: DomainViewFixtures.domainNames[domainId]!,
-                    nodes: const [],
-                    domainId: domainId,
-                  ),
-              ],
-              laneHighlight: state.selectedDomainId != null
-                  ? DomainViewFixtures.domainNames[state.selectedDomainId]
-                  : null,
-              onSelectDomain: onSelectDomain,
-              scrollKey: const Key('scroll-domain-swimlane'),
-              dragKey: const Key('drag-domain-swimlane'),
-            ),
-          ),
         ],
+        fill: SwimlaneGrid(
+          lanes: [
+            for (final domainId in DomainViewFixtures.domainIds)
+              SwimlaneLane(
+                name: DomainViewFixtures.domainNames[domainId]!,
+                nodes: const [],
+                domainId: domainId,
+              ),
+          ],
+          laneHighlight: state.selectedDomainId != null
+              ? DomainViewFixtures.domainNames[state.selectedDomainId]
+              : null,
+          onSelectDomain: onSelectDomain,
+          scrollKey: const Key('scroll-domain-swimlane'),
+          dragKey: const Key('drag-domain-swimlane'),
+        ),
       );
     }
 
@@ -557,67 +551,65 @@ class _SwimlaneBody extends ConsumerWidget {
 
     if (!uc.hasFlowStep) {
       return Panel(
-        children: [
+        leading: [
           AppText(
             l10n.swimlanePanelTitle(uc.id, uc.title),
             variant: AppTextVariant.subtitle,
           ),
-          EmptyState(
-            variant: EmptyStateVariant.section,
-            message: l10n.flowUnstructuredMessage,
-            testKey: const Key('state-domain-swimlane-unstructured'),
-            actions: [
-              AppButton(
-                label: l10n.openSourceFileAction,
-                variant: AppButtonVariant.secondary,
-                onPressed: () => _openSource(context, ref, uc.id),
-                testKey: const Key('action-domain-open-source'),
-              ),
-            ],
-          ),
         ],
+        fill: EmptyState(
+          variant: EmptyStateVariant.section,
+          message: l10n.flowUnstructuredMessage,
+          testKey: const Key('state-domain-swimlane-unstructured'),
+          actions: [
+            AppButton(
+              label: l10n.openSourceFileAction,
+              variant: AppButtonVariant.secondary,
+              onPressed: () => _openSource(context, ref, uc.id),
+              testKey: const Key('action-domain-open-source'),
+            ),
+          ],
+        ),
       );
     }
 
     final lanes = DomainViewFixtures.lanesForUc(uc.id);
     return Panel(
       key: const Key('state-domain-swimlane'),
-      children: [
+      leading: [
         AppText(
           l10n.swimlanePanelTitle(uc.id, uc.title),
           variant: AppTextVariant.subtitle,
         ),
-        Expanded(
-          child: SwimlaneGrid(
-            lanes: [
-              for (final lane in lanes)
-                SwimlaneLane(
-                  name: DomainViewFixtures.domainNames[lane.domainId]!,
-                  nodes: [
-                    for (final node in lane.nodes)
-                      (
-                        SwimlaneNode(
-                          label: node.stepLabel,
-                          isActive:
-                              state.selectedDomainId != null &&
-                              node.stepTraverses.contains(
-                                state.selectedDomainId,
-                              ),
-                        ),
-                        node.column,
-                      ),
-                  ],
-                  domainId: lane.domainId,
-                ),
-            ],
-            laneHighlight: state.selectedDomainId != null
-                ? DomainViewFixtures.domainNames[state.selectedDomainId]
-                : null,
-            onSelectDomain: onSelectDomain,
-            scrollKey: const Key('scroll-domain-swimlane'),
-            dragKey: const Key('drag-domain-swimlane'),
-          ),
-        ),
+      ],
+      fill: SwimlaneGrid(
+        lanes: [
+          for (final lane in lanes)
+            SwimlaneLane(
+              name: DomainViewFixtures.domainNames[lane.domainId]!,
+              nodes: [
+                for (final node in lane.nodes)
+                  (
+                    SwimlaneNode(
+                      label: node.stepLabel,
+                      isActive:
+                          state.selectedDomainId != null &&
+                          node.stepTraverses.contains(state.selectedDomainId),
+                    ),
+                    node.column,
+                  ),
+              ],
+              domainId: lane.domainId,
+            ),
+        ],
+        laneHighlight: state.selectedDomainId != null
+            ? DomainViewFixtures.domainNames[state.selectedDomainId]
+            : null,
+        onSelectDomain: onSelectDomain,
+        scrollKey: const Key('scroll-domain-swimlane'),
+        dragKey: const Key('drag-domain-swimlane'),
+      ),
+      trailing: [
         BadgeRow(
           variant: BadgeRowVariant.legend,
           children: [
