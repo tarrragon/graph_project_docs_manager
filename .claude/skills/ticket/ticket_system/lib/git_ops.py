@@ -70,6 +70,13 @@ _LOCK_PATH_RE = re.compile(r"'([^']*\.lock)'")
 # 不會自行前進。兩者錯誤輸出完全同形，唯一可程式化的區別是鎖齡。
 _STALE_LOCK_AGE_SECONDS = 60
 
+# 判定「己方歷史版本」時回溯的該路徑提交數上限。凍結型過期 entry 的成因是同步
+# 失敗後又發生的後續提交次數；同步失敗屬罕見事件，其後累積的提交數遠低於此值。
+# 取 50 使每個未命中路徑最多多花約 50 次 ls-tree（只在 entry 不等於 HEAD／本次
+# tree／parent 時才進入，正常路徑零額外成本），並避免長歷史檔案無界掃描。
+# 超出上限的凍結 entry 仍視為他方 stage，由 WARNING 的 restore 指令人工處置。
+_OWN_HISTORY_LOOKBACK = 50
+
 
 def _run_git(
     args: List[str],
@@ -303,6 +310,25 @@ def _shared_index_entries(paths: List[str], cwd: str) -> Optional[Dict[str, str]
     return entries
 
 
+def _path_history_entries(path: str, cwd: str) -> set:
+    """該路徑在 HEAD 可達歷史中最近 ``_OWN_HISTORY_LOOKBACK`` 次提交的 entry 集合。
+
+    entry 格式同 ``_blob_entries``（``"<mode> <blob>"``）。步驟失敗時回傳已收集
+    部分：少收只會讓更多 entry 被判為他方 stage，方向保守（不覆寫）。
+    """
+    ok, out, _err = _run_git_with_lock_retry(
+        ["git", "rev-list", f"-{_OWN_HISTORY_LOOKBACK}", "HEAD", "--", path], cwd=cwd
+    )
+    history: set = set()
+    if not ok:
+        return history
+    for commit in out.split():
+        entry = (_blob_entries(commit, [path], cwd) or {}).get(path)
+        if entry:
+            history.add(entry)
+    return history
+
+
 def _warn_sync_failed(paths: List[str], step: str, err: str) -> None:
     """同步最終失敗的 WARNING：列出受影響路徑與補救指令。
 
@@ -329,8 +355,9 @@ def _sync_shared_index_after_commit(
     entry 覆寫成比 HEAD 舊的版本（路徑 B：並行提交的同步順序顛倒）。
 
     他方保護：共用 index 該 entry 既不等於本次 commit 的 parent 版本
-    （``old_head``），也不等於本次 tree 版本、也不等於當下 HEAD 版本，代表
-    有人另外 stage 了內容，不覆寫，改印 WARNING。
+    （``old_head``），也不等於本次 tree 版本、也不等於當下 HEAD 版本，且其 blob
+    未出現在該路徑最近 ``_OWN_HISTORY_LOOKBACK`` 次提交歷史中，代表有人另外
+    stage 了內容，不覆寫，改印 WARNING。
 
     僅動共用 index 中本次 ``paths`` 涉及的項目，不做全量 read-tree（避免
     覆蓋共用 index 中其他未提交的 staged 內容），不刪任何鎖。
@@ -357,8 +384,15 @@ def _sync_shared_index_after_commit(
         known = {head_entries.get(path), tree_entries.get(path)}
         if old_head:
             known.add(parent_entries.get(path))
-        target = to_sync if index_entries.get(path) in known else foreign
-        target.append(path)
+        entry = index_entries.get(path)
+        # 歷史比對辨認「前次同步失敗而凍結的己方舊版本」；否則凍結 entry 在其後
+        # 每次同步都落在 known 之外，被永久當成他方 stage
+        is_own = entry in known or (
+            entry is not None
+            and entry != "conflict"
+            and entry in _path_history_entries(path, cwd)
+        )
+        (to_sync if is_own else foreign).append(path)
 
     if foreign:
         print(
@@ -374,7 +408,8 @@ def _sync_shared_index_after_commit(
     )
     if index_info:
         ok, _, err = _run_git_with_lock_retry(
-            ["git", "update-index", "--index-info"], cwd=cwd, input_text=index_info
+            ["git", "update-index", "--index-info"], cwd=cwd, input_text=index_info,
+            timeout=None,  # 持 index.lock 期間被 timeout 殺掉會殘留鎖，比照 update-ref
         )
         if not ok:
             _warn_sync_failed(present, "update-index", err)
@@ -382,7 +417,8 @@ def _sync_shared_index_after_commit(
     missing = [p for p in to_sync if p not in head_entries]
     if missing:
         ok, _, err = _run_git_with_lock_retry(
-            ["git", "update-index", "--force-remove", "--"] + missing, cwd=cwd
+            ["git", "update-index", "--force-remove", "--"] + missing, cwd=cwd,
+            timeout=None,  # 同上：持鎖步驟不設會殺行程的 timeout
         )
         if not ok:
             _warn_sync_failed(missing, "force-remove", err)

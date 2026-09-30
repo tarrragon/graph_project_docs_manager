@@ -679,3 +679,56 @@ class TestSharedIndexSyncAfterCommit:
         err = capsys.readouterr().err
         assert "[WARNING]" in err
         assert f"git restore --staged -- {self._REL}" in err
+
+    def _three_commits(self, repo: Path):
+        return [self._commit_deferring_sync(repo, c) for c in ("v2\n", "v3\n", "v4\n")]
+
+    def test_frozen_own_stale_entry_recovers_on_next_sync(self, repo):
+        """缺陷 1：第一次同步失敗（未執行）後 entry 停在 v1，第二次同步須寫成 HEAD。"""
+        _first, second, _third = self._three_commits(repo)
+        assert self._index_blob(repo) != self._head_blob(repo)
+        self._run_deferred_sync(second)
+        assert self._index_blob(repo) == self._head_blob(repo)
+
+    def test_never_committed_blob_still_treated_as_foreign(self, repo, capsys):
+        """E2 對照：entry 是從未提交過的 blob 時，即使有歷史比對仍不覆寫。"""
+        _first, second, _third = self._three_commits(repo)
+        (repo / self._REL).write_text("foreign\n")
+        _run_git(repo, "add", self._REL)
+        foreign_blob = self._index_blob(repo)
+        self._run_deferred_sync(second)
+        assert self._index_blob(repo) == foreign_blob
+        assert "[WARNING]" in capsys.readouterr().err
+
+    def test_history_lookback_is_bounded(self, repo, monkeypatch):
+        """歷史比對有上限：己方舊版本超出回溯範圍即視為他方（保守不覆寫）。"""
+        monkeypatch.setattr(git_ops, "_OWN_HISTORY_LOOKBACK", 1, raising=False)
+        _first, second, _third = self._three_commits(repo)
+        frozen = self._index_blob(repo)
+        self._run_deferred_sync(second)
+        assert self._index_blob(repo) == frozen
+
+    def test_update_index_never_killed_by_timeout_leaves_no_lock(self, repo, monkeypatch):
+        """缺陷 2：持 index.lock 的 update-index 若被 timeout 殺掉會殘留鎖。
+
+        以 subprocess.run 包裝模擬「持鎖耗時超過 _GIT_TIMEOUT」：有 timeout 時，
+        依真實行為在鎖仍在時拋 TimeoutExpired（殘留鎖）；無 timeout 才正常釋放。
+        update-index 無 hook 可掛，故以此模擬持鎖耗時。
+        """
+        first = self._commit_deferring_sync(repo, "v2\n")
+        lock = repo / ".git" / "index.lock"
+        real_run = subprocess.run
+
+        def slow_run(args, *a, **kw):
+            if list(args[:2]) == ["git", "update-index"]:
+                lock.write_text("")
+                timeout = kw.get("timeout")
+                if timeout is not None:  # 持鎖耗時視為超過任何有限 timeout
+                    raise subprocess.TimeoutExpired(args, timeout)
+                lock.unlink()
+            return real_run(args, *a, **kw)
+
+        monkeypatch.setattr(git_ops.subprocess, "run", slow_run)
+        self._run_deferred_sync(first)
+        assert not lock.exists()
+        assert self._index_blob(repo) == self._head_blob(repo)
