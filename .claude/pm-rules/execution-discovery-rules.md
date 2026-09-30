@@ -55,7 +55,7 @@
 |------|------|---------|
 | 1. 識別 | 認知這是「不能立刻產出結論」的問題 | 若可立即決策則寫狀態 (a) 結論，跳過閉環；否則進入 step 2 |
 | 2. 建分析/規劃 ticket | 建 ANA（分析）或 DOC（規劃）ticket 承載問題 | `ticket create --type ANA --action "分析" --target "..."` 或 `--type DOC` |
-| 3. Solution 規劃驗證/實驗子任務 | 在 step 2 ticket 的 Solution 章節列出需建立的 IMP/DOC 子任務 | 每項需含：產出物、acceptance、預估成本；這些子任務是 step 5 結案的前置，用 `--parent` 建為 children（PC-091），不用 `--source-ticket`。後者僅用於分析中發現、結論不依賴的獨立工作 |
+| 3. Solution 規劃驗證/實驗子任務 | 在 step 2 ticket 的 Solution 章節列出需建立的 IMP/DOC 子任務 | 每項需含：產出物、acceptance、預估成本；這些子任務屬結論要求的落地（step 5 結案的前置），用 `--parent` 建為 children（PC-091），不用 `--source-ticket`；後者僅用於結論未要求的獨立工作 |
 | 4. 執行驗證/實驗 | 完成 children 子任務（依 Solution 方案逐項執行） | 標準 TDD 流程；每個子任務獨立 commit |
 | 5. 釐清解決方案 + 結案 | 根據驗證結果，原 ANA/DOC ticket 寫明確結論並 complete | 結論為狀態 (a)：「採方案 X」「不採方案 Y 因為 Z」「需另建 follow-up 追蹤」 |
 

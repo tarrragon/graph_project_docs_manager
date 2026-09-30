@@ -483,7 +483,7 @@ W10-072（ANA，防護性）
 
 | 情境 | 處置 |
 |------|------|
-| 下游只依賴 ANA 的結論 | blockedBy 改指「產出該結論的那張 child」，不指 ANA 本身 |
+| 下游只依賴 ANA 的結論 | blockedBy 改指產出結論的 child，不指 ANA 本身 |
 | ANA 結論寫定、children 已建 | 由 PM 檢視所有 blockedBy 這張 ANA 的下游，逐張判斷並改指具體 child |
 | 下游確實依賴全部落地 | 維持 blockedBy ANA（等待全部落地是預期效果） |
 | `complete --force` | 只在 children 屬「非前置的後續工作」（不影響結論成立、下游不依賴）時使用；並在 Completion Info 記錄理由（哪些 children 未終態、為何非前置）。hook 會留下稽核紀錄 |
@@ -517,7 +517,7 @@ ANA Ticket 的下游 Ticket **必須以 children 表達**（用 `--parent <ANA-i
 - 把「執行獨立性」（可獨立執行）誤當「血緣獨立性」（與上游無關）→ 仍應為 children
 - 用 `spawned_tickets` 代替 `parent_id` 表達血緣（spawned 是衍生副產品語意，非直系後代）
 
-> **CLI 對照**：`--parent` vs `--source-ticket` 的副作用、欄位寫入、阻擋規則完整對比表，見 `.claude/skills/ticket/references/create-command.md`「--parent vs --source-ticket 對比表」章節。建立衍生 Ticket 時使用 `--source-ticket <SOURCE-ID>`，CLI 會自動追加新 Ticket ID 至 source 的 `spawned_tickets`，無需人工編輯。
+> **CLI 對照**：`--parent` vs `--source-ticket` 的副作用、欄位寫入、阻擋規則完整對比表，見 `.claude/skills/ticket/references/create-command.md`「--parent vs --source-ticket 對比表」章節。建立執行中發現、結論未要求的獨立衍生 Ticket 時使用 `--source-ticket <SOURCE-ID>`（ANA 結論要求的落地改用 `--parent`，見 PC-091），CLI 會自動追加新 Ticket ID 至 source 的 `spawned_tickets`，無需人工編輯。
 
 ---
 
