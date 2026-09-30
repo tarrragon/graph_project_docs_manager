@@ -13,6 +13,7 @@ if __name__ == "__main__":
 import argparse
 import sys
 import traceback
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ticket_system.constants import PRIORITY_LEVELS, TICKET_TYPES
@@ -947,11 +948,20 @@ def execute(args: argparse.Namespace) -> int:
     # 故 --new-topic 的主題名註冊亦一併由它完成，不再單獨呼叫）。
     # --dry-run 時 rc==0 但 ticket 從未落盤，主題映射寫入的對象是不存在的
     # ticket_id，故一併略過（與 Step 4 Context Bundle/auto-commit 同理）。
+    # 旁路寫入的提交範圍：主題行以「HEAD + 該行」進同一提交（不整檔，避免吸入
+    # 他人未提交的行）；來源票回填整檔進同一提交。
+    topic_append_lines: dict = {}
     if rc == 0 and not dry_run:
         if topic:
-            from ticket_system.lib.topic_assignments import append_assignment
+            from ticket_system.lib.topic_assignments import (
+                _assignments_path,
+                append_assignment,
+            )
             try:
-                append_assignment(ticket_id, topic)
+                if append_assignment(ticket_id, topic):
+                    topic_append_lines[str(_assignments_path())] = (
+                        f"{ticket_id}\t{topic.strip()}\n"
+                    )
             except Exception as exc:
                 # 映射寫入失敗降級為非致命：ticket 已成功建立，不應因
                 # side-channel 映射寫入失敗而回頭判定整體建票失敗
@@ -1031,9 +1041,12 @@ def execute(args: argparse.Namespace) -> int:
             if ticket_intact:
                 ticket_path = str(get_ticket_path(version, ticket_id))
                 from ticket_system.lib import git_utils
+                extra_paths = _source_backfill_paths(args, ticket_id)
                 try:
                     commit_status = git_utils._auto_commit_ticket_md(
                         ticket_path, ticket_id, "Task Summary", operation="create",
+                        extra_paths=extra_paths,
+                        append_lines=topic_append_lines or None,
                     )
                     if commit_status in ("not_git_repo", "git_failed"):
                         sys.stderr.write(
@@ -1059,6 +1072,27 @@ def execute(args: argparse.Namespace) -> int:
 
     return rc
 
+
+
+def _source_backfill_paths(args: argparse.Namespace, ticket_id: str) -> list:
+    """--source-ticket 回填（spawned_tickets）改到的來源票 md 路徑，供併入 auto-commit。
+
+    回填在 execute 前段已落盤；此處只解析路徑。無 --source-ticket、版本無法
+    解析、檔案不存在或來源票內容不含新票 ID（回填失敗，檔案無變更）時回傳
+    空清單——納入無變更的檔案會使提交範圍自我驗證失敗、整批放棄。
+    """
+    source_id = getattr(args, "source_ticket", None)
+    if not source_id:
+        return []
+    source_version = extract_version_from_ticket_id(source_id)
+    if source_version is None:
+        return []
+    source_path = get_ticket_path(source_version, source_id)
+    try:
+        backfilled = ticket_id in Path(source_path).read_text(encoding="utf-8")
+    except OSError:
+        return []
+    return [str(source_path)] if backfilled else []
 
 
 # 1.0.0-W1-028: 縮寫歧義攔截已抽為共用 helper，泛化原 _AmbiguousHowAction。
