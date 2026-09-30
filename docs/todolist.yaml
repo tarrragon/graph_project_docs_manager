@@ -405,6 +405,17 @@ versions:
          - 建圖不可用：原因碼（型別表缺 edge_types／基數且版本不在已知範圍）
          - 鄰接查詢回傳「圖不可用」時：記錄一次原因碼（不逐次記錄正常查詢）
 
+  - version: "0.4.1"
+    codename: "Graph-2"
+    description: "0.4.0 Phase 4 多視角審查（W4-001）的延後追蹤項：Graph／Schema 可維護性、Panel 基數驗證、返回鈕實畫面測試、SPEC-006 追溯回填"
+    status: "planned"
+    worklog: "docs/work-logs/v0/v0.4/v0.4.1/"
+    notes: |
+      依版本登記規則 patch 列登記（2026-09-30，用戶裁決：0.4.0 Phase 4 延後項移至 0.4.1）。
+      來源：0.4.0-W4-001 並行評估報告「延後追蹤」九項（原 0.4.0-W4-006～014，以 ticket migrate 遷入）。
+      發版前修的四項（W4-002～005）留在 0.4.0；Graph 編排層接線屬 0.6（0.6.0-W1-073）。
+      九項皆為可維護性或測試覆蓋補強，不改 0.4.0 已凍結的 IT 值；版本契約於 0.4.1 開工前依 2026-09-29 規則寫定。
+
   - version: "0.5.0"
     codename: "Layout"
     description: "Domain 視圖接真資料：矩陣的列與格由真實資料驅動，點交叉格定位至泳道"
