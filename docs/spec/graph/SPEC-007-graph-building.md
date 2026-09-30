@@ -52,9 +52,9 @@ depends_on_domains: [schema, corpus, diagnostics]
 
 | 項目 | 不在本版的理由 | 承接 |
 |------|--------------|------|
-| `depends_on_domains`（`domain_dependency` 邊） | 值是 domain 名稱而非節點 ID（兩語料實測），個別 domain 不是圖節點；與 0.5「矩陣的列無來源」是同一個問題（用戶裁決 2026-09-30） | 0.5.0 規劃波（見〈變更歷史〉1.0 的承接票） |
-| B 層 4 條邊（`emits`／`consumes`／`branch_from`／`return_to`）與 FlowStep 節點 | 欄位在 UC 的結構化 flow 區塊內，不在 frontmatter，Corpus 未解析；layer 為 proposed（用戶裁決 2026-09-30） | 同上 |
-| 破洞「孤島」「缺必要邊」 | 「必要邊」未定義（哪種節點必須有哪種邊）；本版只做有判準的三種（用戶裁決 2026-09-30） | 0.6.0（破洞報告接真資料） |
+| `depends_on_domains`（`domain_dependency` 邊） | 值是 domain 名稱而非節點 ID（兩語料實測），個別 domain 不是圖節點；與 0.5「矩陣的列無來源」是同一個問題（用戶裁決 2026-09-30） | `0.5.0-W1-001` |
+| B 層 4 條邊（`emits`／`consumes`／`branch_from`／`return_to`）與 FlowStep 節點 | 欄位在 UC 的結構化 flow 區塊內，不在 frontmatter，Corpus 未解析；layer 為 proposed（用戶裁決 2026-09-30） | `0.5.0-W1-001` |
+| 破洞「孤島」「缺必要邊」 | 「必要邊」未定義（哪種節點必須有哪種邊）；本版只做有判準的子類：用戶裁決的斷邊、格式錯誤、多來源衝突（2026-09-30），加上 FR-02 的重複 ID | `0.6.0-W1-072` |
 | 貫穿數、路徑→domain 查詢 | 依賴 FlowStep `traverses` 與路徑對照表，屬 0.5 | PROP-005 §0.5 |
 | 語料變動後的增量重建（EVT-CORPUS-002） | 本版只做單輪完整建圖；重掃屬畫面接真資料的互動 | PROP-005 §0.6 |
 | 引用值的部分救回（例：從 `0.2.1-W3-1057 驗收` 抽出 ID） | 與 SPEC-006「不部分救回」一致；救回規則會猜錯（兩個 ID 寫在同一字串） | 本版只回報（FR-03） |
