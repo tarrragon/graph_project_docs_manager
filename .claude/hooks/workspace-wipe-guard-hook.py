@@ -324,32 +324,6 @@ def _detect_operation(command: str) -> Optional[Tuple[str, Optional[str]]]:
 _WIPE_SUBCOMMANDS = frozenset({"stash", "checkout", "reset", "clean", "restore"})
 
 
-def _space_parens(command: str) -> str:
-    """在引號外的 `(` `)` 兩側補空白。
-
-    tokenizer 會把 `create);` 這類黏著括號的 token 視為單一 token，使括號後
-    接的 `git checkout -- .` 語句偵測不到（偵測盲點，fail-open）。補空白後
-    括號成為獨立 token，語句切分正確。引號內文字不動。
-    """
-    out = []
-    quote = ""
-    prev = ""
-    for ch in command:
-        if quote:
-            if ch == quote and prev != "\\":
-                quote = ""
-            out.append(ch)
-        elif ch in ("'", '"') and prev != "\\":
-            quote = ch
-            out.append(ch)
-        elif ch in "()":
-            out.append(" " + ch + " ")
-        else:
-            out.append(ch)
-        prev = ch
-    return "".join(out)
-
-
 _SINGLE_SUBSHELL_RE =re.compile(r"^\(\s*cd\s+[^\s()]+\s*&&[^()]*\)$")
 
 
@@ -587,7 +561,7 @@ def main() -> int:
         return 0
 
     tool_input = input_data.get("tool_input") or {}
-    command = _space_parens(tool_input.get("command", "") or "")
+    command = tool_input.get("command", "") or ""
 
     detected = _detect_operation(command)
     if detected is None:

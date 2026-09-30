@@ -106,7 +106,7 @@ def _build_deny_message(command: str, staged: List[str]) -> str:
     if len(staged) > 15:
         shown += f"\n  ...（另 {len(staged) - 15} 筆）"
     return (
-        "[git merge 被阻擋：主工作區 index 有 staged 變更]\n\n"
+        "[git merge 被阻擋：目標 repo 的 index 有 staged 變更]\n\n"
         f"被攔截的命令：{command}\n\n"
         "理由：index != HEAD 時，需建 merge commit 的 merge 必然失敗，而失敗路徑會以 read-tree 把 "
         "index 與工作區重設為 merge 開始時的 HEAD。若他方在這段期間 commit，"
