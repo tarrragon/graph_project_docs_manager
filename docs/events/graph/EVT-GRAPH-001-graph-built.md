@@ -6,7 +6,7 @@ category: domain_event
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-08-27"
+updated: "2026-09-30"
 
 payload: null
 
@@ -22,13 +22,17 @@ consumers: ['Layout', 'Diagnostics']
 
 ## 負載結構
 
-`nodeCount: int`、`edgeCount: int`、`danglingEdges: List<EdgeRef>`
+`nodeCount: int`、`edgeCount: int`、`refDefects: List<RefDefect>`
 
-> 具體型別待 SPEC 產出後定案。
+`refDefects` 逐筆列出引用缺陷，子類為 `danglingRef`（斷邊）、`malformedRef`（格式錯誤，含自我引用）、`duplicateId`、`multiSource`（單值正向欄位經兩側聯集得到多個終點）。欄位與判準以 SPEC-007 FR-02～FR-06 為準。
+
+> 2026-09-30 依 SPEC-007 定案：原暫定的 `danglingEdges` 併入 `refDefects`。
 
 ## 設計註記
 
 `relatedTo` 語意對稱但儲存單向（`reverse_field` 為 `null`），因此建圖時必須做 1-hop symmetric union，只讀單向會漏掉一半的邊。斷邊（指向不存在節點）不丟棄，交給 Diagnostics。
+
+有反向欄位的邊（`provenance`、`blood`、`spawn`）任一側宣告即建邊，邊上記錄宣告來源（`docs/tech-decisions.md` 2026-09-30 補記、SPEC-007 FR-04）。
 
 ## 來源
 

@@ -2,6 +2,7 @@
 id: PROP-004
 title: "展示介面與 Domain 視圖版型"
 status: confirmed
+evaluation_level: heavy
 source: development
 proposed_by: saas-tech-selection 訪談
 proposed_date: "2026-08-26"
@@ -10,7 +11,7 @@ target_version: null
 priority: P1
 
 outputs:
-  spec_refs: [SPEC-001]
+  spec_refs: [SPEC-001, SPEC-002, SPEC-003, SPEC-004]
   usecase_refs: [UC-02, UC-03, UC-04, UC-05, UC-06]
   event_refs: [EVT-GRAPH-001, EVT-LAYOUT-001, EVT-DIAGNOSTICS-001]
   ticket_refs: []

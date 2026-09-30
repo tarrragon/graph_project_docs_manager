@@ -71,7 +71,7 @@ Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影�
 |----|------|--------|
 | **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（L4 畫面狀態層）為 `[]`。計數由 Graph 聚合（§3） | Domain 視圖矩陣的格、UC-02、UC-03 |
 | **穿透**（drill-through） | 使用者在兩個視圖之間**雙向導覽**的操作行為（domain → UC、UC → domain） | PROP-004 §核心場景、`tech-decisions.md` §3.1 |
-| **鄰接查詢** | Graph domain 的公開 API，沿邊取相鄰節點。**簽章待定**——本批未定義它吃什麼、回什麼 | §3 Graph 的公開面 |
+| **鄰接查詢** | Graph domain 的公開 API，沿邊取相鄰節點（1 hop）。簽章定於 SPEC-007 FR-08：輸入節點 ID、可選邊型集合與方向，回傳邊型、另一端 ID、方向、宣告來源 | §3 Graph 的公開面 |
 
 第三項原名「穿透查詢」，與「穿透」（操作行為）同名但實為 API，已改名。
 另有一個同義動詞「橫向穿過」出現在 SPEC-001 §1 與 PROP-004 §版型定案，
@@ -167,7 +167,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 | **Workspace** | 資料夾存取方式改變 | 目前路徑、可用性狀態、開啟原始檔、最近專案清單、健康計數（攜帶，來源歸 Diagnostics 整合定案） | 路徑持久化、可用性探測、清單持久化 |
 | **Schema** | 上游 schema 格式或版本語意改變 | 型別表（節點／邊定義）、版本相容判定、**路徑對型別查詢**（依 carrier 路徑模式與具體度，SPEC-006 FR-06） | JSON 解析、`.claude/VERSION` 讀取、內建表補欄位 |
 | **Corpus** | 文件格式或解析寬容度改變 | 原始節點與邊、解析錯誤清單 | 掃描策略、YAML 容錯、檔案監看 |
-| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（簽章待定）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
+| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
 | **TicketDetail** | ticket 的 5W1H 結構語意改變 | 單張 ticket 全文與生命週期欄位 | 欄位解讀、佔位值處理 |
 | **Layout** | 布局演算法或版型規則改變 | 泳道／矩陣的座標與尺寸 | 排列演算法、碰撞處理 |
 | **Diagnostics** | 「什麼算破洞」的定義改變 | 破洞清單（分類、嚴重度、跳轉目標） | 各類偵測規則 |
@@ -463,6 +463,25 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 
 全部 FR 皆有歸屬，無標為非 domain 者（破洞報告畫面接真實資料屬 0.6+，不在本版）。
 
+### SPEC-007（0.4.0 Graph）
+
+| FR | 內容 | Bundle | 測試層 |
+|----|------|--------|-------|
+| FR-01 | 邊型表 | Schema | domain unit |
+| FR-02 | 輕節點（含重複 ID） | Graph（讀 Corpus `rawNodes`） | domain unit；IT-3 |
+| FR-03 | 引用值抽取與三類分類、守恆 | Graph | domain unit；IT-2 |
+| FR-04 | 有反向欄位的邊：兩側聯集、宣告來源、多來源衝突 | Graph | domain unit；IT-1 |
+| FR-05 | `relatedTo` 1-hop 對稱聯集 | Graph | domain unit；IT-1 |
+| FR-06 | 建圖結果、計數與 EVT-GRAPH-001 | Graph | domain unit |
+| FR-07 | TicketDetail 以 ID 查詢全文 | TicketDetail（讀 Corpus `rawNodes`） | domain unit；IT-3 |
+| FR-08 | 鄰接查詢 | Graph | domain unit；IT-1 |
+| FR-09 | 由 EVT-GRAPH-001 產生 `graphDefect` 破洞 | Diagnostics | domain unit；IT-2 |
+| NFR-01 | 缺陷隔離 | Graph | domain unit |
+| NFR-02 | 計算量線性 | Graph | `test/performance/`（不入主套件） |
+
+全部 FR 皆有歸屬，無標為非 domain 者。Graph 與 TicketDetail 都只讀 Corpus 產物、彼此不依賴（§4.1）；
+Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
+
 ## 9. 待決事項
 
 - 搜尋與全域導覽若納入，歸屬 Graph（查詢）或獨立 domain（索引）待定
@@ -572,8 +591,8 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   **在裁決前，本 App 不得把現行 FlowStep 清單當必填用。**
   本專案 39 個 FlowStep 已補齊七個欄位（值為空陣列），該動作在兩種
   語意下都安全（欄位存在且值明確為空），但它的**理由**需隨裁決結果重述
-- **`鄰接查詢` 的簽章未定**（§2.5）：Graph 的公開面列了它，但吃什麼、回什麼、
-  幾 hop 皆無。矩陣的「間接依賴」判定會落在這個 API 上
+- ~~**`鄰接查詢` 的簽章未定**~~（§2.5）：2026-09-30 定於 SPEC-007 FR-08，為 1 hop 查詢。
+  矩陣的「間接依賴」需要多 hop，屬 0.5 規劃，會在此 API 之上組合
 - **UC-04 四層樹的第二跳欄位未明訂**：自 PROP 展開時，走
   `SPEC.related_usecases` 或 `UC.source_proposal` 會得到不同的樹。
   本批文件自身即有實例——UC-01 自報 `source_proposal: PROP-003`，

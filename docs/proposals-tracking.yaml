@@ -48,6 +48,9 @@ proposals:
   source: ''
   spec_refs:
   - SPEC-001
+  - SPEC-002
+  - SPEC-003
+  - SPEC-004
   usecase_refs:
   - UC-02
   - UC-03
@@ -65,7 +68,8 @@ proposals:
   depends_on: []
   source: development
   spec_refs:
-  - SPEC-001
+  - SPEC-006
+  - SPEC-007
   usecase_refs: []
   ticket_refs:
   - 0.2.0-W1-033
@@ -121,3 +125,13 @@ specs:
   status: draft
   domain: workspace
   source_proposal: null
+- id: SPEC-006
+  title: Corpus 解析與破洞判定
+  status: draft
+  domain: corpus
+  source_proposal: PROP-005
+- id: SPEC-007
+  title: 建圖：輕節點、邊的聯集與圖結構破洞
+  status: draft
+  domain: graph
+  source_proposal: PROP-005

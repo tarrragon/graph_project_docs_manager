@@ -11,7 +11,7 @@ priority: P0
 evaluation_level: heavy
 
 outputs:
-  spec_refs: []
+  spec_refs: [SPEC-006, SPEC-007]
   usecase_refs: []
   event_refs: []
   ticket_refs: []
