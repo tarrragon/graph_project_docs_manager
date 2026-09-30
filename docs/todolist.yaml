@@ -28,7 +28,7 @@
 meta:
   project: "graph_project_docs_manager"
   architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
-  last_updated: "2026-09-30"
+  last_updated: "2026-10-01"
   maintainer: "rosemary-project-manager"
 
 versions:
@@ -355,7 +355,7 @@ versions:
   - version: "0.4.0"
     codename: "Graph"
     description: "建圖：relatedTo 的 1-hop symmetric union 正確，斷邊交給 Diagnostics，輕節點與 5W1H 全文分離"
-    status: "active"
+    status: completed
     scope: "frozen"    # 2026-10-01 凍結：版本內票全數已完成或關閉，無待標 scope_blocker 的必要票；新票路由至 0.4.1
     proposals:
       - PROP-005
