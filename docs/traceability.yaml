@@ -177,7 +177,8 @@ domain_bundle_tests:
     layer: L0
     invariants:
       - 上游 schema 格式或版本語意改變是唯一合法變更理由（domain-map.md §3）
-    tests: []
+    tests:  # 目前只回填 SPEC-007 FR-01（0.4.0-W4-001）；SPEC-006 的 Schema 測試未回填
+      - test/unit/schema/edge_type_decoding_test.dart
 
   - bundle: Corpus
     layer: L1
@@ -190,7 +191,7 @@ domain_bundle_tests:
     layer: L2
     invariants:
       - 圖語意改變（如 symmetric union 規則）是唯一合法變更理由（domain-map.md §3）
-    tests:  # 測試規格：docs/spec/graph/SPEC-007-test-design.md（0.4.0-W1-059），實作前為紅燈
+    tests:  # SPEC-007 FR-02～FR-06、FR-08、NFR-01、NFR-02；日誌 L1～L3 在 graph_log_events_test
       - test/unit/graph/light_node_test.dart
       - test/unit/graph/reference_extraction_test.dart
       - test/unit/graph/reference_classification_test.dart
@@ -202,12 +203,14 @@ domain_bundle_tests:
       - test/unit/graph/graph_log_events_test.dart
       - test/integration/graph_it1_edge_union_test.dart
       - test/integration/graph_it2_defects_to_diagnostics_test.dart
+      - test/unit/graph/undirected_edge_contract_test.dart
+      - test/performance/graph_build_scaling_test.dart
 
   - bundle: TicketDetail
     layer: L2
     invariants:
       - ticket 的 5W1H 結構語意改變是唯一合法變更理由（domain-map.md §3）
-    tests:  # 測試規格：docs/spec/graph/SPEC-007-test-design.md（0.4.0-W1-059），實作前為紅燈
+    tests:  # SPEC-007 FR-07
       - test/unit/ticket_detail/ticket_detail_query_test.dart
       - test/integration/graph_it3_light_node_separation_test.dart
 
@@ -216,7 +219,9 @@ domain_bundle_tests:
     invariants:
       - 「什麼算破洞」的定義改變是唯一合法變更理由（domain-map.md §3）
       - 只有落在節點 carrier 路徑下卻缺 frontmatter 的檔案才進破洞報告（domain-map.md §7）
-    tests: []
+    tests:  # 目前只回填 SPEC-007 FR-09（0.4.0-W4-001）；SPEC-006 的 Diagnostics 測試未回填
+      - test/unit/diagnostics/graph_defect_gap_test.dart
+      - test/integration/graph_it2_defects_to_diagnostics_test.dart
 
   - bundle: History
     layer: L2
