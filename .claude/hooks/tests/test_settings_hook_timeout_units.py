@@ -54,6 +54,32 @@ def test_e2_fixture_with_millisecond_timeout_is_flagged():
     assert find_oversized_timeouts(fixture) == [("x.py", 5000)]
 
 
+TIMEOUT_FLOOR_SECONDS = 30
+
+
+def find_undersized_timeouts(settings: Dict[str, Any]) -> List[Tuple[str, Any]]:
+    """回傳 timeout 為數值且 < 30 者（須蓋過 uv 冷啟動約 14.5 秒）。"""
+    bad: List[Tuple[str, Any]] = []
+    for matchers in settings.get("hooks", {}).values():
+        for matcher in matchers:
+            for hook in matcher.get("hooks", []):
+                timeout = hook.get("timeout")
+                if isinstance(timeout, (int, float)) and timeout < TIMEOUT_FLOOR_SECONDS:
+                    bad.append((hook.get("command", ""), timeout))
+    return bad
+
+
+def test_e1_current_settings_timeouts_meet_floor():
+    settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    bad = find_undersized_timeouts(settings)
+    assert bad == [], f"{len(bad)} 筆 timeout < 30，首筆：{bad[:1]}"
+
+
+def test_e2_fixture_with_ten_second_timeout_is_flagged():
+    fixture = {"hooks": {"Stop": [{"hooks": [{"command": "a.py", "timeout": 10}]}]}}
+    assert find_undersized_timeouts(fixture) == [("a.py", 10)]
+
+
 def test_fixture_with_second_timeouts_passes():
     fixture = {
         "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "z.py", "timeout": 999}]}]}
