@@ -56,10 +56,7 @@ void main() {
   group('detectGraphDefectGaps（SPEC-007-test-design §3.4 D3，FR-09）', () {
     test('D3-1 四子類各一 → 四筆 graphDefect，欄位逐一相符且原值原樣', () {
       final gaps = _gapsOf(
-        detectGraphDefectGaps(
-          event: _event(_fourKinds()),
-          unavailableReason: null,
-        ),
+        detectGraphDefectGaps(GraphDefectInputAvailable(_event(_fourKinds()))),
       );
 
       expect(gaps, hasLength(4));
@@ -91,8 +88,7 @@ void main() {
 
     test('D3-2 零筆缺陷 → 零筆破洞，非無法判定', () {
       final result = detectGraphDefectGaps(
-        event: _event(const []),
-        unavailableReason: null,
+        GraphDefectInputAvailable(_event(const [])),
       );
 
       expect(result, isA<GraphDefectsDetected>());
@@ -101,10 +97,7 @@ void main() {
 
     test('D3-3 破洞負載只含原因碼與原值，不含顯示文字', () {
       final gaps = _gapsOf(
-        detectGraphDefectGaps(
-          event: _event(_fourKinds()),
-          unavailableReason: null,
-        ),
+        detectGraphDefectGaps(GraphDefectInputAvailable(_event(_fourKinds()))),
       );
 
       final dangling = gaps[0] as RefGraphDefectGap;
@@ -119,8 +112,9 @@ void main() {
 
     test('D3-4（守衛）建圖不可用 → 零筆 graphDefect，回報無法判定並帶原因', () {
       final result = detectGraphDefectGaps(
-        event: null,
-        unavailableReason: UndeterminedGapReason.projectVersionOutOfKnownRange,
+        const GraphDefectInputUnavailable(
+          UndeterminedGapReason.projectVersionOutOfKnownRange,
+        ),
       );
 
       expect(result, isA<GraphDefectUndetermined>());
@@ -132,8 +126,7 @@ void main() {
       expect(
         _gapsOf(
           detectGraphDefectGaps(
-            event: _event(_fourKinds()),
-            unavailableReason: null,
+            GraphDefectInputAvailable(_event(_fourKinds())),
           ),
         ),
         isNotEmpty,
@@ -158,8 +151,7 @@ void main() {
         unavailableReason: null,
       );
       final graphResult = detectGraphDefectGaps(
-        event: _event(_fourKinds()),
-        unavailableReason: null,
+        GraphDefectInputAvailable(_event(_fourKinds())),
       );
 
       final parseGaps = (parseResult as GapsDetected).gaps;
