@@ -10,7 +10,7 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 /// 無向邊以鍵名識別（SPEC-007 FR-04 表格：`association`）。
-const _undirectedEdgeName = 'association';
+const undirectedEdgeName = 'association';
 
 /// 需求：[SPEC-007 FR-01、FR-06] 建圖入口。
 ///
@@ -117,7 +117,7 @@ GraphEdge _edgeOf(ResolvedRef r) {
   final source = r.ref.sourceId;
   final target = r.targetId;
   final type = r.ref.edgeTypeName;
-  if (type == _undirectedEdgeName) {
+  if (type == undirectedEdgeName) {
     final ordered = source.compareTo(target) <= 0
         ? (source, target)
         : (target, source);
@@ -154,7 +154,7 @@ List<MultiSourceGraphDefect> _multiSourceDefects(
   final oneTypes = {
     for (final t in edgeTypes)
       if (t.forwardCardinality == EdgeCardinality.one &&
-          t.name != _undirectedEdgeName)
+          t.name != undirectedEdgeName)
         t.name,
   };
   final groups = <String, List<GraphEdge>>{};
