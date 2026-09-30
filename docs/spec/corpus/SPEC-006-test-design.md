@@ -417,7 +417,7 @@ lostFields 以純函式測（輸入：完整性集合、實際寫出的鍵與值
 |------|------|-------|------|
 | K1 | FR-01 切分語意 ↔ `frontmatter_parser.py` | `test/integration/corpus_it1_frontmatter_equivalence_test.dart` | IT1-A1～A6 |
 | K2 | FR-06 ↔ `tracking_schema.json` 路徑模式與具體度 | `test/unit/schema/tracking_schema_contract_test.dart` | K2-1：真實 JSON 中每個非 FlowStep 型別都有 `carrier_path_patterns`，元素鍵為 `pattern`、`specificity`，`specificity` 為兩個非負整數；K2-2：每個 `pattern` 能被 Dart `RegExp` 編譯；K2-3（守衛，E2）：以測試內建的 Python 專屬語法（例如 `(?P<name>...)`）作正向對照，斷言方言檢查會攔下；K2-4：S1～S2 的關鍵路徑以真實 JSON 查詢得到預期型別；K2-5：模式含 `\d` 時，全形數字路徑不命中（Python 3 `re` 的 `\d` 預設匹配 Unicode 數字、Dart 只匹配 ASCII，兩邊差異須由此案例釘住，見 N3） |
-| K3 | lostFields ↔ `completeness_fields`／`completeness_semantics` | 同上檔，group `completeness` | K3-1：真實 JSON 含 `completeness_fields`，各值為字串清單；K3-2：`completeness_semantics` 存在；K3-3：C6-2 的鑑別對照以真實 JSON 的 SPEC 集合重跑 |
+| K3 | lostFields ↔ `completeness_fields`／`completeness_semantics` | K3-1、K3-2：同上檔，group `completeness`；K3-3：`test/unit/corpus/lost_fields_contract_test.dart`（K3-3 呼叫 `lib/corpus/` 的 `lostFields`，放在 schema 測試目錄會違反 §1.3，`0.4.0-W2-002` 發現後移出） | K3-1：真實 JSON 含 `completeness_fields`，各值為字串清單；K3-2：`completeness_semantics` 存在；K3-3：C6-2 的鑑別對照以真實 JSON 的 SPEC 集合重跑 |
 | K4 | 內建型別表副本 ↔ `builtin_schema_version.json` | `test/unit/schema/builtin_schema_version_contract_test.dart` | K4-1：內建型別表 asset 的 `schema_generated_at_framework_version` 等於 `builtin_schema_version.json` 的值；K4-2（守衛，E2）：以兩個不同值的測試輸入作正向對照，斷言比對回報不一致；內建型別表 asset 由 `0.3.0-W2-001` 建立，在此之前測試為紅燈屬預期 |
 
 ## 4. 覆蓋矩陣

@@ -153,7 +153,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | IT1-A1 | 每個語料的實體化樹 | 建圖 | 邊集合（比對鍵含宣告來源）與 `expected_edges.json` 該語料組完全相等；以差集雙向列出多出與缺少 |
 | IT1-A2（E1 鑑別） | `covers: related_one_side` 的每一筆，未宣告端 B | 對 B 做鄰接查詢（邊型 `association`） | 結果含宣告端 A；另以測試內「只讀 B 自己的 `relatedTo` 欄位」計算，斷言該結果不含 A（證明測資有鑑別力） |
 | IT1-A3 | `covers: spawn_reverse_only` 的每一筆 | 查該子票（方向：出） | 得到父票，宣告來源 {父} |
-| IT1-A4 | 各宣告來源形態 | 統計 | 僅起點、僅終點、兩端三種形態計數等於 `expected_counts.json` |
+| IT1-A4 | 各宣告來源形態 | 統計 | 有向邊的僅起點、僅終點、兩端，與無向邊的一端、兩端，五組計數等於 `expected_counts.json`（SPEC-007 v1.3 FR-06） |
 | IT1-A5（守衛，E2） | manifest 覆蓋檢查器 | 檢查 §2.2.1 每類至少一列 | 通過；另以測試內建、缺 `related_one_side` 的 manifest 作正向對照，斷言檢查器回報缺漏 |
 | IT1-A6（守衛，E2） | 實體化器 | 遇到無法序列化的 `edge_fields` 值型別 | 拒絕而非略過；以測試內建含未知值型別（例如 YAML 無法表示的物件標記）的列作正向對照 |
 
@@ -213,6 +213,8 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | S6-8（守衛） | 專案型別表有 `edge_types` 但某邊型缺正向基數，版本高於內建 | 解碼 | 建圖不可用；同一表版本改為等於內建時，基數由內建補值、可用（正向對照） |
 | S6-9 | layer 為 proposed 的邊型 | 取使用中邊型 | 不在其中 |
 | S6-10 | 既有 `node_types` 解碼 | 解碼含 `edge_types` 的表 | 節點型別解碼結果與未含 `edge_types` 時相同（版本契約第 2 欄「既有 node_types 解碼測試不變」） |
+| S6-11（守衛） | 專案型別表整份缺席（`projectSchemaJson` 為 null） | 解碼 | 建圖不可用，原因碼為版本不在已知範圍；正向對照為 S6-12（SPEC-007 v1.3） |
+| S6-12 | 降級模式：內建表 asset 作為專案型別表傳入 | 解碼 | 建圖可用；使用中邊型等於 asset 的 established 邊型扣除 `domain_dependency`（SPEC-007 v1.3） |
 
 ### 3.2 Graph bundle
 
@@ -294,7 +296,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 
 | # | Given | Then |
 |---|-------|------|
-| G6-1 | 分布已知 fixture | 節點數、`duplicateId` 數、各邊型邊數、三種宣告來源形態邊數、FR-03 三類、`multiSource` 數等於已知值 |
+| G6-1 | 分布已知 fixture | 節點數、`duplicateId` 數、各邊型邊數、宣告來源形態邊數（有向三組、無向兩組）、FR-03 三類、`multiSource` 數等於已知值 |
 | G6-2 | `rawNodes` 為空 | 發出一筆 EVT-GRAPH-001，`nodeCount`／`edgeCount` 0，`graphDefects` 空，非錯誤 |
 | G6-3 | 建圖完成 | 恰一筆 EVT-GRAPH-001；`graphDefects` 筆數等於斷邊＋格式錯誤＋`duplicateId`＋`multiSource` |
 | G6-4 | 同一邊多次宣告 | `edgeCount` 只計一次 |
@@ -384,7 +386,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 
 | FR | 驗收條件數 | 5a | 5b | 日誌 |
 |----|-----------|----|----|------|
-| FR-01 | 5 | IT2-A5 | S6-1～S6-10、G2-9、G2-10 | L2 |
+| FR-01 | 7 | IT2-A5 | S6-1～S6-12、G2-9、G2-10 | L2 |
 | FR-02 | 3 | IT-3（A1、A3）；IT-1 合成 `duplicate_id` 列 | G1-1～G1-6 | — |
 | FR-03 | 8 | IT-2（A1～A4） | G2-1～G2-8、G3-1～G3-9 | L1 |
 | FR-04 | 6 | IT-1（A1、A3、A4） | G4-1～G4-9 | — |
@@ -407,6 +409,8 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | FR-01 #3 `forward_field` 改名 | S6-4、G2-10 |
 | FR-01 #4 缺 `edge_types`、版本已知 | S6-5、S6-6 |
 | FR-01 #5 缺 `edge_types`、版本較高 | S6-7、IT2-A5 |
+| FR-01 #6 型別表整份缺席 | S6-11 |
+| FR-01 #7 降級模式以內建表建圖 | S6-12 |
 | FR-02 #1 五欄、無共用引用 | G1-1、IT3-A1 |
 | FR-02 #2 重複 ID | G1-4 |
 | FR-02 #3 指向重複 ID | G1-5 |
@@ -445,7 +449,7 @@ FR 驗收（5b）與 IT（5a）交集的處理：5b 為規則分支的權威，I
 | 日誌 | L1～L3 | 8 |
 | 合計 | | 97 |
 
-守衛型案例與正向對照：IT1-A5、IT1-A6、IT2-A4、IT3-A4、IT3-A6、S6-7、S6-8、G1-4、G3-5、G3-6、G3-9、G4-4、
+守衛型案例與正向對照：IT1-A5、IT1-A6、IT2-A4、IT3-A4、IT3-A6、S6-7、S6-8、S6-11、G1-4、G3-5、G3-6、G3-9、G4-4、
 G7-2、G7-5、T1-3、D3-4、L2-3、L3-2，均已附正向對照輸入。E1 鑑別對照：IT1-A2、IT2-A5、G2-9、G2-10、
 G4-8、G5-1、L1-2。
 
