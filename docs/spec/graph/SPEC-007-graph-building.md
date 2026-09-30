@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-09-30"
-version: "1.1"
+version: "1.2"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -38,6 +38,8 @@ depends_on_domains: [schema, corpus, diagnostics]
 | IT-1 聯集 | FR-04、FR-05、FR-08 | 由凍結 manifest 實體化的語料建圖，邊集合與凍結的參照實作輸出一致。比對鍵為（邊型、起點、終點、宣告來源）；無向邊的兩端依 ID 字典序排列。另斷言：對每一筆只由一端宣告的 `relatedTo`，未宣告的一端做鄰接查詢也查得到對方（只讀單向時查不到，證明測資有鑑別力） |
 | IT-2 缺陷交給 Diagnostics | FR-03、FR-09 | 同一份語料，破洞集合與凍結的參照實作輸出一致。另斷言：解析成功、斷邊、格式錯誤三類計數的總和，等於參照實作從 manifest 獨立算出並凍結的引用值總數（總數不由待測實作自己計算，否則靜默丟值時守恆式仍成立） |
 | IT-3 輕節點與全文分離 | FR-02、FR-07 | 圖上每個節點只帶輕節點欄位；ticket 的 frontmatter 全文只能經 TicketDetail 以 ID 取得 |
+
+EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout），不佔使用者呈現通道：Graph 無對外呈現面（`docs/domain-map.md` §2.6.2）。佔用使用者注意力的是 Diagnostics 其後的掃描完成通知，已由 SPEC-003 FR-11 標定。
 
 斷言來源：`EVT-GRAPH-001`、`docs/domain-map.md` §4.1、`docs/tech-decisions.md` 2026-09-30 兩則補記（反向邊讀取規則、來源邊多值）。
 
@@ -112,14 +114,14 @@ depends_on_domains: [schema, corpus, diagnostics]
 **抽取**：
 - 欄位缺席、值為 null、空字串、空清單：不產生引用值
 - 清單內的 null 項：跳過，不計為引用值
-- 反向欄位 `outputs`（PROP）是 map：子鍵 `spec_refs`、`usecase_refs`、`event_refs`、`ticket_refs` 的清單每一項各是一個 `provenance` 的反向引用值。其他子鍵各計為一個引用值，歸格式錯誤
+- 反向欄位 `outputs`（PROP）是 map：每個子鍵的清單每一項各是一個 `provenance` 的反向引用值。子鍵名稱只是分組，規格不列舉，新子鍵自動納入；子鍵值不是清單時，該子鍵計為一個引用值，歸格式錯誤
 - 形狀不合法（欄位值為數字、布林或 map；清單項不是字串）：每個清單項（純量欄位則為整個欄位）計為一個引用值，歸格式錯誤
 
 **分類**：依下列順序判定，每個引用值落入第一個成立的類別：
 
 | 順序 | 類別 | 條件 | 處置 |
 |------|------|------|------|
-| 1 | 格式錯誤 | 形狀不合法，或值不符合任何節點型別的 `id_pattern` | 不建邊，不救回，回報 `malformedRef`（原因碼 `invalidShape`／`patternMismatch`） |
+| 1 | 格式錯誤 | 形狀不合法，或值不符合任何節點型別的 `id_pattern`（值原樣比對，不去除前後空白） | 不建邊，不救回，回報 `malformedRef`（原因碼 `invalidShape`／`patternMismatch`） |
 | 2 | 格式錯誤 | 值等於來源節點自己的 `id` | 不建邊，回報 `malformedRef`（原因碼 `selfReference`） |
 | 3 | 斷邊 | 圖上沒有該 `id` 的節點（含 FR-02 排除的重複 ID） | 不建邊，回報 `danglingRef`（原因碼 `targetMissing`／`targetDuplicated`） |
 | 4 | 解析成功 | 其餘 | 參與建邊（FR-04、FR-05） |
@@ -129,9 +131,11 @@ depends_on_domains: [schema, corpus, diagnostics]
 **驗收條件**：
 - [ ] Given `source_ticket: 0.1.0-W3-181` 且圖上沒有該節點，Then 回報一筆 `danglingRef`（`targetMissing`），不建邊
 - [ ] Given `relatedTo: ["0.1.0-W1-072 0.1.0-W1-073"]`、`discovered_during: "0.2.1-W3-1057 驗收"`、`spawned_tickets: [PENDING]`，Then 三者皆為 `malformedRef`（`patternMismatch`），不建邊，不抽出其中的 ID
+- [ ] Given `relatedTo: [" 0.1.0-W1-001"]`（引號內帶前導空白），Then 為 `malformedRef`（`patternMismatch`），不去除空白後重試
 - [ ] Given 節點 A 的 `relatedTo` 列出 A，Then 回報 `malformedRef`（`selfReference`），不建邊
 - [ ] Given `blockedBy: [0.1.0-W1-001, 42, null]`，Then 產生兩個引用值：`0.1.0-W1-001` 依存在與否分類，`42` 為 `malformedRef`（`invalidShape`）；null 不計
-- [ ] Given PROP 的 `outputs` 含子鍵 `notes: [x]`，Then 該子鍵計為一個 `malformedRef`（`invalidShape`）
+- [ ] Given PROP 的 `outputs` 含子鍵 `design_refs: [SPEC-001]`，Then 該項為 `provenance` 的反向引用值，照常分類
+- [ ] Given PROP 的 `outputs` 含子鍵 `notes: "x"`，Then 該子鍵計為一個 `malformedRef`（`invalidShape`）
 - [ ] Given 一份分布已知的 fixture，Then 三類計數等於已知值，守恆式成立
 
 ### FR-04：邊的方向與建邊來源
@@ -175,10 +179,13 @@ depends_on_domains: [schema, corpus, diagnostics]
 
 **計數項**：節點數、`duplicateId` 數、各邊型的邊數、各宣告來源形態的邊數（僅起點、僅終點、兩端）、FR-03 三類計數、`multiSource` 數。
 
+**規則**：`rawNodes` 為空時照常建出空圖、發出 EVT-GRAPH-001，所有計數為 0，不視為錯誤（與 SPEC-006 FR-02「沒有 `docs/` 時掃描 0 檔」一致）。
+
 **負載**：`nodeCount`、`edgeCount`、`graphDefects`（`danglingRef`、`malformedRef`、`duplicateId`、`multiSource`，逐筆）。EVT-GRAPH-001 的負載說明已於本規格定案時同步改寫（`docs/events/graph/EVT-GRAPH-001-graph-built.md`）。
 
 **驗收條件**：
 - [ ] Given 一份分布已知的 fixture，Then 各計數項等於已知值，FR-03 守恆式成立
+- [ ] Given `rawNodes` 為空，Then 發出一筆 EVT-GRAPH-001，`nodeCount`、`edgeCount` 為 0，`graphDefects` 為空
 - [ ] Given 建圖完成，Then 發出一筆 EVT-GRAPH-001，`graphDefects` 筆數等於斷邊數＋格式錯誤數＋`duplicateId` 數＋`multiSource` 數
 
 ### FR-07：TicketDetail
@@ -202,12 +209,15 @@ depends_on_domains: [schema, corpus, diagnostics]
 
 **輸出**：清單，每項帶邊型、另一端的節點 ID、方向（出、入、無向）、宣告來源。無向邊在任何方向篩選下都會回傳，方向標為無向。
 
-**規則**：節點 ID 不在圖上時回傳空清單，不拋例外。
+**規則**：
+- 節點 ID 不在圖上時回傳空清單，不拋例外
+- 建圖不可用（FR-01）或尚未完成時，回傳「圖不可用」狀態而非空清單。空清單表示「查過且沒有相鄰節點」，兩者分開，畫面才不會把不可用顯示成「沒有關聯」
 
 **驗收條件**：
 - [ ] Given 一張子票以 `source_ticket` 指向父票，Then 查子票（方向：出）得到父票，查父票（方向：入）得到子票
 - [ ] Given 邊型篩選只含 `blocking`，Then 回傳不含其他邊型
 - [ ] Given 不存在的 ID，Then 回傳空清單
+- [ ] Given 建圖不可用，Then 任何查詢都回傳「圖不可用」，不回傳空清單
 
 ### FR-09：圖結構破洞（Diagnostics）
 
@@ -269,5 +279,6 @@ depends_on_domains: [schema, corpus, diagnostics]
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.2 | 2026-09-30 | 依 `/spec validate`（規劃波 Step 3）的五個未回答問題補齊，全部採用預設答案（用戶確認）：空語料建空圖並發事件；引用值原樣比對不去空白；圖不可用時鄰接查詢回傳「圖不可用」而非空清單；`outputs` 子鍵不列舉，所有子鍵的清單項皆為反向引用值；寫明 EVT-GRAPH-001 不佔使用者呈現通道 |
 | 1.1 | 2026-09-30 | 依技術與文字兩份審查修正，並納入用戶裁決「來源邊多值、基數由 schema 宣告」（D7）：新增〈用詞〉；FR-01 解碼正向基數、改以集合描述邊型數；FR-03 分類改為有序判定，自我引用、重複 ID、非法形狀與清單內 null 的計數單位寫定；FR-04 改為「邊的方向與建邊來源」總表，單值判準改讀正向基數，`multiSource` 只計解析成功的終點；宣告來源統一為端點集合；IT-1 比對鍵含宣告來源；IT-2 引用值總數由參照實作獨立凍結；負載欄位 `refDefects` 更名 `graphDefects`；補齊各 FR 缺漏的驗收條件 |
 | 1.0 | 2026-09-30 | 初版：0.4.0 規劃波 Step 2，依 PROP-005 §0.4 與設計約束表所列用戶裁決建立。兩語料實測：本專案 1179 節點、flutter_balance 1690 節點；引用值中斷邊 3／0、格式錯誤 1／4、只在反向的 `spawn` 38／52；重複 ID 與自我引用皆 0 |
