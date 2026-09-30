@@ -103,6 +103,9 @@ macos/Podfile.lock
 # 故採 blanket + 白名單：類別式涵蓋維持，合法的依賴鎖定檔逐一放行。
 .claude/**/*.lock
 !.claude/**/uv.lock
+# ticket CLI 的 file_lock 在票檔旁留 0 位元組 sentinel（{ticket}.md.lock），由 reap_stale_locks 事後收割；
+# 票庫在 docs/ 下，上一行 .claude/ 的類別式涵蓋照不到（0.4.0-W1-075）。
+docs/**/*.md.lock
 .claude/sync-preserve.yaml
 .claude/sync-skills.yaml
 .claude/worktrees
