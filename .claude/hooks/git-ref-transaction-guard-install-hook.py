@@ -55,7 +55,7 @@ from lib.git_utils import get_project_root  # noqa: E402
 
 SHIM_MARKER = "# git-ref-transaction-content-guard shim"
 HOOK_FILENAME = "reference-transaction"
-SHIM_VERSION = 2
+SHIM_VERSION = 3  # 3：警告訊息改用 ${rc}，避免 bash 在 C locale 把全形標點併入變數名
 
 # guard 判定阻擋的專用離開碼，須與 git-ref-transaction-content-guard.py 的
 # EXIT_BLOCK 一致。選 87 的理由：避開 uv / python / shell 的一般錯誤碼——
@@ -106,7 +106,7 @@ if [ -n "$root" ] && [ -f "$target" ]; then
     exit 1
   fi
   # 非判定型失敗（uv 解析失敗 rc=1、uv 不存在 rc=127 等）：fail-open 但必須可見
-  echo "[reference-transaction shim] guard 啟動失敗（rc=$rc），已放行本次 ref 寫入，內容掃描未生效" >&2
+  echo "[reference-transaction shim] guard 啟動失敗（rc=${{rc}}），已放行本次 ref 寫入，內容掃描未生效" >&2
 fi
 exit 0
 """

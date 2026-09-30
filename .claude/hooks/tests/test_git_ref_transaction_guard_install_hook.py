@@ -186,5 +186,17 @@ class TestShimVersion:
         assert f"shim-version: {hook_module.SHIM_VERSION}" in target.read_text(encoding="utf-8")
 
 
+class TestShimWarningRcExpansion:
+    def test_rc_is_brace_delimited_before_fullwidth_punctuation(self):
+        """警告訊息中 rc 須寫成 ${rc}。
+
+        bash 在 C locale 會把緊接的全形標點位元組併入變數名，`$rc）` 展開為空值並輸出亂碼，
+        使「guard 啟動失敗（rc=...）」看不到實際離開碼。
+        """
+        body = hook_module._shim_body()
+        assert "rc=${rc}" in body
+        assert "rc=$rc）" not in body
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
