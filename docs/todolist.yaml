@@ -356,6 +356,7 @@ versions:
     codename: "Graph"
     description: "建圖：relatedTo 的 1-hop symmetric union 正確，斷邊交給 Diagnostics，輕節點與 5W1H 全文分離"
     status: "active"
+    scope: "frozen"    # 2026-10-01 凍結：版本內票全數已完成或關閉，無待標 scope_blocker 的必要票；新票路由至 0.4.1
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.4/v0.4.0/"
