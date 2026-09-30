@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-09-30"
-version: "1.6"
+version: "1.7"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -84,6 +84,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 每個邊型帶：鍵名（如 `association`、`spawn`）、`class`、`forward_field`、`reverse_field`（可為 null）、正向基數（`one`／`many`）、`layer`
 - 使用中邊型見〈用詞〉。欄位名、基數、是否有反向欄位一律取自型別表，不在程式內寫死。本版以鍵名寫死的只有兩處（設計約束 D6）：排除 `domain_dependency`，以及把 `association` 認定為無向邊（FR-05）
 - 專案型別表缺 `edge_types`，或其中缺正向基數欄位：版本在 App 已知範圍內則從內建表補；否則建圖不可用，回報原因碼（與 SPEC-006 FR-08 同一套「無法判定」原因）
+- 單一邊型條目不合法（值不是 map；`class`、`forward_field`、`layer` 缺席或不是字串；`reverse_field` 存在但不是字串，null 合法）：該條目整筆拒收並寫日誌，視同該邊型缺席，依缺欄位的規則處置——版本在 App 已知範圍內時該邊型取內建表的定義；否則建圖不可用。`edge_types` 本身不是 map 時視同缺 `edge_types`。邊型條目的問題只影響 Graph，不得中斷 Corpus 對同一型別表 `node_types` 的解碼
 - 專案型別表整份缺席（`tracking_schema.json` 不存在）：建圖不可用，回報版本不在已知範圍的原因碼。這是 SPEC-001 §1「無可消費的型別表」的顯式關卡，Graph 不自動降級；使用者選「以 App 內建型別表檢視」後，呼叫端以內建表作為專案型別表傳入，建圖可用，使用中邊型取自內建表（`docs/tech-decisions.md` 2026-09-03「型別表缺席時降級而非拒絕」）。呼叫端的接線屬 PROP-005 §0.6 畫面接真資料
 
 **驗收條件**：
@@ -93,6 +94,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given 專案型別表缺 `edge_types` 且版本在已知範圍內，Then 解碼出的邊型集合與內建表相同，建圖可用
 - [ ] Given 專案型別表缺 `edge_types` 且版本高於內建版本，Then 建圖不可用，回報原因碼，不產生 `graphDefect`
 - [ ] Given 專案型別表整份缺席，Then 建圖不可用，回報版本不在已知範圍的原因碼
+- [ ] Given 專案型別表某邊型的值是字串、版本在已知範圍內，Then 不拋例外，該邊型取內建表定義，建圖可用，`node_types` 解碼結果與該條目正常時相同
+- [ ] Given 同上但版本高於內建版本，Then 建圖不可用，Corpus 掃描照常完成
 - [ ] Given 降級模式（內建表作為專案型別表傳入），Then 建圖可用，使用中邊型等於內建表 established 邊型扣除 `domain_dependency`
 
 ### FR-02：輕節點
@@ -286,6 +289,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.7 | 2026-09-30 | FR-01 補單一邊型條目不合法的處置（`0.4.0-W4-004` 提出）：整筆拒收並寫日誌，視同該邊型缺席，依缺欄位規則從內建表補或判建圖不可用；不得中斷 Corpus 的 `node_types` 解碼。依 FR-01 既有「缺欄位→內建補／不可用」原則推導，避免邊型被靜默丟棄 |
 | 1.6 | 2026-09-30 | D6 補列第二個鍵名例外：以 `association` 認定無向邊（`0.4.0-W2-004` 提出，用戶經 WRAP 裁決）。FR-01、FR-05 同步；FR-05 寫明不能依 `class` 判定的理由，並由契約測試 S6-13 釘住前提；上游補欄位後由 `0.5.0-W1-001` 移除 |
 | 1.5 | 2026-09-30 | FR-09 寫明建圖不可用原因的轉換（`0.4.0-W2-007` 提出）：由編排層轉成 Diagnostics 既有的「專案版本不在已知範圍」，Diagnostics 不 import Schema、不擴充原因列舉與 l10n；兩種原因的區分保留在日誌。依 FR-01「與 SPEC-006 FR-08 同一套原因」推導 |
 | 1.4 | 2026-09-30 | FR-03 與〈用詞〉的 map 展開規則改為依值的形狀判定：任何值為 map 的反向欄位都展開子鍵，不再以 `outputs` 點名，對齊 D6「欄位名不寫死」；正向欄位的值為 map 仍歸格式錯誤。`0.4.0-W2-003` 與參照實作已是此行為，兩語料只有 `outputs` 是 map，IT 不受影響 |
