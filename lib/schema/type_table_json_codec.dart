@@ -42,13 +42,53 @@ TypeTable typeTableFromJson(Map<String, dynamic> json) {
     );
   }
 
-  return TypeTable(Map.unmodifiable(entries));
+  return TypeTable(
+    Map.unmodifiable(entries),
+    edgeTypes: _parseEdgeTypes(json['edge_types']),
+  );
+}
+
+/// `null` 代表缺 `edge_types` 鍵；缺必要欄位的邊型拒收並寫日誌，正向基數
+/// 缺席保留為 `null`（SPEC-007 FR-01）。
+Map<String, EdgeTypeDecl>? _parseEdgeTypes(dynamic raw) {
+  if (raw is! Map<String, dynamic>) {
+    return null;
+  }
+  final result = <String, EdgeTypeDecl>{};
+  for (final entry in raw.entries) {
+    final map = entry.value as Map<String, dynamic>;
+    final forwardField = map['forward_field'] as String?;
+    final edgeClass = map['class'] as String?;
+    final layer = map['layer'] as String?;
+    if (forwardField == null || edgeClass == null || layer == null) {
+      developer.log(
+        '邊型 ${entry.key} 缺 class／forward_field／layer，已拒收', // i18n-exempt: 開發者診斷 log
+        name: _tag,
+        level: 900,
+      );
+      continue;
+    }
+    result[entry.key] = EdgeTypeDecl(
+      name: entry.key,
+      edgeClass: edgeClass,
+      forwardField: forwardField,
+      reverseField: map['reverse_field'] as String?,
+      forwardCardinality: EdgeCardinality.values
+          .where((value) => value.name == map['forward_cardinality'])
+          .firstOrNull,
+      layer: layer,
+    );
+  }
+  return Map.unmodifiable(result);
 }
 
 /// `null` 代表型別表中不帶 `carrier_path_patterns` 欄位（規則 3）；
 /// 非 `null` 時逐元素轉成 [CarrierPathPattern]，壞元素拒收並寫日誌，不影響
 /// 同批其他元素（0.3.0-W3-531）。
-List<CarrierPathPattern>? _parseCarrierPathPatterns(String typeName, dynamic raw) {
+List<CarrierPathPattern>? _parseCarrierPathPatterns(
+  String typeName,
+  dynamic raw,
+) {
   if (raw == null) {
     return null;
   }
@@ -57,12 +97,18 @@ List<CarrierPathPattern>? _parseCarrierPathPatterns(String typeName, dynamic raw
   for (final element in list) {
     final map = element as Map<String, dynamic>;
     final pattern = map['pattern'] as String;
-    final specificity = _parseSpecificity(typeName, pattern, map['specificity']);
+    final specificity = _parseSpecificity(
+      typeName,
+      pattern,
+      map['specificity'],
+    );
     if (specificity == null) {
       continue;
     }
     try {
-      patterns.add(CarrierPathPattern(pattern: pattern, specificity: specificity));
+      patterns.add(
+        CarrierPathPattern(pattern: pattern, specificity: specificity),
+      );
     } on FormatException catch (error) {
       developer.log(
         '型別 $typeName 的 carrier_path_patterns 模式無法編譯，已拒收：$pattern（$error）', // i18n-exempt: 開發者診斷 log
@@ -76,7 +122,11 @@ List<CarrierPathPattern>? _parseCarrierPathPatterns(String typeName, dynamic raw
 
 /// `specificity` 必須是長度為 2 的整數清單（規則 6）；長度不對時拒收該筆
 /// 模式並寫日誌，回傳 `null`。
-PathSpecificity? _parseSpecificity(String typeName, String pattern, dynamic raw) {
+PathSpecificity? _parseSpecificity(
+  String typeName,
+  String pattern,
+  dynamic raw,
+) {
   final list = raw as List<dynamic>;
   if (list.length != 2) {
     developer.log(
