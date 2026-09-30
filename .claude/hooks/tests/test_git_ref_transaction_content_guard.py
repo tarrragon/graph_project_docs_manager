@@ -151,7 +151,7 @@ class TestMainIntegration:
 
         result = _run_guard(scratch_repo, "prepared", stdin_text)
 
-        assert result.returncode == 1
+        assert result.returncode == 87
         assert "reference-stability-rule8-guard" in result.stderr
         assert "git-ref-transaction-content-guard" in result.stderr
 
@@ -283,7 +283,7 @@ class TestMergeExemption:
 
         result = _run_guard(scratch_repo, "prepared", stdin_text)
 
-        assert result.returncode == 1
+        assert result.returncode == 87
         assert "branch-verify" in result.stderr
 
     def test_merge_with_other_guard_violation_includes_residue_cleanup_note(
@@ -301,7 +301,7 @@ class TestMergeExemption:
 
         result = _run_guard(scratch_repo, "prepared", stdin_text)
 
-        assert result.returncode == 1
+        assert result.returncode == 87
         assert "reference-stability-rule8-guard" in result.stderr
         assert "merge 殘局提醒" in result.stderr
         assert "git merge --abort" in result.stderr

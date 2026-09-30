@@ -139,7 +139,9 @@ from lib.commit_content_guards import (  # noqa: E402
 )
 
 EXIT_ALLOW = 0
-EXIT_BLOCK = 1  # `prepared` 狀態任何非零離開碼皆中止該次 ref transaction
+# 專用離開碼，須與 install hook 的 GUARD_BLOCK_EXIT_CODE 一致；shim 只在收到
+# 此碼時中止 ref transaction，其他非零（uv 失敗等）一律 fail-open。
+EXIT_BLOCK = 87
 
 _HEADS_PREFIX = "refs/heads/"
 _HEAD_REF = "HEAD"
