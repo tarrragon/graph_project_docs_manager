@@ -276,5 +276,5 @@
     }
   },
   "notice": "本檔為 tracking_schema.py 的衍生產物，唯一 SSOT 為該 .py 檔。禁止直接編輯本 JSON，修改型別表請改 tracking_schema.py 後重新執行`doc schema export` 產生。",
-  "schema_generated_at_framework_version": "2.65.0"
+  "schema_generated_at_framework_version": "2.60.13"
 }

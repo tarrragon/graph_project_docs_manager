@@ -11,6 +11,9 @@
 `references/tracking.md` 與五份範本註解寫明 `source_proposal` 可為清單。
 `test_schema_export.py` 新增 `TestEdgeForwardCardinality`（16 個邊型值逐一斷言 + 缺欄位／
 值域外的正向對照輸入）。**消費端注意**：`source_proposal` 讀取須先正規化為清單。
+`schema_generated_at_framework_version` 刻意維持 2.60.13：App 的「已知範圍」判準拿此值與內建值
+比對，高於內建即判不相容；本次只在 `edge_types` 加欄位而 App 不讀 `edge_types`，實際仍相容。
+待 App 開始讀此欄位時，產生版本與 App 內建版本一起升（處置同 1.22.7）。
 
 **Version**: 1.22.7 — Ticket 型 `id_pattern` 由
 `^[\w.]+-W\d+-\d+$` 改為 `^[\w.]+-W\d+-\d+(\.\d+)*$`，接受 ticket CLI 自產的子票 ID
