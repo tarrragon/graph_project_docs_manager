@@ -61,6 +61,7 @@ from ticket_system.lib.ticket_ops import (
 )
 from ticket_system.lib.tdd_phase_inference import TDD_PHASE_SOURCE_MANUAL
 from ticket_system.lib.ticket_validator import validate_ticket_id
+from ticket_system.lib.ana_coupling_hint import hint_blocked_by_ana
 
 # _execute_set_relation_field 呼叫入口對應的 CLI 子命令名稱，
 # 用於逗號分隔誤用訊息中組出正確指令範例。
@@ -264,6 +265,9 @@ def _execute_set_relation_field(
         print(f"  新值：{', '.join(new_value)}")
     else:
         print(f"  新值：（空）")
+
+    if field_name == "blockedBy" and not is_remove_mode:
+        hint_blocked_by_ana(version, referenced_ids, target_id)
 
     return 0
 
