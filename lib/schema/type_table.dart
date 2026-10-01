@@ -6,9 +6,6 @@
 /// 判定（專案 JSON／內建表三分）屬另一票範圍（FR-06 規則 7）。
 library;
 
-import 'package:graph_project_docs_manager/schema/edge_type.dart'
-    show EdgeTypeEntry;
-
 /// 路徑模式具體度（規則 6）：字面段數與跨段萬用成分數的具名組合。
 ///
 /// 取代先前的 `List<int>` 索引存取（`[0]`／`[1]` 易誤用、長度不對時只能在
@@ -122,19 +119,6 @@ class EdgeTypeDecl {
   final String? reverseField;
   final EdgeCardinality? forwardCardinality;
   final String layer;
-
-  EdgeTypeEntry toEntry(
-    EdgeCardinality cardinality, {
-    bool isUndirected = false,
-  }) => EdgeTypeEntry(
-    name: name,
-    edgeClass: edgeClass,
-    forwardField: forwardField,
-    reverseField: reverseField,
-    forwardCardinality: cardinality,
-    layer: layer,
-    isUndirected: isUndirected,
-  );
 }
 
 /// 型別表：型別名稱對條目的對照。
