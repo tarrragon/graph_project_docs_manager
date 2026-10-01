@@ -413,6 +413,7 @@ versions:
     codename: "Graph-2"
     description: "兩個 topic：Graph 可維護性（0.4.0 Phase 4 延後九項）與框架修復（0.4.0 期間的框架新發現、#114 版本規則落地）"
     status: "active"
+    scope: "frozen"    # 2026-10-02 凍結：契約必要工作（Graph topic 與 finish 前置 1～2）已完成；未完成框架票無 scope_blocker，依用戶裁決前移至 0.4.2
     worklog: "docs/work-logs/v0/v0.4/v0.4.1/"
     notes: |
       依版本登記規則 patch 列登記（2026-09-30，用戶裁決：0.4.0 Phase 4 延後項移至 0.4.1）。
