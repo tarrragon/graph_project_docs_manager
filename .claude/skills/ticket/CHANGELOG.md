@@ -2,7 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
-**Version**: 2.44.26（本地變更）— 單一路徑隔離提交的 CAS 重試與檔案日誌：update-ref 因 HEAD 前進被拒（`but expected`）列為可重試，整個提交流程以新 HEAD 重做（原本僅依「含 cannot lock ref」的巧合被外層重試，內層同 old_head 重試必敗卻白等 1 秒，現已略過）；每次重試與最終失敗各寫一筆 `.claude/hook-logs/ticket-commit-retry/retry-YYYYMMDD.log`（欄位 attempt、waited_s、reason=cas_rejected 或 lock:鎖名）；日誌寫入失敗只寫 stderr，不改變提交結果；重試用盡的補救指令加列 `ticket track commit`。總等待上限不變（5 秒）。測試 `ticket_system/tests/test_commit_cas_retry.py`：E1 對照無競爭不重試且無日誌。
+**Version**: 2.44.26（本地變更）— 單一路徑隔離提交的 CAS 重試與檔案日誌：update-ref 因 HEAD 前進被拒（`but expected`）列為可重試，整個提交流程以新 HEAD 重做（原本僅依「含 cannot lock ref」的巧合被外層重試，內層同 old_head 重試必敗卻白等 1 秒，現已略過）；每次重試與最終失敗各寫一筆 `.claude/hook-logs/ticket-commit-retry/retry-YYYYMMDD.log`（欄位 attempt、waited_s、reason=cas_rejected 或 lock:鎖名）；日誌寫入失敗只寫 stderr，不改變提交結果；重試用盡的補救指令加列 `ticket track commit`。總等待上限不變（5 秒）。修正：票檔不存在或解析不到 repo root 時不再退回 process cwd 寫日誌（只寫 stderr），測試由 skill-root conftest 的 autouse fixture 把日誌導向 tmp，避免 mock 值污染真實日誌。測試 `ticket_system/tests/test_commit_cas_retry.py`：E1 對照無競爭不重試且無日誌。
 
 **Version**: 2.44.25（本地變更）— 修復 `ticket migrate` 的 `_sync_parent_children` 回歸：新父 `children` 已列新 ID（字串或 dict 的 `id`）時保留原項、原形式、原順序且不寫父票檔；未列才以字串追加尾端。此前以「剔除後追加」去重，dict 形式與原位置皆遺失（舊父為 None、新父由新 ID 推導時觸發）。
 
