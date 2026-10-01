@@ -165,10 +165,13 @@ def _failure_reason(error: str) -> str:
 
 
 def _log_commit_event(
-    cwd: str, event: str, ticket_id: str, attempt: int, waited_s: float, error: str
+    ticket_path: str, event: str, ticket_id: str, attempt: int, waited_s: float, error: str
 ) -> None:
     """重試／最終失敗寫入檔案日誌；寫入失敗只寫 stderr，不影響提交結果。"""
     import sys
+
+    cwd = str(Path(ticket_path).parent)
+    ticket_file_exists = Path(ticket_path).is_file()
 
     detail = (error or "").splitlines()[0] if error else ""
     line = (
@@ -177,8 +180,13 @@ def _log_commit_event(
         f"detail={detail}\n"
     )
     try:
+        # 票檔不存在或解析不到 repo root 時不退回 process cwd（會寫進無關 repo
+        # 的日誌），只寫 stderr
         ok, root, _err = _run_git(["git", "rev-parse", "--show-toplevel"], cwd=cwd)
-        base = root.strip() if ok and root.strip() else cwd
+        if not (ticket_file_exists and ok and root.strip()):
+            sys.stderr.write(f"[WARNING] 提交重試日誌未寫檔（無法解析 repo）：{line}")
+            return
+        base = root.strip()
         log_dir = os.path.join(base, _RETRY_LOG_DIR)
         os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, "retry-" + time.strftime("%Y%m%d") + ".log")
@@ -200,7 +208,7 @@ def auto_commit_ticket_md_with_retry(*args, **kwargs) -> Dict[str, object]:
     attempts = 0
     waited = 0.0
     ticket_id = str(args[1]) if len(args) > 1 else str(kwargs.get("ticket_id", ""))
-    log_cwd = str(Path(args[0] if args else kwargs["path"]).parent)
+    log_cwd = str(args[0] if args else kwargs["path"])
     while True:
         detail: Dict[str, Optional[str]] = {}
         status = _auto_commit_ticket_md(*args, result_out=detail, **kwargs)

@@ -37,6 +37,8 @@ def repo(tmp_path, monkeypatch):
     _git(tmp_path, "add", md.name)
     _git(tmp_path, "commit", "-q", "-m", "init")
     md.write_text("v2\n")
+    # conftest 預設把日誌導向 tmp；本檔要驗 repo 內的預設相對位置
+    monkeypatch.setattr(git_utils, "_RETRY_LOG_DIR", str(_LOG_DIR))
     monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BACKOFF_SECONDS", (0.01,))
     monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BUDGET_SECONDS", 1.0)
     real_sleep = git_ops.time.sleep
@@ -149,3 +151,25 @@ def test_log_write_failure_goes_to_stderr_and_keeps_commit_result(repo, monkeypa
     assert result["status"] == "committed"
     assert _git(repo, "show", f"HEAD:{_TID}.md") == "v2\n"
     assert "日誌寫入失敗" in capsys.readouterr().err
+
+
+def test_e2_mock_path_does_not_write_into_process_cwd_repo(repo, monkeypatch, capsys):
+    """E2：票檔不存在的 mock 路徑（"p"）不得退回 process cwd 所屬 repo 寫日誌。"""
+    monkeypatch.chdir(repo)  # process cwd 是一個真 repo，正是污染主 repo 的條件
+
+    def fake(*_a, result_out=None, **_k):
+        result_out.update({"error": "fatal: Unable to create '/r/.git/refs/heads/main.lock': File exists."})
+        return "git_failed"
+
+    monkeypatch.setattr(git_utils, "_auto_commit_ticket_md", fake)
+    out = git_utils.auto_commit_ticket_md_with_retry("p", "id", "s")
+    assert out["status"] == "git_failed"
+    assert _read_log(repo) == ""
+    assert "未寫檔" in capsys.readouterr().err
+
+
+def test_default_log_dir_is_isolated_by_conftest():
+    """E2：未自行覆寫的測試，日誌根目錄由 conftest 導向 tmp 絕對路徑。"""
+    import os
+
+    assert os.path.isabs(git_utils._RETRY_LOG_DIR)
