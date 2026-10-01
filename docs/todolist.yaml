@@ -538,6 +538,19 @@ versions:
          - W1-017：git add 失敗時 stderr 輸出失敗的路徑與 git 錯誤訊息，發版流程以非 0 結束且不建立 tag。
          - 其餘票不新增、不改變日誌事件。
 
+  - version: "0.4.2"
+    codename: "Framework-Fix"
+    description: "單一 topic：框架修復（0.4.1 未完成的框架票前移收件）"
+    status: "planned"
+    worklog: "docs/work-logs/v0/v0.4/v0.4.2/"
+    notes: |
+      依版本登記規則 patch 列登記（2026-10-02，用戶裁決）：0.4.1 finish 時未完成的框架票前移至此，
+      不前移至 0.5.0。經討論的記錄：e1 提出 0.5.0（與 Layout 主線並存）與新登記 0.4.2 兩案，並說明 0.4.2 會先於
+      0.5.0 啟用、0.5.0 Layout 須等 0.4.2 finish 才開工；用戶選 0.4.2。
+      收件範圍：0.4.1 前移的框架修復 topic 票（約 19 張，P2 三張：W1-038、W1-038.2、W1-041）。
+      依 #114 方案 4（2026-10-01 補記），框架票不設 scope_blocker 時不阻擋 finish；同票前移第 2 次即收束進 canonical issue 後關票。
+      開工前置：版本契約五欄於 0.4.1 finish 後、開工前由 e1 寫定。
+
   - version: "0.5.0"
     codename: "Layout"
     description: "Domain 視圖接真資料：矩陣的列與格由真實資料驅動，點交叉格定位至泳道"
