@@ -144,4 +144,16 @@ void main() {
       );
     });
   });
+
+  group('不可變結果（0.4.1-W1-004）', () {
+    test('entries 與 AdjacencyEntry.declaredBy 寫入拋 UnsupportedError', () {
+      final q = _queryOf([
+        buildRawNode(id: _parent),
+        buildRawNode(id: _child, extra: {'source_ticket': _parent}),
+      ]);
+      final entries = _entries(q.query(_child));
+      expect(() => entries.add(entries.first), throwsUnsupportedError);
+      expect(() => entries.first.declaredBy.add('X'), throwsUnsupportedError);
+    });
+  });
 }
