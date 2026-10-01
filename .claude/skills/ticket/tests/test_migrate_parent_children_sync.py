@@ -219,6 +219,53 @@ def _rel(repo: Path, tid: str) -> str:
     return str(get_ticket_path(_VER, tid).relative_to(repo))
 
 
+_PARENTLESS = "0.0.0-W0-050"
+_FIRST = "0.0.0-W0-002.9"
+
+
+class TestNewParentAlreadyListsNewId:
+    """舊父 None（無 parent_id）、新父由新 ID 推導；新父已列 new_id 時保留原項（0.4.1-W1-037）。"""
+
+    def _prepare(self, repo: Path, new_parent_children: str) -> None:
+        _seed(_PARENTLESS)
+        path = get_ticket_path(_VER, _NEW_PARENT)
+        path.write_text(path.read_text(encoding="utf-8").replace(
+            "children: []", f"children: {new_parent_children}"), encoding="utf-8")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "prepare new parent children")
+
+    def test_listed_as_dict_keeps_form_and_position(self, repo, monkeypatch):
+        self._prepare(repo, f"[{_FIRST}, {{id: {_PARENTLESS}, type: IMP}}, {_SIBLING}]")
+        assert _run(monkeypatch, _PARENTLESS, _UNDER_NEW) == 0
+        assert _fm(_NEW_PARENT)["children"] == [
+            _FIRST, {"id": _UNDER_NEW, "type": "IMP"}, _SIBLING]
+
+    def test_listed_as_string_keeps_position(self, repo, monkeypatch):
+        self._prepare(repo, f"[{_FIRST}, {_PARENTLESS}, {_SIBLING}]")
+        assert _run(monkeypatch, _PARENTLESS, _UNDER_NEW) == 0
+        assert _fm(_NEW_PARENT)["children"] == [_FIRST, _UNDER_NEW, _SIBLING]
+
+    def test_not_listed_appends_string_at_tail(self, repo, monkeypatch):
+        self._prepare(repo, f"[{_FIRST}, {_SIBLING}]")
+        assert _run(monkeypatch, _PARENTLESS, _UNDER_NEW) == 0
+        assert _fm(_NEW_PARENT)["children"] == [_FIRST, _SIBLING, _UNDER_NEW]
+
+    def test_e1_listed_and_unlisted_products_differ(self, repo, monkeypatch):
+        self._prepare(repo, f"[{_FIRST}, {_PARENTLESS}, {_SIBLING}]")
+        assert _run(monkeypatch, _PARENTLESS, _UNDER_NEW) == 0
+        listed = _fm(_NEW_PARENT)["children"]
+        _git(repo, "reset", "-q", "--hard", "HEAD~1")
+        path = get_ticket_path(_VER, _NEW_PARENT)
+        path.write_text(path.read_text(encoding="utf-8").replace(
+            f"[{_FIRST}, {_PARENTLESS}, {_SIBLING}]", f"[{_FIRST}, {_SIBLING}]"),
+            encoding="utf-8")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "unlisted")
+        assert _run(monkeypatch, _PARENTLESS, _UNDER_NEW) == 0
+        unlisted = _fm(_NEW_PARENT)["children"]
+        assert listed != unlisted
+
+
 class TestE1ParentChangedVsUnchanged:
     def test_products_differ_between_paths(self, repo, monkeypatch):
         assert _run(monkeypatch, _CHILD, _UNDER_NEW) == 0

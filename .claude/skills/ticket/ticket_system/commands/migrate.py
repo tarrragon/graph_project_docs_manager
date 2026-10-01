@@ -486,8 +486,10 @@ def _sync_parent_children(
                 parent_id=new_parent_id,
             ))
         else:
-            kept = _children_without(parent.get("children"), new_id)
-            if _save_parent_children(path, parent, [*kept, new_id]):
+            children = parent.get("children") or []
+            if len(_children_without(children, new_id)) < len(children):
+                return written  # 已列：保留原項、原形式、原順序，不寫檔
+            if _save_parent_children(path, parent, [*children, new_id]):
                 written.append(path)
     return written
 
