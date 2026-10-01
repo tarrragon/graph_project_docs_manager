@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.16（本地變更）— `ticket migrate` 改為自動提交並補齊結構欄位改寫。（1）單票與批次 `--config` 的全部寫入（新檔、刪除的舊檔、各引用者、topic-assignments 追加行）以 `commit_ticket_mds_reporting` 單一隔離 commit 入庫，主路徑取仍存在的新檔；批次只提交成功項；提交最終失敗輸出 `[WARNING]`（列出全部路徑與未入庫的追加行）並回 exit 75，檔案保留在工作區。此前 migrate 寫完不提交且 exit 0，HEAD 會出現指向不存在 ID 的引用。（2）引用改寫補上 `discovered_during`、`closed_by`（字串或清單）與子孫的 `chain.root`／`chain.parent`。（3）`topic_assignments` 新增 `inherit_assignment`／`assignments_file_path`：新 ID 追加一行承接舊 ID 的主題，舊行保留（append-only），以 `append_lines` 只提交該行；此前新 ID 的 `list_assignments()` 回傳 None。（4）被遷移票新增 `previous_ids` 欄位（有序清單，每次遷移追加舊 ID，長度即遷移次數）；語意不同於撞號改號的 `migrated_from`（撞號前的原目標）。票面 body 與 Context Bundle 內的舊 ID 屬歷史事實，不改寫。E1 對照測試（`tests/test_migrate_autocommit.py`）：無鎖時 exit 0、工作區乾淨、恰增一個 commit 且含舊檔 D／新檔 A／引用者 M／topic 僅追加一行；殘留 ref 鎖時 exit 75、WARNING 列全部路徑；另含結構欄位改寫、previous_ids 與 body 保留、topic 承接、批次只提交成功項。
+
 **Version**: 2.44.14（本地變更）— `git_ops.commit_files_isolated` 的提交範圍自我驗證改用 `git diff --no-renames`，不再受 `diff.renames` 設定影響。此前舊路徑刪除加新路徑新增（改名）時，diff 只回報新路徑，與預期的新舊兩路徑不符而誤判失敗並放棄提交。同時明確拒絕目錄路徑（回 failed 並說明須逐檔列出），docstring 寫明刪除與改名須列新舊路徑、主路徑須為存在的檔案。測試（`tests/test_git_ops.py`）：舊刪新增、改名並改內容加另一檔修改、跨目錄逐檔列舉三案（修正前紅），範圍外變更仍 failed 且不 update-ref，目錄路徑拒絕。
 
 **Version**: 2.44.13（本地變更）— `git_ops._stage_appended_blob` 改依工作區行序投影 append-only 檔：提交內容為「HEAD 各行 + 本次各行」（multiset 配對，重複行按次數計，保留工作區順序，不含他人未提交的行）。兩個寫入者都在任一方提交前完成追加、且提交順序與追加順序相反時，提交後 HEAD 與工作區行序一致，檔案不再持續顯示已修改。工作區缺檔、不可讀或不是該 multiset 的超集時，退回原做法「HEAD 版本 + 本次行」。`commit_files_isolated` 的 `append_lines` 參數介面不變；docstring 契約由「提交內容只多出本次 text」改為「行集合恆為 HEAD + 本次，行序依工作區」。測試（`tests/test_git_ops.py`）：兩寫入者 6 種交錯順序（修正前 2 種持續為已修改）、他人未提交行夾在中間不被吸入、重複行 multiset 配對、缺檔與非超集退回。
