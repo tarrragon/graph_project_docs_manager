@@ -432,7 +432,7 @@ versions:
            （4a 派發時依實際觸及檔修正：W1-003 合併缺陷型別會改 graph_builder.dart〔W1-002 亦改〕與
            reference_classification.dart〔W1-006 亦改〕；W1-004／W1-005 共用 adjacency_query.dart。）
          - topic「框架修復」（83 派發）：W1-010～017。W1-010 與 W1-014 皆改 ticket git_ops 的提交路徑，序列執行；
-           W1-013 須先由用戶以 WRAP 裁決 #114 方案 4，裁決前不派發；.claude 修改類並行 ≤2。
+           W1-013 的 #114 方案 4 已由用戶 WRAP 裁決（2026-10-01：當期建票、finish 不阻擋，改規則 6），可派發；.claude 修改類並行 ≤2。
          - topic 以外的新發現依 2026-09-29 規則處理，不自動收進本版。
       2. 預期變更
          - Graph 九張皆為重構或補測試，lib/ 對外行為不變。預期不變：0.4.0 IT-1～3 凍結值（節點 1202／1748 等，
