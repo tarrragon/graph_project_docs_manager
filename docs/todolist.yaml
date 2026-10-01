@@ -423,6 +423,8 @@ versions:
       W1-011（原 0.4.0-W1-070.2，guard 預驗證快取）、W1-012（add-spawned 不寫反向 source_ticket，#102）、W1-013（#114 版本生命週期規則落地，方案 4 先經 WRAP）。
       topic 以外的新發現依 2026-09-29 規則處理，不自動收進本版。
       finish 待辦：實地驗證 0.3.3-W1-015「前移清單非空時 check 建議 finish」（0.4.0 finish 時前移清單為空，無法觸發）。
+      W1-017 完成後 skill-sync push version-release（本地 2.10.0 含 W1-042，發佈庫 2.7.0；用戶裁決 2026-10-01 等 W1-017 一起推，推送仍須逐次授權）。
+      開工前置：版本契約五欄尚未寫定（2026-09-29 規則），兩個 topic 開工前由 e1 補齊。
 
   - version: "0.5.0"
     codename: "Layout"
