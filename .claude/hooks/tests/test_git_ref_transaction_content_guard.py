@@ -502,8 +502,13 @@ def _legacy_findings(files, project_root, is_merge):
     return findings
 
 
+# gate（hooks-test-gate）只跑本檔：代表情境取成本最低且含 deny 發現者；
+# 其餘情境與重量級變體在 test_git_ref_transaction_content_guard_batched.py
+_GATE_SCENARIOS = ("violation",)
+
+
 class TestBatchedEquivalence:
-    @pytest.mark.parametrize("name", sorted(_SCENARIOS))
+    @pytest.mark.parametrize("name", _GATE_SCENARIOS)
     def test_staged_files_identical_to_legacy(self, scenario_repo, monkeypatch, name):
         scratch_repo, _base, new_sha, _merge = scenario_repo(name)
         monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
@@ -516,7 +521,7 @@ class TestBatchedEquivalence:
         assert legacy, "情境應至少有一個變更檔"
         assert batched[new_sha] == legacy
 
-    @pytest.mark.parametrize("name", sorted(_SCENARIOS))
+    @pytest.mark.parametrize("name", _GATE_SCENARIOS)
     def test_findings_identical_to_legacy(self, scenario_repo, monkeypatch, name):
         from lib import commit_content_guards as ccg
 
@@ -529,65 +534,6 @@ class TestBatchedEquivalence:
         new = ccg._run_all_checks(files, scratch_repo, _Logger(), is_merge_commit=is_merge)
 
         assert new == old
-
-    def test_scenarios_cover_both_verdicts(self, scenario_repo, monkeypatch):
-        """對照輸入（規則 E2）：情境集合必須同時含有 deny 與無 deny，否則
-        等價性測試可能在「兩邊都空」的情況下空轉通過。"""
-        from lib import commit_content_guards as ccg
-
-        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
-        v_repo, _b, violating, _m = scenario_repo("violation")
-        c_repo, _b, clean, _m = scenario_repo("clean")
-        monkeypatch.chdir(v_repo)
-        v = ccg._run_all_checks(
-            hook_module._build_scan_files_legacy(violating, v_repo), v_repo, _Logger()
-        )
-        monkeypatch.chdir(c_repo)
-        c = ccg._run_all_checks(
-            hook_module._build_scan_files_legacy(clean, c_repo), c_repo, _Logger()
-        )
-        assert any(f.severity == "deny" for f in v)
-        assert not any(f.severity == "deny" for f in c)
-
-    def test_fallback_to_legacy_when_patch_sections_mismatch(self, scenario_repo, monkeypatch):
-        """全量 patch 區段數與 name-status 條目數不符時，批次路徑必須退回
-        逐檔實作，結果仍與舊路徑相同。"""
-        scratch_repo, _b, new_sha, _m = scenario_repo("multi_file")
-        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
-        monkeypatch.chdir(scratch_repo)
-        legacy = hook_module._build_scan_files_legacy(new_sha, scratch_repo)
-        commits = hook_module._collect_new_commits_with_parents([new_sha], scratch_repo)
-        monkeypatch.setattr(hook_module, "_split_patch_sections", lambda text: [])
-        assert hook_module._build_scan_files_batched(commits, scratch_repo)[new_sha] == legacy
-
-
-def _count_git_subprocesses(repo, stdin_text, tmp_path):
-    trace = tmp_path / f"trace-{repo.name}.log"
-    env = {"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin", "GIT_TRACE": str(trace)}
-    result = subprocess.run(
-        [sys.executable, str(HOOKS_DIR / "git-ref-transaction-content-guard.py"), "prepared"],
-        input=stdin_text, cwd=str(repo), capture_output=True, text=True, env=env,
-    )
-    lines = trace.read_text(encoding="utf-8").splitlines()
-    return result, sum(1 for line in lines if "trace: built-in: git" in line)
-
-
-class TestSubprocessCountConstant:
-    """git 子程序數不得隨變更檔數 F 成長（持鎖時間與子程序數成正比）。"""
-
-    def _run_with_f(self, tmp_path, n_files, template):
-        repo = _clone_baseline(template, tmp_path / f"r{n_files}")
-        head = _capture(["rev-parse", "HEAD"], cwd=repo)
-        files = {f".claude/notes/n{i}.md": b"plain content\n" for i in range(n_files)}
-        new_sha = _make_commit_from_files(repo, head, files)
-        return _count_git_subprocesses(repo, f"{head} {new_sha} refs/heads/main\n", tmp_path)
-
-    def test_count_independent_of_changed_file_count(self, tmp_path, _baseline_template):
-        r1, n1 = self._run_with_f(tmp_path, 1, _baseline_template)
-        r21, n21 = self._run_with_f(tmp_path, 21, _baseline_template)
-        assert r1.returncode == 0 and r21.returncode == 0
-        assert n21 == n1, f"F=1 -> {n1} 個子程序，F=21 -> {n21} 個"
-        assert n21 <= 20
 
 
 if __name__ == "__main__":
