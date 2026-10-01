@@ -241,6 +241,36 @@ void main() {
     });
   });
 
+  group('slot 基數（§4.30 leading 0..4／trailing 0..2）', () {
+    List<Widget> children(int n) =>
+        List.generate(n, (_) => _FixedChild(height: 10));
+
+    test('leading 4 個、trailing 2 個（上限內）正常建構', () {
+      expect(
+        () => Panel(
+          leading: children(4),
+          fill: _FakeDataView(),
+          trailing: children(2),
+        ),
+        returnsNormally,
+      );
+    });
+
+    test('leading 5 個觸發 AssertionError', () {
+      expect(
+        () => Panel(leading: children(5), fill: _FakeDataView()),
+        throwsAssertionError,
+      );
+    });
+
+    test('trailing 3 個觸發 AssertionError', () {
+      expect(
+        () => Panel(fill: _FakeDataView(), trailing: children(3)),
+        throwsAssertionError,
+      );
+    });
+  });
+
   group('無自有文字', () {
     testWidgets('本項不適用（Panel 無文字 slot）', (tester) async {
       await pumpHarness(
