@@ -41,27 +41,60 @@ class AdjacencyAvailable extends AdjacencyResult {
   final List<AdjacencyEntry> entries;
 }
 
-/// 圖不可用；[edgeTypeReason] 僅在建圖不可用時有值。
-class AdjacencyUnavailable extends AdjacencyResult {
-  const AdjacencyUnavailable({required this.cause, this.edgeTypeReason});
-  final AdjacencyUnavailableCause cause;
-  final EdgeTypeUnavailableReason? edgeTypeReason;
+/// 圖不可用；兩個子類各自攜帶成因，不合法的成因組合無法建構。
+sealed class AdjacencyUnavailable extends AdjacencyResult {
+  const AdjacencyUnavailable();
+
+  /// 成因分類。
+  AdjacencyUnavailableCause get cause;
 
   /// 日誌原因碼。
-  String get reasonCode => edgeTypeReason?.name ?? cause.name;
+  String get reasonCode;
+}
+
+/// 尚未完成建圖；沒有邊型原因。
+class AdjacencyBuildNotCompleted extends AdjacencyUnavailable {
+  const AdjacencyBuildNotCompleted();
+
+  @override
+  AdjacencyUnavailableCause get cause =>
+      AdjacencyUnavailableCause.buildNotCompleted;
+
+  @override
+  String get reasonCode => cause.name;
+}
+
+/// 建圖不可用；必帶邊型原因。
+class AdjacencyBuildUnavailable extends AdjacencyUnavailable {
+  const AdjacencyBuildUnavailable(this.edgeTypeReason);
+  final EdgeTypeUnavailableReason edgeTypeReason;
+
+  @override
+  AdjacencyUnavailableCause get cause =>
+      AdjacencyUnavailableCause.buildUnavailable;
+
+  @override
+  String get reasonCode => edgeTypeReason.name;
 }
 
 /// 需求：[SPEC-007 FR-08] 1 hop 鄰接查詢。
 ///
-/// [buildResult] 為 null 代表尚未完成建圖。圖不可用時，同一實例只記一次
-/// 「鄰接查詢圖不可用」日誌（L3）。
+/// [buildResult] 為 null 代表尚未完成建圖。圖不可用時，同一 buildResult
+/// 只記一次「鄰接查詢圖不可用」日誌（L3）；buildResult 為 null 時以實例為單位。
 class AdjacencyQuery {
   AdjacencyQuery({required this.buildResult, GraphLogSink? logSink})
-    : _log = logSink ?? defaultGraphLogSink;
+    : _log = logSink ?? defaultGraphLogSink {
+    final result = buildResult;
+    if (result is GraphBuildAvailable) {
+      _index = _indexByEndpoint(result.event.edges);
+    }
+  }
 
   final GraphBuildResult? buildResult;
   final GraphLogSink _log;
-  bool _unavailableLogged = false;
+  Map<String, List<GraphEdge>> _index = const {};
+  bool _nullLogged = false;
+  static final Expando<bool> _loggedBuilds = Expando<bool>('adjacencyLogged');
 
   /// 邊型缺省為全部使用中邊型，方向缺省為兩者。
   AdjacencyResult query(
@@ -69,26 +102,21 @@ class AdjacencyQuery {
     Set<String>? edgeTypes,
     AdjacencyDirection direction = AdjacencyDirection.both,
   }) {
-    final result = buildResult;
-    if (result is! GraphBuildAvailable) {
-      return _unavailable(result);
-    }
-    return AdjacencyAvailable([
-      for (final edge in result.event.edges)
-        if (edgeTypes == null || edgeTypes.contains(edge.edgeType))
-          ..._entriesOf(edge, nodeId, direction),
-    ]);
+    return switch (buildResult) {
+      GraphBuildAvailable() => AdjacencyAvailable([
+        for (final edge in _index[nodeId] ?? const <GraphEdge>[])
+          if (edgeTypes == null || edgeTypes.contains(edge.edgeType))
+            ..._entriesOf(edge, nodeId, direction),
+      ]),
+      GraphBuildUnavailable(:final reason) => _unavailable(
+        AdjacencyBuildUnavailable(reason),
+      ),
+      null => _unavailable(const AdjacencyBuildNotCompleted()),
+    };
   }
 
-  AdjacencyUnavailable _unavailable(GraphBuildResult? result) {
-    final unavailable = AdjacencyUnavailable(
-      cause: result == null
-          ? AdjacencyUnavailableCause.buildNotCompleted
-          : AdjacencyUnavailableCause.buildUnavailable,
-      edgeTypeReason: result is GraphBuildUnavailable ? result.reason : null,
-    );
-    if (!_unavailableLogged) {
-      _unavailableLogged = true;
+  AdjacencyUnavailable _unavailable(AdjacencyUnavailable unavailable) {
+    if (_markLogged(buildResult)) {
       _log(
         'adjacency query unavailable: ${unavailable.reasonCode}', // i18n-exempt: debug log
         event: GraphLogEvent.adjacencyUnavailable,
@@ -98,6 +126,30 @@ class AdjacencyQuery {
     }
     return unavailable;
   }
+
+  /// 回傳 true 代表此單位尚未記過，並登記為已記。
+  bool _markLogged(GraphBuildResult? result) {
+    if (result == null) {
+      final first = !_nullLogged;
+      _nullLogged = true;
+      return first;
+    }
+    if (_loggedBuilds[result] == true) return false;
+    _loggedBuilds[result] = true;
+    return true;
+  }
+}
+
+/// 依端點建索引；保留邊在原清單的相對順序，自環只入索引一次。
+Map<String, List<GraphEdge>> _indexByEndpoint(List<GraphEdge> edges) {
+  final index = <String, List<GraphEdge>>{};
+  for (final edge in edges) {
+    index.putIfAbsent(edge.from, () => []).add(edge);
+    if (edge.to != edge.from) {
+      index.putIfAbsent(edge.to, () => []).add(edge);
+    }
+  }
+  return index;
 }
 
 Iterable<AdjacencyEntry> _entriesOf(

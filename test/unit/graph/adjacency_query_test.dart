@@ -97,7 +97,7 @@ void main() {
       final bad = unavailable.query(_parent);
       expect(bad, isA<AdjacencyUnavailable>());
       expect(
-        (bad as AdjacencyUnavailable).edgeTypeReason,
+        (bad as AdjacencyBuildUnavailable).edgeTypeReason,
         EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
       );
       final good = _queryOf([buildRawNode(id: _parent)]).query(_parent);

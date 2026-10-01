@@ -186,6 +186,40 @@ void main() {
       });
     });
 
+    test('L3-3 同一 buildResult 的兩個實例各查三次：事件恰記一次', () {
+      final recorder = LogRecorder();
+      final shared = buildGraph(
+        rawNodes: const [],
+        projectSchemaJson: _missingEdgeTypesHigherVersion(),
+        builtinSchemaJson: loadBuiltinSchemaJson(),
+      );
+      final a = AdjacencyQuery(buildResult: shared, logSink: recorder.sink);
+      final b = AdjacencyQuery(buildResult: shared, logSink: recorder.sink);
+      for (var i = 0; i < 3; i++) {
+        a.query('0.1.0-W1-001');
+        b.query('0.1.0-W1-001');
+      }
+      expect(
+        recorder.ofEvent(GraphLogEvent.adjacencyUnavailable),
+        hasLength(1),
+      );
+    });
+
+    test('L3-4 buildResult 為 null：每個實例各記一次', () {
+      final recorder = LogRecorder();
+      final a = AdjacencyQuery(buildResult: null, logSink: recorder.sink);
+      final b = AdjacencyQuery(buildResult: null, logSink: recorder.sink);
+      for (var i = 0; i < 3; i++) {
+        a.query('0.1.0-W1-001');
+        b.query('0.1.0-W1-001');
+      }
+      final logs = recorder.ofEvent(GraphLogEvent.adjacencyUnavailable);
+      expect(logs, hasLength(2));
+      expect(logs.first.payload, {
+        GraphLogKeys.reason: AdjacencyUnavailableCause.buildNotCompleted.name,
+      });
+    });
+
     test('L3-2 守衛：可用圖查詢十次（含查無鄰居）不記事件；正向對照為 L3-1', () {
       final recorder = LogRecorder();
       final q = AdjacencyQuery(
