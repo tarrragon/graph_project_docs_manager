@@ -428,7 +428,7 @@ versions:
       hooks-test-gate 單檔 60 秒，flutter_balance 回報、e1 重現 187 秒；canonical 推送等它）、W1-010 children .1～.6、
       W1-020～023（W1-010 分析中順帶發現）。W1-013 已落地（#114 方案 1～5；方案 4 偵測承擔者為 finish 執行者，原 ID 欄位由 W1-010.2 承接）。
       2026-10-01 W1-017 完成後，經用戶授權 skill-sync push version-release 2.10.1（含 W1-042、W1-017；發佈庫 2.7.0→2.10.1，versions.json 已驗證）。
-      canonical sync-push 依用戶裁決等 W1-019 修好一起推。
+      canonical sync-push v2.70.1（2026-10-01，用戶裁決等 W1-014 一起推；含 W1-012、013、014、017、019、024）。W1-019 待 flutter_balance gate 取樣 N>=3 後結案。
       版本契約（2026-10-01，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
          - topic「Graph 可維護性」（4a 派發，parsley）：W1-001～008；W1-009 由 e1 自做（traceability 回填，純文件）。
