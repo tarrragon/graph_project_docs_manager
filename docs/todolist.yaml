@@ -431,6 +431,10 @@ versions:
       W1-011.1 動工前審查後改設計（不用快取檔，改由該次 update-ref 的 env 帶預驗證值，shim 以 sh 比對）；衍生 W1-028（P1，實測情境 B 誤放受保護分支違規提交，83 依 e1 判準升級；
       content guard 以 CLAUDE_PROJECT_DIR 解析專案根，worktree 內提交判錯；blocks W1-011.1；與 W1-025 分票不併做）、
       W1-029（P3，MERGE_HEAD 存在時單 parent 提交亦被豁免 branch-verify）。e1 分診 2026-10-01。
+      排程改定（2026-10-01）：W1-019 第二輪先於 W1-028 合併。W1-028 實作完成，但機器 load 54～204（跨 session）使 content guard
+      測試超過 gate 單檔 60 秒，無法提交；W1-019 第二輪只改測試檔（gate 不觸發）。拆檔條件：gate 執行的原測試檔須保留
+      至少一個批次化等價性案例，使 gate 對批次化主路徑仍有鑑別力；重量級參數化變體移至新檔由全套件承擔，取捨寫入票面。
+      W1-028 提交窗口內 Graph topic 暫停全套 flutter test（W1-027 為 P3），以降負載。
       Graph topic 執行期收件：W1-004 SR-1（TicketDetail frontmatter 巢狀值仍共用可變引用）建 P3 票，由 4a 建並 resolve SR-1。W1-013 已落地（#114 方案 1～5；方案 4 偵測承擔者為 finish 執行者，原 ID 欄位由 W1-010.2 承接）。
       2026-10-01 W1-017 完成後，經用戶授權 skill-sync push version-release 2.10.1（含 W1-042、W1-017；發佈庫 2.7.0→2.10.1，versions.json 已驗證）。
       canonical sync-push v2.70.1（2026-10-01，用戶裁決等 W1-014 一起推；含 W1-012、013、014、017、019、024）。W1-019 待 flutter_balance gate 取樣 N>=3 後結案。
