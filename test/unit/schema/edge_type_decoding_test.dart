@@ -78,25 +78,25 @@ void main() {
   test('S6-5 缺 edge_types、版本等於內建：同內建表且可用', () {
     final result = _resolve(buildEdgeTableJson(version: builtinVersion));
     expect(_keys(result), builtinEdges.keys.toSet());
-    expect(result.isGraphAvailable, isTrue);
+    expect(result.unavailableReason, isNull);
     expect(result.unavailableReason, isNull);
   });
 
   test('S6-6 缺 edge_types、版本低於內建：同 S6-5', () {
     final result = _resolve(buildEdgeTableJson(version: '0.0.1'));
     expect(_keys(result), builtinEdges.keys.toSet());
-    expect(result.isGraphAvailable, isTrue);
+    expect(result.unavailableReason, isNull);
   });
 
   test('S6-7 守衛：缺 edge_types、版本高於內建 -> 不可用（對照 S6-5）', () {
     final result = _resolve(buildEdgeTableJson(version: '999.0.0'));
-    expect(result.isGraphAvailable, isFalse);
+    expect(result.unavailableReason, isNotNull);
     expect(
       result.unavailableReason,
       EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
     );
     final positive = _resolve(buildEdgeTableJson(version: builtinVersion));
-    expect(positive.isGraphAvailable, isTrue);
+    expect(positive.unavailableReason, isNull);
   });
 
   test('S6-8 守衛：缺正向基數、版本高於內建 -> 不可用；版本等於內建則補值可用', () {
@@ -110,13 +110,13 @@ void main() {
       },
     );
     final high = _resolve(table('999.0.0'));
-    expect(high.isGraphAvailable, isFalse);
+    expect(high.unavailableReason, isNotNull);
     expect(
       high.unavailableReason,
       EdgeTypeUnavailableReason.missingForwardCardinality,
     );
     final equal = _resolve(table(builtinVersion));
-    expect(equal.isGraphAvailable, isTrue);
+    expect(equal.unavailableReason, isNull);
     expect(
       equal.edgeTypes['association']!.forwardCardinality,
       EdgeCardinality.many,
@@ -160,13 +160,13 @@ void main() {
 
   test('S6-11 守衛：型別表整份缺席（null）-> 不可用（對照 S6-12）', () {
     final result = _resolve(null);
-    expect(result.isGraphAvailable, isFalse);
+    expect(result.unavailableReason, isNotNull);
     expect(
       result.unavailableReason,
       EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
     );
     expect(result.edgeTypes, isEmpty);
-    expect(_resolve(builtin).isGraphAvailable, isTrue);
+    expect(_resolve(builtin).unavailableReason, isNull);
   });
 
   test('S6-12 降級模式：內建表 asset 作為專案表傳入 -> 可用', () {
@@ -177,7 +177,7 @@ void main() {
             .map((e) => e.key)
             .toSet()
           ..remove('domain_dependency');
-    expect(result.isGraphAvailable, isTrue);
+    expect(result.unavailableReason, isNull);
     expect(result.activeEdgeTypes.map((e) => e.name).toSet(), expected);
     expect(expected, isNotEmpty);
   });
@@ -235,7 +235,7 @@ void main() {
 
   test('W4-016 壞邊型、版本等於內建：取內建表定義，建圖可用', () {
     final result = _resolve(tableWithBadAssociation(builtinVersion));
-    expect(result.isGraphAvailable, isTrue);
+    expect(result.unavailableReason, isNull);
     final raw = builtinEdges['association'] as Map<String, dynamic>;
     final edge = result.edgeTypes['association']!;
     expect(edge.forwardField, raw['forward_field']);
@@ -247,7 +247,7 @@ void main() {
   test('W4-016 壞邊型、版本高於內建：不可用且為 invalidEdgeTypeEntry，node_types 照常', () {
     final table = tableWithBadAssociation('999.0.0');
     final result = _resolve(table);
-    expect(result.isGraphAvailable, isFalse);
+    expect(result.unavailableReason, isNotNull);
     expect(
       result.unavailableReason,
       EdgeTypeUnavailableReason.invalidEdgeTypeEntry,
@@ -262,7 +262,7 @@ void main() {
       version: '999.0.0',
       edges: {'association': const EdgeSpec(forwardField: 'relatedTo')},
     );
-    expect(_resolve(table).isGraphAvailable, isTrue);
+    expect(_resolve(table).unavailableReason, isNull);
   });
 
   test('W4-016 並存壞條目與缺正向基數、版本高於內建：只回報 invalidEdgeTypeEntry', () {
@@ -289,7 +289,7 @@ void main() {
     );
     (table['edge_types'] as Map<String, dynamic>)[unknownKey] = 'oops';
     final result = _resolve(table);
-    expect(result.isGraphAvailable, isTrue);
+    expect(result.unavailableReason, isNull);
     expect(result.unavailableReason, isNull);
     expect(result.edgeTypes.containsKey(unknownKey), isFalse);
     expect(result.edgeTypes.containsKey('liveEdge'), isTrue);

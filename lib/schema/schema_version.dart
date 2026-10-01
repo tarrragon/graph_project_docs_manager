@@ -6,6 +6,11 @@
 /// （高層可依賴低層，反之不行）。
 library;
 
+/// 取型別表 JSON 的 `schema_generated_at_framework_version`；
+/// [schemaJson] 為 `null`（無專案 JSON）或缺欄位時回傳 `null`。
+String? schemaVersionOf(Map<String, dynamic>? schemaJson) =>
+    schemaJson?['schema_generated_at_framework_version'] as String?;
+
 /// [version] 是否高於 [builtinVersion]（逐段整數比較，段數不足補零；
 /// S5-7：`2.40.3` 對 `2.40.10` 判為低於，數值逐段比較非字串比較）。
 ///

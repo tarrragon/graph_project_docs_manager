@@ -61,8 +61,6 @@ class EdgeTypeResolution {
   /// 非 `null` 代表建圖不可用。
   final EdgeTypeUnavailableReason? unavailableReason;
 
-  bool get isGraphAvailable => unavailableReason == null;
-
   /// 使用中邊型：established 扣 `domain_dependency`（D6）。
   Iterable<EdgeTypeEntry> get activeEdgeTypes => edgeTypes.values.where(
     (edge) => edge.layer == 'established' && edge.name != _excludedByKeyName,
@@ -83,10 +81,8 @@ EdgeTypeResolution resolveEdgeTypes({
   final builtin =
       typeTableFromJson(builtinSchemaJson).edgeTypes ??
       const <String, EdgeTypeDecl>{};
-  final builtinVersion =
-      builtinSchemaJson['schema_generated_at_framework_version'] as String?;
-  final projectVersion =
-      projectSchemaJson?['schema_generated_at_framework_version'] as String?;
+  final builtinVersion = schemaVersionOf(builtinSchemaJson);
+  final projectVersion = schemaVersionOf(projectSchemaJson);
   final inRange =
       builtinVersion != null &&
       isWithinKnownSchemaRange(projectVersion, builtinVersion);
@@ -120,6 +116,18 @@ EdgeTypeResolution resolveEdgeTypes({
   return _fillMissingCardinality(restored, builtin, inRange);
 }
 
+/// 解碼宣告 + 決議後的基數 → 已決議邊型（D6：`association` 為無向）。
+EdgeTypeEntry _entryFromDecl(EdgeTypeDecl raw, EdgeCardinality cardinality) =>
+    EdgeTypeEntry(
+      name: raw.name,
+      edgeClass: raw.edgeClass,
+      forwardField: raw.forwardField,
+      reverseField: raw.reverseField,
+      forwardCardinality: cardinality,
+      layer: raw.layer,
+      isUndirected: raw.name == _undirectedByKeyName,
+    );
+
 EdgeTypeResolution _fillMissingCardinality(
   Map<String, EdgeTypeDecl> project,
   Map<String, EdgeTypeDecl> builtin,
@@ -135,10 +143,7 @@ EdgeTypeResolution _fillMissingCardinality(
       missing = true;
       continue;
     }
-    result[raw.name] = raw.toEntry(
-      cardinality,
-      isUndirected: raw.name == _undirectedByKeyName,
-    );
+    result[raw.name] = _entryFromDecl(raw, cardinality);
   }
   return EdgeTypeResolution(
     edgeTypes: result,

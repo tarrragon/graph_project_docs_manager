@@ -72,7 +72,7 @@ SchemaSourceResolution resolveSchemaSource({
 }) {
   final builtinTable = typeTableFromJson(builtinSchemaJson);
   final builtinVersion =
-      builtinSchemaJson['schema_generated_at_framework_version'] as String?;
+      schemaVersionOf(builtinSchemaJson);
 
   if (projectSchemaJson == null) {
     return _resolveWithoutProjectPathPatterns(
@@ -92,7 +92,7 @@ SchemaSourceResolution resolveSchemaSource({
   }
 
   final projectVersion =
-      projectSchemaJson['schema_generated_at_framework_version'] as String?;
+      schemaVersionOf(projectSchemaJson);
   return _resolveWithoutProjectPathPatterns(
     projectTable: projectTable,
     projectVersion: projectVersion,
