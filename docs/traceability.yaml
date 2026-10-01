@@ -177,15 +177,29 @@ domain_bundle_tests:
     layer: L0
     invariants:
       - 上游 schema 格式或版本語意改變是唯一合法變更理由（domain-map.md §3）
-    tests:  # 目前只回填 SPEC-007 FR-01（0.4.0-W4-001）；SPEC-006 的 Schema 測試未回填
+    tests:  # SPEC-006（0.4.1-W1-009 回填）與 SPEC-007 FR-01、D6
+      - test/unit/schema/carrier_path_lookup_test.dart
+      - test/unit/schema/schema_source_resolution_test.dart
+      - test/unit/schema/schema_version_test.dart
+      - test/unit/schema/builtin_schema_version_contract_test.dart
+      - test/unit/schema/tracking_schema_contract_test.dart
       - test/unit/schema/edge_type_decoding_test.dart
+      - test/unit/schema/edge_type_undirected_test.dart
 
   - bundle: Corpus
     layer: L1
     invariants:
       - 文件格式或解析寬容度改變是唯一合法變更理由（domain-map.md §3）
       - frontmatter 邊界判定採逐行語意，既有語料解析失敗數應為 0（domain-map.md §7）
-    tests: []
+    tests:  # SPEC-006（0.4.1-W1-009 回填）
+      - test/unit/corpus/corpus_scanner_test.dart
+      - test/unit/corpus/frontmatter_classifier_test.dart
+      - test/unit/corpus/node_typing_test.dart
+      - test/unit/corpus/lost_fields_test.dart
+      - test/unit/corpus/lost_fields_contract_test.dart
+      - test/unit/corpus/parse_failure_event_test.dart
+      - test/integration/corpus_it1_frontmatter_equivalence_test.dart
+      - test/integration/corpus_it2_gap_classification_test.dart
 
   - bundle: Graph
     layer: L2
@@ -219,7 +233,9 @@ domain_bundle_tests:
     invariants:
       - 「什麼算破洞」的定義改變是唯一合法變更理由（domain-map.md §3）
       - 只有落在節點 carrier 路徑下卻缺 frontmatter 的檔案才進破洞報告（domain-map.md §7）
-    tests:  # 目前只回填 SPEC-007 FR-09（0.4.0-W4-001）；SPEC-006 的 Diagnostics 測試未回填
+    tests:  # SPEC-006（0.4.1-W1-009 回填）與 SPEC-007 FR-09
+      - test/unit/diagnostics/parse_failure_gap_test.dart
+      - test/integration/corpus_it2_gap_classification_test.dart
       - test/unit/diagnostics/graph_defect_gap_test.dart
       - test/integration/graph_it2_defects_to_diagnostics_test.dart
 
