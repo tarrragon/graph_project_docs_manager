@@ -42,12 +42,20 @@ class Panel extends StatelessWidget {
   }) : this._(
          key: key,
          variant: PanelVariant.standard,
-         children: [
-           ...leading,
-           Expanded(child: fill),
-           ...trailing,
-         ],
+         children: _standardChildren(leading, fill, trailing),
        );
+
+  /// 重導向建構子不能帶 `assert` 初始化，slot 基數（SPEC-004 4.30：
+  /// leading 0..4、trailing 0..2）改在組裝子件時斷言。
+  static List<Widget> _standardChildren(
+    List<Widget> leading,
+    Widget fill,
+    List<Widget> trailing,
+  ) {
+    assert(leading.length <= 4, 'Panel leading 超過 SPEC-004 4.30 上限 4 個');
+    assert(trailing.length <= 2, 'Panel trailing 超過 SPEC-004 4.30 上限 2 個');
+    return [...leading, Expanded(child: fill), ...trailing];
+  }
 
   /// `scrollable` 變體：主體垂直捲動，無子件數量上限。[scrollKey] 為
   /// 必填錨點（`scroll-<screen>-<area>`，§4.30 slot 契約）。
