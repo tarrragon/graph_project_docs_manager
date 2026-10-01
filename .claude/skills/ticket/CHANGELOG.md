@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.23（本地變更）— `git_ops.commit_files_isolated` 的提交範圍自我驗證由嚴格相等改為子集比對：列出但淨變更為零的路徑合法，僅清單外的變更判 failed（錯誤訊息附範圍外路徑，不 update-ref）；全部列出路徑皆無淨變更仍由空 tree 短路回報 no-op（exit 0、不建 commit）。此前多路徑寫入（如 `add-child` 子票的 parent 本已相同、`set-parent` 往返三檔只有一檔有變更）因嚴格相等誤報 exit 75，真實變更留在工作區。測試（`tests/test_commit_isolated_subset_scope.py`）：兩路徑其一無變更提交只含有變更者（修正前紅）、真實 CLI `add-child` 子票已連結 exit 0 且 commit 只含父票（修正前紅）；E2 對照：清單外路徑有變更時 failed 且 HEAD 不動，真實 CLI 構造同一情境 exit 75；全部無變更為 no-op。
+
 **Version**: 2.44.22（本地變更）— `add-spawn-request` 的 SR 編號改為只取 Spawn Requests 章節內結構化條目（行首 `- **SR-N**`）的最大號加一，不再以全文 regex 掃整份票面。此前 Solution 等正文只要提到 `SR-N`（如草稿寫 SR-9）就被計入，首個 spawn request 會被編為 SR-10，出現空號。`resolve-spawn-request` 定位條目本就限章節內且錨定行首，正文提及不會誤命中，行為不變。E1 對照測試（`tests/test_spawn_request_numbering.py`）：正文含 SR-9 且章節為空時編為 SR-1；章節已有 SR-1、SR-2（條目內另提 SR-40）時編為 SR-3；resolve 定位不命中正文提及。
 
 **Version**: 2.44.21（本地變更）— 破壞性變更：移除 `ticket version-shift` 命令。原因：三層目錄結構下 dry-run 即 exit 1（七處寫死扁平路徑）；扁平結構下也會整檔重寫 todolist、漏改他版本引用、遺失 topic 與舊 ID，且沒有任何流程依賴它。刪除 `commands/version_shift.py`、CLI 註冊、`VersionShiftMessages` 與對應測試。替代流程：`version-release start --version <目標版本>` 登記目標版本，`ticket migrate --config` 搬票，再手動完成 todolist 版本條目、worklog 主檔、舊目錄三步，每步驗證方式見 `references/migrate-command.md`〈整版改號流程〉。

@@ -723,13 +723,16 @@ def commit_files_isolated(
         if not ok:
             return {"status": "failed", "commit_sha": None, "error": err}
         changed = {line for line in diff_out.split("\0") if line}
-        if changed != set(expected_changes):
+        # 子集比對：列出但淨變更為零的路徑合法；清單外的變更才是越界。
+        # changed 為空已由上方空 tree 短路回報 empty。
+        out_of_scope = changed - set(expected_changes)
+        if out_of_scope:
             return {
                 "status": "failed",
                 "commit_sha": None,
                 "error": (
                     f"提交範圍自我驗證失敗，預期 {sorted(expected_changes)} 實得 "
-                    f"{sorted(changed)}"
+                    f"{sorted(changed)}（範圍外 {sorted(out_of_scope)}）"
                 ),
             }
 
