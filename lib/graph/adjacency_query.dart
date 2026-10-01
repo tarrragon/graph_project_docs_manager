@@ -102,23 +102,21 @@ class AdjacencyQuery {
     Set<String>? edgeTypes,
     AdjacencyDirection direction = AdjacencyDirection.both,
   }) {
-    final result = buildResult;
-    if (result is! GraphBuildAvailable) {
-      return _unavailable(result);
-    }
-    return AdjacencyAvailable([
-      for (final edge in _index[nodeId] ?? const <GraphEdge>[])
-        if (edgeTypes == null || edgeTypes.contains(edge.edgeType))
-          ..._entriesOf(edge, nodeId, direction),
-    ]);
+    return switch (buildResult) {
+      GraphBuildAvailable() => AdjacencyAvailable([
+        for (final edge in _index[nodeId] ?? const <GraphEdge>[])
+          if (edgeTypes == null || edgeTypes.contains(edge.edgeType))
+            ..._entriesOf(edge, nodeId, direction),
+      ]),
+      GraphBuildUnavailable(:final reason) => _unavailable(
+        AdjacencyBuildUnavailable(reason),
+      ),
+      null => _unavailable(const AdjacencyBuildNotCompleted()),
+    };
   }
 
-  AdjacencyUnavailable _unavailable(GraphBuildResult? result) {
-    final unavailable = switch (result) {
-      GraphBuildUnavailable(:final reason) => AdjacencyBuildUnavailable(reason),
-      _ => const AdjacencyBuildNotCompleted(),
-    };
-    if (_markLogged(result)) {
+  AdjacencyUnavailable _unavailable(AdjacencyUnavailable unavailable) {
+    if (_markLogged(buildResult)) {
       _log(
         'adjacency query unavailable: ${unavailable.reasonCode}', // i18n-exempt: debug log
         event: GraphLogEvent.adjacencyUnavailable,
