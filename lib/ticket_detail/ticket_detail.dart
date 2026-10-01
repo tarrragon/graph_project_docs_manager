@@ -10,6 +10,8 @@ const _ticketTypeName = 'Ticket';
 const _idKey = 'id';
 
 /// 一輪 Corpus rawNodes 建立的不可變 ticket 全文索引。
+///
+/// frontmatter 只凍結第一層；巢狀的清單與子 map 仍與 RawNode 共用引用。
 class TicketDetail {
   TicketDetail._(this._byId);
 
@@ -22,7 +24,7 @@ class TicketDetail {
       final id = node.frontmatter[_idKey];
       if (id is! String) continue;
       if (candidates.containsKey(id)) duplicated.add(id);
-      candidates[id] = node.frontmatter;
+      candidates[id] = Map.unmodifiable(node.frontmatter);
     }
     duplicated.forEach(candidates.remove);
     return TicketDetail._(Map.unmodifiable(candidates));

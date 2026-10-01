@@ -34,8 +34,8 @@ List<GraphDefect> _fourKinds() => [
     ref: _ref(value: 42),
     reason: MalformedReason.invalidShape,
   ),
-  const DuplicateIdGraphDefect(id: 'D-1', paths: ['a.md', 'b.md']),
-  const MultiSourceGraphDefect(
+  DuplicateIdGraphDefect(id: 'D-1', paths: ['a.md', 'b.md']),
+  MultiSourceGraphDefect(
     from: 'T-1',
     edgeType: 'spawn',
     targets: [

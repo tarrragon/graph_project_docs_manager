@@ -13,12 +13,12 @@ enum AdjacencyEntryDirection { out, incoming, undirected }
 
 /// 一筆相鄰關係。
 class AdjacencyEntry {
-  const AdjacencyEntry({
+  AdjacencyEntry({
     required this.edgeType,
     required this.otherId,
     required this.direction,
-    required this.declaredBy,
-  });
+    required Set<String> declaredBy,
+  }) : declaredBy = Set.unmodifiable(declaredBy);
 
   final String edgeType;
   final String otherId;
@@ -36,7 +36,8 @@ sealed class AdjacencyResult {
 
 /// 查過的結果；空清單表示「沒有相鄰節點」。
 class AdjacencyAvailable extends AdjacencyResult {
-  const AdjacencyAvailable(this.entries);
+  AdjacencyAvailable(List<AdjacencyEntry> entries)
+    : entries = List.unmodifiable(entries);
   final List<AdjacencyEntry> entries;
 }
 

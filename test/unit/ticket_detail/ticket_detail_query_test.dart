@@ -53,4 +53,11 @@ void main() {
       expect(fresh.findById('T-NEW'), isNotNull);
     });
   });
+
+  test('T-immutable findById 回傳的 frontmatter 寫入拋 UnsupportedError', () {
+    final node = buildRawNode(id: 'T-1', extra: fullFields);
+    final detail = TicketDetail.fromRawNodes([node]);
+    expect(() => detail.findById('T-1')!['x'] = 1, throwsUnsupportedError);
+    expect(detail.findById('T-1'), equals(node.frontmatter));
+  });
 }

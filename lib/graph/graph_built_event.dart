@@ -12,13 +12,13 @@ enum DirectedDeclarationShape { fromOnly, toOnly, both }
 /// `from`／`to` 依 `String.compareTo`（UTF-16 碼元序；ID 為 ASCII 時等同
 /// 字典序）排序，不代表方向。
 class GraphEdge {
-  const GraphEdge({
+  GraphEdge({
     required this.edgeType,
     required this.from,
     required this.to,
-    required this.declaredBy,
+    required Set<String> declaredBy,
     required this.isUndirected,
-  });
+  }) : declaredBy = Set.unmodifiable(declaredBy);
 
   final String edgeType;
   final String from;
@@ -41,7 +41,8 @@ class GraphEdge {
 
 /// `multiSource` 的一個終點與其宣告來源。
 class MultiSourceTarget {
-  const MultiSourceTarget({required this.to, required this.declaredBy});
+  MultiSourceTarget({required this.to, required Set<String> declaredBy})
+    : declaredBy = Set.unmodifiable(declaredBy);
 
   final String to;
   final Set<String> declaredBy;
@@ -68,18 +69,19 @@ class MalformedRefGraphDefect extends GraphDefect {
 
 /// 同一 `id` 出現在兩個以上 rawNode。
 class DuplicateIdGraphDefect extends GraphDefect {
-  const DuplicateIdGraphDefect({required this.id, required this.paths});
+  DuplicateIdGraphDefect({required this.id, required List<String> paths})
+    : paths = List.unmodifiable(paths);
   final String id;
   final List<String> paths;
 }
 
 /// 正向基數為 `one` 的邊型，一個起點經聯集指向兩個以上不同終點。
 class MultiSourceGraphDefect extends GraphDefect {
-  const MultiSourceGraphDefect({
+  MultiSourceGraphDefect({
     required this.from,
     required this.edgeType,
-    required this.targets,
-  });
+    required List<MultiSourceTarget> targets,
+  }) : targets = List.unmodifiable(targets);
 
   final String from;
   final String edgeType;
@@ -87,14 +89,18 @@ class MultiSourceGraphDefect extends GraphDefect {
 }
 
 /// EVT-GRAPH-001：`nodeCount`、`edgeCount`、`graphDefects`，另帶驗證用明細。
+///
+/// 建構時複製為唯讀集合；計數與分佈在首次讀取時只走訪一次並快取。
 class GraphBuiltEvent {
-  const GraphBuiltEvent({
-    required this.nodes,
-    required this.edges,
-    required this.graphDefects,
+  GraphBuiltEvent({
+    required List<LightNode> nodes,
+    required List<GraphEdge> edges,
+    required List<GraphDefect> graphDefects,
     required this.totalReferences,
     required this.resolvedCount,
-  });
+  }) : nodes = List.unmodifiable(nodes),
+       edges = List.unmodifiable(edges),
+       graphDefects = List.unmodifiable(graphDefects);
 
   final List<LightNode> nodes;
   final List<GraphEdge> edges;
@@ -105,37 +111,46 @@ class GraphBuiltEvent {
   int get nodeCount => nodes.length;
   int get edgeCount => edges.length;
 
+  late final int danglingRefCount = _countOf<DanglingRefGraphDefect>();
+  late final int malformedRefCount = _countOf<MalformedRefGraphDefect>();
+  late final int duplicateIdCount = _countOf<DuplicateIdGraphDefect>();
+  late final int multiSourceCount = _countOf<MultiSourceGraphDefect>();
+
   int _countOf<T extends GraphDefect>() => graphDefects.whereType<T>().length;
 
-  int get danglingRefCount => _countOf<DanglingRefGraphDefect>();
-  int get malformedRefCount => _countOf<MalformedRefGraphDefect>();
-  int get duplicateIdCount => _countOf<DuplicateIdGraphDefect>();
-  int get multiSourceCount => _countOf<MultiSourceGraphDefect>();
+  /// 各邊型的邊數（唯讀）。
+  late final Map<String, int> edgesByType = _countEdgesByType();
 
-  /// 各邊型的邊數。
-  Map<String, int> get edgesByType {
+  /// 有向邊各宣告來源形態的邊數（唯讀）。
+  late final Map<DirectedDeclarationShape, int> directedShapeCounts =
+      _countDirectedShapes();
+
+  /// 無向邊：一端。
+  late final int undirectedOneEndCount = _countUndirected(1);
+
+  /// 無向邊：兩端。
+  late final int undirectedBothCount = _countUndirected(2);
+
+  Map<String, int> _countEdgesByType() {
     final result = <String, int>{};
     for (final edge in edges) {
       result[edge.edgeType] = (result[edge.edgeType] ?? 0) + 1;
     }
-    return result;
+    return Map.unmodifiable(result);
   }
 
-  /// 有向邊各宣告來源形態的邊數。
-  Map<DirectedDeclarationShape, int> get directedShapeCounts => {
-    for (final shape in DirectedDeclarationShape.values)
-      shape: edges
-          .where((e) => !e.isUndirected && e.directedShape == shape)
-          .length,
-  };
+  Map<DirectedDeclarationShape, int> _countDirectedShapes() {
+    final result = {for (final s in DirectedDeclarationShape.values) s: 0};
+    for (final edge in edges) {
+      if (edge.isUndirected) continue;
+      result[edge.directedShape] = result[edge.directedShape]! + 1;
+    }
+    return Map.unmodifiable(result);
+  }
 
-  /// 無向邊：一端。
-  int get undirectedOneEndCount =>
-      edges.where((e) => e.isUndirected && e.declaredBy.length == 1).length;
-
-  /// 無向邊：兩端。
-  int get undirectedBothCount =>
-      edges.where((e) => e.isUndirected && e.declaredBy.length == 2).length;
+  int _countUndirected(int endCount) => edges
+      .where((e) => e.isUndirected && e.declaredBy.length == endCount)
+      .length;
 }
 
 /// 建圖入口結果：可用（帶事件）或不可用（帶原因碼，不產生 `graphDefect`）。
