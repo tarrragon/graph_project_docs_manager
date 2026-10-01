@@ -252,37 +252,7 @@ class TestShimPrevalidatedHit:
         assert not self._called()
         assert self._git("rev-parse", self.branch) == self.new
 
-    def test_no_env_runs_python(self, shim_repo):
-        r = self._git("update-ref", self.branch, self.new, self.old, extra_env={})
-        assert r.returncode != 0
-        assert self._called()
-
-    def test_ref_mismatch_same_tip_other_branch_not_hit(self, shim_repo):
-        """R1：另一分支 tip 與 old 相同，env 綁的是別的 ref，不得命中。"""
-        pv = f"{self.new}:{self.old}:{self.branch}"
-        r = self._git("update-ref", "refs/heads/other", self.new, self.old,
-                      extra_env={"GUARD_PREVALIDATED": pv})
-        assert r.returncode != 0
-        assert self._called()
-
-    def test_new_mismatch_not_hit(self, shim_repo):
-        other_new = self._git("commit-tree", "HEAD^{tree}", "-p", self.old, "-m", "x")
-        pv = f"{other_new}:{self.old}:{self.branch}"
-        r = self._git("update-ref", self.branch, self.new, self.old,
-                      extra_env={"GUARD_PREVALIDATED": pv})
-        assert r.returncode != 0 and self._called()
-
-    def test_old_mismatch_not_hit(self, shim_repo):
-        pv = f"{self.new}:{self.new}:{self.branch}"
-        r = self._git("update-ref", self.branch, self.new, self.old,
-                      extra_env={"GUARD_PREVALIDATED": pv})
-        assert r.returncode != 0 and self._called()
-
-    @pytest.mark.parametrize("pv", ["garbage", "::", "ZZ:ZZ:refs/heads/main", "a:b:HEAD"])
-    def test_malformed_env_not_hit(self, shim_repo, pv):
-        r = self._git("update-ref", self.branch, self.new, self.old,
-                      extra_env={"GUARD_PREVALIDATED": pv})
-        assert r.returncode != 0 and self._called()
+    # 其餘「不符即不命中」對照案例見 test_git_ref_transaction_guard_install_hook_e2e.py
 
     def test_multi_ref_transaction_not_hit_and_stdin_passed_through(self, shim_repo):
         """R3：多 ref 交易即使第一行與 env 全等也不命中；未命中時 python 收到完整 stdin。"""
