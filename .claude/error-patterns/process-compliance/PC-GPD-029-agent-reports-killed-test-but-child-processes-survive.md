@@ -35,7 +35,7 @@ severity: 中
 ## 解決方案
 
 1. 以啟動位置定位殘留：`pgrep -fl <worktree 絕對路徑>` 列出命令列含該路徑的程序；必要時以 `lsof -p <pid> | grep cwd` 確認工作目錄。
-2. 確認父程序屬於該 worktree 後，先送 SIGTERM，再以同一個 `pgrep` 確認已退出；仍在才升級。
+2. 確認父程序屬於該 worktree 後，先送 SIGTERM，再以同一個 `pgrep` 確認已退出；仍在才升級。並行 session 常跑形狀幾乎相同的測試命令，送訊號前除命令列外，再比對工作目錄（`lsof -a -p <pid> -d cwd`）與啟動時間（`ps -o lstart= -p <pid>`），不以命令列片段單獨認定歸屬。
 3. 回報中寫明驗證結果（「`pgrep` 無輸出」），而非「已終止」。
 
 **`pgrep -f` 的比對陷阱**：macOS 的 `pgrep` 預設排除自身與祖先程序，但不排除其他 shell。命令列含有相同樣式字串的其他程序（例如另一個等待迴圈 `until ! pgrep -f "<樣式>"; do sleep 5; done`）會被比對到。實例：兩個等待同一樣式的迴圈互相比對到對方，實際測試早已結束，兩者卻都空等超過 15 小時。查到結果後以 `ps -o command= -p <pid>` 確認命中的是實際測試程序，而不是另一個帶著同樣字串的 shell；等待特定程序結束時，優先等已知 PID（`kill -0 <pid>`）。
