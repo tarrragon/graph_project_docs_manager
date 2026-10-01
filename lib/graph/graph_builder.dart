@@ -80,9 +80,9 @@ GraphBuiltEvent buildGraphFromInputs({
   };
   final edges = _buildEdges(classified.resolved, undirectedTypes);
   final defects = <GraphDefect>[
-    for (final d in classified.dangling) DanglingRefGraphDefect(d),
-    for (final m in classified.malformed) MalformedRefGraphDefect(m),
-    for (final d in classified.duplicates) DuplicateIdGraphDefect(d),
+    ...classified.dangling,
+    ...classified.malformed,
+    ...classified.duplicates,
     ..._multiSourceDefects(edges, edgeList),
   ];
   return GraphBuiltEvent(

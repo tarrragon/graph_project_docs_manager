@@ -13,6 +13,7 @@ import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 import '../helpers/spec007/graph_manifest_materializer.dart';
@@ -54,32 +55,44 @@ Object? _sorted(Object? v) {
   return v;
 }
 
-String _gapKey(GraphDefectGap gap) => switch (gap) {
-  RefGraphDefectGap() => _canonical({
-    'kind': gap.kind.name,
-    'source_id': gap.sourceId,
-    'path': gap.path,
-    'field': gap.fieldName,
-    'raw_value': gap.rawValue,
-    'edge_type': gap.edgeType,
-    'reason': gap.reason,
-  }),
-  DuplicateIdGraphDefectGap() => _canonical({
+String _gapKey(GraphDefectGap gap) => switch (gap.defect) {
+  final DanglingRefGraphDefect d => _refKey(
+    gap.kind.name,
+    d.ref,
+    d.reason.name,
+  ),
+  final MalformedRefGraphDefect d => _refKey(
+    gap.kind.name,
+    d.ref,
+    d.reason.name,
+  ),
+  DuplicateIdGraphDefect(:final id, :final paths) => _canonical({
     'kind': 'duplicateId',
-    'id': gap.id,
-    'paths': (gap.paths.toList()..sort()),
+    'id': id,
+    'paths': (paths.toList()..sort()),
   }),
-  MultiSourceGraphDefectGap() => _canonical({
-    'kind': 'multiSource',
-    'from': gap.from,
-    'edge_type': gap.edgeType,
-    'targets': [
-      for (final t
-          in (gap.targets.toList()..sort((a, b) => a.to.compareTo(b.to))))
-        {'to': t.to, 'declared_by': (t.declaredBy.toList()..sort())},
-    ],
-  }),
+  MultiSourceGraphDefect(:final from, :final edgeType, :final targets) =>
+    _canonical({
+      'kind': 'multiSource',
+      'from': from,
+      'edge_type': edgeType,
+      'targets': [
+        for (final t
+            in (targets.toList()..sort((a, b) => a.to.compareTo(b.to))))
+          {'to': t.to, 'declared_by': (t.declaredBy.toList()..sort())},
+      ],
+    }),
 };
+
+String _refKey(String kind, ReferenceValue ref, String reason) => _canonical({
+  'kind': kind,
+  'source_id': ref.sourceId,
+  'path': ref.sourcePath,
+  'field': ref.fieldName,
+  'raw_value': ref.value,
+  'edge_type': ref.edgeTypeName,
+  'reason': reason,
+});
 
 List<String> _expectedDefectKeys(String host) => [
   for (final d
