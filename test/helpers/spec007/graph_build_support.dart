@@ -28,3 +28,11 @@ Set<String> edgeKeys(GraphBuiltEvent event) => {
   for (final e in event.edges)
     '${e.edgeType}|${e.from}|${e.to}|${(e.declaredBy.toList()..sort()).join(',')}',
 };
+
+/// 守恆式：總數 = 解析成功 + 斷邊 + 格式錯誤。
+bool conservationHolds({
+  required int total,
+  required int resolved,
+  required int dangling,
+  required int malformed,
+}) => total == resolved + dangling + malformed;
