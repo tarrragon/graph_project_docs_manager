@@ -96,5 +96,18 @@ void main() {
       final fm = TicketDetail.fromRawNodes([node]).findById('T-1');
       expect(fm, equals(node.frontmatter));
     });
+
+    test('T-deep-5 巢狀 map 帶 int 鍵不拋錯，可讀且寫入拋 UnsupportedError', () {
+      final node = buildRawNode(
+        id: 'T-1',
+        extra: {
+          'meta': {1: 'x'},
+        },
+      );
+      final detail = TicketDetail.fromRawNodes([node]);
+      final meta = detail.findById('T-1')!['meta'] as Map;
+      expect(meta[1], 'x');
+      expect(() => meta[2] = 'y', throwsUnsupportedError);
+    });
   });
 }

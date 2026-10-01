@@ -9,13 +9,18 @@ import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 const _ticketTypeName = 'Ticket';
 const _idKey = 'id';
 
-Map<String, dynamic> _deepFreezeMap(Map<dynamic, dynamic> source) =>
+/// 頂層 frontmatter 鍵本來就是 String；巢狀 map 的鍵原樣保留（YAML 可為非字串）。
+Map<String, dynamic> _deepFreezeMap(Map<String, dynamic> source) =>
     Map<String, dynamic>.unmodifiable({
-      for (final e in source.entries) e.key as String: _deepFreeze(e.value),
+      for (final e in source.entries) e.key: _deepFreeze(e.value),
     });
 
 dynamic _deepFreeze(dynamic value) {
-  if (value is Map) return _deepFreezeMap(value);
+  if (value is Map) {
+    return Map<dynamic, dynamic>.unmodifiable({
+      for (final e in value.entries) e.key: _deepFreeze(e.value),
+    });
+  }
   if (value is List) return List<dynamic>.unmodifiable(value.map(_deepFreeze));
   return value;
 }
