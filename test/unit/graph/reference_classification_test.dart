@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 
+import '../../helpers/spec007/graph_build_support.dart';
 import '../../helpers/spec007/known_distribution_fixture.dart';
 import '../../helpers/spec007/raw_node_builder.dart';
 

@@ -54,14 +54,6 @@ class ReferenceClassification {
   final int totalReferences;
 }
 
-/// 守恆式：總數 = 解析成功 + 斷邊 + 格式錯誤。
-bool conservationHolds({
-  required int total,
-  required int resolved,
-  required int dangling,
-  required int malformed,
-}) => total == resolved + dangling + malformed;
-
 /// 需求：[SPEC-007 FR-02、FR-03] 建輕節點、抽取引用值並依序分類。
 ///
 /// 重複 ID 節點不抽取、不計入總數；不部分救回（D3）。
