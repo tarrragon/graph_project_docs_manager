@@ -463,6 +463,9 @@ versions:
       main ticket 套件紅（2026-10-01）：W1-020.1 回歸（新父 children 的 dict 項被改成字串），執行者只跑 tests/ 漏 ticket_system/tests/；
       83 已派 incident-responder 並建 P1 修復票（W1-037）；修好前不做 canonical sync-push。W1-035.1 完成。W1-036（ANA P3，gate 主流程其他
       例外仍 fail-open；e1 分診接受）。W1-038（ANA P2，TEST-BAL-006 同日再現兩次，評估工具層偵測收集母體縮小；e1 建）。
+      W1-038 結論採 conftest 外掛（pytest 層警告）＋全量數對照＋派發範本無路徑指令，不採 PreToolUse hook；children W1-038.1（IMP P2，
+      hooks／ticket 兩包外掛，單檔與 :: 不得誤報、不改 exit code）、W1-038.2（DOC P2，派發範本全套件回報規格、TEST-BAL-006 補工具層）。
+      盤點：多筆 testpaths 只有 hooks（全量 5351，只帶 tests 漏 lib 258）與 ticket（全量 4372，只帶 tests 為 2520）。e1 接受。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
