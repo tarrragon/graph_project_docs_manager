@@ -3,6 +3,7 @@ library;
 
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
+import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 enum DirectedDeclarationShape { fromOnly, toOnly, both }
@@ -51,19 +52,25 @@ sealed class GraphDefect {
   const GraphDefect();
 }
 
+/// 斷邊：引用值合乎格式但目標不存在或重複。
 class DanglingRefGraphDefect extends GraphDefect {
-  const DanglingRefGraphDefect(this.detail);
-  final DanglingRef detail;
+  const DanglingRefGraphDefect({required this.ref, required this.reason});
+  final ReferenceValue ref;
+  final DanglingReason reason;
 }
 
+/// 格式錯誤的引用值。
 class MalformedRefGraphDefect extends GraphDefect {
-  const MalformedRefGraphDefect(this.detail);
-  final MalformedRef detail;
+  const MalformedRefGraphDefect({required this.ref, required this.reason});
+  final ReferenceValue ref;
+  final MalformedReason reason;
 }
 
+/// 同一 `id` 出現在兩個以上 rawNode。
 class DuplicateIdGraphDefect extends GraphDefect {
-  const DuplicateIdGraphDefect(this.detail);
-  final DuplicateIdDefect detail;
+  const DuplicateIdGraphDefect({required this.id, required this.paths});
+  final String id;
+  final List<String> paths;
 }
 
 /// 正向基數為 `one` 的邊型，一個起點經聯集指向兩個以上不同終點。

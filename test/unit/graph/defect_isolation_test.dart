@@ -41,11 +41,11 @@ List<RawNode> _injected() => [
 Set<String> _defectSignatures(GraphBuiltEvent event) => {
   for (final d in event.graphDefects)
     switch (d) {
-      DanglingRefGraphDefect(:final detail) =>
-        'dangling:${detail.ref.sourceId}:${detail.reason.name}',
-      MalformedRefGraphDefect(:final detail) =>
-        'malformed:${detail.ref.sourceId}:${detail.reason.name}',
-      DuplicateIdGraphDefect(:final detail) => 'dup:${detail.id}',
+      DanglingRefGraphDefect(:final ref, :final reason) =>
+        'dangling:${ref.sourceId}:${reason.name}',
+      MalformedRefGraphDefect(:final ref, :final reason) =>
+        'malformed:${ref.sourceId}:${reason.name}',
+      DuplicateIdGraphDefect(:final id) => 'dup:$id',
       MultiSourceGraphDefect() => 'multi:${d.from}:${d.edgeType}',
     },
 };

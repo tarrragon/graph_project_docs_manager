@@ -4,7 +4,6 @@ import 'package:graph_project_docs_manager/diagnostics/gap_detector.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
-import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 
@@ -28,17 +27,14 @@ GraphBuiltEvent _event(List<GraphDefect> defects) => GraphBuiltEvent(
 
 List<GraphDefect> _fourKinds() => [
   DanglingRefGraphDefect(
-    DanglingRef(
-      ref: _ref(value: ' X-9 '),
-      reason: DanglingReason.targetMissing,
-    ),
+    ref: _ref(value: ' X-9 '),
+    reason: DanglingReason.targetMissing,
   ),
   MalformedRefGraphDefect(
-    MalformedRef(ref: _ref(value: 42), reason: MalformedReason.invalidShape),
+    ref: _ref(value: 42),
+    reason: MalformedReason.invalidShape,
   ),
-  const DuplicateIdGraphDefect(
-    DuplicateIdDefect(id: 'D-1', paths: ['a.md', 'b.md']),
-  ),
+  const DuplicateIdGraphDefect(id: 'D-1', paths: ['a.md', 'b.md']),
   const MultiSourceGraphDefect(
     from: 'T-1',
     edgeType: 'spawn',
@@ -61,24 +57,24 @@ void main() {
 
       expect(gaps, hasLength(4));
       expect(gaps.every((g) => g.category == GapCategory.graphDefect), isTrue);
-      final dangling = gaps[0] as RefGraphDefectGap;
-      expect(dangling.kind, GraphDefectKind.danglingRef);
-      expect(dangling.sourceId, 'A-1');
-      expect(dangling.path, 'docs/A-1.md');
-      expect(dangling.fieldName, 'spawned_tickets');
-      expect(dangling.rawValue, ' X-9 ');
-      expect(dangling.edgeType, 'spawn');
-      expect(dangling.reason, 'targetMissing');
-      final malformed = gaps[1] as RefGraphDefectGap;
-      expect(malformed.kind, GraphDefectKind.malformedRef);
-      expect(malformed.rawValue, 42);
-      expect(malformed.reason, 'invalidShape');
-      final dup = gaps[2] as DuplicateIdGraphDefectGap;
-      expect(dup.kind, GraphDefectKind.duplicateId);
+      final dangling = gaps[0].defect as DanglingRefGraphDefect;
+      expect(gaps[0].kind, GraphDefectKind.danglingRef);
+      expect(dangling.ref.sourceId, 'A-1');
+      expect(dangling.ref.sourcePath, 'docs/A-1.md');
+      expect(dangling.ref.fieldName, 'spawned_tickets');
+      expect(dangling.ref.value, ' X-9 ');
+      expect(dangling.ref.edgeTypeName, 'spawn');
+      expect(dangling.reason.name, 'targetMissing');
+      final malformed = gaps[1].defect as MalformedRefGraphDefect;
+      expect(gaps[1].kind, GraphDefectKind.malformedRef);
+      expect(malformed.ref.value, 42);
+      expect(malformed.reason.name, 'invalidShape');
+      final dup = gaps[2].defect as DuplicateIdGraphDefect;
+      expect(gaps[2].kind, GraphDefectKind.duplicateId);
       expect(dup.id, 'D-1');
       expect(dup.paths, ['a.md', 'b.md']);
-      final multi = gaps[3] as MultiSourceGraphDefectGap;
-      expect(multi.kind, GraphDefectKind.multiSource);
+      final multi = gaps[3].defect as MultiSourceGraphDefect;
+      expect(gaps[3].kind, GraphDefectKind.multiSource);
       expect(multi.from, 'T-1');
       expect(multi.edgeType, 'spawn');
       expect(multi.targets.map((t) => t.to), ['T-2', 'T-3']);
@@ -100,8 +96,8 @@ void main() {
         detectGraphDefectGaps(GraphDefectInputAvailable(_event(_fourKinds()))),
       );
 
-      final dangling = gaps[0] as RefGraphDefectGap;
-      expect(dangling.reason, matches(RegExp(r'^[A-Za-z]+$')));
+      final dangling = gaps[0].defect as DanglingRefGraphDefect;
+      expect(dangling.reason.name, matches(RegExp(r'^[A-Za-z]+$')));
       expect(GraphDefectKind.values.map((k) => k.name), [
         'danglingRef',
         'malformedRef',

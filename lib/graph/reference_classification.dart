@@ -2,6 +2,7 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
@@ -10,20 +11,6 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 enum MalformedReason { invalidShape, patternMismatch, selfReference }
 
 enum DanglingReason { targetMissing, targetDuplicated }
-
-class MalformedRef {
-  const MalformedRef({required this.ref, required this.reason});
-
-  final ReferenceValue ref;
-  final MalformedReason reason;
-}
-
-class DanglingRef {
-  const DanglingRef({required this.ref, required this.reason});
-
-  final ReferenceValue ref;
-  final DanglingReason reason;
-}
 
 /// 解析成功的引用值（參與 FR-04／FR-05 建邊）。
 class ResolvedRef {
@@ -45,10 +32,10 @@ class ReferenceClassification {
   });
 
   final List<LightNode> lightNodes;
-  final List<DuplicateIdDefect> duplicates;
+  final List<DuplicateIdGraphDefect> duplicates;
   final List<ResolvedRef> resolved;
-  final List<DanglingRef> dangling;
-  final List<MalformedRef> malformed;
+  final List<DanglingRefGraphDefect> dangling;
+  final List<MalformedRefGraphDefect> malformed;
 
   /// 抽取階段的引用值總數（獨立於三類加總）。
   final int totalReferences;
@@ -71,8 +58,8 @@ ReferenceClassification classifyGraphReferences({
       if (type.idRegExp != null) type.idRegExp!,
   ];
   final resolved = <ResolvedRef>[];
-  final dangling = <DanglingRef>[];
-  final malformed = <MalformedRef>[];
+  final dangling = <DanglingRefGraphDefect>[];
+  final malformed = <MalformedRefGraphDefect>[];
   var total = 0;
   for (final raw in rawNodes) {
     final id = raw.frontmatter['id'];
@@ -88,12 +75,15 @@ ReferenceClassification classifyGraphReferences({
     for (final ref in refs) {
       final reason = _malformedReason(ref, patterns);
       if (reason != null) {
-        malformed.add(MalformedRef(ref: ref, reason: reason));
+        malformed.add(MalformedRefGraphDefect(ref: ref, reason: reason));
       } else if (_lookupId(graphIds, ref.value, onIdLookup)) {
         resolved.add(ResolvedRef(ref: ref, targetId: ref.value! as String));
       } else {
         dangling.add(
-          DanglingRef(ref: ref, reason: _danglingReason(ref, duplicateIds)),
+          DanglingRefGraphDefect(
+            ref: ref,
+            reason: _danglingReason(ref, duplicateIds),
+          ),
         );
       }
     }

@@ -4,6 +4,7 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 
 /// 輕節點：`id`、節點型別、`status`、`title`（非字串為 null）、相對路徑。
 class LightNode {
@@ -22,20 +23,12 @@ class LightNode {
   final String path;
 }
 
-/// 一筆 `duplicateId` 缺陷：同一 `id` 出現在兩個以上 rawNode。
-class DuplicateIdDefect {
-  const DuplicateIdDefect({required this.id, required this.paths});
-
-  final String id;
-  final List<String> paths;
-}
-
 /// 輕節點建構結果。
 class LightNodeBuild {
   const LightNodeBuild({required this.nodes, required this.duplicates});
 
   final List<LightNode> nodes;
-  final List<DuplicateIdDefect> duplicates;
+  final List<DuplicateIdGraphDefect> duplicates;
 
   /// 重複 ID 集合（FR-03 分類為 `targetDuplicated` 的依據）。
   Set<String> get duplicateIds => {for (final d in duplicates) d.id};
@@ -51,13 +44,13 @@ LightNodeBuild buildLightNodes(List<RawNode> rawNodes) {
     }
   }
   final nodes = <LightNode>[];
-  final duplicates = <DuplicateIdDefect>[];
+  final duplicates = <DuplicateIdGraphDefect>[];
   for (final entry in byId.entries) {
     if (entry.value.length == 1) {
       nodes.add(_toLightNode(entry.key, entry.value.single));
     } else {
       duplicates.add(
-        DuplicateIdDefect(
+        DuplicateIdGraphDefect(
           id: entry.key,
           paths: [for (final raw in entry.value) raw.path],
         ),

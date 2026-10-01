@@ -12,66 +12,23 @@ import 'parse_failure_gap.dart';
 /// `graphDefect` 破洞的子類（子類清單以 SPEC-007 FR-09〈子類〉為準）。
 enum GraphDefectKind { danglingRef, malformedRef, duplicateId, multiSource }
 
-/// 一筆 `graphDefect` 破洞的共同基底；負載只含原因碼與原始值，
-/// 不含顯示文字（顯示由畫面經 l10n 投影）。
-sealed class GraphDefectGap {
-  const GraphDefectGap();
+/// 一筆 `graphDefect` 破洞：直接承載 Graph 的缺陷（原因碼與原始值，
+/// 不含顯示文字；顯示由畫面經 l10n 投影）。
+class GraphDefectGap {
+  const GraphDefectGap(this.defect);
+
+  final GraphDefect defect;
 
   /// 破洞類別，恆為 [GapCategory.graphDefect]。
   GapCategory get category => GapCategory.graphDefect;
 
-  GraphDefectKind get kind;
-}
-
-/// `danglingRef`／`malformedRef`：來源節點、路徑、欄位、原始值、邊型、原因碼。
-class RefGraphDefectGap extends GraphDefectGap {
-  const RefGraphDefectGap({
-    required this.kind,
-    required this.sourceId,
-    required this.path,
-    required this.fieldName,
-    required this.rawValue,
-    required this.edgeType,
-    required this.reason,
-  });
-
-  @override
-  final GraphDefectKind kind;
-  final String sourceId;
-  final String path;
-  final String fieldName;
-
-  /// 原始值原樣，不正規化。
-  final Object? rawValue;
-  final String edgeType;
-
-  /// 原因碼（資料值）。
-  final String reason;
-}
-
-/// `duplicateId`：ID 與全部路徑。
-class DuplicateIdGraphDefectGap extends GraphDefectGap {
-  const DuplicateIdGraphDefectGap({required this.id, required this.paths});
-
-  @override
-  GraphDefectKind get kind => GraphDefectKind.duplicateId;
-  final String id;
-  final List<String> paths;
-}
-
-/// `multiSource`：起點、邊型、全部終點與各自的宣告來源。
-class MultiSourceGraphDefectGap extends GraphDefectGap {
-  const MultiSourceGraphDefectGap({
-    required this.from,
-    required this.edgeType,
-    required this.targets,
-  });
-
-  @override
-  GraphDefectKind get kind => GraphDefectKind.multiSource;
-  final String from;
-  final String edgeType;
-  final List<MultiSourceTarget> targets;
+  /// 由 sealed [GraphDefect] 窮舉推導；新增缺陷子類時此 switch 編譯期報錯。
+  GraphDefectKind get kind => switch (defect) {
+    DanglingRefGraphDefect() => GraphDefectKind.danglingRef,
+    MalformedRefGraphDefect() => GraphDefectKind.malformedRef,
+    DuplicateIdGraphDefect() => GraphDefectKind.duplicateId,
+    MultiSourceGraphDefect() => GraphDefectKind.multiSource,
+  };
 }
 
 /// 一輪 `graphDefect` 偵測結果（sealed）：可用為 [GraphDefectsDetected]，
@@ -123,33 +80,6 @@ GraphDefectGapResult detectGraphDefectGaps(GraphDefectInput input) =>
         reason: reason,
       ),
       GraphDefectInputAvailable(:final event) => GraphDefectsDetected([
-        for (final defect in event.graphDefects) _toGap(defect),
+        for (final defect in event.graphDefects) GraphDefectGap(defect),
       ]),
     };
-
-GraphDefectGap _toGap(GraphDefect defect) => switch (defect) {
-  DanglingRefGraphDefect(:final detail) => RefGraphDefectGap(
-    kind: GraphDefectKind.danglingRef,
-    sourceId: detail.ref.sourceId,
-    path: detail.ref.sourcePath,
-    fieldName: detail.ref.fieldName,
-    rawValue: detail.ref.value,
-    edgeType: detail.ref.edgeTypeName,
-    reason: detail.reason.name,
-  ),
-  MalformedRefGraphDefect(:final detail) => RefGraphDefectGap(
-    kind: GraphDefectKind.malformedRef,
-    sourceId: detail.ref.sourceId,
-    path: detail.ref.sourcePath,
-    fieldName: detail.ref.fieldName,
-    rawValue: detail.ref.value,
-    edgeType: detail.ref.edgeTypeName,
-    reason: detail.reason.name,
-  ),
-  DuplicateIdGraphDefect(:final detail) => DuplicateIdGraphDefectGap(
-    id: detail.id,
-    paths: detail.paths,
-  ),
-  MultiSourceGraphDefect(:final from, :final edgeType, :final targets) =>
-    MultiSourceGraphDefectGap(from: from, edgeType: edgeType, targets: targets),
-};
