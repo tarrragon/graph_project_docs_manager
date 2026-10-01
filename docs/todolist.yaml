@@ -490,6 +490,10 @@ versions:
       實測重設、測試注入時鐘）。W1-039 已合併（ticket 2.44.27）。
       W1-042 新測試整檔連跑 11 次失敗 5 次：假時鐘替換全域 time.sleep，被 subprocess 等待輪詢呼叫而推進量不固定（TEST-GPD-003）；
       修復 W1-043（P1，finish 前置，改走模組層 _sleep 接縫）。同型無作用替換 13 處 10 檔另開 W1-044（P3，非 finish 前置；e1 分診接受）。
+      finish 前置 1 達成（83，main 1178ce9bd）：CAS 測試整檔連跑 10/10 綠；ticket 全量 4403 passed；hooks 全量 5374（5326 passed＋48 skipped）。
+      finish 前置 2 達成（e1，2026-10-02 00:28～00:29，main 1178ce9bd，load1 22.5→17.3）：`fvm flutter test integration_test -d macos`
+      rc=0，+16 ~2 All tests passed（同 0.3.3）；前後實例數 0／0；UserDefaults export sha256 前後相同（51b4edd6…）；
+      LaunchServices 登記 19 份中現存 .app 僅 1 份（main build），失效路徑不影響選擇。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
