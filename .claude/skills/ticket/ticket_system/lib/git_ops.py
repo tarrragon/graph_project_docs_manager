@@ -493,7 +493,9 @@ def commit_files_isolated(
 
     Args:
         paths: 欲提交的檔案路徑清單，須獨立於共用 index（見 module docstring
-            要件 1），呼叫端自帶（如 ticket md 絕對路徑）。
+            要件 1），呼叫端自帶（如 ticket md 絕對路徑）。須逐檔列出：目錄路徑
+            會被明確拒絕（failed）；刪除或改名時舊路徑與新路徑都要列入（範圍
+            自檢關閉 rename 偵測、逐路徑比對）；主路徑（第一個）須為存在的檔案。
         message: commit message。
         cwd: git 命令執行目錄，預設為目前工作目錄所屬 repo。
         append_lines: 路徑 -> 本次追加文字。這些檔案不整檔 stage，提交內容為
@@ -529,6 +531,20 @@ def commit_files_isolated(
     def _to_repo_relative(path: str) -> str:
         abs_path = path if os.path.isabs(path) else os.path.join(base_dir, path)
         return os.path.relpath(os.path.abspath(abs_path), repo_root).replace(os.sep, "/")
+
+    dir_paths = [
+        p for p in raw_deduped
+        if os.path.isdir(p if os.path.isabs(p) else os.path.join(base_dir, p))
+    ]
+    if dir_paths:
+        return {
+            "status": "failed",
+            "commit_sha": None,
+            "error": (
+                f"paths 含目錄路徑 {dir_paths}：範圍自我驗證逐檔比對，"
+                "目錄會展開為多個檔案而判定不符，請改列各檔案路徑"
+            ),
+        }
 
     deduped: List[str] = list(dict.fromkeys(_to_repo_relative(p) for p in raw_deduped))
     appended: Dict[str, str] = {}
@@ -595,7 +611,7 @@ def commit_files_isolated(
 
         # 提交範圍自我驗證（要件 3）：不符即放棄，不 update-ref。
         ok, diff_out, err = _run_git_with_lock_retry(
-            ["git", "diff", "--name-only", "-z", old_head, commit_sha], cwd=cwd
+            ["git", "diff", "--no-renames", "--name-only", "-z", old_head, commit_sha], cwd=cwd
         )
         if not ok:
             return {"status": "failed", "commit_sha": None, "error": err}
