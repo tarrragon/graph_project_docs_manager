@@ -495,6 +495,12 @@ versions:
       finish 前置 2 達成（e1，2026-10-02 00:28～00:29，main 1178ce9bd，load1 22.5→17.3）：`fvm flutter test integration_test -d macos`
       rc=0，+16 ~2 All tests passed（同 0.3.3）；前後實例數 0／0；UserDefaults export sha256 前後相同（51b4edd6…）；
       LaunchServices 登記 19 份中現存 .app 僅 1 份（main build），失效路徑不影響選擇。
+      canonical v2.74.0（2026-10-02，用戶授權；W1-026／039／042／043／020.2／035.4，ticket 2.44.30）與 v2.74.1（--clean 補推，刪除 v2.72.0
+      未傳播的 version_shift.py 與 test_version_shift.py，用戶授權；遠端以 API 確認已刪）。孤兒推送前偵測併入 W1-040。
+      0.4.1 scope frozen（a40ddaf3b）。version-release check 通過，前移 18 張至 0.4.2；0.3.3-W1-015 實地驗證通過（check 於前移非空時
+      明示「請用 finish（release 會拒絕）」）。finish dry-run 發現：W1-020.2 子樹連帶遷移使 W1-035、W1-038 前移時一併搬走 0.4.1 已完成子票
+      （W1-035.1／.2／.4、W1-038.1），且 finish 以檔名排序先搬子票，新父票 children 漏列（83 以獨立 clone 實測確認，不會中途失敗）。
+      用戶裁決：先修工具再 finish。修復 P1（scope_blocker，83 建；已完成子孫留原版本僅改寫 parent 參照＋finish 改為父票先前移）。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
