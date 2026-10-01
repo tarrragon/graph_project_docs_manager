@@ -426,7 +426,9 @@ versions:
       執行期收件（框架修復 topic，e1 分診 2026-10-01，皆不設 scope_blocker，依 W1-013 新規則 finish 時前移）：
       W1-018（P3，version-release git 寫入 10 秒逾時殺 git 殘留鎖）、W1-019（P1，git-ref-transaction 兩支 hook 測試超過
       hooks-test-gate 單檔 60 秒，flutter_balance 回報、e1 重現 187 秒；canonical 推送等它）、W1-010 children .1～.6、
-      W1-020～023（W1-010 分析中順帶發現）。W1-013 已落地（#114 方案 1～5；方案 4 偵測承擔者為 finish 執行者，原 ID 欄位由 W1-010.2 承接）。
+      W1-020～023（W1-010 分析中順帶發現）。W1-011 量測後：W1-011.1（P2，S2-sh 鎖內不啟 python；e1 確認 P2——主 repo 實測一筆提交持鎖 6.38 s 超過 5 s 重試預算，
+      e1 當日亦遇 append-log exit 75）、W1-025（P3）、W1-026（P3，提交重試與 exit 75 無檔案日誌）。W1-024（P2，派發範本 pgrep 約束，#115）。
+      Graph topic 執行期收件：W1-004 SR-1（TicketDetail frontmatter 巢狀值仍共用可變引用）建 P3 票，由 4a 建並 resolve SR-1。W1-013 已落地（#114 方案 1～5；方案 4 偵測承擔者為 finish 執行者，原 ID 欄位由 W1-010.2 承接）。
       2026-10-01 W1-017 完成後，經用戶授權 skill-sync push version-release 2.10.1（含 W1-042、W1-017；發佈庫 2.7.0→2.10.1，versions.json 已驗證）。
       canonical sync-push v2.70.1（2026-10-01，用戶裁決等 W1-014 一起推；含 W1-012、013、014、017、019、024）。W1-019 待 flutter_balance gate 取樣 N>=3 後結案。
       finish 待辦：skill 發佈庫 ticket（本地 2.44.13 起，發佈庫 2.44.3）與 doc（本地 1.24.0，發佈庫 1.23.0）用戶裁決 0.4.1 finish 時一併處理，推送仍須逐次授權。
@@ -462,6 +464,8 @@ versions:
       5. 日誌事件（結果值）：
          - W1-005 後，「圖不可用」原因碼對同一 buildResult 只記錄一次（以 buildResult 為單位，不以查詢實例為單位）；
            L3 斷言改以同一 buildResult 建兩個查詢實例驗證只記一次。
+           建圖尚未完成（buildResult 為 null，cause=buildNotCompleted）沒有物件可作單位：維持現行，以查詢實例為單位只記一次
+           （e1 裁決 2026-10-01，W1-005 NC-1）。理由：建圖從未完成時仍留下可觀測訊號；不改 SPEC-007 L3-1 的「圖不可用」範圍。
          - W1-017：git add 失敗時 stderr 輸出失敗的路徑與 git 錯誤訊息，發版流程以非 0 結束且不建立 tag。
          - 其餘票不新增、不改變日誌事件。
 
