@@ -75,3 +75,24 @@ def test_real_conftest_exposes_plugin_hooks():
     text = _REAL_CONFTEST.read_text(encoding="utf-8")
     assert "testpaths_coverage_warning" in text
     assert "pytest_terminal_summary" in text
+
+
+def _copies_differ(a: Path, b: Path) -> bool:
+    return a.read_bytes() != b.read_bytes()
+
+
+def test_plugin_copies_identical_across_packages():
+    other = _PLUGIN.parents[1] / "skills" / "ticket" / "testpaths_coverage_warning.py"
+    if not other.exists():
+        pytest.skip("ticket 包副本不存在：consumer 可能只同步其中一包")
+    assert not _copies_differ(_PLUGIN, other), "兩份副本內容不一致，須同步"
+
+
+def test_copies_differ_detects_one_char_change(tmp_path):
+    mutated = tmp_path / "copy.py"
+    text = _PLUGIN.read_text(encoding="utf-8")
+    mutated.write_text("#" + text[1:], encoding="utf-8")
+    assert _copies_differ(_PLUGIN, mutated)
+    same = tmp_path / "same.py"
+    same.write_bytes(_PLUGIN.read_bytes())
+    assert not _copies_differ(_PLUGIN, same)

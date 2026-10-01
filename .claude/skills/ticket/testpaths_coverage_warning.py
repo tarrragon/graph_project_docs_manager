@@ -62,12 +62,21 @@ def _count_full_collection(config) -> Optional[int]:
             cwd=str(config.rootpath), env=env, capture_output=True,
             text=True, timeout=600,
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError) as exc:
+        sys.stderr.write(
+            "[testpaths-coverage] 全量收集失敗: %s: %s\n"
+            % (type(exc).__name__, exc))
+        return None
+    if proc.returncode != 0:
+        sys.stderr.write(
+            "[testpaths-coverage] 全量收集子程序 rc=%s，全量數不可用\n"
+            % proc.returncode)
         return None
     for line in reversed(proc.stdout.splitlines()):
         m = _COLLECTED_RE.search(line)
         if m:
             return int(m.group(1))
+    sys.stderr.write("[testpaths-coverage] 全量收集輸出解析不到 collected 行\n")
     return None
 
 
