@@ -477,6 +477,9 @@ versions:
       無需補推。W1-038.1 外掛實地觸發警告輸出正確。
       W1-026 已合併（ticket 2.44.26，main 4392 passed），但測試未隔離 retry 日誌目錄，每跑一次套件即寫入假紀錄至真實
       `.claude/hook-logs/ticket-commit-retry/`；83 退回修兩層並補 E2。修好前不推 canonical（e1 2026-10-01）。
+      W1-035.3 合成組 N=10（flutter_balance，熱快取）：大 gap 偶發 2/20（16.9 s、22.7 s），不固定在第一個 uv run、與 load1 無對應，
+      其中一次耗盡總預算致第二檔逾時（合成組 10% 逾時、gate 判未通過、擋合法提交）。「第一個 uv run 冷啟動」歸因不成立。
+      W1-035.4（細化計時：spawn→configure／pytest 本體／摘要→退出三段，env 啟用；e1 分診升 P2，理由為已觀測到逾時擋合法提交）。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
