@@ -455,6 +455,9 @@ versions:
       （範圍 W1-010.5、W1-011.1、W1-010.7、W1-034）。
       canonical sync-push v2.72.0（2026-10-01，W1-034 完成後依用戶裁決推送；另含 W1-015；ticket 2.44.23）。
       W1-019 依用戶裁決結案（gate 內 5/5 通過、30 秒餘裕目標未達成如實記錄），uv 開銷由 W1-035（ANA P3）承接。
+      W1-035 量測更正 e1 先前歸因：uv 啟動僅 0.03～0.24 s，本機重現不出 consumer 的 20 秒差距，來源未明。衍生 W1-035.1（P2，
+      gate 遇 uv／.venv 缺失拋 OSError 時 exit 1 被放行，fail-open，與方案無關的現行缺口）、W1-035.2（P3，分段計時日誌）、
+      W1-035.3（ANA P3，consumer N>=10 取樣歸因；W1-035.2 經 canonical 推送後由 e1 轉 consumer）。e1 分診接受。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
