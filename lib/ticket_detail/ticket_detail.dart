@@ -9,9 +9,26 @@ import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 const _ticketTypeName = 'Ticket';
 const _idKey = 'id';
 
+/// 頂層 frontmatter 鍵本來就是 String；巢狀 map 的鍵原樣保留（YAML 可為非字串）。
+Map<String, dynamic> _deepFreezeMap(Map<String, dynamic> source) =>
+    Map<String, dynamic>.unmodifiable({
+      for (final e in source.entries) e.key: _deepFreeze(e.value),
+    });
+
+dynamic _deepFreeze(dynamic value) {
+  if (value is Map) {
+    return Map<dynamic, dynamic>.unmodifiable({
+      for (final e in value.entries) e.key: _deepFreeze(e.value),
+    });
+  }
+  if (value is List) return List<dynamic>.unmodifiable(value.map(_deepFreeze));
+  return value;
+}
+
 /// 一輪 Corpus rawNodes 建立的不可變 ticket 全文索引。
 ///
-/// frontmatter 只凍結第一層；巢狀的清單與子 map 仍與 RawNode 共用引用。
+/// frontmatter 建構時遞迴深層複製並凍結（List／Map 逐層 unmodifiable 副本，
+/// 純量原樣保留），與 RawNode 不共用任何可變引用。
 class TicketDetail {
   TicketDetail._(this._byId);
 
@@ -24,7 +41,7 @@ class TicketDetail {
       final id = node.frontmatter[_idKey];
       if (id is! String) continue;
       if (candidates.containsKey(id)) duplicated.add(id);
-      candidates[id] = Map.unmodifiable(node.frontmatter);
+      candidates[id] = _deepFreezeMap(node.frontmatter);
     }
     duplicated.forEach(candidates.remove);
     return TicketDetail._(Map.unmodifiable(candidates));

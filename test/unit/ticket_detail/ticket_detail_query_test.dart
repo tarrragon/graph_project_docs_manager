@@ -60,4 +60,54 @@ void main() {
     expect(() => detail.findById('T-1')!['x'] = 1, throwsUnsupportedError);
     expect(detail.findById('T-1'), equals(node.frontmatter));
   });
+
+  group('T-deep 深層凍結並切斷與 RawNode 的共用引用', () {
+    Map<String, dynamic> nestedFields() => {
+      'blockedBy': ['A', 'B'],
+      'where': {
+        'layer': 'Domain',
+        'files': ['x.dart'],
+      },
+    };
+
+    test('T-deep-1 巢狀清單寫入拋 UnsupportedError', () {
+      final node = buildRawNode(id: 'T-1', extra: nestedFields());
+      final fm = TicketDetail.fromRawNodes([node]).findById('T-1')!;
+      expect(() => (fm['blockedBy'] as List).add('C'), throwsUnsupportedError);
+    });
+
+    test('T-deep-2 巢狀子 map 與其內清單寫入拋 UnsupportedError', () {
+      final node = buildRawNode(id: 'T-1', extra: nestedFields());
+      final fm = TicketDetail.fromRawNodes([node]).findById('T-1')!;
+      final where = fm['where'] as Map;
+      expect(() => where['layer'] = 'UI', throwsUnsupportedError);
+      expect(() => (where['files'] as List).add('y'), throwsUnsupportedError);
+    });
+
+    test('T-deep-3 事後修改 RawNode 巢狀清單不影響回傳值', () {
+      final node = buildRawNode(id: 'T-1', extra: nestedFields());
+      final detail = TicketDetail.fromRawNodes([node]);
+      (node.frontmatter['blockedBy'] as List).add('Z');
+      expect(detail.findById('T-1')!['blockedBy'], equals(['A', 'B']));
+    });
+
+    test('T-deep-4 正向對照：深層內容與原 frontmatter 相等', () {
+      final node = buildRawNode(id: 'T-1', extra: nestedFields());
+      final fm = TicketDetail.fromRawNodes([node]).findById('T-1');
+      expect(fm, equals(node.frontmatter));
+    });
+
+    test('T-deep-5 巢狀 map 帶 int 鍵不拋錯，可讀且寫入拋 UnsupportedError', () {
+      final node = buildRawNode(
+        id: 'T-1',
+        extra: {
+          'meta': {1: 'x'},
+        },
+      );
+      final detail = TicketDetail.fromRawNodes([node]);
+      final meta = detail.findById('T-1')!['meta'] as Map;
+      expect(meta[1], 'x');
+      expect(() => meta[2] = 'y', throwsUnsupportedError);
+    });
+  });
 }
