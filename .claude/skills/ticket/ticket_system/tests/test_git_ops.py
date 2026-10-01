@@ -814,6 +814,61 @@ class TestStageAppendedBlobProjection:
         assert self._head_text(repo) == "base\nlineA\n"
 
 
+class TestAppendReplayFallback:
+    """非超集時，呼叫端提供的重放方式在 HEAD 版本上插入（E5-D）。"""
+
+    @pytest.fixture
+    def repo(self, tmp_path):
+        _run_git(tmp_path, "init", "-q")
+        _run_git(tmp_path, "config", "user.email", "t@example.com")
+        _run_git(tmp_path, "config", "user.name", "t")
+        (tmp_path / "log.txt").write_text("h1\nh2\nfooter\n", encoding="utf-8")
+        (tmp_path / "t.md").write_text("0\n", encoding="utf-8")
+        _run_git(tmp_path, "add", "-A")
+        _run_git(tmp_path, "commit", "-q", "-m", "init")
+        return tmp_path
+
+    @staticmethod
+    def _insert_before_footer(base, text):
+        lines = base.splitlines(keepends=True)
+        return "".join(lines[:-1]) + text + lines[-1]
+
+    @staticmethod
+    def _commit(repo, value):
+        (repo / "t.md").write_text("1\n", encoding="utf-8")
+        result = git_ops.commit_files_isolated(
+            [str(repo / "t.md")], "c", cwd=str(repo),
+            append_lines={str(repo / "log.txt"): value},
+        )
+        assert result["status"] == "committed", result
+
+    @staticmethod
+    def _head(repo):
+        return _run_git(repo, "show", "HEAD:log.txt").stdout
+
+    def test_non_superset_replays_on_head(self, repo):
+        (repo / "log.txt").write_text("H1\nh2\nfooter\nnew\n", encoding="utf-8")
+        self._commit(repo, git_ops.AppendSpec("new\n", self._insert_before_footer))
+        assert self._head(repo) == "h1\nh2\nnew\nfooter\n"
+
+    def test_non_superset_without_replay_keeps_tail_fallback(self, repo):
+        (repo / "log.txt").write_text("H1\nh2\nfooter\nnew\n", encoding="utf-8")
+        self._commit(repo, "new\n")
+        assert self._head(repo) == "h1\nh2\nfooter\nnew\n"
+
+    def test_superset_ignores_replay_and_drops_foreign(self, repo):
+        (repo / "log.txt").write_text(
+            "h1\nh2\nnew\nfooter\nforeign\n", encoding="utf-8")
+        self._commit(repo, git_ops.AppendSpec("new\n", self._insert_before_footer))
+        assert self._head(repo) == "h1\nh2\nnew\nfooter\n"
+
+    def test_non_superset_foreign_edit_not_absorbed(self, repo):
+        (repo / "log.txt").write_text("H1\nh2\nfooter\nforeign\n", encoding="utf-8")
+        self._commit(repo, git_ops.AppendSpec("new\n", self._insert_before_footer))
+        head = self._head(repo)
+        assert "H1" not in head and "foreign" not in head
+
+
 _BODY = "".join(f"line {i} of the shared body\n" for i in range(30))
 
 
