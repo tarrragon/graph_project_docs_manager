@@ -208,5 +208,94 @@ class TestShimWarningRcExpansion:
         assert "rc=$rc）" not in body
 
 
+class TestShimPrevalidatedHit:
+    """GUARD_PREVALIDATED 命中條件：整段 stdin 與 `<old> <new> <ref>` 單行全等。
+    假 uv 離開碼為 87（guard 判定阻擋）：命中時 uv 不得被呼叫（寫入成功），
+    未命中時 uv 必被呼叫並阻擋（E2 正向對照：每個不符條件都有一個該被擋的輸入）。"""
+
+    @pytest.fixture()
+    def shim_repo(self, scratch_repo, tmp_path):
+        env = _install_shim_with_fake_uv(scratch_repo, tmp_path, 0)
+        assert _commit(scratch_repo, env).returncode == 0
+        self.repo, self.env = scratch_repo, env
+        self.calls = tmp_path / "uv-calls.log"
+        self.stdin_log = tmp_path / "uv-stdin.log"
+        self.old = self._git("rev-parse", "HEAD")
+        self.branch = self._git("symbolic-ref", "HEAD")
+        self.new = self._git("commit-tree", "HEAD^{tree}", "-p", self.old, "-m", "n")
+        self._git("branch", "other", self.old)  # 須在假 uv 改為阻擋前建立
+        uv = tmp_path / "fakebin" / "uv"
+        uv.write_text(
+            f"#!/bin/sh\necho called >> {self.calls}\ncat >> {self.stdin_log}\nexit 87\n",
+            encoding="utf-8",
+        )
+        uv.chmod(0o755)
+        return scratch_repo
+
+    def _git(self, *args, extra_env=None, stdin=None):
+        env = dict(self.env, **(extra_env or {}))
+        r = subprocess.run(["git", *args], cwd=str(self.repo), capture_output=True,
+                           text=True, env=env, input=stdin)
+        if extra_env is None and stdin is None:
+            assert r.returncode == 0, r.stderr
+            return r.stdout.strip()
+        return r
+
+    def _called(self):
+        return self.calls.exists()
+
+    def test_exact_match_skips_python(self, shim_repo):
+        pv = f"{self.new}:{self.old}:{self.branch}"
+        r = self._git("update-ref", self.branch, self.new, self.old,
+                      extra_env={"GUARD_PREVALIDATED": pv})
+        assert r.returncode == 0, r.stderr
+        assert not self._called()
+        assert self._git("rev-parse", self.branch) == self.new
+
+    def test_no_env_runs_python(self, shim_repo):
+        r = self._git("update-ref", self.branch, self.new, self.old, extra_env={})
+        assert r.returncode != 0
+        assert self._called()
+
+    def test_ref_mismatch_same_tip_other_branch_not_hit(self, shim_repo):
+        """R1：另一分支 tip 與 old 相同，env 綁的是別的 ref，不得命中。"""
+        pv = f"{self.new}:{self.old}:{self.branch}"
+        r = self._git("update-ref", "refs/heads/other", self.new, self.old,
+                      extra_env={"GUARD_PREVALIDATED": pv})
+        assert r.returncode != 0
+        assert self._called()
+
+    def test_new_mismatch_not_hit(self, shim_repo):
+        other_new = self._git("commit-tree", "HEAD^{tree}", "-p", self.old, "-m", "x")
+        pv = f"{other_new}:{self.old}:{self.branch}"
+        r = self._git("update-ref", self.branch, self.new, self.old,
+                      extra_env={"GUARD_PREVALIDATED": pv})
+        assert r.returncode != 0 and self._called()
+
+    def test_old_mismatch_not_hit(self, shim_repo):
+        pv = f"{self.new}:{self.new}:{self.branch}"
+        r = self._git("update-ref", self.branch, self.new, self.old,
+                      extra_env={"GUARD_PREVALIDATED": pv})
+        assert r.returncode != 0 and self._called()
+
+    @pytest.mark.parametrize("pv", ["garbage", "::", "ZZ:ZZ:refs/heads/main", "a:b:HEAD"])
+    def test_malformed_env_not_hit(self, shim_repo, pv):
+        r = self._git("update-ref", self.branch, self.new, self.old,
+                      extra_env={"GUARD_PREVALIDATED": pv})
+        assert r.returncode != 0 and self._called()
+
+    def test_multi_ref_transaction_not_hit_and_stdin_passed_through(self, shim_repo):
+        """R3：多 ref 交易即使第一行與 env 全等也不命中；未命中時 python 收到完整 stdin。"""
+        pv = f"{self.new}:{self.old}:{self.branch}"
+        script = (f"start\nupdate {self.branch} {self.new} {self.old}\n"
+                  f"update refs/heads/other {self.new} {self.old}\nprepare\ncommit\n")
+        r = self._git("update-ref", "--stdin", extra_env={"GUARD_PREVALIDATED": pv}, stdin=script)
+        assert r.returncode != 0
+        assert self._called()
+        lines = self.stdin_log.read_text(encoding="utf-8").splitlines()
+        assert f"{self.old} {self.new} {self.branch}" in lines
+        assert f"{self.old} {self.new} refs/heads/other" in lines
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
