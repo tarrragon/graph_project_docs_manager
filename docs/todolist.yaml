@@ -469,6 +469,10 @@ versions:
       W1-035.1、W1-035.2 完成。gate 內首筆分段日誌：total 17.44 s、pytest 自報 5.56 s、差距 11.88 s（load 17.5），手動重現只量到 0.2～2.9 s，
       差距在 gate 內真實存在、來源仍待 W1-035.3 歸因（consumer 以 gate 實際提交日誌為準）。單一路徑 append-log 再現 exit 75（CAS 競爭、
       無重試），連同 e1 先前一例，W1-026 由 P3 升 P2（e1 2026-10-01）。
+      canonical sync-push v2.73.0（2026-10-01，用戶授權；含 W1-035.1、.2、W1-020.1、W1-037，ticket 2.44.25）。查證前提與推送之間
+      W1-038.1（04e96605e，票仍 in_progress）合入 main，隨推送一併送出；e1 以 grep 過濾 sync-push 輸出而未見摘要。覆核改依 83 於 main 的
+      全套件結果。工具缺口建 W1-040（P3，sync-push --expect-head）。W1-039（P2，ticket／skill-sync 宣告 requires-python>=3.9 但
+      paths.py 用 Path | None，3.9 下 import 失敗；e1 分診接受）。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
