@@ -428,9 +428,9 @@ versions:
       1. 範圍與執行順序
          - topic「Graph 可維護性」（4a 派發，parsley）：W1-001～008；W1-009 由 e1 自做（traceability 回填，純文件）。
            共用檔案決定派發順序（順序排在派發，不設 blockedBy，ARCH-017）：
-           W1-001 → W1-002（edge_type 的 re-export 調整後，graph_builder 才收斂直接依賴）；
-           W1-003 → W1-004 → W1-005（共用 graph_built_event.dart／adjacency_query.dart）；
-           W1-006、W1-007、W1-008 與上述兩串無共用檔，可並行。
+           {W1-001、006、007、008} 並行 → W1-003 → {W1-002、W1-004} 並行 → W1-005。
+           （4a 派發時依實際觸及檔修正：W1-003 合併缺陷型別會改 graph_builder.dart〔W1-002 亦改〕與
+           reference_classification.dart〔W1-006 亦改〕；W1-004／W1-005 共用 adjacency_query.dart。）
          - topic「框架修復」（83 派發）：W1-010～017。W1-010 與 W1-014 皆改 ticket git_ops 的提交路徑，序列執行；
            W1-013 須先由用戶以 WRAP 裁決 #114 方案 4，裁決前不派發；.claude 修改類並行 ≤2。
          - topic 以外的新發現依 2026-09-29 規則處理，不自動收進本版。
@@ -443,7 +443,11 @@ versions:
          - 預期新增：W1-004 寫入事件與查詢結果集合時拋 UnsupportedError 的測試；W1-007 Panel leading／trailing
            超限的負向測試；W1-008 以真實 TicketListScreen（未載入態）驗證返回鈕只有一顆。
            W1-007 的斷言若使既有測試變紅，代表既有呼叫點違反 SPEC-004 4.30，須回報 e1，不放寬斷言。
-         - 測試數只增不減（基線：flutter test 1971、integration_test 66），W1-006 為搬移不計減少。
+         - 實機行為層 integration_test/（-d macos）：W1-007、W1-008 涉及 widget，發版前跑一次全綠，實例數與
+           UserDefaults 前後 hash 不變（同 0.3.3 覆核做法）。
+         - W1-001 裁定（4a 派發時）：EdgeTypeDecl（基數可空，剛解碼）與 EdgeTypeEntry（基數已決議）為不同型別狀態，
+           不合併，只拆雙向依賴。
+         - 測試數只增不減（基線：flutter test 全套 1971，其中 test/integration/ 66），W1-006 為搬移不計減少。
          - 框架：ticket 套件（基線 4320）與 hooks＋lib 套件（基線 5277）全綠，各票新增案例；W1-017 須有
            「git add 失敗時不打 tag、exit 非 0」的 tmp repo 測試，含正向對照（git add 成功仍打 tag）。
       3. 驗證方式：全部機械驗證（單元測試、全套件、日誌查詢、test -f）。W1-015 規則修改後的實際效果以
