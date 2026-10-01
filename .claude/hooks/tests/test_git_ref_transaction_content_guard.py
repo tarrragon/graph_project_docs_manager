@@ -536,5 +536,86 @@ class TestBatchedEquivalence:
         assert new == old
 
 
+class TestWorktreeBranchResolution:
+    """W1-028：分支判定以寫入的 ref 與寫入發生的 worktree 為準，不受
+    CLAUDE_PROJECT_DIR 指向別的 checkout 影響。走真實 reference-transaction
+    路徑（hook 安裝於共用 hooks 目錄，由 git update-ref 觸發）。"""
+
+    _ENV_BASE = {"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin", "HOME": "/nonexistent"}
+
+    @pytest.fixture()
+    def wt_repo(self, tmp_path, _baseline_template):
+        main = _clone_baseline(_baseline_template, tmp_path / "main")
+        wt = tmp_path / "feat-wt"
+        _capture(["worktree", "add", "-q", "-b", "feat/x", str(wt)], cwd=main)
+        hook = main / ".git" / "hooks" / "reference-transaction"
+        hook.parent.mkdir(exist_ok=True)
+        hook.write_text(
+            "#!/bin/sh\nexec %s %s \"$1\"\n"
+            % (sys.executable, HOOKS_DIR / "git-ref-transaction-content-guard.py"),
+            encoding="utf-8",
+        )
+        hook.chmod(0o755)
+        return main, wt
+
+    def _dangling(self, repo, rel_path):
+        head = _capture(["rev-parse", "HEAD"], cwd=repo)
+        return _make_dangling_commit(repo, head, rel_path, "非豁免路徑內容\n")
+
+    def _update_ref(self, cwd, args, project_dir):
+        env = dict(self._ENV_BASE, CLAUDE_PROJECT_DIR=str(project_dir))
+        return subprocess.run(
+            ["git", "update-ref"] + args, cwd=str(cwd), capture_output=True, text=True, env=env
+        )
+
+    def test_b_protected_branch_write_denied_when_env_points_to_feature_worktree(self, wt_repo):
+        main, wt = wt_repo
+        new_sha = self._dangling(main, "src/violation.txt")
+        result = self._update_ref(main, ["refs/heads/main", new_sha], project_dir=wt)
+        assert result.returncode != 0, result.stderr
+        assert "branch-verify" in result.stderr
+
+    def test_ref_decides_branch_not_worktree_head(self, wt_repo):
+        """寫入的 ref 為 refs/heads/main，即使 cwd 在 feature worktree（HEAD=feat/x）也應判為保護分支。"""
+        main, wt = wt_repo
+        new_sha = self._dangling(wt, "src/violation.txt")
+        result = self._update_ref(wt, ["refs/heads/main", new_sha], project_dir=wt)
+        assert result.returncode != 0, result.stderr
+
+    def _scan(self, root, monkeypatch, project_dir, rel_path, **kw):
+        from lib import commit_content_guards as ccg
+
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(project_dir))
+        monkeypatch.chdir(root)
+        sf = ccg.StagedFile(rel_path, "", "內容\n", "內容\n")
+        return ccg._run_all_checks([sf], root, _Logger(), **kw)
+
+    def test_a_lib_level_feature_worktree_not_judged_by_env_checkout(self, wt_repo, monkeypatch):
+        """A 情境於 lib 層（PreToolUse 呼叫端同路徑）：root=feature worktree，env 指向 main
+        checkout，修正前 branch-verify 取 env 的 main 分支而誤擋。"""
+        main, wt = wt_repo
+        findings = self._scan(wt, monkeypatch, main, "src/legit.txt")
+        assert not [f for f in findings if f.source == "branch-verify"]
+
+    def test_b_lib_level_protected_root_denied_despite_env_on_feature(self, wt_repo, monkeypatch):
+        main, wt = wt_repo
+        findings = self._scan(main, monkeypatch, wt, "src/violation.txt")
+        assert [f for f in findings if f.source == "branch-verify" and f.severity == "deny"]
+
+    def test_explicit_branch_overrides_head_branch(self, wt_repo, monkeypatch):
+        main, wt = wt_repo
+        findings = self._scan(wt, monkeypatch, wt, "src/violation.txt", branch="main")
+        assert [f for f in findings if f.source == "branch-verify" and f.severity == "deny"]
+
+    def test_detached_head_write_keeps_head_based_verdict(self, wt_repo):
+        """detached HEAD 寫入（ref 為 HEAD，不帶分支名）：維持讀該 worktree HEAD 的現行判定，
+        detached 無分支名 -> 不檢查；env 指向 main checkout 不得改變結論。"""
+        main, wt = wt_repo
+        _capture(["checkout", "-q", "--detach"], cwd=wt)
+        new_sha = self._dangling(wt, "src/detached.txt")
+        result = self._update_ref(wt, ["--no-deref", "HEAD", new_sha], project_dir=main)
+        assert result.returncode == 0, result.stderr
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
