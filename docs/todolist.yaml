@@ -438,6 +438,9 @@ versions:
       W1-028 已合併（1e20efd4b，gate 取樣兩檔最慢合計約 33 秒、hooks＋lib 5287 passed）。下一次 canonical sync-push 用戶裁決
       等 W1-010.4 完成一起推（含 W1-028、W1-019 第二輪、W1-010.1～.4）；推後請 flutter_balance 以 gate 原命令取樣 N>=5 驗收 W1-019。
       W1-030（P3，範本約束句補 pgrep 命中以 ps 確認、等待改等已知 PID；源自 flutter_balance 兩個互鎖等待迴圈）。
+      W1-028 盤點未覆蓋三列皆判無需建票（detached HEAD 只動 HEAD、受保護分支仍經 refs/heads 交易判定；直接改寫 .git/refs
+      為 hook 固有邊界，記於 #97 已知限制；未傳 root 的舊呼叫端生產路徑為零）。W1-031（ANA P3，test_lease 全套件偶發失敗，
+      e1 分診接受）。W1-030 完成（dispatch template 1.38.0），併入下次 canonical 推送。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
