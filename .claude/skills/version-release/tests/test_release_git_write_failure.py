@@ -7,8 +7,6 @@ fixture 為 tmp repo + 本地 bare origin；index.lock 以實體檔案製造，�
 """
 import subprocess
 import sys
-import threading
-import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -81,22 +79,28 @@ def test_persistent_index_lock_aborts_before_tag(repo, monkeypatch, capsys) -> N
 def test_transient_lock_retries_and_tag_contains_changelog(repo, monkeypatch) -> None:
     """鎖是暫時的：重試後成功，定版內容進入被 tag 的 commit。"""
     lock = repo / ".git" / "index.lock"
-    monkeypatch.setattr(vr, "GIT_LOCK_MAX_ATTEMPTS", 40, raising=False)
     real_run = subprocess.run
-    armed = {"done": False}
+    changelog_adds = []
 
     def run_with_lock_on_first_add(cmd, *a, **kw):
-        # 第一次 git add 前放鎖（真實 git 因此失敗），0.3 秒後由「並行 session」移除
-        if cmd[:2] == ["git", "add"] and not armed["done"]:
-            armed["done"] = True
-            lock.write_text("", encoding="utf-8")
-            threading.Timer(0.3, lambda: lock.unlink()).start()
-        return real_run(cmd, *a, **kw)
+        # 第一次 add CHANGELOG.md 時鎖存在（真實 git 因此失敗），該次呼叫返回後
+        # 由「並行 session」釋放鎖。以呼叫邊界而非計時器釋放：計時器在 git 啟動
+        # 慢於計時長度時，第一次 add 就已看不到鎖，修正前的程式也會綠。
+        if cmd[:2] != ["git", "add"] or "CHANGELOG.md" not in cmd:
+            return real_run(cmd, *a, **kw)
+        changelog_adds.append(cmd)
+        if len(changelog_adds) > 1:
+            return real_run(cmd, *a, **kw)
+        lock.write_text("", encoding="utf-8")
+        try:
+            return real_run(cmd, *a, **kw)
+        finally:
+            lock.unlink()
 
     monkeypatch.setattr(vr.subprocess, "run", run_with_lock_on_first_add)
 
     assert _release(repo, monkeypatch) is True
-    assert armed["done"]
+    assert len(changelog_adds) >= 2, "鎖競爭後須重試 add"
 
     assert _tags(repo) == TAG
     assert "定版內容" in _git(repo, "show", f"{TAG}:CHANGELOG.md")
