@@ -13,7 +13,12 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 export 'package:graph_project_docs_manager/schema/type_table.dart'
-    show EdgeCardinality;
+    show EdgeCardinality, NodeTypeEntry;
+
+/// 由 schema JSON 解碼節點型別表，供 Graph 取用而不必碰型別表編解碼細節。
+Map<String, NodeTypeEntry> nodeTypesFromSchemaJson(
+  Map<String, dynamic> schemaJson,
+) => typeTableFromJson(schemaJson).nodeTypes;
 
 /// 單一邊型。
 class EdgeTypeEntry {
