@@ -812,3 +812,76 @@ class TestStageAppendedBlobProjection:
         (repo / "log.txt").write_text("other\n", encoding="utf-8")
         self._commit(repo, "A", "lineA\n")
         assert self._head_text(repo) == "base\nlineA\n"
+
+
+_BODY = "".join(f"line {i} of the shared body\n" for i in range(30))
+
+
+class TestScopeCheckRenameAndDirectory:
+    """範圍自檢不受 diff.renames 影響；目錄路徑明確拒絕。"""
+
+    @pytest.fixture
+    def repo(self, tmp_path):
+        _run_git(tmp_path, "init", "-q")
+        _run_git(tmp_path, "config", "user.email", "t@example.com")
+        _run_git(tmp_path, "config", "user.name", "t")
+        _run_git(tmp_path, "config", "diff.renames", "true")
+        (tmp_path / "old.md").write_text(_BODY, encoding="utf-8")
+        (tmp_path / "other.md").write_text("other\n", encoding="utf-8")
+        (tmp_path / "d1").mkdir()
+        (tmp_path / "d1" / "f.md").write_text(_BODY + "d1\n", encoding="utf-8")
+        _run_git(tmp_path, "add", "-A")
+        _run_git(tmp_path, "commit", "-q", "-m", "init")
+        return tmp_path
+
+    @staticmethod
+    def _porcelain(repo):
+        return _run_git(repo, "status", "--porcelain").stdout
+
+    def test_delete_old_add_new(self, repo):
+        (repo / "old.md").rename(repo / "new.md")
+        r = git_ops.commit_files_isolated(["new.md", "old.md"], "mv", cwd=str(repo))
+        assert r["status"] == "committed", r
+        assert self._porcelain(repo) == ""
+
+    def test_rename_with_edit_plus_other_file(self, repo):
+        (repo / "old.md").rename(repo / "new.md")
+        with open(repo / "new.md", "a", encoding="utf-8") as fh:
+            fh.write("extra\n")
+        (repo / "other.md").write_text("other2\n", encoding="utf-8")
+        r = git_ops.commit_files_isolated(
+            ["new.md", "old.md", "other.md"], "mv", cwd=str(repo))
+        assert r["status"] == "committed", r
+        assert self._porcelain(repo) == ""
+
+    def test_cross_directory_per_file(self, repo):
+        (repo / "d2").mkdir()
+        (repo / "d1" / "f.md").rename(repo / "d2" / "f.md")
+        r = git_ops.commit_files_isolated(
+            ["d2/f.md", "d1/f.md"], "mv", cwd=str(repo))
+        assert r["status"] == "committed", r
+        assert self._porcelain(repo) == ""
+
+    def test_out_of_scope_change_still_fails_without_update_ref(self, repo):
+        head = _run_git(repo, "rev-parse", "HEAD").stdout
+        (repo / "other.md").write_text("changed\n", encoding="utf-8")
+        real_stage = git_ops._run_git_with_lock_retry
+
+        def sneaky(args, **kw):
+            if args[:2] == ["git", "write-tree"]:
+                real_stage(["git", "add", "--", "other.md"], **kw)
+            return real_stage(args, **kw)
+
+        (repo / "old.md").write_text(_BODY + "x\n", encoding="utf-8")
+        with patch.object(git_ops, "_run_git_with_lock_retry", sneaky):
+            r = git_ops.commit_files_isolated(["old.md"], "x", cwd=str(repo))
+        assert r["status"] == "failed", r
+        assert _run_git(repo, "rev-parse", "HEAD").stdout == head
+
+    def test_directory_path_rejected_with_reason(self, repo):
+        (repo / "d1" / "f.md").write_text("changed\n", encoding="utf-8")
+        head = _run_git(repo, "rev-parse", "HEAD").stdout
+        r = git_ops.commit_files_isolated(["d1"], "dir", cwd=str(repo))
+        assert r["status"] == "failed", r
+        assert "目錄" in r["error"]
+        assert _run_git(repo, "rev-parse", "HEAD").stdout == head

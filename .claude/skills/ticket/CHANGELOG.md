@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.14（本地變更）— `git_ops.commit_files_isolated` 的提交範圍自我驗證改用 `git diff --no-renames`，不再受 `diff.renames` 設定影響。此前舊路徑刪除加新路徑新增（改名）時，diff 只回報新路徑，與預期的新舊兩路徑不符而誤判失敗並放棄提交。同時明確拒絕目錄路徑（回 failed 並說明須逐檔列出），docstring 寫明刪除與改名須列新舊路徑、主路徑須為存在的檔案。測試（`tests/test_git_ops.py`）：舊刪新增、改名並改內容加另一檔修改、跨目錄逐檔列舉三案（修正前紅），範圍外變更仍 failed 且不 update-ref，目錄路徑拒絕。
+
 **Version**: 2.44.13（本地變更）— `git_ops._stage_appended_blob` 改依工作區行序投影 append-only 檔：提交內容為「HEAD 各行 + 本次各行」（multiset 配對，重複行按次數計，保留工作區順序，不含他人未提交的行）。兩個寫入者都在任一方提交前完成追加、且提交順序與追加順序相反時，提交後 HEAD 與工作區行序一致，檔案不再持續顯示已修改。工作區缺檔、不可讀或不是該 multiset 的超集時，退回原做法「HEAD 版本 + 本次行」。`commit_files_isolated` 的 `append_lines` 參數介面不變；docstring 契約由「提交內容只多出本次 text」改為「行集合恆為 HEAD + 本次，行序依工作區」。測試（`tests/test_git_ops.py`）：兩寫入者 6 種交錯順序（修正前 2 種持續為已修改）、他人未提交行夾在中間不被吸入、重複行 multiset 配對、缺檔與非超集退回。
 
 **Version**: 2.44.12（本地變更，指向 tarrragon/claude#102）— `ticket track add-spawned` 寫入 spawned_tickets 時一併寫目標票的反向 `source_ticket`，與 `remove-spawned` 對稱。此前只寫單向，目標票 source_ticket 維持 null，`remove-spawned` 的反向清理對它無事可做、血緣視圖單向殘缺。規則：目標票 source_ticket 為空才寫入；已有值（無論是否為本票）保留原值不覆寫，已有不同值時沿用既有 WARNING；目標票不存在或版本無法解析時略過。跨版本成立（目標票各自依自身 ID 解析版本與路徑）。本票與被寫入的目標票改以 `commit_ticket_mds_reporting` 單一 commit 提交；反向寫入發生在本票 file_lock 釋放後，各目標票獨立上鎖不巢狀。新增 `_set_reverse_source_if_unset`（fields.py），無簽名變更。E1／E2 對照測試（`tests/test_add_spawned_reverse_source.py`）：寫入後 B.source_ticket 為 A（修前為 null）、已有不同 source 保留加 WARNING、add 後 remove 雙方欄位還原、跨版本、重複 add 冪等。
