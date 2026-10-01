@@ -451,6 +451,8 @@ versions:
       W1-011.1、W1-011 complete（ticket 4377、hooks＋lib 5300 passed）。W1-010.6.1 因深度上限改號為 W1-010.7（W1-010.2 previous_ids
       首次實地觸發成功）。W1-034（P2，commit_files_isolated 範圍自檢嚴格相等，列出路徑淨變更為零即 exit 75、真實變更遺留
       工作區；改為子集比對、全無變更回報 no-op；e1 分診接受 P2）。migrate 跨父改號時新父票 children 未加入，併入 W1-020。
+      W1-010.7、W1-010 complete（ticket 2.44.21，version-shift 已移除）。下一次 canonical sync-push 用戶裁決等 W1-034 一起推
+      （範圍 W1-010.5、W1-011.1、W1-010.7、W1-034）。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
