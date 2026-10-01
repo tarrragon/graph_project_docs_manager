@@ -458,6 +458,8 @@ versions:
       W1-035 量測更正 e1 先前歸因：uv 啟動僅 0.03～0.24 s，本機重現不出 consumer 的 20 秒差距，來源未明。衍生 W1-035.1（P2，
       gate 遇 uv／.venv 缺失拋 OSError 時 exit 1 被放行，fail-open，與方案無關的現行缺口）、W1-035.2（P3，分段計時日誌）、
       W1-035.3（ANA P3，consumer N>=10 取樣歸因；W1-035.2 經 canonical 推送後由 e1 轉 consumer）。e1 分診接受。
+      W1-020 結論採連帶遷移（83 裁定，e1 無異議）：W1-020.1（P2，舊父／新父 children 同步與根票 parent_id）、W1-020.2（P2，
+      blockedBy .1，子樹連帶遷移，preflight 全過才寫入、單一隔離提交）。兩張驗收皆要求真實 tmp git repo 驗證 commit 內容。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
