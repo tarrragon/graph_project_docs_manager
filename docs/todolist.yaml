@@ -423,6 +423,10 @@ versions:
       W1-011（原 0.4.0-W1-070.2，guard 預驗證快取）、W1-012（add-spawned 不寫反向 source_ticket，#102）、W1-013（#114 版本生命週期規則落地，方案 4 先經 WRAP）。
       topic 以外的新發現依 2026-09-29 規則處理，不自動收進本版。
       finish 待辦：實地驗證 0.3.3-W1-015「前移清單非空時 check 建議 finish」（0.4.0 finish 時前移清單為空，無法觸發）。
+      執行期收件（框架修復 topic，e1 分診 2026-10-01，皆不設 scope_blocker，依 W1-013 新規則 finish 時前移）：
+      W1-018（P3，version-release git 寫入 10 秒逾時殺 git 殘留鎖）、W1-019（P1，git-ref-transaction 兩支 hook 測試超過
+      hooks-test-gate 單檔 60 秒，flutter_balance 回報、e1 重現 187 秒；canonical 推送等它）、W1-010 children .1～.6、
+      W1-020～023（W1-010 分析中順帶發現）。W1-013 已落地（#114 方案 1～5；方案 4 偵測承擔者為 finish 執行者，原 ID 欄位由 W1-010.2 承接）。
       2026-10-01 W1-017 完成後，經用戶授權 skill-sync push version-release 2.10.1（含 W1-042、W1-017；發佈庫 2.7.0→2.10.1，versions.json 已驗證）。
       canonical sync-push 依用戶裁決等 W1-019 修好一起推。
       版本契約（2026-10-01，開工前寫定，實作後逐項對照）：
