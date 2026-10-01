@@ -43,6 +43,9 @@ _STALE_DIAGNOSIS_MARK = "[殘骸診斷]"
 # 暫時性鎖競爭的退避重試：等待（sleep）總和上限 5 秒，依序等 0.5、1、2 秒，其後每次 2 秒，
 # 超出預算即停；預算只計 sleep，不含 git 嘗試本身耗時。
 _COMMIT_RETRY_BUDGET_SECONDS = 5.0
+# 重試等待的接縫：測試只替換此名稱，不改寫全域 ``time.sleep``
+# （後者會被 subprocess 輪詢呼叫，污染測試假時鐘）。
+_sleep = time.sleep
 _COMMIT_RETRY_BACKOFF_SECONDS = (0.5, 1.0, 2.0)
 # 可重試失敗至少重試的次數，不受牆鐘影響（高負載下單次嘗試可耗時數秒，
 # 若牆鐘先用盡會在零重試下放棄）。
@@ -239,7 +242,7 @@ def auto_commit_ticket_md_with_retry(*args, **kwargs) -> Dict[str, object]:
             _log_commit_event(log_cwd, "final_failure", ticket_id, attempts, waited, error)
             return {"status": status, "error": error, "attempts": attempts}
         _log_commit_event(log_cwd, "retry", ticket_id, attempts, delay, error)
-        time.sleep(delay)
+        _sleep(delay)
         waited += delay
 
 

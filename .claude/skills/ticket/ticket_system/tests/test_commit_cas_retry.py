@@ -44,7 +44,10 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(git_utils, "_COMMIT_MIN_RETRIES", 1)
     monkeypatch.setattr(git_utils, "_COMMIT_RETRY_WALL_CAP_SECONDS", 1.0)
     real_sleep = git_ops.time.sleep
+    # 全域 time.sleep 僅縮短真實等待（不推進任何假時鐘），故不影響假時鐘測試；
+    # 重試迴圈的等待走 git_utils._sleep 接縫，同樣縮短。
     monkeypatch.setattr(git_ops.time, "sleep", lambda s: real_sleep(min(s, 0.01)))
+    monkeypatch.setattr(git_utils, "_sleep", lambda s: real_sleep(min(s, 0.01)))
     return tmp_path
 
 
@@ -103,6 +106,7 @@ def test_cas_rejection_does_not_sleep_inside_single_git_call(repo, monkeypatch):
     """CAS 拒絕以同一 old_head 內層重試必敗，不應在內層睡眠。"""
     sleeps = []
     monkeypatch.setattr(git_ops.time, "sleep", lambda s: sleeps.append(s))
+    monkeypatch.setattr(git_utils, "_sleep", lambda s: sleeps.append(s))
     _advance_head_times(monkeypatch, repo, 1)
     _run(repo)
     assert 1 not in sleeps  # _RETRY_WAIT_SECONDS 的內層等待
@@ -192,7 +196,7 @@ def _install_fake_clock(monkeypatch, per_attempt: float) -> _FakeClock:
 
     monkeypatch.setattr(git_utils, "_clock", clock)
     monkeypatch.setattr(git_utils, "_auto_commit_ticket_md", timed)
-    monkeypatch.setattr(git_ops.time, "sleep", lambda s: setattr(clock, "now", clock.now + s))
+    monkeypatch.setattr(git_utils, "_sleep", lambda s: setattr(clock, "now", clock.now + s))
     return clock
 
 
@@ -250,6 +254,24 @@ def test_wall_cap_limits_retries_beyond_min(repo, monkeypatch):
     clock.now = 0.0
     relaxed = _run(repo)["attempts"]
     assert capped < relaxed
+    # 假時鐘決定性推算：牆鐘 5.5 -> 3 次、9.5 -> 5 次
+    assert capped == 3
+    assert relaxed == 5
+
+
+def test_e2_global_sleep_patch_leaks_into_subprocess_polling_but_seam_does_not(monkeypatch):
+    """E2 正向對照：改寫全域 time.sleep 會讓 subprocess 輪詢推進假時鐘（推進量取決於子程序
+    實際耗時）；改用 git_utils._sleep 接縫後，同一子程序呼叫推進量固定為 0。"""
+    cmd = ["sleep", "0.3"]
+    leaked = _FakeClock()
+    with monkeypatch.context() as m:
+        m.setattr(git_ops.time, "sleep", lambda s: setattr(leaked, "now", leaked.now + s))
+        subprocess.run(cmd, timeout=30, check=True)
+    assert leaked.now > 0.0  # 正向對照：全域 patch 確實被輪詢污染
+
+    seam = _install_fake_clock(monkeypatch, per_attempt=0.0)
+    subprocess.run(cmd, timeout=30, check=True)
+    assert seam.now == 0.0
 
 
 def test_default_log_dir_is_isolated_by_conftest():
