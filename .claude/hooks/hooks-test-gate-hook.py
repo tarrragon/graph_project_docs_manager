@@ -312,6 +312,14 @@ def _run_pytest(
     except subprocess.TimeoutExpired:
         logger.warning("目標測試執行逾時（%ss），保守判定為失敗", limit)
         return _STATUS_TIMEOUT, f"測試逾時（{limit:g}s）"
+    except OSError as exc:
+        # uv 不存在或 .venv 缺失：無法驗證等同未通過，fail-closed 判 red 走 deny 路徑
+        logger.error("無法啟動測試程序（%s），判定為失敗: %s", type(exc).__name__, exc)
+        sys.stderr.write(
+            f"[hooks-test-gate] 無法啟動測試程序（{type(exc).__name__}: {exc}），"
+            f"命令: {' '.join(cmd)}\n"
+        )
+        return _STATUS_RED, f"無法啟動測試程序（uv 不存在或環境缺失）: {type(exc).__name__}: {exc}"
     output_tail = "\n".join((result.stdout + result.stderr).splitlines()[-20:])
     status = _STATUS_PASS if result.returncode == 0 else _STATUS_RED
     logger.info("目標測試結果: returncode=%d", result.returncode)
