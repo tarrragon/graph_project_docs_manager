@@ -6,6 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_screen.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
 
 import '../../helpers/helpers.dart';
@@ -242,6 +245,45 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgetsAtEachSize(
+      '真實 TicketListScreen（未載入態、returnTo 非 null）經 AppShell：action-tickets-back 只出現一顆（0.4.1-W1-008）',
+      (tester, size) async {
+        await pumpHarness(
+          tester,
+          size: size,
+          overrides: [
+            selectedDestinationProvider.overrideWith(
+              (ref) => AppDestination.tickets,
+            ),
+            returnToProvider.overrideWith((ref) => AppDestination.domain),
+            ticketListStateProvider.overrideWith(
+              (ref) => const TicketsUnloaded(count: 3),
+            ),
+          ],
+          child: AppShell(
+            switcherEntry: _buildSwitcherEntry(),
+            navItems: _buildNavItems(selected: AppDestination.tickets),
+            pages: [
+              for (final destination in AppDestination.values)
+                PageColumn(
+                  semanticLabel: destination.name,
+                  header: SplitRow.header(
+                    leading: PageTitle(title: destination.name),
+                  ),
+                  content: destination == AppDestination.tickets
+                      ? const TicketListScreen()
+                      : _placeholderPage(destination.name),
+                ),
+            ],
+          ),
+        );
+        expectNoOverflow(tester);
+
+        expect(find.byType(TicketListScreen), findsOneWidget);
+        expect(find.byKey(const Key('action-tickets-back')), findsOneWidget);
+      },
+    );
 
     testWidgetsAtEachSize('returnTo 為 null 時不渲染返回鍵', (tester, size) async {
       await pumpHarness(
