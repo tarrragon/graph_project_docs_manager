@@ -19,11 +19,18 @@
 """
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
-from .git_ops import _is_lock_contention, commit_files_isolated
+from .git_ops import (
+    _is_cas_rejection,
+    _is_lock_contention,
+    _lock_paths_from_error,
+    _run_git,
+    commit_files_isolated,
+)
 from .lease import resolve_current_session_id
 
 # ``ticket create`` 建票成功但 auto-commit 最終失敗時的專用 exit code。取 75
@@ -140,19 +147,60 @@ def _auto_commit_ticket_md(
 
 
 def _is_retryable_commit_failure(error: str) -> bool:
-    """暫時性鎖競爭才值得重試；已判為過期殘骸的鎖重試只是空等。"""
-    return _is_lock_contention(error) and _STALE_DIAGNOSIS_MARK not in error
+    """暫時性競爭（鎖或 HEAD 前進的 CAS 拒絕）才值得重試；殘骸鎖重試只是空等。"""
+    if _STALE_DIAGNOSIS_MARK in error:
+        return False
+    return _is_lock_contention(error) or _is_cas_rejection(error)
+
+
+_RETRY_LOG_DIR = os.path.join(".claude", "hook-logs", "ticket-commit-retry")
+
+
+def _failure_reason(error: str) -> str:
+    """日誌用失敗原因：CAS 拒絕與鎖名分開記，供統計並行失敗率。"""
+    if _is_cas_rejection(error):
+        return "cas_rejected"
+    locks = _lock_paths_from_error(error)
+    return "lock:" + ",".join(os.path.basename(p) for p in locks) if locks else "other"
+
+
+def _log_commit_event(
+    cwd: str, event: str, ticket_id: str, attempt: int, waited_s: float, error: str
+) -> None:
+    """重試／最終失敗寫入檔案日誌；寫入失敗只寫 stderr，不影響提交結果。"""
+    import sys
+
+    detail = (error or "").splitlines()[0] if error else ""
+    line = (
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {event} ticket={ticket_id} "
+        f"attempt={attempt} waited_s={waited_s:.2f} reason={_failure_reason(error)} "
+        f"detail={detail}\n"
+    )
+    try:
+        ok, root, _err = _run_git(["git", "rev-parse", "--show-toplevel"], cwd=cwd)
+        base = root.strip() if ok and root.strip() else cwd
+        log_dir = os.path.join(base, _RETRY_LOG_DIR)
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "retry-" + time.strftime("%Y%m%d") + ".log")
+        with open(log_path, "a", encoding="utf-8") as fh:
+            fh.write(line)
+    except OSError as exc:
+        sys.stderr.write(f"[WARNING] 提交重試日誌寫入失敗：{exc}\n")
 
 
 def auto_commit_ticket_md_with_retry(*args, **kwargs) -> Dict[str, object]:
-    """呼叫 ``_auto_commit_ticket_md``，git_failed 且屬暫時性鎖競爭時退避重試。
+    """呼叫 ``_auto_commit_ticket_md``，git_failed 且屬暫時性競爭時退避重試。
 
     總等待上限 ``_COMMIT_RETRY_BUDGET_SECONDS``（另加各次 git 呼叫本身耗時）。
-    絕不移除任何鎖檔。回傳 ``{"status", "error", "attempts"}``；``error`` 僅在
-    最終 status 為 git_failed 時有值，供呼叫端輸出失敗原因。
+    絕不移除任何鎖檔。每次重試與最終失敗各寫一筆檔案日誌。回傳
+    ``{"status", "error", "attempts"}``；``error`` 僅在最終 status 為
+    git_failed 時有值，供呼叫端輸出失敗原因。
     """
     deadline = time.monotonic() + _COMMIT_RETRY_BUDGET_SECONDS
     attempts = 0
+    waited = 0.0
+    ticket_id = str(args[1]) if len(args) > 1 else str(kwargs.get("ticket_id", ""))
+    log_cwd = str(Path(args[0] if args else kwargs["path"]).parent)
     while True:
         detail: Dict[str, Optional[str]] = {}
         status = _auto_commit_ticket_md(*args, result_out=detail, **kwargs)
@@ -164,8 +212,11 @@ def auto_commit_ticket_md_with_retry(*args, **kwargs) -> Dict[str, object]:
             min(attempts - 1, len(_COMMIT_RETRY_BACKOFF_SECONDS) - 1)
         ]
         if not _is_retryable_commit_failure(error) or time.monotonic() + delay > deadline:
+            _log_commit_event(log_cwd, "final_failure", ticket_id, attempts, waited, error)
             return {"status": status, "error": error, "attempts": attempts}
+        _log_commit_event(log_cwd, "retry", ticket_id, attempts, delay, error)
         time.sleep(delay)
+        waited += delay
 
 
 def format_write_command_commit_failure(
@@ -197,6 +248,7 @@ def format_write_command_commit_failure(
     lines.append(
         f"補救指令（鎖排除後）：git add {' '.join([ticket_path, *extra_paths])} && "
         f"git commit -m \"chore({ticket_id}): {operation} {section}\""
+        "（或 `ticket track commit` 以隔離索引提交）"
     )
     return "\n".join(lines) + "\n"
 
