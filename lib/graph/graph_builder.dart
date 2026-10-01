@@ -6,8 +6,6 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
-import 'package:graph_project_docs_manager/schema/type_table.dart';
-import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 /// 需求：[SPEC-007 FR-01、FR-06] 建圖入口。
 ///
@@ -34,8 +32,9 @@ GraphBuildResult buildGraph({
     );
     return GraphBuildUnavailable(reason);
   }
-  final nodeTypes = typeTableFromJson(projectSchemaJson ?? builtinSchemaJson)
-      .nodeTypes;
+  final nodeTypes = nodeTypesFromSchemaJson(
+    projectSchemaJson ?? builtinSchemaJson,
+  );
   final event = buildGraphFromInputs(
     rawNodes: rawNodes,
     edgeTypes: resolution.activeEdgeTypes,

@@ -9,7 +9,6 @@ import 'dart:io';
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
-import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 import 'raw_node_builder.dart';

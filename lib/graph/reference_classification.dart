@@ -6,7 +6,6 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
-import 'package:graph_project_docs_manager/schema/type_table.dart';
 
 enum MalformedReason { invalidShape, patternMismatch, selfReference }
 
