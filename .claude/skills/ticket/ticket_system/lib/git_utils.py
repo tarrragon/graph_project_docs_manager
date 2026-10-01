@@ -40,9 +40,17 @@ EXIT_AUTO_COMMIT_FAILED = 75
 # git_ops._stale_lock_diagnosis 附在過期殘骸鎖錯誤文字內的標記；出現即不重試。
 _STALE_DIAGNOSIS_MARK = "[殘骸診斷]"
 
-# 暫時性鎖競爭的退避重試：等待總和上限約 5 秒（依序等 0.5、1、2 秒，其後每次 2 秒，超出預算即停）。
+# 暫時性鎖競爭的退避重試：等待（sleep）總和上限 5 秒，依序等 0.5、1、2 秒，其後每次 2 秒，
+# 超出預算即停；預算只計 sleep，不含 git 嘗試本身耗時。
 _COMMIT_RETRY_BUDGET_SECONDS = 5.0
 _COMMIT_RETRY_BACKOFF_SECONDS = (0.5, 1.0, 2.0)
+# 可重試失敗至少重試的次數，不受牆鐘影響（高負載下單次嘗試可耗時數秒，
+# 若牆鐘先用盡會在零重試下放棄）。
+_COMMIT_MIN_RETRIES = 3
+# 最少重試次數之外的額外重試，其牆鐘（自首次嘗試起算）上限；須遠小於呼叫端 hook timeout（30 秒）。
+_COMMIT_RETRY_WALL_CAP_SECONDS = 20.0
+# 時鐘接縫：測試可注入假時鐘，使重試判定不受 git 子程序實際耗時影響。
+_clock = time.monotonic
 
 # git_ops.commit_files_isolated 回傳的 status（committed/empty/failed）轉譯為
 # 本模組既有呼叫端（ticket_system.commands.*）慣用的狀態字串。「not_git_repo」
@@ -199,12 +207,15 @@ def _log_commit_event(
 def auto_commit_ticket_md_with_retry(*args, **kwargs) -> Dict[str, object]:
     """呼叫 ``_auto_commit_ticket_md``，git_failed 且屬暫時性競爭時退避重試。
 
-    總等待上限 ``_COMMIT_RETRY_BUDGET_SECONDS``（另加各次 git 呼叫本身耗時）。
+    重試預算語意：前 ``_COMMIT_MIN_RETRIES`` 次重試必做，不受牆鐘與等待預算限制；
+    其後的額外重試須同時滿足「累計 sleep 不超過 ``_COMMIT_RETRY_BUDGET_SECONDS``」
+    （只計等待，不含 git 嘗試耗時）與「自首次嘗試起的牆鐘不超過
+    ``_COMMIT_RETRY_WALL_CAP_SECONDS``」。
     絕不移除任何鎖檔。每次重試與最終失敗各寫一筆檔案日誌。回傳
     ``{"status", "error", "attempts"}``；``error`` 僅在最終 status 為
     git_failed 時有值，供呼叫端輸出失敗原因。
     """
-    deadline = time.monotonic() + _COMMIT_RETRY_BUDGET_SECONDS
+    start = _clock()
     attempts = 0
     waited = 0.0
     ticket_id = str(args[1]) if len(args) > 1 else str(kwargs.get("ticket_id", ""))
@@ -219,7 +230,12 @@ def auto_commit_ticket_md_with_retry(*args, **kwargs) -> Dict[str, object]:
         delay = _COMMIT_RETRY_BACKOFF_SECONDS[
             min(attempts - 1, len(_COMMIT_RETRY_BACKOFF_SECONDS) - 1)
         ]
-        if not _is_retryable_commit_failure(error) or time.monotonic() + delay > deadline:
+        within_extra_budget = (
+            waited + delay <= _COMMIT_RETRY_BUDGET_SECONDS
+            and _clock() - start + delay <= _COMMIT_RETRY_WALL_CAP_SECONDS
+        )
+        may_retry = attempts <= _COMMIT_MIN_RETRIES or within_extra_budget
+        if not _is_retryable_commit_failure(error) or not may_retry:
             _log_commit_event(log_cwd, "final_failure", ticket_id, attempts, waited, error)
             return {"status": status, "error": error, "attempts": attempts}
         _log_commit_event(log_cwd, "retry", ticket_id, attempts, delay, error)

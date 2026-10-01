@@ -41,6 +41,8 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(git_utils, "_RETRY_LOG_DIR", str(_LOG_DIR))
     monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BACKOFF_SECONDS", (0.01,))
     monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BUDGET_SECONDS", 1.0)
+    monkeypatch.setattr(git_utils, "_COMMIT_MIN_RETRIES", 1)
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_WALL_CAP_SECONDS", 1.0)
     real_sleep = git_ops.time.sleep
     monkeypatch.setattr(git_ops.time, "sleep", lambda s: real_sleep(min(s, 0.01)))
     return tmp_path
@@ -166,6 +168,88 @@ def test_e2_mock_path_does_not_write_into_process_cwd_repo(repo, monkeypatch, ca
     assert out["status"] == "git_failed"
     assert _read_log(repo) == ""
     assert "未寫檔" in capsys.readouterr().err
+
+
+class _FakeClock:
+    """假時鐘：每次提交嘗試前進 ``per_attempt`` 秒，sleep 前進其等待秒數。"""
+
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        return self.now
+
+
+def _install_fake_clock(monkeypatch, per_attempt: float) -> _FakeClock:
+    """重試判定改用假時鐘，與機器負載及 git 子程序實際耗時隔離。"""
+    clock = _FakeClock()
+    original = git_utils._auto_commit_ticket_md
+
+    def timed(*args, **kwargs):
+        status = original(*args, **kwargs)
+        clock.now += per_attempt
+        return status
+
+    monkeypatch.setattr(git_utils, "_clock", clock)
+    monkeypatch.setattr(git_utils, "_auto_commit_ticket_md", timed)
+    monkeypatch.setattr(git_ops.time, "sleep", lambda s: setattr(clock, "now", clock.now + s))
+    return clock
+
+
+def test_slow_first_attempt_still_retries_once(repo, monkeypatch):
+    """首次嘗試耗時遠超預算時，可重試失敗仍須重試（高負載下零重試的回歸）。"""
+    _install_fake_clock(monkeypatch, per_attempt=10.0)
+    _advance_head_times(monkeypatch, repo, 1)
+    result = _run(repo)
+    assert result["status"] == "committed"
+    assert result["attempts"] == 2
+
+
+def test_control_fast_attempt_retries_once(repo, monkeypatch):
+    """正向對照：嘗試不耗時時同一競爭同樣重試一次（與慢嘗試路徑結果一致）。"""
+    _install_fake_clock(monkeypatch, per_attempt=0.0)
+    _advance_head_times(monkeypatch, repo, 1)
+    result = _run(repo)
+    assert result["status"] == "committed"
+    assert result["attempts"] == 2
+
+
+def test_min_retries_guaranteed_then_wall_cap_stops(repo, monkeypatch):
+    """持續被拒且每次嘗試都超過牆鐘上限：恰好最少重試次數後停止（1 + MIN）。"""
+    monkeypatch.setattr(git_utils, "_COMMIT_MIN_RETRIES", 3)
+    _install_fake_clock(monkeypatch, per_attempt=30.0)
+    _advance_head_times(monkeypatch, repo, 10_000)
+    result = _run(repo)
+    assert result["status"] == "git_failed"
+    assert result["attempts"] == 4
+
+
+def test_budget_counts_sleep_only_not_attempt_time(repo, monkeypatch):
+    """等待預算只計 sleep：每次嘗試 1 秒、退避 1 秒、預算 2.5 秒 -> 兩次重試後停止。"""
+    monkeypatch.setattr(git_utils, "_COMMIT_MIN_RETRIES", 0)
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BACKOFF_SECONDS", (1.0,))
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BUDGET_SECONDS", 2.5)
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_WALL_CAP_SECONDS", 1000.0)
+    _install_fake_clock(monkeypatch, per_attempt=1.0)
+    _advance_head_times(monkeypatch, repo, 10_000)
+    result = _run(repo)
+    assert result["status"] == "git_failed"
+    assert result["attempts"] == 3
+
+
+def test_wall_cap_limits_retries_beyond_min(repo, monkeypatch):
+    """最少重試之外的額外重試受牆鐘上限約束（對照：上限放寬則多重試）。"""
+    monkeypatch.setattr(git_utils, "_COMMIT_MIN_RETRIES", 0)
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BACKOFF_SECONDS", (1.0,))
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_BUDGET_SECONDS", 1000.0)
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_WALL_CAP_SECONDS", 5.5)
+    clock = _install_fake_clock(monkeypatch, per_attempt=1.0)
+    _advance_head_times(monkeypatch, repo, 10_000)
+    capped = _run(repo)["attempts"]
+    monkeypatch.setattr(git_utils, "_COMMIT_RETRY_WALL_CAP_SECONDS", 9.5)
+    clock.now = 0.0
+    relaxed = _run(repo)["attempts"]
+    assert capped < relaxed
 
 
 def test_default_log_dir_is_isolated_by_conftest():
