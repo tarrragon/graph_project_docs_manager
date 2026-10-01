@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.x（待合併取號）— `ticket migrate` 遷移有子孫的票時連帶遷移整個子樹。子孫以 ID 前綴收集，建 old 到 new 映射，引用改寫單趟完成（重疊映射不二次改寫）；每個成員（含 completed）更新 id、追加 `previous_ids`、重算 chain 與 parent_id，topic 各追加一行（舊行保留）。preflight（碰撞、深度不超過 MAX_TICKET_DEPTH 且訊息列出超限票 ID 與遷移後深度、目標版本註冊）任一失敗整體拒絕、零寫入；dry-run 列出完整映射表；整個子樹與子樹外引用者走單一隔離提交；寫入中途失敗輸出已寫入集合。子樹遷移碰撞不自動改號。無子孫的票行為不變。測試 `tests/test_migrate_subtree_cascade.py`：E1 對照有子孫與無子孫兩路徑產物不同。
+
 **Version**: 2.44.26（本地變更）— 單一路徑隔離提交的 CAS 重試與檔案日誌：update-ref 因 HEAD 前進被拒（`but expected`）列為可重試，整個提交流程以新 HEAD 重做（原本僅依「含 cannot lock ref」的巧合被外層重試，內層同 old_head 重試必敗卻白等 1 秒，現已略過）；每次重試與最終失敗各寫一筆 `.claude/hook-logs/ticket-commit-retry/retry-YYYYMMDD.log`（欄位 attempt、waited_s、reason=cas_rejected 或 lock:鎖名）；日誌寫入失敗只寫 stderr，不改變提交結果；重試用盡的補救指令加列 `ticket track commit`。總等待上限不變（5 秒）。修正：票檔不存在或解析不到 repo root 時不再退回 process cwd 寫日誌（只寫 stderr），測試由 skill-root conftest 的 autouse fixture 把日誌導向 tmp，避免 mock 值污染真實日誌。測試 `ticket_system/tests/test_commit_cas_retry.py`：E1 對照無競爭不重試且無日誌。
 
 **Version**: 2.44.25（本地變更）— 修復 `ticket migrate` 的 `_sync_parent_children` 回歸：新父 `children` 已列新 ID（字串或 dict 的 `id`）時保留原項、原形式、原順序且不寫父票檔；未列才以字串追加尾端。此前以「剔除後追加」去重，dict 形式與原位置皆遺失（舊父為 None、新父由新 ID 推導時觸發）。
