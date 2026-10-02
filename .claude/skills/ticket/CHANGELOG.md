@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.35（本地變更）— 測試套件不再經由 reference-transaction guard 把日誌寫進真實 `.claude/hook-logs`：`guard_world` fixture 把測試倉庫的 `.claude` 整個 symlink 到真實 `.claude`，guard 被阻擋時（日誌根由 `CLAUDE_PROJECT_DIR` 解析，該測試刻意設為測試倉庫）穿過連結寫入真實 `hook-logs/git-ref-transaction-content-guard/`。歸屬：`test_git_ops.py::TestPrevalidateEndToEnd` 的 worktree 受保護分支違規案例（其餘兩案不寫入）。現行：`link_claude` 改為建立真實 `.claude` 目錄並逐項連結資產、排除 `hook-logs`，日誌落在測試倉庫內；採 fixture 自行隔離而非 conftest 設環境變數，因 conftest 的 `CLAUDE_PROJECT_DIR` 隔離早已存在，是該測試刻意覆寫。產品碼與 guard 不變。測試 `test_guard_logs_stay_inside_tmp_repo`：修前紅（真實 guard 目錄新增 `.cleanup_trigger` 與 `.log`）、修後綠且日誌出現在測試倉庫。
+
 **Version**: 2.44.34（本地變更）— 測試套件不再把 hook 日誌寫進真實 `.claude/hook-logs`：`identity_guard` 未設 `HOOK_LOGS_DIR` 時以 `git rev-parse` 回退，`tests/` 樹的測試因此把 identity-guard usage.log 寫進真實 repo；linked worktree 內 in-process hook 因未設 `HOOK_TEST_ISOLATION` 而被 worktree 偵測蓋過 tmp 根，另有四個日誌目錄落到 worktree 根。現行：skill 根 `conftest.py` 的 autouse `_isolate_hook_logs_dir` 同時設 `HOOK_LOGS_DIR`（tmp）與 `HOOK_TEST_ISOLATION=1`，涵蓋兩棵 testpath；原 `ticket_system/tests/conftest.py` 的同名 autouse 移除（整合為單一處）。產品碼不變。測試 `tests/test_hook_logs_isolation.py`：修前紅、修後綠；乾淨 clone 與 clone 內 linked worktree 跑全套件前後 hook-logs 清單相同，E1 移除 autouse 後兩處皆重現洩漏。
 
 **Version**: 2.44.33（本地變更）— 修復 `test_lease.py` 種子時間戳取自 import 時刻：`NOW` 為模組層常數，套件執行超過 `STALE_THRESHOLD_MINUTES`（30 分鐘）後依賴 FRESH 前提的 4 項測試誤判 STALE 而失敗（單檔執行全綠，紅燈不反映產品缺陷）。現行：新增測試檔時鐘接縫 `_utcnow()`，`_fresh_ts`／`_stale_ts` 每次呼叫取當下時間，autouse fixture 在每個測試開始時重設 `NOW`；STALE 種子仍以門檻常數推導，未放寬門檻。測試 `TestSeedSurvivesLongSuite`：E1 把 `pm_registry` 與本檔 `datetime.now` 撥快 31 分鐘，FRESH 種子修前為 STALE（紅）、修後通過，STALE 對照種子兩版皆維持 STALE。
