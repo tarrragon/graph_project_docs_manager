@@ -666,7 +666,7 @@ versions:
   - version: "0.5.0"
     codename: "Layout"
     description: "Domain 視圖接真資料：矩陣的列與格由真實資料驅動，點交叉格定位至泳道"
-    status: "planned"
+    status: "active"
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.5/v0.5.0/"
