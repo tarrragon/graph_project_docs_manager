@@ -152,3 +152,63 @@ def test_add_failure_with_successful_commit_still_aborts(repo, monkeypatch, caps
     err = capsys.readouterr().err
     assert "CHANGELOG.md" in err
     assert "index.lock" in err
+
+
+# --- 慢速 reference-transaction hook：寫入命令不得被固定逾時殺掉 ---------------
+
+SLOW_HOOK_SECONDS = 3
+CLAMPED_TIMEOUT_SECONDS = 1
+
+
+def _install_slow_ref_hook(repo: Path) -> None:
+    hook = repo / ".git" / "hooks" / "reference-transaction"
+    hook.write_text(
+        f"#!/bin/sh\n[ \"$1\" = prepared ] && sleep {SLOW_HOOK_SECONDS}\nexit 0\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+
+
+def _clamp_timeouts(monkeypatch) -> None:
+    """測試 seam：把任何數值逾時壓到 1 秒，等價於「負載高時 10 秒不夠」。
+
+    逾時為 None（不設逾時）者不受影響：修正前固定 10 秒會被壓成 1 秒殺掉 git，
+    修正後的寫入命令不帶逾時，不受壓縮。
+    """
+    real_run = subprocess.run
+
+    def clamped(cmd, *a, **kw):
+        if kw.get("timeout") is not None:
+            kw["timeout"] = min(kw["timeout"], CLAMPED_TIMEOUT_SECONDS)
+        return real_run(cmd, *a, **kw)
+
+    monkeypatch.setattr(vr.subprocess, "run", clamped)
+
+
+def _leftover_locks(repo: Path) -> list:
+    return sorted(str(p.relative_to(repo)) for p in (repo / ".git").rglob("*.lock"))
+
+
+def test_slow_ref_hook_does_not_kill_git_or_leave_locks(repo, monkeypatch) -> None:
+    """E1：慢速 reference-transaction hook 下，release 的 git 寫入須完成且無殘留鎖。
+
+    修正前：commit／tag／checkout 等帶 timeout=10 的寫入被殺（壓縮後 1 秒），
+    發版中止並可能殘留 HEAD.lock／index.lock。
+    """
+    _install_slow_ref_hook(repo)
+    _clamp_timeouts(monkeypatch)
+
+    assert _release(repo, monkeypatch) is True
+
+    assert _leftover_locks(repo) == []
+    assert _tags(repo) == TAG
+    assert "定版內容" in _git(repo, "show", f"{TAG}:CHANGELOG.md")
+    assert TAG in _tags(repo, remote=True)
+
+
+def test_without_slow_hook_clamp_is_harmless(repo, monkeypatch) -> None:
+    """對照：無慢速 hook 時同樣的壓縮不影響結果，確認上一測試的差異來自 hook。"""
+    _clamp_timeouts(monkeypatch)
+
+    assert _release(repo, monkeypatch) is True
+    assert _leftover_locks(repo) == []

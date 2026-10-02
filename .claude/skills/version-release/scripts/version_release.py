@@ -3737,6 +3737,11 @@ def resolve_activation_version_paths(root: Path) -> set:
 
 GIT_LOCK_MAX_ATTEMPTS = 5
 GIT_LOCK_WAIT_SECONDS = 2.0
+# git 寫入命令不設逾時：寫入會建立 ref 並觸發 reference-transaction hook（本 repo
+# 的 shim 會跑 uv 內容掃描），負載高時耗時不可預測；逾時殺掉 git 會殘留
+# index.lock／HEAD.lock，擋住所有 session 的 git 寫入。與 ticket 側 update-ref／
+# update-index 不設逾時同機制。
+GIT_WRITE_TIMEOUT: Optional[int] = None
 
 
 def _is_git_lock_contention(stderr: str) -> bool:
@@ -3745,7 +3750,7 @@ def _is_git_lock_contention(stderr: str) -> bool:
 
 
 def run_git_with_lock_retry(
-    args: List[str], root: Path, timeout: int = 10
+    args: List[str], root: Path, timeout: Optional[int] = GIT_WRITE_TIMEOUT
 ) -> subprocess.CompletedProcess:
     """執行 git 寫入命令；遇鎖競爭以固定間隔重試，用盡即回傳最後一次結果。
 
@@ -3931,7 +3936,7 @@ def git_merge_and_push(
                 cwd=root,
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=GIT_WRITE_TIMEOUT,
             )
             if result.returncode != 0:
                 report_git_failure("切換 main", "git checkout main", result)
@@ -3950,7 +3955,7 @@ def git_merge_and_push(
                 cwd=root,
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=GIT_WRITE_TIMEOUT,
             )
             if result.returncode == 0:
                 print_success("main 分支已更新到最新", )
@@ -3982,7 +3987,7 @@ def git_merge_and_push(
                     cwd=root,
                     capture_output=True,
                     text=True,
-                    timeout=10,
+                    timeout=GIT_WRITE_TIMEOUT,
                 )
                 if result.returncode == 0:
                     print_success(f"已合併 {feature_branch} 到 main")
@@ -4029,7 +4034,7 @@ def git_merge_and_push(
                 cwd=root,
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=GIT_WRITE_TIMEOUT,
             )
             if result.returncode == 0:
                 print_success("main 已推送")
@@ -4049,7 +4054,7 @@ def git_merge_and_push(
                 cwd=root,
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=GIT_WRITE_TIMEOUT,
             )
             if result.returncode == 0:
                 print_success(f"Tag {tag_name} 已推送")
@@ -4074,7 +4079,7 @@ def git_merge_and_push(
                     ["git", "branch", "-d", feature_branch],
                     cwd=root,
                     capture_output=True,
-                    timeout=10,
+                    timeout=GIT_WRITE_TIMEOUT,
                 )
                 if result.returncode == 0:
                     print_success(f"本地分支已刪除: {feature_branch}")
@@ -4086,7 +4091,7 @@ def git_merge_and_push(
                     ["git", "push", "origin", "--delete", feature_branch],
                     cwd=root,
                     capture_output=True,
-                    timeout=10,
+                    timeout=GIT_WRITE_TIMEOUT,
                 )
                 if result.returncode == 0:
                     print_success(f"遠端分支已刪除: origin/{feature_branch}")
@@ -4113,7 +4118,7 @@ def publish_activation_commit(root: Path, head_before: str) -> bool:
         return True
     result = subprocess.run(
         ["git", "push", "origin", "main"],
-        cwd=root, capture_output=True, text=True, timeout=30,
+        cwd=root, capture_output=True, text=True, timeout=GIT_WRITE_TIMEOUT,
     )
     if result.returncode == 0:
         print_success("啟用提交已推送到 main")
