@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.33（本地變更）— 修復 `test_lease.py` 種子時間戳取自 import 時刻：`NOW` 為模組層常數，套件執行超過 `STALE_THRESHOLD_MINUTES`（30 分鐘）後依賴 FRESH 前提的 4 項測試誤判 STALE 而失敗（單檔執行全綠，紅燈不反映產品缺陷）。現行：新增測試檔時鐘接縫 `_utcnow()`，`_fresh_ts`／`_stale_ts` 每次呼叫取當下時間，autouse fixture 在每個測試開始時重設 `NOW`；STALE 種子仍以門檻常數推導，未放寬門檻。測試 `TestSeedSurvivesLongSuite`：E1 把 `pm_registry` 與本檔 `datetime.now` 撥快 31 分鐘，FRESH 種子修前為 STALE（紅）、修後通過，STALE 對照種子兩版皆維持 STALE。
+
 **Version**: 2.44.32（本地變更）— 修復 `ticket complete` 的 children 與 spawned_tickets 終態檢查只載入父票所在版本：前移規則讓已完成子孫留在舊版本，這些子票被判為 not_found 而擋住 complete。現行：`_collect_pending_children` 與 `_collect_non_terminal_spawned` 共用 `_find_non_terminal_by_id`，依票 ID 前綴推導所屬版本並以 `load_ticket` 載入，載入不到再退回父票版本，兩處皆無才記 not_found。舊版本中非終態的票仍阻擋。測試 `tests/test_complete_cross_version_children.py`：E1 同一 fixture（父在新版本、已完成子票在舊版本）修前 not_found、修後通過；E2 舊版本 pending 仍阻擋、不存在 ID 仍 not_found；children 與 spawned 兩條路徑皆覆蓋。
 
 **Version**: 2.44.31（本地變更）— 修復 `ticket migrate` 子樹連帶遷移把已完成的子孫一併改號搬離原版本：子樹收集只納入非終態（pending、in_progress 等）子孫；completed／closed 的子孫留在原版本、ID 不變，其 `parent_id` 與 `chain.parent`／`chain.root` 中指向被搬移票者改寫為新 ID（經子樹外引用單趟改寫）。祖先鏈上有被留下者的子孫跟著留下（搬走會失去父票）。取捨：已完成歷史票的 ID 前綴與新父不一致，換取歷史紀錄穩定。新父 `children` 同時列搬移者新 ID 與留下者原 ID；dry-run 只列搬移成員；全部子孫皆終態時走單票路徑並同樣改寫 parent 參照。測試 `tests/test_migrate_subtree_cascade.py`：E1 對照同一棵樹 pending 者搬移、completed 者留下（修正前 7 項紅）。
