@@ -594,7 +594,11 @@ versions:
       W1-036.1 完成（_verify_touched_hooks 單一邊界，例外即 deny 並附逃生路徑；main hooks 全量 5386，5338 passed＋48 skipped；clone 內重現
       舊版放行、新版 deny；主 repo 14:14 實地觸發綠燈放行）。已知限制：deny 路徑的 emit_hook_output 自身拋例外時經 run_hook_safely exit 1，
       PreToolUse 視為放行——票面寫「本票不處理」但無承接票，e1 請 83 建 P3 票追蹤——已建 W1-052（ANA P3：run_hook_safely 預設 fail_closed=False，114 支 hook 中 3 支 fail-closed，
-      任一 PreToolUse 守衛 deny 輸出失效即放行；#97 引用）與 W1-053（IMP P3：hook 票驗收閘門只認字面；#70 引用），皆不列必要。W1-036.2 派發。W1-051 乾淨 clone 4438 passed 且
+      任一 PreToolUse 守衛 deny 輸出失效即放行；#97 引用）與 W1-053（IMP P3：hook 票驗收閘門只認字面；#70 引用），皆不列必要。W1-036.2 派發。
+      W1-051 完成（ticket 2.44.35；寫入來自 test_git_ops 的 worktree 守衛測試：tmp repo 的 .claude 整個 symlink 到真實目錄，改為逐項 symlink
+      排除 hook-logs；乾淨 clone 與 clone 內 worktree 皆 4438 passed、無 hook-logs；main 4438 passed；實地觸發期間測試特徵 deny=1 為 0 行）。
+      Solution 記「新測試以真實 guard 日誌目錄快照判定，同秒他方真實阻擋可致偶發誤判、不另建票」——斷言依賴程式以外因素且以事件為 trigger，
+      e1 請 83 建 P3 票承接。W1-036.2 已合併待 main hooks 全套件後結案。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
