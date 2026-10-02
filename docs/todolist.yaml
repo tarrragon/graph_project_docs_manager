@@ -552,6 +552,7 @@ versions:
     codename: "Framework-Fix"
     description: "單一 topic：框架修復（0.4.1 未完成的框架票前移收件）"
     status: "active"
+    scope: "frozen"    # 2026-10-02 凍結：契約必要 12 張（皆設 scope_blocker）completed；0.4.1 二次前移 13 張依 tripwire 收束；0.4.2 新開未完成者前移 0.5.0
     worklog: "docs/work-logs/v0/v0.4/v0.4.2/"
     notes: |
       依版本登記規則 patch 列登記（2026-10-02，用戶裁決）：0.4.1 finish 時未完成的框架票前移至此，
