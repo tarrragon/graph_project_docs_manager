@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.37（本地變更）— `test_guard_logs_stay_inside_tmp_repo` 不再以真實 guard 日誌目錄的前後快照判定。原斷言讀取真實 `hook-logs/git-ref-transaction-content-guard` 的檔名與大小，其他 session 的並行寫入會使它翻紅（結果依賴程式以外的因素）。現行為只讀測試自己的 tmp 樹的正向斷言：測試倉庫 `hook-logs` 下的日誌全部 `resolve()` 後落在 tmp 內（日誌若穿過連結寫進真實根，實體位置在 tmp 外即失敗），且其中有本次「被阻擋」的紀錄。產品碼與 guard 不變。測試：E1 把 `link_claude` 改回整目錄 symlink 時新斷言翻紅；E2 以背景執行緒持續寫入真實 guard 日誌目錄時新斷言維持綠燈，同條件下舊快照斷言翻紅。
+
 **Version**: 2.44.36（本地變更）— 測試 session 的 liveness 不再併入呼叫者 session 的索引檔。原因是 `mark_hook_entry` 以 `CLAUDE_CODE_SESSION_ID` 決定 `_liveness` 索引檔名，測試沿用呼叫者的 id 時，測試寫入的紀錄會併入真實 session 的索引，使已失效的 hook 看起來仍存活。修改如下：
 - skill 根 `conftest.py` 在 `pytest_configure` 把該環境變數設為 `pytest-` 前綴值，`pytest_unconfigure` 時還原。
 - 新增 `pytest_sessionfinish` 洩漏哨兵：若真實 `.claude/hook-logs/_liveness` 出現 `pytest-` 前綴檔，套件即失敗（fail-closed）。哨兵只判斷前綴檔是否存在，不比對整個目錄，因為並行的真實 session 也會寫入同一目錄。

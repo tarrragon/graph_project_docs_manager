@@ -1184,15 +1184,12 @@ class TestPrevalidateEndToEnd:
         assert _run_git(wt, "rev-parse", "HEAD").stdout == head
 
     def test_guard_logs_stay_inside_tmp_repo(self, guard_world, monkeypatch):
-        """guard 被阻擋時寫出的日誌必須落在測試倉庫內，不得進入真實 hook-logs。"""
-        real_dir = _CLAUDE_DIR / "hook-logs" / "git-ref-transaction-content-guard"
+        """guard 被阻擋時的日誌必須落在測試倉庫內（正向斷言，只讀測試自己的 tmp 樹）。
 
-        def snapshot():
-            if not real_dir.exists():
-                return {}
-            return {p.name: p.stat().st_size for p in real_dir.iterdir()}
-
-        before = snapshot()
+        不讀真實 hook-logs：其他 session 的並行寫入會使整體快照翻轉。判定依據是
+        本測試倉庫下的日誌「實體位置」在 tmp 內（resolve 後穿過連結即落在 tmp 外），
+        且內容帶有本測試獨有的 tmp 路徑特徵。
+        """
         primary = guard_world.make_repo(guard_world.tmp / "r4")
         _run_git(primary, "checkout", "-q", "-b", "feat/z")
         guard_world.install(primary)
@@ -1204,6 +1201,10 @@ class TestPrevalidateEndToEnd:
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(primary))
         r = git_ops.commit_files_isolated(["src/v.txt"], "v", cwd=str(wt))
         assert r["status"] == "failed", r
-        assert snapshot() == before
-        tmp_logs = list((primary / ".claude" / "hook-logs").rglob("*.log"))
-        assert tmp_logs, "guard 日誌應寫在測試倉庫內，否則隔離對照無鑑別力"
+        tmp_root = guard_world.tmp.resolve()
+        guard_logs = list((primary / ".claude" / "hook-logs").rglob("*.log"))
+        inside = [p for p in guard_logs if p.resolve().is_relative_to(tmp_root)]
+        assert guard_logs and inside == guard_logs, \
+            f"guard 日誌應全部實體落在測試倉庫內，實際位置：{[str(p.resolve()) for p in guard_logs]}"
+        assert any("被阻擋" in p.read_text(encoding="utf-8") for p in inside), \
+            "測試倉庫內應有本次阻擋的日誌紀錄，否則隔離對照無鑑別力"
