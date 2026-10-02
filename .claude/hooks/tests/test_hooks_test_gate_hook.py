@@ -966,3 +966,65 @@ class TestVerificationStageFailClosed:
         exit_code, captured = _run_main(monkeypatch, self._commit_input())
         assert exit_code == 0
         assert captured == []
+
+
+class TestGitDiffFailureVisible:
+    """git diff --cached 失敗時 fail-open 但必須讓使用者看得到提醒（規則 4）。"""
+
+    def _setup(self, monkeypatch, tmp_path, diff_result):
+        tests_dir = tmp_path / ".claude" / "hooks" / "tests"
+        tests_dir.mkdir(parents=True, exist_ok=True)
+        (tests_dir / "test_foo_hook.py").write_text("def test_x():\n    assert True\n")
+        monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+        monkeypatch.setattr(hook_module, "run_git_command", lambda *a, **k: diff_result)
+        monkeypatch.setattr(
+            hook_module,
+            "_run_pytest",
+            lambda test_paths, hooks_dir, logger, timeout=None: ("pass", "1 passed"),
+        )
+
+    def _commit(self, monkeypatch, command='git commit -m "x"'):
+        return _run_main(
+            monkeypatch, {"tool_name": "Bash", "tool_input": {"command": command}}
+        )
+
+    def test_e1_diff_success_vs_failure_outputs_differ(self, monkeypatch, tmp_path):
+        """E1 對照：同一指令、同一 fixture，僅 git diff 成敗不同，產物必須不同。"""
+        self._setup(monkeypatch, tmp_path, (True, "M\0.claude/hooks/foo-hook.py\0"))
+        _, ok_out = self._commit(monkeypatch)
+        self._setup(monkeypatch, tmp_path, (False, "timeout"))
+        _, fail_out = self._commit(monkeypatch)
+        assert ok_out == []
+        assert len(fail_out) == 1
+        ctx = json.loads(fail_out[0])["hookSpecificOutput"]["additionalContext"]
+        assert "staged" in ctx and "timeout" in ctx
+
+    def test_e2_diff_failure_no_literal_reminds_without_deny(
+        self, monkeypatch, tmp_path
+    ):
+        """E2 正向對照：git diff 失敗且命令無字面 hook 檔，必出提醒且非 deny。"""
+        self._setup(monkeypatch, tmp_path, (False, "git not found"))
+        exit_code, out = self._commit(monkeypatch, 'git commit -m "docs only"')
+        assert exit_code == 0
+        assert len(out) == 1
+        hso = json.loads(out[0])["hookSpecificOutput"]
+        assert hso.get("permissionDecision") != "deny"
+        assert "additionalContext" in hso
+
+    def test_diff_failure_writes_stderr(self, monkeypatch, tmp_path, capsys):
+        self._setup(monkeypatch, tmp_path, (False, "timeout"))
+        self._commit(monkeypatch)
+        assert "staged" in capsys.readouterr().err
+
+    def test_diff_failure_with_literal_hook_merges_single_output(
+        self, monkeypatch, tmp_path
+    ):
+        """字面來源仍驗證測試；提醒與驗證結果合併為單一輸出，不 deny。"""
+        self._setup(monkeypatch, tmp_path, (False, "timeout"))
+        _, out = self._commit(
+            monkeypatch, "git add .claude/hooks/foo-hook.py && git commit -m x"
+        )
+        assert len(out) == 1
+        hso = json.loads(out[0])["hookSpecificOutput"]
+        assert hso.get("permissionDecision") != "deny"
+        assert "staged" in hso["additionalContext"]
