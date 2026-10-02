@@ -834,3 +834,135 @@ class TestMainIntegration:
         assert exit_code == 0
         assert captured == []
         assert called["n"] == 0  # 跨 repo 時不應執行本專案的 git diff
+
+
+class TestVerificationStageFailClosed:
+    """驗證階段（確認觸及 hook 檔之後）拋例外須 deny；偵測階段維持 fail-open。"""
+
+    def _setup(self, monkeypatch, tmp_path):
+        tests_dir = tmp_path / ".claude" / "hooks" / "tests"
+        tests_dir.mkdir(parents=True)
+        (tests_dir / "test_foo_hook.py").write_text("def test_x():\n    assert True\n")
+        monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+        monkeypatch.setattr(
+            hook_module,
+            "run_git_command",
+            lambda *a, **k: (True, "M\0.claude/hooks/foo-hook.py\0"),
+        )
+
+    @staticmethod
+    def _commit_input():
+        return {"tool_name": "Bash", "tool_input": {"command": 'git commit -m "x"'}}
+
+    @staticmethod
+    def _decisions(captured):
+        """logger.critical 的 traceback 亦經 print 進入 captured；只取 hook 輸出 JSON。"""
+        out = []
+        for item in captured:
+            try:
+                parsed = json.loads(item)
+            except (TypeError, ValueError):
+                continue
+            if isinstance(parsed, dict) and "hookSpecificOutput" in parsed:
+                out.append(item)
+        return out
+
+    @staticmethod
+    def _boom(*a, **k):
+        raise RuntimeError("injected failure")
+
+    def test_e1_injected_exception_denies_while_baseline_allows(
+        self, monkeypatch, tmp_path
+    ):
+        """E1 對照：同一 fixture，注入例外 -> deny；不注入（綠燈）-> 無輸出。"""
+        self._setup(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            hook_module,
+            "_run_pytest",
+            lambda test_paths, hooks_dir, logger, timeout=None: ("pass", "1 passed"),
+        )
+        base_code, base_out = _run_main(monkeypatch, self._commit_input())
+
+        monkeypatch.setattr(hook_module, "_resolve_test_paths", self._boom)
+        inj_code, inj_raw = _run_main(monkeypatch, self._commit_input())
+        inj_out = self._decisions(inj_raw)
+
+        assert base_code == 0 and base_out == []
+        assert inj_code == 0 and len(inj_out) == 1
+        assert inj_out != base_out
+        specific = json.loads(inj_out[0])["hookSpecificOutput"]
+        assert specific["permissionDecision"] == "deny"
+        reason = specific["permissionDecisionReason"]
+        assert "RuntimeError" in reason and "injected failure" in reason
+        assert "無法驗證等同未通過" in reason
+        assert "終端機" in reason
+
+    @pytest.mark.parametrize(
+        "target", ["_resolve_test_paths", "_run_all_tests", "_build_deny_message"]
+    )
+    def test_e2_verification_stage_exception_always_denies(
+        self, monkeypatch, tmp_path, target
+    ):
+        """E2 正向對照：驗證階段各函式拋例外必定 deny。"""
+        self._setup(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            hook_module,
+            "_run_pytest",
+            lambda test_paths, hooks_dir, logger, timeout=None: ("red", "1 failed"),
+        )
+        monkeypatch.setattr(hook_module, target, self._boom)
+        exit_code, raw = _run_main(monkeypatch, self._commit_input())
+        captured = self._decisions(raw)
+        assert exit_code == 0 and len(captured) == 1
+        specific = json.loads(captured[0])["hookSpecificOutput"]
+        assert specific["permissionDecision"] == "deny"
+        assert "RuntimeError" in specific["permissionDecisionReason"]
+
+    def test_e2_timing_log_exception_with_green_tests_still_allows(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """E2：計時日誌拋例外但測試綠燈 -> 放行（exit 0、無 deny），並於 stderr 可見。"""
+        import subprocess
+
+        self._setup(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            hook_module.subprocess,
+            "run",
+            lambda cmd, **kw: subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr=""),
+        )
+        monkeypatch.setattr(hook_module, "_log_segment_timing", self._boom)
+        exit_code, captured = _run_main(monkeypatch, self._commit_input())
+        assert exit_code == 0
+        assert captured == []
+        assert "injected failure" in capsys.readouterr().err
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "flutter test",
+            "git status && echo commit",
+            "git -C /some/other/repo commit -m x",
+        ],
+    )
+    def test_detection_stage_payloads_exit_zero_with_empty_stdout(
+        self, monkeypatch, tmp_path, command
+    ):
+        self._setup(monkeypatch, tmp_path)
+        monkeypatch.setattr(hook_module, "_resolve_test_paths", self._boom)
+        exit_code, captured = _run_main(
+            monkeypatch, {"tool_name": "Bash", "tool_input": {"command": command}}
+        )
+        assert exit_code == 0
+        assert captured == []
+
+    def test_detection_stage_no_hook_touched_exit_zero_with_empty_stdout(
+        self, monkeypatch, tmp_path
+    ):
+        self._setup(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            hook_module, "run_git_command", lambda *a, **k: (True, "M\0README.md\0")
+        )
+        monkeypatch.setattr(hook_module, "_resolve_test_paths", self._boom)
+        exit_code, captured = _run_main(monkeypatch, self._commit_input())
+        assert exit_code == 0
+        assert captured == []
