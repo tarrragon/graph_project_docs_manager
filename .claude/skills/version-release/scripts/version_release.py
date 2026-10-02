@@ -3742,6 +3742,9 @@ GIT_LOCK_WAIT_SECONDS = 2.0
 # index.lock／HEAD.lock，擋住所有 session 的 git 寫入。與 ticket 側 update-ref／
 # update-index 不設逾時同機制。
 GIT_WRITE_TIMEOUT: Optional[int] = None
+# 網路命令（fetch／push）保留逾時：傳輸期間被殺不會留下本地鎖（本地 ref 只在
+# 傳輸成功後更新），而網路卡住或認證提示會讓 finish 無限期掛住且無輸出。
+GIT_NETWORK_TIMEOUT: int = 300
 
 
 def _is_git_lock_contention(stderr: str) -> bool:
@@ -3770,6 +3773,43 @@ def run_git_with_lock_retry(
             return result
         time.sleep(GIT_LOCK_WAIT_SECONDS)
         attempt += 1
+
+
+def run_git_network(args: List[str], root: Path) -> subprocess.CompletedProcess:
+    """執行網路 git 命令（fetch／push）：有逾時、禁用認證提示。
+
+    逾時不拋例外，回傳 rc=124 與可見的 stderr，讓呼叫端走既有失敗路徑。
+    """
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+    try:
+        return subprocess.run(
+            ["git", *args], cwd=root, capture_output=True, text=True,
+            timeout=GIT_NETWORK_TIMEOUT, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        message = (
+            f"git {' '.join(args)} 逾時（{GIT_NETWORK_TIMEOUT} 秒），網路卡住或需要認證"
+        )
+        locks = find_git_lock_files(root)
+        if locks:
+            message += (
+                "\n偵測到殘留鎖檔（不自動刪除，可能屬於其他 session 的進行中寫入）：\n"
+                + "\n".join(f"  {p}" for p in locks)
+                + "\n補救：確認沒有其他 git 程序後再手動刪除"
+            )
+        return subprocess.CompletedProcess(["git", *args], 124, stdout="", stderr=message)
+
+
+def find_git_lock_files(root: Path) -> List[str]:
+    """列出 git 目錄下的 *.lock（index.lock、HEAD.lock、refs 底下的鎖）。"""
+    probe = subprocess.run(
+        ["git", "rev-parse", "--git-dir"], cwd=root, capture_output=True, text=True,
+        timeout=5,
+    )
+    git_dir = Path(probe.stdout.strip())
+    if not git_dir.is_absolute():
+        git_dir = root / git_dir
+    return sorted(str(p) for p in git_dir.rglob("*.lock"))
 
 
 def report_git_failure(
@@ -3950,13 +3990,14 @@ def git_merge_and_push(
         # 3.3 拉取最新 main
         print_info("[IN] 拉取最新 main")
         if not dry_run:
-            result = subprocess.run(
-                ["git", "pull", "origin", "main"],
-                cwd=root,
-                capture_output=True,
-                text=True,
-                timeout=GIT_WRITE_TIMEOUT,
-            )
+            # pull = fetch（網路，有逾時）+ merge（本地寫入，不設逾時）
+            result = run_git_network(["fetch", "origin", "main"], root)
+            if result.returncode == 0:
+                result = subprocess.run(
+                    ["git", "merge", "--no-edit", "FETCH_HEAD"],
+                    cwd=root, capture_output=True, text=True,
+                    timeout=GIT_WRITE_TIMEOUT,
+                )
             if result.returncode == 0:
                 print_success("main 分支已更新到最新", )
                 completed.append("拉取 main")
@@ -4029,13 +4070,7 @@ def git_merge_and_push(
         print_info("[OUT] 推送到遠端")
         if not dry_run:
             # 推送 main
-            result = subprocess.run(
-                ["git", "push", "origin", "main"],
-                cwd=root,
-                capture_output=True,
-                text=True,
-                timeout=GIT_WRITE_TIMEOUT,
-            )
+            result = run_git_network(["push", "origin", "main"], root)
             if result.returncode == 0:
                 print_success("main 已推送")
                 completed.append("推送 main")
@@ -4049,13 +4084,7 @@ def git_merge_and_push(
                 )
 
             # 推送 tag
-            result = subprocess.run(
-                ["git", "push", "origin", tag_name],
-                cwd=root,
-                capture_output=True,
-                text=True,
-                timeout=GIT_WRITE_TIMEOUT,
-            )
+            result = run_git_network(["push", "origin", tag_name], root)
             if result.returncode == 0:
                 print_success(f"Tag {tag_name} 已推送")
             else:
@@ -4087,11 +4116,8 @@ def git_merge_and_push(
                     print_error(f"刪除本地分支失敗")
 
                 # 遠端刪除
-                result = subprocess.run(
-                    ["git", "push", "origin", "--delete", feature_branch],
-                    cwd=root,
-                    capture_output=True,
-                    timeout=GIT_WRITE_TIMEOUT,
+                result = run_git_network(
+                    ["push", "origin", "--delete", feature_branch], root
                 )
                 if result.returncode == 0:
                     print_success(f"遠端分支已刪除: origin/{feature_branch}")
@@ -4116,10 +4142,7 @@ def publish_activation_commit(root: Path, head_before: str) -> bool:
     head_after = run_git_with_lock_retry(["rev-parse", "HEAD"], root).stdout.strip()
     if head_after == head_before:
         return True
-    result = subprocess.run(
-        ["git", "push", "origin", "main"],
-        cwd=root, capture_output=True, text=True, timeout=GIT_WRITE_TIMEOUT,
-    )
+    result = run_git_network(["push", "origin", "main"], root)
     if result.returncode == 0:
         print_success("啟用提交已推送到 main")
         return True
