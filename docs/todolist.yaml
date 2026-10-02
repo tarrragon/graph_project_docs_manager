@@ -551,7 +551,7 @@ versions:
   - version: "0.4.2"
     codename: "Framework-Fix"
     description: "單一 topic：框架修復（0.4.1 未完成的框架票前移收件）"
-    status: "planned"
+    status: "active"
     worklog: "docs/work-logs/v0/v0.4/v0.4.2/"
     notes: |
       依版本登記規則 patch 列登記（2026-10-02，用戶裁決）：0.4.1 finish 時未完成的框架票前移至此，
