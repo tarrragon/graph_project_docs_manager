@@ -598,7 +598,9 @@ versions:
       W1-051 完成（ticket 2.44.35；寫入來自 test_git_ops 的 worktree 守衛測試：tmp repo 的 .claude 整個 symlink 到真實目錄，改為逐項 symlink
       排除 hook-logs；乾淨 clone 與 clone 內 worktree 皆 4438 passed、無 hook-logs；main 4438 passed；實地觸發期間測試特徵 deny=1 為 0 行）。
       Solution 記「新測試以真實 guard 日誌目錄快照判定，同秒他方真實阻擋可致偶發誤判、不另建票」——斷言依賴程式以外因素且以事件為 trigger，
-      e1 請 83 建 P3 票承接。W1-036.2 已合併待 main hooks 全套件後結案。W1-051 乾淨 clone 4438 passed 且
+      e1 請 83 建 P3 票承接——已建 W1-054（IMP P3，E1 還原整目錄 symlink 須翻紅、E2 模擬他方寫入須仍綠）。W1-036.2 已合併待 main hooks 全套件後結案。
+      同型「Solution 寫已知限制不處理而未綁票」本 session 第二次（W1-036.1、W1-051）；phase4-decision-enforcement-hook 的延後句型
+      不含「本票不處理／不另建票」，e1 建議 83 建 P3 IMP 補偵測句型（不列必要）。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
