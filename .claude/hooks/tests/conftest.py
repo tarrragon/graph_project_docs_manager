@@ -11,6 +11,34 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 
+@pytest.fixture(scope="session", autouse=True)
+def isolate_project_root(tmp_path_factory):
+    """session 級：把專案根重導到含 CLAUDE.md 的 tmp 目錄，防止日誌寫進真實 hook-logs。
+
+    Why：subprocess 執行的 hook 與自行解析根目錄的模組會繞過 isolate_hook_logs
+    的 monkeypatch，把測試記錄（含 _liveness）寫進真實 .claude/hook-logs，
+    污染 hook 健康檢查與 liveness 判斷（0.4.2-W1-041）。
+    機制：設 CLAUDE_PROJECT_DIR 指向 tmp，並設 HOOK_TEST_ISOLATION=1 使
+    hook_base.get_project_root 略過 linked worktree 偵測；子程序繼承環境。
+    session 結束由 MonkeyPatch 還原。斷言真實專案根的測試用 real_project_root。
+    """
+    root = tmp_path_factory.mktemp("hook_project_root")
+    (root / "CLAUDE.md").write_text("# isolated test project root\n", encoding="utf-8")
+    mp = pytest.MonkeyPatch()
+    mp.setenv("CLAUDE_PROJECT_DIR", str(root))
+    mp.setenv("HOOK_TEST_ISOLATION", "1")
+    yield root
+    mp.undo()
+
+
+@pytest.fixture
+def real_project_root(monkeypatch):
+    """顯式 opt-out：本測試斷言真實專案根的解析行為，暫時移除 session 級重導。"""
+    monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+    monkeypatch.delenv("HOOK_TEST_ISOLATION", raising=False)
+    return Path(__file__).resolve().parents[3]
+
+
 @pytest.fixture(autouse=True)
 def isolate_hook_logs(tmp_path, monkeypatch):
     """將 hook 日誌輸出隔離至 tmp_path，防止測試污染 production hook-logs。
@@ -26,10 +54,10 @@ def isolate_hook_logs(tmp_path, monkeypatch):
     其他模組（hook 主程式、ticket validator 等）各自 import 的 get_project_root
     或 CLAUDE_PROJECT_DIR 環境變數。
 
-    為何不改 CLAUDE_PROJECT_DIR：環境變數會被 get_project_root 全域優先採用，
-    連帶改變所有以相對路徑 / Path.cwd / 真實 repo 路徑解析的測試（路徑分類、
-    handoff cache glob、cross-repo 判定），造成大量誤傷。僅綁定日誌模組的
-    get_project_root 可精準隔離日誌寫入路徑。
+    與 session 級 isolate_project_root 的分工：本 fixture 只處理同程序內
+    lib.hook_logging 的解析；subprocess hook 與自行拼 hook-logs 路徑的模組由
+    session 級 fixture 以環境變數重導專案根（0.4.2-W1-041.1 實測全套件僅 5 項
+    斷言「真實專案根」的測試需 opt-out，見 real_project_root）。
 
     覆蓋語意：唯有當原 get_project_root 解析結果指向**真實 production repo**
     （即會污染 .claude/hook-logs/ 的情形）時，才改寫為隔離目錄。若測試已透過
