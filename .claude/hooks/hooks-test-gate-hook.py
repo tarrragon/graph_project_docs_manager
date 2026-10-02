@@ -220,7 +220,8 @@ def _is_host_repo_commit(command: str, host_root: str) -> bool:
         return False
     try:
         return Path(repo_hint).resolve() == Path(host_root).resolve()
-    except OSError:
+    except (OSError, RuntimeError, ValueError):
+        # 符號連結迴圈（RuntimeError）、路徑含 NUL（ValueError）：視為非本專案
         return False
 
 
@@ -697,13 +698,32 @@ def main() -> int:
         logger.debug("無有效輸入，允許")
         return 0
 
+    if not isinstance(input_data, dict):
+        logger.info(
+            "input_data 型別非 dict（%s），偵測階段 fail-open 放行",
+            type(input_data).__name__,
+        )
+        return 0
+
     tool_name = input_data.get("tool_name", "")
     if tool_name != "Bash":
         logger.debug("工具 %s 不需要 hooks 測試 gate 檢查", tool_name)
         return 0
 
     tool_input = input_data.get("tool_input") or {}
+    if not isinstance(tool_input, dict):
+        logger.info(
+            "tool_input 型別非 dict（%s），偵測階段 fail-open 放行",
+            type(tool_input).__name__,
+        )
+        return 0
     command = tool_input.get("command", "")
+    if not isinstance(command, str):
+        logger.info(
+            "command 型別非 str（%s），偵測階段 fail-open 放行",
+            type(command).__name__,
+        )
+        return 0
 
     if _fast_reject(command):
         logger.debug("命令不含 'commit' 字樣，零開銷短路允許")

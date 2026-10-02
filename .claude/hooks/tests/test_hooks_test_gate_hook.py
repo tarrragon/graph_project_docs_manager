@@ -1053,3 +1053,88 @@ class TestGitDiffFailureVisible:
         hso = json.loads(out[0])["hookSpecificOutput"]
         assert hso.get("permissionDecision") != "deny"
         assert "staged" in hso["additionalContext"]
+
+
+class TestDetectionStageInputDefense:
+    """偵測階段非預期輸入：記日誌後 exit 0 放行，不走 crash 路徑（fail-open）。"""
+
+    HOOK_NAME = "hooks-test-gate-hook"
+
+    def _run_via_entry(self, monkeypatch, capsys, payload_text: str):
+        """走與 __main__ 相同的 run_hook_safely 入口，取得真實 exit code 與 stderr。"""
+        monkeypatch.setattr(sys, "stdin", io.StringIO(payload_text))
+        with patch("builtins.print"):
+            code = hook_module.run_hook_safely(hook_module.main, self.HOOK_NAME)
+        return code, capsys.readouterr().err
+
+    def _symlink_loop(self, tmp_path):
+        a, b = tmp_path / "loop_a", tmp_path / "loop_b"
+        a.symlink_to(b)
+        b.symlink_to(a)
+        return a
+
+    def _payloads(self, tmp_path):
+        loop = self._symlink_loop(tmp_path)
+        return {
+            "list_payload": json.dumps([1, 2]),
+            "string_tool_input": json.dumps(
+                {"tool_name": "Bash", "tool_input": "git commit"}
+            ),
+            "int_command": json.dumps(
+                {"tool_name": "Bash", "tool_input": {"command": 123}}
+            ),
+            "symlink_loop_dash_c": json.dumps(
+                {
+                    "tool_name": "Bash",
+                    "tool_input": {"command": f"git -C {loop} commit -m x"},
+                }
+            ),
+        }
+
+    @pytest.mark.parametrize(
+        "case",
+        ["list_payload", "string_tool_input", "int_command", "symlink_loop_dash_c"],
+    )
+    def test_e2_known_crash_inputs_exit_zero_without_critical(
+        self, monkeypatch, capsys, tmp_path, case
+    ):
+        """E2 正向對照：四類曾讓 gate crash 的輸入，必須 exit 0 且 stderr 無 CRITICAL。"""
+        code, err = self._run_via_entry(
+            monkeypatch, capsys, self._payloads(tmp_path)[case]
+        )
+        assert code == 0, err
+        assert "CRITICAL" not in err
+
+    def test_e1_same_command_normal_vs_abnormal_type(
+        self, monkeypatch, tmp_path
+    ):
+        """E1 對照：同 command 字串，payload 型別正常走原判斷，異常型別走防禦路徑，日誌可區分。"""
+        cmd = 'git commit -m "docs only"'
+        monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+        monkeypatch.setattr(hook_module, "run_git_command", lambda *a, **k: (True, ""))
+        fake_logger = MagicMock()
+        monkeypatch.setattr(hook_module, "setup_hook_logging", lambda name: fake_logger)
+
+        ok_code, _ = _run_main(
+            monkeypatch, {"tool_name": "Bash", "tool_input": {"command": cmd}}
+        )
+        ok_info = [str(c) for c in fake_logger.info.call_args_list]
+        ok_debug = [str(c) for c in fake_logger.debug.call_args_list]
+        fake_logger.reset_mock()
+        bad_code, _ = _run_main(
+            monkeypatch, {"tool_name": "Bash", "tool_input": [cmd]}
+        )
+        bad_info = [str(c) for c in fake_logger.info.call_args_list]
+        bad_debug = [str(c) for c in fake_logger.debug.call_args_list]
+
+        assert ok_code == 0 and bad_code == 0
+        assert any("未觸及" in m for m in ok_debug) and ok_info == []
+        assert any("型別" in m for m in bad_info)
+        assert not any("未觸及" in m for m in bad_debug)
+
+    def test_is_host_repo_commit_valueerror_returns_false(self):
+        """路徑含 NUL 時 resolve 拋 ValueError，視為非本專案而非 crash。"""
+        assert (
+            hook_module._is_host_repo_commit("git -C /tmp/a\x00b commit", "/tmp")
+            is False
+        )
