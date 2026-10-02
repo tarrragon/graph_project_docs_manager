@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.32（本地變更）— 修復 `ticket complete` 的 children 與 spawned_tickets 終態檢查只載入父票所在版本：前移規則讓已完成子孫留在舊版本，這些子票被判為 not_found 而擋住 complete。現行：`_collect_pending_children` 與 `_collect_non_terminal_spawned` 共用 `_find_non_terminal_by_id`，依票 ID 前綴推導所屬版本並以 `load_ticket` 載入，載入不到再退回父票版本，兩處皆無才記 not_found。舊版本中非終態的票仍阻擋。測試 `tests/test_complete_cross_version_children.py`：E1 同一 fixture（父在新版本、已完成子票在舊版本）修前 not_found、修後通過；E2 舊版本 pending 仍阻擋、不存在 ID 仍 not_found；children 與 spawned 兩條路徑皆覆蓋。
+
 **Version**: 2.44.31（本地變更）— 修復 `ticket migrate` 子樹連帶遷移把已完成的子孫一併改號搬離原版本：子樹收集只納入非終態（pending、in_progress 等）子孫；completed／closed 的子孫留在原版本、ID 不變，其 `parent_id` 與 `chain.parent`／`chain.root` 中指向被搬移票者改寫為新 ID（經子樹外引用單趟改寫）。祖先鏈上有被留下者的子孫跟著留下（搬走會失去父票）。取捨：已完成歷史票的 ID 前綴與新父不一致，換取歷史紀錄穩定。新父 `children` 同時列搬移者新 ID 與留下者原 ID；dry-run 只列搬移成員；全部子孫皆終態時走單票路徑並同樣改寫 parent 參照。測試 `tests/test_migrate_subtree_cascade.py`：E1 對照同一棵樹 pending 者搬移、completed 者留下（修正前 7 項紅）。
 
 **Version**: 2.44.30（本地變更）— `ticket migrate` 遷移有子孫的票時連帶遷移整個子樹。子孫以 ID 前綴收集，建 old 到 new 映射，引用改寫單趟完成（重疊映射不二次改寫）；每個成員（含 completed）更新 id、追加 `previous_ids`、重算 chain 與 parent_id，topic 各追加一行（舊行保留）。preflight（碰撞、深度不超過 MAX_TICKET_DEPTH 且訊息列出超限票 ID 與遷移後深度、目標版本註冊）任一失敗整體拒絕、零寫入；dry-run 列出完整映射表；整個子樹與子樹外引用者走單一隔離提交；寫入中途失敗輸出已寫入集合。子樹遷移碰撞不自動改號。無子孫的票行為不變。測試 `tests/test_migrate_subtree_cascade.py`：E1 對照有子孫與無子孫兩路徑產物不同。
