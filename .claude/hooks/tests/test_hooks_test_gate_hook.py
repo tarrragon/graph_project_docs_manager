@@ -537,22 +537,47 @@ class TestMainIntegration:
         mod.pytest_unconfigure(None)  # 不得拋例外
         assert "gate-timing-plugin" in capsys.readouterr().err
 
+    # 真實子程序測試以 wallclock 標記移出預設主套件（pyproject addopts 排除）：
+    # 逾時上界是機器負載的函數，紅燈不一定反映程式缺陷。執行：uv run pytest -m wallclock
+    # 逾時時直接判紅（不 skip），子程序卡死與計時外掛失效因此仍可被獨立套件偵測。
+    REAL_PYTEST_TIMEOUT_SEC = 120
+
+    @staticmethod
+    def _run_child(cmd, env, cwd, timeout):
+        """seam：以 timeout 執行子程序；逾時拋 TimeoutExpired（由測試判紅）。"""
+        import subprocess as sp
+
+        return sp.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout)
+
+    @pytest.mark.wallclock
     def test_real_pytest_subprocess_writes_ordered_marks(self, tmp_path):
         import os
-        import subprocess as sp
 
         out = tmp_path / "marks.json"
         hooks_dir = Path(__file__).parent.parent
         env = dict(os.environ, HOOKS_TEST_GATE_TIMING_FILE=str(out))
-        r = sp.run(
+        r = self._run_child(
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
              "tests/test_hooks_test_gate_hook.py::TestFastReject::test_empty_command_rejected"],
-            cwd=str(hooks_dir), env=env, capture_output=True, text=True, timeout=50,
+            env, str(hooks_dir), self.REAL_PYTEST_TIMEOUT_SEC,
         )
         assert r.returncode == 0, r.stdout + r.stderr
         marks = json.loads(out.read_text(encoding="utf-8"))
         assert marks["configure"] <= marks["unconfigure"] <= marks["atexit"]
         assert isinstance(marks["load1_start"], float) and isinstance(marks["load1_end"], float)
+
+    @pytest.mark.wallclock
+    def test_real_pytest_hung_child_is_red_not_skipped(self, tmp_path):
+        """E2 正向對照：永不結束的子程序必須以 TimeoutExpired 判紅，不得被吞成 skip/pass。"""
+        import os
+        import subprocess as sp
+
+        hang = [sys.executable, "-c", "import time; time.sleep(3600)"]
+        try:
+            with pytest.raises(sp.TimeoutExpired):
+                self._run_child(hang, dict(os.environ), str(tmp_path), 2)
+        except pytest.skip.Exception:
+            pytest.fail("逾時被轉成 skip：卡死子程序與放行同形")
 
     def test_commit_touching_hook_without_test_reminds(self, monkeypatch, tmp_path):
         hooks_dir = tmp_path / ".claude" / "hooks"
