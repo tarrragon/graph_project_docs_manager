@@ -21,8 +21,11 @@ W1-050 Phase 4 兩視角發現此重複（linux 判 DRY 違規，docstring 已�
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 import pytest
+
+import liveness_session_isolation as _liveness_iso
 
 # testpaths 覆蓋警告外掛：命令列路徑未涵蓋全部 testpaths 時於終端摘要警告
 from testpaths_coverage_warning import (  # noqa: F401
@@ -33,6 +36,31 @@ from ticket_system.lib.paths import (
     reset_project_root_cache,
     reset_ticket_state_root_cache,
 )
+
+
+_SESSION_PATCH = {"mp": None}
+
+
+def pytest_configure(config):
+    """測試 session 專屬 CLAUDE_CODE_SESSION_ID（pytest- 前綴），結束時還原。
+
+    Why：測試觸發的 hook 沿用呼叫者 session id 時，liveness 記錄會併入真實
+    session 的索引檔（見 liveness_session_isolation.py）。
+    """
+    mp = pytest.MonkeyPatch()
+    mp.setenv(_liveness_iso.ENV_SESSION_ID, _liveness_iso.new_test_session_id())
+    _SESSION_PATCH["mp"] = mp
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """洩漏哨兵：真實 _liveness 出現 pytest- 前綴檔即令套件失敗（fail-closed）。"""
+    _liveness_iso.apply_leak_sentinel(session, Path(__file__).resolve().parents[3])
+
+
+def pytest_unconfigure(config):
+    if _SESSION_PATCH["mp"] is not None:
+        _SESSION_PATCH["mp"].undo()
+        _SESSION_PATCH["mp"] = None
 
 
 @pytest.fixture(autouse=True)

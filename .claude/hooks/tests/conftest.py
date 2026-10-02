@@ -10,6 +10,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+from lib import liveness_session_isolation as _liveness_iso
+
 
 _ISOLATED = {"root": None, "patch": None}
 
@@ -29,7 +31,14 @@ def pytest_configure(config):
     mp = pytest.MonkeyPatch()
     mp.setenv("CLAUDE_PROJECT_DIR", str(root))
     mp.setenv("HOOK_TEST_ISOLATION", "1")
+    # 測試 session 專屬 id：漏網的 _liveness 寫入落在 pytest- 前綴檔，不併入呼叫者 session 檔
+    mp.setenv(_liveness_iso.ENV_SESSION_ID, _liveness_iso.new_test_session_id())
     _ISOLATED["root"], _ISOLATED["patch"] = root, mp
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """洩漏哨兵：真實 _liveness 出現 pytest- 前綴檔即令套件失敗（fail-closed）。"""
+    _liveness_iso.apply_leak_sentinel(session, Path(__file__).resolve().parents[3])
 
 
 def pytest_unconfigure(config):
