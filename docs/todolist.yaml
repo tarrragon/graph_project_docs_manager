@@ -565,7 +565,9 @@ versions:
       推送前 canonical v2.74.2（W1-045、W1-046、PC-GPD-030；用戶授權）。finish 的啟用提交 faf95db25 未被推送，e1 比對 HEAD 與
       origin/main 後補推，建 W1-045（P2）。發佈庫（用戶授權）：doc 1.24.0、version-release 2.10.2、ticket 2.44.31（--prune 刪除
       version_shift 兩檔）、skill-sync 1.24.4（W1-046 補升版，原為版號相同內容不同）；skill-sync pull 報告 61 個全部一致。
-      skill-sync 1.24.4 尚未推 canonical（待下次授權）。
+      skill-sync 1.24.4 已推 canonical v2.74.3（用戶授權）。
+      W1-045 完成（version-release 2.10.3，main 全量 215 passed）；main() 接線無端到端測試，AC1 由本版 finish 後比對 HEAD 與 origin/main 承接（e1）。
+      canonical 推送用戶裁決：等 0.4.2 finish 前一起推（含 W1-045 起本版全部 .claude 變更）。W1-038.2 提前派發（83；W1-041 為 ANA 不改 .claude，並行數仍 ≤2）。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
          - 單一 topic「框架修復」（83 派發）。.claude 修改類並行 ≤2；同一 skill 的票序列執行，版號依合併順序取號（W1-032 規則）。
