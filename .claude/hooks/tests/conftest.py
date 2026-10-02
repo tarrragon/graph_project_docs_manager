@@ -15,7 +15,7 @@ _ISOLATED = {"root": None, "patch": None}
 
 
 def pytest_configure(config):
-    """collection 之前就重導專案根（0.4.2-W1-041.1）。
+    """collection 之前就重導專案根。
 
     Why：部分 hook 在模組層以 get_project_root() 計算日誌路徑常數
     （例：agent-dispatch-validation-hook 的 _EVENTS_JSONL_PATH），test 檔 import
@@ -47,7 +47,7 @@ def isolate_project_root():
 
     Why：subprocess 執行的 hook 與自行解析根目錄的模組會繞過 isolate_hook_logs
     的 monkeypatch，把測試記錄（含 _liveness）寫進真實 .claude/hook-logs，
-    污染 hook 健康檢查與 liveness 判斷（0.4.2-W1-041）。
+    污染 hook 健康檢查與 liveness 判斷。
     機制：CLAUDE_PROJECT_DIR 指向 tmp，HOOK_TEST_ISOLATION=1 使
     hook_base.get_project_root 略過 linked worktree 偵測；子程序繼承環境。
     環境變數由 pytest_configure 設定（見其 docstring），本 fixture 僅斷言其存在。
@@ -82,7 +82,7 @@ def isolate_hook_logs(tmp_path, monkeypatch):
 
     與 session 級 isolate_project_root 的分工：本 fixture 只處理同程序內
     lib.hook_logging 的解析；subprocess hook 與自行拼 hook-logs 路徑的模組由
-    session 級 fixture 以環境變數重導專案根（0.4.2-W1-041.1 實測全套件僅 5 項
+    session 級 fixture 以環境變數重導專案根（實測全套件僅 5 項
     斷言「真實專案根」的測試需 opt-out，見 real_project_root）。
 
     覆蓋語意：唯有當原 get_project_root 解析結果指向**真實 production repo**

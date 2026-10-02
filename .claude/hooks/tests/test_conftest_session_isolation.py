@@ -1,4 +1,4 @@
-"""conftest session 級專案根重導的契約測試（0.4.2-W1-041.1）。
+"""conftest session 級專案根重導的契約測試。
 
 防止 hooks 測試套件把日誌寫進真實 .claude/hook-logs：套件執行期間
 CLAUDE_PROJECT_DIR 必須指向含 CLAUDE.md 的 tmp 目錄，且 HOOK_TEST_ISOLATION=1。
