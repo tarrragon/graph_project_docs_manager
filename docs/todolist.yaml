@@ -501,6 +501,9 @@ versions:
       明示「請用 finish（release 會拒絕）」）。finish dry-run 發現：W1-020.2 子樹連帶遷移使 W1-035、W1-038 前移時一併搬走 0.4.1 已完成子票
       （W1-035.1／.2／.4、W1-038.1），且 finish 以檔名排序先搬子票，新父票 children 漏列（83 以獨立 clone 實測確認，不會中途失敗）。
       用戶裁決：先修工具再 finish。修復 P1（scope_blocker，83 建；已完成子孫留原版本僅改寫 parent 參照＋finish 改為父票先前移）。
+      P1 依檔案數門檻拆兩張：W1-045（ticket，子樹連帶遷移只帶 pending／in_progress 子孫）→ W1-046（version-release，overflow 依 ID 深度
+      父先移、已被子樹帶走者以 previous_ids 確認後略過）。PC-GPD-030（worktree 內票務寫入改到主 checkout，根因為 get_ticket_state_root 回推主倉庫）。
+      0.4.2-W1-001（P3，worktree 導回主倉庫時 stderr 提示；0.4.1 已凍結故建於 0.4.2；e1 分診接受）。
       Graph 可維護性 topic 完成（2026-10-01，4a 最終覆核 main 241accbcf）：W1-001～009、W1-027 共 10 張 completed。
       analyze rc=0；flutter test 1990（基線 1971，+19 皆新增：W1-007 +3、008 +2、004 +7、005 +2、027 +5）；test/integration/ 66，
       IT-1～3 凍結值、G9、建圖日誌事件不變。契約第 2、5 欄對照相符。待辦：integration_test/ -d macos 實機覆核（e1，發版前）。
