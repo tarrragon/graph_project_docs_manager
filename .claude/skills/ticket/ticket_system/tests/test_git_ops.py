@@ -1101,13 +1101,24 @@ def guard_world(tmp_path, monkeypatch):
     for k in ("GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"):
         monkeypatch.setenv(k, "t@t")
 
+    def link_claude(path):
+        """建立測試倉庫的 .claude：逐項連結真實資產，但不連結 hook-logs。
+
+        整個目錄做 symlink 會使 guard 的日誌根解析穿過連結寫進真實 hook-logs。
+        """
+        claude = path / ".claude"
+        claude.mkdir()
+        for entry in _CLAUDE_DIR.iterdir():
+            if entry.name != "hook-logs":
+                (claude / entry.name).symlink_to(entry)
+
     def make_repo(path):
         path.mkdir()
         _run_git(path, "init", "-q", "-b", "main")
         (path / "README.md").write_text("base\n", encoding="utf-8")
         _run_git(path, "add", "README.md")
         _run_git(path, "commit", "-qm", "base")
-        (path / ".claude").symlink_to(_CLAUDE_DIR)
+        link_claude(path)
         return path
 
     class World:
@@ -1115,6 +1126,7 @@ def guard_world(tmp_path, monkeypatch):
 
     w = World()
     w.log, w.make_repo, w.installer = log, make_repo, installer
+    w.link_claude = link_claude
     w.tmp = tmp_path
 
     def install(repo):
@@ -1159,7 +1171,7 @@ class TestPrevalidateEndToEnd:
         guard_world.install(primary)
         wt = guard_world.tmp / "wt"
         _run_git(primary, "worktree", "add", "-q", str(wt), "main")
-        (wt / ".claude").symlink_to(_CLAUDE_DIR)
+        guard_world.link_claude(wt)
         (wt / "src").mkdir()
         (wt / "src" / "v.txt").write_text("違規\n", encoding="utf-8")
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(primary))
@@ -1170,3 +1182,28 @@ class TestPrevalidateEndToEnd:
         assert "branch-verify" in r["error"]
         assert guard_world.calls() == ["pv=1", "pv=0"]
         assert _run_git(wt, "rev-parse", "HEAD").stdout == head
+
+    def test_guard_logs_stay_inside_tmp_repo(self, guard_world, monkeypatch):
+        """guard 被阻擋時寫出的日誌必須落在測試倉庫內，不得進入真實 hook-logs。"""
+        real_dir = _CLAUDE_DIR / "hook-logs" / "git-ref-transaction-content-guard"
+
+        def snapshot():
+            if not real_dir.exists():
+                return {}
+            return {p.name: p.stat().st_size for p in real_dir.iterdir()}
+
+        before = snapshot()
+        primary = guard_world.make_repo(guard_world.tmp / "r4")
+        _run_git(primary, "checkout", "-q", "-b", "feat/z")
+        guard_world.install(primary)
+        wt = guard_world.tmp / "wt4"
+        _run_git(primary, "worktree", "add", "-q", str(wt), "main")
+        guard_world.link_claude(wt)
+        (wt / "src").mkdir()
+        (wt / "src" / "v.txt").write_text("違規\n", encoding="utf-8")
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(primary))
+        r = git_ops.commit_files_isolated(["src/v.txt"], "v", cwd=str(wt))
+        assert r["status"] == "failed", r
+        assert snapshot() == before
+        tmp_logs = list((primary / ".claude" / "hook-logs").rglob("*.log"))
+        assert tmp_logs, "guard 日誌應寫在測試倉庫內，否則隔離對照無鑑別力"
