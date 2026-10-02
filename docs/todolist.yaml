@@ -578,6 +578,10 @@ versions:
            追加 W1-047（P2，e1 裁決 2026-10-02）：complete 的 children／spawned 閘門只載入父票所在版本，留在舊版本的已完成子票被判 not_found，
            擋住必要的 W1-038 complete（W1-035 同受影響）；成因是 0.4.1 ticket 2.44.31 的「已完成子孫留原版本」規則。W1-038 等 W1-047
            合併後以正常 complete 結案，兼作 W1-047 實地觸發，不用 --force。
+           追加 W1-041.1、.2、.3 與 W1-049（皆 P2，e1 裁決 2026-10-02）：W1-041 分析結論的三張實作是第 2 欄 W1-041 預期變更的唯一達成路徑，
+           且母票依防護性 ANA 規則維持 in_progress 至子票終態（in_progress 擋 finish）；W1-049（test_lease 的 NOW 於 import 時固定，
+           套件超過 30 分鐘即 4 項假紅）直接影響第 2 欄「框架套件全綠」的判讀，由 P3 升 P2。W1-048（ANA P3，其餘 list_tickets(version)
+           呼叫點盤點）不列入。
          - P3 十四張盡力而為。finish 時未完成者已是第二次前移，依 #114 方案 4 tripwire 收束進 canonical issue 後關票，不再前移。
            例外：W1-035.3 的資料來自 flutter_balance 實際提交日誌，非本專案可控；finish 時若未取得，同樣依 tripwire 收束。
          - 同檔序列：version-release（W1-045 → W1-018）；content guard（W1-025、W1-029）；
