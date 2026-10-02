@@ -560,6 +560,37 @@ versions:
       收件範圍：0.4.1 前移的框架修復 topic 票（約 19 張，P2 三張：W1-038、W1-038.2、W1-041）。
       依 #114 方案 4（2026-10-01 補記），框架票不設 scope_blocker 時不阻擋 finish；同票前移第 2 次即收束進 canonical issue 後關票。
       開工前置：版本契約五欄於 0.4.1 finish 後、開工前由 e1 寫定。
+      0.4.1 finish（2026-10-02，用戶授權；W1-045／W1-046 修好、main 全綠後執行）：rc=0，tag v0.4.1 → c90c93d0e；18 張前移至此，
+      W1-035.3、W1-038.2 隨父票子樹搬移、finish 印 [INFO] 略過；0.4.1 已完成子票留原版本、parent 改指本版新父票，children 雙向一致。
+      推送前 canonical v2.74.2（W1-045、W1-046、PC-GPD-030；用戶授權）。finish 的啟用提交 faf95db25 未被推送，e1 比對 HEAD 與
+      origin/main 後補推，建 W1-045（P2）。發佈庫（用戶授權）：doc 1.24.0、version-release 2.10.2、ticket 2.44.31（--prune 刪除
+      version_shift 兩檔）、skill-sync 1.24.4（W1-046 補升版，原為版號相同內容不同）；skill-sync pull 報告 61 個全部一致。
+      skill-sync 1.24.4 尚未推 canonical（待下次授權）。
+      版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
+      1. 範圍與執行順序
+         - 單一 topic「框架修復」（83 派發）。.claude 修改類並行 ≤2；同一 skill 的票序列執行，版號依合併順序取號（W1-032 規則）。
+         - finish 必要工作（設 scope_blocker）：P2 四張 W1-038、W1-038.2、W1-041、W1-045。W1-045 優先：本版 finish 自身會用到。
+         - P3 十四張盡力而為。finish 時未完成者已是第二次前移，依 #114 方案 4 tripwire 收束進 canonical issue 後關票，不再前移。
+           例外：W1-035.3 的資料來自 flutter_balance 實際提交日誌，非本專案可控；finish 時若未取得，同樣依 tripwire 收束。
+         - 同檔序列：version-release（W1-045 → W1-018）；content guard（W1-025、W1-029）；
+           hooks-test-gate（W1-035 → W1-035.3、W1-036）；ticket（W1-001、W1-021、W1-023、W1-031、W1-033）。
+         - topic 以外的新發現依 2026-09-29 規則處理，不自動收進本版。
+      2. 預期變更
+         - 不動 lib/、test/、integration_test/：flutter test 1990（其中 test/integration/ 66）、0.4.0 IT 凍結值、G9 皆不變；本版不重跑 flutter。
+         - 框架套件只增不減，基線：ticket 4425（main c288570ff）、version-release 212（78365e4d3）、hooks＋lib 5374（5326 passed＋48 skipped，1178ce9bd）。
+         - W1-045：finish 後 HEAD 與 origin/main 一致；推送失敗時 rc 非 0 且列出未推送提交。E1 對照：同一 fixture「有推送／未推送」兩種情況
+           的 HEAD 對 origin/main 比對結果必須不同，摘要文字依實際結果，不寫死。
+         - W1-041：套件跑完後 repo 根 .claude/hook-logs 無新增寫入（以跑前跑後清單比對）。
+         - W1-038.2：派發範本與 TEST-BAL-006 的全套件指令不帶路徑，回報含全量收集數。
+         - ANA 票產出結論與 spawn 落地，不改程式；結論要求的實作票建於當期版本。
+      3. 驗證方式：全部機械驗證（單元測試、tmp git repo 加 bare remote、全套件、日誌與目錄比對）。W1-045 的實際效果以本版 finish
+         實地驗證（finish 後比對 HEAD 與 origin/main）。本版無權限類平台事實。
+      4. 人工實測：無。
+      5. 日誌事件（結果值）：
+         - W1-045：啟用提交推送失敗時 stderr 輸出未推送的提交 hash，finish 以非 0 結束。
+         - W1-001：票務 CLI 由 linked worktree 導回主倉庫寫入時，stderr 輸出一行提示（含實際寫入路徑）。
+         - W1-033：complete 遇版本 worklog 主檔缺漏時，stderr 明確提示並寫入檔案日誌。
+         - 其餘票依各自 AC；未列於此的票不新增、不改變日誌事件，若實作需新增須回報 e1 補入本欄。
 
   - version: "0.5.0"
     codename: "Layout"
