@@ -603,7 +603,8 @@ versions:
       不含「本票不處理／不另建票」，e1 建議 83 建 P3 IMP 補偵測句型（不列必要）——已建 W1-055（#54 引用）。
       main hooks 全量（32c89f1ec，15:10～15:18，load 約 15）collect 5390：1 failed、5341 passed、48 skipped；前次 600622ee3 全綠。
       其間合入 W1-036.2（hooks-test-gate）與 W1-051（ticket）。失敗項未知（輸出只留末行）。83 依規則 1 派 incident-responder
-      （定位失敗項、單項 N>=5、clone 以 600622ee3 對照）；歸因前 W1-036.2 不結案、W1-053／W1-036.3 暫緩派發。W1-051 乾淨 clone 4438 passed 且
+      （定位失敗項、單項 N>=5、clone 以 600622ee3 對照）；歸因前 W1-036.2 不結案、W1-053／W1-036.3 暫緩派發。
+      W1-056（DOC P3，不列必要）：派發範本〈全套件回報規格〉指令補 -rf、FAILED 行不得被 tail／grep 截掉。跨程序干擾假說轉 incident 實測判定。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
