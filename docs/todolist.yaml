@@ -611,7 +611,11 @@ versions:
       finish 必要 11 張全數 completed（e1 以票面 status 核對）。W1-057（P2，該 flaky）依實測判準列為必要（scope_blocker 已設），必要工作 12 張；
       修法依 test-assertion D1：計時斷言移出主套件（獨立標記）或改為不依 wall-clock 的斷言，不採逾時改 skip（會使真實回歸靜默通過）。
       W1-058（P3，sibling-blockedby-validator 建議 claim --acknowledge 但 CLI 無此旗標，ARCH-BAL-013 同型）。
-      仍擋 finish：W1-036 母票（in_progress，待 W1-036.3 或依 tripwire 收束）。W1-051 乾淨 clone 4438 passed 且
+      仍擋 finish：W1-036 母票（in_progress，待 W1-036.3 或依 tripwire 收束）。
+      W1-057 完成（方案 a：真實子程序測試掛 wallclock 標記、addopts 預設排除，seam 化，逾時 120 s 仍判紅；突變為逾時改 skip 時補強後的 E2 判紅；
+      12 個 CPU 空轉下主套件整檔 6 次全綠、wallclock 2 次全綠；main 預設 5350 passed＋48 skipped，-m wallclock 2 passed）。finish 必要 12 張全數 completed。
+      W1-053 完成（P3）。W1-059（P3）：wallclock 測試預設排除後無固定執行點。e1 裁決：W1-059 完成前，本版 finish 前置加跑一次
+      `-m wallclock`（hooks 套件）並記錄結果，使該標記測試在發版時至少執行一次。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
