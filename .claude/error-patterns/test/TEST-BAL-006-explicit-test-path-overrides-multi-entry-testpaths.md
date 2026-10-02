@@ -75,7 +75,7 @@ pytest <path>/ --collect-only -q | tail -1   # 指定路徑後的母體
 
 **不以 exit code 作為母體完整性的證據**。exit 0 只保證跑到的測試全過，不保證跑到了該跑的測試。此判準與 `PC-BAL-048`「量測宇宙與結論宇宙必須一致」同源：篩選了什麼，結論就只能宣稱什麼。
 
-**工具層：conftest 外掛在執行當下提示**。上述三項都是文字預防，依賴執行者讀到並記得；同日兩次再現證明文字預防不足（見下）。預防改由工具承擔：外掛 `.claude/hooks/testpaths_coverage_warning.py` 在 pytest 執行當下偵測「命令列帶路徑而 `testpaths` 有多筆」並輸出警告，母體縮小的資訊出現在執行者必然看到的輸出中，不再依賴事前閱讀。派發範本的〈全套件回報規格〉（`.claude/references/agent-dispatch-template.md`）與外掛互補：外掛負責當場警告，範本負責讓事後回報可用全量數對帳。
+**工具層：conftest 外掛在執行當下提示**。上述三項都是文字預防，依賴執行者讀到並記得；同日兩次再現證明文字預防不足（見下）。預防改由工具承擔：外掛 `.claude/hooks/testpaths_coverage_warning.py` 在 pytest 執行當下偵測「命令列帶路徑而 `testpaths` 有多筆」並輸出警告；警告與 pytest 輸出同屏出現，執行者必然看到，不再依賴事前閱讀。派發範本的〈全套件回報規格〉（`.claude/references/agent-dispatch-template.md`）與外掛互補：外掛負責當場警告，範本負責讓事後回報可用全量數對帳。
 
 **同日兩次再現**（去識別化敘述）：
 
@@ -84,7 +84,7 @@ pytest <path>/ --collect-only -q | tail -1   # 指定路徑後的母體
 | (a) hooks 包 | 驗收時傳入包內某個測試路徑，未走無路徑指令 | 收進 archived 的失敗測試被一併跑到，同時漏掉 lib 的測試，兩個方向的母體誤差並存 |
 | (b) ticket 包 | 只跑 `tests/`，漏掉 `ticket_system/tests` | 後者的回歸未被執行，隨提交進入 main |
 
-**轉折**：本模式已有文字層預防（基線留存、pyproject 註解、exit code 判準）後，同日仍再現兩次。結論是此類預防不能只靠被讀到的文字，須由工具在執行當下介入，並以可對帳的回報規格補上事後驗收的依據。
+**轉折**：本模式已有文字層預防（基線留存、pyproject 註解、exit code 判準）後，同日仍再現兩次。結論是此類預防不能只靠被讀到的文字，須由工具在執行當下介入；事後驗收則改依可對帳的回報規格。
 
 ## 相關
 

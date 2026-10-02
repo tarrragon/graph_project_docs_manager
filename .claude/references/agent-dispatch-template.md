@@ -122,14 +122,14 @@ Ticket: 0.18.0-W17-048.3
 ```
 全套件指令為 (cd <pkg> && uv run pytest -q)，命令列不帶任何測試路徑。
 回報必須附：(1) 所跑命令原文；(2) 同目錄 pytest --collect-only -q 的全量數；
-(3) 執行摘要的 passed / deselected 數。三者須滿足：執行數 = 全量 - deselected。
+(3) 執行摘要各結果數（passed / failed / skipped / error 等）與 deselected 數。三者須滿足：執行數 = 全量 - deselected。
 ```
 
 對帳時兩種摘要格式都要處理：
 
 | 摘要末行格式 | 全量數 | 對帳 |
 |------|------|------|
-| `N tests collected` | N | 執行數（passed + failed + skipped 等）須等於 N |
+| `N tests collected`（僅 1 項時為單數 `1 test collected`） | N | 執行數（passed + failed + skipped 等）須等於 N |
 | `N/M tests collected (K deselected)` | M | 執行數須等於 M - K，且 N = M - K |
 
 不等即停手查證，不以 exit 0 或「全數通過」收尾；只跑局部時，回報須明寫「局部執行」並列出未涵蓋範圍，不得宣稱全套件通過。`<pkg>` 由 PM 在派發時代入。工具層另有執行當下的提示（conftest 外掛），與本節互補：外掛負責當場警告，本節負責讓事後回報可對帳。
