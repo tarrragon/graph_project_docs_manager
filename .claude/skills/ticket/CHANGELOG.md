@@ -2,6 +2,12 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.36（本地變更）— 測試 session 的 liveness 不再併入呼叫者 session 的索引檔。原因是 `mark_hook_entry` 以 `CLAUDE_CODE_SESSION_ID` 決定 `_liveness` 索引檔名，測試沿用呼叫者的 id 時，測試寫入的紀錄會併入真實 session 的索引，使已失效的 hook 看起來仍存活。修改如下：
+- skill 根 `conftest.py` 在 `pytest_configure` 把該環境變數設為 `pytest-` 前綴值，`pytest_unconfigure` 時還原。
+- 新增 `pytest_sessionfinish` 洩漏哨兵：若真實 `.claude/hook-logs/_liveness` 出現 `pytest-` 前綴檔，套件即失敗（fail-closed）。哨兵只判斷前綴檔是否存在，不比對整個目錄，因為並行的真實 session 也會寫入同一目錄。
+- 輔助模組 `liveness_session_isolation.py` 與 `.claude/lib/` 下的同名檔逐字相同，沿用 `testpaths_coverage_warning.py` 的複本慣例，理由是 skill 自成一個測試根。
+- 測試：新增 `tests/test_liveness_session_isolation.py`，以 E2 驗證繞過重導的寫入會被哨兵判定為失敗、移除後則通過。
+
 **Version**: 2.44.35（本地變更）— 測試套件不再經由 reference-transaction guard 把日誌寫進真實 `.claude/hook-logs`：`guard_world` fixture 把測試倉庫的 `.claude` 整個 symlink 到真實 `.claude`，guard 被阻擋時（日誌根由 `CLAUDE_PROJECT_DIR` 解析，該測試刻意設為測試倉庫）穿過連結寫入真實 `hook-logs/git-ref-transaction-content-guard/`。歸屬：`test_git_ops.py::TestPrevalidateEndToEnd` 的 worktree 受保護分支違規案例（其餘兩案不寫入）。現行：`link_claude` 改為建立真實 `.claude` 目錄並逐項連結資產、排除 `hook-logs`，日誌落在測試倉庫內；採 fixture 自行隔離而非 conftest 設環境變數，因 conftest 的 `CLAUDE_PROJECT_DIR` 隔離早已存在，是該測試刻意覆寫。產品碼與 guard 不變。測試 `test_guard_logs_stay_inside_tmp_repo`：修前紅（真實 guard 目錄新增 `.cleanup_trigger` 與 `.log`）、修後綠且日誌出現在測試倉庫。
 
 **Version**: 2.44.34（本地變更）— 測試套件不再把 hook 日誌寫進真實 `.claude/hook-logs`：`identity_guard` 未設 `HOOK_LOGS_DIR` 時以 `git rev-parse` 回退，`tests/` 樹的測試因此把 identity-guard usage.log 寫進真實 repo；linked worktree 內 in-process hook 因未設 `HOOK_TEST_ISOLATION` 而被 worktree 偵測蓋過 tmp 根，另有四個日誌目錄落到 worktree 根。現行：skill 根 `conftest.py` 的 autouse `_isolate_hook_logs_dir` 同時設 `HOOK_LOGS_DIR`（tmp）與 `HOOK_TEST_ISOLATION=1`，涵蓋兩棵 testpath；原 `ticket_system/tests/conftest.py` 的同名 autouse 移除（整合為單一處）。產品碼不變。測試 `tests/test_hook_logs_isolation.py`：修前紅、修後綠；乾淨 clone 與 clone 內 linked worktree 跑全套件前後 hook-logs 清單相同，E1 移除 autouse 後兩處皆重現洩漏。
