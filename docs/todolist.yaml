@@ -625,7 +625,13 @@ versions:
       tripwire 收束完成（curator，兩條 AND 判準 13 張皆成立，皆有既有 issue，無須新開）：#55（021／023／033）、#97（022）、#101（025／029）、
       #58（031／044／035／035.3）、#85（040／032）、#114 init（016）；13 張 close reason not_executable_knowledge_captured，reason-note 含 issue URL；
       W1-031 另 --resolved-by W1-049。e1 以 gh api 抽驗 #55、#114 兩則 comment 存在。W1-036.3、W1-036 complete（main hooks 5356 passed＋48 skipped）。
-      W1-054 已合併（ticket 2.44.37），main ticket 全套件執行中。預計前移 0.5.0：001、048、052、055、056、058、059。W1-051 乾淨 clone 4438 passed 且
+      W1-054 已合併（ticket 2.44.37），main ticket 全套件執行中。預計前移 0.5.0：001、048、052、055、056、058、059。
+      finish 前置（e1，main 2dd29f511，依序無並行，起始 load 56）：hooks -m wallclock 2 passed；hooks 5356 passed＋48 skipped；version-release 220 passed；
+      ticket 4440 passed；皆 rc=0，跑後真實 _liveness 的 pytest- 檔 0。canonical v2.75.0（用戶授權；23 commit 含 1 feat 故 minor，無刪除不加 --clean）。
+      scope frozen（982f083cc）。dry-run 因 0.5.0-W1-001 已存在而判 FAIL（設計上 dry-run 遇撞號即中止、正式執行才自動改號），e1 先以
+      ticket migrate 將 0.4.2-W1-001 移為 0.5.0-W1-003，dry-run 全程 rc=0。
+      0.4.2 finish（2026-10-02，用戶授權）：rc=0，tag v0.4.2 → 38a0acfaf；前移 6 張至 0.5.0（048／052／055／056／058／059，編號不變）；
+      0.5.0 轉 active、pubspec 0.5.0。finish 後 HEAD 與 origin/main 皆 6359ce554，摘要「啟用提交已推送到 main」——W1-045 AC1 實地成立。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
