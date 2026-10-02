@@ -1,4 +1,4 @@
-"""skill 根 conftest 的 hook 日誌隔離契約（0.4.2-W1-041.2）。
+"""skill 根 conftest 的 hook 日誌隔離契約。
 
 兩棵 testpath（tests/、ticket_system/tests/）皆須取得相同隔離：
 HOOK_LOGS_DIR 指向 tmp、HOOK_TEST_ISOLATION=1。
