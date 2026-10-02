@@ -604,7 +604,14 @@ versions:
       main hooks 全量（32c89f1ec，15:10～15:18，load 約 15）collect 5390：1 failed、5341 passed、48 skipped；前次 600622ee3 全綠。
       其間合入 W1-036.2（hooks-test-gate）與 W1-051（ticket）。失敗項未知（輸出只留末行）。83 依規則 1 派 incident-responder
       （定位失敗項、單項 N>=5、clone 以 600622ee3 對照）；歸因前 W1-036.2 不結案、W1-053／W1-036.3 暫緩派發。
-      W1-056（DOC P3，不列必要）：派發範本〈全套件回報規格〉指令補 -rf、FAILED 行不得被 tail／grep 截掉。跨程序干擾假說轉 incident 實測判定。W1-051 乾淨 clone 4438 passed 且
+      W1-056（DOC P3，不列必要）：派發範本〈全套件回報規格〉指令補 -rf、FAILED 行不得被 tail／grep 截掉。跨程序干擾假說轉 incident 實測判定。
+      incident 歸因：失敗項為 test_real_pytest_subprocess_writes_ordered_marks（W1-035.4 加入，50 s wall-clock 逾時，高負載下單檔 11 次 1 紅），
+      與 W1-036.2 無關；跨程序共用路徑假說不成立。無並行重跑 main 全綠。W1-036.2、W1-041.3、W1-041 complete（main hooks 5396 collect
+      5348 passed＋48 skipped；ticket 4440 passed；真實 _liveness 的 pytest- 檔 0、哨兵未觸發——第 2 欄 W1-041 預期變更實地成立）。
+      finish 必要 11 張全數 completed（e1 以票面 status 核對）。W1-057（P2，該 flaky）依實測判準列為必要（scope_blocker 已設），必要工作 12 張；
+      修法依 test-assertion D1：計時斷言移出主套件（獨立標記）或改為不依 wall-clock 的斷言，不採逾時改 skip（會使真實回歸靜默通過）。
+      W1-058（P3，sibling-blockedby-validator 建議 claim --acknowledge 但 CLI 無此旗標，ARCH-BAL-013 同型）。
+      仍擋 finish：W1-036 母票（in_progress，待 W1-036.3 或依 tripwire 收束）。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
