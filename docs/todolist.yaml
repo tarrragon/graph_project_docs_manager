@@ -583,6 +583,9 @@ versions:
       e1 裁決：.2 的 AC1 加註後 complete——乾淨 clone 殘留 git-ref-transaction-content-guard 日誌屬不同機制（測試裝真實 guard 至 tmp repo，
       guard 以 lib.hook_logging 解析專案根、不讀 HOOK_LOGS_DIR），修前即存在，由 W1-051 承接。W1-051（IMP P2）依實測判準列為 finish 必要
       （scope_blocker 已設），本版必要工作為 10 張。順序必要優先：W1-050 AC1 → W1-051 → W1-041.3（.2 結案即解鎖）→ P3 的 W1-001／W1-033。
+      W1-041.2 complete。W1-050 實測不紅、以證據結案不改檔（datetime.now 撥快 211 分鐘：sessions 16 passed、stale_list 9 passed；
+      正向對照確認撥快生效；兩檔判定入口與種子共用同一 NOW），不列必要。W1-051 派發（不改 guard 本體與 lib.hook_logging，必須改則停手回報）；
+      W1-036（P3 ANA）以空出名額派發；W1-025 與 W1-051 重疊 guard 根解析，待 W1-051 合併後派。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
          - 單一 topic「框架修復」（83 派發）。.claude 修改類並行 ≤2；同一 skill 的票序列執行，版號依合併順序取號（W1-032 規則）。
