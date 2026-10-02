@@ -620,7 +620,11 @@ versions:
       （in_progress 擋 finish）；(2) 13 張自 0.4.1 前移且未完成的票（W1-016／021／022／023／025／029／031／032／033／035／035.3／040／044）
       依 #114 方案 4 tripwire 收束進 canonical issue 後關票，既有 issue 以 observe／add（已授權），須新開 issue 者逐次向用戶申請；
       (3) hooks 加跑 -m wallclock、hooks 與 ticket、version-release 全套件（-rf）；(4) canonical sync-push 逐次授權；(5) finish 後比對
-      HEAD 與 origin/main（W1-045 AC1 承接）。0.4.2 新開未完成者前移 0.5.0。W1-051 乾淨 clone 4438 passed 且
+      HEAD 與 origin/main（W1-045 AC1 承接）。0.4.2 新開未完成者前移 0.5.0。
+      tripwire 收束完成（curator，兩條 AND 判準 13 張皆成立，皆有既有 issue，無須新開）：#55（021／023／033）、#97（022）、#101（025／029）、
+      #58（031／044／035／035.3）、#85（040／032）、#114 init（016）；13 張 close reason not_executable_knowledge_captured，reason-note 含 issue URL；
+      W1-031 另 --resolved-by W1-049。e1 以 gh api 抽驗 #55、#114 兩則 comment 存在。W1-036.3、W1-036 complete（main hooks 5356 passed＋48 skipped）。
+      W1-054 已合併（ticket 2.44.37），main ticket 全套件執行中。預計前移 0.5.0：001、048、052、055、056、058、059。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
