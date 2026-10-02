@@ -571,6 +571,9 @@ versions:
       W1-038.2 完成。W1-018 完成（version-release 2.10.4，main 220 passed）：網路命令經 run_git_network 逾時 300 s、GIT_TERMINAL_PROMPT=0、逾時 rc=124
       且 finish 非 0 中止並列出殘留 *.lock（不自動刪）；本地寫入不設逾時；pull 拆為 fetch＋merge FETCH_HEAD。代理人量到的 244 s 經 83 同負載
       交替對照（main 15～40 s 擺盪）判為機器負載，非回歸。load 50～100 期間 83 暫停加派跑套件的票，W1-041 結束後再派。
+      W1-047 完成（ticket 2.44.32；main 2682ab717 全量 collect 4433／4438〔5 deselected〕，4433 passed，686 s）；W1-038 以正常 complete 結案
+      （rc=0，W1-047 實地觸發）。W1-041 分析完成（26 個洩漏目錄歸三類繞過路徑；_liveness 被測試紀錄污染可使失效 hook 看似存活），
+      子票 W1-041.1～.3、附帶 W1-049 依上方追加列入必要；W1-048 不列入。W1-041.1 與 W1-049 並行派發（load 約 20）。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
          - 單一 topic「框架修復」（83 派發）。.claude 修改類並行 ≤2；同一 skill 的票序列執行，版號依合併順序取號（W1-032 規則）。
