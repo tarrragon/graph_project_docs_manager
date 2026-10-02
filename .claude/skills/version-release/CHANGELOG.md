@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 2.10.3 - 修復 `finish` 啟用下一版本的提交未推送：Step 3 推送 main 與 tag 之後，Activate Next Version 另建的提交（todolist 轉 active、版本檔 bump、CHANGELOG 骨架）原本留在本地，rc=0 且摘要宣稱「版本已推送到 main 分支」。新增 `publish_activation_commit`，啟用提交成功後比照 Step 3 推送 main；推送失敗時 stderr 列出未推送的提交 hash 與補救指令，`finish` 以 rc=1 結束。`print_summary` 新增 `activation_pushed` 參數，摘要結尾依實際推送結果產生。`tests/test_finish_activation_commit.py` 新增以真實 tmp repo 加 bare remote 為 fixture 的 E1 對照（推送成功與 remote 拒絕）。
+
 **Version**: 2.10.2 - 修復 `finish` 前移順序：`migrate_overflow_tickets` 依 ID 階層深度排序，父票先於子票遷移（修正前沿用 glob 字典序，`.3` 排在父票之前，子票單獨遷移時新父尚不存在，新父 `children` 漏列前移子票）。改順序後父票的子樹遷移會帶走仍為 pending 的子孫，逐張遷移前檢查來源是否仍存在：已不存在且目標版本有票的 `previous_ids` 含該來源 ID 者輸出 `[INFO]` 略過；已不存在且無任何新票指向者仍判失敗並中止（不把真實缺檔誤判為已搬移）。前移清單中的票若有 completed／closed 祖先（依 ticket skill 的子樹遷移規則留在原版本），輸出 `[WARNING]` 列出該票與留下的祖先。新增 `tests/test_finish_forward_migration_order.py`。
 **Last Updated**: 2026-10-02
 

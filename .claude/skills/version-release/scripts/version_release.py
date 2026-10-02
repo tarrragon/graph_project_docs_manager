@@ -4103,8 +4103,39 @@ def git_merge_and_push(
         return False
 
 
-def print_summary(version: str, all_ok: bool, dry_run: bool = False):
-    """打印完成摘要"""
+def publish_activation_commit(root: Path, head_before: str) -> bool:
+    """啟用提交成功後推送 main；HEAD 未前進（無新提交）時無需推送。
+
+    推送失敗時 stderr 列出未推送的提交 hash，回傳 False 供呼叫端以非 0 結束。
+    """
+    head_after = run_git_with_lock_retry(["rev-parse", "HEAD"], root).stdout.strip()
+    if head_after == head_before:
+        return True
+    result = subprocess.run(
+        ["git", "push", "origin", "main"],
+        cwd=root, capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode == 0:
+        print_success("啟用提交已推送到 main")
+        return True
+    report_git_failure("推送啟用提交", "git push origin main", result)
+    unpushed = subprocess.run(
+        ["git", "log", "--format=%H %s", f"{head_before}..HEAD"],
+        cwd=root, capture_output=True, text=True, timeout=10,
+    ).stdout.strip()
+    sys.stderr.write(
+        f"[ABORT] 啟用提交未推送：\n{unpushed}\n補救：排除原因後 git push origin main\n"
+    )
+    return False
+
+
+def print_summary(
+    version: str,
+    all_ok: bool,
+    dry_run: bool = False,
+    activation_pushed: bool = True,
+):
+    """打印完成摘要；結尾的推送狀態依實際推送結果產生"""
     print_section("完成摘要")
 
     if all_ok:
@@ -4119,7 +4150,10 @@ def print_summary(version: str, all_ok: bool, dry_run: bool = False):
             print_info("- 合併提交: 1", 1)
             print_info("- Tag 建立: 1", 1)
             print_info("- 分支清理: 2", 1)
-            print_info("\n[DONE] 版本已推送到 main 分支", 1)
+            if activation_pushed:
+                print_info("\n[DONE] 版本已推送到 main 分支", 1)
+            else:
+                print_warning("啟用提交未推送到遠端（見上方 stderr 的提交 hash）")
     else:
         print_error("發布失敗，請修正上述問題後重新執行")
 
@@ -4382,6 +4416,13 @@ def main():
             # 能讓 exit 前殘留守衛通過。以同一 baseline 差集比對，僅新增的
             # docs/ 或 CHANGELOG.md 才會被納入。
             print_section("Step: Commit Version Activation")
+            head_before_activation = (
+                run_git_with_lock_retry(
+                    ["rev-parse", "HEAD"], finish_root
+                ).stdout.strip()
+                if not dry_run
+                else ""
+            )
             if not commit_changes(
                 version,
                 dry_run,
@@ -4390,6 +4431,11 @@ def main():
                 extra_paths=resolve_activation_version_paths(finish_root),
             ):
                 print_warning("版本啟用變更提交失敗（請手動確認 todolist.yaml 狀態）")
+
+            # 啟用提交建立在 Step 3 推送之後，需自行推送，否則遠端停在啟用前
+            activation_pushed = dry_run or publish_activation_commit(
+                finish_root, head_before_activation
+            )
 
             # exit 前殘留守衛：不自動 add，避免吸入非本次 finish 產生的變更
             if not dry_run:
@@ -4401,7 +4447,10 @@ def main():
                     return 1
 
             # 打印摘要
-            print_summary(version, git_ok, dry_run)
+            print_summary(version, git_ok, dry_run, activation_pushed)
+
+            if not activation_pushed:
+                return 1
 
             if not git_ok:
                 print_warning(
