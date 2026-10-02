@@ -23,3 +23,4 @@ def test_real_project_root_fixture_opts_out(real_project_root):
     assert "CLAUDE_PROJECT_DIR" not in os.environ
     assert "HOOK_TEST_ISOLATION" not in os.environ
     assert real_project_root == Path(__file__).resolve().parents[3]
+

@@ -11,24 +11,50 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 
-@pytest.fixture(scope="session", autouse=True)
-def isolate_project_root(tmp_path_factory):
-    """session 級：把專案根重導到含 CLAUDE.md 的 tmp 目錄，防止日誌寫進真實 hook-logs。
+_ISOLATED = {"root": None, "patch": None}
 
-    Why：subprocess 執行的 hook 與自行解析根目錄的模組會繞過 isolate_hook_logs
-    的 monkeypatch，把測試記錄（含 _liveness）寫進真實 .claude/hook-logs，
-    污染 hook 健康檢查與 liveness 判斷（0.4.2-W1-041）。
-    機制：設 CLAUDE_PROJECT_DIR 指向 tmp，並設 HOOK_TEST_ISOLATION=1 使
-    hook_base.get_project_root 略過 linked worktree 偵測；子程序繼承環境。
-    session 結束由 MonkeyPatch 還原。斷言真實專案根的測試用 real_project_root。
+
+def pytest_configure(config):
+    """collection 之前就重導專案根（0.4.2-W1-041.1）。
+
+    Why：部分 hook 在模組層以 get_project_root() 計算日誌路徑常數
+    （例：agent-dispatch-validation-hook 的 _EVENTS_JSONL_PATH），test 檔 import
+    它時發生於 collection 階段，早於任何 fixture；只靠 session fixture 設環境變數
+    會讓這類常數仍指向真實 hook-logs（同族 IMP-BAL-018）。
     """
-    root = tmp_path_factory.mktemp("hook_project_root")
+    import tempfile
+
+    root = Path(tempfile.mkdtemp(prefix="hook_project_root_"))
     (root / "CLAUDE.md").write_text("# isolated test project root\n", encoding="utf-8")
     mp = pytest.MonkeyPatch()
     mp.setenv("CLAUDE_PROJECT_DIR", str(root))
     mp.setenv("HOOK_TEST_ISOLATION", "1")
-    yield root
-    mp.undo()
+    _ISOLATED["root"], _ISOLATED["patch"] = root, mp
+
+
+def pytest_unconfigure(config):
+    import shutil
+
+    if _ISOLATED["patch"] is not None:
+        _ISOLATED["patch"].undo()
+    if _ISOLATED["root"] is not None:
+        shutil.rmtree(_ISOLATED["root"], ignore_errors=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolate_project_root():
+    """session 級：回傳 pytest_configure 建立的隔離專案根（含 CLAUDE.md 的 tmp 目錄）。
+
+    Why：subprocess 執行的 hook 與自行解析根目錄的模組會繞過 isolate_hook_logs
+    的 monkeypatch，把測試記錄（含 _liveness）寫進真實 .claude/hook-logs，
+    污染 hook 健康檢查與 liveness 判斷（0.4.2-W1-041）。
+    機制：CLAUDE_PROJECT_DIR 指向 tmp，HOOK_TEST_ISOLATION=1 使
+    hook_base.get_project_root 略過 linked worktree 偵測；子程序繼承環境。
+    環境變數由 pytest_configure 設定（見其 docstring），本 fixture 僅斷言其存在。
+    斷言真實專案根的測試用 real_project_root。
+    """
+    assert _ISOLATED["root"] is not None, "pytest_configure 未建立隔離專案根"
+    return _ISOLATED["root"]
 
 
 @pytest.fixture
