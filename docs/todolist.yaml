@@ -631,7 +631,9 @@ versions:
       scope frozen（982f083cc）。dry-run 因 0.5.0-W1-001 已存在而判 FAIL（設計上 dry-run 遇撞號即中止、正式執行才自動改號），e1 先以
       ticket migrate 將 0.4.2-W1-001 移為 0.5.0-W1-003，dry-run 全程 rc=0。
       0.4.2 finish（2026-10-02，用戶授權）：rc=0，tag v0.4.2 → 38a0acfaf；前移 6 張至 0.5.0（048／052／055／056／058／059，編號不變）；
-      0.5.0 轉 active、pubspec 0.5.0。finish 後 HEAD 與 origin/main 皆 6359ce554，摘要「啟用提交已推送到 main」——W1-045 AC1 實地成立。W1-051 乾淨 clone 4438 passed 且
+      0.5.0 轉 active、pubspec 0.5.0。finish 後 HEAD 與 origin/main 皆 6359ce554，摘要「啟用提交已推送到 main」——W1-045 AC1 實地成立。
+      發佈庫（用戶授權）：ticket 2.44.37（ADD 4、MOD 8）、version-release 2.10.4（MOD 5），預覽皆無 remote-only 檔；skill-sync pull 61 個全部一致。
+      finish dry-run 撞號中止由 83 建 0.5.0-W1-060（ANA P3）承接，列入與否於 0.5.0 契約決定。W1-051 乾淨 clone 4438 passed 且
       hook-logs 全程未建立，待 clone 內 worktree 比對後合併。
       版本契約（2026-10-02，開工前寫定，實作後逐項對照）：
       1. 範圍與執行順序
