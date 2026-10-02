@@ -85,7 +85,7 @@ _TOP_LEVEL_HOOKS_PREFIX = PurePosixPath(".claude/hooks")
 # 是偵測用的寬鬆網，不是對撰寫者的填法建議；建議在 label 與 _format_block_message
 # 的範例段給出。
 _CATEGORY_KEYWORDS = {
-    # 「實地觸發」於 0.4.x 補入：實地觸發與 liveness 合寫一條的條目不含
+    # 「實地觸發」為後補字面：實地觸發與 liveness 合寫一條的條目不含
     # 其餘字面時會被誤判缺項；只放寬（不會使既有通過者翻為被擋）。
     "本 session 實地觸發確認": ["session", "重啟", "生效", "restart", "實地觸發"],
     "liveness 驗證方式": ["liveness", "存活驗證", "存活探針"],
