@@ -224,7 +224,12 @@ def _is_host_repo_commit(command: str, host_root: str) -> bool:
         return False
 
 
-def _touched_hook_filenames(command: str, host_root: str, logger) -> Set[str]:
+def _touched_hook_filenames(
+    command: str,
+    host_root: str,
+    logger,
+    diff_failures: Optional[List[str]] = None,
+) -> Set[str]:
     """回傳本次 commit 觸及的 `.claude/hooks/` 直接子層 `*.py` 檔名集合。
 
     兩來源聯集：
@@ -259,6 +264,12 @@ def _touched_hook_filenames(command: str, host_root: str, logger) -> Set[str]:
                 filenames.add(m.group(1))
     elif not success:
         logger.warning("無法讀取 staged 檔案清單（%s），僅依賴命令字面推導", output)
+        sys.stderr.write(
+            f"[hooks-test-gate] 無法讀取 staged 檔案清單（{output}），"
+            "僅依賴命令字面推導，放行但可能漏判\n"
+        )
+        if diff_failures is not None:
+            diff_failures.append(str(output))
 
     for segment in _iter_literal_pathspec_segments(command):
         for m in _HOOK_PY_LITERAL_RE.finditer(segment):
@@ -603,6 +614,16 @@ def _build_untested_reminder(untested: List[str]) -> str:
     )
 
 
+def _build_diff_failure_reminder(reason: str) -> str:
+    return (
+        "[Hooks 測試 gate 提醒] 無法讀取 staged 檔案清單"
+        f"（git diff --cached 失敗：{reason}），staged 清單未經驗證。\n"
+        "本次僅依命令字面推導被改動的 hook 檔，已 staged 但字面未列出的 "
+        ".claude/hooks/*.py 可能漏判而未跑對應測試（放行，不阻擋）。\n"
+        "建議確認 git 狀態後，手動執行對應 hooks 測試再 commit。"
+    )
+
+
 def _build_verification_error_message(exc: BaseException) -> str:
     return (
         "Hooks 目標測試 gate：commit 被阻止（驗證階段發生例外）\n\n"
@@ -615,8 +636,18 @@ def _build_verification_error_message(exc: BaseException) -> str:
     )
 
 
-def _verify_touched_hooks(touched, host_root: str, input_data: dict, logger) -> int:
-    """驗證階段：解析對應測試、執行、輸出判定。例外由 main 統一轉 deny。"""
+def _verify_touched_hooks(
+    touched,
+    host_root: str,
+    input_data: dict,
+    logger,
+    extra_reminders: Optional[List[str]] = None,
+) -> int:
+    """驗證階段：解析對應測試、執行、輸出判定。例外由 main 統一轉 deny。
+
+    extra_reminders：偵測階段累積的提醒（如 staged 清單讀取失敗），
+    與本階段提醒合併為單一 additional_context 輸出。
+    """
     hooks_dir = Path(host_root) / ".claude" / "hooks"
     tested, untested = _resolve_test_paths(touched, hooks_dir)
 
@@ -639,7 +670,7 @@ def _verify_touched_hooks(touched, host_root: str, input_data: dict, logger) -> 
             )
             return 0
 
-    reminders = []
+    reminders = list(extra_reminders or [])
     if unverified:
         logger.warning("總預算耗盡，放行但以下檔案未驗證: %s", unverified)
         reminders.append(_build_unverified_reminder(tested, unverified))
@@ -688,15 +719,27 @@ def main() -> int:
         logger.debug("commit 目標非本專案，跳過（範疇邊界：不干預跨 repo）")
         return 0
 
-    touched = _touched_hook_filenames(command, host_root, logger)
+    diff_failures: List[str] = []
+    touched = _touched_hook_filenames(command, host_root, logger, diff_failures)
+    extra_reminders = [_build_diff_failure_reminder(r) for r in diff_failures]
     if not touched:
+        if extra_reminders:
+            # staged 清單不可得且無字面來源：fail-open 放行，但提醒必須可見
+            emit_hook_output(
+                "PreToolUse",
+                additional_context="\n\n".join(extra_reminders),
+                input_data=input_data,
+            )
+            return 0
         logger.debug("此次 commit 未觸及 .claude/hooks 下直接子層 *.py，允許")
         return 0
 
     # 以上為偵測階段，維持 fail-open（缺陷不得擋下全部 Bash 呼叫）；
     # 以下為驗證階段，無法驗證等同未通過，任何例外 fail-closed 為 deny。
     try:
-        return _verify_touched_hooks(touched, host_root, input_data, logger)
+        return _verify_touched_hooks(
+            touched, host_root, input_data, logger, extra_reminders
+        )
     except Exception as exc:  # noqa: BLE001 - 驗證階段 fail-closed
         logger.critical("驗證階段例外，無法驗證，判定為未通過: %s", exc, exc_info=True)
         sys.stderr.write(
