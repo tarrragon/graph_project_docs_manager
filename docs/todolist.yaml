@@ -585,6 +585,9 @@ versions:
            且母票依防護性 ANA 規則維持 in_progress 至子票終態（in_progress 擋 finish）；W1-049（test_lease 的 NOW 於 import 時固定，
            套件超過 30 分鐘即 4 項假紅）直接影響第 2 欄「框架套件全綠」的判讀，由 P3 升 P2。W1-048（ANA P3，其餘 list_tickets(version)
            呼叫點盤點）不列入。
+           W1-050（IMP P2，同型模組層 NOW 另兩檔，風險由 grep 推斷未實測；e1 裁決 2026-10-02）：依證據列入，不預先列入。
+           其 AC1（時鐘撥快超過門檻實跑）先做；任一檔實測變紅即設 scope_blocker 列為必要（與 W1-049 同判準：已觀測到假紅）；
+           兩檔皆不紅則附實測證據結案。判準理由：本版必要工作已由 5 張增至 9 張，追加改以實測為門檻，不以推斷風險追加。
          - P3 十四張盡力而為。finish 時未完成者已是第二次前移，依 #114 方案 4 tripwire 收束進 canonical issue 後關票，不再前移。
            例外：W1-035.3 的資料來自 flutter_balance 實際提交日誌，非本專案可控；finish 時若未取得，同樣依 tripwire 收束。
          - 同檔序列：version-release（W1-045 → W1-018）；content guard（W1-025、W1-029）；
