@@ -81,7 +81,7 @@ Notification / TeammateIdle / ConfigChange / CwdChanged / FileChanged / Worktree
 | Handler 選擇 | 預設順序 `command` -> `http` -> `prompt` -> `agent`，越右成本越高需說明理由 |
 | `if` 條件粗篩 | `if` 用於避免不相關工具觸發（如 `if: "Bash(git *)"`）；詳細判斷交給 handler，不硬塞進 `if` |
 
-> 守衛的失敗方向（deny 輸出失敗不得變成放行、fail_closed 適用範圍）見 `.claude/references/hook-architect-technical-reference.md`「deny 輸出失敗語意」章節。
+> 守衛的失效方向（deny 輸出失敗不得變成放行、fail_closed 適用範圍）見 `.claude/references/hook-architect-technical-reference.md`「deny 輸出失敗語意」章節。
 > Event 選擇完整決策流程、handler 對照表、`if` 條件情境表見衛星檔「Event 選擇決策流程」章節。
 > 完整錯誤模式：`.claude/error-patterns/architecture/ARCH-019-hook-event-timing-mismatch.md`；Event input/output 規範：`.claude/references/hook-architect-technical-reference.md`。
 

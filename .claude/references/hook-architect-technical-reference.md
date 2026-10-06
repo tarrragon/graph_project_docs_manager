@@ -806,7 +806,7 @@ if __name__ == "__main__":
 
 ## deny 輸出失敗語意
 
-守衛的失效方向必須在設計期決定：「決定擋下、但輸出 deny 的動作失敗」不得退化為放行。Claude Code 只在 exit 0 且 stdout 含 deny JSON、或 exit 2 時才擋下；輸出失敗（stdout 關閉、BrokenPipe、編碼錯誤）的例外由 `run_hook_safely`（預設 `fail_closed=False`）接住並回 exit 1；exit 1 屬非阻擋錯誤，結果仍是放行。
+守衛的失效方向必須在設計期決定：「決定擋下、但輸出 deny 的動作失敗」不得退化為放行。以 PreToolUse 為例，Claude Code 只在 exit 0 且 stdout 含 deny JSON、或 exit 2 時才擋下；輸出失敗（stdout 關閉、BrokenPipe、編碼錯誤）的例外由 `run_hook_safely`（預設 `fail_closed=False`）接住並回 exit 1；exit 1 屬非阻擋錯誤，結果仍是放行。
 
 ### 三項必載
 
@@ -822,7 +822,7 @@ if __name__ == "__main__":
 
 - [ ] **E1 對照**：同一組 fixture 下各模擬一次「deny 輸出失敗」與「allow 輸出失敗」，斷言結果不同（deny 失敗為 exit 2 且 stderr 有訊息；allow 失敗為原例外 re-raise，不得 exit 2）。只測 deny 單邊時，兜底退化為對所有輸出失敗一律 exit 2 仍全綠
 - [ ] **E2 正向對照輸入**：測試必含一個已知該被擋下的輸入，注入輸出失敗（如 stdout 換成 write 時拋 `BrokenPipeError` 的物件），斷言 exit code 為 2。只餵正常輸入的測試分辨不出兜底在工作還是已死
-- [ ] 自帶 except-all 的守衛：含一個讓兜底拋 SystemExit 的輸入，斷言 SystemExit 穿出 except-all
+- [ ] 自帶 except-all 的守衛：含一個讓兜底拋 SystemExit 的輸入，斷言 SystemExit 穿出 except-all。否則 except-all 吞掉 SystemExit 時，測試照樣全綠
 
 ---
 
