@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.43（本地變更）— `ticket track tree`／`chain` 補上 `children` 欄位指向的跨版本子票（遞迴），載入不到者以 `(not_found)` 節點標示而非靜默省略；`track full` 的 spawned 遞迴改為先依 ID 前綴推導版本載入、退回目前版本（沿用 `extract_version_from_ticket_id`，與 acceptance 審計同一套推導）。原因：前移規則讓已完成子孫留在舊版本，單一版本解析使舊版本子票從樹中消失、舊版本 spawned 顯示 not_found。同版本樹輸出不變，循環引用防護不變；文件同步檢查：SKILL.md 與 pm-rules 無此輸出細節描述。測試 `tests/test_track_query_cross_version_tree.py`：修前 5 紅 1 綠（E1 舊版本子票與 spawned 缺漏、E2 對照 not_found 標示），修後全綠。
+
 **Version**: 2.44.42（本地變更）— acceptance 審計的 `_has_impl_or_adj_child` 改為跨版本載入 children：先以子票 ID 前綴推導版本，載入不到退回父票版本（比照 `lifecycle._find_non_terminal_by_id`，重用 `extract_version_from_ticket_id`）。原因：前移規則讓已完成子孫留在舊版本，只用父票版本載入會把跨版本 IMP/ADJ 子票誤判為不存在。純 bug fix，CLI 子命令與旗標語意不變，無文件同步需求。測試 `tests/test_acceptance_auditor_cross_version_children.py`：E1 同批 fixture 舊版本 IMP／ADJ 子票修前回 False、修後回 True，且與不存在 ID 的結果不同；E2 舊版本 ANA 子票與不存在 ID 仍回 False；同版本子票行為不變。
 
 **Version**: 2.44.41（本地變更）— `ticket migrate --dry-run` 遇目標撞號改為 rc=0 預覽改號目標（單票與子樹路徑皆然），輸出 `[WARNING]` 改號預覽與機器可讀的 `[MIGRATE-MAP] <原目標> -> <實際目標>` 行，預告正式執行結果而不再中止 finish 的 dry-run。批次內以 `reserved` 保留集合避免兩票預覽到同一目標（批次模式程序內共用；跨程序以新旗標 `--reserve-id <ID>`（可重複）帶入）；正式執行改號時同樣輸出 `[MIGRATE-MAP]` 行。`--force-overwrite` 的 dry-run 語意不變（可放行 `[WARNING]`）。原因：同一撞號輸入 dry-run rc=1 中止、正式執行卻自動改號續行，dry-run 無法預告正式結果。測試：`tests/test_migrate_collision.py::TestDryRunCollisionPreview`——E1 同批 fixture 撞號與不撞號 dry-run 輸出不同（修前撞號案 rc=1）、E2 兩票目標相同的連環撞號預覽目標彼此不同且與正式執行落地 ID 一致（修前預覽目標相同或無標記）；既有斷言 dry-run 撞號 rc=1 的兩個測試依新語意改為 rc=0。
