@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-10-06"
-version: "1.65"
+updated: "2026-10-07"
+version: "1.66"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -522,6 +522,7 @@ PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶�
 | chip 類固有高（`Badge`、`SwimlaneNode`、`RelationItem`） | `AppFontSize.caption`（或 `body`）行高 + 2 × `Space.xxs` |
 | 可點元件最小高 | `LayoutSize.hitTargetMin`（§1 最小命中區）；固有高小於之者以透明命中區補足，不放大視覺 |
 | 列高 | 結構性列 `LayoutSize.rowHeightDense`；扁平內容列 `LayoutSize.rowHeightRelaxed`（`lib/tokens/layout.dart` 歸併表） |
+| 一字元 | 該文字 slot 字級 token 的 1em（`AppFontSize.*` 值本身，不實測字形；CJK 全形字寬約等於 1em）；最小尺寸列的「一字元」皆依此定義，多字級元件取決定最小寬之文字 slot 的字級（`0.5.0-W1-071` 裁決） |
 | 邊框線寬 | Flutter `Divider.thickness` / `BorderSide.width` 預設值（1 邏輯像素），不另建 token（既有 `lib/app/shell.dart` 慣例；提案） |
 | 「每種尺寸下的行為」 | 兩種測試尺寸 `kMinWindowSize`、`kDesignSize`（§1）；元件本身不感知視窗尺寸，行為差異全部來自所在容器給的約束，故條目內寫「維持（約束由容器決定）」即為落成值 |
 
@@ -1618,7 +1619,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 填滿父容器（寬，側欄內距內）；高固有 |
-| 最小尺寸 | 寬：2 × `Space.md`（自身水平內距）+ `LayoutSize.iconLg` + `Space.sm` + 一字元；高：`LayoutSize.iconLg` + 2 × `Space.sm`（不小於 `LayoutSize.hitTargetMin`） |
+| 最小尺寸 | 寬：2 × `Space.md`（自身水平內距）+ `LayoutSize.iconLg` + `Space.sm` + 一字元 + 省略號（一字元見 §4.0.3，取 `AppFontSize.body`）；高：`LayoutSize.iconLg` + 2 × `Space.sm`（不小於 `LayoutSize.hitTargetMin`） |
 | 最小命中區 | `LayoutSize.hitTargetMin` |
 | 最大尺寸 | 寬：`LayoutSize.sidebarWidth` − 2 × `Space.sm`；高同最小 |
 | `kMinWindowSize` 下的行為 | 維持（側欄寬固定） |
@@ -1743,7 +1744,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 填滿父容器（寬，側欄內距內）；高固有 |
-| 最小尺寸 | 寬：2 × `Space.sm`（自身水平內距）+ `LayoutSize.iconLg` + 2 × `Space.sm`（圖示與文字、文字與展開圖示間距）+ 一字元 + `LayoutSize.iconMd`；高：`LayoutSize.iconLg` + 2 × `Space.sm`（不小於 `LayoutSize.hitTargetMin`） |
+| 最小尺寸 | 寬：2 × `Space.sm`（自身水平內距）+ `LayoutSize.iconLg` + 2 × `Space.sm`（圖示與文字、文字與展開圖示間距）+ 一字元 + 省略號（一字元見 §4.0.3，取 `AppFontSize.body`）+ `LayoutSize.iconMd`；高：`LayoutSize.iconLg` + 2 × `Space.sm`（不小於 `LayoutSize.hitTargetMin`） |
 | 最小命中區 | `LayoutSize.hitTargetMin` |
 | 最大尺寸 | 寬：`LayoutSize.sidebarWidth` − 2 × `Space.sm`；高同最小 |
 | `kMinWindowSize` 下的行為 | 維持 |
@@ -1840,7 +1841,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
-`isDegraded` 為 `true` 時，摘要列後加 `Badge.tag`（`degradedSchemaShortLabel`），enabled／selected／disabled 三態皆適用；徽章本身不影響 `enabled` / `selected` / `disabled` 判定（`0.1.0-W3-335.38` S-34）。徽章與摘要同一列、接在摘要之後，不另起一列（尺寸契約最大高未計徽章列）；寬度不足時摘要先截斷，徽章維持固有寬度（`0.5.0-W3-001` NC-2）。
+`isDegraded` 為 `true` 時，摘要列後加 `Badge.tag`（`degradedSchemaShortLabel`），enabled／selected／disabled 三態皆適用；徽章本身不影響 `enabled` / `selected` / `disabled` 判定（`0.1.0-W3-335.38` S-34）。徽章與摘要同一列、接在摘要之後，不另起一列（尺寸契約最大高未計徽章列）；寬度不足時摘要先截斷，徽章維持固有寬度（`0.5.0-W3-001` NC-2）。摘要與徽章間距為 `Space.sm`。可用寬連徽章固有寬都容納不下時，摘要縮至 0 後才截斷徽章（徽章寬上限 = 摘要列可用寬 − `Space.sm`）；優先序為名稱 > 徽章 > 摘要（`0.5.0-W1-071` 裁決）。
 
 #### 回饋契約
 
@@ -1867,7 +1868,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 填滿父容器（寬，浮層內距內）；高固有 |
-| 最小尺寸 | 寬：2 × `Space.sm`（自身水平內距）+ `LayoutSize.iconLg` + `Space.sm` + 一字元；高：`AppFontSize.body` 行高 + `Space.xxs` + `AppFontSize.caption` 行高 + 2 × `Space.sm`（不小於 `LayoutSize.hitTargetMin`） |
+| 最小尺寸 | 寬：2 × `Space.sm`（自身水平內距）+ `LayoutSize.iconLg` + `Space.sm` + 一字元 + 省略號（一字元見 §4.0.3，由名稱列決定，取 `AppFontSize.body`）；高：`AppFontSize.body` 行高 + `Space.xxs` + `AppFontSize.caption` 行高 + 2 × `Space.sm`（不小於 `LayoutSize.hitTargetMin`） |
 | 最小命中區 | `LayoutSize.hitTargetMin` |
 | 最大尺寸 | 寬：`LayoutSize.overlayWidth` − 2 × `Space.sm`；高：最小高 + `reason` 兩行 |
 | `kMinWindowSize` 下的行為 | 維持（浮層寬固定） |
@@ -6429,6 +6430,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.66 | 2026-10-07 | `0.5.0-W1-071`（e1 裁決，2026-10-07）：(1) §4.0.3 新增「一字元」定義（該文字 slot 字級的 1em）；4.7／4.8／4.9 最小尺寸改為「一字元 + 省略號」並引用 §4.0.3、字級取 `AppFontSize.body`；(2) 4.9 摘要與降級徽章間距定為 `Space.sm`；(3) 4.9 徽章固有寬亦放不下時，摘要縮至 0 後才截斷徽章（名稱 > 徽章 > 摘要）。(1)–(3) 與現行實作一致 |
 | 1.65 | 2026-10-06 | `0.5.0-W3-001` 派發前 NeedsContext 兩項（e1 裁決）：4.9 RecentProjectItem——(1) NC-2：降級徽章與摘要同一列、接在摘要之後，寬度不足時摘要先截斷、徽章維持固有寬度（依據：尺寸契約最大高為「最小高 + `reason` 兩行」，未計徽章列）；(2) NC-1：內容政策「降級標籤」列的最長測試文案由 `TestCopy.longToken` 改為 `degradedSchemaShortLabel` 的 zh／en 實際值於最小寬下截斷不溢位（標籤文字由元件內部取 l10n，slot 只有 `isDegraded: bool`，不為測試注入另開文字 slot） |
 | 1.64 | 2026-09-30 | `0.4.0-W3-001`（component-contract-design 3.13.0 路徑 C 步驟 3〈佈局輔助的歸屬轉置〉；本專案頁面層掃描見票面）：(1) 4.30 Panel `default` 的 `children` 拆為 `leading`（0..4）／`fill`（恰 1）／`trailing`（0..2）三個具名 slot，「恰一個填滿」由 `fill` 的單一型別保證，呼叫端不再包 `Expanded`；`scrollable` 維持 `children`。變體表、slot 契約、測試點、反例同步。原條文「子件中恰一個填滿」在三處以 `EmptyState.section` 為主體的面板上實際為 0 個填滿子件，改由 `fill` 承載後渲染不變（`section` 靠上對齊）；(2) 4.14 TableColumnHeader 新增 `blank` 變體（無文字、無語意節點），取代表頭空白格的 `SizedBox.shrink()`（用戶裁決 B：不包子件的空節點不是佈局輔助；表頭空白格屬元件層缺口）；`label` 必填性、朗讀標籤、測試點同步 |
 | 1.63 | 2026-09-30 | `0.3.3-W3-405`（承 `0.3.3-W3-404` 稽核浮出）：4.26 slot 契約 `message` 列的呼叫端清單與 i18n 訊息列補 `workspaceNotRemembered`（選定成功但偏好設定寫入失敗，對齊 SPEC-003 v1.53 §3.7 新增列與 §2.13 列 15）。該 key 已登於 §4.0.6〈1.56 補登〉表，本次只補 4.26 內的兩處清單 |
