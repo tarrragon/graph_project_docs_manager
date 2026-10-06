@@ -610,6 +610,11 @@
     "description": "SPEC-004 §4.9：目前專案朗讀標籤"
   },
 
+  "degradedSchemaShortLabel": "內建型別表",
+  "@degradedSchemaShortLabel": {
+    "description": "SPEC-004 §4.9：最近專案項降級徽章（isDegraded 為 true 時，S-34）"
+  },
+
   "projectSummaryLabel": "{nodes} 節點 · {tickets} 票",
   "@projectSummaryLabel": {
     "description": "SPEC-004 §4.9：專案摘要文案",

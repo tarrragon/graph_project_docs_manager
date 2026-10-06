@@ -29,6 +29,7 @@ import 'badge.dart';
 /// | [enabled] | 是 | 可用性；為 `false` 時 [reason] 必填 |
 /// | [isCurrent] | 是 | 是否為目前開啟的專案（`selected` 態） |
 /// | [reason] | `enabled` 為 `false` 時必填 | disabled 常駐原因（非 tooltip） |
+/// | [isDegraded] | 否（預設 `false`） | 為 `true` 時摘要後加降級徽章 |
 /// | [onTap] | 是 | 點選回呼；`enabled` 為 `false` 時不呼叫 |
 /// | [testKey] | 是 | `card-switcher-recent-<index>` |
 class RecentProjectItem extends StatelessWidget {
@@ -42,6 +43,7 @@ class RecentProjectItem extends StatelessWidget {
     required this.testKey,
     this.health,
     this.reason,
+    this.isDegraded = false,
   }) : assert(
          enabled || reason != null,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
@@ -66,6 +68,11 @@ class RecentProjectItem extends StatelessWidget {
   /// disabled 常駐原因（同列文字，非 tooltip；呼叫端取
   /// `projectUnavailableReasonLabel` 值）。`enabled` 為 `false` 時必填。
   final String? reason;
+
+  /// 是否以 App 內建型別表檢視（SPEC-004 4.9，S-34）。為 `true` 時摘要
+  /// 同列之後加 `Badge.tag`（`degradedSchemaShortLabel`）；不影響
+  /// `enabled` / `selected` / `disabled` 判定與 [onTap]。
+  final bool isDegraded;
 
   /// 點選回呼；`enabled` 為 `false` 時不呼叫。
   final VoidCallback onTap;
@@ -110,20 +117,18 @@ class RecentProjectItem extends StatelessWidget {
         hint: _isDisabled ? reason : null,
         excludeSemantics: true,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            minHeight: LayoutSize.hitTargetMin,
-          ),
+          constraints: const BoxConstraints(minHeight: LayoutSize.hitTargetMin),
           child: InkWell(
             onTap: enabled ? onTap : null,
             borderRadius: BorderRadius.circular(Radius.md),
-            child: _buildContent(),
+            child: _buildContent(l10n),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(AppLocalizations l10n) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.sm),
       decoration: BoxDecoration(
@@ -143,7 +148,7 @@ class RecentProjectItem extends StatelessWidget {
                 color: _iconColor,
               ),
               SizedBox(width: Space.sm),
-              Expanded(child: _buildTextBlock()),
+              Expanded(child: _buildTextBlock(l10n)),
               if (health != null) ...[SizedBox(width: Space.sm), health!],
             ],
           ),
@@ -161,15 +166,46 @@ class RecentProjectItem extends StatelessWidget {
     );
   }
 
-  Widget _buildTextBlock() {
+  Widget _buildTextBlock(AppLocalizations l10n) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AppText(name, maxLines: 1, emphasis: true, tone: _nameTone),
         SizedBox(height: Space.xxs),
-        AppText(summary, variant: AppTextVariant.caption, tone: _summaryTone),
+        isDegraded ? _buildSummaryWithDegradedBadge(l10n) : _buildSummary(),
       ],
+    );
+  }
+
+  Widget _buildSummary() {
+    return AppText(
+      summary,
+      variant: AppTextVariant.caption,
+      tone: _summaryTone,
+    );
+  }
+
+  /// 摘要與降級徽章同列（SPEC-004 4.9，NC-2）：寬度不足時摘要先截斷，
+  /// 徽章維持固有寬度；徽章寬上限為本列可用寬，超出時徽章文字截斷。
+  Widget _buildSummaryWithDegradedBadge(AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final badgeMaxWidth = (constraints.maxWidth - Space.sm).clamp(
+          0.0,
+          double.infinity,
+        );
+        return Row(
+          children: [
+            Flexible(child: _buildSummary()),
+            SizedBox(width: Space.sm),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: badgeMaxWidth),
+              child: Badge.tag(label: l10n.degradedSchemaShortLabel),
+            ),
+          ],
+        );
+      },
     );
   }
 }
