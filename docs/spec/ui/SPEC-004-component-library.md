@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-09-30"
-version: "1.64"
+updated: "2026-10-06"
+version: "1.65"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -1840,7 +1840,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
-`isDegraded` 為 `true` 時，摘要列後加 `Badge.tag`（`degradedSchemaShortLabel`），enabled／selected／disabled 三態皆適用；徽章本身不影響 `enabled` / `selected` / `disabled` 判定（`0.1.0-W3-335.38` S-34）。
+`isDegraded` 為 `true` 時，摘要列後加 `Badge.tag`（`degradedSchemaShortLabel`），enabled／selected／disabled 三態皆適用；徽章本身不影響 `enabled` / `selected` / `disabled` 判定（`0.1.0-W3-335.38` S-34）。徽章與摘要同一列、接在摘要之後，不另起一列（尺寸契約最大高未計徽章列）；寬度不足時摘要先截斷，徽章維持固有寬度（`0.5.0-W3-001` NC-2）。
 
 #### 回饋契約
 
@@ -1880,7 +1880,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `name` | 否 | 1 | 截斷 | `TestCopy.projectName`；`TestCopy.longToken` |
 | `summary` | 否 | 1 | 截斷 | `projectSummaryLabel`（nodes 237、tickets 2419；en 較長）；`TestCopy.longEn` |
 | `reason`（disabled） | 是 | 2 | 末行截斷（提案：浮層寬有限，原因須可讀） | `projectUnavailableReasonLabel`（reason 代入 `probeTimeoutReason`）；`TestCopy.longZh` |
-| 降級標籤（`isDegraded`） | 否 | 1 | 截斷 | `degradedSchemaShortLabel`；`TestCopy.longToken`（`0.1.0-W3-335.38` S-34） |
+| 降級標籤（`isDegraded`） | 否 | 1 | 截斷 | `degradedSchemaShortLabel` 的 zh／en 實際值，於最小寬下截斷不溢位（`0.1.0-W3-335.38` S-34）。標籤文字由元件內部取 l10n、slot 只有 `isDegraded: bool`，`TestCopy` 無法注入，故不列 `TestCopy.longToken`（`0.5.0-W3-001` NC-1） |
 
 #### slot 契約
 
@@ -6429,6 +6429,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.65 | 2026-10-06 | `0.5.0-W3-001` 派發前 NeedsContext 兩項（e1 裁決）：4.9 RecentProjectItem——(1) NC-2：降級徽章與摘要同一列、接在摘要之後，寬度不足時摘要先截斷、徽章維持固有寬度（依據：尺寸契約最大高為「最小高 + `reason` 兩行」，未計徽章列）；(2) NC-1：內容政策「降級標籤」列的最長測試文案由 `TestCopy.longToken` 改為 `degradedSchemaShortLabel` 的 zh／en 實際值於最小寬下截斷不溢位（標籤文字由元件內部取 l10n，slot 只有 `isDegraded: bool`，不為測試注入另開文字 slot） |
 | 1.64 | 2026-09-30 | `0.4.0-W3-001`（component-contract-design 3.13.0 路徑 C 步驟 3〈佈局輔助的歸屬轉置〉；本專案頁面層掃描見票面）：(1) 4.30 Panel `default` 的 `children` 拆為 `leading`（0..4）／`fill`（恰 1）／`trailing`（0..2）三個具名 slot，「恰一個填滿」由 `fill` 的單一型別保證，呼叫端不再包 `Expanded`；`scrollable` 維持 `children`。變體表、slot 契約、測試點、反例同步。原條文「子件中恰一個填滿」在三處以 `EmptyState.section` 為主體的面板上實際為 0 個填滿子件，改由 `fill` 承載後渲染不變（`section` 靠上對齊）；(2) 4.14 TableColumnHeader 新增 `blank` 變體（無文字、無語意節點），取代表頭空白格的 `SizedBox.shrink()`（用戶裁決 B：不包子件的空節點不是佈局輔助；表頭空白格屬元件層缺口）；`label` 必填性、朗讀標籤、測試點同步 |
 | 1.63 | 2026-09-30 | `0.3.3-W3-405`（承 `0.3.3-W3-404` 稽核浮出）：4.26 slot 契約 `message` 列的呼叫端清單與 i18n 訊息列補 `workspaceNotRemembered`（選定成功但偏好設定寫入失敗，對齊 SPEC-003 v1.53 §3.7 新增列與 §2.13 列 15）。該 key 已登於 §4.0.6〈1.56 補登〉表，本次只補 4.26 內的兩處清單 |
 | 1.62 | 2026-09-30 | `0.3.3-W3-395`（承 `0.3.3-W3-386` 分流）：ARB 同步四項 key 後規格對齊——§4.0.6〈1.56 補登〉表 `noUcNodesMessage` 列改登 `emptyUcMessage`（同文案；UC Flow 無 UC 改用 4.21 `message` 列既列的 key，`noUcNodesMessage` 自 ARB 移除）。`swimlanePanelTitle`（ARB 新增）、`matrixSubtotalA11yLabel`（MatrixGrid 列首 label「{domain}，小計 N」）本檔既有列已符合，未改；`backToDomainAction` 自 ARB 移除，4.4 `label` 列與 4.21 動作列既有「已移除」註記維持 |
