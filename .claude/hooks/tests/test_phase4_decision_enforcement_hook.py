@@ -756,8 +756,6 @@ def test_dist_5_多個_marker_各自對應():
 
 def _run_main_with_stdin(stdin_payload, monkeypatch, capsys):
     """呼叫 main() 並捕捉 stdin/stdout/stderr + exit。"""
-    # 隔離外部 effort 環境變數：effort=low 會抑制 warn/info audit 輸出，使斷言依賴執行環境
-    monkeypatch.delenv("CLAUDE_EFFORT", raising=False)
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(stdin_payload)))
     rc = main()
     captured = capsys.readouterr()
