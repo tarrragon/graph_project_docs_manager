@@ -681,6 +681,33 @@ versions:
     notes: |
       2026-09-29 依「major 起始即定 minor 清單」登記（0.4.0-W1-040；PROP-005 §0.5）。
       阻擋四項見 PROP-005 §0.5；SPEC 於本版規劃波產出。
+      開工前框架調整（2026-10-05，用戶裁示）：W1-061 代理人 model 分層——實作層 sonnet[1m]、規劃與審查層 opus[1m]，
+      canonical v2.76.0；代理人定義不在 session 中途重新載入，各 session 重啟後才生效。
+      版本契約第一段（2026-10-06，用戶裁決分兩段寫：本段為規劃波，第二段於 SPEC 寫定後、實作票派發前補上第 2～5 欄的實作部分）：
+      1. 範圍與執行順序
+         - topic 1 Layout（PROP-005 §0.5，e1 主導）：四項阻擋逐項由用戶裁決（跨度大者走 WRAP），裁決記入 tech-decisions 並同步
+           domain-map §9；順序：矩陣列的來源 → domain 名稱大小寫的權威寫法 → 泳道布局演算法 → 間接依賴判定式 → lib 分層命名與
+           「路徑模式 → domain」對照表內容。全部裁決後走 version-bootstrap（SPEC → domain map → 資料契約判定 → UC／traceability →
+           Step 4.5 地基波判定 → Step 5 測試設計 → Step 6 建實作票）。W1-001（P2，domain_dependency 與 FlowStep 邊）為阻擋 2 的
+           分析輸入，列為 finish 必要；W1-002（P3，PROP-005 heavy 評估章節）盡力而為。
+         - 產品票：W3-001（RecentProjectItem 降級徽章，不涉 Domain 視圖）可於第一段生效後派發；W3-002、W3-003 改 domain_view 的
+           state／providers，與 Layout 重寫範圍重疊，併入 Step 6 依 SPEC 重排，第二段寫定前不派發。
+         - topic 2 框架修復（83 派發，盡力而為，不列 finish 必要）：W1-003、048、052、055、056、058、059、060、062。
+           finish 時未完成者：W1-060、W1-062 為本版新開，依一般規則前移；其餘為第二次前移，依 #114 方案 4 收束進 canonical issue
+           後關票。.claude 修改類並行 ≤2；同一 skill 的票序列執行，版號依合併順序取號。
+         - topic 3 代理人分層評估：W1-063（ANA P1，scope_blocker 已設，finish 必要；用戶裁決加 opus 對照組）。實驗協定與預寫
+           tripwire 見票面 Solution，執行中不改判準。實作層每次派發完成，派發方（e1、83、4a）於 W1-063 Test Results 追加一列；
+           成對實驗至少 5 組，優先取 topic 1 的實作票，不足以 topic 2 補。
+         - 三個 topic 以外的新發現依 2026-09-29 規則處理，不自動收進本版。
+      2. 預期變更（第一段）
+         - 規劃波只產出文件（tech-decisions、domain-map、SPEC、UC、traceability、測試規格），不動 lib/、test/、integration_test/；
+           例外為 W3-001，依 SPEC-004 4.9 新增 slot 與 ARB key，預期變紅僅限 RecentProjectItem 相關 widget 測試。
+         - 框架套件只增不減，基線取第二段寫定時的 main 實測值。
+         - W1-063 實驗期間 .claude/agents 的正式定義不變；臨時對照定義不進版控、結論後刪除。
+      3. 驗證方式（第一段）：規劃波以 /spec validate、check_domain_coverage、doc query 機械驗證；W1-063 依票面協定，
+         成對實驗以盲審比較。
+      4. 人工實測：第二段決定（Layout 含點擊交叉格定位泳道，預期需要 App 實機驗證）。
+      5. 日誌事件：第二段決定。第一段期間未列於此的票不新增、不改變日誌事件；若實作需新增須回報 e1 補入本欄。
 
   - version: "0.6.0"
     codename: "Screens"
