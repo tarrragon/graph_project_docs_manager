@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.44（本地變更）— `create --blocked-by` 的循環偵測改以跨版本取票建圖：`validate_blocked_by_references` 原只以 `list_tickets(單一版本)` 建圖，環經過其他版本的票時在版本邊界斷開而被漏判（實測：新版本票與舊版本票互為 blockedBy 時驗證通過）。現行：從 blockedBy 沿依賴遍歷，缺席於版本內集合的票以 `resolve_blocker` 跨版本載入後併入圖。純 bug fix，CLI 子命令與旗標語意不變，無文件同步需求。測試 `tests/test_blocked_by_cross_version_cycle.py`：E1 兩節點與三節點跨版本環修前驗證通過、修後回 BLOCKED_BY_CYCLE；E2 跨版本無環仍通過、同版本環仍被擋。
+
 **Version**: 2.44.43（本地變更）— `ticket track tree`／`chain` 補上 `children` 欄位指向的跨版本子票（遞迴），載入不到者以 `(not_found)` 節點標示而非靜默省略；`track full` 的 spawned 遞迴改為先依 ID 前綴推導版本載入、退回目前版本（沿用 `extract_version_from_ticket_id`，與 acceptance 審計同一套推導）。原因：前移規則讓已完成子孫留在舊版本，單一版本解析使舊版本子票從樹中消失、舊版本 spawned 顯示 not_found。同版本樹輸出不變，循環引用防護不變；文件同步檢查：SKILL.md 與 pm-rules 無此輸出細節描述。測試 `tests/test_track_query_cross_version_tree.py`：修前 5 紅 1 綠（E1 舊版本子票與 spawned 缺漏、E2 對照 not_found 標示），修後全綠。
 
 **Version**: 2.44.42（本地變更）— acceptance 審計的 `_has_impl_or_adj_child` 改為跨版本載入 children：先以子票 ID 前綴推導版本，載入不到退回父票版本（比照 `lifecycle._find_non_terminal_by_id`，重用 `extract_version_from_ticket_id`）。原因：前移規則讓已完成子孫留在舊版本，只用父票版本載入會把跨版本 IMP/ADJ 子票誤判為不存在。純 bug fix，CLI 子命令與旗標語意不變，無文件同步需求。測試 `tests/test_acceptance_auditor_cross_version_children.py`：E1 同批 fixture 舊版本 IMP／ADJ 子票修前回 False、修後回 True，且與不存在 ID 的結果不同；E2 舊版本 ANA 子票與不存在 ID 仍回 False；同版本子票行為不變。
