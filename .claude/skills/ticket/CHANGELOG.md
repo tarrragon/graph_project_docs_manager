@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.39（本地變更）— `ticket track claim` 新增 `--acknowledge REASON`：理由以 `[claim acknowledge] <理由>` 追加到票面，claim 語意不變（`--verify` 路徑同樣傳遞）。原因是 sibling-blockedby-validator hook 對條件 3/4 WARN 建議「加 --acknowledge」，CLI 未定義該旗標而以 rc=2 拒絕，守衛建議的命令被另一端拒絕。測試 `tests/test_claim_acknowledge.py`：修前解析 `--acknowledge` 為 unrecognized arguments（rc=2），修後解析成功並留下理由紀錄；不帶旗標時票面無紀錄。
+
 **Version**: 2.44.38（本地變更）— 票務 CLI 從 linked worktree 導回主倉庫時，stderr 輸出一行 `[INFO]` 標明實際作用的主倉庫路徑（`get_ticket_state_root()` 的回推處，每程序一次，stdout 不受影響；主 checkout 與獨立 clone 不輸出）。原因是 worktree 對票務寫入不構成隔離，導向無輸出會讓呼叫者把 worktree 當實驗沙盒而改到主倉庫真票。`reset_ticket_state_root_cache()` 同時重置一次性旗標。SKILL.md 與派發範本各補一句提醒並路由至 PC-GPD-030。測試 `tests/test_worktree_redirect_notice.py`：修前 worktree 兩案紅、主 checkout 與獨立 clone 兩案綠；修後全綠。
 
 **Version**: 2.44.37（本地變更）— `test_guard_logs_stay_inside_tmp_repo` 不再以真實 guard 日誌目錄的前後快照判定。原斷言讀取真實 `hook-logs/git-ref-transaction-content-guard` 的檔名與大小，其他 session 的並行寫入會使它翻紅（結果依賴程式以外的因素）。現行為只讀測試自己的 tmp 樹的正向斷言：測試倉庫 `hook-logs` 下的日誌全部 `resolve()` 後落在 tmp 內（日誌若穿過連結寫進真實根，實體位置在 tmp 外即失敗），且其中有本次「被阻擋」的紀錄。產品碼與 guard 不變。測試：E1 把 `link_claude` 改回整目錄 symlink 時新斷言翻紅；E2 以背景執行緒持續寫入真實 guard 日誌目錄時新斷言維持綠燈，同條件下舊快照斷言翻紅。
