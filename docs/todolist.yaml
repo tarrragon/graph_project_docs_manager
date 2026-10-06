@@ -708,6 +708,18 @@ versions:
          成對實驗以盲審比較。
       4. 人工實測：第二段決定（Layout 含點擊交叉格定位泳道，預期需要 App 實機驗證）。
       5. 日誌事件：第二段決定。第一段期間未列於此的票不新增、不改變日誌事件；若實作需新增須回報 e1 補入本欄。
+      阻擋 1 裁決（2026-10-06，用戶，WRAP）：其他專案缺 traverses／DomainBundle 是框架版本落後（2.22～2.27 的 schema 皆無），
+      由它們升級補上，App 不為舊版遷就；比較基準改為現行框架（2.76）。現行框架規定一個 domain 一份 domain-map
+      （多 domain 放 docs/spec/{domain}/，單 domain 放 docs/ 根層），故矩陣的列＝DomainBundle 節點。本專案 8 個 domain
+      寫在單一根層檔、frontmatter domain 為系統名 docs-graph，不合現行框架，須拆檔；排除方案：上游或本地加 domains 欄位
+      （自創偏離寫法）、由引用推導（忽略框架規定的宣告）。上游無系統層載體（domain 間分層與依賴方向、通道、邊界決策、
+      容錯、待決事項無處放，schema 亦無 domain → domain 邊），用戶裁決先讓上游定載體再拆檔：W1-070（ANA P1，
+      scope_blocker 已設，finish 必要）。阻擋順序改為：W1-070 上游載體 → 本專案拆檔 → 名稱權威寫法（DomainBundle
+      id_pattern 已限小寫加連字號，作為起點）→ 泳道布局 → 間接依賴 → lib 分層命名與對照表。
+      topic 2 追加列入（e1 裁決 2026-10-06，盡力而為）：W1-060.1／.2、048.1～.3、052.1～.3、062.1、064、065、066、
+      067（Ticket ID 守衛自 10/01 被殘留 handoff pending 檔整體放行；殘留檔已由 e1 備份後移除）、068。
+      W3-001 成對實驗第一組完成（合併 opus 份）；後續：W3-004（測試補強 P3）、W1-071（SPEC-004 4.9 三個缺口 DOC P3）、
+      W1-072（代理人全套 flutter test 掛住是否因 stdin，ANA P2）。
 
   - version: "0.6.0"
     codename: "Screens"
