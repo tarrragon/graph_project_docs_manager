@@ -122,10 +122,14 @@ Ticket: 0.18.0-W17-048.3
 **Action**：prompt 必須含以下句子，且任務段中的「跑全套件」一律改寫為下列無路徑指令，不留「跑全套件」的概括說法：
 
 ```
-全套件指令為 (cd <pkg> && uv run pytest -q)，命令列不帶任何測試路徑。
+全套件指令為 (cd <pkg> && uv run pytest -q -rf)，命令列不帶任何測試路徑。
 回報必須附：(1) 所跑命令原文；(2) 同目錄 pytest --collect-only -q 的全量數；
 (3) 執行摘要各結果數（passed / failed / skipped / error 等）與 deselected 數。三者須滿足：執行數 = 全量 - deselected。
+(4) 有 failed 或 error 時，附完整的 FAILED / ERROR 行。這些行不得被 tail、grep 或 grep -v 過濾掉；
+只想看尾段時，先用 tee 留存全量日誌，再從日誌取尾段。
 ```
+
+`-rf` 讓失敗項以 `FAILED <nodeid>` 行列在摘要區；缺少它時，`-q` 的尾行只剩失敗計數，失敗項的識別資訊落在被截斷的上方輸出，驗收方得重跑才能定位。過濾輸出時警告行比正常輸出短且措辭不同，最易被濾掉（`.claude/rules/core/bash-tool-usage-rules.md` 規則二）。
 
 對帳時兩種摘要格式都要處理：
 
@@ -185,7 +189,7 @@ pgrep 有命中時，逐一以 ps -o command= -p <pid> 確認命中的是測試�
 - [ ] 防護類 ticket 的產生路徑盤點表已存在於 `how.strategy` / Solution（建票時產出，此處僅確認存在，格式見 `ticket-body-schema.md` 同名節；PC-BAL-035）
 - [ ] 派發對象為 `.claude/` 框架檔案修改時，代理人受 `.claude/rules/core/document-format-rules.md`「引用穩定性規則」約束（禁依賴型 ticket 引用，該層已實測確認每次派發都會注入），無需 prompt 額外重複；AGENT_PRELOAD 規則 12 僅供代理人主動 Read 時參考，不構成無需重複的依據（`.claude/agents/*.md` 主文 `@-import` 已實測不會展開為內容）
 - [ ] 派發任務涉及測試/建置驗收時，已含既有失敗歸因約束句（PC-BAL-022，見上節）
-- [ ] 派發任務的驗收含「跑全套件」時，已改寫為無路徑指令並含全套件回報規格句（命令原文 + `--collect-only -q` 全量數 + 執行數 = 全量 - deselected，TEST-BAL-006，見上節）
+- [ ] 派發任務的驗收含「跑全套件」時，已改寫為無路徑指令（含 `-rf`）並含全套件回報規格句（命令原文 + `--collect-only -q` 全量數 + 執行數 = 全量 - deselected + FAILED / ERROR 行不被 tail／grep 過濾，TEST-BAL-006，見上節）
 - [ ] 裁示句是否有「補 X」「並補 Y」型句型只指名決策點、未給具體內容？若有，已補齊內容或已明寫「此處未定，停手回報」（PC-GPD-026，見上節）
 - [ ] 派發的代理人會跑長時間或背景測試時，已含終止後 pgrep 驗證約束句（見上節，含 ps 確認命中身分與等待改等已知 PID 兩句）
 
@@ -1114,6 +1118,8 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 
 ---
 
+**Last Updated**: 2026-10-06
+**Version**: 1.40.0 — 「全套件回報規格（TEST-BAL-006）」指令改為 `uv run pytest -q -rf`，回報規格補第 4 項：有 failed／error 時附完整 FAILED／ERROR 行，不得被 tail、grep、grep -v 過濾；只看尾段時先 tee 留全量日誌再取尾段。動機：`-q` 尾行只剩失敗計數，失敗項識別資訊落在被截斷處，驗收方得重跑才能定位。「填空檢查清單」對應列同步。
 **Last Updated**: 2026-10-02
 **Version**: 1.39.0 — 「既有失敗歸因約束句」後新增「全套件回報規格（TEST-BAL-006）」子節：全套件一律用無路徑指令 `(cd <pkg> && uv run pytest -q)`，回報附命令原文、`--collect-only -q` 全量數，對帳公式執行數 = 全量 - deselected，涵蓋 `N tests collected` 與 `N/M tests collected (K deselected)` 兩種摘要格式；「填空檢查清單」同步補一列。文字提醒已兩次失效，本節讓回報可對帳，與 conftest 外掛的執行當下提示互補。
 **Version**: 1.38.0 — 「終止長時間測試後驗證子程序已退出約束句」補兩句：pgrep 命中時以 `ps -o command= -p <pid>` 確認命中的是測試程序本身（macOS pgrep 只排除自身與祖先，會比對到命令列含同字串的其他 shell）；需要等待程序結束時等已知 PID（`kill -0`），不以 `pgrep -f` 樣式作迴圈條件。新增 Why/Consequence 段：兩個 `until ! pgrep -f` 等待迴圈互相比對而永久空等的反例。
