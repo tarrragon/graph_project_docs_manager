@@ -129,7 +129,15 @@ Ticket: 0.18.0-W17-048.3
 只想看尾段時，先用 tee 留存全量日誌，再從日誌取尾段。
 ```
 
-回報須保留失敗項與錯誤項的 nodeid，驗收方才能不重跑就定位。`-rfE` 讓摘要區固定列出 failed 與 error 的 nodeid，不依賴 pytest 的預設值（`-r` 會取代預設的 reportchars，只寫 `-rf` 會漏掉 ERROR 行）。nodeid 遺失的主因是 tail 的行數不夠，或 grep 把它濾掉；所以先用 tee 留下完整日誌，再從日誌取尾段，例如 `(cd <pkg> && uv run pytest -q -rfE) 2>&1 | tee <log>; tail -n 40 <log>`；若後面接管線，另加 `set -o pipefail`，exit code 才反映 pytest 的結果。遺失後驗收方只能重跑全套件，成本由驗收方承擔。警告行比正常輸出短且措辭不同，最易被濾掉（`.claude/rules/core/bash-tool-usage-rules.md` 規則二）。
+回報須保留失敗項與錯誤項的 nodeid，驗收方才能不重跑就定位。`-rfE` 讓摘要區固定列出 failed 與 error 的 nodeid，不依賴 pytest 的預設值（`-r` 會取代預設的 reportchars，只寫 `-rf` 會漏掉 ERROR 行）。nodeid 遺失的主因是 tail 的行數不夠，或 grep 把它濾掉；所以先用 tee 留下完整日誌，再從日誌取尾段。遺失後驗收方只能重跑全套件，成本由驗收方承擔。
+
+判成敗讀 exit code，不讀輸出外觀；exit code 須在 tail 之前取得，否則整行的結果是 tail 的：
+
+```
+set -o pipefail; (cd <pkg> && uv run pytest -q -rfE) 2>&1 | tee <log>; rc=$?; tail -n 40 <log>
+```
+
+`pipefail` 使 `| tee` 這一段回傳 pytest 的結果，`rc` 在 tail 之前取值。警告行比正常輸出短且措辭不同，最易被濾掉（`.claude/rules/core/bash-tool-usage-rules.md` 規則二）。
 
 對帳時兩種摘要格式都要處理：
 
