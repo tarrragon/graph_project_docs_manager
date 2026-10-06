@@ -178,7 +178,7 @@ migrate 不改 todolist、不改 worklog 主檔、不移除舊目錄；這三件
 | `previous_ids` | 每個成員各自追加自己的舊 ID（舊 ID 散見 commit message、worklog、issue，不會被改寫） |
 | `parent_id` | 根票依新 ID 重算；子孫對應新父 |
 | preflight | 碰撞（任一新 ID 已被佔用）、深度（任一成員遷移後超過 MAX_TICKET_DEPTH，訊息列出票 ID 與深度）、目標版本註冊；任一項失敗整體拒絕、零寫入、exit 非 0，訊息列出全部失敗項 |
-| 碰撞處理 | 子樹遷移不自動改號（單票碰撞才自動取下一可用序號）；`--force-overwrite` 可放行碰撞 |
+| 碰撞處理 | 與單票路徑對等：目標根票撞號時，實際執行改取下一可用序號，成員以新根為前綴改號，根票寫入 `migrated_from: <原目標 ID>`；`--dry-run` 判 `[ERROR]` FAIL 並印改號預覽。僅根票撞號觸發改號，成員撞號仍由 preflight 整體拒絕；`--force-overwrite` 不改號、維持放行覆寫 |
 | `--dry-run` | 列出完整 old 到 new 映射表，不寫入 |
 | 提交 | 整個子樹、子樹外引用者、舊檔刪除與 topic 追加行為單一隔離提交 |
 | 中途寫入失敗 | exit 1，輸出已寫入的檔案集合（不自動回滾） |

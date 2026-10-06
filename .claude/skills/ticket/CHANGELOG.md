@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.40（本地變更）— `ticket migrate` 有子孫票的子樹遷移遇目標根票撞號時，與單票路徑對等自動改號：改取下一可用序號（沿用單票路徑的 `_resolve_available_target_id`），成員以新根為前綴改寫 ID／previous_ids／parent_id／外部引用，根票寫入 `migrated_from`；`--dry-run` 對撞號判 FAIL 並印改號預覽；成員撞號仍由 preflight 整體拒絕；`--force-overwrite` 語意不變（不改號）。原因：子樹路徑的 preflight 對根票撞號一律失敗，finish 前移父票遇撞號只能人工 migrate。測試 `tests/test_migrate_subtree_cascade.py::TestRootCollisionAutoRenumber`：修前撞號案三案紅（preflight 失敗），不撞號與 force-overwrite 對照兩案綠；修後全綠。
+
 **Version**: 2.44.39（本地變更）— `ticket track claim` 新增 `--acknowledge REASON`：理由以 `[claim acknowledge] <理由>` 追加到票面，claim 語意不變（`--verify` 路徑同樣傳遞）。原因是 sibling-blockedby-validator hook 對條件 3/4 WARN 建議「加 --acknowledge」，CLI 未定義該旗標而以 rc=2 拒絕，守衛建議的命令被另一端拒絕。測試 `tests/test_claim_acknowledge.py`：修前解析 `--acknowledge` 為 unrecognized arguments（rc=2），修後解析成功並留下理由紀錄；不帶旗標時票面無紀錄。
 
 **Version**: 2.44.38（本地變更）— 票務 CLI 從 linked worktree 導回主倉庫時，stderr 輸出一行 `[INFO]` 標明實際作用的主倉庫路徑（`get_ticket_state_root()` 的回推處，每程序一次，stdout 不受影響；主 checkout 與獨立 clone 不輸出）。原因是 worktree 對票務寫入不構成隔離，導向無輸出會讓呼叫者把 worktree 當實驗沙盒而改到主倉庫真票。`reset_ticket_state_root_cache()` 同時重置一次性旗標。SKILL.md 與派發範本各補一句提醒並路由至 PC-GPD-030。測試 `tests/test_worktree_redirect_notice.py`：修前 worktree 兩案紅、主 checkout 與獨立 clone 兩案綠；修後全綠。

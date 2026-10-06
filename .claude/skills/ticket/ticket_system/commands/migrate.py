@@ -638,6 +638,22 @@ def _rewrite_external_refs(mapping: Dict[str, str], skip_paths: set) -> List[Pat
     return written
 
 
+def _resolve_subtree_root_target(
+    target_id: str, member_ids: set, version: str, force_overwrite: bool,
+) -> tuple:
+    """子樹根票目標撞號時沿用單票路徑的改號函式取下一可用序號，回傳 (目標 ID, 原撞號資訊 | None)。
+
+    force-overwrite 不改號（維持覆寫語意）；僅根票撞號觸發，成員撞號仍由 preflight 擋下。
+    目標正是子樹成員自己的 ID（根遷到自己的子位）時，該檔會被搬走，不算撞號。
+    """
+    if force_overwrite or target_id in member_ids:
+        return target_id, None
+    collision = _check_target_collision(target_id, version)
+    if not collision:
+        return target_id, None
+    return _resolve_available_target_id(target_id, version), collision
+
+
 def _migrate_subtree(
     version: str,
     source_id: str,
@@ -652,6 +668,19 @@ def _migrate_subtree(
     source_path = get_ticket_path(
         (extract_id_components(source_id) or {}).get("version", version), source_id)
     members = [(source_id, source_path, root), *descendants]
+    original_target_id = target_id
+    target_id, collision = _resolve_subtree_root_target(
+        target_id, {tid for tid, _p, _t in members}, version, force_overwrite)
+    if collision and dry_run:
+        print(format_error(
+            MigrateMessages.DRY_RUN_COLLISION_FAIL,
+            target_id=original_target_id,
+            target_path=str(collision["path"]),
+            existing_title=collision["title"],
+            existing_status=collision["status"],
+            resolved_id=target_id,
+        ))
+        return 1, None
     mapping = {tid: target_id + tid[len(source_id):] for tid, _p, _t in members}
     failures = _subtree_preflight(mapping, version, force_overwrite)
     if failures:
@@ -666,6 +695,13 @@ def _migrate_subtree(
             print(f"  {old_id} → {new_id}")
         return 0, None
 
+    if collision:
+        root["migrated_from"] = original_target_id
+        print(format_info(
+            MigrateMessages.INFO_MIGRATE_RENUMBERED,
+            original_target_id=original_target_id,
+            resolved_id=target_id,
+        ))
     old_parent_id = root.get("parent_id")
     new_paths = {tid: _member_path(mapping[tid], version) for tid, _p, _t in members}
     if backup:
