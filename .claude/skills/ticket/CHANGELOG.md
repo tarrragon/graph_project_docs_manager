@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
 
+**Version**: 2.44.41（本地變更）— `ticket migrate --dry-run` 遇目標撞號改為 rc=0 預覽改號目標（單票與子樹路徑皆然），輸出 `[WARNING]` 改號預覽與機器可讀的 `[MIGRATE-MAP] <原目標> -> <實際目標>` 行，預告正式執行結果而不再中止 finish 的 dry-run。批次內以 `reserved` 保留集合避免兩票預覽到同一目標（批次模式程序內共用；跨程序以新旗標 `--reserve-id <ID>`（可重複）帶入）；正式執行改號時同樣輸出 `[MIGRATE-MAP]` 行。`--force-overwrite` 的 dry-run 語意不變（可放行 `[WARNING]`）。原因：同一撞號輸入 dry-run rc=1 中止、正式執行卻自動改號續行，dry-run 無法預告正式結果。測試：`tests/test_migrate_collision.py::TestDryRunCollisionPreview`——E1 同批 fixture 撞號與不撞號 dry-run 輸出不同（修前撞號案 rc=1）、E2 兩票目標相同的連環撞號預覽目標彼此不同且與正式執行落地 ID 一致（修前預覽目標相同或無標記）；既有斷言 dry-run 撞號 rc=1 的兩個測試依新語意改為 rc=0。
+
 **Version**: 2.44.40（本地變更）— `ticket migrate` 有子孫票的子樹遷移遇目標根票撞號時，與單票路徑對等自動改號：改取下一可用序號（沿用單票路徑的 `_resolve_available_target_id`），成員以新根為前綴改寫 ID／previous_ids／parent_id／外部引用，根票寫入 `migrated_from`；`--dry-run` 對撞號判 FAIL 並印改號預覽；成員撞號仍由 preflight 整體拒絕；`--force-overwrite` 語意不變（不改號）。原因：子樹路徑的 preflight 對根票撞號一律失敗，finish 前移父票遇撞號只能人工 migrate。測試 `tests/test_migrate_subtree_cascade.py::TestRootCollisionAutoRenumber`：修前撞號案三案紅（preflight 失敗），不撞號與 force-overwrite 對照兩案綠；修後全綠。
 
 **Version**: 2.44.39（本地變更）— `ticket track claim` 新增 `--acknowledge REASON`：理由以 `[claim acknowledge] <理由>` 追加到票面，claim 語意不變（`--verify` 路徑同樣傳遞）。原因是 sibling-blockedby-validator hook 對條件 3/4 WARN 建議「加 --acknowledge」，CLI 未定義該旗標而以 rc=2 拒絕，守衛建議的命令被另一端拒絕。測試 `tests/test_claim_acknowledge.py`：修前解析 `--acknowledge` 為 unrecognized arguments（rc=2），修後解析成功並留下理由紀錄；不帶旗標時票面無紀錄。
