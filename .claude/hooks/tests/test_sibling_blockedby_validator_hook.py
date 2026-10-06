@@ -348,3 +348,17 @@ def test_d2_main_independent_of_caller_cwd(hook_module, monkeypatch, tmp_path):
 
     assert captured["project_root"] == real_root
     assert captured["project_root"] != nested_cwd
+
+
+# E2：確認方式不得使條件 1 BLOCK 放行（正向對照：已知應被擋的輸入）
+def test_e2_block_not_bypassed_by_acknowledge(hook_module, project_with_tickets, logger, capsys):
+    root, td = project_with_tickets
+    _write_ticket(td, "T-A")
+    _write_ticket(td, "T-B")
+    _write_ticket(td, "T-C", blocked_by=["T-A", "T-B"])
+    cmd = 'ticket track claim T-C --acknowledge "理由"'
+    parsed = hook_module.parse_bash_command(cmd)
+    assert parsed["acknowledge"] == "理由"
+    code = hook_module.run_check(root, "T-C", parsed["acknowledge"], logger)
+    assert code == 2
+    assert "條件 1" in capsys.readouterr().err
