@@ -483,10 +483,12 @@ class TestRootCollisionAutoRenumber:
         # 佔位的既有 020 票未被觸碰
         assert _fm(_NEW_ROOT).get("previous_ids") is None
 
-    def test_dry_run_on_collision_fails_with_zero_writes(self, repo, monkeypatch, capsys):
+    def test_dry_run_on_collision_previews_renumber_with_zero_writes(
+        self, repo, monkeypatch, capsys
+    ):
         _occupy_new_root(repo)
         head = _git(repo, "rev-parse", "HEAD")
-        assert _run(monkeypatch, _ROOT, _NEW_ROOT, "--dry-run") != 0
+        assert _run(monkeypatch, _ROOT, _NEW_ROOT, "--dry-run") == 0
         assert _RENUM_ROOT in capsys.readouterr().out
         _assert_untouched(repo, head)
         assert not _exists(_RENUM_ROOT)
