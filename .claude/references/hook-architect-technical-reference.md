@@ -806,7 +806,7 @@ if __name__ == "__main__":
 
 ## deny 輸出失敗語意
 
-守衛的失效方向必須在設計期決定：「決定擋下、但輸出 deny 的動作失敗」不得退化為放行。Claude Code 只在 exit 0 且 stdout 含 deny JSON、或 exit 2 時才擋下；輸出失敗（stdout 關閉、BrokenPipe、編碼錯誤）若被當一般例外吞掉，結果是 exit 0 且無 deny，等同放行。
+守衛的失效方向必須在設計期決定：「決定擋下、但輸出 deny 的動作失敗」不得退化為放行。Claude Code 只在 exit 0 且 stdout 含 deny JSON、或 exit 2 時才擋下；輸出失敗（stdout 關閉、BrokenPipe、編碼錯誤）的例外由 `run_hook_safely`（預設 `fail_closed=False`）接住並回 exit 1；exit 1 屬非阻擋錯誤，結果仍是放行。
 
 ### 三項必載
 
