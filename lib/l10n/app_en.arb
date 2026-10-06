@@ -101,6 +101,7 @@
   "damagedDetailMarkerLabel": "Detail damaged",
   "relationItemA11yLabel": "Related node {id}",
   "currentProjectA11yLabel": "Current project",
+  "degradedSchemaShortLabel": "Built-in schema",
   "projectSummaryLabel": "{nodes} nodes · {tickets} tickets",
   "healthBadgeA11yLabel": "{count, plural, =1{1 issue} other{{count} issues}}",
   "switcherTitle": "Switch project",

@@ -698,6 +698,12 @@ abstract class AppLocalizations {
   /// **'目前專案'**
   String get currentProjectA11yLabel;
 
+  /// SPEC-004 §4.9：最近專案項降級徽章（isDegraded 為 true 時，S-34）
+  ///
+  /// In zh, this message translates to:
+  /// **'內建型別表'**
+  String get degradedSchemaShortLabel;
+
   /// SPEC-004 §4.9：專案摘要文案
   ///
   /// In zh, this message translates to:

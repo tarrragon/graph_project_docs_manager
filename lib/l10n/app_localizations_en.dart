@@ -356,6 +356,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currentProjectA11yLabel => 'Current project';
 
   @override
+  String get degradedSchemaShortLabel => 'Built-in schema';
+
+  @override
   String projectSummaryLabel(int nodes, int tickets) {
     return '$nodes nodes · $tickets tickets';
   }

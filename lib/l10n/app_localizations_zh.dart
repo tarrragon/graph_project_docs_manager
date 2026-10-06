@@ -351,6 +351,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get currentProjectA11yLabel => '目前專案';
 
   @override
+  String get degradedSchemaShortLabel => '內建型別表';
+
+  @override
   String projectSummaryLabel(int nodes, int tickets) {
     return '$nodes 節點 · $tickets 票';
   }
