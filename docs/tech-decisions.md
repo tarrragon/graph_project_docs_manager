@@ -1659,3 +1659,18 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 **被放棄的選項**：列序——依首次觸及順序（換 UC 列序跳動、與矩陣不一致）、只顯示有步驟的列（與 SPEC-001 每個 domain 一條泳道列衝突）。欄序——檔內順序（分支看起來發生在主線之後）、只有主線佔欄（同格節點重疊需列內分槽）。分支——只標文字（循環關係只剩文字）、預設收合（多一種互動狀態）。空步驟——佔欄不放節點（UC-02 有 3／7 欄為空）、壓縮（步驟跳號）、畫在箭頭列（箭頭列用途擴大）。間接依賴——上游方向（與圖例語意相反）、不分方向（失去方向，A7 下無「無關」格而退化為二值）、事件消費鏈（僅 3 格，UC-03／04 結構上恆為 0）、改二值（須改 UC-02 驗收與兩份規格）。
 
 **已知代價**：「畫面」列是「列＝DomainBundle」的唯一例外，僅限泳道、矩陣不加，畫面層名稱的保留字規則與 EVT consumers 的 `Presentation` 一併由 `0.5.0-W1-095` 處理。前向直線加回指弧線的繞線與碰撞處理是 Layout 實作量最大、最不確定的部分。間接格大多落在 schema 與 workspace 兩個基礎 domain，訊號集中，這反映實際架構而非誤導。Layout 只依賴 Graph，分支欄位須先經 Graph 公開面提供（`0.5.0-W1-001`）。
+
+## 補記：2026-10-07 — FlowStep 以子圖掛在 UC、`next` 不當邊、名稱解析器先服務 traverses、ticket 定位分三類（用戶裁決，WRAP）
+
+**決定**：
+
+1. FlowStep（候選與 WRAP 見 `0.5.0-W1-001`）：取 C——FlowStep 不進主圖，Graph 公開面提供單一 UC 的 flow 子圖（`flowOf`），泳道只消費子圖。
+2. `next`：不當邊。主線順序取 flow 清單順序，分支步的 `next` 為步驟屬性；`doc validate` 檢查兩者一致（框架變更，由 83 協調，canonical 推送逐次授權）。阻擋 3「主線依 `next` 鏈」因此由清單順序實現，兩者經檢查保證一致。
+3. domain_dependency：取 D4——本版只建 domain 名稱解析器（DomainBundle 的 `domain` 欄）並用於 `traverses`（矩陣格）；`depends_on_domains` 建邊另開票，版本歸屬待確認。解析器 `traverses` 與 `depends_on_domains` 共用一套。
+4. 阻擋 5（候選與 WRAP 見 `0.5.0-W1-096`）：ticket 的 `where.files` 定位分三類——命中 domain／非 domain 層／無法定位；被觀測專案完全沒有路徑宣告時，整體顯示「未宣告路徑」，不逐張判定。路徑宣告放 DomainBundle frontmatter 選填 `path_patterns`，另有一份非 domain 路徑清單（放置位置由 ANA 與 83 共同評估）；不加「試 `lib/<domain>/`」的預設規則。`lib/app/degraded_schema.dart` 與 `lib/services/scan_notifier*` 歸非 domain 層。
+
+**Why**：flow 區塊之外沒有任何文件引用 FlowStep id，0.5.0 的泳道只需要單一 UC 的子圖；子圖之後可加法升級為主圖節點，反向則不行。主線 `next` 與清單順序 17 筆全數一致，上游 schema 本就只以 `branch_from`／`return_to` 表達拓撲，另建 `next` 邊型或本地例外都在增加不需要的表達面。名稱解析器無論如何本版都要建（矩陣格），domain_dependency 建邊在 0.5.0 尚無確認的使用者。ticket 定位合併計算時本專案 261 張票有 69% 無法定位，分三類後降到 2.7%；App 觀測的是其他專案，宣告必須由被觀測專案的資料提供，沒有宣告時顯示「未宣告」可避免 flutter_balance 冒出 1762 筆假破洞。
+
+**被放棄的選項**：FlowStep——A 裸 id 進主圖（跨 UC 撞名時兩節點皆不建）、B UC 限定 id 改寫資料（違反上游 id_pattern）、B' 以 (UC, step) 為身分進主圖（0.5.0 無跨 UC 查詢需求）。`next`——上游新增 sequence 邊型（需跨專案協調，卡 0.5.0）、Graph 本地常數（D6 例外再增一個）。domain_dependency——D1 本版建 21 條邊（改寫 S6-2／IT-3 而無使用者）、D2 改寫為 `DOMAIN-MAP-*`（與阻擋 2 及 `0.5.0-W1-091` 衝突）、D3 維持排除（易被誤讀為不需解析器）。阻擋 5——合併計算（無鑑別力）、重整本專案 lib（對依層切分的專案無效、斷 543 筆歷史引用）、專案層單一對照表（與 domain map 兩處各記）、ticket 端宣告 domain（與 PROP-004 衝突）、由 import 圖推導（90 個非 domain 檔有 80 個不 import 任何 domain）。
+
+**已知代價**：FlowStep 非一級節點，EVT 反查發出步驟與 FlowStep 破洞須在升級為主圖節點後才有；子圖解析不經 `_lookupId`，G9 的正比性質須補 flow 案例。作者重排清單而未改 `next` 時由 validate 擋下，未裝新版框架的專案不受此檢查保護。非 domain 路徑清單尚無擁有者；`path_patterns` 與一致性檢查皆需上游變更。
