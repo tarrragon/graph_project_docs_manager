@@ -28,7 +28,7 @@ consumers: ['Presentation']
 
 ## 設計註記
 
-**本節是「破洞」一詞的權威定義。** 全批他處（`domain-map.md` §7、UC-02、UC-06、
+**本節是「破洞」一詞的權威定義。** 全批他處（`docs/system-layer.md` §5、UC-02、UC-06、
 PROP-004）使用該詞時皆以此為準，不另立外延。
 
 破洞來源有**四**類：
@@ -45,11 +45,11 @@ PROP-004）使用該詞時皆以此為準，不另立外延。
 > 術語探針）指出後併入。
 
 **各類別下的具體項目與嚴重度仍待列舉**——UC-06 的驗收條件（依類別分節）
-依賴該清單，見 `docs/domain-map.md` §9。
+依賴該清單，見 `docs/spec/diagnostics/domain-map.md` §6。
 
 `category` 的值域即上表四個鍵。`severity` 是否與 `EVT-CORPUS-003` 的兩級
 （`edgeAffecting` / `detailOnly`）共用同一值域，待定。
 
 ## 來源
 
-`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/domain-map.md`。
+`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/system-layer.md`。

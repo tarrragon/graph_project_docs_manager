@@ -1,22 +1,21 @@
 ---
-id: DOMAIN-MAP-docs-graph
-domain: "docs-graph"
-source_specs: [SPEC-001]
-related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06]
+title: "系統層 — graph_project_docs_manager"
+bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-corpus, DOMAIN-MAP-graph, DOMAIN-MAP-ticketdetail, DOMAIN-MAP-layout, DOMAIN-MAP-diagnostics, DOMAIN-MAP-history]
 created: "2026-08-26"
-updated: "2026-09-29"
+updated: "2026-10-07"
 ---
 
-# Domain Map — graph_project_docs_manager
+# 系統層 — graph_project_docs_manager
 
-> 產出來源：`saas-tech-selection` Stage 2（DDD 切分）。
-> 依 SRP（一個 domain 一個變更理由）與 OCP（區分公開面與內部面）切分。
-> LSP / ISP / DIP 留待實作階段。
+> 產出來源：`saas-tech-selection` Stage 2（DDD 切分）；0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）。
+> 依 SRP（一個 domain 一個變更理由）與 OCP（區分公開面與內部面）切分。LSP / ISP / DIP 留待實作階段。
+> 本文件承接跨 domain 的系統級決策；單一 domain 的 bundle 邊界、不變式與 FR 覆蓋見各 domain map（`docs/spec/{domain}/domain-map.md`）。
 >
-> **狀態**：SPEC-001 與 UC-01~06 已建立，`source_specs`、`related_usecases`
-> 已回填。§8（FR → Bundle 覆蓋對照）已回填 SPEC-003 與 SPEC-006（`0.3.3-W3-238`）。
+> **狀態**：SPEC-001 與 UC-01~06 已建立。§8（FR → Bundle 覆蓋對照）已回填 SPEC-003（`0.3.3-W3-238`）；SPEC-006、SPEC-007 的逐列對照在對應 domain map 的 §7。
 
-## 1. 目的與 UC / DDD 正交關係
+## 1. 目的與適用範圍
+
+### 1.1 UC / DDD 正交關係
 
 本文件界定本 App **自身**的 domain 邊界（水平視角）。
 
@@ -27,6 +26,43 @@ updated: "2026-09-29"
 
 本文件的切分依據是**變更理由的來源**：上游改 schema 格式、專案文件寫壞、
 圖語意規則改變，這三者的來源完全不同，因此是三個 domain。
+
+### 1.2 決策分流
+
+| 決策類型 | 寫在哪裡 | 判準 |
+|---|---|---|
+| 單一 domain 內的 bundle 界定、不變式、測試策略、Commodity check、單一 domain 的待決 | 該 domain 的 domain map | 移除其他 domain 後決策仍成立 |
+| bundle 間依賴方向、共用通道、跨 domain 邊界、容錯、跨 domain 待決、跨 domain 的 FR 對照 | 本文件 | 決策涉及兩個以上 domain map |
+
+### 1.3 Bundle 索引
+
+| Domain | 層 | 唯一變更理由 | domain map |
+|--------|----|------------|-----------|
+| **Workspace** | L0 | 資料夾存取方式改變 | `docs/spec/workspace/domain-map.md` |
+| **Schema** | L0 | 上游 schema 格式或版本語意改變 | `docs/spec/schema/domain-map.md` |
+| **Corpus** | L1 | 文件格式或解析寬容度改變 | `docs/spec/corpus/domain-map.md` |
+| **Graph** | L2 | 圖語意改變（如 symmetric union 規則） | `docs/spec/graph/domain-map.md` |
+| **TicketDetail** | L2 | ticket 的 5W1H 結構語意改變 | `docs/spec/ticketdetail/domain-map.md` |
+| **Layout** | L3 | 布局演算法或版型規則改變 | `docs/spec/layout/domain-map.md` |
+| **Diagnostics** | L2 | 「什麼算破洞」的定義改變 | `docs/spec/diagnostics/domain-map.md` |
+| **History** | L2 | git 查詢方式或歷史語意改變 | `docs/spec/history/domain-map.md` |
+
+**畫面狀態不是 domain，是 layer。** 布局演算法（有真實規則與演算法）與
+畫面狀態（純 UI）分開 —— 前者可獨立測試，後者依賴 widget tree。
+
+### 1.4 三個易混淆詞的定義
+
+「貫穿」與「穿透」差一個字、語意不同，且原本全批皆無定義。此處定為權威：
+
+| 詞 | 語意 | 用在哪 |
+|----|------|--------|
+| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（L4 畫面狀態層）為 `[]`。計數由 Graph 聚合（Graph domain map §3） | Domain 視圖矩陣的格、UC-02、UC-03 |
+| **穿透**（drill-through） | 使用者在兩個視圖之間**雙向導覽**的操作行為（domain → UC、UC → domain） | PROP-004 §核心場景、`tech-decisions.md` §3.1 |
+| **鄰接查詢** | Graph domain 的公開 API，沿邊取相鄰節點（1 hop）。簽章定於 SPEC-007 FR-08：輸入節點 ID、可選邊型集合與方向，回傳邊型、另一端 ID、方向、宣告來源 | Graph domain map §3 的公開面 |
+
+第三項原名「穿透查詢」，與「穿透」（操作行為）同名但實為 API，已改名。
+另有一個同義動詞「橫向穿過」出現在 SPEC-001 §1 與 PROP-004 §版型定案，
+語意等同「貫穿」。
 
 ## 2. 分層與依賴方向
 
@@ -40,7 +76,7 @@ L1   Corpus
 L0   Schema     Workspace
 ```
 
-**依賴邊（完整列舉）**：
+**依賴邊（完整列舉）**：出邊的唯一權威是各 domain map frontmatter 的 `depends_on_bundles`，下表為彙整視圖；兩者不一致時以 frontmatter 為準。
 
 | 來源 | 目標 | 為什麼 |
 |------|------|--------|
@@ -48,9 +84,9 @@ L0   Schema     Workspace
 | Graph | Corpus | 圖建自解析產物 |
 | TicketDetail | Corpus | 詳情取自同一份解析產物 |
 | Diagnostics | Corpus | 取解析錯誤事件（EVT-CORPUS-003），由此產生破洞 |
-| Corpus | Schema | 以 `id_pattern` 為有 frontmatter 的檔案判型；以「路徑對型別」查詢分流沒拿到可用 frontmatter 的檔案（SPEC-006 FR-03、FR-06，見 §7） |
+| Corpus | Schema | 以 `id_pattern` 為有 frontmatter 的檔案判型；以「路徑對型別」查詢分流沒拿到可用 frontmatter 的檔案（SPEC-006 FR-03、FR-06，見系統層 §5） |
 | Corpus | Workspace | 取得專案根路徑 |
-| History | Workspace | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見 §4.3） |
+| History | Workspace | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見系統層 §4.3） |
 
 Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影其產出——
 若讓三者各自解析同一份檔案，容錯規則會分歧。
@@ -58,26 +94,12 @@ Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影�
 **「這算不算破洞」在 Corpus 內就判定**：它需要解析結果與節點型別的 carrier
 路徑模式兩者才成立，而 Corpus 已依賴 Schema，因此由 Corpus 呼叫 Schema 的
 「路徑對型別」查詢，只對命中 carrier 的失敗檔發出 EVT-CORPUS-003；Diagnostics
-只消費事件。不做這個判定，破洞報告會把 1243 個合法的非節點檔誤報為破洞（§7）。
+只消費事件。不做這個判定，破洞報告會把 1243 個合法的非節點檔誤報為破洞（§5）。
 本表原有一條 Diagnostics → Schema，理由正是這個判定；判定移給 Corpus 後這條邊
 沒有用途，2026-09-24 刪除（SPEC-006 D7，用戶裁決）。日後若有破洞類別需要型別表，
 附上理由再加回。
 
-## 2.5 三個易混淆詞的定義
-
-「貫穿」與「穿透」差一個字、語意不同，且原本全批皆無定義。此處定為權威：
-
-| 詞 | 語意 | 用在哪 |
-|----|------|--------|
-| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（L4 畫面狀態層）為 `[]`。計數由 Graph 聚合（§3） | Domain 視圖矩陣的格、UC-02、UC-03 |
-| **穿透**（drill-through） | 使用者在兩個視圖之間**雙向導覽**的操作行為（domain → UC、UC → domain） | PROP-004 §核心場景、`tech-decisions.md` §3.1 |
-| **鄰接查詢** | Graph domain 的公開 API，沿邊取相鄰節點（1 hop）。簽章定於 SPEC-007 FR-08：輸入節點 ID、可選邊型集合與方向，回傳邊型、另一端 ID、方向、宣告來源 | §3 Graph 的公開面 |
-
-第三項原名「穿透查詢」，與「穿透」（操作行為）同名但實為 API，已改名。
-另有一個同義動詞「橫向穿過」出現在 SPEC-001 §1 與 PROP-004 §版型定案，
-語意等同「貫穿」。
-
-## 2.6 通道與協調圖
+## 3. 通道與協調圖
 
 > 判準見《事件流負載仲裁方法論》
 > `.claude/methodologies/event-flow-load-arbitration-methodology.md`
@@ -89,10 +111,10 @@ Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影�
 之間需要仲裁？」——§2 的依賴圖描述資料方向：誰讀誰的輸出。本節的
 協調圖回答另一個問題：使用者注意力是稀缺資源，誰會搶佔使用者當下
 該看的東西。兩張圖的邊集合各自獨立成立，一張圖上「無邊」不能拿來
-推論另一張圖也「無邊」；§2.6.3 會給出兩張圖邊集合部分重疊、部分不
+推論另一張圖也「無邊」；§3.3 會給出兩張圖邊集合部分重疊、部分不
 重疊的實例，證明「正交」指的是判斷依據不同，不是邊集合互斥。
 
-### 2.6.1 通道清單
+### 3.1 通道清單
 
 | 通道 | 真持有者 | 仲裁器落層 | 涉及 domain |
 |---|---|---|---|
@@ -116,10 +138,10 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 需要三條協調邊；落在持有層，三者各自只需向持有層發出一條請求，且
 互不知道彼此存在。
 
-### 2.6.2 逐 domain 判定
+### 3.2 逐 domain 判定
 
-判準：該 domain 的公開面（§3）是否包含「不必然由使用者當下操作觸發、
-卻需要佔用使用者呈現焦點通道」的事件。8 個 domain 逐一判定：
+判準：該 domain 的公開面（各 domain map §3）是否包含「不必然由使用者當下操作觸發、
+卻需要佔用使用者呈現焦點通道」的事件。8 個 domain 逐一判定（各 domain map §2.5 只留本 domain 的判定列）：
 
 | Domain | 是否產生注意力請求 | 依據 |
 |--------|:---:|------|
@@ -132,7 +154,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 | Diagnostics | 是 | 破洞掃描完成通知（SPEC-003 §2.2〈系統層通知〉），App 啟動時自動觸發，不由使用者當下操作發起 |
 | History | 否 | 依視圖惰性載入（§4.3），由使用者開啟歷史視圖觸發（等待型），結果在同一畫面內呈現 |
 
-### 2.6.3 協調圖
+### 3.3 協調圖
 
 ```
 使用者呈現焦點
@@ -149,7 +171,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 | Workspace × Schema | 否 | 同上，兩者在 §2 亦無邊，但同樣競爭同一通道 |
 | Schema × Diagnostics | 否（原有的 `Diagnostics → Schema` 已於 2026-09-24 刪除，見 §2） | 這一對原本與依賴邊重疊，當時用來說明「正交」指的是兩張圖的判斷依據互不涵蓋，不是指兩張圖的邊集合必然不相交。邊刪除後三對都不在 §2 上相鄰，但這個說明仍然成立：協調圖是否相鄰只看是否競爭同一通道，與依賴圖有沒有邊無關 |
 
-### 2.6.4 到達類別與級別實例（例示，非窮舉）
+### 3.4 到達類別與級別實例（例示，非窮舉）
 
 | 通道 | 事件/請求 | 到達類別 | 級別 | 引用來源 |
 |---|---|---|---|---|
@@ -159,48 +181,6 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 
 本表不窮舉；逐事件的到達類別與級別標定屬各 SPEC 職責，本節只證明
 通道存在且已有實例落地，不重新推導〈到達類別〉〈級別〉的判準本身。
-
-## 3. Bundle 界定表
-
-| Domain | 唯一變更理由 | 公開面（OCP） | 內部面 |
-|--------|------------|-------------|-------|
-| **Workspace** | 資料夾存取方式改變 | 目前路徑、可用性狀態、開啟原始檔、最近專案清單、健康計數（攜帶，來源歸 Diagnostics 整合定案） | 路徑持久化、可用性探測、清單持久化 |
-| **Schema** | 上游 schema 格式或版本語意改變 | 型別表（節點／邊定義）、版本相容判定、**路徑對型別查詢**（依 carrier 路徑模式與具體度，SPEC-006 FR-06） | JSON 解析、`.claude/VERSION` 讀取、內建表補欄位 |
-| **Corpus** | 文件格式或解析寬容度改變 | 原始節點與邊、解析錯誤清單 | 掃描策略、YAML 容錯、檔案監看 |
-| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
-| **TicketDetail** | ticket 的 5W1H 結構語意改變 | 單張 ticket 全文與生命週期欄位 | 欄位解讀、佔位值處理 |
-| **Layout** | 布局演算法或版型規則改變 | 泳道／矩陣的座標與尺寸 | 排列演算法、碰撞處理 |
-| **Diagnostics** | 「什麼算破洞」的定義改變 | 破洞清單（分類、嚴重度、跳轉目標） | 各類偵測規則 |
-| **History** | git 查詢方式或歷史語意改變 | 節點與邊的變更事件序列 | `git log -p` 掃描、diff 解析、降級判定 |
-
-**畫面狀態不是 domain，是 layer。** 布局演算法（有真實規則與演算法）與
-畫面狀態（純 UI）分開 —— 前者可獨立測試，後者依賴 widget tree。
-
-### Bundle 不變式清單（0.3.0 範圍：Schema／Corpus／Diagnostics）
-
-供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」
-被動覆蓋。規則權威在 SPEC-006，本表只列可獨立斷言的不變式；目標路徑為 `lib/schema/`、
-`lib/corpus/`、`lib/diagnostics/`（此為目標邊界，非現況：三個目錄尚不存在）。
-
-| Bundle | 不變式（每條可轉一個 unit test） | SPEC-006 |
-|---|---|---|
-| Schema | 路徑對型別查詢比對完整相對路徑、區分大小寫；`docs/spec/<d>/README.md` 不命中 SPEC | FR-06 規則 1、4 |
-| Schema | 多型命中時具體度高者勝：整段固定文字才算字面段；先比字面段數，再比跨多段萬用成分數 | FR-06 規則 6 |
-| Schema | 具體度相同時回傳平手，列出全部候選並標記 schema 歧義，不擅自取一型 | FR-06 規則 5、6 |
-| Schema | 型別表中不帶 `carrier_path_patterns` 的型別（例如 FlowStep）不參與路徑比對；依欄位判定，不依型別名 | FR-06 規則 3、D9 |
-| Schema | 路徑模式以 ASCII 語意比對：`\d` 不匹配全形數字 | FR-06 規則 2、D9 |
-| Schema | 型別表來源三分：JSON 有路徑模式用 JSON；缺欄位且 JSON 版本不高於內建版本，只補路徑模式；其餘情況查詢不可用 | FR-06 規則 7 |
-| Corpus | 每個檔案恰好落入一種結果：可用、無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取 | FR-01、FR-05 |
-| Corpus | 結尾取第一個 `---` 行；frontmatter 引號字串內的 `|---|` 不造成截斷 | FR-01 規則 4、6 |
-| Corpus | 「可用」要求解析結果是非空 map；`{}`、清單、純量、只有註解都不是 | FR-01 |
-| Corpus | 可用檔的 `id` 至多命中一型；無 `id` 或不命中歸「有 frontmatter 的非節點」，不產生節點也不產生破洞 | FR-03 |
-| Corpus | EVT-CORPUS-003 只對命中 carrier（含平手）的失敗檔發出；未命中者只記入 `parseErrors` | FR-04 |
-| Corpus | `lostFields` = 歸屬型別完整性集合 − 實際寫出的鍵；值為 null 或 `[]` 算寫出；平手或取不到集合時為 `[]` | FR-04、EVT-CORPUS-003 |
-| Corpus | 0.3.0 的 `salvagedFields` 恆為 `[]`，`severity` 恆為 `edgeAffecting` | FR-04 |
-| Corpus | 守恆：總數 = 節點 + 有 frontmatter 的非節點 + 各失敗原因總和；各失敗原因總和 = 命中 + 未命中 + 未判定 | FR-07 |
-| Corpus | 任一單檔失敗不中止整輪、不改變其他檔案的結果 | NFR-01 |
-| Diagnostics | 一筆 EVT-CORPUS-003 對應一筆 `parseFailure` 破洞；破洞數等於命中 carrier 數 | FR-08 |
-| Diagnostics | 查詢不可用時不產生 `parseFailure` 破洞，回報「無法判定」 | FR-08 |
 
 ## 4. 邊界決策
 
@@ -231,16 +211,7 @@ Corpus 呼叫 Schema 的判型與「路徑對型別」查詢，這是依賴關�
 失敗形態不同（解析失敗 vs 非 repo／git 缺失）、依賴不同。兩者不會出現在
 同一個 PR 裡。
 
-實測成本（票 `0.0.3-W1-003`，flutter_balance 9409 commits）：
-
-| 做法 | 耗時 |
-|------|------|
-| 文件層級（`git log --name-only` 單次） | 1.04 秒 |
-| 邊層級（逐 commit `git show`，天真實作） | 18.3 分鐘 |
-| **邊層級（單次 `git log -p` + 解析）** | **2.28 秒** |
-
-採用邊層級。載入策略沿用依視圖惰性——開啟歷史視圖才掃描。全量重掃已足夠快，
-不實作增量更新：增量需維護狀態且正確性風險高，省下的時間有限。
+實測成本與載入策略見 `docs/spec/history/domain-map.md` §4.1。
 
 ### 4.4 編輯的寫入責任
 
@@ -281,35 +252,7 @@ CLI 的職責改為驗證：`doc validate`、`uc verify`、`validate-filenames`
 不宣稱全部 28 組皆然。若日後某兩個 domain 反覆在同一個 PR 內同時變更，
 即為合併它們的訊號，屆時回頭補檢查。
 
-## 5. 對實作票的切分指引
-
-- 一張 ticket 原則上只動一個 domain。跨 domain 的需求先拆
-- Corpus 的票必須帶容錯情境（舊框架版本的殘缺文件是常態，非例外）
-- Graph 的票不得依賴 UI —— 遍歷與 symmetric union 皆為純函式，可獨立測試
-- Layout 的票分兩類：矩陣（委派套件、票薄）、泳道（自建、票厚）
-- 0.3.0 新建 `lib/schema/`、`lib/corpus/`、`lib/diagnostics/` 時，import 方向必須符合 §2：
-  `lib/diagnostics/` 只可 import `lib/corpus/`（不得 import `lib/schema/`，該邊已刪除）；
-  `lib/corpus/` 只可 import `lib/schema/` 與 `lib/workspace/`；三者皆不得 import `lib/screens/`。
-  2026-09-24 規劃時三個目錄都不存在，import 鏈無從驗證；各實作票的驗收須含
-  `grep -rn "^import" lib/<bundle>/` 的方向檢查
-
-## 6. Commodity check（本專案的退化形式）
-
-本 App 無後端，領域層的「買 vs 建」退化成「用套件 vs 自己寫」：
-
-| 能力 | 判定 | 依據 |
-|------|------|------|
-| 二維矩陣捲動 | **用套件** | `two_dimensional_scrollables`（publisher: **flutter.dev**，v0.5.3 / 2026-07），官方惰性二維捲動，正是大型矩陣所需 |
-| 泳道布局 | **自己寫** | 產品差異化本身。`graphview` / `flutter_graph_view` 皆為力導向或樹狀，無泳道形態 |
-| YAML 值的解析 | 用套件 | 成熟且非差異化 |
-| **frontmatter 的邊界判定** | **自己寫** | **不可用套件的通用切法**。`split("---")` 類做法會被引號字串內的 markdown 表格分隔線截斷，在既有語料上產生 130 個假失敗（見 §7）。邊界判定是本 App 的正確性核心，套件的寬容度不受我們控制 |
-| 檔案監看 | 用套件 | 同上 |
-| Markdown 渲染 | 用套件 | 同上 |
-
-**接縫**：委派給套件的部分，其失敗語意（套件拋錯、版本升級行為改變）
-由 Layout domain 承擔並轉譯，不讓套件的例外洩漏到畫面狀態層。
-
-## 7. 容錯策略：部分資料，而非壞資料
+## 5. 容錯策略：部分資料，而非壞資料
 
 實測五個框架專案 7106 份文件（量測於 2026-08-27，採框架自身的
 frontmatter 解析語意——見下方「解析器語意是規格的一部分」）：
@@ -335,15 +278,7 @@ frontmatter 解析語意——見下方「解析器語意是規格的一部分�
 
 ### 解析器語意是規格的一部分
 
-本 App 是解析文件的工具，因此**解析器的選擇本身就是正確性問題**，不是實作細節。
-
-| 語意 | 做法 | 在 flutter_balance 1300 張 ticket 上的結果 |
-|------|------|------------------------------------------|
-| **逐行（採用）** | 首行為 `---`，往下找第一個 `strip() == "---"` 的行 | 0 個解析失敗 |
-| 天真（禁用） | `content.split("---")` 取 `parts[1]` | **130 個假失敗** |
-
-**Corpus domain 必須採逐行語意。** 契約測試以此為斷言：對既有語料解析失敗數
-應為 0；若改用天真語意即得 130，兩者的差即為該測試的鑑別力。
+本 App 是解析文件的工具，解析器的選擇本身就是正確性問題。完整內容（逐行語意採用、天真語意禁用、契約測試斷言）屬 Corpus domain，見 `docs/spec/corpus/domain-map.md` §4.2。
 
 ### 真正的失敗形態：無 frontmatter，且多數是合法的
 
@@ -360,7 +295,7 @@ frontmatter 解析語意——見下方「解析器語意是規格的一部分�
 **這才是容錯設計的真正難題**：1243 個是合法的，47 個是真破洞，兩者的
 外觀完全相同（都是「沒有 frontmatter 的 .md」）。唯一的區別是**它的完整
 相對路徑是否符合某個節點型別的 carrier 路徑模式**——模式取自型別表中
-機器可比對的路徑模式欄位，由 Schema 的「路徑對型別」查詢提供（§3 Schema 公開面；
+機器可比對的路徑模式欄位，由 Schema 的「路徑對型別」查詢提供（Schema domain map §3 公開面；
 SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 
 > **必須比對完整路徑模式（含檔名），不是只比對所在目錄。** 實測
@@ -419,97 +354,39 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 診斷入口不另行設計——破洞報告即是入口，因為解析失敗與圖結構缺陷本質同類
 （皆為「這個專案的文件有問題」），分成兩處會讓使用者需要記住兩個入口。
 
-## 8. FR → Bundle 覆蓋對照
+## 6. 待決事項
 
-歸屬判準：該 FR 的**驗收對象**落在哪個 bundle 的公開面（§3），不依「哪個畫面顯示它」——
-畫面狀態是 layer 不是 domain（§2）。驗收對象只落在畫面狀態（錨點、焦點、捲動、動畫、元件層
-回饋）者標為「L4 畫面狀態（非 domain）」；跨多 bundle 者全部列出並說明跨在哪裡。
+單一 domain 的 4 項待決已移到各 domain map §6，索引如下；以下為跨 domain 與非 domain 的待決事項。
 
-### SPEC-003（互動反應）
-
-| FR | 內容 | Bundle | 跨在哪裡 |
-|----|------|--------|---------|
-| FR-01 | 每個狀態的退出路徑皆有具名觸發錨點 | L4 畫面狀態（非 domain） | 驗收對象為 §4 對照表的錨點與狀態錨點 |
-| FR-02 | 取消契約的十條行為 | L4 畫面狀態；Corpus、Diagnostics | 載入態（L4）承載取消錨點與時限；取消後結果不得寫回由長時操作的承擔方兌現——Domain／Ticket 載入為 Corpus 解析，破洞掃描為 Diagnostics |
-| FR-03 | 導航來源單槽記錄 | L4 畫面狀態（非 domain） | `returnTo` 為畫面導航狀態 |
-| FR-04 | 惰性載入以首次可見觸發、保留狀態 | Corpus、Workspace；L4 畫面狀態 | 「解析計數為 0」為 Corpus 解析的觸發時機；「切換專案後重置」以 Workspace 目前路徑改變為觸發；offset／搜尋詞／模式保留屬 L4 |
-| FR-05 | 時間值具名、減少動態效果仍抵達目標態 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/tokens/` 與狀態錨點 |
-| FR-06 | 未接線動作不得無回饋上線 | L4 畫面狀態（非 domain） | 驗收對象為可點錨點的回饋；「外部程序被呼叫」為 Workspace 開啟原始檔的呼叫端觀測，不以 Workspace 行為為驗收對象 |
-| FR-07 | 進度指示誠實 | Corpus、Diagnostics；L4 畫面狀態 | Ticket 載入進度值取自 Corpus 已解析筆數；破洞掃描的進度呈現（不含百分比）以 Diagnostics 掃描為承擔方；呈現屬 L4 |
-| FR-08 | 捲動、換頁、拖拉可斷言 | L4 畫面狀態（非 domain） | 泳道拖曳平移量為手勢反應，不以 Layout 座標計算為驗收對象 |
-| FR-09 | 焦點與鍵盤下界 | L4 畫面狀態（非 domain） | 驗收對象為焦點序列與焦點裝飾 |
-| FR-10 | 兩個獨立捲動區不連動 | L4 畫面狀態（非 domain） | 驗收對象為兩個捲動錨點的 offset |
-| FR-11 | 掃描完成的系統層通知 | Diagnostics | 與 §2.6.4「破洞掃描完成」列一致（自發型、可棄，驗收落點 FR-11） |
-| FR-12 | 第一層回饋不因服務狀態而免除 | L4 畫面狀態（非 domain） | 驗收以永不受理的服務替身驅動元件層，服務行為不在驗收範圍 |
-| FR-13 | 各類服務的回饋形式依 §2.12 成立 | Corpus、Diagnostics、Workspace；L4 畫面狀態 | 長時操作的承擔方為 Corpus（Domain／Ticket 載入）與 Diagnostics（破洞掃描）；短暫非同步的承擔方為 Workspace（外部開啟、資料夾選擇）；各類回饋形式的呈現屬 L4 |
-| FR-14 | 等待期輸入阻擋範圍依服務類型成立 | L4 畫面狀態；Corpus、Diagnostics | 阻擋範圍由載入態（L4）承載；長時操作來源同 FR-13 |
-| FR-15 | 重複觸發防護由服務承擔 | Workspace；L4 畫面狀態 | (d) 外部開啟冪等為 Workspace 公開面「開啟原始檔」；(a)(b) 元件層不實作計時器屬 L4；(c) 搜尋防抖的服務歸屬依 §9「搜尋與全域導覽」待決項 |
-| FR-16 | 暫態提示載體可由判準 T 推導 | Workspace、Diagnostics；L4 畫面狀態 | 與 §2.6.4「開啟原始檔結果」列一致（Workspace，驗收落點 FR-16）；掃描完成 `denied` fallback 為 Diagnostics；判準表與載體選擇屬 L4 仲裁層（§2.6.1 仲裁器落層） |
-| FR-17 | 截斷與不顯示皆有紀錄 | L4 畫面狀態；Workspace、Diagnostics | 截斷紀錄由 L4 仲裁層（`AppSnackBar`）產生；請求方為 Workspace（開啟原始檔結果，§2.6.4 列一致，驗收落點 FR-17）與 Diagnostics（掃描完成） |
-
-### SPEC-006（0.3.0 Corpus）
-
-| FR | 內容 | Bundle | 測試層 |
-|----|------|--------|-------|
-| FR-01 | frontmatter 切分與結果分類 | Corpus | domain unit；IT-1 |
-| FR-02 | 掃描範圍 `docs/**/*.md` | Corpus（經 Workspace 取根目錄） | unit（檔案系統以 port 注入） |
-| FR-03 | 以 `id_pattern` 判型 | Corpus（讀 Schema 型別表） | domain unit |
-| FR-04 | 解析錯誤與 EVT-CORPUS-003 | Corpus | domain unit |
-| FR-05 | 讀取失敗（非 UTF-8） | Corpus | unit；IT-2 |
-| FR-06 | 路徑對型別查詢 | Schema | domain unit；IT-2 |
-| FR-07 | 掃描結果摘要與守恆 | Corpus | domain unit；IT-2 |
-| FR-08 | 由 EVT-CORPUS-003 產生破洞 | Diagnostics | domain unit；IT-2 |
-| NFR-01 | 失敗隔離 | Corpus | domain unit |
-
-全部 FR 皆有歸屬，無標為非 domain 者（破洞報告畫面接真實資料屬 0.6+，不在本版）。
-
-### SPEC-007（0.4.0 Graph）
-
-| FR | 內容 | Bundle | 測試層 |
-|----|------|--------|-------|
-| FR-01 | 邊型表 | Schema | domain unit |
-| FR-02 | 輕節點（含重複 ID） | Graph（讀 Corpus `rawNodes`） | domain unit；IT-3 |
-| FR-03 | 引用值抽取與三類分類、守恆 | Graph | domain unit；IT-2 |
-| FR-04 | 邊的方向與建邊來源：反向欄位兩側聯集、宣告來源、依正向基數判多來源衝突 | Graph | domain unit；IT-1 |
-| FR-05 | `relatedTo` 1-hop 對稱聯集 | Graph | domain unit；IT-1 |
-| FR-06 | 建圖結果、計數與 EVT-GRAPH-001 | Graph | domain unit |
-| FR-07 | TicketDetail 以 ID 查詢全文 | TicketDetail（讀 Corpus `rawNodes`） | domain unit；IT-3 |
-| FR-08 | 鄰接查詢 | Graph | domain unit；IT-1 |
-| FR-09 | 由 EVT-GRAPH-001 產生 `graphDefect` 破洞 | Diagnostics | domain unit；IT-2 |
-| NFR-01 | 缺陷隔離 | Graph | domain unit |
-| NFR-02 | 計算量線性 | Graph | `test/performance/`（不入主套件） |
-
-全部 FR 皆有歸屬，無標為非 domain 者。Graph 與 TicketDetail 都只讀 Corpus 產物、彼此不依賴（§4.1）；
-Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
-
-## 9. 待決事項
+| 事項 | 去處 |
+|---|---|
+| Diagnostics 破洞類別權威清單未列舉 | `docs/spec/diagnostics/domain-map.md` §6 |
+| 泳道布局演算法的具體形態 | `docs/spec/layout/domain-map.md` §6 |
+| 「App 已知範圍」判準（已定案） | `docs/spec/schema/domain-map.md` §6 |
+| 鄰接查詢簽章（已定案） | `docs/spec/graph/domain-map.md` §6 |
 
 - 搜尋與全域導覽若納入，歸屬 Graph（查詢）或獨立 domain（索引）待定
-- `Diagnostics` 的破洞類別權威清單見 `EVT-DIAGNOSTICS-001`（本檔不複述計數），
-  各類別下的具體項目與嚴重度尚未列舉。UC-06 的驗收條件依賴此清單
-- **泳道布局演算法的具體形態**（列序、欄序、分支步驟與空 `traverses` 處置）
-  尚未設計。V4 探針第三、四輪反覆卡在 flow 順序、分支步驟、`traverses: []`
-  佔欄三個問題上；候選演算法與 0.1 假資料階段／串真實資料階段的差異尚待列出。
-  trigger：規劃下一個為 Domain 視圖串接真實資料的 minor 版本時，於其 PROP
-  補記定案（來源票 `0.1.1-W3-377`，已收束為本項知識，未執行）
 - 矩陣的**格**（step → domain）來源已定案（2026-09-14 用戶裁決，0.1.0-W3-346／
-  0.1.0-W3-347）：FlowStep 的 `traverses` 欄位（語意見 §2.5），貫穿數由 Graph
-  聚合（§3）。矩陣的**列**（domain 清單）仍無資料來源：上游 schema 中
+  0.1.0-W3-347）：FlowStep 的 `traverses` 欄位（語意見 §1.4），貫穿數由 Graph
+  聚合（Graph domain map §3）。矩陣的**列**（domain 清單）仍無資料來源：上游 schema 中
   `DomainBundle` 的 carrier 是整份 domain-map.md，個別 domain 不是圖節點
+  （以上為拆檔前的描述。2026-10-06 用戶裁決矩陣的列取 `DomainBundle` 節點，`0.5.0-W1-070.3`
+  已拆為每個 domain 一份 `docs/spec/{domain}/domain-map.md`，各自是一個節點；列的資料來源
+  因此有了載體，消費端的接線屬後續版本）
 - UC → Ticket 在上游 16 條語意邊中無對應邊。追溯視圖（UC-04）第四層的
   資料來源未定。候選方向：新增邊／由 ticket frontmatter 反向欄位推導／
   不做此層。trigger：規劃 0.1 之後的版本時，於對應 PROP 補記定案，並回頭
   列出依賴本判準的規格位置（來源票 `0.1.1-W3-365`，已收束為本項知識，未執行）
 - **「路徑模式 → domain」對照表：歸屬已定、內容未建。** PROP-004 的「以 ticket
   切入」模式要求用 `where.files` 反查 domain。歸屬已定案（2026-09-14，
-  0.1.0-W3-347）：由 Graph 持有與查詢（§3）。表內容待 lib 分層命名定案後填入。
+  0.1.0-W3-347）：由 Graph 持有與查詢（Graph domain map §3）。表內容待 lib 分層命名定案後填入。
   兩張承接票（lib 分層命名定案、對照表內容建立）已收束為本項知識、未執行——
   無執行票不改變表內容仍未建的事實。表內容建立前，UC-02 的「無法定位」判定與
   矩陣的 ticket 高亮仍不可實作。trigger：規劃下一個為 Domain 視圖串接真實資料
   的 minor 版本時，先於其 PROP 補記定案 lib 分層命名（含每個 domain 對應目錄，
   且與 §2 依賴方向一致），再依此建表（來源票 `0.1.1-W3-351`／`0.1.1-W3-352`，
   已收束為本項知識，未執行）
-- **檔案級 carrier 的破洞判定**：§7 的判準寫成「所在目錄是否為某節點型別的
+- **檔案級 carrier 的破洞判定**：§5 的判準寫成「所在目錄是否為某節點型別的
   carrier」，但 `DomainBundle` 的 carrier 是整份 `domain-map.md`
   這**一個檔案**，非目錄。碰到檔案級 carrier 時該判準無法套用
 - **【最高優先】被觀察專案的框架版本只在 schema gate 是變數，其餘判準都不是。**
@@ -556,14 +433,6 @@ Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
   是子票 ID（`NNN.M`）被 Ticket 型 `id_pattern` 漏收，屬 schema 缺陷，另由
   `0.3.1-W1-092` 修正；修正後剩 208 筆（`id` 缺席 183、歷史格式 25）才是
   本問題的實際對象。第一、三問仍待決
-- **「App 已知範圍」判準已定案**（`0.2.0-W1-024`，2026-09-23 WRAP 快速模式）：
-  `tracking_schema.json` 的 `schema_generated_at_framework_version` 不高於
-  App 內建資產 `builtin_schema_version.json` 同名欄位時，版本在範圍內（正常）；
-  高於時超出已知範圍（schema 不相容）。判定式為
-  `!isHigherThanBuiltinSchemaVersion(jsonSchemaVersion, builtinSchemaVersion)`
-  ——重用既有函式，僅第一運算元改為 JSON 版本。CLAUDE.md §6 五項空殼判準
-  原列有此項，定案後應移除。依賴本判準的重評項：SPEC-001 §1 L67-68 註記
-  （面板改放 App 已知版本範圍，trigger 已滿足）、W3-335.37 R4（O4 重評）
 - **`*_REQUIRED_FIELDS` 的語意已裁決**（2026-09-24，`0.3.0-W1-078`，
   `tarrragon/claude#99`）：欄位必須存在，值可為 `null` 或空清單（代表明確
   沒有），對應 JSON Schema 的 `required`；更嚴格的值規則屬各型別 validator。
@@ -591,8 +460,6 @@ Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
   **在裁決前，本 App 不得把現行 FlowStep 清單當必填用。**
   本專案 39 個 FlowStep 已補齊七個欄位（值為空陣列），該動作在兩種
   語意下都安全（欄位存在且值明確為空），但它的**理由**需隨裁決結果重述
-- ~~**`鄰接查詢` 的簽章未定**~~（§2.5）：2026-09-30 定於 SPEC-007 FR-08，為 1 hop 查詢。
-  矩陣的「間接依賴」需要多 hop，屬 0.5 規劃，會在此 API 之上組合
 - **UC-04 四層樹的第二跳欄位未明訂**：自 PROP 展開時，走
   `SPEC.related_usecases` 或 `UC.source_proposal` 會得到不同的樹。
   本批文件自身即有實例——UC-01 自報 `source_proposal: PROP-003`，
@@ -613,7 +480,7 @@ Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
 - **Domain 矩陣格「間接依賴」判定式未定**：UC-02 驗收與圖例要求三種格狀態
   （直接貫穿／間接依賴／無關），CLAUDE.md §6 五項空殼判準列有此項；三值圖例
   已寫入 SPEC-001 §1 與 SPEC-004 MatrixCell，但「間接依賴」本身無判定式，
-  落在「鄰接查詢簽章未定」（本節上一項）的 API 之上。候選：經依賴邊可達／
+  落在 Graph 鄰接查詢（已定案，見 `docs/spec/graph/domain-map.md` §6）的 API 之上。候選：經依賴邊可達／
   事件消費鏈／不做三值改二值。trigger：規劃 Domain 視圖串接真實資料的
   minor 版本時，於對應 PROP 補記定案；若改為二值或其他判定式，須同步修改
   SPEC-001 §1 圖例與 SPEC-004 MatrixCell（來源票 `0.1.1-W3-376`，已收束為
@@ -645,3 +512,54 @@ Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
   可靠區分「寫入成功」與「失敗被降級」。trigger：`1.0.0-W3-553`（1.0 規劃
   票，四項一併定案並重評 SPEC-004 樂觀更新政策）（來源票 `0.1.1-W3-073`／`0.1.1-W3-280`／`0.1.1-W3-281`／
   `0.1.1-W3-283`，已收束為本項知識，未執行）
+
+## 7. 對實作票的切分指引（跨 domain）
+
+- 一張 ticket 原則上只動一個 domain。跨 domain 的需求先拆
+- 0.3.0 新建 `lib/schema/`、`lib/corpus/`、`lib/diagnostics/` 時，import 方向必須符合 §2：
+  `lib/diagnostics/` 只可 import `lib/corpus/`（不得 import `lib/schema/`，該邊已刪除）；
+  `lib/corpus/` 只可 import `lib/schema/` 與 `lib/workspace/`；三者皆不得 import `lib/screens/`。
+  2026-09-24 規劃時三個目錄都不存在，import 鏈無從驗證；各實作票的驗收須含
+  `grep -rn "^import" lib/<bundle>/` 的方向檢查
+
+各 domain 專屬的切分指引見該 domain map §5（Corpus、Graph、Layout）。
+
+## 8. FR → Bundle 覆蓋對照
+
+歸屬判準：該 FR 的**驗收對象**落在哪個 bundle 的公開面（各 domain map §3），不依「哪個畫面顯示它」——
+畫面狀態是 layer 不是 domain（§2）。驗收對象只落在畫面狀態（錨點、焦點、捲動、動畫、元件層
+回饋）者標為「L4 畫面狀態（非 domain）」；跨多 bundle 者全部列出並說明跨在哪裡。
+
+### SPEC-003（互動反應）
+
+| FR | 內容 | Bundle | 跨在哪裡 |
+|----|------|--------|---------|
+| FR-01 | 每個狀態的退出路徑皆有具名觸發錨點 | L4 畫面狀態（非 domain） | 驗收對象為 §4 對照表的錨點與狀態錨點 |
+| FR-02 | 取消契約的十條行為 | L4 畫面狀態；Corpus、Diagnostics | 載入態（L4）承載取消錨點與時限；取消後結果不得寫回由長時操作的承擔方兌現——Domain／Ticket 載入為 Corpus 解析，破洞掃描為 Diagnostics |
+| FR-03 | 導航來源單槽記錄 | L4 畫面狀態（非 domain） | `returnTo` 為畫面導航狀態 |
+| FR-04 | 惰性載入以首次可見觸發、保留狀態 | Corpus、Workspace；L4 畫面狀態 | 「解析計數為 0」為 Corpus 解析的觸發時機；「切換專案後重置」以 Workspace 目前路徑改變為觸發；offset／搜尋詞／模式保留屬 L4 |
+| FR-05 | 時間值具名、減少動態效果仍抵達目標態 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/tokens/` 與狀態錨點 |
+| FR-06 | 未接線動作不得無回饋上線 | L4 畫面狀態（非 domain） | 驗收對象為可點錨點的回饋；「外部程序被呼叫」為 Workspace 開啟原始檔的呼叫端觀測，不以 Workspace 行為為驗收對象 |
+| FR-07 | 進度指示誠實 | Corpus、Diagnostics；L4 畫面狀態 | Ticket 載入進度值取自 Corpus 已解析筆數；破洞掃描的進度呈現（不含百分比）以 Diagnostics 掃描為承擔方；呈現屬 L4 |
+| FR-08 | 捲動、換頁、拖拉可斷言 | L4 畫面狀態（非 domain） | 泳道拖曳平移量為手勢反應，不以 Layout 座標計算為驗收對象 |
+| FR-09 | 焦點與鍵盤下界 | L4 畫面狀態（非 domain） | 驗收對象為焦點序列與焦點裝飾 |
+| FR-10 | 兩個獨立捲動區不連動 | L4 畫面狀態（非 domain） | 驗收對象為兩個捲動錨點的 offset |
+| FR-11 | 掃描完成的系統層通知 | Diagnostics | 與 §3.4「破洞掃描完成」列一致（自發型、可棄，驗收落點 FR-11） |
+| FR-12 | 第一層回饋不因服務狀態而免除 | L4 畫面狀態（非 domain） | 驗收以永不受理的服務替身驅動元件層，服務行為不在驗收範圍 |
+| FR-13 | 各類服務的回饋形式依 §2.12 成立 | Corpus、Diagnostics、Workspace；L4 畫面狀態 | 長時操作的承擔方為 Corpus（Domain／Ticket 載入）與 Diagnostics（破洞掃描）；短暫非同步的承擔方為 Workspace（外部開啟、資料夾選擇）；各類回饋形式的呈現屬 L4 |
+| FR-14 | 等待期輸入阻擋範圍依服務類型成立 | L4 畫面狀態；Corpus、Diagnostics | 阻擋範圍由載入態（L4）承載；長時操作來源同 FR-13 |
+| FR-15 | 重複觸發防護由服務承擔 | Workspace；L4 畫面狀態 | (d) 外部開啟冪等為 Workspace 公開面「開啟原始檔」；(a)(b) 元件層不實作計時器屬 L4；(c) 搜尋防抖的服務歸屬依 §6「搜尋與全域導覽」待決項 |
+| FR-16 | 暫態提示載體可由判準 T 推導 | Workspace、Diagnostics；L4 畫面狀態 | 與 §3.4「開啟原始檔結果」列一致（Workspace，驗收落點 FR-16）；掃描完成 `denied` fallback 為 Diagnostics；判準表與載體選擇屬 L4 仲裁層（§3.1 仲裁器落層） |
+| FR-17 | 截斷與不顯示皆有紀錄 | L4 畫面狀態；Workspace、Diagnostics | 截斷紀錄由 L4 仲裁層（`AppSnackBar`）產生；請求方為 Workspace（開啟原始檔結果，§3.4 列一致，驗收落點 FR-17）與 Diagnostics（掃描完成） |
+
+### SPEC-006 與 SPEC-007
+
+逐列單一 domain，對照表在 spec 同目錄的 domain map：SPEC-006 見 `docs/spec/corpus/domain-map.md` §7，SPEC-007 見 `docs/spec/graph/domain-map.md` §7。歸屬 Schema、TicketDetail、Diagnostics 的列在各自 domain map §7 另列副本。
+
+全部 FR 皆有歸屬，無標為非 domain 者（破洞報告畫面接真實資料屬 0.6+，不在本版）。
+全部 FR 皆有歸屬，無標為非 domain 者。Graph 與 TicketDetail 都只讀 Corpus 產物、彼此不依賴（§4.1）；
+Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
+
+---
+
+**Last Updated**: 2026-10-07 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）

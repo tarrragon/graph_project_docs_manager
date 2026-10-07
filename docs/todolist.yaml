@@ -363,7 +363,7 @@ versions:
     notes: |
       依版本登記規則 minor 列登記（2026-09-25，0.3.0 finish 的前移目標）：PROP-005
       confirmed，§0.4 已寫定整合測試（relatedTo 1-hop symmetric union 正確、斷邊交給
-      Diagnostics、輕節點與 5W1H 全文分離）、斷言來源（EVT-GRAPH-001、domain-map §4.1）、
+      Diagnostics、輕節點與 5W1H 全文分離）、斷言來源（EVT-GRAPH-001、系統層 §4.1）、
       阻擋（上游 0.2.1-W3-1121 反向邊該存還是該推導）。
       2026-09-23 登記：0.2.0 發版前移的新功能票之收件目標（凍結閘門 minor+1）。
       2026-09-30 發版時待辦：finish 須實地驗證 W1-042（0.3.3-W1-016 在 0.3.3 finish 被 git 層 reference-transaction 守衛整筆擋下，
@@ -686,7 +686,7 @@ versions:
       版本契約第一段（2026-10-06，用戶裁決分兩段寫：本段為規劃波，第二段於 SPEC 寫定後、實作票派發前補上第 2～5 欄的實作部分）：
       1. 範圍與執行順序
          - topic 1 Layout（PROP-005 §0.5，e1 主導）：四項阻擋逐項由用戶裁決（跨度大者走 WRAP），裁決記入 tech-decisions 並同步
-           domain-map §9；順序：矩陣列的來源 → domain 名稱大小寫的權威寫法 → 泳道布局演算法 → 間接依賴判定式 → lib 分層命名與
+           系統層 §6；順序：矩陣列的來源 → domain 名稱大小寫的權威寫法 → 泳道布局演算法 → 間接依賴判定式 → lib 分層命名與
            「路徑模式 → domain」對照表內容。全部裁決後走 version-bootstrap（SPEC → domain map → 資料契約判定 → UC／traceability →
            Step 4.5 地基波判定 → Step 5 測試設計 → Step 6 建實作票）。W1-001（P2，domain_dependency 與 FlowStep 邊）為阻擋 2 的
            分析輸入，列為 finish 必要；W1-002（P3，PROP-005 heavy 評估章節）盡力而為。
@@ -773,7 +773,7 @@ versions:
       0.x 全數凍結後「最近開放後繼」路由會把新票自動吸入，屆時須手動指定版本。
       停放：W3-552（openedExternallyMessage 改為抵達時依 T1 條件式顯示以取代具名例外；源自 0.3.2-W3-210
       設計觀察，與用戶 2026-09-29「保留、一律顯示」裁決不同的替代，非缺陷，延後經 e1 判定）。
-      規劃承接：W3-553（編輯能力四項架構決策與 SPEC-004 樂觀更新政策重評；SPEC-004、domain-map §9、CLAUDE.md §6
+      規劃承接：W3-553（編輯能力四項架構決策與 SPEC-004 樂觀更新政策重評；SPEC-004、系統層 §6、CLAUDE.md §6
       三處 trigger 的共同承接；源自 0.3.3-W3-282，1.0 major 起始規劃時執行）。
 
   - version: "0.1.0"

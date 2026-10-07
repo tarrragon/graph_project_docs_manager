@@ -23,7 +23,7 @@ SPEC-007；本文件與其衝突時以 SPEC-007 為準，衝突本身記入承�
 | 圈 | 內容 | 目的 | 失敗時代表 |
 |----|------|------|----------|
 | 5a 外圈 | IT-1、IT-2、IT-3 三項整合測試 | 版本契約（PROP-005 §0.4）的驗收終點 | 與獨立參照實作的行為分歧，或 Corpus→Graph 交界斷裂 |
-| 5b 內圈 | 逐 bundle 的 domain unit 測試 | SPEC-007 每條驗收條件與 domain-map §3〈Bundle 不變式清單〉 | 單一規則被打破，可直接定位 |
+| 5b 內圈 | 逐 bundle 的 domain unit 測試 | SPEC-007 每條驗收條件與各 domain map §3〈Bundle 不變式清單〉 | 單一規則被打破，可直接定位 |
 
 外圈綠而內圈紅、或反之，都代表測資沒有涵蓋到對應形態，須補測資而非放寬斷言。
 
@@ -43,7 +43,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 
 ### 1.3 依賴方向與測試隔離
 
-依 domain-map §2（Graph → Corpus → Schema；Diagnostics 收 Graph 事件）：
+依系統層 §2（Graph → Corpus → Schema；Diagnostics 收 Graph 事件）：
 
 - `test/unit/schema/` 不得 import `lib/graph/`、`lib/ticket_detail/`、`lib/corpus/`、`lib/diagnostics/`
 - `test/unit/graph/` 可 import `lib/graph/`、`lib/schema/`、`lib/corpus/`（僅事件型別）；不得 import `lib/diagnostics/`、`lib/ticket_detail/`
@@ -433,7 +433,7 @@ FR 驗收（5b）與 IT（5a）交集的處理：5b 為規則分支的權威，I
 不在 IT 中重複斷言單一規則的分支（例如「前導空白不去除」只在 G3-5，IT-2 以原始值原樣比對涵蓋，
 不另立案例）。FR-09 #1 本身即以 IT-2 為驗收對象，故只在 IT2-A1 斷言，D3 不重複語料級比對。
 
-### 4.4 不變式 ↔ 測試（domain-map §3）
+### 4.4 不變式 ↔ 測試（各 domain map §3）
 
 | Bundle | 不變式 | 測試 |
 |--------|-------|------|

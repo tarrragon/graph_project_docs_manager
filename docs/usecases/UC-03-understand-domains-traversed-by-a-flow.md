@@ -126,7 +126,7 @@ flow:
 
 > **前提已定案（2026-09-14）。** 步驟的 domain 來源為 `FlowStep.traverses`
 > （步驟直接觸及的 domain 清單，0..n，純畫面步驟為空），定義見
-> `docs/domain-map.md` §2.5；本 UC 的 flow 區塊已回填。schema 驗證由
+> `docs/system-layer.md` §1.4；本 UC 的 flow 區塊已回填。schema 驗證由
 > `0.1.0-W3-346` 提供。
 
 - [ ] 步驟表的每一列同時呈現步驟名稱、該步驟 `traverses` 所列 domain 與發送事件

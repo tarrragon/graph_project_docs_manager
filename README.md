@@ -86,7 +86,8 @@ fvm flutter gen-l10n                # 重新生成多語系程式碼
 | 入口 | 內容 |
 |---|---|
 | `docs/tech-decisions.md` | 設計決策記錄（append-only，**以最後的補記為準**） |
-| `docs/domain-map.md` | 8 個 domain 的邊界、依賴方向、容錯策略、待決事項 |
+| `docs/spec/{domain}/domain-map.md` | 每個 domain 的 bundle 邊界、不變式、FR 覆蓋、單一 domain 待決事項 |
+| `docs/system-layer.md` | 跨 domain 的依賴方向、通道、邊界決策、容錯策略、待決事項 |
 | `docs/proposals/` | PROP-001~004：交付形態、schema 消費、資料來源、展示介面 |
 | `docs/spec/ui/SPEC-001-*.md` | 六個畫面加浮層的狀態矩陣與 FR-01~06 |
 | `docs/usecases/` | UC-01~06，含結構化 flow 區塊 |

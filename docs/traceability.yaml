@@ -160,8 +160,8 @@ mappings:
       - test/unit/diagnostics/parse_failure_gap_test.dart
       - test/integration/corpus_it2_gap_classification_test.dart
 
-# 水平 domain 規則軸：docs/domain-map.md §3 的 8 個 bundle。
-# invariants 取自該表「唯一變更理由」欄；layer 取自 §2 分層圖。
+# 水平 domain 規則軸：docs/spec/{domain}/domain-map.md §3 的 8 個 bundle（索引見 docs/system-layer.md §1.3）。
+# invariants 取自該表「唯一變更理由」欄；layer 取自 docs/system-layer.md §2 分層圖。
 # tests 全數為空——8 個 domain 的業務邏輯尚未實作（專案現處於
 # UI/token/元件庫基礎建設階段，僅 Workspace 有部分程式碼
 # lib/workspace/workspace_repository.dart 且無專屬測試檔），
@@ -170,13 +170,13 @@ domain_bundle_tests:
   - bundle: Workspace
     layer: L0
     invariants:
-      - 資料夾存取方式改變是唯一合法變更理由（domain-map.md §3）
+      - 資料夾存取方式改變是唯一合法變更理由（docs/spec/workspace/domain-map.md §3）
     tests: []
 
   - bundle: Schema
     layer: L0
     invariants:
-      - 上游 schema 格式或版本語意改變是唯一合法變更理由（domain-map.md §3）
+      - 上游 schema 格式或版本語意改變是唯一合法變更理由（docs/spec/schema/domain-map.md §3）
     tests:  # SPEC-006（0.4.1-W1-009 回填）與 SPEC-007 FR-01、D6
       - test/unit/schema/carrier_path_lookup_test.dart
       - test/unit/schema/schema_source_resolution_test.dart
@@ -189,8 +189,8 @@ domain_bundle_tests:
   - bundle: Corpus
     layer: L1
     invariants:
-      - 文件格式或解析寬容度改變是唯一合法變更理由（domain-map.md §3）
-      - frontmatter 邊界判定採逐行語意，既有語料解析失敗數應為 0（domain-map.md §7）
+      - 文件格式或解析寬容度改變是唯一合法變更理由（docs/spec/corpus/domain-map.md §3）
+      - frontmatter 邊界判定採逐行語意，既有語料解析失敗數應為 0（docs/spec/corpus/domain-map.md §4.2）
     tests:  # SPEC-006（0.4.1-W1-009 回填）
       - test/unit/corpus/corpus_scanner_test.dart
       - test/unit/corpus/frontmatter_classifier_test.dart
@@ -204,7 +204,7 @@ domain_bundle_tests:
   - bundle: Graph
     layer: L2
     invariants:
-      - 圖語意改變（如 symmetric union 規則）是唯一合法變更理由（domain-map.md §3）
+      - 圖語意改變（如 symmetric union 規則）是唯一合法變更理由（docs/spec/graph/domain-map.md §3）
     tests:  # SPEC-007 FR-02～FR-06、FR-08、NFR-01、NFR-02；日誌 L1～L3 在 graph_log_events_test
       - test/unit/graph/light_node_test.dart
       - test/unit/graph/reference_extraction_test.dart
@@ -223,7 +223,7 @@ domain_bundle_tests:
   - bundle: TicketDetail
     layer: L2
     invariants:
-      - ticket 的 5W1H 結構語意改變是唯一合法變更理由（domain-map.md §3）
+      - ticket 的 5W1H 結構語意改變是唯一合法變更理由（docs/spec/ticketdetail/domain-map.md §3）
     tests:  # SPEC-007 FR-07
       - test/unit/ticket_detail/ticket_detail_query_test.dart
       - test/integration/graph_it3_light_node_separation_test.dart
@@ -231,8 +231,8 @@ domain_bundle_tests:
   - bundle: Diagnostics
     layer: L2
     invariants:
-      - 「什麼算破洞」的定義改變是唯一合法變更理由（domain-map.md §3）
-      - 只有落在節點 carrier 路徑下卻缺 frontmatter 的檔案才進破洞報告（domain-map.md §7）
+      - 「什麼算破洞」的定義改變是唯一合法變更理由（docs/spec/diagnostics/domain-map.md §3）
+      - 只有落在節點 carrier 路徑下卻缺 frontmatter 的檔案才進破洞報告（docs/system-layer.md §5）
     tests:  # SPEC-006（0.4.1-W1-009 回填）與 SPEC-007 FR-09
       - test/unit/diagnostics/parse_failure_gap_test.dart
       - test/integration/corpus_it2_gap_classification_test.dart
@@ -242,13 +242,13 @@ domain_bundle_tests:
   - bundle: History
     layer: L2
     invariants:
-      - git 查詢方式或歷史語意改變是唯一合法變更理由（domain-map.md §3）
+      - git 查詢方式或歷史語意改變是唯一合法變更理由（docs/spec/history/domain-map.md §3）
     tests: []
 
   - bundle: Layout
     layer: L3
     invariants:
-      - 布局演算法或版型規則改變是唯一合法變更理由（domain-map.md §3）
+      - 布局演算法或版型規則改變是唯一合法變更理由（docs/spec/layout/domain-map.md §3）
     tests: []
 
 # 資料契約軸：跨語言/平台/token 層的不變式，皆已有契約測試覆蓋。

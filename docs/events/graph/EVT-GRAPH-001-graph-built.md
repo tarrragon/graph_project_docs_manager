@@ -36,4 +36,4 @@ consumers: ['Layout', 'Diagnostics']
 
 ## 來源
 
-`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/domain-map.md`。
+`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/system-layer.md`。

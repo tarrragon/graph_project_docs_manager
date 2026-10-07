@@ -134,28 +134,29 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 之內，未新增第三層；但三者的平台端事實軌（實機驗證）全數零覆蓋，且僅
 `MacosScanNotifier` 有承接票（`0.1.0-W3-078`），另兩處尚待 PM 裁決是否開票。
 
-**現行待決**（每一項都是版本規劃的前置，見 `docs/domain-map.md` §9）：
+**現行待決**（每一項都是版本規劃的前置，見 `docs/system-layer.md` §6 與各 `docs/spec/{domain}/domain-map.md` §6）：
 
-- **UC → Ticket 在上游 16 條語意邊中無對應邊**。追溯視圖（UC-04）承諾的
+- **UC → Ticket 在上游 17 條語意邊中無對應邊**。追溯視圖（UC-04）承諾的
   四層鏈，第三跳沒有資料來源
-- **Domain 視圖的列無來源**：個別 domain 不是圖節點（`DomainBundle`
-  的 carrier 是整份 domain-map.md）。格的來源已定案（`0.1.0-W3-341`，經 WRAP
+- **Domain 視圖的列**：2026-10-06 用戶裁決列取 `DomainBundle` 節點，`0.5.0-W1-070.3` 已把
+  單檔 domain-map 拆為每個 domain 一份 `docs/spec/{domain}/domain-map.md`（跨 domain 內容在
+  `docs/system-layer.md`）。格的來源已定案（`0.1.0-W3-341`，經 WRAP
   改定，2026-09-14）：`FlowStep` 新增 `traverses` 欄位——步驟直接觸及的 domain
-  清單（0..n，欄位必存在，純畫面步驟為空），對應 domain-map §2.5「貫穿」；
+  清單（0..n，欄位必存在，純畫面步驟為空），對應系統層 §1.4「貫穿」；
   事件推導類覆蓋率均低於 21% 已排除。schema 修改由 `0.1.0-W3-346` 在本專案
   直接進行，回填前須先補 domain-map 兩處缺口（`0.1.0-W3-347`）
 - 空殼判準：「間接依賴」「破洞分類」「預估耗時」「資源上限」（「App 已知範圍」已於
-  2026-09-23 定案為「JSON 產生版本不高於 App 內建版本」，見 domain-map §9；規格追修由
+  2026-09-23 定案為「JSON 產生版本不高於 App 內建版本」，見 `docs/spec/schema/domain-map.md` §6；規格追修由
   `0.2.0-W1-040` 承接）
-  （「間接依賴」判定式候選與「預估耗時」欄的去留候選已收束於 §9）
-- 泳道布局演算法（唯一的差異化元件；具體形態候選已收束於 §9）
+  （「間接依賴」判定式候選與「預估耗時」欄的去留候選已收束於 `docs/system-layer.md` §6）
+- 泳道布局演算法（唯一的差異化元件；具體形態候選已收束於 `docs/spec/layout/domain-map.md` §6）
 - domain 名稱大小寫的權威寫法未定（`depends_on_domains` 小寫與 `traverses`
-  PascalCase 並存，見 §9）
+  PascalCase 並存，見 `docs/system-layer.md` §6）
 - 跨畫面「首次可見／再次可見」生命週期偵測基礎設施未設計（SPEC-003 §3.5
-  再次可見自動重掃，見 §9）
+  再次可見自動重掃，見 `docs/system-layer.md` §6）
 - 編輯能力與 git 邊層級歷史已定案但未落為提案與規格；編輯能力落為規格前的
   四項子決策（規格檔路徑指名、寫入前閘門判準、structured log 延後理由重估、
-  樂觀更新可觀測時刻）已收束於 §9，trigger 為 `1.0.0-W3-553`（1.0 規劃票）
+  樂觀更新可觀測時刻）已收束於 `docs/system-layer.md` §6，trigger 為 `1.0.0-W3-553`（1.0 規劃票）
 - 0.1 之後的版號規則與 wave 切法
 
 ---
@@ -182,7 +183,8 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 |------|------|------|
 | `docs/proposals/` | PROP 節點 | PROP-001~004，皆 confirmed |
 | `docs/spec/{domain}/` | SPEC 節點 | SPEC-001（ui domain） |
-| `docs/domain-map.md` | DomainBundle 節點，8 個 domain 的邊界與依賴 | 已建立 |
+| `docs/spec/{domain}/domain-map.md` | DomainBundle 節點，每個 domain 一份（8 個 domain 各一） | 已建立 |
+| `docs/system-layer.md` | 系統層：跨 domain 的依賴方向、通道、邊界決策、容錯、待決（非圖節點） | 已建立 |
 | `docs/usecases/` | UC 節點（含結構化 flow 區塊） | UC-01~06，共 39 個 FlowStep |
 | `docs/events/{domain}/` | EVT 節點 | 9 個 |
 | `docs/app-use-cases.md` | UC 白名單 SSOT（`doc uc verify` 依此驗證） | 已建立 |
@@ -193,7 +195,7 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 ### 上游 schema（唯一權威，禁止另建副本）
 
 `.claude/skills/doc/doc_system/core/tracking_schema.py`
-— `GRAPH_NODE_TYPES`（7）、`GRAPH_EDGE_TYPES`（16，established 12 / proposed 4）
+— `GRAPH_NODE_TYPES`（7）、`GRAPH_EDGE_TYPES`（17，established 12 / proposed 5）
 
 三項語意約定：
 

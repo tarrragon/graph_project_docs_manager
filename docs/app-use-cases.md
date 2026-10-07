@@ -15,7 +15,7 @@ UC 白名單 SSOT（Single Source of Truth）。
 
 本表使用的三個易混淆詞——**貫穿**（flow 經過某 domain）、**穿透**（兩視圖間
 雙向導覽）、**破洞**（四類，見 `docs/events/diagnostics/EVT-DIAGNOSTICS-001-gaps-detected.md`）
-——定義見 `docs/domain-map.md` §2.5。
+——定義見 `docs/system-layer.md` §1.4。
 
 ---
 

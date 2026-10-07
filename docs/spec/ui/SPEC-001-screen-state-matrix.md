@@ -187,7 +187,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 某 UC 的某步驟 `traverses` **包含**某 domain，該步驟即屬該 domain × UC 格、並置於該 domain
 > 的泳道列；`traverses` 為 0..n 個 domain 名，一步驟可同時落入多格，`[]`（純畫面步驟）不落入任何格。
 > 列末小計「被直接貫穿的 UC 數」＝至少一步驟 `traverses` 包含該 domain 的 UC 數，由 Graph
-> 公開面「貫穿數」提供（`docs/domain-map.md` §3）。
+> 公開面「貫穿數」提供（`docs/spec/graph/domain-map.md` §3）。
 >
 > **格詳情卡的內容以假資料驅動**（本規格設計約束）。真實資料下「個別 domain 的
 > 步驟與事件」的來源為上段 `FlowStep.traverses` 包含比對；個別 domain 的清單與說明
@@ -302,7 +302,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > （同層多個父節點缺下游即多處），錨點見 SPEC-003 §3.3。
 >
 > **第二跳欄位待決**：PROP → SPEC → UC 的父子欄位（`SPEC.related_usecases` 或
-> `UC.source_proposal`）未定案（`docs/domain-map.md` §9；定案追蹤票
+> `UC.source_proposal`）未定案（`docs/system-layer.md` §6；定案追蹤票
 > `0.1.0-W3-369`）；0.1 以假資料驅動，樹的父子關係由 fixture 直接給定，本表與
 > SPEC-003 §3.3 的行為不依賴欄位選擇。
 >
@@ -703,7 +703,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 一個對 94% 的輸入沒有定義行為的規格，在真實使用中就是空白畫面。
 
 > 本 FR 由 2026-08-27 的 frame 3-H 個案實跑產生——四個個案的停頓點並排後
-> 指向同一個缺席變數（被觀察專案的框架版本），詳見 `docs/domain-map.md` §9。
+> 指向同一個缺席變數（被觀察專案的框架版本），詳見 `docs/system-layer.md` §6。
 
 ### FR-08: 狀態轉換的提示需求逐狀態有結論，且不重複告知
 
@@ -747,7 +747,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
   假資料 `FlowStep.traverses` 計算（§1〈矩陣格與泳道列的判定依據〉，
   `0.1.0-W3-345`），泳道列序與步驟欄序由假資料直接給定，欄寬與列高為
   靜態值。真正的排序、邊繞線需要真實的 flow 資料才判斷得出好壞——在沒有
-  資料可看時設計布局演算法，很可能設完又改，而泳道是 `domain-map.md` §6
+  資料可看時設計布局演算法，很可能設完又改，而泳道是 `docs/spec/layout/domain-map.md` §4.1
   判定的「產品差異化本身」，改的代價高
 
 ## 變更歷史

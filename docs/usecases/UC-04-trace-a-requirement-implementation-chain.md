@@ -54,7 +54,7 @@ ticket_refs: []
 使用者自 Ticket 出發，沿 source_ticket 與 implements_requirements 往上追溯至來源提案
 
 **0.1 規格未涵蓋**：前提為各層向上欄位對照表與 UC → Ticket 語意邊尚未建立，
-見 `docs/domain-map.md` §9；UC → Ticket 資料來源定案（`0.1.0-W3-365`）後
+見 `docs/system-layer.md` §6；UC → Ticket 資料來源定案（`0.1.0-W3-365`）後
 重評本場景是否可規格化
 
 ## 流程拓撲（結構化 Flow 區塊）
@@ -128,7 +128,7 @@ flow:
 
 > **前提未滿足。** 第三跳（UC → Ticket）在上游 16 條語意邊中無對應邊；
 > 第二跳（PROP → SPEC → UC）走 `SPEC.related_usecases` 或 `UC.source_proposal`
-> 會得到不同的樹，欄位未明訂。兩項皆列於 `docs/domain-map.md` §9。
+> 會得到不同的樹，欄位未明訂。兩項皆列於 `docs/system-layer.md` §6。
 > 本批文件自身即是反例：UC-01 自報來自 PROP-003，但經 SPEC-001 展開會
 > 出現在 PROP-004 底下。
 
