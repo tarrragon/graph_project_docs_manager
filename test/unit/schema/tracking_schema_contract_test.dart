@@ -7,6 +7,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/schema/carrier_path_lookup.dart';
+import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 
 import '../../helpers/spec006/real_type_table.dart';
@@ -220,6 +221,23 @@ void main() {
       const unanchored = r'docs/x\.md';
       expect(RegExp(unanchored).hasMatch('other/docs/x.md/extra'), isTrue);
       expect(unanchored.startsWith('^'), isFalse);
+    });
+  });
+
+  group('K5 bundle_dependency 為 proposed 邊型（0.5.0-W1-070.2）', () {
+    test('解碼後 layer 為 proposed，且不進入使用中（established）邊型', () {
+      final json = readRealTrackingSchemaJson();
+      final resolution = resolveEdgeTypes(
+        projectSchemaJson: json,
+        builtinSchemaJson: json,
+      );
+      expect(resolution.edgeTypes['bundle_dependency']?.layer, 'proposed');
+      expect(
+        resolution.activeEdgeTypes.map((e) => e.name),
+        isNot(contains('bundle_dependency')),
+      );
+      // 守衛正向對照：established 邊型確實進入使用中。
+      expect(resolution.activeEdgeTypes, isNotEmpty);
     });
   });
 

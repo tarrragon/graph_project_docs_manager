@@ -2,7 +2,7 @@
 name: doc
 description: "需求追蹤文件系統（proposals/spec/usecases）的查詢、建立、導航和管理。Use for: (1) 查詢提案、規格、用例文件, (2) 建立新提案/規格/用例（從模板）, (3) 跨文件導航（從 UC 找 spec/ticket）, (4) Domain 地圖查詢, (5) 追蹤索引管理, (6) UC 測試對應驗證, (7) 提案評估與審查, (8) 測試追溯矩陣查詢（UC↔測試覆蓋狀態）, (9) UC 編號治理（uc list 列合法 UC / uc verify 白名單驗證可掛 CI / uc trace 引用追溯 / uc context 派發 UC 定位）。Use when: user mentions PROP-, UC-, SPEC-, 功能, 需求, feature, issue, 提案, 用例, 規格, 需求文件, 需求追蹤, 測試覆蓋, 追溯, traceability, test-map, UC 編號, 編號驗證, uc verify, 偽 UC, 合法 UC 清單"
 metadata:
-  version: 1.24.0
+  version: 1.24.1
 ---
 
 # Doc SKILL
@@ -50,7 +50,7 @@ metadata:
 | `uc verify [path]` | 驗證路徑內 UC token 白名單合規（可掛 CI） | `/doc uc verify lib`（exit 0=pass / 1=violation） |
 | `uc trace <UC-XX>` | 列出指定 UC 的 code 引用位置 | `/doc uc trace UC-01` |
 | `uc context <UC-XX\|ticket-id>` | 輸出 UC 標題+spec 位置+code 引用 top-N，供派發 Context Bundle 引用 | `/doc uc context UC-01` 或 `/doc uc context <ticket-id>` |
-| `validate <SPEC-ID\|EVT-ID>` | 依 ID 前綴分派驗證：`SPEC-*`（subdomain 分派章節 schema，目前僅 data-contract）/ `EVT-*`（必填欄位 + producer/consumer 交叉驗證） | `/doc validate SPEC-002` 或 `/doc validate EVT-LIBRARY-001`（exit 0=通過 / 1=章節缺失或欄位缺失 / 2=文件不存在或 frontmatter 不可解析） |
+| `validate <SPEC-ID\|EVT-ID\|DOMAIN-MAP-ID>` | 依 ID 前綴分派驗證：`SPEC-*`（subdomain 分派章節 schema，目前僅 data-contract）/ `EVT-*`（必填欄位 + producer/consumer 交叉驗證）/ `DOMAIN-MAP-*`（`depends_on_bundles` 出邊目標須為已存在的 domain-map id，不存在則 exit 1 並列出懸空目標） | `/doc validate SPEC-002`、`/doc validate EVT-LIBRARY-001` 或 `/doc validate DOMAIN-MAP-{domain}`（exit 0=通過 / 1=章節缺失或欄位缺失 / 2=文件不存在或 frontmatter 不可解析） |
 
 ---
 
@@ -83,6 +83,8 @@ DomainMap ──source_specs──→ Spec
     └──不變式軸──→ Phase 2 測試設計（sage 消費）
     │
     └──依賴方向 DAG──→ Phase 0 一致性審查（saffron 消費）
+    │
+    └──depends_on_bundles──→ DomainMap（B 層 proposed 邊型 `bundle_dependency`，選填）
 ```
 
 > DomainMap 與 Spec/UC 正交：Spec 是功能需求（FR）的垂直切面，DomainMap 是 domain bundle 邊界的水平切面。方法論：`.claude/methodologies/domain-bundle-mapping-methodology.md`。
@@ -107,6 +109,7 @@ doc domain <name>   # 帶 domain 名稱：列出該 domain 下的 spec 清單與
 | 提案模板 | `templates/proposal-template.md` | 建立新提案 |
 | 規格模板 | `templates/spec-template.md` | 建立新功能規格 |
 | Domain Map 模板 | `templates/domain-map-template.md` | 建立 domain bundle 邊界地圖（DDD 水平視角）。§3 每個 bundle 必須 `ls`/`grep` 驗證目標路徑存在後才標「已實作」，不存在標「規劃中」（PC-APP-012 防護） |
+| 系統層模板 | `templates/system-layer-template.md` | 建立 `docs/system-layer.md`（整個專案一份）：承接跨 domain 的分層與依賴方向、通道、邊界決策、容錯策略、待決事項；與 domain-map 以 frontmatter `depends_on_bundles` 互連，用 `cp` 建立（同 domain map） |
 | 資料契約模板 | `templates/data-contract-template.md` | 建立資料層邏輯契約與實作綁定文件（DB-agnostic / DB-specific 兩區） |
 | Design System 規格模板 | `templates/design-system-spec-template.md` | 建立 UI 設計系統規格（token 層） |
 | 元件庫規格模板 | `templates/component-library-spec-template.md` | 建立 L3 元件庫章節：逐元件依元件契約欄位表填寫（含回饋契約）、容器元件排列不變式、禁用對照、豁免清單（依元件庫雙向約束方法論）；缺範例位置的三段鏈式範例集見 `examples/component-library-chained-examples.md` |
