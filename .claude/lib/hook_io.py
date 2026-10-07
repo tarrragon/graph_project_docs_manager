@@ -493,6 +493,46 @@ def is_handoff_recovery_mode(
         return False
 
 
+def _scan_handoff_pending(
+    logger: Optional[logging.Logger],
+    project_root: Optional[Path],
+) -> List[Tuple[str, Set[str]]]:
+    """掃描 pending handoff，回傳 [(檔名, 該檔指向的 ticket ID 集合)]（依檔名排序）
+
+    損壞或無法讀取的檔案略過並記錄；目錄不存在回傳空列表。
+    """
+    root = project_root if project_root is not None else get_project_root()
+    pending_dir = root / ".claude" / "handoff" / "pending"
+    result: List[Tuple[str, Set[str]]] = []
+
+    if not pending_dir.is_dir():
+        return result
+
+    for handoff_file in sorted(pending_dir.glob("*.json")):
+        try:
+            with open(handoff_file, "r", encoding="utf-8") as f:
+                record = json.load(f)
+        except (OSError, ValueError) as e:
+            if logger:
+                logger.info("讀取 handoff 檔案失敗，略過: {}: {}".format(handoff_file.name, e))
+            continue
+        if not isinstance(record, dict):
+            continue
+        ids: Set[str] = set()
+        for key in ("ticket_id", "target_ticket_id"):
+            value = record.get(key)
+            if isinstance(value, str) and value:
+                ids.add(value)
+        # 無顯式 target_ticket_id 時，目標由 direction 後綴表達（"to-sibling:<id>"）
+        direction = record.get("direction")
+        if not record.get("target_ticket_id") and isinstance(direction, str):
+            _, _, suffix = direction.partition(":")
+            if suffix:
+                ids.add(suffix)
+        result.append((handoff_file.name, ids))
+    return result
+
+
 def get_handoff_recovery_ticket_ids(
     logger: Optional[logging.Logger] = None,
     project_root: Optional[Path] = None,
@@ -508,35 +548,54 @@ def get_handoff_recovery_ticket_ids(
         logger: 可選 Logger
         project_root: 可選專案根目錄（測試注入；預設 get_project_root()）
     """
-    root = project_root if project_root is not None else get_project_root()
-    pending_dir = root / ".claude" / "handoff" / "pending"
     ticket_ids: Set[str] = set()
-
-    if not pending_dir.is_dir():
-        return ticket_ids
-
-    for handoff_file in pending_dir.glob("*.json"):
-        try:
-            with open(handoff_file, "r", encoding="utf-8") as f:
-                record = json.load(f)
-        except (OSError, ValueError) as e:
-            if logger:
-                logger.info("讀取 handoff 檔案失敗，略過: {}: {}".format(handoff_file.name, e))
-            continue
-        if not isinstance(record, dict):
-            continue
-        for key in ("ticket_id", "target_ticket_id"):
-            value = record.get(key)
-            if isinstance(value, str) and value:
-                ticket_ids.add(value)
-        # 無顯式 target_ticket_id 時，目標由 direction 後綴表達（"to-sibling:<id>"）
-        direction = record.get("direction")
-        if not record.get("target_ticket_id") and isinstance(direction, str):
-            _, _, suffix = direction.partition(":")
-            if suffix:
-                ticket_ids.add(suffix)
-
+    for _, ids in _scan_handoff_pending(logger, project_root):
+        ticket_ids |= ids
     return ticket_ids
+
+
+def find_handoff_recovery_hits(
+    prompt: str,
+    logger: Optional[logging.Logger] = None,
+    project_root: Optional[Path] = None,
+) -> List[Tuple[str, str]]:
+    """回傳 prompt 命中的 (pending 檔名, 指向票 ID) 列表（完整 ID 比對，子票不算命中父票）
+
+    供守衛在放行當下輸出可見訊號；空列表表示未命中恢復模式。
+    """
+    if not prompt:
+        return []
+    hits: List[Tuple[str, str]] = []
+    for filename, ids in _scan_handoff_pending(logger, project_root):
+        for ticket_id in sorted(ids):
+            pattern = r"(?<![\w.-])" + re.escape(ticket_id) + r"(?![\w-]|\.\d)"
+            if re.search(pattern, prompt):
+                hits.append((filename, ticket_id))
+    return hits
+
+
+def format_handoff_recovery_signal(hits: List[Tuple[str, str]]) -> str:
+    """將命中列表格式化為單行可見訊號"""
+    detail = ", ".join("{} -> {}".format(f, t) for f, t in hits)
+    return "[handoff-recovery] 恢復模式放行派發，命中 pending: {}".format(detail)
+
+
+def emit_handoff_recovery_signal(
+    prompt: str,
+    logger: Optional[logging.Logger] = None,
+    project_root: Optional[Path] = None,
+) -> bool:
+    """判定恢復模式放行；命中時於 stderr 輸出一行可見訊號並回傳 True（不改變放行判定）"""
+    hits = find_handoff_recovery_hits(prompt, logger, project_root)
+    if not hits:
+        return False
+    try:
+        sys.stderr.write(format_handoff_recovery_signal(hits) + "\n")
+    except Exception as e:
+        # stderr 不可寫：訊號僅為可見性輔助，放行判定不受影響，仍記日誌
+        if logger:
+            logger.info("handoff 恢復訊號輸出失敗: {}".format(e))
+    return True
 
 
 def prompt_references_handoff_ticket(
@@ -545,13 +604,7 @@ def prompt_references_handoff_ticket(
     project_root: Optional[Path] = None,
 ) -> bool:
     """prompt 是否引用 handoff 指向的 ticket（完整 ID 比對，子票 ID 不算命中父票）"""
-    if not prompt:
-        return False
-    for ticket_id in get_handoff_recovery_ticket_ids(logger, project_root):
-        pattern = r"(?<![\w.-])" + re.escape(ticket_id) + r"(?![\w-]|\.\d)"
-        if re.search(pattern, prompt):
-            return True
-    return False
+    return bool(find_handoff_recovery_hits(prompt, logger, project_root))
 
 
 def validate_hook_input(

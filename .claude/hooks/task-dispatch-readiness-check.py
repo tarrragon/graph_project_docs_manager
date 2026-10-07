@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-from lib import setup_hook_logging, get_project_root, prompt_references_handoff_ticket, run_hook_safely
+from lib import setup_hook_logging, get_project_root, prompt_references_handoff_ticket, emit_handoff_recovery_signal, run_hook_safely
 from lib.hook_io import read_hook_input, write_hook_output, create_pretooluse_output
 from lib.config_loader import load_agents_config
 
@@ -231,6 +231,7 @@ def main() -> None:
 
     # Handoff 恢復模式：僅 prompt 引用 handoff 指向的票時略過檢查
     if prompt_references_handoff_ticket(prompt, logger):
+        emit_handoff_recovery_signal(prompt, logger)  # 只加可見訊號，不影響放行判定
         logger.info("檢測到 Handoff 恢復模式，略過代理人分派檢查")
         sys.exit(0)
 

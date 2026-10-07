@@ -44,6 +44,18 @@ def _stale_record():
     return {"ticket_id": SRC_ID, "target_ticket_id": TGT_ID}
 
 
+def _run_validation_full(root: Path, prompt: str):
+    payload = {
+        "tool_name": "Agent",
+        "tool_input": {"prompt": prompt, "subagent_type": "thyme-python-developer"},
+    }
+    env = dict(os.environ, HOOK_TEST_ISOLATION="1", CLAUDE_PROJECT_DIR=str(root))
+    return subprocess.run(
+        [sys.executable, str(VALIDATION_HOOK)],
+        input=json.dumps(payload), capture_output=True, text=True, env=env,
+    )
+
+
 def _run_validation(root: Path, prompt: str) -> int:
     payload = {
         "tool_name": "Agent",
@@ -78,9 +90,12 @@ def _run_readiness(monkeypatch, capsys, root: Path, prompt: str, agent: str) -> 
     with pytest.raises(SystemExit) as exc:
         mod.main()
     assert exc.value.code == 0
-    return capsys.readouterr().out
+    captured = capsys.readouterr()
+    _LAST_ERR[0] = captured.err
+    return captured.out
 
 
+_LAST_ERR = [""]
 WRONG_AGENT_PROMPT = "開發 Hook 腳本來檢查代理人分派"
 WRONG_AGENT = "parsley-flutter-developer"
 
@@ -148,3 +163,62 @@ class TestSharedSetFunction:
         rec2 = {"ticket_id": SRC_ID, "direction": "to-parent"}
         root2 = _make_root(tmp_path / "b", {"x.json": rec2})
         assert get_handoff_recovery_ticket_ids(project_root=root2) == {SRC_ID}
+
+
+SIGNAL_TAG = "[handoff-recovery]"
+
+
+class TestRecoveryAllowSignal:
+    """放行當下輸出一行可見訊號（stderr）：含命中的 pending 檔名與指向票；未命中則無額外輸出。"""
+
+    def test_e2_validation_signal_has_filename_and_ticket(self, tmp_path):
+        root = _make_root(tmp_path, {"stale-x.json": _stale_record()})
+        proc = _run_validation_full(root, "Ticket: {} 恢復".format(TGT_ID))
+        assert proc.returncode == 0
+        assert SIGNAL_TAG in proc.stderr
+        assert "stale-x.json" in proc.stderr
+        assert TGT_ID in proc.stderr
+
+    def test_e1_validation_no_signal_when_not_matched(self, tmp_path):
+        root = _make_root(tmp_path, {"stale-x.json": _stale_record()})
+        proc = _run_validation_full(root, "Ticket: demo-other 做事")
+        assert SIGNAL_TAG not in proc.stderr
+        assert "stale-x.json" not in proc.stderr
+
+    def test_e2_readiness_signal_has_filename_and_ticket(self, tmp_path, monkeypatch, capsys):
+        root = _make_root(tmp_path, {"stale-x.json": _stale_record()})
+        prompt = "Ticket: {}\n{}".format(TGT_ID, WRONG_AGENT_PROMPT)
+        _run_readiness(monkeypatch, capsys, root, prompt, WRONG_AGENT)
+        err = _LAST_ERR[0]
+        assert SIGNAL_TAG in err and "stale-x.json" in err and TGT_ID in err
+
+    def test_e1_readiness_no_signal_without_pending(self, tmp_path, monkeypatch, capsys):
+        _run_readiness(monkeypatch, capsys, tmp_path, "沒有票的 prompt", "thyme-python-developer")
+        assert SIGNAL_TAG not in _LAST_ERR[0]
+
+    def test_find_hits_returns_filename_ticket_pairs(self, tmp_path):
+        from lib.hook_io import find_handoff_recovery_hits
+        root = _make_root(tmp_path, {"stale-x.json": _stale_record()})
+        hits = find_handoff_recovery_hits("Ticket: {}".format(TGT_ID), project_root=root)
+        assert hits == [("stale-x.json", TGT_ID)]
+        assert find_handoff_recovery_hits("無關", project_root=root) == []
+
+    def test_signal_write_failure_keeps_allow_decision(self, tmp_path, monkeypatch):
+        """失敗語意：stderr 不可寫時不拋例外，命中判定（放行）不變。"""
+        from lib.hook_io import emit_handoff_recovery_signal
+
+        class _BrokenErr:
+            def write(self, _):
+                raise OSError("closed")
+
+        root = _make_root(tmp_path, {"stale-x.json": _stale_record()})
+        monkeypatch.setattr(sys, "stderr", _BrokenErr())
+        assert emit_handoff_recovery_signal("Ticket: {}".format(TGT_ID), project_root=root) is True
+
+    def test_broken_pending_file_yields_no_signal(self, tmp_path, capsys):
+        from lib.hook_io import emit_handoff_recovery_signal
+        pending = tmp_path / ".claude" / "handoff" / "pending"
+        pending.mkdir(parents=True)
+        (pending / "bad.json").write_text("{nope", encoding="utf-8")
+        assert emit_handoff_recovery_signal("Ticket: {}".format(TGT_ID), project_root=tmp_path) is False
+        assert SIGNAL_TAG not in capsys.readouterr().err
