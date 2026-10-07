@@ -5,7 +5,7 @@
 /// 影響，永遠取自專案 JSON（S5-6：只補路徑模式，非整表替換）。
 ///
 /// 依賴方向：本檔屬 Schema domain（L0），不得 import 任何上層 domain
-/// （`docs/domain-map.md` §2）。版本比較邏輯住在同層的
+/// （`docs/system-layer.md` §2）。版本比較邏輯住在同層的
 /// `schema_version.dart`（L0），`lib/screens/domain_view/domain_view_schema_version.dart`
 /// （L4 畫面狀態層）經 import／export 取用同一份實作——L4 依賴 L0 為
 /// 允許方向，不是「避免反向依賴」（先前檔頭說法有誤，已更正）。

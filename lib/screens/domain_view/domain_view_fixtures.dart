@@ -2,7 +2,7 @@
 /// 詳情卡與泳道節點，非真實 repo 解析，`0.1.0-W1-003`／CLAUDE.md §6
 /// 「Domain 視圖的列無來源」現行待決同源）。
 ///
-/// domain id 取自 `docs/domain-map.md` §3 Bundle 界定表既有四個
+/// domain id 取自 `docs/system-layer.md` §1.3 Bundle 索引既有四個
 /// domain（workspace／schema／corpus／graph），UC id 沿用
 /// `docs/usecases/`（UC-02／UC-04／UC-06）；步驟標籤為 fixture 資料本身，
 /// 非 App UI 文案，故標 `i18n-exempt`（同 `trace_fixtures.dart` 慣例）。

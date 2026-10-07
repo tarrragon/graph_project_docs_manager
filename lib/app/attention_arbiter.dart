@@ -42,7 +42,7 @@ enum AttentionArrival {
   spontaneous,
 }
 
-/// 來源 domain。僅列 `docs/domain-map.md` §2.6.2 判「是」的三者；新增來源
+/// 來源 domain。僅列 `docs/system-layer.md` §3.2 判「是」的三者；新增來源
 /// 須先在該表改判，不得在此擴充。
 enum AttentionSource { workspace, schema, diagnostics }
 

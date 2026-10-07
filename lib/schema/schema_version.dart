@@ -2,7 +2,7 @@
 ///
 /// 單一實作放 L0（Schema domain），供 `schema_source_resolver.dart`（同層）
 /// 與 `lib/screens/domain_view/domain_view_schema_version.dart`（L4 畫面
-/// 狀態層）共用；L4 經 import 取用，方向符合 `docs/domain-map.md` §2
+/// 狀態層）共用；L4 經 import 取用，方向符合 `docs/system-layer.md` §2
 /// （高層可依賴低層，反之不行）。
 library;
 
