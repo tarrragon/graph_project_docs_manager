@@ -2,7 +2,7 @@
 title: "系統層 — graph_project_docs_manager"
 bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-corpus, DOMAIN-MAP-graph, DOMAIN-MAP-ticketdetail, DOMAIN-MAP-layout, DOMAIN-MAP-diagnostics, DOMAIN-MAP-history]
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-10-08"
 ---
 
 # 系統層 — graph_project_docs_manager
@@ -490,8 +490,8 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   於 Layout SPEC 定義。原待決描述（大小寫並存使比對與錨點失準）見來源票 `0.1.1-W3-378`
 - **畫面層的名稱與「列＝DomainBundle」例外範圍已定案**（2026-10-07 用戶裁決，`0.5.0-W1-095` WRAP 第二輪
   G2＋A′，見 `docs/tech-decisions.md` 同日補記）：畫面層（L4，§2）在資料中以本地保留字 `presentation`
-  表示，畫面例外由「僅限泳道」延伸為兩處——泳道「畫面」列（SPEC-001 §1）與 EVT `consumers`／`producers`
-  的 `presentation`（比對 `traverses == []` 的 FlowStep，規則權威 SPEC-003 §3.5）；矩陣不加此列。
+  表示，畫面例外由「僅限泳道」延伸為兩處——泳道「畫面」列（SPEC-001 §1）與 EVT `consumers`
+  的 `presentation`（`producers` 不適用、值只能是已宣告 domain 名，2026-10-08 用戶裁決第 4 項，`0.5.0-W1-106` 收窄；比對 `traverses == []` 的 FlowStep，規則權威 SPEC-003 §3.5）；矩陣不加此列。
   保留字只在本專案 SPEC 定義，上游 validate 不動；EVT 值改寫由 `0.5.0-W1-095.1` 承接
 - **跨畫面「首次可見／再次可見」生命週期偵測基礎設施未設計**：SPEC-003 §3.5
   生命週期列要求無既有結果時再次可見自動重掃；現有 `firstVisibleProvider`
