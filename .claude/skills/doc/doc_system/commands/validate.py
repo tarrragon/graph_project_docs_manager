@@ -17,6 +17,8 @@ from doc_system.core.tracking_schema import (
     EVT_REQUIRED_FIELDS,
     find_dangling_bundle_dependencies,
     find_missing_completeness_fields,
+    find_missing_path_patterns,
+    find_path_pattern_problems,
     find_undeclared_domain_names,
 )
 from doc_system.core.uc_registry import _extract_structured_flow_steps
@@ -223,14 +225,37 @@ def _execute_domain_bundle_validation(project_root: str, doc_id: str) -> None:
         sys.exit(2)
 
     targets = find_dangling_bundle_dependencies(bundles).get(doc_id, [])
-    if not targets:
-        print(f"通過: {doc_id} 的 depends_on_bundles 出邊皆可解析")
+    path_problems = _collect_path_pattern_problems(project_root, bundles, doc_id)
+    if not targets and not path_problems:
+        print(f"通過: {doc_id} 的 depends_on_bundles 出邊與 path_patterns 皆有效")
         sys.exit(0)
 
-    print(f"驗證失敗: {doc_id} 的 depends_on_bundles 指向不存在的 bundle")
-    for target in targets:
-        print(f"  - {target}")
+    if targets:
+        print(f"驗證失敗: {doc_id} 的 depends_on_bundles 指向不存在的 bundle")
+        for target in targets:
+            print(f"  - {target}")
+    if path_problems:
+        print(f"驗證失敗: {doc_id} 的 path_patterns 無效")
+        for item in path_problems:
+            print(f"  - {item}")
     sys.exit(1)
+
+
+def _collect_path_pattern_problems(project_root: str, bundles: dict[str, dict], doc_id: str) -> list[str]:
+    """回傳該 bundle 的 path_patterns 問題（格式、重複、路徑不存在），含檔案位置。"""
+    root = Path(project_root)
+    frontmatter = bundles[doc_id]
+    location = f"{root / 'docs' / 'spec' / str(frontmatter.get('domain')) / 'domain-map.md'}"
+    problems = find_path_pattern_problems(bundles).get(doc_id, [])
+    missing = find_missing_path_patterns(frontmatter, lambda v: _path_matches_kind(root, v))
+    problems += [f"path_patterns 值 {v!r}: 專案根目錄下不存在對應的目錄或檔案" for v in missing]
+    return [f"{location}: {item}" for item in problems]
+
+
+def _path_matches_kind(root: Path, pattern: str) -> bool:
+    """`/` 結尾的前綴須為目錄，否則須為檔案。"""
+    target = root / pattern
+    return target.is_dir() if pattern.endswith("/") else target.is_file()
 
 
 def _as_name_list(value) -> list[str]:
