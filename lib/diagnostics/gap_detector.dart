@@ -1,7 +1,7 @@
 /// 需求：[SPEC-006 FR-08；test-design §3.3 D1、D2]
 /// Diagnostics 由 `EVT-CORPUS-003` 產生 `parseFailure` 破洞。
 ///
-/// 只依賴 `lib/corpus/`（`docs/domain-map.md` §2 已刪除
+/// 只依賴 `lib/corpus/`（`docs/system-layer.md` §2 已刪除
 /// Diagnostics → Schema 依賴邊），不得 import `lib/schema/`。
 library;
 

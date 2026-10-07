@@ -681,7 +681,7 @@ def _cmd_scan(args: argparse.Namespace) -> None:
     print(json.dumps(records, ensure_ascii=False, indent=2))
 
 
-# 五個框架語料專案（SPEC-006 D3；與 docs/domain-map.md §7 量測範圍一致）。
+# 五個框架語料專案（SPEC-006 D3；與 docs/system-layer.md §5 量測範圍一致）。
 # 只用於 freeze 子命令（離線一次性重建凍結測資），main scan 子命令不依賴此常數。
 CORPUS_PROJECTS = (
     "flutter_balance",

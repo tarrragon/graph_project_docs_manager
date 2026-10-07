@@ -1,6 +1,6 @@
 /// 需求：[SPEC-006 FR-03] 節點判型 —— 以可用檔案的 `id` 比對型別表各型的
 /// `id_pattern`，型別判別以 `id_pattern` 為準，不以 carrier 路徑為準
-/// （`docs/domain-map.md` §7）。
+/// （`docs/system-layer.md` §5）。
 library;
 
 import 'package:graph_project_docs_manager/schema/type_table.dart';

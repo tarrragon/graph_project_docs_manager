@@ -2,7 +2,7 @@
 /// 掃描器：遍歷 `docs/**/*.md`，逐檔分類、判型、組裝失敗事件，並產出可
 /// 驗證的摘要計數（EVT-CORPUS-001）。
 ///
-/// 依賴方向：本檔屬 Corpus domain（`docs/domain-map.md` §5），只 import
+/// 依賴方向：本檔屬 Corpus domain（`docs/spec/corpus/domain-map.md` §2），只 import
 /// `lib/schema/`，不 import `lib/diagnostics/`；工作區根目錄不自行推導，
 /// 由呼叫端傳入已綁定該根的 [DocsFileSystem]（C8-6：取自 Workspace 公開
 /// 面）。

@@ -3,8 +3,8 @@
 /// 所有路徑皆相對於已綁定的工作區根目錄、以 `/` 分隔、不含前導 `./`
 /// （SPEC-006-test-design.md §3.2 C8-5）；本介面本身不知道工作區根目錄是
 /// 什麼——由呼叫端在建構 [DefaultDocsFileSystem] 時傳入該值，Corpus 掃描器
-/// 不自行推導（C8-6：根目錄取自 Workspace domain 的公開面，`docs/domain-map.md`
-/// §5 依賴邊 Corpus → Workspace）。
+/// 不自行推導（C8-6：根目錄取自 Workspace domain 的公開面，`docs/system-layer.md`
+/// §2 依賴邊 Corpus → Workspace）。
 library;
 
 import 'dart:developer' as developer;

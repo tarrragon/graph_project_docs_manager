@@ -16,8 +16,8 @@ import 'parse_outcome.dart';
 /// 呼叫端（`corpus_scanner.dart`）負責先行篩選才呼叫本函式：[outcome] 已
 /// 排除 [Available]（事件只對失敗檔，FR-04〈觸發條件〉）、查詢可用性已
 /// 確認（FR-06 規則 7）、[lookup] 的型別 [CarrierPathHit] 本身即排除
-/// 未命中結果（carrier 外的失敗檔不發事件，`docs/domain-map.md` §7
-/// 〈觸發條件比原本設想的窄得多〉；0.3.0-W3-540：未命中不再是執行期
+/// 未命中結果（carrier 外的失敗檔不發事件，`docs/system-layer.md` §5
+/// 〈真正的失敗形態：無 frontmatter，且多數是合法的〉；0.3.0-W3-540：未命中不再是執行期
 /// 才發現的契約違反，而是編譯期即不可傳入）。呼叫端算出 [lookup] 的同一
 /// 次 `lookupCarrierPathType` 呼叫是本輪唯一一次查詢，本函式不重查
 /// （0.3.0-W3-534：先前掃描器判斷命中與否、與建構事件各自呼叫一次，同一
