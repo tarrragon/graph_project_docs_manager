@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-08"
-version: "1.29"
+version: "1.30"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -206,7 +206,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 變動後期望值隨之改變，測試以當時資料重算，上列數字為本版資料下的對照值。
 >
 > **間接依賴格的詳情卡：依賴路徑**。已選格為間接依賴時，詳情卡在關係種類之後列出依賴路徑，每條路徑
-> 一行，形式為 `X → … → Y`（domain 顯示名由 i18n 取，以「→」連接）。路徑集合的判定：
+> 一行，形式為 `X → … → Y`（各 domain 顯示 `DomainBundle.domain` 原值，不經 i18n，以「→」連接）。路徑集合的判定：
 >
 > | 項目 | 規則 |
 > |------|------|
@@ -231,7 +231,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 項目 | 判定式 | 期望值（UC-02 實例） |
 > |------|--------|---------------------|
 > | 列集合與列序 | 「畫面」列在最上，其下每個 DomainBundle 一列。DomainBundle 的層由 `bundle_dependency` 邊（各 domain map frontmatter `depends_on_bundles`）推導：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；列序依層遞增（L0 在上），同層依 `DomainBundle.domain` 字面字母序。規則不寫死 domain 名；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 本專案推導：L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`。列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列；UC-02 下 `schema`、`workspace`、`history`、`diagnostics` 為空列 |
-> | 列鍵比對 | 列鍵為 `DomainBundle.domain` 宣告字面；步驟 `traverses` 值與列鍵精確比對（不做大小寫轉換）；列首顯示名由 i18n 取 | `traverses: ["graph"]` 落 `graph` 列 |
+> | 列鍵比對 | 列鍵為 `DomainBundle.domain` 宣告字面；步驟 `traverses` 值與列鍵精確比對（不做大小寫轉換）；列首顯示 `DomainBundle.domain` 原值（未知 domain 亦同），只有「畫面」列經 i18n | `traverses: ["graph"]` 落 `graph` 列 |
 > | 主線 | `branch_from == null` 的步驟為主線，主線順序為其在 flow 清單中的檔內順序 `i`（不沿 `next` 推導；與 2026-10-07 `next` (c) 裁決同源） | locate-domain → read-traversal-count → switch-to-swimlane → inspect-steps |
 > | 欄序 | 依主線順序逐一輸出主線步驟 M；輸出 M 後，緊接輸出所有 `branch_from == M.id` 的分支步驟（多個時依檔內順序 `i`）；每輸出一個分支步驟 B 後，對 B 遞迴套用同一規則（緊接輸出 `branch_from == B.id` 的巢狀分支，再處理 B 的下一個同層分支）；步驟的欄號 = 輸出序（0 起），每步驟恰一欄 | 0 locate-domain、1 enter-from-ticket、2 read-traversal-count、3 matrix-overview-only、4 switch-to-swimlane、5 flow-not-structured、6 inspect-steps |
 > | 節點所屬列 | `traverses` 非空：該步驟在 `traverses` 每個值對應的列各放一個節點（同欄）；`traverses == []`：只在「畫面」列放一個節點 | enter-from-ticket 於 `graph`、`ticketdetail` 兩列欄 1 各一節點；locate-domain 於「畫面」列欄 0 |
@@ -821,6 +821,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.30 | 2026-10-08 | `0.5.0-W1-106` 修訂輪（用戶裁決 K6，SPEC-004 v1.71 同批）：§1〈泳道布局規則〉列鍵比對列與間接依賴詳情卡依賴路徑的 domain 顯示名，由「i18n 取」改為顯示 `DomainBundle.domain` 原值；只有「畫面」列經 i18n |
 | 1.29 | 2026-10-08 | `0.5.0-W1-092.2`（用戶裁決 2026-10-08 第 1 項 1c、第 2 項 2b，SPEC-004 v1.70 同批）：§1 正常 · 泳道顯示欄與〈泳道布局規則〉修訂——列序改由 `bundle_dependency` 推導層序、同層 domain 字母序（不寫死 domain 名，附本專案期望值；`history` 移至 L1，`diagnostics` 移至 `graph` 前）；〈主線〉改清單順序（`branch_from == null` 依檔內順序，不沿 `next[0]`）；〈欄序〉補巢狀分支遞迴套用 C2；〈無法放置的步驟〉收窄為懸空 `branch_from`。〈間接依賴格的詳情卡〉排序依列序，UC-04 × `schema` 期望值（graph 在 ticketdetail 前）不變。狀態總數不變 |
 | 1.28 | 2026-10-08 | `0.5.0-W1-106`（用戶裁決 2026-10-08 第 4 項 4b，SPEC-003 v1.56 同批）：§5〈破洞類別「事件宣告與 flow 不符」〉鏡像段收窄——`presentation` 只適用 `consumers`，`producers` 中的 `presentation` 視為未對應 |
 | 1.27 | 2026-10-07 | `0.5.0-W1-095.3`（用戶裁決 2026-10-07，`0.5.0-W1-095` WRAP 第二輪 A′）：§2 事件流小表定義「本 UC 外」列補 `presentation` 顯示為「畫面」；§5〈破洞類別「事件宣告與 flow 不符」〉鏡像補 `presentation` 比對 `traverses == []` 步驟、其他值視為未對應、不成矩陣列。規則權威為 SPEC-003 v1.55 §3.5。狀態總數不變 |
