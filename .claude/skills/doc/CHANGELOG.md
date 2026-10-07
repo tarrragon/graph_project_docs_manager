@@ -2,6 +2,14 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.5 — DomainBundle 新增選填 frontmatter 欄位 `path_patterns`（專案根目錄相對的字面路徑前綴清單，
+非 glob；`/` 結尾為目錄前綴）。三態：欄位缺席＝未宣告（`read_path_patterns` 回傳 None，不得正規化為 `[]`），
+顯式 `[]` ＝宣告不擁有任何路徑，兩者對 validate 皆合法。`doc validate DOMAIN-MAP-*` 新增檢查（exit 1 並列出檔案、
+值與原因）：型別非字串清單、格式（絕對路徑、`./` 開頭、含 `..`、glob 字元與反斜線）、同字串跨 bundle 或同 bundle
+內重複、指向的目錄／檔案在專案根目錄不存在；不同 bundle 的巢狀前綴合法（比對語意為最長前綴命中，由消費端實作，
+註解寫在 `tracking_schema.py`）。型別表 JSON 內容不變，`TYPE_TABLE_COMPAT_VERSION` 維持 2.77.0。測試：E2（每條
+檢查各一個該紅 fixture）、E1 對照（缺席、空清單、巢狀前綴合法）、缺席與顯式 `[]` 讀取結果不同的對照。
+
 **Version**: 1.24.4 — 修正相對路徑引數被解析到 skill 目錄的問題：shim 以 `uv run --directory <skill_dir>` 啟動，
 行程 cwd 與 PWD 皆被改成 skill 目錄，`doc uc verify docs/usecases` 回報「指定路徑不存在」（rc=2），絕對路徑才通過。
 shim（`install-skill-clis.py` 的 `shim_body`）改在切換目錄前把呼叫者 cwd 放入 `SKILL_CLI_CALLER_CWD`；

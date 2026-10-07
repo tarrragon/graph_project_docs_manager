@@ -588,6 +588,83 @@ def find_undeclared_domain_names(names: list[str], declared: set[str]) -> list[s
     return [name for name in names if name not in declared]
 
 
+# DomainBundle 選填欄位 `path_patterns`：該 bundle 擁有的專案路徑前綴。
+# - 值為字串清單。三態：欄位缺席＝該 bundle 未宣告（不得正規化為 []）；顯式 `[]` ＝
+#   宣告該 bundle 不擁有任何路徑（無目錄的 bundle 如 History，不得宣告不存在的路徑）；
+#   非空清單＝宣告其擁有的前綴。缺席與 `[]` 對 validate 同為合法，差異由
+#   `read_path_patterns` 保留給消費端（含「語料全部缺席」整體狀態的判定）。
+# - 每個值是專案根目錄相對的字面前綴，不是 glob：POSIX 斜線、不得以 `/` 或 `./`
+#   開頭、不得含 `..`、`*`、`?`、`[`、反斜線；以 `/` 結尾為目錄前綴，否則為單一檔案。
+# - 比對語意（消費端實作，本模組不比對）：路徑對全部 bundle 的 pattern 取最長前綴
+#   命中，由最長者決定歸屬；不同 bundle 的巢狀前綴合法。同一字串不得出現於兩個以上
+#   bundle（含同 bundle 內重複），否則最長前綴仍無法決定歸屬。
+PATH_PATTERNS_FIELD = "path_patterns"
+_PATH_PATTERN_FORBIDDEN_CHARS = frozenset("*?[\\")
+
+
+def read_path_patterns(frontmatter: dict) -> list | None:
+    """讀取 path_patterns：欄位缺席（或值為 None）回傳 None，顯式 `[]` 回傳 `[]`。
+
+    兩者語意不同，不可用 `or []` 之類寫法合併。非清單的值原樣回傳，交由格式檢查報錯。
+    """
+    return frontmatter.get(PATH_PATTERNS_FIELD)
+
+
+def check_path_pattern_format(value: object) -> str | None:
+    """回傳單一 path_patterns 值的格式問題描述；合法回傳 None。"""
+    if not isinstance(value, str) or not value:
+        return "必須是非空字串"
+    if value.startswith("/") or value.startswith("./"):
+        return "不得以 `/` 或 `./` 開頭（須為專案根目錄相對路徑）"
+    if ".." in value.split("/"):
+        return "不得含 `..` 段"
+    if any(ch in _PATH_PATTERN_FORBIDDEN_CHARS for ch in value):
+        return "不得含 glob 字元 `*` `?` `[` 或反斜線（字面前綴，非 glob）"
+    return None
+
+
+def find_path_pattern_problems(bundles: dict[str, dict]) -> dict[str, list[str]]:
+    """回傳各 bundle 的 path_patterns 格式與重複問題（bundle id → 問題描述清單）。
+
+    bundles：bundle id → frontmatter。跨 bundle 重複會同時回報給所有涉及的 bundle。
+    欄位缺席、None 與空清單皆合法。路徑存在性需檔案系統，由呼叫端檢查。
+    """
+    problems: dict[str, list[str]] = {}
+    owners: dict[str, list[str]] = {}
+    for bundle_id, frontmatter in bundles.items():
+        raw = read_path_patterns(frontmatter)
+        if raw is None:
+            continue
+        if not isinstance(raw, list):
+            problems.setdefault(bundle_id, []).append(f"{PATH_PATTERNS_FIELD} 必須是字串清單")
+            continue
+        for value in raw:
+            reason = check_path_pattern_format(value)
+            if reason:
+                problems.setdefault(bundle_id, []).append(f"{PATH_PATTERNS_FIELD} 值 {value!r}: {reason}")
+            else:
+                owners.setdefault(value, []).append(bundle_id)
+    for value, ids in owners.items():
+        if len(ids) < 2:
+            continue
+        for bundle_id in dict.fromkeys(ids):
+            problems.setdefault(bundle_id, []).append(
+                f"{PATH_PATTERNS_FIELD} 值 {value!r}: 重複宣告（出現於 {', '.join(ids)}）"
+            )
+    return problems
+
+
+def find_missing_path_patterns(frontmatter: dict, exists) -> list[str]:
+    """回傳 path_patterns 中指向不存在路徑的值；exists(value) 由呼叫端提供。
+
+    目錄前綴（`/` 結尾）須為目錄，其餘須為檔案。格式不合法的值略過（由格式檢查負責）。
+    """
+    raw = read_path_patterns(frontmatter)
+    if not isinstance(raw, list):
+        return []
+    return [v for v in raw if check_path_pattern_format(v) is None and not exists(v)]
+
+
 def find_dangling_bundle_dependencies(bundles: dict[str, dict]) -> dict[str, list[str]]:
     """回傳出邊指向不存在 bundle 的來源（bundle id → 懸空目標清單）。
 
