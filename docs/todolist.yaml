@@ -728,6 +728,10 @@ versions:
       觸發為占比 > 7.5% 且 ≥ 2 張。原判準與修訂理由保留於票面。
       topic 2 追加列入（e1 裁決 2026-10-07，盡力而為）：W1-067.1～.4、069、073～082；P2 優先（067.x、080）。
       canonical 推送：用戶授權於 W1-071 推送後執行一次（2026-10-07）。
+      canonical v2.77.0（topic 2 修正 23 commit）與 v2.77.1（自發佈庫拉回 7 個 skill）皆經用戶授權推送；發佈庫推 ticket 2.44.44、
+      version-release 2.10.5，比對 61 個一致。磁碟由用戶授權清理（iOS DeviceSupport、~/Library/Caches、系統暫存 pip 殘留），可用 2.8→23Gi。
+      topic 2 常設收件規則（e1 2026-10-07）：已列入 topic 2 的 ANA 所產生的 children，同時符合「屬框架修復、母票已列入、優先級不高於母票」
+      即預設列入，不再逐張裁決；改 lib/、test/ 或升 schema 產生版本者仍須 e1 裁決。依此列入：W1-069.1、W1-077.1（P2）、W1-083（P2）。
 
   - version: "0.6.0"
     codename: "Screens"
