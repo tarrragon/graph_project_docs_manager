@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-07"
-version: "1.26"
+version: "1.27"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -335,7 +335,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 欄位 | 事件（EVT ID）｜發出（步驟序號 · domain）｜消費（步驟序號 · domain） |
 > | 列 | 一個事件一列；同一事件有多個消費步驟時，消費欄列出全部；多個發出步驟時發出欄同樣列出全部；列序依該事件首次出現（發出或消費）的步驟序號 |
 > | 資料來源 | 本 UC 的 FlowStep `emits`／`consumes` |
-> | 本 UC 外 | 事件在本 UC 內只有發出或只有消費時，缺的一側顯示「本 UC 外」，並附 EVT 節點 frontmatter `consumers`（缺消費側時）或 `producers`（缺發出側時）所列 domain |
+> | 本 UC 外 | 事件在本 UC 內只有發出或只有消費時，缺的一側顯示「本 UC 外」，並附 EVT 節點 frontmatter `consumers`（缺消費側時）或 `producers`（缺發出側時）所列 domain；值為本地保留字 `presentation` 時顯示為「畫面」（SPEC-003 §3.2、§3.5） |
 > | 不渲染 | 本 UC 無任何事件 |
 > | 問題標記 | 符合 §5「孤立事件」判準的列以問題標記呈現；元件由 SPEC-004 承接 |
 >
@@ -483,7 +483,9 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > **破洞類別「事件宣告與 flow 不符」**（`0.1.0-W3-335.19` 第二輪裁示，與孤立事件分開，
 > 字面值 `event-declaration-mismatch`）：EVT 節點 `consumers`（或 `producers`）列出的某 domain，
 > 全專案無任何 `traverses` **包含**該 domain 的 FlowStep `consumes`（或 `emits`）該 EVT。
-> 每個未對應的宣告 domain 一項。判準全文見 SPEC-003 §3.5。
+> 每個未對應的宣告 domain 一項。宣告值為本地保留字 `presentation`（畫面層，與泳道「畫面」列同義）時，
+> 改比對全專案 `traverses == []` 的 FlowStep；未宣告且非 `presentation` 的值（含大小寫不同者）視為未對應。
+> `presentation` 不成矩陣列（`0.5.0-W1-095.3`）。判準全文見 SPEC-003 §3.5。
 
 ## 6. 節點詳情
 
@@ -817,6 +819,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.27 | 2026-10-07 | `0.5.0-W1-095.3`（用戶裁決 2026-10-07，`0.5.0-W1-095` WRAP 第二輪 A′）：§2 事件流小表定義「本 UC 外」列補 `presentation` 顯示為「畫面」；§5〈破洞類別「事件宣告與 flow 不符」〉鏡像補 `presentation` 比對 `traverses == []` 步驟、其他值視為未對應、不成矩陣列。規則權威為 SPEC-003 v1.55 §3.5。狀態總數不變 |
 | 1.26 | 2026-10-07 | `0.5.0-W1-093.1`（依 `0.5.0-W1-093` 用戶裁決 A3）：§1 已選格顯示欄補「間接依賴格另含依賴路徑」；〈泳道布局規則〉前新增〈間接依賴判定式〉（三值依序判定、方向判讀、本專案期望分布 19／10／19 與間接 10 格明細）、〈間接依賴格的詳情卡：依賴路徑〉（每來源一條最短路徑、排除經直接 domain 的路徑、排序、UC-04／UC-06 期望值）、〈間接依賴格的「在泳道中檢視」跳轉目標〉（第一行來源 X 列欄號最小節點）。狀態總數不變。SPEC-004 v1.68 同批同步 |
 | 1.25 | 2026-10-07 | `0.5.0-W1-092.1`（依 `0.5.0-W1-092` 用戶裁決 R1／C2／B2／E2）：§1 正常 · 泳道顯示欄改為「畫面」列 + 8 個 DomainBundle 列固定順序、主線 `next` 鏈與分支插欄、前向直線與回指弧線；〈矩陣格與泳道列的判定依據〉後新增〈泳道布局規則〉判定式表（列序、列鍵比對、主線、欄序、節點所屬列、邊的來源、邊的形狀、邊的端點、無法放置的步驟，附 UC-02 期望值）、〈「畫面」列是泳道的例外，不進矩陣〉與〈Graph 須提供的分支欄位〉兩則註記；〈設計約束〉0.1 泳道條補 0.5 指向。狀態總數不變。SPEC-004 v1.67 同批同步 |
 | 1.24 | 2026-09-29 | `0.3.3-W3-378`（用戶裁決 B，2026-09-29，經 e1 以 AUQ）：§1「未選專案」列進入條件補「有已存路徑但還原失敗（`WorkspaceUnavailable`）降級為本狀態」，顯示欄補常駐原因文字「無法存取先前的資料夾：{reason}」（`workspaceUnavailable`），直到使用者選定資料夾；原條文「App 首次啟動」改為「App 啟動且無已存路徑」與 SPEC-003 §3.1 生命週期同一措辭 |

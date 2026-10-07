@@ -488,6 +488,11 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   改寫為宣告字面並同步 K6 錨點與測試（`0.5.0-W1-090`），`doc validate` 檢查兩欄位的值必須已宣告
   （`0.5.0-W1-091`，blockedBy W1-090）。App 精確比對，不一致交 Diagnostics；畫面顯示名另由 i18n 取，
   於 Layout SPEC 定義。原待決描述（大小寫並存使比對與錨點失準）見來源票 `0.1.1-W3-378`
+- **畫面層的名稱與「列＝DomainBundle」例外範圍已定案**（2026-10-07 用戶裁決，`0.5.0-W1-095` WRAP 第二輪
+  G2＋A′，見 `docs/tech-decisions.md` 同日補記）：畫面層（L4，§2）在資料中以本地保留字 `presentation`
+  表示，畫面例外由「僅限泳道」延伸為兩處——泳道「畫面」列（SPEC-001 §1）與 EVT `consumers`／`producers`
+  的 `presentation`（比對 `traverses == []` 的 FlowStep，規則權威 SPEC-003 §3.5）；矩陣不加此列。
+  保留字只在本專案 SPEC 定義，上游 validate 不動；EVT 值改寫由 `0.5.0-W1-095.1` 承接
 - **跨畫面「首次可見／再次可見」生命週期偵測基礎設施未設計**：SPEC-003 §3.5
   生命週期列要求無既有結果時再次可見自動重掃；現有 `firstVisibleProvider`
   不區分「離開又切回」訊號，非單畫面局部修復可解，需先做設計決策供
