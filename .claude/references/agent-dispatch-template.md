@@ -509,8 +509,9 @@ final message 僅指向 ticket ID，不承載結論本體。
 
 - 唯有 CLI 回 `[OK] 已追加日誌到 '<section>'` 才算寫入成功；輸出僅見 heredoc 內容被 echo 出來代表指令 malformed、CLI 未執行，須修正 Bash 指令重發。
 - 收尾關鍵 section（Test Results / Exit Status）後以 `grep -c "<唯一片語>" <ticket-md-path>` 確認實際持久化（固定值驗證，不信 CLI 旁白）。
-- worktree 內多行內容被守衛拒收時，分次 append（每次一個章節或段落），不得把 Markdown 章節壓成單行：壓成單行會使 `###` 子標題失去行首位置，寫入看似成功但章節結構受損，complete gate 才會擋下（PC-GPD-003）。派發 prompt 若要求寫入含子章節的 ticket body，須明示此條。
-- 偵測是否已壓平：`grep -n '^### 自檢結果' <ticket-md-path>`；ticket 內已有該章節內容卻無行首命中，即為壓平，須重新分次 append。
+- 派發 prompt 要求被派發 agent 寫入含子章節（`###`）的 ticket body 時，須明示「守衛拒收多行參數時分次 append，不得壓成單行」（PC-GPD-003 預防節主條文）。
+- worktree 內多行內容被守衛拒收時，分次 append（每次一個章節或段落），不得把 Markdown 章節壓成單行：壓成單行後 `###` 不在行首，寫入看似成功，但 complete gate 判定必填章節缺失而擋下。
+- 偵測是否已壓平：`grep -n '^### <本次寫入的子章節名>' <ticket-md-path>`（例：子章節為「自檢結果」時用 `grep -n '^### 自檢結果' <ticket-md-path>`）；ticket 內已有該章節內容卻無行首命中，即為壓平，須重新分次 append。無此子章節的票不會命中，不可據此判定未壓平。
 - 引用既有規則不重複定義：heredoc 傳長文字見 `bash-tool-usage-rules` 規則 5；「只信 raw stdout、帶旁白視為自身雜訊」見 `tool-output-trust-rules` 規則 2；CLI args 跳脫見 PC-079。
 
 ---
@@ -1128,6 +1129,9 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 
 ---
 
+**Last Updated**: 2026-10-07
+**Version**: 1.41.0 — 「append-log 收尾持久化驗證」Action 新增 worktree 守衛拒收多行參數時分次 append、不得壓成單行的條文：主條文為派發 prompt 明示此條，附通用偵測指令與 PC-GPD-003 引用
+
 **Last Updated**: 2026-10-06
 **Version**: 1.40.0 — 「全套件回報規格（TEST-BAL-006）」指令改為 `uv run pytest -q -rfE`，回報規格補第 4 項：有 failed 或 error 時附完整 FAILED / ERROR 行，不得被 tail、grep、grep -v 過濾；只看尾段時先 tee 留全量日誌再取尾段。動機：回報須保留失敗項與錯誤項的 nodeid，驗收方才能不重跑就定位；`-rfE` 讓摘要區固定列出兩類 nodeid（`-r` 取代預設 reportchars，單寫 `-rf` 會漏 ERROR 行）；遺失主因是 tail 行數不足或 grep 過濾。審查後修正（同版未發佈，版號沿用）：初稿誤用 `-rf` 並誤述「缺 -r 時只剩計數」，已更正。「填空檢查清單」對應列同步。
 **Last Updated**: 2026-10-02
@@ -1143,8 +1147,7 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 **Last Updated**: 2026-09-02
 **Version**: 1.32.0 — 「骨架（權威版）」段「停手上報而非定義優先序」後新增一行提醒：Edit/Write 被非專案來源（harness auto mode classifier、permissionMode、OS 權限）拒絕時同理停手回報 NeedsContext，禁改用 Bash 內嵌腳本繞過，引用 `tool-selection.md` 規則二；不動 `track_dispatch.py` 骨架常數
 
-**Last Updated**: 2026-10-07
-**Version**: 1.32.0 — 「append-log 收尾持久化驗證」Action 新增 worktree 守衛拒收多行參數時分次 append、不得壓成單行的條文，附偵測指令與 PC-GPD-003 引用
+**Last Updated**: 2026-09-01
 **Version**: 1.31.0 — 骨架瘦身落地修正兩處失準敘述：(1)「骨架（權威版）」用途段刪「prompt 控制在 10-15 行，穩過 Hook 30 行上限」（`--commit-policy agent` 預設下實測 39-48 行、被 Layer 1 硬上限阻擋兩次），改為精確描述骨架本體 + 短版指標句的行數構成與硬上限無豁免的事實；(2)「同步保護」句由「只驗模板關鍵字同步」改為明示涵蓋關鍵字同步（Layer 2）與骨架實際行數（Layer 1，新增）兩個獨立維度，避免讀者誤以為 hook 對骨架有豁免。「精準 staging 制式句」節同步改寫：`STAGING_PHRASE_AGENT` 26 行全文不再直接嵌入骨架，改冪等寫入票的「### Commit 規範」子節；骨架末尾改附 `STAGING_PHRASE_AGENT_PROMPT` 短版指標句（約 6 行，逐句保留 Category A/B/C 判定所需片語）。
 
 **Last Updated**: 2026-08-27
