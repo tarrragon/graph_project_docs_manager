@@ -221,6 +221,7 @@ EXPECTED_FORWARD_CARDINALITY = {
     "consumption": "many",
     "branching": "one",
     "returning": "one",
+    "bundle_dependency": "many",
 }
 
 

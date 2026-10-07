@@ -2,6 +2,18 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.1 — DomainBundle 新增選填出邊 `depends_on_bundles`（bundle 層級依賴，目標為另一份
+domain-map 的 id）與對應 B 層 proposed 邊型 `bundle_dependency`（class `ordering`、many、
+`directed`、無反向欄位）；established 12 條與其他既有邊型不變，與 `domain_dependency`（domain 名稱層級）
+並存不取代。`tracking_schema.py` 新增 `extract_bundle_dependencies()`（缺欄位／null 為無出邊、純量
+正規化為清單）與 `find_dangling_bundle_dependencies()`；`doc validate DOMAIN-MAP-*` 檢查出邊
+目標存在（懸空則 exit 1，找不到來源文件 exit 2）。`REF_FIELDS` 補列 `depends_on_bundles`。新增
+`templates/system-layer-template.md`（跨 domain 的分層與依賴方向、通道、邊界決策、容錯策略、待決事項），
+`domain-map-template.md` 升 2.4.0（frontmatter 補欄位並互連）。`tracking_schema.json` 已用正式指令重產，
+`schema_generated_at_framework_version` 由 2.60.13 升為 2.77.0：新邊型使 `edge_types` 多一個鍵，
+以產生版本作為相容閘門的消費端須同步內建副本（本專案由其內建副本票承接）。測試：新增
+`test_bundle_dependency.py`（E1 帶與不帶出邊產物不同、E2 懸空出邊報錯含正向對照）；B 層邊期望由 4 條改為 5 條。
+
 **Version**: 1.24.0 — `GRAPH_EDGE_TYPES` 每個邊型新增方向性欄位 `direction`
 （值域 `directed`／`undirected`，常數 `EDGE_DIRECTION_VALUES`），`doc schema export` 匯出的
 `edge_types` 全欄位帶出，`tracking_schema.json` 已用正式指令重產。欄位採字串列舉而非布林，
