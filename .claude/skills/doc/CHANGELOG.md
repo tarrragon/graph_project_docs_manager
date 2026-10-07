@@ -2,6 +2,13 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.4 — 修正相對路徑引數被解析到 skill 目錄的問題：shim 以 `uv run --directory <skill_dir>` 啟動，
+行程 cwd 與 PWD 皆被改成 skill 目錄，`doc uc verify docs/usecases` 回報「指定路徑不存在」（rc=2），絕對路徑才通過。
+shim（`install-skill-clis.py` 的 `shim_body`）改在切換目錄前把呼叫者 cwd 放入 `SKILL_CLI_CALLER_CWD`；
+`doc_system/cli.py` 新增 `restore_caller_cwd()`，`main()` 起始時讀回並 chdir，未設定（非 shim 啟動）時不動 cwd。
+既有 shim 需重跑 `install-skill-clis.py` 才生效。測試：E1（主倉庫與 worktree 情境各一，相對與絕對路徑結果一致）、
+正向對照（不存在路徑仍 exit 2）、無環境變數時 cwd 不變。
+
 **Version**: 1.24.3 — `doc validate` 對 `UC-*` 與 `SPEC-*` 新增 domain 引用檢查：UC 結構化 flow 區塊的 `traverses`
 與 SPEC frontmatter 的 `depends_on_domains`，每個值須為某份 DomainBundle（`docs/spec/*/domain-map.md`）已宣告的
 `domain`，精確字串比對；未宣告回 exit 1 並列出檔案、欄位位置與值。語料沒有任何 DomainBundle 時不檢查。
