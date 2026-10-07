@@ -79,7 +79,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Graph"]
+    traverses: ["graph"]
   - id: "inspect-status"
     name: "檢視狀態"
     next: ["jump-to-detail"]
@@ -87,7 +87,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Graph"]
+    traverses: ["graph"]
   - id: "jump-to-detail"
     name: "跳轉細節"
     next: []
@@ -95,7 +95,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Graph", "TicketDetail"]
+    traverses: ["graph", "ticketdetail"]
   - id: "reverse-trace"
     name: "反向追溯"
     next: ["inspect-status"]
@@ -103,7 +103,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Graph"]
+    traverses: ["graph"]
   - id: "chain-broken"
     name: "鏈路中斷"
     next: []
@@ -111,7 +111,7 @@ flow:
     return_to: "expand-downstream"
     emits: []
     consumes: []
-    traverses: ["Graph"]
+    traverses: ["graph"]
 ```
 
 ## 例外場景

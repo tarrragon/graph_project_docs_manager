@@ -79,7 +79,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Graph"]
+    traverses: ["graph"]
   - id: "switch-to-swimlane"
     name: "切換至泳道"
     next: ["inspect-steps"]
@@ -87,7 +87,7 @@ flow:
     return_to: null
     emits: []
     consumes: ["EVT-LAYOUT-001"]
-    traverses: ["Layout"]
+    traverses: ["layout"]
   - id: "inspect-steps"
     name: "檢視步驟"
     next: []
@@ -111,7 +111,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Graph", "TicketDetail"]
+    traverses: ["graph", "ticketdetail"]
   - id: "flow-not-structured"
     name: "flow 未結構化"
     next: []
@@ -119,7 +119,7 @@ flow:
     return_to: "locate-domain"
     emits: []
     consumes: []
-    traverses: ["Corpus"]
+    traverses: ["corpus"]
     implements: ["FR-06"]
 ```
 

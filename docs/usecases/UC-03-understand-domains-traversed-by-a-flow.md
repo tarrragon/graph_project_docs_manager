@@ -75,7 +75,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Layout"]
+    traverses: ["layout"]
     implements: ["FR-06"]
   - id: "jump-to-node"
     name: "跳轉節點"
@@ -84,7 +84,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Graph"]
+    traverses: ["graph"]
   - id: "jump-to-domain"
     name: "跳回 domain"
     next: []
@@ -92,7 +92,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Layout"]
+    traverses: ["layout"]
   - id: "inspect-event-flow"
     name: "檢視事件流"
     next: []
@@ -100,7 +100,7 @@ flow:
     return_to: "view-steps"
     emits: []
     consumes: []
-    traverses: ["Graph"]
+    traverses: ["graph"]
   - id: "flow-block-absent"
     name: "UC 無結構化 flow"
     next: []
@@ -108,7 +108,7 @@ flow:
     return_to: "select-uc"
     emits: []
     consumes: []
-    traverses: ["Corpus"]
+    traverses: ["corpus"]
     implements: ["FR-06"]
 ```
 

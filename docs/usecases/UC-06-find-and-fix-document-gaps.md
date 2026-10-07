@@ -66,7 +66,7 @@ flow:
     return_to: null
     emits: []
     consumes: ["EVT-CORPUS-003"]
-    traverses: ["Diagnostics"]
+    traverses: ["diagnostics"]
   - id: "view-categories"
     name: "檢視分類"
     next: ["locate-item"]
@@ -74,7 +74,7 @@ flow:
     return_to: null
     emits: ["EVT-DIAGNOSTICS-001"]
     consumes: []
-    traverses: ["Diagnostics"]
+    traverses: ["diagnostics"]
   - id: "locate-item"
     name: "定位單項"
     next: ["open-source-file"]
@@ -82,7 +82,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Diagnostics"]
+    traverses: ["diagnostics"]
   - id: "open-source-file"
     name: "開啟原始檔"
     next: []
@@ -90,7 +90,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Workspace"]
+    traverses: ["workspace"]
   - id: "rescan"
     name: "重新掃描"
     next: ["view-categories"]
@@ -98,7 +98,7 @@ flow:
     return_to: "view-categories"
     emits: ["EVT-CORPUS-002"]
     consumes: []
-    traverses: ["Corpus"]
+    traverses: ["corpus"]
   - id: "no-gaps"
     name: "無破洞"
     next: []
@@ -106,7 +106,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Diagnostics"]
+    traverses: ["diagnostics"]
   - id: "gaps-undeterminable"
     name: "無法判定破洞"
     next: []
@@ -114,7 +114,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["Diagnostics"]
+    traverses: ["diagnostics"]
 ```
 
 ## 例外場景
