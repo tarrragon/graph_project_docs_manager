@@ -90,6 +90,8 @@ def build_schema_dict(project_root: Path | None = None) -> dict:
         "completeness_semantics": COMPLETENESS_SEMANTICS,
         "carrier_path_types": sorted(CARRIER_PATH_TYPES),
         "carrier_path_specificity_semantics": CARRIER_PATH_SPECIFICITY_SEMANTICS,
+        "non_domain_paths_file": tracking_schema.NON_DOMAIN_PATHS_FILE,
+        "non_domain_paths_key": tracking_schema.NON_DOMAIN_PATHS_KEY,
     }
 
 

@@ -2,6 +2,14 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.7 — 新增 `doc validate-paths` 子命令與非 domain 路徑清單載體 `docs/non-domain-paths.yaml`（路徑與鍵名
+`non_domain_path_patterns` 宣告於 `tracking_schema.py`，值格式沿用 `check_path_pattern_format`）。一次檢查全部 DomainBundle
+的 `path_patterns` 與本檔（exit 1 列出檔案、值與原因）：格式、同檔重複、與任一 `path_patterns` 同字串、路徑不存在。三態：檔案缺席
+＝未宣告（`read_non_domain_paths` 回 None）、`[]` ＝宣告無非 domain 路徑、缺鍵或非清單＝格式錯誤（不當成缺席）。`doc schema export`
+新增 `non_domain_paths_file`／`non_domain_paths_key` 兩鍵，`TYPE_TABLE_COMPAT_VERSION` 升為 2.77.1 並重產
+`tracking_schema.json`。新增 `templates/non-domain-paths-template.yaml`。測試：E2（格式、同檔重複、與 path_patterns 同字串、路徑不存在、缺鍵各一個該紅 fixture）、
+缺席／顯式 `[]`／缺鍵三者讀取對照。
+
 **Version**: 1.24.6 — `doc validate UC-*` 新增 flow 區塊順序一致性檢查：主線步驟（`branch_from` 為空）的
 `next` 須等於清單中下一個主線步驟（末步為空），分支步 `next` 不受限；不一致時 exit 1 並列出檔案與
 `flow[<id>].next` 位置。修正 `doc validate DOMAIN-MAP-*` 的 `path_patterns` 錯誤位置：原固定組為

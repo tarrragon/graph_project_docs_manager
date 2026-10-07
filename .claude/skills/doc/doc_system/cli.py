@@ -102,6 +102,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument("doc_id", help="文件 ID（如 SPEC-002）")
 
+    # validate-paths
+    subparsers.add_parser(
+        "validate-paths",
+        help="檢查全部 DomainBundle path_patterns 與 docs/non-domain-paths.yaml（供 CI）",
+    )
+
     # validate-filenames
     subparsers.add_parser(
         "validate-filenames",
@@ -184,6 +190,7 @@ COMMAND_HANDLERS = {
     "uc": uc.execute,
     "validate": validate.execute,
     "validate-filenames": validate.execute_filenames,
+    "validate-paths": validate.execute_paths,
     "schema": schema.execute,
 }
 
