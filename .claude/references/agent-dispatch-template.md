@@ -509,6 +509,8 @@ final message 僅指向 ticket ID，不承載結論本體。
 
 - 唯有 CLI 回 `[OK] 已追加日誌到 '<section>'` 才算寫入成功；輸出僅見 heredoc 內容被 echo 出來代表指令 malformed、CLI 未執行，須修正 Bash 指令重發。
 - 收尾關鍵 section（Test Results / Exit Status）後以 `grep -c "<唯一片語>" <ticket-md-path>` 確認實際持久化（固定值驗證，不信 CLI 旁白）。
+- worktree 內多行內容被守衛拒收時，分次 append（每次一個章節或段落），不得把 Markdown 章節壓成單行：壓成單行會使 `###` 子標題失去行首位置，寫入看似成功但章節結構受損，complete gate 才會擋下（PC-GPD-003）。派發 prompt 若要求寫入含子章節的 ticket body，須明示此條。
+- 偵測是否已壓平：`grep -n '^### 自檢結果' <ticket-md-path>`；ticket 內已有該章節內容卻無行首命中，即為壓平，須重新分次 append。
 - 引用既有規則不重複定義：heredoc 傳長文字見 `bash-tool-usage-rules` 規則 5；「只信 raw stdout、帶旁白視為自身雜訊」見 `tool-output-trust-rules` 規則 2；CLI args 跳脫見 PC-079。
 
 ---
@@ -1141,7 +1143,8 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 **Last Updated**: 2026-09-02
 **Version**: 1.32.0 — 「骨架（權威版）」段「停手上報而非定義優先序」後新增一行提醒：Edit/Write 被非專案來源（harness auto mode classifier、permissionMode、OS 權限）拒絕時同理停手回報 NeedsContext，禁改用 Bash 內嵌腳本繞過，引用 `tool-selection.md` 規則二；不動 `track_dispatch.py` 骨架常數
 
-**Last Updated**: 2026-09-01
+**Last Updated**: 2026-10-07
+**Version**: 1.32.0 — 「append-log 收尾持久化驗證」Action 新增 worktree 守衛拒收多行參數時分次 append、不得壓成單行的條文，附偵測指令與 PC-GPD-003 引用
 **Version**: 1.31.0 — 骨架瘦身落地修正兩處失準敘述：(1)「骨架（權威版）」用途段刪「prompt 控制在 10-15 行，穩過 Hook 30 行上限」（`--commit-policy agent` 預設下實測 39-48 行、被 Layer 1 硬上限阻擋兩次），改為精確描述骨架本體 + 短版指標句的行數構成與硬上限無豁免的事實；(2)「同步保護」句由「只驗模板關鍵字同步」改為明示涵蓋關鍵字同步（Layer 2）與骨架實際行數（Layer 1，新增）兩個獨立維度，避免讀者誤以為 hook 對骨架有豁免。「精準 staging 制式句」節同步改寫：`STAGING_PHRASE_AGENT` 26 行全文不再直接嵌入骨架，改冪等寫入票的「### Commit 規範」子節；骨架末尾改附 `STAGING_PHRASE_AGENT_PROMPT` 短版指標句（約 6 行，逐句保留 Category A/B/C 判定所需片語）。
 
 **Last Updated**: 2026-08-27
