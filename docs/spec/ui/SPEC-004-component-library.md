@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-10-07"
-version: "1.66"
+version: "1.68"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -169,7 +169,7 @@ depends_on_domains: [layout]
 | `TableRow`（表格列） | 容器 | L2 | 欄寬對齊表頭的水平格線列；子件 ∈ {`TableColumnHeader`, `AppText`, `Badge`, `StepNumber`, `BadgeRow`, `IssueMarker`, `RelationItem`（步驟列 domain 欄，可點）} | §2、§4 | `header`（`TableColumnHeader` × N）/ `ticket`（ID mono、標題、狀態徽章、優先、blockedBy、損壞標記；列表與主題模式共用同一欄序，§3.7 第 15 項；blockedBy 欄出處 SPEC-001 §4）/ `step`（序號、步驟名、domain 標籤、事件徽章列）/ `eventFlow`（事件 ID mono、發出、消費、孤立事件標記；非互動，可被定位；SPEC-001 §2〈事件流小表〉） |
 | `DataTable`（資料表） | 容器 | L2（資料視圖） | `TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`） | §2、§4 | `virtual` / `plain` |
 | `MatrixGrid`（矩陣） | 容器 | L3（資料視圖） | domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`） | §1 | `default` |
-| `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列；0.1 以假資料靜態排版（節點所屬列依 traverses，列序與欄序由假資料給定；SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
+| `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× 9 垂直（「畫面」列 + 8 個 DomainBundle 列）、列間虛線；步驟間邊（直線／弧線）；底部步驟箭頭列；列序、欄序、邊形狀依 SPEC-001 §1〈泳道布局規則〉（「畫面」列 + 8 個 DomainBundle 列固定順序、主線 `next` 鏈與分支插欄、前向直線與回指弧線；0.1 為假資料靜態排版，SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
 | `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3 | `default` |
 | `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption`，可選）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
 | `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
@@ -334,7 +334,7 @@ depends_on_domains: [layout]
 | §1 | 未選專案 | 空畫面 + 選擇資料夾引導 | `EmptyState.page`（動作 `AppButton.primary` 選擇資料夾） |
 | §1 | 載入中 | 骨架版面 + 進度 + 取消 | `LoadingState.skeleton`（版位 `matrix`） |
 | §1 | 正常 · 矩陣 | domain × UC 交叉表 + 右欄格詳情卡區（未選格常駐提示） | `PageColumn`[`SplitRow.header`[`PageTitle`, `SegmentedControl`], `TwoColumnLayout`[`Panel`[`MatrixGrid`, `BadgeRow.legend`], `Panel.scrollable`[`EmptyState.section`（`panel-domain-cell-detail-empty`，訊息 `cellDetailPrompt`，無動作）]]] |
-| §1 | 已選格（疊加於正常 · 矩陣） | 右欄格詳情卡：標題、關係種類、說明、編號步驟、事件標籤、在泳道中檢視、關閉 | 底層同上 + 右欄 `Panel.scrollable`[`SplitRow.header`[`AppText.subtitle`, `AppButton.text`（關閉，`action-domain-cell-clear`）], `AppText.caption`（關係種類）, `AppText.body`（說明，可缺）, `ListRow.numbered` × N（可缺）, `BadgeRow`[`Badge.event` × N]（可缺）, `ButtonRow`[`AppButton.secondary`（在泳道中檢視，`action-domain-cell-goto-swimlane`）]]（`panel-domain-cell-detail`，`scroll-domain-cell-detail`）；`MatrixCell` 呈 `selected` |
+| §1 | 已選格（疊加於正常 · 矩陣） | 右欄格詳情卡：標題、關係種類、說明、編號步驟、事件標籤、在泳道中檢視、關閉 | 底層同上 + 右欄 `Panel.scrollable`[`SplitRow.header`[`AppText.subtitle`, `AppButton.text`（關閉，`action-domain-cell-clear`）], `AppText.caption`（關係種類）, `AppText.body`（說明，可缺）, `ListRow.numbered` × N（可缺）, `BadgeRow`[`Badge.event` × N]（可缺）, `AppText.body` × N（依賴路徑，每條一行，僅 `indirect` 格渲染；路徑集合、排序與跳轉目標見 SPEC-001 §1〈間接依賴格的詳情卡：依賴路徑〉，`0.5.0-W1-093.1`）, `ButtonRow`[`AppButton.secondary`（在泳道中檢視，`action-domain-cell-goto-swimlane`；`indirect` 格的定位目標為依賴路徑第一行來源 domain 的列）]]（`panel-domain-cell-detail`，`scroll-domain-cell-detail`）；`MatrixCell` 呈 `selected` |
 | §1 | 正常 · 泳道 | flow 橫向穿過 domain 泳道 | `Panel`[`AppText.subtitle`（`swimlanePanelTitle`，`<UC id> <UC 標題>`，`0.1.0-W3-335.57` E8）, `SwimlaneGrid`, `BadgeRow.legend`[`Badge.legend` × 2：`laneNodeActive` / `laneNodeInactive`，沿用 4.16 既有 key（`0.1.0-W3-335.47` D6）]] |
 | §1 | 泳道 · 尚未選定 UC | domain 泳道列（不含步驟節點）+ 提示需先選定 UC 並指出選定方式；無 UC 標題 | `Panel`[`EmptyState.section`（`state-domain-swimlane-uc-unset` 內，訊息 `swimlaneUcUnsetPrompt`，無動作——SPEC-001 §1 註記：泳道內不提供 UC 選擇入口，提示指向矩陣點格與 UC Flow 視圖）, `SwimlaneGrid`（零個 `SwimlaneNode`，泳道列與列首照常渲染）]；不渲染 `BadgeRow.legend`（無節點可圖例）。提示置於泳道列之上，理由：泳道列數隨 domain 數成長，置下方時提示可能被捲出可見範圍（提案） |
 | §1 | 泳道 · flow 未結構化 | 面板標題為選定 UC + 「此 UC 尚未填寫結構化 flow」；不渲染泳道列 | `Panel`[`AppText.subtitle`（`swimlanePanelTitle`，`<UC id> <UC 標題>`，`0.1.0-W3-335.57` E8）, `EmptyState.section`（訊息 `flowUnstructuredMessage`，與 §2 同一狀態共用 key；動作 `ButtonRow`[`AppButton.secondary` 開啟原始檔 `action-domain-open-source`]）]；切回矩陣由頁首 `SegmentedControl` 承載不另設按鈕 |
@@ -2596,9 +2596,11 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `direct` | 符號 ●，`AppColors.accent` | 無 | 直接貫穿 |
-| `indirect` | 符號 ○，`AppColors.textSecondary` | 無 | 間接依賴 |
-| `none` | 符號 ·，`AppColors.borderStrong` | 無（同樣可選，SPEC-001 §1「無關格亦可選」） | 無關 |
+| `direct` | 符號 ●，`AppColors.accent` | 無 | 直接貫穿（判定式見 SPEC-001 §1〈間接依賴判定式〉序 1） |
+| `indirect` | 符號 ○，`AppColors.textSecondary` | 無 | 間接依賴（同上序 2：UC 直接貫穿的 X 沿 `bundle_dependency` 往下游可達該格 domain，跳數不限） |
+| `none` | 符號 ·，`AppColors.borderStrong` | 無（同樣可選，SPEC-001 §1「無關格亦可選」） | 無關（同上序 3） |
+
+變體由頁面層依 SPEC-001 §1〈間接依賴判定式〉計算後以 `relation` 傳入，本元件不計算；本專案期望分布 `direct` 19／`indirect` 10／`none` 19（SPEC-001 同段）。
 
 #### 狀態矩陣
 
@@ -5392,9 +5394,9 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 ### 4.38 SwimlaneGrid（容器，資料視圖）
 
-**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；0.1 以假資料靜態排版（節點所屬列依 traverses，列序與欄序由假資料給定；SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。列首 `AppText` 由本容器包成可點（`InkWell` + `action-domain-select-<domainId>`，同 4.37，`0.1.0-W3-335.38` S-14）。得為 `ConsumerWidget`。
+**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；列序、欄序、邊形狀依 SPEC-001 §1〈泳道布局規則〉（「畫面」列 + 8 個 DomainBundle 列固定順序、主線 `next` 鏈與分支插欄、前向直線與回指弧線；0.1 為假資料靜態排版，SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。列首 `AppText` 由本容器包成可點（`InkWell` + `action-domain-select-<domainId>`，同 4.37，`0.1.0-W3-335.38` S-14）。得為 `ConsumerWidget`。
 **內容角色**：容器。
-**何時不用**：矩陣（`MatrixGrid`）；有布局演算法的泳道（0.1 之後）。
+**何時不用**：矩陣（`MatrixGrid`）。
 **出現畫面**：§1（泳道）。
 **層級**：L3
 
@@ -5460,7 +5462,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `lanes` | `List<Lane{name, nodes: List<(SwimlaneNode, column)>}>` | 是（1..無上限） | 泳道名為資料值 |
+| `lanes` | `List<Lane{key, kind: screen\|domain, nodes: List<(SwimlaneNode, column)>}>` | 是（恆 9 列，依 SPEC-001 §1〈泳道布局規則〉列序；`kind: screen` 僅「畫面」列一列） | 列首顯示名由 i18n 取（`domain` 列以 `key` 對應，「畫面」列為固定 key），非資料值 |
+| `edges` | `List<Edge{fromColumn, toColumn, shape: straight\|arc}>` | 否（0.1 為空） | 不適用；`shape` 由欄號比較決定（目標 > 來源為 `straight`，否則 `arc`），繞線屬 Layout 內部演算法 |
 | `laneHighlight` | `String?`（選取 domain） | 否 | 不適用 |
 | `locateLane` | `String?`（§4.0.10 場景 b 定位入口：值自 `null` 變為某 domainId 的那次 build，本容器於 post-frame 對該泳道列 `jumpTo`；頁面層於 `action-domain-cell-goto-swimlane` 進入時設值、切回矩陣時清為 `null`） | 否（提案） | 不適用 |
 | `scrollKey` / `dragKey` | `Key` | 是（`scroll-domain-swimlane` / `drag-domain-swimlane`） | 不適用 |
@@ -5504,6 +5507,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 #### 測試點（widget test）
 
 - [ ] 一支測試渲染單一變體（6 泳道 × 6 步驟假資料）
+- [ ] 依 SPEC-001 §1〈泳道布局規則〉：渲染 9 列且列序固定（「畫面」列在頂）；「畫面」列列首不可點、不受 `laneHighlight` 高亮；`edges` 的 `arc` 與 `straight` 各渲染一條
 - [ ] 兩種視窗尺寸下不溢位；drag `Offset(dx, dy)` 後內容平移量等於位移；至邊界後再 drag 不再改變
 - [ ] 泳道名最長測試文案截斷
 - [ ] 資料值不溢位
@@ -5514,7 +5518,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 不該拿它做什麼 | 應改用 |
 |---------------|--------|
-| 排序、泳道指派、邊繞線 | 0.1 不做（SPEC-001 設計約束） |
+| 自行決定列序、欄序或邊形狀 | 依 SPEC-001 §1〈泳道布局規則〉計算後傳入（本容器只渲染）；0.1 不做（SPEC-001 設計約束） |
+| 把「畫面」列加進矩陣 | 禁止（SPEC-001 §1〈「畫面」列是泳道的例外，不進矩陣〉） |
 | 橡皮筋回彈 | 禁止（SPEC-003 §1.3） |
 
 ### 4.39 Tree（容器，資料視圖）
@@ -6430,6 +6435,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.68 | 2026-10-07 | `0.5.0-W1-093.1`（依 `0.5.0-W1-093` 用戶裁決 A3，SPEC-001 v1.26 同批）：4.15 `MatrixCell` 三變體「何時選用」補判定式序號並指向 SPEC-001 §1〈間接依賴判定式〉，補「變體由頁面層計算傳入」與期望分布 19／10／19；§3.6 已選格組合補依賴路徑 `AppText.body` × N（僅 `indirect` 格）與 `indirect` 格「在泳道中檢視」定位目標 |
+| 1.67 | 2026-10-07 | `0.5.0-W1-092.1`（依 `0.5.0-W1-092` 用戶裁決 R1／C2／B2／E2，SPEC-001 v1.25 同批）：§3.1 `SwimlaneGrid` 列與 4.38 用途改為依 SPEC-001 §1〈泳道布局規則〉——「畫面」列 + 8 個 DomainBundle 列固定 9 列、主線 `next` 鏈與分支插欄、前向直線與回指弧線；4.38 刪「何時不用：有布局演算法的泳道」；slot `lanes` 改含 `key`／`kind`（screen 或 domain）且恆 9 列、列首名由 i18n 取，新增 `edges` slot（`shape` 依欄號比較）；反例改為「自行決定列序欄序邊形狀」與「把畫面列加進矩陣」；測試點補一列 |
 | 1.66 | 2026-10-07 | `0.5.0-W1-071`（e1 裁決，2026-10-07）：(1) §4.0.3 新增「一字元」定義（該文字 slot 字級的 1em）；4.7／4.8／4.9 最小尺寸改為「一字元 + 省略號」並引用 §4.0.3、字級取 `AppFontSize.body`；(2) 4.9 摘要與降級徽章間距定為 `Space.sm`；(3) 4.9 徽章固有寬亦放不下時，摘要縮至 0 後才截斷徽章（名稱 > 徽章 > 摘要）。(1)–(3) 與現行實作一致 |
 | 1.65 | 2026-10-06 | `0.5.0-W3-001` 派發前 NeedsContext 兩項（e1 裁決）：4.9 RecentProjectItem——(1) NC-2：降級徽章與摘要同一列、接在摘要之後，寬度不足時摘要先截斷、徽章維持固有寬度（依據：尺寸契約最大高為「最小高 + `reason` 兩行」，未計徽章列）；(2) NC-1：內容政策「降級標籤」列的最長測試文案由 `TestCopy.longToken` 改為 `degradedSchemaShortLabel` 的 zh／en 實際值於最小寬下截斷不溢位（標籤文字由元件內部取 l10n，slot 只有 `isDegraded: bool`，不為測試注入另開文字 slot） |
 | 1.64 | 2026-09-30 | `0.4.0-W3-001`（component-contract-design 3.13.0 路徑 C 步驟 3〈佈局輔助的歸屬轉置〉；本專案頁面層掃描見票面）：(1) 4.30 Panel `default` 的 `children` 拆為 `leading`（0..4）／`fill`（恰 1）／`trailing`（0..2）三個具名 slot，「恰一個填滿」由 `fill` 的單一型別保證，呼叫端不再包 `Expanded`；`scrollable` 維持 `children`。變體表、slot 契約、測試點、反例同步。原條文「子件中恰一個填滿」在三處以 `EmptyState.section` 為主體的面板上實際為 0 個填滿子件，改由 `fill` 承載後渲染不變（`section` 靠上對齊）；(2) 4.14 TableColumnHeader 新增 `blank` 變體（無文字、無語意節點），取代表頭空白格的 `SizedBox.shrink()`（用戶裁決 B：不包子件的空節點不是佈局輔助；表頭空白格屬元件層缺口）；`label` 必填性、朗讀標籤、測試點同步 |
