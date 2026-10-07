@@ -203,18 +203,23 @@ def _execute_event_validation(project_root: str, doc_id: str) -> None:
     sys.exit(1)
 
 
-def _load_domain_bundles(project_root: str) -> dict[str, dict]:
-    """掃描所有 domain-map 檔，回傳 bundle id → frontmatter。"""
+def _scan_domain_bundles(project_root: str) -> dict[str, tuple[Path, dict]]:
+    """掃描所有 domain-map 檔，回傳 bundle id → (實際載體路徑, frontmatter)。"""
     root = Path(project_root)
     paths = [root / "docs" / "domain-map.md", *sorted(root.glob("docs/spec/*/domain-map.md"))]
-    bundles: dict[str, dict] = {}
+    bundles: dict[str, tuple[Path, dict]] = {}
     for path in paths:
         if not path.is_file():
             continue
         frontmatter = parse_frontmatter(str(path))
         if frontmatter and frontmatter.get("id"):
-            bundles[str(frontmatter["id"])] = frontmatter
+            bundles[str(frontmatter["id"])] = (path, frontmatter)
     return bundles
+
+
+def _load_domain_bundles(project_root: str) -> dict[str, dict]:
+    """回傳 bundle id → frontmatter。"""
+    return {bid: fm for bid, (_, fm) in _scan_domain_bundles(project_root).items()}
 
 
 def _execute_domain_bundle_validation(project_root: str, doc_id: str) -> None:
@@ -245,7 +250,7 @@ def _collect_path_pattern_problems(project_root: str, bundles: dict[str, dict], 
     """回傳該 bundle 的 path_patterns 問題（格式、重複、路徑不存在），含檔案位置。"""
     root = Path(project_root)
     frontmatter = bundles[doc_id]
-    location = f"{root / 'docs' / 'spec' / str(frontmatter.get('domain')) / 'domain-map.md'}"
+    location = str(_scan_domain_bundles(project_root)[doc_id][0])
     problems = find_path_pattern_problems(bundles).get(doc_id, [])
     missing = find_missing_path_patterns(frontmatter, lambda v: _path_matches_kind(root, v))
     problems += [f"path_patterns 值 {v!r}: 專案根目錄下不存在對應的目錄或檔案" for v in missing]
@@ -317,6 +322,36 @@ def _fail_on_undeclared_domains(project_root: str, doc_id: str, file_path: str, 
     sys.exit(1)
 
 
+def _find_flow_order_problems(steps: list) -> list[str]:
+    """主線步驟（branch_from 為空）的 next 須等於清單中下一個主線步驟（末步為空）。
+
+    分支步的 next 不受限。回傳問題描述清單（空清單代表通過）。
+    """
+    mainline = [s for s in steps if isinstance(s, dict) and not s.get("branch_from")]
+    problems: list[str] = []
+    for index, step in enumerate(mainline):
+        expected = [str(mainline[index + 1].get("id"))] if index + 1 < len(mainline) else []
+        actual = _as_name_list(step.get("next"))
+        if actual != expected:
+            problems.append(f"flow[{step.get('id')}].next 為 {actual}，依清單順序應為 {expected}")
+    return problems
+
+
+def _fail_on_flow_order(doc_id: str, file_path: str) -> None:
+    """UC 結構化 flow 區塊主線 next 與清單順序不一致時列出位置並 exit 1。"""
+    if not doc_id.upper().startswith("UC-"):
+        return
+    with open(file_path, encoding="utf-8") as f:
+        steps = _extract_structured_flow_steps(f.read().splitlines()) or []
+    problems = _find_flow_order_problems(steps)
+    if not problems:
+        return
+    print(f"驗證失敗: {doc_id} 主線 next 與 flow 清單順序不一致")
+    for item in problems:
+        print(f"  - {file_path}: {item}")
+    sys.exit(1)
+
+
 def execute(args: argparse.Namespace) -> None:
     """依 frontmatter subdomain 分派章節 schema 驗證。"""
     doc_id = args.doc_id
@@ -343,6 +378,7 @@ def execute(args: argparse.Namespace) -> None:
         sys.exit(2)
 
     _fail_on_undeclared_domains(project_root, doc_id, file_path, frontmatter)
+    _fail_on_flow_order(doc_id, file_path)
 
     subdomain = frontmatter.get("subdomain")
     if subdomain != "data-contract":

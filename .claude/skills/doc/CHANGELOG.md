@@ -2,6 +2,13 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.6 — `doc validate UC-*` 新增 flow 區塊順序一致性檢查：主線步驟（`branch_from` 為空）的
+`next` 須等於清單中下一個主線步驟（末步為空），分支步 `next` 不受限；不一致時 exit 1 並列出檔案與
+`flow[<id>].next` 位置。修正 `doc validate DOMAIN-MAP-*` 的 `path_patterns` 錯誤位置：原固定組為
+`docs/spec/{domain}/domain-map.md`，根層載體 `docs/domain-map.md` 會印錯路徑，改輸出 bundle 實際載體路徑。
+測試：E2（主線 next 跳過／末步帶 next／根層載體各一個該紅 fixture）、E1 對照（順序一致、分支步任意 next、
+主線跳過分支步合法）。
+
 **Version**: 1.24.5 — DomainBundle 新增選填 frontmatter 欄位 `path_patterns`（專案根目錄相對的字面路徑前綴清單，
 非 glob；`/` 結尾為目錄前綴）。三態：欄位缺席＝未宣告（`read_path_patterns` 回傳 None，不得正規化為 `[]`），
 顯式 `[]` ＝宣告不擁有任何路徑，兩者對 validate 皆合法。`doc validate DOMAIN-MAP-*` 新增檢查（exit 1 並列出檔案、
