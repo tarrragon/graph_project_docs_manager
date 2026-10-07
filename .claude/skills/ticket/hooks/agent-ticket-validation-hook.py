@@ -54,7 +54,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 from lib import (
     setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root,
     find_ticket_files, find_ticket_file, validate_ticket_has_decision_tree, save_check_log,
-    prompt_references_handoff_ticket, validate_hook_input, validate_ticket_unified
+    prompt_references_handoff_ticket, emit_handoff_recovery_signal, validate_hook_input, validate_ticket_unified
 )
 
 # ----------------------------------------------------------------------------
@@ -292,6 +292,7 @@ def validate_task_dispatch(tool_input: Dict[str, Any], logger) -> Tuple[bool, Op
 
     # 步驟 0: Handoff 恢復模式（僅 prompt 引用 handoff 指向的票時放行）
     if prompt_references_handoff_ticket(prompt, logger):
+        emit_handoff_recovery_signal(prompt, logger)  # 只加可見訊號，不影響放行判定
         logger.info("Handoff 恢復模式: 略過 Ticket 驗證")
         return True, None, None
 
