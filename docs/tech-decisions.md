@@ -1674,3 +1674,13 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 **被放棄的選項**：FlowStep——A 裸 id 進主圖（跨 UC 撞名時兩節點皆不建）、B UC 限定 id 改寫資料（違反上游 id_pattern）、B' 以 (UC, step) 為身分進主圖（0.5.0 無跨 UC 查詢需求）。`next`——上游新增 sequence 邊型（需跨專案協調，卡 0.5.0）、Graph 本地常數（D6 例外再增一個）。domain_dependency——D1 本版建 21 條邊（改寫 S6-2／IT-3 而無使用者）、D2 改寫為 `DOMAIN-MAP-*`（與阻擋 2 及 `0.5.0-W1-091` 衝突）、D3 維持排除（易被誤讀為不需解析器）。阻擋 5——合併計算（無鑑別力）、重整本專案 lib（對依層切分的專案無效、斷 543 筆歷史引用）、專案層單一對照表（與 domain map 兩處各記）、ticket 端宣告 domain（與 PROP-004 衝突）、由 import 圖推導（90 個非 domain 檔有 80 個不 import 任何 domain）。
 
 **已知代價**：FlowStep 非一級節點，EVT 反查發出步驟與 FlowStep 破洞須在升級為主圖節點後才有；子圖解析不經 `_lookupId`，G9 的正比性質須補 flow 案例。作者重排清單而未改 `next` 時由 validate 擋下，未裝新版框架的專案不受此檢查保護。非 domain 路徑清單尚無擁有者；`path_patterns` 與一致性檢查皆需上游變更。
+
+## 補記：2026-10-07 — EVT consumers 的 domain 名規則維持專案規則、`presentation` 為本地保留字（用戶裁決，WRAP 兩輪）
+
+**決定**：「EVT `consumers`／`producers` 必須是已宣告的 domain 名」維持為本專案規則（SPEC-003 §3.5），不進框架；上游 validate 不動，`0.5.0-W1-091` 的檢查不延伸到 EVT。本專案以 `presentation` 為本地保留字表示畫面層消費者，與泳道「畫面」列同名；阻擋 3 的「畫面」例外由「僅限泳道」延伸到 EVT consumers。8 個 PascalCase domain 值改小寫由 `0.5.0-W1-095.1` 承接，flow 未建模畫面消費步由 `0.5.0-W1-095.2` 補資料。候選與兩輪 WRAP 見 `0.5.0-W1-095` Solution。
+
+**Why**：上游 EVT 模板把 consumers 定義為「domain/service」，範例是程式符號，flutter_balance 的 5 個 EVT 全用程式符號；把「必須是 domain」一般化會收窄上游既有定義並與其模板矛盾。阻擋 2 能把 `traverses`／`depends_on_domains` 的檢查放上游，是因為上游本就定義兩者為 domain 名，consumers 沒有此定義。框架問題的兩條 AND 判準皆不成立。本地保留字仍能抓到拼錯，且畫面層在泳道與 EVT 只用一個名稱。
+
+**被放棄的選項**：強制通用規則（flutter_balance 全部 EVT 失敗）、以 DomainBundle 或專案設定為開關的選用式通用規則（上游須定義例外清單）、上游新增 `consumer_domains` 欄位（需上游接受新欄位，且 `0.5.0-W1-104` 的 validate 與 schema 矛盾應先解）、上游拼寫防護（本版不提）；本地處理方面——任意值只比對已宣告者（拼錯靜默通過）、上游保留字或新欄位（把本專案規則推給其他 consumer）。
+
+**已知代價**：「列＝DomainBundle」的例外由一處變兩處（泳道列與 EVT consumers），保留字只在本專案 SPEC 定義，App 須內建此保留字。樣本只有 2 個專案，日後若多數 consumer 也以 domain 名填寫，再評估上游新增欄位。
