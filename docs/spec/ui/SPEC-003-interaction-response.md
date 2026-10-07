@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-10-07"
-version: "1.55"
+updated: "2026-10-08"
+version: "1.56"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1992,16 +1992,16 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 （`0.1.0-W3-345`）。
 
 **`presentation` 本地保留字**（`0.5.0-W1-095.3`，用戶裁決 2026-10-07，`0.5.0-W1-095` WRAP 第二輪 A′；決策見
-`docs/tech-decisions.md` 同日補記）：EVT `consumers`／`producers` 的值必須是已宣告的 domain 名（各
-`DomainBundle` 的 `domain`）或本地保留字 `presentation`。`presentation` 表示畫面層（L4，非 domain），
+`docs/tech-decisions.md` 同日補記）：EVT `consumers` 的值必須是已宣告的 domain 名（各
+`DomainBundle` 的 `domain`）或本地保留字 `presentation`；`producers` 的值只能是已宣告的 domain 名（用戶裁決 2026-10-08 第 4 項，`0.5.0-W1-106` 收窄；見 `docs/tech-decisions.md` 同日補記）——畫面消費 domain 事件屬正常，畫面發出 domain 事件代表事件起點放錯層，須被檢查抓出。`presentation` 表示畫面層（L4，非 domain），
 與泳道「畫面」列同義（SPEC-001 §1〈「畫面」列是泳道的例外，不進矩陣〉）；本保留字只在本專案規格定義，
 不屬上游 schema。
 
 | 宣告值 | 對應判定（上表兩形態共用） | 期望 |
 |--------|--------------------------|------|
 | 已宣告的 domain 名 | 全專案有 `traverses` **包含**該 domain 的 FlowStep `consumes`（或 `emits`）該 EVT | 有則對應，無則一項 `event-declaration-mismatch` |
-| `presentation` | 全專案有 `traverses == []` 的 FlowStep `consumes`（或 `emits`）該 EVT | 有則對應，無則一項 `event-declaration-mismatch` |
-| 其他值（未宣告且非 `presentation`，含大小寫不同者如 `Presentation`） | 精確比對不命中任何 domain 亦非保留字，視為未對應 | 一項 `event-declaration-mismatch`（拼錯可被抓到） |
+| `presentation` | 僅適用 `consumers`：全專案有 `traverses == []` 的 FlowStep `consumes` 該 EVT | 有則對應，無則一項 `event-declaration-mismatch`；出現於 `producers` 時按下列「其他值」處理 |
+| 其他值（未宣告且非 `presentation`，含大小寫不同者如 `Presentation`；以及 `producers` 中的 `presentation`） | 精確比對不命中任何 domain 亦非保留字，視為未對應 | 一項 `event-declaration-mismatch`（拼錯可被抓到） |
 
 `presentation` 不成為矩陣列、不計入貫穿數；比對一律精確（不做大小寫轉換）。
 
@@ -2406,6 +2406,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.56 | 2026-10-08 | `0.5.0-W1-106`（用戶裁決 2026-10-08 第 4 項 4b）：§3.5〈`presentation` 本地保留字〉收窄為只適用 `consumers`——`producers` 的值只能是已宣告 domain 名，`producers` 中的 `presentation` 依「其他值」列計一項 `event-declaration-mismatch`；對應判定表 `presentation` 列與「其他值」列同步 |
 | 1.55 | 2026-10-07 | `0.5.0-W1-095.3`（用戶裁決 2026-10-07，`0.5.0-W1-095` WRAP 第二輪 G2＋A′）：§3.5〈事件宣告與 flow 不符判準〉後新增〈`presentation` 本地保留字〉——EVT `consumers`／`producers` 值限已宣告 domain 名或 `presentation`；`presentation` 比對 `traverses == []` 的 FlowStep；其他值（含大小寫不同）視為未對應；不成矩陣列、精確比對。§3.2 事件流小表「本 UC 外」列補 `presentation` 以 i18n 顯示名「畫面」呈現。SPEC-001 v1.27 §2／§5 鏡像同步 |
 | 1.54 | 2026-09-30 | `0.3.3-W3-408`（承 `0.3.3-W3-406` 稽核逐列比對與 N10 承載節驗證浮出）：§3.4〈帶目標跳入〉「目標被搜尋詞或篩選隱藏」列寫明 SnackBar key `ticketsFiltersClearedSnackbarMessage`（`AppSnackBar.withAction`，動作 `undoAction`），「按 SnackBar 復原」列標註 `undoAction`——原文只描述行為，與 §2.13 列 14 宣告「§3.4：`withAction`」不一致；§4 列 28（浮層／展開）補 `action-switcher-choose-folder` → 收合 + `state-domain-loading`，對齊 §3.7 導航表「展開」列與 §4 列 29。均依現行實作照實記載，實作不變 |
 | 1.53 | 2026-09-30 | `0.3.3-W3-405`（承 `0.3.3-W3-404` 稽核浮出）：§3.7〈互動反應〉補「選擇其他／最近專案項（選定成功但未能記住）」列——`ChooseFolderNotRemembered` 時照常收合並載入，另顯示 `AppSnackBar.plain`（`workspaceNotRemembered`）；§2.13 對照表列 15〈既有條文〉改為 §3.7：`plain`、一致欄改為「是」。行為依現行實作（`project_switcher_overlay.dart` 的 `_handleChooseFolderResult`，選擇其他與最近專案項共用）照實記載，實作不變；對應 SPEC-004 v1.63 |

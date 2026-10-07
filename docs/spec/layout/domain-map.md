@@ -5,7 +5,7 @@ source_specs: []
 related_usecases: [UC-02, UC-03]
 depends_on_bundles: [DOMAIN-MAP-graph]
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-10-08"
 ---
 
 # Domain Map — Layout
@@ -67,7 +67,7 @@ updated: "2026-10-07"
   - 列序 R1：依系統層分層順序固定 8 列（每個 DomainBundle 一列），換 UC 不跳動；無步驟的 domain 為空列
   - 欄序 C2：主線依 `next` 鏈排列，分支插在起點後一欄
   - 分支 B2：前向分支畫直線，`return_to` 回指畫弧線；繞線與碰撞處理屬本 domain 的演算法
-  - 空 `traverses` E2：另加一條「畫面」列承載純畫面步驟，標示為畫面層、非 domain（「列＝DomainBundle」的例外，矩陣不加此列）。畫面例外的適用範圍為兩處：泳道「畫面」列，與 EVT `consumers`／`producers` 的本地保留字 `presentation`（同義，比對 `traverses == []` 的步驟，規則權威 SPEC-003 §3.5；2026-10-07 用戶裁決 `0.5.0-W1-095` 第二輪 A′，`0.5.0-W1-095.3`），原「僅限泳道」已由該裁決擴充
+  - 空 `traverses` E2：另加一條「畫面」列承載純畫面步驟，標示為畫面層、非 domain（「列＝DomainBundle」的例外，矩陣不加此列）。畫面例外的適用範圍為兩處：泳道「畫面」列，與 EVT `consumers` 的本地保留字 `presentation`（同義，比對 `traverses == []` 的步驟，規則權威 SPEC-003 §3.5；2026-10-07 用戶裁決 `0.5.0-W1-095` 第二輪 A′，`0.5.0-W1-095.3`），原「僅限泳道」已由該裁決擴充；`producers` 不適用、值只能是已宣告 domain 名（2026-10-08 用戶裁決第 4 項，`0.5.0-W1-106` 收窄）
   - 前置：Layout 只依賴 Graph，分支欄位（`branch_from`／`return_to`／`next`）須經 Graph 公開面提供（`0.5.0-W1-001`）
   原待決描述（V4 探針卡在 flow 順序、分支、空 `traverses` 佔欄）見來源票 `0.1.1-W3-377`
 
