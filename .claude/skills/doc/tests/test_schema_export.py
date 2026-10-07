@@ -315,19 +315,19 @@ class TestCompatVersionDecoupledFromFrameworkVersion:
         """E2：調高 VERSION 後重產，產生版本仍為常數值（改回讀 VERSION 即翻紅）。"""
         from doc_system.core import tracking_schema
 
-        root = self._write_version(tmp_path, "2.77.1")
+        compat = tracking_schema.TYPE_TABLE_COMPAT_VERSION
+        root = self._write_version(tmp_path, compat)
         before = build_schema_dict(root)[self.KEY]
         self._write_version(tmp_path, "9.99.0")
         after = build_schema_dict(root)[self.KEY]
 
-        assert before == after == tracking_schema.TYPE_TABLE_COMPAT_VERSION
-        assert after == "2.77.1"
+        assert before == after == compat
 
     def test_e1_changing_constant_changes_generated_version(self, tmp_path, monkeypatch):
         """E1 對照：VERSION 相同、常數不同，產生版本跟著常數變。"""
         from doc_system.core import tracking_schema
 
-        root = self._write_version(tmp_path, "2.77.1")
+        root = self._write_version(tmp_path, tracking_schema.TYPE_TABLE_COMPAT_VERSION)
         base = build_schema_dict(root)[self.KEY]
         monkeypatch.setattr(tracking_schema, "TYPE_TABLE_COMPAT_VERSION", "3.0.0")
         changed = build_schema_dict(root)[self.KEY]

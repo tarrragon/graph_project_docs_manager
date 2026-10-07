@@ -2,6 +2,12 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.8 — `doc validate DOMAIN-MAP-*` 新增 `depends_on_bundles` 成環檢查（自該 bundle 可達的環，含自指；exit 1 並列出
+`A -> B -> A` 路徑）。`doc validate UC-*` 新增 flow `branch_from` 結構檢查：指向不存在的步驟、自指、成環各自 exit 1 並列出檔案、
+`flow[<id>].branch_from` 位置或環路徑。測試：E2（bundle 二環／自指／三環且入口不在環上、branch_from 懸空／自指／二環各一個該紅 fixture）、
+E1 對照（無環依賴、合法分支鏈）。`test_schema_export.py` 的 E2 測試改對照 `TYPE_TABLE_COMPAT_VERSION`，不再寫死版本字面
+（調高 VERSION 後產生版本仍為常數的鑑別力保留）。型別表 JSON 內容不變。
+
 **Version**: 1.24.7 — 新增 `doc validate-paths` 子命令與非 domain 路徑清單載體 `docs/non-domain-paths.yaml`（路徑與鍵名
 `non_domain_path_patterns` 宣告於 `tracking_schema.py`，值格式沿用 `check_path_pattern_format`）。一次檢查全部 DomainBundle
 的 `path_patterns` 與本檔（exit 1 列出檔案、值與原因）：格式、同檔重複、與任一 `path_patterns` 同字串、路徑不存在。三態：檔案缺席
