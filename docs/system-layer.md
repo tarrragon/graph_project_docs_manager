@@ -477,14 +477,11 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   不準的數字不比不顯示更有幫助，優先評估此案。trigger：規劃 0.1 之後的版本
   時，於對應 PROP 補記定案，並同步減去 CLAUDE.md §6 五項空殼判準清單的此項
   （來源票 `0.1.1-W1-037`，已收束為本項知識，未執行）
-- **Domain 矩陣格「間接依賴」判定式未定**：UC-02 驗收與圖例要求三種格狀態
-  （直接貫穿／間接依賴／無關），CLAUDE.md §6 五項空殼判準列有此項；三值圖例
-  已寫入 SPEC-001 §1 與 SPEC-004 MatrixCell，但「間接依賴」本身無判定式，
-  落在 Graph 鄰接查詢（已定案，見 `docs/spec/graph/domain-map.md` §6）的 API 之上。候選：經依賴邊可達／
-  事件消費鏈／不做三值改二值。trigger：規劃 Domain 視圖串接真實資料的
-  minor 版本時，於對應 PROP 補記定案；若改為二值或其他判定式，須同步修改
-  SPEC-001 §1 圖例與 SPEC-004 MatrixCell（來源票 `0.1.1-W3-376`，已收束為
-  本項知識，未執行）
+- **Domain 矩陣格「間接依賴」判定式已定案**（2026-10-07 用戶裁決，候選比較見 `0.5.0-W1-093` Solution）：
+  UC 直接貫穿 X，且 X 經 `depends_on_bundles`（`bundle_dependency` 邊）往下游可達 Y（不限跳數）時，
+  格 (Y, UC) 為「間接依賴」；本專案真實資料下 48 格中直接貫穿 19、間接 10、無關 19。三值圖例維持。
+  點間接格時，詳情卡列出依賴路徑（UC 貫穿 X → X 依賴 … → Y），「在泳道中檢視」跳到泳道中 X 列的來源節點。
+  原待決描述見來源票 `0.1.1-W3-376`
 - **domain 名稱的權威寫法已定案**（2026-10-07 用戶裁決，見 `docs/tech-decisions.md` 同日補記）：
   權威＝各 `DomainBundle` 的 `domain`（小寫加連字號，id_pattern 約束）。盤點時 SPEC 的
   `depends_on_domains` 已與宣告一致，唯 UC FlowStep 的 `traverses` 為 PascalCase；`traverses`
