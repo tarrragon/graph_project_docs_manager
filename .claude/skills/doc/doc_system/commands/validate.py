@@ -21,6 +21,7 @@ from doc_system.core.tracking_schema import (
     find_non_domain_path_problems,
     read_non_domain_paths,
     read_path_patterns,
+    extract_bundle_dependencies,
     find_dangling_bundle_dependencies,
     find_missing_completeness_fields,
     find_missing_path_patterns,
@@ -228,19 +229,52 @@ def _load_domain_bundles(project_root: str) -> dict[str, dict]:
     return {bid: fm for bid, (_, fm) in _scan_domain_bundles(project_root).items()}
 
 
+def _find_reachable_cycles(graph: dict[str, list[str]], start: str) -> list[list[str]]:
+    """自 start 深度優先走訪，回傳遇到的環（每個環為首尾同節點的路徑）。
+
+    只沿 graph 內存在的節點走；指向不存在節點的邊不屬於環，由其他檢查負責。
+    """
+    cycles: list[list[str]] = []
+    done: set[str] = set()
+
+    def visit(node: str, trail: list[str]) -> None:
+        if node in trail:
+            cycles.append(trail[trail.index(node):] + [node])
+            return
+        if node in done or node not in graph:
+            return
+        for target in graph[node]:
+            visit(target, trail + [node])
+        done.add(node)
+
+    visit(start, [])
+    return cycles
+
+
+def _find_bundle_dependency_cycles(bundles: dict[str, dict], doc_id: str) -> list[str]:
+    """回傳自 doc_id 可達的 depends_on_bundles 成環路徑（空清單代表通過）。"""
+    graph = {bid: extract_bundle_dependencies(fm) for bid, fm in bundles.items()}
+    return [" -> ".join(cycle) for cycle in _find_reachable_cycles(graph, doc_id)]
+
+
 def _execute_domain_bundle_validation(project_root: str, doc_id: str) -> None:
-    """DomainBundle 的 validate 分派路徑：depends_on_bundles 出邊目標須存在。"""
+    """DomainBundle 的 validate 分派路徑：depends_on_bundles 出邊目標須存在且不成環。"""
     bundles = _load_domain_bundles(project_root)
     if doc_id not in bundles:
         print(f"找不到文件: {doc_id}")
         sys.exit(2)
 
     targets = find_dangling_bundle_dependencies(bundles).get(doc_id, [])
+    cycles = _find_bundle_dependency_cycles(bundles, doc_id)
     path_problems = _collect_path_pattern_problems(project_root, bundles, doc_id)
-    if not targets and not path_problems:
+    if not targets and not cycles and not path_problems:
         print(f"通過: {doc_id} 的 depends_on_bundles 出邊與 path_patterns 皆有效")
         sys.exit(0)
 
+    if cycles:
+        print(f"驗證失敗: {doc_id} 的 depends_on_bundles 成環")
+        for item in cycles:
+            print(f"  - {item}")
     if targets:
         print(f"驗證失敗: {doc_id} 的 depends_on_bundles 指向不存在的 bundle")
         for target in targets:
@@ -382,6 +416,50 @@ def _find_flow_order_problems(steps: list) -> list[str]:
     return problems
 
 
+def _find_branch_from_problems(steps: list) -> list[str]:
+    """branch_from 須指向 flow 內存在的其他步驟，且沿 branch_from 不成環。
+
+    回傳問題描述清單（空清單代表通過）；自指與成環分開描述。
+    """
+    dict_steps = [s for s in steps if isinstance(s, dict)]
+    ids = {str(s.get("id")) for s in dict_steps}
+    graph: dict[str, list[str]] = {}
+    problems: list[str] = []
+    for step in dict_steps:
+        step_id, parent = str(step.get("id")), step.get("branch_from")
+        if not parent:
+            continue
+        location = f"flow[{step_id}].branch_from"
+        if str(parent) == step_id:
+            problems.append(f"{location} 自指（{step_id}）")
+        elif str(parent) not in ids:
+            problems.append(f"{location} 指向不存在的步驟 {str(parent)!r}")
+        else:
+            graph[step_id] = [str(parent)]
+    reported: set[frozenset] = set()
+    for step_id in graph:
+        for cycle in _find_reachable_cycles(graph, step_id):
+            if frozenset(cycle) not in reported:
+                reported.add(frozenset(cycle))
+                problems.append("branch_from 成環：" + " -> ".join(cycle))
+    return problems
+
+
+def _fail_on_branch_from_structure(doc_id: str, file_path: str) -> None:
+    """UC 結構化 flow 區塊 branch_from 懸空、自指或成環時列出位置並 exit 1。"""
+    if not doc_id.upper().startswith("UC-"):
+        return
+    with open(file_path, encoding="utf-8") as f:
+        steps = _extract_structured_flow_steps(f.read().splitlines()) or []
+    problems = _find_branch_from_problems(steps)
+    if not problems:
+        return
+    print(f"驗證失敗: {doc_id} 的 branch_from 結構無效")
+    for item in problems:
+        print(f"  - {file_path}: {item}")
+    sys.exit(1)
+
+
 def _fail_on_flow_order(doc_id: str, file_path: str) -> None:
     """UC 結構化 flow 區塊主線 next 與清單順序不一致時列出位置並 exit 1。"""
     if not doc_id.upper().startswith("UC-"):
@@ -423,6 +501,7 @@ def execute(args: argparse.Namespace) -> None:
         sys.exit(2)
 
     _fail_on_undeclared_domains(project_root, doc_id, file_path, frontmatter)
+    _fail_on_branch_from_structure(doc_id, file_path)
     _fail_on_flow_order(doc_id, file_path)
 
     subdomain = frontmatter.get("subdomain")
