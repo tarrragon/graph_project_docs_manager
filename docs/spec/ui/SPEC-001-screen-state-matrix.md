@@ -4,8 +4,8 @@ title: "畫面狀態矩陣與 gate 退出路徑"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-09-24"
-version: "1.24"
+updated: "2026-10-07"
+version: "1.25"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -53,7 +53,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 | 載入中 | 骨架版面 + 進度 | **取消載入**、開啟切換浮層 | 已選專案，節點解析未完成 | 取消 → 未選專案；完成 → 正常／空圖／不是框架專案／無可消費的型別表／schema 不相容 |
 | 正常 · 矩陣 | domain × UC 交叉表（每列末為該 domain 被直接貫穿的 UC 數小計）+ 底部圖例（關係種類：直接貫穿／間接依賴／無關）+ 右欄格詳情卡區（未選格時顯示提示「點選一格檢視詳情」，右欄常駐不隱藏） | 點格子→已選格、選 domain、切模式 | 節點解析成功且有節點。載體欄位 `inferredVersion`（`String?`）：`.claude/VERSION` 缺失而 `tracking_schema.json` 存在時，值為該 JSON 的產生版本（推定），否則為 `null`（版本為 `VERSION` 真實值）；本列與已選格、正常 · 泳道、泳道 · 尚未選定 UC、泳道 · flow 未結構化四列共用同一載體，欄位語意相同，見下方〈推定版本〉註記 | 點格子 → 已選格；切至泳道 → 正常 · 泳道／泳道 · 尚未選定 UC／泳道 · flow 未結構化；導覽至其他畫面、切換專案 |
 | **已選格**（疊加於正常 · 矩陣） | 正常 · 矩陣 + 右欄格詳情卡（標題 domain × UC、關係種類、說明、編號步驟、事件標籤）；該格與所在列呈選中態 | 同正常 · 矩陣 + 點其他格（換選）、在泳道中檢視、關閉詳情卡、Esc 清除選取 | 於正常 · 矩陣點擊任一格（含「無關」格） | 點其他格 → 已選格（換內容）；Esc／關閉 → 正常 · 矩陣（未選格）；在泳道中檢視 → 正常 · 泳道／泳道 · flow 未結構化；導覽、切換專案（同正常 · 矩陣） |
-| 正常 · 泳道 | flow 橫向穿過 domain 泳道：每個 domain 一條泳道列（列首為 domain 名）垂直堆疊、列間分隔；選定 UC 的步驟依 flow 順序各佔一欄，步驟節點置於其所屬 domain 的列內，步驟 `traverses` 含選中 domain 者與其餘步驟兩種呈現（UC-02 步驟 4；未選 domain 時皆為其餘）；底部一列標示步驟方向；面板標題為選定 UC（`<UC id> <UC 標題>`）、底部圖例 | 選 domain、切模式 | 同上，且已選定一條 UC | 切回矩陣、導覽、切換專案 |
+| 正常 · 泳道 | flow 橫向穿過 domain 泳道：頂端一條「畫面」列，其下每個 DomainBundle 一條泳道列（列首為 domain 名，共 8 列、依系統層分層固定順序，無步驟者為空列）垂直堆疊、列間分隔；選定 UC 的步驟依主線 `next` 鏈排列、分支插在起點後，各佔一欄，步驟節點置於其所屬 domain 的列內（`traverses` 為 `[]` 者置於「畫面」列）；前向關係畫直線、回指關係畫弧線（列序、欄序、邊與畫面列的判定式見下方〈泳道布局規則〉），步驟 `traverses` 含選中 domain 者與其餘步驟兩種呈現（UC-02 步驟 4；未選 domain 時皆為其餘）；底部一列標示步驟方向；面板標題為選定 UC（`<UC id> <UC 標題>`）、底部圖例 | 選 domain、切模式 | 同上，且已選定一條 UC | 切回矩陣、導覽、切換專案 |
 | **泳道 · 尚未選定 UC** | domain 泳道列（同正常 · 泳道的列結構）不含任何步驟節點 + 提示需先選定一條 UC 並指出選定方式（矩陣點格、UC Flow 視圖選擇）；無面板標題的 UC 名 | 選 domain、切回矩陣 | 節點解析成功且有節點，切至泳道模式時選定 UC 為空 | 切回矩陣、導覽（含至 UC Flow 視圖選擇 UC）、切換專案 |
 | **泳道 · flow 未結構化** | 泳道面板標題為選定 UC（`<UC id> <UC 標題>`）；主區顯示「此 UC 尚未填寫結構化 flow」，不渲染泳道列 | 開啟原始檔、切回矩陣 | 泳道模式，且選定 UC 無 FlowStep | 切回矩陣、導覽、切換專案 |
 | 空圖 | 「此專案尚無圖譜節點」+ 說明 | 開啟 `docs/` 目錄（**僅在該目錄存在時提供**）、切換專案、導覽至破洞報告 | 解析成功、節點數為 0（`docs/` 不存在時亦同，此時不提供開啟 `docs/` 目錄；`0.1.0-W3-335.56` E6 docs/ 不作判準的落實）。載體欄位 `inferredVersion`（`String?`）語意同正常 · 矩陣列：空圖同樣可發生於推定版本路徑（JSON 存在且版本在範圍內 → 載入 → 節點數為 0） | 切換專案、導覽至破洞報告 |
@@ -188,6 +188,33 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 的泳道列；`traverses` 為 0..n 個 domain 名，一步驟可同時落入多格，`[]`（純畫面步驟）不落入任何格。
 > 列末小計「被直接貫穿的 UC 數」＝至少一步驟 `traverses` 包含該 domain 的 UC 數，由 Graph
 > 公開面「貫穿數」提供（`docs/spec/graph/domain-map.md` §3）。
+>
+> **泳道布局規則**（`0.5.0-W1-092.1`，依 `0.5.0-W1-092` 用戶裁決 2026-10-07：列序 R1、欄序 C2、
+> 分支 B2、空 `traverses` E2；決策見 `docs/tech-decisions.md` 同日補記、`docs/spec/layout/domain-map.md` §6）。
+> 輸入為選定 UC 的 FlowStep 序列（檔內順序 `i`），以下各條皆為給定輸入即可逐值比對的判定式：
+>
+> | 項目 | 判定式 | 期望值（UC-02 實例） |
+> |------|--------|---------------------|
+> | 列集合與列序 | 由上而下固定為：「畫面」、`schema`、`workspace`、`corpus`、`graph`、`diagnostics`、`ticketdetail`、`history`、`layout`，共 9 列；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 9 列；`schema`、`workspace`、`diagnostics`、`history` 為空列 |
+> | 列鍵比對 | 列鍵為 `DomainBundle.domain` 宣告字面；步驟 `traverses` 值與列鍵精確比對（不做大小寫轉換）；列首顯示名由 i18n 取 | `traverses: ["graph"]` 落 `graph` 列 |
+> | 主線 | `branch_from == null` 的步驟為主線；主線起點為未被任何主線步驟 `next` 指到的主線步驟，自起點依 `next[0]` 走到 `next == []` 為止 | locate-domain → read-traversal-count → switch-to-swimlane → inspect-steps |
+> | 欄序 | 依主線順序逐一輸出主線步驟 M；輸出 M 後，緊接輸出所有 `branch_from == M.id` 的分支步驟（多個時依檔內順序 `i`）；步驟的欄號 = 輸出序（0 起），每步驟恰一欄 | 0 locate-domain、1 enter-from-ticket、2 read-traversal-count、3 matrix-overview-only、4 switch-to-swimlane、5 flow-not-structured、6 inspect-steps |
+> | 節點所屬列 | `traverses` 非空：該步驟在 `traverses` 每個值對應的列各放一個節點（同欄）；`traverses == []`：只在「畫面」列放一個節點 | enter-from-ticket 於 `graph`、`ticketdetail` 兩列欄 1 各一節點；locate-domain 於「畫面」列欄 0 |
+> | 邊的來源 | 每步驟產生：主線與分支的 `next` 各值一條（步驟 → 目標）、`branch_from` 一條（起點 → 分支步驟）、`return_to` 一條（步驟 → 目標）；同一步驟同時帶 `next` 與 `return_to` 時兩條都畫 | flow-not-structured 產生 switch-to-swimlane → flow-not-structured 與 flow-not-structured → locate-domain 兩條 |
+> | 邊的形狀 | 目標欄號 > 來源欄號：直線（前向）；目標欄號 ≤ 來源欄號：弧線（回指）。形狀只由欄號比較決定，不由欄位名決定 | flow-not-structured（5）→ locate-domain（0）為弧線；enter-from-ticket（1）→ read-traversal-count（2）為直線 |
+> | 邊的端點 | 多列節點的步驟以其最上方的節點為邊端點；繞線與跨列碰撞處理屬 Layout 內部演算法，本規格不定路徑，只定形狀類別與端點 | — |
+> | 無法放置的步驟 | `branch_from` 指向不存在或非主線步驟、或主線不構成單鏈時，未被上述欄序輸出的步驟依檔內順序 `i` 接在最後一欄之後，不畫其 `branch_from` 邊；結構違規的偵測與報告屬 Diagnostics，不在本畫面另顯錯誤 | 6 UC 現況皆無此情形（`0.5.0-W1-092` Solution §1 不變式） |
+>
+> **「畫面」列是泳道的例外，不進矩陣**：「列＝DomainBundle」是 Domain 視圖的前提，「畫面」列是
+> 泳道模式中唯一不對應 DomainBundle 的列——它承載純畫面步驟（`traverses == []`），標示為畫面層、
+> 非 domain。矩陣模式不加此列、不加對應的列末小計，上段〈矩陣格與泳道列的判定依據〉「`[]` 不落入
+> 任何格」維持不變。「畫面」列列首不可點（無對應 domain 可選），不參與 `laneHighlight`，其節點恆為
+> 其餘步驟呈現（`traverses` 不含任何 domain，不會含選中 domain）。
+>
+> **Graph 須提供的分支欄位**（Layout 只依賴 Graph，系統層 §2；公開面落點由 `0.5.0-W1-001` 承接）：
+> 每個 UC 的 FlowStep 序列（保留檔內順序 `i`），每步驟含 `id`、`name`、`next`（list）、`branch_from`
+> （`String?`）、`return_to`（`String?`）、`traverses`（list）；另含 UC 的 `id` 與標題（面板標題用）。
+> 缺任一欄位時 Layout 無法計算上表，不得改為直讀 Corpus。
 >
 > **格詳情卡的內容以假資料驅動**（本規格設計約束）。真實資料下「個別 domain 的
 > 步驟與事件」的來源為上段 `FlowStep.traverses` 包含比對；個別 domain 的清單與說明
@@ -749,11 +776,14 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
   靜態值。真正的排序、邊繞線需要真實的 flow 資料才判斷得出好壞——在沒有
   資料可看時設計布局演算法，很可能設完又改，而泳道是 `docs/spec/layout/domain-map.md` §4.1
   判定的「產品差異化本身」，改的代價高
+  （0.5 補記：布局演算法已於 `0.5.0-W1-092` 裁決，條文見 §1〈泳道布局規則〉；
+  0.1 的靜態版型由 Layout 接真資料的實作票改為依該規則計算，本條只描述 0.1 的範圍）
 
 ## 變更歷史
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.25 | 2026-10-07 | `0.5.0-W1-092.1`（依 `0.5.0-W1-092` 用戶裁決 R1／C2／B2／E2）：§1 正常 · 泳道顯示欄改為「畫面」列 + 8 個 DomainBundle 列固定順序、主線 `next` 鏈與分支插欄、前向直線與回指弧線；〈矩陣格與泳道列的判定依據〉後新增〈泳道布局規則〉判定式表（列序、列鍵比對、主線、欄序、節點所屬列、邊的來源、邊的形狀、邊的端點、無法放置的步驟，附 UC-02 期望值）、〈「畫面」列是泳道的例外，不進矩陣〉與〈Graph 須提供的分支欄位〉兩則註記；〈設計約束〉0.1 泳道條補 0.5 指向。狀態總數不變。SPEC-004 v1.67 同批同步 |
 | 1.24 | 2026-09-29 | `0.3.3-W3-378`（用戶裁決 B，2026-09-29，經 e1 以 AUQ）：§1「未選專案」列進入條件補「有已存路徑但還原失敗（`WorkspaceUnavailable`）降級為本狀態」，顯示欄補常駐原因文字「無法存取先前的資料夾：{reason}」（`workspaceUnavailable`），直到使用者選定資料夾；原條文「App 首次啟動」改為「App 啟動且無已存路徑」與 SPEC-003 §3.1 生命週期同一措辭 |
 | 1.23 | 2026-09-25 | §1 schema 不相容列補「型別表版本無法判讀」：同屬不在已知範圍、仍進本狀態，本體改用 `schemaVersionUnreadableMessage`（不代入版本、告知重新產生），載體 `projectVersion` 改為 `String?` 且此時為 `null`。修正原行為：JSON 損壞而 `.claude/VERSION` 存在時以後者代位，出現「專案版本低於內建卻判不相容」；兩者皆缺時顯示空白版本（用戶裁決 2026-09-25，WRAP 方案 D；`0.3.0-W3-542`）。狀態總數不變。SPEC-004 v1.48 同批同步 |
 | 1.22 | 2026-09-25 | §1〈路徑模式取自內建表〉旗標共存段與 §5「無法判定破洞」列：版本原因由「高於 App 內建版本」改為「不在 App 已知範圍」（涵蓋高於、缺席、無法解析），並註明判定式與 schema 不相容關卡相同、經關卡進入時不會出現（用戶裁決 2026-09-25，WRAP；對齊 SPEC-006 v1.7）。狀態總數不變。SPEC-004 v1.47 同批同步 |
