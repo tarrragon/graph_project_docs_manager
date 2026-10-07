@@ -186,7 +186,7 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 | `docs/spec/{domain}/` | SPEC 節點 | SPEC-001（ui domain） |
 | `docs/spec/{domain}/domain-map.md` | DomainBundle 節點，每個 domain 一份（8 個 domain 各一） | 已建立 |
 | `docs/system-layer.md` | 系統層：跨 domain 的依賴方向、通道、邊界決策、容錯、待決（非圖節點） | 已建立 |
-| `docs/usecases/` | UC 節點（含結構化 flow 區塊） | UC-01~06，共 39 個 FlowStep |
+| `docs/usecases/` | UC 節點（含結構化 flow 區塊） | UC-01~06（FlowStep 數以各 UC 的 flow 區塊為準，不在此寫死） |
 | `docs/events/{domain}/` | EVT 節點 | 9 個 |
 | `docs/app-use-cases.md` | UC 白名單 SSOT（`doc uc verify` 依此驗證） | 已建立 |
 | `docs/proposals-tracking.yaml` | 提案索引 | 已建立 |
