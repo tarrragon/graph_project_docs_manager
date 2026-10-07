@@ -388,7 +388,7 @@ def find_edge_types_with_invalid_direction(edge_types: dict) -> dict[str, str]:
     return invalid
 
 
-# 語意邊表：A 層 12 條 + B 層 4 條，欄位齊全：class / 正向欄位（儲存
+# 語意邊表：A 層（established）+ B 層（proposed），欄位齊全：class / 正向欄位（儲存
 # 側）/ 正向基數 / 方向性 / 反向欄位 / 維護方 / status。
 GRAPH_EDGE_TYPES = {
     # --- A 層（12 條，established）---
@@ -540,4 +540,49 @@ GRAPH_EDGE_TYPES = {
         "maintainer": "手動",
         "layer": GRAPH_LAYER_PROPOSED,
     },
+    "bundle_dependency": {
+        # DomainBundle → DomainBundle：bundle 層級（跨 domain-map 檔）的
+        # 依賴方向。與 domain_dependency（domain 名稱層級、established）
+        # 並存且不取代；欄位為選填，缺欄位或 null 皆視為無出邊。
+        "class": "ordering",
+        "forward_field": "depends_on_bundles",
+        "forward_cardinality": "many",
+        "direction": "directed",
+        "reverse_field": None,
+        "maintainer": "手動",
+        "layer": GRAPH_LAYER_PROPOSED,
+    },
 }
+
+BUNDLE_DEPENDENCY_FIELD = GRAPH_EDGE_TYPES["bundle_dependency"]["forward_field"]
+
+
+def extract_bundle_dependencies(frontmatter: dict) -> list[str]:
+    """回傳 DomainBundle frontmatter 的 depends_on_bundles 出邊目標清單。
+
+    欄位缺失或值為 None 代表無出邊；純量視為只有一項的清單（正向基數 many
+    的通則，見 EDGE_CARDINALITY_MANY 說明）。
+    """
+    value = frontmatter.get(BUNDLE_DEPENDENCY_FIELD)
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return list(value)
+
+
+def find_dangling_bundle_dependencies(bundles: dict[str, dict]) -> dict[str, list[str]]:
+    """回傳出邊指向不存在 bundle 的來源（bundle id → 懸空目標清單）。
+
+    bundles：bundle id → 該 bundle 的 frontmatter；「存在」以此映射的鍵為準。
+    """
+    dangling: dict[str, list[str]] = {}
+    for bundle_id, frontmatter in bundles.items():
+        missing = [
+            target
+            for target in extract_bundle_dependencies(frontmatter)
+            if target not in bundles
+        ]
+        if missing:
+            dangling[bundle_id] = missing
+    return dangling

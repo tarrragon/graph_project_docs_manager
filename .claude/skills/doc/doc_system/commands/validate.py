@@ -15,6 +15,7 @@ from doc_system.core.file_locator import FileLocator
 from doc_system.core.frontmatter_parser import parse_frontmatter
 from doc_system.core.tracking_schema import (
     EVT_REQUIRED_FIELDS,
+    find_dangling_bundle_dependencies,
     find_missing_completeness_fields,
 )
 
@@ -198,10 +199,46 @@ def _execute_event_validation(project_root: str, doc_id: str) -> None:
     sys.exit(1)
 
 
+def _load_domain_bundles(project_root: str) -> dict[str, dict]:
+    """掃描所有 domain-map 檔，回傳 bundle id → frontmatter。"""
+    root = Path(project_root)
+    paths = [root / "docs" / "domain-map.md", *sorted(root.glob("docs/spec/*/domain-map.md"))]
+    bundles: dict[str, dict] = {}
+    for path in paths:
+        if not path.is_file():
+            continue
+        frontmatter = parse_frontmatter(str(path))
+        if frontmatter and frontmatter.get("id"):
+            bundles[str(frontmatter["id"])] = frontmatter
+    return bundles
+
+
+def _execute_domain_bundle_validation(project_root: str, doc_id: str) -> None:
+    """DomainBundle 的 validate 分派路徑：depends_on_bundles 出邊目標須存在。"""
+    bundles = _load_domain_bundles(project_root)
+    if doc_id not in bundles:
+        print(f"找不到文件: {doc_id}")
+        sys.exit(2)
+
+    targets = find_dangling_bundle_dependencies(bundles).get(doc_id, [])
+    if not targets:
+        print(f"通過: {doc_id} 的 depends_on_bundles 出邊皆可解析")
+        sys.exit(0)
+
+    print(f"驗證失敗: {doc_id} 的 depends_on_bundles 指向不存在的 bundle")
+    for target in targets:
+        print(f"  - {target}")
+    sys.exit(1)
+
+
 def execute(args: argparse.Namespace) -> None:
     """依 frontmatter subdomain 分派章節 schema 驗證。"""
     doc_id = args.doc_id
     project_root = FileLocator.get_project_root()
+
+    if doc_id.startswith("DOMAIN-MAP-"):
+        _execute_domain_bundle_validation(project_root, doc_id)
+        return
 
     if doc_id.upper().startswith("EVT-"):
         _execute_event_validation(project_root, doc_id)
