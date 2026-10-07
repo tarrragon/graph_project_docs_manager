@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/schema/schema_version.dart';
 
 const _builtinTrackingSchemaPath =
     'assets/schema/builtin_tracking_schema.json';
@@ -33,6 +34,30 @@ void main() {
         tableVersion,
         gateVersion,
         reason: '0.3.0-W2-001：內建型別表副本與版本閘門資產的版本必須同步',
+      );
+    });
+  });
+
+  group('K4-3 內建版本閘門與專案 JSON 對齊（0.5.0-W1-070.2）', () {
+    const projectPath =
+        '.claude/skills/doc/doc_system/core/tracking_schema.json';
+
+    test('E1 專案 JSON 版本在內建版本範圍內；舊內建版本 2.60.13 則判超出', () {
+      final projectVersion = _readVersionField(projectPath)!;
+      final builtinVersion = _readVersionField(_builtinSchemaVersionPath)!;
+      expect(isWithinKnownSchemaRange(projectVersion, builtinVersion), isTrue);
+      expect(isWithinKnownSchemaRange(projectVersion, '2.60.13'), isFalse);
+    });
+
+    test('E2 版本高於內建時仍判超出已知範圍（守衛正向對照）', () {
+      final builtinVersion = _readVersionField(_builtinSchemaVersionPath)!;
+      expect(isWithinKnownSchemaRange('2.78.0', builtinVersion), isFalse);
+    });
+
+    test('內建型別表副本與專案 JSON 逐位元組一致', () {
+      expect(
+        File(_builtinTrackingSchemaPath).readAsBytesSync(),
+        File(projectPath).readAsBytesSync(),
       );
     });
   });
