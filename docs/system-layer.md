@@ -11,7 +11,7 @@ updated: "2026-10-07"
 > 依 SRP（一個 domain 一個變更理由）與 OCP（區分公開面與內部面）切分。LSP / ISP / DIP 留待實作階段。
 > 本文件承接跨 domain 的系統級決策；單一 domain 的 bundle 邊界、不變式與 FR 覆蓋見各 domain map（`docs/spec/{domain}/domain-map.md`）。
 >
-> **狀態**：SPEC-001 與 UC-01~06 已建立。§8（FR → Bundle 覆蓋對照）已回填 SPEC-003（`0.3.3-W3-238`）；SPEC-006、SPEC-007 的逐列對照在對應 domain map 的 §7。
+> **狀態**：SPEC-001 與 UC-01~06 已建立。§8（FR → Bundle 覆蓋對照）已回填 SPEC-003（`0.3.3-W3-238`）與 SPEC-001、SPEC-002（`0.5.0-W1-088`）；SPEC-006、SPEC-007 的逐列對照在對應 domain map 的 §7。
 
 ## 1. 目的與適用範圍
 
@@ -551,6 +551,30 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 | FR-15 | 重複觸發防護由服務承擔 | Workspace；L4 畫面狀態 | (d) 外部開啟冪等為 Workspace 公開面「開啟原始檔」；(a)(b) 元件層不實作計時器屬 L4；(c) 搜尋防抖的服務歸屬依 §6「搜尋與全域導覽」待決項 |
 | FR-16 | 暫態提示載體可由判準 T 推導 | Workspace、Diagnostics；L4 畫面狀態 | 與 §3.4「開啟原始檔結果」列一致（Workspace，驗收落點 FR-16）；掃描完成 `denied` fallback 為 Diagnostics；判準表與載體選擇屬 L4 仲裁層（§3.1 仲裁器落層） |
 | FR-17 | 截斷與不顯示皆有紀錄 | L4 畫面狀態；Workspace、Diagnostics | 截斷紀錄由 L4 仲裁層（`AppSnackBar`）產生；請求方為 Workspace（開啟原始檔結果，§3.4 列一致，驗收落點 FR-17）與 Diagnostics（掃描完成） |
+
+### SPEC-001（畫面狀態矩陣）
+
+`docs/spec/ui/` 無 domain map（畫面狀態是 layer 不是 domain，§1.3），故本 spec 的對照全數列於此。
+
+| FR | 內容 | Bundle | 跨在哪裡 |
+|----|------|--------|---------|
+| FR-01 | 所有狀態皆有非空退出路徑 | L4 畫面狀態（非 domain） | 驗收對象為本 spec §1–7 每列的退出路徑欄 |
+| FR-02 | 長時操作可取消 | L4 畫面狀態；Corpus、Diagnostics | 取消操作恆可用屬載入態（L4）；三處長時操作的承擔方為 Corpus（Domain 視圖載入、Ticket 載入）與 Diagnostics（破洞掃描），與上表 SPEC-003 取消契約列的分法一致 |
+| FR-03 | 空狀態必須提供前進動作 | L4 畫面狀態（非 domain） | 驗收對象為空狀態畫面提供的動作 |
+| FR-04 | 版本不符時拒絕渲染 | Schema；L4 畫面狀態 | 「schema 版本超出已知範圍」由 Schema 公開面「版本相容判定」產生（Schema domain map §3）；顯示兩個版本值與不繪製圖譜屬 L4 |
+| FR-05 | 損壞資料依嚴重度分級標記 | L4 畫面狀態（非 domain） | 驗收對象為虛線框／不透明度／圖示與徽章等視覺差異；損壞資料的來源不在驗收範圍 |
+| FR-06 | flow 未結構化為一級狀態 | L4 畫面狀態（非 domain） | 驗收對象為 UC 基本資訊、說明與開啟原始檔動作的呈現；開啟原始檔為 Workspace 的呼叫端觀測，比照上表 SPEC-003 未接線動作列，不以 Workspace 行為為驗收對象 |
+| FR-07 | 型別表不可消費或非框架專案時明確說明 | Schema；L4 畫面狀態 | `tracking_schema.json` 缺席判定與 `.claude/VERSION` 讀取屬 Schema（Schema domain map §3 公開面「型別表」、內部面「`.claude/VERSION` 讀取」）；兩個狀態的說明與切換專案出口屬 L4 |
+| FR-08 | 狀態轉換的提示需求逐狀態有結論 | L4 畫面狀態（非 domain） | 驗收對象為本 spec §8.1 表與 `AppSnackBar` 是否出現 |
+
+### SPEC-002（design token 與元件庫）
+
+| FR | 內容 | Bundle | 跨在哪裡 |
+|----|------|--------|---------|
+| FR-01 | 程式碼中無裸值 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/` 下（`lib/tokens/` 除外）的 grep 結果 |
+| FR-02 | 每個 token 有語意名 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/tokens/` 的具名常數表 |
+| FR-03 | 畫面只用元件庫 | L4 畫面狀態（非 domain） | 驗收對象為 SPEC-001 各狀態顯示欄的元件組成 |
+| FR-04 | 間距與字級為離散尺度 | L4 畫面狀態（非 domain） | 驗收對象為間距與字級的具名階 |
 
 ### SPEC-006 與 SPEC-007
 
