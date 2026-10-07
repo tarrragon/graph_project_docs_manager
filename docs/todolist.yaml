@@ -740,6 +740,12 @@ versions:
       IMP P1，4a）→ W1-091（doc validate 檢查已宣告，IMP P1，83），皆 scope_blocker。tech-decisions 同日補記。
       拆檔衍生：W1-086（spec 檢核退回舊路徑，ANA P2，topic 2）、W1-087（lib／test 描述字串舊路徑，DOC P3，4a）、
       W1-088（SPEC-001／002 FR 覆蓋缺口，DOC P3，topic 1 後續）。W1-084（set-type 子命令，P3，topic 2）；W1-082 改為 PC-GPD-003 預防落地（DOC）。
+      候選議題 WRAP 裁決（2026-10-07，用戶）：W1-001 FlowStep 取 C（子圖掛 UC）、next 取 (c)（不當邊，清單順序＋validate 一致性檢查）、
+      domain_dependency 取 D4（本版只建 traverses 名稱解析器，建邊移 0.6.0-W1-074）；阻擋 5（W1-096）取 P2+（三分類＋未宣告）、
+      C+（path_patterns ＋非 domain 清單，清單位置 W1-096.1 與 83 共評）；W1-095 取 G2（consumers 規則維持專案規則）＋ A′
+      （presentation 本地保留字，畫面例外延伸至 EVT consumers）。子票 W1-001.1～.6、W1-096.1～.5、W1-095.1～.3；
+      範圍外發現 W1-103（Graph 啟用指定 proposed 邊型，e1 承接）、W1-104（validate 對 process_event 要求 consumer，83 承接）。
+      canonical 推送用戶裁決（2026-10-07）：等 W1-001.1 與 W1-096.2 合併、main 全綠後一起推（83 已備妥 070.1／083.2／091／098 等）。
 
   - version: "0.6.0"
     codename: "Screens"
