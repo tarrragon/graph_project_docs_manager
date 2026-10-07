@@ -22,10 +22,11 @@ Hook 輸入輸出處理（SSOT）
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from lib.hook_base import get_project_root
 
@@ -490,6 +491,67 @@ def is_handoff_recovery_mode(
         # 錯誤時快取 False（安全預設）
         _handoff_recovery_cache = False
         return False
+
+
+def get_handoff_recovery_ticket_ids(
+    logger: Optional[logging.Logger] = None,
+    project_root: Optional[Path] = None,
+) -> Set[str]:
+    """回傳 pending handoff 指向的 ticket ID 集合（來源 ticket_id + 目標 target_ticket_id）
+
+    handoff 恢復流程只會對這些票派發或讀取；殘留檔（指向已不存在或無關的票）
+    不應使守衛整體放行，故守衛以此集合限縮放行範圍。
+
+    損壞或無法讀取的 handoff 檔略過並記錄；目錄不存在回傳空集合。
+
+    Args:
+        logger: 可選 Logger
+        project_root: 可選專案根目錄（測試注入；預設 get_project_root()）
+    """
+    root = project_root if project_root is not None else get_project_root()
+    pending_dir = root / ".claude" / "handoff" / "pending"
+    ticket_ids: Set[str] = set()
+
+    if not pending_dir.is_dir():
+        return ticket_ids
+
+    for handoff_file in pending_dir.glob("*.json"):
+        try:
+            with open(handoff_file, "r", encoding="utf-8") as f:
+                record = json.load(f)
+        except (OSError, ValueError) as e:
+            if logger:
+                logger.info("讀取 handoff 檔案失敗，略過: {}: {}".format(handoff_file.name, e))
+            continue
+        if not isinstance(record, dict):
+            continue
+        for key in ("ticket_id", "target_ticket_id"):
+            value = record.get(key)
+            if isinstance(value, str) and value:
+                ticket_ids.add(value)
+        # 無顯式 target_ticket_id 時，目標由 direction 後綴表達（"to-sibling:<id>"）
+        direction = record.get("direction")
+        if not record.get("target_ticket_id") and isinstance(direction, str):
+            _, _, suffix = direction.partition(":")
+            if suffix:
+                ticket_ids.add(suffix)
+
+    return ticket_ids
+
+
+def prompt_references_handoff_ticket(
+    prompt: str,
+    logger: Optional[logging.Logger] = None,
+    project_root: Optional[Path] = None,
+) -> bool:
+    """prompt 是否引用 handoff 指向的 ticket（完整 ID 比對，子票 ID 不算命中父票）"""
+    if not prompt:
+        return False
+    for ticket_id in get_handoff_recovery_ticket_ids(logger, project_root):
+        pattern = r"(?<![\w.-])" + re.escape(ticket_id) + r"(?![\w-]|\.\d)"
+        if re.search(pattern, prompt):
+            return True
+    return False
 
 
 def validate_hook_input(

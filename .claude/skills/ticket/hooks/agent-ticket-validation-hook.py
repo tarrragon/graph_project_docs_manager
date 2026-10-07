@@ -54,7 +54,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 from lib import (
     setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root,
     find_ticket_files, find_ticket_file, validate_ticket_has_decision_tree, save_check_log,
-    is_handoff_recovery_mode, validate_hook_input, validate_ticket_unified
+    prompt_references_handoff_ticket, validate_hook_input, validate_ticket_unified
 )
 
 # ----------------------------------------------------------------------------
@@ -193,7 +193,7 @@ def validate_ticket(ticket_id: str, logger) -> Tuple[bool, Optional[str]]:
 # 派發驗證
 # ============================================================================
 
-# is_handoff_recovery_mode 已遷移至 hook_utils
+# handoff 恢復範圍判斷由 lib.prompt_references_handoff_ticket 提供
 
 def is_exempt_agent_type(subagent_type: str, logger) -> bool:
     """
@@ -290,8 +290,8 @@ def validate_task_dispatch(tool_input: Dict[str, Any], logger) -> Tuple[bool, Op
     prompt = tool_input.get("prompt", "")
     subagent_type = tool_input.get("subagent_type", "")
 
-    # 步驟 0: 檢查 Handoff 恢復模式
-    if is_handoff_recovery_mode(logger):
+    # 步驟 0: Handoff 恢復模式（僅 prompt 引用 handoff 指向的票時放行）
+    if prompt_references_handoff_ticket(prompt, logger):
         logger.info("Handoff 恢復模式: 略過 Ticket 驗證")
         return True, None, None
 
