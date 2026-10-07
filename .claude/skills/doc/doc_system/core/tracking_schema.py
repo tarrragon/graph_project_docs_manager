@@ -579,6 +579,15 @@ def extract_bundle_dependencies(frontmatter: dict) -> list[str]:
     return list(value)
 
 
+def find_undeclared_domain_names(names: list[str], declared: set[str]) -> list[str]:
+    """回傳 names 中不在 declared（DomainBundle 宣告的 domain）內的名稱，保留順序。
+
+    比對為精確字串，不做大小寫或別名正規化：domain 名稱以 DomainBundle 的
+    domain 欄位為權威字面。
+    """
+    return [name for name in names if name not in declared]
+
+
 def find_dangling_bundle_dependencies(bundles: dict[str, dict]) -> dict[str, list[str]]:
     """回傳出邊指向不存在 bundle 的來源（bundle id → 懸空目標清單）。
 
