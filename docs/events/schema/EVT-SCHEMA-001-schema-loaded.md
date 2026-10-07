@@ -10,8 +10,8 @@ updated: "2026-08-27"
 
 payload: null
 
-producers: ['Schema']
-consumers: ['Corpus', 'Graph']
+producers: ['schema']
+consumers: ['corpus', 'graph']
 ---
 
 # EVT-SCHEMA-001: SchemaLoaded

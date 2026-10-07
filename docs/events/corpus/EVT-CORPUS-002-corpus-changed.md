@@ -10,8 +10,8 @@ updated: "2026-08-27"
 
 payload: null
 
-producers: ['Corpus']
-consumers: ['Corpus']
+producers: ['corpus']
+consumers: ['corpus']
 ---
 
 # EVT-CORPUS-002: CorpusChanged

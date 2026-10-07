@@ -10,8 +10,8 @@ updated: "2026-09-30"
 
 payload: null
 
-producers: ['Graph']
-consumers: ['Layout', 'Diagnostics']
+producers: ['graph']
+consumers: ['layout', 'diagnostics']
 ---
 
 # EVT-GRAPH-001: GraphBuilt

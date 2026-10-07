@@ -10,8 +10,8 @@ updated: "2026-08-27"
 
 payload: null
 
-producers: ['Schema']
-consumers: ['Presentation']
+producers: ['schema']
+consumers: ['presentation']
 ---
 
 # EVT-SCHEMA-002: SchemaIncompatible
