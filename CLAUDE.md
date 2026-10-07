@@ -150,8 +150,9 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
   `0.2.0-W1-040` 承接）
   （「間接依賴」判定式候選與「預估耗時」欄的去留候選已收束於 `docs/system-layer.md` §6）
 - 泳道布局演算法（唯一的差異化元件；具體形態候選已收束於 `docs/spec/layout/domain-map.md` §6）
-- domain 名稱大小寫的權威寫法未定（`depends_on_domains` 小寫與 `traverses`
-  PascalCase 並存，見 `docs/system-layer.md` §6）
+- domain 名稱權威寫法已定案（2026-10-07 用戶裁決）：以 `DomainBundle` 的 `domain` 為準（小寫加連字號，
+  受 id_pattern 約束）；`traverses` 改寫為宣告字面（`0.5.0-W1-090`），`doc validate` 檢查
+  `traverses` 與 `depends_on_domains` 的值必須已宣告（`0.5.0-W1-091`）；App 精確比對，畫面顯示名另由 i18n 取
 - 跨畫面「首次可見／再次可見」生命週期偵測基礎設施未設計（SPEC-003 §3.5
   再次可見自動重掃，見 `docs/system-layer.md` §6）
 - 編輯能力與 git 邊層級歷史已定案但未落為提案與規格；編輯能力落為規格前的

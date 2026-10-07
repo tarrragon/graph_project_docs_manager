@@ -485,12 +485,12 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   minor 版本時，於對應 PROP 補記定案；若改為二值或其他判定式，須同步修改
   SPEC-001 §1 圖例與 SPEC-004 MatrixCell（來源票 `0.1.1-W3-376`，已收束為
   本項知識，未執行）
-- **domain 名稱大小寫的權威寫法未定**：UC frontmatter 的 `depends_on_domains`
-  用小寫，`traverses` 用 PascalCase 並存；K6 錨點規定 domainId 取 `traverses`
-  字面值，兩者不一致會使比對與錨點失準。trigger：規劃 Domain 視圖串接真實
-  資料的 minor 版本時，於對應 PROP 補記盤點 docs 內所有 domain 名稱出現處
-  與 schema 欄位、定權威寫法，並列出需同步的 frontmatter 與 schema 驗證影響
-  （來源票 `0.1.1-W3-378`，已收束為本項知識，未執行）
+- **domain 名稱的權威寫法已定案**（2026-10-07 用戶裁決，見 `docs/tech-decisions.md` 同日補記）：
+  權威＝各 `DomainBundle` 的 `domain`（小寫加連字號，id_pattern 約束）。盤點時 SPEC 的
+  `depends_on_domains` 已與宣告一致，唯 UC FlowStep 的 `traverses` 為 PascalCase；`traverses`
+  改寫為宣告字面並同步 K6 錨點與測試（`0.5.0-W1-090`），`doc validate` 檢查兩欄位的值必須已宣告
+  （`0.5.0-W1-091`，blockedBy W1-090）。App 精確比對，不一致交 Diagnostics；畫面顯示名另由 i18n 取，
+  於 Layout SPEC 定義。原待決描述（大小寫並存使比對與錨點失準）見來源票 `0.1.1-W3-378`
 - **跨畫面「首次可見／再次可見」生命週期偵測基礎設施未設計**：SPEC-003 §3.5
   生命週期列要求無既有結果時再次可見自動重掃；現有 `firstVisibleProvider`
   不區分「離開又切回」訊號，非單畫面局部修復可解，需先做設計決策供

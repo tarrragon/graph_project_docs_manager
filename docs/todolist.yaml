@@ -732,6 +732,14 @@ versions:
       version-release 2.10.5，比對 61 個一致。磁碟由用戶授權清理（iOS DeviceSupport、~/Library/Caches、系統暫存 pip 殘留），可用 2.8→23Gi。
       topic 2 常設收件規則（e1 2026-10-07）：已列入 topic 2 的 ANA 所產生的 children，同時符合「屬框架修復、母票已列入、優先級不高於母票」
       即預設列入，不再逐張裁決；改 lib/、test/ 或升 schema 產生版本者仍須 e1 裁決。依此列入：W1-069.1、W1-077.1（P2）、W1-083（P2）。
+      W1-070.1／.2 合併（c7ad5d05d，4a 合併、內建副本與 JSON 皆 2.77.0）；W1-070.3 拆檔合併（2fb634c25，8 份 domain map ＋ docs/system-layer.md）。
+      W1-083 根因：產生器以框架 VERSION 蓋章型別表版本；用戶裁決 W1-083.2 採 A（鍵名不變、改為型別表相容版本常數）；
+      W1-083.1 consumer 端契約測試已合併。canonical 下一次推送待 W1-083.2 合併且 main flutter／integration 覆核全綠後申請
+      （e1 判斷：先推會使 VERSION 升 2.78.0，在根因修好前重產 JSON 即令 App 降級）。
+      阻擋 2 裁決（2026-10-07，用戶）：domain 名稱以 DomainBundle 的 domain 為準；W1-090（traverses 改寫並同步 App 錨點與測試，
+      IMP P1，4a）→ W1-091（doc validate 檢查已宣告，IMP P1，83），皆 scope_blocker。tech-decisions 同日補記。
+      拆檔衍生：W1-086（spec 檢核退回舊路徑，ANA P2，topic 2）、W1-087（lib／test 描述字串舊路徑，DOC P3，4a）、
+      W1-088（SPEC-001／002 FR 覆蓋缺口，DOC P3，topic 1 後續）。W1-084（set-type 子命令，P3，topic 2）；W1-082 改為 PC-GPD-003 預防落地（DOC）。
 
   - version: "0.6.0"
     codename: "Screens"
