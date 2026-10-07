@@ -32,4 +32,4 @@ Corpus 是唯一的解析者，三個消費方各自投影：Graph 取輕節點�
 
 ## 來源
 
-`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/domain-map.md`。
+`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/system-layer.md`。

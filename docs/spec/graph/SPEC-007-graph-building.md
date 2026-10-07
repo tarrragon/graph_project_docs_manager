@@ -22,13 +22,13 @@ depends_on_domains: [schema, corpus, diagnostics]
 ## 概述
 
 本規格定義 0.4.0（Graph）的資料管線：把 Corpus 產出的節點（SPEC-006 FR-07 的 `rawNodes`）
-建成圖。依賴方向照 `docs/domain-map.md` §2（Graph → Corpus）。涉及的 domain 與職責：
+建成圖。依賴方向照 `docs/system-layer.md` §2（Graph → Corpus）。涉及的 domain 與職責：
 
 | Domain | 本規格內的職責 | 對應 FR |
 |--------|--------------|--------|
 | **Schema** | 提供邊型表（正向欄位、反向欄位、正向基數、類別、層級） | FR-01 |
 | **Graph** | 建輕節點；抽取引用值並分類；建邊；鄰接查詢 | FR-02～FR-06、FR-08 |
-| **TicketDetail** | 持有 ticket 的 frontmatter 全文，以 ID 查詢（`docs/domain-map.md` §4.1 界定，本規格首次定義其公開面） | FR-07 |
+| **TicketDetail** | 持有 ticket 的 frontmatter 全文，以 ID 查詢（`docs/system-layer.md` §4.1 界定，本規格首次定義其公開面） | FR-07 |
 | **Diagnostics** | 由 Graph 回報的缺陷產生 `graphDefect` 破洞 | FR-09 |
 
 版本契約（PROP-005 §0.4）為三項整合測試，本規格的 FR 以它們為驗收終點：
@@ -39,9 +39,9 @@ depends_on_domains: [schema, corpus, diagnostics]
 | IT-2 缺陷交給 Diagnostics | FR-03、FR-09 | 同一份語料，破洞集合與凍結的參照實作輸出一致。另斷言：解析成功、斷邊、格式錯誤三類計數的總和，等於參照實作從 manifest 獨立算出並凍結的引用值總數（總數不由待測實作自己計算，否則靜默丟值時守恆式仍成立） |
 | IT-3 輕節點與全文分離 | FR-02、FR-07 | 圖上每個節點只帶輕節點欄位；ticket 的 frontmatter 全文只能經 TicketDetail 以 ID 取得 |
 
-EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout），不佔使用者呈現通道：Graph 無對外呈現面（`docs/domain-map.md` §2.6.2）。佔用使用者注意力的是 Diagnostics 其後的掃描完成通知，已由 SPEC-003 FR-11 標定。
+EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout），不佔使用者呈現通道：Graph 無對外呈現面（`docs/system-layer.md` §3.2）。佔用使用者注意力的是 Diagnostics 其後的掃描完成通知，已由 SPEC-003 FR-11 標定。
 
-斷言來源：`EVT-GRAPH-001`、`docs/domain-map.md` §4.1、`docs/tech-decisions.md` 2026-09-30 兩則補記（反向邊讀取規則、來源邊多值）。
+斷言來源：`EVT-GRAPH-001`、`docs/system-layer.md` §4.1、`docs/tech-decisions.md` 2026-09-30 兩則補記（反向邊讀取規則、來源邊多值）。
 
 ## 用詞
 
@@ -100,7 +100,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 ### FR-02：輕節點
 
-**描述**：Graph 為每個 `rawNode` 建一個輕節點。輕節點只帶圖需要的欄位（`docs/domain-map.md` §4.1）。
+**描述**：Graph 為每個 `rawNode` 建一個輕節點。輕節點只帶圖需要的欄位（`docs/system-layer.md` §4.1）。
 
 **輕節點欄位**：`id`、節點型別、`status`（缺席為 null）、`title`（缺席為 null）、相對路徑。不帶 frontmatter map 的其他欄位，也不保留對它的引用。
 
@@ -198,7 +198,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 ### FR-07：TicketDetail
 
-**描述**：TicketDetail 持有 ticket 的 frontmatter 全文（含 5W1H 與生命週期欄位），以 `id` 查詢。Graph 不持有這些欄位（`docs/domain-map.md` §4.1）。
+**描述**：TicketDetail 持有 ticket 的 frontmatter 全文（含 5W1H 與生命週期欄位），以 `id` 查詢。Graph 不持有這些欄位（`docs/system-layer.md` §4.1）。
 
 **規則**：
 - 查詢來源為同一輪 Corpus 的 `rawNodes`；只收節點型別為 Ticket 者
@@ -211,7 +211,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 ### FR-08：鄰接查詢（Graph 公開面）
 
-**描述**：給一個節點 ID，回傳 1 hop 內相鄰的節點。解決 `docs/domain-map.md` §2.5「鄰接查詢簽章」。
+**描述**：給一個節點 ID，回傳 1 hop 內相鄰的節點。解決 `docs/system-layer.md` §1.4「鄰接查詢簽章」。
 
 **輸入**：節點 ID；可選的邊型集合（預設為全部使用中邊型）；方向（出、入、兩者，預設兩者）。
 

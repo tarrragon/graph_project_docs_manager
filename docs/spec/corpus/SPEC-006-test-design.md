@@ -23,7 +23,7 @@ Step 6 建實作票。只描述測資、流程與斷言，不含測試程式碼�
 | 圈 | 內容 | 目的 | 失敗時代表 |
 |----|------|------|----------|
 | 5a 外圈 | IT-1、IT-2 兩項整合測試 | 版本契約（PROP-005 §0.3）的驗收終點 | 與框架或參照實作的行為分歧 |
-| 5b 內圈 | 逐 bundle 的 domain unit 測試 | domain-map §3〈Bundle 不變式清單〉逐條斷言 | 單一不變式被打破，可直接定位 |
+| 5b 內圈 | 逐 bundle 的 domain unit 測試 | 各 domain map §3〈Bundle 不變式清單〉逐條斷言 | 單一不變式被打破，可直接定位 |
 
 外圈綠而內圈紅、或反之，都代表測資沒有涵蓋到對應形態，須補測資而非放寬斷言。
 
@@ -33,7 +33,7 @@ Step 6 建實作票。只描述測資、流程與斷言，不含測試程式碼�
 |------|----|----------|
 | Schema 路徑對型別查詢、型別表來源判定 | domain unit（純函式） | 型別表以測試內建的最小表物件注入，不讀 asset |
 | Corpus 切分、分類、判型、事件組裝、lostFields、守恆計數 | domain unit | 使用真實 Schema 查詢物件（Sociable），不 mock Schema |
-| Corpus 掃描（FR-02、FR-05、NFR-01） | unit | 檔案系統以 port 注入（domain-map §8 FR-02 列）；FR-05 權限與消失兩個子原因用 fake port，編碼用真實位元組 |
+| Corpus 掃描（FR-02、FR-05、NFR-01） | unit | 檔案系統以 port 注入（Corpus domain map §7 FR-02 列）；FR-05 權限與消失兩個子原因用 fake port，編碼用真實位元組 |
 | Diagnostics 破洞產生 | domain unit | 輸入直接構造 EVT-CORPUS-003 值物件與「查詢可用性」狀態 |
 | IT-1、IT-2 | integration（`test/integration/`） | 不 mock：讀真實檔案、真實 Schema 查詢、真實 Diagnostics |
 
@@ -42,7 +42,7 @@ Mock 只替換外部世界（檔案系統 port、asset 讀取）；Schema、Corp
 
 ### 1.3 依賴方向與測試隔離
 
-依 domain-map §2 與 §5：
+依系統層 §2 與 §7：
 
 - `test/unit/schema/` 不得 import `lib/corpus/`、`lib/diagnostics/`
 - `test/unit/corpus/` 可 import `lib/schema/`，不得 import `lib/diagnostics/`
@@ -298,7 +298,7 @@ manifest 檔頭另記：凍結日期、參照實作版本、所用型別表的 `
 | C4-3 | 無 `id` 鍵 | 有 frontmatter 的非節點；無節點、無破洞、無 EVT-CORPUS-003 |
 | C4-4 | `id: v0.1.0-note` | 同 C4-3 |
 | C4-5（守衛） | 測試型別表兩型 `id_pattern` 都命中 `X-1` | 非節點，標記 schema 歧義；不產生節點（對照：只留一型時判為該型） |
-| C4-6 | 可用檔位於某 carrier 路徑但 `id` 屬另一型 | 依 `id_pattern` 判型，不依路徑（domain-map §7） |
+| C4-6 | 可用檔位於某 carrier 路徑但 `id` 屬另一型 | 依 `id_pattern` 判型，不依路徑（系統層 §5） |
 
 #### C5 EVT-CORPUS-003 發出條件（FR-04、D6、D7）
 
@@ -439,7 +439,7 @@ lostFields 以純函式測（輸入：完整性集合、實際寫出的鍵與值
 無空行。NFR-01 不在 IT 範圍：SPEC-006 NFR-01 的驗收是「插入前後逐項相同」的差分比較，
 屬 C11 的形態；IT-2 只跑單一語料。
 
-### 4.2 不變式 ↔ 測試（domain-map §3〈Bundle 不變式清單〉）
+### 4.2 不變式 ↔ 測試（各 domain map §3〈Bundle 不變式清單〉）
 
 | Bundle | 不變式（摘要） | 測試 |
 |--------|--------------|------|
@@ -461,7 +461,7 @@ lostFields 以純函式測（輸入：完整性集合、實際寫出的鍵與值
 | Diagnostics | 一事件一破洞，數量等於命中數 | D1、IT-2 A2 |
 | Diagnostics | 查詢不可用時不產生破洞、回報無法判定 | D2、IT-2 A6 |
 
-domain-map §3〈Bundle 不變式清單〉每一條都有對應測試。
+各 domain map §3〈Bundle 不變式清單〉每一條都有對應測試。
 
 ### 4.3 UC 場景 × 不變式去重
 
@@ -513,4 +513,4 @@ C6-2、C8-3、C8-4、C10-4、D2-1、K2-3、K4-2，均已附正向對照輸入。
 | IT-1 | IT1 | 測資凍結票、Corpus 切分分類 |
 | IT-2 | IT2 | 測資凍結票、以上全部 |
 
-各實作票驗收須含 domain-map §5 的 import 方向檢查。
+各實作票驗收須含系統層 §7 的 import 方向檢查。

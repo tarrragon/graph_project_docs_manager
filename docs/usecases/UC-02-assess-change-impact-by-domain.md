@@ -34,7 +34,7 @@ ticket_refs: []
 | 成功保證 | 使用者得知該 domain 被哪些 UC flow 貫穿，以及各自貫穿的步驟 |
 
 > 「貫穿」＝一條 UC flow 經過某個 domain，是圖上的水平關係、可計數。
-> 與「穿透」（兩視圖間的雙向導覽操作）不同，定義見 `docs/domain-map.md` §2.5。
+> 與「穿透」（兩視圖間的雙向導覽操作）不同，定義見 `docs/system-layer.md` §1.4。
 
 ## 主要成功場景
 
@@ -136,10 +136,10 @@ where.files 無法對應到任何 domain 時標記為無法定位，並列入破
 ## 驗收條件
 
 > **前提部分未滿足，本 UC 的第 1、4 條驗收目前不可實作。** 矩陣的格
-> （step → domain）已定案為 `FlowStep.traverses`（`docs/domain-map.md` §2.5，
+> （step → domain）已定案為 `FlowStep.traverses`（`docs/system-layer.md` §1.4，
 > 2026-09-14）。仍未滿足兩項：矩陣的列（domain 清單）無資料來源——個別 domain
 > 不是圖節點；「路徑模式 → domain」對照表歸屬已定（Graph）但內容未建
-> （`0.1.0-W3-352`）。兩項皆列於 `docs/domain-map.md` §9。排版本順序時，
+> （`0.1.0-W3-352`）。兩項皆列於 `docs/system-layer.md` §6。排版本順序時，
 > 這些前置必須先綠燈。
 
 - [ ] 矩陣的每一格明確區分直接貫穿、間接依賴、無關三種狀態

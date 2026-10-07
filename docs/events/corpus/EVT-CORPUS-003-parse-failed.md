@@ -63,7 +63,7 @@ consumers: ['Diagnostics']
 > （以 `content.split("---")` 解析 frontmatter，被引號字串內的 markdown
 > 表格分隔線截斷）。`severity` 兩級的分法保留，但它現在是**設計判斷而非
 > 量測結論**——支撐它的欄位損失分佈已隨該 artifact 失效。完整說明見
-> `docs/domain-map.md` §7。
+> `docs/system-layer.md` §5。
 
 **真正的高頻形態是「無 frontmatter」**（2026-08-27 量測：1290 / 7106），其中
 1243 個是 README、工作日誌等合法非節點檔。不做區分，破洞報告會有 96% 是雜訊。
@@ -78,4 +78,4 @@ consumers: ['Diagnostics']
 
 ## 來源
 
-`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/domain-map.md`。
+`saas-tech-selection` Stage 2 的 event catalog。切分依據見 `docs/system-layer.md`。

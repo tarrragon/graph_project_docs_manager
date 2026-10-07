@@ -28,7 +28,7 @@ supersedes: null
 ## 需求來源
 
 核心使用場景：需求變更時的雙向**穿透**（兩視圖間的雙向導覽操作；
-與「貫穿」的區別見 `docs/domain-map.md` §2.5）——
+與「貫穿」的區別見 `docs/system-layer.md` §1.4）——
 
 - **domain → UC**：找出負責的 domain，檢視有哪些 UC flow 貫穿它
 - **UC → domain**：自 UC 頭尾檢視該 flow 貫穿哪些 domain
@@ -166,7 +166,7 @@ supersedes: null
 > **先前版本的數字已作廢**：`acceptance` 89.8%、`where.files` / `why` 99.5%、
 > `how.strategy` 98.1%、資訊率 14% 皆偏低，成因是量測腳本用
 > `content.split("---")` 解析 frontmatter，被引號字串內的 markdown 表格
-> 分隔線截斷而產生 130 筆假損壞。詳見 `docs/domain-map.md` §7。
+> 分隔線截斷而產生 130 筆假損壞。詳見 `docs/system-layer.md` §5。
 
 「從哪裡開始」在 99.9% 的情況下已由 ticket 的 5W1H 結構回答，
 獨立畫面是在解 0.5% 的問題。Premortem：該畫面會因「僅將同一份 YAML
@@ -193,7 +193,7 @@ supersedes: null
 >
 > 這條推導成立的前提是先建立「路徑模式 → domain」對照表。該表尚未建立，
 > 且它本身是設計決策（本專案的 `lib/` 目前只有 `main.dart`、`l10n/`、
-> `workspace/`，分層命名未定）。列入 `domain-map.md` §9 待決。
+> `workspace/`，分層命名未定）。列入 `docs/system-layer.md` §6 待決。
 
 無法自 `where.files` 對應到任何 domain 的票，顯示為「無法定位」，
 該狀態本身即為破洞報告的一項。

@@ -289,7 +289,7 @@ G2／G3／G6 對應各呼叫路徑的結局。不互相抵扣規則在測試層�
 
 ## 五、變更理由邊界
 
-本規格的唯一合法變更理由為**資料夾存取方式改變**（`docs/domain-map.md` §3 對 Workspace
+本規格的唯一合法變更理由為**資料夾存取方式改變**（`docs/spec/workspace/domain-map.md` §3 對 Workspace
 bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNotifier`、`ExternalOpener`）
 不屬本規格，其落點為 SPEC-003 §2.2（承接票 `0.1.0-W3-149`）。
 

@@ -248,7 +248,7 @@ monitor、screen_clock（擱置中）可作參考語料。
 ### 2026-08-26：Stage 2 完成，domain map 與 event catalog 落檔
 
 七個 domain（Workspace / Schema / Corpus / Graph / TicketDetail / Layout /
-Diagnostics）與九個 event，見 `docs/domain-map.md` 與 `docs/events/`。
+Diagnostics）與九個 event，見 `docs/system-layer.md`、`docs/spec/{domain}/domain-map.md` 與 `docs/events/`。
 
 三項關鍵切分決策：
 
@@ -314,7 +314,7 @@ Stage 3 的七個核心問題有一半在本專案退化（無後端、單使用
 > **本節的 R 階段基本率已於 2026-08-27 撤回**，見文末「130 個 YAML 錯誤不存在」。
 > 以下保留當時的分析原文（append-only），但其中所有涉及 130 張損壞 ticket、
 > 20.3 個可救回欄位、10% ticket 消失的數字皆不成立。定案的策略方向仍然成立，
-> 重建後的依據見 `docs/domain-map.md` §7。
+> 重建後的依據見 `docs/system-layer.md` §5。
 
 **Step 0 判定資料不足**：對「出問題的 case」缺乏實際資料，屬以假設替代資料。
 先實測五個框架專案共 6145 份文件（量測於 2026-08-26），再進 W 階段。
@@ -335,7 +335,7 @@ Stage 3 的七個核心問題有一半在本專案退化（無後端、單使用
 全屬同一成因：未閉合的單引號字串。100% 可部分救回，平均 20.3 個欄位。
 
 **採用方案（W 之外的第四項）**：盡力解析 + 損壞依嚴重度分級顯性化 +
-破洞報告即修復清單。詳見 `docs/domain-map.md` §7。
+破洞報告即修復清單。詳見 `docs/system-layer.md` §5。
 
 **診斷入口不另行設計**——破洞報告即入口。解析失敗與圖結構缺陷本質同類，
 分成兩處會讓使用者需要記住兩個入口。
@@ -590,7 +590,7 @@ Flutter 官方對 application（非 library）的建議本即為 commit lock 檔
 | 產出 | 位置 |
 |------|------|
 | 操作風險表（BDD） | PROP-004 §範圍界定、SPEC-001 |
-| domain map | `docs/domain-map.md` |
+| domain map | `docs/spec/{domain}/domain-map.md`、`docs/system-layer.md` |
 | event catalog | `docs/events/`（9 個 EVT） |
 | 技術選型（理由／防護狀態／tripwire） | 本檔各補記段 |
 | 防護底線總表 | 本節 |
@@ -608,7 +608,7 @@ Flutter 官方對 application（非 library）的建議本即為 commit lock 檔
 | 定錨 + 交付形態 gate + 技術決策 | PROP-001 ~ PROP-004（皆 `confirmed`） |
 | 畫面狀態矩陣（Stage 1.5） | SPEC-001 |
 | 操作盤點（BDD） | UC-01 ~ UC-06 |
-| domain map + event catalog | `docs/domain-map.md`、`docs/events/` |
+| domain map + event catalog | `docs/spec/{domain}/domain-map.md`、`docs/system-layer.md`、`docs/events/` |
 
 六個 UC 皆填寫**結構化 flow 區塊**（`FlowStep`）。這不只是完整性——
 `FlowStep` 升為 `established` 的判準要求「兩個以上互相獨立的 consumer
@@ -713,7 +713,7 @@ graph schema 允許 `\d{2,}`，因此其他 consumer 專案可能存在三位數
 **採用邊層級**，依視圖惰性載入。不實作增量更新——全量重掃已夠快，
 增量需維護狀態且正確性風險高。
 
-**新增 History domain**（第八個），不併入 Corpus。理由見 `domain-map.md` §4.3。
+**新增 History domain**（第八個），不併入 Corpus。理由見 `docs/system-layer.md` §4.3。
 
 降級行為已實測：非 git 目錄 `exit=128` 且 stderr 明確；git 不在 PATH 為
 `ProcessException`，與解析失敗等其他形態可區分。
@@ -822,7 +822,7 @@ graph schema 允許 `\d{2,}`，因此其他 consumer 專案可能存在三位數
 | `relatedTo` 填寫率 | 13.4% | 13.6% |
 | `where.layer` 有值張數 / 佔位張數 / 資訊率 | 1164 / 996 / 約 14% | 1298 / 1089 / 16.1% |
 | 五專案解析統計 | 5648 / 131 / 366 | 5815 / **1** / 1290 |
-| domain-map §7 損壞救回表（20.3 欄位、各欄損失率） | 全表 | 前提不成立，全表撤除 |
+| 系統層 §5 損壞救回表（20.3 欄位、各欄損失率） | 全表 | 前提不成立，全表撤除 |
 | 上游缺陷第四項 | 「ticket 寫入端有未閉合引號缺陷」 | 無此缺陷，**回報需撤回** |
 
 ### 這件事留下的東西
@@ -836,7 +836,7 @@ graph schema 允許 `\d{2,}`，因此其他 consumer 專案可能存在三位數
 因此**解析器語意的選擇是正確性問題，不是實作細節**。Corpus domain 必須
 採逐行語意；契約測試以 flutter_balance 全量為語料，斷言解析失敗數為 0——
 用天真語意會得到 130，兩者的差即為該測試的鑑別力。條文見
-`docs/domain-map.md` §7「解析器語意是規格的一部分」。
+`docs/spec/corpus/domain-map.md` §4.2「解析器語意是規格的一部分」。
 
 **真正的失敗形態也因此才被看見**：高頻的不是 YAML 損壞（1/7106），
 而是「無 frontmatter」（1290/7106），其中 1243 個是 README 與工作日誌等
@@ -857,7 +857,7 @@ tripwire 總表的「加入編輯能力」一條，**觸發條件已成立，act
 | 項目 | 內容 |
 |------|------|
 | 觸發條件 | 加入編輯能力，跨越「App 不擁有資料」的界線 |
-| 何時成立 | 票 `0.0.3-W1-002` 定案「本 App 直接改檔、CLI 僅作驗證器」（`domain-map.md` §4.4） |
+| 何時成立 | 票 `0.0.3-W1-002` 定案「本 App 直接改檔、CLI 僅作驗證器」（`docs/system-layer.md` §4.4） |
 | 規定的 action | 備份、衝突、還原、PII **全部重評**；等同新的架構決策 |
 | 現況 | 四項皆未重評。CLAUDE.md 待決只登記「編輯能力未落為提案與規格」，**不涵蓋這四項** |
 
@@ -1291,7 +1291,7 @@ tripwire 總表「加入編輯能力」規定的 action 為備份／衝突／還
 
 | 層 | 狀態 | 依據（2026-09-10 實查） |
 |------|------|------|
-| 決策 | 已跨線 | 票 `0.0.3-W1-002` 定案「本 App 直接改檔、CLI 僅作驗證器」，`domain-map.md` §4.4 |
+| 決策 | 已跨線 | 票 `0.0.3-W1-002` 定案「本 App 直接改檔、CLI 僅作驗證器」，`docs/system-layer.md` §4.4 |
 | 規格 | 未跨線 | 編輯能力規格尚未撰寫，其檔案路徑亦未指名（承接見 `0.1.0-W3-281`） |
 | 實作 | 未跨線 | `lib/` 全域無任何寫入使用者檔案的呼叫：`writeAsString` / `writeAsBytes` / `openWrite` / `openSync` / `IOSink` / `RandomAccessFile` / `delete` / `rename` / `copy` 命中數皆為 0 |
 
@@ -1361,7 +1361,7 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 
 **Why 不採檔案鎖**：macOS 的檔案鎖對不參與協定的外部編輯器無強制力，使用者用任何編輯器都能照常寫入。設一個擋不住目標對象的鎖，只會讓實作者以為衝突已被處理。`xattr` 標記同屬此類。
 
-**「0.1 無檔案監看」是既有前提，不是本節的比較結果**：主動監看（`FileSystemEntity.watch` / FSEvents）能把「外部已修改」的發現時點提前到修改發生當下，與寫入當下的比對互補而非互斥。本節未評估它，因為 0.1 不做監看已由三處既有決策定下——`SPEC-003` 明文「視窗失焦／前景切換不觸發任何重新載入（0.1 無檔案監看）」、`domain-map.md` 變異點表列「檔案監看｜用套件」、`EVT-CORPUS-002` 已定義對應事件節點但尚未有活躍來源。**發現時點推遲的代價由該既有決策承擔，不由本節承擔**：使用者可能已基於過期內容在 App 內編輯很久，衝突一旦判定那段編輯作廢。監看轉為活躍時本項應一併重評。
+**「0.1 無檔案監看」是既有前提，不是本節的比較結果**：主動監看（`FileSystemEntity.watch` / FSEvents）能把「外部已修改」的發現時點提前到修改發生當下，與寫入當下的比對互補而非互斥。本節未評估它，因為 0.1 不做監看已由三處既有決策定下——`SPEC-003` 明文「視窗失焦／前景切換不觸發任何重新載入（0.1 無檔案監看）」、`docs/spec/corpus/domain-map.md` §4.1 Commodity 表列「檔案監看｜用套件」、`EVT-CORPUS-002` 已定義對應事件節點但尚未有活躍來源。**發現時點推遲的代價由該既有決策承擔，不由本節承擔**：使用者可能已基於過期內容在 App 內編輯很久，衝突一旦判定那段編輯作廢。監看轉為活躍時本項應一併重評。
 
 **比對用內容本身而非雜湊**：目標檔為 markdown，單檔量級在 KB 級，而本情境是「讀入→寫入前重驗」的短生命週期比對。直接比較字串即可，不需引入 `crypto` 依賴。雜湊只在需要長期只存指紋、不留原始內容於記憶體時才有優勢。
 
@@ -1445,7 +1445,7 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 | structured log 延後的三個理由中兩個已失效 | `0.1.0-W3-280` |
 | SPEC-004 樂觀更新政策的重評 trigger 未綁 ticket ID 且指向錯誤事件 | `0.1.0-W3-282` |
 
-**實作代價（供條文化時參考，非本節結論）**：A-1 判定「已追蹤且乾淨」需至少兩次子行程呼叫——`git status --porcelain` 無法單獨區分「已追蹤且乾淨」與「未追蹤但被忽略」（兩者輸出皆為空），須另以 `git ls-files --error-unmatch` 判定追蹤狀態；「是否為 git repo」可在選定工作區時快取一次。`git` 不在 PATH 時 `Process.run` 拋 `ProcessException` 而非回傳非零離開碼，呼叫端須以 try/catch 承接。`domain-map.md` §4.3 的效能數據為開啟歷史視圖時的一次性全庫掃描，不可套用於每次寫入的單檔查詢。寫入與指紋比對的職責歸屬 Corpus（`domain-map.md` §4.4 已定案），非 Workspace。
+**實作代價（供條文化時參考，非本節結論）**：A-1 判定「已追蹤且乾淨」需至少兩次子行程呼叫——`git status --porcelain` 無法單獨區分「已追蹤且乾淨」與「未追蹤但被忽略」（兩者輸出皆為空），須另以 `git ls-files --error-unmatch` 判定追蹤狀態；「是否為 git repo」可在選定工作區時快取一次。`git` 不在 PATH 時 `Process.run` 拋 `ProcessException` 而非回傳非零離開碼，呼叫端須以 try/catch 承接。`docs/spec/history/domain-map.md` §4.1 的效能數據為開啟歷史視圖時的一次性全庫掃描，不可套用於每次寫入的單檔查詢。寫入與指紋比對的職責歸屬 Corpus（`docs/system-layer.md` §4.4 已定案），非 Workspace。
 
 ### 首版被推翻了什麼
 
