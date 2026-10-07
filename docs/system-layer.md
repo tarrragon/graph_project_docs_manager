@@ -488,8 +488,8 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   權威＝各 `DomainBundle` 的 `domain`（小寫加連字號，id_pattern 約束）。盤點時 SPEC 的
   `depends_on_domains` 已與宣告一致，唯 UC FlowStep 的 `traverses` 為 PascalCase；`traverses`
   改寫為宣告字面並同步 K6 錨點與測試（`0.5.0-W1-090`），`doc validate` 檢查兩欄位的值必須已宣告
-  （`0.5.0-W1-091`，blockedBy W1-090）。App 精確比對，不一致交 Diagnostics；畫面顯示名另由 i18n 取，
-  於 Layout SPEC 定義。原待決描述（大小寫並存使比對與錨點失準）見來源票 `0.1.1-W3-378`
+  （`0.5.0-W1-091`，blockedBy W1-090）。App 精確比對，不一致交 Diagnostics；列首顯示 `domain` 原值，只有「畫面」列（`presentation`，
+  App 自身詞彙）經 i18n（2026-10-08 用戶裁決 K6，SPEC-004 §4.0.6／4.37／4.38）。原待決描述（大小寫並存使比對與錨點失準）見來源票 `0.1.1-W3-378`
 - **畫面層的名稱與「列＝DomainBundle」例外範圍已定案**（2026-10-07 用戶裁決，`0.5.0-W1-095` WRAP 第二輪
   G2＋A′，見 `docs/tech-decisions.md` 同日補記）：畫面層（L4，§2）在資料中以本地保留字 `presentation`
   表示，畫面例外由「僅限泳道」延伸為兩處——泳道「畫面」列（SPEC-001 §1）與 EVT `consumers`
