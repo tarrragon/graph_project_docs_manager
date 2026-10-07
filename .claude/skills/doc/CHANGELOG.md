@@ -2,6 +2,14 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.2 — `schema_generated_at_framework_version` 語意改為「型別表相容版本」（用戶裁決 A）：
+值取自 `tracking_schema.py` 新增常數 `TYPE_TABLE_COMPAT_VERSION`（初值 2.77.0，即型別表最後一次變更時的
+框架版本），`doc schema export` 不再讀重產當下的 `.claude/VERSION`；只在型別表變更時手動升版。
+鍵名不改：改名會影響所有舊 consumer，舊 consumer 照舊寫入的框架版本與常數同屬一條遞增序列，App 閘門
+無需修改。`tracking-schema-json-staleness-guard-hook.py` 移除 `VOLATILE_KEYS`，此鍵的值變動現在會被
+內容比對偵測。重產 JSON 零差異。測試：E2（調高 VERSION 後重產，產生版本維持常數）、E1 對照（常數變更則
+產生版本跟著變）、守衛正向對照（手改該鍵須被攔下）。
+
 **Version**: 1.24.1 — DomainBundle 新增選填出邊 `depends_on_bundles`（bundle 層級依賴，目標為另一份
 domain-map 的 id）與對應 B 層 proposed 邊型 `bundle_dependency`（class `ordering`、many、
 `directed`、無反向欄位）；established 12 條與其他既有邊型不變，與 `domain_dependency`（domain 名稱層級）

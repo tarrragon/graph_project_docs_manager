@@ -161,6 +161,14 @@ GRAPH_EDGE_MAINTAINERS = frozenset({"手動", "CLI 自動", "手動/CLI"})
 # 可能重疊的型別在兩項打平，須調整路徑深度或縮小重疊範圍化解，不得用
 # 額外比對層次掩蓋。
 
+# 型別表相容版本：`doc schema export` 寫入 JSON 鍵
+# `schema_generated_at_framework_version` 的值，取自本常數，不讀 .claude/VERSION。
+# 語意是「型別表最後一次變更時的框架版本」，只在 GRAPH_NODE_TYPES /
+# GRAPH_EDGE_TYPES 等型別表內容變更時手動升版，升為變更當下的框架版本。
+# 鍵名不改的理由：改名會影響所有舊 consumer；舊 consumer 照舊寫入的框架
+# 版本與本常數落在同一條遞增序列，消費端閘門無需修改即可比較。
+TYPE_TABLE_COMPAT_VERSION = "2.77.0"
+
 # 節點型別表：A 層 5 節點 + B 層 2 節點。FR 與 Test 不列為獨立節點型別
 # （無獨立檔案/ID 空間，語意由 SPEC / traceability 節點欄位承載）。
 GRAPH_NODE_TYPES = {
