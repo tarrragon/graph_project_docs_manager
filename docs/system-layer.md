@@ -45,7 +45,7 @@ updated: "2026-10-08"
 | **TicketDetail** | L2 | ticket 的 5W1H 結構語意改變 | `docs/spec/ticketdetail/domain-map.md` |
 | **Layout** | L3 | 布局演算法或版型規則改變 | `docs/spec/layout/domain-map.md` |
 | **Diagnostics** | L2 | 「什麼算破洞」的定義改變 | `docs/spec/diagnostics/domain-map.md` |
-| **History** | L2 | git 查詢方式或歷史語意改變 | `docs/spec/history/domain-map.md` |
+| **History** | L1 | git 查詢方式或歷史語意改變 | `docs/spec/history/domain-map.md` |
 
 **畫面狀態不是 domain，是 layer。** 布局演算法（有真實規則與演算法）與
 畫面狀態（純 UI）分開 —— 前者可獨立測試，後者依賴 widget tree。
@@ -71,10 +71,12 @@ updated: "2026-10-08"
 ```
 L4   畫面狀態（layer，非 domain）
 L3   Layout
-L2   Graph      Diagnostics      TicketDetail      History
-L1   Corpus
+L2   Graph      Diagnostics      TicketDetail
+L1   Corpus     History
 L0   Schema     Workspace
 ```
+
+**層由 `bundle_dependency` 推導**（2026-10-08 用戶裁決，`docs/tech-decisions.md` 同日補記第 1 項）：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；上圖為推導結果，非手寫指派。`History` 只依賴 `Workspace`，推導為 L1（原寫 L2，已更正）。泳道列序依此層序與同層字母序（SPEC-001 §1〈泳道布局規則〉）。
 
 **依賴邊（完整列舉）**：出邊的唯一權威是各 domain map frontmatter 的 `depends_on_bundles`，下表為彙整視圖；兩者不一致時以 frontmatter 為準。
 
