@@ -10,8 +10,8 @@ updated: "2026-09-24"
 
 payload: null
 
-producers: ['Corpus']
-consumers: ['Diagnostics']
+producers: ['corpus']
+consumers: ['diagnostics']
 ---
 
 # EVT-CORPUS-003: ParseFailed

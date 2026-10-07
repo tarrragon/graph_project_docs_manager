@@ -10,8 +10,8 @@ updated: "2026-08-27"
 
 payload: null
 
-producers: ['Layout']
-consumers: ['Presentation']
+producers: ['layout']
+consumers: ['presentation']
 ---
 
 # EVT-LAYOUT-001: LayoutComputed

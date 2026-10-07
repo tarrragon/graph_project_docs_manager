@@ -10,8 +10,8 @@ updated: "2026-09-24"
 
 payload: null
 
-producers: ['Diagnostics']
-consumers: ['Presentation']
+producers: ['diagnostics']
+consumers: ['presentation']
 ---
 
 # EVT-DIAGNOSTICS-001: GapsDetected

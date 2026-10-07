@@ -10,8 +10,8 @@ updated: "2026-08-27"
 
 payload: null
 
-producers: ['Corpus']
-consumers: ['Graph', 'TicketDetail', 'Diagnostics']
+producers: ['corpus']
+consumers: ['graph', 'ticketdetail', 'diagnostics']
 ---
 
 # EVT-CORPUS-001: CorpusParsed

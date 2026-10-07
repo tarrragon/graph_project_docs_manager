@@ -10,8 +10,8 @@ updated: "2026-08-27"
 
 payload: null
 
-producers: ['Workspace']
-consumers: ['Schema', 'Corpus']
+producers: ['workspace']
+consumers: ['schema', 'corpus']
 ---
 
 # EVT-WORKSPACE-001: WorkspaceSelected
