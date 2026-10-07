@@ -249,36 +249,59 @@ void main() {
       );
     });
 
-    testWidgets('en 語系「Built-in schema」不溢位', (tester) async {
-      await pumpHarness(
-        tester,
-        locale: const Locale('en'),
-        child: SizedBox(
-          width: LayoutSize.overlayWidth,
-          child: _degraded(enabled: true, isCurrent: false),
-        ),
-      );
-
-      expect(find.text(_degradedEn), findsOneWidget);
-      expectNoOverflow(tester);
-    });
-
-    for (final locale in const [Locale('zh'), Locale('en')]) {
-      testWidgets('最小寬下 ${locale.languageCode} 降級標籤截斷不溢位、摘要先截斷', (
+    // 合併自「en 不溢位」與兩支最小寬案例：文案與寬度的三種組合
+    // （zh @ overlayWidth 已由三態案例覆蓋）。
+    final labelCases = <(Locale, double, String)>[
+      (const Locale('en'), LayoutSize.overlayWidth, _degradedEn),
+      (const Locale('zh'), _minItemWidth, _degradedZh),
+      (const Locale('en'), _minItemWidth, _degradedEn),
+    ];
+    for (final (locale, width, label) in labelCases) {
+      testWidgets('${locale.languageCode} @ 寬 $width 降級標籤存在且不溢位', (
         tester,
       ) async {
         await pumpHarness(
           tester,
           locale: locale,
           child: SizedBox(
-            width: _minItemWidth,
+            width: width,
             child: _degraded(enabled: true, isCurrent: false),
           ),
         );
 
+        expect(find.text(label), findsOneWidget);
         expectNoOverflow(tester);
       });
     }
+
+    testWidgets('最小寬下截斷順序：摘要縮至 0、徽章取可用寬而非固有寬', (tester) async {
+      // 一字元 = AppFontSize.body（SPEC-004 §4.0.3）；文字區寬恰為一字元。
+      const textBlockWidth = AppFontSize.body;
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: LayoutSize.overlayWidth,
+          child: _degraded(enabled: true, isCurrent: false),
+        ),
+      );
+      final intrinsicBadgeWidth = tester.getSize(find.byType(Badge)).width;
+      expect(intrinsicBadgeWidth, greaterThan(textBlockWidth - Space.sm));
+
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: _minItemWidth,
+          child: _degraded(enabled: true, isCurrent: false),
+        ),
+      );
+
+      expectNoOverflow(tester);
+      expect(tester.getSize(find.text('237 節點 · 2419 票')).width, 0);
+      expect(
+        tester.getSize(find.byType(Badge)).width,
+        textBlockWidth - Space.sm,
+      );
+    });
 
     testWidgets('寬度不足時摘要先截斷、徽章維持固有寬度', (tester) async {
       await pumpHarness(
