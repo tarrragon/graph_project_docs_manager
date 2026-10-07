@@ -321,7 +321,7 @@ class TestCompatVersionDecoupledFromFrameworkVersion:
         after = build_schema_dict(root)[self.KEY]
 
         assert before == after == tracking_schema.TYPE_TABLE_COMPAT_VERSION
-        assert after == "2.77.0"
+        assert after == "2.77.1"
 
     def test_e1_changing_constant_changes_generated_version(self, tmp_path, monkeypatch):
         """E1 對照：VERSION 相同、常數不同，產生版本跟著常數變。"""

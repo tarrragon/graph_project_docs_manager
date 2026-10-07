@@ -15,6 +15,12 @@ from doc_system.core.file_locator import FileLocator
 from doc_system.core.frontmatter_parser import parse_frontmatter
 from doc_system.core.tracking_schema import (
     EVT_REQUIRED_FIELDS,
+    NON_DOMAIN_PATHS_FILE,
+    NonDomainPathsFormatError,
+    check_path_pattern_format,
+    find_non_domain_path_problems,
+    read_non_domain_paths,
+    read_path_patterns,
     find_dangling_bundle_dependencies,
     find_missing_completeness_fields,
     find_missing_path_patterns,
@@ -261,6 +267,45 @@ def _path_matches_kind(root: Path, pattern: str) -> bool:
     """`/` 結尾的前綴須為目錄，否則須為檔案。"""
     target = root / pattern
     return target.is_dir() if pattern.endswith("/") else target.is_file()
+
+
+def _collect_all_path_problems(project_root: str) -> list[str]:
+    """全部 DomainBundle 的 path_patterns 問題，加上非 domain 路徑清單檔的問題。"""
+    root = Path(project_root)
+    scanned = _scan_domain_bundles(project_root)
+    bundles = {bid: fm for bid, (_, fm) in scanned.items()}
+    problems = []
+    for bid in bundles:
+        problems += _collect_path_pattern_problems(project_root, bundles, bid)
+    bundle_patterns = {
+        bid: raw for bid, fm in bundles.items() if isinstance(raw := read_path_patterns(fm), list)
+    }
+    location = str(root / NON_DOMAIN_PATHS_FILE)
+    try:
+        values = read_non_domain_paths(root)
+    except NonDomainPathsFormatError as exc:
+        return problems + [f"{location}: {exc}"]
+    if values is None:
+        return problems
+    found = find_non_domain_path_problems(values, bundle_patterns)
+    found += [
+        f"non_domain_path_patterns 值 {v!r}: 專案根目錄下不存在對應的目錄或檔案"
+        for v in values
+        if isinstance(v, str) and check_path_pattern_format(v) is None and not _path_matches_kind(root, v)
+    ]
+    return problems + [f"{location}: {item}" for item in found]
+
+
+def execute_paths(args: argparse.Namespace) -> None:
+    """doc validate-paths：一次檢查全部 path_patterns 與非 domain 路徑清單檔（供 CI）。"""
+    problems = _collect_all_path_problems(FileLocator.get_project_root())
+    if not problems:
+        print("通過: 全部 path_patterns 與非 domain 路徑清單皆有效")
+        sys.exit(0)
+    print("驗證失敗: path_patterns／非 domain 路徑清單無效")
+    for item in problems:
+        print(f"  - {item}")
+    sys.exit(1)
 
 
 def _as_name_list(value) -> list[str]:
