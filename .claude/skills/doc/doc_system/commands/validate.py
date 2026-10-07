@@ -17,7 +17,9 @@ from doc_system.core.tracking_schema import (
     EVT_REQUIRED_FIELDS,
     find_dangling_bundle_dependencies,
     find_missing_completeness_fields,
+    find_undeclared_domain_names,
 )
+from doc_system.core.uc_registry import _extract_structured_flow_steps
 
 
 # 錨點關鍵字：容忍章節標題的合理變體（如「A.1 表/欄位語意」「A.1：xxx」等），
@@ -231,6 +233,65 @@ def _execute_domain_bundle_validation(project_root: str, doc_id: str) -> None:
     sys.exit(1)
 
 
+def _as_name_list(value) -> list[str]:
+    """frontmatter／flow 欄位值正規化為字串清單（缺失或 None 為空）。"""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return [str(item) for item in value]
+
+
+def _collect_domain_references(doc_id: str, file_path: str, frontmatter: dict) -> list[tuple[str, str]]:
+    """回傳文件內的 (欄位位置, domain 名稱) 引用；僅 UC 與 SPEC 帶此類欄位。"""
+    prefix = doc_id.upper()
+    if prefix.startswith("SPEC-"):
+        names = _as_name_list(frontmatter.get("depends_on_domains"))
+        return [("depends_on_domains", name) for name in names]
+    if prefix.startswith("UC-"):
+        with open(file_path, encoding="utf-8") as f:
+            steps = _extract_structured_flow_steps(f.read().splitlines()) or []
+        return [
+            (f"flow[{step.get('id')}].traverses", name)
+            for step in steps
+            if isinstance(step, dict)
+            for name in _as_name_list(step.get("traverses"))
+        ]
+    return []
+
+
+def _find_undeclared_domain_references(
+    project_root: str, doc_id: str, file_path: str, frontmatter: dict
+) -> list[str]:
+    """回傳未被任何 DomainBundle 宣告的 domain 引用（空清單代表通過）。
+
+    語料沒有任何 DomainBundle 時不檢查（舊版語料沒有宣告來源可比對）。
+    """
+    declared = {
+        str(fm["domain"]) for fm in _load_domain_bundles(project_root).values() if fm.get("domain")
+    }
+    if not declared:
+        return []
+    references = _collect_domain_references(doc_id, file_path, frontmatter)
+    undeclared = set(find_undeclared_domain_names([name for _, name in references], declared))
+    return [
+        f"{file_path}: {location} 值 {name!r} 不是已宣告的 domain"
+        for location, name in references
+        if name in undeclared
+    ]
+
+
+def _fail_on_undeclared_domains(project_root: str, doc_id: str, file_path: str, frontmatter: dict) -> None:
+    """有未宣告的 domain 引用時列出位置並 exit 1。"""
+    problems = _find_undeclared_domain_references(project_root, doc_id, file_path, frontmatter)
+    if not problems:
+        return
+    print(f"驗證失敗: {doc_id} 引用了未宣告的 domain（須為 DomainBundle 的 domain）")
+    for item in problems:
+        print(f"  - {item}")
+    sys.exit(1)
+
+
 def execute(args: argparse.Namespace) -> None:
     """依 frontmatter subdomain 分派章節 schema 驗證。"""
     doc_id = args.doc_id
@@ -255,6 +316,8 @@ def execute(args: argparse.Namespace) -> None:
     if frontmatter is None:
         print(f"無法解析 frontmatter: {file_path}")
         sys.exit(2)
+
+    _fail_on_undeclared_domains(project_root, doc_id, file_path, frontmatter)
 
     subdomain = frontmatter.get("subdomain")
     if subdomain != "data-contract":

@@ -2,6 +2,12 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.24.3 — `doc validate` 對 `UC-*` 與 `SPEC-*` 新增 domain 引用檢查：UC 結構化 flow 區塊的 `traverses`
+與 SPEC frontmatter 的 `depends_on_domains`，每個值須為某份 DomainBundle（`docs/spec/*/domain-map.md`）已宣告的
+`domain`，精確字串比對；未宣告回 exit 1 並列出檔案、欄位位置與值。語料沒有任何 DomainBundle 時不檢查。
+新增 `tracking_schema.find_undeclared_domain_names`。測試：E2（未宣告值 exit 1 並列出位置）、E1 對照（同批
+fixture 換成已宣告名稱 exit 0）、無 DomainBundle 語料不報錯。
+
 **Version**: 1.24.2 — `schema_generated_at_framework_version` 語意改為「型別表相容版本」（用戶裁決 A）：
 值取自 `tracking_schema.py` 新增常數 `TYPE_TABLE_COMPAT_VERSION`（初值 2.77.0，即型別表最後一次變更時的
 框架版本），`doc schema export` 不再讀重產當下的 `.claude/VERSION`；只在型別表變更時手動升版。
