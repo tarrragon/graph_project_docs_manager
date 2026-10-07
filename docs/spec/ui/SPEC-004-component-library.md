@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-10-07"
-version: "1.67"
+version: "1.68"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -334,7 +334,7 @@ depends_on_domains: [layout]
 | §1 | 未選專案 | 空畫面 + 選擇資料夾引導 | `EmptyState.page`（動作 `AppButton.primary` 選擇資料夾） |
 | §1 | 載入中 | 骨架版面 + 進度 + 取消 | `LoadingState.skeleton`（版位 `matrix`） |
 | §1 | 正常 · 矩陣 | domain × UC 交叉表 + 右欄格詳情卡區（未選格常駐提示） | `PageColumn`[`SplitRow.header`[`PageTitle`, `SegmentedControl`], `TwoColumnLayout`[`Panel`[`MatrixGrid`, `BadgeRow.legend`], `Panel.scrollable`[`EmptyState.section`（`panel-domain-cell-detail-empty`，訊息 `cellDetailPrompt`，無動作）]]] |
-| §1 | 已選格（疊加於正常 · 矩陣） | 右欄格詳情卡：標題、關係種類、說明、編號步驟、事件標籤、在泳道中檢視、關閉 | 底層同上 + 右欄 `Panel.scrollable`[`SplitRow.header`[`AppText.subtitle`, `AppButton.text`（關閉，`action-domain-cell-clear`）], `AppText.caption`（關係種類）, `AppText.body`（說明，可缺）, `ListRow.numbered` × N（可缺）, `BadgeRow`[`Badge.event` × N]（可缺）, `ButtonRow`[`AppButton.secondary`（在泳道中檢視，`action-domain-cell-goto-swimlane`）]]（`panel-domain-cell-detail`，`scroll-domain-cell-detail`）；`MatrixCell` 呈 `selected` |
+| §1 | 已選格（疊加於正常 · 矩陣） | 右欄格詳情卡：標題、關係種類、說明、編號步驟、事件標籤、在泳道中檢視、關閉 | 底層同上 + 右欄 `Panel.scrollable`[`SplitRow.header`[`AppText.subtitle`, `AppButton.text`（關閉，`action-domain-cell-clear`）], `AppText.caption`（關係種類）, `AppText.body`（說明，可缺）, `ListRow.numbered` × N（可缺）, `BadgeRow`[`Badge.event` × N]（可缺）, `AppText.body` × N（依賴路徑，每條一行，僅 `indirect` 格渲染；路徑集合、排序與跳轉目標見 SPEC-001 §1〈間接依賴格的詳情卡：依賴路徑〉，`0.5.0-W1-093.1`）, `ButtonRow`[`AppButton.secondary`（在泳道中檢視，`action-domain-cell-goto-swimlane`；`indirect` 格的定位目標為依賴路徑第一行來源 domain 的列）]]（`panel-domain-cell-detail`，`scroll-domain-cell-detail`）；`MatrixCell` 呈 `selected` |
 | §1 | 正常 · 泳道 | flow 橫向穿過 domain 泳道 | `Panel`[`AppText.subtitle`（`swimlanePanelTitle`，`<UC id> <UC 標題>`，`0.1.0-W3-335.57` E8）, `SwimlaneGrid`, `BadgeRow.legend`[`Badge.legend` × 2：`laneNodeActive` / `laneNodeInactive`，沿用 4.16 既有 key（`0.1.0-W3-335.47` D6）]] |
 | §1 | 泳道 · 尚未選定 UC | domain 泳道列（不含步驟節點）+ 提示需先選定 UC 並指出選定方式；無 UC 標題 | `Panel`[`EmptyState.section`（`state-domain-swimlane-uc-unset` 內，訊息 `swimlaneUcUnsetPrompt`，無動作——SPEC-001 §1 註記：泳道內不提供 UC 選擇入口，提示指向矩陣點格與 UC Flow 視圖）, `SwimlaneGrid`（零個 `SwimlaneNode`，泳道列與列首照常渲染）]；不渲染 `BadgeRow.legend`（無節點可圖例）。提示置於泳道列之上，理由：泳道列數隨 domain 數成長，置下方時提示可能被捲出可見範圍（提案） |
 | §1 | 泳道 · flow 未結構化 | 面板標題為選定 UC + 「此 UC 尚未填寫結構化 flow」；不渲染泳道列 | `Panel`[`AppText.subtitle`（`swimlanePanelTitle`，`<UC id> <UC 標題>`，`0.1.0-W3-335.57` E8）, `EmptyState.section`（訊息 `flowUnstructuredMessage`，與 §2 同一狀態共用 key；動作 `ButtonRow`[`AppButton.secondary` 開啟原始檔 `action-domain-open-source`]）]；切回矩陣由頁首 `SegmentedControl` 承載不另設按鈕 |
@@ -2596,9 +2596,11 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `direct` | 符號 ●，`AppColors.accent` | 無 | 直接貫穿 |
-| `indirect` | 符號 ○，`AppColors.textSecondary` | 無 | 間接依賴 |
-| `none` | 符號 ·，`AppColors.borderStrong` | 無（同樣可選，SPEC-001 §1「無關格亦可選」） | 無關 |
+| `direct` | 符號 ●，`AppColors.accent` | 無 | 直接貫穿（判定式見 SPEC-001 §1〈間接依賴判定式〉序 1） |
+| `indirect` | 符號 ○，`AppColors.textSecondary` | 無 | 間接依賴（同上序 2：UC 直接貫穿的 X 沿 `bundle_dependency` 往下游可達該格 domain，跳數不限） |
+| `none` | 符號 ·，`AppColors.borderStrong` | 無（同樣可選，SPEC-001 §1「無關格亦可選」） | 無關（同上序 3） |
+
+變體由頁面層依 SPEC-001 §1〈間接依賴判定式〉計算後以 `relation` 傳入，本元件不計算；本專案期望分布 `direct` 19／`indirect` 10／`none` 19（SPEC-001 同段）。
 
 #### 狀態矩陣
 
@@ -6433,6 +6435,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.68 | 2026-10-07 | `0.5.0-W1-093.1`（依 `0.5.0-W1-093` 用戶裁決 A3，SPEC-001 v1.26 同批）：4.15 `MatrixCell` 三變體「何時選用」補判定式序號並指向 SPEC-001 §1〈間接依賴判定式〉，補「變體由頁面層計算傳入」與期望分布 19／10／19；§3.6 已選格組合補依賴路徑 `AppText.body` × N（僅 `indirect` 格）與 `indirect` 格「在泳道中檢視」定位目標 |
 | 1.67 | 2026-10-07 | `0.5.0-W1-092.1`（依 `0.5.0-W1-092` 用戶裁決 R1／C2／B2／E2，SPEC-001 v1.25 同批）：§3.1 `SwimlaneGrid` 列與 4.38 用途改為依 SPEC-001 §1〈泳道布局規則〉——「畫面」列 + 8 個 DomainBundle 列固定 9 列、主線 `next` 鏈與分支插欄、前向直線與回指弧線；4.38 刪「何時不用：有布局演算法的泳道」；slot `lanes` 改含 `key`／`kind`（screen 或 domain）且恆 9 列、列首名由 i18n 取，新增 `edges` slot（`shape` 依欄號比較）；反例改為「自行決定列序欄序邊形狀」與「把畫面列加進矩陣」；測試點補一列 |
 | 1.66 | 2026-10-07 | `0.5.0-W1-071`（e1 裁決，2026-10-07）：(1) §4.0.3 新增「一字元」定義（該文字 slot 字級的 1em）；4.7／4.8／4.9 最小尺寸改為「一字元 + 省略號」並引用 §4.0.3、字級取 `AppFontSize.body`；(2) 4.9 摘要與降級徽章間距定為 `Space.sm`；(3) 4.9 徽章固有寬亦放不下時，摘要縮至 0 後才截斷徽章（名稱 > 徽章 > 摘要）。(1)–(3) 與現行實作一致 |
 | 1.65 | 2026-10-06 | `0.5.0-W3-001` 派發前 NeedsContext 兩項（e1 裁決）：4.9 RecentProjectItem——(1) NC-2：降級徽章與摘要同一列、接在摘要之後，寬度不足時摘要先截斷、徽章維持固有寬度（依據：尺寸契約最大高為「最小高 + `reason` 兩行」，未計徽章列）；(2) NC-1：內容政策「降級標籤」列的最長測試文案由 `TestCopy.longToken` 改為 `degradedSchemaShortLabel` 的 zh／en 實際值於最小寬下截斷不溢位（標籤文字由元件內部取 l10n，slot 只有 `isDegraded: bool`，不為測試注入另開文字 slot） |
