@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-10-08"
-version: "1.11"
+version: "1.12"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -56,7 +56,7 @@ Corpus 沿既有的依賴邊 Corpus → Schema 呼叫路徑查詢，因此能在
 | 項目 | 不在本版的理由 | 承接 |
 |------|--------------|------|
 | 原始邊（`rawEdges`）的抽取 | 建圖屬 0.4（Graph），兩項整合測試都不需要邊 | PROP-005 §0.4 |
-| 破洞類別 `graphDefect`／`traceGap`／`unlocatable` | 需要圖或追溯資料；本版只實作 `parseFailure`。`unlocatable` 的定義以 EVT-DIAGNOSTICS-001 為準：只在被觀測專案兩側皆已宣告（DomainBundle `path_patterns` 與 `docs/non-domain-paths.yaml`）時，對兩者皆未命中的 `where.files` 路徑成立；只宣告一側時為「domain 未宣告」或「非 domain 未宣告」，兩側皆無時專案整體為「未宣告路徑」，皆不屬本類（`0.5.0-W1-096`／`0.5.0-W1-096.1` 用戶裁決） | EVT-DIAGNOSTICS-001、UC-02、PROP-005 §0.4／§0.6+ |
+| 破洞類別 `graphDefect`／`traceGap`／`unlocatable` | 需要圖或追溯資料；本版只實作 `parseFailure`。`unlocatable` 的定義以 EVT-DIAGNOSTICS-001 為準：只在被觀測專案兩側皆已宣告（DomainBundle `path_patterns` 與 `docs/non-domain-paths.yaml`）時，對兩者皆未命中的 `where.files` 路徑成立；只宣告一側時為「domain 未宣告」或「非 domain 未宣告」，兩側皆無時專案整體為「未宣告路徑」，皆不屬本類（`0.5.0-W1-096`／`0.5.0-W1-096.1` 用戶裁決）。`path_patterns` 逐 bundle 判定：仍有 bundle 未宣告時，未命中路徑為「domain 未宣告」而非 `unlocatable`（2026-10-08 用戶裁決 5c）。兩種「未宣告」不進破洞報告，報告頁另顯示一行專案層級宣告狀態（7a）；路徑逐條判定，不做整票歸類（6a）。完整分類見 UC-02〈ticket 定位的五種狀態與整體未宣告〉 | EVT-DIAGNOSTICS-001、UC-02、PROP-005 §0.4／§0.6+ |
 | frontmatter 可用、位於 carrier 路徑內，但 `id` 缺席或不符合任何型別的 `id_pattern` | 已定案（`0.3.1-W1-081`，用戶裁決 2026-09-29）：歸 `parseFailure`，新增原因碼 `idMissing`／`idPatternMismatch`，不另立類別。本版 FR-03 維持「不產生破洞」，FR 修訂與實作不在本版。另：量測中 85.8% 是子票 ID（`NNN.M`）被 Ticket 型 `id_pattern` 漏收，屬 schema 缺陷而非歸類問題，由 `0.3.1-W1-092` 修正 | 歸類實作 `1.0.0-W1-084`；pattern 修正 `0.3.1-W1-092` |
 | 掃描中途取消（UC-05）與重新掃描（UC-06、EVT-CORPUS-002） | 屬畫面接真實資料的互動，排在 0.6+；兩項整合測試都只跑單輪完整掃描 | PROP-005 §0.6+ |
 | YAML 損壞檔的部分欄位救回 | 語料中 YAML 錯誤僅 1 件（`docs/system-layer.md` §5，2026-08-27 對五個語料專案 7106 份文件量測），部分救回的演算法沒有樣本可以校準 | 本版只回報、不救回（FR-04） |
@@ -296,6 +296,7 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.12 | 2026-10-08 | 〈本版範圍外〉`unlocatable` 列補 `0.5.0-W1-096.3` NeedsContext 用戶裁決（`0.5.0-W1-096.9`）：`path_patterns` 逐 bundle 判定（5c）、逐路徑判定不做整票歸類（6a）、兩種未宣告不進破洞報告並於報告頁顯示專案層級宣告狀態（7a）。本規格 FR 不變 |
 | 1.11 | 2026-10-08 | 落地 `0.5.0-W1-001.2` NeedsContext 用戶裁決 3b（`0.5.0-W1-001.8`）：FR-09 新增規則 3a，flow yaml 區塊解析失敗時該 UC 產生 `parseFailure`，原因碼為新增的「flow 區塊解析失敗」，與「無區塊」（不產生破洞）區分；驗收條件改為兩者對照。原因碼識別名與四項邊界細節未裁決，列於規則 3b 並上報 `0.5.0-W1-001.8` NeedsContext |
 | 1.10 | 2026-10-08 | 〈本版範圍外〉`unlocatable` 列補定義，與 EVT-DIAGNOSTICS-001 一致（`0.5.0-W1-096.3`，依 `0.5.0-W1-096` P2+ 與 `0.5.0-W1-096.1` 半套宣告裁決）：限兩側皆宣告時成立，半套宣告與整體未宣告不屬此類。本規格 FR 不變；SPEC-006-test-design D1-4 仍成立（本版不產生 `unlocatable`），無案例需改 |
 | 1.9 | 2026-10-08 | 新增 FR-09 UC flow 區塊解析（`0.5.0-W1-001.2`，依 `0.5.0-W1-001` 用戶裁決 C／(c)，2026-10-07）：區塊判準對齊框架 `_extract_structured_flow_steps`，步驟清單依原始順序附掛於 UC `rawNode`，FlowStep 不另產節點；〈概述〉Corpus 列與 FR-07 規則同步 |
