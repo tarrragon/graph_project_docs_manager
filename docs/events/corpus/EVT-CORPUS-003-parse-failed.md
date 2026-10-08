@@ -6,7 +6,7 @@ category: domain_event
 status: draft
 source_proposal: PROP-003
 created: "2026-08-26"
-updated: "2026-09-24"
+updated: "2026-10-08"
 
 payload: null
 
@@ -19,6 +19,8 @@ consumers: ['diagnostics']
 ## 事實
 
 單一文件解析失敗，該文件未進入圖譜。
+
+> 已成為節點的 UC 其 flow 區塊解析失敗不屬本事件，由 EVT-CORPUS-004 承載（2026-10-08，`0.5.0-W1-001.8`）。
 
 ## 負載結構
 
