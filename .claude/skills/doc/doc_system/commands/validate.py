@@ -475,6 +475,24 @@ def _fail_on_flow_order(doc_id: str, file_path: str) -> None:
     sys.exit(1)
 
 
+def _report_non_data_contract_pass(doc_id: str, subdomain) -> None:
+    """非 data-contract 文件通過時：先列已通過的檢查，再依文件型別說明不適用項。
+
+    UC 不印 /spec 路由（UC 不屬 spec 驗證範圍）；SPEC 保留路由提示。
+    """
+    is_uc = doc_id.upper().startswith("UC-")
+    print(f"通過: {doc_id} 已執行的檢查")
+    if is_uc:
+        print("  - domain 引用宣告（flow 的 traverses）")
+        print("  - flow branch_from 結構")
+        print("  - flow 主線 next 與清單順序")
+        print("不適用: data-contract 章節 schema（僅適用 subdomain 為 data-contract 的 SPEC）")
+        return
+    print("  - domain 引用宣告（depends_on_domains）")
+    print(f"不適用: UC flow 檢查（僅適用 UC）；data-contract 章節 schema（subdomain={subdomain!r}）")
+    print("SPEC 章節驗證請用 /spec validate")
+
+
 def execute(args: argparse.Namespace) -> None:
     """依 frontmatter subdomain 分派章節 schema 驗證。"""
     doc_id = args.doc_id
@@ -506,7 +524,7 @@ def execute(args: argparse.Namespace) -> None:
 
     subdomain = frontmatter.get("subdomain")
     if subdomain != "data-contract":
-        print(f"非 data-contract 文件，請用 /spec validate（subdomain={subdomain!r}）")
+        _report_non_data_contract_pass(doc_id, subdomain)
         sys.exit(0)
 
     with open(file_path, encoding="utf-8-sig") as f:
