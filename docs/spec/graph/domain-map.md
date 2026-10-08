@@ -5,7 +5,7 @@ source_specs: [SPEC-007]
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05]
 depends_on_bundles: [DOMAIN-MAP-corpus]
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-10-08"
 ---
 
 # Domain Map — Graph
@@ -41,7 +41,7 @@ updated: "2026-10-07"
 
 | Domain | 唯一變更理由 | 公開面（OCP） | 內部面 |
 |--------|------------|-------------|-------|
-| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
+| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**domain × UC 關係與依賴路徑**（延伸貫穿數：直接貫穿／間接依賴／無關三值，間接依賴另帶依賴路徑；SPEC-007 FR-12，`0.5.0-W1-114` 用戶裁決 O1——畫面只顯示，規則不落 Layout 或畫面層）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
 
 ## 5. 對實作票的切分指引
 
@@ -50,7 +50,8 @@ updated: "2026-10-07"
 ## 6. 待決事項
 
 - ~~**`鄰接查詢` 的簽章未定**~~（§2.5）：2026-09-30 定於 SPEC-007 FR-08，為 1 hop 查詢。
-  矩陣的「間接依賴」需要多 hop，屬 0.5 規劃，會在此 API 之上組合
+  矩陣的「間接依賴」需要多 hop，屬 0.5 規劃。2026-10-08 用戶裁決 O1（`0.5.0-W1-114`）：
+  間接依賴由 Graph 判定，於公開面回傳三值與依賴路徑（SPEC-007 FR-12），不由畫面組合
 
 > 「路徑模式 → domain」對照表由 Graph 持有（內容待建）；該待決事項本體在系統層 §6。
 
@@ -69,6 +70,7 @@ updated: "2026-10-07"
 | FR-07 | TicketDetail 以 ID 查詢全文 | TicketDetail（讀 Corpus `rawNodes`） | domain unit；IT-3 |
 | FR-08 | 鄰接查詢 | Graph | domain unit；IT-1 |
 | FR-09 | 由 EVT-GRAPH-001 產生 `graphDefect` 破洞 | Diagnostics | domain unit；IT-2 |
+| FR-12 | domain × UC 關係（三值）與依賴路徑 | Graph | domain unit |
 | NFR-01 | 缺陷隔離 | Graph | domain unit |
 | NFR-02 | 計算量線性 | Graph | `test/performance/`（不入主套件） |
 
@@ -79,4 +81,4 @@ Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
 
 ---
 
-**Last Updated**: 2026-10-07 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-08（`0.5.0-W1-114.1`：§3 公開面補 domain × UC 關係與依賴路徑、§6 間接依賴歸屬、§7 補 FR-12） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
