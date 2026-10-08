@@ -51,6 +51,19 @@ void main() {
     );
   });
 
+  test('E2 正向對照：export 違規樣本（package 與相對路徑）被攔下', () {
+    const packageExport =
+        "export 'package:graph_project_docs_manager/screens/x.dart';\n"
+        "export 'package:graph_project_docs_manager/graph/y.dart';\n";
+    expect(forbiddenImportsIn(packageExport, 'lib/layout/z.dart'), [
+      'package:graph_project_docs_manager/screens/x.dart',
+    ]);
+    expect(
+      forbiddenImportsIn("export '../corpus/a.dart';", '/w/lib/layout/z.dart'),
+      ['../corpus/a.dart'],
+    );
+  });
+
   test('lib/layout 與 test/unit/layout 無違規 import', () {
     final files = [
       for (final dir in ['lib/layout', 'test/unit/layout'])
