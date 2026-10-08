@@ -62,6 +62,30 @@ void main() {
     });
   });
 
+  group('K6 內建副本含 non-domain 路徑 carrier 位置欄位（0.5.0-W1-096.8）', () {
+    Map<String, dynamic> readBuiltin() => jsonDecode(
+          File(_builtinTrackingSchemaPath).readAsStringSync(),
+        ) as Map<String, dynamic>;
+
+    test('K6-1 non_domain_paths_file 與 non_domain_paths_key 存在且值正確', () {
+      final json = readBuiltin();
+      expect(json['non_domain_paths_file'], 'docs/non-domain-paths.yaml');
+      expect(json['non_domain_paths_key'], 'non_domain_path_patterns');
+    });
+
+    test('K6-2（守衛，E2 正向對照）缺欄位的 JSON 使同一斷言失敗', () {
+      final stripped = readBuiltin()
+        ..remove('non_domain_paths_file')
+        ..remove('non_domain_paths_key');
+      expect(stripped['non_domain_paths_file'], isNull);
+      expect(stripped['non_domain_paths_key'], isNull);
+      expect(
+        stripped['non_domain_paths_file'] == 'docs/non-domain-paths.yaml',
+        isFalse,
+      );
+    });
+  });
+
   group('K4-2（守衛，E2）以兩個不同值的測試輸入作正向對照', () {
     test('版本不一致時，比對邏輯回報不一致（證明 K4-1 的斷言對真實漂移有鑑別力）', () {
       expect(_versionsConsistent('2.60.13', '2.60.13'), isTrue);
