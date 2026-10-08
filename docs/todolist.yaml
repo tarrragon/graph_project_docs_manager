@@ -747,6 +747,8 @@ versions:
       範圍外發現 W1-103（Graph 啟用指定 proposed 邊型，e1 承接）、W1-104（validate 對 process_event 要求 consumer，83 承接）。
       canonical 推送用戶裁決（2026-10-07）：等 W1-001.1 與 W1-096.2 合併、main 全綠後一起推（83 已備妥 070.1／083.2／091／098 等）。
       canonical 批次擴充（2026-10-08，用戶裁決）：再加 W1-096.6（S2 載體）與 W1-092.4（validate 擋下依賴與 branch_from 結構錯誤），四張合併且 main 全綠後申請授權。
+      canonical v2.78.0（2026-10-08，用戶授權；096.2／001.1／096.6／092.4 ＋ W1-107.1 及先前未推框架變更，doc 1.24.8、ticket 2.44.45）；
+      發佈庫推 doc 1.24.8、ticket 2.44.45（用戶授權）。096.6 合併後 main 的 test/unit/schema 3 紅，由 W1-096.8 修復，閘門缺口 W1-110。
 
   - version: "0.6.0"
     codename: "Screens"
