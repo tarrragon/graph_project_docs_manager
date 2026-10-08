@@ -151,7 +151,8 @@ def evaluate(input_data: dict, main_root: Path, logger) -> Optional[str]:
         return None
     if find_isolated_entry(agent_id, main_root, logger) is None:
         return None
-    logger.info("隔離代理人寫入落在主 repo，warn: agent_id=%s target=%s", agent_id, target)
+    decision = "deny" if input_data.get("tool_name") in FILE_TOOL_KEYS else "warn"
+    logger.info("隔離代理人寫入落在主 repo，%s: agent_id=%s target=%s", decision, agent_id, target)
     return WARN_MESSAGE.format(target=target)
 
 
