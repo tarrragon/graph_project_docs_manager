@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-08"
-version: "1.32"
+version: "1.33"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -513,6 +513,12 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 訊息「尚未選取節點」、前進動作 `action-nodeDetail-goto-traceability`、返回鍵
 > 不渲染；本列將其提升為 §6 的一級狀態，使 FR-01（每個狀態皆有非空退出路徑）
 > 在此路徑上有可檢驗對象。
+>
+> **關聯右欄標示 proposed 邊**（`0.5.0-W1-103.1`，依 `0.5.0-W1-103` 用戶裁決 2026-10-08）：
+> 「正常」「部分損壞」兩狀態的關聯右欄，來自 `layer` 為 `proposed` 之邊的關聯項須帶 proposed
+> 標示（SPEC-007 FR-08 回傳項的 `layer`；目前只有 DomainBundle 之間的 `bundle_dependency`），
+> 讓使用者分辨形狀可能變動的邊——`layer` 是穩定性承諾而非開發進度。established 邊的關聯項不帶
+> 標示。元件與文案見 SPEC-004 4.19 `RelationItem` 的 `isProposed`。不新增狀態，狀態總數不變。
 
 ## 7. 專案切換浮層（非獨立畫面）
 
@@ -828,6 +834,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.33 | 2026-10-08 | `0.5.0-W1-103.1`（依 `0.5.0-W1-103` 用戶裁決：使用中的 proposed 邊須標示）：§6 新增〈關聯右欄標示 proposed 邊〉註記——正常、部分損壞兩狀態的關聯右欄依 SPEC-007 FR-08 回傳項 `layer` 標示 proposed 邊，元件見 SPEC-004 v1.72 4.19 `isProposed`。狀態總數不變 |
 | 1.32 | 2026-10-08 | `0.5.0-W1-096.9`（依 `0.5.0-W1-096.3` 用戶裁決 7a）：§5 新增〈專案層級宣告狀態一行不是新狀態〉註記——「domain 未宣告」「非 domain 未宣告」不列為破洞項、不計入破洞數，報告頁改顯示一行專案層級宣告狀態；出現的狀態列、內容、文案、i18n key 與元件未裁決，見該票 NeedsContext。狀態總數不變 |
 | 1.31 | 2026-10-08 | `0.5.0-W1-092.3`（依 `0.5.0-W1-092.2` 用戶裁決 1a／2b／3e）：§1 正常 · 泳道顯示欄與〈泳道布局規則〉修訂——列序同層排序明定為 `DomainBundle.domain` 字面 Unicode code point 序（層公式不變）；推不出層的 bundle（依賴循環或指向未宣告者）接在最後一列之後；〈無法放置的步驟〉改名〈欄序無法輸出的步驟〉，涵蓋懸空 `branch_from` 與 `branch_from` 循環，皆依檔內順序接在最後一欄之後；刪除「結構違規的偵測與報告屬 Diagnostics」一句。狀態總數不變 |
 | 1.30 | 2026-10-08 | `0.5.0-W1-106` 修訂輪（用戶裁決 K6，SPEC-004 v1.71 同批）：§1〈泳道布局規則〉列鍵比對列與間接依賴詳情卡依賴路徑的 domain 顯示名，由「i18n 取」改為顯示 `DomainBundle.domain` 原值；只有「畫面」列經 i18n |

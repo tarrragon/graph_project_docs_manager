@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-10-08"
-version: "1.71"
+version: "1.72"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.71（1.71 依用戶裁決 K6：§4.0.6 1.69 表刪除 8 個 domain key、只留「畫面」列 key（改名 `swimlaneScreenLaneName`），4.37／4.38 domain 列首改顯示 `DomainBundle.domain` 原值（`0.5.0-W1-106` 修訂輪）；1.70 §3.1 `SwimlaneGrid` 列與 4.38 用途的列序／主線敘述同步 SPEC-001 v1.29（`0.5.0-W1-092.2`）；1.69 §4.0.6 補登 8 個 domain 與「畫面」列（`presentation`）的列首顯示名 key、4.37 `MatrixGrid` 列首改由 i18n 以 domain key 取（與 4.38 一致）、本行補記 1.65–1.68（`0.5.0-W1-106`）；1.68 4.15 `MatrixCell` 三變體指向 SPEC-001 §1〈間接依賴判定式〉（`0.5.0-W1-093.1`）；1.67 4.38 `SwimlaneGrid` 依 SPEC-001 §1〈泳道布局規則〉固定 9 列、新增 `edges` slot（`0.5.0-W1-092.1`）；1.66 §4.0.3「一字元」定義與 4.7／4.8／4.9 最小尺寸改寫（`0.5.0-W1-071`）；1.65 4.9 RecentProjectItem 降級徽章與摘要同列（`0.5.0-W3-001`）；1.64 4.30 Panel `default` 改具名 `leading`／`fill`／`trailing` slot、4.14 TableColumnHeader 新增 `blank` 變體（`0.4.0-W3-001`）；1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
+**版本**: 1.72（1.72 依 `0.5.0-W1-103` 用戶裁決：4.19 `RelationItem` 新增 `isProposed` slot 與尾端 `Badge.tag` proposed 標記、§4.0.6 登記兩個新 key（`0.5.0-W1-103.1`）；1.71 依用戶裁決 K6：§4.0.6 1.69 表刪除 8 個 domain key、只留「畫面」列 key（改名 `swimlaneScreenLaneName`），4.37／4.38 domain 列首改顯示 `DomainBundle.domain` 原值（`0.5.0-W1-106` 修訂輪）；1.70 §3.1 `SwimlaneGrid` 列與 4.38 用途的列序／主線敘述同步 SPEC-001 v1.29（`0.5.0-W1-092.2`）；1.69 §4.0.6 補登 8 個 domain 與「畫面」列（`presentation`）的列首顯示名 key、4.37 `MatrixGrid` 列首改由 i18n 以 domain key 取（與 4.38 一致）、本行補記 1.65–1.68（`0.5.0-W1-106`）；1.68 4.15 `MatrixCell` 三變體指向 SPEC-001 §1〈間接依賴判定式〉（`0.5.0-W1-093.1`）；1.67 4.38 `SwimlaneGrid` 依 SPEC-001 §1〈泳道布局規則〉固定 9 列、新增 `edges` slot（`0.5.0-W1-092.1`）；1.66 §4.0.3「一字元」定義與 4.7／4.8／4.9 最小尺寸改寫（`0.5.0-W1-071`）；1.65 4.9 RecentProjectItem 降級徽章與摘要同列（`0.5.0-W3-001`）；1.64 4.30 Panel `default` 改具名 `leading`／`fill`／`trailing` slot、4.14 TableColumnHeader 新增 `blank` 變體（`0.4.0-W3-001`）；1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -577,6 +577,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `gapMarkerLabel` | 缺口 | Gap | — | 4.6（可見文字） |
 | `damagedEdgeMarkerLabel` / `damagedDetailMarkerLabel` | 邊損壞 / 詳情損壞 | Edge damaged / Detail damaged | — | 4.6（朗讀） |
 | `relationItemA11yLabel` | 關聯節點 {id} | Related node {id} | id | 4.19 |
+| `relationProposedLabel` | proposed | proposed | — | 4.19（`isProposed=true` 的尾端 `Badge.tag`；新 key，ARB 待建，`0.5.0-W1-103.2`；文案為提案） |
+| `relationItemProposedA11yLabel` | 關聯節點 {id}，proposed 邊，形狀可能變動 | Related node {id}, proposed edge, shape may change | id | 4.19（新 key，ARB 待建，`0.5.0-W1-103.2`；文案為提案） |
 | `currentProjectA11yLabel` | 目前專案 | Current project | — | 4.9 |
 | `projectSummaryLabel` | {nodes} 節點 · {tickets} 票 | {nodes} nodes · {tickets} tickets | nodes, tickets | 4.9 |
 | `healthBadgeA11yLabel` | {count} 個問題 | 單複數：1 issue／{count} issues | count | 4.5（health）；計數 0 時徽章不渲染（SPEC-001 §7） |
@@ -3063,6 +3065,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 ### 4.19 RelationItem
 
 **用途**：可點的節點參照 chip：節點詳情右欄的關聯節點 ID（等寬字，點擊替換主欄，`card-nodeDetail-relation-<nodeId>`）與步驟表的 domain 欄（一般字，點擊 jump 至 Domain 視圖並選取該 domain，`action-ucFlow-goto-domain-<domainId>`）。兩者內容角色相同（節點參照 + 動作），只有目的地不同，依 skill「只是目的地不同者為 slot」合為一件；字型以 `isMono` 參數區分。
+**proposed 邊標示**（`0.5.0-W1-103.1`，依 `0.5.0-W1-103` 用戶裁決 2026-10-08：使用中的 proposed 邊在詳情卡與鄰接查詢標示 proposed，`layer` 是穩定性承諾）：關聯右欄的關聯項若來自 `layer` 為 `proposed` 的邊（SPEC-007 FR-08 回傳項的 `layer`；目前只有 `bundle_dependency`），呼叫端傳 `isProposed=true`，chip 尾端加一個 `Badge.tag`（沿用該變體固定 tone `neutral`，不新增變體，文字 `relationProposedLabel`），朗讀改用 `relationItemProposedA11yLabel`。步驟表 domain 欄不是邊，恆為 `false`。視覺與文案為提案（規格撰寫者），未經用戶確認。
 **內容角色**：數值（ID 或名稱）+ 動作。
 **何時不用**：非互動的 ID 顯示（`AppText.mono`）；非節點參照的跨畫面動作（`AppButton`）；非互動的 domain 標籤（`Badge.tag`，節點詳情標籤列）。
 **出現畫面**：§6（關聯右欄）、§2（步驟表 domain 欄）。
@@ -3128,6 +3131,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 |------|---------|------|---------|
 | `id` | `String` | 是 | 呼叫端（資料值：節點 ID 或 domain 名） |
 | `isMono` | `bool` | 否（預設 `true`；步驟表 domain 欄傳 `false`） | 不適用 |
+| `isProposed` | `bool` | 否（預設 `false`；關聯右欄依 SPEC-007 FR-08 回傳項 `layer == proposed` 傳 `true`，不以邊型鍵名判定） | 不適用（尾端 `Badge.tag` 文字為 `relationProposedLabel`） |
 | `onTap` | `VoidCallback` | 是 | 不適用 |
 | `testKey` | `Key` | 是（`card-nodeDetail-relation-<nodeId>` / `action-ucFlow-goto-domain-<domainId>`） | 不適用 |
 
@@ -3145,13 +3149,15 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 文字 | i18n key |
 |------|---------|
-| 朗讀標籤 | `relationItemA11yLabel` |
+| 朗讀標籤 | `relationItemA11yLabel`；`isProposed=true` 時 `relationItemProposedA11yLabel` |
+| proposed 標記 | `relationProposedLabel`（尾端 `Badge.tag`） |
 
 #### 組合規則
 
 | 項目 | 值 |
 |------|-----|
 | 可放入的容器 | `Section.static`（關聯群項目）；`TableRow.step`（domain 欄，`isMono=false`）；damaged 時外包 `IssueMarker.damagedEdge` |
+| 內含元件 | `isProposed=true` 時尾端一個 `Badge.tag`（tone `neutral`，chip 形態，與 `id` 文字間距 `Space.sm`）；`id` 截斷時 badge 不截斷、不換行 |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 關聯群內填滿寬、文字 `start`；表格欄內固有寬、置中 |
 | 作為表格或列表的一欄時 | `TableRow.step` domain 欄：固定寬（`LayoutSize.stepDomainColumnWidth`）、固有寬 chip 置於欄內；內距由容器承載 |
@@ -3160,7 +3166,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 | 面向 | 要求 |
 |------|------|
-| 朗讀標籤 | `Semantics.button`；label 為 `relationItemA11yLabel`（id 代入） |
+| 朗讀標籤 | `Semantics.button`；label 為 `relationItemA11yLabel`（id 代入）；`isProposed=true` 時為 `relationItemProposedA11yLabel`（id 代入），尾端 badge 併入此標籤、不另朗讀 |
 | 狀態變化播報 | 點選後主欄替換由主欄標題（`Semantics.header`）承載，本元件不播報 |
 | 非視覺替代訊號 | damaged 由 `IssueMarker` 的朗讀標籤承載 |
 | 焦點順序與操作路徑（桌機） | 進入 Tab 順序（右欄依群組閱讀順序）；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
@@ -3173,6 +3179,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 - [ ] 最長測試文案截斷
 - [ ] 資料值（zh / en 無差異）不溢位
 - [ ] 點選呼叫 `onTap` 恰一次；元件樹被 `InkWell` 包覆
+- [ ] `isProposed=true` 時尾端出現 `Badge.tag` 且朗讀標籤為 `relationItemProposedA11yLabel`；`isProposed=false` 時兩者皆不出現（對照）；最長測試文案下 badge 不被截斷
 - [ ] 顏色、內距、圓角引用 token 非硬編碼
 
 #### 反例
@@ -6441,6 +6448,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.72 | 2026-10-08 | `0.5.0-W1-103.1`（依 `0.5.0-W1-103` 用戶裁決：使用中的 proposed 邊在詳情卡與鄰接查詢標示 proposed）：4.19 `RelationItem` 新增 `isProposed` slot（依 SPEC-007 FR-08 回傳項 `layer` 判定，不依鍵名），`true` 時尾端加 `Badge.tag`（沿用固定 tone `neutral`，不新增變體）並改用 proposed 朗讀標籤；i18n、組合規則、無障礙、測試點同步；§4.0.6 登記 `relationProposedLabel`、`relationItemProposedA11yLabel`（ARB 待建，`0.5.0-W1-103.2`）。視覺與文案為提案，見該票 NeedsContext |
 | 1.71 | 2026-10-08 | `0.5.0-W1-106` 修訂輪（用戶裁決 K6，`docs/tech-decisions.md` 2026-10-08 補記）：§4.0.6 1.69 表刪除 8 個 `domainDisplayName<Domain>` key，只留「畫面」列（`presentation`）key 並改名 `swimlaneScreenLaneName`；4.37 `MatrixGrid` `rows` 與 4.38 `SwimlaneGrid` `lanes` 列首來源改為 `DomainBundle.domain` 原值（未知 domain 亦顯示原值），僅「畫面」列經 i18n；取代 1.69 的 domain 列首 i18n 規則 |
 | 1.70 | 2026-10-08 | `0.5.0-W1-092.2`（用戶裁決 2026-10-08 第 1、2 項，SPEC-001 v1.29 同批）：§3.1 `SwimlaneGrid` 列與 4.38 用途的括注由「8 個 DomainBundle 列固定順序、主線 `next` 鏈」改為「依 `bundle_dependency` 推導層序與同層字母序、主線清單順序與分支（含巢狀）」；slot `lanes` 與測試點引用〈泳道布局規則〉列序，不改字面 |
 | 1.69 | 2026-10-08 | `0.5.0-W1-106`（SR-1 落地，承 `0.5.0-W1-095.3`）：§4.0.6 新增「1.69 新增」表，8 個 DomainBundle domain 與「畫面」列（`presentation`）的 zh／en 列首顯示名 key（狀態待建）；4.37 `MatrixGrid` slot `rows` 來源欄由「列首文字為資料值」改為以 domain key 由 i18n 取，與 4.38 `lanes` 一致；正文版號行補記 1.65–1.69（該行自 1.65 起未隨 frontmatter 更新，第三度漂移） |

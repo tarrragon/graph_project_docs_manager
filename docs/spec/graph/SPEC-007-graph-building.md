@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.12"
+version: "1.13"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -47,7 +47,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 詞 | 定義 |
 |----|------|
-| 使用中邊型 | 型別表中 `layer` 為 `established` 的邊型，扣除 `domain_dependency`（FR-01） |
+| 使用中邊型 | 型別表中 `layer` 為 `established` 的邊型，扣除 `domain_dependency`，加上 `layer` 為 `proposed` 的 `bundle_dependency`（FR-01、D6） |
+| 無向邊 | 型別表 `direction` 欄為 `undirected` 的邊型（FR-05）；`directed` 為有向 |
 | 引用值 | 單一節點、單一欄位中的單一項。純量欄位是一個引用值；清單欄位每一項各是一個引用值；反向欄位的值是 map 時（如 `outputs`），每個子鍵的清單每一項各是一個引用值 |
 | 宣告來源 | 一條邊由哪些端點宣告，型別為端點 ID 的集合。有向邊：起點宣告＝起點的正向欄位列出終點；終點宣告＝終點的反向欄位列出起點。無向邊：列出對方的那一端 |
 | 正向基數 | 型別表為每個邊型宣告的值：`one` 表示一個節點的正向欄位最多指向一個終點，`many` 表示可指向多個（FR-01） |
@@ -81,14 +82,16 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **描述**：Schema 從型別表 JSON 的 `edge_types` 解碼邊型，供 Graph 查詢。與節點型別同一份來源、同一套版本判定（SPEC-006 FR-06 規則 7）。
 
 **規則**：
-- 每個邊型帶：鍵名（如 `association`、`spawn`）、`class`、`forward_field`、`reverse_field`（可為 null）、正向基數（`one`／`many`）、`layer`
-- 使用中邊型見〈用詞〉。欄位名、基數、是否有反向欄位一律取自型別表，不在程式內寫死。本版以鍵名寫死的只有兩處（設計約束 D6）：排除 `domain_dependency`，以及把 `association` 認定為無向邊（FR-05）
+- 每個邊型帶：鍵名（如 `association`、`spawn`）、`class`、`forward_field`、`reverse_field`（可為 null）、正向基數（`one`／`many`）、`direction`（`directed`／`undirected`）、`layer`
+- 使用中邊型見〈用詞〉。欄位名、基數、是否有反向欄位、方向性一律取自型別表，不在程式內寫死。本版以鍵名寫死的只有兩處（設計約束 D6）：排除 `domain_dependency`，以及納入 `proposed` 層的 `bundle_dependency`
+- 專案型別表缺 `direction` 欄時的處置未裁決（`0.5.0-W1-103.1` NeedsContext）；裁決前實作不得自行補定
 - 專案型別表缺 `edge_types`，或其中缺正向基數欄位：版本在 App 已知範圍內則從內建表補；否則建圖不可用，回報原因碼（與 SPEC-006 FR-08 同一套「無法判定」原因）
 - 單一邊型條目不合法（值不是 map；`class`、`forward_field`、`layer` 缺席或不是字串；`reverse_field` 存在但不是字串，null 合法）：該條目整筆拒收並寫日誌，視同該邊型缺席，依缺欄位的規則處置——版本在 App 已知範圍內時該邊型取內建表的定義；否則建圖不可用，原因碼為「邊型條目不合法」（與缺 `edge_types`、缺正向基數各自獨立的第三個值，日誌據此區分）。同一張表同時有不合法條目與缺正向基數的條目時，只回報「邊型條目不合法」：不合法條目在解碼階段就被拒收，先於基數補值判定。版本在已知範圍內、但內建表也沒有該鍵名時（上游已刪除該邊型，舊專案表仍留著且條目不合法），該邊型不建邊，只寫拒收日誌，建圖仍可用：兩張表都沒有可讀的定義，而內建表是已知範圍內的權威，不認得的邊型不屬於 App 所知的圖。`edge_types` 本身不是 map 時視同缺 `edge_types`。邊型條目的問題只影響 Graph，不得中斷 Corpus 對同一型別表 `node_types` 的解碼
 - 專案型別表整份缺席（`tracking_schema.json` 不存在）：建圖不可用，回報版本不在已知範圍的原因碼。這是 SPEC-001 §1「無可消費的型別表」的顯式關卡，Graph 不自動降級；使用者選「以 App 內建型別表檢視」後，呼叫端以內建表作為專案型別表傳入，建圖可用，使用中邊型取自內建表（`docs/tech-decisions.md` 2026-09-03「型別表缺席時降級而非拒絕」）。呼叫端的接線屬 PROP-005 §0.6 畫面接真資料
 
 **驗收條件**：
-- [ ] Given 內建型別表，Then 解碼出的邊型集合與內建表 `edge_types` 的鍵集合相同，使用中邊型等於 established 邊型扣除 `domain_dependency`
+- [ ] Given 內建型別表，Then 解碼出的邊型集合與內建表 `edge_types` 的鍵集合相同，使用中邊型等於 established 邊型扣除 `domain_dependency`、加上 `bundle_dependency`
+- [ ] Given 內建型別表，Then 其餘 proposed 邊型（`bundle_dependency` 以外）不是使用中邊型（E2 正向對照）
 - [ ] Given 測試用型別表新增一個 established 邊型，Then 該邊型自動成為使用中邊型，Graph 依其欄位抽取
 - [ ] Given 測試用型別表把某使用中邊型的 `forward_field` 改名，Then Graph 依新欄位名抽取，不讀舊欄位名
 - [ ] Given 專案型別表缺 `edge_types` 且版本在已知範圍內，Then 解碼出的邊型集合與內建表相同，建圖可用
@@ -96,7 +99,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given 專案型別表整份缺席，Then 建圖不可用，回報版本不在已知範圍的原因碼
 - [ ] Given 專案型別表某邊型的值是字串、版本在已知範圍內，Then 不拋例外，該邊型取內建表定義，建圖可用，`node_types` 解碼結果與該條目正常時相同
 - [ ] Given 同上但版本高於內建版本，Then 建圖不可用，Corpus 掃描照常完成
-- [ ] Given 降級模式（內建表作為專案型別表傳入），Then 建圖可用，使用中邊型等於內建表 established 邊型扣除 `domain_dependency`
+- [ ] Given 降級模式（內建表作為專案型別表傳入），Then 建圖可用，使用中邊型等於內建表 established 邊型扣除 `domain_dependency`、加上 `bundle_dependency`
 
 ### FR-02：輕節點
 
@@ -153,8 +156,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | 邊型種類 | 建邊來源 | 宣告來源 |
 |---------|---------|---------|
 | 有反向欄位（`reverse_field` 非 null） | 起點的正向欄位列出終點，或終點的反向欄位列出起點，任一成立即建邊（`docs/tech-decisions.md` 2026-09-30 補記） | 起點、終點或兩者 |
-| `association`（`relatedTo`） | 無向邊，見 FR-05 | 列出對方的一端或兩端 |
-| 其餘（`reverse_field` 為 null） | 起點的正向欄位列出終點 | 起點 |
+| `direction` 為 `undirected`（目前只有 `association`／`relatedTo`） | 無向邊，見 FR-05 | 列出對方的一端或兩端 |
+| 其餘（`reverse_field` 為 null，`direction` 為 `directed`） | 起點的正向欄位列出終點 | 起點 |
 
 **規則**：
 - 同一條邊（邊型、起點、終點相同；無向邊為兩端集合相同）只建一次，宣告來源取各次宣告的聯集
@@ -169,15 +172,17 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given UC 的 `source_proposal: [PROP-003, PROP-002]`，兩個 PROP 的 `outputs.usecase_refs` 都列出該 UC，Then 建兩條 `provenance` 邊（UC→PROP-003、UC→PROP-002），宣告來源皆為兩端，不回報 `multiSource`（`provenance` 正向基數為 `many`）
 - [ ] Given PROP 的 `outputs.spec_refs` 列出 SPEC-X，SPEC-X 的 `source_proposal` 為同一 PROP，Then 一條 `provenance` 邊（SPEC-X→PROP），宣告來源為兩端
 
-### FR-05：`relatedTo` 的 1-hop 對稱聯集
+### FR-05：無向邊的 1-hop 對稱聯集
 
-**描述**：`association` 邊（`relatedTo`）語意無向、儲存單向，建圖時做 1-hop 對稱聯集。
+**描述**：無向邊型（目前只有 `association`，欄位 `relatedTo`）語意無向、儲存單向，建圖時做 1-hop 對稱聯集。
 
-**無向的判定**：以鍵名 `association` 認定（D6 的第二個鍵名例外）。上游型別表沒有表達無向的欄位：`association` 與 `blocking` 都沒有反向欄位、基數都是 many，只差 `class`；而 `class` 為 `see-also` 的另有三種邊型，上游沒有把它們註明為無向，所以也不能依 `class` 判定。無向語意只寫在上游 `tracking_schema.py` 的程式註解，匯出的 JSON 沒有這項資訊。契約測試 S6-13 釘住這個例外的前提，上游一變動就翻紅；上游補上機器可讀的無向欄位後，由 `0.5.0-W1-001` 改為讀取欄位並移除本例外。
+**無向的判定**：讀型別表邊型條目的 `direction` 欄，值為 `undirected` 即為無向，不以鍵名或 `class` 推導（2026-09-30 用戶裁決：上游補欄位後改讀欄位、移除鍵名例外；上游欄位由 `0.4.0-W1-072` 落地）。`class` 相同的 see-also 邊型（`spec_association`、`uc_association`、`proposal_association`）在上游宣告為 `directed`，照有向處理。
 
-**規則**：A 的 `relatedTo` 列出 B，或 B 的 `relatedTo` 列出 A，都建同一條無向邊 {A, B}；宣告來源為列出對方的端點集合。
+**規則**：無向邊型的正向欄位，A 列出 B 或 B 列出 A，都建同一條無向邊 {A, B}；宣告來源為列出對方的端點集合。
 
 **驗收條件**：
+- [ ] Given 測試用型別表把某個 see-also 邊型的 `direction` 改為 `undirected`，Then 該邊型做對稱聯集（依欄位判定，非依鍵名）
+- [ ] Given 測試用型別表把 `association` 的 `direction` 改為 `directed`，Then A 列出 B 時建有向邊 A→B，查 B 的方向為入而非無向（E2 正向對照：鍵名不再有特權）
 - [ ] Given A 列出 B、B 未列出 A，Then 邊 {A, B} 存在，宣告來源為 {A}，且對 B 做鄰接查詢會得到 A
 - [ ] Given A、B 互相列出，Then 只有一條邊，宣告來源為 {A, B}
 
@@ -215,7 +220,9 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 **輸入**：節點 ID；可選的邊型集合（預設為全部使用中邊型）；方向（出、入、兩者，預設兩者）。
 
-**輸出**：清單，每項帶邊型、另一端的節點 ID、方向（出、入、無向）、宣告來源。無向邊在任何方向篩選下都會回傳，方向標為無向。
+**輸出**：清單，每項帶邊型、另一端的節點 ID、方向（出、入、無向）、宣告來源、該邊型的 `layer`。無向邊在任何方向篩選下都會回傳，方向標為無向。
+
+**proposed 標示**（2026-10-08 用戶裁決，`0.5.0-W1-103`）：使用中邊型中 `layer` 為 `proposed` 者（目前只有 `bundle_dependency`），其回傳項的 `layer` 為 `proposed`，消費端（節點詳情卡、鄰接清單）須據此標示，讓使用者分辨形狀可能變動的邊（`layer` 是穩定性承諾）。`layer` 取自型別表，不以鍵名判定；畫面標示見 SPEC-001 §6 與 SPEC-004。
 
 **規則**：
 - 節點 ID 不在圖上時回傳空清單，不拋例外
@@ -224,6 +231,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **驗收條件**：
 - [ ] Given 一張子票以 `source_ticket` 指向父票，Then 查子票（方向：出）得到父票，查父票（方向：入）得到子票
 - [ ] Given 邊型篩選只含 `blocking`，Then 回傳不含其他邊型
+- [ ] Given DomainBundle A 的 `depends_on_bundles` 列出 B，Then 查 A（方向：出）得到 B，邊型 `bundle_dependency`、`layer` 為 `proposed`；查 `spawn` 邊的回傳項 `layer` 為 `established`（對照）
 - [ ] Given 不存在的 ID，Then 回傳空清單
 - [ ] Given 建圖不可用，Then 任何查詢都回傳「圖不可用」，不回傳空清單
 
@@ -305,6 +313,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - `traverses` 為空清單：無解析結果、無缺陷（純畫面步驟，Layout 的「畫面」列）
 - 解析器的輸入是名稱字串、輸出是 DomainBundle 節點 ID 或未宣告，不綁 FlowStep 型別：`depends_on_domains` 建邊時接同一解析器（`0.6.0-W1-074`），避免兩處各自比對而漂移
 - 本版只解析 `traverses`；`depends_on_domains` 不解析、不建邊（D6 排除鍵維持）
+- Graph 對外提供 DomainBundle `domain` 的方式以本 FR 的解析器條文為準，與 `0.5.0-W1-001.5`（名稱解析器實作）同批落地，不另行設計查詢（2026-10-08 用戶裁決，`0.5.0-W1-103`）。`bundle_dependency` 的值是 DomainBundle 節點 ID（如 `DOMAIN-MAP-corpus`），走 FR-03 的 ID 解析，不經本解析器
 
 **驗收條件**：
 - [ ] Given 兩語料，Then 全部 `traverses` 值解析到 DomainBundle 節點
@@ -340,11 +349,11 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | # | 約束 | 來源 |
 |---|------|------|
 | D1 | 有反向欄位的邊取兩側聯集並記錄宣告來源；單側宣告不是缺陷 | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
-| D2 | 本版建圖的邊型為使用中邊型（〈用詞〉） | 用戶裁決 2026-09-30 |
+| D2 | 本版建圖的邊型為使用中邊型（〈用詞〉）；proposed 層的 `bundle_dependency` 進主圖，走與其他邊型相同的目標解析（FR-03）與破洞判定（FR-09），鄰接查詢標示其 `layer`（FR-08） | 用戶裁決 2026-09-30；2026-10-08（`0.5.0-W1-103` P1） |
 | D3 | 引用值分類為解析成功、斷邊、格式錯誤三類，不部分救回 | 用戶裁決 2026-09-30 |
 | D4 | 主圖缺陷子類為 FR-09 所列四種，flow 子圖另三種（2026-10-08 用戶裁決 1a）；其中 `duplicateId` 與自我引用的處理為規格預設，用戶 2026-09-30 整批確認；孤島與缺必要邊延至 0.6 | 用戶裁決 2026-09-30 |
 | D5 | 整合測試使用凍結測資，預期值由獨立參照實作產生並凍結 | 用戶裁決 2026-09-30；同 SPEC-006 D3 |
-| D6 | 邊型的欄位名、正向基數、是否有反向欄位取自型別表；程式內的鍵名例外只有兩處：排除 `domain_dependency`、以 `association` 認定無向邊（FR-05）。`domain_dependency` 排除鍵在 0.5.0 維持（`0.5.0-W1-001` 裁決 D4，2026-10-07），建邊與移除排除鍵由 `0.6.0-W1-074` 承接；`association` 例外於上游補無向欄位後移除 | 同 SPEC-006 D1：上游 schema 為唯一權威。第二個例外起因於上游 JSON 缺無向欄位（用戶裁決 2026-09-30，WRAP） |
+| D6 | 邊型的欄位名、正向基數、是否有反向欄位、方向性（`direction`）、層級取自型別表；程式內的鍵名例外只有兩處：排除 `domain_dependency`、納入 `proposed` 層的 `bundle_dependency`。`domain_dependency` 排除鍵在 0.5.0 維持（`0.5.0-W1-001` 裁決 D4，2026-10-07），建邊與移除排除鍵由 `0.6.0-W1-074` 承接。`bundle_dependency` 例外的理由：矩陣間接格與泳道分層需要「沿邊可達」，現成管線已含目標解析與破洞判定；上游升級判準要求兩個獨立專案皆有實例，目前只有本專案，不能升為 established，故以本地允許清單納入。原「以 `association` 認定無向邊」例外已移除，改讀 `direction`（FR-05） | 同 SPEC-006 D1：上游 schema 為唯一權威。`association` 例外移除依 2026-09-30 用戶裁決（上游 `0.4.0-W1-072` 已補 `direction`）；`bundle_dependency` 例外依 2026-10-08 用戶裁決（`0.5.0-W1-103` P1，WRAP） |
 | D7 | 正向基數由 schema 宣告；`provenance` 為 `many`（一個節點可有多個來源提案），`spawn`、`blood` 為 `one` | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
 | D8 | FlowStep 不進主圖，Graph 以 `flowOf(ucId)` 提供單一 UC 的 flow 子圖；`next` 不當邊，主線順序取 flow 清單順序，分支步 `next` 為步驟屬性；子圖內參照只在同 UC 範圍解析 | 用戶裁決 2026-10-07（`0.5.0-W1-001` C、(c)，WRAP） |
 | D9 | domain 名稱解析器以 DomainBundle 的 `domain` 欄精確比對，本版只服務 `traverses`，不建邊；解析器不綁 FlowStep 型別 | 用戶裁決 2026-10-07（`0.5.0-W1-001` D4，WRAP） |
@@ -360,6 +369,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.13 | 2026-10-08 | `0.5.0-W1-103.1`（依 `0.5.0-W1-103` 用戶裁決 P1＋proposed 標示，及 2026-09-30 無向欄位裁決）：〈用詞〉使用中邊型加入 `bundle_dependency`、新增「無向邊」詞條；FR-01 邊型帶 `direction`，鍵名例外改為排除 `domain_dependency`、納入 `bundle_dependency`；FR-04、FR-05 改由 `direction` 欄判無向，移除 `association` 鍵名例外與「匯出的 JSON 沒有這項資訊」過時敘述（上游 `0.4.0-W1-072` 已補欄位）；FR-08 回傳項帶 `layer`，proposed 邊須由消費端標示；FR-11 補 DomainBundle `domain` 對外提供方式沿用解析器條文；D2、D6 同步並寫明 `bundle_dependency` 例外理由。專案型別表缺 `direction` 時的處置未裁決，見該票 NeedsContext |
 | 1.12 | 2026-10-08 | 落地 `0.5.0-W1-001.2` NeedsContext 用戶裁決（`0.5.0-W1-001.8`）：FR-09 新增 flow 三子類（flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告），負載 {UC ID, step id, 欄位, 原始值}，破洞報告另立 flow 小組（1a）；FR-10 重複 step id 兩步保留、指向它的參照標未解析並報缺陷，寫明與主圖重複 ID（FR-02）處理不同的理由（2a）；D4 同步。三子類的程式識別名未裁決，見 `0.5.0-W1-001.8` NeedsContext |
 | 1.11 | 2026-10-08 | 新增 FR-10 UC flow 子圖 `flowOf(ucId)` 與 FR-11 `traverses` 名稱解析（`0.5.0-W1-001.2`，依 `0.5.0-W1-001` 用戶裁決 C／(c)／D4，2026-10-07）：FlowStep 不進主圖、`next` 不當邊、子圖內參照 UC 範圍解析、未解析參照與 UC 內重複 step id 成缺陷；名稱解析以 `domain` 欄精確比對、未宣告名稱成缺陷、不建邊。新增 D8、D9；D6 寫明 `domain_dependency` 排除維持並改由 `0.6.0-W1-074` 承接；〈本版範圍外〉兩列與 FR-09 子類同步，新缺陷子類識別名待裁決 |
 | 1.10 | 2026-09-30 | FR-01 補邊界（`0.4.0-W4-016` 審閱時提出）：被拒收的邊型在內建表也不存在時，不建邊、只寫日誌、建圖仍可用。v1.7 要避免的是靜默丟棄內建表認得的邊型，此情況兩表皆無可讀定義，判建圖不可用會因一個過時邊型癱瘓整張圖。現行實作即此行為 |
