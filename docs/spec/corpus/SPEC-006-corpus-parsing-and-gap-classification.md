@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-10-08"
-version: "1.19"
+version: "1.20"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -220,7 +220,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 **規則**：
 - 一筆 EVT-CORPUS-003 對應一筆破洞，帶相對路徑、歸屬型別（或平手時的候選型別與 schema 歧義標記）、原因；資訊要足以讓使用者直接去修
 - 一筆 EVT-CORPUS-004 對應一筆破洞，帶 UC 相對路徑、所屬型別 UC（該 UC 仍是節點，型別已知；`0.5.0-W1-113` PM 處置 N5）與原因碼 `flowBlockMalformed`（「flow 區塊解析失敗」，FR-09 規則 3a、3b）
-- 一筆 EVT-CORPUS-005 對應一筆破洞，帶非 domain 路徑清單檔的相對路徑、原因碼 `nonDomainPathsMalformed`（「非 domain 路徑清單格式錯誤」）與子原因 `NonDomainPathsMalformedReason`（FR-10 規則 2；`0.5.0-W1-096.7` 用戶裁決 NC-1 (i) I-b、PM 處置識別名）
+- 一筆 EVT-CORPUS-005 對應一筆破洞，帶非 domain 路徑清單檔的相對路徑、原因碼 `nonDomainPathsMalformed`（「非 domain 路徑清單格式錯誤」）與子原因 `NonDomainPathsMalformedReason`（FR-10 規則 2；`0.5.0-W1-096.7` 用戶裁決 NC-1 (i) I-b、PM 處置識別名）；子原因為 `elementNotString` 時另帶 `nonStringElementCount`，報告項目顯示「清單內 N 個非字串元素」（SPEC-004 §4.0.6 key `gapNonDomainPathsNonStringElements`；`0.5.0-W1-114.4` 用戶裁決第五批 NC-7，G1）
 - EVT-CORPUS-005 的破洞同樣不依賴 FR-06 路徑模式查詢：查詢不可用時照常產生（清單檔位置取自型別表欄位或內建表，不需路徑對型別；`0.5.0-W1-114.1` PM 處置 NC-e，與 N4 同理）
 - EVT-CORPUS-004 的破洞不依賴 FR-06 路徑模式查詢：查詢不可用時照常產生（UC 型別由判型取得，不需路徑對型別；`0.5.0-W1-113` PM 處置 N4，為下一條的直接推論）
 - FR-06 查詢不可用時，不產生 EVT-CORPUS-003 的 `parseFailure` 破洞，破洞報告顯示「無法判定破洞」並說明原因。原因以原因碼表示（專案型別表版本不在 App 已知範圍／型別表沒有路徑模式），屬資料值；「不在已知範圍」涵蓋版本高於內建、缺席與無法解析三種情形，判定式與 SPEC-001 schema 不相容關卡相同，因此在 App 內經關卡進入時不會出現，只在繞過關卡的呼叫路徑出現（用戶裁決 2026-09-25，WRAP）；顯示文字由畫面經 l10n 投影（SPEC-004 v1.47 key），Diagnostics 不產生在地化字串（用戶裁決 2026-09-24）
@@ -233,6 +233,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 - [ ] Given FR-06 查詢不可用、一份 UC 的 flow 區塊解析失敗，Then 仍產生該 UC 的 flow 區塊解析失敗破洞，且破洞帶型別 UC（E2 正向對照：N4 前的寫法會漏報）
 - [ ] Given 非 domain 路徑清單檔 YAML 解析失敗，Then 產生一筆原因碼為 `nonDomainPathsMalformed`、子原因 `yamlInvalid` 的 `parseFailure` 破洞，破洞數比該檔正常時多 1
 - [ ] Given FR-06 查詢不可用、非 domain 路徑清單檔缺該鍵，Then 仍產生一筆原因碼 `nonDomainPathsMalformed`、子原因 `keyMissing` 的破洞（NC-e，E2 正向對照）
+- [ ] Given 清單為 `["docs/a/", 1, true]`，Then 產生一筆子原因 `elementNotString` 的破洞，破洞帶 `nonStringElementCount` 為 2（G1）
 
 ### FR-09：UC flow 區塊解析
 
@@ -270,7 +271,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | # | 規則 |
 |---|------|
-| 1 | 檔案位置與鍵名取自專案型別表的 `non_domain_paths_file`／`non_domain_paths_key`；型別表缺這兩欄時回落內建表值（`0.5.0-W1-096.7` PM 決定 NC-2），不在程式內寫死。欄位值為空字串時視為缺欄，回落內建表值，與非字串值同路徑（`0.5.0-W1-096.7` 用戶裁決第二批 #2，2A） |
+| 1 | 檔案位置與鍵名取自專案型別表的 `non_domain_paths_file`／`non_domain_paths_key`；型別表缺這兩欄時回落內建表值（`0.5.0-W1-096.7` PM 決定 NC-2），不在程式內寫死。欄位值去除首尾空白後為空（含空字串與只有空白）時視為缺欄，回落內建表值，與非字串值同路徑（`0.5.0-W1-096.7` 用戶裁決第二批 #2，2A；`0.5.0-W1-114.4` 用戶裁決第五批 NC-8，W1）；非空值不做修剪，照原值使用 |
 | 2 | 子原因列舉 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList, elementNotString }`（`elementNotString` 見規則 2a）。整份格式錯誤為三種：YAML 解析失敗（`yamlInvalid`）、缺該鍵（`keyMissing`）、該鍵的值不是清單（`notList`）。任一成立即發出一筆 EVT-CORPUS-005，`reason` 為對應子原因 |
 | 2a | 清單內出現非字串元素（`elementNotString`）：該元素略過、不納入非 domain 路徑，其餘元素照常生效；另報 EVT-CORPUS-005，`reason` 為 `elementNotString`。不轉為字串照收（`0.5.0-W1-096.7` 用戶裁決第二批 #1，1C）。本情境非 domain 側不視為未宣告，規則 4 不適用。**筆數**：一輪掃描最多一筆，不論非字串元素有幾個；負載另帶非字串元素數 `nonStringElementCount`（`0.5.0-W1-114.3` 用戶裁決 A3，2026-10-08；欄位識別名為 PM 決定）。App 不指出是哪個元素，定位交上游 `doc validate-paths` |
 | 2b | 字串元素不檢查格式：上游 `check_path_pattern_format` 判為違規的字串（空字串、以 `/` 或 `./` 開頭、含 `..` 段、含 glob 字元）照常納入，不發事件。依 UC-02 比對語意，這些值不命中任何路徑，效果等於該值不存在，不造成錯誤分類；格式回饋由 `doc validate` 負責（`0.5.0-W1-114.3` 用戶裁決 C3′，2026-10-08）。「不命中」由路徑查詢保證，見 UC-02〈ticket 定位〉 |
@@ -284,6 +285,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 - [ ] Given 清單檔不存在，Then 不發 EVT-CORPUS-005，非 domain 側為未宣告（與第一條對照：分類相同、事件不同）
 - [ ] Given 專案型別表缺 `non_domain_paths_file`／`non_domain_paths_key`，Then 依內建表值定位清單檔
 - [ ] Given 專案型別表的 `non_domain_paths_file` 或 `non_domain_paths_key` 為空字串，Then 依內建表值定位清單檔（與缺欄同結果，E2 正向對照：不得以空字串為位置）
+- [ ] Given 專案型別表的 `non_domain_paths_file` 為 `" "`，Then 依內建表值定位清單檔；Given 其值為 `" docs/x.yaml"`（非空、帶前導空白），Then 照原值定位、不修剪（W1）
 - [ ] Given 清單為 `["docs/a/", null, "docs/b/"]`，Then `docs/a/`、`docs/b/` 生效，`null` 不納入（不得產生模式字串 `"null"`），並發出一筆 `reason` 為 `elementNotString`、`nonStringElementCount` 為 1 的 EVT-CORPUS-005；非 domain 側不視為未宣告
 - [ ] Given 清單為 `["docs/a/", 1, true]`，Then 只發出一筆 EVT-CORPUS-005，`nonStringElementCount` 為 2（A3：一輪一筆）
 - [ ] Given 清單為 `["", "docs/a/"]`，Then 不發 EVT-CORPUS-005，兩個值都納入（C3′：字串不檢查格式）
@@ -333,6 +335,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.20 | 2026-10-08 | `0.5.0-W1-114.5`（依 `0.5.0-W1-114.4` 用戶裁決第五批）：FR-08 EVT-CORPUS-005 破洞於 `elementNotString` 時攜帶 `nonStringElementCount`、報告項目引用 SPEC-004 key `gapNonDomainPathsNonStringElements`（G1）；FR-10 規則 1 改為去除首尾空白後為空即視為缺欄、非空值不修剪（W1）；各補一條驗收 |
 | 1.19 | 2026-10-08 | `0.5.0-W1-114.3` 用戶裁決第三、四批（PM 寫入）：FR-10 規則 2a 補筆數——一輪最多一筆，負載加 `nonStringElementCount`（A3）；新增規則 2b——字串元素不檢查格式，上游判為違規的字串照常納入、不發事件（C3′）；補兩條驗收 |
 | 1.18 | 2026-10-08 | `0.5.0-W1-114.3`（依 `0.5.0-W1-096.7` 用戶裁決第二批 #1 1C、#2 2A）：FR-10 子原因列舉新增 `elementNotString`，新增規則 2a——非字串元素略過、其餘照常生效、另報一筆 EVT-CORPUS-005，非 domain 側不視為未宣告；規則 4 限定為規則 2 三種格式錯誤；規則 1 補位置欄位空字串視為缺欄、回落內建表；補兩條驗收。程式修正由 `0.5.0-W1-123` 承接 |
 | 1.17 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪：FR-08 新增 EVT-CORPUS-005 破洞不依賴 FR-06 路徑查詢（PM 處置 NC-e），移除該項未裁決標記並補一條驗收；原因碼識別名落地——flow 區塊解析失敗為 `flowBlockMalformed`（`0.5.0-W1-001.3` PM 決定），非 domain 路徑清單格式錯誤為 `nonDomainPathsMalformed`，子原因 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList }`（`0.5.0-W1-096.7` PM 處置）；FR-09 規則 3a／3b 與驗收、FR-10 規則 2 與驗收同步 |
