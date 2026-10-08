@@ -201,5 +201,23 @@ void main() {
       expect(labelsOf(tailLanes), ['畫面', 'a', 'x', 'y', '未定位']);
       expect(labelsOf(headLanes), ['畫面', 'x', 'y', 'a', '未定位']);
     });
+
+    test('traverses 部分已宣告不出現未定位列；全部未宣告則出現（E1 對照）', () {
+      final partial = assembleSwimLanes(
+        bundleOrder: projectOrder,
+        stepTraverses: const [
+          ['graph', 'ghost'],
+        ],
+      );
+      final allUndeclared = assembleSwimLanes(
+        bundleOrder: projectOrder,
+        stepTraverses: const [
+          ['phantom', 'ghost'],
+        ],
+      );
+      expect(labelsOf(partial), projectLabels);
+      expect(labelsOf(allUndeclared), [...projectLabels, '未定位']);
+      expect(labelsOf(partial), isNot(labelsOf(allUndeclared)));
+    });
   });
 }
