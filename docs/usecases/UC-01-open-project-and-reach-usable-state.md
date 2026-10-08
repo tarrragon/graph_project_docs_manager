@@ -4,8 +4,8 @@ title: "開啟專案並抵達可用狀態"
 status: draft
 source_proposal: [PROP-003, PROP-002]
 created: "2026-08-26"
-updated: "2026-09-30"
-version: "1.5"
+updated: "2026-10-09"
+version: "1.6"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -113,13 +113,21 @@ flow:
     traverses: ["graph"]
   - id: "schema-rejected"
     name: "版本不符拒絕渲染"
-    next: []
+    next: ["show-version-mismatch"]
     branch_from: "load-schema"
-    return_to: "select-folder"
+    return_to: null
     emits: ["EVT-SCHEMA-002"]
     consumes: []
     traverses: ["schema"]
     implements: ["FR-04"]
+  - id: "show-version-mismatch"
+    name: "顯示版本不符說明"
+    next: []
+    branch_from: "schema-rejected"
+    return_to: "select-folder"
+    emits: []
+    consumes: ["EVT-SCHEMA-002"]
+    traverses: []
 ```
 
 ## 例外場景
@@ -158,6 +166,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.6 | 2026-10-09 | `0.5.0-W1-095.2`：結構化 flow 區塊新增純畫面步驟 `show-version-mismatch`（traverses `[]`，consumes `EVT-SCHEMA-002`），接在 `schema-rejected` 之後；`return_to: select-folder` 由 `schema-rejected` 移至新步驟 |
 | 1.5 | 2026-09-30 | `source_proposal` 由 `PROP-003` 改為 `[PROP-003, PROP-002]`：PROP-002 `outputs.usecase_refs` 已列 UC-01，補上對應的正向宣告（`0.4.0-W2-001`；`provenance` 正向基數為 `many`，SPEC-007 D7）；不動正文與結構化 flow 區塊 |
 | 1.4 | 2026-09-24 | 0.3.0 規劃波 Step 4：〈部分檔案解析失敗〉與對應驗收改為只有 carrier 路徑內的失敗檔列入破洞報告（SPEC-006 D6）；`related_specs` 補 SPEC-006；不動結構化 flow 區塊 |
 | 1.3 | 2026-09-15 | 追修同步稽核裁決議題 P1（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：〈替代場景〉〈空專案〉動作清單補「導覽至破洞報告」，對齊 SPEC-001 §1 空圖可用操作欄；不動結構化 flow 區塊 |

@@ -4,8 +4,8 @@ title: "依 domain 盤點變更影響面"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-10-08"
-version: "1.9"
+updated: "2026-10-09"
+version: "1.10"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -85,8 +85,8 @@ flow:
     next: ["inspect-steps"]
     branch_from: null
     return_to: null
-    emits: []
-    consumes: ["EVT-LAYOUT-001"]
+    emits: ["EVT-LAYOUT-001"]
+    consumes: []
     traverses: ["layout"]
   - id: "inspect-steps"
     name: "檢視步驟"
@@ -94,7 +94,7 @@ flow:
     branch_from: null
     return_to: null
     emits: []
-    consumes: []
+    consumes: ["EVT-LAYOUT-001"]
     traverses: []
   - id: "matrix-overview-only"
     name: "僅檢視全貌"
@@ -203,6 +203,7 @@ ticket 的 `where.files` 逐路徑比對兩個宣告載體（2026-10-07 用戶�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.10 | 2026-10-09 | `0.5.0-W1-095.2`：結構化 flow 區塊校正 `EVT-LAYOUT-001` 的發出與消費——`switch-to-swimlane`（traverses `[layout]`）由 `consumes` 改為 `emits`（layout 為該事件 producer）；`inspect-steps`（traverses `[]`）改為 `consumes`（事件 consumer 為 `presentation`） |
 | 1.9 | 2026-10-08 | `0.5.0-W1-114.5`（依 `0.5.0-W1-114.4` PM 處置 NC-6）：v1.8 第一條新驗收的括號理由改為「實作不得把宣告值當無條件前綴比對」，涵蓋以 `/` 結尾的 `/docs/` |
 | 1.8 | 2026-10-08 | 落地 `0.5.0-W1-114.3` 用戶裁決（PM 寫入）：〈ticket 定位〉比對語意補兩條——不以 `/` 結尾的值精確比對，上游判為格式違規的值不命中（C3′）；同一字串同時出現在兩側時歸 domain（T1）；新增兩條驗收 |
 | 1.7 | 2026-10-08 | 落地 `0.5.0-W1-096.7` 用戶裁決 NC-1（`0.5.0-W1-114.1`）：〈ticket 定位〉新增「非 domain 清單格式錯誤視為缺席」段（II-a，錯誤經 EVT-CORPUS-005 另報 `parseFailure`）；宣告狀態行的非 domain 側由有／無擴為有／無／格式錯誤；新增一條驗收 |
