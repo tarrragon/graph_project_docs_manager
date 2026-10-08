@@ -199,17 +199,37 @@ class TestFailureSemantics:
         assert "boom" in cap.err
         assert cap.out.strip() == ""
 
-    def test_main_emits_additional_context_on_hit(self, main_root, capsys):
-        write_state(main_root, [entry()])
-        payload = file_payload("Edit", main_root / "a.md", main_root)
+    def _run_main(self, payload, main_root, capsys):
         with patch.object(hook, "read_json_from_stdin", return_value=payload), \
              patch.object(hook, "resolve_main_root", return_value=main_root):
             rc = hook.main()
-        out = json.loads(capsys.readouterr().out)
+        out = capsys.readouterr().out.strip()
+        return rc, (json.loads(out) if out else None)
+
+    @pytest.mark.parametrize("tool", ["Edit", "Write", "NotebookEdit"])
+    def test_e2_file_tool_hit_emits_deny(self, tool, main_root, capsys):
+        write_state(main_root, [entry()])
+        rc, out = self._run_main(file_payload(tool, main_root / "a.md", main_root), main_root, capsys)
+        spec = out["hookSpecificOutput"]
         assert rc == 0
-        assert out["hookSpecificOutput"]["hookEventName"] == "PreToolUse"
-        assert "permissionDecision" not in out["hookSpecificOutput"]
-        assert out["hookSpecificOutput"]["additionalContext"]
+        assert spec["hookEventName"] == "PreToolUse"
+        assert spec["permissionDecision"] == "deny"
+        assert "NeedsContext" in spec["permissionDecisionReason"]
+        assert "PM" in spec["permissionDecisionReason"]
+
+    def test_e2_bash_hit_stays_warn_only(self, main_root, capsys):
+        write_state(main_root, [entry()])
+        rc, out = self._run_main(bash_payload("git add a.md", main_root), main_root, capsys)
+        spec = out["hookSpecificOutput"]
+        assert rc == 0
+        assert "permissionDecision" not in spec
+        assert "NeedsContext" in spec["additionalContext"]
+
+    def test_e1_file_tool_without_mapping_allows(self, main_root, capsys):
+        write_state(main_root, [entry(agent_id="someone-else")])
+        rc, out = self._run_main(file_payload("Edit", main_root / "a.md", main_root), main_root, capsys)
+        assert rc == 0
+        assert out is None
 
 
 class TestResolveMainRoot:

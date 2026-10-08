@@ -11,7 +11,7 @@ Isolated Subagent Main-Write Guard Hook - PreToolUse (Edit|Write|NotebookEdit|Ba
   隔離（isolation: worktree）子代理人的 worktree 被清除、恢復後，其寫入會直接
   落在主 repo 的共用 working tree / index。本 hook 在該情境下以
   additionalContext 要求代理人停手、寫 NeedsContext、交回 PM 重派
-  （warn 模式，不阻擋；升級 deny 由後續決策承接）。
+  （Edit/Write/NotebookEdit 以 permissionDecision deny 阻擋；Bash 維持 warn）。
 
 觸發條件（全部成立才介入）:
   1. payload 有 agent_id，且經 dispatch-active.json 映射命中 entry
@@ -166,7 +166,10 @@ def main() -> int:
         logger.critical("hook 例外，fail-open 放行: %s", e, exc_info=True)
         sys.stderr.write("[%s] 例外，已放行: %s\n" % (HOOK_NAME, e))
         return EXIT_SUCCESS
-    if message:
+    if message and input_data.get("tool_name") in FILE_TOOL_KEYS:
+        print(json.dumps(generate_hook_output(
+            "PreToolUse", permission_decision="deny", permission_decision_reason=message), ensure_ascii=False))
+    elif message:
         print(json.dumps(generate_hook_output("PreToolUse", additional_context=message), ensure_ascii=False))
     return EXIT_SUCCESS
 
