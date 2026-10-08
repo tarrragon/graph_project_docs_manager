@@ -52,10 +52,10 @@ TypeTable typeTableFromJson(Map<String, dynamic> json) {
   );
 }
 
-/// 需求：[SPEC-006 FR-10 規則 1] 非字串、空字串（含缺欄）一律視為缺欄回傳
-/// `null`，由消費端回落內建表值。
+/// 需求：[SPEC-006 FR-10 規則 1] 非字串、去頭尾空白後為空（含缺欄）一律視為
+/// 缺欄回傳 `null`，由消費端回落內建表值；非空值照原值回傳、不修剪。
 String? _parseOptionalString(dynamic raw) =>
-    raw is String && raw.isNotEmpty ? raw : null;
+    raw is String && raw.trim().isNotEmpty ? raw : null;
 
 /// `edges` 為 `null` 代表缺 `edge_types` 鍵；缺必要欄位的邊型拒收並寫日誌，
 /// 鍵名交給 `rejected`（視同缺席，由 `resolveEdgeTypes` 依版本補回或判不可用，
