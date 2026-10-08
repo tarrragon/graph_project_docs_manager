@@ -6,7 +6,7 @@ category: domain_event
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-09-24"
+updated: "2026-10-08"
 
 payload: null
 
@@ -38,7 +38,7 @@ PROP-004）使用該詞時皆以此為準，不另立外延。
 | `parseFailure` | 解析失敗 | `EVT-CORPUS-003`：落在節點 carrier 路徑內，且沒拿到可用 frontmatter 的檔案（無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取）。carrier 外的失敗檔不算，YAML 語法錯誤也一樣（2026-09-24 用戶裁決，SPEC-006 D6）。路徑對型別平手時仍產生破洞，帶候選型別並標記 schema 歧義；型別表取不到路徑模式時不產生本類破洞，報告改顯示「無法判定破洞」（SPEC-006 FR-08） |
 | `graphDefect` | 圖結構缺陷 | 斷邊（指向不存在節點）、孤島、缺必要邊 |
 | `traceGap` | 追溯缺口 | 無 SPEC 的 PROP、無測試的 UC |
-| `unlocatable` | ticket 無法定位 | `where.files` 對應不到任何 domain（PROP-004「以 ticket 切入」模式） |
+| `unlocatable` | ticket 無法定位 | 被觀測專案**兩側皆已宣告**（DomainBundle `path_patterns` 與 `docs/non-domain-paths.yaml`）時，`where.files` 的路徑既不命中任何 `path_patterns`、也不命中非 domain 清單（PROP-004「以 ticket 切入」模式）。只宣告一側時兩者皆未命中的路徑為「domain 未宣告」或「非 domain 未宣告」，兩側皆未宣告時專案整體為「未宣告路徑」，三者都不是本類破洞（2026-10-07 用戶裁決 P2+、2026-10-08 用戶裁決半套宣告，`0.5.0-W1-096`／`0.5.0-W1-096.1`；分類表見 UC-02〈ticket 定位的五種狀態與整體未宣告〉） |
 
 > 第四類先前散落在 UC-02 例外場景與 PROP-004 §已否決 兩處，未被收進本清單，
 > 使「破洞」在批內有三種互不相容的外延。2026-08-27 的多輪審查（frame 2-B⁶
