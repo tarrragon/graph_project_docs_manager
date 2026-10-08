@@ -2,7 +2,7 @@
 /// 逐檔比對，需求：[SPEC-006 FR-01；traceability 第三軸契約 K1]。
 ///
 /// 測資：`test/fixtures/spec006/it1/expected.json`（凍結，見同目錄
-/// README.md），斷言依 `docs/spec/corpus/SPEC-006-test-design.md` §2.1
+/// README.md），斷言依 `docs/test-design/SPEC-006-test-design.md` §2.1
 /// IT1-A1～IT1-A6。
 ///
 /// 對照該規格描述與實際凍結測資的兩處既知偏離（README〈偏離票面之處〉）：
