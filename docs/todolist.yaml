@@ -762,6 +762,10 @@ versions:
            元件 SwimlaneGrid／MatrixGrid／RelationItem、Corpus 發出 EVT-CORPUS-004）並重排 W3-002／003 → 派發實作。
          - 已建實作票：W1-001.3～.7、W1-096.4／.5／.7／.8、W1-103.2、W1-095.2（資料）。順序底線：096.8 → 096.7；
            103.1 已合併 → 001.7、103.2；001.3 → 001.4 → 001.5。同一 lib 目錄的票序列化，parsley 實作、W1-063 取樣。
+         - Step 5／6 完成（2026-10-08）：規格經第二至五批裁決更新至 SPEC-001 v1.40、SPEC-004 v1.79、SPEC-006 v1.20、
+           SPEC-007 v1.20、UC-02 v1.9、EVT-CORPUS-005；測試設計 W1-114.4。Step 6 新建 W1-114.6（快照凍結）、114.7（Graph
+           FR-12／13）、114.8（graphDefects 計數）、114.9／114.10（Layout 列序／欄序與查詢）、114.11（元件）、114.12（domain_view）、
+           114.13（外圈 IT-D1～D4），另有 W1-119（Diagnostics）、122、124；派發交 4a。
       2. 預期變更（第二段，實作）
          - lib：corpus（flow 區塊解析、EVT-CORPUS-004、S2 讀取）、graph（flowOf、traverses 名稱解析與反查、bundle_dependency
            進使用中邊型並帶 layer、direction 判無向、where.files 路徑比對器）、schema（direction 解碼、使用中邊型）、layout（泳道
