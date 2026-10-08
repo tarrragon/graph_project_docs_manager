@@ -4,6 +4,7 @@ domain: "ticketdetail"
 source_specs: [SPEC-007]
 related_usecases: [UC-02, UC-04]
 depends_on_bundles: [DOMAIN-MAP-corpus]
+path_patterns: [lib/ticket_detail/]
 created: "2026-08-26"
 updated: "2026-10-07"
 ---

@@ -4,6 +4,7 @@ domain: "layout"
 source_specs: []
 related_usecases: [UC-02, UC-03]
 depends_on_bundles: [DOMAIN-MAP-graph]
+path_patterns: [lib/layout/, lib/components/swimlane_grid.dart, lib/components/swimlane_node.dart, lib/components/matrix_cell.dart, lib/components/matrix_grid.dart]
 created: "2026-08-26"
 updated: "2026-10-08"
 ---
