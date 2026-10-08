@@ -4,8 +4,8 @@ title: "找出並修復文件破洞"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-09-24"
-version: "1.3"
+updated: "2026-10-09"
+version: "1.4"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -69,12 +69,20 @@ flow:
     traverses: ["diagnostics"]
   - id: "view-categories"
     name: "檢視分類"
-    next: ["locate-item"]
+    next: ["present-gap-sections"]
     branch_from: null
     return_to: null
     emits: ["EVT-DIAGNOSTICS-001"]
     consumes: []
     traverses: ["diagnostics"]
+  - id: "present-gap-sections"
+    name: "呈現分節報告"
+    next: ["locate-item"]
+    branch_from: null
+    return_to: null
+    emits: []
+    consumes: ["EVT-DIAGNOSTICS-001"]
+    traverses: []
   - id: "locate-item"
     name: "定位單項"
     next: ["open-source-file"]
@@ -152,6 +160,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.4 | 2026-10-09 | `0.5.0-W1-095.2`：結構化 flow 區塊新增純畫面步驟 `present-gap-sections`（traverses `[]`，consumes `EVT-DIAGNOSTICS-001`），插在 `view-categories` 與 `locate-item` 之間 |
 | 1.3 | 2026-09-24 | 0.3.0 規劃波 Step 4：依 SPEC-006 新增例外場景〈無法判定破洞〉（結構化 flow 補 `gaps-undeterminable` 步驟）與〈破洞歸屬型別不明〉；驗收補「無法判定與無破洞明顯不同」及「只有 carrier 內的失敗檔列為破洞」；`related_specs` 補 SPEC-006 |
 | 1.2 | 2026-09-15 | 追修同步稽核裁決議題 X1／X2／P2（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：主要成功場景步驟 3、4 改依指向型別跳轉、原始檔以次要操作或直接開啟，0.1 不定位行號（承 `0.1.0-W3-335.19` 第二輪裁示與 `0.1.0-W1-070` 決定，見 SPEC-003 §3.5）；〈原始檔已消失〉拆兩路（破洞報告內開啟 vs 節點詳情開啟）；`related_specs` 補 SPEC-003；不動結構化 flow 區塊 |
 | 1.1 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` R11）：主要成功場景步驟 3「系統顯示檔案路徑與行號」補「（行號於有值時顯示）」，對齊事件類破洞項行號可空 |
