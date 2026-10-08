@@ -25,15 +25,6 @@ Map<String, dynamic> _builtinWith(String name, String direction) {
   return table;
 }
 
-/// 內建表副本，全部邊型移除 `direction`（S6-14）。
-Map<String, dynamic> _builtinWithoutDirection() {
-  final table = loadBuiltinSchemaJson();
-  for (final edge in (table['edge_types'] as Map<String, dynamic>).values) {
-    (edge as Map<String, dynamic>).remove('direction');
-  }
-  return table;
-}
-
 Set<String> _undirectedTypesOf(GraphBuiltEvent event) => {
   for (final e in event.edges)
     if (e.isUndirected) e.edgeType,
@@ -165,7 +156,10 @@ void main() {
 
   group('S6-14 專案表缺 direction，鄰接部分（SPEC-007 FR-01）', () {
     test('association 仍為無向，A、B 鄰接均含對方（缺欄不得當 directed）', () {
-      final q = _queryOf(_fixture('relatedTo'), _builtinWithoutDirection());
+      final q = _queryOf(
+        _fixture('relatedTo'),
+        loadBuiltinSchemaJsonWithoutDirection(),
+      );
       for (final id in ['SPEC-001', 'SPEC-002']) {
         expect(
           _entries(q, id).single.direction,

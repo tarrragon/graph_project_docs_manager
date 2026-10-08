@@ -1,30 +1,19 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 import '../../helpers/spec007/edge_table_builder.dart';
+import '../../helpers/spec007/known_distribution_fixture.dart';
 
-const _builtinPath = 'assets/schema/builtin_tracking_schema.json';
+Map<String, dynamic> _builtin() => loadBuiltinSchemaJson();
 
-Map<String, dynamic> _builtin() =>
-    jsonDecode(File(_builtinPath).readAsStringSync()) as Map<String, dynamic>;
+Map<String, dynamic> _builtinWithoutDirection() =>
+    loadBuiltinSchemaJsonWithoutDirection();
 
 Map<String, EdgeTypeEntry> _resolve(Map<String, dynamic> project) =>
     resolveEdgeTypes(
       projectSchemaJson: project,
       builtinSchemaJson: _builtin(),
     ).edgeTypes;
-
-/// 內建表移除全部邊型的 `direction` 欄（S6-14 的專案表）。
-Map<String, dynamic> _builtinWithoutDirection() {
-  final table = _builtin();
-  for (final edge in (table['edge_types'] as Map<String, dynamic>).values) {
-    (edge as Map<String, dynamic>).remove('direction');
-  }
-  return table;
-}
 
 /// 需求：[SPEC-007 FR-01、FR-05、D6] 方向性取自 `direction` 欄。
 void main() {
@@ -90,6 +79,53 @@ void main() {
       expect(original.direction, filled.direction);
       expect(original.directionSource, DirectionSource.projectTable);
       expect(filled.directionSource, isNot(original.directionSource));
+    });
+
+    test('被拒收後由內建表補回：整筆採內建宣告，專案原寫的 direction 被忽略', () {
+      final table = _builtin();
+      final edges = table['edge_types'] as Map<String, dynamic>;
+      // 專案表的 association 缺 forward_field 而被拒收，且寫了相反的 direction。
+      (edges['association'] as Map<String, dynamic>)
+        ..remove('forward_field')
+        ..['direction'] = 'directed';
+      final resolved = _resolve(table);
+      expect(resolved['association']!.direction, EdgeDirection.undirected);
+      expect(
+        resolved['association']!.directionSource,
+        DirectionSource.builtinTable,
+      );
+      // E1：同表未被拒收的邊型，來源為專案表。
+      expect(
+        resolved['spec_association']!.directionSource,
+        DirectionSource.projectTable,
+      );
+    });
+
+    test('E1：association 未被拒收且寫 directed 時，採專案值與專案來源', () {
+      final table = _builtin();
+      final edges = table['edge_types'] as Map<String, dynamic>;
+      (edges['association'] as Map<String, dynamic>)['direction'] = 'directed';
+      final resolved = _resolve(table)['association']!;
+      expect(resolved.direction, EdgeDirection.directed);
+      expect(resolved.directionSource, DirectionSource.projectTable);
+    });
+
+    test('direction 值不是 directed／undirected 時視同缺欄，補內建表值', () {
+      final table = _builtin();
+      final edges = table['edge_types'] as Map<String, dynamic>;
+      (edges['association'] as Map<String, dynamic>)['direction'] = 'sideways';
+      (edges['spec_association'] as Map<String, dynamic>)['direction'] = 7;
+      final resolved = _resolve(table);
+      expect(resolved['association']!.direction, EdgeDirection.undirected);
+      expect(
+        resolved['association']!.directionSource,
+        DirectionSource.builtinTable,
+      );
+      expect(resolved['spec_association']!.direction, EdgeDirection.directed);
+      expect(
+        resolved['spec_association']!.directionSource,
+        DirectionSource.builtinTable,
+      );
     });
 
     test('S6-15：內建表沒有的邊型缺欄為有向，來源為預設（有向）', () {

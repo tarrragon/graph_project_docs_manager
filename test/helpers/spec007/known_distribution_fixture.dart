@@ -19,6 +19,15 @@ Map<String, dynamic> loadBuiltinSchemaJson() {
   return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
 }
 
+/// 內建表副本，全部邊型移除 `direction` 欄（S6-14 的專案表）。
+Map<String, dynamic> loadBuiltinSchemaJsonWithoutDirection() {
+  final table = loadBuiltinSchemaJson();
+  for (final edge in (table['edge_types'] as Map<String, dynamic>).values) {
+    (edge as Map<String, dynamic>).remove('direction');
+  }
+  return table;
+}
+
 /// 由型別表 JSON 取得建圖輸入（使用中邊型與節點型別表）。
 ///
 /// [schemaJson] 缺省為內建表；內建表恆作為版本基準（不會落入不可用）。

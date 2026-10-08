@@ -108,10 +108,25 @@ EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
         .where((v) => v.name == value['forward_cardinality'])
         .firstOrNull,
     layer: layer,
-    direction: EdgeDirection.values
-        .where((v) => v.name == value['direction'])
-        .firstOrNull,
+    direction: _parseDirection(name, value['direction']),
   );
+}
+
+/// 缺欄回傳 `null`；有值但不是 `directed`／`undirected` 時寫警告日誌，
+/// 語意仍視同缺欄（由 `resolveEdgeTypes` 補值）。
+EdgeDirection? _parseDirection(String name, dynamic raw) {
+  if (raw == null) {
+    return null;
+  }
+  final parsed = EdgeDirection.values.where((v) => v.name == raw).firstOrNull;
+  if (parsed == null) {
+    developer.log(
+      '邊型 $name 的 direction 不是 directed／undirected，視同缺欄：$raw', // i18n-exempt: 開發者診斷 log
+      name: _tag,
+      level: 900,
+    );
+  }
+  return parsed;
 }
 
 void _logRejectedEdgeType(String name) {
