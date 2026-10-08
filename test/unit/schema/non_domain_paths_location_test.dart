@@ -46,4 +46,42 @@ void main() {
     expect(table.nonDomainPathsFile, isNull);
     expect(table.nonDomainPathsKey, isNull);
   });
+
+  test('R1/R2 純空白位置欄位視為缺欄，與缺欄對照（C1）結果相同', () {
+    final whitespace = typeTableFromJson(<String, dynamic>{
+      'node_types': <String, dynamic>{},
+      'non_domain_paths_file': ' ',
+      'non_domain_paths_key': '\t ',
+    });
+    final missing = typeTableFromJson(<String, dynamic>{
+      'node_types': <String, dynamic>{},
+    });
+
+    expect(whitespace.nonDomainPathsFile, isNull);
+    expect(whitespace.nonDomainPathsKey, isNull);
+    expect(whitespace.nonDomainPathsFile, missing.nonDomainPathsFile);
+    expect(whitespace.nonDomainPathsKey, missing.nonDomainPathsKey);
+  });
+
+  test('R3/R4 前後帶空白的非空值照原值使用、不修剪', () {
+    final table = typeTableFromJson(<String, dynamic>{
+      'node_types': <String, dynamic>{},
+      'non_domain_paths_file': ' docs/x.yaml',
+      'non_domain_paths_key': 'custom ',
+    });
+
+    expect(table.nonDomainPathsFile, ' docs/x.yaml');
+    expect(table.nonDomainPathsKey, 'custom ');
+  });
+
+  test('C2 非字串值視為缺欄', () {
+    final table = typeTableFromJson(<String, dynamic>{
+      'node_types': <String, dynamic>{},
+      'non_domain_paths_file': 42,
+      'non_domain_paths_key': true,
+    });
+
+    expect(table.nonDomainPathsFile, isNull);
+    expect(table.nonDomainPathsKey, isNull);
+  });
 }
