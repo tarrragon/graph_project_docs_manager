@@ -751,6 +751,44 @@ versions:
       發佈庫推 doc 1.24.8、ticket 2.44.45（用戶授權）。096.6 合併後 main 的 test/unit/schema 3 紅，由 W1-096.8 修復，閘門缺口 W1-110。
       決策分流規則（2026-10-08，用戶裁決）：候選議題只有改變規則語意者（使用者可見行為、架構歸屬、超出範圍或缺資料的處理）才 WRAP 後交用戶；
       文案／i18n key／讀螢幕句、既有裁決的直接推論、識別名（交實作票）、可查證的事實由 PM 決定或查證，寫入票面後彙報。
+      canonical v2.79.0（2026-10-08，用戶授權；W1-108 doc 1.24.9、W1-109 ticket 2.44.46），發佈庫同步推送。
+      版本契約第二段（草案，2026-10-08，待用戶審閱；用戶裁決先寫第二段，再做 Step 5 測試設計與 Step 6 建票）：
+      1. 範圍與執行順序（補）
+         - 規劃波裁決與規格已全數寫定（阻擋 1～5、W1-001／095／096／103 及其 NeedsContext 各輪），規格權威為 SPEC-001 v1.35、
+           SPEC-004 v1.75、SPEC-006 v1.15、SPEC-007 v1.15、UC-02 v1.6、EVT-CORPUS-004。
+         - 審閱通過後依序：Step 5 sage 補紅燈測試設計（SPEC-001 泳道布局／間接依賴／路徑五狀態與宣告狀態行；SPEC-004 4.19／
+           4.37／4.38；SPEC-006 FR-09；SPEC-007 FR-10／11、D6 bundle_dependency、FR-01 direction）→ Step 6 依測試設計補建
+           尚無承接的實作票（Layout 泳道布局與矩陣格狀態、domain_view 接真資料與交叉格定位、Diagnostics flow 子類與宣告狀態行、
+           元件 SwimlaneGrid／MatrixGrid／RelationItem、Corpus 發出 EVT-CORPUS-004）並重排 W3-002／003 → 派發實作。
+         - 已建實作票：W1-001.3～.7、W1-096.4／.5／.7／.8、W1-103.2、W1-095.2（資料）。順序底線：096.8 → 096.7；
+           103.1 已合併 → 001.7、103.2；001.3 → 001.4 → 001.5。同一 lib 目錄的票序列化，parsley 實作、W1-063 取樣。
+      2. 預期變更（第二段，實作）
+         - lib：corpus（flow 區塊解析、EVT-CORPUS-004、S2 讀取）、graph（flowOf、traverses 名稱解析與反查、bundle_dependency
+           進使用中邊型並帶 layer、direction 判無向、where.files 路徑比對器）、schema（direction 解碼、使用中邊型）、layout（泳道
+           布局與矩陣格狀態含間接依賴）、diagnostics（flow 三子類、unlocatable 收窄、宣告狀態行資料）、screens/domain_view（接真
+           資料、交叉格定位泳道）、元件（SwimlaneGrid edges、MatrixGrid 列首原值、RelationItem proposed、報告頁狀態行）、ARB 新 key、
+           assets/schema 內建副本（096.8）。
+         - 預期變紅後轉綠：K5（bundle_dependency 不在使用中，103.2 改寫）、S6-13（association 鍵名，001.7 改寫）；現存 3 紅
+           （W1-083.1 InKnownRange、W1-070.2 逐位元組、E1）由 096.8 修復。IT-1／IT-2 凍結值與 G9 計數預期不變；新邊與 flowOf
+           的 IT 覆蓋由 W1-001.6 判定是否重凍結。
+         - 測試只增不減。框架基線（83 實測 main 047391f77）：hooks+lib 5432、ticket 4476、doc 495（1 skipped）；flutter test 與
+           integration_test 基線於 096.8 合併後取 main 實測值補入本欄。
+      3. 驗證方式（第二段）
+         - 每張 IMP：flutter test（含 test/integration）rc=0、票面 E1／E2 對照測試、合併前跑 test/unit/schema（W1-110 裁決前的
+           暫行閘門）。
+         - 規格與資料：/spec validate、check_domain_coverage、doc validate（含 next 一致性與結構檢查）、doc validate-paths（096.4
+           宣告後）。
+         - 跨層：IT-1／IT-2 凍結值不變、G9 正比；W1-063 成對實驗由實作票補足至 5 組。
+      4. 人工實測（App 實機，PM /verify）
+         - 本專案語料：矩陣 8 列以 domain 原值為列首、格分布對照 W1-093 實測（直接 19／間接 10／無關 19）、點間接格顯示依賴路徑、
+           「在泳道中檢視」跳到來源列節點；泳道 9 列（含「畫面」列）、層序 L0 schema／workspace…L3 layout、分支直線與回指弧線；
+           詳情卡 proposed 標記；096.4 宣告後的路徑五狀態與報告頁宣告狀態行。
+         - flutter_balance：單 domain 落在 L0、無 bundle_dependency 時無間接格、整體「未宣告路徑」。
+         - 降級：以 App 內建型別表檢視的路徑仍可進入 Domain 視圖。
+      5. 日誌事件（第二段）
+         - 新增 EVT-CORPUS-004（flow 區塊解析失敗；UC 仍為節點）。
+         - 語意調整不新增：EVT-CORPUS-003（指向 004）、EVT-DIAGNOSTICS-001（unlocatable 收窄為五狀態中的「無法定位」）。
+         - EVT-LAYOUT-001 事件本身不變，flow 發出與消費步驟由 095.2 校正。Layout 實作若需新事件，回報 e1 補入本欄。
 
   - version: "0.6.0"
     codename: "Screens"
