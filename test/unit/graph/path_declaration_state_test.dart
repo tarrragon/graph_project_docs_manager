@@ -32,7 +32,7 @@ void main() {
     test('P1-1 命中 domain', () {
       final r = _run(both, nd, ['lib/graph/a.dart']);
       expect(r.paths.single.state, PathLocationState.domainHit);
-      expect(r.paths.single.domain, 'graph');
+      expect(r.paths.single.domains, ['graph']);
     });
     test('P1-2 非 domain 層', () {
       expect(_one(both, nd, 'docs/a.md'), PathLocationState.nonDomainLayer);
@@ -120,8 +120,11 @@ void main() {
       expect(_run(b, nd, files).highlightedDomains, {'graph'});
     });
     test('P3-3 任一命中即可定位；全未命中不可', () {
-      expect(_run(b, nd, files).isLocatable, isTrue);
-      expect(_run(b, nd, ['src/x.dart']).isLocatable, isFalse);
+      expect(_run(b, nd, files).locatability, TicketLocatability.locatable);
+      expect(
+        _run(b, nd, ['src/x.dart']).locatability,
+        TicketLocatability.notLocatable,
+      );
     });
     test('P3-4 受影響路徑數 = 未宣告路徑數', () {
       expect(_run(b, nd, files).affectedPathCount, 1);
@@ -135,6 +138,105 @@ void main() {
         files,
       );
       expect(r.overallUndeclared, isTrue);
+    });
+  });
+
+  group('X1、零 bundle、摘要不判定', () {
+    test('X1 等長跨 bundle 全歸入，與插入順序無關，受影響路徑數仍為 1', () {
+      final a = {
+        'beta': <String>['docs/x/'],
+        'alpha': <String>['docs/x/'],
+      };
+      final b = {
+        'alpha': <String>['docs/x/'],
+        'beta': <String>['docs/x/'],
+      };
+      final ra = _run(a, nd, ['docs/x/a.md']);
+      final rb = _run(b, nd, ['docs/x/a.md']);
+      expect(ra.paths.single.domains, ['alpha', 'beta']);
+      expect(rb.paths.single.domains, ['alpha', 'beta']);
+      expect(ra.highlightedDomains, {'alpha', 'beta'});
+      expect(ra.paths, hasLength(1));
+    });
+    test('零 bundle 有非 domain 清單：未命中為 domain 未宣告，非無法定位', () {
+      expect(
+        _one(<String, List<String>?>{}, nd, 'src/a.dart'),
+        PathLocationState.domainUndeclared,
+      );
+      expect(
+        _one(<String, List<String>?>{}, nd, 'docs/a.md'),
+        PathLocationState.nonDomainLayer,
+      );
+    });
+    test('零 bundle 且非 domain 缺席：整體未宣告', () {
+      expect(
+        _run(<String, List<String>?>{}, nonDomainAbsent(), [
+          'a.dart',
+        ]).overallUndeclared,
+        isTrue,
+      );
+    });
+    test('兩側皆無的摘要為 undetermined，與 notLocatable 不同', () {
+      final none = _run(
+        buildBundlePathPatterns(absent: ['a']),
+        nonDomainAbsent(),
+        ['x.dart'],
+      );
+      expect(none.locatability, TicketLocatability.undetermined);
+      expect(none.locatability, isNot(TicketLocatability.notLocatable));
+      expect(
+        _run(both, nd, ['src/x.dart']).locatability,
+        TicketLocatability.notLocatable,
+      );
+    });
+  });
+
+  group('跨 bundle 最長前綴與守衛鑑別力', () {
+    test('最長前綴跨 bundle：lib/graph/ 勝過 lib/，與插入順序無關', () {
+      final a = {
+        'core': <String>['lib/'],
+        'graph': <String>['lib/graph/'],
+      };
+      final b = {
+        'graph': <String>['lib/graph/'],
+        'core': <String>['lib/'],
+      };
+      expect(_run(a, nd, ['lib/graph/a.dart']).paths.single.domains, ['graph']);
+      expect(_run(b, nd, ['lib/graph/a.dart']).paths.single.domains, ['graph']);
+      expect(_run(a, nd, ['lib/x.dart']).paths.single.domains, ['core']);
+    });
+    test('守衛：/docs/ 宣告不命中字面上會命中的 /docs/a.md', () {
+      expect(
+        _one(both, nonDomainDeclared(['/docs/']), '/docs/a.md'),
+        PathLocationState.unlocatable,
+      );
+    });
+    test('守衛：./docs/、.. 段、glob 宣告不命中字面上會命中的路徑', () {
+      expect(
+        _one(both, nonDomainDeclared(['./docs/']), './docs/a.md'),
+        PathLocationState.unlocatable,
+      );
+      expect(
+        _one(both, nonDomainDeclared(['docs/../lib/']), 'docs/../lib/a.dart'),
+        PathLocationState.unlocatable,
+      );
+      expect(
+        _one(both, nonDomainDeclared(['docs/*.md']), 'docs/*.md'),
+        PathLocationState.unlocatable,
+      );
+    });
+    test('FR-10 規則 2a：含非字串元素仍為 declared', () {
+      final r = _run(
+        both,
+        NonDomainPathsReadDeclaredWithBadElements(
+          path: 'docs/non-domain-paths.yaml',
+          patterns: ['docs/'],
+          nonStringElementCount: 1,
+        ),
+        ['docs/a.md'],
+      );
+      expect(r.nonDomainSide, NonDomainSideState.declared);
+      expect(r.paths.single.state, PathLocationState.nonDomainLayer);
     });
   });
 
@@ -191,7 +293,7 @@ void main() {
       );
       final r = _run(b, nonDomainDeclared(['docs/x/']), ['docs/x/a.md']);
       expect(r.paths.single.state, PathLocationState.domainHit);
-      expect(r.paths.single.domain, 'graph');
+      expect(r.paths.single.domains, ['graph']);
     });
     test('P4-7 較長的非 domain 前綴勝出', () {
       final b = buildBundlePathPatterns(
@@ -214,12 +316,12 @@ void main() {
 
   group('正規化與無預設推測', () {
     test('N1 ::read 後綴截除後歸 graph', () {
-      final r = _run(both, nd, ['lib/graph/::read']);
+      final r = _run(both, nd, ['lib/graph::read']);
       expect(r.paths.single.path, 'lib/graph/');
-      expect(r.paths.single.domain, 'graph');
+      expect(r.paths.single.domains, ['graph']);
     });
     test('N2 裸目錄補 /；有副檔名者不補', () {
-      expect(_run(both, nd, ['lib/graph']).paths.single.domain, 'graph');
+      expect(_run(both, nd, ['lib/graph']).paths.single.domains, ['graph']);
       expect(normalizeWhereFilesPath('lib/graph.dart'), 'lib/graph.dart');
       expect(_one(both, nd, 'lib/graph.dart'), PathLocationState.unlocatable);
     });

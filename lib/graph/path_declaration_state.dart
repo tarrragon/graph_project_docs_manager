@@ -34,17 +34,27 @@ class PathClassification {
   const PathClassification({
     required this.path,
     required this.state,
-    this.domain,
+    this.domains = const [],
   });
 
   final String path;
   final PathLocationState state;
 
-  /// 只有 [PathLocationState.domainHit] 時有值。
-  final String? domain;
+  /// 宣告此路徑（最長前綴）的所有 bundle，依名稱排序；只有
+  /// [PathLocationState.domainHit] 非空。等長多 bundle 宣告時全部列入
+  /// （UC-02 v1.11 X1），受影響路徑數仍以路徑計。
+  final List<String> domains;
 }
 
+/// 票列表摘要三值。兩側皆無宣告時為 [undetermined]，與 [notLocatable] 不同。
+enum TicketLocatability { locatable, notLocatable, undetermined }
+
 /// 一次比對的完整輸出，供 W1-119 消費。
+///
+/// 兩種粒度並存：[paths]、[affectedPathCount] 與其衍生 getter 是單票值
+/// （[affectedPathCount] 在整體未宣告時為 `null`）；[nonDomainSide]、
+/// [declaredBundleCount]、[totalBundleCount]、[overallUndeclared] 是語料層狀態，
+/// 與傳入的 where.files 無關。
 class PathDeclarationReport {
   PathDeclarationReport({
     required List<PathClassification> paths,
@@ -82,14 +92,15 @@ class PathDeclarationReport {
       paths.where((p) => p.state == PathLocationState.unlocatable).length;
 
   /// 矩陣高亮：各路徑命中 domain 的聯集。
-  Set<String> get highlightedDomains => {
-    for (final p in paths)
-      if (p.domain != null) p.domain!,
-  };
+  Set<String> get highlightedDomains => {for (final p in paths) ...p.domains};
 
-  /// 票列表摘要：任一路徑命中 domain 即可定位。
-  bool get isLocatable =>
-      paths.any((p) => p.state == PathLocationState.domainHit);
+  /// 票列表摘要：任一路徑命中 domain 即可定位；兩側皆無宣告時不判定。
+  TicketLocatability get locatability {
+    if (overallUndeclared) return TicketLocatability.undetermined;
+    return paths.any((p) => p.state == PathLocationState.domainHit)
+        ? TicketLocatability.locatable
+        : TicketLocatability.notLocatable;
+  }
 }
 
 /// 需求：[UC-02 ticket 定位] 逐路徑分類 [whereFiles]。
@@ -118,7 +129,8 @@ PathDeclarationReport classifyTicketPaths({
     );
   }
   final fallback = _unmatchedState(
-    allBundlesDeclared: declaredCount == total,
+    // 零 bundle 不得空真：domain 側視為未宣告。
+    allBundlesDeclared: total > 0 && declaredCount == total,
     nonDomainDeclared: nonDomainPatterns != null,
   );
   return PathDeclarationReport(
@@ -174,22 +186,24 @@ PathClassification _classifyOne(
   List<String>? nonDomainPatterns,
   PathLocationState fallback,
 ) {
-  String? domain;
+  final domains = <String>[];
   var domainLen = -1;
   for (final entry in bundles.entries) {
     final len = _longestMatch(path, entry.value);
     if (len > domainLen) {
       domainLen = len;
-      domain = entry.key;
+      domains.clear();
     }
+    if (len >= 0 && len == domainLen) domains.add(entry.key);
   }
+  domains.sort();
   final nonDomainLen = _longestMatch(path, nonDomainPatterns);
   // 等長時歸 domain（UC-02 v1.8 T1）；最長前綴優先。
   if (domainLen >= 0 && domainLen >= nonDomainLen) {
     return PathClassification(
       path: path,
       state: PathLocationState.domainHit,
-      domain: domain,
+      domains: List<String>.unmodifiable(domains),
     );
   }
   if (nonDomainLen >= 0) {
@@ -215,6 +229,8 @@ int _longestMatch(String path, List<String>? patterns) {
 bool _matches(String path, String pattern) =>
     pattern.endsWith('/') ? path.startsWith(pattern) : path == pattern;
 
+final _globChars = RegExp(r'[*?\[\]{}]');
+
 /// 上游判為格式違規的值不命中任何路徑：空字串、以 `/` 或 `./` 開頭、
 /// 含 `..` 段、含 glob 字元。
 bool _isMatchable(String pattern) {
@@ -222,5 +238,5 @@ bool _isMatchable(String pattern) {
     return false;
   }
   if (pattern.split('/').contains('..')) return false;
-  return !RegExp(r'[*?\[\]{}]').hasMatch(pattern);
+  return !_globChars.hasMatch(pattern);
 }
