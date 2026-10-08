@@ -33,8 +33,11 @@ enum NonDomainPathsMalformedReason {
 
 /// EVT-CORPUS-005 的負載（`docs/events/corpus/
 /// EVT-CORPUS-005-non-domain-paths-parse-failed.md`〈負載結構〉）。
+///
+/// 建構子私有：事件只由 [NonDomainPathsReadResult] 的子型別產生，
+/// `reason` 與 `nonStringElementCount` 的配對因此無法被外部建成矛盾組合。
 class NonDomainPathsParseFailedEvent {
-  const NonDomainPathsParseFailedEvent({
+  const NonDomainPathsParseFailedEvent._({
     required this.path,
     required this.reason,
     this.nonStringElementCount,
@@ -47,6 +50,19 @@ class NonDomainPathsParseFailedEvent {
 
   /// 非字串元素數；只在 [reason] 為 `elementNotString` 時有值，其餘為 `null`。
   final int? nonStringElementCount;
+}
+
+/// 整份格式錯誤的三種子原因（規則 2）；刻意不含 `elementNotString`，
+/// 使「整份錯誤」型別無法表達規則 2a 的情形。
+enum NonDomainPathsWholeFileReason {
+  yamlInvalid(NonDomainPathsMalformedReason.yamlInvalid),
+  keyMissing(NonDomainPathsMalformedReason.keyMissing),
+  notList(NonDomainPathsMalformedReason.notList);
+
+  const NonDomainPathsWholeFileReason(this.eventReason);
+
+  /// 對應事件負載使用的 [NonDomainPathsMalformedReason]。
+  final NonDomainPathsMalformedReason eventReason;
 }
 
 /// 非 domain 側的宣告狀態。
@@ -66,11 +82,11 @@ class NonDomainPathsAbsent extends NonDomainPathsDeclaration {
 }
 
 /// 清單檔整份格式錯誤（規則 2 三種）：非 domain 側視為未宣告（FR-10 規則 4），
-/// 另有事件。`elementNotString` 不走此型別（規則 2a）。
+/// 另有事件。`elementNotString` 不走此型別（規則 2a），型別上無法表達。
 class NonDomainPathsMalformed extends NonDomainPathsDeclaration {
   const NonDomainPathsMalformed(this.reason);
 
-  final NonDomainPathsMalformedReason reason;
+  final NonDomainPathsWholeFileReason reason;
 
   @override
   List<String>? get declaredPatterns => null;
@@ -86,20 +102,82 @@ class NonDomainPathsDeclared extends NonDomainPathsDeclaration {
   List<String>? get declaredPatterns => patterns;
 }
 
-/// 一輪讀取結果；[malformedEvent] 最多一筆（EVT-CORPUS-005〈負載結構〉）。
-class NonDomainPathsReadResult {
-  const NonDomainPathsReadResult({
-    required this.declaration,
-    this.malformedEvent,
-  });
+/// 一輪讀取結果；只有四種合法組合，各為一個子型別，[malformedEvent] 最多一筆
+/// （EVT-CORPUS-005〈負載結構〉）：
+/// [NonDomainPathsReadAbsent]、[NonDomainPathsReadDeclared]、
+/// [NonDomainPathsReadDeclaredWithBadElements]、[NonDomainPathsReadMalformed]。
+sealed class NonDomainPathsReadResult {
+  const NonDomainPathsReadResult();
 
-  final NonDomainPathsDeclaration declaration;
-  final NonDomainPathsParseFailedEvent? malformedEvent;
+  NonDomainPathsDeclaration get declaration;
+  NonDomainPathsParseFailedEvent? get malformedEvent;
 }
 
-const _absentResult = NonDomainPathsReadResult(
-  declaration: NonDomainPathsAbsent(),
-);
+/// 清單檔缺席：無事件。
+class NonDomainPathsReadAbsent extends NonDomainPathsReadResult {
+  const NonDomainPathsReadAbsent();
+
+  @override
+  NonDomainPathsDeclaration get declaration => const NonDomainPathsAbsent();
+
+  @override
+  NonDomainPathsParseFailedEvent? get malformedEvent => null;
+}
+
+/// 已宣告且元素皆為字串：無事件。
+class NonDomainPathsReadDeclared extends NonDomainPathsReadResult {
+  const NonDomainPathsReadDeclared(this.patterns);
+
+  final List<String> patterns;
+
+  @override
+  NonDomainPathsDeclaration get declaration => NonDomainPathsDeclared(patterns);
+
+  @override
+  NonDomainPathsParseFailedEvent? get malformedEvent => null;
+}
+
+/// 已宣告但有非字串元素（規則 2a）：事件為 `elementNotString` 且帶個數。
+class NonDomainPathsReadDeclaredWithBadElements
+    extends NonDomainPathsReadResult {
+  NonDomainPathsReadDeclaredWithBadElements({
+    required String path,
+    required this.patterns,
+    required int nonStringElementCount,
+  }) : malformedEvent = NonDomainPathsParseFailedEvent._(
+         path: path,
+         reason: NonDomainPathsMalformedReason.elementNotString,
+         nonStringElementCount: nonStringElementCount,
+       );
+
+  final List<String> patterns;
+
+  @override
+  NonDomainPathsDeclaration get declaration => NonDomainPathsDeclared(patterns);
+
+  @override
+  final NonDomainPathsParseFailedEvent malformedEvent;
+}
+
+/// 整份格式錯誤（規則 2）：未宣告，事件 reason 與 [reason] 對應，個數為 `null`。
+class NonDomainPathsReadMalformed extends NonDomainPathsReadResult {
+  NonDomainPathsReadMalformed({
+    required String path,
+    required NonDomainPathsWholeFileReason reason,
+  }) : declaration = NonDomainPathsMalformed(reason),
+       malformedEvent = NonDomainPathsParseFailedEvent._(
+         path: path,
+         reason: reason.eventReason,
+       );
+
+  @override
+  final NonDomainPathsMalformed declaration;
+
+  @override
+  final NonDomainPathsParseFailedEvent malformedEvent;
+}
+
+const _absentResult = NonDomainPathsReadAbsent();
 
 /// 需求：[SPEC-006 FR-10] 依型別表定位清單檔並讀取。位置與鍵名取自
 /// [projectTable]，缺欄時回落 [builtinTable]（規則 1）。
@@ -145,14 +223,14 @@ NonDomainPathsReadResult _classify(String path, String key, List<int> bytes) {
       'non-domain paths file YAML invalid: $path ($error)',
       900,
     );
-    return _malformed(path, NonDomainPathsMalformedReason.yamlInvalid);
+    return _malformed(path, NonDomainPathsWholeFileReason.yamlInvalid);
   }
   if (document is! Map || !document.containsKey(key)) {
-    return _malformed(path, NonDomainPathsMalformedReason.keyMissing);
+    return _malformed(path, NonDomainPathsWholeFileReason.keyMissing);
   }
   final value = document[key];
   if (value is! List) {
-    return _malformed(path, NonDomainPathsMalformedReason.notList);
+    return _malformed(path, NonDomainPathsWholeFileReason.notList);
   }
   return _declared(path, value);
 }
@@ -162,38 +240,31 @@ NonDomainPathsReadResult _classify(String path, String key, List<int> bytes) {
 NonDomainPathsReadResult _declared(String path, List<dynamic> value) {
   final patterns = List<String>.unmodifiable(value.whereType<String>());
   final nonStringCount = value.length - patterns.length;
-  final declaration = NonDomainPathsDeclared(patterns);
   if (nonStringCount == 0) {
-    return NonDomainPathsReadResult(declaration: declaration);
+    return NonDomainPathsReadDeclared(patterns);
   }
   _log(
     // i18n-exempt: 開發者診斷 log
     'non-domain paths non-string elements skipped: $path ($nonStringCount)',
     900,
   );
-  return NonDomainPathsReadResult(
-    declaration: declaration,
-    malformedEvent: NonDomainPathsParseFailedEvent(
-      path: path,
-      reason: NonDomainPathsMalformedReason.elementNotString,
-      nonStringElementCount: nonStringCount,
-    ),
+  return NonDomainPathsReadDeclaredWithBadElements(
+    path: path,
+    patterns: patterns,
+    nonStringElementCount: nonStringCount,
   );
 }
 
 NonDomainPathsReadResult _malformed(
   String path,
-  NonDomainPathsMalformedReason reason,
+  NonDomainPathsWholeFileReason reason,
 ) {
   _log(
     // i18n-exempt: 開發者診斷 log
     'non-domain paths file malformed: $path (${reason.name})',
     900,
   );
-  return NonDomainPathsReadResult(
-    declaration: NonDomainPathsMalformed(reason),
-    malformedEvent: NonDomainPathsParseFailedEvent(path: path, reason: reason),
-  );
+  return NonDomainPathsReadMalformed(path: path, reason: reason);
 }
 
 void _log(String message, int level) {
