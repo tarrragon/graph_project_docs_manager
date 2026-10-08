@@ -57,7 +57,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 
 | helper | 路徑 | 用途 | 使用群組 |
 |--------|------|------|---------|
-| 邊型表建構器 | `test/helpers/spec007/edge_table_builder.dart` | 以宣告方式建出含指定邊型（鍵名、class、正反向欄位、基數、layer）與版本的型別表 JSON | S6、G1～G9 |
+| 邊型表建構器 | `test/helpers/spec007/edge_table_builder.dart` | 以宣告方式建出含指定邊型（鍵名、class、正反向欄位、基數、layer、direction）與版本的型別表 JSON | S6、G1～G9 |
 | rawNode 建構器 | `test/helpers/spec007/raw_node_builder.dart` | 以 `id`、型別、路徑與 frontmatter map 建 `rawNode` | G1～G9、T1、D3 |
 | 分布已知 fixture | `test/helpers/spec007/known_distribution_fixture.dart` | 一組 rawNodes 與其手算的全部計數（計數的權威位置是 fixture 檔內的常數，本文件不另列表：`0.4.0-W2-003` 建立節點數、`duplicateId`、引用值三類；`0.4.0-W2-004` 擴充各邊型邊數、宣告來源五組、`multiSource`），供 G3-8、G6-1、NFR 基準共用 | G3、G6、G9 |
 | log 記錄器 | `test/helpers/spec007/log_recorder.dart` | 實作 log sink，可查詢事件名與負載 | L1～L3 |
