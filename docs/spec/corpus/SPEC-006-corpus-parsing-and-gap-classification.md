@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-10-08"
-version: "1.16"
+version: "1.17"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -219,19 +219,20 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 **規則**：
 - 一筆 EVT-CORPUS-003 對應一筆破洞，帶相對路徑、歸屬型別（或平手時的候選型別與 schema 歧義標記）、原因；資訊要足以讓使用者直接去修
-- 一筆 EVT-CORPUS-004 對應一筆破洞，帶 UC 相對路徑、所屬型別 UC（該 UC 仍是節點，型別已知；`0.5.0-W1-113` PM 處置 N5）與原因「flow 區塊解析失敗」（FR-09 規則 3a、3b）
-- 一筆 EVT-CORPUS-005 對應一筆破洞，帶非 domain 路徑清單檔的相對路徑與原因「非 domain 路徑清單格式錯誤」（新原因碼，FR-10；`0.5.0-W1-096.7` 用戶裁決 NC-1 (i) I-b）
+- 一筆 EVT-CORPUS-004 對應一筆破洞，帶 UC 相對路徑、所屬型別 UC（該 UC 仍是節點，型別已知；`0.5.0-W1-113` PM 處置 N5）與原因碼 `flowBlockMalformed`（「flow 區塊解析失敗」，FR-09 規則 3a、3b）
+- 一筆 EVT-CORPUS-005 對應一筆破洞，帶非 domain 路徑清單檔的相對路徑、原因碼 `nonDomainPathsMalformed`（「非 domain 路徑清單格式錯誤」）與子原因 `NonDomainPathsMalformedReason`（FR-10 規則 2；`0.5.0-W1-096.7` 用戶裁決 NC-1 (i) I-b、PM 處置識別名）
+- EVT-CORPUS-005 的破洞同樣不依賴 FR-06 路徑模式查詢：查詢不可用時照常產生（清單檔位置取自型別表欄位或內建表，不需路徑對型別；`0.5.0-W1-114.1` PM 處置 NC-e，與 N4 同理）
 - EVT-CORPUS-004 的破洞不依賴 FR-06 路徑模式查詢：查詢不可用時照常產生（UC 型別由判型取得，不需路徑對型別；`0.5.0-W1-113` PM 處置 N4，為下一條的直接推論）
 - FR-06 查詢不可用時，不產生 EVT-CORPUS-003 的 `parseFailure` 破洞，破洞報告顯示「無法判定破洞」並說明原因。原因以原因碼表示（專案型別表版本不在 App 已知範圍／型別表沒有路徑模式），屬資料值；「不在已知範圍」涵蓋版本高於內建、缺席與無法解析三種情形，判定式與 SPEC-001 schema 不相容關卡相同，因此在 App 內經關卡進入時不會出現，只在繞過關卡的呼叫路徑出現（用戶裁決 2026-09-25，WRAP）；顯示文字由畫面經 l10n 投影（SPEC-004 v1.47 key），Diagnostics 不產生在地化字串（用戶裁決 2026-09-24）
 - 破洞數 = FR-07 的「命中 carrier 數」＋「flow 區塊解析失敗的 UC 數」＋「非 domain 路徑清單格式錯誤數」（第三項為 0 或 1；前兩項依 `0.5.0-W1-001.8` 用戶裁決 CD1，第三項依 `0.5.0-W1-096.7` 用戶裁決 NC-1 (i)）
-- EVT-CORPUS-005 的破洞在 FR-06 查詢不可用時是否照常產生，未裁決（`0.5.0-W1-114.1` NeedsContext）
 
 **驗收條件**：
 - [ ] Given IT-2 的實體化檔案樹，Then 每一筆破洞的路徑、歸屬型別、原因與凍結的參照實作輸出一致，且沒有多出或缺少的破洞
 - [ ] Given `docs/work-logs/` 下非 `tickets/` 目錄的工作日誌，frontmatter 有 YAML 語法錯誤，Then 不產生破洞
 - [ ] Given FR-06 查詢不可用、語料無 flow 解析失敗，Then 不產生破洞，並回報無法判定
 - [ ] Given FR-06 查詢不可用、一份 UC 的 flow 區塊解析失敗，Then 仍產生該 UC 的 flow 區塊解析失敗破洞，且破洞帶型別 UC（E2 正向對照：N4 前的寫法會漏報）
-- [ ] Given 非 domain 路徑清單檔 YAML 解析失敗，Then 產生一筆原因為「非 domain 路徑清單格式錯誤」的 `parseFailure` 破洞，破洞數比該檔正常時多 1
+- [ ] Given 非 domain 路徑清單檔 YAML 解析失敗，Then 產生一筆原因碼為 `nonDomainPathsMalformed`、子原因 `yamlInvalid` 的 `parseFailure` 破洞，破洞數比該檔正常時多 1
+- [ ] Given FR-06 查詢不可用、非 domain 路徑清單檔缺該鍵，Then 仍產生一筆原因碼 `nonDomainPathsMalformed`、子原因 `keyMissing` 的破洞（NC-e，E2 正向對照）
 
 ### FR-09：UC flow 區塊解析
 
@@ -244,8 +245,8 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 | 1 | 區塊判準與框架既有函式相同（`.claude/skills/doc/doc_system/core/uc_registry.py` 的 `_extract_structured_flow_steps`）：本文中的 fenced yaml 區塊，YAML 解析結果為 map、含 `flow` 鍵且其值為非空清單；同一文件有多個時取**第一個**符合者 |
 | 2 | 不符合規則 1 的 yaml 區塊（解析失敗、不是 map、沒有 `flow` 鍵、`flow` 不是非空清單）略過，繼續找下一個，與框架函式一致 |
 | 3 | 找不到符合規則 1 的區塊時，該 UC 的步驟清單為空清單；UC 本身照常是節點，FR-07 的計數與守恆式不受影響 |
-| 3a | 區分「無區塊」與「區塊壞掉」（2026-10-08 用戶裁決 3b，`0.5.0-W1-001.2`）：UC 本文的 flow yaml 區塊 YAML 解析失敗時，該 UC 產生 `parseFailure` 破洞，原因碼為新增的「flow 區塊解析失敗」；UC 本文沒有 flow 區塊時為「無區塊」，不產生破洞。兩者的步驟清單都是空清單（規則 3），App 須能分辨兩者。理由：壞掉的 flow 與「沒有 flow」同形是靜默失敗；框架函式對兩者回傳相同，App 不能直接沿用其回傳值 |
-| 3b | 規則 3a 的邊界（`0.5.0-W1-001.8` 用戶裁決第二輪，2026-10-08，AB1／CD1）：(a) **flow 區塊的判定**：fenced yaml 區塊內有頂層 `flow:` 行（行首、無縮排）即判為 flow 區塊，屬文字層判定，不需解析；(b) **後方另有合法區塊**：任一 flow 區塊解析失敗即產生破洞，步驟清單仍取第一個合法區塊（規則 1），兩者並存；(c) **承載事件**：Corpus 對該 UC 發出一筆 EVT-CORPUS-004（不論壞區塊數），UC 仍是節點，不發 EVT-CORPUS-003；(d) **計數**：FR-08 破洞數公式納入此類破洞，FR-07 兩條守恆式不變。原因碼程式識別名由實作票定。(e) **負載**：EVT-CORPUS-004 不另設行號欄位，負載維持 path／reason，reason 文字可含失敗區塊起始行號（與 EVT-CORPUS-003 一致）。**已知限制**：判定只看頂層 `flow:` 行——縮排錯誤在 `flow:` 行之下時頂層行仍在，可判定並回報；`flow:` 行本身被縮排時不成頂層，該區塊判為非 flow 區塊而略過，不產生破洞（`0.5.0-W1-001.8` PM 處置，2026-10-08） |
+| 3a | 區分「無區塊」與「區塊壞掉」（2026-10-08 用戶裁決 3b，`0.5.0-W1-001.2`）：UC 本文的 flow yaml 區塊 YAML 解析失敗時，該 UC 產生 `parseFailure` 破洞，原因碼為新增的 `flowBlockMalformed`（「flow 區塊解析失敗」）；UC 本文沒有 flow 區塊時為「無區塊」，不產生破洞。兩者的步驟清單都是空清單（規則 3），App 須能分辨兩者。理由：壞掉的 flow 與「沒有 flow」同形是靜默失敗；框架函式對兩者回傳相同，App 不能直接沿用其回傳值 |
+| 3b | 規則 3a 的邊界（`0.5.0-W1-001.8` 用戶裁決第二輪，2026-10-08，AB1／CD1）：(a) **flow 區塊的判定**：fenced yaml 區塊內有頂層 `flow:` 行（行首、無縮排）即判為 flow 區塊，屬文字層判定，不需解析；(b) **後方另有合法區塊**：任一 flow 區塊解析失敗即產生破洞，步驟清單仍取第一個合法區塊（規則 1），兩者並存；(c) **承載事件**：Corpus 對該 UC 發出一筆 EVT-CORPUS-004（不論壞區塊數），UC 仍是節點，不發 EVT-CORPUS-003；(d) **計數**：FR-08 破洞數公式納入此類破洞，FR-07 兩條守恆式不變。原因碼程式識別名為 `flowBlockMalformed`（PM 決定 2026-10-08，`0.5.0-W1-001.3`，與 `nonDomainPathsMalformed` 同一命名慣例）。(e) **負載**：EVT-CORPUS-004 不另設行號欄位，負載維持 path／reason，reason 文字可含失敗區塊起始行號（與 EVT-CORPUS-003 一致）。**已知限制**：判定只看頂層 `flow:` 行——縮排錯誤在 `flow:` 行之下時頂層行仍在，可判定並回報；`flow:` 行本身被縮排時不成頂層，該區塊判為非 flow 區塊而略過，不產生破洞（`0.5.0-W1-001.8` PM 處置，2026-10-08） |
 | 4 | 步驟清單依區塊內的原始順序保存，不排序、不去重：主線順序取清單順序（`0.5.0-W1-001` 裁決 (c)），重複 step id 由 Graph 判定（SPEC-007 FR-10） |
 | 5 | 每一步保存區塊中該項的完整 map（FlowStep 欄位見上游 `FLOWSTEP_REQUIRED_FIELDS`：`id`、`name`、`next`、`branch_from`、`return_to`、`emits`、`consumes`、`traverses`），不在 Corpus 解析參照、不檢查欄位完整性 |
 | 6 | 只對 UC 型別的節點讀取；其他型別的本文不找 flow 區塊 |
@@ -253,7 +254,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 **驗收條件**：
 - [ ] Given 本專案與 flutter_balance 兩語料，Then 各 UC `rawNode` 的步驟數等於其 flow 區塊步驟數，總數分別為 40、9（2026-10-07 量測）
 - [ ] Given 一份 UC 本文先有一個不含 `flow` 鍵的 yaml 區塊、再有一個合法 flow 區塊，Then 取第二個區塊的步驟
-- [ ] Given 一份 UC 唯一的 yaml 區塊是 YAML 語法錯誤、含頂層 `flow:` 行的區塊，Then 步驟清單為空清單，該 UC 仍是節點，掃描完成，發出一筆 EVT-CORPUS-004、不發 EVT-CORPUS-003，且產生一筆原因碼為「flow 區塊解析失敗」的 `parseFailure` 破洞（E2 正向對照）
+- [ ] Given 一份 UC 唯一的 yaml 區塊是 YAML 語法錯誤、含頂層 `flow:` 行的區塊，Then 步驟清單為空清單，該 UC 仍是節點，掃描完成，發出一筆 EVT-CORPUS-004、不發 EVT-CORPUS-003，且產生一筆原因碼為 `flowBlockMalformed` 的 `parseFailure` 破洞（E2 正向對照）
 - [ ] Given 一份 UC 先有一個含頂層 `flow:` 行但 YAML 語法錯誤的區塊、再有一個合法 flow 區塊，Then 步驟取第二個區塊，且仍產生一筆「flow 區塊解析失敗」破洞（規則 3b (b)）
 - [ ] Given 一份 UC 有兩個含頂層 `flow:` 行且都解析失敗的區塊，Then 只發出一筆 EVT-CORPUS-004、產生一筆破洞
 - [ ] Given 一份 UC 有一個 YAML 語法錯誤但沒有頂層 `flow:` 行的 yaml 區塊，Then 不產生破洞（規則 3b (a) 的負向對照）
@@ -263,21 +264,21 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 ### FR-10：非 domain 路徑清單檔格式錯誤
 
-**描述**：被觀測專案的非 domain 路徑清單檔（UC-02〈ticket 定位的五種狀態與整體未宣告〉的非 domain 側宣告）格式錯誤時，Corpus 發出 EVT-CORPUS-005，Diagnostics 依 FR-08 產生 `parseFailure` 破洞（新原因碼）。依據：`0.5.0-W1-096.7` 用戶裁決 NC-1（2026-10-08），(i) I-b 沿用 `parseFailure` 擴原因碼、語意不同另立事件（比照 EVT-CORPUS-004）；(ii) II-a。
+**描述**：被觀測專案的非 domain 路徑清單檔（UC-02〈ticket 定位的五種狀態與整體未宣告〉的非 domain 側宣告）格式錯誤時，Corpus 發出 EVT-CORPUS-005，Diagnostics 依 FR-08 產生 `parseFailure` 破洞（新原因碼 `nonDomainPathsMalformed`，`0.5.0-W1-096.7` PM 處置識別名）。依據：`0.5.0-W1-096.7` 用戶裁決 NC-1（2026-10-08），(i) I-b 沿用 `parseFailure` 擴原因碼、語意不同另立事件（比照 EVT-CORPUS-004）；(ii) II-a。
 
 **規則**：
 
 | # | 規則 |
 |---|------|
 | 1 | 檔案位置與鍵名取自專案型別表的 `non_domain_paths_file`／`non_domain_paths_key`；型別表缺這兩欄時回落內建表值（`0.5.0-W1-096.7` PM 決定 NC-2），不在程式內寫死 |
-| 2 | 格式錯誤為三種：YAML 解析失敗、缺該鍵、該鍵的值不是清單。任一成立即發出一筆 EVT-CORPUS-005 |
+| 2 | 格式錯誤為三種，子原因列舉 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList }`：YAML 解析失敗（`yamlInvalid`）、缺該鍵（`keyMissing`）、該鍵的值不是清單（`notList`）。任一成立即發出一筆 EVT-CORPUS-005，`reason` 為對應子原因 |
 | 3 | 檔案不存在不是格式錯誤：不發事件、不產生破洞，非 domain 側為未宣告（「壞檔不得當作缺席」在錯誤回報層成立，見規則 4） |
 | 4 | 格式錯誤時非 domain 側視為未宣告：路徑分類照 UC-02 宣告表「非 domain 清單缺席」的列處理（未命中路徑標「非 domain 未宣告」），不新增顯示狀態；報告頁宣告狀態行另標「格式錯誤」，與「檔案不存在」區分（II-a，畫面見 UC-02） |
 
 **驗收條件**：
-- [ ] Given 清單檔 YAML 語法錯誤，Then 發出一筆 EVT-CORPUS-005，非 domain 側視為未宣告（E2 正向對照）
-- [ ] Given 清單檔缺該鍵，Then 發出一筆 EVT-CORPUS-005
-- [ ] Given 該鍵的值為字串，Then 發出一筆 EVT-CORPUS-005
+- [ ] Given 清單檔 YAML 語法錯誤，Then 發出一筆 `reason` 為 `yamlInvalid` 的 EVT-CORPUS-005，非 domain 側視為未宣告（E2 正向對照）
+- [ ] Given 清單檔缺該鍵，Then 發出一筆 `reason` 為 `keyMissing` 的 EVT-CORPUS-005
+- [ ] Given 該鍵的值為字串，Then 發出一筆 `reason` 為 `notList` 的 EVT-CORPUS-005
 - [ ] Given 清單檔不存在，Then 不發 EVT-CORPUS-005，非 domain 側為未宣告（與第一條對照：分類相同、事件不同）
 - [ ] Given 專案型別表缺 `non_domain_paths_file`／`non_domain_paths_key`，Then 依內建表值定位清單檔
 
@@ -326,6 +327,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.17 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪：FR-08 新增 EVT-CORPUS-005 破洞不依賴 FR-06 路徑查詢（PM 處置 NC-e），移除該項未裁決標記並補一條驗收；原因碼識別名落地——flow 區塊解析失敗為 `flowBlockMalformed`（`0.5.0-W1-001.3` PM 決定），非 domain 路徑清單格式錯誤為 `nonDomainPathsMalformed`，子原因 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList }`（`0.5.0-W1-096.7` PM 處置）；FR-09 規則 3a／3b 與驗收、FR-10 規則 2 與驗收同步 |
 | 1.16 | 2026-10-08 | `0.5.0-W1-114.1`：FR-08 補兩處釐清——EVT-CORPUS-004 的破洞不依賴 FR-06 路徑模式查詢（N4）、帶所屬型別 UC（N5），「查詢不可用時不產生破洞」限定為 EVT-CORPUS-003（`0.5.0-W1-113` PM 處置）；落地 `0.5.0-W1-096.7` 用戶裁決 NC-1：新增 FR-10 非 domain 路徑清單檔格式錯誤（三種格式錯誤、檔案不存在不算、位置取型別表欄位並回落內建表、非 domain 側視為未宣告），經新增 EVT-CORPUS-005 交出，`parseFailure` 新原因碼；FR-08 收 EVT-CORPUS-005、破洞數公式加第三項；〈概述〉職責表同步；補四條驗收。EVT-CORPUS-005 破洞在查詢不可用時的處置未裁決 |
 | 1.15 | 2026-10-08 | 落地 `0.5.0-W1-001.8` PM 處置：FR-09 規則 3b 補 (e) EVT-CORPUS-004 不另設行號欄位（reason 文字可含行號），並寫明已知限制——`flow:` 行本身被縮排的區塊判為非 flow 區塊而略過 |
 | 1.14 | 2026-10-08 | 〈本版範圍外〉`unlocatable` 列補 `0.5.0-W1-096.9` 用戶裁決 E1：部分 bundle 宣告且非 domain 清單缺席時，未命中路徑同樣為「domain 未宣告」。本規格 FR 不變 |

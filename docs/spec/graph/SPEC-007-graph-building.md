@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.16"
+version: "1.17"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -249,9 +249,15 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | flow 參照未解析 | FR-10：`branch_from`、`return_to` 或分支步 `next` 指向同 UC 不存在的 step id；或指向 UC 內重複的 step id | {UC ID, step id, 欄位, 原始值} |
 | UC 內 step id 重複 | FR-10：同一 UC 內兩個以上步驟的 `id` 相同 | {UC ID, step id, 欄位, 原始值} |
 | `traverses` 名稱未宣告 | FR-11：`traverses` 的值沒有 DomainBundle 以 `domain` 宣告（含因重複宣告被排除於名稱索引的名稱）；同一步驟內同一值重複出現只報一筆 | {UC ID, step id, 欄位, 原始值} |
-| `traverses` 鍵缺席 | FR-11：步驟沒有 `traverses` 鍵（schema 必填欄位缺席，不視同 `[]`） | {UC ID, step id, 欄位, 原始值}（欄位為 `traverses`；鍵缺席時原始值的表示未裁決，見 `0.5.0-W1-114.1` NeedsContext） |
+| `traverses` 鍵缺席 | FR-11：步驟沒有 `traverses` 鍵（schema 必填欄位缺席，不視同 `[]`） | {UC ID, step id, 欄位, 原始值}（欄位為 `traverses`，原始值為 `null`；`0.5.0-W1-114.1` PM 處置 NC-b） |
 
-前三種子類的程式識別名（camelCase 字面）未在裁決內，由 `0.5.0-W1-001.8` NeedsContext 上報；第四種同樣未命名（`0.5.0-W1-114.1` NeedsContext）。裁決前實作不得自行命名。
+另有一種非 flow 子圖的名稱索引缺陷，同屬 `graphDefect` 大類（`0.5.0-W1-114.1` PM 處置 NC-d，比照 D3）：
+
+| 子類 | 來源 | 負載 |
+|------|------|------|
+| domain 重複宣告 | FR-11〈重複 domain 宣告〉：兩個以上 DomainBundle 宣告相同 `domain` 值 | {domain, 衝突的 DomainBundle ID 清單} |
+
+前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（第四子類由 `0.5.0-W1-001.4` 或 `0.5.0-W1-001.5` 命名，`0.5.0-W1-114.1` PM 處置 NC-c）。實作票命名前，其他實作不得自行命名。
 
 **規則**：
 - 一筆缺陷對應一筆破洞。`danglingRef`、`malformedRef` 帶來源節點 ID 與路徑、欄位名、原始值（原樣，不正規化）、邊型、原因碼；`duplicateId` 帶 ID 與全部路徑；`multiSource` 帶起點、邊型、全部終點與各自的宣告來源
@@ -316,9 +322,9 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 解析不到的名稱（未宣告）：回報一筆「`traverses` 名稱未宣告」缺陷（負載見 FR-09），收在 EVT-GRAPH-001 的 `graphDefects`，經 FR-09 成為 `graphDefect`
 - 同一步驟的 `traverses` 重複出現同一個未宣告名稱：以（步驟, 值）去重，只回報一筆（`0.5.0-W1-113` PM 處置 N-E）
 - `traverses` 為空清單：無解析結果、無缺陷（純畫面步驟，Layout 的「畫面」列）
-- 步驟缺 `traverses` 鍵：無解析結果，回報一筆「`traverses` 鍵缺席」缺陷（負載見 FR-09），不視同空清單、不歸「畫面」列（`0.5.0-W1-114` 用戶裁決 T1，2026-10-08）。`traverses` 是 schema 必填欄位，缺鍵是資料缺陷，與純畫面步驟在畫面上須可區分；上游 `doc validate` 不檢查缺鍵，App 端自行回報
+- 步驟缺 `traverses` 鍵：無解析結果，回報一筆「`traverses` 鍵缺席」缺陷（負載見 FR-09，欄位 `traverses`、原始值 `null`），不視同空清單、不歸「畫面」列（`0.5.0-W1-114` 用戶裁決 T1，2026-10-08）。`traverses` 是 schema 必填欄位，缺鍵是資料缺陷，與純畫面步驟在畫面上須可區分；上游 `doc validate` 不檢查缺鍵，App 端自行回報
 - 步驟的 `traverses` 部分值已宣告、部分未宣告：已宣告值照常解析，未宣告值各回報缺陷；解析結果只含已宣告值（泳道放置見 SPEC-001 §1〈泳道布局規則〉「`traverses` 異常的步驟」）
-- **重複 domain 宣告**（`0.5.0-W1-113` 用戶裁決 D-3，2026-10-08）：兩個以上 DomainBundle 宣告相同 `domain` 值時，比照主圖重複 ID（FR-02），這些 DomainBundle 全部不進名稱索引，該名稱的所有 `traverses` 引用回報為未宣告，另回報一筆重複宣告缺陷。DomainBundle 的 `id` 與 `domain` 是兩個欄位，同 `domain` 不同 `id` 時 FR-02 不會觸發，須在名稱索引另行偵測。上游 `doc validate` 另擋下重複 `domain`（`0.5.0-W1-113.1`，框架變更），未升級框架的專案由本規則保護。重複宣告缺陷的子類歸屬與負載、這些 DomainBundle 在矩陣與泳道是否仍各成一列，未裁決（`0.5.0-W1-114.1` NeedsContext）
+- **重複 domain 宣告**（`0.5.0-W1-113` 用戶裁決 D-3，2026-10-08）：兩個以上 DomainBundle 宣告相同 `domain` 值時，比照主圖重複 ID（FR-02），這些 DomainBundle 全部不進名稱索引，該名稱的所有 `traverses` 引用回報為未宣告，另回報一筆重複宣告缺陷。DomainBundle 的 `id` 與 `domain` 是兩個欄位，同 `domain` 不同 `id` 時 FR-02 不會觸發，須在名稱索引另行偵測。上游 `doc validate` 另擋下重複 `domain`（`0.5.0-W1-113.1`，框架變更），未升級框架的專案由本規則保護。重複宣告缺陷為 `graphDefect` 子類「domain 重複宣告」，每個重複的 `domain` 值一筆，負載 {domain, 衝突的 DomainBundle ID 清單}（見 FR-09；`0.5.0-W1-114.1` PM 處置 NC-d）。這些 DomainBundle 仍是節點，在矩陣與泳道仍各自成列（列＝DomainBundle 節點）；因被排除於名稱索引，其列沒有任何 `traverses` 命中，並帶缺陷標記
 - 解析器的輸入是名稱字串、輸出是 DomainBundle 節點 ID 或未宣告，不綁 FlowStep 型別：`depends_on_domains` 建邊時接同一解析器（`0.6.0-W1-074`），避免兩處各自比對而漂移
 - 本版只解析 `traverses`；`depends_on_domains` 不解析、不建邊（D6 排除鍵維持）
 - Graph 對外提供 DomainBundle `domain` 的方式以本 FR 的解析器條文為準，與 `0.5.0-W1-001.5`（名稱解析器實作）同批落地，不另行設計查詢（2026-10-08 用戶裁決，`0.5.0-W1-103`）。`bundle_dependency` 的值是 DomainBundle 節點 ID（如 `DOMAIN-MAP-corpus`），走 FR-03 的 ID 解析，不經本解析器
@@ -332,7 +338,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given 一個步驟 `traverses: ["nope", "nope"]` 且 `nope` 未宣告，Then 只回報一筆缺陷
 - [ ] Given 一個步驟沒有 `traverses` 鍵，Then 回報一筆「`traverses` 鍵缺席」缺陷（E2 正向對照：不得當 `[]` 而無缺陷）；`traverses: []` 的步驟不回報（對照）
 - [ ] Given 一個步驟 `traverses: ["graph", "nope"]`、`graph` 已宣告，Then 解析結果只含 `graph` 的 DomainBundle，並回報一筆 `nope` 未宣告缺陷
-- [ ] Given 兩個 DomainBundle 的 `id` 不同、`domain` 皆為 `corpus`，Then `traverses: ["corpus"]` 回報為未宣告，並回報一筆重複宣告缺陷（E2 正向對照：不得取其一解析成功）
+- [ ] Given 兩個 DomainBundle 的 `id` 不同、`domain` 皆為 `corpus`，Then `traverses: ["corpus"]` 回報為未宣告，並回報一筆負載為 {`corpus`, 兩個 DomainBundle ID} 的「domain 重複宣告」缺陷（E2 正向對照：不得取其一解析成功）；兩個 DomainBundle 仍各自出現在矩陣列集合中
+- [ ] Given 一個步驟沒有 `traverses` 鍵，Then 「`traverses` 鍵缺席」缺陷負載的欄位為 `traverses`、原始值為 `null`
 
 ### FR-12：domain × UC 關係與依賴路徑（Graph 公開面）
 
@@ -343,7 +350,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 回傳值：關係種類三值之一；間接依賴時另帶依賴路徑清單（每條為 DomainBundle 序列），直接貫穿與無關時路徑為空
 - 只計 FR-11 解析成功的值：未宣告名稱、缺 `traverses` 鍵、重複宣告被排除的名稱不構成直接貫穿
 - 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致
-- 介面識別名與簽章未裁決（`0.5.0-W1-114.1` NeedsContext）
+- 介面識別名與簽章交 Step 6 的 Graph 間接依賴實作票定（`0.5.0-W1-114.1` PM 處置 NC-c）；該實作的預期值取凍結快照（PM 接受的推論）
 
 **驗收條件**：
 - [ ] Given 本專案語料的凍結快照（預期值取凍結快照，`0.5.0-W1-114` PM 處置 N1），Then 全部格的關係種類與快照一致（本版資料下為 SPEC-001 §1〈本專案期望分布〉：直接貫穿 19、間接依賴 10、無關 19）
@@ -398,6 +405,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.17 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪（PM 處置 NC-b／NC-c／NC-d）：FR-09「`traverses` 鍵缺席」負載原始值定為 `null`；新增 `graphDefect` 子類「domain 重複宣告」，負載 {domain, 衝突的 DomainBundle ID 清單}；第四 flow 子類、domain 重複宣告與 FR-12 的識別名改為交實作票定；FR-11 重複 domain 宣告寫明兩個 DomainBundle 仍各自成列、其列無 `traverses` 命中並帶缺陷標記，缺鍵規則補負載；補一條驗收、擴寫一條驗收。移除本票三處未裁決標記 |
 | 1.16 | 2026-10-08 | `0.5.0-W1-114.1`（依 `0.5.0-W1-114` 用戶裁決 T1／O1 與 PM 補定、`0.5.0-W1-113` 用戶裁決 D-3 與 PM 處置 N-A／N-B／N-E）：FR-01 內建表也沒有的邊型回報來源值為「預設（有向）」；FR-06 負載與驗收 #3 的 `graphDefects` 筆數改含 flow 子類並補一條正向對照；FR-09 新增第四個 flow 子類「`traverses` 鍵缺席」，未宣告名稱子類註明去重與重複宣告；FR-11 新增（步驟, 值）去重、缺鍵回報、部分已宣告、重複 domain 宣告（兩者皆排除於名稱索引並報重複）四條規則與驗收；新增 FR-12 domain × UC 關係與依賴路徑（Graph 公開面，判定式引 SPEC-001 §1）；〈本版範圍外〉貫穿數列與〈概述〉職責表同步；D4 改為 flow 四子類。未裁決項（缺鍵原始值表示、第四子類與 FR-12 識別名、重複宣告缺陷子類與矩陣列）見該票 NeedsContext |
 | 1.15 | 2026-10-08 | `0.5.0-W1-103.1` PM 處置：FR-01 缺 `direction` 規則補一句——版本不在已知範圍時由 SPEC-001 §1「schema 不相容」關卡涵蓋、內建表本身帶 `direction`，取代原指向 NeedsContext 的句子 |
 | 1.14 | 2026-10-08 | `0.5.0-W1-103.1` 用戶裁決第二輪 H1：FR-01 寫明專案型別表缺 `direction` 欄時，版本在已知範圍內依鍵名從內建表補並回報來源、內建表也沒有的邊型照 `directed` 處理（沿用 SPEC-006 D8）；補兩條驗收。版本不在已知範圍時的處置未裁決，見該票 NeedsContext |
