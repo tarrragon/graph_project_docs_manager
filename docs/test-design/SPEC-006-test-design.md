@@ -69,6 +69,8 @@ Mock 只替換外部世界（檔案系統 port、asset 讀取）；Schema、Corp
 - `test/unit/diagnostics/` 只 import `lib/diagnostics/` 與 `lib/corpus/`（事件型別），不得 import `lib/schema/`（Diagnostics → Schema 邊已刪除）
 - 只有 `test/integration/` 的兩項 IT 可同時 import 三者
 
+上列「import」涵蓋 `package:` 與相對路徑寫法，以及 `export`；判準同 SPEC-001-test-design §1.4（`0.5.0-W1-114.9` 雙審回報，PM 處置 2026-10-09）。
+
 ### 1.4 共用測資 helper（拆分友善）
 
 | helper | 路徑 | 用途 | 使用群組 |

@@ -71,7 +71,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 - `test/unit/diagnostics/` 可 import `lib/diagnostics/`、`lib/graph/`（僅事件型別）、`lib/corpus/`（僅事件型別）；不得 import `lib/schema/`
 - 只有 `test/integration/graph_it*_test.dart` 可同時 import 全部
 
-各實作票驗收含上述 import 方向檢查（grep `^import` 差集為零）。
+各實作票驗收含上述 import 方向檢查（`package:` 與相對路徑的 `import`、以及 `export` 皆計入，差集為零；判準同 SPEC-001-test-design §1.4，`0.5.0-W1-114.9` 雙審回報，PM 處置 2026-10-09）。
 
 ### 1.4 共用測資 helper（拆分友善）
 

@@ -99,6 +99,8 @@ Mock 只替換外部世界（資料夾選擇、檔案系統 port）；Graph、La
 
 依系統層 §2：Layout 只依賴 Graph。
 
+本節與各實作票「import 方向檢查」所稱的依賴，涵蓋 `package:` 與相對路徑兩種寫法的 `import`，以及 `export`（re-export 同樣形成依賴）；守衛須三者皆攔，並各附一個應被攔下的正向對照輸入（E2）。依據為系統層 §2 依賴方向的直接推論（`0.5.0-W1-114.9` 雙審回報，PM 處置 2026-10-09）。
+
 - `test/unit/layout/` 只 import `lib/layout/` 與 `lib/graph/` 的公開值型別；不得 import `lib/corpus/`（SPEC-001〈Graph 須提供的分支欄位〉：不得改為直讀 Corpus）
 - 路徑比對器測試放 `test/unit/graph/`，不 import `lib/diagnostics/`（受影響路徑數由 Graph 持有，SPEC-001 §5 宣告狀態行表「受影響路徑數來源」列）
 - 宣告狀態行 widget 測試不 import `lib/diagnostics/` 的破洞計數，只消費比對器結果
