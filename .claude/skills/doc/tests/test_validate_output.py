@@ -78,3 +78,55 @@ class TestSpecNonDataContractOutput:
         assert "/spec validate" in out
         assert out.index("已執行") < out.index("/spec validate")
         assert "flow" not in out.split("已執行")[1].split("不適用")[0]
+
+
+def _bundle(root: Path) -> None:
+    _write(
+        root, "docs/spec/ui/domain-map.md",
+        "---\nid: DOMAIN-MAP-ui\ntitle: ui\ndomain: ui\n---\n# ui\n",
+    )
+
+
+def _passed_section(out: str) -> str:
+    """「已執行」到「略過」／「不適用」之間，即列為通過的檢查。"""
+    body = out.split("已執行", 1)[1]
+    for marker in ("略過", "不適用"):
+        body = body.split(marker, 1)[0]
+    return body
+
+
+class TestOutputMatchesWhatRan:
+    def test_e2_no_bundle_domain_check_not_listed_as_passed(self, tmp_path, capsys):
+        _uc(tmp_path, [_step("s1", [])])
+        code, out = _run(tmp_path, "UC-01", capsys)
+        assert code == 0
+        assert "domain 引用" not in _passed_section(out)
+        assert "略過" in out and "DomainBundle" in out
+
+    def test_e1_with_bundle_domain_check_listed_as_passed(self, tmp_path, capsys):
+        _bundle(tmp_path)
+        _uc(tmp_path, [_step("s1", [])])
+        _, out = _run(tmp_path, "UC-01", capsys)
+        assert "domain 引用" in _passed_section(out)
+
+    def test_e2_spec_no_bundle_domain_check_skipped(self, tmp_path, capsys):
+        _write(tmp_path, "docs/spec/ui/SPEC-001-x.md", "---\nid: SPEC-001\ntitle: x\n---\n# S\n")
+        _, out = _run(tmp_path, "SPEC-001", capsys)
+        assert "domain 引用" not in _passed_section(out)
+        assert "/spec validate" in out
+
+    def test_e2_uc_without_flow_block_flow_checks_not_listed_as_passed(self, tmp_path, capsys):
+        _write(tmp_path, "docs/usecases/UC-01-sample.md", "---\nid: UC-01\ntitle: s\n---\n# UC\n")
+        code, out = _run(tmp_path, "UC-01", capsys)
+        assert code == 0
+        passed = _passed_section(out)
+        assert "branch_from" not in passed and "next" not in passed
+        assert "略過" in out and "flow" in out
+
+    def test_e2_prop_shows_no_spec_hint_and_no_uc_flow_text(self, tmp_path, capsys):
+        _write(tmp_path, "docs/proposals/PROP-001-x.md", "---\nid: PROP-001\ntitle: x\n---\n# P\n")
+        code, out = _run(tmp_path, "PROP-001", capsys)
+        assert code == 0
+        assert "/spec" not in out
+        assert "UC flow" not in out
+        assert "branch_from" not in out
