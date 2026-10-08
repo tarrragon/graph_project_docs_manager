@@ -2,7 +2,7 @@
 """SPEC-007 建圖參照實作（獨立於待測 Dart 實作）。
 
 依 `docs/spec/graph/SPEC-007-graph-building.md`（FR-02～FR-06、FR-09、D5）與
-`docs/spec/graph/SPEC-007-test-design.md` §2.1～§2.3 撰寫，產生 IT-1／IT-2／IT-3 的凍結測資。
+`docs/test-design/SPEC-007-test-design.md` §2.1～§2.3 撰寫，產生 IT-1／IT-2／IT-3 的凍結測資。
 
 獨立性約束：不 import、不執行、不讀取任何 Dart 實作或其產物；只讀 manifest、型別表，
 `freeze` 時另讀語料原始檔。Corpus 判型借用同為 Python 的 `tool/spec006_reference.py`

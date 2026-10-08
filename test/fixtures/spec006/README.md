@@ -1,7 +1,7 @@
 # SPEC-006 凍結測資（IT-1、IT-2）
 
 本目錄記錄 `docs/spec/corpus/SPEC-006-corpus-parsing-and-gap-classification.md`
-D3、`docs/spec/corpus/SPEC-006-test-design.md` §2.1／§2.2 要求的兩項整合測試
+D3、`docs/test-design/SPEC-006-test-design.md` §2.1／§2.2 要求的兩項整合測試
 凍結測資的產生方式、量測環境與已知偏離。凍結與產生動作由票 `0.3.0-W2-002`
 一次離線完成，CI 不重新執行本目錄下的任何 Python 程式。
 

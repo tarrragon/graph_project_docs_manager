@@ -1,6 +1,6 @@
 # SPEC-007 凍結測資（IT-1、IT-2、IT-3）
 
-本目錄是 `docs/spec/graph/SPEC-007-graph-building.md` D5、`docs/spec/graph/SPEC-007-test-design.md`
+本目錄是 `docs/spec/graph/SPEC-007-graph-building.md` D5、`docs/test-design/SPEC-007-test-design.md`
 §2.1～§2.3 要求的三項整合測試的凍結測資。預期值由 `tool/spec007_reference.py`（獨立的 Python
 參照實作）依規格產生，凍結時離線執行，CI 不執行。凍結票：`0.4.0-W2-008`。
 

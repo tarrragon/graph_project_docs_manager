@@ -337,7 +337,7 @@ data_contract_tests:
       - test/widget/app/fatal_error_gate_test.dart
 
   # 0.3.0 規劃波 Step 2.6：以下四條是跨語言契約（Python 產出／Dart 消費），
-  # 改錯時沒有編譯期徵兆。tests 由 0.3.0-W1-084 指定（docs/spec/corpus/SPEC-006-test-design.md §3.4），0.3.0-W4-001 核對皆已存在。
+  # 改錯時沒有編譯期徵兆。tests 由 0.3.0-W1-084 指定（docs/test-design/SPEC-006-test-design.md §3.4），0.3.0-W4-001 核對皆已存在。
   - contract_ref: SPEC-006 FR-01（frontmatter 切分語意）／.claude/skills/doc/doc_system/core/frontmatter_parser.py
     description: Dart 端的切分結果與鍵集合須與框架 Python 函式一致（IT-1）；行分隔只認 \n 與 \r\n，值的型別不在等價範圍內（YAML 1.1 對 1.2）
     tests:
