@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yaml/yaml.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
 import 'package:graph_project_docs_manager/corpus/scan_summary.dart';
 import 'package:graph_project_docs_manager/corpus/uc_flow_extractor.dart';
@@ -36,6 +38,59 @@ Future<CorpusScanResult> _scan(Map<String, List<int>> files) {
 
 Future<CorpusScanResult> _scanOneUc(List<String> blocks) =>
     _scan({_ucPath: ucBytes(blocks: blocks)});
+
+/// C10-1 的型別表（見 corpus_scanner_test.dart），另加 UC 型別。
+TypeTable _c10Table() => TypeTableBuilder()
+    .addType('Alpha', idPattern: r'^A-\d+$')
+    .addType('UC', idPattern: r'^UC-\d{2}$')
+    .addType(
+      'CarrierType',
+      carrierPathPatterns: const [
+        PathPatternSpec(pattern: r'^docs/carrier/.*\.md$', specificity: [2, 0]),
+      ],
+    )
+    .addType(
+      'TieTypeA',
+      carrierPathPatterns: const [
+        PathPatternSpec(pattern: r'^docs/tie/.*\.md$', specificity: [2, 0]),
+      ],
+    )
+    .addType(
+      'TieTypeB',
+      carrierPathPatterns: const [
+        PathPatternSpec(pattern: r'^docs/tie/.*\.md$', specificity: [2, 0]),
+      ],
+    )
+    .build();
+
+/// C10-1 的七檔 fixture（節點 1、非節點 1、五種失敗原因各 1）。
+FakeDocsFileSystem _c10Fixture() => FakeDocsFileSystem()
+  ..addFile('docs/node.md', utf8.encode('---\nid: A-1\n---\n'))
+  ..addFile('docs/nonnode.md', utf8.encode('---\ntitle: 無 id\n---\n'))
+  ..addFile('docs/carrier/nofm.md', utf8.encode('# title\n'))
+  ..addFile('docs/tie/unclosed.md', utf8.encode('---\nkey: 1\n'))
+  ..addFile('docs/other/empty.md', utf8.encode('---\n- a\n- b\n---\n'))
+  ..addFile(
+    'docs/carrier/badyaml.md',
+    utf8.encode('---\nkey: "unterminated\n---\n'),
+  )
+  ..addFile('docs/other/unreadable.md', [0x80, 0x81]);
+
+Future<CorpusScanResult> _scanWithC10Table(FakeDocsFileSystem fs) =>
+    scanCorpus(fileSystem: fs, table: _c10Table());
+
+/// 節點的逐項比對鍵：路徑、型別、完整 frontmatter、flow 步驟。
+String _nodeKey(RawNode n) =>
+    '${n.path}|${n.typeName}|${jsonEncode(n.frontmatter)}|'
+    '${jsonEncode(n.flowSteps)}';
+
+/// 解析錯誤的逐項比對鍵：路徑、結果分類、顯示文字。
+String _errorKey(ParseError e) => '${e.path}|${e.outcome.kind}|${e.reasonText}';
+
+/// EVT-CORPUS-003 負載的逐欄比對鍵。
+String _eventKey(ParseFailureEvent e) =>
+    '${e.path}|${e.reason}|${e.line}|${e.nodeType}|${e.candidateTypes}|'
+    '${e.schemaAmbiguous}|${e.salvagedFields}|${e.lostFields}|${e.severity}';
 
 List<String> _stepIds(CorpusScanResult r) => [
   for (final s in r.rawNodes.single.flowSteps) s['id'] as String,
@@ -166,12 +221,19 @@ void main() {
       expect(indented.flowParseFailedEvents, isEmpty);
       expect(indented.parseFailureEvents, isEmpty);
       expect(indented.rawNodes.single.flowSteps, isEmpty);
-      // 與 C13-6 對照：只差 flow: 行縮排，結果不同。
-      final topLevel = await _scanOneUc([malformedFlowBlock]);
+      // 對照組：與 C13-6 內容相同，只差 flow: 行的縮排，結果不同。
       expect(
-        topLevel.flowParseFailedEvents.length,
-        isNot(indented.flowParseFailedEvents.length),
+        indentedFlowKeyBlock.split('\n').skip(1).join('\n'),
+        badIndentUnderFlowBlock.split('\n').skip(1).join('\n'),
       );
+      // 縮排版本的 YAML 仍然損壞，排除「因內容變合法才不報」的誤判。
+      expect(
+        () => loadYaml(indentedFlowKeyBlock),
+        throwsA(isA<YamlException>()),
+      );
+      final topLevel = await _scanOneUc([badIndentUnderFlowBlock]);
+      expect(topLevel.flowParseFailedEvents, hasLength(1));
+      expect(indented.flowParseFailedEvents, isEmpty);
     });
 
     test('C13-8 負載：鍵集合恰為 path、reason；reason 為具名原因碼', () async {
@@ -204,33 +266,70 @@ void main() {
     });
 
     test('C13-11 失敗隔離：加入壞 UC 不改變其他檔案結果', () async {
-      final others = <String, List<int>>{
-        'docs/spec/a.md': utf8.encode('---\nid: SPEC-001\n---\n'),
-        'docs/usecases/UC-02.md': ucBytes(
-          id: 'UC-02',
-          blocks: [
-            validFlowBlock(['x']),
-          ],
-        ),
-        'docs/usecases/bad.md': utf8.encode('# no frontmatter\n'),
-      };
-      final base = await _scan(others);
-      final withBad = await _scan({
-        ...others,
-        _ucPath: ucBytes(blocks: [malformedFlowBlock]),
-      });
+      // C10-1 的 fixture（七檔、五種失敗原因）；差別只在多一份壞 flow 的 UC。
+      final base = await _scanWithC10Table(_c10Fixture());
+      final withBad = await _scanWithC10Table(
+        _c10Fixture()..addFile(_ucPath, ucBytes(blocks: [malformedFlowBlock])),
+      );
+
       expect(
-        withBad.rawNodes.where((n) => n.path != _ucPath).map((n) => n.path),
-        base.rawNodes.map((n) => n.path),
+        withBad.rawNodes.where((n) => n.path != _ucPath).map(_nodeKey),
+        base.rawNodes.map(_nodeKey),
       );
       expect(
-        withBad.rawNodes
-            .firstWhere((n) => n.path.endsWith('UC-02.md'))
-            .flowSteps,
-        base.rawNodes.firstWhere((n) => n.path.endsWith('UC-02.md')).flowSteps,
+        withBad.parseErrors.map(_errorKey),
+        base.parseErrors.map(_errorKey),
       );
-      expect(withBad.parseErrors.length, base.parseErrors.length);
-      expect(withBad.parseFailureEvents.length, base.parseFailureEvents.length);
+      expect(
+        withBad.parseFailureEvents.map(_eventKey),
+        base.parseFailureEvents.map(_eventKey),
+      );
+      expect(
+        withBad.schemaAmbiguousNodes.length,
+        base.schemaAmbiguousNodes.length,
+      );
+      final b = base.summary;
+      final w = withBad.summary;
+      expect(w.totalFilesScanned, b.totalFilesScanned + 1);
+      expect(w.nodeCount, b.nodeCount + 1);
+      expect(w.nonNodeWithFrontmatterCount, b.nonNodeWithFrontmatterCount);
+      expect(w.failureReasonCounts, b.failureReasonCounts);
+      expect(w.hitCarrierCount, b.hitCarrierCount);
+      expect(w.noHitCount, b.noHitCount);
+      expect(w.undeterminedCount, b.undeterminedCount);
+      expect(w.carrierPathQueryAvailable, b.carrierPathQueryAvailable);
+      expect(w.unlistableDirectories, b.unlistableDirectories);
+      expect(b.flowBlockMalformedUcCount, 0);
+      expect(w.flowBlockMalformedUcCount, 1);
+      expect(checkScanSummaryConservation(w), isTrue);
+    });
+
+    test('L1 flow 擷取拋出非 YamlException：該 UC 視為無 flow 區塊，掃描完成', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile(
+          _ucPath,
+          ucBytes(
+            blocks: [
+              validFlowBlock(['s1']),
+            ],
+          ),
+        )
+        ..addFile('docs/usecases/UC-02.md', ucBytes(id: 'UC-02'));
+      final r = await scanCorpus(
+        fileSystem: fs,
+        table: _table(),
+        extractFlow: (bytes, path) {
+          if (path == _ucPath) {
+            throw StateError('模擬 YAML 解析器的非預期例外');
+          }
+          return extractUcFlow(bytes, path);
+        },
+      );
+      expect(r.rawNodes, hasLength(2));
+      final thrown = r.rawNodes.firstWhere((n) => n.path == _ucPath);
+      expect(thrown.flowSteps, isEmpty);
+      expect(r.flowParseFailedEvents, isEmpty);
+      expect(checkScanSummaryConservation(r.summary), isTrue);
     });
   });
 
@@ -300,13 +399,14 @@ void main() {
 
     /// 快照的 UC 檔只保留 flow 區塊位元組（無 frontmatter，見各專案
     /// MANIFEST.md）；測試補上最小 UC frontmatter 後交給掃描器。
-    Future<int> totalSteps(String project) async {
+    /// 回傳「UC id → 步驟數」。檔名前五個字元（`UC-0N`）即兩位數補零的 UC
+    /// id，符合 `^UC-\\d{2}$`；掃描路徑以該 id 命名。
+    Future<Map<String, int>> stepsPerUc(String project) async {
       final dir = Directory('$root/$project/docs/usecases');
       final fs = FakeDocsFileSystem();
-      var index = 0;
       for (final file in dir.listSync().whereType<File>()) {
-        index++;
-        final id = 'UC-0$index';
+        final name = file.uri.pathSegments.last;
+        final id = name.substring(0, 5);
         final prefix = utf8.encode('---\nid: $id\n---\n\n');
         fs.addFile('docs/usecases/$id.md', [
           ...prefix,
@@ -315,17 +415,29 @@ void main() {
       }
       final result = await scanCorpus(fileSystem: fs, table: _table());
       expect(result.flowParseFailedEvents, isEmpty);
-      return result.rawNodes
-          .where((n) => n.typeName == 'UC')
-          .fold<int>(0, (sum, n) => sum + n.flowSteps.length);
+      return {
+        for (final n in result.rawNodes.where((n) => n.typeName == 'UC'))
+          n.frontmatter['id'] as String: n.flowSteps.length,
+      };
     }
 
-    test('graph_project_docs_manager 為 40', () async {
-      expect(await totalSteps('graph_project_docs_manager'), 40);
+    test('graph_project_docs_manager 逐 UC 步數，總數 40', () async {
+      final perUc = await stepsPerUc('graph_project_docs_manager');
+      expect(perUc, {
+        'UC-01': 7,
+        'UC-02': 7,
+        'UC-03': 6,
+        'UC-04': 6,
+        'UC-05': 7,
+        'UC-06': 7,
+      });
+      expect(perUc.values.fold<int>(0, (a, b) => a + b), 40);
     });
 
-    test('flutter_balance 為 9', () async {
-      expect(await totalSteps('flutter_balance'), 9);
+    test('flutter_balance 逐 UC 步數，總數 9', () async {
+      final perUc = await stepsPerUc('flutter_balance');
+      expect(perUc, {'UC-01': 9});
+      expect(perUc.values.fold<int>(0, (a, b) => a + b), 9);
     });
   });
 }

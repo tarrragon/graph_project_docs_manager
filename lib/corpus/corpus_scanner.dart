@@ -114,6 +114,13 @@ typedef CarrierPathLookupFn = CarrierPathLookupResult Function(
   String path,
 );
 
+/// 測試用種子（`@visibleForTesting`）：預設為真正的 [extractUcFlow]；測試
+/// 以會拋例外的替身驗證單一 UC 的 flow 擷取失敗不中止整輪掃描。
+typedef UcFlowExtractFn = UcFlowExtraction Function(
+  Uint8List bytes,
+  String path,
+);
+
 /// 需求：[SPEC-006 FR-02、FR-03、FR-04、FR-05、FR-07、NFR-01] 掃描
 /// [fileSystem] 綁定的工作區下 `docs/**/*.md`，逐檔分類、判型、組裝失敗
 /// 事件，回傳彙整結果。
@@ -129,6 +136,7 @@ Future<CorpusScanResult> scanCorpus({
   required DocsFileSystem fileSystem,
   required TypeTable table,
   CarrierPathLookupFn lookupCarrierPath = lookupCarrierPathType,
+  UcFlowExtractFn extractFlow = extractUcFlow,
 }) async {
   developer.log(
     'scanCorpus 開始：root=$_docsRoot', // i18n-exempt: 開發者 debug log
@@ -138,7 +146,7 @@ Future<CorpusScanResult> scanCorpus({
 
   final listing = await _listMarkdownFiles(fileSystem, _docsRoot);
   final carrierPathQueryAvailable = table.pathParticipatingTypes.isNotEmpty;
-  final acc = _ScanAccumulator();
+  final acc = _ScanAccumulator(extractFlow);
 
   for (final batch in _batches(listing.paths, _readBatchSize)) {
     final reads = await Future.wait(
@@ -199,8 +207,14 @@ String _scanEndLogMessage(
   final failureCount = result.parseErrors.length; // i18n-exempt: 開發者 debug log
   final unlistableCount =
       listing.unlistableDirectories.length; // i18n-exempt: 開發者 debug log
+  final flowMalformedCount =
+      result.summary.flowBlockMalformedUcCount; // i18n-exempt: 開發者 debug log
+  // i18n-exempt: 開發者 debug log（以下三行字串）
   return 'scanCorpus 結束：檔案數=$fileCount、節點數=$nodeCount、'
-      '失敗數=$failureCount、無法列出目錄數=$unlistableCount'; // i18n-exempt: 開發者 debug log
+      // i18n-exempt: 開發者 debug log
+      '失敗數=$failureCount、無法列出目錄數=$unlistableCount、'
+      // i18n-exempt: 開發者 debug log
+      'flow區塊解析失敗UC數=$flowMalformedCount';
 }
 
 /// 需求：[SPEC-006 FR-01、FR-05、NFR-01] 讀取單一檔案並分類；讀取失敗直接
@@ -314,6 +328,10 @@ void _classifyEntry(
 /// 一輪掃描的累加器：把「可用」與「失敗」兩種分支各自的計數與產出集中在
 /// 一處，讓 [scanCorpus] 的主迴圈維持精簡（僅負責讀檔與分派）。
 class _ScanAccumulator {
+  _ScanAccumulator(this._extractFlow);
+
+  final UcFlowExtractFn _extractFlow;
+
   final rawNodes = <RawNode>[];
   final parseErrors = <ParseError>[];
   final parseFailureEvents = <ParseFailureEvent>[];
@@ -349,6 +367,26 @@ class _ScanAccumulator {
     }
   }
 
+  /// NFR-01：flow 擷取拋出任何例外時，該 UC 當作沒有 flow 區塊（空步驟、
+  /// 不發 EVT-CORPUS-004），記 log，不中止整輪掃描。
+  UcFlowExtraction _extractFlowOrEmpty(String path, Uint8List bytes) {
+    try {
+      return _extractFlow(bytes, path);
+    } catch (e) {
+      developer.log(
+        // i18n-exempt: 開發者 debug log
+        'UC flow 擷取發生非預期例外，視為無 flow 區塊：$path',
+        name: 'CorpusScanner',
+        level: 900,
+        error: e,
+      );
+      return const UcFlowExtraction(
+        steps: <Map<String, dynamic>>[],
+        hasMalformedFlowBlock: false,
+      );
+    }
+  }
+
   /// 需求：[SPEC-006 FR-09 規則 3b、6] 只對 UC 型別節點讀 flow 區塊；任一
   /// flow 區塊解析失敗時，該 UC 恰記一筆 EVT-CORPUS-004（不論壞區塊數），
   /// UC 仍是節點。
@@ -361,8 +399,14 @@ class _ScanAccumulator {
     if (typeName != _ucTypeName || bytes == null) {
       return RawNode(path: path, frontmatter: frontmatter, typeName: typeName);
     }
-    final flow = extractUcFlow(bytes);
+    final flow = _extractFlowOrEmpty(path, bytes);
     if (flow.hasMalformedFlowBlock) {
+      developer.log(
+        // i18n-exempt: 開發者 debug log
+        '發出 EVT-CORPUS-004（$flowBlockMalformedReasonCode）：$path',
+        name: 'CorpusScanner',
+        level: 900,
+      );
       flowParseFailedEvents.add(
         FlowParseFailedEvent(path: path, reason: flowBlockMalformedReasonCode),
       );

@@ -25,9 +25,10 @@ const String badIndentUnderFlowBlock =
     // i18n-exempt: 測試 fixture YAML
     'flow:\n  - id: s1\n   name: x\n  - id: s2';
 
-/// `flow:` 行本身縮排兩格的壞區塊（C13-7 已知限制）。
+/// 與 [badIndentUnderFlowBlock] 相同內容，只有第一行 `flow:` 多縮排兩格
+/// （C13-7 已知限制的對照組）。
 // i18n-exempt: 測試 fixture YAML
-const String indentedFlowKeyBlock = '  flow:\n    - id: "unterminated';
+const String indentedFlowKeyBlock = '  $badIndentUnderFlowBlock';
 
 /// 無 `flow` 鍵的合法 yaml。
 // i18n-exempt: 測試 fixture YAML

@@ -5,12 +5,14 @@
 /// 以 trim 後等於 ```` ```yaml ```` 的行開啟、等於 ```` ``` ```` 的行關閉。
 library;
 
+import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import 'package:yaml/yaml.dart';
 
 import 'frontmatter_classifier.dart';
 
+const _tag = 'corpus.uc_flow_extractor';
 const _fenceOpen = '```yaml';
 const _fenceClose = '```';
 
@@ -37,7 +39,8 @@ class UcFlowExtraction {
 }
 
 /// 需求：[SPEC-006 FR-09 規則 1～5、3a、3b] 擷取 [bytes] 的 flow 資訊。
-UcFlowExtraction extractUcFlow(Uint8List bytes) {
+/// [path] 只用於日誌（YAML 解析失敗時帶出 UC 路徑）。
+UcFlowExtraction extractUcFlow(Uint8List bytes, String path) {
   final body = bodyLinesAfterFrontmatter(bytes) ?? const <String>[];
   var steps = const <Map<String, dynamic>>[];
   var foundValid = false;
@@ -59,7 +62,7 @@ UcFlowExtraction extractUcFlow(Uint8List bytes) {
       continue;
     }
     inFence = false;
-    final outcome = _evaluateBlock(fenceLines);
+    final outcome = _evaluateBlock(fenceLines, path);
     malformed = malformed || outcome.malformed;
     final blockSteps = outcome.steps;
     if (!foundValid && blockSteps != null) {
@@ -72,6 +75,7 @@ UcFlowExtraction extractUcFlow(Uint8List bytes) {
 
 ({List<Map<String, dynamic>>? steps, bool malformed}) _evaluateBlock(
   List<String> blockLines,
+  String path,
 ) {
   final isFlowBlock = blockLines.any(
     (line) => line.startsWith(_topLevelFlowKeyPrefix),
@@ -79,7 +83,14 @@ UcFlowExtraction extractUcFlow(Uint8List bytes) {
   Object? parsed;
   try {
     parsed = loadYaml(blockLines.join('\n'));
-  } on YamlException {
+  } on YamlException catch (e) {
+    developer.log(
+      // i18n-exempt: 開發者 debug log
+      'UC 的 yaml 區塊解析失敗，略過該區塊（flow 區塊判定=$isFlowBlock）：$path',
+      name: _tag,
+      level: 900,
+      error: e,
+    );
     return (steps: null, malformed: isFlowBlock);
   }
   if (parsed is! YamlMap) {
