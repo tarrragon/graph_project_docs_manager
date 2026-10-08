@@ -16,7 +16,7 @@ import 'docs_file_system.dart';
 
 const _tag = 'corpus.non_domain_paths_reader';
 
-/// 需求：[SPEC-006 FR-10 規則 2] 格式錯誤的三種子原因。
+/// 需求：[SPEC-006 FR-10 規則 2、2a] 格式錯誤的四種子原因。
 enum NonDomainPathsMalformedReason {
   /// YAML 解析失敗（含內容不是合法 UTF-8）。
   yamlInvalid,
@@ -26,6 +26,9 @@ enum NonDomainPathsMalformedReason {
 
   /// 該鍵的值不是清單。
   notList,
+
+  /// 清單內有非字串元素：只略過該元素，非 domain 側仍為已宣告（規則 2a）。
+  elementNotString,
 }
 
 /// EVT-CORPUS-005 的負載（`docs/events/corpus/
@@ -34,12 +37,16 @@ class NonDomainPathsParseFailedEvent {
   const NonDomainPathsParseFailedEvent({
     required this.path,
     required this.reason,
+    this.nonStringElementCount,
   });
 
   /// 清單檔相對於工作區根目錄的路徑。
   final String path;
 
   final NonDomainPathsMalformedReason reason;
+
+  /// 非字串元素數；只在 [reason] 為 `elementNotString` 時有值，其餘為 `null`。
+  final int? nonStringElementCount;
 }
 
 /// 非 domain 側的宣告狀態。
@@ -58,7 +65,8 @@ class NonDomainPathsAbsent extends NonDomainPathsDeclaration {
   List<String>? get declaredPatterns => null;
 }
 
-/// 清單檔格式錯誤：非 domain 側視為未宣告（FR-10 規則 4），另有事件。
+/// 清單檔整份格式錯誤（規則 2 三種）：非 domain 側視為未宣告（FR-10 規則 4），
+/// 另有事件。`elementNotString` 不走此型別（規則 2a）。
 class NonDomainPathsMalformed extends NonDomainPathsDeclaration {
   const NonDomainPathsMalformed(this.reason);
 
@@ -146,9 +154,29 @@ NonDomainPathsReadResult _classify(String path, String key, List<int> bytes) {
   if (value is! List) {
     return _malformed(path, NonDomainPathsMalformedReason.notList);
   }
+  return _declared(path, value);
+}
+
+/// 需求：[SPEC-006 FR-10 規則 2a、2b] 字串元素不檢查格式照收；非字串元素略過，
+/// 有任一個時發一筆 `elementNotString` 事件並帶個數。
+NonDomainPathsReadResult _declared(String path, List<dynamic> value) {
+  final patterns = List<String>.unmodifiable(value.whereType<String>());
+  final nonStringCount = value.length - patterns.length;
+  final declaration = NonDomainPathsDeclared(patterns);
+  if (nonStringCount == 0) {
+    return NonDomainPathsReadResult(declaration: declaration);
+  }
+  _log(
+    // i18n-exempt: 開發者診斷 log
+    'non-domain paths non-string elements skipped: $path ($nonStringCount)',
+    900,
+  );
   return NonDomainPathsReadResult(
-    declaration: NonDomainPathsDeclared(
-      List<String>.unmodifiable(value.map((element) => '$element')),
+    declaration: declaration,
+    malformedEvent: NonDomainPathsParseFailedEvent(
+      path: path,
+      reason: NonDomainPathsMalformedReason.elementNotString,
+      nonStringElementCount: nonStringCount,
     ),
   );
 }

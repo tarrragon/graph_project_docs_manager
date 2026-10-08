@@ -187,4 +187,114 @@ void main() {
       );
     }
   });
+
+  group('非字串元素（FR-10 規則 2a）', () {
+    Future<NonDomainPathsReadResult> readList(String items) =>
+        _read({_defaultFile: 'non_domain_path_patterns: $items\n'});
+
+    test('E1：含 null 時其餘生效、發一筆 elementNotString，與去掉壞元素的對照模式相同',
+        () async {
+      final withBad = await readList('["docs/a/", null, "docs/b/"]');
+      final clean = await readList('["docs/a/", "docs/b/"]');
+
+      expect(withBad.declaration, isA<NonDomainPathsDeclared>());
+      expect(withBad.declaration.declaredPatterns, ['docs/a/', 'docs/b/']);
+      expect(withBad.declaration.declaredPatterns, isNot(contains('null')));
+      expect(
+        withBad.declaration.declaredPatterns,
+        clean.declaration.declaredPatterns,
+      );
+      expect(
+        withBad.malformedEvent?.reason,
+        NonDomainPathsMalformedReason.elementNotString,
+      );
+      expect(withBad.malformedEvent?.nonStringElementCount, 1);
+      expect(withBad.malformedEvent?.path, _defaultFile);
+      expect(clean.malformedEvent, isNull);
+    });
+
+    test('兩個壞元素只發一筆，nonStringElementCount 為 2', () async {
+      final result = await readList('["docs/a/", 1, true]');
+
+      expect(result.declaration.declaredPatterns, ['docs/a/']);
+      expect(
+        result.malformedEvent?.reason,
+        NonDomainPathsMalformedReason.elementNotString,
+      );
+      expect(result.malformedEvent?.nonStringElementCount, 2);
+    });
+
+    test('全為壞元素時為已宣告的空清單，不視為未宣告', () async {
+      final result = await readList('[null, 1]');
+
+      expect(result.declaration, isA<NonDomainPathsDeclared>());
+      expect(result.declaration.declaredPatterns, isEmpty);
+      expect(result.malformedEvent?.nonStringElementCount, 2);
+    });
+
+    test('字串元素不檢查格式：空字串、/ 開頭、glob 照收且不發事件', () async {
+      final result = await readList('["", "docs/a/", "/docs/", "docs/*.md"]');
+
+      expect(
+        result.declaration.declaredPatterns,
+        ['', 'docs/a/', '/docs/', 'docs/*.md'],
+      );
+      expect(result.malformedEvent, isNull);
+    });
+
+    test('三種整份格式錯誤的事件 nonStringElementCount 為 null', () async {
+      for (final content in const [
+        'non_domain_path_patterns: [\n',
+        'other: []\n',
+        'non_domain_path_patterns: docs/\n',
+      ]) {
+        final result = await _read({_defaultFile: content});
+        expect(result.declaration, isA<NonDomainPathsMalformed>());
+        expect(result.malformedEvent, isNotNull);
+        expect(result.malformedEvent?.nonStringElementCount, isNull);
+      }
+    });
+  });
+
+  group('位置欄位空字串（FR-10 規則 1）', () {
+    Future<_MemoryFileSystem> readWith(Map<String, dynamic> extra) async {
+      final fileSystem = _MemoryFileSystem(const {
+        _defaultFile: 'non_domain_path_patterns: [docs/a/]\n',
+      });
+      await readNonDomainPaths(
+        fileSystem: fileSystem,
+        projectTable: typeTableFromJson(<String, dynamic>{
+          'node_types': <String, dynamic>{},
+          ...extra,
+        }),
+        builtinTable: _builtinTable(),
+      );
+      return fileSystem;
+    }
+
+    test('E2：file 為空字串時依內建表檔名讀取，不以空字串為路徑', () async {
+      final fileSystem = await readWith({'non_domain_paths_file': ''});
+      final missing = await readWith({});
+
+      expect(fileSystem.readPaths, [_defaultFile]);
+      expect(fileSystem.readPaths, isNot(contains('')));
+      expect(fileSystem.readPaths, missing.readPaths);
+    });
+
+    test('key 為空字串時依內建表鍵名取清單', () async {
+      final result = await readNonDomainPaths(
+        fileSystem: _MemoryFileSystem(const {
+          _defaultFile: 'non_domain_path_patterns: [docs/a/]\n',
+        }),
+        projectTable: typeTableFromJson(<String, dynamic>{
+          'node_types': <String, dynamic>{},
+          'non_domain_paths_key': '',
+        }),
+        builtinTable: _builtinTable(),
+      );
+
+      expect(result.declaration.declaredPatterns, ['docs/a/']);
+      expect(result.malformedEvent, isNull);
+    });
+  });
 }
