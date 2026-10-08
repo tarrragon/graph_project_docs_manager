@@ -169,6 +169,14 @@ TypeTable _mergeBuiltinPathPatterns({
     );
   }
 
-  return TypeTable(Map.unmodifiable(merged));
+  // 0.5.0-W1-121：路徑模式以外的欄位（邊型宣告、拒收邊型、S2 位置）保留
+  // 專案型別表的值；專案 JSON 缺席時維持 TypeTable 預設值。
+  return TypeTable(
+    Map.unmodifiable(merged),
+    edgeTypes: projectTable?.edgeTypes,
+    rejectedEdgeTypes: projectTable?.rejectedEdgeTypes ?? const <String>{},
+    nonDomainPathsFile: projectTable?.nonDomainPathsFile,
+    nonDomainPathsKey: projectTable?.nonDomainPathsKey,
+  );
 }
 

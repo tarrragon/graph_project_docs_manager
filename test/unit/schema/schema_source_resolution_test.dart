@@ -4,6 +4,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/schema/schema_source_resolver.dart';
+import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 Map<String, dynamic> _schemaJson({
   required String version,
@@ -88,7 +89,10 @@ void main() {
 
       final specEntry = result.typeTable.nodeTypes['SPEC']!;
       expect(specEntry.carrierPathPatterns, isNotNull);
-      expect(specEntry.carrierPathPatterns!.single.pattern, r'^docs/spec/.+\.md$');
+      expect(
+        specEntry.carrierPathPatterns!.single.pattern,
+        r'^docs/spec/.+\.md$',
+      );
       expect(specEntry.idPattern, r'^SPEC-\d+-project$');
       expect(specEntry.completenessFields, {'id', 'title', 'status'});
     });
@@ -198,9 +202,12 @@ void main() {
 
   group('S5-5 專案 JSON 與內建表都沒有路徑模式', () {
     test('查詢不可用；原因為沒有路徑模式（非版本高於內建）', () {
-      final emptyBuiltinJson = _schemaJson(version: '2.40.3', nodeTypes: {
-        'SPEC': {'id_pattern': r'^SPEC-\d+$'},
-      });
+      final emptyBuiltinJson = _schemaJson(
+        version: '2.40.3',
+        nodeTypes: {
+          'SPEC': {'id_pattern': r'^SPEC-\d+$'},
+        },
+      );
       final projectJson = _schemaJson(
         version: '1.0.0',
         nodeTypes: {
@@ -251,9 +258,15 @@ void main() {
 
       final specEntry = result.typeTable.nodeTypes['SPEC']!;
       expect(specEntry.idPattern, r'^PROJECT-ONLY-\d+$');
-      expect(specEntry.idPattern, isNot(builtinJson['node_types']['SPEC']['id_pattern']));
+      expect(
+        specEntry.idPattern,
+        isNot(builtinJson['node_types']['SPEC']['id_pattern']),
+      );
       // 正向對照：路徑模式確實來自內建表（否則本案例對「只補路徑模式」無鑑別力）。
-      expect(specEntry.carrierPathPatterns!.single.pattern, r'^docs/spec/.+\.md$');
+      expect(
+        specEntry.carrierPathPatterns!.single.pattern,
+        r'^docs/spec/.+\.md$',
+      );
     });
   });
 
@@ -261,9 +274,7 @@ void main() {
     test('合併結果 idPattern 為 null，不取內建值', () {
       final projectJson = _schemaJson(
         version: '2.40.3',
-        nodeTypes: {
-          'SPEC': <String, dynamic>{},
-        },
+        nodeTypes: {'SPEC': <String, dynamic>{}},
       );
 
       final result = resolveSchemaSource(
@@ -274,9 +285,15 @@ void main() {
       final specEntry = result.typeTable.nodeTypes['SPEC']!;
       // 正向對照：路徑模式確實來自內建表（否則本案例落錯分支，
       // 對「id_pattern 不退回內建」無鑑別力）。
-      expect(specEntry.carrierPathPatterns!.single.pattern, r'^docs/spec/.+\.md$');
+      expect(
+        specEntry.carrierPathPatterns!.single.pattern,
+        r'^docs/spec/.+\.md$',
+      );
       expect(specEntry.idPattern, isNull);
-      expect(specEntry.idPattern, isNot(builtinJson['node_types']['SPEC']['id_pattern']));
+      expect(
+        specEntry.idPattern,
+        isNot(builtinJson['node_types']['SPEC']['id_pattern']),
+      );
     });
   });
 
@@ -313,7 +330,10 @@ void main() {
 
       final specEntry = result.typeTable.nodeTypes['SPEC']!;
       // 正向對照：路徑模式確實來自內建表。
-      expect(specEntry.carrierPathPatterns!.single.pattern, r'^docs/spec/.+\.md$');
+      expect(
+        specEntry.carrierPathPatterns!.single.pattern,
+        r'^docs/spec/.+\.md$',
+      );
       expect(specEntry.completenessFields, isEmpty);
       expect(specEntry.completenessFields, isNot({'id', 'title', 'status'}));
     });
@@ -351,6 +371,82 @@ void main() {
       // 數值逐段比較下 2.40.3 < 2.40.10，應可從內建表補上。
       expect(result.pathPatternSource, PathPatternSource.builtinTable);
       expect(result.isQueryAvailable, isTrue);
+    });
+  });
+
+  group('0.5.0-W1-121 補值路徑保留專案型別表的非路徑欄位', () {
+    // 專案 JSON：缺路徑模式（走內建補值），帶邊型宣告、一個拒收邊型與自訂 S2 位置。
+    final projectJson = <String, dynamic>{
+      ..._schemaJson(
+        version: '2.40.3',
+        nodeTypes: {
+          'SPEC': {'id_pattern': r'^SPEC-\d+-project$'},
+        },
+      ),
+      'edge_types': {
+        'blockedBy': {
+          'class': 'dependency',
+          'forward_field': 'blockedBy',
+          'layer': 'established',
+        },
+        'brokenEdge': 'not-a-map',
+      },
+      'non_domain_paths_file': 'docs/custom-non-domain.yaml',
+      'non_domain_paths_key': 'custom_paths',
+    };
+
+    SchemaSourceResolution resolveProject() => resolveSchemaSource(
+      projectSchemaJson: projectJson,
+      builtinSchemaJson: builtinJson,
+    );
+
+    test('E1 對照：補值後非路徑欄位與輸入相同，路徑模式取內建值', () {
+      final input = typeTableFromJson(projectJson);
+      final result = resolveProject();
+
+      expect(result.pathPatternSource, PathPatternSource.builtinTable);
+      expect(input.nodeTypes['SPEC']!.carrierPathPatterns, isNull);
+      expect(
+        result.typeTable.nodeTypes['SPEC']!.carrierPathPatterns!.single.pattern,
+        r'^docs/spec/.+\.md$',
+      );
+      expect(result.typeTable.edgeTypes?.keys, input.edgeTypes!.keys);
+      expect(result.typeTable.rejectedEdgeTypes, input.rejectedEdgeTypes);
+      expect(result.typeTable.nonDomainPathsFile, input.nonDomainPathsFile);
+      expect(result.typeTable.nonDomainPathsKey, input.nonDomainPathsKey);
+    });
+
+    test('E2 edgeTypes 保留', () {
+      final edges = resolveProject().typeTable.edgeTypes;
+      expect(edges, isNotNull);
+      expect(edges!.keys, ['blockedBy']);
+      expect(edges['blockedBy']!.edgeClass, 'dependency');
+    });
+
+    test('E2 rejectedEdgeTypes 保留', () {
+      expect(resolveProject().typeTable.rejectedEdgeTypes, {'brokenEdge'});
+    });
+
+    test('E2 nonDomainPathsFile 保留', () {
+      expect(
+        resolveProject().typeTable.nonDomainPathsFile,
+        'docs/custom-non-domain.yaml',
+      );
+    });
+
+    test('E2 nonDomainPathsKey 保留', () {
+      expect(resolveProject().typeTable.nonDomainPathsKey, 'custom_paths');
+    });
+
+    test('對照：專案 JSON 缺席時其餘欄位維持預設值', () {
+      final result = resolveSchemaSource(
+        projectSchemaJson: null,
+        builtinSchemaJson: builtinJson,
+      );
+      expect(result.typeTable.edgeTypes, isNull);
+      expect(result.typeTable.rejectedEdgeTypes, isEmpty);
+      expect(result.typeTable.nonDomainPathsFile, isNull);
+      expect(result.typeTable.nonDomainPathsKey, isNull);
     });
   });
 }
