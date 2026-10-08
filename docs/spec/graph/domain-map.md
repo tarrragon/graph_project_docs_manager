@@ -70,6 +70,8 @@ updated: "2026-10-08"
 | FR-07 | TicketDetail 以 ID 查詢全文 | TicketDetail（讀 Corpus `rawNodes`） | domain unit；IT-3 |
 | FR-08 | 鄰接查詢 | Graph | domain unit；IT-1 |
 | FR-09 | 由 EVT-GRAPH-001 產生 `graphDefect` 破洞 | Diagnostics | domain unit；IT-2 |
+| FR-10 | `flowOf(ucId)` flow 子圖 | Graph（讀 Corpus 附掛於 UC `rawNode` 的步驟清單） | domain unit |
+| FR-11 | `traverses` 名稱解析（以 DomainBundle `domain` 精確比對） | Graph | domain unit |
 | FR-12 | domain × UC 關係（三值）與依賴路徑 | Graph | domain unit |
 | NFR-01 | 缺陷隔離 | Graph | domain unit |
 | NFR-02 | 計算量線性 | Graph | `test/performance/`（不入主套件） |
