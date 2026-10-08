@@ -41,7 +41,7 @@ updated: "2026-10-08"
 
 | Domain | 唯一變更理由 | 公開面（OCP） | 內部面 |
 |--------|------------|-------------|-------|
-| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**domain × UC 關係與依賴路徑**（延伸貫穿數：直接貫穿／間接依賴／無關三值，間接依賴另帶依賴路徑；SPEC-007 FR-12，`0.5.0-W1-114` 用戶裁決 O1——畫面只顯示，規則不落 Layout 或畫面層）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
+| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**domain × UC 關係與依賴路徑**（延伸貫穿數：直接貫穿／間接依賴／無關三值，間接依賴另帶依賴路徑；SPEC-007 FR-12，`0.5.0-W1-114` 用戶裁決 O1——畫面只顯示，規則不落 Layout 或畫面層）、**DomainBundle 分層與層內排序**（1a max+1、2b code point；Layout 泳道列序與 FR-12 依賴路徑排序共用；SPEC-007 FR-13，`0.5.0-W1-114.2` 用戶裁決 R1）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
 
 ## 5. 對實作票的切分指引
 
@@ -73,6 +73,7 @@ updated: "2026-10-08"
 | FR-10 | `flowOf(ucId)` flow 子圖 | Graph（讀 Corpus 附掛於 UC `rawNode` 的步驟清單） | domain unit |
 | FR-11 | `traverses` 名稱解析（以 DomainBundle `domain` 精確比對） | Graph | domain unit |
 | FR-12 | domain × UC 關係（三值）與依賴路徑 | Graph | domain unit |
+| FR-13 | DomainBundle 分層與層內排序 | Graph | domain unit |
 | NFR-01 | 缺陷隔離 | Graph | domain unit |
 | NFR-02 | 計算量線性 | Graph | `test/performance/`（不入主套件） |
 
@@ -83,4 +84,4 @@ Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
 
 ---
 
-**Last Updated**: 2026-10-08（`0.5.0-W1-114.1`：§3 公開面補 domain × UC 關係與依賴路徑、§6 間接依賴歸屬、§7 補 FR-12） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-08（`0.5.0-W1-114.3`：§3 公開面補 DomainBundle 分層與層內排序、§7 補 FR-13；前次 `0.5.0-W1-114.1`：§3 公開面補 domain × UC 關係與依賴路徑、§6 間接依賴歸屬、§7 補 FR-12） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）

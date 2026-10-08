@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-08"
-version: "1.37"
+version: "1.38"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -222,14 +222,17 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > |------|------|
 > | 每個來源一條 | 對每個可達 Y 的直接貫穿 domain X，取 X 到 Y 的最短路徑；同長的多條路徑全部列出 |
 > | 排除經直接 domain 的路徑 | 路徑的中間節點（不含兩端）若為此 UC 的直接貫穿 domain，該路徑不列（較短的那條已由該中間 domain 為來源列出） |
-> | 排序 | 先依路徑長度遞增，同長依來源 X 在泳道列序（§1〈泳道布局規則〉列序）的先後，再依中間節點列序 |
+> | 排序 | 先依路徑長度遞增，同長依來源 X 在 Graph 分層排序（SPEC-007 FR-13，與泳道列序同一份）的先後，再依中間節點在該排序中的先後；由 Graph 排序（SPEC-007 FR-12），畫面只顯示（`0.5.0-W1-114.2` 用戶裁決 R1） |
 > | 期望值（UC-04 × `schema`） | 兩行：`graph → corpus → schema`、`ticketdetail → corpus → schema`（多來源同長，依列序 graph 在前） |
 > | 期望值（UC-06 × `schema`） | 一行：`corpus → schema`（`diagnostics → corpus → schema` 經直接 domain `corpus`，不列） |
 >
 > 直接貫穿與無關格不顯示依賴路徑區塊。
 >
 > **間接依賴格的「在泳道中檢視」跳轉目標**：跳到依賴路徑第一行的來源 X 所在泳道列，定位到該列中
-> 欄號最小的節點（欄號依 §1〈泳道布局規則〉欄序），即此 UC 第一個 `traverses` 包含 X 的步驟。
+> 欄號最小的節點（欄號依 §1〈泳道布局規則〉欄序），即欄序中第一個 `traverses` 包含 X 的步驟（分支插在起點後，
+> 欄號不等於清單位置）。取得方式（`0.5.0-W1-114.2` 用戶裁決 J2，2026-10-08）：畫面以 SPEC-007 FR-12
+> 第一條依賴路徑的來源 X 呼叫 Layout 公開面「給定一列，回傳欄號最小的節點」查詢（`docs/spec/layout/domain-map.md` §3），
+> 畫面不自行組合。
 > 期望值：UC-04 × `schema` → `graph` 列、UC-04 欄號最小且 `traverses` 含 `graph` 的步驟。直接貫穿格維持
 > 跳到該格 domain 所在列（既有行為）。
 >
@@ -240,7 +243,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 >
 > | 項目 | 判定式 | 期望值（UC-02 實例） |
 > |------|--------|---------------------|
-> | 列集合與列序 | 「畫面」列在最上，其下每個 DomainBundle 一列。DomainBundle 的層由 `bundle_dependency` 邊（各 domain map frontmatter `depends_on_bundles`）推導：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；列序依層遞增（L0 在上），同層依 `DomainBundle.domain` 字面的 Unicode code point 逐字元遞增排序（不依 locale 排序規則）。推不出層的 bundle（依賴循環，或 `depends_on_bundles` 指向未宣告的 bundle）不消失：依 `DomainBundle.domain` code point 序接在最後一列之後，其依賴邊照常依存在的端點繪製、指向未宣告者的邊不畫。規則不寫死 domain 名；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 本專案推導：L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`。列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列；UC-02 下 `schema`、`workspace`、`history`、`diagnostics` 為空列 |
+> | 列集合與列序 | 「畫面」列在最上，其下每個 DomainBundle 一列。DomainBundle 列的順序取自 Graph 公開面的分層與層內排序（SPEC-007 FR-13，權威條文在該處；Layout 不自行推導，`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08），以下為摘錄。DomainBundle 的層由 `bundle_dependency` 邊（各 domain map frontmatter `depends_on_bundles`）推導：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；列序依層遞增（L0 在上），同層依 `DomainBundle.domain` 字面的 Unicode code point 逐字元遞增排序（不依 locale 排序規則）。推不出層的 bundle（依賴循環，或 `depends_on_bundles` 指向未宣告的 bundle）不消失：依 `DomainBundle.domain` code point 序接在最後一列之後，其依賴邊照常依存在的端點繪製、指向未宣告者的邊不畫。規則不寫死 domain 名；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 本專案推導：L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`。列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列；UC-02 下 `schema`、`workspace`、`history`、`diagnostics` 為空列 |
 > | 列鍵比對 | 列鍵為 `DomainBundle.domain` 宣告字面；步驟 `traverses` 值與列鍵精確比對（不做大小寫轉換）；列首顯示 `DomainBundle.domain` 原值（未知 domain 亦同），只有「畫面」列經 i18n | `traverses: ["graph"]` 落 `graph` 列 |
 > | 主線 | `branch_from == null` 的步驟為主線，主線順序為其在 flow 清單中的檔內順序 `i`（不沿 `next` 推導；與 2026-10-07 `next` (c) 裁決同源） | locate-domain → read-traversal-count → switch-to-swimlane → inspect-steps |
 > | 欄序 | 依主線順序逐一輸出主線步驟 M；輸出 M 後，緊接輸出所有 `branch_from == M.id` 的分支步驟（多個時依檔內順序 `i`）；每輸出一個分支步驟 B 後，對 B 遞迴套用同一規則（緊接輸出 `branch_from == B.id` 的巢狀分支，再處理 B 的下一個同層分支）；步驟的欄號 = 輸出序（0 起），每步驟恰一欄 | 0 locate-domain、1 enter-from-ticket、2 read-traversal-count、3 matrix-overview-only、4 switch-to-swimlane、5 flow-not-structured、6 inspect-steps |
@@ -855,6 +858,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.38 | 2026-10-08 | `0.5.0-W1-114.3`（依 `0.5.0-W1-114.2` 用戶裁決 R1／J2，第二批）：§1〈泳道布局規則〉列序來源改為 Graph 公開面的分層與層內排序（SPEC-007 FR-13），Layout 不自行推導，原判定式保留為摘錄；〈間接依賴格的詳情卡〉排序列改依 SPEC-007 FR-13、由 Graph 排序；〈「在泳道中檢視」跳轉目標〉補取得方式——畫面以 FR-12 第一條路徑來源呼叫 Layout 公開面「給定一列，回傳欄號最小的節點」查詢。狀態總數不變 |
 | 1.37 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪（PM 處置 NC-a／NC-f／NC-g，SPEC-004 v1.77 同批）：§1〈泳道布局規則〉「`traverses` 異常的步驟」列定案「泳道最後」為另立「未定位」列（全部 DomainBundle 列之後的最末列，只在有此類步驟時出現，欄號依清單順序），正常 · 泳道顯示欄同步；〈flow 區塊解析失敗的泳道呈現〉提示元件、位置與兩個 i18n key 由提案改為已定；§2「flow 未結構化」在 flow 區塊皆解析失敗時改用 `flowParseFailedMessage`。狀態總數不變 |
 | 1.36 | 2026-10-08 | `0.5.0-W1-114.1`（依 `0.5.0-W1-114` 用戶裁決 T1／F1 與 `0.5.0-W1-113` D-3）：§1〈泳道布局規則〉新增「`traverses` 異常的步驟」列——值未宣告報既有未宣告名稱缺陷、缺鍵報缺欄位缺陷（flow 子圖第四子類），部分已宣告者只依已宣告值放列，全部未宣告或缺鍵者置於泳道最後；重複宣告的 domain 名比照未宣告。新增〈flow 區塊解析失敗的泳道呈現〉註記：仍有合法區塊時正常 · 泳道加提示，無合法區塊時泳道 · flow 未結構化改用解析失敗專用文案並提供開啟來源檔；正常 · 泳道與泳道 · flow 未結構化兩列同步。「泳道最後」形態與欄號未裁決。狀態總數不變 |
 | 1.35 | 2026-10-08 | `0.5.0-W1-096.9` PM 處置：§5〈專案層級宣告狀態一行不是新狀態〉表補兩列——受影響路徑數取自 Graph 路徑比對器結果、報告頁只消費；兩側皆未宣告時不顯示路徑數。文案與 i18n key 列改為已定（四個 key，zh／en 見 SPEC-004 v1.74 §4.0.6）。狀態總數不變 |

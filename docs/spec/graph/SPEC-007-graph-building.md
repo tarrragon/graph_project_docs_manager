@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.17"
+version: "1.18"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -27,7 +27,7 @@ depends_on_domains: [schema, corpus, diagnostics]
 | Domain | 本規格內的職責 | 對應 FR |
 |--------|--------------|--------|
 | **Schema** | 提供邊型表（正向欄位、反向欄位、正向基數、類別、層級） | FR-01 |
-| **Graph** | 建輕節點；抽取引用值並分類；建邊；鄰接查詢；UC flow 子圖；domain 名稱解析；domain × UC 關係與依賴路徑 | FR-02～FR-06、FR-08、FR-10～FR-12 |
+| **Graph** | 建輕節點；抽取引用值並分類；建邊；鄰接查詢；UC flow 子圖；domain 名稱解析；domain × UC 關係與依賴路徑；DomainBundle 分層與層內排序 | FR-02～FR-06、FR-08、FR-10～FR-13 |
 | **TicketDetail** | 持有 ticket 的 frontmatter 全文，以 ID 查詢（`docs/system-layer.md` §4.1 界定，本規格首次定義其公開面） | FR-07 |
 | **Diagnostics** | 由 Graph 回報的缺陷產生 `graphDefect` 破洞 | FR-09 |
 
@@ -346,8 +346,9 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **描述**：給一個 DomainBundle 與一個 UC，回傳兩者的關係種類（直接貫穿／間接依賴／無關）與依賴路徑。延伸 Graph 公開面既有的貫穿數（`docs/spec/graph/domain-map.md` §3），畫面（矩陣格、格詳情卡）只顯示回傳值，不自行計算。依據：`0.5.0-W1-114` 用戶裁決 O1（2026-10-08）。
 
 **規則**：
-- 判定式與依賴路徑集合的權威條文為 SPEC-001 §1〈間接依賴判定式〉與〈間接依賴格的詳情卡：依賴路徑〉，本 FR 不重述：直接貫穿以 FR-11 的解析結果判定（`traverses` 包含 Y）；間接依賴沿 `bundle_dependency` 邊往下游可達，跳數不限；依賴路徑取每個來源的最短路徑、同長全列、排除經直接 domain 的路徑，並依該處排序
+- 判定式與依賴路徑集合的權威條文為 SPEC-001 §1〈間接依賴判定式〉與〈間接依賴格的詳情卡：依賴路徑〉，本 FR 不重述：直接貫穿以 FR-11 的解析結果判定（`traverses` 包含 Y）；間接依賴沿 `bundle_dependency` 邊往下游可達，跳數不限；依賴路徑取每個來源的最短路徑、同長全列、排除經直接 domain 的路徑；排序依下一條
 - 回傳值：關係種類三值之一；間接依賴時另帶依賴路徑清單（每條為 DomainBundle 序列），直接貫穿與無關時路徑為空
+- 依賴路徑排序：先依路徑長度遞增，同長依來源 X 在 FR-13 分層排序中的先後，再依中間節點在 FR-13 中的先後。排序依據取自 FR-13，不依賴 Layout（`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08；系統層 §2 禁止 Graph 依賴 Layout）
 - 只計 FR-11 解析成功的值：未宣告名稱、缺 `traverses` 鍵、重複宣告被排除的名稱不構成直接貫穿
 - 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致
 - 介面識別名與簽章交 Step 6 的 Graph 間接依賴實作票定（`0.5.0-W1-114.1` PM 處置 NC-c）；該實作的預期值取凍結快照（PM 接受的推論）
@@ -357,6 +358,24 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given UC-04 × `schema`，Then 回傳間接依賴與兩條路徑 `graph → corpus → schema`、`ticketdetail → corpus → schema`（依此順序）
 - [ ] Given UC-06 × `schema`，Then 回傳一條路徑 `corpus → schema`，不含經直接 domain 的 `diagnostics → corpus → schema`（E2 正向對照）
 - [ ] Given 直接貫穿格，Then 依賴路徑為空
+
+### FR-13：DomainBundle 分層與層內排序（Graph 公開面）
+
+**描述**：回傳全部 DomainBundle 的分層與排序。Layout 的泳道列序（SPEC-001 §1〈泳道布局規則〉）與 FR-12 的依賴路徑排序共用這一份，Layout 向 Graph 取列序、不自行推導。依據：`0.5.0-W1-114.2` 用戶裁決 R1（2026-10-08，`docs/tech-decisions.md` 同日補記「列序規則歸 Graph」）。
+
+**規則**：
+- 分層（1a）：層由 `bundle_dependency` 邊推導。無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1
+- 層內排序（2b）：同層依 `DomainBundle.domain` 字面的 Unicode code point 逐字元遞增排序，不依 locale 排序規則
+- 排序結果依層遞增（L0 在前），同層依上一條
+- 推不出層的 bundle（依賴循環，或依賴指向未宣告的 bundle）不消失：依 `DomainBundle.domain` code point 序接在最後（沿用 `0.5.0-W1-092.2` 用戶裁決 3e 的既有條文，原寫於 SPEC-001 列序判定式）
+- 規則不寫死 domain 名，與 UC 無關
+- 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致
+- 介面識別名與簽章交實作票定（比照 FR-12）
+
+**驗收條件**：
+- [ ] Given 本專案語料的凍結快照，Then 排序結果為 `schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`（L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`，與 SPEC-001 §1 列序期望值一致）
+- [ ] Given 兩個 bundle 互相依賴，Then 兩者接在全部可分層 bundle 之後，依 code point 序
+- [ ] Given FR-12 回傳 UC-04 × `schema` 的兩條同長路徑，Then 其先後與兩條路徑來源在本 FR 排序中的先後一致
 
 ## 非功能需求
 
@@ -405,6 +424,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.18 | 2026-10-08 | `0.5.0-W1-114.3`（依 `0.5.0-W1-114.2` 用戶裁決 R1，第二批）：新增 FR-13 DomainBundle 分層（1a max+1）與層內排序（2b code point）的 Graph 公開查詢，推不出層者沿 3e 接在最後；FR-12 依賴路徑排序改依 FR-13，不依賴 Layout；〈概述〉職責表同步。介面識別名交實作票 |
 | 1.17 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪（PM 處置 NC-b／NC-c／NC-d）：FR-09「`traverses` 鍵缺席」負載原始值定為 `null`；新增 `graphDefect` 子類「domain 重複宣告」，負載 {domain, 衝突的 DomainBundle ID 清單}；第四 flow 子類、domain 重複宣告與 FR-12 的識別名改為交實作票定；FR-11 重複 domain 宣告寫明兩個 DomainBundle 仍各自成列、其列無 `traverses` 命中並帶缺陷標記，缺鍵規則補負載；補一條驗收、擴寫一條驗收。移除本票三處未裁決標記 |
 | 1.16 | 2026-10-08 | `0.5.0-W1-114.1`（依 `0.5.0-W1-114` 用戶裁決 T1／O1 與 PM 補定、`0.5.0-W1-113` 用戶裁決 D-3 與 PM 處置 N-A／N-B／N-E）：FR-01 內建表也沒有的邊型回報來源值為「預設（有向）」；FR-06 負載與驗收 #3 的 `graphDefects` 筆數改含 flow 子類並補一條正向對照；FR-09 新增第四個 flow 子類「`traverses` 鍵缺席」，未宣告名稱子類註明去重與重複宣告；FR-11 新增（步驟, 值）去重、缺鍵回報、部分已宣告、重複 domain 宣告（兩者皆排除於名稱索引並報重複）四條規則與驗收；新增 FR-12 domain × UC 關係與依賴路徑（Graph 公開面，判定式引 SPEC-001 §1）；〈本版範圍外〉貫穿數列與〈概述〉職責表同步；D4 改為 flow 四子類。未裁決項（缺鍵原始值表示、第四子類與 FR-12 識別名、重複宣告缺陷子類與矩陣列）見該票 NeedsContext |
 | 1.15 | 2026-10-08 | `0.5.0-W1-103.1` PM 處置：FR-01 缺 `direction` 規則補一句——版本不在已知範圍時由 SPEC-001 §1「schema 不相容」關卡涵蓋、內建表本身帶 `direction`，取代原指向 NeedsContext 的句子 |
