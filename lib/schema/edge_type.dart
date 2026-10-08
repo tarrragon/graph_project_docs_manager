@@ -1,9 +1,9 @@
 /// SPEC-007 FR-01 邊型模型與解碼結果（設計約束 D6）。
 ///
 /// 欄位名、基數、是否有反向欄位一律取自型別表；程式內的鍵名例外集中在本檔
-/// 兩處：排除 `domain_dependency`（[EdgeTypeResolution.activeEdgeTypes]）、
-/// 認定 `association` 為無向（`isUndirected`，FR-05〈無向的判定〉）。
-/// 兩處皆由 `0.5.0-W1-001` 移除；Graph 只讀旗標，不再比對鍵名。
+/// 一處：排除 `domain_dependency`（[EdgeTypeResolution.activeEdgeTypes]，
+/// 由 `0.6.0-W1-074` 承接移除）。無向由型別表 `direction` 欄判定
+/// （FR-05〈無向的判定〉），不比對鍵名。
 ///
 /// 依賴方向：Schema domain（L0），不得 import 上層 domain。
 library;
@@ -13,7 +13,7 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 export 'package:graph_project_docs_manager/schema/type_table.dart'
-    show EdgeCardinality, NodeTypeEntry;
+    show EdgeCardinality, EdgeDirection, NodeTypeEntry;
 
 /// 由 schema JSON 解碼節點型別表，供 Graph 取用而不必碰型別表編解碼細節。
 Map<String, NodeTypeEntry> nodeTypesFromSchemaJson(
@@ -29,7 +29,8 @@ class EdgeTypeEntry {
     required this.reverseField,
     required this.forwardCardinality,
     required this.layer,
-    this.isUndirected = false,
+    required this.direction,
+    required this.directionSource,
   });
 
   final String name;
@@ -39,9 +40,18 @@ class EdgeTypeEntry {
   final EdgeCardinality forwardCardinality;
   final String layer;
 
-  /// 無向邊（端點集合，無方向）；由 [resolveEdgeTypes] 依鍵名填入（D6）。
-  final bool isUndirected;
+  /// 方向性，取自型別表 `direction` 欄（缺欄時依來源補值，FR-01）。
+  final EdgeDirection direction;
+
+  /// [direction] 的來源。
+  final DirectionSource directionSource;
+
+  /// 無向邊（端點集合，無方向）：`direction == undirected`（FR-05）。
+  bool get isUndirected => direction == EdgeDirection.undirected;
 }
+
+/// `direction` 的來源值（SPEC-007 FR-01）。[defaultDirected] 即「預設（有向）」。
+enum DirectionSource { projectTable, builtinTable, defaultDirected }
 
 /// 建圖不可用的原因碼（與 SPEC-006 FR-08「版本不在已知範圍」同一套）。
 enum EdgeTypeUnavailableReason {
@@ -74,9 +84,6 @@ class EdgeTypeResolution {
 
 const _excludedByKeyName = 'domain_dependency';
 
-/// D6 鍵名例外：`association` 為無向邊（FR-05）。
-const _undirectedByKeyName = 'association';
-
 /// 決議邊型（FR-01）：專案表有完整 `edge_types` 直接用；缺席或缺正向基數時，
 /// 版本在已知範圍內從內建表補，否則回報原因碼。
 EdgeTypeResolution resolveEdgeTypes({
@@ -98,7 +105,7 @@ EdgeTypeResolution resolveEdgeTypes({
 
   if (project == null) {
     return inRange
-        ? _fillMissingCardinality(builtin, builtin, true)
+        ? _fillMissingCardinality(builtin, builtin, true, builtin.keys.toSet())
         : EdgeTypeResolution(
             edgeTypes: const {},
             unavailableReason:
@@ -118,25 +125,59 @@ EdgeTypeResolution resolveEdgeTypes({
       if (builtin[name] != null) name: builtin[name]!,
     ...project,
   };
-  return _fillMissingCardinality(restored, builtin, inRange);
+  final restoredNames = {
+    for (final name in rejected)
+      if (builtin[name] != null) name,
+  };
+  return _fillMissingCardinality(restored, builtin, inRange, restoredNames);
 }
 
-/// 解碼宣告 + 決議後的基數 → 已決議邊型（D6：`association` 為無向）。
-EdgeTypeEntry _entryFromDecl(EdgeTypeDecl raw, EdgeCardinality cardinality) =>
-    EdgeTypeEntry(
-      name: raw.name,
-      edgeClass: raw.edgeClass,
-      forwardField: raw.forwardField,
-      reverseField: raw.reverseField,
-      forwardCardinality: cardinality,
-      layer: raw.layer,
-      isUndirected: raw.name == _undirectedByKeyName,
+/// 缺 `direction` 補值（FR-01）：版本在已知範圍內且內建表有該鍵名取內建表，
+/// 否則照有向處理並回報 [DirectionSource.defaultDirected]。
+({EdgeDirection direction, DirectionSource source}) _resolveDirection(
+  EdgeTypeDecl raw,
+  Map<String, EdgeTypeDecl> builtin,
+  bool inRange,
+  bool declFromBuiltin,
+) {
+  if (raw.direction != null) {
+    return (
+      direction: raw.direction!,
+      source: declFromBuiltin
+          ? DirectionSource.builtinTable
+          : DirectionSource.projectTable,
     );
+  }
+  final fromBuiltin = inRange ? builtin[raw.name]?.direction : null;
+  return fromBuiltin == null
+      ? (
+          direction: EdgeDirection.directed,
+          source: DirectionSource.defaultDirected,
+        )
+      : (direction: fromBuiltin, source: DirectionSource.builtinTable);
+}
+
+/// 解碼宣告 + 決議後的基數與方向 → 已決議邊型。
+EdgeTypeEntry _entryFromDecl(
+  EdgeTypeDecl raw,
+  EdgeCardinality cardinality,
+  ({EdgeDirection direction, DirectionSource source}) resolved,
+) => EdgeTypeEntry(
+  name: raw.name,
+  edgeClass: raw.edgeClass,
+  forwardField: raw.forwardField,
+  reverseField: raw.reverseField,
+  forwardCardinality: cardinality,
+  layer: raw.layer,
+  direction: resolved.direction,
+  directionSource: resolved.source,
+);
 
 EdgeTypeResolution _fillMissingCardinality(
   Map<String, EdgeTypeDecl> project,
   Map<String, EdgeTypeDecl> builtin,
   bool inRange,
+  Set<String> builtinSourced,
 ) {
   final result = <String, EdgeTypeEntry>{};
   var missing = false;
@@ -148,7 +189,13 @@ EdgeTypeResolution _fillMissingCardinality(
       missing = true;
       continue;
     }
-    result[raw.name] = _entryFromDecl(raw, cardinality);
+    final resolved = _resolveDirection(
+      raw,
+      builtin,
+      inRange,
+      builtinSourced.contains(raw.name),
+    );
+    result[raw.name] = _entryFromDecl(raw, cardinality, resolved);
   }
   return EdgeTypeResolution(
     edgeTypes: result,

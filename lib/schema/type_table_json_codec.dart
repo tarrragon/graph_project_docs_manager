@@ -108,6 +108,9 @@ EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
         .where((v) => v.name == value['forward_cardinality'])
         .firstOrNull,
     layer: layer,
+    direction: EdgeDirection.values
+        .where((v) => v.name == value['direction'])
+        .firstOrNull,
   );
 }
 

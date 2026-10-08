@@ -111,6 +111,7 @@ class EdgeTypeDecl {
     required this.reverseField,
     required this.forwardCardinality,
     required this.layer,
+    this.direction,
   });
 
   final String name;
@@ -119,7 +120,14 @@ class EdgeTypeDecl {
   final String? reverseField;
   final EdgeCardinality? forwardCardinality;
   final String layer;
+
+  /// `null` 代表 JSON 缺 `direction` 欄或值不是 `directed`／`undirected`
+  /// （由 `resolveEdgeTypes` 依來源補值，SPEC-007 FR-01）。
+  final EdgeDirection? direction;
 }
+
+/// 邊型方向性（SPEC-007 FR-05：只讀型別表 `direction` 欄）。
+enum EdgeDirection { directed, undirected }
 
 /// 型別表：型別名稱對條目的對照。
 class TypeTable {
