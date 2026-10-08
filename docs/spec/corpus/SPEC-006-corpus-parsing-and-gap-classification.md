@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-10-08"
-version: "1.17"
+version: "1.18"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -270,10 +270,11 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | # | 規則 |
 |---|------|
-| 1 | 檔案位置與鍵名取自專案型別表的 `non_domain_paths_file`／`non_domain_paths_key`；型別表缺這兩欄時回落內建表值（`0.5.0-W1-096.7` PM 決定 NC-2），不在程式內寫死 |
-| 2 | 格式錯誤為三種，子原因列舉 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList }`：YAML 解析失敗（`yamlInvalid`）、缺該鍵（`keyMissing`）、該鍵的值不是清單（`notList`）。任一成立即發出一筆 EVT-CORPUS-005，`reason` 為對應子原因 |
+| 1 | 檔案位置與鍵名取自專案型別表的 `non_domain_paths_file`／`non_domain_paths_key`；型別表缺這兩欄時回落內建表值（`0.5.0-W1-096.7` PM 決定 NC-2），不在程式內寫死。欄位值為空字串時視為缺欄，回落內建表值，與非字串值同路徑（`0.5.0-W1-096.7` 用戶裁決第二批 #2，2A） |
+| 2 | 子原因列舉 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList, elementNotString }`（`elementNotString` 見規則 2a）。整份格式錯誤為三種：YAML 解析失敗（`yamlInvalid`）、缺該鍵（`keyMissing`）、該鍵的值不是清單（`notList`）。任一成立即發出一筆 EVT-CORPUS-005，`reason` 為對應子原因 |
+| 2a | 清單內出現非字串元素（`elementNotString`）：該元素略過、不納入非 domain 路徑，其餘元素照常生效；另報一筆 EVT-CORPUS-005，`reason` 為 `elementNotString`（與上游 `doc validate-paths` 逐元素回報同形）。不轉為字串照收（`0.5.0-W1-096.7` 用戶裁決第二批 #1，1C）。本情境非 domain 側不視為未宣告，規則 4 不適用 |
 | 3 | 檔案不存在不是格式錯誤：不發事件、不產生破洞，非 domain 側為未宣告（「壞檔不得當作缺席」在錯誤回報層成立，見規則 4） |
-| 4 | 格式錯誤時非 domain 側視為未宣告：路徑分類照 UC-02 宣告表「非 domain 清單缺席」的列處理（未命中路徑標「非 domain 未宣告」），不新增顯示狀態；報告頁宣告狀態行另標「格式錯誤」，與「檔案不存在」區分（II-a，畫面見 UC-02） |
+| 4 | 規則 2 的三種格式錯誤時非 domain 側視為未宣告：路徑分類照 UC-02 宣告表「非 domain 清單缺席」的列處理（未命中路徑標「非 domain 未宣告」），不新增顯示狀態；報告頁宣告狀態行另標「格式錯誤」，與「檔案不存在」區分（II-a，畫面見 UC-02） |
 
 **驗收條件**：
 - [ ] Given 清單檔 YAML 語法錯誤，Then 發出一筆 `reason` 為 `yamlInvalid` 的 EVT-CORPUS-005，非 domain 側視為未宣告（E2 正向對照）
@@ -281,6 +282,8 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 - [ ] Given 該鍵的值為字串，Then 發出一筆 `reason` 為 `notList` 的 EVT-CORPUS-005
 - [ ] Given 清單檔不存在，Then 不發 EVT-CORPUS-005，非 domain 側為未宣告（與第一條對照：分類相同、事件不同）
 - [ ] Given 專案型別表缺 `non_domain_paths_file`／`non_domain_paths_key`，Then 依內建表值定位清單檔
+- [ ] Given 專案型別表的 `non_domain_paths_file` 或 `non_domain_paths_key` 為空字串，Then 依內建表值定位清單檔（與缺欄同結果，E2 正向對照：不得以空字串為位置）
+- [ ] Given 清單為 `["docs/a/", null, "docs/b/"]`，Then `docs/a/`、`docs/b/` 生效，`null` 不納入（不得產生模式字串 `"null"`），並發出一筆 `reason` 為 `elementNotString` 的 EVT-CORPUS-005；非 domain 側不視為未宣告
 
 ## 非功能需求
 
@@ -327,6 +330,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.18 | 2026-10-08 | `0.5.0-W1-114.3`（依 `0.5.0-W1-096.7` 用戶裁決第二批 #1 1C、#2 2A）：FR-10 子原因列舉新增 `elementNotString`，新增規則 2a——非字串元素略過、其餘照常生效、另報一筆 EVT-CORPUS-005，非 domain 側不視為未宣告；規則 4 限定為規則 2 三種格式錯誤；規則 1 補位置欄位空字串視為缺欄、回落內建表；補兩條驗收。程式修正由 `0.5.0-W1-123` 承接 |
 | 1.17 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪：FR-08 新增 EVT-CORPUS-005 破洞不依賴 FR-06 路徑查詢（PM 處置 NC-e），移除該項未裁決標記並補一條驗收；原因碼識別名落地——flow 區塊解析失敗為 `flowBlockMalformed`（`0.5.0-W1-001.3` PM 決定），非 domain 路徑清單格式錯誤為 `nonDomainPathsMalformed`，子原因 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList }`（`0.5.0-W1-096.7` PM 處置）；FR-09 規則 3a／3b 與驗收、FR-10 規則 2 與驗收同步 |
 | 1.16 | 2026-10-08 | `0.5.0-W1-114.1`：FR-08 補兩處釐清——EVT-CORPUS-004 的破洞不依賴 FR-06 路徑模式查詢（N4）、帶所屬型別 UC（N5），「查詢不可用時不產生破洞」限定為 EVT-CORPUS-003（`0.5.0-W1-113` PM 處置）；落地 `0.5.0-W1-096.7` 用戶裁決 NC-1：新增 FR-10 非 domain 路徑清單檔格式錯誤（三種格式錯誤、檔案不存在不算、位置取型別表欄位並回落內建表、非 domain 側視為未宣告），經新增 EVT-CORPUS-005 交出，`parseFailure` 新原因碼；FR-08 收 EVT-CORPUS-005、破洞數公式加第三項；〈概述〉職責表同步；補四條驗收。EVT-CORPUS-005 破洞在查詢不可用時的處置未裁決 |
 | 1.15 | 2026-10-08 | 落地 `0.5.0-W1-001.8` PM 處置：FR-09 規則 3b 補 (e) EVT-CORPUS-004 不另設行號欄位（reason 文字可含行號），並寫明已知限制——`flow:` 行本身被縮排的區塊判為非 flow 區塊而略過 |
