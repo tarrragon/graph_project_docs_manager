@@ -7,7 +7,7 @@ source_spec: SPEC-007
 spec_version: "1.2"
 ticket: 0.4.0-W1-059
 created: "2026-09-30"
-updated: "2026-09-30"
+updated: "2026-10-08"
 ---
 
 # SPEC-007 Phase 2 紅燈測試規格
@@ -216,7 +216,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | S6-10 | 既有 `node_types` 解碼 | 解碼含 `edge_types` 的表 | 節點型別解碼結果與未含 `edge_types` 時相同（版本契約第 2 欄「既有 node_types 解碼測試不變」） |
 | S6-11（守衛） | 專案型別表整份缺席（`projectSchemaJson` 為 null） | 解碼 | 建圖不可用，原因碼為版本不在已知範圍；正向對照為 S6-12（SPEC-007 v1.3） |
 | S6-12 | 降級模式：內建表 asset 作為專案型別表傳入 | 解碼 | 建圖可用；使用中邊型等於 asset 的 established 邊型扣除 `domain_dependency`（SPEC-007 v1.3） |
-| S6-13（守衛） | 真實內建型別表 asset | 讀 `edge_types` | established 且 `class` 為 `see-also` 的邊型集合恰為 `association`、`spec_association`、`uc_association`、`proposal_association`；`association` 的 `forward_field` 為 `relatedTo`、`reverse_field` 為 null；Graph 認定為無向的邊型集合恰為 {`association`}。正向對照：測試用型別表新增一個 established see-also 邊型時，斷言翻紅（SPEC-007 v1.6 FR-05、D6）。測試檔放 `test/unit/graph/undirected_edge_contract_test.dart`：需讀 Graph 的無向認定，§1.3 不允許 schema 測試 import graph |
+| S6-13（守衛） | 真實內建型別表 asset；另以邊型表建構器建一份與 asset 相同、僅改指定邊型 `direction` 的測試用型別表 | 讀 `edge_types`；以同一 fixture（A 的 `relatedTo` 列出 B，B 未列 A）建圖 | asset 中 `direction` 為 `undirected` 的邊型集合等於 Graph 認定為無向的邊型集合（目前為 {`association`}）；`spec_association`、`uc_association`、`proposal_association` 的 `direction` 為 `directed`，Graph 照有向處理；`association` 的 `forward_field` 為 `relatedTo`、`reverse_field` 為 null，A 與 B 的鄰接均含對方（對稱聯集）。正向對照（守衛）：測試用型別表把某個 see-also 邊型（如 `spec_association`）的 `direction` 改為 `undirected`，該邊型即做對稱聯集，證明判定依欄位而非鍵名。E1 對照：同一 fixture 下僅把 `association` 的 `direction` 改為 `directed`，建出有向邊 A→B，查 B 的方向為入而非無向，結果與改動前不同；兩份型別表的產物必須不同（SPEC-007 v1.13 FR-05、D6：無向由 `direction` 判定，已無 `association` 鍵名例外）。測試檔放 `test/unit/graph/undirected_edge_contract_test.dart`：需讀 Graph 的無向認定，§1.3 不允許 schema 測試 import graph |
 
 ### 3.2 Graph bundle
 
