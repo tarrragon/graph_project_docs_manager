@@ -127,9 +127,19 @@ class TypeTable {
     this.nodeTypes, {
     this.edgeTypes,
     this.rejectedEdgeTypes = const <String>{},
+    this.nonDomainPathsFile,
+    this.nonDomainPathsKey,
   });
 
   final Map<String, NodeTypeEntry> nodeTypes;
+
+  /// 需求：[SPEC-006 FR-10 規則 1] 非 domain 路徑清單檔的相對路徑
+  /// （`non_domain_paths_file`）；`null` 代表型別表缺此欄，由消費端回落內建表值。
+  final String? nonDomainPathsFile;
+
+  /// 需求：[SPEC-006 FR-10 規則 1] 清單檔內承載模式清單的鍵名
+  /// （`non_domain_paths_key`）；`null` 代表型別表缺此欄，由消費端回落內建表值。
+  final String? nonDomainPathsKey;
 
   /// 邊型宣告；`null` 代表型別表缺 `edge_types` 鍵（與空 map 語意不同）。
   /// 缺席不影響 [nodeTypes] 解碼（SPEC-007 FR-01）。
