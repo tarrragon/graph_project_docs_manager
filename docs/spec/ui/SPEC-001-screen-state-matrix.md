@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-08"
-version: "1.34"
+version: "1.35"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -459,7 +459,9 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 何時顯示 | 只在有任何宣告缺口時顯示；兩側皆完整宣告時隱藏 |
 > | 內容 | 列出缺哪一側——`path_patterns` 已宣告的 bundle 數／bundle 總數、非 domain 清單有或無——加上受影響路徑數；兩側皆無時的整體「未宣告路徑」也在此行呈現，不另設位置 |
 > | 元件 | `AppText`（不新增元件），置於頁首說明區 |
-> | 文案與 i18n key | 未裁決，見 `0.5.0-W1-096.9` NeedsContext；裁決前不得自行定義 key |
+> | 受影響路徑數來源 | Graph 的路徑比對器結果（對照表由 Graph 持有與查詢）；報告頁只消費，不由 Diagnostics 計算 |
+> | 兩側皆未宣告 | 整體「未宣告路徑」時不顯示路徑數，只顯示整體狀態 |
+> | 文案與 i18n key | 部分缺口：`pathDeclarationIncompleteLine`，`{detail}` 由 `pathDeclarationBundlesPartial`、`pathDeclarationNonDomainMissing` 組成（兩者並存時以「、」／", " 連接）；整體未宣告：`pathDeclarationNoneLine`。zh／en 文案登記於 SPEC-004 §4.0.6（`0.5.0-W1-096.9` PM 處置，2026-10-08） |
 
 > **掃描範圍說明的出處**：取自 SPEC-004 §3.6 對照表 §5「無破洞」列（`EmptyState.page` 的
 > 說明 slot）與 §4.21 `EmptyState` 條目的既有 i18n key `noGapsScanScope`；訊息的既有 key
@@ -842,6 +844,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.35 | 2026-10-08 | `0.5.0-W1-096.9` PM 處置：§5〈專案層級宣告狀態一行不是新狀態〉表補兩列——受影響路徑數取自 Graph 路徑比對器結果、報告頁只消費；兩側皆未宣告時不顯示路徑數。文案與 i18n key 列改為已定（四個 key，zh／en 見 SPEC-004 v1.74 §4.0.6）。狀態總數不變 |
 | 1.34 | 2026-10-08 | `0.5.0-W1-096.9` 用戶裁決第二輪（F＋G）：§5〈專案層級宣告狀態一行不是新狀態〉寫明該行只在掃描完成三列、有宣告缺口時顯示，內容為缺哪一側與受影響路徑數，整體「未宣告路徑」同在此行，元件為 `AppText`；文案與 i18n key 仍未裁決。狀態總數不變 |
 | 1.33 | 2026-10-08 | `0.5.0-W1-103.1`（依 `0.5.0-W1-103` 用戶裁決：使用中的 proposed 邊須標示）：§6 新增〈關聯右欄標示 proposed 邊〉註記——正常、部分損壞兩狀態的關聯右欄依 SPEC-007 FR-08 回傳項 `layer` 標示 proposed 邊，元件見 SPEC-004 v1.72 4.19 `isProposed`。狀態總數不變 |
 | 1.32 | 2026-10-08 | `0.5.0-W1-096.9`（依 `0.5.0-W1-096.3` 用戶裁決 7a）：§5 新增〈專案層級宣告狀態一行不是新狀態〉註記——「domain 未宣告」「非 domain 未宣告」不列為破洞項、不計入破洞數，報告頁改顯示一行專案層級宣告狀態；出現的狀態列、內容、文案、i18n key 與元件未裁決，見該票 NeedsContext。狀態總數不變 |

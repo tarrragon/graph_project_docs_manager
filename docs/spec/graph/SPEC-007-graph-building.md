@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.14"
+version: "1.15"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -84,7 +84,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **規則**：
 - 每個邊型帶：鍵名（如 `association`、`spawn`）、`class`、`forward_field`、`reverse_field`（可為 null）、正向基數（`one`／`many`）、`direction`（`directed`／`undirected`）、`layer`
 - 使用中邊型見〈用詞〉。欄位名、基數、是否有反向欄位、方向性一律取自型別表，不在程式內寫死。本版以鍵名寫死的只有兩處（設計約束 D6）：排除 `domain_dependency`，以及納入 `proposed` 層的 `bundle_dependency`
-- 專案型別表的邊型條目缺 `direction` 欄（舊框架匯出的 JSON，例如 2.40.3 版 17 條皆缺）：版本在 App 已知範圍內時，依該邊型鍵名從內建表補 `direction`，並回報 `direction` 來源為內建表；內建表也沒有該鍵名時照 `directed` 處理並回報來源（`0.5.0-W1-103.1` 用戶裁決 H1，2026-10-08，沿用 SPEC-006 D8 前例）。查的是內建表的資料，不是程式內的鍵名例外，D6 的鍵名例外不因此增加。不可把缺欄一律當 `directed`：`association` 會變成單向，違反 `relatedTo` 語意對稱的約定。版本不在已知範圍時的處置見 `0.5.0-W1-103.1` NeedsContext
+- 專案型別表的邊型條目缺 `direction` 欄（舊框架匯出的 JSON，例如 2.40.3 版 17 條皆缺）：版本在 App 已知範圍內時，依該邊型鍵名從內建表補 `direction`，並回報 `direction` 來源為內建表；內建表也沒有該鍵名時照 `directed` 處理並回報來源（`0.5.0-W1-103.1` 用戶裁決 H1，2026-10-08，沿用 SPEC-006 D8 前例）。查的是內建表的資料，不是程式內的鍵名例外，D6 的鍵名例外不因此增加。不可把缺欄一律當 `directed`：`association` 會變成單向，違反 `relatedTo` 語意對稱的約定。版本不在已知範圍時已由既有規則涵蓋，不另定：該專案 JSON 走 SPEC-001 §1「schema 不相容」關卡、不被消費；使用者改以內建型別表檢視時，內建表本身帶 `direction`（`0.5.0-W1-103.1` PM 處置，2026-10-08）
 - 專案型別表缺 `edge_types`，或其中缺正向基數欄位：版本在 App 已知範圍內則從內建表補；否則建圖不可用，回報原因碼（與 SPEC-006 FR-08 同一套「無法判定」原因）
 - 單一邊型條目不合法（值不是 map；`class`、`forward_field`、`layer` 缺席或不是字串；`reverse_field` 存在但不是字串，null 合法）：該條目整筆拒收並寫日誌，視同該邊型缺席，依缺欄位的規則處置——版本在 App 已知範圍內時該邊型取內建表的定義；否則建圖不可用，原因碼為「邊型條目不合法」（與缺 `edge_types`、缺正向基數各自獨立的第三個值，日誌據此區分）。同一張表同時有不合法條目與缺正向基數的條目時，只回報「邊型條目不合法」：不合法條目在解碼階段就被拒收，先於基數補值判定。版本在已知範圍內、但內建表也沒有該鍵名時（上游已刪除該邊型，舊專案表仍留著且條目不合法），該邊型不建邊，只寫拒收日誌，建圖仍可用：兩張表都沒有可讀的定義，而內建表是已知範圍內的權威，不認得的邊型不屬於 App 所知的圖。`edge_types` 本身不是 map 時視同缺 `edge_types`。邊型條目的問題只影響 Graph，不得中斷 Corpus 對同一型別表 `node_types` 的解碼
 - 專案型別表整份缺席（`tracking_schema.json` 不存在）：建圖不可用，回報版本不在已知範圍的原因碼。這是 SPEC-001 §1「無可消費的型別表」的顯式關卡，Graph 不自動降級；使用者選「以 App 內建型別表檢視」後，呼叫端以內建表作為專案型別表傳入，建圖可用，使用中邊型取自內建表（`docs/tech-decisions.md` 2026-09-03「型別表缺席時降級而非拒絕」）。呼叫端的接線屬 PROP-005 §0.6 畫面接真資料
@@ -371,6 +371,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.15 | 2026-10-08 | `0.5.0-W1-103.1` PM 處置：FR-01 缺 `direction` 規則補一句——版本不在已知範圍時由 SPEC-001 §1「schema 不相容」關卡涵蓋、內建表本身帶 `direction`，取代原指向 NeedsContext 的句子 |
 | 1.14 | 2026-10-08 | `0.5.0-W1-103.1` 用戶裁決第二輪 H1：FR-01 寫明專案型別表缺 `direction` 欄時，版本在已知範圍內依鍵名從內建表補並回報來源、內建表也沒有的邊型照 `directed` 處理（沿用 SPEC-006 D8）；補兩條驗收。版本不在已知範圍時的處置未裁決，見該票 NeedsContext |
 | 1.13 | 2026-10-08 | `0.5.0-W1-103.1`（依 `0.5.0-W1-103` 用戶裁決 P1＋proposed 標示，及 2026-09-30 無向欄位裁決）：〈用詞〉使用中邊型加入 `bundle_dependency`、新增「無向邊」詞條；FR-01 邊型帶 `direction`，鍵名例外改為排除 `domain_dependency`、納入 `bundle_dependency`；FR-04、FR-05 改由 `direction` 欄判無向，移除 `association` 鍵名例外與「匯出的 JSON 沒有這項資訊」過時敘述（上游 `0.4.0-W1-072` 已補欄位）；FR-08 回傳項帶 `layer`，proposed 邊須由消費端標示；FR-11 補 DomainBundle `domain` 對外提供方式沿用解析器條文；D2、D6 同步並寫明 `bundle_dependency` 例外理由。專案型別表缺 `direction` 時的處置未裁決，見該票 NeedsContext |
 | 1.12 | 2026-10-08 | 落地 `0.5.0-W1-001.2` NeedsContext 用戶裁決（`0.5.0-W1-001.8`）：FR-09 新增 flow 三子類（flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告），負載 {UC ID, step id, 欄位, 原始值}，破洞報告另立 flow 小組（1a）；FR-10 重複 step id 兩步保留、指向它的參照標未解析並報缺陷，寫明與主圖重複 ID（FR-02）處理不同的理由（2a）；D4 同步。三子類的程式識別名未裁決，見 `0.5.0-W1-001.8` NeedsContext |
