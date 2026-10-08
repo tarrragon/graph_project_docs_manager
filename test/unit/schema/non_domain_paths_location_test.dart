@@ -35,4 +35,15 @@ void main() {
     expect(table.nonDomainPathsFile, 'docs/non-domain-paths.yaml');
     expect(table.nonDomainPathsKey, 'non_domain_path_patterns');
   });
+
+  test('專案 JSON 兩欄為空字串時視為缺欄（與缺欄對照相同）', () {
+    final table = typeTableFromJson(<String, dynamic>{
+      'node_types': <String, dynamic>{},
+      'non_domain_paths_file': '',
+      'non_domain_paths_key': '',
+    });
+
+    expect(table.nonDomainPathsFile, isNull);
+    expect(table.nonDomainPathsKey, isNull);
+  });
 }
