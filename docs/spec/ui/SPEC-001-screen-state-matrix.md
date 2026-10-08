@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-08"
-version: "1.39"
+version: "1.40"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -470,7 +470,9 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 「有破洞」列中原因碼 `nonDomainPathsMalformed`、子原因 `elementNotString` 的破洞項，項目說明顯示
 > 「清單內 N 個非字串元素」，N 取破洞的 `nonStringElementCount`（SPEC-006 FR-08）；文案 key 為
 > SPEC-004 §4.0.6 `gapNonDomainPathsNonStringElements`。不指出是哪個元素，定位交上游 `doc validate-paths`。
-> 狀態總數不變。
+> 其餘三個子原因的項目說明（`0.5.0-W1-114.5` PM 處置）：`yamlInvalid` → `gapNonDomainPathsYamlInvalid`、
+> `keyMissing` → `gapNonDomainPathsKeyMissing`、`notList` → `gapNonDomainPathsNotList`（後兩者帶鍵名參數）。
+> 項目路徑為清單檔相對路徑，無行號；無指向節點，點擊開啟原始檔。狀態總數不變。
 >
 > **專案層級宣告狀態一行不是新狀態**（`0.5.0-W1-096.9`，依 `0.5.0-W1-096.3` 用戶裁決 7a，
 > 2026-10-08；分類見 UC-02〈ticket 定位的五種狀態與整體未宣告〉）：ticket 定位的「domain 未宣告」
@@ -870,6 +872,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.40 | 2026-10-08 | `0.5.0-W1-114.5` PM 處置（lavender NeedsContext）：§5〈非字串元素破洞的項目說明〉補 `nonDomainPathsMalformed` 其餘三個子原因的項目說明 key（SPEC-004 v1.79），並寫明此類破洞無行號、無指向節點、點擊開啟原始檔。狀態總數不變 |
 | 1.39 | 2026-10-08 | `0.5.0-W1-114.5`（依 `0.5.0-W1-114.4` PM 處置 NC-4／NC-5、用戶裁決第五批 NC-7）：〈「在泳道中檢視」跳轉目標〉補 Layout「給定一列，回傳欄號最小的節點」查詢遇空列回傳 null，並註明本情境來源 X 為直接貫穿 domain、列必有節點；〈泳道布局規則〉表後補 FR-13 圖不可用與 schema 不相容關卡同判定式、Layout 不另處理；§5 新增 `elementNotString` 破洞項目說明，引用 SPEC-004 key `gapNonDomainPathsNonStringElements`。狀態總數不變 |
 | 1.38 | 2026-10-08 | `0.5.0-W1-114.3`（依 `0.5.0-W1-114.2` 用戶裁決 R1／J2，第二批）：§1〈泳道布局規則〉列序來源改為 Graph 公開面的分層與層內排序（SPEC-007 FR-13），Layout 不自行推導，原判定式保留為摘錄；〈間接依賴格的詳情卡〉排序列改依 SPEC-007 FR-13、由 Graph 排序；〈「在泳道中檢視」跳轉目標〉補取得方式——畫面以 FR-12 第一條路徑來源呼叫 Layout 公開面「給定一列，回傳欄號最小的節點」查詢。狀態總數不變 |
 | 1.37 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪（PM 處置 NC-a／NC-f／NC-g，SPEC-004 v1.77 同批）：§1〈泳道布局規則〉「`traverses` 異常的步驟」列定案「泳道最後」為另立「未定位」列（全部 DomainBundle 列之後的最末列，只在有此類步驟時出現，欄號依清單順序），正常 · 泳道顯示欄同步；〈flow 區塊解析失敗的泳道呈現〉提示元件、位置與兩個 i18n key 由提案改為已定；§2「flow 未結構化」在 flow 區塊皆解析失敗時改用 `flowParseFailedMessage`。狀態總數不變 |
