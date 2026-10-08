@@ -1,19 +1,24 @@
 ---
 id: SPEC-001-test-design
-title: "SPEC-001 v1.37／SPEC-004 v1.77／UC-02 v1.7 Phase 2 紅燈測試規格"
+title: "SPEC-001 v1.38／SPEC-004 v1.77／UC-02 v1.8 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-001
 spec_version: "1.35"
-delta_spec_version: "1.37"
+delta_spec_version: "1.38"
 related_specs: [SPEC-004, UC-02, SPEC-007]
 ticket: 0.5.0-W1-114
-delta_ticket: 0.5.0-W1-114.2
+delta_ticket: 0.5.0-W1-114.4
 created: "2026-10-08"
 updated: "2026-10-08"
 ---
 
-# SPEC-001 v1.37／SPEC-004 v1.77／UC-02 v1.7 Phase 2 紅燈測試規格
+# SPEC-001 v1.38／SPEC-004 v1.77／UC-02 v1.8 Phase 2 紅燈測試規格
+
+**v1.38 差異（`0.5.0-W1-114.4`）**：依 `0.5.0-W1-114.2` 用戶裁決 R1／J2。R1：列序規則改歸 Graph（SPEC-007 FR-13），
+L1-1～L1-3、L2-1～L2-4 移至 `docs/test-design/SPEC-007-test-design.md` G13，Layout 改測「向 Graph 取列序、不自行推導」（L8）。
+J2：跳轉目標由 Layout 公開面「給定一列，回傳欄號最小的節點」查詢取得（L9），畫面以 FR-12 第一條路徑的來源呼叫（V3 改寫），
+NC-1、NC-2 已處置。UC-02 v1.8 比對語意兩條（C3′ 不以 `/` 結尾的值精確比對、T1 同字串歸 domain）落為 P4。
 
 **v1.36～v1.37 差異（`0.5.0-W1-114.2`）**：依 `0.5.0-W1-114` 用戶裁決 T1／O1／F1、`0.5.0-W1-113` D-3、
 `0.5.0-W1-096.7` NC-1 與 `0.5.0-W1-114.1` PM 處置 NC-a～NC-g 增改：「未定位」列（L7、ITD2-A5 改寫、
@@ -161,9 +166,14 @@ Mock 只替換外部世界（資料夾選擇、檔案系統 port）；Graph、La
 
 ### 3.1 Layout：泳道布局規則
 
+> **v1.38 移轉（R1）**：列序規則權威改為 SPEC-007 FR-13。L1-1～L1-3、L2-1～L2-4 與 L2-5 的排序部分移至
+> `docs/test-design/SPEC-007-test-design.md` G13（對照：L1-1→G13-1、L1-2→G13-2、L1-3→G13-3、L2-1→G13-4、
+> L2-2→G13-5、L2-3→G13-7、L2-4→G13-8、L2-5 排序→G13-9），Layout 實作不再承擔這些案例，下表保留原文供追溯，
+> 標「已移」者不在本檔實作。Layout 留下 L1-4、L2-5 的畫邊部分、L2-6，另加 L8（列序來源）。
+
 #### L1 列序：層推導 max+1（SPEC-001〈泳道布局規則〉列集合與列序；domain map §6 1c／1a）
 
-**測試檔**：`test/unit/layout/lane_order_test.dart`，group `層推導`
+**測試檔**：`test/unit/layout/lane_order_test.dart`，group `層推導`（L1-1～L1-3 已移，僅 L1-4 留在本檔）
 
 | # | Given | Then |
 |---|-------|------|
@@ -174,7 +184,7 @@ Mock 只替換外部世界（資料夾選擇、檔案系統 port）；Graph、La
 
 #### L2 列序：同層 code point 排序與推不出層者
 
-**測試檔**：同上，group `同層排序與結構異常`
+**測試檔**：同上，group `同層排序與結構異常`（L2-1～L2-4 已移；L2-5 只留「不產生 `ghost` 列、指向 `ghost` 的邊不畫」；L2-6 留）
 
 | # | Given | Then |
 |---|-------|------|
@@ -249,21 +259,52 @@ Mock 只替換外部世界（資料夾選擇、檔案系統 port）；Graph、La
 | L7-8 | flutter_balance UC-01 快照 | 九個節點全在「未定位」列、欄號 0～8 依 §1.2 表；邊與 L5-6 相同（4 弧線、8 直線） |
 | L7-9 | 步驟總數守恆 | 輸出節點所在步驟集合等於輸入步驟集合（L7-1～L7-8 各驗一次，異常步驟不消失） |
 
+#### L8 列序來源：向 Graph 取、不自行推導（SPEC-001 v1.38〈泳道布局規則〉列集合與列序；`0.5.0-W1-114.2` R1；v1.38 新增）
+
+**層**：domain unit（Layout）。**測試檔**：`test/unit/layout/lane_order_test.dart`，group `列序來源`
+**輸入**：以 provider override／建構子注入 Graph FR-13 查詢的替身，回傳指定的 DomainBundle 排序
+**承接票**：Layout 列序票（§6.2 L1、L2、L8 列）
+
+| # | Given | Then |
+|---|-------|------|
+| L8-1 | Graph 替身回傳本專案快照排序（G13-1 的期望值） | 列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列 |
+| L8-2（E1：取自 Graph 而非自行推導） | 同一組 DomainBundle 與依賴邊，Graph 替身回傳一個刻意與分層＋code point 推導不同的排序（例：`layout`、`schema`、其餘依原序） | Layout 的 DomainBundle 列序逐值等於替身回傳的排序；與 L8-1 的列序不同。若 Layout 自行推導，兩次結果會相同，斷言因此翻紅 |
+| L8-3 | L8-1 的輸入另有一個 `traverses` 缺鍵的步驟 | 列序為「畫面」、Graph 排序、「未定位」；Graph 排序段不插入、不移除任何列（與 L7-5 的末列規則一致） |
+| L8-4（E1：推不出層者的位置由 Graph 決定） | Graph 替身回傳的排序末兩個為成環的 X、Y | Layout 依原樣放在 Graph 排序段末尾、「未定位」之前；Layout 不另外判斷環，替換替身使 X、Y 排在前段時 Layout 跟著改 |
+
+L8 只驗「列序來自 FR-13 回傳值」。分層與 code point 的規則本身由 SPEC-007 G13 承擔，兩者不重複斷言同一規則。
+
+#### L9 「給定一列，回傳欄號最小的節點」查詢（`docs/spec/layout/domain-map.md` §3；SPEC-001 v1.38〈「在泳道中檢視」跳轉目標〉；`0.5.0-W1-114.2` J2；v1.38 新增）
+
+**層**：domain unit（Layout 公開面）。**測試檔**：`test/unit/layout/lane_first_node_test.dart`
+**輸入**：選定 UC 的 flow 子圖與 Graph 名稱解析結果（同 L3～L7）
+**承接票**：Layout 欄序與節點票（§6.2 L3～L7、L9 列）
+
+| # | Given | Then |
+|---|-------|------|
+| L9-1 | UC-04 快照，列 `graph` | 回傳 UC-04 欄號最小且 `traverses` 含 `graph` 的步驟所在節點（原 V3-1 的期望值，改由 Layout 承擔） |
+| L9-2（E1：欄號對清單順序，原 V3-2） | 列 X 有兩個步驟節點，檔內順序在後者因分支插欄而欄號較小（L3-4 的形態） | 回傳欄號較小者；取清單順序第一步會得另一個節點，斷言兩者不同 |
+| L9-3 | 一個步驟 `traverses: [graph, corpus]`（多列節點），另一步只含 `corpus` 且欄號較大 | 列 `corpus` 回傳前者在 `corpus` 列的節點；回傳的是指定列上的節點，不是該步驟最上方節點（L5-5 的邊端點規則不適用於此查詢） |
+| L9-4 | 列 X 存在但無節點（L2-6 的空列，或 L7-7 的重複宣告列） | 回傳值可與「有節點」區分（回傳形態見 §6.1 NC-4） |
+
 ### 3.2 domain_view：跳轉目標（V1、V2 已移至 SPEC-007 G12）
 
 原 V1（三值判定式）、V2（依賴路徑）依 `0.5.0-W1-114` 用戶裁決 O1 改歸 Graph FR-12，案例內容不變、
 編號改為 G12，見 `docs/test-design/SPEC-007-test-design.md` §3.2 G12。畫面層只顯示 FR-12 回傳值，
-本檔僅保留畫面消費的斷言（ITD1、ITD3）與 V3。V3 是否同樣改歸 Graph 見 §6.1 NC-2。
+本檔僅保留畫面消費的斷言（ITD1、ITD3）與 V3。
 
-#### V3 「在泳道中檢視」跳轉目標
+#### V3 「在泳道中檢視」跳轉目標（v1.38 改寫：J2，NC-2 已處置）
 
-**測試檔**：`test/unit/screens/domain_view/indirect_dependency_test.dart`，group `跳轉目標`（歸屬待 NC-2）
+**層**：widget（domain_view 畫面，Graph FR-12 與 Layout L9 查詢皆以替身注入）。
+**測試檔**：`test/unit/screens/domain_view/indirect_dependency_test.dart`，group `跳轉目標`
+**承接票**：domain_view 畫面票（§6.2 第 3 組）。「欄號最小」的規則本身由 L9 承擔，V3 只驗畫面的呼叫參數與落點，不重算欄號
 
 | # | Given | Then |
 |---|-------|------|
-| V3-1 | UC-04 × `schema` | 目標列 `graph`，目標節點為 UC-04 欄號最小且 `traverses` 含 `graph` 的步驟 |
-| V3-2（E1） | 來源 X 在 UC 中有兩個步驟，檔內順序在後者欄號較小（分支插欄） | 取欄號最小者，而非檔內順序最先者 |
-| V3-3 | 直接貫穿格 | 目標列為該格 domain |
+| V3-1（v1.38 改寫） | UC-04 × `schema` 間接依賴格；FR-12 替身回傳 `graph → corpus → schema`、`ticketdetail → corpus → schema`；L9 替身對 `graph` 回傳節點 N | 畫面以 `graph`（第一條路徑的來源）呼叫 L9 查詢恰一次，跳到 `graph` 列的節點 N |
+| V3-2（E1：取第一條路徑，v1.38 改寫；原 V3-2 的欄號鑑別移至 L9-2） | 同一格，FR-12 替身改回傳 `ticketdetail → corpus → schema` 在前 | 畫面以 `ticketdetail` 呼叫 L9，落點改為 `ticketdetail` 列；與 V3-1 的落點不同（證明畫面不自行排序路徑） |
+| V3-3 | 直接貫穿格 | 目標列為該格 domain（既有行為，SPEC-001 v1.38 原文「直接貫穿格維持跳到該格 domain 所在列」）；畫面不呼叫 FR-12 的依賴路徑 |
+| V3-4（E1：畫面不自行組合，v1.38 新增） | V3-1 的輸入，但 L9 替身對 `graph` 回傳的節點 N′ 刻意不是欄號最小者 | 畫面落點為 N′；若畫面自行依欄號挑節點會得另一節點，斷言翻紅 |
 
 #### F1 flow 區塊解析失敗的呈現（SPEC-001 §1〈flow 區塊解析失敗的泳道呈現〉、§2「flow 未結構化」；`0.5.0-W1-114` F1、`0.5.0-W1-114.1` NC-f／NC-g；v1.37 新增）
 
@@ -319,6 +360,23 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | P3-4 | 受影響路徑數 | 等於標為兩種「未宣告」的路徑數；兩側皆無時不提供路徑數 |
 | P3-5 | flutter_balance | 整體「未宣告路徑」 |
 
+#### P4 比對語意：精確比對與同字串歸屬（UC-02 v1.8〈ticket 定位〉；`0.5.0-W1-114.3` 用戶裁決 C3′、T1；v1.38 新增）
+
+**層**：domain unit（路徑比對器）。**測試檔**：同 P1～P3，group `比對語意`
+**承接票**：`0.5.0-W1-096.5`（UC-02 v1.8 兩條新驗收的承接；比對器輸入由 SPEC-006 FR-10 規則 2b 保證含格式違規字串，見 SPEC-006-test-design C15-7、C15-8）
+**共通宣告**：兩側皆有宣告（P1-1 的形態），使「未命中」落在可觀測的「無法定位」
+
+| # | Given | 路徑 | Then |
+|---|-------|------|------|
+| P4-1（守衛：空字串不命中，UC-02 驗收「空字串」條） | bundle `graph` 的 `path_patterns: [""]` | `lib/a.dart` | 不歸 `graph`，為無法定位；正向對照：同路徑在 `path_patterns: ["lib/"]` 時歸 `graph`。把空字串當前綴比對的實作會命中全部路徑，斷言翻紅 |
+| P4-2（守衛：空字串在非 domain 側同樣不命中） | 非 domain 清單 `["", "docs/a/"]`（SPEC-006 C15-7 的清單） | `src/b.dart` | 不歸非 domain，為無法定位；`docs/a/x.md` 歸非 domain（其餘元素照常生效） |
+| P4-3（守衛：`/docs/` 不命中，UC-02 驗收「`/docs/`」條） | 非 domain 清單 `["/docs/"]` | `docs/a.md` | 不歸非 domain，為無法定位；正向對照：清單 `["docs/"]` 時歸非 domain。比對前去除前導 `/` 的實作會命中，斷言翻紅 |
+| P4-4（E1：不以 `/` 結尾為精確比對） | bundle `graph` 的 `path_patterns: ["lib/a.dart"]` | `lib/a.dart`、`lib/a.dart.bak`、`lib/a.dartx` | 第一條歸 `graph`；後兩條為無法定位。前綴比對會使三條皆歸 `graph`，斷言結果與後者不同 |
+| P4-5（守衛：其餘上游格式違規值不命中） | 非 domain 清單 `["./docs/", "docs/../lib/", "docs/*.md"]` | `docs/a.md`、`lib/a.dart` | 兩條皆為無法定位；正向對照為 P1-2（合法值命中） |
+| P4-6（T1，UC-02 驗收「同字串」條） | bundle `graph` 的 `path_patterns` 與非 domain 清單皆含 `docs/x/` | `docs/x/a.md` | 歸 `graph`；比對器不另回報衝突（衝突由 `doc validate` 回報） |
+| P4-7（E1：T1 只在等長時生效） | bundle `graph` 宣告 `docs/x/`，非 domain 清單宣告 `docs/x/y/` | `docs/x/y/a.md` | 歸非 domain（最長前綴優先）；與 P4-6 的歸屬不同，證明「歸 domain」不是無條件的 domain 優先 |
+| P4-8（E1：T1 的對照組） | 只有非 domain 清單含 `docs/x/`，bundle 不含 | `docs/x/a.md` | 歸非 domain；與 P4-6 的歸屬不同 |
+
 ### 3.4 報告頁宣告狀態行（SPEC-001 §5、SPEC-004 §4.0.6）
 
 **測試檔**：`test/unit/screens/gap_report_declaration_line_test.dart`
@@ -362,7 +420,7 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 
 | 規則（規格位置） | 5a | 5b |
 |----------------|----|----|
-| 列集合與列序（SPEC-001 §1） | ITD2-A1、A4、A5 | L1、L2 |
+| 列集合與列序（SPEC-001 §1；v1.38 列序來源改 Graph） | ITD2-A1、A4、A5 | L1-4、L2-5（畫邊）、L2-6、L8；規則本身為 SPEC-007 G13 |
 | 列鍵比對、列首原值（SPEC-001 §1；SPEC-004 4.37／4.38） | ITD1-A3 | L4-3、K1、K2-1 |
 | 主線、欄序（SPEC-001 §1） | ITD2-A2、A5 | L3 |
 | 節點所屬列、「畫面」列 | ITD2-A2 | L4、K2-2 |
@@ -370,10 +428,11 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | 欄序無法輸出的步驟 | — | L6 |
 | `traverses` 異常的步驟與「未定位」列（v1.36／v1.37） | ITD2-A5 | L4-3、L7、K2-5 |
 | 間接依賴判定式 | ITD1-A1、A2、A4 | SPEC-007 G12（原 V1） |
-| 依賴路徑 | ITD3-A1、A2、A4 | SPEC-007 G12（原 V2） |
-| 跳轉目標 | ITD3-A3 | V3 |
+| 依賴路徑（v1.38 排序依 FR-13） | ITD3-A1、A2、A4 | SPEC-007 G12（原 V2）、G13-13 |
+| 跳轉目標（v1.38 J2） | ITD3-A3 | L9（欄號最小節點查詢）、V3（畫面呼叫參數與落點） |
 | flow 區塊解析失敗的呈現（v1.36／v1.37） | — | F1、K4-2 |
 | ticket 定位五狀態與整體未宣告（UC-02 v1.7） | ITD4-A1、A2、A5 | P1（含 P1-7）、P2、P3 |
+| 比對語意：精確比對與同字串歸 domain（UC-02 v1.8 C3′、T1） | —（兩份語料皆無此類宣告值） | P4 |
 | 宣告狀態行（SPEC-001 §5；含格式錯誤） | ITD4（含 A5） | R1（含 R1-9～R1-11）、K4-1、K4-2 |
 | proposed 標記（SPEC-004 4.19；SPEC-001 §6） | ITD3-A5 | K3、K4-1 |
 
@@ -384,26 +443,28 @@ L6 不在外圈：兩份語料皆無懸空與循環（SPEC-001 期望值欄）�
 
 | 不變式（`docs/spec/layout/domain-map.md`） | 測試 |
 |------------------------------------------|------|
-| 列序不寫死 domain 名、換 UC 不變 | L1-4、L2-6、ITD2-A4、A5 |
-| 結構異常不消失、接在最後 | L2-4、L2-5、L6、L7-1、L7-5、L7-9 |
-| 只依賴 Graph | §1.4 import 檢查；L7 只消費 Graph 解析結果 |
+| 列序不寫死 domain 名、換 UC 不變 | L1-4、L2-6、L8-2、ITD2-A4、A5；SPEC-007 G13-11 |
+| 結構異常不消失、接在最後 | L2-5、L6、L7-1、L7-5、L7-9、L8-4；SPEC-007 G13-8～G13-10 |
+| 只依賴 Graph | §1.4 import 檢查；L7 只消費 Graph 解析結果；L8 只消費 Graph 排序 |
+| 公開面「給定一列，回傳欄號最小的節點」（v1.38） | L9 |
 
 ## 5. 測試案例統計
 
 | 單元／圈 | 群組 | 案例數 |
 |---------|------|-------|
 | 5a 外圈 | IT-D1～IT-D4 | 19（v1.37 加 ITD3-A5、ITD4-A5；ITD2-A5 改寫不計增） |
-| Layout | L1～L7 | 38（加 L7 九案；L1-4、L4-3 改寫不計增） |
-| domain_view | V3 | 3（V1、V2 共 12 案移至 SPEC-007 G12） |
+| Layout | L1～L9 | 39（v1.37 為 38；v1.38 移出 L1-1～L1-3、L2-1～L2-4 共七案至 SPEC-007 G13，加 L8 四案、L9 四案） |
+| domain_view | V3 | 4（V1、V2 共 12 案移至 SPEC-007 G12；v1.38 加 V3-4，V3-1、V3-2 改寫不計增） |
 | flow 解析失敗呈現 | F1 | 7 |
-| 路徑定位 | P1～P3 | 16（加 P1-7） |
+| 路徑定位 | P1～P4 | 24（加 P1-7；v1.38 加 P4 八案） |
 | 報告頁宣告狀態行 | R1 | 11（加 R1-9～R1-11） |
 | 元件 | K1～K4 | 12（加 K2-5、K4-2；K2-4 改寫不計增） |
-| 合計 | | 106 |
+| 合計 | | 116 |
 
-守衛型案例（已附正向對照）：L2-4、L2-5、L6-1、L6-2、L7-1、R1-5。
-E1 對照：ITD1-A4、ITD2-A5、ITD3-A4、ITD3-A5、ITD4-A3、ITD4-A5、L1-2、L2-2、L3-3、L4-3、L5-3、L7-2、L7-4、L7-6、
-V3-2、F1-2、F1-4、F1-7、P1-7、P2-2、P2-3、R1-7、R1-10、K2-3、K2-4、K3-1。
+守衛型案例（已附正向對照）：L2-5、L6-1、L6-2、L7-1、R1-5、P4-1、P4-2、P4-3、P4-5（L2-4 已移為 SPEC-007 G13-8）。
+E1 對照：ITD1-A4、ITD2-A5、ITD3-A4、ITD3-A5、ITD4-A3、ITD4-A5、L3-3、L4-3、L5-3、L7-2、L7-4、L7-6、
+L8-2、L8-4、L9-2、V3-2、V3-4、F1-2、F1-4、F1-7、P1-7、P2-2、P2-3、P4-4、P4-7、P4-8、R1-7、R1-10、K2-3、K2-4、K3-1
+（L1-2、L2-2 已移為 SPEC-007 G13-2、G13-5）。
 
 ## 6. 待決與交接
 
@@ -423,17 +484,31 @@ V3-2、F1-2、F1-4、F1-7、P1-7、P2-2、P2-3、R1-7、R1-10、K2-3、K2-4、K3
 
 - **NC-1**：FR-12 依賴路徑的排序規則引用「泳道列序」（SPEC-001〈間接依賴格的詳情卡：依賴路徑〉排序列），而列序由 Layout 推導（分層＋code point）。依系統層 §2 Layout 依賴 Graph，Graph 不能反向取用 Layout 的列序。Graph 在 FR-12 內自行以相同公式重算列序，或排序改由畫面層以 Layout 列序重排，未裁決。影響 G12 中原 V2-1、V2-3 的排序斷言由哪個單元承擔。
 - **NC-2**：V3「在泳道中檢視」跳轉目標的歸屬。SPEC-007 FR-12 只回傳關係種類與依賴路徑，不含跳轉目標；跳轉目標需要依賴路徑第一行的來源（FR-12）與該 UC 的欄號（Layout 欄序），兩者分屬兩個單元。票面寫「V1～V3 改歸 Graph FR-12」，但 FR-12 條文不涵蓋 V3。本輪 V3 留在本檔、測試檔路徑暫放 `test/unit/screens/domain_view/`，待裁決是否改歸 Graph（須擴充 FR-12）或維持畫面層組合。
+v1.38 處置（`0.5.0-W1-114.2` 用戶裁決，SPEC-001 v1.38、SPEC-007 v1.18）：
+
+- **NC-1（已處置，R1）**：分層與層內排序歸 Graph FR-13，FR-12 依其排序、Layout 向 Graph 取列序。落點 SPEC-007 G13、G12-7／G12-9 改寫、本檔 L8。
+- **NC-2（已處置，J2）**：跳轉目標由 Layout 公開面「給定一列，回傳欄號最小的節點」查詢取得，畫面以 FR-12 第一條路徑的來源呼叫。落點 L9、V3 改寫。
+
 - **NC-3**：F1-3 在路徑查詢不可用時的呈現（SPEC-006 FR-08：EVT-CORPUS-004 的破洞照常產生、同時回報「無法判定」）。泳道 F1 只以「有無解析失敗破洞」為輸入，與無法判定並存時是否仍顯示解析失敗文案未明寫；本輪 F1 不設此組合。
+
+本輪新增（`0.5.0-W1-114.4`，未在裁決內，不自行填補）：
+
+- **NC-4**：Layout「給定一列，回傳欄號最小的節點」在該列無節點時的回傳未定義（`docs/spec/layout/domain-map.md` §3、SPEC-001 v1.38 皆未寫）。間接依賴的來源 X 依定義被 UC 直接貫穿，正常情況下列上必有節點；但 X 為重複宣告 domain（L7-7，兩列皆無節點）或 FR-12 與 Layout 讀到不同輪掃描結果時可能為空。L9-4 只斷言可與「有節點」區分；畫面遇空結果的落點（停在列首、不跳轉、提示）未定，V3 本輪不設此組合。
+- **NC-5**：Graph FR-13 回傳「圖不可用」時 Layout 列序的行為未寫。泳道畫面在建圖不可用時是否已被上游阻擋狀態攔下（不進入 Layout）未在 SPEC-001 §1 與 Layout domain map 明寫；L8 本輪不設此組合。
+- **NC-6**：UC-02 v1.8 驗收「宣告值為空字串或 `/docs/` 時不命中」的括號理由寫「不得把不以 `/` 結尾的值當前綴比對」，但 `/docs/` 以 `/` 結尾，其不命中的理由是前導 `/`（相對專案根的路徑不以 `/` 開頭），不是精確比對。P4-3 依「`/docs/` 不命中」的結論寫斷言，不依括號理由；條文是否補一句由規格擁有者決定。
 
 ### 6.2 實作單元與承接票對照（Step 6）
 
 | 案例群組 | 實作單元 | 承接票 | 依賴 |
 |---------|---------|-------|------|
-| L1、L2 | Layout（列序） | 待 Step 6 建票 | `0.5.0-W1-103.2`（`bundle_dependency` 進主圖） |
+| L1-4、L2-5（畫邊）、L2-6、L8（v1.38） | Layout（列序組裝，向 Graph 取列序） | 待 Step 6 建票 | Graph FR-13 票（SPEC-007 G13；L8 以替身測，不阻擋開工） |
+| L1-1～L1-3、L2-1～L2-4 | 已移至 SPEC-007 G13 | 見 SPEC-007-test-design §7 G13 | — |
 | L3～L6 | Layout（欄序、節點、邊） | 待 Step 6 建票 | `0.5.0-W1-001.4`（flowOf） |
 | L7 | Layout（節點、「未定位」列） | 待 Step 6 建票（併 L3～L6） | `0.5.0-W1-001.4`、`0.5.0-W1-001.5`（解析結果） |
+| L9（v1.38） | Layout（欄號最小節點查詢） | 待 Step 6 建票（併 L3～L7，共用欄序結果） | 同 L3～L7 |
 | V1、V2 | Graph FR-12 | 見 SPEC-007-test-design §7 G12 | — |
-| V3 | domain_view（暫，待 NC-2） | 待 Step 6 建票 | Graph FR-12 票、Layout 欄序票 |
+| V3（v1.38 改寫） | domain_view（畫面呼叫 FR-12 與 L9） | 待 Step 6 建票（第 3 組） | Graph FR-12 票、Layout L9 票（以替身測，不阻擋開工） |
+| P4（v1.38） | 路徑比對器 | `0.5.0-W1-096.5` | `0.5.0-W1-123`（非 domain 清單照收字串，SPEC-006 C15-7） |
 | F1 | domain_view／UC Flow 畫面（EVT-004 接畫面） | 待 Step 6 建票 | `0.5.0-W1-001.3`（EVT-CORPUS-004）、`0.5.0-W1-119`（`parseFailure` 破洞） |
 | P1～P3（含 P1-7） | 路徑比對器 | `0.5.0-W1-096.5` | `0.5.0-W1-096.7`（非 domain 清單三態與格式錯誤狀態） |
 | R1（含 R1-9～R1-11）、K4-1／K4-2 的 `pathDeclaration*` | Diagnostics／破洞報告頁 | `0.5.0-W1-119` | `0.5.0-W1-096.5`、`0.5.0-W1-096.7` |
@@ -447,11 +522,11 @@ V3-2、F1-2、F1-4、F1-7、P1-7、P2-2、P2-3、R1-7、R1-10、K2-3、K2-4、K3
 
 **Step 6 建議分組**（待建票者，依實作單元分組，各組一張實作票）：
 
-1. Layout：L1～L7（可再依列序 L1～L2／欄序與節點 L3～L7 拆兩張，群組間無共用 mutable 狀態）
-2. Graph 間接依賴（FR-12）：SPEC-007 G12（原 V1、V2）；V3 依 NC-2 裁決併入本組或第 3 組
-3. domain_view／UC Flow 畫面：F1、K4-2 的兩個解析失敗 key（V3 若維持畫面層則併入）
+1. Layout：L1-4、L2-5、L2-6、L3～L9（可再依列序組裝 L1-4／L2-5／L2-6／L8 與欄序、節點、查詢 L3～L7／L9 拆兩張，群組間無共用 mutable 狀態）
+2. Graph 間接依賴與分層排序（FR-12、FR-13）：SPEC-007 G12（原 V1、V2）、G13（原 L1-1～L1-3、L2-1～L2-4）
+3. domain_view／UC Flow 畫面：V3、F1、K4-2 的兩個解析失敗 key
 4. components：K1、K2、K3、K4-1 的 `swimlaneScreenLaneName` 與 `relation*`、K4-2 的 `swimlaneUnplacedLaneName`
 5. 外圈與快照：快照凍結 → IT-D1～IT-D4
 
-已有承接票者不再分組：P1～P3 → `0.5.0-W1-096.5`；R1 與 `pathDeclaration*` → `0.5.0-W1-119`。
+已有承接票者不再分組：P1～P4 → `0.5.0-W1-096.5`；R1 與 `pathDeclaration*` → `0.5.0-W1-119`。
 各實作票驗收須含 §1.4 的 import 方向檢查。
