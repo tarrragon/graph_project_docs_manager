@@ -410,10 +410,14 @@ void main() {
         result.typeTable.nodeTypes['SPEC']!.carrierPathPatterns!.single.pattern,
         r'^docs/spec/.+\.md$',
       );
-      expect(result.typeTable.edgeTypes?.keys, input.edgeTypes!.keys);
-      expect(result.typeTable.rejectedEdgeTypes, input.rejectedEdgeTypes);
-      expect(result.typeTable.nonDomainPathsFile, input.nonDomainPathsFile);
-      expect(result.typeTable.nonDomainPathsKey, input.nonDomainPathsKey);
+      // 期望值為字面值（不由 typeTableFromJson 自算，避免與被測路徑同源）。
+      expect(result.typeTable.edgeTypes?.keys, ['blockedBy']);
+      expect(result.typeTable.rejectedEdgeTypes, {'brokenEdge'});
+      expect(
+        result.typeTable.nonDomainPathsFile,
+        'docs/custom-non-domain.yaml',
+      );
+      expect(result.typeTable.nonDomainPathsKey, 'custom_paths');
     });
 
     test('E2 edgeTypes 保留', () {

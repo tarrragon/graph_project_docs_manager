@@ -71,8 +71,7 @@ SchemaSourceResolution resolveSchemaSource({
   required Map<String, dynamic> builtinSchemaJson,
 }) {
   final builtinTable = typeTableFromJson(builtinSchemaJson);
-  final builtinVersion =
-      schemaVersionOf(builtinSchemaJson);
+  final builtinVersion = schemaVersionOf(builtinSchemaJson);
 
   if (projectSchemaJson == null) {
     return _resolveWithoutProjectPathPatterns(
@@ -91,8 +90,7 @@ SchemaSourceResolution resolveSchemaSource({
     );
   }
 
-  final projectVersion =
-      schemaVersionOf(projectSchemaJson);
+  final projectVersion = schemaVersionOf(projectSchemaJson);
   return _resolveWithoutProjectPathPatterns(
     projectTable: projectTable,
     projectVersion: projectVersion,
@@ -148,6 +146,10 @@ SchemaSourceResolution _resolveWithoutProjectPathPatterns({
 /// `id_pattern` 時，結果保留 `null`（[NodeTypeEntry.idPattern] 本為
 /// nullable），不退回內建表：內建表的 `id_pattern` 屬另一來源（可能與
 /// 專案定義衝突），S5-6 鑑別的正是「不可混用」。
+///
+/// 路徑模式與 `id_pattern`／完整性集合以外，保留專案型別表的四個欄位：
+/// `edgeTypes`、`rejectedEdgeTypes`、`nonDomainPathsFile`、`nonDomainPathsKey`
+/// （專案型別表為 `null` 時維持 [TypeTable] 預設值）。
 TypeTable _mergeBuiltinPathPatterns({
   required TypeTable? projectTable,
   required TypeTable builtinTable,
@@ -179,4 +181,3 @@ TypeTable _mergeBuiltinPathPatterns({
     nonDomainPathsKey: projectTable?.nonDomainPathsKey,
   );
 }
-

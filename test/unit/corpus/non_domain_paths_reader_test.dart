@@ -37,8 +37,9 @@ const _defaultFile = 'docs/non-domain-paths.yaml';
 
 TypeTable _builtinTable() => typeTableFromJson(
   jsonDecode(
-    File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
-  ) as Map<String, dynamic>,
+        File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
+      )
+      as Map<String, dynamic>,
 );
 
 TypeTable _projectTableWithoutLocation() =>
@@ -50,6 +51,16 @@ Future<NonDomainPathsReadResult> _read(Map<String, String> files) =>
       projectTable: _projectTableWithoutLocation(),
       builtinTable: _builtinTable(),
     );
+
+/// Graph 原始碼中不得出現的直讀訊號；回傳命中的訊號清單。
+List<String> _graphDirectReadViolations(String source) => [
+  for (final signal in const [
+    "import 'dart:io'",
+    'nonDomainPathsFile',
+    'non-domain-paths.yaml',
+  ])
+    if (source.contains(signal)) signal,
+];
 
 void main() {
   group('三態', () {
@@ -170,30 +181,40 @@ void main() {
     });
   });
 
-  test('Graph 不直讀非 domain 路徑清單檔（只經 Corpus 公開面）', () {
-    final graphSources = Directory('lib/graph')
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((file) => file.path.endsWith('.dart'));
+  group('Graph 不直讀非 domain 路徑清單檔（只經 Corpus 公開面）', () {
+    test('E2 正向對照：已知違規樣本判為違規', () {
+      const violating = """
+import 'dart:io';
+final f = typeTable.nonDomainPathsFile;
+const p = 'non-domain-paths.yaml';
+""";
+      expect(_graphDirectReadViolations(violating), hasLength(3));
+      expect(_graphDirectReadViolations("import 'dart:async';\n"), isEmpty);
+    });
 
-    for (final file in graphSources) {
-      final source = file.readAsStringSync();
-      expect(source, isNot(contains("import 'dart:io'")), reason: file.path);
-      expect(source, isNot(contains('nonDomainPathsFile')), reason: file.path);
-      expect(
-        source,
-        isNot(contains('non-domain-paths.yaml')),
-        reason: file.path,
-      );
-    }
+    test('掃描到的 lib/graph 檔案數 > 0，且無違規', () {
+      final graphSources = Directory('lib/graph')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart'))
+          .toList();
+
+      expect(graphSources, isNotEmpty);
+      for (final file in graphSources) {
+        expect(
+          _graphDirectReadViolations(file.readAsStringSync()),
+          isEmpty,
+          reason: file.path,
+        );
+      }
+    });
   });
 
   group('非字串元素（FR-10 規則 2a）', () {
     Future<NonDomainPathsReadResult> readList(String items) =>
         _read({_defaultFile: 'non_domain_path_patterns: $items\n'});
 
-    test('E1：含 null 時其餘生效、發一筆 elementNotString，與去掉壞元素的對照模式相同',
-        () async {
+    test('E1：含 null 時其餘生效、發一筆 elementNotString，與去掉壞元素的對照模式相同', () async {
       final withBad = await readList('["docs/a/", null, "docs/b/"]');
       final clean = await readList('["docs/a/", "docs/b/"]');
 
@@ -235,10 +256,12 @@ void main() {
     test('字串元素不檢查格式：空字串、/ 開頭、glob 照收且不發事件', () async {
       final result = await readList('["", "docs/a/", "/docs/", "docs/*.md"]');
 
-      expect(
-        result.declaration.declaredPatterns,
-        ['', 'docs/a/', '/docs/', 'docs/*.md'],
-      );
+      expect(result.declaration.declaredPatterns, [
+        '',
+        'docs/a/',
+        '/docs/',
+        'docs/*.md',
+      ]);
       expect(result.malformedEvent, isNull);
     });
 
@@ -253,6 +276,43 @@ void main() {
         expect(result.malformedEvent, isNotNull);
         expect(result.malformedEvent?.nonStringElementCount, isNull);
       }
+    });
+  });
+
+  group('結果型別不變式', () {
+    test('E2：非字串元素數為 0 時拋出 AssertionError，1 時可建構（對照）', () {
+      expect(
+        () => NonDomainPathsReadDeclaredWithBadElements(
+          path: _defaultFile,
+          patterns: const ['a/'],
+          nonStringElementCount: 0,
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        NonDomainPathsReadDeclaredWithBadElements(
+          path: _defaultFile,
+          patterns: const ['a/'],
+          nonStringElementCount: 1,
+        ).malformedEvent.nonStringElementCount,
+        1,
+      );
+    });
+
+    test('外部傳入可變 list 時，patterns 不隨之變動且不可修改', () {
+      final source = ['a/'];
+      final declared = NonDomainPathsReadDeclared(source);
+      final withBad = NonDomainPathsReadDeclaredWithBadElements(
+        path: _defaultFile,
+        patterns: source,
+        nonStringElementCount: 1,
+      );
+      source.add('b/');
+
+      expect(declared.patterns, ['a/']);
+      expect(withBad.patterns, ['a/']);
+      expect(() => declared.patterns.add('c/'), throwsUnsupportedError);
+      expect(() => withBad.patterns.add('c/'), throwsUnsupportedError);
     });
   });
 
@@ -281,20 +341,30 @@ void main() {
       expect(fileSystem.readPaths, missing.readPaths);
     });
 
-    test('key 為空字串時依內建表鍵名取清單', () async {
-      final result = await readNonDomainPaths(
+    test('key 為空字串與缺 key 並列比對：結果相同，皆依內建表鍵名取清單', () async {
+      Future<NonDomainPathsReadResult> readWithKey(
+        Map<String, dynamic> extra,
+      ) => readNonDomainPaths(
         fileSystem: _MemoryFileSystem(const {
           _defaultFile: 'non_domain_path_patterns: [docs/a/]\n',
         }),
         projectTable: typeTableFromJson(<String, dynamic>{
           'node_types': <String, dynamic>{},
-          'non_domain_paths_key': '',
+          ...extra,
         }),
         builtinTable: _builtinTable(),
       );
 
-      expect(result.declaration.declaredPatterns, ['docs/a/']);
-      expect(result.malformedEvent, isNull);
+      final emptyKey = await readWithKey({'non_domain_paths_key': ''});
+      final missingKey = await readWithKey({});
+
+      expect(emptyKey.declaration.declaredPatterns, ['docs/a/']);
+      expect(emptyKey.malformedEvent, isNull);
+      expect(
+        emptyKey.declaration.declaredPatterns,
+        missingKey.declaration.declaredPatterns,
+      );
+      expect(emptyKey.malformedEvent, missingKey.malformedEvent);
     });
   });
 }
