@@ -5,9 +5,9 @@ type: test-design
 status: draft
 source_spec: SPEC-007
 spec_version: "1.2"
-delta_spec_version: "1.15"
+delta_spec_version: "1.17"
 ticket: 0.4.0-W1-059
-delta_ticket: 0.5.0-W1-113
+delta_ticket: 0.5.0-W1-114.2
 created: "2026-09-30"
 updated: "2026-10-08"
 ---
@@ -23,6 +23,12 @@ SPEC-007；本文件與其衝突時以 SPEC-007 為準，衝突本身記入承�
 （S6-2、S6-9、S6-12 改寫，S6-14～S6-17）、FR-05 無向判定（S6-13 既有，不改）、FR-08 回傳項帶
 `layer`（G7-1 改寫，G7-8～G7-10）、FR-09 flow 三子類（D4）、FR-10 `flowOf`（G10）、FR-11 名稱解析（G11）。
 案例與實作票對照見 §7。
+
+**v1.16～v1.17 差異（`0.5.0-W1-114.2`，前一輪 `delta_ticket` 為 `0.5.0-W1-113`）**：FR-01 內建表也沒有的邊型
+回報來源值「預設（有向）」（S6-15 改寫，N-B）；FR-06 `graphDefects` 筆數含 flow 子類（G6-3 改寫、G6-5、G6-6，
+N-A）；FR-09 flow 第四子類「`traverses` 鍵缺席」與「domain 重複宣告」子類（D4 改寫為四子類、D4-6、D5）；
+FR-11 去重、缺鍵、部分已宣告、重複 domain 宣告（G11-11～G11-18，N-D／N-E）；新增 FR-12 domain × UC
+關係與依賴路徑（G12，承接原 `docs/test-design/SPEC-001-test-design.md` V1、V2）。IT 凍結值與 G9 不變（IT-INV-5）。
 
 ## 1. 測試策略
 
@@ -209,8 +215,10 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | IT-INV-3 | `direction` 補值不改變凍結邊集合：凍結 `type_table.json` 的邊型條目不帶 `direction`、產生版本 2.60.13 不高於內建 2.77.0，依 FR-01 自內建表補值，`association` 仍為無向。IT1-A1、IT1-A2 因此兼為補值規則的端到端正向對照：若實作把缺欄當 `directed`，IT1-A2 翻紅 | FR-01（v1.14）、FR-05 |
 | IT-INV-4 | flow 子圖與名稱解析不改變凍結值：實體化器只寫最小 frontmatter、不寫 UC 本文，各 UC 步驟清單為空，`flowOf` 無缺陷；FR-10 子圖不進 EVT-GRAPH-001 邊集合，`expected_edges.json`、`expected_defects.json`、`expected_counts.json` 不變 | FR-10、FR-11 |
 | G9-INV | G9-1（`test/performance/graph_build_scaling_test.dart`）的案例數、合成語料、操作計數斷言不改：flow 子圖與名稱解析不屬 NFR-02 的「引用值」範圍；名稱解析的線性性本輪不另立量測案例 | NFR-02 |
+| IT-INV-5（v1.16／v1.17） | 凍結檔與 IT1～IT3 斷言文字本輪仍**一律不改**，G9-INV 照舊成立：(a) 實體化樹無 UC 本文，flow 四子類缺陷恆為 0 筆，FR-06 筆數公式新增的 flow 項為 0，`expected_defects.json`／`expected_counts.json` 不變；(b) manifest 的兩個 DomainBundle `id` 相異且皆無 `domain` 欄，名稱索引為空，不產生「domain 重複宣告」缺陷；(c) FR-12 是查詢、不改 EVT-GRAPH-001 負載，IT 不呼叫；(d) S6-15 的來源值只在專案表有內建表沒有的邊型時出現，凍結 `type_table.json` 的邊型皆在內建表內 | FR-01、FR-06、FR-09、FR-11、FR-12 |
 
 實測記錄：凍結檔中 `"direction"` 出現 0 次、`depends_on_bundles` 出現 0 次、`schema_generated_at_framework_version` 為 2.60.13；內建 `builtin_schema_version.json` 為 2.77.0（2026-10-08，本 worktree 讀取）。
+`graph_manifest.json` 中 `"domain"` 鍵出現 0 次、DomainBundle ID 為 `DOMAIN-MAP-balance-sheet`、`DOMAIN-MAP-docs-graph` 各 1；凍結 `type_table.json` 的 16 個邊型鍵皆在內建 `builtin_tracking_schema.json` 的 17 個鍵內，差集為空（2026-10-08，`0.5.0-W1-114.2` worktree 讀取）。
 重凍結以覆蓋 flow 子圖、名稱解析、`bundle_dependency` 由 `0.5.0-W1-001.6` 分析。
 
 ## 3. 5b 內圈：逐 bundle 測試案例
@@ -240,7 +248,7 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | S6-12（v1.13 改寫） | 降級模式：內建表 asset 作為專案型別表傳入 | 解碼 | 建圖可用；使用中邊型等於 asset 的 established 邊型扣除 `domain_dependency`、加上 `bundle_dependency`（SPEC-007 v1.3、v1.13） |
 | S6-13（守衛） | 真實內建型別表 asset；另以邊型表建構器建一份與 asset 相同、僅改指定邊型 `direction` 的測試用型別表 | 讀 `edge_types`；以同一 fixture（A 的 `relatedTo` 列出 B，B 未列 A）建圖 | asset 中 `direction` 為 `undirected` 的邊型集合等於 Graph 認定為無向的邊型集合（目前為 {`association`}）；`spec_association`、`uc_association`、`proposal_association` 的 `direction` 為 `directed`，Graph 照有向處理；`association` 的 `forward_field` 為 `relatedTo`、`reverse_field` 為 null，A 與 B 的鄰接均含對方（對稱聯集）。正向對照（守衛）：測試用型別表把某個 see-also 邊型（如 `spec_association`）的 `direction` 改為 `undirected`，該邊型即做對稱聯集，證明判定依欄位而非鍵名。E1 對照：同一 fixture 下僅把 `association` 的 `direction` 改為 `directed`，建出有向邊 A→B，查 B 的方向為入而非無向，結果與改動前不同；兩份型別表的產物必須不同（SPEC-007 v1.13 FR-05、D6：無向由 `direction` 判定，已無 `association` 鍵名例外）。測試檔放 `test/unit/graph/undirected_edge_contract_test.dart`：需讀 Graph 的無向認定，§1.3 不允許 schema 測試 import graph |
 | S6-14（v1.14，守衛） | 專案型別表＝內建 asset 移除全部邊型的 `direction` 欄，版本等於內建；fixture：A 的 `relatedTo` 列出 B，B 未列 A | 解碼；建圖；查 A、B 鄰接 | `association` 的 `direction` 為 `undirected`、來源回報為內建表；A、B 鄰接均含對方（缺欄不得當 `directed`）。E1 對照：同一 fixture 以帶 `direction` 的原表解碼，`direction` 值相同而來源回報為專案表——兩份產物的來源欄必須不同，證明補值確實發生而非剛好相同。鄰接部分放 `test/unit/graph/undirected_edge_contract_test.dart`（§1.3） |
-| S6-15（v1.14） | 專案型別表在 S6-14 的表上另加內建表沒有的邊型 `testEdge`（缺 `direction`），版本等於內建 | 解碼 | `testEdge` 的 `direction` 為 `directed`，來源回報為「內建表亦無、取預設」一類（值見 §6.3 N-B）；與 S6-14 的 `association` 來源不同 |
+| S6-15（v1.16 改寫，E1） | 專案型別表在 S6-14 的表上另加內建表沒有的邊型 `testEdge`（缺 `direction`），版本等於內建 | 解碼 | `testEdge` 的 `direction` 為 `directed`，來源值為「預設（有向）」（以實作提供的具名常數比對）；同一張表中 S6-14 的 `association` 來源值為「內建表」。兩者不同，證明第三個來源值確實存在、不與內建表同值（N-B 已由 `0.5.0-W1-113` PM 處置定案） |
 | S6-16（v1.13，正向對照） | 內建 asset | 取使用中邊型 | 含 `bundle_dependency`，其 `layer` 為 `proposed`（取自表） |
 | S6-17（v1.13，E1 鑑別） | 測試型別表：在內建 asset 上把 `bundle_dependency` 鍵名改為 `bundle_dependency_x`（其他欄不變） | 取使用中邊型 | 不含 `bundle_dependency_x`；與 S6-16 結果不同，證明納入依 D6 的鍵名允許清單，而非「所有 proposed 皆納入」 |
 
@@ -326,8 +334,10 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 |---|-------|------|
 | G6-1 | 分布已知 fixture | 節點數、`duplicateId` 數、各邊型邊數、宣告來源形態邊數（有向三組、無向兩組）、FR-03 三類、`multiSource` 數等於已知值 |
 | G6-2 | `rawNodes` 為空 | 發出一筆 EVT-GRAPH-001，`nodeCount`／`edgeCount` 0，`graphDefects` 空，非錯誤 |
-| G6-3 | 建圖完成（fixture 不含 UC 步驟清單） | 恰一筆 EVT-GRAPH-001；`graphDefects` 筆數等於斷邊＋格式錯誤＋`duplicateId`＋`multiSource`。含 flow 缺陷時的筆數公式見 §6.3 N-A，本案例不涵蓋 |
+| G6-3（v1.16 改寫） | 建圖完成，fixture 含主圖四類缺陷各一、flow 四子類缺陷各一，無重複 domain 宣告 | 恰一筆 EVT-GRAPH-001；`graphDefects` 筆數等於斷邊＋格式錯誤＋`duplicateId`＋`multiSource`＋FR-09 各 flow 子類缺陷數（此例 8 筆）。「domain 重複宣告」是否計入此公式見 §6.3 NC-4，本案例不含 |
 | G6-4 | 同一邊多次宣告 | `edgeCount` 只計一次 |
+| G6-5（v1.16，守衛：E2 正向對照） | 主圖無缺陷；某 UC 一個步驟 `traverses: ["nope"]`、`nope` 未宣告 | `graphDefects` 筆數為 1；只計主圖四類的實作在此為 0（FR-06 驗收新增條） |
+| G6-6（v1.16，E1） | G6-5 的 fixture；對照組把 `nope` 改為已宣告的名稱 | 筆數 1 對 0；`nodeCount`、`edgeCount` 兩組相同 |
 
 #### G7 鄰接查詢（FR-08）
 
@@ -389,7 +399,7 @@ G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷�
 | G10-14（E1 鑑別） | 同一組 rawNodes，一份 UC 附掛含缺陷的步驟清單（G10-4、G10-7 的形態），另一份同 rawNodes 但步驟清單全空 | 兩次建圖的 `edgeCount`、各邊型邊數、FR-03 三類計數完全相同；`graphDefects` 只差 flow 缺陷。證明子圖不進邊集合也不汙染主圖計數 |
 | G10-15 | G10-4、G10-5、G10-7 的缺陷 | 負載鍵集合恰為 {UC ID, step id, 欄位, 原始值}，不含邊型 |
 
-缺陷子類的程式識別名待 `0.5.0-W1-001.8` NeedsContext 裁決；測試以實作提供的具名常數比對，裁決前不得以字面寫入。
+缺陷子類的程式識別名：前三種 flow 子類由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與「domain 重複宣告」由實作票命名（SPEC-007 v1.17 FR-09，`0.5.0-W1-114.1` NC-c）。測試一律以實作提供的具名常數比對，命名前不得以字面寫入。
 
 #### G11 `traverses` 名稱解析（FR-11；v1.11 新增）
 
@@ -408,6 +418,40 @@ G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷�
 | G11-8 | SPEC 帶 `depends_on_domains: [corpus]` | 不建邊、不產生缺陷、使用中邊型不含 `domain_dependency` |
 | G11-9 | 解析器公開面 | 輸入名稱字串，輸出 DomainBundle 節點 ID 或「未宣告」；不需 FlowStep 物件即可呼叫 |
 | G11-10 | `bundle_dependency` 的值 `DOMAIN-MAP-corpus` | 走 FR-03 ID 解析（見 G7-8），解析器不被呼叫（以注入計數或 spy 驗證呼叫次數為 0） |
+| G11-11（v1.16，E1：去重） | 一步 `traverses: ["nope", "nope"]`；對照組 `traverses: ["nope", "nope2"]`（皆未宣告） | 前者一筆缺陷、後者兩筆（以（步驟, 值）去重，N-E 已由 `0.5.0-W1-113` PM 處置定案） |
+| G11-12 | 步驟 A、B 各有 `traverses: ["nope"]` | 兩筆缺陷（去重以步驟為單位，不跨步驟合併） |
+| G11-13（v1.16，守衛＋E1：缺鍵對 `[]`） | 步驟 S1 沒有 `traverses` 鍵；步驟 S2 `traverses: []` | S1 一筆「`traverses` 鍵缺席」缺陷，負載 {UC ID, `S1`, `traverses`, `null`}（原始值為 null，不是空字串或空清單）；S2 零缺陷。兩者解析結果皆為空，缺陷輸出不同（不得把缺鍵當 `[]`） |
+| G11-14（v1.16） | 一步 `traverses: ["graph", "nope"]`，`graph` 已宣告 | 解析結果只含 `graph` 的 DomainBundle；一筆 `nope` 的「`traverses` 名稱未宣告」 |
+| G11-15（v1.16／v1.17，守衛＋E1：重複 domain） | DomainBundle P1（`id: DOMAIN-MAP-corpus`）、P2（`id: BUNDLE-corpus-2`）皆 `domain: corpus`；步驟 `traverses: ["corpus"]`。對照組把 P2 的 `domain` 改為 `corpus2` | 前者：`corpus` 解析為未宣告（一筆「`traverses` 名稱未宣告」）＋一筆「domain 重複宣告」，負載 `domain` 為 `corpus`、衝突 ID 清單的集合為 {P1, P2}（不斷言清單順序）；P1、P2 仍是圖節點，皆出現在 DomainBundle 節點集合中。對照組：`corpus` 解析到 P1、零缺陷。兩組結果不同，證明不取其一解析成功（D-3） |
+| G11-16（v1.17） | P1、P2、P3 三者皆 `domain: corpus` | 恰一筆「domain 重複宣告」（每個重複的 `domain` 值一筆），衝突 ID 清單集合為 {P1, P2, P3} |
+| G11-17（v1.17） | P1、P2 皆 `domain: corpus`；P3、P4 皆 `domain: graph` | 兩筆「domain 重複宣告」，`domain` 分別為 `corpus`、`graph` |
+| G11-18（v1.16） | G11-15 前者的 bundle，UC 有兩步各 `traverses: ["corpus"]` | 兩筆「`traverses` 名稱未宣告」（每步一筆）；「domain 重複宣告」仍只一筆（與引用次數無關） |
+
+#### G12 domain × UC 關係與依賴路徑（FR-12；v1.16 新增，承接原 SPEC-001-test-design V1、V2）
+
+**測試檔**：`test/unit/graph/domain_uc_relation_test.dart`（group `三值判定`：G12-1～G12-6；group `依賴路徑`：G12-7～G12-12；group `邊界`：G12-13～G12-15）
+**測資**：DomainBundle 建構器＋rawNode 建構器（UC 附掛步驟清單），本專案語料取凍結快照（`0.5.0-W1-114` PM 處置 N1，快照凍結為 Step 6 一張票）
+**判定式權威**：SPEC-001 §1〈間接依賴判定式〉〈間接依賴格的詳情卡：依賴路徑〉；本群組斷言 Graph 回傳值，畫面只顯示（SPEC-001-test-design ITD1、ITD3 為外圈）
+
+| # | 原編號 | Given | Then |
+|---|-------|-------|------|
+| G12-1 | V1-1 | 本專案快照 | 48 格中直接貫穿 19、間接依賴 10、無關 19；間接 10 格為 UC-02、UC-03、UC-05 各 {`schema`, `workspace`}，UC-04 {`corpus`, `schema`, `workspace`}，UC-06 {`schema`} |
+| G12-2 | V1-2 | 直接優先：UC 直接貫穿 Y 且 Y 亦自 X 可達 | 直接貫穿 |
+| G12-3（E1：方向） | V1-3 | UC 貫穿 X，Y 依賴 X（Y 為上游） | 無關；把邊反向後同格變為間接，兩次結果不同 |
+| G12-4 | V1-4 | 3 跳可達（X→A→B→Y） | 間接（不限跳數） |
+| G12-5 | V1-5 | UC 貫穿 X1、X2，兩者皆可達 Y | (Y, UC) 一個間接結果（不重複計格） |
+| G12-6 | V1-6 | flutter_balance 快照 | 間接 0 格 |
+| G12-7 | V2-1 | UC-04 × `schema` | 間接依賴，兩條路徑，依序 `graph → corpus → schema`、`ticketdetail → corpus → schema`（排序來源見 SPEC-001-test-design §6.1 NC-1） |
+| G12-8（E1：排除經直接 domain） | V2-2 | UC-06 × `schema` | 一條路徑 `corpus → schema`；不含 `diagnostics → corpus → schema`（未套排除規則時會多出此條） |
+| G12-9 | V2-3 | 同來源兩條同長最短路徑 | 兩條皆列，依中間節點列序（排序來源同 NC-1） |
+| G12-10 | V2-4 | 不同長度 | 短的在前 |
+| G12-11 | V2-5 | 直接貫穿格、無關格 | 依賴路徑為空 |
+| G12-12 | V2-6 改寫 | 路徑元素 | 每條路徑為 DomainBundle 序列，元素可取回 `domain` 原值；Graph 不產生顯示字串（「→」連接與 i18n 不變屬畫面，由 ITD3-A1 外圈承擔） |
+| G12-13（v1.16，E1：只計解析成功值） | — | 步驟 `traverses: ["graph"]`；對照組把 `graph` 改為重複宣告（G11-15 形態）或步驟缺 `traverses` 鍵 | 前者 (graph, UC) 為直接貫穿；對照組兩種皆非直接貫穿（未宣告、缺鍵、重複宣告被排除的名稱不構成直接貫穿） |
+| G12-14（守衛） | — | 建圖不可用（S6-7 的型別表）；建圖尚未完成 | 皆回傳「圖不可用」，不是「無關」；正向對照為 G12-11 的無關格（可用圖） |
+| G12-15 | — | 不在圖上的 DomainBundle ID 或 UC ID | 回傳值可與三值、「圖不可用」區分（回傳形態由實作票定；介面識別名交 Step 6 的 Graph 間接依賴實作票，`0.5.0-W1-114.1` NC-c） |
+
+G12-15 的「不存在」回傳形態 SPEC-007 FR-12 未定義，見 §6.3 NC-5。
 
 ### 3.3 TicketDetail bundle
 
@@ -437,17 +481,28 @@ G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷�
 | D3-4（守衛） | 建圖不可用狀態 | 零筆 `graphDefect`，回報無法判定並帶原因；正向對照為 D3-1 |
 | D3-5 | 同時輸入 EVT-CORPUS-003 | `parseFailure` 與 `graphDefect` 各自產生，互不影響（SPEC-006 D1 不變） |
 
-#### D4 flow 三子類（FR-09；v1.12 新增）
+#### D4 flow 四子類（FR-09；v1.12 新增，v1.16 改為四子類）
 
 **測試檔**：`test/unit/diagnostics/flow_defect_gap_test.dart`
 
 | # | Given | Then |
 |---|-------|------|
-| D4-1 | EVT-GRAPH-001 含 flow 三子類各一 | 三筆 `graphDefect`，子類各自相符，負載 {UC ID, step id, 欄位, 原始值} 與缺陷逐一相符，不含邊型 |
-| D4-2 | 同時含主圖四子類各一與 flow 三子類各一 | 七筆破洞；報告分組為主圖組四筆、「flow」小組三筆；破洞大類列舉不增加（皆為 `graphDefect`） |
+| D4-1（v1.16 改寫） | EVT-GRAPH-001 含 flow 四子類各一（含「`traverses` 鍵缺席」） | 四筆 `graphDefect`，子類各自相符，負載 {UC ID, step id, 欄位, 原始值} 與缺陷逐一相符，不含邊型 |
+| D4-2（v1.16 改寫，E1） | 同時含主圖四子類各一與 flow 四子類各一 | 八筆破洞；報告分組為主圖組四筆、「flow」小組四筆；破洞大類列舉不增加（皆為 `graphDefect`） |
 | D4-3 | flow 缺陷原始值為帶前後空白的字串 | 原樣保存，不修剪 |
 | D4-4（守衛） | 建圖不可用狀態 | 零筆 flow 破洞，回報無法判定；正向對照為 D4-1 |
 | D4-5 | 破洞負載 | 不含在地化字串 |
+| D4-6（v1.17，E1） | 「`traverses` 鍵缺席」缺陷（原始值 null）；對照組為 `traverses` 值為空字串 `""` 的「名稱未宣告」缺陷 | 前者破洞原始值為 null，後者為 `""`；兩筆子類與原始值皆不同（null 不被轉成空字串） |
+
+#### D5 domain 重複宣告（FR-09、FR-11；v1.17 新增）
+
+**測試檔**：同上，group `domain 重複宣告`
+
+| # | Given | Then |
+|---|-------|------|
+| D5-1 | EVT-GRAPH-001 含一筆「domain 重複宣告」，負載 {`corpus`, [P1, P2]} | 一筆 `graphDefect`，子類相符，負載 `domain` 與衝突 ID 清單原樣保存 |
+| D5-2（E1：分組） | 同時含 D5-1 的缺陷與 flow 四子類各一、主圖四子類各一 | 九筆破洞；「domain 重複宣告」在主圖組（主圖組五筆），「flow」小組仍為四筆（`0.5.0-W1-114.1` PM 第二小輪 NC-2：屬 DomainBundle 節點而非 flow） |
+| D5-3 | 破洞負載 | 不含在地化字串；不含 UC ID、step id 欄 |
 
 ### 3.5 日誌事件（版本契約第 5 欄）
 
@@ -478,12 +533,13 @@ G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷�
 | FR-03 | 8 | IT-2（A1～A4） | G2-1～G2-8、G3-1～G3-9 | L1 |
 | FR-04 | 6 | IT-1（A1、A3、A4） | G4-1～G4-9 | — |
 | FR-05 | 4 | IT-1（A1、A2） | G5-1～G5-3、S6-13 | — |
-| FR-06 | 3 | IT-2（A3） | G6-1～G6-4 | L1 |
+| FR-06 | 4 | IT-2（A3；IT-INV-5） | G6-1～G6-6 | L1 |
 | FR-07 | 2 | IT-3（A2、A5） | T1-1～T1-5 | — |
 | FR-08 | 5 | IT-1（A2、A3） | G7-1～G7-10 | L3 |
-| FR-09 | 3 | IT-2（A1、A5、A6） | D3-1～D3-5、D4-1～D4-5 | L2 |
+| FR-09 | 3 | IT-2（A1、A5、A6） | D3-1～D3-5、D4-1～D4-6、D5-1～D5-3 | L2 |
 | FR-10 | 10 | —（IT-INV-4） | G10-1～G10-15 | — |
-| FR-11 | 5 | —（IT-INV-4） | G11-1～G11-10 | — |
+| FR-11 | 10 | —（IT-INV-4、IT-INV-5） | G11-1～G11-18 | — |
+| FR-12 | 4 | —（IT-INV-5；外圈由 SPEC-001-test-design ITD1、ITD3 承擔） | G12-1～G12-15 | — |
 | NFR-01 | 1 | — | G8-1～G8-3 | — |
 | NFR-02 | —（非條件式驗收） | — | G9-1（`test/performance/`） | — |
 
@@ -510,13 +566,24 @@ G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷�
 | FR-10 #2～#10 | G10-2、G10-4、G10-5、G10-7、G10-8、G10-15＋D4-2、G10-9、G10-12、G10-14 |
 | FR-11 #1 兩語料全部解析 | 無單元案例；需語料或重凍結（`0.5.0-W1-001.6`） |
 | FR-11 #2～#5 | G11-2、G11-3、G11-5、G11-8 |
+| FR-11 #6 同一步驟重複未宣告名稱只報一筆 | G11-11 |
+| FR-11 #7 缺 `traverses` 鍵回報缺陷、`[]` 不回報 | G11-13 |
+| FR-11 #8 部分已宣告 | G11-14 |
+| FR-11 #9 重複 domain 宣告（含兩者仍為節點） | G11-15、D5-1 |
+| FR-11 #10 缺鍵缺陷負載欄位 `traverses`、原始值 null | G11-13、D4-6 |
+| FR-06 #4 主圖無缺陷、一個未宣告名稱時筆數為 1 | G6-5、G6-6 |
+| FR-12 #1 本專案快照 19／10／19 | G12-1 |
+| FR-12 #2 UC-04 × `schema` 兩條路徑 | G12-7 |
+| FR-12 #3 UC-06 × `schema` 排除經直接 domain | G12-8 |
+| FR-12 #4 直接貫穿格路徑為空 | G12-11 |
+| FR-01 內建表也沒有的邊型來源值「預設（有向）」 | S6-15 |
 | FR-02 #1 五欄、無共用引用 | G1-1、IT3-A1 |
 | FR-02 #2 重複 ID | G1-4 |
 | FR-02 #3 指向重複 ID | G1-5 |
 | FR-03 #1～#8 | G3-1、G3-2～G3-4、G3-5、G3-6、G2-2、G2-5、G2-7、G3-8 |
 | FR-04 #1～#6 | G4-1～G4-6 |
 | FR-05 #1、#2 | G5-1、G5-2 |
-| FR-06 #1～#3 | G6-1、G6-2、G6-3 |
+| FR-06 #1～#3 | G6-1、G6-2、G6-3（v1.16 改寫） |
 | FR-07 #1、#2 | T1-1、T1-2 |
 | FR-08 #1～#5 | G7-1、G7-2、G7-8、G7-4、G7-5 |
 | FR-09 #1、#2 | IT2-A1、D3-4 |
@@ -535,7 +602,8 @@ FR 驗收（5b）與 IT（5a）交集的處理：5b 為規則分支的權威，I
 |--------|-------|------|
 | Graph | 圖語意（symmetric union 規則）改變是唯一合法變更理由 | G5、IT1-A1、IT1-A2 |
 | TicketDetail | ticket 5W1H 結構語意 | T1-1、IT3-A2 |
-| Diagnostics | 「什麼算破洞」 | D3、IT2-A1 |
+| Diagnostics | 「什麼算破洞」 | D3、D4、D5、IT2-A1 |
+| Graph | domain × UC 關係與依賴路徑由 Graph 判定，畫面只顯示 | G12 |
 
 ## 5. 測試案例統計
 
@@ -543,18 +611,19 @@ FR 驗收（5b）與 IT（5a）交集的處理：5b 為規則分支的權威，I
 |-----------|------|-------|
 | 5a 外圈 | IT-1、IT-2、IT-3 | 18（v1.15 不增減） |
 | Schema | S6 | 17（S6-1～S6-17） |
-| Graph | G1～G11 | 80（v1.2 的 52，加 G7-8～G7-10、G10 十五案、G11 十案） |
+| Graph | G1～G12 | 105（v1.2 的 52，加 G7-8～G7-10、G10 十五案、G11 十案；v1.16／v1.17 加 G6-5、G6-6、G11-11～G11-18、G12 十五案，G6-3 改寫不計增） |
 | TicketDetail | T1 | 5 |
-| Diagnostics | D3、D4 | 10 |
+| Diagnostics | D3、D4、D5 | 14（v1.16／v1.17 加 D4-6、D5 三案；D4-1、D4-2 改寫不計增） |
 | 日誌 | L1～L3 | 9 |
-| 合計 | | 139 |
+| 合計 | | 168 |
 
 前版統計 100 漏計 S6-13 與 L2-4（兩者為後續版本追加時未同步本表），本輪一併以實際列數更正。
 
 守衛型案例與正向對照：IT1-A5、IT1-A6、IT2-A4、IT3-A4、IT3-A6、S6-7、S6-8、S6-9、S6-11、S6-13、S6-14、G1-4、G3-5、G3-6、G3-9、G4-4、
-G7-2、G7-5、G7-10、G10-4、G10-5、G10-7、G10-10、G10-13、G11-2、G11-3、T1-3、D3-4、D4-4、L2-3、L3-2，均已附正向對照輸入。
+G7-2、G7-5、G7-10、G10-4、G10-5、G10-7、G10-10、G10-13、G11-2、G11-3、G11-13、G11-15、G6-5、G12-14、T1-3、D3-4、D4-4、L2-3、L3-2，均已附正向對照輸入。
 E1 鑑別對照：IT1-A2、IT2-A5、IT2-A6、G2-9、G2-10、G4-8、G5-1、L1-2；v1.15 變更 FR 新增 S6-14、S6-17（FR-01）、
-S6-13（FR-05，既有）、G7-9（FR-08）、G10-3、G10-14（FR-10）、G11-4（FR-11）、D4-2（FR-09，主圖與 flow 兩組對照）。
+S6-13（FR-05，既有）、G7-9（FR-08）、G10-3、G10-14（FR-10）、G11-4（FR-11）、D4-2（FR-09，主圖與 flow 兩組對照）；
+v1.16／v1.17 新增 S6-15（FR-01）、G6-6（FR-06）、G11-11、G11-13、G11-15（FR-11）、G12-3、G12-8、G12-13（FR-12）、D4-6、D5-2（FR-09）。
 
 ## 6. 待決與交接
 
@@ -580,25 +649,40 @@ G4～G6（建邊與結果）拆為兩張，即 8 張。各票驗收含 §1.3 imp
 
 ### 6.3 v1.15 輪的 NeedsContext（`0.5.0-W1-113`，寫入票面）
 
-- **N-A**：FR-06 驗收第三條的 `graphDefects` 筆數公式只列主圖四子類，但 FR-10、FR-11 規定 flow 三子類也收在 `graphDefects`。含 flow 缺陷時筆數公式未更新；G6-3 已限縮為不含步驟清單的 fixture，含 flow 的公式案例未設。
-- **N-B**：FR-01「內建表也沒有該鍵名時照 `directed` 處理並回報來源」的來源值未定義（是否為第三個來源值，或與內建表同值）。S6-15 只斷言與 S6-14 不同。
-- **N-C**：flow 三子類的程式識別名待 `0.5.0-W1-001.8` NeedsContext 裁決（規格明文禁止實作自行命名）；G10、G11、D4 以具名常數比對，常數名未定前紅燈測試無法寫成可編譯形式。
-- **N-D**：兩個 DomainBundle 宣告相同 `domain` 值時，FR-11 解析結果未定義；G11 未設此案例。
-- **N-E**：同一步驟 `traverses` 內同一未宣告名稱出現兩次時，缺陷為一筆或兩筆未定義；G11-7 只用相異名稱。
+- **N-A（已處置，SPEC-007 v1.16）**：筆數含 flow 子類。落點 G6-3 改寫、G6-5、G6-6。
+- **N-B（已處置，同上）**：來源值「預設（有向）」。落點 S6-15 改寫。
+- **N-C（部分處置，SPEC-007 v1.17 FR-09）**：前三種 flow 子類識別名仍由 `0.5.0-W1-001.8` 上報；第四子類與「domain 重複宣告」由實作票命名（`0.5.0-W1-001.4` 或 `0.5.0-W1-001.5`，NC-c）。測試以具名常數比對的原則不變。
+- **N-D（已處置，`0.5.0-W1-113` D-3、`0.5.0-W1-114.1` NC-d）**：落點 G11-15～G11-18、D5。
+- **N-E（已處置，`0.5.0-W1-113` PM 處置）**：（步驟, 值）去重。落點 G11-11、G11-12。
 
-## 7. 案例 ↔ 實作票對照（v1.15 輪）
+本輪新增（`0.5.0-W1-114.2`，未在裁決內，不自行填補）：
+
+- **NC-4**：FR-06 驗收的 `graphDefects` 筆數公式寫「主圖四類＋FR-09 各 flow 子類」，未列「domain 重複宣告」；FR-09 將其列為 `graphDefect` 子類、D5 依 W1-119 驗收歸報告主圖組，但它是否經 EVT-GRAPH-001 的 `graphDefects` 傳遞、是否計入 FR-06 筆數未明寫。G6-3 本輪不含此子類。
+- **NC-5**：FR-12 對「不在圖上的 DomainBundle 或 UC ID」的回傳未定義（FR-08、FR-10 皆有「不存在」回傳）。G12-15 只斷言可與三值、「圖不可用」區分，回傳形態未定。
+- **NC-6**：FR-12 依賴路徑排序依「泳道列序」，列序由 Layout 推導，Graph 依系統層 §2 不得依賴 Layout；排序在 Graph 內如何取得列序未裁決（同 SPEC-001-test-design §6.1 NC-1）。G12-7、G12-9 的排序斷言以 SPEC-001 期望值寫成，承擔單元待裁決。
+- **NC-7**：第四 flow 子類與「domain 重複宣告」的命名承接票為 `0.5.0-W1-001.4` 或 `0.5.0-W1-001.5`（NC-c 擇一未定），影響 G11-13、G11-15～G11-17 的承接票。
+
+## 7. 案例 ↔ 實作票對照（v1.15～v1.17 輪）
 
 | 案例 | 實作票 | 備註 |
 |------|-------|------|
-| S6-14、S6-15 | `0.5.0-W1-001.7` | 該票 what 含解碼 `direction`、`EdgeTypeEntry` 參數必填；缺欄補值（v1.14）晚於該票建立，Step 6 須確認是否併入或另立 |
+| S6-14、S6-15（v1.16 改寫） | `0.5.0-W1-001.7` | 該票 what 含解碼 `direction`、`EdgeTypeEntry` 參數必填；缺欄補值（v1.14）與來源值「預設（有向）」（v1.16）晚於該票建立，Step 6 須確認是否併入或另立 |
 | S6-13（既有，不改） | `0.5.0-W1-001.7` | 該票 what 已指名改 S6-13 斷言欄位 |
 | S6-2、S6-9、S6-12（改寫）、S6-16、S6-17 | `0.5.0-W1-103.2` | 含 K5 契約改寫（`bundle_dependency` 不在使用中 → 在使用中） |
 | G7-1（改寫）、G7-7（改寫）、G7-8～G7-10 | `0.5.0-W1-103.2` | 該票 what 含 proposed 標記與「指向未宣告 bundle 的值須成破洞」 |
 | G10-1～G10-15 | `0.5.0-W1-001.4` | |
 | G11-1～G11-10 | `0.5.0-W1-001.5` | |
-| D4-1～D4-5 | 待 Step 6 建票 | Diagnostics 側 flow 小組；`0.5.0-W1-001.4`／`.5` 只到 Graph 回報缺陷 |
-| G6-3（限縮） | 待 Step 6 建票 | 依 N-A 裁決結果決定是否擴充 |
-| IT-INV-1～4、G9-INV | `0.5.0-W1-001.6` | 重凍結分析；未重凍結前斷言即為「不改」 |
+| G11-11、G11-12、G11-14、G11-18 | `0.5.0-W1-001.5` | 名稱解析器的去重、部分已宣告、逐步回報 |
+| G11-13、G11-15～G11-17 | `0.5.0-W1-001.5`（暫）／`0.5.0-W1-001.4` | 第四子類與「domain 重複宣告」的命名承接票擇一未定（NC-7）；解析行為屬名稱解析器，暫列 001.5 |
+| D4-1～D4-6、D5-1～D5-3 | `0.5.0-W1-119` | 該票驗收「flow 子類報告分組」「重複 domain 宣告子類歸報告主圖組」 |
+| G6-3（改寫）、G6-5、G6-6 | 待 Step 6 建票 | Graph 建圖結果（FR-06）；flow 缺陷由 001.4／001.5 產生，彙入 `graphDefects` 的計數屬建圖結果單元 |
+| G12-1～G12-15 | 待 Step 6 建票 | Graph 間接依賴（FR-12）；介面識別名由該票定（NC-c）；依賴 `0.5.0-W1-001.5`、`0.5.0-W1-103.2`、快照凍結票 |
+| IT-INV-1～5、G9-INV | `0.5.0-W1-001.6` | 重凍結分析；未重凍結前斷言即為「不改」 |
 | FR-10 #1、FR-11 #1（兩語料） | `0.5.0-W1-001.6` | |
 
-`0.5.0-W1-001.3` 屬 SPEC-006（見該檔 §7）；`0.5.0-W1-096.5`、`0.5.0-W1-096.7`（`where.files` 路徑比對與非 domain 清單）不在本輪變更 FR 內，本檔無對應案例。
+**Step 6 建議分組**（本檔待建票者，依實作單元分組）：
+
+1. Graph 建圖結果計數：G6-3、G6-5、G6-6（可併入下一組或 001.4／001.5 其一，由 Step 6 決定）
+2. Graph 間接依賴（FR-12）：G12 全部（與 SPEC-001-test-design §6.2 第 2 組為同一張票）
+
+`0.5.0-W1-001.3` 屬 SPEC-006（見該檔 §7）；`0.5.0-W1-096.5`、`0.5.0-W1-096.7` 本檔無對應案例（屬 SPEC-001 路徑比對器與 SPEC-006 FR-10）。
