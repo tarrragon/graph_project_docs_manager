@@ -30,7 +30,7 @@ consumers: ['diagnostics']
   分別對應 YAML 解析失敗、缺該鍵、該鍵的值不是清單（SPEC-006 FR-10 規則 2）、清單內有非字串元素（FR-10 規則 2a，
   `0.5.0-W1-096.7` 用戶裁決第二批 #1）。`elementNotString` 是唯一不使整份失效的子原因，其餘三種為整份格式錯誤；
   列舉名維持不改（`0.5.0-W1-114.4` PM 處置）
-- `nonStringElementCount: int?`：清單內非字串元素數，只在 `reason` 為 `elementNotString` 時有值，其餘子原因為 null（`0.5.0-W1-114.3` 用戶裁決 A3；識別名為 PM 決定）
+- `nonStringElementCount: int?`：清單內非字串元素數，只在 `reason` 為 `elementNotString` 時有值且必為 1 以上（有非字串元素才發出此子原因；`0.5.0-W1-122` 審查回報，PM 處置為直接推論），其餘子原因為 null（`0.5.0-W1-114.3` 用戶裁決 A3；識別名為 PM 決定）
 - Diagnostics 據此產生的 `parseFailure` 破洞原因碼為 `nonDomainPathsMalformed`（`0.5.0-W1-096.7` PM 處置識別名）
 - 一輪掃描最多發出一筆，四種子原因皆同；非字串元素有多個時不逐個發出，以 `nonStringElementCount` 帶數量（A3）
 
@@ -61,6 +61,7 @@ UC-02）。
 
 | 日期 | 變更 |
 |------|------|
+| 2026-10-08 | PM 處置（`0.5.0-W1-122` 審查回報）：`nonStringElementCount` 有值時必為 1 以上 |
 | 2026-10-08 | `0.5.0-W1-114.5`（`0.5.0-W1-114.4` PM 處置）：負載結構摘要行補列 `nonStringElementCount`；`reason` 註明 `elementNotString` 是唯一不使整份失效的子原因（列舉名不改） |
 | 2026-10-08 | `0.5.0-W1-114.3` 用戶裁決第三、四批：負載新增 `nonStringElementCount`，一輪最多一筆擴及 `elementNotString`（A3）；發送條件補字串元素不檢查格式（C3′） |
 | 2026-10-08 | `0.5.0-W1-114.3`（`0.5.0-W1-096.7` 用戶裁決第二批 #1，1C）：子原因列舉新增 `elementNotString`，發送條件補非字串元素（略過該元素、其餘生效）；`elementNotString` 筆數未裁決 |
