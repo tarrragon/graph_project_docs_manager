@@ -58,7 +58,17 @@ mappings:
       - matrix-overview-only
       - enter-from-ticket
       - flow-not-structured
-    tests: []
+    # 0.5.0-W1-114 指定（docs/test-design/SPEC-001-test-design.md §2、§3），Step 6 實作票建立前檔案尚不存在。
+    tests:
+      - integration_test/domain_view_v050_test.dart
+      - integration_test/gap_report_declaration_line_test.dart
+      - test/unit/layout/lane_order_test.dart
+      - test/unit/layout/column_order_test.dart
+      - test/unit/layout/node_placement_test.dart
+      - test/unit/layout/edge_shape_test.dart
+      - test/unit/screens/domain_view/indirect_dependency_test.dart
+      - test/unit/graph/path_declaration_state_test.dart
+      - test/unit/screens/gap_report_declaration_line_test.dart
 
   - spec: SPEC-001
     usecase: UC-03
@@ -219,6 +229,7 @@ domain_bundle_tests:
       - test/integration/graph_it2_defects_to_diagnostics_test.dart
       - test/unit/graph/undirected_edge_contract_test.dart
       - test/performance/graph_build_scaling_test.dart
+      - test/unit/graph/path_declaration_state_test.dart  # 0.5.0-W1-114 指定（UC-02 v1.6 五狀態），實作屬 0.5.0-W1-096.5
 
   - bundle: TicketDetail
     layer: L2
@@ -249,7 +260,11 @@ domain_bundle_tests:
     layer: L3
     invariants:
       - 布局演算法或版型規則改變是唯一合法變更理由（docs/spec/layout/domain-map.md §3）
-    tests: []
+    tests:  # 0.5.0-W1-114 指定（SPEC-001 §1〈泳道布局規則〉），Step 6 實作票建立前檔案尚不存在
+      - test/unit/layout/lane_order_test.dart
+      - test/unit/layout/column_order_test.dart
+      - test/unit/layout/node_placement_test.dart
+      - test/unit/layout/edge_shape_test.dart
 
 # 資料契約軸：跨語言/平台/token 層的不變式，皆已有契約測試覆蓋。
 data_contract_tests:
@@ -381,4 +396,4 @@ runtime_tests:
       - test/unit/screens/gap_report_test.dart
     status: 邏輯軌（fake）已覆蓋 _openItem 三個結局分支（exitCode 0 成功、exitCode 非零失敗、呼叫拋例外，皆以注入 gapItemProcessRunnerProvider 替身驗證）與「檔案不存在」情境（真實 Process.run 對刻意不存在路徑）；平台端事實軌仍零覆蓋——真正開啟外部編輯器與 doc CLI 呼叫路徑皆無實機驗證，且 doc CLI 呼叫於 lib/ 尚無對應實作（rescan() 現讀寫死 fixture，非真實呼叫）
 
-last_updated: "2026-09-24"
+last_updated: "2026-10-08"
