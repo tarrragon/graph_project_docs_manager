@@ -28,9 +28,10 @@ consumers: ['diagnostics']
 - `path`：非 domain 路徑清單檔的相對路徑（位置取自專案型別表 `non_domain_paths_file`，缺欄時取內建表值）
 - `reason`：格式錯誤子原因，列舉 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList, elementNotString }`，
   分別對應 YAML 解析失敗、缺該鍵、該鍵的值不是清單（SPEC-006 FR-10 規則 2）、清單內有非字串元素（FR-10 規則 2a，
-  `0.5.0-W1-096.7` 用戶裁決第二批 #1，與上游 `doc validate-paths` 逐元素回報同形）
+  `0.5.0-W1-096.7` 用戶裁決第二批 #1）
+- `nonStringElementCount: int?`：清單內非字串元素數，只在 `reason` 為 `elementNotString` 時有值，其餘子原因為 null（`0.5.0-W1-114.3` 用戶裁決 A3；識別名為 PM 決定）
 - Diagnostics 據此產生的 `parseFailure` 破洞原因碼為 `nonDomainPathsMalformed`（`0.5.0-W1-096.7` PM 處置識別名）
-- `yamlInvalid`／`keyMissing`／`notList` 一輪掃描最多發出一筆；`elementNotString` 的筆數（每個非字串元素一筆或每輪一筆）未裁決，見 `0.5.0-W1-114.3` NeedsContext
+- 一輪掃描最多發出一筆，四種子原因皆同；非字串元素有多個時不逐個發出，以 `nonStringElementCount` 帶數量（A3）
 
 > 判定與取值規則依 SPEC-006 FR-10。
 
@@ -43,7 +44,8 @@ consumers: ['diagnostics']
 
 **發送條件**：清單檔存在，且 YAML 解析失敗、缺該鍵、或該鍵的值不是清單，三者任一成立；
 或清單內有非字串元素（`elementNotString`：該元素略過，其餘元素照常生效，非 domain 側不視為未宣告）。
-清單檔不存在時不發出（屬未宣告，不是格式錯誤）。
+清單檔不存在時不發出（屬未宣告，不是格式錯誤）。字串元素不檢查格式，上游判為違規的字串
+（如空字串）不觸發本事件（SPEC-006 FR-10 規則 2b，`0.5.0-W1-114.3` 用戶裁決 C3′）。
 
 Diagnostics 收到後產生一筆 `parseFailure` 破洞（SPEC-006 FR-08），不依賴 FR-06 路徑模式查詢，
 查詢不可用時照常產生（`0.5.0-W1-114.1` PM 處置 NC-e）。路徑分類不因本事件
@@ -58,6 +60,7 @@ UC-02）。
 
 | 日期 | 變更 |
 |------|------|
+| 2026-10-08 | `0.5.0-W1-114.3` 用戶裁決第三、四批：負載新增 `nonStringElementCount`，一輪最多一筆擴及 `elementNotString`（A3）；發送條件補字串元素不檢查格式（C3′） |
 | 2026-10-08 | `0.5.0-W1-114.3`（`0.5.0-W1-096.7` 用戶裁決第二批 #1，1C）：子原因列舉新增 `elementNotString`，發送條件補非字串元素（略過該元素、其餘生效）；`elementNotString` 筆數未裁決 |
 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪：負載 `reason` 改為子原因列舉 `NonDomainPathsMalformedReason { yamlInvalid, keyMissing, notList }`，破洞原因碼記為 `nonDomainPathsMalformed`（`0.5.0-W1-096.7` PM 處置）；補「不依賴路徑查詢」（NC-e） |
 | 2026-10-08 | 建立（`0.5.0-W1-096.7` 用戶裁決 NC-1） |
