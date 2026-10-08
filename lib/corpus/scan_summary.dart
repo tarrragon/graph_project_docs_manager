@@ -15,6 +15,7 @@ class ScanSummary {
     required this.undeterminedCount,
     required this.carrierPathQueryAvailable,
     this.unlistableDirectories = const <String>[],
+    this.flowBlockMalformedUcCount = 0,
   });
 
   /// 掃描到的檔案總數。刻意作為獨立觀測值傳入、不由其他欄位推導——讓
@@ -50,6 +51,10 @@ class ScanSummary {
   /// （用戶裁決 2026-09-24，Phase 4 審查）。
   final List<String> unlistableDirectories;
 
+  /// FR-07 計數項：flow 區塊解析失敗的 UC 數（以 UC 計，不以區塊計；FR-09
+  /// 規則 3b）。這些 UC 是節點，已計入 [nodeCount]，不進兩條守恆式。
+  final int flowBlockMalformedUcCount;
+
   int get totalFailureCount =>
       failureReasonCounts.values.fold(0, (sum, count) => sum + count);
 }
@@ -69,8 +74,6 @@ bool checkScanSummaryConservation(ScanSummary summary) {
           summary.totalFailureCount;
   final secondEquationHolds =
       summary.totalFailureCount ==
-      summary.hitCarrierCount +
-          summary.noHitCount +
-          summary.undeterminedCount;
+      summary.hitCarrierCount + summary.noHitCount + summary.undeterminedCount;
   return firstEquationHolds && secondEquationHolds;
 }
