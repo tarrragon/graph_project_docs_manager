@@ -4,8 +4,8 @@ title: "Corpus 解析與破洞判定"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
-updated: "2026-09-29"
-version: "1.8"
+updated: "2026-10-08"
+version: "1.9"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -26,7 +26,7 @@ depends_on_domains: [schema, workspace]
 | Domain | 本規格內的職責 | 對應 FR |
 |--------|--------------|--------|
 | **Schema** | 提供「路徑對到哪個節點型別」的查詢 | FR-06 |
-| **Corpus** | 唯一的解析者：切出 frontmatter、判型；對命中 carrier 的失敗檔發出解析錯誤事件 | FR-01～FR-05、FR-07 |
+| **Corpus** | 唯一的解析者：切出 frontmatter、判型；對命中 carrier 的失敗檔發出解析錯誤事件；讀 UC 本文的 flow 區塊 | FR-01～FR-05、FR-07、FR-09 |
 | **Diagnostics** | 由解析錯誤事件產生破洞 | FR-08 |
 
 Corpus 沿既有的依賴邊 Corpus → Schema 呼叫路徑查詢，因此能在發事件前就知道
@@ -206,7 +206,7 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 1. 掃描檔案總數 = 節點數 + 有 frontmatter 的非節點數 + 各失敗原因數量總和
 2. 各失敗原因數量總和 = 命中 carrier 數 + 未命中數 + 未判定數
 
-**規則**：`rawNodes` 攜帶該檔完整 frontmatter map、相對路徑與判定型別；邊的抽取不在本版。
+**規則**：`rawNodes` 攜帶該檔完整 frontmatter map、相對路徑與判定型別；UC 另攜帶 flow 步驟清單（FR-09）；邊的抽取不在本版。
 
 **驗收條件**：
 - [ ] Given 一份分布已知的 fixture（每個計數項至少一檔），Then 各計數項等於已知值，兩條守恆式成立
@@ -225,6 +225,29 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 - [ ] Given IT-2 的實體化檔案樹，Then 每一筆破洞的路徑、歸屬型別、原因與凍結的參照實作輸出一致，且沒有多出或缺少的破洞
 - [ ] Given `docs/work-logs/` 下非 `tickets/` 目錄的工作日誌，frontmatter 有 YAML 語法錯誤，Then 不產生破洞
 - [ ] Given FR-06 查詢不可用，Then 不產生破洞，並回報無法判定
+
+### FR-09：UC flow 區塊解析
+
+**描述**：判為 UC 的「可用」檔案，Corpus 另讀其本文的結構化 flow 區塊，把步驟清單附掛在該 UC 的 `rawNode` 上。FlowStep 不另產 `rawNode`、不進主圖；子圖由 Graph 依此清單建立（SPEC-007 FR-10）。依據：`0.5.0-W1-001` 用戶裁決 C（2026-10-07，`docs/tech-decisions.md` 同日補記「FlowStep 以子圖掛在 UC」）。
+
+**規則**：
+
+| # | 規則 |
+|---|------|
+| 1 | 區塊判準與框架既有函式相同（`.claude/skills/doc/doc_system/core/uc_registry.py` 的 `_extract_structured_flow_steps`）：本文中的 fenced yaml 區塊，YAML 解析結果為 map、含 `flow` 鍵且其值為非空清單；同一文件有多個時取**第一個**符合者 |
+| 2 | 不符合規則 1 的 yaml 區塊（解析失敗、不是 map、沒有 `flow` 鍵、`flow` 不是非空清單）略過，繼續找下一個，與框架函式一致 |
+| 3 | 找不到符合規則 1 的區塊時，該 UC 的步驟清單為空清單；UC 本身照常是節點，FR-07 的計數與守恆式不受影響 |
+| 4 | 步驟清單依區塊內的原始順序保存，不排序、不去重：主線順序取清單順序（`0.5.0-W1-001` 裁決 (c)），重複 step id 由 Graph 判定（SPEC-007 FR-10） |
+| 5 | 每一步保存區塊中該項的完整 map（FlowStep 欄位見上游 `FLOWSTEP_REQUIRED_FIELDS`：`id`、`name`、`next`、`branch_from`、`return_to`、`emits`、`consumes`、`traverses`），不在 Corpus 解析參照、不檢查欄位完整性 |
+| 6 | 只對 UC 型別的節點讀取；其他型別的本文不找 flow 區塊 |
+
+**驗收條件**：
+- [ ] Given 本專案與 flutter_balance 兩語料，Then 各 UC `rawNode` 的步驟數等於其 flow 區塊步驟數，總數分別為 40、9（2026-10-07 量測）
+- [ ] Given 一份 UC 本文先有一個不含 `flow` 鍵的 yaml 區塊、再有一個合法 flow 區塊，Then 取第二個區塊的步驟
+- [ ] Given 一份 UC 唯一的 yaml 區塊有 YAML 語法錯誤，Then 步驟清單為空清單，該 UC 仍是節點，掃描完成
+- [ ] Given 一份 UC 沒有 yaml 區塊，Then 步驟清單為空清單
+- [ ] Given 一份 SPEC 本文含合法 flow 區塊，Then 該 SPEC 的 `rawNode` 不帶步驟清單
+- [ ] Given flow 區塊內步驟順序為 a、c、b，Then 附掛的清單順序仍為 a、c、b
 
 ## 非功能需求
 
@@ -271,6 +294,7 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.9 | 2026-10-08 | 新增 FR-09 UC flow 區塊解析（`0.5.0-W1-001.2`，依 `0.5.0-W1-001` 用戶裁決 C／(c)，2026-10-07）：區塊判準對齊框架 `_extract_structured_flow_steps`，步驟清單依原始順序附掛於 UC `rawNode`，FlowStep 不另產節點；〈概述〉Corpus 列與 FR-07 規則同步 |
 | 1.8 | 2026-09-29 | 〈本版範圍外〉第三列回填 `0.3.1-W1-081` 結論（用戶裁決）：歸 `parseFailure` 新原因碼 `idMissing`／`idPatternMismatch`，實作 `1.0.0-W1-084`；並記錄量測發現的 Ticket 型 `id_pattern` 漏收子票 ID（修正 `0.3.1-W1-092`）。承接欄的舊票號 `0.3.0-W1-081` 更正為遷移後的 `0.3.1-W1-081`。FR-03 本文不變 |
 | 1.7 | 2026-09-25 | FR-06 規則 7、FR-08、邊界表：版本條件改為「在 App 已知範圍內」，無法判定原因碼改為「版本不在 App 已知範圍」（涵蓋高於、缺席、無法解析），判定式與 SPEC-001 schema 不相容關卡相同（用戶裁決 2026-09-25，WRAP；`0.3.0-W3-541` 驗收發現） |
 | 1.6 | 2026-09-24 | 依 0.3.0 W4 Phase 4 多視角審查的用戶裁決：FR-02 補無法列出的目錄（另列清單、不進守恆式）；FR-03 明寫 schema 歧義的檔案須出現在掃描結果；FR-08 無法判定的原因為原因碼資料值，顯示文字由畫面投影 |
