@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.11"
+version: "1.12"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -231,10 +231,20 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 **描述**：Diagnostics 收到 EVT-GRAPH-001 後，對 `graphDefects` 逐筆產生 EVT-DIAGNOSTICS-001 的 `graphDefect` 破洞。
 
-**子類**：`danglingRef`、`malformedRef`、`duplicateId`、`multiSource`（原因碼見 FR-02～FR-04）。FR-10、FR-11 新增三種缺陷（flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告），子類識別名、負載欄位與破洞報告的分組尚未裁決（`0.5.0-W1-001.2` NeedsContext），在裁決前不得自行命名。
+**子類**：主圖四種為 `danglingRef`、`malformedRef`、`duplicateId`、`multiSource`（原因碼見 FR-02～FR-04）。flow 子圖另有三種，同屬 `graphDefect` 大類，不另立破洞類別（2026-10-08 用戶裁決 1a，`0.5.0-W1-001.2`）：
+
+| flow 子類 | 來源 | 負載 |
+|----------|------|------|
+| flow 參照未解析 | FR-10：`branch_from`、`return_to` 或分支步 `next` 指向同 UC 不存在的 step id；或指向 UC 內重複的 step id | {UC ID, step id, 欄位, 原始值} |
+| UC 內 step id 重複 | FR-10：同一 UC 內兩個以上步驟的 `id` 相同 | {UC ID, step id, 欄位, 原始值} |
+| `traverses` 名稱未宣告 | FR-11：`traverses` 的值沒有 DomainBundle 以 `domain` 宣告 | {UC ID, step id, 欄位, 原始值} |
+
+三種子類的程式識別名（camelCase 字面）未在裁決內，由 `0.5.0-W1-001.8` NeedsContext 上報，裁決前實作不得自行命名。
 
 **規則**：
 - 一筆缺陷對應一筆破洞。`danglingRef`、`malformedRef` 帶來源節點 ID 與路徑、欄位名、原始值（原樣，不正規化）、邊型、原因碼；`duplicateId` 帶 ID 與全部路徑；`multiSource` 帶起點、邊型、全部終點與各自的宣告來源
+- flow 三子類的負載一律為 {UC ID, step id, 欄位, 原始值}，不帶邊型：flow 參照不是邊（FR-10），沿用 `danglingRef`／`duplicateId` 的帶邊型負載對不上（2026-10-08 用戶裁決 1a）。欄位為觸發缺陷的 FlowStep 欄位名（`branch_from`、`return_to`、`next`、`id`、`traverses`）；原始值原樣保存，不正規化
+- 破洞報告把 flow 三子類另立「flow」小組，與主圖四子類分開列出；仍屬 `graphDefect` 大類，Diagnostics 的破洞類別列舉與報告頁大類結構不變
 - 顯示文字由畫面經 l10n 投影，Diagnostics 不產生在地化字串（與 SPEC-006 FR-08 一致）
 - 建圖不可用（FR-01）時不產生本類破洞，報告顯示「無法判定破洞」並說明原因
 - 建圖不可用的原因碼由編排層轉成 Diagnostics 既有的無法判定原因，Diagnostics 不依賴 Schema 的原因型別：版本不在已知範圍、缺正向基數、邊型條目不合法三者都轉成「專案版本不在已知範圍」（依 FR-01，後兩者只在版本不在已知範圍時才使建圖不可用）。三者的區分只保留在建圖不可用的日誌事件
@@ -265,7 +275,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 **規則**：
 - 解析不到的參照（指向同一 UC 不存在的步驟 id）：該步驟仍留在子圖內，該參照標為未解析，並回報一筆缺陷（收在 EVT-GRAPH-001 的 `graphDefects`，經 FR-09 成為 `graphDefect`）。步驟留在子圖內是為了讓泳道把懸空參照的步驟放在最後一欄（2026-10-08 用戶裁決，`docs/spec/layout/domain-map.md` §6）
-- 同一 UC 內兩個以上步驟的 `id` 相同：回報一筆缺陷（帶 UC ID 與該 step id）。不同 UC 的 step id 相同不是缺陷（step id 只需 UC 內唯一）
+- 同一 UC 內兩個以上步驟的 `id` 相同：重複的步驟**全部保留**在子圖內（主線或分支位置照清單順序與 `branch_from` 判定），回報一筆「UC 內 step id 重複」缺陷；`branch_from`、`return_to`、分支步 `next` 指向該重複 id 的參照一律標為未解析，各回報一筆「flow 參照未解析」缺陷（2026-10-08 用戶裁決 2a）。不同 UC 的 step id 相同不是缺陷（step id 只需 UC 內唯一）
+- **與主圖重複 ID 處理的差異**：主圖兩份檔案同一 `id` 時兩個節點都不建（FR-02、〈錯誤處理〉），flow 子圖則兩步都保留。理由：主圖的節點以 ID 全域定位，留下任一個都會讓指向該 ID 的邊連錯；子圖只在單一 UC 內，步驟消失會使泳道缺欄，且延續 2026-10-08 結構異常不消失的裁決（3e）。參照仍標未解析，所以不會連錯
 - UC ID 不在圖上、或不是 UC：回傳「不存在」，不拋例外
 - UC 的步驟清單為空：回傳空子圖（主線、分支、回指皆為空），與「不存在」分開
 - 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致
@@ -276,7 +287,9 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given 主線步驟 a 的 `next` 寫成 c、清單順序為 a、b、c，Then 主線順序為 a、b、c，不產生缺陷
 - [ ] Given 一個步驟的 `branch_from` 指向同 UC 不存在的 step id，Then 該步驟仍在子圖內、參照標為未解析，並回報一筆缺陷（E2 正向對照）
 - [ ] Given 一個分支步的 `next` 或 `return_to` 指向同 UC 不存在的 step id，Then 回報一筆缺陷（E2 正向對照）
-- [ ] Given 同一 UC 內兩個步驟 id 相同，Then 回報一筆缺陷（E2 正向對照）
+- [ ] Given 同一 UC 內兩個步驟 id 相同，Then 兩步都在子圖內，回報一筆「UC 內 step id 重複」缺陷（E2 正向對照）
+- [ ] Given 同一 UC 內兩個步驟 id 為 `x`、另一步驟 `return_to: x`，Then 該參照標為未解析，並另回報一筆「flow 參照未解析」缺陷
+- [ ] Given 任一 flow 缺陷，Then 破洞負載為 {UC ID, step id, 欄位, 原始值}，且報告列在「flow」小組
 - [ ] Given UC-A 與 UC-B 各有一個 id 為 `rescan` 的步驟，Then 不回報缺陷，兩者各自出現在自己的子圖
 - [ ] Given 步驟清單為空的 UC，Then 回傳空子圖，不是「不存在」
 - [ ] Given 建圖完成，Then EVT-GRAPH-001 的 `edgeCount` 與未啟用本 FR 時相同（子圖不進邊集合）
@@ -288,7 +301,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **規則**：
 - 索引鍵為 DomainBundle 輕節點來源 frontmatter 的 `domain` 值；精確比對（區分大小寫、不去空白、不正規化）
 - 不以字串拼接（如 `DOMAIN-MAP-` 加名稱）代替索引查詢：ID 慣例不是 schema 保證
-- 解析不到的名稱（未宣告）：回報一筆缺陷（帶 UC ID、step id、原始值），收在 EVT-GRAPH-001 的 `graphDefects`，經 FR-09 成為 `graphDefect`
+- 解析不到的名稱（未宣告）：回報一筆「`traverses` 名稱未宣告」缺陷（負載見 FR-09），收在 EVT-GRAPH-001 的 `graphDefects`，經 FR-09 成為 `graphDefect`
 - `traverses` 為空清單：無解析結果、無缺陷（純畫面步驟，Layout 的「畫面」列）
 - 解析器的輸入是名稱字串、輸出是 DomainBundle 節點 ID 或未宣告，不綁 FlowStep 型別：`depends_on_domains` 建邊時接同一解析器（`0.6.0-W1-074`），避免兩處各自比對而漂移
 - 本版只解析 `traverses`；`depends_on_domains` 不解析、不建邊（D6 排除鍵維持）
@@ -329,7 +342,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | D1 | 有反向欄位的邊取兩側聯集並記錄宣告來源；單側宣告不是缺陷 | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
 | D2 | 本版建圖的邊型為使用中邊型（〈用詞〉） | 用戶裁決 2026-09-30 |
 | D3 | 引用值分類為解析成功、斷邊、格式錯誤三類，不部分救回 | 用戶裁決 2026-09-30 |
-| D4 | 缺陷子類為 FR-09 所列四種；其中 `duplicateId` 與自我引用的處理為規格預設，用戶 2026-09-30 整批確認；孤島與缺必要邊延至 0.6 | 用戶裁決 2026-09-30 |
+| D4 | 主圖缺陷子類為 FR-09 所列四種，flow 子圖另三種（2026-10-08 用戶裁決 1a）；其中 `duplicateId` 與自我引用的處理為規格預設，用戶 2026-09-30 整批確認；孤島與缺必要邊延至 0.6 | 用戶裁決 2026-09-30 |
 | D5 | 整合測試使用凍結測資，預期值由獨立參照實作產生並凍結 | 用戶裁決 2026-09-30；同 SPEC-006 D3 |
 | D6 | 邊型的欄位名、正向基數、是否有反向欄位取自型別表；程式內的鍵名例外只有兩處：排除 `domain_dependency`、以 `association` 認定無向邊（FR-05）。`domain_dependency` 排除鍵在 0.5.0 維持（`0.5.0-W1-001` 裁決 D4，2026-10-07），建邊與移除排除鍵由 `0.6.0-W1-074` 承接；`association` 例外於上游補無向欄位後移除 | 同 SPEC-006 D1：上游 schema 為唯一權威。第二個例外起因於上游 JSON 缺無向欄位（用戶裁決 2026-09-30，WRAP） |
 | D7 | 正向基數由 schema 宣告；`provenance` 為 `many`（一個節點可有多個來源提案），`spawn`、`blood` 為 `one` | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
@@ -347,6 +360,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.12 | 2026-10-08 | 落地 `0.5.0-W1-001.2` NeedsContext 用戶裁決（`0.5.0-W1-001.8`）：FR-09 新增 flow 三子類（flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告），負載 {UC ID, step id, 欄位, 原始值}，破洞報告另立 flow 小組（1a）；FR-10 重複 step id 兩步保留、指向它的參照標未解析並報缺陷，寫明與主圖重複 ID（FR-02）處理不同的理由（2a）；D4 同步。三子類的程式識別名未裁決，見 `0.5.0-W1-001.8` NeedsContext |
 | 1.11 | 2026-10-08 | 新增 FR-10 UC flow 子圖 `flowOf(ucId)` 與 FR-11 `traverses` 名稱解析（`0.5.0-W1-001.2`，依 `0.5.0-W1-001` 用戶裁決 C／(c)／D4，2026-10-07）：FlowStep 不進主圖、`next` 不當邊、子圖內參照 UC 範圍解析、未解析參照與 UC 內重複 step id 成缺陷；名稱解析以 `domain` 欄精確比對、未宣告名稱成缺陷、不建邊。新增 D8、D9；D6 寫明 `domain_dependency` 排除維持並改由 `0.6.0-W1-074` 承接；〈本版範圍外〉兩列與 FR-09 子類同步，新缺陷子類識別名待裁決 |
 | 1.10 | 2026-09-30 | FR-01 補邊界（`0.4.0-W4-016` 審閱時提出）：被拒收的邊型在內建表也不存在時，不建邊、只寫日誌、建圖仍可用。v1.7 要避免的是靜默丟棄內建表認得的邊型，此情況兩表皆無可讀定義，判建圖不可用會因一個過時邊型癱瘓整張圖。現行實作即此行為 |
 | 1.9 | 2026-09-30 | FR-01 補原因碼優先序（`0.4.0-W4-016` 提出）：不合法條目與缺正向基數並存且版本不在已知範圍時，只回報「邊型條目不合法」 |

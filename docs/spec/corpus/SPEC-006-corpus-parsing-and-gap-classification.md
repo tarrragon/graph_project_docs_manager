@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-10-08"
-version: "1.10"
+version: "1.11"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -237,6 +237,8 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 | 1 | 區塊判準與框架既有函式相同（`.claude/skills/doc/doc_system/core/uc_registry.py` 的 `_extract_structured_flow_steps`）：本文中的 fenced yaml 區塊，YAML 解析結果為 map、含 `flow` 鍵且其值為非空清單；同一文件有多個時取**第一個**符合者 |
 | 2 | 不符合規則 1 的 yaml 區塊（解析失敗、不是 map、沒有 `flow` 鍵、`flow` 不是非空清單）略過，繼續找下一個，與框架函式一致 |
 | 3 | 找不到符合規則 1 的區塊時，該 UC 的步驟清單為空清單；UC 本身照常是節點，FR-07 的計數與守恆式不受影響 |
+| 3a | 區分「無區塊」與「區塊壞掉」（2026-10-08 用戶裁決 3b，`0.5.0-W1-001.2`）：UC 本文的 flow yaml 區塊 YAML 解析失敗時，該 UC 產生 `parseFailure` 破洞，原因碼為新增的「flow 區塊解析失敗」；UC 本文沒有 flow 區塊時為「無區塊」，不產生破洞。兩者的步驟清單都是空清單（規則 3），App 須能分辨兩者。理由：壞掉的 flow 與「沒有 flow」同形是靜默失敗；框架函式對兩者回傳相同，App 不能直接沿用其回傳值 |
+| 3b | 規則 3a 的待裁決細節（原因碼程式識別名；解析失敗的 yaml 區塊之後另有合法 flow 區塊時是否仍產生破洞；如何判定一個解析失敗的區塊是「flow 區塊」；破洞經哪個事件交給 Diagnostics；與 FR-08「破洞數等於命中 carrier 數」的關係）見 `0.5.0-W1-001.8` NeedsContext，裁決前實作不得自行補定 |
 | 4 | 步驟清單依區塊內的原始順序保存，不排序、不去重：主線順序取清單順序（`0.5.0-W1-001` 裁決 (c)），重複 step id 由 Graph 判定（SPEC-007 FR-10） |
 | 5 | 每一步保存區塊中該項的完整 map（FlowStep 欄位見上游 `FLOWSTEP_REQUIRED_FIELDS`：`id`、`name`、`next`、`branch_from`、`return_to`、`emits`、`consumes`、`traverses`），不在 Corpus 解析參照、不檢查欄位完整性 |
 | 6 | 只對 UC 型別的節點讀取；其他型別的本文不找 flow 區塊 |
@@ -244,8 +246,8 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 **驗收條件**：
 - [ ] Given 本專案與 flutter_balance 兩語料，Then 各 UC `rawNode` 的步驟數等於其 flow 區塊步驟數，總數分別為 40、9（2026-10-07 量測）
 - [ ] Given 一份 UC 本文先有一個不含 `flow` 鍵的 yaml 區塊、再有一個合法 flow 區塊，Then 取第二個區塊的步驟
-- [ ] Given 一份 UC 唯一的 yaml 區塊有 YAML 語法錯誤，Then 步驟清單為空清單，該 UC 仍是節點，掃描完成
-- [ ] Given 一份 UC 沒有 yaml 區塊，Then 步驟清單為空清單
+- [ ] Given 一份 UC 唯一的 yaml 區塊是 YAML 語法錯誤的 flow 區塊（如何判定為 flow 區塊見規則 3b），Then 步驟清單為空清單，該 UC 仍是節點，掃描完成，且產生一筆原因碼為「flow 區塊解析失敗」的 `parseFailure` 破洞（E2 正向對照）
+- [ ] Given 一份 UC 沒有 yaml 區塊，Then 步驟清單為空清單，且不產生破洞（與上一條對照：兩者步驟清單相同、破洞不同）
 - [ ] Given 一份 SPEC 本文含合法 flow 區塊，Then 該 SPEC 的 `rawNode` 不帶步驟清單
 - [ ] Given flow 區塊內步驟順序為 a、c、b，Then 附掛的清單順序仍為 a、c、b
 
@@ -294,6 +296,7 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.11 | 2026-10-08 | 落地 `0.5.0-W1-001.2` NeedsContext 用戶裁決 3b（`0.5.0-W1-001.8`）：FR-09 新增規則 3a，flow yaml 區塊解析失敗時該 UC 產生 `parseFailure`，原因碼為新增的「flow 區塊解析失敗」，與「無區塊」（不產生破洞）區分；驗收條件改為兩者對照。原因碼識別名與四項邊界細節未裁決，列於規則 3b 並上報 `0.5.0-W1-001.8` NeedsContext |
 | 1.10 | 2026-10-08 | 〈本版範圍外〉`unlocatable` 列補定義，與 EVT-DIAGNOSTICS-001 一致（`0.5.0-W1-096.3`，依 `0.5.0-W1-096` P2+ 與 `0.5.0-W1-096.1` 半套宣告裁決）：限兩側皆宣告時成立，半套宣告與整體未宣告不屬此類。本規格 FR 不變；SPEC-006-test-design D1-4 仍成立（本版不產生 `unlocatable`），無案例需改 |
 | 1.9 | 2026-10-08 | 新增 FR-09 UC flow 區塊解析（`0.5.0-W1-001.2`，依 `0.5.0-W1-001` 用戶裁決 C／(c)，2026-10-07）：區塊判準對齊框架 `_extract_structured_flow_steps`，步驟清單依原始順序附掛於 UC `rawNode`，FlowStep 不另產節點；〈概述〉Corpus 列與 FR-07 規則同步 |
 | 1.8 | 2026-09-29 | 〈本版範圍外〉第三列回填 `0.3.1-W1-081` 結論（用戶裁決）：歸 `parseFailure` 新原因碼 `idMissing`／`idPatternMismatch`，實作 `1.0.0-W1-084`；並記錄量測發現的 Ticket 型 `id_pattern` 漏收子票 ID（修正 `0.3.1-W1-092`）。承接欄的舊票號 `0.3.0-W1-081` 更正為遷移後的 `0.3.1-W1-081`。FR-03 本文不變 |
