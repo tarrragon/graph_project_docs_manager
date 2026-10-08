@@ -126,7 +126,8 @@ class NonDomainPathsReadAbsent extends NonDomainPathsReadResult {
 
 /// 已宣告且元素皆為字串：無事件。
 class NonDomainPathsReadDeclared extends NonDomainPathsReadResult {
-  const NonDomainPathsReadDeclared(this.patterns);
+  NonDomainPathsReadDeclared(List<String> patterns)
+    : patterns = List<String>.unmodifiable(patterns);
 
   final List<String> patterns;
 
@@ -142,9 +143,15 @@ class NonDomainPathsReadDeclaredWithBadElements
     extends NonDomainPathsReadResult {
   NonDomainPathsReadDeclaredWithBadElements({
     required String path,
-    required this.patterns,
+    required List<String> patterns,
     required int nonStringElementCount,
-  }) : malformedEvent = NonDomainPathsParseFailedEvent._(
+  }) : assert(
+         nonStringElementCount > 0,
+         // i18n-exempt: 開發者 assert 訊息
+         'elementNotString 事件的非字串元素數必須 >= 1（規則 2a）',
+       ),
+       patterns = List<String>.unmodifiable(patterns),
+       malformedEvent = NonDomainPathsParseFailedEvent._(
          path: path,
          reason: NonDomainPathsMalformedReason.elementNotString,
          nonStringElementCount: nonStringElementCount,

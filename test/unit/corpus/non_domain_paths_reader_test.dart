@@ -279,6 +279,43 @@ const p = 'non-domain-paths.yaml';
     });
   });
 
+  group('結果型別不變式', () {
+    test('E2：非字串元素數為 0 時拋出 AssertionError，1 時可建構（對照）', () {
+      expect(
+        () => NonDomainPathsReadDeclaredWithBadElements(
+          path: _defaultFile,
+          patterns: const ['a/'],
+          nonStringElementCount: 0,
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        NonDomainPathsReadDeclaredWithBadElements(
+          path: _defaultFile,
+          patterns: const ['a/'],
+          nonStringElementCount: 1,
+        ).malformedEvent.nonStringElementCount,
+        1,
+      );
+    });
+
+    test('外部傳入可變 list 時，patterns 不隨之變動且不可修改', () {
+      final source = ['a/'];
+      final declared = NonDomainPathsReadDeclared(source);
+      final withBad = NonDomainPathsReadDeclaredWithBadElements(
+        path: _defaultFile,
+        patterns: source,
+        nonStringElementCount: 1,
+      );
+      source.add('b/');
+
+      expect(declared.patterns, ['a/']);
+      expect(withBad.patterns, ['a/']);
+      expect(() => declared.patterns.add('c/'), throwsUnsupportedError);
+      expect(() => withBad.patterns.add('c/'), throwsUnsupportedError);
+    });
+  });
+
   group('位置欄位空字串（FR-10 規則 1）', () {
     Future<_MemoryFileSystem> readWith(Map<String, dynamic> extra) async {
       final fileSystem = _MemoryFileSystem(const {
