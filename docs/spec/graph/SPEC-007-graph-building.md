@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.19"
+version: "1.20"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -201,7 +201,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **驗收條件**：
 - [ ] Given 一份分布已知的 fixture，Then 各計數項等於已知值，FR-03 守恆式成立
 - [ ] Given `rawNodes` 為空，Then 發出一筆 EVT-GRAPH-001，`nodeCount`、`edgeCount` 為 0，`graphDefects` 為空
-- [ ] Given 建圖完成，Then 發出一筆 EVT-GRAPH-001，`graphDefects` 筆數等於斷邊數＋格式錯誤數＋`duplicateId` 數＋`multiSource` 數＋FR-09 各 flow 子類的缺陷數（原只計主圖四類，與 FR-10／FR-11 的 flow 缺陷收在同一 `graphDefects` 不一致，依 `0.5.0-W1-113` PM 處置 N-A 修正）
+- [ ] Given 建圖完成，Then 發出一筆 EVT-GRAPH-001，`graphDefects` 筆數等於斷邊數＋格式錯誤數＋`duplicateId` 數＋`multiSource` 數＋FR-09 各 flow 子類的缺陷數＋「domain 重複宣告」數（後者經 `graphDefects` 傳遞，為子類定義的直接推論，`0.5.0-W1-114.2` PM 處置 NC-4）（原只計主圖四類，與 FR-10／FR-11 的 flow 缺陷收在同一 `graphDefects` 不一致，依 `0.5.0-W1-113` PM 處置 N-A 修正）
 - [ ] Given 主圖無缺陷、某 UC 一個步驟的 `traverses` 含一個未宣告名稱，Then `graphDefects` 筆數為 1（E2 正向對照：只計主圖四類時為 0）
 
 ### FR-07：TicketDetail
@@ -257,7 +257,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 |------|------|------|
 | domain 重複宣告 | FR-11〈重複 domain 宣告〉：兩個以上 DomainBundle 宣告相同 `domain` 值 | {domain, 衝突的 DomainBundle ID 清單} |
 
-前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（第四子類由 `0.5.0-W1-001.4` 或 `0.5.0-W1-001.5` 命名，`0.5.0-W1-114.1` PM 處置 NC-c）。實作票命名前，其他實作不得自行命名。
+前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（兩者皆由 `0.5.0-W1-001.5` 命名——皆屬名稱解析器，`0.5.0-W1-114.1` PM 處置 NC-c、`0.5.0-W1-114.2` PM 處置 NC-7）。實作票命名前，其他實作不得自行命名。
 
 **規則**：
 - 一筆缺陷對應一筆破洞。`danglingRef`、`malformedRef` 帶來源節點 ID 與路徑、欄位名、原始值（原樣，不正規化）、邊型、原因碼；`duplicateId` 帶 ID 與全部路徑；`multiSource` 帶起點、邊型、全部終點與各自的宣告來源
@@ -350,6 +350,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 回傳值：關係種類三值之一；間接依賴時另帶依賴路徑清單（每條為 DomainBundle 序列），直接貫穿與無關時路徑為空
 - 依賴路徑排序：先依路徑長度遞增，同長依來源 X 在 FR-13 分層排序中的先後，再依中間節點在 FR-13 中的先後。排序依據取自 FR-13，不依賴 Layout（`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08；系統層 §2 禁止 Graph 依賴 Layout）
 - 只計 FR-11 解析成功的值：未宣告名稱、缺 `traverses` 鍵、重複宣告被排除的名稱不構成直接貫穿
+- DomainBundle 或 UC 的 ID 不在圖上時，比照 FR-08 回傳「無關」且路徑為空，不拋例外（`0.5.0-W1-114.2` PM 處置 NC-5）
 - 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致
 - 介面識別名與簽章交 Step 6 的 Graph 間接依賴實作票定（`0.5.0-W1-114.1` PM 處置 NC-c）；該實作的預期值取凍結快照（PM 接受的推論）
 
@@ -427,6 +428,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.20 | 2026-10-08 | 補寫 `0.5.0-W1-114.2` PM 處置（Step 6 建票前發現未落規格）：FR-06 驗收 #3 `graphDefects` 筆數含「domain 重複宣告」（NC-4）；FR-12 ID 不在圖上時回傳「無關」且路徑為空（NC-5）；FR-09 第四 flow 子類與 domain 重複宣告的識別名皆由 `0.5.0-W1-001.5` 命名（NC-7） |
 | 1.19 | 2026-10-08 | `0.5.0-W1-114.5`（依 `0.5.0-W1-114.4` PM 處置 NC-8／NC-9）：FR-13 寫明依賴推不出層者的 bundle 同樣推不出層、接在最後；回傳形狀定為排序清單＋每項層號（推不出層者為 null）；補一條驗收 |
 | 1.18 | 2026-10-08 | `0.5.0-W1-114.3`（依 `0.5.0-W1-114.2` 用戶裁決 R1，第二批）：新增 FR-13 DomainBundle 分層（1a max+1）與層內排序（2b code point）的 Graph 公開查詢，推不出層者沿 3e 接在最後；FR-12 依賴路徑排序改依 FR-13，不依賴 Layout；〈概述〉職責表同步。介面識別名交實作票 |
 | 1.17 | 2026-10-08 | `0.5.0-W1-114.1` 第二小輪（PM 處置 NC-b／NC-c／NC-d）：FR-09「`traverses` 鍵缺席」負載原始值定為 `null`；新增 `graphDefect` 子類「domain 重複宣告」，負載 {domain, 衝突的 DomainBundle ID 清單}；第四 flow 子類、domain 重複宣告與 FR-12 的識別名改為交實作票定；FR-11 重複 domain 宣告寫明兩個 DomainBundle 仍各自成列、其列無 `traverses` 命中並帶缺陷標記，缺鍵規則補負載；補一條驗收、擴寫一條驗收。移除本票三處未裁決標記 |
