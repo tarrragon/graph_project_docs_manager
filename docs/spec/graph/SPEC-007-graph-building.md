@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.24"
+version: "1.25"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -300,8 +300,9 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - UC ID 不在圖上、或不是 UC：回傳「不存在」，不拋例外
 - UC 的步驟清單為空：回傳空子圖（主線、分支、回指皆為空），與「不存在」分開
 - `next` 是步驟 id 的清單（上游 UC 模板：「後續步驟 id；場景結尾留空陣列 []」）：分支步的 `next` 逐元素在 UC 內解析，每個解析不到的元素各報一筆「flow 參照未解析」（欄位 `next`、原始值為該元素）；`[]` 表示無後續、不報缺陷；`next` 為單一純量值時視同單元素清單。不得把整個清單轉成一個字串比對（PM 處置 2026-10-09，`0.5.0-W1-001.4` 實作回報：原條文把 next 寫成純量為規格錯誤，依上游定義與 S1「與上游一致」修正）
+- `branch_from`、`return_to` 為單一步驟 id（上游模板定義）；其值為清單或 map 時不逐元素解析，依下一條整體轉字串比對，必然解析不到而報一筆「flow 參照未解析」——壞資料可見（PM 處置 2026-10-09，`0.5.0-W1-001.4` 複審回報，S1 與上游定義的直接推論）
 - 步驟 `id` 與參照欄（`next` 的各元素、`branch_from`、`return_to`）的值為非空、非字串（例：`id: 123`、`next: [123]`）時，一律轉成字串後比對，不報缺陷——與上游 `doc validate` 的判定一致（其以 `str()` 正規化），避免上游通過而 App 報缺陷（`0.5.0-W1-001.4` 用戶裁決 S1，2026-10-09）
-- 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致，含與 FR-08 同形的日誌事件（PM 處置 2026-10-09，「一致」的直接推論；事件名 `flowUnavailable`，`0.5.0-W1-001.4` 命名）
+- 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致，含與 FR-08 同形的日誌事件（PM 處置 2026-10-09，「一致」的直接推論；事件名 `flowUnavailable`，`0.5.0-W1-001.4` 命名）；建圖完成日誌（`buildCompleted`）負載另帶 `flowDefectCount`（flow 子圖缺陷筆數，`0.5.0-W1-001.4` 實作、PM 追認）
 - 缺陷程式識別名：flow 參照未解析為 `GraphDefectKind.flowUnresolvedRef`、UC 內 step id 重複為 `GraphDefectKind.flowDuplicateStepId`，負載 `{ucId, stepId, field, rawValue}`（`0.5.0-W1-001.4` 命名回填）。字串化後相同但原值不同的重複 id（例：`1` 與 `"1"`），重複缺陷的 stepId／rawValue 取清單中第一個出現者（`0.5.0-W1-001.4` 實作選擇，PM 追認）
 - 主線 `next` 的值不解析、不產生缺陷（見上方 `next` 的語意）
 
@@ -433,6 +434,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.25 | 2026-10-09 | FR-10：`branch_from`／`return_to` 為清單或 map 時整體轉字串、報未解析（PM 處置）；回填 `buildCompleted` 日誌的 `flowDefectCount`（`0.5.0-W1-001.4` 複審回報） |
 | 1.24 | 2026-10-09 | FR-10：`next` 為步驟 id 清單、逐元素解析、`[]` 不報缺陷（PM 處置，修正原條文把 next 寫成純量的錯誤）；追認 `flowUnavailable` 日誌事件名與重複 id 取第一個原值 |
 | 1.23 | 2026-10-09 | FR-10：非字串 id／參照值轉字串比對（`0.5.0-W1-001.4` 用戶裁決 S1）；圖不可用含日誌事件（PM 處置）；回填兩個 flow 缺陷識別名與負載 |
 | 1.22 | 2026-10-09 | FR-09 原因碼轉換由三者改為四者，納入 `missingDirection`（`0.5.0-W1-001.7` 回報，文字同步） |
