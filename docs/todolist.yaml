@@ -766,6 +766,11 @@ versions:
            SPEC-007 v1.20、UC-02 v1.9、EVT-CORPUS-005；測試設計 W1-114.4。Step 6 新建 W1-114.6（快照凍結）、114.7（Graph
            FR-12／13）、114.8（graphDefects 計數）、114.9／114.10（Layout 列序／欄序與查詢）、114.11（元件）、114.12（domain_view）、
            114.13（外圈 IT-D1～D4），另有 W1-119（Diagnostics）、122、124；派發交 4a。
+         - 2026-10-09 補建（用戶裁決 O-A／P-B／U1）：114.14（Domain 視圖編排層）、114.15（破洞報告頁接真資料，承接
+           0.6.0-W1-025）、114.17（報告項目投影實作）、114.18（UC Flow 接真資料）；114.16 投影規格已定案。
+         - 共用工作樹推送約定（2026-10-09，e1／4a）：任一方 push 前先看 `git log origin/main..HEAD`；含對方尚未覆核通過的
+           merge 時不推，等對方通知。合併方優先採「合併前在合併後的樹上實跑」，若先合併後覆核，合併當下通知對方「覆核中勿推」。
+           起因：b9c173d64 在 4a 覆核完成前隨 e1 的推送上了 origin（結果為綠）。
       2. 預期變更（第二段，實作）
          - lib：corpus（flow 區塊解析、EVT-CORPUS-004、S2 讀取）、graph（flowOf、traverses 名稱解析與反查、bundle_dependency
            進使用中邊型並帶 layer、direction 判無向、where.files 路徑比對器）、schema（direction 解碼、使用中邊型）、layout（泳道
