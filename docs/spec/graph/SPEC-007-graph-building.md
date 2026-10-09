@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.25"
+version: "1.26"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -330,6 +330,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - `traverses` 為空清單：無解析結果、無缺陷（純畫面步驟，Layout 的「畫面」列）
 - 步驟缺 `traverses` 鍵：無解析結果，回報一筆「`traverses` 鍵缺席」缺陷（負載見 FR-09，欄位 `traverses`、原始值 `null`），不視同空清單、不歸「畫面」列（`0.5.0-W1-114` 用戶裁決 T1，2026-10-08）。`traverses` 是 schema 必填欄位，缺鍵是資料缺陷，與純畫面步驟在畫面上須可區分；上游 `doc validate` 不檢查缺鍵，App 端自行回報
 - 步驟的 `traverses` 部分值已宣告、部分未宣告：已宣告值照常解析，未宣告值各回報缺陷；解析結果只含已宣告值（泳道放置見 SPEC-001 §1〈泳道布局規則〉「`traverses` 異常的步驟」）
+- 值的正規化與上游 `doc validate` 的 `_as_name_list` 一致（比照 FR-10 用戶裁決 S1「與上游一致」，PM 追認 `0.5.0-W1-001.5` 實作選擇，2026-10-09）：`traverses` 為純量字串時視同單元素清單；鍵在而值為 `null` 時視同 `[]`（純畫面步驟，歸「畫面」列，不報缺陷——與「鍵缺席」不同，後者照上一條報缺陷）；元素為非字串時轉字串後比對，空字串與轉字串後無對應宣告者皆為「名稱未宣告」；同一步驟同名已宣告值重複時解析結果只留一筆（未宣告值的去重見上方 N-E）
+- 缺陷程式識別名（`0.5.0-W1-001.5` 命名回填）：`FlowDefectKind.traversesUndeclared`／`traversesKeyAbsent`，對應 `GraphDefectKind.flowTraversesUndeclared`／`flowTraversesKeyAbsent`；重複宣告為 `GraphDefectKind.domainDuplicateDeclaration`，負載 `DomainDuplicateDeclarationGraphDefect{domain, bundleIds}`
 - **重複 domain 宣告**（`0.5.0-W1-113` 用戶裁決 D-3，2026-10-08）：兩個以上 DomainBundle 宣告相同 `domain` 值時，比照主圖重複 ID（FR-02），這些 DomainBundle 全部不進名稱索引，該名稱的所有 `traverses` 引用回報為未宣告，另回報一筆重複宣告缺陷。DomainBundle 的 `id` 與 `domain` 是兩個欄位，同 `domain` 不同 `id` 時 FR-02 不會觸發，須在名稱索引另行偵測。上游 `doc validate` 另擋下重複 `domain`（`0.5.0-W1-113.1`，框架變更），未升級框架的專案由本規則保護。重複宣告缺陷為 `graphDefect` 子類「domain 重複宣告」，每個重複的 `domain` 值一筆，負載 {domain, 衝突的 DomainBundle ID 清單}（見 FR-09；`0.5.0-W1-114.1` PM 處置 NC-d）。這些 DomainBundle 仍是節點，在矩陣與泳道仍各自成列（列＝DomainBundle 節點）；因被排除於名稱索引，其列沒有任何 `traverses` 命中，並帶缺陷標記
 - 解析器的輸入是名稱字串、輸出是 DomainBundle 節點 ID 或未宣告，不綁 FlowStep 型別：`depends_on_domains` 建邊時接同一解析器（`0.6.0-W1-074`），避免兩處各自比對而漂移
 - 本版只解析 `traverses`；`depends_on_domains` 不解析、不建邊（D6 排除鍵維持）
@@ -434,6 +436,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.26 | 2026-10-09 | FR-11：traverses 值正規化與上游 `_as_name_list` 一致（純量、null、非字串元素、同名去重；PM 追認 `0.5.0-W1-001.5` 實作選擇）；回填 traverses 兩子類與 domain 重複宣告的識別名 |
 | 1.25 | 2026-10-09 | FR-10：`branch_from`／`return_to` 為清單或 map 時整體轉字串、報未解析（PM 處置）；回填 `buildCompleted` 日誌的 `flowDefectCount`（`0.5.0-W1-001.4` 複審回報） |
 | 1.24 | 2026-10-09 | FR-10：`next` 為步驟 id 清單、逐元素解析、`[]` 不報缺陷（PM 處置，修正原條文把 next 寫成純量的錯誤）；追認 `flowUnavailable` 日誌事件名與重複 id 取第一個原值 |
 | 1.23 | 2026-10-09 | FR-10：非字串 id／參照值轉字串比對（`0.5.0-W1-001.4` 用戶裁決 S1）；圖不可用含日誌事件（PM 處置）；回填兩個 flow 缺陷識別名與負載 |
