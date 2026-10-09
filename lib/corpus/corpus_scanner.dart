@@ -370,12 +370,11 @@ class _ScanAccumulator {
   /// 需求：[SPEC-006 FR-09 規則 3a] flow 擷取拋出非預期例外時，不當作「無
   /// 區塊」：該 UC 空步驟、記 warning、標為壞區塊（呼叫端發一筆
   /// EVT-CORPUS-004，reason 附例外摘要），不中止整輪掃描。
-  UcFlowExtraction _extractFlowOrEmpty(String path, Uint8List bytes) {
+  UcFlowExtraction _extractFlowGuarded(String path, Uint8List bytes) {
     try {
       return _extractFlow(bytes, path);
     } catch (e) {
       developer.log(
-        // i18n-exempt: 開發者 debug log
         'UC flow 擷取發生非預期例外，該 UC 發 EVT-CORPUS-004：$path', // i18n-exempt: 開發者 debug log
         name: 'CorpusScanner',
         level: 900,
@@ -401,7 +400,7 @@ class _ScanAccumulator {
     if (typeName != _ucTypeName || bytes == null) {
       return RawNode(path: path, frontmatter: frontmatter, typeName: typeName);
     }
-    final flow = _extractFlowOrEmpty(path, bytes);
+    final flow = _extractFlowGuarded(path, bytes);
     if (flow.hasMalformedFlowBlock || flow.hasNonMapFlowItem) {
       // 規則 3b (c)、3c：兩類來源共用「每 UC 一筆」上限；reason 以原因碼
       // 開頭，非 map 項目時另附註說明。

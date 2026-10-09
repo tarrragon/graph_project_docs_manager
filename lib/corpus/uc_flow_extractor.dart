@@ -53,6 +53,7 @@ class UcFlowExtraction {
   final List<Map<String, dynamic>> steps;
 
   /// 任一含頂層 `flow:` 行的區塊 YAML 解析失敗（不論後方是否另有合法區塊）。
+  /// 含擷取時的非預期例外，以 `unexpectedErrorSummary != null` 區分。
   final bool hasMalformedFlowBlock;
 }
 

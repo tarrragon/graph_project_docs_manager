@@ -451,14 +451,26 @@ void main() {
       expect(checkScanSummaryConservation(r.summary), isTrue);
     });
 
-    test('A6 例外與非 map／壞區塊並存的 UC 仍只一筆 004', () async {
+    test('A6 例外摘要與非 map 旗標並存的 UC 仍只一筆 004，說明依序皆在', () async {
       final r = await scanCorpus(
         fileSystem: FakeDocsFileSystem()
           ..addFile(_ucPath, ucBytes(blocks: [malformedFlowBlock])),
         table: _table(),
-        extractFlow: (bytes, path) => throw StateError('boom'),
+        extractFlow: (bytes, path) => const UcFlowExtraction(
+          steps: <Map<String, dynamic>>[],
+          hasMalformedFlowBlock: true,
+          hasNonMapFlowItem: true,
+          unexpectedErrorSummary: 'StateError: boom',
+        ),
       );
       expect(r.flowParseFailedEvents, hasLength(1));
+      final reason = r.flowParseFailedEvents.single.reason;
+      expect(reason, startsWith(flowBlockMalformedReasonCode));
+      final unexpected = reason.indexOf('StateError: boom');
+      final nonMap = reason.indexOf(flowNonMapItemReasonNote);
+      expect(unexpected, greaterThan(-1));
+      expect(nonMap, greaterThan(unexpected));
+      expect(r.summary.flowBlockMalformedUcCount, 1);
     });
   });
 
