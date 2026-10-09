@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-10-08"
-version: "1.24"
+version: "1.25"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -201,7 +201,8 @@ Dart `package:yaml` 依 1.2，兩者對 `yes`／`no`、日期等值的型別解�
 **計數項**：節點數、有 frontmatter 的非節點數、各失敗原因的數量（FR-01 四種 + 無法讀取）、
 失敗檔中命中 carrier 的數量（**含平手**：平手的檔案也發事件、也產生一筆帶候選型別的破洞）、
 失敗檔中未命中的數量、失敗檔中未判定的數量（FR-06 查詢不可用時）、
-flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已計入節點數，不另進守恆式）。
+flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已計入節點數，不另進守恆式）、
+非 domain 路徑清單格式錯誤數（0 或 1，FR-10；清單檔不是語料檔，不進守恆式；識別名 `ScanSummary.nonDomainPathsMalformedCount`，PM 追認 2026-10-09，FR-08 公式第三項引用本項）。
 
 **守恆式**：
 1. 掃描檔案總數 = 節點數 + 有 frontmatter 的非節點數 + 各失敗原因數量總和
@@ -219,7 +220,8 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 **規則**：
 - 一筆 EVT-CORPUS-003 對應一筆破洞，帶相對路徑、歸屬型別（或平手時的候選型別與 schema 歧義標記）、原因；資訊要足以讓使用者直接去修
-- 一筆 EVT-CORPUS-004 對應一筆破洞，帶 UC 相對路徑、所屬型別 UC（該 UC 仍是節點，型別已知；`0.5.0-W1-113` PM 處置 N5）與原因碼 `flowBlockMalformed`（「flow 區塊解析失敗」，FR-09 規則 3a、3b）
+- 一筆 EVT-CORPUS-004 對應一筆破洞，帶 UC 相對路徑、所屬型別 UC（該 UC 仍是節點，型別已知；`0.5.0-W1-113` PM 處置 N5）與原因碼 `flowBlockMalformed`（「flow 區塊解析失敗」，FR-09 規則 3a、3b）。破洞原因碼由事件類別決定，恆為 `flowBlockMalformed`；004 的 reason 未以該原因碼開頭時視為上游違反 EVT-CORPUS-004 約定，寫 warning 日誌，破洞照常產生、原因碼仍為 `flowBlockMalformed`，不得把 reason 原文當原因碼（PM 處置 2026-10-09，`0.5.0-W1-119.1` 審查 M2）
+- EVT-CORPUS-005 的破洞不帶節點型別（清單檔不是圖節點），須與 EVT-CORPUS-003 的「平手」（多個候選型別）可區分（PM 處置 2026-10-09，`0.5.0-W1-119.1` 審查回報）
 - 一筆 EVT-CORPUS-005 對應一筆破洞，帶非 domain 路徑清單檔的相對路徑、原因碼 `nonDomainPathsMalformed`（「非 domain 路徑清單格式錯誤」）與子原因 `NonDomainPathsMalformedReason`（FR-10 規則 2；`0.5.0-W1-096.7` 用戶裁決 NC-1 (i) I-b、PM 處置識別名）；子原因為 `elementNotString` 時另帶 `nonStringElementCount`，報告項目顯示「清單內 N 個非字串元素」（SPEC-004 §4.0.6 key `gapNonDomainPathsNonStringElements`；`0.5.0-W1-114.4` 用戶裁決第五批 NC-7，G1）
 - EVT-CORPUS-005 的破洞同樣不依賴 FR-06 路徑模式查詢：查詢不可用時照常產生（清單檔位置取自型別表欄位或內建表，不需路徑對型別；`0.5.0-W1-114.1` PM 處置 NC-e，與 N4 同理）
 - EVT-CORPUS-004 的破洞不依賴 FR-06 路徑模式查詢：查詢不可用時照常產生（UC 型別由判型取得，不需路徑對型別；`0.5.0-W1-113` PM 處置 N4，為下一條的直接推論）
@@ -340,6 +342,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.25 | 2026-10-09 | PM 處置（`0.5.0-W1-119.1` 審查回報）：FR-07 計數項補「非 domain 路徑清單格式錯誤數」（不進守恆式）；FR-08 補 004 破洞原因碼恆為 `flowBlockMalformed`、reason 前綴不符記 warning；005 破洞不帶節點型別 |
 | 1.24 | 2026-10-09 | PM 處置（`0.5.0-W1-130` NeedsContext 4）：規則 3a 補擷取時非預期例外不得當作「無區塊」，發 004、寫 warning、掃描照常完成 |
 | 1.23 | 2026-10-09 | PM 處置（`0.5.0-W1-001.3` 複審 N3）：規則 3c 寫明適用於任一 flow 區塊，不限被採用者；EVT-CORPUS-004 的 reason 改為以原因碼開頭、可附說明（N1） |
 | 1.22 | 2026-10-09 | `0.5.0-W1-001.3` 用戶裁決（審查回報 G1／G2）：FR-09 新增規則 3c——flow 清單內非 map 項目略過、其餘照常、發一筆 EVT-CORPUS-004（H2）；規則 3d——未閉合的 yaml 圍欄含頂層 `flow:` 行時判為壞掉的 flow 區塊、發 004、不採用其步驟（J2）；補三條驗收 |
