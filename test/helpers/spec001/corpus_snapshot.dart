@@ -25,7 +25,11 @@ const _schemaPath = '.claude/skills/doc/doc_system/core/tracking_schema.json';
 final _ucFileName = RegExp(r'^(UC-\d+)');
 
 /// 快照名：`graph_project_docs_manager` 或 `flutter_balance`。
-Future<Map<String, FlowSubgraph>> loadSnapshotFlows(String snapshot) async {
+Future<Map<String, FlowSubgraph>> loadSnapshotFlows(String snapshot) async =>
+    (await loadSnapshotEvent(snapshot)).flowSubgraphs;
+
+/// 同 [loadSnapshotFlows]，回傳整個 GraphBuilt 事件（含邊與缺陷）。
+Future<GraphBuiltEvent> loadSnapshotEvent(String snapshot) async {
   final temp = await Directory.systemTemp.createTemp('spec001_snapshot_');
   try {
     final source = Directory('$_snapshotRoot/$snapshot');
@@ -52,7 +56,7 @@ Future<void> _materialize(Directory source, Directory target) async {
   }
 }
 
-Future<Map<String, FlowSubgraph>> _scanAndBuild(String root) async {
+Future<GraphBuiltEvent> _scanAndBuild(String root) async {
   final schemaJson = jsonDecode(
     File('$root/$_schemaPath').readAsStringSync(),
   ) as Map<String, dynamic>;
@@ -73,5 +77,5 @@ Future<Map<String, FlowSubgraph>> _scanAndBuild(String root) async {
     // i18n-exempt: 測試診斷訊息
     reason: '建圖不可用：${result is GraphBuildUnavailable ? result.reason : result}',
   );
-  return (result as GraphBuildAvailable).event.flowSubgraphs;
+  return (result as GraphBuildAvailable).event;
 }
