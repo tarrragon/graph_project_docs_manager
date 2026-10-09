@@ -1,9 +1,63 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 
 import '../../helpers/spec007/graph_build_support.dart';
 import '../../helpers/spec007/known_distribution_fixture.dart';
 import '../../helpers/spec007/raw_node_builder.dart';
+
+RawNode _bundle(String id, String domain) => buildRawNode(
+  id: id,
+  typeName: domainBundleTypeName,
+  extra: {domainBundleDomainField: domain},
+);
+
+RawNode _ucNode(List<Map<String, dynamic>> steps) => RawNode(
+  path: 'docs/usecases/UC-01.md',
+  frontmatter: {'id': 'UC-01'},
+  typeName: flowSourceTypeName,
+  flowSteps: steps,
+);
+
+Map<String, dynamic> _step(
+  String id, {
+  List<Object?> traverses = const [],
+  String? branchFrom,
+}) => {'id': id, 'traverses': traverses, 'branch_from': ?branchFrom};
+
+/// 無任何主圖缺陷。
+List<RawNode> _cleanMainGraph() => [
+  buildRawNode(
+    id: '0.1.0-W1-001',
+    extra: {
+      'relatedTo': ['0.1.0-W1-002'],
+    },
+  ),
+  buildRawNode(id: '0.1.0-W1-002'),
+];
+
+/// 主圖四類各一：斷邊、格式錯誤、duplicateId、multiSource。
+List<RawNode> _mainGraphFourDefects() => [
+  buildRawNode(id: '0.1.0-W1-001', extra: {'source_ticket': '0.1.0-W9-999'}),
+  buildRawNode(
+    id: '0.1.0-W1-002',
+    extra: {
+      'relatedTo': [42],
+    },
+  ),
+  buildRawNode(id: '0.1.0-W1-005', path: 'docs/dup-a.md'),
+  buildRawNode(id: '0.1.0-W1-005', path: 'docs/dup-b.md'),
+  buildRawNode(id: '0.2.0-W1-001'),
+  buildRawNode(id: '0.2.0-W1-004', extra: {'source_ticket': '0.2.0-W1-001'}),
+  buildRawNode(
+    id: '0.2.0-W1-005',
+    extra: {
+      'spawned_tickets': ['0.2.0-W1-004'],
+    },
+  ),
+];
 
 void main() {
   group('G6 建圖結果與事件（FR-06）', () {
@@ -41,17 +95,68 @@ void main() {
       expect(event.graphDefects, isEmpty);
     });
 
-    test('G6-3 graphDefects 筆數 = 斷邊 + 格式錯誤 + duplicateId + multiSource', () {
-      final known = buildKnownGraphDistribution();
-      final event = buildGraphEvent(known.rawNodes);
-      expect(event.graphDefects.length, known.graphDefectCount);
+    test('G6-3 graphDefects 筆數 = 主圖四類 + flow 四子類 (+ domain 重複宣告)', () {
+      final main = _mainGraphFourDefects();
+      final flow = _ucNode([
+        _step('a'),
+        _step('b', branchFrom: 'ghost'),
+        _step('x'),
+        _step('x'),
+        _step('c', traverses: ['nope']),
+        {'id': 'd'},
+      ]);
+      final event = buildGraphEvent([...main, flow]);
+      expect(event.danglingRefCount, 1);
+      expect(event.malformedRefCount, 1);
+      expect(event.duplicateIdCount, 1);
+      expect(event.multiSourceCount, 1);
       expect(
-        event.graphDefects.length,
-        event.danglingRefCount +
-            event.malformedRefCount +
-            event.duplicateIdCount +
-            event.multiSourceCount,
+        event.graphDefects.whereType<FlowGraphDefect>().map((d) => d.kind),
+        unorderedEquals(FlowDefectKind.values),
       );
+      expect(event.graphDefects.length, 8);
+      final withDup = buildGraphEvent([
+        ...main,
+        flow,
+        _bundle('B1', 'corpus'),
+        _bundle('B2', 'corpus'),
+      ]);
+      expect(withDup.graphDefects.length, 9);
+      expect(
+        withDup.graphDefects.whereType<DomainDuplicateDeclarationGraphDefect>(),
+        hasLength(1),
+      );
+    });
+
+    test('G6-5 守衛：主圖無缺陷、一步 traverses 未宣告名稱 -> 恰 1 筆', () {
+      final event = buildGraphEvent([
+        ..._cleanMainGraph(),
+        _ucNode([
+          _step('a', traverses: ['nope']),
+        ]),
+      ]);
+      final d = event.graphDefects.single as FlowGraphDefect;
+      expect(d.kind, FlowDefectKind.traversesUndeclared);
+    });
+
+    test('G6-6 對照：未宣告改為已宣告名稱 -> 1 對 0，節點與邊數相同', () {
+      final bad = buildGraphEvent([
+        ..._cleanMainGraph(),
+        _ucNode([
+          _step('a', traverses: ['nope']),
+        ]),
+      ]);
+      final good = buildGraphEvent([
+        ..._cleanMainGraph(),
+        _bundle('B1', 'corpus'),
+        _ucNode([
+          _step('a', traverses: ['corpus']),
+        ]),
+      ]);
+      expect(bad.graphDefects.length, 1);
+      expect(good.graphDefects.length, 0);
+      expect(bad.edgeCount, good.edgeCount);
+      expect(bad.nodeCount + 1, good.nodeCount);
     });
 
     test('G6-4 同一邊多次宣告：edgeCount 只計一次', () {
