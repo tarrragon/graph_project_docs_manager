@@ -27,6 +27,16 @@ Map<String, dynamic> _step(
   String? branchFrom,
 }) => {'id': id, 'traverses': traverses, 'branch_from': ?branchFrom};
 
+/// flow 四子類各一的 UC。
+RawNode _flowFourSubclassUc() => _ucNode([
+  _step('a'),
+  _step('b', branchFrom: 'ghost'),
+  _step('x'),
+  _step('x'),
+  _step('c', traverses: ['nope']),
+  {'id': 'd'},
+]);
+
 /// 無任何主圖缺陷。
 List<RawNode> _cleanMainGraph() => [
   buildRawNode(
@@ -95,17 +105,11 @@ void main() {
       expect(event.graphDefects, isEmpty);
     });
 
-    test('G6-3 graphDefects 筆數 = 主圖四類 + flow 四子類 (+ domain 重複宣告)', () {
-      final main = _mainGraphFourDefects();
-      final flow = _ucNode([
-        _step('a'),
-        _step('b', branchFrom: 'ghost'),
-        _step('x'),
-        _step('x'),
-        _step('c', traverses: ['nope']),
-        {'id': 'd'},
+    test('G6-3 graphDefects 筆數 = 主圖四類 + flow 四子類', () {
+      final event = buildGraphEvent([
+        ..._mainGraphFourDefects(),
+        _flowFourSubclassUc(),
       ]);
-      final event = buildGraphEvent([...main, flow]);
       expect(event.danglingRefCount, 1);
       expect(event.malformedRefCount, 1);
       expect(event.duplicateIdCount, 1);
@@ -115,9 +119,12 @@ void main() {
         unorderedEquals(FlowDefectKind.values),
       );
       expect(event.graphDefects.length, 8);
+    });
+
+    test('FR-06 驗收（NC-4）：再加 domain 重複宣告，筆數 9', () {
       final withDup = buildGraphEvent([
-        ...main,
-        flow,
+        ..._mainGraphFourDefects(),
+        _flowFourSubclassUc(),
         _bundle('B1', 'corpus'),
         _bundle('B2', 'corpus'),
       ]);
@@ -142,6 +149,7 @@ void main() {
     test('G6-6 對照：未宣告改為已宣告名稱 -> 1 對 0，節點與邊數相同', () {
       final bad = buildGraphEvent([
         ..._cleanMainGraph(),
+        _bundle('B1', 'corpus'),
         _ucNode([
           _step('a', traverses: ['nope']),
         ]),
@@ -156,7 +164,7 @@ void main() {
       expect(bad.graphDefects.length, 1);
       expect(good.graphDefects.length, 0);
       expect(bad.edgeCount, good.edgeCount);
-      expect(bad.nodeCount + 1, good.nodeCount);
+      expect(bad.nodeCount, good.nodeCount);
     });
 
     test('G6-4 同一邊多次宣告：edgeCount 只計一次', () {
