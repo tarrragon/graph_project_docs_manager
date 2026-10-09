@@ -158,6 +158,28 @@ void main() {
       expect(ra.highlightedDomains, {'alpha', 'beta'});
       expect(ra.paths, hasLength(1));
     });
+    test('X1 多路徑：受影響路徑數以路徑計，高亮為聯集', () {
+      final b = <String, List<String>?>{
+        'alpha': ['docs/x/'],
+        'beta': ['docs/x/'],
+        'graph': ['lib/graph/'],
+        'other': null,
+      };
+      final r = _run(b, nd, ['docs/x/a.md', 'lib/graph/a.dart', 'src/x.dart']);
+      expect(r.paths, hasLength(3));
+      expect(r.paths.first.domains, ['alpha', 'beta']);
+      expect(r.affectedPathCount, 1);
+      expect(r.highlightedDomains, {'alpha', 'beta', 'graph'});
+    });
+    test('K2 where.files 為空且非整體未宣告：undetermined，與 notLocatable 不同', () {
+      final empty = _run(both, nd, []);
+      expect(empty.overallUndeclared, isFalse);
+      expect(empty.locatability, TicketLocatability.undetermined);
+      final oneSide = _run(both, nonDomainAbsent(), []);
+      expect(oneSide.locatability, TicketLocatability.undetermined);
+      final withPath = _run(both, nd, ['src/x.dart']);
+      expect(withPath.locatability, TicketLocatability.notLocatable);
+    });
     test('零 bundle 有非 domain 清單：未命中為 domain 未宣告，非無法定位', () {
       expect(
         _one(<String, List<String>?>{}, nd, 'src/a.dart'),
@@ -225,6 +247,15 @@ void main() {
         PathLocationState.unlocatable,
       );
     });
+    for (final c in ['?', '[', ']', '{', '}']) {
+      test('守衛：含 glob 字元 $c 的宣告不命中字面上會命中的路徑', () {
+        final pattern = 'docs/a${c}b/';
+        expect(
+          _one(both, nonDomainDeclared([pattern]), '${pattern}x.md'),
+          PathLocationState.unlocatable,
+        );
+      });
+    }
     test('FR-10 規則 2a：含非字串元素仍為 declared', () {
       final r = _run(
         both,
