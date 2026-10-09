@@ -16,8 +16,8 @@ void main() {
   group('K2-1 真實 JSON 中每個非 FlowStep 型別都有 carrier_path_patterns', () {
     test('carrier_path_types 清單中的型別皆帶合法形態的 carrier_path_patterns', () {
       final json = readRealTrackingSchemaJson();
-      final carrierPathTypes =
-          (json['carrier_path_types'] as List<dynamic>).cast<String>();
+      final carrierPathTypes = (json['carrier_path_types'] as List<dynamic>)
+          .cast<String>();
       final nodeTypes = json['node_types'] as Map<String, dynamic>;
 
       expect(carrierPathTypes, isNotEmpty);
@@ -49,8 +49,8 @@ void main() {
 
     test('K2-1（守衛正向對照）FlowStep 不在 carrier_path_types 中', () {
       final json = readRealTrackingSchemaJson();
-      final carrierPathTypes =
-          (json['carrier_path_types'] as List<dynamic>).cast<String>();
+      final carrierPathTypes = (json['carrier_path_types'] as List<dynamic>)
+          .cast<String>();
       expect(carrierPathTypes, isNot(contains('FlowStep')));
 
       final nodeTypes = json['node_types'] as Map<String, dynamic>;
@@ -68,7 +68,8 @@ void main() {
           expect(
             () => pattern.toRegExp(),
             returnsNormally,
-            reason: '${entry.name} 的 pattern 無法被 Dart RegExp 編譯：${pattern.pattern}',
+            reason:
+                '${entry.name} 的 pattern 無法被 Dart RegExp 編譯：${pattern.pattern}',
           );
         }
       }
@@ -118,20 +119,29 @@ void main() {
       expect((result as CarrierPathSingleMatch).typeName, 'UC');
     });
 
-    test('K2-4-4 docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md 命中 Ticket（S1-4）', () {
-      final result = lookupCarrierPathType(
-        table,
-        'docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md',
-      );
-      expect(result, isA<CarrierPathSingleMatch>());
-      expect((result as CarrierPathSingleMatch).typeName, 'Ticket');
-    });
+    test(
+      'K2-4-4 docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md 命中 Ticket（S1-4）',
+      () {
+        final result = lookupCarrierPathType(
+          table,
+          'docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md',
+        );
+        expect(result, isA<CarrierPathSingleMatch>());
+        expect((result as CarrierPathSingleMatch).typeName, 'Ticket');
+      },
+    );
 
-    test('K2-4-5 docs/spec/corpus/domain-map.md 回傳 DomainBundle（S2-1，具體度 3 > 2）', () {
-      final result = lookupCarrierPathType(table, 'docs/spec/corpus/domain-map.md');
-      expect(result, isA<CarrierPathSingleMatch>());
-      expect((result as CarrierPathSingleMatch).typeName, 'DomainBundle');
-    });
+    test(
+      'K2-4-5 docs/spec/corpus/domain-map.md 回傳 DomainBundle（S2-1，具體度 3 > 2）',
+      () {
+        final result = lookupCarrierPathType(
+          table,
+          'docs/spec/corpus/domain-map.md',
+        );
+        expect(result, isA<CarrierPathSingleMatch>());
+        expect((result as CarrierPathSingleMatch).typeName, 'DomainBundle');
+      },
+    );
 
     test('K2-4-6 docs/domain-map.md 回傳 DomainBundle（具體度 2）', () {
       final result = lookupCarrierPathType(table, 'docs/domain-map.md');
@@ -140,7 +150,10 @@ void main() {
     });
 
     test('K2-4-7 大小寫不同的路徑未命中（S1-5）', () {
-      final specResult = lookupCarrierPathType(table, 'docs/Spec/ui/SPEC-001-x.md');
+      final specResult = lookupCarrierPathType(
+        table,
+        'docs/Spec/ui/SPEC-001-x.md',
+      );
       expect(specResult, isA<CarrierPathNoMatch>());
     });
   });
@@ -168,9 +181,9 @@ void main() {
       final ticketPattern = ticketEntry.carrierPathPatterns!.single;
 
       expect(
-        ticketPattern
-            .toRegExp()
-            .hasMatch('docs/work-logs/v0/tickets/0.1.0-W1-001.md'),
+        ticketPattern.toRegExp().hasMatch(
+          'docs/work-logs/v0/tickets/0.1.0-W1-001.md',
+        ),
         isTrue,
       );
     });
@@ -224,8 +237,8 @@ void main() {
     });
   });
 
-  group('K5 bundle_dependency 為 proposed 邊型（0.5.0-W1-070.2）', () {
-    test('解碼後 layer 為 proposed，且不進入使用中（established）邊型', () {
+  group('K5 bundle_dependency 為 proposed 邊型且納入使用中（0.5.0-W1-103.2）', () {
+    test('解碼後 layer 為 proposed，且依 D6 鍵名允許清單進入使用中邊型', () {
       final json = readRealTrackingSchemaJson();
       final resolution = resolveEdgeTypes(
         projectSchemaJson: json,
@@ -234,41 +247,52 @@ void main() {
       expect(resolution.edgeTypes['bundle_dependency']?.layer, 'proposed');
       expect(
         resolution.activeEdgeTypes.map((e) => e.name),
-        isNot(contains('bundle_dependency')),
+        contains('bundle_dependency'),
       );
       // 守衛正向對照：established 邊型確實進入使用中。
       expect(resolution.activeEdgeTypes, isNotEmpty);
     });
+
+    test('S6-17 對照：鍵名改為 bundle_dependency_x 時不納入', () {
+      final json = readRealTrackingSchemaJson();
+      final edges = json['edge_types'] as Map<String, dynamic>;
+      edges['bundle_dependency_x'] = edges.remove('bundle_dependency');
+      final resolution = resolveEdgeTypes(
+        projectSchemaJson: json,
+        builtinSchemaJson: json,
+      );
+      expect(
+        resolution.activeEdgeTypes.map((e) => e.name),
+        isNot(contains('bundle_dependency_x')),
+      );
+    });
   });
 
   group('completeness', () {
-    test(
-      'K3-1 真實 JSON 含 completeness_fields，各值為字串清單',
-      () {
-        final json = readRealTrackingSchemaJson();
-        expect(json.containsKey('completeness_fields'), isTrue);
+    test('K3-1 真實 JSON 含 completeness_fields，各值為字串清單', () {
+      final json = readRealTrackingSchemaJson();
+      expect(json.containsKey('completeness_fields'), isTrue);
 
-        final completenessFields =
-            json['completeness_fields'] as Map<String, dynamic>;
-        expect(completenessFields, isNotEmpty);
+      final completenessFields =
+          json['completeness_fields'] as Map<String, dynamic>;
+      expect(completenessFields, isNotEmpty);
 
-        for (final entry in completenessFields.entries) {
-          final value = entry.value;
+      for (final entry in completenessFields.entries) {
+        final value = entry.value;
+        expect(
+          value,
+          isA<List<dynamic>>(),
+          reason: '${entry.key} 的 completeness_fields 值應為清單',
+        );
+        for (final field in value as List<dynamic>) {
           expect(
-            value,
-            isA<List<dynamic>>(),
-            reason: '${entry.key} 的 completeness_fields 值應為清單',
+            field,
+            isA<String>(),
+            reason: '${entry.key} 的 completeness_fields 元素應為字串',
           );
-          for (final field in value as List<dynamic>) {
-            expect(
-              field,
-              isA<String>(),
-              reason: '${entry.key} 的 completeness_fields 元素應為字串',
-            );
-          }
         }
-      },
-    );
+      }
+    });
 
     test('K3-2 真實 JSON 含 completeness_semantics', () {
       final json = readRealTrackingSchemaJson();

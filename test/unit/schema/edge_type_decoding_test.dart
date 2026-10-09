@@ -8,11 +8,9 @@ import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 import '../../helpers/spec007/edge_table_builder.dart';
 
-Map<String, dynamic> _builtinJson() =>
-    jsonDecode(
-          File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
-        )
-        as Map<String, dynamic>;
+Map<String, dynamic> _builtinJson() => jsonDecode(
+  File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
+) as Map<String, dynamic>;
 
 Set<String> _keys(EdgeTypeResolution r) => r.edgeTypes.keys.toSet();
 
@@ -20,6 +18,15 @@ EdgeTypeResolution _resolve(Map<String, dynamic>? project) => resolveEdgeTypes(
   projectSchemaJson: project,
   builtinSchemaJson: _builtinJson(),
 );
+
+/// 預期使用中邊型：asset 的 established 扣 domain_dependency 加 bundle_dependency。
+Set<String> _expectedActive(Map<String, dynamic> edges) =>
+    edges.entries
+        .where((e) => (e.value as Map)['layer'] == 'established')
+        .map((e) => e.key)
+        .toSet()
+      ..remove('domain_dependency')
+      ..add('bundle_dependency');
 
 void main() {
   final builtin = _builtinJson();
@@ -42,13 +49,8 @@ void main() {
     }
   });
 
-  test('S6-2 使用中邊型 = established 扣 domain_dependency', () {
-    final expected =
-        builtinEdges.entries
-            .where((e) => (e.value as Map)['layer'] == 'established')
-            .map((e) => e.key)
-            .toSet()
-          ..remove('domain_dependency');
+  test('S6-2 使用中邊型 = established 扣 domain_dependency 加 bundle_dependency', () {
+    final expected = _expectedActive(builtinEdges);
     final result = _resolve(builtin);
     expect(result.activeEdgeTypes.map((e) => e.name).toSet(), expected);
     expect(expected, isNotEmpty);
@@ -125,6 +127,36 @@ void main() {
     );
   });
 
+  test('S6-16 內建 asset 的使用中邊型含 bundle_dependency，layer 取自表為 proposed', () {
+    final active = _resolve(builtin).activeEdgeTypes;
+    expect(
+      active.firstWhere((e) => e.name == 'bundle_dependency').layer,
+      'proposed',
+    );
+  });
+
+  test('S6-17 E1 鑑別：鍵名改為 bundle_dependency_x 時不納入（依鍵名，非所有 proposed）', () {
+    final renamed = _builtinJson();
+    final edges = renamed['edge_types'] as Map<String, dynamic>;
+    edges['bundle_dependency_x'] = edges.remove('bundle_dependency');
+    final names = _resolve(renamed).activeEdgeTypes.map((e) => e.name).toSet();
+    expect(names, isNot(contains('bundle_dependency_x')));
+    expect(names, isNot(contains('bundle_dependency')));
+    final original = _resolve(builtin).activeEdgeTypes.map((e) => e.name);
+    expect(original, contains('bundle_dependency'));
+  });
+
+  test('S6-9 守衛：其餘 proposed 邊型不在使用中（正向對照 S6-16）', () {
+    final proposedOthers = builtinEdges.entries
+        .where((e) => (e.value as Map)['layer'] == 'proposed')
+        .map((e) => e.key)
+        .where((k) => k != 'bundle_dependency');
+    final names = _resolve(builtin).activeEdgeTypes.map((e) => e.name).toSet();
+    for (final other in proposedOthers) {
+      expect(names, isNot(contains(other)), reason: other);
+    }
+  });
+
   test('S6-9 proposed 邊型不在使用中', () {
     final table = buildEdgeTableJson(
       version: builtinVersion,
@@ -173,12 +205,7 @@ void main() {
 
   test('S6-12 降級模式：內建表 asset 作為專案表傳入 -> 可用', () {
     final result = _resolve(builtin);
-    final expected =
-        builtinEdges.entries
-            .where((e) => (e.value as Map)['layer'] == 'established')
-            .map((e) => e.key)
-            .toSet()
-          ..remove('domain_dependency');
+    final expected = _expectedActive(builtinEdges);
     expect(result.unavailableReason, isNull);
     expect(result.activeEdgeTypes.map((e) => e.name).toSet(), expected);
     expect(expected, isNotEmpty);
