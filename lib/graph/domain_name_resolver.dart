@@ -1,12 +1,11 @@
 /// SPEC-007 FR-11 domain 名稱解析器：以 DomainBundle 的 `domain` 欄建名稱索引。
 ///
 /// 不綁 FlowStep 型別：輸入是名稱字串、輸出是 DomainBundle 節點 ID 或未宣告，
-/// 日後 `depends_on_domains` 建邊接同一解析器。本檔不依賴其他 graph 模組。
+/// 日後 `depends_on_domains` 建邊接同一解析器。本檔只依賴 flow_key.dart 的比對鍵正規化。
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
-import 'package:graph_project_docs_manager/graph/flow_subgraph.dart'
-    show flowKeyOf;
+import 'package:graph_project_docs_manager/graph/flow_key.dart';
 
 /// DomainBundle 的節點型別名（型別表節點型別名）。
 const domainBundleTypeName = 'DomainBundle';

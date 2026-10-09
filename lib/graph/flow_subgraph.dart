@@ -6,6 +6,7 @@
 library;
 
 import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
+import 'package:graph_project_docs_manager/graph/flow_key.dart';
 
 /// 只有此節點型別的 rawNode 附掛 flow 步驟（型別表節點型別名）。
 const flowSourceTypeName = 'UC';
@@ -40,17 +41,6 @@ class FlowReference {
 
   bool get isResolved => targetIndex != null;
 }
-
-/// 空值：null、空字串、空清單／空 Map（規格 FR-10 的「非空」；空集合視為空）。
-bool _isEmptyRef(Object? value) =>
-    value == null ||
-    value == '' ||
-    (value is Iterable && value.isEmpty) ||
-    (value is Map && value.isEmpty);
-
-/// 步驟 `id` 與參照值的比對鍵：非空值一律轉成字串（FR-10 用戶裁決 S1，
-/// 與上游 `doc validate` 的 `str()` 正規化一致）；空值回傳 null。
-String? flowKeyOf(Object? value) => _isEmptyRef(value) ? null : '$value';
 
 /// 遞迴凍結 Map／List，使子圖不與 RawNode 共用可變參照。
 Object? _freeze(Object? value) => switch (value) {
@@ -128,16 +118,16 @@ class FlowStepNode {
     required DomainNameResolver domainResolver,
   }) : step = (_freeze(step)! as Map<dynamic, dynamic>).cast<String, dynamic>(),
        traversesResolution = _resolveTraverses(step, domainResolver),
-       isMainline = _isEmptyRef(step[FlowFields.branchFrom]),
+       isMainline = isEmptyFlowRef(step[FlowFields.branchFrom]),
        branchFrom = _resolveIf(
-         !_isEmptyRef(step[FlowFields.branchFrom]),
+         !isEmptyFlowRef(step[FlowFields.branchFrom]),
          FlowFields.branchFrom,
          step,
          idIndex,
        ),
        returnTo = _resolveIf(true, FlowFields.returnTo, step, idIndex),
        nextRefs = List.unmodifiable(
-         _isEmptyRef(step[FlowFields.branchFrom])
+         isEmptyFlowRef(step[FlowFields.branchFrom])
              ? const <FlowReference>[]
              : _resolveNext(step[FlowFields.next], idIndex),
        );
@@ -179,7 +169,7 @@ FlowReference? _resolveIf(
   Map<String, List<int>> idIndex,
 ) {
   final raw = step[field];
-  if (!applies || _isEmptyRef(raw)) return null;
+  if (!applies || isEmptyFlowRef(raw)) return null;
   return FlowReference(
     field: field,
     rawValue: raw,
@@ -192,7 +182,7 @@ List<FlowReference> _resolveNext(Object? raw, Map<String, List<int>> idIndex) {
   final elements = raw is Iterable ? raw : [raw];
   return [
     for (final e in elements)
-      if (!_isEmptyRef(e))
+      if (!isEmptyFlowRef(e))
         FlowReference(
           field: FlowFields.next,
           rawValue: e,
