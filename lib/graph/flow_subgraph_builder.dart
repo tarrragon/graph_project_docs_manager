@@ -2,6 +2,7 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 
@@ -14,21 +15,29 @@ class FlowBuildResult {
 }
 
 /// 需求：[SPEC-007 FR-10] 對進入圖的 UC（[ucIds]）建子圖並回報 flow 缺陷。
-FlowBuildResult buildFlowSubgraphs(List<RawNode> rawNodes, Set<String> ucIds) {
+FlowBuildResult buildFlowSubgraphs(
+  List<RawNode> rawNodes,
+  Set<String> ucIds,
+  DomainNameResolver domainResolver,
+) {
   final subgraphs = <String, FlowSubgraph>{};
   final defects = <FlowGraphDefect>[];
   for (final raw in rawNodes) {
     final id = raw.frontmatter['id'];
     if (raw.typeName != flowSourceTypeName || id is! String) continue;
     if (!ucIds.contains(id)) continue;
-    final subgraph = _buildOne(id, raw.flowSteps);
+    final subgraph = _buildOne(id, raw.flowSteps, domainResolver);
     subgraphs[id] = subgraph;
     defects.addAll(_defectsOf(subgraph));
   }
   return FlowBuildResult(subgraphs: subgraphs, defects: defects);
 }
 
-FlowSubgraph _buildOne(String ucId, List<Map<String, dynamic>> rawSteps) {
+FlowSubgraph _buildOne(
+  String ucId,
+  List<Map<String, dynamic>> rawSteps,
+  DomainNameResolver domainResolver,
+) {
   final idIndex = <String, List<int>>{};
   for (var i = 0; i < rawSteps.length; i++) {
     final key = flowKeyOf(rawSteps[i][FlowFields.id]);
@@ -38,7 +47,12 @@ FlowSubgraph _buildOne(String ucId, List<Map<String, dynamic>> rawSteps) {
     ucId: ucId,
     steps: [
       for (var i = 0; i < rawSteps.length; i++)
-        FlowStepNode(index: i, step: rawSteps[i], idIndex: idIndex),
+        FlowStepNode(
+          index: i,
+          step: rawSteps[i],
+          idIndex: idIndex,
+          domainResolver: domainResolver,
+        ),
     ],
   );
 }
@@ -71,5 +85,22 @@ List<FlowGraphDefect> _defectsOf(FlowSubgraph g) {
             field: ref.field,
             rawValue: ref.rawValue,
           ),
+    for (final s in g.steps) ..._traversesDefects(g.ucId, s),
+  ];
+}
+
+/// 需求：[SPEC-007 FR-11] 缺鍵一筆（原始值 null）；未宣告值逐值各一筆。
+List<FlowGraphDefect> _traversesDefects(String ucId, FlowStepNode s) {
+  final r = s.traversesResolution;
+  FlowGraphDefect defect(FlowDefectKind kind, Object? raw) => FlowGraphDefect(
+    kind: kind,
+    ucId: ucId,
+    stepId: s.id,
+    field: FlowFields.traverses,
+    rawValue: raw,
+  );
+  return [
+    if (r.keyAbsent) defect(FlowDefectKind.traversesKeyAbsent, null),
+    for (final v in r.undeclared) defect(FlowDefectKind.traversesUndeclared, v),
   ];
 }

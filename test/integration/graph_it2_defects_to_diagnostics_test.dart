@@ -83,6 +83,12 @@ String _gapKey(GraphDefectGap gap) => switch (gap.defect) {
           {'to': t.to, 'declared_by': (t.declaredBy.toList()..sort())},
       ],
     }),
+  DomainDuplicateDeclarationGraphDefect(:final domain, :final bundleIds) =>
+    _canonical({
+      'kind': gap.kind.name,
+      'domain': domain,
+      'bundle_ids': (bundleIds.toList()..sort()),
+    }),
   FlowGraphDefect(:final ucId, :final stepId, :final field, :final rawValue) =>
     _canonical({
       'kind': gap.kind.name,

@@ -2,6 +2,7 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
@@ -80,21 +81,27 @@ GraphBuiltEvent buildGraphFromInputs({
       if (t.isUndirected) t.name,
   };
   final edges = _buildEdges(classified.resolved, undirectedTypes);
-  final flow = buildFlowSubgraphs(rawNodes, {
-    for (final n in classified.lightNodes) n.id,
-  });
+  final nodeIds = {for (final n in classified.lightNodes) n.id};
+  final resolver = DomainNameResolver.fromRawNodes(rawNodes, nodeIds);
+  final flow = buildFlowSubgraphs(rawNodes, nodeIds, resolver);
   final defects = <GraphDefect>[
     ...classified.dangling,
     ...classified.malformed,
     ...classified.duplicates,
     ..._multiSourceDefects(edges, edgeList),
     ...flow.defects,
+    for (final d in resolver.duplicates)
+      DomainDuplicateDeclarationGraphDefect(
+        domain: d.domain,
+        bundleIds: d.bundleIds,
+      ),
   ];
   return GraphBuiltEvent(
     nodes: classified.lightNodes,
     edges: edges,
     graphDefects: defects,
     flowSubgraphs: flow.subgraphs,
+    domainResolver: resolver,
     totalReferences: classified.totalReferences,
     resolvedCount: classified.resolved.length,
   );

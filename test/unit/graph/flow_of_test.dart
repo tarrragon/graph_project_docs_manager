@@ -42,8 +42,15 @@ FlowSubgraph _flow(List<Map<String, dynamic>> steps) {
   return (r as FlowOfAvailable).subgraph;
 }
 
-List<FlowGraphDefect> _flowDefects(GraphBuiltEvent e) =>
-    e.graphDefects.whereType<FlowGraphDefect>().toList();
+/// FR-10 缺陷；`traverses` 兩子類（FR-11）由 domain_name_resolution_test 驗證。
+List<FlowGraphDefect> _flowDefects(GraphBuiltEvent e) => e.graphDefects
+    .whereType<FlowGraphDefect>()
+    .where(
+      (d) =>
+          d.kind != FlowDefectKind.traversesUndeclared &&
+          d.kind != FlowDefectKind.traversesKeyAbsent,
+    )
+    .toList();
 
 (FlowDefectKind, Object?, String, Object?) _sig(FlowGraphDefect d) =>
     (d.kind, d.stepId, d.field, d.rawValue);
@@ -465,9 +472,9 @@ void main() {
 
     test('G10-14 E1 鑑別：子圖不進邊集合，圖計數與有無缺陷步驟無關', () {
       final defectSteps = [
-        _s('x'),
-        _s('x'),
-        _s('b1', {'branch_from': 'ghost'}),
+        _s('x', {'traverses': <String>[]}),
+        _s('x', {'traverses': <String>[]}),
+        _s('b1', {'branch_from': 'ghost', 'traverses': <String>[]}),
       ];
       final withFlow = buildGraphEvent([_uc01(defectSteps)]);
       final without = buildGraphEvent([_uc01(const [])]);

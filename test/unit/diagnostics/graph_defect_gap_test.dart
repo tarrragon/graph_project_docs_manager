@@ -82,6 +82,41 @@ void main() {
       expect(multi.targets[1].declaredBy, {'T-3'});
     });
 
+    test('FR-11 三個新缺陷各對應獨立的破洞子類', () {
+      final gaps = _gapsOf(
+        detectGraphDefectGaps(
+          GraphDefectInputAvailable(
+            _event([
+              const FlowGraphDefect(
+                kind: FlowDefectKind.traversesUndeclared,
+                ucId: 'UC-01',
+                stepId: 's',
+                field: 'traverses',
+                rawValue: 'nope',
+              ),
+              const FlowGraphDefect(
+                kind: FlowDefectKind.traversesKeyAbsent,
+                ucId: 'UC-01',
+                stepId: 's',
+                field: 'traverses',
+                rawValue: null,
+              ),
+              DomainDuplicateDeclarationGraphDefect(
+                domain: 'corpus',
+                bundleIds: ['P1', 'P2'],
+              ),
+            ]),
+          ),
+        ),
+      );
+
+      expect(gaps.map((g) => g.kind), [
+        GraphDefectKind.flowTraversesUndeclared,
+        GraphDefectKind.flowTraversesKeyAbsent,
+        GraphDefectKind.domainDuplicateDeclaration,
+      ]);
+    });
+
     test('D3-2 零筆缺陷 → 零筆破洞，非無法判定', () {
       final result = detectGraphDefectGaps(
         GraphDefectInputAvailable(_event(const [])),
@@ -105,6 +140,9 @@ void main() {
         'multiSource',
         'flowUnresolvedRef',
         'flowDuplicateStepId',
+        'flowTraversesUndeclared',
+        'flowTraversesKeyAbsent',
+        'domainDuplicateDeclaration',
       ]);
     });
 
