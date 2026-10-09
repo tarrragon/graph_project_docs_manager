@@ -355,7 +355,7 @@ void main() {
       expect(_sig(e), [(FlowDefectKind.traversesKeyAbsent, 'absent', null)]);
     });
 
-    test('元素 [""] 與 [7]：各一筆未宣告，原始值原樣', () {
+    test('N3 元素 [""] 與（無 "7" 宣告時）[7]：各一筆未宣告，原始值原樣', () {
       final e = _build([
         _bundle('DOMAIN-MAP-corpus', 'corpus'),
         _ucNode([
@@ -367,6 +367,39 @@ void main() {
         (FlowDefectKind.traversesUndeclared, 'e', ''),
         (FlowDefectKind.traversesUndeclared, 'n', 7),
       ]);
+    });
+
+    test('N1 非字串元素轉字串後比對：[7] 對上 domain "7" 解析成功', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-seven', '7'),
+        _ucNode([
+          _step('n', [7]),
+        ]),
+      ]);
+      expect(_resolvedIds(_only(e, 'n')), ['DOMAIN-MAP-seven']);
+      expect(_sig(e), isEmpty);
+    });
+
+    test('N2 E1 對照：無 domain "7" 宣告時 [7] 未宣告，原值為 int', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-corpus', 'corpus'),
+        _ucNode([
+          _step('n', [7]),
+        ]),
+      ]);
+      final raw = _only(e, 'n').traversesResolution.undeclared.single;
+      expect(raw, isA<int>());
+      expect(raw, 7);
+      expect(_sig(e), [(FlowDefectKind.traversesUndeclared, 'n', 7)]);
+    });
+
+    test('N4 純量非字串 traverses: 7 視同單元素清單，解析成功', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-seven', '7'),
+        _ucNode([_step('n', 7)]),
+      ]);
+      expect(_resolvedIds(_only(e, 'n')), ['DOMAIN-MAP-seven']);
+      expect(_sig(e), isEmpty);
     });
 
     test('未宣告原值為凍結副本：不可改，且不與來源共用參照', () {

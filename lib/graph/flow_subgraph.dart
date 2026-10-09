@@ -90,7 +90,8 @@ class TraversesResolution {
 }
 
 /// 解析 `traverses`：缺鍵不視同 `[]`；空值（null、`[]`）無結果；純量視同單元素清單；
-/// 元素逐一精確比對，非字串或空字串元素必為未宣告。
+/// 元素非字串者先轉字串再精確比對（FR-11），空字串或轉字串後無對應宣告者為未宣告；
+/// 未宣告以原值（非轉換後字串）記錄。
 TraversesResolution _resolveTraverses(
   Map<String, dynamic> step,
   DomainNameResolver resolver,
@@ -107,8 +108,8 @@ TraversesResolution _resolveTraverses(
     if (bundleId == null) {
       // 去重以 `==` 比較；存入凍結副本，使結果不可被改寫。
       if (!undeclared.contains(e)) undeclared.add(_freeze(e));
-    } else if (!resolved.any((r) => r.name == e)) {
-      resolved.add(ResolvedDomain(name: e as String, bundleId: bundleId));
+    } else if (!resolved.any((r) => r.bundleId == bundleId)) {
+      resolved.add(ResolvedDomain(name: '$e', bundleId: bundleId));
     }
   }
   return TraversesResolution(

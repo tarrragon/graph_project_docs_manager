@@ -5,6 +5,8 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart'
+    show flowKeyOf;
 
 /// DomainBundle 的節點型別名（型別表節點型別名）。
 const domainBundleTypeName = 'DomainBundle';
@@ -81,7 +83,13 @@ class DomainNameResolver {
   final List<DuplicateDomainDeclaration> duplicates;
 
   /// 正向：名稱 → DomainBundle 節點 ID；未宣告（含因重複宣告被排除）回傳 null。
-  String? resolve(Object? name) => name is String ? _byName[name] : null;
+  ///
+  /// 非字串先轉字串再比對（FR-11 值正規化，沿用 FR-10 的 [flowKeyOf]）；
+  /// 空字串與空值不解析。
+  String? resolve(Object? name) {
+    final key = flowKeyOf(name);
+    return key == null ? null : _byName[key];
+  }
 
   /// 反查：DomainBundle 節點 ID → 其宣告的 `domain` 原值；非 DomainBundle 或
   /// `domain` 非字串回傳 null。重複宣告的 DomainBundle 仍可反查（其列仍存在）。
