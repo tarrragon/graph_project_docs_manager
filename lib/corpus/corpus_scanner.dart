@@ -367,22 +367,23 @@ class _ScanAccumulator {
     }
   }
 
-  /// NFR-01：flow 擷取拋出任何例外時，該 UC 當作沒有 flow 區塊（空步驟、
-  /// 不發 EVT-CORPUS-004），記 log，不中止整輪掃描。
-  UcFlowExtraction _extractFlowOrEmpty(String path, Uint8List bytes) {
+  /// 需求：[SPEC-006 FR-09 規則 3a] flow 擷取拋出非預期例外時，不當作「無
+  /// 區塊」：該 UC 空步驟、記 warning、標為壞區塊（呼叫端發一筆
+  /// EVT-CORPUS-004，reason 附例外摘要），不中止整輪掃描。
+  UcFlowExtraction _extractFlowGuarded(String path, Uint8List bytes) {
     try {
       return _extractFlow(bytes, path);
     } catch (e) {
       developer.log(
-        // i18n-exempt: 開發者 debug log
-        'UC flow 擷取發生非預期例外，視為無 flow 區塊：$path',
+        'UC flow 擷取發生非預期例外，該 UC 發 EVT-CORPUS-004：$path', // i18n-exempt: 開發者 debug log
         name: 'CorpusScanner',
         level: 900,
         error: e,
       );
-      return const UcFlowExtraction(
-        steps: <Map<String, dynamic>>[],
-        hasMalformedFlowBlock: false,
+      return UcFlowExtraction(
+        steps: const <Map<String, dynamic>>[],
+        hasMalformedFlowBlock: true,
+        unexpectedErrorSummary: '${e.runtimeType}: $e',
       );
     }
   }
@@ -399,13 +400,11 @@ class _ScanAccumulator {
     if (typeName != _ucTypeName || bytes == null) {
       return RawNode(path: path, frontmatter: frontmatter, typeName: typeName);
     }
-    final flow = _extractFlowOrEmpty(path, bytes);
+    final flow = _extractFlowGuarded(path, bytes);
     if (flow.hasMalformedFlowBlock || flow.hasNonMapFlowItem) {
       // 規則 3b (c)、3c：兩類來源共用「每 UC 一筆」上限；reason 以原因碼
       // 開頭，非 map 項目時另附註說明。
-      final reason = flow.hasNonMapFlowItem
-          ? '$flowBlockMalformedReasonCode：$flowNonMapItemReasonNote'
-          : flowBlockMalformedReasonCode;
+      final reason = _flowReason(flow);
       developer.log(
         // i18n-exempt: 開發者 debug log
         '發出 EVT-CORPUS-004（$reason）：$path', // i18n-exempt: 開發者 debug log
@@ -422,6 +421,21 @@ class _ScanAccumulator {
       typeName: typeName,
       flowSteps: flow.steps,
     );
+  }
+
+  /// reason：原因碼開頭，後接成立的各項說明（語法／非 map／例外摘要）。
+  String _flowReason(UcFlowExtraction flow) {
+    final unexpected = flow.unexpectedErrorSummary;
+    final notes = <String>[
+      if (unexpected != null)
+        '$flowUnexpectedErrorReasonNote：$unexpected'
+      else if (flow.hasMalformedFlowBlock)
+        flowSyntaxReasonNote,
+      if (flow.hasNonMapFlowItem) flowNonMapItemReasonNote,
+    ];
+    return notes.isEmpty
+        ? flowBlockMalformedReasonCode
+        : '$flowBlockMalformedReasonCode：${notes.join('；')}';
   }
 
   /// 需求：[SPEC-006 FR-04、FR-06、FR-07] 失敗檔一律記入 `parseErrors`；
