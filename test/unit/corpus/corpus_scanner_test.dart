@@ -51,6 +51,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
       );
 
       expect(result.rawNodes, isEmpty);
@@ -67,6 +68,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
       );
 
       expect(
@@ -88,6 +90,7 @@ void main() {
         final result = await scanCorpus(
           fileSystem: fs,
           table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
         );
 
         final scannedPaths = result.parseErrors.map((e) => e.path).toSet();
@@ -106,6 +109,7 @@ void main() {
         final result = await scanCorpus(
           fileSystem: fs,
           table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
         );
 
         final matches = result.parseErrors
@@ -122,6 +126,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
       );
 
       final path = result.parseErrors.single.path;
@@ -141,10 +146,12 @@ void main() {
         final resultA = await scanCorpus(
           fileSystem: workspaceA,
           table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
         );
         final resultB = await scanCorpus(
           fileSystem: workspaceB,
           table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
         );
 
         expect(resultA.summary.totalFilesScanned, 1);
@@ -164,6 +171,7 @@ void main() {
         final result = await scanCorpus(
           fileSystem: fs,
           table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
         );
 
         expect(result.summary.unlistableDirectories, ['docs/denied']);
@@ -187,6 +195,7 @@ void main() {
         final result = await scanCorpus(
           fileSystem: fs,
           table: _tableWithoutCarrier(),
+builtinTable: _tableWithoutCarrier(),
         );
 
         expect(result.parseErrors.map((e) => e.path), ['docs/normal.md']);
@@ -215,6 +224,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
+builtinTable: tableWithCarrier(),
       );
 
       final error = result.parseErrors.single;
@@ -230,6 +240,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
+builtinTable: tableWithCarrier(),
       );
 
       expect(result.parseErrors, hasLength(1));
@@ -248,6 +259,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
+builtinTable: tableWithCarrier(),
       );
 
       final error = result.parseErrors.single;
@@ -263,6 +275,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
+builtinTable: tableWithCarrier(),
       );
 
       final error = result.parseErrors.single;
@@ -319,6 +332,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: distributionFixture(),
         table: distributionTable(),
+builtinTable: distributionTable(),
       );
       final summary = result.summary;
 
@@ -349,6 +363,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: distributionFixture(),
         table: distributionTable(),
+builtinTable: distributionTable(),
       );
 
       final tieEvent = result.parseFailureEvents.singleWhere(
@@ -368,6 +383,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: distributionFixture(),
         table: unavailableTable,
+builtinTable: unavailableTable,
       );
       final summary = result.summary;
 
@@ -432,7 +448,7 @@ void main() {
             .addType('Alpha', idPattern: r'^A-\d+$')
             .build();
 
-        final result = await scanCorpus(fileSystem: fs, table: table);
+        final result = await scanCorpus(fileSystem: fs, table: table, builtinTable: table);
 
         final node = result.rawNodes.single;
         expect(node.path, 'docs/node.md');
@@ -454,7 +470,7 @@ void main() {
         final fs = FakeDocsFileSystem()
           ..addFile('docs/ambiguous.md', _validFrontmatter('X-1'));
 
-        final result = await scanCorpus(fileSystem: fs, table: ambiguousTable);
+        final result = await scanCorpus(fileSystem: fs, table: ambiguousTable, builtinTable: ambiguousTable);
 
         expect(result.schemaAmbiguousNodes, hasLength(1));
         final node = result.schemaAmbiguousNodes.single;
@@ -472,7 +488,7 @@ void main() {
       final fs = FakeDocsFileSystem()
         ..addFile('docs/single.md', _validFrontmatter('X-1'));
 
-      final result = await scanCorpus(fileSystem: fs, table: singleTable);
+      final result = await scanCorpus(fileSystem: fs, table: singleTable, builtinTable: singleTable);
 
       expect(result.schemaAmbiguousNodes, isEmpty);
       expect(result.rawNodes, hasLength(1));
@@ -509,6 +525,7 @@ void main() {
         final result = await scanCorpus(
           fileSystem: fs,
           table: tableWithCarrier(),
+builtinTable: tableWithCarrier(),
           lookupCarrierPath: countingLookup,
         );
 
@@ -542,7 +559,7 @@ void main() {
     };
 
     test('C11-1 基準 fixture 一輪結果 R0（基準）', () async {
-      final r0 = await scanCorpus(fileSystem: baselineFixture(), table: table());
+      final r0 = await scanCorpus(fileSystem: baselineFixture(), table: table(), builtinTable: table());
 
       expect(r0.rawNodes, hasLength(2));
     });
@@ -554,6 +571,7 @@ void main() {
         final r0 = await scanCorpus(
           fileSystem: baselineFixture(),
           table: table(),
+builtinTable: table(),
         );
         final r0Results = resultByPath(r0);
 
@@ -567,7 +585,7 @@ void main() {
           ..addFile('docs/carrier/gone.md', _validFrontmatter('A-4'))
           ..markDisappearedAfterListing('docs/carrier/gone.md');
 
-        final result = await scanCorpus(fileSystem: fs, table: table());
+        final result = await scanCorpus(fileSystem: fs, table: table(), builtinTable: table());
         final results = resultByPath(result);
 
         for (final entry in r0Results.entries) {
@@ -602,8 +620,9 @@ void main() {
       final resultFirst = await scanCorpus(
         fileSystem: fsFirst,
         table: table(),
+builtinTable: table(),
       );
-      final resultLast = await scanCorpus(fileSystem: fsLast, table: table());
+      final resultLast = await scanCorpus(fileSystem: fsLast, table: table(), builtinTable: table());
 
       expect(resultByPath(resultFirst), resultByPath(resultLast));
     });
@@ -615,6 +634,7 @@ void main() {
         final r0 = await scanCorpus(
           fileSystem: baselineFixture(),
           table: table(),
+builtinTable: table(),
         );
         final r0Results = resultByPath(r0);
 
@@ -624,7 +644,7 @@ void main() {
           throwOnReadPath: 'docs/carrier/throws.md',
         );
 
-        final result = await scanCorpus(fileSystem: throwing, table: table());
+        final result = await scanCorpus(fileSystem: throwing, table: table(), builtinTable: table());
         final results = resultByPath(result);
 
         for (final entry in r0Results.entries) {
@@ -652,7 +672,7 @@ void main() {
           ),
         );
 
-        final result = await scanCorpus(fileSystem: throwing, table: table());
+        final result = await scanCorpus(fileSystem: throwing, table: table(), builtinTable: table());
         final error = result.parseErrors.singleWhere(
           (e) => e.path == 'docs/carrier/eperm.md',
         );
@@ -679,7 +699,7 @@ void main() {
           ),
         );
 
-        final result = await scanCorpus(fileSystem: throwing, table: table());
+        final result = await scanCorpus(fileSystem: throwing, table: table(), builtinTable: table());
         final error = result.parseErrors.singleWhere(
           (e) => e.path == 'docs/carrier/eacces.md',
         );
@@ -704,7 +724,7 @@ void main() {
         }
         final tracking = _ConcurrencyTrackingDocsFileSystem(delegate);
 
-        await scanCorpus(fileSystem: tracking, table: _tableWithoutCarrier());
+        await scanCorpus(fileSystem: tracking, table: _tableWithoutCarrier(), builtinTable: _tableWithoutCarrier());
 
         expect(
           tracking.maxConcurrentReads,
@@ -724,7 +744,7 @@ void main() {
         ..addFile('docs/b/4.md', _unclosedBytes)
         ..addFile('docs/b/5.md', _validFrontmatter('A-1'));
 
-      final result = await scanCorpus(fileSystem: fs, table: _tableWithoutCarrier());
+      final result = await scanCorpus(fileSystem: fs, table: _tableWithoutCarrier(), builtinTable: _tableWithoutCarrier());
 
       expect(
         result.rawNodes.map((n) => n.path).toList(),

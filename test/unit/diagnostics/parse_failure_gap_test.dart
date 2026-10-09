@@ -1,11 +1,19 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
-import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
-import 'package:graph_project_docs_manager/corpus/scan_summary.dart';
 import 'package:graph_project_docs_manager/corpus/uc_flow_extractor.dart';
 import 'package:graph_project_docs_manager/diagnostics/gap_detector.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
+import 'package:graph_project_docs_manager/schema/type_table.dart';
+import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
+
+import '../../helpers/spec006/fake_docs_fs.dart';
+import '../../helpers/spec006/type_table_builder.dart';
+import '../../helpers/spec006/uc_body_builder.dart';
 
 ParseFailureEvent _singleMatchEvent({
   required String path,
@@ -34,6 +42,65 @@ ParseFailureEvent _tieEvent({
   severity: ParseFailureSeverity.edgeAffecting,
 );
 
+const _okListYaml = 'non_domain_path_patterns:\n  - docs/a.md\n';
+const _badListYaml = 'non_domain_path_patterns: nope\n';
+const _yamlInvalidListYaml = 'non_domain_path_patterns: [unterminated\n';
+
+TypeTable _builtinTable() => typeTableFromJson(
+  jsonDecode(
+    File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
+  ) as Map<String, dynamic>,
+);
+
+TypeTable _threeSourceTable() => TypeTableBuilder()
+    .addType(
+      'UC',
+      idPattern: r'^UC-\d{2}$',
+      carrierPathPatterns: const [
+        PathPatternSpec(
+          pattern: r'^docs/usecases/.*\.md$',
+          specificity: [2, 0],
+        ),
+      ],
+    )
+    .addType(
+      'CarrierType',
+      carrierPathPatterns: const [
+        PathPatternSpec(pattern: r'^docs/carrier/.*\.md$', specificity: [2, 0]),
+      ],
+    )
+    .build();
+
+/// 一份 fixture 同時含三個來源：兩個命中 carrier 的失敗檔（003）、一個
+/// flow 區塊壞掉的 UC（004）、一份清單檔（內容由 [listContent] 決定，005）。
+Future<CorpusScanResult> _scanThreeSourceFixture({
+  required String listContent,
+}) {
+  final fs = FakeDocsFileSystem()
+    ..addFile('docs/carrier/nofm.md', utf8.encode('# title\n'))
+    ..addFile(
+      'docs/carrier/badyaml.md',
+      utf8.encode('---\nkey: "unterminated\n---\n'),
+    )
+    ..addFile('docs/usecases/UC-01.md', ucBytes(blocks: [malformedFlowBlock]))
+    ..addFile('docs/non-domain-paths.yaml', utf8.encode(listContent));
+  return scanCorpus(
+    fileSystem: fs,
+    table: _threeSourceTable(),
+    builtinTable: _builtinTable(),
+  );
+}
+
+/// 以掃描產出的事件餵 Diagnostics（查詢可用）。
+GapDetectionResult _detectFromScan(CorpusScanResult scan) =>
+    detectParseFailureGaps(
+      events: scan.parseFailureEvents,
+      undeterminedCount: scan.summary.undeterminedCount,
+      unavailableReason: null,
+      flowEvents: scan.flowParseFailedEvents,
+      nonDomainPathsEvent: scan.nonDomainPathsParseFailedEvent,
+    );
+
 void main() {
   group(
     'detectParseFailureGaps 一事件一破洞（SPEC-006-test-design §3.3 D1，FR-08）',
@@ -61,7 +128,7 @@ void main() {
         );
 
         expect(result, isA<GapsDetected>());
-        final gaps = (result as GapsDetected).gaps;
+        final gaps = result.gaps.cast<CarrierParseFailureGap>();
         expect(gaps, hasLength(3));
 
         for (var i = 0; i < events.length; i++) {
@@ -196,7 +263,7 @@ void main() {
   group(
     'detectParseFailureGaps 收 EVT-CORPUS-004／005（§3.3 D1-3、D1-5～D1-10）',
     () {
-      final threeCarrierEvents = [
+      final twoCarrierEvents = [
         _singleMatchEvent(path: 'docs/a.md', type: 'Proposal'),
         _singleMatchEvent(path: 'docs/b.md', type: 'Proposal'),
       ];
@@ -205,8 +272,7 @@ void main() {
         reason: flowBlockMalformedReasonCode,
       );
 
-      List<ParseFailureGap> gapsOf(GapDetectionResult result) =>
-          (result as GapsDetected).gaps;
+      List<ParseFailureGap> gapsOf(GapDetectionResult result) => result.gaps;
 
       test('D1-5 一筆 004 → 一筆破洞：路徑、型別 UC、原因碼 flowBlockMalformed', () {
         final gaps = gapsOf(
@@ -219,11 +285,11 @@ void main() {
         );
 
         expect(gaps, hasLength(1));
-        expect(gaps.single.path, 'docs/usecases/UC-01.md');
-        expect(gaps.single.nodeType, 'UC');
-        expect(gaps.single.source, ParseFailureGapSource.flowBlockMalformed);
-        expect(gaps.single.reasonCode, flowBlockMalformedReasonCode);
-        expect(gaps.single.category, GapCategory.parseFailure);
+        final gap = gaps.single as FlowBlockMalformedGap;
+        expect(gap.path, 'docs/usecases/UC-01.md');
+        expect(gap.nodeType, 'UC');
+        expect(gap.reasonCode, flowBlockMalformedReasonCode);
+        expect(gap.category, GapCategory.parseFailure);
       });
 
       test('D1-5 原因碼以前綴比對：reason 附說明仍對應 flowBlockMalformed', () {
@@ -241,11 +307,12 @@ void main() {
           ),
         );
 
-        expect(gaps.single.reasonCode, flowBlockMalformedReasonCode);
-        expect(gaps.single.reason, contains('語法錯誤'));
+        final gap = gaps.single as FlowBlockMalformedGap;
+        expect(gap.reasonCode, flowBlockMalformedReasonCode);
+        expect(gap.reason, contains('語法錯誤'));
         expect(
-          gaps.single.reasonCode,
-          isNot(equals(gaps.single.reason)),
+          gap.reasonCode,
+          isNot(equals(gap.reason)),
           reason: '全等比對會把附說明的 reason 判成非該原因碼',
         );
       });
@@ -253,7 +320,7 @@ void main() {
       test('D1-6（E1）兩筆 003＋一筆 004 對照零筆 004：三筆對兩筆', () {
         final withFlow = gapsOf(
           detectParseFailureGaps(
-            events: threeCarrierEvents,
+            events: twoCarrierEvents,
             undeterminedCount: 0,
             unavailableReason: null,
             flowEvents: [flowEvent],
@@ -261,7 +328,7 @@ void main() {
         );
         final withoutFlow = gapsOf(
           detectParseFailureGaps(
-            events: threeCarrierEvents,
+            events: twoCarrierEvents,
             undeterminedCount: 0,
             unavailableReason: null,
           ),
@@ -269,12 +336,8 @@ void main() {
 
         expect(withFlow, hasLength(3));
         expect(withoutFlow, hasLength(2));
-        expect(
-          withFlow.where(
-            (g) => g.source == ParseFailureGapSource.flowBlockMalformed,
-          ),
-          hasLength(1),
-        );
+        expect(withFlow.whereType<FlowBlockMalformedGap>(), hasLength(1));
+        expect(withoutFlow.whereType<FlowBlockMalformedGap>(), isEmpty);
       });
 
       test(
@@ -295,14 +358,10 @@ void main() {
           );
 
           expect(gaps, hasLength(1));
-          final gap = gaps.single;
+          final gap = gaps.single as NonDomainPathsMalformedGap;
           expect(gap.path, 'docs/non-domain-paths.yaml');
           expect(gap.reasonCode, nonDomainPathsMalformedGapReasonCode);
-          expect(
-            gap.nonDomainPathsReason,
-            NonDomainPathsMalformedReason.notList,
-          );
-          expect(gap.source, ParseFailureGapSource.nonDomainPathsMalformed);
+          expect(gap.subReason, NonDomainPathsMalformedReason.notList);
           expect(gap.reasonCode, isNot(flowBlockMalformedReasonCode));
         },
       );
@@ -315,7 +374,7 @@ void main() {
 
         final with005 = gapsOf(
           detectParseFailureGaps(
-            events: threeCarrierEvents,
+            events: twoCarrierEvents,
             undeterminedCount: 0,
             unavailableReason: null,
             flowEvents: [flowEvent],
@@ -324,7 +383,7 @@ void main() {
         );
         final without005 = gapsOf(
           detectParseFailureGaps(
-            events: threeCarrierEvents,
+            events: twoCarrierEvents,
             undeterminedCount: 0,
             unavailableReason: null,
             flowEvents: [flowEvent],
@@ -335,49 +394,45 @@ void main() {
         expect(without005, hasLength(3));
       });
 
-      test('D1-3 破洞數等於 命中 carrier 數＋flow 失敗 UC 數＋清單格式錯誤數', () {
-        final listEvent = NonDomainPathsReadMalformed(
-          path: 'docs/non-domain-paths.yaml',
-          reason: NonDomainPathsWholeFileReason.yamlInvalid,
-        ).malformedEvent;
-        final flows = [
-          flowEvent,
-          FlowParseFailedEvent(
-            path: 'docs/usecases/UC-03.md',
-            reason: flowBlockMalformedReasonCode,
-          ),
-        ];
-        const summary = ScanSummary(
-          totalFilesScanned: 0,
-          nodeCount: 0,
-          nonNodeWithFrontmatterCount: 0,
-          failureReasonCounts: <ParseResultKind, int>{},
-          hitCarrierCount: 2,
-          noHitCount: 0,
-          undeterminedCount: 0,
-          carrierPathQueryAvailable: true,
-          flowBlockMalformedUcCount: 2,
-          nonDomainPathsMalformedCount: 1,
+      test(
+        'D1-3 同一份 fixture 掃描：破洞數等於 命中 carrier 數＋flow 失敗 UC 數＋清單格式錯誤數',
+        () async {
+          final scan = await _scanThreeSourceFixture(listContent: _badListYaml);
+          final summary = scan.summary;
+
+          final gaps = gapsOf(_detectFromScan(scan));
+
+          // 三項計數皆非零，公式任一項被漏收都會使等式不成立。
+          expect(summary.hitCarrierCount, 2);
+          expect(summary.flowBlockMalformedUcCount, 1);
+          expect(summary.nonDomainPathsMalformedCount, 1);
+          expect(
+            gaps,
+            hasLength(
+              summary.hitCarrierCount +
+                  summary.flowBlockMalformedUcCount +
+                  summary.nonDomainPathsMalformedCount,
+            ),
+          );
+        },
+      );
+
+      test('D1-8（E1）yamlInvalid：同一份清單檔正常對 YAML 壞掉，破洞數差 1', () async {
+        final ok = await _scanThreeSourceFixture(listContent: _okListYaml);
+        final broken = await _scanThreeSourceFixture(
+          listContent: _yamlInvalidListYaml,
         );
 
-        final gaps = gapsOf(
-          detectParseFailureGaps(
-            events: threeCarrierEvents,
-            undeterminedCount: 0,
-            unavailableReason: null,
-            flowEvents: flows,
-            nonDomainPathsEvent: listEvent,
-          ),
-        );
+        final okGaps = gapsOf(_detectFromScan(ok));
+        final brokenGaps = gapsOf(_detectFromScan(broken));
 
+        expect(brokenGaps.length - okGaps.length, 1);
+        final extra = brokenGaps.whereType<NonDomainPathsMalformedGap>();
         expect(
-          gaps,
-          hasLength(
-            summary.hitCarrierCount +
-                summary.flowBlockMalformedUcCount +
-                summary.nonDomainPathsMalformedCount,
-          ),
+          extra.single.subReason,
+          NonDomainPathsMalformedReason.yamlInvalid,
         );
+        expect(okGaps.whereType<NonDomainPathsMalformedGap>(), isEmpty);
       });
 
       test('D1-9（E1）004 的型別為 UC、無候選與歧義標記；平手 003 帶候選與歧義', () {
@@ -392,11 +447,14 @@ void main() {
           ),
         );
 
-        final tie = gaps.firstWhere((g) => g.path == 'docs/c.md');
-        final flow = gaps.firstWhere((g) => g.path == flowEvent.path);
+        final tie = gaps.firstWhere(
+          (g) => g.path == 'docs/c.md',
+        ) as CarrierParseFailureGap;
+        final flow = gaps.firstWhere(
+          (g) => g.path == flowEvent.path,
+        ) as FlowBlockMalformedGap;
+        // 004 子型別沒有候選型別與歧義標記欄位，型別恆為 UC。
         expect(flow.nodeType, 'UC');
-        expect(flow.candidateTypes, isEmpty);
-        expect(flow.schemaAmbiguous, isFalse);
         expect(tie.nodeType, isNull);
         expect(tie.candidateTypes, ['A', 'B']);
         expect(tie.schemaAmbiguous, isTrue);
@@ -433,12 +491,14 @@ void main() {
           );
 
           expect(badGaps, hasLength(1));
+          final badGap = badGaps.single as NonDomainPathsMalformedGap;
+          final notListGap = notListGaps.single as NonDomainPathsMalformedGap;
           expect(
-            badGaps.single.nonDomainPathsReason,
+            badGap.subReason,
             NonDomainPathsMalformedReason.elementNotString,
           );
-          expect(badGaps.single.nonStringElementCount, 2);
-          expect(notListGaps.single.nonStringElementCount, isNull);
+          expect(badGap.nonStringElementCount, 2);
+          expect(notListGap.nonStringElementCount, isNull);
         },
       );
     },
@@ -474,16 +534,12 @@ void main() {
       ) as Undetermined;
 
       expect(result.gaps, hasLength(1));
-      expect(result.gaps.single.nodeType, 'UC');
-      expect(result.gaps.single.reasonCode, flowBlockMalformedReasonCode);
+      final gap = result.gaps.single as FlowBlockMalformedGap;
+      expect(gap.nodeType, 'UC');
+      expect(gap.reasonCode, flowBlockMalformedReasonCode);
       expect(result.reason, UndeterminedGapReason.noPathPattern);
       // 003 來源的破洞仍為零：唯一的破洞不是 carrier 來源。
-      expect(
-        result.gaps.where(
-          (g) => g.source == ParseFailureGapSource.carrierParseFailure,
-        ),
-        isEmpty,
-      );
+      expect(result.gaps.whereType<CarrierParseFailureGap>(), isEmpty);
     });
 
     test('D2-7（E2）另加一筆 005（keyMissing）：恰一筆破洞，仍無法判定', () {
@@ -495,14 +551,9 @@ void main() {
       final result = unavailable(listEvent: listEvent) as Undetermined;
 
       expect(result.gaps, hasLength(1));
-      expect(
-        result.gaps.single.reasonCode,
-        nonDomainPathsMalformedGapReasonCode,
-      );
-      expect(
-        result.gaps.single.nonDomainPathsReason,
-        NonDomainPathsMalformedReason.keyMissing,
-      );
+      final gap = result.gaps.single as NonDomainPathsMalformedGap;
+      expect(gap.reasonCode, nonDomainPathsMalformedGapReasonCode);
+      expect(gap.subReason, NonDomainPathsMalformedReason.keyMissing);
       expect(result.undeterminedCount, 3);
     });
   });

@@ -11,9 +11,6 @@ import 'package:graph_project_docs_manager/corpus/uc_flow_extractor.dart';
 
 import 'parse_failure_gap.dart';
 
-/// FR-09 規則 6：004 破洞的歸屬型別（UC 仍是節點，型別已知）。
-const _flowGapNodeType = 'UC';
-
 /// 需求：[SPEC-006 FR-08〈規則〉] 一筆 `EVT-CORPUS-003` 對應一筆破洞，
 /// 資訊要足以讓使用者直接去修；一筆 `EVT-CORPUS-004`、一筆
 /// `EVT-CORPUS-005` 各對應一筆破洞。破洞數 = 命中 carrier 數 + flow
@@ -55,7 +52,7 @@ GapDetectionResult detectParseFailureGaps({
 }
 
 /// 需求：[SPEC-006 FR-08〈規則〉] 一筆事件一筆破洞，逐欄位對齊。
-ParseFailureGap _toGap(ParseFailureEvent event) => ParseFailureGap(
+ParseFailureGap _toGap(ParseFailureEvent event) => CarrierParseFailureGap(
   path: event.path,
   reason: event.reason,
   nodeType: event.nodeType,
@@ -66,13 +63,9 @@ ParseFailureGap _toGap(ParseFailureEvent event) => ParseFailureGap(
 /// 需求：[SPEC-006 FR-08〈規則〉第 2 條、EVT-CORPUS-004] 原因碼以前綴比對：
 /// reason 以 `flowBlockMalformed` 開頭（可附說明）即對應該原因碼，不做
 /// 全等比對；不以原因碼開頭者保留原 reason 作為原因碼，不丟資訊。
-ParseFailureGap _toFlowGap(FlowParseFailedEvent event) => ParseFailureGap(
+ParseFailureGap _toFlowGap(FlowParseFailedEvent event) => FlowBlockMalformedGap(
   path: event.path,
   reason: event.reason,
-  nodeType: _flowGapNodeType,
-  candidateTypes: const <String>[],
-  schemaAmbiguous: false,
-  source: ParseFailureGapSource.flowBlockMalformed,
   reasonCode: event.reason.startsWith(flowBlockMalformedReasonCode)
       ? flowBlockMalformedReasonCode
       : event.reason,
@@ -80,19 +73,13 @@ ParseFailureGap _toFlowGap(FlowParseFailedEvent event) => ParseFailureGap(
 
 /// 需求：[SPEC-006 FR-08〈規則〉第 3 條、EVT-CORPUS-005] 破洞帶清單檔路徑、
 /// 原因碼 `nonDomainPathsMalformed` 與子原因；子原因為 `elementNotString`
-/// 時另帶 `nonStringElementCount`（D1-10），其餘為 `null`。負載不含
+/// 時另帶 `nonStringElementCount`（D1-10）；事件側保證其餘子原因為 `null`
+/// （`NonDomainPathsParseFailedEvent` 建構子私有），直接沿用。負載不含
 /// 在地化字串。
 ParseFailureGap _toNonDomainPathsGap(NonDomainPathsParseFailedEvent event) =>
-    ParseFailureGap(
+    NonDomainPathsMalformedGap(
       path: event.path,
       reason: event.reason.name,
-      candidateTypes: const <String>[],
-      schemaAmbiguous: false,
-      source: ParseFailureGapSource.nonDomainPathsMalformed,
-      reasonCode: nonDomainPathsMalformedGapReasonCode,
-      nonDomainPathsReason: event.reason,
-      nonStringElementCount:
-          event.reason == NonDomainPathsMalformedReason.elementNotString
-          ? event.nonStringElementCount
-          : null,
+      subReason: event.reason,
+      nonStringElementCount: event.nonStringElementCount,
     );

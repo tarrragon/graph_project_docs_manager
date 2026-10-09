@@ -143,7 +143,7 @@ Future<CorpusScanResult> scanCorpus({
   required TypeTable table,
   CarrierPathLookupFn lookupCarrierPath = lookupCarrierPathType,
   UcFlowExtractFn extractFlow = extractUcFlow,
-  TypeTable? builtinTable,
+  required TypeTable builtinTable,
 }) async {
   developer.log(
     'scanCorpus 開始：root=$_docsRoot', // i18n-exempt: 開發者 debug log
@@ -180,7 +180,7 @@ Future<CorpusScanResult> scanCorpus({
   final nonDomainEvent = await _readNonDomainPathsEvent(
     fileSystem,
     table,
-    builtinTable ?? table,
+    builtinTable,
   );
   final result = acc.toResult(
     listing.paths.length,
@@ -201,8 +201,8 @@ Future<CorpusScanResult> scanCorpus({
 /// 需求：[SPEC-006 FR-10、FR-07] 每輪掃描讀一次非 domain 路徑清單檔，取
 /// 格式錯誤事件（EVT-CORPUS-005，至多一筆）。事件不依賴 FR-06 路徑查詢，
 /// 故不受 `carrierPathQueryAvailable` 影響。讀取拋出非預期例外時不中止整輪
-/// 掃描（NFR-01），視同無事件並寫 warning 日誌。[builtinTable] 省略時以
-/// [table] 回落（規則 1 缺欄回落內建表）。
+/// 掃描（NFR-01），視同無事件並寫 warning 日誌（含 stackTrace）。清單檔位置與
+/// 鍵名取自 [table]，缺欄時回落 [builtinTable]（規則 1）。
 Future<NonDomainPathsParseFailedEvent?> _readNonDomainPathsEvent(
   DocsFileSystem fileSystem,
   TypeTable table,
@@ -215,12 +215,13 @@ Future<NonDomainPathsParseFailedEvent?> _readNonDomainPathsEvent(
       builtinTable: builtinTable,
     );
     return read.malformedEvent;
-  } catch (e) {
+  } catch (e, stackTrace) {
     developer.log(
       '非 domain 路徑清單檔讀取發生非預期例外，視同無事件', // i18n-exempt: 開發者 debug log
       name: 'CorpusScanner',
       level: 900,
       error: e,
+      stackTrace: stackTrace,
     );
     return null;
   }

@@ -31,6 +31,17 @@ class _MemoryFileSystem implements DocsFileSystem {
   }
 }
 
+/// 任何讀取都拋出非 [DocsReadResult] 契約內的例外。
+class _ThrowingFileSystem implements DocsFileSystem {
+  @override
+  Future<List<DocsFileSystemEntry>> listEntries(String relativePath) async =>
+      const <DocsFileSystemEntry>[];
+
+  @override
+  Future<DocsReadResult> readBytes(String relativePath) async =>
+      throw StateError('simulated read failure');
+}
+
 const _listFile = 'docs/non-domain-paths.yaml';
 
 TypeTable _builtinTable() => typeTableFromJson(
@@ -80,6 +91,41 @@ void main() {
       expect(event!.reason, NonDomainPathsMalformedReason.elementNotString);
       expect(event.nonStringElementCount, 2);
       expect(result.summary.nonDomainPathsMalformedCount, 1);
+    });
+
+    test('M1：專案表缺 non_domain_paths_file、內建表有 → 依內建位置讀到事件', () async {
+      final builtin = _builtinTable();
+      const projectTable = TypeTable(<String, NodeTypeEntry>{});
+      expect(projectTable.nonDomainPathsFile, isNull);
+      expect(builtin.nonDomainPathsFile, _listFile);
+      final files = {_listFile: 'non_domain_path_patterns: nope\n'};
+
+      final withBuiltin = await scanCorpus(
+        fileSystem: _MemoryFileSystem(files),
+        table: projectTable,
+        builtinTable: builtin,
+      );
+      // 對照：內建表同樣缺位置時讀不到清單檔，證明上一個結果來自內建表。
+      final withoutBuiltinLocation = await scanCorpus(
+        fileSystem: _MemoryFileSystem(files),
+        table: projectTable,
+        builtinTable: projectTable,
+      );
+
+      expect(withBuiltin.nonDomainPathsParseFailedEvent?.path, _listFile);
+      expect(withoutBuiltinLocation.nonDomainPathsParseFailedEvent, isNull);
+    });
+
+    test('L2：讀取拋出例外時掃描照常完成、無事件、計數 0', () async {
+      final result = await scanCorpus(
+        fileSystem: _ThrowingFileSystem(),
+        table: const TypeTable(<String, NodeTypeEntry>{}),
+        builtinTable: _builtinTable(),
+      );
+
+      expect(result.nonDomainPathsParseFailedEvent, isNull);
+      expect(result.summary.nonDomainPathsMalformedCount, 0);
+      expect(result.summary.totalFilesScanned, 0);
     });
 
     test('不依賴 FR-06 路徑查詢：型別表無路徑模式仍發出事件', () async {
