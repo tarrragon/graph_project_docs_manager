@@ -46,7 +46,8 @@ class PathClassification {
   final List<String> domains;
 }
 
-/// 票列表摘要三值。兩側皆無宣告時為 [undetermined]，與 [notLocatable] 不同。
+/// 票列表摘要三值。兩側皆無宣告或票無路徑時為 [undetermined]，與
+/// [notLocatable] 不同。
 enum TicketLocatability { locatable, notLocatable, undetermined }
 
 /// 一次比對的完整輸出，供 W1-119 消費。
@@ -94,9 +95,12 @@ class PathDeclarationReport {
   /// 矩陣高亮：各路徑命中 domain 的聯集。
   Set<String> get highlightedDomains => {for (final p in paths) ...p.domains};
 
-  /// 票列表摘要：任一路徑命中 domain 即可定位；兩側皆無宣告時不判定。
+  /// 票列表摘要：任一路徑命中 domain 即可定位；兩側皆無宣告，或票的
+  /// `where.files` 為空（沒有可判定的對象）時不判定（UC-02 v1.12）。
   TicketLocatability get locatability {
-    if (overallUndeclared) return TicketLocatability.undetermined;
+    if (overallUndeclared || paths.isEmpty) {
+      return TicketLocatability.undetermined;
+    }
     return paths.any((p) => p.state == PathLocationState.domainHit)
         ? TicketLocatability.locatable
         : TicketLocatability.notLocatable;
