@@ -134,6 +134,17 @@ void main() {
       }
     });
 
+    test('明寫 direction: null 視為存在但不合法：整筆拒收（與缺席區分）', () {
+      final table = _builtin();
+      final edges = table['edge_types'] as Map<String, dynamic>;
+      (edges['association'] as Map<String, dynamic>)
+        ..['direction'] = null
+        ..['forward_field'] = 'customField';
+      final resolved = _resolve(table)['association']!;
+      expect(resolved.forwardField, 'relatedTo');
+      expect(resolved.directionSource, DirectionSource.builtinTable);
+    });
+
     test('缺 direction 欄不屬不合法：條目其餘欄位保留（與拒收區分）', () {
       final table = _builtin();
       final edges = table['edge_types'] as Map<String, dynamic>;
@@ -152,7 +163,20 @@ void main() {
         projectSchemaJson: outOfRange,
         builtinSchemaJson: _builtin(),
       );
-      expect(unavailable.unavailableReason, isNotNull);
+      expect(
+        unavailable.unavailableReason,
+        EdgeTypeUnavailableReason.missingDirection,
+      );
+      // 正向對照：版本同為 99.0.0，但條目自帶 direction 時不受 D2 影響。
+      final withDirection = _builtin()
+        ..['schema_generated_at_framework_version'] = '99.0.0';
+      expect(
+        resolveEdgeTypes(
+          projectSchemaJson: withDirection,
+          builtinSchemaJson: _builtin(),
+        ).unavailableReason,
+        isNull,
+      );
       final inRange = resolveEdgeTypes(
         projectSchemaJson: _builtinWithoutDirection(),
         builtinSchemaJson: _builtin(),
@@ -161,6 +185,22 @@ void main() {
       expect(
         inRange.edgeTypes['association']!.direction,
         EdgeDirection.undirected,
+      );
+    });
+
+    test('G2：同時缺正向基數與 direction，回報 missingForwardCardinality', () {
+      final table = _builtinWithoutDirection()
+        ..['schema_generated_at_framework_version'] = '99.0.0';
+      (table['edge_types'] as Map<String, dynamic>)['custom'] = const EdgeSpec(
+        forwardField: 'f',
+        forwardCardinality: null,
+      ).toJson();
+      expect(
+        resolveEdgeTypes(
+          projectSchemaJson: table,
+          builtinSchemaJson: _builtin(),
+        ).unavailableReason,
+        EdgeTypeUnavailableReason.missingForwardCardinality,
       );
     });
 

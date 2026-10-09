@@ -64,6 +64,11 @@ enum EdgeTypeUnavailableReason {
   /// `edge_types` 有條目不合法被拒收，且版本高於內建表而無法補回
   /// （SPEC-007 v1.8 FR-01）；優先於 [missingForwardCardinality]（v1.9）。
   invalidEdgeTypeEntry,
+
+  /// 版本不在 App 已知範圍，且有邊型條目缺 `direction`（繞過關卡呼叫路徑，
+  /// SPEC-007 FR-01）；優先序低於 [invalidEdgeTypeEntry]、
+  /// [missingForwardCardinality]。
+  missingDirection,
 }
 
 /// 邊型解碼結果。
@@ -132,8 +137,10 @@ EdgeTypeResolution resolveEdgeTypes({
   return _fillMissingCardinality(restored, builtin, inRange, restoredNames);
 }
 
-/// 缺 `direction` 補值（FR-01）：版本在已知範圍內且內建表有該鍵名取內建表，
-/// 否則照有向處理並回報 [DirectionSource.defaultDirected]。
+/// 缺 `direction` 補值（FR-01）：條目自帶 direction 時直接採用；缺欄且版本在
+/// 已知範圍內時，內建表有該鍵名取內建表，否則照有向處理並回報
+/// [DirectionSource.defaultDirected]。版本超出已知範圍又缺 direction 時回傳
+/// `null`，由呼叫端標為建圖不可用（D2）。
 ({EdgeDirection direction, DirectionSource source})? _resolveDirection(
   EdgeTypeDecl raw,
   Map<String, EdgeTypeDecl> builtin,
@@ -210,7 +217,7 @@ EdgeTypeResolution _fillMissingCardinality(
     unavailableReason: missing
         ? EdgeTypeUnavailableReason.missingForwardCardinality
         : directionUnresolved
-        ? EdgeTypeUnavailableReason.projectVersionOutOfKnownRange
+        ? EdgeTypeUnavailableReason.missingDirection
         : null,
   );
 }
