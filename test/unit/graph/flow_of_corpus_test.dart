@@ -41,7 +41,11 @@ Future<GraphBuildResult> _buildOf(String project) async {
       ...file.readAsBytesSync(),
     ]);
   }
-  final scan = await scanCorpus(fileSystem: fs, table: _table());
+  final scan = await scanCorpus(
+    fileSystem: fs,
+    table: _table(),
+    builtinTable: _table(),
+  );
   final result = buildGraph(
     rawNodes: scan.rawNodes,
     projectSchemaJson: loadBuiltinSchemaJson(),

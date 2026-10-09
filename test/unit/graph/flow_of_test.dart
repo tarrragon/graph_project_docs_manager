@@ -349,6 +349,21 @@ void main() {
       expect(_flowDefects(built.event), isEmpty);
     });
 
+    test('凍結保留巢狀 Map 的原鍵型別（不轉字串），且仍不可改', () {
+      final raw = <String, dynamic>{
+        'id': 'a',
+        'meta': {1: 'x', 'k': 'y'},
+      };
+      final g = (_build([
+        _uc01([raw]),
+      ]).query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      final meta = g.steps.single.step['meta'] as Map;
+      expect(meta.keys.toList(), [1, 'k']);
+      expect(meta[1], 'x');
+      expect(meta['1'], isNull);
+      expect(() => meta[2] = 'z', throwsUnsupportedError);
+    });
+
     test('M2 子圖不可改寫，且與 RawNode 原 Map 不共用參照', () {
       final raw = <String, dynamic>{
         'id': 'a',

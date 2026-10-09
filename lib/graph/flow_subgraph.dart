@@ -52,8 +52,8 @@ String? flowKeyOf(Object? value) => _isEmptyRef(value) ? null : '$value';
 
 /// 遞迴凍結 Map／List，使子圖不與 RawNode 共用可變參照。
 Object? _freeze(Object? value) => switch (value) {
-  final Map<dynamic, dynamic> m => Map<String, dynamic>.unmodifiable({
-    for (final e in m.entries) '${e.key}': _freeze(e.value),
+  final Map<dynamic, dynamic> m => Map<dynamic, dynamic>.unmodifiable({
+    for (final e in m.entries) e.key: _freeze(e.value),
   }),
   final List<dynamic> l => List<dynamic>.unmodifiable(l.map(_freeze)),
   _ => value,
@@ -65,7 +65,7 @@ class FlowStepNode {
     required this.index,
     required Map<String, dynamic> step,
     required Map<String, List<int>> idIndex,
-  }) : step = _freeze(step)! as Map<String, dynamic>,
+  }) : step = (_freeze(step)! as Map<dynamic, dynamic>).cast<String, dynamic>(),
        isMainline = _isEmptyRef(step[FlowFields.branchFrom]),
        branchFrom = _resolveIf(
          !_isEmptyRef(step[FlowFields.branchFrom]),

@@ -237,9 +237,11 @@ void main() {
       }
       final logs = recorder.ofEvent(GraphLogEvent.flowUnavailable);
       expect(logs, hasLength(2));
-      expect(logs.first.payload, {
-        GraphLogKeys.reason: AdjacencyUnavailableCause.buildNotCompleted.name,
-      });
+      for (final log in logs) {
+        expect(log.payload, {
+          GraphLogKeys.reason: AdjacencyUnavailableCause.buildNotCompleted.name,
+        });
+      }
     });
 
     test('L5-4 守衛：可用圖查詢（含不存在的 UC）不記事件；正向對照為 L5-1', () {
