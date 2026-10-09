@@ -8,6 +8,9 @@ library;
 import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_key.dart';
 
+// flowKeyOf 原為本檔公開 API；轉出以維持既有 import 面。
+export 'package:graph_project_docs_manager/graph/flow_key.dart' show flowKeyOf;
+
 /// 只有此節點型別的 rawNode 附掛 flow 步驟（型別表節點型別名）。
 const flowSourceTypeName = 'UC';
 

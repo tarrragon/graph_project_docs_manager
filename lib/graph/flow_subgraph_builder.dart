@@ -3,7 +3,6 @@ library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
-import 'package:graph_project_docs_manager/graph/flow_key.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 

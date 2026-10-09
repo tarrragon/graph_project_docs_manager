@@ -3,6 +3,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+// 只 import flow_subgraph.dart：確認 flowKeyOf 仍經此檔轉出。
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 
 final _importPattern = RegExp(r'''^\s*(?:import|export)\s+['"]([^'"]+)['"]''');
 
@@ -25,6 +27,11 @@ void main() {
       'package:graph_project_docs_manager/graph/flow_subgraph.dart',
       'flow_subgraph.dart',
     ]);
+  });
+
+  test('flowKeyOf 經 flow_subgraph.dart 仍可取得（公開面不破壞）', () {
+    expect(flowKeyOf(7), '7');
+    expect(flowKeyOf(''), isNull);
   });
 
   test('被依賴的底層檔不 import flow_subgraph.dart', () {
