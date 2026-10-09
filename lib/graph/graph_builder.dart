@@ -2,6 +2,7 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
@@ -78,16 +79,21 @@ GraphBuiltEvent buildGraphFromInputs({
       if (t.isUndirected) t.name,
   };
   final edges = _buildEdges(classified.resolved, undirectedTypes);
+  final flow = buildFlowSubgraphs(rawNodes, {
+    for (final n in classified.lightNodes) n.id,
+  });
   final defects = <GraphDefect>[
     ...classified.dangling,
     ...classified.malformed,
     ...classified.duplicates,
     ..._multiSourceDefects(edges, edgeList),
+    ...flow.defects,
   ];
   return GraphBuiltEvent(
     nodes: classified.lightNodes,
     edges: edges,
     graphDefects: defects,
+    flowSubgraphs: flow.subgraphs,
     totalReferences: classified.totalReferences,
     resolvedCount: classified.resolved.length,
   );

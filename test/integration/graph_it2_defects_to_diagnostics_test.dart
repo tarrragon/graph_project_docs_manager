@@ -83,6 +83,14 @@ String _gapKey(GraphDefectGap gap) => switch (gap.defect) {
           {'to': t.to, 'declared_by': (t.declaredBy.toList()..sort())},
       ],
     }),
+  FlowGraphDefect(:final ucId, :final stepId, :final field, :final rawValue) =>
+    _canonical({
+      'kind': gap.kind.name,
+      'uc_id': ucId,
+      'step_id': stepId,
+      'field': field,
+      'raw_value': rawValue,
+    }),
 };
 
 String _refKey(String kind, ReferenceValue ref, String reason) => _canonical({
