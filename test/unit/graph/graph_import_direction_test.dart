@@ -16,6 +16,21 @@ List<String> forbiddenImportsIn(String source) => [
       t,
 ];
 
+/// [root] 底下（遞迴）全部 .dart 檔。
+List<File> dartFilesUnder(Directory root) => root
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where((f) => f.path.endsWith('.dart'))
+    .toList();
+
+/// 檔案路徑 → 其違規 import；無違規的檔案不出現。
+Map<String, List<String>> violationsUnder(Directory root) => {
+  for (final file in dartFilesUnder(root))
+    if (forbiddenImportsIn(file.readAsStringSync()) case final bad
+        when bad.isNotEmpty)
+      file.path: bad,
+};
+
 void main() {
   test('E2 正向對照：違規樣本被攔下，合法 import 放行', () {
     const sample =
@@ -31,19 +46,26 @@ void main() {
     ]);
   });
 
-  test('lib/graph 不 import layout／screens／components', () {
-    final files = Directory('lib/graph')
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))
-        .toList();
-    expect(files, isNotEmpty);
-    for (final file in files) {
-      expect(
-        forbiddenImportsIn(file.readAsStringSync()),
-        isEmpty,
-        reason: file.path,
-      );
-    }
+  test('E2 正向對照：子目錄中的違規檔案被遞迴掃描攔下', () {
+    final temp = Directory.systemTemp.createTempSync('graph_import_dir_');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final nested = Directory('${temp.path}/sub/deeper')
+      ..createSync(recursive: true);
+    File('${nested.path}/bad.dart').writeAsStringSync(
+      "import 'package:graph_project_docs_manager/layout/lane_order.dart';\n",
+    );
+    File('${temp.path}/ok.dart').writeAsStringSync(
+      "import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';\n",
+    );
+    expect(violationsUnder(temp), {
+      '${nested.path}/bad.dart': [
+        'package:graph_project_docs_manager/layout/lane_order.dart',
+      ],
+    });
+  });
+
+  test('lib/graph（含子目錄）不 import layout／screens／components', () {
+    expect(dartFilesUnder(Directory('lib/graph')), isNotEmpty);
+    expect(violationsUnder(Directory('lib/graph')), isEmpty);
   });
 }

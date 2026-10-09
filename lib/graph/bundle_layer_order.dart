@@ -100,16 +100,21 @@ List<DomainBundleRef> bundleRefsOf(GraphBuiltEvent event) => [
 /// 兩端皆為 DomainBundle 的 `bundle_dependency` 邊。
 List<BundleDependency> bundleDependenciesOf(GraphBuiltEvent event) {
   final ids = event.domainResolver.bundleIds.toSet();
-  return [
+  // 以 Set 去重（保留出現順序）：同一依賴值宣告多次也只算一條邊。
+  return {
     for (final e in event.edges)
       if (e.edgeType == bundleDependencyEdgeType &&
           ids.contains(e.from) &&
           ids.contains(e.to))
         (from: e.from, to: e.to),
-  ];
+  }.toList();
 }
 
 /// 依賴推不出層的 bundle 起點：依賴指向未宣告的節點（斷邊，或邊的終點不是 DomainBundle）。
+///
+/// 只看正向斷邊：型別表 `bundle_dependency` 的 `reverse_field` 為 null（無反向欄位，
+/// 見 assets/schema/builtin_tracking_schema.json），不存在 `isReverse` 的 bundle_dependency
+/// 引用；前提由 bundle_layer_order_test 的「型別表無反向欄位」案例固定。
 Set<String> _brokenDependents(GraphBuiltEvent event) {
   final ids = event.domainResolver.bundleIds.toSet();
   return {

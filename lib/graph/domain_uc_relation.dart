@@ -43,13 +43,19 @@ class DomainUcRelationGraphUnavailable extends DomainUcRelationResult {
 ///
 /// DomainBundle 或 UC 的 ID 不在圖上時，回傳無關且路徑為空（NC-5，比照 FR-08）。
 class DomainUcRelationQuery {
-  const DomainUcRelationQuery({required this.buildResult});
+  DomainUcRelationQuery({required this.buildResult});
 
   final GraphBuildResult? buildResult;
 
+  /// FR-13 排序、依賴索引只算一次；各目標的反向距離在首次查詢時快取。
+  late final _BundleIndex? _index = switch (buildResult) {
+    GraphBuildAvailable(:final event) => _BundleIndex(event),
+    _ => null,
+  };
+
   DomainUcRelationResult relationOf(String bundleId, String ucId) =>
       switch (buildResult) {
-        GraphBuildAvailable(:final event) => _relation(event, bundleId, ucId),
+        GraphBuildAvailable() => _relation(_index!, bundleId, ucId),
         GraphBuildUnavailable(:final reason) =>
           DomainUcRelationGraphUnavailable(
             AdjacencyUnavailableCause.buildUnavailable,
@@ -62,11 +68,37 @@ class DomainUcRelationQuery {
       };
 }
 
+/// 一次建好的 FR-13 排序與依賴鄰接表。
+class _BundleIndex {
+  _BundleIndex(this.event) {
+    final ordered = orderBundlesOf(event);
+    for (var i = 0; i < ordered.length; i++) {
+      rank[ordered[i].bundleId] = i;
+      byId[ordered[i].bundleId] = ordered[i];
+    }
+    for (final d in bundleDependenciesOf(event)) {
+      out.putIfAbsent(d.from, () => []).add(d.to);
+      incoming.putIfAbsent(d.to, () => []).add(d.from);
+    }
+  }
+
+  final GraphBuiltEvent event;
+  final rank = <String, int>{};
+  final byId = <String, BundleLayerEntry>{};
+  final out = <String, List<String>>{};
+  final incoming = <String, List<String>>{};
+  final _distances = <String, Map<String, int>>{};
+
+  Map<String, int> distancesTo(String target) =>
+      _distances.putIfAbsent(target, () => _distancesTo(target, incoming));
+}
+
 DomainUcRelationAvailable _relation(
-  GraphBuiltEvent event,
+  _BundleIndex index,
   String bundleId,
   String ucId,
 ) {
+  final event = index.event;
   final known = event.domainResolver.domainOf(bundleId) != null;
   final direct = _directBundles(event, ucId);
   if (!known || direct.isEmpty) {
@@ -75,7 +107,7 @@ DomainUcRelationAvailable _relation(
   if (direct.contains(bundleId)) {
     return DomainUcRelationAvailable(DomainUcRelationKind.direct);
   }
-  final paths = _dependencyPaths(event, bundleId, direct);
+  final paths = _dependencyPaths(index, bundleId, direct);
   return DomainUcRelationAvailable(
     paths.isEmpty
         ? DomainUcRelationKind.unrelated
@@ -93,42 +125,31 @@ Set<String> _directBundles(GraphBuiltEvent event, String ucId) => {
 /// 需求：[SPEC-007 FR-12] 每個來源取最短路徑、同長全列、排除經直接 domain 的路徑，
 /// 依長度、來源在 FR-13 的先後、中間節點在 FR-13 的先後排序。
 List<List<DomainBundleRef>> _dependencyPaths(
-  GraphBuiltEvent event,
+  _BundleIndex index,
   String target,
   Set<String> direct,
 ) {
-  final ordered = orderBundlesOf(event);
-  final rank = {
-    for (var i = 0; i < ordered.length; i++) ordered[i].bundleId: i,
-  };
-  final byId = {for (final e in ordered) e.bundleId: e};
-  final out = <String, List<String>>{};
-  final deps = bundleDependenciesOf(event);
-  for (final d in deps) {
-    out.putIfAbsent(d.from, () => []).add(d.to);
-  }
-  final distance = _distancesTo(target, deps);
+  final distance = index.distancesTo(target);
   final paths = <List<String>>[
     for (final source in direct)
       if (distance.containsKey(source))
         ..._shortestPaths(
           source,
           target,
-          out,
+          index.out,
           distance,
         ).where((p) => !p.sublist(1, p.length - 1).any(direct.contains)),
-  ]..sort((a, b) => _comparePaths(a, b, rank));
+  ]..sort((a, b) => _comparePaths(a, b, index.rank));
   return [
-    for (final p in paths) [for (final id in p) byId[id]!],
+    for (final p in paths) [for (final id in p) index.byId[id]!],
   ];
 }
 
 /// 自 [target] 沿依賴邊反向廣度優先，得各節點到 [target] 的最短跳數。
-Map<String, int> _distancesTo(String target, List<BundleDependency> deps) {
-  final incoming = <String, List<String>>{};
-  for (final d in deps) {
-    incoming.putIfAbsent(d.to, () => []).add(d.from);
-  }
+Map<String, int> _distancesTo(
+  String target,
+  Map<String, List<String>> incoming,
+) {
   final distance = {target: 0};
   final queue = [target];
   for (var i = 0; i < queue.length; i++) {

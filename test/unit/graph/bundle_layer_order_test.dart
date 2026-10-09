@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 
 import '../../helpers/spec001/corpus_snapshot.dart';
 import '../../helpers/spec007/bundle_graph_fixture.dart';
+import '../../helpers/spec007/known_distribution_fixture.dart';
 
 List<BundleLayerEntry> _order(List<RawNode> nodes) {
   final result = BundleLayerQuery(buildResult: buildResultOf(nodes))
@@ -79,6 +80,26 @@ void main() {
     });
   });
 
+  group('依賴來源前提', () {
+    test('型別表 bundle_dependency 無反向欄位（_brokenDependents 不需過濾 isReverse）', () {
+      final schema = loadBuiltinSchemaJson();
+      final edge =
+          (schema['edge_types']
+                  as Map<String, dynamic>)[bundleDependencyEdgeType]
+              as Map<String, dynamic>;
+      expect(edge['reverse_field'], isNull);
+      expect(edge['forward_field'], 'depends_on_bundles');
+    });
+
+    test('同一依賴值宣告兩次只算一條依賴邊', () {
+      final event = (buildResultOf([
+        bundleNode('a'),
+        bundleNode('b', dependsOn: ['a', 'a']),
+      ]) as GraphBuildAvailable).event;
+      expect(bundleDependenciesOf(event), hasLength(1));
+    });
+  });
+
   group('層內排序', () {
     test('G13-4 同層 graph、diagnostics、ticketdetail 依 code point 序', () {
       final order = _domains(
@@ -105,6 +126,8 @@ void main() {
       expect(order, isNot(['ab', 'a-c']));
     });
 
+    // 限制：實作完全不讀 locale（以 runes 逐 code point 比較，未使用 Intl），
+    // 切換 Intl locale 對結果沒有作用；本案例是規格案例本身的限制，只能固定「兩次結果相同」。
     test('G13-7 執行環境 locale 切 zh 與 en 結果逐值相同', () {
       List<List<String>> run() => [
         _domains(_order(_g135Nodes())),

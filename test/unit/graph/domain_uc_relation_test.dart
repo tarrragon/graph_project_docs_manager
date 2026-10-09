@@ -3,6 +3,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
+import 'package:graph_project_docs_manager/graph/bundle_layer_order.dart';
 import 'package:graph_project_docs_manager/graph/domain_uc_relation.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 
@@ -17,6 +18,10 @@ DomainUcRelationAvailable _relation(
     DomainUcRelationQuery(buildResult: buildResultOf(nodes))
             .relationOf(bundleIdOf(bundleKey), ucId)
         as DomainUcRelationAvailable;
+
+List<String> _domains(List<BundleLayerEntry> entries) => [
+  for (final e in entries) e.domain,
+];
 
 List<List<String>> _domainPaths(DomainUcRelationAvailable r) => [
   for (final p in r.paths) [for (final b in p) b.domain],
@@ -221,19 +226,41 @@ void main() {
       ]);
     });
 
-    test('G12-10 不同長度：短的在前（宣告順序與 code point 皆會把長的排前）', () {
-      final r = _relation([
+    test('G12-10 不同長度：短的在前（長路徑來源在 FR-13 序中排前，仍排後面）', () {
+      // a、z 同為 L2，code point 序 a 先於 z：若不以長度優先，長路徑 a→m→y 會排前。
+      final nodes = [
+        bundleNode('w'),
         bundleNode('y'),
+        bundleNode('t', dependsOn: ['w']),
         bundleNode('m', dependsOn: ['y']),
         bundleNode('a', dependsOn: ['m']),
-        bundleNode('z', dependsOn: ['y']),
+        bundleNode('z', dependsOn: ['y', 't']),
         ucNode('UC-01', [
           ['a', 'z'],
         ]),
-      ], 'y');
+      ];
+      final r = _relation(nodes, 'y');
       expect(_domainPaths(r), [
         ['z', 'y'],
         ['a', 'm', 'y'],
+      ]);
+      // 前提：FR-13 序中 a 確實排在 z 之前，使本案例對「長度優先」有鑑別力。
+      final order = _domains(
+        orderBundlesOf((buildResultOf(nodes) as GraphBuildAvailable).event),
+      );
+      expect(order.indexOf('a'), lessThan(order.indexOf('z')));
+    });
+
+    test('G12-10b 同一依賴值宣告兩次不產生重複路徑', () {
+      final r = _relation([
+        bundleNode('y'),
+        bundleNode('x', dependsOn: ['y', 'y']),
+        ucNode('UC-01', [
+          ['x'],
+        ]),
+      ], 'y');
+      expect(_domainPaths(r), [
+        ['x', 'y'],
       ]);
     });
 
