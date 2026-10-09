@@ -103,6 +103,8 @@ void main() {
         'malformedRef',
         'duplicateId',
         'multiSource',
+        'flowUnresolvedRef',
+        'flowDuplicateStepId',
       ]);
     });
 

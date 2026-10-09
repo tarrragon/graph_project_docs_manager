@@ -33,7 +33,43 @@ List<RawNode> _syntheticCorpus(int n) => [
   return (lookups: lookups, references: event.totalReferences);
 }
 
+/// 含 flow 步驟的 UC 語料（G9-INV：G9-1 本身不改，另補 G9-2；
+/// G9-2 只驗證 flow 解析不走主圖 ID 索引，不宣稱 flow 解析本身的計算量）。
+List<RawNode> _flowCorpus(int n) => [
+  for (var i = 0; i < n; i++)
+    RawNode(
+      path: 'docs/UC-$i.md',
+      frontmatter: {'id': 'UC-$i'},
+      typeName: 'UC',
+      flowSteps: [
+        {'id': 's1'},
+        {'id': 's2', 'branch_from': 's1', 'next': 'ghost'},
+      ],
+    ),
+];
+
+int _lookupsOf(List<RawNode> nodes) {
+  var lookups = 0;
+  final inputs = graphInputsFrom();
+  buildGraphFromInputs(
+    rawNodes: nodes,
+    edgeTypes: inputs.edgeTypes,
+    nodeTypes: inputs.nodeTypes,
+    onIdLookup: () => lookups++,
+  );
+  return lookups;
+}
+
 void main() {
+  test('G9-2 flow 解析不走主圖 ID 索引：加入 flow 語料不增加查詢次數', () {
+    expect(_lookupsOf(_flowCorpus(100)), 0);
+    expect(_lookupsOf(_flowCorpus(1000)), 0);
+    for (final n in [100, 1000]) {
+      final withFlow = _lookupsOf([..._syntheticCorpus(n), ..._flowCorpus(n)]);
+      expect(withFlow, _measure(n).lookups, reason: 'n=$n');
+    }
+  });
+
   test('G9-1 ID 索引查詢次數與引用值總數成正比（N 與 10N）', () {
     final small = _measure(100);
     final large = _measure(1000);

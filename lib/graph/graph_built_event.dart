@@ -1,6 +1,7 @@
 /// EVT-GRAPH-001 GraphBuilt 與建圖結果型別（SPEC-007 FR-01～FR-06：建圖不可用、缺陷、邊、事件）。
 library;
 
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
@@ -88,6 +89,36 @@ class MultiSourceGraphDefect extends GraphDefect {
   final List<MultiSourceTarget> targets;
 }
 
+/// flow 缺陷子類（FR-09 flow 子類；`traverses` 兩子類由 0.5.0-W1-001.5 追加）。
+enum FlowDefectKind {
+  /// flow 參照未解析。
+  unresolvedReference,
+
+  /// UC 內 step id 重複。
+  duplicateStepId,
+}
+
+/// 一筆 flow 缺陷，負載恆為 {UC ID, step id, 欄位, 原始值}，不帶邊型。
+class FlowGraphDefect extends GraphDefect {
+  const FlowGraphDefect({
+    required this.kind,
+    required this.ucId,
+    required this.stepId,
+    required this.field,
+    required this.rawValue,
+  });
+
+  final FlowDefectKind kind;
+  final String ucId;
+
+  /// 觸發缺陷的步驟 `id` 原值（原樣，不正規化）。
+  final Object? stepId;
+  final String field;
+
+  /// 觸發缺陷的欄位原值（原樣，不正規化）。
+  final Object? rawValue;
+}
+
 /// EVT-GRAPH-001：`nodeCount`、`edgeCount`、`graphDefects`，另帶驗證用明細。
 ///
 /// 建構時複製為唯讀集合；計數與分佈在首次讀取時只走訪一次並快取。
@@ -98,9 +129,14 @@ class GraphBuiltEvent {
     required List<GraphDefect> graphDefects,
     required this.totalReferences,
     required this.resolvedCount,
+    Map<String, FlowSubgraph> flowSubgraphs = const {},
   }) : nodes = List.unmodifiable(nodes),
        edges = List.unmodifiable(edges),
-       graphDefects = List.unmodifiable(graphDefects);
+       graphDefects = List.unmodifiable(graphDefects),
+       flowSubgraphs = Map.unmodifiable(flowSubgraphs);
+
+  /// FR-10：UC ID → flow 子圖。不進 [edges]，不計入 [edgeCount]。
+  final Map<String, FlowSubgraph> flowSubgraphs;
 
   final List<LightNode> nodes;
   final List<GraphEdge> edges;
@@ -115,6 +151,7 @@ class GraphBuiltEvent {
   late final int malformedRefCount = _countOf<MalformedRefGraphDefect>();
   late final int duplicateIdCount = _countOf<DuplicateIdGraphDefect>();
   late final int multiSourceCount = _countOf<MultiSourceGraphDefect>();
+  late final int flowDefectCount = _countOf<FlowGraphDefect>();
 
   int _countOf<T extends GraphDefect>() => graphDefects.whereType<T>().length;
 

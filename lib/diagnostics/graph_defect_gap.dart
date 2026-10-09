@@ -10,7 +10,18 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'parse_failure_gap.dart';
 
 /// `graphDefect` 破洞的子類（子類清單以 SPEC-007 FR-09〈子類〉為準）。
-enum GraphDefectKind { danglingRef, malformedRef, duplicateId, multiSource }
+enum GraphDefectKind {
+  danglingRef,
+  malformedRef,
+  duplicateId,
+  multiSource,
+
+  /// flow 參照未解析（FR-09 flow 子類）。
+  flowUnresolvedRef,
+
+  /// UC 內 step id 重複（FR-09 flow 子類）。
+  flowDuplicateStepId,
+}
 
 /// 一筆 `graphDefect` 破洞：直接承載 Graph 的缺陷（原因碼與原始值，
 /// 不含顯示文字；顯示由畫面經 l10n 投影）。
@@ -28,6 +39,10 @@ class GraphDefectGap {
     MalformedRefGraphDefect() => GraphDefectKind.malformedRef,
     DuplicateIdGraphDefect() => GraphDefectKind.duplicateId,
     MultiSourceGraphDefect() => GraphDefectKind.multiSource,
+    FlowGraphDefect(:final kind) => switch (kind) {
+      FlowDefectKind.unresolvedReference => GraphDefectKind.flowUnresolvedRef,
+      FlowDefectKind.duplicateStepId => GraphDefectKind.flowDuplicateStepId,
+    },
   };
 }
 
