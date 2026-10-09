@@ -400,15 +400,20 @@ class _ScanAccumulator {
       return RawNode(path: path, frontmatter: frontmatter, typeName: typeName);
     }
     final flow = _extractFlowOrEmpty(path, bytes);
-    if (flow.hasMalformedFlowBlock) {
+    if (flow.hasMalformedFlowBlock || flow.hasNonMapFlowItem) {
+      // 規則 3b (c)、3c：兩類來源共用「每 UC 一筆」上限；reason 以原因碼
+      // 開頭，非 map 項目時另附註說明。
+      final reason = flow.hasNonMapFlowItem
+          ? '$flowBlockMalformedReasonCode：$flowNonMapItemReasonNote'
+          : flowBlockMalformedReasonCode;
       developer.log(
         // i18n-exempt: 開發者 debug log
-        '發出 EVT-CORPUS-004（$flowBlockMalformedReasonCode）：$path',
+        '發出 EVT-CORPUS-004（$reason）：$path', // i18n-exempt: 開發者 debug log
         name: 'CorpusScanner',
         level: 900,
       );
       flowParseFailedEvents.add(
-        FlowParseFailedEvent(path: path, reason: flowBlockMalformedReasonCode),
+        FlowParseFailedEvent(path: path, reason: reason),
       );
     }
     return RawNode(

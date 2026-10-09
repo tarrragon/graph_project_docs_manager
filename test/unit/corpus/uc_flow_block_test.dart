@@ -304,6 +304,81 @@ void main() {
       expect(checkScanSummaryConservation(w), isTrue);
     });
 
+    test('C13-12 規則 3c：flow: ["a"] 步驟為空且發一筆 004，與無區塊可區分（E1）', () async {
+      final r = await _scanOneUc(['flow: ["a"]']);
+      final none = await _scanOneUc([]);
+      expect(r.rawNodes.single.flowSteps, isEmpty);
+      expect(r.flowParseFailedEvents, hasLength(1));
+      final reason = r.flowParseFailedEvents.single.reason;
+      expect(reason, startsWith(flowBlockMalformedReasonCode));
+      expect(reason, contains(flowNonMapItemReasonNote));
+      expect(r.parseFailureEvents, isEmpty);
+      // 對照：清單同為空，事件不同。
+      expect(none.rawNodes.single.flowSteps, isEmpty);
+      expect(none.flowParseFailedEvents, isEmpty);
+    });
+
+    test('C13-13 規則 3c：map、非 map、map 混合：只留 map 項目且僅一筆 004', () async {
+      final r = await _scanOneUc([
+        'flow:\n  - id: a\n  - "x"\n  - 42\n  - id: b',
+      ]);
+      expect(_stepIds(r), ['a', 'b']);
+      expect(r.flowParseFailedEvents, hasLength(1));
+      expect(
+        r.flowParseFailedEvents.single.reason,
+        contains(flowNonMapItemReasonNote),
+      );
+    });
+
+    test('C13-14 規則 3c／3b 共用上限：壞區塊加非 map 項目仍僅一筆 004', () async {
+      final r = await _scanOneUc([
+        malformedFlowBlock,
+        'flow:\n  - id: a\n  - "x"',
+      ]);
+      expect(_stepIds(r), ['a']);
+      expect(r.flowParseFailedEvents, hasLength(1));
+      expect(r.summary.flowBlockMalformedUcCount, 1);
+    });
+
+    List<int> unclosedFenceUc(String fenceContent, {String before = ''}) =>
+        utf8.encode(
+          // i18n-exempt: 測試 fixture markdown
+          '---\nid: UC-01\n---\n\n$before```yaml\n$fenceContent\n',
+        );
+
+    test('C13-15 規則 3d：未閉合圍欄含頂層 flow: 行：發一筆 004、不採用步驟', () async {
+      final r = await _scan({
+        _ucPath: unclosedFenceUc(validFlowBlock(['s1', 's2'])),
+      });
+      expect(r.rawNodes.single.flowSteps, isEmpty);
+      expect(r.flowParseFailedEvents, hasLength(1));
+      expect(
+        r.flowParseFailedEvents.single.reason,
+        flowBlockMalformedReasonCode,
+      );
+      expect(r.parseFailureEvents, isEmpty);
+    });
+
+    test('C13-15b 規則 3d：前方已有合法區塊時步驟取該區塊，仍發一筆 004', () async {
+      final before = '```yaml\n${validFlowBlock(['s1'])}\n```\n\n';
+      final r = await _scan({
+        _ucPath: unclosedFenceUc(validFlowBlock(['t1', 't2']), before: before),
+      });
+      expect(_stepIds(r), ['s1']);
+      expect(r.flowParseFailedEvents, hasLength(1));
+    });
+
+    test('C13-16 規則 3d 負向對照：未閉合圍欄無頂層 flow: 行：不發 004', () async {
+      final r = await _scan({_ucPath: unclosedFenceUc(noFlowKeyBlock)});
+      expect(r.rawNodes.single.flowSteps, isEmpty);
+      expect(r.flowParseFailedEvents, isEmpty);
+      // 縮排的 flow: 行不是頂層，同樣不發。
+      final indented = await _scan({
+        _ucPath: unclosedFenceUc('  flow:\n    - a'),
+      });
+      expect(indented.flowParseFailedEvents, isEmpty);
+    });
+
     test('L1 flow 擷取拋出非 YamlException：該 UC 視為無 flow 區塊，掃描完成', () async {
       final fs = FakeDocsFileSystem()
         ..addFile(
