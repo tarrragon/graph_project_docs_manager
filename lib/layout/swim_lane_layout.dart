@@ -6,8 +6,12 @@
 /// 共用同一個 [SwimLaneLayout]，不另算欄號。
 library;
 
+import 'dart:developer' as developer;
+
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/layout/lane_order.dart';
+
+const _tag = 'SwimLaneLayout';
 
 /// 邊的形狀類別：前向直線、回指弧線。
 enum EdgeShape { straight, arc }
@@ -143,7 +147,7 @@ List<List<LayoutNode>> _nodesPerStep(
   return [
     for (final s in steps)
       [
-        for (final lane in _lanesOf(s.traversesResolution, lanes))
+        for (final lane in _lanesOf(s, lanes))
           LayoutNode(
             stepIndex: s.index,
             column: columnOfStep[s.index],
@@ -157,16 +161,41 @@ List<List<LayoutNode>> _nodesPerStep(
 /// 不以字串比對判定「是否已宣告」。
 ///
 /// 不變式（文件化）：Graph 解析出的名稱必在 FR-13 列序內（兩者出自同一批
-/// DomainBundle）。違反時不崩潰：該名稱沒有對應列，節點不輸出；若因此
-/// 一個節點也沒有，退落「畫面」列，使步驟不消失。
-List<SwimLane> _lanesOf(TraversesResolution resolution, List<SwimLane> lanes) {
+/// DomainBundle）。違反屬程式錯誤、不是資料狀態（PM 處置 (a)）：先記一筆
+/// warning（level 900，含步驟 id 與名稱），再 `assert`；release 下該名稱沒有
+/// 對應列、節點不輸出，若因此一個節點也沒有，退落「未定位」列使步驟不消失
+/// （release 落點不屬測試契約）。
+List<SwimLane> _lanesOf(FlowStepNode step, List<SwimLane> lanes) {
+  final resolution = step.traversesResolution;
   if (isUnplacedResolution(resolution)) return const [UnplacedLane()];
   final named = {for (final r in resolution.resolved) BundleLane(r.name)};
   final placed = [
     for (final lane in lanes)
       if (named.contains(lane)) lane,
   ];
-  return placed.isEmpty ? const [ScreenLane()] : placed;
+  final missing = [
+    for (final lane in named)
+      if (!placed.contains(lane)) lane.domain,
+  ];
+  if (missing.isNotEmpty) _reportInvariantViolation(step, missing);
+  if (placed.isNotEmpty) return placed;
+  return resolution.resolved.isEmpty
+      ? const [ScreenLane()]
+      : const [UnplacedLane()];
+}
+
+void _reportInvariantViolation(FlowStepNode step, List<String> names) {
+  developer.log(
+    // i18n-exempt: 開發者 debug log
+    '解析名稱不在 FR-13 列序內：step=${step.id}, names=$names',
+    name: _tag,
+    level: 900,
+  );
+  assert(
+    false,
+    // i18n-exempt: 開發者診斷訊息
+    '解析名稱不在 FR-13 列序內：step=${step.id}, names=$names',
+  );
 }
 
 /// 邊：每步驟的 `branch_from`（起點 → 本步）、`next` 各值、`return_to`。

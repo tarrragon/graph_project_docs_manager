@@ -92,17 +92,23 @@ void main() {
 
     test('L3-5 每步驟恰一欄：欄號集合為 0..n-1 無重複無缺號', () {
       final flows = [
-        project['UC-02']!,
-        project['UC-04']!,
-        balance['UC-01']!,
-        buildFlow([
-          stepRow('M'),
-          stepRow('B', branchFrom: 'M'),
-          stepRow('B2', branchFrom: 'B'),
-        ]),
+        (project['UC-02']!, projectBundleOrder),
+        (project['UC-04']!, projectBundleOrder),
+        (balance['UC-01']!, balanceOrder),
+        (
+          buildFlow([
+            stepRow('M'),
+            stepRow('B', branchFrom: 'M'),
+            stepRow('B2', branchFrom: 'B'),
+          ]),
+          orderOf(const []),
+        ),
       ];
-      for (final flow in flows) {
-        final columns = layoutOf(flow).columnOfStep;
+      for (final (flow, order) in flows) {
+        final columns = buildSwimLaneLayout(
+          flow: flow,
+          bundleOrder: order,
+        ).columnOfStep;
         expect(columns.toSet(), {for (var i = 0; i < columns.length; i++) i});
         expect(columns, hasLength(flow.steps.length));
       }
@@ -175,21 +181,23 @@ void main() {
     });
 
     test('L6-5 (c) 依附異常：C 的 branch_from 指向懸空 X，平鋪且 branch_from 邊照畫', () {
-      // 檔內 C、M、X、D：C 掛在 X 之下，X 懸空；D 也掛在 X。
+      // 檔內 C、M、X、Y、D：C、D 掛在懸空的 X 之下，Y 另一個懸空步驟。
+      // 平鋪得 M、C、X、Y、D；若尾段遞迴（X 之後緊接其子 D）會得 M、C、X、D、Y。
       final flow = buildFlow([
         stepRow('C', branchFrom: 'X'),
         stepRow('M'),
         stepRow('X', branchFrom: 'ghost'),
+        stepRow('Y', branchFrom: 'ghost'),
         stepRow('D', branchFrom: 'X'),
       ]);
       final layout = layoutOf(flow);
-      // 平鋪依檔內順序：C、X、D（X 之後不緊接其子步驟）。
-      expect(stepIdsByColumn(flow, layout), ['M', 'C', 'X', 'D']);
+      expect(stepIdsByColumn(flow, layout), ['M', 'C', 'X', 'Y', 'D']);
+      expect(stepIdsByColumn(flow, layout), isNot(['M', 'C', 'X', 'D', 'Y']));
       final branchEdges = {
         for (final e in layout.edges)
           if (e.source == EdgeSource.branchFrom) edgeLabel(flow, e): e.shape,
       };
-      // X 的 branch_from（懸空）不畫；C、D 的邊照畫：X>C 欄 2→1 弧線，X>D 欄 2→3 直線。
+      // X 的 branch_from（懸空）不畫；C、D 的邊照畫：X>C 欄 2→1 弧線，X>D 欄 2→4 直線。
       expect(branchEdges, {'X>C': EdgeShape.arc, 'X>D': EdgeShape.straight});
       expectStepsConserved(flow, layout);
     });
