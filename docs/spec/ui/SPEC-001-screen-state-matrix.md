@@ -4,8 +4,8 @@ title: "畫面狀態矩陣與 gate 退出路徑"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-10-08"
-version: "1.40"
+updated: "2026-10-09"
+version: "1.41"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -533,6 +533,62 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 改比對全專案 `traverses == []` 的 FlowStep；`producers` 只能是已宣告 domain 名，其中的 `presentation`
 > 與未宣告且非 `presentation` 的值（含大小寫不同者）同視為未對應（用戶裁決 2026-10-08 第 4 項，`0.5.0-W1-106`）。
 > `presentation` 不成矩陣列（`0.5.0-W1-095.3`）。判準全文見 SPEC-003 §3.5。
+>
+> **破洞報告項目投影：`parseFailure` 與 `graphDefect`**（`0.5.0-W1-114.16`，**提案，待 PM 確認**；
+> category id、分節標籤 key、項目 id 規則皆屬 PM 層決定，本段為提案文字）：Diagnostics 的
+> `parseFailure`（SPEC-006 FR-08）與 `graphDefect`（SPEC-007 FR-09）破洞投影為「有破洞」列的分節與
+> 項目時依下列三表。「無法判定破洞」列的其餘類別沿用同一投影；解析失敗類別在該列不列項目的規則不變
+> （003 不產生，004、005 照常產生，SPEC-006 FR-08）。狀態總數不變。
+>
+> 表一：分節（category id 為 `expander-gaps-<category>` 錨點與分節標籤查表鍵；標籤 zh／en 見 SPEC-004
+> §4.0.6〈1.80 提案〉）
+>
+> | 破洞來源 | 子類 | category id（提案） | 分節標籤 key（提案） |
+> |---|---|---|---|
+> | `parseFailure` · EVT-CORPUS-003 | 全部原因 | `parse-failure` | `gapCategoryParseFailure` |
+> | `parseFailure` · EVT-CORPUS-004 | `flowBlockMalformed` | `flow-block-malformed` | `gapCategoryFlowBlockMalformed` |
+> | `parseFailure` · EVT-CORPUS-005 | `nonDomainPathsMalformed` 四個子原因 | `non-domain-paths-malformed` | `gapCategoryNonDomainPathsMalformed` |
+> | `graphDefect` 主圖 | `danglingRef`、`malformedRef`、`duplicateId`、`multiSource` | `graph-defect` | `gapCategoryGraphDefect` |
+> | `graphDefect` 名稱索引 | domain 重複宣告 | `graph-defect`（與主圖同節） | 同上 |
+> | `graphDefect` flow 子圖 | flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告、`traverses` 鍵缺席 | `graph-defect-flow` | `gapCategoryGraphDefectFlow` |
+>
+> 子類不再細分為分節，改由項目說明 key 區分（SPEC-004 §4.0.6〈1.80 提案〉）。flow 四子類另立一節，依
+> SPEC-007 FR-09「另立 flow 小組，與主圖四子類分開列出」。分節只在該節有項目時渲染。分節順序提案為
+> 上表列序，其後接既有的 `orphan-event`、`event-declaration-mismatch`；第一個分節的第一項是
+> `viewGapsAction` 的定位目標（SPEC-003 §2.2），順序因此影響可見行為。
+>
+> 表二：項目 id（`card-gaps-<itemId>`、`action-gaps-open-source-<itemId>` 的 `<itemId>`）
+>
+> | 子類 | 鑑別成分（依序） |
+> |---|---|
+> | EVT-CORPUS-003／004／005 | category id、相對路徑 |
+> | `danglingRef`／`malformedRef` | 子類名、來源節點 ID、欄位名、原始值 |
+> | `duplicateId` | 子類名、重複的 ID |
+> | `multiSource` | 子類名、起點 ID、邊型 |
+> | flow 四子類 | 子類名、UC ID、step id、欄位名、原始值（`traverses` 鍵缺席時為字面 `null`） |
+> | domain 重複宣告 | 子類名、domain 值 |
+>
+> 產生規則：各成分以 URI component 編碼後用 `:` 串接（編碼後成分不含 `:`，串接結果與成分序列一對一）。
+> 成分只取破洞負載的資料值，不取清單索引、掃描順序或時間，因此同一缺陷在下一輪掃描得到同一 id；
+> 缺陷修正後該 id 消失，不被其他項目沿用。同一輪內兩筆破洞的成分完全相同時（例：同一欄位清單內
+> 重複出現同一個斷邊值），第二筆起依 Diagnostics 輸出順序加後綴 `#2`、`#3`。0.1 既有三個類別的項目
+> id 規則不在本段範圍。
+>
+> 表三：指向（對應上方〈破洞項的主操作與次要操作〉表的四列）
+>
+> | 子類 | 項目路徑 | 指向節點 | 指向型別 |
+> |---|---|---|---|
+> | EVT-CORPUS-003 | 失敗檔相對路徑，行號有值時附 | 無（檔案未成節點） | 無法指向任何節點 |
+> | EVT-CORPUS-004 | UC 相對路徑 | 該 UC | 其他圖節點 |
+> | EVT-CORPUS-005 | 清單檔相對路徑（見〈非字串元素破洞的項目說明〉） | 無 | 無法指向任何節點 |
+> | `danglingRef`／`malformedRef` | 來源節點路徑 | 來源節點（引用值寫在該節點上） | 來源節點為 Ticket 時為 ticket，其餘為其他圖節點 |
+> | `duplicateId` | 全部路徑中 code point 序最小者 | 無（同一 ID 對應多個檔案，無單一節點） | 無法指向任何節點；點擊開啟該路徑 |
+> | `multiSource` | 起點節點路徑 | 起點節點 | 起點為 Ticket 時為 ticket，其餘為其他圖節點 |
+> | flow 四子類 | UC 路徑 | 該 UC | 其他圖節點 |
+> | domain 重複宣告 | 衝突 DomainBundle ID 中 code point 序最小者的路徑 | 該 DomainBundle | 其他圖節點 |
+>
+> `graphDefect` 各子類無行號，不顯示行號。項目說明 key 與參數見 SPEC-004 §4.0.6〈1.80 提案〉。
+> 未定事項見 `0.5.0-W1-114.16` NeedsContext。
 
 ## 6. 節點詳情
 
@@ -872,6 +928,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.41 | 2026-10-09 | `0.5.0-W1-114.16`（承 `0.5.0-W1-114.15` NeedsContext 2）：§5 新增〈破洞報告項目投影：`parseFailure` 與 `graphDefect`〉註記，三表分別定義分節（category id 與標籤 key）、項目 id 產生規則（跨輪次穩定）、各子類的項目路徑與指向。全段為提案，待 PM 確認；項目說明 key 見 SPEC-004 v1.80。狀態總數不變 |
 | 1.40 | 2026-10-08 | `0.5.0-W1-114.5` PM 處置（lavender NeedsContext）：§5〈非字串元素破洞的項目說明〉補 `nonDomainPathsMalformed` 其餘三個子原因的項目說明 key（SPEC-004 v1.79），並寫明此類破洞無行號、無指向節點、點擊開啟原始檔。狀態總數不變 |
 | 1.39 | 2026-10-08 | `0.5.0-W1-114.5`（依 `0.5.0-W1-114.4` PM 處置 NC-4／NC-5、用戶裁決第五批 NC-7）：〈「在泳道中檢視」跳轉目標〉補 Layout「給定一列，回傳欄號最小的節點」查詢遇空列回傳 null，並註明本情境來源 X 為直接貫穿 domain、列必有節點；〈泳道布局規則〉表後補 FR-13 圖不可用與 schema 不相容關卡同判定式、Layout 不另處理；§5 新增 `elementNotString` 破洞項目說明，引用 SPEC-004 key `gapNonDomainPathsNonStringElements`。狀態總數不變 |
 | 1.38 | 2026-10-08 | `0.5.0-W1-114.3`（依 `0.5.0-W1-114.2` 用戶裁決 R1／J2，第二批）：§1〈泳道布局規則〉列序來源改為 Graph 公開面的分層與層內排序（SPEC-007 FR-13），Layout 不自行推導，原判定式保留為摘錄；〈間接依賴格的詳情卡〉排序列改依 SPEC-007 FR-13、由 Graph 排序；〈「在泳道中檢視」跳轉目標〉補取得方式——畫面以 FR-12 第一條路徑來源呼叫 Layout 公開面「給定一列，回傳欄號最小的節點」查詢。狀態總數不變 |
