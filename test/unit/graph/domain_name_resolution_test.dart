@@ -377,7 +377,48 @@ void main() {
         ]),
       ]);
       expect(_resolvedIds(_only(e, 'n')), ['DOMAIN-MAP-seven']);
+      expect(
+        _only(e, 'n').traversesResolution.resolved.single.name,
+        '7',
+        reason: 'name 是正規化後的比對鍵，不是原值',
+      );
       expect(_sig(e), isEmpty);
+    });
+
+    test('去重比 bundleId：[7, "7"] 對上 domain "7" 只得一筆', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-seven', '7'),
+        _ucNode([
+          _step('n', [7, '7']),
+        ]),
+      ]);
+      final r = _only(e, 'n').traversesResolution.resolved;
+      expect(r, hasLength(1));
+      expect(r.single.bundleId, 'DOMAIN-MAP-seven');
+    });
+
+    test('去重對照：兩個不同已宣告 domain 得兩筆', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-seven', '7'),
+        _bundle('DOMAIN-MAP-eight', '8'),
+        _ucNode([
+          _step('n', [7, '8']),
+        ]),
+      ]);
+      expect(_resolvedIds(_only(e, 'n')), [
+        'DOMAIN-MAP-seven',
+        'DOMAIN-MAP-eight',
+      ]);
+    });
+
+    test('N2 純量版：traverses: 7 無 "7" 宣告時未宣告，原值為 int', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-corpus', 'corpus'),
+        _ucNode([_step('n', 7)]),
+      ]);
+      final raw = _only(e, 'n').traversesResolution.undeclared.single;
+      expect(raw, isA<int>());
+      expect(raw, 7);
     });
 
     test('N2 E1 對照：無 domain "7" 宣告時 [7] 未宣告，原值為 int', () {

@@ -58,7 +58,8 @@ Object? _freeze(Object? value) => switch (value) {
 class ResolvedDomain {
   const ResolvedDomain({required this.name, required this.bundleId});
 
-  /// `traverses` 中的名稱原值。
+  /// 正規化後的比對鍵（[flowKeyOf] 結果），不是 `traverses` 的原值；
+  /// 例如元素 7 解析後為 '7'。原值只保留在 `undeclared`。
   final String name;
 
   /// 宣告該名稱的 DomainBundle 節點 ID。
