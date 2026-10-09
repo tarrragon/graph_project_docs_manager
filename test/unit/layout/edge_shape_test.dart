@@ -143,4 +143,120 @@ void main() {
       'cashflow-runway>view-net-worth',
     });
   });
+
+  // 0.5.0-W1-137 改寫前的 Layout 輸出，作為回歸基準。
+  // 格式：UC|來源欄位|fromStep|toStep|形狀（兩語料快照，共 58 筆）。
+  const baselineEdges = {
+    'graph_project_docs_manager': [
+      'UC-01|next|0|1|straight',
+      'UC-01|next|1|2|straight',
+      'UC-01|next|2|3|straight',
+      'UC-01|branchFrom|0|4|straight',
+      'UC-01|returnTo|4|0|arc',
+      'UC-01|branchFrom|2|5|straight',
+      'UC-01|branchFrom|1|6|straight',
+      'UC-01|returnTo|6|0|arc',
+      'UC-02|next|0|1|straight',
+      'UC-02|next|1|2|straight',
+      'UC-02|next|2|3|straight',
+      'UC-02|branchFrom|1|4|straight',
+      'UC-02|branchFrom|0|5|straight',
+      'UC-02|next|5|1|straight',
+      'UC-02|branchFrom|2|6|straight',
+      'UC-02|returnTo|6|0|arc',
+      'UC-03|next|0|1|straight',
+      'UC-03|next|1|2|straight',
+      'UC-03|branchFrom|1|3|straight',
+      'UC-03|branchFrom|1|4|straight',
+      'UC-03|returnTo|4|1|arc',
+      'UC-03|branchFrom|0|5|straight',
+      'UC-03|returnTo|5|0|arc',
+      'UC-04|next|0|1|straight',
+      'UC-04|next|1|2|straight',
+      'UC-04|next|2|3|straight',
+      'UC-04|branchFrom|0|4|straight',
+      'UC-04|next|4|2|straight',
+      'UC-04|branchFrom|1|5|straight',
+      'UC-04|returnTo|5|1|arc',
+      'UC-05|next|0|1|straight',
+      'UC-05|next|1|2|straight',
+      'UC-05|next|2|3|straight',
+      'UC-05|branchFrom|2|4|straight',
+      'UC-05|returnTo|4|2|arc',
+      'UC-05|branchFrom|1|5|straight',
+      'UC-05|returnTo|5|0|arc',
+      'UC-05|branchFrom|1|6|straight',
+      'UC-06|next|0|1|straight',
+      'UC-06|next|1|2|straight',
+      'UC-06|next|2|3|straight',
+      'UC-06|branchFrom|3|4|straight',
+      'UC-06|next|4|1|arc',
+      'UC-06|returnTo|4|1|arc',
+      'UC-06|branchFrom|1|5|straight',
+      'UC-06|branchFrom|1|6|straight',
+    ],
+    'flutter_balance': [
+      'UC-01|next|0|1|straight',
+      'UC-01|next|1|2|straight',
+      'UC-01|next|2|3|straight',
+      'UC-01|next|3|4|straight',
+      'UC-01|branchFrom|2|5|straight',
+      'UC-01|returnTo|5|2|arc',
+      'UC-01|branchFrom|2|6|straight',
+      'UC-01|returnTo|6|2|arc',
+      'UC-01|branchFrom|0|7|straight',
+      'UC-01|returnTo|7|0|arc',
+      'UC-01|branchFrom|1|8|straight',
+      'UC-01|returnTo|8|1|arc',
+    ],
+  };
+
+  Set<String> edgeKeysOf(Map<String, FlowSubgraph> flows) => {
+    for (final entry in flows.entries)
+      for (final e in buildSwimLaneLayout(
+        flow: entry.value,
+        bundleOrder: projectBundleOrder,
+      ).edges)
+        '${entry.key}|${e.source.name}|${e.fromStep}|${e.toStep}|'
+            '${e.shape.name}',
+  };
+
+  test('L5-7 R1 兩語料完整邊集合與改寫前基準相同（含 source、端點、形狀）', () {
+    expect(
+      edgeKeysOf(project),
+      equals({...baselineEdges['graph_project_docs_manager']!}),
+    );
+    expect(edgeKeysOf(balance), equals({...baselineEdges['flutter_balance']!}));
+  });
+
+  test('L5-8 R2 主線 next 指向不存在或重複 id：不畫該邊、不拋例外，可解析者照畫', () {
+    final cases = {
+      'missing': [
+        stepRow('bad', next: ['ghost']),
+        stepRow('ok', next: ['target']),
+        stepRow('target'),
+      ],
+      'duplicate': [
+        stepRow('bad', next: ['dup']),
+        stepRow('ok', next: ['target']),
+        stepRow('dup'),
+        stepRow('dup'),
+        stepRow('target'),
+      ],
+    };
+    for (final entry in cases.entries) {
+      final flow = buildFlow(entry.value);
+      late SwimLaneLayout layout;
+      expect(
+        () => layout = buildSwimLaneLayout(flow: flow, bundleOrder: const []),
+        returnsNormally,
+        reason: entry.key,
+      );
+      final nextLabels = [
+        for (final e in layout.edges)
+          if (e.source == EdgeSource.next) edgeLabel(flow, e),
+      ];
+      expect(nextLabels, ['ok>target'], reason: entry.key);
+    }
+  });
 }
