@@ -40,7 +40,8 @@ class DomainNameResolver {
     final idsByDomain = <String, List<String>>{};
     final byBundleId = <String, String>{};
     for (final (id, domain) in declarations) {
-      if (domain is! String) continue;
+      // 空字串不是名稱：不入索引，`traverses: ['']` 必為未宣告。
+      if (domain is! String || domain.isEmpty) continue;
       idsByDomain.putIfAbsent(domain, () => []).add(id);
       byBundleId[id] = domain;
     }

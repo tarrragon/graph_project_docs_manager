@@ -105,7 +105,8 @@ TraversesResolution _resolveTraverses(
   for (final e in elements) {
     final bundleId = resolver.resolve(e);
     if (bundleId == null) {
-      if (!undeclared.contains(e)) undeclared.add(e);
+      // 去重以 `==` 比較；存入凍結副本，使結果不可被改寫。
+      if (!undeclared.contains(e)) undeclared.add(_freeze(e));
     } else if (!resolved.any((r) => r.name == e)) {
       resolved.add(ResolvedDomain(name: e as String, bundleId: bundleId));
     }

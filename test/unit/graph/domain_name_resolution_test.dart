@@ -322,6 +322,66 @@ void main() {
       expect(_dupDefects(e), hasLength(1));
     });
 
+    test('空字串 domain 不入索引：步驟引用 [""] 報一筆未宣告', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-empty', ''),
+        _ucNode([
+          _step('a', ['']),
+        ]),
+      ]);
+      expect(_sig(e), [(FlowDefectKind.traversesUndeclared, 'a', '')]);
+      expect(e.domainResolver.resolve(''), isNull);
+      expect(_dupDefects(e), isEmpty);
+    });
+
+    test('純量 traverses：宣告者解析成功，未宣告者報一筆', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-corpus', 'corpus'),
+        _ucNode([_step('ok', 'corpus'), _step('bad', 'nope')]),
+      ]);
+      expect(_resolvedIds(_only(e, 'ok')), ['DOMAIN-MAP-corpus']);
+      expect(_sig(e), [(FlowDefectKind.traversesUndeclared, 'bad', 'nope')]);
+    });
+
+    test('traverses: null 視同空（keyAbsent 假、零缺陷），與缺鍵並列對照', () {
+      final e = _build([
+        _ucNode([
+          _step('n', null),
+          {'id': 'absent'},
+        ]),
+      ]);
+      expect(_only(e, 'n').traversesResolution.keyAbsent, isFalse);
+      expect(_only(e, 'absent').traversesResolution.keyAbsent, isTrue);
+      expect(_sig(e), [(FlowDefectKind.traversesKeyAbsent, 'absent', null)]);
+    });
+
+    test('元素 [""] 與 [7]：各一筆未宣告，原始值原樣', () {
+      final e = _build([
+        _bundle('DOMAIN-MAP-corpus', 'corpus'),
+        _ucNode([
+          _step('e', ['']),
+          _step('n', [7]),
+        ]),
+      ]);
+      expect(_sig(e), [
+        (FlowDefectKind.traversesUndeclared, 'e', ''),
+        (FlowDefectKind.traversesUndeclared, 'n', 7),
+      ]);
+    });
+
+    test('未宣告原值為凍結副本：不可改，且不與來源共用參照', () {
+      final source = <String, dynamic>{'k': 'v'};
+      final e = _build([
+        _ucNode([
+          _step('a', [source]),
+        ]),
+      ]);
+      final kept = _only(e, 'a').traversesResolution.undeclared.single;
+      expect(() => (kept as Map)['k'] = 'x', throwsUnsupportedError);
+      source['k'] = 'changed';
+      expect((kept as Map)['k'], 'v');
+    });
+
     test('G10-11 traverses 原值保留、不修剪不轉型，解析結果另存', () {
       final e = _build([
         _bundle('DOMAIN-MAP-corpus', 'corpus'),
