@@ -47,6 +47,7 @@ Set<String> _defectSignatures(GraphBuiltEvent event) => {
         'malformed:${ref.sourceId}:${reason.name}',
       DuplicateIdGraphDefect(:final id) => 'dup:$id',
       MultiSourceGraphDefect() => 'multi:${d.from}:${d.edgeType}',
+      DomainDuplicateDeclarationGraphDefect() => 'domainDup:${d.domain}',
       FlowGraphDefect() => 'flow:${d.ucId}:${d.kind.name}:${d.field}',
     },
 };

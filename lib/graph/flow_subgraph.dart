@@ -5,6 +5,8 @@
 /// `flow_subgraph_builder.dart`，查詢見 `flow_query.dart`。
 library;
 
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
+
 /// 只有此節點型別的 rawNode 附掛 flow 步驟（型別表節點型別名）。
 const flowSourceTypeName = 'UC';
 
@@ -59,13 +61,71 @@ Object? _freeze(Object? value) => switch (value) {
   _ => value,
 };
 
-/// 子圖中的一步；屬性皆為 flow 區塊原值的唯讀副本，參照在建構時解析完成。
+/// `traverses` 一個已宣告值的解析結果。
+class ResolvedDomain {
+  const ResolvedDomain({required this.name, required this.bundleId});
+
+  /// `traverses` 中的名稱原值。
+  final String name;
+
+  /// 宣告該名稱的 DomainBundle 節點 ID。
+  final String bundleId;
+}
+
+/// 一個步驟 `traverses` 的解析結果（FR-11）。
+///
+/// [resolved] 只含已宣告值（依出現順序，同值只一筆）；[undeclared] 為未宣告值
+/// 原值（依出現順序，以（步驟, 值）去重）。鍵缺席時兩者皆空，[keyAbsent] 為真。
+class TraversesResolution {
+  TraversesResolution({
+    required this.keyAbsent,
+    required List<ResolvedDomain> resolved,
+    required List<Object?> undeclared,
+  }) : resolved = List.unmodifiable(resolved),
+       undeclared = List.unmodifiable(undeclared);
+
+  final bool keyAbsent;
+  final List<ResolvedDomain> resolved;
+  final List<Object?> undeclared;
+}
+
+/// 解析 `traverses`：缺鍵不視同 `[]`；空值（null、`[]`）無結果；純量視同單元素清單；
+/// 元素逐一精確比對，非字串或空字串元素必為未宣告。
+TraversesResolution _resolveTraverses(
+  Map<String, dynamic> step,
+  DomainNameResolver resolver,
+) {
+  if (!step.containsKey(FlowFields.traverses)) {
+    return TraversesResolution(keyAbsent: true, resolved: [], undeclared: []);
+  }
+  final raw = step[FlowFields.traverses];
+  final elements = raw == null ? const [] : (raw is Iterable ? raw : [raw]);
+  final resolved = <ResolvedDomain>[];
+  final undeclared = <Object?>[];
+  for (final e in elements) {
+    final bundleId = resolver.resolve(e);
+    if (bundleId == null) {
+      if (!undeclared.contains(e)) undeclared.add(e);
+    } else if (!resolved.any((r) => r.name == e)) {
+      resolved.add(ResolvedDomain(name: e as String, bundleId: bundleId));
+    }
+  }
+  return TraversesResolution(
+    keyAbsent: false,
+    resolved: resolved,
+    undeclared: undeclared,
+  );
+}
+
+/// 子圖中的一步；屬性皆為 flow 區塊原值的唯讀副本，參照與 `traverses` 在建構時解析完成。
 class FlowStepNode {
   FlowStepNode({
     required this.index,
     required Map<String, dynamic> step,
     required Map<String, List<int>> idIndex,
+    required DomainNameResolver domainResolver,
   }) : step = (_freeze(step)! as Map<dynamic, dynamic>).cast<String, dynamic>(),
+       traversesResolution = _resolveTraverses(step, domainResolver),
        isMainline = _isEmptyRef(step[FlowFields.branchFrom]),
        branchFrom = _resolveIf(
          !_isEmptyRef(step[FlowFields.branchFrom]),
@@ -82,6 +142,9 @@ class FlowStepNode {
 
   /// 在步驟清單中的位置。
   final int index;
+
+  /// `traverses` 的解析結果（FR-11）。
+  final TraversesResolution traversesResolution;
   final Map<String, dynamic> step;
   final bool isMainline;
 

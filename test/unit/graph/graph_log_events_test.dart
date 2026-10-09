@@ -86,16 +86,16 @@ void main() {
       final defective = LogRecorder();
       _build(defective, [
         uc([
-          {'id': 'x'},
-          {'id': 'x'},
-          {'id': 'b', 'branch_from': 'ghost'},
+          {'id': 'x', 'traverses': <String>[]},
+          {'id': 'x', 'traverses': <String>[]},
+          {'id': 'b', 'branch_from': 'ghost', 'traverses': <String>[]},
         ]),
       ], loadBuiltinSchemaJson());
       final clean = LogRecorder();
       _build(clean, [
         uc([
-          {'id': 'x'},
-          {'id': 'b', 'branch_from': 'x'},
+          {'id': 'x', 'traverses': <String>[]},
+          {'id': 'b', 'branch_from': 'x', 'traverses': <String>[]},
         ]),
       ], loadBuiltinSchemaJson());
       Object? count(LogRecorder r) => r

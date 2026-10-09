@@ -189,14 +189,20 @@ void main() {
       _expectFlow(await _queryOf('flutter_balance'), _balance);
     });
 
-    test('兩份語料的 flow 缺陷數皆為 0（next 逐元素解析，FR-10 v1.24）', () async {
+    // 本測試的型別表不含 DomainBundle，故不測 traverses；`traverses` 缺陷
+    // 排除後，FR-10 的 flow 缺陷（參照未解析、step id 重複）為 0。
+    test('兩份語料的 FR-10 flow 缺陷數皆為 0（next 逐元素解析，FR-10 v1.24）', () async {
       for (final project in ['graph_project_docs_manager', 'flutter_balance']) {
         final built = await _buildOf(project) as GraphBuildAvailable;
         final flowDefects = built.event.graphDefects
             .whereType<FlowGraphDefect>()
+            .where(
+              (d) =>
+                  d.kind == FlowDefectKind.unresolvedReference ||
+                  d.kind == FlowDefectKind.duplicateStepId,
+            )
             .toList();
         expect(flowDefects, isEmpty, reason: project);
-        expect(built.event.flowDefectCount, 0, reason: project);
       }
     });
 

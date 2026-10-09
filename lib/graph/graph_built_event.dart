@@ -1,6 +1,7 @@
 /// EVT-GRAPH-001 GraphBuilt 與建圖結果型別（SPEC-007 FR-01～FR-06：建圖不可用、缺陷、邊、事件）。
 library;
 
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
@@ -96,6 +97,23 @@ enum FlowDefectKind {
 
   /// UC 內 step id 重複。
   duplicateStepId,
+
+  /// `traverses` 名稱未宣告（FR-11）。
+  traversesUndeclared,
+
+  /// `traverses` 鍵缺席（FR-11；原始值恆為 null）。
+  traversesKeyAbsent,
+}
+
+/// domain 重複宣告（FR-11〈重複 domain 宣告〉）：負載 {domain, 衝突的 DomainBundle ID 清單}。
+class DomainDuplicateDeclarationGraphDefect extends GraphDefect {
+  DomainDuplicateDeclarationGraphDefect({
+    required this.domain,
+    required List<String> bundleIds,
+  }) : bundleIds = List.unmodifiable(bundleIds);
+
+  final String domain;
+  final List<String> bundleIds;
 }
 
 /// 一筆 flow 缺陷，負載恆為 {UC ID, step id, 欄位, 原始值}，不帶邊型。
@@ -130,13 +148,18 @@ class GraphBuiltEvent {
     required this.totalReferences,
     required this.resolvedCount,
     Map<String, FlowSubgraph> flowSubgraphs = const {},
-  }) : nodes = List.unmodifiable(nodes),
+    DomainNameResolver? domainResolver,
+  }) : domainResolver = domainResolver ?? DomainNameResolver.empty(),
+       nodes = List.unmodifiable(nodes),
        edges = List.unmodifiable(edges),
        graphDefects = List.unmodifiable(graphDefects),
        flowSubgraphs = Map.unmodifiable(flowSubgraphs);
 
   /// FR-10：UC ID → flow 子圖。不進 [edges]，不計入 [edgeCount]。
   final Map<String, FlowSubgraph> flowSubgraphs;
+
+  /// FR-11：domain 名稱索引；正向解析與 DomainBundle 節點 → domain 反查。
+  final DomainNameResolver domainResolver;
 
   final List<LightNode> nodes;
   final List<GraphEdge> edges;

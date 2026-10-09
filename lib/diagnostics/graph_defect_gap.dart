@@ -21,6 +21,15 @@ enum GraphDefectKind {
 
   /// UC 內 step id 重複（FR-09 flow 子類）。
   flowDuplicateStepId,
+
+  /// `traverses` 名稱未宣告（FR-09 flow 子類）。
+  flowTraversesUndeclared,
+
+  /// `traverses` 鍵缺席（FR-09 flow 子類）。
+  flowTraversesKeyAbsent,
+
+  /// domain 重複宣告（FR-09，非 flow 子圖的名稱索引缺陷）。
+  domainDuplicateDeclaration,
 }
 
 /// 一筆 `graphDefect` 破洞：直接承載 Graph 的缺陷（原因碼與原始值，
@@ -39,9 +48,15 @@ class GraphDefectGap {
     MalformedRefGraphDefect() => GraphDefectKind.malformedRef,
     DuplicateIdGraphDefect() => GraphDefectKind.duplicateId,
     MultiSourceGraphDefect() => GraphDefectKind.multiSource,
+    DomainDuplicateDeclarationGraphDefect() =>
+      GraphDefectKind.domainDuplicateDeclaration,
     FlowGraphDefect(:final kind) => switch (kind) {
       FlowDefectKind.unresolvedReference => GraphDefectKind.flowUnresolvedRef,
       FlowDefectKind.duplicateStepId => GraphDefectKind.flowDuplicateStepId,
+      FlowDefectKind.traversesUndeclared =>
+        GraphDefectKind.flowTraversesUndeclared,
+      FlowDefectKind.traversesKeyAbsent =>
+        GraphDefectKind.flowTraversesKeyAbsent,
     },
   };
 }
