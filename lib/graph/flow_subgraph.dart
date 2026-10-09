@@ -134,6 +134,11 @@ class FlowStepNode {
          isEmptyFlowRef(step[FlowFields.branchFrom])
              ? const <FlowReference>[]
              : _resolveNext(step[FlowFields.next], idIndex),
+       ),
+       mainlineNextRefs = List.unmodifiable(
+         isEmptyFlowRef(step[FlowFields.branchFrom])
+             ? _resolveNext(step[FlowFields.next], idIndex)
+             : const <FlowReference>[],
        );
 
   /// 在步驟清單中的位置。
@@ -151,10 +156,16 @@ class FlowStepNode {
   final FlowReference? returnTo;
 
   /// 分支步 `next` 逐元素的解析結果（純量視同單元素清單，`[]` 為空清單）；
-  /// 主線步驟恆為空清單（主線 `next` 不解析）。
+  /// 主線步驟恆為空清單（主線 `next` 的解析結果在 [mainlineNextRefs]）。
   final List<FlowReference> nextRefs;
 
-  /// 此步驟全部參照（依 branch_from、return_to、next 各元素順序）。
+  /// 主線步驟 `next` 逐元素的 UC 內解析結果（FR-10 N-a；正規化同 [nextRefs]）；
+  /// 分支步恆為空清單。解析不到只標記（[FlowReference.isResolved] 為假），
+  /// 不進 [references]，故不產生缺陷。
+  final List<FlowReference> mainlineNextRefs;
+
+  /// 此步驟全部「會產生缺陷」的參照（依 branch_from、return_to、分支 next
+  /// 各元素順序）；不含 [mainlineNextRefs]。
   List<FlowReference> get references => [?branchFrom, ?returnTo, ...nextRefs];
 
   Object? get id => step[FlowFields.id];
