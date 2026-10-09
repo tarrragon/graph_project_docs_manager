@@ -26,6 +26,11 @@ enum GapCategory {
 /// `EVT-CORPUS-005` 對應破洞的原因碼（FR-08；資料值，不是顯示字串）。
 const nonDomainPathsMalformedGapReasonCode = 'nonDomainPathsMalformed';
 
+/// `EVT-CORPUS-004` 對應破洞的原因碼（資料值；與 Corpus 端
+/// `flowBlockMalformedReasonCode` 同值，Diagnostics 自持以免破洞原因碼
+/// 隨事件 reason 文字漂移）。
+const flowBlockMalformedGapReasonCode = 'flowBlockMalformed';
+
 /// 004 破洞的歸屬型別（FR-09 規則 6：UC 仍是節點，型別已知）。
 const flowBlockMalformedGapNodeType = 'UC';
 
@@ -72,15 +77,11 @@ class CarrierParseFailureGap extends ParseFailureGap {
 /// EVT-CORPUS-004 來源：UC flow 區塊解析失敗。歸屬型別恆為 UC
 /// （[nodeType]），無候選型別與歧義標記。
 class FlowBlockMalformedGap extends ParseFailureGap {
-  const FlowBlockMalformedGap({
-    required super.path,
-    required super.reason,
-    required this.reasonCode,
-  });
+  const FlowBlockMalformedGap({required super.path, required super.reason});
 
-  /// 原因碼，正常為 `flowBlockMalformed`（`flowBlockMalformedReasonCode`）；
-  /// 事件 reason 不以該原因碼開頭時的保存內容見 `gap_detector.dart`。
-  final String reasonCode;
+  /// 原因碼，由事件類別決定，恆為 `flowBlockMalformed`（SPEC-006 v1.25
+  /// FR-08），不從 [reason] 解析。
+  String get reasonCode => flowBlockMalformedGapReasonCode;
 
   /// 歸屬型別，恆為 UC。
   String get nodeType => flowBlockMalformedGapNodeType;

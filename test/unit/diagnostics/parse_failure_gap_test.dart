@@ -317,6 +317,31 @@ void main() {
         );
       });
 
+      test('L3 004 的 reason 不以原因碼開頭：原因碼仍為 flowBlockMalformed，破洞照常產生', () {
+        const upstreamViolation = 'unexpected free text from upstream';
+        final gaps = gapsOf(
+          detectParseFailureGaps(
+            events: const [],
+            undeterminedCount: 0,
+            unavailableReason: null,
+            flowEvents: [
+              FlowParseFailedEvent(
+                path: 'docs/usecases/UC-04.md',
+                reason: upstreamViolation,
+              ),
+            ],
+          ),
+        );
+
+        expect(gaps, hasLength(1));
+        final gap = gaps.single as FlowBlockMalformedGap;
+        expect(gap.reasonCode, flowBlockMalformedReasonCode);
+        // reason 原文不得被當成原因碼。
+        expect(gap.reasonCode, isNot(upstreamViolation));
+        expect(gap.reason, upstreamViolation);
+        expect(gap.path, 'docs/usecases/UC-04.md');
+      });
+
       test('D1-6（E1）兩筆 003＋一筆 004 對照零筆 004：三筆對兩筆', () {
         final withFlow = gapsOf(
           detectParseFailureGaps(
