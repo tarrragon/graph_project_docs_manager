@@ -816,9 +816,267 @@
     }
   },
 
-  "gapCategoryMissingFrontmatter": "缺少 Frontmatter",
-  "@gapCategoryMissingFrontmatter": {
-    "description": "SPEC-001 §5 破洞報告·有破洞狀態：以真實 repo 快照缺 frontmatter 樣本驅動的分節類別名稱"
+  "gapCategoryParseFailure": "解析失敗",
+  "@gapCategoryParseFailure": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：分節 parse-failure（EVT-CORPUS-003）"
+  },
+
+  "gapCategoryFlowBlockMalformed": "flow 區塊解析失敗",
+  "@gapCategoryFlowBlockMalformed": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：分節 flow-block-malformed（EVT-CORPUS-004）"
+  },
+
+  "gapCategoryNonDomainPathsMalformed": "非 domain 路徑清單格式錯誤",
+  "@gapCategoryNonDomainPathsMalformed": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：分節 non-domain-paths-malformed（EVT-CORPUS-005）"
+  },
+
+  "gapCategoryGraphDefect": "圖結構缺陷",
+  "@gapCategoryGraphDefect": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：分節 graph-defect（主圖四子類與 domain 重複宣告）"
+  },
+
+  "gapCategoryGraphDefectFlow": "flow 結構缺陷",
+  "@gapCategoryGraphDefectFlow": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：分節 graph-defect-flow（flow 四子類）"
+  },
+
+  "gapParseNoFrontmatter": "缺少 frontmatter",
+  "@gapParseNoFrontmatter": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「無 frontmatter」"
+  },
+
+  "gapParseFrontmatterUnclosed": "frontmatter 未閉合",
+  "@gapParseFrontmatterUnclosed": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「frontmatter 未閉合」"
+  },
+
+  "gapParseFrontmatterNotMap": "frontmatter 為空或不是鍵值對映",
+  "@gapParseFrontmatterNotMap": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「frontmatter 為空或非 map」"
+  },
+
+  "gapParseYamlInvalid": "frontmatter 的 YAML 無法解析",
+  "@gapParseYamlInvalid": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「YAML 語法錯誤」"
+  },
+
+  "gapParseUnreadableEncoding": "無法讀取檔案：編碼錯誤",
+  "@gapParseUnreadableEncoding": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 無法讀取，子原因編碼"
+  },
+
+  "gapParseUnreadablePermission": "無法讀取檔案：沒有權限",
+  "@gapParseUnreadablePermission": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 無法讀取，子原因權限"
+  },
+
+  "gapParseUnreadableMissing": "無法讀取檔案：檔案已消失",
+  "@gapParseUnreadableMissing": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 無法讀取，子原因檔案消失"
+  },
+
+  "gapParseTypeAmbiguous": "歸屬型別不明，候選：{types}",
+  "@gapParseTypeAmbiguous": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：schemaAmbiguous 為 true 時附於原因說明之後；types 為 candidateTypes 以分隔符連接",
+    "placeholders": {
+      "types": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapFlowBlockMalformed": "flow 區塊解析失敗，請修正後重新掃描",
+  "@gapFlowBlockMalformed": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-004 原因碼 flowBlockMalformed"
+  },
+
+  "gapNonDomainPathsNonStringElements": "清單內 {count} 個非字串元素",
+  "@gapNonDomainPathsNonStringElements": {
+    "description": "SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 elementNotString",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "gapNonDomainPathsYamlInvalid": "清單檔的 YAML 無法解析",
+  "@gapNonDomainPathsYamlInvalid": {
+    "description": "SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 yamlInvalid"
+  },
+
+  "gapNonDomainPathsKeyMissing": "清單檔缺少 {key} 鍵",
+  "@gapNonDomainPathsKeyMissing": {
+    "description": "SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 keyMissing",
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapNonDomainPathsNotList": "清單檔中 {key} 的值不是清單",
+  "@gapNonDomainPathsNotList": {
+    "description": "SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 notList",
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapDanglingRefTargetMissing": "{field} 指向的 {value} 不存在",
+  "@gapDanglingRefTargetMissing": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：danglingRef，原因 targetMissing",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapDanglingRefTargetDuplicated": "{field} 指向的 {value} 對應多個節點",
+  "@gapDanglingRefTargetDuplicated": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：danglingRef，原因 targetDuplicated",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapMalformedRefInvalidShape": "{field} 的值 {value} 格式不正確",
+  "@gapMalformedRefInvalidShape": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：malformedRef，原因 invalidShape",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapMalformedRefPatternMismatch": "{field} 的值 {value} 不符合 ID 格式",
+  "@gapMalformedRefPatternMismatch": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：malformedRef，原因 patternMismatch",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapMalformedRefSelfReference": "{field} 指向自己",
+  "@gapMalformedRefSelfReference": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：malformedRef，原因 selfReference",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapDuplicateId": "ID {id} 出現在 {count} 個檔案：{paths}",
+  "@gapDuplicateId": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：duplicateId；paths 為全部路徑以分隔符連接",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapMultiSource": "{edgeType} 只能指向一個終點，目前指向 {targets}",
+  "@gapMultiSource": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：multiSource；targets 為全部終點 ID 以分隔符連接",
+    "placeholders": {
+      "edgeType": {
+        "type": "String"
+      },
+      "targets": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapFlowRefUnresolved": "步驟 {stepId} 的 {field} 無法解析：{value}",
+  "@gapFlowRefUnresolved": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：flow 參照未解析",
+    "placeholders": {
+      "stepId": {
+        "type": "String"
+      },
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapFlowStepIdDuplicated": "步驟 ID {stepId} 在此 UC 內重複",
+  "@gapFlowStepIdDuplicated": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：UC 內 step id 重複",
+    "placeholders": {
+      "stepId": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapTraversesUndeclared": "步驟 {stepId} 的 traverses 含未宣告的 domain：{value}",
+  "@gapTraversesUndeclared": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：traverses 名稱未宣告",
+    "placeholders": {
+      "stepId": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapTraversesMissing": "步驟 {stepId} 缺少 traverses 欄位",
+  "@gapTraversesMissing": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：traverses 鍵缺席",
+    "placeholders": {
+      "stepId": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapDomainDeclaredTwice": "domain {domain} 被多個 DomainBundle 宣告：{bundles}",
+  "@gapDomainDeclaredTwice": {
+    "description": "SPEC-004 §4.0.6〈1.80 提案〉：domain 重複宣告；bundles 為衝突 DomainBundle ID 以分隔符連接",
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "bundles": {
+        "type": "String"
+      }
+    }
   },
 
   "gapCategoryOrphanEvent": "孤立事件",

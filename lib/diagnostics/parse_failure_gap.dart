@@ -3,6 +3,7 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
+import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 
 /// EVT-DIAGNOSTICS-001〈設計註記〉定義的破洞四類。0.3.0 只實際產生
 /// [parseFailure]；0.4.0 起另產生 [graphDefect]（SPEC-007 FR-09，產生端
@@ -59,10 +60,29 @@ class CarrierParseFailureGap extends ParseFailureGap {
   const CarrierParseFailureGap({
     required super.path,
     required super.reason,
+    required this.failureReason,
+    this.unreadableReason,
+    this.lineNumber,
     this.nodeType,
     required this.candidateTypes,
     required this.schemaAmbiguous,
-  });
+  }) : assert(
+         (failureReason == CarrierParseFailureReason.unreadable) ==
+             (unreadableReason != null),
+         // i18n-exempt: 開發者斷言訊息
+         'unreadableReason 只在 failureReason 為 unreadable 時有值',
+       );
+
+  /// YAML 語法錯誤時解析器提供的行號（1-indexed），其餘為 `null`；
+  /// 供報告項目「行號有值時附」（SPEC-001 §5 表三）。
+  final int? lineNumber;
+
+  /// 型別化原因碼（SPEC-001 §5〈定案〉），投影依此查項目說明 key，
+  /// 不從 [reason] 字串反解。
+  final CarrierParseFailureReason failureReason;
+
+  /// [failureReason] 為 `unreadable` 時的子原因，其餘為 `null`。
+  final UnreadableReason? unreadableReason;
 
   /// 命中一型時為該型名稱；平手時為 `null`。
   final String? nodeType;

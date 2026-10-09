@@ -29,7 +29,7 @@ import '../../helpers/helpers.dart';
 
 const _foundState = GapReportFound([
   GapReportCategory(
-    id: 'missing-frontmatter',
+    id: 'parse-failure',
     items: [
       GapReportItem(
         id: 'spec-readme',
@@ -48,7 +48,9 @@ void main() {
         child: const GapReportScreen(),
         overrides: [
           gapReportProvider.overrideWith(
-            () => _FixedNotifier(const GapReportProjectUnready(ProjectUnreadyReason.notSelected)),
+            () => _FixedNotifier(
+              const GapReportProjectUnready(ProjectUnreadyReason.notSelected),
+            ),
           ),
         ],
         size: size,
@@ -70,7 +72,9 @@ void main() {
         child: const GapReportScreen(),
         overrides: [
           gapReportProvider.overrideWith(
-            () => _FixedNotifier(const GapReportProjectUnready(ProjectUnreadyReason.notSelected)),
+            () => _FixedNotifier(
+              const GapReportProjectUnready(ProjectUnreadyReason.notSelected),
+            ),
           ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.gaps,
@@ -88,22 +92,33 @@ void main() {
       expect(container.read(returnToProvider), AppDestination.gaps);
     });
 
-    testWidgets('真實 Notifier：projectUnreadyReasonProvider 為非 null 時不自動掃描、直接落在專案未就緒', (
-      tester,
-    ) async {
-      final container = await pumpHarness(
-        tester,
-        child: const SizedBox.shrink(),
-        overrides: [projectUnreadyReasonProvider.overrideWithValue(ProjectUnreadyReason.notSelected)],
-      );
+    testWidgets(
+      '真實 Notifier：projectUnreadyReasonProvider 為非 null 時不自動掃描、直接落在專案未就緒',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const SizedBox.shrink(),
+          overrides: [
+            projectUnreadyReasonProvider.overrideWithValue(
+              ProjectUnreadyReason.notSelected,
+            ),
+          ],
+        );
 
-      expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
+        expect(
+          container.read(gapReportProvider),
+          isA<GapReportProjectUnready>(),
+        );
 
-      // 推進足以完成一輪掃描的時間：若誤自動排程掃描，此處會轉為
-      // GapReportFound／NoGaps，斷言其仍停在專案未就緒。
-      await tester.pump(Motion.spinnerMinVisible);
-      expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
-    });
+        // 推進足以完成一輪掃描的時間：若誤自動排程掃描，此處會轉為
+        // GapReportFound／NoGaps，斷言其仍停在專案未就緒。
+        await tester.pump(Motion.spinnerMinVisible);
+        expect(
+          container.read(gapReportProvider),
+          isA<GapReportProjectUnready>(),
+        );
+      },
+    );
   });
 
   group('掃描中（state-gaps-scanning）', () {
@@ -214,7 +229,7 @@ void main() {
       expect(find.byType(Panel), findsOneWidget);
       expect(find.byType(Section), findsOneWidget);
       expect(
-        find.byKey(const Key('expander-gaps-missing-frontmatter')),
+        find.byKey(const Key('expander-gaps-parse-failure')),
         findsOneWidget,
       );
       expect(find.byKey(const Key('card-gaps-spec-readme')), findsOneWidget);
@@ -267,7 +282,7 @@ void main() {
     testWidgets('lineNumber 為 null：不顯示行號（SPEC-001 §5「有值時附」）', (tester) async {
       const stateWithoutLine = GapReportFound([
         GapReportCategory(
-          id: 'missing-frontmatter',
+          id: 'parse-failure',
           items: [
             GapReportItem(id: 'spec-readme', filePath: 'docs/spec/README.md'),
           ],
@@ -299,7 +314,7 @@ void main() {
         pointerNodeId: 'example-ticket',
       );
       const state = GapReportFound([
-        GapReportCategory(id: 'missing-frontmatter', items: [item]),
+        GapReportCategory(id: 'parse-failure', items: [item]),
       ]);
 
       final container = await pumpHarness(
@@ -336,7 +351,7 @@ void main() {
         pointerNodeId: 'PROP-001',
       );
       const state = GapReportFound([
-        GapReportCategory(id: 'missing-frontmatter', items: [item]),
+        GapReportCategory(id: 'parse-failure', items: [item]),
       ]);
 
       final container = await pumpHarness(
@@ -380,6 +395,39 @@ void main() {
       await tester.pump();
 
       expect(container.read(selectedUcProvider), 'UC-05');
+      expect(
+        container.read(selectedDestinationProvider),
+        AppDestination.ucFlow,
+      );
+    });
+
+    testWidgets('flow 類（J2）：寫入選定 UC 並 jump 至 UC Flow，step id 只攜帶', (
+      tester,
+    ) async {
+      const item = GapReportItem(
+        id: 'flow-item',
+        filePath: 'docs/usecases/UC-02.md',
+        pointerType: GapItemPointerType.flow,
+        pointerNodeId: 'UC-02',
+        flowUcId: 'UC-02',
+        flowStepId: 's3',
+      );
+      const state = GapReportFound([
+        GapReportCategory(id: 'graph-defect-flow', items: [item]),
+      ]);
+
+      final container = await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(() => _FixedNotifier(state)),
+        ],
+      );
+
+      await tester.tap(find.byKey(const Key('card-gaps-flow-item')));
+      await tester.pump();
+
+      expect(container.read(selectedUcProvider), 'UC-02');
       expect(
         container.read(selectedDestinationProvider),
         AppDestination.ucFlow,
@@ -447,7 +495,7 @@ void main() {
       final file = File('${tempDir.path}/README.md')..writeAsStringSync('# x');
       stateWithExistingFile = GapReportFound([
         GapReportCategory(
-          id: 'missing-frontmatter',
+          id: 'parse-failure',
           items: [
             GapReportItem(
               id: 'spec-readme',
@@ -527,7 +575,7 @@ void main() {
             () => _FixedNotifier(
               const GapReportFound([
                 GapReportCategory(
-                  id: 'missing-frontmatter',
+                  id: 'parse-failure',
                   items: [
                     GapReportItem(
                       id: 'spec-readme',
@@ -589,7 +637,9 @@ void main() {
             (ref) => AppDestination.gaps,
           ),
           gapReportProvider.overrideWith(
-            () => _FixedNotifier(const GapReportProjectUnready(ProjectUnreadyReason.notSelected)),
+            () => _FixedNotifier(
+              const GapReportProjectUnready(ProjectUnreadyReason.notSelected),
+            ),
           ),
         ],
       );

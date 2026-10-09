@@ -7,6 +7,33 @@
 /// 只能碰到本檔，碰不到建構函式）。
 library;
 
+import 'parse_outcome.dart';
+
+// Diagnostics 只 import 本檔（見上方庫註解），[UnreadableReason] 經此轉出。
+export 'parse_outcome.dart' show UnreadableReason;
+
+/// 需求：[SPEC-001 §5〈定案〉；SPEC-006 FR-01、FR-05] EVT-CORPUS-003 的原因碼
+/// 列舉（型別化欄位，供投影查項目說明 key，不從 `reason` 字串反解）。
+///
+/// 事件負載 `reason` 字串值域不變，仍由 `parseOutcomeReasonText` 單一對照產生；
+/// [unreadable] 的子原因另見 [ParseFailureEvent.unreadableReason]。
+enum CarrierParseFailureReason {
+  /// 無 frontmatter。
+  noFrontmatter,
+
+  /// frontmatter 未閉合。
+  frontmatterUnclosed,
+
+  /// frontmatter 為空或非 map。
+  frontmatterNotMap,
+
+  /// YAML 語法錯誤。
+  yamlInvalid,
+
+  /// 無法讀取，子原因見 [UnreadableReason]。
+  unreadable,
+}
+
 /// 需求：[SPEC-006 FR-04] `severity` 本版一律為 [edgeAffecting]（`detailOnly`
 /// 保留供未來版本區分兩種強度的畫面標記，本版不會產生）。
 enum ParseFailureSeverity {
@@ -23,6 +50,8 @@ class ParseFailureEvent {
   const ParseFailureEvent({
     required this.path,
     required this.reason,
+    required this.failureReason,
+    this.unreadableReason,
     this.line,
     this.nodeType,
     required this.candidateTypes,
@@ -38,6 +67,13 @@ class ParseFailureEvent {
   /// FR-01 結果分類或 FR-05「無法讀取」子原因對應的文字（見
   /// [_reasonForOutcome]）。
   final String reason;
+
+  /// 型別化原因碼，與 [reason] 同源（由 `ParseOutcome` 推導，非字串反解）。
+  final CarrierParseFailureReason failureReason;
+
+  /// [failureReason] 為 [CarrierParseFailureReason.unreadable] 時的子原因，
+  /// 其餘為 null。
+  final UnreadableReason? unreadableReason;
 
   /// YAML 語法錯誤時解析器提供的行號（1-indexed），其餘結果為 null。
   final int? line;

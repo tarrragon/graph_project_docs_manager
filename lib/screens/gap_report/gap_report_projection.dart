@@ -1,0 +1,361 @@
+/// 破洞報告項目投影（SPEC-001 §5〈破洞報告項目投影：`parseFailure` 與
+/// `graphDefect`〉表一～三與〈定案〉M1／O1／J2）。
+///
+/// 純函式：不讀檔、不碰 provider。輸入 Diagnostics 的破洞與圖輕節點，輸出
+/// 依 O1 排序的 [GapReportCategory] 清單；空分節不產生。
+library;
+
+import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
+import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
+import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
+import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/graph/light_node.dart';
+import 'package:graph_project_docs_manager/graph/reference_classification.dart';
+
+import 'gap_report_models.dart';
+
+/// 分節 category id（SPEC-001 §5 表一）。
+const gapCategoryIdParseFailure = 'parse-failure';
+const gapCategoryIdFlowBlockMalformed = 'flow-block-malformed';
+const gapCategoryIdNonDomainPathsMalformed = 'non-domain-paths-malformed';
+const gapCategoryIdGraphDefect = 'graph-defect';
+const gapCategoryIdGraphDefectFlow = 'graph-defect-flow';
+const gapCategoryIdOrphanEvent = 'orphan-event';
+const gapCategoryIdEventDeclarationMismatch = 'event-declaration-mismatch';
+
+/// 分節順序（SPEC-001 §5〈定案〉O1）。
+const gapCategoryOrder = <String>[
+  gapCategoryIdParseFailure,
+  gapCategoryIdFlowBlockMalformed,
+  gapCategoryIdNonDomainPathsMalformed,
+  gapCategoryIdGraphDefect,
+  gapCategoryIdGraphDefectFlow,
+  gapCategoryIdOrphanEvent,
+  gapCategoryIdEventDeclarationMismatch,
+];
+
+/// 節點型別名：來源節點為此型別時指向型別為 [GapItemPointerType.ticket]。
+const _ticketTypeName = 'Ticket';
+
+/// 需求：[SPEC-001 §5 表一～三、〈定案〉O1] 投影破洞為報告分節與項目。
+///
+/// [nodes] 供查節點路徑與型別（`GraphBuiltEvent.nodes`）；
+/// [orphanEventItems]／[eventDeclarationMismatchItems] 為既有事件類項目，
+/// 原樣放入對應分節（其 id 規則不在表二範圍）；[nonDomainPathsKey] 是
+/// EVT-CORPUS-005 說明的 `{key}` 值（型別表 `non_domain_paths_key`，
+/// 缺欄時由呼叫端取內建表值）。
+List<GapReportCategory> projectGapReport({
+  required List<ParseFailureGap> parseFailures,
+  required List<GraphDefectGap> graphDefects,
+  required List<LightNode> nodes,
+  required String nonDomainPathsKey,
+  List<GapReportItem> orphanEventItems = const [],
+  List<GapReportItem> eventDeclarationMismatchItems = const [],
+}) {
+  final projector = _Projector(nodes, nonDomainPathsKey);
+  final byCategory = <String, List<GapReportItem>>{
+    for (final id in gapCategoryOrder) id: <GapReportItem>[],
+  };
+  for (final gap in parseFailures) {
+    final (category, item) = projector.parseFailure(gap);
+    byCategory[category]!.add(item);
+  }
+  for (final gap in graphDefects) {
+    final (category, item) = projector.graphDefect(gap);
+    byCategory[category]!.add(item);
+  }
+  byCategory[gapCategoryIdOrphanEvent]!.addAll(orphanEventItems);
+  byCategory[gapCategoryIdEventDeclarationMismatch]!.addAll(
+    eventDeclarationMismatchItems,
+  );
+  return [
+    for (final id in gapCategoryOrder)
+      if (byCategory[id]!.isNotEmpty)
+        GapReportCategory(id: id, items: byCategory[id]!),
+  ];
+}
+
+/// 需求：[SPEC-001 §5 表二] 各成分以 URI component 編碼後以 `:` 串接。
+/// 編碼後成分不含 `:`，串接結果與成分序列一對一。
+String gapItemIdOf(List<Object?> components) =>
+    components.map((c) => Uri.encodeComponent('$c')).join(':');
+
+/// 以 code point 序取最小者（SPEC-001 §5 表三 `duplicateId`／domain 重複宣告）。
+String _minByCodePoint(Iterable<String> values) =>
+    values.reduce((a, b) => _compareCodePoints(a, b) <= 0 ? a : b);
+
+int _compareCodePoints(String a, String b) {
+  final ra = a.runes.iterator;
+  final rb = b.runes.iterator;
+  while (true) {
+    final hasA = ra.moveNext();
+    final hasB = rb.moveNext();
+    if (!hasA || !hasB) return hasA == hasB ? 0 : (hasA ? 1 : -1);
+    if (ra.current != rb.current) return ra.current.compareTo(rb.current);
+  }
+}
+
+class _Projector {
+  _Projector(List<LightNode> nodes, this._nonDomainPathsKey)
+    : _byId = {for (final n in nodes) n.id: n},
+      _idByPath = {for (final n in nodes) n.path: n.id};
+
+  final Map<String, LightNode> _byId;
+  final Map<String, String> _idByPath;
+  final String _nonDomainPathsKey;
+
+  /// 同輪內已出現的 id 次數；成分完全相同者第二筆起加 `#N` 後綴。
+  final Map<String, int> _seen = {};
+
+  String _uniqueId(List<Object?> components) {
+    final base = gapItemIdOf(components);
+    final count = (_seen[base] ?? 0) + 1;
+    _seen[base] = count;
+    return count == 1 ? base : '$base#$count';
+  }
+
+  (String, GapReportItem) parseFailure(ParseFailureGap gap) => switch (gap) {
+    CarrierParseFailureGap() => (gapCategoryIdParseFailure, _carrierItem(gap)),
+    FlowBlockMalformedGap() => (
+      gapCategoryIdFlowBlockMalformed,
+      _flowBlockItem(gap),
+    ),
+    NonDomainPathsMalformedGap() => (
+      gapCategoryIdNonDomainPathsMalformed,
+      _nonDomainPathsItem(gap),
+    ),
+  };
+
+  GapReportItem _carrierItem(CarrierParseFailureGap gap) => GapReportItem(
+    id: _uniqueId([gapCategoryIdParseFailure, gap.path]),
+    filePath: gap.path,
+    lineNumber: gap.lineNumber,
+    description: GapItemDescription(_carrierKind(gap)),
+    ambiguousTypes: gap.schemaAmbiguous ? gap.candidateTypes : const [],
+  );
+
+  GapReportItem _flowBlockItem(FlowBlockMalformedGap gap) {
+    final ucId = _idByPath[gap.path];
+    return GapReportItem(
+      id: _uniqueId([gapCategoryIdFlowBlockMalformed, gap.path]),
+      filePath: gap.path,
+      // UC 路徑查不到節點時無從選定 UC，退回開啟原始檔。
+      pointerType: ucId == null
+          ? GapItemPointerType.none
+          : GapItemPointerType.flow,
+      pointerNodeId: ucId,
+      flowUcId: ucId,
+      description: const GapItemDescription(
+        GapDescriptionKind.flowBlockMalformed,
+      ),
+    );
+  }
+
+  GapReportItem _nonDomainPathsItem(NonDomainPathsMalformedGap gap) =>
+      GapReportItem(
+        id: _uniqueId([gapCategoryIdNonDomainPathsMalformed, gap.path]),
+        filePath: gap.path,
+        description: _nonDomainPathsDescription(gap),
+      );
+
+  GapItemDescription _nonDomainPathsDescription(
+    NonDomainPathsMalformedGap gap,
+  ) => switch (gap.subReason) {
+    NonDomainPathsMalformedReason.yamlInvalid => const GapItemDescription(
+      GapDescriptionKind.nonDomainPathsYamlInvalid,
+    ),
+    NonDomainPathsMalformedReason.keyMissing => GapItemDescription(
+      GapDescriptionKind.nonDomainPathsKeyMissing,
+      {'key': _nonDomainPathsKey},
+    ),
+    NonDomainPathsMalformedReason.notList => GapItemDescription(
+      GapDescriptionKind.nonDomainPathsNotList,
+      {'key': _nonDomainPathsKey},
+    ),
+    NonDomainPathsMalformedReason.elementNotString => GapItemDescription(
+      GapDescriptionKind.nonDomainPathsNonStringElements,
+      {'count': gap.nonStringElementCount ?? 0},
+    ),
+  };
+
+  (String, GapReportItem) graphDefect(GraphDefectGap gap) {
+    final kind = gap.kind;
+    return switch (gap.defect) {
+      final DanglingRefGraphDefect d => (
+        gapCategoryIdGraphDefect,
+        _danglingItem(kind, d),
+      ),
+      final MalformedRefGraphDefect d => (
+        gapCategoryIdGraphDefect,
+        _malformedItem(kind, d),
+      ),
+      final DuplicateIdGraphDefect d => (
+        gapCategoryIdGraphDefect,
+        _duplicateIdItem(kind, d),
+      ),
+      final MultiSourceGraphDefect d => (
+        gapCategoryIdGraphDefect,
+        _multiSourceItem(kind, d),
+      ),
+      final DomainDuplicateDeclarationGraphDefect d => (
+        gapCategoryIdGraphDefect,
+        _domainDuplicateItem(kind, d),
+      ),
+      final FlowGraphDefect d => (
+        gapCategoryIdGraphDefectFlow,
+        _flowItem(kind, d),
+      ),
+    };
+  }
+
+  GapItemPointerType _nodePointerType(String nodeId) =>
+      _byId[nodeId]?.typeName == _ticketTypeName
+      ? GapItemPointerType.ticket
+      : GapItemPointerType.otherNode;
+
+  GapReportItem _danglingItem(GraphDefectKind kind, DanglingRefGraphDefect d) =>
+      GapReportItem(
+        id: _uniqueId([
+          kind.name,
+          d.ref.sourceId,
+          d.ref.fieldName,
+          d.ref.value,
+        ]),
+        filePath: d.ref.sourcePath,
+        pointerType: _nodePointerType(d.ref.sourceId),
+        pointerNodeId: d.ref.sourceId,
+        description: GapItemDescription(
+          d.reason == DanglingReason.targetMissing
+              ? GapDescriptionKind.danglingRefTargetMissing
+              : GapDescriptionKind.danglingRefTargetDuplicated,
+          {'field': d.ref.fieldName, 'value': '${d.ref.value}'},
+        ),
+      );
+
+  GapReportItem _malformedItem(
+    GraphDefectKind kind,
+    MalformedRefGraphDefect d,
+  ) => GapReportItem(
+    id: _uniqueId([kind.name, d.ref.sourceId, d.ref.fieldName, d.ref.value]),
+    filePath: d.ref.sourcePath,
+    pointerType: _nodePointerType(d.ref.sourceId),
+    pointerNodeId: d.ref.sourceId,
+    description: GapItemDescription(_malformedKind(d.reason), {
+      'field': d.ref.fieldName,
+      'value': '${d.ref.value}',
+    }),
+  );
+
+  GapReportItem _duplicateIdItem(
+    GraphDefectKind kind,
+    DuplicateIdGraphDefect d,
+  ) => GapReportItem(
+    id: _uniqueId([kind.name, d.id]),
+    filePath: _minByCodePoint(d.paths),
+    description: GapItemDescription(GapDescriptionKind.duplicateId, {
+      'id': d.id,
+      'count': d.paths.length,
+      'paths': d.paths,
+    }),
+  );
+
+  GapReportItem _multiSourceItem(
+    GraphDefectKind kind,
+    MultiSourceGraphDefect d,
+  ) {
+    final origin = _byId[d.from];
+    return GapReportItem(
+      id: _uniqueId([kind.name, d.from, d.edgeType]),
+      // 起點不在輕節點清單時無路徑可指，退回以 ID 顯示且不指向節點。
+      filePath: origin?.path ?? d.from,
+      pointerType: origin == null
+          ? GapItemPointerType.none
+          : _nodePointerType(d.from),
+      pointerNodeId: origin == null ? null : d.from,
+      description: GapItemDescription(GapDescriptionKind.multiSource, {
+        'edgeType': d.edgeType,
+        'targets': [for (final t in d.targets) t.to],
+      }),
+    );
+  }
+
+  GapReportItem _domainDuplicateItem(
+    GraphDefectKind kind,
+    DomainDuplicateDeclarationGraphDefect d,
+  ) {
+    final bundleId = _minByCodePoint(d.bundleIds);
+    return GapReportItem(
+      id: _uniqueId([kind.name, d.domain]),
+      filePath: _byId[bundleId]?.path ?? bundleId,
+      pointerType: _byId[bundleId] == null
+          ? GapItemPointerType.none
+          : GapItemPointerType.otherNode,
+      pointerNodeId: _byId[bundleId] == null ? null : bundleId,
+      description: GapItemDescription(GapDescriptionKind.domainDeclaredTwice, {
+        'domain': d.domain,
+        'bundles': d.bundleIds,
+      }),
+    );
+  }
+
+  GapReportItem _flowItem(GraphDefectKind kind, FlowGraphDefect d) {
+    final uc = _byId[d.ucId];
+    final stepId = '${d.stepId}';
+    return GapReportItem(
+      id: _uniqueId([kind.name, d.ucId, d.stepId, d.field, d.rawValue]),
+      filePath: uc?.path ?? d.ucId,
+      pointerType: GapItemPointerType.flow,
+      pointerNodeId: d.ucId,
+      flowUcId: d.ucId,
+      flowStepId: stepId,
+      description: _flowDescription(d, stepId),
+    );
+  }
+
+  GapItemDescription _flowDescription(FlowGraphDefect d, String stepId) =>
+      switch (d.kind) {
+        FlowDefectKind.unresolvedReference => GapItemDescription(
+          GapDescriptionKind.flowRefUnresolved,
+          {'stepId': stepId, 'field': d.field, 'value': '${d.rawValue}'},
+        ),
+        FlowDefectKind.duplicateStepId => GapItemDescription(
+          GapDescriptionKind.flowStepIdDuplicated,
+          {'stepId': stepId},
+        ),
+        FlowDefectKind.traversesUndeclared => GapItemDescription(
+          GapDescriptionKind.traversesUndeclared,
+          {'stepId': stepId, 'value': '${d.rawValue}'},
+        ),
+        FlowDefectKind.traversesKeyAbsent => GapItemDescription(
+          GapDescriptionKind.traversesMissing,
+          {'stepId': stepId},
+        ),
+      };
+}
+
+GapDescriptionKind _malformedKind(MalformedReason reason) => switch (reason) {
+  MalformedReason.invalidShape => GapDescriptionKind.malformedRefInvalidShape,
+  MalformedReason.patternMismatch =>
+    GapDescriptionKind.malformedRefPatternMismatch,
+  MalformedReason.selfReference => GapDescriptionKind.malformedRefSelfReference,
+};
+
+/// EVT-CORPUS-003 型別化原因碼 → 項目說明識別名（與七個 `gapParse*` key
+/// 一對一；`unreadable` 依子原因分三個）。
+GapDescriptionKind _carrierKind(
+  CarrierParseFailureGap gap,
+) => switch (gap.failureReason) {
+  CarrierParseFailureReason.noFrontmatter =>
+    GapDescriptionKind.parseNoFrontmatter,
+  CarrierParseFailureReason.frontmatterUnclosed =>
+    GapDescriptionKind.parseFrontmatterUnclosed,
+  CarrierParseFailureReason.frontmatterNotMap =>
+    GapDescriptionKind.parseFrontmatterNotMap,
+  CarrierParseFailureReason.yamlInvalid => GapDescriptionKind.parseYamlInvalid,
+  CarrierParseFailureReason.unreadable => switch (gap.unreadableReason) {
+    UnreadableReason.permission => GapDescriptionKind.parseUnreadablePermission,
+    UnreadableReason.fileDeleted => GapDescriptionKind.parseUnreadableMissing,
+    _ => GapDescriptionKind.parseUnreadableEncoding,
+  },
+};

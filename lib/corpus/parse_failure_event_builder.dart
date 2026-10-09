@@ -53,6 +53,8 @@ ParseFailureEvent buildParseFailureEvent({
   return ParseFailureEvent(
     path: path,
     reason: parseOutcomeReasonText(outcome),
+    failureReason: carrierFailureReasonOf(outcome),
+    unreadableReason: _unreadableReasonOf(outcome),
     line: _yamlErrorLineOf(outcome),
     nodeType: nodeType,
     candidateTypes: candidateTypes,
@@ -86,9 +88,27 @@ String parseOutcomeReasonText(ParseOutcome outcome) => switch (outcome) {
   Unclosed() => 'frontmatter 未閉合', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
   EmptyOrNotMap() => 'frontmatter 為空或非 map', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
   YamlSyntaxError() => 'YAML 語法錯誤', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
-  Unreadable(:final reason) =>
-    '無法讀取（${_unreadableSubReasonText(reason)}）', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
+  Unreadable(:final reason) => '無法讀取（${_unreadableSubReasonText(reason)}）', // i18n-exempt: 事件負載資料值，非 UI 顯示字串
 };
+
+/// 需求：[SPEC-001 §5〈定案〉] 失敗檔分類結果對應的型別化原因碼。
+/// [Available] 結構上不會被呼叫（同 [parseOutcomeReasonText]），回傳
+/// [CarrierParseFailureReason.unreadable] 作 sentinel 以保留窮舉編譯保證。
+CarrierParseFailureReason carrierFailureReasonOf(ParseOutcome outcome) =>
+    switch (outcome) {
+      Available() => CarrierParseFailureReason.unreadable,
+      NoFrontmatter() => CarrierParseFailureReason.noFrontmatter,
+      Unclosed() => CarrierParseFailureReason.frontmatterUnclosed,
+      EmptyOrNotMap() => CarrierParseFailureReason.frontmatterNotMap,
+      YamlSyntaxError() => CarrierParseFailureReason.yamlInvalid,
+      Unreadable() => CarrierParseFailureReason.unreadable,
+    };
+
+UnreadableReason? _unreadableReasonOf(ParseOutcome outcome) =>
+    switch (outcome) {
+      Unreadable(:final reason) => reason,
+      _ => null,
+    };
 
 /// YAML 語法錯誤時解析器提供的行號（1-indexed）；其餘結果為 `null`。
 int? _yamlErrorLineOf(ParseOutcome outcome) => switch (outcome) {

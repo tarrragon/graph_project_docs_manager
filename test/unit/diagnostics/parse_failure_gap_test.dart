@@ -21,6 +21,7 @@ ParseFailureEvent _singleMatchEvent({
 }) => ParseFailureEvent(
   path: path,
   reason: 'YAML 語法錯誤',
+  failureReason: CarrierParseFailureReason.yamlInvalid,
   nodeType: type,
   candidateTypes: [type],
   schemaAmbiguous: false,
@@ -35,6 +36,7 @@ ParseFailureEvent _tieEvent({
 }) => ParseFailureEvent(
   path: path,
   reason: '無 frontmatter',
+  failureReason: CarrierParseFailureReason.noFrontmatter,
   candidateTypes: types,
   schemaAmbiguous: true,
   salvagedFields: const [],
