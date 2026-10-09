@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-09"
-version: "1.42"
+version: "1.43"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -253,7 +253,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 邊的來源 | 每步驟產生：主線與分支的 `next` 各值一條（步驟 → 目標）、`branch_from` 一條（起點 → 分支步驟）、`return_to` 一條（步驟 → 目標）；同一步驟同時帶 `next` 與 `return_to` 時兩條都畫 | flow-not-structured 產生 switch-to-swimlane → flow-not-structured 與 flow-not-structured → locate-domain 兩條 |
 > | 邊的形狀 | 目標欄號 > 來源欄號：直線（前向）；目標欄號 ≤ 來源欄號：弧線（回指）。形狀只由欄號比較決定，不由欄位名決定 | flow-not-structured（5）→ locate-domain（0）為弧線；enter-from-ticket（1）→ read-traversal-count（2）為直線 |
 > | 邊的端點 | 多列節點的步驟以其最上方的節點為邊端點；繞線與跨列碰撞處理屬 Layout 內部演算法，本規格不定路徑，只定形狀類別與端點 | — |
-> | 欄序無法輸出的步驟 | 兩類：(a) 懸空參照——`branch_from` 指向此 UC 不存在的步驟 id；(b) `branch_from` 循環——沿 `branch_from` 追溯回到自身、永遠到不了主線的步驟。兩類步驟皆不消失，依檔內順序 `i` 接在最後一欄之後；(a) 不畫其 `branch_from` 邊（無目標端點），(b) 的 `branch_from` 邊照常依〈邊的形狀〉判定。與列序「推不出層的 bundle」同一原則：結構異常一律接在最後顯示 | 6 UC 現況皆無懸空參照與巢狀分支（`0.5.0-W1-092` Solution §1 不變式） |
+> | 欄序無法輸出的步驟 | 凡沿 `branch_from` 追溯到不了主線的步驟皆屬此列（2026-10-09 用戶裁決 V1，`0.5.0-W1-114.10`），常見三類：(a) 懸空參照——`branch_from` 指向此 UC 不存在的步驟 id；(b) `branch_from` 循環——沿 `branch_from` 追溯回到自身、永遠到不了主線的步驟；(c) 依附異常——`branch_from` 指向 (a) 或 (b) 類步驟（或沿鏈指向它們）的步驟。全部不消失，依檔內順序 `i` 平鋪接在最後一欄之後，不在尾段內套用巢狀輸出；(a) 不畫其 `branch_from` 邊（無目標端點），(b)、(c) 的 `branch_from` 邊照常依〈邊的形狀〉判定。與列序「推不出層的 bundle」同一原則：結構異常一律接在最後顯示 | 6 UC 現況皆無懸空參照與巢狀分支（`0.5.0-W1-092` Solution §1 不變式） |
 > | `traverses` 異常的步驟 | （`0.5.0-W1-114` 用戶裁決 T1，2026-10-08）(a) 值未宣告：`traverses` 值對不上任何列鍵（含因重複宣告被排除於名稱解析的 domain 名，SPEC-007〈重複 domain 宣告〉）時，報既有「`traverses` 名稱未宣告」缺陷（SPEC-007 flow 子圖缺陷）；(b) 缺鍵：步驟沒有 `traverses` 鍵時，報缺欄位缺陷（flow 子圖第四個 `graphDefect` 子類），不視同 `[]`、不放「畫面」列。放置：步驟另有已宣告值時，只依已宣告值放到對應列，未宣告值不另放節點；值全部未宣告或缺鍵時，節點置於泳道最後，不消失（與〈欄序無法輸出的步驟〉、列序「推不出層的 bundle」同一原則）。「泳道最後」為另立一條「未定位」列（`0.5.0-W1-114.1` PM 處置 NC-a）：置於全部 DomainBundle 列（含推不出層者）之後、為最末列，只在選定 UC 有此類步驟時出現；此類節點的欄號依清單順序（與其他步驟同一欄序規則，異常可見、不另造欄序）；列首經 i18n（SPEC-004 §4.0.6 `swimlaneUnplacedLaneName`） | 本專案 40 步皆有鍵、值皆已宣告，無實例，不出現「未定位」列；flutter_balance UC-01 的 9 步皆缺鍵，全數置於「未定位」列並各報一筆缺欄位缺陷 | 本專案 40 步皆有鍵、值皆已宣告，無實例；flutter_balance UC-01 的 9 步皆缺鍵，全數置於泳道最後並各報一筆缺欄位缺陷 |
 >
 > **FR-13 回傳「圖不可用」時 Layout 不另處理**（`0.5.0-W1-114.4` PM 處置 NC-5）：建圖不可用的成因（SPEC-007
@@ -935,6 +935,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.43 | 2026-10-09 | §1〈泳道布局規則〉「欄序無法輸出的步驟」擴為「凡沿 branch_from 到不了主線者」，新增 (c) 依附異常，尾段依檔內順序平鋪、不套巢狀（用戶裁決 V1，`0.5.0-W1-114.10`）。狀態總數不變 |
 | 1.42 | 2026-10-09 | §5〈破洞報告項目投影〉由提案轉定案：PM 確認識別名、key 與文案；用戶裁決 M1（移除 0.1「缺 frontmatter」分節、併入 `parse-failure`）、O1（分節順序固定）、J2（004 與 flow 四子類跳 UC Flow，主操作表新增「flow 類」列，「有破洞」列跳轉描述同步）；EVT-CORPUS-003 原因碼識別名（PM 決定）。狀態總數不變 |
 | 1.41 | 2026-10-09 | `0.5.0-W1-114.16`（承 `0.5.0-W1-114.15` NeedsContext 2）：§5 新增〈破洞報告項目投影：`parseFailure` 與 `graphDefect`〉註記，三表分別定義分節（category id 與標籤 key）、項目 id 產生規則（跨輪次穩定）、各子類的項目路徑與指向。全段為提案，待 PM 確認；項目說明 key 見 SPEC-004 v1.80。狀態總數不變 |
 | 1.40 | 2026-10-08 | `0.5.0-W1-114.5` PM 處置（lavender NeedsContext）：§5〈非字串元素破洞的項目說明〉補 `nonDomainPathsMalformed` 其餘三個子原因的項目說明 key（SPEC-004 v1.79），並寫明此類破洞無行號、無指向節點、點擊開啟原始檔。狀態總數不變 |
