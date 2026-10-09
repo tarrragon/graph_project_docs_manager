@@ -151,6 +151,7 @@ class GraphBuiltEvent {
   late final int malformedRefCount = _countOf<MalformedRefGraphDefect>();
   late final int duplicateIdCount = _countOf<DuplicateIdGraphDefect>();
   late final int multiSourceCount = _countOf<MultiSourceGraphDefect>();
+  late final int flowDefectCount = _countOf<FlowGraphDefect>();
 
   int _countOf<T extends GraphDefect>() => graphDefects.whereType<T>().length;
 

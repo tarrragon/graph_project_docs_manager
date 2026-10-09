@@ -16,6 +16,10 @@ enum GraphLogEvent {
 
   /// 鄰接查詢時圖不可用（每個查詢實例只記一次），負載帶原因碼。
   adjacencyUnavailable,
+
+  /// `flowOf` 查詢時圖不可用（與鄰接查詢同形：同一 buildResult 只記一次），
+  /// 負載帶原因碼。
+  flowUnavailable,
 }
 
 /// 事件負載鍵（具名常數，測試以常數比對）。
@@ -26,6 +30,7 @@ abstract final class GraphLogKeys {
   static const malformedRefCount = 'malformedRefCount';
   static const duplicateIdCount = 'duplicateIdCount';
   static const multiSourceCount = 'multiSourceCount';
+  static const flowDefectCount = 'flowDefectCount';
   static const resolvedCount = 'resolvedCount';
   static const totalReferences = 'totalReferences';
   static const reason = 'reason';

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
+import 'package:graph_project_docs_manager/graph/flow_query.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
@@ -47,6 +48,7 @@ void main() {
         GraphLogKeys.malformedRefCount: known.malformed,
         GraphLogKeys.duplicateIdCount: known.duplicateIdCount,
         GraphLogKeys.multiSourceCount: known.multiSourceCount,
+        GraphLogKeys.flowDefectCount: 0,
         GraphLogKeys.resolvedCount: known.resolved,
         GraphLogKeys.totalReferences: known.totalReferences,
       });
@@ -72,6 +74,36 @@ void main() {
           .single
           .payload;
       expect(filledPayload, isNot(emptyPayload));
+    });
+
+    test('L1-4 負載帶 flow 缺陷數：含缺陷步驟的 UC 為 2，同語料無缺陷為 0', () {
+      RawNode uc(List<Map<String, dynamic>> steps) => RawNode(
+        path: 'docs/UC-01.md',
+        frontmatter: {'id': 'UC-01'},
+        typeName: 'UC',
+        flowSteps: steps,
+      );
+      final defective = LogRecorder();
+      _build(defective, [
+        uc([
+          {'id': 'x'},
+          {'id': 'x'},
+          {'id': 'b', 'branch_from': 'ghost'},
+        ]),
+      ], loadBuiltinSchemaJson());
+      final clean = LogRecorder();
+      _build(clean, [
+        uc([
+          {'id': 'x'},
+          {'id': 'b', 'branch_from': 'x'},
+        ]),
+      ], loadBuiltinSchemaJson());
+      Object? count(LogRecorder r) => r
+          .ofEvent(GraphLogEvent.buildCompleted)
+          .single
+          .payload[GraphLogKeys.flowDefectCount];
+      expect(count(defective), 2);
+      expect(count(clean), 0);
     });
 
     test('L1-3 不存在只記開始而無結果值的事件：每筆事件皆帶結果負載', () {
@@ -158,6 +190,72 @@ void main() {
       final bad = LogRecorder();
       _build(bad, const [], _missingEdgeTypesHigherVersion());
       expect(bad.ofEvent(GraphLogEvent.buildUnavailable), hasLength(1));
+    });
+  });
+
+  group('L5 flowOf 圖不可用日誌（與 L3 同形）', () {
+    GraphBuildResult unavailable() => buildGraph(
+      rawNodes: const [],
+      projectSchemaJson: _missingEdgeTypesHigherVersion(),
+      builtinSchemaJson: loadBuiltinSchemaJson(),
+    );
+
+    test('L5-1 連續三次 flowOf：事件恰記一次，帶原因碼，且不混入鄰接事件', () {
+      final recorder = LogRecorder();
+      final q = FlowQuery(buildResult: unavailable(), logSink: recorder.sink);
+      for (var i = 0; i < 3; i++) {
+        expect(q.flowOf('UC-01'), isA<FlowOfGraphUnavailable>());
+      }
+      final logs = recorder.ofEvent(GraphLogEvent.flowUnavailable);
+      expect(logs, hasLength(1));
+      expect(recorder.entries, hasLength(1));
+      expect(logs.single.payload, {
+        GraphLogKeys.reason:
+            EdgeTypeUnavailableReason.projectVersionOutOfKnownRange.name,
+      });
+    });
+
+    test('L5-2 同一 buildResult 的兩個實例各查三次：事件恰記一次', () {
+      final recorder = LogRecorder();
+      final shared = unavailable();
+      final a = FlowQuery(buildResult: shared, logSink: recorder.sink);
+      final b = FlowQuery(buildResult: shared, logSink: recorder.sink);
+      for (var i = 0; i < 3; i++) {
+        a.flowOf('UC-01');
+        b.flowOf('UC-01');
+      }
+      expect(recorder.ofEvent(GraphLogEvent.flowUnavailable), hasLength(1));
+    });
+
+    test('L5-3 buildResult 為 null：每個實例各記一次，原因為尚未完成建圖', () {
+      final recorder = LogRecorder();
+      final a = FlowQuery(buildResult: null, logSink: recorder.sink);
+      final b = FlowQuery(buildResult: null, logSink: recorder.sink);
+      for (var i = 0; i < 3; i++) {
+        a.flowOf('UC-01');
+        b.flowOf('UC-01');
+      }
+      final logs = recorder.ofEvent(GraphLogEvent.flowUnavailable);
+      expect(logs, hasLength(2));
+      expect(logs.first.payload, {
+        GraphLogKeys.reason: AdjacencyUnavailableCause.buildNotCompleted.name,
+      });
+    });
+
+    test('L5-4 守衛：可用圖查詢（含不存在的 UC）不記事件；正向對照為 L5-1', () {
+      final recorder = LogRecorder();
+      final q = FlowQuery(
+        buildResult: buildGraph(
+          rawNodes: const [],
+          projectSchemaJson: loadBuiltinSchemaJson(),
+          builtinSchemaJson: loadBuiltinSchemaJson(),
+        ),
+        logSink: recorder.sink,
+      );
+      for (var i = 0; i < 10; i++) {
+        expect(q.flowOf('UC-99'), isA<FlowOfNotFound>());
+      }
+      expect(recorder.entries, isEmpty);
     });
   });
 

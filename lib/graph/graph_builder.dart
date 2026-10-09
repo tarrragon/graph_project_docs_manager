@@ -2,7 +2,7 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
-import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
+import 'package:graph_project_docs_manager/graph/flow_subgraph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
@@ -56,6 +56,7 @@ Map<String, Object?> _completedPayload(GraphBuiltEvent event) => {
   GraphLogKeys.malformedRefCount: event.malformedRefCount,
   GraphLogKeys.duplicateIdCount: event.duplicateIdCount,
   GraphLogKeys.multiSourceCount: event.multiSourceCount,
+  GraphLogKeys.flowDefectCount: event.flowDefectCount,
   GraphLogKeys.resolvedCount: event.resolvedCount,
   GraphLogKeys.totalReferences: event.totalReferences,
 };

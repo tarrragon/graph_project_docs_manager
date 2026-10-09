@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
+import 'package:graph_project_docs_manager/graph/flow_query.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
@@ -44,6 +45,9 @@ FlowSubgraph _flow(List<Map<String, dynamic>> steps) {
 List<FlowGraphDefect> _flowDefects(GraphBuiltEvent e) =>
     e.graphDefects.whereType<FlowGraphDefect>().toList();
 
+(FlowDefectKind, Object?, String, Object?) _sig(FlowGraphDefect d) =>
+    (d.kind, d.stepId, d.field, d.rawValue);
+
 List<Object?> _ids(List<FlowStepNode> nodes) => [for (final n in nodes) n.id];
 
 void main() {
@@ -58,7 +62,7 @@ void main() {
       ]);
       expect(_ids(g.mainline), ['s1', 's2', 's3', 's4']);
       expect(_ids(g.branches), ['b1']);
-      expect(g.branches.single.branchFrom!.target!.id, 's1');
+      expect(g.targetOf(g.branches.single.branchFrom!)!.id, 's1');
     });
 
     test('G10-2 主線順序取清單順序，主線 next 不解析、無缺陷', () {
@@ -135,10 +139,20 @@ void main() {
           _s('b2', {'branch_from': 's1', 'next': 'ghost2'}),
         ]),
       ]);
-      final fields = {
-        for (final d in _flowDefects(built.event)) d.field: d.rawValue,
-      };
-      expect(fields, {FlowFields.returnTo: 'ghost', FlowFields.next: 'ghost2'});
+      final ds = _flowDefects(built.event);
+      expect(ds, hasLength(2));
+      expect(_sig(ds[0]), (
+        FlowDefectKind.unresolvedReference,
+        'b1',
+        FlowFields.returnTo,
+        'ghost',
+      ));
+      expect(_sig(ds[1]), (
+        FlowDefectKind.unresolvedReference,
+        'b2',
+        FlowFields.next,
+        'ghost2',
+      ));
       final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
       expect(_ids(g.branches), ['b1', 'b2']);
     });
@@ -153,7 +167,7 @@ void main() {
       ]);
       final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
       expect(_ids(g.returns), ['b1']);
-      expect(g.returns.single.returnTo!.target!.id, 's2');
+      expect(g.targetOf(g.returns.single.returnTo!)!.id, 's2');
       expect(_flowDefects(built.event), isEmpty);
     });
 
@@ -183,7 +197,7 @@ void main() {
       expect(_flowDefects(built.event), isEmpty);
     });
 
-    test('G10-8 指向重複 id 的參照標未解析，缺陷共兩筆', () {
+    test('G10-8 指向重複 id 的參照逐筆斷言（依 FR-10 實際共四筆）', () {
       final built = _build([
         _uc01([
           _s('x'),
@@ -191,19 +205,112 @@ void main() {
           _s('r', {'branch_from': 'x', 'return_to': 'x'}),
         ]),
       ]);
-      final ds = _flowDefects(built.event);
-      final kinds = ds.map((d) => d.kind).toList();
+      // 來源：(1) 重複 id x；(2) 第二個 x 的 branch_from 指向重複 id；
+      // (3) r 的 branch_from 指向重複 id；(4) r 的 return_to 指向重複 id。
+      final expected = [
+        (FlowDefectKind.duplicateStepId, 'x', FlowFields.id, 'x'),
+        (FlowDefectKind.unresolvedReference, 'x', FlowFields.branchFrom, 'x'),
+        (FlowDefectKind.unresolvedReference, 'r', FlowFields.branchFrom, 'x'),
+        (FlowDefectKind.unresolvedReference, 'r', FlowFields.returnTo, 'x'),
+      ];
+      expect(_flowDefects(built.event).map(_sig).toList(), expected);
+      final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      final r = g.steps[2];
+      expect(r.branchFrom!.isResolved, isFalse);
+      expect(r.returnTo!.isResolved, isFalse);
+      expect(g.steps[1].branchFrom!.isResolved, isFalse);
+    });
+
+    test('G10-8 補：分支步 next 指向重複 id 標未解析，各一筆缺陷', () {
+      final built = _build([
+        _uc01([
+          _s('x'),
+          _s('x'),
+          _s('b', {'branch_from': 'x', 'next': 'x'}),
+        ]),
+      ]);
+      final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      expect(g.steps[2].nextRef!.isResolved, isFalse);
+      expect(_flowDefects(built.event).map(_sig).toList(), [
+        (FlowDefectKind.duplicateStepId, 'x', FlowFields.id, 'x'),
+        (FlowDefectKind.unresolvedReference, 'b', FlowFields.branchFrom, 'x'),
+        (FlowDefectKind.unresolvedReference, 'b', FlowFields.next, 'x'),
+      ]);
+    });
+
+    test('S1 非字串 id 與參照轉字串後比對：id 整數 1 可被 "1" 與 1 解析，零缺陷', () {
+      final built = _build([
+        _uc01([
+          {'id': 1},
+          {'id': 'b1', 'branch_from': '1', 'return_to': 1, 'next': 1},
+        ]),
+      ]);
+      expect(_flowDefects(built.event), isEmpty);
+      final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      final b = g.steps[1];
+      expect(g.targetOf(b.branchFrom!)!.id, 1);
+      expect(g.targetOf(b.returnTo!)!.id, 1);
+      expect(g.targetOf(b.nextRef!)!.id, 1);
+    });
+
+    test('S1 對照：id 1 與 "1" 判為重複，指向它的參照未解析', () {
+      final built = _build([
+        _uc01([
+          {'id': 1},
+          {'id': '1'},
+          {'id': 'b', 'branch_from': '1'},
+        ]),
+      ]);
+      expect(_flowDefects(built.event).map(_sig).toList(), [
+        (FlowDefectKind.duplicateStepId, 1, FlowFields.id, 1),
+        (FlowDefectKind.unresolvedReference, 'b', FlowFields.branchFrom, '1'),
+      ]);
+    });
+
+    test('S1 對照：id 1 與 2 不重複；指向不存在的整數 9 仍為未解析', () {
+      final built = _build([
+        _uc01([
+          {'id': 1},
+          {'id': 2},
+          {'id': 'b', 'branch_from': 9},
+        ]),
+      ]);
+      expect(_flowDefects(built.event).map(_sig).toList(), [
+        (FlowDefectKind.unresolvedReference, 'b', FlowFields.branchFrom, 9),
+      ]);
+    });
+
+    test('分支步 next 為空清單視為空值，不報缺陷', () {
+      final built = _build([
+        _uc01([
+          _s('a'),
+          _s('b', {'branch_from': 'a', 'next': <String>[]}),
+        ]),
+      ]);
+      expect(_flowDefects(built.event), isEmpty);
+    });
+
+    test('M2 子圖不可改寫，且與 RawNode 原 Map 不共用參照', () {
+      final raw = <String, dynamic>{
+        'id': 'a',
+        'traverses': ['graph'],
+      };
+      final node = _uc01([raw]);
+      final g = (_build([node]).query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      final step = g.steps.single.step;
+      expect(() => step['id'] = 'z', throwsUnsupportedError);
       expect(
-        kinds.where((k) => k == FlowDefectKind.duplicateStepId),
-        hasLength(1),
+        () => (g.steps.single.traverses! as List).add('x'),
+        throwsUnsupportedError,
       );
-      final unresolved = ds.where(
-        (d) => d.kind == FlowDefectKind.unresolvedReference,
-      );
-      expect(
-        unresolved.where((d) => d.stepId == 'r' && d.field == 'return_to'),
-        hasLength(1),
-      );
+      expect(() => g.steps.add(g.steps.single), throwsUnsupportedError);
+      expect(identical(step, raw), isFalse);
+      expect(node.flowSteps.single, {
+        'id': 'a',
+        'traverses': ['graph'],
+      });
+      raw['id'] = 'changed';
+      expect(g.steps.single.id, 'a');
     });
 
     test('G10-9 不同 UC 的相同 step id 不是缺陷', () {
@@ -275,7 +382,7 @@ void main() {
         (bad as FlowOfGraphUnavailable).cause,
         AdjacencyUnavailableCause.buildUnavailable,
       );
-      final pending = const FlowQuery(buildResult: null).flowOf(_uc);
+      final pending = FlowQuery(buildResult: null).flowOf(_uc);
       expect(
         (pending as FlowOfGraphUnavailable).cause,
         AdjacencyUnavailableCause.buildNotCompleted,
