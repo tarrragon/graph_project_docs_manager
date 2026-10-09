@@ -12,6 +12,7 @@ class EdgeSpec {
     this.reverseField,
     this.forwardCardinality = 'many',
     this.layer = 'established',
+    this.direction,
   });
 
   final String forwardField;
@@ -20,12 +21,16 @@ class EdgeSpec {
   final String? forwardCardinality;
   final String layer;
 
+  /// `directed`／`undirected`；`null` 時 JSON 不帶 `direction` 欄。
+  final String? direction;
+
   Map<String, dynamic> toJson() => <String, dynamic>{
     'class': edgeClass,
     'forward_field': forwardField,
     'reverse_field': reverseField,
     'layer': layer,
     'forward_cardinality': ?forwardCardinality,
+    'direction': ?direction,
   };
 }
 

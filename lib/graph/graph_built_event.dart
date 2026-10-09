@@ -8,7 +8,7 @@ import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 enum DirectedDeclarationShape { fromOnly, toOnly, both }
 
-/// 一條邊。有向邊 `from`→`to`；無向邊（`association`，FR-05〈無向的判定〉）
+/// 一條邊。有向邊 `from`→`to`；無向邊（型別表 `direction` 為 `undirected`，FR-05〈無向的判定〉）
 /// `from`／`to` 依 `String.compareTo`（UTF-16 碼元序；ID 為 ASCII 時等同
 /// 字典序）排序，不代表方向。
 class GraphEdge {

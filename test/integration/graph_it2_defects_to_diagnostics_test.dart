@@ -26,7 +26,8 @@ UndeterminedGapReason _toUndeterminedReason(EdgeTypeUnavailableReason reason) =>
     switch (reason) {
       EdgeTypeUnavailableReason.projectVersionOutOfKnownRange ||
       EdgeTypeUnavailableReason.missingForwardCardinality ||
-      EdgeTypeUnavailableReason.invalidEdgeTypeEntry =>
+      EdgeTypeUnavailableReason.invalidEdgeTypeEntry ||
+      EdgeTypeUnavailableReason.missingDirection =>
         UndeterminedGapReason.projectVersionOutOfKnownRange,
     };
 
