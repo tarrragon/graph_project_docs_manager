@@ -17,6 +17,7 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'docs_file_system.dart';
 import 'frontmatter_classifier.dart';
 import 'node_typer.dart';
+import 'non_domain_paths_reader.dart';
 import 'uc_flow_extractor.dart';
 import 'parse_failure_event.dart';
 import 'parse_failure_event_builder.dart';
@@ -92,6 +93,7 @@ class CorpusScanResult {
     required this.schemaAmbiguousNodes,
     required this.summary,
     this.flowParseFailedEvents = const <FlowParseFailedEvent>[],
+    this.nonDomainPathsParseFailedEvent,
   });
 
   final List<RawNode> rawNodes;
@@ -104,6 +106,10 @@ class CorpusScanResult {
 
   /// FR-09 規則 3b：flow 區塊解析失敗的 UC 各一筆（EVT-CORPUS-004）。
   final List<FlowParseFailedEvent> flowParseFailedEvents;
+
+  /// FR-10：非 domain 路徑清單檔格式錯誤時本輪的 EVT-CORPUS-005（至多一筆，
+  /// 四種子原因皆同）；清單檔缺席或格式正確時為 `null`。
+  final NonDomainPathsParseFailedEvent? nonDomainPathsParseFailedEvent;
 }
 
 /// 測試用查詢種子（`@visibleForTesting`）：預設呼叫真正的
@@ -137,6 +143,7 @@ Future<CorpusScanResult> scanCorpus({
   required TypeTable table,
   CarrierPathLookupFn lookupCarrierPath = lookupCarrierPathType,
   UcFlowExtractFn extractFlow = extractUcFlow,
+  required TypeTable builtinTable,
 }) async {
   developer.log(
     'scanCorpus 開始：root=$_docsRoot', // i18n-exempt: 開發者 debug log
@@ -170,10 +177,16 @@ Future<CorpusScanResult> scanCorpus({
     }
   }
 
+  final nonDomainEvent = await _readNonDomainPathsEvent(
+    fileSystem,
+    table,
+    builtinTable,
+  );
   final result = acc.toResult(
     listing.paths.length,
     carrierPathQueryAvailable,
     listing.unlistableDirectories,
+    nonDomainEvent,
   );
 
   developer.log(
@@ -183,6 +196,35 @@ Future<CorpusScanResult> scanCorpus({
   );
 
   return result;
+}
+
+/// 需求：[SPEC-006 FR-10、FR-07] 每輪掃描讀一次非 domain 路徑清單檔，取
+/// 格式錯誤事件（EVT-CORPUS-005，至多一筆）。事件不依賴 FR-06 路徑查詢，
+/// 故不受 `carrierPathQueryAvailable` 影響。讀取拋出非預期例外時不中止整輪
+/// 掃描（NFR-01），視同無事件並寫 warning 日誌（含 stackTrace）。清單檔位置與
+/// 鍵名取自 [table]，缺欄時回落 [builtinTable]（規則 1）。
+Future<NonDomainPathsParseFailedEvent?> _readNonDomainPathsEvent(
+  DocsFileSystem fileSystem,
+  TypeTable table,
+  TypeTable builtinTable,
+) async {
+  try {
+    final read = await readNonDomainPaths(
+      fileSystem: fileSystem,
+      projectTable: table,
+      builtinTable: builtinTable,
+    );
+    return read.malformedEvent;
+  } catch (e, stackTrace) {
+    developer.log(
+      '非 domain 路徑清單檔讀取發生非預期例外，視同無事件', // i18n-exempt: 開發者 debug log
+      name: 'CorpusScanner',
+      level: 900,
+      error: e,
+      stackTrace: stackTrace,
+    );
+    return null;
+  }
 }
 
 /// 將 [items] 依 [size] 切成連續子清單（最後一批可能較短），維持原始
@@ -483,8 +525,10 @@ class _ScanAccumulator {
     int totalFilesScanned,
     bool carrierPathQueryAvailable,
     List<String> unlistableDirectories,
+    NonDomainPathsParseFailedEvent? nonDomainEvent,
   ) {
     return CorpusScanResult(
+      nonDomainPathsParseFailedEvent: nonDomainEvent,
       rawNodes: rawNodes,
       parseErrors: parseErrors,
       parseFailureEvents: parseFailureEvents,
@@ -501,6 +545,7 @@ class _ScanAccumulator {
         carrierPathQueryAvailable: carrierPathQueryAvailable,
         unlistableDirectories: List.unmodifiable(unlistableDirectories),
         flowBlockMalformedUcCount: flowParseFailedEvents.length,
+        nonDomainPathsMalformedCount: nonDomainEvent == null ? 0 : 1,
       ),
     );
   }
