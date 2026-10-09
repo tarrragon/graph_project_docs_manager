@@ -8,9 +8,11 @@ import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 import '../../helpers/spec007/edge_table_builder.dart';
 
-Map<String, dynamic> _builtinJson() => jsonDecode(
-  File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
-) as Map<String, dynamic>;
+Map<String, dynamic> _builtinJson() =>
+    jsonDecode(
+          File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
+        )
+        as Map<String, dynamic>;
 
 Set<String> _keys(EdgeTypeResolution r) => r.edgeTypes.keys.toSet();
 
@@ -260,7 +262,12 @@ void main() {
   test('W4-016 正向對照：去掉壞條目、版本高於內建 -> 可用', () {
     final table = buildEdgeTableJson(
       version: '999.0.0',
-      edges: {'association': const EdgeSpec(forwardField: 'relatedTo')},
+      edges: {
+        'association': const EdgeSpec(
+          forwardField: 'relatedTo',
+          direction: 'undirected',
+        ),
+      },
     );
     expect(_resolve(table).unavailableReason, isNull);
   });

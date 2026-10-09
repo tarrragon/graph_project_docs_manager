@@ -110,21 +110,57 @@ void main() {
       expect(resolved.directionSource, DirectionSource.projectTable);
     });
 
-    test('direction 值不是 directed／undirected 時視同缺欄，補內建表值', () {
+    test('direction 為 "undirect" 或非字串：整筆拒收，取內建表定義（不只補 direction）', () {
       final table = _builtin();
       final edges = table['edge_types'] as Map<String, dynamic>;
-      (edges['association'] as Map<String, dynamic>)['direction'] = 'sideways';
-      (edges['spec_association'] as Map<String, dynamic>)['direction'] = 7;
+      (edges['association'] as Map<String, dynamic>)
+        ..['direction'] = 'undirect'
+        ..['forward_field'] = 'customField';
+      (edges['spec_association'] as Map<String, dynamic>)
+        ..['direction'] = 7
+        ..['forward_field'] = 'customField';
       final resolved = _resolve(table);
+      // E2：與缺欄補值區分——其餘欄位也回到內建表值，而非沿用條目的 customField。
+      expect(resolved['association']!.forwardField, 'relatedTo');
       expect(resolved['association']!.direction, EdgeDirection.undirected);
-      expect(
-        resolved['association']!.directionSource,
-        DirectionSource.builtinTable,
-      );
+      expect(resolved['spec_association']!.forwardField, isNot('customField'));
       expect(resolved['spec_association']!.direction, EdgeDirection.directed);
+      for (final name in const ['association', 'spec_association']) {
+        expect(
+          resolved[name]!.directionSource,
+          DirectionSource.builtinTable,
+          reason: name,
+        );
+      }
+    });
+
+    test('缺 direction 欄不屬不合法：條目其餘欄位保留（與拒收區分）', () {
+      final table = _builtin();
+      final edges = table['edge_types'] as Map<String, dynamic>;
+      (edges['association'] as Map<String, dynamic>)
+        ..remove('direction')
+        ..['forward_field'] = 'customField';
+      final resolved = _resolve(table)['association']!;
+      expect(resolved.forwardField, 'customField');
+      expect(resolved.directionSource, DirectionSource.builtinTable);
+    });
+
+    test('D2：版本不在已知範圍且缺 direction，建圖不可用；版本改到範圍內則補值', () {
+      final outOfRange = _builtinWithoutDirection()
+        ..['schema_generated_at_framework_version'] = '99.0.0';
+      final unavailable = resolveEdgeTypes(
+        projectSchemaJson: outOfRange,
+        builtinSchemaJson: _builtin(),
+      );
+      expect(unavailable.unavailableReason, isNotNull);
+      final inRange = resolveEdgeTypes(
+        projectSchemaJson: _builtinWithoutDirection(),
+        builtinSchemaJson: _builtin(),
+      );
+      expect(inRange.unavailableReason, isNull);
       expect(
-        resolved['spec_association']!.directionSource,
-        DirectionSource.builtinTable,
+        inRange.edgeTypes['association']!.direction,
+        EdgeDirection.undirected,
       );
     });
 

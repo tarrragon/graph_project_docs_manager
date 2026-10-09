@@ -99,6 +99,17 @@ EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
     _logRejectedEdgeType(name);
     return null;
   }
+  // direction 缺席合法（由 resolveEdgeTypes 補值）；存在則必須是合法值。
+  final direction = EdgeDirection.values
+      .where((v) => v.name == value['direction'])
+      .firstOrNull;
+  if (value.containsKey('direction') && direction == null) {
+    _logRejectedEdgeType(
+      name,
+      '；direction 不是 directed／undirected：${value['direction']}', // i18n-exempt: 開發者診斷 log
+    );
+    return null;
+  }
   return EdgeTypeDecl(
     name: name,
     edgeClass: edgeClass,
@@ -108,30 +119,13 @@ EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
         .where((v) => v.name == value['forward_cardinality'])
         .firstOrNull,
     layer: layer,
-    direction: _parseDirection(name, value['direction']),
+    direction: direction,
   );
 }
 
-/// 缺欄回傳 `null`；有值但不是 `directed`／`undirected` 時寫警告日誌，
-/// 語意仍視同缺欄（由 `resolveEdgeTypes` 補值）。
-EdgeDirection? _parseDirection(String name, dynamic raw) {
-  if (raw == null) {
-    return null;
-  }
-  final parsed = EdgeDirection.values.where((v) => v.name == raw).firstOrNull;
-  if (parsed == null) {
-    developer.log(
-      '邊型 $name 的 direction 不是 directed／undirected，視同缺欄：$raw', // i18n-exempt: 開發者診斷 log
-      name: _tag,
-      level: 900,
-    );
-  }
-  return parsed;
-}
-
-void _logRejectedEdgeType(String name) {
+void _logRejectedEdgeType(String name, [String detail = '']) {
   developer.log(
-    '邊型 $name 不是 map，或 class／forward_field／layer 缺席或非字串，或 reverse_field 非字串，已拒收', // i18n-exempt: 開發者診斷 log
+    '邊型 $name 不是 map，或 class／forward_field／layer 缺席或非字串，或 reverse_field 非字串，或 direction 存在但不合法，已拒收$detail', // i18n-exempt: 開發者診斷 log
     name: _tag,
     level: 900,
   );

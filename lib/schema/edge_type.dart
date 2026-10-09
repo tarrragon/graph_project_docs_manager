@@ -134,7 +134,7 @@ EdgeTypeResolution resolveEdgeTypes({
 
 /// 缺 `direction` 補值（FR-01）：版本在已知範圍內且內建表有該鍵名取內建表，
 /// 否則照有向處理並回報 [DirectionSource.defaultDirected]。
-({EdgeDirection direction, DirectionSource source}) _resolveDirection(
+({EdgeDirection direction, DirectionSource source})? _resolveDirection(
   EdgeTypeDecl raw,
   Map<String, EdgeTypeDecl> builtin,
   bool inRange,
@@ -148,7 +148,10 @@ EdgeTypeResolution resolveEdgeTypes({
           : DirectionSource.projectTable,
     );
   }
-  final fromBuiltin = inRange ? builtin[raw.name]?.direction : null;
+  if (!inRange) {
+    return null; // 繞過關卡呼叫路徑：版本不在已知範圍且缺 direction，建圖不可用（D2）
+  }
+  final fromBuiltin = builtin[raw.name]?.direction;
   return fromBuiltin == null
       ? (
           direction: EdgeDirection.directed,
@@ -181,6 +184,7 @@ EdgeTypeResolution _fillMissingCardinality(
 ) {
   final result = <String, EdgeTypeEntry>{};
   var missing = false;
+  var directionUnresolved = false;
   for (final raw in project.values) {
     final cardinality =
         raw.forwardCardinality ??
@@ -195,12 +199,18 @@ EdgeTypeResolution _fillMissingCardinality(
       inRange,
       builtinSourced.contains(raw.name),
     );
+    if (resolved == null) {
+      directionUnresolved = true;
+      continue;
+    }
     result[raw.name] = _entryFromDecl(raw, cardinality, resolved);
   }
   return EdgeTypeResolution(
     edgeTypes: result,
     unavailableReason: missing
         ? EdgeTypeUnavailableReason.missingForwardCardinality
+        : directionUnresolved
+        ? EdgeTypeUnavailableReason.projectVersionOutOfKnownRange
         : null,
   );
 }
