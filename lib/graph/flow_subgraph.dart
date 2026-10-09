@@ -74,11 +74,10 @@ class FlowStepNode {
          idIndex,
        ),
        returnTo = _resolveIf(true, FlowFields.returnTo, step, idIndex),
-       nextRef = _resolveIf(
-         !_isEmptyRef(step[FlowFields.branchFrom]),
-         FlowFields.next,
-         step,
-         idIndex,
+       nextRefs = List.unmodifiable(
+         _isEmptyRef(step[FlowFields.branchFrom])
+             ? const <FlowReference>[]
+             : _resolveNext(step[FlowFields.next], idIndex),
        );
 
   /// 在步驟清單中的位置。
@@ -92,11 +91,12 @@ class FlowStepNode {
   /// 非空 `return_to` 的解析結果。
   final FlowReference? returnTo;
 
-  /// 分支步非空 `next` 的解析結果；主線步驟恆為 null（主線 `next` 不解析）。
-  final FlowReference? nextRef;
+  /// 分支步 `next` 逐元素的解析結果（純量視同單元素清單，`[]` 為空清單）；
+  /// 主線步驟恆為空清單（主線 `next` 不解析）。
+  final List<FlowReference> nextRefs;
 
-  /// 此步驟三個參照中的全部（依 branch_from、return_to、next 順序）。
-  List<FlowReference> get references => [?branchFrom, ?returnTo, ?nextRef];
+  /// 此步驟全部參照（依 branch_from、return_to、next 各元素順序）。
+  List<FlowReference> get references => [?branchFrom, ?returnTo, ...nextRefs];
 
   Object? get id => step[FlowFields.id];
   Object? get name => step[FlowFields.name];
@@ -115,10 +115,29 @@ FlowReference? _resolveIf(
 ) {
   final raw = step[field];
   if (!applies || _isEmptyRef(raw)) return null;
-  final hits = idIndex[flowKeyOf(raw)];
-  final target = hits != null && hits.length == 1 ? hits.single : null;
-  return FlowReference(field: field, rawValue: raw, targetIndex: target);
+  return FlowReference(
+    field: field,
+    rawValue: raw,
+    targetIndex: _soleHit(idIndex[flowKeyOf(raw)]),
+  );
 }
+
+/// `next` 是步驟 id 清單：逐元素解析；純量視同單元素清單；空元素略過。
+List<FlowReference> _resolveNext(Object? raw, Map<String, List<int>> idIndex) {
+  final elements = raw is Iterable ? raw : [raw];
+  return [
+    for (final e in elements)
+      if (!_isEmptyRef(e))
+        FlowReference(
+          field: FlowFields.next,
+          rawValue: e,
+          targetIndex: _soleHit(idIndex[flowKeyOf(e)]),
+        ),
+  ];
+}
+
+int? _soleHit(List<int>? hits) =>
+    hits != null && hits.length == 1 ? hits.single : null;
 
 /// 一個 UC 的 flow 子圖。
 class FlowSubgraph {

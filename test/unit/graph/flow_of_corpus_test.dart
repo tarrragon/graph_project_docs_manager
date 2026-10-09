@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/flow_query.dart';
+import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 
@@ -27,7 +28,10 @@ TypeTable _table() => TypeTableBuilder()
     .build();
 
 /// 快照 UC 檔只含 flow 區塊（無 frontmatter），補最小 frontmatter 後掃描。
-Future<FlowQuery> _queryOf(String project) async {
+Future<FlowQuery> _queryOf(String project) async =>
+    FlowQuery(buildResult: await _buildOf(project));
+
+Future<GraphBuildResult> _buildOf(String project) async {
   final fs = FakeDocsFileSystem();
   final dir = Directory('$_root/$project/docs/usecases');
   for (final file in dir.listSync().whereType<File>()) {
@@ -43,7 +47,7 @@ Future<FlowQuery> _queryOf(String project) async {
     projectSchemaJson: loadBuiltinSchemaJson(),
     builtinSchemaJson: loadBuiltinSchemaJson(),
   );
-  return FlowQuery(buildResult: result);
+  return result;
 }
 
 /// 分支步的期望：(id, branch_from, return_to 或 null, next 原值)。
@@ -179,6 +183,17 @@ void main() {
 
     test('flutter_balance 一個 UC', () async {
       _expectFlow(await _queryOf('flutter_balance'), _balance);
+    });
+
+    test('兩份語料的 flow 缺陷數皆為 0（next 逐元素解析，FR-10 v1.24）', () async {
+      for (final project in ['graph_project_docs_manager', 'flutter_balance']) {
+        final built = await _buildOf(project) as GraphBuildAvailable;
+        final flowDefects = built.event.graphDefects
+            .whereType<FlowGraphDefect>()
+            .toList();
+        expect(flowDefects, isEmpty, reason: project);
+        expect(built.event.flowDefectCount, 0, reason: project);
+      }
     });
 
     test('主線 next 屬性原樣為清單，不影響主線順序', () async {

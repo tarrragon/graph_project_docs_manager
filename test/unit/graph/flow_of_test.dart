@@ -230,7 +230,7 @@ void main() {
         ]),
       ]);
       final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
-      expect(g.steps[2].nextRef!.isResolved, isFalse);
+      expect(g.steps[2].nextRefs.single.isResolved, isFalse);
       expect(_flowDefects(built.event).map(_sig).toList(), [
         (FlowDefectKind.duplicateStepId, 'x', FlowFields.id, 'x'),
         (FlowDefectKind.unresolvedReference, 'b', FlowFields.branchFrom, 'x'),
@@ -250,7 +250,7 @@ void main() {
       final b = g.steps[1];
       expect(g.targetOf(b.branchFrom!)!.id, 1);
       expect(g.targetOf(b.returnTo!)!.id, 1);
-      expect(g.targetOf(b.nextRef!)!.id, 1);
+      expect(g.targetOf(b.nextRefs.single)!.id, 1);
     });
 
     test('S1 對照：id 1 與 "1" 判為重複，指向它的參照未解析', () {
@@ -278,6 +278,65 @@ void main() {
       expect(_flowDefects(built.event).map(_sig).toList(), [
         (FlowDefectKind.unresolvedReference, 'b', FlowFields.branchFrom, 9),
       ]);
+    });
+
+    List<(FlowDefectKind, Object?, String, Object?)> nextDefects(Object? next) {
+      final built = _build([
+        _uc01([
+          _s('a'),
+          _s('b', {'branch_from': 'a', 'next': next}),
+        ]),
+      ]);
+      return _flowDefects(built.event).map(_sig).toList();
+    }
+
+    test('next 逐元素解析：[a, ghost] 只報 ghost 一筆', () {
+      expect(nextDefects(['a', 'ghost']), [
+        (FlowDefectKind.unresolvedReference, 'b', FlowFields.next, 'ghost'),
+      ]);
+    });
+
+    test('next 為 [ghost1, ghost2]：各報一筆，原始值為元素', () {
+      expect(nextDefects(['ghost1', 'ghost2']), [
+        (FlowDefectKind.unresolvedReference, 'b', FlowFields.next, 'ghost1'),
+        (FlowDefectKind.unresolvedReference, 'b', FlowFields.next, 'ghost2'),
+      ]);
+    });
+
+    test('next 為 []：無後續，不報', () {
+      expect(nextDefects(<String>[]), isEmpty);
+    });
+
+    test('E1 next 純量 a 與 [a] 結果相同；純量 ghost 與 [ghost] 相同', () {
+      expect(nextDefects('a'), nextDefects(['a']));
+      expect(nextDefects('a'), isEmpty);
+      expect(nextDefects('ghost'), nextDefects(['ghost']));
+      expect(nextDefects('ghost'), hasLength(1));
+    });
+
+    test('next 元素沿用 S1：整數 1 可解析 id "1"', () {
+      final built = _build([
+        _uc01([
+          {'id': '1'},
+          {
+            'id': 'b',
+            'branch_from': '1',
+            'next': [1],
+          },
+        ]),
+      ]);
+      expect(_flowDefects(built.event), isEmpty);
+    });
+
+    test('主線步驟 next 清單不解析', () {
+      final built = _build([
+        _uc01([
+          _s('a', {
+            'next': ['ghost'],
+          }),
+        ]),
+      ]);
+      expect(_flowDefects(built.event), isEmpty);
     });
 
     test('分支步 next 為空清單視為空值，不報缺陷', () {
