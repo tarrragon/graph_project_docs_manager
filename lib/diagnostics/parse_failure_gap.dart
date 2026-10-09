@@ -2,6 +2,8 @@
 /// Diagnostics 破洞的值型別。
 library;
 
+import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
+
 /// EVT-DIAGNOSTICS-001〈設計註記〉定義的破洞四類。0.3.0 只實際產生
 /// [parseFailure]；0.4.0 起另產生 [graphDefect]（SPEC-007 FR-09，產生端
 /// `lib/diagnostics/graph_defect_gap.dart`）；其餘兩類保留列舉位置供後續
@@ -21,11 +23,30 @@ enum GapCategory {
   unlocatable,
 }
 
-/// 一筆 `parseFailure` 破洞（FR-08），由一筆 `EVT-CORPUS-003` 一對一組成。
+/// `EVT-CORPUS-005` 對應破洞的原因碼（FR-08；資料值，不是顯示字串）。
+const nonDomainPathsMalformedGapReasonCode = 'nonDomainPathsMalformed';
+
+/// 破洞的來源事件種類（FR-08 三類事件各一種）。
+enum ParseFailureGapSource {
+  /// EVT-CORPUS-003：命中 carrier 的失敗檔。
+  carrierParseFailure,
+
+  /// EVT-CORPUS-004：UC flow 區塊解析失敗，[ParseFailureGap.reasonCode]
+  /// 為 `flowBlockMalformed`。
+  flowBlockMalformed,
+
+  /// EVT-CORPUS-005：非 domain 路徑清單檔格式錯誤，
+  /// [ParseFailureGap.reasonCode] 為 `nonDomainPathsMalformed`。
+  nonDomainPathsMalformed,
+}
+
+/// 一筆 `parseFailure` 破洞（FR-08），由一筆 `EVT-CORPUS-003`、`-004` 或
+/// `-005` 一對一組成（[source] 區分）。
 ///
 /// 欄位語意與 `EVT-CORPUS-003` 對齊：[nodeType] 命中一型時為該型名稱，
 /// 平手時為 `null`；[candidateTypes] 命中一型時為單一元素清單，平手時
 /// 列出全部候選型別；[schemaAmbiguous] 為 `true` 代表平手（schema 歧義）。
+/// 004 破洞的 [nodeType] 為 `UC`、無候選型別與歧義標記；005 破洞無型別。
 class ParseFailureGap {
   const ParseFailureGap({
     required this.path,
@@ -33,7 +54,24 @@ class ParseFailureGap {
     this.nodeType,
     required this.candidateTypes,
     required this.schemaAmbiguous,
+    this.source = ParseFailureGapSource.carrierParseFailure,
+    this.reasonCode,
+    this.nonDomainPathsReason,
+    this.nonStringElementCount,
   });
+
+  /// 破洞來源事件種類。
+  final ParseFailureGapSource source;
+
+  /// 原因碼：004／005 破洞有值，003 破洞為 `null`。
+  final String? reasonCode;
+
+  /// 005 破洞的子原因；其餘來源為 `null`。
+  final NonDomainPathsMalformedReason? nonDomainPathsReason;
+
+  /// 005 破洞子原因為 `elementNotString` 時的非字串元素數（D1-10），
+  /// 其餘情形為 `null`。
+  final int? nonStringElementCount;
 
   /// 破洞類別，本版恆為 [GapCategory.parseFailure]。
   GapCategory get category => GapCategory.parseFailure;
@@ -83,7 +121,15 @@ class GapsDetected extends GapDetectionResult {
 
 /// FR-06 查詢不可用時的「無法判定破洞」回報（FR-08〈規則〉第 2 項）。
 class Undetermined extends GapDetectionResult {
-  const Undetermined({required this.undeterminedCount, required this.reason});
+  const Undetermined({
+    required this.undeterminedCount,
+    required this.reason,
+    this.gaps = const <ParseFailureGap>[],
+  });
+
+  /// 查詢不可用時仍照常產生的破洞（EVT-CORPUS-004、005，不依賴路徑查詢；
+  /// FR-08 N4／NC-e）；EVT-CORPUS-003 來源的破洞恆不在此。
+  final List<ParseFailureGap> gaps;
 
   /// FR-07「失敗檔中未判定的數量」，本結構不重新計算，直接採信呼叫端
   /// 提供的掃描摘要計數。
