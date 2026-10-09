@@ -50,10 +50,15 @@ void main() {
   });
 
   test('S6-2 使用中邊型 = established 扣 domain_dependency 加 bundle_dependency', () {
+    // 本案只驗證集合形狀；鑑別力由 S6-9 守衛與 S6-17 承擔。
     final expected = _expectedActive(builtinEdges);
     final result = _resolve(builtin);
-    expect(result.activeEdgeTypes.map((e) => e.name).toSet(), expected);
+    final names = result.activeEdgeTypes.map((e) => e.name).toSet();
+    expect(names, expected);
     expect(expected, isNotEmpty);
+    // 獨立斷言：直接寫規格〈用詞〉點名的鍵名，不經 helper。
+    expect(names, contains('bundle_dependency'));
+    expect(names, isNot(contains('domain_dependency')));
   });
 
   test('S6-3 新增 established 邊型 testEdge 成為使用中', () {
@@ -146,7 +151,7 @@ void main() {
     expect(original, contains('bundle_dependency'));
   });
 
-  test('S6-9 守衛：其餘 proposed 邊型不在使用中（正向對照 S6-16）', () {
+  test('S6-9b 守衛：其餘 proposed 邊型不在使用中（正向對照 S6-16）', () {
     final proposedOthers = builtinEdges.entries
         .where((e) => (e.value as Map)['layer'] == 'proposed')
         .map((e) => e.key)
@@ -204,6 +209,7 @@ void main() {
   });
 
   test('S6-12 降級模式：內建表 asset 作為專案表傳入 -> 可用', () {
+    // 本案只驗證集合形狀；鑑別力由 S6-9 守衛與 S6-17 承擔。
     final result = _resolve(builtin);
     final expected = _expectedActive(builtinEdges);
     expect(result.unavailableReason, isNull);

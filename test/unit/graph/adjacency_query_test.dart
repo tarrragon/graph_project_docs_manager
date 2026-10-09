@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yaml/yaml.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
@@ -221,18 +224,40 @@ void main() {
   });
 
   group('本專案語料快照（0.5.0-W1-103.2）', () {
-    test('bundle_dependency 7 條邊進主圖，layer 為 proposed，無破洞', () async {
-      final event = await loadSnapshotEvent('graph_project_docs_manager');
-      final bundleEdges = event.edges
-          .where((e) => e.edgeType == 'bundle_dependency')
-          .toList();
-      expect(bundleEdges, hasLength(7));
-      expect(bundleEdges.every((e) => e.layer == 'proposed'), isTrue);
-      final dangling = event.graphDefects
-          .whereType<DanglingRefGraphDefect>()
-          .where((d) => d.ref.edgeTypeName == 'bundle_dependency');
-      expect(dangling, isEmpty);
-    });
+    test(
+      'bundle_dependency 邊集合等於各 domain-map frontmatter 宣告，layer 為 proposed，無破洞',
+      () async {
+        final event = await loadSnapshotEvent('graph_project_docs_manager');
+        final bundleEdges = event.edges
+            .where((e) => e.edgeType == 'bundle_dependency')
+            .toList();
+        final expected = <String>{};
+        final maps =
+            Directory(
+                  'test/fixtures/spec001/corpus_snapshot/graph_project_docs_manager',
+                )
+                .listSync(recursive: true)
+                .whereType<File>()
+                .where((f) => f.path.endsWith('domain-map.md'));
+        for (final f in maps) {
+          final lines = f.readAsStringSync().split('\n');
+          final fm = loadYaml(
+            lines.sublist(1, lines.indexOf('---', 1)).join('\n'),
+          ) as YamlMap;
+          for (final to
+              in (fm['depends_on_bundles'] as YamlList? ?? YamlList())) {
+            expected.add('${fm['id']}->$to');
+          }
+        }
+        expect(expected, isNotEmpty);
+        expect({for (final e in bundleEdges) '${e.from}->${e.to}'}, expected);
+        expect(bundleEdges.every((e) => e.layer == 'proposed'), isTrue);
+        final dangling = event.graphDefects
+            .whereType<DanglingRefGraphDefect>()
+            .where((d) => d.ref.edgeTypeName == 'bundle_dependency');
+        expect(dangling, isEmpty);
+      },
+    );
   });
 
   group('不可變結果（0.4.1-W1-004）', () {
