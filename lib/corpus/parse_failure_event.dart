@@ -61,3 +61,21 @@ class ParseFailureEvent {
   /// 0.3.0 一律為 [ParseFailureSeverity.edgeAffecting]。
   final ParseFailureSeverity severity;
 }
+
+/// 需求：[SPEC-006 FR-09 規則 3a、3b；EVT-CORPUS-004〈負載結構〉] UC 本文
+/// flow 區塊解析失敗事件的負載。負載鍵集合恰為 `path`、`reason`，不設行號
+/// 欄位（規則 3b (e)）。UC 仍是節點，與 [ParseFailureEvent] 的「未進入圖譜」
+/// 事實分立。
+class FlowParseFailedEvent {
+  const FlowParseFailedEvent({required this.path, required this.reason});
+
+  /// 該 UC 相對於工作區根目錄的路徑。
+  final String path;
+
+  /// 原因碼，恆為 `flowBlockMalformedReasonCode`
+  /// （`lib/corpus/uc_flow_extractor.dart`）。
+  final String reason;
+
+  /// 負載鍵值表，鍵集合恰為 `path`、`reason`。
+  Map<String, String> toPayload() => {'path': path, 'reason': reason};
+}

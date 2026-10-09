@@ -9,6 +9,7 @@
 library;
 
 import 'dart:developer' as developer;
+import 'dart:typed_data';
 
 import 'package:graph_project_docs_manager/schema/carrier_path_lookup.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
@@ -16,6 +17,7 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'docs_file_system.dart';
 import 'frontmatter_classifier.dart';
 import 'node_typer.dart';
+import 'uc_flow_extractor.dart';
 import 'parse_failure_event.dart';
 import 'parse_failure_event_builder.dart';
 import 'parse_outcome.dart';
@@ -34,6 +36,9 @@ const _readBatchSize = 32;
 /// 副檔名比對只認小寫 `.md`（FR-02 規則）。
 const _markdownExtension = '.md';
 
+/// FR-09 規則 6：只有此型別的節點讀取 flow 區塊（型別表節點型別名）。
+const _ucTypeName = 'UC';
+
 /// EVT-CORPUS-001 的一筆節點（C10-5：帶完整 frontmatter map、相對路徑、
 /// 判定型別；不含邊）。
 class RawNode {
@@ -41,11 +46,16 @@ class RawNode {
     required this.path,
     required this.frontmatter,
     required this.typeName,
+    this.flowSteps = const <Map<String, dynamic>>[],
   });
 
   final String path;
   final Map<String, dynamic> frontmatter;
   final String typeName;
+
+  /// FR-09：UC 本文第一個合法 flow 區塊的步驟（原始順序，每步為完整 map）；
+  /// 非 UC 或找不到合法區塊時為空清單。
+  final List<Map<String, dynamic>> flowSteps;
 }
 
 /// EVT-CORPUS-001 的一筆 `parseErrors`（FR-04：路徑、原因、行號）。保留
@@ -81,6 +91,7 @@ class CorpusScanResult {
     required this.parseFailureEvents,
     required this.schemaAmbiguousNodes,
     required this.summary,
+    this.flowParseFailedEvents = const <FlowParseFailedEvent>[],
   });
 
   final List<RawNode> rawNodes;
@@ -90,6 +101,9 @@ class CorpusScanResult {
   /// FR-03：`id` 互斥被打破的可用檔案，各附路徑與候選型別（0.3.0-W3-534）。
   final List<SchemaAmbiguousNode> schemaAmbiguousNodes;
   final ScanSummary summary;
+
+  /// FR-09 規則 3b：flow 區塊解析失敗的 UC 各一筆（EVT-CORPUS-004）。
+  final List<FlowParseFailedEvent> flowParseFailedEvents;
 }
 
 /// 測試用查詢種子（`@visibleForTesting`）：預設呼叫真正的
@@ -97,6 +111,13 @@ class CorpusScanResult {
 /// 一次 carrier（0.3.0-W3-534 acceptance）。
 typedef CarrierPathLookupFn = CarrierPathLookupResult Function(
   TypeTable table,
+  String path,
+);
+
+/// 測試用種子（`@visibleForTesting`）：預設為真正的 [extractUcFlow]；測試
+/// 以會拋例外的替身驗證單一 UC 的 flow 擷取失敗不中止整輪掃描。
+typedef UcFlowExtractFn = UcFlowExtraction Function(
+  Uint8List bytes,
   String path,
 );
 
@@ -115,6 +136,7 @@ Future<CorpusScanResult> scanCorpus({
   required DocsFileSystem fileSystem,
   required TypeTable table,
   CarrierPathLookupFn lookupCarrierPath = lookupCarrierPathType,
+  UcFlowExtractFn extractFlow = extractUcFlow,
 }) async {
   developer.log(
     'scanCorpus 開始：root=$_docsRoot', // i18n-exempt: 開發者 debug log
@@ -124,18 +146,18 @@ Future<CorpusScanResult> scanCorpus({
 
   final listing = await _listMarkdownFiles(fileSystem, _docsRoot);
   final carrierPathQueryAvailable = table.pathParticipatingTypes.isNotEmpty;
-  final acc = _ScanAccumulator();
+  final acc = _ScanAccumulator(extractFlow);
 
   for (final batch in _batches(listing.paths, _readBatchSize)) {
-    final outcomes = await Future.wait(
+    final reads = await Future.wait(
       batch.map((path) => _readAndClassify(fileSystem, path)),
     );
     for (var i = 0; i < batch.length; i++) {
       final path = batch[i];
-      final outcome = outcomes[i];
+      final outcome = reads[i].outcome;
       switch (outcome) {
         case Available(:final frontmatter):
-          acc.addAvailable(table, path, frontmatter);
+          acc.addAvailable(table, path, frontmatter, reads[i].bytes);
         default:
           acc.addFailure(
             table,
@@ -182,12 +204,17 @@ String _scanEndLogMessage(
 ) {
   final fileCount = listing.paths.length; // i18n-exempt: 開發者 debug log
   final nodeCount = result.rawNodes.length; // i18n-exempt: 開發者 debug log
-  final failureCount =
-      result.parseErrors.length; // i18n-exempt: 開發者 debug log
+  final failureCount = result.parseErrors.length; // i18n-exempt: 開發者 debug log
   final unlistableCount =
       listing.unlistableDirectories.length; // i18n-exempt: 開發者 debug log
+  final flowMalformedCount =
+      result.summary.flowBlockMalformedUcCount; // i18n-exempt: 開發者 debug log
+  // i18n-exempt: 開發者 debug log（以下三行字串）
   return 'scanCorpus 結束：檔案數=$fileCount、節點數=$nodeCount、'
-      '失敗數=$failureCount、無法列出目錄數=$unlistableCount'; // i18n-exempt: 開發者 debug log
+      // i18n-exempt: 開發者 debug log
+      '失敗數=$failureCount、無法列出目錄數=$unlistableCount、'
+      // i18n-exempt: 開發者 debug log
+      'flow區塊解析失敗UC數=$flowMalformedCount';
 }
 
 /// 需求：[SPEC-006 FR-01、FR-05、NFR-01] 讀取單一檔案並分類；讀取失敗直接
@@ -196,15 +223,21 @@ String _scanEndLogMessage(
 /// 外層包 try/catch 是 NFR-01 的最後一道防線：即使注入的 [fileSystem] 實作
 /// 拋出非 [DocsReadResult] 契約內的非預期例外，該檔仍歸類為無法讀取，不
 /// 讓例外往外傳播中止整輪掃描（C11-4）。
-Future<ParseOutcome> _readAndClassify(
+Future<({ParseOutcome outcome, Uint8List? bytes})> _readAndClassify(
   DocsFileSystem fileSystem,
   String path,
 ) async {
   try {
     final read = await fileSystem.readBytes(path);
     return switch (read) {
-      DocsReadSuccess(:final bytes) => classifyFrontmatter(bytes),
-      DocsReadFailure(:final reason) => ParseOutcome.unreadable(reason),
+      DocsReadSuccess(:final bytes) => (
+        outcome: classifyFrontmatter(bytes),
+        bytes: bytes,
+      ),
+      DocsReadFailure(:final reason) => (
+        outcome: ParseOutcome.unreadable(reason),
+        bytes: null,
+      ),
     };
   } catch (e) {
     developer.log(
@@ -213,7 +246,10 @@ Future<ParseOutcome> _readAndClassify(
       level: 900,
       error: e,
     );
-    return ParseOutcome.unreadable(reasonForFileSystemFailure(e));
+    return (
+      outcome: ParseOutcome.unreadable(reasonForFileSystemFailure(e)),
+      bytes: null,
+    );
   }
 }
 
@@ -292,10 +328,15 @@ void _classifyEntry(
 /// 一輪掃描的累加器：把「可用」與「失敗」兩種分支各自的計數與產出集中在
 /// 一處，讓 [scanCorpus] 的主迴圈維持精簡（僅負責讀檔與分派）。
 class _ScanAccumulator {
+  _ScanAccumulator(this._extractFlow);
+
+  final UcFlowExtractFn _extractFlow;
+
   final rawNodes = <RawNode>[];
   final parseErrors = <ParseError>[];
   final parseFailureEvents = <ParseFailureEvent>[];
   final schemaAmbiguousNodes = <SchemaAmbiguousNode>[];
+  final flowParseFailedEvents = <FlowParseFailedEvent>[];
   final failureReasonCounts = <ParseResultKind, int>{};
   var nonNodeCount = 0;
   var hitCarrierCount = 0;
@@ -310,13 +351,12 @@ class _ScanAccumulator {
     TypeTable table,
     String path,
     Map<String, dynamic> frontmatter,
+    Uint8List? bytes,
   ) {
     final typing = classifyNodeType(table, frontmatter);
     switch (typing) {
       case NodeTypingMatch(:final typeName):
-        rawNodes.add(
-          RawNode(path: path, frontmatter: frontmatter, typeName: typeName),
-        );
+        rawNodes.add(_buildRawNode(path, frontmatter, typeName, bytes));
       case NodeTypingNonNode(:final schemaAmbiguous, :final candidateTypes):
         nonNodeCount++;
         if (schemaAmbiguous) {
@@ -325,6 +365,63 @@ class _ScanAccumulator {
           );
         }
     }
+  }
+
+  /// NFR-01：flow 擷取拋出任何例外時，該 UC 當作沒有 flow 區塊（空步驟、
+  /// 不發 EVT-CORPUS-004），記 log，不中止整輪掃描。
+  UcFlowExtraction _extractFlowOrEmpty(String path, Uint8List bytes) {
+    try {
+      return _extractFlow(bytes, path);
+    } catch (e) {
+      developer.log(
+        // i18n-exempt: 開發者 debug log
+        'UC flow 擷取發生非預期例外，視為無 flow 區塊：$path',
+        name: 'CorpusScanner',
+        level: 900,
+        error: e,
+      );
+      return const UcFlowExtraction(
+        steps: <Map<String, dynamic>>[],
+        hasMalformedFlowBlock: false,
+      );
+    }
+  }
+
+  /// 需求：[SPEC-006 FR-09 規則 3b、6] 只對 UC 型別節點讀 flow 區塊；任一
+  /// flow 區塊解析失敗時，該 UC 恰記一筆 EVT-CORPUS-004（不論壞區塊數），
+  /// UC 仍是節點。
+  RawNode _buildRawNode(
+    String path,
+    Map<String, dynamic> frontmatter,
+    String typeName,
+    Uint8List? bytes,
+  ) {
+    if (typeName != _ucTypeName || bytes == null) {
+      return RawNode(path: path, frontmatter: frontmatter, typeName: typeName);
+    }
+    final flow = _extractFlowOrEmpty(path, bytes);
+    if (flow.hasMalformedFlowBlock || flow.hasNonMapFlowItem) {
+      // 規則 3b (c)、3c：兩類來源共用「每 UC 一筆」上限；reason 以原因碼
+      // 開頭，非 map 項目時另附註說明。
+      final reason = flow.hasNonMapFlowItem
+          ? '$flowBlockMalformedReasonCode：$flowNonMapItemReasonNote'
+          : flowBlockMalformedReasonCode;
+      developer.log(
+        // i18n-exempt: 開發者 debug log
+        '發出 EVT-CORPUS-004（$reason）：$path', // i18n-exempt: 開發者 debug log
+        name: 'CorpusScanner',
+        level: 900,
+      );
+      flowParseFailedEvents.add(
+        FlowParseFailedEvent(path: path, reason: reason),
+      );
+    }
+    return RawNode(
+      path: path,
+      frontmatter: frontmatter,
+      typeName: typeName,
+      flowSteps: flow.steps,
+    );
   }
 
   /// 需求：[SPEC-006 FR-04、FR-06、FR-07] 失敗檔一律記入 `parseErrors`；
@@ -378,6 +475,7 @@ class _ScanAccumulator {
       parseErrors: parseErrors,
       parseFailureEvents: parseFailureEvents,
       schemaAmbiguousNodes: schemaAmbiguousNodes,
+      flowParseFailedEvents: flowParseFailedEvents,
       summary: ScanSummary(
         totalFilesScanned: totalFilesScanned,
         nodeCount: rawNodes.length,
@@ -388,6 +486,7 @@ class _ScanAccumulator {
         undeterminedCount: undeterminedCount,
         carrierPathQueryAvailable: carrierPathQueryAvailable,
         unlistableDirectories: List.unmodifiable(unlistableDirectories),
+        flowBlockMalformedUcCount: flowParseFailedEvents.length,
       ),
     );
   }

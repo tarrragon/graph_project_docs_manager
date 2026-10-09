@@ -37,6 +37,22 @@ ParseOutcome classifyFrontmatter(Uint8List bytes) {
   return _parseYamlContent(contentLines);
 }
 
+/// 需求：[SPEC-006 FR-09] 回傳 frontmatter 結尾分隔線之後的本文行；位元組
+/// 無法解碼或找不到完整 frontmatter 時回傳 `null`（呼叫端僅對 [Available]
+/// 檔案呼叫，此二情形結構上不會發生）。切分規則與 [classifyFrontmatter] 相同。
+List<String>? bodyLinesAfterFrontmatter(Uint8List bytes) {
+  final decoded = _decodeUtf8Strict(bytes);
+  if (decoded == null) {
+    return null;
+  }
+  final lines = _splitLines(_stripBom(decoded));
+  if (lines.isEmpty || lines.first.trim() != _delimiter) {
+    return null;
+  }
+  final closingIndex = _findClosingDelimiterIndex(lines);
+  return closingIndex == null ? null : lines.sublist(closingIndex + 1);
+}
+
 /// 需求：[SPEC-006 FR-01 規則 1] 嚴格 UTF-8 解碼；無法解碼回傳 null 交由
 /// 呼叫端轉為「無法讀取（編碼）」，不做寬鬆解碼（避免亂碼進入圖譜，C1-6）。
 String? _decodeUtf8Strict(Uint8List bytes) {
@@ -108,7 +124,7 @@ Map<String, dynamic>? _toImmutableFrontmatter(YamlMap map) {
     if (key is! String) {
       return null;
     }
-    result[key] = _toPlainValue(entry.value);
+    result[key] = toPlainYamlValue(entry.value);
   }
   return Map<String, dynamic>.unmodifiable(result);
 }
@@ -116,16 +132,16 @@ Map<String, dynamic>? _toImmutableFrontmatter(YamlMap map) {
 /// 遞迴轉換 [YamlMap]／[YamlList] 為一般不可變 Map／List；巢狀鍵非字串時
 /// 以字串化保留內容（頂層鍵是否為字串才是 FR-01 的判定範圍，見
 /// [_toImmutableFrontmatter]）。
-Object? _toPlainValue(Object? value) {
+Object? toPlainYamlValue(Object? value) {
   if (value is YamlMap) {
     final nested = <String, dynamic>{
       for (final entry in value.entries)
-        entry.key.toString(): _toPlainValue(entry.value),
+        entry.key.toString(): toPlainYamlValue(entry.value),
     };
     return Map<String, dynamic>.unmodifiable(nested);
   }
   if (value is YamlList) {
-    return List.unmodifiable(value.map(_toPlainValue));
+    return List.unmodifiable(value.map(toPlainYamlValue));
   }
   return value;
 }
