@@ -33,7 +33,7 @@ TypeTable _table() => TypeTableBuilder()
 Future<CorpusScanResult> _scan(Map<String, List<int>> files) {
   final fs = FakeDocsFileSystem();
   files.forEach(fs.addFile);
-  return scanCorpus(fileSystem: fs, table: _table());
+  return scanCorpus(fileSystem: fs, table: _table(), builtinTable: _table());
 }
 
 Future<CorpusScanResult> _scanOneUc(List<String> blocks) =>
@@ -77,7 +77,7 @@ FakeDocsFileSystem _c10Fixture() => FakeDocsFileSystem()
   ..addFile('docs/other/unreadable.md', [0x80, 0x81]);
 
 Future<CorpusScanResult> _scanWithC10Table(FakeDocsFileSystem fs) =>
-    scanCorpus(fileSystem: fs, table: _c10Table());
+    scanCorpus(fileSystem: fs, table: _c10Table(), builtinTable: _c10Table());
 
 /// 節點的逐項比對鍵：路徑、型別、完整 frontmatter、flow 步驟。
 String _nodeKey(RawNode n) =>
@@ -427,6 +427,7 @@ void main() {
       final r = await scanCorpus(
         fileSystem: fs,
         table: _table(),
+builtinTable: _table(),
         extractFlow: (bytes, path) {
           if (path == _ucPath) {
             throw StateError('模擬 YAML 解析器的非預期例外');
@@ -456,6 +457,7 @@ void main() {
         fileSystem: FakeDocsFileSystem()
           ..addFile(_ucPath, ucBytes(blocks: [malformedFlowBlock])),
         table: _table(),
+builtinTable: _table(),
         extractFlow: (bytes, path) => const UcFlowExtraction(
           steps: <Map<String, dynamic>>[],
           hasMalformedFlowBlock: true,
@@ -553,7 +555,7 @@ void main() {
           ...file.readAsBytesSync(),
         ]);
       }
-      final result = await scanCorpus(fileSystem: fs, table: _table());
+      final result = await scanCorpus(fileSystem: fs, table: _table(), builtinTable: _table());
       expect(result.flowParseFailedEvents, isEmpty);
       return {
         for (final n in result.rawNodes.where((n) => n.typeName == 'UC'))

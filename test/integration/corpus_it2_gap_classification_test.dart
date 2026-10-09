@@ -57,7 +57,7 @@ class _ProjectScanOutcome {
 
   final ScanSummary summary;
   final Map<String, String> nodeTypeByPath;
-  final Map<String, ParseFailureGap> gapByPath;
+  final Map<String, CarrierParseFailureGap> gapByPath;
   final Set<String> unmatchedFailurePaths;
 }
 
@@ -70,7 +70,11 @@ Future<_ProjectScanOutcome> _scanProject({
   await materializeManifestRows(rows: rows, workspaceRoot: workspaceRoot);
 
   final fileSystem = DefaultDocsFileSystem(workspaceRoot.path);
-  final result = await scanCorpus(fileSystem: fileSystem, table: table);
+  final result = await scanCorpus(
+    fileSystem: fileSystem,
+    table: table,
+    builtinTable: table,
+  );
   // 兩種原因碼（專案版本高於內建／無路徑模式）的映射屬編排層職責
   // （0.1.0-W1-025），Diagnostics 不 import Schema。本輪各專案掃描恆用
   // 可路徑查詢的型別表（IT2-A6 另建不可用型別表獨立測試，見下方），
@@ -95,8 +99,9 @@ Future<_ProjectScanOutcome> _scanProject({
     for (final node in result.rawNodes) fullPath(node.path): node.typeName,
   };
 
-  final gapByPath = <String, ParseFailureGap>{
-    for (final gap in gaps) fullPath(gap.path): gap,
+  final gapByPath = <String, CarrierParseFailureGap>{
+    for (final gap in gaps.whereType<CarrierParseFailureGap>())
+      fullPath(gap.path): gap,
   };
 
   final unmatchedFailurePaths = <String>{
@@ -209,7 +214,7 @@ void main() {
   late Directory tempRoot;
 
   late Map<String, String> nodeTypeByPath;
-  late Map<String, ParseFailureGap> gapByPath;
+  late Map<String, CarrierParseFailureGap> gapByPath;
   late Set<String> unmatchedFailurePaths;
 
   late int totalFilesScanned;

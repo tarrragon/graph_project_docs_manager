@@ -189,9 +189,11 @@ Future<CorpusGraphRun> scanAndBuild({
   final root = await Directory.systemTemp.createTemp('spec007_it_');
   try {
     await materializeRows(rows: rows, root: root, overrides: overrides);
+    final typeTable = typeTableFromJson(loadSpec007Fixture('type_table'));
     final scan = await scanCorpus(
       fileSystem: DefaultDocsFileSystem(root.path),
-      table: typeTableFromJson(loadSpec007Fixture('type_table')),
+      table: typeTable,
+      builtinTable: typeTable,
     );
     return buildFromRawNodes(scan.rawNodes, schemaJson: schemaJson);
   } finally {
