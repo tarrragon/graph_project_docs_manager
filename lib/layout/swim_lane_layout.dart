@@ -205,7 +205,6 @@ List<LayoutEdge> _edges(
   List<int> columnOfStep,
   List<List<LayoutNode>> nodesOfStep,
 ) {
-  final idIndex = _idIndex(steps);
   final edges = <LayoutEdge>[];
   void add(EdgeSource source, int from, int? to) {
     if (to == null || nodesOfStep[from].isEmpty || nodesOfStep[to].isEmpty) {
@@ -229,39 +228,15 @@ List<LayoutEdge> _edges(
   for (final s in steps) {
     final parent = s.branchFrom?.targetIndex;
     if (parent != null) add(EdgeSource.branchFrom, parent, s.index);
-    for (final target in _nextTargets(s, idIndex)) {
-      add(EdgeSource.next, s.index, target);
+    for (final ref in _nextRefsOf(s)) {
+      if (ref.isResolved) add(EdgeSource.next, s.index, ref.targetIndex);
     }
     add(EdgeSource.returnTo, s.index, s.returnTo?.targetIndex);
   }
   return edges;
 }
 
-/// `next` 各值的目標位置；主線 `next` Graph 不解析，由此以 id 唯一命中解析。
-List<int?> _nextTargets(FlowStepNode s, Map<String, List<int>> idIndex) {
-  final raw = s.next;
-  final values = raw is Iterable ? raw : [raw];
-  return [
-    for (final v in values)
-      if (flowKeyOf(v) case final key?) _uniqueStepIndex(idIndex, key),
-  ];
-}
-
-/// 以 id 解析 `next` 目標：恰好一個步驟命中才算解析（缺席或重複皆未解析）。
-/// 依據：SPEC-007 FR-10 規定 Graph 不解析主線 `next`，SPEC-001 卻要畫主線
-/// `next` 邊，故 Layout 自行解析；規則對齊 FR-10 的參照解析（id 以
-/// `flowKeyOf` 正規化、缺席或重複為未解析）。
-/// 暫代，依 SPEC-007 v1.28 FR-10 N-a 由 0.5.0-W1-137 移除（改讀 Graph 解析結果）。
-int? _uniqueStepIndex(Map<String, List<int>> idIndex, String key) {
-  final hits = idIndex[key];
-  return hits != null && hits.length == 1 ? hits.single : null;
-}
-
-Map<String, List<int>> _idIndex(List<FlowStepNode> steps) {
-  final index = <String, List<int>>{};
-  for (final s in steps) {
-    final key = flowKeyOf(s.id);
-    if (key != null) index.putIfAbsent(key, () => []).add(s.index);
-  }
-  return index;
-}
+/// `next` 各值的 Graph 解析結果（SPEC-007 v1.28 FR-10 N-a）：
+/// 主線步驟讀 `mainlineNextRefs`、分支步讀 `nextRefs`。
+List<FlowReference> _nextRefsOf(FlowStepNode s) =>
+    s.isMainline ? s.mainlineNextRefs : s.nextRefs;
