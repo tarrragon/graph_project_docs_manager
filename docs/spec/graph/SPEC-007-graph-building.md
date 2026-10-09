@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.27"
+version: "1.28"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -289,7 +289,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | 回指 | `return_to` 非空的步驟，各帶其 `return_to` 指向的步驟 |
 | 步驟屬性 | 每步帶 `id`、`name`、`next`（原值）、`emits`、`consumes`、`traverses`（原值）與 `traverses` 的解析結果（FR-11） |
 
-**`next` 的語意**（裁決 (c)）：`next` 不是邊型，也不建邊。主線順序取清單順序，不沿主線步驟的 `next` 推導；分支步的 `next` 作為步驟屬性提供（回接主線的位置由 Layout 使用）。主線 `next` 與清單順序的一致性由上游 `doc validate` 檢查（`0.5.0-W1-001.1`），Graph 不重複檢查。
+**`next` 的語意**（裁決 (c)）：`next` 不是邊型，也不建邊。主線順序取清單順序，不沿主線步驟的 `next` 推導；分支步的 `next` 作為步驟屬性提供（回接主線的位置由 Layout 使用）。主線 `next` 與清單順序的一致性由上游 `doc validate` 檢查（`0.5.0-W1-001.1`），Graph 不重複檢查。**主線 `next` 的解析結果**（2026-10-09 用戶裁決 N-a，`0.5.0-W1-114.10` 兩位審查者提出）：flowOf 也為主線步驟的 `next` 各元素提供 UC 內解析結果（對應的步驟，或「解析不到」），供 Layout 畫「邊的來源」所需的主線 next 邊（SPEC-001 §1〈泳道布局規則〉）；主線 next 解析不到時**不產生缺陷**（維持本段「主線 next 不檢查」），只在解析結果標為解析不到。Layout 不自行以 step id 比對 next 值；正規化（清單、轉字串）同下方分支 next 的規則。
 
 **UC 內參照解析**：`branch_from`、`return_to` 與分支步的 `next` 的值，只在同一 UC 的步驟 id 範圍內解析，不跨 UC、不查主圖。
 
@@ -436,6 +436,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.28 | 2026-10-09 | FR-10：flowOf 為主線 next 也提供 UC 內解析結果（解析不到不產生缺陷），Layout 不自行解析（用戶裁決 N-a）；實作由 `0.5.0-W1-136` 承接 |
 | 1.27 | 2026-10-09 | 更正 v1.26：FR-11 非字串元素「轉字串後比對」並非 `0.5.0-W1-001.5` 的實作（實作為一律未宣告），v1.26 誤記為追認；依 S1 以規格為準，實作修正由 `0.5.0-W1-135` 承接；補未宣告缺陷原始值記原值 |
 | 1.26 | 2026-10-09 | FR-11：traverses 值正規化與上游 `_as_name_list` 一致（純量、null、非字串元素、同名去重；PM 追認 `0.5.0-W1-001.5` 實作選擇）；回填 traverses 兩子類與 domain 重複宣告的識別名 |
 | 1.25 | 2026-10-09 | FR-10：`branch_from`／`return_to` 為清單或 map 時整體轉字串、報未解析（PM 處置）；回填 `buildCompleted` 日誌的 `flowDefectCount`（`0.5.0-W1-001.4` 複審回報） |
