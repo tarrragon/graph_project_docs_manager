@@ -72,8 +72,9 @@ class FlowParseFailedEvent {
   /// 該 UC 相對於工作區根目錄的路徑。
   final String path;
 
-  /// 原因碼，恆為 `flowBlockMalformedReasonCode`
-  /// （`lib/corpus/uc_flow_extractor.dart`）。
+  /// 以原因碼 `flowBlockMalformedReasonCode`（`lib/corpus/uc_flow_extractor.dart`）
+  /// 開頭，可附說明（語法錯誤／非 map 項目／未閉合圍欄／例外摘要），
+  /// 與 EVT-CORPUS-004〈負載結構〉一致。
   final String reason;
 
   /// 負載鍵值表，鍵集合恰為 `path`、`reason`。

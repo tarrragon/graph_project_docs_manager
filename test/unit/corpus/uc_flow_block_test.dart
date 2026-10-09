@@ -96,6 +96,10 @@ List<String> _stepIds(CorpusScanResult r) => [
   for (final s in r.rawNodes.single.flowSteps) s['id'] as String,
 ];
 
+/// 由檔名開頭的 `UC-\d+` 擷取 UC id，不依賴固定字元數。
+String ucIdFromFileName(String name) =>
+    RegExp(r'^UC-\d+').firstMatch(name)!.group(0)!;
+
 void main() {
   group('C12 UC flow 區塊取步驟（FR-09 規則 1～6）', () {
     test('C12-1 先無 flow 鍵的 yaml、再合法 flow：取第二個區塊', () async {
@@ -241,7 +245,7 @@ void main() {
       final event = r.flowParseFailedEvents.single;
       expect(event.toPayload().keys.toSet(), {'path', 'reason'});
       expect(event.path, _ucPath);
-      expect(event.reason, flowBlockMalformedReasonCode);
+      expect(event.reason, startsWith(flowBlockMalformedReasonCode));
     });
 
     test('C13-9 守衛：SPEC 節點本文壞 flow 區塊：不發 004', () async {
@@ -354,9 +358,39 @@ void main() {
       expect(r.flowParseFailedEvents, hasLength(1));
       expect(
         r.flowParseFailedEvents.single.reason,
-        flowBlockMalformedReasonCode,
+        startsWith(flowBlockMalformedReasonCode),
       );
       expect(r.parseFailureEvents, isEmpty);
+    });
+
+    test('A2 同 UC 語法壞區塊加非 map 項目：reason 兩段說明皆在', () async {
+      final r = await _scanOneUc([
+        malformedFlowBlock,
+        'flow:\n  - id: a\n  - "x"',
+      ]);
+      final reason = r.flowParseFailedEvents.single.reason;
+      expect(reason, startsWith(flowBlockMalformedReasonCode));
+      expect(reason, contains(flowSyntaxReasonNote));
+      expect(reason, contains(flowNonMapItemReasonNote));
+      // 對照：只有非 map 時不含語法說明。
+      final only = await _scanOneUc(['flow:\n  - "x"']);
+      expect(
+        only.flowParseFailedEvents.single.reason,
+        isNot(contains(flowSyntaxReasonNote)),
+      );
+    });
+
+    test('A4 非 map 項目只在未被採用的區塊：步驟取前方合法區塊、仍一筆 004', () async {
+      final r = await _scanOneUc([
+        validFlowBlock(['s1']),
+        'flow:\n  - "x"',
+      ]);
+      expect(_stepIds(r), ['s1']);
+      expect(r.flowParseFailedEvents, hasLength(1));
+      expect(
+        r.flowParseFailedEvents.single.reason,
+        contains(flowNonMapItemReasonNote),
+      );
     });
 
     test('C13-15b 規則 3d：前方已有合法區塊時步驟取該區塊，仍發一筆 004', () async {
@@ -379,7 +413,7 @@ void main() {
       expect(indented.flowParseFailedEvents, isEmpty);
     });
 
-    test('L1 flow 擷取拋出非 YamlException：該 UC 視為無 flow 區塊，掃描完成', () async {
+    test('A6 flow 擷取拋出非 YamlException：發一筆 004、步驟空、掃描完成', () async {
       final fs = FakeDocsFileSystem()
         ..addFile(
           _ucPath,
@@ -403,8 +437,28 @@ void main() {
       expect(r.rawNodes, hasLength(2));
       final thrown = r.rawNodes.firstWhere((n) => n.path == _ucPath);
       expect(thrown.flowSteps, isEmpty);
-      expect(r.flowParseFailedEvents, isEmpty);
+      expect(r.flowParseFailedEvents, hasLength(1));
+      final event = r.flowParseFailedEvents.single;
+      expect(event.path, _ucPath);
+      expect(event.reason, startsWith(flowBlockMalformedReasonCode));
+      expect(event.reason, contains('StateError'));
+      // E1 對照：同輪另一份無區塊的 UC 不發 004。
+      expect(
+        r.flowParseFailedEvents.any((e) => e.path.endsWith('UC-02.md')),
+        isFalse,
+      );
+      expect(r.summary.flowBlockMalformedUcCount, 1);
       expect(checkScanSummaryConservation(r.summary), isTrue);
+    });
+
+    test('A6 例外與非 map／壞區塊並存的 UC 仍只一筆 004', () async {
+      final r = await scanCorpus(
+        fileSystem: FakeDocsFileSystem()
+          ..addFile(_ucPath, ucBytes(blocks: [malformedFlowBlock])),
+        table: _table(),
+        extractFlow: (bytes, path) => throw StateError('boom'),
+      );
+      expect(r.flowParseFailedEvents, hasLength(1));
     });
   });
 
@@ -474,14 +528,13 @@ void main() {
 
     /// 快照的 UC 檔只保留 flow 區塊位元組（無 frontmatter，見各專案
     /// MANIFEST.md）；測試補上最小 UC frontmatter 後交給掃描器。
-    /// 回傳「UC id → 步驟數」。檔名前五個字元（`UC-0N`）即兩位數補零的 UC
-    /// id，符合 `^UC-\\d{2}$`；掃描路徑以該 id 命名。
+    /// 回傳「UC id → 步驟數」。UC id 由檔名開頭的 `UC-\\d+` 擷取（兩語料
+    /// 皆為兩位數補零，符合 `^UC-\\d{2}$`）；掃描路徑以該 id 命名。
     Future<Map<String, int>> stepsPerUc(String project) async {
       final dir = Directory('$root/$project/docs/usecases');
       final fs = FakeDocsFileSystem();
       for (final file in dir.listSync().whereType<File>()) {
-        final name = file.uri.pathSegments.last;
-        final id = name.substring(0, 5);
+        final id = ucIdFromFileName(file.uri.pathSegments.last);
         final prefix = utf8.encode('---\nid: $id\n---\n\n');
         fs.addFile('docs/usecases/$id.md', [
           ...prefix,
@@ -513,6 +566,24 @@ void main() {
       final perUc = await stepsPerUc('flutter_balance');
       expect(perUc, {'UC-01': 9});
       expect(perUc.values.fold<int>(0, (a, b) => a + b), 9);
+    });
+  });
+
+  group('A3 UC id 擷取不依賴檔名前綴長度', () {
+    test('12 份以上 UC 檔名（含三位數編號）擷取的 id 互不相撞', () {
+      final names = [
+        for (var i = 1; i <= 12; i++) 'UC-${i.toString().padLeft(2, '0')}-x.md',
+        'UC-100-long.md',
+        'UC-101-long.md',
+      ];
+      final ids = names.map(ucIdFromFileName).toList();
+      expect(ids.toSet(), hasLength(names.length));
+      expect(ids.last, 'UC-101');
+      // 對照：舊作法（前 5 字元）會讓 UC-100／UC-101 相撞。
+      expect(
+        names.map((n) => n.substring(0, 5)).toSet().length,
+        lessThan(names.length),
+      );
     });
   });
 }

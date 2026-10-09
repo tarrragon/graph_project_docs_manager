@@ -26,13 +26,24 @@ const flowBlockMalformedReasonCode = 'flowBlockMalformed';
 // i18n-exempt: 事件負載資料值，非 UI 顯示字串
 const flowNonMapItemReasonNote = 'flow 清單含非 map 項目';
 
+// i18n-exempt: 事件負載資料值，非 UI 顯示字串
+const flowSyntaxReasonNote = 'flow 區塊語法錯誤或圍欄未閉合';
+
+// i18n-exempt: 事件負載資料值，非 UI 顯示字串
+const flowUnexpectedErrorReasonNote = 'flow 擷取發生非預期例外';
+
 /// 一份 UC 本文的 flow 擷取結果。
 class UcFlowExtraction {
   const UcFlowExtraction({
     required this.steps,
     required this.hasMalformedFlowBlock,
     this.hasNonMapFlowItem = false,
+    this.unexpectedErrorSummary,
   });
+
+  /// 規則 3a：擷取時發生 YAML 解析例外以外的非預期例外時的例外摘要
+  /// （此時 [hasMalformedFlowBlock] 亦為 true，步驟為空）；否則為 null。
+  final String? unexpectedErrorSummary;
 
   /// 規則 3c：合格 flow 區塊的清單內有非 map 項目（該項已略過）。
   final bool hasNonMapFlowItem;
