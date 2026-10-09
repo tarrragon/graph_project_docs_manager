@@ -5,6 +5,8 @@
 /// 轉成 [BundleOrderEntry] 清單傳入；本檔不推導分層、不判斷環。
 library;
 
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
+
 /// SPEC-007 FR-13 回傳的單項：排序後的 bundle，附層號（推不出層者為 null）。
 typedef BundleOrderEntry = ({String domain, int? layer});
 
@@ -19,39 +21,66 @@ sealed class SwimLane {
 /// 最上方的「畫面」列，承載 `traverses == []` 的步驟。
 final class ScreenLane extends SwimLane {
   const ScreenLane();
+
+  @override
+  bool operator ==(Object other) => other is ScreenLane;
+
+  @override
+  int get hashCode => (ScreenLane).hashCode;
 }
 
 /// 一個 DomainBundle 列，列鍵為 `DomainBundle.domain` 宣告字面。
 final class BundleLane extends SwimLane {
   const BundleLane(this.domain);
   final String domain;
+
+  @override
+  bool operator ==(Object other) =>
+      other is BundleLane && other.domain == domain;
+
+  @override
+  int get hashCode => Object.hash(BundleLane, domain);
 }
 
 /// 最末的「未定位」列，只在有缺鍵或值全部未宣告的步驟時出現。
 final class UnplacedLane extends SwimLane {
   const UnplacedLane();
+
+  @override
+  bool operator ==(Object other) => other is UnplacedLane;
+
+  @override
+  int get hashCode => (UnplacedLane).hashCode;
 }
 
 /// 需求：SPEC-001 §1 列集合與列序。
 /// 「畫面」列、FR-13 排序段（照單使用）、必要時「未定位」列。
-/// [stepTraverses] 為選定 UC 各步驟的 `traverses`，null 表示鍵缺席。
+/// [stepResolutions] 為選定 UC 各步驟的 Graph `traverses` 解析結果
+/// （`FlowStepNode.traversesResolution`）；重複宣告而被 Graph 排除者不在
+/// 其中，Layout 不以字串比對列鍵。
 List<SwimLane> assembleSwimLanes({
   required List<BundleOrderEntry> bundleOrder,
-  required List<List<String>?> stepTraverses,
+  required List<TraversesResolution> stepResolutions,
 }) {
-  final declared = {for (final entry in bundleOrder) entry.domain};
+  final keys = {for (final entry in bundleOrder) entry.domain};
   return [
     const ScreenLane(),
     for (final entry in bundleOrder) BundleLane(entry.domain),
-    if (stepTraverses.any((t) => _isUnplaced(t, declared)))
+    if (stepResolutions.any((r) => isUnplacedResolution(r, keys)))
       const UnplacedLane(),
   ];
 }
 
-/// 缺鍵，或非空且值全部未宣告者，置於「未定位」列。
-bool _isUnplaced(List<String>? traverses, Set<String> declared) {
-  if (traverses == null) return true;
-  return traverses.isNotEmpty && !traverses.any(declared.contains);
+/// 缺鍵，或沒有任何已宣告值對得上列鍵而仍有值者，置於「未定位」列。
+/// 列層級（是否出現「未定位」列）與節點層級（節點落哪一列）共用此判定。
+bool isUnplacedResolution(
+  TraversesResolution resolution,
+  Set<String> laneKeys,
+) {
+  if (resolution.keyAbsent) return true;
+  final placed = resolution.resolved.any((r) => laneKeys.contains(r.name));
+  if (placed) return false;
+  return resolution.resolved.isNotEmpty || resolution.undeclared.isNotEmpty;
 }
 
 /// 需求：SPEC-001 §1 推不出層的 bundle——依賴邊依存在的端點繪製，
