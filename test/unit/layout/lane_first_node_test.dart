@@ -41,7 +41,9 @@ void main() {
     );
     expect('${flow.steps[picked.stepIndex].id}', 'B');
     expect('${firstInFileOrder.id}', 'A');
-    expect(picked.stepIndex, isNot(firstInFileOrder.index));
+    // 取清單順序第一步（A）會得欄 2，實際回傳欄 1。
+    expect(layout.columnOfStep[firstInFileOrder.index], 2);
+    expect(picked.column, 1);
   });
 
   test('L9-3 多列節點：回傳指定列上的節點，不是該步驟最上方節點', () {

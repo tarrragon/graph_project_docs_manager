@@ -62,26 +62,19 @@ List<SwimLane> assembleSwimLanes({
   required List<BundleOrderEntry> bundleOrder,
   required List<TraversesResolution> stepResolutions,
 }) {
-  final keys = {for (final entry in bundleOrder) entry.domain};
   return [
     const ScreenLane(),
     for (final entry in bundleOrder) BundleLane(entry.domain),
-    if (stepResolutions.any((r) => isUnplacedResolution(r, keys)))
-      const UnplacedLane(),
+    if (stepResolutions.any(isUnplacedResolution)) const UnplacedLane(),
   ];
 }
 
-/// 缺鍵，或沒有任何已宣告值對得上列鍵而仍有值者，置於「未定位」列。
-/// 列層級（是否出現「未定位」列）與節點層級（節點落哪一列）共用此判定。
-bool isUnplacedResolution(
-  TraversesResolution resolution,
-  Set<String> laneKeys,
-) {
-  if (resolution.keyAbsent) return true;
-  final placed = resolution.resolved.any((r) => laneKeys.contains(r.name));
-  if (placed) return false;
-  return resolution.resolved.isNotEmpty || resolution.undeclared.isNotEmpty;
-}
+/// 缺鍵，或已宣告值為空而仍有未宣告值者，置於「未定位」列。
+/// 只用 Graph 解析結果判定，不比對列鍵字串。列層級（是否出現「未定位」列）
+/// 與節點層級（節點落哪一列）共用此判定。
+bool isUnplacedResolution(TraversesResolution resolution) =>
+    resolution.keyAbsent ||
+    (resolution.resolved.isEmpty && resolution.undeclared.isNotEmpty);
 
 /// 需求：SPEC-001 §1 推不出層的 bundle——依賴邊依存在的端點繪製，
 /// 指向未宣告者（無對應列）的邊不畫。

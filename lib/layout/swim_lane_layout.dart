@@ -105,8 +105,9 @@ SwimLaneLayout buildSwimLaneLayout({
   );
 }
 
-/// 欄序：主線依檔內順序，分支緊接起點之後（巢狀遞迴）；
-/// 到不了主線者（懸空、循環）依檔內順序接在最後。
+/// 欄序（SPEC-001 v1.43）：主線依檔內順序，分支緊接起點之後（巢狀遞迴）；
+/// 沿 `branch_from` 到不了主線者（懸空、循環、依附異常）依檔內順序平鋪在
+/// 最後一欄之後，尾段不套巢狀輸出。
 List<int> _columnOrder(List<FlowStepNode> steps) {
   final childrenOf = <int, List<int>>{};
   for (final s in steps) {
@@ -127,7 +128,7 @@ List<int> _columnOrder(List<FlowStepNode> steps) {
     if (s.isMainline) emit(s.index);
   }
   for (final s in steps) {
-    emit(s.index);
+    if (seen.add(s.index)) order.add(s.index);
   }
   return order;
 }
@@ -139,14 +140,10 @@ List<List<LayoutNode>> _nodesPerStep(
   List<SwimLane> lanes,
   List<int> columnOfStep,
 ) {
-  final keys = {
-    for (final lane in lanes)
-      if (lane is BundleLane) lane.domain,
-  };
   return [
     for (final s in steps)
       [
-        for (final lane in _lanesOf(s.traversesResolution, keys, lanes))
+        for (final lane in _lanesOf(s.traversesResolution, lanes))
           LayoutNode(
             stepIndex: s.index,
             column: columnOfStep[s.index],
@@ -156,22 +153,20 @@ List<List<LayoutNode>> _nodesPerStep(
   ];
 }
 
-/// 單一步驟所在的列，依列序由上而下。
-List<SwimLane> _lanesOf(
-  TraversesResolution resolution,
-  Set<String> keys,
-  List<SwimLane> lanes,
-) {
-  if (isUnplacedResolution(resolution, keys)) return const [UnplacedLane()];
-  final placed = {
-    for (final r in resolution.resolved)
-      if (keys.contains(r.name)) BundleLane(r.name),
-  };
-  if (placed.isEmpty) return const [ScreenLane()];
-  return [
+/// 單一步驟所在的列，依列序由上而下。節點直接落 `BundleLane(解析名稱)`，
+/// 不以字串比對判定「是否已宣告」。
+///
+/// 不變式（文件化）：Graph 解析出的名稱必在 FR-13 列序內（兩者出自同一批
+/// DomainBundle）。違反時不崩潰：該名稱沒有對應列，節點不輸出；若因此
+/// 一個節點也沒有，退落「畫面」列，使步驟不消失。
+List<SwimLane> _lanesOf(TraversesResolution resolution, List<SwimLane> lanes) {
+  if (isUnplacedResolution(resolution)) return const [UnplacedLane()];
+  final named = {for (final r in resolution.resolved) BundleLane(r.name)};
+  final placed = [
     for (final lane in lanes)
-      if (placed.contains(lane)) lane,
+      if (named.contains(lane)) lane,
   ];
+  return placed.isEmpty ? const [ScreenLane()] : placed;
 }
 
 /// 邊：每步驟的 `branch_from`（起點 → 本步）、`next` 各值、`return_to`。
@@ -219,8 +214,18 @@ List<int?> _nextTargets(FlowStepNode s, Map<String, List<int>> idIndex) {
   final values = raw is Iterable ? raw : [raw];
   return [
     for (final v in values)
-      if (flowKeyOf(v) case final key?) _soleHit(idIndex[key]),
+      if (flowKeyOf(v) case final key?) _uniqueStepIndex(idIndex, key),
   ];
+}
+
+/// 以 id 解析 `next` 目標：恰好一個步驟命中才算解析（缺席或重複皆未解析）。
+/// 依據：SPEC-007 FR-10 規定 Graph 不解析主線 `next`，SPEC-001 卻要畫主線
+/// `next` 邊，故 Layout 自行解析；規則對齊 FR-10 的參照解析（id 以
+/// `flowKeyOf` 正規化、缺席或重複為未解析）。
+/// 暫代，依 SPEC-007 v1.28 FR-10 N-a 由 0.5.0-W1-137 移除（改讀 Graph 解析結果）。
+int? _uniqueStepIndex(Map<String, List<int>> idIndex, String key) {
+  final hits = idIndex[key];
+  return hits != null && hits.length == 1 ? hits.single : null;
 }
 
 Map<String, List<int>> _idIndex(List<FlowStepNode> steps) {
@@ -231,6 +236,3 @@ Map<String, List<int>> _idIndex(List<FlowStepNode> steps) {
   }
   return index;
 }
-
-int? _soleHit(List<int>? hits) =>
-    hits != null && hits.length == 1 ? hits.single : null;

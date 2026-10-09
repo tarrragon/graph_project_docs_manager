@@ -48,6 +48,24 @@ void main() {
     );
   });
 
+  test('L5-1b 同一步驟 next 非空且帶 return_to：兩條邊都畫', () {
+    final flow = buildFlow([
+      stepRow('a', next: ['b']),
+      stepRow('b', next: ['c'], returnTo: 'a'),
+      stepRow('c'),
+    ]);
+    final layout = buildSwimLaneLayout(flow: flow, bundleOrder: const []);
+    final fromB = {
+      for (final e in layout.edges)
+        if (flow.steps[e.fromStep].id == 'b')
+          '${e.source.name}:${edgeLabel(flow, e)}': e.shape,
+    };
+    expect(fromB, {
+      'next:b>c': EdgeShape.straight,
+      'returnTo:b>a': EdgeShape.arc,
+    });
+  });
+
   test('L5-2 目標欄 > 來源欄：直線', () {
     final flow = buildFlow([
       stepRow('a', next: ['b']),

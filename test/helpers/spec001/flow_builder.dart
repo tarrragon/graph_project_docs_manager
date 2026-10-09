@@ -73,24 +73,21 @@ FlowSubgraph buildFlow(
   );
 }
 
-/// 以 [declared] 對應舊式 `traverses` 清單（null 為鍵缺席）建解析結果，
-/// 供只關心列集合的測試使用；解析語意與 Graph 一致（未宣告者進 undeclared）。
+/// 以 [declared] 為已宣告 domain，經真實 Graph 的 `DomainNameResolver` 與
+/// `FlowStepNode` 產生 `traverses` 解析結果（null 為鍵缺席）；不在測試內
+/// 以字串比對代算。
 TraversesResolution resolutionOf(
   List<String>? traverses,
   Set<String> declared,
 ) {
-  if (traverses == null) {
-    return TraversesResolution(keyAbsent: true, resolved: [], undeclared: []);
-  }
-  return TraversesResolution(
-    keyAbsent: false,
-    resolved: [
-      for (final t in traverses)
-        if (declared.contains(t)) ResolvedDomain(name: t, bundleId: 'b-$t'),
-    ],
-    undeclared: [
-      for (final t in traverses)
-        if (!declared.contains(t)) t,
-    ],
-  );
+  final resolver = DomainNameResolver.fromDeclarations([
+    for (final d in declared) ('bundle-$d', d),
+  ]);
+  final step = <String, dynamic>{'id': 'probe', 'traverses': ?traverses};
+  return FlowStepNode(
+    index: 0,
+    step: step,
+    idIndex: const {},
+    domainResolver: resolver,
+  ).traversesResolution;
 }

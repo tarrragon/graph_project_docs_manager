@@ -3,12 +3,16 @@
 /// 讀凍結快照，經真實 Corpus 掃描與 Graph 建圖，交出 flow 子圖。快照的 UC
 /// 檔只含 flow 圍欄、無 frontmatter（MANIFEST 擷取規則），故實體化到暫存樹時
 /// 依檔名前綴補最小 frontmatter（`id: UC-NN`）；其餘檔位元組原樣複製。
+/// 合成 frontmatter 是刻意的：凍結快照依 MANIFEST 擷取規則只保留 flow 圍欄，
+/// 不含 UC 的 frontmatter，真實 Corpus 沒有 `id` 就不會產生 UC 節點；補上的
+/// 只有 `id`，不影響 flow 內容。
 /// 外圈載入器（IT-D1～IT-D3）屬 0.5.0-W1-114.13，不在此範圍。
 library;
 
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/docs_file_system.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
@@ -62,6 +66,12 @@ Future<Map<String, FlowSubgraph>> _scanAndBuild(String root) async {
     rawNodes: scan.rawNodes,
     projectSchemaJson: schemaJson,
     builtinSchemaJson: schemaJson,
+  );
+  expect(
+    result,
+    isA<GraphBuildAvailable>(),
+    // i18n-exempt: 測試診斷訊息
+    reason: '建圖不可用：${result is GraphBuildUnavailable ? result.reason : result}',
   );
   return (result as GraphBuildAvailable).event.flowSubgraphs;
 }

@@ -252,6 +252,19 @@ void main() {
       expect(shapes.where((s) => s == EdgeShape.straight), hasLength(8));
     });
 
+    test('L7-10 不變式違反（解析名稱不在 FR-13 列內）：不崩潰、步驟不消失', () {
+      final flow = buildFlow(
+        [
+          stepRow('S', traverses: ['ghost']),
+        ],
+        declaredDomains: ['ghost'],
+      );
+      final layout = layoutWith(flow, orderOf(['graph']));
+      expect(laneLabelsById(flow, layout)['S'], ['畫面']);
+      expect(hasUnplaced(layout), isFalse);
+      expectStepsConserved(flow, layout);
+    });
+
     test('L7-9 步驟總數守恆：異常步驟不消失', () {
       final inputs = <FlowSubgraph>[
         buildFlow([

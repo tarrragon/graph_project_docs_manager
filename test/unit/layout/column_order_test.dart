@@ -66,8 +66,17 @@ void main() {
       final layout = layoutOf(flow);
       final byFileOrder = stepIdsByColumn(flow, layout);
       expect(byFileOrder, ['A', 'C', 'B']);
-      // 沿 next 推導的順序（對照組）。
-      const byNextChain = ['A', 'B', 'C'];
+      // 對照組：由輸入實際推導的 next 鏈順序（自第一步沿 next 走）。
+      final byNextChain = <String>[];
+      FlowStepNode? cursor = flow.steps.first;
+      while (cursor != null) {
+        byNextChain.add('${cursor.id}');
+        final nextIds = cursor.next as List;
+        cursor = nextIds.isEmpty
+            ? null
+            : flow.steps.firstWhere((s) => s.id == nextIds.first);
+      }
+      expect(byNextChain, ['A', 'B', 'C']);
       expect(byFileOrder, isNot(byNextChain));
     });
 
@@ -152,15 +161,36 @@ void main() {
       expectStepsConserved(flow, layout);
     });
 
-    test('L6-3 懸空 X 與循環 Y、Z 同時存在：三者依檔內順序共同接在最後', () {
+    test('L6-3 懸空 X 與循環 Y、Z 交錯：三者依檔內順序平鋪接在最後', () {
+      // 交錯順序：若尾段遞迴輸出巢狀，Y 之後會緊接 Z（M、Y、Z、X）。
       final flow = buildFlow([
-        stepRow('X', branchFrom: 'ghost'),
         stepRow('Y', branchFrom: 'Z'),
+        stepRow('M'),
+        stepRow('X', branchFrom: 'ghost'),
         stepRow('Z', branchFrom: 'Y'),
-        stepRow('m'),
       ]);
       final layout = layoutOf(flow);
-      expect(stepIdsByColumn(flow, layout), ['m', 'X', 'Y', 'Z']);
+      expect(stepIdsByColumn(flow, layout), ['M', 'Y', 'X', 'Z']);
+      expectStepsConserved(flow, layout);
+    });
+
+    test('L6-5 (c) 依附異常：C 的 branch_from 指向懸空 X，平鋪且 branch_from 邊照畫', () {
+      // 檔內 C、M、X、D：C 掛在 X 之下，X 懸空；D 也掛在 X。
+      final flow = buildFlow([
+        stepRow('C', branchFrom: 'X'),
+        stepRow('M'),
+        stepRow('X', branchFrom: 'ghost'),
+        stepRow('D', branchFrom: 'X'),
+      ]);
+      final layout = layoutOf(flow);
+      // 平鋪依檔內順序：C、X、D（X 之後不緊接其子步驟）。
+      expect(stepIdsByColumn(flow, layout), ['M', 'C', 'X', 'D']);
+      final branchEdges = {
+        for (final e in layout.edges)
+          if (e.source == EdgeSource.branchFrom) edgeLabel(flow, e): e.shape,
+      };
+      // X 的 branch_from（懸空）不畫；C、D 的邊照畫：X>C 欄 2→1 弧線，X>D 欄 2→3 直線。
+      expect(branchEdges, {'X>C': EdgeShape.arc, 'X>D': EdgeShape.straight});
       expectStepsConserved(flow, layout);
     });
 
