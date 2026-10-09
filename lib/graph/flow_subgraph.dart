@@ -6,6 +6,10 @@
 library;
 
 import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
+import 'package:graph_project_docs_manager/graph/flow_key.dart';
+
+// flowKeyOf 原為本檔公開 API；轉出以維持既有 import 面。
+export 'package:graph_project_docs_manager/graph/flow_key.dart' show flowKeyOf;
 
 /// 只有此節點型別的 rawNode 附掛 flow 步驟（型別表節點型別名）。
 const flowSourceTypeName = 'UC';
@@ -41,17 +45,6 @@ class FlowReference {
   bool get isResolved => targetIndex != null;
 }
 
-/// 空值：null、空字串、空清單／空 Map（規格 FR-10 的「非空」；空集合視為空）。
-bool _isEmptyRef(Object? value) =>
-    value == null ||
-    value == '' ||
-    (value is Iterable && value.isEmpty) ||
-    (value is Map && value.isEmpty);
-
-/// 步驟 `id` 與參照值的比對鍵：非空值一律轉成字串（FR-10 用戶裁決 S1，
-/// 與上游 `doc validate` 的 `str()` 正規化一致）；空值回傳 null。
-String? flowKeyOf(Object? value) => _isEmptyRef(value) ? null : '$value';
-
 /// 遞迴凍結 Map／List，使子圖不與 RawNode 共用可變參照。
 Object? _freeze(Object? value) => switch (value) {
   final Map<dynamic, dynamic> m => Map<dynamic, dynamic>.unmodifiable({
@@ -65,7 +58,8 @@ Object? _freeze(Object? value) => switch (value) {
 class ResolvedDomain {
   const ResolvedDomain({required this.name, required this.bundleId});
 
-  /// `traverses` 中的名稱原值。
+  /// 正規化後的比對鍵（[flowKeyOf] 結果），不是 `traverses` 的原值；
+  /// 例如元素 7 解析後為 '7'。原值只保留在 `undeclared`。
   final String name;
 
   /// 宣告該名稱的 DomainBundle 節點 ID。
@@ -90,7 +84,8 @@ class TraversesResolution {
 }
 
 /// 解析 `traverses`：缺鍵不視同 `[]`；空值（null、`[]`）無結果；純量視同單元素清單；
-/// 元素逐一精確比對，非字串或空字串元素必為未宣告。
+/// 元素非字串者先轉字串再精確比對（FR-11），空字串或轉字串後無對應宣告者為未宣告；
+/// 未宣告以原值（非轉換後字串）記錄。
 TraversesResolution _resolveTraverses(
   Map<String, dynamic> step,
   DomainNameResolver resolver,
@@ -107,8 +102,8 @@ TraversesResolution _resolveTraverses(
     if (bundleId == null) {
       // 去重以 `==` 比較；存入凍結副本，使結果不可被改寫。
       if (!undeclared.contains(e)) undeclared.add(_freeze(e));
-    } else if (!resolved.any((r) => r.name == e)) {
-      resolved.add(ResolvedDomain(name: e as String, bundleId: bundleId));
+    } else if (!resolved.any((r) => r.bundleId == bundleId)) {
+      resolved.add(ResolvedDomain(name: '$e', bundleId: bundleId));
     }
   }
   return TraversesResolution(
@@ -127,16 +122,16 @@ class FlowStepNode {
     required DomainNameResolver domainResolver,
   }) : step = (_freeze(step)! as Map<dynamic, dynamic>).cast<String, dynamic>(),
        traversesResolution = _resolveTraverses(step, domainResolver),
-       isMainline = _isEmptyRef(step[FlowFields.branchFrom]),
+       isMainline = isEmptyFlowRef(step[FlowFields.branchFrom]),
        branchFrom = _resolveIf(
-         !_isEmptyRef(step[FlowFields.branchFrom]),
+         !isEmptyFlowRef(step[FlowFields.branchFrom]),
          FlowFields.branchFrom,
          step,
          idIndex,
        ),
        returnTo = _resolveIf(true, FlowFields.returnTo, step, idIndex),
        nextRefs = List.unmodifiable(
-         _isEmptyRef(step[FlowFields.branchFrom])
+         isEmptyFlowRef(step[FlowFields.branchFrom])
              ? const <FlowReference>[]
              : _resolveNext(step[FlowFields.next], idIndex),
        );
@@ -178,7 +173,7 @@ FlowReference? _resolveIf(
   Map<String, List<int>> idIndex,
 ) {
   final raw = step[field];
-  if (!applies || _isEmptyRef(raw)) return null;
+  if (!applies || isEmptyFlowRef(raw)) return null;
   return FlowReference(
     field: field,
     rawValue: raw,
@@ -191,7 +186,7 @@ List<FlowReference> _resolveNext(Object? raw, Map<String, List<int>> idIndex) {
   final elements = raw is Iterable ? raw : [raw];
   return [
     for (final e in elements)
-      if (!_isEmptyRef(e))
+      if (!isEmptyFlowRef(e))
         FlowReference(
           field: FlowFields.next,
           rawValue: e,
