@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-08"
-version: "1.28"
+version: "1.29"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -301,10 +301,10 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - UC 的步驟清單為空：回傳空子圖（主線、分支、回指皆為空），與「不存在」分開
 - `next` 是步驟 id 的清單（上游 UC 模板：「後續步驟 id；場景結尾留空陣列 []」）：分支步的 `next` 逐元素在 UC 內解析，每個解析不到的元素各報一筆「flow 參照未解析」（欄位 `next`、原始值為該元素）；`[]` 表示無後續、不報缺陷；`next` 為單一純量值時視同單元素清單。不得把整個清單轉成一個字串比對（PM 處置 2026-10-09，`0.5.0-W1-001.4` 實作回報：原條文把 next 寫成純量為規格錯誤，依上游定義與 S1「與上游一致」修正）
 - `branch_from`、`return_to` 為單一步驟 id（上游模板定義）；其值為清單或 map 時不逐元素解析，依下一條整體轉字串比對，必然解析不到而報一筆「flow 參照未解析」——壞資料可見（PM 處置 2026-10-09，`0.5.0-W1-001.4` 複審回報，S1 與上游定義的直接推論）
-- 步驟 `id` 與參照欄（`next` 的各元素、`branch_from`、`return_to`）的值為非空、非字串（例：`id: 123`、`next: [123]`）時，一律轉成字串後比對，不報缺陷——與上游 `doc validate` 的判定一致（其以 `str()` 正規化），避免上游通過而 App 報缺陷（`0.5.0-W1-001.4` 用戶裁決 S1，2026-10-09）
+- 步驟 `id` 與參照欄（`next` 的各元素、`branch_from`、`return_to`）的值為非空、非字串（例：`id: 123`、`next: [123]`）時，一律轉成字串後比對，不報缺陷——與上游 `doc validate` 的判定一致（其以 `str()` 正規化），避免上游通過而 App 報缺陷（`0.5.0-W1-001.4` 用戶裁決 S1，2026-10-09）。「與上游一致」的保證範圍限字串與整數：Dart 與 Python 對 bool（`true`／`True`）、清單、map 的轉字串結果不同，但 step id 與 domain 名受格式約束（kebab-case、小寫），這些值兩種轉法皆必然解析不到，解析結果與上游相同；App 以 Dart 轉法為準，不模擬 Python repr（`0.5.0-W1-138` 用戶裁決 K1，2026-10-11）
 - 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致，含與 FR-08 同形的日誌事件（PM 處置 2026-10-09，「一致」的直接推論；事件名 `flowUnavailable`，`0.5.0-W1-001.4` 命名）；建圖完成日誌（`buildCompleted`）負載另帶 `flowDefectCount`（flow 子圖缺陷筆數，`0.5.0-W1-001.4` 實作、PM 追認）
 - 缺陷程式識別名：flow 參照未解析為 `GraphDefectKind.flowUnresolvedRef`、UC 內 step id 重複為 `GraphDefectKind.flowDuplicateStepId`，負載 `{ucId, stepId, field, rawValue}`（`0.5.0-W1-001.4` 命名回填）。字串化後相同但原值不同的重複 id（例：`1` 與 `"1"`），重複缺陷的 stepId／rawValue 取清單中第一個出現者（`0.5.0-W1-001.4` 實作選擇，PM 追認）
-- 主線 `next` 的值不解析、不產生缺陷（見上方 `next` 的語意）
+- 主線 `next` 解析不到時不產生缺陷；解析結果以獨立欄位提供，與缺陷來源分開（見上方 `next` 的語意，用戶裁決 N-a；原「不解析」字面與 N-a 衝突，2026-10-11 更正，4a 回報）
 
 **驗收條件**：
 - [ ] Given 兩語料每份 UC，Then `flowOf` 的主線順序、分支與 `branch_from`、回指與 `return_to`、分支步 `next` 屬性與 flow 區塊逐項一致
@@ -359,8 +359,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 依賴路徑排序：先依路徑長度遞增，同長依來源 X 在 FR-13 分層排序中的先後，再依中間節點在 FR-13 中的先後。排序依據取自 FR-13，不依賴 Layout（`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08；系統層 §2 禁止 Graph 依賴 Layout）
 - 只計 FR-11 解析成功的值：未宣告名稱、缺 `traverses` 鍵、重複宣告被排除的名稱不構成直接貫穿
 - DomainBundle 或 UC 的 ID 不在圖上時，比照 FR-08 回傳「無關」且路徑為空，不拋例外（`0.5.0-W1-114.2` PM 處置 NC-5）
-- 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致
-- 介面識別名與簽章交 Step 6 的 Graph 間接依賴實作票定（`0.5.0-W1-114.1` PM 處置 NC-c）；該實作的預期值取凍結快照（PM 接受的推論）
+- 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致，含與 FR-08 同形的日誌事件（PM 處置 2026-10-11，同 FR-10「一致」的推論；`0.5.0-W1-139` 第 6 項）
+- 介面識別名（`0.5.0-W1-114.7` 命名回填）：`DomainUcRelationQuery.relationOf(bundleId, ucId) -> DomainUcRelationResult`，`kind` 為 `{direct, indirect, unrelated}`，`paths: List<List<DomainBundleRef>>`；該實作的預期值取凍結快照（PM 接受的推論）
 
 **驗收條件**：
 - [ ] Given 本專案語料的凍結快照（預期值取凍結快照，`0.5.0-W1-114` PM 處置 N1），Then 全部格的關係種類與快照一致（本版資料下為 SPEC-001 §1〈本專案期望分布〉：直接貫穿 19、間接依賴 10、無關 19）
@@ -380,8 +380,10 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 依賴推不出層者的 bundle 同樣推不出層、接在最後：任一所依賴 bundle 無層時，「所依賴 bundle 的最大層」不存在，該 bundle 不得以其餘依賴的最大層 + 1 計層（`0.5.0-W1-114.4` PM 處置 NC-8，為分層 1a 的直接後果）
 - 回傳形狀：排序後的 bundle 清單，每項附層號；推不出層者層號為 null（`0.5.0-W1-114.4` PM 處置 NC-9）
 - 規則不寫死 domain 名，與 UC 無關
-- 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致
-- 介面識別名與簽章交實作票定（比照 FR-12）；回傳形狀依上方「回傳形狀」條
+- 「依賴指向未宣告的 bundle」含終點存在但不是 DomainBundle 的情形（不是 DomainBundle 即不是已宣告的 bundle，PM 處置 2026-10-11，`0.5.0-W1-139` 第 2 項之一）
+- 兩個以上 DomainBundle 宣告同一 `domain`（FR-11 重複宣告）時各自成一項，同 `domain` 之間依 DomainBundle ID 的 code point 序（PM 處置 2026-10-11，`0.5.0-W1-139` 第 3 項）
+- 建圖不可用（FR-01）時回傳「圖不可用」，與 FR-08 一致，含與 FR-08 同形的日誌事件（PM 處置 2026-10-11，`0.5.0-W1-139` 第 6 項）
+- 介面識別名（`0.5.0-W1-114.7` 命名回填）：`BundleLayerQuery.orderedBundles() -> BundleOrderResult`，可用時為 `BundleOrderAvailable.entries: List<BundleLayerEntry{bundleId, domain, int? layer}>`，圖不可用時為 `BundleOrderGraphUnavailable`
 
 **驗收條件**：
 - [ ] Given 本專案語料的凍結快照，Then 排序結果為 `schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`（L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`，與 SPEC-001 §1 列序期望值一致）
@@ -436,6 +438,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.29 | 2026-10-11 | FR-10：S1「與上游一致」限字串與整數（用戶裁決 K1，`0.5.0-W1-138`）；規則清單「主線 next 不解析」更正為「解析不到不產生缺陷」。FR-12／FR-13：回填介面識別名（`0.5.0-W1-114.7`）、圖不可用含日誌事件、非 DomainBundle 終點屬推不出層、同 domain 重複宣告以 bundle ID 為次鍵（PM 處置，`0.5.0-W1-139` 第 2 之一、3、6 項） |
 | 1.28 | 2026-10-09 | FR-10：flowOf 為主線 next 也提供 UC 內解析結果（解析不到不產生缺陷），Layout 不自行解析（用戶裁決 N-a）；實作由 `0.5.0-W1-136` 承接 |
 | 1.27 | 2026-10-09 | 更正 v1.26：FR-11 非字串元素「轉字串後比對」並非 `0.5.0-W1-001.5` 的實作（實作為一律未宣告），v1.26 誤記為追認；依 S1 以規格為準，實作修正由 `0.5.0-W1-135` 承接；補未宣告缺陷原始值記原值 |
 | 1.26 | 2026-10-09 | FR-11：traverses 值正規化與上游 `_as_name_list` 一致（純量、null、非字串元素、同名去重；PM 追認 `0.5.0-W1-001.5` 實作選擇）；回填 traverses 兩子類與 domain 重複宣告的識別名 |
