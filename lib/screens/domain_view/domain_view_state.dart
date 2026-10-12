@@ -292,6 +292,12 @@ class DomainReady extends DomainViewState {
   }
 }
 
+/// 載入失敗：載入輪次拋出非預期例外（SPEC-001 v1.49 §1，
+/// `state-domain-load-failed`，`BlockedState.plain`）。
+class DomainLoadFailed extends DomainViewState {
+  const DomainLoadFailed();
+}
+
 /// 空圖：節點數為 0。
 class DomainEmpty extends DomainViewState {
   const DomainEmpty({

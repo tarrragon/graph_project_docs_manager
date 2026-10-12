@@ -657,6 +657,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'This project is not usable with this app';
 
   @override
+  String get projectUnreadyReasonLoadFailed => 'Graph failed to load';
+
+  @override
+  String get domainLoadFailedMessage =>
+      'An unexpected error occurred while scanning this project, so the graph could not be loaded.';
+
+  @override
+  String get reloadAction => 'Reload';
+
+  @override
   String get gotoDomainViewAction => 'Go to Domain View';
 
   @override

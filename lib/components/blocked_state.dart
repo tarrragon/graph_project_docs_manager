@@ -51,6 +51,7 @@ class BlockedState extends StatelessWidget {
     this.explanation,
     this.version,
     this.onDegradedView,
+    this.onReload,
   }) : variant = BlockedStateVariant.plain,
        appVersion = null,
        projectVersion = null,
@@ -71,7 +72,8 @@ class BlockedState extends StatelessWidget {
     this.explanation,
   }) : variant = BlockedStateVariant.withDetail,
        version = null,
-       onDegradedView = null;
+       onDegradedView = null,
+       onReload = null;
 
   /// 兩種變體之一。
   final BlockedStateVariant variant;
@@ -90,6 +92,11 @@ class BlockedState extends StatelessWidget {
   /// SPEC-004 §1／SPEC-003 §3.1，`0.1.0-W1-035` 定案）。呼叫端負責同畫面
   /// 轉換，不改變本元件狀態。
   final VoidCallback? onDegradedView;
+
+  /// 重新載入回呼（`plain` 選填，`withDetail` 不使用）；非 null 時渲染
+  /// 「重新載入」次要按鈕（`action-domain-reload`，SPEC-004 4.23，
+  /// 僅載入失敗時傳入，`0.5.0-W1-114.14.2`）。
+  final VoidCallback? onReload;
 
   /// App 支援版本值（`withDetail` 必填），單行截斷。
   final String? appVersion;
@@ -146,11 +153,7 @@ class BlockedState extends StatelessWidget {
       return body;
     }
 
-    return Focus(
-      skipTraversal: true,
-      onKeyEvent: _handleKeyEvent,
-      child: body,
-    );
+    return Focus(skipTraversal: true, onKeyEvent: _handleKeyEvent, child: body);
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -199,10 +202,18 @@ class BlockedState extends StatelessWidget {
 
     if (!_isWithDetail) {
       final onDegraded = onDegradedView;
+      final onReloadCallback = onReload;
       return ButtonRow(
         alignment: ButtonRowAlignment.center,
         children: [
           switchButton,
+          if (onReloadCallback != null)
+            AppButton(
+              label: l10n.reloadAction,
+              variant: AppButtonVariant.secondary,
+              onPressed: onReloadCallback,
+              testKey: const ValueKey('action-domain-reload'),
+            ),
           if (onDegraded != null)
             AppButton(
               label: l10n.useBuiltinSchemaAction,

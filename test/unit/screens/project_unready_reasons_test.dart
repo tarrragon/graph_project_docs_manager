@@ -18,6 +18,7 @@ const _messages = {
   ProjectUnreadyReason.notSelected: '尚未選擇專案',
   ProjectUnreadyReason.loading: '圖譜載入中',
   ProjectUnreadyReason.incompatible: '此專案不適用本 App',
+  ProjectUnreadyReason.loadFailed: '圖譜載入失敗', // F5：四選一
 };
 
 const _gotoDomainViewLabel = '前往 Domain 視圖';

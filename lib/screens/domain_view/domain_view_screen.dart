@@ -55,7 +55,27 @@ class DomainViewScreen extends ConsumerWidget {
       DomainNotFramework() => const _NotFrameworkView(),
       DomainSchemaUnconsumable() => _SchemaUnconsumableView(state: state),
       DomainSchemaIncompatible() => _SchemaIncompatibleView(state: state),
+      DomainLoadFailed() => const _LoadFailedView(),
     };
+  }
+}
+
+/// 載入失敗：`BlockedState.plain`（SPEC-001 v1.49 §1）。重新載入回載入中，
+/// 同資料夾、同模式（降級旗標不動）。
+class _LoadFailedView extends ConsumerWidget {
+  const _LoadFailedView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return BlockedState.plain(
+      message: l10n.domainLoadFailedMessage,
+      onSwitchProject: () =>
+          ref.read(switcherOpenProvider.notifier).state = true,
+      onReload: () =>
+          unawaited(ref.read(domainViewLoaderProvider.notifier).reload()),
+      testKey: const Key('state-domain-load-failed'),
+    );
   }
 }
 
