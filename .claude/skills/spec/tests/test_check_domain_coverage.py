@@ -586,3 +586,65 @@ def test_no_signal_when_explicitly_attributed(tmp_path, monkeypatch, capsys):
     spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101", "## SPEC-101\n| FR-01~03 | A |\n"))
     assert cdc.main([spec]) == 0
     assert "無任何 SPEC 歸屬" not in capsys.readouterr().err
+
+
+# --- 層級 SPEC 以系統層判定（0.5.0-W1-149.1）---
+
+LAYER_SPEC = ("---\nid: SPEC-101\ndomain: \"ui\"\n---\n"
+              "### FR-01: A\n### FR-02: B\n")
+
+
+def _layer_fixture(tmp_path, spec_domain="ui", system="## SPEC-101\n| FR-01~02 | sys |\n"):
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, LAYER_SPEC.replace('"ui"', f'"{spec_domain}"'))
+    _write(tmp_path / "docs/spec/a/domain-map.md", "---\ndomain: \"a\"\nsource_specs: [SPEC-999]\n---\n")
+    if system is not None:
+        _write(tmp_path / "docs/system-layer.md", system)
+    return spec
+
+
+def test_layer_spec_judged_by_system_layer_without_flag(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    assert cdc.main([str(spec)]) == 0
+    assert "docs/system-layer.md" in capsys.readouterr().out
+
+
+def test_layer_spec_e1_declared_domain_keeps_source_specs_message(tmp_path, monkeypatch, capsys):
+    """E1 對照：domain 欄改為已宣告的 a 且無 map 列入 -> 維持請補 source_specs。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="a")
+    assert cdc.main([str(spec)]) == 1
+    assert "source_specs" in capsys.readouterr().out
+
+
+def test_spec_without_domain_field_unchanged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    spec.write_text("---\nid: SPEC-101\n---\n### FR-01: A\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+    assert "source_specs" in capsys.readouterr().out
+
+
+def test_layer_spec_system_layer_missing_fr_points_to_system_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "FR-01" in out and "系統層" in out and "source_specs" not in out
+
+
+def test_layer_spec_without_system_layer_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system=None)
+    assert cdc.main([str(spec)]) == 1
+    assert "系統層" in capsys.readouterr().out
+
+
+def test_single_domain_project_domain_field_not_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/SPEC-101-x.md"
+    _write(spec, LAYER_SPEC)
+    _write(tmp_path / "docs/domain-map.md", "## 覆蓋\n| FR-01~02 | X |\n")
+    assert cdc.main([str(spec)]) == 0
+    assert "docs/domain-map.md" in capsys.readouterr().out
