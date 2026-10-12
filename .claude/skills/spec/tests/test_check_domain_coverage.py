@@ -553,3 +553,36 @@ def test_declared_false_letter_continuation_headings_not_contradiction(tmp_path,
     for h in ("Framework", "FRAME"):
         rc, _ = _run_nomap(tmp_path, _fm("false") + f"# s\n## {h} x\n", capsys)
         assert rc == 0, h
+
+
+# --- 0.5.0-W1-086.5 追修：系統層不適用整份無歸屬規則 + stderr 訊號 ---
+
+SYSTEM_PROSE = "涉及 FR-02 與 FR-03\n"
+
+
+def test_system_layer_unattributed_not_counted_in_domain_dir(tmp_path, monkeypatch, capsys):
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101", "## SPEC-101\n| FR-01 | A |\n"),
+                          system=SYSTEM_PROSE)
+    assert cdc.main([spec]) == 1, capsys.readouterr().out
+
+
+def test_system_layer_unattributed_not_counted_outside_domain_dir(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", _map("SPEC-101", "## SPEC-101\n| FR-01 | A |\n"))
+    _write(tmp_path / "docs/system-layer.md", SYSTEM_PROSE)
+    assert cdc.main([str(spec)]) == 1, capsys.readouterr().out
+
+
+def test_default_attribution_signal_on_stderr(tmp_path, monkeypatch, capsys):
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101", "| FR-01~03 | A |\n"))
+    assert cdc.main([spec]) == 0
+    err = capsys.readouterr().err
+    assert "domain-map.md" in err and "無任何 SPEC 歸屬" in err
+
+
+def test_no_signal_when_explicitly_attributed(tmp_path, monkeypatch, capsys):
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101", "## SPEC-101\n| FR-01~03 | A |\n"))
+    assert cdc.main([spec]) == 0
+    assert "無任何 SPEC 歸屬" not in capsys.readouterr().err

@@ -151,13 +151,16 @@ def check_domain_coverage(spec_text, domain_map_text, spec_path=None):
 def _merged_attribution(named_texts, spec_id):
     """逐檔解析歸屬後於集合層合併，回傳 {spec_id: FR 集合}。
 
-    標題堆疊不跨檔。整份無任何 SPEC 歸屬的檔案，其 FR 一律計給受檢 SPEC（相容語意，
+    標題堆疊不跨檔。整份無任何 SPEC 歸屬的檔案（系統層除外），其 FR 一律計給受檢 SPEC（相容語意，
     單檔與多檔同一規則）；檔案內有部分歸屬時，有歸屬者依歸屬，未歸屬者不計入。
     """
     merged = {}
-    for _, text in named_texts:
+    for name, text in named_texts:
         attributed, unattributed = extract_fr_attribution(text)
-        if not attributed and unattributed and spec_id:
+        # 系統層是定位鏈無條件附加的，不是因與受檢 SPEC 有關而被選入，不適用預設計給
+        is_system_layer = Path(name).name == SYSTEM_LAYER_PATH.name
+        if not attributed and unattributed and spec_id and not is_system_layer:
+            sys.stderr.write(f"domain 覆蓋檢核：{name} 無任何 SPEC 歸屬，其 FR 依預設計給受檢 SPEC\n")
             attributed = {spec_id: unattributed}
         for owner, nums in attributed.items():
             merged.setdefault(owner, set()).update(nums)
