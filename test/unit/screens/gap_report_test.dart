@@ -9,7 +9,7 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter/material.dart' show SnackBar;
+import 'package:flutter/material.dart' show Icons, SnackBar;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -432,6 +432,33 @@ void main() {
         container.read(selectedDestinationProvider),
         AppDestination.ucFlow,
       );
+    });
+
+    testWidgets('降級項目（isOpenable=false）：顯示節點 ID、無開檔圖示、點擊不呼叫開檔', (tester) async {
+      const item = GapReportItem(
+        id: 'unresolved-item',
+        filePath: 'UC-77',
+        isOpenable: false,
+      );
+      const state = GapReportFound([
+        GapReportCategory(id: 'graph-defect-flow', items: [item]),
+      ]);
+      final opener = FakeExternalOpener();
+
+      await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(() => _FixedNotifier(state)),
+          externalOpenerProvider.overrideWithValue(opener),
+        ],
+      );
+
+      expect(find.text('UC-77'), findsOneWidget);
+      expect(find.byIcon(Icons.open_in_new), findsNothing);
+      await tester.tap(find.byKey(const Key('card-gaps-unresolved-item')));
+      await tester.pump();
+      expect(opener.calls, isEmpty);
     });
 
     testWidgets('事件類（無任何 UC 引用）：依其他圖節點處理，jump 至節點詳情'

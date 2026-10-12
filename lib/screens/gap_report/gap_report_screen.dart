@@ -156,7 +156,10 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
                 variant: AppTextVariant.caption,
                 secondary: true,
               ),
-              trailing: item.hasSecondaryOpenSource
+              // 降級項目（isOpenable=false）不提供開檔，不渲染開檔圖示。
+              trailing: !item.isOpenable
+                  ? null
+                  : item.hasSecondaryOpenSource
                   ? GestureDetector(
                       key: Key('action-gaps-open-source-${item.id}'),
                       onTap: () => _openExternally(context, item),

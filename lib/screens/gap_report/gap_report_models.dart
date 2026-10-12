@@ -90,7 +90,8 @@ class GapReportItem {
   });
 
   /// 是否可開啟原始檔；降級項目（節點查不到、無路徑可開）為 `false`，
-  /// 主操作不動作（SPEC-001 §5〈定案〉降級落點）。
+  /// 主操作不動作、不渲染開檔圖示，[filePath] 改放查不到的節點 ID 供顯示
+  /// （出處：SPEC-001 v1.44 §5〈定案〉降級落點）。
   final bool isOpenable;
 
   /// 穩定識別碼，供 `card-gaps-<itemId>` 錨點使用（SPEC-003 §3.5、§2.9）。

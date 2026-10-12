@@ -148,7 +148,7 @@ class _Projector {
     if (ucId == null) {
       // 004 的 UC 查無節點：不變式違反（UC 仍是節點，SPEC-006 FR-09）。
       _reportUnresolvedNode('flowBlockMalformed', gap.path);
-      return _unresolvedItem(id, description);
+      return _unresolvedItem(id, gap.path, description);
     }
     return GapReportItem(
       id: id,
@@ -172,13 +172,17 @@ class _Projector {
     assert(false, 'projection: node not found subclass=$subclass id=$nodeId');
   }
 
-  GapReportItem _unresolvedItem(String id, GapItemDescription description) =>
-      GapReportItem(
-        id: id,
-        filePath: '',
-        isOpenable: false,
-        description: description,
-      );
+  /// 降級項目：[filePath] 放查不到的節點 ID（只顯示，不可開檔）。
+  GapReportItem _unresolvedItem(
+    String id,
+    String nodeId,
+    GapItemDescription description,
+  ) => GapReportItem(
+    id: id,
+    filePath: nodeId,
+    isOpenable: false,
+    description: description,
+  );
 
   GapReportItem _nonDomainPathsItem(NonDomainPathsMalformedGap gap) =>
       GapReportItem(
@@ -300,7 +304,7 @@ class _Projector {
     });
     if (origin == null) {
       _reportUnresolvedNode(kind.name, d.from);
-      return _unresolvedItem(id, description);
+      return _unresolvedItem(id, d.from, description);
     }
     return GapReportItem(
       id: id,
@@ -324,7 +328,7 @@ class _Projector {
     );
     if (bundle == null) {
       _reportUnresolvedNode(kind.name, bundleId);
-      return _unresolvedItem(id, description);
+      return _unresolvedItem(id, bundleId, description);
     }
     return GapReportItem(
       id: id,
@@ -341,7 +345,7 @@ class _Projector {
     final id = _uniqueId([kind.name, d.ucId, d.stepId, d.field, d.rawValue]);
     if (uc == null) {
       _reportUnresolvedNode(kind.name, d.ucId);
-      return _unresolvedItem(id, _flowDescription(d, stepId));
+      return _unresolvedItem(id, d.ucId, _flowDescription(d, stepId));
     }
     return GapReportItem(
       id: id,

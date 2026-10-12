@@ -528,13 +528,14 @@ void main() {
       );
     });
 
-    test('T3-7b flow 子類的 UC 查無節點 → AssertionError', () {
-      expect(
-        () => projectWithoutNodes(
-          defects: [_flowDefect(FlowDefectKind.duplicateStepId)],
-        ),
-        throwsAssertionError,
-      );
+    test('T3-7b flow 四子類的 UC 查無節點 → 各自 AssertionError', () {
+      for (final kind in FlowDefectKind.values) {
+        expect(
+          () => projectWithoutNodes(defects: [_flowDefect(kind)]),
+          throwsAssertionError,
+          reason: '$kind',
+        );
+      }
     });
 
     test('T3-3 EVT-CORPUS-005：清單檔路徑、無指向', () {
@@ -964,18 +965,23 @@ void main() {
     final spec = File('docs/spec/ui/SPEC-004-component-library.md')
         .readAsStringSync();
     // 表格列解析：以未跳脫的 `|` 分欄，`\|` 還原為文案內的 `|`。
-    const escapedPipe = '\u0001';
+    // 拆欄函式由 P7 實際比對與下方自檢共用。
+    List<String> splitRow(String line) {
+      const escapedPipe = '\u0001';
+      return line
+          .replaceAll(r'\|', escapedPipe)
+          .split('|')
+          .map((c) => c.replaceAll(escapedPipe, '|').trim())
+          .toList();
+    }
+
     final rowStart = RegExp(r'^\| `(gap[A-Za-z]+)` \|');
     final rows = <String, (String, String)>{};
     final duplicateKeys = <String>[];
     for (final line in spec.split('\n')) {
       final m = rowStart.firstMatch(line);
       if (m == null) continue;
-      final cells = line
-          .replaceAll(r'\|', escapedPipe)
-          .split('|')
-          .map((c) => c.replaceAll(escapedPipe, '|').trim())
-          .toList();
+      final cells = splitRow(line);
       final key = m.group(1)!;
       if (rows.containsKey(key)) duplicateKeys.add(key);
       rows[key] = (cells[2], cells[3]);
@@ -1024,11 +1030,7 @@ void main() {
     });
 
     test('表格含跳脫豎線的文案可正確比對（解析器自檢）', () {
-      final cells = r'| `gapX` | a \| b | c |'
-          .replaceAll(r'\|', escapedPipe)
-          .split('|')
-          .map((c) => c.replaceAll(escapedPipe, '|').trim())
-          .toList();
+      final cells = splitRow(r'| `gapX` | a \| b | c |');
       expect(cells[2], 'a | b');
       expect(cells[3], 'c');
     });
