@@ -46,7 +46,8 @@ class BundleOrderAvailable extends BundleOrderResult {
   BundleOrderAvailable(List<BundleLayerEntry> entries)
     : entries = List.unmodifiable(entries);
 
-  /// 依層遞增、同層依 `domain` code point 序；推不出層者（層號 null）接在最後。
+  /// 依層遞增、同層依 `domain` code point 序（`domain` 無效者排在同層最後、依 bundle ID）；
+  /// 推不出層者（層號 null）接在最後。
   final List<BundleLayerEntry> entries;
 }
 
@@ -116,7 +117,7 @@ int compareCodePoints(String a, String b) {
   }
 }
 
-/// 全部 DomainBundle（重複宣告者各自成列；非字串 `domain` 以轉字串值成列，FR-13 Z1）。
+/// 全部 DomainBundle（重複宣告者各自成列；`domain` 無效者亦成列，列首文字見 FR-13 Z3）。
 List<DomainBundleRef> bundleRefsOf(GraphBuiltEvent event) => [
   for (final id in _allBundleIds(event))
     DomainBundleRef(
@@ -127,7 +128,7 @@ List<DomainBundleRef> bundleRefsOf(GraphBuiltEvent event) => [
 
 Set<String> _allBundleIds(GraphBuiltEvent event) => {
   ...event.domainResolver.bundleIds,
-  ...event.domainResolver.nonStringDomainBundleIds,
+  ...event.domainResolver.invalidDomainBundleIds,
 };
 
 /// 兩端皆為 DomainBundle 的 `bundle_dependency` 邊。
@@ -144,8 +145,8 @@ List<BundleDependency> bundleDependenciesOf(GraphBuiltEvent event) {
 }
 
 /// 推不出層的 bundle 起點：依賴指向未宣告的節點（斷邊，或邊的終點不是 DomainBundle）、
-/// 自我依賴（Y1：selfReference 格式錯誤不建邊，故依依賴宣告而非已建的邊判定）、
-/// `domain` 非字串（Z1）。
+/// 自我依賴（Y1：selfReference 格式錯誤不建邊，故依依賴宣告而非已建的邊判定）。
+/// `domain` 無效不在此列（Z3：層號照依賴計算）。
 ///
 /// 只看正向斷邊：型別表 `bundle_dependency` 的 `reverse_field` 為 null（無反向欄位，
 /// 見 assets/schema/builtin_tracking_schema.json），不存在 `isReverse` 的 bundle_dependency
@@ -153,7 +154,6 @@ List<BundleDependency> bundleDependenciesOf(GraphBuiltEvent event) {
 Set<String> _brokenDependents(GraphBuiltEvent event) {
   final ids = _allBundleIds(event);
   return {
-    ...event.domainResolver.nonStringDomainBundleIds,
     for (final d in event.graphDefects.whereType<MalformedRefGraphDefect>())
       if (d.ref.edgeTypeName == bundleDependencyEdgeType &&
           d.reason == MalformedReason.selfReference)
@@ -206,16 +206,27 @@ int? _layerIfReady(Set<String> targets, Map<String, int> layers) {
       : targets.map((t) => layers[t]!).reduce((a, b) => a > b ? a : b) + 1;
 }
 
-int _compareEntries(BundleLayerEntry a, BundleLayerEntry b) {
-  final la = a.layer;
-  final lb = b.layer;
-  if (la != lb) {
-    if (la == null) return 1;
-    if (lb == null) return -1;
-    return la.compareTo(lb);
-  }
-  final byDomain = compareCodePoints(a.domain, b.domain);
-  return byDomain != 0 ? byDomain : a.bundleId.compareTo(b.bundleId);
+/// 層遞增（null 在最後）；同層 `domain` 有效者在前並依 domain、再依 bundle ID；
+/// `domain` 無效者（[invalid]）在後並只依 bundle ID（FR-13 Z3）。
+int _compareEntries(
+  BundleLayerEntry a,
+  BundleLayerEntry b,
+  Set<String> invalid,
+) {
+  final byLayer = _compareLayers(a.layer, b.layer);
+  if (byLayer != 0) return byLayer;
+  final ia = invalid.contains(a.bundleId);
+  final ib = invalid.contains(b.bundleId);
+  if (ia != ib) return ia ? 1 : -1;
+  final byDomain = ia ? 0 : compareCodePoints(a.domain, b.domain);
+  return byDomain != 0 ? byDomain : compareCodePoints(a.bundleId, b.bundleId);
+}
+
+int _compareLayers(int? la, int? lb) {
+  if (la == lb) return 0;
+  if (la == null) return 1;
+  if (lb == null) return -1;
+  return la.compareTo(lb);
 }
 
 /// 需求：[SPEC-007 FR-13] 由已完成的建圖事件算出分層與排序。
@@ -226,6 +237,7 @@ List<BundleLayerEntry> orderBundlesOf(GraphBuiltEvent event) {
     bundleDependenciesOf(event),
     _brokenDependents(event),
   );
+  final invalid = event.domainResolver.invalidDomainBundleIds.toSet();
   return [
     for (final r in refs)
       BundleLayerEntry(
@@ -233,5 +245,5 @@ List<BundleLayerEntry> orderBundlesOf(GraphBuiltEvent event) {
         domain: r.domain,
         layer: layers[r.bundleId],
       ),
-  ]..sort(_compareEntries);
+  ]..sort((a, b) => _compareEntries(a, b, invalid));
 }

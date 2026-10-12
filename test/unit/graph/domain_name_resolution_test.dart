@@ -567,7 +567,7 @@ void main() {
     });
   });
 
-  group('非字串 domain 的反查（FR-13 Z1）', () {
+  group('無效 domain 的反查（FR-13 Z3）', () {
     test('domain 為 7：domainOf 為 null、bundleIds 不含、domainTextOf 為 7 的字串', () {
       final r = DomainNameResolver.fromDeclarations([
         ('B1', 7),
@@ -575,14 +575,36 @@ void main() {
       ]);
       expect(r.domainOf('B1'), isNull);
       expect(r.bundleIds, isNot(contains('B1')));
-      expect(r.nonStringDomainBundleIds, ['B1']);
+      expect(r.invalidDomainBundleIds, ['B1']);
       expect(r.domainTextOf('B1'), '7');
       // 對照：字串 domain 照舊。
       expect(r.domainOf('B2'), 'corpus');
       expect(r.bundleIds, contains('B2'));
-      expect(r.nonStringDomainBundleIds, isNot(contains('B2')));
+      expect(r.invalidDomainBundleIds, isNot(contains('B2')));
       expect(r.domainTextOf('B2'), 'corpus');
       expect(r.domainTextOf('nope'), isNull);
+    });
+
+    test('null、缺鍵、空字串：不入名稱索引，列首文字為空字串', () {
+      const ids = ['B-null', 'B-absent', 'B-empty', 'B-ok'];
+      RawNode node(String id, Map<String, dynamic> extra) =>
+          buildRawNode(id: id, typeName: domainBundleTypeName, extra: extra);
+      final r = DomainNameResolver.fromRawNodes([
+        node('B-null', {domainBundleDomainField: null}),
+        node('B-absent', const {}),
+        node('B-empty', {domainBundleDomainField: ''}),
+        node('B-ok', {domainBundleDomainField: 'corpus'}),
+      ], ids.toSet());
+      expect(r.invalidDomainBundleIds, ['B-null', 'B-absent', 'B-empty']);
+      for (final id in ['B-null', 'B-absent', 'B-empty']) {
+        expect(r.domainOf(id), isNull);
+        expect(r.bundleIds, isNot(contains(id)));
+        expect(r.domainTextOf(id), '');
+      }
+      expect(r.resolve(''), isNull);
+      // 對照：有效 domain 照舊解析。
+      expect(r.resolve('corpus'), 'B-ok');
+      expect(r.domainTextOf('B-ok'), 'corpus');
     });
   });
 }

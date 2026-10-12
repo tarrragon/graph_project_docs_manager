@@ -309,29 +309,76 @@ void main() {
       expect(mixed, {'a': 0, 's': null, 'd': null});
     });
 
-    test('T4 Z1：domain 非字串的 DomainBundle 不消失，層號 null，以轉字串值排序', () {
+    test('T4 Z3：四種無效 domain 皆出現、層號照算，同層排在有效者之後並依 bundle ID', () {
       final entries = _order([
-        bundleNode('a', domain: '8'),
-        buildRawNode(
-          id: bundleIdOf('n'),
-          typeName: domainBundleTypeName,
-          extra: {domainBundleDomainField: 7},
-        ),
-        bundleNode('b', domain: '70'),
+        bundleNode('z', domain: 'zz'),
+        _rawBundle('a', {domainBundleDomainField: 7}),
+        _rawBundle('b', {domainBundleDomainField: null}),
+        _rawBundle('c', const {}),
+        _rawBundle('d', {domainBundleDomainField: ''}),
       ]);
+      // 依列首文字排序會得 b、c、d、a（'' 先於 '7'）；依 bundle ID 則 a 在前。
+      expect(_ids(entries), [
+        bundleIdOf('z'),
+        bundleIdOf('a'),
+        bundleIdOf('b'),
+        bundleIdOf('c'),
+        bundleIdOf('d'),
+      ]);
+      // 列首：非字串轉字串，null、缺鍵、空字串為空字串；層號皆照依賴計算（無依賴即 L0）。
       expect(_asLayoutRecords(entries), [
-        (domain: '70', layer: 0),
-        (domain: '8', layer: 0),
+        (domain: 'zz', layer: 0),
+        (domain: '7', layer: 0),
+        (domain: '', layer: 0),
+        (domain: '', layer: 0),
+        (domain: '', layer: 0),
+      ]);
+    });
+
+    test('T4 Z3 E1：L0 domain 有效 vs 無效，下游層號相同、排序位置不同', () {
+      List<RawNode> nodes(Map<String, dynamic> baseExtra) => [
+        _rawBundle('base', baseExtra),
+        bundleNode('m'),
+        bundleNode('x', dependsOn: ['base']),
+      ];
+      final valid = _order(nodes({domainBundleDomainField: 'a'}));
+      final invalid = _order(nodes({domainBundleDomainField: null}));
+      Map<String, int?> layers(List<BundleLayerEntry> e) => {
+        for (final x in e) x.bundleId: x.layer,
+      };
+      expect(layers(invalid), layers(valid));
+      expect(layers(invalid), {
+        bundleIdOf('base'): 0,
+        bundleIdOf('m'): 0,
+        bundleIdOf('x'): 1,
+      });
+      expect(_ids(valid), [
+        bundleIdOf('base'),
+        bundleIdOf('m'),
+        bundleIdOf('x'),
+      ]);
+      expect(_ids(invalid), [
+        bundleIdOf('m'),
+        bundleIdOf('base'),
+        bundleIdOf('x'),
+      ]);
+    });
+
+    test('T4 Z3：推不出層者之間，domain 無效者排在有效者之後並依 bundle ID', () {
+      final entries = _order([
+        bundleNode('z'),
+        bundleNode('x', dependsOn: ['y']),
+        _rawBundle('y', {
+          domainBundleDomainField: 7,
+          'depends_on_bundles': [bundleIdOf('x')],
+        }),
+      ]);
+      // 依列首文字排序會把 '7' 排在 'x' 之前。
+      expect(_asLayoutRecords(entries), [
+        (domain: 'z', layer: 0),
+        (domain: 'x', layer: null),
         (domain: '7', layer: null),
       ]);
-      expect(entries.last.bundleId, bundleIdOf('n'));
-      // 正向對照：同一節點改成字串 domain '7'，即為 L0 並依 code point 排在 '70' 之前。
-      final asString = _order([
-        bundleNode('a', domain: '8'),
-        bundleNode('n', domain: '7'),
-        bundleNode('b', domain: '70'),
-      ]);
-      expect(_domains(asString), ['7', '70', '8']);
     });
 
     test('T5 依賴指向存在但不是 DomainBundle 的節點：推不出層', () {
@@ -430,6 +477,17 @@ void main() {
     });
   });
 }
+
+/// 以完整 frontmatter 建 DomainBundle（可缺 `domain` 鍵或給無效值）。
+RawNode _rawBundle(String key, Map<String, dynamic> extra) => buildRawNode(
+  id: bundleIdOf(key),
+  typeName: domainBundleTypeName,
+  extra: extra,
+);
+
+List<String> _ids(List<BundleLayerEntry> entries) => [
+  for (final e in entries) e.bundleId,
+];
 
 List<RawNode> _g135Nodes() => [
   bundleNode('n1', domain: 'b'),
