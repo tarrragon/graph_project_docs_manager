@@ -148,14 +148,18 @@ class FakeScanRound extends ScanRoundNotifier {
     ensureCalls++;
     final current = state;
     if (current is ScanRoundCompleted) return Future.value(current.result);
-    return _produceRound();
+    // 對齊真實擁有者：進行中的輪次共用，不重複產生。
+    return _inFlight ??= _produceRound();
   }
 
   @override
   Future<ScanRoundResult?> rescan() {
     rescanCalls++;
-    return _produceRound();
+    discard('rescan');
+    return _inFlight = _produceRound();
   }
+
+  Future<ScanRoundResult?>? _inFlight;
 
   /// 模擬其他消費者（如 Domain 視圖）完成了一輪。
   void completeExternally(ScanRoundResult result) {
@@ -166,6 +170,7 @@ class FakeScanRound extends ScanRoundNotifier {
   void discard([String reason = 'cancel']) {
     discardCalls++;
     _generation++;
+    _inFlight = null;
     state = const ScanRoundIdle();
   }
 
@@ -177,8 +182,11 @@ class FakeScanRound extends ScanRoundNotifier {
     produced++;
     final generation = ++_generation;
     state = const ScanRoundRunning('/ws/fake');
+    // 讓出一個 microtask，確保呼叫端先登記 _inFlight 再完成。
+    await Future<void>.value();
     if (latency > Duration.zero) await Future<void>.delayed(latency);
     if (generation != _generation) return null;
+    _inFlight = null;
     final result = produce();
     state = result == null ? const ScanRoundIdle() : ScanRoundCompleted(result);
     return result;

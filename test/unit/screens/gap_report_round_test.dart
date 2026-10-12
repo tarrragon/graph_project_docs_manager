@@ -5,15 +5,19 @@
 // A5（通知送出與真實耗時）屬平台事實，不在單元測試斷言。
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show Override, ProviderContainer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/components/components.dart'
+    show AppText, AppTextVariant;
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
@@ -404,14 +408,15 @@ void main() {
       await tester.pump();
 
       container.read(gapReportProvider.notifier).cancelScan();
+      // 輪次完成時刻（300ms）早於取消導覽時限（500ms）：此時斷言取消態。
       await pumpContract(tester, Motion.spinnerMinVisible);
-      await tester.pump(Motion.cancelDeadline);
 
       expect(fake.discardCalls, 1);
       expect(container.read(scanRoundProvider), isA<ScanRoundIdle>());
       final state = container.read(gapReportProvider);
       expect(state, isA<GapReportScanning>());
       expect((state as GapReportScanning).isCancelling, isTrue);
+      await tester.pump(Motion.cancelDeadline);
     });
   });
 
@@ -455,6 +460,7 @@ void main() {
       await pumpContract(tester, Motion.spinnerMinVisible);
 
       expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
+      expect(fake.produced, 1, reason: '沒有恢復條件時不得自行重掃');
     });
 
     testWidgets('必修1 其他消費者完成同工作區輪次：直接呈現', (tester) async {
@@ -510,6 +516,165 @@ void main() {
       expect(_categoryIds(container.read(gapReportProvider)), [
         gapCategoryIdFlowBlockMalformed,
       ]);
+    });
+  });
+
+  group('B／D／E：輪次三種回應、取消後恢復、離開再回到本頁', () {
+    const wsA = WorkspaceReady('/ws/a');
+    final wsOverride = currentWorkspaceStateProvider.overrideWith((ref) => wsA);
+
+    Future<ProviderContainer> pumpWith(
+      WidgetTester tester,
+      FakeScanRound fake, {
+      List<Override> extra = const [],
+    }) async {
+      final container = await pumpHarness(
+        tester,
+        child: const SizedBox.shrink(),
+        overrides: [
+          _onGaps,
+          scanRoundProvider.overrideWith(() => fake),
+          ...extra,
+        ],
+      );
+      container.listen(gapReportProvider, (_, _) {});
+      return container;
+    }
+
+    testWidgets('B1 工作區不是 Ready → 專案未就緒（不接續新輪次）', (tester) async {
+      final fake = FakeScanRound(produce: () => null);
+      final container = await pumpWith(tester, fake);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
+      expect(fake.produced, 1);
+    });
+
+    testWidgets('B2 輪次等待中被丟棄 → 接續新輪次並呈現其結果', (tester) async {
+      final fake = FakeScanRound(
+        produce: () =>
+            fakeRound(parseFailureEvents: [fakeCarrierEvent('docs/a.md')]),
+        latency: Motion.spinnerMinVisible,
+      );
+      final container = await pumpWith(tester, fake, extra: [wsOverride]);
+      await tester.pump();
+      // 他人在本頁等待期間重掃：舊輪被丟棄（ensureRound 回 null），新輪開始。
+      unawaited(fake.rescan());
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(container.read(gapReportProvider), isA<GapReportFound>());
+      expect(fake.produced, 2, reason: '接續共用新輪，不另開第三輪');
+    });
+
+    testWidgets('B3 輪次拋出非預期例外 → 無法判定破洞（掃描失敗）', (tester) async {
+      final fake = FakeScanRound(produce: () => throw StateError('boom'));
+      final container = await pumpWith(tester, fake, extra: [wsOverride]);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      final state = container.read(gapReportProvider);
+      expect(state, isA<GapReportUndeterminable>());
+      expect((state as GapReportUndeterminable).isScanFailure, isTrue);
+    });
+
+    testWidgets('B3 畫面顯示掃描失敗原因說明', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(
+            () => _FixedNotifier(const GapReportUndeterminable.scanFailed()),
+          ),
+        ],
+      );
+
+      expect(
+        find.text(AppLocalizationsZh().gapsUndeterminableReasonScanFailed),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('D 取消 → 離開 → 回到本頁會重新掃描，不停在取消中', (tester) async {
+      final fake = FakeScanRound(
+        produce: () => fakeRound(),
+        latency: Motion.spinnerMinVisible,
+      );
+      final container = await pumpWith(tester, fake, extra: [wsOverride]);
+      await tester.pump();
+
+      container.read(gapReportProvider.notifier).cancelScan();
+      await tester.pump(Motion.cancelDeadline);
+      await tester.pump();
+      expect(
+        container.read(selectedDestinationProvider),
+        AppDestination.domain,
+      );
+
+      container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.gaps;
+      await tester.pump();
+      await pumpContract(tester, Motion.spinnerMinVisible * 2);
+
+      expect(container.read(gapReportProvider), isA<GapReportNoGaps>());
+      expect(fake.produced, 2);
+    });
+
+    testWidgets('E(a) 完成後離開再回到本頁：維持結果、不重掃', (tester) async {
+      final fake = FakeScanRound(
+        produce: () =>
+            fakeRound(parseFailureEvents: [fakeCarrierEvent('docs/a.md')]),
+      );
+      final container = await pumpWith(tester, fake, extra: [wsOverride]);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      final selected = container.read(selectedDestinationProvider.notifier);
+
+      selected.state = AppDestination.domain;
+      await tester.pump();
+      selected.state = AppDestination.gaps;
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(container.read(gapReportProvider), isA<GapReportFound>());
+      expect(fake.produced, 1);
+    });
+
+    testWidgets('E(a) 未就緒後工作區轉 ready，離開再回到本頁：恢復出結果', (tester) async {
+      var ready = false;
+      final fake = FakeScanRound(
+        produce: () => ready
+            ? fakeRound(parseFailureEvents: [fakeCarrierEvent('d')])
+            : null,
+      );
+      final container = await pumpWith(tester, fake);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      final selected = container.read(selectedDestinationProvider.notifier);
+
+      selected.state = AppDestination.domain;
+      await tester.pump();
+      ready = true;
+      selected.state = AppDestination.gaps;
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(container.read(gapReportProvider), isA<GapReportFound>());
+    });
+
+    testWidgets('E(b) 不在等待輪次時忽略他人完成的輪次（拿掉守衛會紅）', (tester) async {
+      final fake = FakeScanRound(
+        produce: () =>
+            fakeRound(parseFailureEvents: [fakeCarrierEvent('docs/a.md')]),
+      );
+      final container = await pumpWith(tester, fake, extra: [wsOverride]);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      expect(container.read(gapReportProvider), isA<GapReportFound>());
+
+      fake.completeExternally(fakeRound());
+      await tester.pump();
+
+      expect(
+        container.read(gapReportProvider),
+        isA<GapReportFound>(),
+        reason: '本頁已有自己的結果，他人的無破洞輪次不得覆蓋',
+      );
     });
   });
 
@@ -678,6 +843,33 @@ void main() {
       expect(find.byKey(badge), findsOneWidget);
       await pumpState(const GapReportNoGaps());
       expect(find.byKey(badge), findsNothing);
+    });
+
+    testWidgets('C 主文字是項目說明，次文字（caption）是路徑與行號', (tester) async {
+      final state = gapReportStateFromRound(
+        fakeRound(
+          parseFailureEvents: [fakeCarrierEvent('docs/spec/README.md')],
+        ),
+        nonDomainPathsKey: _key,
+      );
+      await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(() => _FixedNotifier(state)),
+        ],
+      );
+      final description = AppLocalizationsZh().gapParseNoFrontmatter;
+
+      final primary = tester.widget<AppText>(
+        find.widgetWithText(AppText, description),
+      );
+      final secondary = tester.widget<AppText>(
+        find.widgetWithText(AppText, 'docs/spec/README.md'),
+      );
+
+      expect(primary.variant, isNot(AppTextVariant.caption));
+      expect(secondary.variant, AppTextVariant.caption);
     });
 
     testWidgets('A9 項目說明與歸屬型別不明附註以 l10n 渲染', (tester) async {

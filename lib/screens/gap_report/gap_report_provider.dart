@@ -22,6 +22,9 @@ import 'gap_report_round_state.dart';
 
 const String _tag = 'GapReportNotifier';
 
+/// 輪次等待中被丟棄時，最多接續新輪次的次數。
+const int _maxRoundRetries = 3;
+
 /// 破洞報告畫面狀態機。
 ///
 /// 生命週期（SPEC-003 §3.5）：首次可見自動進入掃描中，完成後轉無破洞、
@@ -158,6 +161,10 @@ class GapReportNotifier extends Notifier<GapReportState> {
     }
     state = const GapReportScanning(isCancelling: true);
     _lastResult = state;
+    // 取消後離開本頁；回到本頁時須重新掃描（C7 重來自 0），否則旗標仍為
+    // true 會一直停在「取消中」。
+    _hasTriggeredScan = false;
+    _awaitingRound = false;
     if (ref.read(scanRoundProvider) is ScanRoundRunning) {
       ref.read(scanRoundProvider.notifier).discard('gap-report-cancel');
     }
@@ -184,18 +191,27 @@ class GapReportNotifier extends Notifier<GapReportState> {
     // 在建構期間修改其他 provider（輪次擁有者 ensureRound() 會同步改自身
     // state，debug 下斷言失敗），故先讓出一個 microtask 待 build() 返回。
     await Future<void>.microtask(() {});
-    final result = await _projectRound(forceNewRound);
+    final result = await _projectRound(generation, forceNewRound);
     await minVisible;
     _completeScan(generation, result);
   }
 
   /// 輪次不可用（非 WorkspaceReady、等待中被丟棄）或失敗時回傳 `null`。
-  Future<GapReportState?> _projectRound(bool forceNewRound) async {
+  Future<GapReportState?> _projectRound(
+    int generation,
+    bool forceNewRound,
+  ) async {
     final rounds = ref.read(scanRoundProvider.notifier);
     try {
-      final round = await (forceNewRound
+      var round = await (forceNewRound
           ? rounds.rescan()
           : rounds.ensureRound());
+      // 輪次回 null 有兩種：工作區不是 Ready（專案未就緒），或等待中被丟棄
+      // （切換、他人重掃；丟棄方已開新輪）。後者接續新輪次，上一輪已處理。
+      for (var retry = 0; round == null && retry < _maxRoundRetries; retry++) {
+        if (!_shouldFollowNewRound(generation)) return null;
+        round = await rounds.ensureRound();
+      }
       if (round == null) return null;
       return gapReportStateFromRound(
         round,
@@ -209,8 +225,20 @@ class GapReportNotifier extends Notifier<GapReportState> {
         error: e,
         stackTrace: st,
       );
-      return null;
+      // SPEC-001 v1.48：非預期例外落「無法判定破洞」，原因說明之三。
+      return const GapReportUndeterminable.scanFailed();
     }
+  }
+
+  /// 接續新輪次的前提：工作區仍是 Ready、本次掃描未被更新的一輪取代、
+  /// 且使用者未按取消（取消者自己丟棄了輪次，不該再開新輪）。
+  bool _shouldFollowNewRound(int generation) {
+    if (generation != _scanGeneration) return false;
+    if (ref.read(currentWorkspaceStateProvider) is! WorkspaceReady) {
+      return false;
+    }
+    final current = state;
+    return !(current is GapReportScanning && current.isCancelling);
   }
 
   GapReportState? _stateOfCompletedRound() {

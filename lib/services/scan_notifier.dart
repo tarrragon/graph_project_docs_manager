@@ -30,10 +30,17 @@ enum ScanNotificationDelivery {
 
 /// 掃描完成通知的內容（SPEC-003 §2.2「通知內容」列）。
 class ScanCompleteNotification {
-  const ScanCompleteNotification({required this.gapCount});
+  const ScanCompleteNotification({
+    required this.gapCount,
+    this.isUndeterminable = false,
+  });
 
   /// 破洞總數。0 表示無破洞，對應 `scanCompleteNoGapsNotificationBody`。
   final int gapCount;
+
+  /// 掃描結果為 `state-gaps-undeterminable`：內文須明示「無法判定」，
+  /// 對應 `scanCompleteUndeterminableNotificationBody`（優先於 [gapCount]）。
+  final bool isUndeterminable;
 }
 
 /// 掃描完成的系統層通知抽象（SPEC-003 §2.2）。

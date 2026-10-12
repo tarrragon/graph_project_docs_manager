@@ -632,6 +632,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Scan complete: no gaps detected';
 
   @override
+  String get scanCompleteUndeterminableNotificationBody =>
+      'Gaps could not be determined: schema lacks path patterns';
+
+  @override
+  String get scanCompleteUndeterminableSnackbarMessage =>
+      'Scan complete: gaps could not be determined';
+
+  @override
+  String get gapsUndeterminableReasonScanFailed =>
+      'An unexpected error occurred during the scan, so gaps cannot be determined. Try rescanning.';
+
+  @override
   String get viewGapsAction => 'View';
 
   @override

@@ -606,6 +606,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scanCompleteNoGapsSnackbarMessage => '掃描完成，未偵測到破洞';
 
   @override
+  String get scanCompleteUndeterminableNotificationBody => '無法判定破洞：型別表缺路徑模式';
+
+  @override
+  String get scanCompleteUndeterminableSnackbarMessage => '掃描完成，無法判定破洞';
+
+  @override
+  String get gapsUndeterminableReasonScanFailed => '掃描時發生非預期錯誤，無法判斷破洞；請重新掃描';
+
+  @override
   String get viewGapsAction => '檢視';
 
   @override

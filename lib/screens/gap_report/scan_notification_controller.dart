@@ -132,6 +132,8 @@ class ScanNotificationController {
         title: () => l10n.scanCompleteNotificationTitle,
         foundBody: l10n.scanCompleteNotificationBody,
         noGapsBody: () => l10n.scanCompleteNoGapsNotificationBody,
+        undeterminableBody: () =>
+            l10n.scanCompleteUndeterminableNotificationBody,
       );
     }
   }
@@ -146,7 +148,10 @@ class ScanNotificationController {
     // 觸發條件僅「state-gaps-scanning 轉換至 state-gaps-none 或
     // state-gaps-found」；取消完成（isCancelling）不通知（§2.5 C5）。
     final cancelled = previous is GapReportScanning && previous.isCancelling;
-    final completed = next is GapReportNoGaps || next is GapReportFound;
+    final completed =
+        next is GapReportNoGaps ||
+        next is GapReportFound ||
+        next is GapReportUndeterminable;
     if (previous is GapReportScanning && completed && !cancelled) {
       _evaluateCompletion(next);
     }
@@ -218,19 +223,22 @@ class ScanNotificationController {
     syncLocalizedStrings(l10n);
     final notifier = _ref.read(scanNotifierProvider);
     final authorization = await notifier.authorizationStatus();
-    final gapCount = _gapCountOf(completed);
+    final notification = ScanCompleteNotification(
+      gapCount: _gapCountOf(completed),
+      isUndeterminable: completed is GapReportUndeterminable,
+    );
     switch (authorization) {
       case NotificationAuthorization.granted:
-        await _showOrFallback(notifier, gapCount, completed);
+        await _showOrFallback(notifier, notification, completed);
       case NotificationAuthorization.notDetermined:
         final requested = await notifier.requestAuthorization();
         if (requested == NotificationAuthorization.granted) {
-          await _showOrFallback(notifier, gapCount, completed);
+          await _showOrFallback(notifier, notification, completed);
         } else {
-          _fallbackToSnackbar(gapCount);
+          _fallbackToSnackbar(notification);
         }
       case NotificationAuthorization.denied:
-        _fallbackToSnackbar(gapCount);
+        _fallbackToSnackbar(notification);
     }
   }
 
@@ -238,29 +246,26 @@ class ScanNotificationController {
   /// 的 SnackBar fallback（SPEC-003 §2.2 權限 gate「發送失敗」列）。
   Future<void> _showOrFallback(
     ScanNotifier notifier,
-    int gapCount,
+    ScanCompleteNotification notification,
     GapReportState completed,
   ) async {
-    final result = await notifier.show(
-      ScanCompleteNotification(gapCount: gapCount),
-    );
+    final result = await notifier.show(notification);
     if (result == ScanNotificationDelivery.delivered) {
       _pendingWithdrawableState = completed;
       return;
     }
     developer.log(
-      '系統通知發送失敗（gapCount=$gapCount），改走 SnackBar fallback', // i18n-exempt: 開發者診斷 log
+      '系統通知發送失敗（gapCount=${notification.gapCount}），改走 SnackBar fallback', // i18n-exempt: 開發者診斷 log
       name: _tag,
       level: 900,
     );
-    _fallbackToSnackbar(gapCount);
+    _fallbackToSnackbar(notification);
   }
 
   /// `denied` fallback（SPEC-003 §2.2 權限 gate `denied` 列）：視窗在前景
   /// 且可見頁不是 `nav-page-gaps` → 立即顯示；視窗非前景 → 延後至
   /// `resumed`。
-  void _fallbackToSnackbar(int gapCount) {
-    final notification = ScanCompleteNotification(gapCount: gapCount);
+  void _fallbackToSnackbar(ScanCompleteNotification notification) {
     final lifecycle = _ref.read(appLifecycleStateProvider);
     if (lifecycle == AppLifecycleState.resumed) {
       _showDeniedSnackbar(notification);
@@ -280,7 +285,9 @@ class ScanNotificationController {
       return;
     }
     final l10n = AppLocalizations.of(context);
-    final message = notification.gapCount == 0
+    final message = notification.isUndeterminable
+        ? l10n.scanCompleteUndeterminableSnackbarMessage
+        : notification.gapCount == 0
         ? l10n.scanCompleteNoGapsSnackbarMessage
         : l10n.scanCompleteSnackbarMessage(notification.gapCount);
     AppSnackBar.show(

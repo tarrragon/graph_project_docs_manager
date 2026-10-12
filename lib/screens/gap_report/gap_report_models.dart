@@ -207,12 +207,22 @@ class GapReportFound extends GapReportState {
 /// 「路徑模式取自內建表」旗標互斥，故不攜帶該旗標。
 class GapReportUndeterminable extends GapReportState {
   const GapReportUndeterminable({
-    required this.reason,
+    required UndeterminedGapReason this.reason,
     this.categories = const [],
   });
 
-  /// 原因碼（二選一，顯示文字由畫面經 l10n 投影）。
-  final UndeterminedGapReason reason;
+  /// 掃描輪次拋出非預期例外（SPEC-001 v1.48，原因說明之三）：無原因碼，
+  /// 無其餘類別。
+  const GapReportUndeterminable.scanFailed()
+    : reason = null,
+      categories = const [];
+
+  /// 原因碼（二選一，顯示文字由畫面經 l10n 投影）；`null` 代表
+  /// [isScanFailure]。
+  final UndeterminedGapReason? reason;
+
+  /// 是否為掃描失敗（非預期例外）所致。
+  bool get isScanFailure => reason == null;
 
   final List<GapReportCategory> categories;
 }

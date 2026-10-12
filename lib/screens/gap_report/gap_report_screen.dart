@@ -107,12 +107,13 @@ class _UndeterminableView extends StatelessWidget {
     );
   }
 
-  String _reasonText(AppLocalizations l10n, UndeterminedGapReason reason) =>
+  String _reasonText(AppLocalizations l10n, UndeterminedGapReason? reason) =>
       switch (reason) {
         UndeterminedGapReason.projectVersionOutOfKnownRange =>
           l10n.gapsUndeterminableReasonVersionOutOfRange,
         UndeterminedGapReason.noPathPattern =>
           l10n.gapsUndeterminableReasonNoPathPattern,
+        null => l10n.gapsUndeterminableReasonScanFailed,
       };
 }
 
@@ -216,7 +217,11 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
           _LocatableGapItem(
             item: item,
             child: ListRow.item(
-              primary: AppText(item.filePath, variant: AppTextVariant.mono),
+              // SPEC-004 4.40：有項目說明時主文字是說明，次文字是路徑與行號；
+              // 無說明（事件類、0.1 項目）維持路徑為主文字。
+              primary: item.description == null
+                  ? AppText(item.filePath, variant: AppTextVariant.mono)
+                  : AppText(_primaryText(l10n, item)),
               // 有值時附行號，無值時不顯示佔位（SPEC-001 §5、`0.1.0-W3-335.37`
               // R11）：`ListRow.item` 的 `secondary` 為必填 slot（SPEC-004
               // §5.14 子件契約），無行號時以空文字滿足契約而不渲染可見內容。
@@ -251,11 +256,20 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
     );
   }
 
-  /// 次要文字：項目說明、歸屬型別不明附註、行號（有值才附，無值不佔位）。
-  String _secondaryText(AppLocalizations l10n, GapReportItem item) {
+  /// 主文字（有項目說明時）：說明加歸屬型別不明附註。
+  String _primaryText(AppLocalizations l10n, GapReportItem item) {
     final parts = <String>[
       ?gapItemDescriptionText(l10n, item.description),
       ?gapAmbiguousTypesText(l10n, item.ambiguousTypes),
+    ];
+    return parts.join(' · '); // i18n-exempt: 分隔符
+  }
+
+  /// 次要文字：有說明時為檔案路徑加行號；無說明時只有行號
+  /// （有值才附，無值不佔位）。
+  String _secondaryText(AppLocalizations l10n, GapReportItem item) {
+    final parts = <String>[
+      if (item.description != null) item.filePath,
       if (item.lineNumber != null) l10n.gapItemLineLabel(item.lineNumber!),
     ];
     return parts.join(' · '); // i18n-exempt: 分隔符

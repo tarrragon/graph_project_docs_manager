@@ -30,6 +30,32 @@ void main() {
     );
   });
 
+  test('A 內文依結果選擇：無法判定優先於破洞數（E1：同 gapCount 對照）', () async {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final bodies = <Object?>[];
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      bodies.add((call.arguments as Map)['body']);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(_channel, null));
+    final notifier = MacosScanNotifier(channel: _channel)
+      ..updateLocalizedStrings(
+        title: () => 't',
+        foundBody: (n) => 'found$n',
+        noGapsBody: () => 'none',
+        undeterminableBody: () => 'undet',
+      );
+
+    await notifier.show(const ScanCompleteNotification(gapCount: 0));
+    await notifier.show(
+      const ScanCompleteNotification(gapCount: 0, isUndeterminable: true),
+    );
+    await notifier.show(const ScanCompleteNotification(gapCount: 2));
+
+    expect(bodies, ['none', 'undet', 'found2']);
+  });
+
   test('PlatformException：failed', () async {
     expect(
       await showWith((_) async => throw PlatformException(code: 'x')),
