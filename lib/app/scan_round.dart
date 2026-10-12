@@ -22,10 +22,10 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/schema/schema_source_resolver.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
-import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
-const String _tag = 'ScanRound';
+const String _tag = 'scan_round';
 
 /// 專案 `tracking_schema.json` 相對工作區根的路徑（PROP-002）。
 const String projectSchemaRelativePath =
@@ -150,9 +150,18 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     ref.onDispose(() => _generation++);
     ref.listen<WorkspaceState>(currentWorkspaceStateProvider, (prev, next) {
       if (_isSameWorkspace(prev, next)) return;
-      discard();
+      discard('workspace-changed');
     });
     return const ScanRoundIdle();
+  }
+
+  void _log(String message, {int level = 500, Object? error}) {
+    developer.log(
+      message, // i18n-exempt: 開發者 debug log
+      name: _tag,
+      level: level,
+      error: error,
+    );
   }
 
   bool _isSameWorkspace(WorkspaceState? prev, WorkspaceState next) =>
@@ -173,12 +182,14 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
 
   /// 手動重新掃描：丟棄現有輪次並開新輪。
   Future<ScanRoundResult?> rescan() {
-    discard();
+    discard('rescan');
     return _startRound();
   }
 
   /// 取消／失效：丟棄進行中或已完成的輪次，之後讀取開新輪。
-  void discard() {
+  void discard([String reason = 'cancel']) {
+    // i18n-exempt: 開發者 debug log
+    _log('discard：reason=$reason, generation=$_generation');
     _generation++;
     _inFlight = null;
     state = const ScanRoundIdle();
@@ -189,6 +200,8 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     if (workspace is! WorkspaceReady) return Future.value(null);
     final generation = ++_generation;
     state = ScanRoundRunning(workspace.path);
+    // i18n-exempt: 開發者 debug log
+    _log('開始：path=${workspace.path}, generation=$generation');
     final future = _runGuarded(workspace.path, generation);
     _inFlight = future;
     return future;
@@ -197,22 +210,28 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
   Future<ScanRoundResult?> _runGuarded(String path, int generation) async {
     try {
       final result = await _runRound(path);
-      if (generation != _generation) return null;
+      if (generation != _generation) {
+        // i18n-exempt: 開發者 debug log
+        _log('丟棄過期輪次：path=$path, generation=$generation');
+        return null;
+      }
       state = ScanRoundCompleted(result);
       _inFlight = null;
+      // i18n-exempt: 開發者 debug log
+      _log('完成：path=$path, degraded=${result.isDegraded}');
       return result;
     } catch (e, st) {
       developer.log(
-        '輪次失敗：$path', // i18n-exempt: 開發者 debug log
+        '輪次失敗：$path, generation=$generation', // i18n-exempt: 開發者 debug log
         name: _tag,
         level: 900,
         error: e,
         stackTrace: st,
       );
-      if (generation == _generation) {
-        _inFlight = null;
-        state = const ScanRoundIdle();
-      }
+      // 過期輪次失敗與過期輪次成功一致：回傳 null，不往外拋。
+      if (generation != _generation) return null;
+      _inFlight = null;
+      state = const ScanRoundIdle();
       rethrow;
     }
   }
@@ -222,6 +241,7 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     final builtinJson = await ref.read(
       builtinTrackingSchemaJsonProvider.future,
     );
+    // 降級切換由呼叫端 discard／rescan，輪次不監聽旗標。
     final isDegraded = ref.read(degradedSchemaProvider);
     final projectJson = isDegraded
         ? builtinJson
@@ -253,7 +273,11 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     DocsFileSystem fileSystem,
   ) async {
     final read = await fileSystem.readBytes(projectSchemaRelativePath);
-    if (read is! DocsReadSuccess) return null;
+    if (read is! DocsReadSuccess) {
+      // i18n-exempt: 開發者 debug log
+      _log('專案型別表讀取失敗（視為缺席）：$projectSchemaRelativePath', level: 900);
+      return null;
+    }
     try {
       final decoded = jsonDecode(utf8.decode(read.bytes));
       return decoded is Map<String, dynamic> ? decoded : null;

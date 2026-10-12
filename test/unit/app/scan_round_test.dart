@@ -14,7 +14,7 @@ import 'package:graph_project_docs_manager/corpus/scan_summary.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
-import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/spec006/fake_docs_fs.dart';
@@ -57,16 +57,25 @@ class _Counters {
   int scans = 0;
   int builds = 0;
   final List<TypeTable> tables = [];
+  final List<TypeTable> builtinTables = [];
+  final List<Map<String, dynamic>?> projectJsons = [];
   final List<DocsFileSystem> fileSystems = [];
-  Completer<void>? scanGate;
+
+  /// 為真時每次 scanCorpus 呼叫登記一道閘門，測試依序放行。
+  bool holdScans = false;
+  final List<Completer<void>> gates = [];
 
   ScanCorpusFn get scanFn =>
       ({required fileSystem, required table, required builtinTable}) async {
         scans++;
         tables.add(table);
+        builtinTables.add(builtinTable);
         fileSystems.add(fileSystem);
-        final gate = scanGate;
-        if (gate != null) await gate.future;
+        if (holdScans) {
+          final gate = Completer<void>();
+          gates.add(gate);
+          await gate.future;
+        }
         return _emptyScan();
       };
 
@@ -77,6 +86,7 @@ class _Counters {
         required builtinSchemaJson,
       }) {
         builds++;
+        projectJsons.add(projectSchemaJson);
         return const GraphBuildUnavailable(
           EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
         );
@@ -186,23 +196,123 @@ void main() {
     expect(degradedResult!.isDegraded, isTrue);
   });
 
+  test('R5（E1）建圖端：projectSchemaJson 與 builtinTable 在降級／正常兩組各自斷言', () async {
+    final normal = _Counters();
+    await _round(_container(normal)).ensureRound();
+
+    final degraded = _Counters();
+    final degradedContainer = _container(degraded);
+    degradedContainer.read(degradedSchemaProvider.notifier).state = true;
+    await _round(degradedContainer).ensureRound();
+
+    expect(normal.projectJsons.single, _projectJson);
+    expect(degraded.projectJsons.single, _builtinJson);
+    expect(normal.projectJsons.single, isNot(degraded.projectJsons.single));
+    for (final c in [normal, degraded]) {
+      expect(c.builtinTables.single.nodeTypes.keys, ['BuiltinType']);
+    }
+  });
+
   test('R6：取消丟棄該輪結果，不寫入 provider，之後讀取開新輪', () async {
-    final counters = _Counters()..scanGate = Completer<void>();
+    final counters = _Counters()..holdScans = true;
     final container = _container(counters);
     final notifier = _round(container);
 
     final pending = notifier.ensureRound();
-    await Future<void>.delayed(Duration.zero);
+    await pumpEventQueue();
     notifier.discard();
-    counters.scanGate!.complete();
+    counters.gates.single.complete();
 
     expect(await pending, isNull);
     expect(container.read(scanRoundProvider), isA<ScanRoundIdle>());
 
-    counters.scanGate = null;
+    counters.holdScans = false;
     final fresh = await notifier.ensureRound();
     expect(fresh, isNotNull);
     expect(counters.scans, 2);
+  });
+
+  test('R6 競態：第一輪被擋住時 rescan，先放行第二輪再放行第一輪，最終為第二輪結果', () async {
+    final counters = _Counters()..holdScans = true;
+    final container = _container(counters);
+    final notifier = _round(container);
+
+    final first = notifier.ensureRound();
+    await pumpEventQueue();
+    final second = notifier.rescan();
+    await pumpEventQueue();
+    expect(counters.gates, hasLength(2));
+
+    counters.gates[1].complete();
+    final secondResult = await second;
+    counters.gates[0].complete();
+
+    expect(await first, isNull);
+    expect(secondResult, isNotNull);
+    final state = container.read(scanRoundProvider);
+    expect(state, isA<ScanRoundCompleted>());
+    expect((state as ScanRoundCompleted).result, same(secondResult));
+  });
+
+  test('R6 競態（工作區切換）：舊工作區的輪次晚完成不覆蓋新工作區結果', () async {
+    final counters = _Counters()..holdScans = true;
+    final container = _container(counters);
+    final notifier = _round(container);
+
+    final first = notifier.ensureRound();
+    await pumpEventQueue();
+    container.read(currentWorkspaceStateProvider.notifier).state =
+        const WorkspaceReady('/ws/b');
+    final second = notifier.ensureRound();
+    await pumpEventQueue();
+    expect(counters.gates, hasLength(2));
+
+    counters.gates[1].complete();
+    final secondResult = await second;
+    counters.gates[0].complete();
+
+    expect(await first, isNull);
+    expect(secondResult!.workspacePath, '/ws/b');
+    final state = container.read(scanRoundProvider) as ScanRoundCompleted;
+    expect(state.result, same(secondResult));
+  });
+
+  test('過期輪次失敗：回傳 null 不往外拋，不影響新輪', () async {
+    final counters = _Counters();
+    final failing = Completer<void>();
+    var calls = 0;
+    final container = ProviderContainer(
+      overrides: [
+        scanCorpusFnProvider.overrideWithValue(({
+          required fileSystem,
+          required table,
+          required builtinTable,
+        }) async {
+          calls++;
+          if (calls == 1) {
+            await failing.future;
+            throw StateError('boom');
+          }
+          return _emptyScan();
+        }),
+        buildGraphFnProvider.overrideWithValue(counters.buildFn),
+        docsFileSystemFactoryProvider.overrideWithValue((_) => _projectFs()),
+        builtinTrackingSchemaJsonProvider.overrideWith((ref) => _builtinJson),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(currentWorkspaceStateProvider.notifier).state =
+        const WorkspaceReady('/ws/a');
+    container.listen(scanRoundProvider, (_, _) {});
+    final notifier = _round(container);
+
+    final first = notifier.ensureRound();
+    await pumpEventQueue();
+    final second = await notifier.rescan();
+    failing.complete();
+
+    expect(await first, isNull);
+    expect(second, isNotNull);
   });
 
   test('非 WorkspaceReady：不開輪，回傳 null', () async {
@@ -272,6 +382,33 @@ void main() {
           'package:graph_project_docs_manager/app/scan_round.dart',
         ],
       });
+    });
+
+    final screensImport = RegExp(
+      r'^(?:package:graph_project_docs_manager/|(?:\.\./)+)screens/',
+    );
+
+    List<String> screensImportsIn(String source) => [
+      for (final line in source.split('\n'))
+        if (importPattern.firstMatch(line)?.group(1) case final t?
+            when screensImport.hasMatch(t))
+          t,
+    ];
+
+    test('E2 正向對照：lib/app 守衛的違規樣本（screens import）被攔下', () {
+      const sample =
+          "import 'package:graph_project_docs_manager/screens/project_switcher/x.dart';\n"
+          "import '../screens/home.dart';\n"
+          "import 'package:graph_project_docs_manager/workspace/workspace_types.dart';\n";
+      expect(screensImportsIn(sample), [
+        'package:graph_project_docs_manager/screens/project_switcher/x.dart',
+        '../screens/home.dart',
+      ]);
+    });
+
+    test('scan_round.dart 不 import screens（lib/app 不得反向依賴 screens）', () {
+      final source = File('lib/app/scan_round.dart').readAsStringSync();
+      expect(screensImportsIn(source), isEmpty);
     });
 
     for (final dir in ['corpus', 'graph', 'diagnostics', 'schema', 'layout']) {
