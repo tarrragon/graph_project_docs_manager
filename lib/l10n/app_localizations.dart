@@ -854,11 +854,185 @@ abstract class AppLocalizations {
   /// **'{count} 項'**
   String gapSectionCount(int count);
 
-  /// SPEC-001 §5 破洞報告·有破洞狀態：以真實 repo 快照缺 frontmatter 樣本驅動的分節類別名稱
+  /// SPEC-004 §4.0.6〈1.80 提案〉：分節 parse-failure（EVT-CORPUS-003）
   ///
   /// In zh, this message translates to:
-  /// **'缺少 Frontmatter'**
-  String get gapCategoryMissingFrontmatter;
+  /// **'解析失敗'**
+  String get gapCategoryParseFailure;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：分節 flow-block-malformed（EVT-CORPUS-004）
+  ///
+  /// In zh, this message translates to:
+  /// **'flow 區塊解析失敗'**
+  String get gapCategoryFlowBlockMalformed;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：分節 non-domain-paths-malformed（EVT-CORPUS-005）
+  ///
+  /// In zh, this message translates to:
+  /// **'非 domain 路徑清單格式錯誤'**
+  String get gapCategoryNonDomainPathsMalformed;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：分節 graph-defect（主圖四子類與 domain 重複宣告）
+  ///
+  /// In zh, this message translates to:
+  /// **'圖結構缺陷'**
+  String get gapCategoryGraphDefect;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：分節 graph-defect-flow（flow 四子類）
+  ///
+  /// In zh, this message translates to:
+  /// **'flow 結構缺陷'**
+  String get gapCategoryGraphDefectFlow;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「無 frontmatter」
+  ///
+  /// In zh, this message translates to:
+  /// **'缺少 frontmatter'**
+  String get gapParseNoFrontmatter;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「frontmatter 未閉合」
+  ///
+  /// In zh, this message translates to:
+  /// **'frontmatter 未閉合'**
+  String get gapParseFrontmatterUnclosed;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「frontmatter 為空或非 map」
+  ///
+  /// In zh, this message translates to:
+  /// **'frontmatter 為空或不是鍵值對映'**
+  String get gapParseFrontmatterNotMap;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 reason「YAML 語法錯誤」
+  ///
+  /// In zh, this message translates to:
+  /// **'frontmatter 的 YAML 無法解析'**
+  String get gapParseYamlInvalid;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 無法讀取，子原因編碼
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取檔案：編碼錯誤'**
+  String get gapParseUnreadableEncoding;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 無法讀取，子原因權限
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取檔案：沒有權限'**
+  String get gapParseUnreadablePermission;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-003 無法讀取，子原因檔案消失
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取檔案：檔案已消失'**
+  String get gapParseUnreadableMissing;
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：schemaAmbiguous 為 true 時附於原因說明之後；types 為 candidateTypes 以分隔符連接
+  ///
+  /// In zh, this message translates to:
+  /// **'歸屬型別不明，候選：{types}'**
+  String gapParseTypeAmbiguous(String types);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：EVT-CORPUS-004 原因碼 flowBlockMalformed
+  ///
+  /// In zh, this message translates to:
+  /// **'flow 區塊解析失敗，請修正後重新掃描'**
+  String get gapFlowBlockMalformed;
+
+  /// SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 elementNotString
+  ///
+  /// In zh, this message translates to:
+  /// **'清單內 {count} 個非字串元素'**
+  String gapNonDomainPathsNonStringElements(int count);
+
+  /// SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 yamlInvalid
+  ///
+  /// In zh, this message translates to:
+  /// **'清單檔的 YAML 無法解析'**
+  String get gapNonDomainPathsYamlInvalid;
+
+  /// SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 keyMissing
+  ///
+  /// In zh, this message translates to:
+  /// **'清單檔缺少 {key} 鍵'**
+  String gapNonDomainPathsKeyMissing(String key);
+
+  /// SPEC-004 §4.0.6：EVT-CORPUS-005 子原因 notList
+  ///
+  /// In zh, this message translates to:
+  /// **'清單檔中 {key} 的值不是清單'**
+  String gapNonDomainPathsNotList(String key);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：danglingRef，原因 targetMissing
+  ///
+  /// In zh, this message translates to:
+  /// **'{field} 指向的 {value} 不存在'**
+  String gapDanglingRefTargetMissing(String field, String value);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：danglingRef，原因 targetDuplicated
+  ///
+  /// In zh, this message translates to:
+  /// **'{field} 指向的 {value} 對應多個節點'**
+  String gapDanglingRefTargetDuplicated(String field, String value);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：malformedRef，原因 invalidShape
+  ///
+  /// In zh, this message translates to:
+  /// **'{field} 的值 {value} 格式不正確'**
+  String gapMalformedRefInvalidShape(String field, String value);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：malformedRef，原因 patternMismatch
+  ///
+  /// In zh, this message translates to:
+  /// **'{field} 的值 {value} 不符合 ID 格式'**
+  String gapMalformedRefPatternMismatch(String field, String value);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：malformedRef，原因 selfReference
+  ///
+  /// In zh, this message translates to:
+  /// **'{field} 指向自己'**
+  String gapMalformedRefSelfReference(String field);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：duplicateId；paths 為全部路徑以分隔符連接
+  ///
+  /// In zh, this message translates to:
+  /// **'ID {id} 出現在 {count} 個檔案：{paths}'**
+  String gapDuplicateId(String id, int count, String paths);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：multiSource；targets 為全部終點 ID 以分隔符連接
+  ///
+  /// In zh, this message translates to:
+  /// **'{edgeType} 只能指向一個終點，目前指向 {targets}'**
+  String gapMultiSource(String edgeType, String targets);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：flow 參照未解析
+  ///
+  /// In zh, this message translates to:
+  /// **'步驟 {stepId} 的 {field} 無法解析：{value}'**
+  String gapFlowRefUnresolved(String stepId, String field, String value);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：UC 內 step id 重複
+  ///
+  /// In zh, this message translates to:
+  /// **'步驟 ID {stepId} 在此 UC 內重複'**
+  String gapFlowStepIdDuplicated(String stepId);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：traverses 名稱未宣告
+  ///
+  /// In zh, this message translates to:
+  /// **'步驟 {stepId} 的 traverses 含未宣告的 domain：{value}'**
+  String gapTraversesUndeclared(String stepId, String value);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：traverses 鍵缺席
+  ///
+  /// In zh, this message translates to:
+  /// **'步驟 {stepId} 缺少 traverses 欄位'**
+  String gapTraversesMissing(String stepId);
+
+  /// SPEC-004 §4.0.6〈1.80 提案〉：domain 重複宣告；bundles 為衝突 DomainBundle ID 以分隔符連接
+  ///
+  /// In zh, this message translates to:
+  /// **'domain {domain} 被多個 DomainBundle 宣告：{bundles}'**
+  String gapDomainDeclaredTwice(String domain, String bundles);
 
   /// SPEC-001 §5／SPEC-003 §3.5：破洞類別 orphan-event 的分節標籤
   ///

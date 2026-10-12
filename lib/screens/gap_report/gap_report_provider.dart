@@ -185,7 +185,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
     }
     state = const GapReportFound([
       GapReportCategory(
-        id: 'missing-frontmatter',
+        id: 'parse-failure',
         items: _missingFrontmatterItems,
       ),
     ]);

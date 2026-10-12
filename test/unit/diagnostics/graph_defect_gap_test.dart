@@ -175,6 +175,7 @@ void main() {
           ParseFailureEvent(
             path: 'docs/x.md',
             reason: 'YAML 語法錯誤',
+            failureReason: CarrierParseFailureReason.yamlInvalid,
             nodeType: 'Ticket',
             candidateTypes: ['Ticket'],
             schemaAmbiguous: false,

@@ -466,7 +466,138 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get gapCategoryMissingFrontmatter => 'Missing Frontmatter';
+  String get gapCategoryParseFailure => 'Parse Failures';
+
+  @override
+  String get gapCategoryFlowBlockMalformed => 'Flow Block Parse Failures';
+
+  @override
+  String get gapCategoryNonDomainPathsMalformed =>
+      'Malformed Non-domain Path List';
+
+  @override
+  String get gapCategoryGraphDefect => 'Graph Defects';
+
+  @override
+  String get gapCategoryGraphDefectFlow => 'Flow Defects';
+
+  @override
+  String get gapParseNoFrontmatter => 'No frontmatter';
+
+  @override
+  String get gapParseFrontmatterUnclosed => 'Frontmatter is not closed';
+
+  @override
+  String get gapParseFrontmatterNotMap => 'Frontmatter is empty or not a map';
+
+  @override
+  String get gapParseYamlInvalid => 'The frontmatter YAML could not be parsed';
+
+  @override
+  String get gapParseUnreadableEncoding =>
+      'Could not read the file: invalid encoding';
+
+  @override
+  String get gapParseUnreadablePermission =>
+      'Could not read the file: permission denied';
+
+  @override
+  String get gapParseUnreadableMissing =>
+      'Could not read the file: it no longer exists';
+
+  @override
+  String gapParseTypeAmbiguous(String types) {
+    return 'Type is ambiguous; candidates: $types';
+  }
+
+  @override
+  String get gapFlowBlockMalformed =>
+      'The flow block failed to parse; fix it and rescan';
+
+  @override
+  String gapNonDomainPathsNonStringElements(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count non-string elements in the list',
+      one: '1 non-string element in the list',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gapNonDomainPathsYamlInvalid =>
+      'The list file\'s YAML could not be parsed';
+
+  @override
+  String gapNonDomainPathsKeyMissing(String key) {
+    return 'The list file is missing the $key key';
+  }
+
+  @override
+  String gapNonDomainPathsNotList(String key) {
+    return 'The value of $key in the list file is not a list';
+  }
+
+  @override
+  String gapDanglingRefTargetMissing(String field, String value) {
+    return '$value in $field does not exist';
+  }
+
+  @override
+  String gapDanglingRefTargetDuplicated(String field, String value) {
+    return '$value in $field matches more than one node';
+  }
+
+  @override
+  String gapMalformedRefInvalidShape(String field, String value) {
+    return 'The value $value in $field is malformed';
+  }
+
+  @override
+  String gapMalformedRefPatternMismatch(String field, String value) {
+    return 'The value $value in $field does not match the ID pattern';
+  }
+
+  @override
+  String gapMalformedRefSelfReference(String field) {
+    return '$field refers to the node itself';
+  }
+
+  @override
+  String gapDuplicateId(String id, int count, String paths) {
+    return 'ID $id appears in $count files: $paths';
+  }
+
+  @override
+  String gapMultiSource(String edgeType, String targets) {
+    return '$edgeType allows one target but points to $targets';
+  }
+
+  @override
+  String gapFlowRefUnresolved(String stepId, String field, String value) {
+    return 'Step $stepId: $field cannot be resolved: $value';
+  }
+
+  @override
+  String gapFlowStepIdDuplicated(String stepId) {
+    return 'Step ID $stepId is duplicated in this UC';
+  }
+
+  @override
+  String gapTraversesUndeclared(String stepId, String value) {
+    return 'Step $stepId: traverses has an undeclared domain: $value';
+  }
+
+  @override
+  String gapTraversesMissing(String stepId) {
+    return 'Step $stepId is missing the traverses field';
+  }
+
+  @override
+  String gapDomainDeclaredTwice(String domain, String bundles) {
+    return 'Domain $domain is declared by more than one DomainBundle: $bundles';
+  }
 
   @override
   String get gapCategoryOrphanEvent => 'Orphan Events';

@@ -22,8 +22,53 @@ enum GapItemPointerType {
   /// 事件類（破洞類別 `orphan-event` 或 `event-declaration-mismatch`）。
   event,
 
+  /// flow 類（SPEC-001 §5〈定案〉J2）：EVT-CORPUS-004 與 flow 四子類，
+  /// 點擊選定 UC 並 jump 至 UC Flow；步驟定位由 UC Flow 接真資料票承接，
+  /// 本類只攜帶 [GapReportItem.flowUcId]／[GapReportItem.flowStepId]。
+  flow,
+
   /// 無法指向任何節點。
   none,
+}
+
+/// 項目說明的識別名（SPEC-004 §4.0.6〈1.80 提案〉，一值對一個 ARB key；
+/// 文案由 `gapItemDescriptionText` 查 l10n，投影層不產生在地化字串）。
+enum GapDescriptionKind {
+  parseNoFrontmatter,
+  parseFrontmatterUnclosed,
+  parseFrontmatterNotMap,
+  parseYamlInvalid,
+  parseUnreadableEncoding,
+  parseUnreadablePermission,
+  parseUnreadableMissing,
+  flowBlockMalformed,
+  nonDomainPathsYamlInvalid,
+  nonDomainPathsKeyMissing,
+  nonDomainPathsNotList,
+  nonDomainPathsNonStringElements,
+  danglingRefTargetMissing,
+  danglingRefTargetDuplicated,
+  malformedRefInvalidShape,
+  malformedRefPatternMismatch,
+  malformedRefSelfReference,
+  duplicateId,
+  multiSource,
+  flowRefUnresolved,
+  flowStepIdDuplicated,
+  traversesUndeclared,
+  traversesMissing,
+  domainDeclaredTwice,
+}
+
+/// 項目說明：[kind] 加 ARB 佔位符的原始值 [args]（欄位名、原始值不經 i18n）。
+class GapItemDescription {
+  const GapItemDescription(this.kind, [this.args = const {}]);
+
+  final GapDescriptionKind kind;
+
+  /// 佔位符名稱 → 值；清單類（paths／targets／bundles）在此保持 `List`，
+  /// 連接符號依語系於格式化時決定。
+  final Map<String, Object> args;
 }
 
 /// 單一破洞項：檔案路徑、行號（可缺）與指向節點屬性
@@ -36,7 +81,18 @@ class GapReportItem {
     this.pointerType = GapItemPointerType.none,
     this.pointerNodeId,
     this.eventUcId,
+    this.eventId,
+    this.flowUcId,
+    this.flowStepId,
+    this.description,
+    this.ambiguousTypes = const [],
+    this.isOpenable = true,
   });
+
+  /// 是否可開啟原始檔；降級項目（節點查不到、無路徑可開）為 `false`，
+  /// 主操作不動作、不渲染開檔圖示，[filePath] 改放查不到的節點 ID 供顯示
+  /// （出處：SPEC-001 v1.44 §5〈定案〉降級落點）。
+  final bool isOpenable;
 
   /// 穩定識別碼，供 `card-gaps-<itemId>` 錨點使用（SPEC-003 §3.5、§2.9）。
   final String id;
@@ -61,6 +117,24 @@ class GapReportItem {
   /// 代表無任何 UC 引用該 EVT，跳轉行為改依 [otherNode] 處理
   /// （`0.1.0-W3-335.38` S-31）。僅 [GapItemPointerType.event] 使用。
   final String? eventUcId;
+
+  /// 事件類破洞項的 EVT 節點 ID（只攜帶，本票不消費；事件列定位由
+  /// `0.5.0-W1-114.18` 承接）。僅 [GapItemPointerType.event] 使用。
+  final String? eventId;
+
+  /// flow 類破洞項的選定 UC ID。僅 [GapItemPointerType.flow] 使用。
+  final String? flowUcId;
+
+  /// flow 類破洞項觸發缺陷的 step id 原值字串化；EVT-CORPUS-004 無步驟可
+  /// 定位，為 `null`。只攜帶，不消費。
+  final String? flowStepId;
+
+  /// 項目說明（SPEC-004 §4.0.6〈1.80 提案〉）；既有 0.1 項目與事件類為 `null`。
+  final GapItemDescription? description;
+
+  /// EVT-CORPUS-003 `schemaAmbiguous` 為 `true` 時的候選型別，說明之後
+  /// 另附 `gapParseTypeAmbiguous`；非歧義為空。
+  final List<String> ambiguousTypes;
 
   /// 是否渲染次要操作 `action-gaps-open-source-<itemId>`（SPEC-001 §5：
   /// 有指向節點的前三類另有次要操作；無指向者主操作本身即開啟原始檔，
