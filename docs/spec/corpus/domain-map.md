@@ -6,7 +6,7 @@ related_usecases: [UC-01, UC-02, UC-03, UC-05, UC-06]
 depends_on_bundles: [DOMAIN-MAP-schema, DOMAIN-MAP-workspace]
 path_patterns: [lib/corpus/]
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-10-13"
 ---
 
 # Domain Map — Corpus
@@ -107,12 +107,16 @@ updated: "2026-10-07"
 | FR-06 | 路徑對型別查詢 | Schema | domain unit；IT-2 |
 | FR-07 | 掃描結果摘要與守恆 | Corpus | domain unit；IT-2 |
 | FR-08 | 由 EVT-CORPUS-003 產生破洞 | Diagnostics | domain unit；IT-2 |
+| FR-09 | UC flow 區塊解析：步驟清單附掛於 UC `rawNode`，壞區塊發 EVT-CORPUS-004 | Corpus（破洞由 Diagnostics 依 FR-08 產生） | domain unit |
+| FR-10 | 非 domain 路徑清單檔格式錯誤：發 EVT-CORPUS-005，非 domain 側視為未宣告 | Corpus（讀 Schema 型別表的清單檔位置與鍵名；破洞由 Diagnostics 依 FR-08 產生） | domain unit |
 | NFR-01 | 失敗隔離 | Corpus | domain unit |
 
 全部 FR 皆有歸屬，無標為非 domain 者（破洞報告畫面接真實資料屬 0.6+，不在本版）。
+
+FR-09、FR-10 的歸屬依據（`0.5.0-W1-159`，判準見系統層 §8：驗收對象落在哪個 bundle 的公開面）：兩者的驗收對象為 UC `rawNode` 攜帶的步驟清單與 EVT-CORPUS-004／005 的發出，屬本 bundle 公開面「原始節點與邊、解析錯誤清單」（§3）；SPEC-006〈概述〉職責表把兩者列在 Corpus，兩個事件的 `producers` 皆為 `corpus`。事件之後的破洞產生是 FR-08 的驗收對象，歸 Diagnostics，不在這兩列重複歸屬。
 
 > 本表為 SPEC-006 全表的權威（與 spec 同目錄，供 `check_domain_coverage` 定位）；歸屬 Schema、Diagnostics 的列在各自 domain map §7 另列副本。
 
 ---
 
-**Last Updated**: 2026-10-07 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-13（`0.5.0-W1-159`：§7 補 FR-09、FR-10 與歸屬依據） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
