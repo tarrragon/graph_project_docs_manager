@@ -24,7 +24,8 @@ enum DomainRelation {
   /// 直接貫穿：至少一個 FlowStep 的 `traverses` 包含該 domain。
   direct,
 
-  /// 間接依賴：判定式待決（`0.1.0-W3-376`），0.1 以 fixture 字面值標記。
+  /// 間接依賴：依 SPEC-007 FR-12（SPEC-001 §1〈間接依賴判定式〉）——UC 的
+  /// 某直接貫穿 domain 沿 `bundle_dependency` 往下游可達該 domain。
   indirect,
 
   /// 無關。
@@ -40,6 +41,7 @@ class DomainCell {
     this.explanation,
     this.steps = const [],
     this.events = const [],
+    this.dependencyPaths = const [],
   });
 
   /// 所在列 domain id。
@@ -58,7 +60,12 @@ class DomainCell {
   final List<String> steps;
 
   /// 詳情卡「事件標籤」slot：`(事件名, 是否為 emits)`；可為空。
+  /// 每個（事件, 方向）一筆，排序見 SPEC-003 §3.1〈格詳情卡的內容契約〉。
   final List<(String eventName, bool isEmit)> events;
+
+  /// 詳情卡「依賴路徑」區塊：每條一行，domain 原值以「→」連接
+  /// （SPEC-001 §1〈間接依賴格的詳情卡：依賴路徑〉）；僅間接依賴格非空。
+  final List<String> dependencyPaths;
 }
 
 /// 單一 domain 在矩陣中的一列：domain 名 + 該列各 UC 欄的格 + 小計。
@@ -73,7 +80,7 @@ class DomainRow {
   final String domainId;
   final String domainName;
 
-  /// 長度須等於 [DomainViewFixtures.ucColumns] 長度，依欄序對齊。
+  /// 長度須等於矩陣欄（UC）數，依欄序對齊。
   final List<DomainCell> cells;
 
   /// 被直接貫穿的 UC 數（SPEC-001 §1 註記：`relation == direct` 的格數）。
@@ -88,6 +95,7 @@ class DomainLaneNode {
     required this.stepLabel,
     required this.column,
     required this.stepTraverses,
+    this.stepId,
   });
 
   final String stepLabel;
@@ -95,14 +103,105 @@ class DomainLaneNode {
 
   /// 本節點所屬步驟的完整 `traverses` 清單（可能含多個 domain）。
   final List<String> stepTraverses;
+
+  /// 步驟 `id`（轉字串）；fixture 時代的節點為 null。
+  final String? stepId;
 }
 
-/// 一條泳道（一個 domain）：泳道名 + 該 domain 在選定 UC 的節點清單。
-class DomainLane {
-  const DomainLane({required this.domainId, required this.nodes});
+/// 泳道列的種類（SPEC-004 4.38 `lanes` 的 `kind`）。
+enum DomainLaneKind {
+  /// 最上方「畫面」列：承載 `traverses == []` 的步驟，不對應 DomainBundle。
+  screen,
 
-  final String domainId;
+  /// 一個 DomainBundle 列。
+  domain,
+
+  /// 最末「未定位」列：`traverses` 缺鍵或值全部未宣告的步驟。
+  unplaced,
+}
+
+/// 一條泳道：列種類 + 列鍵 + 該列在選定 UC 的節點清單。
+class DomainLane {
+  const DomainLane({
+    required this.domainId,
+    required this.nodes,
+    this.kind = DomainLaneKind.domain,
+    this.domainName,
+  });
+
+  /// domain 列的 domain id；「畫面」與「未定位」列為 null。
+  final String? domainId;
+
+  /// domain 列的列首字面（`DomainBundle.domain` 原值）；其餘列為 null
+  /// （列首經 i18n，由畫面層取）。
+  final String? domainName;
+  final DomainLaneKind kind;
   final List<DomainLaneNode> nodes;
+}
+
+/// 泳道邊的形狀類別（SPEC-001 §1〈泳道布局規則〉「邊的形狀」）。
+enum DomainLaneEdgeShape {
+  /// 前向：目標欄號 > 來源欄號。
+  straight,
+
+  /// 回指：目標欄號 ≤ 來源欄號。
+  arc,
+}
+
+/// 一條泳道邊；端點為各步驟最上方的節點（列以 [DomainSwimlane.lanes] 的
+/// 位置表示）。
+class DomainLaneEdge {
+  const DomainLaneEdge({
+    required this.fromColumn,
+    required this.toColumn,
+    required this.fromLane,
+    required this.toLane,
+    required this.shape,
+  });
+
+  final int fromColumn;
+  final int toColumn;
+  final int fromLane;
+  final int toLane;
+  final DomainLaneEdgeShape shape;
+}
+
+/// 選定 UC 的泳道投影：有 FlowStep（[DomainSwimlane]）或無（[DomainSwimlaneUnstructured]）。
+sealed class DomainSwimlaneView {
+  const DomainSwimlaneView();
+}
+
+/// 正常 · 泳道的資料：列（依列序）、邊、flow 區塊部分解析失敗的提示旗標。
+class DomainSwimlane extends DomainSwimlaneView {
+  const DomainSwimlane({
+    required this.lanes,
+    required this.edges,
+    this.hasFlowParseFailure = false,
+  });
+
+  final List<DomainLane> lanes;
+  final List<DomainLaneEdge> edges;
+
+  /// 選定 UC 有 flow 區塊解析失敗但仍有合法區塊（SPEC-001 §1〈flow 區塊
+  /// 解析失敗的泳道呈現〉(a)）：泳道照常渲染並加提示。
+  final bool hasFlowParseFailure;
+}
+
+/// 泳道 · flow 未結構化：選定 UC 無 FlowStep。
+class DomainSwimlaneUnstructured extends DomainSwimlaneView {
+  const DomainSwimlaneUnstructured({this.isFlowParseFailed = false});
+
+  /// flow 區塊皆解析失敗（SPEC-001 §1〈flow 區塊解析失敗的泳道呈現〉(b)）：
+  /// 主區改用解析失敗專用文案。
+  final bool isFlowParseFailed;
+}
+
+/// 矩陣投影：欄（UC，依欄序）與列（DomainBundle，依 FR-13 列序）。
+class DomainMatrix {
+  const DomainMatrix({required this.columns, required this.rows});
+
+  final List<DomainUc> columns;
+  final List<DomainRow> rows;
 }
 
 /// UC 欄首資訊（矩陣欄首 `TableColumnHeader.twoLine`、泳道面板標題）。
