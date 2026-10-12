@@ -10,21 +10,25 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+
 import '../../workspace/workspace_types.dart';
+
+// 過渡用轉出（0.5.0-W1-114.19）：currentWorkspaceStateProvider 已下移至
+// lib/workspace/current_workspace_provider.dart；既有呼叫端經此轉出取用，
+// 待各呼叫端改 import 新位置後移除。
+export 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart'
+    show currentWorkspaceStateProvider;
 
 /// 浮層展開態；`true` 對應 SPEC-001 §7「展開」或「無最近專案」（依
 /// [recentProjectsProvider] 是否為空清單區分），`false` 對應「收合」。
 final switcherOpenProvider = StateProvider<bool>((ref) => false);
 
-/// 目前工作資料夾狀態；初始為 [WorkspaceUnset]（App 剛啟動、`restore()`
-/// 尚未回傳，或從未選過資料夾）。
-final currentWorkspaceStateProvider =
-    StateProvider<WorkspaceState>((ref) => const WorkspaceUnset());
-
 /// 最近專案清單；初始為空清單，由 `AppShell` 於啟動時以
 /// `WorkspaceRepository.loadRecentProjects()` 載入寫入（SPEC-005 §2.4）。
-final recentProjectsProvider =
-    StateProvider<List<RecentProject>>((ref) => const []);
+final recentProjectsProvider = StateProvider<List<RecentProject>>(
+  (ref) => const [],
+);
 
 /// 側欄入口顯示的目前專案名；取 [currentWorkspaceStateProvider] 的
 /// [WorkspaceReady.path] 資料夾名，非 [WorkspaceReady] 時回傳 `null`
