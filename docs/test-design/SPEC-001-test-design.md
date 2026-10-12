@@ -518,8 +518,8 @@ v1.38 處置（`0.5.0-W1-114.2` 用戶裁決，SPEC-001 v1.38、SPEC-007 v1.18�
 | K2（含 K2-4、K2-5）、K4-1 `swimlaneScreenLaneName`、K4-2 `swimlaneUnplacedLaneName` | components（`SwimlaneGrid`） | 待 Step 6 建票 | 無 |
 | K3、K4-1 `relation*` | components（`RelationItem`） | 待 Step 6 建票（`0.5.0-W1-114` PM 處置 K3：元件改動不在 `0.5.0-W1-103.2`） | `0.5.0-W1-103.2`（`layer` 回傳） |
 | K4-2 `swimlaneFlowParseFailedHint`、`flowParseFailedMessage` | 畫面 ARB | 待 Step 6 建票（併 F1） | 無 |
-| IT-D1～IT-D3（含 ITD2-A5 改寫、ITD3-A5） | 外圈 | 待 Step 6 建票 | 以上 Layout、Graph FR-12、components、快照凍結 |
-| IT-D4（含 ITD4-A5） | 外圈 | 待 Step 6 建票 | `0.5.0-W1-096.5`、`0.5.0-W1-096.7`、`0.5.0-W1-119` |
+| IT-D1～IT-D3（含 ITD2-A5 改寫、ITD3-A5） | 外圈 | `0.5.0-W1-114.13` | 以上 Layout、Graph FR-12、components、快照凍結 |
+| IT-D4（含 ITD4-A5） | 外圈 | `0.5.0-W1-114.13` | `0.5.0-W1-096.5`、`0.5.0-W1-096.7`、`0.5.0-W1-119` |
 | 快照凍結 | 測資 | 待 Step 6 建票 | 無 |
 
 **Step 6 建議分組**（待建票者，依實作單元分組，各組一張實作票）：
