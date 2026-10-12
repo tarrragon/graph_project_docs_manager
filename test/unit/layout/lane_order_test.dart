@@ -3,6 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/layout/lane_order.dart';
 
 import '../../helpers/spec001/bundle_graph_builder.dart';
+import '../../helpers/spec001/flow_builder.dart';
+
+/// 以 FR-13 清單的 domain 為已宣告集合，把舊式 `traverses` 清單換成解析結果
+/// 後呼叫 [assembleSwimLanes]（null 為鍵缺席）。
+List<SwimLane> assembleFromTraverses({
+  required List<BundleOrderEntry> bundleOrder,
+  required List<List<String>?> stepTraverses,
+}) {
+  final declared = {for (final e in bundleOrder) e.domain};
+  return assembleSwimLanes(
+    bundleOrder: bundleOrder,
+    stepResolutions: [for (final t in stepTraverses) resolutionOf(t, declared)],
+  );
+}
 
 /// 以字面值表示列：'畫面'、domain 名、'未定位'。
 List<String> labelsOf(List<SwimLane> lanes) => [
@@ -43,14 +57,14 @@ void main() {
       final edges = buildBundleDependencyEdges({'app': []});
       expect(edges, isEmpty);
       const order = <BundleOrderEntry>[(domain: 'app', layer: 0)];
-      final normal = assembleSwimLanes(
+      final normal = assembleFromTraverses(
         bundleOrder: order,
         stepTraverses: const [
           ['app'],
           [],
         ],
       );
-      final missingKey = assembleSwimLanes(
+      final missingKey = assembleFromTraverses(
         bundleOrder: order,
         stepTraverses: const [
           ['app'],
@@ -72,7 +86,7 @@ void main() {
         (domain: 'a', layer: 0),
         (domain: 'x', layer: null),
       ];
-      final lanes = assembleSwimLanes(
+      final lanes = assembleFromTraverses(
         bundleOrder: order,
         stepTraverses: const [
           ['x'],
@@ -112,7 +126,10 @@ void main() {
       final results = [
         for (final steps in ucSteps)
           labelsOf(
-            assembleSwimLanes(bundleOrder: projectOrder, stepTraverses: steps),
+            assembleFromTraverses(
+              bundleOrder: projectOrder,
+              stepTraverses: steps,
+            ),
           ),
       ];
       expect(results, hasLength(6));
@@ -124,7 +141,7 @@ void main() {
 
   group('列序來源（L8）', () {
     test('L8-1 本專案快照排序 → 9 列', () {
-      final lanes = assembleSwimLanes(
+      final lanes = assembleFromTraverses(
         bundleOrder: projectOrder,
         stepTraverses: const [
           ['graph'],
@@ -145,7 +162,7 @@ void main() {
         (domain: 'graph', layer: 2),
         (domain: 'ticketdetail', layer: 2),
       ];
-      final lanes = assembleSwimLanes(
+      final lanes = assembleFromTraverses(
         bundleOrder: altered,
         stepTraverses: const [
           ['graph'],
@@ -166,7 +183,7 @@ void main() {
     });
 
     test('L8-3 有缺鍵步驟：畫面、FR-13 排序、未定位', () {
-      final lanes = assembleSwimLanes(
+      final lanes = assembleFromTraverses(
         bundleOrder: projectOrder,
         stepTraverses: const [
           ['graph'],
@@ -190,11 +207,11 @@ void main() {
       const steps = <List<String>?>[
         ['unknown'],
       ];
-      final tailLanes = assembleSwimLanes(
+      final tailLanes = assembleFromTraverses(
         bundleOrder: tail,
         stepTraverses: steps,
       );
-      final headLanes = assembleSwimLanes(
+      final headLanes = assembleFromTraverses(
         bundleOrder: head,
         stepTraverses: steps,
       );
@@ -203,13 +220,13 @@ void main() {
     });
 
     test('traverses 部分已宣告不出現未定位列；全部未宣告則出現（E1 對照）', () {
-      final partial = assembleSwimLanes(
+      final partial = assembleFromTraverses(
         bundleOrder: projectOrder,
         stepTraverses: const [
           ['graph', 'ghost'],
         ],
       );
-      final allUndeclared = assembleSwimLanes(
+      final allUndeclared = assembleFromTraverses(
         bundleOrder: projectOrder,
         stepTraverses: const [
           ['phantom', 'ghost'],

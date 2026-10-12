@@ -8,6 +8,7 @@ GraphEdge _edge(Set<String> declaredBy) => GraphEdge(
   to: 'B',
   declaredBy: declaredBy,
   isUndirected: false,
+  layer: 'established',
 );
 
 void main() {

@@ -80,7 +80,8 @@ GraphBuiltEvent buildGraphFromInputs({
     for (final t in edgeList)
       if (t.isUndirected) t.name,
   };
-  final edges = _buildEdges(classified.resolved, undirectedTypes);
+  final layers = {for (final t in edgeList) t.name: t.layer};
+  final edges = _buildEdges(classified.resolved, undirectedTypes, layers);
   final nodeIds = {for (final n in classified.lightNodes) n.id};
   final resolver = DomainNameResolver.fromRawNodes(rawNodes, nodeIds);
   final flow = buildFlowSubgraphs(rawNodes, nodeIds, resolver);
@@ -111,10 +112,11 @@ GraphBuiltEvent buildGraphFromInputs({
 List<GraphEdge> _buildEdges(
   List<ResolvedRef> resolved,
   Set<String> undirectedTypes,
+  Map<String, String> layers,
 ) {
   final merged = <String, GraphEdge>{};
   for (final r in resolved) {
-    final edge = _edgeOf(r, undirectedTypes);
+    final edge = _edgeOf(r, undirectedTypes, layers);
     final key = '${edge.edgeType}\u0000${edge.from}\u0000${edge.to}';
     final existing = merged[key];
     merged[key] = existing == null
@@ -125,16 +127,22 @@ List<GraphEdge> _buildEdges(
             to: edge.to,
             declaredBy: {...existing.declaredBy, ...edge.declaredBy},
             isUndirected: edge.isUndirected,
+            layer: edge.layer,
           );
   }
   return merged.values.toList()..sort(_compareEdges);
 }
 
 /// 無向與否取自 [undirectedTypes]（`EdgeTypeEntry.isUndirected`，D6）。
-GraphEdge _edgeOf(ResolvedRef r, Set<String> undirectedTypes) {
+GraphEdge _edgeOf(
+  ResolvedRef r,
+  Set<String> undirectedTypes,
+  Map<String, String> layers,
+) {
   final source = r.ref.sourceId;
   final target = r.targetId;
   final type = r.ref.edgeTypeName;
+  final layer = layers[type]!;
   if (undirectedTypes.contains(type)) {
     final ordered = source.compareTo(target) <= 0
         ? (source, target)
@@ -145,6 +153,7 @@ GraphEdge _edgeOf(ResolvedRef r, Set<String> undirectedTypes) {
       to: ordered.$2,
       declaredBy: {source},
       isUndirected: true,
+      layer: layer,
     );
   }
   final isReverse = r.ref.isReverse;
@@ -154,6 +163,7 @@ GraphEdge _edgeOf(ResolvedRef r, Set<String> undirectedTypes) {
     to: isReverse ? source : target,
     declaredBy: {source},
     isUndirected: false,
+    layer: layer,
   );
 }
 

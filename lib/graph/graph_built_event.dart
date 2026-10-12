@@ -20,9 +20,13 @@ class GraphEdge {
     required this.to,
     required Set<String> declaredBy,
     required this.isUndirected,
+    required this.layer,
   }) : declaredBy = Set.unmodifiable(declaredBy);
 
   final String edgeType;
+
+  /// 邊型的穩定性層級（`established`／`proposed`），取自型別表（FR-08）。
+  final String layer;
   final String from;
   final String to;
 

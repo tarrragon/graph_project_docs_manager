@@ -516,4 +516,99 @@ void main() {
       expect(built.query.flowOf(_uc), isA<FlowOfNotFound>());
     });
   });
+
+  group('G10-N 主線 next 的 UC 內解析結果（FR-10 N-a）', () {
+    List<Object?> targets(FlowSubgraph g, FlowStepNode n) => [
+      for (final r in n.mainlineNextRefs) g.targetOf(r)?.id,
+    ];
+
+    test('M1 主線 next 指向存在的步驟', () {
+      final g = _flow([
+        _s('a', {
+          'next': ['b'],
+        }),
+        _s('b'),
+      ]);
+      expect(targets(g, g.steps[0]), ['b']);
+      expect(g.steps[0].mainlineNextRefs.single.isResolved, isTrue);
+    });
+
+    test('M2 E2 主線 next 解析不到：標為解析不到且缺陷筆數不變', () {
+      final plain = _build([
+        _uc01([_s('a'), _s('b')]),
+      ]);
+      final ghost = _build([
+        _uc01([
+          _s('a', {
+            'next': ['ghost'],
+          }),
+          _s('b'),
+        ]),
+      ]);
+      final g = (ghost.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      final ref = g.steps[0].mainlineNextRefs.single;
+      expect(ref.isResolved, isFalse);
+      expect(ref.rawValue, 'ghost');
+      expect(ghost.event.graphDefects.length, plain.event.graphDefects.length);
+    });
+
+    test('M3 純量、空清單、非字串元素', () {
+      final g = _flow([
+        {'id': 'a', 'next': 'b'},
+        {'id': 'e', 'next': <Object?>[]},
+        {
+          'id': 'n',
+          'next': [2],
+        },
+        {'id': 'b'},
+        {'id': 2},
+      ]);
+      expect(targets(g, g.steps[0]), ['b']);
+      expect(g.steps[1].mainlineNextRefs, isEmpty);
+      expect(targets(g, g.steps[2]), [2]);
+    });
+
+    test('M4 指向重複 id：解析不到，只報 duplicateStepId', () {
+      final built = _build([
+        _uc01([
+          _s('a', {
+            'next': ['d'],
+          }),
+          _s('d'),
+          _s('d'),
+        ]),
+      ]);
+      final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      expect(g.steps[0].mainlineNextRefs.single.isResolved, isFalse);
+      expect(_flowDefects(built.event).map((d) => d.kind), [
+        FlowDefectKind.duplicateStepId,
+      ]);
+    });
+
+    test('M5 E1 同一 next 值：主線不報缺陷、分支報缺陷', () {
+      final main = _build([
+        _uc01([
+          _s('a', {
+            'next': ['c'],
+          }),
+        ]),
+      ]);
+      final branch = _build([
+        _uc01([
+          _s('x'),
+          _s('a', {
+            'branch_from': 'x',
+            'next': ['c'],
+          }),
+        ]),
+      ]);
+      final mg = (main.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      final bg = (branch.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      expect(mg.steps[0].mainlineNextRefs, hasLength(1));
+      expect(bg.steps[1].nextRefs, hasLength(1));
+      expect(bg.steps[1].mainlineNextRefs, isEmpty);
+      expect(_flowDefects(main.event), isEmpty);
+      expect(_flowDefects(branch.event), hasLength(1));
+    });
+  });
 }

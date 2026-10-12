@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-09"
-version: "1.43"
+version: "1.45"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -220,8 +220,8 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 >
 > | 項目 | 規則 |
 > |------|------|
-> | 每個來源一條 | 對每個可達 Y 的直接貫穿 domain X，取 X 到 Y 的最短路徑；同長的多條路徑全部列出 |
-> | 排除經直接 domain 的路徑 | 路徑的中間節點（不含兩端）若為此 UC 的直接貫穿 domain，該路徑不列（較短的那條已由該中間 domain 為來源列出） |
+> | 每個來源一條 | 對每個可達 Y 的直接貫穿 domain X，在「中間節點（不含兩端）不為此 UC 的直接貫穿 domain」的路徑中取 X 到 Y 的最短者；同長的多條路徑全部列出；X 不存在這樣的路徑時不列該來源 |
+> | 排除經直接 domain 的路徑 | 中間節點為直接貫穿 domain 的路徑不列（較短的那條已由該中間 domain 為來源列出，屬重複資訊）；排除在取最短之前套用，因此來源 X 若另有不經直接 domain 的較長路徑，仍列出該路徑——它是 X 對 Y 的獨立影響途徑，不是重複（2026-10-12 用戶裁決 E-B，`0.5.0-W1-139`） |
 > | 排序 | 先依路徑長度遞增，同長依來源 X 在 Graph 分層排序（SPEC-007 FR-13，與泳道列序同一份）的先後，再依中間節點在該排序中的先後；由 Graph 排序（SPEC-007 FR-12），畫面只顯示（`0.5.0-W1-114.2` 用戶裁決 R1） |
 > | 期望值（UC-04 × `schema`） | 兩行：`graph → corpus → schema`、`ticketdetail → corpus → schema`（多來源同長，依列序 graph 在前） |
 > | 期望值（UC-06 × `schema`） | 一行：`corpus → schema`（`diagnostics → corpus → schema` 經直接 domain `corpus`，不列） |
@@ -594,8 +594,10 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > - **M1**（用戶裁決）：移除 0.1 的「缺 frontmatter」分節，EVT-CORPUS-003 全部原因收進 `parse-failure`，原因由項目說明 key 區分；`gapCategoryMissingFrontmatter` 淘汰
 > - **O1**（用戶裁決）：分節順序固定為 `parse-failure` → `flow-block-malformed` → `non-domain-paths-malformed` → `graph-defect` → `graph-defect-flow` → `orphan-event` → `event-declaration-mismatch`；理由是解析失敗的檔案不進圖，其上的圖缺陷可能是連帶結果
 > - **J2**（用戶裁決）：004 與 flow 四子類點擊跳 UC Flow 並選定該 UC（flow 四子類另定位到該步驟），比照下方主操作表「事件類→UC Flow 並定位事件列」；主操作表新增「flow 類」一列
-> - EVT-CORPUS-003 原因碼識別名（PM 決定）：`CarrierParseFailureReason { noFrontmatter, frontmatterUnclosed, frontmatterNotMap, yamlInvalid, unreadable }`，無法讀取子原因 `UnreadableReason { encoding, permission, missing }`，與 SPEC-004 七個 `gapParse*` key 一對一；歸屬型別不明以 `gapParseTypeAmbiguous`
+> - EVT-CORPUS-003 原因碼識別名（PM 決定）：`CarrierParseFailureReason { noFrontmatter, frontmatterUnclosed, frontmatterNotMap, yamlInvalid, unreadable }`，無法讀取子原因沿用既有列舉 `UnreadableReason { encoding, permission, fileDeleted }`（`fileDeleted` 對 `gapParseUnreadableMissing`；原寫 `missing` 改為既有值，避免更動既有呼叫點，2026-10-11 PM 處置，`0.5.0-W1-114.17` 回報），與 SPEC-004 七個 `gapParse*` key 一對一；歸屬型別不明以 `gapParseTypeAmbiguous`。EVT-CORPUS-003 的事件負載鍵與 reason 字串值域不變（事件契約），列舉為破洞上的型別化欄位，投影依列舉查 key、不從字串反解
 > - `duplicateId` 開啟 code point 序最小的路徑、domain 重複宣告指向 code point 序最小的 DomainBundle、domain 重複宣告歸 `graph-defect`（SPEC-007 FR-09 不屬 flow 子圖）、`gapDuplicateId` en 不做單複數：PM 確認
+> - **指向節點查不到時**（004 的 UC、flow 四子類的 UC、`danglingRef`／`malformedRef`／`multiSource` 的來源或起點、domain 重複宣告的 DomainBundle）：正常資料不會發生（破洞與節點出自同一輪建圖），屬程式內部不變式。debug 下 assert，並寫 `developer.log` warning；release 下該項降為「無法指向任何節點」，但不提供開啟原始檔（手上只有 ID 而非路徑，開檔必然失敗），只顯示 ID 與項目說明。不新增狀態，也不新增 key（PM 處置 2026-10-11，`0.5.0-W1-114.17` 審查回報，比照 `0.5.0-W1-114.10` 的不變式處理）
+> - EVT-CORPUS-003 破洞帶行號（`lineNumber`）供表三「行號有值時附」：接受 `0.5.0-W1-114.17` 補欄（PM 追認）
 
 ## 6. 節點詳情
 
@@ -935,6 +937,8 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.45 | 2026-10-12 | §1〈間接依賴格的詳情卡：依賴路徑〉：排除經直接 domain 的路徑在取最短之前套用，來源另有不經直接 domain 的較長路徑時仍列出（用戶裁決 E-B，`0.5.0-W1-139`）；UC-04／UC-06 期望值不變。狀態總數不變 |
+| 1.44 | 2026-10-11 | §5〈定案〉（PM 處置，`0.5.0-W1-114.17` 回報與審查）：`UnreadableReason` 子原因沿用既有 `fileDeleted`；003 列舉與事件契約的關係；指向節點查不到屬不變式，release 降為無指向、不提供開檔、只顯示 ID；追認 003 破洞帶行號。狀態總數不變 |
 | 1.43 | 2026-10-09 | §1〈泳道布局規則〉「欄序無法輸出的步驟」擴為「凡沿 branch_from 到不了主線者」，新增 (c) 依附異常，尾段依檔內順序平鋪、不套巢狀（用戶裁決 V1，`0.5.0-W1-114.10`）。狀態總數不變 |
 | 1.42 | 2026-10-09 | §5〈破洞報告項目投影〉由提案轉定案：PM 確認識別名、key 與文案；用戶裁決 M1（移除 0.1「缺 frontmatter」分節、併入 `parse-failure`）、O1（分節順序固定）、J2（004 與 flow 四子類跳 UC Flow，主操作表新增「flow 類」列，「有破洞」列跳轉描述同步）；EVT-CORPUS-003 原因碼識別名（PM 決定）。狀態總數不變 |
 | 1.41 | 2026-10-09 | `0.5.0-W1-114.16`（承 `0.5.0-W1-114.15` NeedsContext 2）：§5 新增〈破洞報告項目投影：`parseFailure` 與 `graphDefect`〉註記，三表分別定義分節（category id 與標籤 key）、項目 id 產生規則（跨輪次穩定）、各子類的項目路徑與指向。全段為提案，待 PM 確認；項目說明 key 見 SPEC-004 v1.80。狀態總數不變 |

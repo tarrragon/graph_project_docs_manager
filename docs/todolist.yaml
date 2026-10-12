@@ -771,6 +771,8 @@ versions:
          - 共用工作樹推送約定（2026-10-09，e1／4a）：任一方 push 前先看 `git log origin/main..HEAD`；含對方尚未覆核通過的
            merge 時不推，等對方通知。合併方優先採「合併前在合併後的樹上實跑」，若先合併後覆核，合併當下通知對方「覆核中勿推」。
            起因：b9c173d64 在 4a 覆核完成前隨 e1 的推送上了 origin（結果為綠）。
+           檢查與推送必須是兩次獨立呼叫，讀過清單才推：2026-10-10 e1 把檢查與 push 串在同一指令，清單已列出 4a 覆核中的
+           040870d51（135 merge）仍被推出，約定因串接失效。
       2. 預期變更（第二段，實作）
          - lib：corpus（flow 區塊解析、EVT-CORPUS-004、S2 讀取）、graph（flowOf、traverses 名稱解析與反查、bundle_dependency
            進使用中邊型並帶 layer、direction 判無向、where.files 路徑比對器）、schema（direction 解碼、使用中邊型）、layout（泳道

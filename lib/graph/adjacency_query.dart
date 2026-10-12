@@ -18,9 +18,13 @@ class AdjacencyEntry {
     required this.otherId,
     required this.direction,
     required Set<String> declaredBy,
+    required this.layer,
   }) : declaredBy = Set.unmodifiable(declaredBy);
 
   final String edgeType;
+
+  /// 邊型的穩定性層級，取自型別表（`proposed` 供呼叫端標示）。
+  final String layer;
   final String otherId;
   final AdjacencyEntryDirection direction;
   final Set<String> declaredBy;
@@ -188,4 +192,5 @@ AdjacencyEntry _entry(
   otherId: otherId,
   direction: direction,
   declaredBy: edge.declaredBy,
+  layer: edge.layer,
 );

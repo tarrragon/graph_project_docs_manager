@@ -2,7 +2,7 @@
 ///
 /// 欄位名、基數、是否有反向欄位一律取自型別表；程式內的鍵名例外集中在本檔
 /// 一處：排除 `domain_dependency`（[EdgeTypeResolution.activeEdgeTypes]，
-/// 由 `0.6.0-W1-074` 承接移除）。無向由型別表 `direction` 欄判定
+/// 由 `0.6.0-W1-074` 承接移除）、納入 proposed 的 `bundle_dependency`。無向由型別表 `direction` 欄判定
 /// （FR-05〈無向的判定〉），不比對鍵名。
 ///
 /// 依賴方向：Schema domain（L0），不得 import 上層 domain。
@@ -81,13 +81,19 @@ class EdgeTypeResolution {
   /// 非 `null` 代表建圖不可用。
   final EdgeTypeUnavailableReason? unavailableReason;
 
-  /// 使用中邊型：established 扣 `domain_dependency`（D6）。
+  /// 使用中邊型：established 扣 `domain_dependency`，加上 proposed 層的
+  /// `bundle_dependency`（D6 鍵名允許清單，依鍵名納入；其餘 proposed 不納入）。
   Iterable<EdgeTypeEntry> get activeEdgeTypes => edgeTypes.values.where(
-    (edge) => edge.layer == 'established' && edge.name != _excludedByKeyName,
+    (edge) =>
+        (edge.layer == 'established' && edge.name != _excludedByKeyName) ||
+        (edge.layer == 'proposed' && edge.name == _proposedIncludedByKeyName),
   );
 }
 
 const _excludedByKeyName = 'domain_dependency';
+
+/// D6 允許清單：proposed 層中仍納入使用中邊型的鍵名。
+const _proposedIncludedByKeyName = 'bundle_dependency';
 
 /// 決議邊型（FR-01）：專案表有完整 `edge_types` 直接用；缺席或缺正向基數時，
 /// 版本在已知範圍內從內建表補，否則回報原因碼。
