@@ -390,10 +390,12 @@ def _build_merge_in_progress_deny_message() -> str:
         "理由：偵測到 MERGE_HEAD（有未收尾的合併），裸 `git commit` 會把"
         "該合併收尾成 merge commit，若該合併非本人發起，會連同他方內容"
         "一併提交。\n\n"
-        "若合併是你發起的，請改用：\n"
-        "  git merge --continue   # 收尾合併\n"
-        "若合併非你發起或想放棄：\n"
-        "  git merge --abort      # 放棄合併（確認不是他方進行中的合併再執行）\n"
+        "若合併是你發起的，請改用（git merge --continue 不接受任何引數，"
+        "-m／--no-edit 皆會 fatal；無 tty 環境須以 GIT_EDITOR=true 略過編輯器）：\n"
+        "  GIT_EDITOR=true git merge --continue\n"
+        "自訂合併訊息：先寫入 `git rev-parse --git-path MERGE_MSG` 所指的檔案，"
+        "再執行上一行。\n\n"
+        "若合併非你發起：請停手並回報 PM，不要自行收尾或放棄該合併。\n"
     )
 
 

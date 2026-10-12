@@ -1013,7 +1013,9 @@ class TestMergeHeadPresent:
         assert rc == 2
         err = capsys.readouterr().err
         assert "git merge --continue" in err
-        assert "git merge --abort" in err
+        assert "GIT_EDITOR=true git merge --continue" in err
+        assert "MERGE_MSG" in err
+        assert "--abort" not in err
 
     def test_denied_with_merge_head_in_parallel_period(self, monkeypatch, capsys):
         rc = _run_hook(
@@ -1033,3 +1035,37 @@ class TestMergeHeadPresent:
     def test_amend_still_allowed_with_merge_head(self, monkeypatch, capsys):
         rc = _run_hook(monkeypatch, "git commit --amend --no-edit", merge_head=True)
         assert rc == 0
+
+    def test_all_flag_commit_denied_with_merge_head(self, monkeypatch):
+        assert _run_hook(monkeypatch, 'git commit -am "x"', merge_head=True) == 2
+
+    def test_pathspec_commit_denied_with_merge_head(self, monkeypatch):
+        assert _run_hook(monkeypatch, 'git commit -m x -- f.py', merge_head=True) == 2
+
+
+def _real_git(repo: Path, *args: str) -> None:
+    import subprocess
+
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+class TestMergeInProgressRealRepo:
+    """不 mock 偵測函式：真實 repo 中 merge --no-commit 前後各斷言一次。"""
+
+    def test_false_before_and_true_after_merge_no_commit(self, tmp_path):
+        _real_git(tmp_path, "init", "-q", "-b", "main")
+        (tmp_path / "a.txt").write_text("a\n")
+        _real_git(tmp_path, "add", "a.txt")
+        _real_git(tmp_path, "commit", "-q", "-m", "base")
+        _real_git(tmp_path, "checkout", "-q", "-b", "side")
+        (tmp_path / "b.txt").write_text("b\n")
+        _real_git(tmp_path, "add", "b.txt")
+        _real_git(tmp_path, "commit", "-q", "-m", "side")
+        _real_git(tmp_path, "checkout", "-q", "main")
+        assert hook_module._merge_in_progress(tmp_path) is False
+        _real_git(tmp_path, "merge", "--no-ff", "--no-commit", "side")
+        assert hook_module._merge_in_progress(tmp_path) is True
