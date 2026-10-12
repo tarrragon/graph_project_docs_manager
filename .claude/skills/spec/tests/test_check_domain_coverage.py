@@ -382,14 +382,62 @@ def test_union_untitled_map_falls_back_to_its_source_specs(tmp_path, monkeypatch
     assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
 
 
-def test_union_untitled_multi_source_specs_stays_unattributed(tmp_path, monkeypatch, capsys):
+def test_union_untitled_multi_source_specs_counts_to_inspected_spec(tmp_path, monkeypatch, capsys):
+    """整份無歸屬的 map 其 FR 計給受檢 SPEC，與 source_specs 值數無關（0.5.0-W1-086.5）。"""
     monkeypatch.chdir(tmp_path)
     spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
     _write(spec, SPEC_A)
     _write(tmp_path / "docs/spec/a/domain-map.md", _map("SPEC-101", "## SPEC-101\n| FR-01 | A |\n"))
     _write(tmp_path / "docs/spec/b/domain-map.md", _map("SPEC-101, SPEC-202", "| FR-02~03 | B |\n"))
-    assert cdc.main([str(spec)]) == 1
-    assert "b/domain-map.md" in capsys.readouterr().err
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+# --- 0.5.0-W1-086.5：審查的四種由綠轉紅輸入 + 一例反向假綠 ---
+
+def _in_domain_dir(tmp_path, monkeypatch, map_text, system=None, extra_map=None):
+    """SPEC-101 在 docs/spec/a/（domain 目錄內），同目錄 map 為未帶 SPEC 標題的 map_text。"""
+    monkeypatch.chdir(tmp_path)
+    _write(tmp_path / "docs/spec/a/SPEC-101-x.md", SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", map_text)
+    if extra_map:
+        _write(tmp_path / "docs/spec/b/domain-map.md", extra_map)
+    if system:
+        _write(tmp_path / "docs/system-layer.md", system)
+    return str(tmp_path / "docs/spec/a/SPEC-101-x.md")
+
+
+def test_green_to_red_1_multi_source_specs_with_other_spec_in_system(tmp_path, monkeypatch, capsys):
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101, SPEC-202", "| FR-01~03 | A |\n"),
+                          system="## SPEC-202\n| FR-09 | s |\n")
+    assert cdc.main([spec]) == 0, capsys.readouterr().out
+
+
+def test_green_to_red_2_no_source_specs_system_mentions_other_spec(tmp_path, monkeypatch, capsys):
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("", "| FR-01~03 | A |\n"),
+                          system="SPEC-202 的 FR-09 見此\n")
+    assert cdc.main([spec]) == 0, capsys.readouterr().out
+
+
+def test_green_to_red_3_source_specs_lists_other_spec(tmp_path, monkeypatch, capsys):
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-202", "| FR-01~03 | A |\n"),
+                          system="## SPEC-202\n| FR-09 | s |\n")
+    assert cdc.main([spec]) == 0, capsys.readouterr().out
+
+
+def test_green_to_red_4_multi_source_specs_and_other_map_titled(tmp_path, monkeypatch, capsys):
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101, SPEC-202", "| FR-02~03 | A |\n"),
+                          extra_map=_map("SPEC-101", "## SPEC-101\n| FR-01 | B |\n"))
+    assert cdc.main([spec]) == 0, capsys.readouterr().out
+
+
+def test_reverse_false_green_verdict_independent_of_neighbours(tmp_path, monkeypatch, capsys):
+    """首個 SPEC 標題前的散文 FR 不計入；判定不因旁邊有無系統層而改變。"""
+    body = "前言提到 FR-01\n## SPEC-101\n| FR-02~03 | A |\n"
+    spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101", body))
+    alone = cdc.main([spec])
+    _write(tmp_path / "docs/system-layer.md", "## SPEC-202\n| FR-09 | s |\n")
+    with_system = cdc.main([spec])
+    assert alone == with_system == 1
 
 
 def test_union_spec_inside_domain_dir_includes_other_listed_and_system(tmp_path, monkeypatch):
