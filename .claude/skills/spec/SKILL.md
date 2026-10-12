@@ -176,7 +176,7 @@ python3 .claude/skills/spec/scripts/check_api_surface.py {spec-file-path}  # por
 python3 .claude/skills/spec/scripts/check_domain_coverage.py {spec-file-path} [--domain-map {path}]  # portability-allow: consumer 共通安裝位置
 ```
 
-FR 標題接受半形與全形冒號（`### FR-NN:` / `### FR-NN：`）。抽出 0 個 FR 標題時分兩種結果：全文含 FR- 加數字字樣，判為規則漏抓，報錯並列出預期標題樣式，exit code 非 0；全文無該字樣，回報本 SPEC 無 FR、未執行覆蓋比對，exit code 0，且輸出不同於實際比對通過（不含通過字樣）。呼叫端判讀結果須讀 exit code 與輸出：「未執行比對」不等於「已覆蓋」。
+FR 標題接受半形與全形冒號（`### FR-NN:` / `### FR-NN：`）。無 FR 的 SPEC 須於 frontmatter 明示宣告 `has_functional_requirements: false`（布林；未填視同 true；非布林值報錯，不當作 false）。此判定先於 domain map 定位，宣告 false 且通過矛盾檢查者不需要任何 map。四種結果：(1) 宣告 false 且抽出 0 個 FR：exit code 0，輸出明示本 SPEC 宣告無 FR、未執行覆蓋比對，不含通過字樣，且不執行事件流標定檢核；(2) 宣告 false 但存在以 FR 開頭的標題行（比抽取規則寬：不分大小寫，含 FR01、FR 01、fr-01、全形連字號與 en dash；NFR 開頭不算）：exit code 非 0，列出該行；(3) 未宣告或宣告 true 且抽出 0 個：exit code 非 0，訊息列出預期標題樣式與宣告方式；(4) 抽出大於 0 個：照現行比對，exit code 0 = 全部覆蓋、1 = 有缺口。呼叫端判讀須讀 exit code 與輸出：「未執行比對」（情況 1）不等於「已覆蓋」。已知殘留：宣告 false 的 SPEC 若以完全不含 FR 字樣的標題定義需求（如「功能需求 1」），矛盾檢查抓不到。
 
 domain map 定位鏈（省略 `--domain-map` 時）：spec 同目錄 `domain-map.md`（為聯集成員之一，不短路）與列舉 `docs/spec/*/domain-map.md` 中 frontmatter `source_specs` 含本 SPEC id 者（並聯集 `docs/system-layer.md`；逐檔解析歸屬與事件流標定後於集合層合併，標題堆疊不跨檔；某檔的 FR 無標題歸屬時以該檔單一 `source_specs` 為預設，多值則未歸屬並於 stderr 指出檔名；`--domain-map` 明示為唯一來源不聯集，故 SPEC 不必與 domain map 同目錄）-> `docs/domain-map.md`。輸出：無任何 domain map（提示先走 Step 2.5 產出）、有 domain map 但無一列入本 SPEC（提示補 `source_specs`）、未覆蓋 FR 清單（`FR-NN`，請於 domain map §7 補歸屬）、或「檢核通過」。exit code 0 = 通過、1 = 缺失或有未覆蓋 FR。FR token 展開支援逗號續列（`FR-01,02,03`）與範圍（`FR-13~17`）。
 

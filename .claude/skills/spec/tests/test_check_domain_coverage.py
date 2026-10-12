@@ -428,22 +428,59 @@ def test_extract_spec_frs_fullwidth_colon():
     assert cdc.extract_spec_frs("### FR-01：A\n#### FR-02: B\n") == {1, 2}
 
 
-def test_zero_extracted_with_fr_wording_fails(tmp_path, capsys):
-    # 粗體代替標題：未支援寫法，須翻紅而非放行
-    rc, out = _run_main(tmp_path, "# s\n**FR-01** 某需求\n", capsys)
-    assert rc != 0
-    assert "FR-" in out and "### FR-NN" in out
-    assert "通過" not in out
+def _fm(value=None):
+    if value is None:
+        return "---\nid: SPEC-900\n---\n"
+    return f"---\nid: SPEC-900\nhas_functional_requirements: {value}\n---\n"
 
 
-def test_no_fr_at_all_rc0_without_pass_wording(tmp_path, capsys):
-    rc, out = _run_main(tmp_path, "# s\n元件契約表\n", capsys)
+def _run_nomap(tmp_path, spec_text, capsys, *extra):
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(spec_text, encoding="utf-8")
+    rc = cdc.main([str(spec), *extra])
+    return rc, capsys.readouterr().out
+
+
+def test_declared_false_no_fr_rc0_before_map_location(tmp_path, capsys):
+    # 無任何 map 仍 rc=0（判定先於定位）；加事件流旗標輸出亦不含通過字樣
+    for extra in ((), ("--check-event-flow-labeling",)):
+        rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n元件契約表\n", capsys, *extra)
+        assert rc == 0
+        assert "宣告無 FR" in out and "未執行覆蓋比對" in out
+        assert "通過" not in out
+
+
+def test_declared_false_with_map_not_listing_spec_rc0(tmp_path, capsys):
+    (tmp_path / "other").mkdir()
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n", capsys)
     assert rc == 0
-    assert "無 FR" in out and "未執行覆蓋比對" in out
-    assert "通過" not in out
 
 
-def test_no_fr_flips_when_prose_mentions_fr(tmp_path, capsys):
-    base = "# s\n元件契約表\n"
-    assert _run_main(tmp_path, base, capsys)[0] == 0
-    assert _run_main(tmp_path, base + "參見 FR-01 的說明\n", capsys)[0] != 0
+def test_declared_false_but_fr_heading_contradicts(tmp_path, capsys):
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n### FR-01: A\n", capsys)
+    assert rc != 0 and "矛盾" in out
+
+
+def test_declared_false_loose_headings_contradict(tmp_path, capsys):
+    for h in ("fr-01", "FR01", "FR 01", "FR\uff0d01", "FR\u201301"):
+        rc, _ = _run_nomap(tmp_path, _fm("false") + f"# s\n## {h} x\n", capsys)
+        assert rc != 0, h
+
+
+def test_declared_false_nfr_heading_not_contradiction(tmp_path, capsys):
+    rc, _ = _run_nomap(tmp_path, _fm("false") + "# s\n## NFR-01 x\n", capsys)
+    assert rc == 0
+
+
+def test_undeclared_zero_fr_fails_regardless_of_wording(tmp_path, capsys):
+    for body in ("# s\n元件契約表\n", "# s\n**FR-01** 需求\n"):
+        for fm in (_fm(), _fm("true")):
+            rc, out = _run_nomap(tmp_path, fm + body, capsys)
+            assert rc != 0
+            assert "### FR-NN" in out and "has_functional_requirements: false" in out
+
+
+def test_non_boolean_declaration_errors(tmp_path, capsys):
+    for v in ('"false"', "null", "", "no"):
+        rc, _ = _run_nomap(tmp_path, _fm(v) + "# s\n", capsys)
+        assert rc != 0, v
