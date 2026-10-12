@@ -7,7 +7,9 @@ bundle 邊界；且 spec FR 是否全數映射到某 bundle 缺工具強制（�
   1. spec 對應的 domain map 是否存在
   2. spec 每個 FR 是否出現在 domain map 的 FR 覆蓋（含標為 presentation/data 的非 domain FR）
 
-domain map 定位：預設找 spec 同目錄的 domain-map.md，退化找 docs/domain-map.md。
+domain map 定位鏈：--domain-map 明示 -> spec 同目錄 domain-map.md -> 列舉
+docs/spec/*/domain-map.md 取 frontmatter source_specs 含本 SPEC id 者（並聯集
+docs/system-layer.md，覆蓋判定取聯集）-> docs/domain-map.md。
 
 另含可選檢核「事件流標定」（`--check-event-flow-labeling`）：spec 的 FR 段落若命中
 事件流訊號詞（清單見 EVENT_FLOW_SIGNAL_WORDS，與 /spec validate Layer 2 維度 5「資源
@@ -201,21 +203,86 @@ def check_event_flow_labeling(spec_text, domain_map_text, signal_words=EVENT_FLO
     return sorted(signaled - labeled)
 
 
-def locate_domain_map(spec_path, explicit):
-    """定位 domain map：優先 explicit，其次 spec 同目錄，最後 docs/domain-map.md。"""
+DOMAIN_MAP_GLOB_DIR = Path("docs/spec")
+SYSTEM_LAYER_PATH = Path("docs/system-layer.md")
+LEGACY_DOMAIN_MAP_PATH = Path("docs/domain-map.md")
+SOURCE_SPECS_RE = re.compile(r"^source_specs:\s*\[(.*?)\]", re.MULTILINE)
+
+
+def _declared_source_specs(map_text):
+    """回傳 domain map frontmatter 的 source_specs 清單（大寫 SPEC-NNN）。"""
+    block = FRONTMATTER_BLOCK_RE.match(map_text)
+    found = SOURCE_SPECS_RE.search(block.group(1)) if block else None
+    return set(SPEC_ID_RE.findall(found.group(1).upper())) if found else set()
+
+
+def _list_domain_maps():
+    """列舉 docs/spec/*/domain-map.md（依路徑排序，結果穩定）。"""
+    return sorted(DOMAIN_MAP_GLOB_DIR.glob("*/domain-map.md"))
+
+
+def _maps_listing_spec(spec_id):
+    """回傳 source_specs 含 spec_id 的 domain map 清單。"""
+    if spec_id is None:
+        return []
+    return [
+        m for m in _list_domain_maps()
+        if spec_id in _declared_source_specs(m.read_text(encoding="utf-8"))
+    ]
+
+
+def locate_domain_maps(spec_path, explicit, spec_id=None):
+    """定位 domain map 清單（可多份，覆蓋判定取聯集）。
+
+    解析鏈：explicit -> spec 同目錄 -> docs/spec/*/domain-map.md 中 source_specs 含本 SPEC
+    者（並聯集 docs/system-layer.md）-> docs/domain-map.md。找不到回空 list。
+    """
     if explicit:
         p = Path(explicit)
-        return p if p.exists() else None
+        return [p] if p.exists() else []
     same_dir = spec_path.parent / "domain-map.md"
     if same_dir.exists():
-        return same_dir
-    fallback = Path("docs/domain-map.md")
-    return fallback if fallback.exists() else None
+        return [same_dir]
+    if spec_id is None and Path(spec_path).exists():
+        spec_id = extract_spec_id(Path(spec_path).read_text(encoding="utf-8"), spec_path)
+    listed = _maps_listing_spec(spec_id)
+    if listed:
+        return listed + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.exists() else [])
+    return [LEGACY_DOMAIN_MAP_PATH] if LEGACY_DOMAIN_MAP_PATH.exists() else []
 
 
-def _report_domain_coverage(spec_text, domain_map_path, spec_path=None):
+def locate_domain_map(spec_path, explicit):
+    """相容入口：回傳 locate_domain_maps 的第一份，找不到回 None。"""
+    found = locate_domain_maps(spec_path, explicit)
+    return found[0] if found else None
+
+
+def describe_missing_map(explicit):
+    """找不到 map 時的訊息：區分「無任何 map」與「有 map 但無一列入本 SPEC」。"""
+    if explicit:
+        return f"domain 覆蓋檢核：--domain-map 指定的檔案不存在：{explicit}"
+    if _list_domain_maps():
+        return (
+            "domain 覆蓋檢核：有 domain map（docs/spec/*/domain-map.md），但無一份的 "
+            "source_specs 列入本 SPEC。請於對應 domain map frontmatter 的 source_specs 補上本 SPEC id，"
+            "或以 --domain-map 指定。"
+        )
+    return (
+        "domain 覆蓋檢核：找不到任何 domain map（spec 同目錄 domain-map.md、"
+        "docs/spec/*/domain-map.md 或 docs/domain-map.md）。"
+        "依 version-bootstrap Step 2.5，規劃波應先產出 domain map。"
+    )
+
+
+def _read_maps_text(paths):
+    """串接多份 map 內容作聯集比對。"""
+    return "\n".join(p.read_text(encoding="utf-8") for p in paths)
+
+
+def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None):
     """列印 FR->bundle 覆蓋檢核結果，回傳 exit code。"""
-    uncovered = check_domain_coverage(spec_text, domain_map_path.read_text(encoding="utf-8"), spec_path)
+    domain_map_path = ", ".join(str(p) for p in domain_map_paths)
+    uncovered = check_domain_coverage(spec_text, _read_maps_text(domain_map_paths), spec_path)
     if not uncovered:
         print(f"domain 覆蓋檢核通過：spec 全部 FR 皆在 {domain_map_path} 有 bundle 歸屬")
         return 0
@@ -227,9 +294,10 @@ def _report_domain_coverage(spec_text, domain_map_path, spec_path=None):
     return 1
 
 
-def _report_event_flow_labeling(spec_text, domain_map_path):
+def _report_event_flow_labeling(spec_text, domain_map_paths):
     """列印事件流標定檢核結果，回傳 exit code。性質為啟發式提醒，非阻擋。"""
-    missing = check_event_flow_labeling(spec_text, domain_map_path.read_text(encoding="utf-8"))
+    domain_map_path = ", ".join(str(p) for p in domain_map_paths)
+    missing = check_event_flow_labeling(spec_text, _read_maps_text(domain_map_paths))
     if not missing:
         print("事件流標定檢核通過：命中事件流訊號詞的 FR 皆在通道與協調圖節有到達類別與級別標定")
         return 0
@@ -258,17 +326,14 @@ def main(argv=None):
     spec_path = Path(args.spec_path)
     spec_text = spec_path.read_text(encoding="utf-8")
 
-    domain_map_path = locate_domain_map(spec_path, args.domain_map)
-    if domain_map_path is None:
-        print(
-            "domain 覆蓋檢核：找不到 domain map（spec 同目錄 domain-map.md 或 "
-            "docs/domain-map.md）。依 version-bootstrap Step 2.5，規劃波應先產出 domain map。"
-        )
+    domain_map_paths = locate_domain_maps(spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
+    if not domain_map_paths:
+        print(describe_missing_map(args.domain_map))
         return 1
 
-    rc = _report_domain_coverage(spec_text, domain_map_path, spec_path)
+    rc = _report_domain_coverage(spec_text, domain_map_paths, spec_path)
     if args.check_event_flow_labeling:
-        rc = _report_event_flow_labeling(spec_text, domain_map_path) or rc
+        rc = _report_event_flow_labeling(spec_text, domain_map_paths) or rc
     return rc
 
 
