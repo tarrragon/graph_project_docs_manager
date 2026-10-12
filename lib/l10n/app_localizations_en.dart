@@ -633,11 +633,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scanCompleteUndeterminableNotificationBody =>
-      'Gaps could not be determined: schema lacks path patterns';
+      'Gaps could not be determined. See the gap report for the reason.';
 
   @override
   String get scanCompleteUndeterminableSnackbarMessage =>
-      'Scan complete: gaps could not be determined';
+      'Scan finished: gaps could not be determined';
 
   @override
   String get gapsUndeterminableReasonScanFailed =>

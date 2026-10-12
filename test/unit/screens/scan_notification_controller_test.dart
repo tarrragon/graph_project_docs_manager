@@ -119,7 +119,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('掃描完成，無法判定破洞'), findsOneWidget);
+      expect(find.text('掃描結束，無法判定破洞'), findsOneWidget);
       expect(find.text('掃描完成，未偵測到破洞'), findsNothing);
     });
 

@@ -105,11 +105,12 @@ class ListRow extends StatelessWidget {
          trailing: trailing,
        );
 
-  /// 破洞項。secondary／onTap／testKey 必填（SPEC-004 4.40 slot 契約）。
+  /// 破洞項。onTap／testKey 必填；[secondary] 可省——項目沒有說明時路徑與
+  /// 行號放主文字、不渲染次文字，列高一行（SPEC-004 v1.84 4.40 `item`）。
   const ListRow.item({
     Key? key,
     required AppText primary,
-    required AppText secondary,
+    AppText? secondary,
     Widget? trailing,
     required VoidCallback onTap,
     required Key testKey,
@@ -141,8 +142,16 @@ class ListRow extends StatelessWidget {
        );
 
   /// 節點詳情 meta 列。leading 必填，primary 為 `AppText.mono`（路徑）。
-  const ListRow.meta({Key? key, required Widget leading, required AppText primary})
-    : this._(key: key, variant: ListRowVariant.meta, leading: leading, primary: primary);
+  const ListRow.meta({
+    Key? key,
+    required Widget leading,
+    required AppText primary,
+  }) : this._(
+         key: key,
+         variant: ListRowVariant.meta,
+         leading: leading,
+         primary: primary,
+       );
 
   /// 格詳情卡步驟清單。leading 必填。
   const ListRow.numbered({
@@ -195,15 +204,9 @@ class ListRow extends StatelessWidget {
           ? CrossAxisAlignment.start
           : CrossAxisAlignment.center,
       children: [
-        if (leading != null) ...[
-          leading!,
-          SizedBox(width: Space.sm.w),
-        ],
+        if (leading != null) ...[leading!, SizedBox(width: Space.sm.w)],
         Expanded(child: _buildTextBlock()),
-        if (trailing != null) ...[
-          SizedBox(width: Space.sm.w),
-          trailing!,
-        ],
+        if (trailing != null) ...[SizedBox(width: Space.sm.w), trailing!],
       ],
     );
 
@@ -248,7 +251,7 @@ class ListRow extends StatelessWidget {
   /// 主／次文字堆疊。`sectionHeader` 依契約色（`emphasis` +
   /// `accentStrong`）重建，見檔頭說明。
   Widget _buildTextBlock() {
-    if (variant != ListRowVariant.item) {
+    if (variant != ListRowVariant.item || secondary == null) {
       return _buildPrimary();
     }
     return Column(

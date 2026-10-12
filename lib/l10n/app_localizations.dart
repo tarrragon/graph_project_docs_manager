@@ -1085,13 +1085,13 @@ abstract class AppLocalizations {
   /// SPEC-003 §2.2 系統層通知：state-gaps-undeterminable 時的通知內文
   ///
   /// In zh, this message translates to:
-  /// **'無法判定破洞：型別表缺路徑模式'**
+  /// **'無法判定破洞，原因請見破洞報告'**
   String get scanCompleteUndeterminableNotificationBody;
 
   /// SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字（無法判定破洞）
   ///
   /// In zh, this message translates to:
-  /// **'掃描完成，無法判定破洞'**
+  /// **'掃描結束，無法判定破洞'**
   String get scanCompleteUndeterminableSnackbarMessage;
 
   /// SPEC-001 §5「無法判定破洞」原因說明之三（掃描輪次拋出非預期例外）

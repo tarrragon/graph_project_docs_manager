@@ -933,6 +933,65 @@ void main() {
       expect(secondary.variant, AppTextVariant.caption);
     });
 
+    testWidgets('6 E1 有說明兩行、沒有說明一行（路徑與行號在主文字、無次文字）', (tester) async {
+      Future<int> textCountOf(GapReportItem item) async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpHarness(
+          tester,
+          child: const GapReportScreen(),
+          overrides: [
+            gapReportProvider.overrideWith(
+              () => _FixedNotifier(
+                GapReportFound([
+                  GapReportCategory(
+                    id: gapCategoryIdParseFailure,
+                    items: [item],
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        );
+        return find
+            .descendant(
+              of: find.byKey(Key('card-gaps-${item.id}')),
+              matching: find.byType(AppText),
+            )
+            .evaluate()
+            .length;
+      }
+
+      final withDescription = await textCountOf(
+        const GapReportItem(
+          id: 'd',
+          filePath: 'docs/a.md',
+          lineNumber: 3,
+          description: GapItemDescription(
+            GapDescriptionKind.parseNoFrontmatter,
+          ),
+        ),
+      );
+      expect(
+        tester
+            .widget<AppText>(find.widgetWithText(AppText, 'docs/a.md · 第 3 行'))
+            .variant,
+        AppTextVariant.caption,
+      );
+
+      final withoutDescription = await textCountOf(
+        const GapReportItem(id: 'n', filePath: 'docs/a.md', lineNumber: 3),
+      );
+      expect(
+        tester
+            .widget<AppText>(find.widgetWithText(AppText, 'docs/a.md · 第 3 行'))
+            .variant,
+        AppTextVariant.mono,
+      );
+
+      expect(withDescription, 2);
+      expect(withoutDescription, 1);
+    });
+
     testWidgets('A9 項目說明與歸屬型別不明附註以 l10n 渲染', (tester) async {
       final state = gapReportStateFromRound(
         fakeRound(parseFailureEvents: [_ambiguousEvent()]),

@@ -1134,12 +1134,12 @@
     "description": "SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字（無破洞）"
   },
 
-  "scanCompleteUndeterminableNotificationBody": "無法判定破洞：型別表缺路徑模式",
+  "scanCompleteUndeterminableNotificationBody": "無法判定破洞，原因請見破洞報告",
   "@scanCompleteUndeterminableNotificationBody": {
     "description": "SPEC-003 §2.2 系統層通知：state-gaps-undeterminable 時的通知內文"
   },
 
-  "scanCompleteUndeterminableSnackbarMessage": "掃描完成，無法判定破洞",
+  "scanCompleteUndeterminableSnackbarMessage": "掃描結束，無法判定破洞",
   "@scanCompleteUndeterminableSnackbarMessage": {
     "description": "SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字（無法判定破洞）"
   },
