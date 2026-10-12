@@ -57,7 +57,7 @@ class DomainUcRelationQuery {
     'domainUcRelationLogged',
   );
 
-  /// FR-13 排序、依賴索引只算一次；各目標的反向距離在首次查詢時快取。
+  /// FR-13 排序、依賴索引只算一次；反向距離因受該 UC 直接 domain 集合影響，每次查詢重算。
   late final _BundleIndex? _index = switch (buildResult) {
     GraphBuildAvailable(:final event) => _BundleIndex(event),
     _ => null,

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/bundle_layer_order.dart';
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/domain_uc_relation.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
@@ -11,6 +12,7 @@ import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import '../../helpers/spec001/corpus_snapshot.dart';
 import '../../helpers/spec007/bundle_graph_fixture.dart';
 import '../../helpers/spec007/log_recorder.dart';
+import '../../helpers/spec007/raw_node_builder.dart';
 
 DomainUcRelationAvailable _relation(
   List<RawNode> nodes,
@@ -407,6 +409,52 @@ void main() {
       expect(_domainPaths(r), [
         ['z', 'y'],
       ]);
+    });
+
+    test('T1 同長：排除直接 domain 後 x 有兩條同長路徑，皆列出，依中間節點 FR-13 序', () {
+      // m 為 L1、k 為 L2：FR-13 序 m 先於 k，與 code point 序（k 先於 m）相反。
+      final r = _relation([
+        bundleNode('y'),
+        bundleNode('z', dependsOn: ['y']),
+        bundleNode('m', dependsOn: ['y']),
+        bundleNode('k', dependsOn: ['y', 'm']),
+        bundleNode('x', dependsOn: ['z', 'k', 'm']),
+        ucNode('UC-01', [
+          ['x', 'z'],
+        ]),
+      ], 'y');
+      expect(_domainPaths(r), [
+        ['z', 'y'],
+        ['x', 'm', 'y'],
+        ['x', 'k', 'y'],
+      ]);
+    });
+
+    test('非字串 domain 的 bundle 為目標可判定間接依賴；E1 對照字串 domain 結果同形', () {
+      DomainUcRelationAvailable run(Object domainText) {
+        return DomainUcRelationQuery(
+          buildResult: buildResultOf([
+            buildRawNode(
+              id: bundleIdOf('n'),
+              typeName: domainBundleTypeName,
+              extra: {domainBundleDomainField: domainText},
+            ),
+            bundleNode('x', dependsOn: ['n']),
+            ucNode('UC-01', [
+              ['x'],
+            ]),
+          ]),
+        ).relationOf(bundleIdOf('n'), 'UC-01') as DomainUcRelationAvailable;
+      }
+
+      final nonString = run(7);
+      expect(nonString.kind, DomainUcRelationKind.indirect);
+      expect(_domainPaths(nonString), [
+        ['x', '7'],
+      ]);
+      final asString = run('7');
+      expect(asString.kind, nonString.kind);
+      expect(_domainPaths(asString), _domainPaths(nonString));
     });
 
     test('T7 圖不可用日誌：同一 buildResult 只記一次；null 以實例為單位', () {

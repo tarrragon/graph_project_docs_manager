@@ -566,4 +566,23 @@ void main() {
       expect(_dupDefects(e), isEmpty);
     });
   });
+
+  group('非字串 domain 的反查（FR-13 Z1）', () {
+    test('domain 為 7：domainOf 為 null、bundleIds 不含、domainTextOf 為 7 的字串', () {
+      final r = DomainNameResolver.fromDeclarations([
+        ('B1', 7),
+        ('B2', 'corpus'),
+      ]);
+      expect(r.domainOf('B1'), isNull);
+      expect(r.bundleIds, isNot(contains('B1')));
+      expect(r.nonStringDomainBundleIds, ['B1']);
+      expect(r.domainTextOf('B1'), '7');
+      // 對照：字串 domain 照舊。
+      expect(r.domainOf('B2'), 'corpus');
+      expect(r.bundleIds, contains('B2'));
+      expect(r.nonStringDomainBundleIds, isNot(contains('B2')));
+      expect(r.domainTextOf('B2'), 'corpus');
+      expect(r.domainTextOf('nope'), isNull);
+    });
+  });
 }
