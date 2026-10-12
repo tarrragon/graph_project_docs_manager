@@ -28,7 +28,12 @@ class DuplicateDomainDeclaration {
 
 /// 名稱索引：精確比對（區分大小寫、不去空白、不正規化），不以 ID 拼接代替查詢。
 class DomainNameResolver {
-  DomainNameResolver._(this._byName, this._byBundleId, this.duplicates);
+  DomainNameResolver._(
+    this._byName,
+    this._byBundleId,
+    this.duplicates, [
+    this._nonStringByBundleId = const {},
+  ]);
 
   /// 無任何 DomainBundle 的索引（所有名稱皆未宣告）。
   factory DomainNameResolver.empty() =>
@@ -40,7 +45,13 @@ class DomainNameResolver {
   ) {
     final idsByDomain = <String, List<String>>{};
     final byBundleId = <String, String>{};
+    final nonString = <String, String>{};
     for (final (id, domain) in declarations) {
+      // FR-13 Z1：非字串（非空）domain 不入名稱索引，但以轉字串值保留列。
+      if (domain != null && domain is! String && !isEmptyFlowRef(domain)) {
+        nonString[id] = '$domain';
+        continue;
+      }
       // 空字串不是名稱：不入索引，`traverses: ['']` 必為未宣告。
       if (domain is! String || domain.isEmpty) continue;
       idsByDomain.putIfAbsent(domain, () => []).add(id);
@@ -57,6 +68,7 @@ class DomainNameResolver {
           if (e.value.length >= 2)
             DuplicateDomainDeclaration(domain: e.key, bundleIds: e.value),
       ]),
+      Map.unmodifiable(nonString),
     );
   }
 
@@ -78,6 +90,9 @@ class DomainNameResolver {
   final Map<String, String> _byName;
   final Map<String, String> _byBundleId;
 
+  /// `domain` 非字串的 DomainBundle：節點 ID → 轉字串後的值（FR-13 Z1）。
+  final Map<String, String> _nonStringByBundleId;
+
   /// 重複宣告（每個重複的 `domain` 值一筆）；這些 DomainBundle 不在正向索引。
   final List<DuplicateDomainDeclaration> duplicates;
 
@@ -96,4 +111,11 @@ class DomainNameResolver {
 
   /// 全部有字串 `domain` 的 DomainBundle 節點 ID，依輸入順序。
   Iterable<String> get bundleIds => _byBundleId.keys;
+
+  /// `domain` 非字串（非空）的 DomainBundle 節點 ID，依輸入順序（FR-13 Z1）。
+  Iterable<String> get nonStringDomainBundleIds => _nonStringByBundleId.keys;
+
+  /// 列首顯示與排序用的 domain 文字：字串原值，非字串為轉字串值；非 DomainBundle 回傳 null。
+  String? domainTextOf(String bundleId) =>
+      _byBundleId[bundleId] ?? _nonStringByBundleId[bundleId];
 }

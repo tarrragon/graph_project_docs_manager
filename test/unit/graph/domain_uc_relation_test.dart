@@ -6,9 +6,11 @@ import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/bundle_layer_order.dart';
 import 'package:graph_project_docs_manager/graph/domain_uc_relation.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 
 import '../../helpers/spec001/corpus_snapshot.dart';
 import '../../helpers/spec007/bundle_graph_fixture.dart';
+import '../../helpers/spec007/log_recorder.dart';
 
 DomainUcRelationAvailable _relation(
   List<RawNode> nodes,
@@ -375,6 +377,83 @@ void main() {
         'UC-01',
       ) as DomainUcRelationAvailable;
       expect(existing.kind, DomainUcRelationKind.indirect);
+    });
+  });
+
+  group('0.5.0-W1-139 裁決落地', () {
+    // 目標 y；z 為直接 domain 且 z→y；x 為直接 domain，最短路徑 x→z→y 經 z。
+    List<RawNode> eb({required bool withLongRoute}) => [
+      bundleNode('y'),
+      bundleNode('z', dependsOn: ['y']),
+      bundleNode('b', dependsOn: ['y']),
+      bundleNode('a', dependsOn: ['b']),
+      bundleNode('x', dependsOn: ['z', if (withLongRoute) 'a']),
+      ucNode('UC-01', [
+        ['x', 'z'],
+      ]),
+    ];
+
+    test('T1 E-B：x 最短路徑經直接 domain z，另有不經直接 domain 的較長路徑時列出後者', () {
+      final r = _relation(eb(withLongRoute: true), 'y');
+      expect(r.kind, DomainUcRelationKind.indirect);
+      expect(_domainPaths(r), [
+        ['z', 'y'],
+        ['x', 'a', 'b', 'y'],
+      ]);
+    });
+
+    test('T1 對照：x 只有經直接 domain 的路徑時，x 不列任何路徑', () {
+      final r = _relation(eb(withLongRoute: false), 'y');
+      expect(_domainPaths(r), [
+        ['z', 'y'],
+      ]);
+    });
+
+    test('T7 圖不可用日誌：同一 buildResult 只記一次；null 以實例為單位', () {
+      final recorder = LogRecorder();
+      final shared = unavailableBuildResult();
+      final a = DomainUcRelationQuery(
+        buildResult: shared,
+        logSink: recorder.sink,
+      );
+      final b = DomainUcRelationQuery(
+        buildResult: shared,
+        logSink: recorder.sink,
+      );
+      for (var i = 0; i < 3; i++) {
+        expect(
+          a.relationOf('B', 'UC-01'),
+          isA<DomainUcRelationGraphUnavailable>(),
+        );
+        b.relationOf('B', 'UC-01');
+      }
+      final logs = recorder.ofEvent(GraphLogEvent.domainUcRelationUnavailable);
+      expect(logs, hasLength(1));
+      expect(recorder.entries, hasLength(1));
+      expect(logs.single.payload.keys, [GraphLogKeys.reason]);
+      final n1 = DomainUcRelationQuery(
+        buildResult: null,
+        logSink: recorder.sink,
+      );
+      final n2 = DomainUcRelationQuery(
+        buildResult: null,
+        logSink: recorder.sink,
+      );
+      for (var i = 0; i < 3; i++) {
+        n1.relationOf('B', 'UC-01');
+        n2.relationOf('B', 'UC-01');
+      }
+      expect(
+        recorder.ofEvent(GraphLogEvent.domainUcRelationUnavailable),
+        hasLength(3),
+      );
+      // 正向對照：可用圖不記日誌。
+      final before = recorder.entries.length;
+      DomainUcRelationQuery(
+        buildResult: buildResultOf(eb(withLongRoute: true)),
+        logSink: recorder.sink,
+      ).relationOf(bundleIdOf('y'), 'UC-01');
+      expect(recorder.entries, hasLength(before));
     });
   });
 }

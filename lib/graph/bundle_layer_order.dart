@@ -6,6 +6,8 @@ library;
 
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 
 /// 依賴邊的邊型名（型別表 `bundle_dependency`）。
 const bundleDependencyEdgeType = 'bundle_dependency';
@@ -59,24 +61,47 @@ class BundleOrderGraphUnavailable extends BundleOrderResult {
 /// 需求：[SPEC-007 FR-13] Graph 公開面 `orderedBundles()`。
 ///
 /// [buildResult] 為 null 代表尚未完成建圖。
+///
+/// 圖不可用時，與 FR-08 同形：同一 buildResult 只記一次
+/// [GraphLogEvent.bundleOrderUnavailable]；buildResult 為 null 時以實例為單位。
 class BundleLayerQuery {
-  const BundleLayerQuery({required this.buildResult});
+  BundleLayerQuery({required this.buildResult, GraphLogSink? logSink})
+    : _log = logSink ?? defaultGraphLogSink;
 
   final GraphBuildResult? buildResult;
+  final GraphLogSink _log;
+  final _once = UnavailableLogOnce(_loggedBuilds);
+  static final Expando<bool> _loggedBuilds = Expando<bool>('bundleOrderLogged');
 
   BundleOrderResult orderedBundles() => switch (buildResult) {
     GraphBuildAvailable(:final event) => BundleOrderAvailable(
       orderBundlesOf(event),
     ),
-    GraphBuildUnavailable(:final reason) => BundleOrderGraphUnavailable(
-      AdjacencyUnavailableCause.buildUnavailable,
-      reason.name,
+    GraphBuildUnavailable(:final reason) => _unavailable(
+      BundleOrderGraphUnavailable(
+        AdjacencyUnavailableCause.buildUnavailable,
+        reason.name,
+      ),
     ),
-    null => BundleOrderGraphUnavailable(
-      AdjacencyUnavailableCause.buildNotCompleted,
-      AdjacencyUnavailableCause.buildNotCompleted.name,
+    null => _unavailable(
+      BundleOrderGraphUnavailable(
+        AdjacencyUnavailableCause.buildNotCompleted,
+        AdjacencyUnavailableCause.buildNotCompleted.name,
+      ),
     ),
   };
+
+  BundleOrderGraphUnavailable _unavailable(BundleOrderGraphUnavailable r) {
+    if (_once.mark(buildResult)) {
+      _log(
+        'bundle order query unavailable: ${r.reasonCode}', // i18n-exempt: debug log
+        event: GraphLogEvent.bundleOrderUnavailable,
+        payload: {GraphLogKeys.reason: r.reasonCode},
+        level: 900,
+      );
+    }
+    return r;
+  }
 }
 
 /// 以 Unicode code point 逐字元比較（不依 locale，也不是 UTF-16 碼元序）。
@@ -91,15 +116,23 @@ int compareCodePoints(String a, String b) {
   }
 }
 
-/// 全部有字串 `domain` 的 DomainBundle（重複宣告者各自成列）。
+/// 全部 DomainBundle（重複宣告者各自成列；非字串 `domain` 以轉字串值成列，FR-13 Z1）。
 List<DomainBundleRef> bundleRefsOf(GraphBuiltEvent event) => [
-  for (final id in event.domainResolver.bundleIds)
-    DomainBundleRef(bundleId: id, domain: event.domainResolver.domainOf(id)!),
+  for (final id in _allBundleIds(event))
+    DomainBundleRef(
+      bundleId: id,
+      domain: event.domainResolver.domainTextOf(id)!,
+    ),
 ];
+
+Set<String> _allBundleIds(GraphBuiltEvent event) => {
+  ...event.domainResolver.bundleIds,
+  ...event.domainResolver.nonStringDomainBundleIds,
+};
 
 /// 兩端皆為 DomainBundle 的 `bundle_dependency` 邊。
 List<BundleDependency> bundleDependenciesOf(GraphBuiltEvent event) {
-  final ids = event.domainResolver.bundleIds.toSet();
+  final ids = _allBundleIds(event);
   // 以 Set 去重（保留出現順序）：同一依賴值宣告多次也只算一條邊。
   return {
     for (final e in event.edges)
@@ -110,14 +143,21 @@ List<BundleDependency> bundleDependenciesOf(GraphBuiltEvent event) {
   }.toList();
 }
 
-/// 依賴推不出層的 bundle 起點：依賴指向未宣告的節點（斷邊，或邊的終點不是 DomainBundle）。
+/// 推不出層的 bundle 起點：依賴指向未宣告的節點（斷邊，或邊的終點不是 DomainBundle）、
+/// 自我依賴（Y1：selfReference 格式錯誤不建邊，故依依賴宣告而非已建的邊判定）、
+/// `domain` 非字串（Z1）。
 ///
 /// 只看正向斷邊：型別表 `bundle_dependency` 的 `reverse_field` 為 null（無反向欄位，
 /// 見 assets/schema/builtin_tracking_schema.json），不存在 `isReverse` 的 bundle_dependency
 /// 引用；前提由 bundle_layer_order_test 的「型別表無反向欄位」案例固定。
 Set<String> _brokenDependents(GraphBuiltEvent event) {
-  final ids = event.domainResolver.bundleIds.toSet();
+  final ids = _allBundleIds(event);
   return {
+    ...event.domainResolver.nonStringDomainBundleIds,
+    for (final d in event.graphDefects.whereType<MalformedRefGraphDefect>())
+      if (d.ref.edgeTypeName == bundleDependencyEdgeType &&
+          d.reason == MalformedReason.selfReference)
+        d.ref.sourceId,
     for (final d in event.graphDefects.whereType<DanglingRefGraphDefect>())
       if (d.ref.edgeTypeName == bundleDependencyEdgeType) d.ref.sourceId,
     for (final e in event.edges)
