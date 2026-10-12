@@ -72,6 +72,9 @@ class GapReportNotifier extends Notifier<GapReportState> {
     ref.watch(firstVisibleProvider(AppDestination.gaps));
     final isFirstVisible =
         ref.watch(selectedDestinationProvider) == AppDestination.gaps;
+    // 取消後、離開本頁前，本頁維持取消態：期間的任何重建都不得重啟掃描。
+    if (!isFirstVisible) _cancelHold = false;
+    if (_cancelHold) return _lastResult;
     if (isFirstVisible && !_hasTriggeredScan) {
       _hasTriggeredScan = true;
       // PM 處置 5：已有完成輪次即直接呈現，不重掃、不渲染骨架。
@@ -104,6 +107,9 @@ class GapReportNotifier extends Notifier<GapReportState> {
   /// 區分「首次 build」與「路徑變成 null」。
   String? _workspaceKey;
   bool _hasBuilt = false;
+
+  /// 取消後到離開本頁之間為 `true`（見 [cancelScan]）。
+  bool _cancelHold = false;
 
   /// 輪次取不到後等待輪次出現（見 [_showUnreadyAfterDiscardedRound]）。
   bool _awaitingRound = false;
@@ -165,6 +171,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
     // true 會一直停在「取消中」。
     _hasTriggeredScan = false;
     _awaitingRound = false;
+    _cancelHold = true;
     if (ref.read(scanRoundProvider) is ScanRoundRunning) {
       ref.read(scanRoundProvider.notifier).discard('gap-report-cancel');
     }
