@@ -61,7 +61,7 @@ main 無新變更，worktree 已是最新。
 | 分支已存在 | `分支已存在：feat/1.0.0-W9-002.1` | `git branch -d feat/1.0.0-W9-002.1` <!-- rule8-exempt: relocation:自 .claude/skills/worktree/SKILL.md 逐字位置搬移 --> |
 | Worktree 路徑已存在 | `目錄已存在：../ccsession-1.0.0-W9-002.1` | 使用其他 ticket-id 或刪除目錄 <!-- rule8-exempt: relocation:自 .claude/skills/worktree/SKILL.md 逐字位置搬移 --> |
 | base 分支不存在 | `基礎分支不存在：develop` | 確認分支名稱，或省略 --base 使用預設 |
-| merge main 衝突（worktree 已建立） | `[阻擋] 合併 main 發生衝突，worktree 需要人工處理才能安全使用。` | `cd` 進 worktree 手動解衝突後 `git add`+`git commit`，或 `git merge --abort` 放棄本次合併 |
+| merge main 衝突（worktree 已建立） | `[阻擋] 合併 main 發生衝突，worktree 需要人工處理才能安全使用。` | `cd` 進 worktree 手動解衝突後精確 `git add <衝突檔>`，再 `GIT_EDITOR=true git merge --continue`（合併進行中 `bare-commit-guard-hook.py` 於 linked worktree 內同樣拒絕裸 `git commit`），或 `git merge --abort` 放棄本次合併 |
 
 ## status — 查看 Worktree 狀態
 
