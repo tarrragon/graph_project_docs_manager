@@ -348,6 +348,20 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get relationProposedLabel => '暫定';
+
+  @override
+  String relationItemProposedA11yLabel(String id) {
+    return '關聯節點 $id，暫定邊，形狀可能變動';
+  }
+
+  @override
+  String get swimlaneScreenLaneName => '畫面';
+
+  @override
+  String get swimlaneUnplacedLaneName => '未定位';
+
+  @override
   String get currentProjectA11yLabel => '目前專案';
 
   @override

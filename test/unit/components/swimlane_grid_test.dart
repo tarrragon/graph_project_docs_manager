@@ -4,6 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations_en.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
 
 import '../../helpers/helpers.dart';
@@ -180,8 +182,12 @@ void main() {
         ),
       );
 
-      final row0Top = tester.getTopLeft(find.byKey(const ValueKey('node-0-0'))).dy;
-      final row1Top = tester.getTopLeft(find.byKey(const ValueKey('node-1-0'))).dy;
+      final row0Top = tester
+          .getTopLeft(find.byKey(const ValueKey('node-0-0')))
+          .dy;
+      final row1Top = tester
+          .getTopLeft(find.byKey(const ValueKey('node-1-0')))
+          .dy;
 
       expect(row1Top - row0Top, LayoutSize.laneRowHeight);
     });
@@ -234,10 +240,7 @@ void main() {
       expect(nodeRect.left - columnStart, greaterThanOrEqualTo(Space.xs));
     });
 
-    testWidgetsAtEachSize('空間不足策略：泳道數與步驟欄數超出可用空間時可捲動不溢位', (
-      tester,
-      size,
-    ) async {
+    testWidgetsAtEachSize('空間不足策略：泳道數與步驟欄數超出可用空間時可捲動不溢位', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -325,4 +328,152 @@ void main() {
       expect(find.byType(InkWell), findsNothing);
     });
   });
+
+  group('0.5.0 lanes kind／edges（K2、K4）', () {
+    const en = Locale('en');
+
+    Widget gridOf(
+      List<SwimlaneLane> lanes, {
+      List<SwimlaneEdge> edges = const [],
+      String? highlight,
+      ValueChanged<String>? onSelect,
+    }) => SizedBox(
+      width: 700,
+      height: 500,
+      child: SwimlaneGrid(
+        lanes: lanes,
+        edges: edges,
+        laneHighlight: highlight,
+        onSelectDomain: onSelect,
+        scrollKey: scrollKey,
+        dragKey: dragKey,
+      ),
+    );
+
+    SwimlaneNode nodeOf(String id) => SwimlaneNode(label: id, isActive: false);
+
+    List<SwimlaneLane> mixedLanes() => [
+      const SwimlaneLane(
+        name: 'presentation',
+        kind: SwimlaneLaneKind.screen,
+        domainId: 'presentation',
+        nodes: [],
+      ),
+      const SwimlaneLane(name: 'ticketdetail', domainId: 'td', nodes: []),
+      SwimlaneLane(
+        name: 'unplaced-raw',
+        kind: SwimlaneLaneKind.unplaced,
+        nodes: [(nodeOf('u1'), 0), (nodeOf('u2'), 1)],
+      ),
+    ];
+
+    testWidgets('K2-1：zh 畫面列與 domain 原值', (tester) async {
+      await pumpHarness(tester, child: gridOf(mixedLanes()));
+      expect(find.text('畫面'), findsOneWidget);
+      expect(find.text('ticketdetail'), findsOneWidget);
+      expect(find.text('presentation'), findsNothing);
+    });
+
+    testWidgets('K2-1：en 畫面列', (tester) async {
+      await pumpHarness(tester, locale: en, child: gridOf(mixedLanes()));
+      expect(find.text('Screen'), findsOneWidget);
+      expect(find.text('ticketdetail'), findsOneWidget);
+    });
+
+    testWidgets('K2-5：未定位列列首走 i18n，節點依欄號渲染', (tester) async {
+      await pumpHarness(tester, child: gridOf(mixedLanes()));
+      expect(find.text('未定位'), findsOneWidget);
+      expect(find.text('unplaced-raw'), findsNothing);
+      expect(find.text('u1'), findsOneWidget);
+      expect(find.text('u2'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('u1')).dx,
+        lessThan(tester.getTopLeft(find.text('u2')).dx),
+      );
+      await pumpHarness(tester, locale: en, child: gridOf(mixedLanes()));
+      expect(find.text('Unplaced'), findsOneWidget);
+    });
+
+    testWidgets('K2-2：畫面列與未定位列列首不可點、不高亮', (tester) async {
+      final taps = <String>[];
+      await pumpHarness(
+        tester,
+        child: gridOf(
+          mixedLanes(),
+          highlight: 'presentation',
+          onSelect: taps.add,
+        ),
+      );
+      await tester.tap(find.text('畫面'));
+      await tester.tap(find.text('未定位'));
+      expect(taps, isEmpty);
+      expect(
+        find.byKey(const Key('action-domain-select-presentation')),
+        findsNothing,
+      );
+      // 對照：domain 列可點
+      await tester.tap(find.text('ticketdetail'));
+      expect(taps, ['td']);
+    });
+
+    testWidgets('K2-3（E1）：straight／arc 各渲染一條，空 edges 無邊', (tester) async {
+      await pumpHarness(tester, child: gridOf(mixedLanes()));
+      expect(find.byType(CustomPaint).evaluate().where(_isEdge), isEmpty);
+      await pumpHarness(
+        tester,
+        child: gridOf(
+          mixedLanes(),
+          edges: const [
+            SwimlaneEdge(
+              fromColumn: 0,
+              toColumn: 1,
+              shape: SwimlaneEdgeShape.straight,
+            ),
+            SwimlaneEdge(
+              fromColumn: 1,
+              toColumn: 0,
+              shape: SwimlaneEdgeShape.arc,
+            ),
+          ],
+        ),
+      );
+      final straight = find.byKey(const Key('swimlane-edge-straight-0-1'));
+      final arc = find.byKey(const Key('swimlane-edge-arc-1-0'));
+      expect(straight, findsOneWidget);
+      expect(arc, findsOneWidget);
+      final straightPainter = tester.widget<CustomPaint>(straight).painter!;
+      final arcPainter = tester.widget<CustomPaint>(arc).painter!;
+      expect(straightPainter.shouldRepaint(arcPainter), isTrue);
+    });
+
+    testWidgets('K2-4（E1）：列數取自輸入（2 列與 9 列）', (tester) async {
+      List<SwimlaneLane> make(int n) => [
+        const SwimlaneLane(name: 'p', kind: SwimlaneLaneKind.screen, nodes: []),
+        for (var i = 1; i < n; i++)
+          SwimlaneLane(name: 'dom-$i', nodes: const []),
+      ];
+      await pumpHarness(tester, child: gridOf(make(2)));
+      expect(find.textContaining('dom-'), findsOneWidget);
+      await pumpHarness(tester, child: gridOf(make(9)));
+      expect(find.textContaining('dom-'), findsNWidgets(8));
+    });
+
+    test('K4-1／K4-2：ARB 值與 §4.0.6 逐字一致', () {
+      final zh = AppLocalizationsZh();
+      final enL = AppLocalizationsEn();
+      expect(zh.swimlaneScreenLaneName, '畫面');
+      expect(enL.swimlaneScreenLaneName, 'Screen');
+      expect(zh.swimlaneUnplacedLaneName, '未定位');
+      expect(enL.swimlaneUnplacedLaneName, 'Unplaced');
+      expect(zh.relationProposedLabel, '暫定');
+      expect(enL.relationProposedLabel, 'Proposed');
+      expect(zh.relationItemProposedA11yLabel('X'), '關聯節點 X，暫定邊，形狀可能變動');
+      expect(
+        enL.relationItemProposedA11yLabel('X'),
+        'Related node X, proposed edge, shape may change',
+      );
+    });
+  });
 }
+
+bool _isEdge(Element e) => e.widget.key.toString().contains('swimlane-edge');

@@ -353,6 +353,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get relationProposedLabel => 'Proposed';
+
+  @override
+  String relationItemProposedA11yLabel(String id) {
+    return 'Related node $id, proposed edge, shape may change';
+  }
+
+  @override
+  String get swimlaneScreenLaneName => 'Screen';
+
+  @override
+  String get swimlaneUnplacedLaneName => 'Unplaced';
+
+  @override
   String get currentProjectA11yLabel => 'Current project';
 
   @override

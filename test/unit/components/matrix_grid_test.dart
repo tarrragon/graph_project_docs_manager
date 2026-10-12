@@ -69,14 +69,14 @@ void main() {
       expect(find.byKey(scrollKey), findsOneWidget);
       expect(find.text('UC-00'), findsOneWidget);
       expect(find.text('domain-0 名稱'), findsOneWidget);
-      expect(find.byKey(const ValueKey('cell-domain-domain-0-0')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('cell-domain-domain-0-0')),
+        findsOneWidget,
+      );
       expect(find.text('0'), findsOneWidget); // subtotal row 0
     });
 
-    testWidgetsAtEachSize('子件數量上限情境：大量列與欄不溢位（依 5.11 捲動）', (
-      tester,
-      size,
-    ) async {
+    testWidgetsAtEachSize('子件數量上限情境：大量列與欄不溢位（依 5.11 捲動）', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -117,7 +117,10 @@ void main() {
       );
 
       expectNoOverflow(tester);
-      expect(find.byKey(const ValueKey('action-domain-select-d0')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('action-domain-select-d0')),
+        findsOneWidget,
+      );
     });
   });
 
@@ -129,7 +132,9 @@ void main() {
 
       final l10n = AppLocalizations.of(tester.element(find.byType(MatrixGrid)));
       final label = tester
-          .getSemantics(find.byKey(const ValueKey('action-domain-select-domain-1')))
+          .getSemantics(
+            find.byKey(const ValueKey('action-domain-select-domain-1')),
+          )
           .label;
 
       expect(label, 'domain-1 名稱，${l10n.matrixSubtotalA11yLabel(1)}');
@@ -145,17 +150,16 @@ void main() {
         child: buildGrid(onSelectDomain: (id) => selected = id),
       );
 
-      await tester.tap(find.byKey(const ValueKey('action-domain-select-domain-0')));
+      await tester.tap(
+        find.byKey(const ValueKey('action-domain-select-domain-0')),
+      );
       await tester.pump();
 
       expect(selected, 'domain-0');
     });
 
     testWidgets('selectedDomainId 對應列以 surfaceIconTint 高亮', (tester) async {
-      await pumpHarness(
-        tester,
-        child: buildGrid(selectedDomainId: 'domain-0'),
-      );
+      await pumpHarness(tester, child: buildGrid(selectedDomainId: 'domain-0'));
 
       final decoratedBoxes = tester
           .widgetList<DecoratedBox>(find.byType(DecoratedBox))
@@ -226,9 +230,7 @@ void main() {
     testWidgets('不重疊：相鄰列列首不重疊', (tester) async {
       await pumpHarness(tester, child: buildGrid(rowCount: 2));
 
-      final row0Bottom = tester
-          .getBottomLeft(find.text('domain-0 名稱'))
-          .dy;
+      final row0Bottom = tester.getBottomLeft(find.text('domain-0 名稱')).dy;
       final row1Top = tester.getTopLeft(find.text('domain-1 名稱')).dy;
 
       expect(row1Top, greaterThanOrEqualTo(row0Bottom));
@@ -237,24 +239,53 @@ void main() {
     testWidgets('最小間距：列間為 Space.xxs', (tester) async {
       await pumpHarness(tester, child: buildGrid(rowCount: 2));
 
-      final row0Bottom = tester
-          .getBottomLeft(find.text('domain-0 名稱'))
-          .dy;
+      final row0Bottom = tester.getBottomLeft(find.text('domain-0 名稱')).dy;
       final row1Top = tester.getTopLeft(find.text('domain-1 名稱')).dy;
 
       expect(row1Top - row0Bottom, Space.xxs);
     });
 
     testWidgets('空間不足策略：欄數超出可用寬時仍可渲染（委派二維捲動）', (tester) async {
-      await pumpHarness(
-        tester,
-        child: buildGrid(colCount: 10, rowCount: 30),
-      );
+      await pumpHarness(tester, child: buildGrid(colCount: 10, rowCount: 30));
 
       expectNoOverflow(tester);
       // 觸發條件成立（10 欄遠超 700 寬可用空間）時，容器不裁切拋例外，
       // 而是交由 TableView 的二維 Scrollable 承載，驗證其存在。
       expect(find.byType(TwoDimensionalScrollable), findsWidgets);
     });
+  });
+
+  group('K1：列首原值、無畫面列', () {
+    Widget gridWithNames() => SizedBox(
+      width: 700,
+      height: 400,
+      child: MatrixGrid(
+        columnHeaders: buildHeaders(1),
+        rows: [
+          for (final name in ['ticketdetail', 'foo-bar'])
+            MatrixRow(
+              domainId: name,
+              domainName: name,
+              cells: [buildCell(name, 0)],
+              subtotal: 0,
+            ),
+        ],
+        selectedDomainId: null,
+        selectedCell: null,
+        onSelectDomain: (_) {},
+        onClearSelection: () {},
+        scrollKey: scrollKey,
+      ),
+    );
+
+    for (final locale in const [Locale('zh'), Locale('en')]) {
+      testWidgets('K1-1／K1-2 @ $locale', (tester) async {
+        await pumpHarness(tester, locale: locale, child: gridWithNames());
+        expect(find.text('ticketdetail'), findsOneWidget);
+        expect(find.text('foo-bar'), findsOneWidget);
+        expect(find.text('畫面'), findsNothing);
+        expect(find.text('Screen'), findsNothing);
+      });
+    }
   });
 }
