@@ -73,6 +73,10 @@ proposals:
   usecase_refs: []
   ticket_refs:
   - 0.2.0-W1-033
+  - 0.3.0-W3-527
+  - 0.3.0-W3-528
+  - 0.4.0-W2-009
+  - 0.5.0-W1-114.13
   checklist: []
 usecases:
 - id: UC-01
