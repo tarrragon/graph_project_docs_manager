@@ -19,6 +19,7 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -604,10 +605,7 @@ void main() {
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsOneWidget);
       expect(find.byType(SnackBar), findsOneWidget);
-      expect(
-        find.text('無法開啟資料夾選取面板，應用程式可能安裝不完整'),
-        findsOneWidget,
-      );
+      expect(find.text('無法開啟資料夾選取面板，應用程式可能安裝不完整'), findsOneWidget);
     });
 
     testWidgets('ChooseFolderSelected(WorkspaceReady)：浮層收合，不顯示 AppSnackBar', (

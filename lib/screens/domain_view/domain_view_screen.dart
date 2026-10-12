@@ -16,13 +16,14 @@
 /// `degradedSchemaVersionsProvider`，由 `components.AppShell` 常駐渲染。
 library;
 
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
-import '../../app/degraded_schema.dart';
+import '../../app/domain_view_loader.dart';
 import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
@@ -30,6 +31,7 @@ import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
+import '../../workspace/current_workspace_provider.dart';
 import '../project_switcher/project_switcher_providers.dart';
 import 'domain_view_fixtures.dart';
 import 'domain_view_providers.dart';
@@ -220,18 +222,16 @@ class _SchemaUnconsumableView extends ConsumerWidget {
           ref.read(switcherOpenProvider.notifier).state = true,
       onDegradedView: canDegrade
           ? () {
-              ref.read(domainViewStateProvider.notifier).state =
-                  const DomainReady(mode: DomainMode.matrix, isDegraded: true);
-              // 寫入端接線（0.1.0-W2-014）：同步設定 app 層降級旗標與版本
-              // 文字，供 `components.AppShell` 於返回列常駐渲染
-              // `badge-domain-degraded-schema`（SPEC-001 §1／SPEC-004
-              // §4.27）。
-              ref.read(degradedSchemaProvider.notifier).state = true;
-              ref
-                  .read(degradedSchemaVersionsProvider.notifier)
-                  .state = DegradedSchemaVersions(
-                builtinVersion: builtinVersion ?? '',
-                projectVersion: state.version,
+              // 降級旗標、徽章版本文字（`badge-domain-degraded-schema`，
+              // SPEC-001 §1／SPEC-004 §4.27）、輪次失效與重掃由
+              // lib/app 的降級動作承擔（0.5.0-W1-114.14）。
+              unawaited(
+                ref
+                    .read(domainViewLoaderProvider.notifier)
+                    .enterDegradedView(
+                      builtinVersion: builtinVersion ?? '',
+                      projectVersion: state.version,
+                    ),
               );
             }
           : null,

@@ -30,6 +30,7 @@ import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/stub_workspace_repository.dart';
 
 void main() {
@@ -200,9 +201,7 @@ void main() {
     expect(find.text(l10n.folderAccessRationale), findsNothing);
   });
 
-  testWidgets('啟動 Unset：顯示 folderAccessRationale，無原因文字（對照）', (
-    tester,
-  ) async {
+  testWidgets('啟動 Unset：顯示 folderAccessRationale，無原因文字（對照）', (tester) async {
     await _pumpShell(
       tester,
       overrides: [
@@ -457,7 +456,10 @@ void _registerFocusTests() {
       find.byKey(const Key('panel-domain-cell-detail-empty')),
       findsOneWidget,
     );
-    expect(_ancestorKeys(FocusManager.instance.primaryFocus), contains(cellKey));
+    expect(
+      _ancestorKeys(FocusManager.instance.primaryFocus),
+      contains(cellKey),
+    );
   });
 
   testWidgets('Tab 依序走過六個導覽項（SPEC-003 §2.10）', (tester) async {
@@ -532,4 +534,5 @@ List<Override> _readyOverrides() => [
     const StubFrameworkSignalProbe(version: '0.0.1', schemaJson: true),
   ),
   builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+  fakeScanRoundOverride(),
 ];

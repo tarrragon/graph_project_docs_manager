@@ -19,7 +19,7 @@ import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
-import '../project_switcher/project_switcher_providers.dart';
+import '../../workspace/current_workspace_provider.dart';
 import 'gap_report_descriptions.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';

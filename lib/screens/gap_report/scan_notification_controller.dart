@@ -23,7 +23,7 @@ import '../../services/macos_scan_notifier.dart';
 import '../../services/scan_notifier.dart';
 import '../../services/scan_notifier_provider.dart';
 import '../../workspace/workspace_types.dart';
-import '../project_switcher/project_switcher_providers.dart';
+import '../../workspace/current_workspace_provider.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
 

@@ -30,6 +30,7 @@ import '../screens/node_detail/node_detail_screen.dart';
 import '../screens/ticket_list/ticket_list_screen.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../screens/project_switcher/project_switcher_providers.dart';
+import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
 import 'app_lifecycle.dart';
 import 'router.dart';

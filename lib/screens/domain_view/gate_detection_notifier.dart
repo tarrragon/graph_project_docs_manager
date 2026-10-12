@@ -18,6 +18,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/domain_view_loader.dart';
 import '../../schema/schema_version.dart'
     show InKnownRange, Unreadable, classifySchemaVersion;
 import '../../workspace/framework_signal_probe.dart';
@@ -63,9 +64,7 @@ class GateDetectionNotifier extends Notifier<void> {
       return;
     }
 
-    final builtinVersion = await ref.read(
-      builtinSchemaVersionProvider.future,
-    );
+    final builtinVersion = await ref.read(builtinSchemaVersionProvider.future);
     final jsonVersion = await probe.readSchemaJsonVersion(workspacePath);
     final isInferred = version == null;
     final displayVersion = version ?? jsonVersion;
@@ -74,10 +73,11 @@ class GateDetectionNotifier extends Notifier<void> {
 
     if (classification is InKnownRange) {
       final inferred = isInferred ? jsonVersion : null;
-      _apply(
-        DomainReady(mode: DomainMode.matrix, inferredVersion: inferred),
-        inferredVersion: inferred,
-      );
+      ref.read(inferredVersionProvider.notifier).state = inferred;
+      // 0.5.0-W1-114.14：gate 通過後經共用輪次載入，Loading → Ready／Empty。
+      await ref
+          .read(domainViewLoaderProvider.notifier)
+          .load(inferredVersion: inferred);
       return;
     }
 
