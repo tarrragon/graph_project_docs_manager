@@ -4,9 +4,10 @@ title: "Workspace driven port 回饋契約"
 status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
-updated: "2026-09-24"
-version: "1.2"
+updated: "2026-10-13"
+version: "1.3"
 owner: star-anise-system-designer
+has_functional_requirements: false   # 本規格只記 workspace driven port 的專案事實，不含 FR（0.5.0-W1-159 判定）
 
 domain: "workspace"
 subdomain: driven-ports
@@ -297,6 +298,7 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.3 | 2026-10-13 | frontmatter 新增 `has_functional_requirements: false`：本規格不含 FR 為設計（通則在方法論〈Port 回饋契約〉，本規格只記專案事實），覆蓋檢查據此不執行 FR 比對。條文無變更。來源 `0.5.0-W1-159`，承接票 `0.5.0-W1-159.1` |
 | 1.2 | 2026-09-24 | §2.2 回饋點表新增 `remove` 結果時刻列（`clearStoredPath()` 清除已存路徑，S-21）；新增 §2.4 最近專案清單持久化：key `workspace.recentProjects`、JSON 陣列 schema（`path` + `lastOpenedAt`）、`RecentProject` 與兩個 repository 方法、寫入時機、回饋點承擔者表、損壞處理邊界（S-36）。來源 `0.2.0-W1-023`，承接票 `0.2.1-W1-043` |
 | 1.1 | 2026-09-09 | 對齊 `0.1.0-W3-146`／`0.1.0-W3-147` 落地後的現況：載體段由遷移事件敘述改寫為三條契約（接縫落點／value types 落點／不 re-export 與呼叫端 import 約束），時態問題隨之消解；§1 補與 146 對照表的列定義差異（歸屬單位 vs 計算單位）並寫出拆列會使判準把 `WorkspacePreferencesPort` 判成 typedef 的失效機制；§1.1 補軸別釐清並寫明所擋的推論與刪除代價。`docs/tech-decisions.md` 補記段有對稱一份（`0.1.0-W3-157`） |
 | 1.0 | 2026-09-09 | 初始版本：workspace 五個接縫與三種形態、受盤點的四個 port 的回饋點承擔者、`WorkspaceLogSink` 排除判定與理由（§1.1）、兩項現況缺口、測試替身紀律（`0.1.0-W3-148`） |
