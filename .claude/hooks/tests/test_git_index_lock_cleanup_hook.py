@@ -153,7 +153,7 @@ def _age(lock, hook_module):
 def test_worktree_lock_path_is_under_worktrees_dir(hook_module, wt):
     w, lock = wt
     assert "worktrees" in lock.parts
-    assert Path(hook_module.resolve_lock_path(str(w))).resolve() == lock.resolve()
+    assert Path(hook_module.resolve_lock_path(str(w), logging.getLogger("test"))).resolve() == lock.resolve()
 
 
 def test_worktree_stale_empty_lock_removed(hook_module, wt):
@@ -211,3 +211,83 @@ def test_lsof_unavailable_fails_safe(hook_module, wt):
         msg = _run(hook_module, w)
     assert msg and "不自動移除" in msg
     assert lock.exists()
+
+
+# ---- 合併前追修：payload cwd、刪除前複核、lsof 判定、解析失敗記錄 ----
+
+import json
+
+
+def _aged_empty(lock, hook_module):
+    lock.write_text("")
+    _age(lock, hook_module)
+
+
+def test_payload_cwd_beats_env_real_stdin(hook_module, wt, tmp_path):
+    """env 指主 repo、payload cwd 為 worktree：清 worktree 的鎖，主 repo 的鎖不動（真實 stdin）。"""
+    w, wlock = wt
+    main = tmp_path / "main"
+    mlock = main / ".git" / "index.lock"
+    _aged_empty(wlock, hook_module)
+    _aged_empty(mlock, hook_module)
+    payload = {"tool_name": "Bash", "tool_input": {"command": "git add x"}, "cwd": str(w)}
+    env = dict(os.environ, CLAUDE_PROJECT_DIR=str(main))
+    r = subprocess.run(
+        ["python3", str(HOOK_PATH)], input=json.dumps(payload),
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 0, r.stderr
+    assert not wlock.exists(), "worktree 的鎖應被清"
+    assert mlock.exists(), "主 repo 的鎖不得被動"
+
+
+def test_lock_replaced_during_lsof_not_removed(hook_module, wt):
+    w, lock = wt
+    _aged_empty(lock, hook_module)
+
+    def swap(path, logger):
+        os.remove(path)
+        with open(path, "w"):
+            pass
+        return False
+
+    with patch.object(hook_module, "is_held_by_process", side_effect=swap):
+        msg = _run(hook_module, w)
+    assert lock.exists(), "新 inode 的鎖不得被刪"
+    assert msg and "被替換" in msg
+
+
+@pytest.mark.parametrize("rc,out,err,held", [
+    (1, "", "", False),
+    (1, "", "lsof: WARNING", True),
+    (2, "", "", True),
+    (0, "123\n", "", True),
+    (127, "", "", True),
+])
+def test_lsof_result_matrix(hook_module, rc, out, err, held):
+    cp = subprocess.CompletedProcess([], rc, stdout=out, stderr=err)
+    with patch.object(hook_module.subprocess, "run", return_value=cp):
+        assert hook_module.is_held_by_process("/x", logging.getLogger("test")) is held
+
+
+def test_lsof_timeout_treated_as_held(hook_module):
+    with patch.object(hook_module.subprocess, "run",
+                      side_effect=subprocess.TimeoutExpired("lsof", 5)):
+        assert hook_module.is_held_by_process("/x", logging.getLogger("test")) is True
+
+
+def test_rev_parse_failure_logged_and_falls_back(hook_module, tmp_path, caplog):
+    with caplog.at_level(logging.WARNING, logger="test"):
+        with patch.object(hook_module.subprocess, "run",
+                          side_effect=subprocess.TimeoutExpired("git", 5)):
+            p = hook_module.resolve_lock_path(str(tmp_path), logging.getLogger("test"))
+    assert p == str(tmp_path / ".git" / "index.lock")
+    assert "無法解析" in caplog.text
+
+
+def test_fresh_lock_message_uses_resolved_path(hook_module, wt, capsys):
+    w, lock = wt
+    lock.write_text("")
+    msg = _run(hook_module, w)
+    assert str(lock) in msg
+    assert str(lock) in capsys.readouterr().err
