@@ -81,7 +81,7 @@ DomainUc _ucColumn(GraphBuiltEvent event, FlowQuery flows, String ucId) {
   final node = event.nodes.where((n) => n.id == ucId).firstOrNull;
   return DomainUc(
     id: ucId,
-    title: node?.title ?? '',
+    title: node?.displayTitle ?? '',
     hasFlowStep: _flowOf(flows, ucId)?.steps.isNotEmpty ?? false,
   );
 }
@@ -154,11 +154,11 @@ List<(String, bool)> _cellEventTags(List<FlowStepNode> steps) {
   final emitted = <String>{};
   final consumed = <String>{};
   for (final step in steps) {
-    for (final name in _eventNames(step.emits)) {
+    for (final name in step.emitsNames) {
       order.add(name);
       emitted.add(name);
     }
-    for (final name in _eventNames(step.consumes)) {
+    for (final name in step.consumesNames) {
       order.add(name);
       consumed.add(name);
     }
@@ -170,12 +170,6 @@ List<(String, bool)> _cellEventTags(List<FlowStepNode> steps) {
     ],
   ];
 }
-
-/// `emits`／`consumes` 正規化同 `next`：純量視同單元素清單，空元素略過，
-/// 非字串元素轉字串（`flowKeyOf`）。
-List<String> _eventNames(Object? raw) => [
-  for (final e in raw is Iterable ? raw : [raw]) ?flowKeyOf(e),
-];
 
 /// 步驟顯示字面：`name`，缺或空時退用 `id`。
 String _stepLabel(FlowStepNode step) =>

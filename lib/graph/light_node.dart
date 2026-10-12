@@ -14,12 +14,17 @@ class LightNode {
     required this.status,
     required this.title,
     required this.path,
-  });
+    String? displayTitle,
+  }) : displayTitle = displayTitle ?? title ?? '';
 
   final String id;
   final String typeName;
   final String? status;
   final String? title;
+
+  /// 顯示用標題（SPEC-001 §1 顯示字面的退路）：非字串轉字串，
+  /// null、缺鍵、空字串為空字串。
+  final String displayTitle;
   final String path;
 }
 
@@ -68,6 +73,7 @@ LightNode _toLightNode(String id, RawNode raw) {
     typeName: raw.typeName,
     status: status is String ? status : null,
     title: title is String ? title : null,
+    displayTitle: title == null ? '' : '$title',
     path: raw.path,
   );
 }
