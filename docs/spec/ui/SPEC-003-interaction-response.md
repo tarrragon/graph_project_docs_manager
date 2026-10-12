@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-10-12"
-version: "1.58"
+version: "1.59"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -21,7 +21,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 
 ## 概述
 
-SPEC-001 界定七個畫面的 40 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
+SPEC-001 界定七個畫面的 41 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
 
 | 類別 | 界定什麼 |
@@ -1583,7 +1583,8 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 檢視 schema 詳情 | `action-domain-schema-detail` | 點擊 | `panel-domain-schema-detail` 出現，內容改為一列「標籤 + 版本值」——`schemaKnownRangeLabel`（App 已知版本範圍）+ `schemaKnownRangeValue`（不高於 <App 內建型別表產生版本>），不再重複本體已顯示的 App 支援版本、專案版本兩值，不含其他說明文字或動作——下一步的出口仍只有 `project-switcher-entry`（元件組成見 SPEC-004 §4.23 `BlockedState` 的 `withDetail` 變體：面板為 `Section.static`[`AppText.caption`, `AppText.mono`] 各一；`projectVersion` 為推定值時面板字面不變，推定來源由 §2.4 推定版本徽章承載）；再次點擊或 Esc 收合 |
 | 導覽至破洞報告 | `action-domain-goto-gaps` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `domain` |
 | 切換專案 | `project-switcher-entry`（既有） | 點擊 | 浮層展開（§3.7） |
-| 阻擋狀態切換專案 | `action-domain-switch-project` | 點擊（僅於三個阻擋狀態渲染） | 浮層展開（§3.7），不改變 `IndexedStack` 索引；結果同 `project-switcher-entry` |
+| 阻擋狀態切換專案 | `action-domain-switch-project` | 點擊（僅於三個阻擋狀態與 `state-domain-load-failed` 共四個狀態渲染，`0.5.0-W1-114.14.1`） | 浮層展開（§3.7），不改變 `IndexedStack` 索引；結果同 `project-switcher-entry` |
+| 重新載入（載入失敗） | `action-domain-reload` | 點擊（僅於 `state-domain-load-failed` 渲染） | `state-domain-load-failed` 消失、`state-domain-loading` 出現；以同一資料夾、同一模式重新載入（失敗的載入若是降級檢視，重試仍為降級檢視）；已存路徑與最近清單不變；不發 SnackBar 或通知（SPEC-001 §8.1，`0.5.0-W1-114.14.1`） |
 | 以 App 內建型別表檢視 | `action-domain-degraded-view` | 點擊（僅於 `state-domain-schema-unconsumable` 且 `VERSION` 不高於內建表產生版本時渲染） | `state-domain-matrix` 或 `state-domain-empty` 出現並疊加 `badge-domain-degraded-schema`，不經 `state-domain-loading`（`0.1.0-W3-335.59` S3-1） |
 
 **格詳情卡的內容契約**（`panel-domain-cell-detail`）：
@@ -1628,7 +1629,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 |------|------|
 | 未選專案 → 載入中 | cross-fade，`Motion.transition` |
 | 載入中的骨架 | shimmer 循環 `Motion.skeletonCycle`；`disableAnimations` 時為靜態灰塊 |
-| 載入中 → 正常 / 空圖 / 三個阻擋狀態 | cross-fade，`Motion.transition` |
+| 載入中 → 正常 / 空圖 / 三個阻擋狀態 / 載入失敗 | cross-fade，`Motion.transition` |
 | 矩陣首次渲染 | **不做逐格入場動畫**。真實規模下（不低於 1300 筆）逐格動畫無資訊量且成本高 |
 | 矩陣 → 泳道的定位 | 以 `jumpTo` 即時定位，**不用** `animateTo`。定位是導航結果不是動畫；長泳道上的 animateTo 會產生數秒捲動且中途無法斷言 |
 | 矩陣格的選取標記出現 | 點擊確認用 `InkWell` 內建 pressed 態（§2.2），選中態本身無入場動畫（持續性標記） |
@@ -1640,7 +1641,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 狀態 | 退出動作 → 目標 |
 |------|----------------|
 | 未選專案 | `action-domain-choose-folder` → `state-domain-loading` |
-| 載入中 | `action-domain-cancel-load` → `state-domain-unset`；解析完成 → `state-domain-matrix`、`state-domain-empty`、`state-domain-not-framework`、`state-domain-schema-unconsumable` 或 `state-domain-schema-incompatible`（`0.1.0-W3-335.37` R3，補齊三個阻擋錨點，與 §4 #2 對齊） |
+| 載入中 | `action-domain-cancel-load` → `state-domain-unset`；解析完成 → `state-domain-matrix`、`state-domain-empty`、`state-domain-not-framework`、`state-domain-schema-unconsumable` 或 `state-domain-schema-incompatible`（`0.1.0-W3-335.37` R3，補齊三個阻擋錨點，與 §4 #2 對齊）；載入輪次拋出非預期例外 → `state-domain-load-failed`（`0.5.0-W1-114.14.1`） |
 | 正常 · 矩陣 | `nav-item-<d>` → 其他畫面（rail）；`project-switcher-entry` → 浮層；`cell-domain-*` → 已選格（同畫面疊加）；`mode-domain-swimlane` → 泳道三態之一（依 §2.8〈選定 UC〉，`0.1.0-W3-335.59` S3-2） |
 | 已選格（疊加） | Esc / `action-domain-cell-clear` → 正常 · 矩陣（未選格）；另一 `cell-domain-*` → 已選格（換內容）；`action-domain-cell-goto-swimlane` → 正常 · 泳道／泳道 · flow 未結構化（`0.1.0-W3-335.37` R5）；其餘繼承正常 · 矩陣 |
 | 正常 · 泳道 | `mode-domain-matrix` → 矩陣；其餘同上 |
@@ -1650,6 +1651,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 不是框架專案 | `project-switcher-entry` → 浮層；`action-domain-switch-project` → 浮層（兩入口同結果，恆可用） |
 | 無可消費的型別表 | `project-switcher-entry` → 浮層；`action-domain-switch-project` → 浮層；`action-domain-degraded-view` → `state-domain-matrix` 或 `state-domain-empty`（同畫面轉換，疊加 `badge-domain-degraded-schema`，SPEC-001 v1.5 §1 註記「降級型別表」）。轉換**不經** `state-domain-loading`：節點重新解析屬幾乎即時帶（圖譜節點檔數量級見 `docs/tech-decisions.md`〈載入策略：依視圖惰性〉，`0.1.0-W3-335.38` S-19）。該動作僅在 `.claude/VERSION` 不高於 App 內建型別表產生版本時渲染；高於時不渲染，退出只剩浮層。降級旗標於切換專案時重置（§2.8）。定案來源 `0.1.0-W1-035` |
 | schema 不相容 | `action-domain-schema-detail` → 同畫面展開；`project-switcher-entry` → 浮層；`action-domain-switch-project` → 浮層 |
+| 載入失敗 | `action-domain-reload` → `state-domain-loading`（同一資料夾、同一模式）；`project-switcher-entry` → 浮層；`action-domain-switch-project` → 浮層（`0.5.0-W1-114.14.1`） |
 
 #### 生命週期
 
@@ -2167,7 +2169,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 ---
 
-## 4. SPEC-001 全 40 狀態的導航反應對照
+## 4. SPEC-001 全 41 狀態的導航反應對照
 
 本表逐一列出 SPEC-001 §1–§7 的每一個狀態，**無一遺漏**。「畫面」「狀態」兩欄即指向
 SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑」欄為準，本表不複製
@@ -2185,7 +2187,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | # | 畫面 | 狀態 | 狀態錨點 | 導航反應（觸發錨點 → 結果） |
 |---|------|------|---------|---------------------------|
 | 1 | Domain | 未選專案 | `state-domain-unset` | 同畫面轉換：`action-domain-choose-folder` → `state-domain-loading` |
-| 2 | Domain | 載入中 | `state-domain-loading` | 同畫面轉換：`action-domain-cancel-load` → `state-domain-unset`（§2.5）；解析完成 → `state-domain-matrix`、`state-domain-empty`，或三個阻擋狀態之一（`state-domain-not-framework` / `state-domain-schema-unconsumable` / `state-domain-schema-incompatible`，三者進入條件皆發生於資料夾已選定之後，見 SPEC-001 §1 註記） |
+| 2 | Domain | 載入中 | `state-domain-loading` | 同畫面轉換：`action-domain-cancel-load` → `state-domain-unset`（§2.5）；解析完成 → `state-domain-matrix`、`state-domain-empty`，或三個阻擋狀態之一（`state-domain-not-framework` / `state-domain-schema-unconsumable` / `state-domain-schema-incompatible`，三者進入條件皆發生於資料夾已選定之後，見 SPEC-001 §1 註記）；載入輪次拋出非預期例外 → `state-domain-load-failed`（#41） |
 | 3 | Domain | 正常 · 矩陣 | `state-domain-matrix` | rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded`；同畫面疊加：`cell-domain-*` → `panel-domain-cell-detail`（已選格，`0.1.0-W3-335.59` S1-P1(a)）；同畫面轉換：`mode-domain-swimlane` → 泳道三態之一（依 §2.8〈選定 UC〉，§3.1〈導航跳轉與退出〉，`0.3.3-W3-402`） |
 | 4 | Domain | 正常 · 泳道 | `state-domain-swimlane` | 同畫面轉換：`mode-domain-matrix` → `state-domain-matrix`；rail；覆蓋層 |
 | 5 | Domain | 空圖 | `state-domain-empty` | 覆蓋層：`project-switcher-entry`；jump：`action-domain-goto-gaps` → `nav-page-gaps`，`returnTo`=domain |
@@ -2224,16 +2226,18 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 38 | 破洞 | 專案未就緒 | `state-gaps-project-unready` | jump：`action-gaps-goto-domain` → `nav-page-domain`；rail；覆蓋層 |
 | 39 | 節點詳情 | 專案未就緒 | `state-nodeDetail-project-unready` | jump：`action-nodeDetail-goto-domain` → `nav-page-domain`；rail；覆蓋層 |
 | 40 | 破洞 | 無法判定破洞 | `state-gaps-undeterminable` | 同畫面轉換：`action-gaps-rescan` → `state-gaps-scanning`；rail；覆蓋層；其餘類別有項目時另加 #23 的 `card-gaps-*` jump（解析失敗類別無項目） |
+| 41 | Domain | 載入失敗 | `state-domain-load-failed` | 同畫面轉換：`action-domain-reload` → `state-domain-loading`；覆蓋層：`project-switcher-entry`；本體按鈕：`action-domain-switch-project` → 浮層（結果同上） |
 
-**覆蓋完整性**：40 列，對應 SPEC-001 §1（11）+ §2（5）+ §3（4）+ §4（7）+ §5（5）
-+ §6（5）+ §7（3）= 40。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
+**覆蓋完整性**：41 列，對應 SPEC-001 §1（12）+ §2（5）+ §3（4）+ §4（7）+ §5（5）
++ §6（5）+ §7（3）= 41。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
 #30、#31 為 SPEC-001 v1.3／v1.4 新增，#32、#33 為 SPEC-001 v1.8 新增，#34 為 SPEC-001 v1.9
 新增，#35–#39 為 SPEC-001 v1.11 新增（五個非 Domain 畫面共用同一則「專案未就緒」
-定義，`0.1.0-W3-335.37` R9），#40 為 SPEC-001 v1.21 新增（`0.3.0-W1-082`），依 SPEC-001
+定義，`0.1.0-W3-335.37` R9），#40 為 SPEC-001 v1.21 新增（`0.3.0-W1-082`），#41 為 SPEC-001 v1.49 新增
+（`0.5.0-W1-114.14.1`），依 SPEC-001
 §狀態總數 的順序編號，不重排既有列。
 
 **同步提醒**：本節標題、本段算式、下方 FR-01 驗收、§0 概述四處皆耦合 SPEC-001
-§狀態總數 的狀態數字（現為 40）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
+§狀態總數 的狀態數字（現為 41）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
 缺一處會使對照表列數與 FR-01 驗收範圍失去覆蓋完整性保證。
 
 ---
@@ -2267,7 +2271,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | §4 對照表 40 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
+| 驗收 | §4 對照表 41 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
 
 ### FR-02: 取消契約的十條行為全部成立
 
@@ -2392,7 +2396,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 - 導航來源記錄為單槽而非堆疊；若日後導入 deep link 或多視窗，此決策須重新評估，
   屆時 §2.3 的四條規則是重評的起點
 - 0.1 的互動全部以假資料驅動。假資料須使每個狀態可被單獨渲染（狀態注入而非
-  等待真實解析），否則 §4 對照表的 40 列無法逐列斷言
+  等待真實解析），否則 §4 對照表的 41 列無法逐列斷言
 - 泳道的拖曳是版型行為，與布局演算法無關；0.1 的泳道以寫死座標的假資料畫出，
   拖曳只驗證平移，不驗證排列品質（SPEC-001 §設計約束已定案）
 - 用語決定：本規格全文統一使用「渲染」描述元件樹的產出動作，不改為「算繪」
@@ -2406,6 +2410,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.59 | 2026-10-12 | 對齊 SPEC-001 v1.49（`0.5.0-W1-114.14.1`，用戶裁決 2026-10-12：Domain 視圖新增「載入失敗」）：§3.1〈互動反應〉`action-domain-switch-project` 渲染條件由三個阻擋狀態擴為四個，新增「重新載入（載入失敗）」列（`action-domain-reload` → `state-domain-loading`，同一資料夾、同一模式）；〈動畫提示〉載入中轉出列補載入失敗；〈導航跳轉與退出〉載入中列補落點、新增載入失敗列；§4 #2 補落點、新增 #41 `state-domain-load-failed`，標題、覆蓋完整性算式（§1 11 → 12）、同步提醒、FR-01 驗收、§0 概述、設計約束的 40 → 41 |
 | 1.58 | 2026-10-12 | `0.5.0-W1-114.15`（PM 處置）：§2.2 文案表 `scanCompleteUndeterminableNotificationBody` 改為不帶原因的通用文案（原因有三種，原文只寫路徑模式缺，對另兩種會說錯；原因由畫面承載），`scanCompleteUndeterminableSnackbarMessage`「掃描完成」改「掃描結束」以涵蓋掃描失敗 |
 | 1.57 | 2026-10-12 | `0.5.0-W1-114.20`（用戶裁決 A）：§3.1〈格詳情卡的內容契約〉事件標籤補不同事件之間的排序——依首次出現的步驟序、同一事件兩標籤相鄰，與 §3.2 事件流小表同一規則；同一步驟首次出現的多個事件依 `emits` 再 `consumes` 清單順序（PM 處置） |
 | 1.56 | 2026-10-08 | `0.5.0-W1-106`（用戶裁決 2026-10-08 第 4 項 4b）：§3.5〈`presentation` 本地保留字〉收窄為只適用 `consumers`——`producers` 的值只能是已宣告 domain 名，`producers` 中的 `presentation` 依「其他值」列計一項 `event-declaration-mismatch`；對應判定表 `presentation` 列與「其他值」列同步 |

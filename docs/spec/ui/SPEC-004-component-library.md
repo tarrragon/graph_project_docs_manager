@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-10-12"
-version: "1.84"
+version: "1.86"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.85（1.85 依 `0.5.0-W3-005`：4.1／4.16／4.20／4.24／4.26／4.40 最小尺寸列的「一字元」改引用 §4.0.3 並標明字級 slot；1.84 依 `0.5.0-W1-114.15` PM 處置：4.40 `item` 無說明時路徑與行號移至主文字；1.83 依 `0.5.0-W1-114.15` 用戶裁決：§3.6 §5 無法判定破洞列原因說明改為三選一，§4.0.6 新增 `gapsUndeterminableReasonScanFailed`；1.82 依 `0.5.0-W1-114.17` 回報：ICU plural、「沿用既有」更正、淘汰 key 移出表格；1.81 依 2026-10-09 PM 確認與用戶裁決 M1：〈1.80 提案〉key 與文案定案，`gapCategoryMissingFrontmatter` 淘汰；1.80 依 `0.5.0-W1-114.16`：§4.0.6 提案破洞報告分節標籤與 EVT-CORPUS-003／004、`graphDefect` 各子類的項目說明 key（待 PM 確認）；1.79 依 `0.5.0-W1-114.5` PM 處置：§4.0.6 新增 `nonDomainPathsMalformed` 其餘三個子原因的破洞項目 key；1.78 依 `0.5.0-W1-114.4` 用戶裁決 NC-7：§4.0.6 新增 `gapNonDomainPathsNonStringElements`；1.77 依 `0.5.0-W1-114.1` PM 處置 NC-a／NC-f／NC-g：4.38 `lanes` 與 §3.1 列數改為 DomainBundle 數＋1、有未定位步驟時＋2，新增 `kind: unplaced` 與 `swimlaneUnplacedLaneName`，三個解析失敗相關 key 與提示位置定案；1.76 依 `0.5.0-W1-114` PM 處置 N4 與用戶裁決 F1、`0.5.0-W1-096.7` NC-1：4.38 `lanes` 與 §3.1 列數約束改為 DomainBundle 數＋1、§3.6 §1 正常 · 泳道與泳道 · flow 未結構化補解析失敗呈現、§4.0.6 提案三個新 key（`0.5.0-W1-114.1`）；1.75 依 `0.5.0-W1-103.1` PM 處置：§4.0.6 `relationItemProposedA11yLabel` 朗讀整句確認、移除提案標記；1.74 依 `0.5.0-W1-096.9` PM 處置：§4.0.6 登記專案層級路徑宣告狀態一行的四個新 key；1.73 依 `0.5.0-W1-103.1` 用戶裁決 I2：4.19 proposed 標記改為尾端 `Badge.category` tone `warning`、`relationProposedLabel` 文案改「暫定／Proposed」；1.72 依 `0.5.0-W1-103` 用戶裁決：4.19 `RelationItem` 新增 `isProposed` slot 與尾端 `Badge.tag` proposed 標記、§4.0.6 登記兩個新 key（`0.5.0-W1-103.1`）；1.71 依用戶裁決 K6：§4.0.6 1.69 表刪除 8 個 domain key、只留「畫面」列 key（改名 `swimlaneScreenLaneName`），4.37／4.38 domain 列首改顯示 `DomainBundle.domain` 原值（`0.5.0-W1-106` 修訂輪）；1.70 §3.1 `SwimlaneGrid` 列與 4.38 用途的列序／主線敘述同步 SPEC-001 v1.29（`0.5.0-W1-092.2`）；1.69 §4.0.6 補登 8 個 domain 與「畫面」列（`presentation`）的列首顯示名 key、4.37 `MatrixGrid` 列首改由 i18n 以 domain key 取（與 4.38 一致）、本行補記 1.65–1.68（`0.5.0-W1-106`）；1.68 4.15 `MatrixCell` 三變體指向 SPEC-001 §1〈間接依賴判定式〉（`0.5.0-W1-093.1`）；1.67 4.38 `SwimlaneGrid` 依 SPEC-001 §1〈泳道布局規則〉固定 9 列、新增 `edges` slot（`0.5.0-W1-092.1`）；1.66 §4.0.3「一字元」定義與 4.7／4.8／4.9 最小尺寸改寫（`0.5.0-W1-071`）；1.65 4.9 RecentProjectItem 降級徽章與摘要同列（`0.5.0-W3-001`）；1.64 4.30 Panel `default` 改具名 `leading`／`fill`／`trailing` slot、4.14 TableColumnHeader 新增 `blank` 變體（`0.4.0-W3-001`）；1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
+**版本**: 1.86（1.86 依 `0.5.0-W1-114.14.1` 用戶裁決：§1 新增「載入失敗」——§3.6 補一列、§2–§6 專案未就緒改四選一，§4.0.6 新增 `domainLoadFailedMessage`／`reloadAction`／`projectUnreadyReasonLoadFailed`，4.23 `BlockedState.plain` 新增 `onReload` 與 `action-domain-reload`；1.85 依 `0.5.0-W3-005`：4.1／4.16／4.20／4.24／4.26／4.40 最小尺寸列的「一字元」改引用 §4.0.3 並標明字級 slot；1.84 依 `0.5.0-W1-114.15` PM 處置：4.40 `item` 無說明時路徑與行號移至主文字；1.83 依 `0.5.0-W1-114.15` 用戶裁決：§3.6 §5 無法判定破洞列原因說明改為三選一，§4.0.6 新增 `gapsUndeterminableReasonScanFailed`；1.82 依 `0.5.0-W1-114.17` 回報：ICU plural、「沿用既有」更正、淘汰 key 移出表格；1.81 依 2026-10-09 PM 確認與用戶裁決 M1：〈1.80 提案〉key 與文案定案，`gapCategoryMissingFrontmatter` 淘汰；1.80 依 `0.5.0-W1-114.16`：§4.0.6 提案破洞報告分節標籤與 EVT-CORPUS-003／004、`graphDefect` 各子類的項目說明 key（待 PM 確認）；1.79 依 `0.5.0-W1-114.5` PM 處置：§4.0.6 新增 `nonDomainPathsMalformed` 其餘三個子原因的破洞項目 key；1.78 依 `0.5.0-W1-114.4` 用戶裁決 NC-7：§4.0.6 新增 `gapNonDomainPathsNonStringElements`；1.77 依 `0.5.0-W1-114.1` PM 處置 NC-a／NC-f／NC-g：4.38 `lanes` 與 §3.1 列數改為 DomainBundle 數＋1、有未定位步驟時＋2，新增 `kind: unplaced` 與 `swimlaneUnplacedLaneName`，三個解析失敗相關 key 與提示位置定案；1.76 依 `0.5.0-W1-114` PM 處置 N4 與用戶裁決 F1、`0.5.0-W1-096.7` NC-1：4.38 `lanes` 與 §3.1 列數約束改為 DomainBundle 數＋1、§3.6 §1 正常 · 泳道與泳道 · flow 未結構化補解析失敗呈現、§4.0.6 提案三個新 key（`0.5.0-W1-114.1`）；1.75 依 `0.5.0-W1-103.1` PM 處置：§4.0.6 `relationItemProposedA11yLabel` 朗讀整句確認、移除提案標記；1.74 依 `0.5.0-W1-096.9` PM 處置：§4.0.6 登記專案層級路徑宣告狀態一行的四個新 key；1.73 依 `0.5.0-W1-103.1` 用戶裁決 I2：4.19 proposed 標記改為尾端 `Badge.category` tone `warning`、`relationProposedLabel` 文案改「暫定／Proposed」；1.72 依 `0.5.0-W1-103` 用戶裁決：4.19 `RelationItem` 新增 `isProposed` slot 與尾端 `Badge.tag` proposed 標記、§4.0.6 登記兩個新 key（`0.5.0-W1-103.1`）；1.71 依用戶裁決 K6：§4.0.6 1.69 表刪除 8 個 domain key、只留「畫面」列 key（改名 `swimlaneScreenLaneName`），4.37／4.38 domain 列首改顯示 `DomainBundle.domain` 原值（`0.5.0-W1-106` 修訂輪）；1.70 §3.1 `SwimlaneGrid` 列與 4.38 用途的列序／主線敘述同步 SPEC-001 v1.29（`0.5.0-W1-092.2`）；1.69 §4.0.6 補登 8 個 domain 與「畫面」列（`presentation`）的列首顯示名 key、4.37 `MatrixGrid` 列首改由 i18n 以 domain key 取（與 4.38 一致）、本行補記 1.65–1.68（`0.5.0-W1-106`）；1.68 4.15 `MatrixCell` 三變體指向 SPEC-001 §1〈間接依賴判定式〉（`0.5.0-W1-093.1`）；1.67 4.38 `SwimlaneGrid` 依 SPEC-001 §1〈泳道布局規則〉固定 9 列、新增 `edges` slot（`0.5.0-W1-092.1`）；1.66 §4.0.3「一字元」定義與 4.7／4.8／4.9 最小尺寸改寫（`0.5.0-W1-071`）；1.65 4.9 RecentProjectItem 降級徽章與摘要同列（`0.5.0-W3-001`）；1.64 4.30 Panel `default` 改具名 `leading`／`fill`／`trailing` slot、4.14 TableColumnHeader 新增 `blank` 變體（`0.4.0-W3-001`）；1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -342,28 +342,29 @@ depends_on_domains: [layout]
 | §1 | 不是框架專案 | 訊息 + 說明本 App 需要什麼 + 出口 | `BlockedState.plain` |
 | §1 | 無可消費的型別表 | 版本值 + 訊息 + 降級說明（條件）+ 出口 | `BlockedState.plain`（版本值 slot；降級說明 `onDegradedView` 非 null 時渲染，`0.1.0-W3-335.57` E2） |
 | §1 | schema 不相容 | 版本不符說明 + 兩個版本值 + 檢視詳情 | `BlockedState.withDetail`（面板 `Section.static`[`AppText.caption`, `AppText.mono`]，內容為 App 已知版本範圍） |
-| §2 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-ucFlow-goto-domain`） |
+| §1 | 載入失敗 | 訊息（結果與原因）+ 重新載入 + 出口 | `BlockedState.plain`（訊息 `domainLoadFailedMessage`，無說明、無版本值；`onReload` 非 null 時渲染重新載入，`0.5.0-W1-114.14.1`） |
+| §2 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-ucFlow-goto-domain`） |
 | §2 | 無 UC | 訊息 + 導覽至破洞報告 | `EmptyState.page` |
 | §2 | 尚未選定 UC | UC 選擇入口 + 「選擇一條 UC 以檢視 flow」提示；不渲染步驟表（屬正常態）與 UC 基本資訊（屬 flow 未結構化態，`0.1.0-W3-335.47` D9） | `TwoColumnLayout`[`Panel`[`EmptyState.section`（訊息 `ucUnsetPrompt`，無動作——前進動作即右欄選擇入口）], 〈UC 選擇入口〉] |
 | §2 | flow 未結構化 | UC 基本資訊 + 訊息 + 選擇 UC／開啟原始檔／檢視關聯 | `TwoColumnLayout`[`Panel`[`ListRow.meta`, `AppText.title`, `EmptyState.section`（訊息 `flowUnstructuredMessage`，選定 UC 的 flow 區塊皆解析失敗時改為 `flowParseFailedMessage`，與泳道同 key，`0.5.0-W1-114.1` NC-f；`ButtonRow` 動作：開啟原始檔、檢視關聯；不含返回 Domain 視圖，退出改由選擇 UC、通用返回、導覽列承擔，`0.1.0-W3-335.37` R7）], 〈UC 選擇入口〉] |
 | §2 | 正常 | 垂直步驟表，domain 與事件成欄 + 事件流小表 | `TwoColumnLayout`[`Panel`[`DataTable.plain`（步驟表，`scroll-ucFlow-steps`）[`TableRow.header`, `TableRow.step` × N, `appendix`: `DataTable.plain`（事件流小表，`panel-ucFlow-event-flow`，本 UC 無事件時不渲染；不持有捲動）[`TableRow.header`（事件／發出／消費／標記）, `TableRow.eventFlow` × N]]], 〈UC 選擇入口〉]；事件流小表以步驟表的 `appendix` slot 接在最後一列之下、共用 `scroll-ucFlow-steps`（提案：`Panel.default` 資料視圖恰 1 的組合規則因此不變；兩個獨立捲動區垂直堆疊時，下方表的可見高會被步驟列數擠壓至零）；孤立事件標記見 4.35 `eventFlow` |
-| §3 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-traceability-goto-domain`） |
+| §3 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-traceability-goto-domain`） |
 | §3 | 正常 | PROP→SPEC→UC→Ticket 樹狀，各節點帶 status；初始只顯示 PROP 層 | `Panel.scrollable`[`Tree`[`ListRow.tree` × N]]；展開集合初始值見 4.39；Ticket 清單未載入時樹上方常駐說明列（`AppText.caption` + `AppButton.text`，`action-traceability-goto-tickets`，訊息 `traceabilityTicketsNotLoadedHint`，動作 `gotoTicketsListAction`，`0.1.0-W3-335.38` S-28） |
 | §3 | 鏈路斷裂 | 每個缺下游的父節點下方一個虛線框缺口標示；含缺口分支初始自動展開至缺口層 | 同上 + 每個缺下游的父節點之下插入一列缺口列（深度 = 父節點深度 + 1，主文字 `traceabilityNoDownstream`、trailing `IssueMarker.gap`，testKey `badge-traceability-broken-<父節點 nodeId>`）；Ticket 未載入時樹上方常駐說明列歸屬同正常列（`0.1.0-W3-335.38` S-28） |
 | §3 | 無提案 | 訊息 + 導覽至破洞報告 | `EmptyState.page` |
-| §4 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-tickets-goto-domain`） |
+| §4 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-tickets-goto-domain`） |
 | §4 | 未載入 | 「載入 N 張 ticket」+ 開始載入 | `LoadPrompt`（`ButtonRow`[`AppButton.primary`]） |
 | §4 | 載入中 | 進度條 + 已解析筆數 + 取消 | `LoadingState.progressBar` |
 | §4 | 正常 · 列表 | 密集表格 + 虛擬捲動 + 搜尋／篩選／排序；票列含 blockedBy 欄 | `Panel`[`Toolbar`, `DataTable.virtual`[`TableRow.header`（ID／標題／狀態／優先為 `sortable`，blockedBy 與標記欄為 `static`——SPEC-001 §4 排序列舉不含 blockedBy）, `TableRow.ticket` × N], `SplitRow.footer`]。帶目標跳入（SPEC-003 §3.4〈帶目標跳入〉）清除搜尋與篩選時：`AppSnackBar.withAction`（訊息 `ticketsFiltersClearedSnackbarMessage`、動作 `undoAction`），目標列經 §4.0.10 定位（4.36 承載捲動，4.35 `ticket` 承載高亮） |
 | §4 | 正常 · 主題 | 主題節 + 未歸屬節 | `Panel.scrollable`[`Section.collapsible` × N（含未歸屬）, `AppText.caption`] |
 | §4 | 無 ticket | 訊息 + 導覽至破洞報告 | `EmptyState.page` |
 | §4 | 含損壞（疊加態） | 正常視圖 + 損壞徽章與計數 | 底層正常態 + `Toolbar` 右側 `IssueMarker.damagedDetail`（可點 `badge-tickets-corrupted`，§3.7 第 14 項）+ 各損壞列末欄 `IssueMarker.damagedDetail`（圖示，可點 `badge-tickets-corrupted-<ticketId>`，不觸發開票、不定位破洞項，`0.1.0-W3-335.47` D2） |
-| §5 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-gaps-goto-domain`） |
+| §5 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-gaps-goto-domain`） |
 | §5 | 掃描中 | 骨架 + 進度 + 取消 | `LoadingState.skeleton`（版位 `sections`） |
 | §5 | 無破洞 | 訊息 + 掃描範圍說明 + 重新掃描 | `EmptyState.page`（說明 slot；無動作）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項，`0.1.0-W3-335.37` R10） |
 | §5 | 有破洞 | 依類別分節，各項帶檔案與行號 + 重新掃描 | `Panel.scrollable`[`Section.collapsible`[`ListRow.sectionHeader`, `ListRow.item` × N] × N]；破洞項主操作依指向節點型別（SPEC-003 §3.5），有指向者 trailing 為次要操作 `AppButton.text`（開啟原始檔，`action-gaps-open-source-<itemId>`），無指向者 trailing 為 `AppIcon` 外開箭頭（見 4.40 `item`）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項） |
 | §5 | 無法判定破洞 | 頁首標題 + 原因說明（三選一）+ 其餘類別分節（有項目時）+ 重新掃描 | `Panel.scrollable`[`Section.static`[`AppText.subtitle`（`gapsUndeterminableTitle`）, `AppText.body`（`gapsUndeterminableReasonVersionOutOfRange`、`gapsUndeterminableReasonNoPathPattern` 或 `gapsUndeterminableReasonScanFailed`）], 其餘類別同「有破洞」列的 `Section.collapsible` × N（解析失敗類別不渲染）]；**不使用 `EmptyState`**，與無破洞的 `EmptyState.page` 在元件層即不同（SPEC-001 §5〈無法判定破洞〉成列註記）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項）（`0.3.0-W1-082`） |
-| §6 | 專案未就緒 | 說明（依原因三選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-nodeDetail-goto-domain`；優先於「未選節點」，SPEC-003 §3.6 註記） |
+| §6 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-nodeDetail-goto-domain`；優先於「未選節點」，SPEC-003 §3.6 註記） |
 | §6 | 未選節點 | 空狀態元件 + 「尚未選取節點」 | `EmptyState.page`（動作前往追溯視圖） |
 | §6 | 正常 | 全頁內容 + 關聯右欄 + 開啟原始檔／返回 | `TwoColumnLayout`[`Panel.scrollable`[`ListRow.meta`, `AppText.title`, `BadgeRow`, `Divider`, `DocumentBody`], `Panel.scrollable`[`Section.static` × N]]；返回與開啟原始檔的 `AppButton` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 17 項；返回鍵由 `AppShell` 之下的頁面框架單一渲染，SPEC-003 §2.4） |
 | §6 | 部分損壞 | 可讀欄位 + 損失欄位標示 + 跳轉破洞報告 | 同上 + 欄位級 `IssueMarker.damagedDetail`（說明文字 slot） |
@@ -769,6 +770,14 @@ EVT-CORPUS-004 項目說明：
 | `gapTraversesUndeclared` | 步驟 {stepId} 的 traverses 含未宣告的 domain：{value} | Step {stepId}: traverses has an undeclared domain: {value} | stepId, value | `traverses` 名稱未宣告 |
 | `gapTraversesMissing` | 步驟 {stepId} 缺少 traverses 欄位 | Step {stepId} is missing the traverses field | stepId | `traverses` 鍵缺席 |
 | `gapDomainDeclaredTwice` | domain {domain} 被多個 DomainBundle 宣告：{bundles} | Domain {domain} is declared by more than one DomainBundle: {bundles} | domain, bundles | domain 重複宣告；`bundles` 為衝突 DomainBundle ID 以「、」／", " 連接 |
+
+**1.86 新增（`0.5.0-W1-114.14.1`，對應 SPEC-001 v1.49 §1「載入失敗」與 §2–§6「專案未就緒」第四個原因；ARB 實檔狀態待建，由對應實作票加入，zh／en 值為 PM 處置文案）**：
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `domainLoadFailedMessage` | 掃描此專案時發生非預期錯誤，無法載入圖譜 | An unexpected error occurred while scanning this project, so the graph could not be loaded. | — | 4.23 `BlockedState.plain` 本體 `message`（`state-domain-load-failed`）；只寫結果與原因，操作由按鈕承載（4.26 訊息設計要求） |
+| `reloadAction` | 重新載入 | Reload | — | 4.23 `BlockedState.plain`（`AppButton.secondary` 呼叫端，`action-domain-reload`，僅載入失敗時渲染） |
+| `projectUnreadyReasonLoadFailed` | 圖譜載入失敗 | Graph failed to load | — | §2–§6「專案未就緒」（4.21 `page` 呼叫端；Domain 視圖為載入失敗時） |
 
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
@@ -3619,17 +3628,17 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.23 BlockedState
 
-**用途**：「這個專案不適用本 App」+ 版本值（不是框架專案無）+ 說明 + 切換專案出口（恆可用，SPEC-001 FR-07）；無可消費的型別表時另提供「以 App 內建型別表檢視」條件式渲染出口（`action-domain-degraded-view`，`VERSION` 不高於內建表產生版本時渲染，SPEC-003 §3.1，`0.1.0-W1-035` 定案）。
+**用途**：「這個專案不適用本 App」+ 版本值（不是框架專案無）+ 說明 + 切換專案出口（恆可用，SPEC-001 FR-07）；無可消費的型別表時另提供「以 App 內建型別表檢視」條件式渲染出口（`action-domain-degraded-view`，`VERSION` 不高於內建表產生版本時渲染，SPEC-003 §3.1，`0.1.0-W1-035` 定案）；載入失敗時另提供「重新載入」出口（`action-domain-reload`，SPEC-001 §1「載入失敗」列，`0.5.0-W1-114.14.1`）。
 **內容角色**：內文（訊息 + 說明）+ 數值（版本值）+ 動作。
 **何時不用**：這裡沒有內容（`EmptyState`）；暫時性錯誤提示（`AppSnackBar`）。
-**出現畫面**：§1（不是框架專案、無可消費的型別表、schema 不相容）。
+**出現畫面**：§1（不是框架專案、無可消費的型別表、schema 不相容、載入失敗）。
 **層級**：L3
 
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `plain` | 訊息 + 說明（可缺）+ 版本值（可缺）+ `ButtonRow`[切換專案 `primary`；無可消費的型別表且 `VERSION` 條件成立時另加「以 App 內建型別表檢視」`AppButton.secondary`（`action-domain-degraded-view`，條件式渲染，依 SPEC-003 §3.1）] | 無展開；`action-domain-degraded-view` 觸發同畫面轉換，不改變本元件狀態（元件隨畫面轉換一併消失） | 不是框架專案、無可消費的型別表 |
+| `plain` | 訊息 + 說明（可缺）+ 版本值（可缺）+ `ButtonRow`[切換專案 `primary`；無可消費的型別表且 `VERSION` 條件成立時另加「以 App 內建型別表檢視」`AppButton.secondary`（`action-domain-degraded-view`，條件式渲染，依 SPEC-003 §3.1）；載入失敗時另加「重新載入」`AppButton.secondary`（`action-domain-reload`，`onReload` 非 null 時渲染）] | 無展開；`action-domain-degraded-view`、`action-domain-reload` 觸發同畫面轉換，不改變本元件狀態（元件隨畫面轉換一併消失） | 不是框架專案、無可消費的型別表、載入失敗 |
 | `withDetail` | 加 `AppButton.secondary`「檢視詳情」（`action-domain-schema-detail`）與可展開的 `Section.static`[`AppText.caption`, `AppText.mono`]（`panel-domain-schema-detail`，內容為「App 已知版本範圍：不高於 <內建版本>」一列） | 展開／收合（再次點擊或 Esc） | schema 不相容 |
 
 `withDetail` 面板改放本體沒有的資訊（`0.1.0-W3-335.37` R4 的重評條件於「App 已知範圍」判準定案時觸發，SPEC-001 v1.19 §1 註記為重評結果）：本體 `message`（`schemaIncompatibleMessage`）已代入 `appVersion` / `projectVersion` 兩值；面板原為同兩值的帶標籤單行版本（R4 判為有意冗餘），現改為一列小標 `schemaKnownRangeLabel` + 值 `schemaKnownRangeValue`（代入 `appVersion`），告知「已知範圍」的判準（上界為 App 內建型別表產生版本，不高於者可載入），不再重複兩個版本值。`projectVersion` 為推定值（呼叫端 `isVersionInferred`）時本體與面板字面不變，推定來源由 4.27 `AppShell` 的 `badge-<screen>-inferred-version` 承載，本元件不另標示。
@@ -3638,7 +3647,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| collapsed | 依變體，詳情面板不存在 | 切換專案；`withDetail`：檢視詳情；`plain`（無可消費的型別表，`VERSION` 條件成立時）：以 App 內建型別表檢視 | 呼叫端渲染 | 切換專案 → 浮層展開（覆蓋層，不改變本狀態）；檢視詳情 → expanded；以 App 內建型別表檢視 → 同畫面轉換至 `state-domain-matrix` 或 `state-domain-empty`（疊加 `badge-domain-degraded-schema`，不經 `state-domain-loading`，SPEC-003 §3.1） | 資料態：受控 `isDetailExpanded` 存於 Domain 視圖頁面層（slot 契約：§2 頁面狀態保留）——該畫面的 provider 尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `isDetailExpanded` 傳值，元件不 watch。是否渲染本元件（三個阻擋狀態）同為該畫面 provider 的資料態 | 本地即時（面板開合為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作）；是否渲染由頁面 provider 等確認才決定（阻擋判定為載入完成後的結果） |
+| collapsed | 依變體，詳情面板不存在 | 切換專案；`withDetail`：檢視詳情；`plain`（無可消費的型別表，`VERSION` 條件成立時）：以 App 內建型別表檢視；`plain`（載入失敗）：重新載入 | 呼叫端渲染 | 切換專案 → 浮層展開（覆蓋層，不改變本狀態）；檢視詳情 → expanded；重新載入 → 同畫面轉換至 `state-domain-loading`（同一資料夾、同一模式，SPEC-003 §3.1）；以 App 內建型別表檢視 → 同畫面轉換至 `state-domain-matrix` 或 `state-domain-empty`（疊加 `badge-domain-degraded-schema`，不經 `state-domain-loading`，SPEC-003 §3.1） | 資料態：受控 `isDetailExpanded` 存於 Domain 視圖頁面層（slot 契約：§2 頁面狀態保留）——該畫面的 provider 尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `isDetailExpanded` 傳值，元件不 watch。是否渲染本元件（三個阻擋狀態與載入失敗）同為該畫面 provider 的資料態 | 本地即時（面板開合為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作）；是否渲染由頁面 provider 等確認才決定（阻擋判定為載入完成後的結果） |
 | expanded（`withDetail`） | 詳情面板出現於同一狀態根節點內，含「App 已知版本範圍：不高於 <內建版本>」一列 | 同上 + 再次點擊 / Esc 收合 | 點擊檢視詳情 | 再次點擊 / Esc → collapsed（SPEC-003 §1.4、§2.10） | 資料態：同上（`isDetailExpanded` 為 `true`） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由切換專案、檢視詳情、降級檢視（`action-domain-degraded-view`，條件式渲染）各 4.4 `AppButton` 承載，本元件不另列。
@@ -3688,14 +3697,15 @@ EVT-CORPUS-004 項目說明：
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `message` | `String` | 是 | 呼叫端（`notFrameworkProjectMessage` / `schemaUnconsumableMessage` / `schemaIncompatibleMessage` / `schemaVersionUnreadableMessage`） |
+| `message` | `String` | 是 | 呼叫端（`notFrameworkProjectMessage` / `schemaUnconsumableMessage` / `schemaIncompatibleMessage` / `schemaVersionUnreadableMessage` / `domainLoadFailedMessage`（載入失敗，§4.0.6〈1.86 新增〉）） |
 | `explanation` | `String?` | 無可消費的型別表且 `onDegradedView` 非 null 時為降級說明必填，其餘否 | 呼叫端（`notFrameworkProjectExplanation`；無可消費的型別表降級說明改 `schemaUnconsumableDegradedExplanation`，新增，`0.1.0-W3-335.57` E2） |
 | `version` | `String?` | 無可消費的型別表時必填（FR-07 顯示專案 `.claude/VERSION` 值） | 呼叫端（專案 `.claude/VERSION`，`0.1.0-W3-335.57` E2） |
 | `appVersion` / `projectVersion` | `String`（`withDetail`） | `withDetail` 必填 | 呼叫端（資料值） |
 | `onSwitchProject` | `VoidCallback` | 是 | 不適用 |
 | `onDegradedView` | `VoidCallback?` | 無可消費的型別表且 `VERSION` 條件成立時必填，其餘 `null`（不渲染） | 不適用 |
+| `onReload` | `VoidCallback?` | 載入失敗時必填，其餘 `null`（不渲染，`0.5.0-W1-114.14.1`） | 不適用 |
 | `isDetailExpanded` / `onToggleDetail` | `bool` / `VoidCallback`（`withDetail`） | `withDetail` 必填（展開狀態存於頁面層，§2 頁面狀態保留） | 不適用 |
-| `testKey` | `Key` | 是（`state-domain-not-framework` / `state-domain-schema-unconsumable` / `state-domain-schema-incompatible`；本體切換專案按鈕另計 `action-domain-switch-project`，與 `project-switcher-entry` 同結果，`0.1.0-W3-335.57` E9） | 不適用 |
+| `testKey` | `Key` | 是（`state-domain-not-framework` / `state-domain-schema-unconsumable` / `state-domain-schema-incompatible` / `state-domain-load-failed`；本體重新載入按鈕另計 `action-domain-reload`（僅載入失敗）；本體切換專案按鈕於四個狀態皆渲染，另計 `action-domain-switch-project`，與 `project-switcher-entry` 同結果，`0.1.0-W3-335.57` E9） | 不適用 |
 
 #### 使用 design token
 
@@ -3711,9 +3721,10 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 | i18n key |
 |------|---------|
-| 訊息 / 說明 | `notFrameworkProjectMessage` / `notFrameworkProjectExplanation` / `schemaUnconsumableMessage` / `schemaIncompatibleMessage`（既有，呼叫端傳入）／`schemaUnconsumableDegradedExplanation`（新增，§4.0.6 新 key 總表，`0.1.0-W3-335.57` E2） |
+| 訊息 / 說明 | `notFrameworkProjectMessage` / `notFrameworkProjectExplanation` / `schemaUnconsumableMessage` / `schemaIncompatibleMessage`（既有，呼叫端傳入）／`domainLoadFailedMessage`（新增，呼叫端傳入，§4.0.6〈1.86 新增〉）／`schemaUnconsumableDegradedExplanation`（新增，§4.0.6 新 key 總表，`0.1.0-W3-335.57` E2） |
 | 切換專案 | `projectSwitcherEntryLabel`（既有，元件預設，參數可覆蓋） |
 | 以 App 內建型別表檢視 | `useBuiltinSchemaAction`（新增，元件預設，§4.0.6 新 key 總表） |
+| 重新載入 | `reloadAction`（新增，元件預設，§4.0.6〈1.86 新增〉） |
 | 檢視詳情 | `viewSchemaDetailAction`（既有，元件預設） |
 | 面板小標 / 面板值 | `schemaKnownRangeLabel` / `schemaKnownRangeValue`（新增，元件預設，§4.0.6〈1.45 新增〉；取代原 `schemaAppVersionLabel` / `schemaProjectVersionLabel`） |
 
@@ -6510,6 +6521,7 @@ EVT-CORPUS-004 項目說明：
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.86 | 2026-10-12 | `0.5.0-W1-114.14.1` 用戶裁決（對應 SPEC-001 v1.49、SPEC-003 v1.59）：§3.6 對照表 §1 補「載入失敗」列（`BlockedState.plain`），§2–§6「專案未就緒」五列改四選一；§4.0.6 新增〈1.86 新增〉表（`domainLoadFailedMessage`、`reloadAction`、`projectUnreadyReasonLoadFailed`）；4.23 用途、出現畫面、`plain` 變體、狀態矩陣、slot 契約（`message` 來源、新增 `onReload`、`testKey` 補 `state-domain-load-failed` 與 `action-domain-reload`；`action-domain-switch-project` 渲染於四個狀態）、i18n 同步。frontmatter `version` 原停在 1.84（1.85 只改正文版本行與本表），本版一併對齊 |
 | 1.85 | 2026-10-12 | `0.5.0-W3-005`（PM 裁決，2026-10-12；承 `0.5.0-W1-071` 的 §4.0.3「一字元」定義）：六個條目〈尺寸契約〉最小尺寸列的「一字元」改引用 §4.0.3 並標明字級 slot，是否計省略號依各條目〈內容政策〉的超出處置（截斷計、換行不計）。數值變化：(1) 4.16 `SwimlaneNode`、4.24 `LoadingState`、4.26 `AppSnackBar`、4.40 `ListRow` 的寬各新增「+ 省略號」項，字級取 `AppFontSize.body`（依序為 `label`、`message`、`message`、`primary` slot）；(2) 4.1 `AppText` 字級取各變體自身的 `AppFontSize.*`（`mono` 取 `body`），原「一個字元 + 省略號可見」統一為「一字元 + 省略號」，`body` 未傳 `maxLines` 時為換行、不計省略號（原文全變體皆計）；(3) 4.20 `DocumentBody` 字級由未指明改為 h1 標題 slot 的 `AppFontSize.title`（段落與標題皆字元邊界換行，由字級最大的 slot 決定最小寬），不計省略號；h1 字級的出處為 4.20〈使用 design token〉字體列（`title`（h1）），實作為 `lib/components/document_body.dart` 的 `MarkdownStyleSheet`（`test/unit/components/document_body_test.dart` 已斷言）。各列的高、內距與間距項未變。實作不變 |
 | 1.84 | 2026-10-12 | `0.5.0-W1-114.15` PM 處置：4.40 `item` 項目沒有說明 key 時，路徑與行號移到主文字、不渲染次文字 |
 | 1.83 | 2026-10-12 | `0.5.0-W1-114.15` 用戶裁決：掃描輪次拋出非預期例外時落「無法判定破洞」；§3.6 §5 原因說明改三選一，§4.0.6 新增 `gapsUndeterminableReasonScanFailed`（對應 SPEC-001 v1.48） |
