@@ -412,3 +412,38 @@ def test_union_filter_loads_only_listing_maps(tmp_path, monkeypatch):
     _write(tmp_path / "docs/spec/c/domain-map.md", _map("SPEC-999", "## SPEC-999\n| FR-02 | C |\n"))
     found = cdc.locate_domain_maps(Path("docs/spec/ui/SPEC-101-x.md"), None)
     assert [p.as_posix() for p in found] == ["docs/spec/a/domain-map.md"]
+
+
+# --- 0.5.0-W1-157：FR 標題全形冒號 + 空集合兩種性質分流 ---
+
+def _run_main(tmp_path, spec_text, capsys):
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(spec_text, encoding="utf-8")
+    (tmp_path / "domain-map.md").write_text("FR-01 -> bundle", encoding="utf-8")
+    rc = cdc.main([str(spec)])
+    return rc, capsys.readouterr().out
+
+
+def test_extract_spec_frs_fullwidth_colon():
+    assert cdc.extract_spec_frs("### FR-01：A\n#### FR-02: B\n") == {1, 2}
+
+
+def test_zero_extracted_with_fr_wording_fails(tmp_path, capsys):
+    # 粗體代替標題：未支援寫法，須翻紅而非放行
+    rc, out = _run_main(tmp_path, "# s\n**FR-01** 某需求\n", capsys)
+    assert rc != 0
+    assert "FR-" in out and "### FR-NN" in out
+    assert "通過" not in out
+
+
+def test_no_fr_at_all_rc0_without_pass_wording(tmp_path, capsys):
+    rc, out = _run_main(tmp_path, "# s\n元件契約表\n", capsys)
+    assert rc == 0
+    assert "無 FR" in out and "未執行覆蓋比對" in out
+    assert "通過" not in out
+
+
+def test_no_fr_flips_when_prose_mentions_fr(tmp_path, capsys):
+    base = "# s\n元件契約表\n"
+    assert _run_main(tmp_path, base, capsys)[0] == 0
+    assert _run_main(tmp_path, base + "參見 FR-01 的說明\n", capsys)[0] != 0

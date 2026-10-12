@@ -27,7 +27,8 @@ import check_api_surface
 
 # FR 標題容許 H3 以上任一層級（### / #### …）——真實 spec 常用 #### FR-XX:，
 # 只認 H3 會使 extract_spec_frs 回空集、gate 靜默假通過（Round 2-C 實證）。
-FR_HEADER_RE = re.compile(r"^#{3,}\s+(FR-\d+):", re.MULTILINE)
+# 冒號接受半形與全形（SPEC-006/007 用全形，曾因只認半形而抽出 0 個、假通過）。
+FR_HEADER_RE = re.compile(r"^#{3,}\s+(FR-\d+)[:：]", re.MULTILINE)
 
 # 事件流訊號詞：與 /spec validate Layer 2 維度 5「資源競爭」共用單一常數，避免
 # Layer 1 機械檢核與 Layer 2 語意維度各自維護清單而漂移（SKILL.md 維度 5 掃描說明）。
@@ -324,8 +325,23 @@ def _read_maps(paths):
     return [(str(p), p.read_text(encoding="utf-8")) for p in paths]
 
 
+FR_WORDING_RE = re.compile(r"FR-\d+")
+
+
+def _report_empty_fr_set(spec_text):
+    """抽出 0 個 FR 標題時分流：全文含 FR 字樣（規則漏抓）rc=1；否則確實無 FR rc=0。"""
+    if FR_WORDING_RE.search(spec_text):
+        print("domain 覆蓋檢核失敗：spec 含 FR-NN 字樣，但未抽到任何 FR 標題（規則漏抓，未執行覆蓋比對）。")
+        print("預期標題樣式：`### FR-NN: 標題` 或 `### FR-NN：標題`（H3 以上，半形或全形冒號）。")
+        return 1
+    print("domain 覆蓋檢核略過：本 SPEC 無 FR（全文無 FR-NN 字樣），未執行覆蓋比對")
+    return 0
+
+
 def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None):
     """列印 FR->bundle 覆蓋檢核結果，回傳 exit code。"""
+    if not extract_spec_frs(spec_text):
+        return _report_empty_fr_set(spec_text)
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
     uncovered = check_domain_coverage_union(spec_text, _read_maps(domain_map_paths), spec_path)
     if not uncovered:
