@@ -155,6 +155,35 @@ gap_count=46, unmatched_count=1252, unjudged_count=0
 守恆式 1：7472 = 4676 + 1498 + (1293+1+2+1+1=1298) 。
 守恆式 2：1298 = 46 + 1252 + 0 。兩者皆由程式內 `assert` 通過。
 
+### 兩個 gap 數字的口徑
+
+本文件與 PROP-005 §0.3 出現兩個 gap 數字，口徑不同，整合測試斷言須依用途擇一：
+
+| 數字 | 口徑 | 範圍 |
+|------|------|------|
+| 41 | 真破洞：`expected.kind == "gap"` 且 `synthetic == false` | 五個語料專案的真實檔案（40 筆 `no_frontmatter` 命中 carrier + 1 筆 `yaml_error` 命中 carrier） |
+| 46 | `header.expected_counts.gap_count`：`expected.kind == "gap"` 全部列 | 真實 41 + 合成 5 |
+
+差額 5 筆為合成補充列（`synthetic: true`，為補齊語料缺席類別而附加，見上節「合成補充列涵蓋的缺席類別」），皆為 `gap`：
+
+| 檔名（manifest `path`） | 失敗原因（`expected.reason`） | 歸屬型別 |
+|------------------------|------------------------------|---------|
+| `docs/work-logs/v0/v0.1/tickets/0.1.0-W1-999.md` | `unclosed` | Ticket |
+| `docs/proposals/PROP-999-synthetic.md` | `empty_or_non_map` | PROP |
+| `docs/usecases/UC-99-synthetic.md` | `unreadable_encoding` | UC |
+| `docs/proposals/PROP-998-tie.md` | `no_frontmatter`（多型別具體度打平，`schema_ambiguous: true`） | 無（平手） |
+| `docs/spec/synthetic-domain/domain-map.md` | `no_frontmatter`（依具體度歸 DomainBundle，`schema_ambiguous: false`） | DomainBundle |
+
+第 6 筆合成列 `docs/spec/corpus/id-clash-synthetic.md` 為 `non_node`，不計入 gap。
+
+**驗證指令**（於專案根目錄執行，預期輸出 `41 5 46`）：
+
+```bash
+jq -r '.rows as $a | ([$a[]|select(.expected.kind=="gap" and .synthetic==false)]|length) as $r | ([$a[]|select(.expected.kind=="gap" and .synthetic==true)]|length) as $s | "\($r) \($s) \($r+$s)"' test/fixtures/spec006/it2/manifest.json
+```
+
+PROP-005 §0.3 的契約（五個語料專案全部文件分類正確）以口徑 41 為準；`gap_count=46` 為 manifest 全列計數，供守恆式 2 使用。
+
 **型別表凍結副本**：`header.type_table` 為凍結時所用的完整型別表（真實
 `tracking_schema.json` 的 `node_types` + 兩個合成型別），避免上游改動使凍結
 預期失效；`header.schema_generated_at_framework_version` = 2.60.13。
