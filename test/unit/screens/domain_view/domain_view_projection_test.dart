@@ -298,6 +298,29 @@ void main() {
     });
   });
 
+  group('UC 標題顯示退路（SPEC-001 §1）', () {
+    String titleOf(Map<String, dynamic> extra) {
+      final uc = RawNode(
+        path: 'docs/usecases/UC-01.md',
+        frontmatter: {'id': 'UC-01', ...extra},
+        typeName: 'UC',
+      );
+      final m = projectDomainMatrix(
+        event: _eventOf([bundleNode('a'), uc]),
+        ucIds: const ['UC-01'],
+      );
+      return m.columns.single.title;
+    }
+
+    test('F1-1 非字串轉字串', () => expect(titleOf({'title': 7}), '7'));
+    test('F1-2 null 為空字串', () => expect(titleOf({'title': null}), ''));
+    test('F1-3 缺鍵為空字串', () => expect(titleOf({}), ''));
+    test('F1-4 空字串為空字串', () => expect(titleOf({'title': ''}), ''));
+    test('F1-5 E1 對照：非字串與空字串結果不同', () {
+      expect(titleOf({'title': 7}), isNot(titleOf({'title': ''})));
+    });
+  });
+
   group('泳道', () {
     test('P6 UC-02 列：「畫面」+ 8 個 DomainBundle 列，無「未定位」列', () {
       final swimlane = _swimlaneOf(project, 'UC-02');
@@ -329,21 +352,24 @@ void main() {
       });
     });
 
-    test('P6 UC-02 節點：enter-from-ticket 於 graph、ticketdetail 欄 1；locate-domain 於畫面列欄 0', () {
-      final swimlane = _swimlaneOf(project, 'UC-02');
-      List<String?> lanesOf(String stepId) => [
-        for (final l in swimlane.lanes)
-          if (l.nodes.any((n) => n.stepId == stepId))
-            l.domainName ?? l.kind.name,
-      ];
-      expect(lanesOf('enter-from-ticket'), ['graph', 'ticketdetail']);
-      expect(lanesOf('locate-domain'), ['screen']);
-      final node = swimlane.lanes
-          .expand((l) => l.nodes)
-          .firstWhere((n) => n.stepId == 'enter-from-ticket');
-      expect(node.stepLabel, '由 ticket 切入');
-      expect(node.stepTraverses, hasLength(2));
-    });
+    test(
+      'P6 UC-02 節點：enter-from-ticket 於 graph、ticketdetail 欄 1；locate-domain 於畫面列欄 0',
+      () {
+        final swimlane = _swimlaneOf(project, 'UC-02');
+        List<String?> lanesOf(String stepId) => [
+          for (final l in swimlane.lanes)
+            if (l.nodes.any((n) => n.stepId == stepId))
+              l.domainName ?? l.kind.name,
+        ];
+        expect(lanesOf('enter-from-ticket'), ['graph', 'ticketdetail']);
+        expect(lanesOf('locate-domain'), ['screen']);
+        final node = swimlane.lanes
+            .expand((l) => l.nodes)
+            .firstWhere((n) => n.stepId == 'enter-from-ticket');
+        expect(node.stepLabel, '由 ticket 切入');
+        expect(node.stepTraverses, hasLength(2));
+      },
+    );
 
     test('P6 UC-02 邊形：5→0 弧線、1→2 直線，端點取最上方節點', () {
       final swimlane = _swimlaneOf(project, 'UC-02');
@@ -477,8 +503,9 @@ void main() {
     });
 
     test('投影只依賴 graph／layout 公開面與本畫面模型', () {
-      final source = File('lib/screens/domain_view/domain_view_projection.dart')
-          .readAsStringSync();
+      final source = File(
+        'lib/screens/domain_view/domain_view_projection.dart',
+      ).readAsStringSync();
       expect(disallowedImportsIn(source), isEmpty);
     });
   });

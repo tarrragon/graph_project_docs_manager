@@ -174,6 +174,12 @@ class FlowStepNode {
   Object? get emits => step[FlowFields.emits];
   Object? get consumes => step[FlowFields.consumes];
   Object? get traverses => step[FlowFields.traverses];
+
+  /// `emits` 正規化後的事件名清單（FR-10 步驟屬性，各消費端共用）。
+  List<String> get emitsNames => flowKeysOf(emits);
+
+  /// `consumes` 正規化後的事件名清單（同 [emitsNames]）。
+  List<String> get consumesNames => flowKeysOf(consumes);
 }
 
 /// 參照只在同 UC 範圍解析；目標 id 缺席或重複皆為未解析。
