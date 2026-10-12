@@ -137,6 +137,13 @@ SPEC 定狀態、UC 定流程、ticket 承載開發資訊。改一層不必動�
 2026-08-27 量測：130 出自已作廢的量測腳本（量法不同，不可直接比較），
 其餘差異來自語料演進（新增 360 份文件）。
 
+**口徑註記（`0.5.0-W1-148`）**：本節採用的 **41** 是真實列（`synthetic: false`）中
+`expected.kind == "gap"` 的筆數；manifest `header.expected_counts.gap_count` 的 **46**
+是全 manifest 7472 列（真實 + 合成）的同一計數，差額 5 為合成 gap 列
+（`unclosed`、`empty_or_non_map`、`unreadable_encoding`、平手、具體度分型別各 1）。
+描述真實語料破洞用 41；對 manifest 全列斷言用 46。構成列與驗證指令見
+`test/fixtures/spec006/README.md`「兩個 gap 數字的口徑」。
+
 **斷言來源**：`docs/system-layer.md` §5、`EVT-CORPUS-001`、`EVT-CORPUS-003`。
 
 **阻擋**：
