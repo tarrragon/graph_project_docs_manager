@@ -1235,5 +1235,25 @@
   "orphanEventMarkerLabel": "孤立事件",
   "@orphanEventMarkerLabel": {
     "description": "SPEC-004 4.35 `eventFlow` 標記格朗讀"
+  },
+
+  "builtinPathPatternBadgeLabel": "路徑模式取自 App 內建型別表",
+  "@builtinPathPatternBadgeLabel": {
+    "description": "SPEC-001 §1〈路徑模式取自內建表〉旗標：`badge-gaps-builtin-path-pattern` 徽章文案，只在破洞報告常駐（SPEC-004 §4.0.6 1.46 新增）"
+  },
+
+  "gapsUndeterminableTitle": "無法判定破洞",
+  "@gapsUndeterminableTitle": {
+    "description": "SPEC-001 §5「無法判定破洞」列頁首標題（`state-gaps-undeterminable`）"
+  },
+
+  "gapsUndeterminableReasonVersionOutOfRange": "專案型別表版本不在 App 已知範圍內，且缺少路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出",
+  "@gapsUndeterminableReasonVersionOutOfRange": {
+    "description": "SPEC-001 §5「無法判定破洞」原因說明之一（版本不在 App 已知範圍；建圖不可用的四個原因碼亦映射至此）"
+  },
+
+  "gapsUndeterminableReasonNoPathPattern": "專案型別表與 App 內建型別表都沒有路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出",
+  "@gapsUndeterminableReasonNoPathPattern": {
+    "description": "SPEC-001 §5「無法判定破洞」原因說明之二（型別表沒有路徑模式）"
   }
 }

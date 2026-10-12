@@ -5,6 +5,8 @@
 /// 真實 repo 快照的缺 frontmatter 樣本驅動（見 gap_report_provider.dart）。
 library;
 
+import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
+
 import '../../app/graph_status.dart';
 
 /// 破洞項指向的節點型別（SPEC-001 §5〈破洞項的主操作與次要操作〉，
@@ -180,12 +182,37 @@ class GapReportScanning extends GapReportState {
 
 /// 無破洞：對應 `EmptyState.page`。
 class GapReportNoGaps extends GapReportState {
-  const GapReportNoGaps();
+  const GapReportNoGaps({this.isPathPatternFromBuiltin = false});
+
+  /// 路徑模式取自內建表（SPEC-001 §1〈路徑模式取自內建表〉）：為 `true`
+  /// 時報告頁常駐 `badge-gaps-builtin-path-pattern`。
+  final bool isPathPatternFromBuiltin;
 }
 
 /// 有破洞：對應 `Panel.scrollable`[`Section.collapsible` × N]。
 class GapReportFound extends GapReportState {
-  const GapReportFound(this.categories);
+  const GapReportFound(
+    this.categories, {
+    this.isPathPatternFromBuiltin = false,
+  });
+
+  final List<GapReportCategory> categories;
+
+  /// 同 [GapReportNoGaps.isPathPatternFromBuiltin]。
+  final bool isPathPatternFromBuiltin;
+}
+
+/// 無法判定破洞（SPEC-001 §5，`state-gaps-undeterminable`）：路徑模式查詢
+/// 或建圖不可用。[categories] 為不依賴不可用資料的其餘類別，可為空；與
+/// 「路徑模式取自內建表」旗標互斥，故不攜帶該旗標。
+class GapReportUndeterminable extends GapReportState {
+  const GapReportUndeterminable({
+    required this.reason,
+    this.categories = const [],
+  });
+
+  /// 原因碼（二選一，顯示文字由畫面經 l10n 投影）。
+  final UndeterminedGapReason reason;
 
   final List<GapReportCategory> categories;
 }

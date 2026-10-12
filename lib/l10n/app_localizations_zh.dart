@@ -661,4 +661,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get orphanEventMarkerLabel => '孤立事件';
+
+  @override
+  String get builtinPathPatternBadgeLabel => '路徑模式取自 App 內建型別表';
+
+  @override
+  String get gapsUndeterminableTitle => '無法判定破洞';
+
+  @override
+  String get gapsUndeterminableReasonVersionOutOfRange =>
+      '專案型別表版本不在 App 已知範圍內，且缺少路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出';
+
+  @override
+  String get gapsUndeterminableReasonNoPathPattern =>
+      '專案型別表與 App 內建型別表都沒有路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出';
 }

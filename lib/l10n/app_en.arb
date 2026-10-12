@@ -181,5 +181,9 @@
   "gapTraversesUndeclared": "Step {stepId}: traverses has an undeclared domain: {value}",
   "gapTraversesMissing": "Step {stepId} is missing the traverses field",
   "gapDomainDeclaredTwice": "Domain {domain} is declared by more than one DomainBundle: {bundles}",
-  "gapItemLineLabel": "Line {lineNumber}"
+  "gapItemLineLabel": "Line {lineNumber}",
+  "builtinPathPatternBadgeLabel": "Path patterns from built-in schema",
+  "gapsUndeterminableTitle": "Gaps cannot be determined",
+  "gapsUndeterminableReasonVersionOutOfRange": "The project schema version is outside the range this app knows and lacks path patterns, so node files cannot be identified; parse failures are not listed",
+  "gapsUndeterminableReasonNoPathPattern": "Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed"
 }

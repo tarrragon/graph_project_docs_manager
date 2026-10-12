@@ -690,4 +690,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get orphanEventMarkerLabel => 'Orphan event';
+
+  @override
+  String get builtinPathPatternBadgeLabel =>
+      'Path patterns from built-in schema';
+
+  @override
+  String get gapsUndeterminableTitle => 'Gaps cannot be determined';
+
+  @override
+  String get gapsUndeterminableReasonVersionOutOfRange =>
+      'The project schema version is outside the range this app knows and lacks path patterns, so node files cannot be identified; parse failures are not listed';
+
+  @override
+  String get gapsUndeterminableReasonNoPathPattern =>
+      'Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed';
 }

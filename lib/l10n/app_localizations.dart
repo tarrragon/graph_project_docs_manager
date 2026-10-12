@@ -1183,6 +1183,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'孤立事件'**
   String get orphanEventMarkerLabel;
+
+  /// SPEC-001 §1〈路徑模式取自內建表〉旗標：`badge-gaps-builtin-path-pattern` 徽章文案，只在破洞報告常駐（SPEC-004 §4.0.6 1.46 新增）
+  ///
+  /// In zh, this message translates to:
+  /// **'路徑模式取自 App 內建型別表'**
+  String get builtinPathPatternBadgeLabel;
+
+  /// SPEC-001 §5「無法判定破洞」列頁首標題（`state-gaps-undeterminable`）
+  ///
+  /// In zh, this message translates to:
+  /// **'無法判定破洞'**
+  String get gapsUndeterminableTitle;
+
+  /// SPEC-001 §5「無法判定破洞」原因說明之一（版本不在 App 已知範圍；建圖不可用的四個原因碼亦映射至此）
+  ///
+  /// In zh, this message translates to:
+  /// **'專案型別表版本不在 App 已知範圍內，且缺少路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出'**
+  String get gapsUndeterminableReasonVersionOutOfRange;
+
+  /// SPEC-001 §5「無法判定破洞」原因說明之二（型別表沒有路徑模式）
+  ///
+  /// In zh, this message translates to:
+  /// **'專案型別表與 App 內建型別表都沒有路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出'**
+  String get gapsUndeterminableReasonNoPathPattern;
 }
 
 class _AppLocalizationsDelegate

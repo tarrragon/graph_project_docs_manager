@@ -191,6 +191,10 @@ class ScanNotificationController {
       0,
       (sum, category) => sum + category.items.length,
     ),
+    GapReportUndeterminable(:final categories) => categories.fold(
+      0,
+      (sum, category) => sum + category.items.length,
+    ),
     GapReportNoGaps() => 0,
     GapReportScanning() => 0,
     GapReportProjectUnready() => 0,
