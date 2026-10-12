@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-10-13"
-version: "1.87"
+version: "1.88"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -19,7 +19,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.87（1.87 依 `0.5.0-W1-114.11` 修正輪回報 PM 處置：4.38 捲動不變式補「邊落在 viewport 內的部分一律可見」並補測試點；1.86 依 1.86 依 `0.5.0-W1-114.14.1` 用戶裁決：§1 新增「載入失敗」——§3.6 補一列、§2–§6 專案未就緒改四選一，§4.0.6 新增 `domainLoadFailedMessage`／`reloadAction`／`projectUnreadyReasonLoadFailed`，4.23 `BlockedState.plain` 新增 `onReload` 與 `action-domain-reload`；1.85 依 `0.5.0-W3-005`：4.1／4.16／4.20／4.24／4.26／4.40 最小尺寸列的「一字元」改引用 §4.0.3 並標明字級 slot；1.84 依 `0.5.0-W1-114.15` PM 處置：4.40 `item` 無說明時路徑與行號移至主文字；1.83 依 `0.5.0-W1-114.15` 用戶裁決：§3.6 §5 無法判定破洞列原因說明改為三選一，§4.0.6 新增 `gapsUndeterminableReasonScanFailed`；1.82 依 `0.5.0-W1-114.17` 回報：ICU plural、「沿用既有」更正、淘汰 key 移出表格；1.81 依 2026-10-09 PM 確認與用戶裁決 M1：〈1.80 提案〉key 與文案定案，`gapCategoryMissingFrontmatter` 淘汰；1.80 依 `0.5.0-W1-114.16`：§4.0.6 提案破洞報告分節標籤與 EVT-CORPUS-003／004、`graphDefect` 各子類的項目說明 key（待 PM 確認）；1.79 依 `0.5.0-W1-114.5` PM 處置：§4.0.6 新增 `nonDomainPathsMalformed` 其餘三個子原因的破洞項目 key；1.78 依 `0.5.0-W1-114.4` 用戶裁決 NC-7：§4.0.6 新增 `gapNonDomainPathsNonStringElements`；1.77 依 `0.5.0-W1-114.1` PM 處置 NC-a／NC-f／NC-g：4.38 `lanes` 與 §3.1 列數改為 DomainBundle 數＋1、有未定位步驟時＋2，新增 `kind: unplaced` 與 `swimlaneUnplacedLaneName`，三個解析失敗相關 key 與提示位置定案；1.76 依 `0.5.0-W1-114` PM 處置 N4 與用戶裁決 F1、`0.5.0-W1-096.7` NC-1：4.38 `lanes` 與 §3.1 列數約束改為 DomainBundle 數＋1、§3.6 §1 正常 · 泳道與泳道 · flow 未結構化補解析失敗呈現、§4.0.6 提案三個新 key（`0.5.0-W1-114.1`）；1.75 依 `0.5.0-W1-103.1` PM 處置：§4.0.6 `relationItemProposedA11yLabel` 朗讀整句確認、移除提案標記；1.74 依 `0.5.0-W1-096.9` PM 處置：§4.0.6 登記專案層級路徑宣告狀態一行的四個新 key；1.73 依 `0.5.0-W1-103.1` 用戶裁決 I2：4.19 proposed 標記改為尾端 `Badge.category` tone `warning`、`relationProposedLabel` 文案改「暫定／Proposed」；1.72 依 `0.5.0-W1-103` 用戶裁決：4.19 `RelationItem` 新增 `isProposed` slot 與尾端 `Badge.tag` proposed 標記、§4.0.6 登記兩個新 key（`0.5.0-W1-103.1`）；1.71 依用戶裁決 K6：§4.0.6 1.69 表刪除 8 個 domain key、只留「畫面」列 key（改名 `swimlaneScreenLaneName`），4.37／4.38 domain 列首改顯示 `DomainBundle.domain` 原值（`0.5.0-W1-106` 修訂輪）；1.70 §3.1 `SwimlaneGrid` 列與 4.38 用途的列序／主線敘述同步 SPEC-001 v1.29（`0.5.0-W1-092.2`）；1.69 §4.0.6 補登 8 個 domain 與「畫面」列（`presentation`）的列首顯示名 key、4.37 `MatrixGrid` 列首改由 i18n 以 domain key 取（與 4.38 一致）、本行補記 1.65–1.68（`0.5.0-W1-106`）；1.68 4.15 `MatrixCell` 三變體指向 SPEC-001 §1〈間接依賴判定式〉（`0.5.0-W1-093.1`）；1.67 4.38 `SwimlaneGrid` 依 SPEC-001 §1〈泳道布局規則〉固定 9 列、新增 `edges` slot（`0.5.0-W1-092.1`）；1.66 §4.0.3「一字元」定義與 4.7／4.8／4.9 最小尺寸改寫（`0.5.0-W1-071`）；1.65 4.9 RecentProjectItem 降級徽章與摘要同列（`0.5.0-W3-001`）；1.64 4.30 Panel `default` 改具名 `leading`／`fill`／`trailing` slot、4.14 TableColumnHeader 新增 `blank` 變體（`0.4.0-W3-001`）；1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
+**版本**: 1.88（1.88 依 `0.5.0-W1-156.1`，承 `0.5.0-W1-156` 用戶裁決 2026-10-12：專案切換浮層內選資料夾失敗改由浮層內常駐文字承載——§4.0.6 新增 `switcherChooseFolderUnavailableReason`／`switcherFolderUnavailableReason`，4.42 `SwitcherOverlay` 新增 `chooseOtherFailureReason` slot，4.9 `RecentProjectItem` disabled 態補「點選後判定失敗」進入條件，5.16 排列不變式同步；1.87 依 `0.5.0-W1-114.11` 修正輪回報 PM 處置：4.38 捲動不變式補「邊落在 viewport 內的部分一律可見」並補測試點；1.86 依 1.86 依 `0.5.0-W1-114.14.1` 用戶裁決：§1 新增「載入失敗」——§3.6 補一列、§2–§6 專案未就緒改四選一，§4.0.6 新增 `domainLoadFailedMessage`／`reloadAction`／`projectUnreadyReasonLoadFailed`，4.23 `BlockedState.plain` 新增 `onReload` 與 `action-domain-reload`；1.85 依 `0.5.0-W3-005`：4.1／4.16／4.20／4.24／4.26／4.40 最小尺寸列的「一字元」改引用 §4.0.3 並標明字級 slot；1.84 依 `0.5.0-W1-114.15` PM 處置：4.40 `item` 無說明時路徑與行號移至主文字；1.83 依 `0.5.0-W1-114.15` 用戶裁決：§3.6 §5 無法判定破洞列原因說明改為三選一，§4.0.6 新增 `gapsUndeterminableReasonScanFailed`；1.82 依 `0.5.0-W1-114.17` 回報：ICU plural、「沿用既有」更正、淘汰 key 移出表格；1.81 依 2026-10-09 PM 確認與用戶裁決 M1：〈1.80 提案〉key 與文案定案，`gapCategoryMissingFrontmatter` 淘汰；1.80 依 `0.5.0-W1-114.16`：§4.0.6 提案破洞報告分節標籤與 EVT-CORPUS-003／004、`graphDefect` 各子類的項目說明 key（待 PM 確認）；1.79 依 `0.5.0-W1-114.5` PM 處置：§4.0.6 新增 `nonDomainPathsMalformed` 其餘三個子原因的破洞項目 key；1.78 依 `0.5.0-W1-114.4` 用戶裁決 NC-7：§4.0.6 新增 `gapNonDomainPathsNonStringElements`；1.77 依 `0.5.0-W1-114.1` PM 處置 NC-a／NC-f／NC-g：4.38 `lanes` 與 §3.1 列數改為 DomainBundle 數＋1、有未定位步驟時＋2，新增 `kind: unplaced` 與 `swimlaneUnplacedLaneName`，三個解析失敗相關 key 與提示位置定案；1.76 依 `0.5.0-W1-114` PM 處置 N4 與用戶裁決 F1、`0.5.0-W1-096.7` NC-1：4.38 `lanes` 與 §3.1 列數約束改為 DomainBundle 數＋1、§3.6 §1 正常 · 泳道與泳道 · flow 未結構化補解析失敗呈現、§4.0.6 提案三個新 key（`0.5.0-W1-114.1`）；1.75 依 `0.5.0-W1-103.1` PM 處置：§4.0.6 `relationItemProposedA11yLabel` 朗讀整句確認、移除提案標記；1.74 依 `0.5.0-W1-096.9` PM 處置：§4.0.6 登記專案層級路徑宣告狀態一行的四個新 key；1.73 依 `0.5.0-W1-103.1` 用戶裁決 I2：4.19 proposed 標記改為尾端 `Badge.category` tone `warning`、`relationProposedLabel` 文案改「暫定／Proposed」；1.72 依 `0.5.0-W1-103` 用戶裁決：4.19 `RelationItem` 新增 `isProposed` slot 與尾端 `Badge.tag` proposed 標記、§4.0.6 登記兩個新 key（`0.5.0-W1-103.1`）；1.71 依用戶裁決 K6：§4.0.6 1.69 表刪除 8 個 domain key、只留「畫面」列 key（改名 `swimlaneScreenLaneName`），4.37／4.38 domain 列首改顯示 `DomainBundle.domain` 原值（`0.5.0-W1-106` 修訂輪）；1.70 §3.1 `SwimlaneGrid` 列與 4.38 用途的列序／主線敘述同步 SPEC-001 v1.29（`0.5.0-W1-092.2`）；1.69 §4.0.6 補登 8 個 domain 與「畫面」列（`presentation`）的列首顯示名 key、4.37 `MatrixGrid` 列首改由 i18n 以 domain key 取（與 4.38 一致）、本行補記 1.65–1.68（`0.5.0-W1-106`）；1.68 4.15 `MatrixCell` 三變體指向 SPEC-001 §1〈間接依賴判定式〉（`0.5.0-W1-093.1`）；1.67 4.38 `SwimlaneGrid` 依 SPEC-001 §1〈泳道布局規則〉固定 9 列、新增 `edges` slot（`0.5.0-W1-092.1`）；1.66 §4.0.3「一字元」定義與 4.7／4.8／4.9 最小尺寸改寫（`0.5.0-W1-071`）；1.65 4.9 RecentProjectItem 降級徽章與摘要同列（`0.5.0-W3-001`）；1.64 4.30 Panel `default` 改具名 `leading`／`fill`／`trailing` slot、4.14 TableColumnHeader 新增 `blank` 變體（`0.4.0-W3-001`）；1.63 4.26 slot `message` 列與 i18n 訊息列補 `workspaceNotRemembered`（`0.3.3-W3-405`）；1.62 §4.0.6 `noUcNodesMessage` 列改登 `emptyUcMessage`（`0.3.3-W3-395`）；1.61 4.13 FilterDropdown F3、slot testKey、測試點補選單與選項錨點（`0.3.3-W3-403`）；1.60 §4.0.6 `chooseFolderUnavailableMessage` 改為結果＋原因文案（`0.3.3-W3-377` 裁決 C）、登記 `workspaceUnavailable` 為還原失敗常駐文字（`0.3.3-W3-378` 裁決 B）；1.59 「專案未就緒」統一為依原因三選一：移除 `projectUnreadyMessage`、`gotoDomainAction` 相關列與引用（`0.3.3-W3-389`）；1.58 §4.0.1 focused 列改為兩態對照形並引用 SPEC-003 §2.10，全檔「只斷言裝飾存在」措辭同步（`0.3.3-W3-391`）；1.57 全檔最小尺寸公式補自身內距：4.7、4.8、4.9、4.20、4.35，5.5 引用同步（`0.3.3-W3-387`）；1.56 §4.0.6 同義異名改用 ARB 名、補登 lib 已使用未記載的 6 個 key、陳舊列改寫（`0.3.3-W3-384`）；1.55 §2 樂觀更新政策重評 trigger 改綁 `1.0.0-W3-553`、移除 PROP-004 已撤回段引用、唯讀前提分決策層／實作層（`0.3.3-W3-282`）；1.54 4.26 狀態矩陣與回饋契約兩處「取代」補級別條件，§4.0.11 仲裁欄位改引用 SPEC-003（`0.3.3-W3-245`）；1.53 4.8 最小高改寫為內容組成並以命中區為下界，與 4.7 同構（`0.3.3-W3-129`）；1.52 4.29 最小寬公式補兩側水平內距、5.3 空間不足策略的可用寬明示扣除內距（`0.3.3-W3-128`）；1.51 §4.0.6 補登 `gapCategoryOrphanEvent`、`gapCategoryEventDeclarationMismatch` 兩個既存 key 的 zh／en 列（`0.3.3-W3-376`）；1.50 §4.0.6 選擇器無法開啟改沿用既有 key `chooseFolderUnavailableMessage`，`folderUnavailableMessage` 附保留理由（`0.3.2-W3-368`）；1.49 §4.0.6 補登 `gapCategoryMissingFrontmatter`、`gapItemLineLabel` 兩個既存 key 的 zh／en 列；1.48 對齊 SPEC-001 v1.23：§4.0.6 新增 `schemaVersionUnreadableMessage`，4.23 `message` 來源補此 key；1.47 對齊 SPEC-001 v1.22：§4.0.6 原因 key 改名為 `gapsUndeterminableReasonVersionOutOfRange` 並改寫文案為「不在 App 已知範圍」；1.46 對齊 SPEC-001 v1.21：§3.6 補 §5 無法判定破洞列、§4.0.6 新增四 key；1.45 對齊 SPEC-001 v1.19：4.23 `withDetail` 面板改放 App 已知版本範圍、§4.0.6 新增三 key、4.27 補推定版本徽章；1.44 §4.0.6 `healthBadgeA11yLabel` en 單複數形，對齊 SPEC-001 v1.17；1.43 追修 V4 第四輪門檻外矛盾裁決（`0.1.0-W3-335.69`）3 項，對齊 SPEC-001 v1.16／SPEC-003 v1.37；1.42 同步稽核追修票（`0.1.0-W3-335.62`）20 項，對齊 SPEC-001 v1.15／SPEC-003 v1.36；1.41 V4 第四輪前追修票 C（`0.1.0-W3-335.57`）E1／E2／E3／E5／E8／E9，對齊 SPEC-001 v1.14／SPEC-003 v1.35；1.40 V4 第二輪矛盾追修票 C（`0.1.0-W3-335.51`）D2／D6／D8／D9／D13／D14，對齊 SPEC-003 v1.33／SPEC-001 v1.13；1.39 V4 第二輪矛盾追修票 A（`0.1.0-W3-335.48`）D3／D4／D5，對齊 SPEC-003 v1.32；1.38 追修 `0.1.0-W3-335.38` 真缺口票 C 15 項（12 改動點），對齊 SPEC-001 v1.12／SPEC-003 v1.31；1.37 追修 `0.1.0-W3-335.37` 矛盾裁決中 SPEC-004 剩餘 7 項（R4、R7、R10 × 3、R11、附帶）；1.36 對齊 SPEC-001 v1.11／SPEC-003 v1.30 的 R9 追修回寫，見變更歷史；1.35 對齊 SPEC-001 v1.9／SPEC-003 v1.27 上游回寫；第 1-3 章已核定；第 4-5 章逐元件契約與容器不變式由 `0.1.0-W1-044.2` 填寫；第 6-7 章依 §3.7 第 7 項填最小集，標提案；對比核定依 §3.7 第 25 項回填；1.17 起 §1 回饋通道子表與 §2 過渡提示觸發點／樂觀更新政策兩列為提案；逐元件回饋契約與狀態矩陣來源／同步策略欄由 `0.1.0-W3-060.2`–`060.5` 填寫，1.22 起全部 42 條目落成，§4.0.10 定位提示容器執行約定為提案，1.23 補其雙向接線與場景分支，1.24 統一正文用語一致性（zhtw strict 兩項，見變更歷史）並移除既有導覽頁計數慣例的表面數字，1.25 同步 §4.0.10 接線的指向端措辭，1.26 同步 SPEC-003 §3.1 列名錨點並擴 4.42 焦點列為三條收合路徑，1.27 修訂 4.12／4.36 防抖歸屬敘述為服務層，1.28 補 4.4／4.6／4.7 等待與結果列的顯式掛載點、失敗路徑四段與服務類型標註，1.29 同段補 4.8–4.14 六個互動元件，1.30 同段補 4.15–4.26 九個互動元件，含 4.24 LoadingState 的雙重掛載點寫法，1.31 補 4.27–4.42 容器元件段，父票 0.1.0-W3-106 四張子票至此全數完成，1.32 新增 §4.0.11 終端回饋元件的元件層回饋日誌，承接方法論同名條款於本專案的落地狀態，1.33 新增 §4.0.12 暫態提示的訊息設計要求並於 4.26 三個子節接線，1.34 修正 4.26 測試點子節寫死 key 數的單列；本行的粗體版號自 1.26–1.32 未隨 frontmatter 更新而停留於 1.25，`0.1.0-W3-169` 一併校正，括號內的敘述本已逐版累積至 1.32、未受影響；1.35–1.42 期間本行第二度未隨 frontmatter 更新而停留於 1.38，`0.1.0-W3-636` 校正並補記本次漂移，同票已將本行納入 `spec-version-consistency-check-hook.py` 的比對範圍，往後漂移於下次 session 啟動即翻警告，不再仰賴人工逐版勾稽）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -650,9 +650,9 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
 | `ticketsTargetNotFoundMessage` | 找不到該 ticket，可能已被移除 | Ticket not found; it may have been removed | — | 4.26 `AppSnackBar.plain`（Ticket 帶目標跳入目標不在清單，SPEC-003 §3.4〈帶目標跳入〉，S-11） |
-| `chooseFolderUnavailableMessage`（既有 key；原提案 `folderPickerUnavailableMessage` 與之語意完全重疊，`0.3.2-W3-368` 裁定沿用既有 key、不另立） | 無法開啟資料夾選取面板，應用程式可能安裝不完整 | Could not open the folder picker; the app may not be installed correctly | — | 4.26 `AppSnackBar.plain`（選擇器無法開啟，SPEC-003 §3.1／§3.7，S-13／S-38）。文案為「結果陳述＋一般語言原因」，符合 §4.0.12 M1（原因非技術細節、非操作指引）；原 ARB 值「請確認應用程式安裝完整後重新啟動」屬操作指引，已依裁決改寫（用戶，2026-09-29，經 e1 以 AUQ，`0.3.3-W3-377` 候選 C）；ARB 實檔由實作票更新 |
+| `chooseFolderUnavailableMessage`（既有 key；原提案 `folderPickerUnavailableMessage` 與之語意完全重疊，`0.3.2-W3-368` 裁定沿用既有 key、不另立） | 無法開啟資料夾選取面板，應用程式可能安裝不完整 | Could not open the folder picker; the app may not be installed correctly | — | 4.26 `AppSnackBar.plain`（選擇器無法開啟，SPEC-003 §3.1，S-13／S-38；專案切換浮層內觸發者自 1.88 起改用 `switcherChooseFolderUnavailableReason`，不經 SnackBar，SPEC-003 §3.7）。文案為「結果陳述＋一般語言原因」，符合 §4.0.12 M1（原因非技術細節、非操作指引）；原 ARB 值「請確認應用程式安裝完整後重新啟動」屬操作指引，已依裁決改寫（用戶，2026-09-29，經 e1 以 AUQ，`0.3.3-W3-377` 候選 C）；ARB 實檔由實作票更新 |
 | `workspaceUnavailable`（既有 key） | 無法存取先前的資料夾：{reason} | Cannot access the previous folder: {reason} | reason | §1 未選專案說明區的常駐文字（`EmptyState.page` 的 `explanation`，取代 `folderAccessRationale`）：App 啟動且已存路徑還原失敗時降級為 `state-domain-unset` 並顯示，選定資料夾後消失（SPEC-001 §1、SPEC-003 §3.1〈生命週期〉，`0.3.3-W3-378` 用戶裁決 B）；`reason` 取 `WorkspaceUnavailable.reason` |
-| `folderUnavailableMessage` | 資料夾無法使用：{reason} | Folder unavailable: {reason} | reason | 4.26 `AppSnackBar.plain`（選定資料夾不可讀或不存在，`reason` 取 `WorkspaceUnavailable.reason`，SPEC-003 §3.1／§3.7，S-13／S-38）。與既有 `workspaceUnavailable`（「無法存取先前的資料夾：{reason}」，啟動時還原上次資料夾的情境）語意不同——本 key 的對象是剛在選擇器選定的資料夾，不是「先前的」，`0.3.2-W3-368` 裁定保留新 key |
+| `folderUnavailableMessage` | 資料夾無法使用：{reason} | Folder unavailable: {reason} | reason | 4.26 `AppSnackBar.plain`（選定資料夾不可讀或不存在，`reason` 取 `WorkspaceUnavailable.reason`，SPEC-003 §3.1，S-13／S-38；專案切換浮層內觸發者自 1.88 起改用 `switcherFolderUnavailableReason` 或 4.9 `reason`，不經 SnackBar，SPEC-003 §3.7）。與既有 `workspaceUnavailable`（「無法存取先前的資料夾：{reason}」，啟動時還原上次資料夾的情境）語意不同——本 key 的對象是剛在選擇器選定的資料夾，不是「先前的」，`0.3.2-W3-368` 裁定保留新 key |
 | `traceabilityTicketsNotLoadedHint` | Ticket 尚未載入 | Tickets not loaded yet | — | §3 正常／鏈路斷裂常駐說明列（4.40 `sectionHeader` 型式的說明列呼叫端，SPEC-003 §3.3，S-28） |
 | `gotoTicketsListAction`（原規格名 `gotoTicketsAction`，1.56 改用 ARB 名） | 前往 Ticket 清單 | Go to Ticket List | — | §3 常駐說明列動作（`AppButton.text` 呼叫端，`action-traceability-goto-tickets`，S-28）；en 大小寫取 ARB 現值（SPEC-001 未定 en 字面） |
 | `degradedSchemaShortLabel` | 內建型別表 | Built-in schema | — | 4.9 `RecentProjectItem`（`Badge.tag`，`isDegraded` 為 `true` 時，S-34） |
@@ -778,6 +778,15 @@ EVT-CORPUS-004 項目說明：
 | `domainLoadFailedMessage` | 掃描此專案時發生非預期錯誤，無法載入圖譜 | An unexpected error occurred while scanning this project, so the graph could not be loaded. | — | 4.23 `BlockedState.plain` 本體 `message`（`state-domain-load-failed`）；只寫結果與原因，操作由按鈕承載（4.26 訊息設計要求） |
 | `reloadAction` | 重新載入 | Reload | — | 4.23 `BlockedState.plain`（`AppButton.secondary` 呼叫端，`action-domain-reload`，僅載入失敗時渲染） |
 | `projectUnreadyReasonLoadFailed` | 圖譜載入失敗 | Graph failed to load | — | §2–§6「專案未就緒」（4.21 `page` 呼叫端；Domain 視圖為載入失敗時） |
+
+**1.88 新增（`0.5.0-W1-156.1`，對應 SPEC-003 v1.60 §3.7〈浮層內選資料夾失敗的常駐原因文字〉，用戶裁決 2026-10-12；ARB 實檔狀態待建，由對應實作票加入，zh／en 值沿用下列既有 SnackBar key 的現值，語意不變）**：
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `switcherChooseFolderUnavailableReason` | 無法開啟資料夾選取面板，應用程式可能安裝不完整 | Could not open the folder picker; the app may not be installed correctly | — | 4.42 `SwitcherOverlay` 的 `chooseOtherFailureReason`（浮層內「選擇其他」選擇器無法開啟）。文案同 `chooseFolderUnavailableMessage`；另立 key 的理由：兩者載體不同（浮層內常駐文字與 SnackBar），長度與換行政策各依所屬元件的內容政策，不宜由同一值同時滿足兩套上限 |
+| `switcherFolderUnavailableReason` | 資料夾無法使用：{reason} | Folder unavailable: {reason} | reason | 4.42 `SwitcherOverlay` 的 `chooseOtherFailureReason`（浮層內「選擇其他」選定資料夾不可讀或不存在，`reason` 取 `WorkspaceUnavailable.reason`）。文案同 `folderUnavailableMessage`，另立 key 的理由同上一列 |
+
+最近專案項點擊後判定不可用時不新增 key：沿用 4.9 `reason` 的既有 key `projectUnavailableReasonLabel`，`reason` 取 `WorkspaceUnavailable.reason`。
 
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
@@ -1915,7 +1924,7 @@ EVT-CORPUS-004 項目說明：
 |------|------|---------|---------|---------|------|---------|
 | enabled | 圖示 `AppColors.textSecondary`、名稱 `textTitle`、摘要 caption | 點選 → 切換至該專案 | 可用性探測成功 | 點選 → 浮層收合（本元件隨浮層消失） | 資料態：`recentProjectsProvider`（`Provider<List<RecentProjectFixture>>`，`lib/screens/project_switcher/project_switcher_providers.dart`）各項的 `enabled` 欄位；`SwitcherOverlay` watch 後以 `enabled` 傳值，元件不 watch（§2）。0.1 為 fixture 固定值，真實探測由 workspace domain 後續票承接（該檔檔頭註記） | 等確認才顯示（可用性為探測完成後的資料態；探測未完成前不得預設為 enabled，SPEC-003 §3.7「探測逾時的處理」；§2 樂觀更新政策：0.1 無樂觀操作） |
 | selected（目前專案） | 底 `AppColors.surfaceIconTint`、圖示與名稱 `accentStrong`（畫布為準）、摘要 `textPrimary`（§4.0.2 帶色表面規則：`textSecondary` / `surfaceIconTint` 3.98:1 未達 AA，`0.1.0-W1-060` 改） | 點選（重載同一專案，SPEC-003 §3.7 未區分，視同選取） | 為目前開啟的專案 | 同上 | 資料態：`currentProjectIndexProvider`（`StateProvider<int?>`，同檔）等於本項索引；`SwitcherOverlay` watch 後以 `isCurrent` 傳值 | 本地即時（目前專案索引為本地狀態；切換專案的重載由 Domain 視圖載入態承載，不回寫本項） |
-| disabled | 依 §4.0.1；同列常駐 `reason` 文字（不用 tooltip，SPEC-003 §3.7） | 無 | 探測失敗或逾時（reason 含 `probeTimeoutReason`）；探測未完成（reason 為 `probingReason`，`0.1.0-W3-335.38` S-37） | 探測結果更新 → enabled（其餘項不受本項探測影響） | 資料態：`recentProjectsProvider` 各項的 `enabled` 為 `false`（同 enabled 列） | 等確認才顯示（同 enabled 列） |
+| disabled | 依 §4.0.1；同列常駐 `reason` 文字（不用 tooltip，SPEC-003 §3.7） | 無 | 探測失敗或逾時（reason 含 `probeTimeoutReason`）；探測未完成（reason 為 `probingReason`，`0.1.0-W3-335.38` S-37）；點選後開啟該路徑判定不可讀或不存在（reason 取 `WorkspaceUnavailable.reason`，SPEC-003 §3.7「最近專案項（點擊後判定不可讀或不存在）」列，1.88） | 探測結果更新 → enabled（其餘項不受本項探測影響）；點選後判定失敗者於本次展開期間維持 disabled，下次展開重新探測（SPEC-003 §3.7〈生命週期〉「展開時」列） | 資料態：`recentProjectsProvider` 各項的 `enabled` 為 `false`（同 enabled 列） | 等確認才顯示（同 enabled 列） |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
@@ -1931,7 +1940,7 @@ EVT-CORPUS-004 項目說明：
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
 | 可互動提示 affordance | 使用者接近 | hover 態（§4.0.1：Material `InkWell` 內建 overlay）；指標形狀 `SystemMouseCursors.click`；disabled 時無 hover overlay（§4.0.1 disabled 列） | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文；提案） | §1 子表「可互動提示」列 | 不適用 | 反應：規格撰寫者（抄 §4.0.1 提案列）；通道：規格撰寫者 |
 | 焦點 focus | 使用者／輔助技術 | 焦點環（§4.0.1 focused）；浮層展開時焦點限制於浮層內，Tab 依序走過各項（SPEC-003 §2.10「浮層展開時」列）；朗讀「{name}，{summary}」+ `selected` / `enabled` 旗標，disabled 時 `hint` 為 `reason`（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言焦點兩態裝飾可區分，不設時限；提案） | §1 子表「焦點」列 | enabled / selected / disabled → focused → 原狀態 | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
-| 按下確認 press-ack | 使用者 | pressed 態 + Material ripple（§4.0.1）；呼叫 `onTap` 恰一次；呼叫端執行：浮層收合 → 全部導覽頁重置 → `state-domain-loading`（SPEC-003 §3.7，兩段不重疊）；disabled 時無反應、無 SnackBar（SPEC-003 §2.2 FR-06 合法形態 b） | Material 內建 ripple（浮層收合 `Motion.overlay` 由 4.42 `SwitcherOverlay` 承載） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列 | enabled / selected → pressed →（隨浮層消失） | 反應／時限：UX 審查（SPEC-003 §2.2、§3.7）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | pressed 態 + Material ripple（§4.0.1）；呼叫 `onTap` 恰一次；呼叫端執行：浮層收合 → 全部導覽頁重置 → `state-domain-loading`（SPEC-003 §3.7，兩段不重疊）；開啟該路徑判定不可讀或不存在時不收合、不重置，呼叫端改傳 `enabled: false` 與 `reason`，本項轉 disabled，無 SnackBar（SPEC-003 §3.7，1.88）；disabled 時無反應、無 SnackBar（SPEC-003 §2.2 FR-06 合法形態 b） | Material 內建 ripple（浮層收合 `Motion.overlay` 由 4.42 `SwitcherOverlay` 承載） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列 | enabled / selected → pressed →（隨浮層消失） | 反應／時限：UX 審查（SPEC-003 §2.2、§3.7）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 由容器承載（`SwitcherOverlay` 清單 slot）：0.1 無定位至專案項的場景——浮層收合後 `scroll-switcher-recent` 的 offset 不保留、下次展開自頂端（SPEC-003 §3.7 生命週期），不對目前專案項執行 scroll-into-view；展開時的焦點落點屬焦點列 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
 | 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：`SwitcherOverlay` 依 `recentProjectsProvider` 的 `enabled` 改 `enabled` / `reason` 傳值，依 `currentProjectIndexProvider` 改 `isCurrent` 傳值） | enabled ↔ disabled：視覺依 §4.0.1 disabled（`textDisabled`、無 hover overlay）+ 同列常駐 `reason`；語意樹 `enabled` 旗標隨重建更新，不設 live region（無障礙子節）；其餘項不受本項探測影響（SPEC-003 §3.7）。selected 切換：0.1 只在切換專案後重載時發生，重載前浮層已收合，本元件不呈現該過渡 | 無（探測結果為離散替換；SPEC-003 §3.7 無專案項過渡動畫條文；提案） | 無（探測逾時值屬 workspace domain、不在 SPEC-003 定義，且該值為探測時限非回饋時限；旗標與常駐文字隨重建瞬切；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙狀態變化播報適用（旗標隨重建更新）；不升級系統通知） | disabled → enabled（探測結果更新）/ enabled → disabled（探測失敗或逾時） | 反應：UX 審查（SPEC-003 §3.7）；通道／狀態邊：規格撰寫者 |
 | 等待與結果 | 系統 | 掛載點：第一層（互動元件層，pressed 態）——第二層（服務受理）與第三層（event 效果）不由本元件承載，皆委派 Domain 視圖畫面級載入態承載（`state-domain-loading`，4.24 `LoadingState`，SPEC-003 §2.6、§3.7）；可用性探測（決定本項 enabled/disabled）為另一獨立流程，非本事件觸發，亦不由本元件承載其等待（探測未完成的項依狀態矩陣 enabled 列「等確認才顯示」處理，浮層其餘項可操作）。服務類型：長時操作（專案切換觸發 Domain 載入，SPEC-003 §2.12 0.1 實例）。成功：Domain 視圖進入 `state-domain-loading` 後完成載入、全部導覽頁重置，結果通知即該狀態轉換本身，由 4.24 承載；失敗：由 4.24 `LoadingState` 依 SPEC-003 §2.12 長時操作類政策呈現（解析錯誤／平台錯誤／資料損壞），本元件不重述；逾時：同（由承載端呈現，本元件不另處理）；服務不可用：同。輸入阻擋範圍：不適用於本元件——由 4.24 依長時操作類政策阻擋頁面內容（SPEC-003 §2.12），本元件於呼叫 `onTap` 後隨浮層消失，不自行阻擋。重複觸發防護：不適用於本元件——依長時操作類政策，禁用觸發來源由頁面內容被載入態取代後自然消失達成（SPEC-003 §2.12），非本元件自我停用；disabled 態的成因是可用性探測失敗，與防抖無關（狀態矩陣 disabled 列） | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.12、§3.7）；通道：規格撰寫者 |
@@ -1990,7 +1999,7 @@ EVT-CORPUS-004 項目說明：
 | 文字 | i18n key |
 |------|---------|
 | `summary` | `projectSummaryLabel`（呼叫端取值） |
-| `reason` | `projectUnavailableReasonLabel` + `probeTimeoutReason`（既有）；探測未完成時 `probingReason`（新增，§4.0.6，`0.1.0-W3-335.38` S-37） |
+| `reason` | `projectUnavailableReasonLabel` + `probeTimeoutReason`（既有）；探測未完成時 `probingReason`（新增，§4.0.6，`0.1.0-W3-335.38` S-37）；點選後判定不可讀或不存在時 `projectUnavailableReasonLabel`，`reason` 取 `WorkspaceUnavailable.reason`（1.88，不新增 key） |
 | 降級標籤 | `degradedSchemaShortLabel`（新增，§4.0.6，`0.1.0-W3-335.38` S-34） |
 | 朗讀「目前專案」 | `currentProjectA11yLabel` |
 
@@ -2008,7 +2017,7 @@ EVT-CORPUS-004 項目說明：
 | 面向 | 要求 |
 |------|------|
 | 朗讀標籤 | `Semantics.button`；label 為「{name}，{summary}」，`isCurrent` 時附 `currentProjectA11yLabel`；`selected` 等於 `isCurrent`；`enabled` 等於 `enabled`；disabled 時 `hint` 為 `reason` |
-| 狀態變化播報 | `enabled` 改變（探測結果）隨重建更新旗標；不設 live region |
+| 狀態變化播報 | `enabled` 改變（探測結果）隨重建更新旗標；不設 live region。點選後判定失敗造成的轉換是使用者動作的結果，其播報由 4.42 無障礙子節承載（1.88，提案） |
 | 非視覺替代訊號 | 不可用由 `enabled` 旗標 + 常駐文字承載；目前專案由 `selected` 旗標承載，底色非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | 浮層展開時焦點限制於浮層內，Tab 依序走過各項（SPEC-003 §2.10）；Space / Enter 觸發；Esc 收合 |
 | 對比 | 依 §4.0.2：enabled 摘要與 disabled 原因 `textSecondary` / `surfaceBase` 4.71:1、selected 摘要 `textPrimary` / `surfaceIconTint` 4.89:1、selected 名稱 `accentStrong` / `surfaceIconTint` 8.38:1，皆通過；disabled 圖示與名稱 `textDisabled` 3.06:1 屬非作用中元件豁免（表 2） |
@@ -2019,6 +2028,7 @@ EVT-CORPUS-004 項目說明：
 - [ ] 兩種視窗尺寸下不溢位（寬固定於 `LayoutSize.overlayWidth` 內）
 - [ ] 最長測試文案：名稱與摘要截斷、原因兩行末截斷、降級標籤截斷
 - [ ] zh / en 兩語系值皆不溢位
+- [ ] disabled 的 `reason` 代入 `WorkspaceUnavailable.reason` 型式的值（點選後判定失敗，1.88）時同列顯示且不溢位
 - [ ] enabled 點選呼叫 `onTap` 恰一次；disabled 零次；`Semantics.selected` / `enabled` 與參數一致；`isDegraded` 為 `true` 時 `Badge.tag` 存在且不影響 `onTap` 行為
 - [ ] 顏色、內距、圓角引用 token 非硬編碼
 
@@ -6005,7 +6015,7 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.42 SwitcherOverlay（容器）
 
-**用途**：專案切換覆蓋層：`AppText.caption` 標題 + `RecentProjectItem` × N（垂直捲動 `scroll-switcher-recent`）+ `Divider` + `AppButton.text`（選擇其他資料夾）；自入口向下展開，Esc / 點外部收合，焦點限制於浮層內。
+**用途**：專案切換覆蓋層：`AppText.caption` 標題 + `RecentProjectItem` × N（垂直捲動 `scroll-switcher-recent`）+ `Divider` + `AppButton.text`（選擇其他資料夾）；自入口向下展開，Esc / 點外部收合，焦點限制於浮層內。「選擇其他」選資料夾失敗時，按鈕下方相鄰處另有一則常駐原因文字（`chooseOtherFailureReason`，SPEC-003 §3.7〈浮層內選資料夾失敗的常駐原因文字〉，1.88）。
 **內容角色**：容器（另有標題 slot）。
 **何時不用**：任何其他覆蓋表面（0.1 唯一 overlay，§1 覆蓋表面對映）。
 **出現畫面**：§7（展開、無最近專案）。
@@ -6021,8 +6031,8 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| expanded（`state-switcher-expanded`） | 標題 + 專案項 + 分隔線 + 選擇其他 | 選專案、選資料夾、Esc、點外部、捲動 | `project-switcher-entry` 或阻擋狀態出口 | 選取 → 收合並重載；Esc / 點外部 → 收合（SPEC-001 §7）；系統通知點擊（視同點外部，見 4.27 locate 列）→ 收合 | 資料態：`switcherOpenProvider`（`StateProvider<bool>`，`lib/screens/project_switcher/project_switcher_providers.dart`）為 `true` 且 `recentProjectsProvider`（`Provider<List<RecentProjectFixture>>`，同檔）非空；`AppShell` watch 後渲染本容器並以 `items` 傳值，本容器不 watch（§2）；清單 offset 為本容器內部 `ScrollController`，收合即釋放（SPEC-003 §3.7 捲動列：收合後不保留） | 本地即時（浮層開合為本地 UI 狀態；專案項的 `enabled` 為探測結果，等確認才顯示，見 4.9；§2 樂觀更新政策：0.1 無樂觀操作） |
-| noRecent（`state-switcher-no-recent`） | 標題 + 選擇其他 | 選資料夾、Esc、點外部（`0.1.0-W3-335.47` D14） | 首次使用（無最近專案） | 選取 → 收合並載入；Esc／點外部 → 收合（`0.1.0-W3-335.47` D14）；系統通知點擊（視同點外部，見 4.27 locate 列）→ 收合 | 資料態：`switcherOpenProvider` 為 `true` 且 `recentProjectsProvider` 為空（同上） | 本地即時 |
+| expanded（`state-switcher-expanded`） | 標題 + 專案項 + 分隔線 + 選擇其他；`chooseOtherFailureReason` 非 `null` 時另於選擇其他下方顯示失敗原因文字（不構成另一個狀態，1.88） | 選專案、選資料夾、Esc、點外部、捲動 | `project-switcher-entry` 或阻擋狀態出口 | 選取 → 收合並重載；Esc / 點外部 → 收合（SPEC-001 §7）；系統通知點擊（視同點外部，見 4.27 locate 列）→ 收合 | 資料態：`switcherOpenProvider`（`StateProvider<bool>`，`lib/screens/project_switcher/project_switcher_providers.dart`）為 `true` 且 `recentProjectsProvider`（`Provider<List<RecentProjectFixture>>`，同檔）非空；`AppShell` watch 後渲染本容器並以 `items` 傳值，本容器不 watch（§2）；清單 offset 為本容器內部 `ScrollController`，收合即釋放（SPEC-003 §3.7 捲動列：收合後不保留） | 本地即時（浮層開合為本地 UI 狀態；專案項的 `enabled` 為探測結果，等確認才顯示，見 4.9；§2 樂觀更新政策：0.1 無樂觀操作） |
+| noRecent（`state-switcher-no-recent`） | 標題 + 選擇其他；失敗原因文字同 expanded 列（1.88） | 選資料夾、Esc、點外部（`0.1.0-W3-335.47` D14） | 首次使用（無最近專案） | 選取 → 收合並載入；Esc／點外部 → 收合（`0.1.0-W3-335.47` D14）；系統通知點擊（視同點外部，見 4.27 locate 列）→ 收合 | 資料態：`switcherOpenProvider` 為 `true` 且 `recentProjectsProvider` 為空（同上） | 本地即時 |
 
 收合態不是本容器的狀態（本容器不存在），由 `ProjectSwitcherEntry` 承載。展開／收合的過渡（淡入 + 向下展開及其反向）為本容器自身的出場／退場動畫，由 `AppShell` 渲染或移除本容器時觸發，屬 §2 呼叫端觸發，不構成本容器的第三個狀態。
 
@@ -6038,10 +6048,10 @@ EVT-CORPUS-004 項目說明：
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
 | 可互動提示 affordance | 使用者接近 | 由子件承載：專案項 hover 4.9、選擇其他 hover 4.4 `text`；標題、分隔線、健康徽章無 hover（SPEC-003 §3.7 健康徽章列：非互動元素、不呈按鈕形態）；浮層外部無 hover | 無（Material 內建，經子件） | 無（同 4.9 / 4.4） | §1 子表「可互動提示」列（由 4.9 / 4.4 承載） | 不適用 | 規格撰寫者 |
 | 焦點 focus | 使用者／輔助技術 | 展開時焦點移入浮層首個可聚焦項（專案項或選擇其他）並唸出 `switcherTitle`（`Semantics(scopesRoute: true)`，無障礙子節）；焦點限制於浮層（`FocusScope` + `FocusTraversalGroup`）、Tab 依序項目 × N → 選擇其他、不離開浮層（SPEC-003 §2.10「浮層展開時」列）；收合時焦點回到 `project-switcher-entry`，三條收合路徑皆同——Esc（SPEC-003 §2.10、§3.7 按 Esc 列）、點浮層外部（§3.7 點浮層外部列）、系統通知點擊（視同點外部，見 4.27 locate 列；該路徑下焦點交回入口後再由定位段移入被定位項，最終落點為被定位項）；各停留點焦點環由 4.9 / 4.4 依 §4.0.1 承載 | 無 | 無（SPEC-003 §2.10 只斷言限制與落點，不設時限；提案） | §1 子表「焦點」列（焦點限制與三條收合路徑的焦點歸位由本容器承載；焦點環由子件承載） | expanded / noRecent → Esc／點外部／通知點擊 →（本容器消失，入口回 collapsed，4.8；焦點回入口，通知點擊路徑再移入被定位項） | 反應：UX 審查（SPEC-003 §2.10、§3.7）；通道／狀態邊：規格撰寫者 |
-| 按下確認 press-ack | 使用者 | 專案項經 4.9（pressed + ripple，`onTap` 恰一次）→ 呼叫端先收合浮層再由 Domain 視圖轉入 `state-domain-loading`，兩段不重疊（SPEC-003 §3.7 動畫提示「選取專案後的重載」、§2.8 L2 全部導覽頁重置）；選擇其他經 4.4 `text`（`action-switcher-choose-folder`）→ 開啟系統資料夾選擇器，選定後收合並載入、取消則維持展開（SPEC-003 §3.7）；點浮層外部 → 呼叫 `onDismiss` 恰一次，收合、不改變當前專案、無 pressed 態（barrier 非按鈕；SPEC-003 §3.7 點浮層外部列）；展開期間點擊背景任一處（含導覽項）同被吸收：浮層收合、不切頁（同 SPEC-003 §3.4 F7，`0.1.0-W3-335.47` D13；SPEC-003 §3.7 生命週期） | Material 內建 ripple（經子件）；收合 `Motion.overlay`（本容器承載） | pressed 態出現於 `Motion.feedback` 內（經子件）；收合於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「按下確認」列（由 4.9 / 4.4 承載；點外部由本容器 barrier 承載） | expanded → pressed（專案項）→ 收合並重載；expanded / noRecent → pressed（選擇其他）→ 收合並載入或維持原狀態；expanded → 點外部 → 收合 | 反應／時限：UX 審查（SPEC-003 §2.2、§2.8、§3.7）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 專案項經 4.9（pressed + ripple，`onTap` 恰一次）→ 呼叫端先收合浮層再由 Domain 視圖轉入 `state-domain-loading`，兩段不重疊（SPEC-003 §3.7 動畫提示「選取專案後的重載」、§2.8 L2 全部導覽頁重置）；選擇其他經 4.4 `text`（`action-switcher-choose-folder`）→ 開啟系統資料夾選擇器，選定後收合並載入、取消則維持展開（SPEC-003 §3.7）；選擇器無法開啟、或選定資料夾不可讀或不存在時維持展開，呼叫端傳入 `chooseOtherFailureReason`，按鈕下方出現常駐原因文字，不顯示 SnackBar；專案項點選後判定不可讀或不存在時維持展開，該項轉 disabled 並於同列顯示原因（4.9），不顯示 SnackBar（SPEC-003 §3.7〈浮層內選資料夾失敗的常駐原因文字〉，1.88）；點浮層外部 → 呼叫 `onDismiss` 恰一次，收合、不改變當前專案、無 pressed 態（barrier 非按鈕；SPEC-003 §3.7 點浮層外部列）；展開期間點擊背景任一處（含導覽項）同被吸收：浮層收合、不切頁（同 SPEC-003 §3.4 F7，`0.1.0-W3-335.47` D13；SPEC-003 §3.7 生命週期） | Material 內建 ripple（經子件）；收合 `Motion.overlay`（本容器承載） | pressed 態出現於 `Motion.feedback` 內（經子件）；收合於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「按下確認」列（由 4.9 / 4.4 承載；點外部由本容器 barrier 承載） | expanded → pressed（專案項）→ 收合並重載；expanded / noRecent → pressed（選擇其他）→ 收合並載入或維持原狀態；expanded → 點外部 → 收合 | 反應／時限：UX 審查（SPEC-003 §2.2、§2.8、§3.7）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 不適用（無承載場景）：本容器為覆蓋層，每次展開自頂端、offset 不保留（SPEC-003 §3.7 捲動列），無定位至專案項的場景；目前專案項以 `selected` 態（4.9）標示，非定位；本容器不是被定位目標（§1 子表 locate 列適用場景皆在導覽頁內） | — | — | 不適用（覆蓋層無定位場景） | expanded／noRecent → 消失（通知點擊視同點外部，見 4.27 locate 列） | 規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（`AppShell` 為 `ConsumerWidget`，依 `switcherOpenProvider` 渲染／移除本容器，依 `recentProjectsProvider` 傳 `items`；含 Esc、點外部、選取專案、選擇資料夾後的收合） | 展開：淡入 + 自入口向下展開；收合：反向（SPEC-003 §3.7 動畫提示）；`disableAnimations` 下依 §2.1 歸零；展開時焦點移入並唸出標題、收合時焦點回入口（無障礙子節）；expanded ↔ noRecent 不在同一次展開內切換（`items` 於展開時已定）；專案項 `enabled` 隨探測結果更新由 4.9 承載（SPEC-003 §3.7 探測逾時） | `Motion.overlay`（展開與收合，本容器承載） | 浮層出現／收合於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「狀態變更提示」列（`Motion.*` 過渡適用（本容器）；無障礙播報適用（`scopesRoute` 唸出標題）；不升級系統通知） | （不存在）→ expanded / noRecent（入口或阻擋狀態出口）/ expanded / noRecent →（不存在）（Esc、點外部、選取、選定資料夾） | 反應／時限：UX 審查（SPEC-003 §2.1、§3.7）；通道／狀態邊：規格撰寫者 |
-| 等待與結果 | 系統 | 掛載點：第一層（互動元件層）由子件 4.9／4.4 承載；點外部的 barrier dismiss（`onDismiss`）為本容器自身的第一層（無 pressed 態，barrier 非按鈕）——第二層與第三層依觸發動作而定：浮層自身開合的第三層即結果通知本身（收合的狀態轉換）；選取專案後的重載委派 4.24（`state-domain-loading`）；選擇資料夾為系統 UI，無等待指示。服務類型：浮層自身開合為本地即時（依兩軸：使用者感知的等待為零、不可能失敗，清單為本地 fixture／已探測結果，探測逾時期間浮層仍可操作、其餘項不受影響，SPEC-003 §3.7）；選取專案後的重載為長時操作，委派 4.24（見 4.9 條目）；第一層本身不隨後續服務類型變動。成功：浮層出現／收合；選取專案後 4.24 完成載入的目標態；失敗：浮層開合依兩軸判定不可能發生（純本地狀態操作）；選取專案的失敗由 4.24 依長時操作類政策呈現，本容器不重述；逾時：浮層開合同不可能發生；選取專案同由 4.24 承載；服務不可用：浮層開合同不可能發生；選取專案同由 4.24 承載。輸入阻擋範圍：浮層開合不阻擋（本地即時類政策）；展開期間點擊背景任一處（含導覽項）被吸收（浮層收合、不切頁，`0.1.0-W3-335.47` D13）屬焦點限制機制（`FocusScope`），非服務類阻擋（SPEC-003 §3.7 生命週期）。重複觸發防護：浮層開合無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12） | `Motion.overlay`（收合） | 收合於 `Motion.overlay` 內；載入態的等待由 4.24 承載 | §1 子表「等待與結果」列（結果通知＝收合 + 載入態轉換） | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.12、§3.7）；通道：規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（`AppShell` 為 `ConsumerWidget`，依 `switcherOpenProvider` 渲染／移除本容器，依 `recentProjectsProvider` 傳 `items`；含 Esc、點外部、選取專案、選擇資料夾後的收合） | 展開：淡入 + 自入口向下展開；收合：反向（SPEC-003 §3.7 動畫提示）；`disableAnimations` 下依 §2.1 歸零；展開時焦點移入並唸出標題、收合時焦點回入口（無障礙子節）；expanded ↔ noRecent 不在同一次展開內切換（`items` 於展開時已定）；專案項 `enabled` 隨探測結果更新由 4.9 承載（SPEC-003 §3.7 探測逾時）；`chooseOtherFailureReason` 由 `null` 轉為非 `null` 時失敗原因文字瞬切出現、無過渡動畫，並播報一次（無障礙子節；1.88，提案） | `Motion.overlay`（展開與收合，本容器承載） | 浮層出現／收合於 `Motion.overlay` 內（SPEC-003 §3.7 動畫提示） | §1 子表「狀態變更提示」列（`Motion.*` 過渡適用（本容器）；無障礙播報適用（`scopesRoute` 唸出標題）；不升級系統通知） | （不存在）→ expanded / noRecent（入口或阻擋狀態出口）/ expanded / noRecent →（不存在）（Esc、點外部、選取、選定資料夾） | 反應／時限：UX 審查（SPEC-003 §2.1、§3.7）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | 掛載點：第一層（互動元件層）由子件 4.9／4.4 承載；點外部的 barrier dismiss（`onDismiss`）為本容器自身的第一層（無 pressed 態，barrier 非按鈕）——第二層與第三層依觸發動作而定：浮層自身開合的第三層即結果通知本身（收合的狀態轉換）；選取專案後的重載委派 4.24（`state-domain-loading`）；選擇資料夾為系統 UI，無等待指示。服務類型：浮層自身開合為本地即時（依兩軸：使用者感知的等待為零、不可能失敗，清單為本地 fixture／已探測結果，探測逾時期間浮層仍可操作、其餘項不受影響，SPEC-003 §3.7）；選取專案後的重載為長時操作，委派 4.24（見 4.9 條目）；第一層本身不隨後續服務類型變動。成功：浮層出現／收合；選取專案後 4.24 完成載入的目標態；失敗：浮層開合依兩軸判定不可能發生（純本地狀態操作）；選取專案的失敗由 4.24 依長時操作類政策呈現，本容器不重述；選資料夾與開啟最近專案項於載入開始之前即判定失敗者（選擇器無法開啟、資料夾不可讀或不存在）不進入 4.24，其第三層為浮層內常駐文字（「選擇其他」為本容器的 `chooseOtherFailureReason`，專案項為 4.9 的 `reason`），不使用 4.26 `AppSnackBar`（SPEC-003 §3.7、§2.13 對照表列 17、18，1.88）；逾時：浮層開合同不可能發生；選取專案同由 4.24 承載；服務不可用：浮層開合同不可能發生；選取專案同由 4.24 承載。輸入阻擋範圍：浮層開合不阻擋（本地即時類政策）；展開期間點擊背景任一處（含導覽項）被吸收（浮層收合、不切頁，`0.1.0-W3-335.47` D13）屬焦點限制機制（`FocusScope`），非服務類阻擋（SPEC-003 §3.7 生命週期）。重複觸發防護：浮層開合無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12） | `Motion.overlay`（收合） | 收合於 `Motion.overlay` 內；載入態的等待由 4.24 承載 | §1 子表「等待與結果」列（結果通知＝收合 + 載入態轉換） | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.12、§3.7）；通道：規格撰寫者 |
 
 #### 操作機制
 
@@ -6066,6 +6076,7 @@ EVT-CORPUS-004 項目說明：
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
 | `title`（`AppText.caption`） | 否 | 1 | 截斷 | `switcherTitle`（en「Switch project」）；`TestCopy.longToken` |
+| `chooseOtherFailureReason`（`AppText.caption`，1.88） | 是 | 2 | 末行截斷（比照 4.9 `reason`：浮層寬有限，原因須可讀；提案） | `switcherChooseFolderUnavailableReason` 的 zh／en 實際值；`switcherFolderUnavailableReason`（`reason` 代入 `TestCopy.longZh`） |
 
 #### slot 契約
 
@@ -6074,6 +6085,7 @@ EVT-CORPUS-004 項目說明：
 | `title` | `String` | 否 | 元件預設 `switcherTitle`（參數可覆蓋） |
 | `items` | `List<RecentProjectItem>` | 是（0..無上限） | 不適用 |
 | `chooseOther` | `AppButton.text` | 是（恰 1；label 由呼叫端：`switcherChooseOtherFolder` / 零項時 `switcherChooseFolderPrompt`） | 不適用 |
+| `chooseOtherFailureReason`（1.88） | `String?` | 否（`null` 時不渲染、不佔高度） | 呼叫端（`switcherChooseFolderUnavailableReason` / `switcherFolderUnavailableReason` 取值）；何時傳回 `null` 依 SPEC-003 §3.7〈浮層內選資料夾失敗的常駐原因文字〉「清除時機」列，該列定案前本檔不另定 |
 | `onDismiss` | `VoidCallback` | 是 | 不適用 |
 | `testKey` / `scrollKey` | `Key` | 是（`state-switcher-expanded` / `state-switcher-no-recent`；`scroll-switcher-recent`） | 不適用 |
 
@@ -6081,9 +6093,9 @@ EVT-CORPUS-004 項目說明：
 
 | 面向 | token |
 |------|-------|
-| 色彩 | `AppColors.surfaceBase`（底）、`borderStrong`（邊框） |
-| 間距 | 內距 `Space.sm`；子件最小間距 `Space.xxs`；標題內距 `Space.xs` × `Space.sm` |
-| 字體 | 經子件 |
+| 色彩 | `AppColors.surfaceBase`（底）、`borderStrong`（邊框）、`textSecondary`（失敗原因文字，同 4.9 原因，1.88） |
+| 間距 | 內距 `Space.sm`；子件最小間距 `Space.xxs`；標題內距 `Space.xs` × `Space.sm`；失敗原因文字水平內距同標題（`Space.sm`，提案） |
+| 字體 | 經子件；失敗原因文字 `AppFontSize.caption`（同 4.9 原因） |
 | 圓角 | `Radius.lg` |
 | 動畫 | `Motion.overlay` |
 | 尺寸 | `LayoutSize.overlayWidth` |
@@ -6096,6 +6108,7 @@ EVT-CORPUS-004 項目說明：
 |------|---------|
 | 標題 | `switcherTitle` |
 | 選擇其他 | `switcherChooseOtherFolder` / `switcherChooseFolderPrompt`（既有，呼叫端傳入） |
+| 選擇其他的失敗原因 | `switcherChooseFolderUnavailableReason` / `switcherFolderUnavailableReason`（新增，§4.0.6〈1.88 新增〉表，呼叫端傳入） |
 
 #### 組合規則
 
@@ -6111,9 +6124,9 @@ EVT-CORPUS-004 項目說明：
 | 面向 | 要求 |
 |------|------|
 | 朗讀標籤 | `Semantics(container: true, scopesRoute: true)`，label 為 `switcherTitle`；標題為 header |
-| 狀態變化播報 | 展開時焦點移入浮層（首個可聚焦項）並唸出標題；收合時焦點回入口 |
+| 狀態變化播報 | 展開時焦點移入浮層（首個可聚焦項）並唸出標題；收合時焦點回入口。選資料夾失敗的原因文字出現時播報一次：`chooseOtherFailureReason` 以 `Semantics(liveRegion: true)` 包覆；專案項點選後判定失敗者，由本容器於傳入該項新的 `reason` 時播報該文字（4.9 自身不設 live region）。理由：失敗後焦點停在原觸發元件、浮層不收合，改為常駐文字後若不播報，輔助技術使用者得不到任何結果（1.88，提案） |
 | 非視覺替代訊號 | 不適用 |
-| 焦點順序與操作路徑（桌機） | 焦點限制於浮層（`FocusScope` + `FocusTraversalGroup`）；Tab 依序：項目 × N → 選擇其他；Esc 收合 |
+| 焦點順序與操作路徑（桌機） | 焦點限制於浮層（`FocusScope` + `FocusTraversalGroup`）；Tab 依序：項目 × N → 選擇其他；失敗原因文字不可聚焦、不進入 Tab 序列；Esc 收合 |
 | 對比 | 不適用（容器） |
 
 #### 測試點（widget test）
@@ -6121,14 +6134,16 @@ EVT-CORPUS-004 項目說明：
 - [ ] 一支測試渲染 expanded（1 / 5 / 50 項）與 noRecent
 - [ ] 兩種視窗尺寸下不溢位；50 項於 `kMinWindowSize` 高度內可捲動且高不超過上限
 - [ ] 標題最長測試文案截斷
-- [ ] zh / en 三個 key 皆不溢位
+- [ ] 本條目 i18n 子節所列各 key 的 zh / en 值皆不溢位
 - [ ] Esc 呼叫 `onDismiss` 且焦點回到入口；點外部呼叫 `onDismiss`；Tab 序列不含浮層外元件；收合再展開 offset 為 0
 - [ ] 寬、圓角、動畫引用 token 非硬編碼
+- [ ] `chooseOtherFailureReason` 傳與不傳各渲染一次（expanded 與 noRecent 皆測）：不傳時找不到該文字且浮層高度與未加入本 slot 前相同；傳入時文字出現於選擇其他下方、兩行末截斷、兩種視窗尺寸下不溢位、不進入 Tab 序列（1.88）
 
 #### 反例
 
 | 不該拿它做什麼 | 應改用 |
 |---------------|--------|
+| 以 4.26 `AppSnackBar` 呈現浮層內選資料夾的失敗結果（1.88） | `chooseOtherFailureReason` 或 4.9 `reason`（SPEC-003 §3.7；§3.1 內容區觸發者仍用 `AppSnackBar`） |
 | 以 `showDialog` / `AlertDialog` 呈現（原 `shell.dart` 空殼，**整改完成**：`lib/` 內 `showDialog` / `AlertDialog` / `showModalBottomSheet` / `Drawer(` 實查 0 命中，`0.1.0-W3-169` 複驗 2026-09-09；本列自此為整改記錄，非現存衝突） | 本容器（W1-005 對齊） |
 | schema 詳情面板 | `BlockedState.withDetail` 內展開 |
 
@@ -6436,16 +6451,16 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 接受的子件類型 | `AppText.caption`（標題）、`RecentProjectItem`、`Divider`、`AppButton.text` |
-| 子件數量上限 | 標題 1、`Divider` 1、`AppButton.text` 1；`RecentProjectItem` 無上限 |
+| 接受的子件類型 | `AppText.caption`（標題；選擇其他的失敗原因文字，1.88）、`RecentProjectItem`、`Divider`、`AppButton.text` |
+| 子件數量上限 | 標題 1、`Divider` 1、`AppButton.text` 1、失敗原因文字 0 或 1；`RecentProjectItem` 無上限 |
 
 #### 排列不變式
 
 | 不變式 | 值 |
 |--------|-----|
-| 不重疊 | 標題 / 清單區 / 分隔線 / 按鈕垂直互斥；清單區高 = 浮層高 − 其餘三者高 − 間距 |
+| 不重疊 | 標題 / 清單區 / 分隔線 / 按鈕 / 失敗原因文字（存在時，位於按鈕之下）垂直互斥；清單區高 = 浮層高 − 其餘各者高 − 間距 |
 | 最小間距 | `Space.xxs`；內距 `Space.sm`；呼叫端不得覆寫 |
-| 空間不足策略 | 捲動（垂直，僅清單區，`scroll-switcher-recent`；標題、分隔線、按鈕不捲離）；觸發條件：標題高 + N × `RecentProjectItem` 高 + (N − 1) × `Space.xxs` + `Divider` 高 + `LayoutSize.hitTargetMin` + 2 × `Space.sm` > 最大高（入口下緣至視窗下緣 − `Space.xl`） |
+| 空間不足策略 | 捲動（垂直，僅清單區，`scroll-switcher-recent`；標題、分隔線、按鈕、失敗原因文字不捲離）；觸發條件：標題高 + N × `RecentProjectItem` 高 + (N − 1) × `Space.xxs` + `Divider` 高 + `LayoutSize.hitTargetMin` + 失敗原因文字高（存在時，至多兩行，另加 `Space.xxs`）+ 2 × `Space.sm` > 最大高（入口下緣至視窗下緣 − `Space.xl`） |
 
 ---
 
@@ -6522,6 +6537,7 @@ EVT-CORPUS-004 項目說明：
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
+| 1.88 | 2026-10-13 | `0.5.0-W1-156.1`（承 `0.5.0-W1-156` 用戶裁決 2026-10-12，對應 SPEC-003 v1.60、SPEC-001 v1.50）：專案切換浮層內選資料夾失敗由 4.26 `AppSnackBar` 改為浮層內常駐文字。(1) §4.0.6 新增〈1.88 新增〉表：`switcherChooseFolderUnavailableReason`、`switcherFolderUnavailableReason`（文案沿用既有 SnackBar key 現值，因載體與內容政策不同而另立 key）；最近專案項沿用 `projectUnavailableReasonLabel`，不新增 key；`chooseFolderUnavailableMessage`、`folderUnavailableMessage` 兩列使用處限縮為 SPEC-003 §3.1。(2) 4.42 `SwitcherOverlay`：新增 `chooseOtherFailureReason` slot（`String?`，`null` 時不渲染），用途、狀態矩陣兩列顯示欄、回饋契約（press-ack、state-change、等待與結果三列）、內容政策、design token、i18n、無障礙（播報與 Tab 序列）、測試點、反例同步；清除時機待 SPEC-003 §3.7 定案，本檔不另定。(3) 4.9 `RecentProjectItem`：disabled 態進入條件補「點選後開啟該路徑判定不可讀或不存在」、退出路徑補本次展開期間維持，press-ack 列、i18n `reason` 列、無障礙播報列、測試點同步。(4) 5.16 子件契約與排列不變式補失敗原因文字。4.26 的 slot 與 i18n 清單不變（兩個 SnackBar key 仍由 §3.1 內容區使用） |
 | 1.87 | 2026-10-13 | `0.5.0-W1-114.11` 修正輪回報（4a，2026-10-13）：`SwimlaneGrid` 的邊掛在 min(from,to) 格繪製，起點格捲出被回收後整條跨欄邊消失。PM 處置：4.38〈拖曳與捲動操作路徑的不變式〉既定捲動與拖曳為畫布平移（只移視窗、內容 1:1 平移），邊屬內容，故補一句「任一條邊落在 viewport 內的部分一律可見，與起點欄、終點欄是否在 viewport 內無關」，屬既有不變式的直接後果，不改使用者可見規則；測試點補一條（起點欄捲出、終點欄在內，邊段仍繪製，附捲動前對照）。不規定繪製方式（整列覆蓋層或其他） |
 | 1.86 | 2026-10-12 | `0.5.0-W1-114.14.1` 用戶裁決（對應 SPEC-001 v1.49、SPEC-003 v1.59）：§3.6 對照表 §1 補「載入失敗」列（`BlockedState.plain`），§2–§6「專案未就緒」五列改四選一；§4.0.6 新增〈1.86 新增〉表（`domainLoadFailedMessage`、`reloadAction`、`projectUnreadyReasonLoadFailed`）；4.23 用途、出現畫面、`plain` 變體、狀態矩陣、slot 契約（`message` 來源、新增 `onReload`、`testKey` 補 `state-domain-load-failed` 與 `action-domain-reload`；`action-domain-switch-project` 渲染於四個狀態）、i18n 同步。frontmatter `version` 原停在 1.84（1.85 只改正文版本行與本表），本版一併對齊 |
 | 1.85 | 2026-10-12 | `0.5.0-W3-005`（PM 裁決，2026-10-12；承 `0.5.0-W1-071` 的 §4.0.3「一字元」定義）：六個條目〈尺寸契約〉最小尺寸列的「一字元」改引用 §4.0.3 並標明字級 slot，是否計省略號依各條目〈內容政策〉的超出處置（截斷計、換行不計）。數值變化：(1) 4.16 `SwimlaneNode`、4.24 `LoadingState`、4.26 `AppSnackBar`、4.40 `ListRow` 的寬各新增「+ 省略號」項，字級取 `AppFontSize.body`（依序為 `label`、`message`、`message`、`primary` slot）；(2) 4.1 `AppText` 字級取各變體自身的 `AppFontSize.*`（`mono` 取 `body`），原「一個字元 + 省略號可見」統一為「一字元 + 省略號」，`body` 未傳 `maxLines` 時為換行、不計省略號（原文全變體皆計）；(3) 4.20 `DocumentBody` 字級由未指明改為 h1 標題 slot 的 `AppFontSize.title`（段落與標題皆字元邊界換行，由字級最大的 slot 決定最小寬），不計省略號；h1 字級的出處為 4.20〈使用 design token〉字體列（`title`（h1）），實作為 `lib/components/document_body.dart` 的 `MarkdownStyleSheet`（`test/unit/components/document_body_test.dart` 已斷言）。各列的高、內距與間距項未變。實作不變 |
