@@ -187,7 +187,14 @@ class FakeScanRound extends ScanRoundNotifier {
     if (latency > Duration.zero) await Future<void>.delayed(latency);
     if (generation != _generation) return null;
     _inFlight = null;
-    final result = produce();
+    final ScanRoundResult? result;
+    try {
+      result = produce();
+    } catch (_) {
+      // 對齊真實 _runGuarded：失敗時狀態回 Idle 再往外拋。
+      state = const ScanRoundIdle();
+      rethrow;
+    }
     state = result == null ? const ScanRoundIdle() : ScanRoundCompleted(result);
     return result;
   }

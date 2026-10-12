@@ -567,10 +567,71 @@ void main() {
       expect(fake.produced, 2, reason: '接續共用新輪，不另開第三輪');
     });
 
+    testWidgets('B2 連續被丟棄 5 次仍接續到最後一輪並呈現結果（無次數上限）', (tester) async {
+      final fake = FakeScanRound(
+        produce: () =>
+            fakeRound(parseFailureEvents: [fakeCarrierEvent('docs/a.md')]),
+        latency: Motion.spinnerMinVisible,
+      );
+      final container = await pumpWith(tester, fake, extra: [wsOverride]);
+      await tester.pump();
+      for (var i = 0; i < 5; i++) {
+        unawaited(fake.rescan());
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await pumpContract(tester, Motion.spinnerMinVisible * 2);
+
+      expect(container.read(gapReportProvider), isA<GapReportFound>());
+      expect(fake.produced, 6);
+    });
+
+    testWidgets('B2 E1 輪次因取消被丟棄時不接續（不再開新輪）', (tester) async {
+      final fake = FakeScanRound(
+        produce: () => fakeRound(),
+        latency: Motion.spinnerMinVisible,
+      );
+      final container = await pumpWith(tester, fake, extra: [wsOverride]);
+      await tester.pump();
+
+      container.read(gapReportProvider.notifier).cancelScan();
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(fake.discardCalls, 1);
+      expect(fake.produced, 1, reason: '取消者自己丟棄輪次，不得接續開新輪');
+      await tester.pump(Motion.cancelDeadline);
+    });
+
+    testWidgets('B2 E1 接續期間工作區切走時不接續', (tester) async {
+      final fake = FakeScanRound(
+        produce: () => fakeRound(),
+        latency: Motion.spinnerMinVisible,
+      );
+      // 工作區維持預設（非 Ready），其就緒路徑鍵不變，本頁不會因重建而
+      // 換代，單獨檢驗「工作區不是 Ready」這道守衛：拿掉它，本頁會接續
+      // 他人開的新輪並呈現 Found。
+      final container = await pumpWith(tester, fake);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      unawaited(fake.rescan());
+      // t=350ms：本頁原輪次（300ms）已作廢，外部新輪（400ms）尚未完成。
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(fake.produced, 2, reason: '只有外部那一次重掃，本頁不接續');
+      expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
+      // 外部輪次之後完成：同工作區輪次由等待中的本頁直接呈現（恢復路徑）。
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(container.read(gapReportProvider), isA<GapReportNoGaps>());
+    });
+
     testWidgets('B3 輪次拋出非預期例外 → 無法判定破洞（掃描失敗）', (tester) async {
       final fake = FakeScanRound(produce: () => throw StateError('boom'));
       final container = await pumpWith(tester, fake, extra: [wsOverride]);
       await pumpContract(tester, Motion.spinnerMinVisible);
+      expect(
+        container.read(scanRoundProvider),
+        isA<ScanRoundIdle>(),
+        reason: '失敗後輪次狀態回 Idle，與真實擁有者一致',
+      );
 
       final state = container.read(gapReportProvider);
       expect(state, isA<GapReportUndeterminable>());

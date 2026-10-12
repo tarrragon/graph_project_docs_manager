@@ -22,9 +22,6 @@ import 'gap_report_round_state.dart';
 
 const String _tag = 'GapReportNotifier';
 
-/// 輪次等待中被丟棄時，最多接續新輪次的次數。
-const int _maxRoundRetries = 3;
-
 /// 破洞報告畫面狀態機。
 ///
 /// 生命週期（SPEC-003 §3.5）：首次可見自動進入掃描中，完成後轉無破洞、
@@ -214,12 +211,14 @@ class GapReportNotifier extends Notifier<GapReportState> {
           ? rounds.rescan()
           : rounds.ensureRound());
       // 輪次回 null 有兩種：工作區不是 Ready（專案未就緒），或等待中被丟棄
-      // （切換、他人重掃；丟棄方已開新輪）。後者接續新輪次，上一輪已處理。
-      for (var retry = 0; round == null && retry < _maxRoundRetries; retry++) {
+      // （切換、他人重掃；丟棄方已開新輪）。後者接續新輪次，上一輪已處理；
+      // 丟棄屬過渡而非終態，不設次數上限。迴圈由 _shouldFollowNewRound 的
+      // 三道守衛（世代換代、工作區不是 Ready、取消中）收束，且每圈都在等一輪
+      // 真實輪次完成。
+      while (round == null) {
         if (!_shouldFollowNewRound(generation)) return null;
         round = await rounds.ensureRound();
       }
-      if (round == null) return null;
       return gapReportStateFromRound(
         round,
         nonDomainPathsKey: _nonDomainPathsKeyOf(round),
@@ -294,8 +293,10 @@ class GapReportNotifier extends Notifier<GapReportState> {
     _lastResult = state;
   }
 
-  /// 輪次取不到（沒有可掃的工作區或輪次被丟棄）：不顯示任何舊輪結果，
-  /// 改渲染「專案未就緒」，並讓下一次 build() 能重新觸發掃描。
+  /// 輪次取不到：唯一會走到這裡的情形是工作區不是 Ready（丟棄情形由
+  /// [_projectRound] 接續新輪次；世代換代與取消則在 [_completeScan] 前段
+  /// 即被忽略），故渲染「專案未就緒」與工作區實況一致。不顯示任何舊輪
+  /// 結果，並讓下一次 build() 能重新觸發掃描。
   void _showUnreadyAfterDiscardedRound() {
     _hasTriggeredScan = false;
     _awaitingRound = true;
