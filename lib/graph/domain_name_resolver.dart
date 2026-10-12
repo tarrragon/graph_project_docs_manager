@@ -28,7 +28,12 @@ class DuplicateDomainDeclaration {
 
 /// 名稱索引：精確比對（區分大小寫、不去空白、不正規化），不以 ID 拼接代替查詢。
 class DomainNameResolver {
-  DomainNameResolver._(this._byName, this._byBundleId, this.duplicates);
+  DomainNameResolver._(
+    this._byName,
+    this._byBundleId,
+    this.duplicates, [
+    this._invalidByBundleId = const {},
+  ]);
 
   /// 無任何 DomainBundle 的索引（所有名稱皆未宣告）。
   factory DomainNameResolver.empty() =>
@@ -40,9 +45,14 @@ class DomainNameResolver {
   ) {
     final idsByDomain = <String, List<String>>{};
     final byBundleId = <String, String>{};
+    final invalid = <String, String>{};
     for (final (id, domain) in declarations) {
       // 空字串不是名稱：不入索引，`traverses: ['']` 必為未宣告。
-      if (domain is! String || domain.isEmpty) continue;
+      // FR-13 Z3：無效 domain（非字串、null、缺鍵、空字串）不入名稱索引，但保留列。
+      if (domain is! String || domain.isEmpty) {
+        invalid[id] = _invalidDomainText(domain);
+        continue;
+      }
       idsByDomain.putIfAbsent(domain, () => []).add(id);
       byBundleId[id] = domain;
     }
@@ -57,8 +67,13 @@ class DomainNameResolver {
           if (e.value.length >= 2)
             DuplicateDomainDeclaration(domain: e.key, bundleIds: e.value),
       ]),
+      Map.unmodifiable(invalid),
     );
   }
+
+  /// 無效 domain 的列首文字（FR-13 Z3）：非字串轉字串，null（含缺鍵）與空字串為空字串。
+  static String _invalidDomainText(Object? domain) =>
+      domain == null || domain is String ? '' : '$domain';
 
   /// 由 rawNode 清單建索引；只取 [bundleIds] 內（已進圖、非重複 ID）的 DomainBundle。
   factory DomainNameResolver.fromRawNodes(
@@ -78,6 +93,9 @@ class DomainNameResolver {
   final Map<String, String> _byName;
   final Map<String, String> _byBundleId;
 
+  /// `domain` 無效的 DomainBundle：節點 ID → 列首文字（FR-13 Z3）。
+  final Map<String, String> _invalidByBundleId;
+
   /// 重複宣告（每個重複的 `domain` 值一筆）；這些 DomainBundle 不在正向索引。
   final List<DuplicateDomainDeclaration> duplicates;
 
@@ -96,4 +114,12 @@ class DomainNameResolver {
 
   /// 全部有字串 `domain` 的 DomainBundle 節點 ID，依輸入順序。
   Iterable<String> get bundleIds => _byBundleId.keys;
+
+  /// `domain` 無效（非字串、null、缺鍵、空字串）的 DomainBundle 節點 ID，依輸入順序（FR-13 Z3）。
+  Iterable<String> get invalidDomainBundleIds => _invalidByBundleId.keys;
+
+  /// 列首顯示用的 domain 文字：有效為原值；無效時非字串為轉字串值、其餘為空字串；
+  /// 非 DomainBundle 回傳 null。
+  String? domainTextOf(String bundleId) =>
+      _byBundleId[bundleId] ?? _invalidByBundleId[bundleId];
 }
