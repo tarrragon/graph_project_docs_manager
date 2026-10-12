@@ -28,7 +28,7 @@ import 'package:graph_project_docs_manager/screens/gap_report/scan_notification_
         withdrawLogPrefix,
         withdrawLogSink;
 import 'package:graph_project_docs_manager/services/scan_notifier.dart';
-import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/services/scan_notifier_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 

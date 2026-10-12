@@ -34,6 +34,7 @@ import 'package:graph_project_docs_manager/screens/project_switcher/project_swit
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/helpers.dart';
 import '../../helpers/stub_workspace_repository.dart';
 
@@ -47,6 +48,7 @@ List<Override> _readyGateOverrides() => [
     const StubFrameworkSignalProbe(version: '0.0.1', schemaJson: true),
   ),
   builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+  fakeScanRoundOverride(),
 ];
 
 void main() {
@@ -278,7 +280,9 @@ void main() {
       final l10n = AppLocalizations.of(
         tester.element(find.byType(DomainViewScreen)),
       );
-      final uc = DomainViewFixtures.ucColumns.firstWhere((u) => u.id == 'UC-02');
+      final uc = DomainViewFixtures.ucColumns.firstWhere(
+        (u) => u.id == 'UC-02',
+      );
       expect(
         find.text(l10n.swimlanePanelTitle(uc.id, uc.title)),
         findsOneWidget,
@@ -392,7 +396,9 @@ void main() {
       final l10n = AppLocalizations.of(
         tester.element(find.byType(DomainViewScreen)),
       );
-      final uc = DomainViewFixtures.ucColumns.firstWhere((u) => u.id == 'UC-06');
+      final uc = DomainViewFixtures.ucColumns.firstWhere(
+        (u) => u.id == 'UC-06',
+      );
       expect(
         find.text(l10n.swimlanePanelTitle(uc.id, uc.title)),
         findsOneWidget,
@@ -525,6 +531,8 @@ void main() {
           domainViewStateProvider.overrideWith(
             (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
           ),
+          // 降級進入經共用輪次重掃（0.5.0-W1-114.14）；輪次讀降級旗標。
+          fakeScanRoundOverride(),
         ],
       );
 
@@ -534,6 +542,7 @@ void main() {
       );
 
       await tester.tap(find.byKey(const Key('action-domain-degraded-view')));
+      await tester.pump();
       await tester.pump();
 
       final state = container.read(domainViewStateProvider);
@@ -801,6 +810,7 @@ void main() {
           frameworkSignalProbeProvider.overrideWithValue(
             const StubFrameworkSignalProbe(version: '0.0.3', schemaJson: false),
           ),
+          fakeScanRoundOverride(),
         ],
       );
 

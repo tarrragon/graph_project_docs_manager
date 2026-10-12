@@ -15,6 +15,8 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 
+import '../helpers/gap_round_fakes.dart';
+
 /// App 內建版本（`assets/schema/builtin_schema_version.json`，同
 /// `0.2.0-W1-032` manifest 量測當下值），測試以固定值覆寫
 /// [builtinSchemaVersionProvider] 避免依賴 asset bundle 讀取。
@@ -55,8 +57,7 @@ class _FixtureProbe implements FrameworkSignalProbePort {
   Future<String?> readVersion(String workspacePath) async => row.version;
 
   @override
-  Future<bool> schemaJsonExists(String workspacePath) async =>
-      row.jsonExists;
+  Future<bool> schemaJsonExists(String workspacePath) async => row.jsonExists;
 
   @override
   Future<String?> readSchemaJsonVersion(String workspacePath) async =>
@@ -208,6 +209,8 @@ Future<void> _runRow(_ManifestRow row) async {
       builtinSchemaVersionProvider.overrideWith(
         (ref) async => _kBuiltinVersion,
       ),
+      // gate 通過後經共用輪次載入（0.5.0-W1-114.14）。
+      fakeScanRoundOverride(),
     ],
   );
   addTearDown(container.dispose);

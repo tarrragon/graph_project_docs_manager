@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
+
+import '../../../helpers/gap_round_fakes.dart';
 
 /// 測試用 [FrameworkSignalProbePort]：三項訊號由建構子固定值直接回傳，
 /// 不接觸真實檔案系統。
@@ -31,6 +34,10 @@ ProviderContainer _buildContainer(FrameworkSignalProbePort probe) {
     overrides: [
       frameworkSignalProbeProvider.overrideWithValue(probe),
       builtinSchemaVersionProvider.overrideWith((ref) async => '2.40.3'),
+      // gate 通過後經共用輪次載入（0.5.0-W1-114.14）。
+      scanRoundProvider.overrideWith(
+        () => FakeScanRound(produce: () => fakeRound()),
+      ),
     ],
   );
   addTearDown(container.dispose);
@@ -67,11 +74,7 @@ void main() {
 
     test('JSON 有、版本在範圍內 → DomainReady（非推定）', () async {
       final container = _buildContainer(
-        _FakeProbe(
-          version: '2.60.3',
-          jsonExists: true,
-          jsonVersion: '2.40.3',
-        ),
+        _FakeProbe(version: '2.60.3', jsonExists: true, jsonVersion: '2.40.3'),
       );
 
       await container
@@ -86,11 +89,7 @@ void main() {
 
     test('JSON 有、版本超出範圍 → DomainSchemaIncompatible（非推定）', () async {
       final container = _buildContainer(
-        _FakeProbe(
-          version: '2.10.0',
-          jsonExists: true,
-          jsonVersion: '2.90.0',
-        ),
+        _FakeProbe(version: '2.10.0', jsonExists: true, jsonVersion: '2.90.0'),
       );
 
       await container
@@ -120,22 +119,25 @@ void main() {
       expect(container.read(inferredVersionProvider), '2.40.3');
     });
 
-    test('VERSION 缺、JSON 有、推定版本超出範圍 → DomainSchemaIncompatible 帶推定旗標', () async {
-      final container = _buildContainer(
-        _FakeProbe(jsonExists: true, jsonVersion: '2.90.0'),
-      );
+    test(
+      'VERSION 缺、JSON 有、推定版本超出範圍 → DomainSchemaIncompatible 帶推定旗標',
+      () async {
+        final container = _buildContainer(
+          _FakeProbe(jsonExists: true, jsonVersion: '2.90.0'),
+        );
 
-      await container
-          .read(gateDetectionNotifierProvider.notifier)
-          .detect('/fake');
+        await container
+            .read(gateDetectionNotifierProvider.notifier)
+            .detect('/fake');
 
-      final state = container.read(domainViewStateProvider);
-      expect(state, isA<DomainSchemaIncompatible>());
-      final incompatible = state as DomainSchemaIncompatible;
-      expect(incompatible.projectVersion, '2.90.0');
-      expect(incompatible.isVersionInferred, isTrue);
-      expect(container.read(inferredVersionProvider), isNull);
-    });
+        final state = container.read(domainViewStateProvider);
+        expect(state, isA<DomainSchemaIncompatible>());
+        final incompatible = state as DomainSchemaIncompatible;
+        expect(incompatible.projectVersion, '2.90.0');
+        expect(incompatible.isVersionInferred, isTrue);
+        expect(container.read(inferredVersionProvider), isNull);
+      },
+    );
 
     test('JSON 有但版本無法解析（回傳 null）→ 安全預設拒絕（不相容）', () async {
       final container = _buildContainer(
@@ -155,9 +157,7 @@ void main() {
     test(
       'JSON 版本無法判讀（null）且 VERSION 缺 → projectVersion 為 null（0.3.0-W3-542）',
       () async {
-        final container = _buildContainer(
-          _FakeProbe(jsonExists: true),
-        );
+        final container = _buildContainer(_FakeProbe(jsonExists: true));
 
         await container
             .read(gateDetectionNotifierProvider.notifier)
@@ -169,22 +169,19 @@ void main() {
       },
     );
 
-    test(
-      'JSON 版本無法判讀（null）且 VERSION 存在 → 不以 VERSION 代位，projectVersion 仍為 null'
-      '（0.3.0-W3-542）',
-      () async {
-        final container = _buildContainer(
-          _FakeProbe(version: '2.10.0', jsonExists: true),
-        );
+    test('JSON 版本無法判讀（null）且 VERSION 存在 → 不以 VERSION 代位，projectVersion 仍為 null'
+        '（0.3.0-W3-542）', () async {
+      final container = _buildContainer(
+        _FakeProbe(version: '2.10.0', jsonExists: true),
+      );
 
-        await container
-            .read(gateDetectionNotifierProvider.notifier)
-            .detect('/fake');
+      await container
+          .read(gateDetectionNotifierProvider.notifier)
+          .detect('/fake');
 
-        final state = container.read(domainViewStateProvider);
-        expect(state, isA<DomainSchemaIncompatible>());
-        expect((state as DomainSchemaIncompatible).projectVersion, isNull);
-      },
-    );
+      final state = container.read(domainViewStateProvider);
+      expect(state, isA<DomainSchemaIncompatible>());
+      expect((state as DomainSchemaIncompatible).projectVersion, isNull);
+    });
   });
 }

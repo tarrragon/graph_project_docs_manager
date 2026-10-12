@@ -14,12 +14,6 @@ import 'package:graph_project_docs_manager/workspace/current_workspace_provider.
 
 import '../../workspace/workspace_types.dart';
 
-// 過渡用轉出（0.5.0-W1-114.19）：currentWorkspaceStateProvider 已下移至
-// lib/workspace/current_workspace_provider.dart；既有呼叫端經此轉出取用，
-// 待各呼叫端改 import 新位置後移除。
-export 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart'
-    show currentWorkspaceStateProvider;
-
 /// 浮層展開態；`true` 對應 SPEC-001 §7「展開」或「無最近專案」（依
 /// [recentProjectsProvider] 是否為空清單區分），`false` 對應「收合」。
 final switcherOpenProvider = StateProvider<bool>((ref) => false);

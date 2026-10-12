@@ -7,6 +7,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
@@ -61,6 +63,7 @@ ScanRoundResult fakeRound({
   PathPatternSource pathSource = PathPatternSource.projectJson,
   List<LightNode> nodes = const [fakeUcNode],
   bool isDegraded = false,
+  GraphBuiltEvent? event,
 }) {
   final scan = CorpusScanResult(
     rawNodes: [
@@ -89,13 +92,14 @@ ScanRoundResult fakeRound({
     graph: graphUnavailable != null
         ? GraphBuildUnavailable(graphUnavailable)
         : GraphBuildAvailable(
-            GraphBuiltEvent(
-              nodes: nodes,
-              edges: const [],
-              graphDefects: graphDefects,
-              totalReferences: 0,
-              resolvedCount: 0,
-            ),
+            event ??
+                GraphBuiltEvent(
+                  nodes: nodes,
+                  edges: const [],
+                  graphDefects: graphDefects,
+                  totalReferences: 0,
+                  resolvedCount: 0,
+                ),
           ),
     schemaResolution: SchemaSourceResolution(
       typeTable: const TypeTable(
@@ -107,6 +111,17 @@ ScanRoundResult fakeRound({
     isDegraded: isDegraded,
   );
 }
+
+/// gate 通過後 Domain 視圖載入走共用輪次（0.5.0-W1-114.14）；經 shell／gate
+/// 啟動的測試以此取代真實掃描，輪次為「建圖可用、有節點」。
+///
+/// 輪次的降級與否於產生當下讀 `degradedSchemaProvider`（對齊真實擁有者
+/// `_runRound`），不由呼叫端寫死：降級動作若未設旗標，輪次即非降級。
+Override fakeScanRoundOverride() => scanRoundProvider.overrideWith(() {
+  late final FakeScanRound fake;
+  fake = FakeScanRound(produce: () => fakeRound(isDegraded: fake.degradedFlag));
+  return fake;
+});
 
 /// `scanRoundProvider` 替身。[produce] 回傳 `null` 代表輪次不可用（非
 /// WorkspaceReady 或等待中被丟棄）；[latency] 為每次產生輪次的假時鐘耗時。
@@ -127,6 +142,9 @@ class FakeScanRound extends ScanRoundNotifier {
 
   /// 實際產生輪次（即「掃描函式被呼叫」）的次數。
   int produced = 0;
+
+  /// 目前的降級旗標（`degradedSchemaProvider`）。
+  bool get degradedFlag => ref.read(degradedSchemaProvider);
 
   @override
   ScanRoundState build() {

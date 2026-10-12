@@ -20,7 +20,7 @@ import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
-import '../project_switcher/project_switcher_providers.dart';
+import '../../workspace/current_workspace_provider.dart';
 import 'node_detail_fixtures.dart';
 import 'node_detail_providers.dart';
 import 'node_detail_state.dart';

@@ -17,6 +17,7 @@ import '../../l10n/app_localizations.dart';
 import '../../workspace/workspace_repository.dart';
 import '../../workspace/workspace_types.dart';
 import '../domain_view/gate_detection_notifier.dart';
+import '../../workspace/current_workspace_provider.dart';
 import 'project_switcher_providers.dart';
 
 /// [WorkspaceRepository] 的接縫；測試可覆寫以注入替身，避免碰觸真實檔案
