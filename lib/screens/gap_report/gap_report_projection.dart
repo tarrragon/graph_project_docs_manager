@@ -5,6 +5,8 @@
 /// 依 O1 排序的 [GapReportCategory] 清單；空分節不產生。
 library;
 
+import 'dart:developer' as developer;
+
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
@@ -37,6 +39,8 @@ const gapCategoryOrder = <String>[
 
 /// 節點型別名：來源節點為此型別時指向型別為 [GapItemPointerType.ticket]。
 const _ticketTypeName = 'Ticket';
+
+const _tag = 'GapReportProjection';
 
 /// 需求：[SPEC-001 §5 表一～三、〈定案〉O1] 投影破洞為報告分節與項目。
 ///
@@ -137,20 +141,44 @@ class _Projector {
 
   GapReportItem _flowBlockItem(FlowBlockMalformedGap gap) {
     final ucId = _idByPath[gap.path];
+    const description = GapItemDescription(
+      GapDescriptionKind.flowBlockMalformed,
+    );
+    final id = _uniqueId([gapCategoryIdFlowBlockMalformed, gap.path]);
+    if (ucId == null) {
+      // 004 的 UC 查無節點：不變式違反（UC 仍是節點，SPEC-006 FR-09）。
+      _reportUnresolvedNode('flowBlockMalformed', gap.path);
+      return _unresolvedItem(id, description);
+    }
     return GapReportItem(
-      id: _uniqueId([gapCategoryIdFlowBlockMalformed, gap.path]),
+      id: id,
       filePath: gap.path,
-      // UC 路徑查不到節點時無從選定 UC，退回開啟原始檔。
-      pointerType: ucId == null
-          ? GapItemPointerType.none
-          : GapItemPointerType.flow,
+      pointerType: GapItemPointerType.flow,
       pointerNodeId: ucId,
       flowUcId: ucId,
-      description: const GapItemDescription(
-        GapDescriptionKind.flowBlockMalformed,
-      ),
+      description: description,
     );
   }
+
+  /// 降級落點（SPEC-001 §5〈定案〉）：節點查不到時，debug 下 assert 並寫
+  /// warning log，release 下降為無法指向任何節點且不提供開檔。
+  void _reportUnresolvedNode(String subclass, String nodeId) {
+    developer.log(
+      // i18n-exempt: 開發者診斷 log
+      'projection: node not found subclass=$subclass id=$nodeId',
+      name: _tag,
+      level: 900,
+    );
+    assert(false, 'projection: node not found subclass=$subclass id=$nodeId');
+  }
+
+  GapReportItem _unresolvedItem(String id, GapItemDescription description) =>
+      GapReportItem(
+        id: id,
+        filePath: '',
+        isOpenable: false,
+        description: description,
+      );
 
   GapReportItem _nonDomainPathsItem(NonDomainPathsMalformedGap gap) =>
       GapReportItem(
@@ -265,18 +293,21 @@ class _Projector {
     MultiSourceGraphDefect d,
   ) {
     final origin = _byId[d.from];
+    final id = _uniqueId([kind.name, d.from, d.edgeType]);
+    final description = GapItemDescription(GapDescriptionKind.multiSource, {
+      'edgeType': d.edgeType,
+      'targets': [for (final t in d.targets) t.to],
+    });
+    if (origin == null) {
+      _reportUnresolvedNode(kind.name, d.from);
+      return _unresolvedItem(id, description);
+    }
     return GapReportItem(
-      id: _uniqueId([kind.name, d.from, d.edgeType]),
-      // 起點不在輕節點清單時無路徑可指，退回以 ID 顯示且不指向節點。
-      filePath: origin?.path ?? d.from,
-      pointerType: origin == null
-          ? GapItemPointerType.none
-          : _nodePointerType(d.from),
-      pointerNodeId: origin == null ? null : d.from,
-      description: GapItemDescription(GapDescriptionKind.multiSource, {
-        'edgeType': d.edgeType,
-        'targets': [for (final t in d.targets) t.to],
-      }),
+      id: id,
+      filePath: origin.path,
+      pointerType: _nodePointerType(d.from),
+      pointerNodeId: d.from,
+      description: description,
     );
   }
 
@@ -285,26 +316,36 @@ class _Projector {
     DomainDuplicateDeclarationGraphDefect d,
   ) {
     final bundleId = _minByCodePoint(d.bundleIds);
+    final bundle = _byId[bundleId];
+    final id = _uniqueId([kind.name, d.domain]);
+    final description = GapItemDescription(
+      GapDescriptionKind.domainDeclaredTwice,
+      {'domain': d.domain, 'bundles': d.bundleIds},
+    );
+    if (bundle == null) {
+      _reportUnresolvedNode(kind.name, bundleId);
+      return _unresolvedItem(id, description);
+    }
     return GapReportItem(
-      id: _uniqueId([kind.name, d.domain]),
-      filePath: _byId[bundleId]?.path ?? bundleId,
-      pointerType: _byId[bundleId] == null
-          ? GapItemPointerType.none
-          : GapItemPointerType.otherNode,
-      pointerNodeId: _byId[bundleId] == null ? null : bundleId,
-      description: GapItemDescription(GapDescriptionKind.domainDeclaredTwice, {
-        'domain': d.domain,
-        'bundles': d.bundleIds,
-      }),
+      id: id,
+      filePath: bundle.path,
+      pointerType: GapItemPointerType.otherNode,
+      pointerNodeId: bundleId,
+      description: description,
     );
   }
 
   GapReportItem _flowItem(GraphDefectKind kind, FlowGraphDefect d) {
     final uc = _byId[d.ucId];
     final stepId = '${d.stepId}';
+    final id = _uniqueId([kind.name, d.ucId, d.stepId, d.field, d.rawValue]);
+    if (uc == null) {
+      _reportUnresolvedNode(kind.name, d.ucId);
+      return _unresolvedItem(id, _flowDescription(d, stepId));
+    }
     return GapReportItem(
-      id: _uniqueId([kind.name, d.ucId, d.stepId, d.field, d.rawValue]),
-      filePath: uc?.path ?? d.ucId,
+      id: id,
+      filePath: uc.path,
       pointerType: GapItemPointerType.flow,
       pointerNodeId: d.ucId,
       flowUcId: d.ucId,
@@ -343,7 +384,21 @@ GapDescriptionKind _malformedKind(MalformedReason reason) => switch (reason) {
 
 /// EVT-CORPUS-003 型別化原因碼 → 項目說明識別名（與七個 `gapParse*` key
 /// 一對一；`unreadable` 依子原因分三個）。
-GapDescriptionKind _carrierKind(
+GapDescriptionKind _carrierKind(CarrierParseFailureGap gap) {
+  if (gap.failureReason == CarrierParseFailureReason.unreadable &&
+      gap.unreadableReason == null) {
+    // 一致性 assert 已在 gap 建構時擋下；release 下退回編碼說明並記 warning。
+    developer.log(
+      // i18n-exempt: 開發者診斷 log
+      'projection: unreadable gap without sub-reason path=${gap.path}',
+      name: _tag,
+      level: 900,
+    );
+  }
+  return _carrierKindOf(gap);
+}
+
+GapDescriptionKind _carrierKindOf(
   CarrierParseFailureGap gap,
 ) => switch (gap.failureReason) {
   CarrierParseFailureReason.noFrontmatter =>
@@ -356,6 +411,7 @@ GapDescriptionKind _carrierKind(
   CarrierParseFailureReason.unreadable => switch (gap.unreadableReason) {
     UnreadableReason.permission => GapDescriptionKind.parseUnreadablePermission,
     UnreadableReason.fileDeleted => GapDescriptionKind.parseUnreadableMissing,
-    _ => GapDescriptionKind.parseUnreadableEncoding,
+    UnreadableReason.encoding => GapDescriptionKind.parseUnreadableEncoding,
+    null => GapDescriptionKind.parseUnreadableEncoding,
   },
 };

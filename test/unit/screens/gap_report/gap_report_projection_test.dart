@@ -495,17 +495,46 @@ void main() {
       expect(item.flowStepId, isNull);
     });
 
-    test('T3-2b EVT-CORPUS-004 的 UC 路徑查無節點 → 無從選定 UC，退回開啟檔案', () {
-      final item = _only(
-        projectGapReport(
-          parseFailures: [_flowGap],
-          graphDefects: const [],
-          nodes: const [],
-          nonDomainPathsKey: _key,
-        ),
+    List<GapReportCategory> projectWithoutNodes({
+      List<ParseFailureGap> parse = const [],
+      List<GraphDefectGap> defects = const [],
+    }) => projectGapReport(
+      parseFailures: parse,
+      graphDefects: defects,
+      nodes: const [],
+      nonDomainPathsKey: _key,
+    );
+
+    // 降級落點不變式（SPEC-001 v1.44 §5〈定案〉）：debug 下 assert；release
+    // 下降為無指向且不可開檔的分支無法在 debug 測試套件內走到。
+    test('T3-2b 004 的 UC 路徑查無節點 → AssertionError', () {
+      expect(
+        () => projectWithoutNodes(parse: [_flowGap]),
+        throwsAssertionError,
       );
-      expect(item.pointerType, GapItemPointerType.none);
-      expect(item.flowUcId, isNull);
+    });
+
+    test('T3-6b multiSource 起點查無節點 → AssertionError', () {
+      expect(
+        () => projectWithoutNodes(defects: [_multi]),
+        throwsAssertionError,
+      );
+    });
+
+    test('T3-8b domain 重複宣告的最小 bundle 查無節點 → AssertionError', () {
+      expect(
+        () => projectWithoutNodes(defects: [_domainDup]),
+        throwsAssertionError,
+      );
+    });
+
+    test('T3-7b flow 子類的 UC 查無節點 → AssertionError', () {
+      expect(
+        () => projectWithoutNodes(
+          defects: [_flowDefect(FlowDefectKind.duplicateStepId)],
+        ),
+        throwsAssertionError,
+      );
     });
 
     test('T3-3 EVT-CORPUS-005：清單檔路徑、無指向', () {
@@ -591,9 +620,14 @@ void main() {
       }
     });
 
-    test('事件類項目攜帶事件 id 與既有 UC id', () {
-      expect(_eventItem.eventId, 'EVT-1');
-      expect(_eventItem.eventUcId, 'UC-01');
+    test('事件類項目經投影後原樣保留事件 id 與既有 UC id', () {
+      final projected = _itemsOf(
+        _project(orphan: [_eventItem]),
+        'orphan-event',
+      ).single;
+      expect(projected.eventId, 'EVT-1');
+      expect(projected.eventUcId, 'UC-01');
+      expect(projected.pointerType, GapItemPointerType.event);
     });
   });
 
@@ -645,10 +679,12 @@ void main() {
         ),
       ]);
       final seen = <String>{};
+      final seenZh = <String>{};
       for (final (item, expected) in cases) {
         expect(text(en, item), expected(en));
         expect(text(zh, item), expected(zh));
-        expect(seen.add(text(en, item)!), isTrue, reason: '七則文案互異');
+        expect(seen.add(text(en, item)!), isTrue, reason: '七則 en 文案互異');
+        expect(seenZh.add(text(zh, item)!), isTrue, reason: '七則 zh 文案互異');
       }
     });
 
@@ -873,16 +909,48 @@ void main() {
     });
 
     test('事件 reason 字串值域不變（列舉是型別化欄位，字串仍由單一對照產生）', () {
-      expect(parseOutcomeReasonText(ParseOutcome.noFrontmatter()), isNotEmpty);
-      final reasons = {
+      // EVT-CORPUS-003 `reason` 值域的七個字面值（事件契約，不得變動）。
+      expect(
         parseOutcomeReasonText(ParseOutcome.noFrontmatter()),
+        '無 frontmatter',
+      );
+      expect(
         parseOutcomeReasonText(ParseOutcome.unclosed()),
+        'frontmatter 未閉合',
+      );
+      expect(
         parseOutcomeReasonText(ParseOutcome.emptyOrNotMap()),
+        'frontmatter 為空或非 map',
+      );
+      expect(
         parseOutcomeReasonText(ParseOutcome.yamlSyntaxError()),
-        for (final u in UnreadableReason.values)
-          parseOutcomeReasonText(ParseOutcome.unreadable(u)),
-      };
-      expect(reasons, hasLength(7));
+        'YAML 語法錯誤',
+      );
+      expect(
+        parseOutcomeReasonText(
+          ParseOutcome.unreadable(UnreadableReason.encoding),
+        ),
+        '無法讀取（編碼）',
+      );
+      expect(
+        parseOutcomeReasonText(
+          ParseOutcome.unreadable(UnreadableReason.permission),
+        ),
+        '無法讀取（權限）',
+      );
+      expect(
+        parseOutcomeReasonText(
+          ParseOutcome.unreadable(UnreadableReason.fileDeleted),
+        ),
+        '無法讀取（檔案消失）',
+      );
+    });
+
+    test('carrierFailureReasonOf(Available) 結構上不可達 → StateError', () {
+      expect(
+        () => carrierFailureReasonOf(ParseOutcome.available({'a': 1})),
+        throwsStateError,
+      );
     });
   });
 
@@ -895,14 +963,23 @@ void main() {
     ) as Map<String, dynamic>;
     final spec = File('docs/spec/ui/SPEC-004-component-library.md')
         .readAsStringSync();
-    final rowPattern = RegExp(
-      r'^\| `(gap[A-Za-z]+)` \| ([^|]+) \| ([^|]+) \|',
-      multiLine: true,
-    );
-    final rows = {
-      for (final m in rowPattern.allMatches(spec))
-        m.group(1)!: (m.group(2)!.trim(), m.group(3)!.trim()),
-    };
+    // 表格列解析：以未跳脫的 `|` 分欄，`\|` 還原為文案內的 `|`。
+    const escapedPipe = '\u0001';
+    final rowStart = RegExp(r'^\| `(gap[A-Za-z]+)` \|');
+    final rows = <String, (String, String)>{};
+    final duplicateKeys = <String>[];
+    for (final line in spec.split('\n')) {
+      final m = rowStart.firstMatch(line);
+      if (m == null) continue;
+      final cells = line
+          .replaceAll(r'\|', escapedPipe)
+          .split('|')
+          .map((c) => c.replaceAll(escapedPipe, '|').trim())
+          .toList();
+      final key = m.group(1)!;
+      if (rows.containsKey(key)) duplicateKeys.add(key);
+      rows[key] = (cells[2], cells[3]);
+    }
     // 〈1.80 提案〉表與 gapNonDomainPaths* 四列。
     final keys = rows.keys
         .where(
@@ -928,26 +1005,32 @@ void main() {
         )
         .toList();
 
-    test('SPEC-004 表中的 gap* 新 key 全數存在於 zh／en ARB 且文案逐字相同', () {
-      // 〈1.80 提案〉26 個 + gapNonDomainPaths* 4 個；既有 gapCategoryOrphanEvent
-      // 等列不在此集合（spec 列與 ARB 由其他測試覆蓋）。
-      final checked = keys
-          .where(
-            (k) =>
-                k != 'gapCategoryMissingFrontmatter' &&
-                k != 'gapCategoryOrphanEvent' &&
-                k != 'gapCategoryEventDeclarationMismatch',
-          )
-          .toList();
-      expect(checked, hasLength(30));
-      for (final k in checked) {
+    test('規格表抽到重複 key 即失敗', () {
+      expect(duplicateKeys, isEmpty);
+    });
+
+    test('SPEC-004 表中的 gap* key 全數存在於 zh／en ARB 且文案逐字相同', () {
+      // 〈1.80 提案〉26 個 + gapNonDomainPaths* 4 個 + 既有的
+      // gapCategoryOrphanEvent／gapCategoryEventDeclarationMismatch。
+      expect(keys, hasLength(32));
+      expect(keys, contains('gapCategoryOrphanEvent'));
+      expect(keys, contains('gapCategoryEventDeclarationMismatch'));
+      for (final k in keys) {
         expect(zh.containsKey(k), isTrue, reason: 'zh 缺 $k');
         expect(en.containsKey(k), isTrue, reason: 'en 缺 $k');
         expect(zh[k], rows[k]!.$1, reason: 'zh 文案 $k');
-        if (k != 'gapNonDomainPathsNonStringElements') {
-          expect(en[k], rows[k]!.$2, reason: 'en 文案 $k');
-        }
+        expect(en[k], rows[k]!.$2, reason: 'en 文案 $k');
       }
+    });
+
+    test('表格含跳脫豎線的文案可正確比對（解析器自檢）', () {
+      final cells = r'| `gapX` | a \| b | c |'
+          .replaceAll(r'\|', escapedPipe)
+          .split('|')
+          .map((c) => c.replaceAll(escapedPipe, '|').trim())
+          .toList();
+      expect(cells[2], 'a | b');
+      expect(cells[3], 'c');
     });
 
     test('gapNonDomainPathsNonStringElements en 為單複數 ICU', () {

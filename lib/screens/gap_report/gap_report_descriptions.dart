@@ -105,6 +105,7 @@ String? gapItemDescriptionText(AppLocalizations l10n, GapItemDescription? d) {
 String? gapAmbiguousTypesText(AppLocalizations l10n, List<String> types) =>
     types.isEmpty ? null : l10n.gapParseTypeAmbiguous(_join(l10n, types));
 
+/// 連接符號依語系選擇；只支援 zh／en（新增語系時須在此補分支）。
 String _join(AppLocalizations l10n, List<String> values) => values.join(
   l10n.localeName.startsWith('zh') ? '、' : ', ',
 ); // i18n-exempt: 語系分隔符

@@ -86,7 +86,12 @@ class GapReportItem {
     this.flowStepId,
     this.description,
     this.ambiguousTypes = const [],
+    this.isOpenable = true,
   });
+
+  /// 是否可開啟原始檔；降級項目（節點查不到、無路徑可開）為 `false`，
+  /// 主操作不動作（SPEC-001 §5〈定案〉降級落點）。
+  final bool isOpenable;
 
   /// 穩定識別碼，供 `card-gaps-<itemId>` 錨點使用（SPEC-003 §3.5、§2.9）。
   final String id;

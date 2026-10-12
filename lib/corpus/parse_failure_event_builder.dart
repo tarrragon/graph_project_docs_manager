@@ -92,11 +92,14 @@ String parseOutcomeReasonText(ParseOutcome outcome) => switch (outcome) {
 };
 
 /// 需求：[SPEC-001 §5〈定案〉] 失敗檔分類結果對應的型別化原因碼。
-/// [Available] 結構上不會被呼叫（同 [parseOutcomeReasonText]），回傳
-/// [CarrierParseFailureReason.unreadable] 作 sentinel 以保留窮舉編譯保證。
+/// [Available] 結構上不可達（呼叫端已排除 available 結果），到達即呼叫端
+/// 違約，拋 [StateError]。
 CarrierParseFailureReason carrierFailureReasonOf(ParseOutcome outcome) =>
     switch (outcome) {
-      Available() => CarrierParseFailureReason.unreadable,
+      Available() => throw StateError(
+        // i18n-exempt: 開發者錯誤訊息
+        'carrierFailureReasonOf: Available 結構上不可達',
+      ),
       NoFrontmatter() => CarrierParseFailureReason.noFrontmatter,
       Unclosed() => CarrierParseFailureReason.frontmatterUnclosed,
       EmptyOrNotMap() => CarrierParseFailureReason.frontmatterNotMap,

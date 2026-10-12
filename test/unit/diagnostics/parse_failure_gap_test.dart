@@ -104,6 +104,83 @@ GapDetectionResult _detectFromScan(CorpusScanResult scan) =>
     );
 
 void main() {
+  group('003 型別化原因碼與行號傳遞（_toGap 新增三欄）', () {
+    test('yamlInvalid 事件（line=7）→ failureReason、lineNumber 傳到破洞', () {
+      const event = ParseFailureEvent(
+        path: 'docs/x.md',
+        reason: 'YAML 語法錯誤',
+        failureReason: CarrierParseFailureReason.yamlInvalid,
+        line: 7,
+        candidateTypes: ['Ticket'],
+        schemaAmbiguous: false,
+        salvagedFields: [],
+        lostFields: [],
+        severity: ParseFailureSeverity.edgeAffecting,
+      );
+      final gap =
+          detectParseFailureGaps(
+                events: const [event],
+                undeterminedCount: 0,
+                unavailableReason: null,
+              ).gaps.single
+              as CarrierParseFailureGap;
+      expect(gap.failureReason, CarrierParseFailureReason.yamlInvalid);
+      expect(gap.lineNumber, 7);
+      expect(gap.unreadableReason, isNull);
+    });
+
+    test('unreadable 事件 → failureReason 與 unreadableReason 傳到破洞', () {
+      const event = ParseFailureEvent(
+        path: 'docs/y.md',
+        reason: '無法讀取（權限）',
+        failureReason: CarrierParseFailureReason.unreadable,
+        unreadableReason: UnreadableReason.permission,
+        candidateTypes: ['Ticket'],
+        schemaAmbiguous: false,
+        salvagedFields: [],
+        lostFields: [],
+        severity: ParseFailureSeverity.edgeAffecting,
+      );
+      final gap =
+          detectParseFailureGaps(
+                events: const [event],
+                undeterminedCount: 0,
+                unavailableReason: null,
+              ).gaps.single
+              as CarrierParseFailureGap;
+      expect(gap.failureReason, CarrierParseFailureReason.unreadable);
+      expect(gap.unreadableReason, UnreadableReason.permission);
+      expect(gap.lineNumber, isNull);
+    });
+
+    test('一致性 assert：unreadable 卻沒給子原因 → AssertionError', () {
+      expect(
+        () => CarrierParseFailureGap(
+          path: 'p',
+          reason: 'r',
+          failureReason: CarrierParseFailureReason.unreadable,
+          candidateTypes: const [],
+          schemaAmbiguous: false,
+        ),
+        throwsAssertionError,
+      );
+    });
+
+    test('一致性 assert：noFrontmatter 卻給了子原因 → AssertionError', () {
+      expect(
+        () => CarrierParseFailureGap(
+          path: 'p',
+          reason: 'r',
+          failureReason: CarrierParseFailureReason.noFrontmatter,
+          unreadableReason: UnreadableReason.encoding,
+          candidateTypes: const [],
+          schemaAmbiguous: false,
+        ),
+        throwsAssertionError,
+      );
+    });
+  });
+
   group(
     'detectParseFailureGaps 一事件一破洞（SPEC-006-test-design §3.3 D1，FR-08）',
     () {

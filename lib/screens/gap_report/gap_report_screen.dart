@@ -211,6 +211,7 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
         navigateTo(ref.read, AppDestination.ucFlow, NavIntent.jump);
         return;
       case GapItemPointerType.none:
+        if (!item.isOpenable) return;
         await _openExternally(context, item);
     }
   }
