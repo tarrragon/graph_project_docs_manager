@@ -454,7 +454,126 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get gapCategoryMissingFrontmatter => '缺少 Frontmatter';
+  String get gapCategoryParseFailure => '解析失敗';
+
+  @override
+  String get gapCategoryFlowBlockMalformed => 'flow 區塊解析失敗';
+
+  @override
+  String get gapCategoryNonDomainPathsMalformed => '非 domain 路徑清單格式錯誤';
+
+  @override
+  String get gapCategoryGraphDefect => '圖結構缺陷';
+
+  @override
+  String get gapCategoryGraphDefectFlow => 'flow 結構缺陷';
+
+  @override
+  String get gapParseNoFrontmatter => '缺少 frontmatter';
+
+  @override
+  String get gapParseFrontmatterUnclosed => 'frontmatter 未閉合';
+
+  @override
+  String get gapParseFrontmatterNotMap => 'frontmatter 為空或不是鍵值對映';
+
+  @override
+  String get gapParseYamlInvalid => 'frontmatter 的 YAML 無法解析';
+
+  @override
+  String get gapParseUnreadableEncoding => '無法讀取檔案：編碼錯誤';
+
+  @override
+  String get gapParseUnreadablePermission => '無法讀取檔案：沒有權限';
+
+  @override
+  String get gapParseUnreadableMissing => '無法讀取檔案：檔案已消失';
+
+  @override
+  String gapParseTypeAmbiguous(String types) {
+    return '歸屬型別不明，候選：$types';
+  }
+
+  @override
+  String get gapFlowBlockMalformed => 'flow 區塊解析失敗，請修正後重新掃描';
+
+  @override
+  String gapNonDomainPathsNonStringElements(int count) {
+    return '清單內 $count 個非字串元素';
+  }
+
+  @override
+  String get gapNonDomainPathsYamlInvalid => '清單檔的 YAML 無法解析';
+
+  @override
+  String gapNonDomainPathsKeyMissing(String key) {
+    return '清單檔缺少 $key 鍵';
+  }
+
+  @override
+  String gapNonDomainPathsNotList(String key) {
+    return '清單檔中 $key 的值不是清單';
+  }
+
+  @override
+  String gapDanglingRefTargetMissing(String field, String value) {
+    return '$field 指向的 $value 不存在';
+  }
+
+  @override
+  String gapDanglingRefTargetDuplicated(String field, String value) {
+    return '$field 指向的 $value 對應多個節點';
+  }
+
+  @override
+  String gapMalformedRefInvalidShape(String field, String value) {
+    return '$field 的值 $value 格式不正確';
+  }
+
+  @override
+  String gapMalformedRefPatternMismatch(String field, String value) {
+    return '$field 的值 $value 不符合 ID 格式';
+  }
+
+  @override
+  String gapMalformedRefSelfReference(String field) {
+    return '$field 指向自己';
+  }
+
+  @override
+  String gapDuplicateId(String id, int count, String paths) {
+    return 'ID $id 出現在 $count 個檔案：$paths';
+  }
+
+  @override
+  String gapMultiSource(String edgeType, String targets) {
+    return '$edgeType 只能指向一個終點，目前指向 $targets';
+  }
+
+  @override
+  String gapFlowRefUnresolved(String stepId, String field, String value) {
+    return '步驟 $stepId 的 $field 無法解析：$value';
+  }
+
+  @override
+  String gapFlowStepIdDuplicated(String stepId) {
+    return '步驟 ID $stepId 在此 UC 內重複';
+  }
+
+  @override
+  String gapTraversesUndeclared(String stepId, String value) {
+    return '步驟 $stepId 的 traverses 含未宣告的 domain：$value';
+  }
+
+  @override
+  String gapTraversesMissing(String stepId) {
+    return '步驟 $stepId 缺少 traverses 欄位';
+  }
+
+  @override
+  String gapDomainDeclaredTwice(String domain, String bundles) {
+    return 'domain $domain 被多個 DomainBundle 宣告：$bundles';
+  }
 
   @override
   String get gapCategoryOrphanEvent => '孤立事件';
