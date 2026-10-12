@@ -531,8 +531,8 @@ void main() {
           domainViewStateProvider.overrideWith(
             (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
           ),
-          // 降級進入經共用輪次重掃（0.5.0-W1-114.14）。
-          fakeScanRoundOverride(isDegraded: true),
+          // 降級進入經共用輪次重掃（0.5.0-W1-114.14）；輪次讀降級旗標。
+          fakeScanRoundOverride(),
         ],
       );
 
@@ -810,7 +810,7 @@ void main() {
           frameworkSignalProbeProvider.overrideWithValue(
             const StubFrameworkSignalProbe(version: '0.0.3', schemaJson: false),
           ),
-          fakeScanRoundOverride(isDegraded: true),
+          fakeScanRoundOverride(),
         ],
       );
 
