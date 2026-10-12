@@ -280,7 +280,17 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
             return TableViewCell(child: _buildArrowCell(vicinity.column));
           }
           if (vicinity.row > laneCount) {
-            return TableViewCell(child: _buildEdgeCell(vicinity.column));
+            if (vicinity.column == 0) {
+              return const TableViewCell(child: SizedBox.shrink());
+            }
+            // 整個邊列合併為單一 cell（欄 1..末欄）：TableView 對合併 cell
+            // 只要任一部分在 viewport 內即建構並整塊佈局，邊段不依附起始格，
+            // 起點欄捲出後仍隨畫布 1:1 位移繪製（SPEC-004 4.38）。
+            return TableViewCell(
+              columnMergeStart: 1,
+              columnMergeSpan: stepColumnCount,
+              child: _buildEdgeRow(),
+            );
           }
           return TableViewCell(
             child: _buildLaneCell(
@@ -355,23 +365,13 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     );
   }
 
-  /// 邊列：每條邊畫在其較小欄號的格，向右溢出至涵蓋的步驟欄數。
-  Widget _buildEdgeCell(int column) {
-    if (column == 0) {
-      return const SizedBox.shrink();
-    }
-    final stepColumn = column - 1;
-    final cellEdges = [
-      for (final edge in widget.edges)
-        if (math.min(edge.fromColumn, edge.toColumn) == stepColumn) edge,
-    ];
-    if (cellEdges.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  /// 邊列：整列一個合併 cell，每條邊依起訖欄號定位，寬度只涵蓋自身欄段
+  /// （非全寬），邊數多時不放大每條邊的繪製面積。
+  Widget _buildEdgeRow() {
     return ExcludeSemantics(
       child: Stack(
         clipBehavior: Clip.none,
-        children: [for (final edge in cellEdges) _buildEdgeShape(edge)],
+        children: [for (final edge in widget.edges) _buildEdgeShape(edge)],
       ),
     );
   }
@@ -379,7 +379,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
   Widget _buildEdgeShape(SwimlaneEdge edge) {
     final span = (edge.toColumn - edge.fromColumn).abs() + 1;
     return Positioned(
-      left: 0,
+      left: _stepColumnWidth.w * math.min(edge.fromColumn, edge.toColumn),
       top: 0,
       bottom: 0,
       width: _stepColumnWidth.w * span,

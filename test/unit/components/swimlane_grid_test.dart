@@ -485,44 +485,60 @@ void main() {
       expect(rect.width, closeTo(2 * (u2 - u1), 0.5));
     });
 
-    // 實測確認：起始格被回收後跨欄邊整段消失；設計是否調整待 PM 裁決，
-    // 裁決前以 skip 保留重現（取消 skip 即紅）。
-    testWidgets(
-      'F2：起始格捲出視窗後跨欄邊的存續',
-      skip: true,
-      (tester) async {
-        await pumpHarness(
-          tester,
-          child: SizedBox(
-            width: 300,
-            height: 300,
-            child: SwimlaneGrid(
-              lanes: mixedLanes(),
-              edges: [
-                edgeOf(0, 1, SwimlaneEdgeShape.straight),
-                edgeOf(7, 8, SwimlaneEdgeShape.straight),
-              ],
-              scrollKey: scrollKey,
-              dragKey: dragKey,
-            ),
+    // SPEC-004 v1.87 4.38：起點欄完全捲出、終點欄仍在畫面內時邊段仍繪製；
+    // 捲動前同一條邊可見作為對照。
+    testWidgets('F2：起始格捲出視窗後跨欄邊的存續', (tester) async {
+      const edgeKey = Key('swimlane-edge-straight-0-12');
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 700,
+          height: 300,
+          child: SwimlaneGrid(
+            lanes: [
+              SwimlaneLane(
+                name: 'dom',
+                nodes: [
+                  (nodeOf('n0'), 0),
+                  (nodeOf('n12'), 12),
+                  (nodeOf('n15'), 15),
+                ],
+              ),
+            ],
+            edges: [edgeOf(0, 12, SwimlaneEdgeShape.straight)],
+            scrollKey: scrollKey,
+            dragKey: dragKey,
           ),
-        );
-        final hState = tester
-            .state<TwoDimensionalScrollableState>(
-              find.byType(TwoDimensionalScrollable),
-            )
-            .horizontalScrollable;
-        hState.position.jumpTo(hState.position.maxScrollExtent);
-        await tester.pump();
-        expect(find.text('u1'), findsNothing, reason: '前提：起始欄已捲出');
-        expect(find.text('u2'), findsNothing, reason: '前提：訖欄也已捲出');
-        expect(
-          find.byKey(const Key('swimlane-edge-straight-0-1')),
-          findsOneWidget,
-          reason: '起始格已被回收時跨欄邊整段消失',
-        );
-      },
-    );
+        ),
+      );
+      final viewport = tester.getRect(find.byKey(scrollKey));
+      expect(find.byKey(edgeKey), findsOneWidget, reason: '對照：捲動前可見');
+      final before = tester.getRect(find.byKey(edgeKey));
+      expect(before.overlaps(viewport), isTrue, reason: '對照：捲動前落在視窗內');
+
+      final hState = tester
+          .state<TwoDimensionalScrollableState>(
+            find.byType(TwoDimensionalScrollable),
+          )
+          .horizontalScrollable;
+      final delta = 10 * 96.w;
+      hState.position.jumpTo(delta);
+      await tester.pump();
+
+      // 起點欄完全捲出（超出快取範圍，格已回收）；終點欄仍在視窗內。
+      expect(find.text('n0'), findsNothing, reason: '前提：起點欄已完全捲出');
+      expect(find.text('n12'), findsOneWidget, reason: '前提：終點欄仍在畫面內');
+      expect(
+        viewport.contains(tester.getCenter(find.text('n12'))),
+        isTrue,
+        reason: '前提：終點欄落在視窗內',
+      );
+      expect(find.byKey(edgeKey), findsOneWidget, reason: '邊段仍須繪製');
+      final after = tester.getRect(find.byKey(edgeKey));
+      expect(after.overlaps(viewport), isTrue, reason: '邊段落在視窗內');
+      expect(after.left, closeTo(before.left - delta, 0.5), reason: '1:1 位移');
+      expect(after.right, closeTo(before.right - delta, 0.5));
+    });
 
     testWidgets('F3：空 edges 不增邊列，有 edges 恰多一個邊列高', (tester) async {
       double extentOf(WidgetTester t) => t
