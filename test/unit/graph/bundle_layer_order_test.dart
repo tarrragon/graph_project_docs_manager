@@ -4,13 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/bundle_layer_order.dart';
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/domain_uc_relation.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:intl/intl.dart';
 
 import '../../helpers/spec001/corpus_snapshot.dart';
 import '../../helpers/spec007/bundle_graph_fixture.dart';
 import '../../helpers/spec007/known_distribution_fixture.dart';
+import '../../helpers/spec007/log_recorder.dart';
+import '../../helpers/spec007/raw_node_builder.dart';
 
 List<BundleLayerEntry> _order(List<RawNode> nodes) {
   final result = BundleLayerQuery(buildResult: buildResultOf(nodes))
@@ -279,6 +283,172 @@ void main() {
     });
   });
 
+  group('0.5.0-W1-139 裁決落地', () {
+    test('T3 Y1：depends_on_bundles 指向自己者推不出層、接在最後；E1 去掉自我依賴為 L0', () {
+      final withSelf = _order([
+        bundleNode('s', dependsOn: ['s']),
+        bundleNode('z'),
+      ]);
+      expect(_asLayoutRecords(withSelf), [
+        (domain: 'z', layer: 0),
+        (domain: 's', layer: null),
+      ]);
+      final withoutSelf = _order([bundleNode('s'), bundleNode('z')]);
+      expect(_asLayoutRecords(withoutSelf), [
+        (domain: 's', layer: 0),
+        (domain: 'z', layer: 0),
+      ]);
+      // 自我依賴與其他依賴並存：依宣告判定，仍推不出層，且依賴它者同樣推不出層。
+      final mixed = _layerByDomain(
+        _order([
+          bundleNode('a'),
+          bundleNode('s', dependsOn: ['a', 's']),
+          bundleNode('d', dependsOn: ['s']),
+        ]),
+      );
+      expect(mixed, {'a': 0, 's': null, 'd': null});
+    });
+
+    test('T4 Z3：四種無效 domain 皆出現、層號照算，同層排在有效者之後並依 bundle ID', () {
+      final entries = _order([
+        bundleNode('z', domain: 'zz'),
+        _rawBundle('a', {domainBundleDomainField: 7}),
+        _rawBundle('b', {domainBundleDomainField: null}),
+        _rawBundle('c', const {}),
+        _rawBundle('d', {domainBundleDomainField: ''}),
+      ]);
+      // 依列首文字排序會得 b、c、d、a（'' 先於 '7'）；依 bundle ID 則 a 在前。
+      expect(_ids(entries), [
+        bundleIdOf('z'),
+        bundleIdOf('a'),
+        bundleIdOf('b'),
+        bundleIdOf('c'),
+        bundleIdOf('d'),
+      ]);
+      // 列首：非字串轉字串，null、缺鍵、空字串為空字串；層號皆照依賴計算（無依賴即 L0）。
+      expect(_asLayoutRecords(entries), [
+        (domain: 'zz', layer: 0),
+        (domain: '7', layer: 0),
+        (domain: '', layer: 0),
+        (domain: '', layer: 0),
+        (domain: '', layer: 0),
+      ]);
+    });
+
+    test('T4 Z3 E1：L0 domain 有效 vs 無效，下游層號相同、排序位置不同', () {
+      List<RawNode> nodes(Map<String, dynamic> baseExtra) => [
+        _rawBundle('base', baseExtra),
+        bundleNode('m'),
+        bundleNode('x', dependsOn: ['base']),
+      ];
+      final valid = _order(nodes({domainBundleDomainField: 'a'}));
+      final invalid = _order(nodes({domainBundleDomainField: null}));
+      Map<String, int?> layers(List<BundleLayerEntry> e) => {
+        for (final x in e) x.bundleId: x.layer,
+      };
+      expect(layers(invalid), layers(valid));
+      expect(layers(invalid), {
+        bundleIdOf('base'): 0,
+        bundleIdOf('m'): 0,
+        bundleIdOf('x'): 1,
+      });
+      expect(_ids(valid), [
+        bundleIdOf('base'),
+        bundleIdOf('m'),
+        bundleIdOf('x'),
+      ]);
+      expect(_ids(invalid), [
+        bundleIdOf('m'),
+        bundleIdOf('base'),
+        bundleIdOf('x'),
+      ]);
+    });
+
+    test('T4 Z3：推不出層者之間，domain 無效者排在有效者之後並依 bundle ID', () {
+      final entries = _order([
+        bundleNode('z'),
+        bundleNode('x', dependsOn: ['y']),
+        _rawBundle('y', {
+          domainBundleDomainField: 7,
+          'depends_on_bundles': [bundleIdOf('x')],
+        }),
+      ]);
+      // 依列首文字排序會把 '7' 排在 'x' 之前。
+      expect(_asLayoutRecords(entries), [
+        (domain: 'z', layer: 0),
+        (domain: 'x', layer: null),
+        (domain: '7', layer: null),
+      ]);
+    });
+
+    test('T5 依賴指向存在但不是 DomainBundle 的節點：推不出層', () {
+      final entries = _order([
+        buildRawNode(id: 'PROP-900', typeName: 'PROP'),
+        bundleNode('x'),
+        buildRawNode(
+          id: bundleIdOf('c'),
+          typeName: domainBundleTypeName,
+          extra: {
+            domainBundleDomainField: 'c',
+            'depends_on_bundles': ['PROP-900'],
+          },
+        ),
+      ]);
+      expect(_asLayoutRecords(entries), [
+        (domain: 'x', layer: 0),
+        (domain: 'c', layer: null),
+      ]);
+    });
+
+    test('T6 同 domain 同層：依 bundle ID code point 序；交換宣告順序結果不變', () {
+      List<String> ids(List<RawNode> n) => [
+        for (final e in _order(n)) e.bundleId,
+      ];
+      final forward = ids([
+        bundleNode('p', domain: 'dup'),
+        bundleNode('q', domain: 'dup'),
+      ]);
+      final reversed = ids([
+        bundleNode('q', domain: 'dup'),
+        bundleNode('p', domain: 'dup'),
+      ]);
+      expect(forward, [bundleIdOf('p'), bundleIdOf('q')]);
+      expect(reversed, forward);
+    });
+
+    test('T7 圖不可用日誌：同一 buildResult 只記一次；null 以實例為單位', () {
+      final recorder = LogRecorder();
+      final shared = unavailableBuildResult();
+      final a = BundleLayerQuery(buildResult: shared, logSink: recorder.sink);
+      final b = BundleLayerQuery(buildResult: shared, logSink: recorder.sink);
+      for (var i = 0; i < 3; i++) {
+        a.orderedBundles();
+        b.orderedBundles();
+      }
+      final logs = recorder.ofEvent(GraphLogEvent.bundleOrderUnavailable);
+      expect(logs, hasLength(1));
+      expect(recorder.entries, hasLength(1));
+      expect(logs.single.payload.keys, [GraphLogKeys.reason]);
+      final n1 = BundleLayerQuery(buildResult: null, logSink: recorder.sink);
+      final n2 = BundleLayerQuery(buildResult: null, logSink: recorder.sink);
+      for (var i = 0; i < 3; i++) {
+        n1.orderedBundles();
+        n2.orderedBundles();
+      }
+      expect(
+        recorder.ofEvent(GraphLogEvent.bundleOrderUnavailable),
+        hasLength(3),
+      );
+      // 正向對照：可用圖不記日誌。
+      final before = recorder.entries.length;
+      BundleLayerQuery(
+        buildResult: buildResultOf([bundleNode('a')]),
+        logSink: recorder.sink,
+      ).orderedBundles();
+      expect(recorder.entries, hasLength(before));
+    });
+  });
+
   group('FR-12 共用排序', () {
     test('G13-13 E1：FR-12 路徑依 FR-13 層序（zeta L2 先於 alpha L3），非純 code point', () {
       final result = DomainUcRelationQuery(
@@ -307,6 +477,17 @@ void main() {
     });
   });
 }
+
+/// 以完整 frontmatter 建 DomainBundle（可缺 `domain` 鍵或給無效值）。
+RawNode _rawBundle(String key, Map<String, dynamic> extra) => buildRawNode(
+  id: bundleIdOf(key),
+  typeName: domainBundleTypeName,
+  extra: extra,
+);
+
+List<String> _ids(List<BundleLayerEntry> entries) => [
+  for (final e in entries) e.bundleId,
+];
 
 List<RawNode> _g135Nodes() => [
   bundleNode('n1', domain: 'b'),

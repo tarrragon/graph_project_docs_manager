@@ -7,6 +7,7 @@ library;
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/bundle_layer_order.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 
 /// 格 (DomainBundle, UC) 的關係種類。
 enum DomainUcRelationKind { direct, indirect, unrelated }
@@ -42,12 +43,21 @@ class DomainUcRelationGraphUnavailable extends DomainUcRelationResult {
 /// 需求：[SPEC-007 FR-12] Graph 公開面 `relationOf(bundleId, ucId)`。
 ///
 /// DomainBundle 或 UC 的 ID 不在圖上時，回傳無關且路徑為空（NC-5，比照 FR-08）。
+///
+/// 圖不可用時，與 FR-08 同形：同一 buildResult 只記一次
+/// [GraphLogEvent.domainUcRelationUnavailable]；buildResult 為 null 時以實例為單位。
 class DomainUcRelationQuery {
-  DomainUcRelationQuery({required this.buildResult});
+  DomainUcRelationQuery({required this.buildResult, GraphLogSink? logSink})
+    : _log = logSink ?? defaultGraphLogSink;
 
   final GraphBuildResult? buildResult;
+  final GraphLogSink _log;
+  final _once = UnavailableLogOnce(_loggedBuilds);
+  static final Expando<bool> _loggedBuilds = Expando<bool>(
+    'domainUcRelationLogged',
+  );
 
-  /// FR-13 排序、依賴索引只算一次；各目標的反向距離在首次查詢時快取。
+  /// FR-13 排序、依賴索引只算一次；反向距離因受該 UC 直接 domain 集合影響，每次查詢重算。
   late final _BundleIndex? _index = switch (buildResult) {
     GraphBuildAvailable(:final event) => _BundleIndex(event),
     _ => null,
@@ -56,16 +66,33 @@ class DomainUcRelationQuery {
   DomainUcRelationResult relationOf(String bundleId, String ucId) =>
       switch (buildResult) {
         GraphBuildAvailable() => _relation(_index!, bundleId, ucId),
-        GraphBuildUnavailable(:final reason) =>
+        GraphBuildUnavailable(:final reason) => _unavailable(
           DomainUcRelationGraphUnavailable(
             AdjacencyUnavailableCause.buildUnavailable,
             reason.name,
           ),
-        null => DomainUcRelationGraphUnavailable(
-          AdjacencyUnavailableCause.buildNotCompleted,
-          AdjacencyUnavailableCause.buildNotCompleted.name,
+        ),
+        null => _unavailable(
+          DomainUcRelationGraphUnavailable(
+            AdjacencyUnavailableCause.buildNotCompleted,
+            AdjacencyUnavailableCause.buildNotCompleted.name,
+          ),
         ),
       };
+
+  DomainUcRelationGraphUnavailable _unavailable(
+    DomainUcRelationGraphUnavailable r,
+  ) {
+    if (_once.mark(buildResult)) {
+      _log(
+        'domain uc relation query unavailable: ${r.reasonCode}', // i18n-exempt: debug log
+        event: GraphLogEvent.domainUcRelationUnavailable,
+        payload: {GraphLogKeys.reason: r.reasonCode},
+        level: 900,
+      );
+    }
+    return r;
+  }
 }
 
 /// 一次建好的 FR-13 排序與依賴鄰接表。
@@ -87,10 +114,6 @@ class _BundleIndex {
   final byId = <String, BundleLayerEntry>{};
   final out = <String, List<String>>{};
   final incoming = <String, List<String>>{};
-  final _distances = <String, Map<String, int>>{};
-
-  Map<String, int> distancesTo(String target) =>
-      _distances.putIfAbsent(target, () => _distancesTo(target, incoming));
 }
 
 DomainUcRelationAvailable _relation(
@@ -99,7 +122,7 @@ DomainUcRelationAvailable _relation(
   String ucId,
 ) {
   final event = index.event;
-  final known = event.domainResolver.domainOf(bundleId) != null;
+  final known = index.byId.containsKey(bundleId);
   final direct = _directBundles(event, ucId);
   if (!known || direct.isEmpty) {
     return DomainUcRelationAvailable(DomainUcRelationKind.unrelated);
@@ -122,23 +145,18 @@ Set<String> _directBundles(GraphBuiltEvent event, String ucId) => {
     for (final r in step.traversesResolution.resolved) r.bundleId,
 };
 
-/// 需求：[SPEC-007 FR-12] 每個來源取最短路徑、同長全列、排除經直接 domain 的路徑，
-/// 依長度、來源在 FR-13 的先後、中間節點在 FR-13 的先後排序。
+/// 需求：[SPEC-007 FR-12] 每個來源在「中間節點不為直接 domain」的路徑中取最短（E-B：
+/// 排除在取最短之前套用）、同長全列，依長度、來源在 FR-13 的先後、中間節點在 FR-13 的先後排序。
 List<List<DomainBundleRef>> _dependencyPaths(
   _BundleIndex index,
   String target,
   Set<String> direct,
 ) {
-  final distance = index.distancesTo(target);
+  final distance = _distancesTo(target, index.incoming, direct);
   final paths = <List<String>>[
     for (final source in direct)
       if (distance.containsKey(source))
-        ..._shortestPaths(
-          source,
-          target,
-          index.out,
-          distance,
-        ).where((p) => !p.sublist(1, p.length - 1).any(direct.contains)),
+        ..._shortestPaths(source, target, index.out, distance, direct),
   ]..sort((a, b) => _comparePaths(a, b, index.rank));
   return [
     for (final p in paths) [for (final id in p) index.byId[id]!],
@@ -146,13 +164,17 @@ List<List<DomainBundleRef>> _dependencyPaths(
 }
 
 /// 自 [target] 沿依賴邊反向廣度優先，得各節點到 [target] 的最短跳數。
+///
+/// [direct] 內的節點只能作為路徑起點：取得距離但不再往上游展開（不得當中間節點）。
 Map<String, int> _distancesTo(
   String target,
   Map<String, List<String>> incoming,
+  Set<String> direct,
 ) {
   final distance = {target: 0};
   final queue = [target];
   for (var i = 0; i < queue.length; i++) {
+    if (queue[i] != target && direct.contains(queue[i])) continue;
     for (final prev in incoming[queue[i]] ?? const <String>[]) {
       if (!distance.containsKey(prev)) {
         distance[prev] = distance[queue[i]]! + 1;
@@ -163,12 +185,13 @@ Map<String, int> _distancesTo(
   return distance;
 }
 
-/// [source] 到 [target] 的全部最短路徑（每步距離恰減 1）。
+/// [source] 到 [target] 的全部最短路徑（每步距離恰減 1，中間節點不得在 [direct] 內）。
 List<List<String>> _shortestPaths(
   String source,
   String target,
   Map<String, List<String>> out,
   Map<String, int> distance,
+  Set<String> direct,
 ) {
   if (source == target) {
     return [
@@ -177,8 +200,9 @@ List<List<String>> _shortestPaths(
   }
   return [
     for (final next in out[source] ?? const <String>[])
-      if (distance[next] == distance[source]! - 1)
-        for (final rest in _shortestPaths(next, target, out, distance))
+      if (distance[next] == distance[source]! - 1 &&
+          (next == target || !direct.contains(next)))
+        for (final rest in _shortestPaths(next, target, out, distance, direct))
           [source, ...rest],
   ];
 }

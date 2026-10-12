@@ -585,6 +585,35 @@ void main() {
       ]);
     });
 
+    test('G10-20 守衛：branch_from 為清單、return_to 為 map 各報一筆未解析（原值原樣），步驟仍在子圖', () {
+      final built = _build([
+        _uc01([
+          _s('a'),
+          _s('b1', {
+            'branch_from': ['a'],
+          }),
+          _s('b2', {
+            'branch_from': 'a',
+            'return_to': {'k': 'a'},
+          }),
+        ]),
+      ]);
+      final ds = _flowDefects(built.event);
+      expect(ds, hasLength(2));
+      expect(ds[0].kind, FlowDefectKind.unresolvedReference);
+      expect(ds[0].stepId, 'b1');
+      expect(ds[0].field, FlowFields.branchFrom);
+      expect(ds[0].rawValue, ['a']);
+      expect(ds[1].kind, FlowDefectKind.unresolvedReference);
+      expect(ds[1].stepId, 'b2');
+      expect(ds[1].field, FlowFields.returnTo);
+      expect(ds[1].rawValue, {'k': 'a'});
+      final g = (built.query.flowOf(_uc) as FlowOfAvailable).subgraph;
+      expect(g.steps.map((s) => s.id), ['a', 'b1', 'b2']);
+      // 正向對照：b2 的 branch_from 為純量 a，解析成功。
+      expect(g.targetOf(g.steps[2].branchFrom!)!.id, 'a');
+    });
+
     test('M5 E1 同一 next 值：主線不報缺陷、分支報缺陷', () {
       final main = _build([
         _uc01([
