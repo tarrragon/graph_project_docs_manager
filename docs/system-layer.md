@@ -224,7 +224,7 @@ Corpus 呼叫 Schema 的判型與「路徑對型別」查詢，這是依賴關�
 | 對象 | CLI 可編輯範圍 |
 |------|---------------|
 | 圖譜節點（PROP/SPEC/UC/EVT/DomainBundle） | 僅 `status` |
-| schema 的 16 條邊 | 僅 4 條（`parent_id`／`source_ticket`／`blockedBy`／`relatedTo`，皆在 Ticket 上） |
+| schema 的 16 條邊（票 `0.0.3-W1-002` 實測當時的總數；現行總數以 `GRAPH_EDGE_TYPES` 為準） | 僅 4 條（`parent_id`／`source_ticket`／`blockedBy`／`relatedTo`，皆在 Ticket 上） |
 
 若同時維護 CLI 與直接改檔兩套寫入路徑，兩者必然分歧，而分歧形態正是
 本專案已撞到三次的索引不同步（六個框架缺陷中的三個，見
@@ -375,7 +375,7 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   （以上為拆檔前的描述。2026-10-06 用戶裁決矩陣的列取 `DomainBundle` 節點，`0.5.0-W1-070.3`
   已拆為每個 domain 一份 `docs/spec/{domain}/domain-map.md`，各自是一個節點；列的資料來源
   因此有了載體，消費端的接線屬後續版本）
-- UC → Ticket 在上游 16 條語意邊中無對應邊。追溯視圖（UC-04）第四層的
+- UC → Ticket 在上游 `GRAPH_EDGE_TYPES` 的語意邊中無對應邊。追溯視圖（UC-04）第四層的
   資料來源未定。候選方向：新增邊／由 ticket frontmatter 反向欄位推導／
   不做此層。trigger：規劃 0.1 之後的版本時，於對應 PROP 補記定案，並回頭
   列出依賴本判準的規格位置（來源票 `0.1.1-W3-365`，已收束為本項知識，未執行）
