@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-10-12"
-version: "1.57"
+version: "1.58"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -318,8 +318,8 @@ abstract class ScanNotifier {
 | `scanCompleteNoGapsNotificationBody` | 未偵測到破洞 | No gaps detected |
 | `scanCompleteSnackbarMessage` | 掃描完成，偵測到 {count} 個破洞 | Scan complete: {count} gaps detected |
 | `scanCompleteNoGapsSnackbarMessage` | 掃描完成，未偵測到破洞 | Scan complete: no gaps detected |
-| `scanCompleteUndeterminableNotificationBody` | 無法判定破洞：型別表缺路徑模式 | Gaps could not be determined: schema lacks path patterns |
-| `scanCompleteUndeterminableSnackbarMessage` | 掃描完成，無法判定破洞 | Scan complete: gaps could not be determined |
+| `scanCompleteUndeterminableNotificationBody` | 無法判定破洞，原因請見破洞報告 | Gaps could not be determined. See the gap report for the reason. |
+| `scanCompleteUndeterminableSnackbarMessage` | 掃描結束，無法判定破洞 | Scan finished: gaps could not be determined |
 | `viewGapsAction` | 檢視 | View |
 
 **實作票驗證（實測記錄，`0.3.1-W1-028`）**：以下為實機量測結果，非規格推論。
@@ -2406,6 +2406,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.58 | 2026-10-12 | `0.5.0-W1-114.15`（PM 處置）：§2.2 文案表 `scanCompleteUndeterminableNotificationBody` 改為不帶原因的通用文案（原因有三種，原文只寫路徑模式缺，對另兩種會說錯；原因由畫面承載），`scanCompleteUndeterminableSnackbarMessage`「掃描完成」改「掃描結束」以涵蓋掃描失敗 |
 | 1.57 | 2026-10-12 | `0.5.0-W1-114.20`（用戶裁決 A）：§3.1〈格詳情卡的內容契約〉事件標籤補不同事件之間的排序——依首次出現的步驟序、同一事件兩標籤相鄰，與 §3.2 事件流小表同一規則；同一步驟首次出現的多個事件依 `emits` 再 `consumes` 清單順序（PM 處置） |
 | 1.56 | 2026-10-08 | `0.5.0-W1-106`（用戶裁決 2026-10-08 第 4 項 4b）：§3.5〈`presentation` 本地保留字〉收窄為只適用 `consumers`——`producers` 的值只能是已宣告 domain 名，`producers` 中的 `presentation` 依「其他值」列計一項 `event-declaration-mismatch`；對應判定表 `presentation` 列與「其他值」列同步 |
 | 1.55 | 2026-10-07 | `0.5.0-W1-095.3`（用戶裁決 2026-10-07，`0.5.0-W1-095` WRAP 第二輪 G2＋A′）：§3.5〈事件宣告與 flow 不符判準〉後新增〈`presentation` 本地保留字〉——EVT `consumers`／`producers` 值限已宣告 domain 名或 `presentation`；`presentation` 比對 `traverses == []` 的 FlowStep；其他值（含大小寫不同）視為未對應；不成矩陣列、精確比對。§3.2 事件流小表「本 UC 外」列補 `presentation` 以 i18n 顯示名「畫面」呈現。SPEC-001 v1.27 §2／§5 鏡像同步 |
