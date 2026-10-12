@@ -7,9 +7,9 @@ bundle 邊界；且 spec FR 是否全數映射到某 bundle 缺工具強制（�
   1. spec 對應的 domain map 是否存在
   2. spec 每個 FR 是否出現在 domain map 的 FR 覆蓋（含標為 presentation/data 的非 domain FR）
 
-domain map 定位鏈：--domain-map 明示 -> spec 同目錄 domain-map.md -> 列舉
-docs/spec/*/domain-map.md 取 frontmatter source_specs 含本 SPEC id 者（並聯集
-docs/system-layer.md，覆蓋判定取聯集）-> docs/domain-map.md。
+domain map 定位鏈：--domain-map 明示（唯一來源，不聯集）-> spec 同目錄 domain-map.md
+與 docs/spec/*/domain-map.md 中 frontmatter source_specs 含本 SPEC id 者（同目錄為聯集
+成員之一，並聯集 docs/system-layer.md；逐檔解析後於集合層合併）-> docs/domain-map.md。
 
 另含可選檢核「事件流標定」（`--check-event-flow-labeling`）：spec 的 FR 段落若命中
 事件流訊號詞（清單見 EVENT_FLOW_SIGNAL_WORDS，與 /spec validate Layer 2 維度 5「資源
@@ -147,6 +147,40 @@ def check_domain_coverage(spec_text, domain_map_text, spec_path=None):
     return sorted(spec_frs - extract_fr_ids(domain_map_text))
 
 
+def _merged_attribution(named_texts):
+    """逐檔解析歸屬後於集合層合併，回傳 {spec_id: FR 集合}。
+
+    標題堆疊不跨檔。多檔聯集時，某檔的未歸屬 FR 以該檔 source_specs 為預設歸屬
+    （僅單一值）；多值則維持未歸屬並於 stderr 指出檔名。
+    """
+    merged = {}
+    for name, text in named_texts:
+        attributed, unattributed = extract_fr_attribution(text)
+        if unattributed and len(named_texts) > 1:
+            declared = _declared_source_specs(text)
+            if len(declared) == 1:
+                attributed.setdefault(next(iter(declared)), set()).update(unattributed)
+            else:
+                sys.stderr.write(f"domain 覆蓋檢核：{name} 有未歸屬的 FR 且 source_specs 非單一值，未計入\n")
+        for spec_id, nums in attributed.items():
+            merged.setdefault(spec_id, set()).update(nums)
+    return merged
+
+
+def check_domain_coverage_union(spec_text, named_texts, spec_path=None):
+    """多份 map（(檔名, 內容) 清單）聯集版的 check_domain_coverage，聯集發生在集合層。"""
+    spec_frs = extract_spec_frs(spec_text)
+    spec_id = extract_spec_id(spec_text, spec_path)
+    attributed = _merged_attribution(named_texts)
+    if spec_id is None:
+        sys.stderr.write("WARNING: 取不到 spec 識別（frontmatter id / 檔名 SPEC-NNN），走相容模式（不分 spec 比對）\n")
+    elif not attributed:
+        sys.stderr.write("domain 覆蓋檢核：domain map 無任何 FR 歸屬到 SPEC-NNN，走相容模式（不分 spec 比對）\n")
+    else:
+        return sorted(spec_frs - attributed.get(spec_id, set()))
+    return sorted(spec_frs - extract_fr_ids("\n".join(t for _, t in named_texts)))
+
+
 def extract_event_signaled_frs(spec_text, signal_words=EVENT_FLOW_SIGNAL_WORDS):
     """回傳 spec 中，FR 段落內文命中任一事件流訊號詞的 FR 編號集合（int）。
 
@@ -195,11 +229,19 @@ def check_event_flow_labeling(spec_text, domain_map_text, signal_words=EVENT_FLO
 
     未命中任何訊號詞的 spec 回傳空 list（維度 5 同形的條件式觸發：無事件流訊號時不檢核）。
     """
+    return check_event_flow_labeling_union(spec_text, [domain_map_text], signal_words)
+
+
+def check_event_flow_labeling_union(spec_text, map_texts, signal_words=EVENT_FLOW_SIGNAL_WORDS):
+    """多份 map 版：逐檔取通道章節與到達級別子表，聯集已標定的 FR 後再比對。"""
     signaled = extract_event_signaled_frs(spec_text, signal_words)
     if not signaled:
         return []
-    arrival_table = extract_arrival_level_table(extract_channel_section(domain_map_text))
-    labeled = extract_fr_ids(arrival_table) if arrival_table else set()
+    labeled = set()
+    for text in map_texts:
+        table = extract_arrival_level_table(extract_channel_section(text))
+        if table:
+            labeled |= extract_fr_ids(table)
     return sorted(signaled - labeled)
 
 
@@ -234,20 +276,23 @@ def _maps_listing_spec(spec_id):
 def locate_domain_maps(spec_path, explicit, spec_id=None):
     """定位 domain map 清單（可多份，覆蓋判定取聯集）。
 
-    解析鏈：explicit -> spec 同目錄 -> docs/spec/*/domain-map.md 中 source_specs 含本 SPEC
+    解析鏈：explicit -> spec 同目錄（為聯集成員之一，不短路）+ docs/spec/*/domain-map.md 中 source_specs 含本 SPEC
     者（並聯集 docs/system-layer.md）-> docs/domain-map.md。找不到回空 list。
     """
     if explicit:
         p = Path(explicit)
         return [p] if p.exists() else []
     same_dir = spec_path.parent / "domain-map.md"
-    if same_dir.exists():
-        return [same_dir]
     if spec_id is None and Path(spec_path).exists():
         spec_id = extract_spec_id(Path(spec_path).read_text(encoding="utf-8"), spec_path)
-    listed = _maps_listing_spec(spec_id)
-    if listed:
-        return listed + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.exists() else [])
+    found = [same_dir] if same_dir.exists() else []
+    seen = {p.resolve() for p in found}
+    for m in _maps_listing_spec(spec_id):
+        if m.resolve() not in seen:
+            found.append(m)
+            seen.add(m.resolve())
+    if found:
+        return found + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.exists() else [])
     return [LEGACY_DOMAIN_MAP_PATH] if LEGACY_DOMAIN_MAP_PATH.exists() else []
 
 
@@ -274,15 +319,15 @@ def describe_missing_map(explicit):
     )
 
 
-def _read_maps_text(paths):
-    """串接多份 map 內容作聯集比對。"""
-    return "\n".join(p.read_text(encoding="utf-8") for p in paths)
+def _read_maps(paths):
+    """逐檔讀取，回傳 [(檔名, 內容)]；不串接，供集合層聯集。"""
+    return [(str(p), p.read_text(encoding="utf-8")) for p in paths]
 
 
 def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None):
     """列印 FR->bundle 覆蓋檢核結果，回傳 exit code。"""
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
-    uncovered = check_domain_coverage(spec_text, _read_maps_text(domain_map_paths), spec_path)
+    uncovered = check_domain_coverage_union(spec_text, _read_maps(domain_map_paths), spec_path)
     if not uncovered:
         print(f"domain 覆蓋檢核通過：spec 全部 FR 皆在 {domain_map_path} 有 bundle 歸屬")
         return 0
@@ -297,7 +342,8 @@ def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None):
 def _report_event_flow_labeling(spec_text, domain_map_paths):
     """列印事件流標定檢核結果，回傳 exit code。性質為啟發式提醒，非阻擋。"""
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
-    missing = check_event_flow_labeling(spec_text, _read_maps_text(domain_map_paths))
+    missing = check_event_flow_labeling_union(
+        spec_text, [t for _, t in _read_maps(domain_map_paths)])
     if not missing:
         print("事件流標定檢核通過：命中事件流訊號詞的 FR 皆在通道與協調圖節有到達類別與級別標定")
         return 0

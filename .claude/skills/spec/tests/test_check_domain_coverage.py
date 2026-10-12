@@ -342,3 +342,73 @@ def test_single_domain_root_map_unchanged(tmp_path, monkeypatch, capsys):
     found = cdc.locate_domain_maps(Path("docs/spec/SPEC-101-x.md"), None)
     assert [p.as_posix() for p in found] == ["docs/domain-map.md"]
     assert cdc.main([str(spec)]) == 0
+
+
+# --- 多 map 聯集在集合層（0.5.0-W1-086.3）---
+
+def _map(specs, body):
+    return f"---\nsource_specs: [{specs}]\n---\n{body}"
+
+
+def test_union_event_flow_label_only_in_later_file(tmp_path, monkeypatch, capsys):
+    """紅輸入：通道章節標題在每份 map 皆有，標定表只在排最後的系統層。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, "---\nid: SPEC-101\n---\n### FR-01: 掃描通知\n### FR-02: b\n### FR-03: c\n")
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           _map("SPEC-101", "## SPEC-101\n| FR-01~03 | A |\n## 通道與協調圖\n無表\n"))
+    _write(tmp_path / "docs/system-layer.md",
+           "## 通道與協調圖\n### 到達類別與級別實例\n| FR-01 | 級別 |\n")
+    assert cdc.main([str(spec), "--check-event-flow-labeling"]) == 0, capsys.readouterr().out
+
+
+def test_union_heading_stack_resets_at_file_boundary(tmp_path, monkeypatch, capsys):
+    """紅輸入：前一份以 SPEC-202 標題結尾，後一份無標題的 FR 不得繼承它。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           _map("SPEC-101, SPEC-202", "## SPEC-101\n| FR-01 | A |\n## SPEC-202\n| FR-09 | A |\n"))
+    _write(tmp_path / "docs/spec/b/domain-map.md", _map("SPEC-101", "| FR-02~03 | B |\n"))
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_union_untitled_map_falls_back_to_its_source_specs(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", _map("SPEC-101", "| FR-02~03 | A |\n"))
+    _write(tmp_path / "docs/spec/b/domain-map.md", _map("SPEC-101", "## SPEC-101\n| FR-01 | B |\n"))
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_union_untitled_multi_source_specs_stays_unattributed(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", _map("SPEC-101", "## SPEC-101\n| FR-01 | A |\n"))
+    _write(tmp_path / "docs/spec/b/domain-map.md", _map("SPEC-101, SPEC-202", "| FR-02~03 | B |\n"))
+    assert cdc.main([str(spec)]) == 1
+    assert "b/domain-map.md" in capsys.readouterr().err
+
+
+def test_union_spec_inside_domain_dir_includes_other_listed_and_system(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write(tmp_path / "docs/spec/a/SPEC-101-x.md", SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", _map("SPEC-101", "## SPEC-101\n| FR-01 | A |\n"))
+    _write(tmp_path / "docs/spec/b/domain-map.md", _map("SPEC-101", "## SPEC-101\n| FR-02 | B |\n"))
+    _write(tmp_path / "docs/system-layer.md", "## SPEC-101\n| FR-03 | sys |\n")
+    found = cdc.locate_domain_maps(Path("docs/spec/a/SPEC-101-x.md"), None)
+    assert [p.as_posix() for p in found] == [
+        "docs/spec/a/domain-map.md", "docs/spec/b/domain-map.md", "docs/system-layer.md"]
+    assert cdc.main([str(tmp_path / "docs/spec/a/SPEC-101-x.md")]) == 0
+
+
+def test_union_filter_loads_only_listing_maps(tmp_path, monkeypatch):
+    """過濾對照：未列入本 SPEC 的 map 不載入。"""
+    monkeypatch.chdir(tmp_path)
+    _write(tmp_path / "docs/spec/ui/SPEC-101-x.md", SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", _map("SPEC-101", "## SPEC-101\n| FR-01 | A |\n"))
+    _write(tmp_path / "docs/spec/c/domain-map.md", _map("SPEC-999", "## SPEC-999\n| FR-02 | C |\n"))
+    found = cdc.locate_domain_maps(Path("docs/spec/ui/SPEC-101-x.md"), None)
+    assert [p.as_posix() for p in found] == ["docs/spec/a/domain-map.md"]
