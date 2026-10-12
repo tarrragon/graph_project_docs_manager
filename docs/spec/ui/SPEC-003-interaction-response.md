@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-10-08"
-version: "1.56"
+updated: "2026-10-12"
+version: "1.57"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1594,7 +1594,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 關係種類 | 恆在 | 文字等於圖例三值之一（`l10n.legendDirect` / `legendIndirect` / `legendNone`），與該格符號一致 |
 | 說明 | 該格有說明資料時 | 一段文字；無資料時該 slot 不渲染，不留空白列 |
 | 編號步驟 | 該格步驟數 > 0 | 依 flow 順序的編號列；序號從 1 起連續 |
-| 事件標籤 | 該格步驟的 `emits` / `consumes` 聯集非空 | 每個（事件, 方向）一個標籤，前綴 `emits` 或 `consumes`；同一事件在該格步驟中兼有發出與消費時渲染兩個標籤，`emits` 在前 |
+| 事件標籤 | 該格步驟的 `emits` / `consumes` 聯集非空 | 每個（事件, 方向）一個標籤，前綴 `emits` 或 `consumes`；同一事件在該格步驟中兼有發出與消費時渲染兩個標籤，`emits` 在前；不同事件之間依該事件在該格步驟中首次出現（發出或消費）的步驟序排列，同一事件的兩個標籤相鄰，與 §3.2 事件流小表的列序同一規則（2026-10-12 用戶裁決 A，`0.5.0-W1-114.20`）；首次出現於同一步驟的多個事件，依該步驟 `emits` 清單順序、再 `consumes` 清單順序（PM 處置，為「`emits` 在前」的延伸） |
 | 在泳道中檢視 | 恆在 | `action-domain-cell-goto-swimlane` 存在且 `enabled` 為 `true` |
 | 關閉 | 恆在 | `action-domain-cell-clear` 存在 |
 
@@ -2406,6 +2406,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.57 | 2026-10-12 | `0.5.0-W1-114.20`（用戶裁決 A）：§3.1〈格詳情卡的內容契約〉事件標籤補不同事件之間的排序——依首次出現的步驟序、同一事件兩標籤相鄰，與 §3.2 事件流小表同一規則；同一步驟首次出現的多個事件依 `emits` 再 `consumes` 清單順序（PM 處置） |
 | 1.56 | 2026-10-08 | `0.5.0-W1-106`（用戶裁決 2026-10-08 第 4 項 4b）：§3.5〈`presentation` 本地保留字〉收窄為只適用 `consumers`——`producers` 的值只能是已宣告 domain 名，`producers` 中的 `presentation` 依「其他值」列計一項 `event-declaration-mismatch`；對應判定表 `presentation` 列與「其他值」列同步 |
 | 1.55 | 2026-10-07 | `0.5.0-W1-095.3`（用戶裁決 2026-10-07，`0.5.0-W1-095` WRAP 第二輪 G2＋A′）：§3.5〈事件宣告與 flow 不符判準〉後新增〈`presentation` 本地保留字〉——EVT `consumers`／`producers` 值限已宣告 domain 名或 `presentation`；`presentation` 比對 `traverses == []` 的 FlowStep；其他值（含大小寫不同）視為未對應；不成矩陣列、精確比對。§3.2 事件流小表「本 UC 外」列補 `presentation` 以 i18n 顯示名「畫面」呈現。SPEC-001 v1.27 §2／§5 鏡像同步 |
 | 1.54 | 2026-09-30 | `0.3.3-W3-408`（承 `0.3.3-W3-406` 稽核逐列比對與 N10 承載節驗證浮出）：§3.4〈帶目標跳入〉「目標被搜尋詞或篩選隱藏」列寫明 SnackBar key `ticketsFiltersClearedSnackbarMessage`（`AppSnackBar.withAction`，動作 `undoAction`），「按 SnackBar 復原」列標註 `undoAction`——原文只描述行為，與 §2.13 列 14 宣告「§3.4：`withAction`」不一致；§4 列 28（浮層／展開）補 `action-switcher-choose-folder` → 收合 + `state-domain-loading`，對齊 §3.7 導航表「展開」列與 §4 列 29。均依現行實作照實記載，實作不變 |
