@@ -632,6 +632,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Scan complete: no gaps detected';
 
   @override
+  String get scanCompleteUndeterminableNotificationBody =>
+      'Gaps could not be determined. See the gap report for the reason.';
+
+  @override
+  String get scanCompleteUndeterminableSnackbarMessage =>
+      'Scan finished: gaps could not be determined';
+
+  @override
+  String get gapsUndeterminableReasonScanFailed =>
+      'An unexpected error occurred during the scan, so gaps cannot be determined. Try rescanning.';
+
+  @override
   String get viewGapsAction => 'View';
 
   @override
@@ -690,4 +702,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get orphanEventMarkerLabel => 'Orphan event';
+
+  @override
+  String get builtinPathPatternBadgeLabel =>
+      'Path patterns from built-in schema';
+
+  @override
+  String get gapsUndeterminableTitle => 'Gaps cannot be determined';
+
+  @override
+  String get gapsUndeterminableReasonVersionOutOfRange =>
+      'The project schema version is outside the range this app knows and lacks path patterns, so node files cannot be identified; parse failures are not listed';
+
+  @override
+  String get gapsUndeterminableReasonNoPathPattern =>
+      'Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed';
 }

@@ -39,17 +39,20 @@ class MacosScanNotifier implements ScanNotifier {
 
   /// 通知標題產生器；未設定時使用開發期 fallback（不應在正式路徑觸發，
   /// controller 於 build 時即設定）。
-  String Function() titleBuilder =
-      () => 'Gap scan complete'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
+  String Function() titleBuilder = () =>
+      'Gap scan complete'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
 
   /// `state-gaps-found` 內文產生器。
-  String Function(int gapCount) foundBodyBuilder =
-      (count) =>
-          '$count gaps detected'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
+  String Function(int gapCount) foundBodyBuilder = (count) =>
+      '$count gaps detected'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
 
   /// `state-gaps-none` 內文產生器。
-  String Function() noGapsBodyBuilder =
-      () => 'No gaps detected'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
+  String Function() noGapsBodyBuilder = () =>
+      'No gaps detected'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
+
+  /// `state-gaps-undeterminable` 內文產生器。
+  String Function() undeterminableBodyBuilder = () =>
+      'Gaps could not be determined'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
 
   /// controller 於每次 build 時呼叫，注入當前語系的字串產生器
   /// （[AppLocalizations] 需要 `BuildContext`，本類別無法自行取得）。
@@ -57,10 +60,12 @@ class MacosScanNotifier implements ScanNotifier {
     required String Function() title,
     required String Function(int gapCount) foundBody,
     required String Function() noGapsBody,
+    required String Function() undeterminableBody,
   }) {
     titleBuilder = title;
     foundBodyBuilder = foundBody;
     noGapsBodyBuilder = noGapsBody;
+    undeterminableBodyBuilder = undeterminableBody;
   }
 
   @override
@@ -78,9 +83,7 @@ class MacosScanNotifier implements ScanNotifier {
   Future<NotificationAuthorization> authorizationStatus() async {
     developer.log('查詢授權狀態', name: _tag); // i18n-exempt: 開發者診斷 log
     try {
-      final result = await _channel.invokeMethod<String>(
-        'authorizationStatus',
-      );
+      final result = await _channel.invokeMethod<String>('authorizationStatus');
       final status = _parseAuthorization(result);
       developer.log('授權狀態：$status', name: _tag); // i18n-exempt: 開發者診斷 log
       return status;
@@ -138,8 +141,11 @@ class MacosScanNotifier implements ScanNotifier {
       name: _tag,
     );
     final title = titleBuilder();
-    final body =
-        gapCount == 0 ? noGapsBodyBuilder() : foundBodyBuilder(gapCount);
+    final body = notification.isUndeterminable
+        ? undeterminableBodyBuilder()
+        : gapCount == 0
+        ? noGapsBodyBuilder()
+        : foundBodyBuilder(gapCount);
     try {
       await _channel.invokeMethod<void>('show', <String, Object?>{
         'title': title,

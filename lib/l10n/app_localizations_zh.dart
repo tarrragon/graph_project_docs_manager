@@ -606,6 +606,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scanCompleteNoGapsSnackbarMessage => '掃描完成，未偵測到破洞';
 
   @override
+  String get scanCompleteUndeterminableNotificationBody => '無法判定破洞，原因請見破洞報告';
+
+  @override
+  String get scanCompleteUndeterminableSnackbarMessage => '掃描結束，無法判定破洞';
+
+  @override
+  String get gapsUndeterminableReasonScanFailed => '掃描時發生非預期錯誤，無法判斷破洞；請重新掃描';
+
+  @override
   String get viewGapsAction => '檢視';
 
   @override
@@ -661,4 +670,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get orphanEventMarkerLabel => '孤立事件';
+
+  @override
+  String get builtinPathPatternBadgeLabel => '路徑模式取自 App 內建型別表';
+
+  @override
+  String get gapsUndeterminableTitle => '無法判定破洞';
+
+  @override
+  String get gapsUndeterminableReasonVersionOutOfRange =>
+      '專案型別表版本不在 App 已知範圍內，且缺少路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出';
+
+  @override
+  String get gapsUndeterminableReasonNoPathPattern =>
+      '專案型別表與 App 內建型別表都沒有路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出';
 }

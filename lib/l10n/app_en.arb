@@ -181,5 +181,12 @@
   "gapTraversesUndeclared": "Step {stepId}: traverses has an undeclared domain: {value}",
   "gapTraversesMissing": "Step {stepId} is missing the traverses field",
   "gapDomainDeclaredTwice": "Domain {domain} is declared by more than one DomainBundle: {bundles}",
-  "gapItemLineLabel": "Line {lineNumber}"
+  "gapItemLineLabel": "Line {lineNumber}",
+  "builtinPathPatternBadgeLabel": "Path patterns from built-in schema",
+  "scanCompleteUndeterminableNotificationBody": "Gaps could not be determined. See the gap report for the reason.",
+  "scanCompleteUndeterminableSnackbarMessage": "Scan finished: gaps could not be determined",
+  "gapsUndeterminableReasonScanFailed": "An unexpected error occurred during the scan, so gaps cannot be determined. Try rescanning.",
+  "gapsUndeterminableTitle": "Gaps cannot be determined",
+  "gapsUndeterminableReasonVersionOutOfRange": "The project schema version is outside the range this app knows and lacks path patterns, so node files cannot be identified; parse failures are not listed",
+  "gapsUndeterminableReasonNoPathPattern": "Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed"
 }

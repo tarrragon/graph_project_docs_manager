@@ -9,6 +9,8 @@ import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
+
 import '../../app/attention_level.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
@@ -39,10 +41,80 @@ class GapReportScreen extends ConsumerWidget {
         actionKey: const Key('action-gaps-goto-domain'),
       ),
       GapReportScanning() => _ScanningView(state: state),
-      GapReportNoGaps() => const _NoGapsView(),
-      GapReportFound() => _FoundView(state: state),
+      GapReportNoGaps(:final isPathPatternFromBuiltin) => _WithBuiltinBadge(
+        show: isPathPatternFromBuiltin,
+        child: const _NoGapsView(),
+      ),
+      GapReportFound(:final isPathPatternFromBuiltin) => _WithBuiltinBadge(
+        show: isPathPatternFromBuiltin,
+        child: _FoundView(state: state),
+      ),
+      GapReportUndeterminable() => _UndeterminableView(state: state),
     };
   }
+}
+
+/// 「路徑模式取自內建表」徽章（SPEC-001 §1，`badge-gaps-builtin-path-pattern`）：
+/// 旗標生效期間於內容上方常駐；只出現在破洞報告。
+class _WithBuiltinBadge extends StatelessWidget {
+  const _WithBuiltinBadge({required this.show, required this.child});
+
+  final bool show;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!show) return child;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Badge.tag(
+          key: const Key('badge-gaps-builtin-path-pattern'),
+          label: AppLocalizations.of(context).builtinPathPatternBadgeLabel,
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+}
+
+/// 無法判定破洞：`Panel.scrollable`[`Section.static`[標題, 原因說明],
+/// 其餘類別分節]；不使用 `EmptyState`（SPEC-001 §5 成列註記）。
+class _UndeterminableView extends StatelessWidget {
+  const _UndeterminableView({required this.state});
+
+  final GapReportUndeterminable state;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Panel.scrollable(
+      key: const Key('state-gaps-undeterminable'),
+      scrollKey: const Key('scroll-gaps-sections'),
+      children: [
+        Section(
+          variant: SectionVariant.static,
+          testKey: const Key('state-gaps-undeterminable-reason'),
+          header: AppText(
+            l10n.gapsUndeterminableTitle,
+            variant: AppTextVariant.subtitle,
+          ),
+          items: [AppText(_reasonText(l10n, state.reason))],
+        ),
+        for (final category in state.categories)
+          _CategorySection(category: category),
+      ],
+    );
+  }
+
+  String _reasonText(AppLocalizations l10n, UndeterminedGapReason? reason) =>
+      switch (reason) {
+        UndeterminedGapReason.projectVersionOutOfKnownRange =>
+          l10n.gapsUndeterminableReasonVersionOutOfRange,
+        UndeterminedGapReason.noPathPattern =>
+          l10n.gapsUndeterminableReasonNoPathPattern,
+        null => l10n.gapsUndeterminableReasonScanFailed,
+      };
 }
 
 /// 掃描中：`LoadingState.skeleton`（版位 `sections`）。
@@ -145,17 +217,22 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
           _LocatableGapItem(
             item: item,
             child: ListRow.item(
-              primary: AppText(item.filePath, variant: AppTextVariant.mono),
-              // 有值時附行號，無值時不顯示佔位（SPEC-001 §5、`0.1.0-W3-335.37`
-              // R11）：`ListRow.item` 的 `secondary` 為必填 slot（SPEC-004
-              // §5.14 子件契約），無行號時以空文字滿足契約而不渲染可見內容。
-              secondary: AppText(
-                item.lineNumber != null
-                    ? l10n.gapItemLineLabel(item.lineNumber!)
-                    : '',
-                variant: AppTextVariant.caption,
-                secondary: true,
-              ),
+              // SPEC-004 v1.84 4.40 `item`：有說明時兩行（主文字是說明，次文字
+              // 是路徑與行號）；沒有說明（事件類、0.1 項目）時一行（主文字是
+              // 路徑與行號，不渲染次文字）。行號有值才附（SPEC-001 §5）。
+              primary: item.description == null
+                  ? AppText(
+                      _pathWithLine(l10n, item),
+                      variant: AppTextVariant.mono,
+                    )
+                  : AppText(_primaryText(l10n, item)),
+              secondary: item.description == null
+                  ? null
+                  : AppText(
+                      _pathWithLine(l10n, item),
+                      variant: AppTextVariant.caption,
+                      secondary: true,
+                    ),
               // 降級項目（isOpenable=false）不提供開檔，不渲染開檔圖示。
               trailing: !item.isOpenable
                   ? null
@@ -180,6 +257,24 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
           ),
       ],
     );
+  }
+
+  /// 主文字（有項目說明時）：說明加歸屬型別不明附註。
+  String _primaryText(AppLocalizations l10n, GapReportItem item) {
+    final parts = <String>[
+      ?gapItemDescriptionText(l10n, item.description),
+      ?gapAmbiguousTypesText(l10n, item.ambiguousTypes),
+    ];
+    return parts.join(' · '); // i18n-exempt: 分隔符
+  }
+
+  /// 檔案路徑加行號（行號有值才附，無值不佔位）。
+  String _pathWithLine(AppLocalizations l10n, GapReportItem item) {
+    final parts = <String>[
+      item.filePath,
+      if (item.lineNumber != null) l10n.gapItemLineLabel(item.lineNumber!),
+    ];
+    return parts.join(' · '); // i18n-exempt: 分隔符
   }
 
   /// 破洞項主操作（SPEC-001 §5〈破洞項的主操作與次要操作〉；SPEC-003 §3.5）：

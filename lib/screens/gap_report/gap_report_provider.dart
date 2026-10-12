@@ -1,81 +1,43 @@
 /// 破洞報告狀態機（SPEC-001 §5；SPEC-003 §3.5 生命週期、§2.5 取消契約）。
 ///
-/// 首次可見即自動掃描；0.1 不接真實圖建置，掃描結果固定由真實 repo
-/// 快照（`test/fixtures/corpus/book_overview_v1`）的缺 frontmatter 樣本
-/// 驅動——決策已記於本票 `decision_tree_path`：「只交狀態渲染與退出路徑，
-/// 不接真實資料」。
+/// 資料來自共用掃描輪次（`scanRoundProvider`，0.5.0-W1-114.19）：首次可見
+/// 時 `ensureRound()`，已有完成輪次直接呈現不重掃；「重新掃描」走
+/// `rescan()`。輪次結果經 [gapReportStateFromRound] 投影為畫面狀態。
 library;
 
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../app/graph_status.dart';
 import '../../app/router.dart';
 import '../../tokens/motion.dart';
 import 'gap_report_models.dart';
+import 'gap_report_round_state.dart';
 
-/// 真實 repo 快照驗證出的缺 frontmatter 樣本（見
-/// `test/fixtures/corpus/book_overview_v1/meta.yaml`）。0.1 以此驅動
-/// 「有破洞」狀態，不接真實掃描邏輯。
-const _missingFrontmatterItems = [
-  GapReportItem(
-    id: 'csv-export-spec',
-    filePath: 'docs/spec/csv-export-spec.md',
-    lineNumber: 1,
-  ),
-  GapReportItem(
-    id: 'cross-project-verification-protocol',
-    filePath: 'docs/spec/cross-project-verification-protocol.md',
-    lineNumber: 1,
-  ),
-  GapReportItem(
-    id: 'spec-readme',
-    filePath: 'docs/spec/README.md',
-    lineNumber: 1,
-  ),
-  GapReportItem(
-    id: 'book-interchange-v1',
-    filePath: 'docs/spec/book-interchange-v1.md',
-    lineNumber: 1,
-  ),
-  GapReportItem(
-    id: 'usecases-readme',
-    filePath: 'docs/usecases/README.md',
-    lineNumber: 1,
-  ),
-  GapReportItem(
-    id: 'proposals-readme',
-    filePath: 'docs/proposals/README.md',
-    lineNumber: 1,
-  ),
-  GapReportItem(
-    id: 'synchronization-qr-frame-format',
-    filePath: 'docs/spec/synchronization/SPEC-009-qr-frame-format.md',
-    lineNumber: 1,
-  ),
-  GapReportItem(
-    id: 'synchronization-test-fixtures-readme',
-    filePath: 'docs/spec/synchronization/test-fixtures/README.md',
-    lineNumber: 1,
-  ),
-];
+const String _tag = 'GapReportNotifier';
 
 /// 破洞報告畫面狀態機。
 ///
-/// 生命週期（SPEC-003 §3.5）：首次可見自動進入掃描中，完成後轉無破洞或
-/// 有破洞；再次可見不重新掃描；`rescan()` 對應 `action-gaps-rescan`，
-/// 重新掃描時現有結果立即被骨架取代（不做兩段淡出淡入）。
+/// 生命週期（SPEC-003 §3.5）：首次可見自動進入掃描中，完成後轉無破洞、
+/// 有破洞或無法判定破洞；再次可見不重新掃描；`rescan()` 對應
+/// `action-gaps-rescan`，重新掃描時現有結果立即被骨架取代（不做兩段淡出
+/// 淡入）。
 class GapReportNotifier extends Notifier<GapReportState> {
-  /// 目前這一輪掃描的世代號。`_scheduleScan()` 每次呼叫遞增；延遲完成
-  /// 回呼觸發時比對世代號，避免 `rescan()` 疊代排程時較舊一輪蓋過較新
-  /// 一輪的結果（見 [_completeScan]）。
+  /// 目前這一輪掃描的世代號。`_scheduleScan()` 每次呼叫遞增；完成回呼
+  /// 觸發時比對世代號，避免 `rescan()` 疊代排程時較舊一輪蓋過較新一輪的
+  /// 結果（見 [_completeScan]）。
   int _scanGeneration = 0;
 
   /// 掃描是否已被觸發過一次（0.3.1-W3-122：觸發時機改為消費
-  /// [firstVisibleProvider]）。`firstVisibleProvider` 本身對重複讀取已
-  /// 冪等（讀到 `true` 後即透過 microtask 寫回已見集合），本欄位額外
-  /// 防止「已見集合更新」觸發的重建 rebuild build() 時，因
-  /// `firstVisibleProvider` 短暫仍可能與前次同為 `true`（同一次事件迴圈
-  /// 內的中間態）而重複呼叫 [_scheduleScan]。
+  /// [firstVisibleProvider]）。額外防止「已見集合更新」觸發的重建
+  /// rebuild build() 時，因 `firstVisibleProvider` 仍為 `true` 而重複呼叫
+  /// [_scheduleScan]。
   bool _hasTriggeredScan = false;
 
   /// build() 上一次回傳的結果，供本次 rebuild 在「未觸發新一輪掃描」時
@@ -92,16 +54,32 @@ class GapReportNotifier extends Notifier<GapReportState> {
     // （SPEC-003 §2.8），本畫面即使未被選取也持續存在，圖建立狀態可能在
     // 已觸發過掃描後又反覆變化（例如切換專案）；若在此覆寫 `_lastResult`，
     // 圖重新建立後會錯誤地卡在本狀態，而非恢復已完成的掃描結果。
+    _resetWhenWorkspaceChanged();
+    _recoverWhenRoundCompletes();
     final unreadyReason = ref.watch(projectUnreadyReasonProvider);
     if (unreadyReason != null) {
       return GapReportProjectUnready(unreadyReason);
     }
     // 0.3.1-W3-122：掃描觸發改掛在「首次可見 nav-page-gaps」，不再掛在
-    // provider 的 build()（原本一經 ScanNotificationController.start() 於
-    // App 啟動時掛上監聽即觸發，早於使用者看過破洞報告頁）。
-    final isFirstVisible = ref.watch(firstVisibleProvider(AppDestination.gaps));
+    // provider 的 build()。
+    // firstVisibleProvider 只在首次可見那一次為真（讀取後即併入已見集合），
+    // 工作區切換或輪次取不到後的重新觸發不能依賴它；改以「目前選取項為
+    // 本頁」判定可見（首次可見必然滿足），仍保留對它的 watch 以維持
+    // 已見集合的寫入。
+    ref.watch(firstVisibleProvider(AppDestination.gaps));
+    final isFirstVisible =
+        ref.watch(selectedDestinationProvider) == AppDestination.gaps;
+    // 取消後、離開本頁前，本頁維持取消態：期間的任何重建都不得重啟掃描。
+    if (!isFirstVisible) _cancelHold = false;
+    if (_cancelHold) return _lastResult;
     if (isFirstVisible && !_hasTriggeredScan) {
       _hasTriggeredScan = true;
+      // PM 處置 5：已有完成輪次即直接呈現，不重掃、不渲染骨架。
+      final existing = _stateOfCompletedRound();
+      if (existing != null) {
+        _lastResult = existing;
+        return existing;
+      }
       _scheduleScan();
       _lastResult = const GapReportScanning();
       return _lastResult;
@@ -111,12 +89,10 @@ class GapReportNotifier extends Notifier<GapReportState> {
       // 仍在背景持續建構本 widget tree。若回傳 [GapReportScanning]，
       // `_ScanningView` 的 shimmer `AnimationController` 會在背景無限
       // `repeat()`，使涉及完整 App（`pumpApp`）的 `pumpAndSettle` 永不收斂
-      // （0.3.1-W3-122 根因；重現：`project_switcher_test.dart` 等未曾
-      // 導覽至 gaps 頁的測試逐一 timeout）。改用 [GapReportProjectUnready]
-      // （`EmptyState`，靜態無動畫）作為佔位——使用者尚未選取本頁，畫面
-      // 文字不會被實際看見；選取當下 `isFirstVisible` 已於同一次 provider
-      // 重算中翻為 `true`（見上一分支），不會有此佔位文字的殘影閃現。
-      // 使用者看不到此分支（本頁未被選取），reason 取 notSelected 僅為填滿必填欄位。
+      // （0.3.1-W3-122 根因）。改用 [GapReportProjectUnready]（`EmptyState`，
+      // 靜態無動畫）作為佔位——使用者尚未選取本頁，畫面文字不會被看見；
+      // 選取當下 `isFirstVisible` 已於同一次 provider 重算中翻為 `true`。
+      // reason 取 notSelected 僅為填滿必填欄位。
       return const GapReportProjectUnready(ProjectUnreadyReason.notSelected);
     }
     // 已觸發過掃描：保留目前結果，不因 firstVisibleProvider 的後續讀值
@@ -124,19 +100,63 @@ class GapReportNotifier extends Notifier<GapReportState> {
     return _lastResult;
   }
 
-  /// `action-gaps-rescan`：現有結果立即被骨架取代，重新掃描。
+  /// 上一次 build() 看到的就緒工作區路徑（非就緒為 `null`）；`_hasBuilt`
+  /// 區分「首次 build」與「路徑變成 null」。
+  String? _workspaceKey;
+  bool _hasBuilt = false;
+
+  /// 取消後到離開本頁之間為 `true`（見 [cancelScan]）。
+  bool _cancelHold = false;
+
+  /// 輪次取不到後等待輪次出現（見 [_showUnreadyAfterDiscardedRound]）。
+  bool _awaitingRound = false;
+
+  /// 工作區切換（含 A→B、就緒↔非就緒）使本頁既有結果與進行中的掃描作廢，
+  /// 並讓下一個可見判定重新觸發掃描；共用輪次在切換時已被擁有者丟棄，
+  /// 故重新觸發取得的是新工作區的輪次。
+  void _resetWhenWorkspaceChanged() {
+    final key = ref.watch(
+      currentWorkspaceStateProvider.select(
+        (s) => s is WorkspaceReady ? s.path : null,
+      ),
+    );
+    if (_hasBuilt && key != _workspaceKey) {
+      _scanGeneration++;
+      _hasTriggeredScan = false;
+      _awaitingRound = false;
+      _lastResult = const GapReportScanning();
+    }
+    _hasBuilt = true;
+    _workspaceKey = key;
+  }
+
+  /// 輪次取不到而顯示「專案未就緒」後，同一工作區的輪次由其他消費者
+  /// （如 Domain 視圖）建立完成時，直接呈現該輪結果。
+  void _recoverWhenRoundCompletes() {
+    ref.listen<ScanRoundState>(scanRoundProvider, (_, next) {
+      if (!_awaitingRound || next is! ScanRoundCompleted) return;
+      _awaitingRound = false;
+      final projected = _stateOfCompletedRound();
+      if (projected == null) return;
+      state = projected;
+      _lastResult = projected;
+    });
+  }
+
+  /// `action-gaps-rescan`：現有結果立即被骨架取代，重新掃描（新輪次）。
   void rescan() {
     state = const GapReportScanning();
     _lastResult = state;
-    _scheduleScan();
+    _scheduleScan(forceNewRound: true);
   }
 
   /// `action-gaps-cancel-scan`（取消契約 C2、C4，SPEC-003 §2.5）。
   ///
   /// 按下後立即轉 `isCancelling`；`Motion.cancelDeadline` 內抵達
   /// `returnTo` 指定畫面，`returnTo` 為 `null` 時抵達 Domain 視圖
-  /// （SPEC-001 §5「掃描中」列「取消 → 返回」）。C8 冪等：非掃描中或
-  /// 已在取消中時不重複觸發。
+  /// （SPEC-001 §5「掃描中」列「取消 → 返回」）。進行中的輪次一併丟棄
+  /// （C6 部分結果全數丟棄、C7 重來自 0）。C8 冪等：非掃描中或已在取消中
+  /// 時不重複觸發。
   void cancelScan() {
     final current = state;
     if (current is! GapReportScanning || current.isCancelling) {
@@ -144,6 +164,14 @@ class GapReportNotifier extends Notifier<GapReportState> {
     }
     state = const GapReportScanning(isCancelling: true);
     _lastResult = state;
+    // 取消後離開本頁；回到本頁時須重新掃描（C7 重來自 0），否則旗標仍為
+    // true 會一直停在「取消中」。
+    _hasTriggeredScan = false;
+    _awaitingRound = false;
+    _cancelHold = true;
+    if (ref.read(scanRoundProvider) is ScanRoundRunning) {
+      ref.read(scanRoundProvider.notifier).discard('gap-report-cancel');
+    }
     Future<void>.delayed(Motion.cancelDeadline, () {
       final returnTo = ref.read(returnToProvider);
       if (returnTo != null) {
@@ -154,21 +182,100 @@ class GapReportNotifier extends Notifier<GapReportState> {
     });
   }
 
-  /// 延後至少 `Motion.spinnerMinVisible` 後完成掃描（SPEC-003 §2.6「最短
-  /// 顯示時間適用」）。`state-gaps-scanning` 一旦渲染，即使掃描本身
-  /// （現階段由 [_missingFrontmatterItems] 常數驅動，耗時趨近於零）更快
-  /// 完成，也至少存續此契約時長——這同時是骨架可被觀測、以及取消／重新
-  /// 掃描可在完成前介入的最短視窗。真實掃描串接後，此處應改為與真實耗時
-  /// 取兩者較長者（而非疊加），不在本票範圍。
-  void _scheduleScan() {
+  /// 取得輪次結果並投影；完成時機取真實耗時與 `Motion.spinnerMinVisible`
+  /// 的較長者（SPEC-003 §2.4 / §2.6，非疊加）。
+  void _scheduleScan({bool forceNewRound = false}) {
     final generation = ++_scanGeneration;
-    Future<void>.delayed(
-      Motion.spinnerMinVisible,
-      () => _completeScan(generation),
+    unawaited(_runScan(generation, forceNewRound));
+  }
+
+  Future<void> _runScan(int generation, bool forceNewRound) async {
+    final minVisible = Future<void>.delayed(Motion.spinnerMinVisible);
+    // 權宜之計：_scheduleScan() 由 build() 呼叫，而 Riverpod 不允許 provider
+    // 在建構期間修改其他 provider（輪次擁有者 ensureRound() 會同步改自身
+    // state，debug 下斷言失敗），故先讓出一個 microtask 待 build() 返回。
+    await Future<void>.microtask(() {});
+    final result = await _projectRound(generation, forceNewRound);
+    await minVisible;
+    _completeScan(generation, result);
+  }
+
+  /// 輪次不可用（非 WorkspaceReady、等待中被丟棄）或失敗時回傳 `null`。
+  Future<GapReportState?> _projectRound(
+    int generation,
+    bool forceNewRound,
+  ) async {
+    final rounds = ref.read(scanRoundProvider.notifier);
+    try {
+      var round = await (forceNewRound
+          ? rounds.rescan()
+          : rounds.ensureRound());
+      // 輪次回 null 有兩種：工作區不是 Ready（專案未就緒），或等待中被丟棄
+      // （切換、他人重掃；丟棄方已開新輪）。後者接續新輪次，上一輪已處理；
+      // 丟棄屬過渡而非終態，不設次數上限。迴圈由 _shouldFollowNewRound 的
+      // 三道守衛（世代換代、工作區不是 Ready、取消中）收束，且每圈都在等一輪
+      // 真實輪次完成。
+      while (round == null) {
+        if (!_shouldFollowNewRound(generation)) return null;
+        round = await rounds.ensureRound();
+      }
+      return gapReportStateFromRound(
+        round,
+        nonDomainPathsKey: _nonDomainPathsKeyOf(round),
+      );
+    } catch (e, st) {
+      developer.log(
+        '取得掃描輪次失敗', // i18n-exempt: 開發者 debug log
+        name: _tag,
+        level: 900,
+        error: e,
+        stackTrace: st,
+      );
+      // SPEC-001 v1.48：非預期例外落「無法判定破洞」，原因說明之三。
+      return const GapReportUndeterminable.scanFailed();
+    }
+  }
+
+  /// 接續新輪次的前提：工作區仍是 Ready、本次掃描未被更新的一輪取代、
+  /// 且使用者未按取消（取消者自己丟棄了輪次，不該再開新輪）。
+  bool _shouldFollowNewRound(int generation) {
+    if (generation != _scanGeneration) return false;
+    if (ref.read(currentWorkspaceStateProvider) is! WorkspaceReady) {
+      return false;
+    }
+    final current = state;
+    return !(current is GapReportScanning && current.isCancelling);
+  }
+
+  GapReportState? _stateOfCompletedRound() {
+    final round = ref.read(scanRoundProvider);
+    if (round is! ScanRoundCompleted) return null;
+    return gapReportStateFromRound(
+      round.result,
+      nonDomainPathsKey: _nonDomainPathsKeyOf(round.result),
     );
   }
 
-  void _completeScan(int generation) {
+  /// EVT-CORPUS-005 說明的鍵名：專案型別表優先，缺欄回落內建表。清單檔
+  /// 位置缺席時 005 不會產生，故取不到時的空字串不會被顯示。
+  String _nonDomainPathsKeyOf(ScanRoundResult round) {
+    final fromProject = round.schemaResolution.typeTable.nonDomainPathsKey;
+    if (fromProject != null) return fromProject;
+    final builtin = ref.read(builtinTrackingSchemaJsonProvider).valueOrNull;
+    final fromBuiltin = builtin == null
+        ? null
+        : typeTableFromJson(builtin).nonDomainPathsKey;
+    if (fromBuiltin == null) {
+      developer.log(
+        '專案與內建型別表都沒有 non_domain_paths_key', // i18n-exempt: 開發者 debug log
+        name: _tag,
+        level: 900,
+      );
+    }
+    return fromBuiltin ?? '';
+  }
+
+  void _completeScan(int generation, GapReportState? result) {
     if (generation != _scanGeneration) {
       // 已被更新一輪的 rescan() 取代，本次（較舊）結果作廢。
       return;
@@ -178,17 +285,25 @@ class GapReportNotifier extends Notifier<GapReportState> {
       // 掃描期間已被 rescan() 改變狀態，或正在取消中，本次結果作廢。
       return;
     }
-    if (_missingFrontmatterItems.isEmpty) {
-      state = const GapReportNoGaps();
-      _lastResult = state;
+    if (result == null) {
+      _showUnreadyAfterDiscardedRound();
       return;
     }
-    state = const GapReportFound([
-      GapReportCategory(
-        id: 'parse-failure',
-        items: _missingFrontmatterItems,
-      ),
-    ]);
+    state = result;
+    _lastResult = state;
+  }
+
+  /// 輪次取不到：唯一會走到這裡的情形是工作區不是 Ready（丟棄情形由
+  /// [_projectRound] 接續新輪次；世代換代與取消則在 [_completeScan] 前段
+  /// 即被忽略），故渲染「專案未就緒」與工作區實況一致。不顯示任何舊輪
+  /// 結果，並讓下一次 build() 能重新觸發掃描。
+  void _showUnreadyAfterDiscardedRound() {
+    _hasTriggeredScan = false;
+    _awaitingRound = true;
+    state = GapReportProjectUnready(
+      ref.read(projectUnreadyReasonProvider) ??
+          ProjectUnreadyReason.notSelected,
+    );
     _lastResult = state;
   }
 }

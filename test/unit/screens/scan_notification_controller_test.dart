@@ -16,6 +16,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/app_lifecycle.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' show AppShell;
+import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart'
+    show UndeterminedGapReason;
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/scan_notification_controller.dart'
@@ -77,6 +79,48 @@ void main() {
       expect(fixture.fake.lastGapCount, 3);
       expect(fixture.fake.authorizationStatusCalls, 1);
       expect(fixture.fake.showOrder, greaterThan(fixture.fake.authOrder));
+    });
+
+    testWidgets('A 無法判定破洞完成：發通知且標記 isUndeterminable（E1：無破洞不標記）', (
+      tester,
+    ) async {
+      final fixture = await _pumpFixture(tester);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(const GapReportNoGaps());
+      await tester.pump();
+      expect(fixture.fake.showCalls, 1);
+      expect(fixture.fake.lastIsUndeterminable, isFalse);
+
+      fixture.gapNotifier.rescan();
+      await tester.pump();
+      fixture.gapNotifier.complete(
+        const GapReportUndeterminable(
+          reason: UndeterminedGapReason.noPathPattern,
+        ),
+      );
+      await tester.pump();
+
+      expect(fixture.fake.showCalls, 2);
+      expect(fixture.fake.lastIsUndeterminable, isTrue);
+    });
+
+    testWidgets('A denied fallback：無法判定破洞走專屬 SnackBar 文案', (tester) async {
+      final fake = FakeScanNotifier(
+        authorization: NotificationAuthorization.denied,
+      );
+      final fixture = await _pumpFixture(tester, fake: fake);
+      fixture.container.read(selectedDestinationProvider.notifier).state =
+          AppDestination.tickets;
+      fixture.gapNotifier.complete(
+        const GapReportUndeterminable(
+          reason: UndeterminedGapReason.noPathPattern,
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('掃描結束，無法判定破洞'), findsOneWidget);
+      expect(find.text('掃描完成，未偵測到破洞'), findsNothing);
     });
 
     testWidgets('視窗背景 → 前景往返兩次：show 仍為一次', (tester) async {
@@ -624,6 +668,7 @@ class FakeScanNotifier implements ScanNotifier {
   int showCalls = 0;
   int withdrawCalls = 0;
   int? lastGapCount;
+  bool? lastIsUndeterminable;
 
   int _callSequence = 0;
   int authOrder = -1;
@@ -659,6 +704,7 @@ class FakeScanNotifier implements ScanNotifier {
     showCalls++;
     showOrder = _callSequence++;
     lastGapCount = notification.gapCount;
+    lastIsUndeterminable = notification.isUndeterminable;
     return showResult;
   }
 

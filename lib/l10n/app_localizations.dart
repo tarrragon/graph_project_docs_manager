@@ -1082,6 +1082,24 @@ abstract class AppLocalizations {
   /// **'掃描完成，未偵測到破洞'**
   String get scanCompleteNoGapsSnackbarMessage;
 
+  /// SPEC-003 §2.2 系統層通知：state-gaps-undeterminable 時的通知內文
+  ///
+  /// In zh, this message translates to:
+  /// **'無法判定破洞，原因請見破洞報告'**
+  String get scanCompleteUndeterminableNotificationBody;
+
+  /// SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字（無法判定破洞）
+  ///
+  /// In zh, this message translates to:
+  /// **'掃描結束，無法判定破洞'**
+  String get scanCompleteUndeterminableSnackbarMessage;
+
+  /// SPEC-001 §5「無法判定破洞」原因說明之三（掃描輪次拋出非預期例外）
+  ///
+  /// In zh, this message translates to:
+  /// **'掃描時發生非預期錯誤，無法判斷破洞；請重新掃描'**
+  String get gapsUndeterminableReasonScanFailed;
+
   /// SPEC-003 §2.2 系統層通知：App 內 SnackBar 的動作按鈕文字
   ///
   /// In zh, this message translates to:
@@ -1183,6 +1201,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'孤立事件'**
   String get orphanEventMarkerLabel;
+
+  /// SPEC-001 §1〈路徑模式取自內建表〉旗標：`badge-gaps-builtin-path-pattern` 徽章文案，只在破洞報告常駐（SPEC-004 §4.0.6 1.46 新增）
+  ///
+  /// In zh, this message translates to:
+  /// **'路徑模式取自 App 內建型別表'**
+  String get builtinPathPatternBadgeLabel;
+
+  /// SPEC-001 §5「無法判定破洞」列頁首標題（`state-gaps-undeterminable`）
+  ///
+  /// In zh, this message translates to:
+  /// **'無法判定破洞'**
+  String get gapsUndeterminableTitle;
+
+  /// SPEC-001 §5「無法判定破洞」原因說明之一（版本不在 App 已知範圍；建圖不可用的四個原因碼亦映射至此）
+  ///
+  /// In zh, this message translates to:
+  /// **'專案型別表版本不在 App 已知範圍內，且缺少路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出'**
+  String get gapsUndeterminableReasonVersionOutOfRange;
+
+  /// SPEC-001 §5「無法判定破洞」原因說明之二（型別表沒有路徑模式）
+  ///
+  /// In zh, this message translates to:
+  /// **'專案型別表與 App 內建型別表都沒有路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出'**
+  String get gapsUndeterminableReasonNoPathPattern;
 }
 
 class _AppLocalizationsDelegate
