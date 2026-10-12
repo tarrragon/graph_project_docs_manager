@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-12"
-version: "1.31"
+version: "1.32"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -287,7 +287,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | 主線 | `branch_from` 為空（null、缺席或空字串）的步驟，依清單順序排列（主線判定與框架 `doc validate` 的 `_find_flow_order_problems` 相同） |
 | 分支 | `branch_from` 非空的步驟，各帶其 `branch_from` 指向的步驟 |
 | 回指 | `return_to` 非空的步驟，各帶其 `return_to` 指向的步驟 |
-| 步驟屬性 | 每步帶 `id`、`name`、`next`（原值）、`emits`、`consumes`、`traverses`（原值）與 `traverses` 的解析結果（FR-11） |
+| 步驟屬性 | 每步帶 `id`、`name`、`next`（原值）、`emits`、`consumes`、`traverses`（原值）與 `traverses` 的解析結果（FR-11）。`emits`／`consumes` 的正規化比照 `next`：純量視同單元素清單；`null`、缺鍵與空元素略過；非字串元素轉字串（`flowKeyOf`）。各消費端（格詳情卡、UC Flow、Diagnostics）取同一份正規化結果（PM 處置 2026-10-12，S1 與 FR-11 正規化的同族推論，`0.5.0-W1-114.20`） |
 
 **`next` 的語意**（裁決 (c)）：`next` 不是邊型，也不建邊。主線順序取清單順序，不沿主線步驟的 `next` 推導；分支步的 `next` 作為步驟屬性提供（回接主線的位置由 Layout 使用）。主線 `next` 與清單順序的一致性由上游 `doc validate` 檢查（`0.5.0-W1-001.1`），Graph 不重複檢查。**主線 `next` 的解析結果**（2026-10-09 用戶裁決 N-a，`0.5.0-W1-114.10` 兩位審查者提出）：flowOf 也為主線步驟的 `next` 各元素提供 UC 內解析結果（對應的步驟，或「解析不到」），供 Layout 畫「邊的來源」所需的主線 next 邊（SPEC-001 §1〈泳道布局規則〉）；主線 next 解析不到時**不產生缺陷**（維持本段「主線 next 不檢查」），只在解析結果標為解析不到。Layout 不自行以 step id 比對 next 值；正規化（清單、轉字串）同下方分支 next 的規則。
 
@@ -444,6 +444,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.32 | 2026-10-12 | FR-10 步驟屬性：`emits`／`consumes` 的正規化比照 `next`（純量視同單元素清單、空元素略過、非字串轉字串），各消費端共用同一份結果（PM 處置，`0.5.0-W1-114.20`） |
 | 1.31 | 2026-10-12 | FR-13：`domain` 無效（非字串、`null`、缺鍵、空字串）的 bundle 層號照算、同層排在有效者之後並依 bundle ID 排序（用戶裁決 Z3，取代 Z1 的「歸推不出層」，`0.5.0-W1-139`） |
 | 1.30 | 2026-10-12 | FR-12：排除經直接 domain 的路徑在取最短之前套用（用戶裁決 E-B）；FR-13：自我依賴視為循環（Y1）、非字串 domain 不消失（Z1）（皆 `0.5.0-W1-139`） |
 | 1.29 | 2026-10-11 | FR-10：S1「與上游一致」限字串與整數（用戶裁決 K1，`0.5.0-W1-138`）；規則清單「主線 next 不解析」更正為「解析不到不產生缺陷」。FR-12／FR-13：回填介面識別名（`0.5.0-W1-114.7`）、圖不可用含日誌事件、非 DomainBundle 終點屬推不出層、同 domain 重複宣告以 bundle ID 為次鍵（PM 處置，`0.5.0-W1-139` 第 2 之一、3、6 項） |
