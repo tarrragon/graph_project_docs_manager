@@ -148,23 +148,22 @@ def check_domain_coverage(spec_text, domain_map_text, spec_path=None):
     return sorted(spec_frs - extract_fr_ids(domain_map_text))
 
 
-def _merged_attribution(named_texts):
+def _merged_attribution(named_texts, spec_id):
     """逐檔解析歸屬後於集合層合併，回傳 {spec_id: FR 集合}。
 
-    標題堆疊不跨檔。多檔聯集時，某檔的未歸屬 FR 以該檔 source_specs 為預設歸屬
-    （僅單一值）；多值則維持未歸屬並於 stderr 指出檔名。
+    標題堆疊不跨檔。整份無任何 SPEC 歸屬的檔案（系統層除外），其 FR 一律計給受檢 SPEC（相容語意，
+    單檔與多檔同一規則）；檔案內有部分歸屬時，有歸屬者依歸屬，未歸屬者不計入。
     """
     merged = {}
     for name, text in named_texts:
         attributed, unattributed = extract_fr_attribution(text)
-        if unattributed and len(named_texts) > 1:
-            declared = _declared_source_specs(text)
-            if len(declared) == 1:
-                attributed.setdefault(next(iter(declared)), set()).update(unattributed)
-            else:
-                sys.stderr.write(f"domain 覆蓋檢核：{name} 有未歸屬的 FR 且 source_specs 非單一值，未計入\n")
-        for spec_id, nums in attributed.items():
-            merged.setdefault(spec_id, set()).update(nums)
+        # 系統層是定位鏈無條件附加的，不是因與受檢 SPEC 有關而被選入，不適用預設計給
+        is_system_layer = Path(name).name == SYSTEM_LAYER_PATH.name
+        if not attributed and unattributed and spec_id and not is_system_layer:
+            sys.stderr.write(f"domain 覆蓋檢核：{name} 無任何 SPEC 歸屬，其 FR 依預設計給受檢 SPEC\n")
+            attributed = {spec_id: unattributed}
+        for owner, nums in attributed.items():
+            merged.setdefault(owner, set()).update(nums)
     return merged
 
 
@@ -172,7 +171,7 @@ def check_domain_coverage_union(spec_text, named_texts, spec_path=None):
     """多份 map（(檔名, 內容) 清單）聯集版的 check_domain_coverage，聯集發生在集合層。"""
     spec_frs = extract_spec_frs(spec_text)
     spec_id = extract_spec_id(spec_text, spec_path)
-    attributed = _merged_attribution(named_texts)
+    attributed = _merged_attribution(named_texts, spec_id)
     if spec_id is None:
         sys.stderr.write("WARNING: 取不到 spec 識別（frontmatter id / 檔名 SPEC-NNN），走相容模式（不分 spec 比對）\n")
     elif not attributed:
