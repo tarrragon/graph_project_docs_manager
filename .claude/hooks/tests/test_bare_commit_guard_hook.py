@@ -88,6 +88,7 @@ def _run_hook(
     unstaged_files=None,
     tool_name: str = "Bash",
     project_root: Path = Path("/fake/project"),
+    merge_head: bool = False,
 ) -> int:
     """以 monkeypatch 模擬 stdin + 依賴（活躍派發清單 / staged 檔案 /
     unstaged tracked 檔案），執行 main()。"""
@@ -95,6 +96,7 @@ def _run_hook(
     stdin_buffer = io.StringIO(json.dumps(payload))
     monkeypatch.setattr(sys, "stdin", stdin_buffer)
     monkeypatch.setattr(hook_module, "get_project_root", lambda: project_root)
+    monkeypatch.setattr(hook_module, "_merge_in_progress", lambda root: merge_head)
     monkeypatch.setattr(
         hook_module, "_get_active_dispatches_safe", lambda root: dispatches or []
     )
@@ -998,3 +1000,36 @@ class TestLiveScopeFallbackToSnapshot:
         original = _dispatch(_LIVE_TICKET_ID, ["snap.py"])
         hook_module._with_live_declared_files([original], tmp_path, _RecordingLogger())
         assert original["files"] == ["snap.py"]
+
+
+# ============================================================================
+# MERGE_HEAD 存在時拒絕裸 commit（E2 正向對照：存在 vs 不存在）
+# ============================================================================
+
+
+class TestMergeHeadPresent:
+    def test_denied_with_merge_head_no_dispatch(self, monkeypatch, capsys):
+        rc = _run_hook(monkeypatch, 'git commit -m "x"', merge_head=True)
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "git merge --continue" in err
+        assert "git merge --abort" in err
+
+    def test_denied_with_merge_head_in_parallel_period(self, monkeypatch, capsys):
+        rc = _run_hook(
+            monkeypatch,
+            'git commit -m "x"',
+            dispatches=[_dispatch("T-1", ["a.py"])],
+            staged_files=["a.py"],
+            merge_head=True,
+        )
+        assert rc == 2
+
+    def test_not_denied_without_merge_head(self, monkeypatch, capsys):
+        rc = _run_hook(monkeypatch, 'git commit -m "x"', merge_head=False)
+        assert rc == 0
+        assert "git merge --continue" not in capsys.readouterr().err
+
+    def test_amend_still_allowed_with_merge_head(self, monkeypatch, capsys):
+        rc = _run_hook(monkeypatch, "git commit --amend --no-edit", merge_head=True)
+        assert rc == 0
