@@ -675,9 +675,19 @@ git -C "$D" show HEAD:a.txt              # v2 —— 內容被回滾，git log �
 
 | 情境 | 處置 |
 |------|------|
-| 衝突解決完畢，準備收尾提交 | 精確 `git add <衝突檔>` → `git diff --cached --name-only` 核對 index 僅含衝突檔與本次合併應有的變更 → 裸 `git commit`（`git merge --continue` 亦讀 index，同樣受此核對保護） |
+| 衝突解決完畢，準備收尾提交 | 精確 `git add <衝突檔>` → `git diff --cached --name-only` 核對 index 僅含衝突檔與本次合併應有的變更 → `GIT_EDITOR=true git merge --continue`。存在 MERGE_HEAD 時守衛拒絕裸 `git commit`，`merge --continue` 是唯一收尾路徑 |
+| 需自訂合併訊息 | 先把訊息寫入 `$(git rev-parse --git-path MERGE_MSG)` 所指的檔，再執行上列收尾指令。`git merge --continue` 不接受任何引數（`-m`、`--no-edit` 皆報錯） |
+| 共用 checkout 需合併 | 合併一步完成；遇 `Unable to write index` 屬 index 競爭，重試即可。禁以 `git merge --no-commit` 開頭、跨 Bash 呼叫留下 MERGE_HEAD（見下方「兩段式合併禁令」） |
 | 合併前工作區已有未暫存的無關編輯 | 合併前先處置（提交或 `git stash`），不留在工作區等合併結束——`-A` 之外，衝突期間的多次 `git add` 也容易誤觸 |
 | 已發生捲入 | 依規則七既有條文：**不得** `revert` / `reset --soft` / `commit --amend` / 反向套用。被捲入的內容與他方同窗口的合法寫入在 diff 上不可區分，任一還原動作都會連帶撤銷後者。記錄 commit SHA 與檔案清單於 ticket，上報 PM |
+
+**兩段式合併禁令（MERGE_HEAD 空窗）**
+
+**Why**：`git merge --no-commit` 開頭、另一個 Bash 呼叫才收尾時，兩次呼叫之間 MERGE_HEAD 與半合併的 index 存活於共用 working tree，空窗長度不受控。並行 session 在此期間的 `git add`／`git commit` 都落在這個半合併狀態上，其 commit 會被當成合併提交（多 parent）或吸入合併內容；守衛也因 MERGE_HEAD 存在而拒絕所有裸 commit，連帶卡住無關 session。
+
+**Consequence**：他方提交被誤判為合併收尾、provenance 污染，與廣域 staging 同屬零訊號靜默污染；空窗期間並行提交被守衛拒絕，表現為無來由的 commit 失敗。
+
+**Action**：共用 checkout 內的合併在單一 Bash 呼叫內完成；`Unable to write index` 是 index 競爭（等同 index.lock），重試即可，不改走兩段式。確需手動解衝突時，收尾走 `GIT_EDITOR=true git merge --continue`，在同一 session 內完成，不跨 session 交接 MERGE_HEAD。
 
 **與既有防護層的關係**：派發骨架（`agent-dispatch-template.md` / `dispatch_skeleton.py` 的 `SKELETON_TEMPLATE_NORMAL`）的 Forbidden 行已同時禁 `git add . / git add -A` 與 `git commit -a`，涵蓋本節兩種載體；缺口原本只在規則七主文——規則七列的是四種 pathspec 形式，未把廣域 staging 納入自身射程，本節補此涵蓋。`bare-commit-guard-hook.py` 與 `dispatch-staging-phrase-guard-hook.py` 皆不涵蓋 merge 收尾（前者攔 pathspec commit，後者檢查派發 prompt 的片語完整性），強制層是否加碼屬另一議題，不在本節範圍。
 
@@ -754,6 +764,8 @@ LC_ALL=C sort /tmp/t.txt | LC_ALL=C uniq -c
 
 ---
 
+**Last Updated**: 2026-10-12
+**Version**: 1.16.0 — 規則七詳細「衝突合併收尾」處置表改為 `GIT_EDITOR=true git merge --continue`（對齊 MERGE_HEAD 存在時守衛拒絕裸 commit），補自訂合併訊息做法（寫入 MERGE_MSG；`merge --continue` 不接受引數）；新增「兩段式合併禁令（MERGE_HEAD 空窗）」Why／Consequence／Action。
 **Last Updated**: 2026-10-07
 **Version**: 1.15.0 — 規則一詳細 uv 方法由不存在的 `-d` 短旗標改為 `--directory`，附 uv 0.8.13 實測錯誤訊息。
 **Last Updated**: 2026-09-08
