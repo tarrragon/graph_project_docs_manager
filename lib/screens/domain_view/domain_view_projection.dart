@@ -186,24 +186,35 @@ List<DomainLane> _lanes(
   List<BundleLayerEntry> bundles,
   FlowSubgraph flow,
 ) {
-  var bundleIndex = 0;
+  final byDomain = _bundlesByDomain(bundles);
   return [
     for (final lane in layout.lanes)
       switch (lane) {
         ScreenLane() => _lane(layout, flow, lane, DomainLaneKind.screen),
         UnplacedLane() => _lane(layout, flow, lane, DomainLaneKind.unplaced),
-        BundleLane() => _lane(
+        BundleLane(:final domain) => _lane(
           layout,
           flow,
           lane,
           DomainLaneKind.domain,
-          bundle: bundles[bundleIndex++],
+          bundle: byDomain[domain]!.removeAt(0),
         ),
       },
   ];
 }
 
-/// Layout 列序中 BundleLane 依 FR-13 清單逐一對應（`assembleSwimLanes` 照單使用）。
+/// 以 domain 字面查 FR-13 項。同一字面可對應多個 bundle（重複宣告、FR-13 Z3
+/// 的無效 domain 皆可能列首文字相同），依 FR-13 先後逐一取用。
+Map<String, List<BundleLayerEntry>> _bundlesByDomain(
+  List<BundleLayerEntry> bundles,
+) {
+  final byDomain = <String, List<BundleLayerEntry>>{};
+  for (final entry in bundles) {
+    (byDomain[entry.domain] ??= []).add(entry);
+  }
+  return byDomain;
+}
+
 DomainLane _lane(
   SwimLaneLayout layout,
   FlowSubgraph flow,

@@ -5,12 +5,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 
 import '../../../helpers/spec001/corpus_snapshot.dart';
 import '../../../helpers/spec007/bundle_graph_fixture.dart';
+import '../../../helpers/spec007/raw_node_builder.dart';
 
 const _ucIds = ['UC-01', 'UC-02', 'UC-03', 'UC-04', 'UC-05', 'UC-06'];
 
@@ -356,6 +358,42 @@ void main() {
       );
       expect(forward.shape, DomainLaneEdgeShape.straight);
       expect(forward.fromLane, _laneIndexOf(swimlane, 'graph'));
+      // read-traversal-count 的 traverses 為 ["graph"]（快照 UC-02）。
+      expect(forward.toLane, _laneIndexOf(swimlane, 'graph'));
+    });
+
+    test('P6 列以 domain 字面對應 bundle：無效 domain（FR-13 Z3）與列首同字面者各對上自己的列', () {
+      RawNode invalid(String key, Map<String, dynamic> extra) => buildRawNode(
+        id: bundleIdOf(key),
+        typeName: domainBundleTypeName,
+        extra: extra,
+      );
+      final event = _eventOf([
+        bundleNode('a'),
+        invalid('p', {domainBundleDomainField: 7}),
+        invalid('q', {domainBundleDomainField: null}),
+        invalid('r', const {}),
+        invalid('s', {domainBundleDomainField: ''}),
+        ucNode('UC-01', [
+          ['a'],
+        ]),
+      ]);
+      final lanes = _swimlaneOf(event, 'UC-01').lanes.skip(1).toList();
+      // SPEC-007 FR-13 Z3：有效者在前；無效者同層排後並依 bundle ID；
+      // 列首非字串轉字串，null／缺鍵／空字串為空字串。
+      expect(
+        [for (final l in lanes) l.domainId],
+        [
+          bundleIdOf('a'),
+          bundleIdOf('p'),
+          bundleIdOf('q'),
+          bundleIdOf('r'),
+          bundleIdOf('s'),
+        ],
+      );
+      expect([for (final l in lanes) l.domainName], ['a', '7', '', '', '']);
+      expect(lanes.first.nodes, hasLength(1));
+      expect(lanes.skip(1).expand((l) => l.nodes), isEmpty);
     });
 
     test('P6 flutter_balance UC-01：九節點在未定位列（欄 0～8），4 弧線 8 直線', () {
