@@ -803,7 +803,7 @@ versions:
 
   - version: "0.6.0"
     codename: "Screens"
-    description: "其餘畫面接真資料：UC Flow、Ticket 清單、破洞報告、節點詳情、追溯視圖"
+    description: "其餘畫面接真資料：Ticket 清單、節點詳情、追溯視圖"
     status: "planned"
     proposals:
       - PROP-005
@@ -811,8 +811,14 @@ versions:
     notes: |
       2026-09-29 依「major 起始即定 minor 清單」登記（0.4.0-W1-040；PROP-005 §0.6，原「0.6+」
       收斂為單一 minor）。阻擋見 PROP-005 §0.6 表；SPEC 於本版規劃波產出。
-      預先收件（topic 契合）：W1-071（UC Flow 畫面資料直讀靜態 fixture、繞過 ucFlowUcListProvider；
-      源自 0.3.2-W3-236，接真資料時一併處理）。
+      2026-10-09 範圍縮減（用戶裁決，docs/tech-decisions.md 同日兩則）：破洞報告整頁與 UC Flow 前移至 0.5
+      （0.5.0-W1-114.15、0.5.0-W1-114.18），起因是自已接真資料的畫面跳轉會落進假資料。本版原登記五個畫面，剩上列三個。
+      預先收件現況：W1-071（UC Flow 直讀靜態 fixture）範圍已併入 0.5.0-W1-114.18，該票合併後以 superseded_by 關閉；
+      W1-025 已關閉（移入 0.5.0-W1-114.15）；W1-073 剩餘範圍為 AdjacencyQuery、TicketDetail 接線
+      （buildGraph 與 detectGraphDefectGaps 的 production 呼叫已由 0.5 的票達成）。
+      2026-10-12 跳轉耦合盤點（W1-076）：追溯視圖無真資料畫面跳入，可獨立留在本版；節點詳情與 Ticket 清單仍有
+      同型耦合三條（破洞報告→Ticket 清單、破洞報告→節點詳情、UC Flow→節點詳情，後者於 0.5.0-W1-114.18 合併時發作）。
+      處置待用戶裁決，裁決結果可能再改變本版畫面數；本版規劃波以 W1-076 的 Solution 為範圍起算依據。
 
   - version: "0.7.0"
     codename: "History"
