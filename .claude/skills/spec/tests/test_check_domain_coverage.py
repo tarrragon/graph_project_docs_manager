@@ -412,3 +412,96 @@ def test_union_filter_loads_only_listing_maps(tmp_path, monkeypatch):
     _write(tmp_path / "docs/spec/c/domain-map.md", _map("SPEC-999", "## SPEC-999\n| FR-02 | C |\n"))
     found = cdc.locate_domain_maps(Path("docs/spec/ui/SPEC-101-x.md"), None)
     assert [p.as_posix() for p in found] == ["docs/spec/a/domain-map.md"]
+
+
+# --- 0.5.0-W1-157：FR 標題全形冒號 + 空集合兩種性質分流 ---
+
+def test_extract_spec_frs_fullwidth_colon():
+    assert cdc.extract_spec_frs("### FR-01：A\n#### FR-02: B\n") == {1, 2}
+
+
+def _fm(value=None):
+    if value is None:
+        return "---\nid: SPEC-900\n---\n"
+    return f"---\nid: SPEC-900\nhas_functional_requirements: {value}\n---\n"
+
+
+def _run_nomap(tmp_path, spec_text, capsys, *extra):
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(spec_text, encoding="utf-8")
+    rc = cdc.main([str(spec), *extra])
+    return rc, capsys.readouterr().out
+
+
+def _write_map(tmp_path, source_specs="SPEC-001"):
+    (tmp_path / "domain-map.md").write_text(
+        f"---\nsource_specs: [{source_specs}]\n---\n# 通道與協調圖\n## 到達類別與級別實例\nFR-01\n",
+        encoding="utf-8")
+
+
+def test_declared_false_no_fr_rc0_without_any_map(tmp_path, capsys):
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n元件契約表\n", capsys)
+    assert rc == 0
+    assert "宣告無 FR" in out and "未執行覆蓋比對" in out
+    assert "通過" not in out
+
+
+def test_declared_false_skips_event_flow_check_even_with_map(tmp_path, capsys):
+    # 同目錄有 map 時，若仍跑事件流檢核會印「事件流標定檢核通過」
+    _write_map(tmp_path)
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n元件契約表\n", capsys,
+                         "--check-event-flow-labeling")
+    assert rc == 0
+    assert "通過" not in out and "事件流" not in out
+
+
+def test_declared_false_with_map_not_listing_spec_rc0(tmp_path, capsys):
+    _write_map(tmp_path, "SPEC-001")  # 未列入 SPEC-900
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n", capsys)
+    assert rc == 0 and "宣告無 FR" in out
+
+
+def test_declaration_outside_frontmatter_not_honored(tmp_path, capsys):
+    body = "# s\nhas_functional_requirements: false\n"
+    fenced = "# s\n```yaml\nhas_functional_requirements: false\n```\n"
+    for text in (_fm() + body, _fm() + fenced, body, fenced):
+        rc, _ = _run_nomap(tmp_path, text, capsys)
+        assert rc != 0
+
+
+def test_declared_false_but_fr_heading_contradicts(tmp_path, capsys):
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n### FR-01: A\n", capsys)
+    assert rc != 0 and "矛盾" in out
+
+
+def test_declared_false_loose_headings_contradict(tmp_path, capsys):
+    for h in ("fr-01", "FR01", "FR 01", "FR\uff0d01", "FR\u201301"):
+        rc, _ = _run_nomap(tmp_path, _fm("false") + f"# s\n## {h} x\n", capsys)
+        assert rc != 0, h
+
+
+def test_declared_false_nfr_heading_not_contradiction(tmp_path, capsys):
+    rc, _ = _run_nomap(tmp_path, _fm("false") + "# s\n## NFR-01 x\n", capsys)
+    assert rc == 0
+
+
+def test_undeclared_zero_fr_fails_regardless_of_wording(tmp_path, capsys):
+    for body in ("# s\n元件契約表\n", "# s\n**FR-01** 需求\n"):
+        for fm in (_fm(), _fm("true")):
+            rc, out = _run_nomap(tmp_path, fm + body, capsys)
+            assert rc != 0
+            assert "### FR-NN" in out and "has_functional_requirements: false" in out
+
+
+def test_non_boolean_declaration_errors(tmp_path, capsys):
+    # 本文含 FR 標題：若被當作 true 會走比對，不會出現「須為布林」訊息
+    for v in ('"false"', "null", "", "no"):
+        rc, out = _run_nomap(tmp_path, _fm(v) + "# s\n### FR-01: A\n", capsys)
+        assert rc != 0, v
+        assert "須為布林" in out, v
+
+
+def test_declared_false_letter_continuation_headings_not_contradiction(tmp_path, capsys):
+    for h in ("Framework", "FRAME"):
+        rc, _ = _run_nomap(tmp_path, _fm("false") + f"# s\n## {h} x\n", capsys)
+        assert rc == 0, h

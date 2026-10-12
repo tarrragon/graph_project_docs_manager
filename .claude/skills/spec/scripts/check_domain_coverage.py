@@ -27,7 +27,8 @@ import check_api_surface
 
 # FR 標題容許 H3 以上任一層級（### / #### …）——真實 spec 常用 #### FR-XX:，
 # 只認 H3 會使 extract_spec_frs 回空集、gate 靜默假通過（Round 2-C 實證）。
-FR_HEADER_RE = re.compile(r"^#{3,}\s+(FR-\d+):", re.MULTILINE)
+# 冒號接受半形與全形（SPEC-006/007 用全形，曾因只認半形而抽出 0 個、假通過）。
+FR_HEADER_RE = re.compile(r"^#{3,}\s+(FR-\d+)[:：]", re.MULTILINE)
 
 # 事件流訊號詞：與 /spec validate Layer 2 維度 5「資源競爭」共用單一常數，避免
 # Layer 1 機械檢核與 Layer 2 語意維度各自維護清單而漂移（SKILL.md 維度 5 掃描說明）。
@@ -324,6 +325,58 @@ def _read_maps(paths):
     return [(str(p), p.read_text(encoding="utf-8")) for p in paths]
 
 
+DECLARATION_KEY = "has_functional_requirements"
+DECLARATION_LINE_RE = re.compile(rf"^{DECLARATION_KEY}:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
+# 矛盾檢查比抽取規則寬：任何標題行文字以 FR 開頭（不分大小寫，含 FR01、FR 01、fr-01、
+# 全形連字號、en dash）；NFR 開頭與 FRAME 之類字母續接者不命中。
+LOOSE_FR_HEADING_RE = re.compile(r"^#{1,6}[ \t]*FR(?![A-Za-z]).*$", re.MULTILINE | re.IGNORECASE)
+EXPECTED_HEADING_HINT = (
+    "預期標題樣式：`### FR-NN: 標題` 或 `### FR-NN：標題`（H3 以上，半形或全形冒號）；"
+    f"若本 SPEC 確實無 FR，請於 frontmatter 宣告 `{DECLARATION_KEY}: false`。"
+)
+
+
+def read_fr_declaration(spec_text):
+    """回傳 frontmatter 的 has_functional_requirements：True/False；未填回 True；非布林拋 ValueError。"""
+    block = FRONTMATTER_BLOCK_RE.match(spec_text)
+    found = DECLARATION_LINE_RE.search(block.group(1)) if block else None
+    if not found:
+        return True
+    raw = re.sub(r"\s+#.*$", "", found.group(1))
+    if raw in ("true", "false"):
+        return raw == "true"
+    raise ValueError(f"{DECLARATION_KEY} 須為布林 true/false，實得 {raw!r}")
+
+
+def _body_without_frontmatter(spec_text):
+    block = FRONTMATTER_BLOCK_RE.match(spec_text)
+    return spec_text[block.end():] if block else spec_text
+
+
+def judge_fr_declaration(spec_text):
+    """於 domain map 定位之前判定。回傳 exit code（已結束）或 None（續行覆蓋比對）。"""
+    try:
+        declared = read_fr_declaration(spec_text)
+    except ValueError as exc:
+        print(f"domain 覆蓋檢核失敗：{exc}（未填視同 true；非布林不當作 false）")
+        return 1
+    extracted = extract_spec_frs(spec_text)
+    if declared is False:
+        loose = LOOSE_FR_HEADING_RE.findall(_body_without_frontmatter(spec_text))
+        if extracted or loose:
+            print(f"domain 覆蓋檢核失敗：宣告 {DECLARATION_KEY}: false，但內容存在 FR 標題行（宣告與內容矛盾）：")
+            for line in loose:
+                print(f"  {line.strip()}")
+            return 1
+        print(f"本 SPEC 宣告無 FR（{DECLARATION_KEY}: false），未執行覆蓋比對")
+        return 0
+    if not extracted:
+        print("domain 覆蓋檢核失敗：未宣告無 FR，但未抽到任何 FR 標題（未執行覆蓋比對）。")
+        print(EXPECTED_HEADING_HINT)
+        return 1
+    return None
+
+
 def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None):
     """列印 FR->bundle 覆蓋檢核結果，回傳 exit code。"""
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
@@ -371,6 +424,10 @@ def main(argv=None):
 
     spec_path = Path(args.spec_path)
     spec_text = spec_path.read_text(encoding="utf-8")
+
+    early = judge_fr_declaration(spec_text)
+    if early is not None:
+        return early
 
     domain_map_paths = locate_domain_maps(spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
     if not domain_map_paths:
