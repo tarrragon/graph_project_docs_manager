@@ -105,10 +105,12 @@ void main() {
       expect(event.graphDefects, isEmpty);
     });
 
-    test('G6-3 graphDefects 筆數 = 主圖四類 + flow 四子類', () {
+    test('G6-3 九類全式（NC-4／NC-11）：主圖四類 + flow 四子類 + domain 重複宣告 = 9 筆', () {
       final event = buildGraphEvent([
         ..._mainGraphFourDefects(),
         _flowFourSubclassUc(),
+        _bundle('B1', 'corpus'),
+        _bundle('B2', 'corpus'),
       ]);
       expect(event.danglingRefCount, 1);
       expect(event.malformedRefCount, 1);
@@ -118,21 +120,18 @@ void main() {
         event.graphDefects.whereType<FlowGraphDefect>().map((d) => d.kind),
         unorderedEquals(FlowDefectKind.values),
       );
-      expect(event.graphDefects.length, 8);
-    });
-
-    test('FR-06 驗收（NC-4）：再加 domain 重複宣告，筆數 9', () {
-      final withDup = buildGraphEvent([
+      expect(
+        event.graphDefects.whereType<DomainDuplicateDeclarationGraphDefect>(),
+        hasLength(1),
+      );
+      expect(event.graphDefects.length, 9);
+      // 對照：拿掉重複宣告的一個 bundle，總數回到 8（重複宣告那一筆確實計入）。
+      final without = buildGraphEvent([
         ..._mainGraphFourDefects(),
         _flowFourSubclassUc(),
         _bundle('B1', 'corpus'),
-        _bundle('B2', 'corpus'),
       ]);
-      expect(withDup.graphDefects.length, 9);
-      expect(
-        withDup.graphDefects.whereType<DomainDuplicateDeclarationGraphDefect>(),
-        hasLength(1),
-      );
+      expect(without.graphDefects.length, 8);
     });
 
     test('G6-5 守衛：主圖無缺陷、一步 traverses 未宣告名稱 -> 恰 1 筆', () {
