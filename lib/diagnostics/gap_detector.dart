@@ -57,6 +57,9 @@ GapDetectionResult detectParseFailureGaps({
 ParseFailureGap _toGap(ParseFailureEvent event) => CarrierParseFailureGap(
   path: event.path,
   reason: event.reason,
+  failureReason: event.failureReason,
+  unreadableReason: event.unreadableReason,
+  lineNumber: event.line,
   nodeType: event.nodeType,
   candidateTypes: event.candidateTypes,
   schemaAmbiguous: event.schemaAmbiguous,

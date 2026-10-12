@@ -18,6 +18,7 @@ import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../project_switcher/project_switcher_providers.dart';
+import 'gap_report_descriptions.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
 import 'scan_notification_controller.dart';
@@ -155,7 +156,10 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
                 variant: AppTextVariant.caption,
                 secondary: true,
               ),
-              trailing: item.hasSecondaryOpenSource
+              // 降級項目（isOpenable=false）不提供開檔，不渲染開檔圖示。
+              trailing: !item.isOpenable
+                  ? null
+                  : item.hasSecondaryOpenSource
                   ? GestureDetector(
                       key: Key('action-gaps-open-source-${item.id}'),
                       onTap: () => _openExternally(context, item),
@@ -200,7 +204,17 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
           navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
         }
         return;
+      case GapItemPointerType.flow:
+        // J2：選定 UC 並 jump 至 UC Flow；step id 只攜帶，定位由
+        // `0.5.0-W1-114.18` 承接。
+        final flowUcId = item.flowUcId;
+        if (flowUcId != null) {
+          ref.read(selectedUcProvider.notifier).state = flowUcId;
+        }
+        navigateTo(ref.read, AppDestination.ucFlow, NavIntent.jump);
+        return;
       case GapItemPointerType.none:
+        if (!item.isOpenable) return;
         await _openExternally(context, item);
     }
   }
@@ -347,14 +361,6 @@ class _LocatableGapItemState extends ConsumerState<_LocatableGapItem> {
   }
 }
 
-/// 類別識別碼 → 語系化標籤。0.1 只以真實資料驅動「缺 frontmatter」一類，
-/// 「孤立事件」「事件宣告與 flow 不符」兩個破洞類別
-/// （SPEC-001 §5、SPEC-003 §3.5）依賴 CLAUDE.md §6 待決的「破洞分類」，
-/// 尚無資料來源產生對應項；標籤先行補齊供未來資料接線時直接使用。
+/// 類別識別碼 → 語系化標籤（SPEC-001 §5 表一；查表見 `gap_report_descriptions.dart`）。
 String _categoryLabel(AppLocalizations l10n, String categoryId) =>
-    switch (categoryId) {
-      'missing-frontmatter' => l10n.gapCategoryMissingFrontmatter,
-      'orphan-event' => l10n.gapCategoryOrphanEvent,
-      'event-declaration-mismatch' => l10n.gapCategoryEventDeclarationMismatch,
-      _ => categoryId,
-    };
+    gapCategoryLabel(l10n, categoryId);

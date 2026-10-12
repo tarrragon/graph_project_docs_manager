@@ -34,14 +34,14 @@ import '../../helpers/helpers.dart';
 
 const _foundOneItem = GapReportFound([
   GapReportCategory(
-    id: 'missing-frontmatter',
+    id: 'parse-failure',
     items: [GapReportItem(id: 'a', filePath: 'a.md', lineNumber: 1)],
   ),
 ]);
 
 const _foundThreeItems = GapReportFound([
   GapReportCategory(
-    id: 'missing-frontmatter',
+    id: 'parse-failure',
     items: [
       GapReportItem(id: 'a', filePath: 'a.md', lineNumber: 1),
       GapReportItem(id: 'b', filePath: 'b.md', lineNumber: 1),
