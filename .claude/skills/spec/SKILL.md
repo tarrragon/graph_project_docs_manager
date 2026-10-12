@@ -176,7 +176,7 @@ python3 .claude/skills/spec/scripts/check_api_surface.py {spec-file-path}  # por
 python3 .claude/skills/spec/scripts/check_domain_coverage.py {spec-file-path} [--domain-map {path}]  # portability-allow: consumer 共通安裝位置
 ```
 
-domain map 定位：省略 `--domain-map` 時自動找 spec 同目錄 `domain-map.md`，退化找 `docs/domain-map.md`。輸出：domain map 缺失（提示先走 Step 2.5 產出）、未覆蓋 FR 清單（`FR-NN`，請於 domain map §7 補歸屬）、或「檢核通過」。exit code 0 = 通過、1 = 缺失或有未覆蓋 FR。FR token 展開支援逗號續列（`FR-01,02,03`）與範圍（`FR-13~17`）。
+domain map 定位鏈（省略 `--domain-map` 時）：spec 同目錄 `domain-map.md` -> 列舉 `docs/spec/*/domain-map.md` 取 frontmatter `source_specs` 含本 SPEC id 者（並聯集 `docs/system-layer.md`，覆蓋判定取聯集，故 SPEC 不必與 domain map 同目錄）-> `docs/domain-map.md`。輸出：無任何 domain map（提示先走 Step 2.5 產出）、有 domain map 但無一列入本 SPEC（提示補 `source_specs`）、未覆蓋 FR 清單（`FR-NN`，請於 domain map §7 補歸屬）、或「檢核通過」。exit code 0 = 通過、1 = 缺失或有未覆蓋 FR。FR token 展開支援逗號續列（`FR-01,02,03`）與範圍（`FR-13~17`）。
 
 **事件流標定檢核**（可選，動機：Layer 2 維度 5「資源競爭」需要規格逐條標定事件流的到達類別與級別，靠 AI 語意判讀成本高，本檢核先以機械掃描做第一輪篩選）：以同一支 `check_domain_coverage.py` 加 `--check-event-flow-labeling` 執行，掃描 spec 每個 `### FR-XX:` 段落是否命中事件流訊號詞（`事件`、`通知`、`提示`、`背景`、`排程`、`佇列`、`推送`、`webhook`、`isolate`——與上方 Layer 2 維度 5 掃描說明共用同一份清單，程式碼側集中於 `check_domain_coverage.py` 的 `EVENT_FLOW_SIGNAL_WORDS` 常數，避免兩處各自維護而漂移）。命中的 FR 須在 domain map「通道與協調圖」節（**以標題文字定位，不依編號**——章節編號在既有專案可能已被其他內容佔用）之「到達類別與級別實例」子表找到對應 FR 引用，缺者列為提醒。命令：
 
