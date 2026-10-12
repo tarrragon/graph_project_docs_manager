@@ -1866,3 +1866,25 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 - null 與缺鍵依 Z1 處理，空字串照一般規則排序
 
 **已知代價**：domain 無效的 bundle 混在正常層內，只能從列首空白或異常字面辨識，不像排在最後那樣集中可見；格式錯誤仍由上游 doc validate 回報。
+
+---
+
+## 2026-10-12 — 改 schema 匯出的框架票之合併閘門（用戶裁決「條文加守衛」，`0.5.0-W1-110`）
+
+**背景**：`0.5.0-W1-096.6` 改了 schema 匯出後單獨進 main，`test/unit/schema` 紅 3 項持續 13 小時 20 分。根因有二：合併前驗證的套件由改動目錄決定（框架票只改 `.claude/skills/doc/`，不會觸發 `test/unit/schema`）；內建副本與框架 JSON 的同批合併程序只存在於 `0.5.0-W1-070` 兩張票的票面，未成文。內建副本成為整份覆寫的完整副本後，框架 JSON 變更 5 次，其中 3 次未同批。
+
+**決策**：下列條文適用於所有改動 `.claude/skills/doc/doc_system/core/tracking_schema.py` 或其匯出的 `tracking_schema.json` 的票（以下稱框架 schema 票）。
+
+1. **同批同步內嵌副本**：建框架 schema 票時，同時建內建副本同步票（整份覆寫 `assets/schema/builtin_tracking_schema.json`，並更新 `assets/schema/builtin_schema_version.json` 的 `schema_generated_at_framework_version`）。副本票的 worktree 先合入框架票分支，PM 只合併副本票；框架票不得單獨進 main，不得以「合併後補」取代。
+2. **合併前跑契約測試**：合併前在待合併分支執行 `fvm flutter test test/unit/schema`，紅燈即不合併；命令、rc 與通過數記入該票 Test Results。
+
+**Why**：測試套件由改動目錄決定，框架票自身不會觸及 `test/unit/schema`，沒有條文時偏離程序無任何訊號（3/5 未同批、紅窗 13 小時 20 分為實測）。
+
+**實測基線**（main，2026-10-12）：`fvm flutter test test/unit/schema` rc=0，144 項全數通過，耗時約 20 秒。
+
+**被放棄的選項**：
+- 候選 C（契約放寬為允許框架 JSON 領先內建一版）：只改測試不改 App 判定，測試綠而產品仍把該 JSON 判為超出已知範圍
+- 候選 D（取消入庫副本）：內建版本原是「App 已確認認得此型別表」的人為確認點，取消後解碼落後於型別表時不再有紅燈；兩個前提亦未驗證
+- 只寫條文、只做守衛：用戶裁決兩者併行
+
+**已知代價**：條文為自律層，仍靠執行者記得；框架批次（canonical 推送前的連續合併）被副本票綁住。強制層（合併或 commit 時比對專案宣告的內嵌副本）由 `0.5.0-W1-110` 的另一張子票設計，推送上游須另行取得用戶授權。
