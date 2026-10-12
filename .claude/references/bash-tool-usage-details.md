@@ -675,13 +675,28 @@ git -C "$D" show HEAD:a.txt              # v2 —— 內容被回滾，git log �
 
 | 情境 | 處置 |
 |------|------|
-| 衝突解決完畢，準備收尾提交 | 精確 `git add <衝突檔>` → `git diff --cached --name-only` 核對 index 僅含衝突檔與本次合併應有的變更 → 裸 `git commit`（`git merge --continue` 亦讀 index，同樣受此核對保護） |
+| 衝突解決完畢，準備收尾提交 | 精確 `git add <衝突檔>` → `git diff --cached --name-only` 核對 index 僅含衝突檔與本次合併應有的變更 → `GIT_EDITOR=true git merge --continue`。存在 MERGE_HEAD 時 `bare-commit-guard-hook.py` 拒絕裸 `git commit`；完成合併只有 `merge --continue` 一條路徑，放棄走 `git merge --abort` |
+| 需自訂合併訊息 | 先把訊息寫入 `$(git rev-parse --git-path MERGE_MSG)` 所指的檔，再執行上列收尾指令。`git merge --continue` 不接受任何引數（`-m`、`--no-edit` 皆報錯） |
+| 共用 checkout 需合併 | 合併一步完成；禁以 `git merge --no-commit` 開頭、把未收尾的合併留給另一個 session。合併報 `Unable to write index` 的檢查與處置見〈兩段式合併禁令（MERGE_HEAD 空窗）〉 |
 | 合併前工作區已有未暫存的無關編輯 | 合併前先處置（提交或 `git stash`），不留在工作區等合併結束——`-A` 之外，衝突期間的多次 `git add` 也容易誤觸 |
 | 已發生捲入 | 依規則七既有條文：**不得** `revert` / `reset --soft` / `commit --amend` / 反向套用。被捲入的內容與他方同窗口的合法寫入在 diff 上不可區分，任一還原動作都會連帶撤銷後者。記錄 commit SHA 與檔案清單於 ticket，上報 PM |
 
-**與既有防護層的關係**：派發骨架（`agent-dispatch-template.md` / `dispatch_skeleton.py` 的 `SKELETON_TEMPLATE_NORMAL`）的 Forbidden 行已同時禁 `git add . / git add -A` 與 `git commit -a`，涵蓋本節兩種載體；缺口原本只在規則七主文——規則七列的是四種 pathspec 形式，未把廣域 staging 納入自身射程，本節補此涵蓋。`bare-commit-guard-hook.py` 與 `dispatch-staging-phrase-guard-hook.py` 皆不涵蓋 merge 收尾（前者攔 pathspec commit，後者檢查派發 prompt 的片語完整性），強制層是否加碼屬另一議題，不在本節範圍。
+**與既有防護層的關係**：派發骨架（`agent-dispatch-template.md` / `dispatch_skeleton.py` 的 `SKELETON_TEMPLATE_NORMAL`）的 Forbidden 行已同時禁 `git add . / git add -A` 與 `git commit -a`，涵蓋本節兩種載體；缺口原本只在規則七主文——規則七列的是四種 pathspec 形式，未把廣域 staging 納入自身射程，本節補此涵蓋。`bare-commit-guard-hook.py` 於 MERGE_HEAD 存在時拒絕裸 commit，涵蓋「以裸 commit 收尾」這條路徑；廣域 staging（`git add -A` 後走 `merge --continue`）仍無強制層。`dispatch-staging-phrase-guard-hook.py` 檢查派發 prompt 的片語完整性，不涵蓋 merge 收尾。強制層是否加碼屬另一議題，不在本節範圍。
 
 **與 PC-BAL-008 的歸屬判定**：本機制**應併入 `PC-BAL-008` 作為新變體**，不另立 error-pattern。判定依據三項——(1) 該 PC 的根因抽象層是「commit 範圍大於意圖且無訊號」，本節是同一抽象下的另一載體，該 PC 已用「變體：檔案級共用」章節容納過一次相同性質的擴充；(2) 讀者遇到「commit 含非預期檔案」時只需查一份文件，另立新 PC 會迫使讀者在兩份相似文件間先判定載體差異，而該判定正是事發當下最難做的；(3) 該 PC 的預防措施（隔離索引、commit 後驗證錨定 SHA 而非 `HEAD`）對本節同樣適用，另立會整段重複。**併入的代價**：該 PC 標題含 `parallel-agent`，而本機制在單 session 自行合併時亦會發生，併入時需於變體章節明示此差異。
+
+### 兩段式合併禁令（MERGE_HEAD 空窗）
+
+**Why**：`git merge --no-commit` 開頭、另一個 Bash 呼叫才收尾時，兩次呼叫之間 MERGE_HEAD 與半合併的 index 留在共用 working tree，長度不受控，他方的 `git add`／`git commit` 作用在這個狀態上。
+
+**Consequence**：他方的裸 commit 實際完成該合併（多 parent，內容含半合併 index），provenance 污染且零訊號；`bare-commit-guard-hook.py` 於 MERGE_HEAD 存在時拒絕裸 commit，空窗期間並行 session 的提交表現為無來由的失敗。
+
+**Action**：共用 checkout 內的合併在單一 Bash 呼叫內完成。同一 session 解完衝突並以 `GIT_EDITOR=true git merge --continue` 收尾屬合法，不得把未收尾的合併留給另一個 session。合併報 `Unable to write index` 視為狀態不一致的警報（`PC-169`、`IMP-V1-005`），不直接 commit 完成，也不直接再執行一次合併，先查：
+
+| 檢查 | 判讀與處置 |
+|------|-----------|
+| `git log --oneline -1` 對照 HEAD 是否已前移 | HEAD 已前移而 index 過時（fast-forward 的非原子性）：依 `IMP-V1-005`，先 `git reset` 重建 index 對齊 HEAD，再繼續任何 commit |
+| MERGE_HEAD 是否殘留（`git rev-parse -q --verify MERGE_HEAD`） | 殘留：先 `git merge --abort`，再重新合併（`PC-169`） |
 
 ---
 
@@ -754,6 +769,8 @@ LC_ALL=C sort /tmp/t.txt | LC_ALL=C uniq -c
 
 ---
 
+**Last Updated**: 2026-10-12
+**Version**: 1.16.0 — 規則七詳細「衝突合併收尾」處置表改為 `GIT_EDITOR=true git merge --continue`（對齊 MERGE_HEAD 存在時守衛拒絕裸 commit），補自訂合併訊息做法（寫入 MERGE_MSG；`merge --continue` 不接受引數）；新增「兩段式合併禁令（MERGE_HEAD 空窗）」Why／Consequence／Action 三級小節（置於 PC-BAL-008 歸屬判定之後）；`Unable to write index` 處置對齊 `PC-169`／`IMP-V1-005`（視為警報，先查 HEAD 與 MERGE_HEAD，不重試），守衛具名並更正「與既有防護層的關係」（MERGE_HEAD 存在時拒絕裸 commit）。
 **Last Updated**: 2026-10-07
 **Version**: 1.15.0 — 規則一詳細 uv 方法由不存在的 `-d` 短旗標改為 `--directory`，附 uv 0.8.13 實測錯誤訊息。
 **Last Updated**: 2026-09-08
