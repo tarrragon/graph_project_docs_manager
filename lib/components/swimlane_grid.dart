@@ -367,6 +367,9 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
 
   /// 邊列：整列一個合併 cell，每條邊依起訖欄號定位，寬度只涵蓋自身欄段
   /// （非全寬），邊數多時不放大每條邊的繪製面積。
+  ///
+  /// 成本：最左可見欄跨欄時合併 cell 的錨點改變，整個邊列重建，成本為
+  /// O(邊數)；在同一欄內捲動只做圖層位移，不重建。
   Widget _buildEdgeRow() {
     return ExcludeSemantics(
       child: Stack(

@@ -467,6 +467,34 @@ void main() {
       );
       expect(rect.left, closeTo(u1 - step / 2, 0.5));
       expect(rect.right, closeTo(u2 + step / 2, 0.5));
+
+      // 較小欄號 > 0：前向 (1,2) 與回指 (2,1)，rect 涵蓋欄 1 左緣至欄 2 右緣。
+      await pumpHarness(
+        tester,
+        child: gridOf(
+          [
+            SwimlaneLane(
+              name: 'dom',
+              nodes: [(nodeOf('c0'), 0), (nodeOf('c1'), 1), (nodeOf('c2'), 2)],
+            ),
+          ],
+          edges: [
+            edgeOf(1, 2, SwimlaneEdgeShape.straight),
+            edgeOf(2, 1, SwimlaneEdgeShape.arc),
+          ],
+        ),
+      );
+      final c1 = tester.getCenter(find.text('c1')).dx;
+      final c2 = tester.getCenter(find.text('c2')).dx;
+      final colStep = c2 - c1;
+      for (final key in const [
+        Key('swimlane-edge-straight-1-2'),
+        Key('swimlane-edge-arc-2-1'),
+      ]) {
+        final edgeRect = tester.getRect(find.byKey(key));
+        expect(edgeRect.left, closeTo(c1 - colStep / 2, 0.5), reason: '$key');
+        expect(edgeRect.right, closeTo(c2 + colStep / 2, 0.5), reason: '$key');
+      }
     });
 
     testWidgets('F2：跨欄邊溢出起始格時不被格裁切（寬度為兩欄）', (tester) async {
