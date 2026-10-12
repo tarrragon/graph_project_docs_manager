@@ -18,6 +18,8 @@ import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/schema/schema_source_resolver.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 /// 測試用 UC 節點（004 破洞指向它；`flowUcId` 為此 id）。
 const fakeUcNode = LightNode(
@@ -127,8 +129,19 @@ class FakeScanRound extends ScanRoundNotifier {
   int produced = 0;
 
   @override
-  ScanRoundState build() =>
-      initial == null ? const ScanRoundIdle() : ScanRoundCompleted(initial!);
+  ScanRoundState build() {
+    // 對齊真實擁有者：工作區路徑變更即丟棄現有輪次。
+    ref.listen<WorkspaceState>(currentWorkspaceStateProvider, (prev, next) {
+      final same =
+          prev is WorkspaceReady &&
+          next is WorkspaceReady &&
+          prev.path == next.path;
+      if (!same) discard('workspace-changed');
+    });
+    return initial == null
+        ? const ScanRoundIdle()
+        : ScanRoundCompleted(initial!);
+  }
 
   @override
   Future<ScanRoundResult?> ensureRound() {
@@ -144,16 +157,28 @@ class FakeScanRound extends ScanRoundNotifier {
     return _produceRound();
   }
 
+  /// 模擬其他消費者（如 Domain 視圖）完成了一輪。
+  void completeExternally(ScanRoundResult result) {
+    state = ScanRoundCompleted(result);
+  }
+
   @override
   void discard([String reason = 'cancel']) {
     discardCalls++;
+    _generation++;
     state = const ScanRoundIdle();
   }
 
+  /// 對齊真實 `_runGuarded`：輪次進行中被 discard 即作廢，回傳 `null`
+  /// 且不寫回狀態。
+  int _generation = 0;
+
   Future<ScanRoundResult?> _produceRound() async {
     produced++;
+    final generation = ++_generation;
     state = const ScanRoundRunning('/ws/fake');
     if (latency > Duration.zero) await Future<void>.delayed(latency);
+    if (generation != _generation) return null;
     final result = produce();
     state = result == null ? const ScanRoundIdle() : ScanRoundCompleted(result);
     return result;

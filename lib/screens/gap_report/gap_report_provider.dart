@@ -11,6 +11,8 @@ import 'dart:developer' as developer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../app/graph_status.dart';
 import '../../app/router.dart';
@@ -52,13 +54,21 @@ class GapReportNotifier extends Notifier<GapReportState> {
     // （SPEC-003 §2.8），本畫面即使未被選取也持續存在，圖建立狀態可能在
     // 已觸發過掃描後又反覆變化（例如切換專案）；若在此覆寫 `_lastResult`，
     // 圖重新建立後會錯誤地卡在本狀態，而非恢復已完成的掃描結果。
+    _resetWhenWorkspaceChanged();
+    _recoverWhenRoundCompletes();
     final unreadyReason = ref.watch(projectUnreadyReasonProvider);
     if (unreadyReason != null) {
       return GapReportProjectUnready(unreadyReason);
     }
     // 0.3.1-W3-122：掃描觸發改掛在「首次可見 nav-page-gaps」，不再掛在
     // provider 的 build()。
-    final isFirstVisible = ref.watch(firstVisibleProvider(AppDestination.gaps));
+    // firstVisibleProvider 只在首次可見那一次為真（讀取後即併入已見集合），
+    // 工作區切換或輪次取不到後的重新觸發不能依賴它；改以「目前選取項為
+    // 本頁」判定可見（首次可見必然滿足），仍保留對它的 watch 以維持
+    // 已見集合的寫入。
+    ref.watch(firstVisibleProvider(AppDestination.gaps));
+    final isFirstVisible =
+        ref.watch(selectedDestinationProvider) == AppDestination.gaps;
     if (isFirstVisible && !_hasTriggeredScan) {
       _hasTriggeredScan = true;
       // PM 處置 5：已有完成輪次即直接呈現，不重掃、不渲染骨架。
@@ -85,6 +95,46 @@ class GapReportNotifier extends Notifier<GapReportState> {
     // 已觸發過掃描：保留目前結果，不因 firstVisibleProvider 的後續讀值
     // （例如已見集合寫回導致的 rebuild）重置狀態。
     return _lastResult;
+  }
+
+  /// 上一次 build() 看到的就緒工作區路徑（非就緒為 `null`）；`_hasBuilt`
+  /// 區分「首次 build」與「路徑變成 null」。
+  String? _workspaceKey;
+  bool _hasBuilt = false;
+
+  /// 輪次取不到後等待輪次出現（見 [_showUnreadyAfterDiscardedRound]）。
+  bool _awaitingRound = false;
+
+  /// 工作區切換（含 A→B、就緒↔非就緒）使本頁既有結果與進行中的掃描作廢，
+  /// 並讓下一個可見判定重新觸發掃描；共用輪次在切換時已被擁有者丟棄，
+  /// 故重新觸發取得的是新工作區的輪次。
+  void _resetWhenWorkspaceChanged() {
+    final key = ref.watch(
+      currentWorkspaceStateProvider.select(
+        (s) => s is WorkspaceReady ? s.path : null,
+      ),
+    );
+    if (_hasBuilt && key != _workspaceKey) {
+      _scanGeneration++;
+      _hasTriggeredScan = false;
+      _awaitingRound = false;
+      _lastResult = const GapReportScanning();
+    }
+    _hasBuilt = true;
+    _workspaceKey = key;
+  }
+
+  /// 輪次取不到而顯示「專案未就緒」後，同一工作區的輪次由其他消費者
+  /// （如 Domain 視圖）建立完成時，直接呈現該輪結果。
+  void _recoverWhenRoundCompletes() {
+    ref.listen<ScanRoundState>(scanRoundProvider, (_, next) {
+      if (!_awaitingRound || next is! ScanRoundCompleted) return;
+      _awaitingRound = false;
+      final projected = _stateOfCompletedRound();
+      if (projected == null) return;
+      state = projected;
+      _lastResult = projected;
+    });
   }
 
   /// `action-gaps-rescan`：現有結果立即被骨架取代，重新掃描（新輪次）。
@@ -130,8 +180,9 @@ class GapReportNotifier extends Notifier<GapReportState> {
 
   Future<void> _runScan(int generation, bool forceNewRound) async {
     final minVisible = Future<void>.delayed(Motion.spinnerMinVisible);
-    // build() 內同步呼叫會讓輪次擁有者在本 provider 建構期間改寫自身狀態，
-    // Riverpod 禁止（debug 斷言）；讓出一個 microtask 待 build() 返回。
+    // 權宜之計：_scheduleScan() 由 build() 呼叫，而 Riverpod 不允許 provider
+    // 在建構期間修改其他 provider（輪次擁有者 ensureRound() 會同步改自身
+    // state，debug 下斷言失敗），故先讓出一個 microtask 待 build() 返回。
     await Future<void>.microtask(() {});
     final result = await _projectRound(forceNewRound);
     await minVisible;
@@ -180,6 +231,13 @@ class GapReportNotifier extends Notifier<GapReportState> {
     final fromBuiltin = builtin == null
         ? null
         : typeTableFromJson(builtin).nonDomainPathsKey;
+    if (fromBuiltin == null) {
+      developer.log(
+        '專案與內建型別表都沒有 non_domain_paths_key', // i18n-exempt: 開發者 debug log
+        name: _tag,
+        level: 900,
+      );
+    }
     return fromBuiltin ?? '';
   }
 
@@ -205,6 +263,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
   /// 改渲染「專案未就緒」，並讓下一次 build() 能重新觸發掃描。
   void _showUnreadyAfterDiscardedRound() {
     _hasTriggeredScan = false;
+    _awaitingRound = true;
     state = GapReportProjectUnready(
       ref.read(projectUnreadyReasonProvider) ??
           ProjectUnreadyReason.notSelected,

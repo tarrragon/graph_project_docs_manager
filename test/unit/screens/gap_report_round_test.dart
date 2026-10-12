@@ -408,9 +408,108 @@ void main() {
       await tester.pump(Motion.cancelDeadline);
 
       expect(fake.discardCalls, 1);
+      expect(container.read(scanRoundProvider), isA<ScanRoundIdle>());
       final state = container.read(gapReportProvider);
       expect(state, isA<GapReportScanning>());
       expect((state as GapReportScanning).isCancelling, isTrue);
+    });
+  });
+
+  group('輪次取不到後的恢復與工作區切換', () {
+    const wsA = WorkspaceReady('/ws/a');
+    const wsB = WorkspaceReady('/ws/b');
+
+    testWidgets('必修1 E1 輪次 null 後工作區轉 ready：頁面再出結果', (tester) async {
+      var ready = false;
+      final fake = FakeScanRound(
+        produce: () => ready
+            ? fakeRound(parseFailureEvents: [fakeCarrierEvent('docs/a.md')])
+            : null,
+      );
+      final container = await pumpHarness(
+        tester,
+        child: const SizedBox.shrink(),
+        overrides: [_onGaps, scanRoundProvider.overrideWith(() => fake)],
+      );
+      container.listen(gapReportProvider, (_, _) {});
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
+
+      ready = true;
+      container.read(currentWorkspaceStateProvider.notifier).state = wsA;
+      await tester.pump();
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(container.read(gapReportProvider), isA<GapReportFound>());
+    });
+
+    testWidgets('必修1 E1 對照：工作區未變、無他人輪次 → 維持專案未就緒', (tester) async {
+      final fake = FakeScanRound(produce: () => null);
+      final container = await pumpHarness(
+        tester,
+        child: const SizedBox.shrink(),
+        overrides: [_onGaps, scanRoundProvider.overrideWith(() => fake)],
+      );
+      container.listen(gapReportProvider, (_, _) {});
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(container.read(gapReportProvider), isA<GapReportProjectUnready>());
+    });
+
+    testWidgets('必修1 其他消費者完成同工作區輪次：直接呈現', (tester) async {
+      final fake = FakeScanRound(produce: () => null);
+      final container = await pumpHarness(
+        tester,
+        child: const SizedBox.shrink(),
+        overrides: [_onGaps, scanRoundProvider.overrideWith(() => fake)],
+      );
+      container.listen(gapReportProvider, (_, _) {});
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      fake.completeExternally(
+        fakeRound(parseFailureEvents: [fakeCarrierEvent('docs/a.md')]),
+      );
+      await tester.pump();
+
+      expect(container.read(gapReportProvider), isA<GapReportFound>());
+    });
+
+    testWidgets('必修2 A→B（皆 ready）：A 的結果不殘留，呈現 B 的結果', (tester) async {
+      var current = 'a';
+      final fake = FakeScanRound(
+        produce: () => current == 'a'
+            ? fakeRound(parseFailureEvents: [fakeCarrierEvent('docs/a.md')])
+            : fakeRound(flowEvents: [_flowEvent]),
+      );
+      final container = await pumpHarness(
+        tester,
+        child: const SizedBox.shrink(),
+        overrides: [
+          _onGaps,
+          scanRoundProvider.overrideWith(() => fake),
+          currentWorkspaceStateProvider.overrideWith((ref) => wsA),
+        ],
+      );
+      container.listen(gapReportProvider, (_, _) {});
+      await pumpContract(tester, Motion.spinnerMinVisible);
+      expect(_categoryIds(container.read(gapReportProvider)), [
+        gapCategoryIdParseFailure,
+      ]);
+
+      current = 'b';
+      container.read(currentWorkspaceStateProvider.notifier).state = wsB;
+      await tester.pump();
+      expect(
+        container.read(gapReportProvider),
+        isA<GapReportScanning>(),
+        reason: '切換當下不得保留 A 的結果',
+      );
+      await pumpContract(tester, Motion.spinnerMinVisible);
+
+      expect(_categoryIds(container.read(gapReportProvider)), [
+        gapCategoryIdFlowBlockMalformed,
+      ]);
     });
   });
 
