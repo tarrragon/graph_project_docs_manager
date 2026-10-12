@@ -40,6 +40,7 @@ class ProjectUnreadyView extends ConsumerWidget {
         ProjectUnreadyReason.loading => l10n.projectUnreadyReasonLoading,
         ProjectUnreadyReason.incompatible =>
           l10n.projectUnreadyReasonIncompatible,
+        ProjectUnreadyReason.loadFailed => l10n.projectUnreadyReasonLoadFailed,
       },
       actions: [
         AppButton(

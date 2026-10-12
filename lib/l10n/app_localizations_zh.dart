@@ -627,6 +627,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectUnreadyReasonIncompatible => '此專案不適用本 App';
 
   @override
+  String get projectUnreadyReasonLoadFailed => '圖譜載入失敗';
+
+  @override
+  String get domainLoadFailedMessage => '掃描此專案時發生非預期錯誤，無法載入圖譜';
+
+  @override
+  String get reloadAction => '重新載入';
+
+  @override
   String get gotoDomainViewAction => '前往 Domain 視圖';
 
   @override

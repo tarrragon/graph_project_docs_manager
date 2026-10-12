@@ -1124,6 +1124,24 @@ abstract class AppLocalizations {
   /// **'此專案不適用本 App'**
   String get projectUnreadyReasonIncompatible;
 
+  /// SPEC-001「專案未就緒」共用定義：Domain 視圖處於載入失敗時的顯示文案（SPEC-004 §4.0.6 1.86）
+  ///
+  /// In zh, this message translates to:
+  /// **'圖譜載入失敗'**
+  String get projectUnreadyReasonLoadFailed;
+
+  /// SPEC-001 §1 Domain 視圖·載入失敗的顯示文案（state-domain-load-failed；只寫結果與原因，操作由按鈕承載）
+  ///
+  /// In zh, this message translates to:
+  /// **'掃描此專案時發生非預期錯誤，無法載入圖譜'**
+  String get domainLoadFailedMessage;
+
+  /// SPEC-001 §1 Domain 視圖·載入失敗的重新載入動作（action-domain-reload）
+  ///
+  /// In zh, this message translates to:
+  /// **'重新載入'**
+  String get reloadAction;
+
   /// SPEC-001「專案未就緒」共用定義：前往 Domain 視圖的動作文案（SPEC-003 §2.9 `action-<screen>-goto-domain`）
   ///
   /// In zh, this message translates to:

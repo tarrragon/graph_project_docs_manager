@@ -24,6 +24,9 @@ enum ProjectUnreadyReason {
   /// Domain 視圖處於三個阻擋狀態之一（不是框架專案／無可消費的型別表／
   /// schema 不相容），畫面不區分三者，統一顯示「此專案不適用本 App」。
   incompatible,
+
+  /// Domain 視圖載入失敗（輪次拋非預期例外，SPEC-001 v1.49 §1）。
+  loadFailed,
 }
 
 /// 專案未就緒的原因；`null` 表 Domain 視圖已建立圖。

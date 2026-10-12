@@ -42,6 +42,9 @@ class DomainViewLoader extends Notifier<void> {
   /// 每次載入、取消、降級遞增；過期的載入結果不寫回。
   int _generation = 0;
 
+  /// 最近一次載入帶入的推定版本，供 [reload] 沿用。
+  String? _lastInferredVersion;
+
   @override
   void build() {}
 
@@ -52,6 +55,7 @@ class DomainViewLoader extends Notifier<void> {
     _write(const DomainLoading());
     // provider 的建構期間不可修改其他 provider；讓出一個 microtask。
     await Future<void>.microtask(() {});
+    _lastInferredVersion = inferredVersion;
     final ScanRoundResult? round;
     try {
       round = await _obtainRound(generation);
@@ -63,7 +67,9 @@ class DomainViewLoader extends Notifier<void> {
         error: e,
         stackTrace: st,
       );
-      rethrow;
+      // SPEC-001 v1.49 §1 載入失敗：落阻擋狀態，不外拋（降級入口以 unawaited 呼叫）。
+      if (_isCurrent(generation)) _write(const DomainLoadFailed());
+      return;
     }
     if (!_isCurrent(generation)) return;
     if (round == null) {
@@ -72,6 +78,10 @@ class DomainViewLoader extends Notifier<void> {
     }
     _write(_stateOfRound(round, inferredVersion: inferredVersion));
   }
+
+  /// 重新載入（`action-domain-reload`）：回載入中，同一資料夾、同一模式——
+  /// 降級旗標不動故降級檢視重試仍為降級；推定版本沿用上一次載入的值。
+  Future<void> reload() => load(inferredVersion: _lastInferredVersion);
 
   /// 取消載入（SPEC-001 §1 載入中列：取消 → 未選專案）：Running 輪次一併
   /// 丟棄，進行中的載入結果作廢。
