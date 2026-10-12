@@ -97,7 +97,7 @@ class AdjacencyQuery {
   final GraphBuildResult? buildResult;
   final GraphLogSink _log;
   Map<String, List<GraphEdge>> _index = const {};
-  bool _nullLogged = false;
+  final _once = UnavailableLogOnce(_loggedBuilds);
   static final Expando<bool> _loggedBuilds = Expando<bool>('adjacencyLogged');
 
   /// 邊型缺省為全部使用中邊型，方向缺省為兩者。
@@ -120,7 +120,7 @@ class AdjacencyQuery {
   }
 
   AdjacencyUnavailable _unavailable(AdjacencyUnavailable unavailable) {
-    if (_markLogged(buildResult)) {
+    if (_once.mark(buildResult)) {
       _log(
         'adjacency query unavailable: ${unavailable.reasonCode}', // i18n-exempt: debug log
         event: GraphLogEvent.adjacencyUnavailable,
@@ -129,18 +129,6 @@ class AdjacencyQuery {
       );
     }
     return unavailable;
-  }
-
-  /// 回傳 true 代表此單位尚未記過，並登記為已記。
-  bool _markLogged(GraphBuildResult? result) {
-    if (result == null) {
-      final first = !_nullLogged;
-      _nullLogged = true;
-      return first;
-    }
-    if (_loggedBuilds[result] == true) return false;
-    _loggedBuilds[result] = true;
-    return true;
   }
 }
 

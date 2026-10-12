@@ -39,7 +39,7 @@ class FlowQuery {
 
   final GraphBuildResult? buildResult;
   final GraphLogSink _log;
-  bool _nullLogged = false;
+  final _once = UnavailableLogOnce(_loggedBuilds);
   static final Expando<bool> _loggedBuilds = Expando<bool>('flowLogged');
 
   FlowOfResult flowOf(String ucId) => switch (buildResult) {
@@ -66,7 +66,7 @@ class FlowQuery {
   }
 
   FlowOfGraphUnavailable _unavailable(FlowOfGraphUnavailable result) {
-    if (_markLogged(buildResult)) {
+    if (_once.mark(buildResult)) {
       _log(
         'flow query unavailable: ${result.reasonCode}', // i18n-exempt: debug log
         event: GraphLogEvent.flowUnavailable,
@@ -75,17 +75,5 @@ class FlowQuery {
       );
     }
     return result;
-  }
-
-  /// 回傳 true 代表此單位尚未記過，並登記為已記。
-  bool _markLogged(GraphBuildResult? result) {
-    if (result == null) {
-      final first = !_nullLogged;
-      _nullLogged = true;
-      return first;
-    }
-    if (_loggedBuilds[result] == true) return false;
-    _loggedBuilds[result] = true;
-    return true;
   }
 }
