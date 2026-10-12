@@ -295,6 +295,27 @@ void main() {
       expectNoOverflow(tester);
       expect(find.text('暫定'), findsOneWidget);
       expect(tester.getSize(find.text('暫定')).height, lessThan(30));
+      final idText = tester.widget<Text>(find.text(TestCopy.longToken));
+      final idSize = tester.getSize(find.text(TestCopy.longToken));
+      final painter = TextPainter(
+        text: TextSpan(text: TestCopy.longToken, style: idText.style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      expect(idSize.width, lessThan(painter.width), reason: 'id 被截斷');
+      final badgeWidth = tester.getSize(find.byType(Badge)).width;
+      final labelPainter = TextPainter(
+        text: TextSpan(
+          text: '暫定',
+          style: tester.widget<Text>(find.text('暫定')).style,
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      expect(badgeWidth, greaterThanOrEqualTo(labelPainter.width));
+      expect(
+        tester.getSize(find.text('暫定')).width,
+        closeTo(labelPainter.width, 0.5),
+        reason: 'badge 文字未被壓縮',
+      );
     });
 
     testWidgets('K3-3：badge 併入 chip 標籤，不另朗讀', (tester) async {

@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations_en.dart';
@@ -441,9 +442,114 @@ void main() {
       final arc = find.byKey(const Key('swimlane-edge-arc-1-0'));
       expect(straight, findsOneWidget);
       expect(arc, findsOneWidget);
-      final straightPainter = tester.widget<CustomPaint>(straight).painter!;
-      final arcPainter = tester.widget<CustomPaint>(arc).painter!;
-      expect(straightPainter.shouldRepaint(arcPainter), isTrue);
+      final straightRender = tester.renderObject(straight);
+      final arcRender = tester.renderObject(arc);
+      expect(straightRender, paints..line());
+      expect(straightRender, isNot(paints..path()));
+      expect(arcRender, paints..path());
+      expect(arcRender, isNot(paints..line()));
+    });
+
+    SwimlaneEdge edgeOf(int from, int to, SwimlaneEdgeShape shape) =>
+        SwimlaneEdge(fromColumn: from, toColumn: to, shape: shape);
+
+    testWidgets('F2：邊 rect 左緣為起欄左緣、右緣為訖欄右緣', (tester) async {
+      final lanes = mixedLanes();
+      await pumpHarness(
+        tester,
+        child: gridOf(lanes, edges: [edgeOf(0, 1, SwimlaneEdgeShape.straight)]),
+      );
+      final u1 = tester.getCenter(find.text('u1')).dx;
+      final u2 = tester.getCenter(find.text('u2')).dx;
+      final step = u2 - u1;
+      final rect = tester.getRect(
+        find.byKey(const Key('swimlane-edge-straight-0-1')),
+      );
+      expect(rect.left, closeTo(u1 - step / 2, 0.5));
+      expect(rect.right, closeTo(u2 + step / 2, 0.5));
+    });
+
+    testWidgets('F2：跨欄邊溢出起始格時不被格裁切（寬度為兩欄）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: gridOf(
+          mixedLanes(),
+          edges: [edgeOf(0, 1, SwimlaneEdgeShape.straight)],
+        ),
+      );
+      final rect = tester.getRect(
+        find.byKey(const Key('swimlane-edge-straight-0-1')),
+      );
+      final u1 = tester.getCenter(find.text('u1')).dx;
+      final u2 = tester.getCenter(find.text('u2')).dx;
+      expect(rect.width, closeTo(2 * (u2 - u1), 0.5));
+    });
+
+    // 實測確認：起始格被回收後跨欄邊整段消失；設計是否調整待 PM 裁決，
+    // 裁決前以 skip 保留重現（取消 skip 即紅）。
+    testWidgets(
+      'F2：起始格捲出視窗後跨欄邊的存續',
+      skip: true,
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: SizedBox(
+            width: 300,
+            height: 300,
+            child: SwimlaneGrid(
+              lanes: mixedLanes(),
+              edges: [
+                edgeOf(0, 1, SwimlaneEdgeShape.straight),
+                edgeOf(7, 8, SwimlaneEdgeShape.straight),
+              ],
+              scrollKey: scrollKey,
+              dragKey: dragKey,
+            ),
+          ),
+        );
+        final hState = tester
+            .state<TwoDimensionalScrollableState>(
+              find.byType(TwoDimensionalScrollable),
+            )
+            .horizontalScrollable;
+        hState.position.jumpTo(hState.position.maxScrollExtent);
+        await tester.pump();
+        expect(find.text('u1'), findsNothing, reason: '前提：起始欄已捲出');
+        expect(find.text('u2'), findsNothing, reason: '前提：訖欄也已捲出');
+        expect(
+          find.byKey(const Key('swimlane-edge-straight-0-1')),
+          findsOneWidget,
+          reason: '起始格已被回收時跨欄邊整段消失',
+        );
+      },
+    );
+
+    testWidgets('F3：空 edges 不增邊列，有 edges 恰多一個邊列高', (tester) async {
+      double extentOf(WidgetTester t) => t
+          .state<TwoDimensionalScrollableState>(
+            find.byType(TwoDimensionalScrollable),
+          )
+          .verticalScrollable
+          .position
+          .maxScrollExtent;
+      Widget small({List<SwimlaneEdge> edges = const []}) => SizedBox(
+        width: 700,
+        height: 100,
+        child: SwimlaneGrid(
+          lanes: mixedLanes(),
+          edges: edges,
+          scrollKey: scrollKey,
+          dragKey: dragKey,
+        ),
+      );
+      await pumpHarness(tester, child: small());
+      final empty = extentOf(tester);
+      expect(empty, closeTo(3 * LayoutSize.laneRowHeight.h + 28.h - 100, 0.5));
+      await pumpHarness(
+        tester,
+        child: small(edges: [edgeOf(0, 1, SwimlaneEdgeShape.straight)]),
+      );
+      expect(extentOf(tester) - empty, closeTo(28.h, 0.5));
     });
 
     testWidgets('K2-4（E1）：列數取自輸入（2 列與 9 列）', (tester) async {
