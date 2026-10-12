@@ -88,6 +88,7 @@ def _run_hook(
     unstaged_files=None,
     tool_name: str = "Bash",
     project_root: Path = Path("/fake/project"),
+    merge_head: bool = False,
 ) -> int:
     """以 monkeypatch 模擬 stdin + 依賴（活躍派發清單 / staged 檔案 /
     unstaged tracked 檔案），執行 main()。"""
@@ -95,6 +96,7 @@ def _run_hook(
     stdin_buffer = io.StringIO(json.dumps(payload))
     monkeypatch.setattr(sys, "stdin", stdin_buffer)
     monkeypatch.setattr(hook_module, "get_project_root", lambda: project_root)
+    monkeypatch.setattr(hook_module, "_merge_in_progress", lambda root: merge_head)
     monkeypatch.setattr(
         hook_module, "_get_active_dispatches_safe", lambda root: dispatches or []
     )
@@ -998,3 +1000,72 @@ class TestLiveScopeFallbackToSnapshot:
         original = _dispatch(_LIVE_TICKET_ID, ["snap.py"])
         hook_module._with_live_declared_files([original], tmp_path, _RecordingLogger())
         assert original["files"] == ["snap.py"]
+
+
+# ============================================================================
+# MERGE_HEAD 存在時拒絕裸 commit（E2 正向對照：存在 vs 不存在）
+# ============================================================================
+
+
+class TestMergeHeadPresent:
+    def test_denied_with_merge_head_no_dispatch(self, monkeypatch, capsys):
+        rc = _run_hook(monkeypatch, 'git commit -m "x"', merge_head=True)
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "git merge --continue" in err
+        assert "GIT_EDITOR=true git merge --continue" in err
+        assert "MERGE_MSG" in err
+        assert "--abort" not in err
+
+    def test_denied_with_merge_head_in_parallel_period(self, monkeypatch, capsys):
+        rc = _run_hook(
+            monkeypatch,
+            'git commit -m "x"',
+            dispatches=[_dispatch("T-1", ["a.py"])],
+            staged_files=["a.py"],
+            merge_head=True,
+        )
+        assert rc == 2
+
+    def test_not_denied_without_merge_head(self, monkeypatch, capsys):
+        rc = _run_hook(monkeypatch, 'git commit -m "x"', merge_head=False)
+        assert rc == 0
+        assert "git merge --continue" not in capsys.readouterr().err
+
+    def test_amend_still_allowed_with_merge_head(self, monkeypatch, capsys):
+        rc = _run_hook(monkeypatch, "git commit --amend --no-edit", merge_head=True)
+        assert rc == 0
+
+    def test_all_flag_commit_denied_with_merge_head(self, monkeypatch):
+        assert _run_hook(monkeypatch, 'git commit -am "x"', merge_head=True) == 2
+
+    def test_pathspec_commit_denied_with_merge_head(self, monkeypatch):
+        assert _run_hook(monkeypatch, 'git commit -m x -- f.py', merge_head=True) == 2
+
+
+def _real_git(repo: Path, *args: str) -> None:
+    import subprocess
+
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+class TestMergeInProgressRealRepo:
+    """不 mock 偵測函式：真實 repo 中 merge --no-commit 前後各斷言一次。"""
+
+    def test_false_before_and_true_after_merge_no_commit(self, tmp_path):
+        _real_git(tmp_path, "init", "-q", "-b", "main")
+        (tmp_path / "a.txt").write_text("a\n")
+        _real_git(tmp_path, "add", "a.txt")
+        _real_git(tmp_path, "commit", "-q", "-m", "base")
+        _real_git(tmp_path, "checkout", "-q", "-b", "side")
+        (tmp_path / "b.txt").write_text("b\n")
+        _real_git(tmp_path, "add", "b.txt")
+        _real_git(tmp_path, "commit", "-q", "-m", "side")
+        _real_git(tmp_path, "checkout", "-q", "main")
+        assert hook_module._merge_in_progress(tmp_path) is False
+        _real_git(tmp_path, "merge", "--no-ff", "--no-commit", "side")
+        assert hook_module._merge_in_progress(tmp_path) is True

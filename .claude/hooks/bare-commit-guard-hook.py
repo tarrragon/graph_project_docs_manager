@@ -373,6 +373,32 @@ def _with_live_declared_files(
     return resolved
 
 
+def _merge_in_progress(project_root: Path) -> bool:
+    """`MERGE_HEAD` 可解析即有未收尾的合併；此時裸 commit 會把合併收尾成
+    merge commit（可能是他方的合併）。寫法同 commit-stage-guard-gate-hook。
+    """
+    success, _ = run_git_command(
+        ["rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=str(project_root)
+    )
+    return success
+
+
+def _build_merge_in_progress_deny_message() -> str:
+    """組出 MERGE_HEAD 存在時的 DENY 訊息。"""
+    return (
+        "[合併進行中，裸 commit 被阻擋]\n\n"
+        "理由：偵測到 MERGE_HEAD（有未收尾的合併），裸 `git commit` 會把"
+        "該合併收尾成 merge commit，若該合併非本人發起，會連同他方內容"
+        "一併提交。\n\n"
+        "若合併是你發起的，請改用（git merge --continue 不接受任何引數，"
+        "-m／--no-edit 皆會 fatal；無 tty 環境須以 GIT_EDITOR=true 略過編輯器）：\n"
+        "  GIT_EDITOR=true git merge --continue\n"
+        "自訂合併訊息：先寫入 `git rev-parse --git-path MERGE_MSG` 所指的檔案，"
+        "再執行上一行。\n\n"
+        "若合併非你發起：請停手並回報 PM，不要自行收尾或放棄該合併。\n"
+    )
+
+
 def _get_staged_files(project_root: Path) -> List[str]:
     """取得目前 staged 檔案清單，讀取失敗時回傳空清單（fail-open）。"""
     success, output = run_git_command(
@@ -768,6 +794,11 @@ def main() -> int:
     if _has_amend_exemption(invocation.args):
         logger.debug("命令含 --amend，放行")
         return 0
+
+    if _merge_in_progress(project_root):
+        logger.warning("MERGE_HEAD 存在，裸 commit 會收尾他方合併，阻擋")
+        print(_build_merge_in_progress_deny_message(), file=sys.stderr)
+        return 2
 
     if _has_all_exemption(invocation.args):
         if dispatch_count == 0:
