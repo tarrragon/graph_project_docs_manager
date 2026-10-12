@@ -134,6 +134,8 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 之內，未新增第三層；但三者的平台端事實軌（實機驗證）全數零覆蓋，且僅
 `MacosScanNotifier` 有承接票（`0.1.0-W3-078`），另兩處尚待 PM 裁決是否開票。
 
+**改 schema 匯出的框架票之合併閘門**：同批同步內嵌副本、合併前跑 `test/unit/schema`，見 `docs/tech-decisions.md` 補記段「2026-10-12 — 改 schema 匯出的框架票之合併閘門」。
+
 **現行待決**（每一項都是版本規劃的前置，見 `docs/system-layer.md` §6 與各 `docs/spec/{domain}/domain-map.md` §6）：
 
 - **UC → Ticket 在上游 17 條語意邊中無對應邊**。追溯視圖（UC-04）承諾的

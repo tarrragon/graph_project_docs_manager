@@ -234,11 +234,11 @@ Mock 只替換外部世界（檔案系統、log 輸出）；Schema、Corpus、Gr
 | IT-INV-3 | `direction` 補值不改變凍結邊集合：凍結 `type_table.json` 的邊型條目不帶 `direction`、產生版本 2.60.13 不高於內建 2.77.0，依 FR-01 自內建表補值，`association` 仍為無向。IT1-A1、IT1-A2 因此兼為補值規則的端到端正向對照：若實作把缺欄當 `directed`，IT1-A2 翻紅 | FR-01（v1.14）、FR-05 |
 | IT-INV-4 | flow 子圖與名稱解析不改變凍結值：實體化器只寫最小 frontmatter、不寫 UC 本文，各 UC 步驟清單為空，`flowOf` 無缺陷；FR-10 子圖不進 EVT-GRAPH-001 邊集合，`expected_edges.json`、`expected_defects.json`、`expected_counts.json` 不變 | FR-10、FR-11 |
 | G9-INV | G9-1（`test/performance/graph_build_scaling_test.dart`）的案例數、合成語料、操作計數斷言不改：flow 子圖與名稱解析不屬 NFR-02 的「引用值」範圍；名稱解析的線性性本輪不另立量測案例 | NFR-02 |
-| IT-INV-5（v1.16／v1.17） | 凍結檔與 IT1～IT3 斷言文字本輪仍**一律不改**，G9-INV 照舊成立：(a) 實體化樹無 UC 本文，flow 四子類缺陷恆為 0 筆，FR-06 筆數公式新增的 flow 項為 0，`expected_defects.json`／`expected_counts.json` 不變；(b) manifest 的兩個 DomainBundle `id` 相異且皆無 `domain` 欄，名稱索引為空，不產生「domain 重複宣告」缺陷；(c) FR-12 是查詢、不改 EVT-GRAPH-001 負載，IT 不呼叫；(d) S6-15 的來源值只在專案表有內建表沒有的邊型時出現，凍結 `type_table.json` 的邊型皆在內建表內 | FR-01、FR-06、FR-09、FR-11、FR-12 |
+| IT-INV-5（v1.16／v1.17） | 凍結檔與 IT1～IT3 斷言文字本輪仍**一律不改**，G9-INV 照舊成立：(a) 實體化樹無 UC 本文，flow 四子類缺陷恆為 0 筆，FR-06 筆數公式新增的 flow 項為 0，`expected_defects.json`／`expected_counts.json` 不變；(b) manifest 的兩個 DomainBundle `id` 相異且皆無 `domain` 欄，名稱索引為空，不產生「domain 重複宣告」缺陷；(c) FR-12 是查詢、不改 EVT-GRAPH-001 負載，IT 不呼叫；(d) S6-15 的來源值只在專案表有內建表沒有的邊型時出現，凍結 `type_table.json` 的邊型皆在內建表內。(a)～(d) 說明凍結值為何不受影響；「不為覆蓋這些能力而重凍結」的依據是用戶 2026-10-12 裁決（`0.5.0-W1-001.6` 候選 A），覆蓋來源與殘餘缺口見 §4.2〈不重凍結的覆蓋來源與殘餘缺口〉 | FR-01、FR-06、FR-09、FR-11、FR-12 |
 
 實測記錄：凍結檔中 `"direction"` 出現 0 次、`depends_on_bundles` 出現 0 次、`schema_generated_at_framework_version` 為 2.60.13；內建 `builtin_schema_version.json` 為 2.77.0（2026-10-08，本 worktree 讀取）。
 `graph_manifest.json` 中 `"domain"` 鍵出現 0 次、DomainBundle ID 為 `DOMAIN-MAP-balance-sheet`、`DOMAIN-MAP-docs-graph` 各 1；凍結 `type_table.json` 的 16 個邊型鍵皆在內建 `builtin_tracking_schema.json` 的 17 個鍵內，差集為空（2026-10-08，`0.5.0-W1-114.2` worktree 讀取）。
-重凍結以覆蓋 flow 子圖、名稱解析、`bundle_dependency` 由 `0.5.0-W1-001.6` 分析。
+是否重凍結以覆蓋 flow 子圖、名稱解析、`bundle_dependency` 已由 `0.5.0-W1-001.6` 分析並經用戶 2026-10-12 裁決：不重凍結（候選 A）。
 
 ## 3. 5b 內圈：逐 bundle 測試案例
 
@@ -652,7 +652,7 @@ L2-6（換 UC 列序不變）與 L1-4（單一 bundle 的總列數）屬 Layout 
 | FR-01 內建表也沒有的邊型缺 `direction` | S6-15 |
 | FR-05 see-also 改 `undirected`／`association` 改 `directed` | S6-13 |
 | FR-08 `bundle_dependency` 的 `layer` 為 proposed | G7-8、G7-9 |
-| FR-10 #1 兩語料逐項一致 | G10-16（語料直讀）；IT 端仍需重凍結（`0.5.0-W1-001.6`） |
+| FR-10 #1 兩語料逐項一致 | G10-16（語料直讀，`flow_of_corpus_test.dart`）；外圈 SPEC-001-test-design ITD2-A2、ITD2-A3、ITD2-A5。IT-1／IT-2 不呼叫（見表後〈不重凍結的覆蓋來源與殘餘缺口〉） |
 | FR-10 #2～#10 | G10-2、G10-4、G10-5、G10-7、G10-8、G10-15＋D4-2、G10-9、G10-12、G10-14 |
 | FR-10 規則：`next` 清單逐元素、`[]` 不報、純量視同單元素（v1.24） | G10-17、G10-18、G10-19 |
 | FR-10 規則：`branch_from`／`return_to` 為清單或 map 報未解析（v1.25） | G10-20（`0.5.0-W1-139`） |
@@ -661,7 +661,7 @@ L2-6（換 UC 列序不變）與 L1-4（單一 bundle 的總列數）屬 Layout 
 | FR-10 規則：主線 `next` 解析結果、不產生缺陷（v1.28） | G10-24（`0.5.0-W1-136`） |
 | FR-10 規則：圖不可用日誌、`buildCompleted` 帶 `flowDefectCount`（v1.23／v1.25） | L5-1～L5-4、L1-4 |
 | FR-11 規則：值正規化（純量、`null`、非字串元素、同名去重，v1.26／v1.27） | G11-19～G11-25 |
-| FR-11 #1 兩語料全部解析 | 無單元案例；需語料或重凍結（`0.5.0-W1-001.6`） |
+| FR-11 #1 兩語料全部解析 | 語料直讀案例（本檔未編號，實作測試：`domain_name_resolution_test.dart` group「兩語料 traverses 解析（FR-11 驗收 1）」）；外圈 SPEC-001-test-design ITD1-A1、ITD2-A2、ITD2-A5。IT-1／IT-2 不呼叫（見表後〈不重凍結的覆蓋來源與殘餘缺口〉） |
 | FR-11 #2～#5 | G11-2、G11-3、G11-5、G11-8 |
 | FR-11 #6 同一步驟重複未宣告名稱只報一筆 | G11-11 |
 | FR-11 #7 缺 `traverses` 鍵回報缺陷、`[]` 不回報 | G11-13 |
@@ -669,11 +669,11 @@ L2-6（換 UC 列序不變）與 L1-4（單一 bundle 的總列數）屬 Layout 
 | FR-11 #9 重複 domain 宣告（含兩者仍為節點） | G11-15、D5-1 |
 | FR-11 #10 缺鍵缺陷負載欄位 `traverses`、原始值 null | G11-13、D4-6 |
 | FR-06 #4 主圖無缺陷、一個未宣告名稱時筆數為 1 | G6-5、G6-6 |
-| FR-12 #1 本專案快照 19／10／19 | G12-1 |
+| FR-12 #1 本專案快照 19／10／19 | G12-1；外圈 SPEC-001-test-design ITD1-A1、ITD1-A2 |
 | FR-12 #2 UC-04 × `schema` 兩條路徑 | G12-7 |
 | FR-12 #3 UC-06 × `schema` 排除經直接 domain | G12-8 |
 | FR-12 #4 直接貫穿格路徑為空 | G12-11 |
-| FR-13 #1 本專案快照排序 | G13-1 |
+| FR-13 #1 本專案快照排序 | G13-1；外圈 SPEC-001-test-design ITD2-A1、ITD2-A4 |
 | FR-13 #2 互相依賴接在最後、依 code point | G13-8 |
 | FR-13 #3 FR-12 同長路徑先後與 FR-13 一致 | G12-7、G13-13 |
 | FR-01 內建表也沒有的邊型來源值「預設（有向）」 | S6-15 |
@@ -689,6 +689,27 @@ L2-6（換 UC 列序不變）與 L1-4（單一 bundle 的總列數）屬 Layout 
 | FR-09 #1、#2 | IT2-A1、D3-4 |
 | FR-09 #3 建圖不可用原因轉換（缺正向基數） | IT2-A6 |
 | NFR-01 | G8-2 |
+
+#### 不重凍結的覆蓋來源與殘餘缺口
+
+用戶 2026-10-12 裁決（`0.5.0-W1-001.6` 候選 A）：IT-1／IT-2 的凍結檔不重凍結。`flowOf`（FR-10）、名稱解析（FR-11）、
+FR-12、FR-13 的語料級驗收由下表案例承擔，不經 `test/fixtures/spec007/` 與 Python 參照實作。
+
+| 能力 | 內圈語料級案例 | 測資路徑 | 外圈（SPEC-001-test-design） |
+|------|--------------|---------|---------------------------|
+| `flowOf`（FR-10 #1） | G10-16 | `FakeDocsFileSystem`＋測試內自建型別表，讀 `test/fixtures/spec001/corpus_snapshot` | ITD2-A2、ITD2-A3、ITD2-A5 |
+| 名稱解析（FR-11 #1） | 未編號，`domain_name_resolution_test.dart` group「兩語料 traverses 解析（FR-11 驗收 1）」 | 同上 | ITD1-A1、ITD2-A2、ITD2-A5 |
+| FR-12 #1 | G12-1 | `loadSnapshotEvent`（暫存樹＋真實 Corpus 與 Graph） | ITD1-A1、ITD1-A2、ITD3-A1、ITD3-A2 |
+| FR-13 #1 | G13-1 | 同上 | ITD2-A1、ITD2-A4 |
+
+殘餘缺口（已知且接受，不另立案例）：
+
+- **無獨立參照實作**：IT-1／IT-2 的期望值由 §2.3 的 Python 參照實作獨立算出；上表四項能力沒有對應的參照實作，
+  期望值為依語料與規格手抄進測試或測試設計的常數。實作與手抄值若出於同一個誤讀，測試不會翻紅。
+- **前兩列不經真實 Corpus 與真實型別表**：G10-16 與 FR-11 語料案例以替身檔案系統和自建型別表建圖，
+  Corpus 解析與 `tracking_schema.json` 消費的錯誤不會在這兩案翻紅；該段由 G12-1、G13-1（`loadSnapshotEvent`）與外圈承擔。
+- **外圈尚未實作**：ITD1～ITD3 在 SPEC-001-test-design 實作單元對照表標「待 Step 6 建票」，建票前上表外圈欄不提供覆蓋。
+- **FR-11 語料案例無本檔編號**：本輪不增改案例編號，該案以測試檔與 group 名稱指認。
 
 ### 4.3 兩軸去重
 
@@ -800,8 +821,8 @@ G4～G6（建邊與結果）拆為兩張，即 8 張。各票驗收含 §1.3 imp
 | G12-16～G12-20、G13-14～G13-20 | `0.5.0-W1-139` | FR-12 E-B、FR-13 Y1／Z3、非 DomainBundle 終點、bundle ID 次鍵、圖不可用日誌 |
 | G13-21 | `0.5.0-W1-141` | 已實作：非字串空值 domain 留列 |
 | G13-1～G13-13（v1.18） | `0.5.0-W1-114.7` | Graph 分層與層內排序（FR-13）；G12-7、G12-9、G13-13 依賴本群組，同票實作免跨票等待；依賴 `0.5.0-W1-103.2`（`bundle_dependency` 進主圖）、快照凍結票（G13-1）。Layout 列序票改向本群組取列序（SPEC-001-test-design L8） |
-| IT-INV-1～5、G9-INV | `0.5.0-W1-001.6` | 重凍結分析；未重凍結前斷言即為「不改」 |
-| FR-10 #1、FR-11 #1（兩語料） | `0.5.0-W1-001.6` | |
+| IT-INV-1～5、G9-INV | `0.5.0-W1-001.6` | 分析結論經用戶 2026-10-12 裁決為不重凍結（候選 A），斷言維持「不改」 |
+| FR-10 #1、FR-11 #1（兩語料） | `0.5.0-W1-001.6` | 不重凍結；覆蓋來源見 §4.2〈不重凍結的覆蓋來源與殘餘缺口〉 |
 
 **Step 6 建議分組**（本檔待建票者，依實作單元分組）：
 

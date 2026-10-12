@@ -286,3 +286,59 @@ def test_spec_id_outside_spec_nnn_form_falls_back_to_compat(capsys):
     spec = "---\nid: SPEC-UI-001\n---\n### FR-01: a\n"
     assert cdc.check_domain_coverage(spec, MAP_UNDER_B) == []
     assert "WARNING" in capsys.readouterr().err
+
+
+# --- 多 domain 解析鏈（0.5.0-W1-086.1）---
+
+def _write(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def _multi_domain_fixture(tmp_path, source_specs="[SPEC-101]"):
+    """SPEC 在 docs/spec/ui/（無 map）；兩個 domain map 分攤 FR，系統層補 FR-03。"""
+    _write(tmp_path / "docs/spec/ui/SPEC-101-x.md", SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           f"---\nsource_specs: {source_specs}\n---\n## SPEC-101\n| FR-01 | A |\n")
+    _write(tmp_path / "docs/spec/b/domain-map.md",
+           f"---\nsource_specs: {source_specs}\n---\n## SPEC-101\n| FR-02 | B |\n")
+    _write(tmp_path / "docs/system-layer.md", "## SPEC-101 覆蓋\n| FR-03 | sys |\n")
+    return tmp_path / "docs/spec/ui/SPEC-101-x.md"
+
+
+def test_multi_map_union_resolves_without_flag(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _multi_domain_fixture(tmp_path)
+    found = cdc.locate_domain_maps(Path("docs/spec/ui/SPEC-101-x.md"), None)
+    assert [p.as_posix() for p in found] == [
+        "docs/spec/a/domain-map.md", "docs/spec/b/domain-map.md", "docs/system-layer.md"]
+    assert cdc.main([str(spec)]) == 0  # 聯集覆蓋 FR-01/02/03
+
+
+def test_multi_map_e1_without_source_specs_differs(tmp_path, monkeypatch, capsys):
+    """E1 對照：同 fixture 無 source_specs 列入 -> 解析不到，rc=1 且訊息為「未列入」。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _multi_domain_fixture(tmp_path, source_specs="[]")
+    assert cdc.locate_domain_maps(Path("docs/spec/ui/SPEC-101-x.md"), None) == []
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "無一份" in out and "source_specs" in out
+
+
+def test_ui_dir_without_any_map_reports_no_map(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "找不到任何 domain map" in out and "無一份" not in out
+
+
+def test_single_domain_root_map_unchanged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    _write(tmp_path / "docs/domain-map.md", "## 覆蓋\n| FR-01~03 | X |\n")
+    found = cdc.locate_domain_maps(Path("docs/spec/SPEC-101-x.md"), None)
+    assert [p.as_posix() for p in found] == ["docs/domain-map.md"]
+    assert cdc.main([str(spec)]) == 0

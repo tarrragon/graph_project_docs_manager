@@ -4,6 +4,17 @@
 §2.1～§2.3 要求的三項整合測試的凍結測資。預期值由 `tool/spec007_reference.py`（獨立的 Python
 參照實作）依規格產生，凍結時離線執行，CI 不執行。凍結票：`0.4.0-W2-008`。
 
+## 參照實作版本與規格對應
+
+`tool/spec007_reference.py` 1.1.0 對應 SPEC-007 v1.21（凍結時為 1.0.0，凍結檔 header 的
+`reference_version` 仍記 1.0.0，不重寫）。1.1.0 變更：使用中邊型為 established 扣
+`domain_dependency` 加 proposed 的 `bundle_dependency`（FR-01、D6）；無向改讀型別表
+`direction` 欄，缺欄依鍵名取內建表 `assets/schema/builtin_tracking_schema.json`、內建表也沒有則
+`directed`（FR-01、FR-05）。凍結的 `type_table.json`（16 邊型、無 `bundle_dependency`、無 `direction`）
+重跑 `compute`，值與凍結檔逐項相同，故 IT-1／IT-2 未重凍結；`compute` 只比對 `corpora` 值，不比對 header。
+
+仍未涵蓋的條文：flow、名稱解析、FR-12、FR-13。
+
 ## 檔案
 
 | 檔案 | 內容 |

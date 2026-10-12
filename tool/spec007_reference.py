@@ -34,9 +34,11 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec006_reference as corpus_ref  # noqa: E402  只借 Corpus 判型，非 Dart
 
-REFERENCE_VERSION = "1.0.0"
+REFERENCE_VERSION = "1.1.0"  # 對應 SPEC-007 v1.21
 EXCLUDED_EDGE_TYPE = "domain_dependency"  # SPEC-007 D6：唯一以鍵名排除的邊型
-UNDIRECTED_EDGE_TYPE = "association"  # SPEC-007 FR-04／FR-05：無向邊
+INCLUDED_PROPOSED_EDGE_TYPE = "bundle_dependency"  # SPEC-007 D6：納入的 proposed 層邊型
+DIRECTION_UNDIRECTED = "undirected"  # SPEC-007 FR-05：無向由 direction 欄判定
+BUILTIN_SCHEMA_RELATIVE = Path("assets/schema/builtin_tracking_schema.json")
 TICKET_TYPE = "Ticket"
 SYNTHETIC_CORPUS = "synthetic"
 CORPUS_GPDM = "graph_project_docs_manager"
@@ -80,13 +82,36 @@ class EdgeType:
     forward_field: str
     reverse_field: str | None
     cardinality: str
+    undirected: bool = False
 
 
-def load_edge_types(table: dict[str, Any]) -> list[EdgeType]:
-    """FR-01：使用中邊型 = established 扣除 domain_dependency；欄位與基數取自型別表。"""
+def builtin_directions() -> dict[str, str]:
+    """內建表的 direction（FR-01 缺欄補值來源）。"""
+    path = Path(__file__).resolve().parent.parent / BUILTIN_SCHEMA_RELATIVE
+    builtin = json.loads(path.read_text(encoding="utf-8"))
+    return {k: v["direction"] for k, v in builtin["edge_types"].items() if "direction" in v}
+
+
+def resolve_direction(name: str, spec: dict[str, Any], builtin: dict[str, str]) -> str:
+    """FR-01：型別表有 direction 用之；缺欄依鍵名取內建表；內建表也沒有則 directed。"""
+    return spec.get("direction") or builtin.get(name, "directed")
+
+
+def is_active_edge_type(name: str, layer: str) -> bool:
+    """FR-01／D6：established 扣 domain_dependency，加 proposed 的 bundle_dependency。"""
+    if name == EXCLUDED_EDGE_TYPE:
+        return False
+    return layer == "established" or name == INCLUDED_PROPOSED_EDGE_TYPE
+
+
+def load_edge_types(
+    table: dict[str, Any], builtin: dict[str, str] | None = None
+) -> list[EdgeType]:
+    """FR-01：使用中邊型見 is_active_edge_type；欄位、基數、方向取自型別表。"""
+    builtin = builtin_directions() if builtin is None else builtin
     result = []
     for name, spec in table["edge_types"].items():
-        if spec["layer"] != "established" or name == EXCLUDED_EDGE_TYPE:
+        if not is_active_edge_type(name, spec["layer"]):
             continue
         result.append(
             EdgeType(
@@ -94,6 +119,7 @@ def load_edge_types(table: dict[str, Any]) -> list[EdgeType]:
                 forward_field=spec["forward_field"],
                 reverse_field=spec.get("reverse_field"),
                 cardinality=spec["forward_cardinality"],
+                undirected=resolve_direction(name, spec, builtin) == DIRECTION_UNDIRECTED,
             )
         )
     return sorted(result, key=lambda e: e.name)
@@ -251,8 +277,8 @@ def classify_ref(
     return "resolved", None
 
 
-def _edge_key(ref: Ref) -> tuple[str, str, str]:
-    if ref.edge_type == UNDIRECTED_EDGE_TYPE:
+def _edge_key(ref: Ref, undirected: set[str]) -> tuple[str, str, str]:
+    if ref.edge_type in undirected:
         low, high = sorted([ref.source_id, ref.raw])
         return ref.edge_type, low, high
     if ref.is_reverse:
@@ -270,6 +296,7 @@ class GraphResult:
     classification: Counter
     reasons: Counter
     reference_total: int
+    undirected: frozenset[str] = frozenset()
 
 
 def _group_rows(
@@ -325,6 +352,7 @@ def build_graph(
 ) -> GraphResult:
     nodes, duplicates = _group_rows(rows)
     node_ids, duplicate_ids = set(nodes), set(duplicates)
+    undirected = {e.name for e in edge_types if e.undirected}
     edges: dict[tuple[str, str, str], set[str]] = defaultdict(set)
     ref_defects: list[dict[str, Any]] = []
     classification: Counter = Counter()
@@ -336,7 +364,7 @@ def build_graph(
             if reason:
                 reasons[reason] += 1
             if category == "resolved":
-                edges[_edge_key(ref)].add(ref.source_id)
+                edges[_edge_key(ref, undirected)].add(ref.source_id)
             else:
                 kind = "danglingRef" if category == "dangling" else "malformedRef"
                 ref_defects.append(_ref_defect(ref, kind, reason))
@@ -349,6 +377,7 @@ def build_graph(
         classification=classification,
         reasons=reasons,
         reference_total=count_reference_values(rows, edge_types),
+        undirected=frozenset(undirected),
     )
 
 
@@ -377,7 +406,7 @@ def declaration_shapes(result: GraphResult) -> dict[str, dict[str, int]]:
     directed: Counter = Counter()
     undirected: Counter = Counter()
     for (edge_type, start, _end), declared in result.edges.items():
-        if edge_type == UNDIRECTED_EDGE_TYPE:
+        if edge_type in result.undirected:
             undirected["both" if len(declared) == 2 else "one_end"] += 1
         elif len(declared) == 2:
             directed["both"] += 1
@@ -586,7 +615,7 @@ def derive_real_covers(rows: list[dict[str, Any]], result: GraphResult) -> dict[
 
     provenance_targets: dict[str, set[str]] = defaultdict(set)
     for (edge_type, start, end), declared in result.edges.items():
-        if edge_type == UNDIRECTED_EDGE_TYPE:
+        if edge_type in result.undirected:
             if len(declared) == 1:
                 tag(next(iter(declared)), "related_one_side")
             else:
@@ -838,7 +867,8 @@ def _cmd_compute(args: argparse.Namespace) -> None:
     bad = []
     for name, data in files.items():
         frozen = json.loads((fixture_dir / name).read_text(encoding="utf-8"))
-        if frozen != json.loads(json.dumps(data)):
+        # 只比對值（corpora）；header 的 reference_version 隨參照實作升版，凍結檔不重寫
+        if frozen["corpora"] != json.loads(json.dumps(data))["corpora"]:
             bad.append(name)
     print("recompute matches frozen values" if not bad else f"mismatch: {bad}")
     sys.exit(1 if bad else 0)
@@ -857,8 +887,12 @@ _TEST_NODE_TYPES = {
 
 
 def _test_table() -> dict[str, Any]:
-    def edge(fwd: str, card: str, rev: str | None = None, layer: str = "established") -> dict:
+    def edge(
+        fwd: str, card: str, rev: str | None = None, layer: str = "established",
+        direction: str = "directed",
+    ) -> dict:
         return {
+            "direction": direction,
             "forward_field": fwd,
             "reverse_field": rev,
             "forward_cardinality": card,
@@ -869,13 +903,14 @@ def _test_table() -> dict[str, Any]:
     return {
         "node_types": _TEST_NODE_TYPES,
         "edge_types": {
-            "association": edge("relatedTo", "many"),
+            "association": edge("relatedTo", "many", direction="undirected"),
             "blocking": edge("blockedBy", "many"),
             "spawn": edge("source_ticket", "one", "spawned_tickets"),
             "provenance": edge("source_proposal", "many", "outputs"),
             "discovery": edge("discovered_during", "one"),
             "domain_dependency": edge("depends_on_domains", "many"),
             "emission": edge("emits", "many", layer="proposed"),
+            "bundle_dependency": edge("depends_on_bundles", "many", layer="proposed"),
         },
     }
 
@@ -912,8 +947,12 @@ A, B, C = "1.0.0-W1-001", "1.0.0-W1-002", "1.0.0-W1-003"
 
 def _test_edge_types_and_patterns() -> None:
     types = {e.name: e for e in load_edge_types(_test_table())}
-    assert set(types) == {"association", "blocking", "spawn", "provenance", "discovery"}
+    assert set(types) == {"association", "blocking", "spawn", "provenance", "discovery", "bundle_dependency"}
     assert types["spawn"].cardinality == "one" and types["provenance"].cardinality == "many"
+    no_bundle = copy.deepcopy(_test_table())  # E2 對照：移除 bundle_dependency 條目後集合不同
+    del no_bundle["edge_types"]["bundle_dependency"]
+    assert {e.name for e in load_edge_types(no_bundle)} == set(types) - {"bundle_dependency"}
+    assert "domain_dependency" not in types and "emission" not in types
     changed = copy.deepcopy(_test_table())
     changed["edge_types"]["blocking"]["forward_field"] = "blocks_x"
     rows = [_row(A, blockedBy=[B], blocks_x=[C]), _row(B), _row(C)]
@@ -1000,6 +1039,36 @@ def _test_association_union() -> None:
     assert declaration_shapes(r)["undirected"] == {"one_end": 0, "both": 1}
 
 
+def _test_direction_from_table() -> None:
+    rows = [_row(B, relatedTo=[A]), _row(A)]
+    assert _edge_set(_graph(rows)) == {("association", A, B, (B,))}
+    directed = copy.deepcopy(_test_table())  # E2 對照：association 改 directed 後不再對稱
+    directed["edge_types"]["association"]["direction"] = "directed"
+    assert _edge_set(_graph(rows, directed)) == {("association", B, A, (B,))}
+    both = _graph([_row(B, relatedTo=[A]), _row(A, relatedTo=[B])], directed)
+    assert len(both.edges) == 2  # 有向：A->B 與 B->A 不合併
+    see_also = copy.deepcopy(_test_table())  # 非鍵名特權：其他邊型改 undirected 即對稱
+    see_also["edge_types"]["blocking"]["direction"] = "undirected"
+    r = _graph([_row(B, blockedBy=[A]), _row(A, blockedBy=[B])], see_also)
+    assert _edge_set(r) == {("blocking", A, B, (A, B))}
+
+
+def _test_direction_fill_when_missing() -> None:
+    """FR-01：缺 direction 依鍵名取內建表；內建表也沒有則 directed。"""
+    table = copy.deepcopy(_test_table())
+    for spec in table["edge_types"].values():
+        del spec["direction"]
+    table["edge_types"]["unknown_edge"] = {
+        "forward_field": "ux", "reverse_field": None, "forward_cardinality": "many",
+        "layer": "established", "class": "x",
+    }
+    types = {e.name: e for e in load_edge_types(table)}
+    assert types["association"].undirected and not types["blocking"].undirected
+    assert not types["unknown_edge"].undirected  # 對照：內建表沒有的鍵名不當無向
+    stub = {k: v for k, v in builtin_directions().items() if k != "association"}
+    assert not {e.name: e for e in load_edge_types(table, stub)}["association"].undirected
+
+
 def _test_counts_and_conservation() -> None:
     rows = [_row(A, relatedTo=[B, "bad id"], blockedBy=[C, 7]), _row(B, relatedTo=[A]), _row(C)]
     counts = counts_output(_graph(rows))
@@ -1045,6 +1114,8 @@ def _run_selftests() -> None:
         _test_classification,
         _test_edges_and_multisource,
         _test_association_union,
+        _test_direction_from_table,
+        _test_direction_fill_when_missing,
         _test_counts_and_conservation,
         _test_reference_total_two_ways_on_fixture,
         _test_coverage_guard,
