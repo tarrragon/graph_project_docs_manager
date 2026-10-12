@@ -18,6 +18,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_text.dart';
+import 'badge.dart';
 
 /// 節點參照 chip（SPEC-004 §4.19）。
 ///
@@ -28,6 +29,7 @@ class RelationItem extends StatefulWidget {
     super.key,
     required this.id,
     this.isMono = true,
+    this.isProposed = false,
     required this.onTap,
     required this.testKey,
   });
@@ -37,6 +39,10 @@ class RelationItem extends StatefulWidget {
 
   /// `true`（預設）等寬字；步驟表 domain 欄傳 `false`。
   final bool isMono;
+
+  /// `true` 時尾端加 `Badge.category`（tone warning）標示 proposed 邊，
+  /// 朗讀改用 `relationItemProposedA11yLabel`（SPEC-004 4.19）。
+  final bool isProposed;
 
   /// 點選回呼；呼叫端依所在情境決定行為（替換主欄／jump 至 Domain 視圖／
   /// 跳轉破洞報告）。
@@ -78,7 +84,11 @@ class _RelationItemState extends State<RelationItem> {
     return Semantics(
       key: widget.testKey,
       button: true,
-      label: l10n.relationItemA11yLabel(widget.id),
+      // badge 併入 chip 標籤，不另朗讀（SPEC-004 4.19）。
+      excludeSemantics: true,
+      label: widget.isProposed
+          ? l10n.relationItemProposedA11yLabel(widget.id)
+          : l10n.relationItemA11yLabel(widget.id),
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: Border.all(
@@ -103,12 +113,26 @@ class _RelationItemState extends State<RelationItem> {
                 color: AppColors.surfaceChip,
                 borderRadius: BorderRadius.circular(Radius.md.r),
               ),
-              child: AppText(
-                widget.id,
-                variant: widget.isMono
-                    ? AppTextVariant.mono
-                    : AppTextVariant.body,
-                maxLines: 1,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: AppText(
+                      widget.id,
+                      variant: widget.isMono
+                          ? AppTextVariant.mono
+                          : AppTextVariant.body,
+                      maxLines: 1,
+                    ),
+                  ),
+                  if (widget.isProposed) ...[
+                    SizedBox(width: Space.sm.w),
+                    Badge.category(
+                      label: l10n.relationProposedLabel,
+                      tone: BadgeTone.warning,
+                    ),
+                  ],
+                ],
               ),
             ),
           ),

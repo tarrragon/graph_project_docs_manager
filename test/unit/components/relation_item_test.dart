@@ -68,9 +68,7 @@ void main() {
         expectNoOverflow(tester);
       });
 
-      testWidgets('domain 欄（isMono=false）@ ${size.label} 不溢位', (
-        tester,
-      ) async {
+      testWidgets('domain 欄（isMono=false）@ ${size.label} 不溢位', (tester) async {
         await pumpHarness(
           tester,
           size: size,
@@ -185,9 +183,7 @@ void main() {
   });
 
   group('顏色、內距、圓角引用 token', () {
-    testWidgets('底色為 surfaceChip、內距為 Space.sm、圓角為 Radius.md', (
-      tester,
-    ) async {
+    testWidgets('底色為 surfaceChip、內距為 Space.sm、圓角為 Radius.md', (tester) async {
       await pumpHarness(
         tester,
         child: SizedBox(
@@ -203,10 +199,7 @@ void main() {
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration! as BoxDecoration;
       expect(decoration.color, AppColors.surfaceChip);
-      expect(
-        (decoration.borderRadius! as BorderRadius).topLeft.x,
-        Radius.md.r,
-      );
+      expect((decoration.borderRadius! as BorderRadius).topLeft.x, Radius.md.r);
 
       final padding = container.padding! as EdgeInsets;
       expect(padding.left, Space.sm.w);
@@ -235,9 +228,7 @@ void main() {
       expect(semantics.label, contains(TestCopy.nodeId));
     });
 
-    testWidgets('祖先鏈存在 decoration 非 null 的 DecoratedBox（焦點裝飾）', (
-      tester,
-    ) async {
+    testWidgets('祖先鏈存在 decoration 非 null 的 DecoratedBox（焦點裝飾）', (tester) async {
       await pumpHarness(
         tester,
         child: SizedBox(
@@ -255,6 +246,83 @@ void main() {
         find.byType(DecoratedBox).first,
       );
       expect(decoratedBox.decoration, isNotNull);
+    });
+  });
+
+  group('isProposed badge（K3）', () {
+    Widget itemOf({required bool proposed, String id = 'DOMAIN-MAP-x'}) =>
+        SizedBox(
+          width: 200,
+          child: RelationItem(
+            id: id,
+            isProposed: proposed,
+            onTap: () {},
+            testKey: _relationKey,
+          ),
+        );
+
+    testWidgets('K3-1（E1）：true 有暫定 badge 與朗讀；false 無', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(tester, child: itemOf(proposed: true));
+      expect(find.text('暫定'), findsOneWidget);
+      final badge = tester.widget<Badge>(find.byType(Badge));
+      expect(badge.tone, BadgeTone.warning);
+      expect(badge.variant, BadgeVariant.category);
+      expect(
+        find.bySemanticsLabel('關聯節點 DOMAIN-MAP-x，暫定邊，形狀可能變動'),
+        findsOneWidget,
+      );
+
+      await pumpHarness(tester, child: itemOf(proposed: false));
+      expect(find.byType(Badge), findsNothing);
+      expect(find.text('暫定'), findsNothing);
+      expect(find.bySemanticsLabel('關聯節點 DOMAIN-MAP-x'), findsOneWidget);
+
+      await pumpHarness(
+        tester,
+        locale: const Locale('en'),
+        child: itemOf(proposed: true),
+      );
+      expect(find.text('Proposed'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('K3-2：長 id 截斷時 badge 不截斷不換行、不溢位', (tester) async {
+      await pumpHarness(
+        tester,
+        child: itemOf(proposed: true, id: TestCopy.longToken),
+      );
+      expectNoOverflow(tester);
+      expect(find.text('暫定'), findsOneWidget);
+      expect(tester.getSize(find.text('暫定')).height, lessThan(30));
+      final idText = tester.widget<Text>(find.text(TestCopy.longToken));
+      final idSize = tester.getSize(find.text(TestCopy.longToken));
+      final painter = TextPainter(
+        text: TextSpan(text: TestCopy.longToken, style: idText.style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      expect(idSize.width, lessThan(painter.width), reason: 'id 被截斷');
+      final badgeWidth = tester.getSize(find.byType(Badge)).width;
+      final labelPainter = TextPainter(
+        text: TextSpan(
+          text: '暫定',
+          style: tester.widget<Text>(find.text('暫定')).style,
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      expect(badgeWidth, greaterThanOrEqualTo(labelPainter.width));
+      expect(
+        tester.getSize(find.text('暫定')).width,
+        closeTo(labelPainter.width, 0.5),
+        reason: 'badge 文字未被壓縮',
+      );
+    });
+
+    testWidgets('K3-3：badge 併入 chip 標籤，不另朗讀', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(tester, child: itemOf(proposed: true));
+      expect(find.bySemanticsLabel('暫定'), findsNothing);
+      handle.dispose();
     });
   });
 }

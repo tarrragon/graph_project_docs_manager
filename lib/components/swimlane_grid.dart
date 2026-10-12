@@ -41,12 +41,49 @@ import 'app_icon.dart';
 import 'app_text.dart';
 import 'swimlane_node.dart';
 
+/// 泳道列種類（SPEC-004 4.38 `lanes` slot）。
+enum SwimlaneLaneKind {
+  /// 「畫面」列：列首走 i18n `swimlaneScreenLaneName`，不可點、不高亮。
+  screen,
+
+  /// domain 列：列首顯示 [SwimlaneLane.name] 原值，不經 i18n。
+  domain,
+
+  /// 「未定位」列：列首走 i18n `swimlaneUnplacedLaneName`，不可點、不高亮。
+  unplaced,
+}
+
+/// 邊形狀（SPEC-004 4.38 `edges` slot）。
+enum SwimlaneEdgeShape { straight, arc }
+
+/// 一條步驟間的邊：起訖步驟欄號（0 起算）與形狀。
+class SwimlaneEdge {
+  const SwimlaneEdge({
+    required this.fromColumn,
+    required this.toColumn,
+    required this.shape,
+  });
+
+  final int fromColumn;
+  final int toColumn;
+  final SwimlaneEdgeShape shape;
+}
+
 /// 一條泳道：泳道名 + 節點（節點與其所在步驟欄，0 起算）。
 class SwimlaneLane {
-  const SwimlaneLane({required this.name, required this.nodes, this.domainId});
+  const SwimlaneLane({
+    required this.name,
+    required this.nodes,
+    this.domainId,
+    this.kind = SwimlaneLaneKind.domain,
+  });
 
-  /// 泳道名（資料值），對映 [AppText.body] 泳道名 slot。
+  /// 泳道名（資料值），對映 [AppText.body] 泳道名 slot。僅 `kind` 為
+  /// [SwimlaneLaneKind.domain] 時作為列首顯示。
   final String name;
+
+  /// 列種類，預設 [SwimlaneLaneKind.domain]。
+  final SwimlaneLaneKind kind;
 
   /// 該泳道對映的 domain 識別碼；`null` 時泳道名格維持唯讀（無
   /// [SwimlaneGrid.onSelectDomain] 輸入端，呼叫端未提供 domain 對映關係）。
@@ -76,10 +113,14 @@ class SwimlaneGrid extends StatefulWidget {
     required this.dragKey,
     this.laneHighlight,
     this.onSelectDomain,
+    this.edges = const [],
   });
 
-  /// 泳道清單（1..無上限）。
+  /// 泳道清單（1..無上限）；列數取自輸入。
   final List<SwimlaneLane> lanes;
+
+  /// 步驟間的邊；空清單時不渲染邊列。
+  final List<SwimlaneEdge> edges;
 
   /// 選中 domain 的泳道名；`null` 時無列高亮。容器無自身狀態集，本欄位
   /// 由呼叫端傳入（SPEC-004 4.38「狀態矩陣」）。
@@ -136,9 +177,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     if (!mounted || !_vController.hasClients) {
       return;
     }
-    final index = widget.lanes.indexWhere(
-      (lane) => lane.name == widget.laneHighlight,
-    );
+    final index = widget.lanes.indexWhere(_isHighlighted);
     if (index < 0) {
       return;
     }
@@ -159,7 +198,19 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     );
   }
 
+  /// 只有 domain 列受 [SwimlaneGrid.laneHighlight] 高亮。
+  bool _isHighlighted(SwimlaneLane lane) =>
+      lane.kind == SwimlaneLaneKind.domain && lane.name == widget.laneHighlight;
+
   int get _stepColumnCount {
+    var maxColumn = _maxNodeColumn;
+    for (final edge in widget.edges) {
+      maxColumn = math.max(maxColumn, math.max(edge.fromColumn, edge.toColumn));
+    }
+    return maxColumn < 0 ? 1 : maxColumn + 1;
+  }
+
+  int get _maxNodeColumn {
     var maxColumn = -1;
     for (final lane in widget.lanes) {
       for (final entry in lane.nodes) {
@@ -168,7 +219,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
         }
       }
     }
-    return maxColumn < 0 ? 1 : maxColumn + 1;
+    return maxColumn;
   }
 
   @override
@@ -196,7 +247,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
         // jumpTo 大距離跳轉會觸發 two_dimensional_scrollables 0.5.4 內部
         // child-reuse 例外，見本檔頂端 dartdoc「契約值實測」段）。
         columnCount: stepColumnCount + 1,
-        rowCount: laneCount + 1,
+        rowCount: laneCount + 1 + (widget.edges.isEmpty ? 0 : 1),
         columnBuilder: (column) => TableSpan(
           extent: FixedTableSpanExtent(
             column == 0 ? LayoutSize.laneLabelWidth.w : _stepColumnWidth.w,
@@ -206,7 +257,10 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
           if (row == laneCount) {
             return TableSpan(extent: FixedTableSpanExtent(_arrowRowHeight.h));
           }
-          final highlighted = widget.lanes[row].name == widget.laneHighlight;
+          if (row > laneCount) {
+            return TableSpan(extent: FixedTableSpanExtent(_edgeRowHeight.h));
+          }
+          final highlighted = _isHighlighted(widget.lanes[row]);
           return TableSpan(
             extent: FixedTableSpanExtent(LayoutSize.laneRowHeight.h),
             backgroundDecoration: highlighted
@@ -224,6 +278,19 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
         cellBuilder: (context, vicinity) {
           if (vicinity.row == laneCount) {
             return TableViewCell(child: _buildArrowCell(vicinity.column));
+          }
+          if (vicinity.row > laneCount) {
+            if (vicinity.column == 0) {
+              return const TableViewCell(child: SizedBox.shrink());
+            }
+            // 整個邊列合併為單一 cell（欄 1..末欄）：TableView 對合併 cell
+            // 只要任一部分在 viewport 內即建構並整塊佈局，邊段不依附起始格，
+            // 起點欄捲出後仍隨畫布 1:1 位移繪製（SPEC-004 4.38）。
+            return TableViewCell(
+              columnMergeStart: 1,
+              columnMergeSpan: stepColumnCount,
+              child: _buildEdgeRow(),
+            );
           }
           return TableViewCell(
             child: _buildLaneCell(
@@ -248,15 +315,22 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
   ) {
     if (column == 0) {
       final domainId = lane.domainId;
-      if (domainId == null || onSelectDomain == null) {
+      final title = switch (lane.kind) {
+        SwimlaneLaneKind.screen => l10n.swimlaneScreenLaneName,
+        SwimlaneLaneKind.unplaced => l10n.swimlaneUnplacedLaneName,
+        SwimlaneLaneKind.domain => lane.name,
+      };
+      if (lane.kind != SwimlaneLaneKind.domain ||
+          domainId == null ||
+          onSelectDomain == null) {
         return Semantics(
-          label: l10n.laneA11yLabel(lane.name),
+          label: l10n.laneA11yLabel(title),
           container: true,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: AppText(lane.name, maxLines: 1),
+              child: AppText(title, maxLines: 1),
             ),
           ),
         );
@@ -291,6 +365,36 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     );
   }
 
+  /// 邊列：整列一個合併 cell，每條邊依起訖欄號定位，寬度只涵蓋自身欄段
+  /// （非全寬），邊數多時不放大每條邊的繪製面積。
+  ///
+  /// 成本：最左可見欄跨欄時合併 cell 的錨點改變，整個邊列重建，成本為
+  /// O(邊數)；在同一欄內捲動只做圖層位移，不重建。
+  Widget _buildEdgeRow() {
+    return ExcludeSemantics(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [for (final edge in widget.edges) _buildEdgeShape(edge)],
+      ),
+    );
+  }
+
+  Widget _buildEdgeShape(SwimlaneEdge edge) {
+    final span = (edge.toColumn - edge.fromColumn).abs() + 1;
+    return Positioned(
+      left: _stepColumnWidth.w * math.min(edge.fromColumn, edge.toColumn),
+      top: 0,
+      bottom: 0,
+      width: _stepColumnWidth.w * span,
+      child: CustomPaint(
+        key: Key(
+          'swimlane-edge-${edge.shape.name}-${edge.fromColumn}-${edge.toColumn}',
+        ),
+        painter: _EdgePainter(edge.shape),
+      ),
+    );
+  }
+
   Widget _buildArrowCell(int column) {
     if (column == 0) {
       return const SizedBox.shrink();
@@ -313,6 +417,37 @@ const double _stepColumnWidth = 96;
 
 /// 底部箭頭列高：裝飾列，非畫布量測值，理由同 [_stepColumnWidth]。
 const double _arrowRowHeight = 28;
+
+/// 邊列高：裝飾列，非畫布量測值，理由同 [_stepColumnWidth]。
+const double _edgeRowHeight = 28;
+
+/// 邊繪製：`straight` 為水平直線，`arc` 為向上拱起的弧線。
+class _EdgePainter extends CustomPainter {
+  const _EdgePainter(this.shape);
+
+  final SwimlaneEdgeShape shape;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.borderStrong
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final midY = size.height / 2;
+    switch (shape) {
+      case SwimlaneEdgeShape.straight:
+        canvas.drawLine(Offset(0, midY), Offset(size.width, midY), paint);
+      case SwimlaneEdgeShape.arc:
+        final path = Path()
+          ..moveTo(0, midY)
+          ..quadraticBezierTo(size.width / 2, 0, size.width, midY);
+        canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_EdgePainter oldDelegate) => oldDelegate.shape != shape;
+}
 
 /// 泳道列的列間虛線裝飾：於列底畫等距短劃。與 Section 容器
 /// （section.dart）的私有虛線繪製類別視覺等效（同色
@@ -356,6 +491,5 @@ class _NoInertiaScrollPhysics extends ClampingScrollPhysics {
   Simulation? createBallisticSimulation(
     ScrollMetrics position,
     double velocity,
-  ) =>
-      null;
+  ) => null;
 }

@@ -692,6 +692,30 @@ abstract class AppLocalizations {
   /// **'關聯節點 {id}'**
   String relationItemA11yLabel(String id);
 
+  /// SPEC-004 §4.19：isProposed 的尾端 Badge.category 文字
+  ///
+  /// In zh, this message translates to:
+  /// **'暫定'**
+  String get relationProposedLabel;
+
+  /// SPEC-004 §4.19：isProposed 的 RelationItem 朗讀標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'關聯節點 {id}，暫定邊，形狀可能變動'**
+  String relationItemProposedA11yLabel(String id);
+
+  /// SPEC-004 §4.38：「畫面」列列首（kind: screen）
+  ///
+  /// In zh, this message translates to:
+  /// **'畫面'**
+  String get swimlaneScreenLaneName;
+
+  /// SPEC-004 §4.38：「未定位」列列首（kind: unplaced）
+  ///
+  /// In zh, this message translates to:
+  /// **'未定位'**
+  String get swimlaneUnplacedLaneName;
+
   /// SPEC-004 §4.9：目前專案朗讀標籤
   ///
   /// In zh, this message translates to:

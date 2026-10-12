@@ -604,6 +604,27 @@
       }
     }
   },
+  "relationProposedLabel": "暫定",
+  "@relationProposedLabel": {
+    "description": "SPEC-004 §4.19：isProposed 的尾端 Badge.category 文字"
+  },
+  "relationItemProposedA11yLabel": "關聯節點 {id}，暫定邊，形狀可能變動",
+  "@relationItemProposedA11yLabel": {
+    "description": "SPEC-004 §4.19：isProposed 的 RelationItem 朗讀標籤",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "swimlaneScreenLaneName": "畫面",
+  "@swimlaneScreenLaneName": {
+    "description": "SPEC-004 §4.38：「畫面」列列首（kind: screen）"
+  },
+  "swimlaneUnplacedLaneName": "未定位",
+  "@swimlaneUnplacedLaneName": {
+    "description": "SPEC-004 §4.38：「未定位」列列首（kind: unplaced）"
+  },
 
   "currentProjectA11yLabel": "目前專案",
   "@currentProjectA11yLabel": {
