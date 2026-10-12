@@ -800,6 +800,10 @@ versions:
          - 新增 EVT-CORPUS-004（flow 區塊解析失敗；UC 仍為節點）。
          - 語意調整不新增：EVT-CORPUS-003（指向 004）、EVT-DIAGNOSTICS-001（unlocatable 收窄為五狀態中的「無法定位」）。
          - EVT-LAYOUT-001 事件本身不變，flow 發出與消費步驟由 095.2 校正。Layout 實作若需新事件，回報 e1 補入本欄。
+      發版已知限制（2026-10-12 用戶裁決，0.6.0-W1-076）：自破洞報告與 UC Flow 跳入節點詳情、Ticket 清單時，落點顯示的是
+      fixture 而非指向的節點或票（破洞項指向 ticket、指向其他圖節點、事件類無 UC 引用；UC Flow 步驟列與「檢視關聯」）；
+      側欄直接進入節點詳情、Ticket 清單、追溯視圖亦顯示 fixture。三條皆不前移，由 0.6.0-W1-077 於 0.6 實作；
+      SPEC-003 §3.4、§3.5 的目標行為不改。發版時寫入 CHANGELOG 的已知限制。
 
   - version: "0.6.0"
     codename: "Screens"
@@ -818,7 +822,8 @@ versions:
       （buildGraph 與 detectGraphDefectGaps 的 production 呼叫已由 0.5 的票達成）。
       2026-10-12 跳轉耦合盤點（W1-076）：追溯視圖無真資料畫面跳入，可獨立留在本版；節點詳情與 Ticket 清單仍有
       同型耦合三條（破洞報告→Ticket 清單、破洞報告→節點詳情、UC Flow→節點詳情，後者於 0.5.0-W1-114.18 合併時發作）。
-      處置待用戶裁決，裁決結果可能再改變本版畫面數；本版規劃波以 W1-076 的 Solution 為範圍起算依據。
+      用戶裁決（2026-10-12）：三條皆維持在本版，0.5 發版時記為已知限制；側欄直接進入顯示 fixture 隨同處理。
+      承接 W1-077（跳轉帶目標）、W1-078（W1-073 票面更新）。本版規劃波以 W1-076 的 Solution 為範圍起算依據。
 
   - version: "0.7.0"
     codename: "History"
