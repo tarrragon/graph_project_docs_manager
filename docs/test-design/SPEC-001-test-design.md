@@ -503,32 +503,33 @@ v1.38 處置（`0.5.0-W1-114.2` 用戶裁決，SPEC-001 v1.38、SPEC-007 v1.18�
 
 | 案例群組 | 實作單元 | 承接票 | 依賴 |
 |---------|---------|-------|------|
-| L1-4、L2-5（畫邊）、L2-6、L8（v1.38） | Layout（列序組裝，向 Graph 取列序） | 待 Step 6 建票 | Graph FR-13 票（SPEC-007 G13；L8 以替身測，不阻擋開工） |
+| L1-4、L2-5（畫邊）、L2-6、L8（v1.38） | Layout（列序組裝，向 Graph 取列序） | `0.5.0-W1-114.9` | `0.5.0-W1-114.7`（Graph FR-13，SPEC-007 G13；L8 以替身測，不阻擋開工） |
 | L1-1～L1-3、L2-1～L2-4 | 已移至 SPEC-007 G13 | 見 SPEC-007-test-design §7 G13 | — |
-| L3～L6 | Layout（欄序、節點、邊） | 待 Step 6 建票 | `0.5.0-W1-001.4`（flowOf） |
-| L7 | Layout（節點、「未定位」列） | 待 Step 6 建票（併 L3～L6） | `0.5.0-W1-001.4`、`0.5.0-W1-001.5`（解析結果） |
-| L9（v1.38） | Layout（欄號最小節點查詢） | 待 Step 6 建票（併 L3～L7，共用欄序結果） | 同 L3～L7 |
+| L3～L6 | Layout（欄序、節點、邊） | `0.5.0-W1-114.10` | `0.5.0-W1-001.4`（flowOf） |
+| L7 | Layout（節點、「未定位」列） | `0.5.0-W1-114.10`（併 L3～L6） | `0.5.0-W1-001.4`、`0.5.0-W1-001.5`（解析結果） |
+| L9（v1.38） | Layout（欄號最小節點查詢） | `0.5.0-W1-114.10`（併 L3～L7，共用欄序結果） | 同 L3～L7 |
 | V1、V2 | Graph FR-12 | 見 SPEC-007-test-design §7 G12 | — |
-| V3（v1.38 改寫） | domain_view（畫面呼叫 FR-12 與 L9） | 待 Step 6 建票（第 3 組） | Graph FR-12 票、Layout L9 票（以替身測，不阻擋開工） |
+| V3（v1.38 改寫） | domain_view（畫面呼叫 FR-12 與 L9） | `0.5.0-W1-114.12` | `0.5.0-W1-114.7`（Graph FR-12）、`0.5.0-W1-114.10`（Layout L9）（以替身測，不阻擋開工） |
 | P4（v1.38） | 路徑比對器 | `0.5.0-W1-096.5` | `0.5.0-W1-123`（非 domain 清單照收字串，SPEC-006 C15-7） |
-| F1 | domain_view／UC Flow 畫面（EVT-004 接畫面） | 待 Step 6 建票 | `0.5.0-W1-001.3`（EVT-CORPUS-004）、`0.5.0-W1-119`（`parseFailure` 破洞） |
+| F1-1～F1-5 | domain_view 畫面（EVT-004 接畫面） | `0.5.0-W1-114.12` | `0.5.0-W1-001.3`（EVT-CORPUS-004）、`0.5.0-W1-119`（`parseFailure` 破洞） |
+| F1-6、F1-7 | UC Flow 畫面（EVT-004 接畫面） | 無承接票（已回報 PM，`0.5.0-W1-162`）。`0.5.0-W1-114.18` 的驗收含「004 無步驟時顯示 `flowParseFailedMessage`」，但未列 F1-6、F1-7 編號，也未涵蓋 F1-7 的對照斷言 | 同 F1-1～F1-5 |
 | P1～P3（含 P1-7） | 路徑比對器 | `0.5.0-W1-096.5` | `0.5.0-W1-096.7`（非 domain 清單三態與格式錯誤狀態） |
 | R1（含 R1-9～R1-11）、K4-1／K4-2 的 `pathDeclaration*` | Diagnostics／破洞報告頁 | `0.5.0-W1-119` | `0.5.0-W1-096.5`、`0.5.0-W1-096.7` |
-| K1 | components（`MatrixGrid`） | 待 Step 6 建票 | 無 |
-| K2（含 K2-4、K2-5）、K4-1 `swimlaneScreenLaneName`、K4-2 `swimlaneUnplacedLaneName` | components（`SwimlaneGrid`） | 待 Step 6 建票 | 無 |
-| K3、K4-1 `relation*` | components（`RelationItem`） | 待 Step 6 建票（`0.5.0-W1-114` PM 處置 K3：元件改動不在 `0.5.0-W1-103.2`） | `0.5.0-W1-103.2`（`layer` 回傳） |
-| K4-2 `swimlaneFlowParseFailedHint`、`flowParseFailedMessage` | 畫面 ARB | 待 Step 6 建票（併 F1） | 無 |
+| K1 | components（`MatrixGrid`） | `0.5.0-W1-114.11` | 無 |
+| K2（含 K2-4、K2-5）、K4-1 `swimlaneScreenLaneName`、K4-2 `swimlaneUnplacedLaneName` | components（`SwimlaneGrid`） | `0.5.0-W1-114.11` | 無 |
+| K3、K4-1 `relation*` | components（`RelationItem`） | `0.5.0-W1-114.11`（`0.5.0-W1-114` PM 處置 K3：元件改動不在 `0.5.0-W1-103.2`） | `0.5.0-W1-103.2`（`layer` 回傳） |
+| K4-2 `swimlaneFlowParseFailedHint`、`flowParseFailedMessage` | 畫面 ARB | `0.5.0-W1-114.12`（併 F1-1～F1-5） | 無 |
 | IT-D1～IT-D3（含 ITD2-A5 改寫、ITD3-A5） | 外圈 | `0.5.0-W1-114.13` | 以上 Layout、Graph FR-12、components、快照凍結 |
 | IT-D4（含 ITD4-A5） | 外圈 | `0.5.0-W1-114.13` | `0.5.0-W1-096.5`、`0.5.0-W1-096.7`、`0.5.0-W1-119` |
-| 快照凍結 | 測資 | 待 Step 6 建票 | 無 |
+| 快照凍結 | 測資 | `0.5.0-W1-114.6`（載入器隨 `0.5.0-W1-114.13`） | 無 |
 
-**Step 6 建議分組**（待建票者，依實作單元分組，各組一張實作票）：
+**Step 6 分組與承接票**（依實作單元分組；承接票以上表為準）：
 
-1. Layout：L1-4、L2-5、L2-6、L3～L9（可再依列序組裝 L1-4／L2-5／L2-6／L8 與欄序、節點、查詢 L3～L7／L9 拆兩張，群組間無共用 mutable 狀態）
-2. Graph 間接依賴與分層排序（FR-12、FR-13）：SPEC-007 G12（原 V1、V2）、G13（原 L1-1～L1-3、L2-1～L2-4）
-3. domain_view／UC Flow 畫面：V3、F1、K4-2 的兩個解析失敗 key
-4. components：K1、K2、K3、K4-1 的 `swimlaneScreenLaneName` 與 `relation*`、K4-2 的 `swimlaneUnplacedLaneName`
-5. 外圈與快照：快照凍結 → IT-D1～IT-D4
+1. Layout：列序組裝 L1-4／L2-5／L2-6／L8 → `0.5.0-W1-114.9`；欄序、節點、查詢 L3～L7／L9 → `0.5.0-W1-114.10`（群組間無共用 mutable 狀態）
+2. Graph 間接依賴與分層排序（FR-12、FR-13）：SPEC-007 G12（原 V1、V2）、G13（原 L1-1～L1-3、L2-1～L2-4）→ `0.5.0-W1-114.7`
+3. domain_view／UC Flow 畫面：V3、F1-1～F1-5、K4-2 的兩個解析失敗 key → `0.5.0-W1-114.12`；F1-6、F1-7（UC Flow 畫面）無承接票
+4. components：K1、K2、K3、K4-1 的 `swimlaneScreenLaneName` 與 `relation*`、K4-2 的 `swimlaneUnplacedLaneName` → `0.5.0-W1-114.11`
+5. 外圈與快照：快照凍結 `0.5.0-W1-114.6` → IT-D1～IT-D4 `0.5.0-W1-114.13`
 
 已有承接票者不再分組：P1～P4 → `0.5.0-W1-096.5`；R1 與 `pathDeclaration*` → `0.5.0-W1-119`。
 各實作票驗收須含 §1.4 的 import 方向檢查。
