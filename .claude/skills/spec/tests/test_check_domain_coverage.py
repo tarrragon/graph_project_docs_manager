@@ -1443,3 +1443,40 @@ def test_unrecognized_id_no_map_lists_unparseable_map(tmp_path, monkeypatch, cap
     assert rc == 1
     assert "spec id 無法辨識" in cap.out
     assert "docs/spec/b/domain-map.md" in cap.err and "格式無法解析" in cap.err
+
+
+# --- 同目錄 map 與警告的單點輸出 ---
+
+def test_same_dir_unparseable_map_in_use_is_not_reported_as_excluded(tmp_path, monkeypatch, capsys):
+    """同目錄 map 已被選入判定，不得以「未納入本次判定」列名。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, "---\nid: SPEC-101\n---\n### FR-01: A\n### FR-02: B\n")
+    _write(tmp_path / "docs/spec/ui/domain-map.md",
+           "---\ndomain: \"ui\"\nsource_specs: SPEC-101\n---\n## SPEC-101\n| FR-01 | A |\n")
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 1 and "FR-02" in cap.out
+    assert cap.err == ""
+
+
+def test_unparseable_unrelated_map_warned_exactly_once_and_rc_zero(tmp_path, monkeypatch, capsys):
+    spec = _unparseable_fixture(tmp_path, monkeypatch)
+    (tmp_path / "docs/spec/a/domain-map.md").write_text(
+        "---\ndomain: \"a\"\nsource_specs: [SPEC-101]\n---\n## SPEC-101\n| FR-01~02 | A |\n", encoding="utf-8")
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 0
+    assert cap.err.count(B_PATH) == 1 and cap.err.count("WARNING") == 1
+
+
+def test_unparseable_map_warned_once_when_domain_field_format_error(tmp_path, monkeypatch, capsys):
+    """domain 欄格式錯誤而提前結束的路徑也列名（單點輸出於定位完成後）。"""
+    spec = _unparseable_fixture(tmp_path, monkeypatch, b_source_specs="SPEC-999")
+    (tmp_path / "docs/spec/a/domain-map.md").unlink()
+    spec.write_text("---\nid: SPEC-101\ndomain: \"[a, b]\"\n---\n### FR-01: A\n", encoding="utf-8")
+    _write(tmp_path / "docs/spec/c/domain-map.md", "---\ndomain: \"c\"\nsource_specs: [SPEC-999]\n---\n")
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 1
+    assert cap.err.count(B_PATH) == 1

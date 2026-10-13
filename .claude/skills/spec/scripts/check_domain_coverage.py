@@ -628,6 +628,17 @@ def warn_unparseable_maps(unparseable):
             f"WARNING: domain map 的 source_specs 格式無法解析，未納入本次判定，其歸屬可能含本 SPEC：{p.as_posix()}\n")
 
 
+def _unlisted_unparseable(unparseable, selected_paths, reason, layer_mode):
+    """須於 stderr 列名的 map：無法解析且未被選入判定者（以解析後路徑比對）。
+
+    定位失敗且成因為 source_specs 無法解析時，stdout 訊息已列名（層級模式除外，其 stdout 不列），不重複。
+    """
+    if not selected_paths and not layer_mode and reason == REASON_SOURCE_SPECS_UNPARSEABLE:
+        return []
+    selected = {p.resolve() for p in selected_paths}
+    return [p for p in unparseable if p.resolve() not in selected]
+
+
 def describe_missing_system_layer():
     return (
         "domain 覆蓋檢核：本 SPEC 的 domain 欄不是任何已宣告的 domain（層級 SPEC），"
@@ -813,6 +824,8 @@ def main(argv=None):
         return 1
     domain_map_paths, reason, unparseable = locate_domain_maps_with_reason(
         spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
+    layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
+    warn_unparseable_maps(_unlisted_unparseable(unparseable, domain_map_paths, reason, layer_mode))
     # 層級判定只在原定位鏈找不到任何 map、且 domain 欄非已宣告 domain 時成立；
     # 有 map 時照原鏈，無 map 但 domain 欄為已宣告 domain 是漏登記，維持紅
     if not domain_map_paths and args.domain_map is None:
@@ -821,10 +834,8 @@ def main(argv=None):
         if format_error:
             print(format_error)
             return 1
-    layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
     if layer_mode:
         print(layer_banner(spec_text, unparseable))
-        warn_unparseable_maps(unparseable)
         if SYSTEM_LAYER_PATH.is_dir():
             print(f"domain 覆蓋檢核：系統層 {SYSTEM_LAYER_PATH} 是目錄，需為檔案。")
             return 1
@@ -835,14 +846,10 @@ def main(argv=None):
             print(describe_missing_map(REASON_ID_UNRECOGNIZED))
             return 1
         domain_map_paths = [SYSTEM_LAYER_PATH]
-    if domain_map_paths and not layer_mode:
-        warn_unparseable_maps(unparseable)
     if SYSTEM_LAYER_PATH in domain_map_paths and SYSTEM_LAYER_PATH.is_dir():
         print(f"domain 覆蓋檢核：系統層 {SYSTEM_LAYER_PATH} 是目錄，需為檔案。")
         return 1
     if not domain_map_paths:
-        if reason == REASON_ID_UNRECOGNIZED:
-            warn_unparseable_maps(unparseable)  # 此成因的訊息不列名，source_specs 無法解析的 map 另行提醒
         print(describe_missing_map(reason, args.domain_map, unparseable))
         return 1
 
