@@ -51,17 +51,17 @@ updated: "2026-10-13"
 
 供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威在 SPEC-006，本表只列可獨立斷言的不變式；目標路徑為 `lib/corpus/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
 
-| Bundle | 不變式（每條可轉一個 unit test） | SPEC-006 |
+| Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
 |---|---|---|
-| Corpus | 每個檔案恰好落入一種結果：可用、無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取 | FR-01、FR-05 |
-| Corpus | 結尾取第一個 `---` 行；frontmatter 引號字串內的 `|---|` 不造成截斷 | FR-01 規則 4、6 |
-| Corpus | 「可用」要求解析結果是非空 map；`{}`、清單、純量、只有註解都不是 | FR-01 |
-| Corpus | 可用檔的 `id` 至多命中一型；無 `id` 或不命中歸「有 frontmatter 的非節點」，不產生節點也不產生破洞 | FR-03 |
-| Corpus | EVT-CORPUS-003 只對命中 carrier（含平手）的失敗檔發出；未命中者只記入 `parseErrors` | FR-04 |
-| Corpus | `lostFields` = 歸屬型別完整性集合 − 實際寫出的鍵；值為 null 或 `[]` 算寫出；平手或取不到集合時為 `[]` | FR-04、EVT-CORPUS-003 |
-| Corpus | 0.3.0 的 `salvagedFields` 恆為 `[]`，`severity` 恆為 `edgeAffecting` | FR-04 |
-| Corpus | 守恆：總數 = 節點 + 有 frontmatter 的非節點 + 各失敗原因總和；各失敗原因總和 = 命中 + 未命中 + 未判定 | FR-07 |
-| Corpus | 任一單檔失敗不中止整輪、不改變其他檔案的結果 | NFR-01 |
+| Corpus | 每個檔案恰好落入一種結果：可用、無 frontmatter、未閉合、空或非 map、YAML 語法錯誤、無法讀取 | SPEC-006 FR-01、FR-05 |
+| Corpus | 結尾取第一個 `---` 行；frontmatter 引號字串內的 `|---|` 不造成截斷 | SPEC-006 FR-01 規則 4、6 |
+| Corpus | 「可用」要求解析結果是非空 map；`{}`、清單、純量、只有註解都不是 | SPEC-006 FR-01 |
+| Corpus | 可用檔的 `id` 至多命中一型；無 `id` 或不命中歸「有 frontmatter 的非節點」，不產生節點也不產生破洞 | SPEC-006 FR-03 |
+| Corpus | EVT-CORPUS-003 只對命中 carrier（含平手）的失敗檔發出；未命中者只記入 `parseErrors` | SPEC-006 FR-04 |
+| Corpus | `lostFields` = 歸屬型別完整性集合 − 實際寫出的鍵；值為 null 或 `[]` 算寫出；平手或取不到集合時為 `[]` | SPEC-006 FR-04、EVT-CORPUS-003 |
+| Corpus | 0.3.0 的 `salvagedFields` 恆為 `[]`，`severity` 恆為 `edgeAffecting` | SPEC-006 FR-04 |
+| Corpus | 守恆：總數 = 節點 + 有 frontmatter 的非節點 + 各失敗原因總和；各失敗原因總和 = 命中 + 未命中 + 未判定 | SPEC-006 FR-07 |
+| Corpus | 任一單檔失敗不中止整輪、不改變其他檔案的結果 | SPEC-006 NFR-01 |
 | Corpus | 「flow 區塊解析失敗的 UC 數」與「非 domain 路徑清單格式錯誤數」（0 或 1）另計，不進兩條守恆式：前者的 UC 已計入節點數，後者的清單檔不是語料檔 | SPEC-006 FR-07 |
 | Corpus | UC 的步驟清單取第一個符合的 flow 區塊，依區塊內原始順序附掛於該 UC 的 `rawNode`，不排序、不去重；FlowStep 不另產 `rawNode`；非 UC 型別的 `rawNode` 不帶步驟清單 | SPEC-006 FR-09 規則 1、4、6 |
 | Corpus | 含頂層 `flow:` 行的區塊解析失敗、flow 清單含非 map 項目、或結尾未閉合圍欄含頂層 `flow:` 行時，該 UC 恰發一筆 EVT-CORPUS-004（不論壞區塊或壞項目數）；該 UC 仍是節點、不發 EVT-CORPUS-003 | SPEC-006 FR-09 規則 3a～3d |
@@ -125,4 +125,4 @@ FR-09、FR-10 的歸屬依據（`0.5.0-W1-159`，判準見系統層 §8：驗收
 
 ---
 
-**Last Updated**: 2026-10-13（`0.5.0-W1-159`：§7 補 FR-09、FR-10 與歸屬依據；`0.5.0-W1-176`：§2 入邊、§7 FR-08 列對齊 EVT-CORPUS-004／005，不變式清單補 FR-07 計數項、FR-09、FR-10） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-13（`0.5.0-W1-159`：§7 補 FR-09、FR-10 與歸屬依據；`0.5.0-W1-176`：§2 入邊、§7 FR-08 列對齊 EVT-CORPUS-004／005，不變式清單補 FR-07 計數項、FR-09、FR-10；`0.5.0-W1-178`：不變式清單既有九列同行寫明 SPEC id，欄名改「SPEC 條款」，不變式內容未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）

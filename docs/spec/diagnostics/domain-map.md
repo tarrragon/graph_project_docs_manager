@@ -45,15 +45,22 @@ updated: "2026-10-13"
 
 ### Bundle 不變式清單
 
-供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威在 SPEC-006，本表只列可獨立斷言的不變式；目標路徑為 `lib/diagnostics/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
+供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威依破洞大類分屬兩份規格：`parseFailure` 在 SPEC-006，`graphDefect` 在 SPEC-007（各列的 SPEC 條款欄寫明出處）。本表只列可獨立斷言的不變式；目標路徑為 `lib/diagnostics/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
 
-| Bundle | 不變式（每條可轉一個 unit test） | SPEC-006 |
+`graphDefect` 的不變式落在本表而非 Graph 的 map（`0.5.0-W1-178`，判準見系統層 §8：驗收對象落在哪個 bundle 的公開面）：SPEC-007〈概述〉職責表與 `docs/spec/graph/domain-map.md` §7 皆把 SPEC-007 FR-09 單獨歸 Diagnostics，其驗收對象是破洞清單（本 bundle 公開面，§3）。缺陷的產生與 EVT-GRAPH-001 的筆數屬 Graph 的條款，不在本表重複。
+
+| Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
 |---|---|---|
 | Diagnostics | EVT-CORPUS-003、004、005 每一筆各對應一筆 `parseFailure` 破洞；破洞數 = 命中 carrier 數 + flow 區塊解析失敗的 UC 數 + 非 domain 路徑清單格式錯誤數（第三項為 0 或 1） | SPEC-006 FR-08 |
 | Diagnostics | 查詢不可用時不產生 EVT-CORPUS-003 的 `parseFailure` 破洞，回報「無法判定」；EVT-CORPUS-004、005 的破洞不依賴路徑查詢，照常產生 | SPEC-006 FR-08 |
 | Diagnostics | EVT-CORPUS-004 的破洞帶型別 UC，原因碼恆為 `flowBlockMalformed`；事件 reason 未以該原因碼開頭時寫 warning 日誌，破洞照常產生且原因碼不變 | SPEC-006 FR-08 |
 | Diagnostics | EVT-CORPUS-005 的破洞不帶節點型別，原因碼為 `nonDomainPathsMalformed` 並帶子原因；與 EVT-CORPUS-003「平手」的區分載體是破洞子型別，不是節點型別欄的空值 | SPEC-006 FR-08 |
 | Diagnostics | EVT-CORPUS-005 破洞的 `nonStringElementCount` 只在子原因為 `elementNotString` 時有值且為 1 以上，其餘子原因為空 | SPEC-006 FR-08 |
+| Diagnostics | EVT-GRAPH-001 的 `graphDefects` 每一筆各對應一筆 `graphDefect` 破洞；破洞數 = `graphDefects` 筆數，不合併、不去重 | SPEC-007 FR-09 |
+| Diagnostics | 主圖四子類的破洞負載：`danglingRef`、`malformedRef` 帶來源節點 ID 與路徑、欄位名、原始值、邊型、原因碼；`duplicateId` 帶 ID 與全部路徑；`multiSource` 帶起點、邊型、全部終點與各自的宣告來源 | SPEC-007 FR-09 |
+| Diagnostics | flow 四子類的破洞負載一律為 {UC ID, step id, 欄位, 原始值}，不帶邊型；「domain 重複宣告」的負載為 {domain, 衝突的 DomainBundle ID 清單} | SPEC-007 FR-09 |
+| Diagnostics | 破洞的原始值原樣保存，不正規化 | SPEC-007 FR-09 |
+| Diagnostics | 建圖不可用時不產生任何 `graphDefect` 破洞，回報「無法判定」；無法判定原因取自 Diagnostics 既有列舉（編排層已轉換），Diagnostics 不依賴 Schema 的原因型別 | SPEC-007 FR-09 |
 
 ## 6. 待決事項
 
@@ -82,4 +89,4 @@ updated: "2026-10-13"
 
 ---
 
-**Last Updated**: 2026-10-13（`0.5.0-W1-176`：§2 出邊、不變式清單、§7 FR-08 列對齊 EVT-CORPUS-004／005 之後的 SPEC-006 FR-08；不變式列同行寫明 SPEC id） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-13（`0.5.0-W1-176`：§2 出邊、不變式清單、§7 SPEC-006 FR-08 列對齊 EVT-CORPUS-004／005 之後的 SPEC-006 FR-08；不變式列同行寫明 SPEC id；`0.5.0-W1-178`：不變式清單引言改為兩份規格分屬並寫明 `graphDefect` 的落點依據，補 SPEC-007 FR-09 五列，欄名改「SPEC 條款」，既有五列未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）

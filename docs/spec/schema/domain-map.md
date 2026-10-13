@@ -6,7 +6,7 @@ related_usecases: [UC-01]
 depends_on_bundles: []
 path_patterns: [lib/schema/]
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-10-13"
 ---
 
 # Domain Map — Schema
@@ -48,14 +48,14 @@ updated: "2026-10-07"
 
 供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威在 SPEC-006，本表只列可獨立斷言的不變式；目標路徑為 `lib/schema/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
 
-| Bundle | 不變式（每條可轉一個 unit test） | SPEC-006 |
+| Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
 |---|---|---|
-| Schema | 路徑對型別查詢比對完整相對路徑、區分大小寫；`docs/spec/<d>/README.md` 不命中 SPEC | FR-06 規則 1、4 |
-| Schema | 多型命中時具體度高者勝：整段固定文字才算字面段；先比字面段數，再比跨多段萬用成分數 | FR-06 規則 6 |
-| Schema | 具體度相同時回傳平手，列出全部候選並標記 schema 歧義，不擅自取一型 | FR-06 規則 5、6 |
-| Schema | 型別表中不帶 `carrier_path_patterns` 的型別（例如 FlowStep）不參與路徑比對；依欄位判定，不依型別名 | FR-06 規則 3、D9 |
-| Schema | 路徑模式以 ASCII 語意比對：`\d` 不匹配全形數字 | FR-06 規則 2、D9 |
-| Schema | 型別表來源三分：JSON 有路徑模式用 JSON；缺欄位且 JSON 版本不高於內建版本，只補路徑模式；其餘情況查詢不可用 | FR-06 規則 7 |
+| Schema | 路徑對型別查詢比對完整相對路徑、區分大小寫；`docs/spec/<d>/README.md` 不命中 SPEC | SPEC-006 FR-06 規則 1、4 |
+| Schema | 多型命中時具體度高者勝：整段固定文字才算字面段；先比字面段數，再比跨多段萬用成分數 | SPEC-006 FR-06 規則 6 |
+| Schema | 具體度相同時回傳平手，列出全部候選並標記 schema 歧義，不擅自取一型 | SPEC-006 FR-06 規則 5、6 |
+| Schema | 型別表中不帶 `carrier_path_patterns` 的型別（例如 FlowStep）不參與路徑比對；依欄位判定，不依型別名 | SPEC-006 FR-06 規則 3、D9 |
+| Schema | 路徑模式以 ASCII 語意比對：`\d` 不匹配全形數字 | SPEC-006 FR-06 規則 2、D9 |
+| Schema | 型別表來源三分：JSON 有路徑模式用 JSON；缺欄位且 JSON 版本不高於內建版本，只補路徑模式；其餘情況查詢不可用 | SPEC-006 FR-06 規則 7 |
 
 ## 6. 待決事項
 
@@ -90,4 +90,4 @@ updated: "2026-10-07"
 
 ---
 
-**Last Updated**: 2026-10-07 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-13（`0.5.0-W1-178`：不變式清單各列同行寫明 SPEC id，欄名改「SPEC 條款」；不變式內容未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
