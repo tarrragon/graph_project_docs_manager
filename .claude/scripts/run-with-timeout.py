@@ -3,7 +3,10 @@
 
 用法：run-with-timeout.py <秒數> -- <命令> [引數...]
 
-結束碼：逾時 124；未逾時透傳子程序結束碼；子程序被訊號終止回 128+訊號編號。
+結束碼：逾時 124；未逾時透傳子程序結束碼；子程序被訊號終止回 128+訊號編號；
+命令找不到 127；命令無法執行 126。
+
+命令正常結束後，同一程序群組內仍存活的程序會一併終止（不留背景殘留）。
 """
 import os
 import signal
@@ -13,6 +16,8 @@ import time
 from typing import List, Optional
 
 TIMEOUT_EXIT_CODE = 124
+COMMAND_NOT_FOUND_EXIT_CODE = 127
+COMMAND_NOT_EXECUTABLE_EXIT_CODE = 126
 # TERM 後給子程序清理的寬限秒數；過短會截斷正常收尾，過長拖慢逾時回應
 GRACE_SECONDS = 3.0
 POLL_INTERVAL = 0.05
@@ -24,6 +29,9 @@ def _signal_group(pgid: int, sig: int) -> None:
     try:
         os.killpg(pgid, sig)
     except ProcessLookupError:
+        pass
+    except PermissionError:
+        # macOS 上群組僅剩未回收的殭屍成員時，任何訊號皆回 EPERM；已無存活者可終止
         pass
 
 
@@ -54,7 +62,14 @@ def _exit_code_of(returncode: int) -> int:
 
 
 def run(seconds: float, command: List[str]) -> int:
-    proc = subprocess.Popen(command, start_new_session=True)
+    try:
+        proc = subprocess.Popen(command, start_new_session=True)
+    except FileNotFoundError:
+        sys.stderr.write(f"run-with-timeout: 找不到命令：{command[0]}\n")
+        return COMMAND_NOT_FOUND_EXIT_CODE
+    except PermissionError:
+        sys.stderr.write(f"run-with-timeout: 無法執行命令：{command[0]}\n")
+        return COMMAND_NOT_EXECUTABLE_EXIT_CODE
     pgid = proc.pid
 
     def forward(signum, _frame):

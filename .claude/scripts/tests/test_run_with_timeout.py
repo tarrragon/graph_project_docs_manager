@@ -101,6 +101,60 @@ def test_passthrough_exit_code_and_output():
     assert (res.returncode, res.stdout, res.stderr) == (7, "out\n", "err\n")
 
 
+def test_command_not_found_exit_127_single_line_message():
+    res = subprocess.run(
+        [sys.executable, str(SCRIPT), "5", "--", "no-such-command-for-run-with-timeout"],
+        capture_output=True, text=True, timeout=20)
+    assert res.returncode == 127
+    assert len(res.stderr.strip().splitlines()) == 1
+    assert "Traceback" not in res.stderr
+
+
+def test_child_killed_by_signal_exit_128_plus_signum():
+    res = subprocess.run(
+        [sys.executable, str(SCRIPT), "10", "--", sys.executable, "-c",
+         "import os,signal;os.kill(os.getpid(),signal.SIGKILL)"],
+        capture_output=True, timeout=20)
+    assert res.returncode == 128 + signal.SIGKILL
+
+
+def _wait_zombie(pid: int, within=10.0) -> None:
+    """等到程序結束但未被回收（ps 狀態欄以 Z 開頭）；macOS 無 os.waitid 可用。"""
+    deadline = time.monotonic() + within
+    while time.monotonic() < deadline:
+        stat = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)],
+                              capture_output=True, text=True).stdout.strip()
+        if stat.startswith("Z"):
+            return
+        time.sleep(0.05)
+    raise AssertionError("程序未進入殭屍狀態")
+
+
+@pytest.fixture
+def zombie_only_group():
+    """領頭程序已結束但未回收的程序群組。"""
+    proc = subprocess.Popen([sys.executable, "-c", "pass"], start_new_session=True)
+    try:
+        _wait_zombie(proc.pid)
+        yield proc.pid
+    finally:
+        proc.wait()
+
+
+def test_signal_zombie_only_group_does_not_raise(zombie_only_group):
+    mod = _load_module()
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        mod._signal_group(zombie_only_group, sig)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="EPERM 行為為 macOS 特有")
+def test_contrast_raw_killpg_on_zombie_only_group_raises(zombie_only_group):
+    """對照：同一群組不經 _signal_group 直接送訊號會拋 PermissionError，
+    即移除該處理時上一測試會翻紅。"""
+    with pytest.raises(PermissionError):
+        os.killpg(zombie_only_group, signal.SIGKILL)
+
+
 def test_wrapper_term_ends_whole_group(stand_in):
     parent, pidfile = stand_in
     wrapper = subprocess.Popen(_cmd(parent, pidfile, seconds="20"),
