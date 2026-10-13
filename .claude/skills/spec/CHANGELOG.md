@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.9.8 — 本地變更：`scripts/check_domain_coverage.py` 層級模式（以系統層判定）下 SPEC 的 id 無法辨識（frontmatter id 非 SPEC-NNN 形式且檔名無 SPEC-NNN 前綴）時，改輸出與非層級路徑同一句「spec id 無法辨識」訊息（指出成因與修正 id 或以 `--domain-map` 指定），不再印「N 個 FR 未在系統層覆蓋」並指使用者去系統層補歸屬（補了仍為紅）。exit code 維持 1。另 spec id 無法辨識且找不到任何 map 時，source_specs 格式無法解析的 map 也於 stderr 列名（原不列）。其餘路徑的 exit code 與輸出不變，本專案七份 SPEC 修改前後 exit code、stdout、stderr 逐字不變
+
 **Version**: 1.9.7 — 本地變更：`scripts/check_domain_coverage.py` 在 domain map 的 `source_specs` 格式無法解析時，不論定位走哪條路徑都列出該檔名。原只有「找不到任何 map」一條路徑會列；另有 map 列入本 SPEC 時，無法解析的那份被靜默丟棄（它可能正持有未覆蓋的 FR），層級模式接手時橫幅仍寫「無任何 map 列入本 SPEC」。現於 stderr 輸出 WARNING 列出檔名（不改 exit code），層級橫幅在有無法解析的 map 時改稱「無可解析的 map 列入本 SPEC」；無關的 map 也無法解析時同樣列出。判定結果與 exit code 不變，本專案七份 SPEC 修改前後 exit code 與輸出逐字不變
 
 **Version**: 1.9.6 — 本地變更：`scripts/check_domain_coverage.py` 層級判定的輸入健全性。(1) `domain` 欄為 `~` 或 `null` 視同未填（原把 `~` 當 domain 值而被判為層級 SPEC）。格式檢查只在該欄會被消費處（定位鏈為空且未帶 `--domain-map`、即將進入層級判定）進行：清單值、含空白、方括號、逗號、引號殘留或井號者報格式錯誤、exit code 1、訊息印出讀到的值並說明須為單一名稱（原讀成 `'[a,'` 等而走層級判定）；尾端註解在引號配對之後剝除；有 map、帶 `--domain-map`、宣告無 FR 的路徑不讀該欄，不檢查；以上只作用於 SPEC 端，domain map 端的 `domain` 欄（建立已宣告集合）維持舊讀法、其處置待後續；不立命名樣式，拼錯的單一名稱仍走層級判定。(2) spec 路徑或 `--domain-map` 為目錄時印明確錯誤並 exit code 1（原 traceback；早於宣告判定，故 `--domain-map` 為目錄且宣告無 FR 的輸入由通過轉為失敗）；系統層為目錄時，層級模式與 map 列入本 SPEC 兩條路徑皆報錯（原 traceback）。(3) tests 補已宣告集合條件與判定優先序的守護，原名實不符的優先序測試改名並加訊息層斷言。本專案七份 SPEC 修改前後 exit code 與第一行輸出不變

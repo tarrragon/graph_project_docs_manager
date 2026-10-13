@@ -1396,3 +1396,50 @@ def test_layer_mode_e1_valid_syntax_keeps_banner_and_silent(tmp_path, monkeypatc
     assert rc == 0
     assert "無任何 map 列入" in cap.out
     assert "格式無法解析" not in cap.err
+
+
+# --- 層級 SPEC 的 id 無法辨識：與非層級路徑共用同一句成因訊息 ---
+
+def _layer_id_fixture(tmp_path, monkeypatch, spec_id):
+    """兩則測試的 fixture 除 id 外完全相同；系統層只歸屬 FR-01，FR-02 未覆蓋。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, f"---\nid: {spec_id}\ndomain: \"ui\"\n---\n### FR-01: A\n### FR-02: B\n")
+    _write(tmp_path / "docs/spec/a/domain-map.md", "---\ndomain: \"a\"\nsource_specs: [SPEC-999]\n---\n")
+    _write(tmp_path / "docs/system-layer.md", "## SPEC-101\n| FR-01 | sys |\n")
+    return spec
+
+
+def test_layer_spec_unrecognized_id_reports_id_cause(tmp_path, monkeypatch, capsys):
+    spec = _layer_id_fixture(tmp_path, monkeypatch, "SPEC-UI-101")
+    rc = cdc.main([str(spec)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert cdc.describe_missing_map(cdc.REASON_ID_UNRECOGNIZED) in out
+    assert out.splitlines()[-1] == (
+        "domain 覆蓋檢核：spec id 無法辨識（frontmatter id 與檔名皆取不到 SPEC-NNN 形式），"
+        "無法比對 domain map 的 source_specs。請修正 spec 的 id 為 SPEC-NNN 形式，或以 --domain-map 指定。")
+    assert "未在系統層覆蓋" not in out and "FR-01" not in out and "FR-02" not in out
+
+
+def test_layer_spec_e1_recognized_id_keeps_system_layer_message(tmp_path, monkeypatch, capsys):
+    """E1 對照：同 fixture 把 id 改為 SPEC-101，回到以系統層歸屬判定的既有訊息。"""
+    spec = _layer_id_fixture(tmp_path, monkeypatch, "SPEC-101")
+    rc = cdc.main([str(spec)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "1 個 FR 未在系統層覆蓋" in out and "FR-02" in out
+    assert "spec id 無法辨識" not in out
+
+
+def test_unrecognized_id_no_map_lists_unparseable_map(tmp_path, monkeypatch, capsys):
+    """範圍外缺口：id 無法辨識且找不到 map 時，source_specs 無法解析的 map 也要列名。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/x.md"
+    _write(spec, "---\nid: SPEC-UI-101\n---\n### FR-01: A\n")
+    _write(tmp_path / "docs/spec/b/domain-map.md", "---\ndomain: \"b\"\nsource_specs: SPEC-101\n---\n")
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 1
+    assert "spec id 無法辨識" in cap.out
+    assert "docs/spec/b/domain-map.md" in cap.err and "格式無法解析" in cap.err

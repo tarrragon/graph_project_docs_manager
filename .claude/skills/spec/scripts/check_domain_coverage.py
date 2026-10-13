@@ -831,6 +831,9 @@ def main(argv=None):
         if not SYSTEM_LAYER_PATH.exists():
             print(describe_missing_system_layer())
             return 1
+        if extract_spec_id(spec_text, spec_path) is None:
+            print(describe_missing_map(REASON_ID_UNRECOGNIZED))
+            return 1
         domain_map_paths = [SYSTEM_LAYER_PATH]
     if domain_map_paths and not layer_mode:
         warn_unparseable_maps(unparseable)
@@ -838,6 +841,8 @@ def main(argv=None):
         print(f"domain 覆蓋檢核：系統層 {SYSTEM_LAYER_PATH} 是目錄，需為檔案。")
         return 1
     if not domain_map_paths:
+        if reason == REASON_ID_UNRECOGNIZED:
+            warn_unparseable_maps(unparseable)  # 此成因的訊息不列名，source_specs 無法解析的 map 另行提醒
         print(describe_missing_map(reason, args.domain_map, unparseable))
         return 1
 
