@@ -572,9 +572,26 @@ def domain_format_error(spec_text):
     return None
 
 
+LEGACY_DOMAIN_FIELD_RE = re.compile(r"^domain:[ \t]*[\"']?([^\s\"'#]+)", re.MULTILINE)
+
+
+def _map_frontmatter_domain(text):
+    """domain map 端的 domain 欄讀取，刻意維持本輸入健全性補強之前的舊讀法（取第一個非空白、引號、井號字元序列）。
+
+    與 SPEC 端的 _frontmatter_domain 不同：SPEC 端已補強（波浪號視同未填、引號與井號殘留報格式錯誤），
+    但那些處置若直接套到 map 端，會使已宣告集合改變（單邊引號的名稱變成含引號字串、唯一的 map 寫波浪號時
+    集合變空），讓層級判定的結果翻轉。map 端的正式處置（格式檢查與波浪號）待後續另行決定，在此之前保持不變。
+    """
+    block = FRONTMATTER_BLOCK_RE.match(text)
+    found = LEGACY_DOMAIN_FIELD_RE.search(block.group(1)) if block else None
+    if not found or found.group(1).lower() == "null":
+        return None
+    return found.group(1)
+
+
 def _declared_domains():
     """各 docs/spec/*/domain-map.md 宣告的 domain 集合；無任何 map 時為空集合。"""
-    found = (_frontmatter_domain(m.read_text(encoding="utf-8")) for m in _list_domain_maps())
+    found = (_map_frontmatter_domain(m.read_text(encoding="utf-8")) for m in _list_domain_maps())
     return {d for d in found if d}
 
 

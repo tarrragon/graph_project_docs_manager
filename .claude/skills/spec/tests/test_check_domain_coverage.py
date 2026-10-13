@@ -1305,3 +1305,30 @@ def test_malformed_quote_or_hash_domain_is_format_error_not_layer(tmp_path, monk
     assert cdc.main([str(spec)]) == 1
     out = capsys.readouterr().out
     assert "通過" not in out and "單一 domain 名稱" in out
+
+
+# --- map 端的 domain 欄維持舊讀法（本票的讀取修改只作用於 SPEC 端）---
+
+def _map_domain_fixture(tmp_path, map_domain, spec_domain):
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, LAYER_SPEC.replace('"ui"', spec_domain))
+    _write(tmp_path / "docs/spec/a/domain-map.md", f"---\ndomain: {map_domain}\nsource_specs: [SPEC-999]\n---\n")
+    _write(tmp_path / "docs/system-layer.md", "## SPEC-101\n| FR-01~02 | sys |\n")
+    return spec
+
+
+def test_map_domain_left_quote_only_reads_as_bare_name(tmp_path, monkeypatch, capsys):
+    """map 的 domain 欄只有左引號：維持舊讀法（去掉引號），SPEC 的同名 domain 是已宣告而非層級，請補 source_specs。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _map_domain_fixture(tmp_path, '"a', "a")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "source_specs" in out and "層級 SPEC" not in out
+
+
+def test_map_domain_tilde_keeps_declared_set_nonempty(tmp_path, monkeypatch, capsys):
+    """唯一的 map 的 domain 欄為波浪號：舊讀法視為名稱 ~，已宣告集合非空，SPEC 仍走層級判定。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _map_domain_fixture(tmp_path, "~", "ui")
+    assert cdc.main([str(spec)]) == 0
+    assert "層級 SPEC" in capsys.readouterr().out
