@@ -754,13 +754,34 @@ def check_layer_coverage(spec_text, system_text, spec_path=None):
     return sorted(spec_frs - attributed.get(spec_id, set()))
 
 
+def describe_attribution_remedy(where, spec_id):
+    """未覆蓋尾行的補法：歸屬的比對鍵是 SPEC 識別，只列出 FR 而不帶 SPEC 識別不會使檢核轉為通過。"""
+    if spec_id is None:
+        return f"請{where}補上這些 FR。"
+    return f"請{where}補上這些 FR 的歸屬：FR 所在的章節標題含 {spec_id}，或在同一行、該 FR 之前寫出 {spec_id}。"
+
+
+def warn_unattributed_uncovered(named_texts, uncovered):
+    """部分歸屬的檔內，未覆蓋的 FR 若落在其未歸屬集合，於 stderr 列該檔名與 FR（不改 exit code）。
+
+    整份無歸屬的檔其 FR 已計給受檢 SPEC（另有訊息），不在此列；一個 FR 同時出現在多份檔時各檔各列一次。
+    """
+    for name, text in named_texts:
+        attributed, unattributed = extract_fr_attribution(text)
+        dropped = sorted(unattributed & set(uncovered)) if attributed else []
+        if dropped:
+            frs = ", ".join(f"FR-{n:02d}" for n in dropped)
+            sys.stderr.write(f"WARNING: {name} 為部分歸屬的檔，下列未覆蓋的 FR 在其中未歸屬到任何 SPEC，故不計入：{frs}\n")
+
+
 def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None, layer_mode=False):
     """列印 FR->bundle 覆蓋檢核結果，回傳 exit code。"""
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
+    named_texts = _read_maps(domain_map_paths)
     if layer_mode:
-        uncovered = check_layer_coverage(spec_text, domain_map_paths[0].read_text(encoding="utf-8"), spec_path)
+        uncovered = check_layer_coverage(spec_text, named_texts[0][1], spec_path)
     else:
-        uncovered = check_domain_coverage_union(spec_text, _read_maps(domain_map_paths), spec_path)
+        uncovered = check_domain_coverage_union(spec_text, named_texts, spec_path)
     if not uncovered:
         print(f"domain 覆蓋檢核通過：spec 全部 FR 皆在 {domain_map_path} 有 bundle 歸屬")
         return 0
@@ -771,10 +792,12 @@ def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None, layer_m
         print(f"domain 覆蓋檢核發現 {len(uncovered)} 個 FR 未在 domain map 覆蓋：")
     for fr in uncovered:
         print(f"  FR-{fr:02d}")
+    spec_id = extract_spec_id(spec_text, spec_path)
     if layer_mode:
-        print(f"（系統層：{domain_map_path}）層級 SPEC 以系統層判定，請於系統層的 FR 對照節逐條列出歸屬。")
+        print(f"（系統層：{domain_map_path}）層級 SPEC 以系統層判定，{describe_attribution_remedy('於系統層', spec_id)}")
         return 1
-    print(f"（domain map：{domain_map_path}）請於 domain map §7 FR->bundle 覆蓋表補上歸屬。")
+    warn_unattributed_uncovered(named_texts, uncovered)
+    print(f"（domain map：{domain_map_path}）{describe_attribution_remedy('於 domain map ', spec_id)}")
     return 1
 
 

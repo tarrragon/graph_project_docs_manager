@@ -227,6 +227,8 @@ def test_main_without_event_flow_flag_skips_check(tmp_path, monkeypatch, capsys)
 
 # --- FR 比對鍵 = (spec 識別, FR 編號) ---
 
+MAP_TAIL = "請於 domain map 補上這些 FR 的歸屬：FR 所在的章節標題含 SPEC-101，或在同一行、該 FR 之前寫出 SPEC-101。"
+LAYER_TAIL = "層級 SPEC 以系統層判定，請於系統層補上這些 FR 的歸屬：FR 所在的章節標題含 SPEC-101，或在同一行、該 FR 之前寫出 SPEC-101。"
 SPEC_A = "---\nid: SPEC-101\n---\n### FR-01: a\n### FR-02: b\n### FR-03: c\n"
 SPEC_B = SPEC_A.replace("SPEC-101", "SPEC-202")
 MAP_UNDER_B = "## 8. 覆蓋\n### SPEC-202 小節\n| FR-01~03 | Ledger |\n"
@@ -633,7 +635,7 @@ def test_layer_spec_system_layer_missing_fr_points_to_system_layer(tmp_path, mon
     spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
     assert cdc.main([str(spec)]) == 1
     out = capsys.readouterr().out
-    assert "FR-01" in out and "請於系統層的 FR 對照節" in out and "domain map §7" not in out
+    assert "FR-01" in out and LAYER_TAIL in out and "domain map §7" not in out
 
 
 def test_layer_spec_without_system_layer_file(tmp_path, monkeypatch, capsys):
@@ -795,7 +797,7 @@ def test_r3_flag_to_system_layer_for_declared_domain_spec_uses_plain_message(tmp
     spec = _layer_fixture(tmp_path, spec_domain="a", system="## 其他\n無對照\n")
     assert cdc.main([str(spec), "--domain-map", "docs/system-layer.md"]) == 1
     out = capsys.readouterr().out
-    assert "FR-01" in out and "層級 SPEC" not in out and "domain map §7" in out
+    assert "FR-01" in out and "層級 SPEC" not in out and MAP_TAIL in out
 
 
 # --- 第二輪補修：層級模式不走相容後備、旗標判 None ---
@@ -1554,3 +1556,132 @@ def test_unparseable_map_warned_once_when_domain_field_format_error(tmp_path, mo
     cap = capsys.readouterr()
     assert rc == 1
     assert cap.err.count(B_PATH) == 1
+
+
+# --- 未覆蓋尾行的補法與部分歸屬檔的未歸屬提示 ---
+
+PARTIAL_MARK = "為部分歸屬的檔"
+
+
+def _partial_fixture(tmp_path, monkeypatch, a_body, b_body=None, source_specs="[SPEC-101, SPEC-202]"):
+    """SPEC-101 在 docs/spec/ui；a（與可選的 b）為 source_specs 含本 SPEC 的 map。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", f"---\nsource_specs: {source_specs}\n---\n{a_body}")
+    if b_body is not None:
+        _write(tmp_path / "docs/spec/b/domain-map.md", f"---\nsource_specs: {source_specs}\n---\n{b_body}")
+    return spec
+
+
+def test_multi_value_source_specs_partial_map_unattributed_fr_not_counted(tmp_path, monkeypatch, capsys):
+    """多值 source_specs 且部分歸屬：未歸屬的 FR-01 不計入，他 SPEC 的 FR-03 也不計入，只有 FR-02 被覆蓋。"""
+    spec = _partial_fixture(tmp_path, monkeypatch,
+                            "| FR-01 | A |\n## SPEC-101\n| FR-02 | B |\n## SPEC-202\n| FR-03 | C |\n")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "發現 2 個 FR" in out and "FR-01" in out and "FR-03" in out and "FR-02\n" not in out
+
+
+def test_hint_lists_file_when_uncovered_fr_in_its_unattributed_set(tmp_path, monkeypatch, capsys):
+    spec = _partial_fixture(tmp_path, monkeypatch,
+                            "| FR-01 | A |\n## SPEC-101\n| FR-02,03 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+    err = capsys.readouterr().err
+    assert err == ("WARNING: docs/spec/a/domain-map.md 為部分歸屬的檔，下列未覆蓋的 FR 在其中"
+                   "未歸屬到任何 SPEC，故不計入：FR-01\n")
+
+
+def test_hint_e1_unattributed_fr_not_in_spec_prints_nothing(tmp_path, monkeypatch, capsys):
+    """E1 對照一：部分歸屬的檔有未歸屬 FR，但該 FR 不在 SPEC 內，未覆蓋的 FR-03 則不在任何 map。"""
+    spec = _partial_fixture(tmp_path, monkeypatch,
+                            "| FR-09 | Z |\n## SPEC-101\n| FR-01,02 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+    cap = capsys.readouterr()
+    assert "FR-03" in cap.out and cap.err == ""
+
+
+def test_hint_e1_fully_attributed_prints_nothing(tmp_path, monkeypatch, capsys):
+    """E1 對照二：全歸屬的檔，未覆蓋的 FR 屬他 SPEC 的歸屬，無未歸屬集合。"""
+    spec = _partial_fixture(tmp_path, monkeypatch,
+                            "## SPEC-101\n| FR-01,02 | B |\n## SPEC-202\n| FR-03 | C |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert capsys.readouterr().err == ""
+
+
+def test_hint_e1_no_attribution_file_uses_default_message_not_partial_hint(tmp_path, monkeypatch, capsys):
+    """E1 對照三：整份無歸屬的檔 FR 計給受檢 SPEC（既有訊息），不印部分歸屬提示。"""
+    spec = _partial_fixture(tmp_path, monkeypatch, "| FR-01,02 | A |\n")
+    assert cdc.main([str(spec)]) == 1
+    err = capsys.readouterr().err
+    assert "依預設計給受檢 SPEC" in err and PARTIAL_MARK not in err
+
+
+def test_hint_same_fr_in_two_files_listed_once_each(tmp_path, monkeypatch, capsys):
+    spec = _partial_fixture(tmp_path, monkeypatch,
+                            "| FR-01 | A |\n## SPEC-101\n| FR-02,03 | B |\n",
+                            "| FR-01 | A2 |\n## SPEC-101\n| FR-02 | B2 |\n")
+    assert cdc.main([str(spec)]) == 1
+    err = capsys.readouterr().err
+    assert err.count(PARTIAL_MARK) == 2
+    assert err.count("docs/spec/a/domain-map.md") == 1 and err.count("docs/spec/b/domain-map.md") == 1
+
+
+def test_hint_not_printed_when_check_passes(tmp_path, monkeypatch, capsys):
+    spec = _partial_fixture(tmp_path, monkeypatch,
+                            "| FR-09 | Z |\n## SPEC-101\n| FR-01~03 | B |\n")
+    assert cdc.main([str(spec)]) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_tail_has_no_hardcoded_section_number(tmp_path, monkeypatch, capsys):
+    spec = _partial_fixture(tmp_path, monkeypatch, "## SPEC-101\n| FR-01 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert MAP_TAIL in out and "§" not in out
+
+
+def test_tail_without_spec_id_does_not_name_an_id(tmp_path, monkeypatch, capsys):
+    """取不到 SPEC 識別時走相容模式，補法不指名識別。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/x.md"
+    _write(spec, "### FR-01: a\n### FR-02: b\n")
+    _write(tmp_path / "docs/domain-map.md", "| FR-01 | A |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert "請於 domain map 補上這些 FR。" in capsys.readouterr().out
+
+
+def test_following_the_tail_with_section_title_turns_check_green(tmp_path, monkeypatch, capsys):
+    """訊息即指令：依尾行把未覆蓋的 FR 放到含 SPEC-101 的章節標題下，檢核轉為通過。"""
+    spec = _partial_fixture(tmp_path, monkeypatch, "| FR-01 | A |\n## SPEC-101\n| FR-02,03 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert MAP_TAIL in capsys.readouterr().out
+    a = tmp_path / "docs/spec/a/domain-map.md"
+    a.write_text(a.read_text(encoding="utf-8").replace("| FR-01 | A |\n## SPEC-101\n", "## SPEC-101\n| FR-01 | A |\n"),
+                 encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_same_line_id_after_the_fr_does_not_attribute(tmp_path, monkeypatch, capsys):
+    """尾行說明識別須在 FR 之前：寫在 FR 之後不歸屬（歸屬取同行 FR 之前最近的識別）。"""
+    spec = _partial_fixture(tmp_path, monkeypatch, "| FR-01 | A | SPEC-101 |\n## SPEC-101\n| FR-02,03 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+
+
+def test_following_the_tail_with_same_line_id_turns_check_green(tmp_path, monkeypatch, capsys):
+    spec = _partial_fixture(tmp_path, monkeypatch, "| FR-01 | A |\n## SPEC-101\n| FR-02,03 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+    capsys.readouterr()
+    a = tmp_path / "docs/spec/a/domain-map.md"
+    a.write_text(a.read_text(encoding="utf-8").replace("| FR-01 | A |", "| SPEC-101 | FR-01 | A |"), encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_following_layer_tail_turns_check_green(tmp_path, monkeypatch, capsys):
+    """層級路徑：系統層只列 FR 不帶 SPEC 識別時為紅；依尾行補識別後轉綠。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## 覆蓋\n| FR-01~02 | sys |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert LAYER_TAIL in capsys.readouterr().out
+    (tmp_path / "docs/system-layer.md").write_text("## SPEC-101 覆蓋\n| FR-01~02 | sys |\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out

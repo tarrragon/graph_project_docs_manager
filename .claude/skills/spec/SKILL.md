@@ -3,7 +3,7 @@ name: spec
 description: "需求完善度品質閘門。Use for: (1) Phase 1 開始時初始化功能規格骨架 (/spec init), (2) 驗證功能規格的需求完善度 (/spec validate), (3) 判斷需求是否足夠清晰可進入實作。Use when: Phase 1 功能設計代理人在進行功能設計時，作為內部工具使用。不是流程入口——/tdd 管流程編排，/spec 管產出物品質。"
 metadata:
   portable: true
-  version: 1.9.8
+  version: 1.9.9
 
 ---
 
@@ -182,7 +182,7 @@ FR 標題接受半形與全形冒號（`### FR-NN:` / `### FR-NN：`）。抽取
 
 source_specs 格式無法解析、且未被選入判定的 map 會列出其檔名（定位完成後單點輸出，以解析後路徑比對，同目錄 map 已被選入判定者不列）：找不到任何 map 且成因為無法解析時，檔名列在 stdout 的失敗訊息；其餘路徑（有其他 map 列入本 SPEC、層級模式接手、因 spec id 無法辨識而找不到 map、domain 欄格式錯誤而提前結束）於 stderr 輸出 WARNING（不改 exit code），層級模式橫幅改稱「無可解析的 map 列入本 SPEC」而不宣稱無任何 map 列入；無關的 map 一併列出（無法解析即讀不出是否與本 SPEC 有關）。帶 `--domain-map` 明示時不掃描其他 map，故不列；宣告無 FR 而提前結束時尚未定位，亦不列。
 
-domain map 定位鏈（省略 `--domain-map` 時）：spec 同目錄 `domain-map.md`（為聯集成員之一，不短路）與列舉 `docs/spec/*/domain-map.md` 中 frontmatter `source_specs` 含本 SPEC id 者（並聯集 `docs/system-layer.md`；逐檔解析歸屬與事件流標定後於集合層合併，標題堆疊不跨檔；整份無任何 SPEC 歸屬（無 SPEC 標題、無同行 SPEC id）的檔案，其 FR 一律計給受檢 SPEC（stderr 印檔名與原因），單檔與多檔同一規則；`docs/system-layer.md` 不適用此規則（定位鏈無條件附加，非因與受檢 SPEC 有關而選入），其無歸屬的 FR 不計入；檔案內有部分歸屬時有歸屬者依歸屬，所有未歸屬的 FR 皆不計入（含 SPEC 章節結束後、非 SPEC 標題下者）；`--domain-map` 明示為唯一來源不聯集，故 SPEC 不必與 domain map 同目錄）-> `docs/domain-map.md`。輸出（定位 domain map 之後才會出現，無 FR 的判定已先於定位結束，見上）：無任何 domain map（提示先走 Step 2.5 產出）、有 domain map 但無一列入本 SPEC（提示補 `source_specs`）、spec id 無法辨識（提示修正 id，不要求補 `source_specs`）、`source_specs` 格式無法解析（列出檔名，接受行內清單或逐行 `- SPEC-NNN` 的區塊清單）、未覆蓋 FR 清單（`FR-NN`，請於 domain map §7 補歸屬）、或「檢核通過」。此段 exit code 0 = 全部覆蓋、1 = 缺 map 或有未覆蓋 FR；其餘輸出（宣告無 FR 略過、宣告與內容矛盾、非布林宣告、未宣告且未抽到標題）依上段四種結果與 exit code 判讀。FR token 展開支援逗號續列（`FR-01,02,03`）與範圍（`FR-13~17`）。
+domain map 定位鏈（省略 `--domain-map` 時）：spec 同目錄 `domain-map.md`（為聯集成員之一，不短路）與列舉 `docs/spec/*/domain-map.md` 中 frontmatter `source_specs` 含本 SPEC id 者（並聯集 `docs/system-layer.md`；逐檔解析歸屬與事件流標定後於集合層合併，標題堆疊不跨檔；整份無任何 SPEC 歸屬（無 SPEC 標題、無同行 SPEC id）的檔案，其 FR 一律計給受檢 SPEC（stderr 印檔名與原因），單檔與多檔同一規則；`docs/system-layer.md` 不適用此規則（定位鏈無條件附加，非因與受檢 SPEC 有關而選入），其無歸屬的 FR 不計入；檔案內有部分歸屬時有歸屬者依歸屬，所有未歸屬的 FR 皆不計入（含 SPEC 章節結束後、非 SPEC 標題下者）；`--domain-map` 明示為唯一來源不聯集，故 SPEC 不必與 domain map 同目錄）-> `docs/domain-map.md`。輸出（定位 domain map 之後才會出現，無 FR 的判定已先於定位結束，見上）：無任何 domain map（提示先走 Step 2.5 產出）、有 domain map 但無一列入本 SPEC（提示補 `source_specs`）、spec id 無法辨識（提示修正 id，不要求補 `source_specs`）、`source_specs` 格式無法解析（列出檔名，接受行內清單或逐行 `- SPEC-NNN` 的區塊清單）、未覆蓋 FR 清單（`FR-NN`；尾行指示補法：把 FR 歸屬到本 SPEC，即 FR 所在的章節標題含本 SPEC id，或在同一行、該 FR 之前寫出本 SPEC id，只列 FR 而不帶 SPEC id 不會使檢核轉為通過；層級路徑同一補法，對象為系統層；某份部分歸屬的檔內有未覆蓋的 FR 落在其未歸屬集合時，stderr 另印 WARNING 列該檔名與 FR，不改 exit code，整份無歸屬的檔不列）、或「檢核通過」。此段 exit code 0 = 全部覆蓋、1 = 缺 map 或有未覆蓋 FR；其餘輸出（宣告無 FR 略過、宣告與內容矛盾、非布林宣告、未宣告且未抽到標題）依上段四種結果與 exit code 判讀。FR token 展開支援逗號續列（`FR-01,02,03`）與範圍（`FR-13~17`）。
 
 **事件流標定檢核**（可選，動機：Layer 2 維度 5「資源競爭」需要規格逐條標定事件流的到達類別與級別，靠 AI 語意判讀成本高，本檢核先以機械掃描做第一輪篩選）：以同一支 `check_domain_coverage.py` 加 `--check-event-flow-labeling` 執行，掃描 spec 每個 `### FR-XX:` 段落是否命中事件流訊號詞（`事件`、`通知`、`提示`、`背景`、`排程`、`佇列`、`推送`、`webhook`、`isolate`——與上方 Layer 2 維度 5 掃描說明共用同一份清單，程式碼側集中於 `check_domain_coverage.py` 的 `EVENT_FLOW_SIGNAL_WORDS` 常數，避免兩處各自維護而漂移）。命中的 FR 須在 domain map「通道與協調圖」節（**以標題文字定位，不依編號**——章節編號在既有專案可能已被其他內容佔用）之「到達類別與級別實例」子表找到對應 FR 引用，缺者列為提醒。命令：
 
