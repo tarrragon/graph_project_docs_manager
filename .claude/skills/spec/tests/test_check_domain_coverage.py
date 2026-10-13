@@ -690,6 +690,53 @@ def test_no_map_anywhere_with_domain_field_reports_no_map_not_layer(tmp_path, mo
     assert "找不到任何 domain map" in out and "層級 SPEC" not in out
 
 
+@pytest.mark.parametrize("raw", ["[a, b]", "[a,b]", "a b", "'my domain'", "a,b"])
+def test_domain_field_not_single_name_is_format_error(tmp_path, monkeypatch, capsys, raw):
+    """domain 欄含方括號、逗號或空白：格式錯誤 rc=1，印出實際值，不走層級判定。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    spec.write_text(LAYER_SPEC.replace('"ui"', raw), encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert raw in out and "單一 domain 名稱" in out and "層級 SPEC" not in out
+
+
+@pytest.mark.parametrize("raw", ["~", "null", "Null"])
+def test_domain_field_tilde_or_null_treated_as_unset(tmp_path, monkeypatch, capsys, raw):
+    """波浪號與 null 視同未填：不走層級判定（無 map 列入時報請補 source_specs）。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    spec.write_text(LAYER_SPEC.replace('"ui"', raw), encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "層級 SPEC" not in out and "單一 domain 名稱" not in out and "source_specs" in out
+
+
+def test_domain_field_misspelled_single_name_still_layer(tmp_path, monkeypatch, capsys):
+    """對照：拼錯的單一名稱維持現行，走層級判定並印橫幅。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="corpuss")
+    assert cdc.main([str(spec)]) == 0
+    assert "層級 SPEC" in capsys.readouterr().out
+
+
+def test_domain_field_with_trailing_comment_is_plain_name(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    spec.write_text(LAYER_SPEC.replace('"ui"', "ui  # 層級"), encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0
+    assert "'ui'" in capsys.readouterr().out
+
+
+def test_system_layer_directory_with_listing_map_reports_error(tmp_path, monkeypatch, capsys):
+    """非層級路徑：map 列入本 SPEC 時定位函式會附加系統層；系統層為目錄不得 traceback。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system=None)
+    (tmp_path / "docs/system-layer.md").mkdir()
+    _listing_map(tmp_path, "| FR-01~02 | A |\n")
+    assert cdc.main([str(spec)]) == 0
+
+
 def test_directory_as_spec_path_reports_error(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "somedir").mkdir()
