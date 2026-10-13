@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.9.7 — 本地變更：`scripts/check_domain_coverage.py` 在 domain map 的 `source_specs` 格式無法解析時，不論定位走哪條路徑都列出該檔名。原只有「找不到任何 map」一條路徑會列；另有 map 列入本 SPEC 時，無法解析的那份被靜默丟棄（它可能正持有未覆蓋的 FR），層級模式接手時橫幅仍寫「無任何 map 列入本 SPEC」。現於 stderr 輸出 WARNING 列出檔名（不改 exit code），層級橫幅在有無法解析的 map 時改稱「無可解析的 map 列入本 SPEC」；無關的 map 也無法解析時同樣列出。判定結果與 exit code 不變，本專案七份 SPEC 修改前後 exit code 與輸出逐字不變
+
 **Version**: 1.9.6 — 本地變更：`scripts/check_domain_coverage.py` 層級判定的輸入健全性。(1) `domain` 欄為 `~` 或 `null` 視同未填（原把 `~` 當 domain 值而被判為層級 SPEC）。格式檢查只在該欄會被消費處（定位鏈為空且未帶 `--domain-map`、即將進入層級判定）進行：清單值、含空白、方括號、逗號、引號殘留或井號者報格式錯誤、exit code 1、訊息印出讀到的值並說明須為單一名稱（原讀成 `'[a,'` 等而走層級判定）；尾端註解在引號配對之後剝除；有 map、帶 `--domain-map`、宣告無 FR 的路徑不讀該欄，不檢查；以上只作用於 SPEC 端，domain map 端的 `domain` 欄（建立已宣告集合）維持舊讀法、其處置待後續；不立命名樣式，拼錯的單一名稱仍走層級判定。(2) spec 路徑或 `--domain-map` 為目錄時印明確錯誤並 exit code 1（原 traceback；早於宣告判定，故 `--domain-map` 為目錄且宣告無 FR 的輸入由通過轉為失敗）；系統層為目錄時，層級模式與 map 列入本 SPEC 兩條路徑皆報錯（原 traceback）。(3) tests 補已宣告集合條件與判定優先序的守護，原名實不符的優先序測試改名並加訊息層斷言。本專案七份 SPEC 修改前後 exit code 與第一行輸出不變
 
 **Version**: 1.9.5 — 本地變更：`scripts/check_domain_coverage.py` 補強宣告讀取與宣告矛盾比對。(1) `has_functional_requirements` 在 frontmatter 重複出現時報錯（原取第一個，`false` 在前 `true` 在後會放行）；引號多行字串續行內的同名鍵不算宣告（原頂格續行會被讀成宣告）；非法值訊息列出合法寫法 `true`、`false`。(2) 矛盾比對與漏抓提醒改共用單一「形似 FR 定義的行」判定（`fr_like_lines`），涵蓋 ATX 標題、行首粗體、setext 標題，可帶編號前綴、粗體、方括號、反引號、全形字母、1 至 3 格縮排；須含編號，故「FR：不適用」「FR 與 NFR 的界線」不再誤判，`#FR-01`（井號後無空白）不是標題亦不算；圍欄與 HTML 註解內的行不算（抽取端同遮註解），遮蔽先於切除 frontmatter、訊息列出行號。清單項與表格列刻意不算定義。判定結果改變：原漏放的寫法現在報矛盾；原誤判的寫法現在通過。遮蔽註解時行內程式碼片段內的註解符號不作邊界（原行內程式碼寫出註解開頭符號會吞掉其後的 FR 標題且無警告）；被圍欄或註解遮掉的區段內若有抽取樣式或形似 FR 的行，於 stderr 輸出「位於被略過的區段」WARNING 與行號，不改 exit code；編號前綴實際只認數字加點與「需求 」兩種，`#` 後須有空白，縮排 0 至 3 格算標題。本專案七份 SPEC 修改前後 exit code 不變

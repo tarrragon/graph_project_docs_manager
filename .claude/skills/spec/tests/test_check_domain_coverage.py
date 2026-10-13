@@ -1332,3 +1332,67 @@ def test_map_domain_tilde_keeps_declared_set_nonempty(tmp_path, monkeypatch, cap
     spec = _map_domain_fixture(tmp_path, "~", "ui")
     assert cdc.main([str(spec)]) == 0
     assert "層級 SPEC" in capsys.readouterr().out
+
+
+# --- source_specs 格式無法解析的 map：有其他路徑接手時也列出檔名（stderr 提醒，不改 exit code） ---
+
+def _unparseable_fixture(tmp_path, monkeypatch, b_source_specs="SPEC-101", spec_domain="ui", layer=False):
+    """spec 在 docs/spec/ui；a 為合法 map；b 的 source_specs 預設為純量（格式無法解析）。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, f"---\nid: SPEC-101\ndomain: \"{spec_domain}\"\n---\n### FR-01: A\n### FR-02: B\n")
+    a_listing = "[SPEC-999]" if layer else "[SPEC-101]"
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           f"---\ndomain: \"a\"\nsource_specs: {a_listing}\n---\n## SPEC-101\n| FR-01 | A |\n")
+    _write(tmp_path / "docs/spec/b/domain-map.md",
+           f"---\ndomain: \"b\"\nsource_specs: {b_source_specs}\n---\n## SPEC-101\n| FR-02 | B |\n")
+    if layer:
+        _write(tmp_path / "docs/system-layer.md", "## SPEC-101\n| FR-01~02 | sys |\n")
+    return spec
+
+
+B_PATH = "docs/spec/b/domain-map.md"
+
+
+def test_unparseable_map_listed_when_another_map_lists_spec(tmp_path, monkeypatch, capsys):
+    spec = _unparseable_fixture(tmp_path, monkeypatch)
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 1  # FR-02 只在 b，a 未覆蓋；b 被拒讀不改變 rc
+    assert B_PATH in cap.err and "格式無法解析" in cap.err
+
+
+def test_unparseable_map_e1_valid_syntax_emits_nothing(tmp_path, monkeypatch, capsys):
+    """E1 對照：同 fixture 把 b 改為合法寫法（列入本 SPEC），stderr 不含格式無法解析提醒。"""
+    spec = _unparseable_fixture(tmp_path, monkeypatch, b_source_specs="[SPEC-101]")
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 0
+    assert "格式無法解析" not in cap.err
+
+
+def test_unrelated_unparseable_map_is_listed_too(tmp_path, monkeypatch, capsys):
+    """格式無法解析的 map 讀不出是否與本 SPEC 有關，一律列出（寧多勿漏）。"""
+    spec = _unparseable_fixture(tmp_path, monkeypatch, b_source_specs="SPEC-999")
+    cdc.main([str(spec)])
+    assert B_PATH in capsys.readouterr().err
+
+
+def test_unparseable_map_listed_in_layer_mode_and_banner_not_claim_none(tmp_path, monkeypatch, capsys):
+    spec = _unparseable_fixture(tmp_path, monkeypatch, layer=True)
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 0
+    assert B_PATH in cap.err and "格式無法解析" in cap.err
+    assert "無任何 map 列入" not in cap.out
+    assert "層級 SPEC" in cap.out
+
+
+def test_layer_mode_e1_valid_syntax_keeps_banner_and_silent(tmp_path, monkeypatch, capsys):
+    """E1 對照：b 改合法寫法（列他人）後橫幅維持原字樣，stderr 無提醒。"""
+    spec = _unparseable_fixture(tmp_path, monkeypatch, b_source_specs="[SPEC-999]", layer=True)
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 0
+    assert "無任何 map 列入" in cap.out
+    assert "格式無法解析" not in cap.err

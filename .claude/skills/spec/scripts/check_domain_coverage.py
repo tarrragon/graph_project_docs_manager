@@ -605,13 +605,27 @@ def is_layer_spec(spec_text):
     return bool(domain and declared and domain not in declared)
 
 
-def layer_banner(spec_text):
-    """走系統層時印出判定依據：SPEC 的 domain 欄值與已宣告 domain 集合（供人眼比對錯字）。"""
+def layer_banner(spec_text, unparseable=()):
+    """走系統層時印出判定依據：SPEC 的 domain 欄值與已宣告 domain 集合（供人眼比對錯字）。
+
+    unparseable 非空時，有 map 以無法解析的寫法可能列了本 SPEC，橫幅不宣稱「無任何 map 列入」。
+    """
     declared = ", ".join(sorted(_declared_domains()))
+    claim = "無可解析的 map 列入本 SPEC（另有 map 的 source_specs 格式無法解析，見 stderr）" if unparseable else "無任何 map 列入本 SPEC"
     return (
-        f"domain 覆蓋檢核：無任何 map 列入本 SPEC，其 domain 欄 {_frontmatter_domain(spec_text)!r} "
+        f"domain 覆蓋檢核：{claim}，其 domain 欄 {_frontmatter_domain(spec_text)!r} "
         f"不在已宣告 domain 集合 [{declared}]，視為層級 SPEC，以系統層判定"
     )
+
+
+def warn_unparseable_maps(unparseable):
+    """列出 source_specs 格式無法解析的 map 檔名（stderr 提醒，不改 exit code）。
+
+    這些 map 未納入本次判定，且讀不出是否列了本 SPEC，故一律列出。
+    """
+    for p in unparseable:
+        sys.stderr.write(
+            f"WARNING: domain map 的 source_specs 格式無法解析，未納入本次判定，其歸屬可能含本 SPEC：{p.as_posix()}\n")
 
 
 def describe_missing_system_layer():
@@ -809,7 +823,8 @@ def main(argv=None):
             return 1
     layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
     if layer_mode:
-        print(layer_banner(spec_text))
+        print(layer_banner(spec_text, unparseable))
+        warn_unparseable_maps(unparseable)
         if SYSTEM_LAYER_PATH.is_dir():
             print(f"domain 覆蓋檢核：系統層 {SYSTEM_LAYER_PATH} 是目錄，需為檔案。")
             return 1
@@ -817,6 +832,8 @@ def main(argv=None):
             print(describe_missing_system_layer())
             return 1
         domain_map_paths = [SYSTEM_LAYER_PATH]
+    if domain_map_paths and not layer_mode:
+        warn_unparseable_maps(unparseable)
     if SYSTEM_LAYER_PATH in domain_map_paths and SYSTEM_LAYER_PATH.is_dir():
         print(f"domain 覆蓋檢核：系統層 {SYSTEM_LAYER_PATH} 是目錄，需為檔案。")
         return 1
