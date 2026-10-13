@@ -10,8 +10,11 @@ hook 與 ticket_system 各有一份 _run_with_graceful_timeout（單檔腳本無
 """
 
 import importlib.util
+import os
+import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -48,15 +51,45 @@ def run(request, helpers):
     return helpers[request.param]
 
 
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
 @pytest.fixture
-def slow_filter_repo(tmp_path, monkeypatch):
+def pid_log(tmp_path):
+    """測試內啟動的程序把自己的 PID 追加到此檔；結束時逐一終止並確認已不存在。"""
+    path = tmp_path / "pids.log"
+    path.touch()
+    yield path
+    pids = [int(t) for t in path.read_text().split()]
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline and any(_pid_alive(p) for p in pids):
+        time.sleep(0.05)
+    survivors = [p for p in pids if _pid_alive(p)]
+    assert not survivors, f"測試結束後仍殘留程序：{survivors}"
+
+
+@pytest.fixture
+def slow_filter_repo(tmp_path, monkeypatch, pid_log):
     """含慢 clean filter 的暫存 repo；git add 期間持有 index.lock。"""
     monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
     repo = tmp_path / "repo"
     repo.mkdir()
     for cmd in (
         ["git", "init", "-q"],
-        ["git", "config", "filter.slow.clean", f"sleep {_SLOW_SECONDS}; cat"],
+        [
+            "git", "config", "filter.slow.clean",
+            f"echo $$ >> '{pid_log}'; sleep {_SLOW_SECONDS} & echo $! >> '{pid_log}'; wait; cat",
+        ],
     ):
         subprocess.run(cmd, cwd=repo, check=True)
     (repo / ".gitattributes").write_text("*.dat filter=slow\n")
@@ -78,10 +111,33 @@ def _wait_for_lock(repo):
 
 class TestRealGitLock:
     def test_sigterm_clears_index_lock_with_bounded_wait(self, run, slow_filter_repo):
+        # 逾時前鎖必須實際存在，否則「鎖不在」不是清鎖的證據
+        lock_seen = threading.Event()
+        stop = threading.Event()
+
+        def watch():
+            while not stop.is_set():
+                if _lock(slow_filter_repo).exists():
+                    lock_seen.set()
+                    return
+                time.sleep(0.02)
+
+        watcher = threading.Thread(target=watch, daemon=True)
+        watcher.start()
         start = time.monotonic()
-        with pytest.raises(subprocess.TimeoutExpired):
-            run(["git", "add", "payload.dat"], 2, cwd=slow_filter_repo, text=True)
-        assert time.monotonic() - start < _BOUND_SECONDS
+        try:
+            with pytest.raises(subprocess.TimeoutExpired):
+                run(
+                    ["git", "add", "payload.dat"], 3,
+                    cwd=slow_filter_repo, text=True, start_new_session=True,
+                )
+        finally:
+            stop.set()
+            watcher.join()
+        elapsed = time.monotonic() - start
+        if not lock_seen.is_set():
+            pytest.skip("逾時前 git 未取得 index.lock（機器負載高），無法鑑別清鎖行為")
+        assert elapsed < _BOUND_SECONDS
         assert not _lock(slow_filter_repo).exists()
 
     def test_lock_is_held_before_timeout(self, run, slow_filter_repo):
@@ -91,12 +147,16 @@ class TestRealGitLock:
             cwd=slow_filter_repo,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
         try:
             _wait_for_lock(slow_filter_repo)
             assert _lock(slow_filter_repo).exists()
         finally:
-            proc.kill()
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             proc.wait()
 
 
@@ -123,6 +183,21 @@ class TestEscalationAndBounds:
                 grace=1,
                 text=True,
             )
+        assert time.monotonic() - start < _BOUND_SECONDS
+
+
+    def test_ignoring_sigterm_with_grandchild_holding_pipe_has_bounded_wait(
+        self, run, pid_log
+    ):
+        """SIGKILL 之後只能等行程本身；若退化為等管線 EOF，會被孫程序拖到 sleep 結束。"""
+        script = (
+            f"trap '' TERM; echo $$ >> '{pid_log}'; "
+            f"sleep {_SLOW_SECONDS} & echo $! >> '{pid_log}'; "
+            f"sleep {_SLOW_SECONDS * 2} & echo $! >> '{pid_log}'; wait"
+        )
+        start = time.monotonic()
+        with pytest.raises(subprocess.TimeoutExpired):
+            run(["sh", "-c", script], 1, grace=1, text=True, start_new_session=True)
         assert time.monotonic() - start < _BOUND_SECONDS
 
 
