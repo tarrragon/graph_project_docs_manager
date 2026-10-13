@@ -16,6 +16,15 @@
 疑似殘留（只顯示，任何情況下不終止，含 --kill）：父程序為 1、工作目錄在專案範圍內、
 本身不是執行器、子孫中有執行器的程序樹。無法確認它不是刻意放在背景執行的。
 
+登記群組（run-with-timeout.py 啟動命令時登記的程序群組；格式與位置見該檔模組說明，
+本檔另行實作讀取，兩邊一致由測試確保）：這是唯一依「來源」而非外觀終止的類別。
+- 登記的包裝腳本仍存活（PID 存在且啟動時間相符）：略過。
+- 包裝腳本已不在、群組領頭程序存在且啟動時間與登記相符、群組仍有成員：可終止，--kill 時先 TERM 後 KILL
+  （killpg 只對通過比對的登記群組使用），完成後移除登記。
+- 領頭程序啟動時間與登記不符，或領頭已不在但群組編號仍有成員（編號可能已被重用）：只列出原因、不送訊號，並移除過期登記。
+- 群組已無成員：移除過期登記。
+- 登記檔無法讀取／格式損壞：回報該筆後繼續，不中斷、不刪除；登記的工作目錄在專案範圍外者略過。
+
 特殊情形：
 - 工作目錄無法取得或已刪除：無法確認屬於本專案，不終止，僅列為「略過」。
 - 子程序自行脫離群組但父程序仍存活：父程序非 1，不符合，不列出。
@@ -24,11 +33,13 @@
   直譯器帶值選項、測試執行器的工作程序皆不支援，寧可漏認，不可誤認。
 """
 import argparse
+import json
 import os
 import re
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import List, NamedTuple, Optional
@@ -237,6 +248,157 @@ def render_suspects(trees: List[SuspectTree]) -> List[str]:
     return lines
 
 
+def registry_dir() -> str:
+    override = os.environ.get("CLAUDE_PROC_REGISTRY_DIR")
+    if override:
+        return override
+    return os.path.join(tempfile.gettempdir(), f"claude-run-with-timeout-{os.getuid()}")
+
+
+REGISTRY_FIELDS = ("pgid", "leader_start", "wrapper_pid", "wrapper_start", "cwd", "command")
+
+
+class RegEntry(NamedTuple):
+    path: str
+    pgid: int
+    leader_start: str
+    wrapper_pid: int
+    wrapper_start: str
+    cwd: str
+    command: list
+
+
+def read_registry(directory: str):
+    """回傳 (有效登記清單, 無法讀取者 [(路徑, 原因)])；目錄不存在視為空。"""
+    entries, bad = [], []
+    try:
+        names = sorted(n for n in os.listdir(directory)
+                       if n.startswith("wrapper-") and n.endswith(".json"))
+    except FileNotFoundError:
+        return entries, bad
+    except OSError as exc:
+        return entries, [(directory, str(exc))]
+    for name in names:
+        path = os.path.join(directory, name)
+        try:
+            with open(path) as fh:
+                data = json.load(fh)
+            if not all(k in data for k in REGISTRY_FIELDS):
+                raise ValueError("缺少欄位")
+            entries.append(RegEntry(path, int(data["pgid"]), str(data["leader_start"]),
+                                    int(data["wrapper_pid"]), str(data["wrapper_start"]),
+                                    str(data["cwd"]), list(data["command"])))
+        except (OSError, ValueError, TypeError) as exc:
+            bad.append((path, f"{type(exc).__name__}：{exc}"))
+    return entries, bad
+
+
+def process_start(pid: int) -> Optional[str]:
+    """ps 的 lstart；程序不存在回 None。"""
+    try:
+        res = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
+                             text=True, env={**os.environ, "LC_ALL": "C"})
+    except OSError as exc:
+        raise CommandError(f"無法執行 ps：{exc}")
+    out = res.stdout.strip()
+    return out if res.returncode == 0 and out else None
+
+
+def group_members(pgid: int) -> List[int]:
+    """程序群組內非殭屍成員的 PID。"""
+    out = _run(["ps", "-axo", "pid=,pgid=,stat="])
+    found = []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit() \
+                and int(parts[1]) == pgid and not parts[2].startswith("Z"):
+            found.append(int(parts[0]))
+    return found
+
+
+def judge_entry(e: RegEntry, wrapper_start_now, leader_start_now, members: List[int]):
+    """純函式：回傳 (判定, 原因)。判定：wrapper_alive／killable／unsafe／stale。"""
+    if wrapper_start_now is not None and wrapper_start_now == e.wrapper_start:
+        return "wrapper_alive", "包裝腳本仍存活"
+    if not members:
+        return "stale", "群組已無成員"
+    if leader_start_now is None:
+        return "unsafe", f"領頭程序 {e.pgid} 已不在但群組編號仍有成員，可能已被重用"
+    if leader_start_now != e.leader_start:
+        return "unsafe", (f"領頭程序啟動時間不符（登記 {e.leader_start}，"
+                          f"現在 {leader_start_now}），群組編號可能已被重用")
+    return "killable", "包裝腳本已不在，群組領頭與登記相符"
+
+
+def terminate_registered(e: RegEntry, grace: float = GRACE_SECONDS) -> str:
+    """終止登記的群組；送訊號前與 KILL 前各重驗領頭啟動時間。回傳 terminated／changed／survived。"""
+    if process_start(e.pgid) != e.leader_start:
+        return "changed"
+    try:
+        os.killpg(e.pgid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        pass
+    deadline = time.monotonic() + grace
+    while group_members(e.pgid) and time.monotonic() < deadline:
+        time.sleep(POLL_INTERVAL)
+    if group_members(e.pgid):
+        if process_start(e.pgid) != e.leader_start:
+            return "changed"
+        try:
+            os.killpg(e.pgid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        deadline = time.monotonic() + KILL_WAIT_SECONDS
+        while group_members(e.pgid) and time.monotonic() < deadline:
+            time.sleep(POLL_INTERVAL)
+    return "survived" if group_members(e.pgid) else "terminated"
+
+
+def _drop_entry(path: str) -> None:
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        sys.stderr.write(f"警告：無法移除登記 {path}：{exc}\n")
+
+
+def process_registry(roots: List[str], kill: bool) -> int:
+    """處理登記，印出結果；回傳未能終止的筆數。"""
+    entries, bad = read_registry(registry_dir())
+    for path, reason in bad:
+        print(f"登記無法讀取 {path}（{reason}）")
+    failed = 0
+    for e in entries:
+        if not under(e.cwd, roots):
+            continue
+        verdict, reason = judge_entry(e, process_start(e.wrapper_pid),
+                                      process_start(e.pgid), group_members(e.pgid))
+        label = f"群組 {e.pgid} cwd {e.cwd} 命令 {' '.join(e.command)}"
+        if verdict == "wrapper_alive":
+            print(f"登記略過 {label}（{reason}）")
+        elif verdict == "stale":
+            print(f"登記已過期 {label}（{reason}），移除登記")
+            _drop_entry(e.path)
+        elif verdict == "unsafe":
+            print(f"登記不終止 {label}（{reason}），移除登記")
+            _drop_entry(e.path)
+        elif not kill:
+            print(f"登記可終止 {label}（{reason}）")
+        else:
+            result = terminate_registered(e)
+            if result == "terminated":
+                print(f"登記已終止 {label}")
+                _drop_entry(e.path)
+            elif result == "changed":
+                print(f"登記未終止 {label}（送訊號前領頭啟動時間已變，不處理）")
+                _drop_entry(e.path)
+            else:
+                failed += 1
+                print(f"登記未能終止 {label}（送出 KILL 後仍有成員）")
+    return failed
+
+
 def _send(pid: int, sig: int) -> None:
     try:
         os.kill(pid, sig)
@@ -318,6 +480,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     for line in render_suspects(suspects):
         print(line)
     failed = 0
+    try:
+        failed += process_registry(roots, args.kill)
+    except CommandError as exc:
+        sys.stderr.write(f"錯誤：{exc}\n")
+        return 2
     if args.kill:
         for p in matched:
             try:

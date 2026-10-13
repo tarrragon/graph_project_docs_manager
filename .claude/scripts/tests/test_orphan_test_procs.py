@@ -677,3 +677,154 @@ def test_list_mode_shows_suspect_tree_with_age(env):
     assert str(root_pid) in res.stdout and str(child_pid) in res.stdout
     assert "存活" in res.stdout and "符合 0 略過 0 疑似殘留 1" in res.stdout
     assert _alive(root_pid) and _alive(child_pid)
+
+
+# ---- 登記群組（讀取端；寫入端格式由真實包裝腳本產生，兩邊一致由本節測試確保）----
+
+import json  # noqa: E402
+
+WRAPPER = SCRIPT.parent / "run-with-timeout.py"
+SLEEPER_SRC = ("import os,sys,time\n"
+               "open(sys.argv[1],'w').write(str(os.getpid()))\n"
+               "time.sleep(%d)\n" % LIFE)
+
+
+class RegEnv:
+    def __init__(self, env):
+        self.env = env
+        self.reg = env.tmp / "reg"
+        self.wrappers = []
+        self.n = 0
+
+    def _environ(self):
+        return {**os.environ, "CLAUDE_PROC_REGISTRY_DIR": str(self.reg)}
+
+    def start_wrapper(self):
+        """以真實包裝腳本啟動替身；回傳 (wrapper Popen, 替身 pid, 登記檔)。"""
+        self.n += 1
+        pidfile = self.env.tmp / ("sleeper%d" % self.n)
+        w = subprocess.Popen([sys.executable, str(WRAPPER), "60", "--", sys.executable, "-c",
+                              SLEEPER_SRC, str(pidfile)], cwd=str(self.env.root),
+                             env=self._environ(), stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        self.wrappers.append(w)
+        pid = _wait_pid(pidfile)
+        self.env.pids.append(pid)
+        deadline = time.monotonic() + 10
+        while not list(self.reg.glob("wrapper-%d.json" % w.pid)) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        return w, pid, self.reg / ("wrapper-%d.json" % w.pid)
+
+    def run(self, *args):
+        return subprocess.run([sys.executable, str(SCRIPT), "--root", str(self.env.root), *args],
+                              capture_output=True, text=True, timeout=60, env=self._environ())
+
+    def files(self):
+        return sorted(self.reg.glob("*.json")) if self.reg.exists() else []
+
+
+@pytest.fixture
+def renv(env):
+    r = RegEnv(env)
+    yield r
+    for w in r.wrappers:
+        if w.poll() is None:
+            w.kill()
+        w.wait()
+
+
+def _sigkill_wrapper(w):
+    w.kill()
+    w.wait(timeout=10)
+
+
+def test_registered_group_listed_then_killed_after_wrapper_sigkill(renv):
+    w, pid, entry = renv.start_wrapper()
+    _sigkill_wrapper(w)
+    listed = renv.run()
+    assert "登記可終止" in listed.stdout and "僅列出" in listed.stdout
+    assert _alive(pid) and entry.exists()  # 不帶 --kill 不送訊號、不動登記
+    res = renv.run("--kill")
+    assert res.returncode == 0 and "登記已終止" in res.stdout
+    assert _wait_gone(pid)
+    assert renv.files() == []
+
+
+def test_contrast_wrapper_alive_sends_no_signal(renv):
+    w, pid, entry = renv.start_wrapper()
+    res = renv.run("--kill")
+    assert "登記略過" in res.stdout and "包裝腳本仍存活" in res.stdout
+    assert _alive(pid) and entry.exists()
+
+
+def test_contrast_leader_start_mismatch_sends_no_signal_and_reports(renv):
+    w, pid, entry = renv.start_wrapper()
+    _sigkill_wrapper(w)
+    data = json.loads(entry.read_text())
+    data["leader_start"] = "Mon Jan  1 00:00:00 2001"
+    entry.write_text(json.dumps(data))
+    res = renv.run("--kill")
+    assert "登記不終止" in res.stdout and "啟動時間不符" in res.stdout
+    assert _alive(pid)
+    assert renv.files() == []  # 過期登記已移除
+
+
+def test_contrast_leader_gone_but_group_has_members_is_not_killed(renv):
+    """領頭已結束、同群組仍有成員（編號可能被重用）：只列出不終止。"""
+    holder = renv.env.tmp / "member"
+    launcher = ("import subprocess,sys,time\n"
+                "subprocess.Popen([sys.executable,'-c',%r,sys.argv[1]])\n"
+                "time.sleep(1)\n" % SLEEPER_SRC)
+    leader = subprocess.Popen([sys.executable, "-c", launcher, str(holder)],
+                              start_new_session=True)
+    member = _wait_pid(holder)
+    renv.env.pids.append(member)
+    start = _load().process_start(leader.pid)
+    renv.reg.mkdir()
+    entry = renv.reg / "wrapper-999999.json"
+    entry.write_text(json.dumps({
+        "pgid": leader.pid, "leader_start": start, "wrapper_pid": 999999,
+        "wrapper_start": "Mon Jan  1 00:00:00 2001", "cwd": str(renv.env.root),
+        "command": ["x"]}))
+    leader.wait(timeout=10)
+    res = renv.run("--kill")
+    assert "登記不終止" in res.stdout and "已不在" in res.stdout
+    assert _alive(member)
+    assert renv.files() == []
+
+
+def test_registry_outside_project_scope_untouched(renv):
+    w, pid, entry = renv.start_wrapper()
+    _sigkill_wrapper(w)
+    other = renv.env.outside
+    res = subprocess.run([sys.executable, str(SCRIPT), "--root", str(other), "--kill"],
+                         capture_output=True, text=True, timeout=60, env=renv._environ())
+    assert "登記" not in res.stdout
+    assert _alive(pid) and entry.exists()
+
+
+def test_corrupt_entry_reported_and_other_entries_still_processed(renv):
+    w, pid, entry = renv.start_wrapper()
+    _sigkill_wrapper(w)
+    bad = renv.reg / "wrapper-1.json"
+    bad.write_text("{not json")
+    res = renv.run("--kill")
+    assert res.returncode == 0
+    assert "登記無法讀取" in res.stdout and "wrapper-1.json" in res.stdout
+    assert _wait_gone(pid) and bad.exists()
+
+
+def test_unreadable_registry_dir_reported_without_abort(renv):
+    renv.reg.mkdir()
+    renv.reg.chmod(0)
+    try:
+        res = renv.run("--kill")
+    finally:
+        renv.reg.chmod(0o700)
+    assert res.returncode == 0
+    assert "登記無法讀取" in res.stdout
+
+
+def test_missing_registry_dir_is_empty(renv):
+    res = renv.run("--kill")
+    assert res.returncode == 0 and "登記" not in res.stdout

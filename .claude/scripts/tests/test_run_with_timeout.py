@@ -231,3 +231,89 @@ def test_term_ignoring_child_is_killed_within_bound(stand_in):
     assert res.returncode == 124
     assert _wait_dead(_read_pids(pidfile)) == []
     assert elapsed < 1 + 3.0 + 5  # 逾時 + 寬限 + 餘裕
+
+
+# ---- 程序群組登記（寫入端；讀取端見 test_orphan_test_procs.py）----
+
+REG_FIELDS = {"pgid", "leader_start", "wrapper_pid", "wrapper_start", "cwd", "command"}
+LIST_REG_SRC = ("import os,sys,time;time.sleep(1);d=os.environ['CLAUDE_PROC_REGISTRY_DIR'];"
+                "print(len([n for n in os.listdir(d) if n.endswith('.json')]))")
+
+
+def _reg_files(d: Path):
+    return sorted(p for p in d.iterdir() if p.name.endswith(".json")) if d.exists() else []
+
+
+def _env(d: Path):
+    return {**os.environ, "CLAUDE_PROC_REGISTRY_DIR": str(d)}
+
+
+def _wait_reg(d: Path, within=10.0):
+    deadline = time.monotonic() + within
+    while time.monotonic() < deadline:
+        if _reg_files(d):
+            return _reg_files(d)[0]
+        time.sleep(0.05)
+    raise AssertionError("登記未出現")
+
+
+def test_registry_written_during_run_and_removed_after_normal_exit(tmp_path):
+    reg = tmp_path / "reg"
+    res = subprocess.run([sys.executable, str(SCRIPT), "10", "--", sys.executable, "-c", LIST_REG_SRC],
+                         capture_output=True, text=True, timeout=20, env=_env(reg))
+    assert (res.returncode, res.stdout.strip()) == (0, "1")  # 執行期間登記存在
+    assert _reg_files(reg) == []
+
+
+def test_registry_removed_after_timeout(stand_in, tmp_path):
+    parent, pidfile = stand_in
+    reg = tmp_path / "reg"
+    res = subprocess.run(_cmd(parent, pidfile), capture_output=True, timeout=25, env=_env(reg))
+    assert res.returncode == 124
+    assert _reg_files(reg) == []
+
+
+def test_registry_removed_after_term_and_content_has_fields(stand_in, tmp_path):
+    import json
+    parent, pidfile = stand_in
+    reg = tmp_path / "reg"
+    wrapper = subprocess.Popen(_cmd(parent, pidfile, seconds="20"), env=_env(reg),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        pids = _read_pids(pidfile)
+        data = json.loads(_wait_reg(reg).read_text())
+        assert set(data) == REG_FIELDS
+        assert data["pgid"] == pids[0] and data["wrapper_pid"] == wrapper.pid
+        wrapper.send_signal(signal.SIGTERM)
+        wrapper.wait(timeout=15)
+        assert _wait_dead(pids) == []
+        assert _reg_files(reg) == []
+    finally:
+        if wrapper.poll() is None:
+            wrapper.kill()
+
+
+def test_registry_remains_after_wrapper_sigkill(stand_in, tmp_path):
+    parent, pidfile = stand_in
+    reg = tmp_path / "reg"
+    wrapper = subprocess.Popen(_cmd(parent, pidfile, seconds="20"), env=_env(reg),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    pids = _read_pids(pidfile)
+    _wait_reg(reg)
+    wrapper.kill()
+    wrapper.wait(timeout=10)
+    assert len(_reg_files(reg)) == 1
+    for pid in pids:
+        assert _alive(pid)  # 群組存活，等待清理指令處理
+
+
+def test_unwritable_registry_does_not_affect_command_or_exit_code(tmp_path):
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    reg = blocker / "sub"  # 父層是檔案，無法建立目錄
+    res = subprocess.run([sys.executable, str(SCRIPT), "10", "--", sys.executable, "-c",
+                          "print('ran');import sys;sys.exit(7)"],
+                         capture_output=True, text=True, timeout=20, env=_env(reg))
+    assert (res.returncode, res.stdout.strip()) == (7, "ran")
+    assert res.stderr.startswith("run-with-timeout:") and len(res.stderr.strip().splitlines()) == 1
+    assert "Traceback" not in res.stderr
