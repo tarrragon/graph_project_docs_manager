@@ -962,7 +962,7 @@ def test_fenced_like_line_no_warning(tmp_path, monkeypatch, capsys):
     spec = tmp_path / "SPEC-900-x.md"
     spec.write_text(_fm() + "### FR-01: a\n```\n## FR-05 範例\n**FR-06** 範例\n```\n", encoding="utf-8")
     assert cdc.main([str(spec)]) == 0
-    assert "WARNING" not in capsys.readouterr().err
+    assert "未被抽出" not in capsys.readouterr().err  # 漏抓警告不出現；略過區段提醒另計（0.5.0-W1-172）
 
 
 def test_unclosed_fence_fails_with_line_number(tmp_path, monkeypatch, capsys):
@@ -1093,3 +1093,76 @@ def test_both_consumers_use_shared_fr_like_judgment(tmp_path, capsys, monkeypatc
     assert cdc.find_unextracted_fr_lines("# s\n元件\n") == [(3, "SENTINEL-LINE")]
     rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n元件\n", capsys)
     assert rc != 0 and "SENTINEL-LINE" in out
+
+
+# --- 0.5.0-W1-172 審查必修：註解遮蔽的行內程式碼邊界 / 略過區段提醒 / 誤判方向守護 ---
+
+CODE_SPAN_OPEN = "說明 `<!--` 是註解開頭\n"
+
+
+def test_inline_code_comment_opener_does_not_swallow_headings():
+    spec = "### FR-01: a\n" + CODE_SPAN_OPEN + "### FR-02: b\n結尾寫作 `-->` 即可\n### FR-03: c\n"
+    assert cdc.extract_spec_frs(spec) == {1, 2, 3}
+
+
+def test_inline_code_opener_with_real_comment_later_does_not_swallow():
+    spec = "### FR-01: a\n" + CODE_SPAN_OPEN + "### FR-02: b\n<!-- 真註解 -->\n### FR-03: c\n"
+    assert cdc.extract_spec_frs(spec) == {1, 2, 3}
+
+
+def test_real_comment_still_masked_after_inline_code():
+    spec = "### FR-01: a\n`x` <!--\n### FR-02: b\n-->\n### FR-03: c\n"
+    assert cdc.extract_spec_frs(spec) == {1, 3}
+
+
+def _skipped_warnings(tmp_path, monkeypatch, capsys, body):
+    monkeypatch.chdir(tmp_path)
+    _map_covering(tmp_path, "FR-01")
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(_fm() + body, encoding="utf-8")
+    rc = cdc.main([str(spec)])
+    return rc, capsys.readouterr().err
+
+
+def test_masked_region_fr_lines_warn_with_line_numbers(tmp_path, monkeypatch, capsys):
+    body = "### FR-01: a\n```\n### FR-02: 範例\n```\n<!--\n**FR-03** 註解掉\n-->\n"
+    rc, err = _skipped_warnings(tmp_path, monkeypatch, capsys, body)
+    assert rc == 0  # 不改 exit code
+    assert err.count("略過的區段") == 2
+    assert "第 6 行" in err and "第 9 行" in err
+    assert "未被抽出" not in err
+
+
+def test_masked_region_warning_absent_when_nothing_hidden(tmp_path, monkeypatch, capsys):
+    rc, err = _skipped_warnings(tmp_path, monkeypatch, capsys, "### FR-01: a <!-- 註 -->\n```\n普通\n```\n")
+    assert rc == 0 and "略過的區段" not in err
+
+
+def test_masked_region_warning_skips_frontmatter(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _map_covering(tmp_path, "FR-01")
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(_fm_raw("# FR-02 備註") + "### FR-01: a\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0
+    assert "略過的區段" not in capsys.readouterr().err
+
+
+def test_declared_false_frontmatter_fr_like_comment_not_contradiction(tmp_path, capsys):
+    fm = _fm_raw("# FR-01 暫不適用", "has_functional_requirements: false")
+    rc, out = _run_nomap(tmp_path, fm + "# s\n", capsys)
+    assert rc == 0 and "本 SPEC 宣告無 FR" in out
+
+
+def test_declared_false_paragraph_without_underline_not_contradiction(tmp_path, capsys):
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\nFR-01 見他處說明\n接續的段落\n", capsys)
+    assert rc == 0 and "本 SPEC 宣告無 FR" in out
+
+
+def test_declared_false_inline_comment_before_heading_not_contradiction(tmp_path, capsys):
+    rc, _ = _run_nomap(tmp_path, _fm("false") + "# s\n<!-- c --> ## FR-01 x\n", capsys)
+    assert rc == 0
+
+
+def test_declared_false_heading_after_comment_line_contradicts(tmp_path, capsys):
+    rc, _ = _run_nomap(tmp_path, _fm("false") + "# s\n<!-- c -->\n## FR-01 x\n", capsys)
+    assert rc != 0

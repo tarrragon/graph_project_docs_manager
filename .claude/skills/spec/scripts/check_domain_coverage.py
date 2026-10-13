@@ -108,15 +108,41 @@ def _mask_fenced_blocks(text):
     return mask_fenced_blocks(text)[0]
 
 
-HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+def _code_span_end(text, i):
+    """text[i] 為反引號時，回傳同行內與之等長的收尾反引號串之後的位置；無收尾回傳 None。"""
+    n = 1
+    while text[i + n:i + n + 1] == "`":
+        n += 1
+    eol = text.find("\n", i)
+    eol = len(text) if eol < 0 else eol
+    close = re.compile(r"(?<!`)`{%d}(?!`)" % n).search(text, i + n, eol)
+    return close.end() if close else None
 
 
 def _mask_html_comments(text):
-    """HTML 註解（可跨行）的非換行字元換成 NUL，保留行號；未閉合的 <!-- 不遮（保守，不掩蓋內容）。
+    """HTML 註解（可跨行）的非換行字元換成 NUL，保留行號。
 
-    用 NUL 而非空白：`<!-- x --> ## FR-01` 遮成空白後會變成縮排標題而被誤認。
+    行內程式碼（同行的反引號片段）內的 `<!--`、`-->` 不作為註解邊界；未閉合的 <!-- 不遮
+    （保守，不掩蓋內容）。用 NUL 而非空白：`<!-- x --> ## FR-01` 遮成空白後會變成縮排標題而被誤認。
     """
-    return HTML_COMMENT_RE.sub(lambda m: re.sub(r"[^\n]", "\x00", m.group(0)), text)
+    out, i = [], 0
+    while i < len(text):
+        if text[i] == "`":
+            end = _code_span_end(text, i)
+            end = end if end else i + 1
+            out.append(text[i:end])
+            i = end
+        elif text.startswith("<!--", i):
+            close = text.find("-->", i + 4)
+            if close < 0:
+                out.append(text[i:])
+                break
+            out.append(re.sub(r"[^\n]", "\x00", text[i:close + 3]))
+            i = close + 3
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
 
 
 def _scan_text(text):
@@ -179,6 +205,24 @@ def find_unextracted_fr_lines(spec_text):
     """回傳 [(行號, 行文字)]：形似 FR 定義、但其編號不在抽出集合內的行。"""
     extracted = extract_spec_frs(spec_text)
     return [(no, line) for no, line, number in fr_like_lines(spec_text) if number not in extracted]
+
+
+def find_skipped_fr_lines(spec_text):
+    """回傳 [(行號, 行文字)]：被圍欄或註解遮掉、但原文形似 FR 定義或符合抽取樣式的行（略過 frontmatter）。
+
+    遮蔽規則的通用保險：遮蔽後仍形似者（行內註解不影響該行）不列。
+    """
+    originals = spec_text.splitlines()
+    masked = _scan_text(spec_text).splitlines()
+    masked += [""] * (len(originals) - len(masked))
+    skip = _frontmatter_line_count(spec_text)
+
+    def looks_like_fr(lines, i):
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        return FR_HEADER_RE.match(lines[i]) or _fr_like_number(lines[i], nxt) is not None
+
+    return [(i + 1, originals[i].strip()) for i in range(skip, len(originals))
+            if masked[i] != originals[i] and looks_like_fr(originals, i) and not looks_like_fr(masked, i)]
 
 
 SPEC_ID_RE = re.compile(r"SPEC-\d+")
@@ -607,6 +651,8 @@ def judge_fr_declaration(spec_text):
     except ValueError as exc:
         print(f"domain 覆蓋檢核失敗：{exc}")
         return 1
+    for no, line in find_skipped_fr_lines(spec_text):
+        sys.stderr.write(f"WARNING: 第 {no} 行形似 FR 定義但位於被略過的區段（圍欄程式碼區塊或 HTML 註解）內，不納入比對：{line}\n")
     extracted = extract_spec_frs(spec_text)
     if declared is False:
         loose = fr_like_lines(spec_text)
