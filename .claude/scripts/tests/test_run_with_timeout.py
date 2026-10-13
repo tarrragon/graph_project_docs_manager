@@ -110,6 +110,41 @@ def test_command_not_found_exit_127_single_line_message():
     assert "Traceback" not in res.stderr
 
 
+def _assert_single_line_no_traceback(stderr: str) -> None:
+    assert len(stderr.strip().splitlines()) == 1
+    assert "Traceback" not in stderr
+    assert stderr.startswith("run-with-timeout:")
+
+
+def test_not_executable_file_exit_126_single_line_message(tmp_path):
+    target = tmp_path / "no-exec-bit"
+    target.write_text("#!/bin/sh\nexit 0\n")
+    target.chmod(0o644)
+    res = subprocess.run([sys.executable, str(SCRIPT), "5", "--", str(target)],
+                         capture_output=True, text=True, timeout=20)
+    assert res.returncode == 126
+    _assert_single_line_no_traceback(res.stderr)
+
+
+def test_exec_format_error_exit_126_single_line_message(tmp_path):
+    """有執行權限但無 shebang 的文字檔：啟動失敗不屬找不到也不屬權限不足。"""
+    target = tmp_path / "no-shebang"
+    target.write_text("not a program\n")
+    target.chmod(0o755)
+    res = subprocess.run([sys.executable, str(SCRIPT), "5", "--", str(target)],
+                         capture_output=True, text=True, timeout=20)
+    assert res.returncode == 126
+    _assert_single_line_no_traceback(res.stderr)
+
+
+def test_non_numeric_seconds_exit_2_without_traceback():
+    res = subprocess.run([sys.executable, str(SCRIPT), "abc", "--", "true"],
+                         capture_output=True, text=True, timeout=20)
+    assert res.returncode == 2
+    assert "Traceback" not in res.stderr
+    assert "abc" in res.stderr
+
+
 def test_child_killed_by_signal_exit_128_plus_signum():
     res = subprocess.run(
         [sys.executable, str(SCRIPT), "10", "--", sys.executable, "-c",
@@ -119,15 +154,21 @@ def test_child_killed_by_signal_exit_128_plus_signum():
 
 
 def _wait_zombie(pid: int, within=10.0) -> None:
-    """等到程序結束但未被回收（ps 狀態欄以 Z 開頭）；macOS 無 os.waitid 可用。"""
+    """等到程序結束但未被回收（ps 狀態欄以 Z 開頭），逾期拋 AssertionError。
+
+    以輪詢 ps 判定，因 os.waitid（WNOWAIT）在 macOS 的 Python 不提供。
+    """
     deadline = time.monotonic() + within
+    stat = ""
     while time.monotonic() < deadline:
         stat = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)],
                               capture_output=True, text=True).stdout.strip()
         if stat.startswith("Z"):
             return
-        time.sleep(0.05)
-    raise AssertionError("程序未進入殭屍狀態")
+        time.sleep(0.2)
+    raise AssertionError(
+        f"程序 {pid} 於 {within} 秒內未進入殭屍狀態"
+        f"（最後 ps 狀態：{stat!r}，空字串表示程序已不存在）")
 
 
 @pytest.fixture
@@ -147,12 +188,25 @@ def test_signal_zombie_only_group_does_not_raise(zombie_only_group):
         mod._signal_group(zombie_only_group, sig)
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="EPERM 行為為 macOS 特有")
+def test_group_alive_on_zombie_only_group_reports_alive(zombie_only_group):
+    """領頭程序尚未回收時群組仍算存在，由呼叫端回收後才轉為不存在。"""
+    mod = _load_module()
+    assert mod._group_alive(zombie_only_group) is True
+
+
+@pytest.mark.skipif(
+    sys.platform != "darwin",
+    reason="僅於 macOS 實測到對殭屍群組送訊號回 EPERM；其他平台不保證拋例外，對照不成立")
 def test_contrast_raw_killpg_on_zombie_only_group_raises(zombie_only_group):
-    """對照：同一群組不經 _signal_group 直接送訊號會拋 PermissionError，
-    即移除該處理時上一測試會翻紅。"""
-    with pytest.raises(PermissionError):
-        os.killpg(zombie_only_group, signal.SIGKILL)
+    """對照：同一群組不經保護直接送訊號會拋 PermissionError。
+
+    即移除 _signal_group 或 _group_alive 的 PermissionError 處理時，
+    test_signal_zombie_only_group_does_not_raise 與
+    test_group_alive_on_zombie_only_group_reports_alive 在 macOS 上會翻紅。
+    """
+    for sig in (0, signal.SIGKILL):
+        with pytest.raises(PermissionError):
+            os.killpg(zombie_only_group, sig)
 
 
 def test_wrapper_term_ends_whole_group(stand_in):
