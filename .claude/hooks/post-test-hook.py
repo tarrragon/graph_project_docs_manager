@@ -17,6 +17,7 @@
 import json
 import os
 import re
+import shlex
 import sys
 from datetime import datetime
 from enum import Enum
@@ -92,7 +93,7 @@ TICKET_MD_PATH_PATTERNS = [
 # --- timeout 子邏輯常數 ---
 WARNING_THRESHOLD = 300     # 5 分鐘
 CRITICAL_THRESHOLD = 900    # 15 分鐘
-AUTO_KILL_THRESHOLD = 1800  # 30 分鐘
+LIMIT_THRESHOLD = 1800      # 30 分鐘（達此值僅警告，不終止任何程序）
 
 # --- pre-fix-evaluation 子邏輯常數 ---
 
@@ -181,6 +182,32 @@ def _is_test_command(input_data: dict) -> bool:
 # 子邏輯 1: 測試超時監控（來自 test-timeout-post.py）
 # ============================================================================
 
+def _limit_message(duration_minutes: float, project_dir: Path) -> str:
+    """上限警告全文。不終止程序：此時自身測試已返回，終止指令作用於全機，
+    會波及其他 session 與其他專案。兩條指令各佔一行、使用絕對路徑。"""
+    script = shlex.quote(str(project_dir / ".claude" / "scripts" / "orphan-test-procs.py"))
+    limit_minutes = LIMIT_THRESHOLD // 60
+    return (
+        f"[已達上限] 測試執行 {duration_minutes:.1f} 分鐘，超過 {limit_minutes} 分鐘上限。\n"
+        "本 hook 不自動終止程序：終止指令作用於全機，會波及其他 session 與其他專案。\n"
+        "可能殘留孤兒測試程序，請依序執行（第一條只列出，第二條才終止）：\n"
+        f"python3 {script}\n"
+        f"python3 {script} --kill\n"
+        "僅當第一條列出的程序確屬本專案且已不再需要時，才執行第二條。"
+    )
+
+
+def _classify_duration(duration: float, duration_minutes: float, project_dir: Path) -> Tuple[str, str, str]:
+    """依門檻由高到低回傳 (level, action, message)。"""
+    if duration >= LIMIT_THRESHOLD:
+        return "limit", "limit_warning", _limit_message(duration_minutes, project_dir)
+    if duration >= CRITICAL_THRESHOLD:
+        return "critical", "critical_warning", f"嚴重警告：測試執行 {duration_minutes:.1f} 分鐘，建議手動終止"
+    if duration >= WARNING_THRESHOLD:
+        return "warning", "warning", f"警告：測試執行 {duration_minutes:.1f} 分鐘，可能有卡住問題"
+    return "normal", "normal", f"測試完成：{duration_minutes:.1f} 分鐘"
+
+
 def check_test_timeout(input_data: dict, tool_input: dict, logger):
     """子邏輯 1: 測試超時監控。回傳訊息或 None。"""
     project_dir = get_project_root()
@@ -208,27 +235,10 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
     monitor_data["duration_seconds"] = duration
     monitor_data["status"] = "completed"
 
-    message = ""
-    if duration >= AUTO_KILL_THRESHOLD:
-        # 不終止任何程序：此時自身測試已返回，pkill 全機範圍只會波及其他 session
-        message = (
-            f"嚴重警告：測試執行 {duration_minutes:.1f} 分鐘，已達上限。"
-            "可能殘留孤兒測試程序；請先執行 "
-            "python3 .claude/scripts/orphan-test-procs.py 列出本專案孤兒程序，"
-            "確認後再加 --kill 終止"
-        )
+    level, action, message = _classify_duration(duration, duration_minutes, project_dir)
+    monitor_data["action"] = action
+    if level == "limit":
         print(f"[WARNING] {message}", file=sys.stderr)
-        logger.warning(f"timeout: {message}")
-        monitor_data["action"] = "limit_warning"
-    elif duration >= CRITICAL_THRESHOLD:
-        message = f"嚴重警告：測試執行 {duration_minutes:.1f} 分鐘，建議手動終止"
-        monitor_data["action"] = "critical_warning"
-    elif duration >= WARNING_THRESHOLD:
-        message = f"警告：測試執行 {duration_minutes:.1f} 分鐘，可能有卡住問題"
-        monitor_data["action"] = "warning"
-    else:
-        message = f"測試完成：{duration_minutes:.1f} 分鐘"
-        monitor_data["action"] = "normal"
 
     try:
         with open(monitor_file, "w") as f:
@@ -240,7 +250,8 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
         print(f"[WARNING] 無法寫入測試監控記錄: {e}", file=sys.stderr)
         logger.warning(f"timeout: 寫入監控檔案失敗: {e}")
 
-    logger.info(f"timeout: {message}")
+    log = logger.warning if level == "limit" else logger.info
+    log(f"timeout: {message}")
     return message
 
 
