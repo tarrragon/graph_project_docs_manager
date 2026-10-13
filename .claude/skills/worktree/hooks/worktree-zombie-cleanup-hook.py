@@ -114,7 +114,7 @@ def is_worktree_dirty(worktree_path: Path) -> bool:
     """檢查 worktree 是否有未提交變更。失敗時保守視為 dirty。"""
     try:
         result = subprocess.run(
-            ["git", "-C", str(worktree_path), "status", "--porcelain"],
+            ["git", "-C", str(worktree_path), "--no-optional-locks", "status", "--porcelain"],
             capture_output=True,
             text=True,
             timeout=10,

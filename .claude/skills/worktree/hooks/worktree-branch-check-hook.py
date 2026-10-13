@@ -226,7 +226,7 @@ def get_uncommitted_count(worktree_path: str) -> int:
     Returns:
         未提交變更的檔案數量
     """
-    success, output = run_git_command(["status", "--short"], cwd=worktree_path)
+    success, output = run_git_command(["--no-optional-locks", "status", "--short"], cwd=worktree_path)
     if not success or not output:
         return 0
 

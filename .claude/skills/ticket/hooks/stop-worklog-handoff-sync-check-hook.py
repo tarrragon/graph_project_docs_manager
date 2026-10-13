@@ -574,6 +574,7 @@ def _extract_session_incremental_content(
                 "git",
                 "-C",
                 str(project_root),
+                "--no-optional-locks",
                 "diff",
                 "--unified=0",
                 base,

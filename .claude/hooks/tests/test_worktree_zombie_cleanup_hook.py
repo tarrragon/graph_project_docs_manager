@@ -241,3 +241,14 @@ def test_summarize_mixed(hook_module):
     assert "dirty 保留: 1" in msg
     assert "清理失敗: 1" in msg
     assert "* b" in msg
+
+
+# ---------- 0.5.0-W1-164.6.1：唯讀 git 旗標 ----------
+
+def test_is_worktree_dirty_status_has_no_optional_locks_before_subcommand(hook_module):
+    fake = MagicMock(returncode=0, stdout="", stderr="")
+    with patch.object(hook_module.subprocess, "run", return_value=fake) as run:
+        hook_module.is_worktree_dirty(Path("/tmp"))
+    argv = run.call_args.args[0]
+    assert "--no-optional-locks" in argv
+    assert argv.index("--no-optional-locks") < argv.index("status")

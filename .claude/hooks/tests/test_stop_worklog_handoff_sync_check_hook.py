@@ -833,3 +833,23 @@ class TestW1044SubagentContext:
             root, 0.0, MagicMock(), input_data={"agent_id": "agt-1"}
         )
         assert result is None, "subagent stop 應跳過 sync check，不注入漂移警告"
+
+
+def test_session_incremental_diff_has_no_optional_locks_before_subcommand(hook_mod, monkeypatch, tmp_path):
+    """0.5.0-W1-164.6.1：工作樹 diff 須帶 --no-optional-locks 且位於子命令前。"""
+    monkeypatch.setattr(hook_mod, "_resolve_git_base_commit", lambda *a, **kw: "abc123")
+    fake = MagicMock(returncode=0, stdout="", stderr="")
+    seen = []
+
+    def _fake_run(argv, **kw):
+        seen.append(argv)
+        return fake
+
+    monkeypatch.setattr(hook_mod.subprocess, "run", _fake_run)
+    hook_mod._extract_session_incremental_content(
+        tmp_path, tmp_path / "wl.md", 1.0, MagicMock()
+    )
+    assert len(seen) == 1
+    argv = seen[0]
+    assert "--no-optional-locks" in argv
+    assert argv.index("--no-optional-locks") < argv.index("diff")

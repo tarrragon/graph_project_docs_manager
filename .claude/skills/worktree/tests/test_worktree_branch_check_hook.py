@@ -95,7 +95,7 @@ class TestCheckGitStateScenarioB:
         def _run(args, cwd=None):
             if args[:2] == ["worktree", "list"]:
                 return (True, worktree_output)
-            if args[:2] == ["status", "--short"]:
+            if args[-2:] == ["status", "--short"]:
                 if cwd in dirty_paths:
                     return (True, "M some_file.py")
                 return (True, "")
@@ -145,3 +145,14 @@ class TestCheckGitStateScenarioB:
 
         reported_paths = [wt.path for wt in result.uncommitted_worktrees]
         assert reported_paths == ["/repo/wt1"]
+
+
+def test_get_uncommitted_count_status_has_no_optional_locks_before_subcommand():
+    """0.5.0-W1-164.6.1：唯讀 status 須帶 --no-optional-locks 且位於子命令前。"""
+    from unittest.mock import patch
+
+    with patch.object(hook, "run_git_command", return_value=(True, "")) as run:
+        hook.get_uncommitted_count("/tmp")
+    args = run.call_args.args[0]
+    assert "--no-optional-locks" in args
+    assert args.index("--no-optional-locks") < args.index("status")
