@@ -24,6 +24,13 @@ hook = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(hook)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_repo(tmp_path, monkeypatch):
+    """mock 縫失效時 git 也找不到任何 repo，避免對 cwd 執行真實 add / commit。"""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+
+
 @pytest.fixture
 def logger():
     return logging.getLogger("test-wac")
@@ -264,7 +271,7 @@ class TestLockRetry:
     def test_index_lock_retries_then_succeeds(self, logger):
         lock_fail = MagicMock(returncode=1, stderr="fatal: Unable to create index.lock")
         ok = MagicMock(returncode=0, stderr="")
-        with patch.object(hook.subprocess, "run", side_effect=[lock_fail, ok]), patch(
+        with patch.object(hook, "_run_with_graceful_timeout", side_effect=[lock_fail, ok]), patch(
             "time.sleep"
         ):
             success, rc, _ = hook._run_git_with_lock_retry(
@@ -275,7 +282,7 @@ class TestLockRetry:
 
     def test_non_lock_error_no_retry(self, logger):
         fail = MagicMock(returncode=1, stderr="fatal: some other error")
-        with patch.object(hook.subprocess, "run", return_value=fail) as run, patch(
+        with patch.object(hook, "_run_with_graceful_timeout", return_value=fail) as run, patch(
             "time.sleep"
         ):
             success, _, _ = hook._run_git_with_lock_retry(
@@ -288,7 +295,7 @@ class TestLockRetry:
     def test_lock_persists_exhausts_retries(self, logger):
         lock_fail = MagicMock(returncode=1, stderr="Unable to create index.lock")
         with patch.object(
-            hook.subprocess, "run", return_value=lock_fail
+            hook, "_run_with_graceful_timeout", return_value=lock_fail
         ) as run, patch("time.sleep"):
             success, _, _ = hook._run_git_with_lock_retry(
                 ["git", "commit"], logger, "commit", max_retries=3, wait_seconds=0
@@ -301,7 +308,7 @@ class TestLockRetry:
         lock_fail = MagicMock(returncode=1, stderr="Unable to create index.lock")
         ok = MagicMock(returncode=0, stderr="")
         with patch.object(
-            hook.subprocess, "run", side_effect=[lock_fail, ok]
+            hook, "_run_with_graceful_timeout", side_effect=[lock_fail, ok]
         ), patch("time.sleep"), patch("os.remove") as rm, patch(
             "pathlib.Path.unlink"
         ) as unlink:
@@ -315,12 +322,12 @@ class TestLockRetry:
 class TestAutoCommit:
     def test_success_path(self, logger):
         ok = MagicMock(returncode=0, stderr="")
-        with patch.object(hook.subprocess, "run", return_value=ok):
+        with patch.object(hook, "_run_with_graceful_timeout", return_value=ok):
             assert hook.auto_commit("msg", logger) is True
 
     def test_add_failure_aborts(self, logger):
         fail = MagicMock(returncode=1, stderr="add failed")
-        with patch.object(hook.subprocess, "run", return_value=fail):
+        with patch.object(hook, "_run_with_graceful_timeout", return_value=fail):
             assert hook.auto_commit("msg", logger) is False
 
 
