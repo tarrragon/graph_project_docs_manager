@@ -21,6 +21,7 @@ domain map 定位鏈：--domain-map 明示（唯一來源，不聯集）-> spec 
 import argparse
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 import check_api_surface
@@ -69,8 +70,6 @@ def extract_fr_ids(text):
 
 
 FENCE_OPEN_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-# 形似 FR 定義的行：行首為標題或粗體，緊接 FR 編號（NFR 與帶 SPEC 前綴的引用不命中）
-FR_LIKE_LINE_RE = re.compile(r"^(?:#{1,6}[ \t]+|\*\*[ \t]*)FR-(\d+)", re.IGNORECASE)
 
 
 def _fence_open(line):
@@ -109,21 +108,77 @@ def _mask_fenced_blocks(text):
     return mask_fenced_blocks(text)[0]
 
 
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def _mask_html_comments(text):
+    """HTML 註解（可跨行）的非換行字元換成 NUL，保留行號；未閉合的 <!-- 不遮（保守，不掩蓋內容）。
+
+    用 NUL 而非空白：`<!-- x --> ## FR-01` 遮成空白後會變成縮排標題而被誤認。
+    """
+    return HTML_COMMENT_RE.sub(lambda m: re.sub(r"[^\n]", "\x00", m.group(0)), text)
+
+
+def _scan_text(text):
+    """抽取與形似判定共用的掃描文字：先遮圍欄、再遮註解，行號不變。"""
+    return _mask_html_comments(_mask_fenced_blocks(text))
+
+
 def extract_spec_frs(spec_text):
-    """從 spec 的 `### FR-XX:` 標題抽出定義的 FR 編號（int 集合）；略過圍欄程式碼區塊。"""
-    masked = _mask_fenced_blocks(spec_text)
+    """從 spec 的 `### FR-XX:` 標題抽出定義的 FR 編號（int 集合）；略過圍欄程式碼區塊與註解。"""
+    masked = _scan_text(spec_text)
     return {int(m.group(1).split("-")[1]) for m in FR_HEADER_RE.finditer(masked)}
 
 
-def find_unextracted_fr_lines(spec_text):
-    """回傳 [(行號, 行文字)]：形似 FR 定義、但其編號不在抽出集合內的行（略過圍欄區塊）。"""
-    extracted = extract_spec_frs(spec_text)
+# 形似 FR 定義的行（抽取端漏抓提醒與宣告矛盾比對共用單一判定，規則只在此處改）。
+# 行文字先做 NFKC 正規化（全形字母、數字、連字號、方括號併入半形）。
+_FR_LEAD = r"[*_\[\u3010\u300c`]*"  # 粗體、強調、方括號、反引號包裹
+_FR_NUMBERING = r"(?:(?:\d+(?:\.\d+)*\.?|需求)[ \t]*)?"  # 「3.1 」「需求 」編號前綴
+_FR_CORE = _FR_LEAD + _FR_NUMBERING + r"FR[-\u2010-\u2015\u2212]?[ \t]*(\d+)"  # 須含編號：「FR：不適用」不命中
+FR_LIKE_ATX_RE = re.compile(r"^ {0,3}#{1,6}[ \t]+" + _FR_CORE, re.IGNORECASE)
+FR_LIKE_STRONG_RE = re.compile(r"^ {0,3}(?:\*\*|__)" + _FR_CORE, re.IGNORECASE)
+FR_LIKE_SETEXT_TEXT_RE = re.compile(r"^ {0,3}" + _FR_CORE, re.IGNORECASE)
+SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
+
+
+def _frontmatter_line_count(text):
+    block = FRONTMATTER_BLOCK_RE.match(text)
+    return text[: block.end()].count("\n") + 1 if block else 0
+
+
+def _fr_like_number(line, next_line):
+    """該行形似 FR 定義時回傳 FR 編號（int），否則 None。"""
+    norm = unicodedata.normalize("NFKC", line)
+    m = FR_LIKE_ATX_RE.match(norm) or FR_LIKE_STRONG_RE.match(norm)
+    if not m and SETEXT_UNDERLINE_RE.match(unicodedata.normalize("NFKC", next_line)):
+        m = FR_LIKE_SETEXT_TEXT_RE.match(norm)
+    return int(m.group(1)) if m else None
+
+
+def fr_like_lines(spec_text):
+    """回傳 [(行號, 行文字, FR 編號)]：形似 FR 定義的行。略過圍欄、註解與 frontmatter。
+
+    形式：ATX 標題、行首粗體、setext 標題；標題內可帶編號前綴、粗體、方括號、反引號、全形字母。
+    不含清單項與表格列（那是對 FR 的引用，不是定義）；NFR、帶 SPEC 前綴的引用、
+    無編號的 FR 字樣不命中。
+    """
+    masked = _scan_text(spec_text).splitlines()
+    originals = spec_text.splitlines()
+    skip = _frontmatter_line_count(spec_text)
     found = []
-    for no, line in enumerate(_mask_fenced_blocks(spec_text).splitlines(), 1):
-        m = FR_LIKE_LINE_RE.match(line)
-        if m and int(m.group(1)) not in extracted:
-            found.append((no, line.strip()))
+    for i, line in enumerate(masked):
+        if i < skip:
+            continue
+        number = _fr_like_number(line, masked[i + 1] if i + 1 < len(masked) else "")
+        if number is not None:
+            found.append((i + 1, originals[i].strip(), number))
     return found
+
+
+def find_unextracted_fr_lines(spec_text):
+    """回傳 [(行號, 行文字)]：形似 FR 定義、但其編號不在抽出集合內的行。"""
+    extracted = extract_spec_frs(spec_text)
+    return [(no, line) for no, line, number in fr_like_lines(spec_text) if number not in extracted]
 
 
 SPEC_ID_RE = re.compile(r"SPEC-\d+")
@@ -487,31 +542,62 @@ def _read_maps(paths):
 
 
 DECLARATION_KEY = "has_functional_requirements"
-DECLARATION_LINE_RE = re.compile(rf"^{DECLARATION_KEY}:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
-# 矛盾檢查比抽取規則寬：任何標題行文字以 FR 開頭（不分大小寫，含 FR01、FR 01、fr-01、
-# 全形連字號、en dash）；NFR 開頭與 FRAME 之類字母續接者不命中。
-LOOSE_FR_HEADING_RE = re.compile(r"^#{1,6}[ \t]*FR(?![A-Za-z]).*$", re.MULTILINE | re.IGNORECASE)
+DECLARATION_LINE_RE = re.compile(rf"^{DECLARATION_KEY}:[ \t]*(.*?)[ \t]*$")
+TOP_KEY_LINE_RE = re.compile(r"^[^\s#][^:]*:[ \t]*(.*)$")
 EXPECTED_HEADING_HINT = (
     "預期標題樣式：`### FR-NN: 標題` 或 `### FR-NN：標題`（H3 以上，半形或全形冒號）；"
     f"若本 SPEC 確實無 FR，請於 frontmatter 宣告 `{DECLARATION_KEY}: false`。"
 )
 
 
+def _unclosed_quote(text, quote):
+    """於引號 quote 內掃描 text，回傳掃完後仍未閉合的引號字元；已閉合回 None。"""
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if quote == '"' and ch == "\\":
+            i += 2
+            continue
+        if ch == quote:
+            if quote == "'" and text[i + 1:i + 2] == "'":  # '' 是單引號的跳脫
+                i += 2
+                continue
+            return None
+        i += 1
+    return quote
+
+
+def _declaration_occurrences(frontmatter):
+    """回傳 [(檔內行號, 值)]：頂層的宣告鍵行；引號多行字串續行內的行不算。"""
+    found, quote = [], None
+    for no, line in enumerate(frontmatter.splitlines(), 2):  # frontmatter 內容自檔案第 2 行起
+        if quote:
+            quote = _unclosed_quote(line, quote)
+            continue
+        declared = DECLARATION_LINE_RE.match(line)
+        if declared:
+            found.append((no, declared.group(1)))
+        top = TOP_KEY_LINE_RE.match(line)
+        if top and top.group(1)[:1] in ('"', "'"):
+            quote = _unclosed_quote(top.group(1)[1:], top.group(1)[0])
+    return found
+
+
 def read_fr_declaration(spec_text):
-    """回傳 frontmatter 的 has_functional_requirements：True/False；未填回 True；非布林拋 ValueError。"""
+    """回傳 frontmatter 的 has_functional_requirements：True/False；未填回 True；非布林或重複宣告拋 ValueError。"""
     block = FRONTMATTER_BLOCK_RE.match(spec_text)
-    found = DECLARATION_LINE_RE.search(block.group(1)) if block else None
+    found = _declaration_occurrences(block.group(1)) if block else []
     if not found:
         return True
-    raw = re.sub(r"\s+#.*$", "", found.group(1))
+    if len(found) > 1:
+        rows = "、".join(str(no) for no, _ in found)
+        raise ValueError(f"{DECLARATION_KEY} 在 frontmatter 重複宣告（第 {rows} 行），無法判定以何者為準")
+    raw = re.sub(r"\s+#.*$", "", found[0][1])
     if raw in ("true", "false"):
         return raw == "true"
-    raise ValueError(f"{DECLARATION_KEY} 須為布林 true/false，實得 {raw!r}")
-
-
-def _body_without_frontmatter(spec_text):
-    block = FRONTMATTER_BLOCK_RE.match(spec_text)
-    return spec_text[block.end():] if block else spec_text
+    raise ValueError(
+        f"{DECLARATION_KEY} 須為布林（合法寫法：true、false，小寫），實得 {raw!r}"
+        "（未填視同 true；非布林不當作 false）")
 
 
 def judge_fr_declaration(spec_text):
@@ -519,15 +605,15 @@ def judge_fr_declaration(spec_text):
     try:
         declared = read_fr_declaration(spec_text)
     except ValueError as exc:
-        print(f"domain 覆蓋檢核失敗：{exc}（未填視同 true；非布林不當作 false）")
+        print(f"domain 覆蓋檢核失敗：{exc}")
         return 1
     extracted = extract_spec_frs(spec_text)
     if declared is False:
-        loose = LOOSE_FR_HEADING_RE.findall(_body_without_frontmatter(spec_text))
+        loose = fr_like_lines(spec_text)
         if extracted or loose:
             print(f"domain 覆蓋檢核失敗：宣告 {DECLARATION_KEY}: false，但內容存在 FR 標題行（宣告與內容矛盾）：")
-            for line in loose:
-                print(f"  {line.strip()}")
+            for no, line, _ in loose:
+                print(f"  第 {no} 行：{line}")
             return 1
         print(f"本 SPEC 宣告無 FR（{DECLARATION_KEY}: false），未執行覆蓋比對")
         return 0

@@ -992,3 +992,104 @@ def test_fence_close_needs_length_and_no_trailing_text():
 
 def test_inline_triple_backtick_extracts_all():
     assert cdc.extract_spec_frs("### FR-01: a\n```inline``` 說明\n### FR-02: b\n") == {1, 2}
+
+
+# --- 0.5.0-W1-172：宣告讀取（重複鍵 / 多行字串續行）與宣告矛盾比對（漏放 / 誤判 / 共用判定）---
+
+def _fm_raw(*lines):
+    return "---\nid: SPEC-900\n" + "".join(f"{ln}\n" for ln in lines) + "---\n"
+
+
+def test_duplicate_declaration_key_errors(tmp_path, capsys):
+    for first, second in (("false", "true"), ("true", "false"), ("false", "false")):
+        fm = _fm_raw(f"has_functional_requirements: {first}", f"has_functional_requirements: {second}")
+        rc, out = _run_nomap(tmp_path, fm + "# s\n", capsys)
+        assert rc != 0, (first, second)
+        assert "重複" in out and "宣告無 FR" not in out
+
+
+def test_declaration_key_inside_multiline_string_not_counted(tmp_path, capsys):
+    fm = _fm_raw('note: "第一行', "has_functional_requirements: false", '收尾"')
+    rc, out = _run_nomap(tmp_path, fm + "# s\n元件契約表\n", capsys)
+    assert rc != 0 and "本 SPEC 宣告無 FR" not in out  # 未宣告且抽出 0 個
+
+
+def test_single_quoted_multiline_string_not_counted(tmp_path, capsys):
+    fm = _fm_raw("note: 'it''s", "has_functional_requirements: false", "end'")
+    rc, out = _run_nomap(tmp_path, fm + "# s\n", capsys)
+    assert rc != 0 and "本 SPEC 宣告無 FR" not in out
+
+
+def test_declaration_after_closed_quote_still_read(tmp_path, capsys):
+    fm = _fm_raw('note: "單行"', "has_functional_requirements: false")
+    rc, out = _run_nomap(tmp_path, fm + "# s\n", capsys)
+    assert rc == 0 and "宣告無 FR" in out
+
+
+def test_invalid_value_message_lists_legal_forms(tmp_path, capsys):
+    rc, out = _run_nomap(tmp_path, _fm("True") + "# s\n", capsys)
+    assert rc != 0 and "true" in out and "false" in out and "'True'" in out
+
+
+MISSED_CONTRADICTIONS = [
+    "## **FR-01** x", "## 3.1 FR-01 x", "## 需求 FR-01 x", "## [FR-01] x", "## `FR-01` x",
+    "## ＦＲ-01 x", "## ＦＲ－０１ x", "  ## FR-01 x", "**FR-01** x", "FR-01 x\n=====", "FR-01 x\n-----",
+    "## _FR-01_ x",
+]
+
+
+@pytest.mark.parametrize("heading", MISSED_CONTRADICTIONS)
+def test_declared_false_previously_missed_heading_contradicts(tmp_path, capsys, heading):
+    rc, out = _run_nomap(tmp_path, _fm("false") + f"# s\n{heading}\n", capsys)
+    assert rc != 0 and "矛盾" in out
+
+
+FALSE_CONTRADICTIONS = [
+    "## FR", "## FR 與 NFR 的界線", "## FR/NFR 不適用說明", "## FR：不適用", "## Fr. 縮寫",
+    "#FR-01 x", "```\n## FR-01: x\n```", "~~~\n**FR-01** x\n~~~",
+    "<!--\n## FR-01: x\n-->", "<!-- ## FR-01 x -->", "前文 <!-- a -->\n<!--\nFR-02 x\n=====\n-->",
+    "- 見 FR-01 的說明", "| FR-01 | 引用 |", "    ## FR-01 縮排程式碼",
+]
+
+
+@pytest.mark.parametrize("body", FALSE_CONTRADICTIONS)
+def test_declared_false_non_definition_fr_text_not_contradiction(tmp_path, capsys, body):
+    rc, out = _run_nomap(tmp_path, _fm("false") + f"# s\n{body}\n", capsys)
+    assert rc == 0 and "宣告無 FR" in out
+
+
+def test_contradiction_reports_line_numbers_after_masking(tmp_path, capsys):
+    text = _fm("false") + "# s\n```\nx\n```\n## 需求 FR-01 x\n"
+    rc, out = _run_nomap(tmp_path, text, capsys)
+    assert rc != 0 and "第 9 行" in out
+
+
+def test_unclosed_fence_still_precedes_declaration(tmp_path, capsys):
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n```\n元件\n", capsys)
+    assert rc == 1 and "未閉合" in out and "宣告無 FR" not in out
+
+
+def test_fr_header_in_html_comment_not_extracted():
+    assert cdc.extract_spec_frs("### FR-01: a\n<!--\n### FR-02: b\n-->\n### FR-03: c\n") == {1, 3}
+
+
+SHARED_CORPUS = MISSED_CONTRADICTIONS + [
+    "## FR-01: a", "### FR-02 b", "**FR-03** c", "## NFR-01 x", "**SPEC-001 FR-09** 引用",
+    "## FR：不適用", "#FR-01 x",
+]
+
+
+@pytest.mark.parametrize("line", SHARED_CORPUS)
+def test_extraction_warning_and_contradiction_agree(tmp_path, capsys, line):
+    text = f"# s\n{line}\n"
+    warned = bool(cdc.fr_like_lines(text))
+    rc, _ = _run_nomap(tmp_path, _fm("false") + text, capsys)
+    assert (rc != 0) == warned
+
+
+def test_both_consumers_use_shared_fr_like_judgment(tmp_path, capsys, monkeypatch):
+    # 只改共用判定的一端：兩個消費端都必須跟著變，任一端自帶規則則此測試翻紅
+    monkeypatch.setattr(cdc, "fr_like_lines", lambda text: [(3, "SENTINEL-LINE", 7)])
+    assert cdc.find_unextracted_fr_lines("# s\n元件\n") == [(3, "SENTINEL-LINE")]
+    rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n元件\n", capsys)
+    assert rc != 0 and "SENTINEL-LINE" in out
