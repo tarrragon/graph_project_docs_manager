@@ -215,7 +215,7 @@ def test_survivor_after_nonpositive_zombie_check():
         proc.wait()
 
 
-# ---- 0.5.0-W1-187.10：認定表、終止結果、失敗可見性 ----
+# ---- 認定表、終止結果、失敗可見性 ----
 
 SPACE = "/Users/me/My Projects/app/.venv/bin"
 RUNNER_CASES = [
@@ -230,9 +230,11 @@ RUNNER_CASES = [
     ("node /repo/node_modules/jest/bin/jest.js", True),
     ("/usr/local/bin/node /repo/node_modules/vitest/vitest.mjs run", True),
     ("/usr/local/bin/node /repo/node_modules/.bin/vitest", True),
-    (SPACE + "/python -m pytest tests", True),
-    ("/Users/me/My Dir/flutter_tester --x", True),
-    ("node /Users/me/My Dir/node_modules/.bin/jest", True),
+    ("python3 -mpytest", True),
+    # 執行檔路徑含空白：ps 無法分辨詞界，保守不認定（漏認）
+    (SPACE + "/python -m pytest tests", False),
+    ("/Users/me/My Dir/flutter_tester --x", False),
+    ("node /Users/me/My Dir/node_modules/.bin/jest", False),
     # 不該認定
     ("vim pytest.ini", False),
     ("grep pytest file.txt", False),
@@ -244,6 +246,31 @@ RUNNER_CASES = [
     ("tail -f /var/log/vitest.log", False),
     ("/usr/bin/python3", False),
     ("", False),
+    # 首詞為絕對路徑的普通程式，後接執行器路徑
+    ("/usr/bin/vim /repo/.venv/bin/pytest", False),
+    ("/usr/bin/less /repo/node_modules/.bin/jest", False),
+    ("/usr/bin/git add /repo/tools/pytest", False),
+    ("/usr/bin/grep /repo/pytest /tmp/file", False),
+    ("/usr/bin/find /repo/node_modules/.bin/jest", False),
+    ("/usr/bin/ssh host /usr/bin/python3 -m pytest", False),
+    ("/usr/bin/sudo /usr/bin/python3 -m pytest", False),
+    ("/bin/cat /x/pytest", False),
+    # 直譯器後的腳本不是執行器，其後的路徑不看
+    ("python3 /repo/run /data/pytest", False),
+    ("python3 /repo/manage /srv/logs/jest", False),
+    ("node /repo/server /var/data/vitest.ts", False),
+    ("python /opt/app/serve /x/.venv/bin/pytest", False),
+    # 目錄名以執行器名結尾且後接空白
+    ("/Users/me/pytest runs/bin/python server.py", False),
+    # 帶值選項：遇到即不認定（兩個方向）
+    ("python3 -W /repo/pytest other.py", False),
+    ("node --require /repo/node_modules/.bin/jest server.js", False),
+    ("python3 -W ignore -m pytest", False),
+    ("python3 -X dev /repo/.venv/bin/pytest", False),
+    ("node --require x.js /repo/node_modules/.bin/jest", False),
+    ("node --import x.mjs /repo/node_modules/.bin/vitest", False),
+    ("node --loader x.mjs /repo/node_modules/.bin/jest", False),
+    ("node -r x.js /repo/node_modules/.bin/jest", False),
 ]
 
 
@@ -259,9 +286,10 @@ def _fake_world(mod, monkeypatch, root, *, alive=True, same=True):
     monkeypatch.setattr(mod, "list_processes", lambda: [fake])
     monkeypatch.setattr(mod, "process_cwd", lambda pid: str(root))
     monkeypatch.setattr(mod, "_send", lambda pid, sig: sent.append((pid, sig)))
-    monkeypatch.setattr(mod, "_is_alive", lambda pid: alive)
-    monkeypatch.setattr(mod, "_same_identity", lambda p: same, raising=False)
+    monkeypatch.setattr(mod, "_is_alive", alive if callable(alive) else (lambda pid: alive))
+    monkeypatch.setattr(mod, "_same_identity", lambda p: same)
     monkeypatch.setattr(mod, "GRACE_SECONDS", 0.05)
+    monkeypatch.setattr(mod, "POLL_INTERVAL", 0.001)
     return fake, sent
 
 
@@ -277,17 +305,19 @@ def test_kill_reports_survivor_and_exits_nonzero(tmp_path, monkeypatch, capsys):
 def test_kill_skips_signal_when_identity_changed(tmp_path, monkeypatch):
     mod = _load()
     _, sent = _fake_world(mod, monkeypatch, tmp_path, same=False)
-    mod.main(["--kill", "--root", str(tmp_path)])
+    rc = mod.main(["--kill", "--root", str(tmp_path)])
     assert sent == []
+    assert rc == 0
 
 
 def test_identity_changed_between_term_and_kill_sends_no_kill(tmp_path, monkeypatch):
     mod = _load()
     fake, sent = _fake_world(mod, monkeypatch, tmp_path)
     answers = iter([True, False])  # TERM 前相符，KILL 前已不符
-    monkeypatch.setattr(mod, "_same_identity", lambda p: next(answers), raising=False)
-    mod.terminate(fake, grace=0.05)
-    assert signal.SIGKILL not in [s for _, s in sent]
+    monkeypatch.setattr(mod, "_same_identity", lambda p: next(answers))
+    result = mod.terminate(fake, grace=0.05)
+    assert sent == [(999999, signal.SIGTERM)]
+    assert result == "changed_after_term"
 
 
 @pytest.mark.parametrize("failing", ["ps", "git"])
@@ -350,3 +380,135 @@ def test_negative_control_asserts_exit_code_and_output(env):
     assert res.returncode == 0
     assert str(pid) not in res.stdout and "已終止" not in res.stdout
     assert "符合 0 略過 0" in res.stdout
+
+
+# ---- KILL 後的存活判定、結果回報 ----
+
+def _killable_world(mod, monkeypatch, tmp_path, polls_after_kill):
+    """TERM 無效；KILL 送出後再被查詢 polls_after_kill 次仍存活，之後消失。"""
+    state = {"left": polls_after_kill}
+    sent = []
+
+    def alive(pid):
+        if signal.SIGKILL not in [s for _, s in sent]:
+            return True
+        state["left"] -= 1
+        return state["left"] >= 0
+
+    fake, sent_ref = _fake_world(mod, monkeypatch, tmp_path, alive=alive)
+    sent.extend(sent_ref)
+    monkeypatch.setattr(mod, "_send", lambda pid, sig: (sent.append((pid, sig)), sent_ref.append((pid, sig))))
+    return fake, sent
+
+
+def test_slow_exit_after_kill_is_reported_terminated(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    monkeypatch.setattr(mod, "KILL_WAIT_SECONDS", 2.0, raising=True)
+    _killable_world(mod, monkeypatch, tmp_path, polls_after_kill=5)
+    rc = mod.main(["--kill", "--root", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "已終止 999999" in out and "未能終止" not in out
+
+
+def test_alive_past_kill_deadline_is_failure(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    monkeypatch.setattr(mod, "KILL_WAIT_SECONDS", 0.05, raising=True)
+    _killable_world(mod, monkeypatch, tmp_path, polls_after_kill=10 ** 9)
+    rc = mod.main(["--kill", "--root", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "未能終止 999999" in out and "已終止" not in out
+
+
+def test_vanished_before_signal_reports_absent_not_terminated(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    _, sent = _fake_world(mod, monkeypatch, tmp_path, alive=False, same=False)
+    rc = mod.main(["--kill", "--root", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 0 and sent == []
+    assert "已不存在 999999" in out and "已終止" not in out
+
+
+def test_ps_failure_during_terminate_is_error_exit_2(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    fake = mod.Proc(999999, 1, "S", "flutter_tester")
+    sent = []
+    monkeypatch.setattr(mod, "list_processes", lambda: [fake])
+    monkeypatch.setattr(mod, "process_cwd", lambda pid: str(tmp_path))
+    monkeypatch.setattr(mod, "_send", lambda pid, sig: sent.append((pid, sig)))
+    real = subprocess.run
+
+    def fake_run(cmd, *a, **kw):
+        if cmd[0] == "ps":
+            return subprocess.CompletedProcess(cmd, 1, "", "boom")
+        return real(cmd, *a, **kw)
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    rc = mod.main(["--kill", "--root", str(tmp_path)])
+    cap = capsys.readouterr()
+    assert rc == 2 and sent == []
+    assert "boom" in cap.err and "已終止" not in cap.out
+
+
+def test_identity_changed_after_term_is_failure_with_distinct_message(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    _fake_world(mod, monkeypatch, tmp_path)
+    answers = iter([True, False])
+    monkeypatch.setattr(mod, "_same_identity", lambda p: next(answers))
+    rc = mod.main(["--kill", "--root", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "TERM 後身份已變" in out and "送訊號前身份已變" not in out
+
+
+def test_identity_changed_before_signal_message_distinct(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    _fake_world(mod, monkeypatch, tmp_path, same=False)
+    mod.main(["--kill", "--root", str(tmp_path)])
+    assert "送訊號前身份已變" in capsys.readouterr().out
+
+
+# ---- 真實的 _same_identity（不經替換）----
+
+def _command_of(pid):
+    return subprocess.run(["ps", "-o", "command=", "-p", str(pid)],
+                          capture_output=True, text=True).stdout.strip()
+
+
+def test_real_same_identity_true_for_matching_orphan(env):
+    mod = _load()
+    pid = env.orphan()
+    assert mod._same_identity(mod.Proc(pid, 1, "S", _command_of(pid))) is True
+
+
+def test_real_same_identity_false_when_command_differs(env):
+    mod = _load()
+    pid = env.orphan()
+    assert mod._same_identity(mod.Proc(pid, 1, "S", "some other command")) is False
+
+
+def test_real_same_identity_false_when_parent_not_init(env):
+    mod = _load()
+    pid = env.child_of_test()
+    assert mod._same_identity(mod.Proc(pid, 1, "S", _command_of(pid))) is False
+
+
+def test_real_same_identity_false_for_missing_pid(env):
+    mod = _load()
+    pid = env.orphan()
+    os.kill(pid, signal.SIGKILL)
+    assert _wait_gone(pid)
+    assert mod._same_identity(mod.Proc(pid, 1, "S", "flutter_tester")) is False
+
+
+def test_help_lists_unsupported_forms():
+    res = subprocess.run([sys.executable, str(SCRIPT), "--help"],
+                         capture_output=True, text=True, timeout=30)
+    for phrase in ("路徑含空白", "帶值選項", "工作程序"):
+        assert phrase in res.stdout
+
+
+def test_test_file_has_no_ticket_ids():
+    import re
+    assert not re.search(r"\d+\.\d+\.\d+-W\d+-\d+", Path(__file__).read_text())

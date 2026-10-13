@@ -10,13 +10,14 @@
 認定須四項皆符合：
 1. 父程序為 1（已被 launchd 收養）
 2. 非殭屍（ps 狀態不以 Z 開頭）
-3. 命令屬已知測試執行器：直接執行 RUNNERS 之一，或經直譯器啟動（-m 模組名或腳本檔名）
+3. 命令屬已知測試執行器：首詞為 RUNNERS 之一，或首詞為直譯器且緊接 -m 模組名／執行器腳本
 4. 工作目錄位於專案根目錄或其 git worktree 之下
 
 特殊情形：
 - 工作目錄無法取得或已刪除：無法確認屬於本專案，不終止，僅列為「略過」。
 - 子程序自行脫離群組但父程序仍存活：父程序非 1，不符合，不列出。
-- 命令列含空白路徑時 ps 無法分辨詞界，認定採保守的啟發式（見 is_runner）。
+- 命令列的詞界無法由 ps 分辨，認定只看首詞（見 is_runner）：執行檔路徑含空白、
+  直譯器帶值選項、測試執行器的工作程序皆不支援，寧可漏認，不可誤認。
 """
 import argparse
 import os
@@ -35,6 +36,8 @@ SCRIPT_EXTS = (".py", ".js", ".mjs", ".cjs", ".ts")
 # TERM 後給程序收尾的寬限秒數
 GRACE_SECONDS = 3.0
 POLL_INTERVAL = 0.05
+# KILL 後等待目標消失的期限秒數（機器過載時 KILL 生效可能晚於一個輪詢間隔）
+KILL_WAIT_SECONDS = 3.0
 
 
 class Proc(NamedTuple):
@@ -84,58 +87,34 @@ def _is_known_executable(token: str) -> bool:
     return _base(token) in RUNNERS or bool(INTERPRETER_RE.match(_base(token)))
 
 
-def _find_executable(tokens: List[str]) -> int:
-    """回傳可執行檔所在的詞索引，找不到回 -1。
-
-    首詞若為絕對路徑，路徑中的空白會把它切成多詞；此時往後找第一個含 "/" 且
-    檔名屬 RUNNERS 或直譯器的詞。非絕對路徑只看首詞（避免 grep pytest 之類誤認）。
-    """
-    if _is_known_executable(tokens[0]):
-        return 0
-    if tokens[0].startswith("/"):
-        for i, t in enumerate(tokens[1:], 1):
-            if t.startswith("-"):
-                break
-            if "/" in t and _is_known_executable(t):
-                return i
-    return -1
-
-
 def _interpreter_runs_runner(rest: List[str]) -> bool:
-    """直譯器之後的引數是否啟動測試執行器（-m 模組名，或腳本檔名）。"""
-    i = 0
-    while i < len(rest) and rest[i].startswith("-"):
-        if rest[i] == "-m":
-            return i + 1 < len(rest) and rest[i + 1] in RUNNERS
-        if rest[i] in ("-c", "-e", "-p", "--eval", "--print"):
-            return False
-        i += 1
-    if i >= len(rest):
+    """直譯器之後的第一個引數是否啟動測試執行器（-m 模組名，或執行器腳本）。
+
+    只看緊接在直譯器之後的詞：-m 取模組名，-mNAME 取 NAME；其他選項（含帶值的
+    -W、-X、--require 等）一律不認定，因為無法分辨選項的值與腳本詞。
+    """
+    if not rest:
         return False
-    if _script_name(rest[i]) in RUNNERS:
-        return True
-    if not rest[i].startswith("/"):
+    first = rest[0]
+    if first == "-m":
+        return len(rest) > 1 and rest[1] in RUNNERS
+    if first.startswith("-m"):
+        return first[2:] in RUNNERS
+    if first.startswith("-"):
         return False
-    # 絕對路徑含空白：往後延伸，遇已知副檔名的非執行器腳本即停
-    for t in rest[i + 1:]:
-        is_other_script = _base(t).endswith(SCRIPT_EXTS) and _script_name(t) not in RUNNERS
-        if t.startswith("-") or is_other_script:
-            return False
-        if "/" in t and _script_name(t) in RUNNERS:
-            return True
-    return False
+    return _script_name(first) in RUNNERS
 
 
 def is_runner(command: str) -> bool:
+    """只看首詞；後方任何詞都不用來推測被空白切斷的路徑（寧可漏認，不可誤認）。"""
     tokens = command.split()
-    if not tokens:
+    if not tokens or not _is_known_executable(tokens[0]):
         return False
-    idx = _find_executable(tokens)
-    if idx < 0:
-        return False
-    if _base(tokens[idx]) in RUNNERS:
-        return True
-    return _interpreter_runs_runner(tokens[idx + 1:])
+    if _base(tokens[0]) in RUNNERS:
+        # 首詞疑為被空白切斷的目錄名（如 /x/pytest runs/bin/python）
+        cut = len(tokens) > 1 and "/" in tokens[1] and bool(INTERPRETER_RE.match(_base(tokens[1])))
+        return not cut
+    return _interpreter_runs_runner(tokens[1:])
 
 
 def process_cwd(pid: int) -> Optional[str]:
@@ -194,36 +173,59 @@ def _send(pid: int, sig: int) -> None:
         pass
 
 
+def _ps_query(pid: int, fields: str) -> str:
+    """查詢單一 PID 的 ps 欄位。找不到該 PID（結束碼 1 且無 stderr）回空字串；其餘失敗拋 CommandError。"""
+    cmd = ["ps", "-o", fields, "-p", str(pid)]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError as exc:
+        raise CommandError(f"無法執行 ps：{exc}")
+    if res.returncode != 0 and (res.returncode != 1 or res.stderr.strip()):
+        raise CommandError(f"{' '.join(cmd)} 失敗（結束碼 {res.returncode}）：{res.stderr.strip()}")
+    return res.stdout.strip()
+
+
 def _is_alive(pid: int) -> bool:
-    out = _run(["ps", "-o", "stat=", "-p", str(pid)], tolerate_failure=True).strip()
+    out = _ps_query(pid, "stat=")
     return bool(out) and not out.startswith("Z")
 
 
 def _same_identity(p: Proc) -> bool:
     """該 PID 目前仍是認定時的那個程序（父程序為 1 且命令未變）。"""
-    out = _run(["ps", "-o", "ppid=,command=", "-p", str(p.pid)], tolerate_failure=True).strip()
-    parts = out.split(None, 1)
+    parts = _ps_query(p.pid, "ppid=,command=").split(None, 1)
     return len(parts) == 2 and parts[0] == "1" and parts[1] == p.command
 
 
+def _wait_gone(pid: int, seconds: float) -> bool:
+    """在期限內輪詢；回傳是否已消失。"""
+    deadline = time.monotonic() + seconds
+    while _is_alive(pid):
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(POLL_INTERVAL)
+    return True
+
+
 def terminate(p: Proc, grace: float = GRACE_SECONDS) -> str:
-    """回傳 "terminated"、"changed"（身份已變，未送訊號）或 "survived"。"""
+    """回傳 terminated／gone（未送訊號即已不存在）／changed（送訊號前身份已變）／
+    changed_after_term（TERM 後仍存活但身份已變，未送 KILL）／survived。"""
     if not _same_identity(p):
-        return "terminated" if not _is_alive(p.pid) else "changed"
+        return "gone" if not _is_alive(p.pid) else "changed"
     _send(p.pid, signal.SIGTERM)
-    deadline = time.monotonic() + grace
-    while time.monotonic() < deadline and _is_alive(p.pid):
-        time.sleep(POLL_INTERVAL)
-    if _is_alive(p.pid):
-        if not _same_identity(p):
-            return "changed"
-        _send(p.pid, signal.SIGKILL)
-        time.sleep(POLL_INTERVAL)
-    return "survived" if _is_alive(p.pid) else "terminated"
+    if _wait_gone(p.pid, grace):
+        return "terminated"
+    if not _same_identity(p):
+        return "changed_after_term"
+    _send(p.pid, signal.SIGKILL)
+    return "terminated" if _wait_gone(p.pid, KILL_WAIT_SECONDS) else "survived"
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    ap = argparse.ArgumentParser(description="列出或終止本專案範圍的孤兒測試程序")
+    ap = argparse.ArgumentParser(
+        description="列出或終止本專案範圍的孤兒測試程序",
+        epilog="不支援（會漏認，不會誤認）：執行檔路徑含空白；直譯器帶值選項"
+               "（python 的 -W、-X，node 的 -r、--require、--import、--loader）；"
+               "測試執行器的工作程序（如 jest、vitest 的 worker）。")
     ap.add_argument("--kill", action="store_true", help="終止符合者（先 TERM 後 KILL）")
     ap.add_argument("--root", help=argparse.SUPPRESS)  # 測試用，不列入說明
     args = ap.parse_args(argv)
@@ -246,8 +248,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                 return 2
             if result == "terminated":
                 print(f"已終止 {p.pid}")
+            elif result == "gone":
+                print(f"已不存在 {p.pid}（未送訊號時即已結束）")
             elif result == "changed":
                 print(f"未終止 {p.pid}（送訊號前身份已變，不處理）")
+            elif result == "changed_after_term":
+                failed += 1
+                print(f"未終止 {p.pid}（已送出 TERM，TERM 後身份已變，未送 KILL）")
             else:
                 failed += 1
                 print(f"未能終止 {p.pid}（送出 KILL 後仍存活）")
