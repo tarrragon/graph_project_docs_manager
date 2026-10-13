@@ -99,6 +99,26 @@ class TestPC019DowngradedToWarn:
             assert hook.main() == 0
 
 
+class TestReadOnlyGitNoOptionalLocks:
+    """0.5.0-W1-164.3：工作樹側唯讀 diff 須帶 --no-optional-locks 且位於子命令前。"""
+
+    def test_worktree_side_diffs_carry_flag_before_subcommand(self):
+        data = {"tool_input": {"isolation": "worktree"}}
+        with patch.object(hook, "read_json_from_stdin", return_value=data), patch.object(
+            hook, "_check_origin_behind", return_value=0
+        ), patch.object(
+            hook.subprocess,
+            "run",
+            side_effect=[_diff_result(""), _diff_result("")],
+        ) as run:
+            hook.main()
+        argvs = [c.args[0] for c in run.call_args_list]
+        assert len(argvs) == 2
+        for argv in argvs:
+            assert "--no-optional-locks" in argv
+            assert argv.index("--no-optional-locks") < argv.index("diff")
+
+
 class TestOriginBehindDenyUnchanged:
     """W4-008：origin/main 落後超門檻仍 exit 2，本票不動。"""
 

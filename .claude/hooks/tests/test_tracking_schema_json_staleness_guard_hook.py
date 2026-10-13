@@ -66,6 +66,16 @@ def test_get_staged_files_parses_output():
     assert files == ["a.py", "b.json"]
 
 
+def test_get_staged_files_uses_no_optional_locks_before_subcommand():
+    logger = MagicMock()
+    fake_result = MagicMock(returncode=0, stdout="", stderr="")
+    with patch.object(_hook.subprocess, "run", return_value=fake_result) as run:
+        _hook.get_staged_files(Path("/tmp"), logger)
+    argv = run.call_args.args[0]
+    assert "--no-optional-locks" in argv
+    assert argv.index("--no-optional-locks") < argv.index("diff")
+
+
 def test_get_staged_files_returns_empty_on_failure():
     logger = MagicMock()
     fake_result = MagicMock(returncode=1, stdout="", stderr="boom")
