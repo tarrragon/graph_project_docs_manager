@@ -277,11 +277,11 @@ def main() -> int:
     # 檢查 tracked 檔案是否有未 commit 的變更
     try:
         unstaged = subprocess.run(
-            ["git", "diff", "--name-only"],
+            ["git", "--no-optional-locks", "diff", "--name-only"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10
         )
         staged = subprocess.run(
-            ["git", "diff", "--staged", "--name-only"],
+            ["git", "--no-optional-locks", "diff", "--staged", "--name-only"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):

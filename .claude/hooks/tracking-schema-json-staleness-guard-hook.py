@@ -61,7 +61,7 @@ def get_staged_files(project_root: Path, logger) -> list:
     """取得目前已 staged 的檔案清單（`git diff --cached --name-only`）。"""
     try:
         result = subprocess.run(
-            ["git", "diff", "--cached", "--name-only"],
+            ["git", "--no-optional-locks", "diff", "--cached", "--name-only"],
             cwd=str(project_root),
             capture_output=True,
             text=True,

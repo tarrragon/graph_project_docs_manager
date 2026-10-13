@@ -44,7 +44,7 @@ def run_command(cmd: list[str], cwd: str | None = None, timeout: int = 10) -> tu
 
 def check_dirty_worktree(project_root: str) -> list[str]:
     """Check for uncommitted changes (potential confabulated commit)."""
-    rc, output = run_command(["git", "status", "--porcelain"], cwd=project_root)
+    rc, output = run_command(["git", "--no-optional-locks", "status", "--porcelain"], cwd=project_root)
     if rc != 0 or not output:
         return []
 
