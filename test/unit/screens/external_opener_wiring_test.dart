@@ -13,6 +13,7 @@ import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import '../../helpers/domain_view_fixtures.dart';
 import '../../helpers/helpers.dart';
 
 const _opened = '已在外部開啟';
@@ -76,9 +77,7 @@ void main() {
           currentWorkspaceStateProvider.overrideWith(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
-          domainViewStateProvider.overrideWith(
-            (ref) => const DomainReady(mode: DomainMode.swimlane),
-          ),
+          ...domainFixtureOverrides(mode: DomainMode.swimlane),
           selectedUcProvider.overrideWith((ref) => 'UC-06'),
         ],
       );

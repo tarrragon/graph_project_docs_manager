@@ -16,6 +16,7 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
@@ -238,6 +239,23 @@ DomainReady fixtureReady({
   selectedDomainId: selectedDomainId,
   matrix: DomainViewFixtures.matrix,
 );
+
+/// 載入編排替身：載入完成即寫入 [fixtureReady]，供經 shell 啟動（gate 通過
+/// 後由編排載入真實輪次）的測試取得 fixture 矩陣。
+class FixtureDomainViewLoader extends DomainViewLoader {
+  @override
+  Future<void> load({String? inferredVersion}) async {
+    // provider 的建構期間不可修改其他 provider；讓出一個 microtask。
+    await Future<void>.microtask(() {});
+    ref.read(domainViewStateProvider.notifier).state = fixtureReady();
+  }
+}
+
+/// [domainFixtureOverrides] 加上 [FixtureDomainViewLoader]（經 shell 啟動用）。
+List<Override> domainFixtureLoaderOverrides() => [
+  ...domainFixtureOverrides(),
+  domainViewLoaderProvider.overrideWith(FixtureDomainViewLoader.new),
+];
 
 /// 注入 fixture 矩陣狀態與依選定 UC 投影的泳道。
 List<Override> domainFixtureOverrides({DomainMode mode = DomainMode.matrix}) =>
