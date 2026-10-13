@@ -93,7 +93,7 @@ class TestCommitFilesIsolated:
     def test_committed_returns_sha(self):
         calls = []
         with patch.object(
-            git_ops.subprocess, "run", side_effect=_fake_run_factory(calls)
+            git_ops, "_run_with_graceful_timeout", side_effect=_fake_run_factory(calls)
         ):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
         assert result["status"] == "committed"
@@ -104,7 +104,7 @@ class TestCommitFilesIsolated:
         """git add 呼叫的參數僅含指定路徑，無 -A。"""
         calls = []
         with patch.object(
-            git_ops.subprocess, "run", side_effect=_fake_run_factory(calls)
+            git_ops, "_run_with_graceful_timeout", side_effect=_fake_run_factory(calls)
         ):
             git_ops.commit_files_isolated([_TARGET], "msg")
         add_calls = [c for c in calls if c[:2] == ["git", "add"]]
@@ -116,7 +116,7 @@ class TestCommitFilesIsolated:
         """提交路徑不經過 `git commit`（改用 plumbing）。"""
         calls = []
         with patch.object(
-            git_ops.subprocess, "run", side_effect=_fake_run_factory(calls)
+            git_ops, "_run_with_graceful_timeout", side_effect=_fake_run_factory(calls)
         ):
             git_ops.commit_files_isolated([_TARGET], "msg")
         assert all(c[:2] != ["git", "commit"] for c in calls)
@@ -133,7 +133,7 @@ class TestCommitFilesIsolated:
                 seen_envs.append(kwargs.get("env"))
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             git_ops.commit_files_isolated([_TARGET], "msg")
         assert seen_envs, "isolated-index 步驟未被呼叫"
         assert all(env is not None and "GIT_INDEX_FILE" in env for env in seen_envs)
@@ -142,8 +142,8 @@ class TestCommitFilesIsolated:
         """write-tree 產出的 tree 與 HEAD 現有 tree 相同時，短路不提交。"""
         calls = []
         with patch.object(
-            git_ops.subprocess,
-            "run",
+            git_ops,
+            "_run_with_graceful_timeout",
             side_effect=_fake_run_factory(calls, same_tree=True),
         ):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
@@ -154,8 +154,8 @@ class TestCommitFilesIsolated:
         """提交後 diff 範圍含指定範圍以外的檔案時放棄，不 update-ref。"""
         calls = []
         with patch.object(
-            git_ops.subprocess,
-            "run",
+            git_ops,
+            "_run_with_graceful_timeout",
             side_effect=_fake_run_factory(calls, extra_changed=["lib/main.dart"]),
         ):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
@@ -173,7 +173,7 @@ class TestCommitFilesIsolated:
                 return MagicMock(returncode=1, stdout="", stderr="fatal: HEAD 已改變")
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
         assert result["status"] == "failed"
 
@@ -189,7 +189,7 @@ class TestCommitFilesIsolated:
                 return MagicMock(returncode=1, stdout="", stderr="add failed")
             raise AssertionError(f"未預期的 git 呼叫: {args}")
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
         assert result["status"] == "failed"
         assert result["error"] == "add failed"
@@ -206,7 +206,7 @@ class TestCommitFilesIsolated:
                 return MagicMock(returncode=0, stdout="old_head_sha\n", stderr="")
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run), patch.object(
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run), patch.object(
             git_ops.time, "sleep", return_value=None
         ):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
@@ -216,7 +216,7 @@ class TestCommitFilesIsolated:
     def test_dedupes_paths_preserving_order(self):
         calls = []
         with patch.object(
-            git_ops.subprocess, "run", side_effect=_fake_run_factory(calls)
+            git_ops, "_run_with_graceful_timeout", side_effect=_fake_run_factory(calls)
         ):
             git_ops.commit_files_isolated([_TARGET, _TARGET], "msg")
         add_calls = [c for c in calls if c[:2] == ["git", "add"]]
@@ -233,7 +233,7 @@ class TestCommitFilesIsolated:
                 envs[tuple(args)] = kwargs.get("env")
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
 
         assert result["status"] == "committed"
@@ -258,7 +258,7 @@ class TestCommitFilesIsolated:
                 return MagicMock(returncode=1, stdout="", stderr="ls-tree failed")
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
 
         assert result["status"] == "committed"
@@ -279,7 +279,7 @@ class TestCommitFilesIsolated:
                 return MagicMock(returncode=1, stdout="", stderr="add failed")
             raise AssertionError(f"未預期的 git 呼叫: {args}")
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
         assert result["status"] == "failed"
         # fake_run 對 ls-tree/update-index 會 raise AssertionError，
@@ -296,7 +296,7 @@ class TestCommitFilesIsolated:
                 return MagicMock(returncode=0, stdout="", stderr="")
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
 
         assert result["status"] == "committed"
@@ -317,7 +317,7 @@ class TestCommitFilesIsolated:
         abs_target = os.path.join(_REPO_ROOT, _TARGET)
         calls = []
         with patch.object(
-            git_ops.subprocess, "run", side_effect=_fake_run_factory(calls)
+            git_ops, "_run_with_graceful_timeout", side_effect=_fake_run_factory(calls)
         ):
             result = git_ops.commit_files_isolated([abs_target], "msg")
         assert result["status"] == "committed"
@@ -331,18 +331,68 @@ class TestRunGitTimeout:
     會無限等待（見本檔頭 module docstring 搬遷說明）。"""
 
     def test_run_git_passes_default_timeout_to_subprocess(self):
-        with patch.object(git_ops.subprocess, "run") as mock_run:
+        with patch.object(git_ops, "_run_with_graceful_timeout") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             git_ops._run_git(["git", "rev-parse", "HEAD"])
         _, kwargs = mock_run.call_args
         assert kwargs["timeout"] == git_ops._GIT_TIMEOUT
 
     def test_run_git_accepts_custom_timeout(self):
-        with patch.object(git_ops.subprocess, "run") as mock_run:
+        with patch.object(git_ops, "_run_with_graceful_timeout") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             git_ops._run_git(["git", "commit-tree", "abc"], timeout=30)
         _, kwargs = mock_run.call_args
         assert kwargs["timeout"] == 30
+
+
+_HOLD_LOCK_SCRIPT = """
+import os, signal, sys, time
+lock = sys.argv[1]
+open(lock, "w").close()
+if sys.argv[2] == "clean":
+    def _h(*_):
+        os.remove(lock)
+        sys.exit(143)
+    signal.signal(signal.SIGTERM, _h)
+else:
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+time.sleep(60)
+"""
+
+
+class TestGracefulTimeout:
+    """逾時先 SIGTERM、寬限後才 SIGKILL。以持鎖子程序代替 git，只在 tmp_path 操作。"""
+
+    def _argv(self, tmp_path, mode):
+        return ["python3", "-c", _HOLD_LOCK_SCRIPT, str(tmp_path / "index.lock"), mode]
+
+    def test_sigterm_path_lock_removed(self, tmp_path):
+        with pytest.raises(subprocess.TimeoutExpired):
+            git_ops._run_with_graceful_timeout(self._argv(tmp_path, "clean"), 1, text=True)
+        assert not (tmp_path / "index.lock").exists()
+
+    def test_sigterm_ignored_killed_after_grace(self, tmp_path):
+        start = time.monotonic()
+        with pytest.raises(subprocess.TimeoutExpired):
+            git_ops._run_with_graceful_timeout(
+                self._argv(tmp_path, "ignore"), 1, grace=1, text=True
+            )
+        assert time.monotonic() - start < 10
+        # 寬限後 SIGKILL：鎖檔殘留，證明走的是 kill 路徑而非 terminate
+        assert (tmp_path / "index.lock").exists()
+
+    def test_no_timeout_behavior_unchanged(self):
+        ok, out, err = git_ops._run_git(["git", "--version"])
+        assert ok and out.startswith("git version") and err == ""
+
+    def test_run_git_timeout_return_unchanged(self, tmp_path):
+        ok, out, err = git_ops._run_git(self._argv(tmp_path, "clean"), timeout=1)
+        assert (ok, out) == (False, "")
+        assert err.endswith("逾時")
+
+    def test_stdin_input_passed(self):
+        ok, out, _ = git_ops._run_git(["cat"], input_text="hello")
+        assert ok and out == "hello"
 
 
 class TestAutoCommitCompletionFilesWorktreeCwd:
@@ -464,7 +514,7 @@ class TestRefLockRetryAndStaleDiagnosis:
                 return MagicMock(returncode=0, stdout="", stderr="")
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run), patch.object(
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run), patch.object(
             git_ops.time, "sleep", return_value=None
         ):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
@@ -480,7 +530,7 @@ class TestRefLockRetryAndStaleDiagnosis:
                 return MagicMock(returncode=1, stdout="", stderr="fatal: HEAD 已改變")
             return _fake_run_factory([])(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
 
         assert result["status"] == "failed"
@@ -501,7 +551,7 @@ class TestRefLockRetryAndStaleDiagnosis:
                 return MagicMock(returncode=1, stdout="", stderr="fatal: 中斷")
             return _fake_run_factory([], repo_root=str(tmp_path))(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([str(tmp_path / _TARGET)], "msg")
 
         assert result["status"] == "failed"
@@ -537,7 +587,7 @@ class TestRefLockRetryAndStaleDiagnosis:
                 return MagicMock(returncode=1, stdout="", stderr=lock_err)
             return _fake_run_factory([], repo_root=str(tmp_path))(args, **kwargs)
 
-        with patch.object(git_ops.subprocess, "run", side_effect=fake_run), patch.object(
+        with patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run), patch.object(
             git_ops.time, "sleep", return_value=None
         ):
             result = git_ops.commit_files_isolated([str(tmp_path / _TARGET)], "msg")
@@ -711,13 +761,13 @@ class TestSharedIndexSyncAfterCommit:
     def test_update_index_never_killed_by_timeout_leaves_no_lock(self, repo, monkeypatch):
         """缺陷 2：持 index.lock 的 update-index 若被 timeout 殺掉會殘留鎖。
 
-        以 subprocess.run 包裝模擬「持鎖耗時超過 _GIT_TIMEOUT」：有 timeout 時，
+        以 _run_with_graceful_timeout 包裝模擬「持鎖耗時超過 _GIT_TIMEOUT」：有 timeout 時，
         依真實行為在鎖仍在時拋 TimeoutExpired（殘留鎖）；無 timeout 才正常釋放。
         update-index 無 hook 可掛，故以此模擬持鎖耗時。
         """
         first = self._commit_deferring_sync(repo, "v2\n")
         lock = repo / ".git" / "index.lock"
-        real_run = subprocess.run
+        real_run = git_ops._run_with_graceful_timeout
 
         def slow_run(args, *a, **kw):
             if list(args[:2]) == ["git", "update-index"]:
@@ -728,7 +778,7 @@ class TestSharedIndexSyncAfterCommit:
                 lock.unlink()
             return real_run(args, *a, **kw)
 
-        monkeypatch.setattr(git_ops.subprocess, "run", slow_run)
+        monkeypatch.setattr(git_ops, "_run_with_graceful_timeout", slow_run)
         self._run_deferred_sync(first)
         assert not lock.exists()
         assert self._index_blob(repo) == self._head_blob(repo)
@@ -1058,7 +1108,7 @@ class TestPrevalidateEnvPropagation:
             return _fake_run_factory([])(args, **kwargs)
 
         with patch.object(git_ops, "_prevalidate_guard_env", return_value=prevalidated), \
-                patch.object(git_ops.subprocess, "run", side_effect=fake_run):
+                patch.object(git_ops, "_run_with_graceful_timeout", side_effect=fake_run):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
         return result, envs
 
