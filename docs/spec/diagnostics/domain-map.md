@@ -6,7 +6,7 @@ related_usecases: [UC-05, UC-06]
 depends_on_bundles: [DOMAIN-MAP-corpus]
 path_patterns: [lib/diagnostics/]
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-10-13"
 ---
 
 # Domain Map — Diagnostics
@@ -27,7 +27,7 @@ updated: "2026-10-07"
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
-| 出邊 | Corpus（`DOMAIN-MAP-corpus`） | 取解析錯誤事件（EVT-CORPUS-003），由此產生破洞 |
+| 出邊 | Corpus（`DOMAIN-MAP-corpus`） | 取解析錯誤事件（EVT-CORPUS-003、004、005），由此產生破洞 |
 
 ## 2.5 通道與協調圖
 
@@ -49,8 +49,11 @@ updated: "2026-10-07"
 
 | Bundle | 不變式（每條可轉一個 unit test） | SPEC-006 |
 |---|---|---|
-| Diagnostics | 一筆 EVT-CORPUS-003 對應一筆 `parseFailure` 破洞；破洞數等於命中 carrier 數 | FR-08 |
-| Diagnostics | 查詢不可用時不產生 `parseFailure` 破洞，回報「無法判定」 | FR-08 |
+| Diagnostics | EVT-CORPUS-003、004、005 每一筆各對應一筆 `parseFailure` 破洞；破洞數 = 命中 carrier 數 + flow 區塊解析失敗的 UC 數 + 非 domain 路徑清單格式錯誤數（第三項為 0 或 1） | SPEC-006 FR-08 |
+| Diagnostics | 查詢不可用時不產生 EVT-CORPUS-003 的 `parseFailure` 破洞，回報「無法判定」；EVT-CORPUS-004、005 的破洞不依賴路徑查詢，照常產生 | SPEC-006 FR-08 |
+| Diagnostics | EVT-CORPUS-004 的破洞帶型別 UC，原因碼恆為 `flowBlockMalformed`；事件 reason 未以該原因碼開頭時寫 warning 日誌，破洞照常產生且原因碼不變 | SPEC-006 FR-08 |
+| Diagnostics | EVT-CORPUS-005 的破洞不帶節點型別，原因碼為 `nonDomainPathsMalformed` 並帶子原因；與 EVT-CORPUS-003「平手」的區分載體是破洞子型別，不是節點型別欄的空值 | SPEC-006 FR-08 |
+| Diagnostics | EVT-CORPUS-005 破洞的 `nonStringElementCount` 只在子原因為 `elementNotString` 時有值且為 1 以上，其餘子原因為空 | SPEC-006 FR-08 |
 
 ## 6. 待決事項
 
@@ -65,7 +68,7 @@ updated: "2026-10-07"
 
 | FR | 內容 | Bundle | 測試層 |
 |----|------|--------|-------|
-| FR-08 | 由 EVT-CORPUS-003 產生破洞 | Diagnostics | domain unit；IT-2 |
+| FR-08 | 由 EVT-CORPUS-003、004、005 產生 `parseFailure` 破洞 | Diagnostics | domain unit；IT-2 |
 
 > SPEC-006 全表的權威在 `docs/spec/corpus/domain-map.md` §7；此處僅列歸屬本 domain 的列。
 
@@ -79,4 +82,4 @@ updated: "2026-10-07"
 
 ---
 
-**Last Updated**: 2026-10-07 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-13（`0.5.0-W1-176`：§2 出邊、不變式清單、§7 FR-08 列對齊 EVT-CORPUS-004／005 之後的 SPEC-006 FR-08；不變式列同行寫明 SPEC id） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
