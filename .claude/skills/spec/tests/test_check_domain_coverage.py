@@ -648,3 +648,53 @@ def test_single_domain_project_domain_field_not_layer(tmp_path, monkeypatch, cap
     _write(tmp_path / "docs/domain-map.md", "## 覆蓋\n| FR-01~02 | X |\n")
     assert cdc.main([str(spec)]) == 0
     assert "docs/domain-map.md" in capsys.readouterr().out
+
+
+# --- 層級判定優先序：原定位鏈有 map 時照原鏈（R1/R2/R3）---
+
+def _listing_map(tmp_path, body):
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           f"---\ndomain: \"a\"\nsource_specs: [SPEC-101]\n---\n## SPEC-101\n{body}")
+
+
+def test_r1_map_listing_spec_wins_over_layer_red_to_green(tmp_path, monkeypatch, capsys):
+    """有 map 列入且覆蓋，系統層無對照：舊版因 domain 欄非已宣告而走系統層為紅，新版照原鏈為綠。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
+    _listing_map(tmp_path, "| FR-01~02 | A |\n")
+    assert cdc.main([str(spec)]) == 0
+
+
+def test_r1_map_listing_spec_wins_over_layer_green_to_red(tmp_path, monkeypatch, capsys):
+    """有 map 列入但未覆蓋 FR-02，系統層只有無歸屬的 FR 文字：舊版走系統層（相容比對）為綠，新版照原鏈為紅。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="| FR-01~02 | sys |\n")
+    _listing_map(tmp_path, "| FR-01 | A |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert "FR-02" in capsys.readouterr().out
+
+
+def test_r1_no_map_declared_domain_is_red_not_system_layer(tmp_path, monkeypatch, capsys):
+    """無 map 且 domain 欄為已宣告：系統層即使完整覆蓋仍為紅（漏登記），舊版同為紅（對照守住不退化）。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="a")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "source_specs" in out and "層級 SPEC" not in out
+
+
+def test_r2_system_layer_output_shows_domain_and_declared_set(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="corpuss")
+    assert cdc.main([str(spec)]) == 0
+    out = capsys.readouterr().out
+    assert "'corpuss'" in out and "[a]" in out
+
+
+def test_r3_flag_to_system_layer_for_declared_domain_spec_uses_plain_message(tmp_path, monkeypatch, capsys):
+    """已宣告 domain 的 SPEC 帶旗標指向系統層、FR 未覆蓋：訊息不得稱層級 SPEC。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="a", system="## 其他\n無對照\n")
+    assert cdc.main([str(spec), "--domain-map", "docs/system-layer.md"]) == 1
+    out = capsys.readouterr().out
+    assert "FR-01" in out and "層級 SPEC" not in out and "domain map §7" in out
