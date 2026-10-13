@@ -775,3 +775,47 @@ def test_unrecognized_spec_id_reports_id_problem(tmp_path, monkeypatch, capsys):
 
 def test_locate_domain_map_compat_entry_removed():
     assert not hasattr(cdc, "locate_domain_map")
+
+
+# --- 層級模式訊息不稱 domain map（0.5.0-W1-086.4 併入項）---
+
+def test_layer_mode_coverage_title_says_system_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
+    assert cdc.main([str(spec)]) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert "domain 覆蓋檢核發現 2 個 FR 未在系統層覆蓋：" in lines
+
+
+def test_non_layer_coverage_title_unchanged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-001.md"
+    spec.write_text("### FR-01: A\n### FR-02: B\n", encoding="utf-8")
+    (tmp_path / "domain-map.md").write_text("| FR-01 | Ledger |\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert "domain 覆蓋檢核發現 1 個 FR 未在 domain map 覆蓋：" in lines
+
+
+EVENT_TAIL = "請於「通道與協調圖」節之「到達類別與級別實例」子表補上標定。"
+
+
+def test_layer_mode_event_flow_tail_says_system_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## SPEC-101\n| FR-01~02 | sys |\n")
+    spec.write_text(LAYER_SPEC.replace("### FR-01: A", "### FR-01: 掃描完成通知\n發送通知。"),
+                    encoding="utf-8")
+    cdc.main([str(spec), "--check-event-flow-labeling"])
+    lines = capsys.readouterr().out.splitlines()
+    assert f"（系統層：{cdc.SYSTEM_LAYER_PATH}）{EVENT_TAIL}" in lines
+
+
+def test_non_layer_event_flow_tail_unchanged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-001.md"
+    spec.write_text("### FR-01: 掃描完成通知\n發送通知。\n", encoding="utf-8")
+    (tmp_path / "domain-map.md").write_text("| FR-01 | Ledger |\n", encoding="utf-8")
+    cdc.main([str(spec), "--check-event-flow-labeling"])
+    lines = capsys.readouterr().out.splitlines()
+    map_path = (tmp_path / "domain-map.md").resolve()
+    assert f"（domain map：{map_path}）{EVENT_TAIL}" in lines

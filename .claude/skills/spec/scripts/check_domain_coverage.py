@@ -502,7 +502,10 @@ def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None, layer_m
         print(f"domain 覆蓋檢核通過：spec 全部 FR 皆在 {domain_map_path} 有 bundle 歸屬")
         return 0
 
-    print(f"domain 覆蓋檢核發現 {len(uncovered)} 個 FR 未在 domain map 覆蓋：")
+    if layer_mode:
+        print(f"domain 覆蓋檢核發現 {len(uncovered)} 個 FR 未在系統層覆蓋：")
+    else:
+        print(f"domain 覆蓋檢核發現 {len(uncovered)} 個 FR 未在 domain map 覆蓋：")
     for fr in uncovered:
         print(f"  FR-{fr:02d}")
     if layer_mode:
@@ -512,7 +515,7 @@ def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None, layer_m
     return 1
 
 
-def _report_event_flow_labeling(spec_text, domain_map_paths):
+def _report_event_flow_labeling(spec_text, domain_map_paths, layer_mode=False):
     """列印事件流標定檢核結果，回傳 exit code。性質為啟發式提醒，非阻擋。"""
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
     missing = check_event_flow_labeling_union(
@@ -524,7 +527,8 @@ def _report_event_flow_labeling(spec_text, domain_map_paths):
     print(f"事件流標定檢核發現 {len(missing)} 個 FR 命中事件流訊號詞但未見通道標定（提醒，非阻擋）：")
     for fr in missing:
         print(f"  FR-{fr:02d}")
-    print(f"（domain map：{domain_map_path}）請於「通道與協調圖」節之「到達類別與級別實例」子表補上標定。")
+    label = "系統層" if layer_mode else "domain map"
+    print(f"（{label}：{domain_map_path}）請於「通道與協調圖」節之「到達類別與級別實例」子表補上標定。")
     return 1
 
 
@@ -569,7 +573,7 @@ def main(argv=None):
 
     rc = _report_domain_coverage(spec_text, domain_map_paths, spec_path, layer_mode)
     if args.check_event_flow_labeling:
-        rc = _report_event_flow_labeling(spec_text, domain_map_paths) or rc
+        rc = _report_event_flow_labeling(spec_text, domain_map_paths, layer_mode) or rc
     return rc
 
 
