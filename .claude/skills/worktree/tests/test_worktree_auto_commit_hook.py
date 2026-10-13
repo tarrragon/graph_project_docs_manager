@@ -24,13 +24,6 @@ hook = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(hook)
 
 
-@pytest.fixture(autouse=True)
-def _no_real_repo(tmp_path, monkeypatch):
-    """mock 縫失效時 git 也找不到任何 repo，避免對 cwd 執行真實 add / commit。"""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
-
-
 @pytest.fixture
 def logger():
     return logging.getLogger("test-wac")
