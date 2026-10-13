@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.9.3 — 本地變更：`scripts/check_domain_coverage.py` 定位函式回報找不到 map 的成因，訊息依成因輸出（無任何 map／有 map 但未列入／spec id 無法辨識／source_specs 格式無法解析）；`source_specs` 新增 YAML 區塊清單寫法（原只認行內清單，區塊清單被讀成空集合並誤報請補值）；刪除無呼叫端的 `locate_domain_map` 相容入口。層級模式（以系統層判定）下覆蓋失敗標題行與事件流提醒尾行改稱系統層，非層級模式逐字不變。行內清單的三種非法寫法（右括號後緊接井號無空白、右括號後有多餘文字、括號內含註解）由原本接受改為報格式無法解析；其餘合法寫法判定結果不變，區塊清單項目尾端註解會剝除、鍵行註解與清單間的空行或註解行會跳過、flow 清單可寫在鍵的下一行
+
 **Version**: 1.9.2 — 本地變更：`scripts/check_domain_coverage.py` 新增層級 SPEC 判定（原定位鏈無 map、未帶旗標、`domain` 欄非已宣告 domain 三者同時成立時以系統層判定，輸出印出 domain 欄值與已宣告集合；層級模式只認該 SPEC 在系統層的歸屬、不走相容比對；`--domain-map ""` 報錯）。SKILL.md 定位鏈段補述
 
 **Version**: 1.9.1 — 〈定位與分工〉補 system-design 一列：它在寫規格之前決定這一版的範圍與時機，/spec 檢查範圍內的需求清晰度

@@ -1,6 +1,8 @@
 """check_domain_coverage 測試：FR token 展開（逗號/範圍）+ 覆蓋差集判定。"""
 
 import sys
+
+import pytest
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
@@ -66,7 +68,7 @@ def test_range_coverage_matches_individual_spec_frs():
     assert cdc.check_domain_coverage(spec, domain_map) == []
 
 
-# --- locate_domain_map ---
+# --- locate_domain_maps（同目錄與找不到）---
 
 def test_locate_prefers_same_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # 隔離 cwd，避免 fallback 命中真實 docs/domain-map.md
@@ -74,14 +76,14 @@ def test_locate_prefers_same_dir(tmp_path, monkeypatch):
     spec.write_text("### FR-01: A\n", encoding="utf-8")
     dmap = tmp_path / "domain-map.md"
     dmap.write_text("| FR-01 | Ledger |\n", encoding="utf-8")
-    assert cdc.locate_domain_map(spec, None) == dmap
+    assert cdc.locate_domain_maps(spec, None) == [dmap]
 
 
-def test_locate_missing_returns_none(tmp_path, monkeypatch):
+def test_locate_missing_returns_empty_list(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # 隔離 cwd，確保無 docs/domain-map.md fallback
     spec = tmp_path / "SPEC-001.md"
     spec.write_text("### FR-01: A\n", encoding="utf-8")
-    assert cdc.locate_domain_map(spec, None) is None
+    assert cdc.locate_domain_maps(spec, None) == []
 
 
 # --- extract_event_signaled_frs：事件流訊號詞掃描 ---
@@ -730,3 +732,181 @@ def test_m3_empty_domain_map_flag_is_red_not_unflagged(tmp_path, monkeypatch, ca
     assert cdc.main([str(spec), "--domain-map", ""]) == 1
     out = capsys.readouterr().out
     assert "指定的檔案不存在" in out and "層級" not in out
+
+
+# --- 定位失敗訊息依成因輸出 ---
+
+def _spec_and_map(tmp_path, monkeypatch, map_frontmatter, spec_text=SPEC_A, spec_name="SPEC-101-x.md"):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui" / spec_name
+    _write(spec, spec_text)
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           f"---\n{map_frontmatter}\n---\n## SPEC-101\n| FR-01~03 | A |\n")
+    return spec
+
+
+def test_block_list_source_specs_resolves(tmp_path, monkeypatch, capsys):
+    """紅輸入：YAML 區塊清單寫法的 source_specs 過去讀成空集合。"""
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs:\n  - SPEC-101\n  - SPEC-202")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_block_list_not_listing_this_spec_reports_not_listed(tmp_path, monkeypatch, capsys):
+    """對照：區塊清單可解析但未含本 SPEC，仍為「未列入」。"""
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs:\n  - SPEC-202")
+    assert cdc.main([str(spec)]) == 1
+    assert "無一份的 source_specs 列入本 SPEC" in capsys.readouterr().out
+
+
+def test_unparseable_source_specs_reports_format_problem(tmp_path, monkeypatch, capsys):
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs: SPEC-101")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "source_specs 格式無法解析" in out and "docs/spec/a/domain-map.md" in out
+    assert "補上本 SPEC id" not in out
+
+
+def test_unrecognized_spec_id_reports_id_problem(tmp_path, monkeypatch, capsys):
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs: [SPEC-101]",
+                         spec_text="---\nid: SPEC-UI-001\n---\n### FR-01: a\n", spec_name="ui-spec.md")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "spec id 無法辨識" in out
+    assert "補上本 SPEC id" not in out
+
+
+def test_locate_domain_map_compat_entry_removed():
+    assert not hasattr(cdc, "locate_domain_map")
+
+
+# --- 層級模式訊息不稱 domain map（0.5.0-W1-086.4 併入項）---
+
+def test_layer_mode_coverage_title_says_system_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
+    assert cdc.main([str(spec)]) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert "domain 覆蓋檢核發現 2 個 FR 未在系統層覆蓋：" in lines
+
+
+def test_non_layer_coverage_title_unchanged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-001.md"
+    spec.write_text("### FR-01: A\n### FR-02: B\n", encoding="utf-8")
+    (tmp_path / "domain-map.md").write_text("| FR-01 | Ledger |\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert "domain 覆蓋檢核發現 1 個 FR 未在 domain map 覆蓋：" in lines
+
+
+EVENT_TAIL = "請於「通道與協調圖」節之「到達類別與級別實例」子表補上標定。"
+
+
+def test_layer_mode_event_flow_tail_says_system_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## SPEC-101\n| FR-01~02 | sys |\n")
+    spec.write_text(LAYER_SPEC.replace("### FR-01: A", "### FR-01: 掃描完成通知\n發送通知。"),
+                    encoding="utf-8")
+    cdc.main([str(spec), "--check-event-flow-labeling"])
+    lines = capsys.readouterr().out.splitlines()
+    assert f"（系統層：{cdc.SYSTEM_LAYER_PATH}）{EVENT_TAIL}" in lines
+
+
+def test_non_layer_event_flow_tail_unchanged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-001.md"
+    spec.write_text("### FR-01: 掃描完成通知\n發送通知。\n", encoding="utf-8")
+    (tmp_path / "domain-map.md").write_text("| FR-01 | Ledger |\n", encoding="utf-8")
+    cdc.main([str(spec), "--check-event-flow-labeling"])
+    lines = capsys.readouterr().out.splitlines()
+    map_path = (tmp_path / "domain-map.md").resolve()
+    assert f"（domain map：{map_path}）{EVENT_TAIL}" in lines
+
+
+# --- source_specs 解析的修正與變異守衛（0.5.0-W1-086.4 審查 R1-R5）---
+
+MSG_NOT_LISTED = ("domain 覆蓋檢核：有 domain map（docs/spec/*/domain-map.md），但無一份的 source_specs 列入本 SPEC。"
+                  "請於對應 domain map frontmatter 的 source_specs 補上本 SPEC id，或以 --domain-map 指定。")
+MSG_ID_UNRECOGNIZED = ("domain 覆蓋檢核：spec id 無法辨識（frontmatter id 與檔名皆取不到 SPEC-NNN 形式），"
+                       "無法比對 domain map 的 source_specs。請修正 spec 的 id 為 SPEC-NNN 形式，或以 --domain-map 指定。")
+MSG_UNPARSEABLE = ("domain 覆蓋檢核：下列 domain map 的 source_specs 格式無法解析：docs/spec/a/domain-map.md。"
+                   "接受行內清單 `[SPEC-001, SPEC-002]` 或逐行 `- SPEC-001` 的區塊清單；"
+                   "請改成可解析的寫法，或以 --domain-map 指定。")
+
+
+def _run_ss(tmp_path, monkeypatch, capsys, frontmatter, **kw):
+    spec = _spec_and_map(tmp_path, monkeypatch, frontmatter, **kw)
+    rc = cdc.main([str(spec)])
+    return rc, capsys.readouterr().out.splitlines()
+
+
+def test_r1_block_item_trailing_comment_not_a_member(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:\n  - SPEC-202 # not SPEC-101")
+    assert rc == 1 and MSG_NOT_LISTED in lines
+
+
+def test_r2_key_line_comment_then_block_list(tmp_path, monkeypatch, capsys):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: # list below\n  - SPEC-101")
+    assert rc == 0
+
+
+@pytest.mark.parametrize("fm", [
+    "source_specs:\n  - SPEC-202\n\n  - SPEC-101",
+    "source_specs:\n  - SPEC-202\n  # note\n  - SPEC-101",
+    "source_specs:\n  # note\n  - SPEC-101",
+    "source_specs:\n\n  - SPEC-101",
+])
+def test_r3_blank_and_comment_lines_do_not_truncate_block(tmp_path, monkeypatch, capsys, fm):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, fm)
+    assert rc == 0
+
+
+@pytest.mark.parametrize("fm", ["source_specs:\n[SPEC-101]", "source_specs:\n  [SPEC-101, SPEC-202]"])
+def test_r4_flow_list_on_line_after_key(tmp_path, monkeypatch, capsys, fm):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, fm)
+    assert rc == 0
+
+
+def test_inline_list_missing_close_bracket_unparseable(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: [SPEC-101")
+    assert rc == 1 and MSG_UNPARSEABLE in lines
+
+
+def test_inline_list_trailing_comment_parses(tmp_path, monkeypatch, capsys):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: [SPEC-101] # note")
+    assert rc == 0
+
+
+@pytest.mark.parametrize("fm", ["source_specs: [spec-101]", "source_specs:\n  - spec-101"])
+def test_lowercase_ids_treated_as_uppercase(tmp_path, monkeypatch, capsys, fm):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, fm)
+    assert rc == 0
+
+
+def test_key_without_items_is_unparseable_not_empty_set(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:")
+    assert rc == 1 and MSG_UNPARSEABLE in lines
+
+
+def test_block_list_does_not_absorb_following_key_list(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys,
+                        "source_specs:\n  - SPEC-202\nother_specs:\n  - SPEC-101")
+    assert rc == 1 and MSG_NOT_LISTED in lines
+
+
+def test_undeclared_key_keeps_not_listed_message(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "domain: a")
+    assert rc == 1 and MSG_NOT_LISTED in lines
+
+
+def test_map_without_frontmatter_keeps_not_listed_message(tmp_path, monkeypatch, capsys):
+    spec = _spec_and_map(tmp_path, monkeypatch, "domain: a")
+    _write(tmp_path / "docs/spec/a/domain-map.md", "## SPEC-101\n| FR-01~03 | A |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert MSG_NOT_LISTED in capsys.readouterr().out.splitlines()
+
+
+def test_id_problem_reported_before_unparseable_map(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: SPEC-101",
+                        spec_text="---\nid: SPEC-UI-001\n---\n### FR-01: a\n", spec_name="ui-spec.md")
+    assert rc == 1 and MSG_ID_UNRECOGNIZED in lines and MSG_UNPARSEABLE not in lines
