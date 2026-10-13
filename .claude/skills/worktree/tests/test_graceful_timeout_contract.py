@@ -174,15 +174,14 @@ class TestEscalationAndBounds:
             run([sys.executable, "-c", _IGNORE_SIGTERM], 1, grace=1, text=True)
         assert time.monotonic() - start < _BOUND_SECONDS
 
-    def test_grandchild_holding_pipe_does_not_extend_wait(self, run):
+    def test_grandchild_holding_pipe_does_not_extend_wait(self, run, pid_log):
+        script = (
+            f"sleep {_SLOW_SECONDS} & echo $! >> '{pid_log}'; "
+            f"sleep {_SLOW_SECONDS * 2} & echo $! >> '{pid_log}'; wait"
+        )
         start = time.monotonic()
         with pytest.raises(subprocess.TimeoutExpired):
-            run(
-                ["sh", "-c", f"sleep {_SLOW_SECONDS} & sleep {_SLOW_SECONDS * 2}"],
-                1,
-                grace=1,
-                text=True,
-            )
+            run(["sh", "-c", script], 1, grace=1, text=True, start_new_session=True)
         assert time.monotonic() - start < _BOUND_SECONDS
 
 
