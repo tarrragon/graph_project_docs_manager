@@ -248,14 +248,44 @@ def check_event_flow_labeling_union(spec_text, map_texts, signal_words=EVENT_FLO
 DOMAIN_MAP_GLOB_DIR = Path("docs/spec")
 SYSTEM_LAYER_PATH = Path("docs/system-layer.md")
 LEGACY_DOMAIN_MAP_PATH = Path("docs/domain-map.md")
-SOURCE_SPECS_RE = re.compile(r"^source_specs:\s*\[(.*?)\]", re.MULTILINE)
+SOURCE_SPECS_KEY_RE = re.compile(r"^source_specs:[ \t]*(.*?)[ \t]*$")
+BLOCK_ITEM_RE = re.compile(r"^[ \t]*-[ \t]*(.*?)[ \t]*$")
+TRAILING_COMMENT_RE = re.compile(r"[ \t]+#.*$")
+
+# 定位失敗的成因（locate_domain_maps_with_reason 的第二個回傳值；有定位到 map 時為 None）
+REASON_EXPLICIT_MISSING = "explicit_missing"
+REASON_NO_MAP = "no_map"
+REASON_ID_UNRECOGNIZED = "id_unrecognized"
+REASON_SOURCE_SPECS_UNPARSEABLE = "source_specs_unparseable"
+REASON_NOT_LISTED = "not_listed"
 
 
-def _declared_source_specs(map_text):
-    """回傳 domain map frontmatter 的 source_specs 清單（大寫 SPEC-NNN）。"""
+def _parse_source_specs(map_text):
+    """回傳 frontmatter source_specs 的 SPEC id 集合；未宣告該鍵為空集合，格式無法解析為 None。
+
+    可解析：行內清單 `[a, b]`、區塊清單（鍵後逐行 `- a`）。
+    """
     block = FRONTMATTER_BLOCK_RE.match(map_text)
-    found = SOURCE_SPECS_RE.search(block.group(1)) if block else None
-    return set(SPEC_ID_RE.findall(found.group(1).upper())) if found else set()
+    if not block:
+        return set()
+    lines = block.group(1).splitlines()
+    for i, line in enumerate(lines):
+        key = SOURCE_SPECS_KEY_RE.match(line)
+        if not key:
+            continue
+        value = TRAILING_COMMENT_RE.sub("", key.group(1)).strip()
+        if value.startswith("[") and value.endswith("]"):
+            return set(SPEC_ID_RE.findall(value.upper()))
+        if value:
+            return None
+        items = []
+        for following in lines[i + 1:]:
+            item = BLOCK_ITEM_RE.match(following)
+            if not item:
+                break
+            items.append(item.group(1))
+        return set(SPEC_ID_RE.findall(" ".join(items).upper())) if items else None
+    return set()
 
 
 def _list_domain_maps():
@@ -263,50 +293,81 @@ def _list_domain_maps():
     return sorted(DOMAIN_MAP_GLOB_DIR.glob("*/domain-map.md"))
 
 
-def _maps_listing_spec(spec_id):
-    """回傳 source_specs 含 spec_id 的 domain map 清單。"""
+def _scan_listing_maps(spec_id):
+    """回傳 (source_specs 含 spec_id 的 map 清單, source_specs 格式無法解析的 map 清單)。"""
+    listing, unparseable = [], []
+    for m in _list_domain_maps():
+        declared = _parse_source_specs(m.read_text(encoding="utf-8"))
+        if declared is None:
+            unparseable.append(m)
+        elif spec_id is not None and spec_id in declared:
+            listing.append(m)
+    return listing, unparseable
+
+
+def _diagnose_missing(explicit, spec_id, unparseable):
+    """找不到任何 map 時的成因，依序判定。"""
+    if explicit:
+        return REASON_EXPLICIT_MISSING
+    if not _list_domain_maps():
+        return REASON_NO_MAP
     if spec_id is None:
-        return []
-    return [
-        m for m in _list_domain_maps()
-        if spec_id in _declared_source_specs(m.read_text(encoding="utf-8"))
-    ]
+        return REASON_ID_UNRECOGNIZED
+    if unparseable:
+        return REASON_SOURCE_SPECS_UNPARSEABLE
+    return REASON_NOT_LISTED
 
 
-def locate_domain_maps(spec_path, explicit, spec_id=None):
-    """定位 domain map 清單（可多份，覆蓋判定取聯集）。
+def locate_domain_maps_with_reason(spec_path, explicit, spec_id=None):
+    """定位 domain map 清單（可多份，覆蓋判定取聯集），並回報找不到時的成因。
 
+    回傳 (paths, reason, unparseable)：找到時 reason 為 None；找不到時 paths 為空 list、reason 為
+    REASON_* 之一；unparseable 為 source_specs 格式無法解析的 map 清單（供訊息列名）。
     解析鏈：explicit -> spec 同目錄（為聯集成員之一，不短路）+ docs/spec/*/domain-map.md 中 source_specs 含本 SPEC
-    者（並聯集 docs/system-layer.md）-> docs/domain-map.md。找不到回空 list。
+    者（並聯集 docs/system-layer.md）-> docs/domain-map.md。
     """
     if explicit:
         p = Path(explicit)
-        return [p] if p.exists() else []
+        return ([p], None, []) if p.exists() else ([], REASON_EXPLICIT_MISSING, [])
     same_dir = spec_path.parent / "domain-map.md"
     if spec_id is None and Path(spec_path).exists():
         spec_id = extract_spec_id(Path(spec_path).read_text(encoding="utf-8"), spec_path)
     found = [same_dir] if same_dir.exists() else []
+    listing, unparseable = _scan_listing_maps(spec_id)
     seen = {p.resolve() for p in found}
-    for m in _maps_listing_spec(spec_id):
+    for m in listing:
         if m.resolve() not in seen:
             found.append(m)
             seen.add(m.resolve())
     if found:
-        return found + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.exists() else [])
-    return [LEGACY_DOMAIN_MAP_PATH] if LEGACY_DOMAIN_MAP_PATH.exists() else []
+        return found + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.exists() else []), None, unparseable
+    if LEGACY_DOMAIN_MAP_PATH.exists():
+        return [LEGACY_DOMAIN_MAP_PATH], None, unparseable
+    return [], _diagnose_missing(explicit, spec_id, unparseable), unparseable
 
 
-def locate_domain_map(spec_path, explicit):
-    """相容入口：回傳 locate_domain_maps 的第一份，找不到回 None。"""
-    found = locate_domain_maps(spec_path, explicit)
-    return found[0] if found else None
+def locate_domain_maps(spec_path, explicit, spec_id=None):
+    """locate_domain_maps_with_reason 的僅路徑版；找不到回空 list。"""
+    return locate_domain_maps_with_reason(spec_path, explicit, spec_id)[0]
 
 
-def describe_missing_map(explicit):
-    """找不到 map 時的訊息：區分「無任何 map」與「有 map 但無一列入本 SPEC」。"""
-    if explicit:
+def describe_missing_map(reason, explicit=None, unparseable=()):
+    """依定位函式回報的成因輸出訊息。"""
+    if reason == REASON_EXPLICIT_MISSING:
         return f"domain 覆蓋檢核：--domain-map 指定的檔案不存在：{explicit}"
-    if _list_domain_maps():
+    if reason == REASON_ID_UNRECOGNIZED:
+        return (
+            "domain 覆蓋檢核：spec id 無法辨識（frontmatter id 與檔名皆取不到 SPEC-NNN 形式），"
+            "無法比對 domain map 的 source_specs。請修正 spec 的 id 為 SPEC-NNN 形式，或以 --domain-map 指定。"
+        )
+    if reason == REASON_SOURCE_SPECS_UNPARSEABLE:
+        names = ", ".join(p.as_posix() for p in unparseable)
+        return (
+            f"domain 覆蓋檢核：下列 domain map 的 source_specs 格式無法解析：{names}。"
+            "接受行內清單 `[SPEC-001, SPEC-002]` 或逐行 `- SPEC-001` 的區塊清單；"
+            "請改成可解析的寫法，或以 --domain-map 指定。"
+        )
+    if reason == REASON_NOT_LISTED:
         return (
             "domain 覆蓋檢核：有 domain map（docs/spec/*/domain-map.md），但無一份的 "
             "source_specs 列入本 SPEC。請於對應 domain map frontmatter 的 source_specs 補上本 SPEC id，"
@@ -491,7 +552,8 @@ def main(argv=None):
     if args.domain_map == "":
         print("domain 覆蓋檢核：--domain-map 指定的檔案不存在：''（空字串不視為未帶旗標）")
         return 1
-    domain_map_paths = locate_domain_maps(spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
+    domain_map_paths, reason, unparseable = locate_domain_maps_with_reason(
+        spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
     # 層級判定只在原定位鏈找不到任何 map、且 domain 欄非已宣告 domain 時成立；
     # 有 map 時照原鏈，無 map 但 domain 欄為已宣告 domain 是漏登記，維持紅
     layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
@@ -502,7 +564,7 @@ def main(argv=None):
             return 1
         domain_map_paths = [SYSTEM_LAYER_PATH]
     if not domain_map_paths:
-        print(describe_missing_map(args.domain_map))
+        print(describe_missing_map(reason, args.domain_map, unparseable))
         return 1
 
     rc = _report_domain_coverage(spec_text, domain_map_paths, spec_path, layer_mode)

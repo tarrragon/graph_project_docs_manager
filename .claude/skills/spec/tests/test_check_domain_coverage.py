@@ -66,7 +66,7 @@ def test_range_coverage_matches_individual_spec_frs():
     assert cdc.check_domain_coverage(spec, domain_map) == []
 
 
-# --- locate_domain_map ---
+# --- locate_domain_maps（同目錄與找不到）---
 
 def test_locate_prefers_same_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # 隔離 cwd，避免 fallback 命中真實 docs/domain-map.md
@@ -74,14 +74,14 @@ def test_locate_prefers_same_dir(tmp_path, monkeypatch):
     spec.write_text("### FR-01: A\n", encoding="utf-8")
     dmap = tmp_path / "domain-map.md"
     dmap.write_text("| FR-01 | Ledger |\n", encoding="utf-8")
-    assert cdc.locate_domain_map(spec, None) == dmap
+    assert cdc.locate_domain_maps(spec, None) == [dmap]
 
 
 def test_locate_missing_returns_none(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # 隔離 cwd，確保無 docs/domain-map.md fallback
     spec = tmp_path / "SPEC-001.md"
     spec.write_text("### FR-01: A\n", encoding="utf-8")
-    assert cdc.locate_domain_map(spec, None) is None
+    assert cdc.locate_domain_maps(spec, None) == []
 
 
 # --- extract_event_signaled_frs：事件流訊號詞掃描 ---
@@ -730,3 +730,48 @@ def test_m3_empty_domain_map_flag_is_red_not_unflagged(tmp_path, monkeypatch, ca
     assert cdc.main([str(spec), "--domain-map", ""]) == 1
     out = capsys.readouterr().out
     assert "指定的檔案不存在" in out and "層級" not in out
+
+
+# --- 定位失敗訊息依成因輸出 ---
+
+def _spec_and_map(tmp_path, monkeypatch, map_frontmatter, spec_text=SPEC_A, spec_name="SPEC-101-x.md"):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui" / spec_name
+    _write(spec, spec_text)
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           f"---\n{map_frontmatter}\n---\n## SPEC-101\n| FR-01~03 | A |\n")
+    return spec
+
+
+def test_block_list_source_specs_resolves(tmp_path, monkeypatch, capsys):
+    """紅輸入：YAML 區塊清單寫法的 source_specs 過去讀成空集合。"""
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs:\n  - SPEC-101\n  - SPEC-202")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_block_list_not_listing_this_spec_reports_not_listed(tmp_path, monkeypatch, capsys):
+    """對照：區塊清單可解析但未含本 SPEC，仍為「未列入」。"""
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs:\n  - SPEC-202")
+    assert cdc.main([str(spec)]) == 1
+    assert "無一份的 source_specs 列入本 SPEC" in capsys.readouterr().out
+
+
+def test_unparseable_source_specs_reports_format_problem(tmp_path, monkeypatch, capsys):
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs: SPEC-101")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "source_specs 格式無法解析" in out and "docs/spec/a/domain-map.md" in out
+    assert "補上本 SPEC id" not in out
+
+
+def test_unrecognized_spec_id_reports_id_problem(tmp_path, monkeypatch, capsys):
+    spec = _spec_and_map(tmp_path, monkeypatch, "source_specs: [SPEC-101]",
+                         spec_text="---\nid: SPEC-UI-001\n---\n### FR-01: a\n", spec_name="ui-spec.md")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "spec id 無法辨識" in out
+    assert "補上本 SPEC id" not in out
+
+
+def test_locate_domain_map_compat_entry_removed():
+    assert not hasattr(cdc, "locate_domain_map")
