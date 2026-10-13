@@ -920,7 +920,8 @@ def _map_covering(tmp_path, frs="FR-01,02"):
 
 
 @pytest.mark.parametrize("missed", ["### FR-02 b", "**FR-02** b", "## FR-02: b"])
-def test_partial_miss_warns_with_number(tmp_path, capsys, missed):
+def test_partial_miss_warns_with_number(tmp_path, monkeypatch, capsys, missed):
+    monkeypatch.chdir(tmp_path)
     _map_covering(tmp_path)
     spec = tmp_path / "SPEC-900-x.md"
     spec.write_text(_fm() + f"### FR-01: a\n{missed}\n", encoding="utf-8")
@@ -930,11 +931,12 @@ def test_partial_miss_warns_with_number(tmp_path, capsys, missed):
     assert "WARNING" in err and "FR-02" in err
 
 
-def test_partial_miss_no_false_positive_on_nfr_and_prefixed_ref(tmp_path, capsys):
+def test_partial_miss_no_false_positive_on_nfr_and_prefixed_ref(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
     _map_covering(tmp_path, "FR-01")
     spec = tmp_path / "SPEC-900-x.md"
     spec.write_text(
-        _fm() + "### FR-01: a\n### NFR-01: n\n**SPEC-001 FR-09** 引用\n## SPEC-002 FR-08 引用\n",
+        _fm() + "### FR-01: a\n### NFR-07: n\n**NFR-08** n\n**SPEC-001 FR-09** 引用\n## SPEC-002 FR-08 引用\n",
         encoding="utf-8")
     assert cdc.main([str(spec)]) == 0
     assert "WARNING" not in capsys.readouterr().err
@@ -945,9 +947,48 @@ def test_fenced_block_fr_heading_not_extracted():
     assert cdc.extract_spec_frs(spec) == {1, 4}
 
 
-def test_fullwidth_colon_end_to_end(tmp_path, capsys):
+def test_fullwidth_colon_end_to_end(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
     _map_covering(tmp_path, "FR-01")
     spec = tmp_path / "SPEC-900-x.md"
     spec.write_text(_fm() + "### FR-01：全形\n", encoding="utf-8")
     assert cdc.main([str(spec)]) == 0
     assert "通過" in capsys.readouterr().out
+
+
+def test_fenced_like_line_no_warning(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _map_covering(tmp_path, "FR-01")
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(_fm() + "### FR-01: a\n```\n## FR-05 範例\n**FR-06** 範例\n```\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0
+    assert "WARNING" not in capsys.readouterr().err
+
+
+def test_unclosed_fence_fails_with_line_number(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _map_covering(tmp_path, "FR-01,02,03")
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(_fm() + "### FR-01: a\n```\n### FR-02: b\n### FR-03: c\n", encoding="utf-8")
+    rc = cdc.main([str(spec)])
+    out = capsys.readouterr().out
+    assert rc == 1 and "未閉合" in out and "第 5 行" in out
+    assert "通過" not in out
+
+
+def test_inline_triple_backtick_line_is_not_fence(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _map_covering(tmp_path, "FR-01,02,03")
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(_fm() + "### FR-01: a\n```inline``` 說明\n### FR-02: b\n### FR-03: c\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0
+    assert "通過" in capsys.readouterr().out
+
+
+def test_fence_close_needs_length_and_no_trailing_text():
+    spec = "### FR-01: a\n````\n```\n### FR-02: x\n```x\n### FR-03: y\n````\n### FR-04: b\n"
+    assert cdc.extract_spec_frs(spec) == {1, 4}
+
+
+def test_inline_triple_backtick_extracts_all():
+    assert cdc.extract_spec_frs("### FR-01: a\n```inline``` 說明\n### FR-02: b\n") == {1, 2}

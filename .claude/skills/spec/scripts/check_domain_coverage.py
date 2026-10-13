@@ -68,26 +68,45 @@ def extract_fr_ids(text):
     return ids
 
 
-FENCE_LINE_RE = re.compile(r"^[ \t]*(```|~~~)")
+FENCE_OPEN_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 # 形似 FR 定義的行：行首為標題或粗體，緊接 FR 編號（NFR 與帶 SPEC 前綴的引用不命中）
 FR_LIKE_LINE_RE = re.compile(r"^(?:#{1,6}[ \t]+|\*\*[ \t]*)FR-(\d+)", re.IGNORECASE)
 
 
-def _mask_fenced_blocks(text):
-    """圍欄程式碼區塊內的行（含圍欄行）換成空行，保留行號。"""
-    out, fence = [], None
-    for line in text.splitlines():
-        marker = FENCE_LINE_RE.match(line)
-        if fence is None and marker:
-            fence = marker.group(1)
-            out.append("")
-        elif fence is not None:
-            if marker and marker.group(1) == fence:
+def _fence_open(line):
+    """開圍欄行回傳 (圍欄字元, 長度)；反引號開行的標示含反引號者（行內寫法）不是圍欄。"""
+    m = FENCE_OPEN_RE.match(line)
+    if not m or (m.group(1)[0] == "`" and "`" in m.group(2)):
+        return None
+    return m.group(1)[0], len(m.group(1))
+
+
+def _fence_closes(line, fence):
+    """閉合行：同字元、長度不小於開行、其後無其他文字。"""
+    m = re.match(r"^ {0,3}(`+|~+)[ \t]*$", line)
+    return bool(m) and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+
+
+def mask_fenced_blocks(text):
+    """圍欄程式碼區塊內的行（含圍欄行）換成空行，保留行號。
+
+    回傳 (遮罩後文字, 未閉合圍欄的開行行號或 None)。
+    """
+    out, fence, opened_at = [], None, None
+    for no, line in enumerate(text.splitlines(), 1):
+        if fence is None:
+            fence = _fence_open(line)
+            opened_at = no if fence else None
+            out.append("" if fence else line)
+        else:
+            if _fence_closes(line, fence):
                 fence = None
             out.append("")
-        else:
-            out.append(line)
-    return "\n".join(out)
+    return "\n".join(out), (opened_at if fence else None)
+
+
+def _mask_fenced_blocks(text):
+    return mask_fenced_blocks(text)[0]
 
 
 def extract_spec_frs(spec_text):
@@ -588,6 +607,11 @@ def main(argv=None):
 
     spec_path = Path(args.spec_path)
     spec_text = spec_path.read_text(encoding="utf-8")
+
+    unclosed = mask_fenced_blocks(spec_text)[1]
+    if unclosed is not None:
+        print(f"domain 覆蓋檢核失敗：第 {unclosed} 行開啟的圍欄程式碼區塊未閉合，其後內容未被檢視（未執行覆蓋比對）")
+        return 1
 
     early = judge_fr_declaration(spec_text)
     if early is not None:
