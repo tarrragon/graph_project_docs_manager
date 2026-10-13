@@ -68,9 +68,43 @@ def extract_fr_ids(text):
     return ids
 
 
+FENCE_LINE_RE = re.compile(r"^[ \t]*(```|~~~)")
+# 形似 FR 定義的行：行首為標題或粗體，緊接 FR 編號（NFR 與帶 SPEC 前綴的引用不命中）
+FR_LIKE_LINE_RE = re.compile(r"^(?:#{1,6}[ \t]+|\*\*[ \t]*)FR-(\d+)", re.IGNORECASE)
+
+
+def _mask_fenced_blocks(text):
+    """圍欄程式碼區塊內的行（含圍欄行）換成空行，保留行號。"""
+    out, fence = [], None
+    for line in text.splitlines():
+        marker = FENCE_LINE_RE.match(line)
+        if fence is None and marker:
+            fence = marker.group(1)
+            out.append("")
+        elif fence is not None:
+            if marker and marker.group(1) == fence:
+                fence = None
+            out.append("")
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def extract_spec_frs(spec_text):
-    """從 spec 的 `### FR-XX:` 標題抽出定義的 FR 編號（int 集合）。"""
-    return {int(m.group(1).split("-")[1]) for m in FR_HEADER_RE.finditer(spec_text)}
+    """從 spec 的 `### FR-XX:` 標題抽出定義的 FR 編號（int 集合）；略過圍欄程式碼區塊。"""
+    masked = _mask_fenced_blocks(spec_text)
+    return {int(m.group(1).split("-")[1]) for m in FR_HEADER_RE.finditer(masked)}
+
+
+def find_unextracted_fr_lines(spec_text):
+    """回傳 [(行號, 行文字)]：形似 FR 定義、但其編號不在抽出集合內的行（略過圍欄區塊）。"""
+    extracted = extract_spec_frs(spec_text)
+    found = []
+    for no, line in enumerate(_mask_fenced_blocks(spec_text).splitlines(), 1):
+        m = FR_LIKE_LINE_RE.match(line)
+        if m and int(m.group(1)) not in extracted:
+            found.append((no, line.strip()))
+    return found
 
 
 SPEC_ID_RE = re.compile(r"SPEC-\d+")
@@ -482,6 +516,8 @@ def judge_fr_declaration(spec_text):
         print("domain 覆蓋檢核失敗：未宣告無 FR，但未抽到任何 FR 標題（未執行覆蓋比對）。")
         print(EXPECTED_HEADING_HINT)
         return 1
+    for no, line in find_unextracted_fr_lines(spec_text):
+        sys.stderr.write(f"WARNING: 第 {no} 行形似 FR 定義但未被抽出（不納入比對）：{line}\n")
     return None
 
 

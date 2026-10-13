@@ -910,3 +910,44 @@ def test_id_problem_reported_before_unparseable_map(tmp_path, monkeypatch, capsy
     rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: SPEC-101",
                         spec_text="---\nid: SPEC-UI-001\n---\n### FR-01: a\n", spec_name="ui-spec.md")
     assert rc == 1 and MSG_ID_UNRECOGNIZED in lines and MSG_UNPARSEABLE not in lines
+
+
+# --- 0.5.0-W1-166：FR 抽取完整性（部分漏抓警告 / 略過圍欄 / 全形冒號端到端）---
+
+def _map_covering(tmp_path, frs="FR-01,02"):
+    (tmp_path / "domain-map.md").write_text(
+        f"---\nsource_specs: [SPEC-900]\n---\n# SPEC-900\n{frs}\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize("missed", ["### FR-02 b", "**FR-02** b", "## FR-02: b"])
+def test_partial_miss_warns_with_number(tmp_path, capsys, missed):
+    _map_covering(tmp_path)
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(_fm() + f"### FR-01: a\n{missed}\n", encoding="utf-8")
+    rc = cdc.main([str(spec)])
+    err = capsys.readouterr().err
+    assert rc == 0  # 預設僅警告
+    assert "WARNING" in err and "FR-02" in err
+
+
+def test_partial_miss_no_false_positive_on_nfr_and_prefixed_ref(tmp_path, capsys):
+    _map_covering(tmp_path, "FR-01")
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(
+        _fm() + "### FR-01: a\n### NFR-01: n\n**SPEC-001 FR-09** 引用\n## SPEC-002 FR-08 引用\n",
+        encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0
+    assert "WARNING" not in capsys.readouterr().err
+
+
+def test_fenced_block_fr_heading_not_extracted():
+    spec = "### FR-01: a\n```\n### FR-02: 範例\n```\n~~~md\n### FR-03: 範例\n~~~\n### FR-04: b\n"
+    assert cdc.extract_spec_frs(spec) == {1, 4}
+
+
+def test_fullwidth_colon_end_to_end(tmp_path, capsys):
+    _map_covering(tmp_path, "FR-01")
+    spec = tmp_path / "SPEC-900-x.md"
+    spec.write_text(_fm() + "### FR-01：全形\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0
+    assert "通過" in capsys.readouterr().out
