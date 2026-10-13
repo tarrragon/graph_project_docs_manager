@@ -11,6 +11,11 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 import check_domain_coverage as cdc  # noqa: E402
 
 
+def _covered_by(spec_text, map_text, map_name="domain-map.md"):
+    """單份 map 的覆蓋差集：走 main() 實際使用的判定路徑（多份 map 聯集版的單元素清單）。"""
+    return cdc.check_domain_coverage_union(spec_text, [(map_name, map_text)])
+
+
 # --- extract_fr_ids：token 展開 ---
 
 def test_extract_single_fr():
@@ -52,20 +57,20 @@ def test_extract_spec_frs_handles_h4_headers():
 def test_all_covered_returns_empty():
     spec = "### FR-01: A\n### FR-02: B\n"
     domain_map = "§7\n| FR-01,02 | Ledger |\n"
-    assert cdc.check_domain_coverage(spec, domain_map) == []
+    assert _covered_by(spec, domain_map) == []
 
 
 def test_uncovered_fr_reported():
     """domain map 停在 FR-24，spec 有 FR-25/26 → 回報未覆蓋（已實證缺口）。"""
     spec = "### FR-24: 驗證\n### FR-25: 設定\n### FR-26: 提醒\n"
     domain_map = "覆蓋表\n| FR-24 | Ledger |\n"
-    assert cdc.check_domain_coverage(spec, domain_map) == [25, 26]
+    assert _covered_by(spec, domain_map) == [25, 26]
 
 
 def test_range_coverage_matches_individual_spec_frs():
     spec = "### FR-13: A\n### FR-15: B\n### FR-17: C\n"
     domain_map = "| FR-13~17 | presentation |\n"
-    assert cdc.check_domain_coverage(spec, domain_map) == []
+    assert _covered_by(spec, domain_map) == []
 
 
 # --- locate_domain_maps（同目錄與找不到）---
@@ -236,40 +241,58 @@ MAP_UNDER_B = "## 8. 覆蓋\n### SPEC-202 小節\n| FR-01~03 | Ledger |\n"
 
 def test_e2_same_number_fr_under_other_spec_is_uncovered(capsys):
     """E2 正向對照：map 只在 SPEC-202 下覆蓋 FR-01~03，SPEC-101 三條全未覆蓋。"""
-    assert cdc.check_domain_coverage(SPEC_A, MAP_UNDER_B) == [1, 2, 3]
+    assert _covered_by(SPEC_A, MAP_UNDER_B) == [1, 2, 3]
 
 
 def test_e2_same_map_fully_covers_owning_spec():
-    assert cdc.check_domain_coverage(SPEC_B, MAP_UNDER_B) == []
+    assert _covered_by(SPEC_B, MAP_UNDER_B) == []
 
 
 def test_same_line_attribution_nearest_spec():
     dm = "## 覆蓋\n| SPEC-101 FR-01、SPEC-202 FR-02 | X |\n"
-    assert cdc.check_domain_coverage(SPEC_A, dm) == [2, 3]
-    assert cdc.check_domain_coverage(SPEC_B, dm) == [1, 3]
+    assert _covered_by(SPEC_A, dm) == [2, 3]
+    assert _covered_by(SPEC_B, dm) == [1, 3]
 
 
 def test_same_line_multiple_frs_share_preceding_spec():
     dm = "## 覆蓋\n| SPEC-101 FR-01、FR-03 | X |\n"
-    assert cdc.check_domain_coverage(SPEC_A, dm) == [2]
+    assert _covered_by(SPEC_A, dm) == [2]
 
 
 def test_unattributed_tokens_ignored_when_map_has_attributed():
     dm = "## 3. 其他\n提到 FR-01 FR-02 FR-03\n## SPEC-101 覆蓋\n| FR-02 | X |\n"
-    assert cdc.check_domain_coverage(SPEC_A, dm) == [1, 3]
+    assert _covered_by(SPEC_A, dm) == [1, 3]
 
 
-def test_compat_mode_when_map_has_no_attribution(capsys):
-    """E1 對照：無歸屬 map 走相容（不分 spec），stderr 說明；有歸屬 map 結果不同。"""
+def test_unattributed_map_counts_for_inspected_spec(capsys):
+    """E1 對照：整份無歸屬的 map 其 FR 計給受檢 SPEC（不走相容），stderr 說明；有歸屬 map 結果不同。"""
     dm = "## 覆蓋\n| FR-01~03 | X |\n"
-    assert cdc.check_domain_coverage(SPEC_A, dm) == []
-    assert "相容" in capsys.readouterr().err
-    assert cdc.check_domain_coverage(SPEC_A, MAP_UNDER_B) != []
+    assert _covered_by(SPEC_A, dm) == []
+    err = capsys.readouterr().err
+    assert "依預設計給" in err
+    assert "相容模式" not in err
+    assert _covered_by(SPEC_A, MAP_UNDER_B) != []
+
+
+def test_compat_mode_when_only_system_layer_has_unattributed_frs(capsys):
+    """相容模式的現行可達情形（spec 識別取得）：非系統層 map 無 FR 字樣，系統層只有未歸屬的 FR。
+
+    對照：同內容的非系統層 map 依預設計給，不走相容；差異在於系統層不適用預設計給。
+    """
+    layer = "## 覆蓋\n| FR-01~03 | X |\n"
+    assert _covered_by(SPEC_A, layer, "docs/system-layer.md") == []
+    err = capsys.readouterr().err
+    assert "走相容模式" in err and "非系統層的 map 無任何 FR 字樣" in err
+
+
+def test_no_fr_map_reports_all_uncovered_with_spec_id(capsys):
+    """map 無任何 FR 字樣：全數未覆蓋，與是否走相容分支無關（相容比對與歸屬比對在此同結果）。"""
+    assert _covered_by(SPEC_A, "## 覆蓋\n無\n") == [1, 2, 3]
 
 
 def test_compat_mode_warns_when_spec_id_missing(capsys):
     spec = "### FR-01: a\n"
-    assert cdc.check_domain_coverage(spec, MAP_UNDER_B) == []
+    assert _covered_by(spec, MAP_UNDER_B) == []
     assert "WARNING" in capsys.readouterr().err
 
 
@@ -288,7 +311,7 @@ def test_spec_id_not_read_from_body_after_frontmatter():
 def test_spec_id_outside_spec_nnn_form_falls_back_to_compat(capsys):
     """id 不是 SPEC-NNN 形式時 map 的歸屬鍵對不上，須走相容模式並警告，不得全數報未覆蓋。"""
     spec = "---\nid: SPEC-UI-001\n---\n### FR-01: a\n"
-    assert cdc.check_domain_coverage(spec, MAP_UNDER_B) == []
+    assert _covered_by(spec, MAP_UNDER_B) == []
     assert "WARNING" in capsys.readouterr().err
 
 
