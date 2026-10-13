@@ -30,6 +30,7 @@ import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import '../../helpers/domain_view_fixtures.dart';
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/stub_workspace_repository.dart';
 
@@ -443,7 +444,10 @@ void _registerFocusTests() {
   });
 
   testWidgets('點選矩陣格後按 Esc 清除選取，焦點停在原格', (tester) async {
-    await _pumpShell(tester, overrides: _readyOverrides());
+    await _pumpShell(
+      tester,
+      overrides: [..._readyOverrides(), ...domainFixtureLoaderOverrides()],
+    );
     const cellKey = Key('cell-domain-workspace-UC-02');
     await tester.tap(find.byKey(cellKey));
     await tester.pumpAndSettle();
