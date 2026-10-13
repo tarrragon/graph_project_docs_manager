@@ -72,7 +72,7 @@ STATES = [
     (1, '正常 · 泳道', 'state-domain-swimlane'), (1, '泳道 · 尚未選定 UC', 'state-domain-swimlane-uc-unset'),  # i18n-exempt
     (1, '泳道 · flow 未結構化', 'state-domain-swimlane-unstructured'), (1, '空圖', 'state-domain-empty'),  # i18n-exempt
     (1, '不是框架專案', 'state-domain-not-framework'), (1, '無可消費的型別表', 'state-domain-schema-unconsumable'),  # i18n-exempt
-    (1, 'schema 不相容', 'state-domain-schema-incompatible'),  # i18n-exempt
+    (1, 'schema 不相容', 'state-domain-schema-incompatible'), (1, '載入失敗', 'state-domain-load-failed'),  # i18n-exempt
     (2, '專案未就緒', 'state-ucFlow-project-unready'), (2, '無 UC', 'state-ucFlow-empty'),  # i18n-exempt
     (2, '尚未選定 UC', 'state-ucFlow-uc-unset'), (2, 'flow 未結構化', 'state-ucFlow-unstructured'),  # i18n-exempt
     (2, '正常', 'state-ucFlow-normal'),  # i18n-exempt
