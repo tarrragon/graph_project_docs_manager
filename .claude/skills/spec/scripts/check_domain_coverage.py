@@ -420,10 +420,23 @@ def judge_fr_declaration(spec_text):
     return None
 
 
+def check_layer_coverage(spec_text, system_text, spec_path=None):
+    """層級模式：只以該 SPEC 在系統層的歸屬比對，不走相容後備；取不到 SPEC 識別則全部未覆蓋。"""
+    spec_frs = extract_spec_frs(spec_text)
+    spec_id = extract_spec_id(spec_text, spec_path)
+    if spec_id is None:
+        return sorted(spec_frs)
+    attributed, _ = extract_fr_attribution(system_text)
+    return sorted(spec_frs - attributed.get(spec_id, set()))
+
+
 def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None, layer_mode=False):
     """列印 FR->bundle 覆蓋檢核結果，回傳 exit code。"""
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
-    uncovered = check_domain_coverage_union(spec_text, _read_maps(domain_map_paths), spec_path)
+    if layer_mode:
+        uncovered = check_layer_coverage(spec_text, domain_map_paths[0].read_text(encoding="utf-8"), spec_path)
+    else:
+        uncovered = check_domain_coverage_union(spec_text, _read_maps(domain_map_paths), spec_path)
     if not uncovered:
         print(f"domain 覆蓋檢核通過：spec 全部 FR 皆在 {domain_map_path} 有 bundle 歸屬")
         return 0
@@ -475,10 +488,13 @@ def main(argv=None):
     if early is not None:
         return early
 
+    if args.domain_map == "":
+        print("domain 覆蓋檢核：--domain-map 指定的檔案不存在：''（空字串不視為未帶旗標）")
+        return 1
     domain_map_paths = locate_domain_maps(spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
     # 層級判定只在原定位鏈找不到任何 map、且 domain 欄非已宣告 domain 時成立；
     # 有 map 時照原鏈，無 map 但 domain 欄為已宣告 domain 是漏登記，維持紅
-    layer_mode = not domain_map_paths and not args.domain_map and is_layer_spec(spec_text)
+    layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
     if layer_mode:
         print(layer_banner(spec_text))
         if not SYSTEM_LAYER_PATH.exists():

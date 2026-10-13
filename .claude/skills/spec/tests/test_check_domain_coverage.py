@@ -631,7 +631,7 @@ def test_layer_spec_system_layer_missing_fr_points_to_system_layer(tmp_path, mon
     spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
     assert cdc.main([str(spec)]) == 1
     out = capsys.readouterr().out
-    assert "FR-01" in out and "系統層" in out and "source_specs" not in out
+    assert "FR-01" in out and "請於系統層的 FR 對照節" in out and "domain map §7" not in out
 
 
 def test_layer_spec_without_system_layer_file(tmp_path, monkeypatch, capsys):
@@ -666,7 +666,7 @@ def test_r1_map_listing_spec_wins_over_layer_red_to_green(tmp_path, monkeypatch,
 
 
 def test_r1_map_listing_spec_wins_over_layer_green_to_red(tmp_path, monkeypatch, capsys):
-    """有 map 列入但未覆蓋 FR-02，系統層只有無歸屬的 FR 文字：舊版走系統層（相容比對）為綠，新版照原鏈為紅。"""
+    """有 map 列入但未覆蓋 FR-02，系統層只有無歸屬的 FR 文字：照原鏈判定為紅（系統層無 SPEC 歸屬的 FR 不計入）。"""
     monkeypatch.chdir(tmp_path)
     spec = _layer_fixture(tmp_path, system="| FR-01~02 | sys |\n")
     _listing_map(tmp_path, "| FR-01 | A |\n")
@@ -698,3 +698,35 @@ def test_r3_flag_to_system_layer_for_declared_domain_spec_uses_plain_message(tmp
     assert cdc.main([str(spec), "--domain-map", "docs/system-layer.md"]) == 1
     out = capsys.readouterr().out
     assert "FR-01" in out and "層級 SPEC" not in out and "domain map §7" in out
+
+
+# --- 第二輪補修：層級模式不走相容後備、旗標判 None ---
+
+def test_m1_layer_mode_prose_only_system_layer_is_red(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="散文提到 FR-01~02 但沒有任何 SPEC 歸屬。\n")
+    assert cdc.main([str(spec)]) == 1
+    assert "FR-01" in capsys.readouterr().out
+
+
+def test_m1_layer_mode_without_spec_id_is_red(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    spec.write_text('---\nid: SPEC-UI-1\ndomain: "ui"\n---\n### FR-01: A\n', encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+
+
+def test_m2_layer_spec_with_missing_flag_file_reports_missing_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    assert cdc.main([str(spec), "--domain-map", "nope.md"]) == 1
+    out = capsys.readouterr().out
+    assert "指定的檔案不存在" in out and "層級" not in out
+
+
+def test_m3_empty_domain_map_flag_is_red_not_unflagged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    assert cdc.main([str(spec), "--domain-map", ""]) == 1
+    out = capsys.readouterr().out
+    assert "指定的檔案不存在" in out and "層級" not in out
