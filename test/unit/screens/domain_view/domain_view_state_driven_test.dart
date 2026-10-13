@@ -62,9 +62,9 @@ final _matrixA = DomainMatrix(
 
 /// 矩陣 B：與 A 完全不同的列、欄與關係。
 final _matrixB = DomainMatrix(
-  columns: [_uc('UC-07', '標題丙')],
+  columns: [_uc('UC-06', '標題丙')],
   rows: [
-    _row('gamma', 'gamma-name', [_cell('gamma', 'UC-07', DomainRelation.none)]),
+    _row('gamma', 'gamma-name', [_cell('gamma', 'UC-06', DomainRelation.none)]),
   ],
 );
 
@@ -135,7 +135,7 @@ void main() {
       expect(find.byKey(const Key('action-domain-select-alpha')), findsNothing);
       expect(find.text('標題乙'), findsNothing);
       expect(find.text('標題丙'), findsOneWidget);
-      expect(_relationOf(tester, 'cell-domain-gamma-UC-07'), Relation.none);
+      expect(_relationOf(tester, 'cell-domain-gamma-UC-06'), Relation.none);
       expect(_relationOf(tester, 'cell-domain-alpha-UC-01'), isNull);
     });
 
