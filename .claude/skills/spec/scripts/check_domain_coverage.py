@@ -319,6 +319,50 @@ def describe_missing_map(explicit):
     )
 
 
+DOMAIN_FIELD_RE = re.compile(r"^domain:[ \t]*[\"']?([^\s\"'#]+)", re.MULTILINE)
+
+
+def _frontmatter_domain(text):
+    """回傳 frontmatter 的 domain 欄值；未填或無 frontmatter 回 None。"""
+    block = FRONTMATTER_BLOCK_RE.match(text)
+    found = DOMAIN_FIELD_RE.search(block.group(1)) if block else None
+    if not found or found.group(1).lower() == "null":
+        return None
+    return found.group(1)
+
+
+def _declared_domains():
+    """各 docs/spec/*/domain-map.md 宣告的 domain 集合；無任何 map 時為空集合。"""
+    found = (_frontmatter_domain(m.read_text(encoding="utf-8")) for m in _list_domain_maps())
+    return {d for d in found if d}
+
+
+def is_layer_spec(spec_text):
+    """SPEC 的 domain 欄非任何已宣告 DomainBundle 的 domain，即為層級 SPEC（以系統層判定）。
+
+    domain 欄未填、或專案無任何已宣告 domain（單 domain 專案）時不適用。
+    """
+    domain = _frontmatter_domain(spec_text)
+    declared = _declared_domains()
+    return bool(domain and declared and domain not in declared)
+
+
+def layer_banner(spec_text):
+    """走系統層時印出判定依據：SPEC 的 domain 欄值與已宣告 domain 集合（供人眼比對錯字）。"""
+    declared = ", ".join(sorted(_declared_domains()))
+    return (
+        f"domain 覆蓋檢核：無任何 map 列入本 SPEC，其 domain 欄 {_frontmatter_domain(spec_text)!r} "
+        f"不在已宣告 domain 集合 [{declared}]，視為層級 SPEC，以系統層判定"
+    )
+
+
+def describe_missing_system_layer():
+    return (
+        "domain 覆蓋檢核：本 SPEC 的 domain 欄不是任何已宣告的 domain（層級 SPEC），"
+        f"以系統層 {SYSTEM_LAYER_PATH} 判定，但該檔不存在。"
+    )
+
+
 def _read_maps(paths):
     """逐檔讀取，回傳 [(檔名, 內容)]；不串接，供集合層聯集。"""
     return [(str(p), p.read_text(encoding="utf-8")) for p in paths]
@@ -376,10 +420,23 @@ def judge_fr_declaration(spec_text):
     return None
 
 
-def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None):
+def check_layer_coverage(spec_text, system_text, spec_path=None):
+    """層級模式：只以該 SPEC 在系統層的歸屬比對，不走相容後備；取不到 SPEC 識別則全部未覆蓋。"""
+    spec_frs = extract_spec_frs(spec_text)
+    spec_id = extract_spec_id(spec_text, spec_path)
+    if spec_id is None:
+        return sorted(spec_frs)
+    attributed, _ = extract_fr_attribution(system_text)
+    return sorted(spec_frs - attributed.get(spec_id, set()))
+
+
+def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None, layer_mode=False):
     """列印 FR->bundle 覆蓋檢核結果，回傳 exit code。"""
     domain_map_path = ", ".join(str(p) for p in domain_map_paths)
-    uncovered = check_domain_coverage_union(spec_text, _read_maps(domain_map_paths), spec_path)
+    if layer_mode:
+        uncovered = check_layer_coverage(spec_text, domain_map_paths[0].read_text(encoding="utf-8"), spec_path)
+    else:
+        uncovered = check_domain_coverage_union(spec_text, _read_maps(domain_map_paths), spec_path)
     if not uncovered:
         print(f"domain 覆蓋檢核通過：spec 全部 FR 皆在 {domain_map_path} 有 bundle 歸屬")
         return 0
@@ -387,6 +444,9 @@ def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None):
     print(f"domain 覆蓋檢核發現 {len(uncovered)} 個 FR 未在 domain map 覆蓋：")
     for fr in uncovered:
         print(f"  FR-{fr:02d}")
+    if layer_mode:
+        print(f"（系統層：{domain_map_path}）層級 SPEC 以系統層判定，請於系統層的 FR 對照節逐條列出歸屬。")
+        return 1
     print(f"（domain map：{domain_map_path}）請於 domain map §7 FR->bundle 覆蓋表補上歸屬。")
     return 1
 
@@ -428,12 +488,24 @@ def main(argv=None):
     if early is not None:
         return early
 
+    if args.domain_map == "":
+        print("domain 覆蓋檢核：--domain-map 指定的檔案不存在：''（空字串不視為未帶旗標）")
+        return 1
     domain_map_paths = locate_domain_maps(spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
+    # 層級判定只在原定位鏈找不到任何 map、且 domain 欄非已宣告 domain 時成立；
+    # 有 map 時照原鏈，無 map 但 domain 欄為已宣告 domain 是漏登記，維持紅
+    layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
+    if layer_mode:
+        print(layer_banner(spec_text))
+        if not SYSTEM_LAYER_PATH.exists():
+            print(describe_missing_system_layer())
+            return 1
+        domain_map_paths = [SYSTEM_LAYER_PATH]
     if not domain_map_paths:
         print(describe_missing_map(args.domain_map))
         return 1
 
-    rc = _report_domain_coverage(spec_text, domain_map_paths, spec_path)
+    rc = _report_domain_coverage(spec_text, domain_map_paths, spec_path, layer_mode)
     if args.check_event_flow_labeling:
         rc = _report_event_flow_labeling(spec_text, domain_map_paths) or rc
     return rc

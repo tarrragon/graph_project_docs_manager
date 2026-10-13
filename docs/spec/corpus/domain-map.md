@@ -31,7 +31,7 @@ updated: "2026-10-13"
 | 出邊 | Workspace（`DOMAIN-MAP-workspace`） | 取得專案根路徑 |
 | 入邊 | Graph | 圖建自解析產物 |
 | 入邊 | TicketDetail | 詳情取自同一份解析產物 |
-| 入邊 | Diagnostics | 取解析錯誤事件（EVT-CORPUS-003），由此產生破洞 |
+| 入邊 | Diagnostics | 取解析錯誤事件（EVT-CORPUS-003、004、005），由此產生破洞 |
 
 ## 2.5 通道與協調圖
 
@@ -62,6 +62,12 @@ updated: "2026-10-13"
 | Corpus | 0.3.0 的 `salvagedFields` 恆為 `[]`，`severity` 恆為 `edgeAffecting` | FR-04 |
 | Corpus | 守恆：總數 = 節點 + 有 frontmatter 的非節點 + 各失敗原因總和；各失敗原因總和 = 命中 + 未命中 + 未判定 | FR-07 |
 | Corpus | 任一單檔失敗不中止整輪、不改變其他檔案的結果 | NFR-01 |
+| Corpus | 「flow 區塊解析失敗的 UC 數」與「非 domain 路徑清單格式錯誤數」（0 或 1）另計，不進兩條守恆式：前者的 UC 已計入節點數，後者的清單檔不是語料檔 | SPEC-006 FR-07 |
+| Corpus | UC 的步驟清單取第一個符合的 flow 區塊，依區塊內原始順序附掛於該 UC 的 `rawNode`，不排序、不去重；FlowStep 不另產 `rawNode`；非 UC 型別的 `rawNode` 不帶步驟清單 | SPEC-006 FR-09 規則 1、4、6 |
+| Corpus | 含頂層 `flow:` 行的區塊解析失敗、flow 清單含非 map 項目、或結尾未閉合圍欄含頂層 `flow:` 行時，該 UC 恰發一筆 EVT-CORPUS-004（不論壞區塊或壞項目數）；該 UC 仍是節點、不發 EVT-CORPUS-003 | SPEC-006 FR-09 規則 3a～3d |
+| Corpus | 「無區塊」與「區塊壞掉」的步驟清單可同為空清單，但只有後者發 EVT-CORPUS-004；沒有頂層 `flow:` 行的壞 yaml 區塊不發 | SPEC-006 FR-09 規則 3a、3b |
+| Corpus | 非 domain 路徑清單檔 YAML 解析失敗、缺鍵、鍵值不是清單時，各發一筆 EVT-CORPUS-005（`reason` 為對應子原因），非 domain 側視為未宣告；檔案不存在時不發事件 | SPEC-006 FR-10 規則 2、3、4 |
+| Corpus | 清單內的非字串元素略過、其餘元素照常生效；一輪至多一筆 `reason` 為 `elementNotString` 的 EVT-CORPUS-005，`nonStringElementCount` 等於非字串元素數；此時非 domain 側不視為未宣告；字串元素不檢查格式、不發事件 | SPEC-006 FR-10 規則 2a、2b |
 
 ## 4. 邊界決策
 
@@ -106,7 +112,7 @@ updated: "2026-10-13"
 | FR-05 | 讀取失敗（非 UTF-8） | Corpus | unit；IT-2 |
 | FR-06 | 路徑對型別查詢 | Schema | domain unit；IT-2 |
 | FR-07 | 掃描結果摘要與守恆 | Corpus | domain unit；IT-2 |
-| FR-08 | 由 EVT-CORPUS-003 產生破洞 | Diagnostics | domain unit；IT-2 |
+| FR-08 | 由 EVT-CORPUS-003、004、005 產生 `parseFailure` 破洞 | Diagnostics | domain unit；IT-2 |
 | FR-09 | UC flow 區塊解析：步驟清單附掛於 UC `rawNode`，壞區塊發 EVT-CORPUS-004 | Corpus（破洞由 Diagnostics 依 FR-08 產生） | domain unit |
 | FR-10 | 非 domain 路徑清單檔格式錯誤：發 EVT-CORPUS-005，非 domain 側視為未宣告 | Corpus（讀 Schema 型別表的清單檔位置與鍵名；破洞由 Diagnostics 依 FR-08 產生） | domain unit |
 | NFR-01 | 失敗隔離 | Corpus | domain unit |
@@ -119,4 +125,4 @@ FR-09、FR-10 的歸屬依據（`0.5.0-W1-159`，判準見系統層 §8：驗收
 
 ---
 
-**Last Updated**: 2026-10-13（`0.5.0-W1-159`：§7 補 FR-09、FR-10 與歸屬依據） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-13（`0.5.0-W1-159`：§7 補 FR-09、FR-10 與歸屬依據；`0.5.0-W1-176`：§2 入邊、§7 FR-08 列對齊 EVT-CORPUS-004／005，不變式清單補 FR-07 計數項、FR-09、FR-10） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）

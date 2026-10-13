@@ -586,3 +586,147 @@ def test_no_signal_when_explicitly_attributed(tmp_path, monkeypatch, capsys):
     spec = _in_domain_dir(tmp_path, monkeypatch, _map("SPEC-101", "## SPEC-101\n| FR-01~03 | A |\n"))
     assert cdc.main([spec]) == 0
     assert "無任何 SPEC 歸屬" not in capsys.readouterr().err
+
+
+# --- 層級 SPEC 以系統層判定（0.5.0-W1-149.1）---
+
+LAYER_SPEC = ("---\nid: SPEC-101\ndomain: \"ui\"\n---\n"
+              "### FR-01: A\n### FR-02: B\n")
+
+
+def _layer_fixture(tmp_path, spec_domain="ui", system="## SPEC-101\n| FR-01~02 | sys |\n"):
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, LAYER_SPEC.replace('"ui"', f'"{spec_domain}"'))
+    _write(tmp_path / "docs/spec/a/domain-map.md", "---\ndomain: \"a\"\nsource_specs: [SPEC-999]\n---\n")
+    if system is not None:
+        _write(tmp_path / "docs/system-layer.md", system)
+    return spec
+
+
+def test_layer_spec_judged_by_system_layer_without_flag(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    assert cdc.main([str(spec)]) == 0
+    assert "docs/system-layer.md" in capsys.readouterr().out
+
+
+def test_layer_spec_e1_declared_domain_keeps_source_specs_message(tmp_path, monkeypatch, capsys):
+    """E1 對照：domain 欄改為已宣告的 a 且無 map 列入 -> 維持請補 source_specs。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="a")
+    assert cdc.main([str(spec)]) == 1
+    assert "source_specs" in capsys.readouterr().out
+
+
+def test_spec_without_domain_field_unchanged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    spec.write_text("---\nid: SPEC-101\n---\n### FR-01: A\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+    assert "source_specs" in capsys.readouterr().out
+
+
+def test_layer_spec_system_layer_missing_fr_points_to_system_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "FR-01" in out and "請於系統層的 FR 對照節" in out and "domain map §7" not in out
+
+
+def test_layer_spec_without_system_layer_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system=None)
+    assert cdc.main([str(spec)]) == 1
+    assert "系統層" in capsys.readouterr().out
+
+
+def test_single_domain_project_domain_field_not_layer(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/SPEC-101-x.md"
+    _write(spec, LAYER_SPEC)
+    _write(tmp_path / "docs/domain-map.md", "## 覆蓋\n| FR-01~02 | X |\n")
+    assert cdc.main([str(spec)]) == 0
+    assert "docs/domain-map.md" in capsys.readouterr().out
+
+
+# --- 層級判定優先序：原定位鏈有 map 時照原鏈（R1/R2/R3）---
+
+def _listing_map(tmp_path, body):
+    _write(tmp_path / "docs/spec/a/domain-map.md",
+           f"---\ndomain: \"a\"\nsource_specs: [SPEC-101]\n---\n## SPEC-101\n{body}")
+
+
+def test_r1_map_listing_spec_wins_over_layer_red_to_green(tmp_path, monkeypatch, capsys):
+    """有 map 列入且覆蓋，系統層無對照：舊版因 domain 欄非已宣告而走系統層為紅，新版照原鏈為綠。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="## 其他\n無對照\n")
+    _listing_map(tmp_path, "| FR-01~02 | A |\n")
+    assert cdc.main([str(spec)]) == 0
+
+
+def test_r1_map_listing_spec_wins_over_layer_green_to_red(tmp_path, monkeypatch, capsys):
+    """有 map 列入但未覆蓋 FR-02，系統層只有無歸屬的 FR 文字：照原鏈判定為紅（系統層無 SPEC 歸屬的 FR 不計入）。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="| FR-01~02 | sys |\n")
+    _listing_map(tmp_path, "| FR-01 | A |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert "FR-02" in capsys.readouterr().out
+
+
+def test_r1_no_map_declared_domain_is_red_not_system_layer(tmp_path, monkeypatch, capsys):
+    """無 map 且 domain 欄為已宣告：系統層即使完整覆蓋仍為紅（漏登記），舊版同為紅（對照守住不退化）。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="a")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "source_specs" in out and "層級 SPEC" not in out
+
+
+def test_r2_system_layer_output_shows_domain_and_declared_set(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="corpuss")
+    assert cdc.main([str(spec)]) == 0
+    out = capsys.readouterr().out
+    assert "'corpuss'" in out and "[a]" in out
+
+
+def test_r3_flag_to_system_layer_for_declared_domain_spec_uses_plain_message(tmp_path, monkeypatch, capsys):
+    """已宣告 domain 的 SPEC 帶旗標指向系統層、FR 未覆蓋：訊息不得稱層級 SPEC。"""
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="a", system="## 其他\n無對照\n")
+    assert cdc.main([str(spec), "--domain-map", "docs/system-layer.md"]) == 1
+    out = capsys.readouterr().out
+    assert "FR-01" in out and "層級 SPEC" not in out and "domain map §7" in out
+
+
+# --- 第二輪補修：層級模式不走相容後備、旗標判 None ---
+
+def test_m1_layer_mode_prose_only_system_layer_is_red(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="散文提到 FR-01~02 但沒有任何 SPEC 歸屬。\n")
+    assert cdc.main([str(spec)]) == 1
+    assert "FR-01" in capsys.readouterr().out
+
+
+def test_m1_layer_mode_without_spec_id_is_red(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    spec.write_text('---\nid: SPEC-UI-1\ndomain: "ui"\n---\n### FR-01: A\n', encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+
+
+def test_m2_layer_spec_with_missing_flag_file_reports_missing_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    assert cdc.main([str(spec), "--domain-map", "nope.md"]) == 1
+    out = capsys.readouterr().out
+    assert "指定的檔案不存在" in out and "層級" not in out
+
+
+def test_m3_empty_domain_map_flag_is_red_not_unflagged(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path)
+    assert cdc.main([str(spec), "--domain-map", ""]) == 1
+    out = capsys.readouterr().out
+    assert "指定的檔案不存在" in out and "層級" not in out
