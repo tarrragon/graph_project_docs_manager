@@ -213,3 +213,140 @@ def test_survivor_after_nonpositive_zombie_check():
         assert mod._is_alive(proc.pid) is False
     finally:
         proc.wait()
+
+
+# ---- 0.5.0-W1-187.10：認定表、終止結果、失敗可見性 ----
+
+SPACE = "/Users/me/My Projects/app/.venv/bin"
+RUNNER_CASES = [
+    # (命令列, 是否認定)
+    ("/opt/flutter/bin/cache/artifacts/engine/darwin-x64/flutter_tester --a", True),
+    ("flutter_tester", True),
+    ("/usr/bin/python3 -m pytest tests/ -q", True),
+    ("python -m pytest", True),
+    ("/opt/homebrew/bin/python3.12 /repo/.venv/bin/pytest -x", True),
+    ("/repo/.venv/bin/python /repo/.venv/bin/py.test", True),
+    ("node /repo/node_modules/.bin/jest --runInBand", True),
+    ("node /repo/node_modules/jest/bin/jest.js", True),
+    ("/usr/local/bin/node /repo/node_modules/vitest/vitest.mjs run", True),
+    ("/usr/local/bin/node /repo/node_modules/.bin/vitest", True),
+    (SPACE + "/python -m pytest tests", True),
+    ("/Users/me/My Dir/flutter_tester --x", True),
+    ("node /Users/me/My Dir/node_modules/.bin/jest", True),
+    # 不該認定
+    ("vim pytest.ini", False),
+    ("grep pytest file.txt", False),
+    ("/usr/bin/grep -r jest .", False),
+    ("python other.py pytest", False),
+    ("python3 -c import pytest", False),
+    ("python -m http.server", False),
+    ("node server.js --jest", False),
+    ("tail -f /var/log/vitest.log", False),
+    ("/usr/bin/python3", False),
+    ("", False),
+]
+
+
+@pytest.mark.parametrize("command,expected", RUNNER_CASES)
+def test_is_runner_table(command, expected):
+    assert _load().is_runner(command) is expected
+
+
+def _fake_world(mod, monkeypatch, root, *, alive=True, same=True):
+    """不送任何真實訊號的世界：一個假程序，存活與身份由參數決定。"""
+    fake = mod.Proc(999999, 1, "S", "flutter_tester")
+    sent = []
+    monkeypatch.setattr(mod, "list_processes", lambda: [fake])
+    monkeypatch.setattr(mod, "process_cwd", lambda pid: str(root))
+    monkeypatch.setattr(mod, "_send", lambda pid, sig: sent.append((pid, sig)))
+    monkeypatch.setattr(mod, "_is_alive", lambda pid: alive)
+    monkeypatch.setattr(mod, "_same_identity", lambda p: same, raising=False)
+    monkeypatch.setattr(mod, "GRACE_SECONDS", 0.05)
+    return fake, sent
+
+
+def test_kill_reports_survivor_and_exits_nonzero(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    _fake_world(mod, monkeypatch, tmp_path)
+    rc = mod.main(["--kill", "--root", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "未能終止 999999" in out and "已終止" not in out
+
+
+def test_kill_skips_signal_when_identity_changed(tmp_path, monkeypatch):
+    mod = _load()
+    _, sent = _fake_world(mod, monkeypatch, tmp_path, same=False)
+    mod.main(["--kill", "--root", str(tmp_path)])
+    assert sent == []
+
+
+def test_identity_changed_between_term_and_kill_sends_no_kill(tmp_path, monkeypatch):
+    mod = _load()
+    fake, sent = _fake_world(mod, monkeypatch, tmp_path)
+    answers = iter([True, False])  # TERM 前相符，KILL 前已不符
+    monkeypatch.setattr(mod, "_same_identity", lambda p: next(answers), raising=False)
+    mod.terminate(fake, grace=0.05)
+    assert signal.SIGKILL not in [s for _, s in sent]
+
+
+@pytest.mark.parametrize("failing", ["ps", "git"])
+def test_external_command_failure_is_visible(tmp_path, monkeypatch, capsys, failing):
+    mod = _load()
+    real = subprocess.run
+
+    def fake_run(cmd, *a, **kw):
+        if cmd[0] == failing:
+            return subprocess.CompletedProcess(cmd, 1, "", "boom")
+        return real(cmd, *a, **kw)
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    rc = mod.main(["--root", str(tmp_path)] if failing == "ps" else [])
+    cap = capsys.readouterr()
+    assert rc == 2
+    assert "boom" in cap.err
+    assert "符合 0" not in cap.out
+
+
+def test_root_given_does_not_expand_worktrees(tmp_path):
+    mod = _load()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git = ["git", "-C", str(repo)]
+    subprocess.run(git + ["init", "-q"], check=True)
+    subprocess.run(git + ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
+                          "--allow-empty", "-m", "i"], check=True)
+    subprocess.run(git + ["worktree", "add", "-q", str(tmp_path / "wt")], check=True)
+    assert mod.project_roots(str(repo)) == [os.path.realpath(repo)]
+
+
+def test_root_flag_hidden_from_help():
+    res = subprocess.run([sys.executable, str(SCRIPT), "--help"],
+                         capture_output=True, text=True, timeout=30)
+    assert "--kill" in res.stdout and "--root" not in res.stdout
+
+
+def test_skip_reason_deleted_cwd_prints_path(env):
+    gone = env.root / "wt-gone2"
+    gone.mkdir()
+    pid = env.orphan(cwd=gone)
+    gone.rmdir()
+    res = env.run()
+    line = [l for l in res.stdout.splitlines() if str(pid) in l][0]
+    assert "cwd 已刪除" in line and str(gone) in line
+
+
+def test_list_mode_wording_consistent_and_states_nothing_killed(env):
+    pid = env.orphan()
+    res = env.run()
+    assert f"符合 {pid}" in res.stdout and "孤兒" not in res.stdout
+    assert "未終止任何程序" in res.stdout
+
+
+def test_negative_control_asserts_exit_code_and_output(env):
+    pid = env.orphan(cwd=env.outside)
+    res = env.run("--kill")
+    assert _alive(pid)
+    assert res.returncode == 0
+    assert str(pid) not in res.stdout and "已終止" not in res.stdout
+    assert "符合 0 略過 0" in res.stdout
