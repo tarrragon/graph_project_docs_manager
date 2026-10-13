@@ -13,6 +13,9 @@
 3. 命令屬已知測試執行器：首詞為 RUNNERS 之一，或首詞為直譯器且緊接 -m 模組名／執行器腳本
 4. 工作目錄位於專案根目錄或其 git worktree 之下
 
+疑似殘留（只顯示，任何情況下不終止，含 --kill）：父程序為 1、工作目錄在專案範圍內、
+本身不是執行器、子孫中有執行器的程序樹。無法確認它不是刻意放在背景執行的。
+
 特殊情形：
 - 工作目錄無法取得或已刪除：無法確認屬於本專案，不終止，僅列為「略過」。
 - 子程序自行脫離群組但父程序仍存活：父程序非 1，不符合，不列出。
@@ -46,6 +49,13 @@ class Proc(NamedTuple):
     ppid: int
     stat: str
     command: str
+    etime: str = ""  # ps 的存活時間（[[dd-]hh:]mm:ss）；取不到為空字串
+
+
+class SuspectTree(NamedTuple):
+    """被收養且子孫含測試執行器的程序樹；members 含根。"""
+    root: Proc
+    members: List[Proc]
 
 
 class CommandError(Exception):
@@ -63,12 +73,12 @@ def _run(cmd: List[str], tolerate_failure: bool = False) -> str:
 
 
 def list_processes() -> List[Proc]:
-    out = _run(["ps", "-axo", "pid=,ppid=,stat=,command="])
+    out = _run(["ps", "-axo", "pid=,ppid=,stat=,etime=,command="])
     procs = []
     for line in out.splitlines():
-        parts = line.split(None, 3)
-        if len(parts) == 4 and parts[0].isdigit() and parts[1].isdigit():
-            procs.append(Proc(int(parts[0]), int(parts[1]), parts[2], parts[3]))
+        parts = line.split(None, 4)
+        if len(parts) == 5 and parts[0].isdigit() and parts[1].isdigit():
+            procs.append(Proc(int(parts[0]), int(parts[1]), parts[2], parts[4], parts[3]))
     return procs
 
 
@@ -172,6 +182,61 @@ def classify(procs: List[Proc], roots: List[str]):
     return matched, skipped
 
 
+def _descendants(root_pid: int, children: dict) -> List[int]:
+    """root_pid 的所有子孫 PID（含防環：已走過者不重複）。"""
+    seen, stack, order = {root_pid}, [root_pid], []
+    while stack:
+        for kid in children.get(stack.pop(), []):
+            if kid not in seen:
+                seen.add(kid)
+                order.append(kid)
+                stack.append(kid)
+    return order
+
+
+def find_suspect_trees(procs: List[Proc], roots: List[str], cwd_of, is_runner_fn=None):
+    """純函式：回傳 SuspectTree 清單。
+
+    根須父程序為 1、非殭屍、本身不是執行器（那屬「符合」類別）、cwd 可取得且在
+    專案範圍內，且子孫中有非殭屍的執行器。cwd 取不到者不列出（無法確認屬本專案）。
+    """
+    runner = is_runner_fn or is_runner
+    by_pid = {p.pid: p for p in procs}
+    children: dict = {}
+    for p in procs:
+        if p.pid != p.ppid:
+            children.setdefault(p.ppid, []).append(p.pid)
+    found = []
+    for p in procs:
+        if p.ppid != 1 or p.pid == 1 or p.stat.startswith("Z") or runner(p.command):
+            continue
+        subtree = [by_pid[k] for k in _descendants(p.pid, children)]
+        if not any(not d.stat.startswith("Z") and runner(d.command) for d in subtree):
+            continue
+        cwd = cwd_of(p.pid)
+        if cwd is not None and os.path.isdir(cwd) and under(cwd, roots):
+            found.append(SuspectTree(p, [p] + subtree))
+    return found
+
+
+def format_age(etime: str) -> str:
+    return etime.strip() or "未知"
+
+
+def render_suspects(trees: List[SuspectTree]) -> List[str]:
+    """輸出行：各樹的根、存活時間、成員，並說明為何不終止與如何處理。"""
+    lines = []
+    for t in trees:
+        lines.append(f"疑似殘留 根 {t.root.pid} 存活 {format_age(t.root.etime)}")
+        lines += [f"  {m.pid} {m.command}" for m in t.members]
+    if trees:
+        lines += [
+            "以上疑似殘留的程序樹不會被本指令終止（帶 --kill 也一樣）：",
+            "無法確認它不是刻意放在背景執行的。要處理請先核對，再以 kill <PID> 逐一個別終止。",
+        ]
+    return lines
+
+
 def _send(pid: int, sig: int) -> None:
     try:
         os.kill(pid, sig)
@@ -239,7 +304,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--root", help=argparse.SUPPRESS)  # 測試用，不列入說明
     args = ap.parse_args(argv)
     try:
-        matched, skipped = classify(list_processes(), project_roots(args.root))
+        procs = list_processes()
+        roots = project_roots(args.root)
+        matched, skipped = classify(procs, roots)
+        suspects = find_suspect_trees(procs, roots, process_cwd)
     except CommandError as exc:
         sys.stderr.write(f"錯誤：{exc}\n")
         return 2
@@ -247,6 +315,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"符合 {p.pid} {p.command}")
     for p, reason in skipped:
         print(f"略過 {p.pid} {p.command}（{reason}）")
+    for line in render_suspects(suspects):
+        print(line)
     failed = 0
     if args.kill:
         for p in matched:
@@ -267,7 +337,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             else:
                 failed += 1
                 print(f"未能終止 {p.pid}（送出 KILL 後仍存活）")
-    print(f"符合 {len(matched)} 略過 {len(skipped)}")
+    if args.kill and suspects:
+        print(f"疑似殘留 {len(suspects)} 棵未處理（本指令不對其送訊號）")
+    print(f"符合 {len(matched)} 略過 {len(skipped)} 疑似殘留 {len(suspects)}")
     if not args.kill:
         print("僅列出，未終止任何程序；加 --kill 才終止")
     return 1 if failed else 0

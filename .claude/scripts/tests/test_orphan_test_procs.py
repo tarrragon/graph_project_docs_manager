@@ -8,6 +8,7 @@ import os
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -534,3 +535,145 @@ def test_help_lists_unsupported_forms():
 def test_test_file_has_no_ticket_ids():
     import re
     assert not re.search(r"\d+\.\d+\.\d+-W\d+-\d+", Path(__file__).read_text())
+
+
+# ---- 疑似殘留：被收養且子孫含執行器的程序樹（只顯示不終止） ----
+
+def _tree_procs(mod):
+    """父子關係表：命令首詞 flutter_tester 為執行器（見 _runner_by_name）。"""
+    P = mod.Proc
+    return [
+        # 樹 A：根 100（父 1）> 101 > 102(flutter_tester)
+        P(100, 1, "S", "dartvm flutter_tools"), P(101, 100, "S", "dartaotruntime"),
+        P(102, 101, "S", "flutter_tester"),
+        # 樹 B：根 200（父 1），子孫不含執行器
+        P(200, 1, "S", "dartvm other"), P(201, 200, "S", "dartaotruntime"),
+        # 樹 C：根 300（父 1）含執行器，但 cwd 在專案外
+        P(300, 1, "S", "dartvm outside"), P(301, 300, "S", "flutter_tester"),
+        # 樹 D：根 400 的父為 50（非 1），子孫含執行器
+        P(400, 50, "S", "dartvm child"), P(401, 400, "S", "flutter_tester"),
+        # 無關程序
+        P(50, 2, "S", "zsh"),
+    ]
+
+
+def _runner_by_name(command):
+    return command.split()[0] == "flutter_tester"
+
+
+_PROJ = os.path.realpath(tempfile.gettempdir())  # 實際存在的目錄
+_OUTSIDE = os.path.realpath("/usr")
+_TREE_CWD = {100: _PROJ, 101: _PROJ, 102: _PROJ, 200: _PROJ, 300: _OUTSIDE,
+             400: _PROJ}
+
+
+def _suspects(mod, procs=None, cwd=None, roots=(_PROJ,)):
+    cwds = _TREE_CWD if cwd is None else cwd
+    return mod.find_suspect_trees(procs or _tree_procs(mod), list(roots),
+                                  lambda pid: cwds.get(pid), _runner_by_name)
+
+
+def test_suspect_tree_lists_adopted_root_with_runner_descendant():
+    mod = _load()
+    found = _suspects(mod)
+    assert [t.root.pid for t in found] == [100]
+    assert sorted(p.pid for p in found[0].members) == [100, 101, 102]
+
+
+@pytest.mark.parametrize("root_pid", [200, 300, 400])
+def test_suspect_tree_negative_controls_not_listed(root_pid):
+    # 200：子孫不含執行器；300：cwd 在專案外；400：根的父程序非 1
+    mod = _load()
+    assert root_pid not in [t.root.pid for t in _suspects(mod)]
+
+
+def test_suspect_tree_skips_when_root_cwd_unknown_and_never_for_runner_root():
+    mod = _load()
+    assert _suspects(mod, cwd={}) == []
+    P = mod.Proc
+    procs = [P(10, 1, "S", "flutter_tester"), P(11, 10, "S", "flutter_tester")]
+    # 根本身是執行器者屬「符合」類別，不重複列為疑似殘留
+    assert _suspects(mod, procs=procs, cwd={10: _PROJ}) == []
+
+
+def test_suspect_tree_ignores_zombie_runner_descendant():
+    mod = _load()
+    P = mod.Proc
+    procs = [P(1000, 1, "S", "dartvm"), P(1001, 1000, "Z", "flutter_tester")]
+    assert _suspects(mod, procs=procs, cwd={1000: _PROJ}) == []
+
+
+def test_suspect_tree_handles_parent_cycle_without_hanging():
+    mod = _load()
+    P = mod.Proc
+    procs = [P(1, 1, "S", "launchd"), P(2, 3, "S", "a"), P(3, 2, "S", "b")]
+    assert _suspects(mod, procs=procs) == []
+
+
+@pytest.mark.parametrize("raw,shown", [("01:23", "01:23"), ("2-03:04:05", "2-03:04:05"),
+                                       ("", "未知"), ("  ", "未知")])
+def test_format_age_unknown_when_missing(raw, shown):
+    assert _load().format_age(raw) == shown
+
+
+def test_render_suspects_explains_unkilled_and_shows_age_and_pids():
+    mod = _load()
+    P = mod.Proc
+    root = P(100, 1, "S", "dartvm", "05:07")
+    tree = mod.SuspectTree(root, [root, P(102, 100, "S", "flutter_tester")])
+    text = "\n".join(mod.render_suspects([tree]))
+    assert "疑似殘留" in text and "100" in text and "102" in text
+    assert "05:07" in text
+    assert "不會被本指令終止" in text and "刻意放在背景" in text and "kill <PID>" in text
+    unknown = mod.SuspectTree(P(7, 1, "S", "dartvm"), [P(7, 1, "S", "dartvm")])
+    assert "存活 未知" in "\n".join(mod.render_suspects([unknown]))
+
+
+class TreeEnv:
+    """真實替身樹：根(父為 1、argv0 dartvm) > flutter_tester。"""
+    ROOT_SRC = (
+        "import subprocess,sys,time\n"
+        "pidfile=sys.argv[1]\n"
+        "subprocess.Popen(['flutter_tester','-c',%r,pidfile,'0'],executable=sys.executable)\n"
+        "time.sleep(%d)\n" % (STAND_IN_SRC, LIFE)
+    )
+    LAUNCHER = (
+        "import subprocess,sys\n"
+        "cwd,pidfile,rootfile=sys.argv[1:4]\n"
+        "p=subprocess.Popen(['dartvm','-c',%r,pidfile],executable=sys.executable,"
+        "cwd=cwd,start_new_session=True)\n"
+        "open(rootfile,'w').write(str(p.pid))\n" % ROOT_SRC
+    )
+
+
+def _start_tree(env):
+    pidfile, rootfile = env.tmp / "child", env.tmp / "rootpid"
+    subprocess.run([sys.executable, "-c", TreeEnv.LAUNCHER, str(env.root),
+                    str(pidfile), str(rootfile)], check=True, timeout=15)
+    root_pid, child_pid = _wait_pid(rootfile), _wait_pid(pidfile)
+    env.pids += [root_pid, child_pid]
+    deadline = time.monotonic() + 10
+    while _ppid(root_pid) != 1 and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return root_pid, child_pid
+
+
+def test_kill_never_signals_suspect_tree_but_still_kills_matched(env):
+    root_pid, child_pid = _start_tree(env)
+    matched = env.orphan()
+    res = env.run("--kill")
+    assert res.returncode == 0
+    assert _wait_gone(matched)  # 對照：現行符合類別仍被終止
+    assert _alive(root_pid) and _alive(child_pid)
+    assert f"疑似殘留" in res.stdout and str(root_pid) in res.stdout
+    assert "未處理" in res.stdout
+    assert "疑似殘留 1" in res.stdout
+
+
+def test_list_mode_shows_suspect_tree_with_age(env):
+    root_pid, child_pid = _start_tree(env)
+    res = env.run()
+    assert res.returncode == 0
+    assert str(root_pid) in res.stdout and str(child_pid) in res.stdout
+    assert "存活" in res.stdout and "符合 0 略過 0 疑似殘留 1" in res.stdout
+    assert _alive(root_pid) and _alive(child_pid)
