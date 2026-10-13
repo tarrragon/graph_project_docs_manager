@@ -575,6 +575,9 @@ def _extract_session_incremental_content(
                 "-C",
                 str(project_root),
                 "--no-optional-locks",
+                # --no-optional-locks 不阻止 index 回寫；回寫由 diff.autoRefreshIndex 控制
+                "-c",
+                "diff.autoRefreshIndex=false",
                 "diff",
                 "--unified=0",
                 base,
