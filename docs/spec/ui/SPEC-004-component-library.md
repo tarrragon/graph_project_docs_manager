@@ -2017,7 +2017,7 @@ EVT-CORPUS-004 項目說明：
 | 面向 | 要求 |
 |------|------|
 | 朗讀標籤 | `Semantics.button`；label 為「{name}，{summary}」，`isCurrent` 時附 `currentProjectA11yLabel`；`selected` 等於 `isCurrent`；`enabled` 等於 `enabled`；disabled 時 `hint` 為 `reason` |
-| 狀態變化播報 | `enabled` 改變（探測結果）隨重建更新旗標；不設 live region。點選後判定失敗造成的轉換是使用者動作的結果，其播報由 4.42 無障礙子節承載（1.88，提案） |
+| 狀態變化播報 | `enabled` 改變（探測結果）隨重建更新旗標；不設 live region。點選後判定失敗而轉 disabled（已定案，狀態矩陣 disabled 列）是使用者動作的結果，其播報由 4.42 無障礙子節承載（播報方式為提案，1.88） |
 | 非視覺替代訊號 | 不可用由 `enabled` 旗標 + 常駐文字承載；目前專案由 `selected` 旗標承載，底色非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | 浮層展開時焦點限制於浮層內，Tab 依序走過各項（SPEC-003 §2.10）；Space / Enter 觸發；Esc 收合 |
 | 對比 | 依 §4.0.2：enabled 摘要與 disabled 原因 `textSecondary` / `surfaceBase` 4.71:1、selected 摘要 `textPrimary` / `surfaceIconTint` 4.89:1、selected 名稱 `accentStrong` / `surfaceIconTint` 8.38:1，皆通過；disabled 圖示與名稱 `textDisabled` 3.06:1 屬非作用中元件豁免（表 2） |
