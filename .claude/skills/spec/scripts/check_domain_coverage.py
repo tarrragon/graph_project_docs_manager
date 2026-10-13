@@ -250,7 +250,7 @@ SYSTEM_LAYER_PATH = Path("docs/system-layer.md")
 LEGACY_DOMAIN_MAP_PATH = Path("docs/domain-map.md")
 SOURCE_SPECS_KEY_RE = re.compile(r"^source_specs:[ \t]*(.*?)[ \t]*$")
 BLOCK_ITEM_RE = re.compile(r"^[ \t]*-[ \t]*(.*?)[ \t]*$")
-TRAILING_COMMENT_RE = re.compile(r"[ \t]+#.*$")
+TRAILING_COMMENT_RE = re.compile(r"(?:^|[ \t]+)#.*$")
 
 # 定位失敗的成因（locate_domain_maps_with_reason 的第二個回傳值；有定位到 map 時為 None）
 REASON_EXPLICIT_MISSING = "explicit_missing"
@@ -274,16 +274,22 @@ def _parse_source_specs(map_text):
         if not key:
             continue
         value = TRAILING_COMMENT_RE.sub("", key.group(1)).strip()
+        rest = [TRAILING_COMMENT_RE.sub("", ln).strip() for ln in lines[i + 1:]]
+        rest = [ln for ln in rest if ln]  # 空行與純註解行不截斷清單
+        if not value and rest and rest[0].startswith("["):
+            value = rest[0]  # flow 清單寫在鍵的下一行
         if value.startswith("[") and value.endswith("]"):
             return set(SPEC_ID_RE.findall(value.upper()))
         if value:
             return None
         items = []
         for following in lines[i + 1:]:
+            if not TRAILING_COMMENT_RE.sub("", following).strip():
+                continue
             item = BLOCK_ITEM_RE.match(following)
             if not item:
                 break
-            items.append(item.group(1))
+            items.append(TRAILING_COMMENT_RE.sub("", item.group(1)))
         return set(SPEC_ID_RE.findall(" ".join(items).upper())) if items else None
     return set()
 
@@ -300,15 +306,13 @@ def _scan_listing_maps(spec_id):
         declared = _parse_source_specs(m.read_text(encoding="utf-8"))
         if declared is None:
             unparseable.append(m)
-        elif spec_id is not None and spec_id in declared:
+        elif spec_id in declared:
             listing.append(m)
     return listing, unparseable
 
 
 def _diagnose_missing(explicit, spec_id, unparseable):
     """找不到任何 map 時的成因，依序判定。"""
-    if explicit:
-        return REASON_EXPLICIT_MISSING
     if not _list_domain_maps():
         return REASON_NO_MAP
     if spec_id is None:
