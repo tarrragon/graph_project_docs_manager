@@ -463,7 +463,7 @@ def _scan_listing_maps(spec_id):
     return listing, unparseable
 
 
-def _diagnose_missing(explicit, spec_id, unparseable):
+def _diagnose_missing(spec_id, unparseable):
     """找不到任何 map 時的成因，依序判定。"""
     if not _list_domain_maps():
         return REASON_NO_MAP
@@ -499,7 +499,7 @@ def locate_domain_maps_with_reason(spec_path, explicit, spec_id=None):
         return found + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.exists() else []), None, unparseable
     if LEGACY_DOMAIN_MAP_PATH.exists():
         return [LEGACY_DOMAIN_MAP_PATH], None, unparseable
-    return [], _diagnose_missing(explicit, spec_id, unparseable), unparseable
+    return [], _diagnose_missing(spec_id, unparseable), unparseable
 
 
 def locate_domain_maps(spec_path, explicit, spec_id=None):

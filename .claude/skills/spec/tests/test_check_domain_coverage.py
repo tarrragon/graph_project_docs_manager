@@ -1008,6 +1008,58 @@ def test_id_problem_reported_before_unparseable_map(tmp_path, monkeypatch, capsy
     assert rc == 1 and MSG_ID_UNRECOGNIZED in lines and MSG_UNPARSEABLE not in lines
 
 
+# --- 0.5.0-W1-200：source_specs 下一行 flow 清單與井號邊界（各邊界附相鄰對照輸入）---
+
+def test_b1_flow_list_after_blank_and_comment_lines_accepted(tmp_path, monkeypatch, capsys):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:\n\n# note\n[SPEC-101]")
+    assert rc == 0
+
+
+def test_b1_contrast_flow_list_after_blank_and_comment_is_read_not_defaulted(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:\n\n# note\n[SPEC-202]")
+    assert rc == 1 and MSG_NOT_LISTED in lines
+
+
+def test_b2_close_bracket_followed_by_hash_without_space_unparseable(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: [SPEC-101]# note")
+    assert rc == 1 and MSG_UNPARSEABLE in lines
+
+
+def test_b2_contrast_close_bracket_followed_by_spaced_hash_accepted(tmp_path, monkeypatch, capsys):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: [SPEC-101] # note")
+    assert rc == 0
+
+
+def test_b3_scalar_on_key_line_not_overridden_by_next_line_flow_list(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs: SPEC-202\n[SPEC-101]")
+    assert rc == 1 and MSG_UNPARSEABLE in lines
+
+
+def test_b3_contrast_empty_key_line_takes_next_line_flow_list(tmp_path, monkeypatch, capsys):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:\n[SPEC-101]")
+    assert rc == 0
+
+
+def test_b4_next_line_flow_list_with_trailing_comment_accepted(tmp_path, monkeypatch, capsys):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:\n[SPEC-101] # note")
+    assert rc == 0
+
+
+def test_b4_contrast_next_line_flow_list_hash_without_space_unparseable(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:\n[SPEC-101]# note")
+    assert rc == 1 and MSG_UNPARSEABLE in lines
+
+
+def test_b5_flow_list_after_another_key_not_taken_as_this_keys_list(tmp_path, monkeypatch, capsys):
+    rc, lines = _run_ss(tmp_path, monkeypatch, capsys, "source_specs:\nother: x\n[SPEC-101]")
+    assert rc == 1 and MSG_UNPARSEABLE in lines
+
+
+def test_b5_contrast_other_key_before_source_specs_does_not_matter(tmp_path, monkeypatch, capsys):
+    rc, _ = _run_ss(tmp_path, monkeypatch, capsys, "other: x\nsource_specs:\n[SPEC-101]")
+    assert rc == 0
+
+
 # --- 0.5.0-W1-166：FR 抽取完整性（部分漏抓警告 / 略過圍欄 / 全形冒號端到端）---
 
 def _map_covering(tmp_path, frs="FR-01,02"):
