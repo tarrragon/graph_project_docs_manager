@@ -1415,10 +1415,11 @@ def test_layer_spec_unrecognized_id_reports_id_cause(tmp_path, monkeypatch, caps
     rc = cdc.main([str(spec)])
     out = capsys.readouterr().out
     assert rc == 1
-    assert cdc.describe_missing_map(cdc.REASON_ID_UNRECOGNIZED) in out
     assert out.splitlines()[-1] == (
         "domain 覆蓋檢核：spec id 無法辨識（frontmatter id 與檔名皆取不到 SPEC-NNN 形式），"
-        "無法比對 domain map 的 source_specs。請修正 spec 的 id 為 SPEC-NNN 形式，或以 --domain-map 指定。")
+        "無法比對系統層的 SPEC 歸屬。請修正 spec 的 id 為 SPEC-NNN 形式。")
+    assert cdc.ID_UNRECOGNIZED_CAUSE in cdc.describe_missing_map(cdc.REASON_ID_UNRECOGNIZED)  # 成因子句共用
+    assert "--domain-map" not in out  # 層級模式不走相容比對，不得引導使用者帶旗標
     assert "未在系統層覆蓋" not in out and "FR-01" not in out and "FR-02" not in out
 
 
@@ -1443,6 +1444,27 @@ def test_unrecognized_id_no_map_lists_unparseable_map(tmp_path, monkeypatch, cap
     assert rc == 1
     assert "spec id 無法辨識" in cap.out
     assert "docs/spec/b/domain-map.md" in cap.err and "格式無法解析" in cap.err
+
+
+def test_layer_id_check_runs_after_system_layer_existence_check(tmp_path, monkeypatch, capsys):
+    """守護攔截順序：id 無法辨識且系統層不存在時，仍先報系統層不存在。"""
+    spec = _layer_id_fixture(tmp_path, monkeypatch, "SPEC-UI-101")
+    (tmp_path / "docs/system-layer.md").unlink()
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "但該檔不存在" in out and "spec id 無法辨識" not in out
+
+
+def test_unparseable_map_not_repeated_on_stderr_when_stdout_names_it(tmp_path, monkeypatch, capsys):
+    """成因為 source_specs 無法解析時 stdout 已列名，stderr 不重複（不限成因的一律列名會使此測試翻紅）。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, "---\nid: SPEC-101\n---\n### FR-01: A\n")
+    _write(tmp_path / "docs/spec/b/domain-map.md", "---\ndomain: \"b\"\nsource_specs: SPEC-101\n---\n")
+    rc = cdc.main([str(spec)])
+    cap = capsys.readouterr()
+    assert rc == 1
+    assert "docs/spec/b/domain-map.md" in cap.out and cap.err == ""
 
 
 # --- 同目錄 map 與警告的單點輸出 ---

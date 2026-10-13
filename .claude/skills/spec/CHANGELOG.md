@@ -2,7 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
-**Version**: 1.9.8 — 本地變更：`scripts/check_domain_coverage.py` 層級模式（以系統層判定）下 SPEC 的 id 無法辨識（frontmatter id 非 SPEC-NNN 形式且檔名無 SPEC-NNN 前綴）時，改輸出與非層級路徑同一句「spec id 無法辨識」訊息（指出成因與修正 id 或以 `--domain-map` 指定），不再印「N 個 FR 未在系統層覆蓋」並指使用者去系統層補歸屬（補了仍為紅）。exit code 維持 1。另 spec id 無法辨識且找不到任何 map 時，source_specs 格式無法解析的 map 也於 stderr 列名（原不列）。其餘路徑的 exit code 與輸出不變，本專案七份 SPEC 修改前後 exit code、stdout、stderr 逐字不變
+**Version**: 1.9.8 — 本地變更：`scripts/check_domain_coverage.py` 層級模式（以系統層判定）下 SPEC 的 id 無法辨識（frontmatter 的 id 非 SPEC-NNN 形式，或無 id 且檔名無 SPEC-NNN 前綴）時，改輸出「spec id 無法辨識」訊息：成因子句與非層級路徑共用，下一步為修正 id 為 SPEC-NNN 形式，不建議 `--domain-map`（層級模式不走相容比對）；frontmatter 有 id 時只看該 id，不退看檔名；攔截在系統層存在檢查之後；不再印「N 個 FR 未在系統層覆蓋」並指使用者去系統層補歸屬（補了仍為紅）；移除 `check_layer_coverage` 內取不到 id 即全部未覆蓋的、已到不了的分支。exit code 維持 1。另 spec id 無法辨識且找不到任何 map 時，source_specs 格式無法解析的 map 也於 stderr 列名（原不列；成因為 source_specs 無法解析時檔名已在 stdout 訊息，不重複）。其餘路徑的 exit code 與輸出不變，本專案七份 SPEC 修改前後 exit code、stdout、stderr 逐字不變
 
 **Version**: 1.9.7 — 本地變更：`scripts/check_domain_coverage.py` 在 domain map 的 `source_specs` 格式無法解析且未被選入判定時列出該檔名（定位完成後單點輸出，以解析後路徑比對，同目錄 map 已被選入判定者不列；帶 `--domain-map` 明示時不掃描其他 map、宣告無 FR 提前結束時尚未定位，皆不列）。原只有「找不到任何 map」一條路徑會列；另有 map 列入本 SPEC 時，無法解析的那份被靜默丟棄（它可能正持有未覆蓋的 FR），層級模式接手時橫幅仍寫「無任何 map 列入本 SPEC」。現於 stderr 輸出 WARNING 列出檔名（不改 exit code；找不到任何 map 且成因為無法解析時檔名已在 stdout 失敗訊息中，不重複），層級橫幅在有無法解析的 map 時改稱「無可解析的 map 列入本 SPEC」；無關的 map 也無法解析時同樣列出。判定結果與 exit code 不變，本專案七份 SPEC 修改前後 exit code 與輸出逐字不變
 

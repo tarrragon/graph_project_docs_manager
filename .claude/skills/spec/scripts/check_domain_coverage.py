@@ -507,13 +507,21 @@ def locate_domain_maps(spec_path, explicit, spec_id=None):
     return locate_domain_maps_with_reason(spec_path, explicit, spec_id)[0]
 
 
+ID_UNRECOGNIZED_CAUSE = "domain 覆蓋檢核：spec id 無法辨識（frontmatter id 與檔名皆取不到 SPEC-NNN 形式）"
+
+
+def describe_layer_id_unrecognized():
+    """層級路徑的 id 無法辨識訊息：成因子句與非層級共用，下一步不同（層級模式不走相容比對，不建議 --domain-map）。"""
+    return f"{ID_UNRECOGNIZED_CAUSE}，無法比對系統層的 SPEC 歸屬。請修正 spec 的 id 為 SPEC-NNN 形式。"
+
+
 def describe_missing_map(reason, explicit=None, unparseable=()):
     """依定位函式回報的成因輸出訊息。"""
     if reason == REASON_EXPLICIT_MISSING:
         return f"domain 覆蓋檢核：--domain-map 指定的檔案不存在：{explicit}"
     if reason == REASON_ID_UNRECOGNIZED:
         return (
-            "domain 覆蓋檢核：spec id 無法辨識（frontmatter id 與檔名皆取不到 SPEC-NNN 形式），"
+            f"{ID_UNRECOGNIZED_CAUSE}，"
             "無法比對 domain map 的 source_specs。請修正 spec 的 id 為 SPEC-NNN 形式，或以 --domain-map 指定。"
         )
     if reason == REASON_SOURCE_SPECS_UNPARSEABLE:
@@ -739,11 +747,9 @@ def judge_fr_declaration(spec_text):
 
 
 def check_layer_coverage(spec_text, system_text, spec_path=None):
-    """層級模式：只以該 SPEC 在系統層的歸屬比對，不走相容後備；取不到 SPEC 識別則全部未覆蓋。"""
+    """層級模式：只以該 SPEC 在系統層的歸屬比對，不走相容後備；呼叫端須先確認 SPEC 識別可取得。"""
     spec_frs = extract_spec_frs(spec_text)
     spec_id = extract_spec_id(spec_text, spec_path)
-    if spec_id is None:
-        return sorted(spec_frs)
     attributed, _ = extract_fr_attribution(system_text)
     return sorted(spec_frs - attributed.get(spec_id, set()))
 
@@ -843,7 +849,7 @@ def main(argv=None):
             print(describe_missing_system_layer())
             return 1
         if extract_spec_id(spec_text, spec_path) is None:
-            print(describe_missing_map(REASON_ID_UNRECOGNIZED))
+            print(describe_layer_id_unrecognized())
             return 1
         domain_map_paths = [SYSTEM_LAYER_PATH]
     if SYSTEM_LAYER_PATH in domain_map_paths and SYSTEM_LAYER_PATH.is_dir():
