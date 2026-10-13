@@ -4,8 +4,9 @@
 /// （正常 · 矩陣／已選格／正常 · 泳道／泳道 · 尚未選定 UC／泳道 ·
 /// flow 未結構化）共用 [DomainReady]，實際子列由 [DomainReady.mode] +
 /// App 層共用值 `selectedUcProvider`（`app/selected_uc.dart`）計算，見
-/// [_readyBody]。內容由 [DomainViewFixtures] 供給（本票決策：假資料驅動，
-/// 不串真實資料）。頁首模式切換（`SegmentedControl`）由 [DomainHeaderTrailing]
+/// [_readyBody]。矩陣取自 [DomainReady.matrix]、泳道取自
+/// `domainSwimlaneProvider`，畫面只讀 state、不自算（`0.5.0-W1-114.21`）。
+/// 頁首模式切換（`SegmentedControl`）由 [DomainHeaderTrailing]
 /// 承載，經 `lib/app/shell.dart` 接線至 `SplitRow.header` 右格（僅
 /// `AppDestination.domain` 一行條件式 trailing，其餘五個目的地不受影響）。
 /// 降級型別表旗標（[DomainReady.isDegraded]）的觸發入口
@@ -33,7 +34,6 @@ import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../project_switcher/project_switcher_providers.dart';
-import 'domain_view_fixtures.dart';
 import 'domain_view_providers.dart';
 import 'domain_view_schema_version.dart';
 import 'domain_view_state.dart';
@@ -120,8 +120,9 @@ class _LoadingView extends ConsumerWidget {
       message: l10n.domainLoading,
       skeletonLayout: SkeletonLayout.matrix,
       isCancelling: state.isCancelling,
-      onCancel: () => ref.read(domainViewStateProvider.notifier).state =
-          const DomainUnset(),
+      // 取消由載入編排擁有：作廢進行中的輪次與結果，再寫回未選專案。
+      onCancel: () =>
+          ref.read(domainViewLoaderProvider.notifier).cancelLoading(),
       testKey: const Key('state-domain-loading'),
       cancelKey: const Key('action-domain-cancel-load'),
     );
@@ -343,7 +344,8 @@ class _MatrixBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final rows = DomainViewFixtures.rows;
+    final matrix = state.matrix;
+    final rows = matrix?.rows ?? const <DomainRow>[];
 
     void onSelectDomain(String domainId) {
       final current = state.selectedCell;
@@ -393,7 +395,7 @@ class _MatrixBody extends ConsumerWidget {
     ];
 
     final columnHeaders = [
-      for (final uc in DomainViewFixtures.ucColumns)
+      for (final uc in matrix?.columns ?? const <DomainUc>[])
         TableColumnHeader.twoLine(label: uc.id, secondLine: uc.title),
     ];
 
@@ -411,7 +413,10 @@ class _MatrixBody extends ConsumerWidget {
     );
 
     final selectedCell = state.selectedCell;
-    final detail = selectedCell == null
+    final selected = selectedCell == null
+        ? null
+        : _findCell(rows, selectedCell.$1, selectedCell.$2);
+    final detail = selected == null
         ? Panel.scrollable(
             key: const ValueKey('panel-domain-cell-detail-empty-container'),
             scrollKey: const Key('scroll-domain-cell-detail'),
@@ -425,10 +430,11 @@ class _MatrixBody extends ConsumerWidget {
           )
         : _CellDetailPanel(
             key: ValueKey(
-              'panel-domain-cell-detail-${selectedCell.$1}-${selectedCell.$2}',
+              'panel-domain-cell-detail-${selected.$2.domainId}-'
+              '${selected.$2.ucId}',
             ),
-            domainId: selectedCell.$1,
-            ucId: selectedCell.$2,
+            row: selected.$1,
+            cell: selected.$2,
           );
 
     return TwoColumnLayout(
@@ -441,22 +447,15 @@ class _MatrixBody extends ConsumerWidget {
 
 /// 已選格右欄詳情卡內容（SPEC-003 §3.1〈格詳情卡的內容契約〉）。
 class _CellDetailPanel extends ConsumerWidget {
-  const _CellDetailPanel({
-    super.key,
-    required this.domainId,
-    required this.ucId,
-  });
+  const _CellDetailPanel({super.key, required this.row, required this.cell});
 
-  final String domainId;
-  final String ucId;
+  final DomainRow row;
+  final DomainCell cell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final row = DomainViewFixtures.rows.firstWhere(
-      (r) => r.domainId == domainId,
-    );
-    final cell = row.cells.firstWhere((c) => c.ucId == ucId);
+    final ucId = cell.ucId;
     final ready = ref.read(domainViewStateProvider) as DomainReady;
 
     return Panel.scrollable(
@@ -495,10 +494,15 @@ class _CellDetailPanel extends ConsumerWidget {
             children: [
               for (final event in cell.events)
                 Badge.event(
-                  label: '${event.$2 ? 'emits' : 'consumes'} ${event.$1}', // i18n-exempt: 事件標籤前綴為契約用詞，非本地化文案
+                  label:
+                      '${event.$2 ? 'emits' : 'consumes'} ${event.$1}', // i18n-exempt: 事件標籤前綴為契約用詞，非本地化文案
                 ),
             ],
           ),
+        // 依賴路徑僅間接依賴格渲染（SPEC-004 §3.6；SPEC-001 §1）。
+        if (cell.relation == DomainRelation.indirect)
+          for (final path in cell.dependencyPaths)
+            AppText(path, variant: AppTextVariant.body),
         ButtonRow(
           alignment: ButtonRowAlignment.end,
           children: [
@@ -537,7 +541,13 @@ class _SwimlaneBody extends ConsumerWidget {
       );
     }
 
-    if (selectedUcId == null) {
+    final matrix = state.matrix;
+    final swimlane = ref.watch(domainSwimlaneProvider);
+
+    // 未選定 UC，或選定 UC 尚無投影（輪次未完成）：列結構同正常 · 泳道、
+    // 不含步驟節點（SPEC-001 §1「泳道 · 尚未選定 UC」）。
+    if (selectedUcId == null || swimlane == null) {
+      final lanes = _emptyLanes(matrix);
       return Panel(
         leading: [
           EmptyState(
@@ -547,17 +557,8 @@ class _SwimlaneBody extends ConsumerWidget {
           ),
         ],
         fill: SwimlaneGrid(
-          lanes: [
-            for (final domainId in DomainViewFixtures.domainIds)
-              SwimlaneLane(
-                name: DomainViewFixtures.domainNames[domainId]!,
-                nodes: const [],
-                domainId: domainId,
-              ),
-          ],
-          laneHighlight: state.selectedDomainId != null
-              ? DomainViewFixtures.domainNames[state.selectedDomainId]
-              : null,
+          lanes: lanes,
+          laneHighlight: _highlightName(matrix, lanes, state.selectedDomainId),
           onSelectDomain: onSelectDomain,
           scrollKey: const Key('scroll-domain-swimlane'),
           dragKey: const Key('drag-domain-swimlane'),
@@ -565,18 +566,14 @@ class _SwimlaneBody extends ConsumerWidget {
       );
     }
 
-    final uc = DomainViewFixtures.ucColumns.firstWhere(
-      (u) => u.id == selectedUcId,
-    );
+    final ucTitle = _ucTitleOf(matrix, selectedUcId);
+    final panelTitle = ucTitle.isEmpty
+        ? selectedUcId
+        : l10n.swimlanePanelTitle(selectedUcId, ucTitle);
 
-    if (!uc.hasFlowStep) {
+    if (swimlane is! DomainSwimlane) {
       return Panel(
-        leading: [
-          AppText(
-            l10n.swimlanePanelTitle(uc.id, uc.title),
-            variant: AppTextVariant.subtitle,
-          ),
-        ],
+        leading: [AppText(panelTitle, variant: AppTextVariant.subtitle)],
         fill: EmptyState(
           variant: EmptyStateVariant.section,
           message: l10n.flowUnstructuredMessage,
@@ -585,7 +582,7 @@ class _SwimlaneBody extends ConsumerWidget {
             AppButton(
               label: l10n.openSourceFileAction,
               variant: AppButtonVariant.secondary,
-              onPressed: () => _openSource(context, ref, uc.id),
+              onPressed: () => _openSource(context, ref, selectedUcId),
               testKey: const Key('action-domain-open-source'),
             ),
           ],
@@ -593,38 +590,17 @@ class _SwimlaneBody extends ConsumerWidget {
       );
     }
 
-    final lanes = DomainViewFixtures.lanesForUc(uc.id);
+    final lanes = [
+      for (final lane in swimlane.lanes)
+        _toSwimlaneLane(lane, state.selectedDomainId),
+    ];
     return Panel(
       key: const Key('state-domain-swimlane'),
-      leading: [
-        AppText(
-          l10n.swimlanePanelTitle(uc.id, uc.title),
-          variant: AppTextVariant.subtitle,
-        ),
-      ],
+      leading: [AppText(panelTitle, variant: AppTextVariant.subtitle)],
       fill: SwimlaneGrid(
-        lanes: [
-          for (final lane in lanes)
-            SwimlaneLane(
-              name: DomainViewFixtures.domainNames[lane.domainId]!,
-              nodes: [
-                for (final node in lane.nodes)
-                  (
-                    SwimlaneNode(
-                      label: node.stepLabel,
-                      isActive:
-                          state.selectedDomainId != null &&
-                          node.stepTraverses.contains(state.selectedDomainId),
-                    ),
-                    node.column,
-                  ),
-              ],
-              domainId: lane.domainId,
-            ),
-        ],
-        laneHighlight: state.selectedDomainId != null
-            ? DomainViewFixtures.domainNames[state.selectedDomainId]
-            : null,
+        lanes: lanes,
+        edges: [for (final edge in swimlane.edges) _toSwimlaneEdge(edge)],
+        laneHighlight: _highlightName(matrix, lanes, state.selectedDomainId),
         onSelectDomain: onSelectDomain,
         scrollKey: const Key('scroll-domain-swimlane'),
         dragKey: const Key('drag-domain-swimlane'),
@@ -674,6 +650,87 @@ class _SwimlaneBody extends ConsumerWidget {
     );
   }
 }
+
+/// 依 domain id 與 UC id 取矩陣中的列與格；任一不在矩陣內時為 `null`。
+(DomainRow, DomainCell)? _findCell(
+  List<DomainRow> rows,
+  String domainId,
+  String ucId,
+) {
+  for (final row in rows) {
+    if (row.domainId != domainId) continue;
+    for (final cell in row.cells) {
+      if (cell.ucId == ucId) return (row, cell);
+    }
+  }
+  return null;
+}
+
+/// UC 標題取自矩陣欄首；欄不在矩陣內時為空字串（面板只顯示 UC id，
+/// SPEC-001 §1〈顯示字面的退路〉）。
+String _ucTitleOf(DomainMatrix? matrix, String ucId) {
+  for (final uc in matrix?.columns ?? const <DomainUc>[]) {
+    if (uc.id == ucId) return uc.title;
+  }
+  return '';
+}
+
+/// 未選定 UC 的列結構：頂端「畫面」列 + 矩陣各 domain 列，皆無節點。
+List<SwimlaneLane> _emptyLanes(DomainMatrix? matrix) => [
+  const SwimlaneLane(name: '', kind: SwimlaneLaneKind.screen, nodes: []),
+  for (final row in matrix?.rows ?? const <DomainRow>[])
+    SwimlaneLane(name: row.domainName, nodes: const [], domainId: row.domainId),
+];
+
+/// 選中 domain 的列首字面：先查矩陣列，再查泳道列；查無為 `null`。
+String? _highlightName(
+  DomainMatrix? matrix,
+  List<SwimlaneLane> lanes,
+  String? domainId,
+) {
+  if (domainId == null) return null;
+  for (final row in matrix?.rows ?? const <DomainRow>[]) {
+    if (row.domainId == domainId) return row.domainName;
+  }
+  for (final lane in lanes) {
+    if (lane.domainId == domainId) return lane.name;
+  }
+  return null;
+}
+
+/// 投影列轉元件列：domain 列列首為 `domainName` 原值；畫面列與未定位列
+/// 不帶名稱與 domainId，列首由元件走 i18n。
+SwimlaneLane _toSwimlaneLane(DomainLane lane, String? selectedDomainId) =>
+    SwimlaneLane(
+      name: lane.domainName ?? '',
+      kind: switch (lane.kind) {
+        DomainLaneKind.screen => SwimlaneLaneKind.screen,
+        DomainLaneKind.domain => SwimlaneLaneKind.domain,
+        DomainLaneKind.unplaced => SwimlaneLaneKind.unplaced,
+      },
+      domainId: lane.domainId,
+      nodes: [
+        for (final node in lane.nodes)
+          (
+            SwimlaneNode(
+              label: node.stepLabel,
+              isActive:
+                  selectedDomainId != null &&
+                  node.stepTraverses.contains(selectedDomainId),
+            ),
+            node.column,
+          ),
+      ],
+    );
+
+SwimlaneEdge _toSwimlaneEdge(DomainLaneEdge edge) => SwimlaneEdge(
+  fromColumn: edge.fromColumn,
+  toColumn: edge.toColumn,
+  shape: switch (edge.shape) {
+    DomainLaneEdgeShape.straight => SwimlaneEdgeShape.straight,
+    DomainLaneEdgeShape.arc => SwimlaneEdgeShape.arc,
+  },
+);
 
 Relation _toRelation(DomainRelation relation) => switch (relation) {
   DomainRelation.direct => Relation.direct,

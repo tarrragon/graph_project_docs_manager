@@ -9,9 +9,16 @@
 /// 單一 [_FlowStepFixture] 清單是矩陣格詳情、矩陣關係符號、列小計、泳道
 /// 節點四者的共同來源——`traverses` 包含即為該格「直接貫穿」，
 /// 與 SPEC-001 §1〈矩陣格與泳道列的判定依據 FlowStep.traverses〉一致。
+///
+/// 本檔屬測試資料建構器（0.5.0-W1-114.21 自 lib 搬入）：畫面只讀 state，
+/// 測試經 [domainFixtureOverrides] 把本檔資料注入 `domainViewStateProvider`
+/// 與 `domainSwimlaneProvider`，不再有 production 讀取路徑。
 library;
 
-import 'domain_view_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+import 'package:graph_project_docs_manager/app/selected_uc.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 
 /// 單一步驟的 fixture：標籤 + 直接觸及的 domain 清單 + 發出／消費事件。
 class _FlowStepFixture {
@@ -185,6 +192,18 @@ abstract final class DomainViewFixtures {
     );
   }
 
+  /// 矩陣投影（欄 = [ucColumns]，列 = [rows]），形狀同 `DomainReady.matrix`。
+  static DomainMatrix get matrix =>
+      DomainMatrix(columns: ucColumns, rows: rows);
+
+  /// 注入用的泳道投影：`UC-06` 無 FlowStep 為未結構化；未選定為 `null`。
+  static DomainSwimlaneView? swimlaneFor(String? ucId) {
+    if (ucId == null) return null;
+    final uc = ucColumns.firstWhere((u) => u.id == ucId);
+    if (!uc.hasFlowStep) return const DomainSwimlaneUnstructured();
+    return DomainSwimlane(lanes: lanesForUc(ucId), edges: const []);
+  }
+
   /// 泳道列（SPEC-001 §1 acceptance 第四項：泳道節點所屬列依
   /// `FlowStep.traverses`，欄序即步驟在該 UC 內的原始順序索引）。
   /// [ucId] 須為 `hasFlowStep == true` 的 UC，呼叫端保證（`UC-06` 不應
@@ -195,6 +214,7 @@ abstract final class DomainViewFixtures {
       for (final domainId in domainIds)
         DomainLane(
           domainId: domainId,
+          domainName: domainNames[domainId],
           nodes: [
             for (var i = 0; i < steps.length; i++)
               if (steps[i].traverses.contains(domainId))
@@ -208,3 +228,22 @@ abstract final class DomainViewFixtures {
     ];
   }
 }
+
+/// 帶 fixture 矩陣的 [DomainReady]（測試以 `overrideWith` 注入）。
+DomainReady fixtureReady({
+  DomainMode mode = DomainMode.matrix,
+  String? selectedDomainId,
+}) => DomainReady(
+  mode: mode,
+  selectedDomainId: selectedDomainId,
+  matrix: DomainViewFixtures.matrix,
+);
+
+/// 注入 fixture 矩陣狀態與依選定 UC 投影的泳道。
+List<Override> domainFixtureOverrides({DomainMode mode = DomainMode.matrix}) =>
+    [
+      domainViewStateProvider.overrideWith((ref) => fixtureReady(mode: mode)),
+      domainSwimlaneProvider.overrideWith(
+        (ref) => DomainViewFixtures.swimlaneFor(ref.watch(selectedUcProvider)),
+      ),
+    ];

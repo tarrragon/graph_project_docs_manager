@@ -24,7 +24,6 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
@@ -34,6 +33,7 @@ import 'package:graph_project_docs_manager/screens/project_switcher/project_swit
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import '../../helpers/domain_view_fixtures.dart';
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/helpers.dart';
 import '../../helpers/stub_workspace_repository.dart';
@@ -123,7 +123,12 @@ void main() {
       '渲染 TwoColumnLayout[Panel[MatrixGrid, BadgeRow.legend], '
       'Panel.scrollable[EmptyState.section]]',
       (tester, size) async {
-        await pumpHarness(tester, child: const DomainViewScreen(), size: size);
+        await pumpHarness(
+          tester,
+          child: const DomainViewScreen(),
+          overrides: domainFixtureOverrides(),
+          size: size,
+        );
 
         expect(AnchorFinder.state(Screen.domain, 'matrix'), findsOneWidget);
         expect(find.byType(TwoColumnLayout), findsOneWidget);
@@ -142,6 +147,7 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const DomainViewScreen(),
+        overrides: domainFixtureOverrides(),
       );
 
       await tester.tap(find.byKey(const Key('cell-domain-workspace-UC-02')));
@@ -159,7 +165,11 @@ void main() {
     });
 
     testWidgets('已選格「無關」格顯示 cellDetailNotInvolved，不渲染步驟', (tester) async {
-      await pumpHarness(tester, child: const DomainViewScreen());
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: domainFixtureOverrides(),
+      );
 
       await tester.tap(find.byKey(const Key('cell-domain-schema-UC-02')));
       await tester.pumpAndSettle();
@@ -169,7 +179,11 @@ void main() {
     });
 
     testWidgets('action-domain-cell-clear → 回到未選格', (tester) async {
-      await pumpHarness(tester, child: const DomainViewScreen());
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: domainFixtureOverrides(),
+      );
 
       await tester.tap(find.byKey(const Key('cell-domain-workspace-UC-02')));
       await tester.pumpAndSettle();
@@ -184,7 +198,11 @@ void main() {
     });
 
     testWidgets('Esc 清除選取（同 action-domain-cell-clear 效果）', (tester) async {
-      await pumpHarness(tester, child: const DomainViewScreen());
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: domainFixtureOverrides(),
+      );
 
       await tester.tap(find.byKey(const Key('cell-domain-workspace-UC-02')));
       await tester.pumpAndSettle();
@@ -201,6 +219,7 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const DomainViewScreen(),
+        overrides: domainFixtureOverrides(),
       );
 
       await tester.tap(find.byKey(const Key('cell-domain-workspace-UC-02')));
@@ -218,6 +237,7 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const DomainViewScreen(),
+        overrides: domainFixtureOverrides(),
       );
 
       await tester.tap(find.byKey(const Key('cell-domain-workspace-UC-02')));
@@ -245,6 +265,7 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const DomainViewScreen(),
+        overrides: domainFixtureOverrides(),
       );
 
       await tester.tap(find.byKey(const Key('cell-domain-workspace-UC-02')));
@@ -268,9 +289,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
-            (ref) => const DomainReady(mode: DomainMode.swimlane),
-          ),
+          ...domainFixtureOverrides(mode: DomainMode.swimlane),
           selectedUcProvider.overrideWith((ref) => 'UC-02'),
         ],
         size: size,
@@ -302,9 +321,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
-            (ref) => const DomainReady(mode: DomainMode.swimlane),
-          ),
+          ...domainFixtureOverrides(mode: DomainMode.swimlane),
           selectedUcProvider.overrideWith((ref) => 'UC-02'),
         ],
       );
@@ -341,11 +358,7 @@ void main() {
       await pumpHarness(
         tester,
         child: const DomainViewScreen(),
-        overrides: [
-          domainViewStateProvider.overrideWith(
-            (ref) => const DomainReady(mode: DomainMode.swimlane),
-          ),
-        ],
+        overrides: [...domainFixtureOverrides(mode: DomainMode.swimlane)],
         size: size,
       );
 
@@ -376,9 +389,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
-            (ref) => const DomainReady(mode: DomainMode.swimlane),
-          ),
+          ...domainFixtureOverrides(mode: DomainMode.swimlane),
           selectedUcProvider.overrideWith((ref) => 'UC-06'),
         ],
         size: size,
