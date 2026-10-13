@@ -690,7 +690,7 @@ def test_no_map_anywhere_with_domain_field_reports_no_map_not_layer(tmp_path, mo
     assert "找不到任何 domain map" in out and "層級 SPEC" not in out
 
 
-@pytest.mark.parametrize("raw", ["[a, b]", "[a,b]", "a b", "'my domain'", "a,b"])
+@pytest.mark.parametrize("raw", ["[a, b]", "[a,b]", "[ui]", "a b", "'my domain'", "a,b"])
 def test_domain_field_not_single_name_is_format_error(tmp_path, monkeypatch, capsys, raw):
     """domain 欄含方括號、逗號或空白：格式錯誤 rc=1，印出實際值，不走層級判定。"""
     monkeypatch.chdir(tmp_path)
@@ -729,12 +729,14 @@ def test_domain_field_with_trailing_comment_is_plain_name(tmp_path, monkeypatch,
 
 
 def test_system_layer_directory_with_listing_map_reports_error(tmp_path, monkeypatch, capsys):
-    """非層級路徑：map 列入本 SPEC 時定位函式會附加系統層；系統層為目錄不得 traceback。"""
+    """非層級路徑：map 列入本 SPEC 時系統層是聯集成員；系統層為目錄須報錯非 0，不得靜默略過。"""
     monkeypatch.chdir(tmp_path)
     spec = _layer_fixture(tmp_path, system=None)
     (tmp_path / "docs/system-layer.md").mkdir()
     _listing_map(tmp_path, "| FR-01~02 | A |\n")
-    assert cdc.main([str(spec)]) == 0
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "是目錄" in out and "通過" not in out
 
 
 def test_directory_as_spec_path_reports_error(tmp_path, monkeypatch, capsys):
@@ -742,6 +744,15 @@ def test_directory_as_spec_path_reports_error(tmp_path, monkeypatch, capsys):
     (tmp_path / "somedir").mkdir()
     assert cdc.main(["somedir"]) == 1
     assert "是目錄" in capsys.readouterr().out
+
+
+def test_directory_error_message_separates_flag_name(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-101-x.md"
+    _write(spec, LAYER_SPEC)
+    (tmp_path / "mapdir").mkdir()
+    cdc.main([str(spec), "--domain-map", "mapdir"])
+    assert "--domain-map 是目錄" in capsys.readouterr().out
 
 
 def test_directory_as_domain_map_reports_error(tmp_path, monkeypatch, capsys):
@@ -1251,3 +1262,46 @@ def test_declared_false_inline_comment_before_heading_not_contradiction(tmp_path
 def test_declared_false_heading_after_comment_line_contradicts(tmp_path, capsys):
     rc, _ = _run_nomap(tmp_path, _fm("false") + "# s\n<!-- c -->\n## FR-01 x\n", capsys)
     assert rc != 0
+
+
+# --- domain 欄格式檢查的適用範圍：只在 domain 欄會被消費處（定位鏈為空且未帶旗標）---
+
+BAD_DOMAIN_RAWS = ["[a, b]", "a b"]
+
+
+@pytest.mark.parametrize("raw", BAD_DOMAIN_RAWS)
+def test_bad_domain_field_ignored_when_same_dir_map_covers(tmp_path, monkeypatch, capsys, raw):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-101-x.md"
+    _write(spec, LAYER_SPEC.replace('"ui"', raw))
+    _write(tmp_path / "domain-map.md", "---\nsource_specs: [SPEC-101]\n---\n## SPEC-101\n| FR-01~02 | A |\n")
+    assert cdc.main([str(spec)]) == 0
+
+
+@pytest.mark.parametrize("raw", BAD_DOMAIN_RAWS)
+def test_bad_domain_field_ignored_with_explicit_domain_map(tmp_path, monkeypatch, capsys, raw):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-101-x.md"
+    _write(spec, LAYER_SPEC.replace('"ui"', raw))
+    _write(tmp_path / "m.md", "## SPEC-101\n| FR-01~02 | A |\n")
+    assert cdc.main([str(spec), "--domain-map", "m.md"]) == 0
+
+
+@pytest.mark.parametrize("raw", BAD_DOMAIN_RAWS)
+def test_bad_domain_field_ignored_when_declared_no_fr(tmp_path, monkeypatch, capsys, raw):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-101-x.md"
+    _write(spec, f"---\nid: SPEC-101\ndomain: {raw}\nhas_functional_requirements: false\n---\n# s\n")
+    assert cdc.main([str(spec)]) == 0
+
+
+# --- 引號與井號殘留：去掉瑕疵後是已宣告 domain 的值不得改走系統層通過 ---
+
+@pytest.mark.parametrize("raw", ["\"a", "a#b", "\"a#b\"", "'a"])
+def test_malformed_quote_or_hash_domain_is_format_error_not_layer(tmp_path, monkeypatch, capsys, raw):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, spec_domain="a", system="## SPEC-101\n| FR-01~02 | sys |\n")
+    spec.write_text(LAYER_SPEC.replace('"ui"', raw), encoding="utf-8")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "通過" not in out and "單一 domain 名稱" in out

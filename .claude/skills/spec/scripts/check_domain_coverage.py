@@ -496,7 +496,7 @@ def locate_domain_maps_with_reason(spec_path, explicit, spec_id=None):
             found.append(m)
             seen.add(m.resolve())
     if found:
-        return found + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.is_file() else []), None, unparseable
+        return found + ([SYSTEM_LAYER_PATH] if SYSTEM_LAYER_PATH.exists() else []), None, unparseable
     if LEGACY_DOMAIN_MAP_PATH.exists():
         return [LEGACY_DOMAIN_MAP_PATH], None, unparseable
     return [], _diagnose_missing(explicit, spec_id, unparseable), unparseable
@@ -537,8 +537,17 @@ def describe_missing_map(reason, explicit=None, unparseable=()):
 
 
 DOMAIN_FIELD_RE = re.compile(r"^domain:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
-DOMAIN_NOT_SINGLE_NAME_RE = re.compile(r"[\[\],\s]")
+DOMAIN_NOT_SINGLE_NAME_RE = re.compile(r"[\[\],\s\"'#]")
 YAML_NULL_LITERALS = frozenset({"", "~", "null"})
+
+
+def _unquote_domain(raw):
+    """先配對引號再剝尾端註解：引號配對成功取其內容；未配對的引號與值內井號原樣保留（交給格式檢查）。"""
+    if raw[:1] in ("\"", "'") and raw.find(raw[0], 1) > 0:
+        end = raw.find(raw[0], 1)
+        if not raw[end + 1:].strip() or raw[end + 1:].lstrip().startswith("#"):
+            return raw[1:end]
+    return TRAILING_COMMENT_RE.sub("", raw).strip()
 
 
 def _frontmatter_domain(text):
@@ -550,9 +559,7 @@ def _frontmatter_domain(text):
     found = DOMAIN_FIELD_RE.search(block.group(1)) if block else None
     if not found:
         return None
-    value = TRAILING_COMMENT_RE.sub("", found.group(1)).strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        value = value[1:-1]
+    value = _unquote_domain(found.group(1))
     return None if value.lower() in YAML_NULL_LITERALS else value
 
 
@@ -561,7 +568,7 @@ def domain_format_error(spec_text):
     domain = _frontmatter_domain(spec_text)
     if domain and DOMAIN_NOT_SINGLE_NAME_RE.search(domain):
         return (f"domain 覆蓋檢核失敗：SPEC frontmatter 的 domain 欄讀到 {domain!r}，"
-                "該欄須為單一 domain 名稱（不可為清單或含空白）。")
+                "該欄須為單一 domain 名稱（不可為清單、含空白、引號殘留或井號）。")
     return None
 
 
@@ -757,18 +764,13 @@ def main(argv=None):
     spec_path = Path(args.spec_path)
     for label, path in (("spec 路徑", spec_path), ("--domain-map", Path(args.domain_map) if args.domain_map else None)):
         if path is not None and path.is_dir():
-            print(f"domain 覆蓋檢核：{label}是目錄，需為檔案：{path}")
+            print(f"domain 覆蓋檢核：{label} 是目錄，需為檔案：{path}")
             return 1
     spec_text = spec_path.read_text(encoding="utf-8")
 
     unclosed = mask_fenced_blocks(spec_text)[1]
     if unclosed is not None:
         print(f"domain 覆蓋檢核失敗：第 {unclosed} 行開啟的圍欄程式碼區塊未閉合，其後內容未被檢視（未執行覆蓋比對）")
-        return 1
-
-    format_error = domain_format_error(spec_text)
-    if format_error:
-        print(format_error)
         return 1
 
     early = judge_fr_declaration(spec_text)
@@ -782,6 +784,12 @@ def main(argv=None):
         spec_path, args.domain_map, extract_spec_id(spec_text, spec_path))
     # 層級判定只在原定位鏈找不到任何 map、且 domain 欄非已宣告 domain 時成立；
     # 有 map 時照原鏈，無 map 但 domain 欄為已宣告 domain 是漏登記，維持紅
+    if not domain_map_paths and args.domain_map is None:
+        # domain 欄只在此處被消費（進入層級判定），格式檢查限於此路徑
+        format_error = domain_format_error(spec_text)
+        if format_error:
+            print(format_error)
+            return 1
     layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
     if layer_mode:
         print(layer_banner(spec_text))
@@ -792,6 +800,9 @@ def main(argv=None):
             print(describe_missing_system_layer())
             return 1
         domain_map_paths = [SYSTEM_LAYER_PATH]
+    if SYSTEM_LAYER_PATH in domain_map_paths and SYSTEM_LAYER_PATH.is_dir():
+        print(f"domain 覆蓋檢核：系統層 {SYSTEM_LAYER_PATH} 是目錄，需為檔案。")
+        return 1
     if not domain_map_paths:
         print(describe_missing_map(reason, args.domain_map, unparseable))
         return 1
