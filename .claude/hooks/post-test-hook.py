@@ -17,7 +17,6 @@
 import json
 import os
 import re
-import subprocess
 import sys
 from datetime import datetime
 from enum import Enum
@@ -211,11 +210,16 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
 
     message = ""
     if duration >= AUTO_KILL_THRESHOLD:
-        subprocess.run(["pkill", "-f", "flutter_tester"], capture_output=True,
-        encoding="utf-8",
-        errors="replace")
-        message = f"測試執行 {duration_minutes:.1f} 分鐘，已自動終止 flutter_tester"
-        monitor_data["action"] = "auto_killed"
+        # 不終止任何程序：此時自身測試已返回，pkill 全機範圍只會波及其他 session
+        message = (
+            f"嚴重警告：測試執行 {duration_minutes:.1f} 分鐘，已達上限。"
+            "可能殘留孤兒測試程序；請先執行 "
+            "python3 .claude/scripts/orphan-test-procs.py 列出本專案孤兒程序，"
+            "確認後再加 --kill 終止"
+        )
+        print(f"[WARNING] {message}", file=sys.stderr)
+        logger.warning(f"timeout: {message}")
+        monitor_data["action"] = "limit_warning"
     elif duration >= CRITICAL_THRESHOLD:
         message = f"嚴重警告：測試執行 {duration_minutes:.1f} 分鐘，建議手動終止"
         monitor_data["action"] = "critical_warning"
