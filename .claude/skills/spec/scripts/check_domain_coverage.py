@@ -738,6 +738,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     spec_path = Path(args.spec_path)
+    for label, path in (("spec 路徑", spec_path), ("--domain-map", Path(args.domain_map) if args.domain_map else None)):
+        if path is not None and path.is_dir():
+            print(f"domain 覆蓋檢核：{label}是目錄，需為檔案：{path}")
+            return 1
     spec_text = spec_path.read_text(encoding="utf-8")
 
     unclosed = mask_fenced_blocks(spec_text)[1]
@@ -759,6 +763,9 @@ def main(argv=None):
     layer_mode = not domain_map_paths and args.domain_map is None and is_layer_spec(spec_text)
     if layer_mode:
         print(layer_banner(spec_text))
+        if SYSTEM_LAYER_PATH.is_dir():
+            print(f"domain 覆蓋檢核：系統層 {SYSTEM_LAYER_PATH} 是目錄，需為檔案。")
+            return 1
         if not SYSTEM_LAYER_PATH.exists():
             print(describe_missing_system_layer())
             return 1

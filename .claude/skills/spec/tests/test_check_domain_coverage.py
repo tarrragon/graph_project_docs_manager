@@ -667,13 +667,51 @@ def test_r1_map_listing_spec_wins_over_layer_red_to_green(tmp_path, monkeypatch,
     assert cdc.main([str(spec)]) == 0
 
 
-def test_r1_map_listing_spec_wins_over_layer_green_to_red(tmp_path, monkeypatch, capsys):
+def test_r1_map_listing_uncovered_fr_is_red_without_system_layer_attribution(tmp_path, monkeypatch, capsys):
     """有 map 列入但未覆蓋 FR-02，系統層只有無歸屬的 FR 文字：照原鏈判定為紅（系統層無 SPEC 歸屬的 FR 不計入）。"""
     monkeypatch.chdir(tmp_path)
     spec = _layer_fixture(tmp_path, system="| FR-01~02 | sys |\n")
     _listing_map(tmp_path, "| FR-01 | A |\n")
     assert cdc.main([str(spec)]) == 1
-    assert "FR-02" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    # 判定優先序守護：有 map 列入時不得走層級判定（層級判定優先時，此處改印層級橫幅與系統層標題）
+    assert "FR-02" in out and "層級 SPEC" not in out and "未在 domain map 覆蓋" in out
+
+
+def test_no_map_anywhere_with_domain_field_reports_no_map_not_layer(tmp_path, monkeypatch, capsys):
+    """已宣告集合條件守護：專案完全無 map（宣告集合為空）時，domain 欄不是層級依據，
+    即使系統層完整覆蓋仍報找不到任何 domain map。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, LAYER_SPEC)
+    _write(tmp_path / "docs/system-layer.md", "## SPEC-101\n| FR-01~02 | sys |\n")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "找不到任何 domain map" in out and "層級 SPEC" not in out
+
+
+def test_directory_as_spec_path_reports_error(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "somedir").mkdir()
+    assert cdc.main(["somedir"]) == 1
+    assert "是目錄" in capsys.readouterr().out
+
+
+def test_directory_as_domain_map_reports_error(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "SPEC-101-x.md"
+    _write(spec, LAYER_SPEC)
+    (tmp_path / "mapdir").mkdir()
+    assert cdc.main([str(spec), "--domain-map", "mapdir"]) == 1
+    assert "是目錄" in capsys.readouterr().out
+
+
+def test_directory_as_system_layer_reports_error(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system=None)
+    (tmp_path / "docs/system-layer.md").mkdir()
+    assert cdc.main([str(spec)]) == 1
+    assert "是目錄" in capsys.readouterr().out
 
 
 def test_r1_no_map_declared_domain_is_red_not_system_layer(tmp_path, monkeypatch, capsys):
