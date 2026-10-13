@@ -262,6 +262,12 @@ RUNNER_CASES = [
     ("python /opt/app/serve /x/.venv/bin/pytest", False),
     # 目錄名以執行器名結尾且後接空白
     ("/Users/me/pytest runs/bin/python server.py", False),
+    ("/Users/me/pytest runs/tool --flag", False),
+    ("/Users/me/flutter_tester backup/run.sh", False),
+    # 次詞為含斜線的直譯器路徑，但首詞是真實執行器：認定
+    ("/repo/.venv/bin/pytest /repo/tests/python", True),
+    ("pytest /repo/scripts/python3", True),
+    ("jest /repo/src/node", True),
     # 帶值選項：遇到即不認定（兩個方向）
     ("python3 -W /repo/pytest other.py", False),
     ("node --require /repo/node_modules/.bin/jest server.js", False),
@@ -275,8 +281,24 @@ RUNNER_CASES = [
 
 
 @pytest.mark.parametrize("command,expected", RUNNER_CASES)
-def test_is_runner_table(command, expected):
-    assert _load().is_runner(command) is expected
+def test_is_runner_table(command, expected, monkeypatch):
+    mod = _load()
+    # 除明列的半截路徑外，視所有絕對路徑檔案為存在
+    missing = {"/Users/me/pytest", "/Users/me/flutter_tester"}
+    monkeypatch.setattr(mod, "_is_regular_file", lambda path: path not in missing)
+    assert mod.is_runner(command) is expected
+
+
+def test_absolute_first_token_must_exist(tmp_path):
+    mod = _load()
+    real = tmp_path / "pytest"
+    real.write_text("")
+    assert mod.is_runner(f"{real} -x") is True
+    assert mod.is_runner(f"{tmp_path}/gone/pytest -x") is False
+    assert mod.is_runner(f"{tmp_path} /pytest") is False
+    # 目錄不是一般檔案
+    (tmp_path / "jest").mkdir()
+    assert mod.is_runner(f"{tmp_path}/jest") is False
 
 
 def _fake_world(mod, monkeypatch, root, *, alive=True, same=True):

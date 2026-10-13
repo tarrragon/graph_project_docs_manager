@@ -16,6 +16,7 @@
 特殊情形：
 - 工作目錄無法取得或已刪除：無法確認屬於本專案，不終止，僅列為「略過」。
 - 子程序自行脫離群組但父程序仍存活：父程序非 1，不符合，不列出。
+- 首詞為絕對路徑但該檔案不存在（含執行檔已被刪除的程序）：不認定。
 - 命令列的詞界無法由 ps 分辨，認定只看首詞（見 is_runner）：執行檔路徑含空白、
   直譯器帶值選項、測試執行器的工作程序皆不支援，寧可漏認，不可誤認。
 """
@@ -105,15 +106,23 @@ def _interpreter_runs_runner(rest: List[str]) -> bool:
     return _script_name(first) in RUNNERS
 
 
+def _is_regular_file(path: str) -> bool:
+    """磁碟上是否存在該一般檔案（獨立成函式，供測試替換）。"""
+    return os.path.isfile(path)
+
+
 def is_runner(command: str) -> bool:
-    """只看首詞；後方任何詞都不用來推測被空白切斷的路徑（寧可漏認，不可誤認）。"""
+    """只看首詞；後方任何詞都不用來推測被空白切斷的路徑（寧可漏認，不可誤認）。
+
+    首詞為絕對路徑時須為磁碟上存在的一般檔案：被空白切斷的半截路徑不是檔案。
+    """
     tokens = command.split()
     if not tokens or not _is_known_executable(tokens[0]):
         return False
+    if os.path.isabs(tokens[0]) and not _is_regular_file(tokens[0]):
+        return False
     if _base(tokens[0]) in RUNNERS:
-        # 首詞疑為被空白切斷的目錄名（如 /x/pytest runs/bin/python）
-        cut = len(tokens) > 1 and "/" in tokens[1] and bool(INTERPRETER_RE.match(_base(tokens[1])))
-        return not cut
+        return True
     return _interpreter_runs_runner(tokens[1:])
 
 
