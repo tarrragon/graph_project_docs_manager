@@ -755,10 +755,28 @@ def check_layer_coverage(spec_text, system_text, spec_path=None):
 
 
 def describe_attribution_remedy(where, spec_id):
-    """未覆蓋尾行的補法：歸屬的比對鍵是 SPEC 識別，只列出 FR 而不帶 SPEC 識別不會使檢核轉為通過。"""
+    """未覆蓋尾行的補法：歸屬的比對鍵是 SPEC 識別，檔內已有任何 SPEC 歸屬時，只列出 FR 而不帶 SPEC 識別不會使檢核轉為通過。"""
     if spec_id is None:
         return f"請{where}補上這些 FR。"
     return f"請{where}補上這些 FR 的歸屬：FR 所在的章節標題含 {spec_id}，或在同一行、該 FR 之前寫出 {spec_id}。"
+
+
+def describe_default_assigned(named_texts, spec_id):
+    """整份無歸屬而走預設計給的檔（系統層除外）的補充說明；無此類檔回空字串。
+
+    這類檔寫入任一 SPEC id 即轉為部分歸屬，檔內其餘未歸屬的 FR 不再計入，故須整檔一併歸屬。
+    """
+    if spec_id is None:
+        return ""
+    names = []
+    for name, text in named_texts:
+        attributed, unattributed = extract_fr_attribution(text)
+        if not attributed and unattributed and Path(name).name != SYSTEM_LAYER_PATH.name:
+            names.append(name)
+    if not names:
+        return ""
+    return (f"其中 {', '.join(names)} 目前無任何 SPEC 歸屬，直接列出這些 FR 即可；"
+            f"若於該檔寫入任一 SPEC id，檔內其餘 FR 須一併歸屬到 {spec_id}。")
 
 
 def warn_unattributed_uncovered(named_texts, uncovered):
@@ -797,7 +815,8 @@ def _report_domain_coverage(spec_text, domain_map_paths, spec_path=None, layer_m
         print(f"（系統層：{domain_map_path}）層級 SPEC 以系統層判定，{describe_attribution_remedy('於系統層', spec_id)}")
         return 1
     warn_unattributed_uncovered(named_texts, uncovered)
-    print(f"（domain map：{domain_map_path}）{describe_attribution_remedy('於 domain map ', spec_id)}")
+    tail = describe_attribution_remedy('於 domain map ', spec_id) + describe_default_assigned(named_texts, spec_id)
+    print(f"（domain map：{domain_map_path}）{tail}")
     return 1
 
 

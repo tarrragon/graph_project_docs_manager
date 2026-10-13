@@ -2,7 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
-**Version**: 1.9.9 — 本地變更：`scripts/check_domain_coverage.py` 的未覆蓋尾行不再寫死 domain map 的節號，改說明實際可行的補法：把 FR 歸屬到本 SPEC（FR 所在的章節標題含本 SPEC id，或在同一行、該 FR 之前寫出本 SPEC id；id 寫在 FR 之後不歸屬）；取不到 SPEC 識別時僅提示補上這些 FR。層級路徑的尾行原只說「逐條列出歸屬」未說明須帶 SPEC id（只列 FR 補了仍為紅），一併改為同一補法。另新增 stderr 提示：部分歸屬的檔內，未覆蓋的 FR 落在其未歸屬集合時列該檔名與 FR（不改 exit code；整份無歸屬的檔 FR 已計給受檢 SPEC，不列；同一 FR 出現在多份檔時各列一次）。exit code 與判定結果不變，stdout 僅尾行文字改變；本專案七份 SPEC 修改前後 exit code、stdout 逐字不變，stderr 皆為 0 行
+**Version**: 1.9.9 — 本地變更：`scripts/check_domain_coverage.py` 的未覆蓋尾行不再寫死 domain map 的節號，改說明實際可行的補法：把 FR 歸屬到本 SPEC（FR 所在的章節標題含本 SPEC id，或在同一行、該 FR 之前寫出本 SPEC id；id 寫在 FR 之後不歸屬）；取不到 SPEC 識別時僅提示補上這些 FR。層級路徑的尾行原只說「逐條列出歸屬」未說明須帶 SPEC id（只列 FR 補了仍為紅），一併改為同一補法。另新增 stderr 提示：部分歸屬的檔內，未覆蓋的 FR 落在其未歸屬集合時列該檔名與 FR（不改 exit code；整份無歸屬的檔 FR 已計給受檢 SPEC，不列；同一 FR 出現在多份檔時各列一次）。判定集合內有整份無歸屬而走預設計給的檔時，尾行另指名該檔：直接列出 FR 即可，若寫入任一 SPEC id 須將檔內其餘 FR 一併歸屬（否則轉為部分歸屬而其餘 FR 不再計入）；只列 FR 不帶 id 不通過的說法限定於檔內已有 SPEC 歸屬時。exit code 與判定結果不變，stdout 僅尾行文字改變；本專案七份 SPEC 修改前後 exit code、stdout 逐字不變，stderr 皆為 0 行
 
 **Version**: 1.9.8 — 本地變更：`scripts/check_domain_coverage.py` 層級模式（以系統層判定）下 SPEC 的 id 無法辨識（frontmatter 的 id 非 SPEC-NNN 形式，或無 id 且檔名無 SPEC-NNN 前綴）時，改輸出「spec id 無法辨識」訊息：成因子句與非層級路徑共用，下一步為修正 id 為 SPEC-NNN 形式，不建議 `--domain-map`（層級模式不走相容比對）；frontmatter 有 id 時只看該 id，不退看檔名；攔截在系統層存在檢查之後；不再印「N 個 FR 未在系統層覆蓋」並指使用者去系統層補歸屬（補了仍為紅）；移除 `check_layer_coverage` 內取不到 id 即全部未覆蓋的、已到不了的分支。exit code 維持 1。另 spec id 無法辨識且找不到任何 map 時，source_specs 格式無法解析的 map 也於 stderr 列名（原不列；成因為 source_specs 無法解析時檔名已在 stdout 訊息，不重複）。其餘路徑的 exit code 與輸出不變，本專案七份 SPEC 修改前後 exit code、stdout、stderr 逐字不變
 

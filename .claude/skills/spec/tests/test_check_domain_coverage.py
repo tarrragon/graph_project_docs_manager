@@ -1685,3 +1685,93 @@ def test_following_layer_tail_turns_check_green(tmp_path, monkeypatch, capsys):
     assert LAYER_TAIL in capsys.readouterr().out
     (tmp_path / "docs/system-layer.md").write_text("## SPEC-101 覆蓋\n| FR-01~02 | sys |\n", encoding="utf-8")
     assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+# --- 各 map 形態照尾行操作（整份無歸屬、並存、系統層）---
+
+DEFAULT_MARK = "目前無任何 SPEC 歸屬，直接列出這些 FR 即可；若於該檔寫入任一 SPEC id，檔內其餘 FR 須一併歸屬到 SPEC-101。"
+
+
+def _no_attr_fixture(tmp_path, monkeypatch, body="| FR-01 | A |\n"):
+    return _partial_fixture(tmp_path, monkeypatch, body, source_specs="[SPEC-101]")
+
+
+def _rewrite_a(tmp_path, body):
+    (tmp_path / "docs/spec/a/domain-map.md").write_text("---\nsource_specs: [SPEC-101]\n---\n" + body, encoding="utf-8")
+
+
+def test_no_attribution_map_tail_names_file_and_warns_about_whole_file(tmp_path, monkeypatch, capsys):
+    spec = _no_attr_fixture(tmp_path, monkeypatch)
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "docs/spec/a/domain-map.md " + DEFAULT_MARK in out and MAP_TAIL in out
+
+
+def test_no_attribution_map_following_tail_listing_fr_turns_green(tmp_path, monkeypatch, capsys):
+    spec = _no_attr_fixture(tmp_path, monkeypatch)
+    assert cdc.main([str(spec)]) == 1
+    _rewrite_a(tmp_path, "| FR-01~03 | A |\n")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_no_attribution_map_following_tail_all_with_id_turns_green(tmp_path, monkeypatch, capsys):
+    spec = _no_attr_fixture(tmp_path, monkeypatch)
+    assert cdc.main([str(spec)]) == 1
+    _rewrite_a(tmp_path, "| SPEC-101 | FR-01~03 | A |\n")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_no_attribution_map_id_on_single_fr_turns_other_fr_red(tmp_path, monkeypatch, capsys):
+    """尾行所預告的行為：只對單一 FR 補 id，檔轉為部分歸屬，其餘 FR 不再計入。"""
+    spec = _no_attr_fixture(tmp_path, monkeypatch, "| FR-01,03 | A |\n")
+    assert cdc.main([str(spec)]) == 1  # FR-02 未覆蓋
+    capsys.readouterr()
+    _rewrite_a(tmp_path, "| FR-01,03 | A |\n| SPEC-101 | FR-02 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+    out = capsys.readouterr().out
+    assert "FR-01" in out and "FR-03" in out and "FR-02\n" not in out
+
+
+def test_default_sentence_absent_when_all_files_have_attribution(tmp_path, monkeypatch, capsys):
+    spec = _partial_fixture(tmp_path, monkeypatch, "| FR-01 | A |\n## SPEC-101\n| FR-02 | B |\n")
+    assert cdc.main([str(spec)]) == 1
+    assert "目前無任何 SPEC 歸屬" not in capsys.readouterr().out
+
+
+def test_mixed_files_sentence_names_only_default_file_and_hint_only_partial_file(tmp_path, monkeypatch, capsys):
+    spec = _partial_fixture(tmp_path, monkeypatch, "| FR-01 | A |\n",
+                            "| FR-03 | x |\n## SPEC-101\n| FR-02 | B |\n", source_specs="[SPEC-101]")
+    assert cdc.main([str(spec)]) == 1
+    cap = capsys.readouterr()
+    assert "docs/spec/a/domain-map.md " + DEFAULT_MARK in cap.out and "docs/spec/b/domain-map.md 目前" not in cap.out
+    assert cap.err.count(PARTIAL_MARK) == 1 and "docs/spec/b/domain-map.md" in cap.err
+    b = tmp_path / "docs/spec/b/domain-map.md"
+    b.write_text("---\nsource_specs: [SPEC-101]\n---\n## SPEC-101\n| FR-03 | x |\n| FR-02 | B |\n", encoding="utf-8")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_system_layer_without_attribution_current_output_is_silent(tmp_path, monkeypatch, capsys):
+    """固定現況（不改行為）：系統層整份無歸屬且含未覆蓋的 FR，stderr 與尾行皆無說明。"""
+    spec = _no_attr_fixture(tmp_path, monkeypatch, "## SPEC-101\n| FR-01 | A |\n")
+    _write(tmp_path / "docs/system-layer.md", "| FR-02,03 | s |\n")
+    assert cdc.main([str(spec)]) == 1
+    cap = capsys.readouterr()
+    assert cap.err == "" and "目前無任何 SPEC 歸屬" not in cap.out and "FR-02" in cap.out
+
+
+def test_system_layer_partial_attribution_gets_hint_and_following_tail_turns_green(tmp_path, monkeypatch, capsys):
+    spec = _no_attr_fixture(tmp_path, monkeypatch, "## SPEC-101\n| FR-01 | A |\n")
+    _write(tmp_path / "docs/system-layer.md", "| FR-02 | s |\n## SPEC-101\n| FR-03 | s |\n")
+    assert cdc.main([str(spec)]) == 1
+    cap = capsys.readouterr()
+    assert cap.err.startswith("WARNING: docs/system-layer.md " + PARTIAL_MARK) and "FR-02" in cap.err
+    _write(tmp_path / "docs/system-layer.md", "## SPEC-101\n| FR-02 | s |\n| FR-03 | s |\n")
+    assert cdc.main([str(spec)]) == 0, capsys.readouterr().out
+
+
+def test_layer_mode_prints_no_partial_hint(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    spec = _layer_fixture(tmp_path, system="| FR-02 | z |\n## SPEC-101\n| FR-01 | s |\n")
+    assert cdc.main([str(spec)]) == 1
+    cap = capsys.readouterr()
+    assert LAYER_TAIL in cap.out and PARTIAL_MARK not in cap.err
