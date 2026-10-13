@@ -21,7 +21,7 @@
   claude-run-with-timeout-<uid>/（不在任何 repo 內，故不納入版控）。
   位置與工作目錄無關：主專案與各 git worktree 共用同一個目錄，
   清理端以登記中的工作目錄判斷是否屬於該專案範圍。
-- 檔案：wrapper-<本腳本PID>.json，內容為 JSON 物件，欄位：
+- 檔案：wrapper-<本腳本PID>-<啟動時間（非英數字元以 - 取代）>.json，內容為 JSON 物件，欄位：
   pgid、leader_start（群組領頭程序的 ps lstart）、wrapper_pid、wrapper_start、cwd、command（list）。
   先寫同目錄暫存檔再 os.replace 改名。
 - 正常結束、逾時、收到轉送訊號三條路徑皆移除登記；被 SIGKILL 時登記留存。
@@ -29,6 +29,7 @@
 """
 import json
 import os
+import re
 import tempfile
 import signal
 import subprocess
@@ -94,11 +95,26 @@ def process_start(pid: int) -> Optional[str]:
     """ps 的 lstart（秒級）；程序不存在或 ps 失敗回 None。"""
     try:
         res = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
-                             text=True, env={**os.environ, "LC_ALL": "C"})
+                             text=True, env={**os.environ, "LC_ALL": "C", "TZ": "UTC"})
     except OSError:
         return None
     out = res.stdout.strip()
     return out if res.returncode == 0 and out else None
+
+
+def _write_atomically(path: str, entry: dict) -> None:
+    """寫同目錄暫存檔再改名；任何失敗皆清除暫存檔後重新拋出。"""
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".tmp-")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            json.dump(entry, fh)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass  # 暫存檔已不存在（例如已改名）；原例外照常拋出
+        raise
 
 
 def register_group(pgid: int, command: List[str]) -> Optional[str]:
@@ -112,11 +128,10 @@ def register_group(pgid: int, command: List[str]) -> Optional[str]:
                  "wrapper_start": wrapper_start, "cwd": os.getcwd(), "command": command}
         directory = registry_dir()
         os.makedirs(directory, mode=0o700, exist_ok=True)
-        path = os.path.join(directory, f"wrapper-{os.getpid()}.json")
-        fd, tmp = tempfile.mkstemp(dir=directory, prefix=".tmp-")
-        with os.fdopen(fd, "w") as fh:
-            json.dump(entry, fh)
-        os.replace(tmp, path)
+        # 檔名含啟動時間：PID 繞回時不覆蓋舊登記
+        stamp = re.sub(r"[^0-9A-Za-z]+", "-", wrapper_start)
+        path = os.path.join(directory, f"wrapper-{os.getpid()}-{stamp}.json")
+        _write_atomically(path, entry)
         return path
     except (OSError, ValueError) as exc:
         sys.stderr.write(f"run-with-timeout: 無法寫入程序群組登記（不影響命令）：{exc}\n")

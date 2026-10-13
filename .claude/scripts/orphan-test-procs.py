@@ -21,9 +21,13 @@
 - 登記的包裝腳本仍存活（PID 存在且啟動時間相符）：略過。
 - 包裝腳本已不在、群組領頭程序存在且啟動時間與登記相符、群組仍有成員：可終止，--kill 時先 TERM 後 KILL
   （killpg 只對通過比對的登記群組使用），完成後移除登記。
-- 領頭程序啟動時間與登記不符，或領頭已不在但群組編號仍有成員（編號可能已被重用）：只列出原因、不送訊號，並移除過期登記。
-- 群組已無成員：移除過期登記。
-- 登記檔無法讀取／格式損壞：回報該筆後繼續，不中斷、不刪除；登記的工作目錄在專案範圍外者略過。
+  終止函式內 TERM 後領頭已退出而群組仍有成員者，視為同一群組繼續送 KILL；領頭仍在但啟動時間不符則不送，
+  回報未能終止（結束碼 1）。
+- 清理開始時領頭啟動時間與登記不符，或領頭已不在但群組編號仍有成員（編號可能已被重用）：只列出原因、不送訊號，並移除過期登記。
+- 群組已無成員：移除過期登記（不論登記的工作目錄是否在專案範圍內）。
+- 登記檔無法讀取／格式損壞（含 pgid 非大於 1 的整數、布林、浮點、等於本指令自身群組編號）：回報該筆後繼續，不中斷、不刪除、不送訊號；
+  登記的工作目錄在專案範圍外且群組仍有成員者略過。
+- ps 查詢失敗：該筆回報錯誤、不終止、保留登記，其餘登記與既有類別照常處理，結束碼 1。啟動時間固定以 UTC 比對。
 
 特殊情形：
 - 工作目錄無法取得或已刪除：無法確認屬於本專案，不終止，僅列為「略過」。
@@ -268,6 +272,20 @@ class RegEntry(NamedTuple):
     command: list
 
 
+def _valid_pgid(value) -> int:
+    """群組編號須為大於 1 的整數（布林、浮點、字串不接受），且不等於本指令自身的群組編號。
+
+    killpg(0) 會作用於呼叫者自己的群組，1 為 init；不合者視為損壞登記，不送任何訊號。
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"pgid 不是整數：{value!r}")
+    if value <= 1:
+        raise ValueError(f"pgid 必須大於 1：{value}")
+    if value == os.getpgrp():
+        raise ValueError(f"pgid 等於清理指令自身的群組編號：{value}")
+    return value
+
+
 def read_registry(directory: str):
     """回傳 (有效登記清單, 無法讀取者 [(路徑, 原因)])；目錄不存在視為空。"""
     entries, bad = [], []
@@ -285,7 +303,7 @@ def read_registry(directory: str):
                 data = json.load(fh)
             if not all(k in data for k in REGISTRY_FIELDS):
                 raise ValueError("缺少欄位")
-            entries.append(RegEntry(path, int(data["pgid"]), str(data["leader_start"]),
+            entries.append(RegEntry(path, _valid_pgid(data["pgid"]), str(data["leader_start"]),
                                     int(data["wrapper_pid"]), str(data["wrapper_start"]),
                                     str(data["cwd"]), list(data["command"])))
         except (OSError, ValueError, TypeError) as exc:
@@ -294,14 +312,16 @@ def read_registry(directory: str):
 
 
 def process_start(pid: int) -> Optional[str]:
-    """ps 的 lstart；程序不存在回 None。"""
+    """ps 的 lstart（固定 UTC，與 run-with-timeout.py 一致）；程序不存在回 None，查詢失敗拋 CommandError。"""
+    cmd = ["ps", "-o", "lstart=", "-p", str(pid)]
     try:
-        res = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True,
-                             text=True, env={**os.environ, "LC_ALL": "C"})
+        res = subprocess.run(cmd, capture_output=True, text=True,
+                             env={**os.environ, "LC_ALL": "C", "TZ": "UTC"})
     except OSError as exc:
         raise CommandError(f"無法執行 ps：{exc}")
-    out = res.stdout.strip()
-    return out if res.returncode == 0 and out else None
+    if res.returncode != 0 and (res.returncode != 1 or res.stderr.strip()):
+        raise CommandError(f"{' '.join(cmd)} 失敗（結束碼 {res.returncode}）：{res.stderr.strip()}")
+    return res.stdout.strip() or None
 
 
 def group_members(pgid: int) -> List[int]:
@@ -330,27 +350,46 @@ def judge_entry(e: RegEntry, wrapper_start_now, leader_start_now, members: List[
     return "killable", "包裝腳本已不在，群組領頭與登記相符"
 
 
-def terminate_registered(e: RegEntry, grace: float = GRACE_SECONDS) -> str:
-    """終止登記的群組；送訊號前與 KILL 前各重驗領頭啟動時間。回傳 terminated／changed／survived。"""
-    if process_start(e.pgid) != e.leader_start:
-        return "changed"
+def _killpg(pgid: int, sig: int) -> bool:
+    """對群組送訊號；群組已不存在或無權送訊號視為正常（是否存活由存活檢查回報）。
+    其他作業系統錯誤回 False。"""
     try:
-        os.killpg(e.pgid, signal.SIGTERM)
+        os.killpg(pgid, sig)
     except (ProcessLookupError, PermissionError):
         pass
-    deadline = time.monotonic() + grace
-    while group_members(e.pgid) and time.monotonic() < deadline:
+    except OSError as exc:
+        sys.stderr.write(f"錯誤：killpg({pgid}, {sig}) 失敗：{exc}\n")
+        return False
+    return True
+
+
+def _wait_group_empty(pgid: int, seconds: float) -> None:
+    deadline = time.monotonic() + seconds
+    while group_members(pgid) and time.monotonic() < deadline:
         time.sleep(POLL_INTERVAL)
+
+
+def terminate_registered(e: RegEntry, grace: float = GRACE_SECONDS) -> str:
+    """終止登記的群組。回傳 terminated／changed（送任何訊號前領頭啟動時間不符）／
+    changed_after_term（TERM 後領頭仍在但啟動時間不符，未送 KILL）／wrapper_alive／error／survived。
+
+    TERM 後領頭程序查無而群組仍有成員：視為同一群組繼續送 KILL（群組有成員期間其編號
+    不會配發給新程序；新群組的領頭會以該編號存在並使比對不符）。
+    """
+    if process_start(e.pgid) != e.leader_start:
+        return "changed"
+    if not _killpg(e.pgid, signal.SIGTERM):
+        return "error"
+    _wait_group_empty(e.pgid, grace)
     if group_members(e.pgid):
-        if process_start(e.pgid) != e.leader_start:
-            return "changed"
-        try:
-            os.killpg(e.pgid, signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
-            pass
-        deadline = time.monotonic() + KILL_WAIT_SECONDS
-        while group_members(e.pgid) and time.monotonic() < deadline:
-            time.sleep(POLL_INTERVAL)
+        leader_now = process_start(e.pgid)
+        if leader_now is not None and leader_now != e.leader_start:
+            return "changed_after_term"
+        if process_start(e.wrapper_pid) == e.wrapper_start:
+            return "wrapper_alive"
+        if not _killpg(e.pgid, signal.SIGKILL):
+            return "error"
+        _wait_group_empty(e.pgid, KILL_WAIT_SECONDS)
     return "survived" if group_members(e.pgid) else "terminated"
 
 
@@ -363,39 +402,61 @@ def _drop_entry(path: str) -> None:
         sys.stderr.write(f"警告：無法移除登記 {path}：{exc}\n")
 
 
+def _handle_entry(e: RegEntry, roots: List[str], kill: bool) -> int:
+    """處理單筆登記並印出結果；回傳 1 表示未能終止／出錯，0 表示正常。"""
+    wrapper_now = process_start(e.wrapper_pid)
+    members = group_members(e.pgid)
+    in_scope = under(e.cwd, roots)
+    if not in_scope and (members or wrapper_now == e.wrapper_start):
+        return 0
+    verdict, reason = judge_entry(e, wrapper_now, process_start(e.pgid), members)
+    label = f"群組 {e.pgid} cwd {e.cwd} 命令 {' '.join(e.command)}"
+    if verdict == "wrapper_alive":
+        print(f"登記略過 {label}（{reason}）")
+    elif verdict == "stale":
+        print(f"登記已過期 {label}（{reason}），移除登記")
+        _drop_entry(e.path)
+    elif verdict == "unsafe":
+        print(f"登記不終止 {label}（{reason}），移除登記")
+        _drop_entry(e.path)
+    elif not kill:
+        print(f"登記可終止 {label}（{reason}）")
+    else:
+        return _kill_entry(e, label)
+    return 0
+
+
+def _kill_entry(e: RegEntry, label: str) -> int:
+    result = terminate_registered(e)
+    if result == "terminated":
+        print(f"登記已終止 {label}")
+        _drop_entry(e.path)
+        return 0
+    if result == "changed":
+        print(f"登記未終止 {label}（送訊號前領頭啟動時間已變，不處理）")
+        _drop_entry(e.path)
+        return 0
+    reasons = {
+        "changed_after_term": "已送出 TERM，TERM 後領頭啟動時間不符，未送 KILL",
+        "wrapper_alive": "送 KILL 前包裝腳本已存活，未送 KILL",
+        "error": "killpg 失敗",
+    }
+    print(f"登記未能終止 {label}（{reasons.get(result, '送出 KILL 後仍有成員')}）")
+    return 1
+
+
 def process_registry(roots: List[str], kill: bool) -> int:
-    """處理登記，印出結果；回傳未能終止的筆數。"""
+    """處理登記，印出結果；回傳未能終止或出錯的筆數。單筆出錯不中止其餘登記。"""
     entries, bad = read_registry(registry_dir())
     for path, reason in bad:
         print(f"登記無法讀取 {path}（{reason}）")
     failed = 0
     for e in entries:
-        if not under(e.cwd, roots):
-            continue
-        verdict, reason = judge_entry(e, process_start(e.wrapper_pid),
-                                      process_start(e.pgid), group_members(e.pgid))
-        label = f"群組 {e.pgid} cwd {e.cwd} 命令 {' '.join(e.command)}"
-        if verdict == "wrapper_alive":
-            print(f"登記略過 {label}（{reason}）")
-        elif verdict == "stale":
-            print(f"登記已過期 {label}（{reason}），移除登記")
-            _drop_entry(e.path)
-        elif verdict == "unsafe":
-            print(f"登記不終止 {label}（{reason}），移除登記")
-            _drop_entry(e.path)
-        elif not kill:
-            print(f"登記可終止 {label}（{reason}）")
-        else:
-            result = terminate_registered(e)
-            if result == "terminated":
-                print(f"登記已終止 {label}")
-                _drop_entry(e.path)
-            elif result == "changed":
-                print(f"登記未終止 {label}（送訊號前領頭啟動時間已變，不處理）")
-                _drop_entry(e.path)
-            else:
-                failed += 1
-                print(f"登記未能終止 {label}（送出 KILL 後仍有成員）")
+        try:
+            failed += _handle_entry(e, roots, kill)
+        except CommandError as exc:
+            failed += 1
+            print(f"登記查詢失敗 群組 {e.pgid}（{exc}），不終止，保留登記")
     return failed
 
 

@@ -62,6 +62,13 @@ def _wait_gone(pid, within=10.0):
     return not _alive(pid)
 
 
+def _dead_pid():
+    """剛結束並已回收的程序 PID（macOS 的 ps 對超過 PID 上限的值回錯誤，不能用來表示不存在）。"""
+    p = subprocess.Popen([sys.executable, "-c", "pass"])
+    p.wait()
+    return p.pid
+
+
 def _ppid(pid):
     return int(subprocess.run(["ps", "-o", "ppid=", "-p", str(pid)],
                               capture_output=True, text=True).stdout.strip())
@@ -696,28 +703,29 @@ class RegEnv:
         self.wrappers = []
         self.n = 0
 
-    def _environ(self):
-        return {**os.environ, "CLAUDE_PROC_REGISTRY_DIR": str(self.reg)}
+    def _environ(self, **extra):
+        return {**os.environ, "CLAUDE_PROC_REGISTRY_DIR": str(self.reg), **extra}
 
-    def start_wrapper(self):
+    def start_wrapper(self, **extra_env):
         """以真實包裝腳本啟動替身；回傳 (wrapper Popen, 替身 pid, 登記檔)。"""
         self.n += 1
         pidfile = self.env.tmp / ("sleeper%d" % self.n)
         w = subprocess.Popen([sys.executable, str(WRAPPER), "60", "--", sys.executable, "-c",
                               SLEEPER_SRC, str(pidfile)], cwd=str(self.env.root),
-                             env=self._environ(), stdout=subprocess.DEVNULL,
+                             env=self._environ(**extra_env), stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL)
         self.wrappers.append(w)
         pid = _wait_pid(pidfile)
         self.env.pids.append(pid)
         deadline = time.monotonic() + 10
-        while not list(self.reg.glob("wrapper-%d.json" % w.pid)) and time.monotonic() < deadline:
+        while not list(self.reg.glob("wrapper-%d-*.json" % w.pid)) and time.monotonic() < deadline:
             time.sleep(0.05)
-        return w, pid, self.reg / ("wrapper-%d.json" % w.pid)
+        return w, pid, next(iter(self.reg.glob("wrapper-%d-*.json" % w.pid)))
 
-    def run(self, *args):
+    def run(self, *args, **extra_env):
         return subprocess.run([sys.executable, str(SCRIPT), "--root", str(self.env.root), *args],
-                              capture_output=True, text=True, timeout=60, env=self._environ())
+                              capture_output=True, text=True, timeout=60,
+                              env=self._environ(**extra_env))
 
     def files(self):
         return sorted(self.reg.glob("*.json")) if self.reg.exists() else []
@@ -783,7 +791,7 @@ def test_contrast_leader_gone_but_group_has_members_is_not_killed(renv):
     renv.reg.mkdir()
     entry = renv.reg / "wrapper-999999.json"
     entry.write_text(json.dumps({
-        "pgid": leader.pid, "leader_start": start, "wrapper_pid": 999999,
+        "pgid": leader.pid, "leader_start": start, "wrapper_pid": _dead_pid(),
         "wrapper_start": "Mon Jan  1 00:00:00 2001", "cwd": str(renv.env.root),
         "command": ["x"]}))
     leader.wait(timeout=10)
@@ -828,3 +836,184 @@ def test_unreadable_registry_dir_reported_without_abort(renv):
 def test_missing_registry_dir_is_empty(renv):
     res = renv.run("--kill")
     assert res.returncode == 0 and "登記" not in res.stdout
+
+
+# ---- 登記群組：KILL 升級、登記驗證、查詢失敗、時區、過期登記 ----
+
+# 領頭：啟動一個忽略 TERM 的成員後，收到 TERM 即退出（模擬領頭先走、成員殘留）
+MEMBER_SRC = ("import os,signal,sys,time\n"
+              "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+              "open(sys.argv[1],'w').write(str(os.getpid()))\n"
+              "time.sleep(%d)\n" % LIFE)
+LEADER_SRC = ("import signal,subprocess,sys,time\n"
+              "subprocess.Popen([sys.executable,'-c',%r,sys.argv[1]])\n"
+              "signal.signal(signal.SIGTERM, lambda *a: sys.exit(0))\n"
+              "time.sleep(%d)\n" % (MEMBER_SRC, LIFE))
+
+
+def _reap_in_background(proc):
+    """領頭退出後立即被回收，使其 PID 查無（而非殭屍）。"""
+    import threading
+    threading.Thread(target=proc.wait, daemon=True).start()
+
+
+def _start_term_exiting_group(renv):
+    """領頭收 TERM 即退出、另一成員忽略 TERM；回傳 (領頭 Popen, 成員 pid, 登記檔)。"""
+    holder = renv.env.tmp / ("member%d" % renv.n)
+    renv.n += 1
+    leader = subprocess.Popen([sys.executable, "-c", LEADER_SRC, str(holder)],
+                              start_new_session=True)
+    _reap_in_background(leader)
+    member = _wait_pid(holder)
+    renv.env.pids.append(member)
+    renv.env.pids.append(leader.pid)
+    entry = write_entry(renv, leader.pid)
+    return leader, member, entry
+
+
+def write_entry(renv, pgid, wrapper_pid=None, name=None, **override):
+    mod = _load()
+    wrapper_pid = wrapper_pid or _dead_pid()
+    renv.reg.mkdir(exist_ok=True)
+    data = {"pgid": pgid, "leader_start": mod.process_start(pgid) or "x",
+            "wrapper_pid": wrapper_pid, "wrapper_start": "Mon Jan  1 00:00:00 2001",
+            "cwd": str(renv.env.root), "command": ["x"]}
+    data.update(override)
+    path = renv.reg / (name or "wrapper-%d-test.json" % wrapper_pid)
+    path.write_text(json.dumps(data))
+    return path
+
+
+def test_kill_escalates_when_leader_exits_on_term_and_member_ignores_term(renv):
+    leader, member, entry = _start_term_exiting_group(renv)
+    res = renv.run("--kill")
+    assert res.returncode == 0, res.stdout
+    assert "登記已終止" in res.stdout and "身份已變" not in res.stdout and "啟動時間已變" not in res.stdout
+    assert _wait_gone(member)
+    assert renv.files() == []
+
+
+def test_contrast_leader_start_changes_before_kill_sends_no_kill_and_fails(tmp_path, monkeypatch, capsys):
+    """TERM 後領頭程序仍在、但啟動時間與登記不符：不送 KILL，回報未能終止，結束碼非 0。"""
+    mod = _load()
+    sent = []
+    starts = iter(["T0", "OTHER"])  # 送 TERM 前通過；KILL 前驗證不符
+    monkeypatch.setattr(mod, "process_start", lambda pid: next(starts, "OTHER"))
+    monkeypatch.setattr(mod, "group_members", lambda pgid: [4242])
+    monkeypatch.setattr(mod.os, "killpg", lambda pgid, sig: sent.append(sig))
+    e = mod.RegEntry(str(tmp_path / "e.json"), 4000, "T0", 999999, "W0", str(tmp_path), ["x"])
+    assert mod.terminate_registered(e, grace=0.1) == "changed_after_term"
+    assert sent == [signal.SIGTERM]
+
+
+def test_changed_after_term_is_reported_as_failure(tmp_path, monkeypatch, capsys):
+    mod = _load()
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(tmp_path / "reg"))
+    (tmp_path / "reg").mkdir()
+    entry = tmp_path / "reg" / "wrapper-999999-x.json"
+    entry.write_text(json.dumps({"pgid": 4000, "leader_start": "T0", "wrapper_pid": 999999,
+                                 "wrapper_start": "W0", "cwd": str(tmp_path), "command": ["x"]}))
+    monkeypatch.setattr(mod, "process_start", lambda pid: None if pid == 999999 else "T0")
+    monkeypatch.setattr(mod, "group_members", lambda pgid: [4242])
+    monkeypatch.setattr(mod, "terminate_registered", lambda e: "changed_after_term")
+    failed = mod.process_registry([str(tmp_path)], True)
+    out = capsys.readouterr().out
+    assert failed == 1 and "登記未能終止" in out and "啟動時間不符" in out
+
+
+BAD_PGIDS = ["0", "1", "-5", "true", "false", "2.0", "2.5", '"7"', "GETPGRP"]
+
+
+@pytest.mark.parametrize("raw", BAD_PGIDS)
+def test_invalid_pgid_is_corrupt_entry_and_sends_no_signal(raw, tmp_path, monkeypatch, capsys):
+    mod = _load()
+    reg = tmp_path / "reg"
+    reg.mkdir()
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(reg))
+    raw = str(os.getpgrp()) if raw == "GETPGRP" else raw
+    path = reg / "wrapper-999999-x.json"
+    path.write_text('{"pgid": %s, "leader_start": "T0", "wrapper_pid": 999999, '
+                    '"wrapper_start": "W0", "cwd": "%s", "command": ["x"]}' % (raw, tmp_path))
+    sent = []
+    monkeypatch.setattr(mod.os, "killpg", lambda pgid, sig: sent.append((pgid, sig)))
+    failed = mod.process_registry([str(tmp_path)], True)
+    out = capsys.readouterr().out
+    assert sent == [] and failed == 0
+    assert "登記無法讀取" in out and path.exists()
+
+
+def test_killpg_unexpected_oserror_reported_as_error_not_raised(tmp_path, monkeypatch):
+    mod = _load()
+    monkeypatch.setattr(mod, "process_start", lambda pid: "T0")
+    monkeypatch.setattr(mod, "group_members", lambda pgid: [4242])
+
+    def boom(pgid, sig):
+        raise OSError(22, "Invalid argument")
+    monkeypatch.setattr(mod.os, "killpg", boom)
+    e = mod.RegEntry(str(tmp_path / "e.json"), 4000, "T0", 999999, "W0", str(tmp_path), ["x"])
+    assert mod.terminate_registered(e, grace=0.1) == "error"
+
+
+def test_ps_failure_on_one_entry_is_error_others_and_classes_still_processed(env, tmp_path, monkeypatch, capsys):
+    mod = _load()
+    reg = tmp_path / "reg"
+    reg.mkdir()
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(reg))
+    dead = subprocess.Popen([sys.executable, "-c", "pass"])
+    dead.wait()
+    base = {"leader_start": "T0", "wrapper_start": "W0", "cwd": str(env.root), "command": ["x"]}
+    a = reg / "wrapper-777001-a.json"
+    a.write_text(json.dumps({**base, "pgid": 888001, "wrapper_pid": 777001}))
+    b = reg / "wrapper-b.json"
+    b.write_text(json.dumps({**base, "pgid": dead.pid, "wrapper_pid": _dead_pid()}))
+    real = mod.process_start
+
+    def flaky(pid):
+        if pid == 777001:
+            raise mod.CommandError("ps 失敗")
+        return real(pid)
+    monkeypatch.setattr(mod, "process_start", flaky)
+    killpg_calls = []
+    monkeypatch.setattr(mod.os, "killpg", lambda pgid, sig: killpg_calls.append(pgid))
+    orphan = env.orphan()
+    rc = mod.main(["--root", str(env.root), "--kill"])
+    out = capsys.readouterr().out
+    assert rc != 0 and "登記查詢失敗" in out
+    assert a.exists() and killpg_calls == []
+    assert not b.exists()  # 另一筆登記照常處理（已過期，移除）
+    assert "已終止 %d" % orphan in out  # 既有類別照常處理
+
+
+def test_process_start_ignores_timezone_env(monkeypatch):
+    mod = _load()
+    monkeypatch.setenv("TZ", "Asia/Tokyo")
+    tokyo = mod.process_start(os.getpid())
+    monkeypatch.setenv("TZ", "America/Los_Angeles")
+    assert tokyo is not None and mod.process_start(os.getpid()) == tokyo
+
+
+def test_live_wrapper_still_alive_under_different_timezone(renv):
+    w, pid, entry = renv.start_wrapper(TZ="Asia/Tokyo")
+    res = renv.run("--kill", TZ="America/Los_Angeles")
+    assert "登記略過" in res.stdout and "包裝腳本仍存活" in res.stdout
+    assert _alive(pid) and entry.exists()
+
+
+def test_out_of_scope_entry_with_empty_group_is_removed(renv):
+    dead = subprocess.Popen([sys.executable, "-c", "pass"])
+    dead.wait()
+    entry = write_entry(renv, dead.pid, cwd=str(renv.env.outside))
+    res = renv.run("--kill")
+    assert res.returncode == 0
+    assert not entry.exists()
+
+
+def test_process_start_query_failure_distinct_from_missing(monkeypatch):
+    mod = _load()
+    assert mod.process_start(_dead_pid()) is None  # 不存在：None，不拋
+
+    def failing(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 3, "", "ps: boom")
+    monkeypatch.setattr(mod.subprocess, "run", failing)
+    with pytest.raises(mod.CommandError):
+        mod.process_start(os.getpid())

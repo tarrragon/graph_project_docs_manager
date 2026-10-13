@@ -317,3 +317,41 @@ def test_unwritable_registry_does_not_affect_command_or_exit_code(tmp_path):
     assert (res.returncode, res.stdout.strip()) == (7, "ran")
     assert res.stderr.startswith("run-with-timeout:") and len(res.stderr.strip().splitlines()) == 1
     assert "Traceback" not in res.stderr
+
+
+def test_registry_filename_contains_wrapper_start_time(stand_in, tmp_path):
+    import re
+    parent, pidfile = stand_in
+    reg = tmp_path / "reg"
+    wrapper = subprocess.Popen(_cmd(parent, pidfile, seconds="20"), env=_env(reg),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        _read_pids(pidfile)
+        path = _wait_reg(reg)
+        start = _load_module().process_start(wrapper.pid)
+        assert path.name == "wrapper-%d-%s.json" % (wrapper.pid, re.sub(r"[^0-9A-Za-z]+", "-", start))
+    finally:
+        wrapper.kill()
+        wrapper.wait()
+
+
+def test_process_start_ignores_timezone_env(monkeypatch):
+    mod = _load_module()
+    monkeypatch.setenv("TZ", "Asia/Tokyo")
+    tokyo = mod.process_start(os.getpid())
+    monkeypatch.setenv("TZ", "America/Los_Angeles")
+    assert tokyo is not None and mod.process_start(os.getpid()) == tokyo
+
+
+@pytest.mark.parametrize("failing", ["replace", "dump"])
+def test_interrupted_registry_write_leaves_no_temp_file(failing, tmp_path, monkeypatch, capsys):
+    mod = _load_module()
+    reg = tmp_path / "reg"
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(reg))
+    if failing == "replace":
+        monkeypatch.setattr(mod.os, "replace", lambda a, b: (_ for _ in ()).throw(OSError("中斷")))
+    else:
+        monkeypatch.setattr(mod.json, "dump", lambda *a, **k: (_ for _ in ()).throw(OSError("中斷")))
+    assert mod.register_group(os.getpid(), ["x"]) is None
+    assert list(reg.iterdir()) == []
+    assert capsys.readouterr().err.startswith("run-with-timeout:")
