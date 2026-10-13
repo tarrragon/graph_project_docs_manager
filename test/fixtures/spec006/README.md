@@ -43,7 +43,7 @@ FR-01（切分與五類分類）、FR-02（掃描範圍）、FR-03（節點判�
 | 指標 | 2026-08-27（domain-map §7，舊語意：可解析/YAML錯誤/無frontmatter） | 2026-09-24（本次，FR-01/FR-06 語意：node/non_node/gap/unmatched） |
 |------|------|------|
 | 檔案總數 | 7106 | 7466 |
-| 可解析（舊）／node+non_node（新） | 5815 | 6174（node 4676 + non_node 1498，含 1 筆合成，真實 1497） |
+| 可解析（舊）／node+non_node（新） | 5815 | 6174（node 5925 + non_node 249，含 1 筆合成，真實 248；2026-09-29 重凍後的值，初凍為 node 4676 + non_node 1498，見〈重凍註記〉） |
 | YAML 錯誤 | 1 | 1（真實，book_overview_app 語料中唯一一筆，路徑不變） |
 | 無 frontmatter（舊）／no_frontmatter（新，僅此類） | 1290 | 1292（僅真實列） |
 
@@ -138,22 +138,30 @@ usable 檔案逐一比對後的獨立量測結果。
 真實語料已涵蓋的類別（不需合成）：`no_frontmatter` 命中 carrier（40 筆真破洞）、
 `yaml_error` 命中 carrier（1 筆）、`unreadable_encoding` 未命中（1 筆）、
 `no_frontmatter` 未命中（1251 筆）、全部 7 種節點型別（DomainBundle 24、
-SPEC 62、Ticket 4497、EVT 5、UC 39、PROP 48、FlowStep 1，`FlowStep` 命中
+SPEC 62、Ticket 5746、EVT 5、UC 39、PROP 48、FlowStep 1，`FlowStep` 命中
 純屬其寬鬆 `id_pattern` 意外匹配某筆真實 `id`，如實記錄非本票引入的偏差）、
-可用非節點（1497 筆，無 `id` 或 `id` 不命中任何型別）。
+可用非節點（248 筆，無 `id` 或 `id` 不命中任何型別）。
 
 **FR-07 計數與守恆**（`header.expected_counts`，由 `freeze-it2` 內建
 assert 驗證，見下方實測結果）：
 
 ```
 total_files=7472, real_files=7466, synthetic_files=6
-node_count=4676, non_node_count=1498
+node_count=5925, non_node_count=249
 failure_reason_counts={no_frontmatter:1293, yaml_error:1, unreadable_encoding:2, unclosed:1, empty_or_non_map:1}
 gap_count=46, unmatched_count=1252, unjudged_count=0
 ```
 
-守恆式 1：7472 = 4676 + 1498 + (1293+1+2+1+1=1298) 。
+守恆式 1：7472 = 5925 + 249 + (1293+1+2+1+1=1298) 。
 守恆式 2：1298 = 46 + 1252 + 0 。兩者皆由程式內 `assert` 通過。
+
+**重凍註記**（2026-09-29，票 `0.3.1-W1-092`，提交 `4059a7caf`）：Ticket `id_pattern`
+改為接受子票 ID 後重產 manifest，原判為非節點的子票檔 1249 筆改歸 Ticket：
+node_count 4676 → 5925、non_node_count 1498 → 249（總和同為 6174），Ticket
+4497 → 5746，真實非節點 1497 → 248。檔案總數與 gap／unmatched／failure 各項
+計數不變。本文其餘「2026-09-24」欄為初凍當日量測；node／non_node 兩項以現行
+`manifest.json` 的 `header.expected_counts` 為準（manifest 的 `frozen_date`
+header 欄仍為 2026-09-24，重凍未更新該欄）。
 
 ### 兩個 gap 數字的口徑
 

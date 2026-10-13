@@ -59,6 +59,10 @@ _GIT_TIMEOUT = 10
 # 哨兵：呼叫端未指定 timeout 時，於呼叫當下讀取模組層 _GIT_TIMEOUT（而非定義當下綁定
 # 的預設值），使 timeout 可被測試與設定覆寫。None 代表不設 timeout。
 _DEFAULT_TIMEOUT = object()
+# 逾時後先送 SIGTERM，等待此秒數仍未結束才 SIGKILL。取值依據：實驗顯示 SIGKILL
+# 終止持鎖 git 必殘留 0 位元組 index.lock，SIGTERM/SIGINT 則 git 自行清鎖；清鎖為毫秒級，
+# 5 秒足夠且不致讓呼叫端無限等待。
+_TERMINATE_GRACE_SECONDS = 5
 _MAX_RETRIES = 2
 _RETRY_WAIT_SECONDS = 1
 
@@ -80,6 +84,34 @@ _STALE_LOCK_AGE_SECONDS = 60
 _OWN_HISTORY_LOOKBACK = 50
 
 
+def _run_with_graceful_timeout(args, timeout, grace=None, **popen_kwargs):
+    """執行子程序並在逾時時先 SIGTERM、寬限後才 SIGKILL。
+
+    支援參數：args、timeout（None 為不設）、grace（預設 _TERMINATE_GRACE_SECONDS）、
+    input（字串；有值才開 stdin）、其餘 popen_kwargs（cwd、env、text、encoding、errors）。
+    stdout / stderr 一律擷取。回傳 CompletedProcess；逾時拋 subprocess.TimeoutExpired。
+    逾時後只等行程本身結束，不等輸出管線 EOF（孫程序可能仍握著管線）。
+    """
+    if grace is None:
+        grace = _TERMINATE_GRACE_SECONDS
+    input_text = popen_kwargs.pop("input", None)
+    stdin = subprocess.PIPE if input_text is not None else None
+    with subprocess.Popen(
+        args, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **popen_kwargs
+    ) as proc:
+        try:
+            out, err = proc.communicate(input_text, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+            try:
+                proc.wait(timeout=grace)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            raise
+        return subprocess.CompletedProcess(args, proc.returncode, out, err)
+
+
 def _run_git(
     args: List[str],
     cwd: Optional[str] = None,
@@ -91,14 +123,13 @@ def _run_git(
     if timeout is _DEFAULT_TIMEOUT:
         timeout = _GIT_TIMEOUT
     try:
-        result = subprocess.run(
+        result = _run_with_graceful_timeout(
             args,
+            timeout=timeout,
             cwd=cwd,
-            capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=timeout,
             env=env,
             input=input_text,
         )

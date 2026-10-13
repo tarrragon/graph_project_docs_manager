@@ -304,3 +304,80 @@ def test_obsolete_ticket_track_create_removed(hook_module):
     assert "ticket create" in keywords
     assert "ticket batch-create" in keywords
     assert "ticket show" in keywords
+
+
+# ---------------------------------------------------------------------------
+# 時長達上限：不得終止任何程序，改輸出含清理指引的警告（0.5.0-W1-187.2）
+# ---------------------------------------------------------------------------
+
+import json
+import os
+import subprocess
+import time
+
+
+def _arm_monitor(root, seconds_ago):
+    log_dir = root / ".claude" / "hook-logs"
+    log_dir.mkdir(parents=True)
+    f = log_dir / "test-monitor.json"
+    f.write_text(json.dumps({"start_timestamp": time.time() - seconds_ago}))
+    return f
+
+
+def _spy_process_spawns(monkeypatch):
+    calls = []
+
+    def _record(*a, **k):
+        calls.append((a, k))
+
+        class _R:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _R()
+
+    monkeypatch.setattr(subprocess, "run", _record)
+    monkeypatch.setattr(subprocess, "Popen", _record)
+    monkeypatch.setattr(subprocess, "call", _record)
+    monkeypatch.setattr(subprocess, "check_output", _record)
+    monkeypatch.setattr(os, "system", _record)
+    return calls
+
+
+def _run_limit_case(module, monkeypatch, tmp_path, logger):
+    monitor = _arm_monitor(tmp_path, module.AUTO_KILL_THRESHOLD + 5)
+    monkeypatch.setattr(module, "get_project_root", lambda: tmp_path)
+    calls = _spy_process_spawns(monkeypatch)
+    msg = module.check_test_timeout({}, {}, logger)
+    return msg, calls, monitor
+
+
+def test_limit_reached_spawns_no_process_and_warns(hook_module, monkeypatch, tmp_path, logger, capsys, caplog):
+    caplog.set_level(logging.WARNING, logger=logger.name)
+    msg, calls, monitor = _run_limit_case(hook_module, monkeypatch, tmp_path, logger)
+    assert calls == []
+    assert "orphan-test-procs.py" in msg and "--kill" in msg
+    assert "orphan-test-procs.py" in capsys.readouterr().err
+    assert any("orphan-test-procs.py" in r.getMessage() for r in caplog.records)
+    assert json.loads(monitor.read_text())["action"] == "limit_warning"
+
+
+def test_control_pkill_restored_makes_spy_fire(monkeypatch, tmp_path, logger):
+    """對照：把 pkill 呼叫注入回原始碼副本，同一組斷言必須翻紅（證明 spy 有鑑別力）。"""
+    src = HOOK_PATH.read_text()
+    anchor = "        # 不終止任何程序"
+    assert anchor in src
+    mutated = src.replace(
+        anchor, "        import subprocess\n        subprocess.run(['pkill', '-f', 'flutter_tester'])\n" + anchor, 1
+    )
+    mutated_path = tmp_path / "mutated-post-test-hook.py"
+    mutated_path.write_text(mutated)
+    mutated_path.parent.joinpath("lib").symlink_to(HOOK_PATH.parent.parent / "lib")
+    spec = importlib.util.spec_from_file_location("post_test_hook_mutated", mutated_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    project = tmp_path / "proj"
+    project.mkdir()
+    _, calls, _ = _run_limit_case(module, monkeypatch, project, logger)
+    assert calls != []

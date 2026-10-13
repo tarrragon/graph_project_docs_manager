@@ -66,6 +66,12 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 
 **本專案是 `component-contract-design` skill 的開發上游**（2026-09-29 用戶裁示）。其他 consumer 回報該 skill 的條文缺口時，除了觀測 canonical issue，也須在 active 版本建實作票、在本專案修正。完成後 sync-push 到 canonical；推送 skill 發佈庫（`skill-sync push`）仍需逐次授權。
 
+**目前由本專案擔任 `.claude/` 框架的主控方**（2026-10-13 用戶裁示，首例：flutter_balance 回報的逾時孤兒 `flutter_tester`）。
+這是現行安排，不是固定角色：主控方由用戶指定，日後可改由其他專案擔任，改派時以用戶的新裁示為準並更新本段。
+現行安排下，其他 consumer 只開 framework issue，不改框架內容；只有涉及 SKILL 的部分，才由該 consumer 自己推送 SKILL 更新。
+分析、修法與 `.claude/` 實作在主控方由用戶指定的 session 負責。
+理由：同一時間只有一個主控方，避免各 consumer 各自修改框架而分叉。
+
 **仍不在授權內**：`sync-push` 與 `skill-sync push`（同上段理由，那是改資產本體不是留一則可刪的觀測）、
 改他人 owner 的區段或 issue body、其他 remote 與其他 repo、以 `create_issue.py` 新開 issue
 （上段「建立」指 `init`／`add` 建立區段 comment，不含新開 issue；新開須逐次授權，例：#111）。
