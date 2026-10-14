@@ -399,7 +399,8 @@ def _arm_monitor(root, seconds_ago):
     log_dir = root / ".claude" / "hook-logs"
     log_dir.mkdir(parents=True)
     f = log_dir / "test-monitor.json"
-    f.write_text(json.dumps({"start_timestamp": time.time() - seconds_ago}))
+    f.write_text(json.dumps({"start_timestamp": time.time() - seconds_ago,
+                              "status": "running"}))
     return f
 
 

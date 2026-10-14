@@ -235,9 +235,11 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
     project_dir = get_project_root()
     key = monitor_key(input_data)
     keyed_file = keyed_monitor_file(project_dir, key) if key else None
-    # 有鍵且鍵檔存在讀鍵檔；否則退回舊單檔（相容舊格式與無鍵的 pre）
-    monitor_file = (keyed_file if keyed_file and keyed_file.exists()
-                    else legacy_monitor_file(project_dir))
+    # 有鍵：pre 必寫鍵檔，鍵檔不存在即無計時可收，不退回舊單檔（其內容可能是過期的）
+    if keyed_file and not keyed_file.exists():
+        logger.debug("timeout: 有鍵但鍵檔不存在，跳過（不退回舊單檔）")
+        return None
+    monitor_file = keyed_file if keyed_file else legacy_monitor_file(project_dir)
 
     if not monitor_file.exists():
         logger.debug("timeout: 監控檔案不存在，跳過")
@@ -248,6 +250,11 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
             monitor_data = json.load(f)
     except (json.JSONDecodeError, OSError):
         logger.debug("timeout: 監控檔案無法讀取，跳過")
+        return None
+
+    # 無鍵走舊單檔時只採用 running（completed 為上一輪已收尾的內容）
+    if not keyed_file and monitor_data.get("status") != "running":
+        logger.debug("timeout: 舊單檔非 running，跳過")
         return None
 
     start_timestamp = monitor_data.get("start_timestamp", 0)
