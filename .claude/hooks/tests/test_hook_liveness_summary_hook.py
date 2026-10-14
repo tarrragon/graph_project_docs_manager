@@ -740,6 +740,9 @@ class TestReportSmokeTestCrashes:
         assert call_count["n"] == 0
 
 
+from lib.hook_registry import merge_dispatch_registry  # noqa: E402
+
+
 class TestDispatchRegistryMerge:
     """分派程序合併後，被併入的 hook 仍須在『已註冊』監控內。"""
 
@@ -754,7 +757,7 @@ class TestDispatchRegistryMerge:
         settings = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
             {"type": "command", "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/hook-dispatcher.py --group PreToolUse:Bash"}]}]}}
         before = summary_hook._registered_hook_names(settings)
-        summary_hook._merge_dispatch_registry(settings, tmp_path, _test_logger)
+        merge_dispatch_registry(settings, tmp_path, _test_logger)
         after = summary_hook._registered_hook_names(settings)
         assert "merged-a-hook" not in before
         assert {"merged-a-hook", "merged-b-hook"} <= after
@@ -764,17 +767,17 @@ class TestDispatchRegistryMerge:
         (tmp_path / ".claude" / "hooks" / "merged-a-hook.py").write_text(
             "# /// script\n# dependencies = [\"pyyaml\"]\n# ///\n", encoding="utf-8")
         settings = {}
-        summary_hook._merge_dispatch_registry(settings, tmp_path, _test_logger)
+        merge_dispatch_registry(settings, tmp_path, _test_logger)
         assert "merged-a-hook" in summary_hook._uv_registered_hook_names(tmp_path, settings)
 
     def test_missing_registry_keeps_settings_unchanged(self, tmp_path):
         settings = {"hooks": {}}
-        summary_hook._merge_dispatch_registry(settings, tmp_path, _test_logger)
+        merge_dispatch_registry(settings, tmp_path, _test_logger)
         assert settings == {"hooks": {}}
 
     def test_unreadable_registry_is_logged_and_ignored(self, tmp_path):
         (tmp_path / ".claude" / "hooks").mkdir(parents=True)
         (tmp_path / ".claude" / "hooks" / "hook-dispatch-registry.json").write_text("{bad", encoding="utf-8")
         settings = {"hooks": {}}
-        summary_hook._merge_dispatch_registry(settings, tmp_path, _test_logger)
+        merge_dispatch_registry(settings, tmp_path, _test_logger)
         assert settings == {"hooks": {}}

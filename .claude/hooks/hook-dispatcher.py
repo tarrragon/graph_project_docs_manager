@@ -53,6 +53,7 @@ HOOK_METADATA (JSON):
 """
 
 import importlib
+import importlib.util
 import json
 import os
 import runpy
@@ -93,9 +94,12 @@ def hook_name_of(path: str) -> str:
 
 
 def load_group(group: str, registry_path: Path = REGISTRY_PATH) -> dict:
-    with open(str(registry_path), encoding="utf-8") as f:
-        data = json.load(f)
-    return data["groups"][group]
+    """經 lib/hook_registry.py（唯一讀取點）取群組；以檔案路徑載入，不依賴 lib 套件匯入"""
+    spec = importlib.util.spec_from_file_location(
+        "hook_registry_standalone", str(PROJECT_ROOT / ".claude" / "lib" / "hook_registry.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.load_group(group, registry_path)
 
 
 def _alarm_handler(signum, frame):

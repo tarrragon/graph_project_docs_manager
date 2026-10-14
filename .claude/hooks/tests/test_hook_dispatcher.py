@@ -162,6 +162,68 @@ class TestIsolation:
         assert disp.merge_results(results)[0] == 2
 
 
+# ---------- linked worktree 下的專案根一致性 ----------
+
+class TestProjectRootInLinkedWorktree:
+    """同程序先後執行的 hook，經專案根快取取得的根須與各自單獨執行相同。"""
+
+    PROBE = (
+        "import sys\n"
+        "sys.path.insert(0, {claude_dir!r})\n"
+        "from lib import get_project_root\n"
+        "sys.stderr.write(str(get_project_root()))\n"
+    )
+    MUTATE = (
+        "import os\n"
+        "os.environ['CLAUDE_PROJECT_DIR'] = '/nonexistent-other-root'\n"
+        "os.chdir('/')\n"
+    )
+
+    def _is_linked_worktree(self):
+        def git(*a):
+            return subprocess.run(["git", "-C", str(PROJECT_ROOT)] + list(a), capture_output=True,
+                                  text=True).stdout.strip()
+        return Path(git("rev-parse", "--git-dir")).resolve() != Path(
+            git("rev-parse", "--git-common-dir")).resolve() if git("rev-parse", "--git-dir") else False
+
+    def _clean_env(self, monkeypatch):
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.delenv("HOOK_TEST_ISOLATION", raising=False)
+        monkeypatch.chdir(PROJECT_ROOT)
+
+    def _standalone_root(self, probe_path):
+        env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_PROJECT_DIR", "HOOK_TEST_ISOLATION")}
+        p = subprocess.run([sys.executable, str(probe_path)], capture_output=True, text=True,
+                           cwd=str(PROJECT_ROOT), env=env)
+        return p.stderr.strip()
+
+    def test_roots_after_in_process_sequence_match_standalone(self, tmp_path, monkeypatch):
+        probe_body = self.PROBE.format(claude_dir=str(PROJECT_ROOT / ".claude"))
+        a = _write_hook(tmp_path, "probe_a", probe_body)
+        mutate = _write_hook(tmp_path, "mutate_env", self.MUTATE)
+        b = _write_hook(tmp_path, "probe_b", probe_body)
+        want = self._standalone_root(tmp_path / "probe_a.py")
+        self._clean_env(monkeypatch)
+        from lib.hook_base import clear_project_root_cache
+        clear_project_root_cache()
+        results = disp.dispatch([a, mutate, b], "{}", tmp_path, 30)
+        assert results[0].stderr.strip() == want
+        assert results[2].stderr.strip() == want
+        assert os.getcwd() == str(PROJECT_ROOT)
+        assert "CLAUDE_PROJECT_DIR" not in os.environ
+
+    def test_worktree_root_is_read_when_cwd_is_linked_worktree(self, tmp_path, monkeypatch):
+        if not self._is_linked_worktree():
+            pytest.skip("目前 checkout 不是 linked worktree")
+        probe_body = self.PROBE.format(claude_dir=str(PROJECT_ROOT / ".claude"))
+        a = _write_hook(tmp_path, "probe_a", probe_body)
+        self._clean_env(monkeypatch)
+        from lib.hook_base import clear_project_root_cache
+        clear_project_root_cache()
+        results = disp.dispatch([a], "{}", tmp_path, 30)
+        assert Path(results[0].stderr.strip()).resolve() == PROJECT_ROOT.resolve()
+
+
 # ---------- 失敗語意 ----------
 
 class TestFailureSemantics:
