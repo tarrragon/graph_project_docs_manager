@@ -39,22 +39,25 @@ _OUTPUT_TAIL_LINES = 15
 
 SUITE_FLUTTER = "flutter"
 SUITE_HOOKS = "hooks"
+SUITE_SCRIPTS = "scripts"
+SUITE_SKILL_PREFIX = "skill:"
 
 # 全套件命令（argv）；相對於快照根目錄執行
 SUITE_COMMANDS = {
     SUITE_FLUTTER: ["fvm", "flutter", "test"],
     SUITE_HOOKS: ["uv", "--directory", ".claude/hooks", "run", "pytest"],
+    SUITE_SCRIPTS: ["uv", "--directory", ".claude/scripts", "run", "pytest"],
 }
 
 # 範圍判準：路徑前綴或精確檔名命中即需對應套件。見 SKILL.md〈合併前全套件〉
 FLUTTER_SCOPE_PREFIXES = ("lib/", "test/", "integration_test/", "macos/", "docs/")
 FLUTTER_SCOPE_FILES = ("pubspec.yaml", "pubspec.lock", "l10n.yaml", "analysis_options.yaml")
-HOOKS_SCOPE_PREFIXES = (".claude/",)
 
 # 快照內執行前必須就緒的 gitignored 生成產物：套件 -> ((產物路徑, 生成命令), ...)
 REQUIRED_ARTIFACTS = {
     SUITE_FLUTTER: ((".dart_tool/package_config.json", ["fvm", "flutter", "pub", "get"]),),
     SUITE_HOOKS: (),
+    SUITE_SCRIPTS: (),
 }
 
 # CAS 重試沿用驗證結果的豁免清單：測試不讀取這些檔，只改它們不影響全套件結果。
@@ -98,15 +101,78 @@ def is_reuse_exempt(path: str) -> bool:
     return any(p.match(path) for p in _EXEMPT_PATTERNS)
 
 
-def select_suites(changed_paths: list) -> list:
-    """依改動路徑決定全套件範圍。只改豁免檔或不屬兩種範圍的路徑則回傳空清單。"""
-    suites = []
-    if any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES
-           for p in changed_paths if not is_reuse_exempt(p)):
-        suites.append(SUITE_FLUTTER)
-    if any(p.startswith(HOOKS_SCOPE_PREFIXES) for p in changed_paths):
-        suites.append(SUITE_HOOKS)
-    return suites
+def _skill_name(path: str) -> Optional[str]:
+    parts = path.split("/")
+    return parts[2] if len(parts) > 3 and parts[:2] == [".claude", "skills"] else None
+
+
+def _skill_has_tests(root: str, name: str) -> bool:
+    return os.path.isdir(os.path.join(root, ".claude", "skills", name, "tests"))
+
+
+_LIB_IMPORT = re.compile(r"^\s*(?:from|import)\s+lib(?:\.|\s|$)", re.MULTILINE)
+
+
+def _skills_importing_lib(root: str) -> list:
+    """掃描快照：帶 tests 目錄且有 .py 匯入 lib 的 skill 名稱（不寫死清單，新增 skill 不會漏）。"""
+    base = Path(root) / ".claude" / "skills"
+    found = []
+    for skill in sorted(p for p in base.iterdir() if p.is_dir()) if base.is_dir() else []:
+        if not (skill / "tests").is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(skill):
+            dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+            if any(_LIB_IMPORT.search(_read_text(Path(dirpath) / n)) for n in filenames if n.endswith(".py")):
+                found.append(skill.name)
+                break
+    return found
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""  # 掃描中途消失或不可讀：視為不匯入 lib，不影響其他檔
+
+
+def needs_gate(changed_paths: list) -> bool:
+    """改動是否可能落在任何全套件範圍內（用於決定是否值得建立快照）。"""
+    return any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES or p.startswith(".claude/")
+               for p in changed_paths if not is_reuse_exempt(p))
+
+
+def select_suites(changed_paths: list, root: str) -> list:
+    """依改動路徑決定套件範圍（root 為合併 commit 的快照，供掃描 skill）。對應表見 SKILL.md。
+
+    套件識別：flutter／hooks／scripts／skill:<名稱>。回傳順序固定，空清單表示免跑。
+    """
+    paths = [p for p in changed_paths if not is_reuse_exempt(p)]
+    want = set()
+    if any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES for p in paths):
+        want.add(SUITE_FLUTTER)
+    for p in (p for p in paths if p.startswith(".claude/")):
+        skill = _skill_name(p)
+        if skill and _skill_has_tests(root, skill):
+            want.add(f"{SUITE_SKILL_PREFIX}{skill}")
+        elif p.startswith(".claude/scripts/"):
+            want.add(SUITE_SCRIPTS)
+        elif p.startswith(".claude/lib/"):
+            want.update({SUITE_HOOKS, SUITE_SCRIPTS})
+            want.update(f"{SUITE_SKILL_PREFIX}{s}" for s in _skills_importing_lib(root))
+        else:  # hooks、rules、settings、無 tests 的 skill 等：hook 測試會讀這些檔
+            want.add(SUITE_HOOKS)
+    head = [s for s in (SUITE_FLUTTER, SUITE_HOOKS, SUITE_SCRIPTS) if s in want]
+    return head + sorted(s for s in want if s.startswith(SUITE_SKILL_PREFIX))
+
+
+def suite_command(suite: str, root: str) -> list:
+    """套件的執行命令；skill 有 pyproject 沿用 uv --directory，無則借 hooks 的環境跑其 tests 目錄。"""
+    if not suite.startswith(SUITE_SKILL_PREFIX):
+        return SUITE_COMMANDS[suite]
+    name = suite[len(SUITE_SKILL_PREFIX):]
+    if os.path.isfile(os.path.join(root, ".claude", "skills", name, "pyproject.toml")):
+        return ["uv", "--directory", f".claude/skills/{name}", "run", "pytest"]
+    return ["uv", "--directory", ".claude/hooks", "run", "pytest", "-p", "no:cacheprovider", f"../skills/{name}/tests"]
 
 
 def _git(args: list, repo: str):
@@ -195,7 +261,7 @@ def _rc_reason(suite: str, rc: int, output: str) -> str:
 
 def _ensure_artifacts(suite: str, snapshot: str, project_root: str, runner: SuiteRunner) -> str:
     """缺 gitignored 生成產物時先生成；生成失敗或仍缺則回傳指名缺漏的理由，否則空字串。"""
-    for artifact, generator in REQUIRED_ARTIFACTS[suite]:
+    for artifact, generator in REQUIRED_ARTIFACTS.get(suite, ()):
         if os.path.exists(os.path.join(snapshot, artifact)):
             continue
         rc, out = runner(wrapped_argv(generator, project_root), snapshot)
@@ -212,7 +278,7 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
         missing = _ensure_artifacts(suite, snapshot, project_root, runner)
         if missing:
             return missing
-        rc, out = runner(wrapped_argv(SUITE_COMMANDS[suite], project_root), snapshot)
+        rc, out = runner(wrapped_argv(suite_command(suite, snapshot), project_root), snapshot)
         if rc != 0:
             return _rc_reason(suite, rc, out)
     return ""
@@ -241,14 +307,15 @@ class MergeGate:
         paths = changed_paths_between(self.repo, expected_old, commit)
         if paths is None:
             return GateVerdict(False, "無法計算合併改動範圍")
-        suites = select_suites(paths)
-        if not suites:
+        if not needs_gate(paths):
             print("[合併前測試] 改動不在任何全套件範圍內，免跑")
             self.verified_commit = commit
             return GateVerdict(True)
-        print(f"[合併前測試] 快照內跑全套件：{', '.join(suites)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
         with _sigterm_as_interrupt(), merge_snapshot(self.repo, commit) as snap:
-            self.suite_runs += 1
+            suites = select_suites(paths, snap)
+            if suites:
+                print(f"[合併前測試] 快照內跑全套件：{', '.join(suites)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
+                self.suite_runs += 1
             reason = _run_suites(suites, snap, self.project_root, self.runner)
         if reason:
             return GateVerdict(False, reason)

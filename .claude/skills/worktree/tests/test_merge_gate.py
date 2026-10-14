@@ -168,20 +168,82 @@ class TestHeavySlot:
         assert spans[1][0] >= spans[0][1]  # 第二份在第一份結束後才開始
 
 
+def _touch(root, rel, text=""):
+    f = root / rel
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(text)
+
+
+@pytest.fixture
+def skel(tmp_path):
+    """模擬合併快照：三種 skill 型態 + 無 tests 的 skill。"""
+    r = tmp_path / "snap"
+    for name, pyproject, imports_lib in (("withpy", True, True), ("nopy", False, True), ("lone", True, False)):
+        _touch(r, f".claude/skills/{name}/tests/test_a.py")
+        _touch(r, f".claude/skills/{name}/mod.py", "from lib import x\n" if imports_lib else "import os\n")
+        if pyproject:
+            _touch(r, f".claude/skills/{name}/pyproject.toml")
+    _touch(r, ".claude/skills/docsonly/SKILL.md")
+    return str(r)
+
+
 class TestScope:
-    def test_flutter_scope(self):
-        assert mg.select_suites(["lib/main.dart"]) == [mg.SUITE_FLUTTER]
+    def test_flutter_scope(self, skel):
+        assert mg.select_suites(["lib/main.dart"], skel) == [mg.SUITE_FLUTTER]
 
-    def test_hooks_scope(self):
-        assert mg.select_suites([".claude/hooks/x.py"]) == [mg.SUITE_HOOKS]
+    def test_hooks_and_other_claude_paths_run_hooks(self, skel):
+        for p in (".claude/hooks/x.py", ".claude/rules/core/a.md", ".claude/settings.json",
+                  ".claude/skills/docsonly/SKILL.md"):
+            assert mg.select_suites([p], skel) == [mg.SUITE_HOOKS], p
 
-    def test_both_and_none(self):
-        assert mg.select_suites(["lib/a.dart", ".claude/b.py"]) == [mg.SUITE_FLUTTER, mg.SUITE_HOOKS]
-        assert mg.select_suites([TICKET_FILE, "README.md"]) == []
+    def test_skill_runs_its_own_tests_not_hooks(self, skel):
+        """E2：只改 skill 不會只跑 hooks。"""
+        assert mg.select_suites([".claude/skills/withpy/mod.py"], skel) == ["skill:withpy"]
+        assert mg.select_suites([".claude/skills/nopy/tests/test_a.py"], skel) == ["skill:nopy"]
+
+    def test_scripts_scope(self, skel):
+        assert mg.select_suites([".claude/scripts/run-with-timeout.py"], skel) == [mg.SUITE_SCRIPTS]
+
+    def test_lib_runs_hooks_scripts_and_importing_skills(self, skel):
+        assert mg.select_suites([".claude/lib/x.py"], skel) == [
+            mg.SUITE_HOOKS, mg.SUITE_SCRIPTS, "skill:nopy", "skill:withpy"]  # lone 不匯入 lib，不在內
+
+    def test_multiple_scopes_ordered_and_none(self, skel):
+        got = mg.select_suites(["lib/a.dart", ".claude/hooks/b.py", ".claude/scripts/c.py",
+                                ".claude/skills/lone/mod.py"], skel)
+        assert got == [mg.SUITE_FLUTTER, mg.SUITE_HOOKS, mg.SUITE_SCRIPTS, "skill:lone"]
+        assert mg.select_suites([TICKET_FILE, "README.md"], skel) == []
+        assert not mg.needs_gate([TICKET_FILE, "README.md"])
+
+    def test_new_skill_is_picked_up_without_list_edit(self, skel):
+        _touch(Path(skel), ".claude/skills/brandnew/tests/test_a.py")
+        assert mg.select_suites([".claude/skills/brandnew/x.py"], skel) == ["skill:brandnew"]
+
+    def test_suite_commands(self, skel):
+        assert mg.suite_command("skill:withpy", skel) == ["uv", "--directory", ".claude/skills/withpy", "run", "pytest"]
+        nopy = mg.suite_command("skill:nopy", skel)
+        assert nopy[:5] == ["uv", "--directory", ".claude/hooks", "run", "pytest"] and nopy[-1] == "../skills/nopy/tests"
+        assert mg.suite_command(mg.SUITE_SCRIPTS, skel)[2] == ".claude/scripts"
+        for suite in ("skill:withpy", "skill:nopy", mg.SUITE_SCRIPTS):
+            assert classify_argv_weight(mg.suite_command(suite, skel)) == WEIGHT_HEAVY, suite
+
+    def test_gate_runs_skill_suite_only_for_skill_change(self, repo):
+        git(repo, "checkout", "-q", "feat")
+        commit_file(repo, ".claude/skills/foo/tests/test_a.py", "", "foo tests")
+        commit_file(repo, ".claude/skills/foo/mod.py", "x = 1\n", "foo mod")
+        git(repo, "checkout", "-q", "main")
+        calls = []
+        gate = mg.MergeGate(str(repo), art(green_runner(calls)))
+        out = wm.merge_branch_cas("feat", repo=str(repo), pre_merge_check=gate)
+        assert out.ok
+        cmds = [" ".join(argv[argv.index("--") + 1:]) for argv, _ in calls]
+        assert any("--directory .claude/hooks" in c and "../skills/foo/tests" in c for c in cmds)
+        assert not any(c.endswith(".claude/hooks run pytest") for c in cmds)  # 不只跑 hooks 全套
 
     def test_skill_documents_scope_rule(self):
         text = (Path(__file__).parent.parent / "SKILL.md").read_text(encoding="utf-8")
         assert "合併前全套件" in text and "flutter test" in text and "hooks pytest" in text
+        assert "skill:" in text and ".claude/scripts" in text and ".claude/lib" in text
 
     def test_scope_selects_runner_commands(self, repo):
         calls = []

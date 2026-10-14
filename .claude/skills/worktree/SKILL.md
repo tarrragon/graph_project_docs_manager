@@ -107,8 +107,13 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 | 改動範圍（相對當下 main） | 跑的套件 |
 |--------------------------|---------|
 | `lib/`、`test/`、`integration_test/`、`macos/`、`docs/`（票檔與版本日誌除外）、`pubspec.*` 等 | Flutter：`fvm flutter test` |
-| `.claude/` | hooks pytest：`uv --directory .claude/hooks run pytest` |
+| `.claude/skills/<名稱>/`（該 skill 帶 `tests/`） | `skill:<名稱>`：有 `pyproject.toml` 跑 `uv --directory .claude/skills/<名稱> run pytest`；無則借 hooks 環境 `uv --directory .claude/hooks run pytest -p no:cacheprovider ../skills/<名稱>/tests` |
+| `.claude/scripts/` | scripts pytest：`uv --directory .claude/scripts run pytest` |
+| `.claude/lib/` | hooks pytest（其 testpaths 已含 `../lib/tests`）＋ scripts pytest ＋ 所有「帶 `tests/` 且有 .py 匯入 `lib`」的 skill（掃描快照得出，不寫死清單） |
+| `.claude/hooks/`、無 `tests/` 的 skill、rules、settings.json 等其他 `.claude/` 路徑 | hooks pytest：`uv --directory .claude/hooks run pytest`（hook 測試會讀這些檔） |
 | 只改票檔、版本日誌或其他範圍外路徑 | 免跑 |
+
+多個套件依 flutter、hooks、scripts、skill（名稱排序）的固定順序執行，任一紅燈即停。
 
 - 快照內缺 `.dart_tool/package_config.json` 時先 `fvm flutter pub get`；失敗則明確指出缺哪個產物。
 - CAS 重試：新舊合併 commit 的差異全在 `RETRY_REUSE_EXEMPT_GLOBS`（`docs/work-logs/**/tickets/*.md`、`docs/work-logs/**/v*-main.md`）內時沿用驗證結果，否則重跑；重試超過 `GATE_MAX_RETRIES`（預設 3）中止，ref 不變、分支保留。
