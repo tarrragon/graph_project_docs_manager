@@ -10,6 +10,7 @@ Bash 事件的 hook 合併後由 hook-dispatcher 啟動，settings.json 只剩�
 """
 
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -60,8 +61,11 @@ def merge_dispatch_registry(settings: dict, root: Path, logger=None) -> dict:
     try:
         groups = load_registry_groups(root)
     except (OSError, ValueError) as e:
+        # 退回「只看 settings.json」會讓被併入的 hook 被判為未註冊：雙通道可見（日誌 warning + stderr）
+        message = "讀取分派 registry 失敗（{}），未併入註冊清單: {}".format(registry_path(root), e)
         if logger is not None:
-            logger.info("讀取分派 registry 失敗，未併入註冊清單: {}".format(e))
+            logger.warning(message)
+        sys.stderr.write("[hook_registry] {}\n".format(message))
         return settings
     hooks_cfg = settings.setdefault("hooks", {})
     for key, group in groups.items():

@@ -72,6 +72,18 @@ class TestHookRegistry:
         assert settings == _settings()
         assert "讀取分派 registry 失敗" in caplog.text
 
+    def test_corrupt_registry_warns_on_both_channels_and_returns_original(self, tmp_path, caplog, capsys):
+        d = tmp_path / ".claude" / "hooks"
+        d.mkdir(parents=True)
+        (d / "hook-dispatch-registry.json").write_text("{bad", encoding="utf-8")
+        with caplog.at_level(logging.DEBUG, logger="test_hook_registry"):
+            settings = hook_registry.merge_dispatch_registry(_settings(), tmp_path, _LOGGER)
+        assert settings == _settings()
+        records = [r for r in caplog.records if r.name == "test_hook_registry"]
+        assert records and all(r.levelno == logging.WARNING for r in records)
+        err = capsys.readouterr().err
+        assert "hook-dispatch-registry.json" in err and "讀取分派 registry 失敗" in err
+
     def test_registry_commands_equivalent_to_original_registration(self, tmp_path):
         _write_registry(tmp_path, [".claude/hooks/a-hook.py", ".claude/skills/s/hooks/b-hook.py"])
         assert hook_registry.registry_commands(tmp_path) == [
