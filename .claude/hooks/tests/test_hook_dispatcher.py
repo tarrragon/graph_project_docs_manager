@@ -226,6 +226,95 @@ class TestProjectRootInLinkedWorktree:
         assert Path(results[0].stderr.strip()).resolve() == PROJECT_ROOT.resolve()
 
 
+class TestSharedStateRootCacheIsolation:
+    """同程序內 get_project_root 與 get_shared_state_root 兩個快取互不汙染（自建 linked worktree）。"""
+
+    # 預算須 >= DEFAULT_HOOK_TIMEOUT，否則 dispatch 會把 hook 全部改走尾段子程序，等於沒測同程序快取
+    BUDGET = disp.DEFAULT_GROUP_BUDGET
+
+    PROBE_PROJECT = (
+        "import sys\n"
+        "sys.path.insert(0, {claude_dir!r})\n"
+        "from lib import get_project_root\n"
+        "sys.stderr.write(str(get_project_root()))\n"
+    )
+    PROBE_SHARED = (
+        "import sys\n"
+        "sys.path.insert(0, {claude_dir!r})\n"
+        "from lib.hook_base import get_shared_state_root\n"
+        "sys.stderr.write(str(get_shared_state_root()))\n"
+    )
+
+    @pytest.fixture
+    def repos(self, tmp_path, monkeypatch):
+        main = tmp_path / "main_repo"
+        wt = tmp_path / "linked_wt"
+        main.mkdir()
+
+        def git(*a):
+            subprocess.run(["git", "-C", str(main), "-c", "user.name=t", "-c", "user.email=t@t"] + list(a),
+                           check=True, capture_output=True)
+        git("init", "-q")
+        git("commit", "-q", "--allow-empty", "-m", "init")
+        git("worktree", "add", "-q", str(wt), "-b", "wt-branch")
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.delenv("HOOK_TEST_ISOLATION", raising=False)
+        monkeypatch.chdir(wt)
+        from lib.hook_base import clear_project_root_cache
+        clear_project_root_cache()
+        yield main.resolve(), wt.resolve()
+        clear_project_root_cache()
+
+    def _probes(self, tmp_path):
+        claude_dir = str(PROJECT_ROOT / ".claude")
+        proj = _write_hook(tmp_path, "probe_project", self.PROBE_PROJECT.format(claude_dir=claude_dir))
+        shared = _write_hook(tmp_path, "probe_shared", self.PROBE_SHARED.format(claude_dir=claude_dir))
+        return proj, shared
+
+    def _standalone(self, tmp_path, name, cwd):
+        env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_PROJECT_DIR", "HOOK_TEST_ISOLATION")}
+        p = subprocess.run([sys.executable, str(tmp_path / (name + ".py"))], capture_output=True,
+                           text=True, cwd=str(cwd), env=env)
+        return Path(p.stderr.strip()).resolve()
+
+    def test_e2_roots_differ(self, repos):
+        main, wt = repos
+        assert main != wt
+
+    @pytest.mark.parametrize("order", ["project_first", "shared_first"])
+    def test_roots_per_kind_in_both_orders_match_standalone(self, tmp_path, repos, order):
+        main, wt = repos
+        proj, shared = self._probes(tmp_path)
+        entries = [proj, shared] if order == "project_first" else [shared, proj]
+        results = {r.name: Path(r.stderr.strip()).resolve()
+                   for r in disp.dispatch(entries, "{}", tmp_path, self.BUDGET)}
+        assert results["probe_project"] == wt
+        assert results["probe_shared"] == main
+        # E1：單獨以子程序執行讀到的根相同
+        assert self._standalone(tmp_path, "probe_project", wt) == results["probe_project"]
+        assert self._standalone(tmp_path, "probe_shared", wt) == results["probe_shared"]
+
+    def test_e2_polluted_cache_would_be_detected(self, tmp_path, repos):
+        """正向對照：人為讓兩者共用同一快取值時，斷言必須翻紅（證明測試有鑑別力）。"""
+        main, wt = repos
+        proj, shared = self._probes(tmp_path)
+        polluter = _write_hook(
+            tmp_path, "polluter",
+            "import sys\n"
+            "sys.path.insert(0, {!r})\n"
+            "import lib.hook_base as hb\n"
+            "import os\n"
+            "hb._MAIN_REPO_ROOT_CACHE[os.getcwd()] = hb.get_project_root()\n".format(
+                str(PROJECT_ROOT / ".claude")))
+        import lib.hook_base as hb
+        try:
+            rs = disp.dispatch([polluter, proj, shared], "{}", tmp_path, self.BUDGET)
+            results = {r.name: Path(r.stderr.strip()).resolve() for r in rs}
+        finally:
+            hb.clear_project_root_cache()
+        assert results["probe_shared"] != main
+
+
 # ---------- 失敗語意 ----------
 
 class TestFailureSemantics:
