@@ -41,46 +41,32 @@ def fresh_lock(tmp_path):
     return tmp_path, lock
 
 
-def test_fresh_lock_message_contains_gui_app_names(hook_module, fresh_lock):
-    """訊息必須包含 4 個 GUI app 名稱（Fork / GitKraken / SourceTree / VS Code）。"""
-    project_root, _ = fresh_lock
+# 調整說明（0.5.0-W1-164.4.1）：新鎖改為只寫日誌、不回傳訊息也不寫 stderr，
+# 原三則對回傳 msg 的斷言改讀日誌（PC-139 排查文字內容不變，載體由 stderr 改為日誌）。
+def _young_lock_log(hook_module, project_root, caplog):
     with patch.object(hook_module, "get_project_root", return_value=str(project_root)):
-        import logging
-        logger = logging.getLogger("test")
-        msg = hook_module.check_and_cleanup_index_lock(logger)
+        with caplog.at_level(logging.INFO, logger="test"):
+            msg = hook_module.check_and_cleanup_index_lock(logging.getLogger("test"))
+    assert msg is None
+    return caplog.text
 
-    assert msg is not None
+
+def test_fresh_lock_message_contains_gui_app_names(hook_module, fresh_lock, caplog):
+    """日誌必須包含 4 個 GUI app 名稱（Fork / GitKraken / SourceTree / VS Code）。"""
+    text = _young_lock_log(hook_module, fresh_lock[0], caplog)
     for name in ("Fork", "GitKraken", "SourceTree", "VS Code"):
-        assert name in msg, f"訊息缺少 GUI app 名稱: {name}"
+        assert name in text, f"日誌缺少 GUI app 名稱: {name}"
 
 
-def test_fresh_lock_message_contains_ps_aux_detection(hook_module, fresh_lock):
-    """訊息必須包含 ps aux 外部進程偵測指令範例。"""
-    project_root, _ = fresh_lock
-    with patch.object(hook_module, "get_project_root", return_value=str(project_root)):
-        import logging
-        logger = logging.getLogger("test")
-        msg = hook_module.check_and_cleanup_index_lock(logger)
-
-    assert msg is not None
-    # regex match: ps aux | grep ... Fork|GitKraken|SourceTree
-    assert re.search(r"ps\s+aux\s*\|\s*grep", msg), "訊息缺少 ps aux | grep 偵測指令"
-    assert re.search(r"Fork\|GitKraken\|SourceTree", msg), "訊息缺少 GUI app pattern"
+def test_fresh_lock_message_contains_ps_aux_detection(hook_module, fresh_lock, caplog):
+    text = _young_lock_log(hook_module, fresh_lock[0], caplog)
+    assert re.search(r"ps\s+aux\s*\|\s*grep", text), "日誌缺少 ps aux | grep 偵測指令"
+    assert re.search(r"Fork\|GitKraken\|SourceTree", text), "日誌缺少 GUI app pattern"
 
 
-def test_fresh_lock_message_contains_pc139_reference(hook_module, fresh_lock):
-    """訊息必須 cross-link 至 PC-139 error-pattern。"""
-    project_root, _ = fresh_lock
-    with patch.object(hook_module, "get_project_root", return_value=str(project_root)):
-        import logging
-        logger = logging.getLogger("test")
-        msg = hook_module.check_and_cleanup_index_lock(logger)
-
-    assert msg is not None
-    assert "PC-139" in msg, "訊息缺少 PC-139 引用"
-    assert (
-        "PC-139-git-index-lock-source-misattribution-gui-app-fork" in msg
-    ), "訊息缺少 PC-139 完整檔案名引用"
+def test_fresh_lock_message_contains_pc139_reference(hook_module, fresh_lock, caplog):
+    text = _young_lock_log(hook_module, fresh_lock[0], caplog)
+    assert "PC-139-git-index-lock-source-misattribution-gui-app-fork" in text
 
 
 def test_no_lock_returns_none(hook_module, tmp_path):
@@ -178,7 +164,7 @@ def test_worktree_young_lock_kept(hook_module, wt):
     w, lock = wt
     lock.write_text("")
     msg = _run(hook_module, w)
-    assert msg and "WARNING" in msg
+    assert msg is None  # 調整：新鎖不再回傳訊息（只寫日誌）
     assert lock.exists()
 
 
@@ -285,9 +271,206 @@ def test_rev_parse_failure_logged_and_falls_back(hook_module, tmp_path, caplog):
     assert "無法解析" in caplog.text
 
 
-def test_fresh_lock_message_uses_resolved_path(hook_module, wt, capsys):
+def test_fresh_lock_logs_resolved_path_without_stderr(hook_module, wt, capsys, caplog):
+    """調整：新鎖日誌含解析後路徑，stderr 靜默（E1 對照見下方過期鎖測試）。"""
     w, lock = wt
     lock.write_text("")
-    msg = _run(hook_module, w)
-    assert str(lock) in msg
-    assert str(lock) in capsys.readouterr().err
+    with caplog.at_level(logging.INFO, logger="test"):
+        _run(hook_module, w)
+    assert str(lock) in caplog.text
+    assert capsys.readouterr().err == ""
+
+
+# ---- 0.5.0-W1-164.4.1：目標集合、每次 Bash 檢查、線索記錄 ----
+
+import shutil
+
+
+def _mk_repo(path):
+    path.mkdir(parents=True, exist_ok=True)
+    _sh(path, "init", "-q")
+    return path
+
+
+def _stale(repo):
+    lock = Path(repo) / ".git" / "index.lock"
+    lock.write_text("")
+    t = time.time() - 120
+    os.utime(lock, (t, t))
+    return lock
+
+
+def _hook(payload, project_dir, cwd_env=None):
+    env = dict(os.environ, CLAUDE_PROJECT_DIR=str(project_dir))
+    return subprocess.run(["python3", str(HOOK_PATH)], input=json.dumps(payload),
+                          capture_output=True, text=True, env=env, timeout=60)
+
+
+@pytest.fixture
+def two_repos(tmp_path):
+    mine = _mk_repo(tmp_path / "mine")
+    (mine / ".claude").mkdir()
+    other = _mk_repo(tmp_path / "other")
+    return mine, other
+
+
+def _evidence(repo):
+    f = Path(repo) / ".claude" / "hook-logs" / "git-index-lock-cleanup" / "evidence.log"
+    return f.read_text().splitlines() if f.exists() else []
+
+
+@pytest.mark.parametrize("cmd_tpl", [
+    "git add x",
+    "git commit -m m",
+    "git -C {other} add x",
+    "git -C ../other add x",
+    "ticket track commit T-1 -m m --worktree {other} -- f",
+    "ticket track commit T-1 -m m --worktree={other} -- f",
+    "echo hello",
+])
+def test_stale_lock_cleaned_per_command_shape(two_repos, cmd_tpl):
+    """閘門各列：cwd / -C 絕對 / -C 相對 / --worktree 兩形 / 不含 git 字樣。"""
+    mine, other = two_repos
+    target = mine if ("{other}" not in cmd_tpl and "../other" not in cmd_tpl) else other
+    lock = _stale(target)
+    cmd = cmd_tpl.format(other=other)
+    r = _hook({"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": str(mine)}, mine)
+    assert r.returncode == 0, r.stderr
+    if cmd_tpl == "echo hello":
+        assert not lock.exists()
+    assert not lock.exists(), f"{cmd} 應清除 {lock}"
+
+
+def test_dash_c_other_repo_without_flag_keeps_other_lock(two_repos):
+    """對照（E1）：不帶 -C 時他 repo 的鎖不動。"""
+    mine, other = two_repos
+    lock = _stale(other)
+    _hook({"tool_name": "Bash", "tool_input": {"command": "git add x"}, "cwd": str(mine)}, mine)
+    assert lock.exists()
+
+
+def test_other_repo_gets_no_new_files(two_repos):
+    """寫入設限：清他 repo 的鎖後，該 repo 不得新增任何檔案；線索寫回本專案。"""
+    mine, other = two_repos
+    lock = _stale(other)
+    before = {p for p in other.rglob("*")}
+    r = _hook({"tool_name": "Bash", "tool_input": {"command": f"git -C {other} add x"},
+               "cwd": str(mine), "session_id": "S1"}, mine)
+    assert r.returncode == 0, r.stderr
+    after = {p for p in other.rglob("*")}
+    assert after == before - {lock}
+    assert not lock.exists()
+    assert not (other / ".claude").exists()
+    lines = _evidence(mine)
+    assert len(lines) == 1 and str(lock) in lines[0]
+
+
+def test_evidence_fields_and_secret_masking(two_repos):
+    mine, _ = two_repos
+    lock = _stale(mine)
+    cmd = "API_TOKEN=abc123 git add x # Bearer zzz"
+    _hook({"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": str(mine),
+           "session_id": "S2"}, mine)
+    line = _evidence(mine)[0]
+    assert line.startswith("IDXLOCK-EVIDENCE ")
+    for key in ("ts=", "lock_path=", "size=0", "lock_mtime=", "hook_cwd=", "found_by_cmd=",
+                "index_mtime=", "reflog_new=", "reflog_last_ts=", "loadavg_1m=", "session_id=S2"):
+        assert key in line, key
+    assert "abc123" not in line and "zzz" not in line
+    assert not lock.exists()
+
+
+def test_evidence_in_main_repo_when_run_in_worktree(wt, tmp_path):
+    """linked worktree 內執行：鎖在 worktree gitdir，線索進主倉。"""
+    w, lock = wt
+    lock.write_text("")
+    t = time.time() - 120
+    os.utime(lock, (t, t))
+    main = tmp_path / "main"
+    r = subprocess.run(["python3", str(HOOK_PATH)], capture_output=True, text=True, timeout=60,
+                       input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"},
+                                         "cwd": str(w)}),
+                       env=dict(os.environ, CLAUDE_PROJECT_DIR=str(w)))
+    assert r.returncode == 0, r.stderr
+    assert not lock.exists()
+    assert len(_evidence(main)) == 1
+    assert not (w / ".claude" / "hook-logs" / "git-index-lock-cleanup" / "evidence.log").exists()
+
+
+def test_fresh_lock_silent_stderr_vs_stale_stderr(two_repos):
+    """E1 對照：同命令，新鎖 stderr 為空；過期鎖有 IMP-046 stderr。"""
+    mine, _ = two_repos
+    lock = mine / ".git" / "index.lock"
+    lock.write_text("")
+    payload = {"tool_name": "Bash", "tool_input": {"command": "git add x"}, "cwd": str(mine)}
+    assert _hook(payload, mine).stderr.strip() == ""
+    assert lock.exists()
+    t = time.time() - 120
+    os.utime(lock, (t, t))
+    assert "IMP-046" in _hook(payload, mine).stderr
+
+
+def test_non_git_command_does_not_import_git_command_parse(two_repos):
+    """子程序內執行 hook 後檢查 sys.modules（不受 pytest 行程其他測試影響）。"""
+    mine, _ = two_repos
+    code = (
+        "import sys, runpy, json, io\n"
+        "sys.stdin = io.StringIO(json.dumps({'tool_name':'Bash','tool_input':{'command':'echo hi'},'cwd':%r}))\n"
+        "try:\n    runpy.run_path(%r, run_name='__main__')\n"
+        "except SystemExit:\n    pass\n"
+        "sys.stderr.write('IMPORTED=' + str('lib.git_command_parse' in sys.modules))\n"
+    ) % (str(mine), str(HOOK_PATH))
+    r = subprocess.run(["python3", "-c", code], capture_output=True, text=True, timeout=60,
+                       env=dict(os.environ, CLAUDE_PROJECT_DIR=str(mine)))
+    assert "IMPORTED=False" in r.stderr, r.stderr
+
+
+def test_dash_c_nonexistent_dir_no_error(two_repos):
+    mine, _ = two_repos
+    r = _hook({"tool_name": "Bash", "tool_input": {"command": "git -C /no/such/dir add x"},
+               "cwd": str(mine)}, mine)
+    assert r.returncode == 0 and r.stderr.strip() == ""
+
+
+def test_evidence_write_failure_does_not_block_cleanup(hook_module, two_repos, capsys):
+    mine, _ = two_repos
+    lock = _stale(mine)
+    with patch.object(hook_module, "get_project_root", return_value=str(mine)), \
+         patch.object(hook_module, "build_evidence_line", side_effect=RuntimeError("boom")):
+        msg = hook_module.check_and_cleanup_index_lock(logging.getLogger("test"), str(mine), "git add x")
+    assert msg and "IMP-046" in msg
+    assert not lock.exists()
+    assert "線索記錄失敗" in capsys.readouterr().err
+
+
+def test_main_root_unresolved_falls_back_with_note(hook_module, tmp_path):
+    root = tmp_path / "plain"
+    (root / ".git").mkdir(parents=True)
+    assert hook_module.find_main_root(str(root)) == str(root)
+    bare_like = tmp_path / "x"
+    (bare_like / "foo.git").mkdir(parents=True)
+    assert hook_module.find_main_root(str(bare_like)) is None
+
+
+def test_duplicate_targets_deduped(hook_module, two_repos):
+    mine, _ = two_repos
+    lock = _stale(mine)
+    with patch.object(hook_module, "get_project_root", return_value=str(mine)):
+        hook_module.check_and_cleanup_index_lock(
+            logging.getLogger("test"), str(mine), f"git -C {mine} add x && git add y")
+    assert not lock.exists()
+    assert len(_evidence(mine)) == 1
+
+
+def test_already_removed_by_peer_is_silent(hook_module, two_repos, capsys):
+    mine, _ = two_repos
+    lock = _stale(mine)
+    real_remove = os.remove
+    def racing(path):
+        real_remove(path)
+        raise FileNotFoundError(path)
+    with patch.object(hook_module, "get_project_root", return_value=str(mine)), \
+         patch.object(hook_module.os, "remove", side_effect=racing):
+        msg = hook_module.check_and_cleanup_index_lock(logging.getLogger("test"), str(mine), "x")
+    assert msg is None
+    assert "IMP-046" not in capsys.readouterr().err
