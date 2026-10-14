@@ -145,7 +145,7 @@ def main() -> int:
         if not command:
             return 0
 
-        invocations = find_git_invocations(command, {"merge"})
+        invocations = find_git_invocations(command, {"merge"}, scan=True)
         if not invocations:
             return 0  # None（無法解析）或無 merge 呼叫
 

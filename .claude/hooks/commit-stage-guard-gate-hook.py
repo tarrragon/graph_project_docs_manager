@@ -277,7 +277,7 @@ def main() -> int:
     if not contains_git_word(command):
         return EXIT_ALLOW
 
-    invocations = find_git_invocations(command, {"commit"})
+    invocations = find_git_invocations(command, {"commit"}, scan=True)
     if not invocations:
         logger.debug("命令不含 git commit 呼叫，或無法安全解析，放行")
         return EXIT_ALLOW

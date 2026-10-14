@@ -65,7 +65,7 @@ SKIP_MARKER = "[skip homoglyph]"
 def _is_git_commit_command(command: str) -> bool:
     """判斷是否為新建 commit 命令（排除 amend / log / diff / show / status）。"""
     # 三態中 None（無法解析）：視為未命中
-    return match_git_commit(command) is True
+    return match_git_commit(command, scan=True) is True
 
 
 def _get_staged_diff(project_dir: Path, logger) -> str:
