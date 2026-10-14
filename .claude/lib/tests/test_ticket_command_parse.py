@@ -209,6 +209,28 @@ class TestIsInvocationMasked:
         for cmd in self.MASKED:
             assert is_invocation_masked(cmd) is True, cmd
 
+    def test_substitution_under_non_assignment_is_masked(self):
+        for cmd in (
+            f"echo $(ticket track complete {TID})",
+            f'echo "$(ticket track complete {TID})"',
+            f"export x=$(ticket track complete {TID})",
+            f"local x=$(ticket track complete {TID})",
+            f"declare x=$(ticket track complete {TID})",
+        ):
+            assert is_invocation_masked(cmd) is True, cmd
+
+    def test_pure_assignment_substitution_stays_unmasked(self):
+        """E2 對照：純賦值把替換的結束碼傳出。"""
+        for cmd in (
+            f"out=$(ticket track complete {TID})",
+            f'out="$(ticket track complete {TID})"',
+            f"a=$(ticket track complete {TID}) b=$(echo y)",
+        ):
+            assert is_invocation_masked(cmd) is False, cmd
+
+    def test_process_substitution_is_unmasked(self):
+        assert is_invocation_masked(f"ticket track finish {TID} > >(tee /tmp/log)") is False
+
     def test_quoted_separator_is_not_masking(self):
         assert is_invocation_masked(f"ticket track append-log {TID} 'a; b | c'") is False
 

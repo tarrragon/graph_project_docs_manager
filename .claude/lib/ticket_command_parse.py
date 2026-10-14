@@ -9,6 +9,7 @@ heredoc 內文由 parse_command_statements 收斂，不會被誤判為命令。
 """
 
 import os
+import re
 from typing import List, Optional, Tuple
 
 from .git_command_parse import (
@@ -144,6 +145,44 @@ def _masked_in_tokens(tokens: List[str]) -> bool:
     return any(tok in _MASKING_SEPARATORS for tok in tokens[:end])
 
 
+_ASSIGNMENT_WORD = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\+?=")
+_STATEMENT_ENDS = frozenset({";", "|", "||", "&", "&&"})
+
+
+def _substitution_masks(tokens: List[str]) -> bool:
+    """陳述含命令替換且不是純賦值時為 True（結束碼來自命令字，替換的失敗被遮蔽）。
+
+    純賦值（整句只有 NAME=$(...)，無命令字）才會把替換的結束碼傳出。
+    `export x=$(...)`、`echo $(...)` 的結束碼來自 builtin／命令字。
+    """
+    words: List[str] = []
+    has_subst = False
+    paren_depth = 0
+
+    def verdict() -> bool:
+        return has_subst and not all(_ASSIGNMENT_WORD.match(w) for w in words)
+
+    for i, tok in enumerate(tokens):
+        if tok in _STATEMENT_ENDS:
+            if verdict():
+                return True
+            words, has_subst, paren_depth = [], False, 0
+            continue
+        if tok == "(":
+            if i > 0 and tokens[i - 1].endswith("$"):
+                has_subst = True
+            paren_depth += 1
+            continue
+        if tok == ")":
+            paren_depth = max(0, paren_depth - 1)
+            continue
+        if paren_depth == 0:
+            words.append(tok)
+            if "$(" in tok:  # 引號內的替換被收斂為單一 token
+                has_subst = True
+    return verdict()
+
+
 def _is_masked(command: str, depth: int) -> Optional[bool]:
     if depth > _MAX_SCAN_NESTING:
         return None
@@ -151,7 +190,7 @@ def _is_masked(command: str, depth: int) -> Optional[bool]:
     statements = parse_command_statements(command)
     if tokens is None or statements is None:
         return None
-    if _masked_in_tokens(tokens):
+    if _masked_in_tokens(tokens) or _substitution_masks(tokens):
         return True
     for statement in statements:  # shell -c／eval 的巢狀字串另行判斷
         for i in range(len(statement)):
@@ -174,6 +213,8 @@ def is_invocation_masked(command: str) -> Optional[bool]:
     | 單一命令、純重導向（`> log 2>&1`）、`&&` 串接、單獨的 `x=$(...)`／子 shell | False |
     | 含 `;`、管線、`||`、`&`（換行等同 `;`；尾端 `;` 不算）| True |
     | 命令替換後接其他陳述（`out=$(...); rc=$?`，因含 `;` 落入上列）| True |
+    | 非純賦值陳述含命令替換（`echo $(...)`、`export x=$(...)`、`local`／`declare`）| True |
+    | process substitution（`> >(tee log)`）| False |
     | `bash -c '...'`／eval 巢狀字串含上列分隔符 | True |
     | 無法解析（未閉合引號、巢狀過深）| None |
 
