@@ -19,7 +19,14 @@ git_command_parse.parse_command_statements 的切分（heredoc 剝離、換行�
 
 支援的啟動前綴：env／KEY=VAL／sudo／nohup／time／xargs、timeout、fvm、
 `uv [選項] run`、`[python] run-with-timeout.py N -- <命令>`（可巢狀）。
-不支援：`bash -c '...'`（命令位於引號字串內，需二次解析）。
+另處理：sudo／env 的帶值選項（`sudo -u x`、`env -u X`）、python 帶值旗標
+（`-X dev`、`-W ignore`）、flutter／dart 在 test 前的全域選項、npm 帶值選項
+（`--prefix x`、`-w pkg`）與別名 `npm t`。解析成本低的形態一律修正，因為本機
+閘門以本模組辨識 heavy 工作，漏判等於繞過閘門。
+不支援（需二次解析或超出 runner 集合，閘門須另行處理）：`bash -c '...'`／
+`sh -c`／`python -c`（命令位於引號字串內）、`yarn`／`pnpm`／`npx` 的測試、
+`env A=1 -u X cmd`（賦值後才出現選項）、`--opt=val` 以外未列入帶值集合的
+自訂選項（其值會被當成子命令而漏判）。
 """
 
 import re
@@ -27,7 +34,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from .git_command_parse import _skip_prefix_wrapper_count, parse_command_statements
+from .git_command_parse import parse_command_statements, skip_prefix_wrapper_count
 
 RUNNER_FLUTTER = "flutter"
 RUNNER_DART = "dart"
@@ -45,6 +52,21 @@ _UV_OPTIONS_WITH_VALUE = frozenset({
     "--extra", "--package", "--index", "--index-url", "--extra-index-url",
     "--cache-dir", "--config-file",
 })
+_SUDO_OPTIONS_WITH_VALUE = frozenset({
+    "-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt",
+    "-C", "--close-from", "-r", "--role", "-t", "--type", "-D", "--chdir",
+    "-T", "--command-timeout", "-U", "--other-user",
+})
+_ENV_OPTIONS_WITH_VALUE = frozenset({"-u", "--unset", "-C", "--chdir", "-S", "--split-string"})
+_PYTHON_OPTIONS_WITH_VALUE = frozenset({"-X", "-W", "--check-hash-based-pycs"})
+_FLUTTER_DART_OPTIONS_WITH_VALUE = frozenset({
+    "-d", "--device-id", "--packages", "--suppress-analytics-value",
+})
+_NPM_OPTIONS_WITH_VALUE = frozenset({
+    "--prefix", "-C", "-w", "--workspace", "--cache", "--userconfig",
+    "--registry", "--loglevel", "--tag", "--otp",
+})
+NPM_TEST_ALIASES = frozenset({"test", "t", "tst"})
 
 
 @dataclass(frozen=True)
@@ -80,9 +102,7 @@ def _strip_timeout_wrapper(tokens: List[str]) -> Optional[List[str]]:
     """[直譯器 [旗標]] run-with-timeout.py N -- <命令>；不是包裝呼叫回 None。"""
     index = 0
     if _PYTHON_EXECUTABLE_RE.match(Path(tokens[0]).name):
-        index = 1
-        while index < len(tokens) and tokens[index].startswith("-"):
-            index += 1
+        index = len(tokens) - len(_skip_options(tokens[1:], _PYTHON_OPTIONS_WITH_VALUE))
     if index >= len(tokens) or Path(tokens[index]).name != TIMEOUT_WRAPPER_NAME:
         return None
     rest = tokens[index + 1:]
@@ -90,10 +110,14 @@ def _strip_timeout_wrapper(tokens: List[str]) -> Optional[List[str]]:
 
 
 def _strip_one_launcher(tokens: List[str]) -> List[str]:
-    skipped = _skip_prefix_wrapper_count(tokens)  # env／KEY=VAL／sudo／nohup／time／xargs
+    head = tokens[0]
+    if head == "sudo":  # 先於通用前綴處理：sudo／env 的選項須在此消耗
+        return _skip_options(tokens[1:], _SUDO_OPTIONS_WITH_VALUE)
+    if head == "env":
+        return _skip_options(tokens[1:], _ENV_OPTIONS_WITH_VALUE)
+    skipped = skip_prefix_wrapper_count(tokens)  # KEY=VAL／nohup／time／xargs
     if skipped:
         return tokens[skipped:]
-    head = tokens[0]
     if head == "timeout":
         return _strip_timeout(tokens)
     if head == "fvm":
@@ -120,17 +144,19 @@ def _is_python_module_pytest(tokens: List[str]) -> bool:
         return False
     rest = tokens[1:]
     while rest and rest[0].startswith("-") and rest[0] != "-m":
-        rest = rest[1:]
+        rest = rest[2:] if rest[0] in _PYTHON_OPTIONS_WITH_VALUE else rest[1:]
     return len(rest) >= 2 and rest[0] == "-m" and rest[1] == "pytest"
 
 
 def _is_npm_test(tokens: List[str]) -> bool:
     """npm test[:x] / npm run test[:x]"""
-    if len(tokens) > 2 and tokens[1] == "run":
-        script = tokens[2]
-    else:
-        script = tokens[1] if len(tokens) > 1 else ""
-    return script == "test" or script.startswith("test:")
+    rest = _skip_options(tokens[1:], _NPM_OPTIONS_WITH_VALUE)
+    if len(rest) > 1 and rest[0] == "run":
+        rest = _skip_options(rest[1:], _NPM_OPTIONS_WITH_VALUE)
+        script = rest[0] if rest else ""
+        return script == "test" or script.startswith("test:")
+    script = rest[0] if rest else ""
+    return script in NPM_TEST_ALIASES or script.startswith("test:")
 
 
 def _classify_runner(tokens: List[str]) -> Optional[str]:
@@ -138,7 +164,8 @@ def _classify_runner(tokens: List[str]) -> Optional[str]:
         return None
     head = Path(tokens[0]).name
     if head in (RUNNER_FLUTTER, RUNNER_DART):
-        return head if len(tokens) > 1 and tokens[1] == "test" else None
+        rest = _skip_options(tokens[1:], _FLUTTER_DART_OPTIONS_WITH_VALUE)
+        return head if rest and rest[0] == "test" else None
     if head == RUNNER_NPM:
         return RUNNER_NPM if _is_npm_test(tokens) else None
     if head in PYTEST_EXECUTABLES or _is_python_module_pytest(tokens):

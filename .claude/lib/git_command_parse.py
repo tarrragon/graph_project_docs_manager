@@ -259,7 +259,7 @@ def _expand_subcommand_aliases(subcommands: Iterable[str]) -> FrozenSet[str]:
     return frozenset(expanded)
 
 
-def _skip_prefix_wrapper_count(tokens: List[str]) -> int:
+def skip_prefix_wrapper_count(tokens: List[str]) -> int:
     """計算語句開頭需跳過的前綴包裹與環境變數賦值 token 數，供索引位移用。
 
     涵蓋：`sudo` / `nohup` / `time` / `xargs`（跳過自身，不消耗選項值——
@@ -285,6 +285,9 @@ def _skip_prefix_wrapper_count(tokens: List[str]) -> int:
             continue
         break
     return idx
+
+
+_skip_prefix_wrapper_count = skip_prefix_wrapper_count  # 舊私有名稱別名，供既有匯入沿用
 
 
 @dataclass(frozen=True)

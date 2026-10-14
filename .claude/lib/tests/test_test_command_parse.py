@@ -95,3 +95,44 @@ def test_statement_keeps_launch_prefix_for_display():
 
 def test_all_runners_constant_covers_every_runner():
     assert ALL_RUNNERS == {"flutter", "dart", "npm", "pytest"}
+
+
+# 0.5.0-W1-239：漏判形態（本機閘門以此判定 heavy 工作，漏判即繞過）
+@pytest.mark.parametrize("command, expected", [
+    ("python3 -X dev -m pytest", ["pytest"]),
+    ("python3 -W ignore -m pytest tests -q", ["pytest"]),
+    ("python3 -X dev -W error -m pytest", ["pytest"]),
+    ("uv run python -X dev -m pytest", ["pytest"]),
+    ("python3 -X dev .claude/scripts/run-with-timeout.py 60 -- flutter test", ["flutter"]),
+    ("sudo -u x pytest -q", ["pytest"]),
+    ("sudo -E flutter test", ["flutter"]),
+    ("env -u FOO flutter test", ["flutter"]),
+    ("env -i A=1 dart test", ["dart"]),
+    ("dart --enable-asserts test", ["dart"]),
+    ("flutter --no-color test", ["flutter"]),
+    ("flutter -v test", ["flutter"]),
+    ("flutter --device-id macos test", ["flutter"]),
+    ("npm --prefix app test", ["npm"]),
+    ("npm --silent run test:unit", ["npm"]),
+    ("npm run -w pkg test", ["npm"]),
+    ("npm t", ["npm"]),
+])
+def test_hardened_forms_detected(command, expected):
+    assert _runners(command) == expected
+
+
+@pytest.mark.parametrize("command", [
+    "python3 -X dev script.py",
+    "sudo -u x ls",
+    "env -u FOO printenv",
+    "flutter --no-color analyze",
+    "npm --prefix app run build",
+])
+def test_hardened_forms_do_not_overmatch(command):
+    assert _runners(command) == []
+
+
+def test_private_skip_prefix_alias_still_importable():
+    from lib import git_command_parse as g
+
+    assert g._skip_prefix_wrapper_count is g.skip_prefix_wrapper_count
