@@ -476,3 +476,36 @@ def test_below_warning_is_normal(hook_module, tmp_path):
 
 def test_no_obsolete_constant_name(hook_module):
     assert not hasattr(hook_module, "AUTO_KILL_THRESHOLD")
+
+
+# --- 評估紀錄取證欄位 ---
+
+def _run_logged_evaluation(hook_module, monkeypatch, tmp_path, logger, tool_response):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    input_data = {
+        "tool_name": "Bash",
+        "tool_input": {"command": "pytest -q"},
+        "tool_response": tool_response,
+    }
+    hook_module.evaluate_test_failure(input_data, input_data["tool_input"], logger)
+    reports = list((tmp_path / ".claude" / "hook-logs").glob("pre-fix-evaluation-*.json"))
+    assert len(reports) == 1
+    return json.loads(reports[0].read_text(encoding="utf-8"))
+
+
+def test_evaluation_record_dict_tool_response(hook_module, monkeypatch, tmp_path, logger):
+    response = {"stdout": "collected 3 FAILED tests/test_x.py::t - boom", "stderr": ""}
+    report = _run_logged_evaluation(hook_module, monkeypatch, tmp_path, logger, response)
+    assert report["tool_response_type"] == "dict"
+    assert report["tool_response_keys"] == ["stdout", "stderr"]
+    assert report["tool_response_value_lengths"] == {
+        "stdout": len(response["stdout"]), "stderr": 0}
+    assert any("FAILED" in e["matched_excerpt"] for e in report["errors"])
+
+
+def test_evaluation_record_str_tool_response(hook_module, monkeypatch, tmp_path, logger):
+    response = "collected 3\nFAILED tests/test_x.py::t - boom\n"
+    report = _run_logged_evaluation(hook_module, monkeypatch, tmp_path, logger, response)
+    assert report["tool_response_type"] == "str"
+    assert "tool_response_keys" not in report
+    assert any("FAILED" in e["matched_excerpt"] for e in report["errors"])

@@ -282,6 +282,7 @@ def _classify_errors(output: str, logger) -> Tuple[ErrorType, List[Dict[str, str
                     "type": error_type.value,
                     "description": desc,
                     "pattern": pattern,
+                    "matched_excerpt": output[max(0, match.start() - 80):match.end() + 80],
                 })
         if errors:
             return error_type, errors
@@ -307,7 +308,20 @@ def _resolve_truncated_output(output_str: str, logger) -> str:
         return output_str
 
 
-def _log_evaluation(error_type: ErrorType, errors: List[Dict[str, str]], logger) -> None:
+def _describe_tool_response(tool_response) -> Dict[str, object]:
+    """描述 tool_response 形態（只記型別與長度，不轉存內容）。"""
+    info: Dict[str, object] = {"tool_response_type": type(tool_response).__name__}
+    if isinstance(tool_response, dict):
+        info["tool_response_keys"] = list(tool_response.keys())
+        info["tool_response_value_lengths"] = {
+            str(k): len(v) if hasattr(v, "__len__") else len(str(v))
+            for k, v in tool_response.items()
+        }
+    return info
+
+
+def _log_evaluation(error_type: ErrorType, errors: List[Dict[str, str]], logger,
+                    tool_response=None) -> None:
     """記錄評估結果到日誌。"""
     project_root = get_project_root()
     log_dir = project_root / ".claude" / "hook-logs"
@@ -320,6 +334,7 @@ def _log_evaluation(error_type: ErrorType, errors: List[Dict[str, str]], logger)
         "error_count": len(errors),
         "errors": errors,
         "requires_ticket": "pm_decision",
+        **_describe_tool_response(tool_response),
     }
 
     try:
@@ -427,7 +442,7 @@ def evaluate_test_failure(input_data: dict, tool_input: dict, logger):
         return None
 
     logger.info(f"evaluation: 偵測到 {len(errors)} 個 {error_type.value} 錯誤")
-    _log_evaluation(error_type, errors, logger)
+    _log_evaluation(error_type, errors, logger, tool_response)
 
     if error_type == ErrorType.SYNTAX_ERROR:
         message = f"\n語法錯誤 - 簡化修復流程\n\n錯誤數量: {len(errors)}\n推薦代理人: mint-format-specialist\n\n識別的語法錯誤：\n"
