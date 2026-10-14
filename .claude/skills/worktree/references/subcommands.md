@@ -126,3 +126,35 @@ $ /worktree status
 建立新的 worktree：
   /worktree create <ticket-id>
 ```
+
+## merge — 以隔離索引 CAS 合併分支
+
+```bash
+/worktree merge <ticket-id>
+```
+
+前置驗證（Ticket completed、working tree 乾淨、分支不落後 main）通過後，**直接完成合併**，不再輸出 `git merge` 指令。
+
+| 步驟 | 行為 |
+|------|------|
+| 計算 | `git merge-tree --write-tree` 對「當下 main 與分支」做三方合併，只寫物件庫，不碰任何 index |
+| 空合併守衛 | 合併 tree 等於第一親代 tree 即中止，不寫任何 ref |
+| 衝突 | 有文字衝突即中止，列出衝突檔，HEAD 不變，不留 MERGE_HEAD |
+| 提交 | `commit-tree`（親代：舊 main、分支）後，`update-ref refs/heads/main <新> <舊>` CAS |
+| HEAD 被並行推進 | CAS 失敗即以新 HEAD 整段重做（重試預算與 ticket skill 的 `retry_commit_attempt` 相同：前 3 次必做，其後累計等待 5 秒內） |
+| 同步共用 checkout | 僅對「index 與工作區皆等於舊 HEAD」的檔寫入 index 與工作區；其餘列為「未同步」不動；撞 index.lock 同預算重試；最後輸出三平面核對 |
+
+檔案清單全程使用 git 的 NUL 分隔輸出，不經 shell 字詞切分。
+
+### 合併前檢查掛點（pre_merge_check）
+
+程式入口 `worktree_manager.merge_branch_cas(branch, repo=None, base="main", pre_merge_check=None, message=None)`，`cmd_merge(ticket_id, pre_merge_check=None)` 透傳。
+
+| 項目 | 規格 |
+|------|------|
+| 簽名 | `(merge_commit_sha: str, target_ref: str, expected_old_sha: str, attempt: int) -> CheckResult`；`CheckResult(passed: bool, reason: str = "")` |
+| 呼叫時機 | `commit-tree` 之後、`update-ref` 之前；`attempt` 從 1 起算 |
+| 失敗語意 | 回傳 `passed=False` 或拋例外：不執行 `update-ref`，ref 不變，不留任何狀態，`reason`（或例外訊息）經 `[錯誤] 合併失敗：…` 印出，exit 1 |
+| 預設 | `None`：不檢查，直接 `update-ref` |
+| 重現待合併內容 | `merge_commit_sha` 已在物件庫但無 ref 指向，`git worktree add --detach <path> <merge_commit_sha>` 即可在隔離環境檢出（`worktree add` 需要 commit-ish，故傳 commit 而非 tree） |
+| 重試成本 | CAS 重試時每次嘗試依新 HEAD 產生不同的合併 commit，**每次嘗試都以該次 commit 重新呼叫檢查**。檢查若很貴，總成本隨重試次數倍增；是否在檢查內快取、縮短或只重跑差異，由掛載檢查的一方（如全套件綠燈閘門）決定 |

@@ -47,6 +47,20 @@ class MergeMessages:
 
     MERGE_FAILED = "[錯誤] 合併失敗：{error}"
 
+    # ===== 隔離索引 CAS 合併 =====
+    CAS_CONFLICT = "合併有文字衝突，已中止，未寫入任何 ref：{detail}"
+    CAS_MERGE_TREE_FAILED = "merge-tree 失敗"
+    CAS_CHECK_RAISED = "合併前檢查執行失敗：{error}"
+    CAS_CHECK_FAILED = "合併前檢查未通過"
+    CAS_REF_UNRESOLVED = "無法解析 {base} 或 {branch}"
+    CAS_ALREADY_MERGED = "分支 {branch} 已被 {base} 包含，無可合併內容"
+    CAS_EMPTY_MERGE = "拒絕空合併：合併結果的 tree 等於第一親代，分支變更全未進入結果"
+    CAS_COMMIT_TREE_FAILED = "commit-tree 失敗：{error}"
+    CAS_SYNC_FAILED = "(同步共用 index 失敗：{error})"
+    CAS_RESULT = "合併提交：{commit}（嘗試 {attempts} 次）\n同步共用 index/工作區：{synced} 檔；三平面核對不一致：{bad} 檔"
+    CAS_SKIPPED_FILE = "  [未同步，index 或工作區已被改動] {path}"
+    CAS_PLANE_MISMATCH = "  [三平面不一致] {path}"
+
 
 class CreateMessages:
     """create 子命令訊息常數"""
