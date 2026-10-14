@@ -25,6 +25,7 @@ import os
 import subprocess
 from typing import List, Optional, Set
 
+from ticket_system.lib.commit_attribution import apply_attribution
 from ticket_system.lib.file_conflict import files_intersect, parse_file_intent, write_files
 from ticket_system.lib.git_ops import commit_files_isolated
 from ticket_system.lib.messages import ErrorMessages, format_error
@@ -335,7 +336,10 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
         )
         return 1
 
-    result = commit_files_isolated(normalized_input, args.message, cwd=repo_root)
+    message, attribution_warning = apply_attribution(args.message, repo_root)
+    if attribution_warning:
+        print(attribution_warning)
+    result = commit_files_isolated(normalized_input, message, cwd=repo_root)
     status = result["status"]
     if status == "committed":
         print(f"[OK] 已提交 {result['commit_sha']}")
