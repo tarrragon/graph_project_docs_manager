@@ -6,6 +6,7 @@ Source: 0.18.0-W17-119.1
 
 import importlib.util
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -256,6 +257,37 @@ def test_is_worktree_dirty_status_has_no_optional_locks_before_subcommand(hook_m
     argv = run.call_args.args[0]
     assert "--no-optional-locks" in argv
     assert argv.index("--no-optional-locks") < argv.index("status")
+
+
+def _make_stat_dirty_repo(tmp_path):
+    """臨時 repo：檔案內容未變但 mtime 改動（stat-dirty），不帶旗標的 status 會重寫 index。"""
+    def git(*args):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    target = tmp_path / "f.txt"
+    target.write_text("x\n")
+    git("add", "f.txt")
+    git("commit", "-q", "-m", "init")
+    os.utime(target, (1_000_000_000, 1_000_000_000))
+    return tmp_path / ".git" / "index"
+
+
+def test_plain_status_rewrites_index_control(tmp_path):
+    """對照：不帶旗標的 status 會改寫 index（旗標測試的鑑別力前提）。"""
+    index = _make_stat_dirty_repo(tmp_path)
+    before = index.read_bytes()
+    subprocess.run(["git", "-C", str(tmp_path), "status", "--porcelain"], check=True, capture_output=True)
+    assert index.read_bytes() != before
+
+
+def test_is_worktree_dirty_does_not_rewrite_index(hook_module, tmp_path):
+    index = _make_stat_dirty_repo(tmp_path)
+    before = index.read_bytes()
+    assert hook_module.is_worktree_dirty(tmp_path) is False
+    assert index.read_bytes() == before
 
 
 # ---------- 0.5.0-W1-164.6.2：寫入類 git 經溫和終止函式、靜默逾時日誌 ----------

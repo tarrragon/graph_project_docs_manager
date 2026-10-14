@@ -13,6 +13,7 @@ worktree list 輸出順序判定（index==0，git 保證主倉庫恆為 --porcel
 
 import importlib.util
 import logging
+import os
 import subprocess
 from pathlib import Path
 
@@ -103,7 +104,7 @@ class TestCheckGitStateScenarioB:
                 return (True, "")
             if args[:2] == ["branch", "--no-merged"]:
                 return (True, "")
-            return (True, "")
+            raise AssertionError(f"替身遇到未預期的 git 引數: {args}")
 
         return _run
 
@@ -158,6 +159,37 @@ def test_get_uncommitted_count_status_has_no_optional_locks_before_subcommand():
     args = run.call_args.args[0]
     assert "--no-optional-locks" in args
     assert args.index("--no-optional-locks") < args.index("status")
+
+
+def _make_stat_dirty_repo(tmp_path):
+    """臨時 repo：檔案內容未變但 mtime 改動（stat-dirty），不帶旗標的 status 會重寫 index。"""
+    def git(*args):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    target = tmp_path / "f.txt"
+    target.write_text("x\n")
+    git("add", "f.txt")
+    git("commit", "-q", "-m", "init")
+    os.utime(target, (1_000_000_000, 1_000_000_000))
+    return tmp_path / ".git" / "index"
+
+
+def test_plain_status_rewrites_index_control(tmp_path):
+    """對照：不帶旗標的 status 會改寫 index（旗標測試的鑑別力前提）。"""
+    index = _make_stat_dirty_repo(tmp_path)
+    before = index.read_bytes()
+    subprocess.run(["git", "-C", str(tmp_path), "status", "--porcelain"], check=True, capture_output=True)
+    assert index.read_bytes() != before
+
+
+def test_get_uncommitted_count_does_not_rewrite_index(tmp_path):
+    index = _make_stat_dirty_repo(tmp_path)
+    before = index.read_bytes()
+    assert hook.get_uncommitted_count(str(tmp_path)) == 0
+    assert index.read_bytes() == before
 
 
 class TestRunGitCommandFailureLogging:
