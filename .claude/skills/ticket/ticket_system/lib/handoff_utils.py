@@ -6,6 +6,7 @@ Handoff 共用判斷函式模組
 """
 
 import json
+import logging
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +22,8 @@ from ticket_system.lib.constants import (
     HANDOFF_PENDING_SUBDIR,
 )
 from ticket_system.lib.paths import get_project_root, get_ticket_state_root
+
+_logger = logging.getLogger(__name__)
 
 
 # W17-181.1: 真 SSOT delegate 至 hook_utils.hook_ticket
@@ -154,7 +157,9 @@ def is_ticket_missing(
     try:
         root = project_root if project_root is not None else get_project_root()
         return _find_ticket_file(ticket_id, root) is None
-    except Exception:
+    except Exception as exc:
+        # 查詢失敗不等於查無此票：回 False 保守不清，但留下可觀測訊號
+        _logger.warning("is_ticket_missing 查詢失敗 ticket_id=%s: %s", ticket_id, exc)
         return False
 
 
