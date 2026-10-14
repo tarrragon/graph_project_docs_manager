@@ -446,33 +446,59 @@ def _exclude_orphan_confirmed(
     return kept
 
 
-def _resolve_detect_dir(
-    payload_cwd: Optional[str], dash_c: Optional[str], project_root: Path
-) -> str:
-    """MERGE_HEAD 偵測目錄：`-C` 路徑（相對者以 payload cwd 為基準）>
-    payload `cwd` > project root。MERGE_HEAD 是各 worktree 獨立的 ref，
-    `git commit` 實際作用在 shell cwd 或 `-C` 目標，不是 hook 的 root。
+def _base_dir(payload_cwd: Optional[str], project_root: Path) -> str:
+    """命令開始執行的目錄：payload `cwd`，缺則 project root。"""
+    return payload_cwd or str(project_root)
+
+
+def _resolve_detect_dirs(
+    payload_cwd: Optional[str],
+    invocation: Optional[GitInvocation],
+    project_root: Path,
+) -> List[str]:
+    """進行中狀態的偵測目錄清單（有序去重）。
+
+    狀態檔（MERGE_HEAD 等）是各 worktree 獨立的，`git commit` 實際作用在
+    lib 解析的 effective_dir（已含 `cd`、全部 `-C`、`~`、`..`）。目錄可知時
+    只查該處；`dir_unknown` 為真（變數、命令替換、`cd -` 等）或無 invocation
+    時目標不可信，payload cwd 與 project root 兩處都查，任一處有進行中
+    狀態就擋。
     """
-    base = payload_cwd or str(project_root)
-    if dash_c:
-        return str(Path(base) / dash_c)  # 絕對 -C 路徑會覆蓋 base
-    return base
+    if invocation is not None and not invocation.dir_unknown and invocation.effective_dir:
+        return [invocation.effective_dir]
+    return list(dict.fromkeys([_base_dir(payload_cwd, project_root), str(project_root)]))
 
 
-def _report_detect_failure(detect_dir, reason: str, logger) -> None:
+def _report_detect_failure(
+    detect_dir, reason: str, logger, target: str = "MERGE_HEAD"
+) -> None:
     """偵測失敗雙通道可見（品質基線規則 4）：stderr 讓用戶看到守衛本次未生效，
-    log 保留細節。fail-open 放行不變。"""
+    log 保留細節。fail-open 放行不變。`target` 標示偵測對象，
+    讓 MERGE_HEAD 與其他進行中狀態的失敗可分辨。"""
+    scope = "合併狀態" if target == _TARGET_MERGE else "該狀態"
     sys.stderr.write(
-        f"[bare-commit-guard] MERGE_HEAD 偵測失敗，本次未檢查合併狀態："
+        f"[bare-commit-guard] {target} 偵測失敗，本次未檢查{scope}："
         f"dir={detect_dir}, 原因={reason}\n"
     )
     if logger is not None:
         logger.warning(
-            "MERGE_HEAD 偵測失敗（%s），fail-open 放行：dir=%s", reason, detect_dir
+            "%s 偵測失敗（%s），fail-open 放行：dir=%s", target, reason, detect_dir
         )
 
 
-def _merge_in_progress(detect_dir, logger=None) -> bool:
+_TARGET_MERGE = "MERGE_HEAD"
+_TARGET_OTHER = "cherry-pick／revert／rebase 狀態"
+
+
+def _note_detect_failure(detect_dir, reason: str, logger, target: str, failures) -> None:
+    """`failures` 為 list 時只收集原因（由呼叫端合併回報一次），否則立即回報。"""
+    if failures is not None:
+        failures.append(reason)
+        return
+    _report_detect_failure(detect_dir, reason, logger, target)
+
+
+def _merge_in_progress(detect_dir, logger=None, failures=None) -> bool:
     """`MERGE_HEAD` 可解析即有未收尾的合併；此時裸 commit 會把合併收尾成
     merge commit（可能是他方的合併）。
 
@@ -489,15 +515,17 @@ def _merge_in_progress(detect_dir, logger=None) -> bool:
             timeout=10,
         )
     except (subprocess.TimeoutExpired, OSError) as exc:
-        _report_detect_failure(detect_dir, f"{type(exc).__name__}: {exc}", logger)
+        _note_detect_failure(
+            detect_dir, f"{type(exc).__name__}: {exc}", logger, _TARGET_MERGE, failures
+        )
         return False
     if result.returncode == 0:
         return True
     if result.returncode != 1:
-        _report_detect_failure(
+        _note_detect_failure(
             detect_dir,
             f"rc={result.returncode}, stderr={(result.stderr or '').strip()}",
-            logger,
+            logger, _TARGET_MERGE, failures,
         )
     return False
 
@@ -536,7 +564,7 @@ _GIT_PATH_NAMES = (
 )
 
 
-def _other_operation_state(detect_dir, logger=None) -> Optional[str]:
+def _other_operation_state(detect_dir, logger=None, failures=None) -> Optional[str]:
     """判別 cherry-pick／revert／rebase 進行中狀態（MERGE_HEAD 另由
     `_merge_in_progress` 處理）。
 
@@ -557,14 +585,16 @@ def _other_operation_state(detect_dir, logger=None) -> Optional[str]:
             timeout=10,
         )
     except (subprocess.TimeoutExpired, OSError) as exc:
-        _report_detect_failure(detect_dir, f"{type(exc).__name__}: {exc}", logger)
+        _note_detect_failure(
+            detect_dir, f"{type(exc).__name__}: {exc}", logger, _TARGET_OTHER, failures
+        )
         return None
     lines = (result.stdout or "").splitlines()
     if result.returncode != 0 or len(lines) != len(_GIT_PATH_NAMES):
-        _report_detect_failure(
+        _note_detect_failure(
             detect_dir,
             f"rc={result.returncode}, stderr={(result.stderr or '').strip()}",
-            logger,
+            logger, _TARGET_OTHER, failures,
         )
         return None
     paths = {
@@ -583,10 +613,29 @@ def _other_operation_state(detect_dir, logger=None) -> Optional[str]:
 
 
 def _pending_operation(detect_dir, logger=None) -> Optional[str]:
-    """合併優先，其次 cherry-pick／revert／rebase；皆無回 None。"""
-    if _merge_in_progress(detect_dir, logger):
+    """合併優先，其次 cherry-pick／revert／rebase；皆無回 None。
+
+    MERGE_HEAD 偵測失敗代表 git 整體不可用，第二次偵測必同樣失敗：
+    此時合併回報一次（標示兩個偵測對象）並略過第二次呼叫，fail-open。
+    """
+    failures: list = []
+    if _merge_in_progress(detect_dir, logger, failures):
         return _OP_MERGE
+    if failures:
+        _report_detect_failure(
+            detect_dir, failures[0], logger, f"{_TARGET_MERGE} 與{_TARGET_OTHER}"
+        )
+        return None
     return _other_operation_state(detect_dir, logger)
+
+
+def _pending_operation_in_dirs(detect_dirs, logger=None) -> Optional[str]:
+    """多個偵測目錄：任一處有阻擋型進行中狀態就回該狀態，其次 rebase-edit。"""
+    found = [op for op in (_pending_operation(d, logger) for d in detect_dirs) if op]
+    for op in found:
+        if op in _BLOCKING_OPS:
+            return op
+    return found[0] if found else None
 
 
 _CONTINUE_HINTS = {
@@ -988,7 +1037,9 @@ def main() -> int:
         logger.debug("命令不含 git 字樣，放行")
         return 0
 
-    invocations = find_git_invocations(command, {"commit"}, scan=True)
+    project_root = get_project_root()
+    base_dir = _base_dir(input_data.get("cwd"), project_root)
+    invocations = find_git_invocations(command, {"commit"}, base_dir, scan=True)
     parse_cause = classify_parse_cause(invocations)
     if invocations and all(inv.via_scan for inv in invocations):
         # 僅任意位置掃描命中（無位置命中）：辨識不確定，比照無法解析處置
@@ -997,7 +1048,6 @@ def main() -> int:
     elif invocations:
         invocations = [inv for inv in invocations if not inv.via_scan]
 
-    project_root = get_project_root()
     dispatches = _exclude_orphan_confirmed(
         _get_active_dispatches_safe(project_root),
         project_root,
@@ -1012,8 +1062,8 @@ def main() -> int:
         # 並行期保守阻擋、非並行期僅提醒（見兩則 _build_parse_failure_*
         # 訊息函式 docstring）。例外：有他方可能待收尾的進行中操作時，
         # 不論並行期與否一律擋（無 -C 資訊，偵測目錄為 payload cwd > root）。
-        pending = _pending_operation(
-            _resolve_detect_dir(input_data.get("cwd"), None, project_root), logger
+        pending = _pending_operation_in_dirs(
+            _resolve_detect_dirs(input_data.get("cwd"), None, project_root), logger
         )
         if pending in _BLOCKING_OPS:
             logger.warning("命令無法安全解析且 %s 進行中，一律阻擋", pending)
@@ -1040,10 +1090,9 @@ def main() -> int:
         logger.debug("命令含 --amend，放行")
         return 0
 
-    detect_dir = _resolve_detect_dir(
-        input_data.get("cwd"), invocation.dash_c_path, project_root
+    pending = _pending_operation_in_dirs(
+        _resolve_detect_dirs(input_data.get("cwd"), invocation, project_root), logger
     )
-    pending = _pending_operation(detect_dir, logger)
     if pending in _BLOCKING_OPS:
         logger.warning("%s 進行中，裸 commit 會收尾他方操作，阻擋", pending)
         print(_build_pending_operation_deny_message(pending), file=sys.stderr)

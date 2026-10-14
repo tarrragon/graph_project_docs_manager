@@ -59,8 +59,6 @@ EVIDENCE_PREFIX = "IDXLOCK-EVIDENCE"
 # 刻意不用 .log 副檔名：共用日誌清理以 *.log 為樣式、保留 7 天，會刪掉罕見事件的線索檔
 EVIDENCE_FILENAME = "index-lock-evidence.txt"
 
-# git 全域選項中帶獨立值的（掃描 -C 時需跳過其值）
-_GIT_OPTS_WITH_VALUE = frozenset({"-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"})
 _SECRET_KEY_RE = re.compile(r"(TOKEN|SECRET|PASSWORD|KEY|AUTH)", re.IGNORECASE)
 _QUOTED_OR_WORD = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
 _ENV_ASSIGN_RE = re.compile(r"(?<![\w-])([A-Za-z_][A-Za-z0-9_]*)=(" + _QUOTED_OR_WORD + ")")
@@ -82,30 +80,6 @@ _BARE_TOKEN_RE = re.compile(
 
 # ===== 目標集合 =====
 
-def _resolve_path(path: str, cwd: str) -> str:
-    expanded = os.path.expanduser(path)
-    return os.path.normpath(expanded if os.path.isabs(expanded) else os.path.join(cwd, expanded))
-
-
-def _dash_c_paths(statement: List[str]) -> List[str]:
-    """回傳語句中 git 全域選項區段內所有 -C 的值。"""
-    paths: List[str] = []
-    for i, tok in enumerate(statement):
-        if tok != "git":
-            continue
-        j = i + 1
-        while j < len(statement) and statement[j].startswith("-"):
-            if statement[j] == "-C" and j + 1 < len(statement):
-                paths.append(statement[j + 1])
-                j += 2
-            elif statement[j] in _GIT_OPTS_WITH_VALUE:
-                j += 2
-            else:
-                j += 1
-        break
-    return paths
-
-
 def _worktree_values(statement: List[str]) -> List[str]:
     """ticket track commit 語句中 --worktree 的值（兩種寫法）。"""
     if "ticket" not in statement or "commit" not in statement:
@@ -123,18 +97,22 @@ def extract_target_dirs(command: str, cwd: str, logger: logging.Logger) -> List[
     """目標集合：cwd + git -C 路徑 + ticket --worktree 值，有序去重，上限 MAX_TARGETS。"""
     targets = [cwd]
     if "git" in command or "ticket" in command:
-        from lib.git_command_parse import parse_command_statements  # 延遲載入
+        from lib.git_command_parse import (  # 延遲載入
+            find_git_dash_c_dirs, parse_command_statements, resolve_dir_path,
+        )
+        dash_c_dirs = find_git_dash_c_dirs(command, cwd)
         statements = parse_command_statements(command)
-        if statements is None:
-            logger.info("命令無法 tokenize，只查 cwd")
-            statements = []
-        for stmt in statements:
-            for raw in _dash_c_paths(stmt) + _worktree_values(stmt):
-                path = _resolve_path(raw, cwd)
-                if os.path.isdir(path):
-                    targets.append(path)
-                else:
-                    logger.debug("目標目錄不存在，略過: %s", path)
+        if dash_c_dirs is None or statements is None:
+            logger.info("命令無法解析，只查 cwd")
+            dash_c_dirs, statements = [], []
+        worktree_dirs = [
+            resolve_dir_path(cwd, raw) for stmt in statements for raw in _worktree_values(stmt)
+        ]
+        for path in dash_c_dirs + worktree_dirs:
+            if os.path.isdir(path):
+                targets.append(path)
+            else:
+                logger.debug("目標目錄不存在，略過: %s", path)
     return list(dict.fromkeys(targets))[:MAX_TARGETS]
 
 
