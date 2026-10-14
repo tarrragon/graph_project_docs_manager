@@ -81,12 +81,16 @@ WRAPPER_TIMEOUT_SECONDS = 600
 _ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
-def _wrapped_form(statement: tuple) -> str:
-    """產生可直接複製的包裝寫法；前導 KEY=VAL 需經 env，否則包裝腳本無法 exec。"""
+def _wrapped_form(statement: tuple, redirects: str = "") -> str:
+    """產生可直接複製的包裝寫法；前導 KEY=VAL 需經 env，否則包裝腳本無法 exec。
+
+    重導向屬於外層 shell，原樣接在包裝命令之後（不可放進 `--` 之後，否則成為命令參數）。
+    """
     tokens = list(statement)
     if tokens and _ENV_ASSIGNMENT_RE.match(tokens[0]):
         tokens = ["env"] + tokens
-    return "python3 {} {} -- {}".format(WRAPPER_PATH, WRAPPER_TIMEOUT_SECONDS, shlex.join(tokens))
+    wrapped = "python3 {} {} -- {}".format(WRAPPER_PATH, WRAPPER_TIMEOUT_SECONDS, shlex.join(tokens))
+    return "{} {}".format(wrapped, redirects) if redirects else wrapped
 
 
 def _mcp_has_paths(tool_input: dict) -> bool:
@@ -112,11 +116,11 @@ def build_block_reason(tool_name: str, tool_input: dict):
     if tool_name != "Bash":
         return None
     # 延遲匯入：匯入失敗也走呼叫端的 fail-open，不讓封堵端故障擋掉環境檢查
-    from lib.test_command_parse import find_unwrapped_heavy
-    unwrapped = find_unwrapped_heavy(tool_input.get("command", ""))
+    from lib.test_command_parse import find_unwrapped_heavy_with_redirects
+    unwrapped = find_unwrapped_heavy_with_redirects(tool_input.get("command", ""))
     if not unwrapped:  # None（無法解析）與 []（無 heavy）皆放行
         return None
-    suggestions = "\n".join("  " + _wrapped_form(st) for st in unwrapped)
+    suggestions = "\n".join("  " + _wrapped_form(st, rd) for st, rd in unwrapped)
     return (
         "偵測到未經 run-with-timeout 包裝的 heavy 命令（全套件測試或編譯），"
         "會繞過本機名額閘門。請把該命令原樣包進 "

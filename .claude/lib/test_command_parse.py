@@ -31,6 +31,7 @@ git_command_parse.parse_command_statements 的切分（heredoc 剝離、換行�
 
 import os
 import re
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -318,20 +319,64 @@ def _without_trailing_operators(statement) -> Tuple[str, ...]:
     return tuple(tokens)
 
 
-def find_unwrapped_heavy(command: str) -> Optional[List[Tuple[str, ...]]]:
-    """回傳命令中「已辨識為 heavy 且未經 run-with-timeout 包裝」的敘述；無法解析回 None。
+_REDIRECT_OPERATORS = frozenset({">", ">>", "<", "&>", "&>>", ">|", "<<", "<<<", ">&", "<&"})
+_REDIRECT_SELF_CONTAINED_RE = re.compile(r"^\d?[<>]&\d+-?$")
 
-    供封堵端（pre-test-hook）使用：只認已辨識的 runner／編譯器，launcher 開頭判不出者
-    不算（閘門端保守視為 heavy 只多排隊，封堵端誤判則擋掉正當命令，代價較高）。
+
+def split_redirections(tokens: List[str]) -> Tuple[List[str], List[str]]:
+    """把敘述 token 拆為（命令 token，重導向片段）。
+
+    切分器把重導向留在 token 內：`2>&1`；`2`、`>`、`/tmp/e`；`&>`、`>>`、`<` 與其目標。
+    重導向片段已渲染為可接在命令之後的 shell 文字（運算子與 fd 不加引號，目標以 shlex 引號保護）。
+    已知限制：選項值恰為單一數字且緊接重導向運算子（`-n 2 > x`）時，該數字被當成 fd 而剝除，
+    只影響建議寫法的文字，不影響 light 判定（位置參數不變）。
+    """
+    command: List[str] = []
+    redirects: List[str] = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if _REDIRECT_SELF_CONTAINED_RE.match(token):
+            redirects.append(token)
+            index += 1
+        elif token in _REDIRECT_OPERATORS:
+            target = tokens[index + 1] if index + 1 < len(tokens) else None
+            redirects.append(token if target is None else "{} {}".format(token, shlex.quote(target)))
+            index += 1 if target is None else 2
+        elif (len(token) == 1 and token.isdigit() and index + 2 < len(tokens)
+              and tokens[index + 1] in _REDIRECT_OPERATORS):
+            redirects.append("{}{} {}".format(token, tokens[index + 1], shlex.quote(tokens[index + 2])))
+            index += 3
+        else:
+            command.append(token)
+            index += 1
+    return command, redirects
+
+
+def find_unwrapped_heavy_with_redirects(command: str) -> Optional[List[Tuple[Tuple[str, ...], str]]]:
+    """同 find_unwrapped_heavy，每筆另附渲染後的重導向文字（無則空字串）；供產生建議寫法。
+
+    重導向在判定前先剝除（否則 `2>&1` 等被當成非測試檔的位置參數而把單檔誤判 heavy）。
     """
     statements = parse_command_statements(command)
     if statements is None:
         return None
     found = []
     for statement in statements:
-        stripped, wrapped = _strip_launch_prefixes_tracking(list(statement))
+        cmd_tokens, redirects = split_redirections(list(_without_trailing_operators(statement)))
+        stripped, wrapped = _strip_launch_prefixes_tracking(cmd_tokens)
         if wrapped or not stripped or not _is_known_heavy_candidate(stripped):
             continue
         if _weight_of_stripped(stripped, launcher_led=False) == WEIGHT_HEAVY:
-            found.append(_without_trailing_operators(statement))
+            found.append((tuple(cmd_tokens), " ".join(redirects)))
     return found
+
+
+def find_unwrapped_heavy(command: str) -> Optional[List[Tuple[str, ...]]]:
+    """回傳命令中「已辨識為 heavy 且未經 run-with-timeout 包裝」的敘述（不含重導向）；無法解析回 None。
+
+    供封堵端（pre-test-hook）使用：只認已辨識的 runner／編譯器，launcher 開頭判不出者
+    不算（閘門端保守視為 heavy 只多排隊，封堵端誤判則擋掉正當命令，代價較高）。
+    """
+    found = find_unwrapped_heavy_with_redirects(command)
+    return None if found is None else [cmd for cmd, _ in found]

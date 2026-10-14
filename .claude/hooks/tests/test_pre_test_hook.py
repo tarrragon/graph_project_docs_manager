@@ -271,3 +271,16 @@ def test_deny_emit_failure_fails_open(monkeypatch, capsys):
     monkeypatch.setattr(pre_test_hook_module, "emit_hook_output", emit)
     assert pre_test_hook_module.main() == 0
     assert "fail-open" in capsys.readouterr().err
+
+
+def test_suggestion_puts_redirect_outside_wrapper():
+    import shlex
+    reason = build_block_reason("Bash", {"command": "pytest tests/ -q 2>&1"})
+    line = [ln.strip() for ln in reason.splitlines() if ln.strip().startswith("python3 ")][0]
+    tokens = shlex.split(line)
+    after = tokens[tokens.index("--") + 1:]
+    assert after == ["pytest", "tests/", "-q", "2>&1"]
+    assert line.endswith(" -q 2>&1")
+    # 命令部分（-- 之後、重導向之前）不含重導向 token
+    assert "2>&1" not in line.split(" -- ", 1)[1].rsplit(" 2>&1", 1)[0]
+    assert "'2>&1'" not in line
