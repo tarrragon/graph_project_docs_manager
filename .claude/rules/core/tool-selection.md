@@ -41,9 +41,9 @@
 | MCP 寫入工具對非程式碼檔被本 hook deny | 改用 Edit 完成同一修改 | 推論「Edit 也會被拒」而停止 |
 | Edit 對非程式碼檔被拒（其他 hook） | 在 ticket Problem Analysis 記錄並回報 PM | 不嘗試 Edit 直接放棄 |
 | Edit / Write 被非專案來源拒絕（auto mode classifier、permissionMode、OS 權限等） | 停手，於 ticket NeedsContext 記錄並回報 PM | 改用 Bash 內嵌腳本（`python3 -c` / `sed` / heredoc 重寫）繞過完成同一修改 |
-| 例外：複合 Bash 命令被平台以「too complex to verify」拒絕 | 拆成原命令中的單一命令分次執行（每條仍由平台判定）；拆開後仍被拒即停手，回報原命令與拒絕訊息 | 改用 `python -c`、腳本檔等把實際操作藏起來的寫法 |
+| 例外：複合 Bash 命令被平台以「too complex to verify」拒絕 | 拆成原命令中的單一命令分次執行（每條仍由平台判定）；拆開後仍被拒即停手，於 ticket NeedsContext 記錄原命令與拒絕訊息並回報 PM | 改用 `python -c`／`bash -c`／`eval`、腳本檔等把實際操作藏起來的寫法 |
 
-**判別準則**：`mcp__serena__*` 寫入工具屬 MCP 層限制；Edit / Write 屬 Claude Code 內建工具層，兩者限制機制完全不同，被拒原因不可互推。非專案來源拒絕的語意是「不該做這件事」，不是「選錯工具」——不可用 Bash 改寫檔案內容規避判斷。「too complex to verify」例外只限該拒絕訊息，語意是「平台看不清」而非「不該做」，拆分後每條命令仍交平台判定；論證與邊界見 `.claude/references/tool-selection-details.md`（來源：用戶裁決，2026-10-14）。
+**判別準則**：`mcp__serena__*` 寫入工具屬 MCP 層限制；Edit / Write 屬 Claude Code 內建工具層，兩者限制機制完全不同，被拒原因不可互推。非專案來源拒絕的語意是「不該做這件事」，不是「選錯工具」——不可用 Bash 改寫檔案內容規避判斷。「too complex to verify」例外只限該拒絕訊息，語意是「平台看不清」而非「不該做」，拆分後每條命令仍交平台判定；論證與邊界見 `.claude/references/tool-selection-details.md`。
 
 ---
 
