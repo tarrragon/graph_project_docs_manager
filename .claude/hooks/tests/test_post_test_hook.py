@@ -140,6 +140,11 @@ REAL_TEST_COMMAND_SAMPLES = [
     pytest.param("(cd /path && npm test)", id="parenthesised-subshell"),
     pytest.param("NODE_ENV=test npm test", id="env-prefix"),
     pytest.param("npm test 2>&1 | tail -20", id="npm-test-piped"),
+    pytest.param("python3 .claude/scripts/run-with-timeout.py 60 -- flutter test", id="timeout-wrapper-flutter"),
+    pytest.param(
+        "uv --directory .claude/hooks run --with pytest python -m pytest tests -q",
+        id="uv-run-python-m-pytest",
+    ),
 ]
 
 
@@ -159,6 +164,10 @@ ECHO_FALSE_POSITIVE_SAMPLES = [
     pytest.param("git status", id="git-status"),
     pytest.param("", id="empty-command"),
     pytest.param("echo dart test result", id="echo-dart-test-result-tokens"),
+    pytest.param(
+        'grep -n "TEST_COMMAND_PATTERN\\|flutter test\\|dart test" hook.py',
+        id="grep-quoted-pipe-keywords",
+    ),
 ]
 
 

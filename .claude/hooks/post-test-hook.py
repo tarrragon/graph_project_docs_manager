@@ -11,7 +11,8 @@
 1. test-timeout-post.py — 測試超時監控
 2. pre-fix-evaluation-hook.py — 測試失敗評估
 
-觸發時機: PostToolUse (Bash: flutter test / dart test / npm test, 或 mcp__dart__run_tests)
+觸發時機: PostToolUse (Bash: flutter test / dart test / npm test / pytest，含 timeout、
+          fvm、uv run、run-with-timeout.py 前綴，或 mcp__dart__run_tests)
 """
 
 import json
@@ -27,6 +28,7 @@ from typing import Dict, List, Tuple, Optional
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from lib.test_command_parse import find_test_invocations
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -48,20 +50,6 @@ except ImportError as _import_err:
 # ============================================================================
 
 EXIT_SUCCESS = 0
-
-# 測試命令偵測 regex（W3-066 修正）
-#
-# 舊版 TEST_COMMAND_KEYWORDS substring `in` 比對 ["npm test", ...] 會誤觸發
-# echo "npm test" 等回顯關鍵字的非測試命令。改用 statement 邊界 + word
-# boundary regex：要求 test 命令位於命令序列起頭（^/&&/||/;/|/(/換行）後，
-# 可選環境變數前綴，最後接 flutter test / dart test / npm test / npm run test。
-#
-# 同時補強 npm run test:hooks 等 substring 比對漏觸發的情境。
-TEST_COMMAND_PATTERN = re.compile(
-    r"(?:^|[;|&(\n]|&&|\|\|)\s*"                # statement 邊界
-    r"(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*"       # 可選環境變數前綴
-    r"(?:flutter\s+test|dart\s+test|npm\s+(?:test|run\s+test))\b"
-)
 
 # Ticket body 寫入操作關鍵字（W3-041 豁免；W3-066 補齊）
 # 這些 CLI 命令會把含「FAILED / N tests failed」字面的 ticket body 內容
@@ -164,14 +152,16 @@ TRUNCATED_OUTPUT_PATTERN = re.compile(
 def _is_test_command(input_data: dict) -> bool:
     """判斷是否為測試命令。
 
-    W3-066: 改用 statement 邊界 + word boundary regex，避免 echo "npm test"
-    等回顯關鍵字的非測試命令誤觸發。
+    判定委派 lib/test_command_parse.py（2026-10-14）：只認敘述開頭的測試指令，
+    引號內字樣（echo、grep pattern、ticket 參數）不算；涵蓋 pytest 與
+    run-with-timeout.py 包裝。
     """
     tool_name = input_data.get("tool_name", "")
 
     if tool_name == "Bash":
         command = (input_data.get("tool_input") or {}).get("command", "")
-        return bool(TEST_COMMAND_PATTERN.search(command))
+        # 解析失敗（None）視為非測試：監控型 hook，漏判只少一次評估
+        return bool(find_test_invocations(command))
     elif tool_name == "mcp__dart__run_tests":
         return True
 

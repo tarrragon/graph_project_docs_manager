@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""
+test_command_parse 模組單元測試（0.5.0-W1-232.1）
+
+驗證項目：
+1. 應偵測：flutter／dart／pytest／npm 測試呼叫，含前綴、包裝腳本、uv run 啟動形態
+2. 不應偵測：測試指令字樣位於引號、參數或其他命令引數內
+3. 失敗語意：無法 tokenize 回 None，可解析但無命中回 []
+"""
+
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from lib.test_command_parse import ALL_RUNNERS, find_test_invocations
+
+WRAPPER = "python3 .claude/scripts/run-with-timeout.py 300 --"
+
+
+def _runners(command):
+    invocations = find_test_invocations(command)
+    return None if invocations is None else [inv.runner for inv in invocations]
+
+
+@pytest.mark.parametrize("command, expected", [
+    ("flutter test", ["flutter"]),
+    ("fvm flutter test test/unit", ["flutter"]),
+    ("dart test", ["dart"]),
+    ("FLUTTER_TEST_SEED=1 fvm flutter test", ["flutter"]),
+    ("env A=1 flutter test", ["flutter"]),
+    ("timeout 600 fvm flutter test", ["flutter"]),
+    ("timeout -k 5 600 dart test", ["dart"]),
+    ("cd app && fvm flutter test 2>&1 | tail -20", ["flutter"]),
+    ("(cd packages/core && dart test) | tail -5", ["dart"]),
+    ("cd app\nfvm flutter test", ["flutter"]),
+    # 包裝腳本後接的命令（E 線轉交）
+    (f"{WRAPPER} fvm flutter test", ["flutter"]),
+    (".claude/scripts/run-with-timeout.py 60 -- flutter test", ["flutter"]),
+    ("python3 -I .claude/scripts/run-with-timeout.py 600 -- fvm flutter test", ["flutter"]),
+    ("uv run python3 .claude/scripts/run-with-timeout.py 600 -- dart test", ["dart"]),
+    # pytest 三種形態
+    ("pytest tests/test_x.py -q", ["pytest"]),
+    ("python3 -m pytest tests/ -q", ["pytest"]),
+    ("uv --directory .claude/hooks run --with pytest --with pyyaml python -m pytest tests/test_x.py -q", ["pytest"]),
+    (f"{WRAPPER} uv --directory .claude/scripts run --with pytest python -m pytest tests -q", ["pytest"]),
+    ("uv run pytest -q", ["pytest"]),
+    # npm（既有 post-test 覆蓋範圍）
+    ("npm test", ["npm"]),
+    ("npm test:unit", ["npm"]),
+    ("npm run test:hooks", ["npm"]),
+    ("NODE_ENV=test npm test", ["npm"]),
+    # 多個測試呼叫
+    ("flutter test && pytest -q", ["flutter", "pytest"]),
+])
+def test_test_invocations_detected(command, expected):
+    assert _runners(command) == expected
+
+
+@pytest.mark.parametrize("command", [
+    # 測試指令字樣在參數或引號內
+    "grep -rn 'flutter test' .claude/rules",
+    'grep -n "TEST_COMMAND_PATTERN\\|flutter test\\|dart test" hook.py',
+    "echo x | grep 'dart test'",
+    'ticket create --why "執行 flutter test 時 swap 耗盡" --what "閘門"',
+    "ticket track append-log X --section Solution \"$(cat <<'EOF'\nfvm flutter test 全綠\nEOF\n)\"",
+    'echo "npm test"',
+    "echo dart test result",
+    # 包裝器不在命令位置
+    "grep run-with-timeout.py -- flutter test",
+    # pytest 字樣只是 uv 選項值或其他命令的引數
+    "uv run --with pytest python script.py",
+    "pip install pytest",
+    "python3 -m pip install pytest",
+    # 非 test 子命令
+    "flutter analyze",
+    "npm run build",
+    "uv sync",
+    "",
+])
+def test_non_test_commands_not_detected(command):
+    assert _runners(command) == []
+
+
+def test_unparseable_command_returns_none():
+    assert find_test_invocations("echo 'flutter test") is None
+
+
+def test_statement_keeps_launch_prefix_for_display():
+    (invocation,) = find_test_invocations(f"{WRAPPER} fvm flutter test")
+    assert invocation.statement[0] == "python3"
+
+
+def test_all_runners_constant_covers_every_runner():
+    assert ALL_RUNNERS == {"flutter", "dart", "npm", "pytest"}

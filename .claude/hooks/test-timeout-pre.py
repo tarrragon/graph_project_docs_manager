@@ -7,7 +7,9 @@
 測試超時監控 - PreToolUse Hook
 功能: 記錄測試開始時間
 
-觸發時機: 執行 flutter test / dart test 或 mcp__dart__run_tests 工具前
+觸發時機: 執行測試命令（flutter／dart／npm／pytest，含 timeout、fvm、uv run、
+          run-with-timeout.py 前綴）或 mcp__dart__run_tests 工具前；判定與 post-test-hook 共用
+          lib/test_command_parse.py，寫入端與讀取端集合一致
 記錄位置: .claude/hook-logs/test-monitor.json
 """
 
@@ -20,6 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib import setup_hook_logging, run_hook_safely, get_project_root, read_json_from_stdin
+from lib.test_command_parse import find_test_invocations
 
 
 def main():
@@ -35,7 +38,8 @@ def main():
     is_test_command = False
     if tool_name == "Bash":
         command = tool_input.get("command", "")
-        is_test_command = "flutter test" in command or "dart test" in command
+        # 解析失敗（None）視為非測試：監控型 hook，漏判只少一次計時
+        is_test_command = bool(find_test_invocations(command))
     elif tool_name == "mcp__dart__run_tests":
         is_test_command = True
 
