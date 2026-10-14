@@ -36,14 +36,43 @@ def _load(name, path):
     return module
 
 
+_TICKET_DIR = _SKILLS / "ticket"
+_DEGRADE_MARKER = "降級為備援實作"
+
+
 @pytest.fixture(scope="module")
-def helpers():
+def git_ops_module():
+    # 以檔案路徑載入的 git_ops 需 sys.path 含 ticket_system，延遲匯入才走 lib 而非降級備援
+    sys.path.insert(0, str(_TICKET_DIR))
+    try:
+        yield _load("contract_ticket_git_ops", _GIT_OPS_FILE)
+    finally:
+        sys.path.remove(str(_TICKET_DIR))
+
+
+@pytest.fixture(scope="module")
+def helpers(git_ops_module):
     hook = _load("contract_worktree_hook", _HOOK_FILE)
-    git_ops = _load("contract_ticket_git_ops", _GIT_OPS_FILE)
     return {
         "hook": hook._run_with_graceful_timeout,
-        "ticket": git_ops._run_with_graceful_timeout,
+        "ticket": git_ops_module._run_with_graceful_timeout,
     }
+
+
+class TestTicketEntryUsesLib:
+    def test_ticket_entry_does_not_degrade_to_fallback(self, git_ops_module, capsys):
+        git_ops_module._run_with_graceful_timeout(["echo", "ok"], 10, text=True)
+        assert _DEGRADE_MARKER not in capsys.readouterr().err
+
+    def test_degrade_marker_appears_when_lib_unloadable(
+        self, git_ops_module, capsys, monkeypatch
+    ):
+        """正向對照：lib 不可載入時上述斷言所依據的降級訊號必須出現。"""
+        import ticket_system.lib.claude_lib_loader as loader
+
+        monkeypatch.setattr(loader, "load_claude_lib", lambda *a, **k: None)
+        git_ops_module._run_with_graceful_timeout(["echo", "ok"], 10, text=True)
+        assert _DEGRADE_MARKER in capsys.readouterr().err
 
 
 @pytest.fixture(params=["hook", "ticket"])
