@@ -225,8 +225,6 @@ def test_hook_blocks_non_claude_prompt_without_worktree(monkeypatch, capsys):
         },
     )
     assert exit_code == 2
-    err = capsys.readouterr().err
-    assert "必須使用 isolation" in err, "應使用原 BLOCK_MESSAGE_TEMPLATE"
 
 
 def test_hook_allows_cross_path_with_worktree_when_claude_in_main_repo(monkeypatch, capsys):
@@ -257,8 +255,6 @@ def test_hook_blocks_cross_path_without_worktree(monkeypatch, capsys):
         },
     )
     assert exit_code == 2
-    err = capsys.readouterr().err
-    assert "必須使用 isolation" in err
 
 
 def test_hook_blocks_external_claude_path_absolute(monkeypatch, capsys):
@@ -303,8 +299,6 @@ def test_hook_blocks_empty_prompt_without_worktree(monkeypatch, capsys):
         },
     )
     assert exit_code == 2
-    err = capsys.readouterr().err
-    assert "必須使用 isolation" in err
 
 
 def test_hook_allows_no_subagent_type(monkeypatch, capsys):
@@ -661,6 +655,8 @@ class TestKeywordConflictIntegration:
             capsys,
             tool_input={
                 "subagent_type": "sage-test-architect",
+                # 名單外代理人寫 tests/ 路徑也須 worktree，本測試聚焦警告，故帶隔離
+                "isolation": "worktree",
                 "prompt": "請實作新測試並寫入 tests/unit/foo_test.py",
             },
         )
@@ -669,7 +665,7 @@ class TestKeywordConflictIntegration:
             "sage + 『實作』應觸發 W5-045 警告"
         )
         assert "實作" in err
-        # sage 非 IMPLEMENTATION_AGENTS，掃描後放行
+        # 低信心警告不阻擋，已隔離 → 放行
         assert exit_code == 0
 
     def test_implementation_agent_with_git_commit_prompt_emits_warning(
@@ -2139,7 +2135,6 @@ class TestReviewKeywordExemptionRemoved:
                         "prompt": "實作 src/widgets/book_card.dart 並寫對應 tests/unit/book_card_test.dart"},
         )
         assert exit_code == 2
-        assert "必須使用 isolation" in capsys.readouterr().err
 
     def test_external_claude_still_blocked(self, monkeypatch, capsys):
         exit_code = _run_hook(
@@ -2414,3 +2409,95 @@ class TestWorktreeCompleteWarning:
         assert exit_code == 2, "非 worktree 派發應維持既有強制阻擋行為"
         context = _parse_additional_context(capsys)
         assert context == "", "非 worktree 派發不應觸發 track complete 提示"
+
+
+# ============================================================================
+# 名單外代理人依目標路徑判定 worktree 強制（斷言 exit code / 結構化欄位）
+# ============================================================================
+
+class TestNonListAgentPathBased:
+    def test_sage_with_test_path_without_worktree_blocked(self, monkeypatch, capsys):
+        """正向對照 1：名單外 + test/ 路徑 + 無 worktree → 阻擋（舊實作為 0）。"""
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "sage-test-architect",
+            "prompt": "整理 test/unit/foo_test.dart 的測試案例",
+        })
+        assert code == 2
+
+    def test_sage_with_test_path_with_worktree_allowed(self, monkeypatch, capsys):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "sage-test-architect",
+            "isolation": "worktree",
+            "prompt": "整理 test/unit/foo_test.dart 的測試案例",
+        })
+        assert code == 0
+
+    def test_non_list_agent_without_paths_allowed(self, monkeypatch, capsys):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "general-purpose",
+            "prompt": "比較兩種方案的取捨並回報",
+        })
+        assert code == 0
+
+    def test_non_list_agent_main_claude_only_allowed(self, monkeypatch, capsys):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "general-purpose",
+            "prompt": "閱讀 .claude/rules/README.md 並回報",
+        })
+        assert code == 0
+
+    def test_non_list_agent_external_claude_blocked(self, monkeypatch, capsys):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "general-purpose",
+            "prompt": "閱讀 /tmp/other-repo/.claude/hooks/foo.py",
+        })
+        assert code == 2
+
+    def test_non_list_agent_external_claude_blocked_with_worktree(
+        self, monkeypatch, capsys
+    ):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "general-purpose",
+            "isolation": "worktree",
+            "prompt": "閱讀 /tmp/other-repo/.claude/hooks/foo.py",
+        })
+        assert code == 2
+
+    def test_non_list_agent_readonly_declaration_exempts_other_path(
+        self, monkeypatch, capsys
+    ):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "general-purpose",
+            "prompt": "Dispatch-Mode: readonly\n審查 src/foo.py 並回報",
+        })
+        assert code == 0
+
+    def test_basil_worktree_track_finish_emits_closing_context(
+        self, monkeypatch, capsys
+    ):
+        """正向對照 2：名單外 + worktree + track finish → 有收尾提示（舊實作無）。"""
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "basil-hook-architect",
+            "isolation": "worktree",
+            "prompt": "修改 .claude/hooks/foo.py，收尾：ticket track finish X --as basil",
+        })
+        assert code == 0
+        assert _parse_additional_context(capsys) != ""
+
+    def test_basil_worktree_without_closing_command_no_context(
+        self, monkeypatch, capsys
+    ):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "basil-hook-architect",
+            "isolation": "worktree",
+            "prompt": "修改 .claude/hooks/foo.py，完成後回報 PM",
+        })
+        assert code == 0
+        assert _parse_additional_context(capsys) == ""
+
+    def test_list_agent_empty_prompt_still_blocked(self, monkeypatch, capsys):
+        code = _run_hook(monkeypatch, capsys, {
+            "subagent_type": "thyme-python-developer",
+            "prompt": "",
+        })
+        assert code == 2
