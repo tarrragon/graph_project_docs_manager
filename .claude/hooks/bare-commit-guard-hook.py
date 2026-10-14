@@ -441,6 +441,19 @@ def _resolve_detect_dir(
     return base
 
 
+def _report_detect_failure(detect_dir, reason: str, logger) -> None:
+    """偵測失敗雙通道可見（品質基線規則 4）：stderr 讓用戶看到守衛本次未生效，
+    log 保留細節。fail-open 放行不變。"""
+    sys.stderr.write(
+        f"[bare-commit-guard] MERGE_HEAD 偵測失敗，本次未檢查合併狀態："
+        f"dir={detect_dir}, 原因={reason}\n"
+    )
+    if logger is not None:
+        logger.warning(
+            "MERGE_HEAD 偵測失敗（%s），fail-open 放行：dir=%s", reason, detect_dir
+        )
+
+
 def _merge_in_progress(detect_dir, logger=None) -> bool:
     """`MERGE_HEAD` 可解析即有未收尾的合併；此時裸 commit 會把合併收尾成
     merge commit（可能是他方的合併）。
@@ -458,18 +471,15 @@ def _merge_in_progress(detect_dir, logger=None) -> bool:
             timeout=10,
         )
     except (subprocess.TimeoutExpired, OSError) as exc:
-        if logger is not None:
-            logger.warning(
-                "MERGE_HEAD 偵測失敗（%s: %s），fail-open 放行：dir=%s",
-                type(exc).__name__, exc, detect_dir,
-            )
+        _report_detect_failure(detect_dir, f"{type(exc).__name__}: {exc}", logger)
         return False
     if result.returncode == 0:
         return True
-    if result.returncode != 1 and logger is not None:
-        logger.warning(
-            "MERGE_HEAD 偵測失敗（rc=%d, stderr=%s），fail-open 放行：dir=%s",
-            result.returncode, (result.stderr or "").strip(), detect_dir,
+    if result.returncode != 1:
+        _report_detect_failure(
+            detect_dir,
+            f"rc={result.returncode}, stderr={(result.stderr or '').strip()}",
+            logger,
         )
     return False
 

@@ -1185,3 +1185,29 @@ class TestMergeDetectFailureSemantics:
         sink = _Sink()
         assert hook_module._merge_in_progress(tmp_path / "nope", sink) is False
         assert len(sink.warnings) == 1
+
+
+class TestMergeDetectFailureStderr:
+    _MARK = "MERGE_HEAD 偵測失敗，本次未檢查合併狀態"
+
+    def test_rc_failure_writes_stderr(self, monkeypatch, tmp_path, capsys):
+        monkeypatch.setattr(
+            hook_module.subprocess, "run",
+            lambda *a, **k: subprocess.CompletedProcess(a, 128, "", "fatal"),
+        )
+        assert hook_module._merge_in_progress(tmp_path, _Sink()) is False
+        err = capsys.readouterr().err
+        assert self._MARK in err and str(tmp_path) in err and "rc=128" in err
+
+    def test_exception_writes_stderr(self, monkeypatch, tmp_path, capsys):
+        def slow(*a, **k):
+            raise subprocess.TimeoutExpired("git", 10)
+
+        monkeypatch.setattr(hook_module.subprocess, "run", slow)
+        assert hook_module._merge_in_progress(tmp_path, _Sink()) is False
+        assert self._MARK in capsys.readouterr().err
+
+    def test_no_merge_no_stderr(self, main_and_wt, capsys):
+        main_repo, _ = main_and_wt
+        assert hook_module._merge_in_progress(main_repo, _Sink()) is False
+        assert self._MARK not in capsys.readouterr().err
