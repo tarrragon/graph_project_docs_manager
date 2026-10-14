@@ -20,7 +20,7 @@ HOOK_METADATA (JSON):
   "event_type": "PostToolUseFailure",
   "matcher": "Bash",
   "description": "失敗事件送達探針：記錄 liveness 與失敗摘要",
-  "dependencies": [],
+  "dependencies": ["pyyaml"],
   "version": "1.0.0"
 }
 """
