@@ -54,6 +54,8 @@ import sys
 import importlib.util
 from pathlib import Path
 
+import subprocess
+
 import pytest
 
 HOOKS_DIR = Path(__file__).resolve().parent.parent
@@ -96,7 +98,7 @@ def _run_hook(
     stdin_buffer = io.StringIO(json.dumps(payload))
     monkeypatch.setattr(sys, "stdin", stdin_buffer)
     monkeypatch.setattr(hook_module, "get_project_root", lambda: project_root)
-    monkeypatch.setattr(hook_module, "_merge_in_progress", lambda root: merge_head)
+    monkeypatch.setattr(hook_module, "_merge_in_progress", lambda *a, **k: merge_head)
     monkeypatch.setattr(
         hook_module, "_get_active_dispatches_safe", lambda root: dispatches or []
     )
@@ -1069,3 +1071,117 @@ class TestMergeInProgressRealRepo:
         assert hook_module._merge_in_progress(tmp_path) is False
         _real_git(tmp_path, "merge", "--no-ff", "--no-commit", "side")
         assert hook_module._merge_in_progress(tmp_path) is True
+
+
+# ============================================================================
+# 0.5.0-W1-120.4：偵測目錄（-C > payload cwd > root）與失敗語意
+# ============================================================================
+
+
+def _git_out(repo: Path, *args: str) -> None:
+    _real_git(repo, *args)
+
+
+@pytest.fixture
+def main_and_wt(tmp_path):
+    main_repo = tmp_path / "main"
+    main_repo.mkdir()
+    _real_git(main_repo, "init", "-q", "-b", "main")
+    (main_repo / "a.txt").write_text("a\n")
+    _real_git(main_repo, "add", "a.txt")
+    _real_git(main_repo, "commit", "-q", "-m", "base")
+    for br in ("side1", "side2"):
+        _real_git(main_repo, "checkout", "-q", "-b", br)
+        (main_repo / f"{br}.txt").write_text(br)
+        _real_git(main_repo, "add", f"{br}.txt")
+        _real_git(main_repo, "commit", "-q", "-m", br)
+        _real_git(main_repo, "checkout", "-q", "main")
+    wt = tmp_path / "wt"
+    _real_git(main_repo, "worktree", "add", "-q", "-b", "wtbr", str(wt), "main")
+    return main_repo, wt
+
+
+def _run_real(monkeypatch, command, root, cwd=None, logger_sink=None):
+    """不 mock 偵測函式；只固定 root、派發為空。"""
+    payload = {"tool_name": "Bash", "tool_input": {"command": command}}
+    if cwd is not None:
+        payload["cwd"] = str(cwd)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: root)
+    monkeypatch.setattr(hook_module, "_get_active_dispatches_safe", lambda r: [])
+    return main()
+
+
+class TestMergeDetectDirFourCells:
+    """合併位置 x 提交位置。root 固定為主工作樹。"""
+
+    def test_main_merging(self, monkeypatch, main_and_wt):
+        main_repo, wt = main_and_wt
+        _real_git(main_repo, "merge", "--no-ff", "--no-commit", "side1")
+        # 主工作樹提交：擋
+        assert _run_real(monkeypatch, 'git commit -m x', main_repo, cwd=main_repo) == 2
+        # cwd 在 worktree：不擋（原誤擋）
+        assert _run_real(monkeypatch, 'git commit -m x', main_repo, cwd=wt) == 0
+        # -C worktree：不擋（原誤擋）
+        assert _run_real(monkeypatch, f'git -C {wt} commit -m x', main_repo, cwd=main_repo) == 0
+        # -C 主工作樹、cwd 在 worktree：擋（-C 優先於 cwd）
+        assert _run_real(monkeypatch, f'git -C {main_repo} commit -m x', main_repo, cwd=wt) == 2
+
+    def test_worktree_merging(self, monkeypatch, main_and_wt):
+        main_repo, wt = main_and_wt
+        _real_git(wt, "merge", "--no-ff", "--no-commit", "side2")
+        # 主工作樹提交：不擋
+        assert _run_real(monkeypatch, 'git commit -m x', main_repo, cwd=main_repo) == 0
+        # cwd 在 worktree：擋
+        assert _run_real(monkeypatch, 'git commit -m x', main_repo, cwd=wt) == 2
+        # -C worktree：擋（原漏擋）
+        assert _run_real(monkeypatch, f'git -C {wt} commit -m x', main_repo, cwd=main_repo) == 2
+        # 無 payload cwd 時退回 root（主工作樹）：不擋
+        assert _run_real(monkeypatch, 'git commit -m x', main_repo) == 0
+
+    def test_relative_dash_c_uses_payload_cwd(self, monkeypatch, main_and_wt):
+        main_repo, wt = main_and_wt
+        _real_git(wt, "merge", "--no-ff", "--no-commit", "side2")
+        assert _run_real(monkeypatch, 'git -C ../wt commit -m x', main_repo, cwd=main_repo) == 2
+
+
+class _Sink:
+    def __init__(self):
+        self.warnings = []
+
+    def warning(self, msg, *args):
+        self.warnings.append(msg % args if args else msg)
+
+
+class TestMergeDetectFailureSemantics:
+    def test_failure_fail_open_with_warning(self, monkeypatch, tmp_path):
+        sink = _Sink()
+
+        def boom(*a, **k):
+            return subprocess.CompletedProcess(a, 128, "", "fatal: not a git repository")
+
+        monkeypatch.setattr(hook_module.subprocess, "run", boom)
+        assert hook_module._merge_in_progress(tmp_path, sink) is False
+        assert len(sink.warnings) == 1
+        assert "rc=128" in sink.warnings[0] and str(tmp_path) in sink.warnings[0]
+
+    def test_timeout_fail_open_with_warning(self, monkeypatch, tmp_path):
+        sink = _Sink()
+
+        def slow(*a, **k):
+            raise subprocess.TimeoutExpired("git", 10)
+
+        monkeypatch.setattr(hook_module.subprocess, "run", slow)
+        assert hook_module._merge_in_progress(tmp_path, sink) is False
+        assert len(sink.warnings) == 1 and "TimeoutExpired" in sink.warnings[0]
+
+    def test_no_merge_writes_no_warning(self, main_and_wt):
+        main_repo, _ = main_and_wt
+        sink = _Sink()
+        assert hook_module._merge_in_progress(main_repo, sink) is False
+        assert sink.warnings == []
+
+    def test_real_nonexistent_dir_warns(self, tmp_path):
+        sink = _Sink()
+        assert hook_module._merge_in_progress(tmp_path / "nope", sink) is False
+        assert len(sink.warnings) == 1

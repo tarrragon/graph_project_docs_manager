@@ -259,10 +259,11 @@ ticket_id 讀票面現行 where.files 並取代該筆的 `files`，下游判定�
 """
 
 import json
+import subprocess
 import sys
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -427,14 +428,50 @@ def _exclude_orphan_confirmed(
     return kept
 
 
-def _merge_in_progress(project_root: Path) -> bool:
-    """`MERGE_HEAD` 可解析即有未收尾的合併；此時裸 commit 會把合併收尾成
-    merge commit（可能是他方的合併）。寫法同 commit-stage-guard-gate-hook。
+def _resolve_detect_dir(
+    payload_cwd: Optional[str], dash_c: Optional[str], project_root: Path
+) -> str:
+    """MERGE_HEAD 偵測目錄：`-C` 路徑（相對者以 payload cwd 為基準）>
+    payload `cwd` > project root。MERGE_HEAD 是各 worktree 獨立的 ref，
+    `git commit` 實際作用在 shell cwd 或 `-C` 目標，不是 hook 的 root。
     """
-    success, _ = run_git_command(
-        ["rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=str(project_root)
-    )
-    return success
+    base = payload_cwd or str(project_root)
+    if dash_c:
+        return str(Path(base) / dash_c)  # 絕對 -C 路徑會覆蓋 base
+    return base
+
+
+def _merge_in_progress(detect_dir, logger=None) -> bool:
+    """`MERGE_HEAD` 可解析即有未收尾的合併；此時裸 commit 會把合併收尾成
+    merge commit（可能是他方的合併）。
+
+    rev-parse -q --verify：rc 0 = 有合併；rc 1 = 無此 ref（正常，不寫 log）；
+    其他 rc、逾時、git 不存在 = 偵測失敗，fail-open 放行但寫 warning
+    （與「無合併」區分，否則偵測失效不可見）。
+    """
+    try:
+        result = subprocess.run(
+            ["git", "--no-optional-locks", "rev-parse", "-q", "--verify", "MERGE_HEAD"],
+            cwd=str(detect_dir),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        if logger is not None:
+            logger.warning(
+                "MERGE_HEAD 偵測失敗（%s: %s），fail-open 放行：dir=%s",
+                type(exc).__name__, exc, detect_dir,
+            )
+        return False
+    if result.returncode == 0:
+        return True
+    if result.returncode != 1 and logger is not None:
+        logger.warning(
+            "MERGE_HEAD 偵測失敗（rc=%d, stderr=%s），fail-open 放行：dir=%s",
+            result.returncode, (result.stderr or "").strip(), detect_dir,
+        )
+    return False
 
 
 def _build_merge_in_progress_deny_message() -> str:
@@ -853,7 +890,10 @@ def main() -> int:
         logger.debug("命令含 --amend，放行")
         return 0
 
-    if _merge_in_progress(project_root):
+    detect_dir = _resolve_detect_dir(
+        input_data.get("cwd"), invocation.dash_c_path, project_root
+    )
+    if _merge_in_progress(detect_dir, logger):
         logger.warning("MERGE_HEAD 存在，裸 commit 會收尾他方合併，阻擋")
         print(_build_merge_in_progress_deny_message(), file=sys.stderr)
         return 2
