@@ -67,7 +67,6 @@
 | `list-artifacts` | 列出 ticket 已登記的實驗器材 | 〈track register-artifact / resolve-artifact / list-artifacts 子命令〉 |
 | `set-exit-status` | 設定 Exit Status 章節（CLI 生成 fenced YAML） | 〈track set-exit-status 子命令〉 |
 | `set-completion-info` | 設定 Completion Info 章節（CLI 生成格式） | --help |
-| `accept-creation` | 標記 Ticket 建立後驗收已通過 | 〈UPDATE 操作〉 |
 | `audit` | 執行驗收檢查 | 〈track audit 子命令〉 |
 | `audit-version` | 掃描並驗證 Ticket 版本歸屬一致性 | --help |
 | `board` | 顯示樹狀看板視圖 | 〈track board 子命令〉 |
@@ -417,9 +416,6 @@ Live in_progress 票（非 stale，`staleness.is_live_occupied` 判準）以 see
 
 # 驗證 frontmatter 合規性
 /ticket track validate <id>                            # 檢查 status/completed_at/acceptance/who 4 欄位
-
-# 標記建立後驗收已通過
-/ticket track accept-creation <id>
 
 # 執行驗收檢查
 /ticket track audit <id>
@@ -801,6 +797,7 @@ ticket track set-exit-status <ticket_id> --status needs_context --reason "缺少
 | frontmatter 驗證            | `validate <id>`                                 | 檢查 status/completed_at/acceptance/who 4 欄位合規性 |
 | blockedBy                   | `set-blocked-by <id> <value> [--add\|--remove]` | 建立時用 `--blocked-by`；之後用 CLI 更新             |
 | relatedTo                   | `set-related-to <id> <value> [--add\|--remove]` | 建立時用 `--related-to`；之後用 CLI 更新             |
+| creation_accepted           | 無（`accept-creation` 已移除）                  | 建票通過硬閘門後由 `create` 直接寫 `true`，認領不再檢查；2026-10-14 之前建立的票此欄位不具意義（多為 false），不回填 |
 | title                       | `set-title <id> <value>`                        | 清單顯示用短標籤，與 `what` 刻意分離；範圍變更時兩者需個別更新（見「UPDATE 操作補充」章節） |
 | priority                    | `set-priority <id> <value>`                     | value 限 `PRIORITY_LEVELS`（P0-P3）                  |
 | closed_by                   | `set-closed-by <id> --value <ticket-id>`        | 僅 `status=closed` 適用，修正 close 時填錯的值        |

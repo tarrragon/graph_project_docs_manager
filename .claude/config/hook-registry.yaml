@@ -268,9 +268,6 @@ skill_hooks:
     event: PostToolUse
     matcher: Bash
     timeout: 5000
-  ticket/creation-acceptance-gate-hook.py:
-    event: UserPromptSubmit
-    timeout: 5000
   ticket/handoff-auto-resume-stop-hook.py:
     event: Stop
   ticket/handoff-cleanup-hook.py:

@@ -515,53 +515,6 @@ def _execute_batch_check_acceptance(
     return git_utils.EXIT_AUTO_COMMIT_FAILED if commit_failed else 0
 
 
-def execute_accept_creation(args: argparse.Namespace, version: str) -> int:
-    """
-    標記 Ticket 建立後驗收已通過
-
-    支援命令格式：
-    - ticket track accept-creation <id>
-
-    將 frontmatter 中的 creation_accepted 欄位設為 true。
-    既有 Ticket 缺少此欄位時視為 false。
-    """
-    # W14-045: file_lock 包圍 load → modify → save
-    lock_target = Path(get_ticket_path(version, args.ticket_id))
-    with file_lock(lock_target):
-        ticket = load_ticket(version, args.ticket_id)
-        if not ticket:
-            print(format_error(ErrorMessages.TICKET_NOT_FOUND, ticket_id=args.ticket_id))
-            return 1
-
-        # 取得當前 creation_accepted 狀態（預設為 false）
-        creation_accepted = ticket.get("creation_accepted", False)
-
-        if creation_accepted:
-            # 已經通過驗收
-            msg = format_msg(
-                TrackAcceptanceMessages.ACCEPT_CREATION_ALREADY_ACCEPTED_FORMAT,
-                ticket_id=args.ticket_id
-            )
-            print(msg)
-            return 0
-
-        # 標記建立後驗收已通過
-        ticket["creation_accepted"] = True
-
-        # 保存
-        ticket_path = resolve_ticket_path(ticket, version, args.ticket_id)
-        save_ticket(ticket, ticket_path)
-
-    # 輸出結果
-    msg = format_msg(
-        TrackAcceptanceMessages.ACCEPT_CREATION_SUCCESS_FORMAT,
-        ticket_id=args.ticket_id
-    )
-    print(msg)
-
-    return 0
-
-
 def _replace_or_append_section_content(
     *,
     section_text: str,
