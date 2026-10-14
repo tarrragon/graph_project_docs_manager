@@ -7,11 +7,11 @@
 - 124：逾時，整個程序群組已終止
 - 126：命令無法執行（無執行權限、執行格式錯誤等啟動失敗）
 - 127：找不到命令或其直譯器
-- 128+訊號編號：子程序被訊號終止；或本腳本收到 TERM／INT／HUP，此時先終止整個群組
+- 128+訊號編號：子程序被訊號終止；或本腳本收到 TERM／INT／HUP／QUIT，此時先終止整個群組
 - 2：用法錯誤
 - 其餘：原樣回傳子程序結束碼
 
-命令自身也可能回 126 或 127；本腳本輸出的訊息一律以「run-with-timeout:」開頭，可據此區分。
+命令自身也可能回 126 或 127；本腳本輸出的訊息（含用法訊息）一律以「run-with-timeout:」開頭，可據此區分。
 
 命令在期限內結束後（不論結束碼），同一程序群組內仍存活的程序立即以 KILL 終止、無寬限；
 已自行脫離群組的程序不在此列。
@@ -24,7 +24,7 @@
 - 檔案：wrapper-<本腳本PID>-<啟動時間（非英數字元以 - 取代）>.json，內容為 JSON 物件，欄位：
   pgid、leader_start（群組領頭程序的 ps lstart）、wrapper_pid、wrapper_start、cwd、command（list）。
   先寫同目錄暫存檔再 os.replace 改名。
-- 正常結束、逾時、收到轉送訊號三條路徑皆移除登記；被 SIGKILL 時登記留存。
+- 正常結束、逾時、收到轉送訊號、內部例外四條路徑皆移除登記；被 SIGKILL 時登記留存。
 - 登記的任何讀寫失敗只對 stderr 寫一行（開頭 run-with-timeout:）後繼續，不影響命令執行與結束碼。
 """
 import json
@@ -43,10 +43,11 @@ COMMAND_NOT_EXECUTABLE_EXIT_CODE = 126
 # TERM 後給子程序清理的寬限秒數；過短會截斷正常收尾，過長拖慢逾時回應
 GRACE_SECONDS = 3.0
 POLL_INTERVAL = 0.05
-FORWARDED_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+FORWARDED_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT)
 USAGE = (
-    "用法：run-with-timeout.py <秒數> -- <命令> [引數...]\n"
-    "結束碼：124 逾時／126 無法執行／127 找不到命令／其餘為命令自身結束碼\n"
+    "run-with-timeout: 用法：run-with-timeout.py <秒數> -- <命令> [引數...]\n"
+    "結束碼：124 逾時／126 無法執行／127 找不到命令／2 用法錯誤／"
+    "128+訊號編號 被訊號終止／其餘為命令自身結束碼\n"
 )
 
 
@@ -164,35 +165,66 @@ def _report_start_failure(name: str, error: OSError) -> int:
     return COMMAND_NOT_EXECUTABLE_EXIT_CODE
 
 
+class _SignalRecorder:
+    """轉送訊號只記錄、不在處理器內清理：清理由主流程在輪詢中執行。
+
+    處理器內不做等待與離開，故清理期間再收到訊號不會蓋掉結束碼，也不爭用鎖。
+    """
+
+    def __init__(self) -> None:
+        self.received: Optional[int] = None
+
+    def install(self) -> None:
+        for sig in FORWARDED_SIGNALS:
+            signal.signal(sig, self._record)
+
+    def _record(self, signum, _frame) -> None:
+        if self.received is None:
+            self.received = signum
+
+
+def _wait_or_signal(proc, seconds: float, recorder: _SignalRecorder) -> Optional[int]:
+    """等直接子程序結束；逾時回 None，收到轉送訊號時提早回 None（由呼叫端查 recorder）。"""
+    deadline = time.monotonic() + seconds
+    while recorder.received is None:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        try:
+            return proc.wait(timeout=min(POLL_INTERVAL, remaining))
+        except subprocess.TimeoutExpired:
+            continue
+    return None
+
+
 def run(seconds: float, command: List[str]) -> int:
+    recorder = _SignalRecorder()
+    recorder.install()  # 先於啟動子程序安裝，啟動前後的訊號都不會走預設終止動作
     try:
         proc = subprocess.Popen(command, start_new_session=True)
     except OSError as error:
         return _report_start_failure(command[0], error)
     pgid = proc.pid
-    registration: List[Optional[str]] = [None]  # 先裝訊號處理器再登記，避免登記期間收到訊號而漏轉送
-
-    def forward(signum, _frame):
-        terminate_group(pgid, leader=proc)
-        proc.wait()
-        unregister_group(registration[0])
-        sys.exit(128 + signum)
-
-    for sig in FORWARDED_SIGNALS:
-        signal.signal(sig, forward)
-    registration[0] = register_group(pgid, command)
-
+    registration: Optional[str] = None
+    finished = False
+    code = TIMEOUT_EXIT_CODE
     try:
-        returncode = proc.wait(timeout=seconds)
-    except subprocess.TimeoutExpired:
-        terminate_group(pgid, leader=proc)
-        proc.wait()
-        unregister_group(registration[0])
-        return TIMEOUT_EXIT_CODE
-    # 直接子程序已結束，清掉遺留的孫程序
-    _signal_group(pgid, signal.SIGKILL)
-    unregister_group(registration[0])
-    return _exit_code_of(returncode)
+        registration = register_group(pgid, command)
+        returncode = _wait_or_signal(proc, seconds, recorder)
+        if returncode is not None:
+            finished = True
+            code = _exit_code_of(returncode)
+        elif recorder.received is not None:
+            code = 128 + recorder.received
+    finally:
+        # 正常結束只清孫程序；逾時、收到訊號、內部例外皆終止整個群組
+        if finished:
+            _signal_group(pgid, signal.SIGKILL)
+        else:
+            terminate_group(pgid, leader=proc)
+            proc.wait()
+        unregister_group(registration)
+    return code
 
 
 def main(argv: Optional[List[str]] = None) -> int:

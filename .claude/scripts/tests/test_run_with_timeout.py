@@ -355,3 +355,82 @@ def test_interrupted_registry_write_leaves_no_temp_file(failing, tmp_path, monke
     assert mod.register_group(os.getpid(), ["x"]) is None
     assert list(reg.iterdir()) == []
     assert capsys.readouterr().err.startswith("run-with-timeout:")
+
+
+# ---- 訊號處理器安裝時機、內部例外清理、清理期間再收訊號（0.5.0-W1-187.9）----
+
+# 在子程序啟動回傳後立即制造指定事件，模擬「啟動之後、處理器生效之前」的空窗
+HARNESS_SRC = """
+import importlib.util, os, signal, subprocess, sys
+spec = importlib.util.spec_from_file_location("rwt", sys.argv[1])
+mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+mode, pidfile = sys.argv[2], sys.argv[3]
+real_popen, fired = subprocess.Popen, []
+def popen(*a, **k):
+    proc = real_popen(*a, **k)
+    if not fired:
+        fired.append(1)
+        open(pidfile, "w").write("%d" % proc.pid)
+        if mode == "signal":
+            os.kill(os.getpid(), signal.SIGTERM)
+    return proc
+subprocess.Popen = popen
+if mode == "raise":
+    def boom(*a, **k): raise RuntimeError("內部例外")
+    mod.register_group = boom
+sys.exit(mod.run(30, [sys.executable, "-c", "import time; time.sleep(%d)" % LIFE]))
+""".replace("LIFE", str(STAND_IN_LIFETIME))
+
+
+def _run_harness(tmp_path, mode):
+    harness = tmp_path / "harness.py"
+    harness.write_text(HARNESS_SRC)
+    pidfile = tmp_path / "hpid"
+    res = subprocess.run([sys.executable, str(harness), str(SCRIPT), mode, str(pidfile)],
+                         capture_output=True, text=True, timeout=25)
+    child = int(pidfile.read_text())
+    try:
+        assert _wait_dead([child]) == [], "子程序群組未被終止"
+    finally:
+        try:
+            os.killpg(child, signal.SIGKILL)  # 測試失敗時的收尾
+        except (ProcessLookupError, PermissionError):
+            pass
+    return res
+
+
+def test_signal_between_spawn_and_handler_still_kills_group(tmp_path):
+    res = _run_harness(tmp_path, "signal")
+    assert res.returncode == 128 + signal.SIGTERM
+
+
+def test_internal_exception_after_spawn_kills_group(tmp_path):
+    res = _run_harness(tmp_path, "raise")
+    assert res.returncode != 0 and "內部例外" in res.stderr
+
+
+def test_term_during_timeout_cleanup_keeps_exit_124(tmp_path):
+    """子程序收到逾時 TERM 時寫標記並忽略之，標記出現即確定清理中，再送 TERM。"""
+    marker = tmp_path / "got-term"
+    src = ("import signal,time;"
+           "signal.signal(signal.SIGTERM, lambda *a: open(%r,'w').write('x'));"
+           "time.sleep(%d)" % (str(marker), STAND_IN_LIFETIME))
+    wrapper = subprocess.Popen([sys.executable, str(SCRIPT), "1", "--", sys.executable, "-c", src],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        deadline = time.monotonic() + 20
+        while not marker.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert marker.exists()
+        wrapper.send_signal(signal.SIGTERM)
+        assert wrapper.wait(timeout=15) == 124
+    finally:
+        if wrapper.poll() is None:
+            wrapper.kill()
+
+
+def test_usage_message_prefixed_and_lists_exit_codes():
+    res = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, timeout=20)
+    assert res.returncode == 2
+    assert res.stderr.startswith("run-with-timeout:")
+    assert "2" in res.stderr and "128" in res.stderr
