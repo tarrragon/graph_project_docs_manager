@@ -36,7 +36,7 @@ SKELETON_TEMPLATE_NORMAL = """Ticket: {ticket_id}
 {closing}"""
 
 # normal 變體收尾句（依 isolation 對表選用，不在 format 字串內寫條件分支）。
-# worktree：隔離環境下 complete 受守衛限制，改 finish，被拒時交還 PM 代跑。
+# worktree：代理人收尾止於 ticket track commit 並回報 PM，complete 由 PM 於合併並驗證後執行。
 CLOSING_BY_ISOLATION = {
     "none": (
         "收尾：`ticket track set-acceptance {ticket_id} --check <編號>` → 填 Solution（含 ### 自檢結果與 Phase 4 評估）/ "
