@@ -622,7 +622,7 @@ ticket track commit <ticket_id> -m "<commit message>" --worktree <worktree 絕�
 
 ### 歸屬 trailer 自動補全
 
-訊息缺 `Co-Authored-By:` 行時，CLI 讀 transcript 最後一則 assistant 訊息的 `model`，經 `lib/commit_attribution.py` 的 `MODEL_DISPLAY_NAMES` 對照表轉為顯示名稱，補在訊息最末段（`Co-Authored-By: <顯示名稱> <noreply@anthropic.com>`）。已含該行時不動；有 `Claude-Session:` 行但與 Co-Authored-By 不相鄰時，移到其後相鄰。transcript 位置：主 session 為 `~/.claude/projects/<專案目錄編碼>/<CLAUDE_CODE_SESSION_ID>.jsonl`；子代理人為 `.../<父 session id>/subagents/agent-<agentId>.jsonl`（agentId 取自 worktree 目錄名）。子代理人無法確定自身 transcript、讀不到、或 model 不在對照表時，只印 `[WARNING]` 不補，提交照常成立（exit code 不變）；不使用父 session 的值。
+訊息缺 `Co-Authored-By:` 行時，CLI 讀 transcript 最後一則 assistant 訊息的 `model`，依通則 `claude-<family>-<major>-<minor>` 推為 `Claude <Family> <major>.<minor>`（`lib/commit_attribution.py` 的 `MODEL_DISPLAY_NAMES` 只收通則不正確的例外項），補在訊息最末段（`Co-Authored-By: <顯示名稱> <noreply@anthropic.com>`）。已含該行時不動；有 `Claude-Session:` 行但與 Co-Authored-By 不相鄰時，移到其後相鄰。transcript 位置：主 session 為 `~/.claude/projects/<專案目錄編碼>/<CLAUDE_CODE_SESSION_ID>.jsonl`；子代理人（以 cwd 的 git toplevel 位於 `.claude/worktrees/agent-<id>` 判定，不看 `AI_AGENT`）為 `.../<父 session id>/subagents/agent-<id>.jsonl`。共用 checkout 內的子代理人會被當成主 session（實作代理人由 hook 強制用 worktree，共用 checkout 者僅唯讀審查、不提交）。讀不到 transcript、或 model id 無法推導顯示名稱時，只印 `[WARNING]` 不補，提交照常成立（exit code 不變）；不使用父 session 的值。
 
 ### `--worktree` 條件
 

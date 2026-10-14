@@ -107,13 +107,21 @@ def test_unreadable_model_warns_and_commits(repo, monkeypatch, capsys):
 def test_unknown_model_warns(repo, tmp_path, monkeypatch, capsys):
     _write_transcript(tmp_path / "claude" / "projects" / "proj" / f"{SID}.jsonl", "claude-zzz-9")
     assert _commit("feat: x") == 0
-    assert "不在對照表" in capsys.readouterr().out
+    assert "無法推導顯示名稱" in capsys.readouterr().out
+
+
+def test_unlisted_but_wellformed_model_is_derived(repo, tmp_path):
+    _write_transcript(
+        tmp_path / "claude" / "projects" / "proj" / f"{SID}.jsonl", "claude-haiku-5-5"
+    )
+    assert _commit("feat: x") == 0
+    assert "Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>" in _trailers(repo)
 
 
 def test_subagent_uses_own_transcript_not_parent(repo, tmp_path, monkeypatch):
     monkeypatch.setenv("AI_AGENT", "claude-code_2-1-299_agent")
-    agent_dir = tmp_path / "agent-abc123"
-    agent_dir.mkdir()
+    agent_dir = tmp_path / "proj" / ".claude" / "worktrees" / "agent-abc123"
+    agent_dir.mkdir(parents=True)
     monkeypatch.setattr(tc, "_resolve_repo_root", lambda w: str(repo))
     _write_transcript(
         tmp_path / "claude" / "projects" / "proj" / SID / "subagents" / "agent-abc123.jsonl",
@@ -124,8 +132,8 @@ def test_subagent_uses_own_transcript_not_parent(repo, tmp_path, monkeypatch):
     assert line == "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 
-def test_subagent_without_identity_does_not_fall_back_to_parent(repo, capsys, monkeypatch):
+def test_main_session_with_agent_suffixed_env_is_filled(repo, monkeypatch):
+    # 主 session 的 AI_AGENT 同樣以 _agent 結尾，不可當子代理人訊號；cwd 不在 agent worktree
     monkeypatch.setenv("AI_AGENT", "claude-code_2-1-299_agent")
-    assert _commit("feat: x") == 0
-    assert "子代理人無法確定" in capsys.readouterr().out
-    assert "Co-Authored-By" not in _head_message(repo)
+    assert _commit("feat: x\n\n內文") == 0
+    assert CO in _trailers(repo)
