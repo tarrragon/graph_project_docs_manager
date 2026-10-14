@@ -68,7 +68,7 @@ _MAX_DEPTH = 3
 # 環境變數（PAGER、LESSOPEN 等）與設定檔內的執行器不在命令文字，屬已知殘留。
 _EXEC_OPTS = {
     "rg": {"exact": ("--pre",), "prefix": ("--pre=",)},
-    "man": {"exact": ("-P", "--pager"), "prefix": ("-P", "--pager=")},
+    "man": {"exact": ("-P", "--pager"), "prefix": ("-P", "--pager=", "-H", "--html=")},
     "less": {"exact": (), "prefix": ("+",)},
 }
 _SPLIT_RE = re.compile(r"[\s=]+")
@@ -88,6 +88,8 @@ def _expand_tokens(stmt: List[str]) -> List[str]:
         out.append(tok)
         if _SPLIT_RE.search(tok) or tok.startswith(("+", "!")):
             out.extend(p.lstrip("+!") for p in _SPLIT_RE.split(tok) if p)
+        if tok.startswith("-") and not tok.startswith("--") and len(tok) > 2:
+            out.append(tok[2:])  # 黏寫短選項值（-Hpkill、-Ppkill）
     return out
 
 
@@ -163,6 +165,8 @@ def _message(kind: str, command: str) -> str:
         "  3. 逾時控制：python3 .claude/scripts/run-with-timeout.py\n"
         "誤擋時的改寫方式（守衛掃描語句內任何位置的 pkill/killall token）：\n"
         "  - 閱讀類命令（echo/printf/grep/rg/man/which/type/ls/cat/command -v）已放行，無須改寫。\n"
+        "    例外：帶執行類選項（rg --pre、man -P/--pager/-H/--html=、less +）時，"
+        "上述放行不適用，選項值會被當成執行器掃描。\n"
         "  - 只是把字樣當參數（如 git log --grep pkill）：改寫成不含完整字樣的樣式，如 p[k]ill。\n"
         "  - 遠端或容器內執行（ssh/docker exec/kubectl exec）：改 `kill <PID>`，或在目標端另行處理。\n"
     )

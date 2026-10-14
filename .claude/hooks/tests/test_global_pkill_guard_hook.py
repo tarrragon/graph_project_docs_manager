@@ -51,6 +51,9 @@ def run(monkeypatch, capsys, command, tool="Bash"):
     "man -P 'pkill dart' ls",
     "man --pager='pkill dart' ls",
     "less '+!pkill dart' f",
+    "man -Hpkill ls",
+    "man -Ppkill ls",
+    "man --html=pkill ls",
     "timeout 5 rg --pre pkill x .",
 ])
 def test_denied_with_alternative(monkeypatch, capsys, cmd):
@@ -83,6 +86,8 @@ def test_denied_with_alternative(monkeypatch, capsys, cmd):
     "rg -n pkill src",
     "man -k pkill",
     "less pkill.log",
+    "man -H ls",
+    "man --html ls",
 ])
 def test_allowed(monkeypatch, capsys, cmd):
     rc, err = run(monkeypatch, capsys, cmd)
