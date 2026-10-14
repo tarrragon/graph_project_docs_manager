@@ -305,3 +305,66 @@ class TestHookLogsMigration:
             if line.strip()
         ]
         assert any(e.get("hook") == "domain-import-lint-hook" for e in entries)
+
+
+# ============================================================================
+# 解析器判定（E2 正反向對照）與無法解析（None）處置
+# ============================================================================
+
+
+class TestParserJudgement:
+    def test_dash_c_commit_hits(self):
+        assert is_commit_command("git -C x commit -m y") is True
+
+    def test_dash_c_merge_hits(self):
+        assert is_commit_command("git -C x merge feature") is True
+
+    def test_amend_still_hits(self):
+        assert is_commit_command("git commit --amend -m y") is True
+
+    def test_echo_commit_not_hit(self):
+        assert is_commit_command("echo git commit") is False
+
+    def test_echo_merge_not_hit(self):
+        assert is_commit_command("echo git merge") is False
+
+    def test_unparseable_returns_none(self):
+        assert is_commit_command("git commit -m 'unclosed") is None
+
+    def test_mutation_substring_would_miss_dash_c(self):
+        """變異確認：舊的子字串判定對 git -C x commit 漏判，本測試證明對照有鑑別力。"""
+        old = lambda c: "git commit" in c or "git merge" in c  # noqa: E731
+        assert old("git -C x commit -m y") is False
+        assert old("git -C x merge f") is False
+
+
+class TestUnparseableDisposition:
+    def _run(self, monkeypatch, tmp_path, parallel):
+        project_root = _make_domain_project(
+            tmp_path, "import 'package:flutter/material.dart';\n"
+        )
+        monkeypatch.setattr(hook_module, "has_parallel_dispatch", lambda root: parallel)
+        return _run_hook(monkeypatch, "git commit -m 'unclosed", project_root=project_root)
+
+    def test_parallel_blocks(self, monkeypatch, tmp_path, capsys):
+        assert self._run(monkeypatch, tmp_path, True) == 2
+        assert "保守阻擋" in capsys.readouterr().err
+
+    def test_non_parallel_warns_and_passes(self, monkeypatch, tmp_path, capsys):
+        assert self._run(monkeypatch, tmp_path, False) == 0
+        assert "提醒" in capsys.readouterr().err
+
+    def test_dash_c_commit_with_violation_denied(self, monkeypatch, tmp_path):
+        project_root = _make_domain_project(
+            tmp_path, "import 'package:flutter/material.dart';\n"
+        )
+        assert _run_hook(monkeypatch, "git -C x commit -m y", project_root=project_root) == 2
+
+    def test_dash_c_merge_with_violation_denied(self, monkeypatch, tmp_path):
+        project_root = _make_domain_project(
+            tmp_path, "import 'package:flutter/material.dart';\n"
+        )
+        assert _run_hook(monkeypatch, "git -C x merge f", project_root=project_root) == 2
+
+    def test_has_parallel_dispatch_reads_state(self, tmp_path):
+        assert hook_module.has_parallel_dispatch(tmp_path) is False

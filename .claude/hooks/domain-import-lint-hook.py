@@ -17,10 +17,18 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))  # .claude/ — for `from lib import ...`
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin  # noqa: E402
+from lib.hook_base import get_shared_state_root  # noqa: E402
+from lib.dispatch_tracker import get_active_dispatches  # noqa: E402
+from lib.git_command_parse import (  # noqa: E402
+    contains_git_word,
+    find_git_invocations,
+    match_git_commit,
+)
 
 DOMAIN_DIR = "lib/domain"
 
@@ -35,8 +43,31 @@ FORBIDDEN_PATTERNS = [
 ]
 
 
-def is_commit_command(command: str) -> bool:
-    return "git commit" in command or "git merge" in command
+def is_commit_command(command: str) -> Optional[bool]:
+    """判斷是否為 git commit 或 git merge 呼叫（含 amend，維持原掃描範圍）。
+
+    以共用解析器判定（涵蓋 git -C x commit、bash -c 等；echo 與引號內文字不誤判）。
+    回傳 None 表示命令含 git 字樣但無法解析，由 main() 決定處置。
+    """
+    if not contains_git_word(command):
+        return False
+    commit = match_git_commit(command, exclude_amend=False)
+    if commit is True:
+        return True
+    merges = find_git_invocations(command, {"merge"})
+    if merges:
+        return True
+    if commit is None or merges is None:
+        return None
+    return False
+
+
+def has_parallel_dispatch(project_root: Path) -> bool:
+    """是否有活躍並行派發；讀取失敗保守視為非並行（與 bare-commit-guard 一致）。"""
+    try:
+        return len(get_active_dispatches(project_root)) > 0
+    except Exception:
+        return False
 
 
 def scan_domain_imports(project_root: str) -> list[str]:
@@ -72,7 +103,25 @@ def main() -> int:
 
     tool_input = hook_input.get("tool_input", {})
     command = tool_input.get("command", "")
-    if not is_commit_command(command):
+    is_commit = is_commit_command(command)
+    if is_commit is None:
+        # 無法解析：比照 bare-commit-guard，並行期保守擋下、非並行期僅提醒。
+        # 提醒走 stderr 直接 print（logger.warning 會觸發 hook error 顯示）。
+        if has_parallel_dispatch(get_shared_state_root()):
+            logger.info("命令含 git 字樣但無法安全解析，並行期保守阻擋")
+            print(
+                "[domain-import-lint] 命令無法安全解析，並行派發期間保守阻擋。"
+                "請改寫為單純的 git commit 命令後重送。",
+                file=sys.stderr,
+            )
+            return 2
+        logger.info("命令含 git 字樣但無法安全解析，非並行期提醒放行")
+        print(
+            "[domain-import-lint] 提醒：命令無法安全解析，未檢查 domain import 方向。",
+            file=sys.stderr,
+        )
+        return 0
+    if not is_commit:
         logger.debug("非 commit/merge 命令，跳過")
         return 0
 
