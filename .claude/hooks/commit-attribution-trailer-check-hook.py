@@ -49,7 +49,7 @@ CLAUDE_SESSION_PREFIX = "claude-session:"
 COMMIT_SUCCESS_MARKERS = ("files changed", "file changed", "create mode",
                           "insertions(+)", "deletions(-)", "insertion(+)", "deletion(-)")
 GIT_COMMIT_PATTERN = re.compile(r"\bgit(?:\s+-C\s+(?:\"[^\"]*\"|'[^']*'|\S+))*\s+commit\b")
-COMMIT_SHA_PATTERN =re.compile(r"\[[^\]\s]+(?: \(root-commit\))? ([0-9a-f]{7,40})\]")
+COMMIT_SHA_PATTERN = re.compile(r"\[[^\]\s]+(?: \(root-commit\))? ([0-9a-f]{7,40})\]")
 
 
 def _is_git_commit_command(command: str) -> bool:
