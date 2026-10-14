@@ -23,16 +23,6 @@ Envelope 偵測模式 (W17-008.5.5；補移植於 0.0.1-W1-005):
 - 升級至 v2 時兩處須同改
 
 行為: 不阻擋（exit 0），僅在 additionalContext 輸出提醒訊息
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PostToolUse",
-  "matcher": "Bash",
-  "timeout": 5000,
-  "description": "CLI 錯誤偵測與回饋（合併 cli-failure-help-reminder + skill-cli-error-feedback）",
-  "dependencies": [],
-  "version": "1.0.0"
-}
 """
 
 import sys

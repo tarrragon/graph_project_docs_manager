@@ -17,16 +17,6 @@ session 完成計數不在此 hook：同一次 complete 只由 session-context-g
   output_checkpoint_reminder — 輸出 Checkpoint 1/1.5 提醒
 
 行為: 不阻擋（exit 0），僅在 additionalContext 輸出提醒訊息
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PostToolUse",
-  "matcher": "Bash",
-  "timeout": 5000,
-  "description": "Ticket 完成後生命週期處理（合併 session-context-guard + post-ticket-complete-checkpoint）",
-  "dependencies": [],
-  "version": "1.0.0"
-}
 """
 
 import sys

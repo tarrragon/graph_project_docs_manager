@@ -21,16 +21,6 @@ Worktree 和分支檢查 Hook - PreToolUse Hook
   5. 有發現時：輸出 WARNING 到 stderr，列出所有未提交/未合併的詳情
   6. 無發現時：靜默通過
   7. 永遠 exit 0（不阻止操作，僅警告）
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PreToolUse",
-  "matcher": "Bash",
-  "timeout": 10000,
-  "description": "git push/merge/cherry-pick 前檢查 worktree、分支和目標分支",
-  "dependencies": [],
-  "version": "1.2.0"
-}
 """
 
 import logging

@@ -19,16 +19,6 @@ CLI 失敗提醒 Hook - PostToolUse Hook
   5. 若偵測到 CLI 失敗，輸出 PC-005 調查步驟提醒
 
 行為: 不阻擋（exit 0），僅在 additionalContext 輸出提醒訊息
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PostToolUse",
-  "matcher": "Bash",
-  "timeout": 5000,
-  "description": "CLI 失敗時提醒查 --help - PC-005 防護",
-  "dependencies": [],
-  "version": "1.0.0"
-}
 """
 
 import sys

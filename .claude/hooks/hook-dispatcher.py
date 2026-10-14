@@ -47,15 +47,6 @@ Hook 分派程序 (PreToolUse / PostToolUse / PostToolUseFailure 共用)
   序列段只在「剩餘預算 >= 自身逾時」時啟動 hook，序列段不超出 budget；其餘（含其後全部）進尾段並行，
   各用完整自身逾時。最壞上限 = budget + 最大單支逾時，settings.json 逾時 >= 該值 + 餘裕（20 秒），
   且須 < 1000（單位守衛 test_settings_hook_timeout_units）。逾時大於剩餘預算的重型 hook 因此固定走尾段子程序。
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PreToolUse,PostToolUse,PostToolUseFailure",
-  "matcher": "Bash",
-  "description": "Bash 事件 hook 單一分派程序",
-  "dependencies": ["pyyaml"],
-  "version": "1.0.0"
-}
 """
 
 import importlib

@@ -25,15 +25,6 @@ Parallel Claim Audit Hook (PostToolUse:Bash) — 非阻擋 observability
 輸出:
   audit log（JSONL）：{ ticket_id, wave, timestamp, same_wave_in_progress: [...] }
   異常時：stderr + logger（不阻擋，exit 0）
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PostToolUse",
-  "matcher": "Bash",
-  "description": "並行 claim 事後歸因 - ticket track claim 後記錄同 wave in_progress 快照（非阻擋）",
-  "dependencies": [],
-  "version": "1.0.0"
-}
 """
 
 import json

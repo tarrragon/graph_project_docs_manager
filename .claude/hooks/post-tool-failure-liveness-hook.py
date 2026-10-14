@@ -14,15 +14,6 @@ PostToolUseFailure(Bash) 探針 Hook
 觸發時機: PostToolUseFailure (Bash)
 輸入契約: 頂層 error、is_interrupt、duration_ms、hook_event_name；無 tool_response
 輸出: 無（失敗事件無阻擋語意；本 hook 恆 exit 0，不寫 stdout）
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PostToolUseFailure",
-  "matcher": "Bash",
-  "description": "失敗事件送達探針：記錄 liveness 與失敗摘要",
-  "dependencies": ["pyyaml"],
-  "version": "1.0.0"
-}
 """
 
 import sys

@@ -20,15 +20,6 @@ CHANGELOG 更新提醒 Hook (PostToolUse)
 排除條件:
   - commit message 包含 "chore" 或 "docs" 或 "refactor(hooks)" 等維護性質
   - 透過 /version-release 流程執行的 commit
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PostToolUse",
-  "matcher": "Bash",
-  "description": "CHANGELOG 更新提醒 - git commit 後檢查 CHANGELOG 同步",
-  "dependencies": [],
-  "version": "1.0.0"
-}
 """
 
 import json

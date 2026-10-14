@@ -25,15 +25,6 @@ Worklog 路徑防護 Hook (PostToolUse)
   - docs/work-logs/v*/*.md （已在版本目錄下）
   - docs/work-logs/v*/tickets/*.md （已在 tickets 目錄下）
   - 非 .md 檔案
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PostToolUse",
-  "matcher": "Write",
-  "description": "Worklog 路徑防護 - 提醒不要在 docs/work-logs/ 根目錄直接寫入",
-  "dependencies": [],
-  "version": "1.0.0"
-}
 """
 
 import json
