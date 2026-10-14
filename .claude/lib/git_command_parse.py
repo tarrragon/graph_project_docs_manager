@@ -144,6 +144,7 @@ def strip_line_comments(command: str) -> str:
     in_comment = False
     escaped = False
     prev = "\n"
+    prev_before_backslash = "\n"
     for ch in command:
         if in_comment:
             if ch == "\n":
@@ -153,8 +154,15 @@ def strip_line_comments(command: str) -> str:
             continue
         if escaped:
             escaped = False
+            if ch == "\n":
+                # 行接續（單引號外的反斜線加換行）：bash 先合併再判斷註解，
+                # 彈出已加入的反斜線並略過換行，prev 還原為反斜線之前的字元
+                result.pop()
+                prev = prev_before_backslash
+                continue
         elif ch == "\\" and not in_single:
             escaped = True
+            prev_before_backslash = prev
         elif ch == "'" and not in_double:
             in_single = not in_single
         elif ch == '"' and not in_single:
