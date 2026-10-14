@@ -677,3 +677,40 @@ def test_e3_block_message_states_literal_match_and_accepted_literals(logger):
     assert "字面" in msg
     for literal in ("實地觸發", "session", "生效"):
         assert literal in msg.split("合格填法範例")[0], literal
+
+
+# ---------------------------------------------------------------------------
+# (p) 表頭存在但下一行非分隔列（夾空行）→ block，訊息指出格式限制；
+#     完全無表頭時維持原訊息（對照）
+# ---------------------------------------------------------------------------
+
+_BLANK_LINE_TABLE = (
+    "| 產生路徑 | 是否覆蓋 | 未覆蓋原因 |\n"
+    "\n"
+    "|---------|---------|-----------|\n"
+    "| 經工具正常寫入 | 是 | — |\n"
+)
+_PASSING_ACCEPTANCE = [
+    "[ ] 本 session 不生效，需重啟才生效",
+    "[ ] 以 liveness 日誌比對確認 hook 已被觸發",
+    "[ ] 異常時 fail-closed，回傳 exit 2",
+]
+
+
+def test_inventory_header_without_separator_status():
+    assert parse_path_inventory_table(_BLANK_LINE_TABLE).status == "no_separator"
+
+
+def test_inventory_header_without_separator_blocks_with_format_notice(logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _PASSING_ACCEPTANCE, _BLANK_LINE_TABLE)
+    should_block, msg = check_hook_protection_acceptance(fm, logger, content="")
+    assert should_block is True
+    assert "不可夾空行" in msg
+    assert "|---------|" in msg
+
+
+def test_inventory_no_header_keeps_original_message_without_format_notice(logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _PASSING_ACCEPTANCE, "無表的策略文字")
+    should_block, msg = check_hook_protection_acceptance(fm, logger, content="")
+    assert should_block is True
+    assert "不可夾空行" not in msg

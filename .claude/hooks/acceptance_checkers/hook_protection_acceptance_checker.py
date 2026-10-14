@@ -122,7 +122,9 @@ _SOLUTION_SECTION_RE = re.compile(r"^## Solution\s*\n(.*?)(?=^## |\Z)", re.MULTI
 class PathInventoryResult(NamedTuple):
     """產生路徑盤點表解析結果。
 
-    status 三態：
+    status 四態：
+      - "no_separator"：找到含「產生路徑」的表頭列，但其下一行不是分隔列
+        （表頭與分隔列之間夾空行等）→ 與 absent 同樣阻擋，僅訊息不同
       - "absent"：找不到含「產生路徑」表頭的表格 → 呼叫端應阻擋 complete
       - "failed"：表格存在但欄位/內容不符預期（缺覆蓋欄、儲存格非「是/否」
         等）→ 呼叫端應 fail-open（不阻擋、不拋例外，僅記錄 warning 並略過
@@ -177,18 +179,20 @@ def parse_path_inventory_table(text: str) -> PathInventoryResult:
 
     lines = text.split("\n")
     header_idx = None
+    header_without_separator = False
     for i in range(len(lines) - 1):
         stripped = lines[i].strip()
-        if (
-            stripped.startswith("|")
-            and _INVENTORY_HEADER_MARKER in stripped
-            and _TABLE_SEPARATOR_ROW_RE.match(lines[i + 1].strip())
-        ):
+        if not (stripped.startswith("|") and _INVENTORY_HEADER_MARKER in stripped):
+            continue
+        if _TABLE_SEPARATOR_ROW_RE.match(lines[i + 1].strip()):
             header_idx = i
             break
+        header_without_separator = True
 
     if header_idx is None:
-        return PathInventoryResult(status="absent")
+        return PathInventoryResult(
+            status="no_separator" if header_without_separator else "absent"
+        )
 
     header_cells = _split_table_row(lines[header_idx])
     coverage_idx = next(
@@ -356,7 +360,7 @@ def check_hook_protection_acceptance(
     inventory_source = how_strategy if how_strategy.strip() else _extract_solution_section(content)
     inventory_result = parse_path_inventory_table(inventory_source)
 
-    if inventory_result.status == "absent":
+    if inventory_result.status in ("absent", "no_separator"):
         missing.append(_PATH_INVENTORY_LABEL)
     elif inventory_result.status == "failed":
         logger.warning(
@@ -376,7 +380,9 @@ def check_hook_protection_acceptance(
         )
         return False, None
 
-    msg = _format_block_message(ticket_id, missing)
+    msg = _format_block_message(
+        ticket_id, missing, header_without_separator=inventory_result.status == "no_separator"
+    )
     logger.error(
         f"Ticket {ticket_id} where.files 觸及 hooks 目錄但缺必含項目 "
         f"{len(missing)} 項（{'、'.join(missing)}） - 阻擋 complete"
@@ -394,7 +400,17 @@ def _format_accepted_literals(missing: List[str]) -> str:
     return "".join(lines)
 
 
-def _format_block_message(ticket_id: str, missing: List[str]) -> str:
+_NO_SEPARATOR_NOTICE = (
+    "格式限制（為何被擋）：已找到含「產生路徑」的表頭列，但它的下一行不是分隔列，"
+    "故被判為沒有表。表頭與分隔列之間、各資料列之間不可夾空行；"
+    "下方範例即合格寫法（逐列緊接）。\n"
+    "\n"
+)
+
+
+def _format_block_message(
+    ticket_id: str, missing: List[str], header_without_separator: bool = False
+) -> str:
     missing_list = "\n".join(f"  - {label}" for label in missing)
     msg = (
         f"[ERROR] Acceptance Gate: 防護類 hook ticket 缺必含項目\n"
@@ -416,6 +432,8 @@ def _format_block_message(ticket_id: str, missing: List[str]) -> str:
         f"  - 失敗語意：說明異常時 fail-open 或 fail-closed\n"
     )
     if _PATH_INVENTORY_LABEL in missing:
+        if header_without_separator:
+            msg += "\n" + _NO_SEPARATOR_NOTICE
         msg += (
             f"\n"
             f"產生路徑盤點結果——讀取優先序（為何會被擋）：checker 只判斷 "
