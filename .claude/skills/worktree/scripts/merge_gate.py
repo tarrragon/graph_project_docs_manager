@@ -11,6 +11,10 @@ update-ref 之前，在「合併 commit 的 detached worktree 快照」內，經
 CAS 重試：每次重試依新 HEAD 產生不同的合併 commit。上次驗過的 commit 與新 commit 的
 差異全部落在 RETRY_REUSE_EXEMPT_GLOBS（只改票檔與版本日誌）時，沿用驗證結果不重跑。
 
+名額：合併序列（commit-tree、快照全套件、update-ref）整段持有 heavy 名額，由 MergeGate.hold 在
+merge_branch_cas 產生合併 commit 之前取得、update-ref 完成或中止後釋放；窗口因此只剩實際測試時間，
+不含排隊。持有期間以環境標記（slot_gate.export_hold）讓快照內經 run-with-timeout 的套件免重複取得。
+
 套件執行器可注入（SuiteRunner），單元測試不真的跑 hooks 或 flutter 全套件。
 """
 
@@ -26,6 +30,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterator, Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # .claude/，供 import lib
+from lib import slot_gate  # noqa: E402
 
 # 閘門允許的 CAS 重試次數（不含首次嘗試）；超過即中止並回報最後一次失敗原因
 GATE_MAX_RETRIES = 3
@@ -382,12 +389,46 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
 class MergeGate:
     """可掛到 merge_branch_cas(pre_merge_check=...) 的檢查物件；持有跨重試的驗證狀態。"""
 
-    def __init__(self, repo: str, runner: Optional[SuiteRunner] = None, project_root: Optional[str] = None):
+    def __init__(self, repo: str, runner: Optional[SuiteRunner] = None, project_root: Optional[str] = None,
+                 on_event: Optional[Callable[[str], None]] = None):
         self.repo = repo
+        self.on_event = on_event or (lambda _name: None)  # slot_acquired／slot_released，測試斷言順序用
         self.runner = runner or default_runner
         self.project_root = project_root or repo
         self.verified_commit: Optional[str] = None
         self.suite_runs = 0
+
+    def _needs_slot(self, branch: str, base: str) -> bool:
+        """分支相對 base 的改動是否可能需跑全套件；git 失敗時保守視為需要。"""
+        base_proc = _git(["merge-base", base, branch], self.repo)
+        if base_proc.returncode != 0:
+            return True
+        paths = changed_paths_between(self.repo, base_proc.stdout.decode().strip(), branch)
+        return paths is None or needs_gate(paths)
+
+    @contextmanager
+    def hold(self, branch: str, base: str) -> Iterator[None]:
+        """持有 heavy 名額的區段：進入時排隊取得，離開（成功、中止、例外、中斷）一律釋放。
+
+        改動不在任何全套件範圍內者不取得，免得文件合併排在他方全套件之後。
+        """
+        if not self._needs_slot(branch, base):
+            yield
+            return
+        with _sigterm_as_interrupt():
+            held, early = slot_gate.acquire_slot(["merge-gate", branch], lambda: None)
+            if early is not None:
+                raise RuntimeError(f"等待本機名額失敗（exit {early}）")
+            if held is None:  # 名額閘門失效（目錄不可用）：與 run-with-timeout 一致，略過不擋
+                yield
+                return
+            self.on_event("slot_acquired")
+            try:
+                with slot_gate.export_hold(held):
+                    yield
+            finally:
+                held.release()
+                self.on_event("slot_released")
 
     def _can_reuse(self, commit: str) -> bool:
         if self.verified_commit is None:

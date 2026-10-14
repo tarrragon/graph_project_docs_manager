@@ -19,9 +19,13 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
   查詢本專案孤兒；有則於 stderr 印出數量與清理指令，無則不輸出；查詢失敗或逾時（ORPHAN_QUERY_TIMEOUT_SECONDS）
   只寫一行 stderr，不阻擋命令。light 命令不經過閘門，故不查詢。CLAUDE_ORPHAN_SCRIPT、
   CLAUDE_ORPHAN_QUERY_TIMEOUT 可覆寫查詢腳本與逾時（測試用）。
+- 持有者的子程序不重複取得名額：持有者在持有期間把自己的 pid 放入環境變數 HELD_ENV（export_hold），
+  子程序內的 run-with-timeout 經 is_heavy_command 判定為免排隊。標記僅在「該 pid 仍存在且名額確實全被占用」
+  時有效（held_by_ancestor），殘留的過期標記不會讓 heavy 命令繞過閘門。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
 """
 import fcntl
+import contextlib
 import json
 import os
 import re
@@ -49,8 +53,59 @@ def _warn(message: str) -> None:
     sys.stderr.write(f"run-with-timeout: {message}\n")
 
 
+# 持有名額的程序在持有期間放入環境，其子程序據此免重複取得（否則自我死鎖）
+HELD_ENV = "CLAUDE_SLOT_HELD_BY"
+
+
+def _all_slots_busy(directory: str) -> bool:
+    """每個名額的鎖檔目前都被某程序持有（不符合即立刻放回剛取得的鎖）。"""
+    for index in range(SLOT_COUNT):
+        try:
+            fd = os.open(os.path.join(directory, f"heavy-slot-{index}.lock"), os.O_RDWR | os.O_NOFOLLOW)
+        except OSError:
+            return False  # 鎖檔不存在或不可開：沒有人持有
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return False
+        except BlockingIOError:
+            pass  # 此名額有人持有，檢查下一個
+        finally:
+            os.close(fd)
+    return True
+
+
+def held_by_ancestor() -> bool:
+    """環境標記指向仍存在的程序，且名額確實被占用。標記格式錯誤或任何查驗失敗皆視為未持有。"""
+    raw = os.environ.get(HELD_ENV)
+    if not raw:
+        return False
+    try:
+        return not _pid_gone(int(raw)) and _all_slots_busy(slot_dir())
+    except (ValueError, OSError):
+        return False  # 標記不是整數或目錄不可查：不免排隊，由正常取得流程處理
+
+
+@contextlib.contextmanager
+def export_hold(hold: "SlotHold"):
+    """持有期間把本程序 pid 放入環境供子程序辨識；離開時還原原值。"""
+    previous = os.environ.get(HELD_ENV)
+    os.environ[HELD_ENV] = str(os.getpid())
+    try:
+        yield hold
+    finally:
+        if previous is None:
+            os.environ.pop(HELD_ENV, None)
+        else:
+            os.environ[HELD_ENV] = previous
+
+
 def is_heavy_command(command: List[str]) -> bool:
-    """依 test_command_parse 判定；判定本身失敗時保守視為 heavy（只多排隊）。"""
+    """依 test_command_parse 判定；判定本身失敗時保守視為 heavy（只多排隊）。
+
+    祖先程序已持有名額時回 False：呼叫端據此略過取得，避免對同一名額自我死鎖。
+    """
+    if held_by_ancestor():
+        return False
     try:
         from lib.test_command_parse import WEIGHT_HEAVY, classify_argv_weight
         return classify_argv_weight(command) == WEIGHT_HEAVY

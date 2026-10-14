@@ -18,7 +18,8 @@ from typing import Optional
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, ContextManager
+import contextlib
 
 try:
     from .constants import (
@@ -1309,7 +1310,8 @@ def cmd_merge(
         else:
             pre_merge_check = MergeGate(get_project_root(), runner=gate_runner)
             max_retries = GATE_MAX_RETRIES
-    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check, max_retries=max_retries)
+    hold = pre_merge_check.hold(branch_name, DEFAULT_BASE_BRANCH) if isinstance(pre_merge_check, MergeGate) else None
+    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check, max_retries=max_retries, hold=hold)
     return _print_merge_outcome(outcome, label)
 
 
@@ -1579,6 +1581,7 @@ def merge_branch_cas(
     pre_merge_check: Optional[PreMergeCheck] = None,
     message: Optional[str] = None,
     max_retries: Optional[int] = None,
+    hold: "Optional[ContextManager]" = None,
 ) -> MergeOutcome:
     """以 CAS 把 branch 合併進 base（--no-ff 等價：雙親代 commit）。合併主流程的唯一入口。
 
@@ -1590,14 +1593,18 @@ def merge_branch_cas(
     （檢查成本隨重試次數倍增；是否快取或縮短由檢查端決定）。
     max_retries：預設 None（沿用 _run_with_retry 的預算）；給定時 CAS 重試超過該次數即中止，
     回報最後一次失敗原因，ref 不變、分支保留。
+    hold：預設 None。給定時為 context manager，在第一次產生合併 commit 之前進入、所有嘗試
+    （含 CAS 重試）結束後離開，涵蓋 update-ref 完成與各種中止路徑；合併閘門用它整段持有
+    heavy 名額，使檢查窗口不含排隊時間。
     成功後共用 index/工作區只同步未被他人動過的檔。
     """
     repo = repo or get_project_root()
     msg = message or f"Merge branch '{branch}'"
     box: dict = {"max_retries": max_retries}
-    status, error, attempts = _run_with_retry(
-        lambda: _cas_attempt(branch, base, repo, pre_merge_check, msg, box)
-    )
+    with (hold if hold is not None else contextlib.nullcontext()):
+        status, error, attempts = _run_with_retry(
+            lambda: _cas_attempt(branch, base, repo, pre_merge_check, msg, box)
+        )
     if status != "done":
         return MergeOutcome(ok=False, error=error, attempts=attempts)
     synced, skipped = _sync_shared_checkout(repo, base, box["old_head"], box["commit"])

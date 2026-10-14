@@ -52,6 +52,9 @@ def repo(tmp_path, monkeypatch):
     git(r, "checkout", "-b", "feat")
     commit_file(r, "lib/other.txt", "o-feat\n", "feat edit")
     git(r, "checkout", "main")
+    slots = tmp_path / "slots"
+    slots.mkdir(mode=0o700)
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(slots))  # 合併持有名額時不碰真實 ~/.cache
     monkeypatch.chdir(r)
     monkeypatch.setattr(wm, "get_project_root", lambda: str(r))
     monkeypatch.setattr(wm, "get_worktree_list", lambda: [])
@@ -497,3 +500,211 @@ class TestExemptList:
 
     def test_no_test_reads_exempt_files(self):
         assert mg.find_exempt_file_reads(ROOT) == []
+
+
+# ===== 名額先於合併 commit 取得、持有至 update-ref（0.5.0-W1-231.8）=====
+
+
+def slot_free():
+    """名額目前是否可取得（取得後立即釋放）。"""
+    import os
+    from lib import slot_gate
+    got = slot_gate._try_acquire(slot_gate.slot_dir())
+    if got is None:
+        return False
+    os.close(got[0])
+    return True
+
+
+class Events:
+    """帶單調時間戳的事件序列；測試以序列順序與時間戳斷言先後。"""
+
+    def __init__(self):
+        self.items = []
+        self.lock = threading.Lock()
+
+    def add(self, name):
+        with self.lock:
+            self.items.append((name, time.monotonic()))
+
+    def names(self):
+        return [n for n, _ in self.items]
+
+    def at(self, name):
+        return next(t for n, t in self.items if n == name)
+
+
+def instrument(monkeypatch, ev):
+    """記錄 commit-tree（_prepare_candidate 成功返回）與 update-ref 完成；事件名不分執行緒。"""
+    real_prepare, real_raw = wm._prepare_candidate, wm._git_raw
+
+    def prepare(branch, base, repo, message):
+        out = real_prepare(branch, base, repo, message)
+        if out[0] is not None:
+            ev.add("commit")
+        return out
+
+    def raw(args, repo, *a, **k):
+        proc = real_raw(args, repo, *a, **k)
+        if args and args[0] == "update-ref":
+            ev.add("update-ref")
+        return proc
+
+    monkeypatch.setattr(wm, "_prepare_candidate", prepare)
+    monkeypatch.setattr(wm, "_git_raw", raw)
+
+
+def gated_merge(repo, branch, runner, ev, tag="", **kw):
+    gate = mg.MergeGate(str(repo), art(runner), on_event=lambda n: ev.add(f"{tag}{n}"))
+    out = wm.merge_branch_cas(branch, repo=str(repo), pre_merge_check=gate,
+                              hold=gate.hold(branch, "main"), **kw)
+    return out, gate
+
+
+class TestSlotBeforeCommit:
+    def test_slot_taken_before_commit_and_released_after_update_ref(self, repo, monkeypatch):
+        ev = Events()
+        instrument(monkeypatch, ev)
+        seen = {}
+
+        def run(argv, cwd):
+            seen["free_during_suite"] = slot_free()
+            return 0, ""
+
+        out, _ = gated_merge(repo, "feat", run, ev)
+        assert out.ok
+        names = ev.names()
+        assert names.index("slot_acquired") < names.index("commit") < names.index("update-ref") \
+            < names.index("slot_released")
+        assert ev.at("slot_acquired") <= ev.at("commit") <= ev.at("update-ref") <= ev.at("slot_released")
+        assert seen["free_during_suite"] is False  # E1 對照：持有期間名額確實被占
+        assert slot_free()
+
+    def test_doc_only_change_does_not_take_slot(self, repo):
+        git(repo, "checkout", "-q", "-b", "docs-only")
+        commit_file(repo, "notes/readme.txt", "n\n", "notes")
+        git(repo, "checkout", "-q", "main")
+        ev = Events()
+        out, _ = gated_merge(repo, "docs-only", lambda a, c: (0, ""), ev)
+        assert out.ok and "slot_acquired" not in ev.names()
+
+
+class TestNoSelfDeadlock:
+    def _argv(self, tmp_path):
+        d = tmp_path / "suite"
+        d.mkdir()
+        (d / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+        argv = mg.wrapped_argv([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], str(ROOT), 60)
+        return argv, str(d)
+
+    def test_suite_completes_while_holding_slot(self, repo, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "3")
+        argv, cwd = self._argv(tmp_path)
+        gate = mg.MergeGate(str(repo))
+        with gate.hold("feat", "main"):
+            rc, out = mg.default_runner(argv, cwd)
+        assert rc == 0, out
+
+    def test_control_without_hold_marker_is_blocked_by_holder(self, repo, tmp_path, monkeypatch):
+        """E1 對照：同樣被占用、但不帶持有標記的套件命令會等名額逾時，證明上一條通過來自標記。"""
+        monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "2")
+        argv, cwd = self._argv(tmp_path)
+        from lib import slot_gate
+        hold, _ = slot_gate.acquire_slot(["x"], lambda: None)
+        try:
+            rc, _out = mg.default_runner(argv, cwd)
+        finally:
+            hold.release()
+        assert rc == 125
+
+    def test_marker_cleared_after_hold(self, repo):
+        import os
+        from lib import slot_gate
+        with mg.MergeGate(str(repo)).hold("feat", "main"):
+            assert slot_gate.HELD_ENV in os.environ
+        assert slot_gate.HELD_ENV not in os.environ
+
+    def test_stale_marker_does_not_bypass_gate(self, repo, monkeypatch):
+        import os
+        from lib import slot_gate
+        monkeypatch.setenv(slot_gate.HELD_ENV, str(os.getpid()))  # 名額實際未被占用
+        assert slot_gate.held_by_ancestor() is False
+        monkeypatch.setenv(slot_gate.HELD_ENV, "999999999")
+        assert slot_gate.held_by_ancestor() is False
+
+
+class TestSerializedMerges:
+    def test_second_commit_after_first_update_ref(self, repo, monkeypatch):
+        git(repo, "checkout", "-q", "-b", "feat2", "main")
+        commit_file(repo, "lib/second.txt", "s\n", "feat2 edit")
+        git(repo, "checkout", "-q", "main")
+        ev = Events()
+        instrument(monkeypatch, ev)
+        a_started = threading.Event()
+        results = {}
+
+        def run_a(argv, cwd):
+            a_started.set()
+            time.sleep(1.0)
+            return 0, ""
+
+        def go(name, branch, runner):
+            results[name] = gated_merge(repo, branch, runner, ev, tag=name + ":",
+                                        max_retries=mg.GATE_MAX_RETRIES)
+
+        ta = threading.Thread(target=go, args=("a", "feat", run_a))
+        ta.start()
+        assert a_started.wait(30)
+        tb = threading.Thread(target=go, args=("b", "feat2", lambda a, c: (0, "")))
+        tb.start()
+        time.sleep(0.3)
+        assert "b:slot_acquired" not in ev.names()  # B 在 A 持有期間排隊中
+        ta.join(60)
+        tb.join(60)
+        assert results["a"][0].ok and results["b"][0].ok
+        assert ev.at("a:slot_released") <= ev.at("b:slot_acquired")
+        a_ref = [t for n, t in ev.items if n == "update-ref"]  # instrument 無標籤；以時間序判斷
+        assert len(a_ref) == 2 and a_ref[0] <= ev.at("b:slot_acquired")
+
+    def test_retry_under_hold_reuses_when_only_exempt_differs(self, repo):
+        state = {"n": 0}
+
+        def run(argv, cwd):
+            state["n"] += 1
+            if state["n"] == 1:
+                advance_main(repo, TICKET_FILE, "t-new\n")
+            return 0, ""
+
+        ev = Events()
+        out, gate = gated_merge(repo, "feat", run, ev, max_retries=mg.GATE_MAX_RETRIES)
+        assert out.ok and out.attempts == 2 and gate.suite_runs == 1
+        assert ev.names().count("slot_acquired") == 1  # 重試不重新排隊
+
+
+class TestReleaseOnEveryExit:
+    @pytest.mark.parametrize("rc", [1, 124, 125])
+    def test_red_timeout_wait_timeout(self, repo, rc):
+        old = git(repo, "rev-parse", "main")
+        ev = Events()
+        out, _ = gated_merge(repo, "feat", lambda a, c: (rc, "FAILED t::x\n"), ev)
+        assert not out.ok and git(repo, "rev-parse", "main") == old
+        assert slot_free() and snapshots(repo) == []
+        assert ev.names()[-1] == "slot_released"
+
+    def test_interrupt(self, repo):
+        def run(argv, cwd):
+            raise KeyboardInterrupt
+
+        ev = Events()
+        with pytest.raises(KeyboardInterrupt):
+            gated_merge(repo, "feat", run, ev)
+        assert slot_free() and snapshots(repo) == []
+        assert ev.names()[-1] == "slot_released"
+
+    def test_abort_on_conflict(self, repo):
+        commit_file(repo, "lib/other.txt", "o-main\n", "main edit")
+        ev = Events()
+        out, _ = gated_merge(repo, "feat", lambda a, c: (0, ""), ev)
+        assert not out.ok
+        assert slot_free() and snapshots(repo) == []
+        assert ev.names() == ["slot_acquired", "slot_released"]
