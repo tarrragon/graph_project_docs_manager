@@ -382,3 +382,38 @@ def test_dispatch_skeleton_normal_agent_commit_with_hook_scope_within_prompt_lim
         f"dispatch 骨架（hooks 目錄變體）實際餵給 hook 仍被阻擋"
         f"（exit_code={exit_code}）：{capsys.readouterr().err}"
     )
+
+
+# ----------------------------------------------------------------------------
+# worktree 隔離變體收尾句（裁決 B）：止於 ticket track commit 並回報 PM，
+# complete 由 PM 合併後於主 checkout 執行。E1 對照：none 變體仍含 complete。
+# ----------------------------------------------------------------------------
+
+def _build_skeleton_by_isolation(isolation: str) -> str:
+    module = _load_dispatch_skeleton_module()
+    return module.build_skeleton(
+        kind="normal",
+        ticket_id="0.2.1-W3-XXXX",
+        task_summary="一句話動作描述測試填空",
+        agent_name="thyme-python-developer",
+        commit_policy="agent",
+        isolation=isolation,
+    )
+
+
+def test_worktree_closing_stops_at_commit_and_reports_to_pm():
+    skeleton = _build_skeleton_by_isolation("worktree")
+    assert "finish" not in skeleton
+    assert "complete" not in skeleton
+    assert "ticket track commit" in skeleton
+    assert "回報 PM" in skeleton
+
+
+def test_none_closing_still_contains_complete():
+    skeleton = _build_skeleton_by_isolation("none")
+    assert "ticket track complete" in skeleton
+
+
+def test_worktree_skeleton_within_prompt_limit():
+    skeleton = _build_skeleton_by_isolation("worktree")
+    assert _skeleton_line_count(skeleton) <= PROMPT_LINE_LIMIT
