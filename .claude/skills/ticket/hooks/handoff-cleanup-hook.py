@@ -41,7 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root, is_subagent_environment
 from lib.ticket_command_parse import has_complete_command
-from lib.bash_tool_response import is_bash_success
+from lib.bash_tool_response import is_bash_success, is_failure_event, auto_commit_failure_as_success
 
 import re
 from datetime import datetime
@@ -296,6 +296,13 @@ def main() -> int:
 
         # 步驟 2: 讀取 JSON 輸入
         input_data = read_json_from_stdin(logger)
+
+        # PostToolUseFailure：僅結束碼 75（動作完成、auto-commit 失敗）沿用完成後處理
+        if is_failure_event(input_data):
+            input_data = auto_commit_failure_as_success(input_data)
+            if input_data is None:
+                logger.debug("失敗事件非結束碼 75，不處理")
+                return EXIT_SUCCESS
 
         # 步驟 2.5: subagent 環境跳過（代理人不執行 complete）
         if is_subagent_environment(input_data):

@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, emit_hook_output
 from lib.ticket_command_parse import has_complete_command
+from lib.bash_tool_response import FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success
 from lib.constants import SESSION_COMPLETED_TICKETS_COUNTER_TEMPLATE
 from lib.session_state_key import session_state_path
 
@@ -188,6 +189,16 @@ def main() -> int:
         print(json.dumps(DEFAULT_OUTPUT, ensure_ascii=False))
         return EXIT_SUCCESS
 
+    # PostToolUseFailure：僅結束碼 75（動作完成、auto-commit 失敗）沿用完成後處理
+    event_name = "PostToolUse"
+    if is_failure_event(input_data):
+        input_data = auto_commit_failure_as_success(input_data)
+        if input_data is None:
+            logger.debug("失敗事件非結束碼 75，不處理")
+            print(json.dumps(DEFAULT_OUTPUT, ensure_ascii=False))
+            return EXIT_SUCCESS
+        event_name = FAILURE_EVENT_NAME
+
     # 驗證工具類型
     tool_name = input_data.get("tool_name", "")
     if tool_name != "Bash":
@@ -224,7 +235,7 @@ def main() -> int:
 
     # handoff 提醒為 PM-only：統一出口過濾 subagent 觸發（PC-V1-004 防護 C）
     emit_hook_output(
-        "PostToolUse",
+        event_name,
         additional_context=warning,
         audience="pm_only",
         input_data=input_data,

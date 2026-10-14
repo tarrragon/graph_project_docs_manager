@@ -47,6 +47,7 @@ from lib import (
 )
 from lib.hook_messages import AskUserQuestionMessages
 from lib.ticket_command_parse import has_complete_command
+from lib.bash_tool_response import FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success
 
 # ============================================================================
 # 常數定義
@@ -142,6 +143,17 @@ def main() -> int:
         print(json.dumps(DEFAULT_OUTPUT, ensure_ascii=False))
         return EXIT_SUCCESS
 
+    # PostToolUseFailure：僅結束碼 75（動作完成、auto-commit 失敗）沿用完成後處理
+    if is_failure_event(input_data):
+        input_data = auto_commit_failure_as_success(input_data)
+        if input_data is None:
+            logger.debug("失敗事件非結束碼 75，不處理")
+            print(json.dumps(DEFAULT_OUTPUT, ensure_ascii=False))
+            return EXIT_SUCCESS
+        event_name = FAILURE_EVENT_NAME
+    else:
+        event_name = DEFAULT_OUTPUT["hookSpecificOutput"]["hookEventName"]
+
     # 驗證工具類型
     tool_name = input_data.get("tool_name", "")
     if tool_name != "Bash":
@@ -176,7 +188,7 @@ def main() -> int:
     if messages:
         output = {
             "hookSpecificOutput": {
-                "hookEventName": "PostToolUse",
+                "hookEventName": event_name,
                 "additionalContext": "\n\n".join(messages)
             }
         }
