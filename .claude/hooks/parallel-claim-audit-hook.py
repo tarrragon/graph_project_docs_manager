@@ -42,6 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from lib.bash_tool_response import is_bash_success
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -73,8 +74,9 @@ def parse_claim_command(command: str):
     return candidate
 
 
-EXIT_AUTO_COMMIT_FAILED = 75  # ticket CLI：動作已完成、僅 auto-commit 失敗
-# format_write_command_commit_failure 的固定片語；exit_code 欄位缺席時的後備判讀
+# claim 成功回音（messages.py TICKET_CLAIMED）
+CLAIM_SUCCESS_MARKERS = ("[OK] 已接手",)
+# format_write_command_commit_failure 的固定片語；其 stderr 原因文字可能含 "failed"
 AUTO_COMMIT_WARNING_MARK = "已寫入 working tree 但 auto-commit 失敗"
 
 
@@ -87,9 +89,11 @@ def is_claim_successful(tool_result) -> bool:
     """
     if not isinstance(tool_result, dict):
         return True
-    # 75（EXIT_AUTO_COMMIT_FAILED）：claim 已寫入、僅 auto-commit 失敗。其 stderr 的
-    # 原因文字可能含 "failed"，不可被下列子字串比對誤判為 claim 失敗。
-    if tool_result.get("exit_code") == EXIT_AUTO_COMMIT_FAILED:
+    # 結束碼 75（claim 已寫入、僅 auto-commit 失敗）屬非零，PostToolUse 只在結束碼為 0 時
+    # 觸發，故此處不會收到 75，原 75 分支已移除；以下 WARNING 片語後備保留。
+    if tool_result.get("interrupted") is True:
+        return False
+    if is_bash_success(tool_result, CLAIM_SUCCESS_MARKERS):
         return True
     if AUTO_COMMIT_WARNING_MARK in str(tool_result.get("stderr", "")):
         return True
@@ -159,7 +163,10 @@ def main() -> int:
 
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input") or {}
-    tool_result = input_data.get("tool_result", {})
+    # 平台欄位為 tool_response；tool_result 僅為舊測試樁相容後備
+    tool_result = input_data.get("tool_response")
+    if tool_result is None:
+        tool_result = input_data.get("tool_result", {})
 
     if tool_name != "Bash":
         return 0

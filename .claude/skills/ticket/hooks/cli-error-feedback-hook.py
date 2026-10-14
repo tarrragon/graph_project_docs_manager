@@ -47,6 +47,7 @@ sys.path.insert(0, _FRAMEWORK_HOOKS)
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, is_subagent_environment
 from lib.hook_messages import WorkflowMessages
+from lib.bash_tool_response import is_bash_success
 
 # ============================================================================
 # 常數定義
@@ -175,7 +176,8 @@ GIT_INFO_STDERR_PATTERNS = [
 # ============================================================================
 
 # ticket CLI 寫入命令「動作已完成、僅 auto-commit 失敗」的專用退出碼（sysexits EX_TEMPFAIL）
-EXIT_AUTO_COMMIT_FAILED = 75
+# ticket CLI 寫入命令的成功回音（messages.py 以 [OK] 起頭）
+_CLI_SUCCESS_MARKERS = ("[OK]",)
 
 def _find_skill_cli_token(command: str) -> Optional[str]:
     """在複合命令（含 && / ; / | 等鏈式運算子）中尋找觸發 ticket/skill CLI 的片段，
@@ -274,16 +276,20 @@ def check_skill_cli_error(input_data: Dict[str, Any], logger) -> Optional[str]:
     if isinstance(tool_response, str):
         stderr = ""
         stdout = tool_response
-    else:
+    elif isinstance(tool_response, dict):
         stderr = tool_response.get("stderr", "")
         stdout = tool_response.get("stdout", "")
+    else:
+        logger.debug("skill-cli: tool_response 形狀異常，跳過")
+        return None
 
-    # exit_code=0 表示命令成功
-    if isinstance(tool_response, dict):
-        exit_code = tool_response.get("exit_code")
-        if exit_code in (0, EXIT_AUTO_COMMIT_FAILED):
-            logger.debug("skill-cli: 命令成功（exit_code=0），跳過")
-            return None
+    # 成功判定改接共用 helper：真實 payload 無 exit_code，且 PostToolUse 只在 shell 層
+    # 結束碼為 0 時觸發（失敗走 PostToolUseFailure，本專案未註冊）。結束碼 75 屬非零，
+    # 在 PostToolUse 上不會出現，原 75 分支已移除。命令成功回音存在即跳過，避免成功命令
+    # 的 stdout 引述錯誤字樣（如讀取內含 usage 錯誤文字的 ticket）被誤報。
+    if is_bash_success(tool_response, _CLI_SUCCESS_MARKERS):
+        logger.debug("skill-cli: 命令成功（含成功回音），跳過")
+        return None
 
     if not stderr and not stdout:
         logger.debug("skill-cli: 無錯誤資訊，跳過")
