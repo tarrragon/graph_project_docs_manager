@@ -522,6 +522,12 @@ def main() -> int:
         logger.debug("ticket body 寫入操作，跳過所有後續子邏輯（W3-066 補強）")
         return EXIT_SUCCESS
 
+    # 背景命令：PostToolUse 在啟動回傳時觸發，此刻既無測試時長也無測試結果；
+    # 跳過計時與失敗評估。欄位缺失視為前景。
+    if tool_input.get("run_in_background") is True:
+        logger.debug("run_in_background 為真，跳過計時與失敗評估")
+        return EXIT_SUCCESS
+
     logger.info("偵測到測試命令，開始執行子邏輯")
 
     messages = []

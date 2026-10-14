@@ -685,3 +685,43 @@ def test_green_exclusion_reuses_classifier_summary_patterns(hook_module, logger)
         assert any(p.search(sample) for p, _ in hook_module.FAILURE_SUMMARY_PATTERNS)
         _, errors = hook_module._classify_errors(sample, logger)
         assert errors and not hook_module._is_green_summary(sample + "\n5 passed in 1s")
+
+
+# --- run_in_background：跳過計時與失敗評估（前景同命令照常，E1 對照） ---
+
+_FAILING_RESPONSE = {"stdout": "FAILED tests/a.py::t - boom\n1 failed in 1s", "stderr": ""}
+
+
+def _run_main(hook_module, monkeypatch, tmp_path, tool_input):
+    monitor = _arm_monitor(tmp_path, 2000)
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    data = {"tool_name": "Bash", "tool_input": tool_input,
+            "tool_response": _FAILING_RESPONSE}
+    monkeypatch.setattr(hook_module, "read_json_from_stdin", lambda _logger: data)
+    return monitor
+
+
+def test_foreground_command_is_timed_and_evaluated(hook_module, monkeypatch, tmp_path, capsys):
+    monitor = _run_main(hook_module, monkeypatch, tmp_path, {"command": "pytest -q"})
+    assert hook_module.main() == 0
+    out = capsys.readouterr().out
+    assert "TEST FAILURE" in out
+    assert json.loads(monitor.read_text())["status"] == "completed"
+
+
+def test_background_command_skips_timing_and_evaluation(
+        hook_module, monkeypatch, tmp_path, capsys):
+    monitor = _run_main(hook_module, monkeypatch, tmp_path,
+                        {"command": "pytest -q", "run_in_background": True})
+    before = monitor.read_text()
+    assert hook_module.main() == 0
+    assert capsys.readouterr().out == ""
+    assert monitor.read_text() == before
+    assert not list((tmp_path / ".claude" / "hook-logs").glob("pre-fix-evaluation-*.json"))
+
+
+def test_background_false_treated_as_foreground(hook_module, monkeypatch, tmp_path, capsys):
+    _run_main(hook_module, monkeypatch, tmp_path,
+              {"command": "pytest -q", "run_in_background": False})
+    assert hook_module.main() == 0
+    assert "TEST FAILURE" in capsys.readouterr().out
