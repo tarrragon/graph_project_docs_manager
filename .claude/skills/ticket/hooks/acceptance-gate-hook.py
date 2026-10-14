@@ -70,7 +70,7 @@ from lib import (
 )
 from lib.hook_base import get_shared_state_root
 from lib.hook_messages import GateMessages, CoreMessages, AskUserQuestionMessages, format_message
-from lib.git_command_parse import parse_command_statements
+from lib.git_command_parse import parse_command_statements, skip_prefix_wrapper_count
 
 from acceptance_checkers import (
     collect_incomplete_descendants_from_frontmatter,
@@ -246,9 +246,9 @@ def _strip_quoted_spans(command: str) -> str:
 
 def extract_ticket_id_from_command(command: str, logger) -> Optional[str]:
     """從命令中提取 Ticket ID"""
-    stripped = _strip_quoted_spans(command)
-    if "ticket track complete" not in stripped and "ticket track batch-complete" not in stripped:
+    if not is_complete_command(command):
         return None
+    stripped = _strip_quoted_spans(command)
 
     match = re.search(TICKET_ID_PATTERN, stripped)
     if match:
@@ -274,7 +274,7 @@ def has_force_flag_on_complete(command: str, ticket_id: str) -> bool:
         return False
     for tokens in statements:
         for i in range(len(tokens) - 2):
-            if tokens[i:i + 3] == ["ticket", "track", "complete"]:
+            if tokens[i:i + 3] in (["ticket", "track", "complete"], ["ticket", "track", "finish"]):
                 rest = tokens[i + 3:]
                 if ticket_id in rest and "--force" in rest:
                     return True
@@ -312,13 +312,36 @@ def _resolve_force_bypass(
         return None
 
 
-def is_complete_command(command: str) -> bool:
-    """判斷是否為 ticket track complete 命令
+_COMPLETE_VERBS = ("complete", "finish", "batch-complete")
 
-    引號內文字（如 --why 參數的字面引用）不列入判斷，見 _strip_quoted_spans。
-    """
+
+def _statement_complete_verb(tokens: List[str]) -> bool:
+    """語句（去掉 env/nohup/time 等前綴後）是否以 ticket track <完成類動詞> 開頭。"""
+    i = skip_prefix_wrapper_count(tokens)
+    return (
+        len(tokens) >= i + 3
+        and tokens[i] == "ticket"
+        and tokens[i + 1] == "track"
+        and tokens[i + 2] in _COMPLETE_VERBS
+    )
+
+
+def _legacy_complete_substring(command: str) -> bool:
+    """解析失敗時的保守後備：沿用字面比對（含 finish 別名），維持 fail-closed。"""
     stripped = _strip_quoted_spans(command)
-    return "ticket track complete" in stripped or "ticket track batch-complete" in stripped
+    return any("ticket track " + v in stripped for v in _COMPLETE_VERBS)
+
+
+def is_complete_command(command: str) -> bool:
+    """判斷是否為完成類命令（ticket track complete／finish／batch-complete）。
+
+    走共用解析器 parse_command_statements：引號內字面與 heredoc 內文不算命令。
+    無法解析（未閉合引號）時退回字面比對，維持阻擋類 hook 的 fail-closed。
+    """
+    statements = parse_command_statements(command)
+    if statements is None:
+        return _legacy_complete_substring(command)
+    return any(_statement_complete_verb(t) for t in statements)
 
 
 # 0.4.1-W2-006：complete 前段串接後可能改變驗收狀態的寫入操作。
@@ -343,14 +366,14 @@ def detect_chained_pre_complete_write(command: str) -> bool:
     只檢查 complete 命令「之前」的片段：出現在 complete 之後的寫入操作
     （例如同鏈接續的收尾動作）不影響本次 complete 讀到的檔案狀態，不列入判定。
     """
-    complete_pos = command.find("ticket track complete")
-    if complete_pos == -1:
-        complete_pos = command.find("ticket track batch-complete")
-    if complete_pos == -1:
+    statements = parse_command_statements(command)
+    if statements is None:
         return False
-
-    preceding = command[:complete_pos]
-    return any(pattern.search(preceding) for pattern in _CHAINED_WRITE_TRIGGERS)
+    for idx, tokens in enumerate(statements):
+        if _statement_complete_verb(tokens):
+            preceding = " ".join(" ".join(t) for t in statements[:idx])
+            return any(pattern.search(preceding) for pattern in _CHAINED_WRITE_TRIGGERS)
+    return False
 
 
 # ============================================================================
