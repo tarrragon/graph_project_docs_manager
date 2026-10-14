@@ -63,7 +63,7 @@ EVIDENCE_FILENAME = "index-lock-evidence.txt"
 _GIT_OPTS_WITH_VALUE = frozenset({"-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"})
 _SECRET_KEY_RE = re.compile(r"(TOKEN|SECRET|PASSWORD|KEY|AUTH)", re.IGNORECASE)
 _QUOTED_OR_WORD = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
-_ENV_ASSIGN_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)=(" + _QUOTED_OR_WORD + ")")
+_ENV_ASSIGN_RE = re.compile(r"(?<![\w-])([A-Za-z_][A-Za-z0-9_]*)=(" + _QUOTED_OR_WORD + ")")
 _URL_CRED_RE = re.compile(r"(://[^/\s:@]+:)[^/\s@]+(@)")
 _URL_USER_ONLY_RE = re.compile(r"(://)[^/\s:@]+(@)")
 _BEARER_RE = re.compile(r"(Bearer|Basic)\s+\S+", re.IGNORECASE)
@@ -73,11 +73,11 @@ _HEADER_RE = re.compile(
     r"((?:-H|--header)(?:\s+|=)[\"']?[A-Za-z0-9_-]+:)\s*(?:[^\"']*)")
 _AUTH_HEADER_RE = re.compile(r"(\bAuthorization:)\s*[^\"']*", re.IGNORECASE)
 _SECRET_FLAG_RE = re.compile(
-    r"(--[\w-]*(?:token|password|passwd|secret|key|auth)[\w-]*)(?:=|\s+)" + _QUOTED_OR_WORD,
+    r"(--(?!author|keyid)[\w-]*(?:token|password|passwd|secret|key|auth)[\w-]*)(?:=|\s+)" + _QUOTED_OR_WORD,
     re.IGNORECASE)
 _MYSQL_P_RE = re.compile(r"(\s-p)[^\s-]\S*")
 _BARE_TOKEN_RE = re.compile(
-    r"\b(?:gh[pousr]_|github_pat_|glpat-|xox[baprs]-|sk-|AKIA)[A-Za-z0-9_-]{8,}|\b[A-Za-z0-9_-]{32,}\b")
+    r"\b(?:gh[pousr]_|github_pat_|glpat-|xox[baprs]-|sk-|AKIA)[A-Za-z0-9_-]{8,}")
 
 
 # ===== 目標集合 =====
@@ -244,8 +244,9 @@ def sanitize_command(command: str) -> str:
     名稱含 TOKEN/SECRET/PASSWORD/KEY/AUTH 的環境變數賦值（含引號值）、URL 內嵌的
     user:pass 與僅 token 的 userinfo、Bearer/Basic 憑證、-u/--user 值、-H/--header
     與 Authorization: 標頭值、名稱含 token/password/secret/key/auth 的長旗標值
-    （空白或 = 分隔）、mysql 式 -pXXX、已知前綴（ghp_/sk-/AKIA 等）與 32 字元以上的
-    裸 token。未涵蓋：其他任意位置的自由格式機密。
+    （空白或 = 分隔；--author*、--keyid* 為非憑證旗標，保留原樣）、mysql 式 -pXXX、
+    已知前綴（ghp_/sk-/AKIA 等）的裸 token。刻意不遮通用長字串：commit SHA、長檔名
+    是追查鎖由來的定位資訊，誤遮代價高於漏遮。未涵蓋：其他自由格式機密。
     """
     flat = " ".join(command.split())
     flat = _ENV_ASSIGN_RE.sub(

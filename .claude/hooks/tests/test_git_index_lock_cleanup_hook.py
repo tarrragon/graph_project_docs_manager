@@ -580,6 +580,16 @@ def test_secret_forms_masked(hook_module, cmd, secret):
     assert secret not in out and "***" in out, out
 
 
+@pytest.mark.parametrize("cmd", [
+    "git cat-file -t " + "a1b2c3d4" * 5,
+    "uv run pytest tests/" + "x" * 32 + ".py",
+    "git log --author 'A <a@b>'",
+    "git log --author=alice --author-date-order",
+])
+def test_locating_info_preserved(hook_module, cmd):
+    assert hook_module.sanitize_command(cmd) == cmd
+
+
 def test_non_secret_command_unchanged(hook_module):
     cmd = "mkdir -p a/b && git -C /x status"
     assert hook_module.sanitize_command(cmd) == cmd
