@@ -22,12 +22,14 @@ if __name__ == "__main__":
 import argparse
 import json
 import os
+import re
 import subprocess
-from typing import List, Optional, Set
+from collections import Counter
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from ticket_system.lib.commit_attribution import apply_attribution
 from ticket_system.lib.file_conflict import files_intersect, parse_file_intent, write_files
-from ticket_system.lib.git_ops import commit_files_isolated
+from ticket_system.lib.git_ops import AppendSpec, commit_files_isolated
 from ticket_system.lib.messages import ErrorMessages, format_error
 from ticket_system.lib.paths import get_ticket_path, get_ticket_state_root
 from ticket_system.lib.project_root import resolve_project_cwd
@@ -238,6 +240,72 @@ def _expand_directories(
     return expanded
 
 
+def _head_lines(rel: str, repo_root: str) -> List[str]:
+    """HEAD 版本的檔案各行；HEAD 無此檔（新檔）回傳空清單。"""
+    result = subprocess.run(
+        ["git", "show", f"HEAD:{rel}"],
+        cwd=repo_root, capture_output=True, text=True, check=False,
+    )
+    return result.stdout.splitlines() if result.returncode == 0 else []
+
+
+def _own_new_lines(
+    rel: str, repo_root: str, is_own_line: Callable[[str], bool]
+) -> List[str]:
+    """工作區相對 HEAD 新增、且 is_own_line 判定屬本票的行（保留工作區行序）。"""
+    try:
+        with open(os.path.join(repo_root, rel), encoding="utf-8") as fh:
+            work = fh.read().splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"[WARNING] 無法讀取共用檔 {rel}：{exc}，視為無本票的行")
+        return []
+    budget = Counter(_head_lines(rel, repo_root))
+    own: List[str] = []
+    for line in work:
+        if budget[line] > 0:
+            budget[line] -= 1  # HEAD 已有的行
+        elif is_own_line(line):
+            own.append(line)
+    return own
+
+
+def _ticket_id_pattern(ticket_id: str) -> "re.Pattern[str]":
+    """票 ID 字面比對（排除較長 ID 的前綴命中與 `.N` 子票）。"""
+    return re.compile(rf"(?<![\w.-]){re.escape(ticket_id)}(?![\w-]|\.\d)")
+
+
+def _split_shared_append_files(
+    files: List[str], ticket_id: str, version: str, repo_root: str
+) -> Tuple[List[str], Dict[str, AppendSpec]]:
+    """把 append-only 共用檔（topic-assignments、版本工作日誌）從整檔提交
+    路徑移出，改成只追加本票的行（他票未提交的行留在工作區）。
+
+    topic 行以票 ID 為首欄；工作日誌行含票 ID。共用檔無本票的行時不提交
+    該檔並輸出提示。
+    """
+    worklog = _to_repo_relative(
+        str(_build_worklog_path(version)), str(get_ticket_state_root()), repo_root
+    )
+    pattern = _ticket_id_pattern(ticket_id)
+    rules: Dict[str, Callable[[str], bool]] = {
+        TOPIC_ASSIGNMENTS_RELATIVE_PATH: lambda ln: (ln.split() or [""])[0] == ticket_id,
+        worklog: lambda ln: bool(pattern.search(ln)),
+    }
+    paths: List[str] = []
+    appends: Dict[str, AppendSpec] = {}
+    for rel in files:
+        rule = rules.get(rel)
+        if rule is None:
+            paths.append(rel)
+            continue
+        own = _own_new_lines(rel, repo_root, rule)
+        if own:
+            appends[rel] = AppendSpec("".join(f"{ln}\n" for ln in own))
+        else:
+            print(f"[INFO] 共用檔 {rel} 無本票（{ticket_id}）新增的行，不提交該檔")
+    return paths, appends
+
+
 def execute_commit(args: argparse.Namespace, version: str) -> int:
     """`ticket track commit <ticket-id> -m <msg> -- <files>`：驗證 files
     為 where.files 寫入子集後，透過 commit_files_isolated 隔離提交。
@@ -336,14 +404,30 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
         )
         return 1
 
+    normalized_input, append_lines = _split_shared_append_files(
+        normalized_input, args.ticket_id, version, repo_root
+    )
+    if not normalized_input and not append_lines:
+        print("[INFO] 無可提交內容（共用檔沒有本票的行），未提交")
+        return 0
+    if not normalized_input:
+        # commit_files_isolated 在 paths 為空時直接回 empty、不處理 append_lines；
+        # 以票自身 md 作主路徑（內容未變時淨變更為零，屬合法）。
+        if not os.path.isfile(os.path.join(repo_root, own_md)):
+            print(f"[ERROR] 只提交共用檔的本票行需要主路徑，但票面 {own_md} 不存在於 {repo_root}")
+            return 1
+        normalized_input = [own_md]
+
     message, attribution_warning = apply_attribution(args.message, repo_root)
     if attribution_warning:
         print(attribution_warning)
-    result = commit_files_isolated(normalized_input, message, cwd=repo_root)
+    result = commit_files_isolated(
+        normalized_input, message, cwd=repo_root, append_lines=append_lines or None
+    )
     status = result["status"]
     if status == "committed":
         print(f"[OK] 已提交 {result['commit_sha']}")
-        for p in normalized_input:
+        for p in list(normalized_input) + list(append_lines):
             print(f"  - {p}")
         return 0
     if status == "empty":

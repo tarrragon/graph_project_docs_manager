@@ -52,6 +52,9 @@ def _run(files):
 
 
 def test_remedy_with_worklog_and_topics_commits(repo):
+    # 0.5.0-W1-259：共用檔只提交本票的行，故兩檔需含本票的新增行
+    (repo / WORKLOG).write_text(f"base\n- {TID} done\n")
+    (repo / TOPICS).write_text(f"base\n{TID}\ttopic\n")
     assert _run([TICKET, WORKLOG, TOPICS]) == 0
     committed = _git(repo, "show", "--name-only", "--format=", "HEAD").stdout.split()
     assert sorted(committed) == sorted([TICKET, WORKLOG, TOPICS])
