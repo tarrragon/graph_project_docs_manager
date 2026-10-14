@@ -331,5 +331,137 @@ class TestRealPayloadShape:
         assert hook_module.is_ticket_complete_success(data) is False
 
 
+# ============================================================================
+# 0.5.0-W1-279.3：子任務票號擷取 + 以票相關 commit 範圍為比對基準
+# ============================================================================
+
+SUB_ID = "0.1.0-W41-002.1"
+DEEP_ID = "0.1.0-W41-002.1.2"
+
+
+def _git(repo, *args):
+    subprocess.run(["git", "-C", str(repo), *args], check=True,
+                   capture_output=True, text=True)
+
+
+def _commit(repo, files, message):
+    for name in files:
+        f = repo / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(f"{message}\n{name}\n", encoding="utf-8")
+        _git(repo, "add", name)
+    _git(repo, "commit", "-m", message)
+
+
+@pytest.fixture
+def repo(tmp_path):
+    """真實 git fixture：base、父票 commit、子任務票 commit、merge commit"""
+    r = tmp_path / "repo"
+    r.mkdir()
+    _git(r, "init", "-q", "-b", "main")
+    _git(r, "config", "user.email", "t@example.com")
+    _git(r, "config", "user.name", "t")
+    _git(r, "config", "commit.gpgsign", "false")
+    _commit(r, ["base.txt"], "base")
+    _commit(r, ["parent_only.py"], "fix(0.1.0-W41-002): parent work")
+    _git(r, "checkout", "-q", "-b", "wt")
+    _commit(r, ["src/a.py", "src/b.py"], f"fix({SUB_ID}): sub work")
+    _git(r, "checkout", "-q", "main")
+    _git(r, "merge", "--no-ff", "-m", f"merge({SUB_ID}): land", "wt")
+    return r
+
+
+def _run_real(command, where_files, repo):
+    """main() 走真實 git；僅 patch stdin、票面讀取與專案根目錄"""
+    out = StringIO()
+    with patch.object(hook_module, "read_json_from_stdin",
+                      return_value=_real_payload(command)), \
+         patch.object(hook_module, "is_subagent_environment", return_value=False), \
+         patch.object(hook_module, "get_project_root", return_value=repo), \
+         patch.object(hook_module, "read_ticket_where_files",
+                      return_value=where_files) as where_mock, \
+         patch("sys.stdout", out):
+        rc = hook_module.main()
+    return rc, json.loads(out.getvalue()), where_mock
+
+
+class TestSubtaskTicketIdExtraction:
+    """E2：子任務票號須含完整後綴，警告對象為該子任務票"""
+
+    @pytest.mark.parametrize("cmd,expected", [
+        (f"ticket track complete {SUB_ID}", SUB_ID),
+        (f"ticket track finish {DEEP_ID}", DEEP_ID),
+        ("ticket track complete 0.1.0-W41-002", "0.1.0-W41-002"),
+        (f"ticket track complete {SUB_ID} --as x", SUB_ID),
+    ])
+    def test_extract_keeps_suffix(self, cmd, expected):
+        assert hook_module.extract_ticket_id(_real_payload(cmd)) == expected
+
+    def test_extract_ignores_stdout_and_other_statements(self):
+        data = _real_payload(f"echo 0.9.9-W9-9; ticket track complete {SUB_ID}",
+                             stdout="[OK] 已完成 Ticket 0.8.8-W8-8")
+        assert hook_module.extract_ticket_id(data) == SUB_ID
+
+    def test_warning_target_is_subtask(self):
+        rc, payload, where_mock = _run_main_with(
+            _real_payload(f"ticket track complete {SUB_ID}"), ["a.py"], [])
+        assert where_mock.call_args[0][0] == SUB_ID
+        ctx = payload["hookSpecificOutput"]["additionalContext"]
+        assert f"Ticket {SUB_ID} 完成後" in ctx
+
+
+class TestCommitRangeBaseline:
+    """E2：同一 git fixture 的正反對照；complete 時變更已提交（working tree 乾淨）"""
+
+    def test_committed_where_files_no_warning(self, repo):
+        rc, payload, _ = _run_real(
+            f"ticket track complete {SUB_ID}", ["src/a.py", "src/b.py"], repo)
+        assert rc == 0
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+    def test_truly_missing_file_warned_and_listed(self, repo):
+        rc, payload, _ = _run_real(
+            f"ticket track complete {SUB_ID}",
+            ["src/a.py", "src/never_touched.py"], repo)
+        assert rc == 0
+        ctx = payload["hookSpecificOutput"]["additionalContext"]
+        lines = ctx.splitlines()
+        assert "  - src/never_touched.py" in lines
+        missing_block = lines[lines.index("缺失檔案（1 個）：") + 1]
+        assert missing_block == "  - src/never_touched.py"
+
+    def test_parent_does_not_absorb_subtask_commits(self, repo):
+        """父票只認自己的 commit：子任務的檔案對父票而言是缺失"""
+        rc, payload, _ = _run_real(
+            "ticket track complete 0.1.0-W41-002",
+            ["parent_only.py", "src/a.py"], repo)
+        ctx = payload["hookSpecificOutput"]["additionalContext"]
+        lines = ctx.splitlines()
+        assert lines[lines.index("缺失檔案（1 個）：") + 1] == "  - src/a.py"
+
+    def test_uncommitted_change_still_counted(self, repo):
+        (repo / "src").mkdir(exist_ok=True)
+        (repo / "base.txt").write_text("dirty\n", encoding="utf-8")
+        rc, payload, _ = _run_real(
+            f"ticket track complete {SUB_ID}", ["src/a.py", "base.txt"], repo)
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+    def test_git_failure_fail_open(self, tmp_path):
+        """非 git 目錄：git 命令全數失敗，仍 exit 0 不阻擋、不拋例外"""
+        not_repo = tmp_path / "plain"
+        not_repo.mkdir()
+        rc, payload, _ = _run_real(
+            f"ticket track complete {SUB_ID}", ["a.py"], not_repo)
+        assert rc == 0
+        assert "hookSpecificOutput" in payload
+
+    def test_git_timeout_fail_open(self, repo):
+        with patch.object(hook_module.subprocess, "run",
+                          side_effect=subprocess.TimeoutExpired("git", 1)):
+            rc, payload, _ = _run_real(
+                f"ticket track complete {SUB_ID}", ["a.py"], repo)
+        assert rc == 0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
