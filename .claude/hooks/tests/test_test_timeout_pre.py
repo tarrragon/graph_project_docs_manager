@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -134,7 +135,76 @@ def test_session_id_fallback_and_legacy_file_readable(
     _pre(pre_module, monkeypatch, session_id="s/1", tool_input={"command": "pytest"})
     assert (env / ".claude" / "hook-logs" / "test-monitor" / "s_1.json").exists()
     legacy = env / ".claude" / "hook-logs" / "test-monitor.json"
-    legacy.write_text(json.dumps({"start_timestamp": time.time() - 5, "command": "old"}))
-    # 鍵檔不存在的 post 退回舊單檔
-    msg = post_module.check_test_timeout({"tool_use_id": "none"}, {}, logger)
+    legacy.write_text(json.dumps({"start_timestamp": time.time() - 5,
+                                  "command": "old", "status": "running"}))
+    # 無鍵的 post 讀 running 舊單檔
+    msg = post_module.check_test_timeout({}, {}, logger)
     assert msg and json.loads(legacy.read_text())["status"] == "completed"
+
+
+def _arm_legacy(root, status):
+    f = root / ".claude" / "hook-logs" / "test-monitor.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"start_timestamp": time.time() - 5000,
+                             "command": "old", "status": status}))
+    return f
+
+
+@pytest.mark.parametrize("status", ["running", "completed"])
+def test_keyed_post_with_missing_keyfile_ignores_legacy(
+        post_module, env, logger, status):
+    """有鍵但鍵檔不存在：不論舊單檔狀態都不計時、不寫 history、舊單檔不動。"""
+    legacy = _arm_legacy(env, status)
+    before = legacy.read_text()
+    assert post_module.check_test_timeout({"tool_use_id": "gone"}, {}, logger) is None
+    assert legacy.read_text() == before
+    assert not (env / ".claude" / "hook-logs" / "test-duration-history.jsonl").exists()
+
+
+def test_keyless_post_uses_legacy_only_when_running(post_module, env, logger):
+    """E1：同一個舊單檔，無鍵時 running 採用、completed 跳過。"""
+    _arm_legacy(env, "completed")
+    assert post_module.check_test_timeout({}, {}, logger) is None
+    assert not (env / ".claude" / "hook-logs" / "test-duration-history.jsonl").exists()
+    _arm_legacy(env, "running")
+    assert post_module.check_test_timeout({}, {}, logger) is not None
+    assert len(_history(env)) == 1
+
+
+def _make_keyfile(root, key, age_seconds):
+    f = root / ".claude" / "hook-logs" / "test-monitor" / f"{key}.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text("{}")
+    stamp = time.time() - age_seconds
+    os.utime(f, (stamp, stamp))
+    return f
+
+
+def test_pre_prunes_stale_keyfiles_but_keeps_fresh_and_legacy(
+        pre_module, env, monkeypatch):
+    from lib.test_monitor_path import STALE_KEYFILE_SECONDS
+    stale = _make_keyfile(env, "old", STALE_KEYFILE_SECONDS + 60)
+    fresh = _make_keyfile(env, "fresh", STALE_KEYFILE_SECONDS - 60)
+    legacy = _arm_legacy(env, "running")
+    _pre(pre_module, monkeypatch, tool_use_id="new", tool_input={"command": "pytest x"})
+    assert not stale.exists()
+    assert fresh.exists()  # E2：門檻內的新鍵檔不被刪
+    assert legacy.exists()
+    assert (env / ".claude" / "hook-logs" / "test-monitor" / "new.json").exists()
+
+
+def test_keyless_pre_does_not_prune(pre_module, env, monkeypatch):
+    from lib.test_monitor_path import STALE_KEYFILE_SECONDS
+    stale = _make_keyfile(env, "old", STALE_KEYFILE_SECONDS + 60)
+    _pre(pre_module, monkeypatch, tool_input={"command": "pytest x"})
+    assert stale.exists()
+
+
+def test_prune_failure_is_fail_open(pre_module, env, monkeypatch):
+    import lib.test_monitor_path as tmp_mod
+
+    def boom(self):
+        raise OSError("denied")
+    _make_keyfile(env, "old", tmp_mod.STALE_KEYFILE_SECONDS + 60)
+    monkeypatch.setattr(Path, "unlink", boom)
+    assert tmp_mod.prune_stale_keyed_files(env) == 0

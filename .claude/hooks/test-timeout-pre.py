@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib import setup_hook_logging, run_hook_safely, get_project_root, read_json_from_stdin
 from lib.test_command_parse import find_test_invocations
-from lib.test_monitor_path import monitor_key, keyed_monitor_file, legacy_monitor_file
+from lib.test_monitor_path import monitor_key, keyed_monitor_file, legacy_monitor_file, prune_stale_keyed_files
 
 
 def main():
@@ -61,6 +61,9 @@ def main():
     monitor_file = (keyed_monitor_file(project_dir, key) if key
                     else legacy_monitor_file(project_dir))
     monitor_file.parent.mkdir(parents=True, exist_ok=True)
+    # 有鍵時順手清掉逾時未收尾的殘留鍵檔（fail-open，不影響本次寫入）
+    if key:
+        prune_stale_keyed_files(project_dir, logger)
 
     monitor_data = {
         "start_time": datetime.now().isoformat(),

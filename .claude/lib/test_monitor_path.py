@@ -4,6 +4,7 @@
 """
 
 import re
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -25,3 +26,36 @@ def keyed_monitor_file(project_dir: Path, key: str) -> Path:
 
 def legacy_monitor_file(project_dir: Path) -> Path:
     return project_dir / ".claude" / "hook-logs" / "test-monitor.json"
+
+
+# 未收尾鍵檔的保留時長：post-test-hook LIMIT_THRESHOLD（1800 秒）的 2 倍。
+# 超過此值的鍵檔，其命令早已超過最高逾時閾值仍未收尾，視為被中斷或 post 未觸發的殘留。
+STALE_KEYFILE_SECONDS = 3600
+
+
+def prune_stale_keyed_files(project_dir: Path, logger=None,
+                            now: Optional[float] = None) -> int:
+    """刪除鍵檔目錄內 mtime 超過 STALE_KEYFILE_SECONDS 的殘留，回傳刪除數。
+
+    fail-open：任何失敗只寫日誌、不拋出；不碰舊單檔本身。
+    """
+    removed = 0
+    try:
+        directory = keyed_monitor_file(project_dir, "x").parent
+        if not directory.is_dir():
+            return 0
+        current = time.time() if now is None else now
+        for path in directory.glob("*.json"):
+            try:
+                if current - path.stat().st_mtime > STALE_KEYFILE_SECONDS:
+                    path.unlink()
+                    removed += 1
+            except OSError as e:
+                if logger:
+                    logger.info(f"清理殘留鍵檔失敗（略過）{path.name}: {e}")
+    except OSError as e:
+        if logger:
+            logger.info(f"清理殘留鍵檔失敗（略過）: {e}")
+    if removed and logger:
+        logger.info(f"已清理 {removed} 個逾 {STALE_KEYFILE_SECONDS} 秒的殘留鍵檔")
+    return removed
