@@ -78,6 +78,42 @@ def _run_set_where(path, value, monkeypatch):
     return fm["acceptance"], len(calls)
 
 
+def _run_create_e2e(tmp_path, monkeypatch, where_files):
+    """走 create 命令入口（execute），真實落盤到 tmp，讀回 acceptance 與提醒次數。"""
+    from tests.test_create_portable_issue_gate import _install_common_mocks, _make_args
+
+    real_build = create_mod._build_and_save_ticket
+    _install_common_mocks(monkeypatch)
+    monkeypatch.setattr(create_mod, "_build_and_save_ticket", real_build)
+    tickets_dir = tmp_path / "tickets"
+    monkeypatch.setattr(create_mod, "get_tickets_dir", lambda v: tickets_dir)
+    monkeypatch.setattr(
+        create_mod, "get_ticket_path", lambda v, tid: tickets_dir / f"{tid}.md"
+    )
+    calls = []
+    monkeypatch.setattr(create_mod, "print_hook_ticket_reminder", lambda: calls.append(1))
+
+    args = _make_args(where_files=where_files, dedup_checked="none", acceptance=list(BASE))
+    assert create_mod.execute(args) == 0
+    (path,) = tickets_dir.glob("*.md")
+    fm = yaml.safe_load(path.read_text(encoding="utf-8").split("---", 2)[1])
+    return fm["acceptance"], len(calls)
+
+
+@pytest.mark.parametrize(
+    "where_files,expect_templates",
+    [(",".join(HOOK_FILES), True), (",".join(PLAIN_FILES), False)],
+)
+def test_create_command_e2e_e1_contrast(tmp_path, monkeypatch, where_files, expect_templates):
+    acceptance, reminder_calls = _run_create_e2e(tmp_path, monkeypatch, where_files)
+    if expect_templates:
+        assert acceptance == BASE + TEMPLATES
+        assert reminder_calls == 1
+    else:
+        assert acceptance == BASE
+        assert reminder_calls == 0
+
+
 @pytest.mark.parametrize(
     "value,expect_templates",
     [(",".join(HOOK_FILES), True), (",".join(PLAIN_FILES), False)],
