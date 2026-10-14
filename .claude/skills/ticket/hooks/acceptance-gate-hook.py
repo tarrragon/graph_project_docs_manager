@@ -70,7 +70,8 @@ from lib import (
 )
 from lib.hook_base import get_shared_state_root
 from lib.hook_messages import GateMessages, CoreMessages, AskUserQuestionMessages, format_message
-from lib.git_command_parse import parse_command_statements, skip_prefix_wrapper_count
+from lib.git_command_parse import parse_command_statements
+from lib.ticket_command_parse import COMPLETE_VERBS, is_complete_statement
 
 from acceptance_checkers import (
     collect_incomplete_descendants_from_frontmatter,
@@ -312,24 +313,10 @@ def _resolve_force_bypass(
         return None
 
 
-_COMPLETE_VERBS = ("complete", "finish", "batch-complete")
-
-
-def _statement_complete_verb(tokens: List[str]) -> bool:
-    """語句（去掉 env/nohup/time 等前綴後）是否以 ticket track <完成類動詞> 開頭。"""
-    i = skip_prefix_wrapper_count(tokens)
-    return (
-        len(tokens) >= i + 3
-        and tokens[i] == "ticket"
-        and tokens[i + 1] == "track"
-        and tokens[i + 2] in _COMPLETE_VERBS
-    )
-
-
 def _legacy_complete_substring(command: str) -> bool:
     """解析失敗時的保守後備：沿用字面比對（含 finish 別名），維持 fail-closed。"""
     stripped = _strip_quoted_spans(command)
-    return any("ticket track " + v in stripped for v in _COMPLETE_VERBS)
+    return any("ticket track " + v in stripped for v in COMPLETE_VERBS)
 
 
 def is_complete_command(command: str) -> bool:
@@ -341,7 +328,7 @@ def is_complete_command(command: str) -> bool:
     statements = parse_command_statements(command)
     if statements is None:
         return _legacy_complete_substring(command)
-    return any(_statement_complete_verb(t) for t in statements)
+    return any(is_complete_statement(t) for t in statements)
 
 
 # 0.4.1-W2-006：complete 前段串接後可能改變驗收狀態的寫入操作。
@@ -370,7 +357,7 @@ def detect_chained_pre_complete_write(command: str) -> bool:
     if statements is None:
         return False
     for idx, tokens in enumerate(statements):
-        if _statement_complete_verb(tokens):
+        if is_complete_statement(tokens):
             preceding = " ".join(" ".join(t) for t in statements[:idx])
             return any(pattern.search(preceding) for pattern in _CHAINED_WRITE_TRIGGERS)
     return False
