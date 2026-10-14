@@ -45,7 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 try:
-    from lib import setup_hook_logging, run_hook_safely
+    from lib import setup_hook_logging, run_hook_safely, read_hook_input
 except ImportError as e:
     print(f"[Hook Import Warning] {Path(__file__).name}: {e}", file=sys.stderr)
     # Fallback: 最小化日誌設定，run_hook_safely 退化為直接呼叫（無 liveness 記錄）
@@ -54,6 +54,12 @@ except ImportError as e:
         return logging.getLogger(name)
     def run_hook_safely(main_func, hook_name, fail_closed=False):
         return main_func()
+    def read_hook_input():
+        import json
+        try:
+            return json.load(sys.stdin)
+        except Exception:
+            return {}
 
 
 # ============================================================================
@@ -408,18 +414,20 @@ def main() -> int:
     """Hook 主邏輯"""
     logger = setup_hook_logging("worktree-branch-check")
 
-    # 從環境或標準輸入讀取 Bash 命令
-    # 若無法取得命令，靜默通過
-    bash_command = sys.stdin.read().strip() if not sys.stdin.isatty() else ""
+    # 解析 PreToolUse payload，比對對象僅限 tool_input.command
+    # 解析失敗或無命令時 fail-open 靜默通過
+    payload = read_hook_input() if not sys.stdin.isatty() else {}
+    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    bash_command = command.strip() if isinstance(command, str) else ""
 
     if not bash_command:
-        # 無法取得命令，靜默通過
-        logger.debug("無法取得 Bash 命令，靜默通過")
+        logger.warning("無法從 payload 取得 tool_input.command，靜默通過")
         return EXIT_SUCCESS
 
     # 判斷是否應執行檢查
     if not should_check_git_operation(bash_command):
-        logger.debug(f"命令 '{bash_command}' 不需要 worktree 檢查，靜默通過")
+        logger.debug(f"命令（長度 {len(bash_command)}）不需要 worktree 檢查，靜默通過")
         return EXIT_SUCCESS
 
     logger.info("偵測到 push/merge/cherry-pick 命令，執行 worktree 和分支檢查")

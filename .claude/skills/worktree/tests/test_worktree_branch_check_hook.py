@@ -222,3 +222,38 @@ class TestRunGitCommandFailureLogging:
             result = hook.run_git_command(["status"])
         assert result == (True, "x")
         assert caplog.text == ""
+
+
+class TestMainInputParsing:
+    """main() 只以 tool_input.command 比對，且不記錄命令全文。"""
+
+    def _run(self, monkeypatch, payload, caplog):
+        import io, json
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+        monkeypatch.setattr(hook.sys.stdin, "isatty", lambda: False, raising=False)
+        called = []
+        monkeypatch.setattr(
+            hook, "check_git_state",
+            lambda: called.append(1) or hook.CheckResult(False, False, [], []),
+        )
+        monkeypatch.setattr(hook, "check_target_branch", lambda: None)
+        hook.main()
+        return called
+
+    def test_description_with_git_push_does_not_trigger(self, monkeypatch, caplog):
+        payload = {"tool_input": {"command": "ls", "description": "run git push"}}
+        assert self._run(monkeypatch, payload, caplog) == []
+
+    def test_command_with_git_push_triggers(self, monkeypatch, caplog):
+        payload = {"tool_input": {"command": "git push origin main"}}
+        assert self._run(monkeypatch, payload, caplog) == [1]
+
+    def test_skip_log_excludes_command_and_other_fields(self, monkeypatch, caplog):
+        payload = {
+            "session_id": "SECRETSESSION",
+            "tool_input": {"command": "echo TOPSECRET", "description": "d"},
+        }
+        with caplog.at_level(logging.DEBUG):
+            self._run(monkeypatch, payload, caplog)
+        assert "TOPSECRET" not in caplog.text
+        assert "SECRETSESSION" not in caplog.text
