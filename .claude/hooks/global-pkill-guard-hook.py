@@ -42,6 +42,7 @@ references/pm-rules/rules/methodologies/agents）:
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -63,10 +64,37 @@ _ORPHAN_SCRIPT = "orphan-test-procs.py"
 _MAX_DEPTH = 3
 
 
+# 閱讀類命令中可執行外部命令的選項（exact 為整個 token，prefix 為字首比對）。
+# 環境變數（PAGER、LESSOPEN 等）與設定檔內的執行器不在命令文字，屬已知殘留。
+_EXEC_OPTS = {
+    "rg": {"exact": ("--pre",), "prefix": ("--pre=",)},
+    "man": {"exact": ("-P", "--pager"), "prefix": ("-P", "--pager=")},
+    "less": {"exact": (), "prefix": ("+",)},
+}
+_SPLIT_RE = re.compile(r"[\s=]+")
+
+
+def _has_exec_option(prog: str, rest: List[str]) -> bool:
+    spec = _EXEC_OPTS.get(prog)
+    if not spec:
+        return False
+    return any(t in spec["exact"] or t.startswith(spec["prefix"]) for t in rest)
+
+
+def _expand_tokens(stmt: List[str]) -> List[str]:
+    """把含空白、等號的 token 拆成片段，並去掉 less 啟動命令的 +/! 前綴。"""
+    out: List[str] = []
+    for tok in stmt:
+        out.append(tok)
+        if _SPLIT_RE.search(tok) or tok.startswith(("+", "!")):
+            out.extend(p.lstrip("+!") for p in _SPLIT_RE.split(tok) if p)
+    return out
+
+
 def _is_view_statement(prog: str, rest: List[str]) -> bool:
     """命令位置為閱讀類（非執行者）時，其引數中的 pkill 字樣只是文字。"""
     if prog in _VIEW_PROGS:
-        return True
+        return not _has_exec_option(prog, rest)
     return prog == "command" and any(t in ("-v", "-V") for t in rest)
 
 
@@ -103,6 +131,8 @@ def _find_violation(command: str, depth: int = 0) -> Optional[str]:
         vprog = os.path.basename(stmt[vidx])
         if not _is_view_statement(vprog, stmt[vidx + 1:]):
             found = _scan_any_position(stmt, depth)
+            if not found and vprog in _EXEC_OPTS:
+                found = _scan_any_position(_expand_tokens(stmt), depth)
             if found:
                 return found
         # 直接或經 python 直譯器呼叫孤兒清理腳本

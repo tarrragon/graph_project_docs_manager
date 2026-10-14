@@ -45,6 +45,13 @@ def run(monkeypatch, capsys, command, tool="Bash"):
     "sh -c \"echo x; /usr/bin/pkill dart\"",
     "python3 .claude/scripts/orphan-test-procs.py --kill --root /tmp/x",
     "python3 .claude/scripts/orphan-test-procs.py --root=/x --kill",
+    # 閱讀類命令的執行類選項（正向對照）
+    "rg --pre pkill x .",
+    "rg --pre=pkill x .",
+    "man -P 'pkill dart' ls",
+    "man --pager='pkill dart' ls",
+    "less '+!pkill dart' f",
+    "timeout 5 rg --pre pkill x .",
 ])
 def test_denied_with_alternative(monkeypatch, capsys, cmd):
     rc, err = run(monkeypatch, capsys, cmd)
@@ -73,6 +80,9 @@ def test_denied_with_alternative(monkeypatch, capsys, cmd):
     "python3 .claude/scripts/orphan-test-procs.py --root /tmp/x",
     "echo 'unclosed",
     "ls",
+    "rg -n pkill src",
+    "man -k pkill",
+    "less pkill.log",
 ])
 def test_allowed(monkeypatch, capsys, cmd):
     rc, err = run(monkeypatch, capsys, cmd)
