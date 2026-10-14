@@ -280,3 +280,270 @@ def test_git_invocation_args_property():
         dash_c_path=None,
     )
     assert inv.args == ["-m", "x"]
+
+
+# ============================================================================
+# 0.5.0-W1-120.7.1：包裝命令、巢狀 shell、別名、有效目錄
+# ============================================================================
+
+import shlex
+import subprocess
+
+import pytest
+
+import lib.git_command_parse as gcp
+
+
+def _subs(command, base_dir=None, wanted=("commit",)):
+    result = find_git_invocations(command, set(wanted), base_dir=base_dir)
+    assert result is not None
+    return result
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "/usr/bin/git commit -m x",
+        "command git commit -m x",
+        "command -p git commit -m x",
+        "exec git commit -m x",
+        "bash -c 'git commit -m x'",
+        "sh -c \"git commit -m x\"",
+        "zsh -c 'git commit -m x'",
+        "bash -lc 'git commit -m x'",
+        "/bin/bash -c 'git commit -m x'",
+        "eval 'git commit -m x'",
+        "eval git commit -m x",
+        "bash -c \"bash -c 'git commit -m x'\"",
+        "sudo bash -c 'true && git commit -m x'",
+    ],
+)
+def test_wrapped_commit_detected(command):
+    invs = _subs(command)
+    assert [i.subcommand for i in invs] == ["commit"]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo git commit",
+        "echo '/usr/bin/git commit'",
+        "echo \"bash -c 'git commit'\"",
+        "bash -c 'echo git commit'",
+        "eval 'echo git commit'",
+        "command -v git commit",
+        "bash script.sh git commit",
+        "printf '%s' 'eval git commit'",
+    ],
+)
+def test_text_mentioning_commit_not_detected(command):
+    assert _subs(command) == []
+
+
+def test_nesting_depth_is_bounded():
+    cmd = "git commit -m x"
+    for _ in range(8):
+        cmd = "bash -c " + shlex.quote(cmd)
+    assert find_git_invocations(cmd, {"commit"}) is None  # 超過深度上限：與頂層無法解析同形
+
+
+class TestEffectiveDir:
+    def test_defaults_when_nothing_changes(self):
+        inv = _subs("git commit -m x")[0]
+        assert (inv.effective_dir, inv.dir_unknown, inv.dash_c_paths) == (None, False, ())
+
+    def test_base_dir_returned_when_nothing_changes(self):
+        assert _subs("git commit", base_dir="/base")[0].effective_dir == "/base"
+
+    def test_dash_c_chain_joins_relative_paths(self):
+        inv = _subs("git -C a -C b commit")[0]
+        assert inv.dash_c_path == "a"
+        assert inv.dash_c_paths == ("a", "b")
+        assert inv.effective_dir == "a/b"
+
+    def test_absolute_dash_c_replaces(self):
+        assert _subs("git -C a -C /x commit")[0].effective_dir == "/x"
+
+    def test_cd_then_git(self):
+        assert _subs("cd /repo && git commit")[0].effective_dir == "/repo"
+
+    def test_cd_relative_to_base(self):
+        inv = _subs("cd sub && git -C inner commit", base_dir="/base")[0]
+        assert inv.effective_dir == "/base/sub/inner"
+
+    def test_cd_in_subshell_does_not_leak(self):
+        inv = _subs("(cd /other && git status); git commit", base_dir="/base")[0]
+        assert inv.effective_dir == "/base"
+
+    def test_cd_inside_subshell_applies_within(self):
+        assert _subs("(cd /other && git commit)")[0].effective_dir == "/other"
+
+    def test_cd_in_pipeline_does_not_leak(self):
+        assert _subs("cd /other | cat; git commit", base_dir="/base")[0].effective_dir == "/base"
+
+    def test_cd_inside_bash_c_does_not_leak(self):
+        inv = _subs("bash -c 'cd /other'; git commit", base_dir="/base")[0]
+        assert inv.effective_dir == "/base"
+
+    def test_cd_inside_bash_c_applies_within(self):
+        assert _subs("bash -c 'cd /other && git commit'")[0].effective_dir == "/other"
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "cd $X && git commit",
+            "cd `pwd`/x && git commit",
+            "git -C $DIR commit",
+            "cd - && git commit",
+            "cd && git commit",
+            "cd /a || git commit",
+            "false || cd /a; git commit",
+            "popd; git commit",
+        ],
+    )
+    def test_dynamic_directory_marks_unknown(self, command):
+        inv = _subs(command)[0]
+        assert inv.dir_unknown is True
+        assert inv.effective_dir is None
+
+    def test_echo_cd_does_not_change_dir(self):
+        assert _subs("echo cd /other; git commit", base_dir="/base")[0].effective_dir == "/base"
+
+
+class TestAliasExpansion:
+    def _patch(self, monkeypatch, table):
+        calls = []
+
+        def fake(directory, name):
+            calls.append((directory, name))
+            return table.get(name)
+
+        monkeypatch.setattr(gcp, "_read_git_alias", fake)
+        return calls
+
+    def test_simple_alias_hits(self, monkeypatch):
+        self._patch(monkeypatch, {"ci": "commit"})
+        inv = _subs("git ci -m x")[0]
+        assert inv.subcommand == "commit"
+        assert inv.args == ["-m", "x"]
+
+    def test_alias_with_default_flags_visible_in_args(self, monkeypatch):
+        self._patch(monkeypatch, {"ci": "commit -a"})
+        assert "-a" in _subs("git ci -m x")[0].args
+
+    def test_alias_chain(self, monkeypatch):
+        self._patch(monkeypatch, {"ci": "co2", "co2": "commit"})
+        assert len(_subs("git ci")) == 1
+
+    def test_alias_loop_terminates(self, monkeypatch):
+        self._patch(monkeypatch, {"a": "b", "b": "a"})
+        assert find_git_invocations("git a", {"commit"}) is None
+
+    def test_alias_lookup_uses_effective_dir(self, monkeypatch):
+        calls = self._patch(monkeypatch, {"ci": "commit"})
+        _subs("cd /repo && git ci", base_dir="/base")
+        assert calls[0] == ("/repo", "ci")
+
+    def test_unrelated_alias_not_hit(self, monkeypatch):
+        self._patch(monkeypatch, {"st": "status"})
+        assert _subs("git st") == []
+
+    def test_builtin_never_looked_up(self, monkeypatch):
+        calls = self._patch(monkeypatch, {})
+        _subs("git status")
+        assert calls == []
+
+    def test_shell_alias_hit_is_marked_unknown(self, monkeypatch):
+        self._patch(monkeypatch, {"go": "!git commit -m x"})
+        inv = _subs("git go")[0]
+        assert (inv.dir_unknown, inv.effective_dir) == (True, None)
+
+    def test_shell_alias_without_git_commit_not_hit(self, monkeypatch):
+        self._patch(monkeypatch, {"go": "!echo hi"})
+        assert _subs("git go") == []
+
+    def test_alias_read_failure_does_not_raise(self, monkeypatch):
+        def boom(*args, **kwargs):
+            raise OSError("no git")
+
+        monkeypatch.setattr(gcp.subprocess, "run", boom)
+        assert _subs("git ci -m x") == []
+
+    def test_real_git_config_alias(self, tmp_path):
+        subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+        subprocess.run(["git", "-C", str(tmp_path), "config", "alias.ci", "commit"], check=True)
+        invs = _subs(f"git -C {tmp_path} ci -m x")
+        assert [i.subcommand for i in invs] == ["commit"]
+        assert invs[0].effective_dir == str(tmp_path)
+
+    def test_mutation_without_alias_expansion_misses(self, monkeypatch):
+        """變異確認：別名讀取永遠回 None 時，正向對照輸入必須變為漏判。"""
+        self._patch(monkeypatch, {})
+        assert _subs("git ci -m x") == []
+
+
+def test_mutation_without_nested_script_support_misses(monkeypatch):
+    """變異確認：停用巢狀 shell 解析時，bash -c 正向對照輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "_nested_script", lambda statement, idx: None)
+    assert _subs("bash -c 'git commit -m x'") == []
+    assert _subs("git commit -m x") != []
+
+
+class TestUnparseableIsNone:
+    """0.5.0-W1-120.7.1 審查修正：巢狀與別名的無法解析一律回 None（同頂層 tokenize 失敗）。"""
+
+    def test_nested_tokenize_failure_is_none(self):
+        assert find_git_invocations("bash -c \"git commit -m 'x\"", {"commit"}) is None
+
+    def test_nested_ok_control_is_list(self):
+        assert find_git_invocations("bash -c \"git commit -m 'x'\"", {"commit"}) is not None
+
+    def test_alias_lookup_cap_is_none(self, monkeypatch):
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        many = "; ".join(f"git zz{i} x" for i in range(gcp._MAX_ALIAS_LOOKUPS + 1))
+        assert find_git_invocations(many, {"commit"}) is None
+
+    def test_alias_lookup_under_cap_is_list(self, monkeypatch):
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        few = "; ".join(f"git zz{i} x" for i in range(gcp._MAX_ALIAS_LOOKUPS))
+        assert find_git_invocations(few, {"commit"}) == []
+
+    def test_alias_lookup_is_cached(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: calls.append(n))
+        same = "; ".join("git zz x" for _ in range(30))
+        assert find_git_invocations(same, {"commit"}) == []
+        assert len(calls) == 1
+
+    def test_alias_total_time_budget_is_none(self, monkeypatch):
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        clock = iter(range(0, 1000, 5))
+        monkeypatch.setattr(gcp.time, "monotonic", lambda: next(clock))
+        assert find_git_invocations("git aa x; git bb x", {"commit"}) is None
+
+    def test_alias_timeout_is_none(self, monkeypatch):
+        def slow(*args, **kwargs):
+            raise subprocess.TimeoutExpired("git", 1)
+
+        monkeypatch.setattr(gcp.subprocess, "run", slow)
+        assert find_git_invocations("git ci -m x", {"commit"}) is None
+
+    def test_mutation_without_cap_returns_list(self, monkeypatch):
+        """變異確認：上限放寬後，超限輸入不再回 None（證明測試鑑別力）。"""
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        monkeypatch.setattr(gcp, "_MAX_ALIAS_LOOKUPS", 1000)
+        many = "; ".join(f"git zz{i} x" for i in range(9))
+        assert find_git_invocations(many, {"commit"}) == []
+
+    def test_mutation_nested_failure_swallowed_returns_list(self, monkeypatch):
+        """變異確認：舊行為（巢狀失敗回空）會使上面的 None 斷言翻紅。"""
+        original = gcp._scan_script
+
+        def swallowing(script, state, depth, ctx):
+            try:
+                return original(script, state, depth, ctx)
+            except gcp._Unparseable:
+                return []
+
+        monkeypatch.setattr(gcp, "_scan_script", swallowing)
+        assert find_git_invocations("bash -c \"git commit -m 'x\"", {"commit"}) == []
