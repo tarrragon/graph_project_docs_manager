@@ -341,7 +341,9 @@ MAX_TICKET_DEPTH = 3
 can_descend(ticket) = depth(ticket) < MAX_TICKET_DEPTH
 ```
 
-`can_descend` 供持有該票的呼叫者判斷能否再往下派發，不用於判斷該票能否被派發（被派發票僅在 depth > MAX_TICKET_DEPTH 時被派發守衛擋下）。
+`can_descend` 供持有該票的呼叫者判斷能否再往下派發，不用於判斷該票能否被派發。
+
+**兩個量的區別（樹深度 vs 巢狀層數）**：票樹深度是 parent_id 鏈長度；巢狀層數是派發者所處的平台代理人層級。派發守衛依巢狀層數判定：主線程派發（hook 輸入無 `agent_id`）位於最頂層，不受被派發票樹深度限制；子代理人派發以其持有票的 `can_descend` 判定，持有票映射缺失時退回「被派發票 depth > MAX_TICKET_DEPTH 才擋」。深度模組不可用或計算例外時 fail-open（stderr 與日誌雙通道）。
 
 ##### 五步自檢流程（claim 後執行）
 
