@@ -726,6 +726,34 @@ git -C "$D" show HEAD:a.txt              # v2 —— 內容被回滾，git log �
 
 **手寫 CAS 腳本的陷阱**：在 zsh 中把多行檔案清單放進未加引號的變數再 `for f in $FILES` 迴圈，zsh 不會做字詞切分，整串會被當成單一路徑；`update-index` 因此沒有套入任何變更，產生 tree 與第一親代相同的空合併（`PC-169` 同形）。檔案清單一律以 `git diff -z` 輸出、交給陣列或程式語言處理；或直接使用預設路徑的子命令。
 
+### 進行中操作的裸 commit 收尾（cherry-pick、revert、rebase）
+
+**Why**：MERGE_HEAD 空窗的機制同樣存在於其他會在中途停下的操作。cherry-pick 或 revert 停下時留下 CHERRY_PICK_HEAD 或 REVERT_HEAD，rebase 停下時留下 rebase-merge（或 rebase-apply）目錄；git 對裸 `git commit` 的處理不檢查是誰發起了這個操作。
+
+**Consequence**：以暫存 repo 實測，由旁觀者對無關檔案 add 後裸 commit：
+
+| 發起者的狀態 | 旁觀者裸 commit 的結果 |
+|------|------|
+| cherry-pick 或 rebase 遇衝突，尚未解決 | git 自身以 unmerged 路徑拒絕，不成立 |
+| cherry-pick 遇衝突，發起者已解決並 stage | 旁觀者的 commit 帶走發起者的內容，訊息被取代，CHERRY_PICK_HEAD 被清除，發起者的 `cherry-pick --continue` 失敗 |
+| `revert --no-commit`，或 revert 衝突已解決並 stage | 同上，REVERT_HEAD 被清除，發起者的 `revert --continue` 失敗 |
+| rebase 遇衝突，發起者已解決並 stage | 旁觀者的 commit 落在 detached HEAD，吸收發起者正在重放的那個 commit 並蓋掉其訊息；發起者的 `rebase --continue` 仍回 rc=0，最終歷史少了那個 commit |
+| `rebase -i` 在 edit 停下 | 不夾帶內容，但旁觀者的 commit 進入發起者的 rebase 歷史，旁觀者以為提交在原分支 |
+| `cherry-pick --no-commit` 無衝突 | 沒有進行中狀態，屬一般的 staged 內容夾帶，由並行期 staged 範圍判定處理 |
+
+這些結果都只有一個 parent，沒有合併收尾那種兩個 parent 的外觀證據，事後更難察覺。
+
+**Action**：
+
+| 情境 | 處置 |
+|------|------|
+| 自己發起的 cherry-pick 或 revert，衝突已解決 | 精確 `git add <衝突檔>` → 核對 index → `GIT_EDITOR=true git cherry-pick --continue`（或 `revert --continue`）。自訂訊息先寫入 `$(git rev-parse --git-path MERGE_MSG)` 所指的檔 |
+| 自己發起的 rebase，衝突已解決 | 同上，收尾用 `GIT_EDITOR=true git rebase --continue`。自訂訊息先寫入 `$(git rev-parse --git-path rebase-merge/message)` 所指的檔 |
+| 自己發起的 `rebase -i`，在 edit 停下要分拆 commit | 裸 `git commit` 照常可用，守衛只提醒；`--amend` 不受影響 |
+| 裸 commit 被拒，而操作不是自己發起的 | 停手回報，不代為收尾，也不 `--abort`——放棄會毀掉他方進行中的操作 |
+
+**強制層**：`bare-commit-guard-hook.py` 在 CHERRY_PICK_HEAD 或 REVERT_HEAD 存在，或 rebase-merge、rebase-apply 存在且沒有 `rebase-merge/amend`（衝突停下）時，拒絕裸 commit；有 `amend`（edit 停下）時只提醒。偵測目錄依序取命令的 `-C`、payload 的 cwd、專案根，狀態檔路徑以 `git rev-parse --git-path` 取得，所以 worktree 內的操作也能正確判讀。命令無法解析、但存在上述任一狀態時，不論是否有其他 session 正在派發都拒絕。偵測本身失敗（逾時、目錄不存在）時放行，並同時寫 stderr 與日誌。未實測：rebase-apply（am 型）路徑，以及 edit 步驟本身發生衝突時是否仍留有 `amend` 檔。
+
 ---
 
 ## 規則八詳細：CJK 資料聚合統計加 LC_ALL=C（locale collation 陷阱）
@@ -796,6 +824,9 @@ LC_ALL=C sort /tmp/t.txt | LC_ALL=C uniq -c
 - `.claude/rules/core/language-constraints.md` 規則 1（規則八影響面：本框架強制繁體中文輸出，CJK 字串聚合統計皆在射程內）
 
 ---
+
+**Last Updated**: 2026-10-14
+**Version**: 1.18.0 — 新增〈進行中操作的裸 commit 收尾（cherry-pick、revert、rebase）〉：以暫存 repo 實測各停下狀態下旁觀者裸 commit 的後果（內容夾帶、訊息取代、狀態清除、rebase 歷史遺失一個 commit 且 `--continue` 仍回 rc=0），收尾處置表（各操作的 `--continue` 與自訂訊息檔），以及 `bare-commit-guard-hook.py` 的對應強制層與未實測項。
 
 **Last Updated**: 2026-10-12
 **Version**: 1.17.0 — 〈兩段式合併禁令（MERGE_HEAD 空窗）〉新增變體「合併途中 HEAD 被他方推進（update_ref 失敗）」：辨識訊號三項、禁止事項、兩種處置（隔離索引 CAS 補提交後 `git merge --quit`／`git merge --abort` 重來），預設路徑改指 worktree skill 的 `merge` 子命令；補手寫 CAS 腳本在 zsh 未切字詞產生空合併的陷阱。
