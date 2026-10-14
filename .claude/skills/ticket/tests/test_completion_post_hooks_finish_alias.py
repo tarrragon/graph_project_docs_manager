@@ -1,10 +1,10 @@
 """post-ticket-lifecycle-hook / handoff-cleanup-hook 完成命令辨識（finish 別名）測試。
 
 兩支 hook 為 PostToolUse(Bash)，完成命令成功後分別：
-- lifecycle：遞增 session 完成計數器並輸出 checkpoint 提醒（additionalContext）
+- lifecycle：輸出 checkpoint 提醒（additionalContext）；不再計數（計數只在 session-context-guard-hook）
 - handoff-cleanup：刪除 .claude/handoff/pending|archive/{ticket_id}.json
 
-E2 紀律：每支 hook 以 finish 觸發，斷言具體副作用（計數器檔內容、檔案被刪、
+E2 紀律：每支 hook 以 finish 觸發，斷言具體副作用（無計數器檔、檔案被刪、
 結構化輸出整體相等），不以子字串存在性斷言。
 """
 
@@ -21,6 +21,7 @@ HOOKS_DIR = CLAUDE_DIR / "skills" / "ticket" / "hooks"
 LIFECYCLE = HOOKS_DIR / "post-ticket-lifecycle-hook.py"
 HANDOFF = HOOKS_DIR / "handoff-cleanup-hook.py"
 TICKET_ID = "0.5.0-W1-270.6"
+SESSION_ID = "finish-alias-test-session"
 
 sys.path.insert(0, str(CLAUDE_DIR))
 from lib.hook_messages import AskUserQuestionMessages  # noqa: E402
@@ -31,6 +32,7 @@ SUPPRESS_OUTPUT = {"suppressOutput": True}
 
 def _payload(command: str) -> str:
     return json.dumps({
+        "session_id": SESSION_ID,
         "tool_name": "Bash",
         "tool_input": {"command": command},
         "tool_response": {
@@ -52,8 +54,8 @@ def _run(script: Path, command: str, env_extra: dict):
 
 @pytest.fixture
 def lifecycle_env(tmp_path):
-    """隔離 lifecycle 計數器：以 ppid（= 本 pytest 行程）命名的檔案，測前後清除。"""
-    counter = Path(f"/tmp/claude-session-completed-tickets-{os.getpid()}")
+    """隔離計數器路徑：lifecycle 不應寫出它（計數只在 session-context-guard-hook）。"""
+    counter = Path(f"/tmp/claude-session-completed-tickets-{SESSION_ID}")
     counter.unlink(missing_ok=True)
     yield {"HOOK_TEST_ISOLATION": "1", "CLAUDE_PROJECT_DIR": str(tmp_path)}, counter
     counter.unlink(missing_ok=True)
@@ -74,11 +76,11 @@ def handoff_env(tmp_path):
 
 # --- E2：finish 觸發原本對 complete 的處理 ---
 
-def test_lifecycle_finish_updates_counter_and_emits_checkpoint(lifecycle_env):
+def test_lifecycle_finish_emits_checkpoint_without_counting(lifecycle_env):
     env, counter = lifecycle_env
     r = _run(LIFECYCLE, f"ticket track finish {TICKET_ID}", env)
     assert r.returncode == 0
-    assert counter.read_text().strip() == "1"
+    assert not counter.exists()
     out = json.loads(r.stdout)
     assert out == {
         "hookSpecificOutput": {
@@ -105,10 +107,10 @@ def test_handoff_complete_still_removes_pending_file(handoff_env):
     assert not pf.exists()
 
 
-def test_lifecycle_batch_complete_still_counts(lifecycle_env):
+def test_lifecycle_batch_complete_does_not_count(lifecycle_env):
     env, counter = lifecycle_env
     _run(LIFECYCLE, f"ticket track batch-complete {TICKET_ID}", env)
-    assert counter.read_text().strip() == "1"
+    assert not counter.exists()
 
 
 # --- 不辨識：引號內字面、heredoc 內文 ---

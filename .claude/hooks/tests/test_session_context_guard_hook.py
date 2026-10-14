@@ -25,7 +25,7 @@ _spec.loader.exec_module(_hook)
 @pytest.fixture
 def counter(tmp_path, monkeypatch):
     f = tmp_path / "counter"
-    monkeypatch.setattr(_hook, "get_counter_file", lambda: f)
+    monkeypatch.setattr(_hook, "get_counter_file", lambda *a, **kw: f)
     return f
 
 
