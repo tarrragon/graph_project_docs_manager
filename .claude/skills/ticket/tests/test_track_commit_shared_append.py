@@ -81,3 +81,15 @@ def test_no_own_line_not_committed(repo, capsys):
     assert _run([TOPICS]) == 0
     assert _git(repo, "rev-parse", "HEAD").stdout == head
     assert "無本票" in capsys.readouterr().out
+
+
+def test_worktree_mode_refuses_ticket_md_as_primary_path(repo):
+    """worktree 內票面是舊副本，只有共用檔本票行時不得借票面作主路徑（E2 正向對照）。"""
+    head = _git(repo, "rev-parse", "HEAD").stdout
+    (repo / TICKET).write_text("stale worktree copy\n")
+    (repo / TOPICS).write_text(f"{OLD_TOPIC}{TID}\tmine\n")
+    args = argparse.Namespace(
+        ticket_id=TID, message="chore: x", files=[TOPICS], worktree=str(repo)
+    )
+    assert tc.execute_commit(args, VERSION) == 1
+    assert _git(repo, "rev-parse", "HEAD").stdout == head

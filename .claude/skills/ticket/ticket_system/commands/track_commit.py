@@ -413,6 +413,13 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
     if not normalized_input:
         # commit_files_isolated 在 paths 為空時直接回 empty、不處理 append_lines；
         # 以票自身 md 作主路徑（內容未變時淨變更為零，屬合法）。
+        # worktree 內票面是舊副本（見上方票面拒絕），不可借作主路徑。
+        if worktree:
+            print(
+                "[ERROR] worktree 模式下只提交共用檔的本票行需要主路徑，但票面副本不可"
+                "在 worktree 提交；請連同產品檔一起提交，或在主 repo 執行"
+            )
+            return 1
         if not os.path.isfile(os.path.join(repo_root, own_md)):
             print(f"[ERROR] 只提交共用檔的本票行需要主路徑，但票面 {own_md} 不存在於 {repo_root}")
             return 1
