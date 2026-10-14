@@ -483,6 +483,8 @@ class GitInvocation:
             或經由 shell 別名取得時為 True，此時 effective_dir 不可信。預設 False。
         via_scan: 僅 scan 模式的任意位置掃描才命中（命令位置判定找不到）時為
             True；位置命中或未開 scan 時為 False。預設 False。
+        dash_c_dirs: 每個已知 `-C` 套用後的累積目錄（`-C a -C b` 為 a、a/b），
+            遇動態值即停止；供需要「全部 -C 目標」的呼叫端使用。預設空 tuple。
         經別名展開的呼叫，`statement` 為展開後的 token 序列。
     """
 
@@ -495,6 +497,7 @@ class GitInvocation:
     effective_dir: Optional[str] = None
     dir_unknown: bool = False
     via_scan: bool = False
+    dash_c_dirs: Tuple[str, ...] = ()
 
     @property
     def args(self) -> List[str]:
@@ -659,16 +662,26 @@ def _is_dynamic_path(path: str) -> bool:
     return "$" in path or "`" in path
 
 
+def resolve_dir_path(base: Optional[str], target: str) -> str:
+    """依 cd／-C 語意解析單一路徑：展開 `~`，絕對路徑取代 base，相對路徑接續，
+    結果一律 normpath（消除 `..` 與重複分隔符）。base 為 None 時相對路徑以相對字串回傳。
+
+    `find_git_invocations` 的 effective_dir 與 `find_git_dash_c_dirs` 共用此函式，
+    使三支 hook 對同一 `-C` 字面解析出同一目錄。
+    """
+    target = os.path.expanduser(target) if target.startswith("~") else target
+    if os.path.isabs(target) or base is None:
+        return os.path.normpath(target)
+    return os.path.normpath(os.path.join(base, target))
+
+
 def _join_dir(state: _DirState, target: str) -> _DirState:
-    """依 cd／-C 語意把 target 套用到 state：動態值轉未知，絕對路徑取代，相對路徑接續。"""
+    """依 cd／-C 語意把 target 套用到 state：動態值轉未知，其餘委派 resolve_dir_path。"""
     if state.unknown or _is_dynamic_path(target):
         return _DirState(None, True)
     if not target:
         return state
-    target = os.path.expanduser(target) if target.startswith("~") else target
-    if os.path.isabs(target) or state.path is None:
-        return _DirState(target, False)
-    return _DirState(os.path.join(state.path, target), False)
+    return _DirState(resolve_dir_path(state.path, target), False)
 
 
 # 控制結構的語句頭關鍵字：其後才是命令位置（`for`／`select` 的語句頭沒有命令位置，
@@ -984,8 +997,11 @@ def _git_invocations(
     if idx >= len(statement):
         return []
     eff = state
+    dash_c_dirs: List[str] = []
     for path in dash_c_paths:
         eff = _join_dir(eff, path)
+        if not eff.unknown and eff.path is not None:
+            dash_c_dirs.append(eff.path)
     token = statement[idx]
     if token in ctx.wanted:
         return [
@@ -998,6 +1014,7 @@ def _git_invocations(
                 dash_c_paths=dash_c_paths,
                 effective_dir=None if eff.unknown else eff.path,
                 dir_unknown=eff.unknown,
+                dash_c_dirs=tuple(dash_c_dirs),
             )
         ]
     if token.startswith("-") or token in _GIT_BUILTINS:
@@ -1028,6 +1045,38 @@ def _expand_alias(
         return []
     expanded = statement[:idx] + alias_tokens + statement[idx + 1:]
     return _git_invocations(expanded, git_idx, state, depth + 1, ctx)
+
+
+class _AnySubcommand(frozenset):
+    """比對任何子命令的集合（供列舉全部 git 呼叫的 -C 目錄用）。"""
+
+    def __contains__(self, item: object) -> bool:
+        return True
+
+
+def find_git_dash_c_dirs(command: str, base_dir: Optional[str] = None) -> Optional[List[str]]:
+    """命令內所有 git 呼叫（任意子命令、含 scan 模式）的目標目錄，有序去重：
+    每個 `-C` 的累積目錄，加上呼叫最終的 effective_dir（含語句內 `cd`）。
+
+    無法安全解析回 None。與 `find_git_invocations` 同一解析路徑，目錄語意一致。
+    """
+    if not command:
+        return []
+    tokens = _tokenize_command(command)
+    if tokens is None:
+        return None
+    ctx = _Ctx(_AnySubcommand(), base_dir, True)
+    try:
+        found = _scan_tokens(tokens, _DirState(base_dir, False), 0, ctx)
+    except _Unparseable:
+        return None
+    dirs = [
+        d
+        for inv in found
+        for d in (*inv.dash_c_dirs, inv.effective_dir)
+        if d and not inv.dir_unknown
+    ]
+    return list(dict.fromkeys(dirs))
 
 
 def parse_command_statements(command: str) -> Optional[List[List[str]]]:
