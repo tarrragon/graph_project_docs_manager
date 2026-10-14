@@ -13,7 +13,7 @@ Session Context Guard Hook - PostToolUse Hook
 觸發時機: Bash 工具執行後
 檢測邏輯:
   1. 驗證 tool_name == "Bash"
-  2. 檢查 command 是否包含 "ticket track complete" 或 "ticket complete"
+  2. 以共用解析器檢查 command 是否為 ticket track complete/finish/batch-complete
   3. 檢查 stdout 是否包含完成標記（"已完成"）
   4. 若偵測成功，遞增計數器並在閾值時輸出警告
 
@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, emit_hook_output
+from lib.ticket_command_parse import has_complete_command
 
 # ============================================================================
 # 常數定義
@@ -56,12 +57,6 @@ SOFT_WARN_THRESHOLD = 2
 
 # 強烈建議閾值（完成 3 個以上 Ticket）
 STRONG_WARN_THRESHOLD = 3
-
-# 完成指令關鍵字
-COMPLETE_COMMAND_PATTERNS = [
-    "ticket track complete",
-    "ticket complete",
-]
 
 # 完成成功標記（ticket CLI 輸出）
 COMPLETE_SUCCESS_MARKER = "已完成"
@@ -111,8 +106,12 @@ def increment_counter() -> int:
 # ============================================================================
 
 def is_ticket_complete_command(command: str) -> bool:
-    """判斷是否為 ticket track complete 命令"""
-    return any(pattern in command for pattern in COMPLETE_COMMAND_PATTERNS)
+    """判斷是否為 ticket track complete/finish/batch-complete 命令。
+
+    走共用解析器；無法解析（未閉合引號）時視為非完成命令（本 hook 不阻擋，
+    漏計數優於誤計數）。
+    """
+    return has_complete_command(command) is True
 
 
 def is_complete_successful(stdout: str) -> bool:

@@ -2290,3 +2290,31 @@ def test_w3_744_failure_semantics_ticket_not_found_fail_open(monkeypatch, capsys
     )
     assert rc == 0
     assert err == ""
+
+
+# ============================================================================
+# 0.5.0-W1-270.5 -- finish / batch-complete 別名與前綴包裹（E2：比對結構化回傳）
+# ============================================================================
+
+
+@pytest.mark.parametrize("verb", ["complete", "finish", "batch-complete"])
+def test_w1_270_5_complete_verbs_residual_gate(verb):
+    tid, mode = extract_ticket_id_from_command("ticket track {} T-1".format(verb))
+    assert (tid, mode) == ("T-1", "residual_gate")
+
+
+def test_w1_270_5_finish_with_env_prefix_residual_gate():
+    tid, mode = extract_ticket_id_from_command("FOO=1 nohup ticket track finish T-1")
+    assert (tid, mode) == ("T-1", "residual_gate")
+
+
+def test_w1_270_5_quoted_finish_not_detected():
+    tid, mode = extract_ticket_id_from_command(
+        'ticket track append-log T-9 --section S "ticket track finish T-1"'
+    )
+    assert (tid, mode) == (None, None)
+
+
+def test_w1_270_5_finish_unbalanced_quote_fail_open():
+    tid, mode = extract_ticket_id_from_command('ticket track finish "unterminated')
+    assert (tid, mode) == (None, None)
