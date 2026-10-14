@@ -1,7 +1,7 @@
 """逾時終止 helper 的契約測試。
 
-hook 與 ticket_system 各有一份 _run_with_graceful_timeout（單檔腳本無法共用模組），
-本檔以檔案路徑載入兩份，參數化跑同一組案例，固定兩者行為一致：
+hook 與 ticket_system 皆委派 lib.git_utils.run_with_graceful_timeout 單一實作，
+本檔對兩個入口參數化跑同一組案例，固定委派後行為一致：
 逾時先 SIGTERM（git 自行清鎖）、忽略 SIGTERM 者於寬限後被 SIGKILL、
 孫程序握住輸出管線時耗時仍有上界、input 照常傳入。
 

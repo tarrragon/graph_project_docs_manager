@@ -47,6 +47,8 @@ sys.path.insert(0, str(_CLAUDE_DIR))
 sys.path.insert(0, str(_CLAUDE_DIR / "hooks"))
 
 from lib import setup_hook_logging, run_hook_safely, get_uncommitted_files, FileStatus
+# 逾時溫和終止（行程群組 SIGTERM 後 SIGKILL）的單一實作在 lib；沿用原名使測試可 patch 本模組屬性
+from lib.git_utils import run_with_graceful_timeout as _run_with_graceful_timeout
 
 # dispatch_tracker / find_ticket_files 為訊息富化與防 race 用；缺失時降級而非崩潰
 try:
@@ -69,9 +71,6 @@ except ImportError:  # pragma: no cover
 
 HOOK_NAME = "worktree-auto-commit"
 GIT_TIMEOUT = 10
-# 逾時後先 SIGTERM，寬限此秒數仍未結束才 SIGKILL。SIGKILL 殺持鎖 git 必殘留
-# 0 位元組 index.lock，SIGTERM 則 git 自行清鎖（實驗結果）；清鎖為毫秒級，5 秒足夠。
-TERMINATE_GRACE_SECONDS = 5
 # 活躍派發超時時數：超過此時數的派發記錄視為 stale（代理人異常終止未清除），
 # 不再阻止兜底代捕。與 dispatch_tracker.cleanup_expired 預設一致。
 DISPATCH_MAX_AGE_HOURS = 1
@@ -333,36 +332,6 @@ def auto_commit(message, logger) -> bool:
     if commit_ok:
         logger.info("自動 commit 成功: %s", message)
     return commit_ok
-
-
-def _run_with_graceful_timeout(args, timeout, grace=None, **popen_kwargs):
-    """執行子程序並在逾時時先 SIGTERM、寬限後才 SIGKILL。
-
-    支援參數：args、timeout（None 為不設）、grace（預設 TERMINATE_GRACE_SECONDS）、
-    input（字串；有值才開 stdin）、其餘 popen_kwargs（cwd、env、text、encoding、errors）。
-    stdout / stderr 一律擷取。回傳 CompletedProcess；逾時拋 subprocess.TimeoutExpired。
-    逾時後只等行程本身結束，不等輸出管線 EOF（孫程序可能仍握著管線）。
-    本檔為單檔腳本、無法與 ticket_system 共用模組，故與其同名 helper 各自實作；
-    兩者行為一致由 worktree 測試的契約測試固定。
-    """
-    if grace is None:
-        grace = TERMINATE_GRACE_SECONDS
-    input_text = popen_kwargs.pop("input", None)
-    stdin = subprocess.PIPE if input_text is not None else None
-    with subprocess.Popen(
-        args, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **popen_kwargs
-    ) as proc:
-        try:
-            out, err = proc.communicate(input_text, timeout=timeout)
-        except subprocess.TimeoutExpired:
-            proc.terminate()
-            try:
-                proc.wait(timeout=grace)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-            raise
-        return subprocess.CompletedProcess(args, proc.returncode, out, err)
 
 
 def _run_git_with_lock_retry(args, logger, action_label, max_retries=3, wait_seconds=2):

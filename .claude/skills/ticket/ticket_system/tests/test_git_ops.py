@@ -1258,3 +1258,25 @@ class TestPrevalidateEndToEnd:
             f"guard 日誌應全部實體落在測試倉庫內，實際位置：{[str(p.resolve()) for p in guard_logs]}"
         assert any("被阻擋" in p.read_text(encoding="utf-8") for p in inside), \
             "測試倉庫內應有本次阻擋的日誌紀錄，否則隔離對照無鑑別力"
+
+
+class TestLibDelegation:
+    """_run_with_graceful_timeout 委派 lib 單一實作；lib 不可得時降級備援並寫 stderr。"""
+
+    def test_delegates_to_lib_when_available(self):
+        lib = MagicMock()
+        with patch.object(git_ops, "load_claude_lib", return_value=lib):
+            git_ops._run_with_graceful_timeout(["git", "--version"], 5, text=True)
+        lib.run_with_graceful_timeout.assert_called_once_with(["git", "--version"], 5, None, text=True)
+
+    def test_falls_back_with_stderr_when_lib_missing(self, capsys):
+        with patch.object(git_ops, "load_claude_lib", return_value=None):
+            result = git_ops._run_with_graceful_timeout(["echo", "ok"], 5, text=True)
+        assert result.stdout == "ok\n"
+        assert "降級" in capsys.readouterr().err
+
+    def test_falls_back_when_lib_load_raises(self, capsys):
+        with patch.object(git_ops, "load_claude_lib", side_effect=ImportError("x")):
+            result = git_ops._run_with_graceful_timeout(["echo", "ok"], 5, text=True)
+        assert result.stdout == "ok\n"
+        assert "降級" in capsys.readouterr().err
