@@ -698,6 +698,34 @@ git -C "$D" show HEAD:a.txt              # v2 —— 內容被回滾，git log �
 | `git log --oneline -1` 對照 HEAD 是否已前移 | HEAD 已前移而 index 過時（fast-forward 的非原子性）：依 `IMP-V1-005`，先 `git reset` 重建 index 對齊 HEAD，再繼續任何 commit |
 | MERGE_HEAD 是否殘留（`git rev-parse -q --verify MERGE_HEAD`） | 殘留：先 `git merge --abort`，再重新合併（`PC-169`） |
 
+#### 變體：合併途中 HEAD 被他方推進（update_ref 失敗）
+
+**Why**：`git merge` 先寫 index 與工作區，最後才更新 HEAD 參照（git 內部的 update_ref 步驟，會比對 HEAD 舊值），兩步之間不是原子操作。共用 checkout 中有其他 session 以隔離索引 CAS 高頻推進 HEAD 時，這段空窗內只要 HEAD 前進，舊值比對就會失敗。
+
+**Consequence**：git 先印出 `fatal: update_ref failed for ref 'HEAD': … is at <X> but expected <Y>`，接著仍印出 `Merge made by the 'ort' strategy.`。輸出看似成功，實際上 HEAD 沒有前進，MERGE_HEAD 卻留了下來，合併結果的檔案也已 staged、工作區已改寫。這就是上文的 MERGE_HEAD 空窗，只是並非刻意分兩段造成：他方的裸 commit 會被守衛擋下，若繞過守衛，則會把這批 staged 檔夾帶進去。
+
+**Action**：
+
+| 步驟 | 動作 |
+|------|------|
+| 辨識 | 三個訊號同時成立：輸出含 `update_ref failed`、`git rev-parse -q --verify MERGE_HEAD` 有值、`git rev-parse HEAD` 不是新合併提交 |
+| 禁止 | 不以裸 `git commit` 收尾（守衛拒絕，且會把當下的 index 原樣提交）；不直接重跑 `git merge` |
+| 處置一（保留合併結果） | 以隔離索引 CAS 補提交，步驟見下方清單 |
+| 處置二（放棄重來） | `git merge --abort` 還原後，改走下一列的預設路徑 |
+| 預設路徑 | 共用 checkout 合併 worktree 分支時，直接使用 worktree skill 的 `merge` 子命令（隔離索引 CAS 合併，內建空合併守衛、三方合併、衝突中止與 index 同步重試），不手動 `git merge` |
+
+**處置的選擇**：合併結果包含已手動解完的衝突、重來的成本高時，選處置一；其餘情況選處置二，再走預設路徑。處置二不需要手寫 git 底層指令，出錯的面較小。
+
+**處置一的步驟**：
+
+1. 以臨時 `GIT_INDEX_FILE` 從當前 HEAD `git read-tree`，記下這個 HEAD 作為舊值。
+2. 逐檔把合併結果的 blob 以 `git update-index --cacheinfo` 套入臨時 index。
+3. `git write-tree` 取得 tree。若 tree 等於第一親代的 tree，代表沒有套入任何變更：停手，改走處置二，不要建提交。
+4. `git commit-tree` 以「舊值、分支」為雙親代建立提交，再以 `git update-ref HEAD <新提交> <舊值>` 推進。舊值比對失敗代表 HEAD 又被推進，回到步驟 1 重做。
+5. 推進成功後執行 `git merge --quit` 清除合併狀態，再逐檔比對 HEAD、index、工作區三平面是否一致。
+
+**手寫 CAS 腳本的陷阱**：在 zsh 中把多行檔案清單放進未加引號的變數再 `for f in $FILES` 迴圈，zsh 不會做字詞切分，整串會被當成單一路徑；`update-index` 因此沒有套入任何變更，產生 tree 與第一親代相同的空合併（`PC-169` 同形）。檔案清單一律以 `git diff -z` 輸出、交給陣列或程式語言處理；或直接使用預設路徑的子命令。
+
 ---
 
 ## 規則八詳細：CJK 資料聚合統計加 LC_ALL=C（locale collation 陷阱）
@@ -770,6 +798,7 @@ LC_ALL=C sort /tmp/t.txt | LC_ALL=C uniq -c
 ---
 
 **Last Updated**: 2026-10-12
+**Version**: 1.17.0 — 〈兩段式合併禁令（MERGE_HEAD 空窗）〉新增變體「合併途中 HEAD 被他方推進（update_ref 失敗）」：辨識訊號三項、禁止事項、兩種處置（隔離索引 CAS 補提交後 `git merge --quit`／`git merge --abort` 重來），預設路徑改指 worktree skill 的 `merge` 子命令；補手寫 CAS 腳本在 zsh 未切字詞產生空合併的陷阱。
 **Version**: 1.16.0 — 規則七詳細「衝突合併收尾」處置表改為 `GIT_EDITOR=true git merge --continue`（對齊 MERGE_HEAD 存在時守衛拒絕裸 commit），補自訂合併訊息做法（寫入 MERGE_MSG；`merge --continue` 不接受引數）；新增「兩段式合併禁令（MERGE_HEAD 空窗）」Why／Consequence／Action 三級小節（置於 PC-BAL-008 歸屬判定之後）；`Unable to write index` 處置對齊 `PC-169`／`IMP-V1-005`（視為警報，先查 HEAD 與 MERGE_HEAD，不重試），守衛具名並更正「與既有防護層的關係」（MERGE_HEAD 存在時拒絕裸 commit）。
 **Last Updated**: 2026-10-07
 **Version**: 1.15.0 — 規則一詳細 uv 方法由不存在的 `-d` 短旗標改為 `--directory`，附 uv 0.8.13 實測錯誤訊息。
