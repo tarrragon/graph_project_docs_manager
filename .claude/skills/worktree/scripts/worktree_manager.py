@@ -1126,22 +1126,6 @@ def _print_existing_worktrees() -> None:
             print(item)
 
 
-def _get_main_new_commits(branch_name: str) -> str:
-    """
-    取得 main 上比 branch 新的 commit 列表（一行一個）
-
-    Args:
-        branch_name: feature 分支名稱
-
-    Returns:
-        str: commit 列表文字，每行一個 commit
-    """
-    success, output = run_git_command(
-        ["log", "--oneline", f"{branch_name}..{DEFAULT_BASE_BRANCH}"]
-    )
-    return output.strip() if success and output.strip() else "(無法取得 commit 列表)"
-
-
 def _merge_build_warnings_list(ahead: int, behind: int, status_msg: str) -> list[str]:
     """
     根據 metrics 和狀態訊息構建警告清單
@@ -1219,84 +1203,98 @@ def _merge_validate_preconditions(
     return True
 
 
-def _merge_validate_and_collect_metrics(
-    ticket_id: str,
-    worktree: dict
-) -> tuple[bool, int, int, list[str]]:
-    """
-    驗證 merge 前置條件並收集 metrics
-
-    W16 修復：認知負擔指數 = 8 (<= 10)
-
-    Args:
-        ticket_id: Ticket ID
-        worktree: worktree 資訊字典
-
-    Returns:
-        tuple[bool, int, int, list[str]]:
-            - bool: 驗證通過
-            - int: ahead 數
-            - int: behind 數
-            - list[str]: 警告訊息列表
-    """
-    # 驗證前置條件
-    if not _merge_validate_preconditions(ticket_id, worktree["path"]):
-        return False, 0, 0, []
-
-    # 計算 metrics 和警告
-    branch_name = worktree.get("branch", f"feat/{ticket_id}")
-    ahead, behind, warnings = _merge_collect_warnings_for_branch(branch_name, ticket_id)
-
-    return True, ahead, behind, warnings
+def _merge_find_by_branch(branch: str) -> Optional[dict]:
+    """以分支名查詢合併對象：有 worktree 回傳其 dict；無 worktree 但分支存在回傳 path=None；皆無回傳 None。"""
+    for wt in get_worktree_list():
+        if wt.get("branch") == branch:
+            return wt
+    ok, _ = run_git_command(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"])
+    return {"path": None, "branch": branch} if ok else None
 
 
-def cmd_merge(ticket_id: str, pre_merge_check: "Optional[PreMergeCheck]" = None) -> int:
+def _merge_log_pre_acceptance(label: str, reason: str) -> None:
+    """合併前驗收模式：旗標與理由輸出並追加到 .claude/logs/worktree-merge.log。"""
+    line = f"[合併前驗收] target={label} reason={reason}"
+    print(line)
+    try:
+        log_dir = Path(get_project_root()) / ".claude" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with open(log_dir / "worktree-merge.log", "a", encoding="utf-8") as fh:
+            fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
+    except OSError as exc:
+        sys.stderr.write(f"[WARNING] worktree-merge 日誌寫入失敗：{exc}\n")
+
+
+def _merge_resolve_target(
+    ticket_id: Optional[str], branch: Optional[str], pre_acceptance_reason: Optional[str]
+) -> Optional[tuple[dict, str, str]]:
+    """解析合併對象並做前置驗證。回傳 (worktree, branch_name, label)；驗證失敗回傳 None（訊息已輸出）。"""
+    if branch:
+        worktree = _merge_find_by_branch(branch)
+        if worktree is None:
+            print(f"[阻擋] 找不到分支 {branch}")
+            return None
+        if worktree.get("path"):
+            clean, count = _check_working_tree_clean(worktree["path"])
+            if not clean:
+                print(MergeMessages.DIRTY_WORKING_TREE.format(count=count))
+                return None
+        return worktree, branch, branch
+
+    worktree = _validate_and_find_worktree(ticket_id)
+    if worktree is None:
+        return None
+    if pre_acceptance_reason:
+        clean, count = _check_working_tree_clean(worktree["path"])
+        if not clean:
+            print(MergeMessages.DIRTY_WORKING_TREE.format(count=count))
+            return None
+    elif not _merge_validate_preconditions(ticket_id, worktree["path"]):
+        return None
+    return worktree, worktree.get("branch", f"feat/{ticket_id}"), ticket_id
+
+
+def cmd_merge(
+    ticket_id: Optional[str],
+    pre_merge_check: "Optional[PreMergeCheck]" = None,
+    *,
+    branch: Optional[str] = None,
+    pre_acceptance_reason: Optional[str] = None,
+) -> int:
     """
     merge 子命令 — 前置驗證後以隔離索引 CAS 直接完成合併
 
-    驗證 Ticket 狀態為 completed、working tree 乾淨、ahead/behind 狀態後，
-    通過後呼叫 merge_branch_cas（不使用 git merge）。pre_merge_check 為可注入的合併前檢查掛點。
-
-    W16 修復：認知負擔指數 = 6 (<= 10)
-    拆分出：_merge_validate_and_collect_metrics(指數 8), _merge_validate_preconditions(指數 9),
-    _merge_collect_warnings_for_branch(指數 6), _merge_build_warnings_list(指數 7)
-    W17 修復：認知負擔指數進一步降至 4，提取共用的驗證和查詢邏輯到 _validate_and_find_worktree
-
-    Args:
-        ticket_id: Ticket ID（如 "0.1.1-W9-002"）
+    對象由 ticket_id 或 branch 指定（branch 用於萃取不到 ticket ID 的 worktree-agent-<id>，
+    不查票狀態）。預設要求票 completed 且 working tree 乾淨；pre_acceptance_reason 非空時
+    允許票未 completed（合併前驗收），旗標與理由寫入日誌。落後 base 僅提示，不阻擋；
+    衝突由 merge_branch_cas 中止且 ref 不變。pre_merge_check 為可注入的合併前檢查掛點。
 
     Returns:
         int: exit code（0 合併成功，1 驗證失敗或合併中止）
     """
-    # Step 1-2: 驗證 Ticket ID 格式並查詢 worktree（共用函式）
-    worktree = _validate_and_find_worktree(ticket_id)
-    if worktree is None:
+    target = _merge_resolve_target(ticket_id, branch, pre_acceptance_reason)
+    if target is None:
         return 1
+    _worktree, branch_name, label = target
 
-    # Step 3: 驗證前置條件並收集 metrics
-    passed, ahead, behind, warnings = _merge_validate_and_collect_metrics(ticket_id, worktree)
-    if not passed:
-        return 1
-
-    branch_name = worktree.get("branch", f"feat/{ticket_id}")
-
-    # Step 4: behind > 0 時阻擋合併
+    ahead, behind = get_worktree_ahead_behind(branch_name, DEFAULT_BASE_BRANCH)
+    warnings = _merge_build_warnings_list(ahead, behind, "")
+    if pre_acceptance_reason:
+        _merge_log_pre_acceptance(label, pre_acceptance_reason)
+    elif ticket_id and not branch:
+        _, status_msg = _merge_validate_ticket_status(ticket_id)
+        warnings = _merge_build_warnings_list(ahead, behind, status_msg or "")
     if behind > 0:
-        commit_list = _get_main_new_commits(branch_name)
-        print(MergeMessages.BRANCH_BEHIND_BASE.format(
-            base=DEFAULT_BASE_BRANCH,
-            count=behind,
-            commit_list=commit_list,
-            worktree_path=worktree["path"],
-        ))
-        return 1
+        warnings.append(
+            f"[提示] 分支落後 {DEFAULT_BASE_BRANCH} {behind} 個 commit，"
+            "由三方合併處理；衝突時將中止且 ref 不變。"
+        )
 
-    # Step 5: 輸出驗證結果並執行合併
-    _merge_build_output(ticket_id, branch_name, ahead, behind, warnings)
+    _merge_build_output(label, branch_name, ahead, behind, warnings)
     print()
     print(MergeMessages.MERGE_EXECUTING.format(branch=branch_name, base=DEFAULT_BASE_BRANCH))
     outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check)
-    return _print_merge_outcome(outcome, ticket_id)
+    return _print_merge_outcome(outcome, label)
 
 
 # ===== 隔離索引 CAS 合併 =====
@@ -2116,7 +2114,17 @@ def main():
     )
     merge_parser.add_argument(
         "ticket_id",
-        help="Ticket ID (例如：0.1.1-W9-002)"
+        nargs="?",
+        help="Ticket ID (例如：0.1.1-W9-002)；與 --branch 擇一"
+    )
+    merge_parser.add_argument(
+        "--branch",
+        help="以分支名指定合併對象（如 worktree-agent-<id>），不查票狀態"
+    )
+    merge_parser.add_argument(
+        "--pre-acceptance",
+        metavar="REASON",
+        help="合併前驗收：票未 completed 也允許合併，理由寫入日誌"
     )
 
     # cleanup 子命令
@@ -2146,7 +2154,12 @@ def main():
     elif args.command == "status":
         return cmd_status(args.ticket_id)
     elif args.command == "merge":
-        return cmd_merge(args.ticket_id)
+        if bool(args.ticket_id) == bool(args.branch):
+            print("[錯誤] merge 需指定 <ticket-id> 或 --branch 其中之一")
+            return 1
+        return cmd_merge(
+            args.ticket_id, branch=args.branch, pre_acceptance_reason=args.pre_acceptance
+        )
     elif args.command == "cleanup":
         return cmd_cleanup(args.ticket_id, force=args.force)
     else:
