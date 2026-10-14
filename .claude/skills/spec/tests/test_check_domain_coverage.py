@@ -275,19 +275,41 @@ def test_unattributed_map_counts_for_inspected_spec(capsys):
 
 
 def test_compat_mode_when_only_system_layer_has_unattributed_frs(capsys):
-    """相容模式的現行可達情形（spec 識別取得）：非系統層 map 無 FR 字樣，系統層只有未歸屬的 FR。
+    """相容模式的可達情形之一（spec 識別取得）：非系統層 map 無 FR 編號，系統層帶未歸屬的 FR。
 
     對照：同內容的非系統層 map 依預設計給，不走相容；差異在於系統層不適用預設計給。
     """
     layer = "## 覆蓋\n| FR-01~03 | X |\n"
     assert _covered_by(SPEC_A, layer, "docs/system-layer.md") == []
     err = capsys.readouterr().err
-    assert "走相容模式" in err and "非系統層的 map 無任何 FR 字樣" in err
+    assert "走相容模式" in err and "非系統層的 map 無任何 FR 編號" in err
 
 
 def test_no_fr_map_reports_all_uncovered_with_spec_id(capsys):
-    """map 無任何 FR 字樣：全數未覆蓋，與是否走相容分支無關（相容比對與歸屬比對在此同結果）。"""
+    """map 無任何 FR 編號：全數未覆蓋；走相容分支而非預設計給（無 FR 的 map 不得被印成依預設計給）。"""
     assert _covered_by(SPEC_A, "## 覆蓋\n無\n") == [1, 2, 3]
+    err = capsys.readouterr().err
+    assert "依預設計給" not in err
+    assert "走相容模式" in err
+
+
+@pytest.mark.parametrize("system, uncovered_lines", [
+    (None, ["FR-01", "FR-02", "FR-03"]),
+    ("## 其他\n無對照\n", ["FR-01", "FR-02", "FR-03"]),
+    ("## 其他\n| FR-01~02 | sys |\n", ["FR-03"]),
+])
+def test_compat_branch_end_to_end_with_spec_id(tmp_path, monkeypatch, capsys, system, uncovered_lines):
+    """經 main：取得 spec 識別、map 列入本 SPEC 但無 FR 編號時走相容分支，系統層不存在、無 FR、帶未歸屬 FR 三情形皆然。"""
+    monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "docs/spec/ui/SPEC-101-x.md"
+    _write(spec, SPEC_A)
+    _write(tmp_path / "docs/spec/a/domain-map.md", "---\ndomain: \"a\"\nsource_specs: [SPEC-101]\n---\n無\n")
+    if system is not None:
+        _write(tmp_path / "docs/system-layer.md", system)
+    assert cdc.main([str(spec)]) == 1
+    captured = capsys.readouterr()
+    assert "走相容模式" in captured.err and "依預設計給" not in captured.err
+    assert [ln.strip() for ln in captured.out.splitlines() if ln.startswith("  FR-")] == uncovered_lines
 
 
 def test_compat_mode_warns_when_spec_id_missing(capsys):

@@ -333,8 +333,8 @@ def _uncovered_frs(spec_text, parsed_maps, spec_path=None):
     if spec_id is None:
         sys.stderr.write("WARNING: 取不到 spec 識別（frontmatter id / 檔名 SPEC-NNN），走相容模式（不分 spec 比對）\n")
     elif not attributed:
-        # 到此表示非系統層的 map 皆無任何 FR 字樣（有則已預設計給），只有系統層可能帶未歸屬的 FR
-        sys.stderr.write("domain 覆蓋檢核：domain map 無任何 FR 歸屬到 SPEC-NNN（非系統層的 map 無任何 FR 字樣），"
+        # 到此表示非系統層的 map 皆無任何 FR 編號（有則已預設計給），只有系統層可能帶未歸屬的 FR
+        sys.stderr.write("domain 覆蓋檢核：domain map 無任何 FR 歸屬到 SPEC-NNN（非系統層的 map 無任何 FR 編號），"
                          "走相容模式（不分 spec 比對，系統層出現的 FR 一律視為覆蓋）\n")
     else:
         return sorted(spec_frs - attributed.get(spec_id, set()))
