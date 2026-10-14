@@ -54,9 +54,10 @@ DISABLE_ENV_VAR = "WORKTREE_ZOMBIE_CLEANUP_DISABLE"
 # locked 檔案 PID 解析正則
 _PID_PATTERN = re.compile(r"\(pid\s+(\d+)\)")
 
-# 唯讀判斷與 branch -d 的逾時秒數；worktree unlock/remove 較慢另設
+# 唯讀判斷的逾時秒數；branch -d 與 worktree unlock/remove 各自另設
 _READ_TIMEOUT_SECONDS = 10
 _WRITE_TIMEOUT_SECONDS = 15
+_BRANCH_DELETE_TIMEOUT_SECONDS = 10
 
 
 # ---------- 靜默回傳路徑的日誌（逾時與其他失敗訊息可區分） ----------
@@ -217,7 +218,7 @@ def delete_branch_if_merged(project_root: Path, branch: str, name: str, logger) 
     try:
         result = run_with_graceful_timeout(
             ["git", "-C", str(project_root), "branch", "-d", branch],
-            _READ_TIMEOUT_SECONDS,
+            _BRANCH_DELETE_TIMEOUT_SECONDS,
             text=True,
         )
     except (subprocess.SubprocessError, FileNotFoundError, OSError) as exc:
