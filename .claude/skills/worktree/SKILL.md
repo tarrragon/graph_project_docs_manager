@@ -98,6 +98,7 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 
 - `create`：建立 worktree，見 `references/subcommands.md`〈create — 建立 Worktree〉
 - `status`：查看 worktree 狀態，見 `references/subcommands.md`〈status — 查看 Worktree 狀態〉
+- `merge`：前置驗證後以隔離索引 CAS 直接完成合併（不再輸出 `git merge` 指令）；含 `pre_merge_check` 合併前檢查掛點（簽名、時機、失敗語意、重試成本），見 `references/subcommands.md`〈merge — 以隔離索引 CAS 合併分支〉
 
 ---
 
