@@ -368,3 +368,51 @@ class TestUnparseableDisposition:
 
     def test_has_parallel_dispatch_reads_state(self, tmp_path):
         assert hook_module.has_parallel_dispatch(tmp_path) is False
+
+
+# ============================================================================
+# scan 模式：僅掃描命中的呼叫比照無法解析（0.5.0-W1-120.7.9.2）
+# ============================================================================
+
+import pytest  # noqa: E402
+
+_SCAN_ONLY = "find . -exec git commit -m x \\;"
+
+
+class TestScanOnlyDisposition:
+    def _run(self, monkeypatch, tmp_path, command, parallel):
+        project_root = _make_domain_project(
+            tmp_path, "import 'package:flutter/material.dart';\n"
+        )
+        monkeypatch.setattr(hook_module, "has_parallel_dispatch", lambda root: parallel)
+        return _run_hook(monkeypatch, command, project_root=project_root)
+
+    def test_is_commit_command_scan_only_none(self):
+        assert is_commit_command(_SCAN_ONLY) is None
+        assert is_commit_command("taskset 1 git merge x") is None
+
+    def test_parallel_blocks(self, monkeypatch, tmp_path, capsys):
+        assert self._run(monkeypatch, tmp_path, _SCAN_ONLY, True) == 2
+        assert "保守阻擋" in capsys.readouterr().err
+
+    def test_non_parallel_warns_and_passes(self, monkeypatch, tmp_path, capsys):
+        assert self._run(monkeypatch, tmp_path, _SCAN_ONLY, False) == 0
+        assert "提醒" in capsys.readouterr().err
+
+    @pytest.mark.parametrize(
+        "command", ["grep git commit notes.txt", "grep 'git commit' notes.txt", "man git-commit"]
+    )
+    def test_text_lookup_not_blocked_when_non_parallel(self, monkeypatch, tmp_path, command):
+        assert self._run(monkeypatch, tmp_path, command, False) == 0
+
+    def test_position_hit_unchanged(self, monkeypatch, tmp_path):
+        assert self._run(monkeypatch, tmp_path, "git commit -m x", False) == 2
+        assert self._run(monkeypatch, tmp_path, "git -C x merge f", True) == 2
+
+    def test_mutation_without_scan_scan_only_slips_through(self, monkeypatch, tmp_path):
+        """變異確認：移除 scan=True 後，僅掃描命中輸入並行期放行。"""
+        orig = hook_module.find_git_invocations
+        monkeypatch.setattr(
+            hook_module, "find_git_invocations", lambda c, s, *a, **k: orig(c, s)
+        )
+        assert self._run(monkeypatch, tmp_path, _SCAN_ONLY, True) == 0

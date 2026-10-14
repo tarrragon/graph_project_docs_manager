@@ -27,7 +27,6 @@ from lib.dispatch_tracker import get_active_dispatches  # noqa: E402
 from lib.git_command_parse import (  # noqa: E402
     contains_git_word,
     find_git_invocations,
-    match_git_commit,
 )
 
 DOMAIN_DIR = "lib/domain"
@@ -51,15 +50,12 @@ def is_commit_command(command: str) -> Optional[bool]:
     """
     if not contains_git_word(command):
         return False
-    commit = match_git_commit(command, exclude_amend=False)
-    if commit is True:
-        return True
-    merges = find_git_invocations(command, {"merge"})
-    if merges:
-        return True
-    if commit is None or merges is None:
+    invocations = find_git_invocations(command, {"commit", "merge"}, scan=True)
+    if invocations is None:
         return None
-    return False
+    if invocations and all(inv.via_scan for inv in invocations):
+        return None  # 僅掃描命中：辨識不確定，比照無法解析
+    return bool(invocations)
 
 
 def has_parallel_dispatch(project_root: Path) -> bool:

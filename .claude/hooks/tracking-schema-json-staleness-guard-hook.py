@@ -58,9 +58,12 @@ def is_commit_command(command: str) -> Optional[bool]:
     """
     if not contains_git_word(command):
         return False
-    invocations = find_git_invocations(command, {"commit"})
+    invocations = find_git_invocations(command, {"commit"}, scan=True)
     if invocations is None:
         return None
+    if invocations and all(inv.via_scan for inv in invocations):
+        return None  # 僅掃描命中：辨識不確定，比照無法解析
+    invocations = [inv for inv in invocations if not inv.via_scan]
     return any("--amend" not in inv.args for inv in invocations)
 
 

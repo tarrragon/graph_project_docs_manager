@@ -969,7 +969,13 @@ def main() -> int:
         logger.debug("命令不含 git 字樣，放行")
         return 0
 
-    invocations = find_git_invocations(command, {"commit"})
+    invocations = find_git_invocations(command, {"commit"}, scan=True)
+    if invocations and all(inv.via_scan for inv in invocations):
+        # 僅任意位置掃描命中（無位置命中）：辨識不確定，比照無法解析處置
+        logger.info("commit 呼叫僅掃描命中，比照無法解析")
+        invocations = None
+    elif invocations:
+        invocations = [inv for inv in invocations if not inv.via_scan]
 
     project_root = get_project_root()
     dispatches = _exclude_orphan_confirmed(

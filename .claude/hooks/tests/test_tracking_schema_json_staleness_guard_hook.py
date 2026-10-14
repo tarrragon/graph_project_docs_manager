@@ -429,3 +429,52 @@ def test_main_unparseable_parallel_blocks():
 
 def test_main_unparseable_non_parallel_warns_passes():
     assert _run_main_with_command("git commit -m 'unclosed", False) == 0
+
+
+# ============================================================================
+# scan 模式：僅掃描命中的呼叫比照無法解析（0.5.0-W1-120.7.9.2）
+# ============================================================================
+
+_SCAN_ONLY = "find . -exec git commit -m x \\;"
+
+
+def _run_scan(monkeypatch, command, parallel):
+    monkeypatch.setattr(_hook, "has_parallel_dispatch", lambda root: parallel)
+    return _run_main_with(
+        monkeypatch, command, [_hook.SCHEMA_PY_REL_PATH],
+        {"node_types": {"a": 1}}, {"node_types": {}},
+    )
+
+
+def test_scan_only_parallel_blocks(monkeypatch, capsys):
+    assert _run_scan(monkeypatch, _SCAN_ONLY, True) == 2
+    assert "無法安全解析" in capsys.readouterr().err
+
+
+def test_scan_only_non_parallel_warns(monkeypatch, capsys):
+    assert _run_scan(monkeypatch, _SCAN_ONLY, False) == 0
+    assert "提醒" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "command", ["grep git commit notes.txt", "grep 'git commit' notes.txt", "man git-commit"]
+)
+def test_text_lookup_not_blocked_when_non_parallel(monkeypatch, command):
+    assert _run_scan(monkeypatch, command, False) == 0
+
+
+def test_position_hit_stale_still_blocks_regardless_of_parallel(monkeypatch, capsys):
+    assert _run_scan(monkeypatch, 'git commit -m "x"', False) == 2
+    assert "tracking_schema.json 過期" in capsys.readouterr().err
+
+
+def test_is_commit_command_scan_only_returns_none():
+    assert _hook.is_commit_command(_SCAN_ONLY) is None
+    assert _hook.is_commit_command('git commit -m "x"') is True
+
+
+def test_mutation_without_scan_scan_only_slips_through(monkeypatch):
+    """變異確認：移除 scan=True 後，僅掃描命中輸入並行期放行。"""
+    orig = _hook.find_git_invocations
+    monkeypatch.setattr(_hook, "find_git_invocations", lambda c, s, *a, **k: orig(c, s))
+    assert _run_scan(monkeypatch, _SCAN_ONLY, True) == 0

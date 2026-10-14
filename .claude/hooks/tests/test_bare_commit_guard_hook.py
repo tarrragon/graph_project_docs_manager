@@ -1335,3 +1335,62 @@ class TestPendingOperationMutation:
         _g(r, "cherry-pick", "side", check=False)
         monkeypatch.setattr(hook_module, "_other_operation_state", lambda *a, **k: None)
         assert _run_real(monkeypatch, 'git commit -m x', r, cwd=r) == 0
+
+
+# ============================================================================
+# scan 模式：僅掃描命中的呼叫比照無法解析（0.5.0-W1-120.7.9.2）
+# ============================================================================
+
+_SCAN_ONLY_COMMANDS = [
+    "find . -exec git commit -m x \\;",
+    "taskset 0x1 git commit -m x",
+    "strace git commit -m x",
+]
+
+
+class TestScanOnlyTreatedAsUnparsable:
+    @pytest.mark.parametrize("command", _SCAN_ONLY_COMMANDS)
+    def test_parallel_blocks(self, monkeypatch, capsys, command):
+        exit_code = _run_hook(
+            monkeypatch, command, dispatches=[_dispatch("T-1", ["a.py"])]
+        )
+        assert exit_code == 2
+        assert "無法安全解析" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("command", _SCAN_ONLY_COMMANDS)
+    def test_non_parallel_warns(self, monkeypatch, capsys, command):
+        exit_code = _run_hook(monkeypatch, command, dispatches=[])
+        assert exit_code == 0
+        assert "無法安全解析" in capsys.readouterr().err
+
+    @pytest.mark.parametrize(
+        "command", ["grep git commit notes.txt", "grep 'git commit' notes.txt", "man git-commit"]
+    )
+    def test_text_lookup_not_blocked_when_non_parallel(self, monkeypatch, capsys, command):
+        assert _run_hook(monkeypatch, command, dispatches=[]) == 0
+
+    def test_position_hit_parallel_unchanged(self, monkeypatch, capsys):
+        exit_code = _run_hook(
+            monkeypatch, 'git commit -m "x"',
+            dispatches=[_dispatch("T-1", ["a.py"]), _dispatch("T-2", ["b.py"])],
+            staged_files=["a.py", "b.py"],
+        )
+        assert exit_code == 2
+        assert "無法安全解析" not in capsys.readouterr().err
+
+    def test_position_hit_non_parallel_unchanged(self, monkeypatch, capsys):
+        assert _run_hook(monkeypatch, 'git commit -m "x"', dispatches=[]) == 0
+        assert "無法安全解析" not in capsys.readouterr().err
+
+    def test_mutation_without_scan_parallel_scan_only_slips_through(self, monkeypatch):
+        """變異確認：移除 scan=True 後，僅掃描命中輸入在並行期放行（證明測試有鑑別力）。"""
+        orig = hook_module.find_git_invocations
+        monkeypatch.setattr(
+            hook_module, "find_git_invocations",
+            lambda c, s, *a, **k: orig(c, s),
+        )
+        exit_code = _run_hook(
+            monkeypatch, "find . -exec git commit -m x \\;",
+            dispatches=[_dispatch("T-1", ["a.py"])],
+        )
+        assert exit_code == 0

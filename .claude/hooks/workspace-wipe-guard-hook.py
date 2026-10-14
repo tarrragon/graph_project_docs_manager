@@ -193,10 +193,13 @@ def _invocations_or_conservative_default(command: str, subcommand: str):
     不含目標操作」是兩種不同狀態，不可混為一談：本守衛防的是不可逆資料
     遺失，寧可對無法判定的命令保守阻擋，也不放行未知風險。
     """
-    invocations = find_git_invocations(command, {subcommand})
+    invocations = find_git_invocations(command, {subcommand}, scan=True)
     if invocations is None:
         return [], True
-    return invocations, False
+    if invocations and all(inv.via_scan for inv in invocations):
+        # 僅任意位置掃描命中（無位置命中）：辨識不確定，比照無法解析
+        return [], True
+    return [inv for inv in invocations if not inv.via_scan], False
 
 
 def _has_whole_tree_arg_target(args: List[str]) -> bool:
