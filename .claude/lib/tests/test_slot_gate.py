@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -170,3 +171,65 @@ def test_stale_pid_tmp_removed_live_kept(monkeypatch, tmp_path):
         assert not stale.exists() and live.exists()
     finally:
         hold.release()
+
+
+# ---- 孤兒程序提示（以替身腳本取代 orphan-test-procs.py，不查詢也不終止任何真實程序）----
+
+def _fake_orphan_script(tmp_path, body):
+    script = tmp_path / "fake-orphan.py"
+    script.write_text(body)
+    return str(script)
+
+
+def _summary_script(tmp_path, matched=0, suspects=0, extra=""):
+    return _fake_orphan_script(tmp_path, "print(%r)\nprint('符合 %d 略過 0 疑似殘留 %d')\n" % (
+        extra, matched, suspects))
+
+
+def test_orphans_present_prints_count_and_cleanup_command(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _summary_script(tmp_path, matched=2, suspects=1))
+    slot_gate.report_orphans()
+    err = capsys.readouterr().err
+    assert err.startswith("run-with-timeout:") and "3" in err
+    assert "python3 .claude/scripts/orphan-test-procs.py --kill" in err
+
+
+def test_no_orphans_prints_nothing(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _summary_script(tmp_path))
+    slot_gate.report_orphans()
+    assert capsys.readouterr().err == ""
+
+
+def test_registered_group_lines_count_as_orphans(monkeypatch, tmp_path, capsys):
+    script = _summary_script(tmp_path, extra="登記可終止 群組 123 cwd /x 命令 flutter test（原因）")
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", script)
+    slot_gate.report_orphans()
+    assert "1" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("body", [
+    "import sys; sys.exit(2)",
+    "print('無法解析的輸出')",
+    "raise SystemExit('boom')",
+])
+def test_orphan_query_failure_warns_one_line_and_does_not_raise(monkeypatch, tmp_path, capsys, body):
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _fake_orphan_script(tmp_path, body))
+    slot_gate.report_orphans()
+    err = capsys.readouterr().err
+    assert err.startswith("run-with-timeout:") and len(err.strip().splitlines()) == 1
+    assert "Traceback" not in err
+
+
+def test_orphan_script_missing_warns_one_line(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", str(tmp_path / "nope.py"))
+    slot_gate.report_orphans()
+    assert len(capsys.readouterr().err.strip().splitlines()) == 1
+
+
+def test_orphan_query_timeout_is_bounded(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _fake_orphan_script(tmp_path, "import time; time.sleep(30)"))
+    monkeypatch.setenv("CLAUDE_ORPHAN_QUERY_TIMEOUT", "0.5")
+    started = time.monotonic()
+    slot_gate.report_orphans()
+    assert time.monotonic() - started < 5
+    assert "逾時" in capsys.readouterr().err

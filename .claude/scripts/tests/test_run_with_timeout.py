@@ -452,6 +452,13 @@ HEAVY_ARGV = ["pytest", "tests/"]  # 未指定具體測試檔 -> heavy
 LIGHT_ARGV = ["pytest", "tests/test_x.py"]  # 指定具體測試檔 -> light
 
 
+def _orphan_stub(tmp_path, body):
+    """替身 orphan-test-procs.py：預設輸出無孤兒，不查詢任何真實程序。"""
+    stub = tmp_path / "orphan-stub.py"
+    stub.write_text(body)
+    return stub
+
+
 @pytest.fixture
 def gate(tmp_path):
     """回傳 (env, tmp_path, procs)；procs 內的程序於測試結束時整群清除。"""
@@ -466,6 +473,7 @@ def gate(tmp_path):
         "PATH": f"{bindir}{os.pathsep}{env['PATH']}",
         "CLAUDE_SLOT_LOCK_DIR": str(tmp_path / "locks"),
         "CLAUDE_PROC_REGISTRY_DIR": str(tmp_path / "reg"),
+        "CLAUDE_ORPHAN_SCRIPT": str(_orphan_stub(tmp_path, "print('符合 0 略過 0 疑似殘留 0')")),
     })
     procs = []
     yield env, tmp_path, procs
@@ -651,3 +659,42 @@ def test_classifier_exception_does_not_stop_command(gate, tmp_path, monkeypatch)
     finally:
         os.environ.pop("CLAUDE_SLOT_LOCK_DIR", None)
     assert code == 0 and sentinel.exists()
+
+
+def _orphan_env(tmp_path, summary):
+    marker = tmp_path / "orphan-queried"
+    stub = _orphan_stub(tmp_path, "open(%r, 'a').write('x')\nprint(%r)\n" % (str(marker), summary))
+    return marker, {"CLAUDE_ORPHAN_SCRIPT": str(stub)}
+
+
+def test_heavy_start_prints_orphan_notice_before_command_runs(gate):
+    _, tmp_path, _ = gate
+    marker, extra = _orphan_env(tmp_path, "符合 2 略過 0 疑似殘留 0")
+    b, out_b = _spawn(gate, "b", HEAVY_ARGV, life=0.0, **extra)
+    _, err = b.communicate(timeout=30)
+    assert b.returncode == 0 and Path(str(out_b) + ".end").exists()
+    assert "orphan-test-procs.py --kill" in err and marker.exists()
+
+
+def test_heavy_start_without_orphans_prints_no_notice(gate):
+    _, tmp_path, _ = gate
+    marker, extra = _orphan_env(tmp_path, "符合 0 略過 0 疑似殘留 0")
+    b, _ = _spawn(gate, "b", HEAVY_ARGV, life=0.0, **extra)
+    _, err = b.communicate(timeout=30)
+    assert b.returncode == 0 and marker.exists() and "orphan-test-procs" not in err
+
+
+def test_light_command_does_not_query_orphans(gate):
+    _, tmp_path, _ = gate
+    marker, extra = _orphan_env(tmp_path, "符合 2 略過 0 疑似殘留 0")
+    b, _ = _spawn(gate, "b", LIGHT_ARGV, life=0.0, **extra)
+    _, err = b.communicate(timeout=30)
+    assert b.returncode == 0 and not marker.exists() and "orphan-test-procs" not in err
+
+
+def test_orphan_query_failure_does_not_block_heavy_command(gate):
+    _, tmp_path, _ = gate
+    b, out_b = _spawn(gate, "b", HEAVY_ARGV, life=0.0, CLAUDE_ORPHAN_SCRIPT=str(tmp_path / "missing.py"))
+    _, err = b.communicate(timeout=30)
+    assert b.returncode == 0 and Path(str(out_b) + ".end").exists()
+    assert "Traceback" not in err

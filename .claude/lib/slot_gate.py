@@ -15,12 +15,18 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
   父目錄若可被他人改名或替換，驗證通過後的路徑仍可能被換掉。
 - 等待以輪詢進行，不保證先到先得（釋放瞬間由先輪詢到的等待者取得）。
 - 閘門的任何讀寫失敗只對 stderr 寫一行（開頭 run-with-timeout:）後略過閘門，不阻擋命令。
+- 孤兒提示：heavy 命令取得名額後、啟動命令前，以子程序執行 orphan-test-procs.py（不帶 --kill，只列出）
+  查詢本專案孤兒；有則於 stderr 印出數量與清理指令，無則不輸出；查詢失敗或逾時（ORPHAN_QUERY_TIMEOUT_SECONDS）
+  只寫一行 stderr，不阻擋命令。light 命令不經過閘門，故不查詢。CLAUDE_ORPHAN_SCRIPT、
+  CLAUDE_ORPHAN_QUERY_TIMEOUT 可覆寫查詢腳本與逾時（測試用）。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
 """
 import fcntl
 import json
 import os
+import re
 import stat
+import subprocess
 import sys
 import time
 from typing import Callable, List, Optional, Tuple
@@ -32,6 +38,10 @@ SLOT_COUNT = 1
 SLOT_WAIT_LIMIT_SECONDS = 3600.0
 SLOT_NOTICE_INTERVAL_SECONDS = 30.0
 SLOT_POLL_INTERVAL = 0.1
+# 孤兒查詢的逾時：查詢只是提示，慢於此值寧可放棄也不拖慢 heavy 命令啟動
+ORPHAN_QUERY_TIMEOUT_SECONDS = 5.0
+ORPHAN_CLEANUP_COMMAND = "python3 .claude/scripts/orphan-test-procs.py --kill"
+_ORPHAN_SUMMARY_RE = re.compile(r"^符合 (\d+) 略過 (\d+) 疑似殘留 (\d+)$", re.MULTILINE)
 WAITED_REPORT_THRESHOLD = SLOT_POLL_INTERVAL
 
 
@@ -220,3 +230,37 @@ def acquire_slot(command: List[str],
             _warn(f"等待名額：{describe_holder(directory)}；已等待 {now - waited_since:.0f} 秒")
             next_notice = now + interval
         time.sleep(SLOT_POLL_INTERVAL)
+
+
+def _orphan_script() -> str:
+    return os.environ.get("CLAUDE_ORPHAN_SCRIPT") or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "orphan-test-procs.py")
+
+
+def count_orphans() -> int:
+    """列出本專案孤兒（符合 + 疑似殘留 + 可終止的登記群組）；任何失敗拋 RuntimeError 並附原因。"""
+    timeout = _env_seconds("CLAUDE_ORPHAN_QUERY_TIMEOUT", ORPHAN_QUERY_TIMEOUT_SECONDS)
+    try:
+        res = subprocess.run([sys.executable, _orphan_script()], capture_output=True, text=True,
+                             timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"查詢逾時（{timeout:g} 秒）")
+    except OSError as exc:
+        raise RuntimeError(f"無法執行查詢：{exc}")
+    found = _ORPHAN_SUMMARY_RE.findall(res.stdout)
+    if res.returncode not in (0, 1) or not found:
+        raise RuntimeError(f"查詢失敗（結束碼 {res.returncode}，無法解析輸出）")
+    matched, _skipped, suspects = (int(x) for x in found[-1])
+    registered = sum(1 for line in res.stdout.splitlines() if line.startswith("登記可終止"))
+    return matched + suspects + registered
+
+
+def report_orphans() -> None:
+    """有孤兒則印出數量與清理指令；失敗只寫一行 stderr。永不拋例外。"""
+    try:
+        count = count_orphans()
+    except Exception as exc:  # 提示性查詢，任何失敗都不得影響命令
+        _warn(f"孤兒程序查詢失敗，略過提示（不影響命令）：{exc}")
+        return
+    if count:
+        _warn(f"偵測到 {count} 個本專案孤兒測試程序殘留（會佔用記憶體）；清理：{ORPHAN_CLEANUP_COMMAND}")

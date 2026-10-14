@@ -37,6 +37,7 @@
 - 名額由本程序持有的 flock 綁定其存活期間：正常結束、逾時、被 SIGKILL 皆由核心釋放，不依賴任何 hook；
   鎖檔描述符不會被子程序繼承（子程序殘存不佔用名額）。
 - 實作在 lib/slot_gate.py（鎖目錄、等待上限、提示間隔、環境變數覆寫見該檔 docstring）。
+- heavy 命令取得名額後、啟動前會查詢本專案孤兒並在 stderr 提示（只列出不終止，失敗不阻擋；見 slot_gate docstring）。
 - 125 可能與命令自身結束碼重疊，需判斷來源時以 stderr 開頭「run-with-timeout:」的訊息為準。
 - 閘門的任何讀寫失敗只對 stderr 寫一行後略過閘門直接執行命令（fail-open，不阻擋命令）。
 """
@@ -224,7 +225,10 @@ def _acquire_gate(command: List[str], recorder: "_SignalRecorder"):
     try:
         if not slot_gate.is_heavy_command(command):
             return None, None
-        return slot_gate.acquire_slot(command, lambda: recorder.received)
+        hold, early = slot_gate.acquire_slot(command, lambda: recorder.received)
+        if hold is not None:
+            slot_gate.report_orphans()  # 取得名額後、啟動命令前；內部不拋例外
+        return hold, early
     except Exception as exc:  # 閘門故障不得以 traceback 結束，也不得阻擋命令
         sys.stderr.write(f"run-with-timeout: 名額閘門發生例外，略過排隊（不影響命令）：{exc}\n")
         return None, None
