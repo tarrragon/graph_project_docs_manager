@@ -8,7 +8,8 @@ transcript 位置（實測，Claude Code 2.1.x）：
 - 主 session：``~/.claude/projects/<專案目錄編碼>/<CLAUDE_CODE_SESSION_ID>.jsonl``
 - 子代理人：``~/.claude/projects/<專案目錄編碼>/<父 session id>/subagents/agent-<agentId>.jsonl``
   子代理人環境的 CLAUDE_CODE_SESSION_ID 是父 session 的值；agentId 取自
-  worktree 目錄名 ``agent-<agentId>``。
+  worktree 目錄名 ``agent-<agentId>``（cwd 判定，不用 AI_AGENT；共用 checkout
+  內的子代理人會被當成主 session，本框架中該類只會是唯讀審查者，可接受）。
 專案目錄編碼為路徑中非英數字元一律換成 ``-``；本模組以 glob 找 session id
 而不重算編碼，避免編碼規則漂移。
 """
@@ -18,14 +19,10 @@ import re
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-# model id -> 顯示名稱（單一常數；新模型上線時於此增列）
-MODEL_DISPLAY_NAMES = {
-    "claude-opus-5-5": "Claude Opus 5.5",
-    "claude-sonnet-5-5": "Claude Sonnet 5.5",
-    "claude-haiku-4-5": "Claude Haiku 4.5",
-    "claude-opus-4-1": "Claude Opus 4.1",
-    "claude-sonnet-4-5": "Claude Sonnet 4.5",
-}
+# 通則 claude-<family>-<major>-<minor> -> Claude <Family> <major>.<minor>；
+# 此表只收通則推導結果不正確的例外項（單一常數）。
+MODEL_DISPLAY_NAMES: dict = {}
+_MODEL_ID_RE = re.compile(r"^claude-(?P<family>[a-z]+)-(?P<major>\d+)-(?P<minor>\d+)$")
 CO_AUTHOR_EMAIL = "noreply@anthropic.com"
 _TAIL_BYTES = 512 * 1024
 _CO_RE = re.compile(r"^Co-Authored-By:", re.IGNORECASE)
@@ -42,10 +39,14 @@ def _find_transcript(repo_root: str) -> Tuple[Optional[Path], str]:
     session_id = os.environ.get("CLAUDE_CODE_SESSION_ID")
     if not session_id:
         return None, "CLAUDE_CODE_SESSION_ID 未設定"
-    base = os.path.basename(os.path.abspath(repo_root))
-    is_subagent = os.environ.get("AI_AGENT", "").endswith("_agent")
-    if is_subagent and not base.startswith("agent-"):
-        return None, "子代理人無法確定自身 transcript"
+    # 以 cwd 判定：toplevel 為 .claude/worktrees/agent-<id> 即該子代理人。
+    # AI_AGENT 主 session 也帶 _agent 尾綴，不是子代理人訊號。
+    # 已知限制：共用 checkout 內的子代理人會被當成主 session；本框架中實作
+    # 代理人由 hook 強制使用 worktree，共用 checkout 的子代理人只會是唯讀
+    # 審查者、不提交，故可接受。
+    root = Path(os.path.abspath(repo_root))
+    base = root.name
+    is_subagent = base.startswith("agent-") and root.parent.name == "worktrees"
     projects = _claude_home() / "projects"
     if is_subagent:
         hits = list(projects.glob(f"*/{session_id}/subagents/{base}.jsonl"))
@@ -78,7 +79,12 @@ def _last_assistant_model(path: Path) -> Optional[str]:
 def display_name_for_model(model: str) -> Optional[str]:
     key = re.sub(r"\[.*?\]$", "", model)
     key = re.sub(r"-\d{8}$", "", key)
-    return MODEL_DISPLAY_NAMES.get(key)
+    if key in MODEL_DISPLAY_NAMES:
+        return MODEL_DISPLAY_NAMES[key]
+    m = _MODEL_ID_RE.match(key)
+    if not m:
+        return None
+    return f"Claude {m['family'].capitalize()} {m['major']}.{m['minor']}"
 
 
 def resolve_co_author_line(repo_root: str) -> Tuple[Optional[str], str]:
@@ -91,7 +97,7 @@ def resolve_co_author_line(repo_root: str) -> Tuple[Optional[str], str]:
         return None, "transcript 內無 assistant model"
     name = display_name_for_model(model)
     if not name:
-        return None, f"model {model} 不在對照表"
+        return None, f"model {model} 無法推導顯示名稱"
     return f"Co-Authored-By: {name} <{CO_AUTHOR_EMAIL}>", ""
 
 
