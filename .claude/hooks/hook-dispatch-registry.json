@@ -168,6 +168,14 @@
         {
           "path": ".claude/hooks/post-tool-failure-liveness-hook.py",
           "timeout": 30
+        },
+        {
+          "path": ".claude/hooks/post-test-hook.py",
+          "timeout": 30
+        },
+        {
+          "path": ".claude/skills/ticket/hooks/cli-error-feedback-hook.py",
+          "timeout": 30
         }
       ]
     }

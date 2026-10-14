@@ -47,7 +47,7 @@ sys.path.insert(0, _FRAMEWORK_HOOKS)
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, is_subagent_environment
 from lib.hook_messages import WorkflowMessages
-from lib.bash_tool_response import is_bash_success
+from lib.bash_tool_response import is_bash_success, is_failure_event, parse_failure_error
 
 # ============================================================================
 # 常數定義
@@ -258,6 +258,15 @@ def extract_command_summary(command: str) -> Tuple[str, str]:
     return command_summary, command_base
 
 
+def _failure_event_output(input_data: Dict[str, Any]) -> Optional[str]:
+    """PostToolUseFailure 事件的失敗輸出（error 首行 Exit code N 之後的交錯 stdout/stderr）。
+
+    error 格式無法解析時回傳 None，呼叫端 fail-open 跳過。
+    """
+    parsed = parse_failure_error(input_data.get("error"))
+    return None if parsed is None else parsed[1]
+
+
 def check_skill_cli_error(input_data: Dict[str, Any], logger) -> Optional[str]:
     """
     檢查 skill/ticket CLI 錯誤（來自 skill-cli-error-feedback-hook）
@@ -272,8 +281,15 @@ def check_skill_cli_error(input_data: Dict[str, Any], logger) -> Optional[str]:
         logger.debug("skill-cli: 跳過，非 ticket/skill CLI 命令")
         return None
 
+    failure_event = is_failure_event(input_data)
     tool_response = input_data.get("tool_response") or {}
-    if isinstance(tool_response, str):
+    if failure_event:
+        failure_output = _failure_event_output(input_data)
+        if failure_output is None:
+            logger.debug("skill-cli: PostToolUseFailure 的 error 格式無法解析，fail-open 跳過")
+            return None
+        stderr, stdout = "", failure_output
+    elif isinstance(tool_response, str):
         stderr = ""
         stdout = tool_response
     elif isinstance(tool_response, dict):
@@ -283,11 +299,12 @@ def check_skill_cli_error(input_data: Dict[str, Any], logger) -> Optional[str]:
         logger.debug("skill-cli: tool_response 形狀異常，跳過")
         return None
 
+    # 失敗事件已確定為失敗，不做成功回音判定
     # 成功判定改接共用 helper：真實 payload 無 exit_code，且 PostToolUse 只在 shell 層
     # 結束碼為 0 時觸發（失敗走 PostToolUseFailure，本專案未註冊）。結束碼 75 屬非零，
     # 在 PostToolUse 上不會出現，原 75 分支已移除。命令成功回音存在即跳過，避免成功命令
     # 的 stdout 引述錯誤字樣（如讀取內含 usage 錯誤文字的 ticket）被誤報。
-    if is_bash_success(tool_response, _CLI_SUCCESS_MARKERS):
+    if not failure_event and is_bash_success(tool_response, _CLI_SUCCESS_MARKERS):
         logger.debug("skill-cli: 命令成功（含成功回音），跳過")
         return None
 
@@ -354,11 +371,19 @@ def check_general_cli_failure(input_data: Dict[str, Any], logger) -> Optional[st
     tool_input = input_data.get("tool_input") or {}
     command = tool_input.get("command", "")
 
-    tool_response = input_data.get("tool_response") or {}
-    if isinstance(tool_response, str):
-        stderr = ""
+    if is_failure_event(input_data):
+        # 失敗事件的 error 為交錯輸出，整段視為 stderr 並接既有分流
+        failure_output = _failure_event_output(input_data)
+        if failure_output is None:
+            logger.debug("general-cli: PostToolUseFailure 的 error 格式無法解析，fail-open 跳過")
+            return None
+        stderr = failure_output
     else:
-        stderr = tool_response.get("stderr", "")
+        tool_response = input_data.get("tool_response") or {}
+        if isinstance(tool_response, str):
+            stderr = ""
+        else:
+            stderr = tool_response.get("stderr", "")
 
     if not stderr or not stderr.strip():
         logger.debug("general-cli: 無 stderr，命令成功，跳過")
@@ -436,7 +461,8 @@ def main() -> int:
     if additional_context:
         output = {
             "hookSpecificOutput": {
-                "hookEventName": "PostToolUse",
+                "hookEventName": ("PostToolUseFailure" if is_failure_event(input_data)
+                                  else "PostToolUse"),
                 "additionalContext": additional_context
             }
         }

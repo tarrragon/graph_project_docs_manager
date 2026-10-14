@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.test_command_parse import find_test_invocations
 from lib.test_monitor_path import monitor_key, keyed_monitor_file, legacy_monitor_file
+from lib.bash_tool_response import is_failure_event, parse_failure_error
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -345,7 +346,7 @@ def _describe_tool_response(tool_response) -> Dict[str, object]:
 
 
 def _log_evaluation(error_type: ErrorType, errors: List[Dict[str, str]], logger,
-                    tool_response=None) -> None:
+                    tool_response=None, event_name: str = "PostToolUse") -> None:
     """記錄評估結果到日誌。"""
     project_root = get_project_root()
     log_dir = project_root / ".claude" / "hook-logs"
@@ -354,6 +355,7 @@ def _log_evaluation(error_type: ErrorType, errors: List[Dict[str, str]], logger,
     report_file = log_dir / f"pre-fix-evaluation-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
     report = {
         "timestamp": datetime.now().isoformat(),
+        "hook_event_name": event_name,
         "error_type": error_type.value,
         "error_count": len(errors),
         "errors": errors,
@@ -451,12 +453,26 @@ def evaluate_test_failure(input_data: dict, tool_input: dict, logger):
         logger.debug("evaluation: ticket body 寫入操作，跳過失敗評估（W3-041）")
         return None
 
+    failure_event = is_failure_event(input_data)
     tool_response = input_data.get("tool_response", "")
-    if not tool_response:
+    if failure_event:
+        # PostToolUseFailure 無 tool_response，改讀 error；只信首行 Exit code N
+        parsed = parse_failure_error(input_data.get("error"))
+        if parsed is None:
+            logger.debug("evaluation: PostToolUseFailure 的 error 格式無法解析，fail-open 跳過")
+            return None
+        tool_response = parsed[1]
+        if not tool_response.strip():
+            logger.debug("evaluation: 失敗事件無輸出內容，跳過")
+            return None
+        output_str = tool_response
+    elif not tool_response:
         logger.debug("evaluation: 無 tool_response，跳過")
         return None
 
-    if input_data.get("tool_name") == "Bash" and isinstance(tool_response, dict):
+    if failure_event:
+        pass
+    elif input_data.get("tool_name") == "Bash" and isinstance(tool_response, dict):
         # 只評估真實命令輸出；bashEditDiff 等欄位含他人改動檔案的 diff，不可入比對
         stdout, stderr = tool_response.get("stdout"), tool_response.get("stderr")
         if stdout is None and stderr is None:
@@ -479,7 +495,8 @@ def evaluate_test_failure(input_data: dict, tool_input: dict, logger):
         return None
 
     logger.info(f"evaluation: 偵測到 {len(errors)} 個 {error_type.value} 錯誤")
-    _log_evaluation(error_type, errors, logger, tool_response)
+    _log_evaluation(error_type, errors, logger, tool_response,
+                    "PostToolUseFailure" if failure_event else "PostToolUse")
 
     if error_type == ErrorType.SYNTAX_ERROR:
         message = f"\n語法錯誤 - 簡化修復流程\n\n錯誤數量: {len(errors)}\n推薦代理人: mint-format-specialist\n\n識別的語法錯誤：\n"
@@ -561,7 +578,8 @@ def main() -> int:
     if messages:
         output = {
             "hookSpecificOutput": {
-                "hookEventName": "PostToolUse",
+                "hookEventName": ("PostToolUseFailure" if is_failure_event(input_data)
+                                  else "PostToolUse"),
                 "additionalContext": "\n\n".join(messages)
             }
         }
