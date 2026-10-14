@@ -234,5 +234,58 @@ class TestParallelDispatchVerificationHook:
         assert result == expected
 
 
+# ============================================================================
+# 0.5.0-W1-270.8：完成命令辨識（finish 別名）
+# ============================================================================
+
+def _run_main_with(input_data, where_files, git_changed):
+    """以 patch 取代外部依賴執行 main()，回傳 (rc, stdout_payload, where_mock)。"""
+    out = StringIO()
+    with patch.object(hook_module, "read_json_from_stdin", return_value=input_data), \
+         patch.object(hook_module, "is_subagent_environment", return_value=False), \
+         patch.object(hook_module, "get_project_root", return_value=Path("/nonexistent")), \
+         patch.object(hook_module, "read_ticket_where_files",
+                      return_value=where_files) as where_mock, \
+         patch.object(hook_module, "get_git_changed_files", return_value=git_changed), \
+         patch("sys.stdout", out):
+        rc = hook_module.main()
+    return rc, json.loads(out.getvalue()), where_mock
+
+
+def _payload(command):
+    return {
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+        "tool_response": {"stdout": "[OK] 已完成 Ticket", "exit_code": 0},
+    }
+
+
+class TestCompleteCommandRecognition:
+    """E2：finish 觸發原本對 complete 的處理（缺失檔案警告）"""
+
+    def test_finish_triggers_missing_file_warning(self):
+        rc, payload, where_mock = _run_main_with(
+            _payload("ticket track finish 0.1.0-W41-002"), ["a.py"], [])
+        assert rc == 0
+        assert where_mock.call_args[0][0] == "0.1.0-W41-002"
+        ctx = payload["hookSpecificOutput"]["additionalContext"]
+        assert "  - a.py" in ctx.splitlines()
+
+    def test_batch_complete_recognized(self):
+        assert hook_module.is_ticket_complete_success(
+            _payload("ticket track batch-complete 0.1.0-W41-002")) is True
+
+    def test_quoted_literal_not_recognized(self):
+        assert hook_module.is_ticket_complete_success(
+            _payload("echo 'ticket track complete 0.1.0-W41-002'")) is False
+
+    def test_unparseable_command_fail_open(self):
+        rc, payload, where_mock = _run_main_with(
+            _payload("echo 'ticket track finish 0.1.0-W41-002"), ["a.py"], [])
+        assert rc == 0
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+        where_mock.assert_not_called()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

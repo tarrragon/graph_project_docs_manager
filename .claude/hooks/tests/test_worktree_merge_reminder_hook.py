@@ -327,3 +327,41 @@ def test_main_merged_clean_excludes_main_branch(hook_module, capsys):
         # 但 feat/W1-001 應出現
         assert "git worktree remove" in message
         assert "feat/W1-001" in message or "/tmp/wt-merged" in message
+
+
+# ============================================================
+# 0.5.0-W1-270.8：完成命令辨識（finish 別名）
+# ============================================================
+
+def test_finish_triggers_unmerged_warning(hook_module, capsys):
+    """E2：finish 觸發原本對 complete 的處理（未合併警告含分支與 commit 數）"""
+    input_data = {"tool_input": {"command": "ticket track finish 0.18.0-W1-001"}}
+    porcelain = _make_porcelain(("/tmp/wt-A", "feat/W1-001"))
+    side_effect = _mk_subprocess_side_effect(
+        worktree_porcelain=porcelain,
+        unmerged_per_branch={"feat/W1-001": ["abc111 first commit"]},
+    )
+    rc = _run_main(hook_module, input_data, side_effect)
+    lines = _extract_message(capsys.readouterr().out).splitlines()
+    assert rc == 0
+    assert "  分支: feat/W1-001" in lines
+    assert "  待合併 commit: 1 個" in lines
+
+
+def test_batch_complete_recognized(hook_module):
+    assert hook_module.is_ticket_complete_command(
+        {"tool_input": {"command": "ticket track batch-complete A B"}}
+    ) is True
+
+
+def test_quoted_literal_not_recognized(hook_module):
+    assert hook_module.is_ticket_complete_command(
+        {"tool_input": {"command": "echo 'ticket track complete X'"}}
+    ) is False
+
+
+def test_unparseable_command_fail_open(hook_module):
+    """未閉合引號 → 不觸發（提示類不阻擋）"""
+    assert hook_module.is_ticket_complete_command(
+        {"tool_input": {"command": "echo 'ticket track finish X"}}
+    ) is False

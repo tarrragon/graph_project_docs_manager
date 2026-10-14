@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # .claude/ — 
 from lib.hook_base import get_project_root  # noqa: E402
 from lib.hook_logging import setup_hook_logging, run_hook_safely  # noqa: E402
 from lib.hook_io import read_json_from_stdin, is_subagent_environment
+from lib.ticket_command_parse import has_complete_command  # noqa: E402
 from lib.hook_ticket import (
     parse_ticket_frontmatter,
     find_ticket_file,
@@ -201,7 +202,9 @@ def is_ticket_complete_success(input_data: dict) -> bool:
     tool_input = input_data.get("tool_input", {})
     command = tool_input.get("command", "")
 
-    if "ticket track complete" not in command:
+    # 以 token 位置辨識完成類命令（complete / finish / batch-complete）；
+    # 解析失敗（None）視為非完成命令，維持提示類不觸發的失敗語意
+    if has_complete_command(command) is not True:
         return False
 
     # 檢查執行結果

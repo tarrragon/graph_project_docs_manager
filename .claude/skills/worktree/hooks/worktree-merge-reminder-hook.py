@@ -34,6 +34,7 @@ from lib import (
     get_uncommitted_files,
     FileStatus,
 )
+from lib.ticket_command_parse import has_complete_command
 
 
 def parse_worktree_list(logger) -> List[Tuple[str, str]]:
@@ -111,10 +112,9 @@ def is_ticket_complete_command(input_data: dict) -> bool:
     tool_input = input_data.get("tool_input", {})
     command = tool_input.get("command", "")
 
-    if "ticket" in command and "complete" in command:
-        return True
-
-    return False
+    # token 位置辨識（complete / finish / batch-complete）；解析失敗（None）
+    # 視為非完成命令，提示類不觸發
+    return has_complete_command(command) is True
 
 
 def main() -> int:
