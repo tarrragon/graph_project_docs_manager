@@ -100,6 +100,20 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 - `status`：查看 worktree 狀態，見 `references/subcommands.md`〈status — 查看 Worktree 狀態〉
 - `merge`：前置驗證後以隔離索引 CAS 直接完成合併（支援 `--branch <分支名>` 與 `--pre-acceptance <理由>`；落後 base 僅提示）（不再輸出 `git merge` 指令）；含 `pre_merge_check` 合併前檢查掛點（簽名、時機、失敗語意、重試成本），見 `references/subcommands.md`〈merge — 以隔離索引 CAS 合併分支〉
 
+### 合併前全套件（merge 預設行為）
+
+`merge` 預設在 CAS 的 commit-tree 之後、update-ref 之前，於合併 commit 的 detached worktree 快照內經 `run-with-timeout.py`（取得 heavy 名額）跑全套件；紅燈即不合併、列出失敗項、exit 1，快照無論成敗皆移除。實作在 `scripts/merge_gate.py`。
+
+| 改動範圍（相對當下 main） | 跑的套件 |
+|--------------------------|---------|
+| `lib/`、`test/`、`integration_test/`、`macos/`、`docs/`（票檔與版本日誌除外）、`pubspec.*` 等 | Flutter：`fvm flutter test` |
+| `.claude/` | hooks pytest：`uv --directory .claude/hooks run pytest` |
+| 只改票檔、版本日誌或其他範圍外路徑 | 免跑 |
+
+- 快照內缺 `.dart_tool/package_config.json` 時先 `fvm flutter pub get`；失敗則明確指出缺哪個產物。
+- CAS 重試：新舊合併 commit 的差異全在 `RETRY_REUSE_EXEMPT_GLOBS`（`docs/work-logs/**/tickets/*.md`、`docs/work-logs/**/v*-main.md`）內時沿用驗證結果，否則重跑；重試超過 `GATE_MAX_RETRIES`（預設 3）中止，ref 不變、分支保留。
+- `--skip-gate <理由>`：略過閘門，理由必填並寫入 `.claude/logs/worktree-merge.log`。
+
 ---
 
 ## 使用場景
