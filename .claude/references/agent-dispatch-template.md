@@ -826,11 +826,11 @@ A1（PM 派發前 commit gate，見 `.claude/pm-rules/behavior-loop-details.md`�
 
 > **用途**：worktree 隔離派發（`isolation: "worktree"`）的收尾段，代理人止於 worktree commit 並回報 PM；`ticket track complete` 由 PM 於合併並驗證後在主 checkout 執行（用戶裁決，2026-10-14）。
 >
-> **設計依據**：平台對隔離代理人的 `complete` 條件性阻擋（argv 逐元素 basename 比對撞上 bash builtin `complete`）；曾以別名 `ticket track finish` 避開，但 finish 通過平台檢查的同時繞過 acceptance-gate（gate 只辨識字面 `complete`），且隔離代理人在合併前 complete 會讓票面在程式碼未進 main 時即為完成。`finish` 別名仍存在於 CLI，但不再是隔離代理人的收尾路徑。
+> **設計依據**：平台對隔離代理人的 `complete` 條件性阻擋（argv 逐元素 basename 比對撞上 bash builtin `complete`）；曾以別名 `ticket track finish` 避開（finish 同樣經 acceptance-gate 驗收），但隔離代理人在合併前收尾，會讓票面在程式碼未進 main 時即為完成。`finish` 別名仍存在於 CLI，但不再是隔離代理人的收尾路徑。
 
 **Why**：complete 發生在 PM 合併與測試之後，票面完成狀態才與 main 上的程式碼一致；自檢仍由執行期的代理人經 `append-log` 撰寫（寫入主 repo 票面），PM 收尾只執行 complete，證據來源不變。
 
-**Consequence**：派發 prompt 若仍指示隔離代理人執行 `complete` 或 `finish`，輕則被平台擋下而阻塞，重則經 `finish` 繞過 acceptance-gate；PM 代填自檢則破壞「執行期的代理人才是自檢正確供給側」的設計原則（見上方「收尾義務標準段」章節 Why）。
+**Consequence**：派發 prompt 若仍指示隔離代理人執行 `complete` 或 `finish`，`complete` 會被平台擋下而阻塞，`finish` 能通過但讓票面在合併前即為完成；PM 代填自檢則破壞「執行期的代理人才是自檢正確供給側」的設計原則（見上方「收尾義務標準段」章節 Why）。
 
 **Action**：
 

@@ -191,9 +191,9 @@ grep -E "^## (允許產出|禁止行為|適用情境)" .claude/agents/<agent>.md
 
 上方兩步收尾適用於**非隔離派發**（代理人 cwd 為主 checkout）。以 `Agent(isolation: "worktree")` 派發時，代理人只做到 worktree commit，**complete 由 PM 於合併並驗證後在主 checkout 執行**。
 
-**Why**：平台對隔離代理人的 `complete` 條件性阻擋；改走別名 `finish` 雖能通過，卻繞過 acceptance-gate 的完整驗收（gate 只辨識字面 `complete`）。且隔離代理人在合併前 complete，會讓票面在程式碼尚未進 main 時即為完成。候選 B 讓 complete 發生在合併與測試之後，自檢仍由執行期的代理人撰寫。
+**Why**：隔離代理人在合併前 complete，會讓票面在程式碼尚未進 main 時即為完成。平台對隔離代理人的 `complete` 另有阻擋；別名 `finish` 雖能通過且同樣經 acceptance-gate 驗收（gate 辨識 finish 並讀主倉庫票面），收尾時點仍在合併之前。把 complete 移到合併與測試之後，票面完成狀態才與 main 一致，自檢仍由執行期的代理人撰寫。
 
-**Consequence**：隔離代理人 complete 或 finish，輕則票面狀態領先程式碼狀態，重則驗收 gate 失效而空殼放行；PM 代填自檢則破壞「執行期的代理人才是自檢正確供給側」的設計。
+**Consequence**：隔離代理人 complete 或 finish，票面狀態領先程式碼狀態，合併衝突或合併後測試失敗時票面已是完成；PM 代填自檢則破壞「執行期的代理人才是自檢正確供給側」的設計。
 
 **Action**：
 
