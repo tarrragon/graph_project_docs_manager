@@ -106,6 +106,8 @@ macos/Podfile.lock
 # ticket CLI 的 file_lock 在票檔旁留 0 位元組 sentinel（{ticket}.md.lock），由 reap_stale_locks 事後收割；
 # 票庫在 docs/ 下，上一行 .claude/ 的類別式涵蓋照不到（0.4.0-W1-075）。
 docs/**/*.md.lock
+# create 鎖降級（common dir 不可解析）時落在票目錄的鎖檔
+docs/**/.ticket-create.lock
 .claude/sync-preserve.yaml
 .claude/sync-skills.yaml
 .claude/worktrees
