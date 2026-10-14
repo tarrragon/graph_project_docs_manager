@@ -176,6 +176,18 @@
         {
           "path": ".claude/skills/ticket/hooks/cli-error-feedback-hook.py",
           "timeout": 30
+        },
+        {
+          "path": ".claude/skills/ticket/hooks/handoff-cleanup-hook.py",
+          "timeout": 30
+        },
+        {
+          "path": ".claude/skills/ticket/hooks/post-ticket-lifecycle-hook.py",
+          "timeout": 30
+        },
+        {
+          "path": ".claude/hooks/session-context-guard-hook.py",
+          "timeout": 30
         }
       ]
     }

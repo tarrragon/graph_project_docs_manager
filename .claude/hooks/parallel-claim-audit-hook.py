@@ -19,6 +19,8 @@ Parallel Claim Audit Hook (PostToolUse:Bash) — 非阻擋 observability
   - 失敗雙通道可觀測（quality-baseline 規則 4）：例外寫 logger.info + stderr
 
 觸發時機: PostToolUse (Bash: ticket track claim)
+覆蓋限制: 只見被管線或分號遮蔽的失敗（整體結束碼為 0）；未遮蔽的非零結束碼走
+  PostToolUseFailure，本 hook 不在該群組，不會收到（含結束碼 75）。
 
 輸出:
   audit log（JSONL）：{ ticket_id, wave, timestamp, same_wave_in_progress: [...] }

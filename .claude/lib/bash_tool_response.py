@@ -55,6 +55,23 @@ EXIT_AUTO_COMMIT_FAILED = 75
 _OK_EXIT_CODES = (0, EXIT_AUTO_COMMIT_FAILED)
 
 
+def auto_commit_failure_as_success(input_data: Any) -> Optional[dict]:
+    """PostToolUseFailure 且結束碼為 75 時，回傳可供完成類 hook 沿用的 PostToolUse 形狀 payload。
+
+    結束碼 75 表示動作已完成、僅 auto-commit 失敗，完成後處理仍須執行。回傳的 payload
+    以 error 首行之後的輸出作為 tool_response.stdout。其他結束碼、error 格式不符、
+    非 dict 輸入一律回傳 None，呼叫端視為不處理（fail-open，不阻擋）。
+    """
+    if not is_failure_event(input_data):
+        return None
+    parsed = parse_failure_error(input_data.get("error"))
+    if parsed is None or parsed[0] != EXIT_AUTO_COMMIT_FAILED:
+        return None
+    normalized = dict(input_data)
+    normalized["tool_response"] = {"stdout": parsed[1], "stderr": ""}
+    return normalized
+
+
 def is_bash_success(
     tool_response: Any,
     success_markers: Iterable[str],
