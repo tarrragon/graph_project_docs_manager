@@ -307,7 +307,7 @@ def get_git_changed_files(project_root: Path, logger: logging.Logger,
                     continue
                 out = _run_git(project_root, [
                     "diff-tree", "-r", "--name-only", "-z", "--no-commit-id",
-                    "-m", "--first-parent", sha])
+                    "--diff-merges=first-parent", sha])
                 if out is None:
                     logger.warning(f"git diff-tree 失敗: {sha}")
                     continue

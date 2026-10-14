@@ -463,5 +463,50 @@ class TestCommitRangeBaseline:
         assert rc == 0
 
 
+MERGE_ID = "0.1.0-W42-001"
+
+
+@pytest.fixture
+def merge_repo(tmp_path):
+    """分支改 A，主線同期改 B，以含票號的合併 commit 併入（第二親代帶入他線變更）"""
+    r = tmp_path / "merge_repo"
+    r.mkdir()
+    _git(r, "init", "-q", "-b", "main")
+    _git(r, "config", "user.email", "t@example.com")
+    _git(r, "config", "user.name", "t")
+    _git(r, "config", "commit.gpgsign", "false")
+    _commit(r, ["base.txt"], "base")
+    _git(r, "checkout", "-q", "-b", "wt")
+    _commit(r, ["src/a.py"], "feat: branch work without ticket id")
+    _git(r, "checkout", "-q", "main")
+    _commit(r, ["other/b.py"], "feat: mainline work without ticket id")
+    _git(r, "merge", "--no-ff", "-m", f"merge({MERGE_ID}): land", "wt")
+    return r
+
+
+class TestMergeCommitFirstParent:
+    """合併 commit 只取相對第一親代的變更，主線他線檔案不進入票相關集合"""
+
+    def test_changed_set_excludes_mainline_file(self, merge_repo):
+        import logging
+        changed = hook_module.get_git_changed_files(
+            merge_repo, logging.getLogger("t"), MERGE_ID)
+        assert "src/a.py" in changed
+        assert "other/b.py" not in changed
+
+    def test_where_file_untouched_by_ticket_reported_missing(self, merge_repo):
+        rc, payload, _ = _run_real(
+            f"ticket track complete {MERGE_ID}",
+            ["src/a.py", "other/b.py"], merge_repo)
+        lines = payload["hookSpecificOutput"]["additionalContext"].splitlines()
+        assert lines[lines.index("缺失檔案（1 個）：") + 1] == "  - other/b.py"
+
+    def test_ordinary_commit_unchanged(self, repo):
+        import logging
+        changed = hook_module.get_git_changed_files(
+            repo, logging.getLogger("t"), "0.1.0-W41-002")
+        assert "parent_only.py" in changed
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
