@@ -68,6 +68,7 @@ from lib import (
     validate_hook_input,
     is_subagent_environment,
 )
+from lib.hook_base import get_shared_state_root
 from lib.hook_messages import GateMessages, CoreMessages, AskUserQuestionMessages, format_message
 from lib.git_command_parse import parse_command_statements
 
@@ -1042,7 +1043,8 @@ def main() -> int:
             return EXIT_SUCCESS
 
         # 步驟 3: 檢查驗收狀態
-        project_dir = get_project_root()
+        # 讀票面走共用狀態根：linked worktree 內讀主倉庫票面，非 worktree 同 get_project_root
+        project_dir = get_shared_state_root(get_project_root())
         result = check_acceptance_status(ticket_id, project_dir, logger, command)
         logger.info(
             f"驗收結果: should_block={result.should_block}, "
