@@ -26,7 +26,7 @@ git_command_parse.parse_command_statements 的切分（heredoc 剝離、換行�
 不支援（需二次解析或超出 runner 集合，閘門須另行處理）：`bash -c '...'`／
 `sh -c`／`python -c`（命令位於引號字串內）、`yarn`／`pnpm`／`npx` 的測試、
 `env A=1 -u X cmd`（賦值後才出現選項）、`--opt=val` 以外未列入帶值集合的
-自訂選項（其值會被當成子命令而漏判）。
+自訂選項（帶值集合採列舉，未列入的帶值選項其值會被當成子命令而漏判）。
 """
 
 import re
@@ -57,10 +57,12 @@ _SUDO_OPTIONS_WITH_VALUE = frozenset({
     "-C", "--close-from", "-r", "--role", "-t", "--type", "-D", "--chdir",
     "-T", "--command-timeout", "-U", "--other-user",
 })
-_ENV_OPTIONS_WITH_VALUE = frozenset({"-u", "--unset", "-C", "--chdir", "-S", "--split-string"})
+_ENV_OPTIONS_WITH_VALUE = frozenset({"-u", "--unset", "-C", "--chdir", "-S", "--split-string", "-P"})
 _PYTHON_OPTIONS_WITH_VALUE = frozenset({"-X", "-W", "--check-hash-based-pycs"})
 _FLUTTER_DART_OPTIONS_WITH_VALUE = frozenset({
     "-d", "--device-id", "--packages", "--suppress-analytics-value",
+    "--local-engine", "--local-engine-src-path", "--local-engine-host",
+    "--local-web-sdk",
 })
 _NPM_OPTIONS_WITH_VALUE = frozenset({
     "--prefix", "-C", "-w", "--workspace", "--cache", "--userconfig",
@@ -81,7 +83,9 @@ class TestInvocation:
 def _skip_options(tokens: List[str], with_value) -> List[str]:
     index = 0
     while index < len(tokens) and tokens[index].startswith("-"):
-        index += 2 if tokens[index] in with_value else 1
+        token = tokens[index]
+        merged_short = len(token) > 2 and token[1] != "-" and "-" + token[-1] in with_value
+        index += 2 if token in with_value or merged_short else 1
     return tokens[index:]
 
 
@@ -115,7 +119,8 @@ def _strip_one_launcher(tokens: List[str]) -> List[str]:
         return _skip_options(tokens[1:], _SUDO_OPTIONS_WITH_VALUE)
     if head == "env":
         return _skip_options(tokens[1:], _ENV_OPTIONS_WITH_VALUE)
-    skipped = skip_prefix_wrapper_count(tokens)  # KEY=VAL／nohup／time／xargs
+    # 每輪只剝一個 token，使 nohup／time／xargs 後的 sudo／env 回到上方專屬分支
+    skipped = skip_prefix_wrapper_count(tokens[:1])  # KEY=VAL／nohup／time／xargs
     if skipped:
         return tokens[skipped:]
     if head == "timeout":

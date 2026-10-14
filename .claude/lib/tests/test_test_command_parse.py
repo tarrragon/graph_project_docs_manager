@@ -136,3 +136,34 @@ def test_private_skip_prefix_alias_still_importable():
     from lib import git_command_parse as g
 
     assert g._skip_prefix_wrapper_count is g.skip_prefix_wrapper_count
+
+
+# 0.5.0-W1-239 追修：Phase 4 審查三項漏判
+@pytest.mark.parametrize("command, expected", [
+    ("nohup sudo -u x pytest", ["pytest"]),
+    ("time sudo -u x flutter test", ["flutter"]),
+    ("nohup env -u X pytest", ["pytest"]),
+    ("xargs nohup env -u X dart test", ["dart"]),
+])
+def test_wrapper_prefix_then_sudo_env_detected(command, expected):
+    assert _runners(command) == expected
+
+
+@pytest.mark.parametrize("command, expected", [
+    ("sudo -iu x pytest", ["pytest"]),
+    ("sudo -Eu x flutter test", ["flutter"]),
+    ("flutter -vd macos test", ["flutter"]),
+])
+def test_merged_short_options_consume_value(command, expected):
+    assert _runners(command) == expected
+
+
+@pytest.mark.parametrize("command, expected", [
+    ("env -P /usr/bin pytest", ["pytest"]),
+    ("flutter --local-engine host_debug test", ["flutter"]),
+    ("flutter --local-engine-src-path /e test", ["flutter"]),
+    ("flutter --local-engine-host host_debug test", ["flutter"]),
+    ("flutter --local-web-sdk wasm_release test", ["flutter"]),
+])
+def test_missing_value_options_added(command, expected):
+    assert _runners(command) == expected
