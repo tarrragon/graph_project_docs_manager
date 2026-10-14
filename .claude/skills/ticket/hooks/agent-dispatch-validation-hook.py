@@ -182,53 +182,51 @@ def _emit_wide_staging_warning_if_parallel(prompt: str, logger) -> None:
     )
 
 
-# worktree 派發 prompt 誤用 `ticket track complete`（應改用 `finish`）偵測
+# worktree 派發 prompt 含收尾類子命令（`track complete` / `track finish`）偵測
 #
-# 背景：CC runtime 的 worktree isolation guard 對 argv 逐元素做 basename 比對，
-# 子命令 `complete` 恰好撞上 bash builtin `complete`，使 `ticket track complete`
-# 在 worktree 派發下條件性被誤判為不可驗證的操作而阻擋（同一操作同一隔離環境
-# 結果不穩定重現）。`.claude/references/agent-dispatch-template.md`「worktree
-# 派發收尾指引」已明訂改用別名 `ticket track finish`，但規範層存在、強制層
-# 先前無檢查（實際派發已命中此落差）。本檢查只提示不阻擋：PM 可能有正當理由
-# 在 prompt 中提及 `complete`（例如引用他票的收尾記錄）。
-_TRACK_COMPLETE_PATTERN = re.compile(r"track\s+complete\b", re.IGNORECASE)
+# 背景：worktree 隔離代理人的收尾止於 `ticket track commit`，complete 由 PM 於
+# 合併並驗證後執行（權威：`.claude/references/agent-dispatch-template.md`
+# 「worktree 派發收尾指引：complete 由 PM 於合併後執行」與
+# `dispatch_skeleton.CLOSING_BY_ISOLATION`）。`finish` 是 `complete` 的等價別名，
+# 同樣是收尾類子命令，不是替代做法。本檢查只提示不阻擋：PM 可能有正當理由
+# 在 prompt 中提及（例如引用他票的收尾記錄）。
+_TRACK_CLOSING_PATTERN = re.compile(r"track\s+(?:complete|finish)\b", re.IGNORECASE)
 
 
-def _has_track_complete(prompt: str) -> bool:
-    """偵測 prompt 是否含 `track complete`（worktree 派發下應改用 `finish`）。"""
+def _has_track_closing(prompt: str) -> bool:
+    """偵測 prompt 是否含 `track complete` 或 `track finish`（worktree 派發下應止於 commit）。"""
     if not prompt:
         return False
-    return bool(_TRACK_COMPLETE_PATTERN.search(prompt))
+    return bool(_TRACK_CLOSING_PATTERN.search(prompt))
 
 
-_WORKTREE_COMPLETE_WARNING = """[提示] worktree 派發 prompt 偵測到 `track complete`，建議改用 `finish`
+_WORKTREE_COMPLETE_WARNING = """[提示] worktree 派發 prompt 偵測到 `track complete` 或 `track finish`，收尾應止於 `ticket track commit`
 
 為什麼提示：
-  CC runtime 的 worktree isolation guard 對 argv 逐元素做 basename 比對，
-  子命令 `complete` 恰好撞上 bash builtin `complete`，使 `ticket track complete`
-  在 worktree 派發下條件性被誤判為不可驗證的操作而阻擋（同一操作同一隔離
-  環境結果不穩定重現）。
+  worktree 隔離代理人的收尾時點在合併之前，此時票面領先程式碼：
+  代理人 complete 後票面已標完成，但產品檔尚未合併進主線。`finish` 與
+  `complete` 等價，同樣屬收尾類子命令，不能作為替代。
 
 建議修正：
-  worktree 隔離派發（isolation: "worktree"）的收尾段指令改用別名：
-  ticket track finish <ticket-id> --as <自身 agent 名稱>
-  （行為與 complete 完全等價，共用同一實作與全部旗標）
+  收尾段改為：set-acceptance -> 填 Solution / Test Results ->
+  ticket track commit <ticket-id> -m "<描述>" --worktree <worktree 絕對路徑> -- <檔案>
+  並回報 PM；complete 由 PM 於合併並驗證後執行。
 
 詳見：.claude/references/agent-dispatch-template.md
-      （worktree 派發收尾指引：用 finish 別名避開 complete 誤判）
+      （worktree 派發收尾指引：complete 由 PM 於合併後執行）
 
-本訊息為提示（非阻擋），派發將繼續進行；若 prompt 中的 `complete` 是引用
+本訊息為提示（非阻擋），派發將繼續進行；若 prompt 中的子命令是引用
 他票的收尾記錄等合法情境，可忽略本提示。"""
 
 
 def _emit_worktree_complete_warning(prompt: str, logger) -> None:
-    """worktree 派發 prompt 命中 `track complete` → additionalContext 提示（非阻擋）。
+    """worktree 派發 prompt 命中 `track complete`/`track finish` → additionalContext 提示（非阻擋）。
 
     輸出走 hookSpecificOutput.additionalContext，不走 stderr——PreToolUse hook
     於 exit 0 時 stderr 不會注入 PM context（見 askuserquestion-reminder-hook.py
     既有寫法）。只在呼叫端已確認 isolation == "worktree" 時呼叫。
     """
-    if not _has_track_complete(prompt):
+    if not _has_track_closing(prompt):
         return
     output = {
         "hookSpecificOutput": {
@@ -238,7 +236,7 @@ def _emit_worktree_complete_warning(prompt: str, logger) -> None:
         }
     }
     print(json.dumps(output, ensure_ascii=False, indent=2))
-    logger.info("提示：worktree 派發 prompt 含 track complete，建議改用 finish")
+    logger.info("提示：worktree 派發 prompt 含收尾類子命令，收尾應止於 track commit")
 
 
 # Ticket ID 偵測：0.18.0-W17-015.2、W17-015.2、0.18.0-W17-015 等格式
