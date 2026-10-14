@@ -391,7 +391,7 @@ GREEN_SUMMARY_PATTERNS = [
     # pytest: "===== N passed in X.XXs =====" 或 "N passed, 0 failed"
     re.compile(r"=+\s*\d+\s+passed(?:,\s+\d+\s+\w+)*\s+in\s+[\d.]+s", re.IGNORECASE),
     # pytest -q: "N passed in X.XXs"（無 = 框線；排除夾帶 failed/error 的摘要）
-    re.compile(r"^\s*\d+\s+passed(?:,\s+\d+\s+(?!failed|error)\w+)*\s+in\s+[\d.]+s", re.MULTILINE | re.IGNORECASE),
+    re.compile(r"(?<!\S)\d+\s+passed(?:,\s+\d+\s+(?!failed|error)\w+)*\s+in\s+[\d.]+s", re.IGNORECASE),
     # Mocha: "N passing" without "N failing"
     re.compile(r"^\s*\d+\s+passing\b", re.MULTILINE | re.IGNORECASE),
     # 通用「0 failed」字面（與 passed 同段出現）

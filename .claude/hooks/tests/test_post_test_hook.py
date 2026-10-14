@@ -643,3 +643,25 @@ FRAMEWORK_FAILURE_OUTPUTS = [
 def test_framework_real_failure_output_reports_test_failure(hook_module, logger, output):
     _, errors = hook_module._classify_errors(output, logger)
     assert any(e["type"] == "test_failure" for e in errors), output
+
+
+# --- -q 綠燈摘要不要求行首 ---
+
+def test_green_summary_with_prefix_short_circuits_despite_uppercase_title(
+        hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    stdout = ("fix(x): post-test-hook 裸 FAILED 改區分大小寫並補小寫摘要樣式\n"
+              "rc=0 108 passed in 2.27s")
+    response = {"stdout": stdout, "stderr": ""}
+    assert _eval_response(hook_module, logger, "Bash", response) is None
+
+
+@pytest.mark.parametrize("stdout", [
+    "rc=0 1 failed, 108 passed in 2.27s",
+    "FAILED tests/x.py::t - assert\n1 failed, 3 passed in 1s",
+])
+def test_prefixed_failure_summary_still_reported(
+        hook_module, monkeypatch, tmp_path, logger, stdout):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    result = _eval_response(hook_module, logger, "Bash", {"stdout": stdout, "stderr": ""})
+    assert result is not None and "TEST FAILURE" in result
