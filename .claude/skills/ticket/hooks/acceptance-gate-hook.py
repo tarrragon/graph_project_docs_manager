@@ -249,8 +249,32 @@ def _strip_quoted_spans(command: str) -> str:
     return re.sub(r'"[^"]*"|\'[^\']*\'', "", command)
 
 
+_RAW_COMPLETE_VERB_RE = re.compile(
+    r"ticket\s+track\s+(?:complete|finish|batch-complete)\b(.*)", re.DOTALL
+)
+
+
 def extract_ticket_id_from_command(command: str, logger) -> Optional[str]:
-    """從命令中提取 Ticket ID"""
+    """從命令中提取 Ticket ID。
+
+    能解析：ID 取自完成類語句動詞之後第一個符合 TICKET_ID_PATTERN 的 token
+    （引號內的 shell -c 腳本已由掃描展開，不剝引號）。無法解析（含 stdin shell）：
+    在原始命令文字上找完成類動詞字樣、取其後第一個 ID（fail-closed，誤判只會多擋）；
+    找不到再沿用既有行為（legacy 辨識 + 剝引號後找 ID）。
+    """
+    invocations = find_complete_invocations(command)
+    if invocations is not None:
+        for _verb, args in invocations:
+            for token in args:
+                if re.fullmatch(TICKET_ID_PATTERN, token):
+                    logger.info(f"從命令中提取 Ticket ID: {token}")
+                    return token
+    else:
+        raw = _RAW_COMPLETE_VERB_RE.search(command)
+        match = re.search(TICKET_ID_PATTERN, raw.group(1)) if raw else None
+        if match:
+            logger.info(f"從無法解析的命令原文提取 Ticket ID: {match.group(0)}")
+            return match.group(0)
     if not is_complete_command(command):
         return None
     stripped = _strip_quoted_spans(command)
@@ -331,7 +355,9 @@ def is_complete_command(command: str) -> bool:
     """
     invocations = find_complete_invocations(command)
     if invocations is None:
-        return _legacy_complete_substring(command)
+        # 後備先剝引號會漏掉 `echo "ticket track complete X" | bash` 這類引號內字面；
+        # 原文再比對一次，fail-closed 方向，誤判只會多擋
+        return _legacy_complete_substring(command) or bool(_RAW_COMPLETE_VERB_RE.search(command))
     return bool(invocations)
 
 

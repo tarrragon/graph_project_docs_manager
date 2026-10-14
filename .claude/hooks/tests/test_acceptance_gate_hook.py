@@ -1139,6 +1139,38 @@ def test_is_complete_command_stdin_shell_falls_back_to_legacy_literal():
     assert module.is_complete_command(f"echo ticket track complete {_SCAN_TID} | bash") is True
     assert module.is_complete_command(f"bash <<< ticket track complete {_SCAN_TID}") is True
     assert module.is_complete_command("cat f | bash") is False
+    # 引號內字面：原文後備辨識（fail-closed）
+    assert module.is_complete_command(f'echo "ticket track complete {_SCAN_TID}" | bash') is True
+    assert module.is_complete_command(f'bash <<< "ticket track complete {_SCAN_TID}"') is True
+
+
+_E2E_TID = "0.5.0-W1-120.7.9.5"
+
+
+@pytest.mark.parametrize("command", [
+    f"ticket track complete {_E2E_TID}",
+    f"nice ticket track complete {_E2E_TID}",
+    f"echo ticket track complete {_E2E_TID} | bash",
+    f'bash -c "ticket track complete {_E2E_TID}"',
+    f'echo "ticket track complete {_E2E_TID}" | bash',
+    f'bash <<< "ticket track complete {_E2E_TID}"',
+])
+def test_extract_ticket_id_covers_quoted_and_stdin_shell_forms(command, capture_logger):
+    """引號內腳本與 stdin shell 寫法也要抽到 ID，否則閘門放行（_extract_ticket_or_skip）。"""
+    module = _load_gate_module("acceptance_gate_hook_extract_id")
+    assert module.extract_ticket_id_from_command(command, capture_logger) == _E2E_TID
+
+
+def test_extract_ticket_id_not_complete_with_quoted_verb_in_why(capture_logger):
+    module = _load_gate_module("acceptance_gate_hook_extract_neg")
+    cmd = f'ticket track claim {_E2E_TID} --why "ticket track complete 0.5.0-W1-999"'
+    assert module.extract_ticket_id_from_command(cmd, capture_logger) is None
+
+
+def test_extract_ticket_id_takes_verb_arg_not_why_text(capture_logger):
+    module = _load_gate_module("acceptance_gate_hook_extract_first")
+    cmd = f'ticket track complete {_E2E_TID} --why "見 0.5.0-W1-999"'
+    assert module.extract_ticket_id_from_command(cmd, capture_logger) == _E2E_TID
 
 
 def test_has_force_flag_on_complete_scan_forms():
