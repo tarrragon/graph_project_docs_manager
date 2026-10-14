@@ -140,14 +140,21 @@ def _strip_one_launcher(tokens: List[str]) -> List[str]:
     return tokens if unwrapped is None else unwrapped
 
 
-def _strip_launch_prefixes(tokens: List[str]) -> List[str]:
-    """前綴可巢狀（包裝腳本內再接 uv run），反覆去除至穩定。"""
+def _strip_launch_prefixes_tracking(tokens: List[str]) -> Tuple[List[str], bool]:
+    """前綴可巢狀（包裝腳本內再接 uv run），反覆去除至穩定；另回報是否經過 run-with-timeout 包裝。"""
+    wrapped = False
     while tokens:
+        if _strip_timeout_wrapper(tokens) is not None:
+            wrapped = True
         stripped = _strip_one_launcher(tokens)
         if stripped == tokens:
-            return tokens
+            break
         tokens = stripped
-    return tokens
+    return tokens, wrapped
+
+
+def _strip_launch_prefixes(tokens: List[str]) -> List[str]:
+    return _strip_launch_prefixes_tracking(tokens)[0]
 
 
 def _is_python_module_pytest(tokens: List[str]) -> bool:
@@ -245,7 +252,13 @@ def _all_specific_test_files(args: List[str], with_value) -> bool:
         _SPECIFIC_TEST_FILE_RE.search(arg.split("::", 1)[0]) for arg in positional)
 
 
+# 查詢類旗標：只印說明、版本或列舉測試，不執行測試也不編譯，負載輕
+QUERY_FLAGS = frozenset({"--help", "-h", "-help", "--version", "-version", "--collect-only"})
+
+
 def _weight_of_stripped(tokens: List[str], launcher_led: bool) -> str:
+    if any(token in QUERY_FLAGS for token in tokens[1:]):
+        return WEIGHT_LIGHT
     head = Path(tokens[0]).name
     if head in HEAVY_BUILD_EXECUTABLES or (
             head == "xcrun" and any(Path(t).name in HEAVY_BUILD_EXECUTABLES for t in tokens[1:])):
@@ -292,17 +305,17 @@ def _is_known_heavy_candidate(tokens: List[str]) -> bool:
     return _classify_runner(tokens) is not None
 
 
-def _strip_tracking_wrapper(tokens: List[str]) -> Tuple[List[str], bool]:
-    """同 _strip_launch_prefixes，另回報去除過程中是否經過 run-with-timeout 包裝。"""
-    wrapped = False
-    while tokens:
-        if _strip_timeout_wrapper(tokens) is not None:
-            wrapped = True
-        stripped = _strip_one_launcher(tokens)
-        if stripped == tokens:
-            break
-        tokens = stripped
-    return tokens, wrapped
+_TRAILING_CONTROL_OPERATORS = frozenset({"&", ";", "&&", "||", "|"})
+
+
+def _without_trailing_operators(statement) -> Tuple[str, ...]:
+    """去除敘述結尾的控制運算子（&、; 等），供產生可直接複製的包裝寫法。"""
+    tokens = list(statement)
+    while tokens and tokens[-1] in _TRAILING_CONTROL_OPERATORS:
+        tokens.pop()
+    if tokens and tokens[-1].endswith(";") and len(tokens[-1]) > 1:
+        tokens[-1] = tokens[-1].rstrip(";")
+    return tuple(tokens)
 
 
 def find_unwrapped_heavy(command: str) -> Optional[List[Tuple[str, ...]]]:
@@ -316,9 +329,9 @@ def find_unwrapped_heavy(command: str) -> Optional[List[Tuple[str, ...]]]:
         return None
     found = []
     for statement in statements:
-        stripped, wrapped = _strip_tracking_wrapper(list(statement))
+        stripped, wrapped = _strip_launch_prefixes_tracking(list(statement))
         if wrapped or not stripped or not _is_known_heavy_candidate(stripped):
             continue
         if _weight_of_stripped(stripped, launcher_led=False) == WEIGHT_HEAVY:
-            found.append(tuple(statement))
+            found.append(_without_trailing_operators(statement))
     return found

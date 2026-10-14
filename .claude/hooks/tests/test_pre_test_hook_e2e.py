@@ -68,3 +68,49 @@ def test_e2e_single_file_pytest_not_denied():
 def test_e2e_other_forms_not_denied(command):
     decision, _ = _decision("Bash", {"command": command})
     assert decision != "deny"
+
+
+# ---- 追修：查詢類命令、控制運算子、建議寫法回灌（端到端） ----
+
+QUERY_COMMANDS = [
+    "flutter test --help",
+    "dart test -h",
+    "flutter build --help",
+    "xcodebuild -version",
+    "pytest --collect-only tests/",
+    "fvm flutter test --help",
+]
+
+
+@pytest.mark.parametrize("command", QUERY_COMMANDS)
+def test_e2e_query_commands_not_denied(command):
+    decision, _ = _decision("Bash", {"command": command})
+    assert decision != "deny"
+
+
+def test_e2e_background_wrapped_not_denied_and_suggestion_has_no_operator():
+    decision, reason = _decision("Bash", {"command": "nohup flutter test &"})
+    assert decision == "deny"
+    assert "'&'" not in reason
+    assert "-- nohup flutter test\n" in reason
+
+
+@pytest.mark.parametrize("command", [
+    "fvm flutter test",
+    "FOO=1 flutter test",
+    "nohup flutter test &",
+    "flutter build macos;",
+    "uv run pytest -q",
+])
+def test_e2e_copied_suggestion_is_accepted(command):
+    """照抄 deny 訊息中的建議寫法重新送進 hook，必須放行。"""
+    decision, reason = _decision("Bash", {"command": command})
+    assert decision == "deny"
+    suggestion = [ln.strip() for ln in reason.splitlines() if ln.strip().startswith("python3 ")][0]
+    decision2, _ = _decision("Bash", {"command": suggestion})
+    assert decision2 != "deny"
+
+
+def test_e2e_deny_message_says_replace_only_the_statement():
+    _, reason = _decision("Bash", {"command": "flutter test"})
+    assert "cd、管線" in reason

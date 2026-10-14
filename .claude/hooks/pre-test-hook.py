@@ -57,7 +57,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib import setup_hook_logging, run_hook_safely, get_project_root, read_json_from_stdin, emit_hook_output
 from lib.hook_messages import ValidationMessages
-from lib.test_command_parse import RUNNER_DART, RUNNER_FLUTTER, find_test_invocations, find_unwrapped_heavy
+from lib.test_command_parse import RUNNER_DART, RUNNER_FLUTTER, find_test_invocations
 
 
 # 測試命令判定（2026-10-14 改用共用模組）
@@ -111,6 +111,8 @@ def build_block_reason(tool_name: str, tool_input: dict):
         )
     if tool_name != "Bash":
         return None
+    # 延遲匯入：匯入失敗也走呼叫端的 fail-open，不讓封堵端故障擋掉環境檢查
+    from lib.test_command_parse import find_unwrapped_heavy
     unwrapped = find_unwrapped_heavy(tool_input.get("command", ""))
     if not unwrapped:  # None（無法解析）與 []（無 heavy）皆放行
         return None
@@ -119,6 +121,7 @@ def build_block_reason(tool_name: str, tool_input: dict):
         "偵測到未經 run-with-timeout 包裝的 heavy 命令（全套件測試或編譯），"
         "會繞過本機名額閘門。請把該命令原樣包進 "
         "python3 {w} <秒> -- <原命令>，可直接複製（{s} 秒為預設逾時，可依需要調整）：\n{sg}\n"
+        "只替換該敘述本身，cd、管線與其他敘述保持在包裝之外。"
         "指定具體測試檔的執行不需排隊、不需包裝。".format(
             w=WRAPPER_PATH, s=WRAPPER_TIMEOUT_SECONDS, sg=suggestions)
     )
@@ -193,13 +196,16 @@ def main():
         logger.error("封堵判定失敗，fail-open: %s", exc)
         block_reason = None
     if block_reason:
-        logger.warning("deny: %s", block_reason.splitlines()[0])
-        emit_hook_output(
-            "PreToolUse",
-            permission_decision="deny",
-            permission_decision_reason=block_reason,
-        )
-        return 0
+        try:
+            logger.warning("deny: %s", block_reason.splitlines()[0])
+            emit_hook_output(
+                "PreToolUse",
+                permission_decision="deny",
+                permission_decision_reason=block_reason,
+            )
+            return 0
+        except Exception as exc:  # deny 組裝失敗同樣 fail-open
+            sys.stderr.write("pre-test-hook deny 輸出失敗，fail-open 放行: {}\n".format(exc))
 
     if not is_test_command(tool_name, tool_input):
         return 0

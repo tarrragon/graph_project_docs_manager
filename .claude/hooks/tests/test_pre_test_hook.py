@@ -239,3 +239,35 @@ def test_judgement_exception_fails_open(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "fail-open" in captured.err
     assert "deny" not in captured.out
+
+
+def _run_main_with(monkeypatch, command):
+    monkeypatch.setattr(pre_test_hook_module, "read_json_from_stdin",
+                        lambda logger: {"tool_name": "Bash", "tool_input": {"command": command}})
+    monkeypatch.setattr(pre_test_hook_module, "check_flutter_sdk", lambda: (True, "ok"))
+    monkeypatch.setattr(pre_test_hook_module, "check_dependencies", lambda d: [])
+
+
+def test_parse_module_import_failure_fails_open(monkeypatch, capsys):
+    """test_command_parse 匯入失敗（延遲匯入納入 try）時放行並寫 stderr。"""
+    _run_main_with(monkeypatch, "fvm flutter test")
+    monkeypatch.setitem(sys.modules, "lib.test_command_parse", None)
+    assert pre_test_hook_module.main() == 0
+    captured = capsys.readouterr()
+    assert "fail-open" in captured.err
+    assert "deny" not in captured.out
+
+
+def test_deny_emit_failure_fails_open(monkeypatch, capsys):
+    """deny 輸出組裝失敗時放行並寫 stderr，不讓例外外洩成 hook error。"""
+    _run_main_with(monkeypatch, "fvm flutter test")
+    real_emit = pre_test_hook_module.emit_hook_output
+
+    def emit(*args, **kwargs):
+        if kwargs.get("permission_decision") == "deny":
+            raise RuntimeError("emit boom")
+        return real_emit(*args, **kwargs)
+
+    monkeypatch.setattr(pre_test_hook_module, "emit_hook_output", emit)
+    assert pre_test_hook_module.main() == 0
+    assert "fail-open" in capsys.readouterr().err
