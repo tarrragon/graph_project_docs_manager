@@ -344,7 +344,7 @@ def test_nesting_depth_is_bounded():
     cmd = "git commit -m x"
     for _ in range(8):
         cmd = "bash -c " + shlex.quote(cmd)
-    assert _subs(cmd) == []  # 超過深度上限：放棄而非無限遞迴
+    assert find_git_invocations(cmd, {"commit"}) is None  # 超過深度上限：與頂層無法解析同形
 
 
 class TestEffectiveDir:
@@ -437,7 +437,7 @@ class TestAliasExpansion:
 
     def test_alias_loop_terminates(self, monkeypatch):
         self._patch(monkeypatch, {"a": "b", "b": "a"})
-        assert _subs("git a") == []
+        assert find_git_invocations("git a", {"commit"}) is None
 
     def test_alias_lookup_uses_effective_dir(self, monkeypatch):
         calls = self._patch(monkeypatch, {"ci": "commit"})
@@ -487,3 +487,63 @@ def test_mutation_without_nested_script_support_misses(monkeypatch):
     monkeypatch.setattr(gcp, "_nested_script", lambda statement, idx: None)
     assert _subs("bash -c 'git commit -m x'") == []
     assert _subs("git commit -m x") != []
+
+
+class TestUnparseableIsNone:
+    """0.5.0-W1-120.7.1 審查修正：巢狀與別名的無法解析一律回 None（同頂層 tokenize 失敗）。"""
+
+    def test_nested_tokenize_failure_is_none(self):
+        assert find_git_invocations("bash -c \"git commit -m 'x\"", {"commit"}) is None
+
+    def test_nested_ok_control_is_list(self):
+        assert find_git_invocations("bash -c \"git commit -m 'x'\"", {"commit"}) is not None
+
+    def test_alias_lookup_cap_is_none(self, monkeypatch):
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        many = "; ".join(f"git zz{i} x" for i in range(gcp._MAX_ALIAS_LOOKUPS + 1))
+        assert find_git_invocations(many, {"commit"}) is None
+
+    def test_alias_lookup_under_cap_is_list(self, monkeypatch):
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        few = "; ".join(f"git zz{i} x" for i in range(gcp._MAX_ALIAS_LOOKUPS))
+        assert find_git_invocations(few, {"commit"}) == []
+
+    def test_alias_lookup_is_cached(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: calls.append(n))
+        same = "; ".join("git zz x" for _ in range(30))
+        assert find_git_invocations(same, {"commit"}) == []
+        assert len(calls) == 1
+
+    def test_alias_total_time_budget_is_none(self, monkeypatch):
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        clock = iter(range(0, 1000, 5))
+        monkeypatch.setattr(gcp.time, "monotonic", lambda: next(clock))
+        assert find_git_invocations("git aa x; git bb x", {"commit"}) is None
+
+    def test_alias_timeout_is_none(self, monkeypatch):
+        def slow(*args, **kwargs):
+            raise subprocess.TimeoutExpired("git", 1)
+
+        monkeypatch.setattr(gcp.subprocess, "run", slow)
+        assert find_git_invocations("git ci -m x", {"commit"}) is None
+
+    def test_mutation_without_cap_returns_list(self, monkeypatch):
+        """變異確認：上限放寬後，超限輸入不再回 None（證明測試鑑別力）。"""
+        monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: None)
+        monkeypatch.setattr(gcp, "_MAX_ALIAS_LOOKUPS", 1000)
+        many = "; ".join(f"git zz{i} x" for i in range(9))
+        assert find_git_invocations(many, {"commit"}) == []
+
+    def test_mutation_nested_failure_swallowed_returns_list(self, monkeypatch):
+        """變異確認：舊行為（巢狀失敗回空）會使上面的 None 斷言翻紅。"""
+        original = gcp._scan_script
+
+        def swallowing(script, state, depth, ctx):
+            try:
+                return original(script, state, depth, ctx)
+            except gcp._Unparseable:
+                return []
+
+        monkeypatch.setattr(gcp, "_scan_script", swallowing)
+        assert find_git_invocations("bash -c \"git commit -m 'x\"", {"commit"}) == []

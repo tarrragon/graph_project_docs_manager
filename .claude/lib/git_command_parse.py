@@ -34,6 +34,7 @@ import os
 import re
 import shlex
 import subprocess
+import time
 from dataclasses import dataclass, field, replace
 from typing import FrozenSet, Iterable, List, Optional, Tuple
 
@@ -527,7 +528,17 @@ def _walk_statements(
 # ===== 包裝命令、巢狀 shell、別名 =====
 
 _MAX_NESTING = 5
-_ALIAS_READ_TIMEOUT_SEC = 2
+_ALIAS_READ_TIMEOUT_SEC = 1
+_MAX_ALIAS_LOOKUPS = 8  # 單次解析最多實際讀取（不含快取命中）次數
+_ALIAS_TOTAL_BUDGET_SEC = 3.0  # 單次解析別名讀取累計時間上限
+
+
+class _Unparseable(Exception):
+    """內部訊號：無法安全解析（超出深度、巢狀無法 tokenize、別名查詢超限或逾時）。
+
+    由 `find_git_invocations` 轉為與頂層 tokenize 失敗相同的 None，
+    使巢狀情形與頂層情形對呼叫端語意一致，不靜默放行。
+    """
 _SHELLS = frozenset({"bash", "sh", "zsh", "dash", "ksh"})
 _SHELL_C_FLAG_RE = re.compile(r"^-[A-Za-z]*c[A-Za-z]*$")
 
@@ -539,6 +550,12 @@ _GIT_BUILTINS = frozenset(
         "init", "log", "merge", "mv", "pull", "push", "rebase", "remote", "reset",
         "restore", "revert", "rm", "show", "stash", "status", "switch", "tag",
         "worktree", "reflog", "rev-parse", "ls-files", "commit-tree", "update-ref",
+        "show-ref", "for-each-ref", "cat-file", "hash-object", "write-tree",
+        "read-tree", "symbolic-ref", "merge-base", "diff-tree", "diff-index",
+        "ls-tree", "ls-remote", "submodule", "notes", "archive", "bundle", "gc",
+        "fsck", "count-objects", "maintenance", "sparse-checkout", "version",
+        "help", "shortlog", "format-patch", "mergetool", "difftool", "prune",
+        "pack-refs", "repack", "update-index", "checkout-index", "var",
     }
 )
 
@@ -550,7 +567,9 @@ def _read_git_alias(directory: Optional[str], name: str) -> Optional[str]:
         proc = subprocess.run(
             cmd, capture_output=True, text=True, timeout=_ALIAS_READ_TIMEOUT_SEC
         )
-    except Exception as exc:  # 別名讀取失敗不得影響守衛：視為無別名
+    except subprocess.TimeoutExpired as exc:
+        raise _Unparseable("alias read timeout") from exc  # 逾時無法判定：不可當作無別名
+    except Exception as exc:  # 無 git 等讀取失敗：視為無別名
         _logger.debug("read git alias failed (name=%s): %s", name, exc)  # i18n-exempt
         return None
     if proc.returncode != 0:
@@ -599,15 +618,34 @@ class _Ctx:
     def __init__(self, wanted: FrozenSet[str], base_dir: Optional[str]):
         self.wanted = wanted
         self.base_dir = base_dir
+        self.alias_cache: dict = {}
+        self.lookups = 0
+        self.alias_elapsed = 0.0
+
+    def alias(self, directory: Optional[str], name: str) -> Optional[str]:
+        """帶快取、次數與累計時間上限的別名讀取；超限丟 _Unparseable。"""
+        key = (directory, name)
+        if key in self.alias_cache:
+            return self.alias_cache[key]
+        if self.lookups >= _MAX_ALIAS_LOOKUPS or self.alias_elapsed >= _ALIAS_TOTAL_BUDGET_SEC:
+            raise _Unparseable("alias lookup budget exceeded")
+        self.lookups += 1
+        started = time.monotonic()
+        try:
+            value = _read_git_alias(directory, name)
+        finally:
+            self.alias_elapsed += time.monotonic() - started
+        self.alias_cache[key] = value
+        return value
 
 
 def _scan_script(script: str, state: _DirState, depth: int, ctx: "_Ctx") -> List[GitInvocation]:
     """遞迴解析巢狀腳本；巢狀內的 cd 不外溢，無法 tokenize 時視為無命中。"""
     if depth >= _MAX_NESTING:
-        return []
+        raise _Unparseable("nesting too deep")
     tokens = _tokenize_command(script)
     if tokens is None:
-        return []
+        raise _Unparseable("nested script cannot be tokenized")
     return _scan_tokens(tokens, state, depth + 1, ctx)
 
 
@@ -661,8 +699,10 @@ def _git_invocations(
                 dir_unknown=eff.unknown,
             )
         ]
-    if depth >= _MAX_NESTING or token.startswith("-") or token in _GIT_BUILTINS:
+    if token.startswith("-") or token in _GIT_BUILTINS:
         return []
+    if depth >= _MAX_NESTING:
+        raise _Unparseable("alias chain too deep")
     lookup_dir = ctx.base_dir if eff.unknown else eff.path
     return _expand_alias(statement, git_idx, idx, lookup_dir, state, depth, ctx)
 
@@ -671,7 +711,7 @@ def _expand_alias(
     statement: List[str], git_idx: int, idx: int, lookup_dir: Optional[str],
     state: _DirState, depth: int, ctx: "_Ctx",
 ) -> List[GitInvocation]:
-    value = _read_git_alias(lookup_dir, statement[idx])
+    value = ctx.alias(lookup_dir, statement[idx])
     if not value:
         return []
     if value.startswith("!"):
@@ -750,4 +790,8 @@ def find_git_invocations(
         return None
 
     ctx = _Ctx(_expand_subcommand_aliases(subcommands), base_dir)
-    return _scan_tokens(tokens, _DirState(base_dir, False), 0, ctx)
+    try:
+        return _scan_tokens(tokens, _DirState(base_dir, False), 0, ctx)
+    except _Unparseable as exc:
+        _logger.warning("command cannot be parsed safely: %s", exc)  # i18n-exempt
+        return None
