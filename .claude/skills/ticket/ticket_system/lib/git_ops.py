@@ -411,9 +411,39 @@ def _warn_sync_failed(paths: List[str], step: str, err: str) -> None:
     )
 
 
+def _run_sync_step_with_budget(
+    args: List[str], cwd: str, anchor_path: str, input_text: Optional[str] = None
+) -> Tuple[bool, str]:
+    """共用 index 同步步驟：鎖競爭時沿用提交重試的退避預算（``retry_commit_attempt``）。
+
+    HEAD 已推進，同步失敗會留下過期 entry；預算與提交路徑一致，不另訂一套。
+    延遲匯入（本檔可能以檔案路徑單獨載入）；匯入失敗退回單次嘗試。
+    """
+    def attempt_once() -> Tuple[bool, str, str]:
+        return _run_git_with_lock_retry(
+            args, cwd=cwd, input_text=input_text, max_retries=1,
+            timeout=None,  # 持 index.lock 期間被 timeout 殺掉會殘留鎖，比照 update-ref
+        )
+
+    try:
+        from ticket_system.lib.git_utils import retry_commit_attempt
+    except ImportError:
+        ok, _, err = attempt_once()
+        return ok, err
+
+    last = {"ok": False, "err": ""}
+
+    def attempt() -> Tuple[str, str]:
+        last["ok"], _, last["err"] = attempt_once()
+        return ("committed" if last["ok"] else "git_failed"), last["err"]
+
+    retry_commit_attempt(attempt, anchor_path, os.path.basename(anchor_path))
+    return bool(last["ok"]), str(last["err"])
+
+
 def _sync_shared_index_after_commit(
     paths: List[str], tree_sha: str, cwd: str, old_head: Optional[str] = None
-) -> None:
+) -> List[str]:
     """提交成功（update-ref 已推進 HEAD）後，將本次 ``paths`` 同步至共用
     index，避免共用 index 對這些路徑停留在舊 HEAD 狀態（凍結累積），日後
     任何裸 commit 回退這些路徑。
@@ -434,17 +464,21 @@ def _sync_shared_index_after_commit(
     update-ref 已成功，此步驟失敗不應讓呼叫端誤判整體提交失敗（那會導致
     重試造成重複提交）。此函式全程不帶 ``GIT_INDEX_FILE``（env 用行程預設
     環境），寫入對象即共用 index。
+
+    Returns:
+        最終同步失敗的路徑（預算耗盡仍撞鎖等）；空清單表同步完成或無須同步。
     """
+    failed: List[str] = []
     head_entries = _blob_entries("HEAD", paths, cwd)
     if head_entries is None:
         _warn_sync_failed(paths, "ls-tree HEAD", "無法讀取當下 HEAD")
-        return
+        return list(paths)
     tree_entries = _blob_entries(tree_sha, paths, cwd) or {}
     parent_entries = (_blob_entries(old_head, paths, cwd) or {}) if old_head else {}
     index_entries = _shared_index_entries(paths, cwd)
     if index_entries is None:
         _warn_sync_failed(paths, "ls-files", "無法讀取共用 index")
-        return
+        return list(paths)
 
     to_sync: List[str] = []
     foreign: List[str] = []
@@ -475,21 +509,24 @@ def _sync_shared_index_after_commit(
         "{} {} 0\t{}\n".format(*head_entries[p].split(), p) for p in present
     )
     if index_info:
-        ok, _, err = _run_git_with_lock_retry(
-            ["git", "update-index", "--index-info"], cwd=cwd, input_text=index_info,
-            timeout=None,  # 持 index.lock 期間被 timeout 殺掉會殘留鎖，比照 update-ref
+        ok, err = _run_sync_step_with_budget(
+            ["git", "update-index", "--index-info"], cwd, os.path.join(cwd, present[0]),
+            input_text=index_info,
         )
         if not ok:
             _warn_sync_failed(present, "update-index", err)
+            failed.extend(present)
 
     missing = [p for p in to_sync if p not in head_entries]
     if missing:
-        ok, _, err = _run_git_with_lock_retry(
-            ["git", "update-index", "--force-remove", "--"] + missing, cwd=cwd,
-            timeout=None,  # 同上：持鎖步驟不設會殺行程的 timeout
+        ok, err = _run_sync_step_with_budget(
+            ["git", "update-index", "--force-remove", "--"] + missing, cwd,
+            os.path.join(cwd, missing[0]),
         )
         if not ok:
             _warn_sync_failed(missing, "force-remove", err)
+            failed.extend(missing)
+    return failed
 
 
 @dataclass(frozen=True)
@@ -830,8 +867,15 @@ def commit_files_isolated(
                 ),
             }
 
-        _sync_shared_index_after_commit(expected_changes, tree_sha, cwd, old_head)
-        return {"status": "committed", "commit_sha": commit_sha, "error": None}
+        sync_failed = _sync_shared_index_after_commit(
+            expected_changes, tree_sha, cwd, old_head
+        )
+        # rc 維持成功：HEAD 已推進，回報失敗會讓呼叫端重試造成重複提交；
+        # 以欄位明示過期 entry 路徑，WARNING 已附補救指令（restore --staged）
+        return {
+            "status": "committed", "commit_sha": commit_sha, "error": None,
+            "index_sync_failed": sync_failed or [],
+        }
     finally:
         try:
             if os.path.exists(temp_index_path):

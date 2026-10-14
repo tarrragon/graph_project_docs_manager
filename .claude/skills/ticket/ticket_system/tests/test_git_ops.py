@@ -724,11 +724,57 @@ class TestSharedIndexSyncAfterCommit:
 
         with patch.object(git_ops, "_run_git", side_effect=lock_on_update_index), patch.object(
             git_ops.time, "sleep", return_value=None
-        ):
+        ), patch("ticket_system.lib.git_utils._sleep", return_value=None):
             self._run_deferred_sync(first)
         err = capsys.readouterr().err
         assert "[WARNING]" in err
         assert f"git restore --staged -- {self._REL}" in err
+
+    def _lock_update_index_n_times(self, n: int):
+        """前 n 次 update-index 回報 index.lock 撞鎖，其後走真實 git。"""
+        real = git_ops._run_git
+        state = {"left": n}
+
+        def fake(args, *a, **kw):
+            if args[:2] == ["git", "update-index"] and state["left"] > 0:
+                state["left"] -= 1
+                return False, "", "fatal: Unable to create '/r/.git/index.lock': File exists."
+            return real(args, *a, **kw)
+
+        return fake
+
+    def test_transient_lock_on_sync_self_heals(self, repo):
+        """E1：同步撞暫時性 index.lock，退避重試後 entry == HEAD（修正前停在舊雜湊）。"""
+        first = self._commit_deferring_sync(repo, "v2\n")
+        fake = self._lock_update_index_n_times(2)
+        with patch.object(git_ops, "_run_git", side_effect=fake), patch(
+            "ticket_system.lib.git_utils._sleep", return_value=None
+        ):
+            failed = git_ops._sync_shared_index_after_commit(
+                first["paths"], first["tree_sha"], first["cwd"], *first["args"]
+            )
+        assert failed == []
+        assert self._index_blob(repo) == self._head_blob(repo)
+
+    def test_exhausted_sync_reports_failed_paths_in_commit_result(self, repo, capsys):
+        """預算耗盡：結果欄位 index_sync_failed 列出路徑，WARNING 附補救指令，entry 仍舊。"""
+        (repo / self._REL).write_text("v2\n")
+        fake = self._lock_update_index_n_times(10_000)
+        with patch.object(git_ops, "_run_git", side_effect=fake), patch.object(
+            git_ops.time, "sleep", return_value=None
+        ), patch("ticket_system.lib.git_utils._sleep", return_value=None):
+            result = git_ops.commit_files_isolated([str(repo / self._REL)], "m", cwd=str(repo))
+        assert result["status"] == "committed"
+        assert result["index_sync_failed"] == [self._REL]
+        assert f"git restore --staged -- {self._REL}" in capsys.readouterr().err
+        assert self._index_blob(repo) != self._head_blob(repo)
+
+    def test_no_lock_commit_result_has_empty_sync_failed(self, repo):
+        """對照：無鎖時 entry == HEAD 且 index_sync_failed 為空。"""
+        (repo / self._REL).write_text("v2\n")
+        result = git_ops.commit_files_isolated([str(repo / self._REL)], "m", cwd=str(repo))
+        assert result["index_sync_failed"] == []
+        assert self._index_blob(repo) == self._head_blob(repo)
 
     def _three_commits(self, repo: Path):
         return [self._commit_deferring_sync(repo, c) for c in ("v2\n", "v3\n", "v4\n")]
