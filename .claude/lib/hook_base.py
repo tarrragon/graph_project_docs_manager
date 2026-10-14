@@ -35,6 +35,9 @@ GIT_TOPLEVEL_TIMEOUT = 5
 # hook_project_env fixture。
 ENV_HOOK_TEST_ISOLATION = "HOOK_TEST_ISOLATION"
 
+# 專案根解析的行程內快取：(cwd, CLAUDE_PROJECT_DIR, HOOK_TEST_ISOLATION) -> 根目錄
+_PROJECT_ROOT_CACHE: dict[tuple[str, str | None, str | None], Path] = {}
+
 
 # ============================================================================
 # 內部輔助函式
@@ -101,8 +104,37 @@ def _linked_worktree_root() -> Path | None:
     return Path(toplevel_result.stdout.strip())
 
 
+def clear_project_root_cache() -> None:
+    """清除專案根解析快取（測試用：同鍵下替換暫存 repo 或替身後須重算）。"""
+    _PROJECT_ROOT_CACHE.clear()
+
+
 def _find_project_root() -> Path:
-    """查詢專案根目錄
+    """行程內快取版專案根解析。
+
+    Why：單一 hook 行程內 setup_hook_logging 與 mark_hook_entry 多次解析專案根，
+    每次都起 git 子程序（實測每行程 3 次 rev-parse）；同行程內 cwd 與環境變數
+    不變時結果恆定。鍵含 cwd、CLAUDE_PROJECT_DIR、HOOK_TEST_ISOLATION，任一改變即重算。
+    """
+    try:
+        cwd = os.getcwd()
+    except OSError:
+        # cwd 已被刪除：無法組鍵，不快取，維持原解析行為
+        return _resolve_project_root()
+    key = (
+        cwd,
+        os.environ.get(ENV_PROJECT_DIR),
+        os.environ.get(ENV_HOOK_TEST_ISOLATION),
+    )
+    cached = _PROJECT_ROOT_CACHE.get(key)
+    if cached is None:
+        cached = _resolve_project_root()
+        _PROJECT_ROOT_CACHE[key] = cached
+    return cached
+
+
+def _resolve_project_root() -> Path:
+    """查詢專案根目錄（未快取）
 
     優先順序：
     0. 測試隔離逃生艙（HOOK_TEST_ISOLATION=1 時）：直接採用

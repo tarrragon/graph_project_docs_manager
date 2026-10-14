@@ -233,3 +233,13 @@ def hook_project_env(tmp_path):
     project_root.mkdir(parents=True, exist_ok=True)
     env = {"CLAUDE_PROJECT_DIR": str(project_root), "HOOK_TEST_ISOLATION": "1"}
     return project_root, env
+
+
+@pytest.fixture(autouse=True)
+def clear_project_root_cache():
+    """每個測試前後清除 hook_base 專案根快取，避免同鍵不同結果的跨測試汙染。"""
+    from lib import hook_base
+
+    hook_base.clear_project_root_cache()
+    yield
+    hook_base.clear_project_root_cache()
