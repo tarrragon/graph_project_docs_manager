@@ -49,6 +49,10 @@
           },
           {
             "type": "command",
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/global-pkill-guard-hook.py"
+          },
+          {
+            "type": "command",
             "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/hooks-test-gate-hook.py",
             "timeout": 120
           },
