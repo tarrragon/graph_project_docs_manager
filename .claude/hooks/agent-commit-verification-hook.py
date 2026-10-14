@@ -745,11 +745,23 @@ def _lookup_agent_info(project_root, agent_id, logger):
             if d.get("agent_id") == agent_id:
                 desc = d.get("agent_description", "unknown")
                 uses_wt = bool(d.get("branch_name"))
+                _log_lookup_result(logger, agent_id, True, project_root)
                 return desc, uses_wt
     except Exception as e:
         logger.debug("dispatch-active.json lookup failed: %s", e)
 
+    _log_lookup_result(logger, agent_id, False, project_root)
     return "unknown", False
+
+
+def _log_lookup_result(logger, agent_id, hit, project_root) -> None:
+    """判定日誌行：agent_id、dispatch 查詢是否命中、本次讀取的狀態根路徑。"""
+    logger.debug(
+        "dispatch lookup: agent_id=%s hit=%s state_root=%s",
+        agent_id,
+        hit,
+        project_root,
+    )
 
 
 def main() -> None:
