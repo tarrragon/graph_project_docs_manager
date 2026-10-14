@@ -18,7 +18,7 @@
           {
             "type": "command",
             "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/hook-dispatcher.py --group PreToolUse:Bash",
-            "timeout": 620
+            "timeout": 995
           }
         ]
       },
@@ -521,7 +521,7 @@
           {
             "type": "command",
             "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/hook-dispatcher.py --group PostToolUse:Bash",
-            "timeout": 140
+            "timeout": 200
           }
         ]
       },

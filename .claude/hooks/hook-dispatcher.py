@@ -31,16 +31,19 @@ Hook 分派程序 (PreToolUse / PostToolUse 共用)
   - stderr: 逐支加 `[hook名] ` 前綴；整體 exit 2 時 JSON 的 deny/ask reason 一併併入 stderr
     （CC 對 exit 2 只讀 stderr）
 
-失敗語意:
-  - 單支例外 / 逾時: fail-open 但可見（stderr 前綴 + 日誌），fail_closed 的守衛
-    由其自身 run_hook_safely(fail_closed=True) 在 hook 內回 2
+失敗語意（逐支尊重各自語意；fail_closed 以掃描 hook 檔的 fail_closed=True 判定）:
+  - 單支例外 / 逾時: fail_open 的 hook 為 exit 1（可見）；fail_closed 的守衛為 exit 2。
+    HookTimeout 為 BaseException，會穿過 hook 內的 run_hook_safely，故由分派層補上 exit 2
   - 分派機制自身失敗: 該支退回以子程序執行（與原註冊等價），守衛不消失
-  - registry 讀不到: exit 1 並寫 stderr（fail-open 可見，fail-closed 會鎖死修復用 Bash）
+  - 群組預算用盡: 剩餘 hook 不略過，改以子程序並行執行（尾段），各用完整自身逾時
+  - registry 讀不到 / 分派層例外: 以內建 fail_closed 守衛清單（FALLBACK_FAIL_CLOSED_GUARDS）
+    逐支子程序執行；守衛擋下則 exit 2，否則 exit 1 並寫 stderr（fail_open 守衛不鎖死修復用 Bash）
 
 逾時推算:
-  每支上限 = min(registry timeout（缺省 30 秒）, 群組剩餘預算)；
-  群組預算（budget）= 實際執行上限，settings.json 逾時 = budget + 餘裕。
-  任一支卡住時最久等到該支上限，整體不超過 budget。
+  每支上限 = registry timeout（缺省 60 秒，對齊 Claude Code 預設）。
+  序列段只在「剩餘預算 >= 自身逾時」時啟動 hook，序列段不超出 budget；其餘（含其後全部）進尾段並行，
+  各用完整自身逾時。最壞上限 = budget + 最大單支逾時，settings.json 逾時 >= 該值 + 餘裕（20 秒），
+  且須 < 1000（單位守衛 test_settings_hook_timeout_units）。逾時大於剩餘預算的重型 hook 因此固定走尾段子程序。
 
 HOOK_METADATA (JSON):
 {
@@ -56,11 +59,13 @@ import importlib
 import importlib.util
 import json
 import os
+import re
 import runpy
 import signal
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -68,7 +73,17 @@ from typing import Callable, Dict, List, Optional
 HOOKS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = HOOKS_DIR.parent.parent
 REGISTRY_PATH = HOOKS_DIR / "hook-dispatch-registry.json"
-DEFAULT_HOOK_TIMEOUT = 30
+DEFAULT_HOOK_TIMEOUT = 60
+TAIL_WORKERS = 32
+# registry 無法讀取時的內建守衛清單（group -> fail_closed 守衛路徑）；
+# 與 hook 檔實際宣告的一致性由 test_hook_dispatcher 的漂移測試守住
+FALLBACK_FAIL_CLOSED_GUARDS = {
+    "PreToolUse:Bash": [
+        ".claude/hooks/bash-git-protected-branch-guard-hook.py",
+        ".claude/hooks/workspace-wipe-guard-hook.py",
+    ],
+}
+_FAIL_CLOSED_RE = re.compile(r"fail_closed\s*=\s*True")
 DEFAULT_GROUP_BUDGET = 120
 DECISION_RANK = {"deny": 3, "block": 3, "ask": 2, "allow": 1}
 DENY_LEVELS = ("deny", "block", "ask")
@@ -100,6 +115,19 @@ def load_group(group: str, registry_path: Path = REGISTRY_PATH) -> dict:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.load_group(group, registry_path)
+
+
+def is_fail_closed(path: Path) -> bool:
+    """hook 檔是否宣告 run_hook_safely(..., fail_closed=True)；讀不到視為否"""
+    try:
+        return bool(_FAIL_CLOSED_RE.search(Path(path).read_text(encoding="utf-8")))
+    except OSError:
+        return False
+
+
+def _failure_code(path: Path) -> int:
+    """分派層代 hook 判定的失敗碼：fail_closed 守衛 2，其餘 1"""
+    return EXIT_BLOCK if is_fail_closed(path) else EXIT_ERROR
 
 
 def _alarm_handler(signum, frame):
@@ -142,9 +170,9 @@ def run_inprocess(path: Path, payload: str, timeout: float) -> HookResult:
         except SystemExit as e:
             code = _exit_code(e.code)
         except HookTimeout:
-            code, error = EXIT_ERROR, "逾時（{}s）被分派器終止".format(timeout)
-        except Exception as e:  # 單支例外隔離：記錄並回報，不影響其他支
-            code, error = EXIT_ERROR, "{}: {}".format(type(e).__name__, e)
+            code, error = _failure_code(path), "逾時（{}s）被分派器終止".format(timeout)
+        except Exception as e:  # 單支例外隔離：記錄並回報，不影響其他支（載入期例外對 fail_closed 守衛為 2）
+            code, error = _failure_code(path), "{}: {}".format(type(e).__name__, e)
         finally:
             if old_handler is not None:
                 signal.setitimer(signal.ITIMER_REAL, 0)
@@ -173,7 +201,7 @@ def run_subprocess(path: Path, payload: str, timeout: float) -> HookResult:
         )
         return HookResult(name, p.returncode, p.stdout, p.stderr)
     except subprocess.TimeoutExpired:
-        return HookResult(name, EXIT_ERROR, error="逾時（{}s）子程序被終止".format(timeout))
+        return HookResult(name, _failure_code(path), error="逾時（{}s）子程序被終止".format(timeout))
 
 
 def _parse_json_object(text: str) -> Optional[dict]:
@@ -270,22 +298,36 @@ def merge_results(results: List[HookResult]) -> tuple:
 def dispatch(entries: List[dict], payload: str, root: Path, budget: float,
              logger=None, inprocess: bool = True,
              clock: Callable[[], float] = time.monotonic) -> List[HookResult]:
-    """依序執行 entries；每支上限 = min(自身 timeout, 剩餘預算)"""
-    results = []
+    """序列段依序執行「剩餘預算 >= 自身逾時」的 hook（序列段不超出預算）；其餘（含其後全部）進尾段並行，不略過"""
+    results = []  # type: List[Optional[HookResult]]
+    tail = []  # type: List[tuple]
     start = clock()
-    for entry in entries:
+    for index, entry in enumerate(entries):
         path = root / entry["path"]
         name = hook_name_of(entry["path"])
-        remaining = budget - (clock() - start)
-        if remaining <= 0:
-            results.append(HookResult(name, EXIT_ERROR, error="群組預算用盡，未執行"))
-            continue
-        timeout = min(float(entry.get("timeout", DEFAULT_HOOK_TIMEOUT)), remaining)
+        results.append(None)
+        timeout = float(entry.get("timeout", DEFAULT_HOOK_TIMEOUT))
         if not path.exists():
-            results.append(HookResult(name, EXIT_ERROR, error="hook 檔案不存在: {}".format(path)))
-            continue
-        results.append(_run_one(path, payload, timeout, inprocess, logger))
-    return results
+            results[index] = HookResult(name, EXIT_ERROR, error="hook 檔案不存在: {}".format(path))
+        elif tail or budget - (clock() - start) < timeout:
+            tail.append((index, path, timeout))
+        else:
+            results[index] = _run_one(path, payload, timeout, inprocess, logger)
+    if tail:
+        if logger:
+            logger.info("群組預算不足，{} 支 hook 改以子程序並行執行".format(len(tail)))
+        _run_tail(tail, payload, results, logger)
+    return [r for r in results if r is not None]
+
+
+def _run_tail(tail: List[tuple], payload: str, results: list, logger) -> None:
+    """尾段：子程序並行，各用完整自身逾時（不受群組預算縮短）"""
+    def one(item):
+        _, path, timeout = item
+        return _run_one(path, payload, timeout, False, logger)
+    with ThreadPoolExecutor(max_workers=min(TAIL_WORKERS, len(tail))) as pool:
+        for item, r in zip(tail, pool.map(one, tail)):
+            results[item[0]] = r
 
 
 def _run_one(path: Path, payload: str, timeout: float, inprocess: bool, logger) -> HookResult:
@@ -312,9 +354,39 @@ def run_group(group: str, payload: str, registry_path: Path = REGISTRY_PATH,
 
 
 def _group_from_argv(argv: List[str]) -> str:
-    if "--group" in argv:
+    if "--group" in argv and argv.index("--group") + 1 < len(argv):
         return argv[argv.index("--group") + 1]
     return ""
+
+
+def run_fallback_guards(group: str, payload: str, root: Optional[Path] = None, logger=None) -> tuple:
+    """registry / 分派層故障時：內建 fail_closed 守衛清單逐支子程序執行並合併"""
+    root = root if root is not None else PROJECT_ROOT
+    entries = [{"path": p} for p in FALLBACK_FAIL_CLOSED_GUARDS.get(group, [])]
+    results = []
+    for entry in entries:
+        path = root / entry["path"]
+        if path.exists():
+            results.append(_run_one(path, payload, float(DEFAULT_HOOK_TIMEOUT), False, logger))
+    return merge_results(results)
+
+
+def _fail_visible(group: str, e: BaseException, payload: str, logger) -> int:
+    """分派層故障：stderr 可見；fail_closed 守衛仍執行，擋下則 2，否則 1"""
+    sys.stderr.write("[hook-dispatcher] 分派失敗（group={}）: {}: {}\n".format(
+        group, type(e).__name__, e))
+    if logger:
+        logger.critical("分派失敗 group={}: {}".format(group, e))
+    try:
+        code, out, err = run_fallback_guards(group, payload, logger=logger)
+    except Exception as fe:  # 退回清單本身失敗：只能 exit 1，可見
+        sys.stderr.write("[hook-dispatcher] 退回守衛清單執行失敗: {}: {}\n".format(type(fe).__name__, fe))
+        return EXIT_ERROR
+    if out:
+        sys.stdout.write(out + "\n")
+    if err:
+        sys.stderr.write(err + "\n")
+    return EXIT_BLOCK if code == EXIT_BLOCK else EXIT_ERROR
 
 
 def main() -> int:
@@ -331,12 +403,8 @@ def main() -> int:
     payload = sys.stdin.read()
     try:
         code, out, err = run_group(group, payload, logger=logger, inprocess=inprocess)
-    except Exception as e:  # registry 讀取失敗等：fail-open 但可見
-        sys.stderr.write("[hook-dispatcher] 分派失敗（group={}）: {}: {}\n".format(
-            group, type(e).__name__, e))
-        if logger:
-            logger.critical("分派失敗 group={}: {}".format(group, e))
-        return EXIT_ERROR
+    except Exception as e:  # registry 讀取失敗、分派層例外：守衛仍依自身語意執行
+        return _fail_visible(group, e, payload, logger)
     if out:
         sys.stdout.write(out + "\n")
     if err:
