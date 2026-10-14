@@ -135,6 +135,50 @@ def _read_text(path: Path) -> str:
         return ""  # 掃描中途消失或不可讀：視為不匯入 lib，不影響其他檔
 
 
+def _skill_top_modules(root: str, name: str) -> set:
+    """skill 提供的頂層模組名：skill 根與其 scripts/ 下的 .py 模組、帶 __init__.py 的套件。
+
+    hook 常以 sys.path.insert 指向 skill 根或 scripts/ 後匯入，所以兩處都算。
+    """
+    mods = set()
+    for sub in ("", "scripts"):
+        base = Path(root) / ".claude" / "skills" / name / sub
+        if not base.is_dir():
+            continue
+        for entry in base.iterdir():
+            if entry.is_dir() and (entry / "__init__.py").is_file() and entry.name != "tests":
+                mods.add(entry.name)
+            elif entry.suffix == ".py" and entry.stem != "__init__" and not entry.stem.startswith("test_"):
+                mods.add(entry.stem)
+    return mods
+
+
+def _consumer_suites(root: str, skills: set) -> set:
+    """hooks／scripts 的 .py 若匯入這些 skill 的頂層模組，或引用 `skills/<名稱>/` 路徑，回傳對應套件。
+
+    匯入以行首 `from X`／`import X` 辨識，故 sys.path.insert 之後的匯入同樣涵蓋；路徑引用
+    只計非測試檔（測試檔提到路徑多為斷言字串）。通用模組名（如 constants）可能多報，只會多跑套件。
+    """
+    suites = set()
+    for suite, sub in ((SUITE_HOOKS, "hooks"), (SUITE_SCRIPTS, "scripts")):
+        mods = {s: _skill_top_modules(root, s) for s in skills}
+        for dirpath, dirnames, filenames in os.walk(Path(root) / ".claude" / sub):
+            dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+            is_test = "tests" in Path(dirpath).parts
+            for n in (n for n in filenames if n.endswith(".py")):
+                text = _read_text(Path(dirpath) / n)
+                if any(_imports_any(text, m) or (not is_test and f"skills/{s}/" in text)
+                       for s, m in mods.items()):
+                    suites.add(suite)
+    return suites
+
+
+def _imports_any(text: str, modules: set) -> bool:
+    return bool(modules) and re.search(
+        r"^\s*(?:from|import)\s+(?:%s)\b" % "|".join(re.escape(m) for m in sorted(modules)), text, re.MULTILINE
+    ) is not None
+
+
 def needs_gate(changed_paths: list) -> bool:
     """改動是否可能落在任何全套件範圍內（用於決定是否值得建立快照）。"""
     return any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES or p.startswith(".claude/")
@@ -148,6 +192,7 @@ def select_suites(changed_paths: list, root: str) -> list:
     """
     paths = [p for p in changed_paths if not is_reuse_exempt(p)]
     want = set()
+    touched_skills = {n for n in (_skill_name(p) for p in paths) if n}
     if any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES for p in paths):
         want.add(SUITE_FLUTTER)
     for p in (p for p in paths if p.startswith(".claude/")):
@@ -161,6 +206,8 @@ def select_suites(changed_paths: list, root: str) -> list:
             want.update(f"{SUITE_SKILL_PREFIX}{s}" for s in _skills_importing_lib(root))
         else:  # hooks、rules、settings、無 tests 的 skill 等：hook 測試會讀這些檔
             want.add(SUITE_HOOKS)
+    if touched_skills:
+        want |= _consumer_suites(root, touched_skills)  # hooks／scripts 匯入該 skill 時加跑
     head = [s for s in (SUITE_FLUTTER, SUITE_HOOKS, SUITE_SCRIPTS) if s in want]
     return head + sorted(s for s in want if s.startswith(SUITE_SKILL_PREFIX))
 

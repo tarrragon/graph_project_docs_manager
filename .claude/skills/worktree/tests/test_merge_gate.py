@@ -219,6 +219,28 @@ class TestScope:
         _touch(Path(skel), ".claude/skills/brandnew/tests/test_a.py")
         assert mg.select_suites([".claude/skills/brandnew/x.py"], skel) == ["skill:brandnew"]
 
+    def test_skill_imported_by_hooks_also_runs_hooks(self, skel):
+        """E2：改被 hooks 匯入的 skill（含 sys.path.insert 之後的匯入），加跑 hooks。"""
+        _touch(Path(skel), ".claude/skills/withpy/withpy_system/__init__.py")
+        _touch(Path(skel), ".claude/hooks/h.py",
+               "import sys\nsys.path.insert(0, 'x')\nif True:\n    from withpy_system.lib import y\n")
+        assert mg.select_suites([".claude/skills/withpy/mod.py"], skel) == [mg.SUITE_HOOKS, "skill:withpy"]
+
+    def test_skill_imported_by_scripts_also_runs_scripts(self, skel):
+        _touch(Path(skel), ".claude/scripts/s.py", "import mod\n")  # mod 是 withpy 根下的模組
+        assert mg.select_suites([".claude/skills/withpy/mod.py"], skel) == [mg.SUITE_SCRIPTS, "skill:withpy"]
+
+    def test_unimported_skill_runs_only_own_suite(self, skel):
+        """對照：沒被 hooks／scripts 匯入或引用的 skill 不加跑。"""
+        _touch(Path(skel), ".claude/hooks/h.py", "import os\nfrom lib import z\n")
+        assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == ["skill:lone"]
+
+    def test_path_reference_counts_only_in_non_test_files(self, skel):
+        _touch(Path(skel), ".claude/hooks/tests/test_h.py", "p = '.claude/skills/lone/x.json'\n")
+        assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == ["skill:lone"]
+        _touch(Path(skel), ".claude/hooks/g.py", "p = '.claude/skills/lone/x.json'\n")
+        assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == [mg.SUITE_HOOKS, "skill:lone"]
+
     def test_suite_commands(self, skel):
         assert mg.suite_command("skill:withpy", skel) == ["uv", "--directory", ".claude/skills/withpy", "run", "pytest"]
         nopy = mg.suite_command("skill:nopy", skel)
