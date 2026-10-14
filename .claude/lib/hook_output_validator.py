@@ -44,7 +44,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SETTINGS_PATH = PROJECT_ROOT / ".claude" / "settings.json"
 
 # Hook events whose stdout MUST be JSON with hookSpecificOutput schema
-JSON_SCHEMA_EVENTS = {"PreToolUse", "PostToolUse"}
+JSON_SCHEMA_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure"}
 
 # Dummy stdin payload（PostToolUse/PreToolUse 皆可吃）
 DUMMY_STDIN = json.dumps({
