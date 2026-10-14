@@ -287,7 +287,7 @@ def find_exempt_file_reads(root: Path) -> list:
         try:
             lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
-            continue
+            continue  # 守衛掃描中途消失或不可讀的測試檔：無內容可判，略過不影響其他檔
         for line in lines:
             if not _READ_CALL.search(line):
                 continue
