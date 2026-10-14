@@ -17,7 +17,9 @@ Session Context Guard Hook - PostToolUse Hook
   3. 檢查 stdout 是否包含完成標記（"已完成"）
   4. 若偵測成功，遞增計數器並在閾值時輸出警告
 
-計數器存放: /tmp/claude-session-completed-tickets-{ppid}
+計數器存放: /tmp/claude-session-completed-tickets-{session_id}
+（session_id 取自 hook 輸入；一次 complete 只由本 hook 計數，post-ticket-lifecycle-hook 不再計數）
+失敗語意: fail-open——取不到 session_id 或檔案讀寫失敗時略過計數，不阻擋
 閾值:
   - 2 個：輕度提醒（context 正在累積）
   - 3 個以上：強烈建議 handoff
@@ -32,14 +34,16 @@ Session Context Guard Hook - PostToolUse Hook
 
 import sys
 import json
-import os
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, emit_hook_output
 from lib.ticket_command_parse import has_complete_command
+from lib.constants import SESSION_COMPLETED_TICKETS_COUNTER_TEMPLATE
+from lib.session_state_key import session_state_path
 
 # ============================================================================
 # 常數定義
@@ -49,8 +53,8 @@ EXIT_SUCCESS = 0
 
 HOOK_NAME = "session-context-guard"
 
-# 計數器檔案路徑（使用 ppid 識別 session）
-COUNTER_FILE_TEMPLATE = "/tmp/claude-session-completed-tickets-{ppid}"
+# 計數器檔案路徑（以 hook 輸入的 session_id 識別 session）
+COUNTER_FILE_TEMPLATE = SESSION_COMPLETED_TICKETS_COUNTER_TEMPLATE
 
 # 輕度提醒閾值（完成 2 個 Ticket）
 SOFT_WARN_THRESHOLD = 2
@@ -73,16 +77,15 @@ DEFAULT_OUTPUT = {
 # 計數器管理
 # ============================================================================
 
-def get_counter_file() -> Path:
-    """取得計數器檔案路徑（以 ppid 識別 session）"""
-    ppid = os.getppid()
-    return Path(COUNTER_FILE_TEMPLATE.format(ppid=ppid))
+def get_counter_file(input_data: dict, logger=None) -> Optional[Path]:
+    """取得計數器檔案路徑（以 hook 輸入的 session_id 識別 session；取不到回傳 None）"""
+    return session_state_path(COUNTER_FILE_TEMPLATE, input_data, logger)
 
 
-def read_counter() -> int:
-    """讀取當前 session 完成的 Ticket 計數"""
-    counter_file = get_counter_file()
-    if not counter_file.exists():
+def read_counter(input_data: dict, logger=None) -> int:
+    """讀取當前 session 完成的 Ticket 計數（無檔案或讀取失敗為 0，fail-open）"""
+    counter_file = get_counter_file(input_data, logger)
+    if counter_file is None or not counter_file.exists():
         return 0
     try:
         return int(counter_file.read_text().strip())
@@ -90,14 +93,18 @@ def read_counter() -> int:
         return 0
 
 
-def increment_counter() -> int:
-    """遞增計數器並回傳新值"""
-    counter_file = get_counter_file()
-    count = read_counter() + 1
+def increment_counter(input_data: dict, logger=None) -> int:
+    """遞增計數器並回傳新值；取不到 session_id 時略過並回傳 0（fail-open，不觸發提醒）"""
+    counter_file = get_counter_file(input_data, logger)
+    if counter_file is None:
+        return 0
+    count = read_counter(input_data, logger) + 1
     try:
         counter_file.write_text(str(count))
-    except IOError:
-        pass
+    except IOError as e:
+        # fail-open：寫入失敗只少一次累計，不阻擋操作；留日誌可追蹤
+        if logger is not None:
+            logger.warning("計數器寫入失敗: %s", e)
     return count
 
 
@@ -200,7 +207,7 @@ def main() -> int:
         return EXIT_SUCCESS
 
     # 遞增計數器
-    count = increment_counter()
+    count = increment_counter(input_data, logger)
     logger.info("Ticket 完成計數：%d", count)
 
     # 依閾值決定輸出

@@ -34,15 +34,8 @@ spec.loader.exec_module(post_ticket_lifecycle_hook)
 class TestPostTicketLifecycleHook:
     """post-ticket-lifecycle-hook 單元測試類"""
 
-    def _reset_counter(self):
-        """清除 session counter 檔案"""
-        counter_file = post_ticket_lifecycle_hook.get_counter_file()
-        if counter_file.exists():
-            counter_file.unlink()
-
     def test_single_complete_success(self):
         """ticket track complete 成功 → 輸出含 additionalContext"""
-        self._reset_counter()
         input_data = {
             "tool_name": "Bash",
             "tool_input": {"command": "ticket track complete 0.1.0-W30-002"},
@@ -56,7 +49,6 @@ class TestPostTicketLifecycleHook:
 
     def test_batch_complete_success(self):
         """batch-complete 成功 → 輸出含 additionalContext"""
-        self._reset_counter()
         input_data = {
             "tool_name": "Bash",
             "tool_input": {"command": "ticket track batch-complete --ids 001,002"},
@@ -170,7 +162,6 @@ class TestPostTicketLifecycleHook:
 
     def test_output_contains_checkpoint_reminder(self):
         """成功偵測時，輸出含 POST_TICKET_COMPLETE_CHECKPOINT_REMINDER"""
-        self._reset_counter()
         input_data = {
             "tool_name": "Bash",
             "tool_input": {"command": "ticket track complete 0.1.0-W30-002"},
@@ -189,33 +180,22 @@ class TestPostTicketLifecycleHook:
         expected = {"hookSpecificOutput": {"hookEventName": "PostToolUse"}}
         assert post_ticket_lifecycle_hook.DEFAULT_OUTPUT == expected
 
-    def test_session_counter_increments(self):
-        """驗證 session counter 遞增"""
-        self._reset_counter()
-        assert post_ticket_lifecycle_hook.read_counter() == 0
-        post_ticket_lifecycle_hook.increment_counter()
-        assert post_ticket_lifecycle_hook.read_counter() == 1
-        post_ticket_lifecycle_hook.increment_counter()
-        assert post_ticket_lifecycle_hook.read_counter() == 2
-        self._reset_counter()
-
-    def test_session_counter_warning_at_threshold(self):
-        """第 2 個 Ticket 完成時出現輕度提醒"""
-        self._reset_counter()
-        # 先完成 1 個
-        post_ticket_lifecycle_hook.increment_counter()
-
+    def test_complete_does_not_count_session(self):
+        """session 完成計數只由 session-context-guard-hook 負責；本 hook 不計數也不輸出計數警告"""
+        assert not hasattr(post_ticket_lifecycle_hook, "increment_counter")
         input_data = {
             "tool_name": "Bash",
+            "session_id": "lifecycle-no-count",
             "tool_input": {"command": "ticket track complete 0.1.0-W30-002"},
             "tool_response": {"stdout": "已完成"}
         }
+        counter = Path("/tmp/claude-session-completed-tickets-lifecycle-no-count")
+        counter.unlink(missing_ok=True)
 
         with patch('sys.stdin', StringIO(json.dumps(input_data))):
             with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
                 post_ticket_lifecycle_hook.main()
 
-        output = json.loads(mock_stdout.getvalue())
-        context = output.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "Session Context Guard" in context
-        self._reset_counter()
+        context = json.loads(mock_stdout.getvalue()).get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "Session Context Guard" not in context
+        assert not counter.exists()
