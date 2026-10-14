@@ -975,3 +975,23 @@ class TestScanOnlyTreatedAsUnparsable:
             hook_module, "find_git_invocations", lambda c, s, *a, **k: orig(c, s)
         )
         assert _run_hook(monkeypatch, "setsid git reset --hard", dispatch_count=1) == 0
+
+
+class TestParseCauseMessages:
+    def test_tokenize_failure_message(self, monkeypatch, capsys):
+        assert _run_hook(monkeypatch, "git reset --hard 'unclosed", dispatch_count=1) == 2
+        err = capsys.readouterr().err
+        assert "未閉合引號" in err
+        assert "非命令位置" not in err
+
+    def test_scan_only_message(self, monkeypatch, capsys):
+        assert _run_hook(monkeypatch, "setsid git reset --hard", dispatch_count=1) == 2
+        err = capsys.readouterr().err
+        assert "非命令位置" in err
+        assert "未閉合引號" not in err
+
+    def test_positional_hit_has_no_parse_reason(self, monkeypatch, capsys):
+        assert _run_hook(monkeypatch, "git reset --hard", dispatch_count=1) == 2
+        err = capsys.readouterr().err
+        assert "未閉合引號" not in err
+        assert "非命令位置" not in err

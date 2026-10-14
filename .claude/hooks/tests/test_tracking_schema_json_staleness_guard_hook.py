@@ -478,3 +478,24 @@ def test_mutation_without_scan_scan_only_slips_through(monkeypatch):
     orig = _hook.find_git_invocations
     monkeypatch.setattr(_hook, "find_git_invocations", lambda c, s, *a, **k: orig(c, s))
     assert _run_scan(monkeypatch, _SCAN_ONLY, True) == 0
+
+
+# ============================================================================
+# 無法解析成因區分（0.5.0-W1-120.7.10）
+# ============================================================================
+
+
+@pytest.mark.parametrize("parallel", [True, False])
+def test_tokenize_failure_message(monkeypatch, capsys, parallel):
+    _run_scan(monkeypatch, "git commit -m 'unclosed", parallel)
+    err = capsys.readouterr().err
+    assert "未閉合引號" in err
+    assert "非命令位置" not in err
+
+
+@pytest.mark.parametrize("parallel", [True, False])
+def test_scan_only_message(monkeypatch, capsys, parallel):
+    _run_scan(monkeypatch, _SCAN_ONLY, parallel)
+    err = capsys.readouterr().err
+    assert "非命令位置" in err
+    assert "未閉合引號" not in err

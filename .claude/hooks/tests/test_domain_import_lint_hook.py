@@ -416,3 +416,26 @@ class TestScanOnlyDisposition:
             hook_module, "find_git_invocations", lambda c, s, *a, **k: orig(c, s)
         )
         assert self._run(monkeypatch, tmp_path, _SCAN_ONLY, True) == 0
+
+
+class TestParseCauseMessages:
+    def _run(self, monkeypatch, tmp_path, command, parallel):
+        project_root = _make_domain_project(
+            tmp_path, "import 'package:flutter/material.dart';\n"
+        )
+        monkeypatch.setattr(hook_module, "has_parallel_dispatch", lambda root: parallel)
+        return _run_hook(monkeypatch, command, project_root=project_root)
+
+    @pytest.mark.parametrize("parallel", [True, False])
+    def test_tokenize_failure_message(self, monkeypatch, tmp_path, capsys, parallel):
+        self._run(monkeypatch, tmp_path, "git commit -m 'unclosed", parallel)
+        err = capsys.readouterr().err
+        assert "未閉合引號" in err
+        assert "非命令位置" not in err
+
+    @pytest.mark.parametrize("parallel", [True, False])
+    def test_scan_only_message(self, monkeypatch, tmp_path, capsys, parallel):
+        self._run(monkeypatch, tmp_path, _SCAN_ONLY, parallel)
+        err = capsys.readouterr().err
+        assert "非命令位置" in err
+        assert "未閉合引號" not in err

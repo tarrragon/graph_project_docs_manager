@@ -17,7 +17,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent.parent))  # .claude/ — for `from lib import ...`
 
@@ -25,7 +25,9 @@ from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin  # noq
 from lib.hook_base import get_shared_state_root  # noqa: E402
 from lib.dispatch_tracker import get_active_dispatches  # noqa: E402
 from lib.git_command_parse import (  # noqa: E402
+    classify_parse_cause,
     contains_git_word,
+    explain_parse_cause,
     find_git_invocations,
 )
 
@@ -48,14 +50,18 @@ def is_commit_command(command: str) -> Optional[bool]:
     以共用解析器判定（涵蓋 git -C x commit、bash -c 等；echo 與引號內文字不誤判）。
     回傳 None 表示命令含 git 字樣但無法解析，由 main() 決定處置。
     """
+    return classify_commit_command(command)[0]
+
+
+def classify_commit_command(command: str) -> Tuple[Optional[bool], Optional[str]]:
+    """同 is_commit_command，另回傳無法確認的成因（tokenize 失敗或僅掃描命中）。"""
     if not contains_git_word(command):
-        return False
+        return False, None
     invocations = find_git_invocations(command, {"commit", "merge"}, scan=True)
-    if invocations is None:
-        return None
-    if invocations and all(inv.via_scan for inv in invocations):
-        return None  # 僅掃描命中：辨識不確定，比照無法解析
-    return bool(invocations)
+    cause = classify_parse_cause(invocations)
+    if cause is not None:
+        return None, cause  # tokenize 失敗，或僅掃描命中（辨識不確定）：比照無法解析
+    return bool(invocations), None
 
 
 def has_parallel_dispatch(project_root: Path) -> bool:
@@ -99,7 +105,7 @@ def main() -> int:
 
     tool_input = hook_input.get("tool_input", {})
     command = tool_input.get("command", "")
-    is_commit = is_commit_command(command)
+    is_commit, parse_cause = classify_commit_command(command)
     if is_commit is None:
         # 無法解析：比照 bare-commit-guard，並行期保守擋下、非並行期僅提醒。
         # 提醒走 stderr 直接 print（logger.warning 會觸發 hook error 顯示）。
@@ -107,13 +113,14 @@ def main() -> int:
             logger.info("命令含 git 字樣但無法安全解析，並行期保守阻擋")
             print(
                 "[domain-import-lint] 命令無法安全解析，並行派發期間保守阻擋。"
-                "請改寫為單純的 git commit 命令後重送。",
+                f"{explain_parse_cause(parse_cause)}請改寫後重送。",
                 file=sys.stderr,
             )
             return 2
         logger.info("命令含 git 字樣但無法安全解析，非並行期提醒放行")
         print(
-            "[domain-import-lint] 提醒：命令無法安全解析，未檢查 domain import 方向。",
+            "[domain-import-lint] 提醒：命令無法安全解析，未檢查 domain import 方向。"
+            f"{explain_parse_cause(parse_cause)}",
             file=sys.stderr,
         )
         return 0

@@ -1394,3 +1394,26 @@ class TestScanOnlyTreatedAsUnparsable:
             dispatches=[_dispatch("T-1", ["a.py"])],
         )
         assert exit_code == 0
+
+
+# ============================================================================
+# 無法解析成因區分：tokenize 失敗 vs 僅掃描命中（0.5.0-W1-120.7.10）
+# ============================================================================
+
+
+class TestParseCauseMessages:
+    @pytest.mark.parametrize("parallel", [True, False])
+    def test_tokenize_failure_message(self, monkeypatch, capsys, parallel):
+        dispatches = [_dispatch("T-1", ["a.py"])] if parallel else []
+        _run_hook(monkeypatch, 'git commit -m "unterminated', dispatches=dispatches)
+        err = capsys.readouterr().err
+        assert "未閉合引號" in err
+        assert "非命令位置" not in err
+
+    @pytest.mark.parametrize("parallel", [True, False])
+    def test_scan_only_message(self, monkeypatch, capsys, parallel):
+        dispatches = [_dispatch("T-1", ["a.py"])] if parallel else []
+        _run_hook(monkeypatch, "find . -exec git commit -m x \\;", dispatches=dispatches)
+        err = capsys.readouterr().err
+        assert "非命令位置" in err
+        assert "未閉合引號" not in err

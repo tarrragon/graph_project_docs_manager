@@ -1048,3 +1048,49 @@ def test_via_scan_flags_mixed_statements_separately():
         "git commit -m a && setsid git commit -m b", {"commit"}, scan=True
     )
     assert sorted(inv.via_scan for inv in found) == [False, True]
+
+
+# ===== 無法解析：lib 不寫 stderr、成因分類（0.5.0-W1-120.7.10）=====
+
+_NESTED_UNPARSEABLE = "bash -c \"git commit -m 'unclosed\""
+
+
+def test_unparseable_writes_no_stderr(capsys, caplog):
+    """_Unparseable 路徑回傳 None，且 lib 不得寫 stderr（hook-dispatcher 單行程會重複印出）。"""
+    with caplog.at_level("DEBUG", logger="git_command_parse"):
+        assert _gcp.find_git_invocations(_NESTED_UNPARSEABLE, {"commit"}, scan=True) is None
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert captured.out == ""
+    assert not [r for r in caplog.records if r.levelno >= 30]
+
+
+def test_unparseable_mutation_warning_is_detected(monkeypatch, capsys):
+    """變異確認：把 debug 改回 warning 並掛 stderr handler，stderr 會有輸出，證明上一測試有鑑別力。"""
+    import logging
+    import sys
+
+    handler = logging.StreamHandler(sys.stderr)
+    _gcp._logger.addHandler(handler)
+    monkeypatch.setattr(_gcp._logger, "debug", _gcp._logger.warning)
+    try:
+        _gcp.find_git_invocations(_NESTED_UNPARSEABLE, {"commit"}, scan=True)
+    finally:
+        _gcp._logger.removeHandler(handler)
+    assert capsys.readouterr().err != ""
+
+
+def test_classify_parse_cause():
+    assert _gcp.classify_parse_cause(None) == _gcp.PARSE_CAUSE_TOKENIZE
+    scan_only = _gcp.find_git_invocations("find . -exec git commit -m x \\;", {"commit"}, scan=True)
+    assert _gcp.classify_parse_cause(scan_only) == _gcp.PARSE_CAUSE_SCAN_ONLY
+    positional = _gcp.find_git_invocations("git commit -m x", {"commit"}, scan=True)
+    assert _gcp.classify_parse_cause(positional) is None
+    assert _gcp.classify_parse_cause([]) is None
+
+
+def test_explain_parse_cause_distinguishes():
+    assert "非命令位置" in _gcp.explain_parse_cause(_gcp.PARSE_CAUSE_SCAN_ONLY)
+    assert "引號" in _gcp.explain_parse_cause(_gcp.PARSE_CAUSE_SCAN_ONLY)
+    assert "未閉合引號" in _gcp.explain_parse_cause(_gcp.PARSE_CAUSE_TOKENIZE)
+    assert "非命令位置" not in _gcp.explain_parse_cause(_gcp.PARSE_CAUSE_TOKENIZE)

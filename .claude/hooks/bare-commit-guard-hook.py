@@ -282,7 +282,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, resolve_session_id
 from lib.dispatch_tracker import get_active_dispatches
-from lib.git_command_parse import GitInvocation, contains_git_word, find_git_invocations
+from lib.git_command_parse import (
+    GitInvocation,
+    classify_parse_cause,
+    contains_git_word,
+    explain_parse_cause,
+    find_git_invocations,
+)
 from lib.git_utils import get_project_root, run_git_command
 from lib.pm_registry import (
     DEGRADED_READ_KEY,
@@ -917,7 +923,7 @@ def _build_index_discarding_deny_message(dispatch_count: int) -> str:
     )
 
 
-def _build_parse_failure_deny_message(dispatch_count: int) -> str:
+def _build_parse_failure_deny_message(dispatch_count: int, cause: Optional[str] = None) -> str:
     """組出「命令含 git 字樣但無法安全解析」的 DENY 訊息（並行期）。
 
     無法安全解析時（`find_git_invocations` 回傳 None，見共用模組「失敗
@@ -928,18 +934,19 @@ def _build_parse_failure_deny_message(dispatch_count: int) -> str:
         "[並行派發期間裸 commit 被阻擋（命令無法安全解析）]\n\n"
         f"理由：目前有 {dispatch_count} 個實作代理人正在派發中"
         "（.claude/dispatch-active.json 有活躍記錄），且本次命令含 git"
-        "字樣，但因未閉合引號等原因無法安全解析其結構，無法確認是否為"
+        "字樣，但無法安全解析其結構，無法確認是否為"
         "裸 commit 或其安全性，故保守阻擋。\n\n"
-        "請檢查命令引號是否配對，修正後重試。\n"
+        f"{explain_parse_cause(cause)}修正後重試。\n"
     )
 
 
-def _build_parse_failure_warn_message() -> str:
+def _build_parse_failure_warn_message(cause: Optional[str] = None) -> str:
     """組出「命令含 git 字樣但無法安全解析」的 WARN 訊息（非並行期）。"""
     return (
-        "[提醒] 本次命令含 git 字樣，但因未閉合引號等原因無法安全解析其"
-        "結構。目前無並行派發活躍記錄，本次放行；請檢查命令引號是否配對，"
-        "以防未來並行期無法確認安全性而被阻擋。\n"
+        "[提醒] 本次命令含 git 字樣，但無法安全解析其結構。"
+        "目前無並行派發活躍記錄，本次放行。"
+        f"{explain_parse_cause(cause)}"
+        "並行期同類命令會被阻擋。\n"
     )
 
 
@@ -982,6 +989,7 @@ def main() -> int:
         return 0
 
     invocations = find_git_invocations(command, {"commit"}, scan=True)
+    parse_cause = classify_parse_cause(invocations)
     if invocations and all(inv.via_scan for inv in invocations):
         # 僅任意位置掃描命中（無位置命中）：辨識不確定，比照無法解析處置
         logger.info("commit 呼叫僅掃描命中，比照無法解析")
@@ -1013,10 +1021,10 @@ def main() -> int:
             return 2
         if dispatch_count > 0:
             logger.warning("命令含 git 字樣但無法安全解析，並行期保守阻擋")
-            print(_build_parse_failure_deny_message(dispatch_count), file=sys.stderr)
+            print(_build_parse_failure_deny_message(dispatch_count, parse_cause), file=sys.stderr)
             return 2
         logger.info("命令含 git 字樣但無法安全解析，非並行期 WARN 放行")
-        print(_build_parse_failure_warn_message(), file=sys.stderr)
+        print(_build_parse_failure_warn_message(parse_cause), file=sys.stderr)
         return 0
 
     if not invocations:

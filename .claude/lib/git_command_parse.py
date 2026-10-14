@@ -1104,7 +1104,10 @@ def find_git_invocations(
     try:
         return _scan_tokens(tokens, _DirState(base_dir, False), 0, ctx)
     except _Unparseable as exc:
-        _logger.warning("command cannot be parsed safely: %s", exc)  # i18n-exempt
+        # 無法解析是正常判定結果（None 由呼叫端依各自守衛語意處置），不是 hook 失敗：
+        # 只寫 debug 日誌，不輸出 stderr。會阻擋的守衛自有 stderr 訊息；
+        # 在 hook-dispatcher 單一行程下，此處若寫 stderr 會被每支 hook 各印一次。
+        _logger.debug("command cannot be parsed safely: %s", exc)  # i18n-exempt
         return None
 
 
@@ -1142,3 +1145,42 @@ def match_git_commit(
     if not exclude_amend:
         return bool(invocations)
     return any("--amend" not in inv.args for inv in invocations)
+
+
+# ===== 無法解析成因分類（供守衛區分提示文案）=====
+
+PARSE_CAUSE_TOKENIZE = "tokenize"
+PARSE_CAUSE_SCAN_ONLY = "scan_only"
+
+SCAN_ONLY_EXPLANATION = (
+    "git 出現在非命令位置（例如其他命令的參數，或 find -exec 之類的包裝命令之後），"
+    "守衛無法判斷該命令會不會把它當命令執行，保守視為無法確認。"
+    "改寫方式：把 git 字樣加上引號（例如 grep 'git commit' file），"
+    "或把 git 放在命令位置直接呼叫。"
+)
+
+TOKENIZE_EXPLANATION = (
+    "原因：未閉合引號，或命令結構（例如管線接 shell）無法解析；"
+    "請檢查命令引號是否配對，或改寫為單純的命令。"
+)
+
+
+def classify_parse_cause(invocations: Optional[List[GitInvocation]]) -> Optional[str]:
+    """由 `find_git_invocations(scan=True)` 的回傳值判定「無法確認」的成因。
+
+    - `None`：tokenize 失敗（或結構無法解析）-> `PARSE_CAUSE_TOKENIZE`
+    - 非空且全為 `via_scan`：僅掃描命中 -> `PARSE_CAUSE_SCAN_ONLY`
+    - 其餘：可確認，回傳 None
+    """
+    if invocations is None:
+        return PARSE_CAUSE_TOKENIZE
+    if invocations and all(inv.via_scan for inv in invocations):
+        return PARSE_CAUSE_SCAN_ONLY
+    return None
+
+
+def explain_parse_cause(cause: Optional[str]) -> str:
+    """成因對應的說明文字（tokenize 失敗與僅掃描命中給不同的修正方向）。"""
+    if cause == PARSE_CAUSE_SCAN_ONLY:
+        return SCAN_ONLY_EXPLANATION
+    return TOKENIZE_EXPLANATION
