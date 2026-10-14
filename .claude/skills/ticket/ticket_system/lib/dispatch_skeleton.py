@@ -39,11 +39,11 @@ SKELETON_TEMPLATE_NORMAL = """Ticket: {ticket_id}
 # worktree：隔離環境下 complete 受守衛限制，改 finish，被拒時交還 PM 代跑。
 CLOSING_BY_ISOLATION = {
     "none": (
-        "收尾：`ticket track set-acceptance {ticket_id} --check <編號>` → 填 Solution / "
+        "收尾：`ticket track set-acceptance {ticket_id} --check <編號>` → 填 Solution（含 ### 自檢結果與 Phase 4 評估）/ "
         "Test Results → commit → `ticket track complete {ticket_id} --as {agent_name}`。"
     ),
     "worktree": (
-        "收尾：`ticket track set-acceptance {ticket_id} --check <編號>` → 填 Solution / "
+        "收尾：`ticket track set-acceptance {ticket_id} --check <編號>` → 填 Solution（含 ### 自檢結果與 Phase 4 評估）/ "
         "Test Results → commit（`ticket track commit`，於 worktree 路徑，只提交產品檔；"
         "票面由主 repo CLI 寫入並自動提交，禁止複製或提交票面副本）→ "
         "`ticket track finish {ticket_id} --as {agent_name}`；finish 若被隔離守衛拒絕，"
