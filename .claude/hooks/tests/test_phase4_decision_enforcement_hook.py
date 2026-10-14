@@ -2318,3 +2318,47 @@ def test_w1_270_5_quoted_finish_not_detected():
 def test_w1_270_5_finish_unbalanced_quote_fail_open():
     tid, mode = extract_ticket_id_from_command('ticket track finish "unterminated')
     assert (tid, mode) == (None, None)
+
+
+# ============================================================================
+# 0.5.0-W1-120.7.9.5.4 -- 共用任意位置掃描：包裝、串接、巢狀、多 ID、stdin shell
+# ============================================================================
+
+extract_ticket_targets_from_command = _hook.extract_ticket_targets_from_command
+
+
+@pytest.mark.parametrize("command,expected", [
+    ("timeout 30 ticket track phase T-1 phase4", [("T-1", "main_gate")]),
+    ("git status && ticket track phase T-1 phase4", [("T-1", "main_gate")]),
+    ("bash -c 'ticket track phase T-1 phase4'", [("T-1", "main_gate")]),
+    ("/usr/local/bin/ticket track phase T-1 phase4", [("T-1", "main_gate")]),
+    ("timeout 30 ticket track complete T-1", [("T-1", "residual_gate")]),
+    ("git status; ticket track finish T-1", [("T-1", "residual_gate")]),
+    ("sh -c \"cd x && ticket track complete T-1\"", [("T-1", "residual_gate")]),
+    ("ticket track complete T-1 && ticket track complete T-2",
+     [("T-1", "residual_gate"), ("T-2", "residual_gate")]),
+    ("ticket track batch-complete T-1 T-2 --force",
+     [("T-1", "residual_gate"), ("T-2", "residual_gate")]),
+    ("ticket track phase T-1 phase4; ticket track complete T-2",
+     [("T-1", "main_gate"), ("T-2", "residual_gate")]),
+])
+def test_w1_120_7_9_5_4_scan_positive(command, expected):
+    assert extract_ticket_targets_from_command(command) == expected
+
+
+@pytest.mark.parametrize("command", [
+    "ticket track phase T-1 phase3b",
+    "echo ticket track phase T-1 phase4",
+    "echo 'ticket track phase T-1 phase4' | bash",
+    "bash <<< 'ticket track complete T-1'",
+    "ticket track complete 'unterminated",
+    "",
+])
+def test_w1_120_7_9_5_4_scan_negative_and_fail_open(command):
+    assert extract_ticket_targets_from_command(command) == []
+
+
+def test_w1_120_7_9_5_4_wrapper_returns_first():
+    assert extract_ticket_id_from_command(
+        "timeout 5 ticket track complete T-1 && ticket track complete T-2"
+    ) == ("T-1", "residual_gate")

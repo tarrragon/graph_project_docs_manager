@@ -48,7 +48,9 @@ def is_complete_statement(tokens: List[str]) -> bool:
     return complete_statement_args(tokens) is not None
 
 
-def _scan_statement(statement: List[str], depth: int) -> Optional[List[Tuple[str, List[str]]]]:
+def _scan_statement(
+    statement: List[str], depth: int, verbs: Tuple[str, ...]
+) -> Optional[List[Tuple[str, List[str]]]]:
     """單一語句的任意位置掃描；巢狀腳本無法解析時回傳 None。"""
     if skip_wrappers(statement) is None:
         return []  # `command -v` 為查詢，不是執行
@@ -62,13 +64,13 @@ def _scan_statement(statement: List[str], depth: int) -> Optional[List[Tuple[str
             os.path.basename(tok) == "ticket"
             and len(statement) >= i + 3
             and statement[i + 1] == "track"
-            and statement[i + 2] in COMPLETE_VERBS
+            and statement[i + 2] in verbs
         ):
             found.append((statement[i + 2], statement[i + 3:]))
             break  # 其餘 token 是該命令的參數
         script = nested_script(statement, i)
         if script:
-            nested = _scan_command(script, depth + 1)
+            nested = _scan_command(script, depth + 1, verbs)
             if nested is None:
                 return None
             found.extend(nested)
@@ -77,7 +79,9 @@ def _scan_statement(statement: List[str], depth: int) -> Optional[List[Tuple[str
     return found
 
 
-def _scan_command(command: str, depth: int) -> Optional[List[Tuple[str, List[str]]]]:
+def _scan_command(
+    command: str, depth: int, verbs: Tuple[str, ...]
+) -> Optional[List[Tuple[str, List[str]]]]:
     if depth > _MAX_SCAN_NESTING:
         return None
     statements = parse_command_statements(command)
@@ -90,11 +94,22 @@ def _scan_command(command: str, depth: int) -> Optional[List[Tuple[str, List[str
         return None
     found: List[Tuple[str, List[str]]] = []
     for statement in statements:
-        part = _scan_statement(statement, depth)
+        part = _scan_statement(statement, depth, verbs)
         if part is None:
             return None
         found.extend(part)
     return found
+
+
+def find_ticket_track_invocations(
+    command: str, verbs: Tuple[str, ...]
+) -> Optional[List[Tuple[str, List[str]]]]:
+    """任意位置掃描 `ticket track <verbs 之一>`，回傳 (動詞, 動詞之後的 token) 清單。
+
+    掃描規則與失敗語意同 `find_complete_invocations`（它委派本函式）。動詞之後
+    的參數形狀由呼叫端解讀（如 `phase <ID> phase4`）。
+    """
+    return _scan_command(command, 0, verbs)
 
 
 def find_complete_invocations(command: str) -> Optional[List[Tuple[str, List[str]]]]:
@@ -114,7 +129,7 @@ def find_complete_invocations(command: str) -> Optional[List[Tuple[str, List[str
           fail-open 或 fail-closed，不可與空清單混淆。
         - 清單：可能為空（可解析但無完成類命令）。
     """
-    return _scan_command(command, 0)
+    return find_ticket_track_invocations(command, COMPLETE_VERBS)
 
 
 def has_complete_command(command: str) -> Optional[bool]:
