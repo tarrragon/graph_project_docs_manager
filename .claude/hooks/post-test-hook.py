@@ -86,6 +86,11 @@ LIMIT_THRESHOLD = 1800      # 30 分鐘（達此值僅警告，不終止任何�
 # --- pre-fix-evaluation 子邏輯常數 ---
 
 
+def _p(pattern: str, flags: int = re.IGNORECASE | re.MULTILINE) -> "re.Pattern[str]":
+    """編譯錯誤樣式；旗標由各樣式自帶（預設不分大小寫、多行）。"""
+    return re.compile(pattern, flags)
+
+
 class ErrorType(Enum):
     """錯誤類型列舉"""
     SYNTAX_ERROR = "syntax_error"
@@ -96,29 +101,37 @@ class ErrorType(Enum):
 
 
 SYNTAX_PATTERNS = [
-    (r"Expected.*?['\"]([;})\]])['\"]", "缺少括號或分號: {0}"),
-    (r"Unexpected\s+(?:end of|token)\b", "意外 token"),
-    (r"unterminated string literal", "字串未結束"),
-    (r"unexpected end of(?:\s+\w+)*\s*file", "檔案不完整"),
-    (r"missing comma", "缺少逗號"),
-    (r"invalid number format", "無效數字格式"),
+    (_p(r"Expected.*?['\"]([;})\]])['\"]"), "缺少括號或分號: {0}"),
+    (_p(r"Unexpected\s+(?:end of|token)\b"), "意外 token"),
+    (_p(r"unterminated string literal"), "字串未結束"),
+    (_p(r"unexpected end of(?:\s+\w+)*\s*file"), "檔案不完整"),
+    (_p(r"missing comma"), "缺少逗號"),
+    (_p(r"invalid number format"), "無效數字格式"),
 ]
 
 COMPILATION_PATTERNS = [
-    (r"(?:type|variable).*?can't be assigned", "類型不匹配"),
-    (r"is not a subtype of", "類型不匹配"),
-    (r"Undefined\s+(?:name|class|function)\s+['\"]?(\w+)['\"]?", "未定義名稱: {0}"),
-    (r"Target of URI\s+.*?\s+doesn't exist", "導入檔案不存在"),
-    (r"(?:Class|Function|Method)\s+['\"]?(\w+)['\"]?\s+not found", "引用不存在: {0}"),
-    (r"cannot find symbol", "符號未定義"),
-    (r"incompatible types", "類型不相容"),
+    (_p(r"(?:type|variable).*?can't be assigned"), "類型不匹配"),
+    (_p(r"is not a subtype of"), "類型不匹配"),
+    (_p(r"Undefined\s+(?:name|class|function)\s+['\"]?(\w+)['\"]?"), "未定義名稱: {0}"),
+    (_p(r"Target of URI\s+.*?\s+doesn't exist"), "導入檔案不存在"),
+    (_p(r"(?:Class|Function|Method)\s+['\"]?(\w+)['\"]?\s+not found"), "引用不存在: {0}"),
+    (_p(r"cannot find symbol"), "符號未定義"),
+    (_p(r"incompatible types"), "類型不相容"),
+]
+
+# 失敗摘要樣式（單一來源）：錯誤分類與綠燈前置排除共用，兩處不再各自維護
+# flutter / dart「Some tests failed」、jest「Tests: N failed」、pytest「N failed / N error(s)」（N 須非 0）
+FAILURE_SUMMARY_PATTERNS = [
+    (_p(r"Some tests failed"), "部分測試失敗"),
+    (_p(r"(?<![\w-])([1-9]\d*)\s+failed\b"), "{0} 個測試失敗（摘要）"),
+    (_p(r"(?<![\w-])([1-9]\d*)\s+errors?\b"), "{0} 個測試錯誤（摘要）"),
 ]
 
 TEST_FAILURE_PATTERNS = [
-    (r"Expected:\s*(.+?)\s*Actual:", "斷言失敗: Expected {0}"),
+    (_p(r"Expected:\s*(.+?)\s*Actual:"), "斷言失敗: Expected {0}"),
     # W1-055: 排除「0 tests failed」/「0 failed」綠燈 summary
     # 用 negative lookbehind 確保前面數字不是 0
-    (r"(?<![\d])([1-9]\d*)\s+tests?\s+failed\b", "{0} 個測試失敗"),
+    (_p(r"(?<![\d])([1-9]\d*)\s+tests?\s+failed\b"), "{0} 個測試失敗"),
     # W1-055: 縮窄 FAILED pattern
     # 舊版 r"FAILED" 會誤命中：
     #   - 「0 failed」「零 failed」綠燈 summary
@@ -126,24 +139,20 @@ TEST_FAILURE_PATTERNS = [
     #   - 「Tests: 0 failed」等 jest/vitest 綠燈摘要
     # 縮窄為：行首或非識別符前綴 + FAILED + word boundary，且前後不能是
     # 「0 」「not 」或 hyphen/底線連字符。FAILED 區分大小寫：小寫 failed 常見於
-    # commit 標題等一般文字，N failed 摘要由 FAILURE_COUNT_PATTERN 另行處理
-    (r"(?<![\w-])(?-i:FAILED)(?![\w-])(?!\s*[:=]\s*0\b)", "測試失敗"),
-    # 小寫摘要樣式（FAILED 改區分大小寫後，這些框架的失敗輸出由以下樣式承擔）
-    # flutter test / dart test：「Some tests failed.」
-    (r"Some tests failed", "部分測試失敗"),
-    # jest「Tests: N failed」、pytest「N failed, M passed」摘要（N 須非 0）
-    (r"(?<![\w-])([1-9]\d*)\s+failed\b", "{0} 個測試失敗（摘要）"),
-    (r"AssertionError", "斷言錯誤"),
+    # commit 標題等一般文字，小寫摘要由 FAILURE_SUMMARY_PATTERNS 承擔
+    (_p(r"(?<![\w-])FAILED(?![\w-])(?!\s*[:=]\s*0\b)", re.MULTILINE), "測試失敗"),
+    *FAILURE_SUMMARY_PATTERNS,
+    (_p(r"AssertionError"), "斷言錯誤"),
 ]
 
 ANALYZER_WARNING_PATTERNS = [
-    (r"info\s*-.*?unused", "未使用的警告"),
+    (_p(r"info\s*-.*?unused"), "未使用的警告"),
     # eslint stylish formatter 格式：縮排 + row:col + warning + 訊息 + rule-name
     # 例：「  12:34  warning  Unused variable  no-unused-vars」
     # 縮窄理由：W1-059 / W1-048.8 實證舊 regex r"warning\s*-" 誤報 jest console.warn
     # 與含 "warning - ..." 的訊息字串。要求 row:col 起頭 + 結尾 rule name 才屬 lint warning。
-    (r"^\s*\d+:\d+\s+warning\s+.+?\s+@?[a-z][a-z0-9-]*(?:/[a-z0-9-]+)*\s*$", "lint 警告"),
-    (r"deprecated\s+(?:function|class|method)", "已棄用 API"),
+    (_p(r"^\s*\d+:\d+\s+warning\s+.+?\s+@?[a-z][a-z0-9-]*(?:/[a-z0-9-]+)*\s*$"), "lint 警告"),
+    (_p(r"deprecated\s+(?:function|class|method)"), "已棄用 API"),
 ]
 
 TRUNCATED_OUTPUT_PATTERN = re.compile(
@@ -281,13 +290,13 @@ def _classify_errors(output: str, logger) -> Tuple[ErrorType, List[Dict[str, str
     for error_type, patterns in all_pattern_groups:
         errors: List[Dict[str, str]] = []
         for pattern, description in patterns:
-            matches = re.finditer(pattern, output, re.IGNORECASE | re.MULTILINE)
+            matches = pattern.finditer(output)
             for match in matches:
                 desc = description.format(*match.groups()) if "{" in description else description
                 errors.append({
                     "type": error_type.value,
                     "description": desc,
-                    "pattern": pattern,
+                    "pattern": pattern.pattern,
                     "matched_excerpt": output[max(0, match.start() - 80):match.end() + 80],
                 })
         if errors:
@@ -401,10 +410,6 @@ GREEN_SUMMARY_PATTERNS = [
 ]
 
 
-# 摘要含非零 failed / error(s) 計數：任何一處命中即不走綠燈捷徑（xfailed 不命中）
-FAILURE_COUNT_PATTERN = re.compile(r"(?<![\w-])[1-9]\d*\s+(?:failed|errors?)\b", re.IGNORECASE)
-
-
 def _is_green_summary(output: str) -> bool:
     """判斷輸出是否含綠燈測試摘要（W1-055）。
 
@@ -416,7 +421,7 @@ def _is_green_summary(output: str) -> bool:
     - 含 Jest/Vitest/pytest/Mocha 標準綠燈 summary
     - 含「all tests passed」「no issues found」（既有判定，保留相容）
     """
-    if FAILURE_COUNT_PATTERN.search(output):
+    if any(pattern.search(output) for pattern, _ in FAILURE_SUMMARY_PATTERNS):
         return False
 
     lower = output.lower()

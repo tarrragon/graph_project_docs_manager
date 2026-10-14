@@ -665,3 +665,23 @@ def test_prefixed_failure_summary_still_reported(
     monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
     result = _eval_response(hook_module, logger, "Bash", {"stdout": stdout, "stderr": ""})
     assert result is not None and "TEST FAILURE" in result
+
+
+# --- 失敗摘要單一來源：綠燈前置排除與錯誤分類共用 ---
+
+@pytest.mark.parametrize("output", [
+    "3 passed in 0.1s\n00:02 +3 -1: Some tests failed.",
+    "rc=0 3 passed in 0.1s\n00:02 +3 -1: Some tests failed.",
+])
+def test_green_shortcut_not_covering_flutter_failure(hook_module, monkeypatch, tmp_path, logger, output):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    assert not hook_module._is_green_summary(output)
+    result = _eval_response(hook_module, logger, "Bash", {"stdout": output, "stderr": ""})
+    assert result is not None and "TEST FAILURE" in result
+
+
+def test_green_exclusion_reuses_classifier_summary_patterns(hook_module, logger):
+    for sample in ["Some tests failed", "2 failed", "1 error"]:
+        assert any(p.search(sample) for p, _ in hook_module.FAILURE_SUMMARY_PATTERNS)
+        _, errors = hook_module._classify_errors(sample, logger)
+        assert errors and not hook_module._is_green_summary(sample + "\n5 passed in 1s")
