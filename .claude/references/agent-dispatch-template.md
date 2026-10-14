@@ -169,6 +169,8 @@ set -o pipefail; (cd <pkg> && uv run pytest -q -rfE) 2>&1 | tee <log>; rc=$?; ta
 **Action**：prompt 必須含以下句子（可併入任務段或獨立一行）：
 
 ```
+測試需要逾時上限時，一律經 python3 .claude/scripts/run-with-timeout.py <秒數> -- <命令> 啟動，
+不用 timeout、alarm 加 exec 或背景 sleep 後 kill 單一 PID；禁用 pkill 與 killall。
 終止任何長時間或背景測試後，必須以 pgrep -f <worktree 絕對路徑> 確認無殘留程序，
 並在回報中附上該命令的輸出（無輸出即寫「pgrep 無輸出」）。
 pgrep 有命中時，逐一以 ps -o command= -p <pid> 確認命中的是測試程序本身
@@ -179,6 +181,8 @@ pgrep 有命中時，逐一以 ps -o command= -p <pid> 確認命中的是測試�
 ```
 
 驗證依據是程序清單（世界平面），不是代理人對自己動作的記憶；`<worktree 絕對路徑>` 由 PM 在派發時代入實際路徑。
+
+**逾時須經包裝腳本（Why/Consequence）**：逾時當下沒有任何「終止動作」可觸發上述自檢，殘留只能在啟動方式上預防。只對單一程序送訊號的逾時寫法（`alarm` 加 `exec`、背景 `sleep` 後 `kill <pid>`），訊號只送達最上層程序；flutter 工具與 `flutter_tester` 同屬一個程序群組，最上層結束後它們被 launchd 收養並繼續執行。`timeout` 在 macOS 預設環境不存在，照抄即失敗，使用者因此各自改寫成上述單一程序寫法。`pkill`／`killall` 依名稱比對全機程序，會終止其他 worktree 與其他專案的測試。**Action**：逾時一律經 `run-with-timeout.py`（以新程序群組啟動，逾時對整個群組先 TERM 後 KILL，結束碼 124）；事後清理改用 `python3 .claude/scripts/orphan-test-procs.py`（只認定本專案範圍內被收養的測試執行器，以及包裝腳本登記過而包裝腳本已不在的程序群組；預設只列出，加 `--kill` 才終止）。
 
 **pgrep -f 的比對陷阱（Why/Consequence）**：macOS 的 pgrep 預設只排除自身與祖先程序，不排除其他 shell；任何命令列含相同字串的 shell 都會被比對到。兩個各自寫成 `until ! pgrep -f "<樣式>"; do sleep 5; done` 的等待迴圈，命令列都含該樣式，會互相比對到對方而永遠不退出，即使實際的測試早已結束，實例中空等超過 15 小時，代理人已回報「等待背景工作」後長時間無下文。**Action**：命中後以 ps 確認程序身分再判定為殘留；等待程序結束一律綁定已知 PID，PID 不明時先取得 PID（啟動時以 `$!` 記錄），不以樣式比對代替。
 
@@ -1143,6 +1147,8 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 
 ---
 
+**Last Updated**: 2026-10-14
+**Version**: 1.43.0 — 〈終止長時間測試後驗證子程序已退出約束句〉制式句開頭補兩行：測試逾時一律經 `run-with-timeout.py` 啟動、禁用 `timeout`／`alarm` 加 `exec`／背景 `sleep` 後 `kill` 單一 PID 與 `pkill`／`killall`；並新增「逾時須經包裝腳本」三明示段（逾時當下無終止動作可觸發自檢，殘留只能在啟動方式上預防；清理改用 `orphan-test-procs.py`）
 **Last Updated**: 2026-10-08
 **Version**: 1.42.1 — 〈阻塞回報後：重派新 agent 優先於 SendMessage 恢復〉二次審查修正：段首補原則句與「標題沿用初版情境名」說明；Action 與判準表末列對「兩個訊號都取不到」統一為直接重派（刪去與 git worktree list 同源、無增量的 ls 後援）；補兩訊號不一致時以 git worktree list 為準
 **Version**: 1.42.0 — 〈阻塞回報後：重派新 agent 優先於 SendMessage 恢復〉射程由快照過舊擴為所有恢復與續用路徑（審查退回、補料後恢復、idle 續用、超時催促）：補前提事實（無變更 worktree 於完成通知送達時清除，恢復後落回主 repo）與兩個判斷訊號（完成通知 worktreePath 欄位、worktree list 比對 agent id），判準為 worktree 不在則重派；不新增「無變更一律不恢復」禁令
