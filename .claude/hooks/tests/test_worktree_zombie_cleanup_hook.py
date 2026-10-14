@@ -451,3 +451,86 @@ def test_silent_helpers_log_nonzero_returncode_as_failure(
     msgs = [r.getMessage() for r in caplog.records]
     assert any(name in m and "執行失敗" in m and "returncode=128" in m for m in msgs)
     assert not any("逾時" in m for m in msgs)
+
+
+# ---------- 整體期限扣減（0.5.0-W1-164.6.17） ----------
+
+import json
+import types
+
+
+def _registered_outer_timeout():
+    settings = Path(__file__).resolve().parents[2] / "settings.json"
+    data = json.loads(settings.read_text(encoding="utf-8"))
+    for group in data["hooks"]["SessionStart"]:
+        for hook in group["hooks"]:
+            if "worktree-zombie-cleanup-hook.py" in hook["command"]:
+                return hook["timeout"]
+    raise AssertionError("settings.json 未註冊 worktree-zombie-cleanup hook")
+
+
+def _simulate_all_hung(hook_module, monkeypatch, tmp_path, deduct):
+    """5 個殭屍 worktree、每個 git 呼叫皆卡到逾時並耗盡寬限；回傳模擬耗時秒數。"""
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(
+        hook_module, "time",
+        types.SimpleNamespace(monotonic=lambda: clock["now"], time=lambda: 0.0),
+    )
+    grace = hook_module.TERMINATE_GRACE_SECONDS
+
+    def hung_runner(args, timeout, **kw):
+        clock["now"] += timeout + grace
+        raise subprocess.TimeoutExpired(args, timeout)
+
+    monkeypatch.setattr(hook_module, "run_with_graceful_timeout", hung_runner)
+    monkeypatch.setattr(hook_module, "is_worktree_dirty", lambda p: False)
+    monkeypatch.setattr(hook_module, "check_pid_alive", lambda pid: (False, ""))
+    monkeypatch.setattr(hook_module, "get_worktree_branch", lambda r, w: None)
+    monkeypatch.setattr(hook_module, "is_recent", lambda d, n, t=0: False)
+    monkeypatch.setattr(hook_module, "read_locked_pid", lambda r, n: 1)
+    if not deduct:
+        monkeypatch.setattr(hook_module, "budgeted_timeout", lambda base: base)
+
+    worktrees = [tmp_path / f"agent-{i}" for i in range(5)]
+    logger = logging.getLogger("test-budget")
+    start = clock["now"]
+    hook_module.start_overall_deadline()
+    try:
+        for wt in worktrees:
+            if hook_module.budget_exhausted() and deduct:
+                break
+            hook_module.process_worktree(tmp_path, wt, 0.0, logger)
+    finally:
+        hook_module._deadline = None
+    return clock["now"] - start
+
+
+def test_overall_budget_is_below_registered_outer_timeout(hook_module):
+    assert hook_module.OUTER_TIMEOUT_SECONDS == _registered_outer_timeout()
+    assert hook_module.OVERALL_BUDGET_SECONDS < hook_module.OUTER_TIMEOUT_SECONDS
+
+
+def test_all_hung_calls_finish_before_outer_timeout(hook_module, monkeypatch, tmp_path):
+    elapsed = _simulate_all_hung(hook_module, monkeypatch, tmp_path, deduct=True)
+    assert elapsed < _registered_outer_timeout()
+
+
+def test_without_deduction_all_hung_calls_exceed_outer_timeout(hook_module, monkeypatch, tmp_path):
+    """正向對照：移除扣減後整體耗時超過外層，證明上一則斷言有鑑別力。"""
+    elapsed = _simulate_all_hung(hook_module, monkeypatch, tmp_path, deduct=False)
+    assert elapsed >= _registered_outer_timeout()
+
+
+def test_budgeted_timeout_none_when_remaining_not_above_grace(hook_module, monkeypatch):
+    clock = {"now": 0.0}
+    monkeypatch.setattr(hook_module, "time", types.SimpleNamespace(monotonic=lambda: clock["now"]))
+    hook_module.start_overall_deadline(budget=hook_module.TERMINATE_GRACE_SECONDS)
+    try:
+        assert hook_module.budgeted_timeout(10) is None
+    finally:
+        hook_module._deadline = None
+
+
+def test_budgeted_timeout_passthrough_without_deadline(hook_module):
+    hook_module._deadline = None
+    assert hook_module.budgeted_timeout(10) == 10
