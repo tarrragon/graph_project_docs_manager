@@ -538,8 +538,7 @@ def _judge_review_status(ticket: Dict[str, Any]) -> Optional[str]:
     except Exception as exc:  # noqa: BLE001 — 判定器不可用時維持 pending
         sys.stderr.write(f"[complete] Review Status 判定器不可用，維持 pending: {exc}\n")
         return None
-    solution = p4._extract_solution_section(ticket.get("_body", ""))
-    if solution and p4._has_phase4_evidence(solution):
+    if p4.has_phase4_review_evidence(ticket.get("_body", "")):
         return "reviewed"
     return None
 
