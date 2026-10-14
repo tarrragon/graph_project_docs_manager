@@ -30,9 +30,11 @@ add、是否命中保護分支、是否為 index-discarding commit 等）不受�
 """
 
 import logging
+import os
 import re
 import shlex
-from dataclasses import dataclass, field
+import subprocess
+from dataclasses import dataclass, field, replace
 from typing import FrozenSet, Iterable, List, Optional, Tuple
 
 
@@ -304,6 +306,15 @@ class GitInvocation:
             既有守衛皆未處理此情境，沿用既有範疇邊界）。
         global_options: 消耗掉的 git 全域選項 token（不含其值），供除錯用。
         args: `subcommand` 之後的所有 token（即該子命令自身的旗標與引數）。
+        dash_c_paths: 全部 `-C <path>`，依出現順序；預設空 tuple。
+            `dash_c_path` 語意不變（仍只取第一個）。
+        effective_dir: git 實際作用的目錄：基準目錄（`base_dir` 參數，預設
+            None）依語句前的 `cd` 與全部 `-C` 依 git 語意串接（絕對路徑取代、
+            相對路徑接續）。無 base_dir 且無 cd/-C 時為 None；基準為 None 時
+            相對路徑以相對字串回傳；`dir_unknown` 為真時為 None。
+        dir_unknown: 目錄含變數、命令替換、`cd -`、`||` 之後的 cd、`popd`，
+            或經由 shell 別名取得時為 True，此時 effective_dir 不可信。預設 False。
+        經別名展開的呼叫，`statement` 為展開後的 token 序列。
     """
 
     statement: List[str]
@@ -311,6 +322,9 @@ class GitInvocation:
     subcommand_index: int
     dash_c_path: Optional[str]
     global_options: List[str] = field(default_factory=list)
+    dash_c_paths: Tuple[str, ...] = ()
+    effective_dir: Optional[str] = None
+    dir_unknown: bool = False
 
     @property
     def args(self) -> List[str]:
@@ -398,26 +412,21 @@ def _split_statements(tokens: List[str]) -> List[List[str]]:
 
 def _consume_global_options(
     statement: List[str], start_idx: int
-) -> Optional[Tuple[int, Optional[str], List[str]]]:
+) -> Optional[Tuple[int, Optional[str], List[str], Tuple[str, ...]]]:
     """從 `start_idx`（緊接在 `git` 之後）開始，逐一消耗 git 全域選項。
 
-    回傳 `(下一個未消耗的 idx, dash_c_path, global_options)`；回傳 None
-    表示 `-C` 後無值（語句不完整，非可辨識的 git 呼叫）。獨立為函式是
-    因為此迴圈要處理四種選項形態（`-C`、消耗值的長選項、`--opt=value`
-    單一 token 形式、不消耗值的長選項），分支數對應 git 全域選項語法本身
-    的固有複雜度，抽出後呼叫端 `_find_invocation_in_statement` 只需處理
-    一次函式呼叫的結果，不需在自身迴圈中內嵌這四種判斷。
+    回傳 `(下一個未消耗的 idx, 第一個 -C 路徑, global_options, 全部 -C 路徑)`；
+    回傳 None 表示 `-C` 後無值（語句不完整，非可辨識的 git 呼叫）。
     """
     idx = start_idx
-    dash_c_path: Optional[str] = None
+    dash_c_paths: List[str] = []
     global_options: List[str] = []
     while idx < len(statement):
         tok = statement[idx]
         if tok == "-C":
             if idx + 1 >= len(statement):
                 return None  # -C 後無值，語句不完整，非可辨識的 git 呼叫
-            if dash_c_path is None:
-                dash_c_path = statement[idx + 1]
+            dash_c_paths.append(statement[idx + 1])
             global_options.append(tok)
             idx += 2
             continue
@@ -436,37 +445,245 @@ def _consume_global_options(
             idx += 1
             continue
         break
-    return idx, dash_c_path, global_options
+    first = dash_c_paths[0] if dash_c_paths else None
+    return idx, first, global_options, tuple(dash_c_paths)
 
 
-def _find_invocation_in_statement(
-    statement: List[str], wanted_tokens: FrozenSet[str]
-) -> Optional[GitInvocation]:
-    """在單一語句 token 清單中尋找第一個符合條件的 git 呼叫。"""
-    idx = _skip_prefix_wrapper_count(statement)
-    if idx >= len(statement) or statement[idx] != "git":
+# ===== 目錄狀態（cd / -C 串接） =====
+
+
+@dataclass(frozen=True)
+class _DirState:
+    """語句開始時的目錄狀態：path 為已知目錄（可為 None），unknown 為不可信旗標。"""
+
+    path: Optional[str] = None
+    unknown: bool = False
+
+
+def _is_dynamic_path(path: str) -> bool:
+    return "$" in path or "`" in path
+
+
+def _join_dir(state: _DirState, target: str) -> _DirState:
+    """依 cd／-C 語意把 target 套用到 state：動態值轉未知，絕對路徑取代，相對路徑接續。"""
+    if state.unknown or _is_dynamic_path(target):
+        return _DirState(None, True)
+    if not target:
+        return state
+    target = os.path.expanduser(target) if target.startswith("~") else target
+    if os.path.isabs(target) or state.path is None:
+        return _DirState(target, False)
+    return _DirState(os.path.join(state.path, target), False)
+
+
+def _apply_cd(statement: List[str], state: _DirState, prev_sep: str, next_sep: str) -> _DirState:
+    """計算語句執行後留給後續語句的目錄狀態。
+
+    只處理語句開頭的 `cd` / `pushd` / `popd`。管線兩側在子 shell 執行，不外溢；
+    `||` 前後的 cd 是否執行不確定，標未知。
+    """
+    head = statement[0] if statement else ""
+    if head not in ("cd", "pushd", "popd") or "|" in (prev_sep, next_sep):
+        return state
+    if head == "popd":
+        return _DirState(None, True)
+    args = [t for t in statement[1:] if t not in ("-P", "-L", "-e", "-@", "--")]
+    if len(args) != 1 or args[0] == "-" or "||" in (prev_sep, next_sep):
+        return _DirState(None, True)  # HOME／cd -／條件式 cd：目的地不可靜態得知
+    return _join_dir(state, args[0])
+
+
+def _walk_statements(
+    tokens: List[str], init: _DirState
+) -> List[Tuple[List[str], _DirState]]:
+    """切分語句並為每條語句附上其開始時的目錄狀態；括號為 cd 作用域邊界。"""
+    result: List[Tuple[List[str], _DirState]] = []
+    stack: List[_DirState] = []
+    state = init
+    current: List[str] = []
+    prev_sep = ""
+
+    def flush(next_sep: str) -> None:
+        nonlocal state, current
+        if current:
+            result.append((current, state))
+            state = _apply_cd(current, state, prev_sep, next_sep)
+            current = []
+
+    for token in tokens:
+        if token not in _STATEMENT_SEPARATORS:
+            current.append(token)
+            continue
+        flush(token)
+        if token == "(":
+            stack.append(state)
+        elif token == ")" and stack:
+            state = stack.pop()
+        prev_sep = token
+    flush("")
+    return result
+
+
+# ===== 包裝命令、巢狀 shell、別名 =====
+
+_MAX_NESTING = 5
+_ALIAS_READ_TIMEOUT_SEC = 2
+_SHELLS = frozenset({"bash", "sh", "zsh", "dash", "ksh"})
+_SHELL_C_FLAG_RE = re.compile(r"^-[A-Za-z]*c[A-Za-z]*$")
+
+# git 內建子命令：不可被別名覆蓋，查 git config 前直接略過以省子程序
+_GIT_BUILTINS = frozenset(
+    {
+        "add", "am", "apply", "bisect", "blame", "branch", "checkout", "cherry-pick",
+        "clean", "clone", "commit", "config", "describe", "diff", "fetch", "grep",
+        "init", "log", "merge", "mv", "pull", "push", "rebase", "remote", "reset",
+        "restore", "revert", "rm", "show", "stash", "status", "switch", "tag",
+        "worktree", "reflog", "rev-parse", "ls-files", "commit-tree", "update-ref",
+    }
+)
+
+
+def _read_git_alias(directory: Optional[str], name: str) -> Optional[str]:
+    """讀 `alias.<name>`；任何失敗（無 git、逾時、目錄不存在、未設定）皆回 None。"""
+    cmd = ["git"] + (["-C", directory] if directory else []) + ["config", "--get", f"alias.{name}"]
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=_ALIAS_READ_TIMEOUT_SEC
+        )
+    except Exception as exc:  # 別名讀取失敗不得影響守衛：視為無別名
+        _logger.debug("read git alias failed (name=%s): %s", name, exc)  # i18n-exempt
         return None
-    idx += 1
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
 
-    consumed = _consume_global_options(statement, idx)
+
+def _is_git_word(token: str) -> bool:
+    return token == "git" or token.endswith("/git")
+
+
+def _skip_wrappers(statement: List[str]) -> Optional[int]:
+    """跳過 sudo/env/nohup 等前綴與 `command`、`exec`；回傳命令位置，`command -v` 回 None。"""
+    idx = 0
+    while True:
+        idx += skip_prefix_wrapper_count(statement[idx:])
+        if idx < len(statement) and statement[idx] in ("command", "exec"):
+            is_command = statement[idx] == "command"
+            idx += 1
+            while idx < len(statement) and statement[idx].startswith("-"):
+                if is_command and statement[idx] in ("-v", "-V"):
+                    return None  # 查詢而非執行
+                idx += 2 if statement[idx] == "-a" and not is_command else 1
+            continue
+        return idx
+
+
+def _nested_script(statement: List[str], idx: int) -> Optional[str]:
+    """若 statement[idx] 為 `bash -c`／`eval`，取出其腳本字串，否則回 None。"""
+    head = statement[idx]
+    if head == "eval":
+        return " ".join(statement[idx + 1:])
+    if os.path.basename(head) not in _SHELLS:
+        return None
+    pos = idx + 1
+    while pos < len(statement) and statement[pos].startswith("-") and statement[pos] != "--":
+        if _SHELL_C_FLAG_RE.match(statement[pos]):
+            return statement[pos + 1] if pos + 1 < len(statement) else None
+        pos += 1
+    return None
+
+
+class _Ctx:
+    """單次解析的共用參數：關注子命令集合與基準目錄。"""
+
+    def __init__(self, wanted: FrozenSet[str], base_dir: Optional[str]):
+        self.wanted = wanted
+        self.base_dir = base_dir
+
+
+def _scan_script(script: str, state: _DirState, depth: int, ctx: "_Ctx") -> List[GitInvocation]:
+    """遞迴解析巢狀腳本；巢狀內的 cd 不外溢，無法 tokenize 時視為無命中。"""
+    if depth >= _MAX_NESTING:
+        return []
+    tokens = _tokenize_command(script)
+    if tokens is None:
+        return []
+    return _scan_tokens(tokens, state, depth + 1, ctx)
+
+
+def _scan_tokens(
+    tokens: List[str], init: _DirState, depth: int, ctx: "_Ctx"
+) -> List[GitInvocation]:
+    found: List[GitInvocation] = []
+    for statement, state in _walk_statements(tokens, init):
+        found.extend(_invocations_in_statement(statement, state, depth, ctx))
+    return found
+
+
+def _invocations_in_statement(
+    statement: List[str], state: _DirState, depth: int, ctx: "_Ctx"
+) -> List[GitInvocation]:
+    idx = _skip_wrappers(statement)
+    if idx is None or idx >= len(statement):
+        return []
+    if _is_git_word(statement[idx]):
+        return _git_invocations(statement, idx, state, depth, ctx)
+    script = _nested_script(statement, idx)
+    if script:
+        return _scan_script(script, state, depth, ctx)
+    return []
+
+
+def _git_invocations(
+    statement: List[str], git_idx: int, state: _DirState, depth: int, ctx: "_Ctx"
+) -> List[GitInvocation]:
+    """`state` 為套用本呼叫 -C 之前的目錄狀態。"""
+    consumed = _consume_global_options(statement, git_idx + 1)
     if consumed is None:
-        return None
-    idx, dash_c_path, global_options = consumed
-
+        return []
+    idx, dash_c_path, global_options, dash_c_paths = consumed
     if idx >= len(statement):
-        return None
+        return []
+    eff = state
+    for path in dash_c_paths:
+        eff = _join_dir(eff, path)
+    token = statement[idx]
+    if token in ctx.wanted:
+        return [
+            GitInvocation(
+                statement=statement,
+                subcommand=_canonical_subcommand(token),
+                subcommand_index=idx,
+                dash_c_path=dash_c_path,
+                global_options=global_options,
+                dash_c_paths=dash_c_paths,
+                effective_dir=None if eff.unknown else eff.path,
+                dir_unknown=eff.unknown,
+            )
+        ]
+    if depth >= _MAX_NESTING or token.startswith("-") or token in _GIT_BUILTINS:
+        return []
+    lookup_dir = ctx.base_dir if eff.unknown else eff.path
+    return _expand_alias(statement, git_idx, idx, lookup_dir, state, depth, ctx)
 
-    subcommand_token = statement[idx]
-    if subcommand_token not in wanted_tokens:
-        return None
 
-    return GitInvocation(
-        statement=statement,
-        subcommand=_canonical_subcommand(subcommand_token),
-        subcommand_index=idx,
-        dash_c_path=dash_c_path,
-        global_options=global_options,
-    )
+def _expand_alias(
+    statement: List[str], git_idx: int, idx: int, lookup_dir: Optional[str],
+    state: _DirState, depth: int, ctx: "_Ctx",
+) -> List[GitInvocation]:
+    value = _read_git_alias(lookup_dir, statement[idx])
+    if not value:
+        return []
+    if value.startswith("!"):
+        # shell 別名：內容只能當腳本遞迴解析；實際目錄與參數不可知，結果一律標未知
+        found = _scan_script(value[1:], _DirState(None, True), depth, ctx)
+        return [replace(inv, dir_unknown=True, effective_dir=None) for inv in found]
+    try:
+        alias_tokens = shlex.split(value)
+    except ValueError:
+        return []
+    expanded = statement[:idx] + alias_tokens + statement[idx + 1:]
+    return _git_invocations(expanded, git_idx, state, depth + 1, ctx)
 
 
 def parse_command_statements(command: str) -> Optional[List[List[str]]]:
@@ -500,20 +717,23 @@ def parse_command_statements(command: str) -> Optional[List[List[str]]]:
 
 
 def find_git_invocations(
-    command: str, subcommands: Iterable[str]
+    command: str, subcommands: Iterable[str], base_dir: Optional[str] = None
 ) -> Optional[List[GitInvocation]]:
     """解析命令字串，回傳指定子命令的所有 git 呼叫結構化記錄。
 
     處理順序：剝離 heredoc 本體（含保底）-> 換行正規化為語句分隔符 ->
-    shlex tokenize -> 依運算子切分語句 -> 逐語句跳過前綴包裹/環境變數
-    賦值 -> 確認為 `git` -> 消耗全域選項（含 `-C <path>`）-> 比對子命令
-    （含別名展開）。
+    shlex tokenize -> 依運算子切分語句（追蹤 cd 作用域）-> 逐語句跳過前綴
+    包裹／`command`／`exec`／環境變數賦值 -> 確認為 `git`（含絕對路徑）或
+    遞迴進入 `bash|sh|zsh -c` 與 `eval` 的腳本 -> 消耗全域選項（含 `-C`）
+    -> 比對子命令（含內建別名展開，其次讀 `git config alias.X` 展開使用者別名）。
 
     Args:
         command: PreToolUse 收到的原始命令字串（`tool_input.command`）。
         subcommands: 要匹配的 canonical 子命令名稱集合（如 `{"commit"}`
             或 `{"add"}`）。別名由 `SUBCOMMAND_ALIASES` 自動展開，呼叫端
             傳 canonical 名稱即可，不需自行列出別名。
+        base_dir: 命令開始執行時的目錄（通常為 payload cwd），僅用於
+            計算 `effective_dir` 與讀取別名；預設 None 不影響既有行為。
 
     Returns:
         - `None`：命令字串無法安全 tokenize（shlex 遇未閉合引號）。呼叫端
@@ -529,10 +749,5 @@ def find_git_invocations(
     if tokens is None:
         return None
 
-    wanted_tokens = _expand_subcommand_aliases(subcommands)
-    invocations: List[GitInvocation] = []
-    for statement in _split_statements(tokens):
-        inv = _find_invocation_in_statement(statement, wanted_tokens)
-        if inv is not None:
-            invocations.append(inv)
-    return invocations
+    ctx = _Ctx(_expand_subcommand_aliases(subcommands), base_dir)
+    return _scan_tokens(tokens, _DirState(base_dir, False), 0, ctx)
