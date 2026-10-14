@@ -125,6 +125,37 @@ def normalize_newlines_to_separators(command: str) -> str:
     return "".join(result)
 
 
+# ===== 反引號命令替換 =====
+
+
+def extract_backtick_bodies(command: str) -> List[str]:
+    """取出反引號命令替換的本體（單引號內不算；雙引號內仍會執行，算）。
+
+    本體另成語句掃描，原命令字串不改動，使 `git -C `pwd`/x commit` 這類
+    「反引號是參數」的寫法仍保有原本的判讀。未閉合的反引號不取。
+    """
+    bodies: List[str] = []
+    in_single = False
+    in_double = False
+    buf: Optional[List[str]] = None
+    prev = ""
+    for ch in command:
+        if buf is not None:
+            if ch == "`" and prev != "\\":
+                bodies.append("".join(buf))
+                buf = None
+            else:
+                buf.append(ch)
+        elif ch == "'" and not in_double and prev != "\\":
+            in_single = not in_single
+        elif ch == '"' and not in_single and prev != "\\":
+            in_double = not in_double
+        elif ch == "`" and not in_single and prev != "\\":
+            buf = []
+        prev = ch
+    return bodies
+
+
 # ===== 括號正規化 =====
 
 _logger = logging.getLogger("git_command_parse")
@@ -218,6 +249,32 @@ def is_shell_redirection_token(tok: str) -> bool:
 # 語句開頭的前綴包裹命令：跳過後繼續尋找 git（不消耗任何選項值）
 _PREFIX_COMMANDS_SIMPLE = frozenset({"sudo", "nohup", "time", "xargs"})
 
+# 僅 git 呼叫定位（extended=True）額外跳過；其他呼叫端各有自己的 launcher 剝除
+# （test_command_parse 自行處理 timeout／sudo／env 選項），不受此集合影響
+_PREFIX_COMMANDS_EXTENDED_SIMPLE = frozenset({"builtin"})
+# 帶選項的前綴包裹：選項值（消耗下一個 token）與選項後固定個數的位置參數
+# （timeout 的 DURATION）。選項判斷錯誤的最壞結果是找不到 git（漏報），不會誤報。
+_WRAPPER_VALUE_OPTIONS = {
+    "sudo": frozenset({
+        "-u", "-g", "-h", "-p", "-C", "-r", "-t", "-U", "-D", "-R", "-T",
+        "--user", "--group", "--host", "--prompt", "--close-from", "--chdir",
+    }),
+    "env": frozenset({"-u", "-C", "--unset", "--chdir"}),
+    "nice": frozenset({"-n", "--adjustment"}),
+    "timeout": frozenset({"-s", "-k", "--signal", "--kill-after"}),
+    "stdbuf": frozenset({"-i", "-o", "-e", "--input", "--output", "--error"}),
+    "caffeinate": frozenset({"-t", "-w"}),
+    "time": frozenset(),
+    "doas": frozenset({"-u", "-C"}),
+    "chronic": frozenset(),
+    "flock": frozenset({"-w", "-E", "--timeout", "--wait", "--conflict-exit-code"}),
+}
+_WRAPPER_POSITIONALS = {"timeout": 1, "flock": 1}  # flock 的位置參數是鎖檔
+
+# 把字串當命令執行的包裹（env -S／flock -c／watch）：不跳過，改交 _wrapper_script 取腳本遞迴解析
+_STRING_COMMAND_WRAPPERS = frozenset({"env", "flock", "watch"})
+_WATCH_VALUE_OPTIONS = frozenset({"-n", "--interval"})
+
 # 環境變數賦值前綴（如 `FOO=bar git commit ...`），env 本身另外處理
 _ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 
@@ -262,20 +319,79 @@ def _expand_subcommand_aliases(subcommands: Iterable[str]) -> FrozenSet[str]:
     return frozenset(expanded)
 
 
-def skip_prefix_wrapper_count(tokens: List[str]) -> int:
+def _wrapper_script(tokens: List[str], idx: int) -> Optional[str]:
+    """env -S／flock -c／watch 攜帶的命令字串；該包裹沒有字串命令時回 None。
+
+    watch 會把全部引數合併後交給 sh -c，因此一律回合併字串（無引數為空字串）。
+    """
+    name = tokens[idx]
+    value_options = _WATCH_VALUE_OPTIONS if name == "watch" else _WRAPPER_VALUE_OPTIONS.get(name, frozenset())
+    i = idx + 1
+    while i < len(tokens):
+        tok = tokens[i]
+        if name == "env":
+            if tok in ("-S", "--split-string"):
+                return " ".join(tokens[i + 1:])
+            if tok.startswith("--split-string="):
+                return " ".join([tok.split("=", 1)[1]] + tokens[i + 1:])
+            if tok.startswith("-S") and not tok.startswith("--"):
+                return " ".join([tok[2:]] + tokens[i + 1:])
+            if _ENV_ASSIGNMENT_RE.match(tok):
+                i += 1
+                continue
+        if name == "flock" and tok in ("-c", "--command"):
+            return " ".join(tokens[i + 1:])
+        if tok == "--":
+            i += 1
+            break
+        if not tok.startswith("-") or tok == "-":
+            break
+        i += 2 if tok in value_options else 1
+    if name == "watch":
+        return " ".join(tokens[i:])
+    if name == "flock" and i + 1 < len(tokens) and tokens[i + 1] in ("-c", "--command"):
+        return " ".join(tokens[i + 2:])  # `flock <鎖檔> -c <字串>`
+    return None
+
+
+def _skip_wrapper_options(tokens: List[str], idx: int, wrapper: str) -> int:
+    """跳過 wrapper 之後的選項（含選項值）與其固定位置參數，回傳下一個 token 位置。
+
+    `env` 的 `KEY=VALUE` 賦值不在此處理，交回呼叫端迴圈（與裸賦值同一條路徑）。
+    """
+    value_options = _WRAPPER_VALUE_OPTIONS[wrapper]
+    while idx < len(tokens):
+        tok = tokens[idx]
+        if tok == "--":
+            idx += 1
+            break
+        if not tok.startswith("-") or tok == "-":
+            break
+        idx += 2 if tok in value_options else 1
+    idx += _WRAPPER_POSITIONALS.get(wrapper, 0)
+    return min(idx, len(tokens))
+
+
+def skip_prefix_wrapper_count(tokens: List[str], extended: bool = False) -> int:
     """計算語句開頭需跳過的前綴包裹與環境變數賦值 token 數，供索引位移用。
 
-    涵蓋：`sudo` / `nohup` / `time` / `xargs`（跳過自身，不消耗選項值——
-    這些命令的選項形式多樣且與本模組要解決的問題無關，簡化為只跳過命令
-    本身；即使後面接的是該命令自身的選項而非 `git`，後續「下一個 token
-    是否為 git」的檢查會自然判定為不匹配，不會誤判）、`env`（跳過自身與
-    其後任意數量的 `KEY=VALUE` 賦值）、裸的 `KEY=VALUE` 賦值前綴（不經
-    `env` 也是合法 shell 語法）。
+    預設涵蓋：`sudo` / `nohup` / `time` / `xargs`（只跳過命令本身，不消耗
+    選項值；後面若接該命令自身的選項而非 `git`，後續檢查自然判定為不匹配）、
+    `env`（跳過自身與其後任意數量的 `KEY=VALUE`）、裸的 `KEY=VALUE` 賦值前綴。
+
+    `extended=True`（git 呼叫定位用）：`sudo` / `env` / `nice` / `timeout` /
+    `stdbuf` / `caffeinate` 連同選項與選項值一併跳過（`timeout` 另含 DURATION），
+    並加跳 `builtin`。預設值維持舊行為，其他呼叫端的語意不變。
     """
     idx = 0
     while idx < len(tokens):
         tok = tokens[idx]
-        if tok in _PREFIX_COMMANDS_SIMPLE:
+        if extended and tok in _STRING_COMMAND_WRAPPERS and _wrapper_script(tokens, idx) is not None:
+            break
+        if extended and tok in _WRAPPER_VALUE_OPTIONS:
+            idx = _skip_wrapper_options(tokens, idx + 1, tok)
+            continue
+        if tok in _PREFIX_COMMANDS_SIMPLE or (extended and tok in _PREFIX_COMMANDS_EXTENDED_SIMPLE):
             idx += 1
             continue
         if tok == "env":
@@ -334,7 +450,7 @@ class GitInvocation:
 
 # ===== 語句切分 =====
 
-_STATEMENT_SEPARATORS = frozenset({"&&", "||", ";", "|", "(", ")"})
+_STATEMENT_SEPARATORS = frozenset({"&&", "||", ";", "|", "&", "(", ")"})
 
 
 def _tokenize(command: str) -> Optional[List[str]]:
@@ -358,6 +474,9 @@ def _tokenize_command(command: str) -> Optional[List[str]]:
     命令字串切出相同的 token 流。
     """
     stripped = strip_heredoc_bodies(command)
+    bodies = extract_backtick_bodies(stripped)
+    if bodies:
+        stripped = "\n".join([stripped] + bodies)  # 原文保留（-C `pwd` 等仍可判讀），本體另成語句
     normalized = normalize_newlines_to_separators(stripped)
     return _tokenize(space_shell_parens(normalized))
 
@@ -413,17 +532,31 @@ def _split_statements(tokens: List[str]) -> List[List[str]]:
 
 def _consume_global_options(
     statement: List[str], start_idx: int
-) -> Optional[Tuple[int, Optional[str], List[str], Tuple[str, ...]]]:
+) -> Optional[Tuple[int, Optional[str], List[str], Tuple[str, ...], dict]]:
     """從 `start_idx`（緊接在 `git` 之後）開始，逐一消耗 git 全域選項。
 
-    回傳 `(下一個未消耗的 idx, 第一個 -C 路徑, global_options, 全部 -C 路徑)`；
+    回傳 `(下一個未消耗的 idx, 第一個 -C 路徑, global_options, 全部 -C 路徑,
+    行內別名 {名稱: 展開值})`；行內別名來自 `-c alias.X=值`。
     回傳 None 表示 `-C` 後無值（語句不完整，非可辨識的 git 呼叫）。
     """
     idx = start_idx
     dash_c_paths: List[str] = []
     global_options: List[str] = []
+    inline_aliases: dict = {}
     while idx < len(statement):
         tok = statement[idx]
+        if tok == "-c" and idx + 1 < len(statement):
+            _record_inline_alias(statement[idx + 1], inline_aliases)
+        if tok.startswith("-c") and len(tok) > 2 and not tok.startswith("--"):
+            _record_inline_alias(tok[2:], inline_aliases)  # `-c<key=value>` 黏寫
+            global_options.append(tok)
+            idx += 1
+            continue
+        if tok.startswith("-C") and len(tok) > 2:
+            dash_c_paths.append(tok[2:])  # `-C<path>` 黏寫
+            global_options.append(tok)
+            idx += 1
+            continue
         if tok == "-C":
             if idx + 1 >= len(statement):
                 return None  # -C 後無值，語句不完整，非可辨識的 git 呼叫
@@ -447,7 +580,14 @@ def _consume_global_options(
             continue
         break
     first = dash_c_paths[0] if dash_c_paths else None
-    return idx, first, global_options, tuple(dash_c_paths)
+    return idx, first, global_options, tuple(dash_c_paths), inline_aliases
+
+
+def _record_inline_alias(config_pair: str, inline_aliases: dict) -> None:
+    """`-c alias.X=值` 的設定對：記為行內別名；其他設定鍵不處理。"""
+    key, sep, value = config_pair.partition("=")
+    if sep and key.startswith("alias.") and len(key) > len("alias."):
+        inline_aliases[key[len("alias."):]] = value
 
 
 # ===== 目錄狀態（cd / -C 串接） =====
@@ -477,14 +617,35 @@ def _join_dir(state: _DirState, target: str) -> _DirState:
     return _DirState(os.path.join(state.path, target), False)
 
 
+# 控制結構的語句頭關鍵字：其後才是命令位置（`for`／`select` 的語句頭沒有命令位置，
+# 不跳過；整句落到「非 git」而自然無命中）
+_CONTROL_KEYWORDS = frozenset(
+    {"if", "then", "else", "elif", "do", "while", "until", "{", "}", "!", "coproc"}
+)
+
+
+def _leading_control_count(statement: List[str]) -> int:
+    """語句頭的控制關鍵字數；`function NAME` 連同函式名稱一併計入。"""
+    count = 0
+    while count < len(statement):
+        if statement[count] in _CONTROL_KEYWORDS:
+            count += 1
+        elif statement[count] == "function" and count + 1 < len(statement):
+            count += 2
+        else:
+            break
+    return count
+
+
 def _apply_cd(statement: List[str], state: _DirState, prev_sep: str, next_sep: str) -> _DirState:
     """計算語句執行後留給後續語句的目錄狀態。
 
     只處理語句開頭的 `cd` / `pushd` / `popd`。管線兩側在子 shell 執行，不外溢；
     `||` 前後的 cd 是否執行不確定，標未知。
     """
+    statement = statement[_leading_control_count(statement):]
     head = statement[0] if statement else ""
-    if head not in ("cd", "pushd", "popd") or "|" in (prev_sep, next_sep):
+    if head not in ("cd", "pushd", "popd") or "|" in (prev_sep, next_sep) or next_sep == "&":
         return state
     if head == "popd":
         return _DirState(None, True)
@@ -582,10 +743,13 @@ def _is_git_word(token: str) -> bool:
 
 
 def _skip_wrappers(statement: List[str]) -> Optional[int]:
-    """跳過 sudo/env/nohup 等前綴與 `command`、`exec`；回傳命令位置，`command -v` 回 None。"""
+    """跳過控制結構語句頭、sudo/env/nohup 等前綴與 `command`、`exec`；
+    回傳命令位置，`command -v` 回 None。"""
     idx = 0
     while True:
-        idx += skip_prefix_wrapper_count(statement[idx:])
+        start = idx
+        idx += _leading_control_count(statement[idx:])
+        idx += skip_prefix_wrapper_count(statement[idx:], extended=True)
         if idx < len(statement) and statement[idx] in ("command", "exec"):
             is_command = statement[idx] == "command"
             idx += 1
@@ -594,12 +758,16 @@ def _skip_wrappers(statement: List[str]) -> Optional[int]:
                     return None  # 查詢而非執行
                 idx += 2 if statement[idx] == "-a" and not is_command else 1
             continue
+        if idx > start:
+            continue  # 前綴後可能再接控制關鍵字或前綴（如 `then nice <命令>`）
         return idx
 
 
 def _nested_script(statement: List[str], idx: int) -> Optional[str]:
     """若 statement[idx] 為 `bash -c`／`eval`，取出其腳本字串，否則回 None。"""
     head = statement[idx]
+    if head in _STRING_COMMAND_WRAPPERS:
+        return _wrapper_script(statement, idx)
     if head == "eval":
         return " ".join(statement[idx + 1:])
     if os.path.basename(head) not in _SHELLS:
@@ -610,6 +778,39 @@ def _nested_script(statement: List[str], idx: int) -> Optional[str]:
             return statement[pos + 1] if pos + 1 < len(statement) else None
         pos += 1
     return None
+
+
+_REDIRECT_OPERATOR_RE = re.compile(r"^\d*(>>?|<{1,3})$")
+
+
+def _is_stdin_shell(statement: List[str], idx: int) -> bool:
+    """statement[idx] 為從 stdin 讀腳本的 shell（無 `-c`、無腳本檔參數）。"""
+    if os.path.basename(statement[idx]) not in _SHELLS:
+        return False
+    args = iter(statement[idx + 1:])
+    for tok in args:
+        if _SHELL_C_FLAG_RE.match(tok):
+            return False
+        if _REDIRECT_OPERATOR_RE.match(tok):
+            next(args, None)  # 略過重導向目標
+        elif not tok.startswith("-") and not is_shell_redirection_token(tok):
+            return False
+    return True
+
+
+def _raise_if_pipes_into_shell(tokens: List[str]) -> None:
+    """管線輸出餵給 stdin shell：腳本內容在執行期才產生，靜態不可解析。"""
+    for pos, token in enumerate(tokens):
+        if token != "|":
+            continue
+        following: List[str] = []
+        for nxt in tokens[pos + 1:]:
+            if nxt in _STATEMENT_SEPARATORS:
+                break
+            following.append(nxt)
+        idx = _skip_wrappers(following)
+        if idx is not None and idx < len(following) and _is_stdin_shell(following, idx):
+            raise _Unparseable("pipe into shell")
 
 
 class _Ctx:
@@ -653,6 +854,7 @@ def _scan_tokens(
     tokens: List[str], init: _DirState, depth: int, ctx: "_Ctx"
 ) -> List[GitInvocation]:
     found: List[GitInvocation] = []
+    _raise_if_pipes_into_shell(tokens)
     for statement, state in _walk_statements(tokens, init):
         found.extend(_invocations_in_statement(statement, state, depth, ctx))
     return found
@@ -669,6 +871,8 @@ def _invocations_in_statement(
     script = _nested_script(statement, idx)
     if script:
         return _scan_script(script, state, depth, ctx)
+    if "<<<" in statement and _is_stdin_shell(statement, idx):
+        raise _Unparseable("here-string into shell")
     return []
 
 
@@ -679,7 +883,7 @@ def _git_invocations(
     consumed = _consume_global_options(statement, git_idx + 1)
     if consumed is None:
         return []
-    idx, dash_c_path, global_options, dash_c_paths = consumed
+    idx, dash_c_path, global_options, dash_c_paths, inline_aliases = consumed
     if idx >= len(statement):
         return []
     eff = state
@@ -704,14 +908,17 @@ def _git_invocations(
     if depth >= _MAX_NESTING:
         raise _Unparseable("alias chain too deep")
     lookup_dir = ctx.base_dir if eff.unknown else eff.path
-    return _expand_alias(statement, git_idx, idx, lookup_dir, state, depth, ctx)
+    return _expand_alias(
+        statement, git_idx, idx, lookup_dir, state, depth, ctx, inline_aliases.get(token)
+    )
 
 
 def _expand_alias(
     statement: List[str], git_idx: int, idx: int, lookup_dir: Optional[str],
-    state: _DirState, depth: int, ctx: "_Ctx",
+    state: _DirState, depth: int, ctx: "_Ctx", inline_value: Optional[str] = None,
 ) -> List[GitInvocation]:
-    value = ctx.alias(lookup_dir, statement[idx])
+    """展開別名；`inline_value` 為 `-c alias.X=` 行內別名，優先於設定檔。"""
+    value = inline_value if inline_value is not None else ctx.alias(lookup_dir, statement[idx])
     if not value:
         return []
     if value.startswith("!"):

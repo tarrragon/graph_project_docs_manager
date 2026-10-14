@@ -598,3 +598,215 @@ def test_match_git_commit_discriminates_when_parser_mutated(monkeypatch):
     )
     # 恆回非空：amend 排除路徑讀 inv.args，以 exclude_amend=False 驗反向輸入被誤判為命中
     assert match_git_commit("echo git commit", exclude_amend=False) is True
+
+
+# ===== 控制結構、背景符號、前綴命令、行內別名（0.5.0-W1-120.7.5）=====
+
+_CONTROL_AND_PREFIX_POSITIVE = [
+    "{ git commit -m x; }",
+    "true & git commit -m x",
+    "git status & git commit -m x",
+    "if true; then git commit -m x; fi",
+    "if git diff --quiet; then :; else git commit -m x; fi",
+    "if false; then :; elif true; then git commit -m x; fi",
+    "for f in a b; do git commit -m x; done",
+    "while true; do git commit -m x; done",
+    "until false; do git commit -m x; done",
+    "nice git commit -m x",
+    "nice -n 5 git commit -m x",
+    "nice -5 git commit -m x",
+    "timeout 5 git commit -m x",
+    "timeout -k 1 -s TERM 5 git commit -m x",
+    "stdbuf -oL git commit -m x",
+    "stdbuf -o L git commit -m x",
+    "caffeinate git commit -m x",
+    "caffeinate -t 60 git commit -m x",
+    "sudo -u me git commit -m x",
+    "sudo -n git commit -m x",
+    "env -i git commit -m x",
+    "env -u FOO BAR=1 git commit -m x",
+    "builtin command git commit -m x",
+    "git -C. commit -m x",
+    "git -C/tmp/r commit -m x",
+    "git -c alias.ci=commit ci -m x",
+]
+
+_CONTROL_AND_PREFIX_NEGATIVE = [
+    "echo git commit -m x",
+    "echo 'if true; then git commit; fi'",
+    "echo 'nice git commit'",
+    "echo \"true & git commit\"",
+    "for git in a b; do echo $git; done",
+    "if true; then echo hi; fi",
+    "nice -n 5 ls",
+    "timeout 5 ls",
+    "git -c alias.ci=commit status",
+    "git -c alias.ci=log ci",
+]
+
+
+@pytest.mark.parametrize("command", _CONTROL_AND_PREFIX_POSITIVE)
+def test_control_structure_and_prefix_forms_detected(command):
+    found = _subs(command)
+    assert [inv.subcommand for inv in found] == ["commit"]
+
+
+@pytest.mark.parametrize("command", _CONTROL_AND_PREFIX_NEGATIVE)
+def test_control_structure_and_prefix_negative_controls(command):
+    assert _subs(command) == []
+
+
+def test_while_condition_git_call_detected():
+    assert len(_subs("while git commit -m x; do :; done")) == 1
+
+
+def test_dash_c_glued_path_recorded():
+    inv = _subs("git -C/tmp/r commit -m x")[0]
+    assert inv.dash_c_paths == ("/tmp/r",)
+    assert inv.effective_dir == "/tmp/r"
+
+
+def test_inline_alias_beats_config_and_skips_lookup(monkeypatch):
+    monkeypatch.setattr(gcp, "_read_git_alias", lambda d, n: pytest.fail("不應查設定檔"))
+    assert len(_subs("git -c alias.ci=commit ci -m x")) == 1
+
+
+def test_inline_alias_cannot_shadow_builtin():
+    assert _subs("git -c alias.commit=log commit -m x") != []
+
+
+def test_cd_after_control_keyword_affects_effective_dir():
+    inv = _subs("if true; then cd /a; git commit -m x; fi")[0]
+    assert inv.effective_dir == "/a"
+
+
+def test_background_cd_does_not_leak():
+    inv = _subs("cd /a & git commit -m x", base_dir="/base")[0]
+    assert inv.effective_dir == "/base"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "bash <<< 'git commit -m x'",
+        "echo 'git commit -m x' | bash",
+        "echo x | sudo sh",
+        "cat s | bash -s",
+    ],
+)
+def test_stdin_shell_forms_are_none(command):
+    assert find_git_invocations(command, {"commit"}) is None
+    if "git" in command:  # match_git_commit 先以 git 字樣短路，無字樣者不進解析
+        assert match_git_commit(command) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo 'git commit' | cat",
+        "echo x | bash script.sh",
+        "echo x | bash -c 'ls'",
+        "bash -c 'git commit -m x' <<< y",
+    ],
+)
+def test_stdin_shell_negative_controls_not_none(command):
+    assert find_git_invocations(command, {"commit"}) is not None
+
+
+def test_mutation_without_background_separator_misses(monkeypatch):
+    """變異確認：移除 & 分隔符後，背景符號正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "_STATEMENT_SEPARATORS", gcp._STATEMENT_SEPARATORS - {"&"})
+    assert _subs("true & git commit -m x") == []
+
+
+def test_mutation_without_control_keywords_misses(monkeypatch):
+    """變異確認：控制關鍵字清單清空後，控制結構正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "_CONTROL_KEYWORDS", frozenset())
+    assert _subs("if true; then git commit -m x; fi") == []
+    assert _subs("{ git commit -m x; }") == []
+
+
+def test_mutation_without_wrapper_options_misses(monkeypatch):
+    """變異確認：前綴選項表清空後，帶選項前綴正向輸入必須漏判。"""
+    monkeypatch.setattr(
+        gcp, "_WRAPPER_VALUE_OPTIONS", {k: frozenset() for k in gcp._WRAPPER_VALUE_OPTIONS}
+    )
+    assert _subs("sudo -u me git commit -m x") == []
+    assert _subs("nice -n 5 git commit -m x") == []
+
+
+_ROUND2_POSITIVE = [
+    "echo `git commit -m x`",
+    "x=`git commit -m x`",
+    "echo \"`git commit -m x`\"",
+    "! git commit -m x",
+    "coproc git commit -m x",
+    "function f { git commit -m x; }",
+    "time -p git commit -m x",
+    "env -S 'git commit -m x'",
+    "env -i -S'git commit -m x'",
+    "env --split-string='git commit -m x'",
+    "doas git commit -m x",
+    "doas -u me git commit -m x",
+    "flock /tmp/l git commit -m x",
+    "flock -w 5 /tmp/l git commit -m x",
+    "flock /tmp/l -c 'git commit -m x'",
+    "chronic git commit -m x",
+    "chronic -e git commit -m x",
+    "watch git commit -m x",
+    "watch -n 5 'git commit -m x'",
+]
+
+_ROUND2_NEGATIVE = [
+    "echo '`git commit -m x`'",
+    "echo \"! git commit\"",
+    "echo 'function f { git commit; }'",
+    "echo `date`",
+    "echo \"`date`\"",
+    "time -p ls",
+    "env -S 'ls -l'",
+    "doas ls",
+    "flock /tmp/l ls",
+    "flock /tmp/l -c 'ls'",
+    "chronic ls",
+    "watch -n 5 ls",
+    "echo watch git commit",
+]
+
+
+@pytest.mark.parametrize("command", _ROUND2_POSITIVE)
+def test_round2_forms_detected(command):
+    assert [inv.subcommand for inv in _subs(command)] == ["commit"]
+
+
+@pytest.mark.parametrize("command", _ROUND2_NEGATIVE)
+def test_round2_negative_controls(command):
+    assert _subs(command) == []
+
+
+def test_mutation_without_backtick_spacing_misses(monkeypatch):
+    """變異確認：不取反引號本體時，反引號正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "extract_backtick_bodies", lambda command: [])
+    assert _subs("echo `git commit -m x`") == []
+
+
+def test_mutation_without_string_wrappers_misses(monkeypatch):
+    """變異確認：停用字串命令包裹解析後，env -S／flock -c／watch 正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "_wrapper_script", lambda tokens, idx: None)
+    assert _subs("env -S 'git commit -m x'") == []
+    assert _subs("flock /tmp/l -c 'git commit -m x'") == []
+    assert _subs("watch 'git commit -m x'") == []
+
+
+def test_mutation_without_new_control_words_misses(monkeypatch):
+    """變異確認：清空控制關鍵字後，`!`／coproc／function 正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "_CONTROL_KEYWORDS", frozenset({"{", "}"}))
+    assert _subs("! git commit -m x") == []
+    assert _subs("coproc git commit -m x") == []
+
+
+def test_mutation_without_stdin_shell_check_returns_list(monkeypatch):
+    """變異確認：停用 stdin shell 判定後，pipe 與 here-string 輸入不再回 None。"""
+    monkeypatch.setattr(gcp, "_is_stdin_shell", lambda statement, idx: False)
+    assert find_git_invocations("echo x | bash", {"commit"}) == []
+    assert find_git_invocations("bash <<< x", {"commit"}) == []
