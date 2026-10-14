@@ -149,10 +149,6 @@
           "timeout": 30
         },
         {
-          "path": ".claude/hooks/cli-failure-help-reminder-hook.py",
-          "timeout": 30
-        },
-        {
           "path": ".claude/hooks/parallel-dispatch-verification-hook.py",
           "timeout": 30
         },
