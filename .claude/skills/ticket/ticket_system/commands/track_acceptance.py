@@ -727,15 +727,25 @@ def _execute_append_log_locked(args: argparse.Namespace, version: str) -> int:
         # 已寫入的實質內容，一律用本次內容整段覆寫，維持 header 不變、章節
         # 在 body 中的原位置不動。
         if getattr(args, "replace", False):
+            from ticket_system.commands.track_dispatch import split_managed_h3
+
             header_end = section_text.find("\n")
             header_line = section_text[: header_end + 1] if header_end != -1 else section_text
             updated_section = header_line + new_entry.lstrip("\n") + "\n"
 
+            # CLI 管理的 H3 子節（派發日誌 / Commit 規範）接在新內容之後保留
+            managed_texts, human_titles = split_managed_h3(section_content)
+            if managed_texts:
+                updated_section += "\n" + "\n\n".join(managed_texts) + "\n"
+
             # 覆寫為不可逆操作（ticket md 受 hook 保護無法手工還原），寫回前
-            # 印出將被取代的內容摘要供呼叫端核對，作為防呆。
-            old_summary = section_content.strip()
-            if len(old_summary) > 200:
-                old_summary = old_summary[:200] + "...(truncated)"
+            # 印出將被取代的內容摘要供呼叫端核對，作為防呆。有人寫 H3 時列標題。
+            if human_titles:
+                old_summary = "將被取代的子節：\n" + "\n".join(human_titles)
+            else:
+                old_summary = section_content.strip()
+                if len(old_summary) > 200:
+                    old_summary = old_summary[:200] + "...(truncated)"
             print(
                 f"[append-log] --replace 將取代 section '{section}' 既有內容："
                 f"\n{old_summary}\n"
