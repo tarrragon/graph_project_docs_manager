@@ -137,7 +137,12 @@ class TestFailureEventNeverBlocks:
             [sys.executable, str(HOOKS_DIR / "hook-dispatcher.py"), "--group", FAILURE_GROUP],
             input=FAILURE_PAYLOAD, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
         assert p.returncode == 0, p.stderr
-        assert p.stdout.strip() == ""
+        # 群組成員無內容時可能輸出 DEFAULT_OUTPUT 空殼（IMP-055 契約），守的是「不阻擋」
+        if p.stdout.strip():
+            specific = json.loads(p.stdout)["hookSpecificOutput"]
+            assert "permissionDecision" not in specific
+            assert "decision" not in specific
+            assert specific["hookEventName"] == "PostToolUseFailure"
 
 
 class TestMetadataAndFallback:
