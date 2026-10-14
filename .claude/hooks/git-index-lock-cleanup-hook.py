@@ -19,6 +19,11 @@ Source: IMP-046 — Hook/Agent 的 git 操作與主線程 commit 競爭 index.lo
 5. 未達閾值的新鎖只寫日誌，不輸出 stderr
 本 hook 不在任何其他 repo 建立目錄或寫入檔案（-C 指向他 repo 時只檢查與清理鎖）。
 fail-open：自身異常不阻擋 Bash 呼叫。
+
+已知限制:
+- lsof 看不到其他使用者的行程與容器/VM 內的行程（bind mount 的 repo 在容器內跑 git 時
+  會被判為無持有）；持有判定只涵蓋本機同使用者行程。
+- 線索中的機密遮罩為盡力而為，不保證涵蓋所有形式。
 """
 
 import json
@@ -51,7 +56,8 @@ MAX_TARGETS = 8
 MAX_ASCEND_LEVELS = 64
 FOUND_BY_CMD_MAX_CHARS = 200
 EVIDENCE_PREFIX = "IDXLOCK-EVIDENCE"
-EVIDENCE_FILENAME = "evidence.log"
+# 刻意不用 .log 副檔名：共用日誌清理以 *.log 為樣式、保留 7 天，會刪掉罕見事件的線索檔
+EVIDENCE_FILENAME = "index-lock-evidence.txt"
 
 # git 全域選項中帶獨立值的（掃描 -C 時需跳過其值）
 _GIT_OPTS_WITH_VALUE = frozenset({"-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"})
@@ -193,7 +199,12 @@ def resolve_lock_path(project_root: str, logger: logging.Logger) -> Optional[str
 
 
 def is_held_by_process(lock_path: str, logger: logging.Logger) -> bool:
-    """lsof 判斷是否有行程持有鎖檔。無法判定視為持有（fail-safe，不刪）。"""
+    """是否視為被持有：僅明確無持有為 False，持有與無法判定皆 True（fail-safe，不刪）。"""
+    return lsof_state(lock_path, logger) != "free"
+
+
+def lsof_state(lock_path: str, logger: logging.Logger) -> str:
+    """lsof 判定：'held'（確定有持有者）/ 'free'（確定無）/ 'unknown'（無法判定）。"""
     try:
         r = subprocess.run(
             ["lsof", "-t", "--", lock_path],
@@ -201,14 +212,14 @@ def is_held_by_process(lock_path: str, logger: logging.Logger) -> bool:
         )
     except (OSError, subprocess.SubprocessError) as e:
         logger.info("lsof 無法執行，視為有行程持有: %s", e)
-        return True
+        return "unknown"
     if r.stdout.strip():
-        return True
+        return "held"
     # 未持有須同時：rc=1、stdout 空、stderr 空；其餘（含 rc=1 而 stderr 有內容）視為無法判定
     if r.returncode == 1 and not r.stderr.strip():
-        return False
+        return "free"
     logger.info("lsof 結果無法判定（rc=%s stderr=%s），視為持有", r.returncode, r.stderr.strip()[:200])
-    return True
+    return "unknown"
 
 
 # ===== 線索記錄 =====
@@ -347,8 +358,13 @@ def cleanup_lock(lock_path: str, ctx: dict, logger: logging.Logger) -> Optional[
     if st.st_size != 0:
         return _warn(f"[WARNING] {lock_path} 非 0 位元組（{st.st_size} bytes），"
                      f"不自動移除；請確認無 git 操作後手動處理", logger)
-    if is_held_by_process(lock_path, logger):
-        return _warn(f"[WARNING] {lock_path} 有行程持有（或無法判定），不自動移除", logger)
+    state = lsof_state(lock_path, logger)
+    if state == "held":
+        # git 仍在執行的正常狀態：與新鎖同待遇，只寫日誌
+        logger.info("%s 有行程持有，不自動移除", lock_path)
+        return None
+    if state == "unknown":
+        return _warn(f"[WARNING] {lock_path} 持有狀態無法判定，不自動移除", logger)
     try:
         st2 = os.stat(lock_path)
     except OSError as e:

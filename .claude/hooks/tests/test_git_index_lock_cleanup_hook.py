@@ -180,7 +180,7 @@ def test_worktree_lock_held_by_process_kept(hook_module, wt):
     finally:
         holder.kill()
         holder.wait()
-    assert msg and "有行程持有" in msg
+    assert msg is None  # 調整：確定有持有者屬正常狀態，只寫日誌
     assert lock.exists()
 
 
@@ -189,11 +189,8 @@ def test_lsof_unavailable_fails_safe(hook_module, wt):
     w, lock = wt
     lock.write_text("")
     _age(lock, hook_module)
-    with patch.object(hook_module, "is_held_by_process", wraps=hook_module.is_held_by_process), \
-         patch.object(hook_module.subprocess, "run", side_effect=[
-             subprocess.CompletedProcess([], 0, stdout=str(lock) + "\n", stderr=""),
-             OSError("no lsof"),
-         ]):
+    # 調整：上溯取代 rev-parse 後 subprocess.run 只剩 lsof，side_effect 改為單一 OSError
+    with patch.object(hook_module.subprocess, "run", side_effect=OSError("no lsof")):
         msg = _run(hook_module, w)
     assert msg and "不自動移除" in msg
     assert lock.exists()
@@ -237,7 +234,8 @@ def test_lock_replaced_during_lsof_not_removed(hook_module, wt):
             pass
         return False
 
-    with patch.object(hook_module, "is_held_by_process", side_effect=swap):
+    # 調整：cleanup_lock 改呼叫 lsof_state（三態），swap 回傳 'free'
+    with patch.object(hook_module, "lsof_state", side_effect=lambda p, l: "free" if not swap(p, l) else "held"):
         msg = _run(hook_module, w)
     assert lock.exists(), "新 inode 的鎖不得被刪"
     assert msg and "被替換" in msg
@@ -317,7 +315,7 @@ def two_repos(tmp_path):
 
 
 def _evidence(repo):
-    f = Path(repo) / ".claude" / "hook-logs" / "git-index-lock-cleanup" / "evidence.log"
+    f = Path(repo) / ".claude" / "hook-logs" / "git-index-lock-cleanup" / "index-lock-evidence.txt"
     return f.read_text().splitlines() if f.exists() else []
 
 
@@ -338,8 +336,6 @@ def test_stale_lock_cleaned_per_command_shape(two_repos, cmd_tpl):
     cmd = cmd_tpl.format(other=other)
     r = _hook({"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": str(mine)}, mine)
     assert r.returncode == 0, r.stderr
-    if cmd_tpl == "echo hello":
-        assert not lock.exists()
     assert not lock.exists(), f"{cmd} 應清除 {lock}"
 
 
@@ -396,7 +392,7 @@ def test_evidence_in_main_repo_when_run_in_worktree(wt, tmp_path):
     assert r.returncode == 0, r.stderr
     assert not lock.exists()
     assert len(_evidence(main)) == 1
-    assert not (w / ".claude" / "hook-logs" / "git-index-lock-cleanup" / "evidence.log").exists()
+    assert not (w / ".claude" / "hook-logs" / "git-index-lock-cleanup" / "index-lock-evidence.txt").exists()
 
 
 def test_fresh_lock_silent_stderr_vs_stale_stderr(two_repos):
@@ -445,13 +441,46 @@ def test_evidence_write_failure_does_not_block_cleanup(hook_module, two_repos, c
     assert "線索記錄失敗" in capsys.readouterr().err
 
 
-def test_main_root_unresolved_falls_back_with_note(hook_module, tmp_path):
+def test_main_root_resolution(hook_module, tmp_path):
     root = tmp_path / "plain"
     (root / ".git").mkdir(parents=True)
     assert hook_module.find_main_root(str(root)) == str(root)
-    bare_like = tmp_path / "x"
-    (bare_like / "foo.git").mkdir(parents=True)
-    assert hook_module.find_main_root(str(bare_like)) is None
+
+
+def _worktree_with_commondir(tmp_path, common_name):
+    """主倉 gitdir 名為 common_name 的 linked worktree 佈局（手工構造）。"""
+    common = tmp_path / "m" / common_name
+    gd = common / "worktrees" / "w"
+    gd.mkdir(parents=True)
+    (gd / "commondir").write_text("../..\n")
+    w = tmp_path / "w"
+    w.mkdir()
+    (w / ".git").write_text(f"gitdir: {gd}\n")
+    return w, gd
+
+
+def test_commondir_basename_not_dotgit_is_unresolved(hook_module, tmp_path):
+    w, _ = _worktree_with_commondir(tmp_path, "repo.git")
+    assert hook_module.find_main_root(str(w)) is None
+
+
+def test_commondir_dotgit_resolves_main_root(hook_module, tmp_path):
+    w, _ = _worktree_with_commondir(tmp_path, ".git")
+    assert hook_module.find_main_root(str(w)) == str(tmp_path / "m")
+
+
+def test_unresolved_main_root_writes_fallback_note(hook_module, tmp_path):
+    """主倉推不到：線索寫到專案根並註記 evidence_location=fallback。"""
+    w, gd = _worktree_with_commondir(tmp_path, "repo.git")
+    lock = gd / "index.lock"
+    lock.write_text("")
+    t0 = time.time() - 120
+    os.utime(lock, (t0, t0))
+    with patch.object(hook_module, "get_project_root", return_value=str(w)):
+        msg = hook_module.check_and_cleanup_index_lock(logging.getLogger("test"), str(w), "x")
+    assert msg and not lock.exists()
+    lines = _evidence(w)
+    assert len(lines) == 1 and "evidence_location=" in lines[0] and "fallback" in lines[0]
 
 
 def test_duplicate_targets_deduped(hook_module, two_repos):
@@ -501,7 +530,8 @@ def _run_spy(payload, project_dir):
     return r
 
 
-def test_non_repo_cwd_is_silent_and_spawns_no_git(tmp_path, two_repos):
+def test_non_repo_cwd_is_silent_and_hook_spawns_no_git(tmp_path, two_repos):
+    """間諜只攔 hook 自身的 subprocess.run；共用程式庫啟動時的 git 呼叫不在守住範圍內。"""
     mine, _ = two_repos
     plain = tmp_path / "plain"
     plain.mkdir()
@@ -509,7 +539,8 @@ def test_non_repo_cwd_is_silent_and_spawns_no_git(tmp_path, two_repos):
     assert "WARNING" not in r.stderr and "GITCALLS=0" in r.stderr, r.stderr
 
 
-def test_dash_c_non_repo_dir_is_silent_and_spawns_no_git(tmp_path, two_repos):
+def test_dash_c_non_repo_dir_is_silent_and_hook_spawns_no_git(tmp_path, two_repos):
+    """同上：只守住 hook 自身不起 git。"""
     mine, _ = two_repos
     plain = tmp_path / "plain2"
     plain.mkdir()
@@ -531,3 +562,78 @@ def test_corrupt_dotgit_file_takes_fallback_with_record(tmp_path, two_repos):
 def test_url_credentials_masked(hook_module):
     out = hook_module.sanitize_command("git clone https://user:s3cret@host/x.git")
     assert "s3cret" not in out and "https://user:***@host/x.git" in out
+
+
+# ---- 審查修正 A-D 與測試補強 ----
+
+def test_evidence_file_survives_log_retention_cleanup(hook_module, two_repos):
+    """A：以實際的共用清理函式驗證線索檔不被刪；對照：8 天前的 .log 被刪。"""
+    from lib.hook_logging import _cleanup_old_logs
+    mine, _ = two_repos
+    _stale(mine)
+    with patch.object(hook_module, "get_project_root", return_value=str(mine)):
+        hook_module.check_and_cleanup_index_lock(logging.getLogger("test"), str(mine), "x")
+    log_dir = mine / ".claude" / "hook-logs" / "git-index-lock-cleanup"
+    ev = log_dir / hook_module.EVIDENCE_FILENAME
+    old_log = log_dir / "old.log"
+    old_log.write_text("x")
+    old = time.time() - 8 * 86400
+    for f in (ev, old_log):
+        os.utime(f, (old, old))
+    _cleanup_old_logs(log_dir)
+    assert ev.exists()
+    assert not old_log.exists()
+
+
+def test_evidence_written_before_remove(hook_module, two_repos):
+    """B：os.remove 被呼叫的當下線索行已存在（先記後刪）。"""
+    mine, _ = two_repos
+    lock = _stale(mine)
+    seen = {}
+    real_remove = os.remove
+
+    def checking_remove(path):
+        seen["lines"] = len(_evidence(mine))
+        real_remove(path)
+
+    with patch.object(hook_module, "get_project_root", return_value=str(mine)), \
+         patch.object(hook_module.os, "remove", side_effect=checking_remove):
+        hook_module.check_and_cleanup_index_lock(logging.getLogger("test"), str(mine), "x")
+    assert seen.get("lines") == 1
+    assert not lock.exists()
+
+
+def test_lsof_unknown_warns_but_held_is_silent(hook_module, wt, capsys):
+    """D：確定持有只寫日誌；無法判定維持 WARNING。"""
+    w, lock = wt
+    _aged_empty(lock, hook_module)
+    with patch.object(hook_module, "lsof_state", return_value="held"):
+        assert _run(hook_module, w) is None
+    assert capsys.readouterr().err == ""
+    with patch.object(hook_module, "lsof_state", return_value="unknown"):
+        msg = _run(hook_module, w)
+    assert msg and "無法判定" in msg
+    assert lock.exists()
+
+
+def test_worktree_option_only_taken_from_ticket_commit_statement(hook_module):
+    f = hook_module._worktree_values
+    assert f(["ticket", "track", "commit", "T", "--worktree", "/a"]) == ["/a"]
+    assert f(["ticket", "track", "commit", "T", "--worktree=/b"]) == ["/b"]
+    assert f(["git", "worktree", "add", "--worktree", "/c"]) == []
+    assert f(["ticket", "track", "claim", "T", "--worktree", "/d"]) == []
+
+
+def test_git_word_command_does_load_parser(two_repos):
+    """正向對照：命令含 git 字樣時確實載入解析器（子程序內檢查）。"""
+    mine, _ = two_repos
+    code = (
+        "import sys, runpy, json, io\n"
+        "sys.stdin = io.StringIO(json.dumps({'tool_name':'Bash','tool_input':{'command':'git status'},'cwd':%r}))\n"
+        "try:\n    runpy.run_path(%r, run_name='__main__')\n"
+        "except SystemExit:\n    pass\n"
+        "sys.stderr.write('IMPORTED=' + str('lib.git_command_parse' in sys.modules))\n"
+    ) % (str(mine), str(HOOK_PATH))
+    r = subprocess.run(["python3", "-c", code], capture_output=True, text=True, timeout=60,
+                       env=dict(os.environ, CLAUDE_PROJECT_DIR=str(mine)))
+    assert "IMPORTED=True" in r.stderr, r.stderr
