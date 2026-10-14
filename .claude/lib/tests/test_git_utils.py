@@ -532,19 +532,22 @@ def _wait_for_lock(repo):
     return False
 
 
+# 子程序裝好處理器後才寫就緒標記；高負載下啟動慢於逾時時標記缺席，測試 skip 而非假紅或假綠
 _RECORD_SIGTERM = (
     "import signal, sys, time\n"
-    "out = sys.argv[1]\n"
+    "out, ready = sys.argv[1], sys.argv[2]\n"
     "def on_term(signum, frame):\n"
     "    open(out, 'w').write('SIGTERM')\n"
     "    sys.exit(0)\n"
     "signal.signal(signal.SIGTERM, on_term)\n"
+    "open(ready, 'w').write('1')\n"
     "time.sleep(60)\n"
 )
 
 _IGNORE_SIGTERM = (
-    "import signal, time\n"
+    "import signal, sys, time\n"
     "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+    "open(sys.argv[1], 'w').write('1')\n"
     "time.sleep(60)\n"
 )
 
@@ -555,18 +558,24 @@ class TestRunWithGracefulTimeout:
 
     def test_timeout_sends_sigterm_first(self, tmp_path):
         record = tmp_path / "signal.txt"
+        ready = tmp_path / "ready.txt"
         with pytest.raises(subprocess.TimeoutExpired):
             run_with_graceful_timeout(
-                [sys.executable, "-c", _RECORD_SIGTERM, str(record)], 3, text=True
+                [sys.executable, "-c", _RECORD_SIGTERM, str(record), str(ready)], 3, text=True
             )
+        if not ready.exists():
+            pytest.skip("子程序在逾時前未裝好 SIGTERM 處理器（環境負載過高）")
         assert record.exists() and record.read_text() == "SIGTERM"
 
-    def test_ignoring_sigterm_is_killed_after_grace(self):
+    def test_ignoring_sigterm_is_killed_after_grace(self, tmp_path):
+        ready = tmp_path / "ready.txt"
         start = time.monotonic()
         with pytest.raises(subprocess.TimeoutExpired):
             run_with_graceful_timeout(
-                [sys.executable, "-c", _IGNORE_SIGTERM], 1, grace=1, text=True
+                [sys.executable, "-c", _IGNORE_SIGTERM, str(ready)], 1, grace=1, text=True
             )
+        if not ready.exists():
+            pytest.skip("子程序在逾時前未進入忽略 SIGTERM 狀態，未走到 kill 路徑（環境負載過高）")
         assert time.monotonic() - start < _BOUND_SECONDS
 
     def test_grandchild_holding_pipe_does_not_extend_wait(self, pid_log):

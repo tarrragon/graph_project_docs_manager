@@ -164,11 +164,15 @@ def test_process_worktree_dead_clean_triggers_remove(tmp_path, hook_module):
     logger = MagicMock()
     with patch.object(hook_module, "check_pid_alive", return_value=(False, "")), \
          patch.object(hook_module, "is_worktree_dirty", return_value=False), \
-         patch.object(hook_module, "remove_worktree", return_value=True) as mock_rm:
+         patch.object(hook_module, "get_worktree_branch", return_value="worktree-agent-d1"), \
+         patch.object(hook_module, "delete_branch_if_merged", return_value=True), \
+         patch.object(hook_module, "remove_worktree", return_value=True) as mock_rm, \
+         patch.object(hook_module.subprocess, "run") as mock_git:
         result = hook_module.process_worktree(tmp_path, wt, time.time(), logger)
     assert result["action"] == "clean"
     assert result["success"] is True
     mock_rm.assert_called_once()
+    mock_git.assert_not_called()  # 測試期間不得啟動真實 git
 
 
 def test_process_worktree_dead_dirty_warns_no_remove(tmp_path, hook_module):
@@ -399,3 +403,19 @@ def test_silent_helpers_no_log_on_normal_completion(hook_module, monkeypatch, ca
     with caplog.at_level(logging.DEBUG):
         assert getattr(hook_module, fn)(*args) is expected
     assert not [r for r in caplog.records if getattr(hook_module, "HOOK_NAME") in r.name]
+
+
+@pytest.mark.parametrize("fn,args,expected,name", [
+    ("is_worktree_dirty", (Path("/tmp"),), True, "is_worktree_dirty"),
+    ("is_branch_merged", (Path("/tmp"), "b"), False, "is_branch_merged"),
+])
+def test_silent_helpers_log_nonzero_returncode_as_failure(
+    hook_module, monkeypatch, caplog, fn, args, expected, name
+):
+    fake = MagicMock(returncode=128, stdout="", stderr="fatal")
+    monkeypatch.setattr(hook_module.subprocess, "run", lambda *a, **k: fake)
+    with caplog.at_level(logging.INFO):
+        assert getattr(hook_module, fn)(*args) is expected
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any(name in m and "執行失敗" in m and "returncode=128" in m for m in msgs)
+    assert not any("逾時" in m for m in msgs)
