@@ -909,3 +909,27 @@ class TestTargetRepoResolution:
             )
         assert code == 0
         assert any("目標 repo 解析" in r.getMessage() for r in caplog.records)
+
+
+class TestRunRevParseTimeoutLogging:
+    """0.5.0-W1-164.6.16：git 逾時分支 fail-open 回傳 None 並寫 warning 日誌。"""
+
+    def test_timeout_logs_warning_and_returns_none(self, monkeypatch, tmp_path, caplog):
+        import subprocess
+
+        def _raise(*a, **kw):
+            raise subprocess.TimeoutExpired(cmd="git", timeout=5)
+
+        monkeypatch.setattr(hook_module.subprocess, "run", _raise)
+        with caplog.at_level(logging.WARNING):
+            assert hook_module._run_rev_parse(str(tmp_path), "--git-dir") is None
+        assert "rev-parse --git-dir" in caplog.text
+        assert str(tmp_path) in caplog.text
+
+    def test_normal_completion_writes_no_warning(self, tmp_path, caplog):
+        import subprocess
+
+        subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+        with caplog.at_level(logging.WARNING):
+            assert hook_module._run_rev_parse(str(tmp_path), "--git-dir") is not None
+        assert "rev-parse" not in caplog.text

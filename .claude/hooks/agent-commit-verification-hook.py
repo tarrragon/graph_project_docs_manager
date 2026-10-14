@@ -403,7 +403,8 @@ def get_unmerged_worktrees(
                 commits = [l for l in log_result.stdout.strip().splitlines() if l]
                 if commits:
                     unmerged.append(WorktreeItems(wt_path, branch, commits))
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning("git log main..%s 失敗，略過該分支: cwd=%s, %s: %s", branch, project_root, type(e).__name__, e)
             continue
 
     return unmerged
@@ -449,7 +450,8 @@ def get_unmerged_feature_branches(
         )
         if result.returncode != 0:
             return []
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        logger.warning("git branch 失敗，回傳空清單: cwd=%s, %s: %s", project_root, type(e).__name__, e)
         return []
 
     unmerged = []
@@ -474,7 +476,8 @@ def get_unmerged_feature_branches(
                 commits = [line for line in log_result.stdout.strip().splitlines() if line]
                 if commits:
                     unmerged.append((branch, commits))
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning("git log main..%s 失敗，略過該分支: cwd=%s, %s: %s", branch, project_root, type(e).__name__, e)
             continue
 
     return unmerged

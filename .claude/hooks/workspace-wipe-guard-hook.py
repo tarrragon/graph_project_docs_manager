@@ -336,7 +336,11 @@ def _run_rev_parse(target_dir: str, *flags: str) -> Optional[List[str]]:
             text=True,
             timeout=5,
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError) as e:
+        logging.getLogger("workspace-wipe-guard").warning(
+            "git rev-parse %s 失敗（fail-open 回傳 None）: cwd=%s, %s: %s",
+            " ".join(flags), target_dir, type(e).__name__, e,
+        )
         return None
     if result.returncode != 0:
         return None
