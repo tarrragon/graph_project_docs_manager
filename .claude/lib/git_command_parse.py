@@ -125,6 +125,48 @@ def normalize_newlines_to_separators(command: str) -> str:
     return "".join(result)
 
 
+# ===== 註解剝除 =====
+
+# `#` 位於這些字元之後（或行首）才是詞首，才開啟 shell 註解
+_COMMENT_BOUNDARY_CHARS = frozenset(" \t\n;&|(")
+
+
+def strip_line_comments(command: str) -> str:
+    """剝除 shell 註解：詞首的 `#` 起至行尾（不含換行）。
+
+    引號內的 `#` 與詞中的 `#`（如 `a#b`）不是註解，與 bash 語意一致。
+    必須在換行正規化之前執行：換行轉成分號後，shlex 的註解處理會把該行
+    起至命令結尾全部丟棄，使其後語句的 git 呼叫漏判。
+    """
+    result: List[str] = []
+    in_single = False
+    in_double = False
+    in_comment = False
+    escaped = False
+    prev = "\n"
+    for ch in command:
+        if in_comment:
+            if ch == "\n":
+                in_comment = False
+                result.append(ch)
+                prev = ch
+            continue
+        if escaped:
+            escaped = False
+        elif ch == "\\" and not in_single:
+            escaped = True
+        elif ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double and prev in _COMMENT_BOUNDARY_CHARS:
+            in_comment = True
+            continue
+        result.append(ch)
+        prev = ch
+    return "".join(result)
+
+
 # ===== 反引號命令替換 =====
 
 
@@ -462,6 +504,7 @@ def _tokenize(command: str) -> Optional[List[str]]:
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
         lexer.whitespace_split = True
+        lexer.commenters = ""  # 註解已由 strip_line_comments 按行剝除；shlex 會吞掉詞中 `#` 之後內容
         return _merge_fd_duplication(list(lexer))
     except ValueError:
         return None
@@ -473,7 +516,7 @@ def _tokenize_command(command: str) -> Optional[List[str]]:
     `parse_command_statements` 與 `find_git_invocations` 共用，確保兩者對同一
     命令字串切出相同的 token 流。
     """
-    stripped = strip_heredoc_bodies(command)
+    stripped = strip_line_comments(strip_heredoc_bodies(command))
     bodies = extract_backtick_bodies(stripped)
     if bodies:
         stripped = "\n".join([stripped] + bodies)  # 原文保留（-C `pwd` 等仍可判讀），本體另成語句

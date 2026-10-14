@@ -810,3 +810,52 @@ def test_mutation_without_stdin_shell_check_returns_list(monkeypatch):
     monkeypatch.setattr(gcp, "_is_stdin_shell", lambda statement, idx: False)
     assert find_git_invocations("echo x | bash", {"commit"}) == []
     assert find_git_invocations("bash <<< x", {"commit"}) == []
+
+
+# ===== 註解處理（0.5.0-W1-120.7.9.4）=====
+
+
+def _commits(command):
+    return find_git_invocations(command, {"commit"})
+
+
+_POSITIVE_COMMENT_CASES = [
+    "# 前導註解\ngit commit -m x",
+    "git status # 行尾註解\ngit commit -m x",
+    "git status\n# 中段註解\ngit status\ngit commit -m x",
+]
+
+
+@pytest.mark.parametrize("command", _POSITIVE_COMMENT_CASES)
+def test_comment_does_not_swallow_following_commit(command):
+    assert len(_commits(command)) == 1
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["# git commit -m x", "git status # git commit -m x", "echo a\n# git commit\necho b"],
+)
+def test_commit_text_inside_comment_not_matched(command):
+    assert _commits(command) == []
+
+
+def test_hash_in_quotes_is_not_comment():
+    assert len(_commits("echo '# x'; git commit -m \"a # b\"")) == 1
+    assert gcp.strip_line_comments("echo '# x' \"# y\"") == "echo '# x' \"# y\""
+
+
+def test_hash_inside_word_is_not_comment():
+    assert len(_commits("echo a#b; git commit -m x")) == 1
+
+
+def test_mutation_comment_to_end_of_command_misses(monkeypatch):
+    """變異確認：註解延伸到命令結尾（原缺陷）時，三種位置的正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "strip_line_comments", lambda c: c.split("#")[0])
+    for command in _POSITIVE_COMMENT_CASES:
+        assert _commits(command) == []
+
+
+def test_mutation_without_comment_strip_matches_comment_text(monkeypatch):
+    """變異確認：註解不被當註解（僅去掉 # 字元）時，註解內的 git commit 字樣必須被誤判。"""
+    monkeypatch.setattr(gcp, "strip_line_comments", lambda c: c.replace("#", ""))
+    assert len(_commits("# git commit -m x")) == 1
