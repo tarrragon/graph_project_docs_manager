@@ -114,3 +114,23 @@ def test_e2e_copied_suggestion_is_accepted(command):
 def test_e2e_deny_message_says_replace_only_the_statement():
     _, reason = _decision("Bash", {"command": "flutter test"})
     assert "cd、管線" in reason
+
+
+@pytest.mark.parametrize("command", [
+    "pytest tests/test_x.py -q 2>&1 | tail -20",
+    "uv run pytest -q tests/test_x.py > out.log 2>&1",
+    "flutter test test/a_test.dart 2>&1",
+])
+def test_e2e_single_file_with_redirect_not_denied(command):
+    decision, _ = _decision("Bash", {"command": command})
+    assert decision != "deny"
+
+
+@pytest.mark.parametrize("command", ["pytest tests/ -q 2>&1 | tail -20", "uv run pytest -q 2>&1"])
+def test_e2e_directory_with_redirect_denied_and_suggestion_accepted(command):
+    decision, reason = _decision("Bash", {"command": command})
+    assert decision == "deny"
+    suggestion = [ln.strip() for ln in reason.splitlines() if ln.strip().startswith("python3 ")][0]
+    assert suggestion.endswith("2>&1") and "'2>&1'" not in suggestion
+    decision2, _ = _decision("Bash", {"command": suggestion})
+    assert decision2 != "deny"

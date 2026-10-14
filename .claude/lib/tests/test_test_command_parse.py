@@ -305,3 +305,39 @@ def test_unwrapped_heavy_strips_trailing_control_operators():
     from lib.test_command_parse import find_unwrapped_heavy
     assert find_unwrapped_heavy("nohup flutter test &") == [("nohup", "flutter", "test")]
     assert find_unwrapped_heavy("flutter build macos;") == [("flutter", "build", "macos")]
+
+
+# ---- 重導向不計入位置參數 ----
+
+REDIRECT_SUFFIXES = ["2>&1", "> out.log", "2> /tmp/e", "2>/tmp/e", "&> x", ">>log", "< in", ">out 2>&1"]
+
+
+@pytest.mark.parametrize("suffix", REDIRECT_SUFFIXES)
+@pytest.mark.parametrize("runner", ["pytest tests/test_x.py -q", "uv run pytest -q tests/test_x.py",
+                                    "flutter test test/a_test.dart"])
+def test_single_file_with_redirect_is_not_unwrapped_heavy(runner, suffix):
+    from lib.test_command_parse import find_unwrapped_heavy
+    assert find_unwrapped_heavy("{} {}".format(runner, suffix)) == []
+
+
+@pytest.mark.parametrize("suffix", REDIRECT_SUFFIXES)
+@pytest.mark.parametrize("runner", ["pytest tests/", "flutter test", "uv run pytest -q"])
+def test_directory_with_redirect_stays_heavy(runner, suffix):
+    """E2 對照：同形但目標為目錄或全套件者仍判 heavy，命令部分不含重導向。"""
+    from lib.test_command_parse import find_unwrapped_heavy
+    found = find_unwrapped_heavy("{} {}".format(runner, suffix))
+    assert len(found) == 1
+    assert not any(t in ("2>&1", ">", "<", "&>", ">>", "out.log", "x", "in") for t in found[0])
+
+
+def test_redirect_rendering_for_suggestion():
+    from lib.test_command_parse import find_unwrapped_heavy_with_redirects
+    assert find_unwrapped_heavy_with_redirects("pytest tests/ 2>&1") == [(("pytest", "tests/"), "2>&1")]
+    assert find_unwrapped_heavy_with_redirects("pytest tests/ 2> /tmp/e") == [(("pytest", "tests/"), "2> /tmp/e")]
+    assert find_unwrapped_heavy_with_redirects("pytest tests/ >out 2>&1 &") == [
+        (("pytest", "tests/"), "> out 2>&1")]
+
+
+def test_classify_argv_weight_unchanged_for_redirect_like_argv():
+    from lib.test_command_parse import classify_argv_weight, WEIGHT_HEAVY
+    assert classify_argv_weight(["pytest", "tests/test_x.py", "2>&1"]) == WEIGHT_HEAVY
