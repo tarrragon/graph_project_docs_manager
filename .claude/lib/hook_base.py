@@ -328,3 +328,18 @@ def get_shared_state_root(default_root: Optional[Path] = None) -> Path:
         return fallback
     main_root = _main_repo_root_of_linked_worktree()
     return main_root if main_root is not None else fallback
+
+
+def has_parallel_dispatch(default_root: Optional[Path] = None) -> bool:
+    """是否有活躍並行派發（讀共用狀態根的 dispatch-active.json）。
+
+    讀取根一律經 get_shared_state_root，linked worktree 內讀主倉庫登記檔。
+    讀取失敗（含匯入、JSON 損毀）保守視為非並行（fail-open，與既有兩份實作一致）。
+    default_root 語意同 get_shared_state_root。
+    """
+    try:
+        from .dispatch_tracker import get_active_dispatches
+
+        return len(get_active_dispatches(get_shared_state_root(default_root))) > 0
+    except Exception:
+        return False

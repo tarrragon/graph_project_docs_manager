@@ -22,8 +22,7 @@ from typing import Optional, Tuple
 sys.path.insert(0, str(Path(__file__).parent.parent))  # .claude/ — for `from lib import ...`
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin  # noqa: E402
-from lib.hook_base import get_shared_state_root  # noqa: E402
-from lib.dispatch_tracker import get_active_dispatches  # noqa: E402
+from lib.hook_base import get_project_root, has_parallel_dispatch  # noqa: E402
 from lib.git_command_parse import (  # noqa: E402
     classify_parse_cause,
     contains_git_word,
@@ -64,14 +63,6 @@ def classify_commit_command(command: str) -> Tuple[Optional[bool], Optional[str]
     return bool(invocations), None
 
 
-def has_parallel_dispatch(project_root: Path) -> bool:
-    """是否有活躍並行派發；讀取失敗保守視為非並行（與 bare-commit-guard 一致）。"""
-    try:
-        return len(get_active_dispatches(project_root)) > 0
-    except Exception:
-        return False
-
-
 def scan_domain_imports(project_root: str) -> list[str]:
     domain_path = Path(project_root) / DOMAIN_DIR
     if not domain_path.is_dir():
@@ -109,7 +100,7 @@ def main() -> int:
     if is_commit is None:
         # 無法解析：比照 bare-commit-guard，並行期保守擋下、非並行期僅提醒。
         # 提醒走 stderr 直接 print（logger.warning 會觸發 hook error 顯示）。
-        if has_parallel_dispatch(get_shared_state_root()):
+        if has_parallel_dispatch(get_project_root()):
             logger.info("命令含 git 字樣但無法安全解析，並行期保守阻擋")
             print(
                 "[domain-import-lint] 命令無法安全解析，並行派發期間保守阻擋。"

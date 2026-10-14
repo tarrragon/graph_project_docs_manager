@@ -75,6 +75,7 @@ from lib import (
     run_hook_safely,
     resolve_session_id,
 )
+from lib.hook_base import get_shared_state_root  # noqa: E402
 from lib.pm_registry import (
     get_registry_paths,
     register_session,
@@ -276,7 +277,9 @@ def main() -> int:
     # 核心職責（registry 註冊）與退出碼。
     scan_context = None
     try:
-        scan_context = scan_idle_agents(project_root, session_id, registry_file, logger)
+        scan_context = scan_idle_agents(
+            get_shared_state_root(project_root), session_id, registry_file, logger
+        )
     except Exception as e:  # noqa: BLE001
         logger.warning("idle agent 回收掃描失敗（降級忽略）: %s", e)
 

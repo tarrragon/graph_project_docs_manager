@@ -41,7 +41,7 @@ from typing import Optional, Tuple
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root
-from lib.dispatch_tracker import get_active_dispatches
+from lib.hook_base import has_parallel_dispatch  # noqa: E402
 from lib.git_command_parse import (  # noqa: E402
     classify_parse_cause,
     contains_git_word,
@@ -74,14 +74,6 @@ def classify_commit_command(command: str) -> Tuple[Optional[bool], Optional[str]
         return None, cause  # tokenize 失敗，或僅掃描命中（辨識不確定）：比照無法解析
     invocations = [inv for inv in invocations if not inv.via_scan]
     return any("--amend" not in inv.args for inv in invocations), None
-
-
-def has_parallel_dispatch(project_root: Path) -> bool:
-    """是否有活躍並行派發；讀取失敗保守視為非並行（與 bare-commit-guard 一致）。"""
-    try:
-        return len(get_active_dispatches(project_root)) > 0
-    except Exception:
-        return False
 
 
 def get_staged_files(project_root: Path, logger) -> list:
