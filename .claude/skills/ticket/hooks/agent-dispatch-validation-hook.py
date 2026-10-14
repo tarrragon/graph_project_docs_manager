@@ -1270,10 +1270,15 @@ def main() -> int:
     if verdict == "block":
         return 2
 
-    # 無 subagent_type 或非實作代理人 → 放行（worktree 強制邏輯僅對實作代理人）
-    if not subagent_type or subagent_type not in IMPLEMENTATION_AGENTS:
-        logger.info("放行：subagent_type=%s", subagent_type or "(empty)")
+    # 無 subagent_type → 放行
+    if not subagent_type:
+        logger.info("放行：subagent_type=(empty)")
         return 0
+
+    # 名單外代理人也依目標路徑判定（寫入風險取決於目標路徑，不取決於代理人名稱）。
+    # 以下外部 .claude/ 阻擋、廣域 staging 警告、收尾提示對所有 subagent_type 生效；
+    # worktree 強制的差異只在「沒寫路徑」時：名單內擋、名單外放行（研究／審查派發）。
+    is_implementation_agent = subagent_type in IMPLEMENTATION_AGENTS
 
     # Target-based 分類
 
@@ -1321,6 +1326,16 @@ def main() -> int:
     if isolation == "worktree":
         _emit_worktree_complete_warning(prompt, logger)
         logger.info("通過：%s 使用 worktree 隔離", subagent_type)
+        return 0
+
+    # (2.5) 名單外代理人：只有目標含非 .claude/ 路徑才強制 worktree
+    #       has_other 為假（研究／審查／僅 .claude/）→ 放行
+    if not is_implementation_agent and not has_other:
+        logger.info(
+            "放行：%s 非實作名單且無非 .claude/ 目標路徑"
+            "（main_claude=%s external=%s other=%s）",
+            subagent_type, has_main_repo_claude, has_external_claude, has_other,
+        )
         return 0
 
     # (3) 僅主 repo .claude/ 且無其他路徑 → 放行（ARCH-015 豁免 worktree）
