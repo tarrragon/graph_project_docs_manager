@@ -59,7 +59,7 @@ _VIEW_PROGS = frozenset({
     "echo", "printf", "grep", "egrep", "fgrep", "rg", "man", "which", "type",
     "ls", "cat", "head", "tail", "less", "whereis", "apropos",
 })
-_ORPHAN_SCRIPT ="orphan-test-procs.py"
+_ORPHAN_SCRIPT = "orphan-test-procs.py"
 _MAX_DEPTH = 3
 
 
@@ -97,7 +97,11 @@ def _find_violation(command: str, depth: int = 0) -> Optional[str]:
         if idx >= len(stmt):
             continue
         prog = os.path.basename(stmt[idx])
-        if not _is_view_statement(prog, stmt[idx + 1:]):
+        vidx = skip_prefix_wrapper_count(stmt, extended=True)
+        if vidx >= len(stmt):
+            vidx = idx
+        vprog = os.path.basename(stmt[vidx])
+        if not _is_view_statement(vprog, stmt[vidx + 1:]):
             found = _scan_any_position(stmt, depth)
             if found:
                 return found
