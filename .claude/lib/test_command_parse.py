@@ -29,6 +29,7 @@ git_command_parse.parse_command_statements 的切分（heredoc 剝離、換行�
 自訂選項（帶值集合採列舉，未列入的帶值選項其值會被當成子命令而漏判）。
 """
 
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -200,20 +201,29 @@ def find_test_invocations(command: str) -> Optional[List[TestInvocation]]:
 _PYTEST_OPTIONS_WITH_VALUE = frozenset({
     "-k", "-m", "-c", "-p", "-o", "-W", "-n", "-r", "--rootdir", "--tb", "--maxfail", "--junitxml",
     "--basetemp", "--ignore", "--ignore-glob", "--deselect", "--durations", "--confcutdir",
-    "--import-mode", "--log-level", "--cov", "--timeout", "--color", "--capture", "--override-ini",
-    "--durations-min", "--cache-dir", "--rootdir",
+    "--import-mode", "--log-level", "--timeout", "--color", "--capture", "--override-ini",
+    "--durations-min", "--cache-dir",
 })
 _FLUTTER_TEST_OPTIONS_WITH_VALUE = _FLUTTER_DART_OPTIONS_WITH_VALUE | frozenset({
     "-n", "--name", "-N", "--plain-name", "-t", "--tags", "-x", "--exclude-tags", "-r", "--reporter",
-    "-j", "--concurrency", "--timeout", "--platform", "--coverage", "--file-reporter",
+    "-j", "--concurrency", "--timeout", "--platform", "--file-reporter",
     "--shard-index", "--total-shards", "--test-randomize-ordering-seed", "--flavor", "--dart-define",
-    "--target", "-a", "--arch", "--run-skipped-tag",
+    "--target", "-a", "--arch",
 })
 HEAVY_FLUTTER_SUBCOMMANDS = frozenset({"build", "drive"})
 
 
-def _positional_args(args: List[str], with_value) -> List[str]:
-    """去除選項與帶值選項的值，只留位置參數（`--` 之後全是位置參數）。"""
+def _looks_like_path(value: str) -> bool:
+    return "/" in value or os.path.isdir(value)
+
+
+def _all_specific_test_files(args: List[str], with_value) -> bool:
+    """位置參數非空且全部指到具體測試檔（*_test.dart、test_*.py、*_test.py、path::node id）。
+
+    混入任何目錄或非測試檔的位置參數即不成立：目錄會讓整個目錄的測試都跑。
+    根本防線：被當成選項值吞掉的 token 若像路徑（含 `/` 或為既有目錄），整體不成立——
+    帶值選項集合採列舉，日後分錯類時只會多排隊，不會被「選項值」吞掉的目錄繞過。
+    """
     positional: List[str] = []
     index = 0
     while index < len(args):
@@ -222,19 +232,15 @@ def _positional_args(args: List[str], with_value) -> List[str]:
             positional.extend(args[index + 1:])
             break
         if arg.startswith("-"):
-            index += 2 if arg in with_value else 1
+            if arg in with_value and index + 1 < len(args):
+                if _looks_like_path(args[index + 1]):
+                    return False
+                index += 2
+            else:
+                index += 1
             continue
         positional.append(arg)
         index += 1
-    return positional
-
-
-def _all_specific_test_files(args: List[str], with_value) -> bool:
-    """位置參數非空且全部指到具體測試檔（*_test.dart、test_*.py、*_test.py、path::node id）。
-
-    混入任何目錄或非測試檔的位置參數即不成立：目錄會讓整個目錄的測試都跑。
-    """
-    positional = _positional_args(args, with_value)
     return bool(positional) and all(
         _SPECIFIC_TEST_FILE_RE.search(arg.split("::", 1)[0]) for arg in positional)
 

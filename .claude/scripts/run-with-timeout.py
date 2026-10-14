@@ -53,10 +53,8 @@ from typing import List, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from lib import slot_gate
-    from lib.slot_gate import SLOT_WAIT_EXIT_CODE, is_heavy_command  # noqa: F401  # 對外沿用的名稱
 except ImportError as _exc:
     slot_gate = None
-    SLOT_WAIT_EXIT_CODE = 125
     sys.stderr.write(f"run-with-timeout: 無法載入名額閘門，heavy 命令將不排隊：{_exc}\n")
 
 TIMEOUT_EXIT_CODE = 124

@@ -11,6 +11,8 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
   本機使用者搶先建立或換成 symlink。
 - 目錄以 0o700 建立，並以 lstat 驗證：必須是目錄（非 symlink）、屬於目前使用者、群組與其他人不可寫入
   （mode & 0o077 == 0）；任一不符即略過閘門。鎖檔與 holder 暫存檔以 O_NOFOLLOW 開啟。
+- 以 CLAUDE_SLOT_LOCK_DIR 覆寫時，其父目錄須為本人擁有且不可被他人寫入：驗證只涵蓋最末層目錄，
+  父目錄若可被他人改名或替換，驗證通過後的路徑仍可能被換掉。
 - 等待以輪詢進行，不保證先到先得（釋放瞬間由先輪詢到的等待者取得）。
 - 閘門的任何讀寫失敗只對 stderr 寫一行（開頭 run-with-timeout:）後略過閘門，不阻擋命令。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
@@ -89,6 +91,14 @@ def _pid_gone(pid: int) -> bool:
     return False
 
 
+def _current_load() -> str:
+    """當下 load（每次印出時重新取，不沿用持有者記錄的值）。"""
+    try:
+        return "/".join(f"{x:.2f}" for x in os.getloadavg())
+    except OSError:
+        return "不可得"
+
+
 def describe_holder(directory: str) -> str:
     """讀出第一個可讀的持有者資訊；持有者 pid 已不存在時標示資訊過期。"""
     for index in range(SLOT_COUNT):
@@ -96,7 +106,7 @@ def describe_holder(directory: str) -> str:
             with open(_holder_path(directory, index)) as fh:
                 info = json.load(fh)
             text = (f"持有者 pid={info['pid']} cwd={info['cwd']} 命令={' '.join(info['command'])} "
-                    f"開始={info['started']} load={info['load']}")
+                    f"開始={info['started']} load={_current_load()}")
             if _pid_gone(int(info["pid"])):
                 text += "（資訊過期：該 pid 已不存在，名額應很快釋放）"
             return text
@@ -124,6 +134,26 @@ def _write_holder(directory: str, index: int, command: List[str]) -> Optional[st
         except OSError:
             pass  # 暫存檔未建立或已改名，無需清理
         return None
+
+
+def _remove_stale_tmp(directory: str) -> None:
+    """刪除持有者 pid 已不存在的 holder 暫存檔（寫入中途被 SIGKILL 的殘留）。"""
+    try:
+        names = os.listdir(directory)
+    except OSError:
+        return
+    for name in names:
+        if not (name.startswith("heavy-slot-") and name.endswith(".tmp")):
+            continue
+        try:
+            pid = int(name[:-len(".tmp")].rsplit(".", 1)[1])
+        except (ValueError, IndexError):
+            continue
+        if _pid_gone(pid):
+            try:
+                os.unlink(os.path.join(directory, name))
+            except OSError:
+                pass  # 已被他方清除
 
 
 def _try_acquire(directory: str) -> Optional[Tuple[int, int]]:
@@ -177,6 +207,7 @@ def acquire_slot(command: List[str],
             waited = time.monotonic() - waited_since
             if waited >= WAITED_REPORT_THRESHOLD:
                 _warn(f"取得名額，已等待 {waited:.1f} 秒")
+            _remove_stale_tmp(directory)
             return SlotHold(fd, _write_holder(directory, index, command)), None
         signum = interrupted()
         if signum is not None:

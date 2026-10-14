@@ -146,3 +146,27 @@ def test_symlinked_lock_file_is_not_followed(monkeypatch, tmp_path, capsys):
     hold, early = slot_gate.acquire_slot(["flutter", "test"], lambda: None)
     assert hold is None and early is None and victim.read_text() == "keep"
     assert capsys.readouterr().err.startswith("run-with-timeout:")
+
+
+def test_waiter_shows_current_load_not_recorded_load(monkeypatch, tmp_path):
+    (tmp_path / "heavy-slot-0.holder.json").write_text(json.dumps({
+        "pid": os.getpid(), "cwd": "/x", "command": ["flutter", "test"],
+        "started": "2026-10-14 00:00:00", "load": "0.11/0.11/0.11"}))
+    monkeypatch.setattr(slot_gate.os, "getloadavg", lambda: (9.99, 8.88, 7.77))
+    text = slot_gate.describe_holder(str(tmp_path))
+    assert "9.99" in text and "0.11" not in text
+
+
+def test_stale_pid_tmp_removed_live_kept(monkeypatch, tmp_path):
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    dead = subprocess.Popen([sys.executable, "-c", "pass"])
+    dead.wait()
+    stale = tmp_path / ("heavy-slot-0.holder.json.%d.tmp" % dead.pid)
+    live = tmp_path / ("heavy-slot-0.holder.json.%d.tmp" % os.getppid())
+    stale.write_text("{}")
+    live.write_text("{}")
+    hold, _ = slot_gate.acquire_slot(["flutter", "test"], lambda: None)
+    try:
+        assert not stale.exists() and live.exists()
+    finally:
+        hold.release()

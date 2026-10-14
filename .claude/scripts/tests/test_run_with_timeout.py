@@ -566,9 +566,9 @@ def test_wait_limit_exits_with_dedicated_code_naming_holder(gate):
     _stamp(out_a, "start")
     b, _ = _spawn(gate, "b", HEAVY_ARGV, life=0.0, CLAUDE_SLOT_WAIT_LIMIT="0.5")
     _, err = b.communicate(timeout=30)
-    assert b.returncode == mod.SLOT_WAIT_EXIT_CODE
+    assert b.returncode == mod.slot_gate.SLOT_WAIT_EXIT_CODE
     assert str(a.pid) in err and err.startswith("run-with-timeout:")
-    assert str(mod.SLOT_WAIT_EXIT_CODE) in mod.__doc__
+    assert str(mod.slot_gate.SLOT_WAIT_EXIT_CODE) in mod.__doc__
 
 
 @pytest.mark.wallclock
@@ -608,10 +608,10 @@ def test_launcher_led_unknown_runner_is_treated_as_heavy(gate):
 
 def test_bare_unknown_command_is_light():
     mod = _load_module()
-    assert mod.is_heavy_command(["python3", "script.py"]) is False
-    assert mod.is_heavy_command(["env", "X=1", "./run.sh"]) is True
-    assert mod.is_heavy_command(["flutter", "test"]) is True
-    assert mod.is_heavy_command(["flutter", "test", "test/a_test.dart"]) is False
+    assert mod.slot_gate.is_heavy_command(["python3", "script.py"]) is False
+    assert mod.slot_gate.is_heavy_command(["env", "X=1", "./run.sh"]) is True
+    assert mod.slot_gate.is_heavy_command(["flutter", "test"]) is True
+    assert mod.slot_gate.is_heavy_command(["flutter", "test", "test/a_test.dart"]) is False
 
 
 def test_usage_notes_exit_125_may_overlap_command_codes():

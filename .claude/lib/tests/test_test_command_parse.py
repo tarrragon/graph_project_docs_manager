@@ -248,3 +248,26 @@ def test_argv_weight_heavy_bypass_forms(argv):
 ])
 def test_argv_weight_light_after_option_values_removed(argv):
     assert classify_argv_weight(argv) == WEIGHT_LIGHT
+
+
+@pytest.mark.parametrize("argv", [
+    ["flutter", "test", "--coverage", "test/", "test/a_test.dart"],
+    ["flutter", "test", "--run-skipped", "test/", "test/a_test.dart"],
+    ["pytest", "--cov", "tests/", "tests/test_a.py"],
+    ["pytest", "--cov", "src", "tests/test_a.py"],
+])
+def test_argv_weight_heavy_flag_not_swallowing_next_arg(argv):
+    """不帶值的開關（或值可省略者）不得吞掉後一個位置參數。"""
+    assert classify_argv_weight(argv) == WEIGHT_HEAVY
+
+
+def test_argv_weight_flag_forms_still_light_with_specific_file():
+    assert classify_argv_weight(["flutter", "test", "--coverage", "test/a_test.dart"]) == WEIGHT_LIGHT
+    assert classify_argv_weight(["pytest", "--cov=src", "tests/test_a.py"]) == WEIGHT_LIGHT
+
+
+def test_argv_weight_option_value_that_is_a_path_is_heavy(tmp_path):
+    """根本防線：被當成選項值吞掉的 token 若像路徑，整體判 heavy，白名單分錯類也只會多排隊。"""
+    assert classify_argv_weight(["pytest", "--basetemp", "some/dir", "tests/test_a.py"]) == WEIGHT_HEAVY
+    assert classify_argv_weight(["pytest", "--ignore", str(tmp_path), "tests/test_a.py"]) == WEIGHT_HEAVY
+    assert classify_argv_weight(["pytest", "-k", "name", "tests/test_a.py"]) == WEIGHT_LIGHT
