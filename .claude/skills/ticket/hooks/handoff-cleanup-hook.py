@@ -40,6 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root, is_subagent_environment
+from lib.ticket_command_parse import has_complete_command
 
 import re
 from datetime import datetime
@@ -89,8 +90,9 @@ def is_complete_command_success(input_data: Dict[str, Any], logger) -> bool:
     tool_input = input_data.get("tool_input") or {}
     command = tool_input.get("command", "")
 
-    if "ticket track complete" not in command:
-        logger.debug(f"命令非 ticket track complete: {command}")
+    # 共用解析器：涵蓋 complete／finish／batch-complete；無法解析（None）視為非完成命令
+    if has_complete_command(command) is not True:
+        logger.debug(f"命令非完成類命令: {command}")
         return False
 
     # 檢查執行結果 (exit code 0 或輸出包含成功標記)
