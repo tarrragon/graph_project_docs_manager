@@ -118,7 +118,8 @@ skill 被 hooks 或 scripts 使用時加跑對應套件：改動涉及某 skill�
 多個套件依 flutter、hooks、scripts、skill（名稱排序）的固定順序執行，任一紅燈即停。
 
 - 快照內缺 `.dart_tool/package_config.json` 時先 `fvm flutter pub get`；失敗則明確指出缺哪個產物。
-- CAS 重試：新舊合併 commit 的差異全在 `RETRY_REUSE_EXEMPT_GLOBS`（`docs/work-logs/**/tickets/*.md`、`docs/work-logs/**/v*-main.md`）內時沿用驗證結果，否則重跑；重試超過 `GATE_MAX_RETRIES`（預設 3）中止，ref 不變、分支保留。
+- CAS 重試：新舊合併 commit 的差異全在 `RETRY_REUSE_EXEMPT_GLOBS`（`docs/work-logs/**/tickets/*.md`、`docs/work-logs/**/v*-main.md`、`docs/work-logs/topic-assignments.txt`）內時沿用驗證結果，否則重跑；重試超過 `GATE_MAX_RETRIES`（預設 3）中止，ref 不變、分支保留。
+- 每個套件結束輸出一行結果（套件名、狀態、pytest `N passed` 或 flutter `All tests passed` 等摘要、耗時；紅燈、逾時、中斷也記錄），同時寫入 stdout 與 `.claude/logs/worktree-merge.log`。
 - `--skip-gate <理由>`：略過閘門，理由必填並寫入 `.claude/logs/worktree-merge.log`。
 
 ---

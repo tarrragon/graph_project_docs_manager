@@ -371,6 +371,54 @@ class TestRetryReuse:
         assert gate.suite_runs == 2
 
 
+    def test_ticket_plus_topic_assignments_reuses_result(self, repo):
+        state = {"n": 0}
+
+        def run(argv, cwd):
+            state["n"] += 1
+            if state["n"] == 1:
+                advance_main(repo, TICKET_FILE, "t1\n")
+                advance_main(repo, "docs/work-logs/topic-assignments.txt", "line\n")
+            return 0, ""
+
+        gate = mg.MergeGate(str(repo), art(run))
+        out = wm.merge_branch_cas("feat", repo=str(repo), pre_merge_check=gate, max_retries=mg.GATE_MAX_RETRIES)
+        assert out.ok and out.attempts == 2 and gate.suite_runs == 1
+
+
+class TestResultLine:
+    def _log(self, repo):
+        return (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
+
+    def test_green_line_has_suite_summary_and_duration(self, repo, capsys):
+        wm.merge_branch_cas("feat", repo=str(repo), pre_merge_check=mg.MergeGate(
+            str(repo), art(lambda a, c: (0, "...\n==== 5748 passed, 3 skipped in 424.01s ====\n"))))
+        lines = [ln for ln in capsys.readouterr().out.splitlines() if "套件 flutter" in ln]
+        print(lines[0])  # 供回報取用的實際輸出範例
+        assert len(lines) == 1
+        assert "綠燈" in lines[0] and "5748 passed, 3 skipped in 424.01s" in lines[0] and "耗時" in lines[0]
+        assert lines[0] in self._log(repo)
+
+    def test_flutter_summary(self):
+        assert mg.summarize_output("00:41 +812: All tests passed!\n") == "00:41 +812: All tests passed!"
+        assert mg.summarize_output("nothing useful") == "無摘要"
+
+    @pytest.mark.parametrize("rc,status", [(1, "紅燈"), (124, "逾時")])
+    def test_red_and_timeout_also_logged_with_duration(self, repo, rc, status):
+        wm.merge_branch_cas("feat", repo=str(repo), pre_merge_check=mg.MergeGate(
+            str(repo), art(lambda a, c: (rc, "1 failed, 2 passed in 3.00s\n"))))
+        line = [ln for ln in self._log(repo).splitlines() if "套件 flutter" in ln][0]
+        assert status in line and "耗時" in line
+
+    def test_interrupt_logged(self, repo):
+        def run(argv, cwd):
+            raise KeyboardInterrupt
+
+        with pytest.raises(KeyboardInterrupt):
+            wm.merge_branch_cas("feat", repo=str(repo), pre_merge_check=mg.MergeGate(str(repo), art(run)))
+        assert "中斷" in self._log(repo)
+
+
 class TestRetryCap:
     def test_cap_aborts_with_last_failure_and_keeps_branch(self, repo, capsys):
         calls = {"n": 0}
@@ -424,11 +472,16 @@ class TestExemptList:
     def test_patterns(self):
         assert mg.is_reuse_exempt(TICKET_FILE)
         assert mg.is_reuse_exempt("docs/work-logs/v0/v0.5/v0.5.0-main.md")
-        assert not mg.is_reuse_exempt("docs/work-logs/topic-assignments.txt")
+        assert mg.is_reuse_exempt("docs/work-logs/topic-assignments.txt")
+        assert not mg.is_reuse_exempt("docs/work-logs/v0/topic-assignments.txt")
         assert not mg.is_reuse_exempt("docs/spec/ui/domain-map.md")
 
-    def test_list_is_exactly_two_globs(self):
-        assert mg.RETRY_REUSE_EXEMPT_GLOBS == ("docs/work-logs/**/tickets/*.md", "docs/work-logs/**/v*-main.md")
+    def test_list_is_exactly_three_entries(self):
+        assert mg.RETRY_REUSE_EXEMPT_GLOBS == (
+            "docs/work-logs/**/tickets/*.md",
+            "docs/work-logs/**/v*-main.md",
+            "docs/work-logs/topic-assignments.txt",
+        )
 
     def test_guard_flags_test_reading_real_exempt_file(self, tmp_path):
         """E2 正向對照：讀取清單內實際檔案的樣本須為紅。"""

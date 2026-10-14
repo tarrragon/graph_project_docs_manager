@@ -21,6 +21,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,6 +66,7 @@ REQUIRED_ARTIFACTS = {
 RETRY_REUSE_EXEMPT_GLOBS = (
     "docs/work-logs/**/tickets/*.md",
     "docs/work-logs/**/v*-main.md",
+    "docs/work-logs/topic-assignments.txt",  # 每次建票都追加，並行時幾乎每次重試都會變
 )
 
 # (完整 argv, 工作目錄) -> (結束碼, 合併輸出)
@@ -319,13 +321,59 @@ def _ensure_artifacts(suite: str, snapshot: str, project_root: str, runner: Suit
     return ""
 
 
-def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRunner) -> str:
-    """依序跑各套件；任一紅燈即停。回傳空字串表示全綠。"""
+_SUMMARY_PATTERNS = (
+    re.compile(r"\d+ (?:passed|failed|error)[^\n]*"),  # pytest 摘要行
+    re.compile(r"[^\n]*All tests passed[^\n]*"),  # flutter 全綠
+    re.compile(r"[^\n]*Some tests failed[^\n]*"),  # flutter 紅燈
+)
+_LOG_FILE = ".claude/logs/worktree-merge.log"
+
+
+def summarize_output(output: str) -> str:
+    """從輸出尾端取最後一個測試摘要行；取不到回傳「無摘要」。"""
+    for line in reversed(output.strip().splitlines()):
+        for pat in _SUMMARY_PATTERNS:
+            m = pat.search(line)
+            if m:
+                return m.group(0).strip(" =")
+    return "無摘要"
+
+
+def _suite_result_line(suite: str, status: str, summary: str, seconds: float) -> str:
+    return f"[合併前測試] 套件 {suite}：{status}｜{summary}｜耗時 {seconds:.1f}s"
+
+
+def _emit_result(log_root: str, line: str) -> None:
+    """結果行同時寫 stdout 與 worktree-merge.log；日誌寫入失敗只警告，不影響閘門判定。"""
+    print(line)
+    try:
+        log = Path(log_root) / _LOG_FILE
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with open(log, "a", encoding="utf-8") as fh:
+            fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
+    except OSError as exc:
+        sys.stderr.write(f"[WARNING] worktree-merge 日誌寫入失敗：{exc}\n")
+
+
+_STATUS_BY_RC = {0: "綠燈", 124: "逾時", 125: "名額等待逾時"}
+
+
+def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRunner,
+                log_root: Optional[str] = None) -> str:
+    """依序跑各套件；任一紅燈即停。每個套件結束輸出一行結果（含紅燈、逾時、中斷）。回傳空字串表示全綠。"""
+    log_root = log_root or project_root
     for suite in suites:
         missing = _ensure_artifacts(suite, snapshot, project_root, runner)
         if missing:
             return missing
-        rc, out = runner(wrapped_argv(suite_command(suite, snapshot), project_root), snapshot)
+        start = time.monotonic()
+        try:
+            rc, out = runner(wrapped_argv(suite_command(suite, snapshot), project_root), snapshot)
+        except BaseException:  # 中斷也留一行紀錄後原樣再拋，讓上層清快照
+            _emit_result(log_root, _suite_result_line(suite, "中斷", "無摘要", time.monotonic() - start))
+            raise
+        _emit_result(log_root, _suite_result_line(
+            suite, _STATUS_BY_RC.get(rc, "紅燈"), summarize_output(out), time.monotonic() - start))
         if rc != 0:
             return _rc_reason(suite, rc, out)
     return ""
@@ -363,14 +411,14 @@ class MergeGate:
             if suites:
                 print(f"[合併前測試] 快照內跑全套件：{', '.join(suites)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
                 self.suite_runs += 1
-            reason = _run_suites(suites, snap, self.project_root, self.runner)
+            reason = _run_suites(suites, snap, self.project_root, self.runner, self.repo)
         if reason:
             return GateVerdict(False, reason)
         self.verified_commit = commit
         return GateVerdict(True)
 
 
-_PATH_TOKEN = re.compile(r"docs/work-logs/[^\s'\"`)\]}>,]+\.md")
+_PATH_TOKEN = re.compile(r"docs/work-logs/[^\s'\"`)\]}>,]+\.(?:md|txt)")
 # 同一行出現這些讀取寫法才算「讀取實際檔案」；純路徑字串比對與 JSON 資料夾具不算
 _READ_CALL = re.compile(r"File\(|readAs|open\(|Path\(|read_text|read_bytes|\bcat\b|\.read\(|load\(")
 _CODE_SUFFIXES = (".py", ".sh", ".dart")
