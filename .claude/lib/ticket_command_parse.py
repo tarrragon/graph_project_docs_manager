@@ -12,12 +12,16 @@ import os
 from typing import List, Optional, Tuple
 
 from .git_command_parse import (
-    _SCAN_OUTPUT_COMMANDS,
-    _SHELLS,
-    _nested_script,
-    _skip_wrappers,
+    SCAN_OUTPUT_COMMANDS,
+    SHELLS,
+    UnparseableCommand,
+    is_stdin_shell,
+    nested_script,
     parse_command_statements,
+    raise_if_pipes_into_shell,
     skip_prefix_wrapper_count,
+    skip_wrappers,
+    tokenize_command,
 )
 
 COMPLETE_VERBS = ("complete", "finish", "batch-complete")
@@ -46,11 +50,13 @@ def is_complete_statement(tokens: List[str]) -> bool:
 
 def _scan_statement(statement: List[str], depth: int) -> Optional[List[Tuple[str, List[str]]]]:
     """單一語句的任意位置掃描；巢狀腳本無法解析時回傳 None。"""
-    if _skip_wrappers(statement) is None:
+    if skip_wrappers(statement) is None:
         return []  # `command -v` 為查詢，不是執行
+    if "<<<" in statement and any(is_stdin_shell(statement, i) for i in range(len(statement))):
+        return None  # here-string 餵 stdin shell：腳本執行期才產生，靜態不可解析
     found: List[Tuple[str, List[str]]] = []
     for i, tok in enumerate(statement):
-        if os.path.basename(tok) in _SCAN_OUTPUT_COMMANDS:
+        if os.path.basename(tok) in SCAN_OUTPUT_COMMANDS:
             break  # echo、printf 之後只是輸出文字
         if (
             os.path.basename(tok) == "ticket"
@@ -60,13 +66,13 @@ def _scan_statement(statement: List[str], depth: int) -> Optional[List[Tuple[str
         ):
             found.append((statement[i + 2], statement[i + 3:]))
             break  # 其餘 token 是該命令的參數
-        script = _nested_script(statement, i)
+        script = nested_script(statement, i)
         if script:
             nested = _scan_command(script, depth + 1)
             if nested is None:
                 return None
             found.extend(nested)
-            if os.path.basename(tok) not in _SHELLS:
+            if os.path.basename(tok) not in SHELLS:
                 break  # eval、env -S 等的腳本已含其後全部 token
     return found
 
@@ -75,7 +81,12 @@ def _scan_command(command: str, depth: int) -> Optional[List[Tuple[str, List[str
     if depth > _MAX_SCAN_NESTING:
         return None
     statements = parse_command_statements(command)
-    if statements is None:
+    tokens = tokenize_command(command) if command else []
+    if statements is None or tokens is None:
+        return None
+    try:
+        raise_if_pipes_into_shell(tokens)  # 管線餵 stdin shell，同 git 解析器 fail-closed
+    except UnparseableCommand:
         return None
     found: List[Tuple[str, List[str]]] = []
     for statement in statements:
@@ -92,7 +103,9 @@ def find_complete_invocations(command: str) -> Optional[List[Tuple[str, List[str
     與 `has_complete_command` 的差別：不要求 `ticket track` 位於命令位置，語句
     中任何位置的 `ticket track <完成類動詞>`（ticket 可為絕對路徑）皆算，涵蓋
     前綴包裝白名單以外的包裝器；shell -c／eval 巢狀字串遞迴解析。例外：echo、
-    printf 之後的 token 與 `command -v` 語句不是執行，不辨識。已知誤判：動詞
+    printf 之後的 token 與 `command -v` 語句不是執行，不辨識。管線或 here-string
+    餵給 stdin shell（`echo ... | bash`、`bash <<< ...`）腳本內容靜態不可解析，
+    回傳 None。已知誤判：動詞
     字樣作為其他命令的參數（如 `grep ticket track complete f`），呼叫端需以
     狀態條件緩衝。
 
