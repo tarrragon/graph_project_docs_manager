@@ -23,6 +23,8 @@
 from __future__ import annotations
 
 import json
+import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -46,10 +48,12 @@ TICKET_CLI_KEY = "session"
 CLAUDE_SESSION_PREFIX = "claude-session:"
 COMMIT_SUCCESS_MARKERS = ("files changed", "file changed", "create mode",
                           "insertions(+)", "deletions(-)", "insertion(+)", "deletion(-)")
+GIT_COMMIT_PATTERN = re.compile(r"\bgit(?:\s+-C\s+(?:\"[^\"]*\"|'[^']*'|\S+))*\s+commit\b")
+COMMIT_SHA_PATTERN =re.compile(r"\[[^\]\s]+(?: \(root-commit\))? ([0-9a-f]{7,40})\]")
 
 
 def _is_git_commit_command(command: str) -> bool:
-    if "git commit" not in command:
+    if not GIT_COMMIT_PATTERN.search(command):
         return False
     return not any(x in command for x in ("git log", "git show", "git diff", "git status"))
 
@@ -107,18 +111,53 @@ def evaluate_trailers(commit_msg: str, parent_count: int) -> Optional[str]:
     )
 
 
+def _extract_commit_sha(stdout: str) -> Optional[str]:
+    """從 `[<branch>( (root-commit))? <sha>]` 取出提交 SHA；無則 None。"""
+    m = COMMIT_SHA_PATTERN.search(stdout)
+    return m.group(1) if m else None
+
+
+def _resolve_git_dir_option(command: str, base_dir: str, logger) -> "tuple[bool, str]":
+    """回傳 (可解析, cwd)。命令含 `git -C <path>` 時以該 path 為 cwd。"""
+    try:
+        tokens = shlex.split(command)
+    except ValueError as e:
+        logger.debug("命令無法 shlex 解析，略過: %s", e)
+        return False, base_dir
+    for i, tok in enumerate(tokens[:-1]):
+        if tok == "git" and tokens[i + 1] == "-C":
+            if i + 2 >= len(tokens):
+                return False, base_dir
+            path = tokens[i + 2]
+            if any(c in path for c in "$`~*"):
+                logger.debug("git -C 路徑無法靜態解析，略過: %s", path)
+                return False, base_dir
+            return True, str(Path(base_dir) / path)
+    return True, base_dir
+
+
 def check_commit(input_data: dict, logger) -> Optional[str]:
     command = (input_data.get("tool_input") or {}).get("command", "")
     if not _is_git_commit_command(command):
         return None
     resp = input_data.get("tool_response") or {}
-    if not _is_commit_successful(resp.get("stdout", ""), resp.get("stderr", "")):
+    stdout = resp.get("stdout", "")
+    if not _is_commit_successful(stdout, resp.get("stderr", "")):
         return None
-    project_dir = get_project_root()
-    msg = run_git(["git", "--no-optional-locks", "log", "-1", "--format=%B", "HEAD"],
-                  cwd=project_dir, timeout=5, logger=logger) or ""
-    parents = run_git(["git", "--no-optional-locks", "log", "-1", "--format=%P", "HEAD"],
-                      cwd=project_dir, timeout=5, logger=logger) or ""
+    resolvable, cwd = _resolve_git_dir_option(command, get_project_root(), logger)
+    if not resolvable:
+        return None
+    sha = _extract_commit_sha(stdout)
+    if sha is None:
+        logger.debug("stdout 無提交 SHA，退回 HEAD")
+    rev = sha or "HEAD"
+    msg = run_git(["git", "--no-optional-locks", "log", "-1", "--format=%B", rev],
+                  cwd=cwd, timeout=5, logger=logger)
+    if msg is None:
+        logger.debug("提交 %s 在 %s 解析不到，略過", rev, cwd)
+        return None
+    parents = run_git(["git", "--no-optional-locks", "log", "-1", "--format=%P", rev],
+                      cwd=cwd, timeout=5, logger=logger) or ""
     return evaluate_trailers(msg, len(parents.split()))
 
 
