@@ -336,10 +336,18 @@ def has_parallel_dispatch(default_root: Optional[Path] = None) -> bool:
     讀取根一律經 get_shared_state_root，linked worktree 內讀主倉庫登記檔。
     讀取失敗（含匯入、JSON 損毀）保守視為非並行（fail-open，與既有兩份實作一致）。
     default_root 語意同 get_shared_state_root。
+    只計入工作位置與當前 checkout 相同的條目；無工作位置欄位的舊條目保守計入。
     """
     try:
-        from .dispatch_tracker import get_active_dispatches
+        from .dispatch_tracker import (
+            filter_dispatches_for_checkout,
+            get_active_dispatches,
+        )
 
-        return len(get_active_dispatches(get_shared_state_root(default_root))) > 0
+        checkout = _linked_worktree_root() or (
+            default_root if default_root is not None else get_project_root()
+        )
+        dispatches = get_active_dispatches(get_shared_state_root(default_root))
+        return len(filter_dispatches_for_checkout(dispatches, checkout)) > 0
     except Exception:
         return False

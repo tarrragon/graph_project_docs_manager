@@ -362,8 +362,14 @@ def record_dispatch(
     session_id: str = "",
     name: str = "",
     agent_handle: str = "",
+    work_checkout: str = "",
 ) -> None:
     """記錄一個新的派發。寫入 dispatch-active.json。
+
+    work_checkout：代理人工作所在 checkout 的根路徑。非隔離派發為派發者
+        所在 checkout；隔離派發為其 linked worktree 根（runtime 未回報路徑
+        時留空）。空值代表「位置不明」，並行期判定一律計入（保守）。
+        見 `filter_dispatches_for_checkout`。
 
     Args:
         project_root: 專案根目錄
@@ -428,6 +434,7 @@ def record_dispatch(
             "session_id": session_id,
             "name": name,
             "agent_handle": agent_handle,
+            "work_checkout": work_checkout,
             "turn_ended_at": _consume_tombstone(state, agent_id, agent_handle),
         }
         state["dispatches"].append(entry)
@@ -743,6 +750,34 @@ def get_active_dispatches(project_root: Path) -> List[Dict]:
     """
     state = _read_state(project_root)
     return state["dispatches"]
+
+
+def _same_path(a: str, b: str) -> bool:
+    """路徑正規化後比對；任一解析失敗視為相同（保守，計入並行期）。"""
+    try:
+        return Path(a).resolve() == Path(b).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return True
+
+
+def filter_dispatches_for_checkout(
+    dispatches: List[Dict], checkout: Optional[Path]
+) -> List[Dict]:
+    """並行期判定用：只保留工作位置與 checkout 相同的條目。
+
+    保守方向（多擋不放行）：條目無 work_checkout 欄位或為空（舊條目、位置
+    不明）、checkout 為 None、路徑解析失敗，一律保留。
+    僅供「並行期判定」使用；隔離代理人的身分判定須讀全部條目，不得經此過濾。
+    """
+    if checkout is None:
+        return list(dispatches)
+    target = str(checkout)
+    kept = []
+    for d in dispatches:
+        loc = d.get("work_checkout") or ""
+        if not loc or _same_path(loc, target):
+            kept.append(d)
+    return kept
 
 
 def is_file_under_dispatch(project_root: Path, filepath: str) -> Optional[Dict]:

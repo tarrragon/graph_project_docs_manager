@@ -281,7 +281,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, resolve_session_id
-from lib.dispatch_tracker import get_active_dispatches
+from lib.dispatch_tracker import filter_dispatches_for_checkout, get_active_dispatches
 from lib.git_command_parse import (
     GitInvocation,
     classify_parse_cause,
@@ -1048,8 +1048,11 @@ def main() -> int:
     elif invocations:
         invocations = [inv for inv in invocations if not inv.via_scan]
 
+    # 並行期只計入工作位置與本 checkout 相同的條目；舊條目（無 work_checkout）保守計入。
     dispatches = _exclude_orphan_confirmed(
-        _get_active_dispatches_safe(project_root),
+        filter_dispatches_for_checkout(
+            _get_active_dispatches_safe(project_root), project_root
+        ),
         project_root,
         resolve_session_id(input_data),
         logger,
