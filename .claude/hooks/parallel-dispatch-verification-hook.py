@@ -33,6 +33,7 @@ from lib.hook_base import get_project_root  # noqa: E402
 from lib.hook_logging import setup_hook_logging, run_hook_safely  # noqa: E402
 from lib.hook_io import read_json_from_stdin, is_subagent_environment
 from lib.ticket_command_parse import has_complete_command  # noqa: E402
+from lib.bash_tool_response import is_bash_success  # noqa: E402
 from lib.hook_ticket import (
     parse_ticket_frontmatter,
     find_ticket_file,
@@ -208,18 +209,8 @@ def is_ticket_complete_success(input_data: dict) -> bool:
         return False
 
     # 檢查執行結果
-    tool_response = input_data.get("tool_response", {})
-    exit_code = tool_response.get("exit_code", -1)
-    if exit_code not in (0, EXIT_AUTO_COMMIT_FAILED):
-        return False
-
-    # 檢查成功標記
-    stdout = tool_response.get("stdout", "")
-    for marker in TICKET_COMPLETE_SUCCESS_MARKERS:
-        if marker in stdout:
-            return True
-
-    return False
+    # 真實 payload 無 exit_code，由共用 helper 判定（interrupted + 成功標記）
+    return is_bash_success(input_data.get("tool_response"), TICKET_COMPLETE_SUCCESS_MARKERS)
 
 
 def read_ticket_where_files(ticket_id: str, project_root: Path,
