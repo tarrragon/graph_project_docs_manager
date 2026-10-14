@@ -1192,3 +1192,46 @@ def test_has_force_flag_on_complete_scan_forms():
     # 解析失敗維持 False（呼叫端 fail-closed）
     assert module.has_force_flag_on_complete(
         f"ticket track complete {_SCAN_TID} --force 'abc", _SCAN_TID) is False
+
+
+_MULTI_A = "0.5.0-W1-291"
+_MULTI_B = "0.5.0-W1-120.7.9.5"
+
+
+@pytest.mark.parametrize("command", [
+    f"ticket track complete {_MULTI_A}; ticket track complete {_MULTI_B}",
+    f"ticket track complete {_MULTI_A} && bash -c 'ticket track complete {_MULTI_B}'",
+    f"ticket track batch-complete {_MULTI_A},{_MULTI_B}",
+    f"ticket track batch-complete {_MULTI_A} {_MULTI_B}",
+])
+def test_extract_ticket_ids_collects_all_ids_in_multi_forms(command, capture_logger):
+    """一個命令內的多個完成類呼叫：後面的 ID 也要進入檢查清單。"""
+    module = _load_gate_module("acceptance_gate_hook_multi_ids")
+    assert module.extract_ticket_ids_from_command(command, capture_logger) == [_MULTI_A, _MULTI_B]
+
+
+def test_extract_ticket_ids_single_id_unchanged(capture_logger):
+    module = _load_gate_module("acceptance_gate_hook_multi_single")
+    cmd = f"ticket track complete {_MULTI_A}"
+    assert module.extract_ticket_ids_from_command(cmd, capture_logger) == [_MULTI_A]
+    assert module.extract_ticket_id_from_command(cmd, capture_logger) == _MULTI_A
+
+
+def test_extract_ticket_ids_raw_fallback_collects_all_ids(capture_logger):
+    """解析失敗（管線餵 stdin shell）時，原文後備也收集全部 ID。"""
+    module = _load_gate_module("acceptance_gate_hook_multi_raw")
+    cmd = f"echo ticket track complete {_MULTI_A}; ticket track complete {_MULTI_B} | bash"
+    assert module.find_complete_invocations(cmd) is None
+    assert module.extract_ticket_ids_from_command(cmd, capture_logger) == [_MULTI_A, _MULTI_B]
+
+
+def test_second_id_with_incomplete_children_is_checked_and_blocks(project_dir, logger):
+    """逐一檢查：第一張已完成、第二張有未完成 children 時，第二張的結果為應擋。"""
+    module = _load_gate_module("acceptance_gate_hook_multi_check")
+    _write_ticket(project_dir, _MULTI_A, status="completed")
+    _write_ticket(project_dir, _MULTI_B, status="in_progress", children=[_MULTI_B + ".1"])
+    _write_ticket(project_dir, _MULTI_B + ".1", status="pending")
+    cmd = f"ticket track complete {_MULTI_A}; ticket track complete {_MULTI_B}"
+    ids = module.extract_ticket_ids_from_command(cmd, logger)
+    results = [module.check_acceptance_status(t, project_dir, logger, cmd) for t in ids]
+    assert [r.should_block for r in results] == [False, True]
