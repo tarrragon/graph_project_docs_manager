@@ -36,15 +36,6 @@
 輸出:
   環境就緒: allow，附帶確認訊息
   環境異常: allow + stderr 警告（不阻止，但提醒問題）
-
-HOOK_METADATA (JSON):
-{
-  "event_type": "PreToolUse",
-  "matcher": "Bash",
-  "description": "測試前環境檢查 - 確保 Flutter SDK 和依賴完整",
-  "dependencies": [],
-  "version": "1.0.0"
-}
 """
 
 import re
