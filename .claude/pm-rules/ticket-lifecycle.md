@@ -29,7 +29,7 @@ pending → claim → in_progress → complete → completed
 | 階段 | 強制規則 | AskUserQuestion |
 |------|---------|----------------|
 | **建立** | 必須用 `/ticket create`，禁止直接寫 .md | 任務拆分確認（認知 > 10） |
-| **建立後** | 強制並行審核：acceptance-auditor（品質）+ system-analyst（設計）→ creation_accepted: true | - |
+| **建立後** | 建立通過硬閘門即寫 `creation_accepted: true`；品質審核（acceptance-auditor + system-analyst 並行）改由 PM 視需要派發，無機械閘門 | - |
 | **認領** | 阻塞依賴檢查 + **5W1H 待定義欄位補全（強制）** + **簡化 WRAP 三問（W/A/P，強制）** | - |
 | **執行** | 錯誤強制派發 incident-responder；日誌必填 | - |
 | **驗收** | **主動勾選驗收條件**（`check-acceptance`）→ acceptance-gate-hook 事後驗證 | **驗收方式確認**（標準/簡化/先完成後補） |
@@ -75,14 +75,16 @@ pending → claim → in_progress → complete → completed
 
 ---
 
-## 建立後強制審核流程
+## 建立後審核流程
 
-Ticket 建立後、認領前，強制並行派發多代理人審核。
+`/ticket create` 通過硬閘門（欄位清單驗證、可攜問題查重、重複偵測）後，直接寫入 `creation_accepted: true`；認領不再有 `creation_accepted` 閘門（原 UserPromptSubmit 閘門只解析使用者輸入文字，從未檢查到代理人經 Bash 執行的 claim，已於 2026-10-14 移除，`track accept-creation` 同步移除）。2026-10-14 之前建立的票，此欄位值不具意義（多為 false），不回填。
+
+以下審核由 PM 視票的風險自行決定是否派發，結果記錄於票面，不影響認領。
 
 ### 觸發條件
 
 - Ticket 建立完成（`/ticket create` 執行成功）
-- `creation_accepted` 為 false（預設）
+- PM 判斷需要品質或設計審核
 
 ### 審核內容
 
@@ -94,13 +96,13 @@ Ticket 建立後、認領前，強制並行派發多代理人審核。
 ### 審核流程
 
 ```
-/ticket create → creation_accepted: false
+/ticket create → creation_accepted: true（硬閘門已通過）
     |
     v
-[強制] 並行派發 acceptance-auditor + system-analyst
+[PM 視需要] 並行派發 acceptance-auditor + system-analyst
     |
     v
-彙整結果 → 通過（無高/中缺陷）→ creation_accepted: true → 可認領
+彙整結果 → 通過（無高/中缺陷）→ 可認領
          → 未通過 → 修正 → 重新審核
 ```
 
@@ -108,7 +110,7 @@ Ticket 建立後、認領前，強制並行派發多代理人審核。
 
 | 缺陷等級 | 判定 | 處理 |
 |---------|------|------|
-| 無/僅低缺陷 | 通過 | creation_accepted: true |
+| 無/僅低缺陷 | 通過 | 可認領 |
 | 中缺陷 | 不通過 | PM 修正後重新審核或確認 |
 | 高缺陷 | 不通過 | 必須修正後重新審核 |
 
