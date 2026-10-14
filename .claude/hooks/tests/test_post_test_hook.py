@@ -509,3 +509,70 @@ def test_evaluation_record_str_tool_response(hook_module, monkeypatch, tmp_path,
     assert report["tool_response_type"] == "str"
     assert "tool_response_keys" not in report
     assert any("FAILED" in e["matched_excerpt"] for e in report["errors"])
+
+
+# --- Bash dict 形態只評估 stdout/stderr；pytest -q 綠燈摘要 ---
+
+_EDIT_DIFF = (
+    "diff --git a/t.py b/t.py\n+    assert x\n+# Expected: 1 Actual: 2\n"
+    "+FAILED tests/test_other.py::t\n"
+)
+
+
+def _eval_response(hook_module, logger, tool_name, tool_response):
+    input_data = {
+        "tool_name": tool_name,
+        "tool_input": {"command": "pytest -q"},
+        "tool_response": tool_response,
+    }
+    return hook_module.evaluate_test_failure(input_data, input_data["tool_input"], logger)
+
+
+def test_bash_dict_edit_diff_not_evaluated(hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    response = {"stdout": "..........\n82 passed in 0.25s\n", "stderr": "",
+                "bashEditDiff": _EDIT_DIFF}
+    assert _eval_response(hook_module, logger, "Bash", response) is None
+
+
+def test_bash_dict_real_failure_still_reported(hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    response = {"stdout": "x\nFAILED tests/a.py::t - boom\n1 failed, 5 passed in 0.5s\n",
+                "stderr": "", "bashEditDiff": ""}
+    result = _eval_response(hook_module, logger, "Bash", response)
+    assert result is not None and "TEST FAILURE" in result
+
+
+def test_bash_dict_stderr_failure_reported(hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    response = {"stdout": "", "stderr": "SyntaxError: invalid syntax"}
+    assert _eval_response(hook_module, logger, "Bash", response) is not None
+
+
+def test_bash_dict_missing_stdout_stderr_fail_open(hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    assert _eval_response(hook_module, logger, "Bash", {"bashEditDiff": _EDIT_DIFF}) is None
+
+
+def test_non_bash_dict_keeps_original_behavior(hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    response = {"output": "x FAILED tests/a.py::t"}
+    result = _eval_response(hook_module, logger, "mcp__dart__run_tests", response)
+    assert result is not None and "TEST FAILURE" in result
+
+
+@pytest.mark.parametrize("output", [
+    "..........\n82 passed in 0.25s\n",
+    "82 passed, 2 skipped in 1.20s",
+])
+def test_pytest_q_green_summary_recognized(hook_module, output):
+    assert hook_module._is_green_summary(output)
+
+
+@pytest.mark.parametrize("output", [
+    "1 failed, 81 passed in 0.25s",
+    "81 passed, 1 failed in 0.25s",
+    "81 passed, 1 error in 0.25s",
+])
+def test_pytest_q_failure_summary_not_green(hook_module, output):
+    assert not hook_module._is_green_summary(output)

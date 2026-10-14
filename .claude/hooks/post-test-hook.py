@@ -384,6 +384,8 @@ GREEN_SUMMARY_PATTERNS = [
     re.compile(r"Tests?:\s+\d+\s+passed,\s+\d+\s+total", re.IGNORECASE),
     # pytest: "===== N passed in X.XXs =====" 或 "N passed, 0 failed"
     re.compile(r"=+\s*\d+\s+passed(?:,\s+\d+\s+\w+)*\s+in\s+[\d.]+s", re.IGNORECASE),
+    # pytest -q: "N passed in X.XXs"（無 = 框線；排除夾帶 failed/error 的摘要）
+    re.compile(r"^\s*\d+\s+passed(?:,\s+\d+\s+(?!failed|error)\w+)*\s+in\s+[\d.]+s", re.MULTILINE | re.IGNORECASE),
     # Mocha: "N passing" without "N failing"
     re.compile(r"^\s*\d+\s+passing\b", re.MULTILINE | re.IGNORECASE),
     # 通用「0 failed」字面（與 passed 同段出現）
@@ -427,7 +429,15 @@ def evaluate_test_failure(input_data: dict, tool_input: dict, logger):
         logger.debug("evaluation: 無 tool_response，跳過")
         return None
 
-    output_str = str(tool_response) if not isinstance(tool_response, str) else tool_response
+    if input_data.get("tool_name") == "Bash" and isinstance(tool_response, dict):
+        # 只評估真實命令輸出；bashEditDiff 等欄位含他人改動檔案的 diff，不可入比對
+        stdout, stderr = tool_response.get("stdout"), tool_response.get("stderr")
+        if stdout is None and stderr is None:
+            logger.debug("evaluation: Bash 回應缺 stdout/stderr，fail-open 跳過")
+            return None
+        output_str = "\n".join(str(v) for v in (stdout, stderr) if v)
+    else:
+        output_str = str(tool_response) if not isinstance(tool_response, str) else tool_response
     output_str = _resolve_truncated_output(output_str, logger)
 
     # W1-055: 強化綠燈識別（Jest/Vitest/pytest/Mocha summary + 0 failed 字面）
