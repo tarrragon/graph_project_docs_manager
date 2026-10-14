@@ -57,6 +57,7 @@ EVIDENCE_FILENAME = "evidence.log"
 _GIT_OPTS_WITH_VALUE = frozenset({"-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"})
 _SECRET_KEY_RE = re.compile(r"(TOKEN|SECRET|PASSWORD|KEY|AUTH)", re.IGNORECASE)
 _ENV_ASSIGN_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)=(\S+)")
+_URL_CRED_RE = re.compile(r"(://[^/\s:@]+:)[^/\s@]+(@)")
 _BEARER_RE = re.compile(r"(Bearer|Basic)\s+\S+", re.IGNORECASE)
 
 
@@ -120,8 +121,15 @@ def extract_target_dirs(command: str, cwd: str, logger: logging.Logger) -> List[
 
 # ===== 鎖路徑上溯 =====
 
+class UnparseableGitFile(Exception):
+    """找到 .git 檔但內容解析不了（與「根本不是 repo」不同，需走 rev-parse 退路）。"""
+
+
 def find_gitdir(start: str) -> Optional[str]:
-    """由 start 往上找 .git；目錄即 gitdir，檔案則讀 'gitdir: <path>'。"""
+    """由 start 往上找 .git；目錄即 gitdir，檔案則讀 'gitdir: <path>'。
+
+    上溯到根都沒有 .git 回 None（非 repo）；.git 檔無法讀或內容不合格式拋 UnparseableGitFile。
+    """
     cur = os.path.abspath(start)
     for _ in range(MAX_ASCEND_LEVELS):
         dot_git = os.path.join(cur, ".git")
@@ -131,10 +139,10 @@ def find_gitdir(start: str) -> Optional[str]:
             try:
                 with open(dot_git, encoding="utf-8") as f:
                     first = f.readline().strip()
-            except OSError:
-                return None
+            except OSError as e:
+                raise UnparseableGitFile(f"{dot_git}: {e}")
             if not first.startswith("gitdir:"):
-                return None
+                raise UnparseableGitFile(f"{dot_git}: 首行非 gitdir:")
             target = first[len("gitdir:"):].strip()
             return target if os.path.isabs(target) else os.path.normpath(os.path.join(cur, target))
         parent = os.path.dirname(cur)
@@ -144,15 +152,24 @@ def find_gitdir(start: str) -> Optional[str]:
     return None
 
 
-def resolve_lock_path(project_root: str, logger: logging.Logger) -> str:
-    """鎖檔路徑：先檔案系統上溯，失敗才以 rev-parse --git-path index.lock 解析並留記錄。
+def resolve_lock_path(project_root: str, logger: logging.Logger) -> Optional[str]:
+    """鎖檔路徑：先檔案系統上溯；.git 檔解析不了才以 rev-parse --git-path index.lock 解析並留記錄。
+
+    上溯到根都沒有 .git（非 repo）回 None，靜默略過，不起子程序、不寫 stderr。
 
     rev-parse 也失敗時退回 <root>/.git/index.lock 並輸出 WARNING。
     """
-    gitdir = find_gitdir(project_root)
-    if gitdir:
-        return os.path.join(gitdir, "index.lock")
     reason = ""
+    try:
+        gitdir = find_gitdir(project_root)
+    except UnparseableGitFile as e:
+        gitdir = None
+        reason = str(e)
+    else:
+        if gitdir is None:
+            logger.debug("非 git repo，略過: %s", project_root)
+            return None
+        return os.path.join(gitdir, "index.lock")
     try:
         r = subprocess.run(
             ["git", "-C", project_root, "rev-parse", "--git-path", "index.lock"],
@@ -162,9 +179,9 @@ def resolve_lock_path(project_root: str, logger: logging.Logger) -> str:
         if r.returncode == 0 and out:
             logger.info("fallback=rev-parse 上溯未找到 .git: %s", project_root)
             return out if os.path.isabs(out) else os.path.join(project_root, out)
-        reason = f"rc={r.returncode} stderr={r.stderr.strip()[:200]}"
+        reason += f" rc={r.returncode} stderr={r.stderr.strip()[:200]}"
     except (OSError, subprocess.SubprocessError) as e:
-        reason = f"{type(e).__name__}: {e}"
+        reason += f" {type(e).__name__}: {e}"
     fallback = os.path.join(project_root, ".git", "index.lock")
     msg = (
         f"[WARNING] 無法解析 index.lock 路徑（{reason}），"
@@ -201,6 +218,7 @@ def sanitize_command(command: str) -> str:
     flat = " ".join(command.split())
     flat = _ENV_ASSIGN_RE.sub(
         lambda m: f"{m.group(1)}=***" if _SECRET_KEY_RE.search(m.group(1)) else m.group(0), flat)
+    flat = _URL_CRED_RE.sub(r"\1***\2", flat)
     flat = _BEARER_RE.sub(lambda m: f"{m.group(1)} ***", flat)
     return flat[:FOUND_BY_CMD_MAX_CHARS]
 
@@ -231,7 +249,10 @@ def read_reflog_last_ts(gitdir: str) -> Optional[int]:
 
 def find_main_root(project_root: str) -> Optional[str]:
     """本專案主倉：由專案根的 gitdir（含 linked worktree 的 commondir）推得。"""
-    gitdir = find_gitdir(project_root)
+    try:
+        gitdir = find_gitdir(project_root)
+    except UnparseableGitFile:
+        return None
     if not gitdir:
         return None
     common = gitdir
@@ -373,6 +394,8 @@ def check_and_cleanup_index_lock(
     for target in extract_target_dirs(command, cwd, logger):
         try:
             lock_path = resolve_lock_path(target, logger)
+            if lock_path is None:
+                continue
             real = os.path.realpath(lock_path)
             if real in seen:
                 continue

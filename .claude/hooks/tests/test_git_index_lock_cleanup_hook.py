@@ -263,6 +263,8 @@ def test_lsof_timeout_treated_as_held(hook_module):
 
 
 def test_rev_parse_failure_logged_and_falls_back(hook_module, tmp_path, caplog):
+    # 調整：退路只在 .git 檔解析不了時啟用（非 repo 改為靜默回 None）
+    (tmp_path / ".git").write_text("garbage\n")
     with caplog.at_level(logging.WARNING, logger="test"):
         with patch.object(hook_module.subprocess, "run",
                           side_effect=subprocess.TimeoutExpired("git", 5)):
@@ -474,3 +476,58 @@ def test_already_removed_by_peer_is_silent(hook_module, two_repos, capsys):
         msg = hook_module.check_and_cleanup_index_lock(logging.getLogger("test"), str(mine), "x")
     assert msg is None
     assert "IMP-046" not in capsys.readouterr().err
+
+
+# ---- 覆核修正：非 repo 靜默、損壞 .git 檔走退路、網址帳密遮罩 ----
+
+def _spy_run_code(hook, payload, project_dir):
+    """子程序執行 hook，並記錄 subprocess.run 是否被呼叫。"""
+    return (
+        "import sys, runpy, json, io, subprocess\n"
+        "calls=[]\n_orig=subprocess.run\n"
+        "def _spy(*a, **k):\n    calls.append(a[0] if a else k.get('args'))\n    return _orig(*a, **k)\n"
+        "subprocess.run=_spy\n"
+        "sys.stdin=io.StringIO(%r)\n"
+        "try:\n    runpy.run_path(%r, run_name='__main__')\n"
+        "except SystemExit:\n    pass\n"
+        "sys.stderr.write('GITCALLS=' + str(sum(1 for c in calls if c and c[0]=='git')))\n"
+    ) % (json.dumps(payload), str(hook))
+
+
+def _run_spy(payload, project_dir):
+    r = subprocess.run(["python3", "-c", _spy_run_code(HOOK_PATH, payload, project_dir)],
+                       capture_output=True, text=True, timeout=60,
+                       env=dict(os.environ, CLAUDE_PROJECT_DIR=str(project_dir)))
+    return r
+
+
+def test_non_repo_cwd_is_silent_and_spawns_no_git(tmp_path, two_repos):
+    mine, _ = two_repos
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    r = _run_spy({"tool_name": "Bash", "tool_input": {"command": "ls"}, "cwd": str(plain)}, mine)
+    assert "WARNING" not in r.stderr and "GITCALLS=0" in r.stderr, r.stderr
+
+
+def test_dash_c_non_repo_dir_is_silent_and_spawns_no_git(tmp_path, two_repos):
+    mine, _ = two_repos
+    plain = tmp_path / "plain2"
+    plain.mkdir()
+    r = _run_spy({"tool_name": "Bash", "tool_input": {"command": f"git -C {plain} status"},
+                  "cwd": str(mine)}, mine)
+    assert "WARNING" not in r.stderr and "GITCALLS=0" in r.stderr, r.stderr
+
+
+def test_corrupt_dotgit_file_takes_fallback_with_record(tmp_path, two_repos):
+    """對照：同一方法下，內容損壞的 .git 檔確實走到 rev-parse 退路並有記錄。"""
+    mine, _ = two_repos
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    (bad / ".git").write_text("garbage\n")
+    r = _run_spy({"tool_name": "Bash", "tool_input": {"command": "ls"}, "cwd": str(bad)}, mine)
+    assert "GITCALLS=1" in r.stderr and "無法解析 index.lock 路徑" in r.stderr, r.stderr
+
+
+def test_url_credentials_masked(hook_module):
+    out = hook_module.sanitize_command("git clone https://user:s3cret@host/x.git")
+    assert "s3cret" not in out and "https://user:***@host/x.git" in out
