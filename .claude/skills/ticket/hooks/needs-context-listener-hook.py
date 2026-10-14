@@ -51,6 +51,7 @@ from lib import (
     run_hook_safely,
     is_subagent_environment,
 )
+from lib.bash_tool_response import is_bash_success
 from lib.git_command_parse import parse_command_statements
 from lib.ticket_id_pattern import FULL_ANCHORED_RE
 
@@ -68,7 +69,6 @@ _LOG_APPENDED_SUCCESS_MARKER = "已追加日誌到"
 
 
 # ticket CLI 寫入命令「動作已完成、僅 auto-commit 失敗」的專用退出碼（sysexits EX_TEMPFAIL）
-EXIT_AUTO_COMMIT_FAILED = 75
 
 def _match_append_log_needscontext(tokens: List[str]) -> Optional[str]:
     """在單一語句 token 清單中尋找 `ticket track append-log <id> --section
@@ -146,14 +146,12 @@ def main_logic() -> int:
     if tool_response.get("success") is False:
         return EXIT_SUCCESS
 
-    exit_code = tool_response.get("exit_code")
-    if exit_code is not None and exit_code not in (0, EXIT_AUTO_COMMIT_FAILED):
-        return EXIT_SUCCESS
-
-    # stdout 非空時，要求含 CLI 成功回音才視為真正寫入成功；stdout 缺席
-    # （測試樁或部分 Bash 回應未帶此欄位）時不因此判定失敗，交由上兩項把關
-    stdout = tool_response.get("stdout", "")
-    if stdout and _LOG_APPENDED_SUCCESS_MARKER not in stdout:
+    # 成功判定改接共用 helper（interrupted 檢查加成功回音）。PostToolUse 只在 shell 層
+    # 結束碼為 0 時觸發，結束碼 75 屬非零、不會在此出現，原 75 分支已移除。
+    # stdout 欄位缺席（測試樁或部分 Bash 回應）時不因此判定失敗，交由上方 success 欄位把關
+    if "stdout" in tool_response and not is_bash_success(
+        tool_response, (_LOG_APPENDED_SUCCESS_MARKER,)
+    ):
         return EXIT_SUCCESS
 
     # W3-097 中性化（方案 V）：不預設 caller 為代理人，對 PM 自填與代理人回報情境皆適用
