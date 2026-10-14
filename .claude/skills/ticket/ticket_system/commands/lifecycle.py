@@ -27,6 +27,7 @@ from ticket_system.lib.constants import (
 )
 from ticket_system.lib.file_lock import file_lock
 from ticket_system.lib.identity_guard import PM_AGENT_NAME
+from ticket_system.lib.who_history import last_non_pm_executor, record_who_change
 from ticket_system.lib.precondition import require_in_progress
 from ticket_system.lib.ticket_loader import (
     get_project_root,
@@ -468,6 +469,8 @@ def sync_completion_body_fields(
     body: str,
     completed_at: str,
     executing_agent: str = "",
+    overwrite_agent: bool = False,
+    review_status: Optional[str] = None,
 ) -> str:
     """
     將 frontmatter 的完成資訊同步寫回 body 的 Completion Info 區塊。
@@ -475,12 +478,14 @@ def sync_completion_body_fields(
     處理三個欄位（僅替換 placeholder，不覆蓋已填值）：
     - **Completion Time**: (pending) → completed_at ISO
     - **Executing Agent**: 若為空或 placeholder，填入 executing_agent
-    - **Review Status**: 保留現狀（無權威資料來源）
+    - **Review Status**: review_status 非空時，僅替換 pending；否則保留現狀
 
     Args:
         body: Ticket body 文字
         completed_at: ISO 時間字串
-        executing_agent: who.current 值（可為空）
+        executing_agent: 執行者（可為空）
+        overwrite_agent: True 時覆寫已填的 Executing Agent（執行者由 who.history 推導時）
+        review_status: 判定後的審查狀態（None 表示不寫）
 
     Returns:
         更新後的 body 文字；若無相符欄位則原樣返回。
@@ -497,14 +502,57 @@ def sync_completion_body_fields(
 
     # Executing Agent: 僅當為空或 placeholder 時填入
     if executing_agent:
+        value_pattern = r"[^\n]*" if overwrite_agent else r"(?:\(pending\)|TBD|未指派)?"
         body = re.sub(
-            r"(\*\*Executing Agent\*\*:\s*)(\(pending\)|TBD|未指派)?\s*$",
+            r"(\*\*Executing Agent\*\*:[ \t]*)" + value_pattern + r"[ \t]*$",
             lambda m: f"{m.group(1)}{executing_agent}",
             body,
             flags=re.MULTILINE,
         )
 
+    # Review Status: 僅替換 pending，已填值不覆蓋
+    if review_status:
+        body = re.sub(
+            r"(\*\*Review Status\*\*:[ \t]*)pending[ \t]*$",
+            lambda m: f"{m.group(1)}{review_status}",
+            body,
+            flags=re.MULTILINE,
+        )
+
     return body
+
+
+def _judge_review_status(ticket: Dict[str, Any]) -> Optional[str]:
+    """依 Phase 4 審查證據判定 Review Status。
+
+    重用 acceptance_checkers.phase4_review_checker 的證據判定（gate 同一份）：
+    非 IMP 回 "n/a"；IMP 有證據回 "reviewed"；無證據或判定器不可用回 None（維持 pending）。
+    """
+    if (ticket.get("type") or "").upper() != "IMP":
+        return "n/a"
+    try:
+        hooks_dir = str(Path(__file__).resolve().parents[4] / "hooks")
+        if hooks_dir not in sys.path:
+            sys.path.insert(0, hooks_dir)
+        from acceptance_checkers import phase4_review_checker as p4
+    except Exception as exc:  # noqa: BLE001 — 判定器不可用時維持 pending
+        sys.stderr.write(f"[complete] Review Status 判定器不可用，維持 pending: {exc}\n")
+        return None
+    solution = p4._extract_solution_section(ticket.get("_body", ""))
+    if solution and p4._has_phase4_evidence(solution):
+        return "reviewed"
+    return None
+
+
+def _advance_tdd_phase_on_complete(ticket: Dict[str, Any]) -> None:
+    """complete 時 tdd_phase 推進為 tdd_stage 最後一項（manual 來源或 tdd_stage 為空不動）。"""
+    stages = ticket.get("tdd_stage")
+    if not stages or ticket.get("tdd_phase_source") == TDD_PHASE_SOURCE_MANUAL:
+        return
+    if ticket.get("tdd_phase") == stages[-1]:
+        return
+    ticket["tdd_phase"] = stages[-1]
+    ticket["tdd_phase_source"] = TDD_PHASE_SOURCE_AUTO
 
 
 # ============================================================================
@@ -937,16 +985,20 @@ class TicketLifecycle:
             # Step 4：執行完成操作
             ticket["status"] = STATUS_COMPLETED
             ticket["completed_at"] = datetime.now().isoformat(timespec="seconds")
+            _advance_tdd_phase_on_complete(ticket)
 
             # W17-016.4：同步 completed_at / Executing Agent 寫回 body
             existing_body = ticket.get("_body", "")
             if existing_body:
                 who = ticket.get("who") or {}
-                executing_agent = who.get("current") if isinstance(who, dict) else ""
+                history_agent = last_non_pm_executor(who)
+                current_agent = who.get("current") if isinstance(who, dict) else ""
                 new_body = sync_completion_body_fields(
                     existing_body,
                     ticket["completed_at"],
-                    executing_agent or "",
+                    history_agent or current_agent or "",
+                    overwrite_agent=bool(history_agent),
+                    review_status=_judge_review_status(ticket),
                 )
                 # W11-003.3 Layer 2：complete 寫回 body 前 idempotent dedupe Schema H2
                 try:
@@ -2476,6 +2528,7 @@ def _apply_claim_identity(ticket: Dict[str, Any], as_agent: Optional[str]) -> No
 
     who = ticket.get("who")
     if isinstance(who, dict):
+        record_who_change(who, as_agent)
         who["current"] = as_agent
         who.setdefault("history", {})
     else:
