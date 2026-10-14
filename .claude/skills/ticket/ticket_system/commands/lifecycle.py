@@ -2027,8 +2027,8 @@ def _auto_commit_completion_files(
     呼叫端（``complete()``）直接組裝自 ``ticket_path`` 與 worklog 路徑，
     不讀取 ``git diff --cached`` 或任何共用 index 目前 staged 狀態。
 
-    失敗（含 CAS 衝突）時重試一次由 ``commit_files_isolated`` 內部處理；
-    仍失敗則此處 graceful degrade（stderr 警告 + 不中斷 complete 流程），
+    鎖競爭與 CAS 拒絕（HEAD 被並行提交前進）由 ``git_utils`` 的退避重試處理
+    （與 append-log 同預算、同日誌）；重試預算耗盡仍失敗則此處 graceful degrade（stderr 警告 + 不中斷 complete 流程），
     不留任何 staged 殘留（本函式全程不呼叫 ``git add`` 於共用 index）。
 
     cwd 錨定為 ``modified_paths`` 第一個路徑（票面 md）所在目錄，與
@@ -2071,7 +2071,9 @@ def _auto_commit_completion_files(
     try:
         # append_lines 僅在有值時才傳入，無 worklog 行時呼叫形態不變
         extra_kwargs = {"append_lines": append_lines} if append_lines else {}
-        result = commit_files_isolated(deduped, message, cwd=cwd, **extra_kwargs)
+        result = git_utils.commit_files_isolated_with_retry(
+            commit_files_isolated, deduped, message, ticket_id, cwd, **extra_kwargs
+        )
     except Exception as exc:
         sys.stderr.write(_format_complete_commit_failure(
             ticket_id, reported, f"{type(exc).__name__}: {exc}"
@@ -2093,21 +2095,20 @@ def _auto_commit_completion_files(
         pass
     else:
         sys.stderr.write(_format_complete_commit_failure(
-            ticket_id, reported, str(result.get("error") or "")
+            ticket_id, reported, str(result.get("error") or ""),
+            int(result.get("attempts") or 1),
         ))
         return True
     return False
 
 
 def _format_complete_commit_failure(
-    ticket_id: str, paths: List[str], error: str
+    ticket_id: str, paths: List[str], error: str, attempts: int = 1
 ) -> str:
     """complete 的 metadata 提交最終失敗警告：原因、鎖檔路徑、補救指令。"""
     return format_write_command_commit_failure(
         "complete", paths[0], ticket_id, "post-completion", "metadata sync",
-        error, 1,
-    ).replace(
-        f'git add {paths[0]} &&', "git add " + " ".join(paths) + " &&"
+        error, attempts, extra_paths=paths[1:],
     )
 
 
