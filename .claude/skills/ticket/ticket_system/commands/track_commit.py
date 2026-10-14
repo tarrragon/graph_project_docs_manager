@@ -30,6 +30,8 @@ from ticket_system.lib.git_ops import commit_files_isolated
 from ticket_system.lib.messages import ErrorMessages, format_error
 from ticket_system.lib.paths import get_ticket_path, get_ticket_state_root
 from ticket_system.lib.project_root import resolve_project_cwd
+from ticket_system.lib.topic_assignments import TOPIC_ASSIGNMENTS_RELATIVE_PATH
+from ticket_system.lib.worklog_appender import _build_worklog_path
 from ticket_system.lib.ticket_loader import load_ticket
 
 
@@ -83,6 +85,23 @@ def _own_ticket_md(version: str, ticket_id: str, repo_root: str) -> str:
     if rel.startswith(".."):
         rel = _to_repo_relative(abs_path, str(get_ticket_state_root()), repo_root)
     return rel
+
+
+def _cli_managed_paths(version: str, ticket_id: str, repo_root: str) -> set:
+    """CLI 自己寫入的檔案（隱含可寫，不需列入 where.files），repo-relative posix。
+
+    票自身 md、票所屬版本的工作日誌、topic-assignments.txt。complete／create
+    收尾 CAS 失敗的補救指令會同時帶這幾個檔；不放行則照抄補救指令仍被拒。
+    清單固定三項，不放寬到任意 docs/ 路徑（他票票檔與一般 docs 檔仍須在 where.files）。
+    """
+    worklog = _to_repo_relative(
+        str(_build_worklog_path(version)), str(get_ticket_state_root()), repo_root
+    )
+    return {
+        _own_ticket_md(version, ticket_id, repo_root),
+        worklog,
+        TOPIC_ASSIGNMENTS_RELATIVE_PATH,
+    }
 
 
 def _out_of_scope_files(
@@ -253,13 +272,18 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
     }
 
     own_md = _own_ticket_md(version, args.ticket_id, repo_root)
+    implicit_writable = _cli_managed_paths(version, args.ticket_id, repo_root)
     non_own_inputs = [
-        f for f in args.files if _to_repo_relative(f, repo_root, base_dir) != own_md
+        f for f in args.files
+        if _to_repo_relative(f, repo_root, base_dir) not in implicit_writable
+    ]
+    own_md_inputs = [
+        f for f in args.files if _to_repo_relative(f, repo_root, base_dir) == own_md
     ]
 
     # 票面依 root 分離設計由主 repo CLI 寫入並自動提交；linked worktree 內的
     # 票面只可能是舊副本，提交它會使合回 main 的票面狀態倒退。
-    if worktree and len(non_own_inputs) != len(args.files):
+    if worktree and own_md_inputs:
         print(
             f"[ERROR] Ticket {args.ticket_id} 的票面不可在 worktree 提交：票面由主 repo "
             "CLI 寫入並自動提交，worktree 內的副本是舊版本，提交會使合回 main 的"
@@ -287,7 +311,7 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
         return 1
 
     out_of_scope = _out_of_scope_files(
-        args.files, normalized_declared | {own_md}, repo_root, base_dir
+        args.files, normalized_declared | implicit_writable, repo_root, base_dir
     )
     if out_of_scope:
         print(

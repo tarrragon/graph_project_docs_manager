@@ -614,7 +614,7 @@ ticket track commit <ticket_id> -m "<commit message>" --worktree <worktree 絕�
 
 ### files 子集規則
 
-`files` 必須落在該 ticket `where.files`（寫入意圖，即無 `::read` 標記或帶 `::write` 標記的路徑）宣告範圍內；任一項超出範圍即拒絕整批提交，並列出超出項與宣告範圍供核對。目錄型宣告（結尾 `/` 或指向既有目錄）會展開為該目錄下實際變更（`git status --porcelain`）的具體檔案再提交。ANA 型票 `where.files` 預設全唯讀，`write_files()` 恆回空集合；需要寫入的路徑須額外標 `::write`。`::read`／`::write` 後綴語法與 type 預設意圖的完整規則見 `field-semantics.md`〈where.files 宣告語意〉。
+`files` 必須落在該 ticket `where.files`（寫入意圖，即無 `::read` 標記或帶 `::write` 標記的路徑）宣告範圍內；任一項超出範圍即拒絕整批提交，並列出超出項與宣告範圍供核對。**隱含可寫（CLI 自己寫入的檔，不需列入 where.files）**：票自身 md、票所屬版本的工作日誌、`docs/work-logs/topic-assignments.txt`，由 `track_commit._cli_managed_paths` 集中定義；complete／create 收尾 CAS 失敗的補救指令會同時帶這幾個檔。他票票檔與一般 docs 檔不在此列，仍須宣告。目錄型宣告（結尾 `/` 或指向既有目錄）會展開為該目錄下實際變更（`git status --porcelain`）的具體檔案再提交。ANA 型票 `where.files` 預設全唯讀，`write_files()` 恆回空集合；需要寫入的路徑須額外標 `::write`。`::read`／`::write` 後綴語法與 type 預設意圖的完整規則見 `field-semantics.md`〈where.files 宣告語意〉。
 
 **目錄展開的並行過濾**：展開時另讀取 `.claude/dispatch-active.json`，凡命中其他活躍派發（`ticket_id` 不同於本票）宣告路徑的變更檔一律排除，避免並行環境下把他 session 的變更一併吸入本次目錄展開（本票或無人宣告皆保留，僅排除已知歸屬他票者）。此過濾為並行防護的加強層，非安全邊界本身——安全邊界仍是上段的 `where.files` 子集檢查；registry 讀取失敗（檔案不存在／JSON 格式錯誤）視為無其他派發，fail-open 不擋下正常提交。
 
