@@ -67,6 +67,7 @@ import runpy
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
@@ -153,6 +154,50 @@ def _restore(snap) -> None:
         os.chdir(cwd)
 
 
+class _FdCapture:
+    """把 fd 1/2 導向暫存檔：hook 啟動的子程序（不擷取輸出）繼承的是 OS fd，
+    只換 sys.stdout 攔不到；不導向則其文字會排在分派器合併後的 JSON 之前，使 stdout 非合法 JSON"""
+
+    def __init__(self):
+        self.saved = []  # type: List[tuple]
+        self.tmp = None
+
+    def start(self) -> None:
+        for stream in (sys.__stdout__, sys.__stderr__):
+            try:
+                if stream is not None:
+                    stream.flush()
+            except Exception:  # flush 失敗不影響隔離本身（下方 dup2 仍會生效）
+                pass
+        try:
+            self.tmp = tempfile.TemporaryFile()
+            for fd in (1, 2):
+                self.saved.append((fd, os.dup(fd)))
+                os.dup2(self.tmp.fileno(), fd)
+        except OSError:  # 無法隔離 fd：還原已動的部分，退化為舊行為
+            self.restore()
+
+    def restore(self) -> None:
+        for fd, saved in reversed(self.saved):
+            try:
+                os.dup2(saved, fd)
+            finally:
+                os.close(saved)
+        self.saved = []
+
+    def finish(self) -> str:
+        """還原 fd 並回傳期間子程序寫入的文字"""
+        self.restore()
+        if self.tmp is None:
+            return ""
+        try:
+            self.tmp.seek(0)
+            return self.tmp.read().decode("utf-8", errors="replace")
+        finally:
+            self.tmp.close()
+            self.tmp = None
+
+
 def run_inprocess(path: Path, payload: str, timeout: float) -> HookResult:
     """在同程序以 __main__ 身分執行 hook 原檔，回傳其 exit code 與輸出"""
     name = hook_name_of(str(path))
@@ -161,6 +206,8 @@ def run_inprocess(path: Path, payload: str, timeout: float) -> HookResult:
     snap = _snapshot()
     code = 0
     error = ""
+    fdcap = _FdCapture()
+    fdcap.start()
     sys.stdin, sys.stdout, sys.stderr = StringIO(payload), out, err
     old_handler = None
     try:
@@ -184,7 +231,8 @@ def run_inprocess(path: Path, payload: str, timeout: float) -> HookResult:
     finally:
         sys.stdin, sys.stdout, sys.stderr = old
         _restore(snap)
-    return HookResult(name, code, out.getvalue(), err.getvalue(), error)
+        leaked = fdcap.finish()
+    return HookResult(name, code, out.getvalue(), err.getvalue() + leaked, error)
 
 
 def _exit_code(code) -> int:

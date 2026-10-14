@@ -315,6 +315,61 @@ class TestSharedStateRootCacheIsolation:
         assert results["probe_shared"] != main
 
 
+# ---------- 子程序輸出不汙染分派器 stdout ----------
+
+class TestChildProcessOutputIsolation:
+    """hook 啟動且不擷取輸出的子程序，其文字不得出現在分派器真實 stdout（須維持合法 JSON）。"""
+
+    BUDGET = disp.DEFAULT_GROUP_BUDGET  # 須 >= DEFAULT_HOOK_TIMEOUT，否則改走尾段子程序而沒測到同程序路徑
+
+    LEAKER = (
+        "import subprocess, sys\n"
+        "subprocess.run([sys.executable, '-c', \"print('LEAKED-OUT'); import sys; sys.stderr.write('LEAKED-ERR')\"],\n"
+        "               capture_output=False)\n"
+        "print('{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", "
+        "\"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"r\"}}')\n"
+    )
+
+    DRIVER = (
+        "import importlib.util, sys\n"
+        "from pathlib import Path\n"
+        "spec = importlib.util.spec_from_file_location('d', {hook_dispatcher!r})\n"
+        "d = importlib.util.module_from_spec(spec); spec.loader.exec_module(d)\n"
+        "rs = d.dispatch([{{'path': 'leaker.py'}}], '{{}}', Path({root!r}), d.DEFAULT_GROUP_BUDGET)\n"
+        "code, out, err = d.merge_results(rs, 'PreToolUse')\n"
+        "sys.stdout.write(out + '\\n')\n"
+    )
+
+    def _run_driver(self, tmp_path):
+        _write_hook(tmp_path, "leaker", self.LEAKER)
+        driver = tmp_path / "driver.py"
+        driver.write_text(self.DRIVER.format(
+            hook_dispatcher=str(HOOKS_DIR / "hook-dispatcher.py"), root=str(tmp_path)), encoding="utf-8")
+        return subprocess.run([sys.executable, str(driver)], capture_output=True, text=True)
+
+    def test_dispatcher_stdout_is_valid_json_when_child_leaks(self, tmp_path):
+        """E2：修正前子程序文字排在 JSON 前面，json.loads 失敗而翻紅"""
+        p = self._run_driver(tmp_path)
+        obj = json.loads(p.stdout)
+        assert obj["hookSpecificOutput"]["permissionDecision"] == "deny"
+        assert "LEAKED" not in p.stdout
+
+    def test_child_output_lands_in_hook_stderr(self, tmp_path):
+        _write_hook(tmp_path, "leaker", self.LEAKER)
+        r = disp.dispatch([{"path": "leaker.py"}], "{}", tmp_path, self.BUDGET)[0]
+        assert "LEAKED-OUT" in r.stderr and "LEAKED-ERR" in r.stderr
+        assert "LEAKED" not in r.stdout
+
+    def test_fds_restored_after_timeout(self, tmp_path):
+        """逾時中斷（SIGALRM）時 fd 1/2 仍須還原"""
+        hang = _write_hook(tmp_path, "hang", "import time\ntime.sleep(5)\n")
+        hang["timeout"] = 0.3
+        before = (os.fstat(1).st_ino, os.fstat(2).st_ino)
+        r = disp.dispatch([hang], "{}", tmp_path, self.BUDGET)[0]
+        assert r.error
+        assert (os.fstat(1).st_ino, os.fstat(2).st_ino) == before
+
+
 # ---------- 失敗語意 ----------
 
 class TestFailureSemantics:
