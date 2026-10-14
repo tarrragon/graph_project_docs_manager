@@ -6,8 +6,11 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
 
 - 名額由持有程序的 flock 綁定其存活期間；正常結束、逾時、被 SIGKILL 皆由核心釋放。
   鎖檔描述符預設不可繼承，子程序殘存不佔用名額。
-- 鎖目錄：CLAUDE_SLOT_LOCK_DIR；未設則為固定路徑 /tmp/claude-slot-<uid>。刻意不用
-  tempfile.gettempdir()：不同 session 的 TMPDIR 可能不同，名額會變成每個 TMPDIR 一份。
+- 鎖目錄：CLAUDE_SLOT_LOCK_DIR；未設則為 ~/.cache/claude-slot。刻意不用 TMPDIR／XDG_RUNTIME_DIR：
+  它們是環境變數，不同 session 的值可能不同，名額會變成每份值一份；固定的共用 /tmp 路徑則可被其他
+  本機使用者搶先建立或換成 symlink。
+- 目錄以 0o700 建立，並以 lstat 驗證：必須是目錄（非 symlink）、屬於目前使用者、群組與其他人不可寫入
+  （mode & 0o077 == 0）；任一不符即略過閘門。鎖檔與 holder 暫存檔以 O_NOFOLLOW 開啟。
 - 等待以輪詢進行，不保證先到先得（釋放瞬間由先輪詢到的等待者取得）。
 - 閘門的任何讀寫失敗只對 stderr 寫一行（開頭 run-with-timeout:）後略過閘門，不阻擋命令。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
@@ -15,6 +18,7 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
 import fcntl
 import json
 import os
+import stat
 import sys
 import time
 from typing import Callable, List, Optional, Tuple
@@ -44,7 +48,24 @@ def is_heavy_command(command: List[str]) -> bool:
 
 
 def slot_dir() -> str:
-    return os.environ.get("CLAUDE_SLOT_LOCK_DIR") or f"/tmp/claude-slot-{os.getuid()}"
+    return os.environ.get("CLAUDE_SLOT_LOCK_DIR") or os.path.join(
+        os.path.expanduser("~"), ".cache", "claude-slot")
+
+
+def _owner_uid() -> int:
+    return os.getuid()
+
+
+def _prepare_dir(directory: str) -> None:
+    """建立（0o700）並驗證鎖目錄；不符安全條件拋 PermissionError，呼叫端據此略過閘門。"""
+    os.makedirs(directory, mode=0o700, exist_ok=True)
+    info = os.lstat(directory)  # lstat 不跟隨 symlink
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise PermissionError(f"{directory} 不是一般目錄（symlink 或其他類型），不使用")
+    if info.st_uid != _owner_uid():
+        raise PermissionError(f"{directory} 不屬於目前使用者，不使用")
+    if info.st_mode & 0o077:
+        raise PermissionError(f"{directory} 權限允許群組或其他人存取（{info.st_mode & 0o777:o}），不使用")
 
 
 def _env_seconds(name: str, default: float) -> float:
@@ -86,22 +107,29 @@ def describe_holder(directory: str) -> str:
 
 def _write_holder(directory: str, index: int, command: List[str]) -> Optional[str]:
     path = _holder_path(directory, index)
+    tmp = f"{path}.{os.getpid()}.tmp"
     try:
         entry = {"pid": os.getpid(), "cwd": os.getcwd(), "command": command,
                  "started": time.strftime("%Y-%m-%d %H:%M:%S"),
                  "load": "/".join(f"{x:.2f}" for x in os.getloadavg())}
-        with open(path, "w") as fh:  # 讀者容忍半寫入內容（describe_holder 攔 ValueError）
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "w") as fh:
             json.dump(entry, fh)
+        os.replace(tmp, path)
         return path
     except OSError as exc:
         _warn(f"無法寫入名額持有者資訊（不影響命令）：{exc}")
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass  # 暫存檔未建立或已改名，無需清理
         return None
 
 
 def _try_acquire(directory: str) -> Optional[Tuple[int, int]]:
     """依序嘗試各名額；回 (fd, index) 或 None。"""
     for index in range(SLOT_COUNT):
-        fd = os.open(os.path.join(directory, f"heavy-slot-{index}.lock"), os.O_RDWR | os.O_CREAT, 0o600)
+        fd = os.open(os.path.join(directory, f"heavy-slot-{index}.lock"), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return fd, index
@@ -139,7 +167,7 @@ def acquire_slot(command: List[str],
     next_notice = waited_since
     while True:
         try:
-            os.makedirs(directory, mode=0o700, exist_ok=True)
+            _prepare_dir(directory)
             got = _try_acquire(directory)
         except OSError as exc:
             _warn(f"名額閘門無法使用，略過排隊（不影響命令）：{exc}")

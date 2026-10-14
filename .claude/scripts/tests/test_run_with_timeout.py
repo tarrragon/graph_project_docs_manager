@@ -636,11 +636,14 @@ def test_heavy_command_runs_when_cwd_deleted(gate):
     assert "Traceback" not in err
 
 
-def test_classifier_exception_does_not_stop_command(gate, tmp_path):
+def test_classifier_exception_does_not_stop_command(gate, tmp_path, monkeypatch):
     """判定函式拋出非 ImportError 例外：命令仍執行並寫 stderr。"""
     mod = _load_module()
     sentinel = tmp_path / "ran"
-    mod.slot_gate.is_heavy_command = lambda command: (_ for _ in ()).throw(RuntimeError("判定壞了"))
+    def boom(_command):
+        raise RuntimeError("判定壞了")
+
+    monkeypatch.setattr(mod.slot_gate, "is_heavy_command", boom)  # 該模組與其他測試共用，須還原
     env, _, _ = gate
     os.environ["CLAUDE_SLOT_LOCK_DIR"] = env["CLAUDE_SLOT_LOCK_DIR"]
     try:
