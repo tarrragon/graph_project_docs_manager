@@ -71,7 +71,6 @@ from lib.dispatch_tracker import (
     mark_turn_ended_by_handle,
     mark_turn_ended_by_id,
     mark_oldest_active_null_agent_id_entry_turn_ended,
-    is_fifo_fallback_candidate,
     get_active_dispatches,
     get_state_file_path,
     leave_turn_ended_tombstone,
@@ -219,12 +218,9 @@ def main() -> int:
         # null，此時「最早」不代表「本次真正結束的那一筆」，標記任一筆
         # 都可能誤將仍在執行中的代理人記錄判為已結束回合。候選數 > 1 時
         # 不標記任何記錄，只寫 WARNING，留待 cleanup_expired 依超時回收。
-        # 候選僅限非同步派發（run_in_background 非 False）的 null 記錄：
-        # 同步派發 Stop 先於自身記錄寫入，同步 null 記錄必屬他人
-        # ；無候選時由下方墓碑路徑處理。
         null_candidates = [
             d for d in get_active_dispatches(project_root)
-            if is_fifo_fallback_candidate(d)
+            if d.get("agent_id") is None and d.get("turn_ended_at") is None
         ]
         if len(null_candidates) > 1:
             logger.warning(

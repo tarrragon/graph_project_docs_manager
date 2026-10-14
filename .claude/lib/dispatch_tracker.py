@@ -310,7 +310,6 @@ def record_dispatch(
     session_id: str = "",
     name: str = "",
     agent_handle: str = "",
-    run_in_background: Optional[bool] = None,
 ) -> None:
     """記錄一個新的派發。寫入 dispatch-active.json。
 
@@ -348,12 +347,6 @@ def record_dispatch(
             派發（無 `name` 參數）無此值，此時 SubagentStop 比對維持
             沿用 `mark_turn_ended_by_id` 的舊路徑。
 
-        run_in_background: Agent 呼叫的 run_in_background 旗標。True 為背景
-            派發，False 為同步派發，None 為未知（舊記錄或欄位缺席）。
-            SubagentStop 的 FIFO 後援候選僅納入非 False 者：同步派發的
-            Stop 先於自身記錄寫入，此時狀態檔中的同步 null 記錄必屬他人，
-            不可作為其後援標記對象。
-
     Note:
         v1 曾另有 parent_session_id 欄位（恆等 session_id 的冗餘值），
         registry 契約 v2 審查判定其資訊量為零，已移除；nested spawn
@@ -383,7 +376,6 @@ def record_dispatch(
             "session_id": session_id,
             "name": name,
             "agent_handle": agent_handle,
-            "run_in_background": run_in_background,
             "turn_ended_at": _consume_tombstone(state, agent_id, agent_handle),
         }
         state["dispatches"].append(entry)
@@ -658,19 +650,6 @@ def clear_oldest_null_agent_id_entry(project_root: Path) -> bool:
         return True
 
 
-def is_fifo_fallback_candidate(entry: Dict) -> bool:
-    """FIFO 後援候選：agent_id 為 null、回合未結束、且非同步派發。
-
-    run_in_background 為 False（同步派發）者排除；None／缺席（舊記錄）
-    按背景處理，保守維持原行為。
-    """
-    return (
-        entry.get("agent_id") is None
-        and entry.get("turn_ended_at") is None
-        and entry.get("run_in_background") is not False
-    )
-
-
 def mark_oldest_active_null_agent_id_entry_turn_ended(project_root: Path) -> bool:
     """標記 agent_id 為 null 且尚未標記過回合結束的最早一筆（FIFO fallback）。
 
@@ -688,7 +667,8 @@ def mark_oldest_active_null_agent_id_entry_turn_ended(project_root: Path) -> boo
     with _state_lock(project_root):
         state = _read_state(project_root)
         candidates = [
-            d for d in state["dispatches"] if is_fifo_fallback_candidate(d)
+            d for d in state["dispatches"]
+            if d.get("agent_id") is None and d.get("turn_ended_at") is None
         ]
         if not candidates:
             return False

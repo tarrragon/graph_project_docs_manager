@@ -142,10 +142,6 @@ def main() -> int:
     # mark_turn_ended_by_handle 的精準比對（見 dispatch_tracker.py
     # 模組 docstring「agent_handle 欄位」段的完整根因與依據）。
     agent_handle = tool_input.get("name", "") or ""
-    # 背景旗標：缺席記 None（舊行為，按背景處理）；供 SubagentStop FIFO
-    # 後援排除同步派發記錄。
-    raw_bg = tool_input.get("run_in_background")
-    run_in_background = raw_bg if isinstance(raw_bg, bool) else None
 
     files = []
     if ticket_id:
@@ -166,7 +162,6 @@ def main() -> int:
             session_id=session_id,
             name=name,
             agent_handle=agent_handle,
-            run_in_background=run_in_background,
         )
         logger.info(
             "recorded dispatch: %s (isolation=%s, ticket_id=%s, files=%d, "
