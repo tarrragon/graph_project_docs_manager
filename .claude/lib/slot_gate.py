@@ -237,8 +237,11 @@ def _orphan_script() -> str:
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "orphan-test-procs.py")
 
 
-def count_orphans() -> int:
-    """列出本專案孤兒（符合 + 疑似殘留 + 可終止的登記群組）；任何失敗拋 RuntimeError 並附原因。"""
+def count_orphans() -> Tuple[int, int]:
+    """列出本專案孤兒，回 (可清理, 疑似殘留)；可清理 = 符合 + 可終止的登記群組。
+
+    疑似殘留不會被 --kill 處理，故分開計數。任何失敗拋 RuntimeError 並附原因。
+    """
     timeout = _env_seconds("CLAUDE_ORPHAN_QUERY_TIMEOUT", ORPHAN_QUERY_TIMEOUT_SECONDS)
     try:
         res = subprocess.run([sys.executable, _orphan_script()], capture_output=True, text=True,
@@ -252,15 +255,21 @@ def count_orphans() -> int:
         raise RuntimeError(f"查詢失敗（結束碼 {res.returncode}，無法解析輸出）")
     matched, _skipped, suspects = (int(x) for x in found[-1])
     registered = sum(1 for line in res.stdout.splitlines() if line.startswith("登記可終止"))
-    return matched + suspects + registered
+    return matched + registered, suspects
 
 
 def report_orphans() -> None:
-    """有孤兒則印出數量與清理指令；失敗只寫一行 stderr。永不拋例外。"""
+    """有孤兒則印出數量；可清理者附清理指令，疑似殘留者要求人工核對。永不拋例外。"""
     try:
-        count = count_orphans()
+        cleanable, suspects = count_orphans()
     except Exception as exc:  # 提示性查詢，任何失敗都不得影響命令
         _warn(f"孤兒程序查詢失敗，略過提示（不影響命令）：{exc}")
         return
-    if count:
-        _warn(f"偵測到 {count} 個本專案孤兒測試程序殘留（會佔用記憶體）；清理：{ORPHAN_CLEANUP_COMMAND}")
+    parts = []
+    if cleanable:
+        parts.append(f"可清理 {cleanable} 個孤兒測試程序（會佔用記憶體），清理：{ORPHAN_CLEANUP_COMMAND}")
+    if suspects:
+        parts.append(f"疑似殘留 {suspects} 棵程序樹，清理指令不會處理，需人工核對後逐一終止"
+                     "（列表見 orphan-test-procs.py 不帶參數的輸出）")
+    if parts:
+        _warn("偵測到" + "；".join(parts))

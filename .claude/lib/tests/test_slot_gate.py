@@ -190,8 +190,25 @@ def test_orphans_present_prints_count_and_cleanup_command(monkeypatch, tmp_path,
     monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _summary_script(tmp_path, matched=2, suspects=1))
     slot_gate.report_orphans()
     err = capsys.readouterr().err
-    assert err.startswith("run-with-timeout:") and "3" in err
+    assert err.startswith("run-with-timeout:")
+    assert "可清理 2 個" in err and "疑似殘留 1 棵" in err
     assert "python3 .claude/scripts/orphan-test-procs.py --kill" in err
+
+
+def test_only_suspects_message_has_no_kill_command(monkeypatch, tmp_path, capsys):
+    """--kill 不處理疑似殘留；只有疑似殘留時提示不得引導使用 --kill。"""
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _summary_script(tmp_path, suspects=2))
+    slot_gate.report_orphans()
+    err = capsys.readouterr().err
+    assert "疑似殘留 2 棵" in err and "人工核對" in err
+    assert "--kill" not in err and "可清理" not in err
+
+
+def test_only_cleanable_message_has_no_suspect_part(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _summary_script(tmp_path, matched=3))
+    slot_gate.report_orphans()
+    err = capsys.readouterr().err
+    assert "可清理 3 個" in err and "--kill" in err and "疑似殘留" not in err
 
 
 def test_no_orphans_prints_nothing(monkeypatch, tmp_path, capsys):
@@ -204,7 +221,7 @@ def test_registered_group_lines_count_as_orphans(monkeypatch, tmp_path, capsys):
     script = _summary_script(tmp_path, extra="登記可終止 群組 123 cwd /x 命令 flutter test（原因）")
     monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", script)
     slot_gate.report_orphans()
-    assert "1" in capsys.readouterr().err
+    assert "可清理 1 個" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("body", [
