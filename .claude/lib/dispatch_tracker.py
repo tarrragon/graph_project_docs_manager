@@ -75,6 +75,7 @@ agent_handle 欄位（identifier namespace 修復）：
   不受影響，繼續走 `mark_turn_ended_by_id` 舊路徑。
 """
 
+import copy
 import json
 import logging
 import os
@@ -147,14 +148,14 @@ else:
         fcntl.flock(fd, fcntl.LOCK_UN)
 
 # 記憶體快取：避免同一 Hook 執行中重複讀取 JSON 檔案
-# 使用檔案 mtime 判斷是否需要重新讀取
-_state_cache: Dict = {"data": None, "mtime": 0.0}
+# 鍵為解析後的狀態檔路徑，值為 (st_mtime_ns, data)；以奈秒整數比較 mtime，
+# 命中時回傳 deepcopy，呼叫端就地修改不會污染快取
+_state_cache: Dict[Path, Tuple[int, Dict]] = {}
 
 
 def reset_cache() -> None:
     """重設記憶體快取（供測試使用）。"""
-    _state_cache["data"] = None
-    _state_cache["mtime"] = 0.0
+    _state_cache.clear()
     _SHARED_ROOT_CACHE.clear()
 
 
@@ -236,17 +237,17 @@ def _read_state(project_root: Path) -> Dict:
     if not state_file.exists():
         return {"dispatches": []}
     try:
-        current_mtime = state_file.stat().st_mtime
-        if _state_cache["data"] is not None and _state_cache["mtime"] == current_mtime:
-            return _state_cache["data"]
+        current_mtime_ns = state_file.stat().st_mtime_ns
+        cached = _state_cache.get(state_file)
+        if cached is not None and cached[0] == current_mtime_ns:
+            return copy.deepcopy(cached[1])
 
         content = state_file.read_text(encoding="utf-8")
         data = json.loads(content)
         if not isinstance(data, dict) or "dispatches" not in data:
             return {"dispatches": []}
 
-        _state_cache["data"] = data
-        _state_cache["mtime"] = current_mtime
+        _state_cache[state_file] = (current_mtime_ns, copy.deepcopy(data))
         return data
     except (json.JSONDecodeError, OSError) as e:
         print(f"[dispatch_tracker] _read_state: 狀態檔讀取失敗 ({state_file}): {e}", file=sys.stderr)
@@ -293,9 +294,8 @@ def _write_state(project_root: Path, state: Dict) -> None:
                 pass
         raise
 
-    # 寫入後使快取失效，下次 _read_state 會重新讀取
-    _state_cache["data"] = None
-    _state_cache["mtime"] = 0.0
+    # 寫入後使該路徑的快取失效，下次 _read_state 會重新讀取
+    _state_cache.pop(state_file, None)
 
 
 def _prune_tombstones(state: Dict, now: datetime) -> None:
