@@ -19,6 +19,7 @@ Git 操作共用工具
 
 import fnmatch
 import os
+import signal
 import sys
 import subprocess
 from datetime import datetime, timezone
@@ -247,6 +248,16 @@ def run_git_command(
         return False, error_msg
 
 
+def _signal_process_group(proc, sig) -> None:
+    """對 proc 的行程群組送訊號；行程已結束或群組不存在時寫 stderr 後返回。"""
+    try:
+        os.killpg(proc.pid, sig)
+    except ProcessLookupError:
+        print(f"[Warning] process group {proc.pid} already gone ({sig.name})", file=sys.stderr)
+    except OSError as e:
+        print(f"[Warning] killpg {proc.pid} {sig.name} failed: {e}", file=sys.stderr)
+
+
 def run_with_graceful_timeout(args, timeout, grace=None, **popen_kwargs):
     """執行子程序並在逾時時先 SIGTERM、寬限後才 SIGKILL。
 
@@ -257,24 +268,26 @@ def run_with_graceful_timeout(args, timeout, grace=None, **popen_kwargs):
     支援參數：args、timeout（None 為不設）、grace（預設 TERMINATE_GRACE_SECONDS）、
     input（字串；有值才開 stdin）、其餘 popen_kwargs（cwd、env、text、encoding、errors）。
     stdout / stderr 一律擷取。回傳 CompletedProcess；逾時拋 subprocess.TimeoutExpired。
-    只終止直接啟動的行程；逾時後只等行程本身結束，不等輸出管線 EOF
-    （孫程序可能仍握著管線）。
+    一律以 start_new_session=True 啟動（自成行程群組）；逾時對整個群組先 SIGTERM、
+    寬限後 SIGKILL，孫程序（如 git 的 filter 子行程）一併終止。逾時後只等行程本身
+    結束，不等輸出管線 EOF（孫程序可能仍握著管線）。
     """
     if grace is None:
         grace = TERMINATE_GRACE_SECONDS
     input_text = popen_kwargs.pop("input", None)
     stdin = subprocess.PIPE if input_text is not None else None
+    popen_kwargs["start_new_session"] = True
     with subprocess.Popen(
         args, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **popen_kwargs
     ) as proc:
         try:
             out, err = proc.communicate(input_text, timeout=timeout)
         except subprocess.TimeoutExpired:
-            proc.terminate()
+            _signal_process_group(proc, signal.SIGTERM)
             try:
                 proc.wait(timeout=grace)
             except subprocess.TimeoutExpired:
-                proc.kill()
+                _signal_process_group(proc, signal.SIGKILL)
                 proc.wait()
             raise
         return subprocess.CompletedProcess(args, proc.returncode, out, err)

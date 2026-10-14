@@ -608,6 +608,49 @@ class TestRunWithGracefulTimeout:
         assert result.stdout == "ok\n"
 
 
+class TestProcessGroupTermination:
+    def test_timeout_kills_grandchild_in_group(self, pid_log):
+        script = f"sleep {_SLOW_SECONDS} & echo $! >> '{pid_log}'; wait"
+        with pytest.raises(subprocess.TimeoutExpired):
+            run_with_graceful_timeout(["sh", "-c", script], 1, grace=1, text=True)
+        pids = [int(x) for x in pid_log.read_text().split()]
+        assert pids
+        time.sleep(0.3)
+        for pid in pids:
+            with pytest.raises(ProcessLookupError):
+                os.kill(pid, 0)
+
+    def test_normal_completion_sends_no_signal(self):
+        with patch("lib.git_utils.os.killpg") as killpg:
+            result = run_with_graceful_timeout(["echo", "ok"], 10, text=True)
+        assert result.stdout == "ok\n"
+        killpg.assert_not_called()
+
+    def test_missing_group_logs_warning(self, capsys):
+        real_killpg = os.killpg
+
+        def fake(pid, sig):
+            real_killpg(pid, signal.SIGKILL)  # 實際收尾，再模擬群組已不存在
+            raise ProcessLookupError
+
+        with patch("lib.git_utils.os.killpg", side_effect=fake):
+            with pytest.raises(subprocess.TimeoutExpired):
+                run_with_graceful_timeout(["sleep", "30"], 1, grace=1, text=True)
+        assert "already gone" in capsys.readouterr().err
+
+    def test_killpg_oserror_logs_warning(self, capsys):
+        real_killpg = os.killpg
+
+        def fake(pid, sig):
+            real_killpg(pid, signal.SIGKILL)
+            raise PermissionError("denied")
+
+        with patch("lib.git_utils.os.killpg", side_effect=fake):
+            with pytest.raises(subprocess.TimeoutExpired):
+                run_with_graceful_timeout(["sleep", "31"], 1, grace=1, text=True)
+        assert "failed: denied" in capsys.readouterr().err
+
+
 class TestIndexLockEffect:
     """效果層：逾時終止後 index.lock 是否殘留。SIGKILL 對照證明 fixture 有鑑別力。"""
 

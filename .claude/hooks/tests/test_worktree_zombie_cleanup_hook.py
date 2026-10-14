@@ -257,6 +257,7 @@ def test_is_worktree_dirty_status_has_no_optional_locks_before_subcommand(hook_m
 # ---------- 0.5.0-W1-164.6.2：寫入類 git 經溫和終止函式、靜默逾時日誌 ----------
 
 import logging
+import signal
 import subprocess
 
 
@@ -267,6 +268,7 @@ class _FakeTimeoutPopen:
 
     def __init__(self, args, **kwargs):
         self.args = args
+        self.pid = 4242
         self.calls = []
         self.returncode = None
         _FakeTimeoutPopen.instances.append(self)
@@ -296,6 +298,10 @@ def fake_timeout_popen(monkeypatch):
     import lib.git_utils as git_utils
     _FakeTimeoutPopen.instances = []
     monkeypatch.setattr(git_utils.subprocess, "Popen", _FakeTimeoutPopen)
+    monkeypatch.setattr(
+        git_utils.os, "killpg",
+        lambda pid, sig: _FakeTimeoutPopen.instances[0].calls.append(("killpg", pid, sig)),
+    )
     return _FakeTimeoutPopen
 
 
@@ -339,7 +345,7 @@ def test_remove_worktree_timeout_sends_sigterm_not_sigkill(hook_module, fake_tim
     with caplog.at_level(logging.ERROR):
         ok = hook_module.remove_worktree(Path("/r"), Path("/r/w"), "agent-x", logging.getLogger("t"))
     assert ok is False
-    assert fake_timeout_popen.instances[0].calls == ["terminate", "wait"]
+    assert fake_timeout_popen.instances[0].calls == [("killpg", 4242, signal.SIGTERM), "wait"]
     assert any("執行失敗" in r.getMessage() for r in caplog.records)
 
 
@@ -348,7 +354,7 @@ def test_delete_branch_timeout_sends_sigterm_not_sigkill(hook_module, fake_timeo
     with caplog.at_level(logging.ERROR):
         ok = hook_module.delete_branch_if_merged(Path("/r"), "b", "agent-x", logging.getLogger("t"))
     assert ok is False
-    assert fake_timeout_popen.instances[0].calls == ["terminate", "wait"]
+    assert fake_timeout_popen.instances[0].calls == [("killpg", 4242, signal.SIGTERM), "wait"]
     assert any("執行失敗" in r.getMessage() for r in caplog.records)
 
 
