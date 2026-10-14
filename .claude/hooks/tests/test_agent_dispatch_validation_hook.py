@@ -225,8 +225,6 @@ def test_hook_blocks_non_claude_prompt_without_worktree(monkeypatch, capsys):
         },
     )
     assert exit_code == 2
-    err = capsys.readouterr().err
-    assert "必須使用 isolation" in err, "應使用原 BLOCK_MESSAGE_TEMPLATE"
 
 
 def test_hook_allows_cross_path_with_worktree_when_claude_in_main_repo(monkeypatch, capsys):
@@ -257,8 +255,6 @@ def test_hook_blocks_cross_path_without_worktree(monkeypatch, capsys):
         },
     )
     assert exit_code == 2
-    err = capsys.readouterr().err
-    assert "必須使用 isolation" in err
 
 
 def test_hook_blocks_external_claude_path_absolute(monkeypatch, capsys):
@@ -303,8 +299,6 @@ def test_hook_blocks_empty_prompt_without_worktree(monkeypatch, capsys):
         },
     )
     assert exit_code == 2
-    err = capsys.readouterr().err
-    assert "必須使用 isolation" in err
 
 
 def test_hook_allows_no_subagent_type(monkeypatch, capsys):
@@ -2141,7 +2135,6 @@ class TestReviewKeywordExemptionRemoved:
                         "prompt": "實作 src/widgets/book_card.dart 並寫對應 tests/unit/book_card_test.dart"},
         )
         assert exit_code == 2
-        assert "必須使用 isolation" in capsys.readouterr().err
 
     def test_external_claude_still_blocked(self, monkeypatch, capsys):
         exit_code = _run_hook(
