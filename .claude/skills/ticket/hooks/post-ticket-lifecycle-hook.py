@@ -11,7 +11,7 @@ Ticket 生命週期合併 Hook - PostToolUse Hook
 - session-context-guard-hook.py（session 內 Ticket 完成計數與 handoff 警告）
 - post-ticket-complete-checkpoint-hook.py（Ticket complete 後的 Checkpoint 1/1.5 提醒）
 
-觸發時機: Bash 工具執行後，command 包含 ticket track complete/batch-complete
+觸發時機: Bash 工具執行後，command 含 ticket track complete/finish/batch-complete
 執行順序:
   1. update_session_counter — 更新 session 完成計數器（先執行，因為 checkpoint 可能參考計數）
   2. output_checkpoint_reminder — 輸出 Checkpoint 1/1.5 提醒
@@ -47,6 +47,7 @@ from lib import (
     is_subagent_environment,
 )
 from lib.hook_messages import AskUserQuestionMessages
+from lib.ticket_command_parse import has_complete_command
 
 # ============================================================================
 # 常數定義
@@ -60,13 +61,6 @@ DEFAULT_OUTPUT = {
         "hookEventName": "PostToolUse"
     }
 }
-
-# 完成指令關鍵字
-COMPLETE_COMMAND_PATTERNS = [
-    "ticket track complete",
-    "ticket track batch-complete",
-    "ticket complete",
-]
 
 # 完成成功標記
 COMPLETE_SUCCESS_MARKERS = [
@@ -85,8 +79,11 @@ STRONG_WARN_THRESHOLD = 3
 # ============================================================================
 
 def is_ticket_complete_command(command: str) -> bool:
-    """判斷是否為 ticket track complete 命令"""
-    return any(pattern in command for pattern in COMPLETE_COMMAND_PATTERNS)
+    """判斷是否為完成類命令（complete／finish／batch-complete），走共用解析器。
+
+    無法解析（未閉合引號）時視為非完成命令：本 hook 不阻擋，漏計數優於誤計數。
+    """
+    return has_complete_command(command) is True
 
 
 def is_complete_successful(stdout: str) -> bool:
