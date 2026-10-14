@@ -485,32 +485,24 @@ def _execute_batch_check_acceptance(
 
     # 輸出結果
     total_count = len(acceptance_list)
-    if uncheck:
-        print(format_info(
-            InfoMessages.ACCEPTANCE_CRITERIA_UPDATED,
-            ticket_id=args.ticket_id,
-            index=f"全部 ({count}/{total_count})",
-            status_text=TrackAcceptanceMessages.STATUS_TEXT_UNCHECKED
-        ))
-        print(format_msg(
-            TrackAcceptanceMessages.BATCH_UNCHECK_SUMMARY_FORMAT,
-            ticket_id=args.ticket_id,
-            unchecked_count=count,
-            total_count=total_count
-        ))
-    else:
-        print(format_info(
-            InfoMessages.ACCEPTANCE_CRITERIA_UPDATED,
-            ticket_id=args.ticket_id,
-            index=f"全部 ({count}/{total_count})",
-            status_text=TrackAcceptanceMessages.STATUS_TEXT_CHECKED
-        ))
-        print(format_msg(
-            TrackAcceptanceMessages.BATCH_CHECK_SUMMARY_FORMAT,
-            ticket_id=args.ticket_id,
-            checked_count=count,
-            total_count=total_count
-        ))
+    checked_total = sum(1 for item in acceptance_list if item.startswith("[x]"))
+    # 本次變更數與目前已勾選數分開呈現，避免 (n/m) 被讀成目前進度
+    print(format_info(
+        InfoMessages.ACCEPTANCE_CRITERIA_UPDATED,
+        ticket_id=args.ticket_id,
+        index=f"全部（本次變更 {count} 項）",
+        status_text=(TrackAcceptanceMessages.STATUS_TEXT_UNCHECKED if uncheck
+                     else TrackAcceptanceMessages.STATUS_TEXT_CHECKED),
+    ))
+    summary_format = (TrackAcceptanceMessages.BATCH_UNCHECK_SUMMARY_FORMAT if uncheck
+                      else TrackAcceptanceMessages.BATCH_CHECK_SUMMARY_FORMAT)
+    print(format_msg(
+        summary_format,
+        ticket_id=args.ticket_id,
+        changed_count=count,
+        checked_total=checked_total,
+        total_count=total_count,
+    ))
 
     return git_utils.EXIT_AUTO_COMMIT_FAILED if commit_failed else 0
 

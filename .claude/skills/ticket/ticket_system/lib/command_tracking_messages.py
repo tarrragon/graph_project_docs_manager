@@ -175,10 +175,10 @@ class TrackAcceptanceMessages:
     CONTENT_PREFIX = "   內容:"
 
     # execute_check_acceptance 中的批量勾選摘要格式
-    BATCH_CHECK_SUMMARY_FORMAT = "[OK] {ticket_id} 已勾選 {checked_count}/{total_count} 項"
+    BATCH_CHECK_SUMMARY_FORMAT = "[OK] {ticket_id} 全部已勾選：本次變更 {changed_count} 項，目前 {checked_total}/{total_count}"
 
     # execute_check_acceptance 中的批量取消勾選摘要格式
-    BATCH_UNCHECK_SUMMARY_FORMAT = "[OK] {ticket_id} 已取消勾選 {unchecked_count}/{total_count} 項"
+    BATCH_UNCHECK_SUMMARY_FORMAT = "[OK] {ticket_id} 全部已取消勾選：本次變更 {changed_count} 項，目前已勾選 {checked_total}/{total_count}"
 
 
 
