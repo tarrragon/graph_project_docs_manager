@@ -637,3 +637,10 @@ def test_git_word_command_does_load_parser(two_repos):
     r = subprocess.run(["python3", "-c", code], capture_output=True, text=True, timeout=60,
                        env=dict(os.environ, CLAUDE_PROJECT_DIR=str(mine)))
     assert "IMPORTED=True" in r.stderr, r.stderr
+
+
+def test_repo_cwd_without_lock_hook_spawns_no_git(two_repos):
+    """無鎖常態路徑（cwd 為 repo、無鎖）：hook 自身不起 git，stderr 為空。"""
+    mine, _ = two_repos
+    r = _run_spy({"tool_name": "Bash", "tool_input": {"command": "ls"}, "cwd": str(mine)}, mine)
+    assert "GITCALLS=0" in r.stderr and "WARNING" not in r.stderr, r.stderr
