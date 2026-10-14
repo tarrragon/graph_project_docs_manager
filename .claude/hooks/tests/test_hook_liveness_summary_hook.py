@@ -453,8 +453,12 @@ class TestSmokeTestLock:
 
 
 class TestRunSingleSmokeTest:
-    """真實透過 uv run 呼叫子行程，驗證 liveness 條目有無的崩潰判準。"""
+    """真實透過 uv run 呼叫子行程，驗證 liveness 條目有無的崩潰判準。
 
+    真實子程序測試標記 wallclock（預設主套件排除，見 hooks/pyproject.toml）；
+    三態判定邏輯由 TestRunSingleSmokeTestVerdicts 以 monkeypatch 驗證。"""
+
+    @pytest.mark.wallclock
     def test_healthy_hook_not_flagged_as_crashed(self, tmp_path):
         _write_pep723_hook_file(tmp_path, "healthy-hook", deps=[])
         sentinel_file = (
@@ -469,6 +473,7 @@ class TestRunSingleSmokeTest:
         assert status == "ok"
         assert summary == ""
 
+    @pytest.mark.wallclock
     def test_pins_project_dir_env_to_root(self, tmp_path, monkeypatch):
         """實機驗證撈到的真實案例：子行程若繼承呼叫端（本 hook 自身）
         的 CLAUDE_PROJECT_DIR 環境變數，`get_project_root()` 判準優先序
@@ -500,6 +505,7 @@ class TestRunSingleSmokeTest:
         )
         assert not other_sentinel.exists()
 
+    @pytest.mark.wallclock
     def test_import_crash_is_flagged(self, tmp_path):
         _write_pep723_hook_file(
             tmp_path,
@@ -540,6 +546,82 @@ class TestRunSingleSmokeTest:
 
         assert status == "timeout"
         assert "逾時" in summary
+
+
+class TestRunSingleSmokeTestVerdicts:
+    """以 monkeypatch 取代 subprocess.run，驗證 ok/timeout/crashed 判定，
+    不啟動真實 uv 子程序，結果與機器負載無關。"""
+
+    @staticmethod
+    def _sentinel(root):
+        return (
+            root / ".claude" / "hook-logs" / summary_hook.LIVENESS_SUBDIR
+            / "{}.jsonl".format(summary_hook.SMOKE_TEST_SENTINEL_SESSION_ID)
+        )
+
+    @staticmethod
+    def _append_line(sentinel):
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(sentinel), "a", encoding="utf-8") as f:
+            f.write("{}\n")
+
+    def test_completed_with_new_liveness_line_is_ok(self, tmp_path, monkeypatch):
+        sentinel = self._sentinel(tmp_path)
+
+        def _fake_run(*args, **kwargs):
+            self._append_line(sentinel)
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(summary_hook.subprocess, "run", _fake_run)
+        status, summary = summary_hook._run_single_smoke_test(tmp_path, "h", sentinel)
+        assert (status, summary) == ("ok", "")
+
+    def test_completed_without_liveness_line_is_crashed(self, tmp_path, monkeypatch):
+        sentinel = self._sentinel(tmp_path)
+
+        def _fake_run(*args, **kwargs):
+            return subprocess.CompletedProcess(
+                args, 1, stdout="", stderr="ModuleNotFoundError: no module xyz\n"
+            )
+
+        monkeypatch.setattr(summary_hook.subprocess, "run", _fake_run)
+        status, summary = summary_hook._run_single_smoke_test(tmp_path, "h", sentinel)
+        assert status == "crashed"
+        assert "ModuleNotFoundError" in summary
+
+    def test_timeout_without_new_line_is_timeout(self, tmp_path, monkeypatch):
+        """E2 正向對照：逾時且 sentinel 未增行者必須判為 timeout。"""
+        sentinel = self._sentinel(tmp_path)
+
+        def _fake_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd="uv run", timeout=0.01)
+
+        monkeypatch.setattr(summary_hook.subprocess, "run", _fake_run)
+        status, summary = summary_hook._run_single_smoke_test(tmp_path, "h", sentinel)
+        assert status == "timeout"
+        assert "逾時" in summary
+
+    def test_timeout_with_new_line_is_ok(self, tmp_path, monkeypatch):
+        sentinel = self._sentinel(tmp_path)
+
+        def _fake_run(*args, **kwargs):
+            self._append_line(sentinel)
+            raise subprocess.TimeoutExpired(cmd="uv run", timeout=0.01)
+
+        monkeypatch.setattr(summary_hook.subprocess, "run", _fake_run)
+        status, summary = summary_hook._run_single_smoke_test(tmp_path, "h", sentinel)
+        assert (status, summary) == ("ok", "")
+
+    def test_oserror_is_crashed(self, tmp_path, monkeypatch):
+        sentinel = self._sentinel(tmp_path)
+
+        def _fake_run(*args, **kwargs):
+            raise OSError("uv not found")
+
+        monkeypatch.setattr(summary_hook.subprocess, "run", _fake_run)
+        status, summary = summary_hook._run_single_smoke_test(tmp_path, "h", sentinel)
+        assert status == "crashed"
+        assert "uv not found" in summary
 
 
 class TestSmokeTestRegisteredHooksOrchestration:
