@@ -719,6 +719,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | PC-GPD-029 | 代理人終止背景測試後憑記憶回報已終止，實際由它啟動的子程序仍在執行 | 中 | 0.4.1 |
 | PC-GPD-030 | 把 linked worktree 當成票務 CLI 的實驗沙盒，寫入命令實際改到主 checkout 的真票 | 高 | 0.4.1 |
 | PC-GPD-031 | 代理人依 harness 的 Bash 改檔許可直接用 Bash 寫檔，自動載入的工具選擇規則未能勝出 | 中 | 0.5.0 |
+| PC-GPD-032 | hook 實地觸發的命令落在提早返回分支，驗證看似通過卻沒有執行到目標邏輯 | 中 | 0.5.0 |
 
 ---
 
