@@ -287,5 +287,49 @@ class TestCompleteCommandRecognition:
         where_mock.assert_not_called()
 
 
+REAL_KEYS = {"stderr": "", "interrupted": False, "isImage": False, "noOutputExpected": False}
+
+
+def _real_payload(command, stdout="[OK] 已完成 Ticket", **extra):
+    """真實 payload 形狀：五個鍵、無 exit_code"""
+    resp = dict(REAL_KEYS, stdout=stdout, **extra)
+    return {"tool_name": "Bash", "tool_input": {"command": command},
+            "tool_response": resp}
+
+
+class TestRealPayloadShape:
+    """E2：真實形狀（無 exit_code）的成功命令須觸發缺失檔案警告"""
+
+    def test_real_payload_triggers_missing_file_warning(self):
+        rc, payload, where_mock = _run_main_with(
+            _real_payload("ticket track complete 0.1.0-W41-002"), ["a.py"], [])
+        assert rc == 0
+        assert where_mock.call_args[0][0] == "0.1.0-W41-002"
+        ctx = payload["hookSpecificOutput"]["additionalContext"]
+        assert "  - a.py" in ctx.splitlines()
+
+    def test_real_payload_failure_not_triggered(self):
+        rc, payload, where_mock = _run_main_with(
+            _real_payload("ticket track complete 0.1.0-W41-002", stdout="[Error] x"),
+            ["a.py"], [])
+        assert rc == 0
+        where_mock.assert_not_called()
+
+    def test_interrupted_not_triggered(self):
+        data = _real_payload("ticket track complete 0.1.0-W41-002", interrupted=True)
+        assert hook_module.is_ticket_complete_success(data) is False
+
+    def test_legacy_exit_code_compat(self):
+        for code, expected in ((0, True), (75, True), (1, False)):
+            data = _real_payload("ticket track complete 0.1.0-W41-002", exit_code=code)
+            assert hook_module.is_ticket_complete_success(data) is expected
+
+    @pytest.mark.parametrize("resp", ["[OK] 已完成", None, 7])
+    def test_non_dict_response_fail_open(self, resp):
+        data = _real_payload("ticket track complete 0.1.0-W41-002")
+        data["tool_response"] = resp
+        assert hook_module.is_ticket_complete_success(data) is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

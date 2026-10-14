@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root, is_subagent_environment
 from lib.ticket_command_parse import has_complete_command
+from lib.bash_tool_response import is_bash_success
 
 import re
 from datetime import datetime
@@ -97,18 +98,15 @@ def is_complete_command_success(input_data: Dict[str, Any], logger) -> bool:
 
     # 檢查執行結果 (exit code 0 或輸出包含成功標記)
     tool_response = input_data.get("tool_response") or {}
-    stdout = tool_response.get("stdout", "")
-    stderr = tool_response.get("stderr", "")
-    exit_code = tool_response.get("exit_code", -1)
 
-    # 成功判斷：exit code = 0 且輸出包含成功標記
-    is_success = (exit_code in (0, EXIT_AUTO_COMMIT_FAILED)) and ("[OK]" in stdout or "已完成" in stdout or "completed" in stdout.lower())
+    # 成功判斷：真實 payload 無 exit_code，由共用 helper 以 interrupted 與成功標記判定
+    is_success = is_bash_success(tool_response, ("[OK]", "已完成", "completed"), ignore_case=True)
 
     if is_success:
         logger.info(f"檢測到成功的 complete 命令")
         return True
 
-    logger.debug(f"命令未成功: exit_code={exit_code}, stdout={stdout}")
+    logger.debug(f"命令未成功: tool_response={tool_response}")
     return False
 
 def extract_ticket_ids(input_data: Dict[str, Any], logger) -> List[str]:
