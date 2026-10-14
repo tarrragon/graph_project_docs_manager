@@ -79,6 +79,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root
+    from lib.hook_registry import registry_commands
 except ImportError as e:
     # hook 自身失敗雙通道（quality-baseline 規則 4）：import 失敗時尚無
     # logger 可用，僅能靠 stderr 讓用戶可見；fail-open（exit 0）避免因
@@ -159,6 +160,14 @@ def _get_stdlib_module_names() -> "Set[str]":
     return set(_STDLIB_FALLBACK)
 
 
+def _dispatch_registry_commands(settings_path: Path) -> "List[str]":
+    """分派 registry 內的 hook 等價 command 字串（經 lib.hook_registry，讀不到回 []）"""
+    try:
+        return registry_commands(settings_path.parent.parent)
+    except (OSError, ValueError):
+        return []
+
+
 def extract_registered_hook_paths(settings_path: Path) -> "List[str]":
     """從 settings.json 抽取所有登記的 hook 檔案相對路徑（去重排序）。"""
     try:
@@ -166,6 +175,8 @@ def extract_registered_hook_paths(settings_path: Path) -> "List[str]":
     except OSError:
         return []
     hits = set(_REGISTERED_HOOK_PATH_RE.findall(raw))
+    for command in _dispatch_registry_commands(settings_path):
+        hits.update(_REGISTERED_HOOK_PATH_RE.findall(command))
     return sorted(hits)
 
 
@@ -182,7 +193,7 @@ def extract_hook_command_prefixes(settings_path: Path) -> "Dict[str, Set[str]]":
     except OSError:
         return {}
     prefixes: Dict[str, Set[str]] = {}
-    for command in _COMMAND_VALUE_RE.findall(raw):
+    for command in _COMMAND_VALUE_RE.findall(raw) + _dispatch_registry_commands(settings_path):
         match = _REGISTERED_HOOK_PATH_RE.search(command)
         if not match:
             continue

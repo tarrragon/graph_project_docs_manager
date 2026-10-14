@@ -877,6 +877,12 @@ class TestMainIntegration:
                 for h in entry.get("hooks", []):
                     if "hooks-test-gate-hook.py" in h.get("command", ""):
                         found.append(h.get("timeout"))
+        # Bash 事件的註冊改由分派程序的 registry 承載，單支逾時由分派器以 setitimer 強制
+        registry = json.loads((HOOKS_DIR / "hook-dispatch-registry.json").read_text())
+        for group in registry["groups"].values():
+            for e in group["hooks"]:
+                if e["path"].endswith("hooks-test-gate-hook.py"):
+                    found.append(e.get("timeout"))
         assert found and all(t is not None for t in found), "須明示 timeout"
         for t in found:
             assert t == hook_module.PLATFORM_TIMEOUT_SECONDS

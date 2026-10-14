@@ -973,41 +973,39 @@ def _load_settings():
     return json.loads(_SETTINGS.read_text(encoding="utf-8"))
 
 
-def test_cfg_1_posttooluse_含_phase4_hook():
+def _bash_hook_entries(event):
+    """Bash matcher 下登記的 hook：settings.json 直接註冊 + 分派程序 registry 清單"""
     settings = _load_settings()
-    posttool = settings.get("hooks", {}).get("PostToolUse", [])
-    bash_hooks = []
-    for entry in posttool:
+    entries = []
+    for entry in settings.get("hooks", {}).get(event, []):
         if entry.get("matcher") == "Bash":
-            bash_hooks.extend(entry.get("hooks", []))
-    commands = [h.get("command", "") for h in bash_hooks]
+            entries.extend({"command": h.get("command", ""), "timeout": h.get("timeout")}
+                           for h in entry.get("hooks", []))
+    registry = json.loads((_HOOKS_DIR / "hook-dispatch-registry.json").read_text(encoding="utf-8"))
+    for e in registry["groups"].get(event + ":Bash", {}).get("hooks", []):
+        entries.append({"command": e["path"], "timeout": e.get("timeout")})
+    return entries
+
+
+def test_cfg_1_posttooluse_含_phase4_hook():
+    commands = [e["command"] for e in _bash_hook_entries("PostToolUse")]
     assert any("phase4-decision-enforcement-hook" in c for c in commands)
 
 
 def test_cfg_2_pretooluse_含_phase4_hook():
-    settings = _load_settings()
-    pretool = settings.get("hooks", {}).get("PreToolUse", [])
-    bash_hooks = []
-    for entry in pretool:
-        if entry.get("matcher") == "Bash":
-            bash_hooks.extend(entry.get("hooks", []))
-    commands = [h.get("command", "") for h in bash_hooks]
+    commands = [e["command"] for e in _bash_hook_entries("PreToolUse")]
     assert any("phase4-decision-enforcement-hook" in c for c in commands)
 
 
 def test_cfg_3_timeout_設定():
-    settings = _load_settings()
     found = False
     for group in ("PostToolUse", "PreToolUse"):
-        for entry in settings.get("hooks", {}).get(group, []):
-            if entry.get("matcher") != "Bash":
-                continue
-            for h in entry.get("hooks", []):
-                if "phase4-decision-enforcement-hook" in h.get("command", ""):
-                    # timeout 欄位為可選，但若存在應 <= 10000
-                    if "timeout" in h:
-                        assert h["timeout"] <= 10000
-                    found = True
+        for e in _bash_hook_entries(group):
+            if "phase4-decision-enforcement-hook" in e["command"]:
+                # timeout 欄位為可選，但若存在應 <= 10000
+                if e["timeout"] is not None:
+                    assert e["timeout"] <= 10000
+                found = True
     assert found
 
 
