@@ -271,3 +271,37 @@ def test_argv_weight_option_value_that_is_a_path_is_heavy(tmp_path):
     assert classify_argv_weight(["pytest", "--basetemp", "some/dir", "tests/test_a.py"]) == WEIGHT_HEAVY
     assert classify_argv_weight(["pytest", "--ignore", str(tmp_path), "tests/test_a.py"]) == WEIGHT_HEAVY
     assert classify_argv_weight(["pytest", "-k", "name", "tests/test_a.py"]) == WEIGHT_LIGHT
+
+
+def test_find_unwrapped_heavy_distinguishes_wrapped():
+    from lib.test_command_parse import find_unwrapped_heavy
+    assert find_unwrapped_heavy("fvm flutter test") == [("fvm", "flutter", "test")]
+    assert find_unwrapped_heavy("python3 ../scripts/run-with-timeout.py 60 -- uv run pytest -q") == []
+    assert find_unwrapped_heavy("uv run pytest -q tests/test_x.py") == []
+    assert find_unwrapped_heavy("env FOO=1 ls") == []
+    assert find_unwrapped_heavy("echo 'x") is None
+
+
+@pytest.mark.parametrize("argv", [
+    ["flutter", "test", "--help"],
+    ["dart", "test", "-h"],
+    ["flutter", "build", "--help"],
+    ["xcodebuild", "-version"],
+    ["pytest", "--collect-only", "tests/"],
+    ["pytest", "--version"],
+])
+def test_query_flags_classified_light(argv):
+    from lib.test_command_parse import classify_argv_weight, WEIGHT_LIGHT
+    assert classify_argv_weight(argv) == WEIGHT_LIGHT
+
+
+def test_no_query_flag_still_heavy():
+    from lib.test_command_parse import classify_argv_weight, WEIGHT_HEAVY
+    assert classify_argv_weight(["pytest", "tests/"]) == WEIGHT_HEAVY
+    assert classify_argv_weight(["pytest", "-k", "foo"]) == WEIGHT_HEAVY
+
+
+def test_unwrapped_heavy_strips_trailing_control_operators():
+    from lib.test_command_parse import find_unwrapped_heavy
+    assert find_unwrapped_heavy("nohup flutter test &") == [("nohup", "flutter", "test")]
+    assert find_unwrapped_heavy("flutter build macos;") == [("flutter", "build", "macos")]

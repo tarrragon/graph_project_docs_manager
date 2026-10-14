@@ -140,14 +140,21 @@ def _strip_one_launcher(tokens: List[str]) -> List[str]:
     return tokens if unwrapped is None else unwrapped
 
 
-def _strip_launch_prefixes(tokens: List[str]) -> List[str]:
-    """前綴可巢狀（包裝腳本內再接 uv run），反覆去除至穩定。"""
+def _strip_launch_prefixes_tracking(tokens: List[str]) -> Tuple[List[str], bool]:
+    """前綴可巢狀（包裝腳本內再接 uv run），反覆去除至穩定；另回報是否經過 run-with-timeout 包裝。"""
+    wrapped = False
     while tokens:
+        if _strip_timeout_wrapper(tokens) is not None:
+            wrapped = True
         stripped = _strip_one_launcher(tokens)
         if stripped == tokens:
-            return tokens
+            break
         tokens = stripped
-    return tokens
+    return tokens, wrapped
+
+
+def _strip_launch_prefixes(tokens: List[str]) -> List[str]:
+    return _strip_launch_prefixes_tracking(tokens)[0]
 
 
 def _is_python_module_pytest(tokens: List[str]) -> bool:
@@ -245,7 +252,13 @@ def _all_specific_test_files(args: List[str], with_value) -> bool:
         _SPECIFIC_TEST_FILE_RE.search(arg.split("::", 1)[0]) for arg in positional)
 
 
+# 查詢類旗標：只印說明、版本或列舉測試，不執行測試也不編譯，負載輕
+QUERY_FLAGS = frozenset({"--help", "-h", "-help", "--version", "-version", "--collect-only"})
+
+
 def _weight_of_stripped(tokens: List[str], launcher_led: bool) -> str:
+    if any(token in QUERY_FLAGS for token in tokens[1:]):
+        return WEIGHT_LIGHT
     head = Path(tokens[0]).name
     if head in HEAVY_BUILD_EXECUTABLES or (
             head == "xcrun" and any(Path(t).name in HEAVY_BUILD_EXECUTABLES for t in tokens[1:])):
@@ -280,3 +293,45 @@ def classify_argv_weight(tokens: List[str]) -> str:
     if not stripped:
         return WEIGHT_HEAVY  # 全是 launcher 而無命令，屬 launcher 開頭判不出 runner
     return _weight_of_stripped(stripped, launcher_led=stripped != list(tokens))
+
+
+def _is_known_heavy_candidate(tokens: List[str]) -> bool:
+    """剝除前綴後的命令是否屬已辨識的 runner／編譯器（排除「launcher 開頭判不出而保守視為 heavy」）。"""
+    head = Path(tokens[0]).name
+    if head in HEAVY_BUILD_EXECUTABLES or head in (RUNNER_FLUTTER, RUNNER_DART):
+        return True
+    if head == "xcrun" and any(Path(t).name in HEAVY_BUILD_EXECUTABLES for t in tokens[1:]):
+        return True
+    return _classify_runner(tokens) is not None
+
+
+_TRAILING_CONTROL_OPERATORS = frozenset({"&", ";", "&&", "||", "|"})
+
+
+def _without_trailing_operators(statement) -> Tuple[str, ...]:
+    """去除敘述結尾的控制運算子（&、; 等），供產生可直接複製的包裝寫法。"""
+    tokens = list(statement)
+    while tokens and tokens[-1] in _TRAILING_CONTROL_OPERATORS:
+        tokens.pop()
+    if tokens and tokens[-1].endswith(";") and len(tokens[-1]) > 1:
+        tokens[-1] = tokens[-1].rstrip(";")
+    return tuple(tokens)
+
+
+def find_unwrapped_heavy(command: str) -> Optional[List[Tuple[str, ...]]]:
+    """回傳命令中「已辨識為 heavy 且未經 run-with-timeout 包裝」的敘述；無法解析回 None。
+
+    供封堵端（pre-test-hook）使用：只認已辨識的 runner／編譯器，launcher 開頭判不出者
+    不算（閘門端保守視為 heavy 只多排隊，封堵端誤判則擋掉正當命令，代價較高）。
+    """
+    statements = parse_command_statements(command)
+    if statements is None:
+        return None
+    found = []
+    for statement in statements:
+        stripped, wrapped = _strip_launch_prefixes_tracking(list(statement))
+        if wrapped or not stripped or not _is_known_heavy_candidate(stripped):
+            continue
+        if _weight_of_stripped(stripped, launcher_led=False) == WEIGHT_HEAVY:
+            found.append(_without_trailing_operators(statement))
+    return found
