@@ -576,3 +576,33 @@ def test_pytest_q_green_summary_recognized(hook_module, output):
 ])
 def test_pytest_q_failure_summary_not_green(hook_module, output):
     assert not hook_module._is_green_summary(output)
+
+
+# --- 綠燈捷徑：任何一行摘要含 N failed / N error 即不放行 ---
+
+@pytest.mark.parametrize("output", [
+    "=== 5 passed, 1 failed in 1s ===",
+    "5 passed in 1s\n1 failed in 2s",
+    "===== 5 passed in 1.00s =====\n===== 2 passed, 1 error in 0.50s =====",
+])
+def test_green_shortcut_not_taken_when_any_summary_has_failure(hook_module, output):
+    assert not hook_module._is_green_summary(output)
+
+
+def test_multi_run_pytest_output_reports_test_failure(hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    response = {"stdout": "5 passed in 1s\nFAILED tests/a.py::t - boom\n1 failed in 2s\n",
+                "stderr": ""}
+    result = _eval_response(hook_module, logger, "Bash", response)
+    assert result is not None and "TEST FAILURE" in result
+
+
+@pytest.mark.parametrize("output", [
+    "===== 5 passed in 1.00s =====",
+    "5 passed in 1s",
+    "===== 5 passed, 1 xfailed in 1.00s =====",
+    "5 passed, 1 xfailed in 1s",
+    "Tests: 10 passed, 0 failed",
+])
+def test_single_green_summary_still_green(hook_module, output):
+    assert hook_module._is_green_summary(output)

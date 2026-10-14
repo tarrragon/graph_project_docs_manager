@@ -395,6 +395,10 @@ GREEN_SUMMARY_PATTERNS = [
 ]
 
 
+# 摘要含非零 failed / error(s) 計數：任何一處命中即不走綠燈捷徑（xfailed 不命中）
+FAILURE_COUNT_PATTERN = re.compile(r"(?<![\w-])[1-9]\d*\s+(?:failed|errors?)\b", re.IGNORECASE)
+
+
 def _is_green_summary(output: str) -> bool:
     """判斷輸出是否含綠燈測試摘要（W1-055）。
 
@@ -406,6 +410,9 @@ def _is_green_summary(output: str) -> bool:
     - 含 Jest/Vitest/pytest/Mocha 標準綠燈 summary
     - 含「all tests passed」「no issues found」（既有判定，保留相容）
     """
+    if FAILURE_COUNT_PATTERN.search(output):
+        return False
+
     lower = output.lower()
     if "all tests passed" in lower or "no issues found" in lower:
         return True
