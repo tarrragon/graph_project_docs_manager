@@ -25,6 +25,7 @@ Source: 0.18.0-W17-119 / 0.18.0-W17-119.1 — 4 週累積 24 個殭屍 worktree�
 """
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -38,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
 from lib import setup_hook_logging, run_hook_safely, get_project_root, get_worktree_list  # type: ignore
+from lib.git_utils import run_with_graceful_timeout  # type: ignore
 
 HOOK_NAME = "worktree-zombie-cleanup"
 
@@ -51,6 +53,24 @@ DISABLE_ENV_VAR = "WORKTREE_ZOMBIE_CLEANUP_DISABLE"
 
 # locked 檔案 PID 解析正則
 _PID_PATTERN = re.compile(r"\(pid\s+(\d+)\)")
+
+# 唯讀判斷與 branch -d 的逾時秒數；worktree unlock/remove 較慢另設
+_READ_TIMEOUT_SECONDS = 10
+_WRITE_TIMEOUT_SECONDS = 15
+
+
+# ---------- 靜默回傳路徑的日誌（逾時與其他失敗訊息可區分） ----------
+
+def _log_timeout(func: str, subcommand: str, seconds: int, fallback: str) -> None:
+    logging.getLogger(HOOK_NAME).warning(
+        "%s: git %s 逾時（%ds），%s", func, subcommand, seconds, fallback
+    )
+
+
+def _log_failure(func: str, subcommand: str, cause: Any, fallback: str) -> None:
+    logging.getLogger(HOOK_NAME).warning(
+        "%s: git %s 執行失敗（%s），%s", func, subcommand, cause, fallback
+    )
 
 
 # ---------- 純函式（易於 unit test） ----------
@@ -117,12 +137,17 @@ def is_worktree_dirty(worktree_path: Path) -> bool:
             ["git", "-C", str(worktree_path), "--no-optional-locks", "status", "--porcelain"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=_READ_TIMEOUT_SECONDS,
         )
-    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+    except subprocess.TimeoutExpired:
+        _log_timeout("is_worktree_dirty", "status", _READ_TIMEOUT_SECONDS, "保守視為 dirty")
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError, OSError) as exc:
+        _log_failure("is_worktree_dirty", "status", exc, "保守視為 dirty")
         return True
 
     if result.returncode != 0:
+        _log_failure("is_worktree_dirty", "status", f"returncode={result.returncode}", "保守視為 dirty")
         return True
     return bool((result.stdout or "").strip())
 
@@ -162,12 +187,17 @@ def is_branch_merged(project_root: Path, branch: str, base: str = "main") -> boo
             ["git", "-C", str(project_root), "log", f"{base}..{branch}", "--oneline"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=_READ_TIMEOUT_SECONDS,
         )
-    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+    except subprocess.TimeoutExpired:
+        _log_timeout("is_branch_merged", "log", _READ_TIMEOUT_SECONDS, "保守視為未併入")
+        return False
+    except (subprocess.SubprocessError, FileNotFoundError, OSError) as exc:
+        _log_failure("is_branch_merged", "log", exc, "保守視為未併入")
         return False
 
     if result.returncode != 0:
+        _log_failure("is_branch_merged", "log", f"returncode={result.returncode}", "保守視為未併入")
         return False
     return not bool((result.stdout or "").strip())
 
@@ -185,11 +215,10 @@ def delete_branch_if_merged(project_root: Path, branch: str, name: str, logger) 
         logger.warning("[%s] 分支 %s ahead>0（含未併入 main 的提交），保留不刪", name, branch)
         return False
     try:
-        result = subprocess.run(
+        result = run_with_graceful_timeout(
             ["git", "-C", str(project_root), "branch", "-d", branch],
-            capture_output=True,
+            _READ_TIMEOUT_SECONDS,
             text=True,
-            timeout=10,
         )
     except (subprocess.SubprocessError, FileNotFoundError, OSError) as exc:
         logger.error("[%s] 刪除分支 %s 執行失敗: %s", name, branch, exc)
@@ -208,7 +237,7 @@ def remove_worktree(project_root: Path, worktree_path: Path, name: str, logger) 
         ["git", "-C", str(project_root), "worktree", "remove", "--force", str(worktree_path)],
     ):
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            result = run_with_graceful_timeout(cmd, _WRITE_TIMEOUT_SECONDS, text=True)
         except (subprocess.SubprocessError, FileNotFoundError, OSError) as exc:
             logger.error("[%s] %s 執行失敗: %s", name, " ".join(cmd[3:]), exc)
             return False

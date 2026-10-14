@@ -252,3 +252,144 @@ def test_is_worktree_dirty_status_has_no_optional_locks_before_subcommand(hook_m
     argv = run.call_args.args[0]
     assert "--no-optional-locks" in argv
     assert argv.index("--no-optional-locks") < argv.index("status")
+
+
+# ---------- 0.5.0-W1-164.6.2：寫入類 git 經溫和終止函式、靜默逾時日誌 ----------
+
+import logging
+import subprocess
+
+
+class _FakeTimeoutPopen:
+    """communicate 逾時、terminate 後 wait 立即返回；記錄收到的終止方式。"""
+
+    instances = []
+
+    def __init__(self, args, **kwargs):
+        self.args = args
+        self.calls = []
+        self.returncode = None
+        _FakeTimeoutPopen.instances.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def communicate(self, input_text=None, timeout=None):
+        raise subprocess.TimeoutExpired(self.args, timeout)
+
+    def terminate(self):
+        self.calls.append("terminate")
+
+    def wait(self, timeout=None):
+        self.calls.append("wait")
+        return 0
+
+    def kill(self):
+        self.calls.append("kill")
+
+
+@pytest.fixture
+def fake_timeout_popen(monkeypatch):
+    import lib.git_utils as git_utils
+    _FakeTimeoutPopen.instances = []
+    monkeypatch.setattr(git_utils.subprocess, "Popen", _FakeTimeoutPopen)
+    return _FakeTimeoutPopen
+
+
+def _ok_completed(stdout=""):
+    return subprocess.CompletedProcess([], 0, stdout, "")
+
+
+def _no_subprocess_run(*a, **k):
+    raise AssertionError("寫入類呼叫不得直接經 subprocess.run（SIGKILL 逾時）")
+
+
+def test_remove_worktree_uses_graceful_runner_for_unlock_and_remove(hook_module, monkeypatch):
+    seen = []
+
+    def fake(args, timeout, **kw):
+        seen.append(args)
+        return _ok_completed()
+
+    monkeypatch.setattr(hook_module, "run_with_graceful_timeout", fake)
+    monkeypatch.setattr(hook_module.subprocess, "run", _no_subprocess_run)
+    ok = hook_module.remove_worktree(Path("/r"), Path("/r/w"), "agent-x", logging.getLogger("t"))
+    assert ok is True
+    assert [a[3:5] for a in seen] == [["worktree", "unlock"], ["worktree", "remove"]]
+
+
+def test_delete_branch_uses_graceful_runner(hook_module, monkeypatch):
+    seen = []
+
+    def fake(args, timeout, **kw):
+        seen.append(args)
+        return _ok_completed()
+
+    monkeypatch.setattr(hook_module, "run_with_graceful_timeout", fake)
+    monkeypatch.setattr(hook_module, "is_branch_merged", lambda *a, **k: True)
+    ok = hook_module.delete_branch_if_merged(Path("/r"), "b", "agent-x", logging.getLogger("t"))
+    assert ok is True
+    assert seen and seen[0][3:5] == ["branch", "-d"]
+
+
+def test_remove_worktree_timeout_sends_sigterm_not_sigkill(hook_module, fake_timeout_popen, caplog):
+    with caplog.at_level(logging.ERROR):
+        ok = hook_module.remove_worktree(Path("/r"), Path("/r/w"), "agent-x", logging.getLogger("t"))
+    assert ok is False
+    assert fake_timeout_popen.instances[0].calls == ["terminate", "wait"]
+    assert any("執行失敗" in r.getMessage() for r in caplog.records)
+
+
+def test_delete_branch_timeout_sends_sigterm_not_sigkill(hook_module, fake_timeout_popen, monkeypatch, caplog):
+    monkeypatch.setattr(hook_module, "is_branch_merged", lambda *a, **k: True)
+    with caplog.at_level(logging.ERROR):
+        ok = hook_module.delete_branch_if_merged(Path("/r"), "b", "agent-x", logging.getLogger("t"))
+    assert ok is False
+    assert fake_timeout_popen.instances[0].calls == ["terminate", "wait"]
+    assert any("執行失敗" in r.getMessage() for r in caplog.records)
+
+
+def _raise_timeout(*a, **k):
+    raise subprocess.TimeoutExpired(["git"], 10)
+
+
+@pytest.mark.parametrize("fn,args,expected,name", [
+    ("is_worktree_dirty", (Path("/tmp"),), True, "is_worktree_dirty"),
+    ("is_branch_merged", (Path("/tmp"), "b"), False, "is_branch_merged"),
+])
+def test_silent_helpers_log_timeout_distinct_from_other_failure(
+    hook_module, monkeypatch, caplog, fn, args, expected, name
+):
+    monkeypatch.setattr(hook_module.subprocess, "run", _raise_timeout)
+    with caplog.at_level(logging.INFO):
+        assert getattr(hook_module, fn)(*args) is expected
+    timeout_msgs = [r.getMessage() for r in caplog.records if "逾時" in r.getMessage()]
+    assert len(timeout_msgs) == 1
+    assert name in timeout_msgs[0]
+
+    caplog.clear()
+
+    def boom(*a, **k):
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(hook_module.subprocess, "run", boom)
+    with caplog.at_level(logging.INFO):
+        assert getattr(hook_module, fn)(*args) is expected
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any(name in m and "執行失敗" in m for m in msgs)
+    assert not any("逾時" in m for m in msgs)
+
+
+@pytest.mark.parametrize("fn,args,stdout,expected", [
+    ("is_worktree_dirty", (Path("/tmp"),), "", False),
+    ("is_branch_merged", (Path("/tmp"), "b"), "", True),
+])
+def test_silent_helpers_no_log_on_normal_completion(hook_module, monkeypatch, caplog, fn, args, stdout, expected):
+    fake = MagicMock(returncode=0, stdout=stdout, stderr="")
+    monkeypatch.setattr(hook_module.subprocess, "run", lambda *a, **k: fake)
+    with caplog.at_level(logging.DEBUG):
+        assert getattr(hook_module, fn)(*args) is expected
+    assert not [r for r in caplog.records if getattr(hook_module, "HOOK_NAME") in r.name]

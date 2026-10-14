@@ -3,7 +3,13 @@
 git_utils 模組單元測試
 """
 
+import os
+import signal
+import subprocess
+import threading
+import time
 import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 import sys
 from pathlib import Path
@@ -20,6 +26,8 @@ from lib.git_utils import (
     is_allowed_branch,
     is_protected_branch,
     run_git_command,
+    run_with_graceful_timeout,
+    TERMINATE_GRACE_SECONDS,
     find_target_repo,
     FileStatus,
     BRANCH_PREFIX_LEN,
@@ -453,6 +461,199 @@ class TestFindTargetRepo(unittest.TestCase):
 
             self.assertEqual(Path(find_target_repo(str(file_a))).resolve(), repo_a.resolve())
             self.assertEqual(Path(find_target_repo(str(file_b))).resolve(), repo_b.resolve())
+
+
+# ---------- run_with_graceful_timeout 契約測試（0.5.0-W1-164.6.2） ----------
+# 案例移植自 skills/worktree/tests/test_graceful_timeout_contract.py，固定 lib 版
+# 與 worktree-auto-commit-hook / ticket git_ops 兩份私有複本的行為一致。
+# 耗時上界採寬鬆門檻（孫程序 sleep 30、斷言 15 秒內返回），避免機器負載造成誤判。
+
+_SLOW_SECONDS = 30
+_BOUND_SECONDS = 15
+
+
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+@pytest.fixture
+def pid_log(tmp_path):
+    """測試內啟動的程序把 PID 追加到此檔；結束時逐一終止並以 PID 確認已不存在。"""
+    path = tmp_path / "pids.log"
+    path.touch()
+    yield path
+    pids = [int(t) for t in path.read_text().split()]
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline and any(_pid_alive(p) for p in pids):
+        time.sleep(0.05)
+    survivors = [p for p in pids if _pid_alive(p)]
+    assert not survivors, f"測試結束後仍殘留程序：{survivors}"
+
+
+@pytest.fixture
+def slow_filter_repo(tmp_path, monkeypatch, pid_log):
+    """含慢 clean filter 的暫存 repo；git add 期間持有 index.lock。"""
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for cmd in (
+        ["git", "init", "-q"],
+        [
+            "git", "config", "filter.slow.clean",
+            f"echo $$ >> '{pid_log}'; sleep {_SLOW_SECONDS} & echo $! >> '{pid_log}'; wait; cat",
+        ],
+    ):
+        subprocess.run(cmd, cwd=repo, check=True)
+    (repo / ".gitattributes").write_text("*.dat filter=slow\n")
+    (repo / "payload.dat").write_text("x\n")
+    return repo
+
+
+def _lock(repo):
+    return repo / ".git" / "index.lock"
+
+
+def _wait_for_lock(repo):
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if _lock(repo).exists():
+            return True
+        time.sleep(0.05)
+    return False
+
+
+_RECORD_SIGTERM = (
+    "import signal, sys, time\n"
+    "out = sys.argv[1]\n"
+    "def on_term(signum, frame):\n"
+    "    open(out, 'w').write('SIGTERM')\n"
+    "    sys.exit(0)\n"
+    "signal.signal(signal.SIGTERM, on_term)\n"
+    "time.sleep(60)\n"
+)
+
+_IGNORE_SIGTERM = (
+    "import signal, time\n"
+    "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+    "time.sleep(60)\n"
+)
+
+
+class TestRunWithGracefulTimeout:
+    def test_grace_constant_is_five_seconds(self):
+        assert TERMINATE_GRACE_SECONDS == 5
+
+    def test_timeout_sends_sigterm_first(self, tmp_path):
+        record = tmp_path / "signal.txt"
+        with pytest.raises(subprocess.TimeoutExpired):
+            run_with_graceful_timeout(
+                [sys.executable, "-c", _RECORD_SIGTERM, str(record)], 3, text=True
+            )
+        assert record.exists() and record.read_text() == "SIGTERM"
+
+    def test_ignoring_sigterm_is_killed_after_grace(self):
+        start = time.monotonic()
+        with pytest.raises(subprocess.TimeoutExpired):
+            run_with_graceful_timeout(
+                [sys.executable, "-c", _IGNORE_SIGTERM], 1, grace=1, text=True
+            )
+        assert time.monotonic() - start < _BOUND_SECONDS
+
+    def test_grandchild_holding_pipe_does_not_extend_wait(self, pid_log):
+        script = (
+            f"sleep {_SLOW_SECONDS} & echo $! >> '{pid_log}'; "
+            f"sleep {_SLOW_SECONDS * 2} & echo $! >> '{pid_log}'; wait"
+        )
+        start = time.monotonic()
+        with pytest.raises(subprocess.TimeoutExpired):
+            run_with_graceful_timeout(
+                ["sh", "-c", script], 1, grace=1, text=True, start_new_session=True
+            )
+        assert time.monotonic() - start < _BOUND_SECONDS
+
+    def test_ignoring_sigterm_with_grandchild_has_bounded_wait(self, pid_log):
+        script = (
+            f"trap '' TERM; echo $$ >> '{pid_log}'; "
+            f"sleep {_SLOW_SECONDS} & echo $! >> '{pid_log}'; "
+            f"sleep {_SLOW_SECONDS * 2} & echo $! >> '{pid_log}'; wait"
+        )
+        start = time.monotonic()
+        with pytest.raises(subprocess.TimeoutExpired):
+            run_with_graceful_timeout(
+                ["sh", "-c", script], 1, grace=1, text=True, start_new_session=True
+            )
+        assert time.monotonic() - start < _BOUND_SECONDS
+
+    def test_input_is_passed_to_stdin(self):
+        result = run_with_graceful_timeout(["cat"], 10, input="hello", text=True)
+        assert (result.returncode, result.stdout) == (0, "hello")
+
+    def test_completed_process_fields(self):
+        result = run_with_graceful_timeout(
+            ["sh", "-c", "echo out; echo err >&2; exit 3"], 10, text=True
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (3, "out\n", "err\n")
+
+    def test_timeout_none_waits_for_completion(self):
+        result = run_with_graceful_timeout(["echo", "ok"], None, text=True)
+        assert result.stdout == "ok\n"
+
+
+class TestIndexLockEffect:
+    """效果層：逾時終止後 index.lock 是否殘留。SIGKILL 對照證明 fixture 有鑑別力。"""
+
+    def test_sigterm_via_lib_clears_index_lock(self, slow_filter_repo):
+        lock_seen = threading.Event()
+        stop = threading.Event()
+
+        def watch():
+            while not stop.is_set():
+                if _lock(slow_filter_repo).exists():
+                    lock_seen.set()
+                    return
+                time.sleep(0.02)
+
+        watcher = threading.Thread(target=watch, daemon=True)
+        watcher.start()
+        start = time.monotonic()
+        try:
+            with pytest.raises(subprocess.TimeoutExpired):
+                run_with_graceful_timeout(
+                    ["git", "add", "payload.dat"], 3,
+                    cwd=slow_filter_repo, text=True, start_new_session=True,
+                )
+        finally:
+            stop.set()
+            watcher.join()
+        if not lock_seen.is_set():
+            pytest.skip("逾時前 git 未取得 index.lock（機器負載高），無法鑑別清鎖行為")
+        assert time.monotonic() - start < _BOUND_SECONDS
+        assert not _lock(slow_filter_repo).exists()
+
+    def test_direct_sigkill_leaves_index_lock(self, slow_filter_repo):
+        """對照：直接 SIGKILL 同一呼叫，鎖檔殘留。"""
+        proc = subprocess.Popen(
+            ["git", "add", "payload.dat"], cwd=slow_filter_repo,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        try:
+            if not _wait_for_lock(slow_filter_repo):
+                pytest.skip("git 未取得 index.lock（機器負載高），無法建立對照")
+            proc.kill()
+            proc.wait()
+            assert _lock(slow_filter_repo).exists()
+        finally:
+            proc.wait()
 
 
 if __name__ == "__main__":
