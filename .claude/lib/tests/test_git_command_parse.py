@@ -735,6 +735,76 @@ def test_mutation_without_wrapper_options_misses(monkeypatch):
     assert _subs("nice -n 5 git commit -m x") == []
 
 
+_ROUND2_POSITIVE = [
+    "echo `git commit -m x`",
+    "x=`git commit -m x`",
+    "echo \"`git commit -m x`\"",
+    "! git commit -m x",
+    "coproc git commit -m x",
+    "function f { git commit -m x; }",
+    "time -p git commit -m x",
+    "env -S 'git commit -m x'",
+    "env -i -S'git commit -m x'",
+    "env --split-string='git commit -m x'",
+    "doas git commit -m x",
+    "doas -u me git commit -m x",
+    "flock /tmp/l git commit -m x",
+    "flock -w 5 /tmp/l git commit -m x",
+    "flock /tmp/l -c 'git commit -m x'",
+    "chronic git commit -m x",
+    "chronic -e git commit -m x",
+    "watch git commit -m x",
+    "watch -n 5 'git commit -m x'",
+]
+
+_ROUND2_NEGATIVE = [
+    "echo '`git commit -m x`'",
+    "echo \"! git commit\"",
+    "echo 'function f { git commit; }'",
+    "echo `date`",
+    "echo \"`date`\"",
+    "time -p ls",
+    "env -S 'ls -l'",
+    "doas ls",
+    "flock /tmp/l ls",
+    "flock /tmp/l -c 'ls'",
+    "chronic ls",
+    "watch -n 5 ls",
+    "echo watch git commit",
+]
+
+
+@pytest.mark.parametrize("command", _ROUND2_POSITIVE)
+def test_round2_forms_detected(command):
+    assert [inv.subcommand for inv in _subs(command)] == ["commit"]
+
+
+@pytest.mark.parametrize("command", _ROUND2_NEGATIVE)
+def test_round2_negative_controls(command):
+    assert _subs(command) == []
+
+
+def test_mutation_without_backtick_spacing_misses(monkeypatch):
+    """變異確認：不取反引號本體時，反引號正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "extract_backtick_bodies", lambda command: [])
+    assert _subs("echo `git commit -m x`") == []
+
+
+def test_mutation_without_string_wrappers_misses(monkeypatch):
+    """變異確認：停用字串命令包裹解析後，env -S／flock -c／watch 正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "_wrapper_script", lambda tokens, idx: None)
+    assert _subs("env -S 'git commit -m x'") == []
+    assert _subs("flock /tmp/l -c 'git commit -m x'") == []
+    assert _subs("watch 'git commit -m x'") == []
+
+
+def test_mutation_without_new_control_words_misses(monkeypatch):
+    """變異確認：清空控制關鍵字後，`!`／coproc／function 正向輸入必須漏判。"""
+    monkeypatch.setattr(gcp, "_CONTROL_KEYWORDS", frozenset({"{", "}"}))
+    assert _subs("! git commit -m x") == []
+    assert _subs("coproc git commit -m x") == []
+
+
 def test_mutation_without_stdin_shell_check_returns_list(monkeypatch):
     """變異確認：停用 stdin shell 判定後，pipe 與 here-string 輸入不再回 None。"""
     monkeypatch.setattr(gcp, "_is_stdin_shell", lambda statement, idx: False)

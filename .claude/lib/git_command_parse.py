@@ -125,6 +125,37 @@ def normalize_newlines_to_separators(command: str) -> str:
     return "".join(result)
 
 
+# ===== 反引號命令替換 =====
+
+
+def extract_backtick_bodies(command: str) -> List[str]:
+    """取出反引號命令替換的本體（單引號內不算；雙引號內仍會執行，算）。
+
+    本體另成語句掃描，原命令字串不改動，使 `git -C `pwd`/x commit` 這類
+    「反引號是參數」的寫法仍保有原本的判讀。未閉合的反引號不取。
+    """
+    bodies: List[str] = []
+    in_single = False
+    in_double = False
+    buf: Optional[List[str]] = None
+    prev = ""
+    for ch in command:
+        if buf is not None:
+            if ch == "`" and prev != "\\":
+                bodies.append("".join(buf))
+                buf = None
+            else:
+                buf.append(ch)
+        elif ch == "'" and not in_double and prev != "\\":
+            in_single = not in_single
+        elif ch == '"' and not in_single and prev != "\\":
+            in_double = not in_double
+        elif ch == "`" and not in_single and prev != "\\":
+            buf = []
+        prev = ch
+    return bodies
+
+
 # ===== 括號正規化 =====
 
 _logger = logging.getLogger("git_command_parse")
@@ -233,8 +264,16 @@ _WRAPPER_VALUE_OPTIONS = {
     "timeout": frozenset({"-s", "-k", "--signal", "--kill-after"}),
     "stdbuf": frozenset({"-i", "-o", "-e", "--input", "--output", "--error"}),
     "caffeinate": frozenset({"-t", "-w"}),
+    "time": frozenset(),
+    "doas": frozenset({"-u", "-C"}),
+    "chronic": frozenset(),
+    "flock": frozenset({"-w", "-E", "--timeout", "--wait", "--conflict-exit-code"}),
 }
-_WRAPPER_POSITIONALS = {"timeout": 1}
+_WRAPPER_POSITIONALS = {"timeout": 1, "flock": 1}  # flock 的位置參數是鎖檔
+
+# 把字串當命令執行的包裹（env -S／flock -c／watch）：不跳過，改交 _wrapper_script 取腳本遞迴解析
+_STRING_COMMAND_WRAPPERS = frozenset({"env", "flock", "watch"})
+_WATCH_VALUE_OPTIONS = frozenset({"-n", "--interval"})
 
 # 環境變數賦值前綴（如 `FOO=bar git commit ...`），env 本身另外處理
 _ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
@@ -280,6 +319,41 @@ def _expand_subcommand_aliases(subcommands: Iterable[str]) -> FrozenSet[str]:
     return frozenset(expanded)
 
 
+def _wrapper_script(tokens: List[str], idx: int) -> Optional[str]:
+    """env -S／flock -c／watch 攜帶的命令字串；該包裹沒有字串命令時回 None。
+
+    watch 會把全部引數合併後交給 sh -c，因此一律回合併字串（無引數為空字串）。
+    """
+    name = tokens[idx]
+    value_options = _WATCH_VALUE_OPTIONS if name == "watch" else _WRAPPER_VALUE_OPTIONS.get(name, frozenset())
+    i = idx + 1
+    while i < len(tokens):
+        tok = tokens[i]
+        if name == "env":
+            if tok in ("-S", "--split-string"):
+                return " ".join(tokens[i + 1:])
+            if tok.startswith("--split-string="):
+                return " ".join([tok.split("=", 1)[1]] + tokens[i + 1:])
+            if tok.startswith("-S") and not tok.startswith("--"):
+                return " ".join([tok[2:]] + tokens[i + 1:])
+            if _ENV_ASSIGNMENT_RE.match(tok):
+                i += 1
+                continue
+        if name == "flock" and tok in ("-c", "--command"):
+            return " ".join(tokens[i + 1:])
+        if tok == "--":
+            i += 1
+            break
+        if not tok.startswith("-") or tok == "-":
+            break
+        i += 2 if tok in value_options else 1
+    if name == "watch":
+        return " ".join(tokens[i:])
+    if name == "flock" and i + 1 < len(tokens) and tokens[i + 1] in ("-c", "--command"):
+        return " ".join(tokens[i + 2:])  # `flock <鎖檔> -c <字串>`
+    return None
+
+
 def _skip_wrapper_options(tokens: List[str], idx: int, wrapper: str) -> int:
     """跳過 wrapper 之後的選項（含選項值）與其固定位置參數，回傳下一個 token 位置。
 
@@ -312,6 +386,8 @@ def skip_prefix_wrapper_count(tokens: List[str], extended: bool = False) -> int:
     idx = 0
     while idx < len(tokens):
         tok = tokens[idx]
+        if extended and tok in _STRING_COMMAND_WRAPPERS and _wrapper_script(tokens, idx) is not None:
+            break
         if extended and tok in _WRAPPER_VALUE_OPTIONS:
             idx = _skip_wrapper_options(tokens, idx + 1, tok)
             continue
@@ -398,6 +474,9 @@ def _tokenize_command(command: str) -> Optional[List[str]]:
     命令字串切出相同的 token 流。
     """
     stripped = strip_heredoc_bodies(command)
+    bodies = extract_backtick_bodies(stripped)
+    if bodies:
+        stripped = "\n".join([stripped] + bodies)  # 原文保留（-C `pwd` 等仍可判讀），本體另成語句
     normalized = normalize_newlines_to_separators(stripped)
     return _tokenize(space_shell_parens(normalized))
 
@@ -540,13 +619,21 @@ def _join_dir(state: _DirState, target: str) -> _DirState:
 
 # 控制結構的語句頭關鍵字：其後才是命令位置（`for`／`select` 的語句頭沒有命令位置，
 # 不跳過；整句落到「非 git」而自然無命中）
-_CONTROL_KEYWORDS = frozenset({"if", "then", "else", "elif", "do", "while", "until", "{", "}"})
+_CONTROL_KEYWORDS = frozenset(
+    {"if", "then", "else", "elif", "do", "while", "until", "{", "}", "!", "coproc"}
+)
 
 
 def _leading_control_count(statement: List[str]) -> int:
+    """語句頭的控制關鍵字數；`function NAME` 連同函式名稱一併計入。"""
     count = 0
-    while count < len(statement) and statement[count] in _CONTROL_KEYWORDS:
-        count += 1
+    while count < len(statement):
+        if statement[count] in _CONTROL_KEYWORDS:
+            count += 1
+        elif statement[count] == "function" and count + 1 < len(statement):
+            count += 2
+        else:
+            break
     return count
 
 
@@ -679,6 +766,8 @@ def _skip_wrappers(statement: List[str]) -> Optional[int]:
 def _nested_script(statement: List[str], idx: int) -> Optional[str]:
     """若 statement[idx] 為 `bash -c`／`eval`，取出其腳本字串，否則回 None。"""
     head = statement[idx]
+    if head in _STRING_COMMAND_WRAPPERS:
+        return _wrapper_script(statement, idx)
     if head == "eval":
         return " ".join(statement[idx + 1:])
     if os.path.basename(head) not in _SHELLS:
