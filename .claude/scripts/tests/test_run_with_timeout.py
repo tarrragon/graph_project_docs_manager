@@ -617,3 +617,34 @@ def test_bare_unknown_command_is_light():
 def test_usage_notes_exit_125_may_overlap_command_codes():
     mod = _load_module()
     assert "125" in mod.USAGE and "stderr" in mod.USAGE
+
+
+def test_heavy_command_runs_when_cwd_deleted(gate):
+    """閘門讀不到 cwd 時 fail-open：命令照常執行，rc 為命令本身的 rc。"""
+    env, tmp_path, _ = gate
+    doomed = tmp_path / "doomed"
+    doomed.mkdir()
+    code = ("import os, subprocess, sys; os.chdir(sys.argv[1]); os.rmdir(sys.argv[1]); "
+            "r = subprocess.run([sys.executable, sys.argv[2], '5', '--', 'pytest', 'tests/'], "
+            "capture_output=True, text=True); print(r.returncode); print(r.stderr)")
+    env = {**env, "PROBE_OUT": str(tmp_path / "d"), "PROBE_LIFE": "0"}
+    res = subprocess.run([sys.executable, "-c", code, str(doomed), str(SCRIPT)], env=env,
+                         capture_output=True, text=True, timeout=30)
+    rc, _, err = res.stdout.partition("\n")
+    assert rc == "0", res.stdout + res.stderr
+    assert Path(str(tmp_path / "d") + ".end").exists()
+    assert "Traceback" not in err
+
+
+def test_classifier_exception_does_not_stop_command(gate, tmp_path):
+    """判定函式拋出非 ImportError 例外：命令仍執行並寫 stderr。"""
+    mod = _load_module()
+    sentinel = tmp_path / "ran"
+    mod.slot_gate.is_heavy_command = lambda command: (_ for _ in ()).throw(RuntimeError("判定壞了"))
+    env, _, _ = gate
+    os.environ["CLAUDE_SLOT_LOCK_DIR"] = env["CLAUDE_SLOT_LOCK_DIR"]
+    try:
+        code = mod.run(5, [sys.executable, "-c", f"open({str(sentinel)!r}, 'w').write('x')"])
+    finally:
+        os.environ.pop("CLAUDE_SLOT_LOCK_DIR", None)
+    assert code == 0 and sentinel.exists()
