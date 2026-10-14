@@ -55,6 +55,10 @@ def run(monkeypatch, capsys, command, tool="Bash"):
     "man -Ppkill ls",
     "man --html=pkill ls",
     "timeout 5 rg --pre pkill x .",
+    # command 之後的 -v/-V 屬被執行命令的參數，不得豁免
+    "command pkill -v dart",
+    "command killall -V dart",
+    "command -p pkill -v dart",
 ])
 def test_denied_with_alternative(monkeypatch, capsys, cmd):
     rc, err = run(monkeypatch, capsys, cmd)
@@ -76,6 +80,7 @@ def test_denied_with_alternative(monkeypatch, capsys, cmd):
     "man pkill",
     "which pkill",
     "command -v pkill",
+    "command -V killall",
     "type killall",
     "cat x | grep -n killall",
     "python3 .claude/scripts/orphan-test-procs.py",

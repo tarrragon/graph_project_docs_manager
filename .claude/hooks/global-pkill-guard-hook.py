@@ -97,7 +97,16 @@ def _is_view_statement(prog: str, rest: List[str]) -> bool:
     """命令位置為閱讀類（非執行者）時，其引數中的 pkill 字樣只是文字。"""
     if prog in _VIEW_PROGS:
         return not _has_exec_option(prog, rest)
-    return prog == "command" and any(t in ("-v", "-V") for t in rest)
+    if prog != "command":
+        return False
+    # 只看 command 自身的選項（命令名之前、以 - 開頭），遇第一個非選項即停；
+    # 其後的 -v/-V 屬被執行命令（如 pkill -v）的參數，不得豁免。
+    for t in rest:
+        if not t.startswith("-") or t == "-":
+            return False
+        if t in ("-v", "-V"):
+            return True
+    return False
 
 
 def _scan_any_position(stmt: List[str], depth: int) -> Optional[str]:
