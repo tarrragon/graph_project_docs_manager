@@ -14,7 +14,8 @@ Active Dispatch Tracker 共用模組
   派發的精準路徑，先於 mark_turn_ended_by_id 呼叫）
 - mark_turn_ended_by_id: 標記 agent_id 對應 entry 的回合結束時刻（不刪除，
   未命名派發的既有路徑）
-- mark_oldest_active_null_agent_id_entry_turn_ended: 上者的 FIFO fallback
+- mark_oldest_active_null_agent_id_entry_turn_ended: 已停用（SubagentStop 不再
+  呼叫 FIFO 後援，見該函式 docstring）
 - get_active_dispatches: 取得所有活躍派發
 - is_file_under_dispatch: 檢查檔案是否在派發中
 - cleanup_expired: 清理超時記錄
@@ -63,8 +64,8 @@ agent_handle 欄位（identifier namespace 修復）：
   自己回報、CC runtime 保證存在的 `agent_id`（named 派發格式為
   `a<handle>-<hex>`，如 `afix-abc123-73070ca5c1d3f849`）對不上。named
   派發（帶 `name` 參數）在平行情境下（同批次派發多個代理人）必然產生
-  多筆 `agent_id is None` 的候選，FIFO fallback 依設計於候選 > 1 時
-  停用，故 `turn_ended_at` 在此主要情境下永遠不會被設定。
+  多筆 `agent_id is None` 的候選，FIFO fallback（現已移除）於候選 > 1 時
+  本就停用，故 `turn_ended_at` 在此主要情境下永遠不會被設定。
 
   `agent_handle` 欄位改在 dispatch 當下（`PostToolUse` 觸發時）同步
   擷取派發用的 `name` 參數（可定址短 handle，非 persona），不依賴任何
@@ -651,7 +652,12 @@ def clear_oldest_null_agent_id_entry(project_root: Path) -> bool:
 
 
 def mark_oldest_active_null_agent_id_entry_turn_ended(project_root: Path) -> bool:
-    """標記 agent_id 為 null 且尚未標記過回合結束的最早一筆（FIFO fallback）。
+    """【已停用】標記 agent_id 為 null 且未結束回合的最早一筆（FIFO fallback）。
+
+    SubagentStop 已不呼叫本函式：同步派發的 Stop 先於自身記錄寫入，唯一
+    null 候選必屬他人運行中記錄，FIFO 會誤標；且 7 日派發日誌 321 筆中
+    agent_id 為 None 為 0 筆，已無合法候選。精準匹配未命中一律走墓碑。
+    保留函式僅為既有測試與外部相容，不應新增呼叫端。
 
     SubagentStop 觸發時 agent_id 精準匹配失敗後使用。因 SubagentStop
     input 無 description 欄位，改用 FIFO 語義。
