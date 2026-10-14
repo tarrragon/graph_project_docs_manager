@@ -22,6 +22,8 @@ import os
 import signal
 import sys
 import subprocess
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -258,6 +260,36 @@ def _signal_process_group(proc, sig) -> None:
         print(f"[Warning] killpg {proc.pid} {sig.name} failed: {e}", file=sys.stderr)
 
 
+@contextmanager
+def _forward_sigterm_to_group(proc):
+    """子程序執行期間，hook 自身收到 SIGTERM 時先轉送給子群組。
+
+    子程序以 start_new_session 自成群組，harness 對 hook 後代送 TERM 時可能漏掉它
+    （hook 快速退出的輪次實測 1/5）。轉送後交還原 handler：SIG_DFL 則還原後對自身
+    重送 TERM 使 hook 照常結束，SIG_IGN 維持忽略，可呼叫物件則呼叫之。
+    非主執行緒無法安裝 signal handler，略過並寫 stderr。
+    """
+    if threading.current_thread() is not threading.main_thread():
+        print("[Warning] SIGTERM forwarding skipped: not in main thread", file=sys.stderr)
+        yield
+        return
+    previous = signal.getsignal(signal.SIGTERM)
+
+    def _forward(signum, frame):
+        _signal_process_group(proc, signal.SIGTERM)
+        signal.signal(signal.SIGTERM, previous)
+        if callable(previous):
+            previous(signum, frame)
+        elif previous == signal.SIG_DFL:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    signal.signal(signal.SIGTERM, _forward)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
 def run_with_graceful_timeout(args, timeout, grace=None, **popen_kwargs):
     """執行子程序並在逾時時先 SIGTERM、寬限後才 SIGKILL。
 
@@ -279,7 +311,7 @@ def run_with_graceful_timeout(args, timeout, grace=None, **popen_kwargs):
     popen_kwargs["start_new_session"] = True
     with subprocess.Popen(
         args, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **popen_kwargs
-    ) as proc:
+    ) as proc, _forward_sigterm_to_group(proc):
         try:
             out, err = proc.communicate(input_text, timeout=timeout)
         except subprocess.TimeoutExpired:

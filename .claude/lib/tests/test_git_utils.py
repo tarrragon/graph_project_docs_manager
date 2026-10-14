@@ -7,6 +7,7 @@ import os
 import signal
 import subprocess
 import threading
+from contextlib import nullcontext
 import time
 import unittest
 import pytest
@@ -649,6 +650,62 @@ class TestProcessGroupTermination:
             with pytest.raises(subprocess.TimeoutExpired):
                 run_with_graceful_timeout(["sleep", "31"], 1, grace=1, text=True)
         assert "failed: denied" in capsys.readouterr().err
+
+
+class TestSigtermForwarding:
+    """hook 自身收到 SIGTERM 時須轉送給 start_new_session 的子群組。"""
+
+    _TRAP = "trap 'echo got >> \"{log}\"; exit 0' TERM; sleep 2 & wait"
+
+    def _run_with_self_term(self, log, forwarding=True):
+        received = []
+        previous = signal.signal(signal.SIGTERM, lambda s, f: received.append(s))
+        timer = threading.Timer(0.6, os.kill, (os.getpid(), signal.SIGTERM))
+        args = ["sh", "-c", self._TRAP.format(log=log)]
+        try:
+            timer.start()
+            if forwarding:
+                run_with_graceful_timeout(args, 10, text=True)
+            else:
+                with patch("lib.git_utils._forward_sigterm_to_group", lambda p: nullcontext()):
+                    run_with_graceful_timeout(args, 10, text=True)
+        finally:
+            timer.cancel()
+            signal.signal(signal.SIGTERM, previous)
+        time.sleep(0.3)
+        return received
+
+    def test_child_group_receives_term_and_previous_handler_called(self, tmp_path):
+        log = tmp_path / "term.log"
+        received = self._run_with_self_term(log)
+        assert log.exists() and "got" in log.read_text()
+        assert received == [signal.SIGTERM]
+
+    def test_without_forwarding_child_misses_term(self, tmp_path):
+        """正向對照：移除轉送時子群組收不到 TERM，上一測試的斷言即轉紅。"""
+        log = tmp_path / "term.log"
+        self._run_with_self_term(log, forwarding=False)
+        assert not log.exists()
+
+    def test_handler_restored_after_run(self):
+        before = signal.getsignal(signal.SIGTERM)
+        run_with_graceful_timeout(["echo", "ok"], 10, text=True)
+        assert signal.getsignal(signal.SIGTERM) == before
+
+    def test_non_main_thread_does_not_raise(self, capsys):
+        errors = []
+
+        def work():
+            try:
+                run_with_graceful_timeout(["echo", "ok"], 10, text=True)
+            except Exception as e:  # 收集後於主執行緒斷言
+                errors.append(e)
+
+        t = threading.Thread(target=work)
+        t.start()
+        t.join()
+        assert errors == []
+        assert "not in main thread" in capsys.readouterr().err
 
 
 class TestIndexLockEffect:
