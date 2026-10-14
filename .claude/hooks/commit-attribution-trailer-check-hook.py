@@ -6,7 +6,7 @@
 """工作提交歸屬 trailer 提交後提示 hook。
 
 職責：
-    git commit 成功後，檢查最新提交訊息的歸屬 trailer，缺漏時以
+    git commit 成功後，檢查本次提交（以 git commit 輸出的 SHA 定位）訊息的歸屬 trailer，缺漏時以
     additionalContext 提示（exit 0，不阻擋、不自動 amend）。
 
 格式要求：
@@ -103,7 +103,7 @@ def evaluate_trailers(commit_msg: str, parent_count: int) -> Optional[str]:
         return None
     return (
         "[提交歸屬 trailer 提示]\n"
-        f"最新提交：{'；'.join(problems)}。\n"
+        f"本次提交：{'；'.join(problems)}。\n"
         "應補的行（置於訊息最末段，兩行相鄰、中間無空行）：\n"
         "  Co-Authored-By: <harness 歸屬指示給的值>\n"
         "  Claude-Session: <session 網址>（僅當歸屬指示提供網址時）\n"
