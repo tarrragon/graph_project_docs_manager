@@ -131,9 +131,19 @@ $ /worktree status
 
 ```bash
 /worktree merge <ticket-id>
+/worktree merge --branch <分支名>                  # 如 worktree-agent-<id>，不查票狀態
+/worktree merge <ticket-id> --pre-acceptance "<理由>"  # 合併前驗收：票未 completed 也合併
 ```
 
-前置驗證（Ticket completed、working tree 乾淨、分支不落後 main）通過後，**直接完成合併**，不再輸出 `git merge` 指令。
+| 入口 | 行為 |
+|------|------|
+| `--branch` | 以分支名指定對象，用於萃取不到 ticket ID 的代理人隔離 worktree；有 worktree 則檢查乾淨，不查票狀態；`<ticket-id>` 與 `--branch` 需擇一 |
+| `--pre-acceptance` | 略過「票須 completed」；working tree 仍須乾淨；旗標與理由輸出並追加至 `.claude/logs/worktree-merge.log`；不加旗標維持原要求 |
+| 落後 base | 僅提示落後 commit 數，不阻擋；無衝突由三方合併處理，有衝突由 `merge_branch_cas` 中止且 ref 不變 |
+
+所有入口最終都經 `merge_branch_cas`，`pre_merge_check` 掛點語意不變。
+
+前置驗證（Ticket completed、working tree 乾淨）通過後，**直接完成合併**，不再輸出 `git merge` 指令。
 
 | 步驟 | 行為 |
 |------|------|
@@ -148,7 +158,7 @@ $ /worktree status
 
 ### 合併前檢查掛點（pre_merge_check）
 
-程式入口 `worktree_manager.merge_branch_cas(branch, repo=None, base="main", pre_merge_check=None, message=None)`，`cmd_merge(ticket_id, pre_merge_check=None)` 透傳。
+程式入口 `worktree_manager.merge_branch_cas(branch, repo=None, base="main", pre_merge_check=None, message=None)`，`cmd_merge(ticket_id, pre_merge_check=None, *, branch=None, pre_acceptance_reason=None)` 透傳。
 
 | 項目 | 規格 |
 |------|------|
