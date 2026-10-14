@@ -861,6 +861,55 @@ def test_mutation_without_comment_strip_matches_comment_text(monkeypatch):
     assert len(_commits("# git commit -m x")) == 1
 
 
+# ===== 行接續與註解（0.5.0-W1-120.7.9.4）=====
+
+_CONT = "\\\n"  # 反斜線加換行
+
+
+def test_line_continuation_makes_hash_in_word_not_comment():
+    """行接續後為 `echo a#x`，# 在詞中不是註解，commit 會執行。"""
+    assert len(_commits(f"echo a{_CONT}#x; git commit -m x")) == 1
+
+
+def test_line_continuation_after_space_keeps_comment():
+    """行接續後 # 前為空白，屬註解，commit 不執行。"""
+    assert _commits(f"echo a {_CONT}#x; git commit -m x") == []
+
+
+def test_multiple_line_continuations_merge():
+    assert len(_commits(f"echo a{_CONT}{_CONT}#x; git commit -m x")) == 1
+    assert _commits(f"echo a {_CONT}{_CONT}#x; git commit -m x") == []
+
+
+def test_line_continuation_in_double_quotes_is_merged():
+    assert gcp.strip_line_comments(f'echo "a{_CONT}b"') == 'echo "ab"'
+    assert len(_commits(f'echo "a{_CONT}#b"; git commit -m x')) == 1
+
+
+def test_escaped_backslash_before_newline_is_not_continuation():
+    """雙反斜線加換行：反斜線被跳脫，換行是真換行，下一行 # 為註解。"""
+    assert _commits("echo a\\\\\n#x; git commit -m x") == []
+
+
+def test_backslash_newline_in_single_quotes_preserved():
+    command = f"echo 'a{_CONT}b'; git commit -m x"
+    assert gcp.strip_line_comments(command) == command
+    assert len(_commits(command)) == 1
+
+
+def test_mutation_without_line_continuation_handling_misses(monkeypatch):
+    """變異確認：移除行接續處理後，繞過案例正向輸入必須翻回 0 筆。"""
+    import inspect
+
+    source = inspect.getsource(gcp.strip_line_comments)
+    start = source.index('            if ch == "\\n":\n                # 行接續')
+    end = source.index("                continue\n", start) + len("                continue\n")
+    namespace = dict(vars(gcp))
+    exec(source[:start] + source[end:], namespace)
+    monkeypatch.setattr(gcp, "strip_line_comments", namespace["strip_line_comments"])
+    assert _commits(f"echo a{_CONT}#x; git commit -m x") == []
+
+
 # ===== scan 模式（0.5.0-W1-120.7.9.1） =====
 
 _SCAN_SUBS = {"commit", "add"}
