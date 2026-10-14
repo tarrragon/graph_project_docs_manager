@@ -197,31 +197,66 @@ def find_test_invocations(command: str) -> Optional[List[TestInvocation]]:
     return invocations
 
 
-def _names_specific_test_file(args: List[str]) -> bool:
-    """參數中有指到具體測試檔（*_test.dart、test_*.py、*_test.py、path::node id）。"""
-    for arg in args:
+_PYTEST_OPTIONS_WITH_VALUE = frozenset({
+    "-k", "-m", "-c", "-p", "-o", "-W", "-n", "-r", "--rootdir", "--tb", "--maxfail", "--junitxml",
+    "--basetemp", "--ignore", "--ignore-glob", "--deselect", "--durations", "--confcutdir",
+    "--import-mode", "--log-level", "--cov", "--timeout", "--color", "--capture", "--override-ini",
+    "--durations-min", "--cache-dir", "--rootdir",
+})
+_FLUTTER_TEST_OPTIONS_WITH_VALUE = _FLUTTER_DART_OPTIONS_WITH_VALUE | frozenset({
+    "-n", "--name", "-N", "--plain-name", "-t", "--tags", "-x", "--exclude-tags", "-r", "--reporter",
+    "-j", "--concurrency", "--timeout", "--platform", "--coverage", "--file-reporter",
+    "--shard-index", "--total-shards", "--test-randomize-ordering-seed", "--flavor", "--dart-define",
+    "--target", "-a", "--arch", "--run-skipped-tag",
+})
+HEAVY_FLUTTER_SUBCOMMANDS = frozenset({"build", "drive"})
+
+
+def _positional_args(args: List[str], with_value) -> List[str]:
+    """去除選項與帶值選項的值，只留位置參數（`--` 之後全是位置參數）。"""
+    positional: List[str] = []
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--":
+            positional.extend(args[index + 1:])
+            break
         if arg.startswith("-"):
+            index += 2 if arg in with_value else 1
             continue
-        if _SPECIFIC_TEST_FILE_RE.search(arg.split("::", 1)[0]):
-            return True
-    return False
+        positional.append(arg)
+        index += 1
+    return positional
+
+
+def _all_specific_test_files(args: List[str], with_value) -> bool:
+    """位置參數非空且全部指到具體測試檔（*_test.dart、test_*.py、*_test.py、path::node id）。
+
+    混入任何目錄或非測試檔的位置參數即不成立：目錄會讓整個目錄的測試都跑。
+    """
+    positional = _positional_args(args, with_value)
+    return bool(positional) and all(
+        _SPECIFIC_TEST_FILE_RE.search(arg.split("::", 1)[0]) for arg in positional)
 
 
 def _weight_of_stripped(tokens: List[str], launcher_led: bool) -> str:
     head = Path(tokens[0]).name
-    if head in HEAVY_BUILD_EXECUTABLES:
+    if head in HEAVY_BUILD_EXECUTABLES or (
+            head == "xcrun" and any(Path(t).name in HEAVY_BUILD_EXECUTABLES for t in tokens[1:])):
         return WEIGHT_HEAVY
     if head in (RUNNER_FLUTTER, RUNNER_DART):
         rest = _skip_options(tokens[1:], _FLUTTER_DART_OPTIONS_WITH_VALUE)
-        if rest and rest[0] == "build":
+        if rest and rest[0] in HEAVY_FLUTTER_SUBCOMMANDS:
             return WEIGHT_HEAVY
         if rest and rest[0] == "test":
             args = rest[1:]
             if any(INTEGRATION_TEST_MARKER in arg for arg in args):
                 return WEIGHT_HEAVY
-            return WEIGHT_LIGHT if _names_specific_test_file(args) else WEIGHT_HEAVY
+            return WEIGHT_LIGHT if _all_specific_test_files(
+                args, _FLUTTER_TEST_OPTIONS_WITH_VALUE) else WEIGHT_HEAVY
     elif _classify_runner(tokens) == RUNNER_PYTEST:
-        return WEIGHT_LIGHT if _names_specific_test_file(tokens[1:]) else WEIGHT_HEAVY
+        return WEIGHT_LIGHT if _all_specific_test_files(
+            tokens[1:], _PYTEST_OPTIONS_WITH_VALUE) else WEIGHT_HEAVY
     elif _classify_runner(tokens) == RUNNER_NPM:
         return WEIGHT_HEAVY
     # 判不出 runner：launcher 開頭者依慣例是測試或編譯的包裝，保守視為 heavy（誤判只多排隊）

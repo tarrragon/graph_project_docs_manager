@@ -438,20 +438,23 @@ def test_usage_message_prefixed_and_lists_exit_codes():
 
 # ---- 本機名額閘門（heavy 命令全機只跑一份）----
 # 替身 pytest／flutter 放在 tmp PATH：以真實的 heavy／light 判定走完整路徑，不跑任何真實測試套件。
-# 鎖目錄一律指向 tmp_path，不碰全機共用的鎖目錄。
+# 鎖目錄一律指向 tmp_path，不碰全機共用的鎖目錄。替身的輸出檔與存活秒數由環境變數傳入。
 
 PROBE_SRC = """#!{python}
 import os, sys, time
-out, life = sys.argv[1], float(sys.argv[2])
+out, life = os.environ["PROBE_OUT"], float(os.environ["PROBE_LIFE"])
 open(out + ".start", "w").write("%d %r" % (os.getpid(), time.time()))
 time.sleep(life)
 open(out + ".end", "w").write("%r" % time.time())
 """
 
+HEAVY_ARGV = ["pytest", "tests/"]  # 未指定具體測試檔 -> heavy
+LIGHT_ARGV = ["pytest", "tests/test_x.py"]  # 指定具體測試檔 -> light
+
 
 @pytest.fixture
 def gate(tmp_path):
-    """回傳 (env, bin_dir, procs)；procs 內的程序於測試結束時整群清除。"""
+    """回傳 (env, tmp_path, procs)；procs 內的程序於測試結束時整群清除。"""
     bindir = tmp_path / "bin"
     bindir.mkdir()
     for name in ("pytest", "flutter"):
@@ -481,11 +484,12 @@ def gate(tmp_path):
             pass
 
 
-def _spawn(gate, name, argv, seconds="30", **env_extra):
+def _spawn(gate, name, argv, life=30, seconds="30", **env_extra):
     env, tmp_path, procs = gate
     out = tmp_path / name
     cmd = [sys.executable, str(SCRIPT), seconds, "--"] + [a.replace("OUT", str(out)) for a in argv]
-    proc = subprocess.Popen(cmd, env={**env, **env_extra}, stdout=subprocess.PIPE,
+    proc_env = {**env, "PROBE_OUT": str(out), "PROBE_LIFE": str(life), **env_extra}
+    proc = subprocess.Popen(cmd, env=proc_env, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, text=True, start_new_session=True)
     procs.append(proc)
     return proc, out
@@ -501,25 +505,11 @@ def _stamp(out, suffix, within=10.0):
     raise AssertionError(f"{path.name} 未出現")
 
 
-HEAVY_ARGV = ["pytest", "tests/", "OUT"]  # 未指定具體測試檔 -> heavy
-LIGHT_ARGV = ["pytest", "tests/test_x.py", "OUT"]  # 指定具體測試檔 -> light
-
-
-def _argv(base, life):
-    # 替身 pytest 的引數為 <out> <life>；前面的 tests/ 路徑由替身忽略
-    return [base[0], base[1], base[2], str(life)]
-
-
-def _fix(argv):
-    # 替身以 sys.argv[1] 為 out，故把路徑參數移到 out 之後
-    return [argv[0], argv[2], argv[3], argv[1]]
-
-
 @pytest.mark.wallclock
 def test_two_heavy_commands_run_one_at_a_time(gate):
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 1.0)))
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=1.0)
     _stamp(out_a, "start")
-    b, out_b = _spawn(gate, "b", _fix(_argv(HEAVY_ARGV, 0.1)))
+    b, out_b = _spawn(gate, "b", HEAVY_ARGV, life=0.1)
     a_end, b_start = _stamp(out_a, "end"), _stamp(out_b, "start")
     assert b_start >= a_end
     assert a.wait(timeout=20) == 0 and b.wait(timeout=20) == 0
@@ -527,19 +517,30 @@ def test_two_heavy_commands_run_one_at_a_time(gate):
 
 @pytest.mark.wallclock
 def test_light_command_does_not_queue_behind_heavy(gate):
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 4.0)))
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=4.0)
     a_start = _stamp(out_a, "start")
-    b, out_b = _spawn(gate, "b", _fix(_argv(LIGHT_ARGV, 0.0)))
+    b, out_b = _spawn(gate, "b", LIGHT_ARGV, life=0.0)
     assert b.wait(timeout=20) == 0
     assert _stamp(out_b, "start") < a_start + 3.5
     assert not Path(str(out_a) + ".end").exists(), "light 應在 heavy 結束前完成"
 
 
 @pytest.mark.wallclock
-def test_queue_wait_not_counted_against_timeout(gate):
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 2.0)))
+def test_mixed_directory_and_file_args_still_queue(gate):
+    """繞過形態：目錄與具體檔並列不得判為 light。"""
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=1.5)
     _stamp(out_a, "start")
-    b, out_b = _spawn(gate, "b", _fix(_argv(HEAVY_ARGV, 0.3)), seconds="1")
+    b, out_b = _spawn(gate, "b", ["pytest", "tests/", "tests/test_x.py"], life=0.1)
+    time.sleep(0.6)
+    assert not Path(str(out_b) + ".start").exists()
+    assert b.wait(timeout=20) == 0
+
+
+@pytest.mark.wallclock
+def test_queue_wait_not_counted_against_timeout(gate):
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=2.0)
+    _stamp(out_a, "start")
+    b, out_b = _spawn(gate, "b", HEAVY_ARGV, life=0.3, seconds="1")
     assert b.wait(timeout=20) == 0, b.stderr.read()
     assert Path(str(out_b) + ".end").exists()
     assert _stamp(out_b, "start") >= _stamp(out_a, "end")  # 確實排過隊，而非碰巧未逾時
@@ -547,23 +548,23 @@ def test_queue_wait_not_counted_against_timeout(gate):
 
 @pytest.mark.wallclock
 def test_waiter_prints_holder_info_periodically(gate):
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 2.5)))
-    a_pid = _stamp(Path(str(out_a)), "start", 10) and int(Path(str(out_a) + ".start").read_text().split()[0])
-    b, _ = _spawn(gate, "b", _fix(_argv(HEAVY_ARGV, 0.0)), CLAUDE_SLOT_NOTICE_INTERVAL="0.3")
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=2.5)
+    _stamp(out_a, "start")
+    b, _ = _spawn(gate, "b", HEAVY_ARGV, life=0.0, CLAUDE_SLOT_NOTICE_INTERVAL="0.3")
     _, err = b.communicate(timeout=30)
     notices = [ln for ln in err.splitlines() if "等待名額" in ln]
     assert len(notices) >= 3
     for key in ("pid=", "cwd=", "命令=", "開始=", "load="):
         assert key in notices[-1]
-    assert str(a.pid) in notices[-1] and a_pid > 0
+    assert f"pid={a.pid}" in notices[-1]
 
 
 @pytest.mark.wallclock
 def test_wait_limit_exits_with_dedicated_code_naming_holder(gate):
     mod = _load_module()
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 5.0)))
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=5.0)
     _stamp(out_a, "start")
-    b, _ = _spawn(gate, "b", _fix(_argv(HEAVY_ARGV, 0.0)), CLAUDE_SLOT_WAIT_LIMIT="0.5")
+    b, _ = _spawn(gate, "b", HEAVY_ARGV, life=0.0, CLAUDE_SLOT_WAIT_LIMIT="0.5")
     _, err = b.communicate(timeout=30)
     assert b.returncode == mod.SLOT_WAIT_EXIT_CODE
     assert str(a.pid) in err and err.startswith("run-with-timeout:")
@@ -572,9 +573,9 @@ def test_wait_limit_exits_with_dedicated_code_naming_holder(gate):
 
 @pytest.mark.wallclock
 def test_slot_released_when_holder_sigkilled(gate):
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 30)))
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=30)
     _stamp(out_a, "start")
-    b, out_b = _spawn(gate, "b", _fix(_argv(HEAVY_ARGV, 0.1)))
+    b, out_b = _spawn(gate, "b", HEAVY_ARGV, life=0.1)
     time.sleep(0.8)
     assert not Path(str(out_b) + ".start").exists(), "持有者存活時不得取得名額"
     killed_at = time.time()
@@ -585,9 +586,9 @@ def test_slot_released_when_holder_sigkilled(gate):
 
 @pytest.mark.wallclock
 def test_background_started_heavy_keeps_slot_until_it_ends(gate):
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 3.0)))  # 啟動後不等待，模擬 run_in_background
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=3.0)  # 啟動後不等待，模擬 run_in_background
     a_start = _stamp(out_a, "start")
-    b, out_b = _spawn(gate, "b", _fix(_argv(HEAVY_ARGV, 0.0)))
+    b, out_b = _spawn(gate, "b", HEAVY_ARGV, life=0.0)
     time.sleep(1.5)
     assert b.poll() is None and not Path(str(out_b) + ".start").exists()
     assert _stamp(out_b, "start") >= _stamp(out_a, "end") >= a_start
@@ -595,18 +596,24 @@ def test_background_started_heavy_keeps_slot_until_it_ends(gate):
 
 @pytest.mark.wallclock
 def test_launcher_led_unknown_runner_is_treated_as_heavy(gate):
-    a, out_a = _spawn(gate, "a", _fix(_argv(HEAVY_ARGV, 1.5)))
+    a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=1.5)
     _stamp(out_a, "start")
     b, out_b = _spawn(gate, "b", ["env", "X=1", sys.executable, "-c",
-                                  "import os, sys; open(sys.argv[1] + '.start', 'w').write('%d 1.0' % os.getpid())", "OUT"])
+                                  "import os, sys; open(sys.argv[1] + '.start', 'w').write('%d 1.0' % os.getpid())",
+                                  "OUT"])
     time.sleep(0.6)
     assert not Path(str(out_b) + ".start").exists(), "launcher 開頭且判不出 runner 應排隊"
     assert b.wait(timeout=20) == 0
 
 
-def test_bare_unknown_command_is_light(gate):
+def test_bare_unknown_command_is_light():
     mod = _load_module()
     assert mod.is_heavy_command(["python3", "script.py"]) is False
     assert mod.is_heavy_command(["env", "X=1", "./run.sh"]) is True
     assert mod.is_heavy_command(["flutter", "test"]) is True
     assert mod.is_heavy_command(["flutter", "test", "test/a_test.dart"]) is False
+
+
+def test_usage_notes_exit_125_may_overlap_command_codes():
+    mod = _load_module()
+    assert "125" in mod.USAGE and "stderr" in mod.USAGE

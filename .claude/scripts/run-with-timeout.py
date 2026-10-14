@@ -36,11 +36,10 @@
 - 等待期間每 SLOT_NOTICE_INTERVAL_SECONDS 秒於 stderr 印出持有者的 pid、cwd、命令、開始時間與當下 load。
 - 名額由本程序持有的 flock 綁定其存活期間：正常結束、逾時、被 SIGKILL 皆由核心釋放，不依賴任何 hook；
   鎖檔描述符不會被子程序繼承（子程序殘存不佔用名額）。
-- 鎖與持有者資訊放在 CLAUDE_SLOT_LOCK_DIR；未設則與程序群組登記同一目錄（見上）。
-  CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
+- 實作在 lib/slot_gate.py（鎖目錄、等待上限、提示間隔、環境變數覆寫見該檔 docstring）。
+- 125 可能與命令自身結束碼重疊，需判斷來源時以 stderr 開頭「run-with-timeout:」的訊息為準。
 - 閘門的任何讀寫失敗只對 stderr 寫一行後略過閘門直接執行命令（fail-open，不阻擋命令）。
 """
-import fcntl
 import json
 import os
 import re
@@ -51,16 +50,18 @@ import sys
 import time
 from typing import List, Optional
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from lib import slot_gate
+    from lib.slot_gate import SLOT_WAIT_EXIT_CODE, is_heavy_command  # noqa: F401  # 對外沿用的名稱
+except ImportError as _exc:
+    slot_gate = None
+    SLOT_WAIT_EXIT_CODE = 125
+    sys.stderr.write(f"run-with-timeout: 無法載入名額閘門，heavy 命令將不排隊：{_exc}\n")
+
 TIMEOUT_EXIT_CODE = 124
 COMMAND_NOT_FOUND_EXIT_CODE = 127
 COMMAND_NOT_EXECUTABLE_EXIT_CODE = 126
-SLOT_WAIT_EXIT_CODE = 125
-# 同時執行的 heavy 命令數（全機）；2026-10-14 swap 耗盡事件後定為 1
-SLOT_COUNT = 1
-# 排隊上限：超過代表持有者異常久，與其無限掛起不如回報讓呼叫端決策
-SLOT_WAIT_LIMIT_SECONDS = 3600.0
-SLOT_NOTICE_INTERVAL_SECONDS = 30.0
-SLOT_POLL_INTERVAL = 0.1
 # TERM 後給子程序清理的寬限秒數；過短會截斷正常收尾，過長拖慢逾時回應
 GRACE_SECONDS = 3.0
 POLL_INTERVAL = 0.05
@@ -68,7 +69,7 @@ FORWARDED_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUI
 USAGE = (
     "run-with-timeout: 用法：run-with-timeout.py <秒數> -- <命令> [引數...]\n"
     "結束碼：124 逾時／126 無法執行／127 找不到命令／2 用法錯誤／"
-    "125 等候名額逾上限／128+訊號編號 被訊號終止／其餘為命令自身結束碼\n"
+    "125 等候名額逾上限（可能與命令自身結束碼重疊，以 stderr 的 run-with-timeout: 訊息判讀）／128+訊號編號 被訊號終止／其餘為命令自身結束碼\n"
 )
 
 
@@ -218,128 +219,25 @@ def _wait_or_signal(proc, seconds: float, recorder: _SignalRecorder) -> Optional
     return None
 
 
-def is_heavy_command(command: List[str]) -> bool:
-    """依 lib.test_command_parse 判定；模組載入失敗時保守視為 heavy（只多排隊）。"""
+def _acquire_gate(command: List[str], recorder: "_SignalRecorder"):
+    """heavy 命令取得名額；回 (持有者或 None, 提前結束碼或 None)。閘門任何例外只寫一行並略過。"""
+    if slot_gate is None:
+        return None, None
     try:
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from lib.test_command_parse import WEIGHT_HEAVY, classify_argv_weight
-    except ImportError as exc:
-        sys.stderr.write(f"run-with-timeout: 無法載入 heavy 判定，視為 heavy：{exc}\n")
-        return True
-    return classify_argv_weight(command) == WEIGHT_HEAVY
-
-
-def slot_dir() -> str:
-    return os.environ.get("CLAUDE_SLOT_LOCK_DIR") or registry_dir()
-
-
-def _env_seconds(name: str, default: float) -> float:
-    try:
-        return float(os.environ[name])
-    except (KeyError, ValueError):
-        return default
-
-
-def _holder_path(directory: str, index: int) -> str:
-    return os.path.join(directory, f"heavy-slot-{index}.holder.json")
-
-
-def _describe_holder(directory: str) -> str:
-    """讀出第一個可讀的持有者資訊；讀不到時說明原因而不拋例外。"""
-    for index in range(SLOT_COUNT):
-        try:
-            with open(_holder_path(directory, index)) as fh:
-                info = json.load(fh)
-            return (f"持有者 pid={info['pid']} cwd={info['cwd']} 命令={' '.join(info['command'])} "
-                    f"開始={info['started']} load={info['load']}")
-        except (OSError, ValueError, KeyError, TypeError):
-            continue  # 持有者剛取得、尚未寫出資訊，或資訊檔已隨持有者結束移除
-    return "持有者資訊暫不可讀"
-
-
-def _write_holder(directory: str, index: int, command: List[str]) -> Optional[str]:
-    path = _holder_path(directory, index)
-    entry = {"pid": os.getpid(), "cwd": os.getcwd(), "command": command,
-             "started": time.strftime("%Y-%m-%d %H:%M:%S"),
-             "load": "/".join(f"{x:.2f}" for x in os.getloadavg())}
-    try:
-        _write_atomically(path, entry)
-        return path
-    except OSError as exc:
-        sys.stderr.write(f"run-with-timeout: 無法寫入名額持有者資訊（不影響命令）：{exc}\n")
-        return None
-
-
-def _try_acquire(directory: str):
-    """依序嘗試各名額；回 (fd, index) 或 None。鎖檔描述符預設不可繼承，子程序不會持有。"""
-    for index in range(SLOT_COUNT):
-        fd = os.open(os.path.join(directory, f"heavy-slot-{index}.lock"), os.O_RDWR | os.O_CREAT, 0o600)
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return fd, index
-        except BlockingIOError:
-            os.close(fd)
-    return None
-
-
-class SlotHold:
-    """持有中的名額；release 先移除持有者資訊再關閉鎖檔描述符。"""
-
-    def __init__(self, fd: int, holder_path: Optional[str]) -> None:
-        self.fd = fd
-        self.holder_path = holder_path
-
-    def release(self) -> None:
-        if self.holder_path is not None:
-            try:
-                os.unlink(self.holder_path)
-            except OSError:
-                pass  # 資訊檔已不存在；鎖由 close 釋放，不影響正確性
-        os.close(self.fd)
-
-
-def acquire_slot(command: List[str], recorder: "_SignalRecorder"):
-    """排隊取得名額；回 (SlotHold 或 None, 提前結束碼或 None)。None 持有者表示閘門失效而略過。"""
-    directory = slot_dir()
-    limit = _env_seconds("CLAUDE_SLOT_WAIT_LIMIT", SLOT_WAIT_LIMIT_SECONDS)
-    interval = _env_seconds("CLAUDE_SLOT_NOTICE_INTERVAL", SLOT_NOTICE_INTERVAL_SECONDS)
-    waited_since = time.monotonic()
-    next_notice = waited_since
-    while True:
-        try:
-            os.makedirs(directory, mode=0o700, exist_ok=True)
-            got = _try_acquire(directory)
-        except OSError as exc:
-            sys.stderr.write(f"run-with-timeout: 名額閘門無法使用，略過排隊（不影響命令）：{exc}\n")
+        if not slot_gate.is_heavy_command(command):
             return None, None
-        if got is not None:
-            fd, index = got
-            waited = time.monotonic() - waited_since
-            if waited >= SLOT_POLL_INTERVAL:
-                sys.stderr.write(f"run-with-timeout: 取得名額，已等待 {waited:.1f} 秒\n")
-            return SlotHold(fd, _write_holder(directory, index, command)), None
-        if recorder.received is not None:
-            return None, 128 + recorder.received
-        now = time.monotonic()
-        if now - waited_since >= limit:
-            sys.stderr.write(f"run-with-timeout: 等待名額超過 {limit:g} 秒，放棄執行。"
-                             f"{_describe_holder(directory)}\n")
-            return None, SLOT_WAIT_EXIT_CODE
-        if now >= next_notice:
-            sys.stderr.write(f"run-with-timeout: 等待名額：{_describe_holder(directory)}；"
-                             f"已等待 {now - waited_since:.0f} 秒\n")
-            next_notice = now + interval
-        time.sleep(SLOT_POLL_INTERVAL)
+        return slot_gate.acquire_slot(command, lambda: recorder.received)
+    except Exception as exc:  # 閘門故障不得以 traceback 結束，也不得阻擋命令
+        sys.stderr.write(f"run-with-timeout: 名額閘門發生例外，略過排隊（不影響命令）：{exc}\n")
+        return None, None
 
 
 def run(seconds: float, command: List[str]) -> int:
     recorder = _SignalRecorder()
     recorder.install()  # 先於等待名額與啟動子程序安裝，期間的訊號都不會走預設終止動作
-    hold = None
-    if is_heavy_command(command):
-        hold, early = acquire_slot(command, recorder)
-        if early is not None:
-            return early
+    hold, early = _acquire_gate(command, recorder)
+    if early is not None:
+        return early
     try:
         return _run_command(seconds, command, recorder)
     finally:

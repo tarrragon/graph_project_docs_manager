@@ -220,3 +220,31 @@ def test_argv_weight_light(argv):
 def test_argv_weight_launcher_led_unknown_runner_is_heavy(argv):
     """判定退路：launcher 開頭而剝除後判不出 runner，保守視為 heavy。"""
     assert classify_argv_weight(argv) == WEIGHT_HEAVY
+
+
+@pytest.mark.parametrize("argv", [
+    ["pytest", "tests/", "tests/test_a.py"],
+    ["flutter", "test", "test/", "test/a_test.dart"],
+    ["pytest", "tests/test_a.py", "tests/"],
+    ["pytest", "tests/", "-k", "test_a.py"],
+    ["pytest", "-c", "test_cfg.py", "tests/"],
+    ["pytest", "-m", "slow", "--rootdir", "test_root.py", "tests/"],
+    ["pytest", "-k", "x"],
+    ["xcrun", "xcodebuild", "-scheme", "Runner"],
+    ["flutter", "drive", "--target=integration_test/app.dart"],
+    ["flutter", "test", "-d", "macos", "test/"],
+])
+def test_argv_weight_heavy_bypass_forms(argv):
+    """light 須是全部位置參數皆為具體測試檔；帶值選項的值不是路徑。"""
+    assert classify_argv_weight(argv) == WEIGHT_HEAVY
+
+
+@pytest.mark.parametrize("argv", [
+    ["pytest", "tests/test_a.py", "tests/test_b.py"],
+    ["pytest", "-k", "foo", "tests/test_a.py"],
+    ["pytest", "-c", "cfg.ini", "tests/test_a.py::test_x"],
+    ["flutter", "test", "--name", "foo", "test/a_test.dart"],
+    ["xcrun", "simctl", "list"],
+])
+def test_argv_weight_light_after_option_values_removed(argv):
+    assert classify_argv_weight(argv) == WEIGHT_LIGHT
