@@ -32,7 +32,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # .claude/ — 
 from lib.hook_base import get_project_root  # noqa: E402
 from lib.hook_logging import setup_hook_logging, run_hook_safely  # noqa: E402
 from lib.hook_io import read_json_from_stdin, is_subagent_environment
-from lib.ticket_command_parse import has_complete_command  # noqa: E402
+from lib.ticket_command_parse import has_complete_command, complete_statement_args  # noqa: E402
+from lib.git_command_parse import parse_command_statements  # noqa: E402
+from lib.ticket_id_pattern import SEARCH_WITH_SUFFIX_RE  # noqa: E402
 from lib.bash_tool_response import is_bash_success  # noqa: E402
 from lib.hook_ticket import (
     parse_ticket_frontmatter,
@@ -165,23 +167,20 @@ def extract_ticket_id(input_data: dict) -> Optional[str]:
     Returns:
         str | None: Ticket ID 或 None（無法提取時）
     """
-    # 優先從命令中提取
-    tool_input = input_data.get("tool_input", {})
-    command = tool_input.get("command", "")
-
-    # 正則提取 Ticket ID（格式：v.x.y-Wz-nnn）
-    match = re.search(r"(\d+\.\d+\.\d+-W\d+-\d+)", command)
-    if match:
-        return match.group(1)
-
-    # 備選：從輸出中提取
-    tool_response = input_data.get("tool_response", {})
-    stdout = tool_response.get("stdout", "")
-
-    match = re.search(r"(\d+\.\d+\.\d+-W\d+-\d+)", stdout)
-    if match:
-        return match.group(1)
-
+    # 以 token 位置辨識完成類語句，只取其動詞後第一個完整符合票號形狀的 token
+    # （含子任務多層後綴）；不從 stdout 或命令任意位置擷取
+    command = input_data.get("tool_input", {}).get("command", "")
+    statements = parse_command_statements(command)
+    if not statements:
+        return None
+    for tokens in statements:
+        args = complete_statement_args(tokens)
+        if args is None:
+            continue
+        for token in args:
+            m = SEARCH_WITH_SUFFIX_RE.fullmatch(token)
+            if m:
+                return m.group(1)
     return None
 
 
@@ -249,61 +248,90 @@ def read_ticket_where_files(ticket_id: str, project_root: Path,
         return []
 
 
-def get_git_changed_files(project_root: Path, logger: logging.Logger) -> list[str]:
-    """執行 git diff HEAD --name-only 取得實際變更檔案
+def _run_git(project_root: Path, args: list[str]) -> Optional[str]:
+    """執行 git 命令，回傳 stdout；非零退出回傳 None（超時等例外由呼叫端處理）。"""
+    result = subprocess.run(
+        ["git", "--no-optional-locks"] + args,
+        cwd=str(project_root),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=GIT_DIFF_TIMEOUT,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def _split_paths(out: str) -> list[str]:
+    """-z 輸出（NUL 分隔，不受 quotepath 影響）轉為規範化路徑清單。"""
+    return [n for n in (normalize_path(p) for p in out.split("\0")) if n]
+
+
+def get_git_changed_files(project_root: Path, logger: logging.Logger,
+                          ticket_id: str) -> list[str]:
+    """取得該票的實際變更檔案：票相關 commit 範圍 + 未提交變更
+
+    比對基準：
+    1. 訊息含該票號的 commit（子任務票號不吃父票的 commit，後綴須精確相等）。
+       含 merge commit：以 first-parent diff 取得合併帶入的變更。
+       理由：worktree 隔離派發下 complete 在合併提交後執行，此時
+       git diff HEAD 恆為空；票號是此刻唯一與該票綁定的穩定識別。
+    2. 聯集 git diff HEAD：程式碼尚未提交即 complete 的情境仍可比對。
+
+    git 呼叫失敗時記錄雙通道並略過該來源（fail-open，不阻擋）。
 
     Args:
         project_root: 專案根目錄（執行 git 命令的工作目錄）
         logger: Logger 實例
+        ticket_id: 完整票號（含子任務後綴）
 
     Returns:
-        list[str]: 規範化後的變更檔案清單（空列表若執行失敗）
+        list[str]: 規範化後的變更檔案清單
     """
+    changed: set[str] = set()
     try:
-        result = subprocess.run(
-            ["git", "--no-optional-locks", "diff", "HEAD", "--name-only", "-z"],
-            cwd=str(project_root),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=GIT_DIFF_TIMEOUT
-        )
+        log_out = _run_git(project_root, [
+            "log", "--fixed-strings", f"--grep={ticket_id}",
+            "--format=%H%x00%s", "-n", "500"])
+        if log_out is None:
+            logger.warning("git log 失敗")
+            sys.stderr.write("[Hook Error] git log 命令失敗\n")
+        else:
+            # 票號後不可再接「.數字」，避免父票吃到子任務票的 commit
+            id_re = re.compile(re.escape(ticket_id) + r"(?!\.?\d)")
+            for line in log_out.splitlines():
+                sha, _, subject = line.partition("\0")
+                if not sha or not id_re.search(subject):
+                    continue
+                out = _run_git(project_root, [
+                    "diff-tree", "-r", "--name-only", "-z", "--no-commit-id",
+                    "-m", "--first-parent", sha])
+                if out is None:
+                    logger.warning(f"git diff-tree 失敗: {sha}")
+                    continue
+                changed.update(_split_paths(out))
 
-        if result.returncode != 0:
-            logger.warning(f"git diff 失敗 (exit code {result.returncode})")
-            sys.stderr.write(f"[Hook Error] git diff 命令失敗\n")
-            return []
-
-        if not result.stdout.strip():
-            return []
-
-        # 解析輸出並規範化
-        git_changed = []
-        # -z：以 NUL 分隔原始路徑，不受 quotepath 加引號/跳脫影響
-        for line in result.stdout.split("\0"):
-            if line:
-                normalized = normalize_path(line)
-                if normalized:
-                    git_changed.append(normalized)
-
-        logger.debug(f"git diff 返回: {len(git_changed)} 個檔案")
-        return git_changed
+        head_out = _run_git(project_root, ["diff", "HEAD", "--name-only", "-z"])
+        if head_out is None:
+            logger.warning("git diff HEAD 失敗")
+            sys.stderr.write("[Hook Error] git diff 命令失敗\n")
+        else:
+            changed.update(_split_paths(head_out))
 
     except subprocess.TimeoutExpired:
-        logger.error(f"git diff 超時 ({GIT_DIFF_TIMEOUT}s)")
-        sys.stderr.write(f"[Hook Error] git diff 命令超時\n")
-        return []
-
+        logger.error(f"git 命令超時 ({GIT_DIFF_TIMEOUT}s)")
+        sys.stderr.write("[Hook Error] git 命令超時\n")
     except FileNotFoundError:
         logger.error("git 命令未找到")
-        sys.stderr.write(f"[Hook Error] git 命令未找到\n")
-        return []
-
+        sys.stderr.write("[Hook Error] git 命令未找到\n")
     except Exception as e:
-        logger.error(f"執行 git diff 失敗: {e}")
+        logger.error(f"執行 git 失敗: {e}")
         sys.stderr.write(f"[Hook Error] git 命令執行失敗: {e}\n")
-        return []
+
+    logger.debug(f"票相關變更: {len(changed)} 個檔案")
+    return sorted(changed)
 
 
 def format_warning_message(
@@ -331,7 +359,7 @@ def format_warning_message(
     lines.append("")
 
     lines.append(f"Ticket {ticket_id} 完成後，偵測到以下預期修改的檔案")
-    lines.append("未出現在 git diff 中：")
+    lines.append("未出現在該票的提交範圍或未提交變更中：")
     lines.append("")
 
     # 列出缺失檔案
@@ -347,7 +375,7 @@ def format_warning_message(
     lines.append("")
 
     # 列出實際變更清單
-    lines.append(f"{MSG_ACTUAL_TITLE}（git diff HEAD --name-only，共 {len(git_changed_relevant)} 個相關檔案）：")
+    lines.append(f"{MSG_ACTUAL_TITLE}（該票 commit 範圍 + git diff HEAD，共 {len(git_changed_relevant)} 個相關檔案）：")
     for file in sorted(git_changed_relevant):
         lines.append(f"  - {file}")
     lines.append("")
@@ -359,8 +387,8 @@ def format_warning_message(
     lines.append("3. 補完後執行 git diff 確認")
     lines.append("")
 
-    lines.append("注意：此驗證使用 git diff HEAD，包含所有未提交的變更。")
-    lines.append("若有其他任務的未提交變更，可能影響比對結果。")
+    lines.append("注意：此驗證比對訊息含該票號的 commit（含 merge）與未提交變更。")
+    lines.append("若該票 commit 訊息未帶票號，可能誤報缺失。")
     lines.append("")
 
     lines.append(MSG_WARNING_HEADER)
@@ -461,7 +489,7 @@ def main() -> int:
             return 0
 
         # 執行 git diff
-        git_changed = get_git_changed_files(project_root, logger)
+        git_changed = get_git_changed_files(project_root, logger, ticket_id)
 
         # 比對
         missing_files = find_missing_files(where_files, git_changed)
