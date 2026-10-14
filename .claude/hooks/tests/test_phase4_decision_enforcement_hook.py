@@ -223,9 +223,9 @@ def test_m1_w3_749_main_integration_four_sentences(monkeypatch, capsys, tmp_path
     """acceptance 6：main() 整合層級，以 PM 提供的四句實際灌入 ticket
     檔案跑過完整 main() 流程（非僅單元測試 pattern），驗證兩句應攔截、
     兩句應放行同時成立。"""
-    ticket_md = tmp_path / "TST-749.md"
+    ticket_md = tmp_path / "0.1.0-W1-749.md"
     ticket_md.write_text(
-        "---\nid: TST-749\ntitle: t\ntype: IMP\nstatus: in_progress\n---\n\n"
+        "---\nid: 0.1.0-W1-749\ntitle: t\ntype: IMP\nstatus: in_progress\n---\n\n"
         "## Solution\n"
         "案例一（應攔截）：Phase 4 完成後，再決定是否重構\n"
         "案例二（應攔截）：Phase 5 之後，再評估要不要拆\n"
@@ -235,7 +235,7 @@ def test_m1_w3_749_main_integration_four_sentences(monkeypatch, capsys, tmp_path
     )
     monkeypatch.setattr(_hook, "find_ticket_file", lambda tid, **kw: ticket_md)
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-749 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-749 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 2, "含真延後話術（案例一/二）應被 BLOCK"
@@ -782,7 +782,7 @@ def mock_find_ticket(monkeypatch):
 def test_int_1_clean_ticket_exit_0(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("clean_ticket.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 0
@@ -792,7 +792,7 @@ def test_int_1_clean_ticket_exit_0(monkeypatch, capsys, mock_find_ticket):
 def test_int_2_must_block_exit_2_stderr(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("ticket_with_must_block.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 2
@@ -810,7 +810,7 @@ def test_w3_751_deny_message_mentions_code_fence(monkeypatch, capsys, mock_find_
     """acceptance 1：DENY 訊息含 code fence 豁免說明與可複製範例。"""
     mock_find_ticket("ticket_with_must_block.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 2
@@ -882,7 +882,7 @@ def test_w3_751_unfenced_example_would_hit_demonstrates_why_fence_matters():
 def test_int_3_exempt_exit_0_with_audit(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("ticket_with_exempt.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 0
@@ -893,7 +893,7 @@ def test_int_3_exempt_exit_0_with_audit(monkeypatch, capsys, mock_find_ticket):
 def test_int_4_warn_only_exit_0_stdout(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("ticket_with_warn_only.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 0
@@ -904,7 +904,7 @@ def test_int_4_warn_only_exit_0_stdout(monkeypatch, capsys, mock_find_ticket):
 def test_int_5_info_only_exit_0(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("ticket_with_info_only.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 0
@@ -914,7 +914,7 @@ def test_int_5_info_only_exit_0(monkeypatch, capsys, mock_find_ticket):
 def test_int_6_phase3b_不觸發(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("ticket_with_must_block.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase3b"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase3b"),
         monkeypatch, capsys,
     )
     # phase3b 不匹配 MAIN_GATE_CMD → early exit 0
@@ -925,7 +925,7 @@ def test_int_6_phase3b_不觸發(monkeypatch, capsys, mock_find_ticket):
 def test_int_7_pretool_complete_殘留_block(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("ticket_with_must_block.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PreToolUse", "ticket track complete TST-001"),
+        _payload("PreToolUse", "ticket track complete 0.1.0-W1-001"),
         monkeypatch, capsys,
     )
     assert rc == 2
@@ -935,7 +935,7 @@ def test_int_7_pretool_complete_殘留_block(monkeypatch, capsys, mock_find_tick
 def test_int_8_pretool_complete_clean(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("clean_ticket.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PreToolUse", "ticket track complete TST-001"),
+        _payload("PreToolUse", "ticket track complete 0.1.0-W1-001"),
         monkeypatch, capsys,
     )
     assert rc == 0
@@ -944,7 +944,7 @@ def test_int_8_pretool_complete_clean(monkeypatch, capsys, mock_find_ticket):
 def test_int_9_同行多命中全部列出(monkeypatch, capsys, mock_find_ticket):
     mock_find_ticket("ticket_with_must_block.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 2
@@ -1018,7 +1018,7 @@ def test_b1_空_ticket_md_不_crash(monkeypatch, capsys, tmp_path):
     empty.write_text("", encoding="utf-8")
     monkeypatch.setattr(_hook, "find_ticket_file", lambda tid, **kw: empty)
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4")
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4")
     )))
     rc = main()
     assert rc == 0
@@ -1027,7 +1027,7 @@ def test_b1_空_ticket_md_不_crash(monkeypatch, capsys, tmp_path):
 def test_b2_ticket_md_不存在(monkeypatch, capsys):
     monkeypatch.setattr(_hook, "find_ticket_file", lambda tid, **kw: None)
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4")
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4")
     )))
     rc = main()
     assert rc == 0
@@ -1089,13 +1089,13 @@ def test_extract_phase4_mode():
 
 
 def test_extract_complete_mode():
-    tid, mode = extract_ticket_id_from_command("ticket track complete TST-001")
-    assert tid == "TST-001"
+    tid, mode = extract_ticket_id_from_command("ticket track complete 0.1.0-W1-001")
+    assert tid == "0.1.0-W1-001"
     assert mode == "residual_gate"
 
 
 def test_extract_phase3b_不匹配():
-    tid, mode = extract_ticket_id_from_command("ticket track phase TST-001 phase3b")
+    tid, mode = extract_ticket_id_from_command("ticket track phase 0.1.0-W1-001 phase3b")
     assert mode is None
 
 
@@ -1278,10 +1278,10 @@ def test_self_ref_無此欄位():
 
 def test_self_ref_main_整合_豁免整檔(monkeypatch, tmp_path, capsys):
     """Main flow: self-ref ticket 有 M1 命中但整檔豁免 → exit 0 無 stderr。"""
-    ticket_md = tmp_path / "TEST-099.md"
+    ticket_md = tmp_path / "0.1.0-W1-099.md"
     ticket_md.write_text(
         "---\n"
-        "id: TEST-099\n"
+        "id: 0.1.0-W1-099\n"
         "hook_self_reference: phase4-decision-enforcement\n"
         "---\n"
         "Phase 4 再決定是否保留 use_cache\n"
@@ -1291,7 +1291,7 @@ def test_self_ref_main_整合_豁免整檔(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(_hook, "find_ticket_file", lambda tid, logger=None: ticket_md)
     stdin_json = json.dumps({
         "hook_event_name": "PostToolUse",
-        "tool_input": {"command": "ticket track phase TEST-099 phase4"},
+        "tool_input": {"command": "ticket track phase 0.1.0-W1-099 phase4"},
     })
     monkeypatch.setattr("sys.stdin", io.StringIO(stdin_json))
     rc = main()
@@ -1832,7 +1832,7 @@ def test_integ_fenced_unclosed_exempts_to_eof(monkeypatch, capsys, mock_find_tic
     """EDGE-5 整合：未閉合 fence 至檔尾豁免，main exit 0。"""
     mock_find_ticket("ticket_fenced_unclosed.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 0, "未閉合 fence 內全部豁免，不應觸發 BLOCK"
@@ -1843,7 +1843,7 @@ def test_integ_fenced_integration_main_blocks_real_hit(monkeypatch, capsys, mock
     """AC12 整合：fenced/schema/ref 共存時，僅實際命中觸發 BLOCK。"""
     mock_find_ticket("ticket_fenced_integration.md")
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-001 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 2, "real-hit 應觸發 BLOCK"
@@ -2285,7 +2285,7 @@ def test_w3_744_failure_semantics_ticket_not_found_fail_open(monkeypatch, capsys
     純函式，main() 的錯誤處理路徑未被觸及。"""
     monkeypatch.setattr(_hook, "find_ticket_file", lambda tid, **kw: None)
     rc, out, err = _run_main_with_stdin(
-        _payload("PostToolUse", "ticket track phase TST-404 phase4"),
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-404 phase4"),
         monkeypatch, capsys,
     )
     assert rc == 0
@@ -2299,18 +2299,21 @@ def test_w3_744_failure_semantics_ticket_not_found_fail_open(monkeypatch, capsys
 
 @pytest.mark.parametrize("verb", ["complete", "finish", "batch-complete"])
 def test_w1_270_5_complete_verbs_residual_gate(verb):
-    tid, mode = extract_ticket_id_from_command("ticket track {} T-1".format(verb))
-    assert (tid, mode) == ("T-1", "residual_gate")
+    tid, mode = extract_ticket_id_from_command(
+        "ticket track {} 0.1.0-W1-001".format(verb))
+    assert (tid, mode) == ("0.1.0-W1-001", "residual_gate")
 
 
 def test_w1_270_5_finish_with_env_prefix_residual_gate():
-    tid, mode = extract_ticket_id_from_command("FOO=1 nohup ticket track finish T-1")
-    assert (tid, mode) == ("T-1", "residual_gate")
+    tid, mode = extract_ticket_id_from_command(
+        "FOO=1 nohup ticket track finish 0.1.0-W1-001")
+    assert (tid, mode) == ("0.1.0-W1-001", "residual_gate")
 
 
 def test_w1_270_5_quoted_finish_not_detected():
     tid, mode = extract_ticket_id_from_command(
-        'ticket track append-log T-9 --section S "ticket track finish T-1"'
+        'ticket track append-log 0.1.0-W1-009 --section S '
+        '"ticket track finish 0.1.0-W1-001"'
     )
     assert (tid, mode) == (None, None)
 
@@ -2327,38 +2330,76 @@ def test_w1_270_5_finish_unbalanced_quote_fail_open():
 extract_ticket_targets_from_command = _hook.extract_ticket_targets_from_command
 
 
+_A = "0.1.0-W1-001"
+_B = "0.1.0-W1-002"
+
+
 @pytest.mark.parametrize("command,expected", [
-    ("timeout 30 ticket track phase T-1 phase4", [("T-1", "main_gate")]),
-    ("git status && ticket track phase T-1 phase4", [("T-1", "main_gate")]),
-    ("bash -c 'ticket track phase T-1 phase4'", [("T-1", "main_gate")]),
-    ("/usr/local/bin/ticket track phase T-1 phase4", [("T-1", "main_gate")]),
-    ("timeout 30 ticket track complete T-1", [("T-1", "residual_gate")]),
-    ("git status; ticket track finish T-1", [("T-1", "residual_gate")]),
-    ("sh -c \"cd x && ticket track complete T-1\"", [("T-1", "residual_gate")]),
-    ("ticket track complete T-1 && ticket track complete T-2",
-     [("T-1", "residual_gate"), ("T-2", "residual_gate")]),
-    ("ticket track batch-complete T-1 T-2 --force",
-     [("T-1", "residual_gate"), ("T-2", "residual_gate")]),
-    ("ticket track phase T-1 phase4; ticket track complete T-2",
-     [("T-1", "main_gate"), ("T-2", "residual_gate")]),
+    ("timeout 30 ticket track phase {a} phase4", [(_A, "main_gate")]),
+    ("git status && ticket track phase {a} phase4", [(_A, "main_gate")]),
+    ("bash -c 'ticket track phase {a} phase4'", [(_A, "main_gate")]),
+    ("/usr/local/bin/ticket track phase {a} phase4", [(_A, "main_gate")]),
+    ("timeout 30 ticket track complete {a}", [(_A, "residual_gate")]),
+    ("git status; ticket track finish {a}", [(_A, "residual_gate")]),
+    ("sh -c \"cd x && ticket track complete {a}\"", [(_A, "residual_gate")]),
+    ("ticket track complete {a} && ticket track complete {b}",
+     [(_A, "residual_gate"), (_B, "residual_gate")]),
+    ("ticket track batch-complete {a} {b} --force",
+     [(_A, "residual_gate"), (_B, "residual_gate")]),
+    ("ticket track phase {a} phase4; ticket track complete {b}",
+     [(_A, "main_gate"), (_B, "residual_gate")]),
 ])
 def test_w1_120_7_9_5_4_scan_positive(command, expected):
-    assert extract_ticket_targets_from_command(command) == expected
+    assert extract_ticket_targets_from_command(
+        command.format(a=_A, b=_B)) == expected
 
 
 @pytest.mark.parametrize("command", [
-    "ticket track phase T-1 phase3b",
-    "echo ticket track phase T-1 phase4",
-    "echo 'ticket track phase T-1 phase4' | bash",
-    "bash <<< 'ticket track complete T-1'",
+    "ticket track phase {a} phase3b",
+    "echo ticket track phase {a} phase4",
+    "echo 'ticket track phase {a} phase4' | bash",
+    "bash <<< 'ticket track complete {a}'",
     "ticket track complete 'unterminated",
     "",
 ])
 def test_w1_120_7_9_5_4_scan_negative_and_fail_open(command):
-    assert extract_ticket_targets_from_command(command) == []
+    assert extract_ticket_targets_from_command(command.format(a=_A)) == []
 
 
 def test_w1_120_7_9_5_4_wrapper_returns_first():
     assert extract_ticket_id_from_command(
-        "timeout 5 ticket track complete T-1 && ticket track complete T-2"
-    ) == ("T-1", "residual_gate")
+        "timeout 5 ticket track complete {a} && ticket track complete {b}".format(
+            a=_A, b=_B)
+    ) == (_A, "residual_gate")
+
+
+# ============================================================================
+# 0.5.0-W1-120.7.9.5.10 -- 帶值選項的值不得被當成 ticket ID
+# ============================================================================
+
+_BAD = "9.9.9-W1-001"
+_OK = "9.9.9-W1-002"
+
+
+@pytest.mark.parametrize("command,expected", [
+    ("ticket track complete --as rosemary-project-manager {bad}",
+     [(_BAD, "residual_gate")]),
+    ("ticket track complete --version 9.9.9 {bad}", [(_BAD, "residual_gate")]),
+    ("ticket track complete --as {ok} {bad}",
+     [(_OK, "residual_gate"), (_BAD, "residual_gate")]),
+    ("ticket track phase --version 9.9.9 {bad} phase4", [(_BAD, "main_gate")]),
+    ("ticket track complete --as=rosemary {bad}", [(_BAD, "residual_gate")]),
+    ("ticket track complete {bad} --as rosemary", [(_BAD, "residual_gate")]),
+    ("ticket track phase {bad} --as x phase4", [(_BAD, "main_gate")]),
+])
+def test_w1_120_7_9_5_10_option_value_not_taken_as_id(command, expected):
+    assert extract_ticket_targets_from_command(
+        command.format(bad=_BAD, ok=_OK)) == expected
+
+
+@pytest.mark.parametrize("command", [
+    "ticket track phase --version 9.9.9 {bad} phase3b",
+    "ticket track complete --as rosemary-project-manager",
+])
+def test_w1_120_7_9_5_10_no_id_or_other_phase_no_target(command):
+    assert extract_ticket_targets_from_command(command.format(bad=_BAD)) == []
