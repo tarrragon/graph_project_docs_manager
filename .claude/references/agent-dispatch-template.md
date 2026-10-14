@@ -34,7 +34,7 @@
 >
 > 提醒：worktree 不隔離票務寫入，實驗請用獨立 clone 或 tmp_path（詳見 `.claude/error-patterns/process-compliance/PC-GPD-030-worktree-not-isolated-for-ticket-cli-writes.md`）。
 >
-> 派發位置由 `--isolation {worktree,none}` 指定：`worktree` 變體的收尾句為 `ticket track commit`（於 worktree 路徑，只提交產品檔；票面由主 repo CLI 寫入並自動提交，worktree 內的票面副本是舊版本，`ticket track commit --worktree` 遇到票面會拒絕）→ `ticket track finish`，並註明 finish 被隔離守衛拒絕時於 Exit Status 記錄後交還 PM 於主 repo 代跑（權威為 `CLOSING_BY_ISOLATION`）；未帶且 where.files 含非豁免路徑時 stderr 警告。`--kind review` 骨架首行固定為 `Dispatch-Mode: readonly`（`SKELETON_TEMPLATE_REVIEW`），第二行起為 `Ticket: {id}`。需落票約束時加 `--note "..."`（寫入票的「派發日誌」章節）；審查派發改 `--kind review`（輸出不含認領/收尾的審查骨架，改用審查標的/視角/裁決問題/回報格式四欄）。兩個變體的收尾句皆要求 Solution 含 `### 自檢結果與 Phase 4 評估`（acceptance-gate 依此檢查，缺則 complete 被擋）。指令輸出即可直接複製貼入 `Agent(...)` prompt。同步保護（`.claude/hooks/tests/test_agent_prompt_length_guard_hook.py`）涵蓋兩個獨立維度，缺一不足：(1) 骨架常數是否仍命中 length-guard hook 的模板關鍵字（僅影響 Layer 2 軟提示）；(2) 骨架**實際組裝後的行數**（含 `--commit-policy agent` 短版指標句、觸及 hooks 目錄票的額外提醒）是否仍 <= PROMPT_LINE_LIMIT（Layer 1 硬上限，無豁免）——(2) 是骨架曾實際成長至 39-48 行、逐字貼入被 Layer 1 阻擋兩次後才補上的維度，任一維度漂移即測試失敗。
+> 派發位置由 `--isolation {worktree,none}` 指定：`worktree` 變體的收尾句為 `ticket track commit`（於 worktree 路徑，只提交產品檔；票面由主 repo CLI 寫入並自動提交，worktree 內的票面副本是舊版本，`ticket track commit --worktree` 遇到票面會拒絕）後止步並回報 PM，complete 由 PM 於合併後在主 checkout 執行（權威為 `CLOSING_BY_ISOLATION`；見下方〈worktree 派發收尾指引：complete 由 PM 於合併後執行〉）；未帶且 where.files 含非豁免路徑時 stderr 警告。`--kind review` 骨架首行固定為 `Dispatch-Mode: readonly`（`SKELETON_TEMPLATE_REVIEW`），第二行起為 `Ticket: {id}`。需落票約束時加 `--note "..."`（寫入票的「派發日誌」章節）；審查派發改 `--kind review`（輸出不含認領/收尾的審查骨架，改用審查標的/視角/裁決問題/回報格式四欄）。兩個變體的收尾句皆要求 Solution 含 `### 自檢結果與 Phase 4 評估`（acceptance-gate 依此檢查，缺則 complete 被擋）。指令輸出即可直接複製貼入 `Agent(...)` prompt。同步保護（`.claude/hooks/tests/test_agent_prompt_length_guard_hook.py`）涵蓋兩個獨立維度，缺一不足：(1) 骨架常數是否仍命中 length-guard hook 的模板關鍵字（僅影響 Layer 2 軟提示）；(2) 骨架**實際組裝後的行數**（含 `--commit-policy agent` 短版指標句、觸及 hooks 目錄票的額外提醒）是否仍 <= PROMPT_LINE_LIMIT（Layer 1 硬上限，無豁免）——(2) 是骨架曾實際成長至 39-48 行、逐字貼入被 Layer 1 阻擋兩次後才補上的維度，任一維度漂移即測試失敗。
 
 > **claim 行必帶 `--as {agent_name}`**（派發身份前移，W5-005 F1a）：dispatch hook 已在派發時對無主票綁定 who.current，此行是 agent 端對稱綁定與 hook 失效 fallback；缺 `--as` 的裸 claim 不寫 who.current，收尾 `complete --as` 會因身份不符需 set-who 繞道。
 
@@ -822,27 +822,32 @@ A1（PM 派發前 commit gate，見 `.claude/pm-rules/behavior-loop-details.md`�
 >
 > **Action**：派發任何 `isolation: "worktree"` 實作 agent 前，除 A1 `git status --porcelain` 外，再執行 `git push origin main`（確認 `git rev-list --left-right --count origin/main...main` 為 `0 0`）。收到 agent 回報「Ticket 不存在」時，先查 `git log origin/main..main` 是否有未 push 的票 commit，而非直接懷疑票號打錯。完整前置條件表見 `.claude/error-patterns/process-compliance/PC-154-worktree-dispatch-prerequisites-not-verified.md`「前置 1：worktree base 含所需檔案」。
 
-### worktree 派發收尾指引：用 `finish` 別名避開 `complete` 誤判
+### worktree 派發收尾指引：complete 由 PM 於合併後執行
 
-> **用途**：worktree 隔離派發的收尾段，`ticket track complete` 改用別名 `ticket track finish`（兩者行為完全等價，共用同一實作與全部旗標），避開 CC runtime worktree isolation guard 對 `complete` 的條件性誤判。
+> **用途**：worktree 隔離派發（`isolation: "worktree"`）的收尾段，代理人止於 worktree commit 並回報 PM；`ticket track complete` 由 PM 於合併並驗證後在主 checkout 執行（用戶裁決，2026-10-14）。
 >
-> **設計依據**：CC runtime 的 worktree isolation guard 對 argv 逐元素做 basename 比對其可處理的 shell 命令清單，`complete` 命中 bash builtin `complete`，使 `ticket track complete` 在 worktree 派發下條件性被誤判為「不可驗證的合併類操作」而阻擋（同一操作同一隔離環境結果不穩定重現：五次 worktree 派發兩擋三過）。裁示為別名共存而非重命名——`complete` 出現在本框架 rules / pm-rules / skills / agents / hooks 過百處引用，重命名的漣漪成本與破壞相容風險遠超收益。
+> **設計依據**：平台對隔離代理人的 `complete` 條件性阻擋（argv 逐元素 basename 比對撞上 bash builtin `complete`）；曾以別名 `ticket track finish` 避開，但 finish 通過平台檢查的同時繞過 acceptance-gate（gate 只辨識字面 `complete`），且隔離代理人在合併前 complete 會讓票面在程式碼未進 main 時即為完成。`finish` 別名仍存在於 CLI，但不再是隔離代理人的收尾路徑。
 
-**Why**：guard 的比對粒度是 argv 每個 token 的 basename，不區分命令在該 token 序列中是「子命令名稱」還是「參數」，故子命令名稱恰好撞上 shell builtin 名稱時才會誤判；其餘子命令（`claim` / `append-log` / `set-acceptance` 等）不受影響，只有 `complete` 命中。
+**Why**：complete 發生在 PM 合併與測試之後，票面完成狀態才與 main 上的程式碼一致；自檢仍由執行期的代理人經 `append-log` 撰寫（寫入主 repo 票面），PM 收尾只執行 complete，證據來源不變。
 
-**Consequence**：代理人在 worktree 內執行 `ticket track complete` 被拒時無法自行收尾。PM 需在主 repo 代執行並代填 Layer 1 自檢，但代填的自檢在證據來源上與代理人自檢本質不同（PM 看不到代理人的執行過程），破壞「執行期的代理人才是自檢正確供給側」的設計原則（見上方「收尾義務標準段」章節 Why）。
+**Consequence**：派發 prompt 若仍指示隔離代理人執行 `complete` 或 `finish`，輕則被平台擋下而阻塞，重則經 `finish` 繞過 acceptance-gate；PM 代填自檢則破壞「執行期的代理人才是自檢正確供給側」的設計原則（見上方「收尾義務標準段」章節 Why）。
 
-**Action**：worktree 隔離派發（`isolation: "worktree"`）的收尾段指令一律改用 `finish`：
+**Action**：
+
+| 派發位置 | 代理人收尾段 | complete 執行者 |
+|---------|------------|----------------|
+| `isolation: "worktree"` | `set-acceptance` 勾選 → `append-log` 填 Solution（含 `### 自檢結果與 Phase 4 評估`）與 Test Results → `ticket track commit <id> -m "..." --worktree <路徑> -- <檔案>` → 回報 PM；不執行 complete 與 finish | PM，合併並驗證後於主 checkout 執行 |
+| 主 repo cwd（`isolation: "none"`） | 沿用本檔既有收尾段，末步 `ticket track complete <id> --as <自身 agent 名稱>` | 代理人 |
+
+PM 收尾步驟與身份：
 
 ```bash
-# worktree 派發收尾（用 finish，避開 complete 誤判）
-ticket track finish <ticket-id> --as <自身 agent 名稱>
-
-# 主 repo cwd 派發收尾（維持原名 complete，不受影響）
-ticket track complete <ticket-id> --as <自身 agent 名稱>
+# 合併 worktree 分支並確認測試通過後，於主 checkout 執行
+ticket track set-who <ticket-id> --current rosemary-project-manager
+ticket track complete <ticket-id> --as rosemary-project-manager
 ```
 
-`complete` 本身不動、不加棄用警告——它不是要被取代，只是在 worktree 環境有代稱；`--as` / `--force` / `--skip-body-check` / `--yes-spawned` / `--no-stage` 全旗標在兩名下行為完全等價，「收尾義務標準段（W2-003）」與「收尾 --as 全覆蓋」章節的範例套用時，worktree 場景把指令中的 `complete` 換成 `finish` 即可，其餘不變。
+`set-who` 使 who.history 保留實作者與交接時間、Executing Agent 欄保留實作者，who.current 記錄收尾者。PM 只執行 complete，不代填自檢。身份做法的比較與依據見 `.claude/references/agent-definition-standard-details.md`〈隔離派發的收尾界線〉。上方「收尾義務標準段」與「收尾 --as 全覆蓋」章節的範例套用於隔離派發時，刪去末步 complete 即可。
 
 ---
 
@@ -1148,6 +1153,7 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 ---
 
 **Last Updated**: 2026-10-14
+**Version**: 1.44.0 — 〈worktree 派發收尾指引〉由「用 finish 別名避開 complete 誤判」改寫為「complete 由 PM 於合併後執行」：隔離代理人止於 worktree commit，PM 以 set-who 後 complete 收尾且不代填自檢；開頭骨架說明句同步（用戶裁決，2026-10-14）
 **Version**: 1.43.0 — 〈終止長時間測試後驗證子程序已退出約束句〉制式句開頭補兩行：測試逾時一律經 `run-with-timeout.py` 啟動、禁用 `timeout`／`alarm` 加 `exec`／背景 `sleep` 後 `kill` 單一 PID 與 `pkill`／`killall`；並新增「逾時須經包裝腳本」三明示段（逾時當下無終止動作可觸發自檢，殘留只能在啟動方式上預防；清理改用 `orphan-test-procs.py`）
 **Last Updated**: 2026-10-08
 **Version**: 1.42.1 — 〈阻塞回報後：重派新 agent 優先於 SendMessage 恢復〉二次審查修正：段首補原則句與「標題沿用初版情境名」說明；Action 與判準表末列對「兩個訊號都取不到」統一為直接重派（刪去與 git worktree list 同源、無增量的 ls 後援）；補兩訊號不一致時以 git worktree list 為準
