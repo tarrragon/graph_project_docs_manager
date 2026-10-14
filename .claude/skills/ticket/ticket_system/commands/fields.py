@@ -44,6 +44,7 @@ from ticket_system.lib.command_lifecycle_messages import (
     FieldsMessages,
 )
 from ticket_system.lib.ticket_loader import get_ticket_path
+from ticket_system.lib.who_history import record_who_change
 from ticket_system.lib.ticket_ops import (
     load_and_validate_ticket,
     resolve_ticket_path,
@@ -207,6 +208,11 @@ def _execute_set_dict_subfields(
         subkey = DICT_FIELD_SUBKEY[field_name]
         existing = ticket.get(field_name)
         working = dict(existing) if isinstance(existing, dict) else dict(_DICT_FIELD_DEFAULTS[field_name])
+
+        if field_name == "who":
+            new_current = subfields.get("current", value)
+            if new_current is not None:
+                record_who_change(working, new_current)
 
         applied: Dict[str, Any] = {}
         if value is not None:
@@ -376,6 +382,8 @@ def execute_set_field(
             # layer 已有誤填樣本而整個放棄層級跨度指標。要設定 layer 請用
             # --layer 子欄位旗標（execute_set_where 的子欄位路徑）。
             if synced_files is None:
+                if actual_field_name == "who":
+                    record_who_change(existing, new_value)
                 existing[subkey] = new_value
             ticket[actual_field_name] = existing
         else:

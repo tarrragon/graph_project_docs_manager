@@ -521,7 +521,7 @@ ticket track restore <id> --reason <text> [--as <agent>]
 
 `complete` / `check-acceptance` / `set-acceptance` 三個寫入命令支援選用 `--as <agent-name>`，與 ticket `who.current` 精確對照。**Why**：防 generic agent 收 Ticket ID 即越權收尾（PC-V1-002 前提一，探針實證）。**判定邏輯**：`--as` 值 ≠ `who.current`（含空值）→ deny（exit 1，純前置檢查不寫入狀態）；`--as rosemary-project-manager` 一律放行（PM bookkeeping 豁免，如代收尾 / stale cleanup）；未提供 `--as` 時 `complete`（`finish` 別名同列）已轉強制 deny，`check-acceptance` / `set-acceptance` 仍維持 warn-only（僅輸出 stderr 訊息，不阻擋；過渡期設計，見 `identity_guard.py` 的 `ENFORCED_COMMANDS`）。**Action**：subagent 收尾時帶自身身份，例 `ticket track complete <id> --as thyme-python-developer`；其餘 warn-only 命令轉強制的結束條件與偵測承擔者已明訂（7 日滾動 warn 率 < 5% 且樣本數 >= 30，由 PM 於 `version-release` 發布前檢查階段執行 `identity_guard_adoption.py` 判定），非待評估的無 trigger 狀態。
 
-**接手者收尾身份**（SKILL.md〈dashboard-first〉步驟 1「無標記 in_progress 任務」情境——票已 `in_progress`、非新 `claim`，接手者不必然是 `who.current` 原持有者）：維持原 `who.current` 不變逕行 `complete --as <self>` 會因情境 4（`--as` 與 `who.current` 不符）被 deny。**Action**：PM 前台接手裸 `/ticket` 用 `--as rosemary-project-manager` 走情境 2 豁免收尾；代理人接手（非原 `who.current` 者）須先 `ticket track set-who <id> --current <self>` 把 `who.current` 改為自身（`set-who` 不在 `ENFORCED_COMMANDS`，不受本節 `--as` 檢查），再以 `--as <self>` 收尾走情境 3 對稱通過。`set-who` 只覆寫 `who.current` 子欄位、不動 `who.history`（見 `execute_set_who`），接手事實須自行於 Solution 或 append-log 記一行「接手自 <原 who.current>」留痕，否則身份轉移在 `who.history` 上無痕跡。
+**接手者收尾身份**（SKILL.md〈dashboard-first〉步驟 1「無標記 in_progress 任務」情境——票已 `in_progress`、非新 `claim`，接手者不必然是 `who.current` 原持有者）：維持原 `who.current` 不變逕行 `complete --as <self>` 會因情境 4（`--as` 與 `who.current` 不符）被 deny。**Action**：PM 前台接手裸 `/ticket` 用 `--as rosemary-project-manager` 走情境 2 豁免收尾；代理人接手（非原 `who.current` 者）須先 `ticket track set-who <id> --current <self>` 把 `who.current` 改為自身（`set-who` 不在 `ENFORCED_COMMANDS`，不受本節 `--as` 檢查），再以 `--as <self>` 收尾走情境 3 對稱通過。`set-who` 只覆寫 `who.current` 子欄位，並把原 current 追加進 `who.history`（`{ISO 時間: 原 current}`，current 未變不追加）；`complete` 以 current 或 history 中最後一個非 PM 者覆寫 Completion Info 的 Executing Agent，並依 Phase 4 證據寫 Review Status（IMP 有證據為 `reviewed`，ANA／DOC 為 `n/a`，其餘維持 `pending`）、非 manual 來源的 `tdd_phase` 推進為 `tdd_stage` 最後一項。
 
 ### claim 推薦用法（subagent 派發時的身份申報）
 
@@ -541,7 +541,7 @@ ticket track restore <id> --reason <text> [--as <agent>]
 | 不申報身份的裸認領（向後相容） | `ticket track claim <id>` | 不碰 who.current；收尾若需 complete --as 須自行 set-who |
 | 除錯時想 claim 並同時跑 AC 驗證 | `ticket track claim <id> --verify --yes` | `--yes` 在非互動環境短路驗證 prompt 為 y，避免 fail-closed |
 | 只想看 AC 驗證結果不 claim | `ticket track verify <id>` | 與 claim 解耦（`--skip-verify` 已移除，改用此子命令） |
-| 接手既有 in_progress 票（非新 claim，dashboard-first「無標記 in_progress」情境） | 代理人：`ticket track set-who <id> --current <self>` 後 `complete --as <self>`；PM：直接 `--as rosemary-project-manager` | 見上方「接手者收尾身份」；`set-who` 不動 `who.history`，須自行記接手留痕 |
+| 接手既有 in_progress 票（非新 claim，dashboard-first「無標記 in_progress」情境） | 代理人：`ticket track set-who <id> --current <self>` 後 `complete --as <self>`；PM：直接 `--as rosemary-project-manager` | 見上方「接手者收尾身份」；`set-who` 會在 `who.history` 追加原 current |
 
 ### 補標記 — `add-exempt-marker`
 
