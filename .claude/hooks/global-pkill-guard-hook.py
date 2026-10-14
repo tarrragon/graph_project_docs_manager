@@ -54,8 +54,37 @@ from lib.git_command_parse import parse_command_statements, skip_prefix_wrapper_
 
 _BANNED = frozenset({"pkill", "killall"})
 _SHELLS = frozenset({"bash", "sh", "zsh"})
-_ORPHAN_SCRIPT = "orphan-test-procs.py"
+# 非執行者清單：漏收錄的方向是多擋而非放行
+_VIEW_PROGS = frozenset({
+    "echo", "printf", "grep", "egrep", "fgrep", "rg", "man", "which", "type",
+    "ls", "cat", "head", "tail", "less", "whereis", "apropos",
+})
+_ORPHAN_SCRIPT ="orphan-test-procs.py"
 _MAX_DEPTH = 3
+
+
+def _is_view_statement(prog: str, rest: List[str]) -> bool:
+    """命令位置為閱讀類（非執行者）時，其引數中的 pkill 字樣只是文字。"""
+    if prog in _VIEW_PROGS:
+        return True
+    return prog == "command" and any(t in ("-v", "-V") for t in rest)
+
+
+def _scan_any_position(stmt: List[str], depth: int) -> Optional[str]:
+    """語句內任何 token 的 basename 為 pkill/killall 即命中；shell -c 遞迴。"""
+    for i, tok in enumerate(stmt):
+        base = os.path.basename(tok)
+        if base in _BANNED:
+            return base
+        if base in _SHELLS and depth < _MAX_DEPTH:
+            rest = stmt[i + 1:]
+            for j, t in enumerate(rest[:-1]):
+                if t.startswith("-") and not t.startswith("--") and "c" in t:
+                    found = _find_violation(rest[j + 1], depth + 1)
+                    if found:
+                        return found
+                    break
+    return None
 
 
 def _find_violation(command: str, depth: int = 0) -> Optional[str]:
@@ -68,16 +97,10 @@ def _find_violation(command: str, depth: int = 0) -> Optional[str]:
         if idx >= len(stmt):
             continue
         prog = os.path.basename(stmt[idx])
-        if prog in _BANNED:
-            return prog
-        if prog in _SHELLS and depth < _MAX_DEPTH:
-            rest: List[str] = stmt[idx + 1:]
-            for i, tok in enumerate(rest[:-1]):
-                if tok.startswith("-") and not tok.startswith("--") and "c" in tok:
-                    found = _find_violation(rest[i + 1], depth + 1)
-                    if found:
-                        return found
-                    break
+        if not _is_view_statement(prog, stmt[idx + 1:]):
+            found = _scan_any_position(stmt, depth)
+            if found:
+                return found
         # 直接或經 python 直譯器呼叫孤兒清理腳本
         args = stmt[idx:]
         if any(os.path.basename(t) == _ORPHAN_SCRIPT for t in args):
@@ -104,6 +127,10 @@ def _message(kind: str, command: str) -> str:
         "     （不帶 --root；--root 僅供測試縮小範圍）\n"
         "  2. 已知目標：`kill <PID>`，或終止整個程序群組 `kill -- -<PGID>`。\n"
         "  3. 逾時控制：python3 .claude/scripts/run-with-timeout.py\n"
+        "誤擋時的改寫方式（守衛掃描語句內任何位置的 pkill/killall token）：\n"
+        "  - 閱讀類命令（echo/printf/grep/rg/man/which/type/ls/cat/command -v）已放行，無須改寫。\n"
+        "  - 只是把字樣當參數（如 git log --grep pkill）：改寫成不含完整字樣的樣式，如 p[k]ill。\n"
+        "  - 遠端或容器內執行（ssh/docker exec/kubectl exec）：改 `kill <PID>`，或在目標端另行處理。\n"
     )
     return "[全機 pkill/killall 被阻擋]\n\n" + head + why + alt
 
