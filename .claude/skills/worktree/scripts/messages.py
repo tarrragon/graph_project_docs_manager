@@ -27,7 +27,6 @@ class MergeMessages:
 
     NO_NEW_COMMITS = "[提示] 此分支沒有超前 {base} 的新 commit（ahead = 0）。\n可能此分支已合併，或尚未進行任何開發。"
 
-    BRANCH_BEHIND_BASE = "[阻擋] 此分支落後 {base} {count} 個 commit。\n合併會覆蓋 main 上的新變更。\n\nmain 上的新 commit：\n{commit_list}\n\n請先在 worktree 中 rebase：\n  cd {worktree_path} && git rebase {base}"
 
     # ===== 驗證進度訊息 =====
     VERIFICATION_IN_PROGRESS = "正在驗證 Ticket 的合併前置條件..."

@@ -1126,22 +1126,6 @@ def _print_existing_worktrees() -> None:
             print(item)
 
 
-def _get_main_new_commits(branch_name: str) -> str:
-    """
-    取得 main 上比 branch 新的 commit 列表（一行一個）
-
-    Args:
-        branch_name: feature 分支名稱
-
-    Returns:
-        str: commit 列表文字，每行一個 commit
-    """
-    success, output = run_git_command(
-        ["log", "--oneline", f"{branch_name}..{DEFAULT_BASE_BRANCH}"]
-    )
-    return output.strip() if success and output.strip() else "(無法取得 commit 列表)"
-
-
 def _merge_build_warnings_list(ahead: int, behind: int, status_msg: str) -> list[str]:
     """
     根據 metrics 和狀態訊息構建警告清單
@@ -1217,37 +1201,6 @@ def _merge_validate_preconditions(
         return False
 
     return True
-
-
-def _merge_validate_and_collect_metrics(
-    ticket_id: str,
-    worktree: dict
-) -> tuple[bool, int, int, list[str]]:
-    """
-    驗證 merge 前置條件並收集 metrics
-
-    W16 修復：認知負擔指數 = 8 (<= 10)
-
-    Args:
-        ticket_id: Ticket ID
-        worktree: worktree 資訊字典
-
-    Returns:
-        tuple[bool, int, int, list[str]]:
-            - bool: 驗證通過
-            - int: ahead 數
-            - int: behind 數
-            - list[str]: 警告訊息列表
-    """
-    # 驗證前置條件
-    if not _merge_validate_preconditions(ticket_id, worktree["path"]):
-        return False, 0, 0, []
-
-    # 計算 metrics 和警告
-    branch_name = worktree.get("branch", f"feat/{ticket_id}")
-    ahead, behind, warnings = _merge_collect_warnings_for_branch(branch_name, ticket_id)
-
-    return True, ahead, behind, warnings
 
 
 def _merge_find_by_branch(branch: str) -> Optional[dict]:
