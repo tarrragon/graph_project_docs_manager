@@ -20,7 +20,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
@@ -67,6 +67,91 @@ def get_unmerged_commits(branch: str, logger) -> List[str]:
 
     commits = [line for line in result.stdout.strip().splitlines() if line]
     return commits
+
+
+def get_locked_paths(logger) -> Optional[Set[str]]:
+    """取得被 git 標為 locked 的 worktree 路徑集合。
+
+    執行中的代理人 worktree 帶 locked 標記，已結束者不帶。
+    讀取失敗回傳 None（呼叫端據此 fail-open：不列入建議清理）。
+    """
+    try:
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        logger.warning("讀取 worktree locked 狀態失敗: %s", exc)
+        return None
+    if result.returncode != 0:
+        logger.warning("git worktree list --porcelain 非零退出碼: %d", result.returncode)
+        return None
+
+    locked: Set[str] = set()
+    current: Optional[str] = None
+    for line in result.stdout.splitlines():
+        if line.startswith("worktree "):
+            current = line[len("worktree "):]
+        elif line == "locked" or line.startswith("locked "):
+            if current:
+                locked.add(current)
+    return locked
+
+
+def has_no_own_commits(branch: str, logger) -> Optional[bool]:
+    """分支 tip 是否落在 main 的 first-parent 歷史上（分支沒有自己的提交）。
+
+    True = 零提交（僅為派發基底）；False = 有自己的提交；None = 判定失敗。
+    fast-forward 合併的分支會被判為零提交，結果是少給一筆建議（偏安全）。
+    """
+    try:
+        tip = subprocess.run(
+            ["git", "rev-parse", branch],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10
+        )
+        history = subprocess.run(
+            ["git", "rev-list", "--first-parent", "main"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        logger.warning("判定 %s 是否零提交失敗: %s", branch, exc)
+        return None
+    tip_sha = tip.stdout.strip()
+    if tip.returncode != 0 or history.returncode != 0 or not tip_sha:
+        logger.warning("判定 %s 是否零提交失敗: rev-parse/rev-list 無有效輸出", branch)
+        return None
+    return tip_sha in history.stdout.split()
+
+
+def classify_worktrees(worktrees: List[Tuple[str, str]], logger):
+    """分類 worktree：(unmerged, merged, in_progress)。
+
+    ahead=0 的 worktree 中，locked、零提交、或判定失敗者歸 in_progress
+    （不建議清理）；其餘才歸 merged。
+    """
+    locked = get_locked_paths(logger)
+    unmerged = []
+    merged = []  # (path, branch, dirty_files)
+    in_progress = []  # (path, branch, reason)
+    for wt_path, branch in worktrees:
+        commits = get_unmerged_commits(branch, logger)
+        if commits:
+            unmerged.append((wt_path, branch, commits))
+            continue
+        if locked is None:
+            in_progress.append((wt_path, branch, "無法判定 locked 狀態"))
+            continue
+        if wt_path in locked:
+            in_progress.append((wt_path, branch, "worktree 已 locked"))
+            continue
+        zero = has_no_own_commits(branch, logger)
+        if zero is None:
+            in_progress.append((wt_path, branch, "無法判定是否零提交"))
+        elif zero:
+            in_progress.append((wt_path, branch, "分支尚無自己的提交"))
+        else:
+            merged.append((wt_path, branch, get_dirty_files(wt_path, logger)))
+    return unmerged, merged, in_progress
 
 
 def get_dirty_files(path: str, logger) -> List[Tuple[str, str]]:
@@ -146,21 +231,20 @@ def main() -> int:
         return 0
 
     # 分類：未合併 vs 已合併（ahead=0）
-    unmerged = []
-    merged = []  # (path, branch, dirty_files)
-    for wt_path, branch in worktrees:
-        commits = get_unmerged_commits(branch, logger)
-        if commits:
-            unmerged.append((wt_path, branch, commits))
-        else:
-            dirty_files = get_dirty_files(wt_path, logger)
-            merged.append((wt_path, branch, dirty_files))
+    unmerged, merged, in_progress = classify_worktrees(worktrees, logger)
 
-    if not unmerged and not merged:
+    if not unmerged and not merged and not in_progress:
         logger.info("所有 worktree 已合併且無需清理")
         return 0
 
     lines: List[str] = []
+
+    # 進行中派發：明示不建議清理，避免移除代理人進行中的工作區
+    if in_progress:
+        lines.append("[Worktree 進行中派發] 以下 worktree 不建議清理：")
+        for wt_path, branch, reason in in_progress:
+            lines.append(f"  分支: {branch}  路徑: {wt_path}  原因: {reason}")
+        lines.append("")
 
     # Section 1: 未合併警告（既有區塊）
     if unmerged:
