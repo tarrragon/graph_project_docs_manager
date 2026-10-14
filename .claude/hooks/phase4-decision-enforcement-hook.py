@@ -49,11 +49,10 @@ from lib import (  # noqa: E402
     find_ticket_file,
     emit_hook_output,
 )
-from lib.git_command_parse import (  # noqa: E402
-    parse_command_statements,
-    skip_prefix_wrapper_count,
+from lib.ticket_command_parse import (  # noqa: E402
+    COMPLETE_VERBS,
+    find_ticket_track_invocations,
 )
-from lib.ticket_command_parse import complete_statement_args  # noqa: E402
 from lib.ticket_id_pattern import BARE_START_BOUNDED_RE  # noqa: E402
 
 
@@ -853,27 +852,37 @@ def extract_ticket_id_from_command(command: str) -> Tuple[Optional[str], Optiona
     情境下的行為一致（原本 regex 對這些輸入同樣找不到匹配而回傳 None），
     本次修正未改變此方向（見 acceptance 6）。
     """
-    if not command:
-        return (None, None)
-
-    statements = parse_command_statements(command)
-    if statements is None:
-        return (None, None)
-
-    for statement in statements:
-        i = skip_prefix_wrapper_count(statement)
-        if (
-            len(statement) >= i + 5
-            and statement[i] == "ticket"
-            and statement[i + 1] == "track"
-            and statement[i + 2] == "phase"
-            and statement[i + 4] == "phase4"
-        ):
-            return (statement[i + 3], "main_gate")
-        args = complete_statement_args(statement)
-        if args:
-            return (args[0], "residual_gate")
+    targets = extract_ticket_targets_from_command(command)
+    if targets:
+        return targets[0]
     return (None, None)
+
+
+def extract_ticket_targets_from_command(
+    command: str,
+) -> List[Tuple[str, str]]:
+    """從 bash 命令收集全部 (ticket_id, mode)，依出現順序。
+
+    以 lib 共用的任意位置掃描辨識 `ticket track phase <ID> phase4`（main_gate）
+    與完成類命令（residual_gate；batch-complete 的每個 ID 皆收集）。
+    解析失敗（None）回傳空清單，維持 fail-open。
+    """
+    if not command:
+        return []
+    found = find_ticket_track_invocations(command, ("phase",) + COMPLETE_VERBS)
+    if not found:
+        return []
+    targets: List[Tuple[str, str]] = []
+    for verb, args in found:
+        if verb == "phase":
+            if len(args) >= 2 and args[1] == "phase4":
+                targets.append((args[0], "main_gate"))
+            continue
+        ids = [a for a in args if not a.startswith("-")]
+        if verb != "batch-complete":
+            ids = ids[:1]
+        targets.extend((tid, "residual_gate") for tid in ids)
+    return targets
 
 
 # ============================================================================
@@ -1032,11 +1041,21 @@ def main() -> int:
         logger.debug("no command in tool_input, skip")
         return 0
 
-    ticket_id, mode = extract_ticket_id_from_command(command)
-    if mode is None:
+    targets = extract_ticket_targets_from_command(command)
+    if not targets:
         logger.debug("command not matching main/residual gate: {}".format(command[:80]))
         return 0
 
+    # 多 ID 寫法逐一判定；任一阻擋即 exit 2（其餘仍照常輸出）
+    exit_code = 0
+    for ticket_id, mode in targets:
+        if _check_ticket(ticket_id, mode, event_name, effort, logger) == 2:
+            exit_code = 2
+    return exit_code
+
+
+def _check_ticket(ticket_id, mode, event_name, effort, logger) -> int:
+    """對單一 (ticket_id, mode) 執行掃描與輸出，回傳 0 或 2。"""
     # Event 與 mode 對應檢查（INT-6/INT-10）
     if mode == "main_gate" and event_name not in ("PostToolUse", ""):
         logger.debug("main_gate 但 event 非 PostToolUse: {}".format(event_name))

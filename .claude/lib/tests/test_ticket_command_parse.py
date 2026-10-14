@@ -15,8 +15,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from lib.ticket_command_parse import (
+    COMPLETE_VERBS,
     complete_statement_args,
     find_complete_invocations,
+    find_ticket_track_invocations,
     has_complete_command,
     is_complete_statement,
 )
@@ -132,6 +134,46 @@ class TestFailureSemantics:
 
     def test_nested_unparseable_returns_none(self):
         assert find_complete_invocations("bash -c \"ticket track complete 'abc\"") is None
+
+
+class TestGenericScan:
+    """find_ticket_track_invocations：動詞集合參數化，含 phase 形態。"""
+
+    VERBS = ("phase",) + COMPLETE_VERBS
+
+    def _found(self, command):
+        found = find_ticket_track_invocations(command, self.VERBS)
+        assert found is not None
+        return found
+
+    def test_phase_direct(self):
+        assert self._found(f"ticket track phase {TID} phase4") == [("phase", [TID, "phase4"])]
+
+    def test_phase_wrapped_chained_nested_abs(self):
+        for cmd in (
+            f"timeout 30 ticket track phase {TID} phase4",
+            f"git status && ticket track phase {TID} phase4",
+            f"bash -c 'ticket track phase {TID} phase4'",
+            f"/usr/local/bin/ticket track phase {TID} phase4",
+        ):
+            assert self._found(cmd) == [("phase", [TID, "phase4"])], cmd
+
+    def test_multi_ids_mixed(self):
+        found = self._found(
+            f"ticket track phase {TID} phase4 && ticket track complete {TID}.1"
+        )
+        assert found == [("phase", [TID, "phase4"]), ("complete", [f"{TID}.1"])]
+
+    def test_stdin_shell_none(self):
+        assert find_ticket_track_invocations(
+            f'echo "ticket track phase {TID} phase4" | bash', self.VERBS
+        ) is None
+
+    def test_phase_not_seen_by_complete_scan(self):
+        assert find_complete_invocations(f"ticket track phase {TID} phase4") == []
+
+    def test_echo_phase_not_recognized(self):
+        assert self._found(f"echo ticket track phase {TID} phase4") == []
 
 
 class TestExistingFunctionsUnchanged:
