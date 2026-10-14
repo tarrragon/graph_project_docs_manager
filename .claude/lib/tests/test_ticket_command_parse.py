@@ -21,6 +21,7 @@ from lib.ticket_command_parse import (
     find_ticket_track_invocations,
     has_complete_command,
     is_complete_statement,
+    is_invocation_masked,
 )
 
 TID = "0.5.0-W1-001"
@@ -174,6 +175,48 @@ class TestGenericScan:
 
     def test_echo_phase_not_recognized(self):
         assert self._found(f"echo ticket track phase {TID} phase4") == []
+
+
+class TestIsInvocationMasked:
+    """is_invocation_masked：結束碼是否可能被遮蔽。"""
+
+    UNMASKED = [
+        f"ticket track finish {TID}",
+        f"ticket track finish {TID} > /tmp/log 2>&1",
+        f"ticket track finish {TID} 2>&1 && echo done",
+        f"git add x && ticket track complete {TID}",
+        f"ticket track finish {TID};",
+        f"out=$(ticket track append-log {TID} x 2>&1)",
+        f"(ticket track finish {TID})",
+    ]
+    MASKED = [
+        # 285 實例
+        f"ticket track finish {TID} > /tmp/log 2>&1; echo rc=$?",
+        # bash-tool-usage-rules 要求的寫法
+        f"out=$(ticket track append-log {TID} x 2>&1); rc=$?",
+        f"ticket track finish {TID} 2>&1 | head -30",
+        f"ticket track finish {TID} || true",
+        f"ticket track finish {TID} & wait",
+        f"ticket track finish {TID}\necho rc=$?",
+        f"bash -c 'ticket track finish {TID}; echo rc=$?'",
+    ]
+
+    def test_unmasked_forms(self):
+        for cmd in self.UNMASKED:
+            assert is_invocation_masked(cmd) is False, cmd
+
+    def test_masked_forms(self):
+        for cmd in self.MASKED:
+            assert is_invocation_masked(cmd) is True, cmd
+
+    def test_quoted_separator_is_not_masking(self):
+        assert is_invocation_masked(f"ticket track append-log {TID} 'a; b | c'") is False
+
+    def test_unparseable_is_none(self):
+        assert is_invocation_masked("ticket track finish 'abc") is None
+
+    def test_empty_command_is_unmasked(self):
+        assert is_invocation_masked("") is False
 
 
 class TestExistingFunctionsUnchanged:

@@ -69,6 +69,59 @@ def test_is_bash_success_shapes(resp, expected):
 
 def test_is_bash_success_ignore_case():
     assert is_bash_success(_real("COMPLETED"), ("completed",), ignore_case=True) is True
+
+
+# ---------------------------------------------------------------------------
+# 分層判定（command / state_verifier）
+# ---------------------------------------------------------------------------
+
+_UNMASKED_CMD = "ticket track finish T > /tmp/log 2>&1"
+_MASKED_CMD = "ticket track finish T > /tmp/log 2>&1; echo rc=$?"
+_NO_MARKER = _real("rc=0\n")  # 285 實例：標記被吸走
+
+
+def test_layered_e1_same_payload_unmasked_vs_masked_differ():
+    """E1：同一無標記 payload，未遮蔽判成功，遮蔽（無驗證器）退回標記判失敗。"""
+    unmasked = is_bash_success(_NO_MARKER, _OK, command=_UNMASKED_CMD)
+    masked = is_bash_success(_NO_MARKER, _OK, command=_MASKED_CMD)
+    assert (unmasked, masked) == (True, False)
+
+
+def test_layered_masked_uses_verifier_over_marker():
+    assert is_bash_success(_NO_MARKER, _OK, command=_MASKED_CMD, state_verifier=lambda: True) is True
+    # 驗證器否決優先於 stdout 內的標記
+    assert is_bash_success(_real("[OK] x"), _OK, command=_MASKED_CMD, state_verifier=lambda: False) is False
+
+
+def test_layered_unmasked_ignores_verifier():
+    def boom():
+        raise AssertionError("未遮蔽時不應呼叫驗證器")
+
+    assert is_bash_success(_NO_MARKER, _OK, command=_UNMASKED_CMD, state_verifier=boom) is True
+
+
+def test_layered_verifier_exception_falls_back_to_marker():
+    def boom():
+        raise OSError("讀票失敗")
+
+    assert is_bash_success(_real("[OK] x"), _OK, command=_MASKED_CMD, state_verifier=boom) is True
+    assert is_bash_success(_NO_MARKER, _OK, command=_MASKED_CMD, state_verifier=boom) is False
+
+
+def test_layered_unparseable_falls_back_to_marker():
+    bad = "ticket track finish 'abc"
+    assert is_bash_success(_real("[OK] x"), _OK, command=bad, state_verifier=lambda: False) is True
+    assert is_bash_success(_NO_MARKER, _OK, command=bad) is False
+
+
+def test_layered_interrupted_and_bad_exit_code_still_fail():
+    assert is_bash_success(_real("", interrupted=True), _OK, command=_UNMASKED_CMD) is False
+    assert is_bash_success({"exit_code": 1, "stdout": ""}, _OK, command=_UNMASKED_CMD) is False
+
+
+def test_no_new_args_behaviour_unchanged_for_masked_shapes():
+    """不傳 command 時，無標記一律判失敗（與舊版相同），即使命令實際未遮蔽。"""
+    assert is_bash_success(_NO_MARKER, _OK) is False
     assert is_bash_success(_real("COMPLETED"), ("completed",)) is False
 
 
