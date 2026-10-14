@@ -40,6 +40,22 @@ def _write_hook(tmp_path, name, body):
     return {"path": p.name}
 
 
+# 同程序測試的預算須 >= DEFAULT_HOOK_TIMEOUT，否則 dispatch 會把該支與其後全部改走尾段子程序，
+# 名義上測同程序的斷言就會在子程序裡空過（鑑別力為零）。刻意測尾段的案例才傳小預算。
+INPROC_BUDGET = disp.DEFAULT_GROUP_BUDGET
+
+PID_PROBE = "import os, sys\nsys.stderr.write('pid=' + str(os.getpid()))\n"
+
+
+def _pid_probe(tmp_path, name="pid_probe"):
+    return _write_hook(tmp_path, name, PID_PROBE)
+
+
+def _assert_ran_in_process(result):
+    """只在同程序執行才成立：探針回報的 pid 等於測試程序 pid（改走子程序則不同）。"""
+    assert result.stderr == "pid=" + str(os.getpid()), result.stderr
+
+
 # ---------- 合併規則 ----------
 
 class TestMerge:
@@ -101,40 +117,47 @@ class TestIsolation:
     def test_exception_in_one_hook_does_not_stop_others_and_is_visible(self, tmp_path):
         bad = _write_hook(tmp_path, "bad", "raise RuntimeError('boom')\n")
         good = _write_hook(tmp_path, "good", "import sys\nsys.stderr.write('ok-ran')\n")
-        results = disp.dispatch([bad, good], "{}", tmp_path, 100)
+        probe = _pid_probe(tmp_path)
+        results = disp.dispatch([bad, good, probe], "{}", tmp_path, INPROC_BUDGET)
         assert results[0].code == 1 and "boom" in results[0].error
         assert results[1].code == 0 and results[1].stderr == "ok-ran"
+        _assert_ran_in_process(results[2])
         _, _, err = disp.merge_results(results)
         assert "[bad] 分派器" in err and "boom" in err
 
     def test_exit2_from_one_hook_blocks_whole(self, tmp_path):
+        # 合併規則與執行模式無關（同程序或尾段子程序皆同結果），預算沿用小值亦可；此處不主張同程序
         blocker = _write_hook(tmp_path, "blocker", "import sys\nsys.stderr.write('no')\nsys.exit(2)\n")
         other = _write_hook(tmp_path, "other", "pass\n")
         code, _, err = disp.merge_results(disp.dispatch([blocker, other], "{}", tmp_path, 30))
         assert code == 2 and "[blocker] no" in err
 
     def test_each_hook_gets_fresh_stdin(self, tmp_path):
-        body = "import sys\nsys.stderr.write(sys.stdin.read())\n"
+        body = "import os, sys\nsys.stderr.write(sys.stdin.read() + '|' + str(os.getpid()))\n"
         a, b = _write_hook(tmp_path, "a", body), _write_hook(tmp_path, "b", body)
-        results = disp.dispatch([a, b], "PAYLOAD", tmp_path, 30)
-        assert [r.stderr for r in results] == ["PAYLOAD", "PAYLOAD"]
+        results = disp.dispatch([a, b], "PAYLOAD", tmp_path, INPROC_BUDGET)
+        # 帶 pid 後綴：確認兩支都在測試程序內執行，stdin 隔離才真的被行使
+        assert [r.stderr for r in results] == ["PAYLOAD|" + str(os.getpid())] * 2
 
     def test_environment_cwd_and_path_restored(self, tmp_path):
         mutate = _write_hook(tmp_path, "mutate",
-                             "import os, sys\nos.environ['DISP_X']='1'\nos.chdir('/')\nsys.path.insert(0,'/nonexistent-disp')\n")
+                             "import os, sys\nos.environ['DISP_X']='1'\nos.chdir('/')\nsys.path.insert(0,'/nonexistent-disp')\n"
+                             "sys.stderr.write('pid=' + str(os.getpid()))\n")
         cwd, path0 = os.getcwd(), list(sys.path)
-        disp.dispatch([mutate], "{}", tmp_path, 30)
+        results = disp.dispatch([mutate], "{}", tmp_path, INPROC_BUDGET)
+        _assert_ran_in_process(results[0])  # 同程序才真的改過 environ/cwd/sys.path，還原斷言才有鑑別力
         assert "DISP_X" not in os.environ
         assert os.getcwd() == cwd
         assert sys.path == path0
 
     def test_timeout_kills_only_that_hook(self, tmp_path):
         slow = _write_hook(tmp_path, "slow", "import time\ntime.sleep(5)\n")
-        fast = _write_hook(tmp_path, "fast", "pass\n")
+        fast = _pid_probe(tmp_path, "fast")
         slow["timeout"] = 0.3
-        results = disp.dispatch([slow, fast], "{}", tmp_path, 30)
+        results = disp.dispatch([slow, fast], "{}", tmp_path, INPROC_BUDGET)
         assert results[0].code == 1 and "逾時" in results[0].error
         assert results[1].code == 0
+        _assert_ran_in_process(results[1])
 
     def test_exhausted_budget_defers_later_hooks_to_tail_instead_of_skipping(self, tmp_path):
         slow = _write_hook(tmp_path, "slow", "import time\ntime.sleep(5)\n")
@@ -159,9 +182,11 @@ class TestIsolation:
             "    sys.exit(run_hook_safely(main, 'disp-test-guard', fail_closed=True))\n"
         ).format(str(PROJECT_ROOT / ".claude"))
         guard = _write_hook(tmp_path, "guard", body)
-        results = disp.dispatch([guard], "{}", tmp_path, 30)
+        probe = _pid_probe(tmp_path)
+        results = disp.dispatch([guard, probe], "{}", tmp_path, INPROC_BUDGET)
         assert results[0].code == 2
         assert disp.merge_results(results)[0] == 2
+        _assert_ran_in_process(results[1])  # 守衛之後的 hook 仍在同程序，代表守衛走的是同程序路徑
 
 
 # ---------- linked worktree 下的專案根一致性 ----------
@@ -208,7 +233,9 @@ class TestProjectRootInLinkedWorktree:
         self._clean_env(monkeypatch)
         from lib.hook_base import clear_project_root_cache
         clear_project_root_cache()
-        results = disp.dispatch([a, mutate, b], "{}", tmp_path, 30)
+        pid = _pid_probe(tmp_path)
+        results = disp.dispatch([a, mutate, b, pid], "{}", tmp_path, INPROC_BUDGET)
+        _assert_ran_in_process(results[3])  # 全序列同程序，專案根快取才真的被共用
         assert results[0].stderr.strip() == want
         assert results[2].stderr.strip() == want
         assert os.getcwd() == str(PROJECT_ROOT)
@@ -222,7 +249,9 @@ class TestProjectRootInLinkedWorktree:
         self._clean_env(monkeypatch)
         from lib.hook_base import clear_project_root_cache
         clear_project_root_cache()
-        results = disp.dispatch([a], "{}", tmp_path, 30)
+        pid = _pid_probe(tmp_path)
+        results = disp.dispatch([a, pid], "{}", tmp_path, INPROC_BUDGET)
+        _assert_ran_in_process(results[1])
         assert Path(results[0].stderr.strip()).resolve() == PROJECT_ROOT.resolve()
 
 
@@ -365,8 +394,10 @@ class TestChildProcessOutputIsolation:
         hang = _write_hook(tmp_path, "hang", "import time\ntime.sleep(5)\n")
         hang["timeout"] = 0.3
         before = (os.fstat(1).st_ino, os.fstat(2).st_ino)
-        r = disp.dispatch([hang], "{}", tmp_path, self.BUDGET)[0]
-        assert r.error
+        probe = _pid_probe(tmp_path)
+        rs = disp.dispatch([hang, probe], "{}", tmp_path, self.BUDGET)
+        assert rs[0].error
+        _assert_ran_in_process(rs[1])  # 逾時中斷後的下一支仍在同程序，代表 fd 還原發生在同程序路徑
         assert (os.fstat(1).st_ino, os.fstat(2).st_ino) == before
 
 
@@ -378,8 +409,14 @@ class TestFailureSemantics:
 
         def boom(*a, **k):
             raise OSError("機制失敗")
-        monkeypatch.setattr(disp, "run_inprocess", boom)
-        results = disp.dispatch([blocker], "{}", tmp_path, 30)
+        calls = []
+
+        def counting_boom(*a, **k):
+            calls.append(1)
+            return boom(*a, **k)
+        monkeypatch.setattr(disp, "run_inprocess", counting_boom)
+        results = disp.dispatch([blocker], "{}", tmp_path, INPROC_BUDGET)
+        assert calls, "run_inprocess 未被呼叫：改走尾段，退回路徑沒被行使"
         assert results[0].code == 2 and results[0].stderr == "sub"
 
     def test_registry_unreadable_is_fail_open_but_visible(self, tmp_path):
