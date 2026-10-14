@@ -158,10 +158,9 @@ HOOK_TICKET_REMINDER = """本票 where.files 觸及 hooks 目錄，acceptance-ga
   1. 本 session 實地觸發確認（含落檔驗證，或說明何以暫不驗證）
   2. liveness 驗證方式（如何確認 hook 被 runtime 載入並執行）
   3. 失敗語意（fail-open 或 fail-closed）
-  4. 產生路徑盤點表（寫入 how.strategy，缺則 Solution；格式見
-     .claude/pm-rules/ticket-body-schema.md「防護類 hook ticket 額外
-     acceptance」節）。格式限制：表頭、分隔列、各資料列須逐列緊接，不可夾空行；
-     「是否覆蓋」欄值僅接受「是」或「否」（說明寫在「未覆蓋原因」欄）
+  4. 產生路徑盤點表（寫入 how.strategy，缺則 Solution；格式與限制見
+     .claude/pm-rules/ticket-body-schema.md「防護類 ticket：威脅事件寫
+     acceptance，攔截點寫 how.strategy」節的「格式限制」段）
 執行中請一併填寫，勿留到 complete 前才補。"""
 
 
