@@ -148,11 +148,30 @@ class TestFailureEventNeverBlocks:
 class TestMetadataAndFallback:
     """驗收 6"""
 
-    def test_header_event_type_lists_failure_event(self):
-        text = (HOOKS_DIR / "hook-dispatcher.py").read_text(encoding="utf-8")
-        line = [ln for ln in text.splitlines() if '"event_type"' in ln][0]
-        assert "PostToolUseFailure" in line
-        assert "PreToolUse" in line and "PostToolUse," in line  # 既有事件未被擠掉
+    @staticmethod
+    def _dispatcher_events(hooks):
+        """settings.hooks 中有群組 command 指向 hook-dispatcher.py 的事件集合。"""
+        return {
+            event
+            for event, groups in hooks.items()
+            for g in groups
+            for h in g.get("hooks", [])
+            if "hook-dispatcher.py" in h.get("command", "")
+        }
+
+    def test_settings_registers_failure_event_and_keeps_existing_events(self):
+        # 權威來源為 settings.json 的事件註冊（HOOK_METADATA 已於 299 移除）
+        hooks = json.loads((PROJECT_ROOT / ".claude/settings.json").read_text(encoding="utf-8"))["hooks"]
+        events = self._dispatcher_events(hooks)
+        assert "PostToolUseFailure" in events
+        assert {"PreToolUse", "PostToolUse"} <= events  # 既有事件未被擠掉
+
+    def test_dispatcher_events_detects_missing_failure_registration(self):
+        # E2 對照：刪掉 PostToolUseFailure 的複本，上一案的斷言必翻紅
+        hooks = json.loads((PROJECT_ROOT / ".claude/settings.json").read_text(encoding="utf-8"))["hooks"]
+        trimmed = {k: v for k, v in hooks.items() if k != "PostToolUseFailure"}
+        assert "PostToolUseFailure" in self._dispatcher_events(hooks)
+        assert "PostToolUseFailure" not in self._dispatcher_events(trimmed)
 
     def test_fallback_has_explicit_failure_group_without_guards(self):
         assert disp.FALLBACK_FAIL_CLOSED_GUARDS[FAILURE_GROUP] == []
