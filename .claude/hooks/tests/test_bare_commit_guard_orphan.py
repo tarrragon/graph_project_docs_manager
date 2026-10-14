@@ -46,7 +46,7 @@ def _run(monkeypatch, sessions, available, dispatches):
     payload = {"tool_name": "Bash", "tool_input": {"command": "git commit -m x"}}
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     monkeypatch.setattr(hook_module, "get_project_root", lambda: Path("/fake"))
-    monkeypatch.setattr(hook_module, "_merge_in_progress", lambda r: False)
+    monkeypatch.setattr(hook_module, "_merge_in_progress", lambda *a, **k: False)
     monkeypatch.setattr(hook_module, "_get_active_dispatches_safe", lambda r: dispatches)
     monkeypatch.setattr(hook_module, "_get_staged_files", lambda r: ["a.py", "b.py"])
     monkeypatch.setattr(hook_module, "_with_live_declared_files", lambda d, r, lg: d)
