@@ -249,7 +249,8 @@ def run(seconds: float, command: List[str]) -> int:
 
 def _run_command(seconds: float, command: List[str], recorder: _SignalRecorder) -> int:
     try:
-        proc = subprocess.Popen(command, start_new_session=True)
+        env = slot_gate.child_env(os.environ) if slot_gate is not None else None  # 持有標記不往下傳
+        proc = subprocess.Popen(command, start_new_session=True, env=env)
     except OSError as error:
         return _report_start_failure(command[0], error)
     pgid = proc.pid

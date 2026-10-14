@@ -88,13 +88,23 @@ def held_by_ancestor() -> bool:
         return False  # 標記不是整數或目錄不可查：不免排隊，由正常取得流程處理
 
 
+# 保存 export_hold 之前的 CLAUDE_SLOT_WAIT_LIMIT；空字串表示當時未設定
+_LIMIT_BEFORE_ENV = "CLAUDE_SLOT_WAIT_LIMIT_BEFORE_HOLD"
+_LIMIT_ENV = "CLAUDE_SLOT_WAIT_LIMIT"
+
+
 @contextlib.contextmanager
 def export_hold(hold: "SlotHold"):
-    """持有期間把本程序 pid 放入環境供子程序辨識，並把子程序的等待上限降為 HELD_CHILD_WAIT_LIMIT_SECONDS；離開時還原原值。"""
-    names = (HELD_ENV, "CLAUDE_SLOT_WAIT_LIMIT")
+    """持有期間把本程序 pid 放入環境供直接子層的 run-with-timeout 辨識，並把其等待上限降為
+    HELD_CHILD_WAIT_LIMIT_SECONDS；離開時還原原值。
+
+    標記只給直接子層：run-with-timeout 啟動被包裝命令時須以 child_env 去除，不得往下傳。
+    """
+    names = (HELD_ENV, _LIMIT_ENV, _LIMIT_BEFORE_ENV)
     previous = {n: os.environ.get(n) for n in names}
+    os.environ[_LIMIT_BEFORE_ENV] = os.environ.get(_LIMIT_ENV, "")
     os.environ[HELD_ENV] = str(os.getpid())
-    os.environ["CLAUDE_SLOT_WAIT_LIMIT"] = str(HELD_CHILD_WAIT_LIMIT_SECONDS)
+    os.environ[_LIMIT_ENV] = str(HELD_CHILD_WAIT_LIMIT_SECONDS)
     try:
         yield hold
     finally:
@@ -103,6 +113,23 @@ def export_hold(hold: "SlotHold"):
                 os.environ.pop(n, None)
             else:
                 os.environ[n] = v
+
+
+def child_env(env: "os._Environ") -> dict:
+    """被包裝命令的環境：去除持有標記，等待上限還原為持有前的值（持有前未設定則移除）。
+
+    沒有持有標記時原樣複製。
+    """
+    out = dict(env)
+    if HELD_ENV not in out:
+        return out
+    out.pop(HELD_ENV)
+    before = out.pop(_LIMIT_BEFORE_ENV, None)
+    if before:
+        out[_LIMIT_ENV] = before
+    elif before is not None:
+        out.pop(_LIMIT_ENV, None)
+    return out
 
 
 def is_heavy_command(command: List[str]) -> bool:
