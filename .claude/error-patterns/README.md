@@ -389,6 +389,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | IMP-BAL-021 | 查詢型命令暗含歸檔副作用且無持久日誌，加上檔名鍵與查找鍵不一致，讓正常歸檔被誤判為資料遺失 | 中 | 0.2.1 |
 | IMP-GPD-001 | 隔離索引 CAS 的鎖重試字串比對不涵蓋 update-ref 的 ref lock 錯誤 | 高 | 0.1.0 |
 | IMP-GPD-002 | Hook 將 Bash 的 tool_response 整包字串化比對，誤把 bashEditDiff 中他人正在寫的程式碼當成命令輸出 | 高 | 0.5.0 |
+| IMP-GPD-003 | 可重入鎖以環境標記交給子程序辨識，子程序載入另一棵樹的舊版協定碼，等待自己祖先持有的鎖 | 高 | 0.5.0 |
 
 ### 流程 (PROC)
 
