@@ -12,6 +12,8 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 # 將 Hook 腳本路徑加入 sys.path
 hook_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(hook_dir))
@@ -79,3 +81,74 @@ def test_missing_lock_keeps_existing_behavior(tmp_path):
     warnings = check_dependencies(project)
 
     assert warnings == [pre_test_hook_module.ValidationMessages.PRE_TEST_PUBSPEC_LOCK_MISSING]
+
+
+# ---------------------------------------------------------------------------
+# is_test_command：只認敘述開頭的測試指令（0.5.0-W1-232）
+#
+# 舊判定以子字串比對整段命令文字，grep 的 pattern、建票命令的參數只要含
+# 測試指令字樣即被當成測試執行。以下兩組輸入互為對照：應觸發組驗證辨識
+# 範圍（環境變數前綴、fvm、逾時包裝、串接與子 shell），應不觸發組是測試
+# 指令字樣只出現在參數或引號內的命令。
+# ---------------------------------------------------------------------------
+
+is_test_command = pre_test_hook_module.is_test_command
+
+SHOULD_TRIGGER = [
+    "flutter test",
+    "fvm flutter test test/unit",
+    "FLUTTER_TEST_SEED=1 fvm flutter test",
+    "cd app && fvm flutter test 2>&1 | tail -20",
+    "python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test",
+    ".claude/scripts/run-with-timeout.py 600 -- dart test",
+    "(cd packages/core && dart test) | tail -5",
+    "cd app\nfvm flutter test",
+    # 包裝器前的直譯器帶旗標或經 uv 啟動
+    "python3 -I .claude/scripts/run-with-timeout.py 600 -- fvm flutter test",
+    "uv run python3 .claude/scripts/run-with-timeout.py 600 -- flutter test",
+]
+
+SHOULD_NOT_TRIGGER = [
+    # grep 型：測試指令字樣是搜尋 pattern
+    "grep -rn 'flutter test' .claude/rules",
+    # grep 型：pattern 內的 \| 會被 regex 型判定誤當成管線
+    'grep -n "TEST_COMMAND_PATTERN\\|flutter test\\|dart test" hook.py',
+    # 建票型：測試指令字樣在參數文字內
+    'ticket create --why "執行 flutter test 時 swap 耗盡" --what "閘門"',
+    "ticket track append-log X --section Solution \"$(cat <<'EOF'\nfvm flutter test 全綠\nEOF\n)\"",
+    # 管線後的敘述是 grep，測試指令字樣在其 pattern 內
+    "echo x | grep 'dart test'",
+    # 引號未閉合：shell 本身無法執行，不可能是一次測試執行
+    "echo 'flutter test",
+]
+
+
+@pytest.mark.parametrize("command", SHOULD_TRIGGER)
+def test_statement_head_test_command_triggers(command):
+    """Given 敘述開頭為測試指令（含前綴、包裝、串接）
+    When 判定是否為測試命令
+    Then 應觸發"""
+    assert is_test_command("Bash", {"command": command}) is True
+
+
+@pytest.mark.parametrize("command", SHOULD_NOT_TRIGGER)
+def test_test_words_inside_arguments_do_not_trigger(command):
+    """Given 測試指令字樣只出現在參數或引號內
+    When 判定是否為測試命令
+    Then 不應觸發"""
+    assert is_test_command("Bash", {"command": command}) is False
+
+
+def test_dart_mcp_run_tests_triggers():
+    """Given 工具為 mcp__dart__run_tests
+    When 判定是否為測試命令
+    Then 應觸發（不受 Bash 命令解析影響）"""
+    assert is_test_command("mcp__dart__run_tests", {}) is True
+
+
+def test_non_test_flutter_subcommand_does_not_trigger():
+    """回歸檢查（非對照組：舊實作同樣不觸發）
+    Given 敘述開頭為 flutter 的非 test 子命令
+    When 判定是否為測試命令
+    Then 不應觸發"""
+    assert is_test_command("Bash", {"command": "flutter analyze"}) is False

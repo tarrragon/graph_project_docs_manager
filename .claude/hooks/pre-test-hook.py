@@ -29,6 +29,8 @@ HOOK_METADATA (JSON):
 }
 """
 
+import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -39,12 +41,75 @@ from lib import setup_hook_logging, run_hook_safely, get_project_root, read_json
 from lib.hook_messages import ValidationMessages
 
 
+# 測試命令判定（2026-10-14 改寫）
+#
+# 只認「敘述開頭」的測試指令。舊判定以子字串比對整段命令文字，grep 的
+# pattern、建票命令的參數只要含測試指令字樣就被當成測試執行；對原始字串
+# 做 regex 也不夠，引號內的 `\|flutter test` 會被看成管線後的新敘述。
+# 因此先依 POSIX 引號規則切 token，引號內文字整段成為單一參數，
+# 再只檢查每個敘述的開頭。
+STATEMENT_SEPARATOR_CHARS = ";&|()\n"
+ENV_ASSIGNMENT_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+TIMEOUT_WRAPPER_NAME = "run-with-timeout.py"
+VERSION_MANAGER_PREFIXES = frozenset({"fvm"})
+TEST_RUNNER_HEADS = frozenset({("flutter", "test"), ("dart", "test")})
+
+
+def _split_statements(command: str) -> list[list[str]]:
+    """依引號規則切 token，再以分隔符（; & | ( ) 換行）切成各敘述的 token 列。"""
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=STATEMENT_SEPARATOR_CHARS)
+    lexer.whitespace = " \t\r"  # 換行改作分隔符，不當空白
+    lexer.whitespace_split = True
+    statements: list[list[str]] = [[]]
+    for token in lexer:
+        if set(token) <= set(STATEMENT_SEPARATOR_CHARS):
+            statements.append([])
+        else:
+            statements[-1].append(token)
+    return [tokens for tokens in statements if tokens]
+
+
+def _unwrap_timeout_wrapper(tokens: list[str]) -> list[str]:
+    """`... run-with-timeout.py <秒數> -- <命令>` 取出被包裝的命令。
+
+    包裝器前可為任意啟動方式（`python3 -I`、`uv run python3` 等），故在整個
+    敘述內找包裝器，而非逐 token 比對直譯器白名單。
+    """
+    for index, token in enumerate(tokens):
+        if Path(token).name == TIMEOUT_WRAPPER_NAME:
+            rest = tokens[index + 1:]
+            return rest[rest.index("--") + 1:] if "--" in rest else []
+    return tokens
+
+
+def _strip_launch_prefixes(tokens: list[str]) -> list[str]:
+    """去除環境變數前綴、逾時包裝與版本管理器前綴，留下實際執行的命令。
+
+    不支援的前綴形態（判為非測試命令，只少做一次環境檢查）：`timeout N`、
+    `env A=1`、`bash -c '...'`。
+    """
+    while tokens and ENV_ASSIGNMENT_PATTERN.match(tokens[0]):
+        tokens = tokens[1:]
+    tokens = _unwrap_timeout_wrapper(tokens)
+    while tokens and tokens[0] in VERSION_MANAGER_PREFIXES:
+        tokens = tokens[1:]
+    return tokens
+
+
 def is_test_command(tool_name: str, tool_input: dict) -> bool:
-    """判斷是否為測試命令。"""
-    if tool_name == "Bash":
-        command = tool_input.get("command", "")
-        return "flutter test" in command or "dart test" in command
-    return tool_name == "mcp__dart__run_tests"
+    """判斷是否為測試命令：任一敘述去除啟動前綴後以測試指令開頭。"""
+    if tool_name != "Bash":
+        return tool_name == "mcp__dart__run_tests"
+    command = tool_input.get("command", "")
+    try:
+        statements = _split_statements(command)
+    except ValueError:
+        # 解析失敗即略過：本 hook 為提示型檢查，漏判一次只少做環境檢查、不擋命令
+        return False
+    return any(
+        tuple(_strip_launch_prefixes(tokens)[:2]) in TEST_RUNNER_HEADS
+        for tokens in statements
+    )
 
 
 def check_flutter_sdk() -> tuple[bool, str]:
