@@ -125,8 +125,14 @@ TEST_FAILURE_PATTERNS = [
     #   - 「not failed」「FAILED-CASES」等識別符
     #   - 「Tests: 0 failed」等 jest/vitest 綠燈摘要
     # 縮窄為：行首或非識別符前綴 + FAILED + word boundary，且前後不能是
-    # 「0 」「not 」或 hyphen/底線連字符
-    (r"(?<![\w-])FAILED(?![\w-])(?!\s*[:=]\s*0\b)", "測試失敗"),
+    # 「0 」「not 」或 hyphen/底線連字符。FAILED 區分大小寫：小寫 failed 常見於
+    # commit 標題等一般文字，N failed 摘要由 FAILURE_COUNT_PATTERN 另行處理
+    (r"(?<![\w-])(?-i:FAILED)(?![\w-])(?!\s*[:=]\s*0\b)", "測試失敗"),
+    # 小寫摘要樣式（FAILED 改區分大小寫後，這些框架的失敗輸出由以下樣式承擔）
+    # flutter test / dart test：「Some tests failed.」
+    (r"Some tests failed", "部分測試失敗"),
+    # jest「Tests: N failed」、pytest「N failed, M passed」摘要（N 須非 0）
+    (r"(?<![\w-])([1-9]\d*)\s+failed\b", "{0} 個測試失敗（摘要）"),
     (r"AssertionError", "斷言錯誤"),
 ]
 

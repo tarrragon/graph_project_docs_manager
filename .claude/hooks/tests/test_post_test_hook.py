@@ -606,3 +606,40 @@ def test_multi_run_pytest_output_reports_test_failure(hook_module, monkeypatch, 
 ])
 def test_single_green_summary_still_green(hook_module, output):
     assert hook_module._is_green_summary(output)
+
+
+# --- 裸 FAILED 樣式區分大小寫 ---
+
+_COMMIT_TITLE_MIXED = (
+    "[OK] 已提交 1fc768e\n  fix(x): post-test-hook 任一行摘要含 failed/error 即不走綠燈捷徑\n"
+    "rc=0 101 passed in 0.21s"
+)
+
+
+def test_lowercase_failed_in_commit_title_not_test_failure(hook_module, logger):
+    error_type, errors = hook_module._classify_errors(_COMMIT_TITLE_MIXED, logger)
+    assert errors == []
+
+
+def test_lowercase_failed_in_commit_title_end_to_end(hook_module, monkeypatch, tmp_path, logger):
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
+    response = {"stdout": _COMMIT_TITLE_MIXED, "stderr": ""}
+    assert _eval_response(hook_module, logger, "Bash", response) is None
+
+
+FRAMEWORK_FAILURE_OUTPUTS = [
+    pytest.param("FAILED tests/test_a.py::test_x - assert 1 == 2", id="pytest-FAILED-line"),
+    pytest.param("=== 1 failed, 5 passed in 0.5s ===", id="pytest-N-failed-summary"),
+    pytest.param("00:02 +3 -1: test/a_test.dart: x [E]\n00:02 +3 -1: Some tests failed.",
+                 id="flutter-test"),
+    pytest.param("00:01 +0 -1: test/a_test.dart: x [E]\n00:01 +0 -1: Some tests failed.",
+                 id="dart-test"),
+    pytest.param("FAIL src/a.test.js\n  ● x\nTests:       1 failed, 3 passed, 4 total",
+                 id="jest"),
+]
+
+
+@pytest.mark.parametrize("output", FRAMEWORK_FAILURE_OUTPUTS)
+def test_framework_real_failure_output_reports_test_failure(hook_module, logger, output):
+    _, errors = hook_module._classify_errors(output, logger)
+    assert any(e["type"] == "test_failure" for e in errors), output
