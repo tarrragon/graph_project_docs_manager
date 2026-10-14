@@ -76,6 +76,7 @@ agent_handle 欄位（identifier namespace 修復）：
 """
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -154,17 +155,67 @@ def reset_cache() -> None:
     """重設記憶體快取（供測試使用）。"""
     _state_cache["data"] = None
     _state_cache["mtime"] = 0.0
+    _SHARED_ROOT_CACHE.clear()
+
+
+_SHARED_ROOT_CACHE: Dict[str, Path] = {}
+_GIT_COMMON_DIR_TIMEOUT = 5
+
+
+def _report_shared_root_failure(reason: str) -> None:
+    """主倉庫根解析降級：stderr 加 log 雙通道（quality-baseline 規則 4）。"""
+    msg = "dispatch_tracker 主倉庫根解析降級為傳入的 project_root: {}".format(reason)
+    logging.getLogger("dispatch_tracker").warning(msg)
+    sys.stderr.write(msg + "\n")
+
+
+def resolve_shared_root(project_root: Path) -> Path:
+    """以傳入的 project_root 推回主倉庫根，讓 linked worktree 與主倉庫共用同一份登記檔。
+
+    不依賴 cwd、不匯入 hook_base（hook_base 反向匯入本模組，會形成循環）。
+    僅當 project_root/.git 是檔案（linked worktree 或 submodule 的 gitdir 指標）
+    時才查 `git -C <root> rev-parse --path-format=absolute --git-common-dir`；
+    主倉庫（.git 為目錄）與非 repo 直接回傳原值，不起子程序。
+    查詢失敗（逾時、git 不可用、rc 非 0）時回傳原值並寫 stderr 加 log。
+    """
+    key = str(project_root)
+    cached = _SHARED_ROOT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    result = project_root
+    if (project_root / ".git").is_file():
+        try:
+            proc = subprocess.run(
+                ["git", "-C", key, "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=_GIT_COMMON_DIR_TIMEOUT,
+            )
+            out = proc.stdout.strip()
+            if proc.returncode == 0 and out:
+                common = Path(out)
+                # submodule 的 common dir 為 .git/modules/x，父目錄不是工作樹根，不採用
+                if common.name == ".git":
+                    result = common.parent
+            else:
+                _report_shared_root_failure("git-common-dir 查詢失敗 rc={}".format(proc.returncode))
+        except (OSError, subprocess.SubprocessError) as exc:
+            _report_shared_root_failure("git-common-dir 查詢異常: {}".format(exc))
+    _SHARED_ROOT_CACHE[key] = result
+    return result
 
 
 def get_state_file_path(project_root: Path) -> Path:
-    """取得狀態檔路徑"""
-    return project_root / STATE_FILE_RELATIVE
+    """取得狀態檔路徑（linked worktree 內指向主倉庫那份）"""
+    return resolve_shared_root(project_root) / STATE_FILE_RELATIVE
 
 
 @contextmanager
 def _state_lock(project_root: Path):
     """排他鎖保護 read-modify-write 週期，防止並行寫入資料遺失。"""
-    lock_file = project_root / LOCK_FILE_RELATIVE
+    lock_file = resolve_shared_root(project_root) / LOCK_FILE_RELATIVE
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     fd = lock_file.open("w")
     try:
