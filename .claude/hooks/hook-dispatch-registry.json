@@ -161,6 +161,15 @@
           "timeout": 30
         }
       ]
+    },
+    "PostToolUseFailure:Bash": {
+      "budget": 60,
+      "hooks": [
+        {
+          "path": ".claude/hooks/post-tool-failure-liveness-hook.py",
+          "timeout": 30
+        }
+      ]
     }
   }
 }

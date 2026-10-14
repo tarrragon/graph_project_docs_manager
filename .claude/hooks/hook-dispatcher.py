@@ -4,7 +4,7 @@
 # dependencies = ["pyyaml"]
 # ///
 """
-Hook 分派程序 (PreToolUse / PostToolUse 共用)
+Hook 分派程序 (PreToolUse / PostToolUse / PostToolUseFailure 共用)
 
 功能:
   同一事件與 matcher 下的多支 hook 合併成單一程序執行，消去每支 hook 重複支付的
@@ -36,6 +36,9 @@ Hook 分派程序 (PreToolUse / PostToolUse 共用)
     HookTimeout 為 BaseException，會穿過 hook 內的 run_hook_safely，故由分派層補上 exit 2
   - 分派機制自身失敗: 該支退回以子程序執行（與原註冊等價），守衛不消失
   - 群組預算用盡: 剩餘 hook 不略過，改以子程序並行執行（尾段），各用完整自身逾時
+  - PostToolUseFailure 群組: 失敗事件本身無阻擋語意，內建守衛清單為空，分派層故障只會
+    exit 1（可見、不阻擋）；輸出的 hookEventName 一律取自群組的實際事件；
+    payload 的 hook_event_name 原樣轉交子 hook（分派器不改寫 stdin）
   - registry 讀不到 / 分派層例外: 以內建 fail_closed 守衛清單（FALLBACK_FAIL_CLOSED_GUARDS）
     逐支子程序執行；守衛擋下則 exit 2，否則 exit 1 並寫 stderr（fail_open 守衛不鎖死修復用 Bash）
 
@@ -47,7 +50,7 @@ Hook 分派程序 (PreToolUse / PostToolUse 共用)
 
 HOOK_METADATA (JSON):
 {
-  "event_type": "PreToolUse,PostToolUse",
+  "event_type": "PreToolUse,PostToolUse,PostToolUseFailure",
   "matcher": "Bash",
   "description": "Bash 事件 hook 單一分派程序",
   "dependencies": ["pyyaml"],
@@ -82,6 +85,7 @@ FALLBACK_FAIL_CLOSED_GUARDS = {
         ".claude/hooks/bash-git-protected-branch-guard-hook.py",
         ".claude/hooks/workspace-wipe-guard-hook.py",
     ],
+    "PostToolUseFailure:Bash": [],  # 失敗事件無阻擋語意：無 fail_closed 守衛
 }
 _FAIL_CLOSED_RE = re.compile(r"fail_closed\s*=\s*True")
 DEFAULT_GROUP_BUDGET = 120
@@ -234,8 +238,13 @@ def _collect_decisions(parsed: List[tuple]) -> List[tuple]:
     return found
 
 
-def merge_results(results: List[HookResult]) -> tuple:
-    """合併各支結果 -> (exit_code, stdout, stderr)"""
+def event_of_group(group: str) -> str:
+    """`PostToolUseFailure:Bash` -> `PostToolUseFailure`；無冒號回傳空字串（沿用子 hook 輸出的事件名）"""
+    return group.partition(":")[0] if ":" in group else ""
+
+
+def merge_results(results: List[HookResult], event: str = "") -> tuple:
+    """合併各支結果 -> (exit_code, stdout, stderr)；event 非空時 hookEventName 以它為準（平台拒收事件名不符的輸出）"""
     codes = [r.code for r in results]
     final = EXIT_BLOCK if EXIT_BLOCK in codes else (EXIT_ERROR if any(codes) else 0)
 
@@ -274,7 +283,7 @@ def merge_results(results: List[HookResult]) -> tuple:
 
     out_obj: Dict[str, object] = {}
     if parsed:
-        hso_out: Dict[str, object] = {"hookEventName": event_name}
+        hso_out: Dict[str, object] = {"hookEventName": event or event_name}
         if strongest:
             level = strongest[0][1]
             hso_out["permissionDecision"] = level
@@ -350,7 +359,7 @@ def run_group(group: str, payload: str, registry_path: Path = REGISTRY_PATH,
     cfg = load_group(group, registry_path)
     results = dispatch(cfg["hooks"], payload, root,
                        float(cfg.get("budget", DEFAULT_GROUP_BUDGET)), logger, inprocess)
-    return merge_results(results)
+    return merge_results(results, event_of_group(group))
 
 
 def _group_from_argv(argv: List[str]) -> str:
@@ -368,7 +377,7 @@ def run_fallback_guards(group: str, payload: str, root: Optional[Path] = None, l
         path = root / entry["path"]
         if path.exists():
             results.append(_run_one(path, payload, float(DEFAULT_HOOK_TIMEOUT), False, logger))
-    return merge_results(results)
+    return merge_results(results, event_of_group(group))
 
 
 def _fail_visible(group: str, e: BaseException, payload: str, logger) -> int:
