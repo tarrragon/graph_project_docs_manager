@@ -71,7 +71,11 @@ from lib import (
 from lib.hook_base import get_shared_state_root
 from lib.hook_messages import GateMessages, CoreMessages, AskUserQuestionMessages, format_message
 from lib.git_command_parse import parse_command_statements
-from lib.ticket_command_parse import COMPLETE_VERBS, is_complete_statement
+from lib.ticket_command_parse import (
+    COMPLETE_VERBS,
+    find_complete_invocations,
+    is_complete_statement,
+)
 
 from acceptance_checkers import (
     collect_incomplete_descendants_from_frontmatter,
@@ -262,24 +266,23 @@ def extract_ticket_id_from_command(command: str, logger) -> Optional[str]:
 
 
 def has_force_flag_on_complete(command: str, ticket_id: str) -> bool:
-    """命令中引號外的 `ticket track complete <ticket_id> ... --force` 語句是否存在。
+    """命令中 `ticket track complete <ticket_id> ... --force` 語句是否存在。
 
-    只認「complete 語句本身」的 --force：先剝除引號內文字（--why 等參數值），
-    再以共用解析管線切成語句（涵蓋 `&&`／`;`／`|`／子 shell 括號），比對
-    含 `ticket track complete` 與該票 ID 的語句是否帶 `--force` token。同鏈其他
+    只認「complete 語句本身」的 --force：以共用掃描函式 find_complete_invocations
+    找出完成類語句（任意位置，如前綴包裝、串接），比對含該票 ID 的語句是否帶
+    `--force` token；引號內文字（--why 等參數值）先剝除。同鏈其他
     命令的 --force（如推送旗標）不算。無法解析（未閉合引號）回傳 False，
     由呼叫端維持 deny（fail-closed）；解析例外向上拋出，由呼叫端處置。
     """
-    statements = parse_command_statements(_strip_quoted_spans(command))
-    if statements is None:
+    # 先剝引號：shlex 會去引號，`--why '--force'` 的值會與旗標同形。代價是
+    # bash -c '...' 內的 --force 也被剝除而不旁路，方向為維持 deny（安全側）。
+    invocations = find_complete_invocations(_strip_quoted_spans(command))
+    if invocations is None:
         return False
-    for tokens in statements:
-        for i in range(len(tokens) - 2):
-            if tokens[i:i + 3] in (["ticket", "track", "complete"], ["ticket", "track", "finish"]):
-                rest = tokens[i + 3:]
-                if ticket_id in rest and "--force" in rest:
-                    return True
-    return False
+    return any(
+        verb in ("complete", "finish") and ticket_id in rest and "--force" in rest
+        for verb, rest in invocations
+    )
 
 
 def _resolve_force_bypass(
@@ -322,13 +325,14 @@ def _legacy_complete_substring(command: str) -> bool:
 def is_complete_command(command: str) -> bool:
     """判斷是否為完成類命令（ticket track complete／finish／batch-complete）。
 
-    走共用解析器 parse_command_statements：引號內字面與 heredoc 內文不算命令。
+    走共用掃描函式 find_complete_invocations（任意位置、shell -c 巢狀；引號內
+    字面、heredoc 內文與 echo／printf 之後不算命令）。
     無法解析（未閉合引號）時退回字面比對，維持阻擋類 hook 的 fail-closed。
     """
-    statements = parse_command_statements(command)
-    if statements is None:
+    invocations = find_complete_invocations(command)
+    if invocations is None:
         return _legacy_complete_substring(command)
-    return any(is_complete_statement(t) for t in statements)
+    return bool(invocations)
 
 
 # 0.4.1-W2-006：complete 前段串接後可能改變驗收狀態的寫入操作。

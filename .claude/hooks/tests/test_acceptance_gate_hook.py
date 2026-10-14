@@ -990,7 +990,7 @@ def test_force_bypass_fail_closed_when_parser_raises(project_dir, capture_logger
     def _boom(_command):
         raise RuntimeError("parser exploded")
 
-    monkeypatch.setattr(module, "parse_command_statements", _boom)
+    monkeypatch.setattr(module, "find_complete_invocations", _boom)
     result = module.check_acceptance_status(
         parent_id, project_dir, capture_logger,
         f"ticket track complete {parent_id} --force",
@@ -1092,3 +1092,62 @@ def test_children_incomplete_message_documents_force_bypass():
     msg = GateMessages.CHILDREN_INCOMPLETE_ERROR
     assert "--force" in msg
     assert _MSG_AUDIT in msg
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-120.7.9.5.2：完成類辨識改用共用任意位置掃描
+# ---------------------------------------------------------------------------
+
+_SCAN_TID = "0.5.0-W1-001"
+
+
+@pytest.mark.parametrize("command", [
+    f"ticket track complete {_SCAN_TID}",
+    f"timeout 30 ticket track complete {_SCAN_TID}",
+    f"git status && ticket track finish {_SCAN_TID}",
+    f"bash -c 'ticket track complete {_SCAN_TID}'",
+    f"/usr/local/bin/ticket track complete {_SCAN_TID}",
+])
+def test_is_complete_command_scan_positive(command):
+    module = _load_gate_module("acceptance_gate_hook_scan_pos")
+    assert module.is_complete_command(command) is True
+
+
+@pytest.mark.parametrize("command", [
+    f"echo ticket track complete {_SCAN_TID}",
+    f"printf %s ticket track complete {_SCAN_TID}",
+    "command -v ticket track complete",
+    f"ticket track claim {_SCAN_TID}",
+    f"ticket track create --why 'ticket track complete {_SCAN_TID}'",
+])
+def test_is_complete_command_scan_negative(command):
+    module = _load_gate_module("acceptance_gate_hook_scan_neg")
+    assert module.is_complete_command(command) is False
+
+
+def test_is_complete_command_unparseable_falls_back_to_legacy_literal():
+    """未閉合引號：解析失敗，退回字面比對（fail-closed）維持不變。"""
+    module = _load_gate_module("acceptance_gate_hook_scan_legacy")
+    assert module.is_complete_command("ticket track complete 'abc") is True
+    assert module.is_complete_command("ticket track claim 'abc") is False
+
+
+def test_has_force_flag_on_complete_scan_forms():
+    module = _load_gate_module("acceptance_gate_hook_scan_force")
+    assert module.has_force_flag_on_complete(
+        f"timeout 30 ticket track complete {_SCAN_TID} --force", _SCAN_TID) is True
+    assert module.has_force_flag_on_complete(
+        f"git status && nice ticket track finish {_SCAN_TID} --force", _SCAN_TID) is True
+    # bash -c 內的 --force 隨引號剝除而不旁路（維持 deny，安全側）
+    assert module.has_force_flag_on_complete(
+        f"bash -c 'ticket track complete {_SCAN_TID} --force'", _SCAN_TID) is False
+    # 對照：不帶 --force、他鏈的 --force、引號內的 --force 皆不算
+    assert module.has_force_flag_on_complete(
+        f"ticket track complete {_SCAN_TID}", _SCAN_TID) is False
+    assert module.has_force_flag_on_complete(
+        f"ticket track complete {_SCAN_TID} && git push --force", _SCAN_TID) is False
+    assert module.has_force_flag_on_complete(
+        f"ticket track complete {_SCAN_TID} --why 'x --force'", _SCAN_TID) is False
+    # 解析失敗維持 False（呼叫端 fail-closed）
+    assert module.has_force_flag_on_complete(
+        f"ticket track complete {_SCAN_TID} --force 'abc", _SCAN_TID) is False
