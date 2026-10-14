@@ -473,6 +473,8 @@ class GitInvocation:
             相對路徑以相對字串回傳；`dir_unknown` 為真時為 None。
         dir_unknown: 目錄含變數、命令替換、`cd -`、`||` 之後的 cd、`popd`，
             或經由 shell 別名取得時為 True，此時 effective_dir 不可信。預設 False。
+        via_scan: 僅 scan 模式的任意位置掃描才命中（命令位置判定找不到）時為
+            True；位置命中或未開 scan 時為 False。預設 False。
         經別名展開的呼叫，`statement` 為展開後的 token 序列。
     """
 
@@ -484,6 +486,7 @@ class GitInvocation:
     dash_c_paths: Tuple[str, ...] = ()
     effective_dir: Optional[str] = None
     dir_unknown: bool = False
+    via_scan: bool = False
 
     @property
     def args(self) -> List[str]:
@@ -859,9 +862,10 @@ def _raise_if_pipes_into_shell(tokens: List[str]) -> None:
 class _Ctx:
     """單次解析的共用參數：關注子命令集合與基準目錄。"""
 
-    def __init__(self, wanted: FrozenSet[str], base_dir: Optional[str]):
+    def __init__(self, wanted: FrozenSet[str], base_dir: Optional[str], scan: bool = False):
         self.wanted = wanted
         self.base_dir = base_dir
+        self.scan = scan
         self.alias_cache: dict = {}
         self.lookups = 0
         self.alias_elapsed = 0.0
@@ -908,7 +912,17 @@ def _invocations_in_statement(
 ) -> List[GitInvocation]:
     idx = _skip_wrappers(statement)
     if idx is None or idx >= len(statement):
-        return []
+        return []  # `command -v` 為查詢，scan 模式同樣不掃
+    found = _positional_invocations(statement, idx, state, depth, ctx)
+    if found or not ctx.scan:
+        return found
+    return [replace(inv, via_scan=True) for inv in _scan_statement(statement, state, depth, ctx)]
+
+
+def _positional_invocations(
+    statement: List[str], idx: int, state: _DirState, depth: int, ctx: "_Ctx"
+) -> List[GitInvocation]:
+    """命令位置判定：statement[idx] 必須是 git 或可遞迴的巢狀腳本。"""
     if _is_git_word(statement[idx]):
         return _git_invocations(statement, idx, state, depth, ctx)
     script = _nested_script(statement, idx)
@@ -917,6 +931,38 @@ def _invocations_in_statement(
     if "<<<" in statement and _is_stdin_shell(statement, idx):
         raise _Unparseable("here-string into shell")
     return []
+
+
+# scan 模式的例外：這些命令之後的參數列只是輸出文字，不是命令
+_SCAN_OUTPUT_COMMANDS = frozenset({"echo", "printf"})
+
+
+def _scan_statement(
+    statement: List[str], state: _DirState, depth: int, ctx: "_Ctx"
+) -> List[GitInvocation]:
+    """任意位置掃描：語句中任何 git token 或巢狀腳本載體都視為呼叫。
+
+    遇 echo／printf 即停止；找到 git 後其餘 token 是它的參數，不再掃（避免
+    `-C git` 之類的值被重複計數）；eval／env -S／flock -c／watch 的腳本已含
+    其後全部 token，處理後同樣停止，shell -c 的腳本只是一個 token，其後繼續掃。
+    """
+    if "<<<" in statement and any(
+        _is_stdin_shell(statement, i) for i in range(len(statement))
+    ):
+        raise _Unparseable("here-string into shell")
+    found: List[GitInvocation] = []
+    for i, tok in enumerate(statement):
+        if os.path.basename(tok) in _SCAN_OUTPUT_COMMANDS:
+            break
+        if _is_git_word(tok):
+            found.extend(_git_invocations(statement, i, state, depth, ctx))
+            break
+        script = _nested_script(statement, i)
+        if script:
+            found.extend(_scan_script(script, state, depth, ctx))
+            if os.path.basename(tok) not in _SHELLS:
+                break
+    return found
 
 
 def _git_invocations(
@@ -1007,7 +1053,8 @@ def parse_command_statements(command: str) -> Optional[List[List[str]]]:
 
 
 def find_git_invocations(
-    command: str, subcommands: Iterable[str], base_dir: Optional[str] = None
+    command: str, subcommands: Iterable[str], base_dir: Optional[str] = None,
+    scan: bool = False,
 ) -> Optional[List[GitInvocation]]:
     """解析命令字串，回傳指定子命令的所有 git 呼叫結構化記錄。
 
@@ -1024,6 +1071,12 @@ def find_git_invocations(
             傳 canonical 名稱即可，不需自行列出別名。
         base_dir: 命令開始執行時的目錄（通常為 payload cwd），僅用於
             計算 `effective_dir` 與讀取別名；預設 None 不影響既有行為。
+        scan: True 時命令位置找不到的語句改做任意位置掃描（語句中任何 git
+            token 皆視為呼叫，echo、printf 之後與 `command -v` 例外），僅
+            掃描命中的呼叫其 `via_scan` 為 True。已知誤判：git 作為其他命令
+            的參數（如 `bash script.sh git commit`、`grep git commit f`），
+            以及 ssh、docker run 內的遠端執行（有意保守）。預設 False
+            （僅命令位置，行為與未提供此參數時相同）。
 
     Returns:
         - `None`：命令字串無法安全 tokenize（shlex 遇未閉合引號）。呼叫端
@@ -1039,7 +1092,7 @@ def find_git_invocations(
     if tokens is None:
         return None
 
-    ctx = _Ctx(_expand_subcommand_aliases(subcommands), base_dir)
+    ctx = _Ctx(_expand_subcommand_aliases(subcommands), base_dir, scan)
     try:
         return _scan_tokens(tokens, _DirState(base_dir, False), 0, ctx)
     except _Unparseable as exc:
@@ -1048,7 +1101,8 @@ def find_git_invocations(
 
 
 def match_git_commit(
-    command: str, exclude_amend: bool = True, base_dir: Optional[str] = None
+    command: str, exclude_amend: bool = True, base_dir: Optional[str] = None,
+    scan: bool = False,
 ) -> Optional[bool]:
     """判定命令字串是否含一次 git commit 呼叫，回傳三態。
 
@@ -1061,6 +1115,7 @@ def match_git_commit(
             （只剩 amend 呼叫的命令回 False）；False 時 amend 也命中。
             同一命令含多個 commit 呼叫時，任一呼叫符合即命中。
         base_dir: 傳給 `find_git_invocations` 的起始目錄，通常為 payload cwd。
+        scan: 傳給 `find_git_invocations` 的任意位置掃描開關，預設 False。
 
     Returns:
         - `True`：命中，命令含至少一次（符合 exclude_amend 的）git commit。
@@ -1073,7 +1128,7 @@ def match_git_commit(
     """
     if not contains_git_word(command):
         return False
-    invocations = find_git_invocations(command, {"commit"}, base_dir)
+    invocations = find_git_invocations(command, {"commit"}, base_dir, scan)
     if invocations is None:
         return None
     if not exclude_amend:

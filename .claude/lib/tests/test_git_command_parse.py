@@ -859,3 +859,143 @@ def test_mutation_without_comment_strip_matches_comment_text(monkeypatch):
     """變異確認：註解不被當註解（僅去掉 # 字元）時，註解內的 git commit 字樣必須被誤判。"""
     monkeypatch.setattr(gcp, "strip_line_comments", lambda c: c.replace("#", ""))
     assert len(_commits("# git commit -m x")) == 1
+
+
+# ===== scan 模式（0.5.0-W1-120.7.9.1） =====
+
+_SCAN_SUBS = {"commit", "add"}
+
+# 本機會執行 git 寫入的命令（120.7.9 分析的正向輸入）
+_SCAN_POSITIVE = [
+    "xargs -I{} git commit -m x", "echo a | xargs -I{} git commit -m {}",
+    "find . -name x -exec git commit -m x {} \\;", "find . -exec sh -c 'git commit -m x' \\;",
+    "parallel git commit -m x ::: a b", "xargs -0 git add", "time -p git commit -m x",
+    "! git commit -m x", "coproc git commit -m x", "doas git commit -m x",
+    "flock /tmp/l git commit -m x", "chronic git commit -m x", "watch git commit -m x",
+    "env -S 'git commit -m x'", "`git commit -m x`", "echo $(git commit -m x)",
+    "{ git commit -m x; }", "true & git commit -m x", "if true; then git commit -m x; fi",
+    "for i in 1; do git commit -m x; done", "nice git commit -m x", "timeout 5 git commit -m x",
+    "stdbuf -oL git commit -m x", "caffeinate git commit -m x", "sudo -u me git commit -m x",
+    "env -i git commit -m x", "builtin command git commit -m x",
+    "git -c alias.ci=commit ci -m x", "git -C. commit -m x", "setsid git commit -m x",
+    "unbuffer git commit -m x", "ionice -c3 git commit -m x", "taskset 1 git commit -m x",
+    "numactl -C 0 git commit -m x", "strace -f git commit -m x",
+    "systemd-run --user git commit -m x", "xargs sh -c 'git commit -m x'",
+    "/usr/bin/env git commit -m x", "busybox git commit -m x", "chroot / git commit -m x",
+    "exec -a foo git commit -m x", "command time git commit -m x",
+    "gtimeout 5 git commit -m x", "arch -arm64 git commit -m x", "dtruss git commit -m x",
+    "unshare -m git commit -m x", "ssh-agent git commit -m x",
+    "cat f | while read x; do git commit -m $x; done", "git status && git commit -m x",
+    "(cd sub && git commit -m x)", "git commit -m x | tee log", "tee >(git commit -m x) </dev/null",
+]
+
+# 不應命中：輸出文字、查詢、heredoc、引號內、註解、非寫入
+_SCAN_NEGATIVE = [
+    "echo git commit", "printf '%s' git commit", "echo 'git commit'", "command -v git commit",
+    "ls # git commit", "cat <<'EOF'\ngit commit -m x\nEOF",
+    "ticket track append-log T --section S \"git commit\"", "ls .git/commit",
+    "cd git && commit", "git status", "git log --oneline", "echo x | grep git",
+    "echo done; git status", "echo \"git add\"",
+]
+
+# 掃描設計上的已知漏判（字串腳本載體與 echo 引號內命令替換）
+_SCAN_KNOWN_MISSES = [
+    "su -c 'git commit -m x'", "script -q -c 'git commit -m x' /dev/null",
+    "sg staff -c 'git commit -m x'", "echo \"$(git commit -m x)\"",
+]
+
+
+def _hit(command, scan):
+    return bool(gcp.find_git_invocations(command, _SCAN_SUBS, scan=scan))
+
+
+def test_scan_positive_inputs_each_hit():
+    for command in _SCAN_POSITIVE:
+        assert _hit(command, True), command
+
+
+def test_scan_hit_count_meets_floor():
+    hits = sum(_hit(c, True) for c in _SCAN_POSITIVE + _SCAN_KNOWN_MISSES)
+    assert len(_SCAN_POSITIVE) + len(_SCAN_KNOWN_MISSES) >= 55 and hits >= 52
+
+
+def test_scan_negative_inputs_do_not_hit():
+    for command in _SCAN_NEGATIVE:
+        assert not _hit(command, True), command
+
+
+def test_scan_known_misses_stay_missed():
+    for command in _SCAN_KNOWN_MISSES:
+        assert not _hit(command, True), command
+
+
+def test_scan_default_false_keeps_position_only_semantics():
+    assert _hit("find . -exec sh -c 'git commit -m x' \\;", False) is False
+    assert _hit("setsid git commit -m x", False) is False
+    assert _hit("git commit -m x", False) is True
+
+
+def test_scan_false_equals_omitted_argument():
+    for command in _SCAN_POSITIVE + _SCAN_NEGATIVE:
+        assert gcp.find_git_invocations(command, _SCAN_SUBS) == gcp.find_git_invocations(
+            command, _SCAN_SUBS, scan=False
+        )
+
+
+def test_scan_eval_and_watch_not_double_counted():
+    assert len(gcp.find_git_invocations("setsid eval git commit -m x", {"commit"}, scan=True)) == 1
+    assert len(gcp.find_git_invocations("setsid watch git commit -m x", {"commit"}, scan=True)) == 1
+
+
+def test_scan_unclosed_quote_still_none():
+    assert gcp.find_git_invocations("git commit -m 'x", {"commit"}, scan=True) is None
+
+
+def test_scan_match_git_commit():
+    assert gcp.match_git_commit("setsid git commit -m x") is False
+    assert gcp.match_git_commit("setsid git commit -m x", scan=True) is True
+    assert gcp.match_git_commit("command -v git commit", scan=True) is False
+
+
+def test_scan_known_false_positive_argument_position():
+    """已記錄的有意誤判：git 作為其他命令的參數。"""
+    assert _hit("bash script.sh git commit", True) is True
+    assert _hit("bash script.sh git commit", False) is False
+
+
+def test_mutation_scan_disabled_flips_positives(monkeypatch):
+    monkeypatch.setattr(gcp, "_scan_statement", lambda *args, **kwargs: [])
+    flipped = [c for c in _SCAN_POSITIVE if not _hit(c, True)]
+    assert len(flipped) >= 10  # 掃描失效時僅位置命中者仍命中，其餘必翻紅
+
+
+def test_mutation_output_exemption_removed_flips_negative(monkeypatch):
+    monkeypatch.setattr(gcp, "_SCAN_OUTPUT_COMMANDS", frozenset())
+    assert _hit("echo git commit", True) is True
+
+
+def test_via_scan_false_for_position_hit():
+    found = gcp.find_git_invocations("git commit -m x", {"commit"}, scan=True)
+    assert [inv.via_scan for inv in found] == [False]
+    found = gcp.find_git_invocations("sudo git commit -m x", {"commit"}, scan=True)
+    assert [inv.via_scan for inv in found] == [False]
+
+
+def test_via_scan_true_for_scan_only_hit():
+    found = gcp.find_git_invocations("setsid git commit -m x", {"commit"}, scan=True)
+    assert [inv.via_scan for inv in found] == [True]
+
+
+def test_via_scan_false_when_scan_off_and_default_value():
+    found = gcp.find_git_invocations("git commit -m x", {"commit"})
+    assert [inv.via_scan for inv in found] == [False]
+    inv = gcp.GitInvocation(statement=["git", "commit"], subcommand="commit",
+                            subcommand_index=1, dash_c_path=None)
+    assert inv.via_scan is False
+
+
+def test_via_scan_flags_mixed_statements_separately():
+    found = gcp.find_git_invocations(
+        "git commit -m a && setsid git commit -m b", {"commit"}, scan=True
+    )
+    assert sorted(inv.via_scan for inv in found) == [False, True]
