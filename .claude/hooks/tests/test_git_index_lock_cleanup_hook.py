@@ -564,6 +564,27 @@ def test_url_credentials_masked(hook_module):
     assert "s3cret" not in out and "https://user:***@host/x.git" in out
 
 
+@pytest.mark.parametrize("cmd,secret", [
+    ("curl -u user:pass1234 http://h", "pass1234"),
+    ("curl -H 'Authorization: token abc123xyz' http://h", "abc123xyz"),
+    ("curl -H 'X-Api-Key: k3y valu3' http://h", "k3y valu3"),
+    ("tool --password hunter2 run", "hunter2"),
+    ("gh --with-token ghtoken99 x", "ghtoken99"),
+    ("mysql -psecretpw db", "secretpw"),
+    ("git clone https://TOKEN123@host/x.git", "TOKEN123"),
+    ("echo ghp_abcdefgh12345678", "abcdefgh12345678"),
+    ('API_TOKEN="a b c" run', "b c"),
+])
+def test_secret_forms_masked(hook_module, cmd, secret):
+    out = hook_module.sanitize_command(cmd)
+    assert secret not in out and "***" in out, out
+
+
+def test_non_secret_command_unchanged(hook_module):
+    cmd = "mkdir -p a/b && git -C /x status"
+    assert hook_module.sanitize_command(cmd) == cmd
+
+
 # ---- 審查修正 A-D 與測試補強 ----
 
 def test_evidence_file_survives_log_retention_cleanup(hook_module, two_repos):

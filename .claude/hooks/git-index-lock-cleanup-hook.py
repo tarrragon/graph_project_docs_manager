@@ -62,9 +62,22 @@ EVIDENCE_FILENAME = "index-lock-evidence.txt"
 # git 全域選項中帶獨立值的（掃描 -C 時需跳過其值）
 _GIT_OPTS_WITH_VALUE = frozenset({"-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"})
 _SECRET_KEY_RE = re.compile(r"(TOKEN|SECRET|PASSWORD|KEY|AUTH)", re.IGNORECASE)
-_ENV_ASSIGN_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)=(\S+)")
+_QUOTED_OR_WORD = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
+_ENV_ASSIGN_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)=(" + _QUOTED_OR_WORD + ")")
 _URL_CRED_RE = re.compile(r"(://[^/\s:@]+:)[^/\s@]+(@)")
+_URL_USER_ONLY_RE = re.compile(r"(://)[^/\s:@]+(@)")
 _BEARER_RE = re.compile(r"(Bearer|Basic)\s+\S+", re.IGNORECASE)
+_USER_FLAG_RE = re.compile(r"(\s(?:-u|--user|--proxy-user)(?:\s+|=))" + _QUOTED_OR_WORD)
+# 標頭值整段遮罩（Authorization、X-Api-Key 等自訂標頭），引號內可含空白
+_HEADER_RE = re.compile(
+    r"((?:-H|--header)(?:\s+|=)[\"']?[A-Za-z0-9_-]+:)\s*(?:[^\"']*)")
+_AUTH_HEADER_RE = re.compile(r"(\bAuthorization:)\s*[^\"']*", re.IGNORECASE)
+_SECRET_FLAG_RE = re.compile(
+    r"(--[\w-]*(?:token|password|passwd|secret|key|auth)[\w-]*)(?:=|\s+)" + _QUOTED_OR_WORD,
+    re.IGNORECASE)
+_MYSQL_P_RE = re.compile(r"(\s-p)[^\s-]\S*")
+_BARE_TOKEN_RE = re.compile(
+    r"\b(?:gh[pousr]_|github_pat_|glpat-|xox[baprs]-|sk-|AKIA)[A-Za-z0-9_-]{8,}|\b[A-Za-z0-9_-]{32,}\b")
 
 
 # ===== 目標集合 =====
@@ -225,11 +238,26 @@ def lsof_state(lock_path: str, logger: logging.Logger) -> str:
 # ===== 線索記錄 =====
 
 def sanitize_command(command: str) -> str:
-    """去換行、遮罩機密、截斷。"""
+    """去換行、遮罩機密、截斷。
+
+    遮罩範圍（盡力而為，非完整保證；線索日誌為本機且 gitignore）：
+    名稱含 TOKEN/SECRET/PASSWORD/KEY/AUTH 的環境變數賦值（含引號值）、URL 內嵌的
+    user:pass 與僅 token 的 userinfo、Bearer/Basic 憑證、-u/--user 值、-H/--header
+    與 Authorization: 標頭值、名稱含 token/password/secret/key/auth 的長旗標值
+    （空白或 = 分隔）、mysql 式 -pXXX、已知前綴（ghp_/sk-/AKIA 等）與 32 字元以上的
+    裸 token。未涵蓋：其他任意位置的自由格式機密。
+    """
     flat = " ".join(command.split())
     flat = _ENV_ASSIGN_RE.sub(
         lambda m: f"{m.group(1)}=***" if _SECRET_KEY_RE.search(m.group(1)) else m.group(0), flat)
     flat = _URL_CRED_RE.sub(r"\1***\2", flat)
+    flat = _URL_USER_ONLY_RE.sub(r"\1***\2", flat)
+    flat = _USER_FLAG_RE.sub(r"\1***", flat)
+    flat = _HEADER_RE.sub(r"\1 ***", flat)
+    flat = _AUTH_HEADER_RE.sub(r"\1 ***", flat)
+    flat = _SECRET_FLAG_RE.sub(r"\1 ***", flat)
+    flat = _MYSQL_P_RE.sub(r"\1***", flat)
+    flat = _BARE_TOKEN_RE.sub("***", flat)
     flat = _BEARER_RE.sub(lambda m: f"{m.group(1)} ***", flat)
     return flat[:FOUND_BY_CMD_MAX_CHARS]
 
