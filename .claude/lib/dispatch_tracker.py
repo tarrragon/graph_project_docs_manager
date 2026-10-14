@@ -753,10 +753,11 @@ def get_active_dispatches(project_root: Path) -> List[Dict]:
 
 
 def _same_path(a: str, b: str) -> bool:
-    """路徑正規化後比對；任一解析失敗視為相同（保守，計入並行期）。"""
+    """以 inode 比對同一目錄（涵蓋 /tmp 與 /private/tmp、symlink、大小寫別名）；
+    任一路徑不存在或無法解析視為相同（保守，計入並行期）。"""
     try:
-        return Path(a).resolve() == Path(b).resolve()
-    except (OSError, RuntimeError, ValueError):
+        return os.path.samefile(a, b)
+    except (OSError, ValueError):
         return True
 
 

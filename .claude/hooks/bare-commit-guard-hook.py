@@ -469,6 +469,43 @@ def _resolve_detect_dirs(
     return list(dict.fromkeys([_base_dir(payload_cwd, project_root), str(project_root)]))
 
 
+def _commit_target_checkout(
+    invocations: Optional[List[GitInvocation]], logger
+) -> Optional[Path]:
+    """commit 實際作用的 checkout 根；無法判定回 None（呼叫端不過濾，保守計入）。
+
+    沿用 `_resolve_detect_dirs` 的目錄語意：目錄可知時取 effective_dir
+    （含 -C、cd）；無解析結果或 dir_unknown 時不猜，回 None。
+    rev-parse 失敗時 fail-open 並雙通道回報。
+    """
+    if not invocations:
+        return None
+    inv = invocations[0]
+    if inv.dir_unknown or not inv.effective_dir:
+        return None
+    if not Path(inv.effective_dir).is_dir():
+        # 目錄不存在：git 本身也會失敗，屬預期情境，僅記 log、不過濾
+        logger.info("commit 目標目錄不存在，不依工作位置過濾：%s", inv.effective_dir)
+        return None
+    try:
+        proc = subprocess.run(
+            ["git", "-C", inv.effective_dir, "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5,
+        )
+        top = proc.stdout.strip()
+        if proc.returncode == 0 and top:
+            return Path(top)
+        if proc.returncode == 128:
+            # 非 git repo：commit 本身也無從作用，預期情境，僅記 log、不過濾
+            logger.info("commit 目標目錄非 git repo，不依工作位置過濾：%s", inv.effective_dir)
+            return None
+        reason = "rev-parse rc={}".format(proc.returncode)
+    except (OSError, subprocess.SubprocessError) as exc:
+        reason = str(exc)
+    _report_detect_failure(inv.effective_dir, reason, logger, target="checkout 根")
+    return None
+
+
 def _report_detect_failure(
     detect_dir, reason: str, logger, target: str = "MERGE_HEAD"
 ) -> None:
@@ -1049,9 +1086,11 @@ def main() -> int:
         invocations = [inv for inv in invocations if not inv.via_scan]
 
     # 並行期只計入工作位置與本 checkout 相同的條目；舊條目（無 work_checkout）保守計入。
+    # 過濾基準是 commit 實際作用的 checkout（-C／cd 後的 effective_dir），非 hook cwd。
     dispatches = _exclude_orphan_confirmed(
         filter_dispatches_for_checkout(
-            _get_active_dispatches_safe(project_root), project_root
+            _get_active_dispatches_safe(project_root),
+            _commit_target_checkout(invocations, logger),
         ),
         project_root,
         resolve_session_id(input_data),

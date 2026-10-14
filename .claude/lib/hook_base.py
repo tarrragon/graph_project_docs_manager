@@ -330,13 +330,17 @@ def get_shared_state_root(default_root: Optional[Path] = None) -> Path:
     return main_root if main_root is not None else fallback
 
 
-def has_parallel_dispatch(default_root: Optional[Path] = None) -> bool:
+def has_parallel_dispatch(
+    default_root: Optional[Path] = None, checkout: Optional[Path] = None
+) -> bool:
     """是否有活躍並行派發（讀共用狀態根的 dispatch-active.json）。
 
     讀取根一律經 get_shared_state_root，linked worktree 內讀主倉庫登記檔。
     讀取失敗（含匯入、JSON 損毀）保守視為非並行（fail-open，與既有兩份實作一致）。
     default_root 語意同 get_shared_state_root。
-    只計入工作位置與當前 checkout 相同的條目；無工作位置欄位的舊條目保守計入。
+    checkout：命令實際作用的 checkout 根。給定時只計入工作位置與其相同的條目
+    （無工作位置欄位的舊條目保守計入）；None（預設）表示作用目標未知，
+    不過濾、全數計入。不以 cwd 推定，因 -C／cd 可讓命令作用到別的 checkout。
     """
     try:
         from .dispatch_tracker import (
@@ -344,9 +348,6 @@ def has_parallel_dispatch(default_root: Optional[Path] = None) -> bool:
             get_active_dispatches,
         )
 
-        checkout = _linked_worktree_root() or (
-            default_root if default_root is not None else get_project_root()
-        )
         dispatches = get_active_dispatches(get_shared_state_root(default_root))
         return len(filter_dispatches_for_checkout(dispatches, checkout)) > 0
     except Exception:

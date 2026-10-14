@@ -64,27 +64,35 @@ def test_main_ignores_entry_working_in_other_worktree(repos, monkeypatch):
     main, wt = repos
     _write(main, [_entry(wt)])
     monkeypatch.chdir(main)
-    assert has_parallel_dispatch() is False
+    assert has_parallel_dispatch(checkout=main) is False
 
 
 def test_main_counts_entry_working_in_main(repos, monkeypatch):
     main, wt = repos
     _write(main, [_entry(main)])
     monkeypatch.chdir(main)
-    assert has_parallel_dispatch() is True
+    assert has_parallel_dispatch(checkout=main) is True
 
 
 def test_worktree_ignores_entry_working_in_main(repos, monkeypatch):
     main, wt = repos
     _write(main, [_entry(main)])
     monkeypatch.chdir(wt)
-    assert has_parallel_dispatch() is False
+    assert has_parallel_dispatch(checkout=wt) is False
 
 
 def test_worktree_counts_entry_working_in_itself(repos, monkeypatch):
     main, wt = repos
     _write(main, [_entry(wt)])
     monkeypatch.chdir(wt)
+    assert has_parallel_dispatch(checkout=wt) is True
+
+
+def test_unknown_target_does_not_filter(repos, monkeypatch):
+    """作用目標未知（預設 checkout=None）：不以 cwd 推定，全數計入。"""
+    main, wt = repos
+    _write(main, [_entry(wt)])
+    monkeypatch.chdir(main)
     assert has_parallel_dispatch() is True
 
 
@@ -92,9 +100,57 @@ def test_legacy_entry_without_field_counts_everywhere(repos, monkeypatch):
     main, wt = repos
     _write(main, [_entry()])
     monkeypatch.chdir(main)
-    assert has_parallel_dispatch() is True
+    assert has_parallel_dispatch(checkout=main) is True
     monkeypatch.chdir(wt)
-    assert has_parallel_dispatch() is True
+    assert has_parallel_dispatch(checkout=wt) is True
+
+
+def test_symlink_alias_matches_same_directory(repos, tmp_path):
+    main, wt = repos
+    alias = tmp_path / "alias"
+    alias.symlink_to(main)
+    assert filter_dispatches_for_checkout([_entry(alias)], main) == [_entry(alias)]
+    assert filter_dispatches_for_checkout([_entry(wt)], alias) == []
+
+
+HOOK = Path(__file__).parent.parent / "bare-commit-guard-hook.py"
+
+
+def _guard_exit(repos, entry_loc, cwd, cmd_dir):
+    """跑 bare-commit-guard：命令為 git -C <cmd_dir> commit -m x -- f.txt。"""
+    import os
+
+    main, wt = repos
+    _write(main, [dict(_entry(entry_loc), files=["other/zzz.txt"])])
+    payload = json.dumps({
+        "tool_name": "Bash",
+        "tool_input": {"command": "git -C %s commit -m x -- f.txt" % cmd_dir},
+        "cwd": str(cwd),
+        "session_id": "other",
+    })
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("CLAUDE_PROJECT_DIR", "HOOK_TEST_ISOLATION")}
+    proc = subprocess.run(
+        ["python3", str(HOOK)], input=payload, text=True, cwd=str(cwd),
+        capture_output=True, env=env,
+    )
+    return proc.returncode
+
+
+def test_guard_dash_c_targets_entry_checkout_blocks(repos):
+    main, wt = repos
+    # 條目在 main；cwd=wt、-C main：作用於 main，須擋（回歸情境）
+    assert _guard_exit(repos, main, wt, main) == 2
+    # 條目在 wt；cwd=main、-C wt：對稱情境，須擋
+    assert _guard_exit(repos, wt, main, wt) == 2
+
+
+def test_guard_same_dir_matrix(repos):
+    main, wt = repos
+    assert _guard_exit(repos, main, main, main) == 2
+    assert _guard_exit(repos, wt, wt, wt) == 2
+    assert _guard_exit(repos, wt, main, main) == 0  # 他 worktree 的條目不擋 main
+    assert _guard_exit(repos, main, wt, wt) == 0
 
 
 def test_identity_reads_all_entries_unfiltered(repos):
