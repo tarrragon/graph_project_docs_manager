@@ -55,8 +55,6 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from ticket_system.lib.claude_lib_loader import load_claude_lib
-
 _GIT_TIMEOUT = 10
 # 哨兵：呼叫端未指定 timeout 時，於呼叫當下讀取模組層 _GIT_TIMEOUT（而非定義當下綁定
 # 的預設值），使 timeout 可被測試與設定覆寫。None 代表不設 timeout。
@@ -91,13 +89,18 @@ def _run_with_graceful_timeout(args, timeout, grace=None, **popen_kwargs):
 
     lib 載入失敗時降級為 _fallback_run_with_graceful_timeout 並寫 stderr，不阻擋提交。
     """
+    # 延遲匯入：本檔可能被以檔案路徑單獨載入（sys.path 無 ticket_system），
+    # 頂層匯入失敗會使降級備援根本執行不到
     try:
+        from ticket_system.lib.claude_lib_loader import load_claude_lib
+
         lib = load_claude_lib("git_utils")
+        reason = "找不到 .claude/lib/git_utils"
     except Exception as e:  # 降級備援：載入失敗不得讓 git 命令無法執行
         lib = None
-        sys.stderr.write(f"[git_ops] 載入 lib.git_utils 失敗，降級為備援實作：{e}\n")
+        reason = f"載入 lib.git_utils 失敗：{e}"
     if lib is None:
-        sys.stderr.write("[git_ops] 找不到 .claude/lib/git_utils，降級為備援實作\n")
+        sys.stderr.write(f"[git_ops] {reason}，降級為備援實作\n")
         return _fallback_run_with_graceful_timeout(args, timeout, grace, **popen_kwargs)
     return lib.run_with_graceful_timeout(args, timeout, grace, **popen_kwargs)
 

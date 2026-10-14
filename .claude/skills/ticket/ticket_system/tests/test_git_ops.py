@@ -1265,18 +1265,25 @@ class TestLibDelegation:
 
     def test_delegates_to_lib_when_available(self):
         lib = MagicMock()
-        with patch.object(git_ops, "load_claude_lib", return_value=lib):
+        with patch("ticket_system.lib.claude_lib_loader.load_claude_lib", return_value=lib):
             git_ops._run_with_graceful_timeout(["git", "--version"], 5, text=True)
         lib.run_with_graceful_timeout.assert_called_once_with(["git", "--version"], 5, None, text=True)
 
     def test_falls_back_with_stderr_when_lib_missing(self, capsys):
-        with patch.object(git_ops, "load_claude_lib", return_value=None):
+        with patch("ticket_system.lib.claude_lib_loader.load_claude_lib", return_value=None):
             result = git_ops._run_with_graceful_timeout(["echo", "ok"], 5, text=True)
         assert result.stdout == "ok\n"
         assert "降級" in capsys.readouterr().err
 
     def test_falls_back_when_lib_load_raises(self, capsys):
-        with patch.object(git_ops, "load_claude_lib", side_effect=ImportError("x")):
+        with patch("ticket_system.lib.claude_lib_loader.load_claude_lib", side_effect=ImportError("x")):
             result = git_ops._run_with_graceful_timeout(["echo", "ok"], 5, text=True)
         assert result.stdout == "ok\n"
         assert "降級" in capsys.readouterr().err
+
+    def test_loader_module_unimportable_falls_back_with_single_stderr(self, capsys):
+        with patch.dict(sys.modules, {"ticket_system.lib.claude_lib_loader": None}):
+            result = git_ops._run_with_graceful_timeout(["echo", "ok"], 5, text=True)
+        assert result.stdout == "ok\n"
+        err = capsys.readouterr().err
+        assert err.count("降級") == 1
