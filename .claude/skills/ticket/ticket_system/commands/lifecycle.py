@@ -949,6 +949,10 @@ class TicketLifecycle:
                             "     # 於 Solution 內新增 ### 自檢結果 子章節"
                             "（依 .claude/references/agent-self-check-template.md）"
                         )
+                        print(
+                            "     # 標題須為 ### 自檢結果，後接空白、括號或「與」"
+                            "（### 自檢結果摘要 不合格）"
+                        )
                     print()
                     print("   逃生閥：--skip-body-check（需附理由於 Completion Info）")
                     return 1
