@@ -38,6 +38,7 @@ from lib import (
     parse_ticket_frontmatter,
     scan_ticket_files_by_version,
 )
+from lib.git_utils import run_with_graceful_timeout
 from lib.hook_messages import AskUserQuestionMessages
 from lib.ask_user_question_reminders import AskUserQuestionReminders
 
@@ -262,6 +263,10 @@ def check_commit_handoff(input_data: dict, tool_input: dict, logger):
 # 子邏輯 3: 背景 Fetch（來自 post-commit-fetch-hook.py）
 # ============================================================================
 
+FETCH_ARGS = ["git", "fetch", "--quiet", "--all"]
+FETCH_TIMEOUT_SECONDS = 4
+
+
 def run_background_fetch(input_data: dict, tool_input: dict, logger):
     """子邏輯 3: git commit 後同步 fetch。無 additionalContext 回傳。"""
     tool_response = input_data.get("tool_response") or {}
@@ -272,21 +277,20 @@ def run_background_fetch(input_data: dict, tool_input: dict, logger):
         return
 
     try:
-        subprocess.run(
-            ["git", "fetch", "--quiet", "--all"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=4,
-        
-        encoding="utf-8",
-        errors="replace",)
+        # fetch 會取 refs / packed-refs 鎖；逾時先 SIGTERM 讓 git 自行清鎖
+        run_with_graceful_timeout(
+            FETCH_ARGS,
+            FETCH_TIMEOUT_SECONDS,
+            encoding="utf-8",
+            errors="replace",
+        )
         logger.debug("fetch: git fetch 完成")
     except subprocess.TimeoutExpired:
         print(
-            "[WARNING] git fetch timeout after 4s, process killed",
+            f"[WARNING] git fetch timeout after {FETCH_TIMEOUT_SECONDS}s, process terminated",
             file=sys.stderr,
         )
-        logger.warning("fetch: git fetch 超時（4s）")
+        logger.warning("fetch: git fetch 超時（%ss）", FETCH_TIMEOUT_SECONDS)
 
 
 # ============================================================================
