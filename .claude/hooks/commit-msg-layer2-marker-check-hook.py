@@ -49,7 +49,7 @@ from lib import (  # noqa: E402
     is_subagent_environment,
 )
 from lib.framework_paths import is_framework_path  # noqa: E402
-from lib.git_command_parse import contains_git_word, find_git_invocations  # noqa: E402
+from lib.git_command_parse import match_git_commit  # noqa: E402
 
 
 EXIT_SUCCESS = 0
@@ -76,13 +76,8 @@ def _is_commit_successful(stdout: str, stderr: str = "") -> bool:
 
 
 def _is_git_commit_command(command: str) -> bool:
-    if not contains_git_word(command):
-        return False
-    invocations = find_git_invocations(command, {"commit"})
-    if invocations is None:
-        return False  # 無法解析：視為未命中
-    # 排除 --amend（非新建 commit）
-    return any("--amend" not in inv.args for inv in invocations)
+    # 排除 --amend（非新建 commit）；None（無法解析）視為未命中
+    return match_git_commit(command) is True
 
 
 def _get_changed_files(project_dir: Path, logger) -> List[str]:

@@ -43,7 +43,7 @@ try:
         read_json_from_stdin,
     )
     from lib.git_utils import get_uncommitted_files
-    from lib.git_command_parse import contains_git_word, find_git_invocations
+    from lib.git_command_parse import match_git_commit
 except ImportError as e:
     # ImportError 不應 exit(1) 阻斷流程；降級為 no-op（fail-open）
     print(f"[Hook Import Warning] {Path(__file__).name}: {e}", file=sys.stderr)
@@ -64,11 +64,8 @@ except ImportError as e:
     def get_uncommitted_files():
         return []
 
-    def contains_git_word(command):
+    def match_git_commit(command, exclude_amend=True, base_dir=None):
         return False
-
-    def find_git_invocations(command, subcommands, base_dir=None):
-        return []
 
 
 # ============================================================================
@@ -88,12 +85,8 @@ _TICKET_MD_PATTERN = re.compile(r"docs/work-logs/.*/tickets/[^/]+\.md$")
 
 def is_git_commit_command(command: str) -> bool:
     """判斷 Bash 命令是否為 git commit 操作（排除 log/show/diff/status 等讀取）。"""
-    if not command or not contains_git_word(command):
-        return False
-    invocations = find_git_invocations(command, {"commit"})
-    if invocations is None:
-        return False  # 無法解析：提示型 hook 視為未命中
-    return any("--amend" not in inv.args for inv in invocations)
+    # 三態中 None（無法解析）：提示型 hook 視為未命中
+    return match_git_commit(command) is True
 
 
 def is_ticket_md_path(file_path: str) -> bool:

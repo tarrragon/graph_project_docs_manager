@@ -547,3 +547,54 @@ class TestUnparseableIsNone:
 
         monkeypatch.setattr(gcp, "_scan_script", swallowing)
         assert find_git_invocations("bash -c \"git commit -m 'x\"", {"commit"}) == []
+
+
+# ===== match_git_commit（三態 commit 判定，0.5.0-W1-120.7.7）=====
+
+import lib.git_command_parse as _gcp  # noqa: E402
+from lib.git_command_parse import match_git_commit  # noqa: E402
+
+
+def test_match_git_commit_dash_c_hits():
+    assert match_git_commit("git -C x commit -m y") is True
+
+
+def test_match_git_commit_echo_not_hit():
+    assert match_git_commit("echo git commit") is False
+
+
+def test_match_git_commit_no_git_word_not_hit():
+    assert match_git_commit("npm test") is False
+    assert match_git_commit("") is False
+
+
+def test_match_git_commit_non_commit_subcommand_not_hit():
+    assert match_git_commit("git log --oneline") is False
+
+
+def test_match_git_commit_amend_excluded_by_default():
+    assert match_git_commit("git commit --amend") is False
+    assert match_git_commit("git commit --amend", exclude_amend=False) is True
+
+
+def test_match_git_commit_amend_with_other_commit_hits():
+    assert match_git_commit("git commit --amend && git commit -m y") is True
+
+
+def test_match_git_commit_unparseable_is_none():
+    result = match_git_commit("git commit -m 'unclosed")
+    assert result is None  # 區分於 False
+
+
+def test_match_git_commit_discriminates_when_parser_mutated(monkeypatch):
+    """變異確認：解析器失效時正反向輸入都會翻轉，證明測試有鑑別力。"""
+    monkeypatch.setattr(_gcp, "find_git_invocations", lambda *a, **k: [])
+    assert match_git_commit("git -C x commit -m y") is not True
+    monkeypatch.undo()
+    monkeypatch.setattr(
+        _gcp,
+        "find_git_invocations",
+        lambda *a, **k: [_gcp.GitInvocation.__new__(_gcp.GitInvocation)],
+    )
+    # 恆回非空：amend 排除路徑讀 inv.args，以 exclude_amend=False 驗反向輸入被誤判為命中
+    assert match_git_commit("echo git commit", exclude_amend=False) is True

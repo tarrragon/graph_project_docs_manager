@@ -795,3 +795,37 @@ def find_git_invocations(
     except _Unparseable as exc:
         _logger.warning("command cannot be parsed safely: %s", exc)  # i18n-exempt
         return None
+
+
+def match_git_commit(
+    command: str, exclude_amend: bool = True, base_dir: Optional[str] = None
+) -> Optional[bool]:
+    """判定命令字串是否含一次 git commit 呼叫，回傳三態。
+
+    供 hook 的 commit 判定共用，取代各 hook 自行重複的
+    contains_git_word 篩選、find_git_invocations、amend 排除。
+
+    Args:
+        command: Bash 工具的原始命令字串（`tool_input.command`）。
+        exclude_amend: True（預設）時，args 含 `--amend` 的呼叫不算命中
+            （只剩 amend 呼叫的命令回 False）；False 時 amend 也命中。
+            同一命令含多個 commit 呼叫時，任一呼叫符合即命中。
+        base_dir: 傳給 `find_git_invocations` 的起始目錄，通常為 payload cwd。
+
+    Returns:
+        - `True`：命中，命令含至少一次（符合 exclude_amend 的）git commit。
+        - `False`：未命中，含空命令、不含 git 字樣、`echo git commit`
+          這類非實際呼叫、非 commit 子命令，以及只含被排除的 amend。
+        - `None`：無法解析（`find_git_invocations` 回 None：未閉合引號、
+          巢狀過深、別名查詢超限）。呼叫端自行決定處置：提示型 hook
+          視為未命中，阻擋型守衛依並行期等條件保守處理。
+          須用 `is None` 區分，不可只寫 `if not result`。
+    """
+    if not contains_git_word(command):
+        return False
+    invocations = find_git_invocations(command, {"commit"}, base_dir)
+    if invocations is None:
+        return None
+    if not exclude_amend:
+        return bool(invocations)
+    return any("--amend" not in inv.args for inv in invocations)
