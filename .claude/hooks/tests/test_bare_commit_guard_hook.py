@@ -99,6 +99,7 @@ def _run_hook(
     monkeypatch.setattr(sys, "stdin", stdin_buffer)
     monkeypatch.setattr(hook_module, "get_project_root", lambda: project_root)
     monkeypatch.setattr(hook_module, "_merge_in_progress", lambda *a, **k: merge_head)
+    monkeypatch.setattr(hook_module, "_other_operation_state", lambda *a, **k: None)
     monkeypatch.setattr(
         hook_module, "_get_active_dispatches_safe", lambda root: dispatches or []
     )
@@ -1211,3 +1212,126 @@ class TestMergeDetectFailureStderr:
         main_repo, _ = main_and_wt
         assert hook_module._merge_in_progress(main_repo, _Sink()) is False
         assert self._MARK not in capsys.readouterr().err
+
+
+# ============================================================================
+# 0.5.0-W1-120.5.1：CHERRY_PICK_HEAD／REVERT_HEAD／rebase 進行中（真實 git，不 mock 偵測）
+# ============================================================================
+
+import os
+
+
+def _g(repo: Path, *args: str, env_extra=None, check=True):
+    env = dict(os.environ, GIT_EDITOR="true", **(env_extra or {}))
+    return subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *args],
+        check=check, capture_output=True, text=True, env=env,
+    )
+
+
+def _conflict_repo(tmp_path: Path) -> Path:
+    """main 與 side 對 a.txt 衝突；feat 兩個 commit，第一個與 main 衝突。"""
+    r = tmp_path / "r"
+    r.mkdir()
+    _g(r, "init", "-q", "-b", "main")
+    (r / "a.txt").write_text("base\n")
+    _g(r, "add", "a.txt")
+    _g(r, "commit", "-q", "-m", "base")
+    for br, txt in (("side", "side\n"), ("feat", "feat\n")):
+        _g(r, "checkout", "-q", "-b", br, "main")
+        (r / "a.txt").write_text(txt)
+        _g(r, "commit", "-q", "-am", br)
+        if br == "feat":
+            (r / "f2.txt").write_text("f2\n")
+            _g(r, "add", "f2.txt")
+            _g(r, "commit", "-q", "-m", "feat2")
+    _g(r, "checkout", "-q", "main")
+    (r / "a.txt").write_text("main\n")
+    _g(r, "commit", "-q", "-am", "main2")
+    return r
+
+
+def _resolve(r: Path):
+    (r / "a.txt").write_text("resolved\n")
+    _g(r, "add", "a.txt")
+
+
+class TestPendingOperationRealGit:
+    def test_clean_is_none(self, tmp_path):
+        r = _conflict_repo(tmp_path)
+        assert hook_module._other_operation_state(r) is None
+        assert _run_real(pytest.MonkeyPatch(), 'git commit -m x', r, cwd=r) == 0
+
+    def test_cherry_pick_denied(self, monkeypatch, tmp_path, capsys):
+        r = _conflict_repo(tmp_path)
+        _g(r, "cherry-pick", "side", check=False)
+        _resolve(r)
+        assert hook_module._other_operation_state(r) == "cherry-pick"
+        assert _run_real(monkeypatch, 'git commit -m x', r, cwd=r) == 2
+        err = capsys.readouterr().err
+        assert "git cherry-pick --continue" in err and "GIT_EDITOR=true" in err
+        assert "--abort" not in err
+        assert _run_real(monkeypatch, 'git commit --amend --no-edit', r, cwd=r) == 0
+
+    def test_revert_denied(self, monkeypatch, tmp_path, capsys):
+        r = _conflict_repo(tmp_path)
+        _g(r, "revert", "--no-commit", "HEAD")
+        assert hook_module._other_operation_state(r) == "revert"
+        assert _run_real(monkeypatch, 'git commit -m x', r, cwd=r) == 2
+        assert "git revert --continue" in capsys.readouterr().err
+
+    def test_rebase_conflict_denied(self, monkeypatch, tmp_path, capsys):
+        r = _conflict_repo(tmp_path)
+        _g(r, "checkout", "-q", "feat")
+        _g(r, "rebase", "main", check=False)
+        _resolve(r)
+        assert hook_module._other_operation_state(r) == "rebase"
+        assert _run_real(monkeypatch, 'git commit -m x', r, cwd=r) == 2
+        assert "git rebase --continue" in capsys.readouterr().err
+
+    def test_rebase_edit_warns_and_allows(self, monkeypatch, tmp_path, capsys):
+        r = _conflict_repo(tmp_path)
+        _g(r, "checkout", "-q", "side")
+        _g(r, "rebase", "-i", "main~1", check=False,
+           env_extra={"GIT_SEQUENCE_EDITOR": "sed -i.bak 's/^pick/edit/'"})
+        assert (r / ".git" / "rebase-merge" / "amend").exists()
+        assert hook_module._other_operation_state(r) == "rebase-edit"
+        assert _run_real(monkeypatch, 'git commit -m x', r, cwd=r) == 0
+        assert "rebase 在 edit 停下" in capsys.readouterr().err
+        assert _run_real(monkeypatch, 'git commit --amend --no-edit', r, cwd=r) == 0
+
+    def test_unparsable_denied_when_not_parallel(self, monkeypatch, tmp_path, capsys):
+        r = _conflict_repo(tmp_path)
+        _g(r, "cherry-pick", "side", check=False)
+        assert _run_real(monkeypatch, 'git commit -m "unterminated', r, cwd=r) == 2
+        assert "cherry-pick" in capsys.readouterr().err
+
+    def test_unparsable_warns_when_clean(self, monkeypatch, tmp_path):
+        r = _conflict_repo(tmp_path)
+        assert _run_real(monkeypatch, 'git commit -m "unterminated', r, cwd=r) == 0
+
+    def test_dash_c_and_cwd_order(self, monkeypatch, main_and_wt, tmp_path):
+        main_repo, wt = main_and_wt
+        _g(wt, "cherry-pick", "side2", check=False)  # 乾淨 pick 會直接提交
+        _g(wt, "cherry-pick", "--abort", check=False)
+        # worktree 內製造 revert 進行中；主工作樹不受影響
+        _g(wt, "revert", "--no-commit", "HEAD", check=False)
+        assert _run_real(monkeypatch, 'git commit -m x', main_repo, cwd=main_repo) == 0
+        assert _run_real(monkeypatch, 'git commit -m x', main_repo, cwd=wt) == 2
+        assert _run_real(monkeypatch, f'git -C {wt} commit -m x', main_repo, cwd=main_repo) == 2
+
+    def test_detect_failure_fail_open_dual_channel(self, tmp_path, capsys):
+        sink = _Sink()
+        assert hook_module._other_operation_state(tmp_path / "nope", sink) is None
+        assert len(sink.warnings) == 1
+        assert "偵測失敗" in capsys.readouterr().err
+
+
+class TestPendingOperationMutation:
+    """變異確認：偵測函式失效（恆回 None）時正向對照必須翻紅。"""
+
+    def test_blind_detector_lets_cherry_pick_through(self, monkeypatch, tmp_path):
+        r = _conflict_repo(tmp_path)
+        _g(r, "cherry-pick", "side", check=False)
+        monkeypatch.setattr(hook_module, "_other_operation_state", lambda *a, **k: None)
+        assert _run_real(monkeypatch, 'git commit -m x', r, cwd=r) == 0

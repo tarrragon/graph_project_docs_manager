@@ -500,6 +500,112 @@ def _build_merge_in_progress_deny_message() -> str:
     )
 
 
+# 進行中操作的狀態種類（_other_operation_state 回傳值）
+_OP_CHERRY_PICK = "cherry-pick"
+_OP_REVERT = "revert"
+_OP_REBASE = "rebase"
+_OP_REBASE_EDIT = "rebase-edit"
+_OP_MERGE = "merge"
+# 一律擋裸 commit 的種類（rebase-edit 只警告）
+_BLOCKING_OPS = (_OP_MERGE, _OP_CHERRY_PICK, _OP_REVERT, _OP_REBASE)
+
+_GIT_PATH_NAMES = (
+    "CHERRY_PICK_HEAD",
+    "REVERT_HEAD",
+    "rebase-merge",
+    "rebase-apply",
+    "rebase-merge/amend",
+)
+
+
+def _other_operation_state(detect_dir, logger=None) -> Optional[str]:
+    """判別 cherry-pick／revert／rebase 進行中狀態（MERGE_HEAD 另由
+    `_merge_in_progress` 處理）。
+
+    狀態檔路徑以 `git rev-parse --git-path` 取得（worktree 的 git dir 不同，
+    不可手拼 `.git/`），相對路徑以 detect_dir 為基準。判別：
+    CHERRY_PICK_HEAD 存在 -> cherry-pick；REVERT_HEAD 存在 -> revert；
+    rebase-merge 或 rebase-apply 目錄存在 -> rebase，其中 rebase-merge/amend
+    也存在 -> rebase-edit（edit 停下，已提交完畢等待修改）。
+    偵測失敗（git 不存在、rc 非 0、逾時）fail-open 回 None，並雙通道回報。
+    """
+    try:
+        result = subprocess.run(
+            ["git", "--no-optional-locks", "rev-parse"]
+            + [a for n in _GIT_PATH_NAMES for a in ("--git-path", n)],
+            cwd=str(detect_dir),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        _report_detect_failure(detect_dir, f"{type(exc).__name__}: {exc}", logger)
+        return None
+    lines = (result.stdout or "").splitlines()
+    if result.returncode != 0 or len(lines) != len(_GIT_PATH_NAMES):
+        _report_detect_failure(
+            detect_dir,
+            f"rc={result.returncode}, stderr={(result.stderr or '').strip()}",
+            logger,
+        )
+        return None
+    paths = {
+        name: (Path(detect_dir) / line)  # 絕對路徑會覆蓋 detect_dir
+        for name, line in zip(_GIT_PATH_NAMES, lines)
+    }
+    if paths["CHERRY_PICK_HEAD"].is_file():
+        return _OP_CHERRY_PICK
+    if paths["REVERT_HEAD"].is_file():
+        return _OP_REVERT
+    if paths["rebase-merge"].is_dir() or paths["rebase-apply"].is_dir():
+        if paths["rebase-merge/amend"].is_file():
+            return _OP_REBASE_EDIT
+        return _OP_REBASE
+    return None
+
+
+def _pending_operation(detect_dir, logger=None) -> Optional[str]:
+    """合併優先，其次 cherry-pick／revert／rebase；皆無回 None。"""
+    if _merge_in_progress(detect_dir, logger):
+        return _OP_MERGE
+    return _other_operation_state(detect_dir, logger)
+
+
+_CONTINUE_HINTS = {
+    _OP_CHERRY_PICK: ("CHERRY_PICK_HEAD", "cherry-pick", "git cherry-pick --continue", "`git rev-parse --git-path MERGE_MSG` 所指的檔案"),
+    _OP_REVERT: ("REVERT_HEAD", "revert", "git revert --continue", "`git rev-parse --git-path MERGE_MSG` 所指的檔案"),
+    _OP_REBASE: ("rebase-merge／rebase-apply 目錄（rebase 在衝突或中斷處停下）", "rebase", "git rebase --continue", "`git rev-parse --git-path rebase-merge/message` 所指的檔案"),
+}
+
+
+def _build_pending_operation_deny_message(op: str) -> str:
+    """cherry-pick／revert／rebase 進行中時的 DENY 訊息；合併走原訊息。"""
+    if op == _OP_MERGE:
+        return _build_merge_in_progress_deny_message()
+    marker, noun, cont, msg_what = _CONTINUE_HINTS[op]
+    return (
+        f"[{noun} 進行中，裸 commit 被阻擋]\n\n"
+        f"理由：偵測到 {marker}（有未收尾的 {noun}），裸 `git commit` 會把"
+        f"目前 index 內容（可能含他方已 stage 的內容）併成單一 commit、"
+        f"以本次 -m 取代原訊息，且{noun} 的狀態可能被清除或歷史被改寫。\n\n"
+        f"若 {noun} 是你發起的，請改用（無 tty 環境須以 GIT_EDITOR=true "
+        f"略過編輯器）：\n"
+        f"  GIT_EDITOR=true {cont}\n"
+        f"自訂訊息：先把訊息寫入 {msg_what}，再執行上一行。\n\n"
+        f"若 {noun} 非你發起：請停手並回報 PM，不要自行收尾或放棄。\n"
+    )
+
+
+def _build_rebase_edit_warn_message() -> str:
+    """rebase edit 停下時的 WARN 訊息（放行）。"""
+    return (
+        "[提醒] 偵測到 rebase 在 edit 停下（rebase-merge/amend 存在）。"
+        "此狀態下新增 commit 是分拆 commit 的正常用法，本次放行；但該 commit "
+        "會成為 rebase 歷史的一部分，若非你發起的 rebase，請確認這是你要的"
+        "位置。\n"
+    )
+
+
 def _get_staged_files(project_root: Path) -> List[str]:
     """取得目前 staged 檔案清單，讀取失敗時回傳空清單（fail-open）。"""
     success, output = run_git_command(
@@ -878,7 +984,15 @@ def main() -> int:
     if invocations is None:
         # 無法安全 tokenize（未閉合引號等）：命令含 git 字樣但結構不明，
         # 並行期保守阻擋、非並行期僅提醒（見兩則 _build_parse_failure_*
-        # 訊息函式 docstring）。
+        # 訊息函式 docstring）。例外：有他方可能待收尾的進行中操作時，
+        # 不論並行期與否一律擋（無 -C 資訊，偵測目錄為 payload cwd > root）。
+        pending = _pending_operation(
+            _resolve_detect_dir(input_data.get("cwd"), None, project_root), logger
+        )
+        if pending in _BLOCKING_OPS:
+            logger.warning("命令無法安全解析且 %s 進行中，一律阻擋", pending)
+            print(_build_pending_operation_deny_message(pending), file=sys.stderr)
+            return 2
         if dispatch_count > 0:
             logger.warning("命令含 git 字樣但無法安全解析，並行期保守阻擋")
             print(_build_parse_failure_deny_message(dispatch_count), file=sys.stderr)
@@ -903,10 +1017,14 @@ def main() -> int:
     detect_dir = _resolve_detect_dir(
         input_data.get("cwd"), invocation.dash_c_path, project_root
     )
-    if _merge_in_progress(detect_dir, logger):
-        logger.warning("MERGE_HEAD 存在，裸 commit 會收尾他方合併，阻擋")
-        print(_build_merge_in_progress_deny_message(), file=sys.stderr)
+    pending = _pending_operation(detect_dir, logger)
+    if pending in _BLOCKING_OPS:
+        logger.warning("%s 進行中，裸 commit 會收尾他方操作，阻擋", pending)
+        print(_build_pending_operation_deny_message(pending), file=sys.stderr)
         return 2
+    if pending == _OP_REBASE_EDIT:
+        logger.info("rebase edit 停下，WARN 後續行正常判定")
+        print(_build_rebase_edit_warn_message(), file=sys.stderr)
 
     if _has_all_exemption(invocation.args):
         if dispatch_count == 0:
