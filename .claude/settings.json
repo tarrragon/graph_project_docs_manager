@@ -654,6 +654,11 @@
           },
           {
             "type": "command",
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/commit-attribution-trailer-check-hook.py",
+            "timeout": 30
+          },
+          {
+            "type": "command",
             "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/worktree/hooks/worktree-merge-reminder-hook.py",
             "timeout": 30
           },
