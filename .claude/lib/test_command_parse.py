@@ -280,3 +280,45 @@ def classify_argv_weight(tokens: List[str]) -> str:
     if not stripped:
         return WEIGHT_HEAVY  # 全是 launcher 而無命令，屬 launcher 開頭判不出 runner
     return _weight_of_stripped(stripped, launcher_led=stripped != list(tokens))
+
+
+def _is_known_heavy_candidate(tokens: List[str]) -> bool:
+    """剝除前綴後的命令是否屬已辨識的 runner／編譯器（排除「launcher 開頭判不出而保守視為 heavy」）。"""
+    head = Path(tokens[0]).name
+    if head in HEAVY_BUILD_EXECUTABLES or head in (RUNNER_FLUTTER, RUNNER_DART):
+        return True
+    if head == "xcrun" and any(Path(t).name in HEAVY_BUILD_EXECUTABLES for t in tokens[1:]):
+        return True
+    return _classify_runner(tokens) is not None
+
+
+def _strip_tracking_wrapper(tokens: List[str]) -> Tuple[List[str], bool]:
+    """同 _strip_launch_prefixes，另回報去除過程中是否經過 run-with-timeout 包裝。"""
+    wrapped = False
+    while tokens:
+        if _strip_timeout_wrapper(tokens) is not None:
+            wrapped = True
+        stripped = _strip_one_launcher(tokens)
+        if stripped == tokens:
+            break
+        tokens = stripped
+    return tokens, wrapped
+
+
+def find_unwrapped_heavy(command: str) -> Optional[List[Tuple[str, ...]]]:
+    """回傳命令中「已辨識為 heavy 且未經 run-with-timeout 包裝」的敘述；無法解析回 None。
+
+    供封堵端（pre-test-hook）使用：只認已辨識的 runner／編譯器，launcher 開頭判不出者
+    不算（閘門端保守視為 heavy 只多排隊，封堵端誤判則擋掉正當命令，代價較高）。
+    """
+    statements = parse_command_statements(command)
+    if statements is None:
+        return None
+    found = []
+    for statement in statements:
+        stripped, wrapped = _strip_tracking_wrapper(list(statement))
+        if wrapped or not stripped or not _is_known_heavy_candidate(stripped):
+            continue
+        if _weight_of_stripped(stripped, launcher_led=False) == WEIGHT_HEAVY:
+            found.append(tuple(statement))
+    return found

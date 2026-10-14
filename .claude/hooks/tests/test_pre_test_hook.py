@@ -152,3 +152,90 @@ def test_non_test_flutter_subcommand_does_not_trigger():
     When 判定是否為測試命令
     Then 不應觸發"""
     assert is_test_command("Bash", {"command": "flutter analyze"}) is False
+
+
+# ---- 封堵：未包裝 heavy 與不帶 paths 的 MCP ----
+
+build_block_reason = pre_test_hook_module.build_block_reason
+
+UNWRAPPED_HEAVY = [
+    "flutter test",
+    "fvm flutter test",
+    "FLUTTER_TEST_SEED=1 fvm flutter test",
+    "timeout 600 flutter test",
+    "flutter test integration_test/app_test.dart",
+    "flutter build macos",
+    "xcodebuild -scheme Runner",
+    "uv run pytest -q",
+    "(cd .claude/hooks && uv run pytest -q)",
+]
+
+PASS_THROUGH = [
+    # 經包裝（含相對路徑呼叫、不帶路徑的全套件 pytest）
+    "python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test",
+    "(cd /some/snapshot/.claude/hooks && python3 ../scripts/run-with-timeout.py 2400 -- uv run pytest -q -rfE)",
+    # light：指定具體測試檔
+    "flutter test test/unit/a_test.dart",
+    "uv run pytest -q tests/test_x.py",
+    "(cd .claude/hooks && uv run pytest -q tests/test_x.py)",
+    # 非測試／非 heavy
+    "flutter analyze",
+    "flutter pub get",
+    "git status",
+    "env FOO=1 ls",
+    "grep -rn 'flutter test' .claude",
+    # 無法解析：fail-open
+    "echo 'flutter test",
+]
+
+
+@pytest.mark.parametrize("command", UNWRAPPED_HEAVY)
+def test_unwrapped_heavy_is_denied_with_copyable_wrapper(command):
+    reason = build_block_reason("Bash", {"command": command})
+    assert reason is not None
+    assert "python3 .claude/scripts/run-with-timeout.py 600 -- " in reason
+    assert "不需排隊" in reason
+
+
+@pytest.mark.parametrize("command", PASS_THROUGH)
+def test_wrapped_light_and_unrelated_commands_pass(command):
+    assert build_block_reason("Bash", {"command": command}) is None
+
+
+def test_wrapping_same_command_flips_deny_to_pass():
+    """E2 正反對照：同一命令未包裝 deny、包裝後放行。"""
+    bare = "fvm flutter test"
+    assert build_block_reason("Bash", {"command": bare}) is not None
+    wrapped = "python3 .claude/scripts/run-with-timeout.py 600 -- " + bare
+    assert build_block_reason("Bash", {"command": wrapped}) is None
+
+
+def test_env_prefix_suggestion_uses_env():
+    reason = build_block_reason("Bash", {"command": "FOO=1 flutter test"})
+    assert "-- env FOO=1 flutter test" in reason
+
+
+def test_mcp_run_tests_without_paths_denied():
+    for tool_input in ({}, {"roots": [{"root": "file:///x"}]}, {"roots": [{"root": "file:///x", "paths": []}]}):
+        reason = build_block_reason("mcp__dart__run_tests", tool_input)
+        assert reason is not None and "run-with-timeout.py" in reason
+
+
+def test_mcp_run_tests_with_paths_passes():
+    assert build_block_reason(
+        "mcp__dart__run_tests",
+        {"roots": [{"root": "file:///x", "paths": ["test/a_test.dart"]}]}) is None
+
+
+def test_judgement_exception_fails_open(monkeypatch, capsys):
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(pre_test_hook_module, "build_block_reason", boom)
+    monkeypatch.setattr(pre_test_hook_module, "read_json_from_stdin",
+                        lambda logger: {"tool_name": "Bash", "tool_input": {"command": "flutter test"}})
+    monkeypatch.setattr(pre_test_hook_module, "check_flutter_sdk", lambda: (True, "ok"))
+    monkeypatch.setattr(pre_test_hook_module, "check_dependencies", lambda d: [])
+    assert pre_test_hook_module.main() == 0
+    captured = capsys.readouterr()
+    assert "fail-open" in captured.err
+    assert "deny" not in captured.out

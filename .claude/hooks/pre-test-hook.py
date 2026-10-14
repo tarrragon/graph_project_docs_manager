@@ -13,6 +13,24 @@
   2. pubspec.lock 存在（依賴已安裝）
   3. .dart_tool/package_config.json 存在（pub get 已執行）
 
+封堵（deny）:
+  名額閘門只對經 run-with-timeout.py 的命令生效，本 hook 封住繞過它的兩條路徑:
+  1. Bash 直接執行 heavy 命令（未指定具體測試檔的 flutter／dart／pytest 測試、
+     npm test、integration_test、flutter build／drive、xcodebuild）而未經
+     run-with-timeout.py 包裝 -> deny，訊息附可直接複製的包裝寫法。
+  2. mcp__dart__run_tests 未帶 paths（會跑全套件）-> deny，指向 Bash 包裝寫法；帶 paths 放行。
+  light 命令（指定具體測試檔）不經包裝亦放行。
+  判定失敗（命令無法解析、判定拋例外）一律 fail-open 放行並寫 stderr：
+  封堵端誤判會擋掉正當命令，代價高於漏擋。
+  liveness：deny 時 hook 日誌（.claude/hook-logs/pre-test-hook/）記一行 warning；
+  實地確認以「裸 heavy 命令被 deny、包裝後同一命令放行」成對觸發。
+
+不涵蓋（已知破口，不在封堵範圍）:
+  - bash -c '...'／sh -c／python -c：命令在引號字串內，需二次解析
+  - 經 shell 腳本間接執行（腳本檔內含 flutter test）：命令在腳本檔內
+  - yarn／pnpm／npx 的測試，以及 test_command_parse 未列入帶值集合的自訂選項
+  - mcp__dart__run_tests 帶 paths 但 paths 指向整個目錄：視為明示範圍而放行
+
 觸發時機: PreToolUse (Bash: flutter test, mcp__dart__run_tests)
 
 輸出:
@@ -29,6 +47,8 @@ HOOK_METADATA (JSON):
 }
 """
 
+import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -37,7 +57,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib import setup_hook_logging, run_hook_safely, get_project_root, read_json_from_stdin, emit_hook_output
 from lib.hook_messages import ValidationMessages
-from lib.test_command_parse import RUNNER_DART, RUNNER_FLUTTER, find_test_invocations
+from lib.test_command_parse import RUNNER_DART, RUNNER_FLUTTER, find_test_invocations, find_unwrapped_heavy
 
 
 # 測試命令判定（2026-10-14 改用共用模組）
@@ -54,6 +74,54 @@ def is_test_command(tool_name: str, tool_input: dict) -> bool:
     invocations = find_test_invocations(tool_input.get("command", ""))
     # 解析失敗（None）即略過：本 hook 為提示型檢查，漏判一次只少做環境檢查、不擋命令
     return any(inv.runner in FLUTTER_RUNNERS for inv in invocations or [])
+
+
+WRAPPER_PATH = ".claude/scripts/run-with-timeout.py"
+WRAPPER_TIMEOUT_SECONDS = 600
+_ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _wrapped_form(statement: tuple) -> str:
+    """產生可直接複製的包裝寫法；前導 KEY=VAL 需經 env，否則包裝腳本無法 exec。"""
+    tokens = list(statement)
+    if tokens and _ENV_ASSIGNMENT_RE.match(tokens[0]):
+        tokens = ["env"] + tokens
+    return "python3 {} {} -- {}".format(WRAPPER_PATH, WRAPPER_TIMEOUT_SECONDS, shlex.join(tokens))
+
+
+def _mcp_has_paths(tool_input: dict) -> bool:
+    """mcp__dart__run_tests 是否限定了測試範圍（頂層 paths 或 roots[].paths 任一非空）。"""
+    if tool_input.get("paths"):
+        return True
+    roots = tool_input.get("roots") or []
+    return any(isinstance(r, dict) and r.get("paths") for r in roots)
+
+
+def build_block_reason(tool_name: str, tool_input: dict):
+    """回傳封堵理由；放行回 None。判定失敗由呼叫端 fail-open。"""
+    if tool_name == "mcp__dart__run_tests":
+        if _mcp_has_paths(tool_input):
+            return None
+        return (
+            "mcp__dart__run_tests 未帶 paths 會跑全套件，繞過本機名額閘門。"
+            "請改用 Bash 經包裝執行：python3 {} {} -- fvm flutter test"
+            "（{} 為逾時秒數，可依套件大小調整）；"
+            "或在 roots 的 paths 指定具體測試檔（指定具體測試檔的執行不需排隊）。".format(
+                WRAPPER_PATH, WRAPPER_TIMEOUT_SECONDS, WRAPPER_TIMEOUT_SECONDS)
+        )
+    if tool_name != "Bash":
+        return None
+    unwrapped = find_unwrapped_heavy(tool_input.get("command", ""))
+    if not unwrapped:  # None（無法解析）與 []（無 heavy）皆放行
+        return None
+    suggestions = "\n".join("  " + _wrapped_form(st) for st in unwrapped)
+    return (
+        "偵測到未經 run-with-timeout 包裝的 heavy 命令（全套件測試或編譯），"
+        "會繞過本機名額閘門。請把該命令原樣包進 "
+        "python3 {w} <秒> -- <原命令>，可直接複製（{s} 秒為預設逾時，可依需要調整）：\n{sg}\n"
+        "指定具體測試檔的執行不需排隊、不需包裝。".format(
+            w=WRAPPER_PATH, s=WRAPPER_TIMEOUT_SECONDS, sg=suggestions)
+    )
 
 
 def check_flutter_sdk() -> tuple[bool, str]:
@@ -117,6 +185,21 @@ def main():
 
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input") or {}
+
+    try:
+        block_reason = build_block_reason(tool_name, tool_input)
+    except Exception as exc:  # 判定失敗 fail-open：封堵端誤判代價高於漏擋
+        sys.stderr.write("pre-test-hook 封堵判定失敗，fail-open 放行: {}\n".format(exc))
+        logger.error("封堵判定失敗，fail-open: %s", exc)
+        block_reason = None
+    if block_reason:
+        logger.warning("deny: %s", block_reason.splitlines()[0])
+        emit_hook_output(
+            "PreToolUse",
+            permission_decision="deny",
+            permission_decision_reason=block_reason,
+        )
+        return 0
 
     if not is_test_command(tool_name, tool_input):
         return 0

@@ -249,7 +249,8 @@ class TestPreTestHook:
 
     PAYLOAD = {
         "tool_name": "Bash",
-        "tool_input": {"command": "flutter test"},
+        # 指定具體測試檔（light）：不觸發未包裝 heavy 封堵，專測環境警告路徑
+        "tool_input": {"command": "flutter test test/a_test.dart"},
     }
 
     @pytest.fixture(scope="class")
