@@ -838,7 +838,7 @@ ticket track depth <ticket-id>
 
 > **與 frontmatter `chain.depth` 的基數差異**：本命令輸出的 `depth` 是即時沿 `parent_id` 鏈計算的動態值，根任務 = 1（1-based）。`ticket-lifecycle-details.md`〈chain 欄位說明〉的 frontmatter `chain.depth` 是建立當下依 ID 序號點數寫入的靜態快照，根任務 = 0（0-based），與本命令為同名不同來源的獨立量測值，不可互換代入（詳見該節注記）。`can_descend` 與 `MAX_TICKET_DEPTH` 比較一律以本命令輸出為準。
 
-`create --parent <id>` 時，若新子任務深度 > `MAX_TICKET_DEPTH`（3）會 emit warning（**不硬擋**，留旁路；深度 == 3 為合法最深層，不 warn）。此為嵌套派發深度上限的 CLI 強制層，使協議深度上限不只是文件建議。派發端的 `agent-ticket-validation-hook` 同判準：被派發票 depth > `MAX_TICKET_DEPTH` 才 deny（裁決 E）；`can_descend`（`depth < MAX`）是呼叫者判斷自己能否再往下派發，不用於被派發票。
+`create --parent <id>` 時，若新子任務深度 > `MAX_TICKET_DEPTH`（3）會 emit warning（**不硬擋**，留旁路；深度 == 3 為合法最深層，不 warn）。此為嵌套派發深度上限的預警：主線程派發此票不受影響，子代理人持有此票時不可再往下派發。派發端的 `agent-ticket-validation-hook` 對子代理人派發以派發者持有票的 `can_descend` 判定（持有票映射缺失時退回被派發票 depth > `MAX_TICKET_DEPTH` 才 deny，裁決 E）；`can_descend`（`depth < MAX`）是呼叫者判斷自己能否再往下派發，不用於被派發票。
 
 ---
 
