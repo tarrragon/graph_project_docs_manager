@@ -162,3 +162,13 @@ class TestSingleReaderInvariant:
                 if "hook-dispatch-registry.json" in text and "json.load(" in text:
                     offenders.append(p.name)
         assert offenders == []
+
+
+def test_hook_output_validator_target_hooks_include_registry_entries():
+    """validator 經 merge_dispatch_registry 取清單：被併入分派 registry 的 hook 不得缺席"""
+    p = CLAUDE_DIR / "lib" / "hook_output_validator.py"
+    spec = importlib.util.spec_from_file_location("hook_output_validator_under_test", str(p))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    commands = [c for _, _, c in mod.load_target_hooks()]
+    assert any("workspace-wipe-guard-hook.py" in c for c in commands)

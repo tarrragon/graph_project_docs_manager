@@ -1,8 +1,8 @@
 {
-  "_comment": "Bash 事件 hook 分派清單：新增 Bash 的 PreToolUse/PostToolUse hook 時在對應 group 的 hooks 加一項（path 自專案根；timeout 秒，缺省 30）。重型 hook 排最後。mcp__dart__run_tests 與不帶 matcher 的註冊不經分派器，維持在 settings.json。",
+  "_comment": "Bash 事件 hook 分派清單：新增 Bash 的 PreToolUse/PostToolUse hook 時在對應 group 的 hooks 加一項（path 自專案根；timeout 秒，缺省 60）。重型 hook 排最後。mcp__dart__run_tests 與不帶 matcher 的註冊不經分派器，維持在 settings.json。",
   "groups": {
     "PreToolUse:Bash": {
-      "budget": 600,
+      "budget": 380,
       "hooks": [
         {
           "path": ".claude/hooks/isolated-subagent-main-write-guard-hook.py"

@@ -101,7 +101,7 @@ class TestIsolation:
     def test_exception_in_one_hook_does_not_stop_others_and_is_visible(self, tmp_path):
         bad = _write_hook(tmp_path, "bad", "raise RuntimeError('boom')\n")
         good = _write_hook(tmp_path, "good", "import sys\nsys.stderr.write('ok-ran')\n")
-        results = disp.dispatch([bad, good], "{}", tmp_path, 30)
+        results = disp.dispatch([bad, good], "{}", tmp_path, 100)
         assert results[0].code == 1 and "boom" in results[0].error
         assert results[1].code == 0 and results[1].stderr == "ok-ran"
         _, _, err = disp.merge_results(results)
@@ -136,12 +136,14 @@ class TestIsolation:
         assert results[0].code == 1 and "逾時" in results[0].error
         assert results[1].code == 0
 
-    def test_group_budget_caps_total_wait(self, tmp_path):
+    def test_exhausted_budget_defers_later_hooks_to_tail_instead_of_skipping(self, tmp_path):
         slow = _write_hook(tmp_path, "slow", "import time\ntime.sleep(5)\n")
-        later = _write_hook(tmp_path, "later", "pass\n")
-        results = disp.dispatch([slow, later], "{}", tmp_path, 0.3)
+        later = _write_hook(tmp_path, "later", "import sys\nsys.stderr.write('tail-ran')\n")
+        slow["timeout"] = 0.3
+        results = disp.dispatch([slow, later], "{}", tmp_path, 5)
         assert "逾時" in results[0].error
-        assert "預算用盡" in results[1].error
+        assert results[1].code == 0 and results[1].stderr == "tail-ran"
+        assert "預算用盡" not in results[1].error
 
     def test_missing_hook_file_is_visible_not_silent(self, tmp_path):
         results = disp.dispatch([{"path": "nope.py"}], "{}", tmp_path, 30)
