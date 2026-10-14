@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | `claim` | 認領 Ticket | 〈UPDATE 操作〉 |
 | `complete` | 標記完成 | 〈UPDATE 操作〉 |
-| `finish` | `complete` 別名（worktree 派發避開 runtime guard 對 `complete` 的 basename 誤判） | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
+| `finish` | `complete` 別名（CLI 仍保留；隔離代理人不以它收尾，收尾止於 `ticket track commit`，complete 由 PM 於合併後執行） | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `close` | 關閉 Ticket（已在其他 Ticket 一併解決） | --help |
 | `set-closed-by` | 修正已 closed 票的 `closed_by` 欄位 | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `restore` | 還原 closed 票為 pending（closed 態唯一合法出邊，需 `--reason`） | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
@@ -1284,7 +1284,7 @@ ticket track dispatch <ticket_id> --as <agent_name> --dry-run   # 只看骨架�
 | `--review-perspective` | 無 | `--kind review` 專用：審查視角 |
 | `--decision-question` | 無 | `--kind review` 專用：裁決問題 |
 | `--commit-policy` | `agent` | `agent`（骨架嵌入精準 staging 制式句權威版全文，冪等寫入**票面 body**的「Commit 規範」子章節，非本檔章節）／`pm`（PM 統一 commit，agent 不執行）／`none`（本次派發不涉及 commit） |
-| `--isolation` | 無 | `worktree`（normal 骨架收尾句改 `ticket track commit`（於 worktree 路徑）→ `ticket track finish`，並註明 finish 被隔離守衛拒絕時於 Exit Status 記錄後交還 PM 代跑）／`none`（收尾 `complete`，與不帶逐字相同）。未帶且 where.files 寫入路徑含非豁免路徑（豁免清單同 `branch-verify-hook.py`：`.claude/`、`docs/`、`scripts/experiments/` 前綴與頂層檔）時 stderr 印 WARNING、照常輸出、exit 0；帶任一值視為 PM 已明示，不警告。判準見 `.claude/pm-rules/parallel-dispatch.md`〈派發位置判準（強制）〉 |
+| `--isolation` | 無 | `worktree`（normal 骨架收尾句為 `ticket track commit <id> -m "..." --worktree <路徑> -- <檔案>`，只提交產品檔，收尾到 commit 為止並回報 PM；不含 complete 與 finish，complete 由 PM 於合併後在主 checkout 執行，權威為 `CLOSING_BY_ISOLATION`）／`none`（收尾 `complete`，與不帶逐字相同）。未帶且 where.files 寫入路徑含非豁免路徑（豁免清單同 `branch-verify-hook.py`：`.claude/`、`docs/`、`scripts/experiments/` 前綴與頂層檔）時 stderr 印 WARNING、照常輸出、exit 0；帶任一值視為 PM 已明示，不警告。判準見 `.claude/pm-rules/parallel-dispatch.md`〈派發位置判準（強制）〉 |
 | `--dry-run` | 關閉 | 只輸出骨架，不寫入票面（不落 `--note`、不冪等寫入「Commit 規範」子節、不呼叫派發前檢查）；輸出首行加浮水印 `[DRY-RUN 未落票]`；預設行為（非 dry-run）不變 |
 | `--version` | 無 | 指定版本（預設自動偵測 active 版本） |
 
