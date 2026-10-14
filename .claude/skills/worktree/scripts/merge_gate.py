@@ -286,9 +286,13 @@ def _sigterm_as_interrupt() -> Iterator[None]:
         signal.signal(signal.SIGTERM, previous)
 
 
-def wrapped_argv(command: list, project_root: str, timeout: int = SUITE_TIMEOUT_SECONDS) -> list:
-    """全套件一律經 run-with-timeout（heavy 命令自動取得全機名額）。"""
-    script = str(Path(project_root) / ".claude" / "scripts" / "run-with-timeout.py")
+def wrapped_argv(command: list, timeout: int = SUITE_TIMEOUT_SECONDS) -> list:
+    """全套件一律經 run-with-timeout（heavy 命令自動取得全機名額）。
+
+    腳本取自本檔所在的樹而非主 checkout：持有者（本檔的 slot_gate）與子程序必須載入同一版
+    slot_gate，否則子程序不認得持有標記，會等待持有者自己占用的名額。
+    """
+    script = str(Path(__file__).resolve().parents[3] / "scripts" / "run-with-timeout.py")
     return [sys.executable, script, str(timeout), "--", *command]
 
 
@@ -320,7 +324,7 @@ def _ensure_artifacts(suite: str, snapshot: str, project_root: str, runner: Suit
     for artifact, generator in REQUIRED_ARTIFACTS.get(suite, ()):
         if os.path.exists(os.path.join(snapshot, artifact)):
             continue
-        rc, out = runner(wrapped_argv(generator, project_root), snapshot)
+        rc, out = runner(wrapped_argv(generator), snapshot)
         if rc != 0 or not os.path.exists(os.path.join(snapshot, artifact)):
             tail = out.strip().splitlines()[-3:]
             return (f"[{suite}] 快照缺生成產物 {artifact}，生成命令 {' '.join(generator)} 失敗"
@@ -375,7 +379,7 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
             return missing
         start = time.monotonic()
         try:
-            rc, out = runner(wrapped_argv(suite_command(suite, snapshot), project_root), snapshot)
+            rc, out = runner(wrapped_argv(suite_command(suite, snapshot)), snapshot)
         except BaseException:  # 中斷也留一行紀錄後原樣再拋，讓上層清快照
             _emit_result(log_root, _suite_result_line(suite, "中斷", "無摘要", time.monotonic() - start))
             raise
@@ -416,7 +420,7 @@ class MergeGate:
             yield
             return
         with _sigterm_as_interrupt():
-            held, early = slot_gate.acquire_slot(["merge-gate", branch], lambda: None)
+            held, early = slot_gate.acquire_slot(["merge-gate", branch], lambda: None, label="merge-gate")
             if early is not None:
                 raise RuntimeError(f"等待本機名額失敗（exit {early}）")
             if held is None:  # 名額閘門失效（目錄不可用）：與 run-with-timeout 一致，略過不擋

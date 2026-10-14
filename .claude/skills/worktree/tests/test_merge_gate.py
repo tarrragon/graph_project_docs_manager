@@ -127,7 +127,7 @@ class TestRedGreen:
 class TestHeavySlot:
     def test_suite_commands_are_wrapped_and_heavy(self):
         for suite, cmd in mg.SUITE_COMMANDS.items():
-            argv = mg.wrapped_argv(cmd, str(ROOT))
+            argv = mg.wrapped_argv(cmd)
             assert argv[1].endswith("run-with-timeout.py"), suite
             assert argv[argv.index("--") + 1:] == cmd
             assert classify_argv_weight(cmd) == WEIGHT_HEAVY, suite
@@ -157,7 +157,7 @@ class TestHeavySlot:
             return d
 
         def run(d):
-            argv = mg.wrapped_argv([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], str(ROOT), 120)
+            argv = mg.wrapped_argv([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], 120)
             stamps[d.name] = mg.default_runner(argv, str(d))[0]
 
         dirs = [make_dir("a"), make_dir("b")]
@@ -594,7 +594,7 @@ class TestNoSelfDeadlock:
         d = tmp_path / "suite"
         d.mkdir()
         (d / "test_ok.py").write_text("def test_ok():\n    assert True\n")
-        argv = mg.wrapped_argv([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], str(ROOT), 60)
+        argv = mg.wrapped_argv([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], 60)
         return argv, str(d)
 
     def test_suite_completes_while_holding_slot(self, repo, tmp_path, monkeypatch):
@@ -616,6 +616,44 @@ class TestNoSelfDeadlock:
         finally:
             hold.release()
         assert rc == 125
+
+    def test_wrapper_script_comes_from_same_tree_as_gate(self):
+        """持有者與子程序必須載入同一份 slot_gate：腳本取自 merge_gate.py 所在的樹，不取主 checkout。"""
+        expected = Path(mg.__file__).resolve().parents[3] / "scripts" / "run-with-timeout.py"
+        assert Path(mg.wrapped_argv(["true"])[1]) == expected
+
+    def test_child_that_ignores_marker_fails_fast(self, repo, tmp_path, monkeypatch):
+        """E2：子程序的 slot_gate 不認得持有標記（版本不一致）時，等待上限須遠短於預設，不可占住名額。"""
+        from lib import slot_gate
+        stub = tmp_path / "old_run_with_timeout.py"
+        stub.write_text(
+            "import sys\n"
+            f"sys.path.insert(0, r'{ROOT / '.claude'}')\n"
+            "from lib import slot_gate\n"
+            "hold, early = slot_gate.acquire_slot(['x'], lambda: None)  # 舊版：不處理持有標記\n"
+            "sys.exit(early or 0)\n"
+        )
+        monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "20")  # 模擬預設的長上限
+        monkeypatch.setattr(slot_gate, "HELD_CHILD_WAIT_LIMIT_SECONDS", 2, raising=False)
+        with mg.MergeGate(str(repo)).hold("feat", "main"):
+            start = time.monotonic()
+            rc, _ = mg.default_runner([sys.executable, str(stub)], str(tmp_path))
+            elapsed = time.monotonic() - start
+        assert rc == 125 and elapsed < 10
+        assert slot_free()
+
+    def test_holder_wait_notice_names_its_own_source(self, repo, monkeypatch, capsys):
+        from lib import slot_gate
+        monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "1")
+        other, _ = slot_gate.acquire_slot(["other"], lambda: None)
+        try:
+            with pytest.raises(RuntimeError):
+                with mg.MergeGate(str(repo)).hold("feat", "main"):
+                    pass
+        finally:
+            other.release()
+        err = capsys.readouterr().err
+        assert "merge-gate:" in err and "run-with-timeout:" not in err
 
     def test_marker_cleared_after_hold(self, repo):
         import os
