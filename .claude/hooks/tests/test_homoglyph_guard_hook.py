@@ -267,3 +267,20 @@ class TestHookLogsObservability:
             if line.strip()
         ]
         assert any(e.get("hook") == "homoglyph-guard-hook" for e in entries)
+
+
+# ----------------------------------------------------------------------------
+# E2：解析器判定（正向 -C 寫法命中、反向 echo 不命中）
+# ----------------------------------------------------------------------------
+
+
+def test_is_git_commit_command_dash_c_hits_e2():
+    assert _is_git_commit_command("git -C x commit -m y") is True
+
+
+def test_is_git_commit_command_echo_not_hit_e2():
+    assert _is_git_commit_command("echo git commit") is False
+
+
+def test_is_git_commit_command_unparseable_not_hit():
+    assert _is_git_commit_command("git commit -m 'unclosed") is False

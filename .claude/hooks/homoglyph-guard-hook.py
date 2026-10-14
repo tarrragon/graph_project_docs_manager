@@ -47,6 +47,7 @@ from lib import (  # noqa: E402
     read_json_from_stdin,
     get_project_root,
 )
+from lib.git_command_parse import contains_git_word, find_git_invocations  # noqa: E402
 
 
 EXIT_OK = 0
@@ -63,18 +64,12 @@ SKIP_MARKER = "[skip homoglyph]"
 
 def _is_git_commit_command(command: str) -> bool:
     """判斷是否為新建 commit 命令（排除 amend / log / diff / show / status）。"""
-    if "git commit" not in command:
+    if not contains_git_word(command):
         return False
-    for excluded in (
-        "git commit --amend",
-        "git log",
-        "git show",
-        "git diff",
-        "git status",
-    ):
-        if excluded in command:
-            return False
-    return True
+    invocations = find_git_invocations(command, {"commit"})
+    if invocations is None:
+        return False  # 無法解析：視為未命中
+    return any("--amend" not in inv.args for inv in invocations)
 
 
 def _get_staged_diff(project_dir: Path, logger) -> str:

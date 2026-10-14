@@ -43,6 +43,7 @@ try:
         read_json_from_stdin,
     )
     from lib.git_utils import get_uncommitted_files
+    from lib.git_command_parse import contains_git_word, find_git_invocations
 except ImportError as e:
     # ImportError 不應 exit(1) 阻斷流程；降級為 no-op（fail-open）
     print(f"[Hook Import Warning] {Path(__file__).name}: {e}", file=sys.stderr)
@@ -63,20 +64,18 @@ except ImportError as e:
     def get_uncommitted_files():
         return []
 
+    def contains_git_word(command):
+        return False
+
+    def find_git_invocations(command, subcommands, base_dir=None):
+        return []
+
 
 # ============================================================================
 # 常數定義
 # ============================================================================
 
 EXIT_SUCCESS = 0
-
-# 排除的命令模式（非 commit 操作或不需提醒的 commit 變體）
-EXCLUDED_COMMAND_PATTERNS = (
-    "git log",
-    "git show",
-    "git diff",
-    "git status",
-)
 
 # ticket md 路徑特徵：docs/work-logs/.../tickets/*.md
 # 同時支援階層結構（v1/v1.0/v1.0.0/tickets/）與扁平結構（v0.29.0/tickets/）
@@ -89,12 +88,12 @@ _TICKET_MD_PATTERN = re.compile(r"docs/work-logs/.*/tickets/[^/]+\.md$")
 
 def is_git_commit_command(command: str) -> bool:
     """判斷 Bash 命令是否為 git commit 操作（排除 log/show/diff/status 等讀取）。"""
-    if not command or "git commit" not in command:
+    if not command or not contains_git_word(command):
         return False
-    for excluded in EXCLUDED_COMMAND_PATTERNS:
-        if excluded in command:
-            return False
-    return True
+    invocations = find_git_invocations(command, {"commit"})
+    if invocations is None:
+        return False  # 無法解析：提示型 hook 視為未命中
+    return any("--amend" not in inv.args for inv in invocations)
 
 
 def is_ticket_md_path(file_path: str) -> bool:

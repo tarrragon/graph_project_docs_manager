@@ -41,20 +41,35 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root
+from lib.dispatch_tracker import get_active_dispatches
+from lib.git_command_parse import contains_git_word, find_git_invocations  # noqa: E402
 
 
 SCHEMA_PY_REL_PATH = ".claude/skills/doc/doc_system/core/tracking_schema.py"
 SCHEMA_JSON_REL_PATH = ".claude/skills/doc/doc_system/core/tracking_schema.json"
 DOC_SKILL_PROJECT_DIR = ".claude/skills/doc"
 
-def is_commit_command(command: str) -> bool:
-    """判斷是否為 git commit 命令（排除唯讀/amend 變體）。"""
-    if "git commit" not in command:
+def is_commit_command(command: str) -> Optional[bool]:
+    """判斷是否為新建 git commit 命令（排除 --amend）。
+
+    以 find_git_invocations 解析（涵蓋 git -C x commit、command/exec 前綴、
+    bash -c 等；echo 與引號內文字不誤判）。
+    回傳 None 表示命令含 git 字樣但無法解析，由 main() 決定保守處置。
+    """
+    if not contains_git_word(command):
         return False
-    for excluded in ("git commit --amend", "git log", "git show", "git diff"):
-        if excluded in command:
-            return False
-    return True
+    invocations = find_git_invocations(command, {"commit"})
+    if invocations is None:
+        return None
+    return any("--amend" not in inv.args for inv in invocations)
+
+
+def has_parallel_dispatch(project_root: Path) -> bool:
+    """是否有活躍並行派發；讀取失敗保守視為非並行（與 bare-commit-guard 一致）。"""
+    try:
+        return len(get_active_dispatches(project_root)) > 0
+    except Exception:
+        return False
 
 
 def get_staged_files(project_root: Path, logger) -> list:
@@ -134,7 +149,26 @@ def main() -> int:
 
     tool_input = input_data.get("tool_input") or {}
     command = tool_input.get("command", "")
-    if not is_commit_command(command):
+    is_commit = is_commit_command(command)
+    if is_commit is None:
+        # 無法解析：比照 bare-commit-guard，並行期保守擋下、非並行期僅提醒。
+        # 提醒走 stderr 直接 print（logger.warning 會觸發 hook error 顯示）。
+        if has_parallel_dispatch(get_project_root()):
+            logger.warning("命令含 git 字樣但無法安全解析，並行期保守阻擋")
+            print(
+                "[tracking-schema-json-staleness-guard] 命令無法安全解析，"
+                "並行派發期間保守阻擋。請改寫為單純的 git commit 命令後重送。",
+                file=sys.stderr,
+            )
+            return 2
+        logger.info("命令含 git 字樣但無法安全解析，非並行期提醒放行")
+        print(
+            "[tracking-schema-json-staleness-guard] 提醒：命令無法安全解析，"
+            "未檢查 tracking_schema.json 是否過期。",
+            file=sys.stderr,
+        )
+        return 0
+    if not is_commit:
         logger.debug("跳過: 非 git commit 命令")
         return 0
 

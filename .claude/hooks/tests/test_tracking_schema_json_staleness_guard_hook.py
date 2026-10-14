@@ -397,3 +397,35 @@ def test_scenario_hand_edited_compat_version_key_blocks(monkeypatch, capsys):
     )
     assert exit_code == 2
     assert "tracking_schema.json 過期" in capsys.readouterr().err
+
+
+# ============================================================================
+# 解析器判定（E2 正反向對照）與 None 處置
+# ============================================================================
+
+
+def test_is_commit_command_dash_c_hits_e2():
+    assert _hook.is_commit_command("git -C x commit -m y") is True
+
+
+def test_is_commit_command_echo_not_hit_e2():
+    assert _hook.is_commit_command("echo git commit") is False
+
+
+def test_is_commit_command_unparseable_returns_none():
+    assert _hook.is_commit_command("git commit -m 'unclosed") is None
+
+
+def _run_main_with_command(command, parallel):
+    payload = {"tool_name": "Bash", "tool_input": {"command": command}}
+    with patch.object(_hook, "read_json_from_stdin", return_value=payload), \
+         patch.object(_hook, "has_parallel_dispatch", return_value=parallel):
+        return _hook.main()
+
+
+def test_main_unparseable_parallel_blocks():
+    assert _run_main_with_command("git commit -m 'unclosed", True) == 2
+
+
+def test_main_unparseable_non_parallel_warns_passes():
+    assert _run_main_with_command("git commit -m 'unclosed", False) == 0
