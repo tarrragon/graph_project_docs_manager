@@ -56,11 +56,6 @@ CHANGELOG_SKIP_PREFIXES = (
 )
 
 # --- handoff 子邏輯常數 ---
-EXCLUDED_COMMAND_PATTERNS = [
-    "git log", "git show", "git diff", "git status",
-    "git commit --amend",
-]
-
 SKIP_SCENE16_COMMIT_PREFIXES = frozenset({
     "docs", "chore", "style", "revert", "test", "ci", "build",
 })

@@ -64,15 +64,6 @@ from lib import (
 
 EXIT_SUCCESS = 0
 
-# 排除的命令模式（非 commit 寫入操作）
-EXCLUDED_COMMAND_PATTERNS = [
-    "git log",
-    "git show",
-    "git diff",
-    "git status",
-    "git commit --amend",
-]
-
 # commit 成功標記
 COMMIT_SUCCESS_MARKERS = [
     "files changed",

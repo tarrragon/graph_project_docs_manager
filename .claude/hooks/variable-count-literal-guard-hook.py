@@ -65,14 +65,6 @@ from lib import (
 
 EXIT_SUCCESS = 0
 
-EXCLUDED_COMMAND_PATTERNS = [
-    "git log",
-    "git show",
-    "git diff",
-    "git status",
-    "git commit --amend",
-]
-
 COMMIT_SUCCESS_MARKERS = [
     "files changed",
     "file changed",

@@ -49,15 +49,6 @@ from lib.ask_user_question_reminders import AskUserQuestionReminders
 
 EXIT_SUCCESS = 0
 
-# 排除的命令模式（非 commit 操作）
-EXCLUDED_COMMAND_PATTERNS = [
-    "git log",
-    "git show",
-    "git diff",
-    "git status",
-    "git commit --amend",
-]
-
 # 自動跳過 #16 的 commit 類型（conventional commit 前綴）
 SKIP_SCENE16_COMMIT_PREFIXES = frozenset({
     "docs",
