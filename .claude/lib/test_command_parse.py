@@ -70,6 +70,12 @@ _NPM_OPTIONS_WITH_VALUE = frozenset({
 })
 NPM_TEST_ALIASES = frozenset({"test", "t", "tst"})
 
+WEIGHT_HEAVY = "heavy"
+WEIGHT_LIGHT = "light"
+HEAVY_BUILD_EXECUTABLES = frozenset({"xcodebuild"})
+INTEGRATION_TEST_MARKER = "integration_test"
+_SPECIFIC_TEST_FILE_RE = re.compile(r"(_test\.dart|(^|/)test_[^/]*\.py|_test\.py)$")
+
 
 @dataclass(frozen=True)
 class TestInvocation:
@@ -189,3 +195,47 @@ def find_test_invocations(command: str) -> Optional[List[TestInvocation]]:
         if runner is not None:
             invocations.append(TestInvocation(runner=runner, statement=tuple(statement)))
     return invocations
+
+
+def _names_specific_test_file(args: List[str]) -> bool:
+    """參數中有指到具體測試檔（*_test.dart、test_*.py、*_test.py、path::node id）。"""
+    for arg in args:
+        if arg.startswith("-"):
+            continue
+        if _SPECIFIC_TEST_FILE_RE.search(arg.split("::", 1)[0]):
+            return True
+    return False
+
+
+def _weight_of_stripped(tokens: List[str], launcher_led: bool) -> str:
+    head = Path(tokens[0]).name
+    if head in HEAVY_BUILD_EXECUTABLES:
+        return WEIGHT_HEAVY
+    if head in (RUNNER_FLUTTER, RUNNER_DART):
+        rest = _skip_options(tokens[1:], _FLUTTER_DART_OPTIONS_WITH_VALUE)
+        if rest and rest[0] == "build":
+            return WEIGHT_HEAVY
+        if rest and rest[0] == "test":
+            args = rest[1:]
+            if any(INTEGRATION_TEST_MARKER in arg for arg in args):
+                return WEIGHT_HEAVY
+            return WEIGHT_LIGHT if _names_specific_test_file(args) else WEIGHT_HEAVY
+    elif _classify_runner(tokens) == RUNNER_PYTEST:
+        return WEIGHT_LIGHT if _names_specific_test_file(tokens[1:]) else WEIGHT_HEAVY
+    elif _classify_runner(tokens) == RUNNER_NPM:
+        return WEIGHT_HEAVY
+    # 判不出 runner：launcher 開頭者依慣例是測試或編譯的包裝，保守視為 heavy（誤判只多排隊）
+    return WEIGHT_HEAVY if launcher_led else WEIGHT_LIGHT
+
+
+def classify_argv_weight(tokens: List[str]) -> str:
+    """argv 清單（非 shell 字串）的負載分級：未指定具體測試檔的全套件測試與編譯為 heavy。
+
+    供本機名額閘門使用；沿用 find_test_invocations 的前綴剝除，不重新拼接字串。
+    """
+    if not tokens:
+        return WEIGHT_LIGHT
+    stripped = _strip_launch_prefixes(list(tokens))
+    if not stripped:
+        return WEIGHT_HEAVY  # 全是 launcher 而無命令，屬 launcher 開頭判不出 runner
+    return _weight_of_stripped(stripped, launcher_led=stripped != list(tokens))

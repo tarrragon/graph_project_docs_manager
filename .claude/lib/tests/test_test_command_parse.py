@@ -15,7 +15,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from lib.test_command_parse import ALL_RUNNERS, find_test_invocations
+from lib.test_command_parse import (
+    ALL_RUNNERS,
+    WEIGHT_HEAVY,
+    WEIGHT_LIGHT,
+    classify_argv_weight,
+    find_test_invocations,
+)
 
 WRAPPER = "python3 .claude/scripts/run-with-timeout.py 300 --"
 
@@ -167,3 +173,50 @@ def test_merged_short_options_consume_value(command, expected):
 ])
 def test_missing_value_options_added(command, expected):
     assert _runners(command) == expected
+
+
+@pytest.mark.parametrize("argv", [
+    ["flutter", "test"],
+    ["flutter", "test", "test/"],
+    ["fvm", "flutter", "test"],
+    ["flutter", "build", "macos"],
+    ["xcodebuild", "-scheme", "Runner"],
+    ["pytest"],
+    ["pytest", "tests/"],
+    ["python3", "-m", "pytest"],
+    ["uv", "run", "pytest", "-q"],
+    ["dart", "test"],
+    ["flutter", "test", "integration_test/app_test.dart"],
+    ["flutter", "test", "integration_test"],
+])
+def test_argv_weight_heavy(argv):
+    assert classify_argv_weight(argv) == WEIGHT_HEAVY
+
+
+@pytest.mark.parametrize("argv", [
+    ["flutter", "test", "test/a_test.dart"],
+    ["dart", "test", "test/a_test.dart"],
+    ["pytest", "tests/test_a.py"],
+    ["pytest", "tests/a_test.py"],
+    ["pytest", "tests/test_a.py::test_x"],
+    ["pytest", "-q", "tests/test_a.py", "-k", "x"],
+    ["python3", "-m", "pytest", "tests/test_a.py"],
+    ["uv", "run", "pytest", "tests/test_a.py"],
+    ["echo", "hi"],
+    ["python3", "script.py"],
+    [],
+])
+def test_argv_weight_light(argv):
+    assert classify_argv_weight(argv) == WEIGHT_LIGHT
+
+
+@pytest.mark.parametrize("argv", [
+    ["env", "A=1", "./scripts/run.sh"],
+    ["sudo", "./build.sh"],
+    ["nohup", "./all.sh"],
+    ["timeout", "10", "./x.sh"],
+    ["xargs", "./x.sh"],
+])
+def test_argv_weight_launcher_led_unknown_runner_is_heavy(argv):
+    """判定退路：launcher 開頭而剝除後判不出 runner，保守視為 heavy。"""
+    assert classify_argv_weight(argv) == WEIGHT_HEAVY
