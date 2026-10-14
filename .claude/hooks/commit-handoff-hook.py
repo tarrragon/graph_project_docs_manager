@@ -29,6 +29,7 @@ from typing import Any, Optional, Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from lib.git_command_parse import match_git_commit
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -99,15 +100,7 @@ def is_git_commit_command(command: str) -> bool:
     Returns:
         bool - 是否為 git commit 操作（排除 --amend 等特殊情況）
     """
-    if "git commit" not in command:
-        return False
-
-    # 排除不需要提醒的 commit 變體
-    for excluded in EXCLUDED_COMMAND_PATTERNS:
-        if excluded in command:
-            return False
-
-    return True
+    return match_git_commit(command) is True
 
 
 def is_commit_successful(stdout: str) -> bool:

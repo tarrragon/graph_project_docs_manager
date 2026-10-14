@@ -27,6 +27,7 @@ from typing import Any, Optional, Dict, List
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from lib.git_command_parse import match_git_commit
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -152,12 +153,7 @@ def check_changelog_update(input_data: dict, tool_input: dict, logger):
 
 def _is_git_commit_command(command: str) -> bool:
     """判斷是否為 git commit 命令（排除 --amend 等）。"""
-    if "git commit" not in command:
-        return False
-    for excluded in EXCLUDED_COMMAND_PATTERNS:
-        if excluded in command:
-            return False
-    return True
+    return match_git_commit(command) is True
 
 
 
@@ -312,7 +308,8 @@ def main() -> int:
     tool_input = input_data.get("tool_input") or {}
     command = tool_input.get("command", "")
 
-    if "git commit" not in command:
+    # 此閘門不排除 amend（沿用原行為），子邏輯各自判定
+    if match_git_commit(command, exclude_amend=False) is not True:
         return EXIT_SUCCESS
 
     logger.info("偵測到 git commit 命令，開始執行子邏輯")

@@ -40,6 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from lib.git_command_parse import match_git_commit
 from lib import setup_hook_logging, run_hook_safely, run_git, get_project_root, read_json_from_stdin
 
 # 不需要 CHANGELOG 提醒的 commit 類型
@@ -58,7 +59,7 @@ SKIP_PREFIXES = (
 def is_git_commit(tool_input: dict) -> bool:
     """判斷是否為 git commit 命令。"""
     command = tool_input.get("command", "")
-    return "git commit" in command
+    return match_git_commit(command, exclude_amend=False) is True
 
 
 def is_commit_successful(tool_result: dict) -> bool:
