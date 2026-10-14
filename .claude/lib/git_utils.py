@@ -268,12 +268,18 @@ def _forward_sigterm_to_group(proc):
     （hook 快速退出的輪次實測 1/5）。轉送後交還原 handler：SIG_DFL 則還原後對自身
     重送 TERM 使 hook 照常結束，SIG_IGN 維持忽略，可呼叫物件則呼叫之。
     非主執行緒無法安裝 signal handler，略過並寫 stderr。
+    原 handler 非由 Python 安裝（getsignal 回傳 None）時 signal.signal 無法還原，
+    故不安裝轉送，略過並寫 stderr。
     """
     if threading.current_thread() is not threading.main_thread():
         print("[Warning] SIGTERM forwarding skipped: not in main thread", file=sys.stderr)
         yield
         return
     previous = signal.getsignal(signal.SIGTERM)
+    if previous is None:
+        print("[Warning] SIGTERM forwarding skipped: previous handler not installed by Python", file=sys.stderr)
+        yield
+        return
 
     def _forward(signum, frame):
         _signal_process_group(proc, signal.SIGTERM)

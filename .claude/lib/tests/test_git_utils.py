@@ -701,6 +701,17 @@ class TestSigtermForwarding:
         run_with_graceful_timeout(["echo", "ok"], 10, text=True)
         assert signal.getsignal(signal.SIGTERM) == before
 
+    def test_previous_handler_none_skips_forwarding_without_error(self, capsys):
+        with patch("lib.git_utils.signal.getsignal", return_value=None):
+            result = run_with_graceful_timeout(["echo", "ok"], 10, text=True)
+        assert result.returncode == 0 and result.stdout.strip() == "ok"
+        assert "previous handler not installed" in capsys.readouterr().err
+
+    def test_previous_handler_sig_dfl_still_installs_forwarding(self, capsys):
+        with patch("lib.git_utils.signal.getsignal", return_value=signal.SIG_DFL):
+            run_with_graceful_timeout(["echo", "ok"], 10, text=True)
+        assert "previous handler not installed" not in capsys.readouterr().err
+
     def test_non_main_thread_does_not_raise(self, capsys):
         errors = []
 
