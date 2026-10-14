@@ -545,7 +545,7 @@ def test_bash_dict_real_failure_still_reported(hook_module, monkeypatch, tmp_pat
 
 def test_bash_dict_stderr_failure_reported(hook_module, monkeypatch, tmp_path, logger):
     monkeypatch.setattr(hook_module, "get_project_root", lambda: tmp_path)
-    response = {"stdout": "", "stderr": "SyntaxError: invalid syntax"}
+    response = {"stdout": "", "stderr": "AssertionError: expected 1 to equal 2"}
     assert _eval_response(hook_module, logger, "Bash", response) is not None
 
 
