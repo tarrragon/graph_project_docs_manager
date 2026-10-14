@@ -708,3 +708,57 @@ class TestTombstoneOnUnmatchedStop:
         record_dispatch(root, "sync", agent_handle="fix-abc123")
         entries = get_active_dispatches(root)
         assert len(entries) == 1 and entries[0]["turn_ended_at"] is not None
+
+
+class TestFifoFallbackRunInBackgroundFilter:
+    """0.5.0-W1-069.1：FIFO 後援候選僅限非同步派發（run_in_background 非
+    False）的 null 記錄；同步派發 Stop 無精準匹配時走墓碑。"""
+
+    def _run_stop(self, hook_mod, monkeypatch, tmp_path, agent_id):
+        monkeypatch.setattr(
+            hook_mod, "_get_wait_dedup_state_file",
+            lambda root: tmp_path / "wait-broadcast-dedup.json",
+        )
+        monkeypatch.setattr(sys, "stdin", _stdin({"agent_id": agent_id}))
+        assert hook_mod.main() == 0
+
+    def test_running_sync_null_record_not_marked_by_unmatched_stop(
+        self, hook_mod, monkeypatch, tmp_path
+    ):
+        """正向對照（E2）：運行中同步 null 記錄不得被無匹配 Stop 誤標。"""
+        from lib.dispatch_tracker import get_active_dispatches, record_dispatch
+
+        root = hook_mod._get_project_root()
+        record_dispatch(root, "sync-running", agent_id=None, run_in_background=False)
+
+        self._run_stop(hook_mod, monkeypatch, tmp_path, "unrelated-stop-id")
+
+        entry = [d for d in get_active_dispatches(root)
+                 if d["agent_description"] == "sync-running"][0]
+        assert entry["turn_ended_at"] is None
+
+    def test_background_null_record_still_fifo_marked(
+        self, hook_mod, monkeypatch, tmp_path
+    ):
+        """反向對照：背景 null 記錄仍可被 FIFO 後援標記。"""
+        from lib.dispatch_tracker import get_active_dispatches, record_dispatch
+
+        root = hook_mod._get_project_root()
+        record_dispatch(root, "bg-running", agent_id=None, run_in_background=True)
+
+        self._run_stop(hook_mod, monkeypatch, tmp_path, "unrelated-stop-id")
+
+        assert get_active_dispatches(root)[0]["turn_ended_at"] is not None
+
+    def test_legacy_record_without_flag_treated_as_background(
+        self, hook_mod, monkeypatch, tmp_path
+    ):
+        """舊記錄（旗標 None）按背景處理，維持原 FIFO 行為。"""
+        from lib.dispatch_tracker import get_active_dispatches, record_dispatch
+
+        root = hook_mod._get_project_root()
+        record_dispatch(root, "legacy", agent_id=None)
+
+        self._run_stop(hook_mod, monkeypatch, tmp_path, "unrelated-stop-id")
+
+        assert get_active_dispatches(root)[0]["turn_ended_at"] is not None
