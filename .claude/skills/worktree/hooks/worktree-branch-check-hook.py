@@ -33,6 +33,7 @@ HOOK_METADATA (JSON):
 }
 """
 
+import logging
 import sys
 import subprocess
 from pathlib import Path
@@ -131,8 +132,14 @@ def run_git_command(args: List[str], cwd: Optional[str] = None) -> Tuple[bool, s
         )
         return (result.returncode == 0, result.stdout.strip())
     except subprocess.TimeoutExpired:
+        logging.getLogger("worktree-branch-check").warning(
+            f"run_git_command 逾時: git {' '.join(args[:3])} (timeout {GIT_COMMAND_TIMEOUT}s)"
+        )
         return False, "timeout"
     except Exception as e:
+        logging.getLogger("worktree-branch-check").warning(
+            f"run_git_command 失敗: git {' '.join(args[:3])} ({type(e).__name__}: {e})"
+        )
         return False, str(e)
 
 

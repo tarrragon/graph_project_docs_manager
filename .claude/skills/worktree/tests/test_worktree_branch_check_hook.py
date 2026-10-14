@@ -12,6 +12,8 @@ worktree list 輸出順序判定（index==0，git 保證主倉庫恆為 --porcel
 """
 
 import importlib.util
+import logging
+import subprocess
 from pathlib import Path
 
 _HOOK_FILE = (
@@ -156,3 +158,35 @@ def test_get_uncommitted_count_status_has_no_optional_locks_before_subcommand():
     args = run.call_args.args[0]
     assert "--no-optional-locks" in args
     assert args.index("--no-optional-locks") < args.index("status")
+
+
+class TestRunGitCommandFailureLogging:
+    """git 呼叫逾時/失敗須寫可區分日誌，回傳值不變。"""
+
+    def test_timeout_logs_and_returns_timeout(self, monkeypatch, caplog):
+        def boom(*a, **k):
+            raise subprocess.TimeoutExpired(cmd="git", timeout=1)
+        monkeypatch.setattr(hook.subprocess, "run", boom)
+        with caplog.at_level(logging.WARNING, logger="worktree-branch-check"):
+            result = hook.run_git_command(["worktree", "list"])
+        assert result == (False, "timeout")
+        assert "run_git_command 逾時" in caplog.text and "worktree list" in caplog.text
+
+    def test_other_failure_logs_without_timeout_wording(self, monkeypatch, caplog):
+        def boom(*a, **k):
+            raise OSError("nope")
+        monkeypatch.setattr(hook.subprocess, "run", boom)
+        with caplog.at_level(logging.WARNING, logger="worktree-branch-check"):
+            result = hook.run_git_command(["status"])
+        assert result == (False, "nope")
+        assert "run_git_command 失敗" in caplog.text and "逾時" not in caplog.text
+
+    def test_success_writes_no_log(self, monkeypatch, caplog):
+        class R:
+            returncode = 0
+            stdout = "x\n"
+        monkeypatch.setattr(hook.subprocess, "run", lambda *a, **k: R())
+        with caplog.at_level(logging.WARNING, logger="worktree-branch-check"):
+            result = hook.run_git_command(["status"])
+        assert result == (True, "x")
+        assert caplog.text == ""
