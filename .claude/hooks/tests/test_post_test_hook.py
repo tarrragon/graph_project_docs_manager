@@ -310,24 +310,80 @@ def test_obsolete_ticket_track_create_removed(hook_module):
 # 時長達上限：不得終止任何程序，改輸出含清理指引的警告
 # ---------------------------------------------------------------------------
 
+import ast
 import json
-import os
 import shlex
-import subprocess
 import time
 
-# 攔截器取代的終止／啟動途徑；每一項都必須有對照（見 test_interceptor_catches_route）
-_SPIED_ROUTES = [
-    (subprocess, "run"),
-    (subprocess, "Popen"),
-    (subprocess, "call"),
-    (subprocess, "check_call"),
-    (subprocess, "check_output"),
-    (os, "system"),
-    (os, "popen"),
-    (os, "kill"),
-    (os, "killpg"),
+_BANNED_MODULES = {"subprocess", "signal", "pty", "multiprocessing"}
+_BANNED_OS_EXACT = {"kill", "killpg", "system", "popen", "fork", "forkpty", "posix_spawn", "posix_spawnp"}
+_BANNED_OS_PREFIX = ("spawn", "exec")
+
+
+def _is_banned_os_attr(name):
+    return name in _BANNED_OS_EXACT or name.startswith(_BANNED_OS_PREFIX)
+
+
+def find_termination_routes(source):
+    """對原始碼做語法樹檢查，回傳所有啟動程序／送訊號途徑的描述清單。"""
+    found = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            found += [f"import {a.name}" for a in node.names if a.name.split(".")[0] in _BANNED_MODULES]
+        elif isinstance(node, ast.ImportFrom):
+            mod = (node.module or "").split(".")[0]
+            if mod in _BANNED_MODULES:
+                found.append(f"from {node.module} import ...")
+            elif mod == "os":
+                found += [f"from os import {a.name}" for a in node.names if _is_banned_os_attr(a.name)]
+            elif mod == "asyncio":
+                found += [f"from asyncio import {a.name}" for a in node.names if a.name.startswith("create_subprocess")]
+        elif isinstance(node, ast.Attribute):
+            base = node.value
+            if isinstance(base, ast.Name) and base.id == "os" and _is_banned_os_attr(node.attr):
+                found.append(f"os.{node.attr}")
+            if node.attr.startswith("create_subprocess"):
+                found.append(f"{node.attr}")
+    return found
+
+
+_INJECTED_ROUTES = [
+    pytest.param("import subprocess", id="import-subprocess"),
+    pytest.param("import signal", id="import-signal"),
+    pytest.param("from subprocess import run", id="from-subprocess"),
+    pytest.param("from signal import SIGTERM", id="from-signal"),
+    pytest.param("import os\nos.kill(1, 15)", id="os.kill"),
+    pytest.param("import os\nos.killpg(1, 15)", id="os.killpg"),
+    pytest.param("import os\nos.system('x')", id="os.system"),
+    pytest.param("import os\nos.popen('x')", id="os.popen"),
+    pytest.param("import os\nos.spawnv(0, 'x', [])", id="os.spawnv"),
+    pytest.param("import os\nos.execv('x', [])", id="os.execv"),
+    pytest.param("import os\nos.posix_spawn('x', [], {})", id="os.posix_spawn"),
+    pytest.param("import os\nos.fork()", id="os.fork"),
+    pytest.param("from os import kill", id="from-os-kill"),
+    pytest.param("from os import killpg as k", id="from-os-killpg-alias"),
+    pytest.param("from os import system", id="from-os-system"),
+    pytest.param("from os import execvp", id="from-os-execvp"),
+    pytest.param("import asyncio\nasyncio.create_subprocess_exec('x')", id="asyncio-exec"),
+    pytest.param("import asyncio\nasyncio.create_subprocess_shell('x')", id="asyncio-shell"),
+    pytest.param("from asyncio import create_subprocess_exec", id="from-asyncio"),
+    pytest.param("import subprocess\nsubprocess.getoutput('x')", id="subprocess.getoutput"),
 ]
+
+
+@pytest.mark.parametrize("source", _INJECTED_ROUTES)
+def test_route_check_fails_on_injected_source(source):
+    """正向對照：注入各途徑的原始碼，檢查必須回報（含 from 匯入形式）。"""
+    assert find_termination_routes(source) != []
+
+
+def test_route_check_passes_on_clean_source():
+    assert find_termination_routes("import os\nx = os.path.join('a', 'b')\nos.environ.get('A')") == []
+
+
+def test_hook_source_has_no_termination_route():
+    """零終止保證：hook 原始碼不含任何啟動程序或送訊號的途徑。"""
+    assert find_termination_routes(HOOK_PATH.read_text()) == []
 
 
 def _arm_monitor(root, seconds_ago):
@@ -338,98 +394,76 @@ def _arm_monitor(root, seconds_ago):
     return f
 
 
-def _spy_process_spawns(monkeypatch):
-    """以假呼叫取代所有終止／啟動途徑並記錄；真實終止指令不會被執行。"""
-    calls = []
-
-    def _record(*a, **k):
-        calls.append((a, k))
-
-        class _R:
-            returncode = 0
-            stdout = ""
-            stderr = ""
-
-        return _R()
-
-    for mod, name in _SPIED_ROUTES:
-        monkeypatch.setattr(mod, name, _record)
-    return calls
-
-
-def _run_limit_case(module, monkeypatch, tmp_path, logger):
-    monitor = _arm_monitor(tmp_path, module.LIMIT_THRESHOLD + 5)
+def _run_at(module, monkeypatch, tmp_path, logger, seconds_ago):
+    monitor = _arm_monitor(tmp_path, seconds_ago)
     monkeypatch.setattr(module, "get_project_root", lambda: tmp_path)
-    calls = _spy_process_spawns(monkeypatch)
     msg = module.check_test_timeout({}, {}, logger)
-    return msg, calls, monitor
+    return msg, monitor
 
 
-def test_limit_reached_spawns_no_process_and_warns(hook_module, monkeypatch, tmp_path, logger, capsys, caplog):
+def test_limit_reached_warns_on_stderr_once_with_single_label(hook_module, monkeypatch, tmp_path, logger, capsys, caplog):
     caplog.set_level(logging.WARNING, logger=logger.name)
-    msg, calls, monitor = _run_limit_case(hook_module, monkeypatch, tmp_path, logger)
-    assert calls == []
+    msg, monitor = _run_at(hook_module, monkeypatch, tmp_path, logger, hook_module.LIMIT_THRESHOLD + 5)
+    err = capsys.readouterr().err
     assert "orphan-test-procs.py" in msg and "--kill" in msg
-    assert "orphan-test-procs.py" in capsys.readouterr().err
+    assert "orphan-test-procs.py" in err
+    assert err.startswith("[已達上限]")
+    assert err.count("[") == 1 and "[WARNING]" not in err
     assert any("orphan-test-procs.py" in r.getMessage() for r in caplog.records)
     assert json.loads(monitor.read_text())["action"] == "limit_warning"
 
 
-@pytest.mark.parametrize(
-    "mod,name,invoke",
-    [
-        pytest.param(subprocess, "run", lambda: subprocess.run(["x"]), id="subprocess.run"),
-        pytest.param(subprocess, "Popen", lambda: subprocess.Popen(["x"]), id="subprocess.Popen"),
-        pytest.param(subprocess, "call", lambda: subprocess.call(["x"]), id="subprocess.call"),
-        pytest.param(subprocess, "check_call", lambda: subprocess.check_call(["x"]), id="subprocess.check_call"),
-        pytest.param(subprocess, "check_output", lambda: subprocess.check_output(["x"]), id="subprocess.check_output"),
-        pytest.param(os, "system", lambda: os.system("x"), id="os.system"),
-        pytest.param(os, "popen", lambda: os.popen("x"), id="os.popen"),
-        pytest.param(os, "kill", lambda: os.kill(999999, 15), id="os.kill"),
-        pytest.param(os, "killpg", lambda: os.killpg(999999, 15), id="os.killpg"),
-    ],
-)
-def test_interceptor_catches_route(monkeypatch, mod, name, invoke):
-    """對照：攔截器取代後，每條途徑的呼叫都必須被記錄（呼叫端若加回該途徑，零終止斷言即翻紅）。"""
-    assert (mod, name) in _SPIED_ROUTES
-    calls = _spy_process_spawns(monkeypatch)
-    invoke()
-    assert len(calls) == 1
-
-
 def test_limit_warning_content(hook_module, monkeypatch, tmp_path, logger):
-    msg, _, _ = _run_limit_case(hook_module, monkeypatch, tmp_path, logger)
-    # 1 上限分鐘數由常數換算
+    msg, _ = _run_at(hook_module, monkeypatch, tmp_path, logger, hook_module.LIMIT_THRESHOLD + 5)
     assert f"{hook_module.LIMIT_THRESHOLD // 60} 分鐘" in msg
-    # 2 不自動終止的理由
     assert "不自動終止" in msg and "其他專案" in msg
-    # 3 兩條指令各佔一行、整行可複製、路徑為絕對路徑
     script = tmp_path / ".claude" / "scripts" / "orphan-test-procs.py"
     list_cmd = f"python3 {shlex.quote(str(script))}"
     lines = msg.splitlines()
     assert list_cmd in lines
     assert f"{list_cmd} --kill" in lines
-    # 4 執行第二條的判準
     assert "確屬本專案" in msg and "不再需要" in msg
-    # 與 15 分鐘一級的開頭標籤不同
-    crit = _critical_message(hook_module, monkeypatch, tmp_path / "c", logger)
-    assert msg.split("，")[0] != crit.split("，")[0]
 
 
-def _critical_message(module, monkeypatch, root, logger):
-    root.mkdir()
-    _arm_monitor(root, module.CRITICAL_THRESHOLD + 5)
-    monkeypatch.setattr(module, "get_project_root", lambda: root)
-    return module.check_test_timeout({}, {}, logger)
+def test_critical_message_points_to_list_command_only(hook_module, monkeypatch, tmp_path, logger):
+    msg, _ = _run_at(hook_module, monkeypatch, tmp_path, logger, hook_module.CRITICAL_THRESHOLD + 5)
+    script = tmp_path / ".claude" / "scripts" / "orphan-test-procs.py"
+    assert f"python3 {shlex.quote(str(script))}" in msg.splitlines()
+    for banned in ("--kill", "pkill", "killall", "手動終止", "建議終止"):
+        assert banned not in msg
+    assert msg.split("，")[0] != hook_module._limit_message(30.0, tmp_path).split("，")[0]
 
 
 def test_limit_message_logged_once(hook_module, monkeypatch, tmp_path, logger, caplog):
     caplog.set_level(logging.DEBUG, logger=logger.name)
-    msg, _, _ = _run_limit_case(hook_module, monkeypatch, tmp_path, logger)
+    _run_at(hook_module, monkeypatch, tmp_path, logger, hook_module.LIMIT_THRESHOLD + 5)
     hits = [r for r in caplog.records if "orphan-test-procs.py" in r.getMessage()]
     assert len(hits) == 1
 
 
+# (門檻屬性名, 門檻前一秒的 action, 門檻當秒的 action, 當秒訊息開頭)
+_BOUNDARY_CASES = [
+    pytest.param("WARNING_THRESHOLD", "normal", "warning", "警告：", id="warning-boundary"),
+    pytest.param("CRITICAL_THRESHOLD", "warning", "critical_warning", "嚴重警告：", id="critical-boundary"),
+    pytest.param("LIMIT_THRESHOLD", "critical_warning", "limit_warning", "[已達上限]", id="limit-boundary"),
+]
+
+
+@pytest.mark.parametrize("attr,before_action,at_action,at_prefix", _BOUNDARY_CASES)
+def test_threshold_boundaries(hook_module, tmp_path, attr, before_action, at_action, at_prefix):
+    t = getattr(hook_module, attr)
+    before_act, before_msg = hook_module._classify_duration(t - 1, tmp_path)
+    at_act, at_msg = hook_module._classify_duration(t, tmp_path)
+    assert before_act == before_action
+    assert at_act == at_action
+    assert at_msg.startswith(at_prefix)
+    assert not before_msg.startswith(at_prefix)
+
+
+def test_below_warning_is_normal(hook_module, tmp_path):
+    act, msg = hook_module._classify_duration(0, tmp_path)
+    assert act == "normal" and msg.startswith("測試完成：")
+
+
 def test_no_obsolete_constant_name(hook_module):
     assert not hasattr(hook_module, "AUTO_KILL_THRESHOLD")
-    assert "AUTO_KILL" not in HOOK_PATH.read_text()

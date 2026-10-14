@@ -182,10 +182,24 @@ def _is_test_command(input_data: dict) -> bool:
 # 子邏輯 1: 測試超時監控（來自 test-timeout-post.py）
 # ============================================================================
 
+def _orphan_script(project_dir: Path) -> str:
+    """列出／終止殘留測試程序的腳本絕對路徑（已 shell quote）。"""
+    return shlex.quote(str(project_dir / ".claude" / "scripts" / "orphan-test-procs.py"))
+
+
+def _critical_message(duration_minutes: float, project_dir: Path) -> str:
+    """15 分鐘一級：只指向列出指令，不給未指明範圍的終止建議。"""
+    return (
+        f"嚴重警告：測試執行 {duration_minutes:.1f} 分鐘，可能有卡住問題。\n"
+        "如需檢查殘留測試程序，請先只列出（不會動任何程序）：\n"
+        f"python3 {_orphan_script(project_dir)}"
+    )
+
+
 def _limit_message(duration_minutes: float, project_dir: Path) -> str:
     """上限警告全文。不終止程序：此時自身測試已返回，終止指令作用於全機，
     會波及其他 session 與其他專案。兩條指令各佔一行、使用絕對路徑。"""
-    script = shlex.quote(str(project_dir / ".claude" / "scripts" / "orphan-test-procs.py"))
+    script = _orphan_script(project_dir)
     limit_minutes = LIMIT_THRESHOLD // 60
     return (
         f"[已達上限] 測試執行 {duration_minutes:.1f} 分鐘，超過 {limit_minutes} 分鐘上限。\n"
@@ -197,15 +211,16 @@ def _limit_message(duration_minutes: float, project_dir: Path) -> str:
     )
 
 
-def _classify_duration(duration: float, duration_minutes: float, project_dir: Path) -> Tuple[str, str, str]:
-    """依門檻由高到低回傳 (level, action, message)。"""
+def _classify_duration(duration: float, project_dir: Path) -> Tuple[str, str]:
+    """依門檻由高到低回傳 (action, message)；分鐘數由 duration 自算。"""
+    minutes = duration / 60
     if duration >= LIMIT_THRESHOLD:
-        return "limit", "limit_warning", _limit_message(duration_minutes, project_dir)
+        return "limit_warning", _limit_message(minutes, project_dir)
     if duration >= CRITICAL_THRESHOLD:
-        return "critical", "critical_warning", f"嚴重警告：測試執行 {duration_minutes:.1f} 分鐘，建議手動終止"
+        return "critical_warning", _critical_message(minutes, project_dir)
     if duration >= WARNING_THRESHOLD:
-        return "warning", "warning", f"警告：測試執行 {duration_minutes:.1f} 分鐘，可能有卡住問題"
-    return "normal", "normal", f"測試完成：{duration_minutes:.1f} 分鐘"
+        return "warning", f"警告：測試執行 {minutes:.1f} 分鐘，可能有卡住問題"
+    return "normal", f"測試完成：{minutes:.1f} 分鐘"
 
 
 def check_test_timeout(input_data: dict, tool_input: dict, logger):
@@ -229,16 +244,15 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
         return None
 
     duration = datetime.now().timestamp() - start_timestamp
-    duration_minutes = duration / 60
-
     monitor_data["end_time"] = datetime.now().isoformat()
     monitor_data["duration_seconds"] = duration
     monitor_data["status"] = "completed"
 
-    level, action, message = _classify_duration(duration, duration_minutes, project_dir)
+    action, message = _classify_duration(duration, project_dir)
     monitor_data["action"] = action
-    if level == "limit":
-        print(f"[WARNING] {message}", file=sys.stderr)
+    is_limit = action == "limit_warning"
+    if is_limit:
+        print(message, file=sys.stderr)
 
     try:
         with open(monitor_file, "w") as f:
@@ -250,7 +264,7 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
         print(f"[WARNING] 無法寫入測試監控記錄: {e}", file=sys.stderr)
         logger.warning(f"timeout: 寫入監控檔案失敗: {e}")
 
-    log = logger.warning if level == "limit" else logger.info
+    log = logger.warning if is_limit else logger.info
     log(f"timeout: {message}")
     return message
 
