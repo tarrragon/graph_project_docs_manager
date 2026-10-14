@@ -50,7 +50,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin
-from lib.git_command_parse import parse_command_statements, _skip_prefix_wrapper_count
+from lib.git_command_parse import parse_command_statements, skip_prefix_wrapper_count
 
 _BANNED = frozenset({"pkill", "killall"})
 _SHELLS = frozenset({"bash", "sh", "zsh"})
@@ -64,7 +64,7 @@ def _find_violation(command: str, depth: int = 0) -> Optional[str]:
     if not statements:
         return None
     for stmt in statements:
-        idx = _skip_prefix_wrapper_count(stmt)
+        idx = skip_prefix_wrapper_count(stmt)
         if idx >= len(stmt):
             continue
         prog = os.path.basename(stmt[idx])
