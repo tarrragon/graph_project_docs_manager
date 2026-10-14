@@ -61,7 +61,7 @@
 | `add-spawn-request` | 追加結構化 spawn request 至 Spawn Requests 章節 | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `resolve-spawn-request` | 標記 spawn request 狀態並回填 `spawned_tickets` | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `add-exempt-marker` | 對既有行補上 PC-093-exempt marker | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
-| `fix-multi-view-status` | 覆寫 ANA Solution 的 `multi_view_status` 行值 | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
+| `fix-multi-view-status` | 覆寫 ANA Solution 的 `multi_view_status` 行值；skipped／n_a 同步寫入平鋪 `reason:` 行，章節缺欄位行時於章節末新增兩行 | 〈UPDATE 操作補充：commit 副作用與欄位語意〉 |
 | `register-artifact` | 登記實驗器材至 Solution 章節 | 〈track register-artifact / resolve-artifact / list-artifacts 子命令〉 |
 | `resolve-artifact` | 標記實驗器材狀態為 removed/kept | 〈track register-artifact / resolve-artifact / list-artifacts 子命令〉 |
 | `list-artifacts` | 列出 ticket 已登記的實驗器材 | 〈track register-artifact / resolve-artifact / list-artifacts 子命令〉 |
