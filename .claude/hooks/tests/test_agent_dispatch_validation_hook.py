@@ -2289,7 +2289,7 @@ class TestDispatchModeReadonlyExemption:
 # 0.1.0-W3-156: worktree 派發 prompt 誤用 `track complete` 提示（改用 finish）
 # ============================================================================
 
-_has_track_complete = _hook._has_track_complete
+_has_track_complete = _hook._has_track_closing
 
 
 class TestHasTrackComplete:
@@ -2300,13 +2300,13 @@ class TestHasTrackComplete:
         "/ticket track complete 0.1.0-W3-147",
         "收尾：ticket track  complete 0.1.0-W3-147",  # 多空白
         "TICKET TRACK COMPLETE 0.1.0-W3-147",  # 大小寫不敏感
+        "ticket track finish 0.1.0-W3-147 --as parsley-flutter-developer",
     ])
     def test_detects_track_complete(self, prompt):
         assert _has_track_complete(prompt) is True
 
     @pytest.mark.parametrize("prompt", [
         "",
-        "ticket track finish 0.1.0-W3-147 --as parsley-flutter-developer",
         "ticket track completed 0.1.0-W3-147",  # 非完整字，不誤觸
         "ticket track append-log 0.1.0-W3-147",
         "ticket track claim 0.1.0-W3-147",
@@ -2350,11 +2350,9 @@ class TestWorktreeCompleteWarning:
         assert exit_code == 0
         context = _parse_additional_context(capsys)
         assert context, "worktree + track complete 應輸出 additionalContext 提示"
-        assert "finish" in context
-        assert "agent-dispatch-template.md" in context
 
-    def test_track_finish_prompt_no_warning(self, monkeypatch, capsys):
-        """prompt 已用 track finish（正確用法）→ 不誤報。"""
+    def test_track_finish_prompt_emits_warning(self, monkeypatch, capsys):
+        """正向對照：worktree + track finish 同樣出提示，且 permissionDecision 為 allow（不阻擋）。"""
         exit_code = _run_hook(
             monkeypatch,
             capsys,
@@ -2369,8 +2367,30 @@ class TestWorktreeCompleteWarning:
             },
         )
         assert exit_code == 0
+        out = capsys.readouterr().out.strip()
+        assert out, "worktree + track finish 應輸出提示"
+        hso = json.loads(out)["hookSpecificOutput"]
+        assert hso["permissionDecision"] == "allow"
+        assert hso.get("additionalContext")
+
+    def test_track_commit_only_prompt_no_warning(self, monkeypatch, capsys):
+        """prompt 止於 track commit（正確用法）→ 不誤報。"""
+        exit_code = _run_hook(
+            monkeypatch,
+            capsys,
+            tool_input={
+                "subagent_type": "parsley-flutter-developer",
+                "isolation": "worktree",
+                "prompt": (
+                    "Ticket: 0.1.0-W3-147\n\n"
+                    "1. 提取 lib/workspace/workspace_repository.dart 的 value types\n\n"
+                    "收尾：ticket track commit 0.1.0-W3-147 -m x，回報 PM"
+                ),
+            },
+        )
+        assert exit_code == 0
         context = _parse_additional_context(capsys)
-        assert context == "", "track finish 不應觸發提示"
+        assert context == "", "止於 track commit 不應觸發提示"
 
     def test_non_worktree_dispatch_no_warning_even_with_track_complete(
         self, monkeypatch, capsys

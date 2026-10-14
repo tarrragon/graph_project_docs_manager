@@ -505,7 +505,7 @@ def register_dispatch_command(subparsers: "argparse._SubParsersAction") -> None:
         choices=["worktree", "none"],
         default=None,
         help=(
-            "派發位置：worktree（收尾句改 finish 並註明 PM 代跑）/ none（主工作樹，"
+            "派發位置：worktree（收尾止於 ticket track commit 並回報 PM，complete 由 PM 於合併後執行）/ none（主工作樹，"
             "收尾 complete；未帶且 where.files 含非豁免路徑時 stderr 警告）"
         ),
     )
