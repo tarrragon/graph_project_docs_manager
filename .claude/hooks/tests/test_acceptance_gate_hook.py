@@ -1132,6 +1132,15 @@ def test_is_complete_command_unparseable_falls_back_to_legacy_literal():
     assert module.is_complete_command("ticket track claim 'abc") is False
 
 
+def test_is_complete_command_stdin_shell_falls_back_to_legacy_literal():
+    """管線或 here-string 餵 stdin shell：掃描回 None，退回字面比對（fail-closed）。"""
+    module = _load_gate_module("acceptance_gate_hook_scan_stdin_shell")
+    # 後備為字面比對且先剝引號，故用未加引號的形式證明走了後備（掃描本身會回 []）
+    assert module.is_complete_command(f"echo ticket track complete {_SCAN_TID} | bash") is True
+    assert module.is_complete_command(f"bash <<< ticket track complete {_SCAN_TID}") is True
+    assert module.is_complete_command("cat f | bash") is False
+
+
 def test_has_force_flag_on_complete_scan_forms():
     module = _load_gate_module("acceptance_gate_hook_scan_force")
     assert module.has_force_flag_on_complete(

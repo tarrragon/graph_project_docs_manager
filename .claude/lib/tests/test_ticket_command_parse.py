@@ -115,6 +115,21 @@ class TestFailureSemantics:
     def test_unclosed_quote_returns_none(self):
         assert find_complete_invocations("ticket track complete 'abc") is None
 
+    def test_stdin_shell_returns_none(self):
+        for cmd in (
+            f'echo "ticket track complete {TID}" | bash',
+            f'printf %s "ticket track complete {TID}" | sh',
+            f'bash <<< "ticket track complete {TID}"',
+            "cat f | bash",
+            "echo x | bash -s",
+        ):
+            assert find_complete_invocations(cmd) is None, cmd
+
+    def test_plain_complete_still_returns_list(self):
+        assert find_complete_invocations(f"ticket track complete {TID}") == [("complete", [TID])]
+        # 對照：管線但接收端非 shell 不 fail-closed
+        assert find_complete_invocations(f"echo x | grep y") == []
+
     def test_nested_unparseable_returns_none(self):
         assert find_complete_invocations("bash -c \"ticket track complete 'abc\"") is None
 

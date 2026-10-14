@@ -1233,3 +1233,14 @@ def explain_parse_cause(cause: Optional[str]) -> str:
     if cause == PARSE_CAUSE_SCAN_ONLY:
         return SCAN_ONLY_EXPLANATION
     return TOKENIZE_EXPLANATION
+
+
+# 供 ticket_command_parse 等同 lib 解析器共用的公開名稱（僅別名，行為同私有符號）
+UnparseableCommand = _Unparseable
+SHELLS = _SHELLS
+SCAN_OUTPUT_COMMANDS = _SCAN_OUTPUT_COMMANDS
+skip_wrappers = _skip_wrappers
+nested_script = _nested_script
+is_stdin_shell = _is_stdin_shell
+raise_if_pipes_into_shell = _raise_if_pipes_into_shell
+tokenize_command = _tokenize_command
