@@ -118,6 +118,30 @@ def _iter_registered_hook_commands(settings: dict):
                 yield command
 
 
+def _merge_dispatch_registry(settings: dict, root: Path, logger) -> None:
+    """把分派程序 registry 內的 hook 併入 settings 的 hooks 區塊（就地修改）。
+
+    Bash 事件的多支 hook 合併後由 hook-dispatcher 啟動，settings.json 只剩分派器
+    一筆；不併入的話，被合併的 hook 會掉出「已註冊但未進入」與崩潰 smoke test 的
+    監控。併入形式與原註冊等價（`uv run --quiet $CLAUDE_PROJECT_DIR/<path>`）。
+    registry 讀不到時僅記錄並維持原行為。
+    """
+    registry_path = root / ".claude" / "hooks" / "hook-dispatch-registry.json"
+    if not registry_path.is_file():
+        return
+    try:
+        groups = json.loads(registry_path.read_text(encoding="utf-8")).get("groups", {})
+    except (OSError, json.JSONDecodeError) as e:
+        logger.info("讀取分派 registry 失敗，未併入監控: {}".format(e))
+        return
+    synthetic = []
+    for group in groups.values():
+        for entry in group.get("hooks", []):
+            command = "uv run --quiet $CLAUDE_PROJECT_DIR/{}".format(entry.get("path", ""))
+            synthetic.append({"hooks": [{"type": "command", "command": command}]})
+    settings.setdefault("hooks", {})["_DispatchRegistry"] = synthetic
+
+
 def _registered_hook_names(settings: dict) -> set:
     """從 settings.json 擷取所有 .claude/hooks/*.py 的檔名（去副檔名）"""
     return {Path(command).stem for command in _iter_registered_hook_commands(settings)}
@@ -638,6 +662,7 @@ def main() -> int:
         logger.info("讀取 settings.json 失敗，跳過本次彙整: {}".format(e))
         return 0
 
+    _merge_dispatch_registry(settings, root, logger)
     registered = _registered_hook_names(settings)
     covered = _covered_by_run_hook_safely(root, registered)
     uncovered = registered - covered
