@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.test_command_parse import find_test_invocations
+from lib.test_monitor_path import monitor_key, keyed_monitor_file, legacy_monitor_file
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -231,7 +232,11 @@ def _classify_duration(duration: float, project_dir: Path) -> Tuple[str, str]:
 def check_test_timeout(input_data: dict, tool_input: dict, logger):
     """子邏輯 1: 測試超時監控。回傳訊息或 None。"""
     project_dir = get_project_root()
-    monitor_file = project_dir / ".claude" / "hook-logs" / "test-monitor.json"
+    key = monitor_key(input_data)
+    keyed_file = keyed_monitor_file(project_dir, key) if key else None
+    # 有鍵且鍵檔存在讀鍵檔；否則退回舊單檔（相容舊格式與無鍵的 pre）
+    monitor_file = (keyed_file if keyed_file and keyed_file.exists()
+                    else legacy_monitor_file(project_dir))
 
     if not monitor_file.exists():
         logger.debug("timeout: 監控檔案不存在，跳過")
@@ -260,8 +265,12 @@ def check_test_timeout(input_data: dict, tool_input: dict, logger):
         print(message, file=sys.stderr)
 
     try:
-        with open(monitor_file, "w") as f:
-            json.dump(monitor_data, f, indent=2, ensure_ascii=False)
+        # 鍵檔收尾即刪（歷史由 jsonl 保存）；舊單檔照舊寫回
+        if monitor_file == keyed_file:
+            monitor_file.unlink()
+        else:
+            with open(monitor_file, "w") as f:
+                json.dump(monitor_data, f, indent=2, ensure_ascii=False)
         history_file = project_dir / ".claude" / "hook-logs" / "test-duration-history.jsonl"
         with open(history_file, "a") as f:
             f.write(json.dumps(monitor_data, ensure_ascii=False) + "\n")

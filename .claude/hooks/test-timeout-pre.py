@@ -10,7 +10,8 @@
 觸發時機: 執行測試命令（flutter／dart／npm／pytest，含 timeout、fvm、uv run、
           run-with-timeout.py 前綴）或 mcp__dart__run_tests 工具前；判定與 post-test-hook 共用
           lib/test_command_parse.py，寫入端與讀取端集合一致
-記錄位置: .claude/hook-logs/test-monitor.json
+記錄位置: .claude/hook-logs/test-monitor/<tool_use_id>.json（退路 session_id，再退回舊單檔 test-monitor.json）
+背景命令: 不寫監控檔
 """
 
 import json
@@ -23,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib import setup_hook_logging, run_hook_safely, get_project_root, read_json_from_stdin
 from lib.test_command_parse import find_test_invocations
+from lib.test_monitor_path import monitor_key, keyed_monitor_file, legacy_monitor_file
 
 
 def main():
@@ -47,9 +49,17 @@ def main():
         # 非測試命令：直接退出，不輸出任何內容（exit 0 = 成功）
         return 0
 
+    # 背景命令不寫監控檔：post 在背景啟動回傳時直接跳過收尾（無檔可收會停在 running），
+    # 且單檔退路（無鍵）下寫入會覆寫前景命令的開始時間
+    if tool_input.get("run_in_background") is True:
+        logger.debug("run_in_background 為真，不建立監控檔")
+        return 0
+
     # 記錄測試開始時間
     project_dir = get_project_root()
-    monitor_file = project_dir / ".claude" / "hook-logs" / "test-monitor.json"
+    key = monitor_key(input_data)
+    monitor_file = (keyed_monitor_file(project_dir, key) if key
+                    else legacy_monitor_file(project_dir))
     monitor_file.parent.mkdir(parents=True, exist_ok=True)
 
     monitor_data = {
