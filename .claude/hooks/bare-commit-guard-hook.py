@@ -236,6 +236,9 @@ ticket_id」映射表（未落在任何宣告範圍者標「未宣告範圍」�
    說明須逐條分開送出執行、不可用 `&&` 或分號串接。
 
 ============================================================
+九修正：擁有者 session 已結束（orphan_confirmed）的派發條目不計入佔用（見
+_exclude_orphan_confirmed；僅排除確定孤兒，registry 讀取失敗 fail-closed）
+
 八修正：宣告範圍改讀票面現行 where.files，不再以派發快照為準
 ============================================================
 派發記錄的 `files` 是派發當下由 dispatch_tracker 記錄的 where.files 快照。
@@ -264,10 +267,16 @@ from typing import Dict, List
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin
+from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, resolve_session_id
 from lib.dispatch_tracker import get_active_dispatches
 from lib.git_command_parse import GitInvocation, contains_git_word, find_git_invocations
 from lib.git_utils import get_project_root, run_git_command
+from lib.pm_registry import (
+    DEGRADED_READ_KEY,
+    classify_ownership,
+    get_registry_paths,
+    read_registry,
+)
 
 _UNASSIGNED_LABEL = "未宣告範圍"
 
@@ -371,6 +380,51 @@ def _with_live_declared_files(
             continue
         resolved.append({**dispatch, "files": live_files})
     return resolved
+
+
+def _read_registry_sessions(project_root: Path, logger) -> "tuple[Dict, bool]":
+    """回傳 (sessions, available)。任何讀取失敗一律 available=False
+    （fail-closed：不得把讀不到當成 session 已結束）。"""
+    try:
+        paths = get_registry_paths(cwd=str(project_root), logger=logger)
+        if paths is None:
+            return {}, False
+        data = read_registry(paths[0], logger=logger)
+    except Exception as exc:
+        logger.warning("讀取 pm-registry 失敗，派發條目全數維持佔用：%s", exc)
+        return {}, False
+    if data.get(DEGRADED_READ_KEY, False):
+        return {}, False
+    return data.get("sessions", {}) or {}, True
+
+
+def _exclude_orphan_confirmed(
+    dispatches: List[Dict], project_root: Path, self_session_id: str, logger
+) -> List[Dict]:
+    """九修正：排除擁有者 session 已結束（orphan_confirmed）的派發條目。
+
+    背景代理人隨擁有者 session 程序結束，該 session 已 graceful release
+    後其條目不可能再有人寫檔。僅排除 orphan_confirmed；orphan_suspected、
+    unknown_owner、registry_unavailable、self、cross_session_alive 維持
+    佔用。registry 讀取失敗為 fail-closed（全數維持佔用）。
+    不改登記檔，只改本守衛的佔用判定。
+    """
+    if not any(d.get("session_id") for d in dispatches):
+        return dispatches
+    sessions, available = _read_registry_sessions(project_root, logger)
+    kept: List[Dict] = []
+    for dispatch in dispatches:
+        ownership = classify_ownership(
+            dispatch.get("session_id") or "", self_session_id, sessions, available
+        )
+        if ownership == "orphan_confirmed":
+            logger.warning(
+                "排除擁有者 session 已結束的派發條目：ticket_id=%s session_id=%s",
+                dispatch.get("ticket_id"), dispatch.get("session_id"),
+            )
+            continue
+        kept.append(dispatch)
+    return kept
 
 
 def _merge_in_progress(project_root: Path) -> bool:
@@ -765,9 +819,13 @@ def main() -> int:
     invocations = find_git_invocations(command, {"commit"})
 
     project_root = get_project_root()
-    dispatches = _with_live_declared_files(
-        _get_active_dispatches_safe(project_root), project_root, logger
+    dispatches = _exclude_orphan_confirmed(
+        _get_active_dispatches_safe(project_root),
+        project_root,
+        resolve_session_id(input_data),
+        logger,
     )
+    dispatches = _with_live_declared_files(dispatches, project_root, logger)
     dispatch_count = len(dispatches)
 
     if invocations is None:
