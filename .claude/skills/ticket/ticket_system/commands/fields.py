@@ -173,8 +173,10 @@ def _apply_hook_template_to_ticket(ticket: Dict[str, Any], files: Optional[list]
     """
     from ticket_system.commands.create import apply_hook_acceptance_template
 
+    how_field = ticket.get("how")
+    how_strategy = str(how_field.get("strategy") or "") if isinstance(how_field, dict) else ""
     new_acceptance, touches = apply_hook_acceptance_template(
-        files or [], ticket.get("acceptance")
+        files or [], ticket.get("acceptance"), how_strategy
     )
     if touches:
         ticket["acceptance"] = new_acceptance

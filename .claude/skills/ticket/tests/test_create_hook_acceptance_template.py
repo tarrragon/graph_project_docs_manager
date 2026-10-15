@@ -49,10 +49,33 @@ def test_existing_category_not_duplicated():
     assert TEMPLATES[1] not in result
 
 
+INVENTORY_TABLE = (
+    "盤點如下\n"
+    "| 產生路徑 | 是否覆蓋 | 未覆蓋原因 |\n"
+    "|---------|---------|-----------|\n"
+    "| 路徑 A | 是 | |\n"
+)
+
+
+@pytest.mark.parametrize(
+    "how_strategy,expect_inventory_template",
+    [(INVENTORY_TABLE, False), ("一般策略，無表", True)],
+)
+def test_inventory_template_follows_how_strategy_e1_contrast(
+    how_strategy, expect_inventory_template
+):
+    result, touched = apply_hook_acceptance_template(
+        HOOK_FILES, list(BASE), how_strategy
+    )
+    assert touched is True
+    assert (TEMPLATES[3] in result) is expect_inventory_template
+    assert result[: len(BASE)] == BASE
+
+
 # ---- set-where ----
 
 
-def _make_ticket(tmp_path, monkeypatch):
+def _make_ticket(tmp_path, monkeypatch, how_strategy=None):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
     tdir = tmp_path / "docs/work-logs/v0/v0.1/v0.1.0/tickets"
@@ -61,6 +84,8 @@ def _make_ticket(tmp_path, monkeypatch):
         "id": "0.1.0-W1-001", "title": "T", "type": "IMP", "status": "in_progress",
         "version": "0.1.0", "wave": 1, "priority": "P2", "acceptance": list(BASE),
     }
+    if how_strategy is not None:
+        fm["how"] = {"task_type": "Implementation", "strategy": how_strategy}
     path = tdir / "0.1.0-W1-001.md"
     path.write_text(
         "---\n" + yaml.dump(fm, allow_unicode=True) + "---\n\n# Execution Log\n",
@@ -74,7 +99,8 @@ def _run_set_where(path, value, monkeypatch):
     monkeypatch.setattr(create_mod, "print_hook_ticket_reminder", lambda: calls.append(1))
     args = argparse.Namespace(ticket_id="0.1.0-W1-001", value=value, version=None)
     execute_set_where(args, "0.1.0")
-    fm = yaml.safe_load(path.read_text(encoding="utf-8").split("---", 2)[1])
+    # 表格分隔列含 "---"，不可用 split("---") 切 frontmatter
+    fm = next(yaml.safe_load_all(path.read_text(encoding="utf-8")))
     return fm["acceptance"], len(calls)
 
 
@@ -112,6 +138,20 @@ def test_create_command_e2e_e1_contrast(tmp_path, monkeypatch, where_files, expe
     else:
         assert acceptance == BASE
         assert reminder_calls == 0
+
+
+@pytest.mark.parametrize(
+    "how_strategy,expect_inventory_template",
+    [(INVENTORY_TABLE, False), ("一般策略，無表", True)],
+)
+def test_set_where_inventory_follows_ticket_how_strategy(
+    tmp_path, monkeypatch, how_strategy, expect_inventory_template
+):
+    path = _make_ticket(tmp_path, monkeypatch, how_strategy)
+    acceptance, reminder_calls = _run_set_where(path, ",".join(HOOK_FILES), monkeypatch)
+    assert (TEMPLATES[3] in acceptance) is expect_inventory_template
+    assert TEMPLATES[:3] == [t for t in acceptance if t in TEMPLATES[:3]]
+    assert reminder_calls == 1
 
 
 @pytest.mark.parametrize(
