@@ -86,9 +86,19 @@ _SED_I_PATTERN = re.compile(
     r"(?!-)" + _SED_EXPR + r"\s+" + _SED_PATH
 )
 
+# 「必含 -e」以兩個前綴互斥的分支表達（-e 在 -i 之前 / 之後），不用前瞻：
+# 前瞻 (?=...-e) 會在每個 sed 位置向後掃到行尾，輸入以 sed 字樣墊長時耗時平方級成長
+_SED_OPT = r"(?:-[nEr]+|-e\s+" + _SED_EXPR + r")\s+"
+_SED_E_OPT = r"-e\s+" + _SED_EXPR + r"\s+"
+
 _SED_I_E_PATTERN = re.compile(
-    r"\bsed(?=\s(?:[^|;&]*?\s)?-e\s)\s+(?:(?:-[nEr]+|-e\s+" + _SED_EXPR + r")\s+)*"
-    + _SED_INPLACE + r"\s+(?:(?:-[nEr]+|-e\s+" + _SED_EXPR + r")\s+)*" + _SED_PATH
+    r"\bsed\s+(?:" + _SED_OPT + r")*" + _SED_E_OPT + r"(?:" + _SED_OPT + r")*"
+    + _SED_INPLACE + r"\s+(?:" + _SED_OPT + r")*" + _SED_PATH
+)
+
+_SED_I_THEN_E_PATTERN = re.compile(
+    r"\bsed\s+(?:-[nEr]+\s+)*" + _SED_INPLACE + r"\s+(?:" + _SED_OPT + r")*"
+    + _SED_E_OPT + r"(?:" + _SED_OPT + r")*" + _SED_PATH
 )
 
 # cp / mv src dst（簡化：取緊接在來源後的下一個 token 作目的地，不處理多來源/遞迴旗標的複雜排列）
@@ -118,6 +128,7 @@ def _extract_candidate_paths(command: str) -> List[str]:
         _TEE_PATTERN,
         _SED_I_PATTERN,
         _SED_I_E_PATTERN,
+        _SED_I_THEN_E_PATTERN,
         _CP_MV_PATTERN,
         _OPEN_CALL_PATTERN,
     ):
