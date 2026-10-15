@@ -121,6 +121,9 @@ class SignalDef:
     message_template: str = ""
     # context-aware filter（黑名單版）。None 表示未啟用。
     context_blacklist: Optional[ContextBlacklist] = None
+    # 非使用者撰寫回合的框架標記（選填）。prompt 去除前導空白後以任一前綴開頭，
+    # 該訊號整個跳過（代理人交回報告、跨 session 訊息中的字樣是引述，非 PM 結論）。
+    skip_prompt_prefixes: List[str] = field(default_factory=list)
     raw: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -201,6 +204,9 @@ def _parse_signals(signals_raw: Any, logger) -> List[SignalDef]:
         sd.ticket_type_filter = item.get("ticket_type_filter")
         sd.reset_conditions = list(item.get("reset_conditions", []))
         sd.message_template = item.get("message_template", "")
+        prefixes = item.get("skip_prompt_prefixes") or []
+        if isinstance(prefixes, list):
+            sd.skip_prompt_prefixes = [str(p) for p in prefixes if str(p)]
         # 解析 context_blacklist（選填）
         cb_raw = item.get("context_blacklist")
         if isinstance(cb_raw, dict):
@@ -532,6 +538,9 @@ class RestrictiveKeywordsStrategy:
         prompt = str(event.get("prompt", "") or "")
         if len(prompt) < sd.min_prompt_length:
             return DetectResult(hit=False, signal_id=sd.id)
+        if self._is_framework_message(prompt, sd, logger):
+            logger.info("signal %s skipped: framework-marked non-user turn", sd.id)
+            return DetectResult(hit=False, log_reason="framework_message", signal_id=sd.id)
         haystack = prompt if sd.case_sensitive else prompt.lower()
         matched = None
         for kw in sd.keywords:
@@ -553,6 +562,24 @@ class RestrictiveKeywordsStrategy:
             )
             return DetectResult(hit=False, log_reason="context_blacklist", signal_id=sd.id)
         return DetectResult(hit=True, matched_keyword=matched, should_warn=True, signal_id=sd.id)
+
+    @staticmethod
+    def _is_framework_message(prompt: str, sd: SignalDef, logger) -> bool:
+        """prompt 開頭是否為框架標記（前綴比對，非全文子字串）。
+
+        判定失敗時 fail-open：視為使用者回合照常比對關鍵字，
+        同時寫 stderr 與日誌，不阻擋。
+        """
+        try:
+            head = prompt.lstrip()
+            return any(head.startswith(p) for p in sd.skip_prompt_prefixes)
+        except Exception as exc:  # noqa: BLE001 - fail-open，已雙通道記錄
+            logger.info("signal %s framework marker check failed: %s", sd.id, exc)
+            sys.stderr.write(
+                "[wrap-decision-tripwire] framework marker check failed "
+                "(fail-open): %s\n" % exc
+            )
+            return False
 
     @staticmethod
     def _check_context_blacklist(

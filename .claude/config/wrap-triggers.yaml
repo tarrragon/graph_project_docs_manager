@@ -67,6 +67,15 @@ signals:
     match_mode: "substring"
     case_sensitive: false
     min_prompt_length: 20
+    # 非使用者撰寫的回合（代理人交回報告、跨 session 訊息）：去除前導空白後以下列前綴
+    # 開頭即整個跳過本訊號。報告內的「無法」是代理人描述行為的引述，不是 PM 的限制性結論。
+    # 已知漏判：標記不在 prompt 開頭的回合（例如前面另有文字）仍會比對關鍵字。
+    skip_prompt_prefixes:
+      - "<agent-message"
+      - "<cross-session-message"
+      - "agent-message"
+      - "cross-session-message"
+      - "[Subagent hand-back]"
     # W10-058.1.1.2：context-aware filter（黑名單版）
     # 觸發詞前後 window 字內含 words 任一者 → 視為技術語境陳述，suppress signal。
     # 用途：降低 hit 4 型誤報（技術陳述如「Stop 事件不可能每 turn fire」中「不可能」非 PM 限制性主張）。
