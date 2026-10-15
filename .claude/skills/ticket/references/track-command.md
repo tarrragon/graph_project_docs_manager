@@ -636,7 +636,7 @@ ticket track commit <ticket_id> -m "<commit message>" --worktree <worktree 絕�
 
 ### Fallback 條件
 
-僅當本命令因故失敗或不可用時，才降級為「精確 `git add` + `git diff --cached --name-only` 核對 + 裸 `git commit`」（無 pathspec / `--only` / `-o` / `-a`），見 `.claude/rules/core/bash-tool-usage-rules.md` 規則七。本命令走隔離索引、全程不觸碰共用 index，是本框架消除「共用 index 被反覆吸入他票內容」風險的權威路徑，非 fallback 的替代品，不因方便而優先選 fallback。**並行度註記**：fallback 一旦選用即回到共用 index，`append-log`／`complete` 的隔離索引 CAS 可能已在同一視窗把 HEAD 往前推進，使 fallback 前已 `git add` 的 entry 相對新 HEAD 過期；裸 commit 前須先比對 `git show :<path>` 與 `git show HEAD:<path>`，判定過期則 `git restore --staged <path>` 後重新 add，見 `.claude/rules/core/bash-tool-usage-rules.md` 規則七「版本邊界（過期 index 快照）」。
+僅當本命令發生**環境性失敗**（隔離索引的 git 步驟失敗、update-ref 撞鎖或 HEAD 競爭；先重跑本命令，持續失敗才降級）或不可用時，才降級為「精確 `git add` + `git diff --cached --name-only` 核對 + 裸 `git commit`」（無 pathspec / `--only` / `-o` / `-a`），見 `.claude/rules/core/bash-tool-usage-rules.md` 規則七。**判準性拒絕不適用 fallback**（worktree 票面、where.files 未宣告、範圍外檔案、提交範圍自我驗證失敗）：這是命令在執行範圍保護，改走裸 commit 等於繞過；應停手回報 PM 以 set-where 補宣告或移除檔案。輸入錯誤（ticket 不存在、`--worktree` 非 git 目錄）修正輸入後重跑本命令。拒絕訊息尾端的 `[NEXT]` 行即依此分類給出指示。本命令走隔離索引、全程不觸碰共用 index，是本框架消除「共用 index 被反覆吸入他票內容」風險的權威路徑，非 fallback 的替代品，不因方便而優先選 fallback。**並行度註記**：fallback 一旦選用即回到共用 index，`append-log`／`complete` 的隔離索引 CAS 可能已在同一視窗把 HEAD 往前推進，使 fallback 前已 `git add` 的 entry 相對新 HEAD 過期；裸 commit 前須先比對 `git show :<path>` 與 `git show HEAD:<path>`，判定過期則 `git restore --staged <path>` 後重新 add，見 `.claude/rules/core/bash-tool-usage-rules.md` 規則七「版本邊界（過期 index 快照）」。
 
 ### Exit code
 

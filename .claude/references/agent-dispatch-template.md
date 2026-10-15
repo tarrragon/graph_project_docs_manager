@@ -286,8 +286,9 @@ ticket's where.files; never touches the shared index):
   ticket track commit <ticket-id> -m "..." -- {exact files}
 In a linked worktree (files changed under a worktree dir, not the main repo):
 add `--worktree <abs-worktree-path>` to the command above.
-Fallback (not recommended; only if `ticket track commit` fails or is
-unavailable) — use precise staging + verified bare commit only (no pathspec):
+Fallback (not recommended; only if `ticket track commit` hits an environmental
+failure that persists after re-running it, or is unavailable. Scope/criteria
+rejections must NOT use fallback: stop and report to PM) — use precise staging + verified bare commit only (no pathspec):
   git add {exact files}
   git diff --cached --name-only   # confirm index contains ONLY {exact files}
   git commit -m "..."             # bare commit; no -- <paths> / --only / -o / -a
@@ -320,7 +321,8 @@ Ticket: {id}
 Scope: strictly limited to this ticket's `where.files` (see ticket md); do not act outside it.
 Recommended: `ticket track commit {id} -m "..." -- {exact files}` (isolated
 index; files must be a subset of this ticket's where.files).
-Fallback (only if the above fails/unavailable) — precise staging + verified
+Fallback (only on environmental failure persisting after re-run, or unavailable;
+scope rejections: stop, report to PM) — precise staging + verified
 bare commit only (no pathspec):
   git add {exact files}
   git diff --cached --name-only   # confirm index contains ONLY {exact files}

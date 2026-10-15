@@ -22,7 +22,7 @@ Claude Code Bash 工具的使用規範，涵蓋工作目錄、輸出處理、git
 
 > **chpwd 與即時協議**：裸 cd 觸發 zsh chpwd hook 的 ls 淹沒工具結果。輸出可疑/被淹沒當下依四步即時協議——停手 → 重發乾淨原子命令（`git -C`／子 shell）→ 只信 raw stdout → 固定值（hash／二元 grep／整數計數）驗證。論證見 details.md 規則一詳細 + `tool-output-trust-rules` 規則 1-4。
 
-> **規則七與代理人票務提交的預設關係**：手動／無票務 CLI 之高衝突路徑仍用規則七三步或隔離索引 CAS（並列加強選項，`GIT_INDEX_FILE` 全程不觸碰共用 index，已驗證實作見 `ticket-md-auto-commit-hook.py`）；**代理人票務提交改以 `ticket track commit`（隔離索引）為預設**，規則七三步降為其 fallback（僅該命令失敗或不可用時用）。配方、適用條件與分工見 details.md「規則七詳細」。
+> **規則七與代理人票務提交的預設關係**：手動／無票務 CLI 之高衝突路徑仍用規則七三步或隔離索引 CAS（並列加強選項，`GIT_INDEX_FILE` 全程不觸碰共用 index，已驗證實作見 `ticket-md-auto-commit-hook.py`）；**代理人票務提交改以 `ticket track commit`（隔離索引）為預設**，規則七三步降為其 fallback（僅該命令環境性失敗且重跑仍失敗，或不可用時用；範圍判準拒絕不得走 fallback，見 `ticket` skill 的 track-command.md〈Fallback 條件〉）。配方、適用條件與分工見 details.md「規則七詳細」。
 
 > **規則七核對步驟的粒度邊界（檔案內夾帶）**：`git diff --cached --name-only` 只列檔名，核對粒度為檔案層級——`git add` 的最小單位即整個檔案，目標檔本身已含他人未 stage 的編輯時，該編輯隨精確 add 一併進入 index，核對必然通過，對此無鑑別力（機制與 PC-BAL-008「變體：檔案級共用」同源）。**不改變規則七既有禁止事項**，pathspec / `--only` / `-o` / `-i` 仍全數禁用。append-only 共用檔（如 `docs/work-logs/topic-assignments.txt`，每次 `ticket create` 皆追加一行，屬結構性熱點）建議：`git add --patch` 逐 hunk 挑選，或約定由單一方負責提交該檔。完整機制見 details.md「規則七詳細」。
 
