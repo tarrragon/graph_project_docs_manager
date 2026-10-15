@@ -2448,6 +2448,10 @@ class TestClosingWarningQuotedOrNegated:
         "完成後執行 ticket track finish 0.1.0-W3-147",
         # 同 prompt 內先否定一句、另一句仍真正要求收尾
         "不要改其他檔案。最後 ticket track complete 0.1.0-W3-147",
+        # 否定與收尾同句但以逗號分隔
+        "不要改其他檔案，最後執行 ticket track complete 0.1.0-W3-147",
+        # 「分別」含「別」字不是否定
+        "分別確認後執行 ticket track complete 0.1.0-W3-147",
     ])
     def test_real_closing_instruction_still_warns(self, monkeypatch, capsys, prompt):
         """E2：真正要求代理人收尾 → 仍提示，permissionDecision 維持 allow。"""

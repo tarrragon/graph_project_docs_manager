@@ -200,7 +200,7 @@ _TRACK_CLOSING_PATTERN = re.compile(r"track\s+(?:complete|finish)\b", re.IGNOREC
 # 子句級以標點為界，對 PM 實際寫法（收尾一句帶否定、引用一句帶語境詞）足夠。
 _CLAUSE_SPLIT = re.compile(r"[。；;\n]")
 _NEGATION_PATTERN = re.compile(
-    r"不要|不得|不可|不必|不需|不用|不執行|無需|禁止|勿|別|避免|"
+    r"不要|不得|不可|不必|不需|不用|不執行|無需|禁止|勿|別執行|別去|避免|"
     r"\bnever\b|\bdo not\b|\bdon't\b|\bmust not\b|\bwithout\b",
     re.IGNORECASE,
 )
@@ -213,7 +213,10 @@ _REFERENCE_CUE_PATTERN = re.compile(
 
 def _is_closing_instruction(clause: str, match: "re.Match") -> bool:
     """子句內的單一命中是否為真正的收尾指示（非否定、非引用語境）。"""
-    if _NEGATION_PATTERN.search(clause[: match.start()]):
+    # 否定詞只看命中前、最近一個逗號之後的分句尾段；頓號（列舉）不切，
+    # 讓「不要執行 A、B」的 B 仍受否定涵蓋，而「不要改X，最後執行 A」不受影響。
+    head = re.split(r"[，,]", clause[: match.start()])[-1]
+    if _NEGATION_PATTERN.search(head):
         return False
     if _REFERENCE_CUE_PATTERN.search(clause):
         return False
