@@ -184,10 +184,7 @@ class TestCommitFilesIsolated:
         ):
             result = git_ops.commit_files_isolated([_TARGET], "msg")
         result["error"] = "wording changed entirely"
-        assert (
-            tc.classify_failure(result["error"], result.get("failure_kind"))
-            == tc.FAILURE_CRITERIA
-        )
+        assert tc.classify_failure(result.get("failure_kind")) == tc.FAILURE_CRITERIA
 
     def test_non_scope_failure_kind_is_git_step(self):
         """非範圍、非 CAS 的失敗（如目錄路徑）歸 git_step，分類為環境性。"""
@@ -196,10 +193,7 @@ class TestCommitFilesIsolated:
         result = git_ops.commit_files_isolated([str(Path(__file__).parent)], "msg")
         assert result["status"] == "failed"
         assert result["failure_kind"] == git_ops.FAILURE_GIT_STEP
-        assert (
-            tc.classify_failure(result["error"], result["failure_kind"])
-            == tc.FAILURE_ENVIRONMENT
-        )
+        assert tc.classify_failure(result["failure_kind"]) == tc.FAILURE_ENVIRONMENT
 
     def test_update_ref_cas_failure_returns_failed(self):
         """update-ref 帶舊值失敗（HEAD 於期間被並行移動）時回傳 failed，不覆蓋。"""

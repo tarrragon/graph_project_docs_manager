@@ -30,7 +30,8 @@ from typing import Callable, Dict, List, Optional, Set, Tuple
 from ticket_system.lib.commit_attribution import apply_attribution
 from ticket_system.lib.file_conflict import files_intersect, parse_file_intent, write_files
 from ticket_system.lib.git_ops import (
-    FAILURE_SELF_VERIFICATION,
+    FAILURE_CAS,
+    FAILURE_GIT_STEP,
     AppendSpec,
     commit_files_isolated,
 )
@@ -56,25 +57,18 @@ ENVIRONMENT_FAILURE_GUIDANCE = (
     "持續失敗才走規則七 fallback。"
 )
 
-# 舊式結果（無 failure_kind）的相容字串特徵；有 failure_kind 時不使用。
-_SELF_VERIFICATION_MARKER = "自我驗證失敗"
+_ENVIRONMENT_KINDS = frozenset({FAILURE_CAS, FAILURE_GIT_STEP})
 
 
-def classify_failure(error: str, failure_kind: Optional[str] = None) -> str:
-    """將 commit_files_isolated 的失敗分為判準性或環境性。
+def classify_failure(failure_kind: Optional[str]) -> str:
+    """依 ``failure_kind`` 將失敗分為判準性或環境性。
 
-    ``failure_kind`` 給定時只讀結構化欄位（錯誤訊息字面改動不影響分類）；
-    僅在缺欄位的舊式結果才退回比對 ``error`` 字串。
+    只讀結構化欄位。僅明確的環境類型判為環境性；None 或無法辨識者
+    fail-closed 歸判準性（不引導走 fallback，停手回報）。
     """
-    if failure_kind is not None:
-        return (
-            FAILURE_CRITERIA
-            if failure_kind == FAILURE_SELF_VERIFICATION
-            else FAILURE_ENVIRONMENT
-        )
-    if _SELF_VERIFICATION_MARKER in (error or ""):
-        return FAILURE_CRITERIA
-    return FAILURE_ENVIRONMENT
+    if failure_kind in _ENVIRONMENT_KINDS:
+        return FAILURE_ENVIRONMENT
+    return FAILURE_CRITERIA
 
 
 def _resolve_repo_root(worktree: Optional[str]) -> Optional[str]:
@@ -493,7 +487,7 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
         return 0
 
     print(f"[ERROR] 提交失敗：{result['error']}")
-    if classify_failure(result["error"], result.get("failure_kind")) == FAILURE_CRITERIA:
+    if classify_failure(result.get("failure_kind")) == FAILURE_CRITERIA:
         print(CRITERIA_REJECTION_GUIDANCE)
     else:
         print(ENVIRONMENT_FAILURE_GUIDANCE)
