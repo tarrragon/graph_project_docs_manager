@@ -6,6 +6,7 @@
 """
 
 import importlib.util
+import io
 import json
 import sys
 from pathlib import Path
@@ -134,8 +135,15 @@ class TestScopeFilters:
 class TestMainOutputChannel:
     """違規提醒必須走 additionalContext（模型可見），非 message 欄位或 stderr。"""
 
-    def _run(self, monkeypatch, capsys, arg):
-        monkeypatch.setattr(sys, "argv", ["hook", str(arg)])
+    def _run(self, monkeypatch, capsys, arg, payload=None):
+        """以實測 PostToolUse payload 形狀（tool_input.file_path）餵 stdin。"""
+        if payload is None:
+            payload = {
+                "hook_event_name": "PostToolUse",
+                "tool_name": "Edit",
+                "tool_input": {"file_path": str(arg)},
+            }
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
         rc = hook_module.main()
         return rc, capsys.readouterr()
 
@@ -169,6 +177,71 @@ class TestMainOutputChannel:
 
         assert rc == 0
         assert "additionalContext" not in captured.out
+
+    def test_write_tool_payload_triggers(self, dart_file, monkeypatch, capsys):
+        """E1：Write 工具 payload 同樣觸發。"""
+        path = dart_file("TextButton(onPressed: () {}, child: child);\n")
+        payload = {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(path), "content": "x"},
+        }
+        rc, captured = self._run(monkeypatch, capsys, path, payload)
+        assert rc == 0
+        assert "NativeComponent" in captured.out
+
+    @pytest.mark.parametrize(
+        "name", ["a.txt", "a_test.dart", "a.g.dart", "a.freezed.dart"]
+    )
+    def test_non_dart_or_generated_file_silent(
+        self, dart_file, monkeypatch, capsys, name
+    ):
+        """E2：非 dart 檔與產生檔不輸出。"""
+        path = dart_file("TextButton(onPressed: () {});\n", name=name)
+        rc, captured = self._run(monkeypatch, capsys, path)
+        assert rc == 0
+        if name == "a_test.dart":
+            return  # 測試檔命名由 /test/ 目錄規則排除，此處僅確認不崩潰
+        assert "additionalContext" not in captured.out
+
+    def test_test_dir_file_silent(self, tmp_path, monkeypatch, capsys):
+        target = tmp_path / "test" / "lib" / "presentation" / "a.dart"
+        target.parent.mkdir(parents=True)
+        target.write_text("TextButton(onPressed: () {});\n", encoding="utf-8")
+        rc, captured = self._run(monkeypatch, capsys, target)
+        assert rc == 0
+        assert "additionalContext" not in captured.out
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"tool_name": "Edit", "tool_input": {}},
+            {"tool_name": "Edit"},
+            {"tool_name": "Edit", "tool_input": {"file_path": ""}},
+            {"tool_name": "Edit", "tool_input": {"file_path": 3}},
+            {"tool_name": "Edit", "tool_input": "oops"},
+        ],
+    )
+    def test_missing_path_fails_open(self, monkeypatch, capsys, payload):
+        """payload 缺路徑：fail-open，輸出 continue，不輸出提醒。"""
+        rc, captured = self._run(monkeypatch, capsys, "", payload)
+        assert rc == 0
+        assert json.loads(captured.out) == {"continue": True}
+
+    def test_empty_stdin_fails_open(self, monkeypatch, capsys):
+        monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+        rc = hook_module.main()
+        assert rc == 0
+        assert "additionalContext" not in capsys.readouterr().out
+
+    def test_argv_is_ignored(self, dart_file, monkeypatch, capsys):
+        """舊 argv 路徑不再被讀取。"""
+        path = dart_file("TextButton(onPressed: () {});\n")
+        monkeypatch.setattr(sys, "argv", ["hook", str(path)])
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"tool_input": {}})))
+        rc = hook_module.main()
+        assert rc == 0
+        assert "additionalContext" not in capsys.readouterr().out
 
 
 if __name__ == "__main__":

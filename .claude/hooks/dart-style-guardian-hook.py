@@ -14,18 +14,8 @@ Trigger: When editing files in lib/presentation/
 
 Usage:
     This hook is called automatically by Claude Code.
-    Configure in .claude/settings.local.json:
-
-    {
-      "hooks": {
-        "postToolUse": [
-          {
-            "matcher": "Edit|Write|MultiEdit",
-            "command": "uv run .claude/hooks/dart-style-guardian-hook.py \"$CLAUDE_FILE_PATHS\""
-          }
-        ]
-      }
-    }
+    Registered in .claude/settings.json (matcher Edit / Write). 檔案路徑由
+    stdin payload 的 tool_input.file_path 取得，不使用 argv 或環境變數。
 
 Exit Codes:
     0 - Success (continue) - No violations or file not in scope
@@ -40,10 +30,16 @@ import sys
 import json
 import re
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib import setup_hook_logging, run_hook_safely, emit_model_reminder
+from lib import (
+    setup_hook_logging,
+    run_hook_safely,
+    emit_model_reminder,
+    read_json_from_stdin,
+)
 from lib.hook_messages import QualityMessages
 
 # 偵測規則與專案校準一律取自 skill 的 style_checker，本 hook 不另維護第二套。
@@ -183,24 +179,30 @@ def check_file_for_violations(file_path: Path) -> list[dict]:
     return violations
 
 
+def extract_file_paths(payload: Optional[dict]) -> list:
+    """Return the edited file path(s) from a PostToolUse payload."""
+    if not isinstance(payload, dict):
+        return []
+    tool_input = payload.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return []
+    file_path = tool_input.get("file_path")
+    if isinstance(file_path, str) and file_path.strip():
+        return [file_path.strip()]
+    return []
+
+
 def main() -> int:
     """Main hook entry point."""
     logger = setup_hook_logging("dart-style-guardian-hook")
-    # Get file paths from argument
-    if len(sys.argv) < 2:
-        # No files to check
+    # 路徑取自 stdin payload 的 tool_input.file_path（Edit／Write 實測；
+    # 平台不提供 CLAUDE_FILE_PATH 環境變數）。讀不到時 fail-open。
+    payload = read_json_from_stdin(logger)
+    file_paths = extract_file_paths(payload)
+    if not file_paths:
         print(json.dumps({"continue": True}))
-        logger.info("No files to check")
+        logger.info("No file path in payload; skip (fail-open)")
         return 0
-
-    file_paths_str = sys.argv[1]
-
-    # Parse file paths (comma-separated or newline-separated)
-    file_paths = [
-        p.strip()
-        for p in re.split(r'[,\n]', file_paths_str)
-        if p.strip()
-    ]
 
     # Filter to presentation files only
     presentation_files = [
