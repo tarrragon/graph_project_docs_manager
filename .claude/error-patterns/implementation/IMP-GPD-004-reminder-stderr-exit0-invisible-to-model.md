@@ -1,3 +1,10 @@
+---
+id: IMP-GPD-004
+title: 提醒類 hook 以 stderr 加 exit 0 輸出，提醒對模型不可見
+severity: 中
+status: active
+---
+
 # IMP-GPD-004: 提醒類 hook 以 stderr 加 exit 0 輸出，提醒對模型不可見
 
 ## 基本資訊

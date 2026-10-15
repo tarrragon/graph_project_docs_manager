@@ -619,7 +619,7 @@ Hook JSON output 新增 `terminalSequence` 欄位，讓 hook 在無 controlling 
 | 用戶 | 非零結束碼加 stderr；SessionStart 可用純文字 stdout |
 | 營運日誌 | `setup_hook_logging` 日誌，不輸出 |
 
-案例與 IMP-055 的對照見 `.claude/error-patterns/implementation/IMP-GPD-004.md`。
+案例與 IMP-055 的對照見 IMP-GPD-004（`.claude/error-patterns/implementation/` 下）。
 
 ---
 
