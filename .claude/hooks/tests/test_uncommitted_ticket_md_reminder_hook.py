@@ -5,7 +5,7 @@ uncommitted-ticket-md-reminder-hook 測試套件（W8-005，W8-002 ANA 方案 4�
 1. is_git_commit_command 判斷邏輯（含排除變體）
 2. is_ticket_md_path 路徑判斷（docs/work-logs/**/tickets/*.md）
 3. find_uncommitted_ticket_md 過濾 git status 結果
-4. 偵測到 modified/staged ticket md → stderr 警告 + exit 0（不阻擋）
+4. 偵測到 modified/staged ticket md → additionalContext 警告 + exit 0（不阻擋）
 5. 無 modified ticket md → 靜默 exit 0
 6. 非 git commit 命令 → 靜默 exit 0
 """
@@ -156,22 +156,27 @@ def test_find_uncommitted_ticket_md_empty_when_clean():
 # --- main / run_hook 整合（exit 0 + stderr 行為）---
 
 def _run_main_with(input_data, uncommitted):
-    """以 mock stdin 與 git status 執行 main，回傳 (exit_code, stderr_text)。"""
+    """以 mock stdin 與 git status 執行 main，回傳 (exit_code, additionalContext 文字)。
+
+    無輸出時文字為 ""；stderr 必須為空（提醒改走 additionalContext）。
+    """
+    import contextlib
     import io
     import json
-    import sys
 
     files = [_FakeFileStatus(s, p) for s, p in uncommitted]
     with patch.object(hook, "read_json_from_stdin", return_value=input_data), \
          patch.object(hook, "get_uncommitted_files", return_value=files):
-        captured = io.StringIO()
-        old_stderr = sys.stderr
-        sys.stderr = captured
-        try:
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             exit_code = hook.main()
-        finally:
-            sys.stderr = old_stderr
-    return exit_code, captured.getvalue()
+    assert err.getvalue() == ""
+    text = out.getvalue().strip()
+    if not text:
+        return exit_code, ""
+    hso = json.loads(text)["hookSpecificOutput"]
+    assert hso["hookEventName"] == "PreToolUse"
+    return exit_code, hso["additionalContext"]
 
 
 def test_main_warns_when_ticket_md_uncommitted():

@@ -18,7 +18,7 @@ Worktree 和分支檢查 Hook - PreToolUse Hook
   2. 對每個 worktree（排除主倉庫）執行 git status --short 檢查未提交變更
   3. 執行 git branch --no-merged main 檢查未合併分支
   4. (merge/cherry-pick) 檢查主倉庫 HEAD 是否指向 main/master，不符時輸出 WARNING
-  5. 有發現時：輸出 WARNING 到 stderr，列出所有未提交/未合併的詳情
+  5. 有發現時：以 additionalContext 輸出 WARNING，列出所有未提交/未合併的詳情
   6. 無發現時：靜默通過
   7. 永遠 exit 0（不阻止操作，僅警告）
 """
@@ -35,7 +35,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 try:
-    from lib import setup_hook_logging, run_hook_safely, read_hook_input
+    from lib import (
+        setup_hook_logging,
+        run_hook_safely,
+        read_hook_input,
+        emit_model_reminder,
+    )
 except ImportError as e:
     print(f"[Hook Import Warning] {Path(__file__).name}: {e}", file=sys.stderr)
     # Fallback: 最小化日誌設定，run_hook_safely 退化為直接呼叫（無 liveness 記錄）
@@ -44,6 +49,8 @@ except ImportError as e:
         return logging.getLogger(name)
     def run_hook_safely(main_func, hook_name, fail_closed=False):
         return main_func()
+    def emit_model_reminder(event, text, *, audience="all", input_data=None):
+        return None
     def read_hook_input():
         import json
         try:
@@ -422,24 +429,32 @@ def main() -> int:
 
     logger.info("偵測到 push/merge/cherry-pick 命令，執行 worktree 和分支檢查")
 
+    # 兩類警告合併為單一 additionalContext 輸出（hook 只能輸出一份 JSON）
+    warnings: List[str] = []
+
     # 目標分支比對（僅 merge/cherry-pick，push 不需要）
     if is_merge_or_cherry_pick(bash_command):
         target_warning = check_target_branch()
         if target_warning:
-            print(target_warning, file=sys.stderr)
+            warnings.append(target_warning)
             logger.warning("主倉庫 HEAD 未指向預期的合併目標分支")
 
     # 執行 worktree 和未合併分支檢查
     result = check_git_state()
 
-    # 如果有發現，輸出警告
+    # 如果有發現，收集警告
     if result.has_uncommitted_worktrees or result.has_unmerged_branches:
-        warning_msg = format_warning_output(result)
-        print(warning_msg, file=sys.stderr)
+        warnings.append(format_warning_output(result))
         logger.warning(f"偵測到未合併進度：{len(result.uncommitted_worktrees)} 個 worktree，{len(result.unmerged_branches)} 個分支")
     else:
         # 無發現，靜默通過
         logger.debug("無未提交或未合併進度，靜默通過")
+
+    if warnings:
+        # 提醒對象是模型，走 additionalContext（exit 0 stderr 對模型不可見）
+        emit_model_reminder(
+            "PreToolUse", "\n\n".join(warnings), input_data=payload
+        )
 
     # 永遠 exit 0，不阻止操作
     return EXIT_SUCCESS

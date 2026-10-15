@@ -8,7 +8,7 @@
 Uncommitted Ticket MD Reminder Hook - PreToolUse Hook
 
 功能: git commit 前偵測 working tree 內「已修改但未 commit 的 ticket md」，
-      輸出 stderr 警告（不阻擋，exit 0），提醒人為將 ticket md 一併納入提交，
+      以 additionalContext 輸出警告（不阻擋，exit 0），提醒人為將 ticket md 一併納入提交，
       避免手動 Edit ticket body 後遺失（W8-002 ANA 方案 4：狀態偵測）。
 
 觸發時機: Bash 工具執行前（PreToolUse）
@@ -41,6 +41,7 @@ try:
         setup_hook_logging,
         run_hook_safely,
         read_json_from_stdin,
+        emit_model_reminder,
     )
     from lib.git_utils import get_uncommitted_files
     from lib.git_command_parse import match_git_commit
@@ -59,6 +60,9 @@ except ImportError as e:
             return 0
 
     def read_json_from_stdin(logger):
+        return None
+
+    def emit_model_reminder(event, text, *, audience="all", input_data=None):
         return None
 
     def get_uncommitted_files():
@@ -156,8 +160,10 @@ def main() -> int:
         return EXIT_SUCCESS
 
     logger.info("偵測到 %d 個未 commit 的 ticket md，輸出警告", len(ticket_md_paths))
-    # 直接 print 至 stderr（非 logger.warning，避免被當 hook 失敗，IMP-048）
-    print(build_warning_message(ticket_md_paths), file=sys.stderr)
+    # 提醒對象是模型，走 additionalContext（exit 0 stderr 對模型不可見）
+    emit_model_reminder(
+        "PreToolUse", build_warning_message(ticket_md_paths), input_data=input_data
+    )
     return EXIT_SUCCESS
 
 
