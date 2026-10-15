@@ -384,6 +384,18 @@ def test_dispatch_skeleton_normal_agent_commit_with_hook_scope_within_prompt_lim
     )
 
 
+def test_staging_phrases_distinguish_criteria_rejection_from_environmental_failure():
+    """0.5.0-W1-297.2：全文與骨架短版皆須含兩類 fallback 條件——判準性拒絕
+    不得 fallback（回報 PM）；環境性失敗先重跑，持續失敗才 fallback。"""
+    module = _load_dispatch_skeleton_module()
+    assert "environmental" in module.STAGING_PHRASE_AGENT
+    assert "re-running" in module.STAGING_PHRASE_AGENT
+    assert "must NOT use fallback" in module.STAGING_PHRASE_AGENT
+    assert "no fallback" in module.STAGING_PHRASE_AGENT_PROMPT
+    assert "Environmental failure" in module.STAGING_PHRASE_AGENT_PROMPT
+    assert "re-run" in module.STAGING_PHRASE_AGENT_PROMPT
+
+
 def test_hook_ticket_reminder_asks_for_evidence_not_acceptance_sentences():
     """0.5.0-W1-276.2：提醒須列出證據形式與位置（Test Results／Solution、
     hook-logs/ 日誌行引文、fail 宣告加觸發條件），不再要求 acceptance 含句子。"""

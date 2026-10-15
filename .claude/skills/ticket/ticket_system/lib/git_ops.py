@@ -686,7 +686,30 @@ def _prevalidate_guard_env(repo_root: str, commit_sha: str, old_head: str) -> Op
     return f"{commit_sha}:{old_head}:{ref}"
 
 
+# commit_files_isolated 失敗結果的 failure_kind 取值（status == "failed" 時恆存在）
+FAILURE_SELF_VERIFICATION = "self_verification"  # 範圍自我驗證不符（判準）
+FAILURE_CAS = "cas"  # update-ref 帶舊值被拒（HEAD 被並行移動）
+FAILURE_GIT_STEP = "git_step"  # 其餘 git 步驟失敗（環境）
+
+
 def commit_files_isolated(
+    paths: List[str],
+    message: str,
+    cwd: Optional[str] = None,
+    append_lines: Optional[Dict[str, AppendValue]] = None,
+) -> Dict[str, Optional[str]]:
+    """提交並在失敗時補上結構化 ``failure_kind``；語意見 ``_commit_files_isolated_impl``。
+
+    ``status == "failed"`` 時結果多帶 ``failure_kind``（FAILURE_* 常數之一），
+    供呼叫端分類失敗而不必比對 ``error`` 文字。實作端未明示者歸 git_step。
+    """
+    result = _commit_files_isolated_impl(paths, message, cwd, append_lines)
+    if result.get("status") == "failed":
+        result.setdefault("failure_kind", FAILURE_GIT_STEP)
+    return result
+
+
+def _commit_files_isolated_impl(
     paths: List[str],
     message: str,
     cwd: Optional[str] = None,
@@ -833,6 +856,7 @@ def commit_files_isolated(
             return {
                 "status": "failed",
                 "commit_sha": None,
+                "failure_kind": FAILURE_SELF_VERIFICATION,
                 "error": (
                     f"提交範圍自我驗證失敗，預期 {sorted(expected_changes)} 實得 "
                     f"{sorted(changed)}（範圍外 {sorted(out_of_scope)}）"
@@ -862,6 +886,7 @@ def commit_files_isolated(
             return {
                 "status": "failed",
                 "commit_sha": None,
+                "failure_kind": FAILURE_CAS,
                 "error": _describe_update_ref_failure(
                     err, commit_sha, cwd, locks_before_update_ref
                 ),
