@@ -380,3 +380,57 @@ def test_unmasked_stdout_error_prefix_is_not_failure():
 
 def test_unparseable_command_fails_open():
     assert _general("ticket track claim 'X; echo", "[Error] x\n") is None
+
+
+# ----------------------------------------------------------------------------
+# 「已由其他 hook 處理」依命令開頭比對（子字串誤判 E2 對照）
+# ----------------------------------------------------------------------------
+
+REMINDER = hook.WorkflowMessages.CLI_FAILURE_HELP_REMINDER
+_FAIL_OUT = "Exit code 1\nboom: cannot open\n"
+
+
+def test_pip_install_pytest_failure_is_not_suppressed():
+    assert _general_failure("pip install pytest", _FAIL_OUT) == REMINDER
+
+
+def test_quoted_flutter_test_in_argument_is_not_suppressed():
+    assert _general_failure("cat x | somecli 'flutter test'", _FAIL_OUT) == REMINDER
+
+
+def test_quoted_dart_analyze_in_argument_is_not_suppressed():
+    assert _general_failure("somecli 'dart analyze' y", _FAIL_OUT) == REMINDER
+
+
+def test_real_pytest_failure_is_suppressed():
+    assert _general_failure("pytest tests/test_a.py", _FAIL_OUT) is None
+
+
+def test_real_flutter_test_failure_is_suppressed():
+    assert _general_failure("flutter test test/a_test.dart", _FAIL_OUT) is None
+
+
+def test_real_ticket_cli_failure_is_suppressed():
+    assert _general_failure("ticket track claim X", _FAIL_OUT) is None
+
+
+def test_prefixed_commands_are_still_suppressed():
+    for cmd in (
+        "FOO=1 pytest tests/a.py",
+        "cd x && flutter test",
+        "uv --directory x run pytest tests",
+        "uv run ticket track query X",
+        "cd x && dart analyze lib",
+        "go vet ./...",
+        "go test ./...",
+    ):
+        assert _general_failure(cmd, _FAIL_OUT) is None, cmd
+
+
+def test_shared_judge_exception_does_not_suppress():
+    with patch.object(hook, "find_test_invocations", side_effect=RuntimeError("boom")):
+        assert _general_failure("pytest tests/a.py", _FAIL_OUT) == REMINDER
+
+
+def test_unparseable_command_is_not_suppressed():
+    assert hook.is_handled_by_other_hooks("pytest 'unclosed") is False

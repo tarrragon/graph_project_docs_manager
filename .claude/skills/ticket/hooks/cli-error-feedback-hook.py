@@ -39,6 +39,8 @@ from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, is_su
 from lib.hook_messages import WorkflowMessages
 from lib.bash_tool_response import is_bash_success, is_failure_event, parse_failure_error
 from lib.ticket_command_parse import is_invocation_masked
+from lib.git_command_parse import parse_command_statements
+from lib.test_command_parse import find_test_invocations, _strip_launch_prefixes
 
 # ticket CLI 錯誤輸出的固定 stdout 行首前綴
 STDOUT_ERROR_PREFIX = "[Error]"
@@ -130,17 +132,14 @@ SKILL_CLI_ERROR_FEEDBACK_TEMPLATE = """
 # --- General CLI Failure 常數（來自 cli-failure-help-reminder-hook） ---
 
 # 已由其他 Hook 處理的命令模式（避免重複提醒）
+# 測試類（flutter test／dart test／pytest／uv run pytest 等）由共用測試命令判定處理；
+# 以下為共用判定不涵蓋的項目，剝除啟動前綴後依敘述開頭 token 序列比對
 HANDLED_BY_OTHER_HOOKS = [
-    "flutter test",
-    "dart test",
-    "dart analyze",
-    "go test",
-    "go vet",
-    "pytest",
-    "uv run pytest",
-    "ticket ",
-    "skill ",
-    "uv run ticket",
+    ("dart", "analyze"),
+    ("go", "test"),
+    ("go", "vet"),
+    ("ticket",),
+    ("skill",),
 ]
 
 # 預期可能有 stderr 輸出但非真正失敗的命令
@@ -395,12 +394,35 @@ def check_skill_cli_error(input_data: Dict[str, Any], logger) -> Optional[str]:
 # General CLI Failure 子邏輯（來自 cli-failure-help-reminder-hook）
 # ============================================================================
 
-def is_handled_by_other_hooks(command: str) -> bool:
-    """判斷命令是否已由其他 Hook 處理"""
-    for pattern in HANDLED_BY_OTHER_HOOKS:
-        if pattern in command:
+def _statement_starts_with(tokens, prefix) -> bool:
+    if len(tokens) < len(prefix):
+        return False
+    return [Path(tokens[0]).name] + list(tokens[1:len(prefix)]) == list(prefix)
+
+
+def _is_non_test_handled(command: str) -> bool:
+    statements = parse_command_statements(command)
+    for statement in statements or []:
+        stripped = _strip_launch_prefixes(statement)
+        if any(_statement_starts_with(stripped, p) for p in HANDLED_BY_OTHER_HOOKS):
             return True
     return False
+
+
+def is_handled_by_other_hooks(command: str, logger=None) -> bool:
+    """判斷命令是否已由其他 Hook 處理。
+
+    測試類走共用測試命令判定；其餘依敘述開頭比對（前綴處理與共用判定同一函式）。
+    無法解析或判定拋例外一律回 False（寧可多提醒、不漏提醒）。
+    """
+    try:
+        if find_test_invocations(command):
+            return True
+        return _is_non_test_handled(command)
+    except Exception as e:
+        if logger is not None:
+            logger.error("general-cli: 已處理判定例外，不抑制提醒: %s", e, exc_info=True)
+        return False
 
 
 def is_expected_stderr(command: str, stderr: str) -> bool:
@@ -446,7 +468,7 @@ def _masked_stdout_error(command: str, tool_response: Any, logger) -> Optional[s
 def _stdout_error_reminder(command: str, stdout_error: str, logger) -> Optional[str]:
     """遮蔽路徑 stdout [Error] 的提醒；ticket/skill 前綴不套用「已由其他 Hook 處理」排除
     （skill 分支只認參數類錯誤，業務錯誤無人處理），其餘 handled 命令仍排除。"""
-    if is_handled_by_other_hooks(command) and not is_skill_cli_command(command):
+    if is_handled_by_other_hooks(command, logger) and not is_skill_cli_command(command):
         logger.debug("general-cli: 已由其他 Hook 處理: %s", command[:80])
         return None
     logger.info("general-cli: 遮蔽失敗（stdout %s），輸出 PC-005 調查步驟提醒", STDOUT_ERROR_PREFIX)
@@ -485,7 +507,7 @@ def check_general_cli_failure(input_data: Dict[str, Any], logger) -> Optional[st
         logger.debug("general-cli: 無 stderr，命令成功，跳過")
         return None
 
-    if is_handled_by_other_hooks(command):
+    if is_handled_by_other_hooks(command, logger):
         logger.debug("general-cli: 已由其他 Hook 處理: %s", command[:80])
         return None
 
