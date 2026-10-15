@@ -38,6 +38,31 @@ from ticket_system.lib.worklog_appender import _build_worklog_path
 from ticket_system.lib.ticket_loader import load_ticket
 
 
+FAILURE_CRITERIA = "criteria"
+FAILURE_ENVIRONMENT = "environment"
+
+# 判準性拒絕：命令正在執行範圍保護，走 fallback 等於繞過該保護。
+CRITERIA_REJECTION_GUIDANCE = (
+    "[NEXT] 此為範圍判準拒絕，不得改走 fallback（裸 git commit）；"
+    "請停手回報 PM，以 set-where 補宣告，或從輸入移除該檔案後重跑本命令。"
+)
+# 環境性失敗：隔離索引機制本身故障，範圍判準已通過。
+ENVIRONMENT_FAILURE_GUIDANCE = (
+    "[NEXT] 此為環境性失敗；請先重跑本命令（index.lock／HEAD 競爭通常重跑即成功），"
+    "持續失敗才走規則七 fallback。"
+)
+
+# commit_files_isolated 的範圍自我驗證失敗訊息特徵（git_ops.py）：屬判準而非環境。
+_SELF_VERIFICATION_MARKER = "自我驗證失敗"
+
+
+def classify_failure(error: str) -> str:
+    """將 commit_files_isolated 的失敗原因分為判準性或環境性。"""
+    if _SELF_VERIFICATION_MARKER in (error or ""):
+        return FAILURE_CRITERIA
+    return FAILURE_ENVIRONMENT
+
+
 def _resolve_repo_root(worktree: Optional[str]) -> Optional[str]:
     """解析本次提交操作的 repo root。
 
@@ -356,7 +381,8 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
         print(
             f"[ERROR] Ticket {args.ticket_id} 的票面不可在 worktree 提交：票面由主 repo "
             "CLI 寫入並自動提交，worktree 內的副本是舊版本，提交會使合回 main 的"
-            "票面狀態倒退。請從輸入移除票面，只提交產品檔。"
+            "票面狀態倒退。請從輸入移除票面，只提交產品檔。\n"
+            + CRITERIA_REJECTION_GUIDANCE
         )
         return 1
 
@@ -376,7 +402,7 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
                 "非寫入意圖）；若確有寫入需求，請於該路徑後加 ::write 標記，"
                 "例如：path/to/file.py::write"
             )
-        print(message)
+        print(message + "\n" + CRITERIA_REJECTION_GUIDANCE)
         return 1
 
     out_of_scope = _out_of_scope_files(
@@ -388,6 +414,8 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
             + "\n".join(f"  - {f}" for f in out_of_scope)
             + "\n宣告範圍：\n"
             + "\n".join(f"  - {f}" for f in sorted(normalized_declared))
+            + "\n"
+            + CRITERIA_REJECTION_GUIDANCE
         )
         return 1
 
@@ -451,6 +479,10 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
         return 0
 
     print(f"[ERROR] 提交失敗：{result['error']}")
+    if classify_failure(result["error"]) == FAILURE_CRITERIA:
+        print(CRITERIA_REJECTION_GUIDANCE)
+    else:
+        print(ENVIRONMENT_FAILURE_GUIDANCE)
     return 1
 
 
