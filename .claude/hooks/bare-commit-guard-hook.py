@@ -469,6 +469,55 @@ def _resolve_detect_dirs(
     return list(dict.fromkeys([_base_dir(payload_cwd, project_root), str(project_root)]))
 
 
+_GIT_DIR_ENV_NAMES = ("GIT_DIR=", "GIT_WORK_TREE=")
+_GIT_DIR_OPTIONS = ("--git-dir", "--work-tree")
+
+
+def _overrides_git_dir(inv: GitInvocation) -> bool:
+    """commit 呼叫是否以 GIT_DIR／GIT_WORK_TREE（環境變數前綴或 env 包裝）
+    或 --git-dir／--work-tree 選項改寫目標；子命令之前的 token 即涵蓋三者。
+    """
+    for tok in inv.statement[:inv.subcommand_index]:
+        if tok.startswith(_GIT_DIR_ENV_NAMES):
+            return True
+        if tok.split("=", 1)[0] in _GIT_DIR_OPTIONS:
+            return True
+    return False
+
+
+def _commit_target_checkouts(
+    invocations: Optional[List[GitInvocation]], logger
+) -> Optional[List[Path]]:
+    """全部 commit 呼叫的目標 checkout 聯集；任一呼叫無法判定或帶 git-dir
+    類覆寫則回 None（呼叫端不過濾，全數計入，保守方向）。
+    """
+    if not invocations:
+        return None
+    targets: List[Path] = []
+    for inv in invocations:
+        if _overrides_git_dir(inv):
+            logger.info("commit 帶 GIT_DIR／--git-dir 類覆寫，不依工作位置過濾")
+            return None
+        target = _commit_target_checkout([inv], logger)
+        if target is None:
+            return None
+        targets.append(target)
+    return targets
+
+
+def _filter_dispatches_for_targets(
+    dispatches: List[Dict], targets: Optional[List[Path]]
+) -> List[Dict]:
+    """條目工作位置等於任一目標即保留（依原順序、不重複）。"""
+    if targets is None:
+        return dispatches
+    kept_ids = set()
+    for target in targets:
+        for d in filter_dispatches_for_checkout(dispatches, target):
+            kept_ids.add(id(d))
+    return [d for d in dispatches if id(d) in kept_ids]
+
+
 def _commit_target_checkout(
     invocations: Optional[List[GitInvocation]], logger
 ) -> Optional[Path]:
@@ -1088,9 +1137,9 @@ def main() -> int:
     # 並行期只計入工作位置與本 checkout 相同的條目；舊條目（無 work_checkout）保守計入。
     # 過濾基準是 commit 實際作用的 checkout（-C／cd 後的 effective_dir），非 hook cwd。
     dispatches = _exclude_orphan_confirmed(
-        filter_dispatches_for_checkout(
+        _filter_dispatches_for_targets(
             _get_active_dispatches_safe(project_root),
-            _commit_target_checkout(invocations, logger),
+            _commit_target_checkouts(invocations, logger),
         ),
         project_root,
         resolve_session_id(input_data),
