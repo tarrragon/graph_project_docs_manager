@@ -270,15 +270,20 @@ def _queue_files(directory):
     return sorted(p.name for p in Path(directory).glob("queue-*.json"))
 
 
+def _interrupt_after(seconds):
+    """等待 seconds 秒後回傳 SIGTERM 的 interrupted 回呼：佇列不設總等待上限，測試以訊號收尾。"""
+    t0 = time.monotonic()
+    return lambda: signal.SIGTERM if time.monotonic() - t0 >= seconds else None
+
+
 def test_late_comer_cannot_take_free_slot_while_live_waiter_is_ahead(monkeypatch, tmp_path):
     """E2：名額空著，但前方有存活排隊者時，後到者取不到。"""
     monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
-    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)
     ahead = _sleeper()
     try:
         entry = _fake_entry(tmp_path, 1, ahead.pid)
-        hold, early = slot_gate.acquire_slot(["flutter", "test"], lambda: None)
-        assert hold is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
+        hold, early = slot_gate.acquire_slot(["flutter", "test"], _interrupt_after(0.3))
+        assert hold is None and early == 128 + signal.SIGTERM
         assert entry.exists(), "不得清除存活者的排隊檔"
     finally:
         ahead.kill()
@@ -326,7 +331,7 @@ def test_entry_removed_on_acquire_giveup_timeout_and_signal(monkeypatch, tmp_pat
     monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
     hold, _ = slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0)  # 取得；預估 0 使後方真的等待而非提早拒絕
     assert _queue_files(tmp_path) == []
-    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)  # 逾時（名額被 hold 占住）
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)  # 持有者（預估 0）超出預估過久
     got, early = slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0)
     assert got is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
     assert _queue_files(tmp_path) == []
@@ -351,7 +356,7 @@ def test_waiting_notice_shows_position_and_ahead_count(monkeypatch, tmp_path, ca
     try:
         _fake_entry(tmp_path, 1, a.pid)
         _fake_entry(tmp_path, 2, b.pid)
-        slot_gate.acquire_slot(["x"], lambda: None)
+        slot_gate.acquire_slot(["x"], _interrupt_after(0.3))
         err = capsys.readouterr().err
         assert "順位 3" in err and "前方 2 筆" in err
     finally:
@@ -387,24 +392,64 @@ AHEAD_ESTIMATE_SECONDS = 5  # 遠小於等待上限的前方預估
 REJECT_BUDGET_SECONDS = 2.0 # 立即拒絕的耗時上限（遠小於 WAIT_LIMIT，舊碼會等滿上限）
 
 
-def test_estimate_over_limit_rejects_immediately_with_details(monkeypatch, tmp_path, capsys):
-    """E1：前方預估加總 200 秒 > 上限 150 秒，立即以 125 結束，訊息含順位、前方筆數、預估秒數。"""
+def _backdate_holder(holder, seconds):
+    info = json.loads(Path(holder.holder_path).read_text())
+    info["started_epoch"] = time.time() - seconds
+    Path(holder.holder_path).write_text(json.dumps(info))
+
+
+def test_saturated_queue_does_not_starve_earlier_arrival(monkeypatch, tmp_path, capsys):
+    """前方預估加總 300 秒 > 上限 150 秒，且佇列持續補進新到者：先到者仍在有限輪內取得，不被提早拒絕。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "150")
+    ahead = [_sleeper() for _ in range(3)]
+    spare = []
+    for i, p in enumerate(ahead, start=1):
+        _fake_entry(tmp_path, i, p.pid, estimate=100)
+    result = {}
+    worker = threading.Thread(target=lambda: result.update(
+        zip(("hold", "early"), slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0))), daemon=True)
+    worker.start()
+    try:
+        deadline = time.monotonic() + STEP_TIMEOUT
+        while len(_queue_files(tmp_path)) < 4 and worker.is_alive() and time.monotonic() < deadline:
+            time.sleep(ENTER_POLL)
+        seq = 5
+        rounds = 0
+        while worker.is_alive() and rounds < 10 and time.monotonic() < deadline:
+            rounds += 1  # 每輪前方最舊的一位離場，同時補進一位新到者，佇列長度維持在超限
+            if ahead:
+                victim = ahead.pop(0)
+                victim.kill()
+                victim.wait()
+            fresh = _sleeper()
+            spare.append(fresh)
+            _fake_entry(tmp_path, seq, fresh.pid, estimate=100)
+            seq += 1
+            time.sleep(0.3)
+        worker.join(timeout=STEP_TIMEOUT)
+        assert result.get("hold") is not None and result.get("early") is None, capsys.readouterr().err
+        assert rounds <= 4, "先到者應在前方三位離場後即取得"
+        result["hold"].release()
+    finally:
+        for p in ahead + spare:
+            p.kill()
+            p.wait()
+
+
+def test_entry_prints_position_and_estimate_without_total_wait_cap(monkeypatch, tmp_path, capsys):
+    """進場即輸出順位與預估，並說明可自行中止；佇列總等待不設上限。"""
     monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
     monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "5")
+    monkeypatch.setenv("CLAUDE_SLOT_NOTICE_INTERVAL", "999")
     a, b = _sleeper(), _sleeper()
     try:
         _fake_entry(tmp_path, 1, a.pid, estimate=100)
         _fake_entry(tmp_path, 2, b.pid, estimate=100)
-        monkeypatch.setattr(slot_gate, "SLOT_WAIT_LIMIT_SECONDS", 150.0)  # 預估與上限同單位比較
-        monkeypatch.delenv("CLAUDE_SLOT_WAIT_LIMIT")
-        started = time.monotonic()
-        hold, early = slot_gate.acquire_slot(["x"], lambda: None)
-        elapsed = time.monotonic() - started
+        hold, early = slot_gate.acquire_slot(["x"], _interrupt_after(0.5))
         err = capsys.readouterr().err
-        assert hold is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
-        assert elapsed < REJECT_BUDGET_SECONDS
+        assert hold is None and early == 128 + signal.SIGTERM
         assert "順位 3" in err and "前方 2 筆" in err and "預估" in err and "200" in err
-        assert _queue_files(tmp_path) == [f"queue-{1:012d}-{a.pid}.json", f"queue-{2:012d}-{b.pid}.json"]
     finally:
         for p in (a, b):
             p.kill()
@@ -412,7 +457,7 @@ def test_estimate_over_limit_rejects_immediately_with_details(monkeypatch, tmp_p
 
 
 def test_estimate_within_limit_queues_and_acquires(monkeypatch, tmp_path):
-    """對照：前方預估 5 秒 < 上限，照常排隊；前方排隊者結束後取得。"""
+    """對照：前方排隊者結束後取得。"""
     monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
     monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", str(STEP_TIMEOUT))
     ahead = subprocess.Popen([sys.executable, "-c", f"import time; time.sleep({HOLD_SECONDS})"])
@@ -423,26 +468,39 @@ def test_estimate_within_limit_queues_and_acquires(monkeypatch, tmp_path):
     hold.release()
 
 
-def test_running_holder_remaining_time_counts_toward_wait(monkeypatch, tmp_path, capsys):
-    """持有者預估 100 秒、已跑 10 秒 -> 剩餘 90 秒，超過上限 50 秒即拒絕。"""
+def test_holder_overrunning_its_estimate_is_detected(monkeypatch, tmp_path, capsys):
+    """E1：持有者預估 100 秒，超出預估的時間 > 上限 50 秒才回報卡住；未超出上限則照常等待。"""
     monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
     monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "50")
     holder, _ = slot_gate.acquire_slot(["h"], lambda: None, estimate_seconds=100)
     try:
         info = json.loads(Path(holder.holder_path).read_text())
         assert info["estimate"] == 100
-        info["started_epoch"] = time.time() - 10
-        Path(holder.holder_path).write_text(json.dumps(info))
+        _backdate_holder(holder, 140)  # 超出預估 40 秒 < 上限：不算卡住，照常等待
+        got, early = slot_gate.acquire_slot(["x"], _interrupt_after(0.3))
+        assert got is None and early == 128 + signal.SIGTERM
+        _backdate_holder(holder, 200)  # 超出預估 100 秒 > 上限
         started = time.monotonic()
         got, early = slot_gate.acquire_slot(["x"], lambda: None)
         assert got is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
         assert time.monotonic() - started < REJECT_BUDGET_SECONDS
-        assert "預估" in capsys.readouterr().err
-        # 對照：已跑 80 秒 -> 剩餘 20 秒 < 上限，不拒絕而是等待（以訊號中斷代替等滿）
-        info["started_epoch"] = time.time() - 80
-        Path(holder.holder_path).write_text(json.dumps(info))
-        got, early = slot_gate.acquire_slot(["x"], lambda: signal.SIGTERM)
-        assert got is None and early == 128 + signal.SIGTERM
+        err = capsys.readouterr().err
+        assert "超出" in err and "預估" in err
+    finally:
+        holder.release()
+
+
+def test_inherited_hold_marker_keeps_total_wait_cap(monkeypatch, tmp_path):
+    """持有期間子程序（環境帶持有標記）的等待上限仍是總等待上限：持有者未超出預估也在上限到時放棄。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    holder, _ = slot_gate.acquire_slot(["h"], lambda: None, estimate_seconds=100)
+    try:
+        with slot_gate.export_hold(holder):
+            monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)
+            started = time.monotonic()
+            got, early = slot_gate.acquire_slot(["x"], lambda: None)
+        assert got is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
+        assert time.monotonic() - started < REJECT_BUDGET_SECONDS
     finally:
         holder.release()
 
@@ -455,7 +513,7 @@ def test_waiting_notice_shows_remaining_estimate(monkeypatch, tmp_path, capsys):
     try:
         _fake_entry(tmp_path, 1, a.pid, estimate=0)
         monkeypatch.setattr(slot_gate, "DEFAULT_ESTIMATE_SECONDS", 0.0, raising=False)
-        slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0)
+        slot_gate.acquire_slot(["x"], _interrupt_after(0.3), estimate_seconds=0)
         assert "預估剩餘" in capsys.readouterr().err
     finally:
         a.kill()
@@ -480,3 +538,32 @@ def test_entry_without_estimate_uses_command_default(monkeypatch, tmp_path):
     finally:
         a.kill()
         a.wait()
+
+
+def test_notice_names_first_ahead_and_marks_position_excludes_holder(monkeypatch, tmp_path, capsys):
+    """有前方者：提示指名前方第一筆命令，並標明順位不含持有者。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_NOTICE_INTERVAL", "0")
+    a = _sleeper()
+    try:
+        path = Path(tmp_path) / f"queue-{1:012d}-{a.pid}.json"
+        path.write_text(json.dumps({"pid": a.pid, "command": ["merge-gate", "feat-x"], "estimate": 1}))
+        slot_gate.acquire_slot(["x"], _interrupt_after(0.3))
+        err = capsys.readouterr().err
+        assert "前方第一筆：merge-gate feat-x" in err and "持有者之後第 2 位" in err and "不含持有者" in err
+    finally:
+        a.kill()
+        a.wait()
+
+
+def test_notice_without_ahead_says_no_queue(monkeypatch, tmp_path, capsys):
+    """無前方者：提示明說前方無排隊者，不出現前方第一筆。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_NOTICE_INTERVAL", "0")
+    holder, _ = slot_gate.acquire_slot(["h"], lambda: None, estimate_seconds=100)
+    try:
+        slot_gate.acquire_slot(["x"], _interrupt_after(0.3))
+        err = capsys.readouterr().err
+        assert "前方無排隊者" in err and "前方第一筆" not in err and "持有者之後第 1 位" in err
+    finally:
+        holder.release()
