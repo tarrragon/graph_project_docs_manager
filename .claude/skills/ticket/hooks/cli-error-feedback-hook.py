@@ -38,6 +38,10 @@ sys.path.insert(0, _FRAMEWORK_HOOKS)
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, is_subagent_environment
 from lib.hook_messages import WorkflowMessages
 from lib.bash_tool_response import is_bash_success, is_failure_event, parse_failure_error
+from lib.ticket_command_parse import is_invocation_masked
+
+# ticket CLI 錯誤輸出的固定 stdout 行首前綴
+STDOUT_ERROR_PREFIX = "[Error]"
 
 # ============================================================================
 # 常數定義
@@ -351,6 +355,45 @@ def is_expected_stderr(command: str, stderr: str) -> bool:
     return False
 
 
+def _masked_stdout_error(command: str, tool_response: Any, logger) -> Optional[str]:
+    """遮蔽路徑上 stdout 的 [Error] 失敗訊息；非遮蔽、無法判斷或未命中回傳 None。
+
+    比對規則：stdout 任一行 lstrip 後以 STDOUT_ERROR_PREFIX（`[Error]`）開頭才算。
+    ticket CLI 的錯誤固定寫在 stdout 且以該前綴起頭；成功命令輸出中途夾帶
+    `[Error]` 字樣（非行首）不命中。
+    僅在 is_invocation_masked(command) 為 True 時檢查：未遮蔽而收到 PostToolUse
+    的命令結束碼為 0，不以 stdout 判失敗；None（無法解析）fail-open 視為不命中。
+    """
+    if not isinstance(tool_response, dict):
+        return None
+    stdout = tool_response.get("stdout", "")
+    if not isinstance(stdout, str) or STDOUT_ERROR_PREFIX not in stdout:
+        return None
+    try:
+        masked = is_invocation_masked(command)
+    except Exception as e:
+        logger.error("general-cli: 遮蔽判斷例外，fail-open: %s", e, exc_info=True)
+        return None
+    if masked is not True:
+        return None
+    for line in stdout.splitlines():
+        if line.lstrip().startswith(STDOUT_ERROR_PREFIX):
+            logger.info("general-cli: 遮蔽路徑 stdout 偵測到 %s 前綴", STDOUT_ERROR_PREFIX)
+            return line.strip()
+    return None
+
+
+def _stdout_error_reminder(command: str, stdout_error: str, logger) -> Optional[str]:
+    """遮蔽路徑 stdout [Error] 的提醒；ticket/skill 前綴不套用「已由其他 Hook 處理」排除
+    （skill 分支只認參數類錯誤，業務錯誤無人處理），其餘 handled 命令仍排除。"""
+    if is_handled_by_other_hooks(command) and not is_skill_cli_command(command):
+        logger.debug("general-cli: 已由其他 Hook 處理: %s", command[:80])
+        return None
+    logger.info("general-cli: 遮蔽失敗（stdout %s），輸出 PC-005 調查步驟提醒", STDOUT_ERROR_PREFIX)
+    logger.info("general-cli: 失敗命令: %s", command[:120])
+    return WorkflowMessages.CLI_FAILURE_HELP_REMINDER
+
+
 def check_general_cli_failure(input_data: Dict[str, Any], logger) -> Optional[str]:
     """
     檢查一般 CLI 失敗（來自 cli-failure-help-reminder-hook）
@@ -374,6 +417,9 @@ def check_general_cli_failure(input_data: Dict[str, Any], logger) -> Optional[st
             stderr = ""
         else:
             stderr = tool_response.get("stderr", "")
+        stdout_error = _masked_stdout_error(command, tool_response, logger)
+        if stdout_error and not (stderr and stderr.strip()):
+            return _stdout_error_reminder(command, stdout_error, logger)
 
     if not stderr or not stderr.strip():
         logger.debug("general-cli: 無 stderr，命令成功，跳過")
