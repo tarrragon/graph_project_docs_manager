@@ -208,8 +208,14 @@ Ticket 類型判斷
     +-- complete 時審查（合併後）：讀 .claude/logs/worktree-merge.log
           [合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入
           結果為「寫入」--> PASS，Test Results 引用該行原文（可一併引用同分支的 [合併前測試] 套件結果行）
-          其他結果，或合併後仍無該分支的結束行（例如 --skip-gate，日誌只留
-          [略過合併前測試] target=<分支> reason=<理由>）--> FAIL，回報 PM，不自跑全套件
+          其他結果 --> FAIL
+          無該分支的結束行時：
+            有 [略過合併前測試] target=<分支> reason=<理由>（--skip-gate）--> 引用該行，
+              再查 Test Results 有無符合派發範本例外對帳格式的全套件回報
+              （命令原文、collect-only 全量數、執行數對帳、FAILED／ERROR 行完整）：
+              有且全綠 --> PASS；沒有或不全 --> FAIL
+            結束行與略過行都沒有 --> FAIL，回報 PM
+          以上任一情況驗收方都不自跑全套件
 ```
 
 合併前找不到閘門結果時，回報 PM「待合併後於 complete 時再驗」，不自跑全套件。代理人回報宣稱全套件通過卻沒有閘門結果行時：合併前審查判 WARN，complete 時審查判 FAIL，並核對回報是否標明「局部執行」。
@@ -446,6 +452,7 @@ Ticket 類型: RES（研究）
 ---
 
 **Last Updated**: 2026-10-15
+**Version**: 1.2.1 - --skip-gate 處置對齊派發範本例外（略過行加對帳格式全套件回報可判 PASS）
 **Version**: 1.2.0 - 審查修正：測試命令與派發範本一致、補 --skip-gate 與無結束行的判定、補代理人回報核對、對稱引用 [合併前測試] 行
 **Version**: 1.1.0 - Step 5 改為依審查時點驗證：合併前只驗相關測試檔與 dart analyze，complete 時讀合併閘門結束行，不自跑全套件
 **Version**: 1.0.0 - 從 acceptance-auditor.md 提取（Progressive Disclosure）
