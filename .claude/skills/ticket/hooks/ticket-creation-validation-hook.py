@@ -12,7 +12,7 @@ PostToolUse Hook: ticket-creation-validation-hook.py
 
 觸發條件：
   - Hook 類型: PostToolUse (Write 工具執行後)
-  - 檔案路徑: 符合 docs/work-logs/*/tickets/*.md 模式
+  - 檔案路徑: 符合 docs/work-logs/**/tickets/*.md 模式（版本目錄可為任意層數）
 
 驗證邏輯：
   1. 檢查檔案路徑是否為 Ticket 檔案
@@ -51,8 +51,10 @@ if str(_claude_dir) not in sys.path:
     sys.path.insert(0, str(_claude_dir))
 
 try:
-    from lib import get_effort_level, emit_model_reminder
+    from lib import get_effort_level, emit_model_reminder, setup_hook_logging
 except ImportError:
+    setup_hook_logging = None
+
     def get_effort_level(payload, default="medium"):
         return default
 
@@ -63,18 +65,13 @@ except ImportError:
 
 # 日誌配置
 def setup_logging() -> logging.Logger:
-    """設置日誌。"""
-    log_dir = Path.home() / ".claude" / "hook-logs" / "ticket-creation-validation"
-    log_dir.mkdir(parents=True, exist_ok=True)
+    """設置日誌，寫入專案 .claude/hook-logs/（lib 統一日誌）。"""
+    if setup_hook_logging is not None:
+        return setup_hook_logging("ticket-creation-validation")
 
+    # lib 不可用的退路：不寫檔，避免回到使用者家目錄
     logger = logging.getLogger("ticket-creation-validation")
-    logger.setLevel(logging.DEBUG)
-
-    handler = logging.FileHandler(log_dir / "hook.log")
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
+    logger.addHandler(logging.NullHandler())
     return logger
 
 
@@ -84,7 +81,8 @@ logger = setup_logging()
 def is_ticket_file(file_path: Path) -> bool:
     """判斷檔案是否為 Ticket 檔案。
 
-    Ticket 檔案路徑模式：docs/work-logs/*/tickets/*.md
+    Ticket 檔案路徑模式：docs/work-logs/<一層或多層版本目錄>/tickets/*.md
+    （單層 v0.5.0 與階層 v0/v0.5/v0.5.0 皆接受；tickets 之後不得再有子目錄）
 
     Args:
         file_path: 檔案路徑
@@ -94,7 +92,7 @@ def is_ticket_file(file_path: Path) -> bool:
     """
     # 轉換為 posix 路徑便於檢查
     path_str = file_path.as_posix()
-    pattern = r"docs/work-logs/[^/]+/tickets/[^/]+\.md$"
+    pattern = r"docs/work-logs/(?:[^/]+/)+tickets/[^/]+\.md$"
     return bool(re.search(pattern, path_str))
 
 
