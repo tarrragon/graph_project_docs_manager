@@ -169,7 +169,9 @@ Ticket 有 children 欄位?
 
 ## Step 5：測試執行驗證
 
-> **核心原則**：「測試通過」不能只看 Ticket 上的勾選，必須親自執行驗證。
+> **核心原則**：「測試通過」不能只看 Ticket 上的勾選，必須親自驗證：相關測試檔與 `dart analyze` 自己執行，全套件讀合併閘門的結果。
+>
+> **Why/Consequence**：全套件由合併閘門在合併前執行，驗收再跑一次會讓同一張票重複跑全套件。**Action**：不自跑全套件；合併前找不到閘門結果時等合併後再驗，不改成自己跑。
 
 ### 觸發條件
 
@@ -197,25 +199,33 @@ Ticket 類型判斷
 2. 從 Ticket 的 where.files 或驗收條件識別相關測試檔案
     |
     v
-3. 執行 flutter test（相關測試或全部測試）
+3. 依審查時點驗證測試
     |
-    +-- 有失敗 --> FAIL（列出失敗的測試）
-    +-- 全部通過 --> PASS
+    +-- 合併前審查：只執行本票相關測試檔（flutter test 帶測試檔路徑）
+    |     有失敗 --> FAIL（列出失敗的測試）；通過 --> PASS
+    |     全套件項 --> SKIP，註明「由合併閘門負責，合併時驗證」
+    |
+    +-- complete 時審查（合併後）：讀 .claude/logs/worktree-merge.log
+          [合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入
+          結果為「寫入」--> PASS，Test Results 引用該行原文；其他結果 --> FAIL
 ```
+
+合併前找不到閘門結果時，回報 PM「待合併後於 complete 時再驗」，不自跑全套件。
 
 ### Bash 使用規則
 
 | 允許的命令 | 用途 | 範例 |
 |-----------|------|------|
 | `dart analyze` | 靜態分析，偵測語法錯誤和類型問題 | `dart analyze lib/` |
-| `flutter test` | 執行測試套件 | `flutter test test/unit/` |
-| `flutter test --reporter compact` | 精簡輸出格式 | 大量測試時使用 |
+| `flutter test <測試檔>` | 只執行本票相關測試檔 | `flutter test test/unit/plan_parser_test.dart` |
+| 讀取 `.claude/logs/worktree-merge.log` | 取得合併閘門的全套件結果行 | complete 時審查使用 |
 
 | 禁止的命令 | 原因 |
 |-----------|------|
 | 任何修改檔案的命令 | 驗收代理人只讀 |
 | `git` 操作 | 不在職責範圍 |
 | `flutter build` | 不需要建置 |
+| 全套件與整目錄的 `flutter test` | 由合併閘門執行，自跑會重複 |
 | 安裝/移除套件 | 不在職責範圍 |
 
 ### 報告格式範例
@@ -243,7 +253,7 @@ Ticket 類型判斷
 - dart analyze: 0 error(s), 0 warning(s)
 
 測試執行結果：
-- flutter test: 3 tests failed out of 47
+- flutter test（相關測試檔）: 3 tests failed out of 47
 - FAILED: test/unit/plan_parser_test.dart - 'parse empty input returns empty list'
 - FAILED: test/unit/plan_parser_test.dart - 'parse valid plan extracts steps'
 - FAILED: test/unit/plan_parser_test.dart - 'parse nested steps maintains hierarchy'
@@ -259,9 +269,10 @@ Ticket 類型判斷
 - dart analyze: 0 error(s), 0 warning(s)
 
 測試執行結果：
-- flutter test: All 47 tests passed
+- flutter test（相關測試檔）: All 47 tests passed
+- 全套件（complete 時審查）: [合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入
 
-結論：所有測試通過，靜態分析無問題。
+結論：相關測試通過、合併閘門結果為寫入，靜態分析無問題。
 ```
 
 ---
@@ -431,5 +442,6 @@ Ticket 類型: RES（研究）
 
 ---
 
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-10-15
+**Version**: 1.1.0 - Step 5 改為依審查時點驗證：合併前只驗相關測試檔與 dart analyze，complete 時讀合併閘門結束行，不自跑全套件
 **Version**: 1.0.0 - 從 acceptance-auditor.md 提取（Progressive Disclosure）
