@@ -872,3 +872,100 @@ class TestSlotEstimate:
             holders = list(Path(slot_gate.slot_dir()).glob("heavy-slot-*.holder.json"))
             assert len(holders) == 1
             assert json.loads(holders[0].read_text())["estimate"] == 200.0
+
+
+class TestGateRefusalExpected:
+    """名額預估拒絕是預期內結果：一行說明、結束碼 125、不印 traceback；非預期例外仍保留。"""
+
+    @staticmethod
+    def occupy(estimate):
+        from lib import slot_gate
+        hold, _ = slot_gate.acquire_slot(["other"], lambda: None, estimate_seconds=estimate)
+        assert hold is not None
+        return hold
+
+    def test_estimate_rejection_is_single_line_exit_125(self, repo, capsys):
+        old = git(repo, "rev-parse", "main")
+        hold = self.occupy(99999.0)
+        try:
+            rc = wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
+        finally:
+            hold.release()
+        cap = capsys.readouterr()
+        assert rc == 125
+        assert "Traceback" not in cap.out + cap.err
+        assert (cap.out + cap.err).count("不排隊") == 1
+        assert git(repo, "rev-parse", "main") == old
+
+    def test_unexpected_exception_keeps_traceback(self, repo, monkeypatch):
+        def boom(*_a, **_k):
+            raise ValueError("非預期故障")
+
+        monkeypatch.setattr(mg.slot_gate, "acquire_slot", boom)
+        with pytest.raises(ValueError, match="非預期故障"):
+            wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
+        assert "結果 中止" in (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
+
+    def test_refusal_error_is_distinct_type_carrying_exit_code(self, repo):
+        hold = self.occupy(99999.0)
+        try:
+            with pytest.raises(mg.SlotWaitRefused) as info:
+                with mg.MergeGate(str(repo)).hold("feat", "main"):
+                    pass
+        finally:
+            hold.release()
+        assert info.value.exit_code == 125
+
+
+class TestGateLog:
+    """每次閘門開始與結束各一行：target、分支、commit、結果；寫入 stdout 與 worktree-merge.log。"""
+
+    @staticmethod
+    def gate_lines(repo):
+        log = (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
+        return [ln for ln in log.splitlines() if mg.GATE_LINE_PREFIX in ln]
+
+    def test_written_has_start_and_end_with_merge_commit(self, repo, capsys):
+        base = git(repo, "rev-parse", "main")
+        assert wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([]))) == 0
+        merged = git(repo, "rev-parse", "main")
+        start, end = self.gate_lines(repo)
+        print(start)
+        print(end)
+        assert "開始" in start and "target main" in start and base[:12] in start and "分支 feat" in start
+        assert "結束" in end and "target main" in end and merged[:12] in end and "結果 寫入" in end
+        out = capsys.readouterr().out
+        assert start.split(" ", 1)[1] in out and end.split(" ", 1)[1] in out
+
+    def test_red_result(self, repo):
+        base = git(repo, "rev-parse", "main")
+        assert wm.cmd_merge(None, branch="feat", gate_runner=art(lambda a, c: (1, "FAILED t::x\n"))) == 1
+        start, end = self.gate_lines(repo)
+        assert "結果 紅燈" in end and base[:12] in end
+
+    def test_refused_result(self, repo):
+        base = git(repo, "rev-parse", "main")
+        hold = TestGateRefusalExpected.occupy(99999.0)
+        try:
+            assert wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([]))) == 125
+        finally:
+            hold.release()
+        start, end = self.gate_lines(repo)
+        assert "結果 拒絕" in end and base[:12] in end
+
+    def test_timeout_and_abort_are_distinguished(self):
+        assert mg.gate_result_label("[hooks] 全套件逾時（1 秒）") == "逾時"
+        assert mg.gate_result_label("[hooks] 等待本機名額逾時，全套件未執行") == "逾時"
+        assert mg.gate_result_label("CAS expected old") == "中止"
+
+    def test_gate_lines_do_not_pollute_estimate_samples(self, repo):
+        assert wm.cmd_merge(None, branch="feat", gate_runner=art(lambda a, c: (0, "1 passed in 7.00s\n"))) == 0
+        lines = self.gate_lines(repo)
+        assert lines and all("[合併前測試]" not in ln for ln in lines)
+        assert set(mg._recent_green_seconds(str(repo))) == {"flutter"}
+        assert len(mg._recent_green_seconds(str(repo))["flutter"]) == 1
+        # 對照：日誌中偽造含「綠燈」「耗時」的閘門行也不被當樣本
+        fake = f"{mg.GATE_LINE_PREFIX} 結束｜target main｜分支 x｜commit abc｜結果 寫入｜套件 flutter：綠燈｜耗時 1s"
+        with open(repo / ".claude/logs/worktree-merge.log", "a", encoding="utf-8") as fh:
+            fh.write(f"2026-10-15T00:00:00 {fake}\n")
+        assert len(mg._recent_green_seconds(str(repo))["flutter"]) == 1

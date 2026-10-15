@@ -357,7 +357,7 @@ ESTIMATE_SAMPLE_COUNT = 5
 _LOG_TAIL_BYTES = 256 * 1024  # 只讀日誌尾段，避免日誌長大後每次合併都全檔解析
 _DEFAULT_SUITE_SECONDS = {SUITE_FLUTTER: 600.0, SUITE_HOOKS: 230.0, SUITE_SCRIPTS: 60.0, "skill:ticket": 580.0}
 _DEFAULT_SKILL_SECONDS = 120.0
-_GREEN_LINE = re.compile(r"套件 (\S+)：綠燈｜.*｜耗時 ([0-9.]+)s")
+_GREEN_LINE = re.compile(r"\[合併前測試\] 套件 (\S+)：綠燈｜.*｜耗時 ([0-9.]+)s")
 
 
 def default_suite_seconds(suite: str) -> float:
@@ -407,6 +407,39 @@ def _emit_result(log_root: str, line: str) -> None:
 
 
 _STATUS_BY_RC = {0: "綠燈", 124: "逾時", 125: "名額等待逾時"}
+
+# 閘門開始／結束行：前綴與套件結果行（[合併前測試]）刻意不同，名額預估只認後者
+GATE_LINE_PREFIX = "[合併閘門]"
+GATE_WRITTEN, GATE_REFUSED, GATE_RED, GATE_TIMEOUT, GATE_ABORTED = "寫入", "拒絕", "紅燈", "逾時", "中止"
+_TIMEOUT_MARKERS = ("全套件逾時", "等待本機名額逾時")
+_RED_MARKER = "全套件紅燈"
+
+
+class SlotWaitRefused(RuntimeError):
+    """名額等待未取得（預估拒絕、等待逾時、收到訊號）：預期內結果，由呼叫端轉成結束碼，不是故障。"""
+
+    def __init__(self, exit_code: int):
+        super().__init__(f"等待本機名額失敗（exit {exit_code}）")
+        self.exit_code = exit_code
+
+
+def gate_result_label(error: str) -> str:
+    """合併失敗理由 -> 結果類別（紅燈／逾時／中止）；理由文字由本模組 _rc_reason 產生。"""
+    if any(marker in error for marker in _TIMEOUT_MARKERS):
+        return GATE_TIMEOUT
+    if _RED_MARKER in error:
+        return GATE_RED
+    return GATE_ABORTED
+
+
+def gate_line(phase: str, target: str, branch: str, commit: str, result: Optional[str] = None) -> str:
+    """閘門開始／結束行。commit：開始行為 base HEAD，結束行寫入時為合併 commit、其餘仍為 base HEAD。"""
+    tail = f"｜結果 {result}" if result else ""
+    return f"{GATE_LINE_PREFIX} {phase}｜target {target}｜分支 {branch}｜commit {commit[:12]}{tail}"
+
+
+def emit_gate_line(log_root: str, line: str) -> None:
+    _emit_result(log_root, line)
 
 
 def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRunner,
@@ -481,7 +514,7 @@ class MergeGate:
                 ["merge-gate", branch], lambda: None, label="merge-gate",
                 estimate_seconds=self._estimate_hold_seconds(branch, base))
             if early is not None:
-                raise RuntimeError(f"等待本機名額失敗（exit {early}）")
+                raise SlotWaitRefused(early)
             if held is None:  # 名額閘門失效（目錄不可用）：與 run-with-timeout 一致，略過不擋
                 yield
                 return

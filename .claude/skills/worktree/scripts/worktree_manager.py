@@ -35,7 +35,10 @@ try:
         MACOS_XCCONFIG_TEMPLATES,
     )
     from .messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
-    from .merge_gate import GATE_MAX_RETRIES, MergeGate, SuiteRunner
+    from .merge_gate import (
+        GATE_MAX_RETRIES, GATE_ABORTED, GATE_REFUSED, GATE_WRITTEN, MergeGate, SlotWaitRefused, SuiteRunner,
+        emit_gate_line, gate_line, gate_result_label,
+    )
 except ImportError:
     # Fallback when running with scripts/ on sys.path (test 與直接執行情境)
     from constants import (
@@ -51,7 +54,10 @@ except ImportError:
         MACOS_XCCONFIG_TEMPLATES,
     )
     from messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
-    from merge_gate import GATE_MAX_RETRIES, MergeGate, SuiteRunner
+    from merge_gate import (
+        GATE_MAX_RETRIES, GATE_ABORTED, GATE_REFUSED, GATE_WRITTEN, MergeGate, SlotWaitRefused, SuiteRunner,
+        emit_gate_line, gate_line, gate_result_label,
+    )
 
 # 動態定位專案根目錄（W1-118 修復：方案 D 雙策略 fallback）
 #
@@ -1310,8 +1316,39 @@ def cmd_merge(
         else:
             pre_merge_check = MergeGate(get_project_root(), runner=gate_runner)
             max_retries = GATE_MAX_RETRIES
-    hold = pre_merge_check.hold(branch_name, DEFAULT_BASE_BRANCH) if isinstance(pre_merge_check, MergeGate) else None
-    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check, max_retries=max_retries, hold=hold)
+    if isinstance(pre_merge_check, MergeGate):
+        return _merge_through_gate(pre_merge_check, branch_name, label, max_retries)
+    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check, max_retries=max_retries)
+    return _print_merge_outcome(outcome, label)
+
+
+def _merge_through_gate(gate: MergeGate, branch_name: str, label: str, max_retries: Optional[int]) -> int:
+    """經合併閘門合併，並在閘門開始與結束各記一行（stdout 與 worktree-merge.log）。
+
+    名額未取得（預估拒絕、等待逾時、訊號）是預期內結果：說明行已由名額閘門輸出，這裡只回傳
+    其結束碼（拒絕／逾時為 125）；其餘例外記一行「中止」後原樣再拋，保留 traceback。
+    """
+    root = get_project_root()
+    ok, base_head = _git_out(["rev-parse", DEFAULT_BASE_BRANCH], root)
+    base_head = base_head if ok else "未知"
+
+    def record(phase: str, commit: str, result: Optional[str] = None) -> None:
+        emit_gate_line(root, gate_line(phase, DEFAULT_BASE_BRANCH, branch_name, commit, result))
+
+    record("開始", base_head)
+    try:
+        outcome = merge_branch_cas(branch_name, pre_merge_check=gate, max_retries=max_retries,
+                                   hold=gate.hold(branch_name, DEFAULT_BASE_BRANCH))
+    except SlotWaitRefused as refused:
+        record("結束", base_head, GATE_REFUSED if refused.exit_code == 125 else GATE_ABORTED)
+        return refused.exit_code
+    except BaseException:  # 非預期例外與中斷：留一行紀錄後原樣再拋
+        record("結束", base_head, GATE_ABORTED)
+        raise
+    if outcome.ok:
+        record("結束", outcome.commit_sha, GATE_WRITTEN)
+    else:
+        record("結束", base_head, gate_result_label(outcome.error))
     return _print_merge_outcome(outcome, label)
 
 
