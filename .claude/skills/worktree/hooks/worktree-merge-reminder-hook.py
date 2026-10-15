@@ -35,6 +35,9 @@ from lib import (
     FileStatus,
 )
 from lib.ticket_command_parse import has_complete_command
+from lib.bash_tool_response import (
+    FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success,
+)
 
 
 def parse_worktree_list(logger) -> List[Tuple[str, str]]:
@@ -215,6 +218,15 @@ def main() -> int:
     if not input_data:
         return 0
 
+    # PostToolUseFailure：僅結束碼 75（動作完成、auto-commit 失敗）沿用完成後提醒
+    event_name = "PostToolUse"
+    if is_failure_event(input_data):
+        input_data = auto_commit_failure_as_success(input_data)
+        if input_data is None:
+            logger.debug("失敗事件非結束碼 75，不處理")
+            return 0
+        event_name = FAILURE_EVENT_NAME
+
     # subagent 環境跳過（代理人不執行 complete）
     if is_subagent_environment(input_data):
         return 0
@@ -329,7 +341,7 @@ def main() -> int:
     message = "\n".join(lines)
     output = {
         "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
+            "hookEventName": event_name,
             "additionalContext": message
         }
     }
