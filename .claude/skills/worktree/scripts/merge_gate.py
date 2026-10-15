@@ -305,20 +305,66 @@ def default_runner(argv: list, cwd: str) -> tuple:
 
 
 def _failed_items(output: str) -> list:
-    """從 pytest／flutter 輸出摘出失敗項；摘不到時回傳輸出尾段。"""
+    """從 pytest／flutter 輸出摘出失敗項與其 E 行（assertion 訊息）；摘不到時回傳輸出尾段。"""
     lines = output.splitlines()
     items = [ln.strip() for ln in lines if ln.startswith("FAILED ") or "[E]" in ln]
+    items += [ln.rstrip() for ln in lines if ln.startswith("E  ")]
     if not items:
         items = [ln for ln in lines[-_OUTPUT_TAIL_LINES:] if ln.strip()]
     return items[:_FAILED_ITEMS_MAX]
 
 
-def _rc_reason(suite: str, rc: int, output: str) -> str:
+_FAILURE_DIR = ".claude/logs/merge-gate-failures"
+_MEMORY_PROBE_TIMEOUT_SECONDS = 10
+_PAGEOUTS_LINE = re.compile(r"^Pageouts:\s*(\d+)", re.MULTILINE)
+_MEMORY_FREE_LINE = re.compile(r"^System-wide memory free percentage:.*$", re.MULTILINE)
+
+
+def _probe(argv: list) -> str:
+    """執行唯讀記憶體探針；取不到（非 macOS、命令缺、逾時）回空字串並寫 stderr，不影響閘門判定。"""
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True, errors="replace",
+                              timeout=_MEMORY_PROBE_TIMEOUT_SECONDS)
+        return proc.stdout or ""
+    except (OSError, subprocess.SubprocessError) as exc:
+        sys.stderr.write(f"[WARNING] merge-gate 記憶體快照 {argv[0]} 取得失敗（fail-open）：{exc}\n")
+        return ""
+
+
+def memory_snapshot() -> str:
+    """紅燈當下的 memory_pressure 摘要與 vm_stat pageouts 計數，供比對失敗時點是否落在換頁激增時段。"""
+    pressure = _MEMORY_FREE_LINE.search(_probe(["memory_pressure"]))
+    pageouts = _PAGEOUTS_LINE.search(_probe(["vm_stat"]))
+    swap = _probe(["sysctl", "vm.swapusage"]).strip()
+    return (f"memory_pressure: {pressure.group(0).strip() if pressure else '取不到'}\n"
+            f"vm_stat pageouts: {pageouts.group(1) if pageouts else '取不到'}\n"
+            f"swap: {swap or '取不到'}")
+
+
+def save_failure_output(log_root: str, tag: str, suite: str, rc: int, output: str) -> str:
+    """紅燈時把全輸出（附記憶體快照）寫入旁置檔，回傳路徑；寫入失敗回空字串（只警告）。"""
+    safe_suite = re.sub(r"[^A-Za-z0-9_.-]", "_", suite)
+    path = Path(log_root) / _FAILURE_DIR / f"{tag[:12]}-{safe_suite}.log"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        header = (f"# suite={suite} exit={rc} time={time.strftime('%Y-%m-%dT%H:%M:%S')}\n"
+                  f"{memory_snapshot()}\n---- 全輸出 ----\n")
+        path.write_text(header + output, encoding="utf-8")
+    except OSError as exc:
+        sys.stderr.write(f"[WARNING] merge-gate 失敗細節旁置檔寫入失敗：{exc}\n")
+        return ""
+    return str(path)
+
+
+def _rc_reason(suite: str, rc: int, output: str, detail_path: str = "") -> str:
     if rc == 124:
         return f"[{suite}] 全套件逾時（{SUITE_TIMEOUT_SECONDS} 秒）"
     if rc == 125:
         return f"[{suite}] 等待本機名額逾時，全套件未執行"
-    return f"[{suite}] 全套件紅燈（exit {rc}），失敗項：\n  " + "\n  ".join(_failed_items(output))
+    reason = f"[{suite}] 全套件紅燈（exit {rc}），失敗項：\n  " + "\n  ".join(_failed_items(output))
+    if detail_path:
+        reason += f"\n  全輸出與記憶體快照：{detail_path}"
+    return reason
 
 
 def _ensure_artifacts(suite: str, snapshot: str, project_root: str, runner: SuiteRunner) -> str:
@@ -443,7 +489,8 @@ def emit_gate_line(log_root: str, line: str) -> None:
 
 
 def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRunner,
-                log_root: Optional[str] = None, on_green: Optional[Callable[[str], None]] = None) -> str:
+                log_root: Optional[str] = None, on_green: Optional[Callable[[str], None]] = None,
+                tag: str = "nocommit") -> str:
     """依序跑各套件；任一紅燈即停。每個套件結束輸出一行結果（含紅燈、逾時、中斷）。回傳空字串表示全綠。
 
     on_green：套件綠燈時立即回呼，後面套件紅燈時前面已綠者仍可記錄供重試沿用。
@@ -462,7 +509,8 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
         _emit_result(log_root, _suite_result_line(
             suite, _STATUS_BY_RC.get(rc, "紅燈"), summarize_output(out), time.monotonic() - start))
         if rc != 0:
-            return _rc_reason(suite, rc, out)
+            detail = save_failure_output(log_root, tag, suite, rc, out) if rc not in (124, 125) else ""
+            return _rc_reason(suite, rc, out, detail)
         if on_green:
             on_green(suite)
     return ""
@@ -560,7 +608,7 @@ class MergeGate:
                 print(f"[合併前測試] 快照內跑全套件：{', '.join(todo)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
                 self.suite_runs += 1
             reason = _run_suites(todo, snap, self.project_root, self.runner, self.repo,
-                                 on_green=lambda s: self.verified_suites.__setitem__(s, commit))
+                                 on_green=lambda s: self.verified_suites.__setitem__(s, commit), tag=commit)
         return GateVerdict(False, reason) if reason else GateVerdict(True)
 
 
