@@ -131,5 +131,45 @@ class TestScopeFilters:
         assert should_skip_file(path) is True
 
 
+class TestMainOutputChannel:
+    """違規提醒必須走 additionalContext（模型可見），非 message 欄位或 stderr。"""
+
+    def _run(self, monkeypatch, capsys, arg):
+        monkeypatch.setattr(sys, "argv", ["hook", str(arg)])
+        rc = hook_module.main()
+        return rc, capsys.readouterr()
+
+    def test_violation_emits_additional_context(self, dart_file, monkeypatch, capsys):
+        path = dart_file("TextButton(onPressed: () {}, child: child);\n")
+        rc, captured = self._run(monkeypatch, capsys, path)
+        payload = json.loads(captured.out)
+        out = payload["hookSpecificOutput"]
+
+        assert rc == 0
+        assert out["hookEventName"] == "PostToolUse"
+        assert "NativeComponent" in out["additionalContext"]
+        assert "message" not in payload
+        assert "permissionDecision" not in out
+        assert "decision" not in payload
+
+    def test_clean_file_has_no_additional_context(self, dart_file, monkeypatch, capsys):
+        path = dart_file("AppButton(onPressed: () {}, child: child);\n")
+        rc, captured = self._run(monkeypatch, capsys, path)
+
+        assert rc == 0
+        assert "additionalContext" not in captured.out
+
+    def test_non_presentation_file_has_no_additional_context(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        target = tmp_path / "lib" / "domain" / "a.dart"
+        target.parent.mkdir(parents=True)
+        target.write_text("TextButton(onPressed: () {});\n", encoding="utf-8")
+        rc, captured = self._run(monkeypatch, capsys, target)
+
+        assert rc == 0
+        assert "additionalContext" not in captured.out
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

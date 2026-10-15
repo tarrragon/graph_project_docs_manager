@@ -22,6 +22,22 @@ import os
 import sys
 from pathlib import Path
 
+# .claude/ 加入搜尋路徑以使用 lib 的統一輸出入口
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+from lib import emit_model_reminder
+
+
+def _read_stop_hook_active() -> bool:
+    """讀 stdin payload 的 stop_hook_active；空輸入或解析失敗視為假。"""
+    try:
+        text = sys.stdin.read().strip()
+        payload = json.loads(text) if text else {}
+        return bool(isinstance(payload, dict) and payload.get("stop_hook_active"))
+    except Exception:
+        # 非標準輸入（無 stdin / 非 JSON）屬預期路徑，視為首次 Stop
+        return False
+
 
 def main():
     # Configuration
@@ -65,9 +81,17 @@ def main():
         print(f"[ContinuousLearning] Session too short ({message_count} messages), skipping", file=sys.stderr)
         sys.exit(0)
 
+    # Stop 的 additionalContext 會讓模型續跑一次（意圖內：讓模型評估可萃取模式）；
+    # 續跑後的下一次 Stop 為 stop_hook_active，不得再輸出，避免無限迴圈。
+    if _read_stop_hook_active():
+        sys.exit(0)
+
     # Signal to Claude that session should be evaluated for extractable patterns
-    print(f"[ContinuousLearning] Session has {message_count} messages - evaluate for extractable patterns", file=sys.stderr)
-    print(f"[ContinuousLearning] Save learned skills to: {learned_skills_path}", file=sys.stderr)
+    emit_model_reminder(
+        "Stop",
+        f"[ContinuousLearning] Session has {message_count} messages - evaluate for extractable patterns\n"
+        f"[ContinuousLearning] Save learned skills to: {learned_skills_path}",
+    )
 
 
 if __name__ == "__main__":

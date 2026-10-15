@@ -31,6 +31,7 @@ import json
 import re
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 # 加入 hook_utils 路徑
 sys.path.insert(0, str(Path(__file__).parent))
@@ -40,6 +41,8 @@ from lib import (
     setup_hook_logging,
     run_hook_safely,
     get_project_root,
+    read_json_from_stdin,
+    emit_model_reminder,
     find_ticket_files,
     parse_ticket_frontmatter,
 )
@@ -196,12 +199,12 @@ def format_reminder_reason(tickets: list) -> str:
     )
 
 
-def generate_hook_output(logger) -> dict:
+def build_reminder(logger) -> Optional[str]:
     """
-    生成 Hook 輸出。
+    掃描並產生提醒文字。
 
     Returns:
-        dict - Hook 輸出 JSON
+        str - 提醒訊息；None 表示無需提醒（或掃描失敗，已記錄日誌）
     """
     try:
         project_root = get_project_root()
@@ -211,20 +214,15 @@ def generate_hook_output(logger) -> dict:
 
         if not sensitive_tickets:
             logger.info("無 context 敏感的待執行 Ticket，靜默通過")
-            return {"suppressOutput": True}
+            return None
 
         reason = format_reminder_reason(sensitive_tickets)
-        logger.info(f"輸出 context 保護提醒（{len(sensitive_tickets)} 個 Ticket）")
-
-        # 輸出到 stderr（系統可見）
-        print(f"\n{reason}", file=sys.stderr)
-
-        # 不阻止退出，只輸出提醒
-        return {"suppressOutput": True}
+        logger.info(f"提醒 context 保護（{len(sensitive_tickets)} 個 Ticket）")
+        return reason
 
     except Exception as e:
         logger.critical(f"Hook 執行錯誤: {e}", exc_info=True)
-        return {"suppressOutput": True}
+        return None
 
 
 def main() -> int:
@@ -234,8 +232,20 @@ def main() -> int:
     try:
         logger.info("Session 經驗持久化提醒 Hook 啟動")
 
-        hook_output = generate_hook_output(logger)
-        print(json.dumps(hook_output, ensure_ascii=False, indent=2))
+        hook_input = read_json_from_stdin(logger) or {}
+
+        # Stop 事件的 additionalContext 會讓模型續跑一次（意圖內：讓模型評估
+        # context 持久化）；續跑後的下一次 Stop 不得再輸出，避免無限迴圈。
+        if hook_input.get("stop_hook_active"):
+            logger.info("stop_hook_active 為真，不再輸出提醒")
+            print(json.dumps({"suppressOutput": True}))
+            return 0
+
+        reminder = build_reminder(logger)
+        if reminder:
+            emit_model_reminder("Stop", reminder, input_data=hook_input)
+        else:
+            print(json.dumps({"suppressOutput": True}))
 
         logger.info("Hook 執行完成")
         return 0
