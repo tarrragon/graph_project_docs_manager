@@ -284,3 +284,39 @@ def test_suggestion_puts_redirect_outside_wrapper():
     # 命令部分（-- 之後、重導向之前）不含重導向 token
     assert "2>&1" not in line.split(" -- ", 1)[1].rsplit(" 2>&1", 1)[0]
     assert "'2>&1'" not in line
+
+
+# --- shell 變數指定測試目標：無法判定即 fail-open ---
+
+VARIABLE_TARGET_PASS = [
+    "t=tests/test_x.py && pytest $t -m wallclock",
+    "t=tests/test_x.py; uv run pytest -q ${t}",
+    "f=test/a_test.dart && flutter test $f",
+    "pytest -m wallclock $t",
+]
+
+
+@pytest.mark.parametrize("command", VARIABLE_TARGET_PASS)
+def test_variable_target_passes(command):
+    assert build_block_reason("Bash", {"command": command}) is None
+
+
+def test_variable_target_flips_against_literal_and_bare():
+    """E1／E2 對照：字面路徑放行、變數放行、未指定測試檔仍 deny。"""
+    assert build_block_reason("Bash", {"command": "pytest tests/test_x.py -m wallclock"}) is None
+    assert build_block_reason("Bash", {"command": "t=tests/test_x.py && pytest $t -m wallclock"}) is None
+    assert build_block_reason("Bash", {"command": "t=tests/test_x.py && pytest -m wallclock"}) is not None
+    assert build_block_reason("Bash", {"command": "t=a && pytest -m $t"}) is not None  # 變數是選項值非目標
+
+
+def test_variable_target_does_not_hide_other_bare_heavy_statement():
+    reason = build_block_reason("Bash", {"command": "pytest $t && flutter test"})
+    assert reason is not None and "flutter test" in reason
+
+
+def test_variable_target_writes_stderr_and_passes_main(monkeypatch, capsys):
+    _run_main_with(monkeypatch, "t=tests/test_x.py && pytest $t")
+    assert pre_test_hook_module.main() == 0
+    captured = capsys.readouterr()
+    assert "fail-open" in captured.err and "$t" in captured.err
+    assert "deny" not in captured.out
