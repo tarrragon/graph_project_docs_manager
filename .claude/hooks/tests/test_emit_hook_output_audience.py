@@ -182,9 +182,10 @@ def test_gap_hook_migrated_to_unified_exit(hook_file):
 # ---------------------------------------------------------------------------
 
 CLI_FAILURE_PAYLOAD = {
+    "hook_event_name": "PostToolUseFailure",
     "tool_name": "Bash",
     "tool_input": {"command": "./scripts/deploy.sh --target prod"},
-    "tool_response": {"stdout": "", "stderr": "deploy failed: missing config"},
+    "error": "Exit code 1\ndeploy failed: missing config",
 }
 
 
