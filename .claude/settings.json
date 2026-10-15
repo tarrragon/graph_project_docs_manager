@@ -562,7 +562,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/dart-style-guardian-hook.py $CLAUDE_FILE_PATH"
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/dart-style-guardian-hook.py"
           },
           {
             "type": "command",
@@ -626,7 +626,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/dart-style-guardian-hook.py $CLAUDE_FILE_PATH"
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/dart-style-guardian-hook.py"
           },
           {
             "type": "command",

@@ -35,7 +35,7 @@ def _run_main(module, monkeypatch, capsys, payload, reminder):
     """以假 stdin 與假掃描結果執行 main，回傳 (exit_code, stdout, stderr)。"""
     calls = []
 
-    def fake_build(logger):
+    def fake_build(logger, session_id=""):
         calls.append(1)
         return reminder
 
@@ -74,6 +74,83 @@ class TestPersistenceReminder:
         assert code == 0
         assert "additionalContext" not in out
         assert err == ""
+
+
+def _tk(tid):
+    return {"id": tid, "title": f"title-{tid}", "type": "ANA"}
+
+
+def _run_throttled(module, monkeypatch, capsys, tmp_path, payload, tickets):
+    """假掃描清單 + 假狀態目錄，走真實節流邏輯，回傳 stdout 解析結果（無輸出為 None）。"""
+    monkeypatch.setattr(module, "scan_tickets", lambda logger: tickets)
+    monkeypatch.setattr(module, "get_state_dir", lambda: tmp_path / "hook-state")
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+    assert module.main() == 0
+    data = json.loads(capsys.readouterr().out)
+    return data.get("hookSpecificOutput", {}).get("additionalContext")
+
+
+class TestPersistenceReminderThrottle:
+    def test_same_session_same_list_second_stop_silent(self, monkeypatch, capsys, tmp_path):
+        module = _load_reminder_module()
+        tickets = [_tk("A-1"), _tk("A-2")]
+        first = _run_throttled(module, monkeypatch, capsys, tmp_path, {"session_id": "s1"}, tickets)
+        assert first and "A-1" in first and "A-2" in first
+        state = json.loads((tmp_path / "hook-state" / "persistence-reminder-s1.json").read_text())
+        assert state["notified_ids"] == ["A-1", "A-2"]
+        second = _run_throttled(module, monkeypatch, capsys, tmp_path, {"session_id": "s1"}, tickets)
+        assert second is None
+
+    def test_new_ticket_lists_only_the_new_one(self, monkeypatch, capsys, tmp_path):
+        module = _load_reminder_module()
+        _run_throttled(module, monkeypatch, capsys, tmp_path, {"session_id": "s1"}, [_tk("A-1"), _tk("A-2")])
+        out = _run_throttled(
+            module, monkeypatch, capsys, tmp_path, {"session_id": "s1"},
+            [_tk("A-1"), _tk("A-2"), _tk("A-3")],
+        )
+        assert out and "A-3" in out
+        assert "A-1" not in out and "A-2" not in out
+        state = json.loads((tmp_path / "hook-state" / "persistence-reminder-s1.json").read_text())
+        assert state["notified_ids"] == ["A-1", "A-2", "A-3"]
+
+    def test_different_sessions_each_reminded(self, monkeypatch, capsys, tmp_path):
+        module = _load_reminder_module()
+        tickets = [_tk("A-1")]
+        a = _run_throttled(module, monkeypatch, capsys, tmp_path, {"session_id": "s1"}, tickets)
+        b = _run_throttled(module, monkeypatch, capsys, tmp_path, {"session_id": "s2"}, tickets)
+        assert a and "A-1" in a and b and "A-1" in b
+        assert (tmp_path / "hook-state" / "persistence-reminder-s1.json").exists()
+        assert (tmp_path / "hook-state" / "persistence-reminder-s2.json").exists()
+
+    def test_stop_hook_active_silent_and_no_state(self, monkeypatch, capsys, tmp_path):
+        module = _load_reminder_module()
+        out = _run_throttled(
+            module, monkeypatch, capsys, tmp_path,
+            {"session_id": "s1", "stop_hook_active": True}, [_tk("A-1")],
+        )
+        assert out is None
+        assert not (tmp_path / "hook-state").exists()
+
+    def test_missing_session_id_reminds_every_time_without_state(self, monkeypatch, capsys, tmp_path):
+        module = _load_reminder_module()
+        tickets = [_tk("A-1")]
+        assert _run_throttled(module, monkeypatch, capsys, tmp_path, {}, tickets)
+        assert _run_throttled(module, monkeypatch, capsys, tmp_path, {}, tickets)
+        assert not (tmp_path / "hook-state").exists()
+
+    def test_corrupt_state_fails_open(self, monkeypatch, capsys, tmp_path):
+        module = _load_reminder_module()
+        d = tmp_path / "hook-state"
+        d.mkdir()
+        (d / "persistence-reminder-s1.json").write_text("{not json")
+        out = _run_throttled(module, monkeypatch, capsys, tmp_path, {"session_id": "s1"}, [_tk("A-1")])
+        assert out and "A-1" in out
+
+    def test_session_id_sanitized_in_filename(self, monkeypatch, capsys, tmp_path):
+        module = _load_reminder_module()
+        _run_throttled(module, monkeypatch, capsys, tmp_path, {"session_id": "../x/y"}, [_tk("A-1")])
+        files = [p.name for p in (tmp_path / "hook-state").iterdir()]
+        assert files == ["persistence-reminder-___x_y.json"]
 
 
 def _run_eval(tmp_path, payload, with_transcript_path=True, transcript_exists=True):

@@ -142,19 +142,23 @@ def test_uc_drift_no_drift_no_output(monkeypatch, tmp_path, capsys):
 
 @pytest.fixture
 def suggest(monkeypatch, tmp_path):
+    # 計數檔以 payload session_id 分檔，位於 <專案>/.claude/hook-state/（0.5.0-W1-324）；
+    # 專案目錄與舊 /tmp 清理目錄皆導向 tmp_path，避免觸及真實檔案
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    legacy = tmp_path / "legacy-tmp"
+    legacy.mkdir()
+    monkeypatch.setenv("SUGGEST_COMPACT_LEGACY_TMP_DIR", str(legacy))
     mod = _load(SUGGEST_PATH, "suggest_compact_mod")
-    monkeypatch.setattr(mod.os, "getpid", lambda: 987650000 + id(tmp_path) % 1000)
-    counter = Path("/tmp/claude-tool-count-{}".format(mod.os.getpid()))
-    counter.unlink(missing_ok=True)
+    counter = tmp_path / ".claude" / "hook-state" / "compact-count-s1"
+    counter.parent.mkdir(parents=True)
     yield mod, counter
-    counter.unlink(missing_ok=True)
 
 
 def test_suggest_compact_threshold_emits_pretooluse_context(suggest, monkeypatch, capsys):
     mod, counter = suggest
     monkeypatch.setenv("COMPACT_THRESHOLD", "3")
     counter.write_text("2")
-    _stdin(monkeypatch, {"hook_event_name": "PreToolUse", "tool_name": "Edit"})
+    _stdin(monkeypatch, {"hook_event_name": "PreToolUse", "tool_name": "Edit", "session_id": "s1"})
     mod.main()
     cap = capsys.readouterr()
     assert "StrategicCompact" in _ctx(cap.out, "PreToolUse")
@@ -165,16 +169,17 @@ def test_suggest_compact_below_threshold_no_output(suggest, monkeypatch, capsys)
     mod, counter = suggest
     monkeypatch.setenv("COMPACT_THRESHOLD", "3")
     counter.write_text("0")
-    _stdin(monkeypatch, {"hook_event_name": "PreToolUse", "tool_name": "Edit"})
+    _stdin(monkeypatch, {"hook_event_name": "PreToolUse", "tool_name": "Edit", "session_id": "s1"})
     mod.main()
     assert capsys.readouterr().out == ""
+    assert counter.read_text().strip() == "1"
 
 
 def test_suggest_compact_subagent_filtered(suggest, monkeypatch, capsys):
     mod, counter = suggest
     monkeypatch.setenv("COMPACT_THRESHOLD", "3")
     counter.write_text("2")
-    _stdin(monkeypatch, {"tool_name": "Edit", "agent_id": "sub-1"})
+    _stdin(monkeypatch, {"tool_name": "Edit", "agent_id": "sub-1", "session_id": "s1"})
     mod.main()
     out = capsys.readouterr().out
     assert "StrategicCompact" not in out
