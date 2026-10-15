@@ -1085,6 +1085,7 @@ class TestL_Advisory:
                             lambda ev, cwd, logger: "TEST-TICKET-0.18-W10-009")
         code = hook_mod.main()
         captured = capsys.readouterr()
+        self.last_out = captured.out
         return code, captured.err
 
     def test_l1_signal_paths_exit_zero(self, hook_mod, monkeypatch, tmp_yaml, tmp_state_path, tmp_path, capsys):
@@ -1103,6 +1104,52 @@ class TestL_Advisory:
         event = make_user_prompt("這是正常的開發需求並不包含任何關鍵字")
         code, _ = self._run_hook(hook_mod, monkeypatch, event, tmp_yaml, tmp_state_path, tmp_path, capsys)
         assert code == 0
+
+    def _run_stdout(self, hook_mod, monkeypatch, events, tmp_yaml, tmp_path, capsys):
+        """逐一餵事件給 main()（略過 pytest 環境豁免），回傳最後一次 stdout。"""
+        monkeypatch.setattr(hook_mod, "is_pytest_environment", lambda: False)
+        out = ""
+        for ev in events:
+            self._run_hook(hook_mod, monkeypatch, ev, tmp_yaml, None, tmp_path, capsys)
+            out = self.last_out
+        return out
+
+    def test_l4_prompt_warning_emits_additional_context(
+            self, hook_mod, monkeypatch, tmp_yaml, tmp_path, capsys):
+        monkeypatch.setattr(hook_mod, "is_pytest_environment", lambda: False)
+        event = make_user_prompt("這個功能做不到啦不可能實現的我想我們應該放棄")
+        self._run_hook(hook_mod, monkeypatch, event, tmp_yaml, None, tmp_path, capsys)
+        out = self.last_out
+        data = json.loads(out.strip().splitlines()[-1])
+        hso = data["hookSpecificOutput"]
+        assert hso["hookEventName"] == "UserPromptSubmit"
+        assert "[WRAP" in hso["additionalContext"]
+
+    def test_l5_failure_event_name_follows_payload(
+            self, hook_mod, monkeypatch, tmp_yaml, tmp_path, capsys):
+        fail = {"hook_event_name": "PostToolUseFailure", "tool_name": "Agent",
+                "error": "boom", "cwd": "/tmp"}
+        tmp_yaml.write_text(yaml_fixture(signal_overrides={"consecutive_failures": {
+            "event_sources": ["PostToolUse", "PostToolUseFailure"]}}), encoding="utf-8")
+        out = self._run_stdout(hook_mod, monkeypatch, [fail, fail], tmp_yaml, tmp_path, capsys)
+        data = json.loads(out.strip().splitlines()[-1])
+        assert data["hookSpecificOutput"]["hookEventName"] == "PostToolUseFailure"
+        assert "additionalContext" in data["hookSpecificOutput"]
+
+    def test_l6_no_warning_no_stdout(
+            self, hook_mod, monkeypatch, tmp_yaml, tmp_path, capsys):
+        out = self._run_stdout(
+            hook_mod, monkeypatch, [make_user_prompt("正常需求")], tmp_yaml, tmp_path, capsys)
+        assert out.strip() == ""
+
+    def test_l7_path_mention_is_not_manual_invocation(self, hook_mod):
+        """E2：訊息含 skill 路徑不判為手動執行；開頭命令形式仍判為手動。"""
+        path_msg = "見 .claude/skills/wrap-decision/hooks/wrap-decision-tripwire-hook.py 的說明"
+        assert hook_mod.is_manual_wrap_invocation(make_user_prompt(path_msg)) is False
+        assert hook_mod.is_manual_wrap_invocation(
+            make_post_tool_use_bash("cat .claude/skills/wrap-decision/SKILL.md")) is False
+        assert hook_mod.is_manual_wrap_invocation(make_user_prompt("  /wrap-decision")) is True
+        assert hook_mod.is_manual_wrap_invocation(make_user_prompt("/wrap-decisions")) is False
 
 
 # ============================================================================

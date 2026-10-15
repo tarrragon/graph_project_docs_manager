@@ -57,6 +57,7 @@ try:
         parse_ticket_frontmatter,
         find_ticket_file,
         get_effort_level,
+        emit_hook_output,
     )
     _LIB_AVAILABLE = True
 except ImportError:
@@ -385,11 +386,21 @@ def is_manual_wrap_invocation(event: Dict[str, Any]) -> bool:
     event_name = event.get("hook_event_name", "")
     if event_name == "UserPromptSubmit":
         prompt = event.get("prompt", "") or ""
-        return "/wrap-decision" in prompt
+        return _starts_with_wrap_command(prompt)
     if event_name == "PostToolUse" and event.get("tool_name") == "Bash":
-        cmd = _extract_bash_command(event)
-        return "/wrap-decision" in cmd
+        return _starts_with_wrap_command(_extract_bash_command(event))
     return False
+
+
+_WRAP_COMMAND_RE = re.compile(r"^/wrap-decision(\s|$)")
+
+
+def _starts_with_wrap_command(text: str) -> bool:
+    """命令形式比對：去除前導空白後以 /wrap-decision 開頭，其後為空白或結尾。
+
+    路徑中的 /wrap-decision（如 .claude/skills/wrap-decision/...）不算手動執行。
+    """
+    return _WRAP_COMMAND_RE.match(text.lstrip()) is not None
 
 
 def _extract_bash_command(event: Dict[str, Any]) -> str:
@@ -864,7 +875,13 @@ def main() -> int:
     save_state_atomic(state_path, state, logger)
 
     if warnings:
-        sys.stderr.write("\n".join(warnings) + "\n")
+        message = "\n".join(warnings)
+        # stderr 保留作日誌；exit 0 時 stderr 不進模型 context（305 實測），
+        # 故另以 additionalContext 輸出。audience 用預設 "all"：訊號偵測的是
+        # 當前執行緒自身的決策過程（PM 的派發失敗/限制性語句，代理人的 ANA
+        # claim），兩者皆為提醒對象，pm_only 會讓代理人端的 S3 提醒被丟棄。
+        sys.stderr.write(message + "\n")
+        emit_hook_output(event_name, additional_context=message)
 
     return 0
 
