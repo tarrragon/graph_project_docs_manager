@@ -384,6 +384,15 @@ def test_dispatch_skeleton_normal_agent_commit_with_hook_scope_within_prompt_lim
     )
 
 
+def test_hook_ticket_reminder_asks_for_evidence_not_acceptance_sentences():
+    """0.5.0-W1-276.2：提醒須列出證據形式與位置（Test Results／Solution、
+    hook-logs/ 日誌行引文、fail 宣告加觸發條件），不再要求 acceptance 含句子。"""
+    reminder = _load_dispatch_skeleton_module().HOOK_TICKET_REMINDER
+    for form in ("Test Results", "Solution", "hook-logs/", "觸發條件", "fail-open"):
+        assert form in reminder, form
+    assert "acceptance 含四項必含" not in reminder
+
+
 # ----------------------------------------------------------------------------
 # worktree 隔離變體收尾句（裁決 B）：止於 ticket track commit 並回報 PM，
 # complete 由 PM 合併後於主 checkout 執行。E1 對照：none 變體仍含 complete。

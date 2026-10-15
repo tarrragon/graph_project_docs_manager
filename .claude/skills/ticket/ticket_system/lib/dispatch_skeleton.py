@@ -153,10 +153,10 @@ STAGING_PHRASE_NONE = "Commit policy: none（本次派發不涉及 git commit）
 # liveness 驗證方式 / 失敗語意 fail-open/fail-closed / 產生路徑盤點表寫入
 # how.strategy）。文字與該 checker 的關鍵詞判準保持語意一致，供代理人在
 # 執行中即填妥，避免代理人未填四項、complete 被 gate 擋下、PM 事後補料重演。
-HOOK_TICKET_REMINDER = """本票 where.files 觸及 hooks 目錄，acceptance-gate 要求 acceptance 含四項必含：
-  1. 本 session 實地觸發確認（含落檔驗證，或說明何以暫不驗證）
-  2. liveness 驗證方式（如何確認 hook 被 runtime 載入並執行）
-  3. 失敗語意（fail-open 或 fail-closed）
+HOOK_TICKET_REMINDER = """本票 where.files 觸及 hooks 目錄，acceptance-gate 檢查證據（非 acceptance 字句）：
+  1. 實地觸發確認：Test Results/Solution 引用 hook-logs/ 下的日誌行
+  2. liveness：同上，或貼 ticket track hook-liveness 輸出
+  3. 失敗語意：Solution 寫 fail-open 或 fail-closed，並附「觸發條件：...」
   4. 產生路徑盤點表（寫入 how.strategy，缺則 Solution；格式與限制見
      .claude/pm-rules/ticket-body-schema.md「防護類 ticket：威脅事件寫
      acceptance，攔截點寫 how.strategy」節的「格式限制」段）

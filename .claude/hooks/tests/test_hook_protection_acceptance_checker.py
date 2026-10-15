@@ -674,8 +674,8 @@ def test_e2_absent_trigger_entry_still_blocks(logger):
     assert "本 session 實地觸發確認" in missing_section
 
 
-def test_e3_block_message_states_literal_match_and_accepted_literals(logger):
-    """E3：缺項訊息須說明判定為字面（substring）比對，並列出可命中的字面。"""
+def test_e3_block_message_states_required_evidence_forms(logger):
+    """E3（276.2 改寫）：缺項訊息須列出所需證據形式與位置，不再列 acceptance 字面。"""
     fm = _fm(
         "IMP",
         [".claude/hooks/new-guard-hook.py"],
@@ -683,9 +683,8 @@ def test_e3_block_message_states_literal_match_and_accepted_literals(logger):
     )
     should_block, msg = check_hook_protection_acceptance(fm, logger)
     assert should_block is True
-    assert "字面" in msg
-    for literal in ("實地觸發", "session", "生效"):
-        assert literal in msg.split("合格填法範例")[0], literal
+    for form in ("Test Results", "Solution", "hook-logs/", "fail-open", "觸發條件"):
+        assert form in msg, form
 
 
 # ---------------------------------------------------------------------------
@@ -835,3 +834,180 @@ def test_scope_judgement_exception_is_fail_closed(logger, monkeypatch):
 
     monkeypatch.setattr(mod, "touches_hook_protection_scope", boom)
     assert mod._any_path_touches_hook_scope(["x.py"], logger) is True
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-276.2：前三項由 acceptance 字面改為 Test Results／Solution 證據
+# ---------------------------------------------------------------------------
+
+from acceptance_checkers.hook_protection_acceptance_checker import (  # noqa: E402
+    missing_evidence_categories,
+)
+
+_LABEL_TRIGGER = "本 session 實地觸發確認"
+_LABEL_LIVENESS = "liveness 驗證方式"
+_LABEL_FAILURE = "失敗語意（fail-open/fail-closed）"
+_TRANSITION_PREFIX = "[evidence-transition]"
+
+
+class _ListHandler(logging.Handler):
+    def __init__(self):
+        super().__init__(level=logging.DEBUG)
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+
+@pytest.fixture
+def capture_logger():
+    log = logging.getLogger("test-evidence-transition")
+    log.handlers = []
+    handler = _ListHandler()
+    log.addHandler(handler)
+    log.setLevel(logging.DEBUG)
+    log.propagate = False
+    log.captured = handler.records
+    return log
+
+
+def _body(solution: str = "", test_results: str = "", analysis: str = "") -> str:
+    return (
+        "# Execution Log\n\n## Problem Analysis\n\n" + analysis + "\n\n"
+        "## Solution\n\n" + solution + "\n\n---\n\n"
+        "## Test Results\n\n" + test_results + "\n\n---\n\n## NeedsContext\n"
+    )
+
+
+_LOG_QUOTE = (
+    "實地觸發：`.claude/hook-logs/new-guard-hook/2026-10-15.log` 出現 "
+    "`[INFO] guard fired ticket=X`"
+)
+_FAIL_DECL = "失敗語意：fail-closed；觸發條件：判定函式拋例外時視為 hook 票"
+_FULL_BODY = _body(solution=_FAIL_DECL, test_results=_LOG_QUOTE)
+
+_POINTER_ACCEPTANCE = [
+    "[ ] 本 session 實地觸發確認與 liveness 驗證方式記入 Solution",
+    "[ ] 失敗語意：fail-open 或 fail-closed 記入 Solution",
+]
+_NO_LITERAL_ACCEPTANCE = ["[ ] 新增守衛偵測 X"]
+
+
+def _records(log):
+    return [r for r in log.captured if r.getMessage().startswith(_TRANSITION_PREFIX)]
+
+
+class TestMissingEvidenceCategories:
+    def test_full_evidence_has_no_missing(self):
+        assert missing_evidence_categories(_FULL_BODY) == []
+
+    def test_empty_body_misses_all_three(self):
+        assert missing_evidence_categories("") == [
+            _LABEL_TRIGGER,
+            _LABEL_LIVENESS,
+            _LABEL_FAILURE,
+        ]
+
+    def test_pointer_sentence_in_solution_is_not_evidence(self):
+        body = _body(solution="本 session 實地觸發確認與 liveness 記入 Solution；fail-open")
+        assert set(missing_evidence_categories(body)) == {
+            _LABEL_TRIGGER,
+            _LABEL_LIVENESS,
+            _LABEL_FAILURE,
+        }
+
+    def test_unrelated_session_sentence_is_not_evidence(self):
+        body = _body(solution="本 session 另外處理了 liveness 與 fail-open 的文件")
+        assert _LABEL_TRIGGER in missing_evidence_categories(body)
+        assert _LABEL_LIVENESS in missing_evidence_categories(body)
+
+    def test_log_quote_in_test_results_satisfies_trigger_and_liveness(self):
+        missing = missing_evidence_categories(_body(test_results=_LOG_QUOTE))
+        assert missing == [_LABEL_FAILURE]
+
+    def test_log_quote_in_solution_also_counts(self):
+        missing = missing_evidence_categories(_body(solution=_LOG_QUOTE))
+        assert _LABEL_TRIGGER not in missing and _LABEL_LIVENESS not in missing
+
+    def test_hook_liveness_output_header_counts(self):
+        body = _body(test_results="解析名稱: new-guard-hook (來源: source_decl)\n共 3 筆")
+        assert _LABEL_LIVENESS not in missing_evidence_categories(body)
+
+    def test_failure_declaration_requires_trigger_condition(self):
+        body = _body(solution="失敗語意：fail-closed")
+        assert missing_evidence_categories(body) == [
+            _LABEL_TRIGGER,
+            _LABEL_LIVENESS,
+            _LABEL_FAILURE,
+        ]
+
+    def test_failure_declaration_with_condition_counts(self):
+        body = _body(solution=_FAIL_DECL)
+        assert _LABEL_FAILURE not in missing_evidence_categories(body)
+
+    def test_evidence_outside_solution_and_test_results_not_counted(self):
+        body = _body(analysis=_LOG_QUOTE + "\n" + _FAIL_DECL)
+        assert len(missing_evidence_categories(body)) == 3
+
+
+def test_evidence_present_passes_without_acceptance_literals(capture_logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _NO_LITERAL_ACCEPTANCE)
+    result = check_hook_protection_acceptance(fm, capture_logger, content=_FULL_BODY)
+    assert result == (False, None)
+    assert _records(capture_logger) == []
+
+
+def test_pointer_sentences_without_evidence_do_not_pass_silently(capture_logger):
+    """指向句字面命中、證據缺失：過渡期放行，但每一類都必須留下 WARN 紀錄。"""
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _POINTER_ACCEPTANCE)
+    result = check_hook_protection_acceptance(fm, capture_logger, content=_body())
+    assert result == (False, None)
+    recorded = {r.category for r in _records(capture_logger)}
+    assert recorded == {_LABEL_TRIGGER, _LABEL_LIVENESS, _LABEL_FAILURE}
+
+
+def test_transition_warn_records_ticket_and_missing_evidence(capture_logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _POINTER_ACCEPTANCE)
+    check_hook_protection_acceptance(fm, capture_logger, content=_body())
+    for record in _records(capture_logger):
+        assert record.levelno == logging.WARNING
+        assert record.ticket_id == "0.2.1-W99-999"
+        assert record.missing_evidence
+        assert "0.2.1-W99-999" in record.getMessage()
+
+
+def test_transition_warns_only_for_categories_lacking_evidence(capture_logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _POINTER_ACCEPTANCE)
+    content = _body(test_results=_LOG_QUOTE)
+    assert check_hook_protection_acceptance(fm, capture_logger, content=content) == (False, None)
+    assert {r.category for r in _records(capture_logger)} == {_LABEL_FAILURE}
+
+
+def test_no_literal_and_no_evidence_blocks_with_evidence_forms(capture_logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _NO_LITERAL_ACCEPTANCE)
+    should_block, msg = check_hook_protection_acceptance(fm, capture_logger, content=_body())
+    assert should_block is True
+    required = msg.split("依規範必須補齊以下項目，缺少：")[1].split("合格填法範例")[0]
+    assert _LABEL_TRIGGER in required and _LABEL_FAILURE in required
+    assert "hook-logs/" in msg
+    assert "觸發條件" in msg
+    assert _records(capture_logger) == []  # 阻擋路徑不是過渡期 WARN
+
+
+def test_block_message_no_longer_asks_for_acceptance_literals(capture_logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _NO_LITERAL_ACCEPTANCE)
+    _, msg = check_hook_protection_acceptance(fm, capture_logger, content=_body())
+    assert "子字串" not in msg
+    assert "各項可命中的字面" not in msg
+
+
+def test_partial_evidence_blocks_only_unmet_category_without_literal(capture_logger):
+    acceptance = ["[ ] 以 liveness 日誌比對確認", "[ ] 實地觸發已確認"]  # 無失敗語意字面
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], acceptance)
+    should_block, msg = check_hook_protection_acceptance(
+        fm, capture_logger, content=_body(test_results=_LOG_QUOTE)
+    )
+    assert should_block is True
+    required = msg.split("依規範必須補齊以下項目，缺少：")[1].split("合格填法範例")[0]
+    assert _LABEL_FAILURE in required
+    assert _LABEL_TRIGGER not in required and _LABEL_LIVENESS not in required

@@ -362,6 +362,51 @@ def _missing_categories(acceptance_text: str) -> List[str]:
     return missing
 
 
+# 前三項改為檢查 Test Results／Solution 的證據（格式固定字串），
+# acceptance 字面僅在過渡期作為「放行但 WARN」的依據。
+_LABEL_TRIGGER = "本 session 實地觸發確認"
+_LABEL_LIVENESS = "liveness 驗證方式"
+_LABEL_FAILURE = "失敗語意（fail-open/fail-closed）"
+
+# 日誌行引文（hook-logs/ 路徑後接檔名）或 `ticket track hook-liveness` 輸出標頭
+# （「解析名稱: <name>」）。單純提及 hook-liveness 指令名稱或「記入 Solution」不算。
+_LOG_EVIDENCE_RE = re.compile(r"hook-logs/[^\s`'\"]+|解析名稱\s*[:：]\s*\S")
+_FAIL_DECLARATION_RE = re.compile(r"fail[- ]?(open|closed)", re.IGNORECASE)
+_TRIGGER_CONDITION_RE = re.compile(r"觸發條件\s*[:：]\s*\S")
+_EVIDENCE_SECTION_NAMES = ("Solution", "Test Results")
+# 過渡期 WARN 的固定前綴，供統計誤擋率的下游工具比對
+_TRANSITION_LOG_PREFIX = "[evidence-transition]"
+
+
+def _extract_section(content: str, name: str) -> str:
+    """擷取 `## <name>` 章節文字（至下一個 `## ` 或結尾）；缺席回傳空字串。"""
+    if not content:
+        return ""
+    pattern = re.compile(
+        r"^## " + re.escape(name) + r"\s*\n(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL
+    )
+    match = pattern.search(content)
+    return match.group(1) if match else ""
+
+
+def missing_evidence_categories(content: str) -> List[str]:
+    """回傳在 Test Results／Solution 找不到證據的類別標籤（空清單表示齊備）。
+
+    - 實地觸發、liveness：需有 hook-logs/ 日誌行引文或 hook-liveness 輸出標頭
+    - 失敗語意：需有 fail-open／fail-closed 宣告，且同處有「觸發條件：<內容>」
+    """
+    evidence_text = "\n".join(_extract_section(content, n) for n in _EVIDENCE_SECTION_NAMES)
+    missing = []
+    if not _LOG_EVIDENCE_RE.search(evidence_text):
+        missing.extend([_LABEL_TRIGGER, _LABEL_LIVENESS])
+    if not (
+        _FAIL_DECLARATION_RE.search(evidence_text)
+        and _TRIGGER_CONDITION_RE.search(evidence_text)
+    ):
+        missing.append(_LABEL_FAILURE)
+    return missing
+
+
 def _extract_how_strategy(frontmatter: dict) -> str:
     """從 frontmatter.how.strategy 取出文字（非 dict 或欄位缺失時回傳空字串）。"""
     how_field = frontmatter.get("how")
@@ -417,7 +462,22 @@ def check_hook_protection_acceptance(
             f"以下條目尚未填寫，請改寫為實際內容：\n{listed}\n"
         )
     acceptance_text = _join_acceptance_text(frontmatter)
-    missing = _missing_categories(acceptance_text)
+    literal_missing = _missing_categories(acceptance_text)
+    evidence_missing = missing_evidence_categories(content)
+    # 過渡期：證據缺失但 acceptance 字面命中 → WARN 放行並記 log；
+    # 證據缺失且字面也缺 → 阻擋（維持原有強度）
+    missing = [label for label in evidence_missing if label in literal_missing]
+    for label in evidence_missing:
+        if label not in literal_missing:
+            logger.warning(
+                f"{_TRANSITION_LOG_PREFIX} ticket={ticket_id} category={label} "
+                "acceptance 字面命中但 Test Results／Solution 無證據，過渡期放行",
+                extra={
+                    "ticket_id": ticket_id,
+                    "category": label,
+                    "missing_evidence": _EVIDENCE_FORMS[label],
+                },
+            )
 
     how_strategy = _extract_how_strategy(frontmatter)
     inventory_source = how_strategy if how_strategy.strip() else _extract_solution_section(content)
@@ -453,13 +513,23 @@ def check_hook_protection_acceptance(
     return True, msg
 
 
-def _format_accepted_literals(missing: List[str]) -> str:
-    """列出缺項各自可命中的字面（僅前三項；第四項為表格判定，不適用）。"""
+_EVIDENCE_FORMS = {
+    _LABEL_TRIGGER: "Test Results 或 Solution 引用 .claude/hook-logs/ 下的日誌行"
+    "（路徑加該行內容），證明本 session 實地觸發並落檔",
+    _LABEL_LIVENESS: "Test Results 或 Solution 貼 `ticket track hook-liveness` 輸出"
+    "（含「解析名稱: ...」標頭），或 hook-logs/ 路徑下的日誌行引文",
+    _LABEL_FAILURE: "Solution 寫 fail-open 或 fail-closed 二擇一，並附"
+    "「觸發條件：<何種情況觸發>」",
+}
+
+
+def _format_required_evidence(missing: List[str]) -> str:
+    """列出缺項各自所需的證據形式與位置（僅前三項；第四項為表格判定，不適用）。"""
     lines = []
     for label in missing:
-        keywords = _CATEGORY_KEYWORDS.get(label)
-        if keywords:
-            lines.append(f"  - {label}：{'、'.join(keywords)}\n")
+        form = _EVIDENCE_FORMS.get(label)
+        if form:
+            lines.append(f"  - {label}：{form}\n")
     return "".join(lines)
 
 
@@ -483,16 +553,14 @@ def _format_block_message(
         f"依規範必須補齊以下項目，缺少：\n"
         f"{missing_list}\n"
         f"\n"
-        f"判定方式：以字面（不分大小寫的子字串）比對 acceptance 全文，非語意判斷；"
-        f"語意相同但未含下列任一字面仍會被視為缺項。各項可命中的字面：\n"
-        f"{_format_accepted_literals(missing)}"
+        f"判定方式：檢查 ticket 的 Test Results 與 Solution 是否有證據，不比對 "
+        f"acceptance 字句；只寫「記入 Solution」之類指向句不算證據。各項所需證據：\n"
+        f"{_format_required_evidence(missing)}"
         f"\n"
-        f"合格填法範例（前三項寫在 acceptance）：\n"
-        f"  - 本 session 實地觸發確認：明示已於本 session 實地觸發該 hook 並"
-        f"確認落檔（含缺可執行位已排除），或「本 wave 該防護不生效，改以人工"
-        f"紀律承擔」（部署期政策亦屬合格填法）\n"
-        f"  - liveness 驗證方式：說明如何確認 hook 確實被 runtime 載入執行\n"
-        f"  - 失敗語意：說明異常時 fail-open 或 fail-closed\n"
+        f"合格填法範例（寫在 Test Results 或 Solution）：\n"
+        f"  - 實地觸發與 liveness：.claude/hook-logs/<hook 名>/<日期>.log "
+        f"出現 `[INFO] ...` 該行（引文）\n"
+        f"  - 失敗語意：fail-closed；觸發條件：判定函式拋例外時\n"
     )
     if _PATH_INVENTORY_LABEL in missing:
         if header_without_separator:
