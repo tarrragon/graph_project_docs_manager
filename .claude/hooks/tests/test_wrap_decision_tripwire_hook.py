@@ -544,6 +544,82 @@ class TestD_S2:
 # D2. S2 context-aware filter（黑名單版）— W10-058.1.1.2
 # ============================================================================
 
+class TestD3_FrameworkMessageSkip:
+    """非使用者撰寫回合（agent-message／cross-session-message）不套用 restrictive_keywords。"""
+
+    REPORT = "交回報告：此路徑目前無法判定歸因，已列為已知限制，請 PM 後續處理"
+    PREFIXES = ["<agent-message", "<cross-session-message", "<teammate-message",
+                "[Subagent hand-back]"]
+
+    @staticmethod
+    def _sd(hook_mod, tmp_yaml, prefixes):
+        overrides = {"restrictive_keywords": {"skip_prompt_prefixes": prefixes}}
+        tmp_yaml.write_text(yaml_fixture(signal_overrides=overrides), encoding="utf-8")
+        cfg = _load_config(hook_mod, tmp_yaml)
+        return next(s for s in cfg.signals if s.id == "restrictive_keywords")
+
+    def _detect(self, hook_mod, sd, prompt):
+        import logging
+        return hook_mod.RestrictiveKeywordsStrategy().detect(
+            make_user_prompt(prompt), hook_mod._initial_state(), sd, None,
+            logging.getLogger("t"))
+
+    def test_e1_user_authored_restrictive_still_triggers(self, hook_mod, tmp_yaml):
+        sd = self._sd(hook_mod, tmp_yaml, self.PREFIXES)
+        result = self._detect(hook_mod, sd, self.REPORT)
+        assert result.hit is True
+        assert result.should_warn is True
+        assert result.matched_keyword == "無法"
+
+    @pytest.mark.parametrize("marker", [
+        # 真實誤報當時 prompt 的逐字開頭（第一行為固定引導句）
+        "Another Claude session sent a message:\n"
+        "<agent-message from=\"imp-306-5\">\n[Subagent hand-back] ",
+        "Another Claude session sent a message:\n"
+        "<teammate-message teammate_id=\"incident-314\" color=\"blue\">\n",
+        "  <cross-session-message>\n",
+        "[Subagent hand-back]\n",
+    ])
+    def test_e2_framework_marked_turn_does_not_trigger(self, hook_mod, tmp_yaml, marker):
+        sd = self._sd(hook_mod, tmp_yaml, self.PREFIXES)
+        result = self._detect(hook_mod, sd, marker + self.REPORT)
+        assert result.hit is False
+        assert result.should_warn is False
+        assert result.log_reason == "framework_message"
+
+    def test_marker_beyond_scan_range_is_known_miss(self, hook_mod, tmp_yaml):
+        """已知漏判：標記在開頭 3 行之外時視為使用者回合，照常觸發。"""
+        sd = self._sd(hook_mod, tmp_yaml, self.PREFIXES)
+        result = self._detect(hook_mod, sd, "a\nb\nc\n<agent-message>\n" + self.REPORT)
+        assert result.hit is True
+
+    def test_user_sentence_mentioning_agent_message_still_triggers(self, hook_mod, tmp_yaml):
+        """對照：使用者句中提到 agent-message 字樣，不跳過。"""
+        sd = self._sd(hook_mod, tmp_yaml, self.PREFIXES)
+        prompt = "我看到 <agent-message> 這個標籤，但這個功能目前無法處理，請評估"
+        result = self._detect(hook_mod, sd, prompt)
+        assert result.hit is True
+        assert result.matched_keyword == "無法"
+
+    def test_failure_is_fail_open(self, hook_mod, tmp_yaml, capsys):
+        sd = self._sd(hook_mod, tmp_yaml, self.PREFIXES)
+        sd.skip_prompt_prefixes = [None]  # startswith(None) 會拋 TypeError
+        result = self._detect(hook_mod, sd, self.REPORT)
+        assert result.hit is True
+        assert "fail-open" in capsys.readouterr().err
+
+    def test_production_yaml_declares_markers(self, hook_mod):
+        import logging
+        cfg = hook_mod.load_config(CONFIG_PATH, logging.getLogger("t"))
+        sd = next(s for s in cfg.signals if s.id == "restrictive_keywords")
+        for marker in ("<agent-message", "<cross-session-message", "<teammate-message"):
+            assert marker in sd.skip_prompt_prefixes
+        real = ("Another Claude session sent a message:\n"
+                "<teammate-message teammate_id=\"x\">\n")
+        assert self._detect(hook_mod, sd, real + self.REPORT).hit is False
+        assert self._detect(hook_mod, sd, self.REPORT).hit is True
+
+
 class TestD2_ContextBlacklist:
     """W10-058.1.1.2：context-aware filter 黑名單版測試。
 
