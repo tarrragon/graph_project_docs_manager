@@ -41,7 +41,7 @@ from lib.hook_io import (
     create_simple_output,
 )
 from lib.git_utils import get_project_root
-from lib import setup_hook_logging, run_hook_safely, emit_model_reminder
+from lib import setup_hook_logging, run_hook_safely, emit_hook_output
 
 
 def is_version_release_commit(tool_input: dict, logger: logging.Logger) -> tuple:
@@ -179,9 +179,13 @@ def main() -> int:
     # 通過檢查（改為警告模式而非阻止）
     logger.info("Version release guard passed")
     if warnings:
-        # 提醒對象是模型，走 additionalContext（單一 JSON 輸出，不放行語意不變）
-        emit_model_reminder(
-            "PreToolUse", "\n".join(warnings), input_data=hook_input
+        # 提醒走 additionalContext，並保留原核准決策（原輸出 decision=approve，
+        # 等同 allow）；單一 JSON，受眾過濾仍經 emit_hook_output 單點
+        emit_hook_output(
+            "PreToolUse",
+            additional_context="\n".join(warnings),
+            permission_decision="allow",
+            input_data=hook_input,
         )
         return 0
     output = create_simple_output("approve")

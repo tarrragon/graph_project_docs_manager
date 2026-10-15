@@ -42,6 +42,8 @@ def test_release_commit_without_script_emits_additional_context(monkeypatch):
     assert hso["hookEventName"] == "PreToolUse"
     assert "Version Release Guard" in hso["additionalContext"]
     assert "v1.2.3" in hso["additionalContext"]
+    # E1：核准決策與提醒同一份 JSON，權限語意不變（原 decision=approve）
+    assert hso["permissionDecision"] == "allow"
 
 
 def test_version_mismatch_is_appended_to_same_output(monkeypatch):
@@ -55,6 +57,7 @@ def test_version_mismatch_is_appended_to_same_output(monkeypatch):
     ctx = out["hookSpecificOutput"]["additionalContext"]
     assert "版本不一致" in ctx
     assert "建議使用正式版本發布流程" in ctx
+    assert out["hookSpecificOutput"]["permissionDecision"] == "allow"
 
 
 def test_version_mismatch_alone_emits_when_via_script(monkeypatch):
@@ -68,6 +71,7 @@ def test_version_mismatch_alone_emits_when_via_script(monkeypatch):
     ctx = out["hookSpecificOutput"]["additionalContext"]
     assert "版本不一致" in ctx
     assert "建議使用正式版本發布流程" not in ctx
+    assert out["hookSpecificOutput"]["permissionDecision"] == "allow"
 
 
 def test_clean_release_commit_has_no_context(monkeypatch):
