@@ -508,5 +508,95 @@ class TestMergeCommitFirstParent:
         assert "parent_only.py" in changed
 
 
+PARENT_ID = "0.1.0-W41-002"
+
+
+def _run_real_meta(ticket_type, has_children, where_files, repo, ticket_id=PARENT_ID):
+    """同 _run_real，另 patch 票的 type / 有無子票；回傳 (rc, payload)"""
+    out = StringIO()
+    with patch.object(hook_module, "read_json_from_stdin",
+                      return_value=_real_payload(f"ticket track complete {ticket_id}")), \
+         patch.object(hook_module, "is_subagent_environment", return_value=False), \
+         patch.object(hook_module, "get_project_root", return_value=repo), \
+         patch.object(hook_module, "read_ticket_where_files", return_value=where_files), \
+         patch.object(hook_module, "read_ticket_type_and_children",
+                      return_value=(ticket_type, has_children)), \
+         patch("sys.stdout", out):
+        rc = hook_module.main()
+    return rc, json.loads(out.getvalue())
+
+
+class TestAnaAndParentWithChildren:
+    """0.5.0-W1-283：ANA 與修改落在子票的父票不誤報；無子票 IMP 漏改仍警告（同一 repo fixture）"""
+
+    WHERE = ["parent_only.py", "src/a.py"]
+
+    def test_ana_with_children_no_warning(self, repo):
+        rc, payload = _run_real_meta("ANA", True, self.WHERE, repo)
+        assert rc == 0
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+    def test_ana_without_children_no_warning(self, repo):
+        rc, payload = _run_real_meta("ANA", False, ["never.py"], repo)
+        assert rc == 0
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+    def test_imp_parent_with_children_counts_descendant_commits(self, repo):
+        rc, payload = _run_real_meta("IMP", True, self.WHERE, repo)
+        assert rc == 0
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+    def test_imp_without_children_missing_still_warned(self, repo):
+        rc, payload = _run_real_meta("IMP", False, self.WHERE, repo)
+        lines = payload["hookSpecificOutput"]["additionalContext"].splitlines()
+        assert lines[lines.index("缺失檔案（1 個）：") + 1] == "  - src/a.py"
+
+    def test_imp_parent_with_children_truly_missing_still_warned(self, repo):
+        rc, payload = _run_real_meta("IMP", True, ["parent_only.py", "never.py"], repo)
+        lines = payload["hookSpecificOutput"]["additionalContext"].splitlines()
+        assert lines[lines.index("缺失檔案（1 個）：") + 1] == "  - never.py"
+
+    def test_descendants_flag_does_not_absorb_sibling_prefix(self, repo):
+        """0.1.0-W41-0021 不是 0.1.0-W41-002 的子孫"""
+        import logging
+        _commit(repo, ["other.py"], "fix(0.1.0-W41-0021): unrelated")
+        changed = hook_module.get_git_changed_files(
+            repo, logging.getLogger("t"), PARENT_ID, include_descendants=True)
+        assert "other.py" not in changed
+        assert "src/a.py" in changed
+
+
+class TestTicketMetaFailOpen:
+    """讀取票面失敗：回 (None, False)，不拋例外，main 仍 exit 0 並照舊驗證"""
+
+    def test_missing_ticket_returns_default(self, tmp_path):
+        import logging
+        assert hook_module.read_ticket_type_and_children(
+            PARENT_ID, tmp_path, logging.getLogger("t")) == (None, False)
+
+    def test_reader_exception_fail_open(self, tmp_path):
+        import logging
+        with patch.object(hook_module, "find_ticket_file", side_effect=OSError("boom")):
+            assert hook_module.read_ticket_type_and_children(
+                PARENT_ID, tmp_path, logging.getLogger("t")) == (None, False)
+
+    def test_real_ticket_file_parsed(self, tmp_path):
+        import logging
+        d = tmp_path / "docs" / "work-logs" / "v0.1.0" / "tickets"
+        d.mkdir(parents=True)
+        (d / f"{PARENT_ID}.md").write_text(
+            f"---\nid: {PARENT_ID}\ntype: ANA\nchildren:\n- {SUB_ID}\n---\n\nbody\n",
+            encoding="utf-8")
+        assert hook_module.read_ticket_type_and_children(
+            PARENT_ID, tmp_path, logging.getLogger("t")) == ("ANA", True)
+
+    def test_main_exit_zero_when_meta_reader_unavailable(self, repo):
+        rc, payload = _run_real_meta(None, False, self.WHERE_MISSING, repo)
+        assert rc == 0
+        assert "additionalContext" in payload["hookSpecificOutput"]
+
+    WHERE_MISSING = ["src/a.py"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
