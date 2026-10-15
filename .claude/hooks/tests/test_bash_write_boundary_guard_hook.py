@@ -89,8 +89,18 @@ class TestCandidatePathExtraction:
         "sed " * 32000,
         "echo hello " * 17000,
     ])
+    def test_padded_input_extracts_nothing(self, cmd):
+        # 不計時的正確性斷言；線性由計數測試（TestLinearWorkByCount）保證
+        assert _extract_candidate_paths(cmd) == []
+
+    @pytest.mark.wallclock
+    @pytest.mark.parametrize("cmd", [
+        "sed x " * 32000,
+        "sed " * 32000,
+        "echo hello " * 17000,
+    ])
     def test_padded_input_extracts_in_linear_time(self, cmd):
-        # 正向對照：284.2 的前瞻使 192KB 輸入耗時約 43 秒；門檻 1 秒僅判數量級
+        # 牆鐘判準（負載敏感，主套件排除）：284.2 的前瞻使 192KB 輸入耗時約 43 秒
         import time
         start = time.monotonic()
         result = _extract_candidate_paths(cmd)
@@ -323,14 +333,16 @@ class TestLinearTimeAcrossTokenShapes:
         assert t_4n < 1.0
         assert t_4n <= 8 * t_n
 
-    # 主套件粗門檻：約 200KB 最壞形態在 5 秒內完成。線性實作實測約 0.05 秒
-    # （100 倍餘裕，負載雜訊吃不掉）；平方級實作在此長度需數十秒，仍會紅。
-    @pytest.mark.parametrize("shape,k", [
+    # 約 200KB 最壞形態的牆鐘粗門檻（5 秒；線性實測約 0.05 秒）。牆鐘判準，主套件排除。
+    _WORST_SHAPES = [
         ("single_sed_long_e_chain", 15000),
         ("sed_word_padding", 33000),
         ("double_quoted_repeated", 7500),
         ("heredoc_body_long", 10000),
-    ])
+    ]
+
+    @pytest.mark.wallclock
+    @pytest.mark.parametrize("shape,k", _WORST_SHAPES)
     def test_200kb_worst_shapes_finish_within_coarse_bound(self, shape, k):
         import time
         cmd = _PERF_SHAPES[shape](k)
@@ -338,6 +350,65 @@ class TestLinearTimeAcrossTokenShapes:
         start = time.monotonic()
         _extract_candidate_paths(cmd)
         assert time.monotonic() - start < 5.0
+
+    @pytest.mark.parametrize("shape,k", _WORST_SHAPES)
+    def test_200kb_worst_shapes_extract_without_error(self, shape, k):
+        # 不計時：200KB 輸入可完成解析並回傳 list
+        cmd = _PERF_SHAPES[shape](k)
+        assert len(cmd) > 150000
+        assert isinstance(_extract_candidate_paths(cmd), list)
+
+
+# 計數方法（確定性，不受負載影響）：
+#   work = sys.setprofile 觀測到的函式呼叫事件數（Python 與 C 的 call 皆計）
+#        + 交給 _scan_sed 的 token 走訪數（每次呼叫從起點到陳述尾的 token 數）
+# 線性實作的 work 與輸入長度成正比；平方級回退（重掃）使 4n 的 work 趨近 16 倍。
+_WORK_N = 500
+_WORK_CONSTANT = 100
+
+
+def _work_units(cmd, rescan_sed=False):
+    import sys as _sys
+    visited = [0]
+    calls = [0]
+    original = hook_module._scan_sed
+
+    def counting_sed(toks, j, out):
+        visited[0] += len(toks) - j
+        end = original(toks, j, out)
+        # rescan_sed：模擬平方級回退（每個 sed 後只前進一格，使後續 token 被重複掃描）
+        return j if rescan_sed else end
+
+    def profiler(frame, event, arg):
+        if event in ("call", "c_call"):
+            calls[0] += 1
+
+    with patch.object(hook_module, "_scan_sed", counting_sed):
+        _sys.setprofile(profiler)
+        try:
+            _extract_candidate_paths(cmd)
+        finally:
+            _sys.setprofile(None)
+    return calls[0] + visited[0]
+
+
+class TestLinearWorkByCount:
+    """4n 長度的工作量 <= 4 * (n 長度的工作量) + 小常數。"""
+
+    @pytest.mark.parametrize("shape", sorted(_PERF_SHAPES))
+    def test_work_grows_linearly(self, shape):
+        build = _PERF_SHAPES[shape]
+        w_n = _work_units(build(_WORK_N))
+        w_4n = _work_units(build(_WORK_N * 4))
+        assert w_4n <= 4 * w_n + _WORK_CONSTANT
+
+    @pytest.mark.parametrize("shape", ["sed_word_padding", "bare_sed_padding"])
+    def test_counting_detects_quadratic_rescan(self, shape):
+        # 正向對照：每個 sed 重掃後段 token 的平方級變體，在同一個計數斷言下必須翻紅
+        build = _PERF_SHAPES[shape]
+        w_n = _work_units(build(_WORK_N), rescan_sed=True)
+        w_4n = _work_units(build(_WORK_N * 4), rescan_sed=True)
+        assert not (w_4n <= 4 * w_n + _WORK_CONSTANT)
 
 
 class TestHeredocAndQuotedTextIgnored:
