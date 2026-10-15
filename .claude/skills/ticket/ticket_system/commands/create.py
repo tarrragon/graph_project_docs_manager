@@ -473,8 +473,12 @@ def _load_hook_protection_checker() -> Any:
 def apply_hook_acceptance_template(
     where_files: List[str],
     acceptance: Optional[List[str]],
+    how_strategy: str = "",
 ) -> tuple:
     """where 觸及 hook 本體時，於 acceptance 追加缺少類別的模板。
+
+    第四條（產生路徑盤點）的已具備判定與 gate 一致：how_strategy 內有盤點表
+    （parse_path_inventory_table 非 absent/no_separator）即視為已具備。
 
     Returns:
         (新 acceptance 清單, 是否觸及 hook 範圍)。未觸及或 checker 不可用時
@@ -489,7 +493,8 @@ def apply_hook_acceptance_template(
     current = list(acceptance or [])
     text = "\n".join(str(item) for item in current)
     missing = set(checker._missing_categories(text))
-    if "產生路徑盤點" not in text:
+    inventory = checker.parse_path_inventory_table(how_strategy or "")
+    if inventory.status in ("absent", "no_separator") and "產生路徑盤點" not in text:
         missing.add(_PATH_INVENTORY_LABEL)
     for label, template in _HOOK_ACCEPTANCE_TEMPLATES:
         if label in missing:
@@ -715,7 +720,8 @@ def _persist_and_report(
         from ticket_system.lib.ticket_builder import get_default_acceptance_criteria
         base_acceptance = get_default_acceptance_criteria(config["ticket_type"])
     new_acceptance, touches_hook = apply_hook_acceptance_template(
-        config.get("where_files") or [], base_acceptance
+        config.get("where_files") or [], base_acceptance,
+        str(config.get("how_strategy") or ""),
     )
     if touches_hook:
         config["acceptance"] = new_acceptance

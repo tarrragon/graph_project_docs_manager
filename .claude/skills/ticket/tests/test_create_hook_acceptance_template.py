@@ -49,6 +49,29 @@ def test_existing_category_not_duplicated():
     assert TEMPLATES[1] not in result
 
 
+INVENTORY_TABLE = (
+    "盤點如下\n"
+    "| 產生路徑 | 是否覆蓋 | 未覆蓋原因 |\n"
+    "|---------|---------|-----------|\n"
+    "| 路徑 A | 是 | |\n"
+)
+
+
+@pytest.mark.parametrize(
+    "how_strategy,expect_inventory_template",
+    [(INVENTORY_TABLE, False), ("一般策略，無表", True)],
+)
+def test_inventory_template_follows_how_strategy_e1_contrast(
+    how_strategy, expect_inventory_template
+):
+    result, touched = apply_hook_acceptance_template(
+        HOOK_FILES, list(BASE), how_strategy
+    )
+    assert touched is True
+    assert (TEMPLATES[3] in result) is expect_inventory_template
+    assert result[: len(BASE)] == BASE
+
+
 # ---- set-where ----
 
 
