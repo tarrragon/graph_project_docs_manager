@@ -72,9 +72,23 @@ _REDIRECT_PATTERN = re.compile(r'(?<![\d&])(?:>{1,2})(?!&)\s*([\'"]?)([^\s\'"|&;
 _TEE_PATTERN = re.compile(r'\btee\s+(?:-a\s+)?([\'"]?)([^\s\'"|&;)]+)\1')
 
 # sed -i / --in-place ... path（跳過可選的空引號參數與 s/// 表達式，取下一個 token）
+#
+# 支援 GNU（-i、-i.bak、--in-place[=suf]）與 BSD（-i ""、-i ''、-i .bak）寫法。
+# 兩個 pattern 都以 group(2)=path 為慣例：
+#   _SED_I_PATTERN      腳本為位置參數：sed [-nEr] -i[suf] 'script' file
+#   _SED_I_E_PATTERN    腳本由 -e 提供（-i 前後皆可）：sed -e expr -i file
+_SED_EXPR = r"(?:'[^']*'|\"[^\"]*\"|\S+)"
+_SED_INPLACE = r"(?:-i\S*|--in-place\S*)(?:\s+(?:''|\"\"|\.\S+))?"
+_SED_PATH = r"([\'\"]?)([^\s\'\"|&;)]+)\1"
+
 _SED_I_PATTERN = re.compile(
-    r"sed\s+(?:-i|--in-place)(?:\s*'')?\s+(?:'[^']*'|\"[^\"]*\"|\S+)\s+"
-    r"([\'\"]?)([^\s\'\"|&;)]+)\1"
+    r"\bsed\s+(?:-[nEr]+\s+)*" + _SED_INPLACE + r"\s+(?:-[nEr]+\s+)*"
+    r"(?!-)" + _SED_EXPR + r"\s+" + _SED_PATH
+)
+
+_SED_I_E_PATTERN = re.compile(
+    r"\bsed(?=\s(?:[^|;&]*?\s)?-e\s)\s+(?:(?:-[nEr]+|-e\s+" + _SED_EXPR + r")\s+)*"
+    + _SED_INPLACE + r"\s+(?:(?:-[nEr]+|-e\s+" + _SED_EXPR + r")\s+)*" + _SED_PATH
 )
 
 # cp / mv src dst（簡化：取緊接在來源後的下一個 token 作目的地，不處理多來源/遞迴旗標的複雜排列）
@@ -103,6 +117,7 @@ def _extract_candidate_paths(command: str) -> List[str]:
         _REDIRECT_PATTERN,
         _TEE_PATTERN,
         _SED_I_PATTERN,
+        _SED_I_E_PATTERN,
         _CP_MV_PATTERN,
         _OPEN_CALL_PATTERN,
     ):

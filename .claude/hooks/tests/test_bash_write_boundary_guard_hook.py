@@ -67,6 +67,23 @@ class TestCandidatePathExtraction:
         cmd = "sed -i '' 's/a/b/' lib/foo.dart"
         assert "lib/foo.dart" in _extract_candidate_paths(cmd)
 
+    @pytest.mark.parametrize("cmd", [
+        "sed -i 's/a/b/' target.py",
+        "sed -i.bak 's/a/b/' target.py",
+        "sed --in-place 's/a/b/' target.py",
+        "sed --in-place=.bak 's/a/b/' target.py",
+        'sed -i "" \'s/a/b/\' target.py',
+        "sed -i '' 's/a/b/' target.py",
+        "sed -i .bak 's/a/b/' target.py",
+        "sed -n -i 's/a/b/' target.py",
+        "sed -e 's/a/b/' -i target.py",
+        "sed -i -e 's/a/b/' target.py",
+        "sed -e 's/a/b/' -e 's/c/d/' -i.bak target.py",
+    ])
+    def test_sed_inplace_variants_extract_exact_target(self, cmd):
+        # 正向對照：舊實作對 BSD 寫法會抽到 s/a/b/（腳本）而非檔案
+        assert _extract_candidate_paths(cmd) == ["target.py"]
+
     def test_cp_target(self):
         cmd = "cp source.dart lib/dest.dart"
         assert "lib/dest.dart" in _extract_candidate_paths(cmd)
