@@ -37,7 +37,10 @@ from lib import (
 )
 from lib.hook_messages import AskUserQuestionMessages
 from lib.ticket_command_parse import has_complete_command
-from lib.bash_tool_response import FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success
+from lib.bash_tool_response import (
+    FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success, is_bash_success,
+)
+from lib.ticket_completed_verifier import make_completed_verifier
 
 # ============================================================================
 # 常數定義
@@ -71,9 +74,14 @@ def is_ticket_complete_command(command: str) -> bool:
     return has_complete_command(command) is True
 
 
-def is_complete_successful(stdout: str) -> bool:
-    """判斷 ticket complete 是否成功"""
-    return any(marker in stdout for marker in COMPLETE_SUCCESS_MARKERS)
+def is_complete_successful(tool_response, command: str) -> bool:
+    """判斷 ticket complete 是否成功（分層：未遮蔽即成功、遮蔽以票面驗證、其餘比對標記）"""
+    return is_bash_success(
+        tool_response,
+        COMPLETE_SUCCESS_MARKERS,
+        command=command,
+        state_verifier=make_completed_verifier(command),
+    )
 
 
 # ============================================================================
@@ -156,10 +164,9 @@ def main() -> int:
     command = tool_input.get("command", "")
 
     tool_response = extract_tool_response(input_data, logger)
-    stdout = tool_response.get("stdout", "")
 
     # 檢查是否為 ticket complete 成功
-    if not (is_ticket_complete_command(command) and is_complete_successful(stdout)):
+    if not (is_ticket_complete_command(command) and is_complete_successful(tool_response, command)):
         print(json.dumps(DEFAULT_OUTPUT, ensure_ascii=False))
         return EXIT_SUCCESS
 

@@ -42,7 +42,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, emit_hook_output
 from lib.ticket_command_parse import has_complete_command
-from lib.bash_tool_response import FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success
+from lib.bash_tool_response import (
+    FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success, is_bash_success,
+)
+from lib.ticket_completed_verifier import make_completed_verifier
 from lib.constants import SESSION_COMPLETED_TICKETS_COUNTER_TEMPLATE
 from lib.session_state_key import session_state_path
 
@@ -122,9 +125,14 @@ def is_ticket_complete_command(command: str) -> bool:
     return has_complete_command(command) is True
 
 
-def is_complete_successful(stdout: str) -> bool:
-    """判斷 ticket complete 是否成功"""
-    return COMPLETE_SUCCESS_MARKER in stdout
+def is_complete_successful(tool_response, command: str) -> bool:
+    """判斷 ticket complete 是否成功（分層：未遮蔽即成功、遮蔽以票面驗證、其餘比對標記）"""
+    return is_bash_success(
+        tool_response,
+        [COMPLETE_SUCCESS_MARKER],
+        command=command,
+        state_verifier=make_completed_verifier(command),
+    )
 
 
 # ============================================================================
@@ -210,10 +218,9 @@ def main() -> int:
     command = tool_input.get("command", "")
 
     tool_response = input_data.get("tool_response") or {}
-    stdout = tool_response.get("stdout", "")
 
-    # 偵測 ticket track complete 成功
-    if not (is_ticket_complete_command(command) and is_complete_successful(stdout)):
+    # 偵測 ticket track complete 成功（共用分層判定；計數只在此判定成功時遞增一次）
+    if not (is_ticket_complete_command(command) and is_complete_successful(tool_response, command)):
         print(json.dumps(DEFAULT_OUTPUT, ensure_ascii=False))
         return EXIT_SUCCESS
 

@@ -66,5 +66,26 @@ def test_non_command_text_does_not_increment(monkeypatch, counter, command):
 
 
 def test_failure_marker_absent_does_not_increment(monkeypatch, counter):
-    assert _run(monkeypatch, "ticket track finish T-1", stdout="error") == 0
+    # 被遮蔽且無票號可讀（退回標記判定）：stdout 無標記不計數
+    assert _run(monkeypatch, "ticket track finish T-1; echo rc=$?", stdout="error") == 0
+    assert _count(counter) == 0
+
+
+def test_unmasked_counts_once_regardless_of_stdout(monkeypatch, counter):
+    assert _run(monkeypatch, "ticket track finish T-1", stdout="") == 0
+    assert _count(counter) == 1
+
+
+@pytest.mark.parametrize("command", [
+    "ticket track finish T > log 2>&1; echo rc=$?",
+    "out=$(ticket track complete T 2>&1); rc=$?",
+])
+def test_masked_forms_follow_ticket_state(monkeypatch, counter, command):
+    """E1：同一 stdout（rc=0）下，票面已完成計數 1、票面未完成不計數"""
+    monkeypatch.setattr(_hook, "make_completed_verifier", lambda cmd: (lambda: True))
+    assert _run(monkeypatch, command, stdout="rc=0") == 0
+    assert _count(counter) == 1
+    counter.unlink()
+    monkeypatch.setattr(_hook, "make_completed_verifier", lambda cmd: (lambda: False))
+    assert _run(monkeypatch, command, stdout="rc=0") == 0
     assert _count(counter) == 0
