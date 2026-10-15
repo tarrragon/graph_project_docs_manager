@@ -13,6 +13,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -258,9 +259,10 @@ def _sleeper():
     return subprocess.Popen([sys.executable, "-c", f"import time; time.sleep({SLEEPER_LIFETIME})"])
 
 
-def _fake_entry(directory, seq, pid):
+def _fake_entry(directory, seq, pid, estimate=0):
+    """estimate 預設 0：既有測試只關心順序，不讓預估值觸發提早拒絕。"""
     path = Path(directory) / f"queue-{seq:012d}-{pid}.json"
-    path.write_text(json.dumps({"pid": pid, "command": ["x"], "arrived": "t"}))
+    path.write_text(json.dumps({"pid": pid, "command": ["x"], "arrived": "t", "estimate": estimate}))
     return path
 
 
@@ -322,12 +324,13 @@ def test_dead_waiter_entry_is_removed_and_does_not_block(monkeypatch, tmp_path):
 
 def test_entry_removed_on_acquire_giveup_timeout_and_signal(monkeypatch, tmp_path):
     monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
-    hold, _ = slot_gate.acquire_slot(["x"], lambda: None)  # 取得
+    hold, _ = slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0)  # 取得；預估 0 使後方真的等待而非提早拒絕
     assert _queue_files(tmp_path) == []
     monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)  # 逾時（名額被 hold 占住）
-    got, early = slot_gate.acquire_slot(["x"], lambda: None)
+    got, early = slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0)
     assert got is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
     assert _queue_files(tmp_path) == []
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", str(STEP_TIMEOUT))
     got, early = slot_gate.acquire_slot(["x"], lambda: signal.SIGTERM)  # 訊號中斷
     assert got is None and early == 128 + signal.SIGTERM
     assert _queue_files(tmp_path) == []
@@ -376,3 +379,104 @@ def test_orphan_query_timeout_is_bounded(monkeypatch, tmp_path, capsys):
     slot_gate.report_orphans()
     assert time.monotonic() - started < 5
     assert "逾時" in capsys.readouterr().err
+
+
+# ---- 前方預估耗時提早拒絕（0.5.0-W1-303.2）----
+
+AHEAD_ESTIMATE_SECONDS = 5  # 遠小於等待上限的前方預估
+REJECT_BUDGET_SECONDS = 2.0 # 立即拒絕的耗時上限（遠小於 WAIT_LIMIT，舊碼會等滿上限）
+
+
+def test_estimate_over_limit_rejects_immediately_with_details(monkeypatch, tmp_path, capsys):
+    """E1：前方預估加總 200 秒 > 上限 150 秒，立即以 125 結束，訊息含順位、前方筆數、預估秒數。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "5")
+    a, b = _sleeper(), _sleeper()
+    try:
+        _fake_entry(tmp_path, 1, a.pid, estimate=100)
+        _fake_entry(tmp_path, 2, b.pid, estimate=100)
+        monkeypatch.setattr(slot_gate, "SLOT_WAIT_LIMIT_SECONDS", 150.0)  # 預估與上限同單位比較
+        monkeypatch.delenv("CLAUDE_SLOT_WAIT_LIMIT")
+        started = time.monotonic()
+        hold, early = slot_gate.acquire_slot(["x"], lambda: None)
+        elapsed = time.monotonic() - started
+        err = capsys.readouterr().err
+        assert hold is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
+        assert elapsed < REJECT_BUDGET_SECONDS
+        assert "順位 3" in err and "前方 2 筆" in err and "預估" in err and "200" in err
+        assert _queue_files(tmp_path) == [f"queue-{1:012d}-{a.pid}.json", f"queue-{2:012d}-{b.pid}.json"]
+    finally:
+        for p in (a, b):
+            p.kill()
+            p.wait()
+
+
+def test_estimate_within_limit_queues_and_acquires(monkeypatch, tmp_path):
+    """對照：前方預估 5 秒 < 上限，照常排隊；前方排隊者結束後取得。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", str(STEP_TIMEOUT))
+    ahead = subprocess.Popen([sys.executable, "-c", f"import time; time.sleep({HOLD_SECONDS})"])
+    threading.Thread(target=ahead.wait, daemon=True).start()  # 及時回收，避免殭屍程序被 kill(0) 視為存活
+    _fake_entry(tmp_path, 1, ahead.pid, estimate=AHEAD_ESTIMATE_SECONDS)
+    hold, early = slot_gate.acquire_slot(["x"], lambda: None)
+    assert hold is not None and early is None
+    hold.release()
+
+
+def test_running_holder_remaining_time_counts_toward_wait(monkeypatch, tmp_path, capsys):
+    """持有者預估 100 秒、已跑 10 秒 -> 剩餘 90 秒，超過上限 50 秒即拒絕。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "50")
+    holder, _ = slot_gate.acquire_slot(["h"], lambda: None, estimate_seconds=100)
+    try:
+        info = json.loads(Path(holder.holder_path).read_text())
+        assert info["estimate"] == 100
+        info["started_epoch"] = time.time() - 10
+        Path(holder.holder_path).write_text(json.dumps(info))
+        started = time.monotonic()
+        got, early = slot_gate.acquire_slot(["x"], lambda: None)
+        assert got is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
+        assert time.monotonic() - started < REJECT_BUDGET_SECONDS
+        assert "預估" in capsys.readouterr().err
+        # 對照：已跑 80 秒 -> 剩餘 20 秒 < 上限，不拒絕而是等待（以訊號中斷代替等滿）
+        info["started_epoch"] = time.time() - 80
+        Path(holder.holder_path).write_text(json.dumps(info))
+        got, early = slot_gate.acquire_slot(["x"], lambda: signal.SIGTERM)
+        assert got is None and early == 128 + signal.SIGTERM
+    finally:
+        holder.release()
+
+
+def test_waiting_notice_shows_remaining_estimate(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)
+    monkeypatch.setenv("CLAUDE_SLOT_NOTICE_INTERVAL", "0")
+    a = _sleeper()
+    try:
+        _fake_entry(tmp_path, 1, a.pid, estimate=0)
+        monkeypatch.setattr(slot_gate, "DEFAULT_ESTIMATE_SECONDS", 0.0, raising=False)
+        slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0)
+        assert "預估剩餘" in capsys.readouterr().err
+    finally:
+        a.kill()
+        a.wait()
+
+
+def test_default_estimates_are_positive_and_heavier_for_flutter():
+    assert slot_gate.default_estimate_seconds(["fvm", "flutter", "test"]) > 0
+    assert slot_gate.default_estimate_seconds(["something", "else"]) == slot_gate.DEFAULT_ESTIMATE_SECONDS
+    assert slot_gate.default_estimate_seconds(["merge-gate", "b"]) >= slot_gate.default_estimate_seconds(["pytest"])
+
+
+def test_entry_without_estimate_uses_command_default(monkeypatch, tmp_path):
+    """舊格式排隊檔（無 estimate）以預設值計，仍可解析。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    a = _sleeper()
+    try:
+        path = Path(tmp_path) / f"queue-{1:012d}-{a.pid}.json"
+        path.write_text(json.dumps({"pid": a.pid, "command": ["x"], "arrived": "t"}))
+        ahead, seconds = slot_gate.estimate_wait(str(tmp_path), f"queue-{2:012d}-{os.getpid()}.json")
+        assert ahead == 1 and seconds == slot_gate.default_estimate_seconds(["x"])
+    finally:
+        a.kill()
+        a.wait()

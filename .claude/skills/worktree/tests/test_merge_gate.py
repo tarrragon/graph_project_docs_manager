@@ -5,6 +5,7 @@
 名額序列化用 tmp 目錄內的小型 pytest 實測。
 """
 
+import json
 import subprocess
 import sys
 import threading
@@ -673,6 +674,10 @@ class TestNoSelfDeadlock:
 
 class TestSerializedMerges:
     def test_second_commit_after_first_update_ref(self, repo, monkeypatch):
+        from lib import slot_gate
+        # 同進程兩執行緒共用 os.environ：A 持有期間環境上限被降為子程序用的值，B 會讀到；
+        # 預估耗時因此超過上限而被拒絕。真實情境 B 是另一進程，不受此影響。
+        monkeypatch.setattr(slot_gate, "HELD_CHILD_WAIT_LIMIT_SECONDS", slot_gate.SLOT_WAIT_LIMIT_SECONDS)
         git(repo, "checkout", "-q", "-b", "feat2", "main")
         commit_file(repo, "lib/second.txt", "s\n", "feat2 edit")
         git(repo, "checkout", "-q", "main")
@@ -746,3 +751,50 @@ class TestReleaseOnEveryExit:
         assert not out.ok
         assert slot_free() and snapshots(repo) == []
         assert ev.names() == ["slot_acquired", "slot_released"]
+
+
+class TestSlotEstimate:
+    """合併閘門寫入名額的預估持有秒數：取自 worktree-merge.log 近期綠燈耗時的中位數（0.5.0-W1-303.2）。"""
+
+    @staticmethod
+    def write_log(root, lines):
+        log = Path(root) / mg._LOG_FILE
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    @staticmethod
+    def line(suite, status, seconds):
+        return f"2026-10-15T09:00:00 [合併前測試] 套件 {suite}：{status}｜1 passed｜耗時 {seconds}s"
+
+    def test_median_of_recent_green_runs_per_suite_summed(self, tmp_path):
+        self.write_log(tmp_path, [
+            self.line("hooks", "綠燈", 100.0), self.line("hooks", "綠燈", 300.0), self.line("hooks", "綠燈", 200.0),
+            self.line("hooks", "紅燈", 9999.0),  # 非綠燈不計
+            self.line("scripts", "綠燈", 40.0),
+        ])
+        assert mg.suite_estimate_seconds(["hooks", "scripts"], str(tmp_path)) == 200.0 + 40.0
+
+    def test_only_last_samples_are_used(self, tmp_path):
+        old = [self.line("hooks", "綠燈", 1000.0)] * 10
+        new = [self.line("hooks", "綠燈", 10.0)] * mg.ESTIMATE_SAMPLE_COUNT
+        self.write_log(tmp_path, old + new)
+        assert mg.suite_estimate_seconds(["hooks"], str(tmp_path)) == 10.0
+
+    def test_missing_log_uses_defaults(self, tmp_path):
+        assert mg.suite_estimate_seconds(["hooks", "flutter"], str(tmp_path)) == \
+            mg.default_suite_seconds("hooks") + mg.default_suite_seconds("flutter")
+
+    def test_suite_without_history_uses_its_default_others_use_median(self, tmp_path):
+        self.write_log(tmp_path, [self.line("hooks", "綠燈", 50.0)])
+        assert mg.suite_estimate_seconds(["hooks", "scripts"], str(tmp_path)) == \
+            50.0 + mg.default_suite_seconds("scripts")
+
+    def test_hold_writes_estimate_into_holder_file(self, repo):
+        self.write_log(repo, [self.line("flutter", "綠燈", 100.0), self.line("flutter", "綠燈", 300.0),
+                              self.line("flutter", "綠燈", 200.0)])
+        gate = mg.MergeGate(str(repo), runner=lambda a, c: (0, ""))
+        from lib import slot_gate
+        with gate.hold("feat", "main"):
+            holders = list(Path(slot_gate.slot_dir()).glob("heavy-slot-*.holder.json"))
+            assert len(holders) == 1
+            assert json.loads(holders[0].read_text())["estimate"] == 200.0
