@@ -2411,6 +2411,61 @@ class TestWorktreeCompleteWarning:
         assert context == "", "非 worktree 派發不應觸發 track complete 提示"
 
 
+class TestClosingWarningQuotedOrNegated:
+    """收尾提示：引用或否定的形態不提示（E1），真正要求收尾的仍提示（E2）。"""
+
+    @staticmethod
+    def _dispatch(monkeypatch, capsys, prompt):
+        exit_code = _run_hook(
+            monkeypatch,
+            capsys,
+            tool_input={
+                "subagent_type": "parsley-flutter-developer",
+                "isolation": "worktree",
+                "prompt": prompt,
+            },
+        )
+        assert exit_code == 0
+        return _parse_additional_context(capsys)
+
+    @pytest.mark.parametrize("prompt", [
+        # 否定形態：PM 收尾段
+        "收尾：不要執行 ticket track complete、ticket track finish 或 check-acceptance",
+        "禁止 ticket track complete，回報 PM",
+        "Do not run ticket track complete",
+        # 引用形態：測試用命令字串、指稱 hook 類別
+        "測試以 `ticket track complete X` 作為測試用命令字串驗證解析",
+        "處理偵測 ticket track complete 與 ticket track finish 的 hook 類別",
+    ])
+    def test_quoted_or_negated_no_warning(self, monkeypatch, capsys, prompt):
+        """E1：引用或否定 → 無 additionalContext。"""
+        assert _has_track_complete(prompt) is False
+        context = self._dispatch(monkeypatch, capsys, "Ticket: X\n\n" + prompt)
+        assert context == ""
+
+    @pytest.mark.parametrize("prompt", [
+        "收尾：ticket track complete 0.1.0-W3-147 --as agent",
+        "完成後執行 ticket track finish 0.1.0-W3-147",
+        # 同 prompt 內先否定一句、另一句仍真正要求收尾
+        "不要改其他檔案。最後 ticket track complete 0.1.0-W3-147",
+    ])
+    def test_real_closing_instruction_still_warns(self, monkeypatch, capsys, prompt):
+        """E2：真正要求代理人收尾 → 仍提示，permissionDecision 維持 allow。"""
+        assert _has_track_complete(prompt) is True
+        context = self._dispatch(monkeypatch, capsys, "Ticket: X\n\n" + prompt)
+        assert "track commit" in context
+
+    def test_judgement_exception_fails_open(self, monkeypatch, capsys):
+        """判定拋例外 → 不阻擋、不輸出提示、stderr 有記錄。"""
+        def boom(_prompt):
+            raise RuntimeError("boom")
+        monkeypatch.setattr(_hook, "_has_track_closing", boom)
+        context = self._dispatch(
+            monkeypatch, capsys, "收尾：ticket track complete X"
+        )
+        assert context == ""
+
+
 # ============================================================================
 # 名單外代理人依目標路徑判定 worktree 強制（斷言 exit code / 結構化欄位）
 # ============================================================================
