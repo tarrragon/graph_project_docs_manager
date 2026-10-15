@@ -153,6 +153,73 @@ def test_guard_same_dir_matrix(repos):
     assert _guard_exit(repos, main, wt, wt) == 0
 
 
+def _guard_exit_cmd(repos, entry_loc, cwd, command):
+    """跑 bare-commit-guard：任意命令文字，條目工作位置為 entry_loc。"""
+    import os
+
+    main, wt = repos
+    _write(main, [dict(_entry(entry_loc), files=["other/zzz.txt"])])
+    payload = json.dumps({
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+        "cwd": str(cwd),
+        "session_id": "other",
+    })
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("CLAUDE_PROJECT_DIR", "HOOK_TEST_ISOLATION")}
+    proc = subprocess.run(
+        ["python3", str(HOOK)], input=payload, text=True, cwd=str(cwd),
+        capture_output=True, env=env,
+    )
+    return proc.returncode
+
+
+def _regression_commands(main, wt):
+    m = str(main)
+    return {
+        "multi_commit_second_targets_main":
+            "git commit -m x -- g.txt; git -C %s commit -m x -- f.txt" % m,
+        "and_chain_second_targets_main":
+            "git -C %s commit -m x -- f.txt && git -C %s commit -m x -- f.txt" % (wt, m),
+        "git_dir_env_prefix":
+            "GIT_DIR=%s/.git GIT_WORK_TREE=%s git commit -m x -- f.txt" % (m, m),
+        "env_wrapper_git_dir":
+            "env GIT_DIR=%s/.git git commit -m x -- f.txt" % m,
+        "git_dir_option":
+            "git --git-dir=%s/.git --work-tree=%s commit -m x -- f.txt" % (m, m),
+    }
+
+
+@pytest.mark.parametrize("name", [
+    "multi_commit_second_targets_main",
+    "and_chain_second_targets_main",
+    "git_dir_env_prefix",
+    "env_wrapper_git_dir",
+    "git_dir_option",
+])
+def test_guard_blocks_regression_forms(repos, name):
+    main, wt = repos
+    cmd = _regression_commands(main, wt)[name]
+    # 條目在 main、cwd 在 worktree：實際目標含 main，須擋
+    assert _guard_exit_cmd(repos, main, wt, cmd) == 2
+
+
+def test_guard_keeps_blocking_dash_c_and_cd_main(repos):
+    main, wt = repos
+    assert _guard_exit_cmd(
+        repos, main, wt, "git -C %s commit -m x -- f.txt" % main) == 2
+    assert _guard_exit_cmd(
+        repos, main, wt, "cd %s && git commit -m x -- f.txt" % main) == 2
+
+
+def test_guard_filter_benefit_kept_entry_in_wt_single_main_commit(repos):
+    main, wt = repos
+    # 條目在 worktree、對主 checkout 單一 commit：過濾收益保留，放行
+    cmd = "git -C %s commit -m x -- f.txt" % main
+    assert _guard_exit_cmd(repos, wt, main, cmd) == 0
+    assert _guard_exit_cmd(repos, wt, wt, cmd) == 0
+
+
 def test_identity_reads_all_entries_unfiltered(repos):
     """身分判定走 get_active_dispatches，不受過濾影響。"""
     main, wt = repos
