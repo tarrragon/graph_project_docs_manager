@@ -248,6 +248,29 @@ def read_ticket_where_files(ticket_id: str, project_root: Path,
         return []
 
 
+def read_ticket_type_and_children(ticket_id: str, project_root: Path,
+                                  logger: logging.Logger) -> tuple[Optional[str], bool]:
+    """讀取票的 type 與是否有子票（fail-open：失敗回 (None, False)）
+
+    ANA 的 where.files 是分析範圍而非修改範圍（ticket-body-schema），
+    有子票的父票其修改落在子票提交，兩者都不能以「父票自身 commit」判缺失。
+    """
+    try:
+        ticket_file = find_ticket_file(ticket_id, project_root, logger)
+        if not ticket_file or not ticket_file.exists():
+            return None, False
+        fm = parse_ticket_frontmatter(ticket_file, logger)
+        if not fm:
+            return None, False
+        ticket_type = fm.get("type")
+        children = fm.get("children")
+        return (str(ticket_type).strip().upper() if ticket_type else None,
+                bool(children))
+    except Exception as e:
+        logger.warning(f"讀取票 type/children 失敗（fail-open）: {e}")
+        return None, False
+
+
 def _run_git(project_root: Path, args: list[str]) -> Optional[str]:
     """執行 git 命令，回傳 stdout；非零退出回傳 None（超時等例外由呼叫端處理）。"""
     result = subprocess.run(
@@ -270,7 +293,8 @@ def _split_paths(out: str) -> list[str]:
 
 
 def get_git_changed_files(project_root: Path, logger: logging.Logger,
-                          ticket_id: str) -> list[str]:
+                          ticket_id: str,
+                          include_descendants: bool = False) -> list[str]:
     """取得該票的實際變更檔案：票相關 commit 範圍 + 未提交變更
 
     比對基準：
@@ -300,7 +324,9 @@ def get_git_changed_files(project_root: Path, logger: logging.Logger,
             sys.stderr.write("[Hook Error] git log 命令失敗\n")
         else:
             # 票號後不可再接「.數字」，避免父票吃到子任務票的 commit
-            id_re = re.compile(re.escape(ticket_id) + r"(?!\.?\d)")
+            # include_descendants（有子票的父票）：後綴 .N 的子孫票提交併入
+            suffix = r"(?:\.\d+)*(?!\d)" if include_descendants else r"(?!\.?\d)"
+            id_re = re.compile(re.escape(ticket_id) + suffix)
             for line in log_out.splitlines():
                 sha, _, subject = line.partition("\0")
                 if not sha or not id_re.search(subject):
@@ -488,8 +514,17 @@ def main() -> int:
             print(json.dumps(DEFAULT_OUTPUT))
             return 0
 
-        # 執行 git diff
-        git_changed = get_git_changed_files(project_root, logger, ticket_id)
+        # ANA 的 where.files 為分析範圍：略過驗證
+        ticket_type, has_children = read_ticket_type_and_children(
+            ticket_id, project_root, logger)
+        if ticket_type == "ANA":
+            logger.info(f"Verification result: SKIP（ANA 票 where.files 為分析範圍）: {ticket_id}")
+            print(json.dumps(DEFAULT_OUTPUT))
+            return 0
+
+        # 執行 git diff（有子票的父票併入子孫票提交）
+        git_changed = get_git_changed_files(
+            project_root, logger, ticket_id, include_descendants=has_children)
 
         # 比對
         missing_files = find_missing_files(where_files, git_changed)
