@@ -25,7 +25,9 @@
 """
 
 import re
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Callable, Iterable, Optional, Tuple
+
+from .ticket_command_parse import is_invocation_masked
 
 FAILURE_EVENT_NAME = "PostToolUseFailure"
 _EXIT_CODE_LINE = re.compile(r"^Exit code (\d+)[ \t]*$")
@@ -72,10 +74,29 @@ def auto_commit_failure_as_success(input_data: Any) -> Optional[dict]:
     return normalized
 
 
+def _layered_verdict(
+    command: str, state_verifier: Optional[Callable[[], bool]]
+) -> Optional[bool]:
+    """分層判定的前兩層；回傳 None 表示須退回標記判定。"""
+    masked = is_invocation_masked(command)
+    if masked is None:
+        return None
+    if not masked:
+        return True  # 未遮蔽：收到 PostToolUse 即蘊含成功
+    if state_verifier is None:
+        return None
+    try:
+        return bool(state_verifier())
+    except Exception:  # 驗證器自身失敗不等於命令失敗：退回標記判定，不吞掉判定能力
+        return None
+
+
 def is_bash_success(
     tool_response: Any,
     success_markers: Iterable[str],
     ignore_case: bool = False,
+    command: Optional[str] = None,
+    state_verifier: Optional[Callable[[], bool]] = None,
 ) -> bool:
     """判定 Bash 命令是否成功。
 
@@ -83,6 +104,11 @@ def is_bash_success(
         tool_response: PostToolUse 的 tool_response；非 dict 一律視為未成功
         success_markers: 呼叫端命令自身的成功回音；stdout 含任一即符合
         ignore_case: 標記比對是否忽略大小寫
+        command: 原始命令字串；提供時啟用分層判定（未提供則行為與舊版完全相同）。
+            層次：(1) 未遮蔽（見 is_invocation_masked）即成功，不看 stdout；
+            (2) 遮蔽且有 state_verifier，以其回傳值為準；(3) 其餘（無法解析、
+            無驗證器、驗證器拋例外）退回標記判定。
+        state_verifier: 無參數 callable，回傳票面狀態是否符合預期（呼叫端負責時間窗）
     """
     if not isinstance(tool_response, dict):
         return False
@@ -91,6 +117,10 @@ def is_bash_success(
             return False
     elif tool_response.get("interrupted") is True:
         return False
+    if command is not None:
+        verdict = _layered_verdict(command, state_verifier)
+        if verdict is not None:
+            return verdict
     stdout = tool_response.get("stdout", "")
     if not isinstance(stdout, str):
         return False
