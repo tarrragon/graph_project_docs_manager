@@ -21,9 +21,14 @@ Criteria for suggesting compact:
 - Plan has been finalized
 """
 
+import json
 import os
 import sys
 from pathlib import Path
+
+# .claude/skills/strategic-compact/ -> .claude/（lib package 所在）
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from lib import emit_model_reminder  # noqa: E402
 
 
 def main():
@@ -44,13 +49,30 @@ def main():
 
     counter_file.write_text(str(count))
 
+    message = None
     # Suggest compact after threshold tool calls
     if count == threshold:
-        print(f"[StrategicCompact] {threshold} tool calls reached - consider /compact if transitioning phases", file=sys.stderr)
-
+        message = f"[StrategicCompact] {threshold} tool calls reached - consider /compact if transitioning phases"
     # Suggest at regular intervals after threshold
-    if count > threshold and count % 25 == 0:
-        print(f"[StrategicCompact] {count} tool calls - good checkpoint for /compact if context is stale", file=sys.stderr)
+    elif count > threshold and count % 25 == 0:
+        message = f"[StrategicCompact] {count} tool calls - good checkpoint for /compact if context is stale"
+
+    if message is None:
+        return
+
+    # additionalContext 讓模型讀到（stderr + exit 0 模型不可見）。
+    # /compact 僅主線程可執行，subagent 不需看到（pm_only）。
+    input_data = _read_stdin_json()
+    emit_model_reminder("PreToolUse", message, audience="pm_only", input_data=input_data)
+
+
+def _read_stdin_json():
+    """讀取 stdin JSON；空輸入或解析失敗回傳 None（僅影響受眾判斷，不影響提醒輸出）。"""
+    try:
+        raw = sys.stdin.read().strip()
+        return json.loads(raw) if raw else None
+    except (ValueError, OSError):
+        return None
 
 
 if __name__ == "__main__":

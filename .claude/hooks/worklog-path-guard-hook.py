@@ -34,7 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin
+from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, emit_model_reminder
 
 
 def is_worklog_root_markdown(file_path: str) -> bool:
@@ -155,9 +155,9 @@ def main() -> int:
         logger.warning("路徑警告: Worklog 檔案在根目錄 - %s", file_path)
         warning_message = format_warning_message(file_path)
 
-        # 同時輸出到 stderr（雙通道）和日誌
-        print(warning_message, file=sys.stderr)
+        # additionalContext 讓模型讀到（stderr + exit 0 模型不可見）；同時寫日誌
         logger.warning(warning_message)
+        emit_model_reminder("PostToolUse", warning_message, input_data=input_data)
 
         # 不阻止操作（非阻塞 Hook），允許執行
         return 0
