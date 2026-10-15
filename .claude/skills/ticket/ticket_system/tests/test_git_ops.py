@@ -163,6 +163,44 @@ class TestCommitFilesIsolated:
         assert "提交範圍自我驗證失敗" in result["error"]
         assert all(c[:2] != ["git", "update-ref"] for c in calls)
 
+    def test_scope_failure_carries_structured_kind(self):
+        """範圍自我驗證失敗帶 failure_kind=self_verification。"""
+        with patch.object(
+            git_ops,
+            "_run_with_graceful_timeout",
+            side_effect=_fake_run_factory([], extra_changed=["lib/main.dart"]),
+        ):
+            result = git_ops.commit_files_isolated([_TARGET], "msg")
+        assert result["failure_kind"] == git_ops.FAILURE_SELF_VERIFICATION
+
+    def test_classification_independent_of_error_wording(self):
+        """E2：錯誤訊息字面被改掉後，分類仍讀結構化欄位而判為判準性。"""
+        from ticket_system.commands import track_commit as tc
+
+        with patch.object(
+            git_ops,
+            "_run_with_graceful_timeout",
+            side_effect=_fake_run_factory([], extra_changed=["lib/main.dart"]),
+        ):
+            result = git_ops.commit_files_isolated([_TARGET], "msg")
+        result["error"] = "wording changed entirely"
+        assert (
+            tc.classify_failure(result["error"], result.get("failure_kind"))
+            == tc.FAILURE_CRITERIA
+        )
+
+    def test_non_scope_failure_kind_is_git_step(self):
+        """非範圍、非 CAS 的失敗（如目錄路徑）歸 git_step，分類為環境性。"""
+        from ticket_system.commands import track_commit as tc
+
+        result = git_ops.commit_files_isolated([str(Path(__file__).parent)], "msg")
+        assert result["status"] == "failed"
+        assert result["failure_kind"] == git_ops.FAILURE_GIT_STEP
+        assert (
+            tc.classify_failure(result["error"], result["failure_kind"])
+            == tc.FAILURE_ENVIRONMENT
+        )
+
     def test_update_ref_cas_failure_returns_failed(self):
         """update-ref 帶舊值失敗（HEAD 於期間被並行移動）時回傳 failed，不覆蓋。"""
         calls = []
