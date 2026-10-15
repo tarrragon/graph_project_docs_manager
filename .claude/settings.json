@@ -524,6 +524,16 @@
             "timeout": 140
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/wrap-decision/hooks/wrap-decision-tripwire-hook.py",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "PostToolUse": [

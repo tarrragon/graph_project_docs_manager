@@ -464,12 +464,13 @@ class ConsecutiveFailuresStrategy:
     # B-1 + C3-1: 失敗判定條件改讀 YAML signals[S1].failure_detection（
     # source-of-truth 原則）。當 YAML 未提供 failure_detection 時，使用以下 backward-compatible
     # 預設值（避開破壞既有測試 fixture）。生產 YAML 已明確列出，故實際 source-of-truth 由 YAML 決定。
-    _DEFAULT_FAILURE_KEYWORDS = ("error", "exception", "failed", "timeout")
     _DEFAULT_FAILURE_STATUSES = ("failed", "error")
 
     def detect(self, event: Dict[str, Any], state: Dict[str, Any],
                sd: SignalDef, current_ticket: Optional[str], logger) -> DetectResult:
-        if event.get("tool_name") != (sd.tool_matcher or "Task"):
+        # 平台代理人派發工具名為 Agent（舊名 Task），兩者皆認
+        accepted = {sd.tool_matcher or "Agent", "Agent", "Task"}
+        if event.get("tool_name") not in accepted:
             return DetectResult(hit=False, signal_id=sd.id)
         is_failure = self._is_failure(event, sd)
         sig_state = state.setdefault("signals", {}).setdefault(sd.id, {})
@@ -486,22 +487,17 @@ class ConsecutiveFailuresStrategy:
             return DetectResult(hit=False, reset=True, signal_id=sd.id)
 
     def _is_failure(self, event: Dict[str, Any], sd: SignalDef) -> bool:
-        # 從 YAML 讀取失敗判定條件（source-of-truth）
+        # 失敗來源一：PostToolUseFailure 事件即工具層失敗（派發本身失敗）
+        if event.get("hook_event_name") == "PostToolUseFailure":
+            return True
+        # 失敗來源二：PostToolUse 的結構化 status 欄位（YAML 為 source-of-truth）。
+        # 不比對 tool_response 全文關鍵字：前景代理人報告常含 error、failed 字樣。
         failure_cfg = sd.raw.get("failure_detection") or {}
         statuses = failure_cfg.get("structured_statuses") or list(self._DEFAULT_FAILURE_STATUSES)
-        keywords = failure_cfg.get("keywords") or list(self._DEFAULT_FAILURE_KEYWORDS)
-
         tr = event.get("tool_response")
-        # 結構化失敗標記
         if isinstance(tr, dict):
             status = str(tr.get("status", "")).lower()
             if status in {str(s).lower() for s in statuses}:
-                return True
-        # 字串關鍵字（fallback）
-        text = json.dumps(tr, ensure_ascii=False) if tr is not None else ""
-        low = text.lower()
-        for kw in keywords:
-            if str(kw).lower() in low:
                 return True
         return False
 
