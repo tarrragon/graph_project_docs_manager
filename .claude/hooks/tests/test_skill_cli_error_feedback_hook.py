@@ -340,9 +340,34 @@ def test_masked_stdout_error_prefix_is_failure():
     assert out == hook.WorkflowMessages.CLI_FAILURE_HELP_REMINDER
 
 
-def test_masked_stderr_failure_still_detected():
-    out = _general("somecli run; echo done", "done\n", stderr="boom")
+def test_posttooluse_stderr_is_not_a_failure_signal():
+    """stderr 在 PostToolUse 恆空，分支不再依賴它；即使塞值也不觸發（E1 對照）。"""
+    assert _general("somecli run; echo done", "done\n", stderr="boom") is None
+
+
+def test_success_stdout_with_error_words_gives_no_feedback():
+    """成功命令 stdout 含錯誤字樣（非行首 [Error]）不回饋。"""
+    assert _general("somecli run", "Traceback: error: failed to open\n") is None
+
+
+def _general_failure(command: str, error: str):
+    payload = {
+        "hook_event_name": "PostToolUseFailure",
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+        "error": error,
+    }
+    return hook.check_general_cli_failure(payload, logging.getLogger("t306"))
+
+
+def test_failure_event_nonzero_exit_gives_feedback():
+    """E2 正向對照：PostToolUseFailure 結束碼非 0 且有輸出 → 回饋。"""
+    out = _general_failure("somecli run", "Exit code 1\nboom: cannot open\n")
     assert out == hook.WorkflowMessages.CLI_FAILURE_HELP_REMINDER
+
+
+def test_failure_event_unparseable_error_fails_open():
+    assert _general_failure("somecli run", "garbage") is None
 
 
 def test_masked_stdout_error_not_at_line_start_is_not_failure():

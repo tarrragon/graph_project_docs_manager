@@ -472,14 +472,14 @@ def check_general_cli_failure(input_data: Dict[str, Any], logger) -> Optional[st
             return None
         stderr = failure_output
     else:
+        # PostToolUse 的 tool_response.stderr 實測恆為空（stderr 併入 stdout），
+        # 不以其判斷；此事件僅剩遮蔽路徑的 stdout 行首 [Error] 一條偵測。
         tool_response = input_data.get("tool_response") or {}
-        if isinstance(tool_response, str):
-            stderr = ""
-        else:
-            stderr = tool_response.get("stderr", "")
         stdout_error = _masked_stdout_error(command, tool_response, logger)
-        if stdout_error and not (stderr and stderr.strip()):
+        if stdout_error:
             return _stdout_error_reminder(command, stdout_error, logger)
+        logger.debug("general-cli: PostToolUse 無遮蔽失敗訊號，命令成功，跳過")
+        return None
 
     if not stderr or not stderr.strip():
         logger.debug("general-cli: 無 stderr，命令成功，跳過")
