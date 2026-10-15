@@ -1754,6 +1754,44 @@ class TestSessionScopedState:
         assert "consecutive_failures" not in sa["signals"]
         assert sb["signals"]["consecutive_failures"]["count"] == 1
 
+    def _seed(self, tmp_path, name, age_days):
+        d = tmp_path / ".claude" / "hook-state"
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / name
+        p.write_text("{}", encoding="utf-8")
+        t = datetime.now().timestamp() - age_days * 86400
+        os.utime(p, (t, t))
+        return p
+
+    def test_prune_removes_stale_other_session_keeps_rest(self, hook_mod, monkeypatch, tmp_path):
+        stale = self._seed(tmp_path, "wrap-tripwire-state-old.json", 30)
+        fresh = self._seed(tmp_path, "wrap-tripwire-state-new.json", 1)
+        shared = self._seed(tmp_path, "wrap-tripwire-state.json", 30)
+        cur = self._seed(tmp_path, "wrap-tripwire-state-sessA.json", 30)
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", "sessA"))
+        assert not stale.exists()
+        assert fresh.exists()
+        assert shared.exists()
+        assert cur.exists()
+
+    def test_prune_without_session_id_keeps_shared_file(self, hook_mod, monkeypatch, tmp_path):
+        stale = self._seed(tmp_path, "wrap-tripwire-state-old.json", 30)
+        shared = self._seed(tmp_path, "wrap-tripwire-state.json", 30)
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901"))
+        assert not stale.exists()
+        assert shared.exists()
+
+    def test_prune_failure_does_not_break_main(self, hook_mod, monkeypatch, tmp_path):
+        stale = self._seed(tmp_path, "wrap-tripwire-state-old.json", 30)
+
+        def boom(self_path, *a, **k):
+            raise PermissionError("denied")
+        monkeypatch.setattr(Path, "unlink", boom)
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", "sessA"))
+        assert stale.exists()
+        state = self._state(tmp_path, self.STATE_A)
+        assert state["signals"]["consecutive_failures"]["count"] == 1
+
     def test_session_id_sanitized_for_filename(self, hook_mod, tmp_path):
         import logging
         base = tmp_path / "s.json"
