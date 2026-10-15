@@ -567,3 +567,68 @@ def test_notice_without_ahead_says_no_queue(monkeypatch, tmp_path, capsys):
         assert "前方無排隊者" in err and "前方第一筆" not in err and "持有者之後第 1 位" in err
     finally:
         holder.release()
+
+
+# --- 排頭排隊者停住（SIGSTOP）偵測 ---
+
+STALL_SECONDS = "1"
+
+
+def _spawn_real_head(tmp_path):
+    """真實排頭：subprocess 內呼叫 acquire_slot，名額被占時持續輪詢並更新心跳。"""
+    code = (
+        "import sys; sys.path.insert(0, %r)\n"
+        "from lib import slot_gate\n"
+        "slot_gate.acquire_slot(['head'], lambda: None)\n"
+    ) % str(Path(__file__).parent.parent.parent)
+    env = dict(os.environ, CLAUDE_SLOT_LOCK_DIR=str(tmp_path), CLAUDE_SLOT_STALL_SECONDS=STALL_SECONDS)
+    proc = subprocess.Popen([sys.executable, "-c", code], env=env, stderr=subprocess.DEVNULL)
+    deadline = time.monotonic() + STEP_TIMEOUT
+    while not _queue_files(tmp_path) and time.monotonic() < deadline:
+        time.sleep(ENTER_POLL)
+    assert _queue_files(tmp_path), "排頭未進隊"
+    return proc
+
+
+def _stop_proc(proc):
+    try:
+        proc.send_signal(signal.SIGCONT)
+    except OSError:
+        pass  # 已結束
+    proc.kill()
+    proc.wait()
+
+
+def test_stalled_head_is_skipped_and_follower_acquires(monkeypatch, tmp_path, capsys):
+    """排頭收到 SIGSTOP、名額空閒：後方在有限時間內取得，並輸出一行可見訊號。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_STALL_SECONDS", STALL_SECONDS)
+    blocker, _ = slot_gate.acquire_slot(["blocker"], lambda: None)
+    head = _spawn_real_head(tmp_path)
+    try:
+        time.sleep(0.5)  # 讓排頭至少跳過一次心跳
+        head.send_signal(signal.SIGSTOP)
+        blocker.release()
+        t0 = time.monotonic()
+        hold, early = slot_gate.acquire_slot(["follower"], _interrupt_after(10))
+        assert hold is not None and early is None, "排頭停住時後方未在有限時間內取得"
+        assert time.monotonic() - t0 < 8
+        assert "停住" in capsys.readouterr().err
+        hold.release()
+    finally:
+        _stop_proc(head)
+
+
+def test_polling_head_is_not_skipped(monkeypatch, tmp_path):
+    """E1 對照：排頭正常輪詢（心跳持續更新）時，超過停住門檻後仍不被略過。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_STALL_SECONDS", STALL_SECONDS)
+    blocker, _ = slot_gate.acquire_slot(["blocker"], lambda: None)
+    head = _spawn_real_head(tmp_path)
+    try:
+        hold, early = slot_gate.acquire_slot(["follower"], _interrupt_after(3))  # 3 秒 > 2 倍門檻
+        assert hold is None and early == 128 + signal.SIGTERM
+        assert head.poll() is None and _queue_files(tmp_path), "排頭的排隊檔不得被清除"
+    finally:
+        _stop_proc(head)
+        blocker.release()

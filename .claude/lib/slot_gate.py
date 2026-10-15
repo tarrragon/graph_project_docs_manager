@@ -32,7 +32,10 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
   後方遞補一位，不是插隊。等待上限 CLAUDE_SLOT_WAIT_LIMIT 只用來偵測持有者卡住：持有者已持有秒數超出自身
   estimate 超過上限即以 SLOT_WAIT_EXIT_CODE 結束。例外：環境帶持有標記（HELD_ENV，持有者的子程序）時
   上限仍是總等待上限，兩邊版本不一致時快速失敗。
-- CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
+- 排頭停住偵測：排隊者每輪輪詢更新自己排隊檔的 mtime 作為心跳；前方存活排隊者的心跳超過
+  SLOT_STALL_SECONDS 即視同離場（順位不計、不刪其排隊檔，並寫一行 stderr）。恢復後第一輪更新心跳即重新計入，
+  與新排頭同時 flock 由核心互斥。
+- CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL、CLAUDE_SLOT_STALL_SECONDS（秒）可覆寫等待上限、提示間隔與停住門檻（測試用）。
 """
 import fcntl
 import contextlib
@@ -52,6 +55,10 @@ SLOT_COUNT = 1
 SLOT_WAIT_LIMIT_SECONDS = 3600.0
 SLOT_NOTICE_INTERVAL_SECONDS = 30.0
 SLOT_POLL_INTERVAL = 0.1
+# 排頭心跳過期秒數：排隊者每輪輪詢（約 SLOT_POLL_INTERVAL）更新自己排隊檔的 mtime；
+# 存活但超過此秒數未更新（SIGSTOP、整個 session 暫停）即判定停住，後方略過。
+# 取 30 秒：約為輪詢間隔的 300 倍，高負載下的排程延遲不會誤判；停住時後方最多多等這麼久。
+SLOT_STALL_SECONDS = 30.0
 # 孤兒查詢的逾時：查詢只是提示，慢於此值寧可放棄也不拖慢 heavy 命令啟動
 ORPHAN_QUERY_TIMEOUT_SECONDS = 5.0
 ORPHAN_CLEANUP_COMMAND = "python3 .claude/scripts/orphan-test-procs.py --kill"
@@ -325,11 +332,40 @@ def _dequeue(directory: str, name: str) -> None:
         pass  # 已被他方清除
 
 
-def _queue_position(directory: str, name: str) -> int:
-    """自己的順位（1 起算）；排隊檔已不在（被他人清除）時回 0。"""
-    for index, (_seq, entry) in enumerate(_live_queue(directory), start=1):
+def _heartbeat(directory: str, name: str) -> None:
+    """更新自己排隊檔的 mtime 作為心跳；檔案已被清除時不處理（由順位判定重新排隊）。"""
+    try:
+        os.utime(os.path.join(directory, name))
+    except OSError:
+        pass  # 排隊檔已不在，_queue_position 回 0 後會重新排隊
+
+
+def _is_stalled(directory: str, entry: str, stall_seconds: float) -> bool:
+    try:
+        return time.time() - os.stat(os.path.join(directory, entry)).st_mtime > stall_seconds
+    except OSError:
+        return False  # 檔案剛被清除：交由 _live_queue 的後續輪詢處理
+
+
+def _queue_position(directory: str, name: str, stall_seconds: Optional[float] = None,
+                    reported: Optional[set] = None, label: str = "run-with-timeout") -> int:
+    """自己的順位（1 起算）；排隊檔已不在（被他人清除）時回 0。
+
+    stall_seconds 不為 None 時，前方心跳過期的存活排隊者視同離場不計入順位（不刪除其排隊檔：
+    它恢復後第一輪更新心跳即重新計入，與新排頭同時嘗試 flock 由核心互斥，輸者繼續等待）。
+    略過時對 stderr 寫一行，同一筆只寫一次（以 reported 去重）。
+    """
+    position = 0
+    for _seq, entry in _live_queue(directory):
         if entry == name:
-            return index
+            return position + 1
+        if stall_seconds is not None and _is_stalled(directory, entry, stall_seconds):
+            if reported is not None and entry not in reported:
+                reported.add(entry)
+                _warn(f"排頭排隊者 {entry} 存活但超過 {stall_seconds:g} 秒未更新心跳，判定停住，略過"
+                      f"（恢復後自動重新計入）", label)
+            continue
+        position += 1
     return 0
 
 
@@ -460,13 +496,16 @@ def acquire_slot(command: List[str],
             _warn(f"進場排隊：{_queue_text(directory, queue_name, ahead_count + 1)}；預估等待 {expected:.0f} 秒"
                   f"（不設總等待上限，可自行中止）；{describe_holder(directory)}", label)
         capped = bool(os.environ.get(HELD_ENV))  # 持有者的子程序：上限仍是總等待上限
+        stall = _env_seconds("CLAUDE_SLOT_STALL_SECONDS", SLOT_STALL_SECONDS)
+        stalled_reported = set()  # type: set
         while True:
             try:
                 _prepare_dir(directory)
-                position = _queue_position(directory, queue_name)
+                _heartbeat(directory, queue_name)
+                position = _queue_position(directory, queue_name, stall, stalled_reported, label)
                 if position == 0:  # 排隊檔被他人清除：重新排到隊尾
                     queue_name = _enqueue(directory, command, estimate)
-                    position = _queue_position(directory, queue_name)
+                    position = _queue_position(directory, queue_name, stall, stalled_reported, label)
                 got = _try_acquire(directory) if position == 1 else None
             except OSError as exc:
                 _warn(f"名額閘門無法使用，略過排隊（不影響命令）：{exc}", label)
