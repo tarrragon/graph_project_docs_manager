@@ -166,8 +166,10 @@ def main_logic() -> int:
     # 成功判定改接共用 helper（interrupted 檢查加成功回音）。PostToolUse 只在 shell 層
     # 結束碼為 0 時觸發，結束碼 75 屬非零、不會在此出現，原 75 分支已移除。
     # stdout 欄位缺席（測試樁或部分 Bash 回應）時不因此判定失敗，交由上方 success 欄位把關
+    # 分層判定只接第 1 層：append-log 每次呼叫都實際追加，沒有「重複呼叫但無轉換」的情形，
+    # 在乎的是命令成功，不需票面驗證器；被遮蔽時退回成功回音標記。
     if "stdout" in tool_response and not is_bash_success(
-        tool_response, (_LOG_APPENDED_SUCCESS_MARKER,)
+        tool_response, (_LOG_APPENDED_SUCCESS_MARKER,), command=command
     ):
         return EXIT_SUCCESS
 

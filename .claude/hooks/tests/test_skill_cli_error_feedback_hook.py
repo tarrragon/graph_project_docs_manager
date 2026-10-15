@@ -244,3 +244,75 @@ def test_main_end_to_end_compound_command_suggests_actual_cli_help_not_shell_bui
     additional = payload["hookSpecificOutput"].get("additionalContext", "")
     assert "ticket --help" in additional
     assert "cd --help" not in additional
+
+
+# ----------------------------------------------------------------------------
+# 286.3：分層成功判定（反向）與多陳述命令的失敗歸因
+# ----------------------------------------------------------------------------
+
+_MULTI = (
+    "ticket track set-who 0.5.0-W1-286.3 basil > /dev/null 2>&1; "
+    "ticket track check-acceptance 0.5.0-W1-286.3 2 3"
+)
+_MULTI_ERR = "usage: ticket track check-acceptance [-h]\nerror: unrecognized arguments: 3"
+
+
+def test_unmasked_success_with_swallowed_output_gives_no_feedback(capsys):
+    """成功但輸出被吸走（stdout 空、無 [OK]）的未遮蔽命令不給錯誤回饋。"""
+    stdin = _make_input(
+        "ticket track set-who 0.5.0-W1-286.3 basil > /dev/null 2>&1", exit_code=0
+    )
+    rc, out = _run_main(stdin, capsys)
+    assert rc == 0
+    assert "additionalContext" not in json.loads(out)["hookSpecificOutput"]
+
+
+def test_unmasked_success_quoting_error_text_gives_no_feedback(capsys):
+    """E1 對照之一：未遮蔽成功命令的 stdout 引述 usage 錯誤字樣，不誤報。"""
+    stdin = _make_input(
+        "ticket track full 0.5.0-W1-286.3", stdout="error: unrecognized arguments: 3",
+        exit_code=0,
+    )
+    rc, out = _run_main(stdin, capsys)
+    assert "additionalContext" not in json.loads(out)["hookSpecificOutput"]
+
+
+def test_masked_command_with_error_output_still_gives_feedback(capsys):
+    """E1 對照之二：被遮蔽（管線）且輸出含錯誤時仍給回饋。"""
+    stdin = _make_input(
+        "ticket track check-acceptance 0.5.0-W1-286.3 2 3 2>&1 | tail -5",
+        stdout=_MULTI_ERR, exit_code=0,
+    )
+    rc, out = _run_main(stdin, capsys)
+    assert "[CLI 錯誤偵測]" in json.loads(out)["hookSpecificOutput"]["additionalContext"]
+
+
+def test_failure_event_attributes_to_failing_statement(capsys):
+    """多陳述命令：失敗歸因指向 check-acceptance，不是開頭的 set-who。"""
+    stdin = json.dumps({
+        "hook_event_name": "PostToolUseFailure",
+        "tool_name": "Bash",
+        "tool_input": {"command": _MULTI},
+        "error": "Exit code 2\n" + _MULTI_ERR,
+    })
+    rc, out = _run_main(stdin, capsys)
+    additional = json.loads(out)["hookSpecificOutput"]["additionalContext"]
+    assert "失敗命令：ticket track check-acceptance" in additional
+    assert "set-who" not in additional
+
+
+def test_ambiguous_multi_statement_does_not_name_a_statement():
+    """輸出同時帶出兩個陳述的動詞：無法歸因，不指名任何陳述。"""
+    summary, base = hook.extract_command_summary(
+        _MULTI, "usage: set-who and check-acceptance error"
+    )
+    assert summary == hook.AMBIGUOUS_STATEMENT_SUMMARY
+    assert base == "ticket"
+
+
+def test_single_cli_statement_among_other_commands_keeps_whole_summary():
+    summary, _ = hook.extract_command_summary(
+        "cd /x 2>/dev/null; ticket track set-where 0.19.0-W3-071 --layer Domain",
+        "unrecognized arguments",
+    )
+    assert summary.startswith("cd /x")

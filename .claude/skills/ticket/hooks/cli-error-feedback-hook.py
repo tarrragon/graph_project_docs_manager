@@ -224,7 +224,51 @@ def detect_skill_error_type(stderr: str, stdout: str) -> Optional[str]:
     return None
 
 
-def extract_command_summary(command: str) -> Tuple[str, str]:
+AMBIGUOUS_STATEMENT_SUMMARY = "（多陳述命令，無法判定出錯的陳述）"
+
+
+def _skill_cli_segments(command: str) -> list:
+    """複合命令中屬 ticket/skill CLI 的片段（已去 `(` 前綴與空白）。"""
+    found = []
+    for segment in re.split(r'[|&;]+', command):
+        segment = segment.strip().lstrip('(').strip()
+        tokens = segment.split()
+        if not tokens:
+            continue
+        first = tokens[0][1:] if tokens[0].startswith("/") else tokens[0]
+        if first in SKILL_CLI_COMMANDS:
+            found.append(segment)
+    return found
+
+
+def _segment_verb(segment: str) -> Optional[str]:
+    """片段的子命令動詞（`ticket track <verb>` 取 verb，否則取第二個 token）。"""
+    tokens = segment.split()
+    if len(tokens) >= 3 and tokens[1] == "track":
+        return tokens[2]
+    return tokens[1] if len(tokens) >= 2 else None
+
+
+def locate_failing_statement(command: str, output: str) -> Optional[str]:
+    """多陳述命令中，從錯誤輸出歸因實際出錯的 ticket/skill CLI 陳述。
+
+    原缺陷：摘要一律取命令開頭，`ticket track set-who ... > /dev/null 2>&1;
+    ticket track check-acceptance <id> 2 3` 出錯的是第二個陳述，卻標成 set-who。
+    argparse 錯誤輸出帶出錯陳述的子命令名稱（usage / error 行），故以輸出中是否
+    出現該動詞（完整字詞）歸因；恰好一個陳述命中才指名，其餘回傳 None（不指名）。
+    """
+    segments = _skill_cli_segments(command)
+    if len(segments) == 1:
+        return segments[0]
+    hits = []
+    for segment in segments:
+        verb = _segment_verb(segment)
+        if verb and re.search(r'(?<![\w-])' + re.escape(verb) + r'(?![\w-])', output):
+            hits.append(segment)
+    return hits[0] if len(hits) == 1 else None
+
+
+def extract_command_summary(command: str, output: str = "") -> Tuple[str, str]:
     """提取命令摘要和基本命令
 
     `command_base` 優先取複合命令（含 `&&` / `;` / `|` 等鏈式運算子）中實際
@@ -235,8 +279,19 @@ def extract_command_summary(command: str) -> Tuple[str, str]:
     2>/dev/null; ticket track set-where ...` 這類複合命令會誤取 `cd`，使
     後續 `{command_base} --help` 建議變成無意義的 `cd --help`（`cd` 是
     shell builtin，無 `--help`）。
+
+    多個 ticket/skill CLI 陳述時（286.3）：摘要與 command_base 指向 output 歸因
+    出的出錯陳述；無法歸因時摘要標示無法判定，不指名任何陳述。
     """
     command_summary = command[:80] if len(command) > 80 else command
+
+    if len(_skill_cli_segments(command)) > 1:
+        failing = locate_failing_statement(command, output)
+        if failing is None:
+            command_summary = AMBIGUOUS_STATEMENT_SUMMARY
+        else:
+            command_summary = failing[:80]
+            command = failing
 
     command_base = _find_skill_cli_token(command)
     if command_base is None:
@@ -294,7 +349,12 @@ def check_skill_cli_error(input_data: Dict[str, Any], logger) -> Optional[str]:
     # 結束碼為 0 時觸發（失敗走 PostToolUseFailure，本專案未註冊）。結束碼 75 屬非零，
     # 在 PostToolUse 上不會出現，原 75 分支已移除。命令成功回音存在即跳過，避免成功命令
     # 的 stdout 引述錯誤字樣（如讀取內含 usage 錯誤文字的 ticket）被誤報。
-    if not failure_event and is_bash_success(tool_response, _CLI_SUCCESS_MARKERS):
+    # 分層判定（286.3）：本 hook 是反向判定（非成功才給回饋），只接第 1 層——未遮蔽的命令
+    # 收到 PostToolUse 即蘊含成功（argparse 錯誤結束碼非 0，走 PostToolUseFailure），
+    # 不論 stdout 是否有 [OK]；被遮蔽時退回成功回音標記，維持原行為。
+    if not failure_event and is_bash_success(
+        tool_response, _CLI_SUCCESS_MARKERS, command=command
+    ):
         logger.debug("skill-cli: 命令成功（含成功回音），跳過")
         return None
 
@@ -319,7 +379,7 @@ def check_skill_cli_error(input_data: Dict[str, Any], logger) -> Optional[str]:
     logger.info("skill-cli: 偵測到 SKILL 引導缺陷錯誤: %s", error_type)
     logger.info("skill-cli: 失敗命令: %s", command[:120])
 
-    command_summary, command_base = extract_command_summary(command)
+    command_summary, command_base = extract_command_summary(command, stderr + "\n" + stdout)
     return SKILL_CLI_ERROR_FEEDBACK_TEMPLATE.format(
         error_type=error_type,
         command_summary=command_summary,

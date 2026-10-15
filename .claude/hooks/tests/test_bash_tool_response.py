@@ -132,9 +132,9 @@ def test_no_new_args_behaviour_unchanged_for_masked_shapes():
 _CEF = _load(_CLAUDE / "skills" / "ticket" / "hooks" / "cli-error-feedback-hook.py", "cef279")
 
 
-def _cef_input(stdout, stderr):
+def _cef_input(stdout, stderr, command="ticket track append-log 0.1.0-W1-001 --section S x"):
     return {
-        "tool_input": {"command": "ticket track append-log 0.1.0-W1-001 --section S x"},
+        "tool_input": {"command": command},
         "tool_response": _real(stdout, stderr),
     }
 
@@ -146,11 +146,20 @@ def test_cef_success_quoting_error_text_is_not_reported():
 
 def test_cef_masked_failure_is_reported():
     """`cmd | tail` 遮蔽結束碼：stderr 有錯誤、stdout 無成功回音，仍須回饋。"""
+    masked = "ticket track append-log 0.1.0-W1-001 --section S x 2>&1 | tail -5"
     result = _CEF.check_skill_cli_error(
-        _cef_input("", "error: unrecognized arguments: --x"), _LOGGER
+        _cef_input("", "error: unrecognized arguments: --x", masked), _LOGGER
     )
     assert result is not None
     assert "參數不存在" in result
+
+
+def test_cef_unmasked_with_error_text_is_not_reported():
+    """286.3 第 1 層：未遮蔽收到 PostToolUse 即成功，stdout 引述錯誤字樣不誤報。"""
+    result = _CEF.check_skill_cli_error(
+        _cef_input("", "error: unrecognized arguments: --x"), _LOGGER
+    )
+    assert result is None
 
 
 # ---------------------------------------------------------------------------

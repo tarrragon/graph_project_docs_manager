@@ -35,7 +35,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from typing import Optional
 from lib.bash_tool_response import is_bash_success
+from lib.ticket_claim_verifier import make_claim_verifier
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -73,9 +75,30 @@ CLAIM_SUCCESS_MARKERS = ("[OK] 已接手",)
 AUTO_COMMIT_WARNING_MARK = "已寫入 working tree 但 auto-commit 失敗"
 
 
-def is_claim_successful(tool_result) -> bool:
+def _claim_transition_verdict(tool_result, command: str, logger) -> Optional[bool]:
+    """以票面確認「這次發生了認領轉換」，不論命令是否被遮蔽。
+
+    未遮蔽且收到 PostToolUse 只代表命令成功：對已認領的票再次 claim，CLI 仍輸出
+    「已被接手」警告且結束碼為 0，started_at 保持舊值（落在時間窗外）。
+    回傳 True／False 為驗證器的明確判定；None 表示票面讀不到，呼叫端退回標記判定。
+    """
+    try:
+        verdict = bool(make_claim_verifier(command, logger)())
+    except Exception:  # 讀票失敗不等於命令失敗：退回標記判定
+        return None
+    if not verdict:
+        return False
+    # 驗證器為真時仍交由 is_bash_success 做 exit_code 前置檢查（驗證器恆真，不重複判定）
+    return is_bash_success(
+        tool_result, CLAIM_SUCCESS_MARKERS, command=command, state_verifier=lambda: True
+    )
+
+
+def is_claim_successful(tool_result, command: Optional[str] = None, logger=None) -> bool:
     """判斷 claim 是否成功。
 
+    給定 command 時先以票面驗證器確認認領轉換（見 _claim_transition_verdict）；
+    驗證器不可用時退回下列標記判定。
     失敗訊號（任一出現於 stdout/stderr 即視為失敗）：
     - 'already claimed' / 'not found' / 'Error' / 'failed' / 'blocked'
     其餘視為成功（observability 寧可多記，不影響 claim）。
@@ -86,6 +109,10 @@ def is_claim_successful(tool_result) -> bool:
     # 觸發，故此處不會收到 75，原 75 分支已移除；以下 WARNING 片語後備保留。
     if tool_result.get("interrupted") is True:
         return False
+    if command:
+        verdict = _claim_transition_verdict(tool_result, command, logger)
+        if verdict is not None:
+            return verdict
     if is_bash_success(tool_result, CLAIM_SUCCESS_MARKERS):
         return True
     if AUTO_COMMIT_WARNING_MARK in str(tool_result.get("stderr", "")):
@@ -169,7 +196,7 @@ def main() -> int:
     if ticket_id is None:
         return 0  # 非 claim 命令，正常跳過
 
-    if not is_claim_successful(tool_result):
+    if not is_claim_successful(tool_result, command, logger):
         logger.info("claim 命令未成功（{}），不記錄快照".format(ticket_id))
         return 0
 
