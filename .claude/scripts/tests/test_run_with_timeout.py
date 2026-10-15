@@ -1,5 +1,6 @@
 """run-with-timeout.py 測試：僅使用暫存目錄與會自行結束的替身程序。"""
 import importlib.util
+import json
 import os
 import signal
 import subprocess
@@ -572,6 +573,11 @@ def test_wait_limit_exits_with_dedicated_code_naming_holder(gate):
     mod = _load_module()
     a, out_a = _spawn(gate, "a", HEAVY_ARGV, life=5.0)
     _stamp(out_a, "start")
+    # 等待上限只偵測持有者超出自身預估：把持有者的開始時間往前推，使其超出預估逾上限
+    holder_file = gate[1] / "locks" / "heavy-slot-0.holder.json"
+    info = json.loads(holder_file.read_text())
+    info["started_epoch"] = time.time() - info["estimate"] - 100
+    holder_file.write_text(json.dumps(info))
     b, _ = _spawn(gate, "b", HEAVY_ARGV, life=0.0, CLAUDE_SLOT_WAIT_LIMIT="0.5")
     _, err = b.communicate(timeout=30)
     assert b.returncode == mod.slot_gate.SLOT_WAIT_EXIT_CODE
