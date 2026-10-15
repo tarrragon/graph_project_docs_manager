@@ -293,6 +293,67 @@ class TestTouchesHookProtectionScope:
         assert touches_hook_protection_scope("/.claude/hooks/foo.py") is True
 
 
+class TestTouchesScopeDotDotBypass:
+    """tests 排除判定不可被 `..` 繞過（0.5.0-W1-276.7）。"""
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ".claude/hooks/tests/../foo-hook.py",
+            ".claude/hooks/tests/../../hooks/foo-hook.py",
+            ".claude/skills/ticket/hooks/tests/../agent-dispatch-validation-hook.py",
+        ],
+    )
+    def test_dotdot_back_to_hook_body_is_hook(self, path, tmp_path):
+        assert touches_hook_protection_scope(path, project_root=tmp_path) is True
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ".claude/hooks/tests/./test_foo.py",
+            "./.claude/hooks/tests/test_foo.py",
+            ".claude/hooks//tests//test_foo.py",
+            ".claude/skills/ticket/hooks/tests//test_x.py",
+        ],
+    )
+    def test_dot_and_double_slash_real_test_files_stay_excluded(self, path, tmp_path):
+        assert touches_hook_protection_scope(path, project_root=tmp_path) is False
+
+    def test_escaping_project_root_is_fail_closed(self, tmp_path):
+        assert touches_hook_protection_scope("../../outside/x.py", project_root=tmp_path) is True
+        assert touches_hook_protection_scope(".claude/hooks/tests/../../../../x.py", project_root=tmp_path) is True
+
+    def test_symlink_in_tests_to_hook_body_is_hook(self, tmp_path):
+        hooks = tmp_path / ".claude" / "hooks"
+        (hooks / "tests").mkdir(parents=True)
+        (hooks / "real-hook.py").write_text("x")
+        (hooks / "tests" / "link.py").symlink_to(hooks / "real-hook.py")
+        assert (
+            touches_hook_protection_scope(".claude/hooks/tests/link.py", project_root=tmp_path)
+            is True
+        )
+
+    def test_regular_file_in_tests_stays_excluded(self, tmp_path):
+        tests = tmp_path / ".claude" / "hooks" / "tests"
+        tests.mkdir(parents=True)
+        (tests / "test_a.py").write_text("x")
+        assert (
+            touches_hook_protection_scope(".claude/hooks/tests/test_a.py", project_root=tmp_path)
+            is False
+        )
+
+    def test_symlink_in_tests_to_outside_root_is_fail_closed(self, tmp_path):
+        root = tmp_path / "proj"
+        outside = tmp_path / "elsewhere.py"
+        outside.write_text("x")
+        (root / ".claude" / "hooks" / "tests").mkdir(parents=True)
+        (root / ".claude" / "hooks" / "tests" / "out.py").symlink_to(outside)
+        assert (
+            touches_hook_protection_scope(".claude/hooks/tests/out.py", project_root=root)
+            is True
+        )
+
+
 # ---------------------------------------------------------------------------
 # (j) how.strategy 與 Solution 皆缺席 → block，訊息指出正本應寫於
 #     how.strategy 並附格式範例
