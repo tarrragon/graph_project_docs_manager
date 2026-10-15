@@ -1271,9 +1271,15 @@ def cmd_merge(
     pre_acceptance_reason: Optional[str] = None,
     skip_gate_reason: Optional[str] = None,
     gate_runner: "Optional[SuiteRunner]" = None,
+    message: Optional[str] = None,
+    ticket: Optional[str] = None,
 ) -> int:
     """
     merge 子命令 — 前置驗證後以隔離索引 CAS 直接完成合併
+
+    合併 commit 訊息：message 非空時原文使用（含換行與 trailer）；否則在預設訊息
+    `Merge branch '<分支>'` 後附 `(<票號>)`，票號取 ticket 參數，缺省為 ticket_id；
+    兩者皆無時維持預設訊息。
 
     對象由 ticket_id 或 branch 指定（branch 用於萃取不到 ticket ID 的 worktree-agent-<id>，
     不查票狀態）。預設要求票 completed 且 working tree 乾淨；pre_acceptance_reason 非空時
@@ -1306,6 +1312,7 @@ def cmd_merge(
     _merge_build_output(label, branch_name, ahead, behind, warnings)
     print()
     print(MergeMessages.MERGE_EXECUTING.format(branch=branch_name, base=DEFAULT_BASE_BRANCH))
+    merge_message = _compose_merge_message(branch_name, message, ticket or ticket_id)
     max_retries = None
     if pre_merge_check is None:
         if skip_gate_reason is not None:
@@ -1317,12 +1324,25 @@ def cmd_merge(
             pre_merge_check = MergeGate(get_project_root(), runner=gate_runner)
             max_retries = GATE_MAX_RETRIES
     if isinstance(pre_merge_check, MergeGate):
-        return _merge_through_gate(pre_merge_check, branch_name, label, max_retries)
-    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check, max_retries=max_retries)
+        return _merge_through_gate(pre_merge_check, branch_name, label, max_retries, merge_message)
+    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check, max_retries=max_retries,
+                               message=merge_message)
     return _print_merge_outcome(outcome, label)
 
 
-def _merge_through_gate(gate: MergeGate, branch_name: str, label: str, max_retries: Optional[int]) -> int:
+def _compose_merge_message(branch_name: str, message: Optional[str], ticket: Optional[str]) -> Optional[str]:
+    """決定合併 commit 訊息：明示 message 優先；否則有票號時附在預設訊息後；皆無回傳 None。"""
+    if message and message.strip():
+        return message
+    if ticket:
+        return f"Merge branch '{branch_name}' ({ticket})"
+    return None
+
+
+def _merge_through_gate(
+    gate: MergeGate, branch_name: str, label: str, max_retries: Optional[int],
+    message: Optional[str] = None,
+) -> int:
     """經合併閘門合併，並在閘門開始與結束各記一行（stdout 與 worktree-merge.log）。
 
     名額未取得（預估拒絕、等待逾時、訊號）是預期內結果：說明行已由名額閘門輸出，這裡只回傳
@@ -1338,7 +1358,7 @@ def _merge_through_gate(gate: MergeGate, branch_name: str, label: str, max_retri
     record("開始", base_head)
     try:
         outcome = merge_branch_cas(branch_name, pre_merge_check=gate, max_retries=max_retries,
-                                   hold=gate.hold(branch_name, DEFAULT_BASE_BRANCH))
+                                   message=message, hold=gate.hold(branch_name, DEFAULT_BASE_BRANCH))
     except SlotWaitRefused as refused:
         record("結束", base_head, GATE_REFUSED if refused.exit_code == 125 else GATE_ABORTED)
         return refused.exit_code
@@ -2194,6 +2214,15 @@ def main():
         help="略過合併前全套件閘門（須帶理由，理由寫入日誌）"
     )
     merge_parser.add_argument(
+        "--message", "-m",
+        help="合併 commit 訊息（原文使用，可含換行與 trailer）；省略則用預設訊息"
+    )
+    merge_parser.add_argument(
+        "--ticket",
+        metavar="TICKET_ID",
+        help="票號：預設訊息附上 (<票號>)；以 <ticket-id> 合併時自動帶入；--message 優先"
+    )
+    merge_parser.add_argument(
         "--pre-acceptance",
         metavar="REASON",
         help="合併前驗收：票未 completed 也允許合併，理由寫入日誌"
@@ -2231,7 +2260,7 @@ def main():
             return 1
         return cmd_merge(
             args.ticket_id, branch=args.branch, pre_acceptance_reason=args.pre_acceptance,
-            skip_gate_reason=args.skip_gate,
+            skip_gate_reason=args.skip_gate, message=args.message, ticket=args.ticket,
         )
     elif args.command == "cleanup":
         return cmd_cleanup(args.ticket_id, force=args.force)
