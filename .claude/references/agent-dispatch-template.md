@@ -129,13 +129,26 @@ Ticket: 0.18.0-W17-048.3
 
 **邊界**：入口預設安裝 dev group；缺依賴時改 pyproject，不在命令補 `--with`。
 
-### 全套件回報規格（TEST-BAL-006）
+### 全套件由合併閘門執行，代理人只跑相關測試檔（TEST-BAL-006）
 
-**觸發條件**：派發任務的驗收含「跑全套件」「全數通過」類回報，且測試框架的收集入口由設定檔決定（如 pytest 的 `testpaths` 含多筆）。
+**觸發條件**：派發任務的驗收含「跑全套件」「全數通過」類回報，或 prompt 需要寫測試命令。
 
-**Why/Consequence**：命令列一帶入任一路徑，設定檔的收集入口整條失效，只跑所指路徑；縮小後的母體照樣 exit 0、照樣顯示 passed，「全數通過」與「少跑一半後全過」在輸出上同形。文字提醒已失效（同日兩次再現，見 `.claude/error-patterns/test/TEST-BAL-006-explicit-test-path-overrides-multi-entry-testpaths.md`），故回報須附可對帳的數字，讓驗收方不靠執行者的自述判斷母體是否完整。
+**Why/Consequence**：全套件在合併前由合併閘門於快照內依改動範圍執行，紅燈不合併（`.claude/skills/worktree/SKILL.md`〈合併前全套件〉）。實作代理人與驗收代理人再各跑一次，同一張票至少重複跑兩次全套件，成本隨票數倍增。縮小母體的風險仍在：命令列一帶入任一路徑，設定檔的收集入口整條失效，只跑所指路徑，縮小後的母體照樣 exit 0、照樣顯示 passed（見 `.claude/error-patterns/test/TEST-BAL-006-explicit-test-path-overrides-multi-entry-testpaths.md`），所以局部執行必須明寫為局部。
 
-**Action**：prompt 必須含以下句子，且任務段中的「跑全套件」一律改寫為下列無路徑指令，不留「跑全套件」的概括說法：
+**Action**：prompt 的測試段改為下列分工，任務段不寫「跑全套件」的概括說法：
+
+```
+全套件由合併閘門在合併前執行，本任務不跑全套件。
+只跑本票相關測試檔，命令取自〈測試入口〉並附相關測試檔路徑
+（flutter 為 python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test <測試檔> --reporter compact）。
+回報須明寫「局部執行」，列出所跑命令原文與測試檔清單，不得宣稱全套件通過。
+```
+
+驗收方（acceptance-auditor）在合併前只驗相關測試檔與 `dart analyze`，complete 時（合併後）讀 `.claude/logs/worktree-merge.log` 的 `[合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入` 行，不自跑全套件；合併前找不到閘門結果時等合併後再驗。
+
+**例外：任務明確要求代理人跑全套件**（例如閘門被 `--skip-gate` 略過、或範圍在閘門之外的人工驗證）時，改用下列對帳格式；該格式同時供 PM 或驗收方核對任何一次全套件執行的回報（含閘門結果行）是否為完整母體。以下所列對帳規則以 pytest 為例。
+
+**Action（例外情境）**：prompt 必須含以下句子，且任務段中的「跑全套件」一律改寫為下列無路徑指令：
 
 ```
 全套件指令為 (cd <pkg> && uv run pytest -q -rfE)，命令列不帶任何測試路徑。
@@ -217,7 +230,7 @@ pgrep 有命中時，逐一以 ps -o command= -p <pid> 確認命中的是測試�
 - [ ] 防護類 ticket 的產生路徑盤點表已存在於 `how.strategy` / Solution（建票時產出，此處僅確認存在，格式見 `ticket-body-schema.md` 同名節；PC-BAL-035）
 - [ ] 派發對象為 `.claude/` 框架檔案修改時，代理人受 `.claude/rules/core/document-format-rules.md`「引用穩定性規則」約束（禁依賴型 ticket 引用，該層已實測確認每次派發都會注入），無需 prompt 額外重複；AGENT_PRELOAD 規則 12 僅供代理人主動 Read 時參考，不構成無需重複的依據（`.claude/agents/*.md` 主文 `@-import` 已實測不會展開為內容）
 - [ ] 派發任務涉及測試/建置驗收時，已含既有失敗歸因約束句（PC-BAL-022，見上節）
-- [ ] 派發任務的驗收含「跑全套件」時，已改寫為無路徑指令（含 `-rfE`）並含全套件回報規格句（命令原文 + `--collect-only -q` 全量數 + 執行數 = 全量 - deselected + FAILED / ERROR 行不被 tail、grep 過濾，TEST-BAL-006，見上節）
+- [ ] 派發任務的測試段已改為「全套件由合併閘門執行，代理人只跑相關測試檔」並含局部執行回報句（命令引用〈測試入口〉；TEST-BAL-006，見上節）；僅任務明確要求代理人跑全套件時，才改用無路徑指令（含 `-rfE`）與對帳格式（命令原文 + `--collect-only -q` 全量數 + 執行數 = 全量 - deselected + FAILED / ERROR 行不被 tail、grep 過濾）
 - [ ] 裁示句是否有「補 X」「並補 Y」型句型只指名決策點、未給具體內容？若有，已補齊內容或已明寫「此處未定，停手回報」（PC-GPD-026，見上節）
 - [ ] 派發的代理人會跑長時間或背景測試時，已含終止後 pgrep 驗證約束句（見上節，含 ps 確認命中身分與等待改等已知 PID 兩句）
 
@@ -1170,7 +1183,8 @@ acceptance 逐一附證據（如「acceptance N：已於 X 檔案 Y 行落實，
 
 ---
 
-**Last Updated**: 2026-10-14
+**Last Updated**: 2026-10-15
+**Version**: 1.45.0 — 〈全套件回報規格（TEST-BAL-006）〉改寫為〈全套件由合併閘門執行，代理人只跑相關測試檔〉：測試命令引用〈測試入口〉，局部執行須明寫；驗收方合併前只驗相關測試檔，complete 時讀合併閘門結束行；原對帳格式保留為「任務明確要求代理人跑全套件」例外情境與核對全套件回報之用。「填空檢查清單」對應列同步。
 **Version**: 1.44.0 — 〈worktree 派發收尾指引〉由「用 finish 別名避開 complete 誤判」改寫為「complete 由 PM 於合併後執行」：隔離代理人止於 worktree commit，PM 以 set-who 後 complete 收尾且不代填自檢；開頭骨架說明句同步（用戶裁決，2026-10-14）
 **Version**: 1.43.0 — 〈終止長時間測試後驗證子程序已退出約束句〉制式句開頭補兩行：測試逾時一律經 `run-with-timeout.py` 啟動、禁用 `timeout`／`alarm` 加 `exec`／背景 `sleep` 後 `kill` 單一 PID 與 `pkill`／`killall`；並新增「逾時須經包裝腳本」三明示段（逾時當下無終止動作可觸發自檢，殘留只能在啟動方式上預防；清理改用 `orphan-test-procs.py`）
 **Last Updated**: 2026-10-08
