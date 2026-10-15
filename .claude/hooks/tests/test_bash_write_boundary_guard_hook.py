@@ -242,7 +242,28 @@ class TestMainEntryPoint:
 # 0.5.0-W1-284.5：線性 token 走訪的效能（n 與 4n）與 heredoc／引號剔除
 # ============================================================================
 
-_PERF_N = 6000
+# 各形態的 n：依實測使 n 的耗時約 10-30ms，比值才不被排程雜訊主導
+_PERF_N_BY_SHAPE = {
+    "single_sed_long_e_chain": 8000,
+    "single_sed_long_e_chain_no_i": 6000,
+    "sed_word_padding": 8000,
+    "bare_sed_padding": 18000,
+    "sed_n_chain": 14000,
+    "sed_inplace_repeated": 4000,
+    "cp_flag_chain": 8000,
+    "mv_repeated": 6000,
+    "tee_repeated": 4000,
+    "redirect_repeated": 6000,
+    "double_quoted_repeated": 6000,
+    "single_quoted_repeated": 6000,
+    "heredoc_body_long": 90000,
+    "heredoc_repeated": 6000,
+    "python_open_repeated": 20000,
+    "long_single_token": 250000,
+    "unterminated_quote": 200000,
+    "paren_chain": 24000,
+    "backslash_chain": 80000,
+}
 
 # 每種可重複的 token 形態：k -> 命令字串
 _PERF_SHAPES = {
@@ -257,7 +278,7 @@ _PERF_SHAPES = {
     "tee_repeated": lambda k: "tee -a f.txt | " * k,
     "redirect_repeated": lambda k: "echo hello > out.txt; " * k,
     "double_quoted_repeated": lambda k: 'echo "sed -i x lib/a.dart" ' * k,
-    "single_quoted_long": lambda k: "echo '" + "sed -i x lib/a.dart " * k + "'",
+    "single_quoted_repeated": lambda k: "echo 'sed -i x lib/a.dart' " * k,
     "heredoc_body_long": lambda k: "cat <<'EOF'\n" + "sed -i x lib/a.dart\n" * k + "EOF",
     "heredoc_repeated": lambda k: "cat <<A\nx\nA\n" * k,
     "python_open_repeated": lambda k: "python3 -c \"" + "open('a.txt') " * k + "\"",
@@ -269,13 +290,21 @@ _PERF_SHAPES = {
 
 
 def _best_time(cmd, repeat=3):
+    # 取 CPU 時間（排除排程等待）、量測期間停用 GC（世代回收的掃描成本與輸入大小
+    # 非線性，屬量測雜訊而非解析複雜度），重複取最小值
+    import gc
     import time
     best = None
-    for _ in range(repeat):
-        start = time.monotonic()
-        _extract_candidate_paths(cmd)
-        elapsed = time.monotonic() - start
-        best = elapsed if best is None else min(best, elapsed)
+    gc.collect()
+    gc.disable()
+    try:
+        for _ in range(repeat):
+            start = time.process_time()
+            _extract_candidate_paths(cmd)
+            elapsed = time.process_time() - start
+            best = elapsed if best is None else min(best, elapsed)
+    finally:
+        gc.enable()
     return best
 
 
@@ -288,8 +317,9 @@ class TestLinearTimeAcrossTokenShapes:
     @pytest.mark.parametrize("shape", sorted(_PERF_SHAPES))
     def test_four_times_length_costs_at_most_eight_times(self, shape):
         build = _PERF_SHAPES[shape]
-        t_n = _best_time(build(_PERF_N))
-        t_4n = _best_time(build(_PERF_N * 4))
+        n = _PERF_N_BY_SHAPE[shape]
+        t_n = _best_time(build(n), repeat=3)
+        t_4n = _best_time(build(n * 4), repeat=3)
         assert t_4n < 1.0
         assert t_4n <= 8 * t_n
 
