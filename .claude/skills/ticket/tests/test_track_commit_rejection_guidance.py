@@ -18,14 +18,17 @@ def test_guidance_constants_differ():
 
 
 @pytest.mark.parametrize(
-    "error,expected",
+    "kind,expected",
     [
-        ("提交範圍自我驗證失敗，預期 [a] 實得 [b]（範圍外 [b]）", tc.FAILURE_CRITERIA),
-        ("git read-tree 失敗: index.lock exists", tc.FAILURE_ENVIRONMENT),
+        ("self_verification", tc.FAILURE_CRITERIA),
+        ("git_step", tc.FAILURE_ENVIRONMENT),
+        ("cas", tc.FAILURE_ENVIRONMENT),
+        (None, tc.FAILURE_CRITERIA),  # fail-closed
+        ("unknown_kind", tc.FAILURE_CRITERIA),  # fail-closed
     ],
 )
-def test_classify_failure(error, expected):
-    assert tc.classify_failure(error) == expected
+def test_classify_failure(kind, expected):
+    assert tc.classify_failure(kind) == expected
 
 
 def _run(files, tmp_path, monkeypatch, result=None, declared=("src/a.py",)):
@@ -54,7 +57,8 @@ def test_undeclared_carries_criteria_guidance(tmp_path, monkeypatch, capsys):
 
 
 def test_environment_failure_carries_retry_guidance(tmp_path, monkeypatch, capsys):
-    result = {"status": "failed", "commit_sha": None, "error": "git read-tree 失敗"}
+    result = {"status": "failed", "commit_sha": None, "error": "git read-tree 失敗",
+              "failure_kind": "git_step"}
     assert _run(["src/a.py"], tmp_path, monkeypatch, result) == 1
     out = capsys.readouterr().out
     assert tc.ENVIRONMENT_FAILURE_GUIDANCE in out
@@ -62,7 +66,8 @@ def test_environment_failure_carries_retry_guidance(tmp_path, monkeypatch, capsy
 
 
 def test_self_verification_failure_carries_criteria_guidance(tmp_path, monkeypatch, capsys):
-    result = {"status": "failed", "commit_sha": None, "error": "提交範圍自我驗證失敗，預期 [] 實得 []"}
+    result = {"status": "failed", "commit_sha": None, "error": "任意字面",
+              "failure_kind": "self_verification"}
     assert _run(["src/a.py"], tmp_path, monkeypatch, result) == 1
     out = capsys.readouterr().out
     assert tc.CRITERIA_REJECTION_GUIDANCE in out
