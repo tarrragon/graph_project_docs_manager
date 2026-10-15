@@ -563,7 +563,7 @@ def test_waiter_prints_holder_info_periodically(gate):
     _, err = b.communicate(timeout=30)
     notices = [ln for ln in err.splitlines() if "等待名額" in ln]
     assert len(notices) >= 3
-    for key in ("pid=", "cwd=", "命令=", "開始=", "load="):
+    for key in ("pid=", "cwd=", "命令=", "開始=", "目前負載="):
         assert key in notices[-1]
     assert f"pid={a.pid}" in notices[-1]
 
