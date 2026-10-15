@@ -236,3 +236,107 @@ class TestMainEntryPoint:
             branch="main",
         )
         assert exit_code == 0
+
+
+# ============================================================================
+# 0.5.0-W1-284.5：線性 token 走訪的效能（n 與 4n）與 heredoc／引號剔除
+# ============================================================================
+
+_PERF_N = 6000
+
+# 每種可重複的 token 形態：k -> 命令字串
+_PERF_SHAPES = {
+    "single_sed_long_e_chain": lambda k: "sed -n " + "-e 's/a/b/' " * k + "-i f.txt",
+    "single_sed_long_e_chain_no_i": lambda k: "sed " + "-e 's/a/b/' " * k,
+    "sed_word_padding": lambda k: "sed x " * k,
+    "bare_sed_padding": lambda k: "sed " * k,
+    "sed_n_chain": lambda k: "sed " + "-n " * k + "-i f.txt",
+    "sed_inplace_repeated": lambda k: "sed -i '' x f; " * k,
+    "cp_flag_chain": lambda k: "cp " + "-r " * k + "a b",
+    "mv_repeated": lambda k: "mv a b; " * k,
+    "tee_repeated": lambda k: "tee -a f.txt | " * k,
+    "redirect_repeated": lambda k: "echo hello > out.txt; " * k,
+    "double_quoted_repeated": lambda k: 'echo "sed -i x lib/a.dart" ' * k,
+    "single_quoted_long": lambda k: "echo '" + "sed -i x lib/a.dart " * k + "'",
+    "heredoc_body_long": lambda k: "cat <<'EOF'\n" + "sed -i x lib/a.dart\n" * k + "EOF",
+    "heredoc_repeated": lambda k: "cat <<A\nx\nA\n" * k,
+    "python_open_repeated": lambda k: "python3 -c \"" + "open('a.txt') " * k + "\"",
+    "long_single_token": lambda k: "echo " + "a" * (k * 10),
+    "unterminated_quote": lambda k: 'echo "' + "x " * k,
+    "paren_chain": lambda k: "( " * k,
+    "backslash_chain": lambda k: "echo " + "\\ " * k,
+}
+
+
+def _best_time(cmd, repeat=3):
+    import time
+    best = None
+    for _ in range(repeat):
+        start = time.monotonic()
+        _extract_candidate_paths(cmd)
+        elapsed = time.monotonic() - start
+        best = elapsed if best is None else min(best, elapsed)
+    return best
+
+
+class TestLinearTimeAcrossTokenShapes:
+    """每種可重複 token 形態：4n 耗時不超過 n 的 8 倍，且 4n 在 1 秒內。"""
+
+    @pytest.mark.parametrize("shape", sorted(_PERF_SHAPES))
+    def test_four_times_length_costs_at_most_eight_times(self, shape):
+        build = _PERF_SHAPES[shape]
+        t_n = _best_time(build(_PERF_N))
+        t_4n = _best_time(build(_PERF_N * 4))
+        assert t_4n < 1.0
+        assert t_4n <= 8 * t_n
+
+
+class TestHeredocAndQuotedTextIgnored:
+    """284.4：heredoc 正文與引號內的寫入描述不是命令，不擋；真實寫入仍擋。"""
+
+    @pytest.mark.parametrize("cmd", [
+        "ticket track append-log x <<'EOF'\nsed -i 's/a/b/' lib/foo.dart\nEOF",
+        "ticket track append-log x <<EOF\ncat > lib/foo.dart\ncp a test/b_test.dart\nEOF",
+        "git commit -m \"fix: sed -i s/a/b/ lib/foo.dart\"",
+        "echo 'cat > lib/foo.dart'",
+        "echo \"tee lib/foo.dart\"",
+        "echo hi # sed -i x lib/foo.dart",
+    ])
+    def test_description_text_extracts_nothing(self, cmd, logger):
+        assert _extract_candidate_paths(cmd) == []
+        assert _find_boundary_violation(cmd, logger) is None
+
+    def test_real_write_after_heredoc_terminator_still_caught(self, logger):
+        cmd = "cat <<'EOF'\nnote\nEOF\nsed -i s/a/b/ lib/foo.dart"
+        assert _find_boundary_violation(cmd, logger) == "lib/foo.dart"
+
+    def test_real_write_before_heredoc_still_caught(self, logger):
+        cmd = "sed -i s/a/b/ lib/foo.dart; cat <<'EOF'\nnote\nEOF"
+        assert _find_boundary_violation(cmd, logger) == "lib/foo.dart"
+
+    def test_shell_heredoc_body_is_executed_so_still_caught(self, logger):
+        cmd = "bash <<'EOF'\ncat > lib/foo.dart\nEOF"
+        assert _find_boundary_violation(cmd, logger) == "lib/foo.dart"
+
+    def test_python_double_quoted_open_still_caught(self, logger):
+        cmd = 'python3 -c "open(\'lib/bar.dart\', \'w\')"'
+        assert _find_boundary_violation(cmd, logger) == "lib/bar.dart"
+
+    def test_open_text_outside_python_not_caught(self, logger):
+        cmd = "echo \"open('lib/bar.dart', 'w')\""
+        assert _find_boundary_violation(cmd, logger) is None
+
+    @pytest.mark.parametrize("cmd,expected", [
+        ("echo hi 2> lib/foo.dart", []),
+        ("echo hi >&2", []),
+        ("echo hi > lib/foo.dart", ["lib/foo.dart"]),
+        ("echo hi >> \"lib/foo.dart\"", ["lib/foo.dart"]),
+        ("cp -r a b lib/dest", ["lib/dest"]),
+        ("tee -a one.txt lib/two.dart", ["one.txt", "lib/two.dart"]),
+        ("sed -i -e 's/a/b/' -e 's/c/d/' f1 f2", ["f1", "f2"]),
+        ("sed -n 's/a/b/p' f1", []),
+        ("(sed -i s/a/b/ lib/foo.dart)", ["lib/foo.dart"]),
+        ("echo $(sed -i s/a/b/ lib/foo.dart)", ["lib/foo.dart"]),
+    ])
+    def test_real_write_forms(self, cmd, expected):
+        assert _extract_candidate_paths(cmd) == expected
