@@ -74,6 +74,30 @@ def test_read_failure_raises_not_false_or_true(tmp_path, command):
         _verifier(tmp_path, command)()
 
 
+def test_transition_unmasked_old_ticket_false_recent_true(tmp_path):
+    from lib.ticket_completed_verifier import is_complete_transition_success
+
+    cmd = "ticket track complete {}".format(TID)
+    resp = {"stdout": "{} 已完成於 2026-10-15T11:52:55".format(TID)}
+    _write_ticket(tmp_path, TID, "completed", NOW - timedelta(hours=1))
+    assert is_complete_transition_success(
+        resp, ["已完成"], cmd, _verifier(tmp_path, cmd)) is False
+    _write_ticket(tmp_path, TID, "completed", NOW - timedelta(seconds=2))
+    assert is_complete_transition_success(
+        resp, ["已完成"], cmd, _verifier(tmp_path, cmd)) is True
+
+
+def test_transition_unavailable_falls_back_to_layered(tmp_path):
+    from lib.ticket_completed_verifier import is_complete_transition_success
+
+    cmd = "ticket track complete {}".format("0.5.0-W1-999")
+    assert is_complete_transition_success(
+        {"stdout": ""}, ["已完成"], cmd, _verifier(tmp_path, cmd)) is True  # 未遮蔽
+    masked = cmd + "; echo rc=$?"
+    assert is_complete_transition_success(
+        {"stdout": ""}, ["已完成"], masked, _verifier(tmp_path, masked)) is False  # 退回標記
+
+
 def test_missing_completed_at_raises(tmp_path):
     _write_ticket(tmp_path, TID, "completed", None)
     with pytest.raises(VerifierUnavailable):

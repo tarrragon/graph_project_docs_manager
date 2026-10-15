@@ -167,6 +167,16 @@ class TestPostTicketLifecycleHook:
         assert post_ticket_lifecycle_hook.is_complete_successful(
             {"stdout": ""}, "ticket track complete X-NONE") is True
 
+    def test_unmasked_recomplete_outside_window_not_success(self, monkeypatch):
+        """E1：未遮蔽且 stdout 為「已完成於 ...」，窗外為 False、窗內為 True"""
+        out = {"stdout": "0.5.0-W1-286.1 已完成於 2026-10-15T11:52:55"}
+        cmd = "ticket track complete 0.5.0-W1-286.1"
+        for verdict in (False, True):
+            monkeypatch.setattr(
+                post_ticket_lifecycle_hook, "make_completed_verifier",
+                lambda c, v=verdict: (lambda: v))
+            assert post_ticket_lifecycle_hook.is_complete_successful(out, cmd) is verdict
+
     def test_masked_form_uses_ticket_state(self, monkeypatch):
         """E1/E2：stdout 無標記的兩種遮蔽形態，驗證器為真則成功、為假則否"""
         for command in (

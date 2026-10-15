@@ -67,6 +67,34 @@ def _is_recently_completed(
     return -_CLOCK_SKEW_SECONDS <= age <= COMPLETED_AT_WINDOW_SECONDS
 
 
+def is_complete_transition_success(
+    tool_response,
+    success_markers,
+    command: str,
+    verifier: Callable[[], bool],
+) -> bool:
+    """完成類 hook 的成功判定：確認「這次發生了完成轉換」，不論命令是否被遮蔽。
+
+    未遮蔽且收到 PostToolUse 只代表命令成功；對已完成的票重新 complete，CLI 仍輸出
+    「已完成於 ...」且結束碼為 0，但沒有狀態轉換（重複計數）。因此先跑驗證器：
+    True（completed_at 在時間窗內）才成功，False 即失敗；驗證器拋 VerifierUnavailable
+    （或任何例外）時才退回 is_bash_success 的分層判定。interrupted / exit_code 前置檢查
+    仍由 is_bash_success 負責。
+    採 hook 端呼叫（不改 lib 的 is_bash_success），維持 286.1 的預設行為不變。
+    """
+    from .bash_tool_response import is_bash_success
+
+    try:
+        verdict = bool(verifier())
+    except Exception:  # 讀票失敗不等於命令失敗：退回分層判定
+        return is_bash_success(
+            tool_response, success_markers, command=command, state_verifier=verifier)
+    if not verdict:
+        return False
+    return is_bash_success(
+        tool_response, success_markers, command=command, state_verifier=lambda: True)
+
+
 def make_completed_verifier(
     command: str,
     logger: Optional[logging.Logger] = None,

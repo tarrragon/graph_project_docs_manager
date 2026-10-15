@@ -315,6 +315,18 @@ class TestRealPayloadShape:
         assert rc == 0
         where_mock.assert_not_called()
 
+    def test_unmasked_recomplete_outside_window_not_triggered(self):
+        """E1：未遮蔽、stdout「已完成於 ...」，completed_at 窗外不觸發、窗內觸發"""
+        for verdict, triggered in ((False, False), (True, True)):
+            with patch.object(hook_module, "make_completed_verifier",
+                              return_value=lambda v=verdict: v):
+                rc, _p, where_mock = _run_main_with(
+                    _real_payload("ticket track complete 0.1.0-W41-002",
+                                  stdout="0.1.0-W41-002 已完成於 2026-10-15T11:52:55"),
+                    ["a.py"], [])
+            assert rc == 0
+            assert (where_mock.call_count == 1) is triggered
+
     @pytest.mark.parametrize("command", [
         "ticket track finish 0.1.0-W41-002 > log 2>&1; echo rc=$?",
         "out=$(ticket track complete 0.1.0-W41-002 2>&1); rc=$?",

@@ -76,6 +76,17 @@ def test_unmasked_counts_once_regardless_of_stdout(monkeypatch, counter):
     assert _count(counter) == 1
 
 
+def test_unmasked_recomplete_outside_window_not_counted(monkeypatch, counter):
+    """E1：未遮蔽、stdout 為「已完成於 ...」，completed_at 在窗外不計數、窗內計數"""
+    out = "0.5.0-W1-286.1 已完成於 2026-10-15T11:52:55"
+    monkeypatch.setattr(_hook, "make_completed_verifier", lambda cmd: (lambda: False))
+    assert _run(monkeypatch, "ticket track complete 0.5.0-W1-286.1", stdout=out) == 0
+    assert _count(counter) == 0
+    monkeypatch.setattr(_hook, "make_completed_verifier", lambda cmd: (lambda: True))
+    assert _run(monkeypatch, "ticket track complete 0.5.0-W1-286.1", stdout=out) == 0
+    assert _count(counter) == 1
+
+
 @pytest.mark.parametrize("command", [
     "ticket track finish T > log 2>&1; echo rc=$?",
     "out=$(ticket track complete T 2>&1); rc=$?",

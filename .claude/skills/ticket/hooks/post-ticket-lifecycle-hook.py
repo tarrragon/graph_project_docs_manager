@@ -40,7 +40,7 @@ from lib.ticket_command_parse import has_complete_command
 from lib.bash_tool_response import (
     FAILURE_EVENT_NAME, is_failure_event, auto_commit_failure_as_success, is_bash_success,
 )
-from lib.ticket_completed_verifier import make_completed_verifier
+from lib.ticket_completed_verifier import make_completed_verifier, is_complete_transition_success
 
 # ============================================================================
 # 常數定義
@@ -76,11 +76,11 @@ def is_ticket_complete_command(command: str) -> bool:
 
 def is_complete_successful(tool_response, command: str) -> bool:
     """判斷 ticket complete 是否成功（分層：未遮蔽即成功、遮蔽以票面驗證、其餘比對標記）"""
-    return is_bash_success(
+    return is_complete_transition_success(
         tool_response,
         COMPLETE_SUCCESS_MARKERS,
-        command=command,
-        state_verifier=make_completed_verifier(command),
+        command,
+        make_completed_verifier(command),
     )
 
 
