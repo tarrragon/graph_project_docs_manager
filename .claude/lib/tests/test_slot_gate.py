@@ -10,6 +10,7 @@ slot_gate 模組單元測試（本機名額閘門）
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -241,6 +242,131 @@ def test_orphan_script_missing_warns_one_line(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", str(tmp_path / "nope.py"))
     slot_gate.report_orphans()
     assert len(capsys.readouterr().err.strip().splitlines()) == 1
+
+
+# ---- 到達順序排隊（0.5.0-W1-303.1）----
+
+SLEEPER_LIFETIME = 60  # 偽造「前方排隊者」的存活秒數（測試結束即 kill）
+HOLD_SECONDS = 0.4  # 子程序取得名額後持有的秒數
+ENTER_POLL = 0.02
+STEP_TIMEOUT = 30
+SHORT_LIMIT = "0.3"
+
+
+def _sleeper():
+    """存活的外部 pid，供偽造「前方排隊者」。"""
+    return subprocess.Popen([sys.executable, "-c", f"import time; time.sleep({SLEEPER_LIFETIME})"])
+
+
+def _fake_entry(directory, seq, pid):
+    path = Path(directory) / f"queue-{seq:012d}-{pid}.json"
+    path.write_text(json.dumps({"pid": pid, "command": ["x"], "arrived": "t"}))
+    return path
+
+
+def _queue_files(directory):
+    return sorted(p.name for p in Path(directory).glob("queue-*.json"))
+
+
+def test_late_comer_cannot_take_free_slot_while_live_waiter_is_ahead(monkeypatch, tmp_path):
+    """E2：名額空著，但前方有存活排隊者時，後到者取不到。"""
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)
+    ahead = _sleeper()
+    try:
+        entry = _fake_entry(tmp_path, 1, ahead.pid)
+        hold, early = slot_gate.acquire_slot(["flutter", "test"], lambda: None)
+        assert hold is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
+        assert entry.exists(), "不得清除存活者的排隊檔"
+    finally:
+        ahead.kill()
+        ahead.wait()
+
+
+def test_three_waiters_acquire_in_arrival_order(monkeypatch, tmp_path):
+    """三個排隊者依到達順序取得（取得時間戳遞增），後到者不插隊。"""
+    code = (
+        "import sys,time; sys.path.insert(0, %r)\n"
+        "from lib import slot_gate\n"
+        "hold,_ = slot_gate.acquire_slot(['x'], lambda: None)\n"
+        "print(time.time(), flush=True)\n"
+        "time.sleep(%r)\n"
+        "hold.release()\n"
+    ) % (str(Path(__file__).parent.parent.parent), HOLD_SECONDS)
+    env = dict(os.environ, CLAUDE_SLOT_LOCK_DIR=str(tmp_path), CLAUDE_SLOT_WAIT_LIMIT=str(STEP_TIMEOUT))
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    holder, _ = slot_gate.acquire_slot(["holder"], lambda: None)  # 先占住名額
+    procs = []
+    for i in range(3):
+        procs.append(subprocess.Popen([sys.executable, "-c", code], env=env, stdout=subprocess.PIPE,
+                                      stderr=subprocess.DEVNULL, text=True))
+        deadline = time.monotonic() + STEP_TIMEOUT
+        while len(_queue_files(tmp_path)) < i + 1 and time.monotonic() < deadline:
+            time.sleep(ENTER_POLL)  # 確保第 i 個已進隊再啟動下一個
+    holder.release()
+    stamps = [float(p.communicate(timeout=STEP_TIMEOUT)[0]) for p in procs]
+    assert stamps == sorted(stamps) and len(set(stamps)) == 3
+    assert _queue_files(tmp_path) == []
+
+
+def test_dead_waiter_entry_is_removed_and_does_not_block(monkeypatch, tmp_path):
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    dead = subprocess.Popen([sys.executable, "-c", "pass"])
+    dead.wait()
+    entry = _fake_entry(tmp_path, 1, dead.pid)
+    hold, early = slot_gate.acquire_slot(["x"], lambda: None)
+    assert hold is not None and early is None
+    assert not entry.exists()
+    hold.release()
+
+
+def test_entry_removed_on_acquire_giveup_timeout_and_signal(monkeypatch, tmp_path):
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    hold, _ = slot_gate.acquire_slot(["x"], lambda: None)  # 取得
+    assert _queue_files(tmp_path) == []
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)  # 逾時（名額被 hold 占住）
+    got, early = slot_gate.acquire_slot(["x"], lambda: None)
+    assert got is None and early == slot_gate.SLOT_WAIT_EXIT_CODE
+    assert _queue_files(tmp_path) == []
+    got, early = slot_gate.acquire_slot(["x"], lambda: signal.SIGTERM)  # 訊號中斷
+    assert got is None and early == 128 + signal.SIGTERM
+    assert _queue_files(tmp_path) == []
+
+    def boom():
+        raise RuntimeError("abort")
+    with pytest.raises(RuntimeError):  # 放棄：等待中途例外
+        slot_gate.acquire_slot(["x"], boom)
+    assert _queue_files(tmp_path) == []
+    hold.release()
+
+
+def test_waiting_notice_shows_position_and_ahead_count(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", SHORT_LIMIT)
+    monkeypatch.setenv("CLAUDE_SLOT_NOTICE_INTERVAL", "0")
+    a, b = _sleeper(), _sleeper()
+    try:
+        _fake_entry(tmp_path, 1, a.pid)
+        _fake_entry(tmp_path, 2, b.pid)
+        slot_gate.acquire_slot(["x"], lambda: None)
+        err = capsys.readouterr().err
+        assert "順位 3" in err and "前方 2 筆" in err
+    finally:
+        for p in (a, b):
+            p.kill()
+            p.wait()
+
+
+def test_held_marker_and_light_command_bypass_unchanged(monkeypatch, tmp_path):
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(tmp_path))
+    hold, _ = slot_gate.acquire_slot(["x"], lambda: None)
+    with slot_gate.export_hold(hold):
+        assert slot_gate.held_by_ancestor()
+        assert slot_gate.is_heavy_command(["flutter", "test"]) is False
+        assert slot_gate.HELD_ENV not in slot_gate.child_env(os.environ)
+    assert not slot_gate.held_by_ancestor()
+    assert slot_gate.is_heavy_command(["pytest", "tests/test_x.py"]) is False
+    hold.release()
 
 
 def test_orphan_query_timeout_is_bounded(monkeypatch, tmp_path, capsys):
