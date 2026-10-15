@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, get_project_root, is_subagent_environment
 from lib.ticket_command_parse import has_complete_command
 from lib.bash_tool_response import is_bash_success, is_failure_event, auto_commit_failure_as_success
+from lib.ticket_completed_verifier import make_completed_verifier
 
 import re
 from datetime import datetime
@@ -98,9 +99,22 @@ def is_complete_command_success(input_data: Dict[str, Any], logger) -> bool:
 
     # 檢查執行結果 (exit code 0 或輸出包含成功標記)
     tool_response = input_data.get("tool_response") or {}
+    if not tool_response:
+        # 缺漏或空的 tool_response 是畸形 payload，不得套用「未遮蔽即成功」
+        logger.debug("tool_response 缺漏或為空，fail-open 不清理")
+        return False
 
     # 成功判斷：真實 payload 無 exit_code，由共用 helper 以 interrupted 與成功標記判定
-    is_success = is_bash_success(tool_response, ("[OK]", "已完成", "completed"), ignore_case=True)
+    # 分層判定：交接檔清理是冪等的（重複 complete 已完成的票，清理為無害空操作），在乎的是
+    # 「命令成功」而非「發生完成轉換」，故只接第 1 層（未遮蔽即成功），不套 286.2 的
+    # 轉換驗證器；被遮蔽時（out=$(...); rc=$? 等）以 completed 驗證器判定，讀票失敗再退回標記
+    is_success = is_bash_success(
+        tool_response,
+        ("[OK]", "已完成", "completed"),
+        ignore_case=True,
+        command=command,
+        state_verifier=make_completed_verifier(command, logger),
+    )
 
     if is_success:
         logger.info(f"檢測到成功的 complete 命令")

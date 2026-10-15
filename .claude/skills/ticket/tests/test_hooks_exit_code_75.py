@@ -103,7 +103,8 @@ def test_cli_error_feedback_hook_exit_code_75_compat_payload():
     hook = _cef()
     ok = _payload(_CEF_CMD, 75, "[OK] 0.1.0-W1-001 已追加日誌到 'Solution'")
     assert hook.check_skill_cli_error(ok, _LOGGER) is None
-    bad = _payload(_CEF_CMD, 75, "", _CEF_ERR)
+    # 286.3：未遮蔽命令走第 1 層即成功；無成功回音才回饋的情形限於被遮蔽的命令
+    bad = _payload(_CEF_CMD + " 2>&1 | tail -5", 75, "", _CEF_ERR)
     assert hook.check_skill_cli_error(bad, _LOGGER) is not None
 
 
