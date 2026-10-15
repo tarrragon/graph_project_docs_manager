@@ -624,5 +624,86 @@ class TestTicketMetaFailOpen:
     WHERE_MISSING = ["src/a.py"]
 
 
+def _run_real_raw_where(raw_where, repo, ticket_id=SUB_ID):
+    """走真實 read_ticket_where_files（僅 patch 原始 where.files 抽取）+ 真實 git"""
+    out = StringIO()
+    with patch.object(hook_module, "read_json_from_stdin",
+                      return_value=_real_payload(f"ticket track complete {ticket_id}")), \
+         patch.object(hook_module, "is_subagent_environment", return_value=False), \
+         patch.object(hook_module, "get_project_root", return_value=repo), \
+         patch.object(hook_module, "extract_where_files", return_value=raw_where), \
+         patch.object(hook_module, "read_ticket_type_and_children",
+                      return_value=("IMP", False)), \
+         patch("sys.stdout", out):
+        rc = hook_module.main()
+    return rc, json.loads(out.getvalue())
+
+
+def _missing_block(payload):
+    lines = payload["hookSpecificOutput"]["additionalContext"].splitlines()
+    start = lines.index(next(l for l in lines if l.startswith("缺失檔案（")))
+    return lines[start], lines[start + 1]
+
+
+class TestIntentSuffixStripping:
+    """0.5.0-W1-317：where.files 的 ::write / ::read 後綴比對前剝除（同一 repo fixture 正反對照）"""
+
+    def test_write_marked_modified_file_not_missing(self, repo):
+        rc, payload = _run_real_raw_where(
+            ["src/a.py::write", "src/b.py::write"], repo)
+        assert rc == 0
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+    def test_write_marked_untouched_file_still_missing(self, repo):
+        rc, payload = _run_real_raw_where(
+            ["src/a.py::write", "never.py::write"], repo)
+        header, first = _missing_block(payload)
+        assert header == "缺失檔案（1 個）："
+        assert first == "  - never.py"
+
+    def test_read_marked_not_expected_modification(self, repo):
+        rc, payload = _run_real_raw_where(
+            ["src/a.py::write", "never_read.py::read"], repo)
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+    def test_unmarked_legacy_format_unchanged(self, repo):
+        rc, payload = _run_real_raw_where(["src/a.py", "never.py"], repo)
+        assert _missing_block(payload) == ("缺失檔案（1 個）：", "  - never.py")
+
+    def test_read_where_files_structured_result(self):
+        files = hook_module.read_ticket_where_files
+        with patch.object(hook_module, "extract_where_files",
+                          return_value=["A/B.py::write", "c.py::read", "d.py"]):
+            assert files("x", Path("."), logging.getLogger("t")) == ["a/b.py", "d.py"]
+
+    def test_parser_is_shared_with_track_commit(self):
+        """與 track_commit 共用同一解析函式（斷言兩邊為同一物件）"""
+        from ticket_system.lib import file_conflict
+        assert hook_module.parse_file_intent is file_conflict.parse_file_intent
+        # track_commit 依賴 filelock（hooks 測試環境無），改以原始碼斷言其匯入來源
+        src = (Path(file_conflict.__file__).parent.parent / "commands"
+               / "track_commit.py").read_text(encoding="utf-8")
+        assert ("from ticket_system.lib.file_conflict import "
+                "files_intersect, parse_file_intent, write_files") in src
+
+    def test_extract_failure_fail_open(self, repo):
+        """where.files 抽取拋例外：reader 回空、main exit 0 不阻擋"""
+        rc, payload = None, None
+        with patch.object(hook_module, "extract_where_files",
+                          side_effect=OSError("boom")):
+            assert hook_module.read_ticket_where_files(
+                "x", Path("."), logging.getLogger("t")) == []
+            out = StringIO()
+            with patch.object(hook_module, "read_json_from_stdin",
+                              return_value=_real_payload(f"ticket track complete {SUB_ID}")), \
+                 patch.object(hook_module, "is_subagent_environment", return_value=False), \
+                 patch.object(hook_module, "get_project_root", return_value=repo), \
+                 patch("sys.stdout", out):
+                rc = hook_module.main()
+            payload = json.loads(out.getvalue())
+        assert rc == 0
+        assert "additionalContext" not in payload["hookSpecificOutput"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

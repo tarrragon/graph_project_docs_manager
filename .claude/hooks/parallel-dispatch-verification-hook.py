@@ -47,6 +47,13 @@ from lib.hook_ticket import (
     extract_where_files,
 )
 
+# 讀寫意圖後綴（::read / ::write）解析共用 ticket_system 實作，與 track_commit 一致
+# （比照 file-ownership-guard-hook.py 的落地方式）。
+_TICKET_SYSTEM_SKILL_DIR = Path(__file__).resolve().parent.parent / "skills" / "ticket"
+if str(_TICKET_SYSTEM_SKILL_DIR) not in sys.path:
+    sys.path.insert(0, str(_TICKET_SYSTEM_SKILL_DIR))
+from ticket_system.lib.file_conflict import parse_file_intent  # noqa: E402
+
 
 # ============================================================================
 # 常數定義
@@ -246,7 +253,11 @@ def read_ticket_where_files(ticket_id: str, project_root: Path,
 
         normalized = []
         for file_path in raw_files:
-            n = normalize_path(str(file_path))
+            # 剝除 ::read / ::write 後綴；::read 為讀取範圍，不列入預期修改
+            path, intent = parse_file_intent(str(file_path))
+            if intent == "read":
+                continue
+            n = normalize_path(path)
             if n:
                 normalized.append(n)
 
