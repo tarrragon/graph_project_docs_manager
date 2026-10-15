@@ -282,6 +282,9 @@ def _best_time(cmd, repeat=3):
 class TestLinearTimeAcrossTokenShapes:
     """每種可重複 token 形態：4n 耗時不超過 n 的 8 倍，且 4n 在 1 秒內。"""
 
+    # 比值測試以牆鐘為判準，基準耗時約 1ms，負載下比值被雜訊推過門檻，
+    # 故不進主套件；手動執行 -m wallclock
+    @pytest.mark.wallclock
     @pytest.mark.parametrize("shape", sorted(_PERF_SHAPES))
     def test_four_times_length_costs_at_most_eight_times(self, shape):
         build = _PERF_SHAPES[shape]
@@ -289,6 +292,22 @@ class TestLinearTimeAcrossTokenShapes:
         t_4n = _best_time(build(_PERF_N * 4))
         assert t_4n < 1.0
         assert t_4n <= 8 * t_n
+
+    # 主套件粗門檻：約 200KB 最壞形態在 5 秒內完成。線性實作實測約 0.05 秒
+    # （100 倍餘裕，負載雜訊吃不掉）；平方級實作在此長度需數十秒，仍會紅。
+    @pytest.mark.parametrize("shape,k", [
+        ("single_sed_long_e_chain", 15000),
+        ("sed_word_padding", 33000),
+        ("double_quoted_repeated", 7500),
+        ("heredoc_body_long", 10000),
+    ])
+    def test_200kb_worst_shapes_finish_within_coarse_bound(self, shape, k):
+        import time
+        cmd = _PERF_SHAPES[shape](k)
+        assert len(cmd) > 150000
+        start = time.monotonic()
+        _extract_candidate_paths(cmd)
+        assert time.monotonic() - start < 5.0
 
 
 class TestHeredocAndQuotedTextIgnored:
