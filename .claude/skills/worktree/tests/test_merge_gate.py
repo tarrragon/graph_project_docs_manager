@@ -410,7 +410,7 @@ class TestPerSuiteReuse:
         commit_file(repo, ".claude/skills/foo/a.py", "y = 1\n", "multi skill src")
         git(repo, "checkout", "main")
 
-    def _merge(self, repo, advance_path):
+    def _merge(self, repo, advance_path, text="new\n"):
         self._multi_branch(repo)
         ran, state = [], {"n": 0}
 
@@ -419,7 +419,7 @@ class TestPerSuiteReuse:
             ran.append(suite)
             state["n"] += 1
             if state["n"] == 1:
-                advance_main(repo, advance_path, "new\n")
+                advance_main(repo, advance_path, text)
             return 0, "1 passed in 0.1s"
 
         gate = mg.MergeGate(str(repo), art(run))
@@ -438,6 +438,12 @@ class TestPerSuiteReuse:
         out, ran = self._merge(repo, ".claude/hooks/new_hook.py")
         assert out.ok and out.attempts == 2
         assert ran[3:] == [mg.SUITE_HOOKS]
+
+    def test_suite_outside_first_set_is_added(self, repo):
+        # main 新增匯入該 skill 模組的 scripts 檔：套件集合因匯入掃描而變大，新套件加跑、其餘沿用
+        out, ran = self._merge(repo, ".claude/scripts/new_tool.py", "import a\n")
+        assert out.ok and out.attempts == 2
+        assert ran[3:] == ["other"]
 
     def test_reused_state_carries_to_next_retry(self, repo):
         self._multi_branch(repo)
