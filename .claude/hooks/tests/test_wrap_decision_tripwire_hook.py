@@ -392,12 +392,59 @@ class TestC_S1:
         result = strategy.detect(event, state, sd_s1, "T-1", logging.getLogger("t"))
         assert result.hit is True
 
-    def test_c8_failure_detection_fallback_keyword(self, hook_mod, strategy, sd_s1):
+    def test_c8_report_keywords_not_failure(self, hook_mod, strategy, sd_s1):
+        """E2：前景代理人報告含 error / failed 字樣的 PostToolUse 不計為失敗。"""
         import logging
         state = hook_mod._initial_state()
-        event = make_post_tool_use_task({"output": "...Exception thrown while running..."})
+        state["signals"]["consecutive_failures"] = {"count": 1}
+        event = make_post_tool_use_task(
+            {"output": "...Exception thrown; error handled; 2 tests failed then fixed..."})
+        event["tool_name"] = "Agent"
         result = strategy.detect(event, state, sd_s1, "T-1", logging.getLogger("t"))
-        assert result.hit is True
+        assert result.hit is False
+        assert result.reset is True
+
+    def test_c11_agent_failure_event_counts(self, hook_mod, strategy, sd_s1):
+        import logging
+        state = hook_mod._initial_state()
+        event = {"hook_event_name": "PostToolUseFailure", "tool_name": "Agent",
+                 "error": "Agent type not found", "cwd": "/tmp"}
+        r1 = strategy.detect(event, state, sd_s1, "T-1", logging.getLogger("t"))
+        assert r1.hit is True and r1.count == 1 and r1.should_warn is False
+        state = strategy.apply(state, r1, "T-1")
+        r2 = strategy.detect(event, state, sd_s1, "T-1", logging.getLogger("t"))
+        assert r2.count == 2 and r2.should_warn is True
+
+    def test_c12_agent_success_resets_after_failure(self, hook_mod, strategy, sd_s1):
+        import logging
+        state = hook_mod._initial_state()
+        fail = {"hook_event_name": "PostToolUseFailure", "tool_name": "Agent", "cwd": "/tmp"}
+        ok = {"hook_event_name": "PostToolUse", "tool_name": "Agent",
+              "tool_response": {"status": "completed"}, "cwd": "/tmp"}
+        lg = logging.getLogger("t")
+        state = strategy.apply(state, strategy.detect(fail, state, sd_s1, "T-1", lg), "T-1")
+        state = strategy.apply(state, strategy.detect(ok, state, sd_s1, "T-1", lg), "T-1")
+        assert state["signals"]["consecutive_failures"]["count"] == 0
+        r = strategy.detect(fail, state, sd_s1, "T-1", lg)
+        assert r.count == 1 and r.should_warn is False
+
+    def test_c13_production_yaml_agent_and_failure_source(self, hook_mod):
+        import logging
+        cfg = hook_mod.load_config(
+            Path(__file__).resolve().parents[2] / "config" / "wrap-triggers.yaml",
+            logging.getLogger("t"))
+        sd = next(s for s in cfg.signals if s.id == "consecutive_failures")
+        assert sd.tool_matcher == "Agent"
+        assert "PostToolUseFailure" in sd.event_sources
+        assert "keywords" not in (sd.raw.get("failure_detection") or {})
+
+    def test_c14_settings_registers_failure_event_for_agent(self):
+        settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        hits = [e for e in settings["hooks"]["PostToolUseFailure"]
+                if e.get("matcher") == "Agent" and any(
+                    "wrap-decision-tripwire-hook.py" in h.get("command", "")
+                    for h in e.get("hooks", []))]
+        assert len(hits) == 1
 
     def test_c9_non_task_tool_ignored(self, hook_mod, strategy, sd_s1):
         import logging
