@@ -768,6 +768,65 @@ def test_filled_acceptance_without_placeholder_passes(logger):
     assert check_hook_protection_acceptance(fm, logger, content="") == (False, None)
 
 
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-276.5：只擋以「：<待填>」結尾的模板，敘述性提及不擋
+# ---------------------------------------------------------------------------
+
+def _load_template_constant():
+    # 以 ast 讀常數字面值：import create.py 會拉入 filelock 等 hooks 環境沒有的依賴
+    import ast
+
+    src = (
+        _hooks_dir.parent / "skills" / "ticket" / "ticket_system" / "commands" / "create.py"
+    ).read_text(encoding="utf-8")
+    for node in ast.parse(src).body:
+        if isinstance(node, ast.Assign) and any(
+            getattr(t, "id", "") == "_HOOK_ACCEPTANCE_TEMPLATES" for t in node.targets
+        ):
+            return ast.literal_eval(node.value)
+    raise AssertionError("找不到 _HOOK_ACCEPTANCE_TEMPLATES")
+
+
+_NARRATIVE_ITEMS = [
+    "[x] acceptance 殘留 <待填> 時 gate 阻擋並列出該條（正向對照輸入）",
+    "[x] 實地觸發：合併後以只改 hooks/tests 的票 complete，不被要求四項；以殘留 <待填> 的票 complete 被擋",
+]
+
+
+def _legacy_contains_placeholder(item: str) -> bool:
+    """舊實作判準（中段含 <待填> 即算），用來證明反向對照在修正前為紅。"""
+    return "<待填>" in item
+
+
+def test_template_constant_all_blocked_matches_276_1(logger):
+    templates = _load_template_constant()
+    assert len(templates) == 4
+    acceptance = [text for _label, text in templates]
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], acceptance)
+    should_block, msg = check_hook_protection_acceptance(fm, logger, content="")
+    assert should_block is True
+    assert all(text in msg for text in acceptance)
+
+
+@pytest.mark.parametrize("item", _NARRATIVE_ITEMS)
+def test_narrative_mention_not_blocked(logger, item):
+    assert _legacy_contains_placeholder(item) is True  # 舊實作下此條為紅
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _PASSING_ACCEPTANCE + [item])
+    assert check_hook_protection_acceptance(fm, logger, content="") == (False, None)
+
+
+def test_placeholder_check_exception_is_fail_closed(logger, monkeypatch):
+    import acceptance_checkers.hook_protection_acceptance_checker as mod
+
+    def boom(_line):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(mod, "_is_template_placeholder", boom)
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _PASSING_ACCEPTANCE)
+    should_block, _ = check_hook_protection_acceptance(fm, logger, content="")
+    assert should_block is True
+
+
 def test_scope_judgement_exception_is_fail_closed(logger, monkeypatch):
     import acceptance_checkers.hook_protection_acceptance_checker as mod
 

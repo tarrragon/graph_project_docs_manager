@@ -311,13 +311,29 @@ def _any_path_touches_hook_scope(where_files: List[str], logger=None) -> bool:
 _PLACEHOLDER = "<待填>"
 
 
+# 276.1 的模板（create.py 的 _HOOK_ACCEPTANCE_TEMPLATES）一律以「：<待填>」
+# 結尾；只有此形式視為未填寫，條目中段敘述性提及 <待填> 不阻擋。
+_TEMPLATE_SUFFIX = "：" + _PLACEHOLDER
+
+
+def _is_template_placeholder(line: str) -> bool:
+    """條目是否為以「：<待填>」結尾的未填寫模板。"""
+    return line.rstrip().endswith(_TEMPLATE_SUFFIX)
+
+
 def _placeholder_acceptance_items(frontmatter: dict) -> List[str]:
-    """回傳 acceptance 中殘留 `<待填>` 的條目文字。"""
-    return [
-        line
-        for line in _join_acceptance_text(frontmatter).split("\n")
-        if _PLACEHOLDER in line
-    ]
+    """回傳 acceptance 中仍為模板形式（以「：<待填>」結尾）的條目文字。
+
+    判定例外時 fail-closed：視為該條目未填寫。
+    """
+    items = []
+    for line in _join_acceptance_text(frontmatter).split("\n"):
+        try:
+            if _is_template_placeholder(line):
+                items.append(line)
+        except Exception:  # fail-closed：判定失敗仍阻擋
+            items.append(line)
+    return items
 
 
 def _join_acceptance_text(frontmatter: dict) -> str:
