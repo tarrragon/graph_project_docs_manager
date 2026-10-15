@@ -399,10 +399,59 @@ def split_redirections(tokens: List[str]) -> Tuple[List[str], List[str]]:
     return command, redirects
 
 
+def _has_variable_positional(args: List[str], with_value) -> bool:
+    """位置參數（非選項、非帶值選項的值）中是否含未展開的 shell 變數（`$t`、`${t}`、`$(...)`）。"""
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--":
+            return any("$" in a for a in args[index + 1:])
+        if arg.startswith("-"):
+            index += 2 if arg in with_value else 1
+            continue
+        if "$" in arg:
+            return True
+        index += 1
+    return False
+
+
+def has_variable_test_target(tokens: List[str]) -> bool:
+    """剝除前綴後的測試命令，其測試目標是否含未展開的 shell 變數。
+
+    此時目標無法由字面判定（變數可能指向單一測試檔，也可能指向目錄），
+    封堵端據此視為無法判定而放行（fail-open）。僅看 flutter／dart test 與 pytest。
+    """
+    if not tokens:
+        return False
+    head = Path(tokens[0]).name
+    if head in (RUNNER_FLUTTER, RUNNER_DART):
+        rest = _skip_options(tokens[1:], _FLUTTER_DART_OPTIONS_WITH_VALUE)
+        return bool(rest) and rest[0] == "test" and _has_variable_positional(
+            rest[1:], _FLUTTER_TEST_OPTIONS_WITH_VALUE)
+    if _classify_runner(tokens) == RUNNER_PYTEST:
+        return _has_variable_positional(tokens[1:], _PYTEST_OPTIONS_WITH_VALUE)
+    return False
+
+
+def find_variable_target_statements(command: str) -> List[Tuple[str, ...]]:
+    """回傳命令中測試目標含未展開變數的敘述（供封堵端記錄 fail-open 放行）；無法解析回 []。"""
+    statements = parse_command_statements(command)
+    if statements is None:
+        return []
+    found = []
+    for statement in statements:
+        cmd_tokens, _ = split_redirections(list(_without_trailing_operators(statement)))
+        stripped, _wrapped = _strip_launch_prefixes_tracking(cmd_tokens)
+        if has_variable_test_target(stripped):
+            found.append(tuple(cmd_tokens))
+    return found
+
+
 def find_unwrapped_heavy_with_redirects(command: str) -> Optional[List[Tuple[Tuple[str, ...], str]]]:
     """同 find_unwrapped_heavy，每筆另附渲染後的重導向文字（無則空字串）；供產生建議寫法。
 
     重導向在判定前先剝除（否則 `2>&1` 等被當成非測試檔的位置參數而把單檔誤判 heavy）。
+    測試目標含未展開 shell 變數者視為無法判定，不列入（fail-open）。
     """
     statements = parse_command_statements(command)
     if statements is None:
@@ -412,6 +461,11 @@ def find_unwrapped_heavy_with_redirects(command: str) -> Optional[List[Tuple[Tup
         cmd_tokens, redirects = split_redirections(list(_without_trailing_operators(statement)))
         stripped, wrapped = _strip_launch_prefixes_tracking(cmd_tokens)
         if wrapped or not stripped or not _is_known_heavy_candidate(stripped):
+            continue
+        # 判定順序：先排除含未展開 shell 變數的目標（字面無法判定，fail-open 放行），
+        # 再以字面目標分級（命名樣式或基準目錄下既存 .py／.dart 檔判 light，其餘 heavy）。
+        # 變數目標在字面階段不可能解析成既存檔，故必須先於檔案檢查處理。
+        if has_variable_test_target(stripped):
             continue
         if _weight_of_stripped(stripped, launcher_led=False,
                                base_dir=_command_base_dir(cmd_tokens)) == WEIGHT_HEAVY:

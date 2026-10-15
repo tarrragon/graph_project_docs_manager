@@ -788,7 +788,7 @@ def test_contrast_leader_gone_but_group_has_members_is_not_killed(renv):
     member = _wait_pid(holder)
     renv.env.pids.append(member)
     start = _load().process_start(leader.pid)
-    renv.reg.mkdir()
+    renv.reg.mkdir(mode=0o700)
     entry = renv.reg / "wrapper-999999.json"
     entry.write_text(json.dumps({
         "pgid": leader.pid, "leader_start": start, "wrapper_pid": _dead_pid(),
@@ -823,7 +823,7 @@ def test_corrupt_entry_reported_and_other_entries_still_processed(renv):
 
 
 def test_unreadable_registry_dir_reported_without_abort(renv):
-    renv.reg.mkdir()
+    renv.reg.mkdir(mode=0o700)
     renv.reg.chmod(0)
     try:
         res = renv.run("--kill")
@@ -836,6 +836,47 @@ def test_unreadable_registry_dir_reported_without_abort(renv):
 def test_missing_registry_dir_is_empty(renv):
     res = renv.run("--kill")
     assert res.returncode == 0 and "登記" not in res.stdout
+
+
+def test_unsafe_registry_dir_is_not_read_or_acted_on(renv):
+    """群組可寫的登記目錄不採信：即使內有登記檔也不列出、不終止，且回報原因。"""
+    w, pid, entry = renv.start_wrapper()
+    _sigkill_wrapper(w)
+    renv.reg.chmod(0o770)
+    try:
+        res = renv.run("--kill")
+    finally:
+        renv.reg.chmod(0o700)
+    assert res.returncode == 0
+    assert "登記目錄不安全" in res.stdout and "登記已終止" not in res.stdout
+    assert _alive(pid) and entry.exists()
+
+
+def test_symlinked_registry_dir_is_not_read(renv, tmp_path):
+    real = tmp_path / "real-reg"
+    real.mkdir(mode=0o700)
+    renv.reg.symlink_to(real)
+    res = renv.run("--kill")
+    assert res.returncode == 0 and "登記目錄不安全" in res.stdout
+
+
+def test_machine_readable_summary_line_matches_human_line(renv):
+    """機器可讀契約行與人讀行數字一致；count_orphans 只解析前者。"""
+    import re
+    res = renv.run()
+    human = re.search(r"^符合 (\d+) 略過 (\d+) 疑似殘留 (\d+)$", res.stdout, re.M)
+    machine = re.search(r"^ORPHAN_SUMMARY matched=(\d+) skipped=(\d+) suspects=(\d+) registered=(\d+)$",
+                        res.stdout, re.M)
+    assert human and machine and human.groups() == machine.groups()[:3]
+
+
+def test_summary_registered_counts_killable_registry_entries(renv):
+    import re
+    w, _pid, _entry = renv.start_wrapper()
+    _sigkill_wrapper(w)
+    res = renv.run()
+    machine = re.search(r"registered=(\d+)", res.stdout)
+    assert "登記可終止" in res.stdout and machine and int(machine.group(1)) == 1
 
 
 # ---- 登記群組：KILL 升級、登記驗證、查詢失敗、時區、過期登記 ----
@@ -874,7 +915,7 @@ def _start_term_exiting_group(renv):
 def write_entry(renv, pgid, wrapper_pid=None, name=None, **override):
     mod = _load()
     wrapper_pid = wrapper_pid or _dead_pid()
-    renv.reg.mkdir(exist_ok=True)
+    renv.reg.mkdir(mode=0o700, exist_ok=True)
     data = {"pgid": pgid, "leader_start": mod.process_start(pgid) or "x",
             "wrapper_pid": wrapper_pid, "wrapper_start": "Mon Jan  1 00:00:00 2001",
             "cwd": str(renv.env.root), "command": ["x"]}
@@ -909,7 +950,7 @@ def test_contrast_leader_start_changes_before_kill_sends_no_kill_and_fails(tmp_p
 def test_changed_after_term_is_reported_as_failure(tmp_path, monkeypatch, capsys):
     mod = _load()
     monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(tmp_path / "reg"))
-    (tmp_path / "reg").mkdir()
+    (tmp_path / "reg").mkdir(mode=0o700)
     entry = tmp_path / "reg" / "wrapper-999999-x.json"
     entry.write_text(json.dumps({"pgid": 4000, "leader_start": "T0", "wrapper_pid": 999999,
                                  "wrapper_start": "W0", "cwd": str(tmp_path), "command": ["x"]}))
@@ -928,7 +969,7 @@ BAD_PGIDS = ["0", "1", "-5", "true", "false", "2.0", "2.5", '"7"', "GETPGRP"]
 def test_invalid_pgid_is_corrupt_entry_and_sends_no_signal(raw, tmp_path, monkeypatch, capsys):
     mod = _load()
     reg = tmp_path / "reg"
-    reg.mkdir()
+    reg.mkdir(mode=0o700)
     monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(reg))
     raw = str(os.getpgrp()) if raw == "GETPGRP" else raw
     path = reg / "wrapper-999999-x.json"
@@ -957,7 +998,7 @@ def test_killpg_unexpected_oserror_reported_as_error_not_raised(tmp_path, monkey
 def test_ps_failure_on_one_entry_is_error_others_and_classes_still_processed(env, tmp_path, monkeypatch, capsys):
     mod = _load()
     reg = tmp_path / "reg"
-    reg.mkdir()
+    reg.mkdir(mode=0o700)
     monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(reg))
     dead = subprocess.Popen([sys.executable, "-c", "pass"])
     dead.wait()

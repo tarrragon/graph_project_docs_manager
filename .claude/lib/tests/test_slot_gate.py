@@ -183,9 +183,12 @@ def _fake_orphan_script(tmp_path, body):
     return str(script)
 
 
-def _summary_script(tmp_path, matched=0, suspects=0, extra=""):
-    return _fake_orphan_script(tmp_path, "print(%r)\nprint('符合 %d 略過 0 疑似殘留 %d')\n" % (
-        extra, matched, suspects))
+def _summary_script(tmp_path, matched=0, suspects=0, registered=0, extra="",
+                    human="符合 %d 略過 0 疑似殘留 %d"):
+    """替身輸出：人讀行（可任意改字）加機器可讀契約行；count_orphans 只該解析後者。"""
+    return _fake_orphan_script(
+        tmp_path, "print(%r)\nprint(%r)\nprint('ORPHAN_SUMMARY matched=%d skipped=0 suspects=%d registered=%d')\n" % (
+            extra, human % (matched, suspects) if "%d" in human else human, matched, suspects, registered))
 
 
 def test_orphans_present_prints_count_and_cleanup_command(monkeypatch, tmp_path, capsys):
@@ -219,11 +222,28 @@ def test_no_orphans_prints_nothing(monkeypatch, tmp_path, capsys):
     assert capsys.readouterr().err == ""
 
 
-def test_registered_group_lines_count_as_orphans(monkeypatch, tmp_path, capsys):
-    script = _summary_script(tmp_path, extra="登記可終止 群組 123 cwd /x 命令 flutter test（原因）")
-    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", script)
+def test_registered_groups_in_summary_count_as_orphans(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", _summary_script(tmp_path, registered=1))
     slot_gate.report_orphans()
     assert "可清理 1 個" in capsys.readouterr().err
+
+
+def test_human_summary_wording_change_does_not_change_count(monkeypatch, tmp_path, capsys):
+    """人讀行改字（前綴、語言）不得造成少算：計數只認機器可讀契約行。"""
+    script = _summary_script(tmp_path, matched=2, suspects=1, human="Summary: changed wording")
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", script)
+    slot_gate.report_orphans()
+    err = capsys.readouterr().err
+    assert "可清理 2 個" in err and "疑似殘留 1 棵" in err
+
+
+def test_human_lines_alone_are_not_a_contract(monkeypatch, tmp_path, capsys):
+    """只有人讀行、無契約行：視為查詢失敗（單行警告），不從人讀行猜數量。"""
+    script = _fake_orphan_script(tmp_path, "print('符合 5 略過 0 疑似殘留 0')\nprint('登記可終止 群組 1')\n")
+    monkeypatch.setenv("CLAUDE_ORPHAN_SCRIPT", script)
+    slot_gate.report_orphans()
+    err = capsys.readouterr().err
+    assert len(err.strip().splitlines()) == 1 and "可清理" not in err
 
 
 @pytest.mark.parametrize("body", [
