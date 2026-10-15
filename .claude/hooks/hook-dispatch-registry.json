@@ -184,6 +184,14 @@
         {
           "path": ".claude/hooks/session-context-guard-hook.py",
           "timeout": 30
+        },
+        {
+          "path": ".claude/hooks/parallel-dispatch-verification-hook.py",
+          "timeout": 30
+        },
+        {
+          "path": ".claude/skills/worktree/hooks/worktree-merge-reminder-hook.py",
+          "timeout": 30
         }
       ]
     }

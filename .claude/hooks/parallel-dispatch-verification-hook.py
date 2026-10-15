@@ -35,7 +35,9 @@ from lib.hook_io import read_json_from_stdin, is_subagent_environment
 from lib.ticket_command_parse import has_complete_command, complete_statement_args  # noqa: E402
 from lib.git_command_parse import parse_command_statements  # noqa: E402
 from lib.ticket_id_pattern import SEARCH_WITH_SUFFIX_RE  # noqa: E402
-from lib.bash_tool_response import is_bash_success  # noqa: E402
+from lib.bash_tool_response import (  # noqa: E402
+    FAILURE_EVENT_NAME, is_bash_success, is_failure_event, auto_commit_failure_as_success,
+)
 from lib.ticket_completed_verifier import (  # noqa: E402
     make_completed_verifier, is_complete_transition_success,
 )
@@ -493,6 +495,18 @@ def main() -> int:
             print(json.dumps(DEFAULT_OUTPUT))
             return 0
 
+        # PostToolUseFailure：僅結束碼 75（動作完成、auto-commit 失敗）沿用完成後處理；
+        # 正規化後的 payload 仍經 is_ticket_complete_success（286.2 的 completed 驗證器）判定
+        event_name = "PostToolUse"
+        if is_failure_event(input_data):
+            input_data = auto_commit_failure_as_success(input_data)
+            if input_data is None:
+                logger.debug("失敗事件非結束碼 75，不處理")
+                print(json.dumps(DEFAULT_OUTPUT))
+                return 0
+            event_name = FAILURE_EVENT_NAME
+            logger.info("PostToolUseFailure 結束碼 75，視為完成並執行驗證")
+
         # subagent 環境跳過（代理人不執行 complete）
         if is_subagent_environment(input_data):
             logger.debug("subagent 環境，跳過")
@@ -554,7 +568,7 @@ def main() -> int:
 
             output = {
                 "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
+                    "hookEventName": event_name,
                     "additionalContext": warning_msg
                 }
             }
