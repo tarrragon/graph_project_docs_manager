@@ -373,20 +373,9 @@ def derive_ticket(event: Dict[str, Any], cwd: Path, logger) -> Optional[str]:
     if t:
         return t
 
-    # 層 2：dispatch-active.json
-    dispatch_path = cwd / ".claude" / "dispatch-active.json"
-    try:
-        data = json.loads(dispatch_path.read_text(encoding="utf-8"))
-        if isinstance(data, list) and data:
-            latest = max(data, key=lambda x: x.get("dispatched_at", "") if isinstance(x, dict) else "")
-            if isinstance(latest, dict):
-                t = latest.get("ticket_id")
-                if t:
-                    return t
-    except FileNotFoundError:
-        logger.info("dispatch-active.json not found (normal in many sessions)")
-    except (json.JSONDecodeError, OSError) as e:
-        logger.info("dispatch-active.json unreadable: %s", e)
+    # 原層 2（讀 dispatch-active.json 取最新派發）已移除：實檔形狀為
+    # {"dispatches": [...]}，且全域狀態在並行派發或派發已結束時會取到別張票，
+    # 語意不正確；Agent 事件已由層 0 涵蓋。
 
     # 層 3：git branch
     try:

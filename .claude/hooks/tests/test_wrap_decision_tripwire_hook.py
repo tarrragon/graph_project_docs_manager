@@ -885,6 +885,40 @@ class TestF_Resets:
         t = hook_mod.derive_ticket({}, tmp_path, logging.getLogger("t"))
         assert t is None
 
+    def test_f10_dispatch_active_real_shape_not_used(self, hook_mod, monkeypatch, tmp_path):
+        """實檔形狀 {dispatches: [...]} 並行多筆時不得取任何一張票（全域狀態不可歸屬）。"""
+        import json as _json
+        import logging
+        monkeypatch.delenv("TICKET_ID", raising=False)
+        d = tmp_path / ".claude"
+        d.mkdir()
+        payload = {"dispatches": [
+            {"ticket_id": "9.9.9-W1-001", "dispatched_at": "2026-01-01T00:00:00"},
+            {"ticket_id": "9.9.9-W1-002", "dispatched_at": "2026-01-01T00:05:00"},
+        ]}
+        (d / "dispatch-active.json").write_text(_json.dumps(payload), encoding="utf-8")
+
+        def fake_run(*args, **kwargs):
+            raise subprocess.SubprocessError("no git")
+        monkeypatch.setattr(hook_mod.subprocess, "run", fake_run)
+        assert hook_mod.derive_ticket({}, tmp_path, logging.getLogger("t")) is None
+
+    def test_f11_agent_prompt_wins_over_dispatch_active(self, hook_mod, monkeypatch, tmp_path):
+        """對照：同一份多筆 dispatch-active 下，Agent 事件仍取 prompt 首行票號。"""
+        import json as _json
+        import logging
+        monkeypatch.delenv("TICKET_ID", raising=False)
+        d = tmp_path / ".claude"
+        d.mkdir()
+        payload = {"dispatches": [
+            {"ticket_id": "9.9.9-W1-001", "dispatched_at": "2026-01-01T00:00:00"},
+            {"ticket_id": "9.9.9-W1-002", "dispatched_at": "2026-01-01T00:05:00"},
+        ]}
+        (d / "dispatch-active.json").write_text(_json.dumps(payload), encoding="utf-8")
+        event = {"tool_name": "Agent",
+                 "tool_input": {"prompt": "Ticket: 9.9.9-W1-001\n任務"}}
+        assert hook_mod.derive_ticket(event, tmp_path, logging.getLogger("t")) == "9.9.9-W1-001"
+
 
 # ============================================================================
 # G. 提醒訊息快照
