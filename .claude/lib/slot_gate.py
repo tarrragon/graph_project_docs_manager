@@ -240,7 +240,7 @@ def describe_holder(directory: str) -> str:
             with open(_holder_path(directory, index)) as fh:
                 info = json.load(fh)
             text = (f"持有者 pid={info['pid']} cwd={info['cwd']} 命令={' '.join(info['command'])} "
-                    f"開始={info['started']} load={_current_load()}")
+                    f"開始={info['started']} ｜ 目前負載={_current_load()}")
             if _pid_gone(int(info["pid"])):
                 text += "（資訊過期：該 pid 已不存在，名額應很快釋放）"
             return text

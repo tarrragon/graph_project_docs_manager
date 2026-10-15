@@ -158,6 +158,10 @@ def test_waiter_shows_current_load_not_recorded_load(monkeypatch, tmp_path):
     monkeypatch.setattr(slot_gate.os, "getloadavg", lambda: (9.99, 8.88, 7.77))
     text = slot_gate.describe_holder(str(tmp_path))
     assert "9.99" in text and "0.11" not in text
+    # 負載標為當下值，並以分隔符與持有者描述區隔
+    assert " ｜ 目前負載=9.99/8.88/7.77" in text
+    assert text.index("開始=") < text.index(" ｜ ") < text.index("目前負載=")
+    assert " load=" not in text
 
 
 def test_stale_pid_tmp_removed_live_kept(monkeypatch, tmp_path):
