@@ -25,6 +25,11 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
 - 持有者的子程序不重複取得名額：持有者在持有期間把自己的 pid 放入環境變數 HELD_ENV（export_hold），
   子程序內的 run-with-timeout 經 is_heavy_command 判定為免排隊。標記僅在「該 pid 仍存在且名額確實全被占用」
   時有效（held_by_ancestor），殘留的過期標記不會讓 heavy 命令繞過閘門。
+- 預估耗時提早拒絕（2026-10-15）：排隊檔與 holder 檔都記預估持有秒數 estimate（呼叫端傳入 estimate_seconds，
+  未傳用 default_estimate_seconds(command)；舊格式無此欄位的檔案同樣以命令預設值計）。進入排隊時 estimate_wait
+  計算「持有者剩餘（estimate 減已持有秒數，下限 0）加前方各存活排隊者 estimate」，超過等待上限即立刻以
+  SLOT_WAIT_EXIT_CODE 結束，訊息列出順位、前方筆數與預估秒數；未超過照常排隊，等待提示附預估剩餘。
+  預估是估算不是保證：實際較快時多拒了一次（呼叫端可重送），較慢時仍受等待上限保護。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
 """
 import fcntl
@@ -50,6 +55,23 @@ ORPHAN_QUERY_TIMEOUT_SECONDS = 5.0
 ORPHAN_CLEANUP_COMMAND = "python3 .claude/scripts/orphan-test-procs.py --kill"
 _ORPHAN_SUMMARY_RE = re.compile(r"^符合 (\d+) 略過 (\d+) 疑似殘留 (\d+)$", re.MULTILINE)
 WAITED_REPORT_THRESHOLD = SLOT_POLL_INTERVAL
+# 無歷史資料時的預估持有秒數（保守取偏高值，寧可早拒絕也不讓排隊者空等滿上限）。
+# 依據 2026-10-15 實測：hooks 套件 160-230 秒、ticket skill 520-580 秒、動到 lib 的合併約 915 秒。
+DEFAULT_ESTIMATE_SECONDS = 600.0
+_DEFAULT_ESTIMATE_BY_KEYWORD = (
+    ("merge-gate", 900.0),  # 合併閘門通常由 merge_gate 傳入日誌中位數；此為無法估算時的後備
+    ("flutter", 600.0),
+    ("pytest", 300.0),
+)
+
+
+def default_estimate_seconds(command: List[str]) -> float:
+    """依命令內容給預設預估持有秒數；無關鍵字符合時回 DEFAULT_ESTIMATE_SECONDS。"""
+    joined = " ".join(command)
+    for keyword, seconds in _DEFAULT_ESTIMATE_BY_KEYWORD:
+        if keyword in joined:
+            return seconds
+    return DEFAULT_ESTIMATE_SECONDS
 
 
 def _warn(message: str, label: str = "run-with-timeout") -> None:
@@ -216,12 +238,13 @@ def describe_holder(directory: str) -> str:
     return "持有者資訊暫不可讀"
 
 
-def _write_holder(directory: str, index: int, command: List[str]) -> Optional[str]:
+def _write_holder(directory: str, index: int, command: List[str], estimate: float) -> Optional[str]:
     path = _holder_path(directory, index)
     tmp = f"{path}.{os.getpid()}.tmp"
     try:
         entry = {"pid": os.getpid(), "cwd": os.getcwd(), "command": command,
                  "started": time.strftime("%Y-%m-%d %H:%M:%S"),
+                 "started_epoch": time.time(), "estimate": estimate,
                  "load": "/".join(f"{x:.2f}" for x in os.getloadavg())}
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
         with os.fdopen(fd, "w") as fh:
@@ -278,7 +301,7 @@ def _live_queue(directory: str) -> List[Tuple[int, str]]:
     return entries
 
 
-def _enqueue(directory: str, command: List[str]) -> str:
+def _enqueue(directory: str, command: List[str], estimate: float) -> str:
     """建立自己的排隊檔，回檔名；序號 = 現有最大序號 + 1，撞名即重試。"""
     while True:
         seq = max([s for s, _ in _live_queue(directory)] + [0]) + 1
@@ -288,7 +311,7 @@ def _enqueue(directory: str, command: List[str]) -> str:
         except FileExistsError:
             continue  # 他人同時取得同一序號
         with os.fdopen(fd, "w") as fh:
-            json.dump({"pid": os.getpid(), "command": command,
+            json.dump({"pid": os.getpid(), "command": command, "estimate": estimate,
                        "arrived": time.strftime("%Y-%m-%d %H:%M:%S")}, fh)
         return name
 
@@ -306,6 +329,46 @@ def _queue_position(directory: str, name: str) -> int:
         if entry == name:
             return index
     return 0
+
+
+def _number(value, fallback: float) -> float:
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0 else fallback
+
+
+def _entry_estimate(directory: str, name: str) -> float:
+    """排隊檔的預估秒數；欄位缺漏、檔案不可讀（舊格式、剛被清除）以命令預設值或預設常數計。"""
+    try:
+        with open(os.path.join(directory, name)) as fh:
+            info = json.load(fh)
+        return _number(info.get("estimate"), default_estimate_seconds(info.get("command") or []))
+    except (OSError, ValueError, AttributeError, TypeError):
+        return DEFAULT_ESTIMATE_SECONDS
+
+
+def _holder_remaining(directory: str) -> float:
+    """目前持有者的剩餘預估秒數（估計值減已持有秒數，下限 0）；持有者 pid 已不存在或資訊不可讀計 0。"""
+    for index in range(SLOT_COUNT):
+        try:
+            with open(_holder_path(directory, index)) as fh:
+                info = json.load(fh)
+            if _pid_gone(int(info["pid"])):
+                continue
+            estimate = _number(info.get("estimate"), default_estimate_seconds(info.get("command") or []))
+            elapsed = max(time.time() - float(info["started_epoch"]), 0.0) if "started_epoch" in info else 0.0
+            return max(estimate - elapsed, 0.0)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue  # 持有者剛取得、尚未寫出資訊，或資訊檔已移除：不計入
+    return 0.0
+
+
+def estimate_wait(directory: str, name: str) -> Tuple[int, float]:
+    """回 (前方存活排隊筆數, 預估等待秒數)；等待 = 持有者剩餘 + 前方各筆 estimate。"""
+    ahead = []
+    for _seq, entry in _live_queue(directory):
+        if entry == name:
+            break
+        ahead.append(entry)
+    return len(ahead), _holder_remaining(directory) + sum(_entry_estimate(directory, e) for e in ahead)
 
 
 def _try_acquire(directory: str) -> Optional[Tuple[int, int]]:
@@ -338,26 +401,33 @@ class SlotHold:
 
 def acquire_slot(command: List[str],
                  interrupted: Callable[[], Optional[int]],
-                 label: str = "run-with-timeout") -> Tuple[Optional[SlotHold], Optional[int]]:
+                 label: str = "run-with-timeout",
+                 estimate_seconds: Optional[float] = None) -> Tuple[Optional[SlotHold], Optional[int]]:
     """排隊取得名額；回 (SlotHold 或 None, 提前結束碼或 None)。
 
-    interrupted 回傳等待期間收到的訊號編號（無則 None）。label 為提示行前綴，讓不同呼叫端的等待提示可區分來源。持有者為 None 且無結束碼表示閘門失效而略過。
+    interrupted 回傳等待期間收到的訊號編號（無則 None）。label 為提示行前綴，讓不同呼叫端的等待提示可區分來源。estimate_seconds 為本次預計持有秒數（未傳用命令預設值），供後方排隊者估算等待。持有者為 None 且無結束碼表示閘門失效而略過。
     """
     directory = slot_dir()
     limit = _env_seconds("CLAUDE_SLOT_WAIT_LIMIT", SLOT_WAIT_LIMIT_SECONDS)
     interval = _env_seconds("CLAUDE_SLOT_NOTICE_INTERVAL", SLOT_NOTICE_INTERVAL_SECONDS)
+    estimate = _number(estimate_seconds, default_estimate_seconds(command))
     waited_since = time.monotonic()
     next_notice = waited_since
     queue_name = None  # type: Optional[str]
     try:
         _prepare_dir(directory)
-        queue_name = _enqueue(directory, command)
+        queue_name = _enqueue(directory, command, estimate)
+        ahead_count, expected = estimate_wait(directory, queue_name)
+        if expected > limit:  # 前方預估加總已超過上限：等下去只會逾時，立即拒絕
+            _warn(f"預估等待 {expected:.0f} 秒超過上限 {limit:g} 秒，不排隊：順位 {ahead_count + 1}，"
+                  f"前方 {ahead_count} 筆；{describe_holder(directory)}", label)
+            return None, SLOT_WAIT_EXIT_CODE
         while True:
             try:
                 _prepare_dir(directory)
                 position = _queue_position(directory, queue_name)
                 if position == 0:  # 排隊檔被他人清除：重新排到隊尾
-                    queue_name = _enqueue(directory, command)
+                    queue_name = _enqueue(directory, command, estimate)
                     position = _queue_position(directory, queue_name)
                 got = _try_acquire(directory) if position == 1 else None
             except OSError as exc:
@@ -369,7 +439,7 @@ def acquire_slot(command: List[str],
                 if waited >= WAITED_REPORT_THRESHOLD:
                     _warn(f"取得名額，已等待 {waited:.1f} 秒", label)
                 _remove_stale_tmp(directory)
-                return SlotHold(fd, _write_holder(directory, index, command)), None
+                return SlotHold(fd, _write_holder(directory, index, command, estimate)), None
             signum = interrupted()
             if signum is not None:
                 return None, 128 + signum
@@ -378,8 +448,9 @@ def acquire_slot(command: List[str],
                 _warn(f"等待名額超過 {limit:g} 秒，放棄執行。{describe_holder(directory)}", label)
                 return None, SLOT_WAIT_EXIT_CODE
             if now >= next_notice:
+                _, remaining = estimate_wait(directory, queue_name)
                 _warn(f"等待名額：順位 {position}，前方 {max(position - 1, 0)} 筆；{describe_holder(directory)}；"
-                      f"已等待 {now - waited_since:.0f} 秒", label)
+                      f"已等待 {now - waited_since:.0f} 秒，預估剩餘 {remaining:.0f} 秒", label)
                 next_notice = now + interval
             time.sleep(SLOT_POLL_INTERVAL)
     except OSError as exc:

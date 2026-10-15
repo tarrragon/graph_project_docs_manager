@@ -21,6 +21,7 @@ merge_branch_cas 產生合併 commit 之前取得、update-ref 完成或中止�
 import os
 import re
 import shutil
+import statistics
 import signal
 import subprocess
 import sys
@@ -350,6 +351,44 @@ def summarize_output(output: str) -> str:
     return "無摘要"
 
 
+# 名額預估：各套件取日誌中最近 N 筆綠燈耗時的中位數；無資料用預設值（依 2026-10-15 實測，保守取偏高）
+ESTIMATE_SAMPLE_COUNT = 5
+_LOG_TAIL_BYTES = 256 * 1024  # 只讀日誌尾段，避免日誌長大後每次合併都全檔解析
+_DEFAULT_SUITE_SECONDS = {SUITE_FLUTTER: 600.0, SUITE_HOOKS: 230.0, SUITE_SCRIPTS: 60.0, "skill:ticket": 580.0}
+_DEFAULT_SKILL_SECONDS = 120.0
+_GREEN_LINE = re.compile(r"套件 (\S+)：綠燈｜.*｜耗時 ([0-9.]+)s")
+
+
+def default_suite_seconds(suite: str) -> float:
+    return _DEFAULT_SUITE_SECONDS.get(suite, _DEFAULT_SKILL_SECONDS)
+
+
+def _recent_green_seconds(log_root: str) -> dict:
+    """worktree-merge.log 尾段中各套件的綠燈耗時（時間序）；日誌不存在或不可讀回空 dict。"""
+    log = Path(log_root) / _LOG_FILE
+    try:
+        with open(log, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(fh.tell() - _LOG_TAIL_BYTES, 0))
+            text = fh.read().decode("utf-8", errors="replace")
+    except OSError:
+        return {}  # 無日誌：全部用預設值
+    out: dict = {}
+    for m in _GREEN_LINE.finditer(text):
+        out.setdefault(m.group(1), []).append(float(m.group(2)))
+    return out
+
+
+def suite_estimate_seconds(suites: list, log_root: str) -> float:
+    """各套件近期綠燈耗時中位數加總；某套件無歷史則用其預設值。"""
+    history = _recent_green_seconds(log_root)
+    total = 0.0
+    for suite in suites:
+        samples = history.get(suite, [])[-ESTIMATE_SAMPLE_COUNT:]
+        total += statistics.median(samples) if samples else default_suite_seconds(suite)
+    return total
+
+
 def _suite_result_line(suite: str, status: str, summary: str, seconds: float) -> str:
     return f"[合併前測試] 套件 {suite}：{status}｜{summary}｜耗時 {seconds:.1f}s"
 
@@ -410,6 +449,18 @@ class MergeGate:
         paths = changed_paths_between(self.repo, base_proc.stdout.decode().strip(), branch)
         return paths is None or needs_gate(paths)
 
+    def _estimate_hold_seconds(self, branch: str, base: str) -> Optional[float]:
+        """本次合併預計持有名額的秒數；套件範圍算不出來時回 None（交由 slot_gate 用命令預設值）。"""
+        try:
+            base_proc = _git(["merge-base", base, branch], self.repo)
+            paths = changed_paths_between(self.repo, base_proc.stdout.decode().strip(), branch)
+            if base_proc.returncode != 0 or paths is None:
+                return None
+            return suite_estimate_seconds(select_suites(paths, self.repo), self.repo)
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            sys.stderr.write(f"merge-gate: 無法估算持有秒數，改用預設值：{exc}\n")
+            return None
+
     @contextmanager
     def hold(self, branch: str, base: str) -> Iterator[None]:
         """持有 heavy 名額的區段：進入時排隊取得，離開（成功、中止、例外、中斷）一律釋放。
@@ -420,7 +471,9 @@ class MergeGate:
             yield
             return
         with _sigterm_as_interrupt():
-            held, early = slot_gate.acquire_slot(["merge-gate", branch], lambda: None, label="merge-gate")
+            held, early = slot_gate.acquire_slot(
+                ["merge-gate", branch], lambda: None, label="merge-gate",
+                estimate_seconds=self._estimate_hold_seconds(branch, base))
             if early is not None:
                 raise RuntimeError(f"等待本機名額失敗（exit {early}）")
             if held is None:  # 名額閘門失效（目錄不可用）：與 run-with-timeout 一致，略過不擋
