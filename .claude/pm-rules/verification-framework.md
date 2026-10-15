@@ -120,10 +120,10 @@ Level 1 入口層 → Level 2 執行層 → Level 3 完成層 → Level 4 驗收
 | 時點 | 驗證範圍 | 執行者 | 判定依據 |
 |------|---------|-------|---------|
 | 本機提交前（含 Phase 3b） | 本票相關測試檔 | 實作代理人 | 該次測試命令的結束碼 |
-| 合併 main 前 | 全套件（依改動範圍選套件） | worktree 合併流程，於名額閘門內 | 合併閘門讀取的結束碼；紅燈不合併 |
+| 合併 main 前 | 全套件 | worktree 合併流程，於名額閘門內 | 合併閘門讀取的結束碼；紅燈不合併 |
 | Level 4 驗收 | 讀合併結果，不重跑全套件 | acceptance-auditor | `.claude/logs/worktree-merge.log` 的 `[合併前測試]` 套件結果行與 `[合併閘門]` 結束行 |
 
-套件選擇、快照、重試與日誌格式見 `.claude/skills/worktree/SKILL.md`〈合併前全套件〉。測試入口與回報規格見 `.claude/references/agent-dispatch-template.md`〈測試入口〉。
+Level 4 找不到閘門結果的處置與 `--skip-gate` 例外，以 `.claude/agents/acceptance-auditor.md`〈Step 5 測試驗證：依審查時點分兩種做法〉為準。套件選擇、快照、重試與日誌格式見 `.claude/skills/worktree/SKILL.md`〈合併前全套件〉。測試入口與回報規格見 `.claude/references/agent-dispatch-template.md`〈測試入口〉。
 
 **Hook 回報的定位**：post-test-hook 等回報只是輔助訊號，不是「合併前全綠」的保證；保證來自合併閘門讀取的結束碼。條文與驗收不得依賴 hook 回報判定全綠。
 
@@ -137,7 +137,7 @@ Level 1 入口層 → Level 2 執行層 → Level 3 完成層 → Level 4 驗收
 
 | 條件 | 說明 |
 |------|------|
-| 一批合併中有票觸及 runtime surface | 任一票的 `where.files` 觸及 `lib/presentation/`、`lib/main.dart`、平台整合層（判準同〈Runtime-surface ticket 的實機驗證 AC 要求〉）；該批合併後開一張，取代各票各自的實機驗收 |
+| 一批合併中有票觸及 runtime surface | 任一票的 `where.files` 觸及 `lib/presentation/`、`lib/main.dart`、平台整合層（判準同〈Runtime-surface ticket 的實機驗證 AC 要求〉）；該批合併後開一張，取代各票各自的實機驗收；批次邊界由 PM 判斷，例如同一 wave 內相關 UI 票全數合併後 |
 | 版本發布前 | 固定一張，承接發版的 on-device 套件要求 |
 | 自動化 integration_test 紅燈且歸因於 runner 環境 | 歸因程式或測試本身的紅燈不屬此條，走一般除錯票 |
 
