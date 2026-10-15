@@ -133,10 +133,14 @@ $ /worktree status
 /worktree merge <ticket-id>
 /worktree merge --branch <分支名>                  # 如 worktree-agent-<id>，不查票狀態
 /worktree merge <ticket-id> --pre-acceptance "<理由>"  # 合併前驗收：票未 completed 也合併
+/worktree merge --branch <分支名> --ticket <票號>   # 預設訊息附 (<票號>)
+/worktree merge --branch <分支名> --message "<訊息>" # 自訂完整合併訊息
 ```
 
 | 入口 | 行為 |
 |------|------|
+| `--message` / `-m` | 合併 commit 訊息原文使用（含換行與 Co-Authored-By trailer）；優先於 `--ticket`；省略則用預設訊息 |
+| `--ticket` | 預設訊息變為 `Merge branch '<分支>' (<票號>)`；以 `<ticket-id>` 合併時自動帶入該 ID；兩者皆無則維持 `Merge branch '<分支>'` |
 | `--branch` | 以分支名指定對象，用於萃取不到 ticket ID 的代理人隔離 worktree；有 worktree 則檢查乾淨，不查票狀態；`<ticket-id>` 與 `--branch` 需擇一 |
 | `--pre-acceptance` | 略過「票須 completed」；working tree 仍須乾淨；旗標與理由輸出並追加至 `.claude/logs/worktree-merge.log`；不加旗標維持原要求 |
 | 落後 base | 僅提示落後 commit 數，不阻擋；無衝突由三方合併處理，有衝突由 `merge_branch_cas` 中止且 ref 不變 |

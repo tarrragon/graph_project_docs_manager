@@ -111,3 +111,66 @@ class TestBehindBase:
         assert wm.cmd_merge(None, branch=AGENT_BRANCH) == 1
         assert git(repo, "rev-parse", "HEAD") == before
         assert not (repo / ".git" / "MERGE_HEAD").exists()
+
+
+class TestMergeMessage:
+    """合併 commit 訊息可指定；指定與不指定的訊息必須不同（對照），多行與 trailer 完整保留。"""
+
+    def _body(self, repo):
+        return git(repo, "log", "-1", "--format=%B", "main")
+
+    def test_default_message_unchanged(self, repo):
+        make_branch(repo, AGENT_BRANCH, line_edit(9, "agent9"))
+
+        assert wm.cmd_merge(None, branch=AGENT_BRANCH) == 0
+        assert self._body(repo) == f"Merge branch '{AGENT_BRANCH}'"
+
+    def test_message_overrides_default(self, repo):
+        make_branch(repo, AGENT_BRANCH, line_edit(9, "agent9"))
+
+        assert wm.cmd_merge(None, branch=AGENT_BRANCH, message="merge(0.1.1-W9-002): 補測試") == 0
+        assert self._body(repo) == "merge(0.1.1-W9-002): 補測試"
+
+    def test_ticket_composes_default_message_with_branch(self, repo):
+        make_branch(repo, AGENT_BRANCH, line_edit(9, "agent9"))
+
+        assert wm.cmd_merge(None, branch=AGENT_BRANCH, ticket="0.1.1-W9-002") == 0
+        assert self._body(repo) == f"Merge branch '{AGENT_BRANCH}' (0.1.1-W9-002)"
+
+    def test_ticket_id_target_default_message_carries_id(self, repo, monkeypatch):
+        make_branch(repo, "feat/0.1.1-W9-002", line_edit(9, "t9"))
+        monkeypatch.setattr(
+            wm, "get_worktree_list",
+            lambda: [{"path": str(repo), "branch": "feat/0.1.1-W9-002"}],
+        )
+        monkeypatch.setattr(wm, "_query_ticket_status", lambda _t: "completed")
+
+        assert wm.cmd_merge("0.1.1-W9-002") == 0
+        assert self._body(repo) == "Merge branch 'feat/0.1.1-W9-002' (0.1.1-W9-002)"
+
+    def test_message_wins_over_ticket(self, repo):
+        make_branch(repo, AGENT_BRANCH, line_edit(9, "agent9"))
+
+        assert wm.cmd_merge(None, branch=AGENT_BRANCH, ticket="0.1.1-W9-002", message="custom") == 0
+        assert self._body(repo) == "custom"
+
+    def test_multiline_message_with_trailer_preserved(self, repo):
+        make_branch(repo, AGENT_BRANCH, line_edit(9, "agent9"))
+        msg = (
+            "merge(0.1.1-W9-002): 標題\n\n第二段說明\n第三行\n\n"
+            "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\n"
+            "Claude-Session: https://claude.ai/code/session_x"
+        )
+
+        assert wm.cmd_merge(None, branch=AGENT_BRANCH, message=msg) == 0
+        assert self._body(repo) == msg
+
+    def test_cli_parses_message_and_ticket(self, repo, monkeypatch):
+        make_branch(repo, AGENT_BRANCH, line_edit(9, "agent9"))
+        monkeypatch.setattr(
+            sys, "argv",
+            ["wm", "merge", "--branch", AGENT_BRANCH, "--ticket", "0.1.1-W9-002", "--message", "m1\n\nbody"],
+        )
+
+        assert wm.main() == 0
+        assert self._body(repo) == "m1\n\nbody"
