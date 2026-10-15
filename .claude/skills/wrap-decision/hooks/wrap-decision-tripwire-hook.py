@@ -59,6 +59,7 @@ try:
         get_effort_level,
         emit_hook_output,
     )
+    from lib.ticket_id_pattern import extract_ticket_id_anchored
     _LIB_AVAILABLE = True
 except ImportError:
     # 消費端未提供 .claude/lib/ 時優雅降級（portability-allow: 選用性依賴，
@@ -343,8 +344,30 @@ def save_state_atomic(state_path: Path, state: Dict[str, Any], logger) -> None:
 # Ticket 推導 fallback chain
 # ============================================================================
 
+def _ticket_from_agent_payload(event: Dict[str, Any]) -> Optional[str]:
+    """從 Agent/Task 事件 tool_input.prompt 首行取票號（派發 hook 已強制含 Ticket 行）。
+
+    PostToolUse / PostToolUseFailure 的 payload 皆帶 tool_input（與
+    active-dispatch-tracker-hook 讀同一欄位）；UserPromptSubmit 無此欄位，返回 None。
+    """
+    if event.get("tool_name") not in ("Agent", "Task"):
+        return None
+    tool_input = event.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return None
+    prompt = tool_input.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        return None
+    return extract_ticket_id_anchored(prompt.strip().splitlines()[0])
+
+
 def derive_ticket(event: Dict[str, Any], cwd: Path, logger) -> Optional[str]:
-    """四層 fallback 推導當前 ticket。全部失敗返回 None。"""
+    """五層 fallback 推導當前 ticket。全部失敗返回 None。"""
+    # 層 0：事件 payload（Agent 派發 prompt 首行的 Ticket 標籤）
+    t = _ticket_from_agent_payload(event)
+    if t:
+        return t
+
     # 層 1：環境變數
     t = os.environ.get("TICKET_ID")
     if t:
@@ -754,9 +777,13 @@ def render_message(sd: SignalDef, result: DetectResult,
         def __missing__(self, key):
             return "{" + key + "}"
     try:
-        return sd.message_template.format_map(_Safe(**safe))
+        text = sd.message_template.format_map(_Safe(**safe))
     except Exception:
         return sd.message_template
+    if not safe["ticket_id"]:
+        # 推不出票號：不顯示空的 Ticket 欄位
+        text = re.sub(r"[（(]Ticket:\s*[）)]", "", text)
+    return text
 
 
 # ============================================================================
