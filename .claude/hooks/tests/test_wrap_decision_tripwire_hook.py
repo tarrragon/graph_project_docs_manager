@@ -1578,3 +1578,69 @@ class TestO_PytestEnvironmentExemption:
             "pytest 環境下 derive_ticket 不應被呼叫（main 應早期 return）")
         assert called["get_project_root"] is False, (
             "pytest 環境下 get_project_root 不應被呼叫")
+
+
+# ============================================================================
+# 票號推導（Agent payload 層）E1/E2 對照
+# ============================================================================
+
+def make_agent_failure(prompt, cwd):
+    """真實 payload 形狀：PostToolUseFailure 帶 tool_name/tool_input（含 prompt）。"""
+    return {
+        "hook_event_name": "PostToolUseFailure",
+        "tool_name": "Agent",
+        "tool_input": {"description": "x", "prompt": prompt},
+        "cwd": str(cwd),
+    }
+
+
+class TestDeriveTicketFromAgentPayload:
+    @pytest.fixture(autouse=True)
+    def _clean_env(self, monkeypatch):
+        monkeypatch.delenv("TICKET_ID", raising=False)
+
+    def _run_s1_twice(self, hook_mod, event, tmp_path):
+        import logging
+        logger = logging.getLogger("test")
+        cfg = _load_config(hook_mod, CONFIG_PATH)
+        cfg.warn_cooldown_seconds = 0
+        state = hook_mod._initial_state()
+        ticket = hook_mod.derive_ticket(event, tmp_path, logger)
+        state = hook_mod.apply_ticket_switch_reset(state, ticket)
+        hook_mod._process_signals(event, "PostToolUseFailure", state, cfg, ticket, logger)
+        warnings = hook_mod._process_signals(
+            event, "PostToolUseFailure", state, cfg, ticket, logger)
+        return ticket, state, warnings
+
+    def test_e1_ticket_derived_and_warning_carries_it(self, hook_mod, tmp_path):
+        event = make_agent_failure("Ticket: 0.9.0-W1-001\n任務：x", tmp_path)
+        ticket, state, warnings = self._run_s1_twice(hook_mod, event, tmp_path)
+        assert ticket == "0.9.0-W1-001"
+        assert state["current_ticket"] == "0.9.0-W1-001"
+        assert len(warnings) == 1
+        assert "Ticket: 0.9.0-W1-001" in warnings[0]
+
+    def test_e1_switch_reset_with_derived_ticket(self, hook_mod, tmp_path):
+        import logging
+        logger = logging.getLogger("test")
+        state = hook_mod._initial_state()
+        state["current_ticket"] = "0.9.0-W1-001"
+        state["signals"]["consecutive_failures"] = {"count": 1}
+        event = make_agent_failure("Ticket: 0.9.0-W1-002", tmp_path)
+        ticket = hook_mod.derive_ticket(event, tmp_path, logger)
+        state = hook_mod.apply_ticket_switch_reset(state, ticket)
+        assert ticket == "0.9.0-W1-002"
+        assert state["signals"] == {}
+
+    def test_e2_no_ticket_no_empty_field(self, hook_mod, tmp_path):
+        event = make_agent_failure("沒有票號的 prompt", tmp_path)
+        ticket, state, warnings = self._run_s1_twice(hook_mod, event, tmp_path)
+        assert ticket is None
+        assert state["current_ticket"] is None
+        assert len(warnings) == 1
+        assert "Ticket:" not in warnings[0]
+        assert "連續 2 次代理人失敗" in warnings[0]
+
+    def test_e2_user_prompt_event_has_no_payload_ticket(self, hook_mod, tmp_path):
+        event = make_user_prompt("Ticket: 0.9.0-W1-001 但這是使用者輸入", cwd=tmp_path)
+        assert hook_mod._ticket_from_agent_payload(event) is None
