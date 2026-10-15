@@ -698,3 +698,33 @@ def test_orphan_query_failure_does_not_block_heavy_command(gate):
     _, err = b.communicate(timeout=30)
     assert b.returncode == 0 and Path(str(out_b) + ".end").exists()
     assert "Traceback" not in err
+
+
+def test_hold_marker_and_wait_limit_do_not_reach_wrapped_command(tmp_path, monkeypatch):
+    """持有標記只給直接子層的 run-with-timeout：被包裝命令的環境不含標記，等待上限還原為持有前的值。"""
+    sys.path.insert(0, str(SCRIPT.parent.parent))
+    from lib import slot_gate
+
+    lock_dir = tmp_path / "slots"
+    lock_dir.mkdir(mode=0o700)
+    monkeypatch.setenv("CLAUDE_SLOT_LOCK_DIR", str(lock_dir))
+    probe = ("import os; print(os.environ.get('CLAUDE_SLOT_HELD_BY'), os.environ.get('CLAUDE_SLOT_WAIT_LIMIT'),"
+             " os.environ.get('CLAUDE_SLOT_WAIT_LIMIT_BEFORE_HOLD'))")
+
+    def run_under_hold(before):
+        if before is None:
+            monkeypatch.delenv("CLAUDE_SLOT_WAIT_LIMIT", raising=False)
+        else:
+            monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", before)
+        hold, _ = slot_gate.acquire_slot(["x"], lambda: None)
+        try:
+            with slot_gate.export_hold(hold):
+                res = subprocess.run([sys.executable, str(SCRIPT), "30", "--", sys.executable, "-c", probe],
+                                     capture_output=True, text=True, timeout=60)
+        finally:
+            hold.release()
+        assert res.returncode == 0, res.stderr
+        return res.stdout.split()
+
+    assert run_under_hold("7") == ["None", "7", "None"]
+    assert run_under_hold(None) == ["None", "None", "None"]

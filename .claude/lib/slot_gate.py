@@ -19,9 +19,13 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
   查詢本專案孤兒；有則於 stderr 印出數量與清理指令，無則不輸出；查詢失敗或逾時（ORPHAN_QUERY_TIMEOUT_SECONDS）
   只寫一行 stderr，不阻擋命令。light 命令不經過閘門，故不查詢。CLAUDE_ORPHAN_SCRIPT、
   CLAUDE_ORPHAN_QUERY_TIMEOUT 可覆寫查詢腳本與逾時（測試用）。
+- 持有者的子程序不重複取得名額：持有者在持有期間把自己的 pid 放入環境變數 HELD_ENV（export_hold），
+  子程序內的 run-with-timeout 經 is_heavy_command 判定為免排隊。標記僅在「該 pid 仍存在且名額確實全被占用」
+  時有效（held_by_ancestor），殘留的過期標記不會讓 heavy 命令繞過閘門。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
 """
 import fcntl
+import contextlib
 import json
 import os
 import re
@@ -45,12 +49,96 @@ _ORPHAN_SUMMARY_RE = re.compile(r"^符合 (\d+) 略過 (\d+) 疑似殘留 (\d+)$
 WAITED_REPORT_THRESHOLD = SLOT_POLL_INTERVAL
 
 
-def _warn(message: str) -> None:
-    sys.stderr.write(f"run-with-timeout: {message}\n")
+def _warn(message: str, label: str = "run-with-timeout") -> None:
+    sys.stderr.write(f"{label}: {message}\n")
+
+
+# 持有名額的程序在持有期間放入環境，其子程序據此免重複取得（否則自我死鎖）
+HELD_ENV = "CLAUDE_SLOT_HELD_BY"
+# 持有期間子程序的名額等待上限（秒）：子程序認得標記時根本不等待，會等代表兩邊 slot_gate 版本不一致，
+# 此時快速失敗，不讓持有者占住全機名額直到預設上限
+HELD_CHILD_WAIT_LIMIT_SECONDS = 30
+
+
+def _all_slots_busy(directory: str) -> bool:
+    """每個名額的鎖檔目前都被某程序持有（不符合即立刻放回剛取得的鎖）。"""
+    for index in range(SLOT_COUNT):
+        try:
+            fd = os.open(os.path.join(directory, f"heavy-slot-{index}.lock"), os.O_RDWR | os.O_NOFOLLOW)
+        except OSError:
+            return False  # 鎖檔不存在或不可開：沒有人持有
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return False
+        except BlockingIOError:
+            pass  # 此名額有人持有，檢查下一個
+        finally:
+            os.close(fd)
+    return True
+
+
+def held_by_ancestor() -> bool:
+    """環境標記指向仍存在的程序，且名額確實被占用。標記格式錯誤或任何查驗失敗皆視為未持有。"""
+    raw = os.environ.get(HELD_ENV)
+    if not raw:
+        return False
+    try:
+        return not _pid_gone(int(raw)) and _all_slots_busy(slot_dir())
+    except (ValueError, OSError):
+        return False  # 標記不是整數或目錄不可查：不免排隊，由正常取得流程處理
+
+
+# 保存 export_hold 之前的 CLAUDE_SLOT_WAIT_LIMIT；空字串表示當時未設定
+_LIMIT_BEFORE_ENV = "CLAUDE_SLOT_WAIT_LIMIT_BEFORE_HOLD"
+_LIMIT_ENV = "CLAUDE_SLOT_WAIT_LIMIT"
+
+
+@contextlib.contextmanager
+def export_hold(hold: "SlotHold"):
+    """持有期間把本程序 pid 放入環境供直接子層的 run-with-timeout 辨識，並把其等待上限降為
+    HELD_CHILD_WAIT_LIMIT_SECONDS；離開時還原原值。
+
+    標記只給直接子層：run-with-timeout 啟動被包裝命令時須以 child_env 去除，不得往下傳。
+    """
+    names = (HELD_ENV, _LIMIT_ENV, _LIMIT_BEFORE_ENV)
+    previous = {n: os.environ.get(n) for n in names}
+    os.environ[_LIMIT_BEFORE_ENV] = os.environ.get(_LIMIT_ENV, "")
+    os.environ[HELD_ENV] = str(os.getpid())
+    os.environ[_LIMIT_ENV] = str(HELD_CHILD_WAIT_LIMIT_SECONDS)
+    try:
+        yield hold
+    finally:
+        for n, v in previous.items():
+            if v is None:
+                os.environ.pop(n, None)
+            else:
+                os.environ[n] = v
+
+
+def child_env(env: "os._Environ") -> dict:
+    """被包裝命令的環境：去除持有標記，等待上限還原為持有前的值（持有前未設定則移除）。
+
+    沒有持有標記時原樣複製。
+    """
+    out = dict(env)
+    if HELD_ENV not in out:
+        return out
+    out.pop(HELD_ENV)
+    before = out.pop(_LIMIT_BEFORE_ENV, None)
+    if before:
+        out[_LIMIT_ENV] = before
+    elif before is not None:
+        out.pop(_LIMIT_ENV, None)
+    return out
 
 
 def is_heavy_command(command: List[str]) -> bool:
-    """依 test_command_parse 判定；判定本身失敗時保守視為 heavy（只多排隊）。"""
+    """依 test_command_parse 判定；判定本身失敗時保守視為 heavy（只多排隊）。
+
+    祖先程序已持有名額時回 False：呼叫端據此略過取得，避免對同一名額自我死鎖。
+    """
+    if held_by_ancestor():
+        return False
     try:
         from lib.test_command_parse import WEIGHT_HEAVY, classify_argv_weight
         return classify_argv_weight(command) == WEIGHT_HEAVY
@@ -195,10 +283,11 @@ class SlotHold:
 
 
 def acquire_slot(command: List[str],
-                 interrupted: Callable[[], Optional[int]]) -> Tuple[Optional[SlotHold], Optional[int]]:
+                 interrupted: Callable[[], Optional[int]],
+                 label: str = "run-with-timeout") -> Tuple[Optional[SlotHold], Optional[int]]:
     """排隊取得名額；回 (SlotHold 或 None, 提前結束碼或 None)。
 
-    interrupted 回傳等待期間收到的訊號編號（無則 None）。持有者為 None 且無結束碼表示閘門失效而略過。
+    interrupted 回傳等待期間收到的訊號編號（無則 None）。label 為提示行前綴，讓不同呼叫端的等待提示可區分來源。持有者為 None 且無結束碼表示閘門失效而略過。
     """
     directory = slot_dir()
     limit = _env_seconds("CLAUDE_SLOT_WAIT_LIMIT", SLOT_WAIT_LIMIT_SECONDS)
@@ -210,13 +299,13 @@ def acquire_slot(command: List[str],
             _prepare_dir(directory)
             got = _try_acquire(directory)
         except OSError as exc:
-            _warn(f"名額閘門無法使用，略過排隊（不影響命令）：{exc}")
+            _warn(f"名額閘門無法使用，略過排隊（不影響命令）：{exc}", label)
             return None, None
         if got is not None:
             fd, index = got
             waited = time.monotonic() - waited_since
             if waited >= WAITED_REPORT_THRESHOLD:
-                _warn(f"取得名額，已等待 {waited:.1f} 秒")
+                _warn(f"取得名額，已等待 {waited:.1f} 秒", label)
             _remove_stale_tmp(directory)
             return SlotHold(fd, _write_holder(directory, index, command)), None
         signum = interrupted()
@@ -224,10 +313,10 @@ def acquire_slot(command: List[str],
             return None, 128 + signum
         now = time.monotonic()
         if now - waited_since >= limit:
-            _warn(f"等待名額超過 {limit:g} 秒，放棄執行。{describe_holder(directory)}")
+            _warn(f"等待名額超過 {limit:g} 秒，放棄執行。{describe_holder(directory)}", label)
             return None, SLOT_WAIT_EXIT_CODE
         if now >= next_notice:
-            _warn(f"等待名額：{describe_holder(directory)}；已等待 {now - waited_since:.0f} 秒")
+            _warn(f"等待名額：{describe_holder(directory)}；已等待 {now - waited_since:.0f} 秒", label)
             next_notice = now + interval
         time.sleep(SLOT_POLL_INTERVAL)
 

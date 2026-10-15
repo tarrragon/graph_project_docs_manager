@@ -102,7 +102,7 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 
 ### 合併前全套件（merge 預設行為）
 
-`merge` 預設在 CAS 的 commit-tree 之後、update-ref 之前，於合併 commit 的 detached worktree 快照內經 `run-with-timeout.py`（取得 heavy 名額）跑全套件；紅燈即不合併、列出失敗項、exit 1，快照無論成敗皆移除。實作在 `scripts/merge_gate.py`。
+`merge` 預設先取得 heavy 名額（改動不在全套件範圍內者不取），再於名額內執行 commit-tree、於合併 commit 的 detached worktree 快照內跑全套件、update-ref，update-ref 完成或中止後才釋放，檢查窗口不含排隊時間；快照內套件經 `run-with-timeout.py` 但以環境標記 `CLAUDE_SLOT_HELD_BY` 免重複取得名額；紅燈即不合併、列出失敗項、exit 1，快照無論成敗皆移除。實作在 `scripts/merge_gate.py`。
 
 | 改動範圍（相對當下 main） | 跑的套件 |
 |--------------------------|---------|
