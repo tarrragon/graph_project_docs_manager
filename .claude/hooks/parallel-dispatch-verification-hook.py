@@ -36,6 +36,9 @@ from lib.ticket_command_parse import has_complete_command, complete_statement_ar
 from lib.git_command_parse import parse_command_statements  # noqa: E402
 from lib.ticket_id_pattern import SEARCH_WITH_SUFFIX_RE  # noqa: E402
 from lib.bash_tool_response import is_bash_success  # noqa: E402
+from lib.ticket_completed_verifier import (  # noqa: E402
+    make_completed_verifier, is_complete_transition_success,
+)
 from lib.hook_ticket import (
     parse_ticket_frontmatter,
     find_ticket_file,
@@ -209,7 +212,13 @@ def is_ticket_complete_success(input_data: dict) -> bool:
 
     # 檢查執行結果
     # 真實 payload 無 exit_code，由共用 helper 判定（interrupted + 成功標記）
-    return is_bash_success(input_data.get("tool_response"), TICKET_COMPLETE_SUCCESS_MARKERS)
+    # 分層判定：未遮蔽即成功；遮蔽時以票面 completed 狀態驗證；其餘退回標記
+    return is_complete_transition_success(
+        input_data.get("tool_response"),
+        TICKET_COMPLETE_SUCCESS_MARKERS,
+        command,
+        make_completed_verifier(command),
+    )
 
 
 def read_ticket_where_files(ticket_id: str, project_root: Path,
