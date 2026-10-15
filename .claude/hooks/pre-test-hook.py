@@ -30,6 +30,8 @@
   - 經 shell 腳本間接執行（腳本檔內含 flutter test）：命令在腳本檔內
   - yarn／pnpm／npx 的測試，以及 test_command_parse 未列入帶值集合的自訂選項
   - mcp__dart__run_tests 帶 paths 但 paths 指向整個目錄：視為明示範圍而放行
+  - 測試目標含未展開 shell 變數（`t=tests/x.py` 後 `pytest $t`）：無法由字面判定，
+    視為無法判定而 fail-open 放行（變數若實際指向目錄也不擋），stderr 與日誌各記一行
 
 觸發時機: PreToolUse (Bash: flutter test, mcp__dart__run_tests)
 
@@ -122,6 +124,21 @@ def build_block_reason(tool_name: str, tool_input: dict):
     )
 
 
+def _note_variable_target_passthrough(tool_input: dict, logger) -> None:
+    """測試目標含未展開 shell 變數而被 fail-open 放行時，stderr 與日誌各記一行。"""
+    try:
+        from lib.test_command_parse import find_variable_target_statements
+        found = find_variable_target_statements(tool_input.get("command", ""))
+    except Exception as exc:  # 記錄用途失敗不影響放行
+        logger.error("變數目標偵測失敗: %s", exc)
+        return
+    if found:
+        msg = "測試目標含未展開 shell 變數，無法判定是否為單一測試檔，fail-open 放行: {}".format(
+            " ".join(found[0]))
+        sys.stderr.write("pre-test-hook {}\n".format(msg))
+        logger.info(msg)
+
+
 def check_flutter_sdk() -> tuple[bool, str]:
     """檢查 Flutter SDK 可用性。"""
     try:
@@ -190,6 +207,8 @@ def main():
         sys.stderr.write("pre-test-hook 封堵判定失敗，fail-open 放行: {}\n".format(exc))
         logger.error("封堵判定失敗，fail-open: %s", exc)
         block_reason = None
+    if block_reason is None and tool_name == "Bash":
+        _note_variable_target_passthrough(tool_input, logger)
     if block_reason:
         try:
             logger.warning("deny: %s", block_reason.splitlines()[0])
