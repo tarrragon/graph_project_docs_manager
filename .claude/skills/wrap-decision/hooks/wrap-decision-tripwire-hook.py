@@ -124,6 +124,8 @@ class SignalDef:
     # 非使用者撰寫回合的框架標記（選填）。prompt 去除前導空白後以任一前綴開頭，
     # 該訊號整個跳過（代理人交回報告、跨 session 訊息中的字樣是引述，非 PM 結論）。
     skip_prompt_prefixes: List[str] = field(default_factory=list)
+    # 只檢查 prompt 開頭幾行（框架會在標記前加一行固定引導句）。
+    skip_prompt_scan_lines: int = 3
     raw: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -207,6 +209,10 @@ def _parse_signals(signals_raw: Any, logger) -> List[SignalDef]:
         prefixes = item.get("skip_prompt_prefixes") or []
         if isinstance(prefixes, list):
             sd.skip_prompt_prefixes = [str(p) for p in prefixes if str(p)]
+        try:
+            sd.skip_prompt_scan_lines = int(item.get("skip_prompt_scan_lines", 3))
+        except (TypeError, ValueError):
+            sd.skip_prompt_scan_lines = 3
         # 解析 context_blacklist（選填）
         cb_raw = item.get("context_blacklist")
         if isinstance(cb_raw, dict):
@@ -565,14 +571,17 @@ class RestrictiveKeywordsStrategy:
 
     @staticmethod
     def _is_framework_message(prompt: str, sd: SignalDef, logger) -> bool:
-        """prompt 開頭是否為框架標記（前綴比對，非全文子字串）。
+        """開頭數行內是否有以框架標記開頭的行（行首比對，非全文子字串）。
 
         判定失敗時 fail-open：視為使用者回合照常比對關鍵字，
         同時寫 stderr 與日誌，不阻擋。
         """
         try:
-            head = prompt.lstrip()
-            return any(head.startswith(p) for p in sd.skip_prompt_prefixes)
+            lines = prompt.lstrip().splitlines()[:sd.skip_prompt_scan_lines]
+            return any(
+                ln.lstrip().startswith(p)
+                for ln in lines for p in sd.skip_prompt_prefixes
+            )
         except Exception as exc:  # noqa: BLE001 - fail-open，已雙通道記錄
             logger.info("signal %s framework marker check failed: %s", sd.id, exc)
             sys.stderr.write(
