@@ -57,6 +57,8 @@ acceptance 不再要求第四項的數字宣告（迴歸案例：僅含前三項
 不觸發：type 非 IMP（ANA/DOC/ADJ 等）、where.files 不含 hooks 目錄路徑。
 """
 
+import os
+import posixpath
 import re
 import sys
 from pathlib import Path, PurePosixPath
@@ -246,7 +248,34 @@ def _normalize_path(raw: str) -> PurePosixPath:
     """以 PurePosixPath 標準化路徑，避免 string startswith 誤判（規則層要求，
     沿用 ticket_system.commands.track_parallel_check 既有慣例）。
     """
-    return PurePosixPath(raw.strip().strip("/"))
+    return PurePosixPath(posixpath.normpath(raw.strip().strip("/")))
+
+
+_PROJECT_ROOT = _claude_dir.parent
+
+
+def _escapes_root(path: PurePosixPath) -> bool:
+    """normpath 後仍以 `..` 開頭，即跳出專案根。"""
+    return bool(path.parts) and path.parts[0] == ".."
+
+
+def _resolve_real_relative(
+    normalized: PurePosixPath, project_root: Path
+) -> Optional[PurePosixPath]:
+    """檔案存在時以 realpath 取實際路徑，回傳相對專案根的路徑。
+
+    不存在則回傳 None（無 symlink 可解）；實際路徑落在專案根外則回傳以 `..`
+    開頭的路徑，由呼叫端 fail-closed。
+    """
+    candidate = project_root / normalized.as_posix()
+    if not candidate.exists():
+        return None
+    real = Path(os.path.realpath(candidate))
+    real_root = Path(os.path.realpath(project_root))
+    try:
+        return PurePosixPath(real.relative_to(real_root).as_posix())
+    except ValueError:
+        return PurePosixPath("..")
 
 
 def _is_under(path: PurePosixPath, prefix: PurePosixPath) -> bool:
@@ -282,20 +311,37 @@ def _is_hooks_tests_path(path: PurePosixPath) -> bool:
     return _is_skill_hooks_path(path) and len(parts) >= 5 and parts[4] == "tests"
 
 
-def touches_hook_protection_scope(file_path: str) -> bool:
+def _in_hook_scope(path: PurePosixPath) -> bool:
+    """已正規化路徑是否命中 hook 範圍（tests 排除在外）。"""
+    if _is_hooks_tests_path(path):
+        return False
+    return _is_under(path, _TOP_LEVEL_HOOKS_PREFIX) or _is_skill_hooks_path(path)
+
+
+def touches_hook_protection_scope(
+    file_path: str, project_root: Optional[Path] = None
+) -> bool:
     """單一路徑是否落在防護類 hook 觸發範圍（頂層 hooks/ 或 skill hooks/）。
 
     hooks/tests/ 下的路徑不命中；寫入集混合 tests 與 hook 本體時，
     hook 本體路徑仍會使整票命中（由 `_any_path_touches_hook_scope` 的 any 達成）。
+
+    判定前先 normpath 解析 `.`、`..`；跳出專案根一律視為 hook 票（fail-closed）。
+    檔案存在時另以 realpath 的實際路徑再判定一次（tests 下 symlink 指向 hook 本體）。
     """
     if not file_path:
         return False
     normalized = _normalize_path(file_path)
-    if _is_hooks_tests_path(normalized):
+    if _escapes_root(normalized):
+        return True
+    if _in_hook_scope(normalized):
+        return True
+    if not _is_hooks_tests_path(normalized):
         return False
-    return _is_under(normalized, _TOP_LEVEL_HOOKS_PREFIX) or _is_skill_hooks_path(
-        normalized
-    )
+    real = _resolve_real_relative(normalized, project_root or _PROJECT_ROOT)
+    if real is None:
+        return False
+    return _escapes_root(real) or _in_hook_scope(real)
 
 
 def _any_path_touches_hook_scope(where_files: List[str], logger=None) -> bool:
