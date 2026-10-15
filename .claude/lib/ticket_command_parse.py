@@ -169,11 +169,26 @@ _ASSIGNMENT_WORD = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\+?=")
 _STATEMENT_ENDS = frozenset({";", "|", "||", "&", "&&"})
 
 
-def _substitution_masks(tokens: List[str]) -> bool:
+def _matching_close(tokens: List[str], open_idx: int) -> int:
+    """回傳 open_idx 處 `(` 的配對 `)` 索引；未閉合時回傳 len(tokens)。"""
+    depth = 0
+    for j in range(open_idx, len(tokens)):
+        if tokens[j] == "(":
+            depth += 1
+        elif tokens[j] == ")":
+            depth -= 1
+            if depth == 0:
+                return j
+    return len(tokens)
+
+
+def _substitution_masks(tokens: List[str], depth: int = 0) -> bool:
     """陳述含命令替換且不是純賦值時為 True（結束碼來自命令字，替換的失敗被遮蔽）。
 
     純賦值（整句只有 NAME=$(...)，無命令字）才會把替換的結束碼傳出。
     `export x=$(...)`、`echo $(...)` 的結束碼來自 builtin／命令字。
+    子 shell `( ... )` 內層遞迴套用同一判斷（`(echo $(...))` 為遮蔽）；超過
+    _MAX_SCAN_NESTING 時保守回 True（寧可判遮蔽，多走驗證器或標記）。
     """
     words: List[str] = []
     has_subst = False
@@ -182,15 +197,27 @@ def _substitution_masks(tokens: List[str]) -> bool:
     def verdict() -> bool:
         return has_subst and not all(_ASSIGNMENT_WORD.match(w) for w in words)
 
-    for i, tok in enumerate(tokens):
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        i += 1
+        idx = i - 1
         if tok in _STATEMENT_ENDS:
             if verdict():
                 return True
             words, has_subst, paren_depth = [], False, 0
             continue
         if tok == "(":
-            if i > 0 and tokens[i - 1].endswith("$"):
+            if idx > 0 and tokens[idx - 1].endswith("$"):
                 has_subst = True
+            elif paren_depth == 0:  # 子 shell：內層遞迴判斷
+                if depth + 1 > _MAX_SCAN_NESTING:
+                    return True
+                close = _matching_close(tokens, idx)
+                if _substitution_masks(tokens[idx + 1:close], depth + 1):
+                    return True
+                i = close + 1
+                continue
             paren_depth += 1
             continue
         if tok == ")":
