@@ -84,6 +84,23 @@ class TestCandidatePathExtraction:
         # 正向對照：舊實作對 BSD 寫法會抽到 s/a/b/（腳本）而非檔案
         assert _extract_candidate_paths(cmd) == ["target.py"]
 
+    @pytest.mark.parametrize("cmd", [
+        "sed x " * 32000,
+        "sed " * 32000,
+        "echo hello " * 17000,
+    ])
+    def test_padded_input_extracts_in_linear_time(self, cmd):
+        # 正向對照：284.2 的前瞻使 192KB 輸入耗時約 43 秒；門檻 1 秒僅判數量級
+        import time
+        start = time.monotonic()
+        result = _extract_candidate_paths(cmd)
+        assert time.monotonic() - start < 1.0
+        assert result == []
+
+    def test_padded_input_still_catches_trailing_write(self):
+        cmd = "sed x " * 32000 + "; sed -e 's/a/b/' -i lib/foo.dart"
+        assert _extract_candidate_paths(cmd) == ["lib/foo.dart"]
+
     def test_cp_target(self):
         cmd = "cp source.dart lib/dest.dart"
         assert "lib/dest.dart" in _extract_candidate_paths(cmd)
