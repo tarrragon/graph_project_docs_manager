@@ -85,6 +85,14 @@ def _run_hook(payload: dict, project_root: Path, env: dict) -> tuple:
     return proc.returncode, proc.stdout, proc.stderr
 
 
+def _context_of(stdout: str) -> str:
+    """解析 stdout JSON，回傳 UserPromptSubmit additionalContext。"""
+    data = _json.loads(stdout)
+    hso = data["hookSpecificOutput"]
+    assert hso["hookEventName"] == "UserPromptSubmit"
+    return hso["additionalContext"]
+
+
 def _make_transcript(assistant_content: str) -> dict:
     """建立含 assistant 回應的 transcript payload。"""
     return {
@@ -336,19 +344,23 @@ class TestHookSubprocessIntegration:
         """D2: 韓文觸發警告但不阻擋（exit 0 + stderr 警告）。"""
         project_root, env = hook_project_env
         payload = _make_transcript("回應含韓文 안녕")  # 안녕
-        code, _, err = _run_hook(payload, project_root, env)
+        code, out, err = _run_hook(payload, project_root, env)
         assert code == 0, "警告非阻擋，應 exit 0"
-        assert "[LANG GUARD]" in err
-        assert "韓文" in err or "日文" in err or "非繁體" in err
+        ctx = _context_of(out)
+        assert "[LANG GUARD]" in ctx
+        assert "韓文" in ctx or "日文" in ctx or "非繁體" in ctx
+        assert "[LANG GUARD]" not in err, "提醒不應再走 stderr"
 
     def test_emoji_in_assistant_message_exits_zero_with_warning(self, hook_project_env):
         """D3: emoji 觸發警告但不阻擋。"""
         project_root, env = hook_project_env
         payload = _make_transcript("進度 ⚡ 完成 ✅ 任務")
-        code, _, err = _run_hook(payload, project_root, env)
+        code, out, err = _run_hook(payload, project_root, env)
         assert code == 0, "警告非阻擋，應 exit 0"
-        assert "[LANG GUARD]" in err
-        assert "emoji" in err.lower() or "U+26A1" in err or "U+2705" in err
+        ctx = _context_of(out)
+        assert "[LANG GUARD]" in ctx
+        assert "emoji" in ctx.lower() or "U+26A1" in ctx or "U+2705" in ctx
+        assert "[LANG GUARD]" not in err
 
     def test_implicit_expression_in_assistant_message_exits_zero_with_warning(self, hook_project_env):
         """D4: 隱含表達句型觸發警告但不阻擋（PCB §自我驗證重點：警告非阻擋）。"""
@@ -356,10 +368,12 @@ class TestHookSubprocessIntegration:
         payload = _make_transcript(
             "通常來說系統會自動處理。理想情況下不需要人工介入。"
         )
-        code, _, err = _run_hook(payload, project_root, env)
+        code, out, err = _run_hook(payload, project_root, env)
         assert code == 0, "隱含表達句型必為警告非阻擋（exit 0）"
-        assert "[LANG GUARD]" in err
-        assert "隱含表達" in err or "通常來說" in err or "理想情況下" in err
+        ctx = _context_of(out)
+        assert "[LANG GUARD]" in ctx
+        assert "隱含表達" in ctx or "通常來說" in ctx or "理想情況下" in ctx
+        assert "[LANG GUARD]" not in err
 
     def test_multiple_violations_all_reported(self, hook_project_env):
         """D5: 多類違規共存時全部回報（emoji + 隱含表達）。"""
@@ -367,12 +381,15 @@ class TestHookSubprocessIntegration:
         payload = _make_transcript(
             "通常來說 ⚡ 系統會自動處理。"
         )
-        code, _, err = _run_hook(payload, project_root, env)
+        code, out, _ = _run_hook(payload, project_root, env)
         assert code == 0
+        # 單一 JSON 輸出（不得輸出兩份）
+        assert len(out.strip().splitlines()) == 1
+        ctx = _context_of(out)
         # emoji 警告
-        assert "emoji" in err.lower() or "U+26A1" in err
+        assert "emoji" in ctx.lower() or "U+26A1" in ctx
         # 隱含表達警告
-        assert "通常來說" in err
+        assert "通常來說" in ctx
 
     def test_empty_stdin_passes_silently(self, hook_project_env):
         """D6: 無 stdin 輸入靜默通過（已預期非標準輸入路徑）。"""
