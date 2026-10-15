@@ -302,6 +302,51 @@ def load_state(state_path: Path, logger) -> Dict[str, Any]:
         return _initial_state()
 
 
+def resolve_state_path(base_path: Path, event: Dict[str, Any], logger) -> Path:
+    """依 stdin payload 的 session_id 把狀態檔分檔；缺值時退回共用檔（fail-open）。
+
+    分檔命名：<stem>-<session_id><suffix>（session_id 經檔名消毒，僅保留
+    英數、底線、連字號）。只讀 stdin payload，不 fallback 環境變數：
+    環境變數屬 hook 行程自身而非事件來源，與 payload 不一致時會造成同一
+    事件寫入不同檔。
+    """
+    raw = event.get("session_id")
+    sid = re.sub(r"[^A-Za-z0-9_-]", "_", raw) if isinstance(raw, str) else ""
+    if not sid:
+        logger.info("payload 無可用 session_id；退回共用狀態檔: %s", base_path)
+        return base_path
+    return base_path.with_name("%s-%s%s" % (base_path.stem, sid, base_path.suffix))
+
+
+# 他 session 狀態檔的保留天數：S1/cooldown 狀態只在 session 存活期間有意義，
+# 長時間 session 偶爾閒置數日，取 7 天以避免誤刪仍在使用的 session 檔。
+STALE_STATE_DAYS = 7
+
+
+def prune_stale_state_files(base_path: Path, current_path: Path, logger) -> int:
+    """刪除狀態目錄下 mtime 超過 STALE_STATE_DAYS 的他 session 分檔，回傳刪除數。
+
+    不刪當下 session 檔與共用檔；任何失敗只記日誌（fail-open）。
+    不節流：目錄僅含 session 分檔，清理後規模受 7 天內 session 數限制，glob 成本可忽略。
+    """
+    removed = 0
+    try:
+        cutoff = _now().timestamp() - STALE_STATE_DAYS * 86400
+        for p in base_path.parent.glob("%s-*%s" % (base_path.stem, base_path.suffix)):
+            if p == current_path or p == base_path:
+                continue
+            try:
+                if p.stat().st_mtime < cutoff:
+                    p.unlink()
+                    removed += 1
+                    logger.info("stale state file removed: %s", p)
+            except OSError as exc:
+                logger.info("stale state cleanup failed for %s: %s", p, exc)
+    except Exception as exc:  # fail-open：清理不得影響主流程
+        logger.info("stale state cleanup aborted: %s", exc)
+    return removed
+
+
 def _initial_state() -> Dict[str, Any]:
     return {
         "version": "1.0.0",
@@ -910,7 +955,9 @@ def main() -> int:
     if config is None:
         return 0
 
-    state_path = project_root / config.state_file
+    base_state_path = project_root / config.state_file
+    state_path = resolve_state_path(base_state_path, event, logger)
+    prune_stale_state_files(base_state_path, state_path, logger)
     state = load_state(state_path, logger)
     cwd = Path(event.get("cwd") or project_root)
 
@@ -919,7 +966,7 @@ def main() -> int:
 
     if is_manual_wrap_invocation(event):
         state = reset_all_signals(state)
-        logger.info("manual /wrap-decision detected; all signals reset")
+        logger.info("manual /wrap-decision detected; signals of this state file reset")
 
     event_name = event.get("hook_event_name", "")
     warnings = _process_signals(event, event_name, state, config, current_ticket, logger)

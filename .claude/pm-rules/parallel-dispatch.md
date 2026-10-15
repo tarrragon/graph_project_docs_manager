@@ -564,6 +564,7 @@ Ticket 的 `what` / `how` 含以下任一特徵即屬於驗證類：
 - .claude/pm-rules/references/commit-and-phase-responsibility.md - Commit 責任邊界（Phase 分工、代理人自治規則）
 - .claude/skills/bulk-evaluate/SKILL.md - 批量評估工具（1:1 派發）
 - .claude/skills/parallel-evaluation/SKILL.md - 並行評估工具（多視角掃描）
+- .claude/skills/multi-session-orchestration/SKILL.md - 主控 PM 統籌多條同儕 session 工作線的操作流程（分線、共用資源協調、審查標記查證、階段收尾）；本檔管強制條文，該 skill 管操作流程
 - .claude/pm-rules/task-splitting.md - 任務拆分指南
 - .claude/pm-rules/decision-tree.md - 主線程決策樹（第負一層）
 - .claude/skills/agent-team/SKILL.md - Agent Teams 操作指南

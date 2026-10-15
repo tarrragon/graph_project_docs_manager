@@ -341,3 +341,77 @@ def test_redirect_rendering_for_suggestion():
 def test_classify_argv_weight_unchanged_for_redirect_like_argv():
     from lib.test_command_parse import classify_argv_weight, WEIGHT_HEAVY
     assert classify_argv_weight(["pytest", "tests/test_x.py", "2>&1"]) == WEIGHT_HEAVY
+
+
+# ---- 明確指定的既存一般檔案（不論命名）判 light ----
+
+
+def _make_files(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "a.py").write_text("def test_one():\n    pass\n")
+    (tmp_path / "tests" / "b.dart").write_text("void main() {}\n")
+    (tmp_path / "tests" / "notes.txt").write_text("x\n")
+    return tmp_path
+
+
+def test_explicit_non_test_named_file_is_light_both_ends(tmp_path):
+    from lib.test_command_parse import find_unwrapped_heavy
+    root = _make_files(tmp_path)
+    py = str(root / "tests" / "a.py")
+    assert classify_argv_weight(["pytest", py]) == WEIGHT_LIGHT
+    assert classify_argv_weight(["uv", "run", "pytest", py, "-q"]) == WEIGHT_LIGHT
+    assert find_unwrapped_heavy("uv run pytest {} -q".format(py)) == []
+    assert find_unwrapped_heavy("pytest {} 2>&1 | tail -5".format(py)) == []
+    assert classify_argv_weight(["flutter", "test", str(root / "tests" / "b.dart")]) == WEIGHT_LIGHT
+
+
+def test_explicit_file_counterpart_directory_stays_heavy(tmp_path):
+    """E2 對照：同一批 fixture 下指向目錄仍 heavy。"""
+    from lib.test_command_parse import find_unwrapped_heavy
+    root = _make_files(tmp_path)
+    directory = str(root / "tests")
+    assert classify_argv_weight(["pytest", directory]) == WEIGHT_HEAVY
+    assert find_unwrapped_heavy("uv run pytest {}".format(directory)) != []
+    assert classify_argv_weight(["pytest", str(root / "tests" / "a.py"), directory]) == WEIGHT_HEAVY
+
+
+def test_missing_glob_wrong_extension_and_integration_stay_heavy(tmp_path):
+    root = _make_files(tmp_path)
+    assert classify_argv_weight(["pytest", str(root / "tests" / "missing.py")]) == WEIGHT_HEAVY
+    assert classify_argv_weight(["pytest", str(root / "tests" / "*.py")]) == WEIGHT_HEAVY
+    assert classify_argv_weight(["pytest", str(root / "tests" / "notes.txt")]) == WEIGHT_HEAVY
+    (root / "integration_test").mkdir()
+    (root / "integration_test" / "app.dart").write_text("void main() {}\n")
+    assert classify_argv_weight(
+        ["flutter", "test", str(root / "integration_test" / "app.dart")]) == WEIGHT_HEAVY
+
+
+def test_relative_path_resolved_against_uv_directory(tmp_path, monkeypatch):
+    """路徑基準與 pytest 一致：uv --directory 改變子程序 cwd，相對路徑對該目錄解析。"""
+    from lib.test_command_parse import find_unwrapped_heavy
+    root = _make_files(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    argv = ["uv", "--directory", str(root), "run", "pytest", "tests/a.py"]
+    assert classify_argv_weight(argv) == WEIGHT_LIGHT
+    assert find_unwrapped_heavy("uv --directory {} run pytest tests/a.py".format(root)) == []
+    assert find_unwrapped_heavy("uv --directory={} run pytest tests/a.py".format(root)) == []
+    # 不帶 --directory：對 cwd 解析，該檔不存在 -> heavy
+    assert classify_argv_weight(["uv", "run", "pytest", "tests/a.py"]) == WEIGHT_HEAVY
+    monkeypatch.chdir(root)
+    assert classify_argv_weight(["pytest", "tests/a.py"]) == WEIGHT_LIGHT
+
+
+def test_file_check_exception_falls_back_to_heavy(tmp_path, monkeypatch):
+    """失敗語意：判準本身例外時保守判 heavy。"""
+    import os
+    root = _make_files(tmp_path)
+
+    def boom(_path):
+        raise OSError("simulated")
+
+    monkeypatch.setattr(os.path, "isfile", boom)
+    assert classify_argv_weight(["pytest", str(root / "tests" / "a.py")]) == WEIGHT_HEAVY
+    # 命名樣式命中者不經檔案檢查，維持 light
+    assert classify_argv_weight(["pytest", "tests/test_a.py"]) == WEIGHT_LIGHT

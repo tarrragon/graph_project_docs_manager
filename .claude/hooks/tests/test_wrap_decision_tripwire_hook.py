@@ -1678,3 +1678,123 @@ class TestDeriveTicketFromAgentPayload:
     def test_e2_user_prompt_event_has_no_payload_ticket(self, hook_mod, tmp_path):
         event = make_user_prompt("Ticket: 0.9.0-W1-001 但這是使用者輸入", cwd=tmp_path)
         assert hook_mod._ticket_from_agent_payload(event) is None
+
+
+# ============================================================================
+# 狀態檔依 session_id 分檔（E1 對照：他 session 換票不影響；E2 對照：缺值退回共用檔）
+# ============================================================================
+
+class TestSessionScopedState:
+    """跑完整 main()，以磁碟上的狀態檔 JSON 為結構化斷言對象。"""
+
+    SHARED = ".claude/hook-state/wrap-tripwire-state.json"
+    STATE_A = ".claude/hook-state/wrap-tripwire-state-sessA.json"
+    STATE_B = ".claude/hook-state/wrap-tripwire-state-sessB.json"
+
+    @pytest.fixture(autouse=True)
+    def _env(self, hook_mod, monkeypatch, tmp_path):
+        monkeypatch.delenv("TICKET_ID", raising=False)
+        monkeypatch.setattr(hook_mod, "is_pytest_environment", lambda: False)
+        monkeypatch.setattr(hook_mod, "get_project_root", lambda: tmp_path)
+        monkeypatch.setattr(
+            hook_mod, "derive_ticket",
+            lambda ev, cwd, logger: hook_mod._ticket_from_agent_payload(ev))
+        target = tmp_path / ".claude" / "config" / "wrap-triggers.yaml"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(CONFIG_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def _fire(self, hook_mod, monkeypatch, event):
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(event)))
+        assert hook_mod.main() == 0
+
+    def _failure(self, tmp_path, ticket, session_id=None):
+        ev = make_agent_failure("Ticket: %s\n任務：x" % ticket, tmp_path)
+        if session_id is not None:
+            ev["session_id"] = session_id
+        return ev
+
+    def _state(self, tmp_path, rel):
+        return json.loads((tmp_path / rel).read_text(encoding="utf-8"))
+
+    def test_e1_other_session_ticket_switch_keeps_s1_count(self, hook_mod, monkeypatch, tmp_path):
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", "sessA"))
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-902", "sessB"))
+        sa = self._state(tmp_path, self.STATE_A)
+        sb = self._state(tmp_path, self.STATE_B)
+        assert sa["current_ticket"] == "0.9.0-W1-901"
+        assert sa["signals"]["consecutive_failures"]["count"] == 1
+        assert sb["current_ticket"] == "0.9.0-W1-902"
+        assert sb["signals"]["consecutive_failures"]["count"] == 1
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", "sessA"))
+        sa = self._state(tmp_path, self.STATE_A)
+        assert sa["signals"]["consecutive_failures"]["count"] == 2
+        assert not (tmp_path / self.SHARED).exists()
+
+    def test_e2_missing_session_id_uses_shared_file_and_old_behavior(self, hook_mod, monkeypatch, tmp_path):
+        # 缺 session_id 與空字串：皆退回共用檔，他票換票仍清空計數（改前行為）
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901"))
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", ""))
+        shared = self._state(tmp_path, self.SHARED)
+        assert shared["signals"]["consecutive_failures"]["count"] == 2
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-902"))
+        shared = self._state(tmp_path, self.SHARED)
+        assert shared["current_ticket"] == "0.9.0-W1-902"
+        assert shared["signals"]["consecutive_failures"]["count"] == 1
+        files = sorted((tmp_path / ".claude" / "hook-state").glob("*.json"))
+        assert files == [tmp_path / self.SHARED]
+
+    def test_manual_wrap_reset_only_clears_own_session(self, hook_mod, monkeypatch, tmp_path):
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", "sessA"))
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-902", "sessB"))
+        manual = make_user_prompt("/wrap-decision", cwd=tmp_path)
+        manual["session_id"] = "sessA"
+        self._fire(hook_mod, monkeypatch, manual)
+        sa = self._state(tmp_path, self.STATE_A)
+        sb = self._state(tmp_path, self.STATE_B)
+        assert "consecutive_failures" not in sa["signals"]
+        assert sb["signals"]["consecutive_failures"]["count"] == 1
+
+    def _seed(self, tmp_path, name, age_days):
+        d = tmp_path / ".claude" / "hook-state"
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / name
+        p.write_text("{}", encoding="utf-8")
+        t = datetime.now().timestamp() - age_days * 86400
+        os.utime(p, (t, t))
+        return p
+
+    def test_prune_removes_stale_other_session_keeps_rest(self, hook_mod, monkeypatch, tmp_path):
+        stale = self._seed(tmp_path, "wrap-tripwire-state-old.json", 30)
+        fresh = self._seed(tmp_path, "wrap-tripwire-state-new.json", 1)
+        shared = self._seed(tmp_path, "wrap-tripwire-state.json", 30)
+        cur = self._seed(tmp_path, "wrap-tripwire-state-sessA.json", 30)
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", "sessA"))
+        assert not stale.exists()
+        assert fresh.exists()
+        assert shared.exists()
+        assert cur.exists()
+
+    def test_prune_without_session_id_keeps_shared_file(self, hook_mod, monkeypatch, tmp_path):
+        stale = self._seed(tmp_path, "wrap-tripwire-state-old.json", 30)
+        shared = self._seed(tmp_path, "wrap-tripwire-state.json", 30)
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901"))
+        assert not stale.exists()
+        assert shared.exists()
+
+    def test_prune_failure_does_not_break_main(self, hook_mod, monkeypatch, tmp_path):
+        stale = self._seed(tmp_path, "wrap-tripwire-state-old.json", 30)
+
+        def boom(self_path, *a, **k):
+            raise PermissionError("denied")
+        monkeypatch.setattr(Path, "unlink", boom)
+        self._fire(hook_mod, monkeypatch, self._failure(tmp_path, "0.9.0-W1-901", "sessA"))
+        assert stale.exists()
+        state = self._state(tmp_path, self.STATE_A)
+        assert state["signals"]["consecutive_failures"]["count"] == 1
+
+    def test_session_id_sanitized_for_filename(self, hook_mod, tmp_path):
+        import logging
+        base = tmp_path / "s.json"
+        p = hook_mod.resolve_state_path(base, {"session_id": "../x/y"}, logging.getLogger("t"))
+        assert p.parent == tmp_path
+        assert p.name == "s-___x_y.json"

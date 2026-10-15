@@ -43,6 +43,7 @@ from lib import (
     get_project_root,
     emit_model_reminder,
 )
+from lib.transcript_tail_reader import read_last_assistant_text
 
 
 # ============================================================================
@@ -207,37 +208,26 @@ def extract_previous_assistant_message(hook_input: dict, logger) -> Optional[str
     """
     從 Hook 輸入中提取前一輪 assistant 回應。
 
-    Hook 輸入結構：
-    {
-        "transcript": [
-            {"role": "user", "content": "..."},
-            {"role": "assistant", "content": "..."},
-            ...
-        ]
-    }
+    實測的 UserPromptSubmit payload（鍵：session_id、transcript_path、cwd、
+    prompt_id、permission_mode、hook_event_name、prompt）不含 transcript 內容，
+    只提供 transcript_path（session JSONL 檔路徑）；由該檔取最後一則 assistant 文字。
 
     Returns:
-        前一輪 assistant 回應的 content，或 None（若無 transcript 或無 assistant 回應）
+        前一輪 assistant 回應文字，或 None（無 transcript_path、檔案不存在、
+        解析失敗皆 fail-open 並記日誌）
     """
     try:
-        transcript = hook_input.get("transcript")
-        if not isinstance(transcript, list) or not transcript:
-            logger.debug("無 transcript 或 transcript 為空")
+        transcript_path = hook_input.get("transcript_path")
+        if not transcript_path:
+            logger.info("payload 無 transcript_path，略過檢查")
             return None
-
-        # 從後往前掃描，找最後一個 assistant 訊息
-        for item in reversed(transcript):
-            if isinstance(item, dict) and item.get("role") == "assistant":
-                content = item.get("content")
-                if isinstance(content, str):
-                    logger.debug(f"找到前一輪 assistant 回應，長度 {len(content)}")
-                    return content
-
-        logger.debug("Transcript 中未找到 assistant 回應")
-        return None
+        text = read_last_assistant_text(transcript_path, logger)
+        if text is None:
+            logger.info("transcript 未取得 assistant 回應（fail-open）")
+        return text
 
     except Exception as e:
-        logger.info(f"提取 transcript 失敗（已預期的非標準輸入）: {e}")
+        logger.info(f"提取 transcript 失敗（fail-open）: {e}")
         return None
 
 

@@ -93,13 +93,41 @@ def _context_of(stdout: str) -> str:
     return hso["additionalContext"]
 
 
+_TRANSCRIPT_DIR = None  # 由 autouse fixture 指向 pytest tmp_path
+
+
+@pytest.fixture(autouse=True)
+def _transcript_dir(tmp_path):
+    global _TRANSCRIPT_DIR
+    _TRANSCRIPT_DIR = tmp_path
+    yield
+    _TRANSCRIPT_DIR = None
+
+
+def _write_transcript(*assistant_texts: str, name: str = "t.jsonl") -> Path:
+    """建立臨時 session JSONL（形狀同實際 transcript：每行 type + message）。"""
+    path = _TRANSCRIPT_DIR / name
+    lines = [{"type": "user", "message": {"role": "user", "content": "test"}}]
+    for text in assistant_texts:
+        lines.append({
+            "type": "assistant",
+            "message": {"role": "assistant", "content": [{"type": "text", "text": text}]},
+        })
+        lines.append({"type": "user", "message": {"role": "user", "content": "next"}})
+    path.write_text("\n".join(_json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+    return path
+
+
 def _make_transcript(assistant_content: str) -> dict:
-    """建立含 assistant 回應的 transcript payload。"""
+    """建立實測 UserPromptSubmit payload 形狀：只帶 transcript_path，不帶 transcript 內容。"""
     return {
-        "transcript": [
-            {"role": "user", "content": "test"},
-            {"role": "assistant", "content": assistant_content},
-        ]
+        "session_id": "s",
+        "transcript_path": str(_write_transcript(assistant_content)),
+        "cwd": str(_TRANSCRIPT_DIR),
+        "prompt_id": "p",
+        "permission_mode": "auto",
+        "hook_event_name": "UserPromptSubmit",
+        "prompt": "next",
     }
 
 
@@ -411,17 +439,52 @@ class TestHookSubprocessIntegration:
     def test_no_assistant_message_passes_silently(self, hook_project_env):
         """D7: transcript 無 assistant 訊息靜默通過。"""
         project_root, env = hook_project_env
-        payload = {"transcript": [{"role": "user", "content": "test"}]}
-        code, _, err = _run_hook(payload, project_root, env)
+        payload = _make_transcript("x")
+        payload["transcript_path"] = str(_TRANSCRIPT_DIR / "u.jsonl")
+        (_TRANSCRIPT_DIR / "u.jsonl").write_text(
+            _json.dumps({"type": "user", "message": {"role": "user", "content": "t"}}) + "\n",
+            encoding="utf-8",
+        )
+        code, out, err = _run_hook(payload, project_root, env)
         assert code == 0
+        assert out.strip() == ""
         assert "[LANG GUARD]" not in err
 
-    def test_malformed_transcript_passes_silently(self, hook_project_env):
-        """D8: malformed transcript 靜默通過（非 crash）。"""
+    def test_no_transcript_path_no_output(self, hook_project_env):
+        """D8: payload 無 transcript_path → 不輸出（fail-open）。"""
         project_root, env = hook_project_env
-        payload = {"transcript": "not a list"}
-        code, _, err = _run_hook(payload, project_root, env)
-        assert code == 0  # extract returns None, no warning
+        payload = {"hook_event_name": "UserPromptSubmit", "prompt": "hi"}
+        code, out, err = _run_hook(payload, project_root, env)
+        assert code == 0
+        assert out.strip() == ""
+        assert "[LANG GUARD]" not in err
+
+    def test_transcript_file_missing_fails_open(self, hook_project_env):
+        """D9: transcript_path 指向不存在檔案 → fail-open，不輸出、不 crash。"""
+        project_root, env = hook_project_env
+        payload = {"transcript_path": str(_TRANSCRIPT_DIR / "nope.jsonl")}
+        code, out, err = _run_hook(payload, project_root, env)
+        assert code == 0
+        assert out.strip() == ""
+        assert err.strip() == ""
+
+    def test_old_transcript_list_field_ignored(self, hook_project_env):
+        """D10: 舊欄位 transcript(list) 平台不提供，不再被讀取（含違規亦不觸發）。"""
+        project_root, env = hook_project_env
+        payload = {"transcript": [{"role": "assistant", "content": "⚡ 안녕"}]}
+        code, out, _ = _run_hook(payload, project_root, env)
+        assert code == 0
+        assert out.strip() == ""
+
+    def test_previous_turn_violation_triggers_not_clean_latest(self, hook_project_env):
+        """D11 (E1 對照): 取最後一則 assistant；前一輪違規時觸發，而最新乾淨時不觸發。"""
+        project_root, env = hook_project_env
+        bad = _make_transcript("進度 ⚡ 完成")
+        code, out, _ = _run_hook(bad, project_root, env)
+        assert "[LANG GUARD]" in _context_of(out)
+        clean = {"transcript_path": str(_write_transcript("進度 ⚡", "乾淨回應", name="c.jsonl"))}
+        code, out, _ = _run_hook(clean, project_root, env)
+        assert out.strip() == ""
 
 
 if __name__ == "__main__":
