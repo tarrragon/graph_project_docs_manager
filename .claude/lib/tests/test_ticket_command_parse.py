@@ -228,6 +228,29 @@ class TestIsInvocationMasked:
         ):
             assert is_invocation_masked(cmd) is False, cmd
 
+    def test_subshell_inner_substitution_is_masked(self):
+        for cmd in (
+            f"(echo $(ticket track complete {TID}))",
+            f"(a; ticket track complete {TID})",
+            f"((echo $(ticket track complete {TID})))",
+            f"(export x=$(ticket track complete {TID}))",
+            f"(ticket track complete {TID}) && (echo $(date))",
+        ):
+            assert is_invocation_masked(cmd) is True, cmd
+
+    def test_subshell_e2_controls_stay_unmasked(self):
+        for cmd in (
+            f"(ticket track complete {TID})",
+            f"(out=$(ticket track complete {TID}))",
+            f"((ticket track complete {TID}))",
+            f"(ticket track complete {TID}) && (ticket track finish {TID})",
+        ):
+            assert is_invocation_masked(cmd) is False, cmd
+
+    def test_subshell_over_nesting_is_conservatively_masked(self):
+        cmd = "(" * 20 + "ticket track complete X" + ")" * 20
+        assert is_invocation_masked(cmd) is True
+
     def test_process_substitution_is_unmasked(self):
         assert is_invocation_masked(f"ticket track finish {TID} > >(tee /tmp/log)") is False
 

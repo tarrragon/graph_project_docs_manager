@@ -316,3 +316,42 @@ def test_single_cli_statement_among_other_commands_keeps_whole_summary():
         "unrecognized arguments",
     )
     assert summary.startswith("cd /x")
+
+
+# ----------------------------------------------------------------------------
+# 0.5.0-W1-295：遮蔽路徑 stdout 行首 [Error] 偵測（check_general_cli_failure）
+# ----------------------------------------------------------------------------
+
+import logging
+
+
+def _general(command: str, stdout: str = "", stderr: str = ""):
+    payload = {
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+        "tool_response": {"stdout": stdout, "stderr": stderr},
+    }
+    return hook.check_general_cli_failure(payload, logging.getLogger("t295"))
+
+
+def test_masked_stdout_error_prefix_is_failure():
+    """正向對照：舊實作只看 stderr，此情境回傳 None。"""
+    out = _general("ticket track claim X; echo done", "[Error] not found\ndone\n")
+    assert out == hook.WorkflowMessages.CLI_FAILURE_HELP_REMINDER
+
+
+def test_masked_stderr_failure_still_detected():
+    out = _general("somecli run; echo done", "done\n", stderr="boom")
+    assert out == hook.WorkflowMessages.CLI_FAILURE_HELP_REMINDER
+
+
+def test_masked_stdout_error_not_at_line_start_is_not_failure():
+    assert _general("ticket track query X; echo ok", "title: see [Error] in text\n") is None
+
+
+def test_unmasked_stdout_error_prefix_is_not_failure():
+    assert _general("ticket track query X", "[Error] quoted in ticket body\n") is None
+
+
+def test_unparseable_command_fails_open():
+    assert _general("ticket track claim 'X; echo", "[Error] x\n") is None

@@ -789,18 +789,21 @@ git -C "$D" show HEAD:a.txt              # v2 —— 內容被回滾，git log �
 
 #### 並行期工作位置的放行殘留
 
-**Why**：並行期判定只計入「工作位置等於 commit 目標 checkout」的派發登記條目，目的是避免在 checkout A 的派發擋下 checkout B 的 commit。工作位置在派發登記當下寫入，commit 目標在命令解析時取得；兩者之間的差距，就是下表兩條殘留的來源。
+**判定基準**：commit 目標取同一條命令內全部 commit 呼叫的聯集（例如以 `&&` 串接的多個 commit），條目的工作位置等於聯集內任一目標即計入並行期，不以第一個 commit 為準。任一 commit 帶 `GIT_DIR=`、`GIT_WORK_TREE=` 前綴（含 `env` 包裝），或帶 `--git-dir`、`--work-tree` 選項時，覆寫使目標無法從 cwd 與 `-C` 推定，此時不套用工作位置過濾，全數條目計入（多擋方向）。
 
-**Consequence**：這兩條殘留的失敗方向是放行：條目被過濾掉，並行期判定為否，裸 commit 與 pathspec commit 通過守衛，可能吸入他方已 staged 的檔案。守衛沒有反應，不代表目標 checkout 內沒有並行的代理人。
+**Why**：並行期判定只計入「工作位置等於 commit 目標 checkout」的派發登記條目，目的是避免在 checkout A 的派發擋下 checkout B 的 commit。工作位置在派發登記當下寫入，commit 目標在命令解析時取得；兩者之間的差距，就是下表三條殘留的來源。
+
+**Consequence**：這三條殘留的失敗方向是放行：條目被過濾掉，並行期判定為否，裸 commit 與 pathspec commit 通過守衛，可能吸入他方已 staged 的檔案。守衛沒有反應，不代表目標 checkout 內沒有並行的代理人。
 
 | 殘留 | 觸發條件 | 條目為何被濾掉 |
 |------|---------|---------------|
 | 非隔離代理人跨 checkout stage | 非隔離代理人登記時的工作位置是派發者的 checkout；代理人之後以 `cd` 或 `git -C` 在另一個 checkout 進行 stage | 對該另一個 checkout 的 commit，條目的工作位置不等於 commit 目標，不計入 |
 | 登記後切換 cwd | 非隔離派發登記後，PM 把 cwd 切換到另一個 checkout 工作 | 條目仍指原 checkout；對原 checkout 的判定正確，對新 checkout 不計入 |
+| 事先 export 的 `GIT_DIR`、`GIT_WORK_TREE` | 在先前的命令或 shell 中已 `export GIT_DIR=...` 或 `export GIT_WORK_TREE=...`，之後的 commit 命令本身不帶這些變數 | 命令文字沒有覆寫的痕跡，目標被推定為 cwd 所在的 checkout；實際作用的是環境變數指向的 checkout，推定與實際不符時，條目不計入 |
 
-**判定端無解的理由**：工作位置只能取自登記端的資訊。登記發生在派發當下，無從預知代理人日後 `cd` 到哪、PM 日後切換到哪；判定端只看得到 commit 目標，看不到代理人其他的寫入位置。改以 commit 目標為基準已是判定端的上限，把基準換回 cwd 會讓 `git -C` 指向他處的 commit 被誤濾。
+**判定端無解的理由**：工作位置只能取自登記端的資訊。登記發生在派發當下，無從預知代理人日後 `cd` 到哪、PM 日後切換到哪；判定端只看得到 commit 目標，看不到代理人其他的寫入位置。改以 commit 目標為基準已是判定端的上限，把基準換回 cwd 會讓 `git -C` 指向他處的 commit 被誤濾。事先 export 的變數則因為值不在命令文字中，判定端只解析命令字串，無從得知環境變數的內容；這與前述「變數或命令替換組出的命令」同屬文字層無解。
 
-**承擔者**：由執行者自律承擔（用戶裁定接受）。Action：非隔離代理人需在另一個 checkout stage 時，改以隔離派發；PM 切換 cwd 前，先確認原 checkout 已無未收尾的非隔離派發。
+**承擔者**：由執行者自律承擔（用戶裁定接受）。Action：非隔離代理人需在另一個 checkout stage 時，改以隔離派發；PM 切換 cwd 前，先確認原 checkout 已無未收尾的非隔離派發；需要指定 git 目錄時，把 `GIT_DIR`、`GIT_WORK_TREE` 寫在 commit 命令本身（前綴或 `--git-dir`、`--work-tree`），不事先 export，commit 前以 `env | grep '^GIT_'` 確認環境內沒有殘留值。
 
 **與多擋方向的對照**：工作位置無法判定時，條目一律計入並行期（多擋、不放行）：舊格式條目沒有位置欄位、欄位為空、路徑解析失敗、commit 目標目錄未知或不存在、目標不是 git repo。隔離派發若 runtime 未提供 worktree 路徑，位置欄位留空，該條目對所有 checkout 全數計入，屬多擋方向，只是失去過濾收益。
 
@@ -897,6 +900,7 @@ LC_ALL=C sort /tmp/t.txt | LC_ALL=C uniq -c
 ---
 
 **Last Updated**: 2026-10-15
+**Version**: 1.21.0 — 〈並行期工作位置的放行殘留〉同步修正後的判定：新增「判定基準」（commit 目標取命令內全部 commit 的聯集；帶 `GIT_DIR`、`GIT_WORK_TREE`、`--git-dir`、`--work-tree` 時不過濾、全數計入），殘留由兩條增為三條（新增事先 export 的 `GIT_DIR`、`GIT_WORK_TREE`：觸發條件、放行方向、判定端無解理由、自律承擔），承擔者 Action 補不事先 export 與 commit 前檢查環境。
 **Version**: 1.20.0 — 〈守衛如何辨識 commit〉新增子節「並行期工作位置的放行殘留」：依工作位置過濾後的兩條放行殘留（非隔離代理人跨 checkout stage、登記後切換 cwd）的觸發條件、失敗方向、判定端無解的理由、自律承擔，以及位置不明與 runtime 未提供 worktree 路徑時的多擋方向；僅新增小節。
 **Last Updated**: 2026-10-14
 **Version**: 1.19.0 — 規則七詳細新增〈守衛如何辨識 commit：位置判定、任意位置掃描與殘留範圍〉：兩種辨識模型與 via_scan 處置、scan 仍漏判的封閉類別及各自承擔者、scan 的誤判情境與改寫方式；僅新增小節，不改既有條文。
