@@ -263,6 +263,26 @@ def _run_hook_as_subprocess(command: str, repo: Path) -> subprocess.CompletedPro
     )
 
 
+def _hook_log_text(repo: Path) -> str:
+    """收集隔離 tmp repo 內 hook 日誌全文；fail-open（逾時放行）只寫在這裡。"""
+    log_root = repo / ".claude" / "hook-logs"
+    if not log_root.is_dir():
+        return f"(無日誌目錄: {log_root})"
+    parts = [
+        f"--- {p.relative_to(repo)} ---\n{p.read_text(encoding='utf-8', errors='replace')}"
+        for p in sorted(log_root.rglob("*")) if p.is_file()
+    ]
+    return "\n".join(parts) or "(日誌目錄為空)"
+
+
+def _diag(result: subprocess.CompletedProcess, repo: Path) -> str:
+    """斷言失敗訊息：returncode 與 hook 放行原因（fail-open 日誌行）同時可見。"""
+    return (
+        f"rc={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}\n"
+        f"hook 日誌:\n{_hook_log_text(repo)}"
+    )
+
+
 def _git(repo: Path, *args) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", "-C", str(repo), *args],
@@ -325,6 +345,7 @@ def tmp_repo(tmp_path):
     assert _main_status() == baseline, "main repo git status changed during test"
 
 
+@pytest.mark.wallclock
 @pytest.mark.integration
 def test_production_launch_comment_only_change_does_not_block(tmp_repo):
     """方式 B 選擇的理由的實測證成：純註解改動（不影響 schema 值）→ 不觸發。
@@ -341,9 +362,10 @@ def test_production_launch_comment_only_change_does_not_block(tmp_repo):
 
     result = _run_hook_as_subprocess('git commit -m "test: comment only"', tmp_repo)
 
-    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    assert result.returncode == 0, _diag(result, tmp_repo)
 
 
+@pytest.mark.wallclock
 @pytest.mark.integration
 def test_production_launch_semantic_change_without_regen_blocks(tmp_repo):
     """語意改動（新增 GRAPH_NODE_TYPES 條目）但未重產 JSON → 生產路徑下阻擋（exit 2）。
@@ -370,10 +392,11 @@ def test_production_launch_semantic_change_without_regen_blocks(tmp_repo):
 
     result = _run_hook_as_subprocess('git commit -m "test: semantic change no regen"', tmp_repo)
 
-    assert result.returncode == 2, f"stdout={result.stdout}\nstderr={result.stderr}"
+    assert result.returncode == 2, _diag(result, tmp_repo)
     assert "tracking_schema.json 過期" in result.stderr
 
 
+@pytest.mark.wallclock
 @pytest.mark.integration
 def test_production_launch_unrelated_commit_not_affected(tmp_repo):
     """未改動 tracking_schema.py 的 commit 不受影響（生產啟動方式驗證）。"""
@@ -382,7 +405,7 @@ def test_production_launch_unrelated_commit_not_affected(tmp_repo):
 
     result = _run_hook_as_subprocess('git commit -m "test: unrelated"', tmp_repo)
 
-    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    assert result.returncode == 0, _diag(result, tmp_repo)
 
 
 def test_scenario_hand_edited_compat_version_key_blocks(monkeypatch, capsys):
