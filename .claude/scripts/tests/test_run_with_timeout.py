@@ -474,7 +474,7 @@ def gate(tmp_path):
         "PATH": f"{bindir}{os.pathsep}{env['PATH']}",
         "CLAUDE_SLOT_LOCK_DIR": str(tmp_path / "locks"),
         "CLAUDE_PROC_REGISTRY_DIR": str(tmp_path / "reg"),
-        "CLAUDE_ORPHAN_SCRIPT": str(_orphan_stub(tmp_path, "print('符合 0 略過 0 疑似殘留 0')")),
+        "CLAUDE_ORPHAN_SCRIPT": str(_orphan_stub(tmp_path, "print('ORPHAN_SUMMARY matched=0 skipped=0 suspects=0 registered=0')")),
     })
     procs = []
     yield env, tmp_path, procs
@@ -675,8 +675,8 @@ def _orphan_env(tmp_path, summary):
 
 def test_heavy_start_prints_orphan_notice_before_command_runs(gate):
     _, tmp_path, _ = gate
-    marker, extra = _orphan_env(tmp_path, "符合 2 略過 0 疑似殘留 0")
-    b, out_b = _spawn(gate, "b", HEAVY_ARGV, life=0.0, **extra)
+    marker, extra = _orphan_env(tmp_path, "ORPHAN_SUMMARY matched=2 skipped=0 suspects=0 registered=0")
+    b, out_b =_spawn(gate, "b", HEAVY_ARGV, life=0.0, **extra)
     _, err = b.communicate(timeout=30)
     assert b.returncode == 0 and Path(str(out_b) + ".end").exists()
     assert "orphan-test-procs.py --kill" in err and marker.exists()
@@ -684,7 +684,7 @@ def test_heavy_start_prints_orphan_notice_before_command_runs(gate):
 
 def test_heavy_start_without_orphans_prints_no_notice(gate):
     _, tmp_path, _ = gate
-    marker, extra = _orphan_env(tmp_path, "符合 0 略過 0 疑似殘留 0")
+    marker, extra = _orphan_env(tmp_path, "ORPHAN_SUMMARY matched=0 skipped=0 suspects=0 registered=0")
     b, _ = _spawn(gate, "b", HEAVY_ARGV, life=0.0, **extra)
     _, err = b.communicate(timeout=30)
     assert b.returncode == 0 and marker.exists() and "orphan-test-procs" not in err
@@ -692,7 +692,7 @@ def test_heavy_start_without_orphans_prints_no_notice(gate):
 
 def test_light_command_does_not_query_orphans(gate):
     _, tmp_path, _ = gate
-    marker, extra = _orphan_env(tmp_path, "符合 2 略過 0 疑似殘留 0")
+    marker, extra = _orphan_env(tmp_path, "ORPHAN_SUMMARY matched=2 skipped=0 suspects=0 registered=0")
     b, _ = _spawn(gate, "b", LIGHT_ARGV, life=0.0, **extra)
     _, err = b.communicate(timeout=30)
     assert b.returncode == 0 and not marker.exists() and "orphan-test-procs" not in err
@@ -734,3 +734,104 @@ def test_hold_marker_and_wait_limit_do_not_reach_wrapped_command(tmp_path, monke
 
     assert run_under_hold("7") == ["None", "7", "None"]
     assert run_under_hold(None) == ["None", "None", "None"]
+
+
+# ---- 登記目錄的擁有者／權限／symlink 驗證與 O_NOFOLLOW 寫入 ----
+# 全部以 tmp 目錄模擬，不碰真實登記位置。驗證失敗：命令照常執行、不登記、stderr 單行。
+
+def _make_unsafe(kind, tmp_path, monkeypatch):
+    """回傳 (供 CLAUDE_PROC_REGISTRY_DIR 使用的路徑, 不該出現登記檔的真實目錄)。"""
+    real = tmp_path / "real"
+    real.mkdir(mode=0o700)
+    if kind == "symlink":
+        link = tmp_path / "link"
+        link.symlink_to(real)
+        return link, real
+    if kind == "group_writable":
+        real.chmod(0o770)
+    elif kind == "other_writable":
+        real.chmod(0o707)
+    elif kind == "other_owned":
+        # 無法在測試中真的換擁有者；讓驗證端看到的目前使用者與目錄擁有者不同
+        monkeypatch.setattr(_load_module_cache(), "_owner_uid", lambda: os.getuid() + 1, raising=False)
+    return real, real
+
+
+def _load_module_cache():
+    return _MOD_HOLDER.setdefault("mod", _load_module())
+
+
+_MOD_HOLDER = {}
+
+
+@pytest.mark.parametrize("kind", ["other_owned", "group_writable", "other_writable", "symlink"])
+def test_unsafe_registry_dir_is_not_used_and_warns(kind, tmp_path, monkeypatch, capsys):
+    _MOD_HOLDER.clear()
+    mod = _load_module_cache()
+    target, real = _make_unsafe(kind, tmp_path, monkeypatch)
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(target))
+    assert mod.register_group(os.getpid(), ["x"]) is None
+    assert list(real.iterdir()) == []
+    err = capsys.readouterr().err
+    assert err.startswith("run-with-timeout:") and len(err.strip().splitlines()) == 1
+
+
+@pytest.mark.parametrize("kind", ["group_writable", "symlink"])
+def test_unsafe_registry_dir_does_not_block_command(kind, tmp_path, monkeypatch):
+    target, real = _make_unsafe(kind, tmp_path, monkeypatch)
+    res = subprocess.run([sys.executable, str(SCRIPT), "10", "--", sys.executable, "-c",
+                          "print('ran');import sys;sys.exit(7)"],
+                         capture_output=True, text=True, timeout=20, env=_env(target))
+    assert (res.returncode, res.stdout.strip()) == (7, "ran")
+    assert res.stderr.startswith("run-with-timeout:") and "Traceback" not in res.stderr
+    assert list(real.iterdir()) == []
+
+
+def test_registry_file_is_created_with_o_nofollow(tmp_path, monkeypatch):
+    """登記暫存檔須以 O_CREAT|O_EXCL|O_NOFOLLOW 建立，不跟隨預先放置的 symlink。"""
+    mod = _load_module()
+    reg = tmp_path / "reg"
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(reg))
+    flags_seen = []
+    real_open = os.open
+
+    def spy(path, flags, *a, **k):
+        if str(path).startswith(str(reg)):
+            flags_seen.append(flags)
+        return real_open(path, flags, *a, **k)
+
+    monkeypatch.setattr(os, "open", spy)
+    path = mod.register_group(os.getpid(), ["x"])
+    assert path is not None and flags_seen
+    assert all(f & os.O_NOFOLLOW and f & os.O_EXCL for f in flags_seen)
+    mod.unregister_group(path)
+
+
+def test_safe_registry_dir_is_created_private(tmp_path, monkeypatch):
+    mod = _load_module()
+    reg = tmp_path / "reg"
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(reg))
+    path = mod.register_group(os.getpid(), ["x"])
+    assert path is not None and (reg.stat().st_mode & 0o077) == 0
+    mod.unregister_group(path)
+
+
+def _load_orphan_module():
+    spec = importlib.util.spec_from_file_location("otp_loc", SCRIPT.parent / "orphan-test-procs.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_default_registry_dir_is_under_home_and_both_ends_agree(tmp_path, monkeypatch):
+    """寫入端與讀取端的預設位置一致，且在 HOME 底下（與名額鎖同處），不在共用暫存目錄。"""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("CLAUDE_PROC_REGISTRY_DIR", raising=False)
+    writer, reader = _load_module().registry_dir(), _load_orphan_module().registry_dir()
+    assert writer == reader
+    assert Path(writer).parent == tmp_path / ".cache"
+
+
+def test_override_registry_dir_agrees_on_both_ends(tmp_path, monkeypatch):
+    monkeypatch.setenv("CLAUDE_PROC_REGISTRY_DIR", str(tmp_path / "x"))
+    assert _load_module().registry_dir() == _load_orphan_module().registry_dir() == str(tmp_path / "x")

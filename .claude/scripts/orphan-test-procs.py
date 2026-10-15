@@ -41,9 +41,9 @@ import json
 import os
 import re
 import signal
+import stat
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import List, NamedTuple, Optional
@@ -252,11 +252,32 @@ def render_suspects(trees: List[SuspectTree]) -> List[str]:
     return lines
 
 
+SUMMARY_PREFIX = "ORPHAN_SUMMARY"
+
+
 def registry_dir() -> str:
+    """與 run-with-timeout.py 的同名函式同值（兩端一致由測試鎖住）。"""
     override = os.environ.get("CLAUDE_PROC_REGISTRY_DIR")
     if override:
         return override
-    return os.path.join(tempfile.gettempdir(), f"claude-run-with-timeout-{os.getuid()}")
+    return os.path.join(os.path.expanduser("~"), ".cache", "claude-proc-registry")
+
+
+def registry_dir_problem(directory: str) -> Optional[str]:
+    """登記目錄不可採信的原因；安全或目錄不存在回 None。讀取端不建立目錄。"""
+    try:
+        info = os.lstat(directory)  # lstat 不跟隨 symlink
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        return f"無法檢查：{exc}"
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        return "不是一般目錄（symlink 或其他類型）"
+    if info.st_uid != os.getuid():
+        return "不屬於目前使用者"
+    if info.st_mode & 0o077:
+        return f"權限允許群組或其他人存取（{info.st_mode & 0o777:o}）"
+    return None
 
 
 REGISTRY_FIELDS = ("pgid", "leader_start", "wrapper_pid", "wrapper_start", "cwd", "command")
@@ -402,8 +423,8 @@ def _drop_entry(path: str) -> None:
         sys.stderr.write(f"警告：無法移除登記 {path}：{exc}\n")
 
 
-def _handle_entry(e: RegEntry, roots: List[str], kill: bool) -> int:
-    """處理單筆登記並印出結果；回傳 1 表示未能終止／出錯，0 表示正常。"""
+def _handle_entry(e: RegEntry, roots: List[str], kill: bool, killable: List[str]) -> int:
+    """處理單筆登記並印出結果；回傳 1 表示未能終止／出錯，0 表示正常。判為可終止者的登記檔路徑加入 killable。"""
     wrapper_now = process_start(e.wrapper_pid)
     members = group_members(e.pgid)
     in_scope = under(e.cwd, roots)
@@ -419,10 +440,11 @@ def _handle_entry(e: RegEntry, roots: List[str], kill: bool) -> int:
     elif verdict == "unsafe":
         print(f"登記不終止 {label}（{reason}），移除登記")
         _drop_entry(e.path)
-    elif not kill:
-        print(f"登記可終止 {label}（{reason}）")
     else:
-        return _kill_entry(e, label)
+        killable.append(e.path)
+        if kill:
+            return _kill_entry(e, label)
+        print(f"登記可終止 {label}（{reason}）")
     return 0
 
 
@@ -445,15 +467,23 @@ def _kill_entry(e: RegEntry, label: str) -> int:
     return 1
 
 
-def process_registry(roots: List[str], kill: bool) -> int:
-    """處理登記，印出結果；回傳未能終止或出錯的筆數。單筆出錯不中止其餘登記。"""
-    entries, bad = read_registry(registry_dir())
+def process_registry(roots: List[str], kill: bool, killable: Optional[List[str]] = None) -> int:
+    """處理登記，印出結果；回傳未能終止或出錯的筆數。單筆出錯不中止其餘登記。
+
+    登記目錄不安全（symlink、非本人擁有、群組或其他人可寫）時不讀取、不終止，只印一行原因。"""
+    killable = [] if killable is None else killable
+    directory = registry_dir()
+    unsafe = registry_dir_problem(directory)
+    if unsafe:
+        print(f"登記目錄不安全，略過（{unsafe}）")
+        return 0
+    entries, bad = read_registry(directory)
     for path, reason in bad:
         print(f"登記無法讀取 {path}（{reason}）")
     failed = 0
     for e in entries:
         try:
-            failed += _handle_entry(e, roots, kill)
+            failed += _handle_entry(e, roots, kill, killable)
         except CommandError as exc:
             failed += 1
             print(f"登記查詢失敗 群組 {e.pgid}（{exc}），不終止，保留登記")
@@ -541,8 +571,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     for line in render_suspects(suspects):
         print(line)
     failed = 0
+    killable: List[str] = []
     try:
-        failed += process_registry(roots, args.kill)
+        failed += process_registry(roots, args.kill, killable)
     except CommandError as exc:
         sys.stderr.write(f"錯誤：{exc}\n")
         return 2
@@ -568,6 +599,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.kill and suspects:
         print(f"疑似殘留 {len(suspects)} 棵未處理（本指令不對其送訊號）")
     print(f"符合 {len(matched)} 略過 {len(skipped)} 疑似殘留 {len(suspects)}")
+    # 機器可讀契約行（slot_gate.count_orphans 只解析此行）；欄位順序與名稱變動須同步 slot_gate 與測試
+    print(f"{SUMMARY_PREFIX} matched={len(matched)} skipped={len(skipped)} "
+          f"suspects={len(suspects)} registered={len(killable)}")
     if not args.kill:
         print("僅列出，未終止任何程序；加 --kill 才終止")
     return 1 if failed else 0

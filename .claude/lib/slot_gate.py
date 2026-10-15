@@ -62,7 +62,9 @@ SLOT_STALL_SECONDS = 30.0
 # 孤兒查詢的逾時：查詢只是提示，慢於此值寧可放棄也不拖慢 heavy 命令啟動
 ORPHAN_QUERY_TIMEOUT_SECONDS = 5.0
 ORPHAN_CLEANUP_COMMAND = "python3 .claude/scripts/orphan-test-procs.py --kill"
-_ORPHAN_SUMMARY_RE = re.compile(r"^符合 (\d+) 略過 (\d+) 疑似殘留 (\d+)$", re.MULTILINE)
+# 與 orphan-test-procs.py 的機器可讀契約行（SUMMARY_PREFIX）一致；人讀行的字樣不屬契約，不解析
+_ORPHAN_SUMMARY_RE = re.compile(
+    r"^ORPHAN_SUMMARY matched=(\d+) skipped=(\d+) suspects=(\d+) registered=(\d+)$", re.MULTILINE)
 WAITED_REPORT_THRESHOLD = SLOT_POLL_INTERVAL
 # 無歷史資料時的預估持有秒數（保守取偏高值，寧可早拒絕也不讓排隊者空等滿上限）。
 # 依據 2026-10-15 實測：hooks 套件 160-230 秒、ticket skill 520-580 秒、動到 lib 的合併約 915 秒。
@@ -564,8 +566,7 @@ def count_orphans() -> Tuple[int, int]:
     found = _ORPHAN_SUMMARY_RE.findall(res.stdout)
     if res.returncode not in (0, 1) or not found:
         raise RuntimeError(f"查詢失敗（結束碼 {res.returncode}，無法解析輸出）")
-    matched, _skipped, suspects = (int(x) for x in found[-1])
-    registered = sum(1 for line in res.stdout.splitlines() if line.startswith("登記可終止"))
+    matched, _skipped, suspects, registered = (int(x) for x in found[-1])
     return matched + registered, suspects
 
 
