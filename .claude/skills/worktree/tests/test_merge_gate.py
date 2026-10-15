@@ -685,7 +685,7 @@ class TestNoSelfDeadlock:
         monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "2")
         argv, cwd = self._argv(tmp_path)
         from lib import slot_gate
-        hold, _ = slot_gate.acquire_slot(["x"], lambda: None)
+        hold, _ = slot_gate.acquire_slot(["x"], lambda: None, estimate_seconds=0)  # 預估 0：超過上限即視為卡住
         try:
             rc, _out = mg.default_runner(argv, cwd)
         finally:
@@ -720,7 +720,7 @@ class TestNoSelfDeadlock:
     def test_holder_wait_notice_names_its_own_source(self, repo, monkeypatch, capsys):
         from lib import slot_gate
         monkeypatch.setenv("CLAUDE_SLOT_WAIT_LIMIT", "1")
-        other, _ = slot_gate.acquire_slot(["other"], lambda: None)
+        other, _ = slot_gate.acquire_slot(["other"], lambda: None, estimate_seconds=0)
         try:
             with pytest.raises(RuntimeError):
                 with mg.MergeGate(str(repo)).hold("feat", "main"):
@@ -875,18 +875,22 @@ class TestSlotEstimate:
 
 
 class TestGateRefusalExpected:
-    """名額預估拒絕是預期內結果：一行說明、結束碼 125、不印 traceback；非預期例外仍保留。"""
+    """持有者超出預估過久的放棄等待是預期內結果：一行說明、結束碼 125、不印 traceback；非預期例外仍保留。"""
 
     @staticmethod
     def occupy(estimate):
+        """占住名額的持有者，已持有時間遠超自身預估與等待上限（卡住）。"""
         from lib import slot_gate
         hold, _ = slot_gate.acquire_slot(["other"], lambda: None, estimate_seconds=estimate)
         assert hold is not None
+        info = json.loads(Path(hold.holder_path).read_text())
+        info["started_epoch"] = time.time() - estimate - 99999
+        Path(hold.holder_path).write_text(json.dumps(info))
         return hold
 
     def test_estimate_rejection_is_single_line_exit_125(self, repo, capsys):
         old = git(repo, "rev-parse", "main")
-        hold = self.occupy(99999.0)
+        hold = self.occupy(10.0)
         try:
             rc = wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
         finally:
@@ -894,7 +898,7 @@ class TestGateRefusalExpected:
         cap = capsys.readouterr()
         assert rc == 125
         assert "Traceback" not in cap.out + cap.err
-        assert (cap.out + cap.err).count("不排隊") == 1
+        assert (cap.out + cap.err).count("疑似卡住") == 1
         assert git(repo, "rev-parse", "main") == old
 
     def test_unexpected_exception_keeps_traceback(self, repo, monkeypatch):
@@ -907,7 +911,7 @@ class TestGateRefusalExpected:
         assert "結果 中止" in (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
 
     def test_refusal_error_is_distinct_type_carrying_exit_code(self, repo):
-        hold = self.occupy(99999.0)
+        hold = self.occupy(10.0)
         try:
             with pytest.raises(mg.SlotWaitRefused) as info:
                 with mg.MergeGate(str(repo)).hold("feat", "main"):
@@ -945,7 +949,7 @@ class TestGateLog:
 
     def test_refused_result(self, repo):
         base = git(repo, "rev-parse", "main")
-        hold = TestGateRefusalExpected.occupy(99999.0)
+        hold = TestGateRefusalExpected.occupy(10.0)
         try:
             assert wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([]))) == 125
         finally:

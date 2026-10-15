@@ -25,11 +25,13 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
 - 持有者的子程序不重複取得名額：持有者在持有期間把自己的 pid 放入環境變數 HELD_ENV（export_hold），
   子程序內的 run-with-timeout 經 is_heavy_command 判定為免排隊。標記僅在「該 pid 仍存在且名額確實全被占用」
   時有效（held_by_ancestor），殘留的過期標記不會讓 heavy 命令繞過閘門。
-- 預估耗時提早拒絕（2026-10-15）：排隊檔與 holder 檔都記預估持有秒數 estimate（呼叫端傳入 estimate_seconds，
-  未傳用 default_estimate_seconds(command)；舊格式無此欄位的檔案同樣以命令預設值計）。進入排隊時 estimate_wait
-  計算「持有者剩餘（estimate 減已持有秒數，下限 0）加前方各存活排隊者 estimate」，超過等待上限即立刻以
-  SLOT_WAIT_EXIT_CODE 結束，訊息列出順位、前方筆數與預估秒數；未超過照常排隊，等待提示附預估剩餘。
-  預估是估算不是保證：實際較快時多拒了一次（呼叫端可重送），較慢時仍受等待上限保護。
+- 預估耗時（2026-10-15）：排隊檔與 holder 檔都記預估持有秒數 estimate（呼叫端傳入 estimate_seconds，
+  未傳用 default_estimate_seconds(command)；舊格式無此欄位的檔案同樣以命令預設值計）。佇列總等待不設上限、
+  不因預估過長而拒絕（飽和時被拒者不保留位置會飢餓）：進場即輸出一行順位、前方筆數、前方第一筆與預估等待，
+  呼叫端自行決定是否中止。順位只計排隊檔，不含持有者（持有者之後第 N 位）；持有者換人是先到者取得名額後
+  後方遞補一位，不是插隊。等待上限 CLAUDE_SLOT_WAIT_LIMIT 只用來偵測持有者卡住：持有者已持有秒數超出自身
+  estimate 超過上限即以 SLOT_WAIT_EXIT_CODE 結束。例外：環境帶持有標記（HELD_ENV，持有者的子程序）時
+  上限仍是總等待上限，兩邊版本不一致時快速失敗。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
 """
 import fcntl
@@ -46,7 +48,7 @@ from typing import Callable, List, Optional, Tuple
 SLOT_WAIT_EXIT_CODE = 125
 # 同時執行的 heavy 命令數（全機）；2026-10-14 swap 耗盡事件後定為 1
 SLOT_COUNT = 1
-# 排隊上限：超過代表持有者異常久，與其無限掛起不如回報讓呼叫端決策
+# 持有者超出自身預估的容忍秒數：超過代表持有者異常久，與其無限掛起不如回報讓呼叫端決策
 SLOT_WAIT_LIMIT_SECONDS = 3600.0
 SLOT_NOTICE_INTERVAL_SECONDS = 30.0
 SLOT_POLL_INTERVAL = 0.1
@@ -361,6 +363,42 @@ def _holder_remaining(directory: str) -> float:
     return 0.0
 
 
+def _holder_overrun(directory: str) -> Optional[Tuple[float, float]]:
+    """存活持有者 (已持有秒數, 預估秒數)；無存活持有者或資訊不可讀回 None。"""
+    for index in range(SLOT_COUNT):
+        try:
+            with open(_holder_path(directory, index)) as fh:
+                info = json.load(fh)
+            if _pid_gone(int(info["pid"])) or "started_epoch" not in info:
+                continue
+            estimate = _number(info.get("estimate"), default_estimate_seconds(info.get("command") or []))
+            return max(time.time() - float(info["started_epoch"]), 0.0), estimate
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue  # 持有者剛取得、尚未寫出資訊，或資訊檔已移除：不判定
+    return None
+
+
+def _first_ahead_text(directory: str, name: str) -> str:
+    """前方第一筆排隊者的命令（無則空字串）。"""
+    for _seq, entry in _live_queue(directory):
+        if entry == name:
+            return ""
+        try:
+            with open(os.path.join(directory, entry)) as fh:
+                return " ".join(str(x) for x in (json.load(fh).get("command") or [])) or "命令不明"
+        except (OSError, ValueError, AttributeError, TypeError):
+            return "命令不明"
+    return ""
+
+
+def _queue_text(directory: str, name: str, position: int) -> str:
+    """順位說明：順位不含持有者，並指名前方第一筆。"""
+    ahead = max(position - 1, 0)
+    first = _first_ahead_text(directory, name)
+    tail = f"前方第一筆：{first}" if first else "前方無排隊者（只需等持有者，若有）"
+    return f"順位 {position}（持有者之後第 {position} 位，順位不含持有者），前方 {ahead} 筆，{tail}"
+
+
 def estimate_wait(directory: str, name: str) -> Tuple[int, float]:
     """回 (前方存活排隊筆數, 預估等待秒數)；等待 = 持有者剩餘 + 前方各筆 estimate。"""
     ahead = []
@@ -418,10 +456,10 @@ def acquire_slot(command: List[str],
         _prepare_dir(directory)
         queue_name = _enqueue(directory, command, estimate)
         ahead_count, expected = estimate_wait(directory, queue_name)
-        if expected > limit:  # 前方預估加總已超過上限：等下去只會逾時，立即拒絕
-            _warn(f"預估等待 {expected:.0f} 秒超過上限 {limit:g} 秒，不排隊：順位 {ahead_count + 1}，"
-                  f"前方 {ahead_count} 筆；{describe_holder(directory)}", label)
-            return None, SLOT_WAIT_EXIT_CODE
+        if ahead_count or expected > 0:  # 進場即告知順位與預估；佇列總等待不設上限，由呼叫端決定是否放棄
+            _warn(f"進場排隊：{_queue_text(directory, queue_name, ahead_count + 1)}；預估等待 {expected:.0f} 秒"
+                  f"（不設總等待上限，可自行中止）；{describe_holder(directory)}", label)
+        capped = bool(os.environ.get(HELD_ENV))  # 持有者的子程序：上限仍是總等待上限
         while True:
             try:
                 _prepare_dir(directory)
@@ -444,12 +482,17 @@ def acquire_slot(command: List[str],
             if signum is not None:
                 return None, 128 + signum
             now = time.monotonic()
-            if now - waited_since >= limit:
+            if capped and now - waited_since >= limit:
                 _warn(f"等待名額超過 {limit:g} 秒，放棄執行。{describe_holder(directory)}", label)
+                return None, SLOT_WAIT_EXIT_CODE
+            running = _holder_overrun(directory)
+            if running is not None and running[0] - running[1] > limit:
+                _warn(f"持有者已持有 {running[0]:.0f} 秒，超出自身預估 {running[1]:.0f} 秒逾 {limit:g} 秒，"
+                      f"疑似卡住，放棄等待。{describe_holder(directory)}", label)
                 return None, SLOT_WAIT_EXIT_CODE
             if now >= next_notice:
                 _, remaining = estimate_wait(directory, queue_name)
-                _warn(f"等待名額：順位 {position}，前方 {max(position - 1, 0)} 筆；{describe_holder(directory)}；"
+                _warn(f"等待名額：{_queue_text(directory, queue_name, position)}；{describe_holder(directory)}；"
                       f"已等待 {now - waited_since:.0f} 秒，預估剩餘 {remaining:.0f} 秒", label)
                 next_notice = now + interval
             time.sleep(SLOT_POLL_INTERVAL)
