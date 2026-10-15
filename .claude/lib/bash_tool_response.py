@@ -11,6 +11,11 @@
 真實 tool_response 只有 stdout、stderr、interrupted、isImage、noOutputExpected，
 沒有 exit_code（文件未列）。以 get("exit_code", -1) 判定成功會恆走失敗分支。
 
+stderr 恆為空字串：實測（2026-10）Bash PostToolUse payload 中 stderr 全數為 ""，
+命令的 stderr 輸出併入 stdout。以 stderr 判斷失敗的分支在 PostToolUse 永不觸發；
+失敗訊號只能取自 PostToolUseFailure 的 error 欄位。亦不可改以 stdout 內容推斷失敗，
+成功命令的 stdout 可能引述錯誤字樣而造成誤報。
+
 判定順序：
 1. exit_code 存在（相容舊形狀或未來平台補上）：沿用原判定，0 或 75 才算成功。
    75 為 ticket CLI 的 auto-commit 失敗專用碼；真實 PostToolUse 不會出現，僅供相容 payload。
