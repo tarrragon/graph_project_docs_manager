@@ -28,7 +28,7 @@
 
 ### 規則 1：測試通過率 100%
 
-**測試通過率必須維持 100%**：提交前所有測試通過、PR 合併 CI 全綠、版本發布完整套件通過。違規處理：測試失敗禁止直接修復，必須派發 incident-responder 分析，遵循 Skip-gate 防護機制。
+**測試通過率必須維持 100%**：本機提交前該票相關測試檔全綠；合併 main 前全套件全綠，由 worktree 合併流程在閘門內執行並讀結束碼，紅燈不合併，代理人不自行跑全套件（執行點與套件選擇見 `.claude/skills/worktree/SKILL.md`〈合併前全套件〉）；PR 合併 CI 全綠、版本發布完整套件通過。違規處理：測試失敗禁止直接修復，必須派發 incident-responder 分析，遵循 Skip-gate 防護機制。
 
 - **邊界：測試綠燈不等於 Runtime 正確**：100% 通過是必要非充分條件。修復「訊息系統 / 日誌系統 / 跨模組整合」類 bug 時 unit test 綠燈可能遮蔽 runtime 失效（mock 替代真實依賴 + 斷言不檢查訊息文字 + 動態語言靜默忽略多餘參數三層共振）；此類修復 acceptance 必含 runtime 層級驗證。詳見 `.claude/error-patterns/process-compliance/PC-165-false-positive-fix-chain.md`。
 - **邊界：少量綠燈不等於 always 綠燈**：race / 異步 / 環境敏感類問題 baseline 取樣 N < 5 時連續 GREEN 可能是 flaky 環境的幸運連勝，基於假 baseline 的決策鏈會連鎖崩塌；此類任務派發前 prompt 必須強制 N >= 5 取樣 + 紀錄 GREEN/RED 分佈。詳見 `.claude/error-patterns/process-compliance/PC-168-flaky-baseline-lucky-streak.md`。
@@ -111,6 +111,7 @@
 - `.claude/skills/framework-issue/SKILL.md` - 規則 5 框架問題升級流程（介入判斷、兩條路徑、issue 關閉協議、回報前查重 SOP）
 
 ---
+**Last Updated**: 2026-10-15 | **Version**: 3.10.0 — 規則 1 禁令句拆為兩時點：本機提交前該票相關測試檔全綠、合併 main 前全套件全綠（合併閘門執行並讀結束碼），路由 worktree SKILL〈合併前全套件〉；不展開論證，細節在 verification-framework〈合併前全綠與實機驗證票〉。
 **Last Updated**: 2026-10-15 | **Version**: 3.9.0 — 規則 4 補「提醒類輸出須宣告受眾」一段：受眾含模型時走 additionalContext 或 exit 2，exit 0 加 stderr 對模型不可見（實測 2026-10）；可見性對照表放 hook-architect-technical-reference，案例見 IMP-GPD-004。
 **Last Updated**: 2026-09-30 | **Version**: 3.8.0 — 規則 5 ANA spawn 情境表第一列對齊 PC-091：ANA 結論要求的落地改 `--parent`（children），`--source-ticket` 限分析中發現、結論未要求的獨立工作；後果與 `--force` 條件路由 ticket-lifecycle。
 **Version**: 3.7.0 — 規則 5 補一行射程註記（不展開三明示，僅路由）：「建立 Ticket」以發現的收件方裝有本框架 ticket 系統為前提，協作或接手他人專案時合法載體改為通過閘門的盤點工作項表，三種終態對應與強制層零改動接法見 `.claude/references/decision-trigger-binding-details.md` 規則 2.6。
