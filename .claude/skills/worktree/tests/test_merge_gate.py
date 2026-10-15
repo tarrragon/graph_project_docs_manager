@@ -989,6 +989,15 @@ class TestFailureDetailRetention:
         assert "BOOM-STDERR" in text
         assert "vm_stat pageouts: 42" in text and "memory_pressure: 測試值" in text
 
+    def test_e2_no_log_root_does_not_raise(self, monkeypatch, capsys):
+        """E2 對照：log_root 與 project_root 皆為 None 時紅燈不拋例外，失敗項照常輸出。"""
+        monkeypatch.setattr(mg, "_ensure_artifacts", lambda *a: "")
+        out = "FAILED t.py::test_x - boom\nE   boom\n"
+        reason = mg._run_suites(["hooks"], "/snap", None, lambda a, c: (1, out), None)
+        assert "FAILED t.py::test_x" in reason and "E   boom" in reason
+        assert "全輸出與記憶體快照" not in reason
+        assert "略過失敗細節旁置檔" in capsys.readouterr().err
+
     def test_green_writes_no_detail_file(self, tmp_path):
         mg._run_suites(["hooks"], str(tmp_path), str(tmp_path), lambda a, c: (0, "1 passed"), str(tmp_path))
         assert not (tmp_path / ".claude/logs/merge-gate-failures").exists()

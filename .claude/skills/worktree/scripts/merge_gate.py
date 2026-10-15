@@ -343,6 +343,9 @@ def memory_snapshot() -> str:
 
 def save_failure_output(log_root: str, tag: str, suite: str, rc: int, output: str) -> str:
     """紅燈時把全輸出（附記憶體快照）寫入旁置檔，回傳路徑；寫入失敗回空字串（只警告）。"""
+    if not log_root:
+        sys.stderr.write("[WARNING] merge-gate 無 log_root，略過失敗細節旁置檔\n")
+        return ""
     safe_suite = re.sub(r"[^A-Za-z0-9_.-]", "_", suite)
     path = Path(log_root) / _FAILURE_DIR / f"{tag[:12]}-{safe_suite}.log"
     try:
@@ -443,6 +446,9 @@ def _suite_result_line(suite: str, status: str, summary: str, seconds: float) ->
 def _emit_result(log_root: str, line: str) -> None:
     """結果行同時寫 stdout 與 worktree-merge.log；日誌寫入失敗只警告，不影響閘門判定。"""
     print(line)
+    if not log_root:
+        sys.stderr.write("[WARNING] worktree-merge 無 log_root，結果行未寫日誌\n")
+        return
     try:
         log = Path(log_root) / _LOG_FILE
         log.parent.mkdir(parents=True, exist_ok=True)
