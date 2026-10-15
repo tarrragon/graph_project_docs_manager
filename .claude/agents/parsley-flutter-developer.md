@@ -850,7 +850,7 @@ mcp__dart__run_tests(roots: [{"root": "file:///path", "paths": ["test/unit/core/
 >
 > 附註：`.claude/hooks/test-summary.sh` 已刪除，2026-08-22 文件複查更正。<!-- broken-link-exempt: 本行為更正說明，其內容正是在陳述該腳本已刪除，路徑不存在是預期的 -->
 
-**重要提醒**: 此規範為強制遵循；未包裝或不帶 paths 的全套件寫法會耗盡 context 並與合併閘門重複。
+**重要提醒**: 代理人不跑全套件；只跑本票相關測試檔，Bash 經 run-with-timeout 包裝、MCP 必帶 paths。此規範為強制遵循。
 
 ### 1. Dart MCP 優先原則
 ```bash

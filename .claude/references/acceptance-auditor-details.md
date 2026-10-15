@@ -201,23 +201,25 @@ Ticket 類型判斷
     v
 3. 依審查時點驗證測試
     |
-    +-- 合併前審查：只執行本票相關測試檔（flutter test 帶測試檔路徑）
+    +-- 合併前審查：只執行本票相關測試檔（`python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test <測試檔> --reporter compact`）
     |     有失敗 --> FAIL（列出失敗的測試）；通過 --> PASS
     |     全套件項 --> SKIP，註明「由合併閘門負責，合併時驗證」
     |
     +-- complete 時審查（合併後）：讀 .claude/logs/worktree-merge.log
           [合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入
-          結果為「寫入」--> PASS，Test Results 引用該行原文；其他結果 --> FAIL
+          結果為「寫入」--> PASS，Test Results 引用該行原文（可一併引用同分支的 [合併前測試] 套件結果行）
+          其他結果，或合併後仍無該分支的結束行（例如 --skip-gate，日誌只留
+          [略過合併前測試] target=<分支> reason=<理由>）--> FAIL，回報 PM，不自跑全套件
 ```
 
-合併前找不到閘門結果時，回報 PM「待合併後於 complete 時再驗」，不自跑全套件。
+合併前找不到閘門結果時，回報 PM「待合併後於 complete 時再驗」，不自跑全套件。代理人回報宣稱全套件通過卻沒有閘門結果行時：合併前審查判 WARN，complete 時審查判 FAIL，並核對回報是否標明「局部執行」。
 
 ### Bash 使用規則
 
 | 允許的命令 | 用途 | 範例 |
 |-----------|------|------|
 | `dart analyze` | 靜態分析，偵測語法錯誤和類型問題 | `dart analyze lib/` |
-| `flutter test <測試檔>` | 只執行本票相關測試檔 | `flutter test test/unit/plan_parser_test.dart` |
+| `python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test <測試檔> --reporter compact` | 只執行本票相關測試檔，經 run-with-timeout 包裝 | `python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test test/unit/plan_parser_test.dart --reporter compact` |
 | 讀取 `.claude/logs/worktree-merge.log` | 取得合併閘門的全套件結果行 | complete 時審查使用 |
 
 | 禁止的命令 | 原因 |
@@ -271,6 +273,7 @@ Ticket 類型判斷
 測試執行結果：
 - flutter test（相關測試檔）: All 47 tests passed
 - 全套件（complete 時審查）: [合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入
+- 套件結果行（選引）: [合併前測試] 套件 <名稱>：<狀態>
 
 結論：相關測試通過、合併閘門結果為寫入，靜態分析無問題。
 ```
@@ -443,5 +446,6 @@ Ticket 類型: RES（研究）
 ---
 
 **Last Updated**: 2026-10-15
+**Version**: 1.2.0 - 審查修正：測試命令與派發範本一致、補 --skip-gate 與無結束行的判定、補代理人回報核對、對稱引用 [合併前測試] 行
 **Version**: 1.1.0 - Step 5 改為依審查時點驗證：合併前只驗相關測試檔與 dart analyze，complete 時讀合併閘門結束行，不自跑全套件
 **Version**: 1.0.0 - 從 acceptance-auditor.md 提取（Progressive Disclosure）

@@ -131,19 +131,21 @@ acceptance-gate-hook（CLI 層）只檢查子 Ticket 的 status 欄位形式值�
 3. **禁止做最終決策** -- 只提供驗收報告，PM 決定
 4. **禁止跳過任何檢查步驟** -- 七步驟全部執行（可 SKIP 但不可省略）
 5. **禁止放寬驗收標準** -- FAIL 就是 FAIL，不可降級為 WARN
-6. **禁止執行修改性 Bash 命令** -- 只能執行 `dart analyze` 與本票相關測試檔的測試命令
+6. **禁止執行修改性 Bash 命令** -- 只能執行 `dart analyze`、本票相關測試檔的測試命令（`python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test <測試檔> --reporter compact`），及讀取 `.claude/logs/worktree-merge.log`
 7. **禁止自跑全套件** -- 全套件由合併閘門執行，驗收只讀其結果；找不到結果時等合併後再驗
 
 ---
 
-## Step 5 測試驗證：依審查時點分兩種寫法
+## Step 5 測試驗證：依審查時點分兩種做法
 
 **Why**：全套件由合併閘門在合併前於快照內執行（`.claude/skills/worktree/SKILL.md`〈合併前全套件〉），驗收再跑一次全套件會讓同一張票重複跑兩次。流程為「代理人在 worktree commit，PM 送閘門合併，合併後 complete」，審查發生在合併前或合併後，能讀到的閘門結果不同。
 
 | 審查時點 | Step 5 做法 |
 |---------|------------|
-| 合併前審查 | 只驗證本票相關測試檔與 `dart analyze`；全套件項明寫「由合併閘門負責，合併時驗證」，判定為 SKIP（附此說明），不判 FAIL |
-| complete 時審查（合併後） | 從 `.claude/logs/worktree-merge.log` 讀出本次合併的結束行 `[合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入`；結果必須是「寫入」，否則判 FAIL；在 Test Results 引用該行原文，並可一併引用同分支的 `[合併前測試]` 套件結果行；`dart analyze` 照跑 |
+| 合併前審查 | 只驗證本票相關測試檔（命令 `python3 .claude/scripts/run-with-timeout.py 600 -- fvm flutter test <測試檔> --reporter compact`，與派發範本〈測試入口〉的包裝一致）與 `dart analyze`；全套件項明寫「由合併閘門負責，合併時驗證」，判定為 SKIP（附此說明），不判 FAIL |
+| complete 時審查（合併後） | 從 `.claude/logs/worktree-merge.log` 讀出本次合併的結束行 `[合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入`；結果必須是「寫入」，否則判 FAIL；在 Test Results 引用該行原文，並可一併引用同分支的 `[合併前測試]` 套件結果行；`dart analyze` 照跑。合併後 log 仍找不到該分支的結束行（例如合併時用了 `--skip-gate`，日誌只留下 `[略過合併前測試] target=<分支> reason=<理由>` 行）時判 FAIL，在報告引用該略過行（若有）並回報 PM，由 PM 決定如何補驗，驗收方不自跑全套件 |
+
+**代理人回報核對**：回報宣稱全套件通過、卻沒有閘門結果行時，合併前審查判 WARN（結果尚無可核對，以合併後的結束行為準），complete 時審查判 FAIL（宣稱無閘門證據）；兩者都核對回報是否標明「局部執行」，未標明者在報告註記。
 
 **禁止**：合併前找不到閘門結果時，處理方式是「等合併後再驗」，不可改成自己跑全套件。**Consequence**：自己跑全套件會讓同一張票再次重複跑，抵消閘門的設計目的。**Action**：回報 PM「閘門結果尚無，待合併後於 complete 時再驗」。
 
@@ -213,9 +215,11 @@ acceptance-gate-hook（CLI 層）只檢查子 Ticket 的 status 欄位形式值�
 ---
 
 **Last Updated**: 2026-10-15
+**Version**: 1.6.0 - 審查修正：禁止事項補讀 log、測試命令與派發範本一致、補 --skip-gate 與無結束行判定及代理人回報核對、標題改「做法」
 **Version**: 1.5.0 - Step 5 改為不自跑全套件：合併前審查只驗相關測試檔與 dart analyze，complete 時審查讀合併閘門結果行；找不到結果等合併後再驗
 
 **Change Log**:
+- v1.6.0 (2026-10-15): 審查修正（讀 log 授權、命令一致、無結束行判 FAIL、回報核對）
 - v1.5.0 (2026-10-15): Step 5 改讀合併閘門結果，不自跑全套件
 - v1.4.0 (2026-03-02): skill-design-guide 合規修正
   - description 加入觸發短語（Use when...）
