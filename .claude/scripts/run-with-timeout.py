@@ -18,8 +18,10 @@
 已自行脫離群組的程序不在此列。
 
 程序群組登記（供 orphan-test-procs.py --kill 依來源終止本腳本被強制終止後遺留的群組）：
-- 位置：環境變數 CLAUDE_PROC_REGISTRY_DIR；未設則為系統暫存目錄下的
-  claude-run-with-timeout-<uid>/（不在任何 repo 內，故不納入版控）。
+- 位置：環境變數 CLAUDE_PROC_REGISTRY_DIR；未設則為 ~/.cache/claude-proc-registry/
+  （與名額鎖同在 HOME 底下，不在任何 repo 內，故不納入版控；不用系統暫存目錄，因其在 Linux 為全機共用且名稱可預測）。
+  目錄須通過驗證才使用：lstat 非 symlink 且為目錄、擁有者為目前使用者、無群組／其他人權限位（0o700）；
+  不符則不登記、stderr 一行、命令照常執行。登記檔以 O_CREAT|O_EXCL|O_NOFOLLOW 建立。
   位置與工作目錄無關：主專案與各 git worktree 共用同一個目錄，
   清理端以登記中的工作目錄判斷是否屬於該專案範圍。
 - 檔案：wrapper-<本腳本PID>-<啟動時間（非英數字元以 - 取代）>.json，內容為 JSON 物件，欄位：
@@ -44,8 +46,8 @@
 import json
 import os
 import re
-import tempfile
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -107,10 +109,28 @@ def terminate_group(pgid: int, grace: float = GRACE_SECONDS, leader=None) -> Non
 
 
 def registry_dir() -> str:
+    """登記目錄；預設在 HOME 底下（與名額鎖同處），不使用可能為全機共用的暫存目錄。
+    讀取端 orphan-test-procs.py 有同名同值的函式，兩端一致由測試鎖住。"""
     override = os.environ.get("CLAUDE_PROC_REGISTRY_DIR")
     if override:
         return override
-    return os.path.join(tempfile.gettempdir(), f"claude-run-with-timeout-{os.getuid()}")
+    return os.path.join(os.path.expanduser("~"), ".cache", "claude-proc-registry")
+
+
+def _owner_uid() -> int:
+    return os.getuid()
+
+
+def _prepare_registry_dir(directory: str) -> None:
+    """建立（0o700）並驗證登記目錄；不符安全條件拋 PermissionError，呼叫端據此不登記。"""
+    os.makedirs(directory, mode=0o700, exist_ok=True)
+    info = os.lstat(directory)  # lstat 不跟隨 symlink
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise PermissionError(f"{directory} 不是一般目錄（symlink 或其他類型），不使用")
+    if info.st_uid != _owner_uid():
+        raise PermissionError(f"{directory} 不屬於目前使用者，不使用")
+    if info.st_mode & 0o077:
+        raise PermissionError(f"{directory} 權限允許群組或其他人存取（{info.st_mode & 0o777:o}），不使用")
 
 
 def process_start(pid: int) -> Optional[str]:
@@ -125,8 +145,11 @@ def process_start(pid: int) -> Optional[str]:
 
 
 def _write_atomically(path: str, entry: dict) -> None:
-    """寫同目錄暫存檔再改名；任何失敗皆清除暫存檔後重新拋出。"""
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".tmp-")
+    """寫同目錄暫存檔再改名；任何失敗皆清除暫存檔後重新拋出。
+
+    暫存檔以 O_CREAT|O_EXCL|O_NOFOLLOW 建立（0o600）：目標若已是 symlink 或已存在即失敗，不跟隨。"""
+    tmp = os.path.join(os.path.dirname(path), f".tmp-{os.getpid()}-{os.urandom(6).hex()}")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
         with os.fdopen(fd, "w") as fh:
             json.dump(entry, fh)
@@ -149,7 +172,7 @@ def register_group(pgid: int, command: List[str]) -> Optional[str]:
         entry = {"pgid": pgid, "leader_start": leader_start, "wrapper_pid": os.getpid(),
                  "wrapper_start": wrapper_start, "cwd": os.getcwd(), "command": command}
         directory = registry_dir()
-        os.makedirs(directory, mode=0o700, exist_ok=True)
+        _prepare_registry_dir(directory)
         # 檔名含啟動時間：PID 繞回時不覆蓋舊登記
         stamp = re.sub(r"[^0-9A-Za-z]+", "-", wrapper_start)
         path = os.path.join(directory, f"wrapper-{os.getpid()}-{stamp}.json")
