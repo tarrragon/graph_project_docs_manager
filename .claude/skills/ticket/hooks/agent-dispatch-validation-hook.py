@@ -193,11 +193,48 @@ def _emit_wide_staging_warning_if_parallel(prompt: str, logger) -> None:
 _TRACK_CLOSING_PATTERN = re.compile(r"track\s+(?:complete|finish)\b", re.IGNORECASE)
 
 
+# 判定策略：逐子句（以 。；; 與換行切分）判定每個命中是否為
+# 「收尾指示」。子句內命中前方帶否定詞（不要執行、禁止、勿 ...），或同子句帶
+# 引用語境詞（測試用、範例、字串、指稱、例如 ...），視為引用或否定，不計入。
+# 選擇子句級而非「只看收尾段」：收尾段位置無固定標記，段落切分本身易誤判；
+# 子句級以標點為界，對 PM 實際寫法（收尾一句帶否定、引用一句帶語境詞）足夠。
+_CLAUSE_SPLIT = re.compile(r"[。；;\n]")
+_NEGATION_PATTERN = re.compile(
+    r"不要|不得|不可|不必|不需|不用|不執行|無需|禁止|勿|別執行|別去|避免|"
+    r"\bnever\b|\bdo not\b|\bdon't\b|\bmust not\b|\bwithout\b",
+    re.IGNORECASE,
+)
+_REFERENCE_CUE_PATTERN = re.compile(
+    r"測試用|測試字串|命令字串|範例|示例|字串|指稱|引用|例如|類別|"
+    r"\bfixture\b|\be\.g\.|\bexample\b",
+    re.IGNORECASE,
+)
+
+
+def _is_closing_instruction(clause: str, match: "re.Match") -> bool:
+    """子句內的單一命中是否為真正的收尾指示（非否定、非引用語境）。"""
+    # 否定詞只看命中前、最近一個逗號之後的分句尾段；頓號（列舉）不切，
+    # 讓「不要執行 A、B」的 B 仍受否定涵蓋，而「不要改X，最後執行 A」不受影響。
+    head = re.split(r"[，,]", clause[: match.start()])[-1]
+    if _NEGATION_PATTERN.search(head):
+        return False
+    if _REFERENCE_CUE_PATTERN.search(clause):
+        return False
+    return True
+
+
 def _has_track_closing(prompt: str) -> bool:
-    """偵測 prompt 是否含 `track complete` 或 `track finish`（worktree 派發下應止於 commit）。"""
+    """偵測 prompt 是否含收尾指示的 `track complete` / `track finish`。
+
+    引用或被否定的出現不計；例外由呼叫端 fail-open 處理。
+    """
     if not prompt:
         return False
-    return bool(_TRACK_CLOSING_PATTERN.search(prompt))
+    for clause in _CLAUSE_SPLIT.split(prompt):
+        for match in _TRACK_CLOSING_PATTERN.finditer(clause):
+            if _is_closing_instruction(clause, match):
+                return True
+    return False
 
 
 _WORKTREE_COMPLETE_WARNING = """[提示] worktree 派發 prompt 偵測到 `track complete` 或 `track finish`，收尾應止於 `ticket track commit`
@@ -226,7 +263,13 @@ def _emit_worktree_complete_warning(prompt: str, logger) -> None:
     於 exit 0 時 stderr 不會注入 PM context（見 askuserquestion-reminder-hook.py
     既有寫法）。只在呼叫端已確認 isolation == "worktree" 時呼叫。
     """
-    if not _has_track_closing(prompt):
+    try:
+        matched = _has_track_closing(prompt)
+    except Exception as exc:  # fail-open：提示判定失敗不得阻擋派發
+        sys.stderr.write(f"[agent-dispatch-validation] 收尾提示判定失敗，已放行: {exc}\n")
+        logger.error("收尾提示判定失敗（fail-open 放行）: %s", exc)
+        return
+    if not matched:
         return
     output = {
         "hookSpecificOutput": {
