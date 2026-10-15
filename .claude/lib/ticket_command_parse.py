@@ -30,8 +30,25 @@ COMPLETE_VERBS = ("complete", "finish", "batch-complete")
 _MAX_SCAN_NESTING = 5
 
 
+_HELP_FLAGS = ("-h", "--help")
+
+
+def is_help_only(args: List[str]) -> bool:
+    """動詞之後的 token 是否只查說明（argparse 印說明後結束，不執行命令）。
+
+    token 須完全等於 -h 或 --help，且位於單獨的 `--` 之前；引號內字面
+    （如 `--why '見 --help'`）已由 tokenizer 併為單一 token，不會相等。
+    """
+    for tok in args:
+        if tok == "--":
+            return False
+        if tok in _HELP_FLAGS:
+            return True
+    return False
+
+
 def complete_statement_args(tokens: List[str]) -> Optional[List[str]]:
-    """若語句為完成類命令，回傳動詞之後的 token；否則回傳 None。"""
+    """若語句為完成類命令，回傳動詞之後的 token；否則回傳 None（含只查說明）。"""
     i = skip_prefix_wrapper_count(tokens)
     if (
         len(tokens) >= i + 3
@@ -39,7 +56,8 @@ def complete_statement_args(tokens: List[str]) -> Optional[List[str]]:
         and tokens[i + 1] == "track"
         and tokens[i + 2] in COMPLETE_VERBS
     ):
-        return tokens[i + 3:]
+        args = tokens[i + 3:]
+        return None if is_help_only(args) else args
     return None
 
 
@@ -66,7 +84,9 @@ def _scan_statement(
             and statement[i + 1] == "track"
             and statement[i + 2] in verbs
         ):
-            found.append((statement[i + 2], statement[i + 3:]))
+            args = statement[i + 3:]
+            if not is_help_only(args):
+                found.append((statement[i + 2], args))
             break  # 其餘 token 是該命令的參數
         script = nested_script(statement, i)
         if script:
