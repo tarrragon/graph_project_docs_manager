@@ -302,6 +302,22 @@ def load_state(state_path: Path, logger) -> Dict[str, Any]:
         return _initial_state()
 
 
+def resolve_state_path(base_path: Path, event: Dict[str, Any], logger) -> Path:
+    """依 stdin payload 的 session_id 把狀態檔分檔；缺值時退回共用檔（fail-open）。
+
+    分檔命名：<stem>-<session_id><suffix>（session_id 經檔名消毒，僅保留
+    英數、底線、連字號）。只讀 stdin payload，不 fallback 環境變數：
+    環境變數屬 hook 行程自身而非事件來源，與 payload 不一致時會造成同一
+    事件寫入不同檔。
+    """
+    raw = event.get("session_id")
+    sid = re.sub(r"[^A-Za-z0-9_-]", "_", raw) if isinstance(raw, str) else ""
+    if not sid:
+        logger.info("payload 無可用 session_id；退回共用狀態檔: %s", base_path)
+        return base_path
+    return base_path.with_name("%s-%s%s" % (base_path.stem, sid, base_path.suffix))
+
+
 def _initial_state() -> Dict[str, Any]:
     return {
         "version": "1.0.0",
@@ -910,7 +926,7 @@ def main() -> int:
     if config is None:
         return 0
 
-    state_path = project_root / config.state_file
+    state_path = resolve_state_path(project_root / config.state_file, event, logger)
     state = load_state(state_path, logger)
     cwd = Path(event.get("cwd") or project_root)
 
@@ -919,7 +935,7 @@ def main() -> int:
 
     if is_manual_wrap_invocation(event):
         state = reset_all_signals(state)
-        logger.info("manual /wrap-decision detected; all signals reset")
+        logger.info("manual /wrap-decision detected; signals of this state file reset")
 
     event_name = event.get("hook_event_name", "")
     warnings = _process_signals(event, event_name, state, config, current_ticket, logger)
