@@ -390,6 +390,74 @@ class TestRetryReuse:
         assert out.ok and out.attempts == 2 and gate.suite_runs == 1
 
 
+class TestPerSuiteReuse:
+    """CAS 重試依套件範圍沿用：只重跑差異觸及的套件。"""
+
+    @staticmethod
+    def _suite_of(argv):
+        if "flutter" in argv:
+            return mg.SUITE_FLUTTER
+        joined = " ".join(argv)
+        if "../skills/foo/tests" in joined:
+            return "skill:foo"
+        return mg.SUITE_HOOKS if ".claude/hooks" in joined else "other"
+
+    def _multi_branch(self, repo):
+        git(repo, "checkout", "-b", "multi")
+        commit_file(repo, "lib/m.txt", "m\n", "multi lib")
+        commit_file(repo, ".claude/hooks/h.py", "x = 1\n", "multi hook")
+        commit_file(repo, ".claude/skills/foo/tests/test_a.py", "# t\n", "multi skill tests")
+        commit_file(repo, ".claude/skills/foo/a.py", "y = 1\n", "multi skill src")
+        git(repo, "checkout", "main")
+
+    def _merge(self, repo, advance_path):
+        self._multi_branch(repo)
+        ran, state = [], {"n": 0}
+
+        def run(argv, cwd):
+            suite = self._suite_of(argv)
+            ran.append(suite)
+            state["n"] += 1
+            if state["n"] == 1:
+                advance_main(repo, advance_path, "new\n")
+            return 0, "1 passed in 0.1s"
+
+        gate = mg.MergeGate(str(repo), art(run))
+        out = wm.merge_branch_cas("multi", repo=str(repo), pre_merge_check=gate, max_retries=mg.GATE_MAX_RETRIES)
+        return out, ran
+
+    def test_skill_only_difference_reruns_only_that_skill(self, repo, capsys):
+        out, ran = self._merge(repo, ".claude/skills/foo/b.py")
+        assert out.ok and out.attempts == 2
+        assert ran[:3] == [mg.SUITE_FLUTTER, mg.SUITE_HOOKS, "skill:foo"]
+        assert ran[3:] == ["skill:foo"]  # 第二輪只重跑受影響套件
+        text = capsys.readouterr().out
+        assert "套件 flutter：沿用" in text and "套件 hooks：沿用" in text
+
+    def test_hooks_difference_reruns_hooks_only(self, repo):
+        out, ran = self._merge(repo, ".claude/hooks/new_hook.py")
+        assert out.ok and out.attempts == 2
+        assert ran[3:] == [mg.SUITE_HOOKS]
+
+    def test_reused_state_carries_to_next_retry(self, repo):
+        self._multi_branch(repo)
+        ran, state = [], {"n": 0}
+
+        def run(argv, cwd):
+            ran.append(self._suite_of(argv))
+            state["n"] += 1
+            if state["n"] == 1:
+                advance_main(repo, ".claude/skills/foo/b.py", "1\n")
+            if state["n"] == 4:  # 第二輪重跑 skill:foo 期間再推進 main 一次，與 skill 無關
+                advance_main(repo, "lib/z.txt", "z\n")
+            return 0, ""
+
+        gate = mg.MergeGate(str(repo), art(run))
+        out = wm.merge_branch_cas("multi", repo=str(repo), pre_merge_check=gate, max_retries=mg.GATE_MAX_RETRIES)
+        assert out.ok and out.attempts == 3
+        assert ran[3:] == ["skill:foo", mg.SUITE_FLUTTER]  # hooks 沿用兩輪、skill:foo 於第二輪已驗
+
+
 class TestResultLine:
     def _log(self, repo):
         return (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")

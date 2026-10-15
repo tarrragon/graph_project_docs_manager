@@ -9,7 +9,8 @@ update-ref 之前，在「合併 commit 的 detached worktree 快照」內，經
 結果無法對應到單一 commit。測合併 commit 而非分支 HEAD：測到的即是將寫入 main 的樹。
 
 CAS 重試：每次重試依新 HEAD 產生不同的合併 commit。上次驗過的 commit 與新 commit 的
-差異全部落在 RETRY_REUSE_EXEMPT_GLOBS（只改票檔與版本日誌）時，沿用驗證結果不重跑。
+差異依套件選擇規則判定：不觸及某套件範圍（豁免清單內的檔案本就不計）者沿用該套件的驗證結果，
+只重跑受影響的套件；驗證狀態以套件為單位記錄（verified_suites），重跑或沿用後都可再被下一次重試沿用。
 
 名額：合併序列（commit-tree、快照全套件、update-ref）整段持有 heavy 名額，由 MergeGate.hold 在
 merge_branch_cas 產生合併 commit 之前取得、update-ref 完成或中止後釋放；窗口因此只剩實際測試時間，
@@ -409,8 +410,11 @@ _STATUS_BY_RC = {0: "綠燈", 124: "逾時", 125: "名額等待逾時"}
 
 
 def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRunner,
-                log_root: Optional[str] = None) -> str:
-    """依序跑各套件；任一紅燈即停。每個套件結束輸出一行結果（含紅燈、逾時、中斷）。回傳空字串表示全綠。"""
+                log_root: Optional[str] = None, on_green: Optional[Callable[[str], None]] = None) -> str:
+    """依序跑各套件；任一紅燈即停。每個套件結束輸出一行結果（含紅燈、逾時、中斷）。回傳空字串表示全綠。
+
+    on_green：套件綠燈時立即回呼，後面套件紅燈時前面已綠者仍可記錄供重試沿用。
+    """
     log_root = log_root or project_root
     for suite in suites:
         missing = _ensure_artifacts(suite, snapshot, project_root, runner)
@@ -426,6 +430,8 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
             suite, _STATUS_BY_RC.get(rc, "紅燈"), summarize_output(out), time.monotonic() - start))
         if rc != 0:
             return _rc_reason(suite, rc, out)
+        if on_green:
+            on_green(suite)
     return ""
 
 
@@ -438,7 +444,7 @@ class MergeGate:
         self.on_event = on_event or (lambda _name: None)  # slot_acquired／slot_released，測試斷言順序用
         self.runner = runner or default_runner
         self.project_root = project_root or repo
-        self.verified_commit: Optional[str] = None
+        self.verified_suites: dict = {}  # 套件 -> 該套件最近一次確認綠燈（含沿用）的合併 commit
         self.suite_runs = 0
 
     def _needs_slot(self, branch: str, base: str) -> bool:
@@ -487,33 +493,42 @@ class MergeGate:
                 held.release()
                 self.on_event("slot_released")
 
-    def _can_reuse(self, commit: str) -> bool:
-        if self.verified_commit is None:
-            return False
-        diff = changed_paths_between(self.repo, self.verified_commit, commit)
-        return diff is not None and all(is_reuse_exempt(p) for p in diff)
+    def _reusable(self, suite: str, commit: str, snap: str) -> Optional[str]:
+        """該套件上次驗過的 commit 與新 commit 的差異若不觸及此套件，回傳該 commit；否則 None。
+
+        「觸及」以既有套件選擇規則套在差異上判定；git 失敗保守視為觸及。
+        """
+        last = self.verified_suites.get(suite)
+        if last is None:
+            return None
+        diff = changed_paths_between(self.repo, last, commit)
+        if diff is None or suite in select_suites(diff, snap):
+            return None
+        return last
 
     def __call__(self, commit: str, ref: str, expected_old: str, attempt: int) -> GateVerdict:
-        if self._can_reuse(commit):
-            print(f"[合併前測試] 與上次驗過的 {self.verified_commit[:12]} 差異全在豁免清單內，沿用驗證結果")
-            return GateVerdict(True)
         paths = changed_paths_between(self.repo, expected_old, commit)
         if paths is None:
             return GateVerdict(False, "無法計算合併改動範圍")
         if not needs_gate(paths):
             print("[合併前測試] 改動不在任何全套件範圍內，免跑")
-            self.verified_commit = commit
             return GateVerdict(True)
         with _sigterm_as_interrupt(), merge_snapshot(self.repo, commit) as snap:
             suites = select_suites(paths, snap)
-            if suites:
-                print(f"[合併前測試] 快照內跑全套件：{', '.join(suites)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
+            todo = []
+            for suite in suites:
+                last = self._reusable(suite, commit, snap)
+                if last is None:
+                    todo.append(suite)
+                    continue
+                _emit_result(self.repo, _suite_result_line(suite, "沿用", f"沿用 {last[:12]} 的驗證結果", 0.0))
+                self.verified_suites[suite] = commit  # 差異不觸及此套件，驗證結果視同延伸到新 commit
+            if todo:
+                print(f"[合併前測試] 快照內跑全套件：{', '.join(todo)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
                 self.suite_runs += 1
-            reason = _run_suites(suites, snap, self.project_root, self.runner, self.repo)
-        if reason:
-            return GateVerdict(False, reason)
-        self.verified_commit = commit
-        return GateVerdict(True)
+            reason = _run_suites(todo, snap, self.project_root, self.runner, self.repo,
+                                 on_green=lambda s: self.verified_suites.__setitem__(s, commit))
+        return GateVerdict(False, reason) if reason else GateVerdict(True)
 
 
 _PATH_TOKEN = re.compile(r"docs/work-logs/[^\s'\"`)\]}>,]+\.(?:md|txt)")
