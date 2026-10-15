@@ -25,7 +25,7 @@ PostToolUse Hook: ticket-creation-validation-hook.py
   - type = "DOC"：文件類型
 
 行為：
-  - 缺少 decision_tree_path 時輸出 WARNING 到 stderr
+  - 缺少 decision_tree_path 時以 additionalContext 輸出 WARNING（模型可見）
   - 始終返回 exit code 0（不阻止操作）
 """
 
@@ -45,12 +45,20 @@ except ImportError:
 _hooks_dir = Path(__file__).resolve().parents[3] / "hooks"
 if str(_hooks_dir) not in sys.path:
     sys.path.insert(0, str(_hooks_dir))
+# lib 套件位於 .claude/lib，其父目錄 .claude 須在搜尋路徑
+_claude_dir = Path(__file__).resolve().parents[3]
+if str(_claude_dir) not in sys.path:
+    sys.path.insert(0, str(_claude_dir))
 
 try:
-    from lib import get_effort_level
+    from lib import get_effort_level, emit_model_reminder
 except ImportError:
     def get_effort_level(payload, default="medium"):
         return default
+
+    def emit_model_reminder(event, text, *, audience="all", input_data=None):
+        # lib 不可用時退回 stderr，至少保留用戶可見
+        print(text, file=sys.stderr)
 
 
 # 日誌配置
@@ -276,8 +284,11 @@ def main() -> int:
         warning_msg = check_ticket_decision_tree_path(file_path, content)
 
         if warning_msg:
-            # 輸出警告到 stderr
-            print(warning_msg, file=sys.stderr)
+            # 以 additionalContext 讓模型（PM）可見；stderr 模型不可見
+            emit_model_reminder(
+                "PostToolUse", warning_msg,
+                audience="pm_only", input_data=hook_input,
+            )
             logger.info(f"Warning output for: {file_path}")
 
         # 始終返回 0（不阻止操作）

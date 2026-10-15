@@ -266,9 +266,25 @@ class TestAnaTicketMetadataValidationEffort:
             },
             "effort": {"level": "low"},
         }
-        rc, _, stderr = _run_hook(self.HOOK, payload)
+        rc, stdout, _ = _run_hook(self.HOOK, payload)
         assert rc == 0  # 此 hook 恆為 exit 0（WARNING-only，不阻擋）
-        assert "PC-058" in stderr  # 但必須確實輸出警告，證明未短路跳過檢查
+        # 但必須確實輸出警告（additionalContext），證明未短路跳過檢查
+        ctx = json.loads(stdout)["hookSpecificOutput"]["additionalContext"]
+        assert "PC-058" in ctx
+
+    def test_non_ana_ticket_no_output(self):
+        # E2 對照：非 ANA 來源 ticket 不觸發，無輸出
+        payload = {
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "docs/work-logs/v0.18.0/tickets/test.md",
+                "content": "---\nid: test\nacceptance:\n  - 'a; b'\n---\n# x",
+            },
+        }
+        rc, stdout, stderr = _run_hook(self.HOOK, payload)
+        assert rc == 0
+        assert stdout.strip() == ""
+        assert "PC-058" not in stderr
 
     def test_medium_effort_processes(self):
         payload = {
@@ -303,9 +319,29 @@ class TestTicketCreationValidationEffort:
             },
             "effort": {"level": "low"},
         }
-        rc, _, stderr = _run_hook(self.HOOK, payload)
+        rc, stdout, _ = _run_hook(self.HOOK, payload)
         assert rc == 0  # 此 hook 恆為 exit 0（WARNING-only，不阻擋）
-        assert "decision_tree_path" in stderr  # 但必須確實輸出警告，證明未短路跳過檢查
+        # 但必須確實輸出警告（additionalContext），證明未短路跳過檢查
+        ctx = json.loads(stdout)["hookSpecificOutput"]["additionalContext"]
+        assert "decision_tree_path" in ctx
+
+    def test_complete_decision_tree_path_no_output(self):
+        # E2 對照：欄位完整的 ticket 不應有任何輸出
+        content = (
+            "---\nid: test\ntype: IMP\ndecision_tree_path:\n"
+            "  entry_point: a\n  final_decision: b\n  rationale: c\n---\n# x"
+        )
+        payload = {
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "docs/work-logs/v0.18.0/tickets/test.md",
+                "content": content,
+            },
+        }
+        rc, stdout, stderr = _run_hook(self.HOOK, payload)
+        assert rc == 0
+        assert stdout.strip() == ""
+        assert "decision_tree_path" not in stderr
 
     def test_medium_effort_processes(self):
         payload = {

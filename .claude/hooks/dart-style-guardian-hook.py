@@ -33,6 +33,7 @@ Exit Codes:
 
 Output:
     JSON format for Claude Code hook system
+    違規時輸出 hookSpecificOutput.additionalContext（模型可見）；其餘輸出 {"continue": true}
 """
 
 import sys
@@ -42,7 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib import setup_hook_logging, run_hook_safely
+from lib import setup_hook_logging, run_hook_safely, emit_model_reminder
 from lib.hook_messages import QualityMessages
 
 # 偵測規則與專案校準一律取自 skill 的 style_checker，本 hook 不另維護第二套。
@@ -245,13 +246,10 @@ def main() -> int:
     message_lines.append("")
     message_lines.append("Run `/dart-style-guardian` for detailed guidance.")
 
-    # Output informational message (don't block)
-    output = {
-        "continue": True,
-        "message": "\n".join(message_lines),
-    }
-
-    print(json.dumps(output))
+    # 提醒以 additionalContext 輸出讓模型可見（非標準 message 欄位模型不可見）；
+    # 原違規路徑 stdout 僅 continue，無 decision，故不需合成決策欄位。
+    emit_model_reminder("PostToolUse", "\n".join(message_lines))
+    logger.info("Style violations reminder emitted: %d", total)
     return 0
 
 
