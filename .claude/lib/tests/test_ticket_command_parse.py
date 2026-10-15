@@ -176,6 +176,54 @@ class TestGenericScan:
         assert self._found(f"echo ticket track phase {TID} phase4") == []
 
 
+class TestHelpFlagExcluded:
+    """只查說明的寫法（-h、--help）不是收尾；位置判定與掃描判定結果一致。"""
+
+    VERBS = ("phase",) + COMPLETE_VERBS
+    HELP_COMMANDS = (
+        "ticket track complete --help",
+        "ticket track finish -h",
+        f"ticket track complete {TID} --help",
+        "ticket track batch-complete -h",
+    )
+
+    def test_position_judgement_excludes_help(self):
+        for cmd in self.HELP_COMMANDS:
+            assert has_complete_command(cmd) is False, cmd
+        assert complete_statement_args(["ticket", "track", "complete", "--help"]) is None
+        assert complete_statement_args(["ticket", "track", "finish", "-h"]) is None
+
+    def test_scan_judgement_excludes_help(self):
+        for cmd in self.HELP_COMMANDS:
+            assert find_complete_invocations(cmd) == [], cmd
+            assert find_ticket_track_invocations(cmd, self.VERBS) == [], cmd
+
+    def test_phase_help_excluded(self):
+        cmd = f"ticket track phase {TID} phase4 --help"
+        assert find_ticket_track_invocations(cmd, self.VERBS) == []
+
+    def test_wrapped_and_nested_help_excluded(self):
+        assert find_complete_invocations("timeout 30 ticket track complete --help") == []
+        assert find_complete_invocations("bash -c 'ticket track complete -h'") == []
+
+    def test_positive_control_complete_still_recognized(self):
+        assert has_complete_command(f"ticket track complete {TID}") is True
+        assert find_complete_invocations(f"ticket track complete {TID}") == [("complete", [TID])]
+
+    def test_help_inside_quotes_still_complete(self):
+        cmd = f"ticket track complete {TID} --why '見 --help'"
+        assert has_complete_command(cmd) is True
+        assert _verbs(cmd) == ["complete"]
+
+    def test_help_after_double_dash_still_complete(self):
+        cmd = f"ticket track complete {TID} -- --help"
+        assert has_complete_command(cmd) is True
+        assert _verbs(cmd) == ["complete"]
+
+    def test_help_prefix_lookalike_still_complete(self):
+        assert _verbs(f"ticket track complete {TID} --helpful") == ["complete"]
+
+
 class TestExistingFunctionsUnchanged:
     """既有函式維持命令位置判定，另有 hook 引用，行為不得改變。"""
 
