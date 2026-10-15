@@ -677,9 +677,12 @@ def test_dispatch_isolation_worktree_vs_default_closing_differs(dispatch_ticket,
     assert out_default != out_wt
     assert "ticket track complete" in out_default
     assert "ticket track finish" not in out_default
-    assert "ticket track finish" in out_wt
+    # 通用 Commit 段落兩側都提到 --worktree，故以收尾句專有的完整片段區分
+    assert "--worktree <worktree 絕對路徑>" not in out_default
+    assert "--worktree <worktree 絕對路徑>" in out_wt
+    assert "ticket track finish" not in out_wt
     assert "ticket track complete" not in out_wt
-    assert "PM" in out_wt.splitlines()[-1] or "代跑" in out_wt
+    assert "回報 PM" in out_wt
 
 
 def test_dispatch_isolation_none_keeps_complete_closing(dispatch_ticket, capsys):

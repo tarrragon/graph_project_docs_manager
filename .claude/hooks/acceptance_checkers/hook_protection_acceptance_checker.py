@@ -271,18 +271,53 @@ def _is_skill_hooks_path(path: PurePosixPath) -> bool:
     return len(parts) >= 4 and parts[3] == "hooks"
 
 
+def _is_hooks_tests_path(path: PurePosixPath) -> bool:
+    """path 是否位於 `.claude/hooks/tests/` 或 `.claude/skills/<skill>/hooks/tests/` 下。
+
+    測試檔不是會被 runtime 載入的 hook，只改它的票不需要實地觸發等四項。
+    """
+    if _is_under(path, _TOP_LEVEL_HOOKS_PREFIX / "tests"):
+        return True
+    parts = path.parts
+    return _is_skill_hooks_path(path) and len(parts) >= 5 and parts[4] == "tests"
+
+
 def touches_hook_protection_scope(file_path: str) -> bool:
-    """單一路徑是否落在防護類 hook 觸發範圍（頂層 hooks/ 或 skill hooks/）。"""
+    """單一路徑是否落在防護類 hook 觸發範圍（頂層 hooks/ 或 skill hooks/）。
+
+    hooks/tests/ 下的路徑不命中；寫入集混合 tests 與 hook 本體時，
+    hook 本體路徑仍會使整票命中（由 `_any_path_touches_hook_scope` 的 any 達成）。
+    """
     if not file_path:
         return False
     normalized = _normalize_path(file_path)
+    if _is_hooks_tests_path(normalized):
+        return False
     return _is_under(normalized, _TOP_LEVEL_HOOKS_PREFIX) or _is_skill_hooks_path(
         normalized
     )
 
 
-def _any_path_touches_hook_scope(where_files: List[str]) -> bool:
-    return any(touches_hook_protection_scope(f) for f in where_files)
+def _any_path_touches_hook_scope(where_files: List[str], logger=None) -> bool:
+    """寫入集任一路徑命中即 True。判定例外時 fail-closed：視為 hook 票。"""
+    try:
+        return any(touches_hook_protection_scope(f) for f in where_files)
+    except Exception as exc:  # fail-closed：寧可多要求四項也不放行
+        if logger is not None:
+            logger.warning(f"hook 票範圍判定例外，fail-closed 視為 hook 票：{exc}")
+        return True
+
+
+_PLACEHOLDER = "<待填>"
+
+
+def _placeholder_acceptance_items(frontmatter: dict) -> List[str]:
+    """回傳 acceptance 中殘留 `<待填>` 的條目文字。"""
+    return [
+        line
+        for line in _join_acceptance_text(frontmatter).split("\n")
+        if _PLACEHOLDER in line
+    ]
 
 
 def _join_acceptance_text(frontmatter: dict) -> str:
@@ -348,11 +383,23 @@ def check_hook_protection_acceptance(
     # stdout 比對邏輯），不代表本 ticket 會寫入 hook 檔案，不應觸發防護類
     # 要求；未標記與 ::write 標記維持既有觸發行為（預設視為寫入）。
     where_files = extract_where_files_write_only(frontmatter, logger)
-    if not _any_path_touches_hook_scope(where_files):
-        logger.debug("write-set where.files 未觸及 hooks 目錄，跳過防護類 hook acceptance 檢查")
+    if not _any_path_touches_hook_scope(where_files, logger):
+        logger.info(
+            "write-set where.files 未觸及 hook 本體（無 hooks 路徑，或全落在 hooks/tests/），"
+            "排除判定：跳過防護類 hook acceptance 檢查"
+        )
         return False, None
 
     ticket_id = frontmatter.get("id", "未知")
+    placeholders = _placeholder_acceptance_items(frontmatter)
+    if placeholders:
+        listed = "\n".join(f"  - {item}" for item in placeholders)
+        logger.error(f"Ticket {ticket_id} acceptance 殘留 {_PLACEHOLDER} - 阻擋 complete")
+        return True, (
+            f"[ERROR] Acceptance Gate: 防護類 hook ticket 的 acceptance 殘留 "
+            f"{_PLACEHOLDER}\n\nTicket: {ticket_id}\n"
+            f"以下條目尚未填寫，請改寫為實際內容：\n{listed}\n"
+        )
     acceptance_text = _join_acceptance_text(frontmatter)
     missing = _missing_categories(acceptance_text)
 

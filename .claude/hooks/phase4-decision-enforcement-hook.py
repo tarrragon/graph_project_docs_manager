@@ -874,14 +874,17 @@ def extract_ticket_targets_from_command(
         return []
     targets: List[Tuple[str, str]] = []
     for verb, args in found:
+        # ID 以 TICKET_ID_PATTERN 比對取得（比照 acceptance-gate），帶值選項
+        # （--as X、--version X）的值不是 ID，不得以位置推定；選項值本身若
+        # 恰符合 ID 格式則一併收集，真正的目標仍會被判定。
+        ids = [a for a in args if not a.startswith("-") and TICKET_ID_PATTERN.search(a)]
         if verb == "phase":
-            if len(args) >= 2 and args[1] == "phase4":
-                targets.append((args[0], "main_gate"))
-            continue
-        ids = [a for a in args if not a.startswith("-")]
-        if verb != "batch-complete":
-            ids = ids[:1]
-        targets.extend((tid, "residual_gate") for tid in ids)
+            if "phase4" not in args:
+                continue
+            mode = "main_gate"
+        else:
+            mode = "residual_gate"
+        targets.extend((tid, mode) for tid in ids)
     return targets
 
 

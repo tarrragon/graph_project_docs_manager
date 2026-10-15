@@ -156,6 +156,10 @@ $ /worktree status
 
 檔案清單全程使用 git 的 NUL 分隔輸出，不經 shell 字詞切分。
 
+### 合併前全套件閘門
+
+`cmd_merge(..., skip_gate_reason=None, gate_runner=None)`：未注入 `pre_merge_check` 時預設掛上 `merge_gate.MergeGate`（範圍判準與重試規則見 SKILL.md〈合併前全套件〉）；`--skip-gate <理由>` 略過並寫日誌。`merge_branch_cas(..., max_retries=N)` 在 CAS 重試超過 N 次時中止並回報最後一次失敗原因。注意：`_run_with_retry` 第 4 次起的牆鐘預算（20 秒）對耗時數分鐘的全套件必然用盡，實際重試次數可能先被牆鐘預算截斷，兩者皆為中止且 ref 不變。
+
 ### 合併前檢查掛點（pre_merge_check）
 
 程式入口 `worktree_manager.merge_branch_cas(branch, repo=None, base="main", pre_merge_check=None, message=None)`，`cmd_merge(ticket_id, pre_merge_check=None, *, branch=None, pre_acceptance_reason=None)` 透傳。

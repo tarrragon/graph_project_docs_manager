@@ -18,7 +18,8 @@ from typing import Optional
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, ContextManager
+import contextlib
 
 try:
     from .constants import (
@@ -34,6 +35,7 @@ try:
         MACOS_XCCONFIG_TEMPLATES,
     )
     from .messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
+    from .merge_gate import GATE_MAX_RETRIES, MergeGate, SuiteRunner
 except ImportError:
     # Fallback when running with scripts/ on sys.path (test 與直接執行情境)
     from constants import (
@@ -49,6 +51,7 @@ except ImportError:
         MACOS_XCCONFIG_TEMPLATES,
     )
     from messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
+    from merge_gate import GATE_MAX_RETRIES, MergeGate, SuiteRunner
 
 # 動態定位專案根目錄（W1-118 修復：方案 D 雙策略 fallback）
 #
@@ -1212,9 +1215,9 @@ def _merge_find_by_branch(branch: str) -> Optional[dict]:
     return {"path": None, "branch": branch} if ok else None
 
 
-def _merge_log_pre_acceptance(label: str, reason: str) -> None:
-    """合併前驗收模式：旗標與理由輸出並追加到 .claude/logs/worktree-merge.log。"""
-    line = f"[合併前驗收] target={label} reason={reason}"
+def _merge_log_pre_acceptance(label: str, reason: str, tag: str = "合併前驗收") -> None:
+    """旗標與理由輸出並追加到 .claude/logs/worktree-merge.log（合併前驗收、略過合併前測試共用）。"""
+    line = f"[{tag}] target={label} reason={reason}"
     print(line)
     try:
         log_dir = Path(get_project_root()) / ".claude" / "logs"
@@ -1260,6 +1263,8 @@ def cmd_merge(
     *,
     branch: Optional[str] = None,
     pre_acceptance_reason: Optional[str] = None,
+    skip_gate_reason: Optional[str] = None,
+    gate_runner: "Optional[SuiteRunner]" = None,
 ) -> int:
     """
     merge 子命令 — 前置驗證後以隔離索引 CAS 直接完成合併
@@ -1267,7 +1272,9 @@ def cmd_merge(
     對象由 ticket_id 或 branch 指定（branch 用於萃取不到 ticket ID 的 worktree-agent-<id>，
     不查票狀態）。預設要求票 completed 且 working tree 乾淨；pre_acceptance_reason 非空時
     允許票未 completed（合併前驗收），旗標與理由寫入日誌。落後 base 僅提示，不阻擋；
-    衝突由 merge_branch_cas 中止且 ref 不變。pre_merge_check 為可注入的合併前檢查掛點。
+    衝突由 merge_branch_cas 中止且 ref 不變。pre_merge_check 為可注入的合併前檢查掛點；
+    未注入時預設掛上合併前全套件閘門（merge_gate.MergeGate，gate_runner 可替換套件執行器），
+    skip_gate_reason 非空時略過閘門，旗標與理由寫入日誌。
 
     Returns:
         int: exit code（0 合併成功，1 驗證失敗或合併中止）
@@ -1293,7 +1300,18 @@ def cmd_merge(
     _merge_build_output(label, branch_name, ahead, behind, warnings)
     print()
     print(MergeMessages.MERGE_EXECUTING.format(branch=branch_name, base=DEFAULT_BASE_BRANCH))
-    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check)
+    max_retries = None
+    if pre_merge_check is None:
+        if skip_gate_reason is not None:
+            if not skip_gate_reason.strip():
+                print(MergeMessages.SKIP_GATE_NEEDS_REASON)
+                return 1
+            _merge_log_pre_acceptance(label, skip_gate_reason, tag="略過合併前測試")
+        else:
+            pre_merge_check = MergeGate(get_project_root(), runner=gate_runner)
+            max_retries = GATE_MAX_RETRIES
+    hold = pre_merge_check.hold(branch_name, DEFAULT_BASE_BRANCH) if isinstance(pre_merge_check, MergeGate) else None
+    outcome = merge_branch_cas(branch_name, pre_merge_check=pre_merge_check, max_retries=max_retries, hold=hold)
     return _print_merge_outcome(outcome, label)
 
 
@@ -1446,6 +1464,9 @@ def _prepare_candidate(branch: str, base: str, repo: str, message: str):
 def _cas_attempt(branch: str, base: str, repo: str, check: Optional[PreMergeCheck], message: str, box: dict):
     """單次嘗試：算 commit → 合併前檢查 → update-ref CAS。回傳 (status, error)。"""
     box["attempt"] = box.get("attempt", 0) + 1
+    limit = box.get("max_retries")
+    if limit is not None and box["attempt"] > limit + 1:
+        return "abort", MergeMessages.CAS_RETRY_LIMIT.format(limit=limit, error=box.get("last_retry_error", ""))
     commit, old_head, why = _prepare_candidate(branch, base, repo, message)
     if commit is None:
         return "abort", why
@@ -1455,7 +1476,8 @@ def _cas_attempt(branch: str, base: str, repo: str, check: Optional[PreMergeChec
         return "abort", reason
     proc = _git_raw(["update-ref", ref, commit, old_head], repo)
     if proc.returncode != 0:
-        return "retry", proc.stderr.decode("utf-8", "replace").strip()
+        box["last_retry_error"] = proc.stderr.decode("utf-8", "replace").strip()
+        return "retry", box["last_retry_error"]
     box["commit"], box["old_head"] = commit, old_head
     return "done", ""
 
@@ -1558,6 +1580,8 @@ def merge_branch_cas(
     base: str = DEFAULT_BASE_BRANCH,
     pre_merge_check: Optional[PreMergeCheck] = None,
     message: Optional[str] = None,
+    max_retries: Optional[int] = None,
+    hold: "Optional[ContextManager]" = None,
 ) -> MergeOutcome:
     """以 CAS 把 branch 合併進 base（--no-ff 等價：雙親代 commit）。合併主流程的唯一入口。
 
@@ -1567,14 +1591,20 @@ def merge_branch_cas(
     update-ref，ref 不變，理由放進 MergeOutcome.error 並印出。
     CAS 重試時每次嘗試依新 HEAD 產生不同 commit，因此每次嘗試都重新呼叫檢查
     （檢查成本隨重試次數倍增；是否快取或縮短由檢查端決定）。
+    max_retries：預設 None（沿用 _run_with_retry 的預算）；給定時 CAS 重試超過該次數即中止，
+    回報最後一次失敗原因，ref 不變、分支保留。
+    hold：預設 None。給定時為 context manager，在第一次產生合併 commit 之前進入、所有嘗試
+    （含 CAS 重試）結束後離開，涵蓋 update-ref 完成與各種中止路徑；合併閘門用它整段持有
+    heavy 名額，使檢查窗口不含排隊時間。
     成功後共用 index/工作區只同步未被他人動過的檔。
     """
     repo = repo or get_project_root()
     msg = message or f"Merge branch '{branch}'"
-    box: dict = {}
-    status, error, attempts = _run_with_retry(
-        lambda: _cas_attempt(branch, base, repo, pre_merge_check, msg, box)
-    )
+    box: dict = {"max_retries": max_retries}
+    with (hold if hold is not None else contextlib.nullcontext()):
+        status, error, attempts = _run_with_retry(
+            lambda: _cas_attempt(branch, base, repo, pre_merge_check, msg, box)
+        )
     if status != "done":
         return MergeOutcome(ok=False, error=error, attempts=attempts)
     synced, skipped = _sync_shared_checkout(repo, base, box["old_head"], box["commit"])
@@ -2122,6 +2152,11 @@ def main():
         help="以分支名指定合併對象（如 worktree-agent-<id>），不查票狀態"
     )
     merge_parser.add_argument(
+        "--skip-gate",
+        metavar="REASON",
+        help="略過合併前全套件閘門（須帶理由，理由寫入日誌）"
+    )
+    merge_parser.add_argument(
         "--pre-acceptance",
         metavar="REASON",
         help="合併前驗收：票未 completed 也允許合併，理由寫入日誌"
@@ -2158,7 +2193,8 @@ def main():
             print("[錯誤] merge 需指定 <ticket-id> 或 --branch 其中之一")
             return 1
         return cmd_merge(
-            args.ticket_id, branch=args.branch, pre_acceptance_reason=args.pre_acceptance
+            args.ticket_id, branch=args.branch, pre_acceptance_reason=args.pre_acceptance,
+            skip_gate_reason=args.skip_gate,
         )
     elif args.command == "cleanup":
         return cmd_cleanup(args.ticket_id, force=args.force)

@@ -13,15 +13,22 @@ heavy 命令（全套件測試、編譯）以 flock 取得全機名額後才執�
   （mode & 0o077 == 0）；任一不符即略過閘門。鎖檔與 holder 暫存檔以 O_NOFOLLOW 開啟。
 - 以 CLAUDE_SLOT_LOCK_DIR 覆寫時，其父目錄須為本人擁有且不可被他人寫入：驗證只涵蓋最末層目錄，
   父目錄若可被他人改名或替換，驗證通過後的路徑仍可能被換掉。
-- 等待以輪詢進行，不保證先到先得（釋放瞬間由先輪詢到的等待者取得）。
+- 排隊依到達順序（先到先得）：進入等待時於鎖目錄建立排隊檔 queue-{序號12位}-{pid}.json（O_EXCL，序號取現有最大值加一，
+  撞名重試；內容含 pid、命令、到達時間），只有序號最小且 pid 存活的排隊者可嘗試 flock。排隊檔在取得、放棄、
+  逾時、訊號中斷時由本程序刪除；pid 已不存在的排隊檔（被 SIGKILL 或他人清除）由後續排隊者清除，不阻塞後方。
+  等待提示含順位與前方筆數。
 - 閘門的任何讀寫失敗只對 stderr 寫一行（開頭 run-with-timeout:）後略過閘門，不阻擋命令。
 - 孤兒提示：heavy 命令取得名額後、啟動命令前，以子程序執行 orphan-test-procs.py（不帶 --kill，只列出）
   查詢本專案孤兒；有則於 stderr 印出數量與清理指令，無則不輸出；查詢失敗或逾時（ORPHAN_QUERY_TIMEOUT_SECONDS）
   只寫一行 stderr，不阻擋命令。light 命令不經過閘門，故不查詢。CLAUDE_ORPHAN_SCRIPT、
   CLAUDE_ORPHAN_QUERY_TIMEOUT 可覆寫查詢腳本與逾時（測試用）。
+- 持有者的子程序不重複取得名額：持有者在持有期間把自己的 pid 放入環境變數 HELD_ENV（export_hold），
+  子程序內的 run-with-timeout 經 is_heavy_command 判定為免排隊。標記僅在「該 pid 仍存在且名額確實全被占用」
+  時有效（held_by_ancestor），殘留的過期標記不會讓 heavy 命令繞過閘門。
 - CLAUDE_SLOT_WAIT_LIMIT、CLAUDE_SLOT_NOTICE_INTERVAL（秒）可覆寫等待上限與提示間隔（測試用）。
 """
 import fcntl
+import contextlib
 import json
 import os
 import re
@@ -45,12 +52,96 @@ _ORPHAN_SUMMARY_RE = re.compile(r"^符合 (\d+) 略過 (\d+) 疑似殘留 (\d+)$
 WAITED_REPORT_THRESHOLD = SLOT_POLL_INTERVAL
 
 
-def _warn(message: str) -> None:
-    sys.stderr.write(f"run-with-timeout: {message}\n")
+def _warn(message: str, label: str = "run-with-timeout") -> None:
+    sys.stderr.write(f"{label}: {message}\n")
+
+
+# 持有名額的程序在持有期間放入環境，其子程序據此免重複取得（否則自我死鎖）
+HELD_ENV = "CLAUDE_SLOT_HELD_BY"
+# 持有期間子程序的名額等待上限（秒）：子程序認得標記時根本不等待，會等代表兩邊 slot_gate 版本不一致，
+# 此時快速失敗，不讓持有者占住全機名額直到預設上限
+HELD_CHILD_WAIT_LIMIT_SECONDS = 30
+
+
+def _all_slots_busy(directory: str) -> bool:
+    """每個名額的鎖檔目前都被某程序持有（不符合即立刻放回剛取得的鎖）。"""
+    for index in range(SLOT_COUNT):
+        try:
+            fd = os.open(os.path.join(directory, f"heavy-slot-{index}.lock"), os.O_RDWR | os.O_NOFOLLOW)
+        except OSError:
+            return False  # 鎖檔不存在或不可開：沒有人持有
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return False
+        except BlockingIOError:
+            pass  # 此名額有人持有，檢查下一個
+        finally:
+            os.close(fd)
+    return True
+
+
+def held_by_ancestor() -> bool:
+    """環境標記指向仍存在的程序，且名額確實被占用。標記格式錯誤或任何查驗失敗皆視為未持有。"""
+    raw = os.environ.get(HELD_ENV)
+    if not raw:
+        return False
+    try:
+        return not _pid_gone(int(raw)) and _all_slots_busy(slot_dir())
+    except (ValueError, OSError):
+        return False  # 標記不是整數或目錄不可查：不免排隊，由正常取得流程處理
+
+
+# 保存 export_hold 之前的 CLAUDE_SLOT_WAIT_LIMIT；空字串表示當時未設定
+_LIMIT_BEFORE_ENV = "CLAUDE_SLOT_WAIT_LIMIT_BEFORE_HOLD"
+_LIMIT_ENV = "CLAUDE_SLOT_WAIT_LIMIT"
+
+
+@contextlib.contextmanager
+def export_hold(hold: "SlotHold"):
+    """持有期間把本程序 pid 放入環境供直接子層的 run-with-timeout 辨識，並把其等待上限降為
+    HELD_CHILD_WAIT_LIMIT_SECONDS；離開時還原原值。
+
+    標記只給直接子層：run-with-timeout 啟動被包裝命令時須以 child_env 去除，不得往下傳。
+    """
+    names = (HELD_ENV, _LIMIT_ENV, _LIMIT_BEFORE_ENV)
+    previous = {n: os.environ.get(n) for n in names}
+    os.environ[_LIMIT_BEFORE_ENV] = os.environ.get(_LIMIT_ENV, "")
+    os.environ[HELD_ENV] = str(os.getpid())
+    os.environ[_LIMIT_ENV] = str(HELD_CHILD_WAIT_LIMIT_SECONDS)
+    try:
+        yield hold
+    finally:
+        for n, v in previous.items():
+            if v is None:
+                os.environ.pop(n, None)
+            else:
+                os.environ[n] = v
+
+
+def child_env(env: "os._Environ") -> dict:
+    """被包裝命令的環境：去除持有標記，等待上限還原為持有前的值（持有前未設定則移除）。
+
+    沒有持有標記時原樣複製。
+    """
+    out = dict(env)
+    if HELD_ENV not in out:
+        return out
+    out.pop(HELD_ENV)
+    before = out.pop(_LIMIT_BEFORE_ENV, None)
+    if before:
+        out[_LIMIT_ENV] = before
+    elif before is not None:
+        out.pop(_LIMIT_ENV, None)
+    return out
 
 
 def is_heavy_command(command: List[str]) -> bool:
-    """依 test_command_parse 判定；判定本身失敗時保守視為 heavy（只多排隊）。"""
+    """依 test_command_parse 判定；判定本身失敗時保守視為 heavy（只多排隊）。
+
+    祖先程序已持有名額時回 False：呼叫端據此略過取得，避免對同一名額自我死鎖。
+    """
+    if held_by_ancestor():
+        return False
     try:
         from lib.test_command_parse import WEIGHT_HEAVY, classify_argv_weight
         return classify_argv_weight(command) == WEIGHT_HEAVY
@@ -166,6 +257,57 @@ def _remove_stale_tmp(directory: str) -> None:
                 pass  # 已被他方清除
 
 
+_QUEUE_RE = re.compile(r"^queue-(\d{12})-(\d+)\.json$")
+
+
+def _live_queue(directory: str) -> List[Tuple[int, str]]:
+    """依序號排序的存活排隊檔 [(序號, 檔名)]；pid 已不存在者順手清除。"""
+    entries = []
+    for name in os.listdir(directory):
+        m = _QUEUE_RE.match(name)
+        if m is None:
+            continue
+        if _pid_gone(int(m.group(2))):
+            try:
+                os.unlink(os.path.join(directory, name))
+            except OSError:
+                pass  # 已被他方清除
+            continue
+        entries.append((int(m.group(1)), name))
+    entries.sort()
+    return entries
+
+
+def _enqueue(directory: str, command: List[str]) -> str:
+    """建立自己的排隊檔，回檔名；序號 = 現有最大序號 + 1，撞名即重試。"""
+    while True:
+        seq = max([s for s, _ in _live_queue(directory)] + [0]) + 1
+        name = f"queue-{seq:012d}-{os.getpid()}.json"
+        try:
+            fd = os.open(os.path.join(directory, name), os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        except FileExistsError:
+            continue  # 他人同時取得同一序號
+        with os.fdopen(fd, "w") as fh:
+            json.dump({"pid": os.getpid(), "command": command,
+                       "arrived": time.strftime("%Y-%m-%d %H:%M:%S")}, fh)
+        return name
+
+
+def _dequeue(directory: str, name: str) -> None:
+    try:
+        os.unlink(os.path.join(directory, name))
+    except OSError:
+        pass  # 已被他方清除
+
+
+def _queue_position(directory: str, name: str) -> int:
+    """自己的順位（1 起算）；排隊檔已不在（被他人清除）時回 0。"""
+    for index, (_seq, entry) in enumerate(_live_queue(directory), start=1):
+        if entry == name:
+            return index
+    return 0
+
+
 def _try_acquire(directory: str) -> Optional[Tuple[int, int]]:
     """依序嘗試各名額；回 (fd, index) 或 None。"""
     for index in range(SLOT_COUNT):
@@ -195,41 +337,57 @@ class SlotHold:
 
 
 def acquire_slot(command: List[str],
-                 interrupted: Callable[[], Optional[int]]) -> Tuple[Optional[SlotHold], Optional[int]]:
+                 interrupted: Callable[[], Optional[int]],
+                 label: str = "run-with-timeout") -> Tuple[Optional[SlotHold], Optional[int]]:
     """排隊取得名額；回 (SlotHold 或 None, 提前結束碼或 None)。
 
-    interrupted 回傳等待期間收到的訊號編號（無則 None）。持有者為 None 且無結束碼表示閘門失效而略過。
+    interrupted 回傳等待期間收到的訊號編號（無則 None）。label 為提示行前綴，讓不同呼叫端的等待提示可區分來源。持有者為 None 且無結束碼表示閘門失效而略過。
     """
     directory = slot_dir()
     limit = _env_seconds("CLAUDE_SLOT_WAIT_LIMIT", SLOT_WAIT_LIMIT_SECONDS)
     interval = _env_seconds("CLAUDE_SLOT_NOTICE_INTERVAL", SLOT_NOTICE_INTERVAL_SECONDS)
     waited_since = time.monotonic()
     next_notice = waited_since
-    while True:
-        try:
-            _prepare_dir(directory)
-            got = _try_acquire(directory)
-        except OSError as exc:
-            _warn(f"名額閘門無法使用，略過排隊（不影響命令）：{exc}")
-            return None, None
-        if got is not None:
-            fd, index = got
-            waited = time.monotonic() - waited_since
-            if waited >= WAITED_REPORT_THRESHOLD:
-                _warn(f"取得名額，已等待 {waited:.1f} 秒")
-            _remove_stale_tmp(directory)
-            return SlotHold(fd, _write_holder(directory, index, command)), None
-        signum = interrupted()
-        if signum is not None:
-            return None, 128 + signum
-        now = time.monotonic()
-        if now - waited_since >= limit:
-            _warn(f"等待名額超過 {limit:g} 秒，放棄執行。{describe_holder(directory)}")
-            return None, SLOT_WAIT_EXIT_CODE
-        if now >= next_notice:
-            _warn(f"等待名額：{describe_holder(directory)}；已等待 {now - waited_since:.0f} 秒")
-            next_notice = now + interval
-        time.sleep(SLOT_POLL_INTERVAL)
+    queue_name = None  # type: Optional[str]
+    try:
+        _prepare_dir(directory)
+        queue_name = _enqueue(directory, command)
+        while True:
+            try:
+                _prepare_dir(directory)
+                position = _queue_position(directory, queue_name)
+                if position == 0:  # 排隊檔被他人清除：重新排到隊尾
+                    queue_name = _enqueue(directory, command)
+                    position = _queue_position(directory, queue_name)
+                got = _try_acquire(directory) if position == 1 else None
+            except OSError as exc:
+                _warn(f"名額閘門無法使用，略過排隊（不影響命令）：{exc}", label)
+                return None, None
+            if got is not None:
+                fd, index = got
+                waited = time.monotonic() - waited_since
+                if waited >= WAITED_REPORT_THRESHOLD:
+                    _warn(f"取得名額，已等待 {waited:.1f} 秒", label)
+                _remove_stale_tmp(directory)
+                return SlotHold(fd, _write_holder(directory, index, command)), None
+            signum = interrupted()
+            if signum is not None:
+                return None, 128 + signum
+            now = time.monotonic()
+            if now - waited_since >= limit:
+                _warn(f"等待名額超過 {limit:g} 秒，放棄執行。{describe_holder(directory)}", label)
+                return None, SLOT_WAIT_EXIT_CODE
+            if now >= next_notice:
+                _warn(f"等待名額：順位 {position}，前方 {max(position - 1, 0)} 筆；{describe_holder(directory)}；"
+                      f"已等待 {now - waited_since:.0f} 秒", label)
+                next_notice = now + interval
+            time.sleep(SLOT_POLL_INTERVAL)
+    except OSError as exc:
+        _warn(f"名額閘門無法使用，略過排隊（不影響命令）：{exc}", label)
+        return None, None
+    finally:
+        if queue_name is not None:
+            _dequeue(directory, queue_name)  # 取得、放棄、逾時、訊號中斷、例外皆清除
 
 
 def _orphan_script() -> str:

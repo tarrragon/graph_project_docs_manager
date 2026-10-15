@@ -259,7 +259,16 @@ class TestTouchesHookProtectionScope:
         assert touches_hook_protection_scope(".claude/hooks") is True
 
     def test_top_level_hooks_nested_subdir(self):
-        assert touches_hook_protection_scope(".claude/hooks/tests/test_foo.py") is True
+        assert touches_hook_protection_scope(".claude/hooks/lib/foo.py") is True
+
+    def test_top_level_hooks_tests_excluded(self):
+        assert touches_hook_protection_scope(".claude/hooks/tests/test_foo.py") is False
+
+    def test_skill_hooks_tests_excluded(self):
+        assert touches_hook_protection_scope(".claude/skills/ticket/hooks/tests/test_x.py") is False
+
+    def test_tests_prefix_lookalike_still_hit(self):
+        assert touches_hook_protection_scope(".claude/hooks/tests_helper.py") is True
 
     def test_skill_hooks_file(self):
         assert touches_hook_protection_scope(".claude/skills/ticket/hooks/x.py") is True
@@ -714,3 +723,56 @@ def test_inventory_no_header_keeps_original_message_without_format_notice(logger
     should_block, msg = check_hook_protection_acceptance(fm, logger, content="")
     assert should_block is True
     assert "不可夾空行" not in msg
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-276.4：tests 排除與 <待填> 阻擋
+# ---------------------------------------------------------------------------
+
+_EMPTY_ACCEPTANCE = ["[ ] 一般驗收"]
+
+
+def test_tests_only_write_set_not_treated_as_hook_ticket(logger):
+    fm = _fm(
+        "IMP",
+        [
+            ".claude/hooks/tests/test_a.py",
+            ".claude/skills/ticket/hooks/tests/test_b.py",
+        ],
+        _EMPTY_ACCEPTANCE,
+    )
+    assert check_hook_protection_acceptance(fm, logger, content="") == (False, None)
+
+
+def test_mixed_tests_and_hook_body_still_blocks(logger):
+    fm = _fm(
+        "IMP",
+        [".claude/hooks/tests/test_a.py", ".claude/hooks/new-guard-hook.py"],
+        _EMPTY_ACCEPTANCE,
+    )
+    should_block, _ = check_hook_protection_acceptance(fm, logger, content="")
+    assert should_block is True
+
+
+def test_placeholder_in_acceptance_blocks_and_names_item(logger):
+    item = "[ ] 實地觸發：<待填>"
+    acceptance = _PASSING_ACCEPTANCE + [item]
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], acceptance)
+    should_block, msg = check_hook_protection_acceptance(fm, logger, content="")
+    assert should_block is True
+    assert item in msg
+
+
+def test_filled_acceptance_without_placeholder_passes(logger):
+    fm = _fm("IMP", [".claude/hooks/new-guard-hook.py"], _PASSING_ACCEPTANCE)
+    assert check_hook_protection_acceptance(fm, logger, content="") == (False, None)
+
+
+def test_scope_judgement_exception_is_fail_closed(logger, monkeypatch):
+    import acceptance_checkers.hook_protection_acceptance_checker as mod
+
+    def boom(_path):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(mod, "touches_hook_protection_scope", boom)
+    assert mod._any_path_touches_hook_scope(["x.py"], logger) is True
