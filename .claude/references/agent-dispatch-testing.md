@@ -39,6 +39,24 @@
 
 驗收方（acceptance-auditor）在合併前只驗相關測試檔與 `dart analyze`，complete 時（合併後）讀 `.claude/logs/worktree-merge.log` 的 `[合併閘門] 結束｜target main｜分支 <分支>｜commit <sha>｜結果 寫入` 行，不自跑全套件；合併前找不到閘門結果時等合併後再驗。
 
+**相關測試檔怎麼找**：以被改動物的字面 grep 所有測試目錄，命中的檔全數列入，命中幾個套件就各以該套件的〈測試入口〉跑一次。
+
+| 改動物 | 搜尋鍵 |
+|--------|-------|
+| hook 檔 | hook 檔名（含連字號，測試只能以路徑載入，檔名必出現在測試檔中） |
+| Python 模組 | 模組名（import 路徑）與主要符號名 |
+| 參數或旗標的驗證 | 參數的 Namespace 欄位名與 CLI 旗標名兩種寫法（例：`dedup_checked` 與 `dedup-checked`） |
+| 輸出字面、錯誤訊息 | 改動前的字面 |
+
+搜尋範圍是所有測試目錄，不只改動檔所在套件：`.claude/hooks/tests`、`.claude/lib/tests`、`.claude/scripts/tests`、`.claude/skills/*/tests`、`.claude/skills/*/ticket_system/tests`。範例：
+
+```
+git grep -n -e dedup_checked -e dedup-checked -- '*test*'
+grep -rl worktree-merge-reminder .claude/hooks/tests .claude/skills/*/tests
+```
+
+只憑目錄或檔名挑選會漏兩類：同名測試檔分處兩個套件，只改到其中一份；以被改參數作旁路的使用端，檔名不含被改模組名。兩類都在合併閘門跑全套件時才紅，紅燈已經佔用一輪閘門名額（見 `.claude/error-patterns/process-compliance/PC-BAL-061-acceptance-scope-bounded-by-where-files-misses-sibling-mock-drift.md`〈變體〉）。經 dispatcher 或 registry 間接執行的整合測試不含上述字面，這類仍由閘門的全套件兜底，回報不得宣稱已涵蓋。
+
 **例外：任務明確要求代理人跑全套件**（例如閘門被 `--skip-gate` 略過、或範圍在閘門之外的人工驗證）時，改用下列對帳格式；該格式同時供 PM 或驗收方核對任何一次全套件執行的回報（含閘門結果行）是否為完整母體。以下所列對帳規則以 pytest 為例。
 
 **Action（例外情境）**：prompt 必須含以下句子，且任務段中的「跑全套件」一律改寫為下列無路徑指令：
