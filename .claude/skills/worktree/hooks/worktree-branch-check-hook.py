@@ -261,19 +261,15 @@ def get_unmerged_branches() -> List[str]:
     Returns:
         未合併分支名稱列表
     """
-    success, output = run_git_command(["branch", "--no-merged", "main"])
+    # plumbing 輸出不含 porcelain 的 '* ' / '+ ' 前綴（worktree checkout 分支）
+    success, output = run_git_command([
+        "for-each-ref", "--no-merged=main",
+        "--format=%(refname:short)", "refs/heads",
+    ])
     if not success or not output:
         return []
 
-    # 分支名稱，移除開頭的 * 或空格
-    branches = []
-    for line in output.split('\n'):
-        if line.strip():
-            branch_name = line.strip().lstrip('* ')
-            if branch_name:
-                branches.append(branch_name)
-
-    return branches
+    return [line.strip() for line in output.split('\n') if line.strip()]
 
 
 def check_git_state() -> CheckResult:

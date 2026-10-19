@@ -104,7 +104,7 @@ class TestCheckGitStateScenarioB:
                 if cwd in dirty_paths:
                     return (True, "M some_file.py")
                 return (True, "")
-            if args[:2] == ["branch", "--no-merged"]:
+            if args[:1] == ["for-each-ref"]:
                 return (True, "")
             raise AssertionError(f"替身遇到未預期的 git 引數: {args}")
 
@@ -192,6 +192,43 @@ def test_get_uncommitted_count_does_not_rewrite_index(tmp_path):
     before = index.read_bytes()
     assert hook.get_uncommitted_count(str(tmp_path)) == 0
     assert index.read_bytes() == before
+
+
+class TestGetUnmergedBranchesPlumbing:
+    """get_unmerged_branches 以 for-each-ref 取名，worktree checkout 分支不帶 '+ ' 前綴（0.5.0-W1-372）。"""
+
+    @staticmethod
+    def _git(repo, *args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+
+    def _make_repo(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        self._git(repo, "init", "-q", "-b", "main")
+        self._git(repo, "config", "user.email", "t@example.com")
+        self._git(repo, "config", "user.name", "t")
+        self._git(repo, "commit", "-q", "--allow-empty", "-m", "init")
+        return repo
+
+    def _branch_with_commit(self, repo, name):
+        self._git(repo, "branch", name)
+        self._git(repo, "checkout", "-q", name)
+        self._git(repo, "commit", "-q", "--allow-empty", "-m", name)
+        self._git(repo, "checkout", "-q", "main")
+
+    def test_worktree_checked_out_branch_has_no_prefix(self, tmp_path, monkeypatch):
+        repo = self._make_repo(tmp_path)
+        self._branch_with_commit(repo, "feat/wt")
+        self._git(repo, "worktree", "add", "-q", str(tmp_path / "wt"), "feat/wt")
+        monkeypatch.chdir(repo)
+        assert hook.get_unmerged_branches() == ["feat/wt"]
+
+    def test_merged_excluded_and_plain_unmerged_listed(self, tmp_path, monkeypatch):
+        repo = self._make_repo(tmp_path)
+        self._git(repo, "branch", "merged-one")
+        self._branch_with_commit(repo, "plain-unmerged")
+        monkeypatch.chdir(repo)
+        assert hook.get_unmerged_branches() == ["plain-unmerged"]
 
 
 class TestRunGitCommandFailureLogging:
