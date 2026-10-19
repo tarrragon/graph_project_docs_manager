@@ -18,6 +18,7 @@ registry 讀寫一律經 `.claude/lib/pm_registry` 動態載入（lazy import �
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -586,12 +587,14 @@ class GhostReport:
     dirty_files: List[str] = field(default_factory=list)
     dirty_intersection_unknown: bool = False
     exit_status_missing: bool = False
+    dispatch_record_unknown: bool = False
 
     @property
     def clean(self) -> bool:
         return not (
             self.unmerged_branch
             or self.dirty_intersection
+            or self.dispatch_record_unknown
             or self.unmerged_branch_unknown
             or self.dirty_intersection_unknown
         )
@@ -631,6 +634,97 @@ def _branch_names_ticket(branch: str, ticket_id: str) -> bool:
     return re.search(pattern, branch) is not None
 
 
+AGENT_BRANCH_PREFIX = "worktree-agent-"
+
+
+def _dispatch_state_path() -> Optional[Path]:
+    """dispatch-active.json 路徑（經 dispatch_tracker 公開函式；模組不可用回 None）。"""
+    tracker = load_claude_lib("dispatch_tracker")
+    root = _current_project_root()
+    if tracker is None or root is None:
+        return None
+    return tracker.get_state_file_path(Path(root))
+
+
+def _dispatch_branches_for_ticket(ticket_id: str) -> Optional[List[str]]:
+    """dispatch-active 中 ticket_id 全等本票的紀錄所推得的 worktree-agent 分支名。
+
+    檔案不存在回 `[]`（僅用輔訊號）；路徑無法解析或內容讀取／解析失敗回
+    `None`（無法判定）。
+    """
+    path = _dispatch_state_path()
+    if path is None:
+        return None
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        records = data["dispatches"]
+        return [
+            AGENT_BRANCH_PREFIX + str(r["agent_id"])
+            for r in records
+            if r.get("ticket_id") == ticket_id and r.get("agent_id")
+        ]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        sys.stderr.write(f"[lease] dispatch-active 讀取失敗，判無法判定: {exc}\n")
+        return None
+
+
+def _worktree_path_of_branch(branch: str) -> Optional[str]:
+    lines = _run_git_lines(["worktree", "list", "--porcelain"]) or []
+    current = None
+    for line in lines:
+        if line.startswith("worktree "):
+            current = line[len("worktree "):]
+        elif line == f"branch refs/heads/{branch}":
+            return current
+    return None
+
+
+def _branch_hit_by_dispatch(branch: str, unmerged: List[str]) -> bool:
+    """分支未合併，或其 worktree 有未提交變更，即判殘留。"""
+    if branch in unmerged:
+        return True
+    wt = _worktree_path_of_branch(branch)
+    if wt is None:
+        return False
+    status = _run_git_lines(["status", "--porcelain"], cwd=wt)
+    return status is None or bool(status)
+
+
+def _subject_hit_branches(unmerged: List[str], ticket_id: str) -> Optional[List[str]]:
+    """未合併 worktree-agent-* 分支中，commit 主旨命中本票號的分支；git 失敗回 None。"""
+    hits: List[str] = []
+    for name in unmerged:
+        if not name.startswith(AGENT_BRANCH_PREFIX):
+            continue
+        subjects = _run_git_lines(["log", "--format=%s", name, "--not", "HEAD"])
+        if subjects is None:
+            return None
+        if any(_branch_names_ticket(s, ticket_id) for s in subjects):
+            hits.append(name)
+    return hits
+
+
+def _apply_dispatch_signals(
+    report: "GhostReport", ticket_id: str, unmerged: List[str]
+) -> None:
+    """主訊號（dispatch-active 全等票號）與輔訊號（commit 主旨）補命中。"""
+    candidates = _dispatch_branches_for_ticket(ticket_id)
+    if candidates is None:
+        report.dispatch_record_unknown = True
+        candidates = []
+    hits = [b for b in candidates if _branch_hit_by_dispatch(b, unmerged)]
+    subject_hits = _subject_hit_branches(unmerged, ticket_id)
+    if subject_hits is None:
+        report.unmerged_branch_unknown = True
+        subject_hits = []
+    for name in hits + subject_hits:
+        report.unmerged_branch = True
+        if name not in report.unmerged_branch_names:
+            report.unmerged_branch_names.append(name)
+
+
 def run_ghost_forensics(ticket_id: str, ticket_files: List[str], body: str) -> GhostReport:
     """執行 reclaim 前 ghost 鑑識三查：
 
@@ -652,11 +746,12 @@ def run_ghost_forensics(ticket_id: str, ticket_files: List[str], body: str) -> G
     if branch_lines is None:
         report.unmerged_branch_unknown = True
     else:
-        for line in branch_lines:
-            name = line.strip()
+        unmerged = [line.strip() for line in branch_lines]
+        for name in unmerged:
             if _branch_names_ticket(name, ticket_id):
                 report.unmerged_branch = True
                 report.unmerged_branch_names.append(name)
+        _apply_dispatch_signals(report, ticket_id, unmerged)
 
     if ticket_files:
         status_lines = _run_git_lines(["status", "--porcelain"])
@@ -694,6 +789,8 @@ def render_ghost_report(ticket_id: str, report: GhostReport) -> str:
     lines.append(f"  2. 髒檔交集: {dirty_status}{dirty_detail}")
     exit_status_label = "缺失/佔位符（警告，不影響鑑識結果）" if report.exit_status_missing else "已填寫"
     lines.append(f"  3. Exit Status 章節: {exit_status_label}")
+    if report.dispatch_record_unknown:
+        lines.append("  4. dispatch-active 紀錄: 無法判定（讀取失敗）")
     lines.append(f"  結論: {'鑑識通過，允許 reclaim' if report.clean else '鑑識未通過，拒絕 reclaim'}")
     return "\n".join(lines)
 
