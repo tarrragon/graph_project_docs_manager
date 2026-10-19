@@ -1025,7 +1025,9 @@ def _is_branch_merged_to_base(branch: str, base: str = DEFAULT_BASE_BRANCH) -> b
     """
     判斷分支是否已合併到 base 分支
 
-    使用 git branch --merged <base> 並檢查 branch 是否在結果中。
+    使用 git merge-base --is-ancestor <branch> <base>，只看結束碼，
+    不解析 git branch --merged 的輸出（worktree 已 checkout 的分支帶「+ 」前綴）。
+    分支不存在與未合併皆回傳非零，判為未合併。
 
     Args:
         branch: 分支名稱
@@ -1034,11 +1036,8 @@ def _is_branch_merged_to_base(branch: str, base: str = DEFAULT_BASE_BRANCH) -> b
     Returns:
         bool: True 表示已合併，False 表示未合併或無法判斷
     """
-    success, output = run_git_command(["branch", "--merged", base])
-    if not success:
-        return False
-    merged_branches = [b.strip() for b in output.split('\n')]
-    return branch in merged_branches
+    success, _ = run_git_command(["merge-base", "--is-ancestor", branch, base])
+    return success
 
 
 def _is_branch_pushed(branch: str) -> bool:

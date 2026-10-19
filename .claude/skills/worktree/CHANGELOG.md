@@ -2,6 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.6.5（2026-10-19）— `_is_branch_merged_to_base` 改用 `git merge-base --is-ancestor <branch> <base>` 判定，不再解析 `git branch --merged` 輸出；修正 worktree 已 checkout 的分支（輸出帶「+ 」前綴）恆判為未合併，使 cleanup Level 3 對已合併分支不再恆報警。未合併分支（含 worktree checkout 中者、分支不存在）仍判為未合併。
 **Version**: 1.6.4（2026-10-19）— `cleanup` 新增 `--branch <分支名>`（與 ticket_id 擇一），用於萃取不到 ticket ID 的 `worktree-agent-<id>`，仍經三閘門；掃描報告對非 ticket 分支改印 `/worktree cleanup --branch <分支名>`（含 `--force` 版），ticket 分支印法不變。
 **Version**: 1.6.3（2026-10-19）— 預檢無衝突時 gate 日誌於開始行與結束行之間多記一行 `[合併閘門] 預檢｜…｜結果 無衝突`，使無衝突的合併也能觀測預檢已執行；格式沿用 `gate_line`，`[合併前測試]` 行不變。
 **Version**: 1.6.2（2026-10-19）— 合併閘門進場排隊前以 `merge_cas.precheck_merge_conflict` 預檢文字衝突，有衝突即不排隊、結束碼 1，結束行結果為「預檢衝突」；`_prepare_candidate` 與預檢共用 `_trial_merge`。取得名額後的衝突判定保留。
