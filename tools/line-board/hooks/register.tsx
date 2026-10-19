@@ -1,22 +1,30 @@
-// line-board：多線開發看板（第一階段）。
-// 定時讀主 checkout 的 349 現行佇列行（每條線取最後一行）、佇列票的 status、合併閘門的開始與結束紀錄，畫在 Pane。
+// line-board：多線開發看板。
+// 定時讀主 checkout 的 349 現行佇列行（每條線取最後一行）、佇列票的 status、
+// 本 repo 各 session 的狀態（~/.claude/sessions/*.json）、合併閘門的開始與結束紀錄，畫在 Pane。
 // 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析在 parse.ts。
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { BoardSnapshot, LanesResult, MergeLogResult, TicketStatus } from '../types'
+import type { BoardSnapshot, LanesResult, MergeLogResult, SessionState, SessionsResult, TicketStatus } from '../types'
 import {
   DISPATCH_TICKET_PATH,
   MERGE_LOG_PATH,
+  SESSIONS_DIR,
   TICKETS_DIR,
   UNKNOWN_STATUS,
+  formatAge,
   formatQueue,
+  isInRepo,
+  laneSessionStatus,
   laneTicketIds,
   mergeGateLines,
   parseFrontmatterStatus,
   parseLanes,
-  parseMainCheckout,
+  parseSessionFile,
+  parseWorktreePaths,
+  sessionStatusFileNames,
+  sortSessions,
 } from './parse'
 
 const PANE = 'line-board'
@@ -35,7 +43,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'board',
-      description: '開啟多線看板（349 各線現行佇列、佇列票即時狀態、合併閘門紀錄）',
+      description: '開啟多線看板（349 各線現行佇列、佇列票即時狀態、各 session 狀態、合併閘門紀錄）',
     })
     $.clock.every(REFRESH_MS, () => refresh($))
     void refresh($)
@@ -55,33 +63,67 @@ export const register: Register = on => {
     const { Box, Text } = $.ui.resolve(e)
     const board = await read($, snapshot)
 
-    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes 欄），等下一輪讀取覆寫前先顯示讀取中。
-    if (board.kind === 'loading' || board.lanes === undefined) {
+    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes 或 sessions 欄），等下一輪讀取覆寫前先顯示讀取中。
+    if (board.kind === 'loading' || board.lanes === undefined || board.sessions === undefined) {
       return <Text dimColor>讀取中…</Text>
     }
 
+    const readAtMs = board.readAtMs
     return (
       <Box flexDirection="column">
         <Text dimColor>
           更新 {board.updatedAt}
           {board.checkoutNote === null ? '' : `｜${board.checkoutNote}`}
         </Text>
-        {renderLanes(board.lanes, board.tickets)}
+        {renderLanes(board.lanes, board.tickets, board.sessions)}
+        <Text bold>各 session</Text>
+        {renderSessions(board.sessions)}
         <Text bold>合併閘門最近紀錄</Text>
         {renderMergeLog(board.mergeLog)}
       </Box>
     )
 
-    function renderLanes(lanes: LanesResult, tickets: readonly TicketStatus[]) {
+    function renderLanes(lanes: LanesResult, tickets: readonly TicketStatus[], sessions: SessionsResult) {
       if (lanes.kind === 'error') {
         return <Text color="red">解析失敗：讀取 {DISPATCH_TICKET_PATH} 時發生錯誤（{lanes.message}）</Text>
       }
       if (lanes.lanes.length === 0) return <Text color="yellow">349 尚無現行佇列行</Text>
       return lanes.lanes.map(lane => (
         <Text>
-          L{lane.lane}｜{lane.session ?? '（未標 session）'}｜{formatQueue(lane.tokens, tickets)}
+          L{lane.lane}｜{lane.session ?? '（未標 session）'}
+          {laneStatusLabel(sessions, lane.session)}｜{formatQueue(lane.tokens, tickets)}
         </Text>
       ))
+    }
+
+    /** 線列 session 名稱旁的 `［狀態］`；沒標 session 時不顯示，session 狀態讀取失敗時標「狀態不明」。 */
+    function laneStatusLabel(sessions: SessionsResult, name: string | null): string {
+      if (name === null) return ''
+      if (sessions.kind === 'error') return '［狀態不明］'
+      return `［${laneSessionStatus(sessions.sessions, name)}］`
+    }
+
+    function renderSessions(sessions: SessionsResult) {
+      if (sessions.kind === 'error') {
+        return <Text color="red">讀取 ~/{SESSIONS_DIR} 失敗（{sessions.message}）</Text>
+      }
+      const rows = sessions.sessions.map(session => renderSession(session))
+      const ended =
+        sessions.endedCount === 0 ? [] : [<Text dimColor>另有 {sessions.endedCount} 個狀態檔的 pid 已結束，未列出</Text>]
+      if (rows.length === 0) return [<Text dimColor>（本 repo 沒有執行中的 session）</Text>, ...ended]
+      return [...rows, ...ended]
+    }
+
+    function renderSession(session: SessionState) {
+      const waitingFor = session.waitingFor === null ? '' : `：${session.waitingFor}`
+      const line = `${session.name}｜${session.status}${waitingFor}｜${formatAge(readAtMs, session.statusUpdatedAt)}`
+      return session.status === 'waiting' ? (
+        <Text color="yellow" bold>
+          {line}
+        </Text>
+      ) : (
+        <Text>{line}</Text>
+      )
     }
 
     function renderMergeLog(log: MergeLogResult) {
@@ -97,19 +139,24 @@ async function refresh($: EngineInterface): Promise<void> {
   if (isRefreshing) return
   isRefreshing = true
   try {
+    const readAtMs = await $.clock.now()
     const root = await $.session.root()
-    const { mainPath, checkoutNote } = await findMainCheckout($, root)
+    const { checkoutPaths, checkoutNote } = await findCheckouts($, root)
+    const mainPath = checkoutPaths[0] ?? root
     const lanes = await readLanes($, mainPath)
     const ids = lanes.kind === 'ok' ? laneTicketIds(lanes.lanes) : []
     const tickets = await Promise.all(ids.map(id => readTicketStatus($, mainPath, id)))
+    const sessions = await readSessions($, checkoutPaths)
     const mergeLog = await readMergeLog($, mainPath)
     const next: BoardSnapshot = {
       kind: 'ready',
-      updatedAt: formatTime(new Date()),
+      updatedAt: formatTime(new Date(readAtMs)),
+      readAtMs,
       mainPath,
       checkoutNote,
       lanes,
       tickets,
+      sessions,
       mergeLog,
     }
     await update($, snapshot, () => next)
@@ -121,27 +168,72 @@ async function refresh($: EngineInterface): Promise<void> {
 }
 
 /**
- * 以 `git worktree list --porcelain` 的第一筆判定主 checkout，看板 session 在 worktree 內啟動也指向主 checkout。
- * 失敗時退回 session root 並帶原因顯示。
+ * 以 `git worktree list --porcelain` 取本 repo 的所有 checkout：第一筆為主 checkout（看板 session 在 worktree 內啟動也指向它），
+ * 全部用來判定哪些 session 屬於本 repo。失敗時只有 session root 一筆，並帶原因顯示。
  */
-async function findMainCheckout(
+async function findCheckouts(
   $: EngineInterface,
   root: string,
-): Promise<{ mainPath: string; checkoutNote: string | null }> {
+): Promise<{ checkoutPaths: string[]; checkoutNote: string | null }> {
   try {
     const result = await $.process.run(['git', 'worktree', 'list', '--porcelain'], { cwd: root })
     if (result.exitCode !== 0) {
       const note = `git worktree list 失敗（exit ${result.exitCode}），改讀 session root`
       $.ui.log(`line-board: ${note}: ${result.stderr.trim()}`, { to: 'debug' })
-      return { mainPath: root, checkoutNote: note }
+      return { checkoutPaths: [root], checkoutNote: note }
     }
-    const main = parseMainCheckout(result.stdout)
-    if (main === null) return { mainPath: root, checkoutNote: 'git worktree list 無輸出，改讀 session root' }
-    return { mainPath: main, checkoutNote: null }
+    const paths = parseWorktreePaths(result.stdout)
+    if (paths.length === 0) return { checkoutPaths: [root], checkoutNote: 'git worktree list 無輸出，改讀 session root' }
+    return { checkoutPaths: paths, checkoutNote: null }
   } catch (error) {
     const note = `git worktree list 無法執行（${messageOf(error)}），改讀 session root`
     $.ui.log(`line-board: ${note}`, { to: 'debug' })
-    return { mainPath: root, checkoutNote: note }
+    return { checkoutPaths: [root], checkoutNote: note }
+  }
+}
+
+/**
+ * 讀 `~/.claude/sessions/` 的狀態檔：只讀副檔名 `.json` 的檔案（`.key` 是金鑰，從不讀取），
+ * 留下 cwd 屬於本 repo 的 session，再以 `ps -p <pid>` 確認存活；已結束者只計數不列出。
+ */
+async function readSessions($: EngineInterface, checkoutPaths: readonly string[]): Promise<SessionsResult> {
+  const home = await $.env.get('HOME')
+  if (home === undefined || home === '') return { kind: 'error', message: 'HOME 未設定' }
+  const dir = `${home}/${SESSIONS_DIR}`
+  let names: string[]
+  try {
+    names = sessionStatusFileNames(await $.fs.list(dir))
+  } catch (error) {
+    $.ui.log(`line-board: 列出 ${dir} 失敗：${messageOf(error)}`, { to: 'debug' })
+    return { kind: 'error', message: messageOf(error) }
+  }
+  const parsed = await Promise.all(names.map(name => readSessionFile($, `${dir}/${name}`)))
+  const inRepo = parsed.filter((session): session is SessionState => session !== null && isInRepo(session.cwd, checkoutPaths))
+  const isAlive = await Promise.all(inRepo.map(session => isPidAlive($, session.pid)))
+  const alive = inRepo.filter((_, index) => isAlive[index])
+  return { kind: 'ok', sessions: sortSessions(alive), endedCount: inRepo.length - alive.length }
+}
+
+/** 讀一個狀態檔；讀不到或格式無效（例如 CC 寫到一半）時回傳 null，下一輪再讀。 */
+async function readSessionFile($: EngineInterface, path: string): Promise<SessionState | null> {
+  try {
+    const session = parseSessionFile(await $.fs.read(path))
+    if (session === null) $.ui.log(`line-board: ${path} 格式無法辨識，略過`, { to: 'debug' })
+    return session
+  } catch (error) {
+    $.ui.log(`line-board: 讀取 ${path} 失敗：${messageOf(error)}`, { to: 'debug' })
+    return null
+  }
+}
+
+/** `ps -p <pid>` exit 0 為存活；ps 本身無法執行時無從判定，視為存活以免整個區塊被清空。 */
+async function isPidAlive($: EngineInterface, pid: number): Promise<boolean> {
+  try {
+    const result = await $.process.run(['ps', '-p', String(pid)])
+    return result.exitCode === 0
+  } catch (error) {
+    $.ui.log(`line-board: ps -p ${pid} 無法執行（${messageOf(error)}），視為存活`, { to: 'debug' })
+    return true
   }
 }
 
