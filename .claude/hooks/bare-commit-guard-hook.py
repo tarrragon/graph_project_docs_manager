@@ -357,19 +357,9 @@ def _read_ticket_where_files(ticket_id: str, project_root: Path) -> List[str]:
     """讀票面現行 where.files；票檔找不到或 frontmatter 解析不出時拋
     ValueError（呼叫端據此退回快照）。可讀但 where.files 為空則回傳 []。
     """
-    from lib.hook_ticket import (
-        extract_where_files_from_frontmatter,
-        find_ticket_file,
-        parse_ticket_frontmatter,
-    )
+    from lib.hook_ticket import extract_where_files
 
-    ticket_file = find_ticket_file(ticket_id, project_root)
-    if not ticket_file or not ticket_file.exists():
-        raise ValueError(f"找不到票檔 {ticket_id}")
-    frontmatter = parse_ticket_frontmatter(ticket_file)
-    if not frontmatter:
-        raise ValueError(f"票檔 {ticket_id} frontmatter 解析失敗")
-    return extract_where_files_from_frontmatter(frontmatter)
+    return extract_where_files(ticket_id, project_root, raise_on_missing=True)
 
 
 def _with_live_declared_files(
