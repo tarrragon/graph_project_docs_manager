@@ -305,15 +305,19 @@ export function mergeGateEntries(text: string): MergeGateEntry[] {
 }
 
 /**
- * 目前持有閘門的分支：最後一筆開始行之後，沒有同一分支的結束行時，回傳該分支與開始時間；
- * 有對應結束、或沒有任何開始行時回傳 null。格式不符的行不參與判定。
+ * 目前持有閘門的所有分支：各分支最後一筆開始行之後沒有同一分支的結束行者，依開始行的順序回傳分支與開始時間；
+ * 沒有時回傳空陣列。開始與結束以分支欄配對，不以相鄰行配對：免跑測試的合併不佔 heavy 名額，
+ * 可與其他分支的合併重疊，因此持有者可能同時有多個。格式不符的行不參與判定。
  */
-export function mergeGateHolder(entries: readonly MergeGateEntry[]): MergeGateHolder | null {
-  const lastStart = entries.findLastIndex(entry => entry.kind === 'start')
-  const start = entries[lastStart]
-  if (start === undefined || start.kind !== 'start') return null
-  const isEnded = entries.slice(lastStart + 1).some(entry => entry.kind === 'end' && entry.branch === start.branch)
-  return isEnded ? null : { branch: start.branch, since: start.time }
+export function mergeGateHolders(entries: readonly MergeGateEntry[]): MergeGateHolder[] {
+  const open = new Map<string, string>()
+  for (const entry of entries) {
+    if (entry.kind === 'raw') continue
+    // 先刪再設，使同分支重新開始時排到最後，與其最新開始行的位置一致
+    open.delete(entry.branch)
+    if (entry.kind === 'start') open.set(entry.branch, entry.time)
+  }
+  return [...open].map(([branch, since]) => ({ branch, since }))
 }
 
 /** worktree 代理人分支 `worktree-agent-<id>` 的 id 只顯示前幾碼。 */
@@ -338,9 +342,9 @@ export function formatMergeGateEntry(entry: MergeGateEntry): string {
   return entry.kind === 'start' ? head : `${head}｜${entry.result}`
 }
 
-/** 閘門持有者的提示：`閘門使用中：<短分支>（自 HH:MM:SS）`。 */
-export function formatMergeGateHolder(holder: MergeGateHolder): string {
-  return `閘門使用中：${shortBranch(holder.branch)}（自 ${holder.since}）`
+/** 閘門持有者的提示，每個持有者一行：`閘門使用中：<短分支>（自 HH:MM:SS）`；沒有持有者時為空陣列。 */
+export function formatMergeGateHolders(holders: readonly MergeGateHolder[]): string[] {
+  return holders.map(holder => `閘門使用中：${shortBranch(holder.branch)}（自 ${holder.since}）`)
 }
 
 /** 結束行的結果與顏色；結果值取自真實 worktree-merge.log（寫入、中止、拒絕、紅燈）。 */
