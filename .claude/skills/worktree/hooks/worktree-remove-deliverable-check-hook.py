@@ -131,7 +131,9 @@ def _format_dirty_block_message(path: str, branch: Optional[str], dirty_lines: L
         "",
         "修復方式（擇一，完成後執行下方「驗證」步驟確認）：",
         "  1. 保留變更並落地 main：",
-        '       git -C {} add <paths> && git -C {} commit -m "<message>" -- <paths>'.format(path, path),
+        "       git -C {} add <exact-path>".format(path),
+        "       git -C {} diff --cached --name-only   # 確認只含目標檔".format(path),
+        '       git -C {} commit -m "<message>"'.format(path),
     ])
     if branch:
         lines.append("       git merge {} --no-edit".format(branch))

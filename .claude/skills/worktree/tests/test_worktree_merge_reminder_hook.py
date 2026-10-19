@@ -1,3 +1,4 @@
+import re
 """worktree-merge-reminder-hook 測試套件（0.2.1-W3-273）
 
 防護目標（issue 46 症狀三）：`ticket track complete` 後的清理提醒，對「已合併
@@ -33,6 +34,20 @@ def logger():
 # ---------------------------------------------------------------------------
 # get_dirty_files（0.2.1-W3-273 新增：布林 dirty 升級為檔案清單）
 # ---------------------------------------------------------------------------
+
+
+# 規則七禁形：commit 帶 `-- <path>` pathspec（亦涵蓋 --only / -o）
+RULE7_PATHSPEC_COMMIT = re.compile(r"commit\b[^\n]*(\s--\s+\S|\s--only\b|\s-o\b)")
+
+_OLD_SUGGESTION = (
+    'git -C /path/to/wt add <paths> && '
+    'git -C /path/to/wt commit -m "<message>" -- <paths>'
+)
+
+
+def test_rule7_checker_flags_pre_fix_literal():
+    """正向對照：修正前的訊息字面必須被判為違規，否則斷言無鑑別力。"""
+    assert RULE7_PATHSPEC_COMMIT.search(_OLD_SUGGESTION)
 
 
 class TestGetDirtyFiles:
@@ -235,8 +250,10 @@ class TestMergedCleanupReminderMessage:
         )
 
         message = _run_main_and_get_message(capsys)
-        assert "commit -m" in message
-        assert "-- <paths>" in message
+        assert 'git -C /path/to/wt commit -m "<message>"' in message
+        assert "git -C /path/to/wt add <exact-path>" in message
+        assert "git -C /path/to/wt diff --cached --name-only" in message
+        assert not RULE7_PATHSPEC_COMMIT.search(message)
         assert "git merge feat/0.0.0-W1-007 --no-edit" in message
         assert "git -C /path/to/wt restore ." in message
         assert "git -C /path/to/wt clean -fd ." in message

@@ -318,10 +318,11 @@ def main() -> int:
                 # --force，故不建議捨棄路徑再加 --force）。
                 lines.append("  建議（擇一）：")
                 lines.append("    1. 保留變更並落地 main：")
-                lines.append(
-                    f"         git -C {wt_path} add <paths> && "
-                    f'git -C {wt_path} commit -m "<message>" -- <paths>'
-                )
+                # 規則七：精確 add → 核對 index → 裸 commit（禁 pathspec 提交）；
+                # linked worktree 有獨立 index，核對僅涵蓋本 worktree。
+                lines.append(f"         git -C {wt_path} add <exact-path>")
+                lines.append(f"         git -C {wt_path} diff --cached --name-only   # 確認只含目標檔")
+                lines.append(f'         git -C {wt_path} commit -m "<message>"')
                 lines.append(f"         git merge {branch} --no-edit")
                 lines.append("    2. 確認變更確為可捨棄後清除：")
                 lines.append(f"         git -C {wt_path} restore .   # 還原已追蹤檔案的未提交修改")

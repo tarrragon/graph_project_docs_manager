@@ -1,3 +1,4 @@
+import re
 """
 worktree-remove-deliverable-check-hook 測試套件（1.2.0-W1-030 Guard A）
 
@@ -32,6 +33,15 @@ def logger():
 # ---------------------------------------------------------------------------
 # _extract_remove_paths
 # ---------------------------------------------------------------------------
+
+
+RULE7_PATHSPEC_COMMIT = re.compile(r"commit\b[^\n]*(\s--\s+\S|\s--only\b|\s-o\b)")
+
+
+def test_rule7_checker_flags_pre_fix_literal():
+    """正向對照：修正前的訊息字面必須被判為違規。"""
+    old = 'git -C p add <paths> && git -C p commit -m "<message>" -- <paths>'
+    assert RULE7_PATHSPEC_COMMIT.search(old)
 
 
 class TestExtractRemovePaths:
@@ -346,9 +356,10 @@ class TestMain:
         ):
             assert hook.main() == 0
 
-    def test_dirty_block_message_no_bare_cd_and_path_limited_commit(self, capsys):
-        """0.2.1-W3-282：BLOCK_MESSAGE_DIRTY 不得含裸 cd，commit 建議須 path-limited
-        （與 bare-commit-guard 並行期無 pathspec 即 DENY 對齊，不互斥）。"""
+    def test_dirty_block_message_no_bare_cd_and_exact_add_bare_commit(self, capsys):
+        """0.2.1-W3-282：BLOCK_MESSAGE_DIRTY 不得含裸 cd，commit 建議須為
+        精確 add、diff --cached 核對、裸 commit（規則七；pathspec 提交會被
+        bare-commit-guard 擋下，故不得出現）。"""
         data = {"tool_input": {"command": "git worktree remove --force .claude/worktrees/agent-abc"}}
         with patch.object(hook, "read_json_from_stdin", return_value=data), patch.object(
             hook, "_branch_of_worktree", return_value="feat/x"
@@ -361,8 +372,10 @@ class TestMain:
         assert "cd .claude/worktrees/agent-abc &&" not in captured.err
         assert "git -C .claude/worktrees/agent-abc" in captured.err
         assert "git add -A" not in captured.err
-        assert "commit -m" in captured.err
-        assert "-- <paths>" in captured.err
+        assert 'git -C .claude/worktrees/agent-abc commit -m "<message>"' in captured.err
+        assert "git -C .claude/worktrees/agent-abc add <exact-path>" in captured.err
+        assert "diff --cached --name-only" in captured.err
+        assert not RULE7_PATHSPEC_COMMIT.search(captured.err)
 
     def test_pass_when_dirty_status_query_fails(self):
         """git status 查詢失敗（None）不阻擋，避免誤擋。"""
