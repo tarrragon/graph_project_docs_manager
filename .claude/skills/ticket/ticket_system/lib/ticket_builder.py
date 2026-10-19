@@ -986,6 +986,26 @@ _DEFAULT_PLACEHOLDERS = {
 }
 
 
+def insert_dedup_record(body: str, keywords: Optional[List[str]]) -> str:
+    """在 Problem Analysis 末端（調查過程註解之前）插入〈查重紀錄〉。
+
+    關鍵字逐字列出供覆核；無關鍵字時原樣回傳。
+    """
+    kws = [k for k in (keywords or []) if (k or "").strip()]
+    if not kws:
+        return body
+    lines = "\n".join(f"- {k}" for k in kws)
+    section = (
+        "### 查重紀錄\n\n"
+        "`--dedup-checked none`，查重關鍵字（逐字）：\n\n"
+        f"{lines}\n\n"
+    )
+    anchor = "<!-- 調查過程記錄（可選）："
+    if anchor in body:
+        return body.replace(anchor, section + anchor, 1)
+    return body
+
+
 def create_ticket_body(what: str, who: str, ticket_type: str = "") -> str:
     """建立 Ticket body。
 

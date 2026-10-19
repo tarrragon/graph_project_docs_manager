@@ -96,7 +96,9 @@ class TestValidatePortableIssueGate:
         assert captured.out == ""
 
     def test_portable_with_none_conclusion_passes(self, capsys):
-        result = validate_portable_issue_gate([".claude/hooks/foo.py"], "none")
+        result = validate_portable_issue_gate(
+            [".claude/hooks/foo.py"], "none", ["關鍵字"]
+        )
         assert result is True
 
     def test_block_message_contains_dedup_command_template(self, capsys):
@@ -303,6 +305,7 @@ class TestExecutePassesPortableWithDedupChecked:
         args = _make_args(
             where_files=".claude/hooks/foo.py",
             dedup_checked="none",
+            dedup_keywords=["關鍵字"],
         )
 
         rc = execute(args)
@@ -413,6 +416,7 @@ class TestClosedFrameworkTicketsAsRedInput:
         args = _make_args(
             where_files=",".join(where_files),
             dedup_checked="none",
+            dedup_keywords=["關鍵字"],
         )
 
         rc = execute(args)
@@ -499,3 +503,101 @@ class TestPrivateSkillNotPortable:
             [".claude/skills/verify/SKILL.md", ".claude/hooks/foo.py"], None
         ) is False
         assert "PORTABLE_ISSUE_UNDEDUPED" in capsys.readouterr().out
+
+
+# ============================================================
+# F 層：--dedup-checked none 須附 --dedup-keywords（0.5.0-W1-354.1）
+# ============================================================
+
+
+class TestDedupNoneRequiresKeywords:
+    def test_none_without_keywords_blocks(self, capsys):
+        result = validate_portable_issue_gate([".claude/hooks/foo.py"], "none")
+        assert result is False
+        out = capsys.readouterr().out
+        assert "PORTABLE_ISSUE_DEDUP_KEYWORDS_MISSING" in out
+        assert "--dedup-keywords" in out
+
+    def test_none_with_empty_keywords_blocks(self):
+        assert validate_portable_issue_gate(
+            [".claude/hooks/foo.py"], "none", []
+        ) is False
+
+    def test_none_with_blank_keywords_blocks(self):
+        assert validate_portable_issue_gate(
+            [".claude/hooks/foo.py"], "none", ["  ", ""]
+        ) is False
+
+    def test_none_with_keywords_passes(self):
+        assert validate_portable_issue_gate(
+            [".claude/hooks/foo.py"], "none", ["閘門", "dedup"]
+        ) is True
+
+    def test_issue_number_without_keywords_unchanged(self):
+        assert validate_portable_issue_gate(
+            [".claude/hooks/foo.py"], "#102"
+        ) is True
+
+    def test_non_portable_none_without_keywords_unchanged(self):
+        assert validate_portable_issue_gate(["lib/a.dart"], "none") is True
+
+    def test_dedup_keywords_flag_registered(self):
+        from ticket_system.commands.create import register
+
+        parser = argparse.ArgumentParser()
+        sub = parser.add_subparsers()
+        register(sub)
+        args = parser.parse_args([
+            "create", "--type", "IMP", "--action", "a", "--target", "b",
+            "--dedup-keywords", "k1", "k2",
+        ])
+        assert args.dedup_keywords == ["k1", "k2"]
+
+    def test_execute_none_without_keywords_blocks(self, monkeypatch, capsys):
+        build_mock = _install_common_mocks(monkeypatch)
+        rc = execute(_make_args(dedup_checked="none", dedup_keywords=None))
+        assert rc == 1
+        build_mock.assert_not_called()
+
+    def test_execute_none_with_keywords_passes_to_config(self, monkeypatch):
+        build_mock = _install_common_mocks(monkeypatch)
+        rc = execute(_make_args(
+            dedup_checked="none", dedup_keywords=["閘門", "dedup"]
+        ))
+        assert rc == 0
+        config = build_mock.call_args[0][2]
+        assert config["dedup_keywords"] == ["閘門", "dedup"]
+
+    def test_execute_issue_number_config_has_no_keywords(self, monkeypatch):
+        build_mock = _install_common_mocks(monkeypatch)
+        rc = execute(_make_args(dedup_checked="#102"))
+        assert rc == 0
+        assert not build_mock.call_args[0][2].get("dedup_keywords")
+
+
+class TestDedupRecordInBody:
+    def test_record_lists_keywords_verbatim_in_problem_analysis(self):
+        from ticket_system.lib.ticket_builder import (
+            create_ticket_body,
+            insert_dedup_record,
+        )
+
+        body = insert_dedup_record(
+            create_ticket_body("w", "who", "IMP"), ["關鍵 一", "key-two"]
+        )
+        assert "### 查重紀錄" in body
+        pa = body.index("## Problem Analysis")
+        rec = body.index("### 查重紀錄")
+        sol = body.index("## Solution")
+        assert pa < rec < sol
+        assert "關鍵 一" in body and "key-two" in body
+
+    def test_no_keywords_leaves_body_unchanged(self):
+        from ticket_system.lib.ticket_builder import (
+            create_ticket_body,
+            insert_dedup_record,
+        )
+
+        body = create_ticket_body("w", "who", "IMP")
+        assert insert_dedup_record(body, None) == body
+        assert "### 查重紀錄" not in body

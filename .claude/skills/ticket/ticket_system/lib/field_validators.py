@@ -558,6 +558,7 @@ def is_portable_where_files(tokens: List[str]) -> bool:
 def validate_portable_issue_gate(
     where_files: List[str],
     dedup_checked: Optional[str],
+    dedup_keywords: Optional[List[str]] = None,
 ) -> bool:
     """可攜問題分流硬閘門。
 
@@ -584,6 +585,9 @@ def validate_portable_issue_gate(
         where_files: 已 strip 的 where.files token 清單
         dedup_checked: `--dedup-checked` 參數值（查重結論：issue 號或 "none"；
             未提供或空字串視為未給結論）
+        dedup_keywords: `--dedup-keywords` 參數值。結論為 "none" 時必填
+            （非空白關鍵字至少一組）：未查重填 none 與已查重得 none 在票面
+            無從區分，關鍵字寫入〈查重紀錄〉供覆核。issue 號結論不需要。
 
     Returns:
         bool: True 表示通過（非可攜，或可攜但已附查重結論）；False 表示
@@ -593,6 +597,26 @@ def validate_portable_issue_gate(
         return True
 
     if dedup_checked:
+        if dedup_checked.strip().lower() == "none" and not any(
+            (k or "").strip() for k in (dedup_keywords or [])
+        ):
+            print(format_error(ErrorEnvelope(
+                component="create",
+                action="portable_issue_gate",
+                errno="PORTABLE_ISSUE_DEDUP_KEYWORDS_MISSING",
+                hint=(
+                    "--dedup-checked none 必須同時附 --dedup-keywords"
+                    "（查重所用的關鍵字，一至多組）：未查重填 none 與已查重"
+                    "得 none 在票面無從區分，關鍵字會逐字寫入新票 Problem "
+                    "Analysis〈查重紀錄〉供覆核。範例：\n"
+                    "     --dedup-checked none --dedup-keywords "
+                    "\"關鍵字一\" \"關鍵字二\"\n"
+                    "  查重指令範本：python3 .claude/skills/framework-issue/"
+                    "scripts/section_comment.py dedup --keywords "
+                    "\"關鍵字一\" \"關鍵字二\""
+                ),
+            )))
+            return False
         return True
 
     print(format_error(ErrorEnvelope(
@@ -615,10 +639,12 @@ def validate_portable_issue_gate(
             "不該建票，issue 號本身就是查重結論，加 --dedup-checked "
             "<issue 號> 建票執行；--why 建議引用該 issue 號說明本票與其"
             "關係\n"
-            "     c) 查重確認全框架皆未命中 → --dedup-checked none 建票，"
-            "並視情況同步在 canonical 開新 issue\n\n"
+            "     c) 查重確認全框架皆未命中 → --dedup-checked none "
+            "--dedup-keywords \"關鍵字一\" \"關鍵字二\" 建票（none 必須附"
+            "查重所用關鍵字），並視情況同步在 canonical 開新 issue\n\n"
             "  3) 帶查重結論重新執行本次建票，例如：\n"
-            "     --dedup-checked '#102'  或  --dedup-checked none"
+            "     --dedup-checked '#102'  或  --dedup-checked none "
+            "--dedup-keywords \"關鍵字一\" \"關鍵字二\""
         ),
     )))
     return False
