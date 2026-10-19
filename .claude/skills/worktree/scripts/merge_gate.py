@@ -29,12 +29,17 @@ import sys
 import threading
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterator, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # .claude/，供 import lib
 from lib import slot_gate  # noqa: E402
+
+try:
+    from .merge_cas import CheckResult
+except ImportError:
+    # Fallback when running with scripts/ on sys.path (test 與直接執行情境)
+    from merge_cas import CheckResult
 
 # 閘門允許的 CAS 重試次數（不含首次嘗試）；超過即中止並回報最後一次失敗原因
 GATE_MAX_RETRIES = 3
@@ -80,14 +85,6 @@ RETRY_REUSE_EXEMPT_GLOBS = (
 
 # (完整 argv, 工作目錄) -> (結束碼, 合併輸出)
 SuiteRunner = Callable[[list, str], tuple]
-
-
-@dataclass(frozen=True)
-class GateVerdict:
-    """與 merge_cas.CheckResult 欄位相同（鴨子型別），避免循環 import。"""
-
-    passed: bool
-    reason: str = ""
 
 
 def _glob_to_regex(glob: str) -> "re.Pattern":
@@ -594,13 +591,13 @@ class MergeGate:
             return None
         return last
 
-    def __call__(self, commit: str, ref: str, expected_old: str, attempt: int) -> GateVerdict:
+    def __call__(self, commit: str, ref: str, expected_old: str, attempt: int) -> CheckResult:
         paths = changed_paths_between(self.repo, expected_old, commit)
         if paths is None:
-            return GateVerdict(False, "無法計算合併改動範圍")
+            return CheckResult(False, "無法計算合併改動範圍")
         if not needs_gate(paths):
             print("[合併前測試] 改動不在任何全套件範圍內，免跑")
-            return GateVerdict(True)
+            return CheckResult(True)
         with _sigterm_as_interrupt(), merge_snapshot(self.repo, commit) as snap:
             suites = select_suites(paths, snap)
             todo = []
@@ -616,7 +613,7 @@ class MergeGate:
                 self.suite_runs += 1
             reason = _run_suites(todo, snap, self.project_root, self.runner, self.repo,
                                  on_green=lambda s: self.verified_suites.__setitem__(s, commit), tag=commit)
-        return GateVerdict(False, reason) if reason else GateVerdict(True)
+        return CheckResult(False, reason) if reason else CheckResult(True)
 
 
 _PATH_TOKEN = re.compile(r"docs/work-logs/[^\s'\"`)\]}>,]+\.(?:md|txt)")
