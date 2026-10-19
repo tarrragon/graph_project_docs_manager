@@ -67,6 +67,10 @@ def _git_dir_overrides(invocation: GitInvocation) -> "tuple[List[str], List[str]
     return git_dirs, work_trees
 
 
+# 覆寫目標含變數或 ~ 而無法靜態解析時，偵測目錄清單中的標記（非真實路徑）
+_UNRESOLVABLE_OVERRIDE = "<unresolvable-override>"
+
+
 def _is_dynamic(path: str) -> bool:
     return any(c in path for c in "$`") or path.startswith("~")
 
@@ -78,7 +82,8 @@ def _override_dirs(
 
     git dir 本身即狀態檔所在（MERGE_HEAD 等直接位於其下），work tree
     也一併列入。路徑相對於該呼叫的 effective_dir（缺則 payload cwd／root）；
-    含變數或 `~` 的覆寫值無法可信解析，退回 cwd 與 root 兩處，不猜。
+    含變數或 `~` 的覆寫值無法可信解析：除 cwd 與 root 兩處外加入
+    `_UNRESOLVABLE_OVERRIDE` 標記，由 `_pending_operation_in_dirs` 保守阻擋。
     """
     git_dirs, work_trees = _git_dir_overrides(invocation)
     if not git_dirs and not work_trees:
@@ -88,6 +93,7 @@ def _override_dirs(
     for raw in git_dirs + work_trees:
         if _is_dynamic(raw):
             dirs.extend([_base_dir(payload_cwd, project_root), str(project_root)])
+            dirs.append(_UNRESOLVABLE_OVERRIDE)
         else:
             dirs.append(str(Path(base) / raw))
     return dirs
@@ -196,7 +202,8 @@ _OP_REBASE = "rebase"
 _OP_REBASE_EDIT = "rebase-edit"
 _OP_MERGE = "merge"
 # 一律擋裸 commit 的種類（rebase-edit 只警告）
-_BLOCKING_OPS = (_OP_MERGE, _OP_CHERRY_PICK, _OP_REVERT, _OP_REBASE)
+_OP_UNRESOLVABLE = "unresolvable-override"
+_BLOCKING_OPS = (_OP_MERGE, _OP_CHERRY_PICK, _OP_REVERT, _OP_REBASE, _OP_UNRESOLVABLE)
 
 _GIT_PATH_NAMES = (
     "CHERRY_PICK_HEAD",
@@ -276,6 +283,9 @@ def _pending_operation_in_dirs(detect_dirs, logger=None) -> Optional[str]:
     """多個偵測目錄：任一處有阻擋型進行中狀態就回該狀態，其次 rebase-edit。"""
     found = []
     for d in detect_dirs:
+        if d == _UNRESOLVABLE_OVERRIDE:
+            found.append(_OP_UNRESOLVABLE)
+            continue
         # d 可能是 work tree，也可能是覆寫指定的 git dir 本身，兩種都查
         op = _pending_operation(d, logger) or _pending_operation_in_git_dir(d)
         if op:

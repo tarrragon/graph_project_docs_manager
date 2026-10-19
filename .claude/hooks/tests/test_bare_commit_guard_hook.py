@@ -1499,3 +1499,29 @@ class TestPendingOperationAllTargets:
         _, clean = merging_and_clean
         cmd = f'git --git-dir={clean}/.git commit -m a'
         assert _run_all_targets(monkeypatch, cmd, clean, clean) == 0
+
+
+class TestUnresolvableOverrideTargetBlocks:
+    """覆寫值含變數或 ~ 而無法靜態解析：保守阻擋（E2：應擋 + 字面路徑放行對照）。"""
+
+    def test_variable_git_dir_blocks(self, monkeypatch, merging_and_clean):
+        merging, clean = merging_and_clean
+        cmd = f'V={merging}; GIT_DIR=$V/.git GIT_WORK_TREE=$V git commit --allow-empty -m b'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 2
+
+    def test_tilde_git_dir_option_blocks(self, monkeypatch, merging_and_clean):
+        _, clean = merging_and_clean
+        cmd = 'git --git-dir=~/somewhere/.git commit --allow-empty -m b'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 2
+
+    def test_literal_git_dir_to_clean_repo_still_passes(self, monkeypatch, merging_and_clean):
+        _, clean = merging_and_clean
+        cmd = f'GIT_DIR={clean}/.git GIT_WORK_TREE={clean} git commit --allow-empty -m a'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 0
+
+
+def test_every_blocking_op_has_deny_message():
+    from bare_commit_guard.messages import _build_pending_operation_deny_message
+
+    for op in ops_module._BLOCKING_OPS:
+        assert _build_pending_operation_deny_message(op).strip()
