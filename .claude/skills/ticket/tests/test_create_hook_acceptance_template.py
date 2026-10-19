@@ -119,7 +119,7 @@ def _run_create_e2e(tmp_path, monkeypatch, where_files):
     calls = []
     monkeypatch.setattr(create_mod, "print_hook_ticket_reminder", lambda: calls.append(1))
 
-    args = _make_args(where_files=where_files, dedup_checked="none", acceptance=list(BASE))
+    args = _make_args(where_files=where_files, dedup_checked="none", dedup_keywords=["測試佔位"], acceptance=list(BASE))
     assert create_mod.execute(args) == 0
     (path,) = tickets_dir.glob("*.md")
     fm = yaml.safe_load(path.read_text(encoding="utf-8").split("---", 2)[1])

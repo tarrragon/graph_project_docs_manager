@@ -74,6 +74,7 @@ from ticket_system.lib.ticket_builder import (
     TicketConfig,
     create_ticket_frontmatter,
     create_ticket_body,
+    insert_dedup_record,
     update_parent_children,
     update_source_spawned_tickets,
     validate_create_checklist,
@@ -216,7 +217,8 @@ def _parse_cli_args_to_config(
     # 附查重結論（--dedup-checked）才放行，否則阻擋建票（詳見
     # validate_portable_issue_gate docstring）。
     dedup_checked = getattr(args, "dedup_checked", None)
-    if not validate_portable_issue_gate(where_files, dedup_checked):
+    dedup_keywords = getattr(args, "dedup_keywords", None)
+    if not validate_portable_issue_gate(where_files, dedup_checked, dedup_keywords):
         return None
 
     # 處理 blocked_by
@@ -281,6 +283,12 @@ def _parse_cli_args_to_config(
         "source_ticket": args.source_ticket,
         "discovered_during": getattr(args, "discovered_during", None),
         "scope_blocker": getattr(args, "scope_blocker", None) or None,
+        # 紀錄文字寫的是「--dedup-checked none」，僅 none 時寫入
+        "dedup_keywords": (
+            getattr(args, "dedup_keywords", None)
+            if (getattr(args, "dedup_checked", None) or "").strip().lower() == "none"
+            else None
+        ) or None,
         "acceptance": acceptance,
         "tdd_phase": tdd_phase,
         "tdd_stage": tdd_result.phases,
@@ -546,6 +554,7 @@ def _build_and_save_ticket(
         frontmatter["who"]["current"],
         frontmatter.get("type", ""),
     )
+    body = insert_dedup_record(body, config.get("dedup_keywords"))
     ticket = frontmatter.copy()
     ticket["_body"] = body
 
@@ -1310,6 +1319,15 @@ def register(subparsers: argparse._SubParsersAction) -> None:
             "可攜問題分流硬閘門的查重結論：where.files 全數落在 .claude/ 下時"
             "必填，值為命中的 issue 號（如 '#102'）或 'none'；僅給旗標不給"
             "結論仍阻擋建票"
+        ),
+    )
+    parser.add_argument(
+        "--dedup-keywords",
+        dest="dedup_keywords",
+        nargs="+",
+        help=(
+            "查重所用關鍵字（一至多組）：--dedup-checked none 時必填，"
+            "逐字寫入新票 Problem Analysis〈查重紀錄〉供覆核"
         ),
     )
     parser.add_argument(

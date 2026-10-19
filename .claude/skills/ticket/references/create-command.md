@@ -202,9 +202,11 @@ ticket create --wave 1 --action "實作" --target "XXX" --allow-duplicate \
 | where.files 含任一非 `.claude/` 路徑（如 `lib/`、`src/`、`test/`） | 不觸發，正常建票 |
 | where.files 全數 `.claude/` 下 + 未帶 `--dedup-checked` | 阻擋，印出查重指令範本與二擇一處置 |
 | where.files 全數 `.claude/` 下 + `--dedup-checked ""`（空字串） | 阻擋（只給旗標不給結論仍視為未查重） |
-| where.files 全數 `.claude/` 下 + `--dedup-checked <issue號或 none>` | 放行 |
+| where.files 全數 `.claude/` 下 + `--dedup-checked <issue號>` | 放行 |
+| where.files 全數 `.claude/` 下 + `--dedup-checked none` 未附 `--dedup-keywords` | 阻擋（`PORTABLE_ISSUE_DEDUP_KEYWORDS_MISSING`） |
+| where.files 全數 `.claude/` 下 + `--dedup-checked none --dedup-keywords "k1" "k2"` | 放行；關鍵字逐字寫入新票 Problem Analysis〈查重紀錄〉 |
 
-`--dedup-checked` 的值即查重結論本身（命中的 issue 號如 `#102`，或確認未命中的 `none`），不是純存在性旗標。
+`--dedup-checked` 的值即查重結論本身（命中的 issue 號如 `#102`，或確認未命中的 `none`），不是純存在性旗標。`none` 須附 `--dedup-keywords`（一至多組查重所用關鍵字）：未查重填 `none` 與已查重得 `none` 在票面無從區分，關鍵字留在〈查重紀錄〉供覆核。本旗標只記錄，不執行 dedup。範例：`--dedup-checked none --dedup-keywords "關鍵字一" "關鍵字二"`。
 
 **命中 issue 不等於不該建票**：`framework-issue` skill 的核心模型是「ticket 記執行，issue 記問題」。命中既有 issue 後要先判斷本票性質：
 
