@@ -15,6 +15,7 @@ from lib.git_operation_state import (
     _OP_MERGE,
     _OP_REBASE,
     _OP_REVERT,
+    _OP_UNRESOLVABLE,
 )
 
 _UNASSIGNED_LABEL = "未宣告範圍"
@@ -43,6 +44,19 @@ def _build_merge_in_progress_deny_message() -> str:
     )
 
 
+def _build_unresolvable_override_deny_message() -> str:
+    """GIT_DIR／--git-dir 覆寫值含變數或 ~ 時的 DENY 訊息。"""
+    return (
+        "[覆寫目標無法靜態解析，裸 commit 被阻擋]\n\n"
+        "理由：GIT_DIR／--git-dir（或 --work-tree）的值含變數、命令替換或 ~，"
+        "守衛無法在執行前得知實際目標倉庫，無法確認該處是否有未收尾的"
+        "合併、cherry-pick、revert 或 rebase，保守視同有進行中操作。\n\n"
+        "請把變數或 ~ 展開成字面絕對路徑後重下命令，例如：\n"
+        "  GIT_DIR=/abs/path/to/repo/.git GIT_WORK_TREE=/abs/path/to/repo git commit ...\n"
+        "字面路徑會逐一檢查該倉庫的進行中狀態，乾淨則放行。\n"
+    )
+
+
 _CONTINUE_HINTS = {
     _OP_CHERRY_PICK: ("CHERRY_PICK_HEAD", "cherry-pick", "git cherry-pick --continue", "`git rev-parse --git-path MERGE_MSG` 所指的檔案"),
     _OP_REVERT: ("REVERT_HEAD", "revert", "git revert --continue", "`git rev-parse --git-path MERGE_MSG` 所指的檔案"),
@@ -54,6 +68,8 @@ def _build_pending_operation_deny_message(op: str) -> str:
     """cherry-pick／revert／rebase 進行中時的 DENY 訊息；合併走原訊息。"""
     if op == _OP_MERGE:
         return _build_merge_in_progress_deny_message()
+    if op == _OP_UNRESOLVABLE:
+        return _build_unresolvable_override_deny_message()
     marker, noun, cont, msg_what = _CONTINUE_HINTS[op]
     return (
         f"[{noun} 進行中，裸 commit 被阻擋]\n\n"
