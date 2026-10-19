@@ -147,8 +147,8 @@ def _argv_index(node: Optional[ast.AST], env) -> Optional[int]:
     if (isinstance(idx, ast.UnaryOp) and isinstance(idx.op, ast.USub)
             and isinstance(idx.operand, ast.Constant) and isinstance(idx.operand.value, int)):
         return -idx.operand.value
-    if isinstance(idx, ast.Constant) and isinstance(idx.value, int) and not isinstance(idx.value, bool):
-        return idx.value
+    if isinstance(idx, ast.Constant) and isinstance(idx.value, int):
+        return int(idx.value)  # bool 依 Python 語意為 int（True→1、False→0）
     return None
 
 
