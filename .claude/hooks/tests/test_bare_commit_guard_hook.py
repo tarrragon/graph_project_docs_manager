@@ -1520,6 +1520,40 @@ class TestUnresolvableOverrideTargetBlocks:
         assert _run_all_targets(monkeypatch, cmd, clean, clean) == 0
 
 
+class _AllLevelsSink:
+    """記錄所有級別日誌行（setup_hook_logging 替身；沿用本檔 _Sink 的字串格式化寫法）。"""
+
+    def __init__(self):
+        self.lines = []
+
+    def _rec(self, msg, *args, **kwargs):
+        self.lines.append(msg % args if args else msg)
+
+    debug = info = warning = error = critical = exception = _rec
+
+
+class TestBlockLogWording:
+    """阻擋日誌措辭依種類分流：無法解析覆寫不得沿用「進行中」樣板（E1 對照：merge 原文不變）。"""
+
+    def _logged(self, monkeypatch, cmd, cwd, root):
+        sink = _AllLevelsSink()
+        monkeypatch.setattr(hook_module, "setup_hook_logging", lambda name: sink)
+        assert _run_all_targets(monkeypatch, cmd, cwd, root) == 2
+        return "\n".join(sink.lines)
+
+    def test_unresolvable_override_log_wording(self, monkeypatch, merging_and_clean):
+        _, clean = merging_and_clean
+        log = self._logged(monkeypatch, "GIT_DIR=$X git commit -m x", clean, clean)
+        assert "無法靜態解析" in log
+        assert "進行中" not in log
+        assert "收尾他方操作" not in log
+
+    def test_merge_in_progress_log_unchanged(self, monkeypatch, merging_and_clean):
+        merging, clean = merging_and_clean
+        log = self._logged(monkeypatch, f"git -C {merging} commit -m b", clean, clean)
+        assert "進行中，裸 commit 會收尾他方操作，阻擋" in log
+
+
 def test_every_blocking_op_has_deny_message():
     from bare_commit_guard.messages import _build_pending_operation_deny_message
 
