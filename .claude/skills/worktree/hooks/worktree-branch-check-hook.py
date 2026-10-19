@@ -45,6 +45,17 @@ try:
     )
 except ImportError as e:
     print(f"[Hook Import Warning] {Path(__file__).name}: {e}", file=sys.stderr)
+    # lib 不可用，僅用 stdlib 補寫檔案日誌（規則 4：stderr + 檔案雙通道）
+    try:
+        import os as _os
+        from datetime import datetime as _dt
+        _root = Path(_os.environ.get("CLAUDE_PROJECT_DIR") or Path(__file__).resolve().parents[4])
+        _log_dir = _root / ".claude" / "hook-logs" / "worktree-branch-check"
+        _log_dir.mkdir(parents=True, exist_ok=True)
+        with open(_log_dir / f"worktree-branch-check-{_dt.now():%Y%m%d}.log", "a", encoding="utf-8") as _fh:
+            _fh.write(f"{_dt.now():%Y-%m-%d %H:%M:%S} - worktree-branch-check - ERROR - lib import failed, fallback active: {e}\n")
+    except Exception as _log_err:
+        print(f"[Hook Import Warning] worktree-branch-check: log write failed: {_log_err}", file=sys.stderr)
     # Fallback: 最小化日誌設定，run_hook_safely 退化為直接呼叫（無 liveness 記錄）
     import logging
     def setup_hook_logging(name):
