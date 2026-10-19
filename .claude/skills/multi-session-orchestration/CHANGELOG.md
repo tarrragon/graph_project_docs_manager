@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.2.0（2026-10-19）— `references/shared-resources.md` 新增 §6「讀取各線 session 的狀態」：`~/.claude/sessions/<pid>.json` 的位置、欄位、四個狀態值（busy／shell／idle／waiting，waiting 附 waitingFor）、只讀 `*.json` 不讀 `*.key`、以 `TZ=UTC ps -o lstart=` 對 `procStart` 的存活判定（pid 可能被重複使用），以及升版後的三步確認方式；標明量測版本為 Claude Code 2.1.303、屬內部格式無相容承諾。SKILL.md〈按需讀取〉加一列路由。主控原本只能逐一傳訊詢問，而停在等用戶的線要到下一輪工具呼叫才讀得到訊息。
+
 **Version**: 1.1.0（2026-10-19）— 補兩條協調規則。〈核心原則〉新增「可預見的裁決提前問」：某線預告影響全線的行為變更、或其結果會定案一項待裁議題時，PM 在該線回報可合併前先取得用戶裁定，否則該線要多等一輪用戶回覆才能合併。〈開線與分線〉新增「驗收需要他線的分支先合併」：由分支所屬的線自行合併、結果直傳驗收方，驗收方與 PM 不代合，因為代合者不清楚該分支的狀態，合併後出問題無人能接手。兩條皆出自主控 PM 實際做過的判斷，原條文無對應，下一個主控 session 會重新判斷一次。
 
 **Version**: 1.0.1（2026-10-19）— `references/wrap-up-and-handoff.md` §3 補「PM 本身換 session 時，總表要能被 handoff 機制讀到」：交接段標題以「下個 Session 接手 Context」開頭、段內列完整票號、以最後完成的票 `--next` 指向第一張接手票、手動跑排程提示 hook 驗證。原流程只要求寫進工作日誌，交接段標題不符解析器時，CLI handoff 與 Stop hook 的同步檢查都看不到。另補建本檔。
