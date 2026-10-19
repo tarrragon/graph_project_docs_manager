@@ -1312,3 +1312,52 @@ class TestExtraCommandWriteTargets:
     ])
     def test_allowed(self, cmd, checkout, logger):
         assert _scope(cmd, checkout, logger) is None
+
+
+# ============================================================================
+# 0.5.0-W1-365.5：python heredoc／-c 以 sys.argv[n] 作為寫入目標
+# ============================================================================
+
+
+class TestPythonArgvTargets:
+    """sys.argv[n] 對應命令列引數，展開後送邊界檢查。"""
+
+    @pytest.mark.parametrize("cmd", [
+        # 386 實例：同命令內字面賦值 W，python3 - "$W" heredoc，p=sys.argv[1] 後 open
+        "W=lib/sub\npython3 - \"$W\" <<'EOF'\nimport sys\np = sys.argv[1]\nopen(p, 'w').write('x')\nEOF",
+        # 直接作寫入目標
+        "python3 - lib/a <<'EOF'\nimport sys\nopen(sys.argv[1], 'w').write('x')\nEOF",
+        # 第二個引數
+        "python3 - /tmp/x lib/b <<'EOF'\nimport sys\nopen(sys.argv[2], 'a').write('x')\nEOF",
+        # 直譯器選項不算引數
+        "python3 -u - lib/a <<'EOF'\nimport sys\nopen(sys.argv[1], 'w').write('x')\nEOF",
+        # -c 變形：[1] 為 code 之後第一個引數
+        "python3 -c \"import sys; open(sys.argv[1], 'w').write('x')\" lib/a",
+        # os.path.join 與 Path 變形
+        "python3 - lib <<'EOF'\nimport sys, os\nopen(os.path.join(sys.argv[1], 'a.dart'), 'w').write('x')\nEOF",
+        "python3 - lib <<'EOF'\nimport sys\nfrom pathlib import Path\n(Path(sys.argv[1]) / 'a').write_text('x')\nEOF",
+    ])
+    def test_denied(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is not None
+
+    @pytest.mark.parametrize("cmd", [
+        "python3 - /tmp/a <<'EOF'\nimport sys\nopen(sys.argv[1], 'w').write('x')\nEOF",
+        "python3 - lib/a <<'EOF'\nimport sys\nprint(open(sys.argv[1]).read())\nEOF",
+        # argv[0] 為 '-'，不是第一個引數
+        "python3 - lib/a <<'EOF'\nimport sys\nopen(sys.argv[0], 'w').write('x')\nEOF",
+        # 索引超出引數個數
+        "python3 - lib/a <<'EOF'\nimport sys\nopen(sys.argv[2], 'w').write('x')\nEOF",
+        "python3 -c \"import sys; open(sys.argv[1], 'w').write('x')\" /tmp/a",
+    ])
+    def test_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
+
+    @pytest.mark.parametrize("cmd,raw", [
+        # $W 未在同命令內賦值（來自前一個 Bash 呼叫）：本票固有邊界
+        ("python3 - \"$W\" <<'EOF'\nimport sys\nopen(sys.argv[1], 'w').write('x')\nEOF", "$W"),
+        ("python3 - \"$(date)x\" <<'EOF'\nimport sys\nopen(sys.argv[1], 'w').write('x')\nEOF", "$(date)x"),
+    ])
+    def test_unresolvable_argument_allowed_and_logged(self, cmd, raw, checkout, logger):
+        skipped = []
+        assert hook_module._find_scope_violation(cmd, str(checkout), logger, skipped) is None
+        assert "%s:unresolvable" % raw in skipped

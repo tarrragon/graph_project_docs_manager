@@ -129,8 +129,25 @@ def _dotted(node: ast.AST) -> str:
     return ""
 
 
+def _argv_index(node: Optional[ast.AST]) -> Optional[int]:
+    """sys.argv[<非負整數常數>] 的索引；其他節點回 None。"""
+    if not isinstance(node, ast.Subscript) or _dotted(node.value) != "sys.argv":
+        return None
+    idx = node.slice
+    if hasattr(ast, "Index") and isinstance(idx, getattr(ast, "Index")):  # Python 3.8 相容
+        idx = idx.value
+    if isinstance(idx, ast.Constant) and isinstance(idx.value, int) and idx.value >= 0:
+        return idx.value
+    return None
+
+
 def _const_path(node: Optional[ast.AST], env) -> Optional[str]:
-    """節點若為全常數的字串／Path／串接／join 運算則回傳其字面值，否則 None。"""
+    """節點若為全常數的字串／Path／串接／join 運算則回傳其字面值，否則 None。
+    sys.argv[n] 取 env["sys.argv"]（命令列引數展開後清單，含 argv[0]）的對應項。"""
+    index = _argv_index(node)
+    if index is not None:
+        argv = env.get("sys.argv") or []
+        return argv[index] if index < len(argv) else None
     if isinstance(node, ast.Constant):
         return node.value if isinstance(node.value, str) else None
     if isinstance(node, ast.Name):
@@ -183,13 +200,16 @@ def _call_write_target(call: ast.Call, env) -> Optional[str]:
     return None
 
 
-def _ast_write_targets(source: str) -> Optional[List[str]]:
-    """以 ast 追蹤常數賦值後的寫入目標；解析失敗回 None（呼叫端退回 regex）。"""
+def _ast_write_targets(source: str, argv: Optional[List[str]] = None) -> Optional[List[str]]:
+    """以 ast 追蹤常數賦值後的寫入目標；解析失敗回 None（呼叫端退回 regex）。
+    argv 為 python 命令列引數（含 argv[0]），供 sys.argv[n] 展開。"""
     try:
         tree = ast.parse(source)
     except (SyntaxError, ValueError):
         return None
     env = {}
+    if argv is not None:
+        env["sys.argv"] = argv
     assigns = sorted((n for n in ast.walk(tree) if isinstance(n, ast.Assign)),
                      key=lambda n: (n.lineno, n.col_offset))
     for node in assigns:
@@ -206,6 +226,26 @@ def _ast_write_targets(source: str) -> Optional[List[str]]:
             if target:
                 out.append(target)
     return out
+
+
+def _python_argv(tokens: List[str], env: dict) -> Optional[List[str]]:
+    """python 命令列引數（含 argv[0]），經同命令內賦值展開；非 stdin／-c 形態回 None。
+    python3 - a b：['-','a','b']；python3 -c CODE a b：['-c','a','b']；
+    其間的直譯器選項（-u、-I、-B 等）不算引數。"""
+    start = next((i for i, t in enumerate(tokens) if _PYTHON_NAME.fullmatch(_basename(t))), None)
+    if start is None:
+        return None
+    i = start + 1
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok == "-":
+            return ["-"] + [_expand_vars(t, env) for t in tokens[i + 1:]]
+        if tok.startswith("-") and not tok.startswith("--") and tok.endswith("c"):
+            return ["-c"] + [_expand_vars(t, env) for t in tokens[i + 2:]]
+        if not tok.startswith("-"):
+            return None
+        i += 1
+    return None
 
 
 def _python_sources(tokens: List[str], bodies: List[str]) -> List[str]:
@@ -882,8 +922,9 @@ def _collect_candidates(command: str, depth: int, dirs: Optional[List[Optional[s
             for text in [command[stmt.start:stmt.end]] + stmt.bodies:
                 candidates.extend(_python_write_targets(text))
             # ast 追蹤變數持有的字面路徑；解析失敗時只保留上列 regex 結果（不放寬、不改擋）
+            argv = _python_argv(stmt.tokens, env)
             for source in _python_sources(stmt.tokens, stmt.bodies):
-                candidates.extend(_ast_write_targets(source) or [])
+                candidates.extend(_ast_write_targets(source, argv) or [])
         sync()
         script = _inline_script(stmt.tokens) if depth < _MAX_HEREDOC_RECURSION else None
         if script is not None:
