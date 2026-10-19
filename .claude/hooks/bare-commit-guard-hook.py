@@ -289,7 +289,7 @@ ticket_id 讀票面現行 where.files 並取代該筆的 `files`，下游判定�
 import json
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -473,19 +473,36 @@ def main() -> int:
         logger.debug("命令不含 git commit 呼叫，放行")
         return 0
 
-    # 多語句內含多筆 git commit 呼叫時，僅處理第一筆——沿用本 hook 原始
-    # regex 設計的隱含假設（單一命令對應單一相關 commit），無測試涵蓋
-    # 多筆呼叫各自獨立判定的情境，範疇邊界非本次收斂目標。
-    invocation: GitInvocation = invocations[0]
-
-    if _has_amend_exemption(invocation.args):
-        logger.debug("命令含 --amend，放行")
-        return 0
-
+    # 進行中操作偵測取「全部目標聯集」，在任何單筆豁免之前完成；
+    # 之後逐筆判定，任一筆回 2 即擋（--amend 只豁免該筆）。
     pending = _pending_operation_in_dirs(
         _resolve_detect_dirs_multi(input_data.get("cwd"), invocations, project_root),
         logger,
     )
+    rebase_warned = False
+    for invocation in invocations:
+        if _has_amend_exemption(invocation.args):
+            logger.debug("該筆 commit 含 --amend，豁免該筆")
+            continue
+        if pending == _OP_REBASE_EDIT and not rebase_warned:
+            logger.info("rebase edit 停下，WARN 後續行正常判定")
+            print(_build_rebase_edit_warn_message(), file=sys.stderr)
+            rebase_warned = True
+        rc = _judge_invocation(invocation, pending, dispatches, project_root, logger)
+        if rc != 0:
+            return rc
+    return 0
+
+
+def _judge_invocation(
+    invocation: GitInvocation,
+    pending: Optional[str],
+    dispatches: list,
+    project_root: Path,
+    logger,
+) -> int:
+    """單筆 commit 判定鏈（非 --amend）：回 2 阻擋、0 放行（可能附 WARN）。"""
+    dispatch_count = len(dispatches)
     if pending in _BLOCKING_OPS:
         if pending == _OP_UNRESOLVABLE:
             logger.warning("覆寫目標無法靜態解析，保守阻擋")
@@ -493,9 +510,6 @@ def main() -> int:
             logger.warning("%s 進行中，裸 commit 會收尾他方操作，阻擋", pending)
         print(_build_pending_operation_deny_message(pending), file=sys.stderr)
         return 2
-    if pending == _OP_REBASE_EDIT:
-        logger.info("rebase edit 停下，WARN 後續行正常判定")
-        print(_build_rebase_edit_warn_message(), file=sys.stderr)
 
     if _has_all_exemption(invocation.args):
         if dispatch_count == 0:
