@@ -59,6 +59,9 @@
 # 派發前章節 Problem Analysis / Context Bundle 例外允許 pending 直寫（PM bookkeeping，不需 --force）
 /ticket track append-log <id> --section "Problem Analysis" "內容"
 /ticket track append-log <id> --section "Context Bundle" "PCB 內容（派發前分析結果，PC-040）"
+# --content-file <path>：自檔案逐字讀取內容，與位置參數 content 擇一（同時給或都不給即拒絕；
+# 讀檔失敗非 0 結束且票面不變）。內容不經命令列，適用含反引號、$(...)、git 命令形態而被 runtime 拒絕的長文；可與 --replace 併用
+/ticket track append-log <id> --section "Solution" --content-file <path>
 #
 # Section 標題容錯（W17-008.9）：
 # - 標題比對採 MULTILINE + \s+ 容許多空白 + \s*$ 容尾空白
