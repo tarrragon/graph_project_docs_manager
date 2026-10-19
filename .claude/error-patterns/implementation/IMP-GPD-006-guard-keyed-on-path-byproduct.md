@@ -13,7 +13,7 @@ status: active
 - **分類**: 實作（implementation）
 - **風險等級**: 高（同一判定點兩個方向都錯：合法操作被擋，違規操作被放行；且成功案例遮蔽缺陷）
 - **來源版本**: 0.5.0
-- **相關 Pattern**: DOC-GPD-005（判準以類別名為鍵，新成員繼承舊裁決；本模式的鍵是副產物而非類別名）、PC-169（合併中斷後的空合併 commit；同樣與 MERGE_HEAD 有關，但屬操作流程，不是判定依據）
+- **相關 Pattern**: DOC-GPD-005（判準以類別名為鍵，新成員繼承舊裁決；本模式的鍵是副產物而非類別名）、PC-169（合併中斷後的空合併 commit；同樣與 MERGE_HEAD 有關，但屬操作流程，不是判定依據）、IMP-GPD-008（守衛只認得無全域選項的 git 字面；與本模式的變體共用「框架規範寫法正是守衛的盲區」這一層未發現機制）
 
 ---
 
@@ -53,6 +53,24 @@ CAS 合併多數只動到豁免路徑（框架檔、文件），豁免路徑本�
 | MERGE_HEAD 殘留，單 parent 提交 | 放（誤放） | 擋 |
 | `git merge` 雙 parent | 放 | 放 |
 | `git merge --squash` 單 parent | 擋 | 擋 |
+
+---
+
+## 變體：以執行者的位置推導判定範圍
+
+**核心**：判定依據取自「執行者在哪裡」，不是「被寫入的目標在哪裡」，屬同一根因的另一種代理屬性。
+
+- **症狀**：Bash 寫入邊界守衛以 payload 的 cwd 推導所屬 checkout，只把落在該 checkout（及其內嵌 worktree 目錄）的路徑換算成相對路徑再判定範圍。worktree 工具的預設版面是主 checkout 同層的 `<repo>-<ticket>` 目錄；派發的代理人以主 checkout 為 cwd、用絕對路徑寫同層 worktree 時，目標不在 cwd 所屬 checkout 內，守衛換算失敗後直接放行，連最基本的 `echo x > <worktree>/lib/a` 也放行。反方向（cwd 在同層 worktree、絕對路徑寫主 checkout）同樣放行
+- **根因對照**：
+
+| 依據 | 性質 | 同層 worktree 版面下的值 |
+|------|------|----------------------|
+| cwd 所屬 checkout | 執行者的位置 | 主 checkout，與目標無關 |
+| 目標路徑所屬 checkout，且與 cwd 同屬一個 repository（git common dir 相同） | 被寫入目標本身的屬性 | 同層 worktree，判定成立 |
+
+- **為何未被發現**：測試 fixture 只建守衛假設的版面（cwd 即 worktree、或 worktree 在 checkout 內的子目錄），而框架的標準派發版面正是守衛不認得的形態。這與 IMP-GPD-008 的未發現機制同構：框架規範的寫法（`git -C`、同層 worktree 加絕對路徑）是守衛最常遇到、也最先失效的輸入
+- **解法**：對每個解析後的絕對路徑找出它自身所屬的 checkout 根，以 git common dir 比對是否與 cwd 所屬 checkout 同一個 repository；同 repo 即以目標的 checkout 為根套用既有範圍判定。common dir 直接讀 `.git` 目錄或 gitlink 檔的 `commondir`，不在熱路徑呼叫 git 子行程
+- **預防**：守衛測試的 fixture 至少要有一筆採用框架工具實際產生的版面（例如以 worktree 工具或 `git worktree add` 建出的真實同層 worktree），不能只用守衛自己假設的目錄結構
 
 ---
 
