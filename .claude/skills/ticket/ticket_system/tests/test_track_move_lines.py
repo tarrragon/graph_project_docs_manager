@@ -127,6 +127,68 @@ class TestRejections:
         assert _run(tmp_path, _args("1-1", "end", dst="a.md")) != 0
         assert _snapshot(tmp_path) == before
 
+    def test_permissions_preserved_on_success(self, tmp_path):
+        _setup(tmp_path)
+        for name in ("a.md", "b.md"):
+            (tmp_path / name).chmod(0o755)
+        assert _run(tmp_path, _args("1-1", "end")) == 0
+        for name in ("a.md", "b.md"):
+            assert (tmp_path / name).stat().st_mode & 0o777 == 0o755
+
+    def test_permissions_preserved_on_restore(self, tmp_path):
+        _setup(tmp_path)
+        for name in ("a.md", "b.md"):
+            (tmp_path / name).chmod(0o755)
+        real_replace = track_move_lines.os.replace
+
+        def fail_on_dst(tmp, final):
+            if str(final).endswith("b.md"):
+                raise OSError("injected")
+            return real_replace(tmp, final)
+
+        with patch.object(track_move_lines.os, "replace", side_effect=fail_on_dst):
+            assert _run(tmp_path, _args("1-1", "end")) != 0
+        for name in ("a.md", "b.md"):
+            assert (tmp_path / name).stat().st_mode & 0o777 == 0o755
+
+    def test_line_boundary_is_newline_only(self, tmp_path):
+        (tmp_path / "a.md").write_bytes(b"a1\na\x0c2\na3\n")
+        (tmp_path / "b.md").write_bytes(b"b1\n")
+        assert _run(tmp_path, _args("2-2", "end")) == 0
+        assert (tmp_path / "a.md").read_bytes() == b"a1\na3\n"
+        assert (tmp_path / "b.md").read_bytes() == b"b1\na\x0c2\n"
+
+    def test_restore_failure_gives_clear_message(self, tmp_path, capsys):
+        _setup(tmp_path)
+        real_replace = track_move_lines.os.replace
+        calls = {"a": 0}
+
+        def fail(tmp, final):
+            if str(final).endswith("b.md"):
+                raise OSError("injected dst")
+            if str(final).endswith("a.md"):
+                calls["a"] += 1
+                if calls["a"] >= 2:
+                    raise OSError("injected restore")
+            return real_replace(tmp, final)
+
+        with patch.object(track_move_lines.os, "replace", side_effect=fail):
+            rc = _run(tmp_path, _args("1-1", "end"))
+        out = capsys.readouterr().out
+        assert rc != 0
+        assert "還原失敗" in out and "備份" in out
+
+    def test_fullwidth_digits_rejected(self, tmp_path):
+        _setup(tmp_path)
+        assert _run(tmp_path, _args("１-２", "end")) != 0
+        assert _run(tmp_path, _args("1-1", "１")) != 0
+
+    def test_crlf_file_keeps_crlf_when_filling_newline(self, tmp_path):
+        (tmp_path / "a.md").write_bytes(b"a1\r\na2\r\n")
+        (tmp_path / "b.md").write_bytes(b"b1\r\nb2")
+        assert _run(tmp_path, _args("1-1", "end")) == 0
+        assert (tmp_path / "b.md").read_bytes() == b"b1\r\nb2\r\na1\r\n"
+
     def test_missing_ticket(self, tmp_path):
         _setup(tmp_path)
         with patch.object(track_move_lines, "load_ticket", return_value=None):

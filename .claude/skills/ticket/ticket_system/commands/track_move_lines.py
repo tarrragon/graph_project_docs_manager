@@ -20,6 +20,7 @@ if __name__ == "__main__":
 
 import argparse
 import os
+import stat
 import tempfile
 from typing import List, Optional, Tuple
 
@@ -41,7 +42,7 @@ class MoveLinesError(Exception):
 def _parse_range(text: str, total: int) -> Tuple[int, int]:
     """解析 `起-迄`（1 起算、含兩端），回傳 0 起算的 [start, end) 切片界線。"""
     parts = text.split("-")
-    if len(parts) != 2 or not all(p.isdigit() for p in parts):
+    if len(parts) != 2 or not all(p.isdecimal() and p.isascii() for p in parts):
         raise MoveLinesError(f"--lines 格式須為 <起>-<迄>，收到 {text!r}")
     first, last = int(parts[0]), int(parts[1])
     if first < 1 or last < first or last > total:
@@ -53,13 +54,30 @@ def _parse_at(text: str, dst_total: int) -> int:
     """解析 --at，回傳 0 起算的插入索引；end 為檔尾。"""
     if text == "end":
         return dst_total
-    if not text.isdigit() or not 1 <= int(text) <= dst_total + 1:
+    if not (text.isdecimal() and text.isascii()) or not 1 <= int(text) <= dst_total + 1:
         raise MoveLinesError(f"--at 須為 1..{dst_total + 1} 或 end，收到 {text!r}")
     return int(text) - 1
 
 
-def _with_newline(line: str) -> str:
-    return line if line.endswith("\n") else line + "\n"
+def _split_lines(text: str) -> List[str]:
+    """只以 \\n 為行界並保留換行（與 grep -n 的行號一致）。"""
+    parts = text.split("\n")
+    lines = [p + "\n" for p in parts[:-1]]
+    if parts[-1]:
+        lines.append(parts[-1])
+    return lines
+
+
+def _eol_of(lines: List[str]) -> str:
+    """該檔既有換行風格：首個帶換行的行為 CRLF 則 CRLF，否則 LF。"""
+    for ln in lines:
+        if ln.endswith("\n"):
+            return "\r\n" if ln.endswith("\r\n") else "\n"
+    return "\n"
+
+
+def _with_newline(line: str, eol: str = "\n") -> str:
+    return line if line.endswith("\n") else line + eol
 
 
 def _plan_move(
@@ -69,11 +87,12 @@ def _plan_move(
 
     搬移段或其前一行缺結尾換行時補上，使行邊界不因拼接而合併。
     """
-    moved = [_with_newline(ln) for ln in src_lines[start:stop]]
+    src_eol, dst_eol = _eol_of(src_lines), _eol_of(dst_lines)
+    moved = [_with_newline(ln, src_eol) for ln in src_lines[start:stop]]
     new_src = src_lines[:start] + src_lines[stop:]
     head = dst_lines[:at]
     if head:
-        head[-1] = _with_newline(head[-1])
+        head[-1] = _with_newline(head[-1], dst_eol)
     return new_src, head + moved + dst_lines[at:], moved
 
 
@@ -91,12 +110,13 @@ def _verify_conservation(
         raise MoveLinesError("目標內的搬移段與抽出段不逐字相同")
 
 
-def _stage_temp(path: str, content: bytes) -> str:
-    """在 path 同目錄寫暫存檔並回傳其路徑。"""
+def _stage_temp(path: str, content: bytes, mode: int) -> str:
+    """在 path 同目錄寫暫存檔（權限設為 mode）並回傳其路徑。"""
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".move-lines-")
     try:
         with os.fdopen(fd, "wb") as fh:
             fh.write(content)
+        os.chmod(tmp, mode)
     except BaseException:
         os.unlink(tmp)
         raise
@@ -105,43 +125,59 @@ def _stage_temp(path: str, content: bytes) -> str:
 
 def _write_both(src: str, dst: str, new_src: bytes, new_dst: bytes,
                 old_src: bytes) -> None:
-    """暫存檔 rename 寫入兩檔；任一步失敗則還原來源並清除暫存檔。"""
+    """暫存檔 rename 寫入兩檔（保留原權限）；失敗則以預先備份還原來源。
+
+    還原本身失敗時保留備份檔並在訊息寫明兩檔狀態與備份位置。
+    """
+    src_mode = stat.S_IMODE(os.stat(src).st_mode)
+    dst_mode = stat.S_IMODE(os.stat(dst).st_mode)
     tmps: List[str] = []
-    src_replaced = False
     try:
-        tmp_src = _stage_temp(src, new_src)
+        tmp_src = _stage_temp(src, new_src, src_mode)
         tmps.append(tmp_src)
-        tmp_dst = _stage_temp(dst, new_dst)
+        tmp_dst = _stage_temp(dst, new_dst, dst_mode)
         tmps.append(tmp_dst)
+        backup = _stage_temp(src, old_src, src_mode)
+        tmps.append(backup)
+    except OSError as exc:
+        _cleanup(tmps)
+        raise MoveLinesError(f"寫入前置失敗，兩檔未動：{exc}") from exc
+    try:
         os.replace(tmp_src, src)
-        src_replaced = True
         os.replace(tmp_dst, dst)
     except OSError as exc:
-        if src_replaced:
-            _restore(src, old_src)
-        raise MoveLinesError(f"寫入失敗，兩檔已還原：{exc}") from exc
-    finally:
-        for tmp in tmps:
-            if os.path.exists(tmp):
-                os.unlink(tmp)
+        _recover(src, dst, backup, tmps, exc)
+    _cleanup(tmps)
 
 
-def _restore(path: str, content: bytes) -> None:
-    """以暫存檔 rename 還原 path 原內容（還原失敗再退回直接覆寫）。"""
-    tmp = _stage_temp(path, content)
+def _recover(src: str, dst: str, backup: str, tmps: List[str],
+             cause: OSError) -> None:
+    """寫入失敗後以備份還原來源；一律拋 MoveLinesError。"""
     try:
-        os.replace(tmp, path)
-    except OSError:
-        with open(path, "wb") as fh:
-            fh.write(content)
-        os.unlink(tmp)
+        os.replace(backup, src)
+    except OSError as restore_exc:
+        tmps.remove(backup)  # 保留備份供人工還原
+        _cleanup(tmps)
+        raise MoveLinesError(
+            f"寫入失敗（{cause}）且還原失敗（{restore_exc}）。"
+            f"dst 未被改動：{dst}；src 可能已是搬移後內容：{src}；"
+            f"src 原始內容備份：{backup}"
+        ) from restore_exc
+    _cleanup(tmps)
+    raise MoveLinesError(f"寫入失敗，兩檔已還原：{cause}") from cause
+
+
+def _cleanup(tmps: List[str]) -> None:
+    for tmp in tmps:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def _read_lines(path: str) -> Tuple[bytes, List[str]]:
     try:
         with open(path, "rb") as fh:
             raw = fh.read()
-        return raw, raw.decode("utf-8").splitlines(keepends=True)
+        return raw, _split_lines(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError) as exc:
         raise MoveLinesError(f"無法讀取 {path}：{exc}") from exc
 
