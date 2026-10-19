@@ -17,6 +17,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 _HOOK_FILE = (
     Path(__file__).resolve().parent.parent
     / "hooks"
@@ -222,6 +224,45 @@ class TestRunGitCommandFailureLogging:
             result = hook.run_git_command(["status"])
         assert result == (True, "x")
         assert caplog.text == ""
+
+
+class TestCommandRecognition:
+    """0.5.0-W1-331：以共用解析辨識 git 子命令，不做子字串比對。"""
+
+    @pytest.mark.parametrize("cmd", [
+        "git push origin main",
+        "git -C /repo push origin main",
+        "git -C /repo merge feat/x",
+        "git -C /repo cherry-pick abc123",
+        "git -c user.name=x -C /repo push",
+        "cd /repo && git -C . push",
+    ])
+    def test_e1_triggers(self, cmd):
+        assert hook.should_check_git_operation(cmd) is True
+
+    @pytest.mark.parametrize("cmd", [
+        "echo 'git push origin main'",
+        'echo "git -C /repo merge x"',
+        'ticket create --why "git push 字樣"',
+        "git status",
+        "git -C /repo log",
+    ])
+    def test_e2_does_not_trigger(self, cmd):
+        assert hook.should_check_git_operation(cmd) is False
+
+    def test_unparseable_fails_open_and_logs(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            assert hook.should_check_git_operation("git push 'unclosed") is False
+        assert "無法解析" in caplog.text
+
+    @pytest.mark.parametrize("cmd,expected", [
+        ("git -C /repo merge x", True),
+        ("git -C /repo cherry-pick x", True),
+        ("git -C /repo push", False),
+        ("echo 'git merge x'", False),
+    ])
+    def test_is_merge_or_cherry_pick(self, cmd, expected):
+        assert hook.is_merge_or_cherry_pick(cmd) is expected
 
 
 class TestMainInputParsing:
