@@ -443,7 +443,8 @@ ticket track complete 0.19.0-W3-032.1 --as <agent-name>
 
 ---
 
-**Last Updated**: 2026-10-15
+**Last Updated**: 2026-10-20
+**Version**: 1.46.0 — `agent-dispatch-testing.md`〈測試入口〉佔位符由 `<root>`（專案根）改為 `<checkout>`（執行測試所在 checkout 的根，linked worktree 內為該 worktree 路徑），並補單檔或相關測試檔的指令示例。原定義在 worktree 內會被代入主倉庫路徑，改跑主倉庫的程式碼而 worktree 內的修改未被測到，結果照樣綠燈；新寫法與 hooks conftest 缺依賴時提示的指令字面一致。
 **Version**: 1.45.0 — 〈全套件回報規格（TEST-BAL-006）〉改寫為〈全套件由合併閘門執行，代理人只跑相關測試檔〉：測試命令引用〈測試入口〉，局部執行須明寫；驗收方合併前只驗相關測試檔，complete 時讀合併閘門結束行；原對帳格式保留為「任務明確要求代理人跑全套件」例外情境與核對全套件回報之用。「填空檢查清單」對應列同步。
 **Version**: 1.44.0 — 〈worktree 派發收尾指引〉由「用 finish 別名避開 complete 誤判」改寫為「complete 由 PM 於合併後執行」：隔離代理人止於 worktree commit，PM 以 set-who 後 complete 收尾且不代填自檢；開頭骨架說明句同步（用戶裁決，2026-10-14）
 **Version**: 1.43.0 — 〈終止長時間測試後驗證子程序已退出約束句〉制式句開頭補兩行：測試逾時一律經 `run-with-timeout.py` 啟動、禁用 `timeout`／`alarm` 加 `exec`／背景 `sleep` 後 `kill` 單一 PID 與 `pkill`／`killall`；並新增「逾時須經包裝腳本」三明示段（逾時當下無終止動作可觸發自檢，殘留只能在啟動方式上預防；清理改用 `orphan-test-procs.py`）
