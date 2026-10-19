@@ -404,21 +404,33 @@ def _scan_tee(toks: List[str], j: int, out: List[str]) -> int:
     return len(toks)
 
 
-def _scan_statement_tokens(toks: List[str], out: List[str]) -> None:
+_ENV_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+_GIT_OPTS_WITH_ARG = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
+
+
+def _is_git_mv(toks: List[str]) -> bool:
+    """陳述的命令字為 git（略過前置 env 賦值與 git 全域選項）且子命令為 mv。"""
     j = 0
-    seen_git = False
+    while j < len(toks) and _ENV_ASSIGN.match(toks[j]):
+        j += 1
+    if j >= len(toks) or _basename(toks[j]) != "git":
+        return False
+    j += 1
+    while j < len(toks) and toks[j].startswith("-"):
+        j += 2 if toks[j] in _GIT_OPTS_WITH_ARG else 1
+    return j < len(toks) and toks[j] == "mv"
+
+
+def _scan_statement_tokens(toks: List[str], out: List[str]) -> None:
+    if _is_git_mv(toks):
+        return  # git mv 是版本控制內的搬移（deny 訊息指定的正規做法），不是 shell 寫入
+    j = 0
     while j < len(toks):
         name = _basename(toks[j])
-        if name == "git":
-            seen_git = True
-            j += 1
-        elif name == "sed":
+        if name == "sed":
             j = _scan_sed(toks, j + 1, out)
         elif name == "perl":
             j = _scan_perl(toks, j + 1, out)
-        elif name == "mv" and seen_git:
-            # git mv 是版本控制內的搬移（deny 訊息指定的正規做法），不是 shell 寫入
-            j = len(toks)
         elif name in ("cp", "mv"):
             j = _scan_cp_mv(toks, j + 1, out)
         elif name == "tee":
@@ -535,13 +547,15 @@ _EXEMPT_COMPONENTS = frozenset({
     ".venv", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".dart_tool",
 })
 
-# .claude 底下的本地執行期產物（清單來源：.gitignore 的「Claude 框架本地執行期產物」段）
+# .claude 底下的本地執行期產物。只保留「無任何 hook／閘門／CLI 讀為判定輸入、
+# 也不注入模型 context」者（逐項 grep 讀取方複核後的結果）。
+# 已移除：settings.local.json、dispatch-active.json／.lock、hook-state、state、handoff、
+# hook-logs、logs、.sync-state.json、.version-release.yaml（皆有讀取方）。
 _EXEMPT_CLAUDE_ENTRIES = frozenset({
-    ".sync-conflicts", ".sync-state.json", ".version-release.yaml", ".zhtw-mcp-skip",
+    ".sync-conflicts", ".zhtw-mcp-skip",
     "ARCHITECTURE_REVIEW_REQUIRED", "PM_INTERVENTION_REQUIRED", "TASK_AVOIDANCE_FIX_MODE",
-    "analyses", "dispatch-active.json", "dispatch-active.lock", "handoff", "hook-logs",
-    "hook-state", "logs", "migration-backups", "plans", "pm-status.json",
-    "scheduled_tasks.lock", "settings.local.json", "state", "tool-results",
+    "analyses", "migration-backups", "plans", "pm-status.json",
+    "scheduled_tasks.lock", "tool-results",
 })
 
 _WORKTREE_PREFIX = ".claude/worktrees/"
@@ -593,7 +607,8 @@ def _scope_hit(rel: str) -> bool:
     parts = [p for p in rel.split("/") if p]
     if not parts or parts[0] not in _SCOPE_TOP_DIRS:
         return False
-    if any(p in _EXEMPT_COMPONENTS for p in parts):
+    # 建置快取只在 .claude 之外豁免：.claude/hooks／lib 下的 .pyc 會在 hook 執行時載入
+    if parts[0] != ".claude" and any(p in _EXEMPT_COMPONENTS for p in parts):
         return False
     if parts[0] == ".claude" and len(parts) > 1 and parts[1] in _EXEMPT_CLAUDE_ENTRIES:
         return False
@@ -683,7 +698,7 @@ def main() -> int:
             "lib/、test/、integration_test/、.claude/** 禁止透過 Bash"
             "（cat/printf/tee/sed -i/python open()/cp/mv/重導向）寫入。"
             "請改用 Edit 或 Write 工具修改檔案；搬移已追蹤的檔案用 git mv。"
-            "本地執行期產物（.venv、__pycache__、.claude/hook-logs 等）不受此限。"
+            "lib/ 等處的建置快取（.dart_tool 等）與少數無讀取方的 .claude 本地產物不受此限。"
             "若這是你自己在 ! 命令中執行的操作，同樣會被擋，請改請 Claude 以 Edit 完成。"
             "若是本 hook 自身異常而誤擋正常命令，改用 Edit 修正 "
             ".claude/hooks/bash-write-boundary-guard-hook.py（Edit 不受本 hook 影響）。"

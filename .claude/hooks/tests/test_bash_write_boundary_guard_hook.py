@@ -582,19 +582,23 @@ class TestScopeViolationAllowed:
         # worktree 目錄本身與其範圍外內容
         "echo x > .claude/worktrees/w2/notes.txt",
         # 建置與快取產物
-        "cp a.pyc .claude/hooks/__pycache__/a.pyc",
-        "echo x > .claude/hooks/.venv/pyvenv.cfg",
-        "echo x > .claude/hooks/.pytest_cache/v",
+        "echo x > .venv/pyvenv.cfg",
+        "echo x > .pytest_cache/v",
         "echo x > lib/.dart_tool/x",
         # 執行期狀態檔（.gitignore 列出的 .claude 本地產物）
-        "echo x > .claude/hook-logs/foo/a.log",
-        "echo '{}' > .claude/dispatch-active.json",
-        "echo x > .claude/dispatch-active.lock",
-        "echo x > .claude/hook-state/s.json",
-        "echo x > .claude/state/s.json",
         "echo x > .claude/pm-status.json",
         "echo x > .claude/plans/p.md",
-        "echo x > .claude/handoff/h.json",
+        "touch .claude/.zhtw-mcp-skip",
+        "echo x > .claude/.zhtw-mcp-skip",
+        # 例行作業：路徑不出現在命令文字
+        "uv --directory .claude/hooks run pytest tests/test_x.py -q",
+        "uv --directory .claude/hooks run pytest tests/test_x.py -q 2>&1 | tail -20",
+        "ticket track claim 0.5.0-W1-1 --as x",
+        "doc validate",
+        "git worktree add .claude/worktrees/x",
+        "git mv a.md b.md",
+        "git -C . mv a.md b.md",
+        "GIT_X=1 git -c core.a=b -C . mv a.md b.md",
         # 一般文件與其他目錄
         "echo x > docs/notes.md",
         "cat lib/a.dart",
@@ -757,3 +761,45 @@ class TestDenyMessage:
         out = capsys.readouterr().out
         assert "Edit" in out and "Write" in out and "git mv" in out
         assert "test/a_test.dart" in out
+
+
+class TestExemptionNarrowing:
+    """0.5.0-W1-369：收窄後的豁免。E2 應擋輸入、E1 例行放行見 TestScopeViolationAllowed。"""
+
+    @pytest.mark.parametrize("target", [
+        ".claude/settings.local.json",
+        ".claude/dispatch-active.json", ".claude/dispatch-active.lock",
+        ".claude/hook-state/s.json", ".claude/state/s.json", ".claude/handoff/h.json",
+        ".claude/hook-logs/foo/a.log", ".claude/logs/worktree-merge.log",
+        ".claude/.sync-state.json", ".claude/.version-release.yaml",
+    ])
+    def test_state_files_with_readers_denied(self, target, checkout, logger):
+        assert _scope(f"echo x > {target}", checkout, logger) == target
+
+    @pytest.mark.parametrize("target", [
+        ".claude/hooks/__pycache__/a.pyc", ".claude/hooks/.venv/pyvenv.cfg",
+        ".claude/lib/__pycache__/a.pyc", ".claude/skills/ticket/.venv/x",
+        ".claude/hooks/tests/__pycache__/a.pyc",
+    ])
+    def test_build_artifacts_under_claude_denied(self, target, checkout, logger):
+        assert _scope(f"echo x > {target}", checkout, logger) == target
+
+    def test_cp_pyc_into_hooks_denied(self, checkout, logger):
+        t = ".claude/hooks/__pycache__/a.pyc"
+        assert _scope(f"cp a.pyc {t}", checkout, logger) == t
+
+    @pytest.mark.parametrize("cmd", [
+        "echo git; mv x .claude/y",
+        "git status && mv x .claude/y",
+        "git log | mv x .claude/y",
+        "echo git mv; cp x .claude/y",
+    ])
+    def test_non_command_word_git_does_not_exempt_mv(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) == ".claude/y"
+
+    @pytest.mark.parametrize("cmd", [
+        "git mv x .claude/y", "git -C . mv x .claude/y",
+        "FOO=1 git --no-pager mv x .claude/y", "git -c a=b mv x .claude/y",
+    ])
+    def test_git_mv_command_word_still_exempt(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
