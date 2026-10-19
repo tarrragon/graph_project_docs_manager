@@ -31,6 +31,7 @@ Hook 類型：PreToolUse
 
 import os
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
@@ -65,9 +66,9 @@ worktree: {path}
 （git fsck 無 unreachable）。這正是 1.2.0-W1-028 事故一的根因。
 
 修復方式（擇一）：
-  1. 先 merge：git checkout main && git merge {branch} --no-edit
-     若被擋下（fatal: ref updates aborted by hook）：git merge --abort 清理
-     MERGE_HEAD 殘局後依 stderr 訊息修正重試（合併本身已對 branch-verify
+  1. 先 merge（走合併閘門，隔離索引一步完成，不留 MERGE_HEAD 殘局）：
+       {merge_cmd}
+     若被擋下，依 stderr 訊息修正後重試（合併本身已對 branch-verify
      豁免，仍被擋通常是其他內容 guard，如 reference-stability-rule8）
   2. 或 cherry-pick 有價值 commit 後再 remove
   3. 用世界平面固定值驗證交付物已在 main（tool-output-trust 規則 3）：
@@ -98,7 +99,26 @@ def _split_dirty_lines(dirty_lines: List[str]) -> Tuple[List[str], List[str]]:
     return untracked, tracked_modified
 
 
-def _format_dirty_block_message(path: str, branch: Optional[str], dirty_lines: List[str]) -> str:
+def _merge_command(branch: Optional[str], logger) -> str:
+    """落地 main 的建議指令（`/worktree merge`）。
+
+    lazy import worktree_manager：本 hook 是阻擋型守衛，不為建議字串在載入期
+    引入約 2000 行模組的 import 失敗點；失敗時退回通用字面並記 warning。
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from worktree_manager import merge_suggestion_command
+        if branch:
+            return merge_suggestion_command(branch)
+    except Exception as exc:  # 建議字串不得使守衛失效；已記日誌後退回
+        logger.warning("無法載入 worktree_manager，建議退回通用字面：%s", exc)
+    target = shlex.quote(branch) if branch else "<branch>"
+    return "/worktree merge --branch {}".format(target)
+
+
+def _format_dirty_block_message(
+    path: str, branch: Optional[str], dirty_lines: List[str], logger
+) -> str:
     """組出 Guard C（未提交變更）阻擋訊息。
 
     0.2.1-W3-285 三項修正：(a) 依未追蹤/已追蹤分組列出檔案，比照
@@ -135,10 +155,9 @@ def _format_dirty_block_message(path: str, branch: Optional[str], dirty_lines: L
         "       git -C {} diff --cached --name-only   # 確認只含目標檔".format(path),
         '       git -C {} commit -m "<message>"'.format(path),
     ])
-    if branch:
-        lines.append("       git merge {} --no-edit".format(branch))
-    else:
-        lines.append("       git merge <branch> --no-edit   # <branch> 為此 worktree 對應分支")
+    lines.append("       {}".format(_merge_command(branch, logger)))
+    if not branch:
+        lines.append("       # <branch> 為此 worktree 對應分支")
     lines.extend([
         "  2. 確認變更確為可捨棄（如暫存/測試殘留）後清除：",
         "       git -C {} restore .   # 還原已追蹤檔案的未提交修改".format(path),
@@ -277,7 +296,10 @@ def _guard_a(path: str, branch: Optional[str], logger) -> Optional[str]:
 
     files_list = "\n".join("  - {}".format(f) for f in sorted(files))
     logger.warning("阻擋 remove：分支 %s 有 %d 個未合併交付物檔案", branch, len(files))
-    return BLOCK_MESSAGE.format(path=path, branch=branch, count=len(files), files=files_list)
+    return BLOCK_MESSAGE.format(
+        path=path, branch=branch, count=len(files), files=files_list,
+        merge_cmd=_merge_command(branch, logger),
+    )
 
 
 def _guard_c(path: str, branch: Optional[str], logger) -> Optional[str]:
@@ -294,7 +316,7 @@ def _guard_c(path: str, branch: Optional[str], logger) -> Optional[str]:
         return None
 
     logger.warning("阻擋 remove：worktree %s 有 %d 項未提交變更", path, len(dirty_lines))
-    return _format_dirty_block_message(path, branch, dirty_lines)
+    return _format_dirty_block_message(path, branch, dirty_lines, logger)
 
 
 # 表驅動 Guard 清單：新增 Guard 只需在此 tuple 加一個元素，不需在 main() 加分支。

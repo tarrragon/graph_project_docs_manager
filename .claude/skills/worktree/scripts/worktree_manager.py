@@ -267,6 +267,17 @@ def extract_ticket_id_from_branch(branch: str) -> Optional[str]:
     return None
 
 
+def merge_suggestion_command(branch: str) -> str:
+    """分支名轉為經合併閘門的 `/worktree merge` 建議字串（供 hook 提示使用）。
+
+    feat/<ticket-id> 印 ticket 形式，其餘分支印 `--branch <quoted>`。
+    """
+    ticket_id = extract_ticket_id_from_branch(branch)
+    if ticket_id:
+        return f"/worktree merge {ticket_id}"
+    return f"/worktree merge --branch {shlex.quote(branch)}"
+
+
 def get_worktree_ahead_behind(branch: str, base: str = DEFAULT_BASE_BRANCH) -> tuple[int, int]:
     """
     計算分支相對於 base 的 ahead/behind commit 數
