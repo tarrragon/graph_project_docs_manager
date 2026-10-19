@@ -632,7 +632,7 @@ class TestScopeUnparseableFailOpen:
     """動態組成的路徑無法靜態判定：放行並記錄為殘留風險（盤點表列）。"""
 
     @pytest.mark.parametrize("cmd", [
-        "python3 -c \"p='li'+'b/a.dart'; open(p,'w')\"",
+        "python3 -c \"p=input()+'/a.dart'; open(p,'w')\"",
         "echo x > $(pwd)/lib/a.dart",
         "echo x > `pwd`/lib/a.dart",
         "echo x > $OTHER/lib/a.dart",
@@ -1020,3 +1020,57 @@ class TestDenyMessageNoBangClaim:
         out = capsys.readouterr().out
         assert "同樣會被擋" not in out
         assert "不經過本 hook" in out
+
+
+# ============================================================================
+# 0.5.0-W1-365.1：python 內嵌腳本以 ast 追蹤「變數持有字面路徑後寫入」
+# ============================================================================
+
+_AST_WRITE_BODIES = {
+    "var_open_w": "p = '.claude/skills/x.md'\nopen(p, 'w').write('x')",
+    "path_var_write_text": "from pathlib import Path\np = Path('lib/x.dart')\np.write_text('x')",
+    "concat_open": "open('lib/' + 'x.dart', 'w')",
+    "path_div_write_bytes": "from pathlib import Path\nq = Path('lib') / 'x.dart'\nq.write_bytes(b'x')",
+    "os_path_join": "import os\np = os.path.join('lib', 'x.dart')\nopen(p, 'a')",
+    "shutil_copy_dest": "import shutil\nd = 'lib/x.dart'\nshutil.copy('/tmp/a', d)",
+    "shutil_move_literal": "import shutil\nshutil.move('/tmp/a', 'lib/x.dart')",
+    "os_replace_dest": "import os\nd = 'lib/x.dart'\nos.replace('/tmp/a', d)",
+    "os_rename_dest": "import os\nos.rename('/tmp/a', 'lib/x.dart')",
+    "func_local": "def f():\n    p = 'lib/x.dart'\n    with open(p, mode='w') as h:\n        h.write('x')\nf()",
+    "path_var_open_w": "from pathlib import Path\np = Path('lib/x.dart')\np.open('w')",
+}
+_AST_READ_BODIES = {
+    "open_read": "p = 'lib/x.dart'\nopen(p).read()",
+    "open_r": "p = 'lib/x.dart'\nopen(p, 'r').read()",
+    "read_text": "from pathlib import Path\np = Path('lib/x.dart')\np.read_text()",
+    "read_bytes": "from pathlib import Path\nPath('lib') / 'x.dart'\np = Path('lib/x.dart')\np.read_bytes()",
+    "copy_source_only": "import shutil\ns = 'lib/x.dart'\nshutil.copy(s, '/tmp/out')",
+}
+
+
+def _heredoc(body):
+    return "python3 - <<'EOF'\n" + body + "\nEOF"
+
+
+class TestPythonAstVariablePaths:
+    @pytest.mark.parametrize("name", sorted(_AST_WRITE_BODIES))
+    def test_heredoc_write_extracted(self, name):
+        paths = _extract_candidate_paths(_heredoc(_AST_WRITE_BODIES[name]))
+        assert any(p.endswith("x.dart") or p.endswith("x.md") for p in paths)
+
+    def test_python_c_variable_write_extracted(self):
+        cmd = "python3 -c \"p = 'lib/x.dart'; open(p, 'w').write('x')\""
+        assert "lib/x.dart" in _extract_candidate_paths(cmd)
+
+    @pytest.mark.parametrize("name", sorted(_AST_READ_BODIES))
+    def test_heredoc_read_only_not_extracted(self, name):
+        paths = _extract_candidate_paths(_heredoc(_AST_READ_BODIES[name]))
+        assert not any(p.endswith("x.dart") for p in paths)
+
+    def test_syntax_error_falls_back_to_regex(self):
+        body = "open('lib/x.dart', 'w')\nthis is $(not python"
+        assert "lib/x.dart" in _extract_candidate_paths(_heredoc(body))
+
+    def test_syntax_error_does_not_extract_variable_form(self):
+        body = "p = 'lib/x.dart'\nopen(p, 'w')\nthis is $(not python"
+        assert "lib/x.dart" not in _extract_candidate_paths(_heredoc(body))
