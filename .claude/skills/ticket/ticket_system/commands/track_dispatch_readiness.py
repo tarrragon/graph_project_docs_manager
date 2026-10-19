@@ -66,6 +66,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import re
+import sys
 from typing import List, Tuple
 
 from ticket_system.lib.dispatch_common import load_and_unpack
@@ -151,12 +152,50 @@ def check_responsibility_count(
     Returns:
         (status, count, msg) — status ∈ {"pass", "warn", "fail"}
     """
-    n = len(acceptance or [])
+    items = list(acceptance or [])
+    n_excluded = _count_hook_template_items(items)
+    n = len(items) - n_excluded
+    note = f"（已排除 hook 證據模板 {n_excluded} 項）" if n_excluded else ""
     if n > hard_max:
-        return "fail", n, f"acceptance 條目 {n} > {hard_max}（強制拆分；功能職責複雜度過高）"
+        return "fail", n, f"acceptance 條目 {n} > {hard_max}（強制拆分；功能職責複雜度過高）{note}"
     if n > soft_max:
-        return "warn", n, f"acceptance 條目 {n} > {soft_max}（軟警告；建議拆分為多個 ticket）"
-    return "pass", n, f"acceptance 條目 {n} ≤ {soft_max}"
+        return "warn", n, f"acceptance 條目 {n} > {soft_max}（軟警告；建議拆分為多個 ticket）{note}"
+    return "pass", n, f"acceptance 條目 {n} ≤ {soft_max}{note}"
+
+
+def _load_hook_template_prefixes() -> List[str]:
+    """取 create 的 hook 驗收模板前綴（去框、<待填> 之前），與 create 去重比對同一辨識方式。"""
+    from ticket_system.commands.create import (
+        _HOOK_ACCEPTANCE_TEMPLATES,
+        _strip_checkbox,
+    )
+
+    return [
+        _strip_checkbox(template.split("<待填>")[0])
+        for _label, template in _HOOK_ACCEPTANCE_TEMPLATES
+    ]
+
+
+def _count_hook_template_items(items: List) -> int:
+    """計算 acceptance 中屬 hook 證據模板的條目數；載入失敗退回 0（全數計入）。"""
+    try:
+        prefixes = [p for p in _load_hook_template_prefixes() if p]
+        return sum(
+            1
+            for item in items
+            if any(_strip_checkbox_text(str(item)).startswith(p) for p in prefixes)
+        )
+    except Exception as exc:  # 保守一側：比對失敗時全數計入，不放寬閾值
+        print(
+            f"[WARNING] hook 模板清單載入或比對失敗，閾值 1 全數計入：{exc}",
+            file=sys.stderr,
+        )
+        return 0
+
+
+def _strip_checkbox_text(item: str) -> str:
+    """去除條目開頭核取框（與 create._strip_checkbox 同語意）。"""
+    return re.sub(r"^\s*\[[ xX]\]\s*", "", item)
 
 
 def check_file_count(
