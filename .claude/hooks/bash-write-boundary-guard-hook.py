@@ -224,7 +224,7 @@ _HEREDOC_DELIM_STOP = frozenset(" \t\r\n;|&()<>")
 class _Statement:
     """一個以 | ; & 換行 ( ) 切出的陳述。"""
 
-    __slots__ = ("tokens", "targets", "bodies", "start", "end", "pre")
+    __slots__ = ("tokens", "targets", "bodies", "start", "end", "pre", "before", "after")
 
     def __init__(self, start: int) -> None:
         self.tokens: List[str] = []    # 引號已剝除的 token（不含重導向目標）
@@ -233,6 +233,8 @@ class _Statement:
         self.start = start
         self.end = start
         self.pre = ""                  # 此陳述之前累積的括號邊界字元（只含 "(" 與 ")"）
+        self.before = ""               # 與前一陳述之間的全部邊界字元（換行記為 ";"）
+        self.after = ""                # 終結此陳述的邊界字元（換行與結尾記為 ";"）
 
 
 def _read_heredoc_delimiter(command: str, i: int):
@@ -278,6 +280,7 @@ def _parse_statements(command: str) -> List[_Statement]:
     redirect: Optional[str] = None  # None / 'write' / 'skip'
     pending: list = []
     parens = ""  # 尚未歸屬任何陳述的括號邊界字元
+    seps = ""    # 尚未歸屬任何陳述的全部邊界字元
     i = 0
 
     def flush() -> None:
@@ -298,13 +301,20 @@ def _parse_statements(command: str) -> List[_Statement]:
         has_tok = False
 
     def end_statement(end_pos: int, next_start: int, boundary: str = "") -> None:
-        nonlocal cur, redirect, parens
+        nonlocal cur, redirect, parens, seps
         flush()
         cur.end = end_pos
+        term = boundary or ";"
+        if boundary in ("&", "|") and command.startswith(boundary * 2, end_pos):
+            term = boundary * 2  # && 與 ||：左側必然在當前 shell 執行
         if cur.tokens or cur.targets or cur.bodies:
             cur.pre = parens
             parens = ""
+            cur.before = seps
+            cur.after = term
+            seps = ""
             stmts.append(cur)
+        seps += term
         if boundary in ("(", ")"):
             parens += boundary
         cur = _Statement(next_start)
@@ -579,22 +589,58 @@ _DECLARE_WORDS = frozenset({"export", "declare", "local", "readonly", "typeset"}
 _WRAPPER_WORDS = frozenset({"env", "sudo", "exec", "nohup", "time", "command", "builtin"})
 
 
+# 由解析階段（_resolve_candidate）以真實值展開的變數；命令內賦值不得改變其「展開前」形式
+_SPECIAL_VARS = frozenset({"HOME", "CLAUDE_PROJECT_DIR"})
+_UNRESOLVED_MARK = "$_ASSIGNED_UNRESOLVABLE"
+
+
 def _expand_vars(raw: str, env: dict) -> str:
-    """以同命令內已知的字面賦值展開 $VAR／${VAR}；未知或無法判定的變數原樣保留。"""
+    """以同命令內已知的字面賦值展開 $VAR／${VAR}；未知或無法判定的變數原樣保留。
+    HOME、CLAUDE_PROJECT_DIR 不在此展開（交給 _resolve_candidate 以真實值解析）。"""
     def sub(m):
-        value = env.get(m.group(1) or m.group(2))
+        name = m.group(1) or m.group(2)
+        value = None if name in _SPECIAL_VARS else env.get(name)
         return m.group(0) if value is None else value
     return _VAR_REF.sub(sub, raw)
 
 
-def _record_assignments(toks: List[str], env: dict) -> None:
-    """純賦值陳述（可帶 export 等宣告字）更新 env；值非字面（含其他變數、命令替換）記 None。"""
+def _expand_assigned_specials(raw: str, env: dict) -> Optional[str]:
+    """HOME、CLAUDE_PROJECT_DIR 在命令內被賦值時的「展開後」形式；無此賦值或無變化回傳 None。
+    賦值值無法判定時回傳不可解析標記（該形式視為 unresolvable，展開前形式仍另行檢查）。"""
+    out = raw
+    if "HOME" in env:
+        home = env["HOME"]
+        pattern = re.compile(r"^(?:~|\$HOME|\$\{HOME\})(?=/|$)")
+        if pattern.match(out):
+            out = pattern.sub(lambda _m: _UNRESOLVED_MARK if home is None else home, out, count=1)
+    for name in ("HOME", "CLAUDE_PROJECT_DIR"):
+        if name in env:
+            value = env[name]
+            out = re.sub(r"\$\{%s\}|\$%s(?![A-Za-z0-9_])" % (name, name),
+                         lambda _m, v=value: _UNRESOLVED_MARK if v is None else v, out)
+    return None if out == raw else out
+
+
+def _assignment_is_certain(stmt, depth: int) -> bool:
+    """賦值陳述必然在當前 shell 執行：括號深度 0、非管線成員、不在 &&／|| 之後、非背景。"""
+    before, after = stmt.before, stmt.after
+    if depth > 0 or "|" in before or "&&" in before or "`" in before:
+        return False
+    return after not in ("|", "&", "`")
+
+
+def _record_assignments(toks: List[str], env: dict, certain: bool = True) -> None:
+    """純賦值陳述（可帶 export 等宣告字）更新 env；值非字面（含其他變數、命令替換）記 None。
+    非必然執行的賦值（certain=False）把變數設為 None（unresolvable）。"""
     j = 1 if toks and toks[0] in _DECLARE_WORDS else 0
     items = toks[j:]
     if not items or not all(_ASSIGN.match(t) for t in items):
         return
     for t in items:
         name, value = _ASSIGN.match(t).groups()
+        if not certain:
+            env[name] = None
+            continue
         value = _expand_vars(value, env)
         rest = _RESOLVER_PREFIX.sub("", value, count=1)
         env[name] = None if ("$" in rest or "`" in rest) else value
@@ -653,10 +699,15 @@ def _collect_candidates(command: str, depth: int, dirs: Optional[List[Optional[s
             elif cd_stack:
                 cur_cd = cd_stack.pop()
         cur_cd = _next_cd(cur_cd, stmt.tokens)
-        _record_assignments(stmt.tokens, env)
+        _record_assignments(stmt.tokens, env, _assignment_is_certain(stmt, len(cd_stack)))
         shell_candidates = list(stmt.targets)
         _scan_statement_tokens(stmt.tokens, shell_candidates)
-        candidates.extend(_expand_vars(c, env) for c in shell_candidates)
+        for c in shell_candidates:
+            base = _expand_vars(c, env)
+            candidates.append(base)
+            alt = _expand_assigned_specials(base, env)
+            if alt is not None:
+                candidates.append(alt)
         names = [_basename(t) for t in stmt.tokens]
         if any(_PYTHON_NAME.fullmatch(name) for name in names):
             for text in [command[stmt.start:stmt.end]] + stmt.bodies:

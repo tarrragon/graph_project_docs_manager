@@ -1190,3 +1190,69 @@ class TestSkippedReasons:
         code, line = TestDecisionLog._run(
             self, monkeypatch, {"tool_name": "Read", "tool_input": {}})
         assert code == 0 and "skipped=[]" in line
+
+
+# ============================================================================
+# 0.5.0-W1-365.2 第二輪：非必然執行的賦值、CLAUDE_PROJECT_DIR／HOME 命令內賦值、L7 實例
+# ============================================================================
+
+
+class TestAssignmentCertainty:
+    """子殼、管線、&&／|| 之後的賦值不得成為放行依據；CLAUDE_PROJECT_DIR／HOME 賦值不得覆寫。"""
+
+    @pytest.mark.parametrize("cmd", [
+        "(CLAUDE_PROJECT_DIR=/tmp); echo x > $CLAUDE_PROJECT_DIR/lib/a",
+        "true && CLAUDE_PROJECT_DIR=/tmp; echo x > $CLAUDE_PROJECT_DIR/lib/a",
+        "false || CLAUDE_PROJECT_DIR=/tmp; echo x > ${CLAUDE_PROJECT_DIR}/lib/a",
+        "CLAUDE_PROJECT_DIR=/tmp; echo x > $CLAUDE_PROJECT_DIR/lib/a",
+        "echo y | CLAUDE_PROJECT_DIR=/tmp; echo x > $CLAUDE_PROJECT_DIR/lib/a",
+    ])
+    def test_project_dir_assignment_never_allows(self, cmd, checkout, logger, monkeypatch):
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(checkout))
+        assert _scope(cmd, checkout, logger) == "lib/a"
+
+    def test_home_assignment_expands_tilde(self, checkout, logger):
+        assert _scope("HOME=%s; echo x > ~/lib/a" % checkout, checkout, logger) == "lib/a"
+
+    def test_home_assignment_expands_dollar_home(self, checkout, logger):
+        assert _scope("HOME=%s; echo x > $HOME/lib/a" % checkout, checkout, logger) == "lib/a"
+
+    def test_real_home_form_still_checked(self, checkout, logger, monkeypatch):
+        monkeypatch.setenv("HOME", str(checkout))
+        assert _scope("HOME=/tmp; echo x > ~/lib/a", checkout, logger) == "lib/a"
+
+    def test_unresolvable_home_assignment_still_checks_real_home(self, checkout, logger, monkeypatch):
+        monkeypatch.setenv("HOME", str(checkout))
+        assert _scope("HOME=$(date); echo x > ~/lib/a", checkout, logger) == "lib/a"
+
+    @pytest.mark.parametrize("cmd", [
+        "(F=lib/a); echo x > $F",
+        "true && F=lib/a; echo x > $F",
+        "echo y | F=lib/a; echo x > $F",
+    ])
+    def test_uncertain_plain_assignment_is_unresolvable(self, cmd, checkout, logger):
+        skipped = []
+        assert hook_module._find_scope_violation(cmd, str(checkout), logger, skipped) is None
+        assert "$F:unresolvable" in skipped
+
+    @pytest.mark.parametrize("cmd", [
+        "F=/tmp/x; echo > $F",
+        "HOME=/tmp; echo > ~/x",
+        "true; F=lib/a; echo x > $F",
+    ])
+    def test_e1_unchanged(self, cmd, checkout, logger):
+        expected = "lib/a" if "lib/a" in cmd else None
+        assert _scope(cmd, checkout, logger) == expected
+
+
+class TestL7SiblingWorktreeVariable:
+    """變數持有同層 worktree 路徑，代理人身份下 sed -i 受限路徑須 deny。"""
+
+    def test_agent_var_sed_inplace_sibling_denied(self, repo_pair, monkeypatch):
+        main_repo, sibling = repo_pair
+        cmd = "T=%s/.claude/skills/worktree/tests; sed -i 's/a/b/' $T/x.py" % sibling
+        payload = {"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": str(main_repo),
+                   "agent_id": "sub-371"}
+        code, line = TestDecisionLog._run(None, monkeypatch, payload, is_subagent=True, branch="feat/x")
+        assert code == 2
+        assert "decision=deny source=agent:sub-371 reason=scope_violation" in line
