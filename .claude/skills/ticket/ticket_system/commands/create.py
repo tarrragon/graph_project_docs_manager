@@ -11,6 +11,7 @@ if __name__ == "__main__":
 
 
 import argparse
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -470,6 +471,11 @@ def _load_hook_protection_checker() -> Any:
         return None
 
 
+def _strip_checkbox(item: str) -> str:
+    """去除條目開頭的核取框（[ ]／[x]／[X]）與空白。"""
+    return re.sub(r"^\s*\[[ xX]\]\s*", "", item)
+
+
 def apply_hook_acceptance_template(
     where_files: List[str],
     acceptance: Optional[List[str]],
@@ -492,6 +498,7 @@ def apply_hook_acceptance_template(
 
     current = list(acceptance or [])
     text = "\n".join(str(item) for item in current)
+    plain_text = "\n".join(_strip_checkbox(str(item)) for item in current)
     missing = set(checker._missing_categories(text))
     inventory = checker.parse_path_inventory_table(how_strategy or "")
     if inventory.status in ("absent", "no_separator") and "產生路徑盤點" not in text:
@@ -499,8 +506,9 @@ def apply_hook_acceptance_template(
     for label, template in _HOOK_ACCEPTANCE_TEMPLATES:
         # 模板文字刻意避開 gate 關鍵詞，_missing_categories 看不見已帶入的模板，
         # 故以模板前綴（<待填> 之前）比對既有條目，不論有無填寫皆視為已帶入。
-        prefix = template.split("<待填>")[0]
-        if label in missing and prefix not in text:
+        # 呼叫端傳入的條目可能尚未補核取框，兩側皆去框後再比對。
+        prefix = _strip_checkbox(template.split("<待填>")[0])
+        if label in missing and prefix not in plain_text:
             current.append(template)
     return current, True
 
