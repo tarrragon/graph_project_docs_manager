@@ -67,6 +67,7 @@ def _make_args(**overrides):
         # 非測可攜問題分流硬閘門），該路徑組合會被新增的硬閘門判定為可攜
         # 問題而阻擋；帶查重結論放行，語意上等同「已查過重、確認非重複」。
         dedup_checked="none",
+        dedup_keywords=["測試佔位"],
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
