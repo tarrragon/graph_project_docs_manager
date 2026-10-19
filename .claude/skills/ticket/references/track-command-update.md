@@ -196,6 +196,8 @@
 
 `title` 是清單顯示用的短標籤（dashboard / runqueue 顯示的是它），`what` 是完整任務敘述（可含檔案清單、括號補充）；兩者常刻意不同（量測見 `CHANGELOG.md`）。票的範圍事後縮小時（如依上游評估結論移除 acceptance），**兩個欄位都要更新**——只改 `what` 會讓清單上的 `title` 繼續以舊範圍誤導接手者。更新用 `set-title <id> <value>`。
 
+**範圍欄位同步提示**：範圍由 `title`、`what`、`acceptance`、`where.files`、`how.strategy` 五欄共同表達。`set-title`／`set-what`／`set-where`（改到 files）／`set-acceptance`（`--add`／`--edit`／`--remove`）寫入後，stdout 會列出其餘非空範圍欄位的現值摘要與對應 set- 指令。被改欄位原值為空（首次填寫）時不印；勾選／取消勾選不印；只印不擋，exit code 不變。
+
 ### 其餘 frontmatter 欄位若無對應命令，不要手動編輯
 
 `ticket-file-access-guard-hook` 會以 exit 2 阻擋直接編輯 frontmatter，繞道不可行。找不到對應命令代表該欄位缺少合法更新途徑（PC-BAL-047），應建 ticket 回報補上命令。
