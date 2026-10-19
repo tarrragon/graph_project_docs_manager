@@ -2,6 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.6.6（2026-10-19）— `_is_branch_pushed` 改問「分支 tip 是否在任一遠端 ref 上」（`git for-each-ref --contains --format=%(refname) refs/remotes`，只看結束碼與是否有輸出），不再比對 origin 同名分支；feat／agent 分支從不推送，原判定恆為未推送，使 cleanup Level 2 恆報警。含遠端沒有的 commit、worktree checkout 中、分支不存在三種情況仍判為未推送。
 **Version**: 1.6.5（2026-10-19）— `_is_branch_merged_to_base` 改用 `git merge-base --is-ancestor <branch> <base>` 判定，不再解析 `git branch --merged` 輸出；修正 worktree 已 checkout 的分支（輸出帶「+ 」前綴）恆判為未合併，使 cleanup Level 3 對已合併分支不再恆報警。未合併分支（含 worktree checkout 中者、分支不存在）仍判為未合併。
 **Version**: 1.6.4（2026-10-19）— `cleanup` 新增 `--branch <分支名>`（與 ticket_id 擇一），用於萃取不到 ticket ID 的 `worktree-agent-<id>`，仍經三閘門；掃描報告對非 ticket 分支改印 `/worktree cleanup --branch <分支名>`（含 `--force` 版），ticket 分支印法不變。
 **Version**: 1.6.3（2026-10-19）— 預檢無衝突時 gate 日誌於開始行與結束行之間多記一行 `[合併閘門] 預檢｜…｜結果 無衝突`，使無衝突的合併也能觀測預檢已執行；格式沿用 `gate_line`，`[合併前測試]` 行不變。

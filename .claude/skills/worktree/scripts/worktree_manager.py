@@ -1042,23 +1042,23 @@ def _is_branch_merged_to_base(branch: str, base: str = DEFAULT_BASE_BRANCH) -> b
 
 def _is_branch_pushed(branch: str) -> bool:
     """
-    判斷本地分支是否已 push 到 origin
+    判斷本地分支 tip 是否已在任一遠端 ref 上
 
-    比較本地和 origin 分支的 HEAD commit 是否相同。
-    若兩者 commit 相同，表示已 push 且同步；否則未 push 或不同步。
+    feat／agent 分支從不推送同名分支，合併後只推 main；故不比對 origin 同名分支，
+    改問「哪些遠端 ref 含此 tip」（for-each-ref --contains，--format 輸出無行首標記）。
+    分支不存在時 git 回非零，判為未推送。
 
     Args:
-        branch: 分支名稱（短名稱，不含 origin/ 前綴）
+        branch: 分支名稱（短名稱）
 
     Returns:
-        bool: True 表示已 push（origin 存在且與本地同步），False 表示未 push
+        bool: True 表示至少一個遠端 ref 含此分支 tip，False 表示未推送或無法判斷
     """
-    # H6 修復：消除重複的 rev-parse --verify 呼叫（合併為單次 rev-parse）
-    # 只需查詢兩個 commit 值進行比較，若 origin/branch 不存在 rev-parse 會自動返回 False
-    success_local, local_commit = run_git_command(["rev-parse", branch])
-    success_remote, remote_commit = run_git_command(["rev-parse", f"origin/{branch}"])
-
-    return success_local and success_remote and local_commit == remote_commit
+    success, output = run_git_command(
+        ["for-each-ref", f"--contains=refs/heads/{branch}",
+         "--format=%(refname)", "refs/remotes"]
+    )
+    return success and bool(output.strip())
 
 
 def _merge_validate_ticket_status(ticket_id: str) -> tuple[bool, str]:
