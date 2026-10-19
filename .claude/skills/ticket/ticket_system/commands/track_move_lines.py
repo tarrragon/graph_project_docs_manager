@@ -26,13 +26,17 @@ from typing import List, Optional, Tuple
 
 from ticket_system.commands.track_commit import (
     CRITERIA_REJECTION_GUIDANCE,
-    _out_of_scope_files,
-    _resolve_repo_root,
-    _to_repo_relative,
 )
 from ticket_system.lib.file_conflict import write_files
 from ticket_system.lib.messages import ErrorMessages, format_error
+from ticket_system.lib.project_root import resolve_project_cwd
 from ticket_system.lib.ticket_loader import load_ticket
+from ticket_system.lib.write_scope import (
+    out_of_scope_files,
+    resolve_repo_root,
+    to_repo_relative,
+    unsafe_paths,
+)
 
 
 class MoveLinesError(Exception):
@@ -183,19 +187,26 @@ def _read_lines(path: str) -> Tuple[bytes, List[str]]:
 
 
 def _check_scope(ticket: dict, args: argparse.Namespace, repo_root: str) -> None:
-    declared = {_to_repo_relative(p, repo_root, repo_root) for p in write_files(ticket)}
-    out = _out_of_scope_files([args.src, args.dst], declared, repo_root, repo_root)
+    declared = {to_repo_relative(p, repo_root, repo_root) for p in write_files(ticket)}
+    pair = [args.src, args.dst]
+    out = out_of_scope_files(pair, declared, repo_root, repo_root)
     if out:
         raise MoveLinesError(
             "以下檔案不在 ticket where.files 宣告的寫入範圍內，拒絕搬移：\n"
             + "\n".join(f"  - {f}" for f in out) + "\n" + CRITERIA_REJECTION_GUIDANCE
         )
+    unsafe = unsafe_paths(pair, repo_root, repo_root)
+    if unsafe:
+        raise MoveLinesError(
+            "以下檔案是 symlink 或解析後落在 repo 之外，拒絕搬移：\n"
+            + "\n".join(f"  - {f}" for f in unsafe) + "\n" + CRITERIA_REJECTION_GUIDANCE
+        )
 
 
 def _run_move(ticket: dict, args: argparse.Namespace, repo_root: str) -> str:
     _check_scope(ticket, args, repo_root)
-    src = os.path.join(repo_root, _to_repo_relative(args.src, repo_root, repo_root))
-    dst = os.path.join(repo_root, _to_repo_relative(args.dst, repo_root, repo_root))
+    src = os.path.join(repo_root, to_repo_relative(args.src, repo_root, repo_root))
+    dst = os.path.join(repo_root, to_repo_relative(args.dst, repo_root, repo_root))
     if os.path.realpath(src) == os.path.realpath(dst):
         raise MoveLinesError("src 與 dst 不可相同")
     old_src_raw, src_lines = _read_lines(src)
@@ -215,9 +226,12 @@ def execute_move_lines(args: argparse.Namespace, version: str) -> int:
     if not ticket:
         print(format_error(ErrorMessages.TICKET_NOT_FOUND, ticket_id=args.ticket_id))
         return 1
-    repo_root: Optional[str] = _resolve_repo_root(getattr(args, "worktree", None))
+    repo_root: Optional[str] = resolve_repo_root(
+        getattr(args, "worktree", None), resolve_project_cwd()
+    )
     if repo_root is None:
-        print(f"[ERROR] --worktree {args.worktree} 不是合法的 git 目錄")
+        print(f"[ERROR] --worktree {args.worktree} 不是合法的 git 目錄，"
+              "或不屬本 repo 的 git worktree list（查詢失敗亦拒絕）")
         return 1
     try:
         print(_run_move(ticket, args, repo_root))
