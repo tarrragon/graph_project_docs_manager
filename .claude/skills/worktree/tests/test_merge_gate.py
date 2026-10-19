@@ -1080,3 +1080,16 @@ class TestPrecheckConflict:
     def test_already_merged_passes_precheck(self, repo):
         git(repo, "merge", "--no-edit", "feat")
         assert mc.precheck_merge_conflict("feat", "main", str(repo)) == ""
+
+
+class TestPrecheckException:
+    def test_precheck_exception_logs_abort_and_reraises(self, repo, monkeypatch):
+        def boom(*a, **k):
+            raise subprocess.TimeoutExpired("git", 60)
+
+        monkeypatch.setattr(wm, "precheck_merge_conflict", boom)
+        with pytest.raises(subprocess.TimeoutExpired):
+            wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
+        log = (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
+        lines = [ln for ln in log.splitlines() if mg.GATE_LINE_PREFIX in ln]
+        assert len(lines) == 2 and f"結果 {mg.GATE_ABORTED}" in lines[1]
