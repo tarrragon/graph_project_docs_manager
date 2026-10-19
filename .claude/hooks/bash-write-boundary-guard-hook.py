@@ -65,6 +65,7 @@ FP 邊界（fail-open，保守白名單原則）：
 """
 
 import ast
+import itertools
 import os
 import posixpath
 import re
@@ -228,9 +229,9 @@ def _ast_write_targets(source: str, argv: Optional[List[str]] = None) -> Optiona
     return out
 
 
-def _python_argv(tokens: List[str], env: dict) -> Optional[List[str]]:
-    """python 命令列引數（含 argv[0]），經同命令內賦值展開；非 stdin／-c 形態回 None。
-    python3 - a b：['-','a','b']；python3 -c CODE a b：['-c','a','b']；
+def _python_argv_parts(tokens: List[str]) -> Optional[tuple]:
+    """python 命令列引數的 (argv[0], 其後原始 token)；非 stdin／-c 形態回 None。
+    python3 - a b：('-', [a, b])；python3 -c CODE a b：('-c', [a, b])；
     其間的直譯器選項（-u、-I、-B 等）不算引數。"""
     start = next((i for i, t in enumerate(tokens) if _PYTHON_NAME.fullmatch(_basename(t))), None)
     if start is None:
@@ -239,13 +240,33 @@ def _python_argv(tokens: List[str], env: dict) -> Optional[List[str]]:
     while i < len(tokens):
         tok = tokens[i]
         if tok == "-":
-            return ["-"] + [_expand_vars(t, env) for t in tokens[i + 1:]]
+            return "-", tokens[i + 1:]
         if tok.startswith("-") and not tok.startswith("--") and tok.endswith("c"):
-            return ["-c"] + [_expand_vars(t, env) for t in tokens[i + 2:]]
+            return "-c", tokens[i + 2:]
         if not tok.startswith("-"):
             return None
         i += 1
     return None
+
+
+def _python_argvs(tokens: List[str], env: dict):
+    """python 命令列引數（含 argv[0]）對所有可能值組合的展開，回傳 (argv 清單或 None, 是否超限)。
+    非 stdin／-c 形態回 (None, False)。"""
+    parts = _python_argv_parts(tokens)
+    if parts is None:
+        return None, False
+    head, rest = parts
+    per_token = []
+    total = 1
+    for t in rest:
+        exps = _expand_all(t, env)
+        if exps is None:
+            return None, True
+        total *= len(exps)
+        if total > _MAX_COMBINATIONS:
+            return None, True
+        per_token.append(exps)
+    return [[head] + list(combo) for combo in itertools.product(*per_token)], False
 
 
 def _python_sources(tokens: List[str], bodies: List[str]) -> List[str]:
@@ -800,34 +821,60 @@ _WRAPPER_WORDS = frozenset({"env", "sudo", "exec", "nohup", "time", "command", "
 
 # 由解析階段（_resolve_candidate）以真實值展開的變數；命令內賦值不得改變其「展開前」形式
 _SPECIAL_VARS = frozenset({"HOME", "CLAUDE_PROJECT_DIR"})
-_UNRESOLVED_MARK = "$_ASSIGNED_UNRESOLVABLE"
+_MAX_COMBINATIONS = 16  # 可能值組合數上限；超過視為命中（保守擋下）
+# 超限時的替身候選：本身即落在 lib/ 受限範圍，使超限必然被擋下
+_OVERFLOW_PATH = "lib/_bash_guard_combination_overflow"
+_SLOT = re.compile(r"^~(?=/|$)|\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+# 複合命令（賦值可能不執行或重複執行）的開頭／結尾字，及其子句連接字
+_COMPOUND_OPEN = frozenset({"if", "while", "until", "for", "select", "case", "{"})
+_COMPOUND_CLOSE = frozenset({"fi", "done", "esac", "}"})
+_CLAUSE_WORDS = frozenset({"then", "else", "elif", "do", "!", "time"})
 
 
-def _expand_vars(raw: str, env: dict) -> str:
-    """以同命令內已知的字面賦值展開 $VAR／${VAR}；未知或無法判定的變數原樣保留。
-    HOME、CLAUDE_PROJECT_DIR 不在此展開（交給 _resolve_candidate 以真實值解析）。"""
-    def sub(m):
-        name = m.group(1) or m.group(2)
-        value = None if name in _SPECIAL_VARS else env.get(name)
-        return m.group(0) if value is None else value
-    return _VAR_REF.sub(sub, raw)
+def _slot_options(m, env: dict) -> List[str]:
+    """一個變數參照（或開頭的 ~）的可能展開結果。env 值集合含 None 代表可能無法判定，
+    該組合原樣保留參照文字。HOME、CLAUDE_PROJECT_DIR 另保留展開前形式（交給
+    _resolve_candidate 以真實值解析）。"""
+    name = "HOME" if m.group(0) == "~" else (m.group(1) or m.group(2))
+    known = env.get(name)
+    if name in _SPECIAL_VARS:
+        return [m.group(0)] + sorted(v for v in (known or ()) if v is not None)
+    if known is None:
+        return [m.group(0)]
+    out = [m.group(0) if v is None else v for v in sorted(known, key=lambda v: (v is None, v or ""))]
+    return list(dict.fromkeys(out))
 
 
-def _expand_assigned_specials(raw: str, env: dict) -> Optional[str]:
-    """HOME、CLAUDE_PROJECT_DIR 在命令內被賦值時的「展開後」形式；無此賦值或無變化回傳 None。
-    賦值值無法判定時回傳不可解析標記（該形式視為 unresolvable，展開前形式仍另行檢查）。"""
-    out = raw
-    if "HOME" in env:
-        home = env["HOME"]
-        pattern = re.compile(r"^(?:~|\$HOME|\$\{HOME\})(?=/|$)")
-        if pattern.match(out):
-            out = pattern.sub(lambda _m: _UNRESOLVED_MARK if home is None else home, out, count=1)
-    for name in ("HOME", "CLAUDE_PROJECT_DIR"):
-        if name in env:
-            value = env[name]
-            out = re.sub(r"\$\{%s\}|\$%s(?![A-Za-z0-9_])" % (name, name),
-                         lambda _m, v=value: _UNRESOLVED_MARK if v is None else v, out)
-    return None if out == raw else out
+def _expand_all(raw: str, env: dict) -> Optional[List[str]]:
+    """raw 內所有 $VAR／${VAR}／開頭 ~ 對各變數可能值的全部組合展開。
+    組合數超過 _MAX_COMBINATIONS 或牽涉超限變數時回傳 None（呼叫端視為命中）。"""
+    matches = list(_SLOT.finditer(raw))
+    if not matches:
+        return [raw]
+    options = [_slot_options(m, env) for m in matches]
+    total = 1
+    for opts in options:
+        if _OVERFLOW_PATH in opts:
+            return None
+        total *= len(opts)
+        if total > _MAX_COMBINATIONS:
+            return None
+    results = []
+    for combo in itertools.product(*options):
+        parts, pos = [], 0
+        for m, val in zip(matches, combo):
+            parts.append(raw[pos:m.start()])
+            parts.append(val)
+            pos = m.end()
+        parts.append(raw[pos:])
+        results.append("".join(parts))
+    return list(dict.fromkeys(results))
+
+
+def _expand_candidate(raw: str, env: dict) -> List[str]:
+    """候選路徑的全部可能展開；超限時以必擋的替身路徑取代。"""
+    exps = _expand_all(raw, env)
+    return [_OVERFLOW_PATH] if exps is None else exps
 
 
 def _assignment_is_certain(stmt, depth: int) -> bool:
@@ -839,20 +886,39 @@ def _assignment_is_certain(stmt, depth: int) -> bool:
 
 
 def _record_assignments(toks: List[str], env: dict, certain: bool = True) -> None:
-    """純賦值陳述（可帶 export 等宣告字）更新 env；值非字面（含其他變數、命令替換）記 None。
-    非必然執行的賦值（certain=False）把變數設為 None（unresolvable）。"""
+    """純賦值陳述（可帶 export 等宣告字）更新 env：變數 → 可能值集合（含 None 代表可能無法判定）。
+    值內的變數參照與 ~ 於賦值當下依當時的可能值展開；非字面（命令替換等）記 None。
+    必然執行的賦值取代集合；非必然執行的賦值（certain=False）把新值併入既有集合
+    （原本未知則併入 None）。集合大小超過上限時記超限替身。"""
     j = 1 if toks and toks[0] in _DECLARE_WORDS else 0
     items = toks[j:]
     if not items or not all(_ASSIGN.match(t) for t in items):
         return
     for t in items:
         name, value = _ASSIGN.match(t).groups()
-        if not certain:
-            env[name] = None
-            continue
-        value = _expand_vars(value, env)
-        rest = _RESOLVER_PREFIX.sub("", value, count=1)
-        env[name] = None if ("$" in rest or "`" in rest) else value
+        exps = _expand_all(value, env)
+        if exps is None:
+            new = {_OVERFLOW_PATH}
+        else:
+            new = {None if ("$" in rest or "`" in rest) else e
+                   for e in exps for rest in [_RESOLVER_PREFIX.sub("", e, count=1)]}
+        merged = new if certain else (env.get(name) or frozenset({None})) | new
+        if len(merged) > _MAX_COMBINATIONS or _OVERFLOW_PATH in merged:
+            merged = {_OVERFLOW_PATH}
+        env[name] = frozenset(merged)
+
+
+def _compound_effect(toks: List[str]):
+    """陳述開頭的複合命令字：回傳 (開啟數, 結束數, 去除這些字後的 token)。"""
+    opened = closed = 0
+    k = 0
+    while k < len(toks) and toks[k] in (_COMPOUND_OPEN | _COMPOUND_CLOSE | _CLAUSE_WORDS):
+        if toks[k] in _COMPOUND_OPEN:
+            opened += 1
+        elif toks[k] in _COMPOUND_CLOSE:
+            closed += 1
+        k += 1
+    return opened, closed, toks[k:]
 
 
 def _command_word_index(toks: List[str]) -> Optional[int]:
@@ -895,6 +961,7 @@ def _collect_candidates(command: str, depth: int, dirs: Optional[List[Optional[s
     candidates: List[str] = []
     env: dict = {}  # 同命令內先前語句的字面賦值
     cur_cd = base_cd
+    compound_depth = 0  # 目前所在的複合命令（if／while／case／{ } 等）層數
     cd_stack: List[Optional[str]] = []  # 子殼：( 保存當下位移，) 還原
 
     def sync() -> None:
@@ -908,23 +975,26 @@ def _collect_candidates(command: str, depth: int, dirs: Optional[List[Optional[s
             elif cd_stack:
                 cur_cd = cd_stack.pop()
         cur_cd = _next_cd(cur_cd, stmt.tokens)
-        _record_assignments(stmt.tokens, env, _assignment_is_certain(stmt, len(cd_stack)))
+        opened, closed, body_toks = _compound_effect(stmt.tokens)
+        compound_depth += opened
+        certain = compound_depth == 0 and _assignment_is_certain(stmt, len(cd_stack))
+        _record_assignments(body_toks, env, certain)
+        compound_depth = max(0, compound_depth - closed)
         shell_candidates = list(stmt.targets)
         _scan_statement_tokens(stmt.tokens, shell_candidates)
         for c in shell_candidates:
-            base = _expand_vars(c, env)
-            candidates.append(base)
-            alt = _expand_assigned_specials(base, env)
-            if alt is not None:
-                candidates.append(alt)
+            candidates.extend(_expand_candidate(c, env))
         names = [_basename(t) for t in stmt.tokens]
         if any(_PYTHON_NAME.fullmatch(name) for name in names):
             for text in [command[stmt.start:stmt.end]] + stmt.bodies:
                 candidates.extend(_python_write_targets(text))
             # ast 追蹤變數持有的字面路徑；解析失敗時只保留上列 regex 結果（不放寬、不改擋）
-            argv = _python_argv(stmt.tokens, env)
-            for source in _python_sources(stmt.tokens, stmt.bodies):
-                candidates.extend(_ast_write_targets(source, argv) or [])
+            argvs, overflow = _python_argvs(stmt.tokens, env)
+            if overflow:
+                candidates.append(_OVERFLOW_PATH)
+            for argv in (argvs if argvs is not None else [None]):
+                for source in _python_sources(stmt.tokens, stmt.bodies):
+                    candidates.extend(_ast_write_targets(source, argv) or [])
         sync()
         script = _inline_script(stmt.tokens) if depth < _MAX_HEREDOC_RECURSION else None
         if script is not None:

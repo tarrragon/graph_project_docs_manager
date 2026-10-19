@@ -1245,9 +1245,9 @@ class TestAssignmentCertainty:
         "echo y | F=lib/a; echo x > $F",
     ])
     def test_uncertain_plain_assignment_is_unresolvable(self, cmd, checkout, logger):
+        # 365.4：不確定賦值的新值併入可能值集合（原未知併入 unresolvable），新值落在範圍內即擋
         skipped = []
-        assert hook_module._find_scope_violation(cmd, str(checkout), logger, skipped) is None
-        assert "$F:unresolvable" in skipped
+        assert hook_module._find_scope_violation(cmd, str(checkout), logger, skipped) == "lib/a"
 
     @pytest.mark.parametrize("cmd", [
         "F=/tmp/x; echo > $F",
@@ -1375,3 +1375,72 @@ class TestPythonArgvTargets:
         skipped = []
         assert hook_module._find_scope_violation(cmd, str(checkout), logger, skipped) is None
         assert "%s:unresolvable" % raw in skipped
+
+
+# ============================================================================
+# 0.5.0-W1-365.4：變數保留可能值集合（不確定賦值併入、延遲綁定、複合命令賦值）
+# ============================================================================
+
+
+class TestPossibleValueSets:
+    """E2：不確定賦值、延遲綁定、複合命令內賦值不得讓受限路徑放行。"""
+
+    @pytest.mark.parametrize("cmd", [
+        "F=lib/a; false && F=/tmp/x; echo x > $F",
+        "F=lib/a; true || F=/tmp/x; echo x > $F",
+        "F=lib/a; echo y | F=/tmp/x; echo x > $F",
+        "F=lib/a; (F=/tmp/x); echo x > $F",
+        "F=lib/a; F=/tmp/x & echo x > $F",
+    ])
+    def test_uncertain_assignment_keeps_prior_value(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) == "lib/a"
+
+    def test_uncertain_assignment_new_value_also_checked(self, checkout, logger):
+        assert _scope("F=/tmp/x; false && F=lib/a; echo x > $F", checkout, logger) == "lib/a"
+
+    def test_tilde_bound_at_assignment_time(self, checkout, logger):
+        cmd = "HOME=%s; D=~/lib; HOME=/tmp; echo x > $D/a" % checkout
+        assert _scope(cmd, checkout, logger) == "lib/a"
+
+    def test_dollar_home_bound_at_assignment_time(self, checkout, logger):
+        cmd = "HOME=%s; D=$HOME/lib; HOME=/tmp; echo x > $D/a" % checkout
+        assert _scope(cmd, checkout, logger) == "lib/a"
+
+    @pytest.mark.parametrize("cmd", [
+        "F=lib/a\nif false; then\nF=/tmp/x\nfi\necho x > $F",
+        "F=lib/a\nwhile false; do\nF=/tmp/x\ndone\necho x > $F",
+        "F=lib/a\ncase y in\nn) F=/tmp/x ;;\nesac\necho x > $F",
+        "F=lib/a\nf() {\nF=/tmp/x\n}\necho x > $F",
+        "F=lib/a\nfor i in 1; do\nF=/tmp/x\ndone\necho x > $F",
+        "F=lib/a\nif false; then F=/tmp/x; fi\necho x > $F",
+    ])
+    def test_compound_command_assignment_is_uncertain(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) == "lib/a"
+
+    def test_project_dir_newline_if_still_denied(self, checkout, logger, monkeypatch):
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(checkout))
+        cmd = "if false; then\nCLAUDE_PROJECT_DIR=/tmp\nfi\necho x > $CLAUDE_PROJECT_DIR/lib/a"
+        assert _scope(cmd, checkout, logger) == "lib/a"
+
+    def test_e1_certain_reassignment_outside_scope_allowed(self, checkout, logger):
+        assert _scope("F=lib/a; F=/tmp/x; echo x > $F", checkout, logger) is None
+
+    def test_e1_sequential_statements_after_compound_are_certain(self, checkout, logger):
+        cmd = "if true; then\ntrue\nfi\nF=lib/a\nF=/tmp/x\necho x > $F"
+        assert _scope(cmd, checkout, logger) is None
+
+    def test_combination_limit_blocks_conservatively(self, checkout, logger):
+        cmd = ("A=/tmp/a; true && A=/tmp/b; true && A=/tmp/c; "
+               "B=/tmp/a; true && B=/tmp/b; true && B=/tmp/c; "
+               "C=/tmp/a; true && C=/tmp/b; true && C=/tmp/c; "
+               "echo x > $A/$B/$C")
+        assert _scope(cmd, checkout, logger) == "lib/_bash_guard_combination_overflow"
+
+    def test_within_limit_all_outside_allowed(self, checkout, logger):
+        cmd = "A=/tmp/a; true && A=/tmp/b; B=/tmp/a; true && B=/tmp/b; echo x > $A/$B"
+        assert _scope(cmd, checkout, logger) is None
+
+    def test_python_argv_checked_for_every_possible_value(self, checkout, logger):
+        cmd = ("F=lib/a; false && F=/tmp/x; "
+               "python3 - $F <<'EOF'\nimport sys\nopen(sys.argv[1], 'w').write('x')\nEOF")
+        assert _scope(cmd, checkout, logger) == "lib/a"
