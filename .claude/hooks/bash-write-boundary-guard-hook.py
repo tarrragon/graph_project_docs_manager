@@ -29,8 +29,12 @@ matcher，禁止主線程（PM）寫入 test/、lib/、*.dart。該限制可被 
 - 第二層（僅主線程；與 main-thread-edit-restriction-hook.py 一致）：轉呼
   check_file_permission，開發分支（feat/*、fix/* 等）跳過
 - 失敗語意 fail_closed：解析例外或分派層逾時時擋下
-- 殘留風險（靜態解析 fail-open）：直譯器內動態組成的路徑、先寫腳本再執行的兩步驟、
-  bash -c 字串內的寫入、$VAR／命令替換／~ 路徑、cd 後經子殼層回到原目錄的位移追蹤
+- 殘留風險清單（靜態解析 fail-open，未偵測）：
+  直譯器內動態組成的路徑；先寫腳本到 checkout 外再執行的兩步驟；
+  bash -c／eval 字串內的寫入；$VAR／命令替換／~ 組成的路徑；
+  2> file、&> file 的檔案目標（fd 2 一律 skip）；
+  awk -i inplace、ruby、install、truncate、patch、tar -C、dd of=、rsync、ln -s、
+  touch、curl -o 與版本控制的還原類子命令（命令集合為列舉式）
 - 不含跨專案判斷：Bash command 無單一 file_path，無法用
   find_target_repo() 判斷目標 repo；candidate path 皆以當前
   CLAUDE_PROJECT_DIR 正規化，跨專案 Bash 寫入若剛好命中
@@ -88,7 +92,23 @@ _MAX_HEREDOC_RECURSION = 2
 _PLAIN_RUN = re.compile(r"[^'\"\\\s;|&()`<>#]+")
 
 # python open('path', ...) / open("path", ...)
-_OPEN_CALL_PATTERN = re.compile(r"open\(\s*(['\"])([^'\"]+)\1")
+# 字串可帶 1-2 字元前綴（f、r、rb 等）；第二個參數（模式）可為位置或 mode= 關鍵字
+_OPEN_CALL_PATTERN = re.compile(
+    r"open\(\s*[A-Za-z]{0,2}(['\"])([^'\"]+)\1(?:\s*,\s*(?:mode\s*=\s*)?[A-Za-z]{0,2}(['\"])([^'\"]*)\3)?"
+)
+
+# Path('x').write_text(...) / write_bytes(...)（含 pathlib.Path 前綴）
+_PATH_WRITE_PATTERN = re.compile(
+    r"Path\(\s*[A-Za-z]{0,2}(['\"])([^'\"]+)\1\s*\)\s*\.write_(?:text|bytes)\("
+)
+
+
+def _python_write_targets(text: str) -> List[str]:
+    """python 原文中的寫入目標：open() 僅在模式含 w／a／x／+ 時算寫入（沒給模式為唯讀）。"""
+    out = [m.group(2) for m in _OPEN_CALL_PATTERN.finditer(text)
+           if m.group(4) and any(ch in m.group(4) for ch in "waxWAX+")]
+    out.extend(m.group(2) for m in _PATH_WRITE_PATTERN.finditer(text))
+    return out
 
 _PYTHON_NAME = re.compile(r"python[\d.]*")
 _SHELL_NAMES = frozenset({"sh", "bash", "zsh"})
@@ -98,7 +118,7 @@ _HEREDOC_DELIM_STOP = frozenset(" \t\r\n;|&()<>")
 class _Statement:
     """一個以 | ; & 換行 ( ) 切出的陳述。"""
 
-    __slots__ = ("tokens", "targets", "bodies", "start", "end")
+    __slots__ = ("tokens", "targets", "bodies", "start", "end", "pre")
 
     def __init__(self, start: int) -> None:
         self.tokens: List[str] = []    # 引號已剝除的 token（不含重導向目標）
@@ -106,6 +126,7 @@ class _Statement:
         self.bodies: List[str] = []    # 此陳述宣告的 heredoc 正文
         self.start = start
         self.end = start
+        self.pre = ""                  # 此陳述之前累積的括號邊界字元（只含 "(" 與 ")"）
 
 
 def _read_heredoc_delimiter(command: str, i: int):
@@ -150,6 +171,7 @@ def _parse_statements(command: str) -> List[_Statement]:
     has_tok = False
     redirect: Optional[str] = None  # None / 'write' / 'skip'
     pending: list = []
+    parens = ""  # 尚未歸屬任何陳述的括號邊界字元
     i = 0
 
     def flush() -> None:
@@ -165,12 +187,16 @@ def _parse_statements(command: str) -> List[_Statement]:
         buf = []
         has_tok = False
 
-    def end_statement(end_pos: int, next_start: int) -> None:
-        nonlocal cur, redirect
+    def end_statement(end_pos: int, next_start: int, boundary: str = "") -> None:
+        nonlocal cur, redirect, parens
         flush()
         cur.end = end_pos
         if cur.tokens or cur.targets or cur.bodies:
+            cur.pre = parens
+            parens = ""
             stmts.append(cur)
+        if boundary in ("(", ")"):
+            parens += boundary
         cur = _Statement(next_start)
         redirect = None
 
@@ -216,14 +242,16 @@ def _parse_statements(command: str) -> List[_Statement]:
             j = command.find("\n", i)
             i = n if j == -1 else j
         elif c == ">":
-            is_fd = has_tok and "".join(buf).isdigit()
+            fd_text = "".join(buf) if has_tok else ""
+            is_fd = fd_text.isdigit()
             if is_fd:
                 buf = []
                 has_tok = False
             else:
                 flush()
             i += 2 if command.startswith(">>", i) else 1
-            skip = is_fd
+            # 1> 與 >=3 的 fd（exec 3>file 等）是寫入；0、2 維持 skip（2> 另票處理）
+            skip = is_fd and fd_text.lstrip("0") in ("", "2")
             if i < n and command[i] in "&|":
                 skip = skip or command[i] == "&"
                 i += 1
@@ -251,7 +279,7 @@ def _parse_statements(command: str) -> List[_Statement]:
             redirect = "skip"
         else:
             # ; | & ( ) `：陳述邊界
-            end_statement(i, i + 1)
+            end_statement(i, i + 1, c)
             i += 1
 
     end_statement(n, n)
@@ -313,9 +341,61 @@ def _scan_sed(toks: List[str], j: int, out: List[str]) -> int:
 
 def _scan_cp_mv(toks: List[str], j: int, out: List[str]) -> int:
     """cp / mv：略過旗標，最後一個位置參數為目的地（至少需要來源與目的地）。"""
-    positionals = [t for t in toks[j:] if t == "" or t[0] != "-"]
-    if len(positionals) >= 2:
+    positionals: List[str] = []
+    target_dir: Optional[str] = None
+    k = j
+    while k < len(toks):
+        t = toks[k]
+        k += 1
+        if t.startswith("--target-directory="):
+            target_dir = t.split("=", 1)[1]
+        elif t == "--target-directory" and k < len(toks):
+            target_dir = toks[k]
+            k += 1
+        elif t.startswith("--") or t == "-" or t == "":
+            if t in ("", "-"):
+                positionals.append(t)
+        elif t[0] == "-":
+            if "t" in t[1:]:
+                rest = t[t.index("t") + 1:]
+                if rest:
+                    target_dir = rest
+                elif k < len(toks):
+                    target_dir = toks[k]
+                    k += 1
+        else:
+            positionals.append(t)
+    if target_dir is not None:
+        out.append(target_dir)  # -t DIR：所有位置參數都是來源
+    elif len(positionals) >= 2:
         out.append(positionals[-1])
+    return len(toks)
+
+
+def _scan_perl(toks: List[str], j: int, out: List[str]) -> int:
+    """perl -i / -pi / -i.bak：原地編輯，位置參數（扣掉未用 -e 時的腳本檔）為目標。"""
+    inplace = False
+    has_script_opt = False
+    positionals: List[str] = []
+    k = j
+    while k < len(toks):
+        t = toks[k]
+        k += 1
+        if len(t) > 1 and t[0] == "-" and t[1] != "-":
+            for ch_idx in range(1, len(t)):
+                ch = t[ch_idx]
+                if ch == "i":
+                    inplace = True
+                    break
+                if ch in "eE":
+                    has_script_opt = True
+                    if ch_idx == len(t) - 1:
+                        k += 1
+                    break
+        elif not t.startswith("--"):
+            positionals.append(t)
+    if inplace:
+        out.extend(positionals if has_script_opt else positionals[1:])
     return len(toks)
 
 
@@ -334,6 +414,8 @@ def _scan_statement_tokens(toks: List[str], out: List[str]) -> None:
             j += 1
         elif name == "sed":
             j = _scan_sed(toks, j + 1, out)
+        elif name == "perl":
+            j = _scan_perl(toks, j + 1, out)
         elif name == "mv" and seen_git:
             # git mv 是版本控制內的搬移（deny 訊息指定的正規做法），不是 shell 寫入
             j = len(toks)
@@ -347,8 +429,10 @@ def _scan_statement_tokens(toks: List[str], out: List[str]) -> None:
 
 def _next_cd(cur_cd: Optional[str], toks: List[str]) -> Optional[str]:
     """陳述以 cd 開頭時更新累積的 cd 位移；None 表示無法靜態判定。"""
-    if not toks or _basename(toks[0]) != "cd":
+    if not toks or _basename(toks[0]) not in ("cd", "pushd"):
         return cur_cd
+    if "-" in toks[1:]:
+        return None  # cd -：回到前一個目錄，無法靜態判定
     args = [t for t in toks[1:] if t == "" or t[0] != "-"]
     if not args or cur_cd is None:
         return cur_cd
@@ -363,19 +447,25 @@ def _collect_candidates(command: str, depth: int, dirs: Optional[List[Optional[s
     """dirs 非 None 時，與回傳清單逐項對應地記錄各候選路徑生效的 cd 位移（"" 為無位移）。"""
     candidates: List[str] = []
     cur_cd = base_cd
+    cd_stack: List[Optional[str]] = []  # 子殼：( 保存當下位移，) 還原
 
     def sync() -> None:
         if dirs is not None:
             dirs.extend([cur_cd] * (len(candidates) - len(dirs)))
 
     for stmt in _parse_statements(command):
+        for ch in stmt.pre:
+            if ch == "(":
+                cd_stack.append(cur_cd)
+            elif cd_stack:
+                cur_cd = cd_stack.pop()
         cur_cd = _next_cd(cur_cd, stmt.tokens)
         candidates.extend(stmt.targets)
         _scan_statement_tokens(stmt.tokens, candidates)
         names = [_basename(t) for t in stmt.tokens]
         if any(_PYTHON_NAME.fullmatch(name) for name in names):
             for text in [command[stmt.start:stmt.end]] + stmt.bodies:
-                candidates.extend(m.group(2) for m in _OPEN_CALL_PATTERN.finditer(text))
+                candidates.extend(_python_write_targets(text))
         sync()
         if depth < _MAX_HEREDOC_RECURSION and any(name in _SHELL_NAMES for name in names):
             for body in stmt.bodies:
@@ -595,6 +685,8 @@ def main() -> int:
             "請改用 Edit 或 Write 工具修改檔案；搬移已追蹤的檔案用 git mv。"
             "本地執行期產物（.venv、__pycache__、.claude/hook-logs 等）不受此限。"
             "若這是你自己在 ! 命令中執行的操作，同樣會被擋，請改請 Claude 以 Edit 完成。"
+            "若是本 hook 自身異常而誤擋正常命令，改用 Edit 修正 "
+            ".claude/hooks/bash-write-boundary-guard-hook.py（Edit 不受本 hook 影響）。"
         )
         emit_hook_output(
             "PreToolUse",

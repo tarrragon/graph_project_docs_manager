@@ -655,6 +655,96 @@ class TestFailClosedDeclaration:
             assert hook_module.run_hook_safely(main, "bash-write-boundary-guard-test", fail_closed=True) == 2
 
 
+class TestReviewFixes:
+    """合併前審查 #1 至 #8 的修正；每筆先紅後綠。"""
+
+    # #1 open() 只有寫入模式才算寫入
+    @pytest.mark.parametrize("cmd", [
+        "python3 -c \"import json;json.load(open('.claude/settings.json'))\"",
+        "python3 - <<'EOF'\nprint(open('lib/x.dart').read())\nEOF",
+        "python3 -c \"open('lib/x.dart', 'r')\"",
+        "python3 -c \"open('lib/x.dart', 'rb')\"",
+        "python3 -c \"open('lib/x.dart', mode='r')\"",
+    ])
+    def test_open_read_modes_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
+
+    @pytest.mark.parametrize("mode", ["w", "a", "x", "r+", "wb", "ab"])
+    def test_open_write_modes_denied(self, mode, checkout, logger):
+        cmd = f"python3 -c \"open('lib/x.dart', '{mode}')\""
+        assert _scope(cmd, checkout, logger) == "lib/x.dart"
+
+    def test_open_mode_keyword_write_denied(self, checkout, logger):
+        assert _scope("python3 -c \"open('lib/x.dart', mode='w')\"", checkout, logger) == "lib/x.dart"
+
+    # #2 1> 與 1>> 是寫入；2> 維持原狀（另票）
+    @pytest.mark.parametrize("cmd", ["echo x 1> lib/a.dart", "echo x 1>> lib/a.dart"])
+    def test_fd1_redirect_denied(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) == "lib/a.dart"
+
+    def test_fd2_redirect_still_skipped(self, checkout, logger):
+        assert _scope("echo x 2> lib/a.dart", checkout, logger) is None
+        assert _scope("echo x 2>&1", checkout, logger) is None
+        assert _scope("echo x 1>&2", checkout, logger) is None
+
+    # #3 五種新增偵測
+    @pytest.mark.parametrize("cmd", [
+        "perl -pi -e 's/a/b/' lib/a.dart",
+        "perl -i.bak -pe 's/a/b/' lib/a.dart",
+        "perl -pi -e 's/a/b/' lib/a.dart test/b.dart",
+        "python3 -c \"open(f'lib/a.dart','w')\"",
+        "python3 -c \"from pathlib import Path; Path('lib/a.dart').write_text('x')\"",
+        "python3 -c \"import pathlib; pathlib.Path('lib/a.dart').write_bytes(b'x')\"",
+        "cp -t lib/ a.dart",
+        "mv -t lib a.dart",
+        "cp --target-directory=lib a.dart",
+        "exec 3> lib/a.dart",
+        "exec 4>> lib/a.dart",
+    ])
+    def test_newly_detected_forms_denied(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is not None
+
+    @pytest.mark.parametrize("cmd", [
+        "perl -e 'print 1' lib/a.dart",
+        "perl lib/script.pl",
+        "python3 -c \"from pathlib import Path; Path('lib/a.dart').read_text()\"",
+        "cp -t /tmp a.dart",
+        "exec 3>&1",
+        "exec 3> /tmp/x",
+    ])
+    def test_new_forms_nonwrite_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
+
+    # #4 #5 子殼內的 cd 位移在 ) 後還原
+    def test_subshell_cd_restored_after_close(self, checkout, logger):
+        (checkout / "lib").mkdir()
+        assert _scope("(cd /tmp); echo hi > lib/a.dart", checkout, logger) == "lib/a.dart"
+
+    def test_subshell_cd_into_scope_not_leaked(self, checkout, logger):
+        (checkout / "lib").mkdir()
+        assert _scope("(cd lib); echo > x", checkout, logger) is None
+
+    def test_cd_inside_subshell_still_applies_inside(self, checkout, logger):
+        assert _scope("(cd lib && echo > x)", checkout, logger) == "lib/x"
+
+    # #6 pushd 視同 cd；cd - 無法判定
+    def test_pushd_acts_like_cd(self, checkout, logger):
+        assert _scope("pushd lib && echo > a", checkout, logger) == "lib/a"
+
+    def test_cd_dash_is_undecidable(self, checkout, logger):
+        assert _scope("cd - && echo > lib/a", checkout, logger) is None
+
+    # #8 脫困指引
+    def test_deny_message_has_escape_hint(self, monkeypatch, capsys):
+        import io
+        import json as json_mod
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json_mod.dumps(
+            {"tool_name": "Bash", "tool_input": {"command": "echo x >> lib/a.dart"}, "cwd": str(_REPO_ROOT)})))
+        with patch.object(hook_module, "get_current_branch", return_value="main"):
+            assert main() == 2
+        assert ".claude/hooks/bash-write-boundary-guard-hook.py" in capsys.readouterr().out
+
+
 class TestDenyMessage:
     def test_deny_reason_names_edit_write_and_git_mv(self, monkeypatch, capsys):
         import io
