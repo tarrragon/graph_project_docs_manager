@@ -848,11 +848,12 @@ if __name__ == "__main__":
 
 守衛的失效方向必須在設計期決定：「決定擋下、但輸出 deny 的動作失敗」不得退化為放行。以 PreToolUse 為例，Claude Code 只在 exit 0 且 stdout 含 deny JSON、或 exit 2 時才擋下；輸出失敗（stdout 關閉、BrokenPipe、編碼錯誤）的例外由 `run_hook_safely`（預設 `fail_closed=False`）接住並回 exit 1；exit 1 屬非阻擋錯誤，結果仍是放行。
 
-### 三項必載
+### 必載項目
 
 | 項目 | 要求 | Why / Consequence |
 |------|------|------------------|
 | fail_closed 只用於不可逆守衛 | `run_hook_safely(..., fail_closed=True)` 僅限放行後無法復原的守衛（如破壞性操作、不可逆寫入）；其餘維持預設 `fail_closed=False` | fail_closed 讓 hook 自身 crash 也擋下操作；濫用會使任何 hook bug 變成全域卡死，用戶學會繞過守衛 |
+| 宣告 fail_closed 時同步 fallback 清單 | 經 `hook-dispatcher.py` 分派的 hook 新增或移除 `fail_closed=True` 時，同一個 commit 同步 `FALLBACK_FAIL_CLOSED_GUARDS` 對應群組，並在本機提交前執行 `tests/test_hook_dispatcher_fail_closed.py` | 該清單刻意不依賴 registry（registry 讀不到時才用），只能手動維護；漏同步由漂移測試擋下，但若只跑 hook 自己的測試檔，要到合併閘門跑全套件才發現，多耗一輪閘門 |
 | deny 輸出失敗由 `emit_hook_output` 兜底 | 輸出 deny 一律走 `lib` 的 `emit_hook_output`：deny 輸出失敗時寫 stderr 後 `SystemExit(2)`；allow 輸出失敗原樣 re-raise。無法改用它的守衛（直接 print、自組輸出）須自行兜底：包住輸出動作，失敗時寫 stderr 並 `sys.exit(2)` | 直接 `print(json.dumps(deny))` 輸出失敗時，例外被 fail-open 路徑吞掉，守衛無聲放行 |
 | 自帶 except-all 的守衛不得吞 SystemExit | `except Exception` 不攔 SystemExit，但 `except BaseException` / 裸 `except:` 會；必須攔時先 `except SystemExit: raise` | 吞掉兜底拋出的 SystemExit(2) 使兜底失效，回到放行 |
 
@@ -903,7 +904,8 @@ if __name__ == "__main__":
 
 ---
 
-**Last Updated**: 2026-10-06
+**Last Updated**: 2026-10-20
+**Version**: 「deny 輸出失敗語意」必載表補一列：經 hook-dispatcher 分派的 hook 增刪 `fail_closed=True` 時，同一 commit 同步 `FALLBACK_FAIL_CLOSED_GUARDS`，並於本機提交前執行 `tests/test_hook_dispatcher_fail_closed.py`（漏同步原本要到合併閘門才發現）；小節標題改為不寫死數量的「必載項目」。
 **Version**: 新增「deny 輸出失敗語意」章節：fail_closed 僅限不可逆守衛、deny 輸出失敗由 emit_hook_output 兜底（無法改用者自行 exit 2）、自帶 except-all 不得吞 SystemExit；新守衛檢查項「deny 輸出失敗測試」含 E1 對照與 E2 正向對照輸入要求。
 **Version**: 校正 Stop 8-block cap 段落的過期計數（Hook 改造附帶發現：文件記載 5 個 Stop hook，settings.json 實際已達 10 個）。以 settings.json 為準逐檔確認實際輸出後改寫：本專案註冊 10 個 Stop hook，其中僅 2 個（handoff-auto-resume-stop-hook、malformed-tool-call-detector-hook）具 block 能力，其餘 8 個皆不含 block 決策；最壞情況合計 2 blocks < 8，結論仍在安全範圍內。同步校正變更總覽表（14-23 行）與版本異動表（846-851 行）的對應計數，並調整 Action 段落區分「註冊總數」與「具 block 能力數」
 **Version**: 修正「effort 感知範例」（327-352 行）與同檔設計鐵則（369-391 行）矛盾：舊範例示範 `if effort == "low": return 0` 無條件短路，與鐵則「事實判斷型 hook 核心 block 邏輯永不依 effort 短路」相悖，為 W14-034/036/037 三批次 12 個 hook 複製此缺陷之散播源；改寫範例為 effort 僅控制 audit log 詳細度，並前置交叉引用指向鐵則章節。
