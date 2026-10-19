@@ -259,8 +259,8 @@ class TestMergedCleanupReminderMessage:
         assert "git -C /path/to/wt clean -fd ." in message
         assert "會被 Guard C 阻擋" in message
         # 移除建議本身不得再帶 --force（僅在文字說明中提及會被擋）
-        assert "git worktree remove /path/to/wt   #" in message
-        assert "git worktree remove /path/to/wt --force" not in message
+        assert "/worktree cleanup 0.0.0-W1-007   #" in message
+        assert "--force" not in message.split("/worktree cleanup", 1)[1].split("#")[0]
 
     def test_mixed_untracked_and_tracked_modified_both_shown_separately(
         self, monkeypatch, capsys
@@ -440,6 +440,15 @@ def test_clean_merged_suggestion_has_no_bare_remove(monkeypatch, capsys):
     )
     assert not _BARE_REMOVE.search(msg)
     assert "建議: /worktree cleanup 0.0.0-W1-001" in msg
+
+
+@pytest.mark.parametrize("dirty", [False, True])
+def test_whole_reminder_has_no_bare_remove(monkeypatch, capsys, dirty):
+    """clean 與 dirty 兩種情況，整段提醒都不得含裸 git worktree remove。"""
+    msg = _messages_for(
+        monkeypatch, capsys, "feat/0.0.0-W1-001", unmerged=False, dirty=dirty
+    )
+    assert not _BARE_REMOVE.search(msg)
 
 
 def test_cleanup_other_branch_prints_quoted_branch_form(monkeypatch, capsys):

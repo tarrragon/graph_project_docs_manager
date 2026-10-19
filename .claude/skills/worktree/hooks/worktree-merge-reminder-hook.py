@@ -362,7 +362,7 @@ def main() -> int:
                 lines.append("  驗證（處理後執行，確認已 clean 才可 remove）：")
                 lines.append(f"    git -C {wt_path} status --porcelain   # 無輸出即代表 clean")
                 lines.append(
-                    f"    git worktree remove {wt_path}   "
+                    f"    {cleanup_command(branch, logger)}   "
                     "# 不需 --force；dirty 狀態下 --force 會被 Guard C 阻擋"
                 )
             else:
