@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.2.1（2026-10-19）— `references/shared-resources.md` §1「閘門驗證期間在主 checkout 提交」一列的處置欄補指向 §4：閘門空出後同樣不在主 checkout 提交，非票面修改一律在 worktree 提交、經閘門合併。原列只講提交時機，讀者照該列處置時看不到 §4 的提交位置，曾在閘門空出後直接於主 checkout 提交並推送 `.claude/` 修改。
+
 **Version**: 1.2.0（2026-10-19）— `references/shared-resources.md` 新增 §6「讀取各線 session 的狀態」：`~/.claude/sessions/<pid>.json` 的位置、欄位、四個狀態值（busy／shell／idle／waiting，waiting 附 waitingFor）、只讀 `*.json` 不讀 `*.key`、以 `TZ=UTC ps -o lstart=` 對 `procStart` 的存活判定（pid 可能被重複使用），以及升版後的三步確認方式；標明量測版本為 Claude Code 2.1.303、屬內部格式無相容承諾。SKILL.md〈按需讀取〉加一列路由。主控原本只能逐一傳訊詢問，而停在等用戶的線要到下一輪工具呼叫才讀得到訊息。
 
 **Version**: 1.1.0（2026-10-19）— 補兩條協調規則。〈核心原則〉新增「可預見的裁決提前問」：某線預告影響全線的行為變更、或其結果會定案一項待裁議題時，PM 在該線回報可合併前先取得用戶裁定，否則該線要多等一輪用戶回覆才能合併。〈開線與分線〉新增「驗收需要他線的分支先合併」：由分支所屬的線自行合併、結果直傳驗收方，驗收方與 PM 不代合，因為代合者不清楚該分支的狀態，合併後出問題無人能接手。兩條皆出自主控 PM 實際做過的判斷，原條文無對應，下一個主控 session 會重新判斷一次。
