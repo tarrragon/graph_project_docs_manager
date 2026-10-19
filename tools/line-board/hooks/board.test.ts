@@ -1,20 +1,29 @@
-// line-board 的測試：parse.ts 純函式（主 checkout 判定、現行佇列行解析、佇列格式化、閘門紀錄篩選）與 Pane 的端到端繪製。
+// line-board 的測試：parse.ts 純函式（checkout 判定、現行佇列行解析、佇列格式化、session 狀態檔、閘門紀錄篩選）
+// 與 Pane 的端到端繪製。
 
 import type { On } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
+import type { SessionState } from '../types'
 import {
   DISPATCH_TICKET_PATH,
   MERGE_LOG_PATH,
+  SESSIONS_DIR,
   TICKETS_DIR,
+  formatAge,
   formatQueue,
+  isInRepo,
+  laneSessionStatus,
   laneTicketIds,
   mergeGateLines,
   parseFrontmatterStatus,
   parseLanes,
-  parseMainCheckout,
   parseQueue,
+  parseSessionFile,
+  parseWorktreePaths,
+  sessionStatusFileNames,
+  sortSessions,
 } from './parse'
 
 /** 〈看板讀取約定〉的格式說明行：行首不是 `**L`，行內以反引號引用範本，不得被當成一條線。 */
@@ -74,8 +83,8 @@ const MERGE_LOG = [
 
 const ticketFile = (status: string) => `---\nid: x\nstatus: ${status}\nwho: y\n---\n# body\nstatus: ignored\n`
 
-describe('parseMainCheckout', () => {
-  test('取 git worktree list 的第一筆為主 checkout', () => {
+describe('parseWorktreePaths', () => {
+  test('取 git worktree list 的所有 checkout，主 checkout 在第一筆', () => {
     const porcelain = [
       'worktree /repo',
       'HEAD aaa',
@@ -87,11 +96,133 @@ describe('parseMainCheckout', () => {
       'locked claude agent agent-x',
       '',
     ].join('\n')
-    expect(parseMainCheckout(porcelain)).toBe('/repo')
+    expect(parseWorktreePaths(porcelain)).toEqual(['/repo', '/repo/.claude/worktrees/agent-x'])
   })
 
-  test('空輸出回傳 null', () => {
-    expect(parseMainCheckout('')).toBeNull()
+  test('空輸出回傳空陣列', () => {
+    expect(parseWorktreePaths('')).toEqual([])
+  })
+})
+
+/** 仿 `~/.claude/sessions/<pid>.json`：只放看板用到的欄位與一個不應被保存的欄位。 */
+const sessionJson = (fields: Record<string, unknown>) =>
+  JSON.stringify({ sessionId: 'x', messagingSocketPath: '/tmp/sock', ...fields })
+
+const session = (fields: Partial<SessionState> & { name: string; status: string }): SessionState => ({
+  pid: 1,
+  cwd: '/repo',
+  waitingFor: null,
+  statusUpdatedAt: null,
+  ...fields,
+})
+
+describe('sessionStatusFileNames', () => {
+  test('只取 .json 一般檔案；.key 金鑰與目錄不在其中', () => {
+    const entry = (name: string, kind: 'file' | 'dir' = 'file') => ({ name, kind, size: 1, mtimeMs: 0, isLink: false })
+    expect(
+      sessionStatusFileNames([
+        entry('101.json'),
+        entry('101.abc.key'),
+        entry('102.json.key'),
+        entry('sub.json', 'dir'),
+        entry('103.json'),
+      ]),
+    ).toEqual(['101.json', '103.json'])
+  })
+})
+
+describe('parseSessionFile', () => {
+  test('取 pid、name、cwd、status、waitingFor、statusUpdatedAt，其他欄位不保存', () => {
+    const text = sessionJson({
+      pid: 7,
+      name: 's-7',
+      cwd: '/repo',
+      status: 'waiting',
+      waitingFor: 'input needed',
+      statusUpdatedAt: 1000,
+    })
+    expect(parseSessionFile(text)).toEqual({
+      pid: 7,
+      name: 's-7',
+      cwd: '/repo',
+      status: 'waiting',
+      waitingFor: 'input needed',
+      statusUpdatedAt: 1000,
+    })
+  })
+
+  test('沒有 waitingFor 或 statusUpdatedAt 時為 null；未知 status 原樣保存', () => {
+    expect(parseSessionFile(sessionJson({ pid: 7, name: 's', cwd: '/r', status: 'compacting' }))).toEqual({
+      pid: 7,
+      name: 's',
+      cwd: '/r',
+      status: 'compacting',
+      waitingFor: null,
+      statusUpdatedAt: null,
+    })
+  })
+
+  test('JSON 無效或缺少必要欄位時回傳 null', () => {
+    expect(parseSessionFile('{"pid": 7, "name"')).toBeNull()
+    expect(parseSessionFile('null')).toBeNull()
+    expect(parseSessionFile(sessionJson({ pid: '7', name: 's', cwd: '/r', status: 'idle' }))).toBeNull()
+    expect(parseSessionFile(sessionJson({ pid: 7, name: 's', cwd: '/r' }))).toBeNull()
+  })
+})
+
+describe('isInRepo', () => {
+  test('等於或位於任一 checkout 之下才算；名稱前綴相同的兄弟目錄不算', () => {
+    const paths = ['/repo', '/repo/.claude/worktrees/agent-x']
+    expect(isInRepo('/repo', paths)).toBe(true)
+    expect(isInRepo('/repo/tools', paths)).toBe(true)
+    expect(isInRepo('/repo/.claude/worktrees/agent-x/lib', paths)).toBe(true)
+    expect(isInRepo('/repo-other', paths)).toBe(false)
+    expect(isInRepo('/other', paths)).toBe(false)
+  })
+})
+
+describe('sortSessions', () => {
+  test('依 waiting、busy、idle 排序，未知 status 排最後；同狀態依名稱', () => {
+    const sorted = sortSessions([
+      session({ name: 'b', status: 'idle' }),
+      session({ name: 'z', status: 'compacting' }),
+      session({ name: 'c', status: 'busy' }),
+      session({ name: 'a', status: 'idle' }),
+      session({ name: 'd', status: 'waiting' }),
+    ])
+    expect(sorted.map(item => `${item.status}:${item.name}`)).toEqual([
+      'waiting:d',
+      'busy:c',
+      'idle:a',
+      'idle:b',
+      'compacting:z',
+    ])
+  })
+})
+
+describe('laneSessionStatus', () => {
+  const sessions = [
+    session({ name: 's-1', status: 'waiting', waitingFor: 'input needed', statusUpdatedAt: 5 }),
+    session({ name: 's-2', status: 'idle', statusUpdatedAt: 1 }),
+    session({ name: 's-2', status: 'busy', statusUpdatedAt: 9 }),
+  ]
+
+  test('waiting 附 waitingFor；同名多筆取最新一筆；比對不到為離線', () => {
+    expect(laneSessionStatus(sessions, 's-1')).toBe('waiting：input needed')
+    expect(laneSessionStatus(sessions, 's-2')).toBe('busy')
+    expect(laneSessionStatus(sessions, 's-9')).toBe('離線')
+    expect(laneSessionStatus(sessions, null)).toBe('')
+  })
+})
+
+describe('formatAge', () => {
+  test('秒、分、小時、天；未來時間為 0 秒；缺少時間為時間不明', () => {
+    expect(formatAge(59_000, 0)).toBe('59 秒前')
+    expect(formatAge(60_000, 0)).toBe('1 分前')
+    expect(formatAge(3 * 3_600_000, 0)).toBe('3 小時前')
+    expect(formatAge(2 * 86_400_000, 0)).toBe('2 天前')
+    expect(formatAge(0, 5_000)).toBe('0 秒前')
+    expect(formatAge(0, null)).toBe('時間不明')
   })
 })
 
@@ -212,29 +343,56 @@ describe('mergeGateLines', () => {
 })
 
 describe('Pane', () => {
+  /** 家目錄與 session 狀態檔目錄（測試用的固定值）。 */
+  const HOME = '/home/u'
+  const SESSIONS = `${HOME}/${SESSIONS_DIR}`
+  /** 讀取當下的時間：2026-10-19 08:00:00 UTC（epoch 毫秒）。 */
+  const NOW_MS = Date.UTC(2026, 9, 19, 8, 0, 0)
+
+  type Stub = {
+    files: Record<string, string>
+    /** `~/.claude/sessions/` 內的檔名；undefined 表示該目錄無法列出。 */
+    sessionEntries?: string[]
+    /** `ps -p` 回報已結束的 pid。 */
+    deadPids?: number[]
+  }
+
   /**
    * 以 test 端 hook 代替 engine：看板 session 在 worktree `/wt` 內啟動（session root 為 `/wt`），
    * git 列出主 checkout `/repo` 與 `/wt`。$ 呼叫的 hook 回 `{ value }` 或 `{ deny }`（deny 即 reject，代表檔案不存在）。
+   * 回傳 fs.read 被呼叫過的所有路徑，供斷言 `.key` 從未被讀取。
    */
-  function stubRepo(on: On, files: Record<string, string>) {
+  function stubRepo(on: On, stub: Stub): string[] {
+    const readPaths: string[] = []
+    mock.env(on, { HOME })
     on('session.start', (_$, e) => ({ cwd: e.cwd }))
     on('session.root', () => ({ value: '/wt' }))
-    on('process.run', () => ({
-      value: {
-        exitCode: 0,
-        stdout: 'worktree /repo\nHEAD a\nbranch refs/heads/main\n\nworktree /wt\nHEAD b\nbranch refs/heads/feat\n',
-        stderr: '',
-        isStdoutTruncated: false,
-        isStderrTruncated: false,
-      },
-    }))
+    on('process.run', (_$, e) => {
+      const isPs = e.argv[0] === 'ps'
+      const isDead = isPs && (stub.deadPids ?? []).includes(Number(e.argv[2]))
+      return {
+        value: {
+          exitCode: isDead ? 1 : 0,
+          stdout: isPs ? '' : 'worktree /repo\nHEAD a\nbranch refs/heads/main\n\nworktree /wt\nHEAD b\nbranch refs/heads/feat\n',
+          stderr: '',
+          isStdoutTruncated: false,
+          isStderrTruncated: false,
+        },
+      }
+    })
+    on('fs.list', (_$, e) => {
+      if (e.path !== SESSIONS || stub.sessionEntries === undefined) return { deny: `ENOENT: ${e.path}` }
+      return { value: stub.sessionEntries.map(name => ({ name, kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false })) }
+    })
     on('fs.read', (_$, e) => {
-      const text = files[e.path]
+      readPaths.push(e.path)
+      const text = stub.files[e.path]
       return text === undefined ? { deny: `ENOENT: ${e.path}` } : { value: text }
     })
     on('command.register', (_$, e) => ({ value: { command: e.name } }))
     on('ui.open', () => ({ value: { isPlaced: true } }))
     on('ui.log', () => ({ value: undefined }))
+    return readPaths
   }
 
   const PANE = {
@@ -250,27 +408,94 @@ describe('Pane', () => {
     },
   } as const
 
-  async function startBoard($: Engine, on: On, files: Record<string, string>) {
-    const clock = mock.clock(on)
-    stubRepo(on, files)
+  async function startBoard($: Engine, on: On, stub: Stub) {
+    const clock = mock.clock(on, { now: NOW_MS })
+    const readPaths = stubRepo(on, stub)
     await $.session.start({ cwd: '/wt', surface: 'terminal', isInteractive: true })
     await clock.advance(1)
-    return $.ui.mount({ plugin: 'line-board', surface: 'terminal', ...PANE })
+    const ui = await $.ui.mount({ plugin: 'line-board', surface: 'terminal', ...PANE })
+    return { ui, readPaths }
   }
 
+  /**
+   * 一組 session 狀態檔：本 repo 主 checkout 的 waiting／busy／idle／未知狀態、worktree 內的一個、
+   * 其他專案的一個、pid 已結束的一個；每個 .json 旁都有 .key（內容故意放 JSON，讀到也能被解析，才分辨得出有沒有被讀）。
+   */
+  const SESSION_FILES: Record<string, Record<string, unknown>> = {
+    '101': { pid: 101, name: 'graph-project-docs-manager-f9', cwd: '/repo', status: 'busy', statusUpdatedAt: NOW_MS - 90_000 },
+    '102': {
+      pid: 102,
+      name: 'graph-project-docs-manager-1b',
+      cwd: '/repo',
+      status: 'waiting',
+      waitingFor: 'input needed',
+      statusUpdatedAt: NOW_MS - 12_000,
+    },
+    '103': { pid: 103, name: 'graph-project-docs-manager-d7', cwd: '/repo', status: 'idle', statusUpdatedAt: NOW_MS - 7_200_000 },
+    '104': { pid: 104, name: 'graph-project-docs-manager-q1', cwd: '/wt/lib', status: 'compacting', statusUpdatedAt: NOW_MS },
+    '105': { pid: 105, name: 'blog-ea', cwd: '/home/u/blog', status: 'waiting', statusUpdatedAt: NOW_MS },
+    '106': { pid: 106, name: 'graph-project-docs-manager-3e', cwd: '/repo', status: 'busy', statusUpdatedAt: NOW_MS },
+  }
+
+  const sessionStub = (files: Record<string, string>): Stub => {
+    const all = { ...files }
+    const entries: string[] = []
+    for (const [pid, fields] of Object.entries(SESSION_FILES)) {
+      all[`${SESSIONS}/${pid}.json`] = sessionJson(fields)
+      all[`${SESSIONS}/${pid}.deadbeef.key`] = sessionJson({ ...fields, name: `KEY-${pid}`, status: 'waiting' })
+      entries.push(`${pid}.json`, `${pid}.deadbeef.key`)
+    }
+    return { files: all, sessionEntries: entries, deadPids: [106] }
+  }
+
+  test('各 session：只列本 repo（含 worktree）且 pid 存活者，waiting 最前，未知狀態原樣；.key 從未被讀取', async ($, on) => {
+    const { ui, readPaths } = await startBoard($, on, sessionStub({ [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 }))
+    const rows = await ui.findAll({ type: 'Text', text: /^(graph-project-docs-manager|blog|KEY)-/ })
+    expect(rows.map(row => row.text)).toEqual([
+      'graph-project-docs-manager-1b｜waiting：input needed｜12 秒前',
+      'graph-project-docs-manager-f9｜busy｜1 分前',
+      'graph-project-docs-manager-d7｜idle｜2 小時前',
+      'graph-project-docs-manager-q1｜compacting｜0 秒前',
+    ])
+    expect(await ui.find({ type: 'Text', text: /^另有 1 個狀態檔的 pid 已結束/ })).toBeDefined()
+    expect(readPaths.some(path => path.endsWith('.key'))).toBe(false)
+    expect(readPaths.filter(path => path.startsWith(SESSIONS)).length).toBe(6)
+    await ui.unmount()
+  })
+
+  test('線列 session 旁標狀態：存活者取其 status，pid 已結束或找不到的為離線', async ($, on) => {
+    const { ui } = await startBoard($, on, sessionStub({ [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 }))
+    expect(await ui.find({ type: 'Text', text: /^L7｜graph-project-docs-manager-f9［busy］｜351/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^L13｜graph-project-docs-manager-1b［waiting：input needed］｜/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^L9｜graph-project-docs-manager-3e［離線］｜/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('sessions 目錄無法列出時，各 session 區塊顯示讀取失敗，線列標狀態不明', async ($, on) => {
+    const { ui } = await startBoard($, on, { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
+    expect(await ui.find({ type: 'Text', text: /^讀取 ~\/\.claude\/sessions 失敗/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^L7｜graph-project-docs-manager-f9［狀態不明］｜/ })).toBeDefined()
+    await ui.unmount()
+  })
+
   test('每條線一列（線號、session、票號與 main 的狀態），歷史票號不出現；閘門區只有開始與結束', async ($, on) => {
-    const ui = await startBoard($, on, {
-      [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
-      [`/repo/${TICKETS_DIR}/0.5.0-W1-351.md`]: ticketFile('in_progress'),
-      [`/wt/${TICKETS_DIR}/0.5.0-W1-351.md`]: ticketFile('pending'),
-      [`/repo/${TICKETS_DIR}/0.5.0-W1-337.1.md`]: ticketFile('completed'),
-      [`/repo/${MERGE_LOG_PATH}`]: MERGE_LOG,
+    const { ui } = await startBoard($, on, {
+      files: {
+        [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+        [`/repo/${TICKETS_DIR}/0.5.0-W1-351.md`]: ticketFile('in_progress'),
+        [`/wt/${TICKETS_DIR}/0.5.0-W1-351.md`]: ticketFile('pending'),
+        [`/repo/${TICKETS_DIR}/0.5.0-W1-337.1.md`]: ticketFile('completed'),
+        [`/repo/${MERGE_LOG_PATH}`]: MERGE_LOG,
+      },
     })
-    const l7 = await ui.find({ type: 'Text', text: /^L7｜graph-project-docs-manager-f9｜/ })
+    const l7 = await ui.find({ type: 'Text', text: /^L7｜graph-project-docs-manager-f9［[^］]*］｜/ })
     expect(l7).toBeDefined()
     expect(JSON.stringify(l7)).toContain('351〔in_progress〕 → 145〔unknown〕')
     expect(
-      await ui.find({ type: 'Text', text: /^L13｜graph-project-docs-manager-1b｜337\.1〔completed〕（待用戶實機驗證） → 337\.3/ }),
+      await ui.find({
+        type: 'Text',
+        text: /^L13｜graph-project-docs-manager-1b［[^］]*］｜337\.1〔completed〕（待用戶實機驗證） → 337\.3/,
+      }),
     ).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^L9｜/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^L11｜/ })).toBeUndefined()
@@ -284,19 +509,21 @@ describe('Pane', () => {
   })
 
   test('349 讀得到但沒有任何現行佇列行時顯示「349 尚無現行佇列行」', async ($, on) => {
-    const ui = await startBoard($, on, {
-      [`/repo/${DISPATCH_TICKET_PATH}`]: `---\nstatus: pending\n---\n## Solution\n${TEMPLATE_NOTE}\n`,
-      [`/repo/${MERGE_LOG_PATH}`]: '',
+    const { ui } = await startBoard($, on, {
+      files: {
+        [`/repo/${DISPATCH_TICKET_PATH}`]: `---\nstatus: pending\n---\n## Solution\n${TEMPLATE_NOTE}\n`,
+        [`/repo/${MERGE_LOG_PATH}`]: '',
+      },
+      sessionEntries: [],
     })
     expect(await ui.find({ type: 'Text', text: /^349 尚無現行佇列行$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^（本 repo 沒有執行中的 session）$/ })).toBeDefined()
     await ui.unmount()
   })
 
   test('對照：349 票檔讀不到時顯示「解析失敗」而非「尚無現行佇列行」', async ($, on) => {
-    const ui = await startBoard($, on, {
-      [`/wt/${DISPATCH_TICKET_PATH}`]: TICKET_349,
-    })
+    const { ui } = await startBoard($, on, { files: { [`/wt/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
     expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /尚無現行佇列行/ })).toBeUndefined()
     await ui.unmount()
