@@ -17,9 +17,24 @@ export type LanesResult =
 /** 佇列中一張票在主 checkout 的狀態；票檔讀不到或沒有 status 欄時為 'unknown'。 */
 export type TicketStatus = { id: string; status: string }
 
-/** 合併閘門紀錄：ok 為最近幾行開始／結束，error 為讀檔失敗原因。 */
+/**
+ * 一行 `[合併閘門] 開始／結束` 的欄位：time 為 `HH:MM:SS`，branch 為完整分支名（顯示時才縮短），
+ * result 為結束行的結果（寫入、中止等）；raw 為格式不符、原樣保留的整行。
+ */
+export type MergeGateEntry =
+  | { kind: 'start'; time: string; branch: string }
+  | { kind: 'end'; time: string; branch: string; result: string }
+  | { kind: 'raw'; text: string }
+
+/** 目前持有閘門的分支：最後一筆開始行沒有對應結束時的分支（完整名稱）與開始時間 `HH:MM:SS`。 */
+export type MergeGateHolder = { branch: string; since: string }
+
+/**
+ * 合併閘門紀錄：ok 為最近幾行開始／結束與目前持有者（以整份紀錄判定，沒有時為 null），
+ * error 為讀檔失敗原因。
+ */
 export type MergeLogResult =
-  | { kind: 'ok'; lines: string[] }
+  | { kind: 'ok'; entries: MergeGateEntry[]; holder: MergeGateHolder | null }
   | { kind: 'error'; message: string }
 
 /**
