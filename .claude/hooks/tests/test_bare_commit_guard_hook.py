@@ -76,6 +76,10 @@ _is_index_discarding_form = hook_module._is_index_discarding_form
 _staged_scope_is_safe_for_bare_commit = hook_module._staged_scope_is_safe_for_bare_commit
 main = hook_module.main
 
+# 偵測函式與其 subprocess 呼叫位於 lib.git_operation_state；patch 必須作用在
+# 函式實際查名稱的模組，只換 hook_module 的 re-export 不會影響 _pending_operation。
+from lib import git_operation_state as ops_module  # noqa: E402
+
 
 def _dispatch(ticket_id: str, files) -> dict:
     """建構最小化的活躍派發記錄（供 `_get_active_dispatches_safe` 回傳）。"""
@@ -98,8 +102,8 @@ def _run_hook(
     stdin_buffer = io.StringIO(json.dumps(payload))
     monkeypatch.setattr(sys, "stdin", stdin_buffer)
     monkeypatch.setattr(hook_module, "get_project_root", lambda: project_root)
-    monkeypatch.setattr(hook_module, "_merge_in_progress", lambda *a, **k: merge_head)
-    monkeypatch.setattr(hook_module, "_other_operation_state", lambda *a, **k: None)
+    monkeypatch.setattr(ops_module, "_merge_in_progress", lambda *a, **k: merge_head)
+    monkeypatch.setattr(ops_module, "_other_operation_state", lambda *a, **k: None)
     monkeypatch.setattr(
         hook_module, "_get_active_dispatches_safe", lambda root: dispatches or []
     )
@@ -1161,7 +1165,7 @@ class TestMergeDetectFailureSemantics:
         def boom(*a, **k):
             return subprocess.CompletedProcess(a, 128, "", "fatal: not a git repository")
 
-        monkeypatch.setattr(hook_module.subprocess, "run", boom)
+        monkeypatch.setattr(ops_module.subprocess, "run", boom)
         assert hook_module._merge_in_progress(tmp_path, sink) is False
         assert len(sink.warnings) == 1
         assert "rc=128" in sink.warnings[0] and str(tmp_path) in sink.warnings[0]
@@ -1172,7 +1176,7 @@ class TestMergeDetectFailureSemantics:
         def slow(*a, **k):
             raise subprocess.TimeoutExpired("git", 10)
 
-        monkeypatch.setattr(hook_module.subprocess, "run", slow)
+        monkeypatch.setattr(ops_module.subprocess, "run", slow)
         assert hook_module._merge_in_progress(tmp_path, sink) is False
         assert len(sink.warnings) == 1 and "TimeoutExpired" in sink.warnings[0]
 
@@ -1193,7 +1197,7 @@ class TestMergeDetectFailureStderr:
 
     def test_rc_failure_writes_stderr(self, monkeypatch, tmp_path, capsys):
         monkeypatch.setattr(
-            hook_module.subprocess, "run",
+            ops_module.subprocess, "run",
             lambda *a, **k: subprocess.CompletedProcess(a, 128, "", "fatal"),
         )
         assert hook_module._merge_in_progress(tmp_path, _Sink()) is False
@@ -1204,7 +1208,7 @@ class TestMergeDetectFailureStderr:
         def slow(*a, **k):
             raise subprocess.TimeoutExpired("git", 10)
 
-        monkeypatch.setattr(hook_module.subprocess, "run", slow)
+        monkeypatch.setattr(ops_module.subprocess, "run", slow)
         assert hook_module._merge_in_progress(tmp_path, _Sink()) is False
         assert self._MARK in capsys.readouterr().err
 
@@ -1333,7 +1337,7 @@ class TestPendingOperationMutation:
     def test_blind_detector_lets_cherry_pick_through(self, monkeypatch, tmp_path):
         r = _conflict_repo(tmp_path)
         _g(r, "cherry-pick", "side", check=False)
-        monkeypatch.setattr(hook_module, "_other_operation_state", lambda *a, **k: None)
+        monkeypatch.setattr(ops_module, "_other_operation_state", lambda *a, **k: None)
         assert _run_real(monkeypatch, 'git commit -m x', r, cwd=r) == 0
 
 
