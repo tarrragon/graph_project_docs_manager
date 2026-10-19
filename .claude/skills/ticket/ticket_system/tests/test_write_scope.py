@@ -55,6 +55,26 @@ class TestResolveRepoRoot:
         result = write_scope.resolve_repo_root(str(tmp_path), str(tmp_path))
         assert result is not None
 
+    def test_linked_worktree_accepted(self, tmp_path):
+        main, linked = tmp_path / "main", tmp_path / "linked"
+        _git_init(main)
+        subprocess.run(
+            ["git", "-C", str(main), "-c", "user.name=t", "-c", "user.email=t@e.x",
+             "commit", "-q", "--allow-empty", "-m", "init"], check=True)
+        subprocess.run(
+            ["git", "-C", str(main), "worktree", "add", "-q", "-b", "wt", str(linked)],
+            check=True)
+        assert write_scope.resolve_repo_root(str(linked), str(main)) is not None
+
+    def test_symlinked_path_forms_accepted(self, tmp_path):
+        """E1：symlink 路徑與實體路徑混用於 --worktree／main_root，皆放行。"""
+        real = tmp_path / "real"
+        _git_init(real)
+        alias = tmp_path / "alias"
+        alias.symlink_to(real, target_is_directory=True)
+        assert write_scope.resolve_repo_root(str(alias), str(real)) is not None
+        assert write_scope.resolve_repo_root(str(real), str(alias)) is not None
+
     def test_foreign_repo_rejected(self, tmp_path):
         _git_init(tmp_path / "m")
         _git_init(tmp_path / "f")
