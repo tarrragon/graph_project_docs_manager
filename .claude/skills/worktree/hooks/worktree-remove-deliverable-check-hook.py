@@ -30,7 +30,6 @@ Hook 類型：PreToolUse
 """
 
 import os
-import re
 import shlex
 import sys
 from pathlib import Path
@@ -39,6 +38,7 @@ from typing import Callable, List, Optional, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
+from lib.git_command_parse import contains_git_word, find_git_invocations
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -49,11 +49,6 @@ from lib import (
     FileStatus,
 )
 
-
-# git worktree remove [--force] <path>
-_REMOVE_PATTERN = re.compile(
-    r"git\s+worktree\s+remove\b(?P<rest>[^\n;&|]*)",
-)
 
 BLOCK_MESSAGE = """[1.2.0-W1-028 Guard A] worktree 分支有未 merge 進 main 的交付物，禁止 remove
 
@@ -185,15 +180,35 @@ def _extract_remove_paths(command: str, logger) -> List[str]:
         目標 worktree 路徑清單（去除 flag）
     """
     paths: List[str] = []
-    for match in _REMOVE_PATTERN.finditer(command):
-        rest = match.group("rest").strip()
-        # 拆 token，濾掉 flag（--force / -f 等）
-        tokens = [t for t in rest.split() if not t.startswith("-")]
-        if tokens:
-            # 第一個非 flag token 視為路徑
-            paths.append(tokens[0].strip("'\""))
+    if not contains_git_word(command):
+        return paths
+    invocations = find_git_invocations(command, {"worktree"})
+    if invocations is None:
+        logger.warning("無法解析命令（長度 %d），fail-open 不檢查", len(command))
+        return paths
+    for inv in invocations:
+        args = inv.args
+        if not args or args[0] != "remove":
+            continue
+        # 濾掉 flag（--force / -f 等），第一個非 flag token 視為路徑
+        operands = [t for t in args[1:] if not t.startswith("-")]
+        if not operands:
+            continue
+        path = _resolve_remove_path(operands[0], inv, logger)
+        if path is not None:
+            paths.append(path)
     logger.debug("解析到 %d 個 remove 路徑：%s", len(paths), paths)
     return paths
+
+
+def _resolve_remove_path(path: str, inv, logger) -> Optional[str]:
+    """相對路徑以 `-C` 指定的目錄為基準解析；目錄無法確定時回傳 None（fail-open）。"""
+    if os.path.isabs(path) or not inv.dash_c_paths:
+        return path
+    if inv.dir_unknown or not inv.effective_dir:
+        logger.warning("-C 目錄含動態值，無法解析相對路徑 %s，fail-open 略過", path)
+        return None
+    return os.path.normpath(os.path.join(inv.effective_dir, path))
 
 
 def _branch_of_worktree(worktree_path: str, logger) -> Optional[str]:
