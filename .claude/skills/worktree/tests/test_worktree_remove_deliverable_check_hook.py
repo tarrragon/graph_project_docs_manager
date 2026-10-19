@@ -611,3 +611,14 @@ class TestGitDashCRemove:
     def test_unresolvable_dash_c_fails_open(self, logger):
         cmd = 'git -C "$REPO" worktree remove rel-path'
         assert hook._extract_remove_paths(cmd, logger) == []
+
+    def test_unparseable_pipe_to_shell_falls_back_to_regex_and_blocks(self, repo, capsys):
+        """無法解析（管線接 shell）時退回正則擷取，路徑仍送 Guard A/C。"""
+        wt = _add_worktree(repo, "pipesh", "feat/pipesh")
+        (wt / "scratch.txt").write_text("unsaved\n")
+        rc = _run_main('echo "git worktree remove {}" | sh'.format(wt))
+        assert rc == 2
+        assert "Guard C" in capsys.readouterr().err
+
+    def test_unparseable_and_regex_miss_fails_open(self, logger):
+        assert hook._extract_remove_paths('echo "unclosed', logger) == []

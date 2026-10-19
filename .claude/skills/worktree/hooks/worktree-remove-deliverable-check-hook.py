@@ -30,6 +30,7 @@ Hook 類型：PreToolUse
 """
 
 import os
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -50,7 +51,13 @@ from lib import (
 )
 
 
-BLOCK_MESSAGE = """[1.2.0-W1-028 Guard A] worktree 分支有未 merge 進 main 的交付物，禁止 remove
+# 僅用於 find_git_invocations 回傳 None（命令無法解析）時的退路；
+# 可解析的命令一律走 lib.git_command_parse。
+_REMOVE_PATTERN = re.compile(
+    r"git\s+worktree\s+remove\b(?P<rest>[^\n;&|]*)",
+)
+
+BLOCK_MESSAGE ="""[1.2.0-W1-028 Guard A] worktree 分支有未 merge 進 main 的交付物，禁止 remove
 
 worktree: {path}
 分支: {branch}
@@ -184,7 +191,10 @@ def _extract_remove_paths(command: str, logger) -> List[str]:
         return paths
     invocations = find_git_invocations(command, {"worktree"})
     if invocations is None:
-        logger.warning("無法解析命令（長度 %d），fail-open 不檢查", len(command))
+        paths = _regex_fallback_paths(command)
+        logger.warning(
+            "無法解析命令（長度 %d），退回正則擷取 %d 個路徑", len(command), len(paths)
+        )
         return paths
     for inv in invocations:
         args = inv.args
@@ -198,6 +208,16 @@ def _extract_remove_paths(command: str, logger) -> List[str]:
         if path is not None:
             paths.append(path)
     logger.debug("解析到 %d 個 remove 路徑：%s", len(paths), paths)
+    return paths
+
+
+def _regex_fallback_paths(command: str) -> List[str]:
+    """命令無法解析時的退路：以正則擷取路徑（如 `echo "..." | sh` 管線接 shell）。"""
+    paths: List[str] = []
+    for match in _REMOVE_PATTERN.finditer(command):
+        tokens = [t for t in match.group("rest").split() if not t.startswith("-")]
+        if tokens:
+            paths.append(tokens[0].strip("'\""))
     return paths
 
 
