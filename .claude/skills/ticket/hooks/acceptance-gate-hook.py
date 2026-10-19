@@ -479,7 +479,9 @@ def check_acceptance_status(
         try:
             chained_write_detected = bool(command) and detect_chained_pre_complete_write(command)
         except Exception as detect_exc:
-            logger.info(f"同鏈偵測失敗，視為未串接（照常輸出警告）: {detect_exc}")
+            logger.warning(
+                f"acceptance-gate-hook 同鏈偵測失敗，視為未串接（照常輸出警告）: {detect_exc}"
+            )
             chained_write_detected = False
         if chained_write_detected:
             logger.info(
