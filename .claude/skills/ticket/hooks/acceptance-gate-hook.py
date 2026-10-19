@@ -409,6 +409,28 @@ def detect_chained_pre_complete_write(command: str) -> bool:
     return False
 
 
+_APPEND_LOG_RE = re.compile(r'\bticket\s+track\s+append-log\b')
+
+
+def detect_chained_multi_view_write(command: str) -> bool:
+    """偵測 complete 之前的同鏈片段是否有 append-log 且內容含 multi_view_status。
+
+    比 detect_chained_pre_complete_write 窄：只有 git merge 或寫其他內容的
+    append-log 不會補上 multi_view_status，不應略過其未標註警告。
+    """
+    statements = parse_command_statements(command)
+    if statements is None:
+        return False
+    for idx, tokens in enumerate(statements):
+        if is_complete_statement(tokens):
+            for prev in statements[:idx]:
+                text = " ".join(prev)
+                if _APPEND_LOG_RE.search(text) and "multi_view_status" in text:
+                    return True
+            return False
+    return False
+
+
 # ============================================================================
 # 主協調函式
 # ============================================================================
@@ -557,9 +579,16 @@ def check_acceptance_status(
                     return AcceptanceCheckResult(
                         True, False, mv_msg + fix_hint, False, [], [], "", "", [], [], False
                     )
-                if chained_write_detected:
-                    # 同鏈 append-log 可能正在補標註，讀到的是滯後內容；
-                    # 比照 acceptance／execution log 略過「未標註」警告
+                try:
+                    mv_chained = chained_write_detected and detect_chained_multi_view_write(command)
+                except Exception as mv_exc:
+                    logger.warning(
+                        f"acceptance-gate-hook multi_view 同鏈偵測失敗，照常警告: {mv_exc}"
+                    )
+                    mv_chained = False
+                if mv_chained:
+                    # 同鏈 append-log 確實寫入 multi_view_status，讀到的是滯後內容；
+                    # 僅此情況略過「未標註」警告
                     logger.info(
                         f"Ticket {ticket_id}：同命令鏈偵測命中，略過 multi_view_status 未標註警告"
                     )
