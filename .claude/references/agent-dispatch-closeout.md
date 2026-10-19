@@ -59,7 +59,7 @@ ticket track append-log {ticket_id} --section "<section>" "<裁決內容>"
 | 角色 | 義務 |
 |------|------|
 | PM 建票 | `ticket create --parent <id>` 建子票時必帶 `--who <預期執行代理人>`（子票預設繼承 parent who，是誤傷源）；派發前發現 who.current 與將派發的 agent 不符時先 `set-who` 對齊 |
-| PM 寫 prompt | 收尾步驟範本三命令均含 `--as <agent-name>`（prompt 骨架見本檔「三段式 prompt 骨架」章節，收尾段直接套用上方 /goal 章節的範例命令） |
+| PM 寫 prompt | 收尾步驟範本三命令均含 `--as <agent-name>`（prompt 骨架見 `agent-dispatch-template.md`「骨架（權威版）」，收尾段直接套用同檔「與 /goal 的邊界」章節的範例命令） |
 | Agent | 依 AGENT_PRELOAD 規則 2.4「--as 全覆蓋」執行；--as 被 deny 時禁拿掉 --as 繞過，回報 PM 裁決 |
 
 ---

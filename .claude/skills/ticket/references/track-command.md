@@ -8,11 +8,13 @@
 >
 > **溯源**：本檔內容為累積式增修，非單次外移——初始批次於本專案匯入 commit `f375ae675` 已存在，此後逐張 ticket 增補子命令（如 `sessions`／`reclaim`／`hook-liveness` 等）。近期兩次可查的外移：一次自 `SKILL.md`〈子命令詳細說明〉搬入 create/track 增量共 153 行；另一次將 `SKILL.md`〈subagent 派發時 claim 推薦用法〉整節（655 tokens）逐字搬入本檔「claim 推薦用法（subagent 派發時的身份申報）」章節（兩次外移皆發生於 2026-09-07，可用 `git log --oneline -- references/track-command.md` 查證）。
 
+**分檔**：依職責拆為同目錄六檔——`track-command-commit.md`（track commit、set-exit-status、root 分離）、`track-command-update.md`（UPDATE 操作、驗收條件、可修改欄位）、`track-command-dispatch.md`（dispatch 系列）、`track-command-session.md`（sessions、reclaim、activity、conflicts、onboard、hook-liveness、artifacts）、`track-command-query.md`（READ、runqueue、deps/depth、parallel-check、board、list）、`track-command-health.md`（audit、stale-list、stuck-anas、dashboard）。本檔對被移走的章節保留同名標題加一行路由。
+
 本檔章節：〈子命令總覽（全量對照 --help）〉〈READ 操作〉〈track runqueue 子命令（Scheduler）〉〈UPDATE 操作〉〈UPDATE 操作補充：commit 副作用與欄位語意〉〈track commit 子命令〉〈track set-exit-status 子命令〉〈Ticket 狀態與程式碼提交的 root 分離（worktree 場景）〉〈驗收條件操作詳解〉〈CLI 可修改欄位 vs 手動編輯欄位〉〈track deps / depth 子命令〉〈track parallel-check 子命令〉〈track board 子命令〉〈track audit 子命令〉〈track stale-list 子命令〉〈track stuck-anas 子命令〉〈track dashboard 子命令〉〈track list 子命令〉〈track dispatch 子命令〉〈track dispatch-validate 子命令〉〈track dispatch-readiness 子命令〉〈track dispatch-check 子命令〉〈track sessions 子命令〉〈track reclaim 子命令〉〈track activity 子命令〉〈track conflicts 子命令〉〈track onboard 子命令〉〈track hook-liveness 子命令〉〈track register-artifact / resolve-artifact / list-artifacts 子命令〉〈共用旗標語意（track 系列命令通用）〉〈空狀態字面規範（track 系列命令通用）〉。
 
 ## 子命令總覽（全量對照 --help）
 
-`ticket track --help` 為子命令清單的權威來源，本表逐一列出其當下輸出的全部子命令（含旗標細節一律見 `--help` 本身，本表不重複展開）。右欄「章節」指向本檔內對應 `##` 章節；標「--help」者代表本檔目前只有旗標層說明或完全未展開，用法以 `ticket track <子命令> --help` 為準。子命令增減時本表可能落後，出現落差以 `ticket track --help` 現況為準。
+`ticket track --help` 為子命令清單的權威來源，本表逐一列出其當下輸出的全部子命令（含旗標細節一律見 `--help` 本身，本表不重複展開）。右欄「章節」指向本檔或同族檔（`track-command-commit.md`、`-update.md`、`-dispatch.md`、`-session.md`、`-query.md`、`-health.md`）內對應 `##` 章節，被移走的章節在本檔以同名標題加一行路由保留；標「--help」者代表本檔目前只有旗標層說明或完全未展開，用法以 `ticket track <子命令> --help` 為準。子命令增減時本表可能落後，出現落差以 `ticket track --help` 現況為準。
 
 | 子命令 | 一句話用途 | 章節 |
 | --- | --- | --- |
@@ -322,7 +324,7 @@
 | stale-list pending 分級 | 7／14／30 天 | `pending` 票的建立年齡 | 依 `created` 與查詢當下的天數差 | `ticket_system/lib/staleness.py` `STALE_INFO_DAYS`／`STALE_WARNING_DAYS`／`STALE_CRITICAL_DAYS` |
 | teammate idle 逾時判準（本 skill 外部） | 30 分 | teammate 是否仍在工作（無 commit 無 append-log） | 見 `.claude/pm-rules/parallel-dispatch.md`〈跨 session 同儕沉默時的接管判準〉 | 外部檔案，非本 CLI 常數 |
 
-`runqueue --format=list` 的 `[RECLAIMABLE]`（lease TTL）可與 `[STALE]`（`is_stale_in_progress`）並列疊加，兩者來源不同、各自獨立出現，見上方「track runqueue 子命令」段落。**Action**：判讀任一「stale／reclaimable」標記前，先確認該標記出自本表哪一套判準，不可假設全站僅一套滯留定義。
+`runqueue --format=list` 的 `[RECLAIMABLE]`（lease TTL）可與 `[STALE]`（`is_stale_in_progress`）並列疊加，兩者來源不同、各自獨立出現，見 `track-command-query.md`〈track runqueue 子命令（Scheduler）〉。**Action**：判讀任一「stale／reclaimable」標記前，先確認該標記出自本表哪一套判準，不可假設全站僅一套滯留定義。
 
 ## 空狀態字面規範（track 系列命令通用）
 

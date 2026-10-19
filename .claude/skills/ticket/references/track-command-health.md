@@ -177,7 +177,7 @@ ticket track stuck-anas [--wave N] [--version V] [--all]
 
 PM 接手新 session 的聚合視圖。一次回傳 `[In Progress]` / `[Handoff Target]` / `[Ready Top N]` / `[Stale Warning]` 四區塊，Ready 區塊含可直接 claim 的編號（`[1]` `[2]` `[3]`），免拼 ID 即可 claim。
 
-**`[In Progress]` 條目的 lease 狀態標記**（判準同 registry heartbeat，TTL 固定 30 分鐘、來源 `.claude/lib/pm_registry.py` `STALE_THRESHOLD_MINUTES`，見「track sessions 子命令」〈欄位定義〉與下方〈滯留判準閾值總表〉）：`[LIVE]` = FRESH session 正在處理，`[RECLAIMABLE]` = 已知無 FRESH session 佐證持有（可能已 STALE，也可能 registry 根本未追蹤此票——含 graceful SessionEnd 釋放後 entry 已刪除的情形，兩者現統一標記，皆須走 `track reclaim` 鑑識判定），無標記 = registry 本身不可用（模組載入失敗 / 非 git 環境 / 讀取降級），無法判定。`[LIVE]` 票不應列入接手選項——活躍 session 正在處理，接手即與其重複處理同一張票（framework issue tarrragon/claude#78）。`[RECLAIMABLE]` 標記與 `list` 視圖〈`[RECLAIMABLE]` 標記〉章節、`track reclaim` 子命令共用同一判準（`lease.is_lease_reclaimable`），詳見「track reclaim 子命令」章節「與 sessions/runqueue 顯示層判定的差異」。
+**`[In Progress]` 條目的 lease 狀態標記**（判準同 registry heartbeat，TTL 固定 30 分鐘、來源 `.claude/lib/pm_registry.py` `STALE_THRESHOLD_MINUTES`，見 `track-command-session.md`「track sessions 子命令」〈欄位定義〉與 `track-command.md`〈滯留判準閾值總表〉）：`[LIVE]` = FRESH session 正在處理，`[RECLAIMABLE]` = 已知無 FRESH session 佐證持有（可能已 STALE，也可能 registry 根本未追蹤此票——含 graceful SessionEnd 釋放後 entry 已刪除的情形，兩者現統一標記，皆須走 `track reclaim` 鑑識判定），無標記 = registry 本身不可用（模組載入失敗 / 非 git 環境 / 讀取降級），無法判定。`[LIVE]` 票不應列入接手選項——活躍 session 正在處理，接手即與其重複處理同一張票（framework issue tarrragon/claude#78）。`[RECLAIMABLE]` 標記與 `list` 視圖〈`[RECLAIMABLE]` 標記〉章節、`track reclaim` 子命令共用同一判準（`lease.is_lease_reclaimable`），詳見「track reclaim 子命令」章節「與 sessions/runqueue 顯示層判定的差異」。
 
 ### 用法
 

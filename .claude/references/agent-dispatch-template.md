@@ -2,6 +2,8 @@
 
 > **用途**：PM 派發代理人時使用的權威 prompt 骨架，以及情境變體（並行 / 唯讀探針 / 嵌套派發等）速查集合。單一權威骨架見下方「## 骨架（權威版）」；骨架的禁重述規則見「## prompt 不重述 ticket 已載欄位（強制）」。
 >
+> **分檔**：收尾政策、測試入口政策、worktree 派發政策、PM 自做規則編輯、情境變體各自在同目錄的 `agent-dispatch-closeout.md`、`agent-dispatch-testing.md`、`agent-dispatch-worktree.md`、`agent-dispatch-pm-edit.md`、`agent-dispatch-variants.md`；本檔對被移走的段標保留同名標題加一行路由，〈段標〉引用不需改寫。
+>
 > **收斂緣由**：本文件曾同時提供三套對「prompt 是否應複製 ticket 欄位」給出相反答案的骨架——舊版「職責邊界聲明骨架」要求逐項複製 `where.files` 至「允許的產出」/「禁止的產出」清單、「三段式快速填空骨架」（W17-048 方案 F）僅用指標零重述、「短 Prompt Snippets」（PC-040/PC-065）的 `Allowed:`/`Forbidden:` 亦要求複製 `where.files`。三者並存使 PM 選任一皆合規，抽樣量測顯示派發 prompt 重述比例在樣本間離散（15%-62%，單一樣本達 55% 字元量），也使任何「prompt 與 ticket 重疊度」檢查機制必然誤報 template-compliant 的 prompt。本次收斂：三段式骨架升格為單一權威版；短 Prompt Snippets 改寫為權威版的情境變體，不再要求複製 `where.files`；舊版職責邊界聲明骨架的防越界意圖併入權威版，改用指標式表達（見下方「歷史脈絡」段）。
 
 ---
@@ -152,9 +154,9 @@ Ticket: 0.18.0-W17-048.3
 - [ ] 防護類 ticket 的產生路徑盤點表已存在於 `how.strategy` / Solution（建票時產出，此處僅確認存在，格式見 `ticket-body-schema.md` 同名節；PC-BAL-035）
 - [ ] 派發對象為 `.claude/` 框架檔案修改時，代理人受 `.claude/rules/core/document-format-rules.md`「引用穩定性規則」約束（禁依賴型 ticket 引用，該層已實測確認每次派發都會注入），無需 prompt 額外重複；AGENT_PRELOAD 規則 12 僅供代理人主動 Read 時參考，不構成無需重複的依據（`.claude/agents/*.md` 主文 `@-import` 已實測不會展開為內容）
 - [ ] 派發任務涉及測試/建置驗收時，已含既有失敗歸因約束句（PC-BAL-022，見上節）
-- [ ] 派發任務的測試段已改為「全套件由合併閘門執行，代理人只跑相關測試檔」並含局部執行回報句（命令引用〈測試入口〉；TEST-BAL-006，見上節）；僅任務明確要求代理人跑全套件時，才改用無路徑指令（含 `-rfE`）與對帳格式（命令原文 + `--collect-only -q` 全量數 + 執行數 = 全量 - deselected + FAILED / ERROR 行不被 tail、grep 過濾）
+- [ ] 派發任務的測試段已改為「全套件由合併閘門執行，代理人只跑相關測試檔」並含局部執行回報句（命令引用〈測試入口〉；TEST-BAL-006，見 `agent-dispatch-testing.md`）；僅任務明確要求代理人跑全套件時，才改用無路徑指令（含 `-rfE`）與對帳格式（命令原文 + `--collect-only -q` 全量數 + 執行數 = 全量 - deselected + FAILED / ERROR 行不被 tail、grep 過濾）
 - [ ] 裁示句是否有「補 X」「並補 Y」型句型只指名決策點、未給具體內容？若有，已補齊內容或已明寫「此處未定，停手回報」（PC-GPD-026，見上節）
-- [ ] 派發的代理人會跑長時間或背景測試時，已含終止後 pgrep 驗證約束句（見上節，含 ps 確認命中身分與等待改等已知 PID 兩句）
+- [ ] 派發的代理人會跑長時間或背景測試時，已含終止後 pgrep 驗證約束句（見 `agent-dispatch-testing.md`〈終止長時間測試後驗證子程序已退出約束句〉，含 ps 確認命中身分與等待改等已知 PID 兩句）
 
 ---
 

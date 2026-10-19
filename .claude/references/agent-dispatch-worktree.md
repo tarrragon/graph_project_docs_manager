@@ -158,7 +158,7 @@ A1（PM 派發前 commit gate，見 `.claude/pm-rules/behavior-loop-details.md`�
 | 派發位置 | 代理人收尾段 | complete 執行者 |
 |---------|------------|----------------|
 | `isolation: "worktree"` | `set-acceptance` 勾選 → `append-log` 填 Solution（含 `### 自檢結果與 Phase 4 評估`）與 Test Results → `ticket track commit <id> -m "..." --worktree <路徑> -- <檔案>` → 回報 PM；不執行 complete 與 finish | PM，合併並驗證後於主 checkout 執行 |
-| 主 repo cwd（`isolation: "none"`） | 沿用本檔既有收尾段，末步 `ticket track complete <id> --as <自身 agent 名稱>` | 代理人 |
+| 主 repo cwd（`isolation: "none"`） | 沿用 `agent-dispatch-closeout.md`〈收尾義務標準段〉的既有收尾段，末步 `ticket track complete <id> --as <自身 agent 名稱>` | 代理人 |
 
 PM 收尾步驟與身份：
 
