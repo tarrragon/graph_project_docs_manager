@@ -1,6 +1,6 @@
 // line-board：多線開發看板（第一階段）。
-// 定時讀 repo 的 349〈分派〉段落、佇列票在 main 與各 worktree 的 status、合併閘門紀錄，畫在 Pane。
-// 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析與合併規則在 status.ts。
+// 定時讀主 checkout 的 349〈分派〉段落、佇列票的 status、合併閘門紀錄，畫在 Pane。
+// 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析在 parse.ts。
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -10,14 +10,14 @@ import {
   DISPATCH_TICKET_PATH,
   MERGE_LOG_PATH,
   TICKETS_DIR,
+  UNKNOWN_STATUS,
   annotateQueue,
   extractDispatchSection,
   extractQueueIds,
   parseFrontmatterStatus,
-  parseWorktreeList,
-  pickStatus,
+  parseMainCheckout,
   tailLines,
-} from './status'
+} from './parse'
 
 const PANE = 'line-board'
 const PANE_TITLE = '多線看板'
@@ -59,21 +59,13 @@ export const register: Register = on => {
       return <Text dimColor>讀取中…</Text>
     }
 
-    const fromWorktree = board.tickets.filter(ticket => ticket.source !== 'main')
-
     return (
       <Box flexDirection="column">
         <Text dimColor>
-          更新 {board.updatedAt}｜worktree {board.worktreeCount} 個
-          {board.worktreeNote === null ? '' : `｜${board.worktreeNote}`}
+          更新 {board.updatedAt}
+          {board.checkoutNote === null ? '' : `｜${board.checkoutNote}`}
         </Text>
         {renderSection(board.section, board.tickets)}
-        {fromWorktree.length > 0 && <Text bold>以 worktree 為準（·wt）</Text>}
-        {fromWorktree.map(ticket => (
-          <Text dimColor>
-            {ticket.id} {ticket.status} ← {ticket.source}
-          </Text>
-        ))}
         <Text bold>合併閘門最近紀錄</Text>
         {renderMergeLog(board.mergeLog)}
       </Box>
@@ -101,17 +93,16 @@ async function refresh($: EngineInterface): Promise<void> {
   isRefreshing = true
   try {
     const root = await $.session.root()
-    const { mainPath, worktrees, worktreeNote } = await listWorktrees($, root)
+    const { mainPath, checkoutNote } = await findMainCheckout($, root)
     const section = await readSection($, mainPath)
     const ids = section.kind === 'ok' ? extractQueueIds(section.markdown) : []
-    const tickets = await Promise.all(ids.map(id => readTicketStatus($, id, mainPath, worktrees)))
+    const tickets = await Promise.all(ids.map(id => readTicketStatus($, mainPath, id)))
     const mergeLog = await readMergeLog($, mainPath)
     const next: BoardSnapshot = {
       kind: 'ready',
       updatedAt: formatTime(new Date()),
       mainPath,
-      worktreeCount: worktrees.length,
-      worktreeNote,
+      checkoutNote,
       section,
       tickets,
       mergeLog,
@@ -124,24 +115,28 @@ async function refresh($: EngineInterface): Promise<void> {
   }
 }
 
-/** 以 `git worktree list --porcelain` 取 main 與其餘 worktree；失敗時退回只讀 session root。 */
-async function listWorktrees(
+/**
+ * 以 `git worktree list --porcelain` 的第一筆判定主 checkout，看板 session 在 worktree 內啟動也指向主 checkout。
+ * 失敗時退回 session root 並帶原因顯示。
+ */
+async function findMainCheckout(
   $: EngineInterface,
   root: string,
-): Promise<{ mainPath: string; worktrees: string[]; worktreeNote: string | null }> {
+): Promise<{ mainPath: string; checkoutNote: string | null }> {
   try {
     const result = await $.process.run(['git', 'worktree', 'list', '--porcelain'], { cwd: root })
     if (result.exitCode !== 0) {
-      const note = `git worktree list 失敗（exit ${result.exitCode}）`
+      const note = `git worktree list 失敗（exit ${result.exitCode}），改讀 session root`
       $.ui.log(`line-board: ${note}: ${result.stderr.trim()}`, { to: 'debug' })
-      return { mainPath: root, worktrees: [], worktreeNote: note }
+      return { mainPath: root, checkoutNote: note }
     }
-    const { main, worktrees } = parseWorktreeList(result.stdout)
-    return { mainPath: main ?? root, worktrees, worktreeNote: null }
+    const main = parseMainCheckout(result.stdout)
+    if (main === null) return { mainPath: root, checkoutNote: 'git worktree list 無輸出，改讀 session root' }
+    return { mainPath: main, checkoutNote: null }
   } catch (error) {
-    const note = `git worktree list 無法執行（${messageOf(error)}）`
+    const note = `git worktree list 無法執行（${messageOf(error)}），改讀 session root`
     $.ui.log(`line-board: ${note}`, { to: 'debug' })
-    return { mainPath: root, worktrees: [], worktreeNote: note }
+    return { mainPath: root, checkoutNote: note }
   }
 }
 
@@ -155,26 +150,14 @@ async function readSection($: EngineInterface, mainPath: string): Promise<Sectio
   }
 }
 
-async function readTicketStatus(
-  $: EngineInterface,
-  id: string,
-  mainPath: string,
-  worktrees: readonly string[],
-): Promise<TicketStatus> {
-  const mainStatus = await readStatusAt($, mainPath, id)
-  const worktreeStatuses = await Promise.all(
-    worktrees.map(async path => ({ path, status: await readStatusAt($, path, id) })),
-  )
-  return { id, ...pickStatus(mainStatus, worktreeStatuses) }
-}
-
-/** 讀某個 checkout 內票檔的 status；票檔不存在（worktree 開出時尚無此票）屬常態，回傳 null 不記錄。 */
-async function readStatusAt($: EngineInterface, checkout: string, id: string): Promise<string | null> {
+/** 讀主 checkout 內票檔的 status；讀不到或無 status 欄時為 unknown。 */
+async function readTicketStatus($: EngineInterface, mainPath: string, id: string): Promise<TicketStatus> {
+  const path = `${TICKETS_DIR}/${id}.md`
   try {
-    return parseFrontmatterStatus(await $.fs.read(`${checkout}/${TICKETS_DIR}/${id}.md`))
-  } catch {
-    // 靜默原因：各 worktree 缺票檔是預期情形（分支早於建票），逐檔記錄只會淹沒 debug log。
-    return null
+    return { id, status: parseFrontmatterStatus(await $.fs.read(`${mainPath}/${path}`)) ?? UNKNOWN_STATUS }
+  } catch (error) {
+    $.ui.log(`line-board: 讀取 ${path} 失敗：${messageOf(error)}`, { to: 'debug' })
+    return { id, status: UNKNOWN_STATUS }
   }
 }
 

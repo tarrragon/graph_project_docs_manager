@@ -5,7 +5,7 @@
 | 區塊 | 資料來源（相對 repo root） |
 |------|---------------------------|
 | 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的〈分派〉段落（自 `### 分派` 起到下一個 `## ` 標題前），以 Markdown 原樣呈現 |
-| 佇列票即時狀態 | 佇列行（含「佇列：」的行）中每個票號旁標 `〔status〕`；狀態讀自 main 與 `git worktree list` 各 worktree 的票檔 frontmatter，合併規則見 `hooks/status.ts` 的 `pickStatus`；以 worktree 為準者標 `·wt` 並在下方列出路徑 |
+| 佇列票即時狀態 | 佇列行（含「佇列：」的行）中每個票號旁標 `〔status〕`；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
 | 合併閘門 | `.claude/logs/worktree-merge.log` 最後 8 行 |
 | 更新時間 | 每 30 秒重讀一次，Pane 頂端顯示最近一次讀取的本機時間 |
 
@@ -30,7 +30,7 @@ claude --plugin-dir tools/line-board
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
 | `hooks/register.tsx` | 註冊 `/board`、定時讀取、繪製 Pane；讀檔與命令一律經 `$` |
-| `hooks/status.ts` | 純函式：段落擷取、佇列票號抽取、frontmatter 解析、worktree 清單解析、狀態合併 |
+| `hooks/parse.ts` | 純函式：主 checkout 判定、段落擷取、佇列票號抽取與標示、frontmatter 解析、紀錄尾端 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`）的型別契約 |
 | `hooks/board.test.ts` | `claude plugin test` 測試 |
 
