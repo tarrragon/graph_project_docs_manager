@@ -19,6 +19,7 @@ registry 讀寫一律經 `.claude/lib/pm_registry` 動態載入（lazy import �
 from __future__ import annotations
 
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -620,6 +621,16 @@ def _dirty_file_paths(status_lines: List[str]) -> List[str]:
     return paths
 
 
+def _branch_names_ticket(branch: str, ticket_id: str) -> bool:
+    """分支名含 ticket_id 且前後皆為票號邊界才算命中。
+
+    前邊界：行首或非數字、非點字元（字母緊接如 `fix<id>` 仍命中，偏向不漏判殘留）；後邊界：行尾，或接非英數、非 `.`
+    的字元（`X-36` 不命中 `X-363`，也不命中子票 `X-36.1`）。
+    """
+    pattern = r"(?<![0-9.])" + re.escape(ticket_id) + r"(?![0-9A-Za-z]|\.[0-9])"
+    return re.search(pattern, branch) is not None
+
+
 def run_ghost_forensics(ticket_id: str, ticket_files: List[str], body: str) -> GhostReport:
     """執行 reclaim 前 ghost 鑑識三查：
 
@@ -635,13 +646,15 @@ def run_ghost_forensics(ticket_id: str, ticket_files: List[str], body: str) -> G
     """
     report = GhostReport()
 
-    branch_lines = _run_git_lines(["branch", "--no-merged"])
+    branch_lines = _run_git_lines(
+        ["for-each-ref", "--no-merged=HEAD", "--format=%(refname:short)", "refs/heads"]
+    )
     if branch_lines is None:
         report.unmerged_branch_unknown = True
     else:
         for line in branch_lines:
-            name = line.strip().lstrip("* ").strip()
-            if ticket_id in name:
+            name = line.strip()
+            if _branch_names_ticket(name, ticket_id):
                 report.unmerged_branch = True
                 report.unmerged_branch_names.append(name)
 

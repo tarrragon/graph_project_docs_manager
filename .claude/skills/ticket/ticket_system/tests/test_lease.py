@@ -464,7 +464,7 @@ class TestGhostForensics:
 
     def test_unmerged_branch_hits(self, monkeypatch):
         def _fake(args, cwd=None):
-            if args[0] == "branch":
+            if args[0] == "for-each-ref":
                 return ["  0.0.0-W1-001-wip"]
             return []
 
@@ -566,7 +566,7 @@ class TestExitStatusMissingSoftWarningCoverage:
 
     def test_exit_status_missing_with_unmerged_branch_still_blocks(self, monkeypatch):
         def _fake(args, cwd=None):
-            if args[0] == "branch":
+            if args[0] == "for-each-ref":
                 return ["  0.0.0-W1-001-wip"]
             return []
 
@@ -628,7 +628,7 @@ class TestGhostForensicsUnknownPropagation:
 
     def test_branch_query_failure_marks_unknown_and_rejects(self, monkeypatch):
         def _fake(args, cwd=None):
-            if args[0] == "branch":
+            if args[0] == "for-each-ref":
                 return None
             return []
 
@@ -1226,7 +1226,7 @@ class TestReclaimTicketDryRun:
         monkeypatch.setattr(lease, "load_ticket", lambda version, tid: ticket)
         monkeypatch.setattr(
             lease, "_run_git_lines",
-            lambda args, cwd=None: (["  0.0.0-W1-001-wip"] if args[0] == "branch" else []),
+            lambda args, cwd=None: (["  0.0.0-W1-001-wip"] if args[0] == "for-each-ref" else []),
         )
 
         rc = lease.reclaim_ticket("0.0.0", "0.0.0-W1-001", confirm=False, now=NOW)
@@ -1467,3 +1467,121 @@ class TestSeedSurvivesLongSuite:
             pytest.skip("pm_registry 不可用")
         _forward_clock(monkeypatch, pm_registry.STALE_THRESHOLD_MINUTES + 1)
         assert pm_registry.is_fresh(_stale_ts()) is False
+
+
+# --- 0.5.0-W1-375：殘留分支以票號邊界比對、git 失敗偏向拒絕 ---------------
+
+import subprocess as _subprocess
+
+
+def _git(repo, *args):
+    _subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *args],
+        check=True, capture_output=True,
+    )
+
+
+@pytest.fixture
+def repo_with_branches(tmp_path, monkeypatch):
+    """tmp repo：main 一個 commit；make_branch 建帶獨有 commit 的未合併分支。"""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-b", "main")
+    (repo / "a.txt").write_text("a")
+    _git(repo, "add", "a.txt")
+    _git(repo, "commit", "-m", "init")
+
+    def make_branch(name, checkout_in=None):
+        _git(repo, "branch", name)
+        _git(repo, "checkout", name)
+        (repo / (name.replace("/", "_") + ".txt")).write_text(name)
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-m", name)
+        _git(repo, "checkout", "main")
+        if checkout_in is not None:
+            _git(repo, "worktree", "add", str(checkout_in), name)
+
+    real = lease._run_git_lines
+    monkeypatch.setattr(lease, "_run_git_lines", lambda args, cwd=None: real(args, cwd=str(repo)))
+    return repo, make_branch
+
+
+_EXIT_OK = "## Exit Status\nfilled\n"
+
+
+class TestGhostForensicsBranchBoundary:
+    def test_adjacent_ticket_id_not_hit(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("feat/0.5.0-W1-363")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch is False
+        assert report.unmerged_branch_names == []
+
+    def test_child_ticket_branch_not_parent_hit(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("feat/0.5.0-W1-36.1")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch is False
+
+    def test_own_branch_hits(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("feat/0.5.0-W1-36")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch_names == ["feat/0.5.0-W1-36"]
+
+    def test_worktree_checked_out_branch_hits_without_prefix(self, repo_with_branches, tmp_path):
+        _, make_branch = repo_with_branches
+        make_branch("feat/0.5.0-W1-36", checkout_in=tmp_path / "wt")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch_names == ["feat/0.5.0-W1-36"]
+
+    def test_letter_prefix_directly_before_id_hits(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("fix0.5.0-W1-36")
+        make_branch("v0.5.0-W1-36")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert sorted(report.unmerged_branch_names) == ["fix0.5.0-W1-36", "v0.5.0-W1-36"]
+
+    def test_digit_directly_before_id_not_hit(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("feat/10.5.0-W1-36")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch is False
+
+    def test_suffix_after_boundary_hits(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("0.5.0-W1-36-wip")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch is True
+
+
+class TestGhostForensicsGitFailureRefuses:
+    """git 查詢失敗須落在「視為有殘留、拒絕接管」一側（clean 為 False）。"""
+
+    def test_nonzero_exit_is_unknown_and_not_clean(self, monkeypatch):
+        class _G:
+            @staticmethod
+            def run_git_command(args, cwd=None):
+                return False, "fatal"
+        monkeypatch.setattr(lease, "_load_git_utils", lambda: _G)
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch_unknown is True
+        assert report.clean is False
+
+    def test_git_not_installed_is_unknown_and_not_clean(self, monkeypatch):
+        def _boom(*a, **k):
+            raise FileNotFoundError("git")
+        git_utils = lease._load_git_utils()
+        monkeypatch.setattr(git_utils.subprocess, "run", _boom)
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch_unknown is True
+        assert report.clean is False
+
+    def test_exception_is_unknown_and_not_clean(self, monkeypatch):
+        def _boom(*a, **k):
+            raise OSError("boom")
+        git_utils = lease._load_git_utils()
+        monkeypatch.setattr(git_utils.subprocess, "run", _boom)
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch_unknown is True
+        assert report.clean is False
