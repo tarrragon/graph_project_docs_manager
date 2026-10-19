@@ -27,10 +27,10 @@ import {
   isSessionProcessAlive,
   laneSessionStatus,
   formatMergeGateEntry,
-  formatMergeGateHolder,
+  formatMergeGateHolders,
   laneTicketIds,
   mergeGateEntries,
-  mergeGateHolder,
+  mergeGateHolders,
   mergeGateResultColor,
   parseFrontmatterStatus,
   parseLanes,
@@ -82,7 +82,7 @@ export const register: Register = on => {
       board.kind === 'loading' ||
       board.lanes === undefined ||
       board.sessions === undefined ||
-      (board.mergeLog.kind === 'ok' && board.mergeLog.entries === undefined)
+      (board.mergeLog.kind === 'ok' && (board.mergeLog.entries === undefined || board.mergeLog.holders === undefined))
     ) {
       return <Text dimColor>讀取中…</Text>
     }
@@ -147,16 +147,13 @@ export const register: Register = on => {
 
     function renderMergeLog(log: MergeLogResult) {
       if (log.kind === 'error') return <Text color="red">讀取 {MERGE_LOG_PATH} 失敗（{log.message}）</Text>
-      const holder =
-        log.holder === null
-          ? []
-          : [
-              <Text color="yellow" bold wrap="truncate-middle">
-                {formatMergeGateHolder(log.holder)}
-              </Text>,
-            ]
-      if (log.entries.length === 0) return [...holder, <Text dimColor>（尚無紀錄）</Text>]
-      return [...holder, ...log.entries.map(entry => renderMergeGateEntry(entry))]
+      const holders = formatMergeGateHolders(log.holders).map(line => (
+        <Text color="yellow" bold wrap="truncate-middle">
+          {line}
+        </Text>
+      ))
+      if (log.entries.length === 0) return [...holders, <Text dimColor>（尚無紀錄）</Text>]
+      return [...holders, ...log.entries.map(entry => renderMergeGateEntry(entry))]
     }
 
     /**
@@ -318,7 +315,7 @@ async function readTicketStatus($: EngineInterface, mainPath: string, id: string
 async function readMergeLog($: EngineInterface, mainPath: string): Promise<MergeLogResult> {
   try {
     const entries = mergeGateEntries(await $.fs.read(`${mainPath}/${MERGE_LOG_PATH}`))
-    return { kind: 'ok', entries: entries.slice(-MERGE_LOG_LINES), holder: mergeGateHolder(entries) }
+    return { kind: 'ok', entries: entries.slice(-MERGE_LOG_LINES), holders: mergeGateHolders(entries) }
   } catch (error) {
     $.ui.log(`line-board: 讀取 ${MERGE_LOG_PATH} 失敗：${messageOf(error)}`, { to: 'debug' })
     return { kind: 'error', message: messageOf(error) }

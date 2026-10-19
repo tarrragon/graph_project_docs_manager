@@ -13,14 +13,14 @@ import {
   TICKETS_DIR,
   formatAge,
   formatMergeGateEntry,
-  formatMergeGateHolder,
+  formatMergeGateHolders,
   formatQueue,
   isInRepo,
   isSessionProcessAlive,
   laneSessionStatus,
   laneTicketIds,
   mergeGateEntries,
-  mergeGateHolder,
+  mergeGateHolders,
   mergeGateLines,
   mergeGateResultColor,
   normalizeProcStart,
@@ -104,6 +104,21 @@ const MERGE_LOG_HOLDING = [
   '2026-10-15T22:15:13 [合併閘門] 結束｜target main｜分支 worktree-doc-split-338-2-5｜commit 9238cea6802f｜結果 中止',
   '2026-10-19T16:41:49 [合併前驗收] target=0.5.0-W1-351 reason=收尾',
   '2026-10-19T16:41:49 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-351｜commit 52477a34f0ce',
+  '',
+].join('\n')
+
+/**
+ * 仿真實 worktree-merge.log（2026-10-19 16:19–16:31 段）的重疊合併：a352 開始後，免跑測試的 a748 開始並結束，
+ * a352 才結束。兩個開始行後各有一行 328.1 之後的三行格式預檢行（帶分支與結果欄），它不是結束行。
+ */
+const MERGE_LOG_OVERLAP = [
+  '2026-10-19T16:19:45 [合併閘門] 開始｜target main｜分支 worktree-agent-a352c31d77c3daa98｜commit c6f614e51840',
+  '2026-10-19T16:19:46 [合併閘門] 預檢｜target main｜分支 worktree-agent-a352c31d77c3daa98｜commit c6f614e51840｜結果 無衝突',
+  '2026-10-19T16:21:08 [合併閘門] 開始｜target main｜分支 worktree-agent-a74808594aa6f7e6f｜commit d198cdfebf44',
+  '2026-10-19T16:21:09 [合併閘門] 預檢｜target main｜分支 worktree-agent-a74808594aa6f7e6f｜commit d198cdfebf44｜結果 無衝突',
+  '2026-10-19T16:21:11 [合併閘門] 結束｜target main｜分支 worktree-agent-a74808594aa6f7e6f｜commit fd67ce66f7e5｜結果 寫入',
+  '2026-10-19T16:26:50 [合併前測試] 套件 hooks：綠燈｜7222 passed',
+  '2026-10-19T16:31:50 [合併閘門] 結束｜target main｜分支 worktree-agent-a352c31d77c3daa98｜commit ca1d747c0332｜結果 寫入',
   '',
 ].join('\n')
 
@@ -506,29 +521,64 @@ describe('mergeGateResultColor', () => {
   })
 })
 
-describe('mergeGateHolder', () => {
-  test('最後一筆開始沒有對應結束時，回傳該分支與開始時間；開始與結束交錯不影響判定', () => {
-    const holder = mergeGateHolder(mergeGateEntries(MERGE_LOG_HOLDING))
-    expect(holder).toEqual({ branch: 'feat/0.5.0-W1-351', since: '16:41:49' })
-    expect(holder === null ? '' : formatMergeGateHolder(holder)).toBe('閘門使用中：0.5.0-W1-351（自 16:41:49）')
+/** MERGE_LOG_OVERLAP 中時間戳不晚於 time（`HH:MM:SS`）的行，模擬看板在該時刻讀到的紀錄。 */
+function overlapLogUntil(time: string): string {
+  return MERGE_LOG_OVERLAP.split('\n')
+    .filter(line => line.slice(11, 19) <= time)
+    .join('\n')
+}
+
+describe('mergeGateHolders', () => {
+  test('重疊的合併：16:21 之後至 16:31:50 前 a352 仍列為持有者；預檢行不當成結束', () => {
+    const a352 = { branch: 'worktree-agent-a352c31d77c3daa98', since: '16:19:45' }
+    const a748 = { branch: 'worktree-agent-a74808594aa6f7e6f', since: '16:21:08' }
+    // 16:19:46 的預檢行帶分支與結果欄，若被當成結束，a352 在此就會消失
+    expect(mergeGateHolders(mergeGateEntries(overlapLogUntil('16:19:46')))).toEqual([a352])
+    expect(mergeGateHolders(mergeGateEntries(overlapLogUntil('16:21:08')))).toEqual([a352, a748])
+    expect(mergeGateHolders(mergeGateEntries(overlapLogUntil('16:21:11')))).toEqual([a352])
+    expect(mergeGateHolders(mergeGateEntries(overlapLogUntil('16:31:49')))).toEqual([a352])
+    expect(formatMergeGateHolders([a352, a748])).toEqual([
+      '閘門使用中：agent-a352c3（自 16:19:45）',
+      '閘門使用中：agent-a74808（自 16:21:08）',
+    ])
   })
 
-  test('對照：最後一筆開始已有同分支的結束時回傳 null', () => {
-    expect(mergeGateHolder(mergeGateEntries(MERGE_LOG))).toBeNull()
+  test('對照：所有開始都有同分支的結束時回傳空陣列，不顯示任何持有者', () => {
+    expect(mergeGateHolders(mergeGateEntries(MERGE_LOG_OVERLAP))).toEqual([])
+    expect(mergeGateHolders(mergeGateEntries(MERGE_LOG))).toEqual([])
+    expect(mergeGateHolders([])).toEqual([])
+    expect(formatMergeGateHolders([])).toEqual([])
+  })
+
+  test('開始與結束交錯時，只列出尚未結束的分支', () => {
+    const holders = mergeGateHolders(mergeGateEntries(MERGE_LOG_HOLDING))
+    expect(holders).toEqual([{ branch: 'feat/0.5.0-W1-351', since: '16:41:49' }])
+    expect(formatMergeGateHolders(holders)).toEqual(['閘門使用中：0.5.0-W1-351（自 16:41:49）'])
   })
 
   test('同分支先前已結束、重新開始後尚未結束時，仍視為持有', () => {
     const text = [MERGE_LOG, '2026-10-19T17:00:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-328｜commit 1'].join('\n')
-    expect(mergeGateHolder(mergeGateEntries(text))).toEqual({ branch: 'feat/0.5.0-W1-328', since: '17:00:00' })
+    expect(mergeGateHolders(mergeGateEntries(text))).toEqual([{ branch: 'feat/0.5.0-W1-328', since: '17:00:00' }])
   })
 
-  test('其他分支的結束行不算對應結束；沒有任何開始行時回傳 null', () => {
+  test('同分支連續兩筆開始而無結束時只列一次，取較晚的開始時間', () => {
+    const text = [
+      '2026-10-19T17:00:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-500｜commit 1',
+      '2026-10-19T17:01:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-501｜commit 2',
+      '2026-10-19T17:02:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-500｜commit 3',
+    ].join('\n')
+    expect(mergeGateHolders(mergeGateEntries(text))).toEqual([
+      { branch: 'feat/0.5.0-W1-501', since: '17:01:00' },
+      { branch: 'feat/0.5.0-W1-500', since: '17:02:00' },
+    ])
+  })
+
+  test('其他分支的結束行不算對應結束', () => {
     const text = [
       '2026-10-19T17:00:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-500｜commit 1',
       '2026-10-19T17:00:05 [合併閘門] 結束｜target main｜分支 feat/0.5.0-W1-499｜commit 2｜結果 寫入',
     ].join('\n')
-    expect(mergeGateHolder(mergeGateEntries(text))).toEqual({ branch: 'feat/0.5.0-W1-500', since: '17:00:00' })
-    expect(mergeGateHolder([])).toBeNull()
+    expect(mergeGateHolders(mergeGateEntries(text))).toEqual([{ branch: 'feat/0.5.0-W1-500', since: '17:00:00' }])
   })
 })
 
@@ -741,8 +791,9 @@ describe('Pane', () => {
       60,
     )
     const heading = await ui.find({ type: 'Text', text: /^合併閘門最近紀錄$/ })
-    const holder = await ui.find({ type: 'Text', text: /^閘門使用中：/ })
-    expect(holder?.text).toBe('閘門使用中：0.5.0-W1-351（自 16:41:49）')
+    const holders = await ui.findAll({ type: 'Text', text: /^閘門使用中：/ })
+    expect(holders.map(row => row.text)).toEqual(['閘門使用中：0.5.0-W1-351（自 16:41:49）'])
+    const holder = holders[0]
     const rows = await ui.findAll({ type: 'Text', text: /^\d{2}:\d{2}:\d{2}｜(開始|結束)｜/ })
     expect(rows.map(row => row.text)).toEqual([
       '16:19:45｜開始｜agent-a352c3',
@@ -760,6 +811,23 @@ describe('Pane', () => {
     const order = [heading?.text, holder?.text, rows[0]?.text].map(text => drawn.indexOf(text ?? '\u0000'))
     expect(order.every(index => index >= 0)).toBe(true)
     expect(order).toEqual([...order].sort((a, b) => a - b))
+    await ui.unmount()
+  })
+
+  test('重疊的合併：兩個分支同時持有閘門時各列一行，依開始順序；預檢行不顯示', async ($, on) => {
+    const { ui } = await startBoard($, on, {
+      files: {
+        [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+        [`/repo/${MERGE_LOG_PATH}`]: overlapLogUntil('16:21:09'),
+      },
+    })
+    const holders = await ui.findAll({ type: 'Text', text: /^閘門使用中：/ })
+    expect(holders.map(row => row.text)).toEqual([
+      '閘門使用中：agent-a352c3（自 16:19:45）',
+      '閘門使用中：agent-a74808（自 16:21:08）',
+    ])
+    expect(holders.map(row => row.props.color)).toEqual(['yellow', 'yellow'])
+    expect(await ui.find({ type: 'Text', text: /預檢/ })).toBeUndefined()
     await ui.unmount()
   })
 

@@ -26,15 +26,15 @@ export type MergeGateEntry =
   | { kind: 'end'; time: string; branch: string; result: string }
   | { kind: 'raw'; text: string }
 
-/** 目前持有閘門的分支：最後一筆開始行沒有對應結束時的分支（完整名稱）與開始時間 `HH:MM:SS`。 */
+/** 一個持有閘門的分支：最後一筆開始行之後沒有同分支結束行的分支（完整名稱）與該開始行的時間 `HH:MM:SS`。 */
 export type MergeGateHolder = { branch: string; since: string }
 
 /**
- * 合併閘門紀錄：ok 為最近幾行開始／結束與目前持有者（以整份紀錄判定，沒有時為 null），
+ * 合併閘門紀錄：ok 為最近幾行開始／結束與目前所有持有者（以整份紀錄判定，依開始順序，沒有時為空陣列），
  * error 為讀檔失敗原因。
  */
 export type MergeLogResult =
-  | { kind: 'ok'; entries: MergeGateEntry[]; holder: MergeGateHolder | null }
+  | { kind: 'ok'; entries: MergeGateEntry[]; holders: MergeGateHolder[] }
   | { kind: 'error'; message: string }
 
 /**
