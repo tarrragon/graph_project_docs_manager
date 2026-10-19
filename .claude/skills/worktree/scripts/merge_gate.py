@@ -463,6 +463,7 @@ _STATUS_BY_RC = {0: "綠燈", 124: "逾時", 125: "名額等待逾時"}
 # 閘門開始／結束行：前綴與套件結果行（[合併前測試]）刻意不同，名額預估只認後者
 GATE_LINE_PREFIX = "[合併閘門]"
 GATE_WRITTEN, GATE_REFUSED, GATE_RED, GATE_TIMEOUT, GATE_ABORTED = "寫入", "拒絕", "紅燈", "逾時", "中止"
+GATE_PRECHECK_CONFLICT = "預檢衝突"
 _TIMEOUT_MARKERS = ("全套件逾時", "等待本機名額逾時")
 _RED_MARKER = "全套件紅燈"
 
