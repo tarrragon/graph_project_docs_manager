@@ -461,6 +461,7 @@ _STATUS_BY_RC = {0: "綠燈", 124: "逾時", 125: "名額等待逾時"}
 GATE_LINE_PREFIX = "[合併閘門]"
 GATE_WRITTEN, GATE_REFUSED, GATE_RED, GATE_TIMEOUT, GATE_ABORTED = "寫入", "拒絕", "紅燈", "逾時", "中止"
 GATE_PRECHECK_CONFLICT = "預檢衝突"
+GATE_PRECHECK_CLEAR = "無衝突"
 _TIMEOUT_MARKERS = ("全套件逾時", "等待本機名額逾時")
 _RED_MARKER = "全套件紅燈"
 

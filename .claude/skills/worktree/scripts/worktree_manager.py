@@ -37,7 +37,7 @@ try:
         precheck_merge_conflict,
     )
     from .merge_gate import (
-        GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
+        GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CLEAR, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
         SlotWaitRefused, SuiteRunner,
         emit_gate_line, gate_line, gate_result_label,
     )
@@ -61,7 +61,7 @@ except ImportError:
         precheck_merge_conflict,
     )
     from merge_gate import (
-        GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
+        GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CLEAR, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
         SlotWaitRefused, SuiteRunner,
         emit_gate_line, gate_line, gate_result_label,
     )
@@ -1369,6 +1369,7 @@ def _merge_through_gate(
             print(MergeMessages.MERGE_FAILED.format(error=conflict))
             record("結束", base_head, GATE_PRECHECK_CONFLICT)
             return 1
+        record("預檢", base_head, GATE_PRECHECK_CLEAR)
         outcome = merge_branch_cas(branch_name, repo=root, pre_merge_check=gate, max_retries=max_retries,
                                    message=message, hold=gate.hold(branch_name, DEFAULT_BASE_BRANCH))
     except SlotWaitRefused as refused:

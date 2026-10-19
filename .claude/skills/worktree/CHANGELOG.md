@@ -2,6 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.6.3（2026-10-19）— 預檢無衝突時 gate 日誌於開始行與結束行之間多記一行 `[合併閘門] 預檢｜…｜結果 無衝突`，使無衝突的合併也能觀測預檢已執行；格式沿用 `gate_line`，`[合併前測試]` 行不變。
 **Version**: 1.6.2（2026-10-19）— 合併閘門進場排隊前以 `merge_cas.precheck_merge_conflict` 預檢文字衝突，有衝突即不排隊、結束碼 1，結束行結果為「預檢衝突」；`_prepare_candidate` 與預檢共用 `_trial_merge`。取得名額後的衝突判定保留。
 
 **Version**: 1.6.1（2026-10-19）— 隔離索引 CAS 合併引擎（CheckResult、PreMergeCheck、MergeOutcome、merge_branch_cas 及其輔助函式與 _sleep／_clock 測試接縫）移到 `scripts/merge_cas.py`，行為不變；`worktree_manager.py` 改為匯入。程式入口改為 `merge_cas.merge_branch_cas`，測試接縫只在 `merge_cas` 替換。`merge_branch_cas` 的 repo 為 None 時才延後匯入 get_project_root，worktree_manager 的呼叫端一律明確傳 repo。
