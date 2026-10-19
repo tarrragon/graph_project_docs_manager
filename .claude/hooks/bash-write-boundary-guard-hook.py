@@ -130,25 +130,54 @@ def _dotted(node: ast.AST) -> str:
     return ""
 
 
-def _argv_index(node: Optional[ast.AST]) -> Optional[int]:
-    """sys.argv[<非負整數常數>] 的索引；其他節點回 None。"""
-    if not isinstance(node, ast.Subscript) or _dotted(node.value) != "sys.argv":
+def _is_argv(node: ast.AST, env) -> bool:
+    """node 是否指向 sys.argv：sys.argv 本身，或 from sys import argv（含 as）／a = sys.argv 的別名。"""
+    if _dotted(node) == "sys.argv":
+        return True
+    return isinstance(node, ast.Name) and node.id in env.get("__argv_names__", ())
+
+
+def _argv_index(node: Optional[ast.AST], env) -> Optional[int]:
+    """argv[<整數常數>] 的索引（負值為倒數第 k 個）；其他節點回 None。"""
+    if not isinstance(node, ast.Subscript) or not _is_argv(node.value, env):
         return None
     idx = node.slice
     if hasattr(ast, "Index") and isinstance(idx, getattr(ast, "Index")):  # Python 3.8 相容
         idx = idx.value
-    if isinstance(idx, ast.Constant) and isinstance(idx.value, int) and idx.value >= 0:
+    if (isinstance(idx, ast.UnaryOp) and isinstance(idx.op, ast.USub)
+            and isinstance(idx.operand, ast.Constant) and isinstance(idx.operand.value, int)):
+        return -idx.operand.value
+    if isinstance(idx, ast.Constant) and isinstance(idx.value, int) and not isinstance(idx.value, bool):
         return idx.value
     return None
+
+
+def _collect_argv_names(tree: ast.AST) -> set:
+    """argv 的別名：from sys import argv [as x]，以及 a = sys.argv／a = <別名>（反覆至不再增加）。"""
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "sys":
+            names.update(a.asname or a.name for a in node.names if a.name == "argv")
+    env = {"__argv_names__": names}
+    changed = True
+    while changed:
+        changed = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and _is_argv(node.value, env):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id not in names:
+                        names.add(target.id)
+                        changed = True
+    return names
 
 
 def _const_path(node: Optional[ast.AST], env) -> Optional[str]:
     """節點若為全常數的字串／Path／串接／join 運算則回傳其字面值，否則 None。
     sys.argv[n] 取 env["sys.argv"]（命令列引數展開後清單，含 argv[0]）的對應項。"""
-    index = _argv_index(node)
+    index = _argv_index(node, env)
     if index is not None:
         argv = env.get("sys.argv") or []
-        return argv[index] if index < len(argv) else None
+        return argv[index] if -len(argv) <= index < len(argv) else None
     if isinstance(node, ast.Constant):
         return node.value if isinstance(node.value, str) else None
     if isinstance(node, ast.Name):
@@ -211,6 +240,7 @@ def _ast_write_targets(source: str, argv: Optional[List[str]] = None) -> Optiona
     env = {}
     if argv is not None:
         env["sys.argv"] = argv
+        env["__argv_names__"] = _collect_argv_names(tree)
     assigns = sorted((n for n in ast.walk(tree) if isinstance(n, ast.Assign)),
                      key=lambda n: (n.lineno, n.col_offset))
     for node in assigns:
