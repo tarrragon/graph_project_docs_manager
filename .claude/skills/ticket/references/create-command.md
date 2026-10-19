@@ -93,7 +93,10 @@ ticket create ... --acceptance "條件A|條件B|條件C"
 #   若 acceptance 內文本身需含該字元（如描述 shell pipe「-q | tail」），
 #   用反斜線跳脫保留字面，避免被靜默拆條：
 ticket create ... --acceptance "重現實證 -q \| tail 導致 0 行"
-#   未跳脫時，單一 --acceptance 值被拆成多條會印出 [WARNING] 供確認。
+#   shell 的「或」（雙分隔符）同樣會被拆，中間的空段被丟棄，一條變兩條；需寫成 \|\|：
+ticket create ... --acceptance "a \|\| b 兩種寫法都被擋"
+#   未跳脫時，單一 --acceptance 值被拆成多條會印出 [WARNING] 供確認（輸出到 stderr；
+#   以 2>&1 擷取後若再用 grep 白名單過濾，警告行會被濾掉，見 bash-tool-usage-rules 規則二）。
 #
 #   建立成功訊息一律回報本次實際存入的驗收條數與逐條內容（不限分隔符拆條
 #   時才印）。--acceptance 不吃逗號分隔（與 --where 等三參數不同），逗號
