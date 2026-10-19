@@ -994,16 +994,37 @@ def insert_dedup_record(body: str, keywords: Optional[List[str]]) -> str:
     kws = [k for k in (keywords or []) if (k or "").strip()]
     if not kws:
         return body
-    lines = "\n".join(f"- {k}" for k in kws)
+    lines = "\n".join(f"- {_as_inline_code(k)}" for k in kws)
     section = (
         "### 查重紀錄\n\n"
         "`--dedup-checked none`，查重關鍵字（逐字）：\n\n"
         f"{lines}\n\n"
     )
-    anchor = "<!-- 調查過程記錄（可選）："
-    if anchor in body:
-        return body.replace(anchor, section + anchor, 1)
-    return body
+    pa_start = body.find("## Problem Analysis")
+    if pa_start < 0:
+        sys.stderr.write("[WARNING] insert_dedup_record: 找不到 Problem Analysis，未寫入查重紀錄\n")
+        return body
+    anchor_pos = body.find("<!-- 調查過程記錄（可選）：", pa_start)
+    if anchor_pos >= 0:
+        return body[:anchor_pos] + section + body[anchor_pos:]
+    sys.stderr.write(
+        "[WARNING] insert_dedup_record: 找不到調查過程註解錨點，"
+        "查重紀錄改附加於 Problem Analysis 段尾\n"
+    )
+    next_sec = body.find("\n## ", pa_start + 1)
+    end = next_sec if next_sec >= 0 else len(body)
+    # 回退到段尾分隔線之前，使紀錄留在 PA 段內
+    sep = body.rfind("\n---", pa_start, end)
+    insert_at = sep + 1 if sep >= 0 else end
+    return body[:insert_at] + section + body[insert_at:]
+
+
+def _as_inline_code(text: str) -> str:
+    """換行換空白後包成 inline code；內含反引號改用雙反引號包覆。"""
+    flat = text.replace("\r", " ").replace("\n", " ")
+    if "`" in flat:
+        return f"``{flat}``"
+    return f"`{flat}`"
 
 
 def create_ticket_body(what: str, who: str, ticket_type: str = "") -> str:

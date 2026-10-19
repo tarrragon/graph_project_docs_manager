@@ -601,3 +601,43 @@ class TestDedupRecordInBody:
         body = create_ticket_body("w", "who", "IMP")
         assert insert_dedup_record(body, None) == body
         assert "### 查重紀錄" not in body
+
+    def test_keyword_with_newline_and_heading_is_neutralized(self):
+        from ticket_system.lib.ticket_builder import (
+            create_ticket_body,
+            insert_dedup_record,
+        )
+
+        base = create_ticket_body("w", "who", "IMP")
+        body = insert_dedup_record(base, ["a\n## X\r\nb", "has`tick"])
+        assert body.count("\n## ") == base.count("\n## ")
+        assert "`a ## X  b`" in body
+        assert "``has`tick``" in body
+
+    def test_anchor_located_after_problem_analysis_not_in_what(self):
+        from ticket_system.lib.ticket_builder import (
+            create_ticket_body,
+            insert_dedup_record,
+        )
+
+        what = "<!-- 調查過程記錄（可選）："
+        body = insert_dedup_record(create_ticket_body(what, "who", "IMP"), ["k"])
+        assert body.index("## Problem Analysis") < body.index("### 查重紀錄")
+        assert body.index("### 查重紀錄") < body.index("## Solution")
+
+    def test_missing_anchor_appends_in_pa_and_warns(self, capsys):
+        from ticket_system.lib.ticket_builder import insert_dedup_record
+
+        body = "## Problem Analysis\n\ntext\n\n---\n\n## Solution\n\nx\n"
+        out = insert_dedup_record(body, ["kw"])
+        assert out.index("## Problem Analysis") < out.index("### 查重紀錄")
+        assert out.index("### 查重紀錄") < out.index("## Solution")
+        assert "[WARNING]" in capsys.readouterr().err
+
+
+class TestKeywordsOnlyRecordedForNone:
+    def test_issue_number_with_keywords_not_recorded(self, monkeypatch):
+        build_mock = _install_common_mocks(monkeypatch)
+        rc = execute(_make_args(dedup_checked="#102", dedup_keywords=["k"]))
+        assert rc == 0
+        assert not build_mock.call_args[0][2].get("dedup_keywords")

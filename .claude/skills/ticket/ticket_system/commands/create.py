@@ -283,7 +283,12 @@ def _parse_cli_args_to_config(
         "source_ticket": args.source_ticket,
         "discovered_during": getattr(args, "discovered_during", None),
         "scope_blocker": getattr(args, "scope_blocker", None) or None,
-        "dedup_keywords": getattr(args, "dedup_keywords", None) or None,
+        # 紀錄文字寫的是「--dedup-checked none」，僅 none 時寫入
+        "dedup_keywords": (
+            getattr(args, "dedup_keywords", None)
+            if (getattr(args, "dedup_checked", None) or "").strip().lower() == "none"
+            else None
+        ) or None,
         "acceptance": acceptance,
         "tdd_phase": tdd_phase,
         "tdd_stage": tdd_result.phases,
