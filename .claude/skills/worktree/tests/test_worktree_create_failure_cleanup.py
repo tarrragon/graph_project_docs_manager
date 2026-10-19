@@ -71,6 +71,44 @@ def test_add_timeout_leaves_no_worktree_or_branch(repo, monkeypatch, capsys):
     assert "逾時" in capsys.readouterr().out
 
 
+def _cleanup_log(repo: Path) -> str:
+    log = repo / ".claude" / "logs" / "worktree-merge.log"
+    return log.read_text(encoding="utf-8") if log.exists() else ""
+
+
+def test_cleanup_steps_written_to_log(repo, monkeypatch):
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(repo))
+    _inject_add_timeout(monkeypatch, [])
+
+    cmd_create(TICKET)
+
+    lines = [l for l in _cleanup_log(repo).splitlines() if "[建立清理]" in l]
+    assert any("worktree remove" in l and "結果 成功" in l for l in lines)
+    assert any("worktree prune" in l and "結果 成功" in l for l in lines)
+    assert any("branch -D" in l and derive_branch_name(TICKET) in l and "結果 成功" in l
+               for l in lines)
+
+
+def test_branch_delete_failure_logged(repo, monkeypatch, capsys):
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(repo))
+    _inject_add_timeout(monkeypatch, [])
+    wrapped = worktree_manager.run_git_command
+
+    def fail_branch_delete(args, cwd=None, timeout=10):
+        if args[:2] == ["branch", "-D"]:
+            return False, "error: cannot delete branch\nbusy"
+        return wrapped(args, cwd=cwd, timeout=timeout)
+
+    monkeypatch.setattr(worktree_manager, "run_git_command", fail_branch_delete)
+
+    cmd_create(TICKET)
+
+    lines = [l for l in _cleanup_log(repo).splitlines() if "[建立清理]" in l]
+    assert any("branch -D" in l and "結果 失敗" in l and "cannot delete branch" in l
+               for l in lines)
+    assert "清理分支" in capsys.readouterr().err
+
+
 def test_add_gets_generous_timeout(repo, monkeypatch):
     seen: list = []
     _inject_add_timeout(monkeypatch, seen)

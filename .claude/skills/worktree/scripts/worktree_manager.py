@@ -693,13 +693,25 @@ def _cleanup_failed_create(branch_name: str, worktree_path: str) -> None:
 
     前置驗證已確保分支與路徑在 add 前不存在，故兩者若存在皆為本次所建。
     """
+    root = str(get_project_root())
     # 逾時被殺的 worktree 會停在 locked initializing，需雙 --force 才能移除
-    run_git_command(["worktree", "remove", "--force", "--force", worktree_path])
-    run_git_command(["worktree", "prune"])
+    _run_cleanup_step(root, "worktree remove", worktree_path,
+                      ["worktree", "remove", "--force", "--force", worktree_path])
+    _run_cleanup_step(root, "worktree prune", worktree_path, ["worktree", "prune"])
     if check_branch_exists(branch_name):
-        ok, err = run_git_command(["branch", "-D", branch_name])
+        ok = _run_cleanup_step(root, "branch -D", branch_name, ["branch", "-D", branch_name])
         if not ok:
-            print(f"[警告] 清理分支 {branch_name} 失敗：{err}", file=sys.stderr)
+            print(f"[警告] 清理分支 {branch_name} 失敗，見 worktree-merge.log", file=sys.stderr)
+
+
+def _run_cleanup_step(root: str, step: str, target: str, git_args: list[str]) -> bool:
+    """執行一個清理步驟，結果（成功或失敗＋git 輸出摘要）寫入 worktree-merge.log。"""
+    ok, output = run_git_command(git_args)
+    result = "成功" if ok else "失敗"
+    summary = output.replace("\n", " ")[:200]
+    detail = f"｜輸出 {summary}" if (not ok and summary) else ""
+    emit_gate_line(root, f"[建立清理]{step}｜target {target}｜結果 {result}{detail}")
+    return ok
 
 
 def _cmd_create_validate_and_execute(
