@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / ".claude"))
 
 import merge_gate as mg  # noqa: E402
 import worktree_manager as wm  # noqa: E402
+import merge_cas as mc  # noqa: E402
 from lib.test_command_parse import WEIGHT_HEAVY, classify_argv_weight  # noqa: E402
 
 TICKET_FILE = "docs/work-logs/v0/v0.5/v0.5.0/tickets/9.9.9-W1-001.md"
@@ -41,7 +42,7 @@ def commit_file(repo, name, text, msg):
 
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
-    monkeypatch.setattr(wm, "_sleep", lambda _s: None)
+    monkeypatch.setattr(mc, "_sleep", lambda _s: None)
     r = tmp_path / "repo"
     r.mkdir()
     git(r, "init", "-b", "main")
@@ -611,7 +612,7 @@ class Events:
 
 def instrument(monkeypatch, ev):
     """記錄 commit-tree（_prepare_candidate 成功返回）與 update-ref 完成；事件名不分執行緒。"""
-    real_prepare, real_raw = wm._prepare_candidate, wm._git_raw
+    real_prepare, real_raw = mc._prepare_candidate, mc._git_raw
 
     def prepare(branch, base, repo, message):
         out = real_prepare(branch, base, repo, message)
@@ -625,8 +626,8 @@ def instrument(monkeypatch, ev):
             ev.add("update-ref")
         return proc
 
-    monkeypatch.setattr(wm, "_prepare_candidate", prepare)
-    monkeypatch.setattr(wm, "_git_raw", raw)
+    monkeypatch.setattr(mc, "_prepare_candidate", prepare)
+    monkeypatch.setattr(mc, "_git_raw", raw)
 
 
 def gated_merge(repo, branch, runner, ev, tag="", **kw):
