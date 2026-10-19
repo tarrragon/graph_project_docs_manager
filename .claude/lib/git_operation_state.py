@@ -75,6 +75,29 @@ def _is_dynamic(path: str) -> bool:
     return any(c in path for c in "$`") or path.startswith("~")
 
 
+def _follow_gitlink(path: str) -> str:
+    """覆寫值是 gitlink 檔（worktree 的 `.git`，首行 `gitdir: <path>`）時
+    回其指向的 git dir，否則原樣回傳。
+
+    git 接受 gitlink 檔當 `--git-dir`，commit 實際落在指向的 git dir，
+    MERGE_HEAD 等狀態檔也在那裡。相對指向以 gitlink 檔所在目錄為基準。
+    讀不到或格式不符回 `_UNRESOLVABLE_OVERRIDE`（保守阻擋，不 fail-open）。
+    """
+    p = Path(path)
+    if not p.is_file():
+        return path
+    try:
+        first = p.read_text(encoding="utf-8").splitlines()[0]
+    except (OSError, UnicodeDecodeError, IndexError) as exc:
+        sys.stderr.write(f"[bare-commit-guard] gitlink 讀取失敗，保守阻擋：{path} ({exc})\n")
+        return _UNRESOLVABLE_OVERRIDE
+    prefix = "gitdir:"
+    if not first.startswith(prefix) or not first[len(prefix):].strip():
+        sys.stderr.write(f"[bare-commit-guard] gitlink 格式不符，保守阻擋：{path}\n")
+        return _UNRESOLVABLE_OVERRIDE
+    return str(p.parent / first[len(prefix):].strip())
+
+
 def _override_dirs(
     payload_cwd: Optional[str], invocation: GitInvocation, project_root: Path
 ) -> Optional[List[str]]:
@@ -95,7 +118,7 @@ def _override_dirs(
             dirs.extend([_base_dir(payload_cwd, project_root), str(project_root)])
             dirs.append(_UNRESOLVABLE_OVERRIDE)
         else:
-            dirs.append(str(Path(base) / raw))
+            dirs.append(_follow_gitlink(str(Path(base) / raw)))
     return dirs
 
 

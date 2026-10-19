@@ -172,3 +172,78 @@ def test_report_detect_failure_labels_target(capsys):
     ops._report_detect_failure("/d", "rc=1", logging.getLogger("t"), target=ops._TARGET_OTHER)
     err = capsys.readouterr().err
     assert "cherry-pick" in err and "MERGE_HEAD" not in err
+
+
+class TestGitlinkOverride:
+    """`--git-dir`／`GIT_DIR` 指向 worktree 的 `.git` gitlink 檔（真實 worktree）。"""
+
+    @pytest.fixture
+    def wt(self, repo, tmp_path):
+        w = tmp_path / "wt"
+        _git(repo, "worktree", "add", "-q", "-b", "wtbr", str(w), "main")
+        return w
+
+    @staticmethod
+    def _inv(statement, effective_dir):
+        idx = statement.index("commit")
+        return GitInvocation(
+            statement=statement, subcommand="commit", subcommand_index=idx,
+            dash_c_path=None, effective_dir=effective_dir,
+        )
+
+    def _detect(self, stmt, base, root, logger=None):
+        dirs = ops._resolve_detect_dirs_multi(str(base), [self._inv(stmt, str(base))], root)
+        return ops._pending_operation_in_dirs(dirs, logger)
+
+    def _stmts(self, wt):
+        g = str(wt / ".git")
+        return [
+            ["git", f"--git-dir={g}", "commit"],
+            ["git", "--git-dir", g, "commit"],
+            [f"GIT_DIR={g}", "git", "commit"],
+        ]
+
+    def test_git_accepts_gitlink_and_commits_into_worktree(self, repo, wt, tmp_path):
+        """前提實測：git 對 gitlink 檔當 --git-dir 照常運作（MERGE_HEAD 會被收尾）。"""
+        assert (wt / ".git").is_file()
+        _git(wt, "merge", "--no-ff", "--no-commit", "side", check=False)
+        gd = _git(wt, "rev-parse", "--absolute-git-dir").stdout.strip()
+        assert (Path(gd) / "MERGE_HEAD").is_file()
+        (wt / "f.txt").write_text("resolved\n")
+        _git(wt, "add", "f.txt")
+        r = subprocess.run(
+            ["git", f"--git-dir={wt / '.git'}", f"--work-tree={wt}",
+             "-c", "user.email=t@t", "-c", "user.name=t",
+             "commit", "-q", "--allow-empty", "-m", "x"],
+            cwd=str(tmp_path), capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        parents = _git(wt, "log", "-1", "--format=%P").stdout.split()
+        assert len(parents) == 2
+
+    @pytest.mark.parametrize("state", ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD"])
+    def test_gitlink_with_pending_state_is_blocked(self, repo, wt, tmp_path, state):
+        gd = _git(wt, "rev-parse", "--absolute-git-dir").stdout.strip()
+        head = _git(wt, "rev-parse", "HEAD").stdout.strip()
+        (Path(gd) / state).write_text(head + "\n")
+        for stmt in self._stmts(wt):
+            assert self._detect(stmt, tmp_path, repo) in ops._BLOCKING_OPS, stmt
+
+    def test_gitlink_without_pending_state_passes(self, repo, wt, tmp_path):
+        for stmt in self._stmts(wt):
+            assert self._detect(stmt, tmp_path, repo) is None, stmt
+
+    def test_gitlink_relative_path_resolves_from_effective_dir(self, repo, wt):
+        gd = _git(wt, "rev-parse", "--absolute-git-dir").stdout.strip()
+        (Path(gd) / "MERGE_HEAD").write_text(
+            _git(wt, "rev-parse", "HEAD").stdout.strip() + "\n")
+        stmt = ["git", "--git-dir=.git", "commit"]
+        assert self._detect(stmt, wt, repo) == ops._OP_MERGE
+
+    def test_unparseable_gitlink_blocks_conservatively(self, repo, tmp_path):
+        bad = tmp_path / "bad"
+        bad.mkdir()
+        (bad / ".git").write_text("garbage not a gitlink\n")
+        sink = _Sink()
+        stmt = ["git", f"--git-dir={bad / '.git'}", "commit"]
+        assert self._detect(stmt, tmp_path, repo, sink) in ops._BLOCKING_OPS
