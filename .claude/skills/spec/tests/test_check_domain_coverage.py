@@ -9,6 +9,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import check_domain_coverage as cdc  # noqa: E402
+from domain_coverage import fr_extract  # noqa: E402
 
 
 def _covered_by(spec_text, map_text, map_name="domain-map.md"):
@@ -1284,6 +1285,9 @@ def test_extraction_warning_and_contradiction_agree(tmp_path, capsys, line):
 
 def test_both_consumers_use_shared_fr_like_judgment(tmp_path, capsys, monkeypatch):
     # 只改共用判定的一端：兩個消費端都必須跟著變，任一端自帶規則則此測試翻紅
+    # 兩個消費端分居不同模組（find_unextracted_fr_lines 在 fr_extract、judge_fr_declaration 在入口檔），
+    # 各自以模組全域名稱解析 fr_like_lines，故兩處都換成同一個哨兵
+    monkeypatch.setattr(fr_extract, "fr_like_lines", lambda text: [(3, "SENTINEL-LINE", 7)])
     monkeypatch.setattr(cdc, "fr_like_lines", lambda text: [(3, "SENTINEL-LINE", 7)])
     assert cdc.find_unextracted_fr_lines("# s\n元件\n") == [(3, "SENTINEL-LINE")]
     rc, out = _run_nomap(tmp_path, _fm("false") + "# s\n元件\n", capsys)
