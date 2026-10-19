@@ -38,6 +38,8 @@
 >
 > 派發位置由 `--isolation {worktree,none}` 指定：`worktree` 變體的收尾句為 `ticket track commit`（於 worktree 路徑，只提交產品檔；票面由主 repo CLI 寫入並自動提交，worktree 內的票面副本是舊版本，`ticket track commit --worktree` 遇到票面會拒絕）後止步並回報 PM，complete 由 PM 於合併後在主 checkout 執行（權威為 `CLOSING_BY_ISOLATION`；見下方〈worktree 派發收尾指引：complete 由 PM 於合併後執行〉）；未帶且 where.files 含非豁免路徑時 stderr 警告。`--kind review` 骨架首行固定為 `Dispatch-Mode: readonly`（`SKELETON_TEMPLATE_REVIEW`），第二行起為 `Ticket: {id}`。需落票約束時加 `--note "..."`（寫入票的「派發日誌」章節）；審查派發改 `--kind review`（輸出不含認領/收尾的審查骨架，改用審查標的/視角/裁決問題/回報格式四欄）。兩個變體的收尾句皆要求 Solution 含 `### 自檢結果與 Phase 4 評估`（acceptance-gate 依此檢查，缺則 complete 被擋）。指令輸出即可直接複製貼入 `Agent(...)` prompt。同步保護（`.claude/hooks/tests/test_agent_prompt_length_guard_hook.py`）涵蓋兩個獨立維度，缺一不足：(1) 骨架常數是否仍命中 length-guard hook 的模板關鍵字（僅影響 Layer 2 軟提示）；(2) 骨架**實際組裝後的行數**（含 `--commit-policy agent` 短版指標句、觸及 hooks 目錄票的額外提醒）是否仍 <= PROMPT_LINE_LIMIT（Layer 1 硬上限，無豁免）——(2) 是骨架曾實際成長至 39-48 行、逐字貼入被 Layer 1 阻擋兩次後才補上的維度，任一維度漂移即測試失敗。
 
+> **紅燈實跑行由 CLI 條件式加入**：票 type 為 IMP 且 acceptance 含測試字樣或 E1／E2 時，骨架多一行「修改產品碼前先實跑新增測試，於 Test Results 貼紅燈輸出摘要；未實跑者須標為推論」（權威為 `dispatch_skeleton.py` 的 `RED_RUN_LINE` 與 `requires_red_run`），DOC／ANA 與無測試 acceptance 的 IMP 骨架不變；PM 不需再手寫此句。
+
 > **claim 行必帶 `--as {agent_name}`**（派發身份前移，W5-005 F1a）：dispatch hook 已在派發時對無主票綁定 who.current，此行是 agent 端對稱綁定與 hook 失效 fallback；缺 `--as` 的裸 claim 不寫 who.current，收尾 `complete --as` 會因身份不符需 set-who 繞道。
 
 > **停手上報而非定義優先序**：在只讀得到 prompt 與正本兩份文本的條件下，agent 無可靠判別依據——故不定義三方優先序表，交由 PM 裁決；裁決回票面方式見「衝突裁決回票面（PM 端）」節。
@@ -444,6 +446,7 @@ ticket track complete 0.19.0-W3-032.1 --as <agent-name>
 ---
 
 **Last Updated**: 2026-10-20
+**Version**: 1.47.0 — 〈骨架（3 段）〉補一句路由：IMP 票 acceptance 含測試或 E1／E2 時，CLI 骨架條件式加入「修改產品碼前先實跑紅燈並貼輸出摘要」一行，權威在 `dispatch_skeleton.py`。
 **Version**: 1.46.0 — `agent-dispatch-testing.md`〈測試入口〉佔位符由 `<root>`（專案根）改為 `<checkout>`（執行測試所在 checkout 的根，linked worktree 內為該 worktree 路徑），並補單檔或相關測試檔的指令示例。原定義在 worktree 內會被代入主倉庫路徑，改跑主倉庫的程式碼而 worktree 內的修改未被測到，結果照樣綠燈；新寫法與 hooks conftest 缺依賴時提示的指令字面一致。
 **Version**: 1.45.0 — 〈全套件回報規格（TEST-BAL-006）〉改寫為〈全套件由合併閘門執行，代理人只跑相關測試檔〉：測試命令引用〈測試入口〉，局部執行須明寫；驗收方合併前只驗相關測試檔，complete 時讀合併閘門結束行；原對帳格式保留為「任務明確要求代理人跑全套件」例外情境與核對全套件回報之用。「填空檢查清單」對應列同步。
 **Version**: 1.44.0 — 〈worktree 派發收尾指引〉由「用 finish 別名避開 complete 誤判」改寫為「complete 由 PM 於合併後執行」：隔離代理人止於 worktree commit，PM 以 set-who 後 complete 收尾且不代填自檢；開頭骨架說明句同步（用戶裁決，2026-10-14）

@@ -741,3 +741,51 @@ def test_dispatch_worktree_closing_excludes_ticket_md_from_commit(dispatch_ticke
     assert "產品檔" in closing
     assert "主 repo" in closing
     assert "票面" not in default_closing
+
+
+# --- 含測試 acceptance 的 IMP 骨架紅燈實跑要求（0.5.0-W1-388） -----------
+
+from ticket_system.lib.dispatch_skeleton import (  # noqa: E402
+    RED_RUN_LINE,
+    build_skeleton,
+    requires_red_run,
+)
+
+
+@pytest.mark.parametrize(
+    "ticket_type, acceptance, expected",
+    [
+        ("IMP", ["[ ] 新增測試全綠"], True),
+        ("IMP", ["[ ] 守衛含 E2 正向對照"], True),
+        ("IMP", ["[ ] 旗標 E1 對照"], True),
+        ("IMP", ["[ ] 文件更新完成"], False),
+        ("DOC", ["[ ] 測試通過"], False),
+        ("ANA", ["[ ] 測試通過"], False),
+        ("IMP", [], False),
+        ("IMP", None, False),
+    ],
+)
+def test_requires_red_run_predicate(ticket_type, acceptance, expected):
+    assert requires_red_run(ticket_type, acceptance) is expected
+
+
+def _skeleton(**overrides) -> str:
+    kwargs = dict(kind="normal", ticket_id="T-1", task_summary="x")
+    kwargs.update(overrides)
+    return build_skeleton(**kwargs)
+
+
+def test_skeleton_includes_red_run_line_when_required():
+    assert RED_RUN_LINE in _skeleton(require_red_run=True)
+
+
+def test_skeleton_unchanged_when_red_run_not_required():
+    assert RED_RUN_LINE not in _skeleton()
+    assert _skeleton(require_red_run=True).replace(RED_RUN_LINE + "\n", "") == _skeleton()
+
+
+def test_dispatch_cli_wires_red_run_line_for_test_acceptance_imp(dispatch_ticket, capsys, monkeypatch):
+    monkeypatch.setattr(td_mod, "requires_red_run", lambda *_: True)
+    rc = td_mod.execute_dispatch(_base_args(ticket_id=dispatch_ticket), "0.0.0")
+    assert rc == 0
+    assert RED_RUN_LINE in capsys.readouterr().out
