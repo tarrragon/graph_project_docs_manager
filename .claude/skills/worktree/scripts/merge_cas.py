@@ -147,17 +147,34 @@ def _run_pre_merge_check(
     return "" if result.passed else (result.reason or MergeMessages.CAS_CHECK_FAILED)
 
 
-def _prepare_candidate(branch: str, base: str, repo: str, message: str):
-    """計算待合併 commit（只寫物件）。回傳 (merge_commit, old_head, 中止說明)。"""
+def _trial_merge(branch: str, base: str, repo: str):
+    """解析兩端並試算三方合併 tree（只寫物件）。回傳 (old_head, branch_sha, tree, 中止說明, 是否良性)。
+
+    良性＝「已合併」與「ref 解析失敗」：都不是文字衝突，預檢放行，由取得名額後的既有路徑判定。
+    """
     ok, old_head = _resolve_commit(f"refs/heads/{base}", repo)
     ok2, branch_sha = _resolve_commit(f"refs/heads/{branch}", repo)
     if not (ok and ok2):
-        return None, "", MergeMessages.CAS_REF_UNRESOLVED.format(base=base, branch=branch)
+        return "", "", "", MergeMessages.CAS_REF_UNRESOLVED.format(base=base, branch=branch), True
     if _git_raw(["merge-base", "--is-ancestor", branch_sha, old_head], repo).returncode == 0:
-        return None, "", MergeMessages.CAS_ALREADY_MERGED.format(base=base, branch=branch)
+        return "", "", "", MergeMessages.CAS_ALREADY_MERGED.format(base=base, branch=branch), True
     ok, tree = _compute_merge_tree(old_head, branch_sha, repo)
     if not ok:
-        return None, "", tree
+        return "", "", "", tree, False
+    return old_head, branch_sha, tree, "", False
+
+
+def precheck_merge_conflict(branch: str, base: str, repo: str) -> str:
+    """進場排隊前的預檢：空字串＝可進場（含已合併、空合併、ref 解析失敗），否則為文字衝突說明。"""
+    _, _, _, why, benign = _trial_merge(branch, base, repo)
+    return "" if benign else why
+
+
+def _prepare_candidate(branch: str, base: str, repo: str, message: str):
+    """計算待合併 commit（只寫物件）。回傳 (merge_commit, old_head, 中止說明)。"""
+    old_head, branch_sha, tree, why, _ = _trial_merge(branch, base, repo)
+    if why:
+        return None, "", why
     _, old_tree = _git_out(["rev-parse", f"{old_head}^{{tree}}"], repo)
     if tree == old_tree:
         return None, "", MergeMessages.CAS_EMPTY_MERGE

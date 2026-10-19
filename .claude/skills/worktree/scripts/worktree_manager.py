@@ -32,9 +32,13 @@ try:
         MACOS_XCCONFIG_TEMPLATES,
     )
     from .messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
-    from .merge_cas import CheckResult, MergeOutcome, PreMergeCheck, _git_out, _verify_three_planes, merge_branch_cas
+    from .merge_cas import (
+        CheckResult, MergeOutcome, PreMergeCheck, _git_out, _verify_three_planes, merge_branch_cas,
+        precheck_merge_conflict,
+    )
     from .merge_gate import (
-        GATE_MAX_RETRIES, GATE_ABORTED, GATE_REFUSED, GATE_WRITTEN, MergeGate, SlotWaitRefused, SuiteRunner,
+        GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
+        SlotWaitRefused, SuiteRunner,
         emit_gate_line, gate_line, gate_result_label,
     )
 except ImportError:
@@ -52,9 +56,13 @@ except ImportError:
         MACOS_XCCONFIG_TEMPLATES,
     )
     from messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
-    from merge_cas import CheckResult, MergeOutcome, PreMergeCheck, _git_out, _verify_three_planes, merge_branch_cas
+    from merge_cas import (
+        CheckResult, MergeOutcome, PreMergeCheck, _git_out, _verify_three_planes, merge_branch_cas,
+        precheck_merge_conflict,
+    )
     from merge_gate import (
-        GATE_MAX_RETRIES, GATE_ABORTED, GATE_REFUSED, GATE_WRITTEN, MergeGate, SlotWaitRefused, SuiteRunner,
+        GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
+        SlotWaitRefused, SuiteRunner,
         emit_gate_line, gate_line, gate_result_label,
     )
 
@@ -1356,6 +1364,11 @@ def _merge_through_gate(
 
     record("開始", base_head)
     try:
+        conflict = precheck_merge_conflict(branch_name, DEFAULT_BASE_BRANCH, root)
+        if conflict:  # 排隊前即知必敗：不占名額佇列
+            print(MergeMessages.MERGE_FAILED.format(error=conflict))
+            record("結束", base_head, GATE_PRECHECK_CONFLICT)
+            return 1
         outcome = merge_branch_cas(branch_name, repo=root, pre_merge_check=gate, max_retries=max_retries,
                                    message=message, hold=gate.hold(branch_name, DEFAULT_BASE_BRANCH))
     except SlotWaitRefused as refused:

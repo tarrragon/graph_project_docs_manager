@@ -1034,3 +1034,62 @@ class TestFailureDetailRetention:
         assert "E2-ASSERT-MARK" in reason
         text = (tmp_path / ".claude/logs/merge-gate-failures/e2commit0000-hooks.log").read_text(encoding="utf-8")
         assert "E2-STDERR-MARK" in text and "E2-ASSERT-MARK" in text
+
+
+class TestPrecheckConflict:
+    """進場排隊前以 merge-tree 預檢文字衝突（0.5.0-W1-328）。"""
+
+    @staticmethod
+    def gate_lines(repo):
+        log = (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
+        return [ln for ln in log.splitlines() if mg.GATE_LINE_PREFIX in ln]
+
+    def test_conflict_reported_before_queueing(self, repo):
+        advance_main(repo, "lib/other.txt", "o-main\n")  # 與 feat 對同檔同處不同改動
+        base = git(repo, "rev-parse", "main")
+        calls = []
+        hold = TestGateRefusalExpected.occupy(10.0)  # 若進入排隊，會因名額被占而回 125
+        try:
+            rc = wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner(calls)))
+        finally:
+            hold.release()
+        assert rc == 1
+        assert git(repo, "rev-parse", "main") == base and not calls
+        _, end = self.gate_lines(repo)
+        assert f"結果 {mg.GATE_PRECHECK_CONFLICT}" in end
+
+    def test_conflict_appearing_while_queued_still_aborts_after_slot(self, repo, monkeypatch):
+        """對照：預檢通過，排隊期間 main 前進產生衝突，取得名額後仍中止且 ref 不變。"""
+        real_hold = mg.MergeGate.hold
+        state = {}
+
+        def hold_then_advance(self, branch, base):
+            with real_hold(self, branch, base):
+                advance_main(repo, "lib/other.txt", "o-main\n")
+                state["advanced"] = git(repo, "rev-parse", "main")
+                yield
+
+        import contextlib
+        monkeypatch.setattr(mg.MergeGate, "hold", contextlib.contextmanager(hold_then_advance))
+        rc = wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
+        assert rc == 1
+        assert git(repo, "rev-parse", "main") == state["advanced"]
+        _, end = self.gate_lines(repo)
+        assert f"結果 {mg.GATE_ABORTED}" in end
+
+    def test_already_merged_passes_precheck(self, repo):
+        git(repo, "merge", "--no-edit", "feat")
+        assert mc.precheck_merge_conflict("feat", "main", str(repo)) == ""
+
+
+class TestPrecheckException:
+    def test_precheck_exception_logs_abort_and_reraises(self, repo, monkeypatch):
+        def boom(*a, **k):
+            raise subprocess.TimeoutExpired("git", 60)
+
+        monkeypatch.setattr(wm, "precheck_merge_conflict", boom)
+        with pytest.raises(subprocess.TimeoutExpired):
+            wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
+        log = (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
+        lines = [ln for ln in log.splitlines() if mg.GATE_LINE_PREFIX in ln]
+        assert len(lines) == 2 and f"結果 {mg.GATE_ABORTED}" in lines[1]
