@@ -130,7 +130,7 @@ _WRAP_COMMAND_RE = re.compile(r"^/wrap-decision(\s|$)")
 def _starts_with_wrap_command(text: str) -> bool:
     """命令形式比對：去除前導空白後以 /wrap-decision 開頭，其後為空白或結尾。
 
-    路徑中的 /wrap-decision（如 .claude/skills/wrap-decision/...）不算手動執行。
+    檔案路徑中的 /wrap-decision 片段不算手動執行。
     """
     return _WRAP_COMMAND_RE.match(text.lstrip()) is not None
 

@@ -1,7 +1,7 @@
 """
 設定與訊號定義解析（自 wrap-decision-tripwire-hook.py 拆出，行為不變）。
 
-唯一觸發條件來源：.claude/config/wrap-triggers.yaml（W10-052 約束）。 rule8-exempt: relocation:自 .claude/skills/wrap-decision/hooks/wrap-decision-tripwire-hook.py 逐字搬移
+唯一觸發條件來源：專案的 wrap-triggers.yaml 設定檔（路徑見 CONFIG_REL_PATH）。
 禁止在本套件中硬編碼 triggers / keywords / thresholds。
 """
 
