@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.3.0
+  version: 1.4.0
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -56,7 +56,7 @@ metadata:
 | 放行方向 | 做法 | 違反的後果 |
 |---------|------|-----------|
 | 不改任何操作的放行結果（例如新增選用旗標） | PM 直接放行 | 每項都交用戶，用戶被瑣碎裁決淹沒，真正需要裁定的項目被稀釋 |
-| 收緊（原本放行的改為阻擋） | PM 放行，並在合併後轉知各線；被擋的操作含用戶自身的操作時交用戶 | 不轉知的話，各線照舊操作時突然被擋，誤判為環境故障 |
+| 收緊（原本放行的改為阻擋） | PM 放行，並在合併後轉知各線；被擋的操作含用戶自身的操作時交用戶。合併前在框架文件（SKILL、references、pm-rules）grep 會被新判準擋下的例行步驟範例，同票改為等效 CLI 或註明執行限制（例：守衛改以 ast 追蹤 python 內嵌腳本的變數路徑後，某 SKILL 步驟記載的 python 片段以 heredoc 執行即被擋，同票把該步驟改以既有 CLI 為主路徑） | 不轉知的話，各線照舊操作時突然被擋，誤判為環境故障；不改文件的話，轉知只送達現有各線，日後照 SKILL 操作的讀者仍會撞上 |
 | 放寬（原本阻擋的改為放行，包括修誤判） | 進閘門前附正向對照：已知應擋的輸入在修改後仍被擋。另追到實際執行判定的共用函式，確認判定本身失敗時（逾時、例外、依賴缺席）落在保守一側；不以對照測試代替這一步。涉及用戶既有裁定或新權限時交用戶 | 放寬的失效方向是放行，與「輸入本來就沒問題」在輸出上同形；只看對照測試會漏掉判定本身出錯時的落點，守衛無聲失效 |
 
 ### 3. 共用資源協調
