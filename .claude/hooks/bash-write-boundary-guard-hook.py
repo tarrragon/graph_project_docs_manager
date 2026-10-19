@@ -713,7 +713,36 @@ def _find_scope_violation(command: str, cwd: str, logger) -> Optional[str]:
     return None
 
 
-def _allow_and_exit(logger, reason: str) -> int:
+_LOG_CMD_LIMIT = 200  # 判定日誌的命令截斷上限，heredoc 正文不全文入日誌
+
+
+def _decision_source(input_data: dict) -> str:
+    """來源：沿用 is_subagent_environment 判定；代理人取 agent_id（缺則 agent_type），否則 main。"""
+    if is_subagent_environment(input_data):
+        return "agent:%s" % (input_data.get("agent_id") or input_data.get("agent_type") or "unknown")
+    return "main"
+
+
+def _log_decision(logger, decision: str, input_data: dict, reason_code: str,
+                  command: str, targets: Optional[List[str]] = None) -> None:
+    """每個放行／阻擋分支記一行穩定可 grep 的判定：
+    decision=<allow|deny> source=<main|agent:ID> reason=<code> targets=[...] cmd=<前 200 字元>
+    targets 為 None 時才即時抽取候選目標（抽取失敗記空，不影響判定）。"""
+    if targets is None:
+        try:
+            targets = _extract_candidate_paths(command) if command else []
+        except Exception:  # 日誌輔助不得改變判定；失敗以空目標記錄
+            targets = []
+    cmd = command[:_LOG_CMD_LIMIT].replace("\n", "\\n")
+    logger.info(
+        "decision=%s source=%s reason=%s targets=%s cmd=%s",
+        decision, _decision_source(input_data), reason_code, list(targets), cmd,
+    )
+
+
+def _allow_and_exit(logger, reason: str, input_data: Optional[dict] = None,
+                    reason_code: str = "", command: str = "") -> int:
+    _log_decision(logger, "allow", input_data or {}, reason_code, command)
     emit_hook_output("PreToolUse", permission_decision="allow", permission_decision_reason=reason)
     return EXIT_ALLOW
 
@@ -732,18 +761,18 @@ def main() -> int:
     input_data = read_json_from_stdin(logger)
     if not input_data:
         logger.debug("輸入為空或解析失敗，返回預設允許")
-        return _allow_and_exit(logger, "輸入為空，預設允許")
+        return _allow_and_exit(logger, "輸入為空，預設允許", {}, "empty_input")
 
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input") or {}
 
     if tool_name != "Bash":
         logger.debug(f"跳過: 工具類型 {tool_name} 不是 Bash")
-        return _allow_and_exit(logger, f"工具 {tool_name} 不在檢查範圍")
+        return _allow_and_exit(logger, f"工具 {tool_name} 不在檢查範圍", input_data, "non_bash_tool")
 
     command = tool_input.get("command", "")
     if not command:
-        return _allow_and_exit(logger, "command 為空，允許")
+        return _allow_and_exit(logger, "command 為空，允許", input_data, "empty_command")
 
     # 第一層：路徑範圍阻擋，主線程與代理人皆適用，不受開發分支跳過影響
     # （feat/* worktree 內若跳過，整層即失效）
@@ -757,10 +786,11 @@ def main() -> int:
             "（cat/printf/tee/sed -i/python open()/cp/mv/重導向）寫入。"
             "請改用 Edit 或 Write 工具修改檔案；搬移已追蹤的檔案用 git mv。"
             "lib/ 等處的建置快取（.dart_tool 等）與少數無讀取方的 .claude 本地產物不受此限。"
-            "若這是你自己在 ! 命令中執行的操作，同樣會被擋，請改請 Claude 以 Edit 完成。"
+            "用戶以 ! 前綴自行執行的命令不經過本 hook，不受此限制。"
             "若是本 hook 自身異常而誤擋正常命令，改用 Edit 修正 "
             ".claude/hooks/bash-write-boundary-guard-hook.py（Edit 不受本 hook 影響）。"
         )
+        _log_decision(logger, "deny", input_data, "scope_violation", command, [scope_path])
         emit_hook_output(
             "PreToolUse",
             permission_decision="deny",
@@ -773,20 +803,23 @@ def main() -> int:
     # 第一層決定，不套用 PM 模型
     if is_subagent_environment(input_data):
         logger.info(f"subagent 環境（agent_id={input_data.get('agent_id')}），路徑範圍檢查通過")
-        return _allow_and_exit(logger, "subagent 的 Bash 寫入未命中受限路徑")
+        return _allow_and_exit(logger, "subagent 的 Bash 寫入未命中受限路徑", input_data, "subagent_no_scope_hit", command)
 
     # 開發分支跳過（feat/*, fix/* 等），與 main-thread-edit-restriction 一致；
     # 僅作用於第二層
     current_branch = get_current_branch()
     if current_branch and is_allowed_branch(current_branch):
         logger.info(f"開發分支 '{current_branch}' 上，跳過 Bash 寫入邊界限制")
-        return _allow_and_exit(logger, f"開發分支 '{current_branch}' 不受主線程 Bash 寫入邊界限制")
+        return _allow_and_exit(
+            logger, f"開發分支 '{current_branch}' 不受主線程 Bash 寫入邊界限制",
+            input_data, "dev_branch_skip", command,
+        )
 
     violation_path = _find_boundary_violation(command, logger)
 
     if violation_path is None:
         logger.debug("未偵測到明確的 test/lib/dart 寫入目標，允許（fail-open）")
-        return _allow_and_exit(logger, "未偵測到職責邊界違規的 Bash 寫入形態")
+        return _allow_and_exit(logger, "未偵測到職責邊界違規的 Bash 寫入形態", input_data, "no_boundary_violation", command)
 
     reason = (
         f"偵測到 Bash 寫入職責邊界違規（path={violation_path}）。"
@@ -794,6 +827,7 @@ def main() -> int:
         "寫入 test/、lib/、*.dart，等同繞過 main-thread-edit-restriction-hook.py "
         "的職責邊界執法。請改派代理人執行此寫入。"
     )
+    _log_decision(logger, "deny", input_data, "boundary_violation", command, [violation_path])
     emit_hook_output(
         "PreToolUse",
         permission_decision="deny",
