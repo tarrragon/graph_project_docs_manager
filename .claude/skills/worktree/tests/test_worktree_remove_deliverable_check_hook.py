@@ -548,3 +548,77 @@ def test_guard_c_unknown_branch_fallback_when_import_fails(capsys):
         err = _block_stderr(capsys, None, guard="C")
     assert "Guard C" in err
     assert "/worktree merge --branch <branch>" in err
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-378：git -C 形式的 worktree remove 也受 Guard A / C 檢查（真實 git）
+# ---------------------------------------------------------------------------
+
+
+def _add_worktree(repo, name, branch):
+    wt = repo.parent / (repo.name + "-" + name)
+    _git(repo, "worktree", "add", "-q", "-b", branch, str(wt), "main")
+    return wt
+
+
+def _run_main(command):
+    data = {"tool_input": {"command": command}}
+    with patch.object(hook, "read_json_from_stdin", return_value=data):
+        return hook.main()
+
+
+class TestGitDashCRemove:
+    def test_dash_c_dirty_worktree_blocked_by_guard_c(self, repo, capsys):
+        wt = _add_worktree(repo, "dirty", "feat/dirty")
+        (wt / "scratch.txt").write_text("unsaved\n")
+        rc = _run_main("git -C {} worktree remove --force {}".format(repo, wt))
+        assert rc == 2
+        assert "Guard C" in capsys.readouterr().err
+
+    def test_dash_c_unmerged_deliverable_blocked_by_guard_a(self, repo, capsys):
+        wt = _add_worktree(repo, "unmerged", "feat/unmerged")
+        (wt / "deliv.txt").write_text("work\n")
+        _git(wt, "add", "deliv.txt")
+        _git(wt, "commit", "-q", "-m", "deliverable")
+        rc = _run_main("git -C {} worktree remove --force {}".format(repo, wt))
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "Guard A" in err
+        assert "deliv.txt" in err
+
+    def test_dash_c_merged_clean_worktree_passes(self, repo):
+        """主控條件（正向對照）：已合併且乾淨仍放行。"""
+        wt = _add_worktree(repo, "clean", "feat/clean")
+        assert _run_main("git -C {} worktree remove {}".format(repo, wt)) == 0
+
+    def test_dash_c_relative_path_resolved_against_dash_c_dir(self, repo, capsys):
+        wt = _add_worktree(repo, "rel", "feat/rel")
+        (wt / "scratch.txt").write_text("unsaved\n")
+        rc = _run_main("git -C {} worktree remove ../{}".format(repo, wt.name))
+        assert rc == 2
+        assert "Guard C" in capsys.readouterr().err
+
+    def test_quoted_or_echoed_remove_text_does_not_trigger(self, repo):
+        """E2：引號／echo 內的字樣不是呼叫。"""
+        wt = _add_worktree(repo, "e2", "feat/e2")
+        (wt / "scratch.txt").write_text("unsaved\n")
+        for cmd in (
+            'echo "git -C {} worktree remove {}"'.format(repo, wt),
+            'git -C {} commit -m "git worktree remove {}"'.format(repo, wt),
+        ):
+            assert _run_main(cmd) == 0
+
+    def test_unresolvable_dash_c_fails_open(self, logger):
+        cmd = 'git -C "$REPO" worktree remove rel-path'
+        assert hook._extract_remove_paths(cmd, logger) == []
+
+    def test_unparseable_pipe_to_shell_falls_back_to_regex_and_blocks(self, repo, capsys):
+        """無法解析（管線接 shell）時退回正則擷取，路徑仍送 Guard A/C。"""
+        wt = _add_worktree(repo, "pipesh", "feat/pipesh")
+        (wt / "scratch.txt").write_text("unsaved\n")
+        rc = _run_main('echo "git worktree remove {}" | sh'.format(wt))
+        assert rc == 2
+        assert "Guard C" in capsys.readouterr().err
+
+    def test_unparseable_and_regex_miss_fails_open(self, logger):
+        assert hook._extract_remove_paths('echo "unclosed', logger) == []
