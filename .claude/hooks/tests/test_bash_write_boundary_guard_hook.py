@@ -1256,3 +1256,59 @@ class TestL7SiblingWorktreeVariable:
         code, line = TestDecisionLog._run(None, monkeypatch, payload, is_subagent=True, branch="feat/x")
         assert code == 2
         assert "decision=deny source=agent:sub-371 reason=scope_violation" in line
+
+
+class TestExtraCommandWriteTargets:
+    """365.3：十種命令的寫入目標抽取（E2：寫受限路徑 deny；E1：只讀與範圍外放行）。"""
+
+    @pytest.mark.parametrize("cmd,expected", [
+        ("dd if=/tmp/a of=lib/x bs=1", "lib/x"),
+        ("install -m 644 /tmp/a lib/x", "lib/x"),
+        ("install -t lib /tmp/a", "lib"),
+        ("install -d lib/newdir", "lib/newdir"),
+        ("truncate -s 0 lib/x", "lib/x"),
+        ("truncate --size=0 lib/x", "lib/x"),
+        ("ln -s /tmp/a lib/x", "lib/x"),
+        ("ln -sf /tmp/a .claude/hooks/x", ".claude/hooks/x"),
+        ("rsync -a /tmp/src/ lib/", "lib"),
+        ("rsync -a --exclude '*.o' /tmp/src/ lib/", "lib"),
+        ("tar -xzf /tmp/a.tgz -C lib", "lib"),
+        ("tar xzf /tmp/a.tgz --directory=lib", "lib"),
+        ("tar --extract -f /tmp/a.tar --directory lib", "lib"),
+        ("patch lib/a.py /tmp/d.patch", "lib/a.py"),
+        ("patch -p1 -d lib < /tmp/d.patch", "lib"),
+        ("patch -o lib/out.py /tmp/a.py /tmp/d.patch", "lib/out.py"),
+        ("awk -i inplace '{print}' lib/a", "lib/a"),
+        ("gawk -i inplace -v x=1 '{print}' lib/a", "lib/a"),
+        ("touch lib/new.dart", "lib/new.dart"),
+        ("touch -t 202001010000 lib/new.dart", "lib/new.dart"),
+        ("ruby -e 'File.write(\"lib/a\", \"x\")'", "lib/a"),
+        ("perl -e 'File.write(\"lib/a\", 1)'", "lib/a"),
+        ("ruby -e 'File.open(\"lib/a\", \"w\") { }'", "lib/a"),
+    ])
+    def test_denied(self, cmd, expected, checkout, logger):
+        assert _scope(cmd, checkout, logger) == expected
+
+    @pytest.mark.parametrize("cmd", [
+        "tar -czf /tmp/a.tgz lib",
+        "tar -tf lib/a.tar",
+        "tar -xzf lib/a.tgz -C /tmp/out",
+        "dd if=lib/a bs=1 count=1",
+        "dd if=lib/a of=/tmp/out",
+        "rsync -a lib/ /tmp/out/",
+        "rsync -a lib/ host:/srv/lib/",
+        "ln -s lib/a /tmp/link",
+        "patch --dry-run lib/a.py /tmp/d.patch",
+        "patch -d /tmp/x < /tmp/d.patch",
+        "touch .claude/.zhtw-mcp-skip",
+        "touch /tmp/a",
+        "truncate -s 0 /tmp/a",
+        "awk '{print}' lib/a",
+        "awk -i inplace '{print}' /tmp/a",
+        "install -m 644 lib/a /tmp/b",
+        "ruby -e 'puts File.read(\"lib/a\")'",
+        "ruby -e 'File.write(\"/tmp/a\", 1)'",
+        "ticket track move-lines 0.5.0-W1-362 --src .claude/skills/ticket/ticket_system/tests/test_track_move_lines.py --lines 1-1 --dst .claude/skills/ticket/references/track-command-update.md --at 1 2>/tmp/ml.err",
+    ])
+    def test_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
