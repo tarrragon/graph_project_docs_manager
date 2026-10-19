@@ -394,6 +394,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | IMP-GPD-005 | fail-open 守衛新增阻擋種類時漏補對應資源，例外被外層吞成放行 | 高 | 0.5.0 |
 | IMP-GPD-006 | 守衛以某條實作路徑的副產物判定操作類型，另一條合法路徑不產生該副產物而被誤擋 | 高 | 0.5.0 |
 | IMP-GPD-007 | 解析 git branch 給人看的輸出取分支名，漏掉 worktree 已 checkout 分支的「+ 」前綴 | 中 | 0.5.0 |
+| IMP-GPD-008 | 守衛以正則或子字串比對 git 命令，git 與子命令之間的全域選項使比對落空 | 高 | 0.5.0 |
 
 ### 流程 (PROC)
 
