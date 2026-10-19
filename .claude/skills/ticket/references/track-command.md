@@ -345,7 +345,7 @@ ticket track move-lines <ticket-id> --src <path> --lines <起>-<迄> --dst <path
 | `--at` | 目標檔插入位置：N 表示搬移段第一行成為目標第 N 行；`end` 附加於尾端 |
 | `--worktree` | 檔案所在 linked worktree 絕對路徑（路徑相對其 repo root 解析） |
 
-**範圍**：`--src` 與 `--dst` 皆須在 ticket `where.files` 寫入範圍內（與 `track commit` 同一判準），否則拒絕。`--src` 與 `--dst` 不可為同一檔。
+**範圍**：`--src` 與 `--dst` 皆須在 ticket `where.files` 寫入範圍內（與 `track commit` 同一判準），否則拒絕。另拒絕 symlink 目標（含解 symlink 後落在 repo 之外者），且 `--worktree` 須屬本 repo 的 `git worktree list`；git 查詢失敗時拒絕。`--src` 與 `--dst` 不可為同一檔。
 
 **守恆與原子性**：記憶體內先驗證「來源減少行數＝目標增加行數」且目標內搬移段與抽出段逐字相同，通過才以暫存檔加 rename 寫入；任一步失敗（含目標寫入失敗）還原兩檔並以 exit 1 結束，兩檔逐位元不變。命令只改檔案，不提交；提交仍走 `track commit`。
 

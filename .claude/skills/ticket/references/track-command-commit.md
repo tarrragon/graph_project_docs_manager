@@ -56,7 +56,7 @@ ticket track commit <ticket_id> -m "<commit message>" --worktree <worktree 絕�
 | 值 | 說明 |
 |----|------|
 | 0 | commit 成功，或檔案內容與 HEAD 相同（空 tree 短路，視為成功） |
-| 1 | ticket 不存在／`where.files` 未宣告寫入路徑／檔案超出宣告範圍／`--worktree` 非合法 git 目錄／提交失敗 |
+| 1 | ticket 不存在／`where.files` 未宣告寫入路徑／檔案超出宣告範圍／目標本身是 symlink 或其路徑解 symlink 後落在 repo 之外／`--worktree` 非合法 git 目錄或不屬本 repo 的 `git worktree list --porcelain`（`rev-parse` 或 `worktree list` 查詢失敗時同樣拒絕，保守一側）／提交失敗。symlink 與 worktree 歸屬拒絕屬判準性拒絕，不得改走 fallback，與 `track move-lines` 共用 `lib/write_scope.py` 同一判準 |
 
 **exit 0 不等於已產生 commit**：兩種情形皆回傳 0，stdout 卻不同——`[OK] 已提交 <sha>` 才代表真正產生 commit；`[INFO] 檔案內容與 HEAD 相同，無需提交（空 tree 短路）。若變更實際發生在 linked worktree 但未帶 --worktree，本命令對該變更零感知；請確認已加 --worktree <worktree 絕對路徑>。` 代表本次呼叫未產生任何 commit（該 repo root 對比的 HEAD 版本已含此內容，或——見上方 `--worktree` 條件——cwd 誤判導致比對到錯誤 repo 的 HEAD，訊息句尾即為此情形的明確提示）。**Action**：判斷是否已產生 commit 一律讀 stdout 首行字面，不可僅憑 exit code 0 判定「已提交」；看到空 tree 短路訊息且變更確實發生在 worktree 內，依提示補 `--worktree` 重試。
 

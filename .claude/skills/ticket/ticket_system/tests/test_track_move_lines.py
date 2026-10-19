@@ -7,6 +7,7 @@
 4. 行範圍非法、src 與 dst 相同、--at 超界時拒絕且兩檔不變。
 """
 import argparse
+import subprocess
 from unittest.mock import patch
 
 from ticket_system.commands import track_commit, track_move_lines
@@ -27,7 +28,7 @@ def _args(lines, at, src="a.md", dst="b.md"):
 
 def _run(tmp_path, args, declared=("a.md", "b.md")):
     with patch.object(track_move_lines, "load_ticket", return_value=_ticket(list(declared))), \
-         patch.object(track_commit, "resolve_project_cwd", return_value=str(tmp_path)):
+         patch.object(track_move_lines, "resolve_project_cwd", return_value=str(tmp_path)):
         return track_move_lines.execute_move_lines(args, _VERSION)
 
 
@@ -70,6 +71,79 @@ class TestMoveLines:
             (tmp_path / "b.md").read_text().splitlines()
         )
         assert total == before
+
+
+def _git_init(path):
+    path.mkdir(exist_ok=True)
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+
+
+class TestSymlinkAndForeignWorktree:
+    """0.5.0-W1-390：symlink 與他 repo --worktree 皆拒絕且檔案不變（E2）。"""
+
+    def test_symlink_file_in_scope_is_rejected(self, tmp_path):
+        _setup(tmp_path)
+        (tmp_path / "real.md").write_bytes(b"r1\nr2\n")
+        (tmp_path / "link.md").symlink_to(tmp_path / "real.md")
+        before = (tmp_path / "real.md").read_bytes()
+        rc = _run(tmp_path, _args("1-1", "end", dst="link.md"),
+                  declared=("a.md", "link.md"))
+        assert rc != 0
+        assert (tmp_path / "link.md").is_symlink()
+        assert (tmp_path / "real.md").read_bytes() == before
+
+    def test_symlink_dir_pointing_outside_repo_is_rejected(self, tmp_path):
+        repo, outside = tmp_path / "repo", tmp_path / "outside"
+        repo.mkdir()
+        outside.mkdir()
+        _setup(repo)
+        (outside / "b.md").write_bytes(b"x1\n")
+        (repo / "sub").symlink_to(outside, target_is_directory=True)
+        rc = _run(repo, _args("1-1", "end", dst="sub/b.md"),
+                  declared=("a.md", "sub"))
+        assert rc != 0
+        assert (outside / "b.md").read_bytes() == b"x1\n"
+
+    def test_worktree_of_foreign_repo_is_rejected(self, tmp_path):
+        main, foreign = tmp_path / "main", tmp_path / "foreign"
+        _git_init(main)
+        _git_init(foreign)
+        _setup(foreign)
+        before = _snapshot(foreign)
+        args = _args("1-1", "end")
+        args.worktree = str(foreign)
+        assert _run(main, args) != 0
+        assert _snapshot(foreign) == before
+
+    def test_git_query_failure_rejects_worktree(self, tmp_path):
+        """保守一側：worktree list 查詢失敗時拒絕。"""
+        main = tmp_path / "main"
+        _git_init(main)
+        _setup(main)
+        before = _snapshot(main)
+        args = _args("1-1", "end")
+        args.worktree = str(main)
+        failed = subprocess.CompletedProcess([], 128, "", "boom")
+        real_run = subprocess.run
+
+        def fake_run(cmd, *a, **kw):
+            if "worktree" in cmd:
+                return failed
+            return real_run(cmd, *a, **kw)
+
+        with patch.object(subprocess, "run", side_effect=fake_run):
+            assert _run(main, args) != 0
+        assert _snapshot(main) == before
+
+    def test_own_repo_worktree_still_works(self, tmp_path):
+        """E1：本 repo 的 worktree（含主 checkout 自身）行為不變。"""
+        main = tmp_path / "main"
+        _git_init(main)
+        _setup(main)
+        args = _args("1-1", "end")
+        args.worktree = str(main)
+        assert _run(main, args) == 0
+        assert (main / "b.md").read_text() == "b1\nb2\nb3\na1\n"
 
 
 class TestRejections:
