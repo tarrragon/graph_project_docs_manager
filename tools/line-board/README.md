@@ -7,7 +7,7 @@
 | 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一列，依線號排序：`L<n>｜<session 名稱>［<session 狀態>］｜<票序>` |
 | 佇列票即時狀態 | 票序中每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
 | 各 session | `~/.claude/sessions/*.json`（家目錄取自 `HOME`），見下節 |
-| 合併閘門 | `.claude/logs/worktree-merge.log` 中 `[合併閘門] 開始` 與 `[合併閘門] 結束` 行的最後 8 行；預檢、合併前驗收、合併前測試等其他行不顯示 |
+| 合併閘門 | `.claude/logs/worktree-merge.log` 中 `[合併閘門] 開始` 與 `[合併閘門] 結束` 行的最後 8 行，精簡為欄位顯示（見下節）；預檢、合併前驗收、合併前測試等其他行不顯示 |
 | 更新時間 | 每 30 秒重讀一次，Pane 頂端顯示最近一次讀取的本機時間 |
 
 ## 各 session 狀態（`~/.claude/sessions/*.json`）
@@ -22,6 +22,22 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `name`、
 - 線列的 `［狀態］`：以 349 現行佇列行括號內的 session 名稱比對存活 session 的 `name`（同名多筆取最新一筆），比對不到標 `離線`；sessions 目錄讀不到時標 `狀態不明`
 
 這是 Claude Code 的內部檔案，官方沒有文件承諾格式。Claude Code 升版後除了下方驗證指令，還要以真實的 sessions 目錄對照一次（檔案欄位、status 值）。
+
+## 合併閘門紀錄的顯示
+
+面板停靠在側邊時寬度有限，整行原文會把分支名與結果擠出畫面，因此每行只顯示四個欄位：
+
+```text
+<HH:MM:SS>｜開始｜<短分支名>
+<HH:MM:SS>｜結束｜<短分支名>｜<結果>
+```
+
+- 時間只取時間戳的 `HH:MM:SS`；分支取自 `分支` 欄，結果取自 `結果` 欄。`commit` 欄不顯示：開始行記的是當時 main 的 HEAD，結束行只有結果為「寫入」時才是合併 commit
+- 短分支名：`worktree-agent-<id>` 縮成 `agent-<id 前 6 碼>`，`feat/<票號>` 縮成票號，其他分支原樣
+- 結束行依結果上色：寫入為綠、中止為黃、拒絕與紅燈為紅，其他結果不上色
+- 欄位行以 `truncate-middle` 截斷：寬度不足時保留行首時間與行尾結果
+- 時間戳、分支或結果（結束行）缺少的 `[合併閘門]` 行原樣顯示，不丟棄
+- **閘門使用中**：整份紀錄中最後一筆開始行之後沒有同一分支的結束行時，區塊最上方顯示 `閘門使用中：<短分支名>（自 HH:MM:SS）`；有對應結束時不顯示。只看最後一筆開始行：較早的開始行即使沒有結束行，也不顯示
 
 ## 349 現行佇列行的格式（349〈看板讀取約定〉）
 
@@ -55,7 +71,7 @@ claude --plugin-dir tools/line-board
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
 | `hooks/register.tsx` | 註冊 `/board`、定時讀取、繪製 Pane；讀檔與命令一律經 `$` |
-| `hooks/parse.ts` | 純函式：checkout 路徑判定、現行佇列行解析（每線取最後一行）、票序拆分與格式化、frontmatter 解析、session 狀態檔篩選／解析／排序、合併閘門紀錄篩選 |
+| `hooks/parse.ts` | 純函式：checkout 路徑判定、現行佇列行解析（每線取最後一行）、票序拆分與格式化、frontmatter 解析、session 狀態檔篩選／解析／排序、合併閘門紀錄篩選與欄位解析、短分支名、閘門持有者判定 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`）的型別契約 |
 | `hooks/board.test.ts` | `claude plugin test` 測試 |
 
