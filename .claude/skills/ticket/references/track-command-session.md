@@ -191,7 +191,7 @@ ticket track activity [--version V] [--all] [--format {table,json}]
 ### 用法
 
 ```bash
-ticket track conflicts [--version V] [--all] [--format {table,json}]
+ticket track conflicts [--version V] [--all] [--format {table,json}] [--since-days N]
 ticket track conflicts --for <ticket-id> [--include-heuristic] [--format {table,json}]
 ticket track conflicts --among <id1,id2,...> [--include-heuristic] [--format {table,json}]
 ```
@@ -213,6 +213,17 @@ ticket track conflicts --among <id1,id2,...> [--include-heuristic] [--format {ta
 3. impl→test 擴張啟發式：對每個宣告檔案路徑額外推導可能的伴生測試檔路徑一併納入交集判定；目前覆蓋兩種慣例——Dart `lib/...` → `test/..._test.dart`（不查真實檔案系統）<!-- skill-residue-exempt: 描述推導慣例的模式示意，非本專案實際檔案 -->；Python `X.py` → 掃描真實檔案系統找出最近的 `tests/` 兄弟目錄（見「Python 測試路徑推導」），找不到真實 `tests/` 目錄時不衍生候選
 4. 與 pm-registry 的 `files` 欄位交叉比對：僅採 **FRESH session**（heartbeat 未逾 30 分鐘）的宣告，`in_progress` 票若與其認領 session 的 registry files 完全無交集，輸出 stderr 警告（不影響 exit code）；STALE session 的殘留宣告排除在外，避免死 session 舊宣告誤觸發警告。警告文字附後果與下一步：「衝突判定僅採 write 集合；請校正票面宣告或重跑 claim」——說明本命令的判定基準只看票面宣告（不讀 registry），並指引兩種修正路徑。`write` 集合的判定依據（後綴標記與 type 預設意圖）見 `field-semantics.md`〈where.files 宣告語意〉
 5. `[heuristic]` 標記：衝突僅由擴張啟發式衍生路徑觸發（原始宣告值本身無交集）
+
+### 同檔票樹競爭統計
+
+衝突命中的檔案另外統計「近 N 天被幾棵不同票樹修改」（`--since-days`，預設 14），輸出在 table 的 `[競爭]` 段與 json 的 `contention` 鍵（`conflicts` 鍵不變）。
+
+| 項目 | 規則 |
+|------|------|
+| 票樹 | commit 訊息中票號的 `版本-波次-序號` 第一段；`chore(` 開頭的 commit 不計 |
+| 統計範圍 | 只算衝突命中的檔，不掃全庫；無衝突時不跑 git |
+| 拆分建議 | 票樹數達門檻且非聚合檔時附「建議拆分」；判準與聚合檔清單見 `.claude/skills/cognitive-load-assessment/references/file-split-by-contention.md` |
+| git 失敗 | stderr 印一行並略過統計，原輸出與 exit code 不變 |
 
 ### Python 測試路徑推導
 
