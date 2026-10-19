@@ -178,6 +178,49 @@ class TestDirtyStatus:
 # ---------------------------------------------------------------------------
 
 
+class _RecLogger:
+    def __init__(self):
+        self.records = []
+
+    def _rec(self, level):
+        return lambda msg, *a, **k: self.records.append((level, msg % a if a else msg))
+
+    def __getattr__(self, name):
+        if name in ("debug", "info", "warning", "error"):
+            return self._rec(name)
+        raise AttributeError(name)
+
+
+class TestMainEmptyTargetLogging:
+    def _run(self, command):
+        rec = _RecLogger()
+        data = {"tool_input": {"command": command}}
+        with patch.object(hook, "setup_hook_logging", return_value=rec), patch.object(
+            hook, "read_json_from_stdin", return_value=data
+        ):
+            rc = hook.main()
+        return rc, rec.records
+
+    def test_log_reader_command_logged_as_non_remove(self):
+        cmd = "grep x .claude/hook-logs/worktree-remove-deliverable-check/a.log"
+        rc, records = self._run(cmd)
+        assert rc == 0
+        assert any(lv == "debug" and "非 remove" in m for lv, m in records)
+        assert not any("無法靜態解析" in m for _, m in records)
+
+    def test_real_remove_without_path_keeps_info(self):
+        rc, records = self._run("git worktree remove --force")
+        assert rc == 0
+        assert any(lv == "info" and "無法靜態解析" in m for lv, m in records)
+
+    def test_unparseable_and_regex_miss_logs_warning(self):
+        with patch.object(hook, "find_git_invocations", return_value=None):
+            rc, records = self._run("echo worktree remove")
+        assert rc == 0
+        assert any(lv == "warning" for lv, _ in records)
+        assert not any("無法靜態解析" in m for _, m in records)
+
+
 class TestMain:
     def test_non_remove_command_passes(self):
         with patch.object(

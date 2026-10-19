@@ -380,6 +380,18 @@ GUARDS: Tuple[Callable[..., Optional[str]], ...] = (
 )
 
 
+def _log_empty_targets(command: str, logger) -> None:
+    """未取得任何 remove 目標時，依 find_git_invocations 結果分三種情況記日誌。"""
+    invocations = find_git_invocations(command, {"worktree"})
+    if invocations is None:
+        logger.warning("命令無法解析且正則退路未命中任何 remove 路徑，放行")
+        return
+    if any(inv.args and inv.args[0] == "remove" for inv in invocations):
+        logger.info("worktree remove 命令但無法靜態解析路徑（批量腳本？），放行")
+        return
+    logger.debug("非 remove 命令（字面含 worktree 與 remove 但無 git worktree remove 呼叫），放行")
+
+
 def main() -> int:
     """Hook 主邏輯。"""
     logger = setup_hook_logging("worktree-remove-deliverable-check")
@@ -396,7 +408,7 @@ def main() -> int:
 
     targets = _extract_remove_targets(command, logger)
     if not targets:
-        logger.info("worktree remove 命令但無法靜態解析路徑（批量腳本？），放行")
+        _log_empty_targets(command, logger)
         return 0
 
     for path, repo_dir in targets:
