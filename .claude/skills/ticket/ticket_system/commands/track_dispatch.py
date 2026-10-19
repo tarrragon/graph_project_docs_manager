@@ -52,6 +52,7 @@ from ticket_system.lib.dispatch_skeleton import (
     STAGING_PHRASE_NONE,
     STAGING_PHRASE_PM,
     build_skeleton,
+    requires_red_run,
     non_exempt_paths,
 )
 from ticket_system.lib.file_lock import file_lock
@@ -107,6 +108,7 @@ def _build_skeleton(args: argparse.Namespace) -> str:
         commit_policy=commit_policy,
         touches_hook_scope=getattr(args, "_touches_hook_scope", False),
         isolation=getattr(args, "isolation", None) or "none",
+        require_red_run=getattr(args, "_require_red_run", False),
     )
 
 
@@ -435,6 +437,9 @@ def execute_dispatch(args: argparse.Namespace, version: str) -> int:
 
     _warn_missing_isolation(ticket, args)
     args._touches_hook_scope = _touches_hook_protection_scope(ticket)
+    args._require_red_run = requires_red_run(
+        ticket.get("type"), ticket.get("acceptance")
+    )
 
     skeleton = _build_skeleton(args)
     if dry_run:

@@ -164,6 +164,25 @@ HOOK_TICKET_REMINDER = """本票 where.files 觸及 hooks 目錄，acceptance-ga
 執行中請一併填寫，勿留到 complete 前才補。"""
 
 
+# 含測試 acceptance 的 IMP 票加一行：修改產品碼前先實跑紅燈。
+RED_RUN_LINE = (
+    "修改產品碼前先實跑新增測試，於 Test Results 貼紅燈輸出摘要；未實跑者須標為推論。"
+)
+_RED_RUN_ANCHOR = "遇阻立即停下回報，禁繞過 Hook。\n"
+_TEST_ACCEPTANCE_MARKERS = ("測試", "E1", "E2")
+
+
+def requires_red_run(ticket_type, acceptance) -> bool:
+    """IMP 票且 acceptance 含測試字樣或 E1／E2 時回傳 True（純函式）。"""
+    if ticket_type != "IMP":
+        return False
+    return any(
+        marker in str(item)
+        for item in (acceptance or [])
+        for marker in _TEST_ACCEPTANCE_MARKERS
+    )
+
+
 def build_skeleton(
     *,
     kind: str,
@@ -175,6 +194,7 @@ def build_skeleton(
     commit_policy: str = "agent",
     touches_hook_scope: bool = False,
     isolation: str = "none",
+    require_red_run: bool = False,
 ) -> str:
     """依 `kind` 產生骨架文字（review 變體不含 claim/收尾協議）。
 
@@ -198,6 +218,11 @@ def build_skeleton(
             ticket_id=ticket_id, agent_name=agent_name
         ),
     )
+
+    if require_red_run:
+        skeleton = skeleton.replace(
+            _RED_RUN_ANCHOR, f"{RED_RUN_LINE}\n{_RED_RUN_ANCHOR}", 1
+        )
 
     if commit_policy == "agent":
         skeleton = f"{skeleton}\n\n{STAGING_PHRASE_AGENT_PROMPT}"
