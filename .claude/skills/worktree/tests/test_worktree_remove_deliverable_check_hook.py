@@ -622,3 +622,51 @@ class TestGitDashCRemove:
 
     def test_unparseable_and_regex_miss_fails_open(self, logger):
         assert hook._extract_remove_paths('echo "unclosed', logger) == []
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-386：Guard A 以 -C 指向的 repo 為基準查詢（真實 git，cwd 在另一個 repo）
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def two_repos(tmp_path, monkeypatch):
+    """repo A（cwd）與 repo B（被 -C 指向），各自有 main 與 base 提交。"""
+    repos = []
+    for name in ("repo_a", "repo_b"):
+        r = tmp_path / name
+        r.mkdir()
+        _git(r, "init", "-q", "-b", "main")
+        (r / "base.txt").write_text("base\n")
+        _git(r, "add", "base.txt")
+        _git(r, "commit", "-q", "-m", "base")
+        repos.append(r)
+    monkeypatch.chdir(repos[0])
+    return repos
+
+
+class TestGuardABaseRepo:
+    def test_cross_repo_unmerged_worktree_blocked(self, two_repos, capsys):
+        repo_a, repo_b = two_repos
+        wt = _add_worktree(repo_b, "unmerged", "feat/unmerged")
+        (wt / "deliv.txt").write_text("work\n")
+        _git(wt, "add", "deliv.txt")
+        _git(wt, "commit", "-q", "-m", "deliverable")
+        rc = _run_main("git -C {} worktree remove --force {}".format(repo_b, wt))
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "Guard A" in err
+        assert "deliv.txt" in err
+
+    def test_cross_repo_merged_clean_worktree_passes(self, two_repos):
+        """正向對照：同一跨 repo 設定下，已合併且乾淨仍放行。"""
+        _, repo_b = two_repos
+        wt = _add_worktree(repo_b, "clean", "feat/clean")
+        assert _run_main("git -C {} worktree remove {}".format(repo_b, wt)) == 0
+
+    def test_extract_targets_carries_repo_base(self, logger):
+        cmd = "git -C /x/y worktree remove /x/y-wt && git worktree remove wt-b"
+        assert hook._extract_remove_targets(cmd, logger) == [
+            ("/x/y-wt", "/x/y"),
+            ("wt-b", None),
+        ]
