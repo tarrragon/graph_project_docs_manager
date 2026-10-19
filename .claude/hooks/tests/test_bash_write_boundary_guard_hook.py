@@ -878,6 +878,20 @@ class TestDenyMessage:
         assert "Edit" in out and "Write" in out and "git mv" in out
         assert "test/a_test.dart" in out
 
+    def test_deny_reason_forbids_bash_retry_and_names_move_lines(self, monkeypatch, capsys):
+        """0.5.0-W1-365.6：被擋當下明示禁止換 Bash 寫法重試，並指向 move-lines 通道。"""
+        import io
+        import json as json_mod
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json_mod.dumps(
+            {"tool_name": "Bash", "tool_input": {"command": "echo x >> test/a_test.dart"},
+             "agent_id": "sub-1", "cwd": str(_REPO_ROOT)})))
+        with patch.object(hook_module, "get_current_branch", return_value="main"):
+            assert main() == 2
+        out = capsys.readouterr().out
+        assert "不得改用其他 Bash 寫法" in out and "python heredoc" in out
+        assert "NeedsContext" in out and "回報 PM" in out
+        assert "ticket track move-lines" in out and "where.files" in out
+
 
 class TestExemptionNarrowing:
     """0.5.0-W1-369：收窄後的豁免。E2 應擋輸入、E1 例行放行見 TestScopeViolationAllowed。"""
