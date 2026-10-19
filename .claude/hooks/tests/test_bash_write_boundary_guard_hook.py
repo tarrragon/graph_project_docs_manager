@@ -467,7 +467,11 @@ class TestHeredocAndQuotedTextIgnored:
         assert _find_boundary_violation(cmd, logger) is None
 
     @pytest.mark.parametrize("cmd,expected", [
-        ("echo hi 2> lib/foo.dart", []),
+        ("echo hi 2> lib/foo.dart", ["lib/foo.dart"]),
+        ("echo hi &> lib/foo.dart", ["lib/foo.dart"]),
+        ("echo hi >& lib/foo.dart", ["lib/foo.dart"]),
+        ("echo hi 2>> lib/foo.dart", ["lib/foo.dart"]),
+        ("echo hi 2>&1", []),
         ("echo hi >&2", []),
         ("echo hi > lib/foo.dart", ["lib/foo.dart"]),
         ("echo hi >> \"lib/foo.dart\"", ["lib/foo.dart"]),
@@ -776,15 +780,32 @@ class TestReviewFixes:
     def test_open_mode_keyword_write_denied(self, checkout, logger):
         assert _scope("python3 -c \"open('lib/x.dart', mode='w')\"", checkout, logger) == "lib/x.dart"
 
-    # #2 1> 與 1>> 是寫入；2> 維持原狀（另票）
+    # #2 1> 與 1>> 是寫入；2> 等 fd 檔案目標亦為寫入
     @pytest.mark.parametrize("cmd", ["echo x 1> lib/a.dart", "echo x 1>> lib/a.dart"])
     def test_fd1_redirect_denied(self, cmd, checkout, logger):
         assert _scope(cmd, checkout, logger) == "lib/a.dart"
 
-    def test_fd2_redirect_still_skipped(self, checkout, logger):
-        assert _scope("echo x 2> lib/a.dart", checkout, logger) is None
-        assert _scope("echo x 2>&1", checkout, logger) is None
-        assert _scope("echo x 1>&2", checkout, logger) is None
+    @pytest.mark.parametrize("cmd,path", [
+        ("cmd &> lib/a.dart", "lib/a.dart"),
+        ("cmd 2> test/log", "test/log"),
+        ("cmd 2>> .claude/x", ".claude/x"),
+        ("cmd >& lib/a", "lib/a"),
+        ("cmd &>> lib/a.dart", "lib/a.dart"),
+    ])
+    def test_fd_redirect_file_target_denied(self, cmd, path, checkout, logger):
+        assert _scope(cmd, checkout, logger) == path
+
+    def test_fd_redirect_worktree_path_denied(self, checkout, logger):
+        (checkout / ".claude" / "worktrees" / "w1").mkdir(parents=True)
+        assert _scope("cmd 2> .claude/worktrees/w1/lib/a.dart", checkout, logger) == "lib/a.dart"
+
+    @pytest.mark.parametrize("cmd", [
+        "echo x 2>&1", "echo x 1>&2", "echo x >&2", "echo x <&0",
+        "echo x 2> /dev/null", "echo x &>/dev/null", "echo x >& /dev/null",
+        "cmd >&-", "uv run pytest 2>&1 | tail -20",
+    ])
+    def test_fd_dup_and_devnull_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
 
     # #3 五種新增偵測
     @pytest.mark.parametrize("cmd", [

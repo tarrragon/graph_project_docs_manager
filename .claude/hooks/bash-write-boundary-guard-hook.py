@@ -32,7 +32,6 @@ matcher，禁止主線程（PM）寫入 test/、lib/、*.dart。該限制可被 
 - 殘留風險清單（靜態解析 fail-open，未偵測）：
   直譯器內動態組成的路徑；先寫腳本到 checkout 外再執行的兩步驟；
   bash -c／eval 字串內的寫入；$VAR／命令替換／~ 組成的路徑；
-  2> file、&> file 的檔案目標（fd 2 一律 skip）；
   awk -i inplace、ruby、install、truncate、patch、tar -C、dd of=、rsync、ln -s、
   touch、curl -o 與版本控制的還原類子命令（命令集合為列舉式）
 - 不含跨專案判斷：Bash command 無單一 file_path，無法用
@@ -179,7 +178,11 @@ def _parse_statements(command: str) -> List[_Statement]:
         if not has_tok:
             return
         text = "".join(buf)
-        if redirect == "write":
+        if redirect == "dup":
+            # >&N、>&- 是 fd 複製／關閉，其餘 >&word 是寫檔
+            if not (text.isdigit() or text == "-"):
+                cur.targets.append(text)
+        elif redirect == "write":
             cur.targets.append(text)
         elif redirect != "skip":
             cur.tokens.append(text)
@@ -250,12 +253,13 @@ def _parse_statements(command: str) -> List[_Statement]:
             else:
                 flush()
             i += 2 if command.startswith(">>", i) else 1
-            # 1> 與 >=3 的 fd（exec 3>file 等）是寫入；0、2 維持 skip（2> 另票處理）
-            skip = is_fd and fd_text.lstrip("0") in ("", "2")
+            # 0> 視為 skip；1、2、>=3 的 fd 目標皆是寫入
+            skip = is_fd and fd_text.lstrip("0") == ""
+            dup = False
             if i < n and command[i] in "&|":
-                skip = skip or command[i] == "&"
+                dup = command[i] == "&"
                 i += 1
-            redirect = "skip" if skip else "write"
+            redirect = "skip" if skip else ("dup" if dup else "write")
         elif c == "<":
             if command.startswith("<<<", i):
                 flush()
@@ -276,7 +280,7 @@ def _parse_statements(command: str) -> List[_Statement]:
         elif c == "&" and command.startswith("&>", i):
             flush()
             i += 3 if command.startswith("&>>", i) else 2
-            redirect = "skip"
+            redirect = "write"
         else:
             # ; | & ( ) `：陳述邊界
             end_statement(i, i + 1, c)
