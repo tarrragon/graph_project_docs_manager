@@ -19,6 +19,7 @@ from typing import Dict, Iterable, List, Optional, Set
 
 DEFAULT_SINCE_DAYS = 14
 SPLIT_THRESHOLD = 3
+MIN_CONTENTION_TREES = 2  # 1 棵票樹依定義不是競爭，table 不列
 GIT_TIMEOUT_SECONDS = 30
 
 AGGREGATE_NOTE = "聚合檔，不以職責拆分"
@@ -128,9 +129,11 @@ def contention_for_files(
 
 
 def render_contention_lines(records: List[Dict[str, object]]) -> List[str]:
-    """渲染為表格輸出的附加行。"""
+    """渲染為表格輸出的附加行；只列票樹數達 MIN_CONTENTION_TREES 的記錄。"""
     lines: List[str] = []
     for r in records:
+        if r["tree_count"] < MIN_CONTENTION_TREES:
+            continue
         lines.append(
             f"  [競爭] {r['file']}: 近 {r['since_days']} 天被 {r['tree_count']} 棵票樹修改"
         )
