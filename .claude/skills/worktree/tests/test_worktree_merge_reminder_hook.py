@@ -416,3 +416,67 @@ def test_reminder_falls_back_when_worktree_manager_import_fails(monkeypatch, cap
         msg = _messages_for(monkeypatch, capsys, branch, unmerged=True, dirty=False)
     assert f"建議: /worktree merge --branch {shlex.quote(branch)}" in msg
     assert not _BARE_MERGE.search(msg)
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-384：已合併區塊的清理建議改走 /worktree cleanup，不得印裸 git worktree remove
+# ---------------------------------------------------------------------------
+
+_BARE_REMOVE = re.compile(r"\bgit\s+worktree\s+remove\b")
+
+
+def _clean_suggestion_line(msg: str) -> str:
+    return next(l.strip() for l in msg.splitlines() if "/worktree cleanup" in l)
+
+
+def test_bare_remove_checker_flags_old_literal():
+    """E2 正向對照：修正前的字面必須被判為違規。"""
+    assert _BARE_REMOVE.search("  建議: git worktree remove /path/to/wt")
+
+
+def test_clean_merged_suggestion_has_no_bare_remove(monkeypatch, capsys):
+    msg = _messages_for(
+        monkeypatch, capsys, "feat/0.0.0-W1-001", unmerged=False, dirty=False
+    )
+    assert not _BARE_REMOVE.search(msg)
+    assert "建議: /worktree cleanup 0.0.0-W1-001" in msg
+
+
+def test_cleanup_other_branch_prints_quoted_branch_form(monkeypatch, capsys):
+    for branch in ("worktree-agent-a1b2c3d4", "fix/it's here", "fix/a b"):
+        msg = _messages_for(monkeypatch, capsys, branch, unmerged=False, dirty=False)
+        assert f"建議: /worktree cleanup --branch {shlex.quote(branch)}" in msg
+
+
+def test_cleanup_forms_parse_with_worktree_argparse(monkeypatch, capsys):
+    """PC-GPD-034：印出的清理建議必須能被 argparse 解析並導向 cmd_cleanup。"""
+    sys.path.insert(0, str(_HOOK_FILE.parent.parent / "scripts"))
+    import worktree_manager
+
+    for branch, expect in (
+        ("worktree-agent-a1b2c3d4", (None, "worktree-agent-a1b2c3d4")),
+        ("fix/it's here", (None, "fix/it's here")),
+        ("fix/a b", (None, "fix/a b")),
+        ("feat/0.0.0-W1-001", ("0.0.0-W1-001", None)),
+    ):
+        msg = _messages_for(monkeypatch, capsys, branch, unmerged=False, dirty=False)
+        argv = shlex.split(_clean_suggestion_line(msg).split("建議:", 1)[-1])
+        assert argv[0] == "/worktree"
+        seen = {}
+        monkeypatch.setattr(
+            worktree_manager, "cmd_cleanup",
+            lambda ticket_id, **kw: seen.update(t=ticket_id, b=kw.get("branch")) or 0,
+        )
+        monkeypatch.setattr(sys, "argv", ["worktree_manager.py"] + argv[1:])
+        assert worktree_manager.main() == 0
+        assert (seen["t"], seen["b"]) == expect
+
+
+def test_cleanup_falls_back_when_worktree_manager_import_fails(monkeypatch, capsys):
+    from unittest.mock import patch
+
+    branch = "fix/it's here"
+    with patch.dict(sys.modules, {"worktree_manager": None}):
+        msg = _messages_for(monkeypatch, capsys, branch, unmerged=False, dirty=False)
+    assert f"建議: /worktree cleanup --branch {shlex.quote(branch)}" in msg
+    assert not _BARE_REMOVE.search(msg)
