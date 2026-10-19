@@ -1,0 +1,7 @@
+{
+  "name": "line-board",
+  "version": "0.1.0",
+  "description": "多線開發看板：顯示 349 分派段落、佇列票即時狀態（main 與各 worktree）與合併閘門最近紀錄",
+  "author": { "name": "tarragonstop" },
+  "types": "./types/index.d.ts"
+}
