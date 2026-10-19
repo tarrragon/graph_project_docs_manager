@@ -6,6 +6,7 @@ fixture 為真實臨時 git repo，不 mock git；E1 對照：同一份 fixture 
 
 from __future__ import annotations
 
+import json
 import subprocess
 from argparse import Namespace
 from pathlib import Path
@@ -44,9 +45,9 @@ def _repo(tmp_path: Path, subjects: list, rel: str) -> Path:
     return repo
 
 
-def _run_conflicts(repo: Path, rel: str, capsys):
+def _run_conflicts(repo: Path, rel: str, capsys, fmt: str = "table"):
     tickets = [_ticket("A", "pending", [rel]), _ticket("B", "pending", [rel])]
-    args = Namespace(version="9.9.9", all=False, format="table")
+    args = Namespace(version="9.9.9", all=False, format=fmt)
     with patch.object(track_conflicts, "_gather_tickets", return_value=tickets), \
          patch.object(track_conflicts, "get_project_root", return_value=repo), \
          patch.object(track_conflicts, "current_project_root", return_value=str(repo)), \
@@ -73,8 +74,17 @@ class TestE1Contrast:
         same = _run_conflicts(_repo(tmp_path / "s", SAME_TREE, rel), rel, capsys)
         diff = _run_conflicts(_repo(tmp_path / "d", DIFF_TREES, rel), rel, capsys)
         assert same.out != diff.out
-        assert "1 棵票樹" in same.out and "建議拆分" not in same.out
+        assert "[競爭]" not in same.out  # 1 棵票樹不列
+        assert same.out.count("[競爭]") < diff.out.count("[競爭]")
         assert "3 棵票樹" in diff.out and "建議拆分" in diff.out
+
+
+class TestJsonKeepsAll:
+    def test_json_contention_includes_single_tree_file(self, tmp_path, capsys):
+        rel = "src/mod.py"
+        out = _run_conflicts(_repo(tmp_path, SAME_TREE, rel), rel, capsys, "json").out
+        records = json.loads(out)["contention"]
+        assert [r["tree_count"] for r in records] == [1]
 
 
 class TestAggregate:
@@ -110,8 +120,8 @@ class TestMetaCommitsExcluded:
         rel = "src/mod.py"
         subjects = ["feat(0.5.0-W1-100): a", "chore(0.5.0-W1-200): m",
                     "chore(0.5.0-W1-300): m"]
-        out = _run_conflicts(_repo(tmp_path, subjects, rel), rel, capsys).out
-        assert "1 棵票樹" in out
+        out = _run_conflicts(_repo(tmp_path, subjects, rel), rel, capsys, "json").out
+        assert json.loads(out)["contention"][0]["tree_count"] == 1
 
 
 class TestGitFailureDegrades:

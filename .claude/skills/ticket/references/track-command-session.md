@@ -216,7 +216,7 @@ ticket track conflicts --among <id1,id2,...> [--include-heuristic] [--format {ta
 
 ### 同檔票樹競爭統計
 
-衝突命中的檔案另外統計「近 N 天被幾棵不同票樹修改」（`--since-days`，預設 14），輸出在 table 的 `[競爭]` 段與 json 的 `contention` 鍵（`conflicts` 鍵不變）。
+衝突命中的檔案另外統計「近 N 天被幾棵不同票樹修改」（`--since-days`，預設 14），輸出在 table 的 `[競爭]` 段與 json 的 `contention` 鍵（`conflicts` 鍵不變）。table 只列票樹數 >= 2 的檔，json 保留全部。
 
 | 項目 | 規則 |
 |------|------|
