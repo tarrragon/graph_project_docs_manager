@@ -67,7 +67,7 @@ import argparse
 import fnmatch
 import re
 import sys
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 
 from ticket_system.lib.dispatch_common import load_and_unpack
 from ticket_system.lib.field_validators import missing_where_paths
@@ -163,27 +163,32 @@ def check_responsibility_count(
     return "pass", n, f"acceptance 條目 {n} ≤ {soft_max}{note}"
 
 
-def _load_hook_template_prefixes() -> List[str]:
-    """取 create 的 hook 驗收模板前綴（去框、<待填> 之前），與 create 去重比對同一辨識方式。"""
+def _load_hook_template_prefixes() -> Tuple[List[str], Callable[[str], str]]:
+    """取 create 的 hook 驗收模板前綴（去框、<待填> 之前）與同一去框函式。
+
+    模板與條目共用同一個 _strip_checkbox，去框語意不會分歧。
+    """
     from ticket_system.commands.create import (
         _HOOK_ACCEPTANCE_TEMPLATES,
         _strip_checkbox,
     )
 
-    return [
+    prefixes = [
         _strip_checkbox(template.split("<待填>")[0])
         for _label, template in _HOOK_ACCEPTANCE_TEMPLATES
     ]
+    return prefixes, _strip_checkbox
 
 
 def _count_hook_template_items(items: List) -> int:
     """計算 acceptance 中屬 hook 證據模板的條目數；載入失敗退回 0（全數計入）。"""
     try:
-        prefixes = [p for p in _load_hook_template_prefixes() if p]
+        raw_prefixes, strip = _load_hook_template_prefixes()
+        prefixes = [p for p in raw_prefixes if p]
         return sum(
             1
             for item in items
-            if any(_strip_checkbox_text(str(item)).startswith(p) for p in prefixes)
+            if any(strip(str(item)).startswith(p) for p in prefixes)
         )
     except Exception as exc:  # 保守一側：比對失敗時全數計入，不放寬閾值
         print(
@@ -191,11 +196,6 @@ def _count_hook_template_items(items: List) -> int:
             file=sys.stderr,
         )
         return 0
-
-
-def _strip_checkbox_text(item: str) -> str:
-    """去除條目開頭核取框（與 create._strip_checkbox 同語意）。"""
-    return re.sub(r"^\s*\[[ xX]\]\s*", "", item)
 
 
 def check_file_count(
