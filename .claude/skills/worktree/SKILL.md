@@ -4,7 +4,7 @@ description: "Use this skill for managing git worktrees for Ticket-based develop
 argument-hint: "<subcommand> [args]"
 allowed-tools: Bash, Read, Write, Edit
 metadata:
-  version: 1.6.3
+  version: 1.6.4
 ---
 
 # Worktree Management SKILL
@@ -99,6 +99,7 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 - `create`：建立 worktree，見 `references/subcommands.md`〈create — 建立 Worktree〉
 - `status`：查看 worktree 狀態，見 `references/subcommands.md`〈status — 查看 Worktree 狀態〉
 - `merge`：前置驗證後以隔離索引 CAS 直接完成合併（支援 `--branch <分支名>`、`--pre-acceptance <理由>`、`--message <合併訊息>`、`--ticket <票號>`；落後 base 僅提示）（不再輸出 `git merge` 指令）；含 `pre_merge_check` 合併前檢查掛點（簽名、時機、失敗語意、重試成本），見 `references/subcommands.md`〈merge — 以隔離索引 CAS 合併分支〉
+- `cleanup`：三閘門安全清理。無參數為掃描模式；`<ticket-id>` 或 `--branch <分支名>`（擇一，後者用於 `worktree-agent-<id>`）為精確模式；`--force` 略過 Level 2／3 警告，Level 1 未 commit 不可繞過
 
 ### 合併前全套件（merge 預設行為）
 
@@ -213,7 +214,7 @@ Session 啟動時：
 
 ### Q: 如何刪除 Worktree？
 
-**A**: 使用 git 命令（本 SKILL 暫不支援刪除）：
+**A**: 使用 `/worktree cleanup <ticket-id>`（worktree-agent-<id> 用 `/worktree cleanup --branch <分支名>`），經三閘門檢查後移除 worktree 與分支。fallback 為手動 git 命令：
 
 ```bash
 # 刪除 worktree（保留分支）
