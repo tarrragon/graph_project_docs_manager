@@ -10,15 +10,15 @@
 
 **Why/Consequence**：代理人自拼 `uv run --with pytest` 會漏掉套件已在 pyproject 宣告的依賴，缺依賴偽裝成既有失敗或收集錯誤（實例：缺 pyyaml 使讀票面的斷言退回快照而失敗；缺 pytest-mock 使 ticket skill 測試 41 errors）。
 
-**Action**：prompt 的測試命令一律複製下表入口，不自拼 `--with`。`<root>` 代入專案根絕對路徑，具體測試檔以 pytest 位置參數附在命令後。
+**Action**：prompt 的測試命令一律複製下表入口，不自拼 `--with`。`<checkout>` 代入執行測試所在 checkout 的根絕對路徑：在 linked worktree 內是該 worktree 的路徑，不是主倉庫；代入主倉庫路徑會改跑主倉庫的程式碼，worktree 內的修改沒有被測到，結果照樣綠燈。單檔或相關測試檔以 pytest 位置參數附在命令後（例：`uv --directory <checkout>/.claude/hooks run pytest <path>`）。hooks 的 conftest 在缺依賴時提示的就是這條指令，兩者字面一致。
 
 | 套件 | 入口命令 | 依賴來源 |
 |------|---------|---------|
-| hooks 與 lib（lib/tests 由 hooks 的 testpaths 帶入） | `uv --directory <root>/.claude/hooks run pytest` | `.claude/hooks/pyproject.toml` |
-| scripts | `uv --directory <root>/.claude/scripts run pytest` | `.claude/scripts/pyproject.toml` |
-| skills/ticket（含 ticket_system/tests） | `uv --directory <root>/.claude/skills/ticket run pytest` | `.claude/skills/ticket/pyproject.toml` |
-| skills/doc、worktree、skill-sync、project-init、version-release、mermaid-ascii | `uv --directory <root>/.claude/skills/<skill> run pytest` | 各 skill 自己的 pyproject |
-| skills/framework-issue、broken-link-check、spec、version-bootstrap（無自有 pyproject） | `uv --directory <root>/.claude/hooks run pytest <root>/.claude/skills/<skill>/tests` | `.claude/hooks/pyproject.toml` |
+| hooks 與 lib（lib/tests 由 hooks 的 testpaths 帶入） | `uv --directory <checkout>/.claude/hooks run pytest` | `.claude/hooks/pyproject.toml` |
+| scripts | `uv --directory <checkout>/.claude/scripts run pytest` | `.claude/scripts/pyproject.toml` |
+| skills/ticket（含 ticket_system/tests） | `uv --directory <checkout>/.claude/skills/ticket run pytest` | `.claude/skills/ticket/pyproject.toml` |
+| skills/doc、worktree、skill-sync、project-init、version-release、mermaid-ascii | `uv --directory <checkout>/.claude/skills/<skill> run pytest` | 各 skill 自己的 pyproject |
+| skills/framework-issue、broken-link-check、spec、version-bootstrap（無自有 pyproject） | `uv --directory <checkout>/.claude/hooks run pytest <checkout>/.claude/skills/<skill>/tests` | `.claude/hooks/pyproject.toml` |
 
 **邊界**：入口預設安裝 dev group；缺依賴時改 pyproject，不在命令補 `--with`。
 
