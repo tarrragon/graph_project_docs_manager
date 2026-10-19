@@ -329,6 +329,7 @@ from lib.git_operation_state import (  # noqa: F401  re-export 原頂層名稱
     _pending_operation_in_dirs,
     _report_detect_failure,
     _resolve_detect_dirs,
+    _resolve_detect_dirs_multi,
 )
 from lib.git_utils import get_project_root
 
@@ -481,7 +482,8 @@ def main() -> int:
         return 0
 
     pending = _pending_operation_in_dirs(
-        _resolve_detect_dirs(input_data.get("cwd"), invocation, project_root), logger
+        _resolve_detect_dirs_multi(input_data.get("cwd"), invocations, project_root),
+        logger,
     )
     if pending in _BLOCKING_OPS:
         logger.warning("%s 進行中，裸 commit 會收尾他方操作，阻擋", pending)

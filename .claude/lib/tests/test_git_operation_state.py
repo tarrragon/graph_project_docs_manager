@@ -133,6 +133,41 @@ class TestResolveDetectDirs:
         assert ops._base_dir(None, tmp_path) == str(tmp_path)
 
 
+class TestResolveDetectDirsMulti:
+    def _inv(self, statement, effective_dir):
+        idx = statement.index("commit")
+        return GitInvocation(
+            statement=statement, subcommand="commit", subcommand_index=idx,
+            dash_c_path=None, effective_dir=effective_dir,
+        )
+
+    def test_union_of_all_targets_in_order(self, tmp_path):
+        invs = [self._inv(["git", "commit"], "/a"), self._inv(["git", "commit"], "/b")]
+        assert ops._resolve_detect_dirs_multi("/cwd", invs, tmp_path) == ["/a", "/b"]
+
+    def test_git_dir_override_forms_use_override_paths(self, tmp_path):
+        for stmt in (
+            ["GIT_DIR=/g", "git", "commit"],
+            ["git", "--git-dir=/g", "commit"],
+            ["git", "--git-dir", "/g", "commit"],
+        ):
+            got = ops._resolve_detect_dirs_multi("/cwd", [self._inv(stmt, "/cwd")], tmp_path)
+            assert got == ["/g"], stmt
+
+    def test_relative_override_joins_effective_dir(self, tmp_path):
+        inv = self._inv(["git", "--git-dir=.git", "commit"], "/eff")
+        assert ops._resolve_detect_dirs_multi("/cwd", [inv], tmp_path) == ["/eff/.git"]
+
+    def test_no_override_equals_single_resolution(self, tmp_path):
+        inv = self._inv(["git", "commit"], "/eff")
+        assert ops._resolve_detect_dirs_multi("/cwd", [inv], tmp_path) == ["/eff"]
+
+    def test_pending_in_git_dir_detects_state_file(self, tmp_path):
+        assert ops._pending_operation_in_git_dir(str(tmp_path)) is None
+        (tmp_path / "MERGE_HEAD").write_text("x\n")
+        assert ops._pending_operation_in_git_dir(str(tmp_path)) == ops._OP_MERGE
+
+
 def test_report_detect_failure_labels_target(capsys):
     ops._report_detect_failure("/d", "rc=1", logging.getLogger("t"), target=ops._TARGET_OTHER)
     err = capsys.readouterr().err
