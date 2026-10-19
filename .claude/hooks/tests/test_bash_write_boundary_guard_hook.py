@@ -921,3 +921,102 @@ class TestExemptionNarrowing:
     ])
     def test_git_mv_command_word_still_exempt(self, cmd, checkout, logger):
         assert _scope(cmd, checkout, logger) is None
+
+
+class TestDecisionLog:
+    """0.5.0-W1-366：每個放行／阻擋分支記一行 decision=... source=... reason=... targets=... cmd=..."""
+
+    def _run(self, monkeypatch, payload, is_subagent=False, branch="main"):
+        import io
+        import json as json_mod
+
+        records = []
+
+        class _H(logging.Handler):
+            def emit(self, record):
+                records.append(record.getMessage())
+
+        lg = logging.getLogger("test-decision-log")
+        lg.handlers = [_H()]
+        lg.setLevel(logging.DEBUG)
+        lg.propagate = False
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json_mod.dumps(payload)))
+        with patch.object(hook_module, "setup_hook_logging", return_value=lg), \
+             patch.object(hook_module, "is_subagent_environment", return_value=is_subagent), \
+             patch.object(hook_module, "get_current_branch", return_value=branch), \
+             patch.object(hook_module, "is_allowed_branch", return_value=(branch != "main")):
+            code = main()
+        lines = [m for m in records if m.startswith("decision=")]
+        assert len(lines) == 1, records
+        return code, lines[0]
+
+    def _bash(self, cmd, **extra):
+        d = {"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": str(_REPO_ROOT)}
+        d.update(extra)
+        return d
+
+    def test_allow_no_boundary_violation(self, monkeypatch):
+        code, line = self._run(monkeypatch, self._bash("echo hi > docs/x.md"))
+        assert code == 0
+        assert line.startswith("decision=allow source=main reason=no_boundary_violation ")
+        assert "targets=['docs/x.md']" in line and "cmd=echo hi > docs/x.md" in line
+
+    def test_allow_empty_targets(self, monkeypatch):
+        _, line = self._run(monkeypatch, self._bash("ls -la"))
+        assert "reason=no_boundary_violation" in line and "targets=[]" in line
+
+    def test_allow_dev_branch_skip(self, monkeypatch):
+        _, line = self._run(monkeypatch, self._bash("echo x > docs/y.dart"), branch="feat/a")
+        assert "decision=allow source=main reason=dev_branch_skip" in line
+        assert "docs/y.dart" in line
+
+    def test_allow_subagent_source(self, monkeypatch):
+        _, line = self._run(
+            monkeypatch, self._bash("echo x > docs/n.md", agent_id="sub-9"), is_subagent=True)
+        assert "decision=allow source=agent:sub-9 reason=subagent_no_scope_hit" in line
+
+    def test_allow_non_bash(self, monkeypatch):
+        _, line = self._run(monkeypatch, {"tool_name": "Read", "tool_input": {}})
+        assert "decision=allow" in line and "reason=non_bash_tool" in line
+
+    def test_allow_empty_command(self, monkeypatch):
+        _, line = self._run(monkeypatch, self._bash(""))
+        assert "decision=allow" in line and "reason=empty_command" in line
+
+    def test_allow_empty_input(self, monkeypatch):
+        code, line = self._run(monkeypatch, {})
+        assert code == 0 and "decision=allow" in line and "reason=empty_input" in line
+
+    def test_deny_scope_violation_has_source(self, monkeypatch):
+        code, line = self._run(
+            monkeypatch, self._bash("echo x >> test/a_test.dart", agent_id="sub-1"), is_subagent=True)
+        assert code == 2
+        assert "decision=deny source=agent:sub-1 reason=scope_violation targets=['test/a_test.dart']" in line
+
+    def test_deny_boundary_violation(self, monkeypatch):
+        # 第一層（範圍阻擋）關閉，單獨觸發第二層主線程模型
+        with patch.object(hook_module, "_find_scope_violation", return_value=None):
+            code, line = self._run(monkeypatch, self._bash("echo x > lib/q.dart"))
+        assert code == 2
+        assert "decision=deny source=main reason=boundary_violation targets=['lib/q.dart']" in line
+
+    def test_long_heredoc_not_fully_logged(self, monkeypatch):
+        body = "SECRETBODY" * 500
+        _, line = self._run(monkeypatch, self._bash(f"cat > docs/h.md <<'EOF'\n{body}\nEOF"))
+        assert "SECRETBODY" in line
+        assert len(line) < 600 and line.count("SECRETBODY") <= 20
+        assert "\n" not in line
+
+
+class TestDenyMessageNoBangClaim:
+    def test_deny_reason_states_bang_not_restricted(self, monkeypatch, capsys):
+        import io
+        import json as json_mod
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json_mod.dumps(
+            {"tool_name": "Bash", "tool_input": {"command": "echo x >> test/a_test.dart"},
+             "cwd": str(_REPO_ROOT)})))
+        with patch.object(hook_module, "get_current_branch", return_value="main"):
+            assert main() == 2
+        out = capsys.readouterr().out
+        assert "同樣會被擋" not in out
+        assert "不經過本 hook" in out
