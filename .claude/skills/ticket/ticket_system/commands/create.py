@@ -497,7 +497,10 @@ def apply_hook_acceptance_template(
     if inventory.status in ("absent", "no_separator") and "產生路徑盤點" not in text:
         missing.add(_PATH_INVENTORY_LABEL)
     for label, template in _HOOK_ACCEPTANCE_TEMPLATES:
-        if label in missing:
+        # 模板文字刻意避開 gate 關鍵詞，_missing_categories 看不見已帶入的模板，
+        # 故以模板前綴（<待填> 之前）比對既有條目，不論有無填寫皆視為已帶入。
+        prefix = template.split("<待填>")[0]
+        if label in missing and prefix not in text:
             current.append(template)
     return current, True
 
