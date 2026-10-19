@@ -637,6 +637,101 @@ class TestScopeUnparseableFailOpen:
         assert _scope(cmd, checkout, logger) is None
 
 
+def _git(*args, cwd):
+    import subprocess
+    subprocess.run(["git", *args], cwd=str(cwd), check=True, capture_output=True,
+                   env={"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+                        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+                        "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"})
+
+
+def _make_repo(base, name):
+    repo = base / name
+    repo.mkdir()
+    _git("init", "-q", "-b", "main", cwd=repo)
+    (repo / "README.md").write_text("x\n")
+    _git("add", "README.md", cwd=repo)
+    _git("commit", "-q", "-m", "init", cwd=repo)
+    return repo
+
+
+@pytest.fixture
+def repo_pair(tmp_path):
+    """真實主 repo + git worktree add 出的同層 worktree（<repo>-<ticket> 版面）。"""
+    main_repo = _make_repo(tmp_path, "proj")
+    sibling = tmp_path / "proj-T1"
+    _git("worktree", "add", "-q", "-b", "feat/T1", str(sibling), cwd=main_repo)
+    return main_repo.resolve(), sibling.resolve()
+
+
+class TestSiblingWorktreeScope:
+    """E2：cwd 與目標分屬同 repo 的不同 checkout（主 checkout 與同層 worktree）。"""
+
+    _SCOPE_FILES = ["lib/a.dart", "test/a_test.dart", "integration_test/a.dart", ".claude/skills/x/y.py"]
+
+    @pytest.mark.parametrize("target", _SCOPE_FILES)
+    def test_redirect_main_cwd_to_sibling(self, repo_pair, logger, target):
+        main_repo, sibling = repo_pair
+        assert _scope(f"echo x > {sibling}/{target}", main_repo, logger) == target
+
+    @pytest.mark.parametrize("target", _SCOPE_FILES)
+    def test_redirect_sibling_cwd_to_main(self, repo_pair, logger, target):
+        main_repo, sibling = repo_pair
+        assert _scope(f"echo x > {main_repo}/{target}", sibling, logger) == target
+
+    def test_python_heredoc_open_main_cwd_to_sibling(self, repo_pair, logger):
+        main_repo, sibling = repo_pair
+        cmd = f"python3 - <<'EOF'\nopen('{sibling}/.claude/skills/w/x.py', 'w').write('x')\nEOF"
+        assert _scope(cmd, main_repo, logger) == ".claude/skills/w/x.py"
+
+    def test_python_heredoc_open_sibling_cwd_to_main(self, repo_pair, logger):
+        main_repo, sibling = repo_pair
+        cmd = f"python3 - <<'EOF'\nopen('{main_repo}/lib/x.dart', 'w').write('x')\nEOF"
+        assert _scope(cmd, sibling, logger) == "lib/x.dart"
+
+    def test_nonexistent_ancestors_resolved(self, repo_pair, logger):
+        main_repo, sibling = repo_pair
+        assert _scope(f"echo x > {sibling}/lib/deep/er/new.dart", main_repo, logger) == "lib/deep/er/new.dart"
+
+    def test_sibling_non_scope_file_allowed(self, repo_pair, logger):
+        main_repo, sibling = repo_pair
+        assert _scope(f"echo x > {sibling}/docs/n.md", main_repo, logger) is None
+        assert _scope(f"echo x > {sibling}/.claude/plans/p.md", main_repo, logger) is None
+
+    def test_different_repo_same_layout_allowed(self, repo_pair, tmp_path, logger):
+        main_repo, _ = repo_pair
+        other = _make_repo(tmp_path, "proj-other")
+        assert _scope(f"echo x > {other}/lib/a.dart", main_repo, logger) is None
+        assert _scope(f"echo x > {other}/.claude/hooks/a.py", main_repo, logger) is None
+
+    def test_same_repo_predicate_contrast(self, repo_pair, tmp_path):
+        main_repo, sibling = repo_pair
+        other = _make_repo(tmp_path, "proj-other")
+        assert hook_module._same_repo(str(sibling), str(main_repo)) is True
+        assert hook_module._same_repo(str(other), str(main_repo)) is False
+
+    def test_routine_commands_allowed(self, repo_pair, logger):
+        main_repo, sibling = repo_pair
+        for cmd in [
+            f"git worktree add {main_repo}-T2 -b feat/T2",
+            f"git -C {sibling} status",
+            f"git worktree add {main_repo}/.claude/worktrees/merge-gate-1 HEAD",
+            f"uv --directory {sibling}/.claude/hooks run pytest tests/x.py -q",
+            "echo x > /dev/null",
+            f"echo x > {sibling}/../notes.txt",
+        ]:
+            assert _scope(cmd, main_repo, logger) is None, cmd
+
+    def test_unresolvable_gitlink_not_blocked(self, tmp_path, logger):
+        """gitlink 無法解析 common dir：不額外阻擋（取向 fail-open，見 Solution）。"""
+        main_repo = _make_repo(tmp_path, "proj")
+        broken = tmp_path / "proj-broken"
+        broken.mkdir()
+        (broken / ".git").write_text("gitdir: /nonexistent/zzz\n")
+        assert _scope(f"echo x > {broken}/lib/a.dart", main_repo, logger) is None
+
+
 class TestFailClosedDeclaration:
     """異常語意：守衛宣告 fail_closed（分派層掃描此宣告決定逾時／例外時 exit 2）。"""
 
