@@ -19,9 +19,22 @@ matcher，禁止主線程（PM）寫入 test/、lib/、*.dart。該限制可被 
       lib/path_permission.check_file_permission() 判斷 → 不允許則 DENY（exit 2）；
       未偵測到明確寫入目標 → 一律 ALLOW（保守白名單策略，fail-open）。
 
-範圍與 main-thread-edit-restriction-hook.py 部分一致：
-- Subagent 環境跳過（此限制僅約束主線程）
-- 開發分支（feat/*、fix/* 等）跳過
+兩層檢查：
+- 第一層（主線程與代理人皆適用，不受開發分支跳過影響）：候選路徑以 payload cwd
+  解析、換算成所在 checkout 根目錄的相對路徑，落在 lib/、test/、integration_test/、
+  .claude/** 即 DENY。豁免：建置快取（.venv、__pycache__ 等）、.claude 本地執行期
+  產物（hook-logs、dispatch-active.json 等，清單對齊 .gitignore）、.git/、
+  checkout 外路徑（暫存區、/dev/null）、git mv。ticket／doc CLI 自寫檔不經 shell
+  重導向，命令文字無目標路徑，不受影響。
+- 第二層（僅主線程；與 main-thread-edit-restriction-hook.py 一致）：轉呼
+  check_file_permission，開發分支（feat/*、fix/* 等）跳過
+- 失敗語意 fail_closed：解析例外或分派層逾時時擋下
+- 殘留風險清單（靜態解析 fail-open，未偵測）：
+  直譯器內動態組成的路徑；先寫腳本到 checkout 外再執行的兩步驟；
+  bash -c／eval 字串內的寫入；$VAR／命令替換／~ 組成的路徑；
+  2> file、&> file 的檔案目標（fd 2 一律 skip）；
+  awk -i inplace、ruby、install、truncate、patch、tar -C、dd of=、rsync、ln -s、
+  touch、curl -o 與版本控制的還原類子命令（命令集合為列舉式）
 - 不含跨專案判斷：Bash command 無單一 file_path，無法用
   find_target_repo() 判斷目標 repo；candidate path 皆以當前
   CLAUDE_PROJECT_DIR 正規化，跨專案 Bash 寫入若剛好命中
@@ -51,6 +64,8 @@ FP 邊界（fail-open，保守白名單原則）：
 合法存在），不增加防護。
 """
 
+import os
+import posixpath
 import re
 import sys
 from pathlib import Path
@@ -77,7 +92,23 @@ _MAX_HEREDOC_RECURSION = 2
 _PLAIN_RUN = re.compile(r"[^'\"\\\s;|&()`<>#]+")
 
 # python open('path', ...) / open("path", ...)
-_OPEN_CALL_PATTERN = re.compile(r"open\(\s*(['\"])([^'\"]+)\1")
+# 字串可帶 1-2 字元前綴（f、r、rb 等）；第二個參數（模式）可為位置或 mode= 關鍵字
+_OPEN_CALL_PATTERN = re.compile(
+    r"open\(\s*[A-Za-z]{0,2}(['\"])([^'\"]+)\1(?:\s*,\s*(?:mode\s*=\s*)?[A-Za-z]{0,2}(['\"])([^'\"]*)\3)?"
+)
+
+# Path('x').write_text(...) / write_bytes(...)（含 pathlib.Path 前綴）
+_PATH_WRITE_PATTERN = re.compile(
+    r"Path\(\s*[A-Za-z]{0,2}(['\"])([^'\"]+)\1\s*\)\s*\.write_(?:text|bytes)\("
+)
+
+
+def _python_write_targets(text: str) -> List[str]:
+    """python 原文中的寫入目標：open() 僅在模式含 w／a／x／+ 時算寫入（沒給模式為唯讀）。"""
+    out = [m.group(2) for m in _OPEN_CALL_PATTERN.finditer(text)
+           if m.group(4) and any(ch in m.group(4) for ch in "waxWAX+")]
+    out.extend(m.group(2) for m in _PATH_WRITE_PATTERN.finditer(text))
+    return out
 
 _PYTHON_NAME = re.compile(r"python[\d.]*")
 _SHELL_NAMES = frozenset({"sh", "bash", "zsh"})
@@ -87,7 +118,7 @@ _HEREDOC_DELIM_STOP = frozenset(" \t\r\n;|&()<>")
 class _Statement:
     """一個以 | ; & 換行 ( ) 切出的陳述。"""
 
-    __slots__ = ("tokens", "targets", "bodies", "start", "end")
+    __slots__ = ("tokens", "targets", "bodies", "start", "end", "pre")
 
     def __init__(self, start: int) -> None:
         self.tokens: List[str] = []    # 引號已剝除的 token（不含重導向目標）
@@ -95,6 +126,7 @@ class _Statement:
         self.bodies: List[str] = []    # 此陳述宣告的 heredoc 正文
         self.start = start
         self.end = start
+        self.pre = ""                  # 此陳述之前累積的括號邊界字元（只含 "(" 與 ")"）
 
 
 def _read_heredoc_delimiter(command: str, i: int):
@@ -139,6 +171,7 @@ def _parse_statements(command: str) -> List[_Statement]:
     has_tok = False
     redirect: Optional[str] = None  # None / 'write' / 'skip'
     pending: list = []
+    parens = ""  # 尚未歸屬任何陳述的括號邊界字元
     i = 0
 
     def flush() -> None:
@@ -154,12 +187,16 @@ def _parse_statements(command: str) -> List[_Statement]:
         buf = []
         has_tok = False
 
-    def end_statement(end_pos: int, next_start: int) -> None:
-        nonlocal cur, redirect
+    def end_statement(end_pos: int, next_start: int, boundary: str = "") -> None:
+        nonlocal cur, redirect, parens
         flush()
         cur.end = end_pos
         if cur.tokens or cur.targets or cur.bodies:
+            cur.pre = parens
+            parens = ""
             stmts.append(cur)
+        if boundary in ("(", ")"):
+            parens += boundary
         cur = _Statement(next_start)
         redirect = None
 
@@ -205,14 +242,16 @@ def _parse_statements(command: str) -> List[_Statement]:
             j = command.find("\n", i)
             i = n if j == -1 else j
         elif c == ">":
-            is_fd = has_tok and "".join(buf).isdigit()
+            fd_text = "".join(buf) if has_tok else ""
+            is_fd = fd_text.isdigit()
             if is_fd:
                 buf = []
                 has_tok = False
             else:
                 flush()
             i += 2 if command.startswith(">>", i) else 1
-            skip = is_fd
+            # 1> 與 >=3 的 fd（exec 3>file 等）是寫入；0、2 維持 skip（2> 另票處理）
+            skip = is_fd and fd_text.lstrip("0") in ("", "2")
             if i < n and command[i] in "&|":
                 skip = skip or command[i] == "&"
                 i += 1
@@ -240,7 +279,7 @@ def _parse_statements(command: str) -> List[_Statement]:
             redirect = "skip"
         else:
             # ; | & ( ) `：陳述邊界
-            end_statement(i, i + 1)
+            end_statement(i, i + 1, c)
             i += 1
 
     end_statement(n, n)
@@ -302,9 +341,61 @@ def _scan_sed(toks: List[str], j: int, out: List[str]) -> int:
 
 def _scan_cp_mv(toks: List[str], j: int, out: List[str]) -> int:
     """cp / mv：略過旗標，最後一個位置參數為目的地（至少需要來源與目的地）。"""
-    positionals = [t for t in toks[j:] if t == "" or t[0] != "-"]
-    if len(positionals) >= 2:
+    positionals: List[str] = []
+    target_dir: Optional[str] = None
+    k = j
+    while k < len(toks):
+        t = toks[k]
+        k += 1
+        if t.startswith("--target-directory="):
+            target_dir = t.split("=", 1)[1]
+        elif t == "--target-directory" and k < len(toks):
+            target_dir = toks[k]
+            k += 1
+        elif t.startswith("--") or t == "-" or t == "":
+            if t in ("", "-"):
+                positionals.append(t)
+        elif t[0] == "-":
+            if "t" in t[1:]:
+                rest = t[t.index("t") + 1:]
+                if rest:
+                    target_dir = rest
+                elif k < len(toks):
+                    target_dir = toks[k]
+                    k += 1
+        else:
+            positionals.append(t)
+    if target_dir is not None:
+        out.append(target_dir)  # -t DIR：所有位置參數都是來源
+    elif len(positionals) >= 2:
         out.append(positionals[-1])
+    return len(toks)
+
+
+def _scan_perl(toks: List[str], j: int, out: List[str]) -> int:
+    """perl -i / -pi / -i.bak：原地編輯，位置參數（扣掉未用 -e 時的腳本檔）為目標。"""
+    inplace = False
+    has_script_opt = False
+    positionals: List[str] = []
+    k = j
+    while k < len(toks):
+        t = toks[k]
+        k += 1
+        if len(t) > 1 and t[0] == "-" and t[1] != "-":
+            for ch_idx in range(1, len(t)):
+                ch = t[ch_idx]
+                if ch == "i":
+                    inplace = True
+                    break
+                if ch in "eE":
+                    has_script_opt = True
+                    if ch_idx == len(t) - 1:
+                        k += 1
+                    break
+        elif not t.startswith("--"):
+            positionals.append(t)
+    if inplace:
+        out.extend(positionals if has_script_opt else positionals[1:])
     return len(toks)
 
 
@@ -315,10 +406,19 @@ def _scan_tee(toks: List[str], j: int, out: List[str]) -> int:
 
 def _scan_statement_tokens(toks: List[str], out: List[str]) -> None:
     j = 0
+    seen_git = False
     while j < len(toks):
         name = _basename(toks[j])
-        if name == "sed":
+        if name == "git":
+            seen_git = True
+            j += 1
+        elif name == "sed":
             j = _scan_sed(toks, j + 1, out)
+        elif name == "perl":
+            j = _scan_perl(toks, j + 1, out)
+        elif name == "mv" and seen_git:
+            # git mv 是版本控制內的搬移（deny 訊息指定的正規做法），不是 shell 寫入
+            j = len(toks)
         elif name in ("cp", "mv"):
             j = _scan_cp_mv(toks, j + 1, out)
         elif name == "tee":
@@ -327,18 +427,50 @@ def _scan_statement_tokens(toks: List[str], out: List[str]) -> None:
             j += 1
 
 
-def _collect_candidates(command: str, depth: int) -> List[str]:
+def _next_cd(cur_cd: Optional[str], toks: List[str]) -> Optional[str]:
+    """陳述以 cd 開頭時更新累積的 cd 位移；None 表示無法靜態判定。"""
+    if not toks or _basename(toks[0]) not in ("cd", "pushd"):
+        return cur_cd
+    if "-" in toks[1:]:
+        return None  # cd -：回到前一個目錄，無法靜態判定
+    args = [t for t in toks[1:] if t == "" or t[0] != "-"]
+    if not args or cur_cd is None:
+        return cur_cd
+    target = args[0]
+    if target[:1] in ("~", "$") or "$" in target or "`" in target:
+        return None
+    return target if target.startswith("/") else posixpath.join(cur_cd, target)
+
+
+def _collect_candidates(command: str, depth: int, dirs: Optional[List[Optional[str]]] = None,
+                        base_cd: Optional[str] = "") -> List[str]:
+    """dirs 非 None 時，與回傳清單逐項對應地記錄各候選路徑生效的 cd 位移（"" 為無位移）。"""
     candidates: List[str] = []
+    cur_cd = base_cd
+    cd_stack: List[Optional[str]] = []  # 子殼：( 保存當下位移，) 還原
+
+    def sync() -> None:
+        if dirs is not None:
+            dirs.extend([cur_cd] * (len(candidates) - len(dirs)))
+
     for stmt in _parse_statements(command):
+        for ch in stmt.pre:
+            if ch == "(":
+                cd_stack.append(cur_cd)
+            elif cd_stack:
+                cur_cd = cd_stack.pop()
+        cur_cd = _next_cd(cur_cd, stmt.tokens)
         candidates.extend(stmt.targets)
         _scan_statement_tokens(stmt.tokens, candidates)
         names = [_basename(t) for t in stmt.tokens]
         if any(_PYTHON_NAME.fullmatch(name) for name in names):
             for text in [command[stmt.start:stmt.end]] + stmt.bodies:
-                candidates.extend(m.group(2) for m in _OPEN_CALL_PATTERN.finditer(text))
+                candidates.extend(_python_write_targets(text))
+        sync()
         if depth < _MAX_HEREDOC_RECURSION and any(name in _SHELL_NAMES for name in names):
             for body in stmt.bodies:
-                candidates.extend(_collect_candidates(body, depth + 1))
+                candidates.extend(_collect_candidates(body, depth + 1, None, cur_cd))
+                sync()
     return candidates
 
 
@@ -391,6 +523,123 @@ def _find_boundary_violation(command: str, logger) -> Optional[str]:
     return None
 
 
+# ============================================================================
+# 路徑範圍阻擋：主線程與代理人共用，不受開發分支跳過影響
+# ============================================================================
+
+# checkout 根目錄下，Bash 不得寫入的頂層目錄
+_SCOPE_TOP_DIRS = frozenset({"lib", "test", "integration_test", ".claude"})
+
+# 路徑任一層級為這些名稱即視為建置／快取產物
+_EXEMPT_COMPONENTS = frozenset({
+    ".venv", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".dart_tool",
+})
+
+# .claude 底下的本地執行期產物（清單來源：.gitignore 的「Claude 框架本地執行期產物」段）
+_EXEMPT_CLAUDE_ENTRIES = frozenset({
+    ".sync-conflicts", ".sync-state.json", ".version-release.yaml", ".zhtw-mcp-skip",
+    "ARCHITECTURE_REVIEW_REQUIRED", "PM_INTERVENTION_REQUIRED", "TASK_AVOIDANCE_FIX_MODE",
+    "analyses", "dispatch-active.json", "dispatch-active.lock", "handoff", "hook-logs",
+    "hook-state", "logs", "migration-backups", "plans", "pm-status.json",
+    "scheduled_tasks.lock", "settings.local.json", "state", "tool-results",
+})
+
+_WORKTREE_PREFIX = ".claude/worktrees/"
+_PROJECT_DIR_VAR = re.compile(r"^\$\{?CLAUDE_PROJECT_DIR\}?(?=/|$)")
+
+
+def _find_checkout_root(cwd: str) -> str:
+    """自 cwd 向上找含 .git（目錄或檔案）的目錄，即所在 checkout 根目錄；找不到回傳 cwd。"""
+    cur = os.path.realpath(cwd)
+    while True:
+        if os.path.exists(os.path.join(cur, ".git")):
+            return cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return os.path.realpath(cwd)
+        cur = parent
+
+
+def _scope_roots(cwd: str) -> List[str]:
+    """候選路徑要換算的 checkout 根目錄：所在 checkout，加上 worktree 對應的主 checkout。"""
+    root = _find_checkout_root(cwd)
+    roots = [root]
+    marker = "/" + _WORKTREE_PREFIX
+    if marker in root + "/":
+        main_root = (root + "/").split(marker, 1)[0]
+        if main_root and main_root != root:
+            roots.append(main_root)
+    return roots
+
+
+def _relative_to_roots(abs_path: str, roots: List[str]) -> Optional[str]:
+    for root in roots:
+        if abs_path == root:
+            return ""
+        if abs_path.startswith(root + "/"):
+            return abs_path[len(root) + 1:]
+    return None
+
+
+def _strip_worktree_prefix(rel: str) -> str:
+    """從主 checkout 看 worktree 內的檔案：剝掉前綴，以 worktree 自己的根目錄判定。"""
+    while rel.startswith(_WORKTREE_PREFIX):
+        rel = rel[len(_WORKTREE_PREFIX):].partition("/")[2]
+    return rel
+
+
+def _scope_hit(rel: str) -> bool:
+    """rel（checkout 相對路徑，已剝 worktree 前綴）是否落在阻擋範圍且不在豁免清單。"""
+    parts = [p for p in rel.split("/") if p]
+    if not parts or parts[0] not in _SCOPE_TOP_DIRS:
+        return False
+    if any(p in _EXEMPT_COMPONENTS for p in parts):
+        return False
+    if parts[0] == ".claude" and len(parts) > 1 and parts[1] in _EXEMPT_CLAUDE_ENTRIES:
+        return False
+    return True
+
+
+def _resolve_candidate(raw: str, cd: str, cwd: str, root: str) -> Optional[str]:
+    """候選路徑解析為絕對路徑；含無法靜態判定的成分（變數、命令替換、~）回傳 None。"""
+    if not raw:
+        return None
+    raw = _PROJECT_DIR_VAR.sub(root, raw)
+    if raw[0] == "~" or "$" in raw or "`" in raw:
+        return None
+    return os.path.realpath(os.path.join(cwd, cd, raw))
+
+
+def _find_scope_violation(command: str, cwd: str, logger) -> Optional[str]:
+    """
+    回傳第一個落在 lib/、test/、integration_test/、.claude/**（扣除豁免）的候選寫入路徑
+    （換算成 checkout 相對路徑）；無命中回傳 None。
+
+    候選路徑相對於 cwd（含命令內 cd 位移）解析，再換算成所在 checkout 根目錄
+    （worktree 另加其主 checkout）的相對路徑比對，因此 worktree 內的 lib/x 也會命中。
+    無法靜態判定的路徑（變數、命令替換、~、字串拼接）放行，見模組檔頭殘留風險。
+    """
+    dirs: List[Optional[str]] = []
+    candidates = _collect_candidates(command, 0, dirs)
+    roots = _scope_roots(cwd)
+    base = os.path.realpath(cwd)
+    for raw, cd in zip(candidates, dirs):
+        if cd is None:
+            continue
+        abs_path = _resolve_candidate(raw, cd, base, roots[0])
+        if abs_path is None:
+            continue
+        rel = _relative_to_roots(abs_path, roots)
+        if rel is None:
+            continue
+        rel = _strip_worktree_prefix(rel)
+        if not _scope_hit(rel):
+            continue
+        logger.warning("偵測到 Bash 寫入受限路徑: path=%s cwd=%s command=%s", rel, cwd, command)
+        return rel
+    return None
+
+
 def _allow_and_exit(logger, reason: str) -> int:
     emit_hook_output("PreToolUse", permission_decision="allow", permission_decision_reason=reason)
     return EXIT_ALLOW
@@ -419,17 +668,42 @@ def main() -> int:
         logger.debug(f"跳過: 工具類型 {tool_name} 不是 Bash")
         return _allow_and_exit(logger, f"工具 {tool_name} 不在檢查範圍")
 
-    # Subagent 跳過：此 Hook 是 main-thread-edit-restriction 的 Bash 補網，
-    # 僅限制主線程
-    if is_subagent_environment(input_data):
-        logger.info(f"subagent 環境（agent_id={input_data.get('agent_id')}），跳過 Bash 寫入邊界限制")
-        return _allow_and_exit(logger, "subagent 不受主線程 Bash 寫入邊界限制")
-
     command = tool_input.get("command", "")
     if not command:
         return _allow_and_exit(logger, "command 為空，允許")
 
-    # 開發分支跳過（feat/*, fix/* 等），與 main-thread-edit-restriction 一致
+    # 第一層：路徑範圍阻擋，主線程與代理人皆適用，不受開發分支跳過影響
+    # （feat/* worktree 內若跳過，整層即失效）
+    cwd = input_data.get("cwd") or os.getcwd()
+    scope_path = _find_scope_violation(command, cwd, logger)
+    if scope_path is not None:
+        who = "代理人" if is_subagent_environment(input_data) else "主線程"
+        reason = (
+            f"Bash 寫入受限路徑被擋下（path={scope_path}，呼叫身份={who}）。"
+            "lib/、test/、integration_test/、.claude/** 禁止透過 Bash"
+            "（cat/printf/tee/sed -i/python open()/cp/mv/重導向）寫入。"
+            "請改用 Edit 或 Write 工具修改檔案；搬移已追蹤的檔案用 git mv。"
+            "本地執行期產物（.venv、__pycache__、.claude/hook-logs 等）不受此限。"
+            "若這是你自己在 ! 命令中執行的操作，同樣會被擋，請改請 Claude 以 Edit 完成。"
+            "若是本 hook 自身異常而誤擋正常命令，改用 Edit 修正 "
+            ".claude/hooks/bash-write-boundary-guard-hook.py（Edit 不受本 hook 影響）。"
+        )
+        emit_hook_output(
+            "PreToolUse",
+            permission_decision="deny",
+            permission_decision_reason=reason,
+        )
+        logger.info("Hook 檢查完成（路徑範圍阻擋），exit code: %d", EXIT_BLOCK)
+        return EXIT_BLOCK
+
+    # 第二層（僅主線程）：PM 可寫路徑模型。Subagent 的 lib/test 寫入權責由
+    # 第一層決定，不套用 PM 模型
+    if is_subagent_environment(input_data):
+        logger.info(f"subagent 環境（agent_id={input_data.get('agent_id')}），路徑範圍檢查通過")
+        return _allow_and_exit(logger, "subagent 的 Bash 寫入未命中受限路徑")
+
+    # 開發分支跳過（feat/*, fix/* 等），與 main-thread-edit-restriction 一致；
+    # 僅作用於第二層
     current_branch = get_current_branch()
     if current_branch and is_allowed_branch(current_branch):
         logger.info(f"開發分支 '{current_branch}' 上，跳過 Bash 寫入邊界限制")
@@ -457,4 +731,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(run_hook_safely(main, "bash-write-boundary-guard"))
+    # fail_closed：此守衛的失效方向是放行；解析異常或分派層逾時時擋下，
+    # 理由與負載實測見票面 Solution
+    sys.exit(run_hook_safely(main, "bash-write-boundary-guard", fail_closed=True))
