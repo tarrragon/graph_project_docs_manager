@@ -4,7 +4,7 @@ description: "Use this skill for managing git worktrees for Ticket-based develop
 argument-hint: "<subcommand> [args]"
 allowed-tools: Bash, Read, Write, Edit
 metadata:
-  version: 1.6.5
+  version: 1.6.6
 ---
 
 # Worktree Management SKILL
