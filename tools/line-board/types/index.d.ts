@@ -39,7 +39,7 @@ export type MergeLogResult =
 
 /**
  * 一個 session 的狀態，取自 `~/.claude/sessions/<pid>.json`（CC 內部檔案，格式無官方承諾）。
- * status 原樣保存，已知值為 waiting／busy／idle，其他值照樣顯示；waitingFor 與 statusUpdatedAt 缺少時為 null。
+ * status 原樣保存，已知值為 waiting／busy／shell／idle，其他值照樣顯示；waitingFor、statusUpdatedAt、procStart 缺少時為 null。
  */
 export type SessionState = {
   pid: number
@@ -49,6 +49,8 @@ export type SessionState = {
   waitingFor: string | null
   /** epoch 毫秒。 */
   statusUpdatedAt: number | null
+  /** 行程啟動時間，UTC 的 `ps -o lstart` 格式（如 `Mon Oct 19 09:09:02 2026`）；用來辨識 pid 是否被重複使用。 */
+  procStart: string | null
 }
 
 /** 各 session 狀態的讀取結果：ok 為本 repo 內 pid 仍存活的 session 與已結束的檔數，error 為讀取失敗原因。 */

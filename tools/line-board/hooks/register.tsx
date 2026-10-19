@@ -24,6 +24,7 @@ import {
   formatAge,
   formatQueue,
   isInRepo,
+  isSessionProcessAlive,
   laneSessionStatus,
   formatMergeGateEntry,
   formatMergeGateHolder,
@@ -235,7 +236,7 @@ async function findCheckouts(
 
 /**
  * 讀 `~/.claude/sessions/` 的狀態檔：只讀副檔名 `.json` 的檔案（`.key` 是金鑰，從不讀取），
- * 留下 cwd 屬於本 repo 的 session，再以 `ps -p <pid>` 確認存活；已結束者只計數不列出。
+ * 留下 cwd 屬於本 repo 的 session，再以 `ps -p <pid> -o lstart=` 對 procStart 確認存活；已結束者只計數不列出。
  */
 async function readSessions($: EngineInterface, checkoutPaths: readonly string[]): Promise<SessionsResult> {
   const home = await $.env.get('HOME')
@@ -250,7 +251,7 @@ async function readSessions($: EngineInterface, checkoutPaths: readonly string[]
   }
   const parsed = await Promise.all(names.map(name => readSessionFile($, `${dir}/${name}`)))
   const inRepo = parsed.filter((session): session is SessionState => session !== null && isInRepo(session.cwd, checkoutPaths))
-  const isAlive = await Promise.all(inRepo.map(session => isPidAlive($, session.pid)))
+  const isAlive = await Promise.all(inRepo.map(session => isSessionAlive($, session)))
   const alive = inRepo.filter((_, index) => isAlive[index])
   return { kind: 'ok', sessions: sortSessions(alive), endedCount: inRepo.length - alive.length }
 }
@@ -267,11 +268,27 @@ async function readSessionFile($: EngineInterface, path: string): Promise<Sessio
   }
 }
 
-/** `ps -p <pid>` exit 0 為存活；ps 本身無法執行時無從判定，視為存活以免整個區塊被清空。 */
-async function isPidAlive($: EngineInterface, pid: number): Promise<boolean> {
+/**
+ * `ps -o lstart` 的執行環境：procStart 是 UTC，ps 須以 UTC 輸出才能逐字比對；
+ * LC_ALL=C 固定星期與月份為英文縮寫，不隨使用者 locale 改變。
+ */
+const PS_ENV: Readonly<Record<string, string>> = { TZ: 'UTC', LC_ALL: 'C' }
+
+/**
+ * `ps -p <pid> -o lstart=` exit 0 且啟動時間與 procStart 相同為存活；時間不同表示 pid 已被其他行程重複使用。
+ * 無從比對（procStart 缺少、輸出格式不符）時退回只看 exit code；ps 本身無法執行時視為存活，以免整個區塊被清空。
+ */
+async function isSessionAlive($: EngineInterface, session: SessionState): Promise<boolean> {
+  const pid = String(session.pid)
   try {
-    const result = await $.process.run(['ps', '-p', String(pid)])
-    return result.exitCode === 0
+    const result = await $.process.run(['ps', '-p', pid, '-o', 'lstart='], { env: { ...PS_ENV } })
+    const isAlive = isSessionProcessAlive(result.exitCode, result.stdout, session.procStart)
+    if (result.exitCode === 0 && !isAlive) {
+      $.ui.log(`line-board: pid ${pid} 的啟動時間與 ${session.name} 的 procStart 不符，視為已結束（pid 重複使用）`, {
+        to: 'debug',
+      })
+    }
+    return isAlive
   } catch (error) {
     $.ui.log(`line-board: ps -p ${pid} 無法執行（${messageOf(error)}），視為存活`, { to: 'debug' })
     return true
