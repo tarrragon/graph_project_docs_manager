@@ -934,7 +934,7 @@ class TestGateLog:
         base = git(repo, "rev-parse", "main")
         assert wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([]))) == 0
         merged = git(repo, "rev-parse", "main")
-        start, end = self.gate_lines(repo)
+        start, _pre, end = self.gate_lines(repo)
         print(start)
         print(end)
         assert "開始" in start and "target main" in start and base[:12] in start and "分支 feat" in start
@@ -945,7 +945,7 @@ class TestGateLog:
     def test_red_result(self, repo):
         base = git(repo, "rev-parse", "main")
         assert wm.cmd_merge(None, branch="feat", gate_runner=art(lambda a, c: (1, "FAILED t::x\n"))) == 1
-        start, end = self.gate_lines(repo)
+        start, _pre, end = self.gate_lines(repo)
         assert "結果 紅燈" in end and base[:12] in end
 
     def test_refused_result(self, repo):
@@ -955,7 +955,7 @@ class TestGateLog:
             assert wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([]))) == 125
         finally:
             hold.release()
-        start, end = self.gate_lines(repo)
+        start, _pre, end = self.gate_lines(repo)
         assert "結果 拒絕" in end and base[:12] in end
 
     def test_timeout_and_abort_are_distinguished(self):
@@ -1074,8 +1074,17 @@ class TestPrecheckConflict:
         rc = wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
         assert rc == 1
         assert git(repo, "rev-parse", "main") == state["advanced"]
-        _, end = self.gate_lines(repo)
+        *_, end = self.gate_lines(repo)
         assert f"結果 {mg.GATE_ABORTED}" in end
+
+    def test_clean_precheck_logs_one_line_between_start_and_end(self, repo):
+        """預檢無衝突時，gate 日誌依序為開始、預檢無衝突、結束（0.5.0-W1-328.1）。"""
+        rc = wm.cmd_merge(None, branch="feat", gate_runner=art(green_runner([])))
+        assert rc == 0
+        start, pre, end = self.gate_lines(repo)
+        assert "開始" in start and "結束" in end
+        assert pre.split(mg.GATE_LINE_PREFIX, 1)[1].strip().startswith("預檢") and f"結果 {mg.GATE_PRECHECK_CLEAR}" in pre
+        assert pre.split("｜")[1:3] == start.split("｜")[1:3]  # target、分支欄位與開始行一致
 
     def test_already_merged_passes_precheck(self, repo):
         git(repo, "merge", "--no-edit", "feat")
