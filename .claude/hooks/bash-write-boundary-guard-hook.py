@@ -253,13 +253,12 @@ def _parse_statements(command: str) -> List[_Statement]:
             else:
                 flush()
             i += 2 if command.startswith(">>", i) else 1
-            # 0> 視為 skip；1、2、>=3 的 fd 目標皆是寫入
-            skip = is_fd and fd_text.lstrip("0") == ""
+            # 所有 fd（含 0）的 > >> >| 檔案目標皆是寫入；>&N、>&- 為 fd 複製
             dup = False
             if i < n and command[i] in "&|":
                 dup = command[i] == "&"
                 i += 1
-            redirect = "skip" if skip else ("dup" if dup else "write")
+            redirect = "dup" if dup else "write"
         elif c == "<":
             if command.startswith("<<<", i):
                 flush()

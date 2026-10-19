@@ -791,6 +791,8 @@ class TestReviewFixes:
         ("cmd 2>> .claude/x", ".claude/x"),
         ("cmd >& lib/a", "lib/a"),
         ("cmd &>> lib/a.dart", "lib/a.dart"),
+        ("cmd 0> lib/a.dart", "lib/a.dart"),
+        ("cmd 0>> test/x", "test/x"),
     ])
     def test_fd_redirect_file_target_denied(self, cmd, path, checkout, logger):
         assert _scope(cmd, checkout, logger) == path
@@ -802,7 +804,7 @@ class TestReviewFixes:
     @pytest.mark.parametrize("cmd", [
         "echo x 2>&1", "echo x 1>&2", "echo x >&2", "echo x <&0",
         "echo x 2> /dev/null", "echo x &>/dev/null", "echo x >& /dev/null",
-        "cmd >&-", "uv run pytest 2>&1 | tail -20",
+        "cmd >&-", "cmd < lib/a.dart", "cmd 0<&-", "uv run pytest 2>&1 | tail -20",
     ])
     def test_fd_dup_and_devnull_allowed(self, cmd, checkout, logger):
         assert _scope(cmd, checkout, logger) is None
