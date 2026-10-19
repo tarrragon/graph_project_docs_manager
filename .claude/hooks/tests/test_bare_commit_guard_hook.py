@@ -1559,3 +1559,59 @@ def test_every_blocking_op_has_deny_message():
 
     for op in ops_module._BLOCKING_OPS:
         assert _build_pending_operation_deny_message(op).strip()
+
+
+# ============================================================================
+# 串接多筆 commit 逐筆判定（0.5.0-W1-341.2.1；實測表 A2/B/C/D/E/F）
+# ============================================================================
+
+_P2_DISPATCHES = [_dispatch("T-1", ["a.txt"]), _dispatch("T-2", ["b.txt"])]
+
+
+class TestChainedCommitsJudgedPerInvocation:
+    def test_A2_amend_then_bare_denied_with_merge_head(self, monkeypatch):
+        """amend ; 裸 commit，MERGE_HEAD：第二筆會收尾他方合併，須擋。"""
+        cmd = 'git commit --amend --no-edit ; git commit -m "x"'
+        assert _run_hook(monkeypatch, cmd, merge_head=True) == 2
+
+    def test_F_amend_then_all_denied_with_merge_head(self, monkeypatch):
+        cmd = 'git commit --amend --no-edit ; git commit -a -m "x"'
+        assert _run_hook(monkeypatch, cmd, merge_head=True) == 2
+
+    def test_E_bare_then_all_denied_when_all_absorbs_other_dispatch(self, monkeypatch):
+        """P2：staged 僅 a.txt（裸 commit 安全），第二筆 -a 掃入 b.txt。"""
+        cmd = 'git commit -m "x" ; git commit -a -m "y"'
+        assert _run_hook(
+            monkeypatch, cmd,
+            dispatches=_P2_DISPATCHES, staged_files=["a.txt"],
+            unstaged_files=["b.txt"],
+        ) == 2
+
+    def test_B_bare_then_amend_denied_with_merge_head(self, monkeypatch):
+        cmd = 'git commit -m "x" && git commit --amend --no-edit'
+        assert _run_hook(monkeypatch, cmd, merge_head=True) == 2
+
+    def test_C_amend_then_amend_allowed_with_merge_head(self, monkeypatch):
+        cmd = "git commit --amend --no-edit && git commit --amend --no-edit"
+        assert _run_hook(monkeypatch, cmd, merge_head=True) == 0
+
+    def test_D_bare_then_bare_denied_with_merge_head(self, monkeypatch):
+        cmd = 'git commit -m "x" && git commit -m "y"'
+        assert _run_hook(monkeypatch, cmd, merge_head=True) == 2
+
+    def test_bare_then_bare_allowed_in_p2(self, monkeypatch):
+        """E1 對照：P2 下兩筆裸 commit 範圍皆安全，維持放行。"""
+        cmd = 'git commit -m "x" && git commit -m "y"'
+        assert _run_hook(
+            monkeypatch, cmd,
+            dispatches=_P2_DISPATCHES, staged_files=["a.txt"],
+            unstaged_files=["b.txt"],
+        ) == 0
+
+    def test_single_all_denied_in_p2_control(self, monkeypatch):
+        """G 單筆對照：單筆 -a 在 P2 被擋。"""
+        assert _run_hook(
+            monkeypatch, 'git commit -a -m "y"',
+            dispatches=_P2_DISPATCHES, staged_files=["a.txt"],
+            unstaged_files=["b.txt"],
+        ) == 2
