@@ -79,6 +79,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))   # .claude/       (lib.*)
 from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin, is_subagent_environment, emit_hook_output
 from lib.git_utils import get_current_branch, is_allowed_branch
 from lib.path_permission import check_file_permission, normalize_path
+from lib.checkout_identity import (
+    common_dir as _common_dir,
+    same_repo as _same_repo,
+    owning_checkout_root as _owning_checkout_root,
+)
 
 EXIT_ALLOW = 0
 EXIT_BLOCK = 2
@@ -1137,56 +1142,6 @@ def _scope_roots(cwd: str) -> List[str]:
         if main_root and main_root != root:
             roots.append(main_root)
     return roots
-
-
-def _common_dir(checkout_root: str) -> Optional[str]:
-    """checkout 的 git common dir（不呼叫 git 子行程）；無法解析回傳 None。
-
-    .git 為目錄 → 該目錄；.git 為 gitlink 檔 → 讀 gitdir 指向的目錄，
-    其 commondir 檔（相對該目錄）回到主 .git。
-    """
-    dot_git = os.path.join(checkout_root, ".git")
-    try:
-        if os.path.isdir(dot_git):
-            return os.path.realpath(dot_git)
-        with open(dot_git, encoding="utf-8") as fh:
-            first = fh.readline().strip()
-        if not first.startswith("gitdir:"):
-            return None
-        gitdir = first[len("gitdir:"):].strip()
-        if not os.path.isabs(gitdir):
-            gitdir = os.path.join(checkout_root, gitdir)
-        gitdir = os.path.realpath(gitdir)
-        with open(os.path.join(gitdir, "commondir"), encoding="utf-8") as fh:
-            common = fh.readline().strip()
-        common = common if os.path.isabs(common) else os.path.join(gitdir, common)
-        common = os.path.realpath(common)
-        return common if os.path.isdir(common) else None
-    except OSError:
-        return None  # 解析失敗：視為不同 repo（不額外阻擋），見票面 Solution
-
-
-def _same_repo(root_a: str, root_b: str) -> bool:
-    """兩個 checkout 根目錄是否屬同一 repository（common dir 相同且可解析）。"""
-    a = _common_dir(root_a)
-    return a is not None and a == _common_dir(root_b)
-
-
-def _owning_checkout_root(abs_path: str) -> Optional[str]:
-    """目標路徑所屬 checkout 根：自 dirname 向上找第一個存在的祖先，再找含 .git 者。"""
-    cur = os.path.dirname(abs_path)
-    while not os.path.isdir(cur):
-        parent = os.path.dirname(cur)
-        if parent == cur:
-            return None
-        cur = parent
-    while True:
-        if os.path.exists(os.path.join(cur, ".git")):
-            return cur
-        parent = os.path.dirname(cur)
-        if parent == cur:
-            return None
-        cur = parent
 
 
 def _relative_to_roots(abs_path: str, roots: List[str]) -> Optional[str]:
