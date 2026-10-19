@@ -356,9 +356,10 @@ class TestMain:
         ):
             assert hook.main() == 0
 
-    def test_dirty_block_message_no_bare_cd_and_path_limited_commit(self, capsys):
-        """0.2.1-W3-282：BLOCK_MESSAGE_DIRTY 不得含裸 cd，commit 建議須 path-limited
-        （與 bare-commit-guard 並行期無 pathspec 即 DENY 對齊，不互斥）。"""
+    def test_dirty_block_message_no_bare_cd_and_exact_add_bare_commit(self, capsys):
+        """0.2.1-W3-282：BLOCK_MESSAGE_DIRTY 不得含裸 cd，commit 建議須為
+        精確 add、diff --cached 核對、裸 commit（規則七；pathspec 提交會被
+        bare-commit-guard 擋下，故不得出現）。"""
         data = {"tool_input": {"command": "git worktree remove --force .claude/worktrees/agent-abc"}}
         with patch.object(hook, "read_json_from_stdin", return_value=data), patch.object(
             hook, "_branch_of_worktree", return_value="feat/x"
