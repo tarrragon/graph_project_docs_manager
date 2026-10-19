@@ -12,6 +12,7 @@ Worktree Manager - /worktree SKILL 的核心邏輯
 
 import os
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Optional
@@ -1765,6 +1766,13 @@ def _cleanup_classify_worktrees(feature_worktrees: list[dict]) -> tuple[list[str
     return safe_to_clean, warnings, unsafe
 
 
+def _cleanup_target_arg(identifier: str) -> str:
+    """掃描識別字轉為 cleanup 可解析的參數：ticket ID 走 positional，其餘分支名走 --branch。"""
+    if is_valid_ticket_id(identifier):
+        return identifier
+    return f"--branch {shlex.quote(identifier)}"
+
+
 def _cleanup_print_scan_report(
     safe_to_clean: list[str],
     warnings: list[tuple],
@@ -1787,7 +1795,7 @@ def _cleanup_print_scan_report(
         print(CleanupMessages.SCAN_SAFE_TO_CLEAN)
         for ticket_id in safe_to_clean:
             print(f"  - {ticket_id}")
-            print(f"    {CleanupMessages.SCAN_CLEANUP_HINT.format(ticket_id=ticket_id)}")
+            print(f"    {CleanupMessages.SCAN_CLEANUP_HINT.format(target=_cleanup_target_arg(ticket_id))}")
         print()
 
     # 警告
@@ -1795,7 +1803,7 @@ def _cleanup_print_scan_report(
         print(CleanupMessages.SCAN_WARNING)
         for ticket_id, branch, reason in warnings:
             print(f"  - {ticket_id} ({branch})  [{reason}]")
-            print(f"    {CleanupMessages.SCAN_FORCE_HINT.format(ticket_id=ticket_id)}")
+            print(f"    {CleanupMessages.SCAN_FORCE_HINT.format(target=_cleanup_target_arg(ticket_id))}")
         print()
 
     # 不安全
@@ -1837,7 +1845,18 @@ def _cleanup_scan_all() -> int:
     return 0
 
 
-def cmd_cleanup(ticket_id: Optional[str] = None, force: bool = False) -> int:
+def _cleanup_find_by_branch(branch: str) -> Optional[dict]:
+    """以分支名查詢 worktree；找不到輸出訊息並回傳 None。"""
+    for wt in get_worktree_list():
+        if wt.get("branch") == branch:
+            return wt
+    print(f"[阻擋] 找不到分支 {branch} 的 worktree")
+    return None
+
+
+def cmd_cleanup(
+    ticket_id: Optional[str] = None, force: bool = False, branch: Optional[str] = None
+) -> int:
     """
     cleanup 子命令 — 三閘門安全清理 worktree
 
@@ -1852,6 +1871,13 @@ def cmd_cleanup(ticket_id: Optional[str] = None, force: bool = False) -> int:
     Returns:
         int: exit code（0 成功/掃描完成，1 失敗/被阻擋）
     """
+    # --branch：用於萃取不到 ticket ID 的 worktree-agent-<id>，同樣經三閘門
+    if branch:
+        worktree = _cleanup_find_by_branch(branch)
+        if worktree is None:
+            return 1
+        return _cleanup_single(worktree, branch, force)
+
     # 無參數：掃描模式
     if ticket_id is None:
         return _cleanup_scan_all()
@@ -1956,6 +1982,10 @@ def main():
         help="可選：指定清理特定 Ticket（若省略則掃描所有 worktree）"
     )
     cleanup_parser.add_argument(
+        "--branch",
+        help="以分支名指定清理對象（如 worktree-agent-<id>），與 ticket_id 擇一"
+    )
+    cleanup_parser.add_argument(
         "--force",
         action="store_true",
         help="略過 Level 2（未 push）和 Level 3（未合併）警告（Level 1 永不可繞過）"
@@ -1980,7 +2010,10 @@ def main():
             skip_gate_reason=args.skip_gate, message=args.message, ticket=args.ticket,
         )
     elif args.command == "cleanup":
-        return cmd_cleanup(args.ticket_id, force=args.force)
+        if args.ticket_id and args.branch:
+            print("[錯誤] cleanup 的 <ticket-id> 與 --branch 擇一，不可同時指定")
+            return 1
+        return cmd_cleanup(args.ticket_id, force=args.force, branch=args.branch)
     else:
         parser.print_help()
         return 1
