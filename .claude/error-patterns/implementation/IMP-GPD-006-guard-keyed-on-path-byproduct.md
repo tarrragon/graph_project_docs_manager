@@ -71,6 +71,7 @@ CAS 合併多數只動到豁免路徑（框架檔、文件），豁免路徑本�
 - **為何未被發現**：測試 fixture 只建守衛假設的版面（cwd 即 worktree、或 worktree 在 checkout 內的子目錄），而框架的標準派發版面正是守衛不認得的形態。這與 IMP-GPD-008 的未發現機制同構：框架規範的寫法（`git -C`、同層 worktree 加絕對路徑）是守衛最常遇到、也最先失效的輸入
 - **解法**：對每個解析後的絕對路徑找出它自身所屬的 checkout 根，以 git common dir 比對是否與 cwd 所屬 checkout 同一個 repository；同 repo 即以目標的 checkout 為根套用既有範圍判定。common dir 直接讀 `.git` 目錄或 gitlink 檔的 `commondir`，不在熱路徑呼叫 git 子行程
 - **預防**：守衛測試的 fixture 至少要有一筆採用框架工具實際產生的版面（例如以 worktree 工具或 `git worktree add` 建出的真實同層 worktree），不能只用守衛自己假設的目錄結構
+- **第二例（派發驗證守衛）**：派發前檢查 prompt 中 `.claude` 絕對路徑的守衛，前提是「repo 外的 worktree 內 `.claude` 會被 runtime 拒絕」，因此把 checkout 根目錄以外的 `.claude` 路徑一律判為外部而阻擋。框架標準版面的同層 worktree 位於 checkout 根目錄之外，代理人在該處編輯 `.claude` 實際可行，守衛卻擋下寫出該路徑的 prompt；prompt 文字中的佔位路徑也被當成具體路徑。此缺陷會阻擋其自身修正的派發——派發修正票時以文字描述測試範例即被擋。解法同上：以目標所屬 checkout 與 git common dir 判定同 repo，再依 runtime 的實際限制（repo 外位置）決定是否阻擋，判定失敗落在阻擋側
 
 ---
 
