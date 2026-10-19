@@ -1,3 +1,4 @@
+import re
 """
 worktree-remove-deliverable-check-hook 測試套件（1.2.0-W1-030 Guard A）
 
@@ -32,6 +33,15 @@ def logger():
 # ---------------------------------------------------------------------------
 # _extract_remove_paths
 # ---------------------------------------------------------------------------
+
+
+RULE7_PATHSPEC_COMMIT = re.compile(r"commit\b[^\n]*(\s--\s+\S|\s--only\b|\s-o\b)")
+
+
+def test_rule7_checker_flags_pre_fix_literal():
+    """正向對照：修正前的訊息字面必須被判為違規。"""
+    old = 'git -C p add <paths> && git -C p commit -m "<message>" -- <paths>'
+    assert RULE7_PATHSPEC_COMMIT.search(old)
 
 
 class TestExtractRemovePaths:
@@ -361,8 +371,10 @@ class TestMain:
         assert "cd .claude/worktrees/agent-abc &&" not in captured.err
         assert "git -C .claude/worktrees/agent-abc" in captured.err
         assert "git add -A" not in captured.err
-        assert "commit -m" in captured.err
-        assert "-- <paths>" in captured.err
+        assert 'git -C .claude/worktrees/agent-abc commit -m "<message>"' in captured.err
+        assert "git -C .claude/worktrees/agent-abc add <exact-path>" in captured.err
+        assert "diff --cached --name-only" in captured.err
+        assert not RULE7_PATHSPEC_COMMIT.search(captured.err)
 
     def test_pass_when_dirty_status_query_fails(self):
         """git status 查詢失敗（None）不阻擋，避免誤擋。"""
