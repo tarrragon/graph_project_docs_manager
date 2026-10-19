@@ -31,6 +31,7 @@ spec = importlib.util.spec_from_file_location(
 hook_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(hook_module)
 
+_REPO_ROOT = hook_dir.parent.parent  # 本 checkout 根目錄（含 .git）
 _extract_candidate_paths = hook_module._extract_candidate_paths
 _find_boundary_violation = hook_module._find_boundary_violation
 main = hook_module.main
@@ -215,18 +216,37 @@ class TestMainEntryPoint:
         )
         assert exit_code == 0
 
-    def test_subagent_environment_allowed(self, monkeypatch):
+    def test_subagent_environment_denied_for_scope_write(self, monkeypatch):
+        # 0.5.0-W1-284.1：subagent 不再一律放行，寫入範圍內路徑改為 deny
         exit_code = self._run_main(
             monkeypatch,
-            {"tool_name": "Bash", "tool_input": {"command": "cat > lib/foo.dart <<'EOF'\nx\nEOF"}, "agent_id": "sub-1"},
+            {"tool_name": "Bash", "tool_input": {"command": "cat > lib/foo.dart <<'EOF'\nx\nEOF"}, "agent_id": "sub-1", "cwd": str(_REPO_ROOT)},
+            is_subagent=True,
+        )
+        assert exit_code == 2
+
+    def test_subagent_environment_out_of_scope_allowed(self, monkeypatch):
+        exit_code = self._run_main(
+            monkeypatch,
+            {"tool_name": "Bash", "tool_input": {"command": "echo x > docs/notes.md"}, "agent_id": "sub-1", "cwd": str(_REPO_ROOT)},
             is_subagent=True,
         )
         assert exit_code == 0
 
-    def test_dev_branch_allowed(self, monkeypatch):
+    def test_dev_branch_still_denied_for_scope_write(self, monkeypatch):
+        # 新的路徑範圍檢查不受開發分支跳過影響（feat/* worktree 內不得失效）
         exit_code = self._run_main(
             monkeypatch,
-            {"tool_name": "Bash", "tool_input": {"command": "cat > lib/foo.dart <<'EOF'\nx\nEOF"}},
+            {"tool_name": "Bash", "tool_input": {"command": "cat > lib/foo.dart <<'EOF'\nx\nEOF"}, "cwd": str(_REPO_ROOT)},
+            branch="feat/some-feature",
+        )
+        assert exit_code == 2
+
+    def test_dev_branch_skips_main_thread_layer_only(self, monkeypatch):
+        # 開發分支跳過仍作用於既有主線程層：*.dart 在範圍外目錄不被擋
+        exit_code = self._run_main(
+            monkeypatch,
+            {"tool_name": "Bash", "tool_input": {"command": "cat > docs/x.dart <<'EOF'\nx\nEOF"}, "cwd": str(_REPO_ROOT)},
             branch="feat/some-feature",
         )
         assert exit_code == 0
@@ -460,3 +480,190 @@ class TestHeredocAndQuotedTextIgnored:
     ])
     def test_real_write_forms(self, cmd, expected):
         assert _extract_candidate_paths(cmd) == expected
+
+
+# ============================================================================
+# 0.5.0-W1-284.1：主線程與代理人共用的路徑範圍阻擋
+# ============================================================================
+
+_SCOPE_TARGETS = [
+    ".claude/hooks/x-hook.py",
+    "lib/a.dart",
+    "test/a_test.dart",
+    "integration_test/a_test.dart",
+]
+
+# 各寫入寫法，{t} 為目標路徑
+_WRITE_FORMS = {
+    "cat_append_heredoc": "cat >> {t} <<'EOF'\nx\nEOF",
+    "printf_append": "printf '%s' x >> {t}",
+    "tee_append": "echo x | tee -a {t}",
+    "python_open": "python3 - <<'EOF'\nopen('{t}', 'w').write('x')\nEOF",
+    "sed_inplace_bsd_empty": "sed -i \"\" 's/a/b/' {t}",
+    "cp_dest": "cp /tmp/src.txt {t}",
+    "mv_dest": "mv /tmp/src.txt {t}",
+}
+
+
+@pytest.fixture
+def checkout(tmp_path):
+    """假 checkout 根目錄（含 .git 目錄）。"""
+    (tmp_path / ".git").mkdir()
+    return tmp_path.resolve()
+
+
+def _scope(cmd, cwd, logger):
+    return hook_module._find_scope_violation(cmd, str(cwd), logger)
+
+
+class TestScopeViolationDenied:
+    """正向對照：範圍內路徑對任何呼叫身份（主線程、代理人）皆 deny。"""
+
+    @pytest.mark.parametrize("target", _SCOPE_TARGETS)
+    @pytest.mark.parametrize("form", sorted(_WRITE_FORMS))
+    def test_write_form_to_scope_target_denied(self, form, target, checkout, logger):
+        cmd = _WRITE_FORMS[form].format(t=target)
+        assert _scope(cmd, checkout, logger) == target
+
+    def test_relative_path_resolved_against_cwd(self, checkout, logger):
+        (checkout / "docs").mkdir()
+        assert _scope("cat > ../lib/a.dart", checkout / "docs", logger) == "lib/a.dart"
+
+    def test_cwd_inside_scope_dir(self, checkout, logger):
+        (checkout / "lib").mkdir()
+        assert _scope("echo x > a.dart", checkout / "lib", logger) == "lib/a.dart"
+
+    def test_cd_then_write_in_same_command(self, checkout, logger):
+        assert _scope("(cd lib && cat > a.dart <<'EOF'\nx\nEOF\n)", checkout, logger) == "lib/a.dart"
+
+    def test_absolute_path_inside_checkout(self, checkout, logger):
+        assert _scope(f"echo x > {checkout}/test/a.dart", checkout, logger) == "test/a.dart"
+
+    def test_claude_project_dir_variable_resolved(self, checkout, logger):
+        assert _scope("echo x > $CLAUDE_PROJECT_DIR/lib/a.dart", checkout, logger) == "lib/a.dart"
+        assert _scope("echo x > ${CLAUDE_PROJECT_DIR}/lib/a.dart", checkout, logger) == "lib/a.dart"
+
+    def test_worktree_path_seen_from_main_checkout(self, checkout, logger):
+        (checkout / ".claude" / "worktrees" / "w1").mkdir(parents=True)
+        assert _scope("echo x > .claude/worktrees/w1/lib/a.dart", checkout, logger) == "lib/a.dart"
+        assert _scope("echo x > .claude/worktrees/w1/.claude/rules/r.md", checkout, logger) == ".claude/rules/r.md"
+
+    def test_main_checkout_path_seen_from_worktree(self, checkout, logger):
+        wt = checkout / ".claude" / "worktrees" / "w1"
+        wt.mkdir(parents=True)
+        (wt / ".git").write_text("gitdir: x\n")
+        assert _scope(f"echo x > {checkout}/lib/a.dart", wt, logger) == "lib/a.dart"
+        assert _scope("echo x > lib/a.dart", wt, logger) == "lib/a.dart"
+
+    def test_symlink_into_scope_denied(self, checkout, logger):
+        (checkout / "lib").mkdir()
+        (checkout / "docs").mkdir()
+        (checkout / "docs" / "ln").symlink_to(checkout / "lib")
+        assert _scope("echo x > docs/ln/a.dart", checkout, logger) == "lib/a.dart"
+
+
+class TestScopeViolationAllowed:
+    """豁免與範圍外：每個豁免項一筆應放行。"""
+
+    @pytest.mark.parametrize("cmd", [
+        # 暫存區、變數路徑、/dev/null
+        "echo x > /tmp/out.txt",
+        "echo x > $S/x",
+        "echo x > ${S}/x",
+        "echo x > ~/note.txt",
+        "echo x > /dev/null",
+        "cmd > /dev/null 2>&1",
+        # git 自身
+        "git mv old.dart lib/new.dart",
+        "git -C . mv test/a.dart test/b.dart",
+        "git worktree add .claude/worktrees/w2 -b feat/x",
+        "git worktree remove .claude/worktrees/w2",
+        "echo x > .git/info/exclude",
+        # worktree 目錄本身與其範圍外內容
+        "echo x > .claude/worktrees/w2/notes.txt",
+        # 建置與快取產物
+        "cp a.pyc .claude/hooks/__pycache__/a.pyc",
+        "echo x > .claude/hooks/.venv/pyvenv.cfg",
+        "echo x > .claude/hooks/.pytest_cache/v",
+        "echo x > lib/.dart_tool/x",
+        # 執行期狀態檔（.gitignore 列出的 .claude 本地產物）
+        "echo x > .claude/hook-logs/foo/a.log",
+        "echo '{}' > .claude/dispatch-active.json",
+        "echo x > .claude/dispatch-active.lock",
+        "echo x > .claude/hook-state/s.json",
+        "echo x > .claude/state/s.json",
+        "echo x > .claude/pm-status.json",
+        "echo x > .claude/plans/p.md",
+        "echo x > .claude/handoff/h.json",
+        # 一般文件與其他目錄
+        "echo x > docs/notes.md",
+        "cat lib/a.dart",
+        "grep -rn foo lib/ test/",
+        "flutter test test/unit/foo_test.dart",
+        # CLI 自寫檔：目標路徑不出現在命令文字，不是 shell 重導向
+        "ticket track append-log 0.5.0-W1-1 --section Solution \"text\"",
+        "ticket track commit --worktree 0.5.0-W1-1",
+        "doc validate",
+        "doc uc verify 2>&1",
+        # 描述文字不是寫入
+        "git commit -m \"fix: cat > lib/a.dart\"",
+    ])
+    def test_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
+
+    def test_path_outside_checkout_allowed(self, checkout, tmp_path_factory, logger):
+        other = tmp_path_factory.mktemp("other").resolve()
+        assert _scope(f"echo x > {other}/lib/a.dart", checkout, logger) is None
+
+    def test_scratchpad_style_absolute_path_allowed(self, checkout, logger):
+        cmd = "cat > /private/tmp/claude-501/proj/session/scratchpad/lib/x.txt <<'EOF'\nx\nEOF"
+        assert _scope(cmd, checkout, logger) is None
+
+
+class TestScopeUnparseableFailOpen:
+    """動態組成的路徑無法靜態判定：放行並記錄為殘留風險（盤點表列）。"""
+
+    @pytest.mark.parametrize("cmd", [
+        "python3 -c \"p='li'+'b/a.dart'; open(p,'w')\"",
+        "echo x > $(pwd)/lib/a.dart",
+        "echo x > `pwd`/lib/a.dart",
+        "echo x > $OTHER/lib/a.dart",
+    ])
+    def test_dynamic_path_not_resolved(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
+
+
+class TestFailClosedDeclaration:
+    """異常語意：守衛宣告 fail_closed（分派層掃描此宣告決定逾時／例外時 exit 2）。"""
+
+    def test_hook_declares_fail_closed(self):
+        import re
+        text = (hook_dir / "bash-write-boundary-guard-hook.py").read_text(encoding="utf-8")
+        assert re.search(r"fail_closed\s*=\s*True", text)
+
+    def test_exception_in_scope_check_yields_block_exit(self, monkeypatch):
+        import io
+        import json as json_mod
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json_mod.dumps(
+            {"tool_name": "Bash", "tool_input": {"command": "echo hi"}, "cwd": str(_REPO_ROOT)})))
+
+        def boom(*a, **k):
+            raise RuntimeError("boom")
+
+        with patch.object(hook_module, "_find_scope_violation", boom), \
+             patch.object(hook_module, "get_current_branch", return_value="main"):
+            assert hook_module.run_hook_safely(main, "bash-write-boundary-guard-test", fail_closed=True) == 2
+
+
+class TestDenyMessage:
+    def test_deny_reason_names_edit_write_and_git_mv(self, monkeypatch, capsys):
+        import io
+        import json as json_mod
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json_mod.dumps(
+            {"tool_name": "Bash", "tool_input": {"command": "echo x >> test/a_test.dart"},
+             "agent_id": "sub-1", "cwd": str(_REPO_ROOT)})))
+        with patch.object(hook_module, "get_current_branch", return_value="main"):
+            assert main() == 2
+        out = capsys.readouterr().out
+        assert "Edit" in out and "Write" in out and "git mv" in out
+        assert "test/a_test.dart" in out
