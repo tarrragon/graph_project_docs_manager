@@ -169,6 +169,15 @@ RED_RUN_LINE = (
     "修改產品碼前先實跑新增測試，於 Test Results 貼紅燈輸出摘要；未實跑者須標為推論。"
 )
 _RED_RUN_ANCHOR = "遇阻立即停下回報，禁繞過 Hook。\n"
+
+# --isolation worktree 專用：票面 CLI 被拒的處置與多行內容傳入方式。
+WORKTREE_CLI_REJECT_LINE = (
+    "票面 CLI（append-log、set-acceptance 等）被拒時，不以 Edit／Write 改 worktree 內票檔；"
+    "把要寫入的內容原文放進回報，由 PM 於主倉庫寫入。"
+)
+WORKTREE_HEREDOC_LINE = (
+    "多行內容以 heredoc 傳給 append-log，`### 自檢結果` 須獨立成行。"
+)
 _TEST_ACCEPTANCE_MARKERS = ("測試", "E1", "E2")
 
 
@@ -222,6 +231,13 @@ def build_skeleton(
     if require_red_run:
         skeleton = skeleton.replace(
             _RED_RUN_ANCHOR, f"{RED_RUN_LINE}\n{_RED_RUN_ANCHOR}", 1
+        )
+
+    if isolation == "worktree":
+        skeleton = skeleton.replace(
+            _RED_RUN_ANCHOR,
+            f"{WORKTREE_CLI_REJECT_LINE}\n{WORKTREE_HEREDOC_LINE}\n{_RED_RUN_ANCHOR}",
+            1,
         )
 
     if commit_policy == "agent":
