@@ -56,6 +56,22 @@ def merge_command(branch: str, logger) -> str:
         return "/worktree merge --branch {}".format(shlex.quote(branch))
 
 
+def cleanup_command(branch: str, logger) -> str:
+    """已合併 worktree 的清理建議（`/worktree cleanup`）。
+
+    判定沿用 worktree_manager 的 `_cleanup_target_arg`（ticket ID 走 positional，
+    其餘走 `--branch <quoted>`）；lazy import 與失敗退回同 merge_command。
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from worktree_manager import _cleanup_target_arg, extract_ticket_id_from_branch
+        target = _cleanup_target_arg(extract_ticket_id_from_branch(branch) or branch)
+        return "/worktree cleanup {}".format(target)
+    except Exception as exc:  # 建議字串不得使 hook 失效；已記日誌後退回
+        logger.warning("無法載入 worktree_manager，建議退回通用字面：%s", exc)
+        return "/worktree cleanup --branch {}".format(shlex.quote(branch))
+
+
 def parse_worktree_list(logger) -> List[Tuple[str, str]]:
     """取得 (路徑, 分支名) 列表（排除 main）。
 
@@ -346,12 +362,12 @@ def main() -> int:
                 lines.append("  驗證（處理後執行，確認已 clean 才可 remove）：")
                 lines.append(f"    git -C {wt_path} status --porcelain   # 無輸出即代表 clean")
                 lines.append(
-                    f"    git worktree remove {wt_path}   "
+                    f"    {cleanup_command(branch, logger)}   "
                     "# 不需 --force；dirty 狀態下 --force 會被 Guard C 阻擋"
                 )
             else:
                 lines.append("  狀態: clean")
-                lines.append(f"  建議: git worktree remove {wt_path}")
+                lines.append(f"  建議: {cleanup_command(branch, logger)}")
             lines.append("")
         lines.append("PC-149: ticket 完成後 worktree 殘留會累積 disk 與視圖污染。")
 
