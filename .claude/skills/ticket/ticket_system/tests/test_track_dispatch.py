@@ -789,3 +789,26 @@ def test_dispatch_cli_wires_red_run_line_for_test_acceptance_imp(dispatch_ticket
     rc = td_mod.execute_dispatch(_base_args(ticket_id=dispatch_ticket), "0.0.0")
     assert rc == 0
     assert RED_RUN_LINE in capsys.readouterr().out
+
+
+# --- worktree 骨架：票面 CLI 被拒處置與 heredoc 傳入（0.5.0-W1-355.1） -----
+
+from ticket_system.lib.dispatch_skeleton import (  # noqa: E402
+    WORKTREE_CLI_REJECT_LINE,
+    WORKTREE_HEREDOC_LINE,
+)
+
+
+def test_worktree_skeleton_includes_cli_reject_and_heredoc_lines():
+    out = _skeleton(isolation="worktree")
+    assert WORKTREE_CLI_REJECT_LINE in out
+    assert WORKTREE_HEREDOC_LINE in out
+    assert "### 自檢結果" in WORKTREE_HEREDOC_LINE
+    assert "heredoc" in WORKTREE_HEREDOC_LINE
+
+
+def test_none_and_review_skeletons_unchanged_by_worktree_lines():
+    for out in (_skeleton(), _skeleton(kind="review")):
+        assert WORKTREE_CLI_REJECT_LINE not in out
+        assert WORKTREE_HEREDOC_LINE not in out
+    assert _skeleton(isolation="none") == _skeleton()
