@@ -45,6 +45,89 @@ def _resolve_detect_dirs(
     return list(dict.fromkeys([_base_dir(payload_cwd, project_root), str(project_root)]))
 
 
+def _git_dir_overrides(invocation: GitInvocation) -> "tuple[List[str], List[str]]":
+    """子命令之前的 GIT_DIR／GIT_WORK_TREE 前綴（含 env 包裝）與
+    --git-dir／--work-tree 選項值，回 (git_dirs, work_trees)。"""
+    toks = invocation.statement[:invocation.subcommand_index]
+    git_dirs: List[str] = []
+    work_trees: List[str] = []
+    for i, tok in enumerate(toks):
+        name, eq, val = tok.partition("=")
+        if name in ("GIT_DIR", "--git-dir"):
+            target = git_dirs
+        elif name in ("GIT_WORK_TREE", "--work-tree"):
+            target = work_trees
+        else:
+            continue
+        if not eq:
+            if not name.startswith("--") or i + 1 >= len(toks):
+                continue
+            val = toks[i + 1]
+        target.append(val)
+    return git_dirs, work_trees
+
+
+def _is_dynamic(path: str) -> bool:
+    return any(c in path for c in "$`") or path.startswith("~")
+
+
+def _override_dirs(
+    payload_cwd: Optional[str], invocation: GitInvocation, project_root: Path
+) -> Optional[List[str]]:
+    """帶 git-dir 類覆寫的呼叫其偵測目錄；無覆寫回 None。
+
+    git dir 本身即狀態檔所在（MERGE_HEAD 等直接位於其下），work tree
+    也一併列入。路徑相對於該呼叫的 effective_dir（缺則 payload cwd／root）；
+    含變數或 `~` 的覆寫值無法可信解析，退回 cwd 與 root 兩處，不猜。
+    """
+    git_dirs, work_trees = _git_dir_overrides(invocation)
+    if not git_dirs and not work_trees:
+        return None
+    base = invocation.effective_dir or _base_dir(payload_cwd, project_root)
+    dirs: List[str] = []
+    for raw in git_dirs + work_trees:
+        if _is_dynamic(raw):
+            dirs.extend([_base_dir(payload_cwd, project_root), str(project_root)])
+        else:
+            dirs.append(str(Path(base) / raw))
+    return dirs
+
+
+def _pending_operation_in_git_dir(git_dir: str) -> Optional[str]:
+    """目錄本身即 git dir（狀態檔直接位於其下）時的判別；純檔案檢查。"""
+    g = Path(git_dir)
+    if (g / "MERGE_HEAD").is_file():
+        return _OP_MERGE
+    if (g / "CHERRY_PICK_HEAD").is_file():
+        return _OP_CHERRY_PICK
+    if (g / "REVERT_HEAD").is_file():
+        return _OP_REVERT
+    if (g / "rebase-merge").is_dir() or (g / "rebase-apply").is_dir():
+        if (g / "rebase-merge" / "amend").is_file():
+            return _OP_REBASE_EDIT
+        return _OP_REBASE
+    return None
+
+
+def _resolve_detect_dirs_multi(
+    payload_cwd: Optional[str],
+    invocations: Optional[List[GitInvocation]],
+    project_root: Path,
+) -> List[str]:
+    """所有 commit 目標的偵測目錄聯集（有序去重）。
+
+    每筆呼叫各自推導（含 git-dir 類覆寫目標）；無呼叫時等同
+    `_resolve_detect_dirs(cwd, None, root)`。
+    """
+    if not invocations:
+        return _resolve_detect_dirs(payload_cwd, None, project_root)
+    dirs: List[str] = []
+    for inv in invocations:
+        override = _override_dirs(payload_cwd, inv, project_root)
+        dirs.extend(override or _resolve_detect_dirs(payload_cwd, inv, project_root))
+    return list(dict.fromkeys(dirs))
+
+
 _TARGET_MERGE = "MERGE_HEAD"
 _TARGET_OTHER = "cherry-pick／revert／rebase 狀態"
 
@@ -191,7 +274,12 @@ def _pending_operation(detect_dir, logger=None) -> Optional[str]:
 
 def _pending_operation_in_dirs(detect_dirs, logger=None) -> Optional[str]:
     """多個偵測目錄：任一處有阻擋型進行中狀態就回該狀態，其次 rebase-edit。"""
-    found = [op for op in (_pending_operation(d, logger) for d in detect_dirs) if op]
+    found = []
+    for d in detect_dirs:
+        # d 可能是 work tree，也可能是覆寫指定的 git dir 本身，兩種都查
+        op = _pending_operation(d, logger) or _pending_operation_in_git_dir(d)
+        if op:
+            found.append(op)
     for op in found:
         if op in _BLOCKING_OPS:
             return op

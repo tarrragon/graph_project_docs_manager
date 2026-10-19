@@ -193,6 +193,6 @@ def test_mutation_no_expanduser_diverges_from_expected(env, monkeypatch):
 def test_mutation_single_dir_detection_misses_root(monkeypatch, tmp_path):
     cwd, root = tmp_path / "cwd", tmp_path / "root"
     monkeypatch.setattr(
-        bare, "_resolve_detect_dirs", lambda c, inv, r: [str(c)]
+        bare, "_resolve_detect_dirs_multi", lambda c, invs, r: [str(c)]
     )
     assert _run_bare(monkeypatch, _UNKNOWN_CMD, cwd, root, {str(root)}) == 0

@@ -1421,3 +1421,81 @@ class TestParseCauseMessages:
         err = capsys.readouterr().err
         assert "非命令位置" in err
         assert "未閉合引號" not in err
+
+
+# ============================================================================
+# 進行中操作偵測涵蓋全部 commit 目標與 GIT_DIR／--git-dir 覆寫目標
+# 不 mock 偵測函式；E2：應擋寫法配乾淨倉庫／單一目標的放行對照
+# ============================================================================
+
+
+@pytest.fixture
+def merging_and_clean(tmp_path):
+    merging = tmp_path / "merging"
+    merging.mkdir()
+    _real_git(merging, "init", "-q", "-b", "main")
+    (merging / "a.txt").write_text("a\n")
+    _real_git(merging, "add", "a.txt")
+    _real_git(merging, "commit", "-q", "-m", "base")
+    _real_git(merging, "checkout", "-q", "-b", "side")
+    (merging / "b.txt").write_text("b\n")
+    _real_git(merging, "add", "b.txt")
+    _real_git(merging, "commit", "-q", "-m", "side")
+    _real_git(merging, "checkout", "-q", "main")
+    _real_git(merging, "merge", "--no-ff", "--no-commit", "side")
+    clean = tmp_path / "clean"
+    clean.mkdir()
+    _real_git(clean, "init", "-q", "-b", "main")
+    return merging, clean
+
+
+def _run_all_targets(monkeypatch, command, cwd, root):
+    payload = {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)}
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+    monkeypatch.setattr(hook_module, "get_project_root", lambda: root)
+    monkeypatch.setattr(hook_module, "_get_active_dispatches_safe", lambda r: [])
+    monkeypatch.setattr(hook_module, "_get_staged_files", lambda r: [])
+    monkeypatch.setattr(hook_module, "_get_unstaged_tracked_files", lambda r: [])
+    return main()
+
+
+class TestPendingOperationAllTargets:
+    def test_chained_second_dash_c_targets_merging_checkout_blocks(
+        self, monkeypatch, merging_and_clean
+    ):
+        merging, clean = merging_and_clean
+        cmd = f'git -C {clean} commit -m a && git -C {merging} commit -m b'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 2
+
+    def test_git_dir_env_prefix_blocks(self, monkeypatch, merging_and_clean):
+        merging, clean = merging_and_clean
+        cmd = f'GIT_DIR={merging}/.git GIT_WORK_TREE={merging} git commit -m b'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 2
+
+    def test_git_dir_option_blocks(self, monkeypatch, merging_and_clean):
+        merging, clean = merging_and_clean
+        cmd = f'git --git-dir={merging}/.git --work-tree={merging} commit -m b'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 2
+
+    def test_git_dir_option_separate_token_blocks(self, monkeypatch, merging_and_clean):
+        merging, clean = merging_and_clean
+        cmd = f'git --git-dir {merging}/.git commit -m b'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 2
+
+    def test_clean_repo_single_target_passes(self, monkeypatch, merging_and_clean):
+        _, clean = merging_and_clean
+        cmd = f'git -C {clean} commit -m a'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 0
+
+    def test_chained_both_clean_passes(self, monkeypatch, merging_and_clean, tmp_path):
+        _, clean = merging_and_clean
+        other = tmp_path / "other"
+        other.mkdir()
+        _real_git(other, "init", "-q", "-b", "main")
+        cmd = f'git -C {clean} commit -m a && git -C {other} commit -m b'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 0
+
+    def test_git_dir_override_to_clean_repo_passes(self, monkeypatch, merging_and_clean):
+        _, clean = merging_and_clean
+        cmd = f'git --git-dir={clean}/.git commit -m a'
+        assert _run_all_targets(monkeypatch, cmd, clean, clean) == 0
