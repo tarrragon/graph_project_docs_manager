@@ -531,3 +531,20 @@ def test_printed_forms_parse_with_worktree_argparse(capsys, monkeypatch):
             monkeypatch.setattr(sys, "argv", ["worktree_manager.py"] + argv[1:])
             assert worktree_manager.main() == 0
             assert (seen["t"], seen["b"]) == expect
+
+
+def test_guard_a_still_blocks_when_worktree_manager_import_fails(capsys):
+    """lazy import 失敗時阻擋型守衛仍須阻擋，建議退回通用字面（分支名 shlex.quote）。"""
+    branch = "fix/it's here"
+    with patch.dict(sys.modules, {"worktree_manager": None}):
+        err = _block_stderr(capsys, branch, guard="A")
+    assert "Guard A" in err
+    assert f"/worktree merge --branch {shlex.quote(branch)}" in err
+    assert not _BARE_MERGE.search(err)
+
+
+def test_guard_c_unknown_branch_fallback_when_import_fails(capsys):
+    with patch.dict(sys.modules, {"worktree_manager": None}):
+        err = _block_stderr(capsys, None, guard="C")
+    assert "Guard C" in err
+    assert "/worktree merge --branch <branch>" in err

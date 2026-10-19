@@ -406,3 +406,13 @@ def test_printed_forms_parse_with_worktree_argparse(monkeypatch, capsys):
         monkeypatch.setattr(sys, "argv", ["worktree_manager.py"] + argv[1:])
         assert worktree_manager.main() == 0
         assert (seen["t"], seen["b"]) == expect
+
+
+def test_reminder_falls_back_when_worktree_manager_import_fails(monkeypatch, capsys):
+    from unittest.mock import patch
+
+    branch = "fix/it's here"
+    with patch.dict(sys.modules, {"worktree_manager": None}):
+        msg = _messages_for(monkeypatch, capsys, branch, unmerged=True, dirty=False)
+    assert f"建議: /worktree merge --branch {shlex.quote(branch)}" in msg
+    assert not _BARE_MERGE.search(msg)
