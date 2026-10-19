@@ -25,6 +25,9 @@ from typing import List, Optional, Set, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from worktree_manager import merge_suggestion_command  # noqa: E402
+
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -270,7 +273,7 @@ def main() -> int:
                 lines.append(f"    - {commit}")
             if len(commits) > 5:
                 lines.append(f"    ... 還有 {len(commits) - 5} 個")
-            lines.append(f"  建議: git merge {branch} --no-edit")
+            lines.append(f"  建議: {merge_suggestion_command(branch)}")
             lines.append("")
         lines.append("請在 ticket 完成前合併這些 worktree 的變更。")
         if merged:
@@ -323,7 +326,7 @@ def main() -> int:
                 lines.append(f"         git -C {wt_path} add <exact-path>")
                 lines.append(f"         git -C {wt_path} diff --cached --name-only   # 確認只含目標檔")
                 lines.append(f'         git -C {wt_path} commit -m "<message>"')
-                lines.append(f"         git merge {branch} --no-edit")
+                lines.append(f"         {merge_suggestion_command(branch)}")
                 lines.append("    2. 確認變更確為可捨棄後清除：")
                 lines.append(f"         git -C {wt_path} restore .   # 還原已追蹤檔案的未提交修改")
                 lines.append(f"         git -C {wt_path} clean -fd .   # 清除未追蹤檔案與目錄")

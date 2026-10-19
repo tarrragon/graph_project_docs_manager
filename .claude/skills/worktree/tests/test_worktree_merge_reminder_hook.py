@@ -254,7 +254,7 @@ class TestMergedCleanupReminderMessage:
         assert "git -C /path/to/wt add <exact-path>" in message
         assert "git -C /path/to/wt diff --cached --name-only" in message
         assert not RULE7_PATHSPEC_COMMIT.search(message)
-        assert "git merge feat/0.0.0-W1-007 --no-edit" in message
+        assert "/worktree merge 0.0.0-W1-007" in message
         assert "git -C /path/to/wt restore ." in message
         assert "git -C /path/to/wt clean -fd ." in message
         assert "會被 Guard C 阻擋" in message
@@ -331,3 +331,78 @@ class TestMergedCleanupReminderMessage:
         message = _run_main_and_get_message(capsys)
         assert "[Worktree 合併提醒]" in message
         assert "[遺失警告]" not in message
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-371：落地 main 建議改走合併閘門（/worktree merge），不得印裸 git merge
+# ---------------------------------------------------------------------------
+
+import shlex
+import sys
+
+_BARE_MERGE = re.compile(r"\bgit\s+merge\b")
+
+
+def _messages_for(monkeypatch, capsys, branch, *, unmerged, dirty):
+    _install_main_mocks(
+        monkeypatch,
+        worktrees=[("/path/to/wt", branch)],
+        unmerged_commits_by_branch={branch: ["abc1234 msg"]} if unmerged else {},
+        dirty_files_by_path={"/path/to/wt": [(" M", "a.md")]} if dirty else {},
+    )
+    return _run_main_and_get_message(capsys)
+
+
+def test_bare_merge_checker_flags_old_literal():
+    """正向對照：舊字面必須被判為違規。"""
+    assert _BARE_MERGE.search("建議: git merge feat/0.0.0-W1-001 --no-edit")
+
+
+@pytest.mark.parametrize("unmerged,dirty", [(True, False), (False, True), (True, True)])
+def test_suggestions_have_no_bare_merge_nor_checkout_main(
+    monkeypatch, capsys, unmerged, dirty
+):
+    msg = _messages_for(
+        monkeypatch, capsys, "feat/0.0.0-W1-001", unmerged=unmerged, dirty=dirty
+    )
+    assert not _BARE_MERGE.search(msg)
+    assert "git checkout main" not in msg
+    assert "/worktree merge 0.0.0-W1-001" in msg
+
+
+def test_ticket_branch_prints_ticket_form(monkeypatch, capsys):
+    msg = _messages_for(
+        monkeypatch, capsys, "feat/0.0.0-W1-001", unmerged=True, dirty=False
+    )
+    assert "建議: /worktree merge 0.0.0-W1-001" in msg
+    assert "--branch" not in msg
+
+
+def test_other_branch_prints_quoted_branch_form(monkeypatch, capsys):
+    for branch in ("worktree-agent-a1b2c3d4", "fix/it's here"):
+        msg = _messages_for(monkeypatch, capsys, branch, unmerged=True, dirty=False)
+        assert f"/worktree merge --branch {shlex.quote(branch)}" in msg
+
+
+def test_printed_forms_parse_with_worktree_argparse(monkeypatch, capsys):
+    """PC-GPD-034：印出的建議必須能被 worktree 的 argparse 解析並導向 cmd_merge。"""
+    sys.path.insert(0, str(_HOOK_FILE.parent.parent / "scripts"))
+    import worktree_manager
+
+    for branch, expect in (
+        ("worktree-agent-a1b2c3d4", (None, "worktree-agent-a1b2c3d4")),
+        ("fix/it's here", (None, "fix/it's here")),
+        ("feat/0.0.0-W1-001", ("0.0.0-W1-001", None)),
+    ):
+        msg = _messages_for(monkeypatch, capsys, branch, unmerged=True, dirty=False)
+        line = next(l.strip() for l in msg.splitlines() if "/worktree merge" in l)
+        argv = shlex.split(line.split("建議:", 1)[-1])
+        assert argv[0] == "/worktree"
+        seen = {}
+        monkeypatch.setattr(
+            worktree_manager, "cmd_merge",
+            lambda ticket_id, **kw: seen.update(t=ticket_id, b=kw.get("branch")) or 0,
+        )
+        monkeypatch.setattr(sys, "argv", ["worktree_manager.py"] + argv[1:])
+        assert worktree_manager.main() == 0
+        assert (seen["t"], seen["b"]) == expect

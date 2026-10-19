@@ -259,7 +259,7 @@ class TestMain:
         captured = capsys.readouterr()
         assert "Guard C" in captured.err
         # 分支未知時，merge 步驟改用 <branch> 佔位並附說明，而非留空或報錯
-        assert "git merge <branch> --no-edit" in captured.err
+        assert "/worktree merge --branch <branch>" in captured.err
 
     def test_dirty_block_message_groups_untracked_and_tracked(self, capsys):
         """0.2.1-W3-285：分組呈現比照 worktree-merge-reminder-hook，未追蹤與
@@ -297,7 +297,7 @@ class TestMain:
         assert rc == 2
         captured = capsys.readouterr()
         assert "commit -m" in captured.err
-        assert "git merge feat/1.2.0-W1-030 --no-edit" in captured.err
+        assert "/worktree merge 1.2.0-W1-030" in captured.err
 
     def test_dirty_block_message_restore_clean_are_literal_commands(self, capsys):
         """0.2.1-W3-285：restore 與 clean 拆為逐字可執行命令並標明作用對象，
@@ -453,3 +453,81 @@ class TestGuardAContentEquivalence:
         message = hook._guard_a(str(repo), "feat/new", logger)
         assert message is not None
         assert "b.txt" in message
+
+
+# ---------------------------------------------------------------------------
+# 0.5.0-W1-371：落地 main 建議改走合併閘門，不得印裸 git merge / git checkout main
+# ---------------------------------------------------------------------------
+
+import shlex
+import sys
+
+_BARE_MERGE = re.compile(r"\bgit\s+merge\b")
+
+
+def _block_stderr(capsys, branch, *, guard):
+    data = {"tool_input": {"command": "git worktree remove --force .claude/worktrees/agent-abc"}}
+    unmerged = ["app/lib/foo.dart"] if guard == "A" else []
+    dirty = [] if guard == "A" else [" M tickets/a.md"]
+    with patch.object(hook, "read_json_from_stdin", return_value=data), patch.object(
+        hook, "_branch_of_worktree", return_value=branch
+    ), patch.object(hook, "_unmerged_files", return_value=unmerged), patch.object(
+        hook, "_dirty_status", return_value=dirty
+    ):
+        assert hook.main() == 2
+    return capsys.readouterr().err
+
+
+def _merge_command_line(err):
+    line = next(l for l in err.splitlines() if "/worktree merge" in l)
+    return line[line.index("/worktree merge"):].split("  #", 1)[0].strip()
+
+
+def test_bare_merge_checker_flags_old_literal():
+    assert _BARE_MERGE.search("git checkout main && git merge feat/x --no-edit")
+
+
+@pytest.mark.parametrize(
+    "guard,branch",
+    [("A", "feat/1.2.0-W1-030"), ("A", "feat/x"), ("C", "feat/1.2.0-W1-030"),
+     ("C", "feat/x"), ("C", None)],
+)
+def test_block_messages_have_no_bare_merge_nor_checkout_main(capsys, guard, branch):
+    err = _block_stderr(capsys, branch, guard=guard)
+    assert not _BARE_MERGE.search(err)
+    assert "git checkout main" not in err
+    assert "/worktree merge" in err
+
+
+def test_ticket_branch_prints_ticket_form(capsys):
+    for guard in ("A", "C"):
+        err = _block_stderr(capsys, "feat/1.2.0-W1-030", guard=guard)
+        assert _merge_command_line(err) == "/worktree merge 1.2.0-W1-030"
+
+
+def test_other_branch_prints_quoted_branch_form(capsys):
+    for branch in ("worktree-agent-a1b2c3d4", "fix/it's here"):
+        err = _block_stderr(capsys, branch, guard="A")
+        assert _merge_command_line(err) == f"/worktree merge --branch {shlex.quote(branch)}"
+
+
+def test_printed_forms_parse_with_worktree_argparse(capsys, monkeypatch):
+    """PC-GPD-034：印出的建議必須能被 worktree 的 argparse 解析並導向 cmd_merge。"""
+    sys.path.insert(0, str(_HOOK_FILE.parent.parent / "scripts"))
+    import worktree_manager
+
+    for branch, expect in (
+        ("worktree-agent-a1b2c3d4", (None, "worktree-agent-a1b2c3d4")),
+        ("fix/it's here", (None, "fix/it's here")),
+        ("feat/1.2.0-W1-030", ("1.2.0-W1-030", None)),
+    ):
+        for guard in ("A", "C"):
+            argv = shlex.split(_merge_command_line(_block_stderr(capsys, branch, guard=guard)))
+            seen = {}
+            monkeypatch.setattr(
+                worktree_manager, "cmd_merge",
+                lambda ticket_id, **kw: seen.update(t=ticket_id, b=kw.get("branch")) or 0,
+            )
+            monkeypatch.setattr(sys, "argv", ["worktree_manager.py"] + argv[1:])
+            assert worktree_manager.main() == 0
+            assert (seen["t"], seen["b"]) == expect

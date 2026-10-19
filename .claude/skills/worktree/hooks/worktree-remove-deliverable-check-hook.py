@@ -38,6 +38,9 @@ from typing import Callable, List, Optional, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from worktree_manager import merge_suggestion_command  # noqa: E402
+
 from lib import (
     setup_hook_logging,
     run_hook_safely,
@@ -65,9 +68,9 @@ worktree: {path}
 （git fsck 無 unreachable）。這正是 1.2.0-W1-028 事故一的根因。
 
 修復方式（擇一）：
-  1. 先 merge：git checkout main && git merge {branch} --no-edit
-     若被擋下（fatal: ref updates aborted by hook）：git merge --abort 清理
-     MERGE_HEAD 殘局後依 stderr 訊息修正重試（合併本身已對 branch-verify
+  1. 先 merge（走合併閘門，隔離索引一步完成，不留 MERGE_HEAD 殘局）：
+       {merge_cmd}
+     若被擋下，依 stderr 訊息修正後重試（合併本身已對 branch-verify
      豁免，仍被擋通常是其他內容 guard，如 reference-stability-rule8）
   2. 或 cherry-pick 有價值 commit 後再 remove
   3. 用世界平面固定值驗證交付物已在 main（tool-output-trust 規則 3）：
@@ -136,9 +139,9 @@ def _format_dirty_block_message(path: str, branch: Optional[str], dirty_lines: L
         '       git -C {} commit -m "<message>"'.format(path),
     ])
     if branch:
-        lines.append("       git merge {} --no-edit".format(branch))
+        lines.append("       {}".format(merge_suggestion_command(branch)))
     else:
-        lines.append("       git merge <branch> --no-edit   # <branch> 為此 worktree 對應分支")
+        lines.append("       /worktree merge --branch <branch>   # <branch> 為此 worktree 對應分支")
     lines.extend([
         "  2. 確認變更確為可捨棄（如暫存/測試殘留）後清除：",
         "       git -C {} restore .   # 還原已追蹤檔案的未提交修改".format(path),
@@ -277,7 +280,10 @@ def _guard_a(path: str, branch: Optional[str], logger) -> Optional[str]:
 
     files_list = "\n".join("  - {}".format(f) for f in sorted(files))
     logger.warning("阻擋 remove：分支 %s 有 %d 個未合併交付物檔案", branch, len(files))
-    return BLOCK_MESSAGE.format(path=path, branch=branch, count=len(files), files=files_list)
+    return BLOCK_MESSAGE.format(
+        path=path, branch=branch, count=len(files), files=files_list,
+        merge_cmd=merge_suggestion_command(branch),
+    )
 
 
 def _guard_c(path: str, branch: Optional[str], logger) -> Optional[str]:
