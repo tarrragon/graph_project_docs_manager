@@ -227,7 +227,7 @@ def _execute_set_dict_subfields(
         existing = ticket.get(field_name)
         prior_files = read_scope_value(ticket, "where.files")
         prior_files = list(prior_files) if isinstance(prior_files, list) else prior_files
-        working =dict(existing) if isinstance(existing, dict) else dict(_DICT_FIELD_DEFAULTS[field_name])
+        working = dict(existing) if isinstance(existing, dict) else dict(_DICT_FIELD_DEFAULTS[field_name])
 
         if field_name == "who":
             new_current = subfields.get("current", value)
