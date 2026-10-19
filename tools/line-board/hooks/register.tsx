@@ -6,7 +6,15 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { BoardSnapshot, LanesResult, MergeLogResult, SessionState, SessionsResult, TicketStatus } from '../types'
+import type {
+  BoardSnapshot,
+  LanesResult,
+  MergeGateEntry,
+  MergeLogResult,
+  SessionState,
+  SessionsResult,
+  TicketStatus,
+} from '../types'
 import {
   DISPATCH_TICKET_PATH,
   MERGE_LOG_PATH,
@@ -17,8 +25,12 @@ import {
   formatQueue,
   isInRepo,
   laneSessionStatus,
+  formatMergeGateEntry,
+  formatMergeGateHolder,
   laneTicketIds,
-  mergeGateLines,
+  mergeGateEntries,
+  mergeGateHolder,
+  mergeGateResultColor,
   parseFrontmatterStatus,
   parseLanes,
   parseSessionFile,
@@ -63,8 +75,14 @@ export const register: Register = on => {
     const { Box, Text } = $.ui.resolve(e)
     const board = await read($, snapshot)
 
-    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes 或 sessions 欄），等下一輪讀取覆寫前先顯示讀取中。
-    if (board.kind === 'loading' || board.lanes === undefined || board.sessions === undefined) {
+    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes、sessions 欄，或閘門紀錄仍是整行原文），
+    // 等下一輪讀取覆寫前先顯示讀取中。
+    if (
+      board.kind === 'loading' ||
+      board.lanes === undefined ||
+      board.sessions === undefined ||
+      (board.mergeLog.kind === 'ok' && board.mergeLog.entries === undefined)
+    ) {
       return <Text dimColor>讀取中…</Text>
     }
 
@@ -128,8 +146,31 @@ export const register: Register = on => {
 
     function renderMergeLog(log: MergeLogResult) {
       if (log.kind === 'error') return <Text color="red">讀取 {MERGE_LOG_PATH} 失敗（{log.message}）</Text>
-      if (log.lines.length === 0) return <Text dimColor>（尚無紀錄）</Text>
-      return log.lines.map(line => <Text wrap="truncate-end">{line}</Text>)
+      const holder =
+        log.holder === null
+          ? []
+          : [
+              <Text color="yellow" bold wrap="truncate-middle">
+                {formatMergeGateHolder(log.holder)}
+              </Text>,
+            ]
+      if (log.entries.length === 0) return [...holder, <Text dimColor>（尚無紀錄）</Text>]
+      return [...holder, ...log.entries.map(entry => renderMergeGateEntry(entry))]
+    }
+
+    /**
+     * 一行閘門紀錄：欄位行以 truncate-middle 截斷，寬度不足時時間與結果兩端都保留；
+     * 結束行依結果上色。格式不符的行原樣換行顯示，不截斷。
+     */
+    function renderMergeGateEntry(entry: MergeGateEntry) {
+      const text = formatMergeGateEntry(entry)
+      if (entry.kind === 'raw') return <Text>{text}</Text>
+      const color = entry.kind === 'end' ? mergeGateResultColor(entry.result) : undefined
+      return (
+        <Text color={color} wrap="truncate-middle">
+          {text}
+        </Text>
+      )
     }
   })
 }
@@ -259,7 +300,8 @@ async function readTicketStatus($: EngineInterface, mainPath: string, id: string
 
 async function readMergeLog($: EngineInterface, mainPath: string): Promise<MergeLogResult> {
   try {
-    return { kind: 'ok', lines: mergeGateLines(await $.fs.read(`${mainPath}/${MERGE_LOG_PATH}`), MERGE_LOG_LINES) }
+    const entries = mergeGateEntries(await $.fs.read(`${mainPath}/${MERGE_LOG_PATH}`))
+    return { kind: 'ok', entries: entries.slice(-MERGE_LOG_LINES), holder: mergeGateHolder(entries) }
   } catch (error) {
     $.ui.log(`line-board: 讀取 ${MERGE_LOG_PATH} 失敗：${messageOf(error)}`, { to: 'debug' })
     return { kind: 'error', message: messageOf(error) }

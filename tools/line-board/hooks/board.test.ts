@@ -12,17 +12,24 @@ import {
   SESSIONS_DIR,
   TICKETS_DIR,
   formatAge,
+  formatMergeGateEntry,
+  formatMergeGateHolder,
   formatQueue,
   isInRepo,
   laneSessionStatus,
   laneTicketIds,
+  mergeGateEntries,
+  mergeGateHolder,
   mergeGateLines,
+  mergeGateResultColor,
   parseFrontmatterStatus,
+  parseMergeGateLine,
   parseLanes,
   parseQueue,
   parseSessionFile,
   parseWorktreePaths,
   sessionStatusFileNames,
+  shortBranch,
   sortSessions,
 } from './parse'
 
@@ -81,7 +88,52 @@ const MERGE_LOG = [
   '',
 ].join('\n')
 
-const ticketFile = (status: string) => `---\nid: x\nstatus: ${status}\nwho: y\n---\n# body\nstatus: ignored\n`
+/**
+ * 仿真實 worktree-merge.log（2026-10-19 16:19–16:41 段）：兩個分支的開始與結束交錯，
+ * 最後一筆開始（feat/0.5.0-W1-351）沒有對應結束，代表閘門正被它持有。
+ * 另插一筆真實紀錄中分支名最長的中止結束行（取自 2026-10-15 的紀錄格式），測窄面板寬度與中止上色。
+ */
+const MERGE_LOG_HOLDING = [
+  '2026-10-19T16:19:45 [合併閘門] 開始｜target main｜分支 worktree-agent-a352c31d77c3daa98｜commit c6f614e51840',
+  '2026-10-19T16:21:08 [合併閘門] 開始｜target main｜分支 worktree-agent-a74808594aa6f7e6f｜commit d198cdfebf44',
+  '2026-10-19T16:21:11 [合併閘門] 結束｜target main｜分支 worktree-agent-a74808594aa6f7e6f｜commit fd67ce66f7e5｜結果 寫入',
+  '2026-10-19T16:26:50 [合併前測試] 套件 hooks：綠燈｜7222 passed',
+  '2026-10-19T16:31:50 [合併閘門] 結束｜target main｜分支 worktree-agent-a352c31d77c3daa98｜commit ca1d747c0332｜結果 寫入',
+  '2026-10-15T22:15:13 [合併閘門] 結束｜target main｜分支 worktree-doc-split-338-2-5｜commit 9238cea6802f｜結果 中止',
+  '2026-10-19T16:41:49 [合併前驗收] target=0.5.0-W1-351 reason=收尾',
+  '2026-10-19T16:41:49 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-351｜commit 52477a34f0ce',
+  '',
+].join('\n')
+
+/** 格式不符的 `[合併閘門]` 行：開始行沒有欄位、結束行沒有結果、時間戳不是 ISO 形式。 */
+const MALFORMED_GATE_LINES = [
+  '2026-10-19T16:50:00 [合併閘門] 開始',
+  '2026-10-19T16:51:00 [合併閘門] 結束｜target main｜分支 feat/0.5.0-W1-400｜commit abc',
+  '2026-10-19 16:52:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-401｜commit def',
+]
+
+/**
+ * 終端機顯示寬度：CJK 與全形字元占 2 欄，其餘 1 欄。
+ * 測試套件只拿得到畫出的樹、拿不到終端機的實際繪製，以此推算一行在固定欄寬的面板內是否放得下。
+ */
+function displayWidth(text: string): number {
+  let width = 0
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0
+    const isWide =
+      (code >= 0x1100 && code <= 0x115f) ||
+      (code >= 0x2e80 && code <= 0xa4cf) ||
+      (code >= 0xac00 && code <= 0xd7a3) ||
+      (code >= 0xf900 && code <= 0xfaff) ||
+      (code >= 0xfe30 && code <= 0xfe4f) ||
+      (code >= 0xff00 && code <= 0xff60) ||
+      (code >= 0xffe0 && code <= 0xffe6)
+    width += isWide ? 2 : 1
+  }
+  return width
+}
+
+const ticketFile =(status: string) => `---\nid: x\nstatus: ${status}\nwho: y\n---\n# body\nstatus: ignored\n`
 
 describe('parseWorktreePaths', () => {
   test('取 git worktree list 的所有 checkout，主 checkout 在第一筆', () => {
@@ -342,6 +394,83 @@ describe('mergeGateLines', () => {
   })
 })
 
+describe('parseMergeGateLine', () => {
+  test('開始行取時間（HH:MM:SS）與分支；結束行另取結果', () => {
+    expect(
+      parseMergeGateLine('2026-10-19T16:04:26 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-328｜commit ee5e80e6b9a4'),
+    ).toEqual({ kind: 'start', time: '16:04:26', branch: 'feat/0.5.0-W1-328' })
+    expect(
+      parseMergeGateLine(
+        '2026-10-19T16:11:45 [合併閘門] 結束｜target main｜分支 feat/0.5.0-W1-328｜commit a9dc3b442c24｜結果 寫入',
+      ),
+    ).toEqual({ kind: 'end', time: '16:11:45', branch: 'feat/0.5.0-W1-328', result: '寫入' })
+  })
+
+  test('反例：格式不符的行原樣保留為 raw，不丟棄、不拋錯', () => {
+    for (const line of MALFORMED_GATE_LINES) {
+      expect(parseMergeGateLine(line)).toEqual({ kind: 'raw', text: line })
+    }
+  })
+
+  test('格式不符的行仍在 mergeGateEntries 結果中，順序不變', () => {
+    const text = [MERGE_LOG, ...MALFORMED_GATE_LINES].join('\n')
+    expect(mergeGateEntries(text).map(entry => entry.kind)).toEqual(['start', 'end', 'raw', 'raw', 'raw'])
+  })
+})
+
+describe('shortBranch', () => {
+  test('worktree-agent-<id> 縮成 agent-<前 6 碼>，feat/<票號> 縮成票號，其他分支原樣', () => {
+    expect(shortBranch('worktree-agent-a352c31d77c3daa98')).toBe('agent-a352c3')
+    expect(shortBranch('feat/0.5.0-W1-351')).toBe('0.5.0-W1-351')
+    expect(shortBranch('worktree-e-batch-306')).toBe('worktree-e-batch-306')
+  })
+})
+
+describe('formatMergeGateEntry', () => {
+  test('開始行為 時間｜開始｜短分支，結束行另接結果；raw 為原文', () => {
+    const [start, end] = mergeGateEntries(MERGE_LOG)
+    expect(start === undefined ? '' : formatMergeGateEntry(start)).toBe('16:04:26｜開始｜0.5.0-W1-328')
+    expect(end === undefined ? '' : formatMergeGateEntry(end)).toBe('16:11:45｜結束｜0.5.0-W1-328｜寫入')
+    expect(formatMergeGateEntry({ kind: 'raw', text: 'x [合併閘門] 開始' })).toBe('x [合併閘門] 開始')
+  })
+})
+
+describe('mergeGateResultColor', () => {
+  test('寫入綠、中止黃、拒絕與紅燈紅，其他結果不上色', () => {
+    expect(mergeGateResultColor('寫入')).toBe('green')
+    expect(mergeGateResultColor('中止')).toBe('yellow')
+    expect(mergeGateResultColor('拒絕')).toBe('red')
+    expect(mergeGateResultColor('紅燈')).toBe('red')
+    expect(mergeGateResultColor('其他')).toBeUndefined()
+  })
+})
+
+describe('mergeGateHolder', () => {
+  test('最後一筆開始沒有對應結束時，回傳該分支與開始時間；開始與結束交錯不影響判定', () => {
+    const holder = mergeGateHolder(mergeGateEntries(MERGE_LOG_HOLDING))
+    expect(holder).toEqual({ branch: 'feat/0.5.0-W1-351', since: '16:41:49' })
+    expect(holder === null ? '' : formatMergeGateHolder(holder)).toBe('閘門使用中：0.5.0-W1-351（自 16:41:49）')
+  })
+
+  test('對照：最後一筆開始已有同分支的結束時回傳 null', () => {
+    expect(mergeGateHolder(mergeGateEntries(MERGE_LOG))).toBeNull()
+  })
+
+  test('同分支先前已結束、重新開始後尚未結束時，仍視為持有', () => {
+    const text = [MERGE_LOG, '2026-10-19T17:00:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-328｜commit 1'].join('\n')
+    expect(mergeGateHolder(mergeGateEntries(text))).toEqual({ branch: 'feat/0.5.0-W1-328', since: '17:00:00' })
+  })
+
+  test('其他分支的結束行不算對應結束；沒有任何開始行時回傳 null', () => {
+    const text = [
+      '2026-10-19T17:00:00 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-500｜commit 1',
+      '2026-10-19T17:00:05 [合併閘門] 結束｜target main｜分支 feat/0.5.0-W1-499｜commit 2｜結果 寫入',
+    ].join('\n')
+    expect(mergeGateHolder(mergeGateEntries(text))).toEqual({ branch: 'feat/0.5.0-W1-500', since: '17:00:00' })
+    expect(mergeGateHolder([])).toBeNull()
+  })
+})
+
 describe('Pane', () => {
   /** 家目錄與 session 狀態檔目錄（測試用的固定值）。 */
   const HOME = '/home/u'
@@ -408,12 +537,18 @@ describe('Pane', () => {
     },
   } as const
 
-  async function startBoard($: Engine, on: On, stub: Stub) {
+  /** bodyColumns：面板內容寬（欄），預設 100；停靠在側邊的窄面板以 60 測。 */
+  async function startBoard($: Engine, on: On, stub: Stub, bodyColumns: number = PANE.props.bodyColumns) {
     const clock = mock.clock(on, { now: NOW_MS })
     const readPaths = stubRepo(on, stub)
     await $.session.start({ cwd: '/wt', surface: 'terminal', isInteractive: true })
     await clock.advance(1)
-    const ui = await $.ui.mount({ plugin: 'line-board', surface: 'terminal', ...PANE })
+    const ui = await $.ui.mount({
+      plugin: 'line-board',
+      surface: 'terminal',
+      ...PANE,
+      props: { ...PANE.props, bodyColumns },
+    })
     return { ui, readPaths }
   }
 
@@ -500,11 +635,57 @@ describe('Pane', () => {
     expect(await ui.find({ type: 'Text', text: /^L9｜/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^L11｜/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /328\.1|348〔/ })).toBeUndefined()
-    expect(await ui.find({ type: 'Text', text: /\[合併閘門\] 開始/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /\[合併閘門\] 結束/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^16:04:26｜開始｜0\.5\.0-W1-328$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^16:11:45｜結束｜0\.5\.0-W1-328｜寫入$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^閘門使用中/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /預檢/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /\[合併前測試\]/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^更新 \d{4}-\d{2}-\d{2} / })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('面板寬 60 欄：閘門每行精簡為時間｜開始或結束｜短分支｜結果，整行放得下，持有者列在區塊最上方', async ($, on) => {
+    const { ui } = await startBoard(
+      $,
+      on,
+      { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349, [`/repo/${MERGE_LOG_PATH}`]: MERGE_LOG_HOLDING } },
+      60,
+    )
+    const heading = await ui.find({ type: 'Text', text: /^合併閘門最近紀錄$/ })
+    const holder = await ui.find({ type: 'Text', text: /^閘門使用中：/ })
+    expect(holder?.text).toBe('閘門使用中：0.5.0-W1-351（自 16:41:49）')
+    const rows = await ui.findAll({ type: 'Text', text: /^\d{2}:\d{2}:\d{2}｜(開始|結束)｜/ })
+    expect(rows.map(row => row.text)).toEqual([
+      '16:19:45｜開始｜agent-a352c3',
+      '16:21:08｜開始｜agent-a74808',
+      '16:21:11｜結束｜agent-a74808｜寫入',
+      '16:31:50｜結束｜agent-a352c3｜寫入',
+      '22:15:13｜結束｜worktree-doc-split-338-2-5｜中止',
+      '16:41:49｜開始｜0.5.0-W1-351',
+    ])
+    for (const row of rows) expect(displayWidth(row.text)).toBeLessThanOrEqual(60)
+    expect(rows.map(row => row.props.color)).toEqual([undefined, undefined, 'green', 'green', 'yellow', undefined])
+    expect(await ui.find({ type: 'Text', text: /worktree-agent-/ })).toBeUndefined()
+    // 持有者提示排在標題之後、第一行紀錄之前
+    const drawn = JSON.stringify(await ui.drawn())
+    const order = [heading?.text, holder?.text, rows[0]?.text].map(text => drawn.indexOf(text ?? '\u0000'))
+    expect(order.every(index => index >= 0)).toBe(true)
+    expect(order).toEqual([...order].sort((a, b) => a - b))
+    await ui.unmount()
+  })
+
+  test('反例：格式不符的閘門行原樣顯示，其他行照常精簡', async ($, on) => {
+    const { ui } = await startBoard($, on, {
+      files: {
+        [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+        [`/repo/${MERGE_LOG_PATH}`]: [MERGE_LOG, ...MALFORMED_GATE_LINES].join('\n'),
+      },
+    })
+    for (const line of MALFORMED_GATE_LINES) {
+      expect((await ui.find({ type: 'Text', text: line }))?.text).toBe(line)
+    }
+    expect(await ui.find({ type: 'Text', text: /^16:11:45｜結束｜0\.5\.0-W1-328｜寫入$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: `讀取 ${MERGE_LOG_PATH} 失敗` })).toBeUndefined()
     await ui.unmount()
   })
 
