@@ -106,6 +106,34 @@ class TestUnchainedStillWarns:
         assert "multi_view_status" in result.message
 
 
+class TestChainWithoutMultiViewWriteStillWarns:
+    """0.5.0-W1-389 E2：同鏈有寫入但未寫 multi_view_status 時仍警告。"""
+
+    def test_merge_then_complete_still_warns(self, tmp_path):
+        _write_ana_ticket(tmp_path, "（尚無標註）")
+        cmd = f"git merge feature && ticket track complete {TICKET_ID}"
+        _, result = _check(tmp_path, cmd)
+        assert result.multi_view_warning is not None
+
+    def test_append_log_other_content_still_warns(self, tmp_path):
+        _write_ana_ticket(tmp_path, "（尚無標註）")
+        cmd = (
+            f'ticket track append-log {TICKET_ID} --section "Solution" "other" '
+            f"&& ticket track complete {TICKET_ID}"
+        )
+        _, result = _check(tmp_path, cmd)
+        assert result.multi_view_warning is not None
+
+    def test_append_log_writes_field_after_complete_still_warns(self, tmp_path):
+        _write_ana_ticket(tmp_path, "（尚無標註）")
+        cmd = (
+            f"ticket track complete {TICKET_ID} && ticket track append-log "
+            f'{TICKET_ID} --section "Solution" "multi_view_status: skipped"'
+        )
+        _, result = _check(tmp_path, cmd)
+        assert result.multi_view_warning is not None
+
+
 class TestIllegalValueStillBlocks:
     """E1 對照：值非法不論是否同鏈皆阻擋。"""
 
