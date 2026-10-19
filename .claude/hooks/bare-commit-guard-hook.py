@@ -319,6 +319,7 @@ from lib.git_operation_state import (  # noqa: F401  re-export 原頂層名稱
     _OP_REBASE,
     _OP_REBASE_EDIT,
     _OP_REVERT,
+    _OP_UNRESOLVABLE,
     _TARGET_MERGE,
     _TARGET_OTHER,
     _base_dir,
@@ -486,7 +487,10 @@ def main() -> int:
         logger,
     )
     if pending in _BLOCKING_OPS:
-        logger.warning("%s 進行中，裸 commit 會收尾他方操作，阻擋", pending)
+        if pending == _OP_UNRESOLVABLE:
+            logger.warning("覆寫目標無法靜態解析，保守阻擋")
+        else:
+            logger.warning("%s 進行中，裸 commit 會收尾他方操作，阻擋", pending)
         print(_build_pending_operation_deny_message(pending), file=sys.stderr)
         return 2
     if pending == _OP_REBASE_EDIT:
