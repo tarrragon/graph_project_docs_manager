@@ -48,6 +48,8 @@ def _inject_add_timeout(monkeypatch, seen: list):
         if args[:2] == ["worktree", "add"]:
             seen.append(timeout)
             real(args, cwd=cwd, timeout=60)
+            # 實際殘留狀態是 locked initializing，需雙 --force 才能移除
+            real(["worktree", "lock", "--reason", "initializing", args[-2]], cwd=cwd, timeout=60)
             return False, f"Command timed out after {timeout}s"
         return real(args, cwd=cwd, timeout=timeout)
 
@@ -84,4 +86,6 @@ def test_preexisting_branch_not_deleted_on_failure(repo, monkeypatch):
 
     assert cmd_create(TICKET) == 1
 
+    # 分支已存在時，前置驗證在 add 之前就返回：此路徑不經過 add 與清理程式碼
+    assert seen == []
     assert _git(repo, "rev-parse", "--verify", branch).returncode == 0
