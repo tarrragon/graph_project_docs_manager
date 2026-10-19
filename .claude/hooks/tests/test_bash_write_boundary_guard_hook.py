@@ -1478,3 +1478,13 @@ class TestPythonArgvIdioms:
     ])
     def test_allowed(self, cmd, checkout, logger):
         assert _scope(cmd, checkout, logger) is None
+
+    @pytest.mark.parametrize("idx,args", [("True", "\"$W\" x"), ("-True", "x \"$W\"")])
+    def test_bool_index_follows_python_int_semantics(self, idx, args, checkout, logger):
+        """True 視為 1、-True 視為 -1（倒數第 1 個）；該位置為受限目錄時 deny。"""
+        cmd = "W=lib/sub\npython3 - %s <<'EOF'\nimport sys\nopen(sys.argv[%s], 'w').write('x')\nEOF" % (args, idx)
+        assert _scope(cmd, checkout, logger) is not None
+
+    def test_bool_index_outside_scope_allowed(self, checkout, logger):
+        cmd = "python3 - x /tmp/a <<'EOF'\nimport sys\nopen(sys.argv[True], 'w').write('x')\nEOF"
+        assert _scope(cmd, checkout, logger) is None
