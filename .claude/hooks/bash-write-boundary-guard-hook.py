@@ -531,6 +531,152 @@ def _scan_tee(toks: List[str], j: int, out: List[str]) -> int:
     return len(toks)
 
 
+def _split_opts(toks: List[str], j: int, short_arg: str, long_arg: frozenset):
+    """通用選項走訪：回傳 (位置參數, {選項: 值})。short_arg 為帶引數的短旗標字元集合，
+    long_arg 為帶引數的長選項；`--opt=v` 與 `-Xv` 形式一併處理。"""
+    positionals: List[str] = []
+    opts: dict = {}
+    k = j
+    end_opts = False
+    while k < len(toks):
+        t = toks[k]
+        k += 1
+        if end_opts or t == "" or t[0] != "-" or t == "-":
+            positionals.append(t)
+        elif t == "--":
+            end_opts = True
+        elif t.startswith("--"):
+            name, eq, val = t.partition("=")
+            if eq:
+                opts[name] = val
+            elif name in long_arg and k < len(toks):
+                opts[name] = toks[k]
+                k += 1
+            else:
+                opts[name] = ""
+        else:
+            for idx in range(1, len(t)):
+                ch = t[idx]
+                if ch in short_arg:
+                    rest = t[idx + 1:]
+                    if rest:
+                        opts["-" + ch] = rest
+                    elif k < len(toks):
+                        opts["-" + ch] = toks[k]
+                        k += 1
+                    break
+                opts.setdefault("-" + ch, "")
+    return positionals, opts
+
+
+def _scan_dd(toks: List[str], j: int, out: List[str]) -> int:
+    """dd：of=PATH 為寫入目標；只有 if= 的只讀用法不收集。"""
+    out.extend(t[3:] for t in toks[j:] if t.startswith("of=") and len(t) > 3)
+    return len(toks)
+
+
+def _scan_install(toks: List[str], j: int, out: List[str]) -> int:
+    """install：-d 時所有位置參數皆為建立目標，其餘同 cp（最後引數或 -t DIR）。"""
+    pos, opts = _split_opts(toks, j, "mogSt", frozenset(
+        {"--mode", "--owner", "--group", "--suffix", "--target-directory"}))
+    target = opts.get("-t") or opts.get("--target-directory")
+    if "-d" in opts or "--directory" in opts:
+        out.extend(pos)
+    elif target:
+        out.append(target)
+    elif len(pos) >= 2:
+        out.append(pos[-1])
+    return len(toks)
+
+
+def _scan_truncate(toks: List[str], j: int, out: List[str]) -> int:
+    """truncate / touch：略過帶引數的選項後，其餘位置參數皆為檔案目標。"""
+    pos, _ = _split_opts(toks, j, "srtd", frozenset(
+        {"--size", "--reference", "--date"}))
+    out.extend(pos)
+    return len(toks)
+
+
+_RSYNC_ARG_OPTS = frozenset({
+    "--exclude", "--include", "--exclude-from", "--include-from", "--filter",
+    "--rsh", "--port", "--rsync-path", "--files-from", "--backup-dir", "--suffix",
+    "--compare-dest", "--copy-dest", "--link-dest", "--bwlimit", "--max-size",
+    "--min-size", "--log-file", "--temp-dir",
+})
+
+
+def _scan_rsync(toks: List[str], j: int, out: List[str]) -> int:
+    """rsync：至少來源與目的地兩個位置參數時，最後一個為目的地；來源端不收集。"""
+    pos, _ = _split_opts(toks, j, "ef", _RSYNC_ARG_OPTS)
+    if len(pos) >= 2:
+        out.append(pos[-1])
+    return len(toks)
+
+
+def _scan_tar(toks: List[str], j: int, out: List[str]) -> int:
+    """tar：僅在解包（-x／--extract／舊式 x 模式字）時，-C／--directory 為寫入目標。"""
+    extract = False
+    pos, opts = _split_opts(toks, j, "CfTXLIKb", frozenset(
+        {"--directory", "--file", "--files-from", "--exclude-from"}))
+    if "--extract" in opts or "--get" in opts or "-x" in opts:
+        extract = True
+    elif toks[j:j + 1] and toks[j][:1] not in ("-", ""):
+        extract = "x" in toks[j]  # 舊式 `tar xzf a.tgz`：第一個 token 是模式字
+    if extract:
+        d = opts.get("-C") or opts.get("--directory")
+        if d:
+            out.append(d)
+    return len(toks)
+
+
+def _scan_patch(toks: List[str], j: int, out: List[str]) -> int:
+    """patch：--dry-run 不收集；-o 指定輸出檔時只收輸出檔；否則 -d DIR 與目標檔（有 -d 時合併）。"""
+    pos, opts = _split_opts(toks, j, "pdiorBVzFD", frozenset(
+        {"--strip", "--directory", "--input", "--output", "--reject-file", "--suffix"}))
+    if "--dry-run" in opts or "-C" in opts or "--check" in opts:
+        return len(toks)
+    outfile = opts.get("-o") or opts.get("--output")
+    d = opts.get("-d") or opts.get("--directory")
+    if outfile:
+        out.append(outfile)
+        return len(toks)
+    target = pos[0] if pos else None
+    if target and d:
+        out.append(d.rstrip("/") + "/" + target)
+    elif target:
+        out.append(target)
+    elif d:
+        out.append(d)
+    return len(toks)
+
+
+_ASSIGN_ARG = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _scan_awk(toks: List[str], j: int, out: List[str]) -> int:
+    """awk / gawk：-i inplace（或 -iinplace）時，程式文字（未用 -f）之後的檔案引數為目標。"""
+    pos, opts = _split_opts(toks, j, "fvFi", frozenset(
+        {"--file", "--assign", "--field-separator", "--include", "--load"}))
+    inplace = opts.get("-i") == "inplace" or opts.get("--include") == "inplace"
+    if inplace:
+        has_prog_file = "-f" in opts or "--file" in opts
+        files = pos if has_prog_file else pos[1:]
+        out.extend(f for f in files if not _ASSIGN_ARG.match(f))
+    return len(toks)
+
+
+_RUBY_WRITE_LITERAL = re.compile(
+    r"""File\.(?:write|binwrite)\(\s*(['"])([^'"]+)\1"""
+    r"""|File\.open\(\s*(['"])([^'"]+)\3\s*,\s*['"][wa]""")
+
+
+def _scan_ruby_perl_e(toks: List[str], j: int, out: List[str]) -> None:
+    """ruby／perl 的腳本字串內 File.write／File.open(...,'w') 字面路徑。"""
+    for t in toks[j:]:
+        for m in _RUBY_WRITE_LITERAL.finditer(t):
+            out.append(m.group(2) or m.group(4))
+
+
 _ENV_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 _GIT_OPTS_WITH_ARG = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
 
@@ -551,15 +697,38 @@ def _is_git_mv(toks: List[str]) -> bool:
 def _scan_statement_tokens(toks: List[str], out: List[str]) -> None:
     if _is_git_mv(toks):
         return  # git mv 是版本控制內的搬移（deny 訊息指定的正規做法），不是 shell 寫入
+    cmd_word = _command_word_index(toks)  # 365.3 新增的命令只認命令字位置（避免 uv tool install 之類子命令誤判）
     j = 0
     while j < len(toks):
         name = _basename(toks[j])
+        at_cmd = j == cmd_word
         if name == "sed":
             j = _scan_sed(toks, j + 1, out)
         elif name == "perl":
+            if at_cmd:
+                _scan_ruby_perl_e(toks, j + 1, out)
             j = _scan_perl(toks, j + 1, out)
         elif name in ("cp", "mv"):
             j = _scan_cp_mv(toks, j + 1, out)
+        elif at_cmd and name == "ruby":
+            _scan_ruby_perl_e(toks, j + 1, out)
+            j += 1
+        elif at_cmd and name == "ln":
+            j = _scan_cp_mv(toks, j + 1, out)
+        elif at_cmd and name == "dd":
+            j = _scan_dd(toks, j + 1, out)
+        elif at_cmd and name == "install":
+            j = _scan_install(toks, j + 1, out)
+        elif at_cmd and name in ("truncate", "touch"):
+            j = _scan_truncate(toks, j + 1, out)
+        elif at_cmd and name == "rsync":
+            j = _scan_rsync(toks, j + 1, out)
+        elif at_cmd and name == "tar":
+            j = _scan_tar(toks, j + 1, out)
+        elif at_cmd and name == "patch":
+            j = _scan_patch(toks, j + 1, out)
+        elif at_cmd and name in ("awk", "gawk"):
+            j = _scan_awk(toks, j + 1, out)
         elif name == "tee":
             j = _scan_tee(toks, j + 1, out)
         else:
