@@ -391,6 +391,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | IMP-GPD-002 | Hook 將 Bash 的 tool_response 整包字串化比對，誤把 bashEditDiff 中他人正在寫的程式碼當成命令輸出 | 高 | 0.5.0 |
 | IMP-GPD-003 | 可重入鎖以環境標記交給子程序辨識，子程序載入另一棵樹的舊版協定碼，等待自己祖先持有的鎖 | 高 | 0.5.0 |
 | IMP-GPD-004 | 提醒類 hook 以 stderr 加 exit 0 輸出，提醒對模型不可見 | 中 | 0.5.0 |
+| IMP-GPD-005 | fail-open 守衛新增阻擋種類時漏補對應資源，例外被外層吞成放行 | 高 | 0.5.0 |
 
 ### 流程 (PROC)
 
