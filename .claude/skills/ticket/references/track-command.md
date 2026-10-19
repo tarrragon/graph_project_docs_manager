@@ -10,7 +10,7 @@
 
 **分檔**：依職責拆為同目錄六檔——`track-command-commit.md`（track commit、set-exit-status、root 分離）、`track-command-update.md`（UPDATE 操作、驗收條件、可修改欄位）、`track-command-dispatch.md`（dispatch 系列）、`track-command-session.md`（sessions、reclaim、activity、conflicts、onboard、hook-liveness、artifacts）、`track-command-query.md`（READ、runqueue、deps/depth、parallel-check、board、list）、`track-command-health.md`（audit、stale-list、stuck-anas、dashboard）。本檔對被移走的章節保留同名標題加一行路由。
 
-本檔章節：〈子命令總覽（全量對照 --help）〉〈READ 操作〉〈track runqueue 子命令（Scheduler）〉〈UPDATE 操作〉〈UPDATE 操作補充：commit 副作用與欄位語意〉〈track commit 子命令〉〈track set-exit-status 子命令〉〈Ticket 狀態與程式碼提交的 root 分離（worktree 場景）〉〈驗收條件操作詳解〉〈CLI 可修改欄位 vs 手動編輯欄位〉〈track deps / depth 子命令〉〈track parallel-check 子命令〉〈track board 子命令〉〈track audit 子命令〉〈track stale-list 子命令〉〈track stuck-anas 子命令〉〈track dashboard 子命令〉〈track list 子命令〉〈track dispatch 子命令〉〈track dispatch-validate 子命令〉〈track dispatch-readiness 子命令〉〈track dispatch-check 子命令〉〈track sessions 子命令〉〈track reclaim 子命令〉〈track activity 子命令〉〈track conflicts 子命令〉〈track onboard 子命令〉〈track hook-liveness 子命令〉〈track register-artifact / resolve-artifact / list-artifacts 子命令〉〈共用旗標語意（track 系列命令通用）〉〈空狀態字面規範（track 系列命令通用）〉。
+本檔章節：〈子命令總覽（全量對照 --help）〉〈READ 操作〉〈track runqueue 子命令（Scheduler）〉〈UPDATE 操作〉〈UPDATE 操作補充：commit 副作用與欄位語意〉〈track commit 子命令〉〈track move-lines 子命令〉〈track set-exit-status 子命令〉〈Ticket 狀態與程式碼提交的 root 分離（worktree 場景）〉〈驗收條件操作詳解〉〈CLI 可修改欄位 vs 手動編輯欄位〉〈track deps / depth 子命令〉〈track parallel-check 子命令〉〈track board 子命令〉〈track audit 子命令〉〈track stale-list 子命令〉〈track stuck-anas 子命令〉〈track dashboard 子命令〉〈track list 子命令〉〈track dispatch 子命令〉〈track dispatch-validate 子命令〉〈track dispatch-readiness 子命令〉〈track dispatch-check 子命令〉〈track sessions 子命令〉〈track reclaim 子命令〉〈track activity 子命令〉〈track conflicts 子命令〉〈track onboard 子命令〉〈track hook-liveness 子命令〉〈track register-artifact / resolve-artifact / list-artifacts 子命令〉〈共用旗標語意（track 系列命令通用）〉〈空狀態字面規範（track 系列命令通用）〉。
 
 ## 子命令總覽（全量對照 --help）
 
@@ -98,6 +98,7 @@
 | `onboard` | PM 入場彙整（活同事/孤兒/髒檔歸屬/可認領建議） | 〈track onboard 子命令〉 |
 | `dispatch` | 派發即落票，輸出 prompt 骨架 | 〈track dispatch 子命令〉 |
 | `commit` | 以隔離索引提交 `where.files` 子集內的指定檔案 | 〈track commit 子命令〉 |
+| `move-lines` | 依行範圍把 src 的文字搬到 dst，驗證行數守恆後原子寫入（src、dst 皆須在 `where.files` 內） | 〈track move-lines 子命令〉 |
 
 ## READ 操作
 
@@ -329,3 +330,23 @@
 ## 空狀態字面規範（track 系列命令通用）
 
 `activity`、`conflicts`、`onboard`、`stale-list`、`stuck-anas`、`dashboard` 六個命令的空狀態一律採全形括號包裹的中文描述句 `（無 XXX）`，不使用英文 `(none)`：`activity` 為「（無 in_progress ticket）」、`conflicts` 為「（無衝突）」、`onboard` 四節分別為「（無活同事）」「（無孤兒 entry）」「（無髒檔）」「（無可認領建議）」、`stale-list` 為「（無符合條件的 stale ticket）」、`stuck-anas` 為「（無卡住的 ANA）」、`dashboard`（In Progress / Handoff Target / Ready Top N / Stale Warning 四區塊）分別為「（無 in_progress ticket）」「（無 handoff target）」「（無可認領建議）」「（無 stale ticket）」。技術術語（`in_progress`、`entry`、`handoff target`）依語言約束規則 4 保留原文，不強制中譯。
+
+## track move-lines 子命令
+
+依行範圍搬移文字，取代 Read 加 Write 全文重寫（284.1 阻擋 Bash 寫入後的受控搬移通道）。
+
+```
+ticket track move-lines <ticket-id> --src <path> --lines <起>-<迄> --dst <path> --at <行號|end> [--worktree <abs-path>]
+```
+
+| 旗標 | 語意 |
+|------|------|
+| `--lines` | 來源行範圍，1 起算、含兩端 |
+| `--at` | 目標檔插入位置：N 表示搬移段第一行成為目標第 N 行；`end` 附加於尾端 |
+| `--worktree` | 檔案所在 linked worktree 絕對路徑（路徑相對其 repo root 解析） |
+
+**範圍**：`--src` 與 `--dst` 皆須在 ticket `where.files` 寫入範圍內（與 `track commit` 同一判準），否則拒絕。`--src` 與 `--dst` 不可為同一檔。
+
+**守恆與原子性**：記憶體內先驗證「來源減少行數＝目標增加行數」且目標內搬移段與抽出段逐字相同，通過才以暫存檔加 rename 寫入；任一步失敗（含目標寫入失敗）還原兩檔並以 exit 1 結束，兩檔逐位元不變。命令只改檔案，不提交；提交仍走 `track commit`。
+
+**Exit code**：0 成功；1 拒絕或失敗（範圍、行範圍非法、守恆失敗、寫入失敗）。
