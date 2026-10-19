@@ -1444,3 +1444,37 @@ class TestPossibleValueSets:
         cmd = ("F=lib/a; false && F=/tmp/x; "
                "python3 - $F <<'EOF'\nimport sys\nopen(sys.argv[1], 'w').write('x')\nEOF")
         assert _scope(cmd, checkout, logger) == "lib/a"
+
+
+# ============================================================================
+# 0.5.0-W1-365.7：argv 的三種常見慣用形態（from sys import argv、負索引、別名）
+# ============================================================================
+
+
+class TestPythonArgvIdioms:
+    """from sys import argv（含 as）、sys.argv[-k]、a = sys.argv 後 a[n] 對應出的引數沿用邊界檢查。"""
+
+    @pytest.mark.parametrize("cmd", [
+        "W=lib/sub\npython3 - \"$W\" <<'EOF'\nfrom sys import argv\nopen(argv[1], 'w').write('x')\nEOF",
+        "python3 - lib/a <<'EOF'\nfrom sys import argv as av\nopen(av[1], 'w').write('x')\nEOF",
+        "python3 - lib/a <<'EOF'\nimport sys\nopen(sys.argv[-1], 'w').write('x')\nEOF",
+        "python3 - lib/a /tmp/x <<'EOF'\nimport sys\nopen(sys.argv[-2], 'w').write('x')\nEOF",
+        "python3 - lib/a <<'EOF'\nimport sys\na = sys.argv\nopen(a[1], 'w').write('x')\nEOF",
+        "python3 - lib/a <<'EOF'\nfrom sys import argv\na = argv\np = a[-1]\nopen(p, 'w').write('x')\nEOF",
+    ])
+    def test_denied(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is not None
+
+    @pytest.mark.parametrize("cmd", [
+        "python3 - /tmp/a <<'EOF'\nfrom sys import argv\nopen(argv[1], 'w').write('x')\nEOF",
+        "python3 - lib/a <<'EOF'\nfrom sys import argv\nprint(open(argv[1]).read())\nEOF",
+        "python3 - lib/a <<'EOF'\nfrom sys import argv\nopen(argv[2], 'w').write('x')\nEOF",
+        # 負索引超出範圍
+        "python3 - lib/a <<'EOF'\nimport sys\nopen(sys.argv[-3], 'w').write('x')\nEOF",
+        # -k 指向範圍外的引數
+        "python3 - lib/a /tmp/x <<'EOF'\nimport sys\nopen(sys.argv[-1], 'w').write('x')\nEOF",
+        "python3 - /tmp/a <<'EOF'\nimport sys\na = sys.argv\nopen(a[1], 'w').write('x')\nEOF",
+        "python3 - lib/a <<'EOF'\nimport sys\na = sys.argv\nprint(open(a[1]).read())\nEOF",
+    ])
+    def test_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
