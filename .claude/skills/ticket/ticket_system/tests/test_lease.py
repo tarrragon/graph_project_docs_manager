@@ -1535,6 +1535,19 @@ class TestGhostForensicsBranchBoundary:
         report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
         assert report.unmerged_branch_names == ["feat/0.5.0-W1-36"]
 
+    def test_letter_prefix_directly_before_id_hits(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("fix0.5.0-W1-36")
+        make_branch("v0.5.0-W1-36")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert sorted(report.unmerged_branch_names) == ["fix0.5.0-W1-36", "v0.5.0-W1-36"]
+
+    def test_digit_directly_before_id_not_hit(self, repo_with_branches):
+        _, make_branch = repo_with_branches
+        make_branch("feat/10.5.0-W1-36")
+        report = lease.run_ghost_forensics("0.5.0-W1-36", [], _EXIT_OK)
+        assert report.unmerged_branch is False
+
     def test_suffix_after_boundary_hits(self, repo_with_branches):
         _, make_branch = repo_with_branches
         make_branch("0.5.0-W1-36-wip")

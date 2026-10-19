@@ -624,10 +624,10 @@ def _dirty_file_paths(status_lines: List[str]) -> List[str]:
 def _branch_names_ticket(branch: str, ticket_id: str) -> bool:
     """分支名含 ticket_id 且前後皆為票號邊界才算命中。
 
-    前邊界：行首或非票號字元（如 `/`、`-`）；後邊界：行尾，或接非英數、非 `.`
+    前邊界：行首或非數字、非點字元（字母緊接如 `fix<id>` 仍命中，偏向不漏判殘留）；後邊界：行尾，或接非英數、非 `.`
     的字元（`X-36` 不命中 `X-363`，也不命中子票 `X-36.1`）。
     """
-    pattern = r"(?<![0-9A-Za-z.])" + re.escape(ticket_id) + r"(?![0-9A-Za-z]|\.[0-9])"
+    pattern = r"(?<![0-9.])" + re.escape(ticket_id) + r"(?![0-9A-Za-z]|\.[0-9])"
     return re.search(pattern, branch) is not None
 
 
