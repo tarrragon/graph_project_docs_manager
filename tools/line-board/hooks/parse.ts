@@ -1,5 +1,5 @@
 // 看板資料的純函式：主 checkout 判定、349 現行佇列行解析、佇列格式化、frontmatter 狀態解析、
-// session 狀態檔篩選與解析、合併閘門紀錄篩選與欄位解析（短分支名、目前持有閘門的分支）。
+// session 狀態檔篩選與解析（含 pid 重複使用的辨識）、合併閘門紀錄篩選與欄位解析（短分支名、目前持有閘門的分支）。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
 
 import type { Lane, MergeGateEntry, MergeGateHolder, QueueToken, SessionState, TicketStatus } from '../types'
@@ -25,8 +25,20 @@ export const SESSIONS_DIR = '.claude/sessions'
 /** 狀態檔副檔名；同目錄的 `.key` 是金鑰，一律不讀。 */
 const SESSION_FILE_SUFFIX = '.json'
 
-/** 「各 session」區塊的排序：在等用戶的排最前；不在此表的 status 排在最後並原樣顯示。 */
-const SESSION_STATUS_ORDER: readonly string[] = ['waiting', 'busy', 'idle']
+/**
+ * 「各 session」區塊的排序組：在等用戶的排最前；`shell`（session 正在執行 shell 命令，實測 2.1.303）屬執行中，與 busy 同組。
+ * 不在此表的 status 排在最後；顯示一律保留原值。
+ */
+const SESSION_STATUS_RANK: Readonly<Record<string, number>> = { waiting: 0, busy: 1, shell: 1, idle: 2 }
+
+/** 未列入排序組的 status 的組別：排在所有已知組之後。 */
+const UNKNOWN_STATUS_RANK = 3
+
+/**
+ * `ps -o lstart=` 與狀態檔 procStart 的格式（正規化後）：`Mon Oct 19 09:09:02 2026`。
+ * 日期為個位數時 ps 以空白補位（`Oct  5`），正規化會把連續空白壓成一個。
+ */
+const PROC_START_FORMAT = /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{1,2} \d{2}:\d{2}:\d{2} \d{4}$/
 
 /** 線列的 session 名稱比對不到存活的 session 時顯示的狀態。 */
 export const SESSION_OFFLINE = '離線'
@@ -170,7 +182,7 @@ export function parseSessionFile(text: string): SessionState | null {
   }
   if (typeof value !== 'object' || value === null) return null
   const record = value as Record<string, unknown>
-  const { pid, name, cwd, status, waitingFor, statusUpdatedAt } = record
+  const { pid, name, cwd, status, waitingFor, statusUpdatedAt, procStart } = record
   if (typeof pid !== 'number' || typeof name !== 'string' || typeof cwd !== 'string' || typeof status !== 'string') {
     return null
   }
@@ -181,7 +193,30 @@ export function parseSessionFile(text: string): SessionState | null {
     status,
     waitingFor: typeof waitingFor === 'string' ? waitingFor : null,
     statusUpdatedAt: typeof statusUpdatedAt === 'number' ? statusUpdatedAt : null,
+    procStart: typeof procStart === 'string' ? procStart : null,
   }
+}
+
+/** 行程啟動時間字串的正規化：去頭尾空白、連續空白壓成一個；不符 lstart 格式時回傳 null（無從比對）。 */
+export function normalizeProcStart(text: string | null): string | null {
+  if (text === null) return null
+  const normalized = text.trim().replace(/\s+/g, ' ')
+  return PROC_START_FORMAT.test(normalized) ? normalized : null
+}
+
+/**
+ * session 的 pid 是否仍是同一個行程：`ps -p <pid> -o lstart=`（以 TZ=UTC 執行）的結果與狀態檔 procStart 比對。
+ * - ps exit 不為 0：pid 已結束
+ * - 兩者正規化後相同：存活；不同：pid 已被其他行程重複使用，原 session 已結束
+ * - 任一方缺少或格式不符（無從比對）：退回只看 exit code 的判定，視為存活
+ * procStart 是 UTC（實測 2026-10-19，CC 2.1.303：與 `TZ=UTC ps -o lstart=` 逐字相同，與本機時區的輸出差 8 小時）。
+ */
+export function isSessionProcessAlive(exitCode: number, lstart: string, procStart: string | null): boolean {
+  if (exitCode !== 0) return false
+  const observed = normalizeProcStart(lstart)
+  const recorded = normalizeProcStart(procStart)
+  if (observed === null || recorded === null) return true
+  return observed === recorded
 }
 
 /** cwd 是否屬於本 repo：等於任一 checkout 路徑，或位於其下。 */
@@ -189,12 +224,9 @@ export function isInRepo(cwd: string, checkoutPaths: readonly string[]): boolean
   return checkoutPaths.some(path => cwd === path || cwd.startsWith(`${path}/`))
 }
 
-/** 依 waiting、busy、idle、其他狀態排序，同狀態依名稱排序；不改動傳入陣列。 */
+/** 依 waiting、busy 與 shell（同組）、idle、其他狀態排序，同組依名稱排序；不改動傳入陣列。 */
 export function sortSessions(sessions: readonly SessionState[]): SessionState[] {
-  const rank = (status: string) => {
-    const index = SESSION_STATUS_ORDER.indexOf(status)
-    return index === -1 ? SESSION_STATUS_ORDER.length : index
-  }
+  const rank = (status: string) => SESSION_STATUS_RANK[status] ?? UNKNOWN_STATUS_RANK
   return [...sessions].sort((a, b) => rank(a.status) - rank(b.status) || a.name.localeCompare(b.name))
 }
 

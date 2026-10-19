@@ -16,12 +16,14 @@ import {
   formatMergeGateHolder,
   formatQueue,
   isInRepo,
+  isSessionProcessAlive,
   laneSessionStatus,
   laneTicketIds,
   mergeGateEntries,
   mergeGateHolder,
   mergeGateLines,
   mergeGateResultColor,
+  normalizeProcStart,
   parseFrontmatterStatus,
   parseMergeGateLine,
   parseLanes,
@@ -165,6 +167,7 @@ const session = (fields: Partial<SessionState> & { name: string; status: string 
   cwd: '/repo',
   waitingFor: null,
   statusUpdatedAt: null,
+  procStart: null,
   ...fields,
 })
 
@@ -192,6 +195,7 @@ describe('parseSessionFile', () => {
       status: 'waiting',
       waitingFor: 'input needed',
       statusUpdatedAt: 1000,
+      procStart: 'Mon Oct 19 09:09:02 2026',
     })
     expect(parseSessionFile(text)).toEqual({
       pid: 7,
@@ -200,10 +204,11 @@ describe('parseSessionFile', () => {
       status: 'waiting',
       waitingFor: 'input needed',
       statusUpdatedAt: 1000,
+      procStart: 'Mon Oct 19 09:09:02 2026',
     })
   })
 
-  test('沒有 waitingFor 或 statusUpdatedAt 時為 null；未知 status 原樣保存', () => {
+  test('沒有 waitingFor、statusUpdatedAt 或 procStart 時為 null；未知 status 原樣保存', () => {
     expect(parseSessionFile(sessionJson({ pid: 7, name: 's', cwd: '/r', status: 'compacting' }))).toEqual({
       pid: 7,
       name: 's',
@@ -211,6 +216,7 @@ describe('parseSessionFile', () => {
       status: 'compacting',
       waitingFor: null,
       statusUpdatedAt: null,
+      procStart: null,
     })
   })
 
@@ -234,6 +240,17 @@ describe('isInRepo', () => {
 })
 
 describe('sortSessions', () => {
+  test('shell 與 busy 同組（組內依名稱交錯），排在 waiting 之後、idle 之前；status 原值保留', () => {
+    const sorted = sortSessions([
+      session({ name: 'e', status: 'idle' }),
+      session({ name: 'c', status: 'shell' }),
+      session({ name: 'd', status: 'busy' }),
+      session({ name: 'a', status: 'busy' }),
+      session({ name: 'f', status: 'waiting' }),
+    ])
+    expect(sorted.map(item => `${item.status}:${item.name}`)).toEqual(['waiting:f', 'busy:a', 'shell:c', 'busy:d', 'idle:e'])
+  })
+
   test('依 waiting、busy、idle 排序，未知 status 排最後；同狀態依名稱', () => {
     const sorted = sortSessions([
       session({ name: 'b', status: 'idle' }),
@@ -264,6 +281,50 @@ describe('laneSessionStatus', () => {
     expect(laneSessionStatus(sessions, 's-2')).toBe('busy')
     expect(laneSessionStatus(sessions, 's-9')).toBe('離線')
     expect(laneSessionStatus(sessions, null)).toBe('')
+  })
+})
+
+/**
+ * 取自本機真實 session（2026-10-19，CC 2.1.303，本機時區 CST +08:00）：
+ * 狀態檔 procStart 與 `TZ=UTC ps -p <pid> -o lstart=` 逐字相同（ps 輸出另帶行尾空白），
+ * 不帶 TZ 的 ps 輸出為本機時間，晚 8 小時。
+ */
+const REAL_PROC_START = 'Mon Oct 19 09:09:02 2026'
+const REAL_LSTART_UTC = 'Mon Oct 19 09:09:02 2026    \n'
+const REAL_LSTART_LOCAL = 'Mon Oct 19 17:09:02 2026    \n'
+
+describe('normalizeProcStart', () => {
+  test('去頭尾空白、壓縮連續空白（個位數日期的補位空白）；不符 lstart 格式時為 null', () => {
+    expect(normalizeProcStart(REAL_LSTART_UTC)).toBe(REAL_PROC_START)
+    expect(normalizeProcStart('Mon Oct  5 09:09:02 2026')).toBe('Mon Oct 5 09:09:02 2026')
+    expect(normalizeProcStart('2026-10-19T09:09:02Z')).toBeNull()
+    expect(normalizeProcStart('')).toBeNull()
+    expect(normalizeProcStart(null)).toBeNull()
+  })
+})
+
+describe('isSessionProcessAlive', () => {
+  test('真實 session：UTC 的 ps 輸出與 procStart 相同，判為存活', () => {
+    expect(isSessionProcessAlive(0, REAL_LSTART_UTC, REAL_PROC_START)).toBe(true)
+  })
+
+  test('反例：pid 存在但啟動時間與 procStart 不符（pid 被重複使用），不列為存活', () => {
+    expect(isSessionProcessAlive(0, 'Mon Oct 19 11:30:00 2026\n', REAL_PROC_START)).toBe(false)
+  })
+
+  test('對照：同一行程的本機時區輸出與 procStart 差 8 小時，比對不符；看板因此以 TZ=UTC 執行 ps', () => {
+    expect(isSessionProcessAlive(0, REAL_LSTART_LOCAL, REAL_PROC_START)).toBe(false)
+  })
+
+  test('ps exit 不為 0 時為已結束，與 procStart 無關', () => {
+    expect(isSessionProcessAlive(1, '', REAL_PROC_START)).toBe(false)
+    expect(isSessionProcessAlive(1, '', null)).toBe(false)
+  })
+
+  test('無從比對（procStart 缺少或格式不符、ps 無輸出）時退回只看 exit code', () => {
+    expect(isSessionProcessAlive(0, REAL_LSTART_UTC, null)).toBe(true)
+    expect(isSessionProcessAlive(0, REAL_LSTART_UTC, '2026-10-19T09:09:02Z')).toBe(true)
+    expect(isSessionProcessAlive(0, '', REAL_PROC_START)).toBe(true)
   })
 })
 
@@ -484,6 +545,8 @@ describe('Pane', () => {
     sessionEntries?: string[]
     /** `ps -p` 回報已結束的 pid。 */
     deadPids?: number[]
+    /** `ps -p <pid> -o lstart=` 對各 pid 的輸出；未列者輸出為空（看板退回只看 exit code）。 */
+    lstart?: Record<number, string>
   }
 
   /**
@@ -491,18 +554,21 @@ describe('Pane', () => {
    * git 列出主 checkout `/repo` 與 `/wt`。$ 呼叫的 hook 回 `{ value }` 或 `{ deny }`（deny 即 reject，代表檔案不存在）。
    * 回傳 fs.read 被呼叫過的所有路徑，供斷言 `.key` 從未被讀取。
    */
-  function stubRepo(on: On, stub: Stub): string[] {
+  function stubRepo(on: On, stub: Stub): { readPaths: string[]; psCalls: { argv: readonly string[]; env: unknown }[] } {
     const readPaths: string[] = []
+    const psCalls: { argv: readonly string[]; env: unknown }[] = []
     mock.env(on, { HOME })
     on('session.start', (_$, e) => ({ cwd: e.cwd }))
     on('session.root', () => ({ value: '/wt' }))
     on('process.run', (_$, e) => {
       const isPs = e.argv[0] === 'ps'
-      const isDead = isPs && (stub.deadPids ?? []).includes(Number(e.argv[2]))
+      const pid = Number(e.argv[2])
+      if (isPs) psCalls.push({ argv: e.argv, env: e.init?.env })
+      const isDead = isPs && (stub.deadPids ?? []).includes(pid)
       return {
         value: {
           exitCode: isDead ? 1 : 0,
-          stdout: isPs ? '' : 'worktree /repo\nHEAD a\nbranch refs/heads/main\n\nworktree /wt\nHEAD b\nbranch refs/heads/feat\n',
+          stdout: isPs ? (isDead ? '' : (stub.lstart?.[pid] ?? '')) : 'worktree /repo\nHEAD a\nbranch refs/heads/main\n\nworktree /wt\nHEAD b\nbranch refs/heads/feat\n',
           stderr: '',
           isStdoutTruncated: false,
           isStderrTruncated: false,
@@ -521,7 +587,7 @@ describe('Pane', () => {
     on('command.register', (_$, e) => ({ value: { command: e.name } }))
     on('ui.open', () => ({ value: { isPlaced: true } }))
     on('ui.log', () => ({ value: undefined }))
-    return readPaths
+    return { readPaths, psCalls }
   }
 
   const PANE = {
@@ -540,7 +606,7 @@ describe('Pane', () => {
   /** bodyColumns：面板內容寬（欄），預設 100；停靠在側邊的窄面板以 60 測。 */
   async function startBoard($: Engine, on: On, stub: Stub, bodyColumns: number = PANE.props.bodyColumns) {
     const clock = mock.clock(on, { now: NOW_MS })
-    const readPaths = stubRepo(on, stub)
+    const { readPaths, psCalls } = stubRepo(on, stub)
     await $.session.start({ cwd: '/wt', surface: 'terminal', isInteractive: true })
     await clock.advance(1)
     const ui = await $.ui.mount({
@@ -549,7 +615,7 @@ describe('Pane', () => {
       ...PANE,
       props: { ...PANE.props, bodyColumns },
     })
-    return { ui, readPaths }
+    return { ui, readPaths, psCalls }
   }
 
   /**
@@ -570,6 +636,7 @@ describe('Pane', () => {
     '104': { pid: 104, name: 'graph-project-docs-manager-q1', cwd: '/wt/lib', status: 'compacting', statusUpdatedAt: NOW_MS },
     '105': { pid: 105, name: 'blog-ea', cwd: '/home/u/blog', status: 'waiting', statusUpdatedAt: NOW_MS },
     '106': { pid: 106, name: 'graph-project-docs-manager-3e', cwd: '/repo', status: 'busy', statusUpdatedAt: NOW_MS },
+    '107': { pid: 107, name: 'graph-project-docs-manager-a2', cwd: '/repo', status: 'shell', statusUpdatedAt: NOW_MS - 30_000 },
   }
 
   const sessionStub = (files: Record<string, string>): Stub => {
@@ -583,18 +650,40 @@ describe('Pane', () => {
     return { files: all, sessionEntries: entries, deadPids: [106] }
   }
 
-  test('各 session：只列本 repo（含 worktree）且 pid 存活者，waiting 最前，未知狀態原樣；.key 從未被讀取', async ($, on) => {
+  test('各 session：只列本 repo（含 worktree）且 pid 存活者，waiting 最前，shell 與 busy 同組並顯示原值，未知狀態原樣；.key 從未被讀取', async ($, on) => {
     const { ui, readPaths } = await startBoard($, on, sessionStub({ [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 }))
     const rows = await ui.findAll({ type: 'Text', text: /^(graph-project-docs-manager|blog|KEY)-/ })
     expect(rows.map(row => row.text)).toEqual([
       'graph-project-docs-manager-1b｜waiting：input needed｜12 秒前',
+      'graph-project-docs-manager-a2｜shell｜30 秒前',
       'graph-project-docs-manager-f9｜busy｜1 分前',
       'graph-project-docs-manager-d7｜idle｜2 小時前',
       'graph-project-docs-manager-q1｜compacting｜0 秒前',
     ])
     expect(await ui.find({ type: 'Text', text: /^另有 1 個狀態檔的 pid 已結束/ })).toBeDefined()
     expect(readPaths.some(path => path.endsWith('.key'))).toBe(false)
-    expect(readPaths.filter(path => path.startsWith(SESSIONS)).length).toBe(6)
+    expect(readPaths.filter(path => path.startsWith(SESSIONS)).length).toBe(7)
+    await ui.unmount()
+  })
+
+  test('反例：pid 存在但 ps 的啟動時間與 procStart 不符時不列出、計入已結束；ps 以 TZ=UTC 執行', async ($, on) => {
+    const reused = { pid: 201, name: 'graph-project-docs-manager-old', cwd: '/repo', status: 'busy', procStart: REAL_PROC_START }
+    const same = { pid: 202, name: 'graph-project-docs-manager-live', cwd: '/repo', status: 'idle', procStart: REAL_PROC_START }
+    const { ui, psCalls } = await startBoard($, on, {
+      files: {
+        [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+        [`${SESSIONS}/201.json`]: sessionJson(reused),
+        [`${SESSIONS}/202.json`]: sessionJson(same),
+      },
+      sessionEntries: ['201.json', '202.json'],
+      lstart: { 201: 'Mon Oct 19 11:30:00 2026    \n', 202: REAL_LSTART_UTC },
+    })
+    const rows = await ui.findAll({ type: 'Text', text: /^graph-project-docs-manager-/ })
+    expect(rows.map(row => row.text)).toEqual(['graph-project-docs-manager-live｜idle｜時間不明'])
+    expect(await ui.find({ type: 'Text', text: /^另有 1 個狀態檔的 pid 已結束/ })).toBeDefined()
+    const call = psCalls.find(item => item.argv[2] === '201')
+    expect(call?.argv).toEqual(['ps', '-p', '201', '-o', 'lstart='])
+    expect(call?.env).toEqual({ TZ: 'UTC', LC_ALL: 'C' })
     await ui.unmount()
   })
 
