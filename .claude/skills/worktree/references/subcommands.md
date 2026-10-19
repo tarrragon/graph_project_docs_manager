@@ -166,7 +166,7 @@ $ /worktree status
 
 ### 合併前檢查掛點（pre_merge_check）
 
-程式入口 `worktree_manager.merge_branch_cas(branch, repo=None, base="main", pre_merge_check=None, message=None)`，`cmd_merge(ticket_id, pre_merge_check=None, *, branch=None, pre_acceptance_reason=None)` 透傳。
+程式入口 `merge_cas.merge_branch_cas(branch, repo=None, base="main", pre_merge_check=None, message=None)`，`cmd_merge(ticket_id, pre_merge_check=None, *, branch=None, pre_acceptance_reason=None)` 透傳。
 
 | 項目 | 規格 |
 |------|------|

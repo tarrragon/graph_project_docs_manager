@@ -1,7 +1,7 @@
 """
 合併前全套件閘門
 
-掛在 worktree_manager.merge_branch_cas 的 pre_merge_check 掛點：commit-tree 之後、
+掛在 merge_cas.merge_branch_cas 的 pre_merge_check 掛點：commit-tree 之後、
 update-ref 之前，在「合併 commit 的 detached worktree 快照」內，經 run-with-timeout
 （取得 heavy 名額）跑全套件；紅燈即回報不通過，ref 不變。
 
@@ -84,7 +84,7 @@ SuiteRunner = Callable[[list, str], tuple]
 
 @dataclass(frozen=True)
 class GateVerdict:
-    """與 worktree_manager.CheckResult 欄位相同（鴨子型別），避免循環 import。"""
+    """與 merge_cas.CheckResult 欄位相同（鴨子型別），避免循環 import。"""
 
     passed: bool
     reason: str = ""
