@@ -633,8 +633,6 @@ class TestScopeUnparseableFailOpen:
 
     @pytest.mark.parametrize("cmd", [
         "python3 -c \"p=input()+'/a.dart'; open(p,'w')\"",
-        "echo x > $(pwd)/lib/a.dart",
-        "echo x > `pwd`/lib/a.dart",
         "echo x > $OTHER/lib/a.dart",
     ])
     def test_dynamic_path_not_resolved(self, cmd, checkout, logger):
@@ -1074,3 +1072,121 @@ class TestPythonAstVariablePaths:
     def test_syntax_error_does_not_extract_variable_form(self):
         body = "p = 'lib/x.dart'\nopen(p, 'w')\nthis is $(not python"
         assert "lib/x.dart" not in _extract_candidate_paths(_heredoc(body))
+
+
+# ============================================================================
+# 0.5.0-W1-365.2：shell 層解析（-c／eval、同命令變數、~／$HOME／$(pwd)、cwd 不在 checkout）
+# ============================================================================
+
+
+class TestShellLayerDenied:
+    """七種形態寫入受限路徑：修正前放行、修正後 deny。"""
+
+    @pytest.mark.parametrize("shell", ["bash", "sh", "zsh"])
+    def test_shell_dash_c_literal(self, shell, checkout, logger):
+        assert _scope("%s -c 'echo x > lib/a'" % shell, checkout, logger) == "lib/a"
+
+    def test_bash_combined_flags_dash_c(self, checkout, logger):
+        assert _scope("bash -lc 'echo x > lib/a'", checkout, logger) == "lib/a"
+
+    def test_eval_literal(self, checkout, logger):
+        assert _scope("eval 'echo x > lib/a'", checkout, logger) == "lib/a"
+
+    def test_dash_c_respects_outer_cd(self, checkout, logger):
+        assert _scope("cd lib && bash -c 'echo x > a'", checkout, logger) == "lib/a"
+
+    @pytest.mark.parametrize("use", ["$F", "${F}"])
+    def test_var_literal_assignment(self, use, checkout, logger):
+        assert _scope("F=lib/a; echo x > %s" % use, checkout, logger) == "lib/a"
+
+    def test_export_assignment(self, checkout, logger):
+        assert _scope("export F=lib/a && echo x > $F", checkout, logger) == "lib/a"
+
+    def test_var_chain_of_literals(self, checkout, logger):
+        assert _scope("F=lib/a; G=$F; echo x > $G", checkout, logger) == "lib/a"
+
+    def test_var_in_tee_argument(self, checkout, logger):
+        assert _scope("F=lib/a; echo x | tee $F", checkout, logger) == "lib/a"
+
+    @pytest.mark.parametrize("prefix", ["~", "$HOME", "${HOME}"])
+    def test_home_prefix(self, prefix, checkout, logger, monkeypatch):
+        monkeypatch.setenv("HOME", str(checkout))
+        assert _scope("echo x > %s/lib/a" % prefix, checkout, logger) == "lib/a"
+
+    def test_var_holding_home_prefix(self, checkout, logger, monkeypatch):
+        monkeypatch.setenv("HOME", str(checkout))
+        assert _scope("F=~/lib/a; echo x > $F", checkout, logger) == "lib/a"
+
+    @pytest.mark.parametrize("pwd", ["$(pwd)", "`pwd`"])
+    def test_pwd_prefix(self, pwd, checkout, logger):
+        assert _scope("echo x > %s/lib/a" % pwd, checkout, logger) == "lib/a"
+
+    def test_cwd_outside_checkout_uses_project_dir(self, tmp_path, logger, monkeypatch):
+        proj = tmp_path / "proj"
+        (proj / ".git").mkdir(parents=True)
+        out = tmp_path / "out"
+        out.mkdir()
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(proj))
+        cmd = "echo x > %s/lib/a" % proj.resolve()
+        assert _scope(cmd, out, logger) == "lib/a"
+
+
+class TestShellLayerAllowed:
+    """E1：只讀、範圍外、無法判定、無 CLAUDE_PROJECT_DIR 時維持放行。"""
+
+    @pytest.mark.parametrize("cmd", [
+        "bash -c 'cat lib/a'",
+        "bash -c 'echo x > docs/a'",
+        "eval 'cat lib/a'",
+        "F=/tmp/out.txt; echo x > $F",
+        "F=docs/a; echo x > $F",
+        "F=$(date); echo x > $F",
+        "F=$OTHER/lib/a; echo x > $F",
+        "echo x > $UNSET/lib/a",
+        "echo x > ~other/lib/a",
+        "F=$(pwd)/lib/a; echo x > $F",
+        "bash -c 'echo x > $UNSET/lib/a'",
+    ])
+    def test_allowed(self, cmd, checkout, logger):
+        assert _scope(cmd, checkout, logger) is None
+
+    def test_cwd_outside_without_project_dir_unchanged(self, tmp_path, logger, monkeypatch):
+        proj = tmp_path / "proj"
+        (proj / ".git").mkdir(parents=True)
+        out = tmp_path / "out"
+        out.mkdir()
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        assert _scope("echo x > %s/lib/a" % proj.resolve(), out, logger) is None
+
+    def test_home_outside_checkout_allowed(self, checkout, logger, monkeypatch, tmp_path):
+        other = tmp_path / "elsewhere"
+        other.mkdir()
+        monkeypatch.setenv("HOME", str(other))
+        assert _scope("echo x > ~/lib/a", checkout, logger) is None
+
+
+class TestSkippedReasons:
+    """逐候選跳過原因併入判定日誌，不改變放行／阻擋結果。"""
+
+    def test_skipped_collects_reasons(self, checkout, logger):
+        skipped = []
+        cmd = "echo a > docs/x.md; echo b > $UNSET/y"
+        assert hook_module._find_scope_violation(cmd, str(checkout), logger, skipped) is None
+        assert skipped == ["docs/x.md:out_of_scope", "$UNSET/y:unresolvable"]
+
+    def test_deny_does_not_list_hit(self, checkout, logger):
+        skipped = []
+        cmd = "echo a > docs/x.md; echo b > lib/y"
+        assert hook_module._find_scope_violation(cmd, str(checkout), logger, skipped) == "lib/y"
+        assert skipped == ["docs/x.md:out_of_scope"]
+
+    def test_log_line_has_skipped_field(self, monkeypatch):
+        code, line = TestDecisionLog._run(
+            self, monkeypatch, TestDecisionLog._bash(self, "echo hi > docs/x.md; echo b > $UNSET/y"))
+        assert code == 0
+        assert "skipped=['docs/x.md:out_of_scope', '$UNSET/y:unresolvable']" in line
+
+    def test_log_line_empty_skipped_on_early_exit(self, monkeypatch):
+        code, line = TestDecisionLog._run(
+            self, monkeypatch, {"tool_name": "Read", "tool_input": {}})
+        assert code == 0 and "skipped=[]" in line
