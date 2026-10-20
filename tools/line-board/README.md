@@ -36,7 +36,7 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
 - **流程階段**，依序判定：
   1. 有票號且該票在主 checkout 為 `completed`：不列
   2. 分支 `worktree-agent-<agent_id>` 是合併閘門的持有者（見〈合併閘門紀錄的顯示〉）：`閘門`，代理人是否已結束皆同。`branch_name` 欄只記 `worktree`，分支名由 `agent_id` 組出
-  3. 未結束（`turn_ended_at` 為 null）：審查類代理人為 `審查`，`incident-responder` 為 `事故分析`，其餘為 `實作`。審查類清單集中在 `parse.ts` 的 `REVIEW_AGENTS`，以該常數為準。**維護點**：這份清單由人手動維護，不會從 `.claude/agents/` 自動取得；`.claude/agents/` 新增審查類代理人時，要同步加進 `REVIEW_AGENTS`，漏加的代理人在未結束時會被判成 `實作`
+  3. 未結束（`turn_ended_at` 為 null）：審查類代理人為 `審查`，`incident-responder` 為 `事故分析`，其餘為 `實作`。審查類清單集中在 `hooks/dispatch.ts` 的 `REVIEW_AGENTS`，以該常數為準。**維護點**：這份清單由人手動維護，不會從 `.claude/agents/` 自動取得；`.claude/agents/` 新增審查類代理人時，要同步加進 `REVIEW_AGENTS`，漏加的代理人在未結束時會被判成 `實作`
   4. 已結束且有票號（票未 `completed`，含票檔讀不到）：`收尾`；已結束且沒有票號：不列（沒有票可收尾）
 - **不列出**：session 已不存活（狀態檔不存在或 pid 已結束），以及上列判定為不列的條目
 - 每列：`L<n> <代理人>｜<任務>｜<流程階段>｜<距 dispatched_at 的時間>`，對不到線時 `L<n>` 改為 `其他`；任務為短票號（與票序相同，去掉 `0.5.0-W1-`），沒有票號時為 `agent_description`。依線號排序、其他最後，同線保留紀錄中的順序；以 `truncate-middle` 截斷
@@ -104,9 +104,16 @@ claude --plugin-dir tools/line-board
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
 | `hooks/register.tsx` | 註冊 `/board`、定時讀取、繪製 Pane（線、派發中代理人、各 session、合併閘門）；讀檔與命令一律經 `$` |
-| `hooks/parse.ts` | 純函式：checkout 路徑判定、現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化、frontmatter 解析、session 狀態檔篩選／解析／排序、pid 存活比對（procStart）、合併閘門紀錄篩選與欄位解析、短分支名、閘門持有者判定、派發紀錄解析與流程階段推導 |
+| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx 只從這裡取用，本身不含實作 |
+| `hooks/shared.ts` | 各 domain 共用：票號前綴與票檔位置、frontmatter 狀態解析、checkout 路徑判定、距今時間 |
+| `hooks/lanes.ts` | 線與佇列：現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化 |
+| `hooks/sessions.ts` | 各 session：狀態檔篩選／解析／排序、pid 存活比對（procStart）、本 repo 判定、線列 session 狀態 |
+| `hooks/mergeGate.ts` | 合併閘門：紀錄篩選與欄位解析、短分支名、閘門持有者判定、結果顏色 |
+| `hooks/dispatch.ts` | 派發中代理人：派發紀錄解析、流程階段推導、派發列；審查類代理人清單 `REVIEW_AGENTS` |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`）的型別契約 |
-| `hooks/board.test.ts` | `claude plugin test` 測試 |
+| `hooks/{shared,lanes,sessions,mergeGate,dispatch}.test.ts` | `claude plugin test` 測試：各 domain 純函式，與同名產品檔一一對應 |
+| `hooks/board.test.ts`、`hooks/boardDispatch.test.ts` | `claude plugin test` 測試：Pane 端到端繪製；後者為派發中代理人區塊，前者為其餘區塊 |
+| `hooks/fixtures.ts`、`hooks/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |
 
 `.claude-plugin/types/` 與根目錄 `tsconfig.json` 由 Claude Code 載入 mod 時自動產生。`.claude-plugin/types/` 由 Claude Code 自帶的 `.gitignore` 排除，不進版控；`tsconfig.json` 納入版控（plugin-authoring 的分享說明要求保留），下次載入時 Claude Code 會以同內容重新產生。
