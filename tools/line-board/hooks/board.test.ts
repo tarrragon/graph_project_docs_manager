@@ -17,10 +17,33 @@ import {
   ticketFile,
 } from './fixtures'
 import { DISPATCH_TICKET_PATH } from './lanes'
+import { GROUP_BORDER_COLUMNS, groupTitleKey } from './lanesView'
 import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupToggleKey, laneGroupId } from './layout'
 import { MERGE_LOG_PATH } from './mergeGate'
 import { SESSIONS, sessionStub, startBoard } from './paneHarness'
 import { TICKETS_DIR } from './shared'
+
+type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
+
+/** 群組標題的各行：標題列（Button）的文字，其後為標題 Box 內各 Text 的文字（目標、活動計數）；群組未畫出時為 undefined。 */
+async function titleOf(ui: Ui, id: string): Promise<string[] | undefined> {
+  const header = await ui.find({ type: 'Button', key: groupToggleKey(id) })
+  const title = await ui.find({ type: 'Box', key: groupTitleKey(id) })
+  return header === undefined || title === undefined ? undefined : [header.text, ...textLines(title.children)]
+}
+
+/** 描述節點內所有 Text 的文字，依文件順序（Text 包在縮排的 Box 內時往下找）；Button 的文字不在其中。 */
+function textLines(nodes: readonly unknown[]): string[] {
+  const texts: string[] = []
+  for (const node of nodes) {
+    if (typeof node !== 'object' || node === null) continue
+    const element = node as { type?: unknown; children?: unknown; props?: { children?: unknown } }
+    const children = Array.isArray(element.children) ? element.children : Array.isArray(element.props?.children) ? element.props.children : []
+    if (element.type === 'Text') texts.push(children.filter((child): child is string => typeof child === 'string').join(''))
+    else if (element.type !== 'Button') texts.push(...textLines(children))
+  }
+  return texts
+}
 
 /**
  * 終端機顯示寬度：CJK 與全形字元占 2 欄，其餘 1 欄。
@@ -83,39 +106,43 @@ describe('Pane', () => {
 
   test('線標題列 session 旁標狀態：存活者取其 status，pid 已結束或找不到的為離線', async ($, on) => {
     const { ui } = await startBoard($, on, sessionStub({ [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 }))
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7｜graph-project-docs-manager-f9［busy］｜/ })).toBeDefined()
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L13｜graph-project-docs-manager-1b［waiting：input needed］｜/ })).toBeDefined()
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L9｜graph-project-docs-manager-3e［離線］｜/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 graph-project-docs-manager-f9［busy］$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L13 graph-project-docs-manager-1b［waiting：input needed］$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L9 graph-project-docs-manager-3e［離線］$/ })).toBeDefined()
     await ui.unmount()
   })
 
-  test('線標題列顯示目標：有目標行的線在 session 後接「｜目標：<文字>」，寫（無）或沒有可採用目標行的線不顯示', async ($, on) => {
+  test('線標題顯示目標：有目標行的線在標題列下一行顯示「目標：<文字>」、再下一行為活動計數，寫（無）或沒有可採用目標行的線省略目標行', async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349_GOALS } })
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L13｜[^｜]*｜目標：顯示各線目標與派發中代理人｜\d+ 排隊$/ })).toBeDefined()
-    const l7 = await ui.find({ type: 'Button', text: /^[▸▾] L7｜/ })
-    const l9 = await ui.find({ type: 'Button', text: /^[▸▾] L9｜/ })
-    expect(l7?.text).toBeDefined()
-    expect(l9?.text).toBeDefined()
-    expect(l7?.text).not.toContain('目標')
-    expect(l9?.text).not.toContain('目標')
+    const l13 = await titleOf(ui, laneGroupId(13))
+    expect(l13?.length).toBe(3)
+    expect(l13?.[0]).toMatch(/^[▸▾] L13 /)
+    expect(l13?.slice(1)).toEqual(['目標：顯示各線目標與派發中代理人', expect.stringMatching(/^\d+ 排隊$/)])
+    const l7 = await titleOf(ui, laneGroupId(7))
+    const l9 = await titleOf(ui, laneGroupId(9))
+    expect(l7?.length).toBe(2)
+    expect(l9?.length).toBe(2)
+    expect(l7?.join('\n')).not.toContain('目標')
+    expect(l9?.join('\n')).not.toContain('目標')
     for (const ignored of ['舊目標', '清單項的目標', '表格內的目標', '反引號範本的目標', '會被清除的目標', 'Solution 之外的目標']) {
       expect(await ui.find({ text: new RegExp(ignored) })).toBeUndefined()
     }
     await ui.unmount()
   })
 
-  test('對照：349 沒有任何目標行時，所有線標題列都不顯示目標', async ($, on) => {
+  test('對照：349 沒有任何目標行時，所有線標題都沒有目標行', async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
-    const rows = await ui.findAll({ type: 'Button', text: /^[▸▾] L\d+｜/ })
+    const rows = await ui.findAll({ type: 'Button', text: /^[▸▾] L\d+ / })
     expect(rows.length).toBe(3)
     for (const row of rows) expect(row.text).not.toContain('目標')
+    expect(await ui.find({ type: 'Text', text: /^目標：/ })).toBeUndefined()
     await ui.unmount()
   })
 
   test('sessions 目錄無法列出時，各 session 區塊顯示讀取失敗，線標題列標狀態不明', async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
     expect(await ui.find({ type: 'Text', text: /^讀取 ~\/\.claude\/sessions 失敗/ })).toBeDefined()
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7｜graph-project-docs-manager-f9［狀態不明］｜/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 graph-project-docs-manager-f9［狀態不明］$/ })).toBeDefined()
     await ui.unmount()
   })
 
@@ -153,7 +180,7 @@ describe('Pane', () => {
         [`/repo/${MERGE_LOG_PATH}`]: MERGE_LOG,
       },
     })
-    expect(await ui.find({ type: 'Button', text: /^▸ L7｜graph-project-docs-manager-f9［[^］]*］｜2 排隊$/ })).toBeDefined()
+    expect(await titleOf(ui, laneGroupId(7))).toEqual([expect.stringMatching(/^▸ L7 graph-project-docs-manager-f9［[^］]*］$/), '2 排隊'])
     expect(await ui.find({ type: 'Text', text: /^排隊：351/ })).toBeUndefined()
     await ui.press({ key: groupToggleKey(laneGroupId(7)) })
     await ui.press({ key: groupToggleKey(laneGroupId(13)) })
@@ -161,9 +188,9 @@ describe('Pane', () => {
     // 337.1 在 main 已 completed，不在佇列列中
     expect(await ui.find({ type: 'Text', text: /^排隊：337\.3〔unknown〕 → 337\.2\.1〔unknown〕$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /337\.1〔/ })).toBeUndefined()
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L13｜graph-project-docs-manager-1b［[^］]*］｜/ })).toBeDefined()
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L9｜/ })).toBeDefined()
-    expect(await ui.find({ type: 'Button', text: /^[▸▾] L11｜/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L13 graph-project-docs-manager-1b［[^］]*］$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L9 / })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L11 / })).toBeUndefined()
     expect(await ui.find({ text: /328\.1|348〔/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^16:04:26｜開始｜0\.5\.0-W1-328$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^16:11:45｜結束｜0\.5\.0-W1-328｜寫入$/ })).toBeDefined()
@@ -194,8 +221,8 @@ describe('Pane', () => {
       '22:15:13｜結束｜worktree-doc-split-338-2-5｜中止',
       '16:41:49｜開始｜0.5.0-W1-351',
     ])
-    // 群組內容縮排 GROUP_INDENT 欄，每行可用的寬度為 60 - GROUP_INDENT
-    for (const row of rows) expect(displayWidth(row.text)).toBeLessThanOrEqual(60 - GROUP_INDENT)
+    // 群組外框的左右框線占 GROUP_BORDER_COLUMNS 欄、內容再縮排 GROUP_INDENT 欄，每行可用的寬度為兩者之外的部分
+    for (const row of rows) expect(displayWidth(row.text)).toBeLessThanOrEqual(60 - GROUP_BORDER_COLUMNS - GROUP_INDENT)
     expect(rows.map(row => row.props.color)).toEqual([undefined, undefined, 'green', 'green', 'yellow', undefined])
     expect(await ui.find({ type: 'Text', text: /worktree-agent-/ })).toBeUndefined()
     // 持有者提示排在標題之後、第一行紀錄之前
