@@ -1,4 +1,4 @@
-// 各 domain 共用的小工具：票號前綴與票檔位置、票檔 frontmatter 狀態解析、checkout 路徑判定、距今時間的顯示。
+// 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 狀態解析、checkout 路徑判定、距今時間的顯示。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
 
 /** 佇列票號的前綴：現行佇列行只寫短票號，補上前綴才是完整票號。 */
@@ -9,6 +9,9 @@ export const TICKETS_DIR = 'docs/work-logs/v0/v0.5/v0.5.0/tickets'
 
 /** 票檔讀不到或沒有 status 欄時顯示的狀態。 */
 export const UNKNOWN_STATUS = 'unknown'
+
+/** 票已完成的 status 值：派發條目不列（dispatch.ts）、不算排隊票（layout.ts）皆以此判定。 */
+export const COMPLETED_STATUS = 'completed'
 
 /** 讀票檔 frontmatter（第一個 `---` 區塊）的 `status:` 值；沒有 frontmatter 或沒有該欄時回傳 null。 */
 export function parseFrontmatterStatus(text: string): string | null {

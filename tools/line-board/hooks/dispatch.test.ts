@@ -1,4 +1,4 @@
-// dispatch.ts 的測試：派發紀錄解析、ISO 時間、流程階段推導、派發列與其顯示文字。
+// dispatch.ts 的測試：派發紀錄解析、ISO 時間、流程階段推導、派發列與派發票號。
 
 import { describe, expect, test } from 'claude-code/testing'
 
@@ -6,7 +6,6 @@ import {
   dispatchRows,
   dispatchStage,
   dispatchTicketIds,
-  formatDispatchRow,
   parseDispatchFile,
   parseIsoMs,
 } from './dispatch'
@@ -171,14 +170,5 @@ describe('dispatchRows', () => {
         dispatch({ ticketId: '0.5.0-W1-351' }),
       ]),
     ).toEqual(['0.5.0-W1-351', '0.5.0-W1-337.9'])
-  })
-})
-
-describe('formatDispatchRow', () => {
-  test('`L<n> 代理人｜任務｜階段｜距派發時間`；對不到線為「其他」，缺派發時間為時間不明', () => {
-    const nowMs = Date.UTC(2026, 9, 19, 8, 0, 0)
-    const row = { lane: 13, name: 'general-purpose', task: '337.9', stage: '實作' as const, dispatchedAt: '2026-10-19T07:57:00.5+00:00' }
-    expect(formatDispatchRow(row, nowMs)).toBe('L13 general-purpose｜337.9｜實作｜2 分前')
-    expect(formatDispatchRow({ ...row, lane: null, dispatchedAt: null }, nowMs)).toBe('其他 general-purpose｜337.9｜實作｜時間不明')
   })
 })
