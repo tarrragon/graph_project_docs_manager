@@ -434,6 +434,10 @@ class _Projector {
           GapDescriptionKind.traversesMissing,
           {'stepId': stepId},
         ),
+        FlowDefectKind.eventUnresolved => GapItemDescription(
+          GapDescriptionKind.flowEventUnresolved,
+          {'stepId': stepId, 'field': d.field, 'value': '${d.rawValue}'},
+        ),
       };
 }
 

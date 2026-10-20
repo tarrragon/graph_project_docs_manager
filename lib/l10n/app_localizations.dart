@@ -1052,6 +1052,12 @@ abstract class AppLocalizations {
   /// **'{edgeType} 只能指向一個終點，目前指向 {targets}'**
   String gapMultiSource(String edgeType, String targets);
 
+  /// SPEC-004 §4.0.6〈1.96 新增〉：flow 子類事件引用未解析
+  ///
+  /// In zh, this message translates to:
+  /// **'步驟 {stepId} 的 {field} 引用的事件不存在：{value}'**
+  String gapFlowEventUnresolved(String stepId, String field, String value);
+
   /// SPEC-004 §4.0.6〈1.80 提案〉：flow 參照未解析
   ///
   /// In zh, this message translates to:

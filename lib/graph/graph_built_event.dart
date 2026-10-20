@@ -107,6 +107,9 @@ enum FlowDefectKind {
 
   /// `traverses` 鍵缺席（FR-11；原始值恆為 null）。
   traversesKeyAbsent,
+
+  /// `emits`／`consumes` 引用不存在的 EVT id（FR-10〈事件引用〉，458.4 命名）。
+  eventUnresolved,
 }
 
 /// domain 重複宣告（FR-11〈重複 domain 宣告〉）：負載 {domain, 衝突的 DomainBundle ID 清單}。

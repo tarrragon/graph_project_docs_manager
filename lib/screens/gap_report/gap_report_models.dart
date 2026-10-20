@@ -60,6 +60,7 @@ enum GapDescriptionKind {
   flowStepIdDuplicated,
   traversesUndeclared,
   traversesMissing,
+  flowEventUnresolved,
   domainDeclaredTwice,
   orphanEventEmittedNotConsumed,
   orphanEventConsumedNotEmitted,

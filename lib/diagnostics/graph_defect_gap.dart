@@ -28,6 +28,9 @@ enum GraphDefectKind {
   /// `traverses` 鍵缺席（FR-09 flow 子類）。
   flowTraversesKeyAbsent,
 
+  /// 事件引用未解析（FR-09 flow 子類，FR-10〈事件引用〉）。
+  flowEventUnresolved,
+
   /// domain 重複宣告（FR-09，非 flow 子圖的名稱索引缺陷）。
   domainDuplicateDeclaration,
 }
@@ -57,6 +60,7 @@ class GraphDefectGap {
         GraphDefectKind.flowTraversesUndeclared,
       FlowDefectKind.traversesKeyAbsent =>
         GraphDefectKind.flowTraversesKeyAbsent,
+      FlowDefectKind.eventUnresolved => GraphDefectKind.flowEventUnresolved,
     },
   };
 }

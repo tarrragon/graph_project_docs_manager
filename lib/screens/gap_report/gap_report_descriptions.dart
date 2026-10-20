@@ -97,6 +97,11 @@ String? gapItemDescriptionText(AppLocalizations l10n, GapItemDescription? d) {
     GapDescriptionKind.traversesMissing => l10n.gapTraversesMissing(
       a['stepId']! as String,
     ),
+    GapDescriptionKind.flowEventUnresolved => l10n.gapFlowEventUnresolved(
+      a['stepId']! as String,
+      a['field']! as String,
+      a['value']! as String,
+    ),
     GapDescriptionKind.domainDeclaredTwice => l10n.gapDomainDeclaredTwice(
       a['domain']! as String,
       _join(l10n, a['bundles']! as List<String>),
