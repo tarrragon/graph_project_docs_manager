@@ -812,3 +812,40 @@ def test_none_and_review_skeletons_unchanged_by_worktree_lines():
         assert WORKTREE_CLI_REJECT_LINE not in out
         assert WORKTREE_HEREDOC_LINE not in out
     assert _skeleton(isolation="none") == _skeleton()
+
+
+# --- 骨架依 where.files 附測試入口命令（0.5.0-W1-397） ---------------------
+
+from ticket_system.lib.dispatch_skeleton import entry_commands_for_files  # noqa: E402
+
+_HOOKS_ENTRY = "uv --directory <checkout>/.claude/hooks run pytest"
+
+
+@pytest.mark.parametrize(
+    "files, expected",
+    [
+        ([".claude/hooks/x-hook.py"], [_HOOKS_ENTRY]),
+        ([".claude/lib/y.py"], [_HOOKS_ENTRY]),
+        (
+            [".claude/skills/ticket/ticket_system/lib/a.py"],
+            ["uv --directory <checkout>/.claude/skills/ticket run pytest"],
+        ),
+        (
+            [".claude/skills/spec/scripts/a.py"],
+            [_HOOKS_ENTRY + " <checkout>/.claude/skills/spec/tests"],
+        ),
+        ([".claude/hooks/a.py", ".claude/hooks/b.py"], [_HOOKS_ENTRY]),
+        (["lib/main.dart", "docs/a.md", ".claude/rules/a.md"], []),
+        ([], []),
+    ],
+)
+def test_test_entry_commands_mapping(files, expected):
+    assert entry_commands_for_files(files) == expected
+
+
+def test_skeleton_includes_test_entry_only_when_mapped():
+    entries = entry_commands_for_files([".claude/hooks/x.py"])
+    with_entry = _skeleton(test_entries=entries)
+    assert _HOOKS_ENTRY in with_entry
+    assert _HOOKS_ENTRY not in _skeleton()
+    assert _skeleton(test_entries=[]) == _skeleton()

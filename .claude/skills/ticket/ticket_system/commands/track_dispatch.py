@@ -109,6 +109,7 @@ def _build_skeleton(args: argparse.Namespace) -> str:
         touches_hook_scope=getattr(args, "_touches_hook_scope", False),
         isolation=getattr(args, "isolation", None) or "none",
         require_red_run=getattr(args, "_require_red_run", False),
+        test_entries=getattr(args, "_test_entries", ()),
     )
 
 
@@ -440,6 +441,11 @@ def execute_dispatch(args: argparse.Namespace, version: str) -> int:
     args._require_red_run = requires_red_run(
         ticket.get("type"), ticket.get("acceptance")
     )
+
+    from ticket_system.lib.file_conflict import write_files
+    from ticket_system.lib.dispatch_skeleton import entry_commands_for_files
+
+    args._test_entries = entry_commands_for_files(write_files(ticket))
 
     skeleton = _build_skeleton(args)
     if dry_run:
