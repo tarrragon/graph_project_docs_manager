@@ -5,8 +5,8 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
 
-const _ticketTypeName = 'Ticket';
 const _idKey = 'id';
 
 /// 頂層 frontmatter 鍵本來就是 String；巢狀 map 的鍵原樣保留（YAML 可為非字串）。
@@ -37,7 +37,7 @@ class TicketDetail {
     final candidates = <String, Map<String, dynamic>>{};
     final duplicated = <String>{};
     for (final node in rawNodes) {
-      if (node.typeName != _ticketTypeName) continue;
+      if (node.typeName != ticketTypeName) continue;
       final id = node.frontmatter[_idKey];
       if (id is! String) continue;
       if (candidates.containsKey(id)) duplicated.add(id);

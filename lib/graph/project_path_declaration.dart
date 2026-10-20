@@ -7,12 +7,12 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 
 import 'domain_name_resolver.dart';
 import 'path_declaration_state.dart';
 
-const _ticketTypeName = 'Ticket';
 const _pathPatternsField = 'path_patterns';
 
 /// 專案層宣告狀態（供報告頁宣告狀態行）。
@@ -61,7 +61,7 @@ ProjectPathDeclaration summarizeProjectPathDeclaration({
   final bundles = _bundlePathPatterns(rawNodes);
   final tickets = [
     for (final raw in rawNodes)
-      if (raw.typeName == _ticketTypeName) _whereFilesOf(raw),
+      if (raw.typeName == ticketTypeName) _whereFilesOf(raw),
   ];
   final reports = [
     for (final files in tickets)
