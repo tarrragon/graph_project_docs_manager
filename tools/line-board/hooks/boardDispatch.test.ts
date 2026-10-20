@@ -14,17 +14,47 @@ import { TICKETS_DIR } from './shared'
 
 type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
 
-/** 一個描述節點內所有 Text 的文字，依文件順序；Text 的文字為其字串子節點相接。 */
+/** 描述節點：子節點在 children 或 props.children；key、color 等在 props。 */
+type Described = { type?: unknown; children?: unknown; props?: { children?: unknown; color?: unknown; bold?: unknown } }
+
+/** 描述節點的子節點；子節點只有一個字串時也包成陣列。 */
+function childrenOf(node: unknown): unknown[] {
+  if (typeof node !== 'object' || node === null) return []
+  const element = node as Described
+  const children = element.children ?? element.props?.children
+  if (Array.isArray(children)) return children
+  return children === undefined ? [] : [children]
+}
+
+/** 一個 Text 的文字：字串子節點與內嵌 Text（佇列列的各票分段）的文字依序相接。 */
+function textOf(node: unknown): string {
+  return childrenOf(node)
+    .map(child => (typeof child === 'string' ? child : (child as Described).type === 'Text' ? textOf(child) : ''))
+    .join('')
+}
+
+/** 一個描述節點內所有 Text 的文字，依文件順序；Text 的文字為其字串子節點與內嵌 Text 相接。 */
 function textsOf(nodes: readonly unknown[]): string[] {
   const texts: string[] = []
   for (const node of nodes) {
     if (typeof node !== 'object' || node === null) continue
-    const element = node as { type?: unknown; children?: unknown; props?: { children?: unknown } }
-    const children = Array.isArray(element.children) ? element.children : Array.isArray(element.props?.children) ? element.props.children : []
-    if (element.type === 'Text') texts.push(children.filter((child): child is string => typeof child === 'string').join(''))
-    else texts.push(...textsOf(children))
+    // 標題列（Button）的文字由 headerOf 另取，不在其中
+    if ((node as Described).type === 'Text') texts.push(textOf(node))
+    else if ((node as Described).type !== 'Button') texts.push(...textsOf(childrenOf(node)))
   }
   return texts
+}
+
+/**
+ * 群組展開內容中佇列列（文字以「排隊：」開頭的 Text）內各票分段的文字與顏色，依序；分隔符（字串子節點）不在其中。
+ * 以內容 Box 的子節點找：子節點的描述不帶 Text 的 key，無從以 key 查找。
+ */
+async function queueSegmentsOf(ui: Ui, id: string): Promise<{ text: string; color: unknown }[]> {
+  const body = await ui.find({ type: 'Box', key: groupBodyKey(id) })
+  const row = childrenOf(body).find(child => (child as Described).type === 'Text' && textOf(child).startsWith('排隊：'))
+  return childrenOf(row)
+    .filter(child => typeof child === 'object' && child !== null && (child as Described).type === 'Text')
+    .map(child => ({ text: textOf(child), color: (child as Described).props?.color }))
 }
 
 /** 群組標題列（Button）的文字；群組未畫出時為 undefined。 */
@@ -122,6 +152,78 @@ describe('Pane', () => {
     const headers = (await ui.findAll({ type: 'Button', text: /^[▸▾] (L\d+|其他)/ })).map(item => item.text.split(' ').slice(0, 2).join(' '))
     expect(headers).toEqual(['▾ L7', '▸ L9', '▾ L13', '▾ 其他'])
     expect(await ui.find({ type: 'Text', text: /讀取 \.claude\/dispatch-active\.json 失敗/ })).toBeUndefined()
+    await ui.unmount()
+  })
+
+  test('五色狀態：派發列依階段上色（代理人執行中青、閘門黃、收尾洋紅），佇列票依狀態上色（待辦灰、進行中綠、閘門黃）', async ($, on) => {
+    const stub = dispatchFiles(DISPATCH_ACTIVE)
+    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-337.3.md`] = ticketFile('pending')
+    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-337.2.1.md`] = ticketFile('in_progress')
+    const { ui } = await startBoard($, on, stub)
+    // 該群組內的派發列（各列文字在本 fixture 中不重複）與其顏色
+    const rowColors = async (id: string) => {
+      const rows = await ui.findAll({ type: 'Text', text: DISPATCH_ROW })
+      const body = (await bodyOf(ui, id)) ?? []
+      return rows.filter(row => body.includes(row.text)).map(row => [withoutAge(row.text), row.props.color])
+    }
+    expect(await rowColors(laneGroupId(7))).toEqual([
+      ['linux｜Readonly review of 337.8｜審查', 'cyan'],
+      ['incident-responder｜分析 354.1 閘門紅燈｜事故分析', 'cyan'],
+    ])
+    expect(await rowColors(laneGroupId(13))).toEqual([
+      ['general-purpose｜337.9｜實作', 'cyan'],
+      ['general-purpose｜351｜閘門', 'yellow'],
+    ])
+    expect(await rowColors(OTHER_GROUP_ID)).toEqual([['general-purpose｜345｜收尾', 'magenta']])
+    // 佇列票：L13 的 337.3 為 pending、337.2.1 為 in_progress 且沒有派發列
+    expect(await queueSegmentsOf(ui, laneGroupId(13))).toEqual([
+      { text: '337.3〔pending〕', color: 'gray' },
+      { text: '337.2.1〔in_progress〕', color: 'green' },
+    ])
+    // L7 的 351 雖為 in_progress，其代理人的分支正持有閘門（派發列在 L13），依派發階段為閘門；145 讀不到狀態，不上色
+    expect(await queueSegmentsOf(ui, laneGroupId(7))).toEqual([
+      { text: '351〔in_progress〕', color: 'yellow' },
+      { text: '145〔unknown〕', color: undefined },
+    ])
+    // 佇列列整行文字不變
+    expect(await bodyOf(ui, laneGroupId(13))).toContain('排隊：337.3〔pending〕 → 337.2.1〔in_progress〕')
+    await ui.unmount()
+  })
+
+  test('對照：同一張票的派發列已結束（收尾）時，佇列票為要人處理（洋紅）', async ($, on) => {
+    const stub = dispatchFiles(
+      JSON.stringify({
+        dispatches: [dispatchJson({ agent_id: 'awrap', session_id: 'sid-102', ticket_id: '0.5.0-W1-337.3', turn_ended_at: '2026-10-19T07:59:00+00:00' })],
+      }),
+    )
+    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-337.3.md`] = ticketFile('in_progress')
+    const { ui } = await startBoard($, on, stub)
+    expect(await queueSegmentsOf(ui, laneGroupId(13))).toEqual([
+      { text: '337.3〔in_progress〕', color: 'magenta' },
+      { text: '337.2.1〔unknown〕', color: undefined },
+    ])
+    await ui.unmount()
+  })
+
+  test('線群組標題列為藍色粗體、不變淡；無活動的線（L9）只有標題列下的各行為淡色', async ($, on) => {
+    const { ui } = await startBoard($, on, dispatchFiles(DISPATCH_ACTIVE))
+    type Styled = { props?: { color?: unknown; bold?: unknown; dimColor?: unknown } }
+    // L7、L13、其他有活動，L9 只有排隊票（無活動）
+    for (const id of [laneGroupId(7), laneGroupId(9), laneGroupId(13), OTHER_GROUP_ID]) {
+      const header = await ui.find({ type: 'Button', key: groupToggleKey(id) })
+      const label = childrenOf(header).find(child => (child as Described).type === 'Text') as Styled | undefined
+      const dim = [header?.props.dimColor, label?.props?.dimColor].some(value => value === true)
+      expect([id, label?.props?.color, label?.props?.bold, dim]).toEqual([id, 'blue', true, false])
+    }
+    // 對照：L9 標題列下的活動計數行為淡色，L7 的不是
+    const detailDim = async (id: string) => {
+      const title = await ui.find({ type: 'Box', key: groupTitleKey(id) })
+      return childrenOf(title)
+        .filter(child => (child as Described).type === 'Text')
+        .map(child => (child as Styled).props?.dimColor)
+    }
+    expect(await detailDim(laneGroupId(9))).toEqual([true])
+    expect(await detailDim(laneGroupId(7))).toEqual([false])
     await ui.unmount()
   })
 

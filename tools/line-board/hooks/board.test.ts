@@ -83,6 +83,19 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
+  test('各 session：waiting 以洋紅粗體顯示（要人處理），其他狀態不上色', async ($, on) => {
+    const { ui } = await startBoard($, on, sessionStub({ [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 }))
+    const rows = await ui.findAll({ type: 'Text', text: /^graph-project-docs-manager-/ })
+    expect(rows.map(row => [row.text.split('｜')[1], row.props.color, row.props.bold ?? false])).toEqual([
+      ['waiting：input needed', 'magenta', true],
+      ['shell', undefined, false],
+      ['busy', undefined, false],
+      ['idle', undefined, false],
+      ['compacting', undefined, false],
+    ])
+    await ui.unmount()
+  })
+
   test('反例：pid 存在但 ps 的啟動時間與 procStart 不符時不列出、計入已結束；ps 以 TZ=UTC 執行', async ($, on) => {
     const reused = { pid: 201, name: 'graph-project-docs-manager-old', cwd: '/repo', status: 'busy', procStart: REAL_PROC_START }
     const same = { pid: 202, name: 'graph-project-docs-manager-live', cwd: '/repo', status: 'idle', procStart: REAL_PROC_START }
