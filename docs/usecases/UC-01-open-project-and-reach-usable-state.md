@@ -4,8 +4,8 @@ title: "開啟專案並抵達可用狀態"
 status: draft
 source_proposal: [PROP-003, PROP-002]
 created: "2026-08-26"
-updated: "2026-10-09"
-version: "1.6"
+updated: "2026-10-21"
+version: "1.7"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -44,7 +44,10 @@ ticket_refs: []
 3. **解析節點**
    - 系統掃描 docs/ 下的圖譜節點檔並解析 frontmatter
 
-4. **抵達 Domain 視圖**
+4. **建立圖譜**
+   - 系統依型別表的邊型，由解析出的節點建立圖譜（輕節點、邊、各 UC 的 flow 子圖）
+
+5. **抵達 Domain 視圖**
    - 系統以矩陣模式呈現 domain × UC 交叉表
 
 ## 替代場景
@@ -57,7 +60,7 @@ ticket_refs: []
 
 ### 空專案
 
-解析成功但無任何圖譜節點時，顯示說明並提供開啟 docs/ 目錄、導覽至破洞報告與切換專案的動作
+解析與建圖完成但無任何圖譜節點時，顯示說明並提供開啟 docs/ 目錄、導覽至破洞報告與切換專案的動作
 
 ## 流程拓撲（結構化 Flow 區塊）
 
@@ -81,12 +84,20 @@ flow:
     traverses: ["schema"]
   - id: "parse-nodes"
     name: "解析節點"
-    next: ["reach-domain-view"]
+    next: ["build-graph"]
     branch_from: null
     return_to: null
     emits: ["EVT-CORPUS-001"]
-    consumes: ["EVT-SCHEMA-001"]
+    consumes: ["EVT-WORKSPACE-001", "EVT-SCHEMA-001"]
     traverses: ["corpus"]
+  - id: "build-graph"
+    name: "建立圖譜"
+    next: ["reach-domain-view"]
+    branch_from: null
+    return_to: null
+    emits: ["EVT-GRAPH-001"]
+    consumes: ["EVT-CORPUS-001", "EVT-SCHEMA-001"]
+    traverses: ["graph"]
   - id: "reach-domain-view"
     name: "抵達 Domain 視圖"
     next: []
@@ -94,7 +105,7 @@ flow:
     return_to: null
     emits: []
     consumes: ["EVT-CORPUS-001"]
-    traverses: ["corpus"]
+    traverses: ["graph"]
   - id: "folder-unavailable"
     name: "資料夾不可用"
     next: []
@@ -106,11 +117,19 @@ flow:
   - id: "empty-graph"
     name: "空專案"
     next: []
-    branch_from: "parse-nodes"
+    branch_from: "build-graph"
     return_to: null
     emits: []
     consumes: []
     traverses: ["graph"]
+  - id: "partial-parse-failure"
+    name: "部分檔案解析失敗"
+    next: []
+    branch_from: "parse-nodes"
+    return_to: null
+    emits: ["EVT-CORPUS-003", "EVT-CORPUS-004", "EVT-CORPUS-005"]
+    consumes: []
+    traverses: ["corpus"]
   - id: "schema-rejected"
     name: "版本不符拒絕渲染"
     next: ["show-version-mismatch"]
@@ -139,7 +158,11 @@ flow:
 ### 部分檔案解析失敗
 
 不中止整輪解析；落在節點 carrier 路徑內的失敗檔案列入破洞報告，其餘（README、
-工作日誌等合法非節點檔）不列入；圖譜以可解析部分呈現（SPEC-006 FR-04、FR-06）
+工作日誌等合法非節點檔）不列入；圖譜以可解析部分呈現（SPEC-006 FR-04、FR-06）。
+UC 本文的 flow 區塊壞掉時，該 UC 仍是節點，另列一筆 flow 區塊解析失敗（SPEC-006
+FR-09，EVT-CORPUS-004）；非 domain 路徑清單檔格式錯誤時，非 domain 側視為未宣告，
+另列一筆（SPEC-006 FR-10，EVT-CORPUS-005）。三種失敗都由 Diagnostics 轉為破洞，
+對應 flow 分支步驟 `partial-parse-failure`
 
 ### 不是框架專案
 
@@ -166,6 +189,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.7 | 2026-10-21 | `0.5.0-W1-458.1`（458 用戶裁定類 A、C）：flow 新增 `build-graph`（traverses `[graph]`，consumes `EVT-CORPUS-001`、`EVT-SCHEMA-001`，emits `EVT-GRAPH-001`），`parse-nodes` 的 next 與 `empty-graph` 的 branch_from 改接它；新增分支步驟 `partial-parse-failure`（branch_from `parse-nodes`，emits `EVT-CORPUS-003`／`004`／`005`）；`parse-nodes` 補 consumes `EVT-WORKSPACE-001`；`reach-domain-view` traverses 由 `[corpus]` 改 `[graph]`（消費步驟的 traverses 即消費方 domain）。正文主要成功場景加「建立圖譜」，〈空專案〉〈部分檔案解析失敗〉同步 |
 | 1.6 | 2026-10-09 | `0.5.0-W1-095.2`：結構化 flow 區塊新增純畫面步驟 `show-version-mismatch`（traverses `[]`，consumes `EVT-SCHEMA-002`），接在 `schema-rejected` 之後；`return_to: select-folder` 由 `schema-rejected` 移至新步驟 |
 | 1.5 | 2026-09-30 | `source_proposal` 由 `PROP-003` 改為 `[PROP-003, PROP-002]`：PROP-002 `outputs.usecase_refs` 已列 UC-01，補上對應的正向宣告（`0.4.0-W2-001`；`provenance` 正向基數為 `many`，SPEC-007 D7）；不動正文與結構化 flow 區塊 |
 | 1.4 | 2026-09-24 | 0.3.0 規劃波 Step 4：〈部分檔案解析失敗〉與對應驗收改為只有 carrier 路徑內的失敗檔列入破洞報告（SPEC-006 D6）；`related_specs` 補 SPEC-006；不動結構化 flow 區塊 |
