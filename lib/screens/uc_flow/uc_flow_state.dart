@@ -17,6 +17,55 @@ library;
 
 import '../../app/graph_status.dart';
 
+/// 單一步驟（0.5.0-W1-114.18：由 Graph `flowOf` 子圖投影，或測試 fixture 直接給定）。
+class UcFlowStepItem {
+  const UcFlowStepItem({
+    required this.label,
+    required this.domain,
+    this.id,
+    this.emits = const [],
+    this.consumes = const [],
+  });
+
+  /// 步驟 id 原值字串化；缺 id 為 `null`（無法被跳轉定位）。
+  final String? id;
+  final String label;
+  final String domain;
+  final List<String> emits;
+  final List<String> consumes;
+}
+
+/// UC 清單項：id、標題、原始檔路徑、步驟，以及 flow 區塊是否解析失敗
+/// （EVT-CORPUS-004，決定未結構化態用哪一則訊息）。
+class UcFlowUcItem {
+  const UcFlowUcItem({
+    required this.id,
+    required this.title,
+    required this.filePath,
+    this.steps = const [],
+    this.isFlowParseFailed = false,
+  });
+
+  final String id;
+  final String title;
+  final String filePath;
+  final List<UcFlowStepItem> steps;
+  final bool isFlowParseFailed;
+
+  /// 含結構化 flow：步驟清單非空。
+  bool get hasFlowStep => steps.isNotEmpty;
+}
+
+/// 跳轉定位目標（SPEC-001 §5 主操作表事件類／flow 類兩列）：[ucId] 為目標 UC，
+/// [stepId] 定位步驟、[eventId] 定位事件流小表列；兩者皆可缺。
+class UcFlowFocus {
+  const UcFlowFocus({required this.ucId, this.stepId, this.eventId});
+
+  final String ucId;
+  final String? stepId;
+  final String? eventId;
+}
+
 /// UC Flow 視圖的五個畫面狀態（SPEC-001 §2）。
 sealed class UcFlowState {
   const UcFlowState();
@@ -42,10 +91,13 @@ class UcFlowUcUnset extends UcFlowState {
 
 /// flow 未結構化：已選定的 UC 無 FlowStep。
 class UcFlowUnstructured extends UcFlowState {
-  const UcFlowUnstructured({required this.ucId});
+  const UcFlowUnstructured({required this.ucId, this.isParseFailed = false});
 
   /// 已選定的 UC id。
   final String ucId;
+
+  /// 該 UC 的 flow 區塊皆解析失敗：訊息改用 `flowParseFailedMessage`。
+  final bool isParseFailed;
 }
 
 /// 正常：已選定一條含結構化 flow 的 UC。

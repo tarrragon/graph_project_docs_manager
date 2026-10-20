@@ -1,7 +1,8 @@
 /// UC Flow 視圖（SPEC-001 §2；SPEC-003 §3.2；SPEC-004 §3.6）。
 ///
 /// 五個狀態列依 [UcFlowState] 切換，內容由 [ucFlowStateProvider] 供給
-/// （假資料驅動，見 [UcFlowFixtures]，本票決策：只交狀態渲染與退出
+/// （`0.5.0-W1-114.18` 起由真實輪次與 `flowOf` 驅動，見
+/// `ucFlowUcListProvider`；原假資料僅供測試注入，本票決策：只交狀態渲染與退出
 /// 路徑，不接真實資料）。
 ///
 /// **`0.1.0-W2-010` 補齊**：`尚未選定 UC`／`flow 未結構化`／`正常`三態
@@ -13,7 +14,7 @@
 /// **`0.1.0-W2-013` 補齊**：`flow 未結構化`態依 SPEC-004 §3.6 §2 對應行
 /// 補齊 `ListRow.meta`（型別標籤 + 原始檔路徑）與 `AppText.title`
 /// （UC 標題），並接上「開啟原始檔」「檢視關聯」兩個動作
-/// （[_UnstructuredView]）；所需 UC 基本資訊擴充於 [UcFlowFixtures]
+/// （[_UnstructuredView]）；所需 UC 基本資訊擴充於 `UcFlowUcItem`
 /// （新增 `filePath`）。步驟表「點步驟→節點詳情」亦接上真實跳轉
 /// （[_stepRow]，沿用 `trace_screen.dart` `onTapNode` 既有簡化：跳轉不
 /// 額外設定 `nodeDetailStateProvider`，節點詳情固定顯示其預設值，0.1
@@ -32,7 +33,6 @@ import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/current_workspace_provider.dart';
-import 'uc_flow_fixtures.dart';
 import 'uc_flow_providers.dart';
 import 'uc_flow_state.dart';
 
@@ -51,7 +51,8 @@ class UcFlowScreen extends ConsumerWidget {
       ),
       UcFlowEmpty() => const _EmptyView(),
       UcFlowUcUnset() => const _UcUnsetView(),
-      UcFlowUnstructured(ucId: final ucId) => _UnstructuredView(ucId: ucId),
+      UcFlowUnstructured(:final ucId, :final isParseFailed) =>
+        _UnstructuredView(ucId: ucId, isParseFailed: isParseFailed),
       UcFlowNormal(ucId: final ucId) => _NormalView(ucId: ucId),
     };
   }
@@ -106,14 +107,15 @@ class _UcUnsetView extends ConsumerWidget {
 /// `EmptyState.section`（`ButtonRow` 動作：開啟原始檔、檢視關聯）], 〈UC
 /// 選擇入口〉]（SPEC-004 §3.6 §2）。
 class _UnstructuredView extends ConsumerWidget {
-  const _UnstructuredView({required this.ucId});
+  const _UnstructuredView({required this.ucId, required this.isParseFailed});
 
   final String ucId;
+  final bool isParseFailed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final uc = UcFlowFixtures.ucList.firstWhere((uc) => uc.id == ucId);
+    final uc = _findUc(ref.watch(ucFlowUcListProvider), ucId);
     return TwoColumnLayout(
       key: const Key('state-ucFlow-unstructured'),
       main: Panel(
@@ -127,7 +129,9 @@ class _UnstructuredView extends ConsumerWidget {
         ],
         fill: EmptyState(
           variant: EmptyStateVariant.section,
-          message: l10n.flowUnstructuredMessage,
+          message: isParseFailed
+              ? l10n.flowParseFailedMessage
+              : l10n.flowUnstructuredMessage,
           testKey: const Key('panel-ucFlow-unstructured-message'),
           actions: [
             AppButton(
@@ -158,7 +162,7 @@ class _UnstructuredView extends ConsumerWidget {
   Future<void> _openSource(
     BuildContext context,
     WidgetRef ref,
-    UcFlowFixtureUc uc,
+    UcFlowUcItem uc,
   ) async {
     final l10n = AppLocalizations.of(context);
     final path = resolveOpenPath(
@@ -185,17 +189,103 @@ class _UnstructuredView extends ConsumerWidget {
 
 /// 正常：`TwoColumnLayout`[`Panel`[`DataTable.plain`（步驟表 + `appendix`
 /// 事件流小表）], 〈UC 選擇入口〉]（SPEC-004 §3.6 §2）。
-class _NormalView extends ConsumerWidget {
+class _NormalView extends ConsumerStatefulWidget {
   const _NormalView({required this.ucId});
 
   final String ucId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_NormalView> createState() => _NormalViewState();
+}
+
+/// 跳轉定位逐段下捲的次數上限（防止目標不存在時無限迴圈）。
+const int _maxLocateScrolls = 200;
+
+/// 事件流小表列 key（跳轉定位與測試錨點）。
+Key _eventRowKey(String event) => Key('row-ucFlow-event-$event');
+
+class _NormalViewState extends ConsumerState<_NormalView> {
+  String get ucId => widget.ucId;
+
+  /// 跳轉定位（SPEC-001 §5）：目標屬本 UC 時，於本幀之後捲動到步驟列或
+  /// 事件列；高亮只有事件列（`step` 變體不接受 `isLocated`，SPEC-004 4.35）。
+  UcFlowFocus? _focusFor(WidgetRef ref) {
+    final focus = ref.watch(ucFlowFocusProvider);
+    return focus != null && focus.ucId == ucId ? focus : null;
+  }
+
+  /// 已為其排過定位的焦點（同一個焦點只定位一次，高亮重建不重捲）。
+  UcFlowFocus? _locatedFocus;
+
+  void _scheduleLocate(UcFlowUcItem uc, UcFlowFocus? focus) {
+    final target = _locateKey(uc, focus);
+    if (target == null || identical(focus, _locatedFocus)) return;
+    _locatedFocus = focus;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _locate(target));
+  }
+
+  /// 列為懶建構：目標未建出時依視窗高度逐段下捲，直到目標建出後捲到可見。
+  Future<void> _locate(Key target) async {
+    final scrollable = _findScrollable();
+    for (var i = 0; i < _maxLocateScrolls && mounted; i++) {
+      final found = _findElementByKey(context as Element, target);
+      if (found != null) {
+        await Scrollable.ensureVisible(found, duration: Duration.zero);
+        return;
+      }
+      final position = scrollable?.position;
+      if (position == null || position.pixels >= position.maxScrollExtent) {
+        return;
+      }
+      position.jumpTo(
+        (position.pixels + position.viewportDimension).clamp(
+          0.0,
+          position.maxScrollExtent,
+        ),
+      );
+      await WidgetsBinding.instance.endOfFrame;
+    }
+  }
+
+  ScrollableState? _findScrollable() {
+    final list = _findElementByKey(
+      context as Element,
+      const Key('scroll-ucFlow-steps'),
+    );
+    if (list == null) return null;
+    ScrollableState? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element is StatefulElement && element.state is ScrollableState) {
+        found = element.state as ScrollableState;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    list.visitChildren(visit);
+    return found;
+  }
+
+  Key? _locateKey(UcFlowUcItem uc, UcFlowFocus? focus) {
+    if (focus == null) return null;
+    final eventId = focus.eventId;
+    if (eventId != null) return _eventRowKey(eventId);
+    final stepId = focus.stepId;
+    if (stepId == null) return null;
+    final index = uc.steps.indexWhere((s) => s.id == stepId);
+    return index < 0 ? null : Key('card-ucFlow-step-$ucId-${index + 1}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final uc = UcFlowFixtures.ucList.firstWhere((uc) => uc.id == ucId);
+    final uc = _findUc(ref.watch(ucFlowUcListProvider), ucId);
+    final focus = _focusFor(ref);
+    _scheduleLocate(uc, focus);
     final steps = uc.steps;
     final eventRows = _buildEventFlowRows(l10n, steps);
+    final locatedEvent = focus?.eventId;
 
     final header = AppTableRow.header(
       columns: AppTableRow.stepColumns,
@@ -229,6 +319,8 @@ class _NormalView extends ConsumerWidget {
             rows: [
               for (final row in eventRows)
                 AppTableRow.eventFlow(
+                  key: _eventRowKey(row.event),
+                  isLocated: row.event == locatedEvent,
                   event: AppText(row.event, variant: AppTextVariant.mono),
                   emittedBy: AppText(row.emittedBy),
                   consumedBy: AppText(row.consumedBy),
@@ -237,19 +329,27 @@ class _NormalView extends ConsumerWidget {
             key: const Key('panel-ucFlow-event-flow'),
           );
 
-    return TwoColumnLayout(
-      key: const Key('state-ucFlow-normal'),
-      main: Panel(
-        fill: AppDataTable(
-          variant: AppDataTableVariant.plain,
-          columns: AppTableRow.stepColumns,
-          header: header,
-          rows: rows,
-          scrollKey: const Key('scroll-ucFlow-steps'),
-          appendix: eventFlowTable,
+    return Listener(
+      // 任一指標按下即結束事件列高亮（SPEC-004 4.35 located 退出）。
+      onPointerDown: (_) {
+        if (ref.read(ucFlowFocusProvider) != null) {
+          ref.read(ucFlowFocusProvider.notifier).state = null;
+        }
+      },
+      child: TwoColumnLayout(
+        key: const Key('state-ucFlow-normal'),
+        main: Panel(
+          fill: AppDataTable(
+            variant: AppDataTableVariant.plain,
+            columns: AppTableRow.stepColumns,
+            header: header,
+            rows: rows,
+            scrollKey: const Key('scroll-ucFlow-steps'),
+            appendix: eventFlowTable,
+          ),
         ),
+        detail: const _UcSelectorPanel(),
       ),
-      detail: const _UcSelectorPanel(),
     );
   }
 
@@ -257,7 +357,7 @@ class _NormalView extends ConsumerWidget {
     WidgetRef ref, {
     required String ucId,
     required int index,
-    required UcFlowFixtureStep step,
+    required UcFlowStepItem step,
   }) {
     return AppTableRow.step(
       number: StepNumber(number: index + 1),
@@ -321,6 +421,28 @@ class _UcSelectorPanel extends ConsumerWidget {
   }
 }
 
+/// 依 id 取 UC 項；選定 id 不在清單時（清單於選定後變動）以空殼項承接，
+/// 不拋例外。
+UcFlowUcItem _findUc(List<UcFlowUcItem> ucList, String ucId) =>
+    ucList.where((uc) => uc.id == ucId).firstOrNull ??
+    UcFlowUcItem(id: ucId, title: '', filePath: '');
+
+/// 自 [root] 往下找第一個 widget key 等於 [target] 的 element。
+Element? _findElementByKey(Element root, Key target) {
+  Element? found;
+  void visit(Element element) {
+    if (found != null) return;
+    if (element.widget.key == target) {
+      found = element;
+      return;
+    }
+    element.visitChildren(visit);
+  }
+
+  visit(root);
+  return found;
+}
+
 /// 事件流小表單列的組裝結果（事件 ID + 發出／消費文字，見
 /// [_buildEventFlowRows]）。
 class _EventFlowRowData {
@@ -340,7 +462,7 @@ class _EventFlowRowData {
 /// 空清單，呼叫端據此不渲染 `appendix`）。
 List<_EventFlowRowData> _buildEventFlowRows(
   AppLocalizations l10n,
-  List<UcFlowFixtureStep> steps,
+  List<UcFlowStepItem> steps,
 ) {
   final seen = <String>[];
   for (final step in steps) {
@@ -367,7 +489,7 @@ List<_EventFlowRowData> _buildEventFlowRows(
 /// 覆蓋）。
 String _joinStepDomain(
   AppLocalizations l10n,
-  List<UcFlowFixtureStep> steps,
+  List<UcFlowStepItem> steps,
   String event, {
   required bool emits,
 }) {

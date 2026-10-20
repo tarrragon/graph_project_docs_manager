@@ -1,104 +1,61 @@
-/// UC Flow 視圖的固定假資料（設計約束：假資料驅動，不接真實圖建置，
-/// `0.1.0-W1-003`／CLAUDE.md §6 同源；UC id 沿用 `domain_view_fixtures.dart`
-/// 既有三個 UC，維持跨畫面一致）。
+/// UC Flow 視圖的固定假資料（0.5.0-W1-114.18 起僅供測試注入，畫面與
+/// providers 不讀取；UC id 沿用 `domain_view_fixtures.dart` 既有三個 UC）。
 ///
-/// **本票（`0.1.0-W2-010`）擴充**：原檔僅 `id` + `hasFlowStep`，不足以
-/// 渲染「正常」態的步驟表與事件流小表（SPEC-001 §2、SPEC-004 §3.6 §2）；
-/// 新增 `title`（UC 選擇入口主文字）與 `steps`（步驟表來源，`hasFlowStep`
-/// 為 `false` 者維持空清單）。標題取自 `docs/usecases/` 對應 UC 的
-/// frontmatter `title`；步驟為本畫面專屬 fixture，domain 取自
-/// `domain_view_fixtures.dart` 同 UC 步驟 `traverses` 的代表值（單一
-/// domain 欄，非清單），事件配對刻意維持同 UC 內發出／消費皆有（不觸發
-/// 「本 UC 外」分支，該分支依賴的 EVT 節點 frontmatter `consumers`／
-/// `producers` 資料本畫面尚未接線，見本票 Solution）。
+/// 事件配對刻意維持同 UC 內發出／消費皆有（不觸發「本 UC 外」分支）。
 library;
 
-/// 單一步驟：標籤 + 觸及的單一 domain + 發出／消費事件。
-class UcFlowFixtureStep {
-  const UcFlowFixtureStep({
-    required this.label,
-    required this.domain,
-    this.emits = const [],
-    this.consumes = const [],
-  });
+import 'uc_flow_state.dart';
 
-  final String label;
-  final String domain;
-  final List<String> emits;
-  final List<String> consumes;
-}
-
-/// UC 清單項：id + 標題 + 是否含結構化 flow（`hasFlowStep`，決定選定後落
-/// 「flow 未結構化」或「正常」）+ 步驟（`hasFlowStep` 為 `false` 時為空）
-/// + 原始檔路徑（`filePath`，`0.1.0-W2-013` 新增：flow 未結構化態
-/// `ListRow.meta` 主文字與「開啟原始檔」動作的目標路徑，SPEC-004
-/// §3.6 §2）。
-class UcFlowFixtureUc {
-  const UcFlowFixtureUc({
-    required this.id,
-    required this.title,
-    required this.hasFlowStep,
-    required this.filePath,
-    this.steps = const [],
-  });
-
-  final String id;
-  final String title;
-  final bool hasFlowStep;
-  final String filePath;
-  final List<UcFlowFixtureStep> steps;
-}
-
-/// UC Flow 視圖固定假資料入口。
+/// UC Flow 視圖固定假資料入口（測試以 `ucFlowUcListProvider` 注入）。
 abstract final class UcFlowFixtures {
-  /// 專案內全部 UC 節點（決定「無 UC」與「尚未選定 UC」的分派）。
-  static const List<UcFlowFixtureUc> ucList = [
-    UcFlowFixtureUc(
+  /// 三個 UC：兩個含結構化 flow、一個無步驟。
+  static const List<UcFlowUcItem> ucList = [
+    UcFlowUcItem(
       id: 'UC-02',
       title: '依 domain 盤點變更影響面', // i18n-exempt: fixture UC 標題，非 App UI 文案
-      hasFlowStep: true,
       filePath: 'docs/usecases/UC-02.md', // i18n-exempt: fixture 路徑字面
       steps: [
-        UcFlowFixtureStep(
+        UcFlowStepItem(
+          id: 'pick-folder', // i18n-exempt: fixture 步驟 id
           label: '選擇資料夾', // i18n-exempt: fixture 步驟標籤
           domain: 'workspace',
         ),
-        UcFlowFixtureStep(
+        UcFlowStepItem(
+          id: 'build-index', // i18n-exempt: fixture 步驟 id
           label: '建立圖索引', // i18n-exempt: fixture 步驟標籤
           domain: 'graph',
           emits: ['graph.index.rebuilt'], // i18n-exempt: fixture 事件 ID
         ),
-        UcFlowFixtureStep(
+        UcFlowStepItem(
+          id: 'check-symmetric', // i18n-exempt: fixture 步驟 id
           label: '檢查對稱聯集', // i18n-exempt: fixture 步驟標籤
           domain: 'graph',
           consumes: ['graph.index.rebuilt'], // i18n-exempt: fixture 事件 ID
         ),
       ],
     ),
-    UcFlowFixtureUc(
+    UcFlowUcItem(
       id: 'UC-04',
       title: '追溯一項需求的實現鏈', // i18n-exempt: fixture UC 標題，非 App UI 文案
-      hasFlowStep: true,
       filePath: 'docs/usecases/UC-04.md', // i18n-exempt: fixture 路徑字面
       steps: [
-        UcFlowFixtureStep(
+        UcFlowStepItem(
           label: '讀取 schema 定義', // i18n-exempt: fixture 步驟標籤
           domain: 'schema',
         ),
-        UcFlowFixtureStep(
+        UcFlowStepItem(
           label: '建立節點索引', // i18n-exempt: fixture 步驟標籤
           domain: 'graph',
         ),
-        UcFlowFixtureStep(
+        UcFlowStepItem(
           label: '掃描原始節點', // i18n-exempt: fixture 步驟標籤
           domain: 'corpus',
         ),
       ],
     ),
-    UcFlowFixtureUc(
+    UcFlowUcItem(
       id: 'UC-06',
       title: '找出並修復文件破洞', // i18n-exempt: fixture UC 標題，非 App UI 文案
-      hasFlowStep: false,
       filePath: 'docs/usecases/UC-06.md', // i18n-exempt: fixture 路徑字面
     ),
   ];

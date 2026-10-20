@@ -19,10 +19,17 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 
 import '../../helpers/helpers.dart';
+
+/// 本檔斷言畫面組成，UC 清單以固定 fixture 注入（真實資料路徑見
+/// `uc_flow/uc_flow_real_data_test.dart`）。
+final _withFixtures = ucFlowUcListProvider.overrideWithValue(
+  UcFlowFixtures.ucList,
+);
 
 void main() {
   group('專案未就緒 state-ucFlow-project-unready（UcFlowProjectUnready）', () {
@@ -113,7 +120,8 @@ void main() {
       await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [selectedUcProvider.overrideWith((ref) => null)],
+        overrides: [_withFixtures,
+          selectedUcProvider.overrideWith((ref) => null)],
         size: size,
       );
 
@@ -130,7 +138,8 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [selectedUcProvider.overrideWith((ref) => null)],
+        overrides: [_withFixtures,
+          selectedUcProvider.overrideWith((ref) => null)],
       );
 
       await tester.tap(find.byKey(const Key('action-ucFlow-select-uc-UC-02')));
@@ -153,7 +162,8 @@ void main() {
         await pumpHarness(
           tester,
           child: const UcFlowScreen(),
-          overrides: [selectedUcProvider.overrideWith((ref) => 'UC-06')],
+          overrides: [_withFixtures,
+          selectedUcProvider.overrideWith((ref) => 'UC-06')],
           size: size,
         );
 
@@ -195,7 +205,8 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [selectedUcProvider.overrideWith((ref) => 'UC-06')],
+        overrides: [_withFixtures,
+          selectedUcProvider.overrideWith((ref) => 'UC-06')],
       );
 
       await tester.tap(find.byKey(const Key('action-ucFlow-select-uc-UC-04')));
@@ -210,6 +221,7 @@ void main() {
         tester,
         child: const UcFlowScreen(),
         overrides: [
+          _withFixtures,
           selectedUcProvider.overrideWith((ref) => 'UC-06'),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.ucFlow,
@@ -235,7 +247,8 @@ void main() {
         await pumpHarness(
           tester,
           child: const UcFlowScreen(),
-          overrides: [selectedUcProvider.overrideWith((ref) => 'UC-02')],
+          overrides: [_withFixtures,
+          selectedUcProvider.overrideWith((ref) => 'UC-02')],
           size: size,
         );
 
@@ -264,7 +277,8 @@ void main() {
       await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [selectedUcProvider.overrideWith((ref) => 'UC-04')],
+        overrides: [_withFixtures,
+          selectedUcProvider.overrideWith((ref) => 'UC-04')],
         size: size,
       );
 
@@ -282,6 +296,7 @@ void main() {
         tester,
         child: const UcFlowScreen(),
         overrides: [
+          _withFixtures,
           selectedUcProvider.overrideWith((ref) => 'UC-02'),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.ucFlow,
@@ -306,6 +321,7 @@ void main() {
         tester,
         child: const UcFlowScreen(),
         overrides: [
+          _withFixtures,
           selectedUcProvider.overrideWith((ref) => 'UC-02'),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.ucFlow,
