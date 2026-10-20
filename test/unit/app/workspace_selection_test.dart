@@ -8,7 +8,6 @@ import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/workspace_selection.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
-import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
