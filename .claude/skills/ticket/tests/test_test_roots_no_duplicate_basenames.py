@@ -8,6 +8,8 @@ import ast
 import re
 from pathlib import Path
 
+import pytest
+
 try:
     import tomllib
 except ImportError:  # Python 3.10：標準庫無 tomllib，改走下方最小解析
@@ -37,8 +39,12 @@ def _configured_roots() -> list[Path]:
 
 def _parse_testpaths_without_tomllib(text: str) -> list[str]:
     """3.10 後備：testpaths 為單行字串陣列，其字面值與 Python list 字面值相容。"""
-    match = re.search(r"^testpaths\s*=\s*(\[.*\])\s*$", text, re.MULTILINE)
-    assert match, "pyproject.toml 找不到單行 testpaths 宣告"
+    section = re.search(
+        r"^\[tool\.pytest\.ini_options\]\s*$(.*?)(?=^\[|\Z)", text, re.MULTILINE | re.DOTALL
+    )
+    assert section, "pyproject.toml 找不到 [tool.pytest.ini_options] 區段"
+    match = re.search(r"^testpaths\s*=\s*(\[.*\])\s*$", section.group(1), re.MULTILINE)
+    assert match, "pytest 區段找不到單行 testpaths 宣告"
     return ast.literal_eval(match.group(1))
 
 
@@ -54,6 +60,25 @@ def test_same_basename_in_two_roots_is_reported(tmp_path):
     (b / "test_x.py").write_text("")
     (b / "test_only_b.py").write_text("")
     assert find_duplicate_test_basenames([a, b]) == {"test_x.py"}
+
+
+def test_fallback_parses_single_line_testpaths():
+    text = '[tool.pytest.ini_options]\ntestpaths = ["a", "b/c"]\n'
+    assert _parse_testpaths_without_tomllib(text) == ["a", "b/c"]
+
+
+def test_fallback_rejects_multiline_testpaths():
+    text = '[tool.pytest.ini_options]\ntestpaths = [\n  "a",\n]\n'
+    with pytest.raises(AssertionError):
+        _parse_testpaths_without_tomllib(text)
+
+
+def test_fallback_ignores_testpaths_in_other_sections():
+    text = (
+        '[tool.other]\ntestpaths = ["z"]\n\n'
+        '[tool.pytest.ini_options]\ntestpaths = ["a"]\n'
+    )
+    assert _parse_testpaths_without_tomllib(text) == ["a"]
 
 
 def test_same_conftest_in_two_roots_is_exempt(tmp_path):
