@@ -60,8 +60,8 @@ mappings:
       - flow-not-structured
     # 0.5.0-W1-114 指定（docs/test-design/SPEC-001-test-design.md §2、§3），Step 6 實作票建立前檔案尚不存在。
     tests:
-      - integration_test/domain_view_v050_test.dart
-      - integration_test/gap_report_declaration_line_test.dart
+      - integration_test/domain_view_v050.dart
+      - integration_test/gap_report_declaration_line.dart
       - test/unit/layout/lane_order_test.dart
       - test/unit/layout/column_order_test.dart
       - test/unit/layout/node_placement_test.dart
