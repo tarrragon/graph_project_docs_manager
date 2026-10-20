@@ -1,12 +1,15 @@
 // line-board Pane 的「各 session」區塊。
-// Text 由 register.tsx 的 ui.render 以 $.ui.resolve(e) 取得後傳入；解析經 parse.ts 匯出。
+// 元素由 register.tsx 的 ui.render 以 $.ui.resolve(e) 取得後傳入；解析經 parse.ts 匯出。
 
 import type { ElementConstructor, TextProps } from 'claude-code'
 
-import type { SessionState, SessionsResult } from '../types'
+import type { ReadyBoard, SessionState } from '../types'
+import type { Elements } from './lanesView'
 import { SESSIONS_DIR, formatAge } from './parse'
 
-export function renderSessions(Text: ElementConstructor<TextProps>, readAtMs: number, sessions: SessionsResult) {
+/** 存活 session 各一行（依狀態排序）、已結束狀態檔的計數行；讀取失敗時只有一行錯誤。距今時間以 board 的讀取時刻計。 */
+export function renderSessions({ Text }: Elements, board: ReadyBoard) {
+  const { sessions, readAtMs } = board
   if (sessions.kind === 'error') {
     return <Text color="red">讀取 ~/{SESSIONS_DIR} 失敗（{sessions.message}）</Text>
   }

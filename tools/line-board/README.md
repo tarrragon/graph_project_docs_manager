@@ -121,12 +121,13 @@ claude --plugin-dir tools/line-board
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board`、定時讀取、寫入 snapshot、讀寫群組的手動展開狀態、組裝 Pane（線群組、底部兩區塊的折疊外框）；讀檔與命令一律經 `$` |
+| `hooks/register.tsx` | 註冊 `/board`、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）、讀寫群組的手動展開狀態、組裝 Pane（線群組、底部兩區塊的折疊外框） |
+| `hooks/readers.ts` | 一輪 snapshot 所需各項的讀取：checkout 清單、349、票檔 status、session 狀態檔與 pid 存活、派發紀錄、合併閘門紀錄；讀檔與命令一律經 `$`，各項失敗只影響該項 |
 | `hooks/lanesView.tsx` | 線群組的繪製（標題列、派發列、閘門票列、佇列列）與各群組共用的可折疊外框 |
 | `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
 | `hooks/{sessions,mergeGate}View.tsx` | 底部兩區塊的內容：各 session、合併閘門最近紀錄 |
-| 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`）由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入 |
-| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
+| 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`，型別 `Elements`）由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入；各區塊的繪製函式以元素與 snapshot（`ReadyBoard`）為參數 |
+| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、readers.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
 | `hooks/shared.ts` | 各 domain 共用：票號前綴與票檔位置、frontmatter 狀態解析、checkout 路徑判定、距今時間 |
 | `hooks/lanes.ts` | 線與佇列：現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化 |
 | `hooks/sessions.ts` | 各 session：狀態檔篩選／解析／排序、pid 存活比對（procStart）、本 repo 判定、線列 session 狀態 |
