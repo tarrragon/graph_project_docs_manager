@@ -30,7 +30,8 @@ UC 白名單 SSOT（Single Source of Truth）。
 1. **選擇資料夾** — 自側欄浮層選定專案，系統確認其存在且可讀
 2. **載入型別表** — 自該專案的 `.claude/` 讀取 `tracking_schema.json` 與 `VERSION`
 3. **解析節點** — 掃描 `docs/` 下的圖譜節點檔並解析 frontmatter
-4. **抵達 Domain 視圖** — 以矩陣模式呈現 domain × UC 交叉表
+4. **建立圖譜** — 依型別表的邊型，由解析出的節點建立圖譜
+5. **抵達 Domain 視圖** — 以矩陣模式呈現 domain × UC 交叉表
 
 ---
 
