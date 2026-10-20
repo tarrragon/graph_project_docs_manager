@@ -168,6 +168,50 @@ void main() {
     });
   });
 
+  group('互動反應：locateColumn 水平捲到目標欄（SPEC-004 4.38）', () {
+    Widget gridWith(List<SwimlaneLane> lanes, {int? column, String? lane}) {
+      return SizedBox(
+        width: 400,
+        height: 200,
+        child: SwimlaneGrid(
+          lanes: lanes,
+          laneHighlight: lane,
+          locateColumn: column,
+          scrollKey: scrollKey,
+          dragKey: dragKey,
+        ),
+      );
+    }
+
+    testWidgets('locateColumn 指向 viewport 外的欄時目標節點與 viewport 相交', (
+      tester,
+    ) async {
+      final lanes = buildLanes(laneCount: 3, columnCount: 20);
+      await pumpHarness(tester, child: gridWith(lanes));
+      await pumpHarness(
+        tester,
+        child: gridWith(lanes, lane: 'lane-1', column: 15),
+      );
+      await tester.pump();
+
+      final viewportRect = tester.getRect(find.byKey(dragKey));
+      final nodeRect = tester.getRect(find.byKey(const ValueKey('node-1-15')));
+      expect(nodeRect.overlaps(viewportRect), isTrue);
+    });
+
+    testWidgets('E1 對照：locateColumn 為 null 時不做水平捲動', (tester) async {
+      final lanes = buildLanes(laneCount: 3, columnCount: 20);
+      await pumpHarness(tester, child: gridWith(lanes));
+      await pumpHarness(tester, child: gridWith(lanes, lane: 'lane-1'));
+      await tester.pump();
+
+      final viewportRect = tester.getRect(find.byKey(dragKey));
+      final nodeRect = tester.getRect(find.byKey(const ValueKey('node-1-0')));
+      expect(nodeRect.overlaps(viewportRect), isTrue);
+      expect(find.byKey(const ValueKey('node-1-15')), findsNothing);
+    });
+  });
+
   group('尺寸與顏色引用 token 非硬編碼', () {
     testWidgets('泳道列高為 LayoutSize.laneRowHeight', (tester) async {
       // TableView 的列高由 rowBuilder 的 TableSpan.extent 決定，非獨立可
