@@ -240,6 +240,28 @@ void main() {
       expectNoOverflow(tester);
     });
 
+    testWidgets('顯示已處理節點計數且不顯示百分比', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainLoading(processedCount: 64),
+          ),
+        ],
+        settle: false,
+      );
+
+      expect(find.text('已處理 64 個節點'), findsOneWidget);
+      expect(find.textContaining('%'), findsNothing);
+
+      container.read(domainViewStateProvider.notifier).state =
+          const DomainLoading(processedCount: 96);
+      await tester.pump();
+      expect(find.text('已處理 96 個節點'), findsOneWidget);
+      expect(find.text('已處理 64 個節點'), findsNothing);
+    });
+
     testWidgets('action-domain-cancel-load → 回到未選專案', (tester) async {
       final container = await pumpHarness(
         tester,

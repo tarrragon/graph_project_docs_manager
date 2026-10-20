@@ -169,6 +169,7 @@ class _LoadingView extends ConsumerWidget {
       message: l10n.domainLoading,
       skeletonLayout: SkeletonLayout.matrix,
       isCancelling: state.isCancelling,
+      countText: l10n.domainLoadingProcessedCount(state.processedCount),
       // 取消由載入編排擁有：作廢進行中的輪次與結果，再寫回未選專案。
       onCancel: () =>
           ref.read(domainViewLoaderProvider.notifier).cancelLoading(),

@@ -56,6 +56,31 @@ class DomainViewLoader extends Notifier<void> {
     _write(const DomainLoading());
     // provider 的建構期間不可修改其他 provider；讓出一個 microtask。
     await Future<void>.microtask(() {});
+    final progress = ref.listen<ScanRoundState>(scanRoundProvider, (_, next) {
+      if (next is ScanRoundRunning) _updateProgress(generation, next);
+    });
+    try {
+      await _loadRound(generation, inferredVersion);
+    } finally {
+      progress.close();
+    }
+  }
+
+  /// 載入中的計數更新：被取代的載入（世代過期）不寫入，保留 isCancelling。
+  void _updateProgress(int generation, ScanRoundRunning running) {
+    if (!_isCurrent(generation)) return;
+    final current = ref.read(domainViewStateProvider);
+    if (current is! DomainLoading) return;
+    if (current.processedCount == running.processedCount) return;
+    _write(
+      DomainLoading(
+        isCancelling: current.isCancelling,
+        processedCount: running.processedCount,
+      ),
+    );
+  }
+
+  Future<void> _loadRound(int generation, String? inferredVersion) async {
     _lastInferredVersion = inferredVersion;
     final ScanRoundResult? round;
     try {
