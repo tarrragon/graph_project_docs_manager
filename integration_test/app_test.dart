@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
@@ -151,20 +152,21 @@ void main() {
   });
 
   group('DomainReady（內建矩陣）', () {
-    // 矩陣內容來自 App 內建 fixtures，工作資料夾只決定 gate 結果；
-    // 以 WorkspaceReady 替身 + 訊號探測替身讓 gate 判 DomainReady。
+    // 資料來源：gate 讀訊號探測替身（_ReadyFrameworkSignalProbe，恆判 DomainReady）；
+    // 矩陣建圖經共用掃描輪次（ScanRound）讀 systemTemp 下的真實工作區，
+    // 內含內建版本的 tracking_schema.json 與最小 docs 語料。
     // 不涵蓋真實磁碟上的 gate 偵測（見 0.3.3-W3-383 Problem Analysis）。
     for (final viewport in kViewports) {
       testWidgets('${viewport.name} (${viewport.size.width.toInt()}'
           'x${viewport.size.height.toInt()}) 矩陣狀態無溢位', (tester) async {
         _applyViewport(tester, viewport);
         final builtinVersion = await _readBuiltinSchemaVersion();
+        final workspace = await _createReadyWorkspace();
+        addTearDown(() => workspace.delete(recursive: true));
 
         final errors = await _pumpAppAndCollectErrors(
           tester,
-          repository: _StubWorkspaceRepository(
-            const WorkspaceReady('/fixture/ready-project'),
-          ),
+          repository: _StubWorkspaceRepository(WorkspaceReady(workspace.path)),
           overrides: [
             frameworkSignalProbeProvider.overrideWithValue(
               _ReadyFrameworkSignalProbe(builtinVersion),
@@ -367,6 +369,22 @@ Future<String> _readBuiltinSchemaVersion() async {
   } finally {
     container.dispose();
   }
+}
+
+/// 建立可建圖的暫存工作區：內建型別表副本 + 最小 docs 語料。
+Future<Directory> _createReadyWorkspace() async {
+  final dir = await Directory.systemTemp.createTemp('domain_ready_');
+  final schema = await rootBundle.loadString(
+    builtinTrackingSchemaAssetPath,
+    cache: false,
+  );
+  final schemaFile = File('${dir.path}/$projectSchemaRelativePath');
+  await schemaFile.create(recursive: true);
+  await schemaFile.writeAsString(schema);
+  final doc = File('${dir.path}/docs/proposals/PROP-001.md');
+  await doc.create(recursive: true);
+  await doc.writeAsString('---\nid: PROP-001\ntitle: fixture\n---\n\n# fixture\n');
+  return dir;
 }
 
 /// 訊號皆齊備且 JSON 版本等於內建版本的探測替身，使 gate 判 DomainReady。
