@@ -16,9 +16,10 @@ import 'package:graph_project_docs_manager/layout/swim_lane_layout.dart';
 import 'domain_view_projection.dart';
 import 'domain_view_state.dart';
 
-/// 目前畫面狀態；預設 `DomainReady`（矩陣模式，無選格、無降級旗標）。
+/// 目前畫面狀態；預設 `DomainLoading`：App 啟動到 restore 完成前不顯示
+/// fixture 矩陣（0.5.0-W3-003），由 shell 啟動流程寫入真實狀態。
 final domainViewStateProvider = StateProvider<DomainViewState>(
-  (ref) => const DomainReady(mode: DomainMode.matrix),
+  (ref) => const DomainLoading(),
 );
 
 /// Layout 公開面「給定一列，回傳欄號最小的節點」查詢（SPEC-001 §1 跳轉目標，

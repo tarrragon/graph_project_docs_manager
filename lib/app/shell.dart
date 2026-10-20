@@ -70,6 +70,13 @@ class _AppShellState extends ConsumerState<AppShell>
     // W1-019 接線的上游進入點）。`unawaited`：initState 不可為 async，
     // 結果透過 provider 寫回，畫面依 domainViewStateProvider 反應變化。
     unawaited(_restoreWorkspaceAndDetect());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      developer.log(
+        '首幀 Domain 狀態：${ref.read(domainViewStateProvider).runtimeType}', // i18n-exempt: 開發者診斷 log
+        name: _tag,
+        level: 500,
+      );
+    });
   }
 
   /// [WorkspaceRepository.restore] 任何失敗皆降級為非 [WorkspaceReady]
@@ -79,6 +86,11 @@ class _AppShellState extends ConsumerState<AppShell>
     final repository = ref.read(workspaceRepositoryProvider);
     final state = await repository.restore();
     if (!mounted) return;
+    developer.log(
+      'restore 完成：${state.runtimeType}', // i18n-exempt: 開發者診斷 log
+      name: _tag,
+      level: 500,
+    );
     ref.read(currentWorkspaceStateProvider.notifier).state = state;
     // 最近專案清單與目前資料夾是否還原成功正交——即使 restore() 未還原到
     // WorkspaceReady，清單本身（SPEC-005 §2.4）仍應載入供切換浮層使用。
