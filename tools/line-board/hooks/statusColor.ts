@@ -33,7 +33,7 @@ export function dispatchStageState(stage: DispatchStage): BoardState {
 }
 
 /**
- * 佇列票的狀態。stages 為同一群組內該票的派發列階段，閘門票列以「閘門」計入。
+ * 佇列票的狀態。stages 為所有群組中該票的派發列階段；閘門票列（同群組）以閘門計入。
  * 有派發列時依階段，同一張票有多個階段時依序取閘門、要人處理、代理人執行中；
  * 沒有時依票的 status：pending 為待辦、in_progress 為進行中，其他值（含讀不到、unknown）回傳 null。
  */
