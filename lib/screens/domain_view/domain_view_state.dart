@@ -42,7 +42,12 @@ class DomainCell {
     this.steps = const [],
     this.events = const [],
     this.dependencyPaths = const [],
+    this.indirectSource,
   });
+
+  /// 間接依賴格第一條依賴路徑的來源 domain 原值（跳轉目標用，取自 FR-12
+  /// 結構化路徑，不由顯示字串反解）；非間接或無路徑時為 null。
+  final String? indirectSource;
 
   /// 所在列 domain id。
   final String domainId;

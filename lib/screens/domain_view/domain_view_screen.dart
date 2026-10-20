@@ -34,7 +34,6 @@ import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../project_switcher/project_switcher_providers.dart';
-import 'domain_view_projection.dart' show dependencyPathSeparator;
 import 'domain_view_providers.dart';
 import 'domain_view_schema_version.dart';
 import 'domain_view_state.dart';
@@ -534,11 +533,10 @@ class _CellDetailPanel extends ConsumerWidget {
 /// 查無對應列）定位到該格 domain 所在列。
 SwimlaneFocus _jumpFocus(WidgetRef ref, DomainCell cell) {
   final direct = SwimlaneFocus(domainId: cell.domainId);
-  if (cell.relation != DomainRelation.indirect ||
-      cell.dependencyPaths.isEmpty) {
+  final source = cell.indirectSource;
+  if (cell.relation != DomainRelation.indirect || source == null) {
     return direct;
   }
-  final source = cell.dependencyPaths.first.split(dependencyPathSeparator).first;
   final node = ref.read(firstNodeInLaneQueryProvider)(cell.ucId, source);
   final matrix = (ref.read(domainViewStateProvider) as DomainReady).matrix;
   final row = matrix?.rows.where((r) => r.domainName == source).firstOrNull;

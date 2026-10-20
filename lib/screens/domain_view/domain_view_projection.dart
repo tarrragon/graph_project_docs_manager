@@ -145,8 +145,18 @@ DomainCell _cell(
     steps: [for (final s in steps) _stepLabel(s)],
     events: _cellEventTags(steps),
     dependencyPaths: _dependencyPaths(relation),
+    indirectSource: _indirectSource(relation),
   );
 }
+
+String? _indirectSource(DomainUcRelationResult result) => switch (result) {
+  DomainUcRelationAvailable(
+    kind: DomainUcRelationKind.indirect,
+    :final paths,
+  ) =>
+    paths.firstOrNull?.firstOrNull?.domain,
+  _ => null,
+};
 
 DomainRelation _relationOf(DomainUcRelationResult result) => switch (result) {
   DomainUcRelationAvailable(kind: DomainUcRelationKind.direct) =>

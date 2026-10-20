@@ -6,11 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/layout/lane_order.dart';
 import 'package:graph_project_docs_manager/layout/swim_lane_layout.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 
 import '../../../helpers/helpers.dart';
+import '../../../helpers/spec001/corpus_snapshot.dart';
 
 const _domains = ['graph', 'ticketdetail', 'corpus', 'schema'];
 
@@ -31,6 +33,9 @@ DomainMatrix _matrix(List<String> paths, DomainRelation schemaRelation) =>
                     ? schemaRelation
                     : DomainRelation.direct,
                 dependencyPaths: d == 'schema' ? paths : const [],
+                indirectSource: d == 'schema'
+                    ? paths.first.split(' → ').first
+                    : null,
               ),
             ],
           ),
@@ -91,6 +96,29 @@ void main() {
     'ticketdetail → corpus → schema',
     'graph → corpus → schema',
   ];
+
+  group('投影的 indirectSource', () {
+    test('間接格等於第一條路徑的來源；直接格為 null（E1）', () async {
+      final event = await loadSnapshotEvent('graph_project_docs_manager');
+      final matrix = projectDomainMatrix(
+        event: event,
+        ucIds: const ['UC-04'],
+      );
+      DomainCell cellOf(String d) => matrix.rows
+          .firstWhere((r) => r.domainName == d)
+          .cells
+          .single;
+      final schema = cellOf('schema');
+      expect(schema.relation, DomainRelation.indirect);
+      expect(
+        schema.indirectSource,
+        schema.dependencyPaths.first.split(' → ').first,
+      );
+      expect(schema.indirectSource, 'graph');
+      expect(cellOf('graph').relation, DomainRelation.direct);
+      expect(cellOf('graph').indirectSource, isNull);
+    });
+  });
 
   group('跳轉目標', () {
     testWidgets('V3-1 以第一條路徑來源呼叫 L9 恰一次並落在其節點', (tester) async {
