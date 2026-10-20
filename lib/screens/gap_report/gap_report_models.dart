@@ -6,6 +6,7 @@
 library;
 
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
+import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 
 import '../../app/graph_status.dart';
 
@@ -182,7 +183,13 @@ class GapReportScanning extends GapReportState {
 
 /// 無破洞：對應 `EmptyState.page`。
 class GapReportNoGaps extends GapReportState {
-  const GapReportNoGaps({this.isPathPatternFromBuiltin = false});
+  const GapReportNoGaps({
+    this.isPathPatternFromBuiltin = false,
+    this.pathDeclaration,
+  });
+
+  /// 專案層宣告狀態（SPEC-001 §5）；`null` 不渲染宣告狀態行。
+  final ProjectPathDeclaration? pathDeclaration;
 
   /// 路徑模式取自內建表（SPEC-001 §1〈路徑模式取自內建表〉）：為 `true`
   /// 時報告頁常駐 `badge-gaps-builtin-path-pattern`。
@@ -194,9 +201,13 @@ class GapReportFound extends GapReportState {
   const GapReportFound(
     this.categories, {
     this.isPathPatternFromBuiltin = false,
+    this.pathDeclaration,
   });
 
   final List<GapReportCategory> categories;
+
+  /// 同 [GapReportNoGaps.pathDeclaration]。
+  final ProjectPathDeclaration? pathDeclaration;
 
   /// 同 [GapReportNoGaps.isPathPatternFromBuiltin]。
   final bool isPathPatternFromBuiltin;
@@ -209,13 +220,18 @@ class GapReportUndeterminable extends GapReportState {
   const GapReportUndeterminable({
     required UndeterminedGapReason this.reason,
     this.categories = const [],
+    this.pathDeclaration,
   });
 
   /// 掃描輪次拋出非預期例外（SPEC-001 v1.48，原因說明之三）：無原因碼，
   /// 無其餘類別。
   const GapReportUndeterminable.scanFailed()
     : reason = null,
-      categories = const [];
+      categories = const [],
+      pathDeclaration = null;
+
+  /// 同 [GapReportNoGaps.pathDeclaration]；掃描失敗時無輪次資料，為 `null`。
+  final ProjectPathDeclaration? pathDeclaration;
 
   /// 原因碼（二選一，顯示文字由畫面經 l10n 投影）；`null` 代表
   /// [isScanFailure]。

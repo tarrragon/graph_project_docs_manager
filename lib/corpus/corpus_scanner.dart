@@ -94,6 +94,7 @@ class CorpusScanResult {
     required this.summary,
     this.flowParseFailedEvents = const <FlowParseFailedEvent>[],
     this.nonDomainPathsParseFailedEvent,
+    this.nonDomainPathsRead = const NonDomainPathsReadAbsent(),
   });
 
   final List<RawNode> rawNodes;
@@ -110,6 +111,11 @@ class CorpusScanResult {
   /// FR-10：非 domain 路徑清單檔格式錯誤時本輪的 EVT-CORPUS-005（至多一筆，
   /// 四種子原因皆同）；清單檔缺席或格式正確時為 `null`。
   final NonDomainPathsParseFailedEvent? nonDomainPathsParseFailedEvent;
+
+  /// FR-10：本輪非 domain 路徑清單的讀取結果（缺席／已宣告／格式錯誤），
+  /// 供 Graph 專案層宣告彙整（0.5.0-W1-119.2）。讀取拋出非預期例外時視同
+  /// 缺席（與 [nonDomainPathsParseFailedEvent] 的「視同無事件」一致）。
+  final NonDomainPathsReadResult nonDomainPathsRead;
 }
 
 /// 測試用查詢種子（`@visibleForTesting`）：預設呼叫真正的
@@ -177,7 +183,7 @@ Future<CorpusScanResult> scanCorpus({
     }
   }
 
-  final nonDomainEvent = await _readNonDomainPathsEvent(
+  final nonDomainRead = await _readNonDomainPaths(
     fileSystem,
     table,
     builtinTable,
@@ -186,7 +192,7 @@ Future<CorpusScanResult> scanCorpus({
     listing.paths.length,
     carrierPathQueryAvailable,
     listing.unlistableDirectories,
-    nonDomainEvent,
+    nonDomainRead,
   );
 
   developer.log(
@@ -198,32 +204,32 @@ Future<CorpusScanResult> scanCorpus({
   return result;
 }
 
-/// 需求：[SPEC-006 FR-10、FR-07] 每輪掃描讀一次非 domain 路徑清單檔，取
-/// 格式錯誤事件（EVT-CORPUS-005，至多一筆）。事件不依賴 FR-06 路徑查詢，
-/// 故不受 `carrierPathQueryAvailable` 影響。讀取拋出非預期例外時不中止整輪
-/// 掃描（NFR-01），視同無事件並寫 warning 日誌（含 stackTrace）。清單檔位置與
-/// 鍵名取自 [table]，缺欄時回落 [builtinTable]（規則 1）。
-Future<NonDomainPathsParseFailedEvent?> _readNonDomainPathsEvent(
+/// 需求：[SPEC-006 FR-10、FR-07] 每輪掃描讀一次非 domain 路徑清單檔；結果
+/// 的 `malformedEvent` 即格式錯誤事件（EVT-CORPUS-005，至多一筆）。讀取不
+/// 依賴 FR-06 路徑查詢，故不受 `carrierPathQueryAvailable` 影響。讀取拋出
+/// 非預期例外時不中止整輪掃描（NFR-01），視同缺席（無事件）並寫 warning
+/// 日誌（含 stackTrace）。清單檔位置與鍵名取自 [table]，缺欄時回落
+/// [builtinTable]（規則 1）。
+Future<NonDomainPathsReadResult> _readNonDomainPaths(
   DocsFileSystem fileSystem,
   TypeTable table,
   TypeTable builtinTable,
 ) async {
   try {
-    final read = await readNonDomainPaths(
+    return await readNonDomainPaths(
       fileSystem: fileSystem,
       projectTable: table,
       builtinTable: builtinTable,
     );
-    return read.malformedEvent;
   } catch (e, stackTrace) {
     developer.log(
-      '非 domain 路徑清單檔讀取發生非預期例外，視同無事件', // i18n-exempt: 開發者 debug log
+      '非 domain 路徑清單檔讀取發生非預期例外，視同缺席', // i18n-exempt: 開發者 debug log
       name: 'CorpusScanner',
       level: 900,
       error: e,
       stackTrace: stackTrace,
     );
-    return null;
+    return const NonDomainPathsReadAbsent();
   }
 }
 
@@ -525,10 +531,12 @@ class _ScanAccumulator {
     int totalFilesScanned,
     bool carrierPathQueryAvailable,
     List<String> unlistableDirectories,
-    NonDomainPathsParseFailedEvent? nonDomainEvent,
+    NonDomainPathsReadResult nonDomainRead,
   ) {
+    final nonDomainEvent = nonDomainRead.malformedEvent;
     return CorpusScanResult(
       nonDomainPathsParseFailedEvent: nonDomainEvent,
+      nonDomainPathsRead: nonDomainRead,
       rawNodes: rawNodes,
       parseErrors: parseErrors,
       parseFailureEvents: parseFailureEvents,

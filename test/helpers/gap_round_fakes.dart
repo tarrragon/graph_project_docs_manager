@@ -64,12 +64,16 @@ ScanRoundResult fakeRound({
   List<LightNode> nodes = const [fakeUcNode],
   bool isDegraded = false,
   GraphBuiltEvent? event,
+  List<RawNode> extraRawNodes = const [],
+  NonDomainPathsReadResult? nonDomainRead,
 }) {
   final scan = CorpusScanResult(
     rawNodes: [
       for (final n in nodes)
         RawNode(path: n.path, frontmatter: {'id': n.id}, typeName: n.typeName),
+      ...extraRawNodes,
     ],
+    nonDomainPathsRead: nonDomainRead ?? const NonDomainPathsReadAbsent(),
     parseErrors: const [],
     parseFailureEvents: parseFailureEvents,
     schemaAmbiguousNodes: const [],

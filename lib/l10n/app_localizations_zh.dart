@@ -707,4 +707,23 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get gapsUndeterminableReasonNoPathPattern =>
       '專案型別表與 App 內建型別表都沒有路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出';
+
+  @override
+  String pathDeclarationIncompleteLine(String detail, int count) {
+    return '路徑宣告不完整：$detail（影響 $count 條路徑）';
+  }
+
+  @override
+  String pathDeclarationBundlesPartial(int declared, int total) {
+    return '已宣告 $declared／$total 個 domain';
+  }
+
+  @override
+  String get pathDeclarationNonDomainMissing => '缺非 domain 路徑清單';
+
+  @override
+  String get pathDeclarationNoneLine => '本專案未宣告路徑';
+
+  @override
+  String get pathDeclarationNonDomainMalformed => '非 domain 路徑清單格式錯誤';
 }

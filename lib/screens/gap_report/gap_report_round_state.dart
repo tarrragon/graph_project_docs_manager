@@ -13,6 +13,7 @@ import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
+import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/schema/schema_source_resolver.dart';
 
@@ -43,15 +44,35 @@ GapReportState gapReportStateFromRound(
     nodes: nodes,
     nonDomainPathsKey: nonDomainPathsKey,
   );
+  final declaration = _declarationOf(round);
   final reason = _undeterminedReasonOf(parse, defects);
   if (reason != null) {
-    return GapReportUndeterminable(reason: reason, categories: categories);
+    return GapReportUndeterminable(
+      reason: reason,
+      categories: categories,
+      pathDeclaration: declaration,
+    );
   }
   final fromBuiltin = resolution.isPathPatternFromBuiltin;
   return categories.isEmpty
-      ? GapReportNoGaps(isPathPatternFromBuiltin: fromBuiltin)
-      : GapReportFound(categories, isPathPatternFromBuiltin: fromBuiltin);
+      ? GapReportNoGaps(
+          isPathPatternFromBuiltin: fromBuiltin,
+          pathDeclaration: declaration,
+        )
+      : GapReportFound(
+          categories,
+          isPathPatternFromBuiltin: fromBuiltin,
+          pathDeclaration: declaration,
+        );
 }
+
+/// 需求：[SPEC-001 §5〈專案層級宣告狀態一行〉] 專案層宣告彙整由 Graph 提供，
+/// 本檔只轉交；宣告缺口不進破洞分節、不計入破洞數。
+ProjectPathDeclaration _declarationOf(ScanRoundResult round) =>
+    summarizeProjectPathDeclaration(
+      rawNodes: round.scan.rawNodes,
+      nonDomain: round.scan.nonDomainPathsRead,
+    );
 
 GapDetectionResult _detectParseFailures(
   ScanRoundResult round,
