@@ -1888,3 +1888,31 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 - 只寫條文、只做守衛：用戶裁決兩者併行
 
 **已知代價**：條文為自律層，仍靠執行者記得；框架批次（canonical 推送前的連續合併）被副本票綁住。強制層（合併或 commit 時比對專案宣告的內嵌副本）由 `0.5.0-W1-110` 的另一張子票設計，推送上游須另行取得用戶授權。
+
+---
+
+## 2026-10-20 — pubspec.lock 入庫，採用 lock 與升級依賴分開（用戶裁定，WRAP，`0.5.0-W1-446.1`）
+
+**背景**：`.gitignore` 原本排除 `pubspec.lock`，每份 checkout 各自解析依賴。主 checkout 的本機 lock（2026-09-24）把 `shared_preferences_android` 鎖在 2.4.27；新 worktree 沒有 lock，`pub get` 重新解析，解出 2.5.1，帶入 FFI plugin `jni`，使 linux／windows 的 `generated_plugins.cmake` 變動、擋下合併。2026-10-20 一天內至少五個 worktree 出現同樣現象（`0.5.0-W1-446`）。
+
+**決策**：
+
+1. **lock 入庫**：移除 `.gitignore` 對 `pubspec.lock` 的排除，入庫主 checkout 的 lock 原樣內容。入庫前在主 checkout 跑過 `fvm flutter pub get`（不用 upgrade），lock 0 變動。
+2. **採用 lock 與升級依賴分開**：本次只鎖定現狀，生成檔與 l10n 產物不動；依賴升級另立 `0.5.0-W1-449`，先審過 `pub outdated` 的清單，再升級並同批重生生成檔。
+3. **CI 使用 `--enforce-lockfile`**：CI 的 `pub get` 帶此旗標，lock 與 pubspec 不符時直接失敗，不靜默重新解析（由 `0.5.0-W1-231.6` 落地）。
+
+**Why**：
+
+- 多份 checkout 各自解析，會得到不同版本；AI 並行開 worktree 只是放大了發生頻率，問題本身是一般開發都會遇到的。
+- Dart 對應用程式的建議是 lock 入庫。
+- 以主 checkout 的 lock 為準，是因為今天 macOS 實機的 integration_test 與 App 都用這一份跑過；合併閘門快照的重新解析版只驗過單元與 widget 層。
+
+**被放棄的選項**：
+
+- 建立 worktree 時複製主 checkout 的 lock：只涵蓋 `/worktree create`，CC runtime 以 `isolation: worktree` 建立的 agent worktree 不經 worktree_manager，本日案例全屬後者。
+- 入庫重新解析版（2.5.1 加 jni）：等於在同一次變更中同時採用 lock 和升級依賴，且目標平台上未驗證。
+
+**已知代價**：
+
+- 依賴維持在 9/24 的解析，pub 回報 23 個套件有超出約束的新版，由 449 處理。
+- l10n 產物在 gen-l10n 重新產出後與入庫版差一個空行，與 lock 無關，另由 `0.5.0-W1-450` 處理；在那之前，worktree 合併前仍須還原這兩檔。

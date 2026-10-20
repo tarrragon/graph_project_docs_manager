@@ -4,8 +4,7 @@
 .dart_tool/
 .packages
 build/
-# If you're building an application, you may want to check-in your pubspec.lock
-pubspec.lock
+# pubspec.lock 刻意入庫（應用程式；見 docs/tech-decisions.md 2026-10-20 補記段）
 
 # Directory created by dartdoc
 # If you don't generate documentation locally you can remove this line.
