@@ -71,9 +71,16 @@ class ScanRoundIdle extends ScanRoundState {
 
 /// 輪次進行中。
 class ScanRoundRunning extends ScanRoundState {
-  const ScanRoundRunning(this.workspacePath);
+  const ScanRoundRunning(this.workspacePath, {this.processedCount = 0});
   final String workspacePath;
+
+  /// 預設掃描函式分批回報的已處理檔案數（SPEC-003 §2.6）；替身不回報時恆為 0。
+  final int processedCount;
 }
+
+/// 進度入口的 Zone 識別鍵：輪次擁有者在 Zone 內放入帶 generation 的回報函式，
+/// 預設掃描函式於呼叫時取用，不使用全域可變狀態。
+const Object _progressZoneKey = #scanRoundProgressSink;
 
 /// 輪次已完成。
 class ScanRoundCompleted extends ScanRoundState {
@@ -101,6 +108,7 @@ final scanCorpusFnProvider = Provider<ScanCorpusFn>(
             fileSystem: fileSystem,
             table: table,
             builtinTable: builtinTable,
+            onProcessed: Zone.current[_progressZoneKey] as void Function(int)?,
           ),
 );
 
@@ -209,7 +217,13 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
 
   Future<ScanRoundResult?> _runGuarded(String path, int generation) async {
     try {
-      final result = await _runRound(path);
+      final result = await runZoned(
+        () => _runRound(path),
+        zoneValues: {
+          _progressZoneKey: (int count) =>
+              _reportProgress(path, generation, count),
+        },
+      );
       if (generation != _generation) {
         // i18n-exempt: 開發者 debug log
         _log('丟棄過期輪次：path=$path, generation=$generation');
@@ -234,6 +248,12 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
       state = const ScanRoundIdle();
       rethrow;
     }
+  }
+
+  /// 進度入口：被取代輪次（generation 不符）的回報直接丟棄。
+  void _reportProgress(String path, int generation, int count) {
+    if (generation != _generation) return;
+    state = ScanRoundRunning(path, processedCount: count);
   }
 
   Future<ScanRoundResult> _runRound(String path) async {

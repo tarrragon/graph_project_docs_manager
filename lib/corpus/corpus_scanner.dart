@@ -151,6 +151,7 @@ Future<CorpusScanResult> scanCorpus({
   CarrierPathLookupFn lookupCarrierPath = lookupCarrierPathType,
   UcFlowExtractFn extractFlow = extractUcFlow,
   required TypeTable builtinTable,
+  void Function(int processedCount)? onProcessed,
 }) async {
   developer.log(
     'scanCorpus 開始：root=$_docsRoot', // i18n-exempt: 開發者 debug log
@@ -162,6 +163,7 @@ Future<CorpusScanResult> scanCorpus({
   final carrierPathQueryAvailable = table.pathParticipatingTypes.isNotEmpty;
   final acc = _ScanAccumulator(extractFlow);
 
+  var processed = 0;
   for (final batch in _batches(listing.paths, _readBatchSize)) {
     final reads = await Future.wait(
       batch.map((path) => _readAndClassify(fileSystem, path)),
@@ -182,6 +184,8 @@ Future<CorpusScanResult> scanCorpus({
           );
       }
     }
+    processed += batch.length;
+    onProcessed?.call(processed);
   }
 
   final nonDomainRead = await _readNonDomainPaths(

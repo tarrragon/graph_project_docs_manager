@@ -116,7 +116,87 @@ ProviderContainer _container(_Counters counters, {String root = '/ws/a'}) {
 ScanRoundNotifier _round(ProviderContainer c) =>
     c.read(scanRoundProvider.notifier);
 
+/// 於指定路徑的讀取處等待閘門，把舊輪次停在掃描中途。
+class _GatedFs extends FakeDocsFileSystem {
+  _GatedFs(this.gatePath, this.gate);
+  final String gatePath;
+  final Completer<void> gate;
+
+  @override
+  Future<DocsReadResult> readBytes(String relativePath) async {
+    if (relativePath == gatePath) await gate.future;
+    return super.readBytes(relativePath);
+  }
+}
+
+FakeDocsFileSystem _bigFs(FakeDocsFileSystem fs, int n) {
+  fs.addFile(projectSchemaRelativePath, utf8.encode(jsonEncode(_projectJson)));
+  for (var i = 0; i < n; i++) {
+    fs.addFile('docs/f${i.toString().padLeft(3, '0')}.md', utf8.encode('x'));
+  }
+  return fs;
+}
+
+ProviderContainer _realScanContainer(
+  DocsFileSystem Function(String) factory,
+  List<int> seen,
+) {
+  final container = ProviderContainer(
+    overrides: [
+      buildGraphFnProvider.overrideWithValue(_Counters().buildFn),
+      docsFileSystemFactoryProvider.overrideWithValue(factory),
+      builtinTrackingSchemaJsonProvider.overrideWith((ref) => _builtinJson),
+    ],
+  );
+  addTearDown(container.dispose);
+  container.read(currentWorkspaceStateProvider.notifier).state =
+      const WorkspaceReady('/ws/a');
+  container.listen<ScanRoundState>(scanRoundProvider, (_, next) {
+    if (next is ScanRoundRunning) seen.add(next.processedCount);
+  });
+  return container;
+}
+
 void main() {
+  test('E2：預設掃描函式接線，processedCount 隨批次遞增', () async {
+    final seen = <int>[];
+    final container = _realScanContainer(
+      (_) => _bigFs(FakeDocsFileSystem(), 70),
+      seen,
+    );
+
+    await container.read(scanRoundProvider.notifier).ensureRound();
+
+    expect(seen, [0, 32, 64, 70]);
+  });
+
+  test('E2：被取代輪次的回報不寫入新輪次', () async {
+    final seen = <int>[];
+    final gate = Completer<void>();
+    var call = 0;
+    final container = _realScanContainer((_) {
+      call++;
+      // 第一輪卡在第 40 個檔（第二批內），第二輪不卡。
+      return call == 1
+          ? _bigFs(_GatedFs('docs/f040.md', gate), 70)
+          : _bigFs(FakeDocsFileSystem(), 10);
+    }, seen);
+    final notifier = container.read(scanRoundProvider.notifier);
+
+    final first = notifier.ensureRound();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final afterFirstBatch = List<int>.of(seen);
+    await notifier.rescan();
+    final afterSecond = List<int>.of(seen);
+    gate.complete();
+    await first;
+
+    expect(afterFirstBatch, [0, 32]);
+    expect(afterSecond, [0, 32, 0, 10]);
+    expect(seen, afterSecond);
+    expect(container.read(scanRoundProvider), isA<ScanRoundCompleted>());
+  });
+
   test('R1（E1）：兩個消費者與一個消費者，scan／build 次數相同', () async {
     final one = _Counters();
     await _round(_container(one)).ensureRound();
