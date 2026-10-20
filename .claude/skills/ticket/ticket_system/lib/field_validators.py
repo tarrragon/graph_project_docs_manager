@@ -557,17 +557,18 @@ def is_portable_where_files(tokens: List[str]) -> bool:
 
 
 _DEDUP_ISSUE_REF_RE = re.compile(
-    r"^(?:[\w.-]+/[\w.-]+#[1-9]\d*|#?[1-9]\d*)$"
+    r"(?:[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*#[1-9][0-9]*"
+    r"|#?[1-9][0-9]*)"
 )
 
 
 def _is_valid_dedup_value(value: str) -> bool:
     """`--dedup-checked` 值：none，或逗號分隔的 issue 參照（#N、N、owner/repo#N）。"""
-    text = value.strip()
-    if text.lower() == "none":
+    if value.strip().lower() == "none":
         return True
-    parts = [p.strip() for p in text.split(",")]
-    return all(_DEDUP_ISSUE_REF_RE.match(p) for p in parts)
+    # 只剝空格與 tab：換行等其他空白視為不合法，不被 strip 吞掉
+    parts = [p.strip(" \t") for p in value.split(",")]
+    return all(_DEDUP_ISSUE_REF_RE.fullmatch(p) for p in parts)
 
 
 def validate_portable_issue_gate(

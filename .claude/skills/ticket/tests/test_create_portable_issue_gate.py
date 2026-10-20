@@ -581,7 +581,9 @@ class TestDedupNoneRequiresKeywords:
 
 
 class TestDedupValueFormat:
-    @pytest.mark.parametrize("bad", ["no", "-", "0", "n/a", "#", "abc", "#1,x"])
+    @pytest.mark.parametrize("bad", ["no", "-", "0", "n/a", "#", "abc", "#1,x",
+        "#01", "#1,", "  ", "a/#1", "中文/庫#1", "-/-#1", "./..#1", "#1,#2\n",
+    ])
     def test_invalid_value_blocks(self, bad, capsys):
         result = validate_portable_issue_gate(
             [".claude/hooks/foo.py"], bad, ["k"]
