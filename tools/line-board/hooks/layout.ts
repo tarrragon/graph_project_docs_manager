@@ -17,7 +17,7 @@ import { parseIsoMs } from './dispatch'
 import { formatQueue } from './lanes'
 import { shortBranch } from './mergeGate'
 import { findSessionByName } from './sessions'
-import { formatAge } from './shared'
+import { COMPLETED_STATUS, formatAge } from './shared'
 
 /** 「其他」群組（收容對不到線的派發）與底部兩個區塊的群組 id；線的群組 id 由 laneGroupId 組出。 */
 export const OTHER_GROUP_ID = 'other'
@@ -41,9 +41,6 @@ export function groupToggleKey(id: string): string {
 export function groupBodyKey(id: string): string {
   return `body:${id}`
 }
-
-/** 票已完成的 status 值：不算排隊票。與 dispatch.ts 判定「票已完成不列」的值相同。 */
-const COMPLETED_STATUS = 'completed'
 
 /** session 停下來等用戶時的 status 值。 */
 const WAITING_STATUS = 'waiting'

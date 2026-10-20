@@ -1,8 +1,9 @@
-// 派發中代理人：`.claude/dispatch-active.json` 解析、流程階段推導、依線分組的派發列與其顯示文字。
+// 派發中代理人：`.claude/dispatch-active.json` 解析、流程階段推導、依線分組的派發列。
+// 派發列的顯示文字由 layout.ts 的 formatGroupDispatchRow 組出（所屬線由群組標題表達）。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
 
 import type { DispatchContext, DispatchRecord, DispatchRow, DispatchStage } from '../types'
-import { TICKET_PREFIX, formatAge } from './shared'
+import { COMPLETED_STATUS, TICKET_PREFIX } from './shared'
 
 /** 派發紀錄檔，相對 repo root；只讀主 checkout 的這一份。 */
 export const DISPATCH_ACTIVE_PATH = '.claude/dispatch-active.json'
@@ -18,9 +19,6 @@ export const REVIEW_AGENTS: readonly string[] = [
 
 /** 事故分析代理人：未結束時流程階段為「事故分析」。 */
 const INCIDENT_AGENT = 'incident-responder'
-
-/** 票已完成的 status 值：票為此狀態的派發條目不列出。 */
-const COMPLETED_STATUS = 'completed'
 
 /** worktree 代理人的分支為 `worktree-agent-<agent_id>`；dispatches 的 branch_name 只記 `worktree`，分支名須由 agent_id 組出。 */
 const AGENT_BRANCH_PREFIX = 'worktree-agent-'
@@ -143,10 +141,4 @@ export function dispatchRows(records: readonly DispatchRecord[], context: Dispat
   }
   const rank = (row: DispatchRow) => row.lane ?? Number.MAX_SAFE_INTEGER
   return rows.sort((a, b) => rank(a) - rank(b))
-}
-
-/** 派發列的顯示文字：`L<n> <代理人>｜<任務>｜<階段>｜<距派發時間>`，對不到線時以「其他」代替 `L<n>`。 */
-export function formatDispatchRow(row: DispatchRow, nowMs: number): string {
-  const group = row.lane === null ? OTHER_LANE_LABEL : `L${row.lane}`
-  return `${group} ${row.name}｜${row.task}｜${row.stage}｜${formatAge(nowMs, parseIsoMs(row.dispatchedAt))}`
 }
