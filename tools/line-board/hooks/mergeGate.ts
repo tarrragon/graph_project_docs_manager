@@ -1,5 +1,5 @@
 // 合併閘門：worktree-merge.log 的開始／結束行篩選與欄位解析、短分支名、目前持有閘門的分支、顯示文字與結果顏色。
-// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
+// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 import type { MergeGateEntry, MergeGateHolder } from '../types'
 

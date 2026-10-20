@@ -1,5 +1,5 @@
 // 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 狀態解析、checkout 路徑判定、距今時間的顯示。
-// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
+// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 /** 佇列票號的前綴：現行佇列行只寫短票號，補上前綴才是完整票號。 */
 export const TICKET_PREFIX = '0.5.0-W1-'
