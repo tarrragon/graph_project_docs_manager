@@ -59,6 +59,9 @@ _Harness _harness({
   final container = ProviderContainer(
     overrides: [
       scanRoundProvider.overrideWith(() => fake),
+      domainViewStateProvider.overrideWith(
+        (ref) => const DomainReady(mode: DomainMode.matrix),
+      ),
       builtinSchemaVersionProvider.overrideWith((ref) async => '1.0.0'),
       domainViewLogSinkProvider.overrideWithValue(
         (message, {level = 500}) => logs.add((message, level)),

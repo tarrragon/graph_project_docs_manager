@@ -6,6 +6,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/shell.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 
 import '../../helpers/helpers.dart';
 
@@ -68,7 +70,15 @@ void main() {
 
   group('真實 App 導覽殼', () {
     testWidgetsAtEachSize('pumpApp 起 AppShell 不溢位', (tester, size) async {
-      await pumpApp(tester, size: size);
+      await pumpApp(
+        tester,
+        size: size,
+        overrides: [
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainReady(mode: DomainMode.matrix),
+          ),
+        ],
+      );
       expect(find.byKey(AppShell.shellKey), findsOneWidget);
       expect(AnchorFinder.projectSwitcherEntry, findsOneWidget);
       expectNoOverflow(tester);

@@ -333,7 +333,12 @@ Future<void> _pumpShell(
   late BuildContext capturedContext;
   await tester.pumpWidget(
     ProviderScope(
-      overrides: overrides,
+      overrides: [
+        domainViewStateProvider.overrideWith(
+          (ref) => const DomainReady(mode: DomainMode.matrix),
+        ),
+        ...overrides,
+      ],
       child: ScreenUtilInit(
         designSize: const Size(1280, 800),
         builder: (context, child) => MaterialApp(

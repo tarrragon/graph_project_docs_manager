@@ -164,6 +164,9 @@ void main() {
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.nodeDetail,
           ),
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainReady(mode: DomainMode.matrix),
+          ),
         ],
       );
       await tester.tap(AnchorFinder.action(Screen.nodeDetail, 'open-source'));
