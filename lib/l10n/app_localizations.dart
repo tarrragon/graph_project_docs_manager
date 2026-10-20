@@ -206,6 +206,12 @@ abstract class AppLocalizations {
   /// **'尚未填寫結構化 flow'**
   String get flowUnstructuredMessage;
 
+  /// SPEC-001 §2 UC Flow 視圖·flow 未結構化狀態、flow 區塊皆解析失敗時的顯示文案（與 Domain 泳道同 key）
+  ///
+  /// In zh, this message translates to:
+  /// **'此 UC 的 flow 區塊解析失敗，請開啟來源檔修正'**
+  String get flowParseFailedMessage;
+
   /// SPEC-001 §2 UC Flow 視圖·尚未選定 UC 狀態的顯示文案
   ///
   /// In zh, this message translates to:

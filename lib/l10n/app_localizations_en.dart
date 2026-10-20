@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -79,6 +78,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get flowUnstructuredMessage =>
       'No structured flow has been written yet';
+
+  @override
+  String get flowParseFailedMessage =>
+      'This UC\'s flow block failed to parse. Open the source file to fix it.';
 
   @override
   String get ucUnsetPrompt => 'Select a UC to view its flow';

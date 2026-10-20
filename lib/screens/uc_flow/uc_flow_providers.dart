@@ -1,19 +1,90 @@
-/// UC Flow 視圖的狀態計算入口（設計約束同 domain/trace/gap_report：狀態
-/// 注入而非等待真實解析，本票不接真實工作資料夾與圖建置）。
+/// UC Flow 視圖的狀態計算入口（0.5.0-W1-114.18）。
+///
+/// UC 清單、步驟與事件流由共用掃描輪次（`scanRoundProvider`）與 Graph
+/// 公開面 `flowOf` 驅動，不讀 `UcFlowFixtures`（測試以
+/// `ucFlowUcListProvider.overrideWithValue` 注入 `UcFlowFixtures`）。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/domain_uc_columns.dart';
+import 'package:graph_project_docs_manager/app/graph_status.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/app/selected_uc.dart';
+import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart'
+    show FlowParseFailedEvent;
+import 'package:graph_project_docs_manager/graph/flow_query.dart';
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
+import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 
-import '../../app/graph_status.dart';
-import '../../app/selected_uc.dart';
-import 'uc_flow_fixtures.dart';
 import 'uc_flow_state.dart';
 
-/// 專案內 UC 清單（`0.1.0-W1-003` fixture 驅動）；測試以
+/// 專案內 UC 清單；輪次未完成或建圖不可用時為空。測試以
 /// `overrideWithValue(const [])` 驗證「無 UC」分支。
-final ucFlowUcListProvider = Provider<List<UcFlowFixtureUc>>(
-  (ref) => UcFlowFixtures.ucList,
-);
+final ucFlowUcListProvider = Provider<List<UcFlowUcItem>>((ref) {
+  final round = ref.watch(scanRoundProvider);
+  if (round is! ScanRoundCompleted) return const [];
+  final graph = round.result.graph;
+  if (graph is! GraphBuildAvailable) return const [];
+  return projectUcFlowItems(
+    event: graph.event,
+    failedEvents: round.result.scan.flowParseFailedEvents,
+  );
+});
+
+/// 跳轉定位目標（破洞報告 flow 類／事件類項目寫入，UC Flow 消費）；`null`
+/// 代表無待定位目標。
+final ucFlowFocusProvider = StateProvider<UcFlowFocus?>((ref) => null);
+
+/// 需求：[SPEC-001 §2] UC 清單取圖上全部 UC 型別節點（欄序同 Domain 矩陣），
+/// 步驟取 `flowOf`，解析失敗旗標取 EVT-CORPUS-004 對應的同路徑 UC。
+List<UcFlowUcItem> projectUcFlowItems({
+  required GraphBuiltEvent event,
+  required Iterable<FlowParseFailedEvent> failedEvents,
+}) {
+  final flows = FlowQuery(buildResult: GraphBuildAvailable(event));
+  final failedIds = flowParseFailedUcIdsOf(
+    failedEvents: failedEvents,
+    event: event,
+  );
+  return [
+    for (final id in orderedUcColumnIds(event.nodes))
+      _toUcItem(event, flows, id, failedIds.contains(id)),
+  ];
+}
+
+UcFlowUcItem _toUcItem(
+  GraphBuiltEvent event,
+  FlowQuery flows,
+  String ucId,
+  bool isFailed,
+) {
+  final node = event.nodes.firstWhere((n) => n.id == ucId);
+  final subgraph = switch (flows.flowOf(ucId)) {
+    FlowOfAvailable(:final subgraph) => subgraph,
+    _ => null,
+  };
+  return UcFlowUcItem(
+    id: ucId,
+    title: node.displayTitle,
+    filePath: node.path,
+    steps: [for (final s in subgraph?.steps ?? const <FlowStepNode>[]) _step(s)],
+    isFlowParseFailed: isFailed,
+  );
+}
+
+UcFlowStepItem _step(FlowStepNode step) {
+  final domains = step.traversesResolution;
+  return UcFlowStepItem(
+    id: flowKeyOf(step.id),
+    label: flowKeyOf(step.name) ?? flowKeyOf(step.id) ?? '',
+    domain: [
+      for (final d in domains.resolved) d.name,
+      for (final u in domains.undeclared) '$u',
+    ].join(', '), // i18n-exempt: domain 清單分隔符
+    emits: step.emitsNames,
+    consumes: step.consumesNames,
+  );
+}
 
 /// 目前畫面狀態：依 [projectUnreadyReasonProvider]、[ucFlowUcListProvider]、
 /// [selectedUcProvider] 三者計算（SPEC-001 §2）。
@@ -30,10 +101,12 @@ final ucFlowStateProvider = Provider<UcFlowState>((ref) {
   if (selectedUcId == null) {
     return const UcFlowUcUnset();
   }
-  final matches = ucList.where((uc) => uc.id == selectedUcId);
-  final hasFlowStep = matches.isNotEmpty && matches.first.hasFlowStep;
-  if (!hasFlowStep) {
-    return UcFlowUnstructured(ucId: selectedUcId);
+  final uc = ucList.where((uc) => uc.id == selectedUcId).firstOrNull;
+  if (uc == null || !uc.hasFlowStep) {
+    return UcFlowUnstructured(
+      ucId: selectedUcId,
+      isParseFailed: uc?.isFlowParseFailed ?? false,
+    );
   }
   return UcFlowNormal(ucId: selectedUcId);
 });
