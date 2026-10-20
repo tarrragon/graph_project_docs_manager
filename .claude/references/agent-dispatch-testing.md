@@ -17,10 +17,10 @@
 | hooks 與 lib（lib/tests 由 hooks 的 testpaths 帶入） | `uv --directory <checkout>/.claude/hooks run pytest` | `.claude/hooks/pyproject.toml` |
 | scripts | `uv --directory <checkout>/.claude/scripts run pytest` | `.claude/scripts/pyproject.toml` |
 | skills/ticket（含 ticket_system/tests） | `uv --directory <checkout>/.claude/skills/ticket run pytest` | `.claude/skills/ticket/pyproject.toml` |
-| skills/doc、worktree、skill-sync、project-init、version-release、mermaid-ascii | `uv --directory <checkout>/.claude/skills/<skill> run pytest` | 各 skill 自己的 pyproject |
+| skills/doc、worktree、skill-sync、project-init、version-release、mermaid-ascii、branch-worktree-guardian | `uv --directory <checkout>/.claude/skills/<skill> run pytest` | 各 skill 自己的 pyproject |
 | skills/framework-issue、broken-link-check、spec、version-bootstrap（無自有 pyproject） | `uv --directory <checkout>/.claude/hooks run pytest <checkout>/.claude/skills/<skill>/tests` | `.claude/hooks/pyproject.toml` |
 
-**邊界**：入口預設安裝 dev group；缺依賴時改 pyproject，不在命令補 `--with`。
+**邊界**：入口預設安裝 dev group；缺依賴時改 pyproject，不在命令補 `--with`。dispatch 骨架的入口由 `dispatch_skeleton.entry_commands_for_files` 依 `.claude/skills/<skill>/pyproject.toml` 是否存在推導，`test_track_dispatch.py` 的比對測試在本表落後檔案系統時翻紅。
 
 ### 全套件由合併閘門執行，代理人只跑相關測試檔（TEST-BAL-006）
 

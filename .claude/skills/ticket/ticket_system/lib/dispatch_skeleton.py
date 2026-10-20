@@ -11,6 +11,8 @@ Dispatch 骨架純組裝邏輯（不依賴 filelock，供 CLI 與測試共用）
 本模組的 `build_skeleton`，兩者量測的是同一份程式碼路徑。
 """
 
+from pathlib import Path
+
 # --dry-run 輸出首行浮水印（3-F M-7）。正式骨架（SKELETON_TEMPLATE_* 與
 # 下方 build_skeleton 的組裝結果）本身不變；浮水印由呼叫端（track_dispatch
 # 的 execute_dispatch）在 dry-run 分支對 build_skeleton 輸出做後處理式
@@ -178,6 +180,47 @@ WORKTREE_CLI_REJECT_LINE = (
 WORKTREE_HEREDOC_LINE = (
     "多行內容以 heredoc 傳給 append-log，`### 自檢結果` 須獨立成行。"
 )
+# 測試入口對照（.claude/references/agent-dispatch-testing.md〈測試入口〉表）。
+# skill 以 root 下 pyproject.toml 是否存在推導：有則以其目錄為入口；無 pyproject
+# 但有 tests 目錄則借 hooks 入口；兩者皆無回 None。
+TEST_ENTRY_LINE = "測試入口（不自拼 --with）：{commands}"
+_HOOKS_ENTRY = "uv --directory <checkout>/.claude/hooks run pytest"
+
+
+def _entry_for_path(path: str, root: Path):
+    """單一路徑對應的測試入口命令；無對應回 None。"""
+    parts = str(path).split("/")
+    if len(parts) < 3 or parts[0] != ".claude" or not str(path).endswith(".py"):
+        return None
+    area = parts[1]
+    if area in ("hooks", "lib"):
+        return _HOOKS_ENTRY
+    if area == "scripts":
+        return "uv --directory <checkout>/.claude/scripts run pytest"
+    if area != "skills" or len(parts) < 4:
+        return None
+    skill = parts[2]
+    skill_dir = root / ".claude" / "skills" / skill
+    if (skill_dir / "pyproject.toml").is_file():
+        return f"uv --directory <checkout>/.claude/skills/{skill} run pytest"
+    if (skill_dir / "tests").is_dir():
+        return f"{_HOOKS_ENTRY} <checkout>/.claude/skills/{skill}/tests"
+    return None
+
+
+def entry_commands_for_files(files, root: Path) -> list:
+    """由 where.files 推出所屬套件的測試入口命令（去重、保序；無對應回空）。
+
+    root 為 checkout 根（用以判斷 skill 目錄下 pyproject.toml／tests 是否存在）。
+    """
+    entries = []
+    for path in files or []:
+        cmd = _entry_for_path(path, root)
+        if cmd and cmd not in entries:
+            entries.append(cmd)
+    return entries
+
+
 _TEST_ACCEPTANCE_MARKERS = ("測試", "E1", "E2")
 
 
@@ -204,6 +247,7 @@ def build_skeleton(
     touches_hook_scope: bool = False,
     isolation: str = "none",
     require_red_run: bool = False,
+    test_entries=(),
 ) -> str:
     """依 `kind` 產生骨架文字（review 變體不含 claim/收尾協議）。
 
@@ -231,6 +275,12 @@ def build_skeleton(
     if require_red_run:
         skeleton = skeleton.replace(
             _RED_RUN_ANCHOR, f"{RED_RUN_LINE}\n{_RED_RUN_ANCHOR}", 1
+        )
+
+    if test_entries:
+        entry_line = TEST_ENTRY_LINE.format(commands="；".join(test_entries))
+        skeleton = skeleton.replace(
+            _RED_RUN_ANCHOR, f"{entry_line}\n{_RED_RUN_ANCHOR}", 1
         )
 
     if isolation == "worktree":
