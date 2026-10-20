@@ -1,0 +1,14 @@
+# 合併閘門套件宣告（專案層，不隨 sync 同步）
+# 宣告取代內建 Flutter 預設，故 flutter 與 line-board 兩個套件都必須寫出。
+suites:
+  flutter:
+    prefixes: [lib/, test/, integration_test/, macos/, docs/, assets/]
+    files: [pubspec.yaml, pubspec.lock, l10n.yaml, analysis_options.yaml]
+    command: [fvm, flutter, test]
+    artifacts:
+      - path: .dart_tool/package_config.json
+        generate: [fvm, flutter, pub, get]
+  # line-board 不放 artifacts：閘門不跑 tsc（types 無頭生成命令未知）
+  line-board:
+    prefixes: [tools/line-board/]
+    command: [claude, plugin, test, tools/line-board]

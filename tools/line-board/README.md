@@ -159,4 +159,6 @@ tsc -p tools/line-board                   # 型別檢查（需先以 --plugin-di
 claude plugin test tools/line-board       # 執行 hooks/*.test.ts
 ```
 
+合併閘門會在改動觸及 `tools/line-board/` 時自動執行 `claude plugin test tools/line-board`（宣告見 `.claude/project-integration/merge-gate.yaml`），失敗即判紅不合併；閘門不跑 `tsc`，型別檢查仍須手動執行。
+
 尚未以 `--plugin-dir` 啟動過時，`tsc` 改用 plugin-authoring skill 型別檔表頭的 `tsconfig.json`（放在 mod 資料夾外，`include` 指向該型別檔與本 mod 的 `hooks`、`types`）。
