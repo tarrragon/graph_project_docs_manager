@@ -10,8 +10,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'app/shell.dart';
 import 'components/components.dart' show BlockedState;
 import 'l10n/app_localizations.dart';
-import 'screens/project_switcher/project_switcher_overlay.dart'
-    show workspaceRepositoryProvider;
 import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
 

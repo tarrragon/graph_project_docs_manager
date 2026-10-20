@@ -19,11 +19,10 @@ import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
 import 'project_switcher_providers.dart';
 
-/// [WorkspaceRepository] 的接縫；測試可覆寫以注入替身，避免碰觸真實檔案
-/// 系統與平台面板（0.2.0-W1-019）。
-final workspaceRepositoryProvider = Provider<WorkspaceRepository>(
-  (ref) => WorkspaceRepository(),
-);
+// provider 定義已搬至 workspace 層；此處 re-export 讓既有測試的 override
+// 照常解析（0.5.0-W1-453）。
+export '../../workspace/workspace_repository.dart'
+    show workspaceRepositoryProvider;
 
 /// 組裝 [SwitcherOverlay]；呼叫端只在浮層展開時呼叫本函式。
 SwitcherOverlay buildProjectSwitcherOverlay({
