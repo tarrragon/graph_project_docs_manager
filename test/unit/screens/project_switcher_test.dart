@@ -246,20 +246,20 @@ Future<void> _pumpApp(
   WidgetTester tester, {
   List<Override> overrides = const [],
   bool settle = true,
-}) =>
-    pumpApp(
-      tester,
-      settle: settle,
-      overrides: [
-        domainViewStateProvider.overrideWith(
-          (ref) => const DomainReady(mode: DomainMode.matrix),
-        ),
-        ...overrides,
-      ],
-    );
+}) => pumpApp(
+  tester,
+  settle: settle,
+  overrides: [
+    domainViewStateProvider.overrideWith(
+      (ref) => const DomainReady(mode: DomainMode.matrix),
+    ),
+    ...overrides,
+  ],
+);
 
 void main() {
   _restoreContrastTest();
+  _inOverlayFailureTests();
   group('收合態', () {
     testWidgets('側欄入口存在，浮層未掛載', (tester) async {
       await _pumpApp(tester);
@@ -718,7 +718,7 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets('ChooseFolderUnavailable：浮層維持展開，顯示 AppSnackBar', (
+    testWidgets('ChooseFolderUnavailable：浮層維持展開，顯示浮層內常駐文字（不跳 SnackBar）', (
       tester,
     ) async {
       await _pumpApp(
@@ -742,7 +742,7 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsOneWidget);
-      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
       expect(find.text('無法開啟資料夾選取面板，應用程式可能安裝不完整'), findsOneWidget);
     });
 
@@ -805,7 +805,7 @@ void main() {
     });
 
     testWidgets(
-      'ChooseFolderSelected(WorkspaceUnavailable)：浮層維持展開，顯示 AppSnackBar',
+      'ChooseFolderSelected(WorkspaceUnavailable)：浮層維持展開，顯示浮層內常駐文字（不跳 SnackBar）',
       (tester) async {
         await _pumpApp(
           tester,
@@ -833,7 +833,7 @@ void main() {
           find.byKey(const Key('state-switcher-expanded')),
           findsOneWidget,
         );
-        expect(find.byType(SnackBar), findsOneWidget);
+        expect(find.byType(SnackBar), findsNothing);
         expect(find.text('資料夾無法使用：資料夾不存在或所在磁碟未掛載'), findsOneWidget);
         expect(find.textContaining('先前的資料夾'), findsNothing);
       },
@@ -863,6 +863,113 @@ void main() {
 
       expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
       expect(find.byType(SnackBar), findsOneWidget);
+    });
+  });
+}
+
+/// 浮層內選資料夾失敗改以常駐文字承載（SPEC-003 §3.7，0.5.0-W1-167.2）。
+/// 對照組（內容區 `action-domain-choose-folder` 失敗仍為 SnackBar）由
+/// `domain_view_test.dart` 的「選擇器無法開啟」「資料夾不可讀」兩案承載。
+void _inOverlayFailureTests() {
+  const pickerReason = '無法開啟資料夾選取面板，應用程式可能安裝不完整';
+  const folderReason = '資料夾無法使用：資料夾不存在或所在磁碟未掛載';
+  const expandedKey = Key('state-switcher-expanded');
+
+  Future<void> openOverlayAndChoose(
+    WidgetTester tester,
+    WorkspaceRepository repository, {
+    bool blocked = false,
+  }) async {
+    await _pumpApp(
+      tester,
+      settle: false,
+      overrides: [
+        domainViewStateProvider.overrideWith(
+          (ref) => blocked
+              ? const DomainNotFramework()
+              : const DomainReady(mode: DomainMode.matrix),
+        ),
+        recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+        workspaceRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+    await tester.pumpAndSettle();
+    if (blocked) {
+      // 啟動還原會把狀態重設為 DomainUnset；展開浮層後再置入阻擋狀態。
+      ProviderScope.containerOf(tester.element(find.byType(app_shell.AppShell)))
+              .read(domainViewStateProvider.notifier)
+              .state =
+          const DomainNotFramework();
+      await tester.pump();
+    }
+    await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+  }
+
+  Finder inOverlay(String text) =>
+      find.descendant(of: find.byKey(expandedKey), matching: find.text(text));
+
+  group('浮層內選資料夾失敗：常駐文字，不跳 SnackBar', () {
+    testWidgets('選擇器無法開啟：浮層內出現常駐文字', (tester) async {
+      await openOverlayAndChoose(
+        tester,
+        _fakeRepositoryPickerUnavailable(recentProjects: _testRecentProjects),
+      );
+      expect(find.byKey(expandedKey), findsOneWidget);
+      expect(inOverlay(pickerReason), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(AppSnackBar), findsNothing);
+    });
+
+    testWidgets('選定資料夾不可讀或不存在：浮層內出現常駐文字', (tester) async {
+      await openOverlayAndChoose(
+        tester,
+        _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
+      );
+      expect(find.byKey(expandedKey), findsOneWidget);
+      expect(inOverlay(folderReason), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(AppSnackBar), findsNothing);
+    });
+
+    testWidgets('阻擋狀態顯示中由浮層觸發失敗：阻擋狀態不變、浮層維持展開', (tester) async {
+      await openOverlayAndChoose(
+        tester,
+        _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
+        blocked: true,
+      );
+      expect(find.byKey(expandedKey), findsOneWidget);
+      expect(inOverlay(folderReason), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(app_shell.AppShell)),
+      );
+      expect(
+        container.read(domainViewStateProvider),
+        isA<DomainNotFramework>(),
+      );
+      expect(
+        find.byKey(const Key('state-domain-not-framework')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('浮層收合後再展開：失敗文字不保留', (tester) async {
+      await openOverlayAndChoose(
+        tester,
+        _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
+      );
+      expect(inOverlay(folderReason), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(expandedKey), findsNothing);
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+      expect(find.byKey(expandedKey), findsOneWidget);
+      expect(find.text(folderReason), findsNothing);
     });
   });
 }
