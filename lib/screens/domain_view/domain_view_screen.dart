@@ -27,12 +27,15 @@ import '../../app/attention_level.dart';
 import '../../app/domain_view_loader.dart';
 import '../../app/router.dart';
 import '../../app/selected_uc.dart';
+import '../../app/workspace_selection.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
+import '../project_switcher/project_switcher_overlay.dart'
+    show workspaceRepositoryProvider;
 import '../project_switcher/project_switcher_providers.dart';
 import 'domain_view_providers.dart';
 import 'domain_view_schema_version.dart';
@@ -98,14 +101,58 @@ class _UnsetView extends ConsumerWidget {
       actions: [
         AppButton(
           label: l10n.chooseWorkspaceFolder,
-          onPressed: () => ref.read(domainViewStateProvider.notifier).state =
-              const DomainLoading(),
+          onPressed: () => unawaited(_chooseFolder(context, ref)),
           testKey: const Key('action-domain-choose-folder'),
         ),
       ],
     );
   }
 }
+
+/// 選擇資料夾（SPEC-003 §3.1〈互動反應〉）：開啟系統選擇器，依
+/// [ChooseFolderResult] 四變體分流。選定走共用流程 [selectWorkspace]；
+/// 取消不給提示；失敗以 SnackBar 回饋，畫面維持 state-domain-unset。
+Future<void> _chooseFolder(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+  final result = await ref.read(workspaceRepositoryProvider).chooseFolder();
+  if (!context.mounted) return;
+  switch (result) {
+    case ChooseFolderCancelled():
+      break;
+    case ChooseFolderUnavailable():
+      // reason 不外露：可能含平台例外字串（同 SPEC-003 §3.7）。
+      _showFailure(context, l10n.chooseFolderUnavailableMessage);
+    case ChooseFolderSelected(:final state):
+      await _applyChosenState(context, ref, l10n, state);
+    case ChooseFolderNotRemembered(:final state):
+      await _applyChosenState(context, ref, l10n, state);
+      if (!context.mounted) return;
+      _showFailure(context, l10n.workspaceNotRemembered);
+  }
+}
+
+Future<void> _applyChosenState(
+  BuildContext context,
+  WidgetRef ref,
+  AppLocalizations l10n,
+  WorkspaceState state,
+) async {
+  switch (state) {
+    case WorkspaceReady():
+      await selectWorkspace(ref, state);
+    case WorkspaceUnavailable(:final reason):
+      _showFailure(context, l10n.folderUnavailableMessage(reason));
+    case WorkspaceUnset():
+      break;
+  }
+}
+
+void _showFailure(BuildContext context, String message) => AppSnackBar.show(
+  context,
+  message: message,
+  level: AttentionLevel.discardable,
+  origin: AppSnackBarOrigin.userInitiated,
+);
 
 /// 載入中：`LoadingState.skeleton`（版位 `matrix`）。
 class _LoadingView extends ConsumerWidget {

@@ -24,6 +24,7 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
@@ -51,6 +52,40 @@ List<Override> _readyGateOverrides() => [
   fakeScanRoundOverride(),
 ];
 
+/// chooseFolder 回固定結果並計次的替身（0.5.0-W1-206.2）。
+class _ChooseRepo extends StubWorkspaceRepository {
+  _ChooseRepo(this._result) : super(const WorkspaceUnset());
+
+  final ChooseFolderResult _result;
+  int chooseCalls = 0;
+
+  @override
+  Future<ChooseFolderResult> chooseFolder() async {
+    chooseCalls++;
+    return _result;
+  }
+}
+
+/// 記錄 gate 讀取版本時的工作區路徑；等於 gate detect 被呼叫的計次證據。
+class _CountingProbe extends StubFrameworkSignalProbe {
+  _CountingProbe() : super(version: null, schemaJson: false);
+
+  final List<String> readVersionPaths = [];
+
+  @override
+  Future<String?> readVersion(String workspacePath) async {
+    readVersionPaths.add(workspacePath);
+    return null;
+  }
+}
+
+List<Override> _chooseOverrides(_ChooseRepo repo, _CountingProbe probe) => [
+  domainViewStateProvider.overrideWith((ref) => const DomainUnset()),
+  workspaceRepositoryProvider.overrideWithValue(repo),
+  frameworkSignalProbeProvider.overrideWithValue(probe),
+  fakeScanRoundOverride(),
+];
+
 void main() {
   group('未選專案 state-domain-unset', () {
     testWidgetsAtEachSize('渲染 EmptyState.page', (tester, size) async {
@@ -68,19 +103,81 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets('action-domain-choose-folder → 進入載入中', (tester) async {
-      final container = await pumpHarness(
+    // 0.5.0-W1-206.2：按鈕開啟選擇器並依四種結果分流（SPEC-003 §3.1）。
+    testWidgets('選定資料夾：chooseFolder 一次，經共用流程呼叫 gate detect', (tester) async {
+      final repo = _ChooseRepo(const ChooseFolderSelected(WorkspaceReady('/ws')));
+      final probe = _CountingProbe();
+      await pumpHarness(
         tester,
         child: const DomainViewScreen(),
-        overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainUnset()),
-        ],
+        overrides: _chooseOverrides(repo, probe),
       );
 
       await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(container.read(domainViewStateProvider), isA<DomainLoading>());
+      expect(repo.chooseCalls, 1);
+      expect(probe.readVersionPaths, ['/ws']);
+    });
+
+    testWidgets('選擇器取消：仍為未選專案，無 SnackBar，gate 未觸發', (tester) async {
+      final repo = _ChooseRepo(const ChooseFolderCancelled());
+      final probe = _CountingProbe();
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: _chooseOverrides(repo, probe),
+      );
+
+      await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
+      await tester.pumpAndSettle();
+
+      expect(repo.chooseCalls, 1);
+      expect(AnchorFinder.state(Screen.domain, 'unset'), findsOneWidget);
+      expect(find.byType(AppSnackBar), findsNothing);
+      expect(probe.readVersionPaths, isEmpty);
+      expect(container.read(domainViewStateProvider), isA<DomainUnset>());
+    });
+
+    testWidgets('選擇器無法開啟：SnackBar 固定文案，仍為未選專案', (tester) async {
+      final repo = _ChooseRepo(const ChooseFolderUnavailable('boom-detail'));
+      final probe = _CountingProbe();
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: _chooseOverrides(repo, probe),
+      );
+
+      await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizationsZh();
+      expect(find.text(l10n.chooseFolderUnavailableMessage), findsOneWidget);
+      expect(find.textContaining('boom-detail'), findsNothing);
+      expect(AnchorFinder.state(Screen.domain, 'unset'), findsOneWidget);
+      expect(probe.readVersionPaths, isEmpty);
+    });
+
+    testWidgets('資料夾不可讀：SnackBar 含原因，仍為未選專案', (tester) async {
+      final repo = _ChooseRepo(
+        const ChooseFolderSelected(
+          WorkspaceUnavailable(lastKnownPath: '/gone', reason: 'missing'),
+        ),
+      );
+      final probe = _CountingProbe();
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: _chooseOverrides(repo, probe),
+      );
+
+      await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizationsZh();
+      expect(find.text(l10n.folderUnavailableMessage('missing')), findsOneWidget);
+      expect(AnchorFinder.state(Screen.domain, 'unset'), findsOneWidget);
+      expect(probe.readVersionPaths, isEmpty);
     });
   });
 
