@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../../helpers/gap_round_fakes.dart';
 
@@ -28,6 +34,26 @@ class _FakeProbe implements FrameworkSignalProbePort {
   Future<String?> readSchemaJsonVersion(String workspacePath) async =>
       jsonVersion;
 }
+
+/// 第一次 ensureRound 卡在 [gate]，其後依 FakeScanRound 預設行為。
+class _GatedScanRound extends FakeScanRound {
+  _GatedScanRound(this.gate) : super(produce: _unavailableRound);
+
+  final Completer<ScanRoundResult?> gate;
+  bool _first = true;
+
+  @override
+  Future<ScanRoundResult?> ensureRound() {
+    if (_first) {
+      _first = false;
+      return gate.future;
+    }
+    return super.ensureRound();
+  }
+}
+
+ScanRoundResult _unavailableRound() =>
+    fakeRound(graphUnavailable: EdgeTypeUnavailableReason.values.first);
 
 ProviderContainer _buildContainer(FrameworkSignalProbePort probe) {
   final container = ProviderContainer(
@@ -182,6 +208,48 @@ void main() {
       final state = container.read(domainViewStateProvider);
       expect(state, isA<DomainSchemaIncompatible>());
       expect((state as DomainSchemaIncompatible).projectVersion, isNull);
+    });
+  });
+
+  group('0.5.0-W1-206.3 gate 阻擋結果遞增載入世代', () {
+    test('載入進行中切專案並被 gate 阻擋，舊載入完成後不覆蓋阻擋態', () async {
+      final gate = Completer<ScanRoundResult?>();
+      final logs = <(String, int)>[];
+      final container = ProviderContainer(
+        overrides: [
+          frameworkSignalProbeProvider.overrideWithValue(_FakeProbe()),
+          builtinSchemaVersionProvider.overrideWith((ref) async => '2.40.3'),
+          scanRoundProvider.overrideWith(() => _GatedScanRound(gate)),
+          domainViewLogSinkProvider.overrideWithValue(
+            (message, {level = 500}) => logs.add((message, level)),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final ws = container.read(currentWorkspaceStateProvider.notifier);
+      ws.state = const WorkspaceReady('/ws/a');
+      container.read(scanRoundProvider);
+
+      final loading = container.read(domainViewLoaderProvider.notifier).load();
+      await Future<void>.delayed(Duration.zero);
+
+      ws.state = const WorkspaceReady('/ws/b');
+      await container
+          .read(gateDetectionNotifierProvider.notifier)
+          .detect('/ws/b');
+      expect(
+        container.read(domainViewStateProvider),
+        isA<DomainNotFramework>(),
+      );
+
+      gate.complete(null);
+      await loading;
+
+      expect(
+        container.read(domainViewStateProvider),
+        isA<DomainNotFramework>(),
+      );
+      expect(logs.where((l) => l.$2 == 900), isEmpty);
     });
   });
 }

@@ -92,7 +92,7 @@ class GateDetectionNotifier extends Notifier<void> {
   }
 
   void _apply(DomainViewState state, {required String? inferredVersion}) {
-    ref.read(domainViewStateProvider.notifier).state = state;
+    ref.read(domainViewLoaderProvider.notifier).applyGateBlock(state);
     ref.read(inferredVersionProvider.notifier).state = inferredVersion;
   }
 }

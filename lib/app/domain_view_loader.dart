@@ -86,6 +86,14 @@ class DomainViewLoader extends Notifier<void> {
   /// 降級旗標不動故降級檢視重試仍為降級；推定版本沿用上一次載入的值。
   Future<void> reload() => load(inferredVersion: _lastInferredVersion);
 
+  /// gate 阻擋結果（NotFramework／SchemaUnconsumable／SchemaIncompatible）的
+  /// 寫入口：遞增世代使進行中的載入失效，再寫入阻擋態
+  /// （SPEC-003 §3.1〈導航跳轉與退出〉切換專案中止載入）。
+  void applyGateBlock(DomainViewState blocked) {
+    _generation++;
+    _write(blocked);
+  }
+
   /// 取消載入（SPEC-001 §1 載入中列：取消 → 未選專案）：Running 輪次一併
   /// 丟棄，進行中的載入結果作廢。
   void cancelLoading() {
