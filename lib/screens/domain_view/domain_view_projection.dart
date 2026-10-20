@@ -64,6 +64,25 @@ DomainSwimlaneView projectDomainSwimlane({
   );
 }
 
+/// 需求：[SPEC-001 §1 間接依賴格的「在泳道中檢視」跳轉目標] 給定 UC 與列的
+/// domain 字面，回傳 Layout 公開面「該列欄號最小的節點」（L9）；UC 無 flow
+/// 或該列無節點時為 null。畫面不自行組合欄號。
+LayoutNode? firstNodeInLaneOf({
+  required GraphBuiltEvent event,
+  required String ucId,
+  required String domain,
+}) {
+  final available = GraphBuildAvailable(event);
+  final flow = _flowOf(FlowQuery(buildResult: available), ucId);
+  if (flow == null || flow.steps.isEmpty) return null;
+  final bundles = _orderedBundles(available);
+  final layout = buildSwimLaneLayout(
+    flow: flow,
+    bundleOrder: [for (final e in bundles) (domain: e.domain, layer: e.layer)],
+  );
+  return layout.firstNodeInLane(BundleLane(domain));
+}
+
 /// FR-13 列序；投影只在建圖可用時呼叫，不可用分支不會發生。
 List<BundleLayerEntry> _orderedBundles(GraphBuildAvailable available) =>
     switch (BundleLayerQuery(buildResult: available).orderedBundles()) {

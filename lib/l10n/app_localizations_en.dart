@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -82,6 +83,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get flowParseFailedMessage =>
       'This UC\'s flow block failed to parse. Open the source file to fix it.';
+
+  @override
+  String get swimlaneFlowParseFailedHint =>
+      'Some flow blocks in this UC failed to parse; the lanes show the first valid block only';
 
   @override
   String get ucUnsetPrompt => 'Select a UC to view its flow';

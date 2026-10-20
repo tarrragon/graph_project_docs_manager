@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -77,6 +78,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get flowParseFailedMessage => '此 UC 的 flow 區塊解析失敗，請開啟來源檔修正';
+
+  @override
+  String get swimlaneFlowParseFailedHint => '此 UC 有 flow 區塊解析失敗，泳道只呈現第一個合法區塊';
 
   @override
   String get ucUnsetPrompt => '選擇一條 UC 以檢視 flow';

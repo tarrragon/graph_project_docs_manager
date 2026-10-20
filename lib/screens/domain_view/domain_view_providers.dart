@@ -11,6 +11,7 @@ import 'package:graph_project_docs_manager/app/domain_uc_columns.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/layout/swim_lane_layout.dart';
 
 import 'domain_view_projection.dart';
 import 'domain_view_state.dart';
@@ -19,6 +20,20 @@ import 'domain_view_state.dart';
 final domainViewStateProvider = StateProvider<DomainViewState>(
   (ref) => const DomainReady(mode: DomainMode.matrix),
 );
+
+/// Layout 公開面「給定一列，回傳欄號最小的節點」查詢（SPEC-001 §1 跳轉目標，
+/// L9）；測試以 `overrideWith` 注入替身。預設依共用掃描輪次的建圖結果計算。
+typedef FirstNodeInLaneQuery = LayoutNode? Function(String ucId, String domain);
+
+final firstNodeInLaneQueryProvider = Provider<FirstNodeInLaneQuery>((ref) {
+  return (ucId, domain) {
+    final round = ref.read(scanRoundProvider);
+    if (round is! ScanRoundCompleted) return null;
+    final graph = round.result.graph;
+    if (graph is! GraphBuildAvailable) return null;
+    return firstNodeInLaneOf(event: graph.event, ucId: ucId, domain: domain);
+  };
+});
 
 /// 選定 UC 的泳道投影；未選定 UC、輪次尚未完成或建圖不可用時為 `null`
 /// （建圖不可用時 Domain 視圖不會進入，見 SPEC-001 §1〈FR-13 回傳「圖不可用」

@@ -34,6 +34,7 @@ import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../project_switcher/project_switcher_providers.dart';
+import 'domain_view_projection.dart' show dependencyPathSeparator;
 import 'domain_view_providers.dart';
 import 'domain_view_schema_version.dart';
 import 'domain_view_state.dart';
@@ -511,8 +512,13 @@ class _CellDetailPanel extends ConsumerWidget {
               variant: AppButtonVariant.secondary,
               onPressed: () {
                 ref.read(selectedUcProvider.notifier).state = ucId;
+                final focus = _jumpFocus(ref, cell);
                 ref.read(domainViewStateProvider.notifier).state = ready
-                    .copyWith(mode: DomainMode.swimlane);
+                    .copyWith(
+                      mode: DomainMode.swimlane,
+                      selectedDomainId: () => focus.domainId,
+                      swimlaneFocus: () => focus,
+                    );
               },
               testKey: const Key('action-domain-cell-goto-swimlane'),
             ),
@@ -521,6 +527,23 @@ class _CellDetailPanel extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// 需求：[SPEC-001 §1 「在泳道中檢視」跳轉目標] 間接依賴格取依賴路徑第一行的
+/// 來源 X，以 X 呼叫 Layout 查詢並採用其回傳節點；直接貫穿格（或查無節點、
+/// 查無對應列）定位到該格 domain 所在列。
+SwimlaneFocus _jumpFocus(WidgetRef ref, DomainCell cell) {
+  final direct = SwimlaneFocus(domainId: cell.domainId);
+  if (cell.relation != DomainRelation.indirect ||
+      cell.dependencyPaths.isEmpty) {
+    return direct;
+  }
+  final source = cell.dependencyPaths.first.split(dependencyPathSeparator).first;
+  final node = ref.read(firstNodeInLaneQueryProvider)(cell.ucId, source);
+  final matrix = (ref.read(domainViewStateProvider) as DomainReady).matrix;
+  final row = matrix?.rows.where((r) => r.domainName == source).firstOrNull;
+  if (node == null || row == null) return direct;
+  return SwimlaneFocus(domainId: row.domainId, column: node.column);
 }
 
 /// 正常 · 泳道／泳道 · 尚未選定 UC／泳道 · flow 未結構化三列的計算入口
@@ -576,7 +599,11 @@ class _SwimlaneBody extends ConsumerWidget {
         leading: [AppText(panelTitle, variant: AppTextVariant.subtitle)],
         fill: EmptyState(
           variant: EmptyStateVariant.section,
-          message: l10n.flowUnstructuredMessage,
+          message:
+              (swimlane is DomainSwimlaneUnstructured &&
+                  swimlane.isFlowParseFailed)
+              ? l10n.flowParseFailedMessage
+              : l10n.flowUnstructuredMessage,
           testKey: const Key('state-domain-swimlane-unstructured'),
           actions: [
             AppButton(
@@ -596,7 +623,14 @@ class _SwimlaneBody extends ConsumerWidget {
     ];
     return Panel(
       key: const Key('state-domain-swimlane'),
-      leading: [AppText(panelTitle, variant: AppTextVariant.subtitle)],
+      leading: [
+        AppText(panelTitle, variant: AppTextVariant.subtitle),
+        if (swimlane.hasFlowParseFailure)
+          AppText(
+            l10n.swimlaneFlowParseFailedHint,
+            variant: AppTextVariant.caption,
+          ),
+      ],
       fill: SwimlaneGrid(
         lanes: lanes,
         edges: [for (final edge in swimlane.edges) _toSwimlaneEdge(edge)],

@@ -20,6 +20,7 @@
   "emptyUcMessage": "This project has no UC nodes yet",
   "flowUnstructuredMessage": "No structured flow has been written yet",
   "flowParseFailedMessage": "This UC's flow block failed to parse. Open the source file to fix it.",
+  "swimlaneFlowParseFailedHint": "Some flow blocks in this UC failed to parse; the lanes show the first valid block only",
   "ucUnsetPrompt": "Select a UC to view its flow",
   "ucSelectorTitle": "Select UC",
   "emptyProposalMessage": "This project has no proposals yet",
