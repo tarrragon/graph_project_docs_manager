@@ -45,7 +45,7 @@ updated: "2026-10-13"
 
 ### Bundle 不變式清單
 
-供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威依破洞大類分屬兩份規格：`parseFailure` 在 SPEC-006，`graphDefect` 在 SPEC-007（各列的 SPEC 條款欄寫明出處）。本表只列可獨立斷言的不變式；目標路徑為 `lib/diagnostics/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
+供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威依破洞大類分屬三處：`parseFailure` 在 SPEC-006，`graphDefect` 在 SPEC-007，事件類（孤立事件、事件宣告與 flow 不符）的判準目前只寫在 SPEC-003 §3.5（各列的 SPEC 條款欄寫明出處）。本表只列可獨立斷言的不變式；目標路徑為 `lib/diagnostics/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
 
 `graphDefect` 的不變式落在本表而非 Graph 的 map（`0.5.0-W1-178`，判準見系統層 §8：驗收對象落在哪個 bundle 的公開面）：SPEC-007〈概述〉職責表與 `docs/spec/graph/domain-map.md` §7 皆把 SPEC-007 FR-09 單獨歸 Diagnostics，其驗收對象是破洞清單（本 bundle 公開面，§3）。缺陷的產生與 EVT-GRAPH-001 的筆數屬 Graph 的條款，不在本表重複。
 
@@ -61,6 +61,10 @@ updated: "2026-10-13"
 | Diagnostics | flow 四子類的破洞負載一律為 {UC ID, step id, 欄位, 原始值}，不帶邊型；「domain 重複宣告」的負載為 {domain, 衝突的 DomainBundle ID 清單} | SPEC-007 FR-09 |
 | Diagnostics | 破洞的原始值原樣保存，不正規化 | SPEC-007 FR-09 |
 | Diagnostics | 建圖不可用時不產生任何 `graphDefect` 破洞，回報「無法判定」；無法判定原因取自 Diagnostics 既有列舉（編排層已轉換），Diagnostics 不依賴 Schema 的原因型別 | SPEC-007 FR-09 |
+| Diagnostics | 孤立事件（`orphan-event`）每個符合判準的 EVT 一項：「有發出無消費」與「有消費無發出」兩形態各自三條件皆成立才列入；`category: process_event` 的 EVT 不列入；EVT 已宣告 `consumers`（或 `producers`）時不屬本類別 | SPEC-003 §3.5〈孤立事件判準〉 |
+| Diagnostics | 事件宣告與 flow 不符（`event-declaration-mismatch`）每個未對應的宣告 domain 一項（同一 EVT 兩個 domain 未對應即兩項）；對應以 `traverses` 包含比對；`consumers` 的 `presentation` 比對 `traverses` 為空的步驟，`producers` 的 `presentation` 與未宣告值同視為未對應 | SPEC-003 §3.5〈事件宣告與 flow 不符判準〉 |
+| Diagnostics | 兩類事件破洞的每一項帶 EVT id 與引用該 EVT 的 UC id 清單（任一 FlowStep `emits` 或 `consumes` 含之，依 UC id 排序）；無 UC 引用時清單為空；負載不含在地化字串 | SPEC-003 §3.5 設定入口 4、SPEC-001 §5 事件類主操作 |
+| Diagnostics | 建圖不可用時不產生兩類事件破洞，回報「無法判定」 | SPEC-003 §3.5（比照 SPEC-007 FR-09 的無法判定語意） |
 
 ## 6. 待決事項
 
@@ -89,4 +93,4 @@ updated: "2026-10-13"
 
 ---
 
-**Last Updated**: 2026-10-13（`0.5.0-W1-176`：§2 出邊、不變式清單、§7 SPEC-006 FR-08 列對齊 EVT-CORPUS-004／005 之後的 SPEC-006 FR-08；不變式列同行寫明 SPEC id；`0.5.0-W1-178`：不變式清單引言改為兩份規格分屬並寫明 `graphDefect` 的落點依據，補 SPEC-007 FR-09 五列，欄名改「SPEC 條款」，既有五列未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-20（`0.5.0-W1-114.22.1`：不變式清單補事件類破洞四列，判準出處 SPEC-003 §3.5；引言改為三處出處）；2026-10-13（`0.5.0-W1-176`：§2 出邊、不變式清單、§7 SPEC-006 FR-08 列對齊 EVT-CORPUS-004／005 之後的 SPEC-006 FR-08；不變式列同行寫明 SPEC id；`0.5.0-W1-178`：不變式清單引言改為兩份規格分屬並寫明 `graphDefect` 的落點依據，補 SPEC-007 FR-09 五列，欄名改「SPEC 條款」，既有五列未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
