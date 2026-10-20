@@ -127,7 +127,13 @@ def _stage_temp(path: str, content: bytes, mode: int) -> str:
             fh.write(content)
         os.chmod(tmp, mode)
     except BaseException:
-        os.unlink(tmp)
+        try:
+            os.unlink(tmp)
+        except OSError as unlink_exc:
+            # 清理失敗不得蓋掉原例外；殘檔路徑記錄供人工刪除
+            msg = f"暫存檔清理失敗，請手動刪除：{tmp}（{unlink_exc}）"
+            logger.warning(msg)
+            sys.stderr.write(f"[WARNING] {msg}\n")
         raise
     return tmp
 
@@ -247,7 +253,8 @@ def execute_move_lines(args: argparse.Namespace, version: str) -> int:
     try:
         print(_run_move(ticket, args, repo_root))
     except MoveLinesError as exc:
-        print(f"[ERROR] {exc}")
+        logger.error("move-lines 失敗：%s", exc)
+        sys.stderr.write(f"[ERROR] {exc}\n")
         return 1
     return 0
 

@@ -249,7 +249,7 @@ class TestRejections:
 
         with patch.object(track_move_lines.os, "replace", side_effect=fail):
             rc = _run(tmp_path, _args("1-1", "end"))
-        out = capsys.readouterr().out
+        out = capsys.readouterr().err
         assert rc != 0
         assert "還原失敗" in out and "備份" in out
         backup = out.split("src 原始內容備份：")[1].split()[0]
@@ -268,7 +268,7 @@ class TestRejections:
         with patch.object(track_move_lines.os, "stat", side_effect=fail):
             rc = _run(tmp_path, _args("1-1", "end"))
         assert rc != 0
-        assert "injected stat" in capsys.readouterr().out
+        assert "injected stat" in capsys.readouterr().err
         assert _snapshot(tmp_path) == before
 
     def test_cleanup_failure_reports_and_continues(self, tmp_path, capsys):
@@ -285,6 +285,35 @@ class TestRejections:
         assert rc == 0
         assert "injected unlink" in capsys.readouterr().err
         assert (tmp_path / "b.md").read_text() == "b1\nb2\nb3\na1\n"
+
+    def test_error_goes_to_stderr_and_logger(self, tmp_path, capsys, caplog):
+        _setup(tmp_path)
+        with caplog.at_level("ERROR"):
+            rc = _run(tmp_path, _args("9-9", "end"))
+        captured = capsys.readouterr()
+        assert rc != 0
+        assert "[ERROR]" in captured.err and "[ERROR]" not in captured.out
+        assert any("超出來源檔範圍" in r.getMessage() and r.levelname == "ERROR"
+                   for r in caplog.records)
+
+    def test_stage_temp_unlink_failure_keeps_original_error(self, tmp_path, capsys, caplog):
+        _setup(tmp_path)
+        before = _snapshot(tmp_path)
+        real_unlink = track_move_lines.os.unlink
+
+        def fail_unlink(path, *a, **kw):
+            if ".move-lines-" in str(path):
+                raise OSError("injected unlink")
+            return real_unlink(path, *a, **kw)
+
+        with patch.object(track_move_lines.os, "chmod", side_effect=OSError("orig chmod")), \
+             patch.object(track_move_lines.os, "unlink", side_effect=fail_unlink), \
+             caplog.at_level("WARNING"):
+            rc = _run(tmp_path, _args("1-1", "end"))
+        assert rc != 0
+        assert "orig chmod" in capsys.readouterr().err
+        assert any("injected unlink" in r.getMessage() for r in caplog.records)
+        assert _snapshot(tmp_path) == before
 
     def test_fullwidth_digits_rejected(self, tmp_path):
         _setup(tmp_path)
