@@ -206,6 +206,8 @@ def _expand_directory_to_changed_files(
     for line in status_out.split("\0"):
         if len(line) < 4:
             continue
+        # 解析依賴 _git_status_porcelain 帶 --no-renames：拿掉該旗標，R 項
+        # 會帶出舊名（多一段 NUL 欄位），line[3:] 會截壞路徑。
         path = line[3:]
         if not files_intersect(path, directory):
             continue
