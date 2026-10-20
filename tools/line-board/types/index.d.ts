@@ -1,4 +1,4 @@
-// line-board 的型別契約：$.state 內每個值的形狀，以及 hooks/parse.ts 純函式的輸入輸出。
+// line-board 的型別契約：$.state 內每個值的形狀（snapshot 與群組展開狀態 expanded），以及 hooks/parse.ts 純函式的輸入輸出。
 
 /** 票序中的一段：ticket 為一張票（短票號、完整票號、其後的註記），sep 為 `→` 或 `∥`，text 為無法辨識為票號的文字。 */
 export type QueueToken =
@@ -95,6 +95,30 @@ export type DispatchRow = {
   dispatchedAt: string | null
 }
 
+/**
+ * 一個群組標題列的活動計數，與展開後的內容一一對應：dispatching 為派發列數；inGate 為派發列中階段為閘門者加上 gateTickets 數；
+ * isWaiting 為該線的 session 狀態是 waiting（等你處理）；queued 為佇列列中狀態不是 completed 的票數。
+ */
+export type GroupActivity = { dispatching: number; inGate: number; isWaiting: boolean; queued: number }
+
+/** 佇列中一張正持有合併閘門的票（閘門持有者為其 `feat/<票號>` 分支）：短票號與開始時間 `HH:MM:SS`。 */
+export type GateTicket = { serial: string; since: string }
+
+/**
+ * 以線分組的一個群組：id 為展開狀態的鍵（`lane:<n>` 或 `other`）；lane 為 null 表示「其他」群組（收容對不到線的派發）。
+ * 展開後依序列出 dispatches、gateTickets（派發列已標閘門的票不重複列）與該線的佇列列。
+ */
+export type LaneGroup = {
+  id: string
+  lane: Lane | null
+  dispatches: DispatchRow[]
+  gateTickets: GateTicket[]
+  activity: GroupActivity
+}
+
+/** 使用者按過的群組的展開狀態，以群組 id 為鍵；沒有的鍵依預設判定。 */
+export type GroupOverrides = Record<string, boolean>
+
 /** 各 session 狀態的讀取結果：ok 為本 repo 內 pid 仍存活的 session 與已結束的檔數，error 為讀取失敗原因。 */
 export type SessionsResult =
   | { kind: 'ok'; sessions: SessionState[]; endedCount: number }
@@ -118,8 +142,11 @@ export type BoardSnapshot =
       dispatches: DispatchesResult
     }
 
+/** 已完成第一次讀取的 snapshot：Pane 各區塊繪製時的輸入。 */
+export type ReadyBoard = Extract<BoardSnapshot, { kind: 'ready' }>
+
 declare module 'claude-code' {
   interface PluginState {
-    'line-board': { snapshot: BoardSnapshot }
+    'line-board': { snapshot: BoardSnapshot; expanded: GroupOverrides }
   }
 }

@@ -2,7 +2,7 @@
 // 定時讀主 checkout 的 349 現行佇列行（每條線取最後一行）、佇列票的 status、
 // 本 repo 各 session 的狀態（~/.claude/sessions/*.json）、派發紀錄（.claude/dispatch-active.json）、
 // 合併閘門的開始與結束紀錄，畫在 Pane。
-// 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析經 parse.ts 匯出（實作分在各 domain 模組）。
+// 畫面資料與群組的手動展開狀態放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析經 parse.ts 匯出（實作分在各 domain 模組）。
 // 本檔負責 hook 註冊、定時讀取、snapshot 與 Pane 組裝；各區塊的繪製在 *View.tsx。
 
 import { atom, read, update } from 'claude-code'
@@ -17,13 +17,15 @@ import type {
   SessionsResult,
   TicketStatus,
 } from '../types'
-import { renderDispatches } from './dispatchView'
-import { renderLanes } from './lanesView'
+import { renderGroup, renderLaneGroups, sectionFrame } from './lanesView'
+import type { Elements, ToggleGroup } from './lanesView'
 import { renderMergeLog } from './mergeGateView'
 import {
   DISPATCH_ACTIVE_PATH,
   DISPATCH_TICKET_PATH,
+  MERGE_GATE_GROUP_ID,
   MERGE_LOG_PATH,
+  SESSIONS_GROUP_ID,
   SESSIONS_DIR,
   TICKETS_DIR,
   UNKNOWN_STATUS,
@@ -40,6 +42,7 @@ import {
   parseWorktreePaths,
   sessionStatusFileNames,
   sortSessions,
+  toggledOverrides,
 } from './parse'
 import { renderSessions } from './sessionsView'
 
@@ -51,6 +54,8 @@ const REFRESH_MS = 30_000
 const MERGE_LOG_LINES = 8
 
 const snapshot = atom({ plugin: 'line-board', key: 'snapshot' } as const, { kind: 'loading' } as BoardSnapshot)
+/** 使用者按過的群組的展開狀態（群組 id → 是否展開）；與 snapshot 分開，資料刷新不覆寫。 */
+const expanded = atom({ plugin: 'line-board', key: 'expanded' } as const, {})
 
 /** 讀取中旗標：避免上一輪尚未結束時重疊讀取。屬執行期控制，非畫面資料，reload 時歸零即可。 */
 let isRefreshing = false
@@ -76,8 +81,9 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
     const board = await read($, snapshot)
+    const overrides = await read($, expanded)
 
     // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes、sessions、dispatches 欄，或閘門紀錄仍是整行原文），
     // 等下一輪讀取覆寫前先顯示讀取中。
@@ -91,20 +97,22 @@ export const register: Register = on => {
       return <Text dimColor>讀取中…</Text>
     }
 
-    const readAtMs = board.readAtMs
+    const elements: Elements = { Box, Text, Button }
+    // 按下標題列：onPress 寫入手動狀態後 Pane 重畫；失敗為 warning 級（$.ui.log 無級別，送 transcript 使畫面可見）
+    const toggle: ToggleGroup = (id, isOpen) => {
+      const onError = (error: unknown) => $.ui.log(`line-board 警告：切換群組 ${id} 失敗：${messageOf(error)}`, { to: 'transcript' })
+      update($, expanded, map => toggledOverrides(map, id, isOpen)).catch(onError)
+    }
+    const bottom = (id: string, title: string) => sectionFrame(id, title, overrides)
     return (
       <Box flexDirection="column">
         <Text dimColor>
           更新 {board.updatedAt}
           {board.checkoutNote === null ? '' : `｜${board.checkoutNote}`}
         </Text>
-        {renderLanes(Text, board.lanes, board.tickets, board.sessions)}
-        <Text bold>派發中代理人</Text>
-        {renderDispatches(Text, readAtMs, board.dispatches, board.lanes, board.tickets, board.sessions, board.mergeLog)}
-        <Text bold>各 session</Text>
-        {renderSessions(Text, readAtMs, board.sessions)}
-        <Text bold>合併閘門最近紀錄</Text>
-        {renderMergeLog(Text, board.mergeLog)}
+        {renderLaneGroups(elements, board, overrides, toggle)}
+        {renderGroup(elements, bottom(SESSIONS_GROUP_ID, '各 session'), toggle, () => renderSessions(Text, board.readAtMs, board.sessions))}
+        {renderGroup(elements, bottom(MERGE_GATE_GROUP_ID, '合併閘門最近紀錄'), toggle, () => renderMergeLog(Text, board.mergeLog))}
       </Box>
     )
   })

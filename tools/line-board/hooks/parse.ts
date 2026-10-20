@@ -4,9 +4,11 @@
 // - sessions.ts：session 狀態檔篩選與解析、pid 存活比對、本 repo 判定、排序、線列 session 狀態
 // - mergeGate.ts：合併閘門紀錄篩選與欄位解析、短分支名、閘門持有者
 // - dispatch.ts：派發紀錄解析、流程階段推導、派發列
+// - layout.ts：以線分組的群組、活動計數、預設展開與手動切換、群組的顯示文字
 
 export * from './shared'
 export * from './lanes'
 export * from './sessions'
 export * from './mergeGate'
 export * from './dispatch'
+export * from './layout'
