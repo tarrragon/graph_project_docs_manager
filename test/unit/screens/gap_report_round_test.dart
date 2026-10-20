@@ -1086,6 +1086,10 @@ void main() {
         nonDomainPathsKey: _key,
       );
       expect(unavailable, isA<GapReportUndeterminable>());
+      expect(
+        (unavailable as GapReportUndeterminable).reason,
+        UndeterminedGapReason.projectVersionOutOfKnownRange,
+      );
       expect(_categoryIds(unavailable), isNot(contains('orphan-event')));
       expect(
         _categoryIds(unavailable),
@@ -1114,11 +1118,10 @@ void main() {
         uc([
           step('a', 'EVT-X-001', 'alpha'),
           step('b', 'EVT-X-002', 'alpha'),
-          step('c', 'EVT-X-003', 'gamma'),
+          step('c', 'EVT-X-001', 'gamma'),
         ]),
         evt('EVT-X-001'),
         evt('EVT-X-002', consumers: ['beta']),
-        evt('EVT-X-003', consumers: ['alpha']),
       ];
       final state = gapReportStateFromRound(
         round(corpus),
@@ -1132,9 +1135,15 @@ void main() {
         'event-declaration-mismatch',
       ]);
       final found = state as GapReportFound;
+      // 步驟 c 的 traverses 含未宣告值 gamma：flow 子類 1 項。
+      expect(itemIds(state, 'graph-defect-flow'), hasLength(1));
+      expect(itemIds(state, 'orphan-event'), ['orphan-event:EVT-X-001']);
+      expect(itemIds(state, 'event-declaration-mismatch'), [
+        'event-declaration-mismatch:EVT-X-002:consumers:beta',
+      ]);
       expect(
         found.categories.fold<int>(0, (n, c) => n + c.items.length),
-        greaterThanOrEqualTo(3),
+        3,
       );
     });
   });
