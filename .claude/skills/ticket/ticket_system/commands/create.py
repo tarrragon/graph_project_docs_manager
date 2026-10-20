@@ -70,6 +70,7 @@ from ticket_system.lib.constants import (
     DEFAULT_HOW_TASK_TYPE,
     DEFAULT_UNDEFINED_VALUE,
 )
+from ticket_system.lib import dedup_runner
 from ticket_system.lib.tdd_sequence import suggest_tdd_sequence
 from ticket_system.lib.ticket_builder import (
     TicketConfig,
@@ -577,7 +578,9 @@ def _build_and_save_ticket(
         frontmatter["who"]["current"],
         frontmatter.get("type", ""),
     )
-    body = insert_dedup_record(body, config.get("dedup_keywords"))
+    dedup_kws = config.get("dedup_keywords")
+    dedup_outcome = dedup_runner.run_dedup(dedup_kws) if dedup_kws else None
+    body = insert_dedup_record(body, dedup_kws, dedup_outcome)
     ticket = frontmatter.copy()
     ticket["_body"] = body
 
