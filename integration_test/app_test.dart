@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
@@ -151,20 +152,21 @@ void main() {
   });
 
   group('DomainReady（內建矩陣）', () {
-    // 矩陣內容來自 App 內建 fixtures，工作資料夾只決定 gate 結果；
-    // 以 WorkspaceReady 替身 + 訊號探測替身讓 gate 判 DomainReady。
+    // 資料來源：gate 讀訊號探測替身（_ReadyFrameworkSignalProbe，恆判 DomainReady）；
+    // 矩陣建圖經共用掃描輪次（ScanRound）讀 systemTemp 下的真實工作區，
+    // 內含內建版本的 tracking_schema.json 與最小 docs 語料。
     // 不涵蓋真實磁碟上的 gate 偵測（見 0.3.3-W3-383 Problem Analysis）。
     for (final viewport in kViewports) {
       testWidgets('${viewport.name} (${viewport.size.width.toInt()}'
           'x${viewport.size.height.toInt()}) 矩陣狀態無溢位', (tester) async {
         _applyViewport(tester, viewport);
         final builtinVersion = await _readBuiltinSchemaVersion();
+        final workspace = await _createReadyWorkspace();
+        addTearDown(() => workspace.delete(recursive: true));
 
         final errors = await _pumpAppAndCollectErrors(
           tester,
-          repository: _StubWorkspaceRepository(
-            const WorkspaceReady('/fixture/ready-project'),
-          ),
+          repository: _StubWorkspaceRepository(WorkspaceReady(workspace.path)),
           overrides: [
             frameworkSignalProbeProvider.overrideWithValue(
               _ReadyFrameworkSignalProbe(builtinVersion),
@@ -224,9 +226,7 @@ void main() {
     late Directory tempDir;
 
     setUp(() {
-      tempDir = Directory.systemTemp.createTempSync(
-        'external_opener_probe_',
-      );
+      tempDir = Directory.systemTemp.createTempSync('external_opener_probe_');
     });
 
     tearDown(() {
@@ -235,40 +235,32 @@ void main() {
       }
     });
 
-    testWidgets(
-      '開啟真實檔案',
-      (tester) async {
-        final file = File('${tempDir.path}/probe.txt')
-          ..writeAsStringSync('probe');
-        final opener = MacosExternalOpener();
+    testWidgets('開啟真實檔案', (tester) async {
+      final file = File('${tempDir.path}/probe.txt')
+        ..writeAsStringSync('probe');
+      final opener = MacosExternalOpener();
 
-        final result = await opener.open(file.path);
+      final result = await opener.open(file.path);
 
-        // 例外：integration test 的 stdout 是唯一能被讀回主線程的通道，
-        // 用來把觀測到的真實結果值帶出測試進程供 PM 記錄。
-        // ignore: avoid_print
-        print('PROBE file result=$result');
+      // 例外：integration test 的 stdout 是唯一能被讀回主線程的通道，
+      // 用來把觀測到的真實結果值帶出測試進程供 PM 記錄。
+      // ignore: avoid_print
+      print('PROBE file result=$result');
 
-        expect(result, ExternalOpenResult.opened);
-      },
-      skip: !_runProbe,
-    );
+      expect(result, ExternalOpenResult.opened);
+    }, skip: !_runProbe);
 
-    testWidgets(
-      '開啟真實目錄',
-      (tester) async {
-        final opener = MacosExternalOpener();
+    testWidgets('開啟真實目錄', (tester) async {
+      final opener = MacosExternalOpener();
 
-        final result = await opener.open(tempDir.path);
+      final result = await opener.open(tempDir.path);
 
-        // 例外：同上，integration test 的 stdout 是唯一能被讀回的通道。
-        // ignore: avoid_print
-        print('PROBE dir result=$result');
+      // 例外：同上，integration test 的 stdout 是唯一能被讀回的通道。
+      // ignore: avoid_print
+      print('PROBE dir result=$result');
 
-        expect(result, ExternalOpenResult.opened);
-      },
-      skip: !_runProbe,
-    );
+      expect(result, ExternalOpenResult.opened);
+    }, skip: !_runProbe);
   });
 }
 
@@ -345,7 +337,8 @@ void _expectNoErrors(
   expect(
     overflows,
     isEmpty,
-    reason: '[$context] 版面溢位：\n'
+    reason:
+        '[$context] 版面溢位：\n'
         '${overflows.map((e) => e.exceptionAsString()).join('\n')}',
   );
 
@@ -354,7 +347,8 @@ void _expectNoErrors(
   expect(
     errors,
     isEmpty,
-    reason: '[$context] 啟動期間出現 framework 錯誤：\n'
+    reason:
+        '[$context] 啟動期間出現 framework 錯誤：\n'
         '${errors.map((e) => e.exceptionAsString()).join('\n')}',
   );
 }
@@ -367,6 +361,24 @@ Future<String> _readBuiltinSchemaVersion() async {
   } finally {
     container.dispose();
   }
+}
+
+/// 建立可建圖的暫存工作區：內建型別表副本 + 最小 docs 語料。
+Future<Directory> _createReadyWorkspace() async {
+  final dir = await Directory.systemTemp.createTemp('domain_ready_');
+  final schema = await rootBundle.loadString(
+    builtinTrackingSchemaAssetPath,
+    cache: false,
+  );
+  final schemaFile = File('${dir.path}/$projectSchemaRelativePath');
+  await schemaFile.create(recursive: true);
+  await schemaFile.writeAsString(schema);
+  final doc = File('${dir.path}/docs/proposals/PROP-001.md');
+  await doc.create(recursive: true);
+  await doc.writeAsString(
+    '---\nid: PROP-001\ntitle: fixture\n---\n\n# fixture\n',
+  );
+  return dir;
 }
 
 /// 訊號皆齊備且 JSON 版本等於內建版本的探測替身，使 gate 判 DomainReady。
@@ -382,8 +394,7 @@ class _ReadyFrameworkSignalProbe implements FrameworkSignalProbePort {
   Future<bool> schemaJsonExists(String workspacePath) async => true;
 
   @override
-  Future<String?> readSchemaJsonVersion(String workspacePath) async =>
-      _version;
+  Future<String?> readSchemaJsonVersion(String workspacePath) async => _version;
 }
 
 /// 回傳固定狀態的替身，讓版面測試不受真實檔案系統與偏好設定影響。
