@@ -111,8 +111,14 @@ export const register: Register = on => {
         <Text>
           L{lane.lane}｜{lane.session ?? '（未標 session）'}
           {laneStatusLabel(sessions, lane.session)}｜{formatQueue(lane.tokens, tickets)}
+          {laneGoalLabel(lane.goal)}
         </Text>
       ))
+    }
+
+    /** 線列票序後的 `｜目標：<文字>`；沒有目標時不顯示。hot reload 後舊 snapshot 的線沒有 goal 欄（undefined），同樣不顯示。 */
+    function laneGoalLabel(goal: string | null | undefined): string {
+      return goal === null || goal === undefined ? '' : `｜目標：${goal}`
     }
 
     /** 線列 session 名稱旁的 `［狀態］`；沒標 session 時不顯示，session 狀態讀取失敗時標「狀態不明」。 */

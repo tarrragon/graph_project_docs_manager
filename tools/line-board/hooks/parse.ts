@@ -1,4 +1,4 @@
-// 看板資料的純函式：主 checkout 判定、349 現行佇列行解析、佇列格式化、frontmatter 狀態解析、
+// 看板資料的純函式：主 checkout 判定、349 現行佇列行與線目標行解析、佇列格式化、frontmatter 狀態解析、
 // session 狀態檔篩選與解析（含 pid 重複使用的辨識）、合併閘門紀錄篩選與欄位解析（短分支名、目前持有閘門的分支）。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
 
@@ -53,8 +53,14 @@ const SOLUTION_HEADING = '## Solution'
  */
 const LANE_LINE = /^\*\*L(\d+) 現行佇列\*\*(?:（([^）]*)）)?：(.*)$/
 
-/** 票序寫此值表示這條線結束，看板不顯示。 */
+/** 票序寫此值表示這條線結束，看板不顯示；目標行寫此值表示清除目標。 */
 const LANE_ENDED = '（無）'
+
+/**
+ * 線目標行（349，337 UI 裁定）：行首即 `**L<n> 目標**`，n 為數字，接全形冒號與一句話目標。
+ * 判定與現行佇列行相同：只比對行首，清單項、表格內與以反引號引用範本的行都不算。
+ */
+const GOAL_LINE = /^\*\*L(\d+) 目標\*\*：(.*)$/
 
 /** 票序中的分隔符：`→` 依序、`∥` 並行；拆分時保留分隔符本身。 */
 const QUEUE_SEPARATOR = /\s*(→|∥)\s*/
@@ -96,20 +102,41 @@ export function parseQueue(queue: string): QueueToken[] {
 }
 
 /**
- * 掃 349 的 Solution，每條線只取最後一次出現的現行佇列行，依線號排序。
+ * 掃 349 Solution 的線目標行，每條線只取最後一行；最後一行寫 `（無）` 或為空的線不在結果中（目標已清除）。
+ */
+export function parseLaneGoals(text: string): Map<number, string> {
+  const goals = new Map<number, string>()
+  for (const [lane, match] of lastMatchPerLane(text, GOAL_LINE)) {
+    const goal = (match[2] ?? '').trim()
+    if (goal !== '' && goal !== LANE_ENDED) goals.set(lane, goal)
+  }
+  return goals
+}
+
+/**
+ * 逐行以 pattern 比對 Solution 段落，每條線只留最後一個符合的行；pattern 的第一個群組須為線號。
+ * 現行佇列行與線目標行共用此規則：同一條線較早的行是歷史，一律被較晚的行取代。
+ */
+function lastMatchPerLane(text: string, pattern: RegExp): Map<number, RegExpExecArray> {
+  const latest = new Map<number, RegExpExecArray>()
+  for (const line of solutionLines(text)) {
+    const match = pattern.exec(line)
+    if (match !== null) latest.set(Number(match[1]), match)
+  }
+  return latest
+}
+
+/**
+ * 掃 349 的 Solution，每條線只取最後一次出現的現行佇列行，依線號排序；各線附上 parseLaneGoals 的目標（沒有時為 null）。
  * 最後一行票序為 `（無）` 的線不回傳；歷史行（同線較早的行）的票號不進結果。
  */
 export function parseLanes(text: string): Lane[] {
-  const latest = new Map<number, { session: string | null; queue: string }>()
-  for (const line of solutionLines(text)) {
-    const match = LANE_LINE.exec(line)
-    if (match === null) continue
-    latest.set(Number(match[1]), { session: match[2] ?? null, queue: (match[3] ?? '').trim() })
-  }
-  return [...latest.entries()]
+  const goals = parseLaneGoals(text)
+  return [...lastMatchPerLane(text, LANE_LINE)]
+    .map(([lane, match]) => [lane, { session: match[2] ?? null, queue: (match[3] ?? '').trim() }] as const)
     .filter(([, { queue }]) => queue !== LANE_ENDED)
     .sort(([a], [b]) => a - b)
-    .map(([lane, { session, queue }]) => ({ lane, session, tokens: parseQueue(queue) }))
+    .map(([lane, { session, queue }]) => ({ lane, session, goal: goals.get(lane) ?? null, tokens: parseQueue(queue) }))
 }
 
 /** 所有線的佇列完整票號，保留首次出現順序並去重。 */

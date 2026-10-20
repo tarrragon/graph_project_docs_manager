@@ -26,6 +26,7 @@ import {
   normalizeProcStart,
   parseFrontmatterStatus,
   parseMergeGateLine,
+  parseLaneGoals,
   parseLanes,
   parseQueue,
   parseSessionFile,
@@ -79,6 +80,31 @@ const TICKET_349 = [
   '## Test Results',
   '**L20 現行佇列**（s-out）：999',
 ].join('\n')
+
+/**
+ * 仿 349 加上線目標行：清單項、表格內、行內反引號範本、行首範本（n 非數字）、整行以反引號包住的目標行都不算；
+ * L13 有兩行（舊目標在前），L7 的最後一行寫（無）清除較早的目標，L9 沒有可採用的目標行；
+ * Solution 之外的目標行不算。
+ */
+const TICKET_349_GOALS = TICKET_349.replace(
+  '## Test Results',
+  [
+    '- **L7 目標**：清單項的目標',
+    '| **L9 目標**：表格內的目標 | 備註 |',
+    '用戶裁定格式為 `**L<n> 目標**：<一句話目標>`，規則同現行佇列行。',
+    '**L<n> 目標**：<一句話目標>',
+    '`**L9 目標**：反引號範本的目標`',
+    '**L13 目標**：舊目標',
+    '',
+    '**L13 目標**：顯示各線目標與派發中代理人',
+    '',
+    '**L7 目標**：會被清除的目標',
+    '',
+    '**L7 目標**：（無）',
+    '## Test Results',
+    '**L9 目標**：Solution 之外的目標',
+  ].join('\n'),
+)
 
 /** 仿 worktree-merge.log：開始／結束之間夾著驗收、測試、預檢等其他行。 */
 const MERGE_LOG = [
@@ -402,10 +428,51 @@ describe('parseLanes', () => {
     expect(parseLanes('')).toEqual([])
   })
 
-  test('行內沒寫 session 名稱時為 null', () => {
+  test('行內沒寫 session 名稱時為 null；沒有目標行時 goal 為 null', () => {
     expect(parseLanes('## Solution\n**L5 現行佇列**：100\n')).toEqual([
-      { lane: 5, session: null, tokens: [{ kind: 'ticket', serial: '100', id: '0.5.0-W1-100', note: '' }] },
+      { lane: 5, session: null, goal: null, tokens: [{ kind: 'ticket', serial: '100', id: '0.5.0-W1-100', note: '' }] },
     ])
+  })
+
+  test('線目標：取該線最後一行目標行；沒有目標行的線為 null（E1 對照）', () => {
+    const withGoals = parseLanes(TICKET_349_GOALS)
+    const without = parseLanes(TICKET_349)
+    expect(withGoals.map(lane => lane.goal)).not.toEqual(without.map(lane => lane.goal))
+    expect(without.map(lane => lane.goal)).toEqual([null, null, null])
+    expect(withGoals.find(lane => lane.lane === 13)?.goal).toBe('顯示各線目標與派發中代理人')
+  })
+
+  test('parseLaneGoals：不依賴現行佇列行，只回傳最後一行仍有目標的線', () => {
+    expect([...parseLaneGoals(TICKET_349_GOALS)]).toEqual([[13, '顯示各線目標與派發中代理人']])
+    expect([...parseLaneGoals('## Solution\n**L2 目標**：乙\n**L3 目標**：\n')]).toEqual([[2, '乙']])
+  })
+
+  test('線目標：最後一行寫（無）時清除較早的目標', () => {
+    expect(parseLanes(TICKET_349_GOALS).find(lane => lane.lane === 7)?.goal).toBeNull()
+    expect(parseLanes('## Solution\n**L5 現行佇列**：100\n**L5 目標**：甲\n').map(lane => lane.goal)).toEqual(['甲'])
+    expect(parseLanes('## Solution\n**L5 現行佇列**：100\n**L5 目標**：甲\n**L5 目標**：（無）\n').map(lane => lane.goal)).toEqual([
+      null,
+    ])
+  })
+
+  test('線目標：寫（無）清除後再寫目標即恢復，取最後一行', () => {
+    const text = '## Solution\n**L5 現行佇列**：100\n**L5 目標**：甲\n**L5 目標**：（無）\n**L5 目標**：乙\n'
+    expect(parseLanes(text).map(lane => lane.goal)).toEqual(['乙'])
+  })
+
+  test('反例：清單項、表格內、反引號範本與 Solution 之外的目標行不被採用（E2）', () => {
+    expect(parseLanes(TICKET_349_GOALS).find(lane => lane.lane === 9)?.goal).toBeNull()
+    for (const line of [
+      '- **L5 目標**：清單項',
+      '| **L5 目標**：表格 | x |',
+      '說明：`**L5 目標**：範本`',
+      '`**L5 目標**：整行反引號`',
+      '  **L5 目標**：縮排',
+    ]) {
+      expect(parseLanes(`## Solution\n**L5 現行佇列**：100\n${line}\n`).map(lane => lane.goal)).toEqual([null])
+    }
+    // 對照：同一段文字寫在行首即被採用，確認上列輸入是被判定排除，不是解析本身失效
+    expect(parseLanes('## Solution\n**L5 現行佇列**：100\n**L5 目標**：行首\n').map(lane => lane.goal)).toEqual(['行首'])
   })
 })
 
@@ -742,6 +809,29 @@ describe('Pane', () => {
     expect(await ui.find({ type: 'Text', text: /^L7｜graph-project-docs-manager-f9［busy］｜351/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^L13｜graph-project-docs-manager-1b［waiting：input needed］｜/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^L9｜graph-project-docs-manager-3e［離線］｜/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('線列顯示目標：有目標行的線在票序後接「｜目標：<文字>」，寫（無）或沒有可採用目標行的線不顯示', async ($, on) => {
+    const { ui } = await startBoard($, on, { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349_GOALS } })
+    expect(await ui.find({ type: 'Text', text: /^L13｜.*｜目標：顯示各線目標與派發中代理人$/ })).toBeDefined()
+    const l7 = await ui.find({ type: 'Text', text: /^L7｜/ })
+    const l9 = await ui.find({ type: 'Text', text: /^L9｜/ })
+    expect(l7?.text).toBeDefined()
+    expect(l9?.text).toBeDefined()
+    expect(l7?.text).not.toContain('目標')
+    expect(l9?.text).not.toContain('目標')
+    for (const ignored of ['舊目標', '清單項的目標', '表格內的目標', '反引號範本的目標', '會被清除的目標', 'Solution 之外的目標']) {
+      expect(await ui.find({ type: 'Text', text: new RegExp(ignored) })).toBeUndefined()
+    }
+    await ui.unmount()
+  })
+
+  test('對照：349 沒有任何目標行時，所有線列都不顯示目標', async ($, on) => {
+    const { ui } = await startBoard($, on, { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
+    const rows = await ui.findAll({ type: 'Text', text: /^L\d+｜/ })
+    expect(rows.length).toBe(3)
+    for (const row of rows) expect(row.text).not.toContain('目標')
     await ui.unmount()
   })
 
