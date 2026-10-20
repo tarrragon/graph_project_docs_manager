@@ -4,8 +4,8 @@ title: "Corpus 解析與破洞判定"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
-updated: "2026-10-08"
-version: "1.26"
+updated: "2026-10-21"
+version: "1.27"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -58,7 +58,7 @@ Corpus 沿既有的依賴邊 Corpus → Schema 呼叫路徑查詢，因此能在
 | 原始邊（`rawEdges`）的抽取 | 建圖屬 0.4（Graph），兩項整合測試都不需要邊 | PROP-005 §0.4 |
 | 破洞類別 `graphDefect`／`traceGap`／`unlocatable` | 需要圖或追溯資料；本版只實作 `parseFailure`。`unlocatable` 的定義以 EVT-DIAGNOSTICS-001 為準：只在被觀測專案兩側皆已宣告（DomainBundle `path_patterns` 與 `docs/non-domain-paths.yaml`）時，對兩者皆未命中的 `where.files` 路徑成立；只宣告一側時為「domain 未宣告」或「非 domain 未宣告」，兩側皆無時專案整體為「未宣告路徑」，皆不屬本類（`0.5.0-W1-096`／`0.5.0-W1-096.1` 用戶裁決）。`path_patterns` 逐 bundle 判定：仍有 bundle 未宣告時，未命中路徑為「domain 未宣告」而非 `unlocatable`（2026-10-08 用戶裁決 5c；非 domain 清單同時缺席時亦同，用戶裁決 E1）。兩種「未宣告」不進破洞報告，報告頁另顯示一行專案層級宣告狀態（7a）；路徑逐條判定，不做整票歸類（6a）。完整分類見 UC-02〈ticket 定位的五種狀態與整體未宣告〉 | EVT-DIAGNOSTICS-001、UC-02、PROP-005 §0.4／§0.6+ |
 | frontmatter 可用、位於 carrier 路徑內，但 `id` 缺席或不符合任何型別的 `id_pattern` | 已定案（`0.3.1-W1-081`，用戶裁決 2026-09-29）：歸 `parseFailure`，新增原因碼 `idMissing`／`idPatternMismatch`，不另立類別。本版 FR-03 維持「不產生破洞」，FR 修訂與實作不在本版。另：量測中 85.8% 是子票 ID（`NNN.M`）被 Ticket 型 `id_pattern` 漏收，屬 schema 缺陷而非歸類問題，由 `0.3.1-W1-092` 修正 | 歸類實作 `1.0.0-W1-084`；pattern 修正 `0.3.1-W1-092` |
-| 掃描中途取消（UC-05）與重新掃描（UC-06、EVT-CORPUS-002） | 屬畫面接真實資料的互動，排在 0.6+；兩項整合測試都只跑單輪完整掃描 | PROP-005 §0.6+ |
+| 掃描中途取消（UC-05）與重新掃描（UC-06；整輪重新解析，發出 EVT-CORPUS-001） | 屬畫面接真實資料的互動，排在 0.6+；兩項整合測試都只跑單輪完整掃描。檔案監看（外部改動自動偵測，EVT-CORPUS-002）不是重新掃描，目前未排入任何版本（`0.5.0-W1-458.5` 更正原寫法，458 用戶裁定題 D2） | PROP-005 §0.6+；檔案監看 `0.5.0-W1-458.6` |
 | YAML 損壞檔的部分欄位救回 | 語料中 YAML 錯誤僅 1 件（`docs/system-layer.md` §5，2026-08-27 對五個語料專案 7106 份文件量測），部分救回的演算法沒有樣本可以校準 | 本版只回報、不救回（FR-04） |
 
 ## 功能需求
@@ -343,6 +343,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.27 | 2026-10-21 | 〈本版不做〉表「重新掃描」列：原寫「重新掃描（UC-06、EVT-CORPUS-002）」，重新掃描實際是整輪重新解析、發出 EVT-CORPUS-001；EVT-CORPUS-002 屬檔案監看，另記未排入版本（`0.5.0-W1-458.5`，458 用戶裁定題 D2）。SPEC-007 增量重建列不動 |
 | 1.26 | 2026-10-09 | PM 處置（`0.5.0-W1-119.1` 複審 S1～S3）：FR-08 寫明 warning 最低內容、005 與 003 平手的區分載體為破洞型別、破洞側 `nonStringElementCount` 不變式 |
 | 1.25 | 2026-10-09 | PM 處置（`0.5.0-W1-119.1` 審查回報）：FR-07 計數項補「非 domain 路徑清單格式錯誤數」（不進守恆式）；FR-08 補 004 破洞原因碼恆為 `flowBlockMalformed`、reason 前綴不符記 warning；005 破洞不帶節點型別 |
 | 1.24 | 2026-10-09 | PM 處置（`0.5.0-W1-130` NeedsContext 4）：規則 3a 補擷取時非預期例外不得當作「無區塊」，發 004、寫 warning、掃描照常完成 |
