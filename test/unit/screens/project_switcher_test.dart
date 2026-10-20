@@ -241,11 +241,28 @@ WorkspaceRepository _fakeRepositoryPickerUnavailable({
   );
 }
 
+/// 明確注入 Domain 起始狀態，不依賴 provider 預設值。
+Future<void> _pumpApp(
+  WidgetTester tester, {
+  List<Override> overrides = const [],
+  bool settle = true,
+}) =>
+    pumpApp(
+      tester,
+      settle: settle,
+      overrides: [
+        domainViewStateProvider.overrideWith(
+          (ref) => const DomainReady(mode: DomainMode.matrix),
+        ),
+        ...overrides,
+      ],
+    );
+
 void main() {
   _restoreContrastTest();
   group('收合態', () {
     testWidgets('側欄入口存在，浮層未掛載', (tester) async {
-      await pumpApp(tester);
+      await _pumpApp(tester);
 
       expect(
         find.byKey(app_shell.AppShell.projectSwitcherEntryKey),
@@ -257,7 +274,7 @@ void main() {
     });
 
     testWidgets('點擊入口展開浮層', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -276,7 +293,7 @@ void main() {
 
   group('展開態', () {
     testWidgets('渲染持久化最近專案清單，每項為 RecentProjectItem', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -295,7 +312,7 @@ void main() {
     });
 
     testWidgets('Esc 收合浮層', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -314,7 +331,7 @@ void main() {
     });
 
     testWidgets('點外部收合浮層', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -337,7 +354,7 @@ void main() {
       // 用「無最近專案」清單將浮層高度收到最小（僅標題＋按鈕），確保浮層
       // 不會視覺覆蓋到最後一個導覽項，本測試才能斷言「點在浮層外的導覽
       // 項」而非「點在浮層自身空白區」。
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
       );
@@ -362,7 +379,7 @@ void main() {
       tester,
     ) async {
       late ProviderContainer container;
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -406,7 +423,7 @@ void main() {
         preferencesPort: preferences,
         directoryProbe: _FakeDirectoryProbePort(probeExists: true),
       );
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -446,7 +463,7 @@ void main() {
         ),
         directoryProbe: _FakeDirectoryProbePort(probeExists: false),
       );
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -483,7 +500,7 @@ void main() {
       tester,
     ) async {
       late ProviderContainer container;
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -524,7 +541,7 @@ void main() {
   group('重選專案丟棄陳舊輪次（0.5.0-W1-248.3.2）', () {
     testWidgets('選取專案走 gate 前丟棄現有掃描輪次，原因為 project-reselected', (tester) async {
       final spy = _SpyScanRound();
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -550,7 +567,7 @@ void main() {
 
     testWidgets('同路徑重選：舊降級輪次不被沿用，下一輪為新物件且 isDegraded 為假', (tester) async {
       const path = '/fake/unipos';
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -627,7 +644,7 @@ void main() {
 
   group('無最近專案態', () {
     testWidgets('清單為空時渲染 SwitcherOverlay 零項 + 選擇資料夾按鈕', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
       );
@@ -645,7 +662,7 @@ void main() {
     });
 
     testWidgets('Esc 收合浮層', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
       );
@@ -659,7 +676,7 @@ void main() {
     });
 
     testWidgets('選擇資料夾按鈕接線 WorkspaceRepository，選定可用資料夾後收合浮層', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => const []),
@@ -679,7 +696,7 @@ void main() {
 
   group('選擇其他資料夾（ChooseFolderResult 四變體，SPEC-003 §3.7）', () {
     testWidgets('ChooseFolderCancelled：浮層維持展開，不顯示 AppSnackBar', (tester) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -704,7 +721,7 @@ void main() {
     testWidgets('ChooseFolderUnavailable：浮層維持展開，顯示 AppSnackBar', (
       tester,
     ) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -732,7 +749,7 @@ void main() {
     testWidgets('ChooseFolderSelected(WorkspaceReady)：浮層收合，不顯示 AppSnackBar', (
       tester,
     ) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           workspaceRepositoryProvider.overrideWithValue(_fakeRepositoryReady()),
@@ -756,7 +773,7 @@ void main() {
     testWidgets('ChooseFolderSelected(WorkspaceReady)：detect() 被呼叫，domainViewStateProvider '
         '與 inferredVersionProvider 反映結果（0.2.0-W1-042）', (tester) async {
       late ProviderContainer container;
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           workspaceRepositoryProvider.overrideWithValue(_fakeRepositoryReady()),
@@ -790,7 +807,7 @@ void main() {
     testWidgets(
       'ChooseFolderSelected(WorkspaceUnavailable)：浮層維持展開，顯示 AppSnackBar',
       (tester) async {
-        await pumpApp(
+        await _pumpApp(
           tester,
           overrides: [
             recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
@@ -825,7 +842,7 @@ void main() {
     testWidgets('ChooseFolderNotRemembered：浮層收合，顯示 AppSnackBar', (
       tester,
     ) async {
-      await pumpApp(
+      await _pumpApp(
         tester,
         overrides: [
           workspaceRepositoryProvider.overrideWithValue(
