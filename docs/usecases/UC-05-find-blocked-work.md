@@ -4,8 +4,8 @@ title: "找出被阻擋的工作"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-09-15"
-version: "1.4"
+updated: "2026-10-21"
+version: "1.5"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -118,7 +118,7 @@ flow:
     return_to: null
     emits: []
     consumes: ["EVT-CORPUS-003"]
-    traverses: ["corpus", "diagnostics"]
+    traverses: ["diagnostics"]
     implements: ["FR-05"]
 ```
 
@@ -150,6 +150,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.5 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定，〈traverses 裁定補正〉）：`damaged-tickets` traverses 由 `[corpus, diagnostics]` 改為 `[diagnostics]`。它 consumes 的 `EVT-CORPUS-003` 消費方只有 Diagnostics，依「消費步驟的 traverses 即消費方 domain」拿掉 corpus（Corpus 是 003 的發出方）；UC-05 × corpus 格仍由 `trigger-load` 提供 |
 | 1.4 | 2026-09-15 | 追修同步稽核裁決議題 P2（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：`related_specs` 補 SPEC-003、SPEC-004（內文引用兩者而 frontmatter 未列） |
 | 1.3 | 2026-09-14 | 追修 V4 第二輪矛盾裁決 D1／D2（`0.1.0-W3-335.47` WRAP，`0.1.0-W3-335.50` 落檔）：〈載入期間離開〉拆為取消（中止回未載入）與切換畫面（載入繼續，對齊 SPEC-003 §2.8 L1）兩分支；〈含損壞票〉改為工具列計數與列末圖示兩者皆可點擊（對齊 SPEC-004 4.6 `damagedDetail`） |
 | 1.2 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` .36 #1）：例外場景〈含損壞票〉對齊 SPEC-004 `IssueMarker.damagedDetail` 兩級分離（清單級圖示計數 vs 詳情欄位級說明文字） |

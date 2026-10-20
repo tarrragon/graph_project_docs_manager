@@ -4,8 +4,8 @@ title: "追溯一項需求的實現鏈"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-09-14"
-version: "1.1"
+updated: "2026-10-21"
+version: "1.2"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -94,7 +94,7 @@ flow:
     branch_from: null
     return_to: null
     emits: []
-    consumes: []
+    consumes: ["EVT-CORPUS-001"]
     traverses: ["graph", "ticketdetail"]
   - id: "reverse-trace"
     name: "反向追溯"
@@ -142,5 +142,6 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.2 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定類 B）：`jump-to-detail` 補 consumes `EVT-CORPUS-001`（TicketDetail 取 5W1H 全文）；不新增步驟，EVT 宣告不動 |
 | 1.1 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` R8）：主要成功場景步驟 1「選定提案」改「展開提案」，flow 區塊 `select-proposal` 的 `name` 同步；替代場景〈反向追溯〉標「0.1 規格未涵蓋」並補缺的前提，重評條件綁 `0.1.0-W3-365` |
 | 1.0 | 2026-08-26 | 初版，`saas-tech-selection` Stage 6 產出 |

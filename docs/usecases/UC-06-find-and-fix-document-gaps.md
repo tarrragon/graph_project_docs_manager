@@ -4,8 +4,8 @@ title: "找出並修復文件破洞"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-10-09"
-version: "1.4"
+updated: "2026-10-21"
+version: "1.6"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -53,7 +53,15 @@ ticket_refs: []
 
 ### 重新掃描
 
-使用者修復後觸發重新掃描，系統重新解析並更新報告
+使用者修復後觸發重新掃描，系統重新解析並更新報告。重新掃描是整輪重新解析，
+發出的是 EVT-CORPUS-001，不是 EVT-CORPUS-002
+
+### 檔案監看（尚未實作）
+
+使用者在外部編輯器修改原始檔後，系統偵測到變動（EVT-CORPUS-002），自動重新解析
+並更新報告，不需手動重新掃描。對應 PROP-003「外部改動自動偵測並重新載入」；
+lib 目前沒有檔案監看，排入哪個版本由 `0.5.0-W1-458.6` 決定，實作後移除本節與
+對應步驟名稱中的「尚未實作」標註
 
 ## 流程拓撲（結構化 Flow 區塊）
 
@@ -65,7 +73,7 @@ flow:
     branch_from: null
     return_to: null
     emits: []
-    consumes: ["EVT-CORPUS-003"]
+    consumes: ["EVT-CORPUS-001", "EVT-CORPUS-003", "EVT-CORPUS-004", "EVT-CORPUS-005", "EVT-GRAPH-001"]
     traverses: ["diagnostics"]
   - id: "view-categories"
     name: "檢視分類"
@@ -104,8 +112,24 @@ flow:
     next: ["view-categories"]
     branch_from: "open-source-file"
     return_to: "view-categories"
+    emits: ["EVT-CORPUS-001"]
+    consumes: []
+    traverses: ["corpus"]
+  - id: "detect-external-change"
+    name: "偵測到外部修改（尚未實作）"
+    next: ["reparse"]
+    branch_from: "open-source-file"
+    return_to: null
     emits: ["EVT-CORPUS-002"]
     consumes: []
+    traverses: ["corpus"]
+  - id: "reparse"
+    name: "重新解析（尚未實作）"
+    next: ["view-categories"]
+    branch_from: "detect-external-change"
+    return_to: "view-categories"
+    emits: ["EVT-CORPUS-001"]
+    consumes: ["EVT-CORPUS-002"]
     traverses: ["corpus"]
   - id: "no-gaps"
     name: "無破洞"
@@ -160,6 +184,8 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.6 | 2026-10-21 | `0.5.0-W1-458.5`（458 用戶裁定題 D2、D3）：`rescan` emits 由 `EVT-CORPUS-002` 改為 `EVT-CORPUS-001`（重新掃描是整輪重新解析，比照 UC-05 `trigger-load`）；新增分支〈檔案監看（尚未實作）〉兩步 `detect-external-change`（emits `EVT-CORPUS-002`）→ `reparse`（consumes `EVT-CORPUS-002`，emits `EVT-CORPUS-001`），traverses 皆為 `[corpus]`；替代場景同步 |
+| 1.5 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定類 B）：`enter-gap-report` 補 consumes `EVT-CORPUS-001`（原始節點）、`EVT-CORPUS-004`、`EVT-CORPUS-005`（解析失敗）與 `EVT-GRAPH-001`（`graphDefects` 與 flow 子圖）；不新增步驟，EVT 宣告不動 |
 | 1.4 | 2026-10-09 | `0.5.0-W1-095.2`：結構化 flow 區塊新增純畫面步驟 `present-gap-sections`（traverses `[]`，consumes `EVT-DIAGNOSTICS-001`），插在 `view-categories` 與 `locate-item` 之間 |
 | 1.3 | 2026-09-24 | 0.3.0 規劃波 Step 4：依 SPEC-006 新增例外場景〈無法判定破洞〉（結構化 flow 補 `gaps-undeterminable` 步驟）與〈破洞歸屬型別不明〉；驗收補「無法判定與無破洞明顯不同」及「只有 carrier 內的失敗檔列為破洞」；`related_specs` 補 SPEC-006 |
 | 1.2 | 2026-09-15 | 追修同步稽核裁決議題 X1／X2／P2（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：主要成功場景步驟 3、4 改依指向型別跳轉、原始檔以次要操作或直接開啟，0.1 不定位行號（承 `0.1.0-W3-335.19` 第二輪裁示與 `0.1.0-W1-070` 決定，見 SPEC-003 §3.5）；〈原始檔已消失〉拆兩路（破洞報告內開啟 vs 節點詳情開啟）；`related_specs` 補 SPEC-003；不動結構化 flow 區塊 |
