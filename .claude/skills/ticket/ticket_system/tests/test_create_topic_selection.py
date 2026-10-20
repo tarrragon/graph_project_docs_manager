@@ -105,7 +105,8 @@ class TestTopicRejectsUnknownName:
         append_topic("既有主題 A")
         append_topic("既有主題 B")
         args = _make_args(topic="不存在的主題")
-        stdout, _, _ = _capture(args)
+        stdout, _, exit_code = _capture(args)
+        assert exit_code == 1
         assert "既有主題 A" in stdout
         assert "既有主題 B" in stdout
 
@@ -567,7 +568,8 @@ class TestNoTopicOverridesAutoInference:
             no_topic=True,
             target="S1 命中時的訊息驗證",
         )
-        out, _, _ = _capture(args)
+        out, _, exit_code = _capture(args)
+        assert exit_code == 0
         assert "--no-topic 明示不指派" in out
 
     def test_same_batch_with_and_without_flag_differ(self, seeded_repo_root):
