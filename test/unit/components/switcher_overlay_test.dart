@@ -33,6 +33,63 @@ void main() {
     testKey: const ValueKey('action-switcher-choose-other'),
   );
 
+  group('chooseOtherFailureReason（SPEC-004 4.42）', () {
+    const reasonText = '無法開啟資料夾選取面板';
+    const chooseKey = ValueKey('action-switcher-choose-other');
+
+    Future<void> pumpWith(
+      WidgetTester tester,
+      WindowSize size, {
+      required List<RecentProjectItem> items,
+      String? reason,
+    }) => pumpHarness(
+      tester,
+      size: size,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: SwitcherOverlay(
+          items: items,
+          chooseOther: buildChooseOther(),
+          onDismiss: () {},
+          testKey: items.isEmpty ? noRecentKey : expandedKey,
+          scrollKey: scrollKey,
+          chooseOtherFailureReason: reason,
+        ),
+      ),
+    );
+
+    testWidgetsAtEachSize('傳入時顯示於選擇其他下方，不傳時不渲染（expanded）', (
+      tester,
+      size,
+    ) async {
+      await pumpWith(tester, size, items: buildItems(2));
+      expect(find.text(reasonText), findsNothing);
+      final heightWithout = tester.getSize(find.byKey(expandedKey)).height;
+
+      await pumpWith(tester, size, items: buildItems(2), reason: reasonText);
+      expectNoOverflow(tester);
+      expect(find.text(reasonText), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text(reasonText)).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(find.byKey(chooseKey)).dy),
+      );
+      expect(
+        tester.getSize(find.byKey(expandedKey)).height,
+        greaterThan(heightWithout),
+      );
+
+      await pumpWith(tester, size, items: buildItems(2));
+      expect(find.text(reasonText), findsNothing);
+    });
+
+    testWidgetsAtEachSize('傳入長文字時顯示（noRecent）且不溢位', (tester, size) async {
+      final longReason = reasonText * 20;
+      await pumpWith(tester, size, items: const [], reason: longReason);
+      expectNoOverflow(tester);
+      expect(find.text(longReason), findsOneWidget);
+    });
+  });
+
   group('狀態矩陣：expanded（1/5/50 項）與 noRecent', () {
     for (final count in [1, 5, 50]) {
       testWidgetsAtEachSize('expanded 渲染標題、$count 項與選擇其他，不溢位', (

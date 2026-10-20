@@ -24,6 +24,15 @@ final recentProjectsProvider = StateProvider<List<RecentProject>>(
   (ref) => const [],
 );
 
+/// 浮層內「選擇其他」失敗的常駐原因文字（SPEC-003 §3.7〈浮層內選資料夾
+/// 失敗的常駐原因文字〉）；`null` 表示無失敗文字。
+///
+/// `autoDispose`：只在浮層展開（有 watcher）期間存活，收合後狀態釋放，
+/// 再次展開即為 `null`（「浮層收合後不保留」）。
+final switcherChooseOtherFailureProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
+
 /// 側欄入口顯示的目前專案名；取 [currentWorkspaceStateProvider] 的
 /// [WorkspaceReady.path] 資料夾名，非 [WorkspaceReady] 時回傳 `null`
 /// （`ProjectSwitcherEntry` 顯示元件預設 `projectSwitcherEntryLabel`）。

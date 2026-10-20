@@ -42,7 +42,12 @@ class SwitcherOverlay extends StatefulWidget {
     required this.scrollKey,
     this.title,
     this.maxHeight,
+    this.chooseOtherFailureReason,
   });
+
+  /// 「選擇其他」失敗的常駐原因文字；`null` 時不渲染、不佔高度。置於
+  /// [chooseOther] 下方，最多 2 行、末行截斷（SPEC-004 4.42）。
+  final String? chooseOtherFailureReason;
 
   /// 標題文字；`null` 時顯示元件預設 `switcherTitle`。
   final String? title;
@@ -154,12 +159,27 @@ class _SwitcherOverlayState extends State<SwitcherOverlay> {
                     ] else
                       SizedBox(height: Space.xxs),
                     widget.chooseOther,
+                    if (widget.chooseOtherFailureReason != null)
+                      _buildFailureReason(widget.chooseOtherFailureReason!),
                   ],
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 失敗原因常駐文字：`AppText.caption` 為單行政策，無法滿足 4.42 的
+  /// 2 行上限，故比照 4.9 `reason` 用 body 變體 + `maxLines: 2`；以
+  /// live region 包覆使文字出現時播報一次（4.42 無障礙子節，提案）。
+  Widget _buildFailureReason(String reason) {
+    return Padding(
+      padding: EdgeInsets.only(top: Space.xxs, left: Space.xs, right: Space.xs),
+      child: Semantics(
+        liveRegion: true,
+        child: AppText(reason, maxLines: 2, tone: AppTextTone.textSecondary),
       ),
     );
   }

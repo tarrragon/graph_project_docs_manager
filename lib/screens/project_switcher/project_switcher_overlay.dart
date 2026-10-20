@@ -36,8 +36,10 @@ SwitcherOverlay buildProjectSwitcherOverlay({
       ? workspaceState.path
       : null;
   final hasItems = projects.isNotEmpty;
+  final failureReason = ref.watch(switcherChooseOtherFailureProvider);
 
   return SwitcherOverlay(
+    chooseOtherFailureReason: failureReason,
     items: [
       for (var i = 0; i < projects.length; i++)
         _buildRecentProjectItem(
@@ -100,6 +102,7 @@ Future<void> _selectProject(
   WidgetRef ref,
   RecentProject project,
 ) async {
+  _clearChooseOtherFailure(ref);
   final repository = ref.read(workspaceRepositoryProvider);
   final result = await repository.openPath(project.path);
   if (!context.mounted) return;
@@ -113,10 +116,22 @@ void _dismiss(WidgetRef ref) {
 /// 「選擇其他」按鈕的處理（SPEC-003 §3.7）：呼叫 [WorkspaceRepository] 開啟
 /// 系統資料夾選擇器，依 [ChooseFolderResult] 四變體回饋。
 Future<void> _chooseFolder(BuildContext context, WidgetRef ref) async {
+  _clearChooseOtherFailure(ref);
   final repository = ref.read(workspaceRepositoryProvider);
   final result = await repository.chooseFolder();
   if (!context.mounted) return;
-  await _handleChooseFolderResult(context, ref, result);
+  await _handleChooseFolderResult(context, ref, result, fromChooseOther: true);
+}
+
+/// 開始新嘗試（點「選擇其他」或可用的最近專案項）的當下清除舊失敗文字
+/// （SPEC-003 §3.7 清除時機：開始新的嘗試）。
+void _clearChooseOtherFailure(WidgetRef ref) {
+  ref.read(switcherChooseOtherFailureProvider.notifier).state = null;
+}
+
+/// 浮層內「選擇其他」失敗改以常駐文字承載，不跳 SnackBar（SPEC-003 §3.7）。
+void _showChooseOtherFailure(WidgetRef ref, String reason) {
+  ref.read(switcherChooseOtherFailureProvider.notifier).state = reason;
 }
 
 /// [ChooseFolderResult] 四變體的共用回饋處理（SPEC-003 §3.7）。由
@@ -125,8 +140,9 @@ Future<void> _chooseFolder(BuildContext context, WidgetRef ref) async {
 Future<void> _handleChooseFolderResult(
   BuildContext context,
   WidgetRef ref,
-  ChooseFolderResult result,
-) async {
+  ChooseFolderResult result, {
+  bool fromChooseOther = false,
+}) async {
   final l10n = AppLocalizations.of(context);
   switch (result) {
     case ChooseFolderCancelled():
@@ -135,6 +151,13 @@ Future<void> _handleChooseFolderResult(
     case ChooseFolderUnavailable():
       // reason 不外露：可能含平台例外字串，使用者只看到固定文案
       // （SPEC-003 §3.7「選擇其他（選擇器無法開啟）」列）。
+      if (fromChooseOther) {
+        _showChooseOtherFailure(
+          ref,
+          l10n.switcherChooseFolderUnavailableReason,
+        );
+        break;
+      }
       AppSnackBar.show(
         context,
         message: l10n.chooseFolderUnavailableMessage,
@@ -142,9 +165,21 @@ Future<void> _handleChooseFolderResult(
         origin: AppSnackBarOrigin.userInitiated,
       );
     case ChooseFolderSelected(:final state):
-      await _handleChosenState(context, ref, l10n, state);
+      await _handleChosenState(
+        context,
+        ref,
+        l10n,
+        state,
+        fromChooseOther: fromChooseOther,
+      );
     case ChooseFolderNotRemembered(:final state):
-      await _handleChosenState(context, ref, l10n, state);
+      await _handleChosenState(
+        context,
+        ref,
+        l10n,
+        state,
+        fromChooseOther: fromChooseOther,
+      );
       if (!context.mounted) return;
       AppSnackBar.show(
         context,
@@ -163,14 +198,22 @@ Future<void> _handleChosenState(
   BuildContext context,
   WidgetRef ref,
   AppLocalizations l10n,
-  WorkspaceState state,
-) async {
+  WorkspaceState state, {
+  bool fromChooseOther = false,
+}) async {
   switch (state) {
     case WorkspaceReady():
       await selectWorkspace(ref, state);
       if (!context.mounted) return;
       _dismiss(ref);
     case WorkspaceUnavailable(:final reason):
+      if (fromChooseOther) {
+        _showChooseOtherFailure(
+          ref,
+          l10n.switcherFolderUnavailableReason(reason),
+        );
+        break;
+      }
       AppSnackBar.show(
         context,
         message: l10n.folderUnavailableMessage(reason),
