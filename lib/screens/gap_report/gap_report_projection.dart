@@ -7,6 +7,7 @@ library;
 
 import 'dart:developer' as developer;
 
+import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
@@ -37,9 +38,6 @@ const gapCategoryOrder = <String>[
   gapCategoryIdOrphanEvent,
   gapCategoryIdEventDeclarationMismatch,
 ];
-
-/// 節點型別名：來源節點為此型別時指向型別為 [GapItemPointerType.ticket]。
-const _ticketTypeName = 'Ticket';
 
 const _tag = 'GapReportProjection';
 
@@ -302,7 +300,7 @@ class _Projector {
   }
 
   GapItemPointerType _nodePointerType(String nodeId) =>
-      _byId[nodeId]?.typeName == _ticketTypeName
+      _byId[nodeId]?.typeName == ticketTypeName
       ? GapItemPointerType.ticket
       : GapItemPointerType.otherNode;
 
