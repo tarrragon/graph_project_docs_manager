@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.4.0
+  version: 1.5.0
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -35,7 +35,7 @@ metadata:
 |------|------|
 | 按主題分線 | 同一主題（同一組檔案、同一個子系統）的票歸同一條線，前一張讀過的程式與事實下一張可直接用 |
 | 每線一份佇列 | 在給該線的訊息中寫明順序與理由，該線在票面維護 |
-| 線空出時移票 | 從佇列最長的線按主題移票給空的線，通知兩邊；被移的票若已開工，由原線直接交接 |
+| 線空出時移票 | 從佇列最長的線按主題移票給空的線，通知兩邊；被移的票若已開工，由原線直接交接。只挑沒有依賴、且改動檔案不與原線剩餘票重疊的票；改同一檔的票群整組留在原線，否則兩線改同一檔又互等 |
 | 跨線依賴 | 下游票依賴上游線未合併的程式時，**把下游票交給上游線**，不讓下游線等待 |
 | 驗收需要他線的分支先合併 | 由該分支所屬的線自行合併，合併結果直接傳給驗收方；驗收方與 PM 不代為合併。代合者不清楚該分支的狀態（未提交的修改、已知紅燈、待補的提交），合併後出了問題，沒有一方能接手處理 |
 | 以他線的操作作實地驗收證據 | 先查該操作何時啟動，再查被驗收的變更何時進 main；啟動須較晚。合併類操作另確認它的 base HEAD 已含該變更。只比對操作完成的時刻，會把啟動時載入舊程式所跑出的結果當成證據 |
@@ -73,7 +73,7 @@ metadata:
 
 ### 4. 審查標記與查證
 
-背景安全審查常只送達一行標題。處理流程、新舊版端到端比對方法、「回歸」與「既有缺口」的判別見 `references/review-flags-and-verification.md`。速查：先比對用戶已接受的殘留 → 再以新舊兩版做端到端比對 → 屬實且為回歸開 P1 子票交原線。
+背景安全審查常只送達一行標題。處理流程、新舊版端到端比對方法、「回歸」與「既有缺口」的判別見 `references/review-flags-and-verification.md`。速查：先比對用戶已接受的殘留（守衛已收斂時含殘留風險分類表）→ 再以新舊兩版做端到端比對 → 屬實且為回歸開 P1 子票交原線；原票閘門進行中時可在同票分兩輪修，接受條件見該檔〈已知回歸暫留 main〉。
 
 ### 5. 階段收尾與交接
 
