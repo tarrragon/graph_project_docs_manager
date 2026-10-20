@@ -4,7 +4,7 @@
 
 | 區塊 | 資料來源（相對 repo root，另註明者除外） |
 |------|---------------------------|
-| 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一列，依線號排序：`L<n>｜<session 名稱>［<session 狀態>］｜<票序>` |
+| 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一列，依線號排序：`L<n>｜<session 名稱>［<session 狀態>］｜<票序>`；該線有目標行時列尾接 `｜目標：<目標>` |
 | 佇列票即時狀態 | 票序中每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
 | 各 session | `~/.claude/sessions/*.json`（家目錄取自 `HOME`），見下節 |
 | 合併閘門 | `.claude/logs/worktree-merge.log` 中 `[合併閘門] 開始` 與 `[合併閘門] 結束` 行的最後 8 行，精簡為欄位顯示（見下節）；預檢、合併前驗收、合併前測試等其他行不顯示 |
@@ -57,6 +57,16 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `name`、
 
 畫面能分辨兩種空狀態：「349 尚無現行佇列行」（票檔讀得到但 Solution 內沒有任何現行佇列行）與「解析失敗」（票檔讀不到）。
 
+### 線目標行（337 UI 裁定，由主控寫在 349）
+
+```text
+**L<n> 目標**：<一句話目標>
+```
+
+- 判定與現行佇列行相同：同樣只掃 Solution，行首即 `**L`、n 為數字；清單項、表格內、以反引號引用範本的行不算
+- 同一條線有多行時只取最後一行；最後一行寫 `（無）` 表示清除，該線不顯示目標
+- 目標只顯示在有現行佇列行的線上，接在該線列尾：`｜目標：<目標>`；沒有現行佇列行或已結束的線，目標行不顯示
+
 ## 啟動
 
 在 repo root 開一個專用的看板 session：
@@ -76,7 +86,7 @@ claude --plugin-dir tools/line-board
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
 | `hooks/register.tsx` | 註冊 `/board`、定時讀取、繪製 Pane；讀檔與命令一律經 `$` |
-| `hooks/parse.ts` | 純函式：checkout 路徑判定、現行佇列行解析（每線取最後一行）、票序拆分與格式化、frontmatter 解析、session 狀態檔篩選／解析／排序、pid 存活比對（procStart）、合併閘門紀錄篩選與欄位解析、短分支名、閘門持有者判定 |
+| `hooks/parse.ts` | 純函式：checkout 路徑判定、現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化、frontmatter 解析、session 狀態檔篩選／解析／排序、pid 存活比對（procStart）、合併閘門紀錄篩選與欄位解析、短分支名、閘門持有者判定 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`）的型別契約 |
 | `hooks/board.test.ts` | `claude plugin test` 測試 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |

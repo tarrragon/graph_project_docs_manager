@@ -6,8 +6,8 @@ export type QueueToken =
   | { kind: 'sep'; text: '→' | '∥' }
   | { kind: 'text'; text: string }
 
-/** 一條線的現行佇列：線號、session 名稱（行內未寫時為 null）、票序。 */
-export type Lane = { lane: number; session: string | null; tokens: QueueToken[] }
+/** 一條線的現行佇列：線號、session 名稱（行內未寫時為 null）、線目標（349 沒有目標行或已寫（無）清除時為 null）、票序。 */
+export type Lane = { lane: number; session: string | null; goal: string | null; tokens: QueueToken[] }
 
 /** 349 現行佇列的讀取結果：ok 為解析出的線（可能為空），error 為讀檔失敗原因。 */
 export type LanesResult =
