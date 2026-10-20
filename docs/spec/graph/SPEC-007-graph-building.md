@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-21"
-version: "1.33"
+version: "1.34"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -69,7 +69,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | 項目 | 不在本版的理由 | 承接 |
 |------|--------------|------|
 | `depends_on_domains`（`domain_dependency` 邊） | 值是 domain 名稱而非節點 ID（兩語料實測），個別 domain 不是圖節點；與 0.5「矩陣的列無來源」是同一個問題（用戶裁決 2026-09-30） | `0.5.0-W1-001` |
-| B 層邊（`emits`／`consumes`／`branch_from`／`return_to`）與 FlowStep 主圖節點 | 已裁決（`0.5.0-W1-001` 裁決 C，2026-10-07）：FlowStep 不進主圖，`branch_from`／`return_to` 以 UC flow 子圖提供（FR-10），不建邊；`emits`／`consumes` 不在 0.5.0 子圖的解析範圍。升級為主圖節點屬加法變更，本版不做 | FR-10 |
+| B 層邊（`emits`／`consumes`／`branch_from`／`return_to`）與 FlowStep 主圖節點 | 已裁決（`0.5.0-W1-001` 裁決 C，2026-10-07）：FlowStep 不進主圖，`branch_from`／`return_to` 以 UC flow 子圖提供（FR-10），不建邊；`emits`／`consumes` 不建邊，子圖只檢查其引用的 EVT id 是否存在（FR-10〈事件引用〉，v1.34 起；原寫「不在 0.5.0 子圖的解析範圍」）。升級為主圖節點屬加法變更，本版不做 | FR-10 |
 | 破洞「孤島」「缺必要邊」 | 「必要邊」未定義（哪種節點必須有哪種邊）；本版的缺陷子類以 FR-09 所列為準（用戶裁決 2026-09-30） | `0.6.0-W1-072` |
 | 貫穿數、路徑→domain 查詢 | 依賴 FlowStep `traverses` 與路徑對照表，屬 0.5。`traverses` 的名稱解析已由 FR-11 定義；聚合為貫穿數與路徑→domain 查詢不在本規格。例外：domain × UC 關係（直接／間接／無關）與依賴路徑的判定歸 Graph，已由 FR-12 定義（`0.5.0-W1-114` 用戶裁決 O1） | PROP-005 §0.5 |
 | 語料變動後的增量重建（EVT-CORPUS-002） | 本版只做單輪完整建圖；重掃屬畫面接真資料的互動 | PROP-005 §0.6 |
@@ -244,7 +244,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 **描述**：Diagnostics 收到 EVT-GRAPH-001 後，對 `graphDefects` 逐筆產生 EVT-DIAGNOSTICS-001 的 `graphDefect` 破洞。
 
-**子類**：主圖四種為 `danglingRef`、`malformedRef`、`duplicateId`、`multiSource`（原因碼見 FR-02～FR-04）。flow 子圖另有四種，同屬 `graphDefect` 大類，不另立破洞類別（2026-10-08 用戶裁決 1a，`0.5.0-W1-001.2`；第四種「`traverses` 鍵缺席」依 `0.5.0-W1-114` 用戶裁決 T1 與 PM 補定）：
+**子類**：主圖四種為 `danglingRef`、`malformedRef`、`duplicateId`、`multiSource`（原因碼見 FR-02～FR-04）。flow 子圖另有下表所列子類，同屬 `graphDefect` 大類，不另立破洞類別（2026-10-08 用戶裁決 1a，`0.5.0-W1-001.2`；「`traverses` 鍵缺席」依 `0.5.0-W1-114` 用戶裁決 T1 與 PM 補定；「事件引用未解析」依 `0.5.0-W1-458` 用戶裁決題 E，2026-10-21）：
 
 | flow 子類 | 來源 | 負載 |
 |----------|------|------|
@@ -252,6 +252,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | UC 內 step id 重複 | FR-10：同一 UC 內兩個以上步驟的 `id` 相同 | {UC ID, step id, 欄位, 原始值} |
 | `traverses` 名稱未宣告 | FR-11：`traverses` 的值沒有 DomainBundle 以 `domain` 宣告（含因重複宣告被排除於名稱索引的名稱）；同一步驟內同一值重複出現只報一筆 | {UC ID, step id, 欄位, 原始值} |
 | `traverses` 鍵缺席 | FR-11：步驟沒有 `traverses` 鍵（schema 必填欄位缺席，不視同 `[]`） | {UC ID, step id, 欄位, 原始值}（欄位為 `traverses`，原始值為 `null`；`0.5.0-W1-114.1` PM 處置 NC-b） |
+| 事件引用未解析 | FR-10〈事件引用〉：`emits` 或 `consumes` 的元素不是任何 EVT 節點的 id；同一步驟同一欄位內同一值重複出現只報一筆 | {UC ID, step id, 欄位, 原始值}（欄位為 `emits` 或 `consumes`） |
 
 另有一種非 flow 子圖的名稱索引缺陷，同屬 `graphDefect` 大類（`0.5.0-W1-114.1` PM 處置 NC-d，比照 D3）：
 
@@ -259,12 +260,12 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 |------|------|------|
 | domain 重複宣告 | FR-11〈重複 domain 宣告〉：兩個以上 DomainBundle 宣告相同 `domain` 值 | {domain, 衝突的 DomainBundle ID 清單} |
 
-前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（兩者皆由 `0.5.0-W1-001.5` 命名——皆屬名稱解析器，`0.5.0-W1-114.1` PM 處置 NC-c、`0.5.0-W1-114.2` PM 處置 NC-7）。實作票命名前，其他實作不得自行命名。
+前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（兩者皆由 `0.5.0-W1-001.5` 命名——皆屬名稱解析器，`0.5.0-W1-114.1` PM 處置 NC-c、`0.5.0-W1-114.2` PM 處置 NC-7）。實作票命名前，其他實作不得自行命名。「事件引用未解析」的識別名由 `0.5.0-W1-458.4` 命名。
 
 **規則**：
 - 一筆缺陷對應一筆破洞。`danglingRef`、`malformedRef` 帶來源節點 ID 與路徑、欄位名、原始值（原樣，不正規化）、邊型、原因碼；`duplicateId` 帶 ID 與全部路徑；`multiSource` 帶起點、邊型、全部終點與各自的宣告來源
-- flow 四子類的負載一律為 {UC ID, step id, 欄位, 原始值}，不帶邊型：flow 參照不是邊（FR-10），沿用 `danglingRef`／`duplicateId` 的帶邊型負載對不上（2026-10-08 用戶裁決 1a）。欄位為觸發缺陷的 FlowStep 欄位名（`branch_from`、`return_to`、`next`、`id`、`traverses`）；原始值原樣保存，不正規化
-- 破洞報告把 flow 四子類另立「flow」小組，與主圖四子類分開列出；仍屬 `graphDefect` 大類，Diagnostics 的破洞類別列舉與報告頁大類結構不變
+- flow 各子類的負載一律為 {UC ID, step id, 欄位, 原始值}，不帶邊型：flow 參照不是邊（FR-10），沿用 `danglingRef`／`duplicateId` 的帶邊型負載對不上（2026-10-08 用戶裁決 1a）。欄位為觸發缺陷的 FlowStep 欄位名（`branch_from`、`return_to`、`next`、`id`、`traverses`、`emits`、`consumes`）；原始值原樣保存，不正規化
+- 破洞報告把 flow 各子類另立「flow」小組，與主圖四子類分開列出；仍屬 `graphDefect` 大類，Diagnostics 的破洞類別列舉與報告頁大類結構不變
 - 顯示文字由畫面經 l10n 投影，Diagnostics 不產生在地化字串（與 SPEC-006 FR-08 一致）
 - 建圖不可用（FR-01）時不產生本類破洞，報告顯示「無法判定破洞」並說明原因
 - 建圖不可用的原因碼由編排層轉成 Diagnostics 既有的無法判定原因，Diagnostics 不依賴 Schema 的原因型別：版本不在已知範圍、缺正向基數、邊型條目不合法、缺 `direction`（`missingDirection`，v1.21）四者都轉成「專案版本不在已知範圍」（依 FR-01，後三者只在版本不在已知範圍時才使建圖不可用）。四者的區分只保留在建圖不可用的日誌事件
@@ -306,6 +307,15 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 缺陷程式識別名：flow 參照未解析為 `GraphDefectKind.flowUnresolvedRef`、UC 內 step id 重複為 `GraphDefectKind.flowDuplicateStepId`，負載 `{ucId, stepId, field, rawValue}`（`0.5.0-W1-001.4` 命名回填）。字串化後相同但原值不同的重複 id（例：`1` 與 `"1"`），重複缺陷的 stepId／rawValue 取清單中第一個出現者（`0.5.0-W1-001.4` 實作選擇，PM 追認）
 - 主線 `next` 解析不到時不產生缺陷；解析結果以獨立欄位提供，與缺陷來源分開（見上方 `next` 的語意，用戶裁決 N-a；原「不解析」字面與 N-a 衝突，2026-10-11 更正，4a 回報）
 
+**事件引用**（`0.5.0-W1-458` 用戶裁決題 E，2026-10-21；權威條文在此，SPEC-003 §3.5 只寫歸屬）：引用不存在的 EVT id 原本沒有任何地方回報——事件類破洞（SPEC-003 §3.5）以 EVT 節點為起點比對，不存在的 id 不會成為孤立事件或宣告不符。本段補上這個缺口：
+- 比對對象是「事件節點 id 集合」：Corpus `rawNodes` 中型別為 `EVT`、`id` 為非空字串者的 id，與 SPEC-003 §3.5 事件類破洞取同一集合。不取輕節點，因為主圖遇到重複 ID 時兩個節點都不建（FR-02），改取輕節點會把重複的 EVT id 誤判為不存在
+- 每個步驟的 `emits`、`consumes` 元素（依上方〈步驟屬性〉的正規化：純量視同單元素清單，`null`、缺鍵與空元素略過，非字串元素轉字串）逐一精確比對（不做大小寫轉換）；比對不到者各報一筆「事件引用未解析」缺陷，欄位為 `emits` 或 `consumes`，原始值為該元素的原值（非字串元素記原值，不記轉字串後的值，與 FR-11 一致）
+- 同一步驟同一欄位內同一值重複出現只報一筆（比照 FR-09「`traverses` 名稱未宣告」）；同一值分別出現在同一步驟的 `emits` 與 `consumes` 時各報一筆（欄位不同）
+- 被引用的 id 對應兩個以上 EVT 檔（主圖 `duplicateId`）時算存在，不報本子類；重複由 `duplicateId` 回報
+- 本子類只判 id 是否存在。id 存在而 EVT 宣告與 flow 不符，仍由事件類破洞（SPEC-003 §3.5）判定，兩者不重疊
+- 步驟仍留在子圖內，`emits`／`consumes` 屬性照常提供（格詳情卡、UC Flow 事件流照常顯示該 id）
+- 建圖不可用時不產生（同 FR-09）
+
 **驗收條件**：
 - [ ] Given 兩語料每份 UC，Then `flowOf` 的主線順序、分支與 `branch_from`、回指與 `return_to`、分支步 `next` 屬性與 flow 區塊逐項一致
 - [ ] Given 主線步驟 a 的 `next` 寫成 c、清單順序為 a、b、c，Then 主線順序為 a、b、c，不產生缺陷
@@ -317,6 +327,9 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given UC-A 與 UC-B 各有一個 id 為 `rescan` 的步驟，Then 不回報缺陷，兩者各自出現在自己的子圖
 - [ ] Given 步驟清單為空的 UC，Then 回傳空子圖，不是「不存在」
 - [ ] Given 建圖完成，Then EVT-GRAPH-001 的 `edgeCount` 與未啟用本 FR 時相同（子圖不進邊集合）
+- [ ] Given 一個步驟 `emits: [EVT-GHOST]`，全專案沒有 id 為 `EVT-GHOST` 的 EVT 節點，Then 回報一筆「事件引用未解析」，負載 {UC ID, step id, `emits`, `EVT-GHOST`}（E2 正向對照，v1.34）
+- [ ] Given 同一份語料，該步驟改為 `emits: [EVT-REAL]` 且 `EVT-REAL` 有 EVT 節點，Then 不回報「事件引用未解析」（v1.34）
+- [ ] Given 步驟 `consumes: [EVT-DUP]`，`EVT-DUP` 有兩個 EVT 檔，Then 不回報「事件引用未解析」，只有一筆 `duplicateId`（v1.34）
 
 ### FR-11：domain 名稱解析（`traverses`）
 
@@ -426,7 +439,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | D1 | 有反向欄位的邊取兩側聯集並記錄宣告來源；單側宣告不是缺陷 | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
 | D2 | 本版建圖的邊型為使用中邊型（〈用詞〉）；proposed 層的 `bundle_dependency` 進主圖，走與其他邊型相同的目標解析（FR-03）與破洞判定（FR-09），鄰接查詢標示其 `layer`（FR-08） | 用戶裁決 2026-09-30；2026-10-08（`0.5.0-W1-103` P1） |
 | D3 | 引用值分類為解析成功、斷邊、格式錯誤三類，不部分救回 | 用戶裁決 2026-09-30 |
-| D4 | 主圖缺陷子類為 FR-09 所列四種，flow 子圖另四種（2026-10-08 用戶裁決 1a；第四種依 `0.5.0-W1-114` T1）；其中 `duplicateId` 與自我引用的處理為規格預設，用戶 2026-09-30 整批確認；孤島與缺必要邊延至 0.6 | 用戶裁決 2026-09-30 |
+| D4 | 主圖缺陷子類為 FR-09 所列四種，flow 子圖子類見 FR-09 子類表（2026-10-08 用戶裁決 1a；「`traverses` 鍵缺席」依 `0.5.0-W1-114` T1；「事件引用未解析」依 `0.5.0-W1-458` 題 E）；其中 `duplicateId` 與自我引用的處理為規格預設，用戶 2026-09-30 整批確認；孤島與缺必要邊延至 0.6 | 用戶裁決 2026-09-30 |
 | D5 | 整合測試使用凍結測資，預期值由獨立參照實作產生並凍結 | 用戶裁決 2026-09-30；同 SPEC-006 D3 |
 | D6 | 邊型的欄位名、正向基數、是否有反向欄位、方向性（`direction`）、層級取自型別表；程式內的鍵名例外只有兩處：排除 `domain_dependency`、納入 `proposed` 層的 `bundle_dependency`。`domain_dependency` 排除鍵在 0.5.0 維持（`0.5.0-W1-001` 裁決 D4，2026-10-07），建邊與移除排除鍵由 `0.6.0-W1-074` 承接。`bundle_dependency` 例外的理由：矩陣間接格與泳道分層需要「沿邊可達」，現成管線已含目標解析與破洞判定；上游升級判準要求兩個獨立專案皆有實例，目前只有本專案，不能升為 established，故以本地允許清單納入。原「以 `association` 認定無向邊」例外已移除，改讀 `direction`（FR-05） | 同 SPEC-006 D1：上游 schema 為唯一權威。`association` 例外移除依 2026-09-30 用戶裁決（上游 `0.4.0-W1-072` 已補 `direction`）；`bundle_dependency` 例外依 2026-10-08 用戶裁決（`0.5.0-W1-103` P1，WRAP） |
 | D7 | 正向基數由 schema 宣告；`provenance` 為 `many`（一個節點可有多個來源提案），`spawn`、`blood` 為 `one` | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
@@ -444,6 +457,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.34 | 2026-10-21 | 新增 flow 子類「事件引用未解析」（`0.5.0-W1-458` 用戶裁決題 E，`0.5.0-W1-458.3`）：FR-10 新增〈事件引用〉段，`emits`／`consumes` 元素比對 `rawNodes` 中型別為 `EVT` 的 id 集合（與 SPEC-003 §3.5 同一集合），比對不到者報缺陷；同步驟同欄位同值只報一筆，重複 EVT id 算存在，建圖不可用不產生；補三條驗收。FR-09 子類表加一列，負載欄位加 `emits`、`consumes`；「flow 四子類」改為「flow 各子類」，D4 改指 FR-09 子類表，不寫死子類數。〈本版範圍外〉B 層邊列同步。識別名由 `0.5.0-W1-458.4` 命名 |
 | 1.33 | 2026-10-21 | FR-06 負載補上圖本體（輕節點、邊、flow 子圖、domain 名稱索引），缺陷子類補「domain 重複宣告」；原文只列計數與 `graphDefects`，與 `GraphBuiltEvent` 現況及 Layout、Diagnostics 實際讀取的欄位不符。FR-13 快照驗收補註：現行語料的 `diagnostics` 已推導為 L3，期望值仍以凍結快照為準（`0.5.0-W1-460`） |
 | 1.32 | 2026-10-12 | FR-10 步驟屬性：`emits`／`consumes` 的正規化比照 `next`（純量視同單元素清單、空元素略過、非字串轉字串），各消費端共用同一份結果（PM 處置，`0.5.0-W1-114.20`） |
 | 1.31 | 2026-10-12 | FR-13：`domain` 無效（非字串、`null`、缺鍵、空字串）的 bundle 層號照算、同層排在有效者之後並依 bundle ID 排序（用戶裁決 Z3，取代 Z1 的「歸推不出層」，`0.5.0-W1-139`） |

@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-21"
-version: "1.53"
+version: "1.54"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -522,7 +522,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | ticket | 切至 Ticket 清單並定位該票；清單未載入時自動載入後定位，目標被搜尋或篩選隱藏時清除之並以 SnackBar 提供復原 |
 > | 其他圖節點（提案、規格、UC 等） | 切至節點詳情並顯示該節點 |
 > | 事件類（孤立事件、事件宣告與 flow 不符） | 選定 UC 設為引用該事件的 UC（多條取 UC 編號最小者），切至 UC Flow，事件流小表定位該事件列；無任何 UC 引用該 EVT 時，依「其他圖節點」列處理：jump 至節點詳情顯示該 EVT 節點，次要操作不變（`0.1.0-W3-335.38` S-31） |
-> | flow 類（EVT-CORPUS-004、flow 四子類） | 選定 UC 設為該 UC，切至 UC Flow；flow 四子類另定位到出錯的步驟，004 無步驟可定位（畫面顯示 `flowParseFailedMessage`）；次要操作開啟原始檔（2026-10-09 用戶裁決 J2，`0.5.0-W1-114.16`） |
+> | flow 類（EVT-CORPUS-004、flow 各子類） | 選定 UC 設為該 UC，切至 UC Flow；flow 各子類另定位到出錯的步驟，004 無步驟可定位（畫面顯示 `flowParseFailedMessage`）；次要操作開啟原始檔（2026-10-09 用戶裁決 J2，`0.5.0-W1-114.16`） |
 > | 無法指向任何節點 | 開啟原始檔（不提供次要操作） |
 >
 > 前三列的次要操作為開啟原始檔。本表只定義已知指向時的行為；破洞項如何決定指向哪個節點，
@@ -564,9 +564,9 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `parseFailure` · EVT-CORPUS-005 | `nonDomainPathsMalformed` 四個子原因 | `non-domain-paths-malformed` | `gapCategoryNonDomainPathsMalformed` |
 > | `graphDefect` 主圖 | `danglingRef`、`malformedRef`、`duplicateId`、`multiSource` | `graph-defect` | `gapCategoryGraphDefect` |
 > | `graphDefect` 名稱索引 | domain 重複宣告 | `graph-defect`（與主圖同節） | 同上 |
-> | `graphDefect` flow 子圖 | flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告、`traverses` 鍵缺席 | `graph-defect-flow` | `gapCategoryGraphDefectFlow` |
+> | `graphDefect` flow 子圖 | flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告、`traverses` 鍵缺席、事件引用未解析（v1.54） | `graph-defect-flow` | `gapCategoryGraphDefectFlow` |
 >
-> 子類不再細分為分節，改由項目說明 key 區分（SPEC-004 §4.0.6〈1.80 提案〉）。flow 四子類另立一節，依
+> 子類不再細分為分節，改由項目說明 key 區分（SPEC-004 §4.0.6〈1.80 提案〉）。flow 各子類另立一節，依
 > SPEC-007 FR-09「另立 flow 小組，與主圖四子類分開列出」。分節只在該節有項目時渲染。分節順序提案為
 > 上表列序，其後接既有的 `orphan-event`、`event-declaration-mismatch`；第一個分節的第一項是
 > `viewGapsAction` 的定位目標（SPEC-003 §2.2），順序因此影響可見行為。
@@ -579,7 +579,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `danglingRef`／`malformedRef` | 子類名、來源節點 ID、欄位名、原始值 |
 > | `duplicateId` | 子類名、重複的 ID |
 > | `multiSource` | 子類名、起點 ID、邊型 |
-> | flow 四子類 | 子類名、UC ID、step id、欄位名、原始值（`traverses` 鍵缺席時為字面 `null`） |
+> | flow 各子類 | 子類名、UC ID、step id、欄位名、原始值（`traverses` 鍵缺席時為字面 `null`） |
 > | domain 重複宣告 | 子類名、domain 值 |
 > | `orphan-event`（v1.52） | category id、EVT ID |
 > | `event-declaration-mismatch`（v1.52） | category id、EVT ID、方向（字面 `consumers` 或 `producers`）、宣告的 domain 原值 |
@@ -600,7 +600,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `danglingRef`／`malformedRef` | 來源節點路徑 | 來源節點（引用值寫在該節點上） | 來源節點為 Ticket 時為 ticket，其餘為其他圖節點 |
 > | `duplicateId` | 全部路徑中 code point 序最小者 | 無（同一 ID 對應多個檔案，無單一節點） | 無法指向任何節點；點擊開啟該路徑 |
 > | `multiSource` | 起點節點路徑 | 起點節點 | 起點為 Ticket 時為 ticket，其餘為其他圖節點 |
-> | flow 四子類 | UC 路徑 | 該 UC 與 step id | flow 類：UC Flow 並選定該 UC、定位該步驟 |
+> | flow 各子類 | UC 路徑 | 該 UC 與 step id | flow 類：UC Flow 並選定該 UC、定位該步驟 |
 > | domain 重複宣告 | 衝突 DomainBundle ID 中 code point 序最小者的路徑 | 該 DomainBundle | 其他圖節點 |
 > | `orphan-event`、`event-declaration-mismatch`（v1.52） | EVT 節點路徑 | 該 EVT | 事件類：事件 ID 為 EVT ID；選定 UC 取引用該 EVT 的 UC ID 中 code point 序最小者，無任何 UC 引用時為無，改依「其他圖節點」列處理 |
 >
@@ -619,10 +619,10 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > **定案**（2026-10-09）：
 > - **M1**（用戶裁決）：移除 0.1 的「缺 frontmatter」分節，EVT-CORPUS-003 全部原因收進 `parse-failure`，原因由項目說明 key 區分；`gapCategoryMissingFrontmatter` 淘汰
 > - **O1**（用戶裁決）：分節順序固定為 `parse-failure` → `flow-block-malformed` → `non-domain-paths-malformed` → `graph-defect` → `graph-defect-flow` → `orphan-event` → `event-declaration-mismatch`；理由是解析失敗的檔案不進圖，其上的圖缺陷可能是連帶結果
-> - **J2**（用戶裁決）：004 與 flow 四子類點擊跳 UC Flow 並選定該 UC（flow 四子類另定位到該步驟），比照下方主操作表「事件類→UC Flow 並定位事件列」；主操作表新增「flow 類」一列
+> - **J2**（用戶裁決）：004 與 flow 各子類點擊跳 UC Flow 並選定該 UC（flow 各子類另定位到該步驟），比照下方主操作表「事件類→UC Flow 並定位事件列」；主操作表新增「flow 類」一列
 > - EVT-CORPUS-003 原因碼識別名（PM 決定）：`CarrierParseFailureReason { noFrontmatter, frontmatterUnclosed, frontmatterNotMap, yamlInvalid, unreadable }`，無法讀取子原因沿用既有列舉 `UnreadableReason { encoding, permission, fileDeleted }`（`fileDeleted` 對 `gapParseUnreadableMissing`；原寫 `missing` 改為既有值，避免更動既有呼叫點，2026-10-11 PM 處置，`0.5.0-W1-114.17` 回報），與 SPEC-004 七個 `gapParse*` key 一對一；歸屬型別不明以 `gapParseTypeAmbiguous`。EVT-CORPUS-003 的事件負載鍵與 reason 字串值域不變（事件契約），列舉為破洞上的型別化欄位，投影依列舉查 key、不從字串反解
 > - `duplicateId` 開啟 code point 序最小的路徑、domain 重複宣告指向 code point 序最小的 DomainBundle、domain 重複宣告歸 `graph-defect`（SPEC-007 FR-09 不屬 flow 子圖）、`gapDuplicateId` en 不做單複數：PM 確認
-> - **指向節點查不到時**（004 的 UC、flow 四子類的 UC、`danglingRef`／`malformedRef`／`multiSource` 的來源或起點、domain 重複宣告的 DomainBundle）：正常資料不會發生（破洞與節點出自同一輪建圖），屬程式內部不變式。debug 下 assert，並寫 `developer.log` warning；release 下該項降為「無法指向任何節點」，但不提供開啟原始檔（手上只有 ID 而非路徑，開檔必然失敗），只顯示 ID 與項目說明。不新增狀態，也不新增 key（PM 處置 2026-10-11，`0.5.0-W1-114.17` 審查回報，比照 `0.5.0-W1-114.10` 的不變式處理）
+> - **指向節點查不到時**（004 的 UC、flow 各子類的 UC、`danglingRef`／`malformedRef`／`multiSource` 的來源或起點、domain 重複宣告的 DomainBundle）：正常資料不會發生（破洞與節點出自同一輪建圖），屬程式內部不變式。debug 下 assert，並寫 `developer.log` warning；release 下該項降為「無法指向任何節點」，但不提供開啟原始檔（手上只有 ID 而非路徑，開檔必然失敗），只顯示 ID 與項目說明。不新增狀態，也不新增 key（PM 處置 2026-10-11，`0.5.0-W1-114.17` 審查回報，比照 `0.5.0-W1-114.10` 的不變式處理）
 > - EVT-CORPUS-003 破洞帶行號（`lineNumber`）供表三「行號有值時附」：接受 `0.5.0-W1-114.17` 補欄（PM 追認）
 
 ## 6. 節點詳情
@@ -969,6 +969,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.54 | 2026-10-21 | §5〈破洞報告項目投影〉表一 flow 子圖列加入「事件引用未解析」（SPEC-007 v1.34 FR-09、FR-10〈事件引用〉，`0.5.0-W1-458` 用戶裁決題 E，`0.5.0-W1-458.3`）；§5 主操作表 flow 類列、表二、表三、〈定案〉J2 與「指向節點查不到時」的「flow 四子類」改為「flow 各子類」，不寫死子類數。新子類與其餘 flow 子類同節（`graph-defect-flow`）、同項目 id 成分、同指向（UC Flow 選定該 UC 並定位步驟）；項目說明 key 見 SPEC-004 v1.96。狀態總數不變 |
 | 1.53 | 2026-10-21 | §1〈泳道布局規則〉列集合與列序：「本專案推導」改標為凍結快照的推導，另記現行語料的推導（`diagnostics` 補上 `graph` 出邊後為 L3）；驗收期望值仍以凍結快照為準，規則本身不變（`0.5.0-W1-460`） |
 | 1.52 | 2026-10-20 | §5〈破洞報告項目投影〉表二、表三補事件類兩列與〈事件類項目投影〉段（`0.5.0-W1-114.22.2`，承 `0.5.0-W1-114.22.1` 偵測公開面合併與 `0.5.0-W1-114.22` 派發前查證：兩表原只定義 `parseFailure` 與 `graphDefect`，事件類項目的 id、路徑、指向與說明無規則）。項目 id 成分：孤立事件為 category id、EVT ID；宣告不符另加方向與 domain 原值。路徑為 EVT 節點路徑，指向該 EVT，選定 UC 取引用 UC ID 的 code point 序最小者，無引用時依其他圖節點處理；建圖不可用時不產生、路徑模式查詢不可用而建圖可用時照常列出。PM 確認，比照 v1.41／v1.42 投影表先例。狀態總數不變。SPEC-004 v1.94 同批 |
 | 1.51 | 2026-10-20 | §5〈專案層級宣告狀態一行不是新狀態〉表三列（用戶裁決 2026-10-20，`0.5.0-W1-443`，承 `0.5.0-W1-119.2` 執行者回報與 linux 審查）：「內容」列補 bundle 總數為 0 時以 `pathDeclarationNoBundles` 片段呈現、不顯示「0／0」；「受影響路徑數來源」列補路徑數為去重後的路徑條數，同一條正規化路徑跨票只算一次；「文案與 i18n key」列改寫 `{detail}` 組成為 bundle 側與非 domain 側各一片段，補列 `pathDeclarationNoBundles`、`pathDeclarationNonDomainMalformed`。狀態總數不變。SPEC-004 v1.93 同批 |
