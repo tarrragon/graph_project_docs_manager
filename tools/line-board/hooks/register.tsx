@@ -3,6 +3,7 @@
 // 本 repo 各 session 的狀態（~/.claude/sessions/*.json）、派發紀錄（.claude/dispatch-active.json）、
 // 合併閘門的開始與結束紀錄，畫在 Pane。
 // 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析經 parse.ts 匯出（實作分在各 domain 模組）。
+// 本檔負責 hook 註冊、定時讀取、snapshot 與 Pane 組裝；各區塊的繪製在 *View.tsx。
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -11,12 +12,14 @@ import type {
   BoardSnapshot,
   DispatchesResult,
   LanesResult,
-  MergeGateEntry,
   MergeLogResult,
   SessionState,
   SessionsResult,
   TicketStatus,
 } from '../types'
+import { renderDispatches } from './dispatchView'
+import { renderLanes } from './lanesView'
+import { renderMergeLog } from './mergeGateView'
 import {
   DISPATCH_ACTIVE_PATH,
   DISPATCH_TICKET_PATH,
@@ -24,20 +27,12 @@ import {
   SESSIONS_DIR,
   TICKETS_DIR,
   UNKNOWN_STATUS,
-  dispatchRows,
   dispatchTicketIds,
-  formatAge,
-  formatDispatchRow,
-  formatQueue,
   isInRepo,
   isSessionProcessAlive,
-  laneSessionStatus,
-  formatMergeGateEntry,
-  formatMergeGateHolders,
   laneTicketIds,
   mergeGateEntries,
   mergeGateHolders,
-  mergeGateResultColor,
   parseDispatchFile,
   parseFrontmatterStatus,
   parseLanes,
@@ -46,6 +41,7 @@ import {
   sessionStatusFileNames,
   sortSessions,
 } from './parse'
+import { renderSessions } from './sessionsView'
 
 const PANE = 'line-board'
 const PANE_TITLE = '多線看板'
@@ -102,116 +98,15 @@ export const register: Register = on => {
           更新 {board.updatedAt}
           {board.checkoutNote === null ? '' : `｜${board.checkoutNote}`}
         </Text>
-        {renderLanes(board.lanes, board.tickets, board.sessions)}
+        {renderLanes(Text, board.lanes, board.tickets, board.sessions)}
         <Text bold>派發中代理人</Text>
-        {renderDispatches(board.dispatches, board.lanes, board.tickets, board.sessions, board.mergeLog)}
+        {renderDispatches(Text, readAtMs, board.dispatches, board.lanes, board.tickets, board.sessions, board.mergeLog)}
         <Text bold>各 session</Text>
-        {renderSessions(board.sessions)}
+        {renderSessions(Text, readAtMs, board.sessions)}
         <Text bold>合併閘門最近紀錄</Text>
-        {renderMergeLog(board.mergeLog)}
+        {renderMergeLog(Text, board.mergeLog)}
       </Box>
     )
-
-    function renderLanes(lanes: LanesResult, tickets: readonly TicketStatus[], sessions: SessionsResult) {
-      if (lanes.kind === 'error') {
-        return <Text color="red">解析失敗：讀取 {DISPATCH_TICKET_PATH} 時發生錯誤（{lanes.message}）</Text>
-      }
-      if (lanes.lanes.length === 0) return <Text color="yellow">349 尚無現行佇列行</Text>
-      return lanes.lanes.map(lane => (
-        <Text>
-          L{lane.lane}｜{lane.session ?? '（未標 session）'}
-          {laneStatusLabel(sessions, lane.session)}｜{formatQueue(lane.tokens, tickets)}
-          {laneGoalLabel(lane.goal)}
-        </Text>
-      ))
-    }
-
-    /** 線列票序後的 `｜目標：<文字>`；沒有目標時不顯示。hot reload 後舊 snapshot 的線沒有 goal 欄（undefined），同樣不顯示。 */
-    function laneGoalLabel(goal: string | null | undefined): string {
-      return goal === null || goal === undefined ? '' : `｜目標：${goal}`
-    }
-
-    /** 線列 session 名稱旁的 `［狀態］`；沒標 session 時不顯示，session 狀態讀取失敗時標「狀態不明」。 */
-    function laneStatusLabel(sessions: SessionsResult, name: string | null): string {
-      if (name === null) return ''
-      if (sessions.kind === 'error') return '［狀態不明］'
-      return `［${laneSessionStatus(sessions.sessions, name)}］`
-    }
-
-    /**
-     * 派發中代理人：每列 `L<n> <代理人>｜<任務>｜<階段>｜<距派發時間>`，依線分組、其他最後。
-     * 派發紀錄讀取失敗只影響本區塊；sessions 讀不到時無從判定存活，不列條目。
-     * 349 或閘門紀錄讀不到時照樣列出：線一律歸其他、不判定閘門。
-     */
-    function renderDispatches(
-      dispatches: DispatchesResult,
-      lanes: LanesResult,
-      tickets: readonly TicketStatus[],
-      sessions: SessionsResult,
-      mergeLog: MergeLogResult,
-    ) {
-      if (dispatches.kind === 'error') {
-        return <Text color="red">讀取 {DISPATCH_ACTIVE_PATH} 失敗（{dispatches.message}）</Text>
-      }
-      if (sessions.kind === 'error') return <Text dimColor>（session 狀態讀取失敗，無法判定派發中的代理人）</Text>
-      const rows = dispatchRows(dispatches.records, {
-        sessions: sessions.sessions,
-        lanes: lanes.kind === 'ok' ? lanes.lanes : [],
-        tickets,
-        holders: mergeLog.kind === 'ok' ? mergeLog.holders : [],
-      })
-      if (rows.length === 0) return <Text dimColor>（目前沒有派發中的代理人）</Text>
-      return rows.map(row => <Text wrap="truncate-middle">{formatDispatchRow(row, readAtMs)}</Text>)
-    }
-
-    function renderSessions(sessions: SessionsResult) {
-      if (sessions.kind === 'error') {
-        return <Text color="red">讀取 ~/{SESSIONS_DIR} 失敗（{sessions.message}）</Text>
-      }
-      const rows = sessions.sessions.map(session => renderSession(session))
-      const ended =
-        sessions.endedCount === 0 ? [] : [<Text dimColor>另有 {sessions.endedCount} 個狀態檔的 pid 已結束，未列出</Text>]
-      if (rows.length === 0) return [<Text dimColor>（本 repo 沒有執行中的 session）</Text>, ...ended]
-      return [...rows, ...ended]
-    }
-
-    function renderSession(session: SessionState) {
-      const waitingFor = session.waitingFor === null ? '' : `：${session.waitingFor}`
-      const line = `${session.name}｜${session.status}${waitingFor}｜${formatAge(readAtMs, session.statusUpdatedAt)}`
-      return session.status === 'waiting' ? (
-        <Text color="yellow" bold>
-          {line}
-        </Text>
-      ) : (
-        <Text>{line}</Text>
-      )
-    }
-
-    function renderMergeLog(log: MergeLogResult) {
-      if (log.kind === 'error') return <Text color="red">讀取 {MERGE_LOG_PATH} 失敗（{log.message}）</Text>
-      const holders = formatMergeGateHolders(log.holders).map(line => (
-        <Text color="yellow" bold wrap="truncate-middle">
-          {line}
-        </Text>
-      ))
-      if (log.entries.length === 0) return [...holders, <Text dimColor>（尚無紀錄）</Text>]
-      return [...holders, ...log.entries.map(entry => renderMergeGateEntry(entry))]
-    }
-
-    /**
-     * 一行閘門紀錄：欄位行以 truncate-middle 截斷，寬度不足時時間與結果兩端都保留；
-     * 結束行依結果上色。格式不符的行原樣換行顯示，不截斷。
-     */
-    function renderMergeGateEntry(entry: MergeGateEntry) {
-      const text = formatMergeGateEntry(entry)
-      if (entry.kind === 'raw') return <Text>{text}</Text>
-      const color = entry.kind === 'end' ? mergeGateResultColor(entry.result) : undefined
-      return (
-        <Text color={color} wrap="truncate-middle">
-          {text}
-        </Text>
-      )
-    }
   })
 }
 
