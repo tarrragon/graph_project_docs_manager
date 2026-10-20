@@ -1,0 +1,31 @@
+# macOS 編譯與 integration_test 的 CI 承接（0.5.0-W1-231.6，用戶裁決 D1=C）。
+# 全套件於本機合併閘門執行；CI 只承接 integration_test 與編譯。
+name: macos-integration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  flutter-integration-macos:
+    runs-on: macos-latest
+    # job 逾時 20 分鐘。依據：實測 run 38512696486 建置約 67 秒；
+    # main 現況 integration_test 本機約 5 秒內完成，20 分鐘留足 runner 冷啟動餘裕，
+    # 又遠小於舊紀錄卡住拖到的約 43 分鐘。
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # Flutter 版本唯一來源為 .fvmrc（JSON），不在 workflow 寫死
+      - name: 讀取 .fvmrc 的 Flutter 版本
+        id: fvm
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@v2.23.0
+        with:
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          channel: stable
+      - run: flutter pub get --enforce-lockfile
+      # 單項測試逾時 2 分鐘（--timeout）。依據：單項正常數秒內完成；
+      # 舊紀錄單項卡 10 分鐘（pumpAndSettle 預設逾時），0.5.0-W1-248.2 已將 settle 設為 30 秒，
+      # 2 分鐘高於 30 秒並保留餘裕，卡住的測試不會佔滿 runner。
+      - run: flutter test integration_test -d macos --timeout 2m
