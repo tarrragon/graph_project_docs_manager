@@ -123,16 +123,16 @@ def read_last_total_context(transcript_path: str) -> Optional[int]:
     return last_value
 
 
-def tier_of(cache_read: int) -> int:
-    """cache_read 對應的去重 tier。"""
-    return cache_read // TIER_STEP
+def tier_of(total_context: int) -> int:
+    """total_context（三項合計）對應的去重 tier。"""
+    return total_context // TIER_STEP
 
 
-def should_warn(cache_read: int, last_warned_tier: int) -> bool:
+def should_warn(total_context: int, last_warned_tier: int) -> bool:
     """是否應提示：超閾值且當前 tier 比已提示的 tier 更深。"""
-    if cache_read < THRESHOLD:
+    if total_context < THRESHOLD:
         return False
-    return tier_of(cache_read) > last_warned_tier
+    return tier_of(total_context) > last_warned_tier
 
 
 def load_state(state_file: Path) -> dict:
@@ -158,9 +158,9 @@ def save_state(state_file: Path, state: dict) -> None:
         log(f"寫 state 失敗: {exc}")
 
 
-def _warning_text(total: int) -> str:
+def _warning_text(total_context: int) -> str:
     return (
-        f"[context-depth-warning] 當前 context 合計約 {total // 1000}K tokens"
+        f"[context-depth-warning] 當前 context 合計約 {total_context // 1000}K tokens"
         f"（input + cache_creation + cache_read），已超過 {THRESHOLD // 1000}K。"
         "請告知用戶擇一處理：(1) 請用戶執行 /compact（模型無法自行觸發）；"
         "(2) 先把進度寫入 ticket 與 handoff，再請用戶以 "
@@ -182,8 +182,8 @@ def main() -> int:
     if not transcript_path:
         return 0
 
-    cache_read = read_last_total_context(transcript_path)
-    if cache_read is None:
+    total_context = read_last_total_context(transcript_path)
+    if total_context is None:
         return 0
 
     state_file = _state_file()
@@ -192,22 +192,22 @@ def main() -> int:
     if not isinstance(last_warned_tier, int):
         last_warned_tier = -1
 
-    if cache_read < THRESHOLD:
+    if total_context < THRESHOLD:
         if session_id in state:  # 降回門檻以下：清除去重，再超過會重新提示
             del state[session_id]
             save_state(state_file, state)
         return 0
 
-    if not should_warn(cache_read, last_warned_tier):
+    if not should_warn(total_context, last_warned_tier):
         return 0
 
-    state[session_id] = tier_of(cache_read)
+    state[session_id] = tier_of(total_context)
     save_state(state_file, state)
     log(
-        f"提示 context 深度 session={session_id!r} cache_read={cache_read} "
-        f"tier={tier_of(cache_read)}"
+        f"提示 context 深度 session={session_id!r} total={total_context} "
+        f"tier={tier_of(total_context)}"
     )
-    emit_hook_output("Stop", additional_context=_warning_text(cache_read))
+    emit_hook_output("Stop", additional_context=_warning_text(total_context))
     return 0
 
 

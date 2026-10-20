@@ -215,6 +215,22 @@ def test_sum_of_three_usage_fields(hook_mod, tmp_path):
     assert hook_mod.read_last_total_context(str(p)) == 410_000
 
 
+def test_log_line_uses_total_field_name(hook_mod, tmp_path, monkeypatch):
+    """日誌欄位名稱表達合計口徑：total=，不得沿用 cache_read=。"""
+    import io
+
+    p = _write_transcript(tmp_path, [_assistant_entry(300_000, 50_000, 60_000)])
+    log_dir = tmp_path / "logs"
+    monkeypatch.setattr(hook_mod, "LOG_DIR", log_dir)
+    monkeypatch.setattr(hook_mod, "LOG_FILE", log_dir / "x.log")
+    monkeypatch.setenv("CONTEXT_DEPTH_WARNING_STATE", str(tmp_path / "state.json"))
+    monkeypatch.setattr(sys, "stdin", io.StringIO(_payload(p)))
+    assert hook_mod.main() == 0
+    text = (log_dir / "x.log").read_text(encoding="utf-8")
+    assert "total=410000" in text
+    assert "cache_read=" not in text
+
+
 def test_above_threshold_emits_additional_context(hook_mod, tmp_path):
     """400K 以上輸出 additionalContext JSON，含 K 數、/compact、claude -n。"""
     p = _write_transcript(tmp_path, [_assistant_entry(410_000)])
