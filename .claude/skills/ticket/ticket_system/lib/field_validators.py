@@ -12,6 +12,7 @@ import 兩次同性質函式。
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -555,6 +556,21 @@ def is_portable_where_files(tokens: List[str]) -> bool:
     return any_pushed
 
 
+_DEDUP_ISSUE_REF_RE = re.compile(
+    r"(?:[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*#[1-9][0-9]*"
+    r"|#?[1-9][0-9]*)"
+)
+
+
+def _is_valid_dedup_value(value: str) -> bool:
+    """`--dedup-checked` 值：none，或逗號分隔的 issue 參照（#N、N、owner/repo#N）。"""
+    if value.strip().lower() == "none":
+        return True
+    # 只剝空格與 tab：換行等其他空白視為不合法，不被 strip 吞掉
+    parts = [p.strip(" \t") for p in value.split(",")]
+    return all(_DEDUP_ISSUE_REF_RE.fullmatch(p) for p in parts)
+
+
 def validate_portable_issue_gate(
     where_files: List[str],
     dedup_checked: Optional[str],
@@ -597,6 +613,22 @@ def validate_portable_issue_gate(
         return True
 
     if dedup_checked:
+        if not _is_valid_dedup_value(dedup_checked):
+            print(format_error(ErrorEnvelope(
+                component="create",
+                action="portable_issue_gate",
+                errno="PORTABLE_ISSUE_DEDUP_VALUE_INVALID",
+                hint=(
+                    f"--dedup-checked 的值 {dedup_checked!r} 不合法：只接受 "
+                    "none，或 issue 參照（#N、N、owner/repo#N，可逗號分隔"
+                    "多個）。no、-、0、n/a 等值無法覆核，視同未查重。範例：\n"
+                    "     --dedup-checked '#102'\n"
+                    "     --dedup-checked tarrragon/claude#102,#105\n"
+                    "     --dedup-checked none --dedup-keywords "
+                    "\"關鍵字一\" \"關鍵字二\""
+                ),
+            )))
+            return False
         if dedup_checked.strip().lower() == "none" and not any(
             (k or "").strip() for k in (dedup_keywords or [])
         ):
