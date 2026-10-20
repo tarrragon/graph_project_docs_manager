@@ -4,7 +4,7 @@
 
 **用語**：「協調票」指主控記錄各線目標與佇列的那張票；「現行佇列行」指協調票中 `**L<n> 現行佇列**（<session 名稱>）：<票序>` 格式的行，每條線以最後一行為準。看板與狀態列從現行佇列行取得線號與 session 名稱的對應。
 
-**量測版本**：Claude Code 2.1.304（2026-10-20，macOS）。改名與定址行為屬 Claude Code 內部實作，沒有相容承諾；升版後依本檔末的確認方式重新核對。
+**量測版本**（2026-10-20，macOS）：行為實測在 Claude Code 2.1.303 的行程上進行，依據是 sessions 檔的 `version` 欄位；CLI 說明與 binary 字串來自 2.1.304。改名與定址行為屬 Claude Code 內部實作，沒有相容承諾；升版後依本檔末的確認方式重新核對。
 
 ---
 
@@ -18,7 +18,7 @@
 
 **名稱不含線號的理由**：線號由主控在協調票的現行佇列行指定，狀態列與看板從那裡讀；名稱再寫一次線號，主控改派線號時兩處會不一致。
 
-**名稱須在本機唯一**：`ListAgents` 列出本機所有專案的 session，其他專案可能已有同名的 session。撞名時 CLI 會自行改用其他名稱（`nameSource` 為 `collision`），改名後要以 `ListAgents` 的自稱為準。
+**名稱須在本機唯一**：`ListAgents` 列出本機所有專案的 session，其他專案可能已有同名的 session。改名後要以 `ListAgents` 的自稱為準。撞名時的行為尚未實測，以下依 2.1.304 的 binary 字串：`/rename` 回應會改為 `Session renamed to: <實際名稱> ("<要求的名稱>" is held by another live session on this machine)`，`nameSource` 記為 `collision`。
 
 ---
 
@@ -29,7 +29,7 @@
 | 開新 session | `claude -n <名稱>`（或 `--name`） | 首選。啟動就定名，不會先以衍生名稱對外一段時間 |
 | 已開啟的 session | 用戶在該 session 輸入 `/rename <名稱>`（別名 `/name`） | 這是內建 CLI 命令，模型無法自行觸發；需要時請用戶輸入 |
 
-**`/clear` 不換名**：名稱記在 `~/.claude/sessions/<pid>.json`，跟著行程走。實測：衍生名稱的行程在同一行程內換成新 session 後，名稱仍是原本的衍生名稱；用 `/rename` 改過名的行程，`/clear` 後名稱是否保留尚未量測。所以換線時要開新行程（`claude -n`），或請用戶 `/rename`；只 `/clear` 的話，新 session 可能頂著前一條線的名稱。
+**同一行程內換 session（例如 `/clear`）不換名**：名稱記在 `~/.claude/sessions/<pid>.json`，跟著行程走。實測：一個衍生名稱的行程在同一行程內換成新 session（sessionId 改變）後，名稱仍是原本的衍生名稱；當時換 session 的操作是否為 `/clear` 沒有記錄，`/clear` 的行為由 §5 第 3 步確認。用 `/rename` 改過名的行程換 session 後名稱是否保留，也尚未量測。所以換線時要開新行程（`claude -n`），或請用戶 `/rename`；只在原行程換 session 的話，新 session 可能頂著前一條線的名稱。
 
 ---
 
