@@ -129,7 +129,12 @@ export function overlapLogUntil(time: string): string {
     .join('\n')
 }
 
-export const ticketFile =(status: string) => `---\nid: x\nstatus: ${status}\nwho: y\n---\n# body\nstatus: ignored\n`
+/**
+ * 仿票檔：frontmatter 有 status，給 title 時另有一行 `title: <title>`（原樣寫入，引號由呼叫端自帶）；
+ * 本文另有 status 與 title 行，不得被當成 frontmatter。
+ */
+export const ticketFile = (status: string, title?: string) =>
+  `---\nid: x\n${title === undefined ? '' : `title: ${title}\n`}status: ${status}\nwho: y\n---\n# body\nstatus: ignored\ntitle: ignored\n`
 
 /** 仿 `~/.claude/sessions/<pid>.json`：只放看板用到的欄位與一個不應被保存的欄位。 */
 export const sessionJson = (fields: Record<string, unknown>) =>

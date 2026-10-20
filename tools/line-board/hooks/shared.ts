@@ -1,4 +1,4 @@
-// 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 狀態解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
+// 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 的狀態與 title 解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 /** 佇列票號的前綴：現行佇列行只寫短票號，補上前綴才是完整票號。 */
@@ -13,16 +13,41 @@ export const UNKNOWN_STATUS = 'unknown'
 /** 票已完成的 status 值：派發條目不列（dispatch.ts）、不算排隊票（layout.ts）皆以此判定。 */
 export const COMPLETED_STATUS = 'completed'
 
-/** 讀票檔 frontmatter（第一個 `---` 區塊）的 `status:` 值；沒有 frontmatter 或沒有該欄時回傳 null。 */
-export function parseFrontmatterStatus(text: string): string | null {
+/** 票檔 frontmatter（檔首第一個 `---` 區塊）的各行，不含前後的 `---`；檔首不是 `---` 時為空陣列。 */
+function frontmatterLines(text: string): string[] {
   const lines = text.split('\n')
-  if (lines[0]?.trim() !== '---') return null
-  for (const line of lines.slice(1)) {
-    if (line.trim() === '---') return null
+  if (lines[0]?.trim() !== '---') return []
+  const rest = lines.slice(1)
+  const end = rest.findIndex(line => line.trim() === '---')
+  return end === -1 ? rest : rest.slice(0, end)
+}
+
+/** 讀票檔 frontmatter 的 `status:` 值；沒有 frontmatter 或沒有該欄時回傳 null。 */
+export function parseFrontmatterStatus(text: string): string | null {
+  for (const line of frontmatterLines(text)) {
     const match = /^status:\s*['"]?([\w-]+)['"]?\s*$/.exec(line)
     if (match !== null) return match[1] ?? null
   }
   return null
+}
+
+/**
+ * 讀票檔 frontmatter 的 `title:` 值（單行）：單引號包住時去掉引號、`''` 還原為 `'`，雙引號包住時去掉引號、`\"` 還原為 `"`；
+ * 沒有 frontmatter、沒有該欄或值為空時回傳 null。票檔的 title 由 ticket CLI 寫成單行（實測 0.5.0 票檔無多行 title）。
+ */
+export function parseFrontmatterTitle(text: string): string | null {
+  for (const line of frontmatterLines(text)) {
+    const match = /^title:\s*(.*?)\s*$/.exec(line)
+    if (match !== null) return unquoteYamlScalar(match[1] ?? '') || null
+  }
+  return null
+}
+
+/** 單行 YAML 純量去引號：只處理整個值被同一種引號包住的情形，其他原樣回傳。 */
+function unquoteYamlScalar(value: string): string {
+  if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) return value.slice(1, -1).replaceAll("''", "'")
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) return value.slice(1, -1).replaceAll('\\"', '"')
+  return value
 }
 
 /**

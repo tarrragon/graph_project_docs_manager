@@ -26,6 +26,7 @@ import {
   messageOf,
   parseDispatchFile,
   parseFrontmatterStatus,
+  parseFrontmatterTitle,
   parseLanes,
   parseSessionFile,
   parseWorktreePaths,
@@ -131,14 +132,15 @@ export async function readLanes($: EngineInterface, mainPath: string): Promise<L
   }
 }
 
-/** 讀主 checkout 內票檔的 status；讀不到或無 status 欄時為 unknown。 */
+/** 讀主 checkout 內票檔的 status 與 title（一次讀檔）；讀不到或無 status 欄時 status 為 unknown，讀不到或無 title 欄時 title 為 null。 */
 export async function readTicketStatus($: EngineInterface, mainPath: string, id: string): Promise<TicketStatus> {
   const path = `${TICKETS_DIR}/${id}.md`
   try {
-    return { id, status: parseFrontmatterStatus(await $.fs.read(`${mainPath}/${path}`)) ?? UNKNOWN_STATUS }
+    const text = await $.fs.read(`${mainPath}/${path}`)
+    return { id, status: parseFrontmatterStatus(text) ?? UNKNOWN_STATUS, title: parseFrontmatterTitle(text) }
   } catch (error) {
     $.ui.log(`line-board: 讀取 ${path} 失敗：${messageOf(error)}`, { to: 'debug' })
-    return { id, status: UNKNOWN_STATUS }
+    return { id, status: UNKNOWN_STATUS, title: null }
   }
 }
 
