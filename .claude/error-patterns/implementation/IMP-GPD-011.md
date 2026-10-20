@@ -66,6 +66,16 @@ await selectWorkspace(ref, state);
 
 ---
 
+### 變體：共用流程拿呼叫端的 WidgetRef，在 await 之後繼續使用
+
+同一根因的另一種失敗形態，例外取代了靜默：
+
+- 共用流程的簽名為 `Future<void> f(WidgetRef ref, ...)`，內部先 await 會讓呼叫端卸載的步驟，之後再 `ref.read(...)` 寫其他狀態
+- 呼叫端卸載後，Riverpod 丟出 `Bad state: Cannot use "ref" after the widget was disposed`，後段副作用（例：寫入最近清單）不執行
+- 由不會卸載的呼叫端（例：常駐浮層）觸發時一切正常，所以先抽出共用流程、只接一個呼叫端時不會暴露；接上第二個會卸載的呼叫端才出現
+
+修法：副作用改由 app 層的 Notifier 執行（它的 `ref` 隨 ProviderContainer 存活）。對外的函式可保留 `WidgetRef` 參數作為薄包裝，但只在第一個 await 之前用它取得 notifier。
+
 ## 預防措施
 
 - 審查 UI 事件處理函式時，凡是 `await` 之後接 `context.mounted` 再顯示回饋的寫法，逐一問：被 await 的流程會不會讓這個 widget 卸載？會的話，該回饋分支就是死碼
