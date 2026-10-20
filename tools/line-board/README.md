@@ -6,13 +6,14 @@
 |------|---------------------------|
 | 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一列，依線號排序：`L<n>｜<session 名稱>［<session 狀態>］｜<票序>`；該線有目標行時列尾接 `｜目標：<目標>` |
 | 佇列票即時狀態 | 票序中每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
+| 派發中代理人 | 主 checkout 的 `.claude/dispatch-active.json` 的 `dispatches` 陣列，依線分組，見〈派發中代理人〉 |
 | 各 session | `~/.claude/sessions/*.json`（家目錄取自 `HOME`），見下節 |
 | 合併閘門 | `.claude/logs/worktree-merge.log` 中 `[合併閘門] 開始` 與 `[合併閘門] 結束` 行的最後 8 行，精簡為欄位顯示（見下節）；預檢、合併前驗收、合併前測試等其他行不顯示 |
 | 更新時間 | 每 30 秒重讀一次，Pane 頂端顯示最近一次讀取的本機時間 |
 
 ## 各 session 狀態（`~/.claude/sessions/*.json`）
 
-Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `name`、`cwd`、`status`（`busy`／`idle`，執行 shell 命令時為 `shell`，停下來等用戶時為 `waiting` 並附 `waitingFor`）、`statusUpdatedAt`（epoch 毫秒）與 `procStart`（行程啟動時間）。
+Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionId`、`name`、`cwd`、`status`（`busy`／`idle`，執行 shell 命令時為 `shell`，停下來等用戶時為 `waiting` 並附 `waitingFor`）、`statusUpdatedAt`（epoch 毫秒）與 `procStart`（行程啟動時間）。
 
 - **只讀副檔名為 `.json` 的檔案**。同目錄的 `<pid>.<hash>.key` 是金鑰，看板任何情況下都不讀（測試以放了 `.key` 的目錄斷言這一點）
 - 只列 cwd 等於主 checkout 或位於 `git worktree list` 任一路徑之下的 session；其他專案的 session 不列出
@@ -25,6 +26,23 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `name`、
 - 線列的 `［狀態］`：以 349 現行佇列行括號內的 session 名稱比對存活 session 的 `name`（同名多筆取最新一筆），比對不到標 `離線`；sessions 目錄讀不到時標 `狀態不明`
 
 這是 Claude Code 的內部檔案，官方沒有文件承諾格式。Claude Code 升版後除了下方驗證指令，還要以真實的 sessions 目錄對照一次（檔案欄位、status 值，以及 `procStart` 是否仍與 `TZ=UTC ps -p <pid> -o lstart=` 逐字相同）。
+
+## 派發中代理人（`.claude/dispatch-active.json`）
+
+`$.agent.list()` 只列看板 session 自己派發的代理人，跨 session 的派發改讀派發紀錄。只讀主 checkout 的這一份：派發紀錄由主 checkout 的 hook 維護，worktree 內的檔案是分支開出當下的舊副本。
+
+- 每筆取 `agent_id`、`name`（代理人類型）、`session_id`、`ticket_id`、`agent_description`、`dispatched_at`、`turn_ended_at`；`agent_id`、`session_id`、`name` 任一缺少的條目略過。`tombstones` 不讀
+- **所屬線**：以 `session_id` 對 `~/.claude/sessions/*.json` 的 `sessionId` 找存活的 session（存活判定同〈各 session 狀態〉），再以其 `name` 對 349 現行佇列行括號內的 session 名稱取線號；對不到任何線的歸「其他」
+- **流程階段**，依序判定：
+  1. 有票號且該票在主 checkout 為 `completed`：不列
+  2. 分支 `worktree-agent-<agent_id>` 是合併閘門的持有者（見〈合併閘門紀錄的顯示〉）：`閘門`，代理人是否已結束皆同。`branch_name` 欄只記 `worktree`，分支名由 `agent_id` 組出
+  3. 未結束（`turn_ended_at` 為 null）：審查類代理人為 `審查`，`incident-responder` 為 `事故分析`，其餘為 `實作`。審查類清單集中在 `parse.ts` 的 `REVIEW_AGENTS`，以該常數為準。**維護點**：這份清單由人手動維護，不會從 `.claude/agents/` 自動取得；`.claude/agents/` 新增審查類代理人時，要同步加進 `REVIEW_AGENTS`，漏加的代理人在未結束時會被判成 `實作`
+  4. 已結束且有票號（票未 `completed`，含票檔讀不到）：`收尾`；已結束且沒有票號：不列（沒有票可收尾）
+- **不列出**：session 已不存活（狀態檔不存在或 pid 已結束），以及上列判定為不列的條目
+- 每列：`L<n> <代理人>｜<任務>｜<流程階段>｜<距 dispatched_at 的時間>`，對不到線時 `L<n>` 改為 `其他`；任務為短票號（與票序相同，去掉 `0.5.0-W1-`），沒有票號時為 `agent_description`。依線號排序、其他最後，同線保留紀錄中的順序；以 `truncate-middle` 截斷
+- 派發紀錄讀不到或格式錯誤（JSON 無效、`dispatches` 不是陣列）時本區塊顯示讀取失敗，其餘區塊照常；sessions 目錄讀不到時無從判定存活，本區塊不列條目並標明；349 或閘門紀錄讀不到時照樣列出，線一律歸其他、不判定閘門
+
+這是本專案框架的內部檔案，欄位由派發 hook 決定；欄位改名時本區塊的條目會被略過或顯示讀取失敗。
 
 ## 合併閘門紀錄的顯示
 
@@ -85,8 +103,8 @@ claude --plugin-dir tools/line-board
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board`、定時讀取、繪製 Pane；讀檔與命令一律經 `$` |
-| `hooks/parse.ts` | 純函式：checkout 路徑判定、現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化、frontmatter 解析、session 狀態檔篩選／解析／排序、pid 存活比對（procStart）、合併閘門紀錄篩選與欄位解析、短分支名、閘門持有者判定 |
+| `hooks/register.tsx` | 註冊 `/board`、定時讀取、繪製 Pane（線、派發中代理人、各 session、合併閘門）；讀檔與命令一律經 `$` |
+| `hooks/parse.ts` | 純函式：checkout 路徑判定、現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化、frontmatter 解析、session 狀態檔篩選／解析／排序、pid 存活比對（procStart）、合併閘門紀錄篩選與欄位解析、短分支名、閘門持有者判定、派發紀錄解析與流程階段推導 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`）的型別契約 |
 | `hooks/board.test.ts` | `claude plugin test` 測試 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |

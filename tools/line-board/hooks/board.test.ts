@@ -1,17 +1,22 @@
-// line-board 的測試：parse.ts 純函式（checkout 判定、現行佇列行解析、佇列格式化、session 狀態檔、閘門紀錄篩選）
-// 與 Pane 的端到端繪製。
+// line-board 的測試：parse.ts 純函式（checkout 判定、現行佇列行解析、佇列格式化、session 狀態檔、閘門紀錄篩選、
+// 派發紀錄解析與流程階段推導）與 Pane 的端到端繪製。
 
 import type { On } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-import type { SessionState } from '../types'
+import type { DispatchRecord, SessionState } from '../types'
 import {
+  DISPATCH_ACTIVE_PATH,
   DISPATCH_TICKET_PATH,
   MERGE_LOG_PATH,
   SESSIONS_DIR,
   TICKETS_DIR,
+  dispatchRows,
+  dispatchStage,
+  dispatchTicketIds,
   formatAge,
+  formatDispatchRow,
   formatMergeGateEntry,
   formatMergeGateHolders,
   formatQueue,
@@ -24,7 +29,9 @@ import {
   mergeGateLines,
   mergeGateResultColor,
   normalizeProcStart,
+  parseDispatchFile,
   parseFrontmatterStatus,
+  parseIsoMs,
   parseMergeGateLine,
   parseLaneGoals,
   parseLanes,
@@ -209,6 +216,7 @@ const session = (fields: Partial<SessionState> & { name: string; status: string 
   waitingFor: null,
   statusUpdatedAt: null,
   procStart: null,
+  sessionId: null,
   ...fields,
 })
 
@@ -228,7 +236,7 @@ describe('sessionStatusFileNames', () => {
 })
 
 describe('parseSessionFile', () => {
-  test('取 pid、name、cwd、status、waitingFor、statusUpdatedAt，其他欄位不保存', () => {
+  test('取 pid、name、cwd、status、waitingFor、statusUpdatedAt、procStart、sessionId，其他欄位不保存', () => {
     const text = sessionJson({
       pid: 7,
       name: 's-7',
@@ -246,11 +254,12 @@ describe('parseSessionFile', () => {
       waitingFor: 'input needed',
       statusUpdatedAt: 1000,
       procStart: 'Mon Oct 19 09:09:02 2026',
+      sessionId: 'x',
     })
   })
 
-  test('沒有 waitingFor、statusUpdatedAt 或 procStart 時為 null；未知 status 原樣保存', () => {
-    expect(parseSessionFile(sessionJson({ pid: 7, name: 's', cwd: '/r', status: 'compacting' }))).toEqual({
+  test('沒有 waitingFor、statusUpdatedAt、procStart 或 sessionId 時為 null；未知 status 原樣保存', () => {
+    expect(parseSessionFile(sessionJson({ pid: 7, name: 's', cwd: '/r', status: 'compacting', sessionId: undefined }))).toEqual({
       pid: 7,
       name: 's',
       cwd: '/r',
@@ -258,6 +267,7 @@ describe('parseSessionFile', () => {
       waitingFor: null,
       statusUpdatedAt: null,
       procStart: null,
+      sessionId: null,
     })
   })
 
@@ -649,6 +659,204 @@ describe('mergeGateHolders', () => {
   })
 })
 
+/** 仿 `.claude/dispatch-active.json` 的一筆 dispatches：欄位名與真實檔相同（2026-10-20 對照），預設為未結束、無票號。 */
+const dispatchJson = (fields: Record<string, unknown>) => ({
+  agent_description: '描述',
+  tool_use_id: 'toolu_x',
+  agent_id: 'a000000000000000',
+  ticket_id: '',
+  files: [],
+  branch_name: '',
+  dispatched_at: '2026-10-19T07:57:00.000000+00:00',
+  session_id: 'sid-x',
+  name: 'general-purpose',
+  agent_handle: '',
+  work_checkout: '',
+  turn_ended_at: null,
+  ...fields,
+})
+
+const dispatch = (fields: Partial<DispatchRecord> = {}): DispatchRecord => ({
+  agentId: 'a1',
+  name: 'general-purpose',
+  sessionId: 'sid-1',
+  ticketId: null,
+  description: '描述',
+  dispatchedAt: null,
+  turnEndedAt: null,
+  ...fields,
+})
+
+describe('parseDispatchFile', () => {
+  test('取 dispatches 各筆的代理人、session、票號、描述與時間；空字串票號為 null，tombstones 不讀', () => {
+    const text = JSON.stringify({
+      dispatches: [
+        dispatchJson({ agent_id: 'a1', session_id: 's1', name: 'linux', agent_description: '審查 337.8' }),
+        dispatchJson({
+          agent_id: 'a2',
+          session_id: 's2',
+          ticket_id: '0.5.0-W1-337.9',
+          turn_ended_at: '2026-10-19T07:58:00+00:00',
+        }),
+      ],
+      tombstones: [{ agent_id: 'a3', created_at: '2026-10-19T07:00:00+00:00' }],
+    })
+    expect(parseDispatchFile(text)).toEqual([
+      {
+        agentId: 'a1',
+        name: 'linux',
+        sessionId: 's1',
+        ticketId: null,
+        description: '審查 337.8',
+        dispatchedAt: '2026-10-19T07:57:00.000000+00:00',
+        turnEndedAt: null,
+      },
+      {
+        agentId: 'a2',
+        name: 'general-purpose',
+        sessionId: 's2',
+        ticketId: '0.5.0-W1-337.9',
+        description: '描述',
+        dispatchedAt: '2026-10-19T07:57:00.000000+00:00',
+        turnEndedAt: '2026-10-19T07:58:00+00:00',
+      },
+    ])
+  })
+
+  test('反例：JSON 無效、不是物件或 dispatches 不是陣列時回傳 null', () => {
+    expect(parseDispatchFile('{"dispatches": [')).toBeNull()
+    expect(parseDispatchFile('null')).toBeNull()
+    expect(parseDispatchFile('{"dispatches": {}}')).toBeNull()
+    expect(parseDispatchFile('{}')).toBeNull()
+    // 對照：空陣列是合法的「沒有派發」，不是格式錯誤
+    expect(parseDispatchFile('{"dispatches": []}')).toEqual([])
+  })
+
+  test('缺少 agent_id、session_id 或 name 的條目略過，其餘照常', () => {
+    const text = JSON.stringify({
+      dispatches: [
+        dispatchJson({ agent_id: undefined }),
+        dispatchJson({ session_id: 7 }),
+        dispatchJson({ name: '' }),
+        'not-an-object',
+        dispatchJson({ agent_id: 'ok' }),
+      ],
+    })
+    expect(parseDispatchFile(text)?.map(record => record.agentId)).toEqual(['ok'])
+  })
+})
+
+describe('parseIsoMs', () => {
+  test('帶微秒與時區位移的 ISO 時間取到毫秒；格式不符或 null 為 null', () => {
+    expect(parseIsoMs('2026-10-19T07:57:00.123456+00:00')).toBe(Date.UTC(2026, 9, 19, 7, 57, 0, 123))
+    expect(parseIsoMs('2026-10-19T15:57:00+08:00')).toBe(Date.UTC(2026, 9, 19, 7, 57, 0))
+    expect(parseIsoMs('昨天')).toBeNull()
+    expect(parseIsoMs(null)).toBeNull()
+  })
+})
+
+describe('dispatchStage', () => {
+  const ENDED = '2026-10-19T07:58:00+00:00'
+
+  test('未結束的實作代理人為「實作」', () => {
+    expect(dispatchStage(dispatch({ ticketId: '0.5.0-W1-337.9' }), 'in_progress', [])).toBe('實作')
+    expect(dispatchStage(dispatch(), undefined, [])).toBe('實作')
+  })
+
+  test('未結束的審查類代理人為「審查」；對照：同一條目換成實作代理人即為「實作」', () => {
+    for (const name of ['linux', 'basil-writing-critic', 'acceptance-auditor']) {
+      expect(dispatchStage(dispatch({ name }), undefined, [])).toBe('審查')
+    }
+    expect(dispatchStage(dispatch({ name: 'general-purpose' }), undefined, [])).toBe('實作')
+  })
+
+  test('未結束的 incident-responder 為「事故分析」', () => {
+    expect(dispatchStage(dispatch({ name: 'incident-responder' }), undefined, [])).toBe('事故分析')
+  })
+
+  test('分支 worktree-agent-<agent_id> 在閘門持有者中為「閘門」，已結束亦同；對照：不在持有者中時依原規則', () => {
+    const running = dispatch({ agentId: 'a352c31d77c3daa98', ticketId: '0.5.0-W1-351' })
+    const ended = { ...running, turnEndedAt: ENDED }
+    const holders = ['worktree-agent-a352c31d77c3daa98']
+    expect(dispatchStage(running, 'in_progress', holders)).toBe('閘門')
+    expect(dispatchStage(ended, 'in_progress', holders)).toBe('閘門')
+    expect(dispatchStage(running, 'in_progress', ['worktree-agent-other'])).toBe('實作')
+    expect(dispatchStage(ended, 'in_progress', [])).toBe('收尾')
+  })
+
+  test('已結束且票未 completed 為「收尾」（票狀態讀不到亦同）；對照：票已 completed 時不列', () => {
+    const ended = dispatch({ ticketId: '0.5.0-W1-345', turnEndedAt: ENDED })
+    expect(dispatchStage(ended, 'pending', [])).toBe('收尾')
+    expect(dispatchStage(ended, 'unknown', [])).toBe('收尾')
+    expect(dispatchStage(ended, undefined, [])).toBe('收尾')
+    expect(dispatchStage(ended, 'completed', [])).toBeNull()
+  })
+
+  test('票已 completed 時不列，代理人未結束亦同', () => {
+    expect(dispatchStage(dispatch({ ticketId: '0.5.0-W1-337.1' }), 'completed', [])).toBeNull()
+  })
+
+  test('已結束且沒有票號的條目不列（沒有票可收尾）；對照：未結束時照常列出', () => {
+    expect(dispatchStage(dispatch({ name: 'linux', turnEndedAt: ENDED }), undefined, [])).toBeNull()
+    expect(dispatchStage(dispatch({ name: 'linux' }), undefined, [])).toBe('審查')
+  })
+})
+
+describe('dispatchRows', () => {
+  const sessions = [
+    session({ name: 's-l13', status: 'busy', sessionId: 'sid-13' }),
+    session({ name: 's-l7', status: 'idle', sessionId: 'sid-7' }),
+    session({ name: 's-free', status: 'idle', sessionId: 'sid-free' }),
+  ]
+  const lanes = parseLanes('## Solution\n**L13 現行佇列**（s-l13）：337.9\n\n**L7 現行佇列**（s-l7）：351\n')
+  const context = { sessions, lanes, tickets: [{ id: '0.5.0-W1-337.1', status: 'completed' }], holders: [] }
+
+  test('session_id 對到存活 session，以其名稱對到線；對不到線的歸其他（null）；依線號排序、其他最後；票號顯示短票號', () => {
+    const rows = dispatchRows(
+      [
+        dispatch({ agentId: 'a-free', sessionId: 'sid-free', description: '其他線的派發' }),
+        dispatch({ agentId: 'a-13', sessionId: 'sid-13', ticketId: '0.5.0-W1-337.9' }),
+        dispatch({ agentId: 'a-7', sessionId: 'sid-7', name: 'linux', description: '審查 351' }),
+      ],
+      context,
+    )
+    expect(rows.map(row => [row.lane, row.name, row.task, row.stage])).toEqual([
+      [7, 'linux', '審查 351', '審查'],
+      [13, 'general-purpose', '337.9', '實作'],
+      [null, 'general-purpose', '其他線的派發', '實作'],
+    ])
+  })
+
+  test('E2：session 不存活或票已 completed 的舊條目不列；對照：同一條目在 session 存活且票未完成時列出', () => {
+    const deadSession = dispatch({ agentId: 'a-dead', sessionId: 'sid-gone' })
+    const completed = dispatch({ agentId: 'a-done', sessionId: 'sid-13', ticketId: '0.5.0-W1-337.1' })
+    expect(dispatchRows([deadSession, completed], context)).toEqual([])
+    const alive = { ...deadSession, sessionId: 'sid-13' }
+    const pending = { ...completed, ticketId: '0.5.0-W1-337.9' }
+    expect(dispatchRows([alive, pending], context).map(row => row.stage)).toEqual(['實作', '實作'])
+  })
+
+  test('dispatchTicketIds：有票號的條目的完整票號，去重並保留順序', () => {
+    expect(
+      dispatchTicketIds([
+        dispatch({ ticketId: '0.5.0-W1-351' }),
+        dispatch(),
+        dispatch({ ticketId: '0.5.0-W1-337.9' }),
+        dispatch({ ticketId: '0.5.0-W1-351' }),
+      ]),
+    ).toEqual(['0.5.0-W1-351', '0.5.0-W1-337.9'])
+  })
+})
+
+describe('formatDispatchRow', () => {
+  test('`L<n> 代理人｜任務｜階段｜距派發時間`；對不到線為「其他」，缺派發時間為時間不明', () => {
+    const nowMs = Date.UTC(2026, 9, 19, 8, 0, 0)
+    const row = { lane: 13, name: 'general-purpose', task: '337.9', stage: '實作' as const, dispatchedAt: '2026-10-19T07:57:00.5+00:00' }
+    expect(formatDispatchRow(row, nowMs)).toBe('L13 general-purpose｜337.9｜實作｜2 分前')
+    expect(formatDispatchRow({ ...row, lane: null, dispatchedAt: null }, nowMs)).toBe('其他 general-purpose｜337.9｜實作｜時間不明')
+  })
+})
+
 describe('Pane', () => {
   /** 家目錄與 session 狀態檔目錄（測試用的固定值）。 */
   const HOME = '/home/u'
@@ -732,7 +940,7 @@ describe('Pane', () => {
       ...PANE,
       props: { ...PANE.props, bodyColumns },
     })
-    return { ui, readPaths, psCalls }
+    return { ui, readPaths, psCalls, clock }
   }
 
   /**
@@ -756,11 +964,12 @@ describe('Pane', () => {
     '107': { pid: 107, name: 'graph-project-docs-manager-a2', cwd: '/repo', status: 'shell', statusUpdatedAt: NOW_MS - 30_000 },
   }
 
+  /** SESSION_FILES 各狀態檔的 sessionId 為 `sid-<pid>`，派發紀錄的 session_id 以此對應。 */
   const sessionStub = (files: Record<string, string>): Stub => {
     const all = { ...files }
     const entries: string[] = []
     for (const [pid, fields] of Object.entries(SESSION_FILES)) {
-      all[`${SESSIONS}/${pid}.json`] = sessionJson(fields)
+      all[`${SESSIONS}/${pid}.json`] = sessionJson({ sessionId: `sid-${pid}`, ...fields })
       all[`${SESSIONS}/${pid}.deadbeef.key`] = sessionJson({ ...fields, name: `KEY-${pid}`, status: 'waiting' })
       entries.push(`${pid}.json`, `${pid}.deadbeef.key`)
     }
@@ -954,6 +1163,178 @@ describe('Pane', () => {
     const { ui } = await startBoard($, on, { files: { [`/wt/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
     expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /尚無現行佇列行/ })).toBeUndefined()
+    await ui.unmount()
+  })
+
+  /**
+   * 派發紀錄：各階段一筆（session 依 sessionStub：sid-101 為 L7 的 f9、sid-102 為 L13 的 1b、sid-103 為不在任何線的 d7），
+   * 加上不應列出的舊條目——票已 completed、session 的 pid 已結束（sid-106）、session 狀態檔不存在、已結束且無票號。
+   * a352c31d77c3daa98 的分支在閘門紀錄中仍持有閘門。
+   */
+  const DISPATCH_ACTIVE = JSON.stringify({
+    dispatches: [
+      dispatchJson({ agent_id: 'aimpl', session_id: 'sid-102', ticket_id: '0.5.0-W1-337.9' }),
+      dispatchJson({ agent_id: 'areview', session_id: 'sid-101', name: 'linux', agent_description: 'Readonly review of 337.8' }),
+      dispatchJson({ agent_id: 'aincident', session_id: 'sid-101', name: 'incident-responder', agent_description: '分析 354.1 閘門紅燈' }),
+      dispatchJson({
+        agent_id: 'a352c31d77c3daa98',
+        session_id: 'sid-102',
+        ticket_id: '0.5.0-W1-351',
+        turn_ended_at: '2026-10-19T07:58:00.000000+00:00',
+      }),
+      dispatchJson({ agent_id: 'awrapup', session_id: 'sid-103', ticket_id: '0.5.0-W1-345', turn_ended_at: '2026-10-19T07:59:00+00:00' }),
+      dispatchJson({ agent_id: 'adone', session_id: 'sid-102', ticket_id: '0.5.0-W1-337.1', turn_ended_at: '2026-10-19T07:58:00+00:00' }),
+      dispatchJson({ agent_id: 'adone2', session_id: 'sid-101', ticket_id: '0.5.0-W1-337.1' }),
+      dispatchJson({ agent_id: 'adead', session_id: 'sid-106', agent_description: 'STALE 已結束 pid 的派發' }),
+      dispatchJson({ agent_id: 'agone', session_id: 'sid-gone', name: 'linux', agent_description: 'STALE 不存在的 session' }),
+      dispatchJson({
+        agent_id: 'aold',
+        session_id: 'sid-101',
+        name: 'linux',
+        agent_description: 'STALE 已結束的審查',
+        turn_ended_at: '2026-10-19T07:58:00+00:00',
+      }),
+    ],
+    tombstones: [{ agent_id: 'atomb', created_at: '2026-10-19T07:00:00+00:00' }],
+  })
+
+  /** 派發區塊的列：`L<n> ` 或 `其他 ` 開頭（線列為 `L<n>｜`，以此區分）。 */
+  const DISPATCH_ROW = /^(L\d+|其他) /
+
+  const dispatchFiles = (dispatchText: string) =>
+    sessionStub({
+      [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+      [`/repo/${DISPATCH_ACTIVE_PATH}`]: dispatchText,
+      [`/wt/${DISPATCH_ACTIVE_PATH}`]: JSON.stringify({ dispatches: [dispatchJson({ session_id: 'sid-102', agent_description: 'WORKTREE 副本' })] }),
+      [`/repo/${TICKETS_DIR}/0.5.0-W1-337.9.md`]: ticketFile('in_progress'),
+      [`/repo/${TICKETS_DIR}/0.5.0-W1-351.md`]: ticketFile('in_progress'),
+      [`/repo/${TICKETS_DIR}/0.5.0-W1-345.md`]: ticketFile('pending'),
+      [`/repo/${TICKETS_DIR}/0.5.0-W1-337.1.md`]: ticketFile('completed'),
+      [`/repo/${MERGE_LOG_PATH}`]: overlapLogUntil('16:19:46'),
+    })
+
+  test('派發中代理人：依線分組，各列為代理人｜票號或描述｜流程階段｜距派發時間；只讀主 checkout 的派發紀錄', async ($, on) => {
+    const { ui } = await startBoard($, on, dispatchFiles(DISPATCH_ACTIVE))
+    expect(await ui.find({ type: 'Text', text: /^派發中代理人$/ })).toBeDefined()
+    const rows = await ui.findAll({ type: 'Text', text: DISPATCH_ROW })
+    expect(rows.map(row => row.text)).toEqual([
+      'L7 linux｜Readonly review of 337.8｜審查｜3 分前',
+      'L7 incident-responder｜分析 354.1 閘門紅燈｜事故分析｜3 分前',
+      'L13 general-purpose｜337.9｜實作｜3 分前',
+      'L13 general-purpose｜351｜閘門｜3 分前',
+      '其他 general-purpose｜345｜收尾｜3 分前',
+    ])
+    expect(await ui.find({ type: 'Text', text: /讀取 \.claude\/dispatch-active\.json 失敗/ })).toBeUndefined()
+    await ui.unmount()
+  })
+
+  test('E2：票已 completed、session 不存活（pid 已結束或狀態檔不存在）、已結束且無票號的舊條目不列出', async ($, on) => {
+    const { ui } = await startBoard($, on, dispatchFiles(DISPATCH_ACTIVE))
+    const rows = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => row.text)
+    expect(rows.length).toBe(5)
+    expect(rows.some(text => text.includes('337.1'))).toBe(false)
+    expect(rows.some(text => text.includes('STALE'))).toBe(false)
+    expect(rows.some(text => text.includes('WORKTREE'))).toBe(false)
+    await ui.unmount()
+  })
+
+  test('沒有任何應列出的派發時顯示「（目前沒有派發中的代理人）」', async ($, on) => {
+    const { ui } = await startBoard($, on, dispatchFiles(JSON.stringify({ dispatches: [] })))
+    expect(await ui.find({ type: 'Text', text: /^（目前沒有派發中的代理人）$/ })).toBeDefined()
+    expect(await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).toEqual([])
+    await ui.unmount()
+  })
+
+  /** 派發區塊失敗時，其餘區塊（線列、各 session、閘門紀錄）照常顯示。 */
+  async function expectOtherBlocksIntact(ui: Awaited<ReturnType<typeof startBoard>>['ui']) {
+    expect(await ui.find({ type: 'Text', text: /^L7｜graph-project-docs-manager-f9［busy］｜351〔in_progress〕/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^graph-project-docs-manager-1b｜waiting：input needed｜/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^閘門使用中：agent-a352c3（自 16:19:45）$/ })).toBeDefined()
+    expect(await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).toEqual([])
+  }
+
+  test('派發紀錄檔讀不到時，派發區塊顯示讀取失敗，其餘區塊照常', async ($, on) => {
+    const stub = dispatchFiles(DISPATCH_ACTIVE)
+    delete stub.files[`/repo/${DISPATCH_ACTIVE_PATH}`]
+    const { ui } = await startBoard($, on, stub)
+    expect(await ui.find({ type: 'Text', text: /^讀取 \.claude\/dispatch-active\.json 失敗（/ })).toBeDefined()
+    await expectOtherBlocksIntact(ui)
+    await ui.unmount()
+  })
+
+  test('派發紀錄格式錯誤（JSON 無效）時，派發區塊顯示讀取失敗，其餘區塊照常', async ($, on) => {
+    const { ui } = await startBoard($, on, dispatchFiles('{"dispatches": ['))
+    expect(await ui.find({ type: 'Text', text: /^讀取 \.claude\/dispatch-active\.json 失敗（/ })).toBeDefined()
+    await expectOtherBlocksIntact(ui)
+    await ui.unmount()
+  })
+
+  test('派發紀錄格式錯誤（dispatches 不是陣列）時，派發區塊顯示讀取失敗', async ($, on) => {
+    const { ui } = await startBoard($, on, dispatchFiles('{"dispatches": {}}'))
+    expect(await ui.find({ type: 'Text', text: /^讀取 \.claude\/dispatch-active\.json 失敗（/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  /** 下一輪定時讀取：時鐘前進一個更新間隔（30 秒），看板依 stub 的現況重讀。 */
+  const REFRESH_MS = 30_000
+
+  /** 派發列去掉末尾的時間欄（重讀後時間會前進），只比對線、代理人、任務與階段。 */
+  const withoutAge = (text: string) => text.replace(/｜[^｜]*$/, '')
+
+  test('349 讀不到時，派發條目照常列出並全歸「其他」；對照：同一份 fixture 讀得到 349 後歸到對應的線', async ($, on) => {
+    const stub = dispatchFiles(DISPATCH_ACTIVE)
+    const ticket349 = stub.files[`/repo/${DISPATCH_TICKET_PATH}`] ?? ''
+    delete stub.files[`/repo/${DISPATCH_TICKET_PATH}`]
+    const { ui, clock } = await startBoard($, on, stub)
+    expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeDefined()
+    const missing = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(missing).toEqual([
+      '其他 general-purpose｜337.9｜實作',
+      '其他 linux｜Readonly review of 337.8｜審查',
+      '其他 incident-responder｜分析 354.1 閘門紅燈｜事故分析',
+      '其他 general-purpose｜351｜閘門',
+      '其他 general-purpose｜345｜收尾',
+    ])
+    // 正向對照：補回 349 後重讀，同一批條目歸到 session 所在的線
+    stub.files[`/repo/${DISPATCH_TICKET_PATH}`] = ticket349
+    await clock.advance(REFRESH_MS)
+    const present = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(present).toEqual([
+      'L7 linux｜Readonly review of 337.8｜審查',
+      'L7 incident-responder｜分析 354.1 閘門紅燈｜事故分析',
+      'L13 general-purpose｜337.9｜實作',
+      'L13 general-purpose｜351｜閘門',
+      '其他 general-purpose｜345｜收尾',
+    ])
+    await ui.unmount()
+  })
+
+  test('閘門紀錄讀不到時，派發條目照常列出且沒有任何一列為「閘門」；對照：同一份 fixture 讀得到閘門紀錄後標為閘門', async ($, on) => {
+    const stub = dispatchFiles(DISPATCH_ACTIVE)
+    const mergeLog = stub.files[`/repo/${MERGE_LOG_PATH}`] ?? ''
+    delete stub.files[`/repo/${MERGE_LOG_PATH}`]
+    const { ui, clock } = await startBoard($, on, stub)
+    expect(await ui.find({ type: 'Text', text: /^讀取 \.claude\/logs\/worktree-merge\.log 失敗/ })).toBeDefined()
+    const missing = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(missing.length).toBe(5)
+    expect(missing.some(text => text.endsWith('｜閘門'))).toBe(false)
+    // 持有閘門的 a352 已結束且票未完成，閘門紀錄讀不到時落回「收尾」
+    expect(missing).toContain('L13 general-purpose｜351｜收尾')
+    // 正向對照：補回閘門紀錄後重讀，同一條目標為閘門
+    stub.files[`/repo/${MERGE_LOG_PATH}`] = mergeLog
+    await clock.advance(REFRESH_MS)
+    const present = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(present).toContain('L13 general-purpose｜351｜閘門')
+    expect(present.filter(text => text.endsWith('｜閘門')).length).toBe(1)
+    await ui.unmount()
+  })
+
+  test('sessions 目錄無法列出時，派發區塊不列條目，標明無法判定', async ($, on) => {
+    const { ui } = await startBoard($, on, {
+      files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349, [`/repo/${DISPATCH_ACTIVE_PATH}`]: DISPATCH_ACTIVE },
+    })
+    expect(await ui.find({ type: 'Text', text: /^（session 狀態讀取失敗，無法判定派發中的代理人）$/ })).toBeDefined()
+    expect(await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).toEqual([])
     await ui.unmount()
   })
 })
