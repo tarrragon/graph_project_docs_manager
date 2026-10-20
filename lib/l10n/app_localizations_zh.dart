@@ -728,6 +728,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pathDeclarationNonDomainMissing => '缺非 domain 路徑清單';
 
   @override
+  String get pathDeclarationNoBundles => '尚未宣告任何 domain';
+
+  @override
   String get pathDeclarationNoneLine => '本專案未宣告路徑';
 
   @override

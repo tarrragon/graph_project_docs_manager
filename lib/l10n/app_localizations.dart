@@ -1298,6 +1298,12 @@ abstract class AppLocalizations {
   /// **'缺非 domain 路徑清單'**
   String get pathDeclarationNonDomainMissing;
 
+  /// SPEC-004 §4.0.6：宣告狀態行 detail 片段（bundle 總數為 0 時取代 pathDeclarationBundlesPartial）
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未宣告任何 domain'**
+  String get pathDeclarationNoBundles;
+
   /// SPEC-001 §5：兩側皆未宣告的整體狀態，不顯示路徑數
   ///
   /// In zh, this message translates to:

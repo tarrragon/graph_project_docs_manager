@@ -131,7 +131,9 @@ String? pathDeclarationLineText(
   if (declaration == null || !declaration.hasGap) return null;
   if (declaration.overallUndeclared) return l10n.pathDeclarationNoneLine;
   final fragments = <String>[
-    if (!declaration.isBundleSideComplete)
+    if (declaration.totalBundleCount == 0)
+      l10n.pathDeclarationNoBundles
+    else if (!declaration.isBundleSideComplete)
       l10n.pathDeclarationBundlesPartial(
         declaration.declaredBundleCount,
         declaration.totalBundleCount,

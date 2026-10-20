@@ -201,6 +201,7 @@
   "pathDeclarationIncompleteLine": "Path declarations incomplete: {detail} ({count} paths affected)",
   "pathDeclarationBundlesPartial": "{declared} of {total} domains declared",
   "pathDeclarationNonDomainMissing": "non-domain path list missing",
+  "pathDeclarationNoBundles": "no domains declared",
   "pathDeclarationNoneLine": "This project declares no paths",
   "pathDeclarationNonDomainMalformed": "non-domain path list is malformed",
   "gapOrphanEventEmittedNotConsumed": "Emitted by a step, but no step consumes it and no consumers are declared",

@@ -764,6 +764,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pathDeclarationNonDomainMissing => 'non-domain path list missing';
 
   @override
+  String get pathDeclarationNoBundles => 'no domains declared';
+
+  @override
   String get pathDeclarationNoneLine => 'This project declares no paths';
 
   @override

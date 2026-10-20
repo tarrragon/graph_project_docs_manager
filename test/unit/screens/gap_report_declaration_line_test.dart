@@ -258,6 +258,53 @@ void main() {
       expect(find.byKey(_lineKey), findsOneWidget);
     });
 
+    testWidgets('R1-12 零 bundle：NoBundles 取代 0／0；與 0／8 對照不同', (tester) async {
+      final zero = GapReportFound(
+        _categories,
+        pathDeclaration: _decl(declared: 0, total: 0, count: 2),
+      );
+      await _pump(tester, zero);
+      final zeroText = _lineText(tester)!;
+      expect(
+        zeroText,
+        _zh.pathDeclarationIncompleteLine(_zh.pathDeclarationNoBundles, 2),
+      );
+      expect(zeroText, contains('尚未宣告任何 domain'));
+      expect(zeroText, isNot(contains('0／0')));
+
+      await _pump(
+        tester,
+        GapReportFound(
+          _categories,
+          pathDeclaration: _decl(declared: 0, total: 8, count: 2),
+        ),
+      );
+      final partialText = _lineText(tester)!;
+      expect(partialText, contains('已宣告 0／8 個 domain'));
+      expect(partialText, isNot(zeroText));
+
+      await _pump(
+        tester,
+        GapReportFound(
+          _categories,
+          pathDeclaration: _decl(
+            declared: 0,
+            total: 0,
+            side: NonDomainSideState.malformed,
+            count: 1,
+          ),
+        ),
+      );
+      expect(
+        _lineText(tester),
+        _zh.pathDeclarationIncompleteLine(
+          '${_zh.pathDeclarationNoBundles}、'
+          '${_zh.pathDeclarationNonDomainMalformed}',
+          1,
+        ),
+      );
+    });
+
     testWidgets('R1-9 8／8、清單格式錯誤 → detail 只含 Malformed 不含 Missing', (
       tester,
     ) async {
@@ -512,6 +559,15 @@ void main() {
         expect(zh[k], zhText, reason: 'zh $k');
         expect(en[k], enText, reason: 'en $k');
       }
+    });
+
+    test('K4-3 pathDeclarationNoBundles zh／en ARB 與 SPEC-004 v1.93 逐字一致', () {
+      const k = 'pathDeclarationNoBundles';
+      final (zhText, enText) = specRow(k);
+      expect(zh[k], zhText);
+      expect(en[k], enText);
+      expect(zhText, '尚未宣告任何 domain');
+      expect(enText, 'no domains declared');
     });
 
     test('K4-4 事件類四 key zh／en ARB 值與 SPEC-004 v1.94 表逐字一致', () {

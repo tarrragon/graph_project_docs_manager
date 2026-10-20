@@ -1349,6 +1349,11 @@
     "description": "SPEC-004 §4.0.6：宣告狀態行 detail 片段（非 domain 側缺席）"
   },
 
+  "pathDeclarationNoBundles": "尚未宣告任何 domain",
+  "@pathDeclarationNoBundles": {
+    "description": "SPEC-004 §4.0.6：宣告狀態行 detail 片段（bundle 總數為 0 時取代 pathDeclarationBundlesPartial）"
+  },
+
   "pathDeclarationNoneLine": "本專案未宣告路徑",
   "@pathDeclarationNoneLine": {
     "description": "SPEC-001 §5：兩側皆未宣告的整體狀態，不顯示路徑數"

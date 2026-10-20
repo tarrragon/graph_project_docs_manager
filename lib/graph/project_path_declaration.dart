@@ -34,7 +34,7 @@ class ProjectPathDeclaration {
   /// 兩側皆無：整體「未宣告路徑」。
   final bool overallUndeclared;
 
-  /// 各票受影響路徑數加總；整體未宣告時為 `null`（P3-4：不顯示路徑數）。
+  /// 受影響路徑條數（跨票去重）；整體未宣告時為 `null`（P3-4：不顯示路徑數）。
   final int? affectedPathCount;
 
   /// domain 側完整宣告：至少一個 bundle 且全數已宣告（零 bundle 不空真，
@@ -52,7 +52,8 @@ class ProjectPathDeclaration {
 /// 需求：[SPEC-001 §5、UC-02] 彙整專案層宣告狀態。
 ///
 /// 每張 Ticket（`typeName == 'Ticket'`）的 `where.files` 經 [classifyTicketPaths]
-/// 比對，受影響路徑數（標為兩種「未宣告」者）逐票加總；非字串元素略過。
+/// 比對，受影響路徑數為標為兩種「未宣告」的正規化路徑跨票去重後的條數；
+/// 非字串元素略過。
 ProjectPathDeclaration summarizeProjectPathDeclaration({
   required List<RawNode> rawNodes,
   required NonDomainPathsReadResult nonDomain,
@@ -82,9 +83,19 @@ ProjectPathDeclaration summarizeProjectPathDeclaration({
     overallUndeclared: base.overallUndeclared,
     affectedPathCount: base.overallUndeclared
         ? null
-        : reports.fold<int>(0, (sum, r) => sum + (r.affectedPathCount ?? 0)),
+        : _distinctUndeclaredPaths(reports).length,
   );
 }
+
+/// 各票標為兩種「未宣告」的正規化路徑聯集；同一路徑跨票只算一次
+/// （SPEC-001 §5「受影響路徑數來源」）。
+Set<String> _distinctUndeclaredPaths(List<PathDeclarationReport> reports) => {
+  for (final r in reports)
+    for (final p in r.paths)
+      if (p.state == PathLocationState.nonDomainUndeclared ||
+          p.state == PathLocationState.domainUndeclared)
+        p.path,
+};
 
 /// DomainBundle 的 `path_patterns`：欄位缺席或值不是清單為 `null`（未宣告），
 /// 清單內非字串元素略過。以節點 `id`（缺則路徑）為鍵。
