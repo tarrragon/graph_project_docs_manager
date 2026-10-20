@@ -38,14 +38,34 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from lib import emit_hook_output  # noqa: E402
+
 HOOK_DIR = Path(__file__).resolve().parent
 LOG_DIR = HOOK_DIR / "hook-logs"
 LOG_FILE = LOG_DIR / "context-depth-warning.log"
 DEFAULT_STATE_FILE = LOG_DIR / "context-depth-warning-state.json"
 
 # 常數（集中管理，模組頂層）
-THRESHOLD = 180_000  # W2-012 onset ~230K，提前 50K 緩衝主動提示
-TIER_STEP = 30_000   # 每加深 30K 再提示一次，避免每回合疲勞
+DEFAULT_THRESHOLD = 400_000  # 用戶需求：合計 context 超過 400K 提示
+DEFAULT_TIER_STEP = 50_000   # 每加深 50K 再提示一次，避免每回合疲勞
+
+
+def _env_int(name: str, default: int) -> int:
+    """讀整數環境變數，非法值回預設。"""
+    try:
+        return int(os.environ.get(name, default))
+    except ValueError:
+        return default
+
+
+THRESHOLD = _env_int("CONTEXT_DEPTH_WARNING_THRESHOLD", DEFAULT_THRESHOLD)
+TIER_STEP = _env_int("CONTEXT_DEPTH_WARNING_TIER_STEP", DEFAULT_TIER_STEP)
+USAGE_FIELDS = (
+    "input_tokens",
+    "cache_creation_input_tokens",
+    "cache_read_input_tokens",
+)
 
 
 def _state_file() -> Path:
@@ -65,9 +85,9 @@ def log(message: str) -> None:
         sys.stderr.write(f"[context-depth-warning] log 失敗: {exc}\n")
 
 
-def read_last_cache_read(transcript_path: str) -> Optional[int]:
+def read_last_total_context(transcript_path: str) -> Optional[int]:
     """從 transcript JSONL 取最後一則 assistant entry 的
-    message.usage.cache_read_input_tokens。讀不到回 None。"""
+    usage 合計（input + cache_creation + cache_read）。讀不到回 None。"""
     path = Path(transcript_path)
     if not path.is_file():
         return None
@@ -89,9 +109,12 @@ def read_last_cache_read(transcript_path: str) -> Optional[int]:
                 usage = message.get("usage")
                 if not isinstance(usage, dict):
                     continue
-                value = usage.get("cache_read_input_tokens")
-                if isinstance(value, int):
-                    last_value = value
+                if not isinstance(usage.get("cache_read_input_tokens"), int):
+                    continue
+                last_value = sum(
+                    v for v in (usage.get(f) for f in USAGE_FIELDS)
+                    if isinstance(v, int)
+                )
     except Exception as exc:  # noqa: BLE001
         log(f"讀 transcript 失敗: {exc}")
         return None
@@ -133,12 +156,13 @@ def save_state(state_file: Path, state: dict) -> None:
         log(f"寫 state 失敗: {exc}")
 
 
-def _warning_text(cache_read: int) -> str:
+def _warning_text(total: int) -> str:
     return (
-        f"[context-depth-warning] 當前 context 深度約 {cache_read // 1000}K tokens"
-        "（cache_read）。依 W2-012，~230K 後 tool-call malformed 復發率升至 41.5%，"
-        "每次 retry 浪費回合與 token。建議在進入高頻 retry 窗口前考慮 /clear 或 "
-        "ticket handoff 保存進度。\n"
+        f"[context-depth-warning] 當前 context 合計約 {total // 1000}K tokens"
+        f"（input + cache_creation + cache_read），已超過 {THRESHOLD // 1000}K。"
+        "請告知用戶擇一處理：(1) 請用戶執行 /compact（模型無法自行觸發）；"
+        "(2) 先把進度寫入 ticket 與 handoff，再請用戶以 "
+        "`claude -n <線主題>` 開新 session 接續。"
     )
 
 
@@ -156,7 +180,7 @@ def main() -> int:
     if not transcript_path:
         return 0
 
-    cache_read = read_last_cache_read(transcript_path)
+    cache_read = read_last_total_context(transcript_path)
     if cache_read is None:
         return 0
 
@@ -165,6 +189,12 @@ def main() -> int:
     last_warned_tier = state.get(session_id, -1)
     if not isinstance(last_warned_tier, int):
         last_warned_tier = -1
+
+    if cache_read < THRESHOLD:
+        if session_id in state:  # 降回門檻以下：清除去重，再超過會重新提示
+            del state[session_id]
+            save_state(state_file, state)
+        return 0
 
     if not should_warn(cache_read, last_warned_tier):
         return 0
@@ -175,7 +205,7 @@ def main() -> int:
         f"提示 context 深度 session={session_id!r} cache_read={cache_read} "
         f"tier={tier_of(cache_read)}"
     )
-    sys.stderr.write(_warning_text(cache_read))
+    emit_hook_output("Stop", additional_context=_warning_text(cache_read))
     return 0
 
 
