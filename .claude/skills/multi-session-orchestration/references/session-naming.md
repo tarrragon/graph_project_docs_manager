@@ -71,3 +71,27 @@
 3. 在同一行程內 `/clear`，確認名稱維持不變。
 
 任一項不符，表示行為已變，先修正本檔再沿用。
+
+---
+
+## 6. 狀態列
+
+`scripts/statusline_lane.py` 在內層狀態列輸出前加一行 `L<n> │ <名稱>`，讓用戶切換終端機時辨認 session 所屬的線。名稱取 statusLine stdin 的 `session_name`（`/rename` 或 `-n` 設定後才出現），缺席時以 `session_id` 對 `~/.claude/sessions/*.json` 的 `sessionId` 取 `name`。線號從協調票 `## Solution` 段的現行佇列行取得（規則同看板：每線取最後一行、票序為 `（結束）` 或 `（無）` 的線視為結束、名稱精確比對；一個名稱對到多條線時列 `L6·L13`）。對不到線時只印名稱，名稱也沒有時不印前綴。任何解析失敗只省略前綴，內層狀態列照常輸出。
+
+**啟用方式**：在專案 `.claude/settings.local.json` 設定（只影響本專案 session，不動全域設定）：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "python3 .claude/skills/multi-session-orchestration/scripts/statusline_lane.py --coord-ticket <協調票路徑>"
+  }
+}
+```
+
+| 參數 | 說明 |
+|------|------|
+| `--coord-ticket` | 協調票路徑；相對路徑以 stdin 的 `workspace.project_dir` 為基準。未給或檔案缺席時不顯示線號 |
+| `--inner` | 內層狀態列命令；未給時讀 `~/.claude/settings.json` 的 `statusLine.command`。該命令指回本腳本時不執行內層（避免遞迴） |
+
+寫入 settings.local.json 屬用戶授權範圍，由主控向用戶確認後才寫。
