@@ -9,6 +9,8 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_provi
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_fixtures.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -117,6 +119,7 @@ void main() {
           currentWorkspaceStateProvider.overrideWith(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
+          ucFlowUcListProvider.overrideWithValue(UcFlowFixtures.ucList),
           selectedUcProvider.overrideWith((ref) => 'UC-06'),
         ],
       );

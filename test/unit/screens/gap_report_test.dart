@@ -20,6 +20,8 @@ import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_state.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
@@ -432,6 +434,74 @@ void main() {
         container.read(selectedDestinationProvider),
         AppDestination.ucFlow,
       );
+    });
+
+    Future<UcFlowFocus?> tapAndReadFocus(
+      WidgetTester tester,
+      GapReportItem item,
+    ) async {
+      final state = GapReportFound([
+        GapReportCategory(id: 'graph-defect-flow', items: [item]),
+      ]);
+      final container = await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(() => _FixedNotifier(state)),
+        ],
+      );
+      await tester.tap(find.byKey(Key('card-gaps-${item.id}')));
+      await tester.pump();
+      return container.read(ucFlowFocusProvider);
+    }
+
+    testWidgets('flow 類：寫入 focus（ucId + stepId）', (tester) async {
+      final focus = await tapAndReadFocus(
+        tester,
+        const GapReportItem(
+          id: 'flow-focus',
+          filePath: 'docs/usecases/UC-02.md',
+          pointerType: GapItemPointerType.flow,
+          flowUcId: 'UC-02',
+          flowStepId: 's3',
+        ),
+      );
+
+      expect(focus?.ucId, 'UC-02');
+      expect(focus?.stepId, 's3');
+      expect(focus?.eventId, isNull);
+    });
+
+    testWidgets('flow 類 E1 對照：無 stepId 時 focus.stepId 為 null', (tester) async {
+      final focus = await tapAndReadFocus(
+        tester,
+        const GapReportItem(
+          id: 'flow-nostep',
+          filePath: 'docs/usecases/UC-02.md',
+          pointerType: GapItemPointerType.flow,
+          flowUcId: 'UC-02',
+        ),
+      );
+
+      expect(focus?.ucId, 'UC-02');
+      expect(focus?.stepId, isNull);
+    });
+
+    testWidgets('事件類：寫入 focus（ucId + eventId）', (tester) async {
+      final focus = await tapAndReadFocus(
+        tester,
+        const GapReportItem(
+          id: 'event-focus',
+          filePath: 'docs/events/example/EVT-001.md',
+          pointerType: GapItemPointerType.event,
+          eventUcId: 'UC-05',
+          eventId: 'EVT-001',
+        ),
+      );
+
+      expect(focus?.ucId, 'UC-05');
+      expect(focus?.eventId, 'EVT-001');
+      expect(focus?.stepId, isNull);
     });
 
     testWidgets('降級項目（isOpenable=false）：顯示節點 ID、無開檔圖示、點擊不呼叫開檔', (tester) async {

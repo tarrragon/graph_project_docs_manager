@@ -20,6 +20,8 @@ import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/current_workspace_provider.dart';
+import '../uc_flow/uc_flow_providers.dart';
+import '../uc_flow/uc_flow_state.dart';
 import 'gap_report_descriptions.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
@@ -292,6 +294,10 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
         final ucId = item.eventUcId;
         if (ucId != null) {
           ref.read(selectedUcProvider.notifier).state = ucId;
+          ref.read(ucFlowFocusProvider.notifier).state = UcFlowFocus(
+            ucId: ucId,
+            eventId: item.eventId,
+          );
           navigateTo(ref.read, AppDestination.ucFlow, NavIntent.jump);
         } else {
           // 無任何 UC 引用該 EVT：依「指向其他圖節點」處理
@@ -300,11 +306,15 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
         }
         return;
       case GapItemPointerType.flow:
-        // J2：選定 UC 並 jump 至 UC Flow；step id 只攜帶，定位由
-        // `0.5.0-W1-114.18` 承接。
+        // J2：選定 UC 並 jump 至 UC Flow，step id 經 `ucFlowFocusProvider`
+        // 交給 UC Flow 定位（`0.5.0-W1-114.18`）。
         final flowUcId = item.flowUcId;
         if (flowUcId != null) {
           ref.read(selectedUcProvider.notifier).state = flowUcId;
+          ref.read(ucFlowFocusProvider.notifier).state = UcFlowFocus(
+            ucId: flowUcId,
+            stepId: item.flowStepId,
+          );
         }
         navigateTo(ref.read, AppDestination.ucFlow, NavIntent.jump);
         return;
