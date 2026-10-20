@@ -226,9 +226,7 @@ void main() {
     late Directory tempDir;
 
     setUp(() {
-      tempDir = Directory.systemTemp.createTempSync(
-        'external_opener_probe_',
-      );
+      tempDir = Directory.systemTemp.createTempSync('external_opener_probe_');
     });
 
     tearDown(() {
@@ -237,40 +235,32 @@ void main() {
       }
     });
 
-    testWidgets(
-      '開啟真實檔案',
-      (tester) async {
-        final file = File('${tempDir.path}/probe.txt')
-          ..writeAsStringSync('probe');
-        final opener = MacosExternalOpener();
+    testWidgets('開啟真實檔案', (tester) async {
+      final file = File('${tempDir.path}/probe.txt')
+        ..writeAsStringSync('probe');
+      final opener = MacosExternalOpener();
 
-        final result = await opener.open(file.path);
+      final result = await opener.open(file.path);
 
-        // 例外：integration test 的 stdout 是唯一能被讀回主線程的通道，
-        // 用來把觀測到的真實結果值帶出測試進程供 PM 記錄。
-        // ignore: avoid_print
-        print('PROBE file result=$result');
+      // 例外：integration test 的 stdout 是唯一能被讀回主線程的通道，
+      // 用來把觀測到的真實結果值帶出測試進程供 PM 記錄。
+      // ignore: avoid_print
+      print('PROBE file result=$result');
 
-        expect(result, ExternalOpenResult.opened);
-      },
-      skip: !_runProbe,
-    );
+      expect(result, ExternalOpenResult.opened);
+    }, skip: !_runProbe);
 
-    testWidgets(
-      '開啟真實目錄',
-      (tester) async {
-        final opener = MacosExternalOpener();
+    testWidgets('開啟真實目錄', (tester) async {
+      final opener = MacosExternalOpener();
 
-        final result = await opener.open(tempDir.path);
+      final result = await opener.open(tempDir.path);
 
-        // 例外：同上，integration test 的 stdout 是唯一能被讀回的通道。
-        // ignore: avoid_print
-        print('PROBE dir result=$result');
+      // 例外：同上，integration test 的 stdout 是唯一能被讀回的通道。
+      // ignore: avoid_print
+      print('PROBE dir result=$result');
 
-        expect(result, ExternalOpenResult.opened);
-      },
-      skip: !_runProbe,
-    );
+      expect(result, ExternalOpenResult.opened);
+    }, skip: !_runProbe);
   });
 }
 
@@ -347,7 +337,8 @@ void _expectNoErrors(
   expect(
     overflows,
     isEmpty,
-    reason: '[$context] 版面溢位：\n'
+    reason:
+        '[$context] 版面溢位：\n'
         '${overflows.map((e) => e.exceptionAsString()).join('\n')}',
   );
 
@@ -356,7 +347,8 @@ void _expectNoErrors(
   expect(
     errors,
     isEmpty,
-    reason: '[$context] 啟動期間出現 framework 錯誤：\n'
+    reason:
+        '[$context] 啟動期間出現 framework 錯誤：\n'
         '${errors.map((e) => e.exceptionAsString()).join('\n')}',
   );
 }
@@ -383,7 +375,9 @@ Future<Directory> _createReadyWorkspace() async {
   await schemaFile.writeAsString(schema);
   final doc = File('${dir.path}/docs/proposals/PROP-001.md');
   await doc.create(recursive: true);
-  await doc.writeAsString('---\nid: PROP-001\ntitle: fixture\n---\n\n# fixture\n');
+  await doc.writeAsString(
+    '---\nid: PROP-001\ntitle: fixture\n---\n\n# fixture\n',
+  );
   return dir;
 }
 
@@ -400,8 +394,7 @@ class _ReadyFrameworkSignalProbe implements FrameworkSignalProbePort {
   Future<bool> schemaJsonExists(String workspacePath) async => true;
 
   @override
-  Future<String?> readSchemaJsonVersion(String workspacePath) async =>
-      _version;
+  Future<String?> readSchemaJsonVersion(String workspacePath) async => _version;
 }
 
 /// 回傳固定狀態的替身，讓版面測試不受真實檔案系統與偏好設定影響。
