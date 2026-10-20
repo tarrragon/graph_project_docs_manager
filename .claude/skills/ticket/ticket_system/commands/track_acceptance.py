@@ -629,6 +629,9 @@ def _resolve_content_file(args: argparse.Namespace) -> bool:
     except (OSError, UnicodeDecodeError) as exc:
         _sys.stderr.write(f"[ERROR] 無法讀取 --content-file {content_file}: {exc}\n")
         return False
+    if not args.content.strip():
+        _sys.stderr.write(f"[ERROR] --content-file {content_file} 內容為空或僅空白，拒絕寫入\n")
+        return False
     return True
 
 
