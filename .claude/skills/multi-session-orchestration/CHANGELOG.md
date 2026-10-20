@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.7.1（2026-10-20）— `references/session-naming.md` §1〈平台對字元的處理〉的中文與空白名稱段，從「尚未實測」改為實測結論：中文名稱可以設定，`ListAgents` 以原字面顯示；含中文與空白的名稱可以用原字面 SendMessage；舊名失效另得一例。依 binary 字串、未實測的部分另列，與實測分開。
+
 **Version**: 1.7.0（2026-10-20）— 新增 `scripts/statusline_lane.py`（狀態列 wrapper，在內層狀態列前加一行 `L<n> │ <名稱>`，線號依協調票現行佇列行解析，解析失敗只省略前綴）與 `tests/test_statusline_lane.py`；`references/session-naming.md` 新增〈6. 狀態列〉寫明啟用方式。起因：用戶切換終端機時需辨認 session 所屬的線。
 
 **Version**: 1.6.0（2026-10-20）— 新增 `references/session-naming.md`：一個 session 一條線、以線主題命名、線完結或轉階段就換 session（開新行程用 `claude -n`）；命名格式只規定三條底線（以線主題命名、本機唯一、不含全形右括號與換行），線號與語言由命名者自定（用戶經 WRAP 裁定）；兩個改名入口（`claude -n` 與只能由用戶輸入的 `/rename`）；改名後舊名立即無法定址、錯誤訊息也不提示新名，所以改名的 session 要告知主控，主控同一步追加現行佇列行；換 session 的步驟與升版後的確認方式。SKILL.md〈開線與分線〉、〈按需讀取〉、〈檢查清單〉各加一列。起因：各線以衍生名稱互稱，終端機不顯示該名稱，用戶切換終端機時分不清哪個 session 是哪條線（用戶裁定，2026-10-20）。
