@@ -57,7 +57,7 @@ created: 2026-09-01
 
 ## 預防
 
-- 派發 prompt 若要求代理人寫入含子章節的 ticket body，明示「守衛拒收多行參數時分次 append，不得壓成單行」
+- 派發 prompt 若要求代理人寫入含子章節的 ticket body，明示「多行內容以 scratchpad 內容檔加 --content-file 傳入，不得壓成單行」
 - 章節結構檢查應前移到寫入端：`append-log` 收到含 `###` 但不在行首的內容時發 WARNING，而非留到 complete gate 才擋
 - 判斷是否命中本模式的最快檢查：`grep -n '^### 自檢結果' <ticket.md>`。有內容但無行首命中，即為壓平
 
