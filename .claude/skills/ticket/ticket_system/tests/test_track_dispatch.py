@@ -795,22 +795,24 @@ def test_dispatch_cli_wires_red_run_line_for_test_acceptance_imp(dispatch_ticket
 
 from ticket_system.lib.dispatch_skeleton import (  # noqa: E402
     WORKTREE_CLI_REJECT_LINE,
-    WORKTREE_HEREDOC_LINE,
+    WORKTREE_MULTILINE_LINE,
 )
 
 
-def test_worktree_skeleton_includes_cli_reject_and_heredoc_lines():
+def test_worktree_skeleton_includes_cli_reject_and_multiline_lines():
     out = _skeleton(isolation="worktree")
     assert WORKTREE_CLI_REJECT_LINE in out
-    assert WORKTREE_HEREDOC_LINE in out
-    assert "### 自檢結果" in WORKTREE_HEREDOC_LINE
-    assert "heredoc" in WORKTREE_HEREDOC_LINE
+    assert WORKTREE_MULTILINE_LINE in out
+    assert "### 自檢結果" in WORKTREE_MULTILINE_LINE
+    assert "--content-file" in WORKTREE_MULTILINE_LINE
+    assert "以 heredoc 傳" not in WORKTREE_MULTILINE_LINE
+    assert "\n" not in WORKTREE_MULTILINE_LINE
 
 
 def test_none_and_review_skeletons_unchanged_by_worktree_lines():
     for out in (_skeleton(), _skeleton(kind="review")):
         assert WORKTREE_CLI_REJECT_LINE not in out
-        assert WORKTREE_HEREDOC_LINE not in out
+        assert WORKTREE_MULTILINE_LINE not in out
     assert _skeleton(isolation="none") == _skeleton()
 
 

@@ -51,7 +51,7 @@ created: 2026-09-01
 
 | 角色 | 動作 |
 |------|------|
-| 代理人 | 守衛拒收多行參數時，不要壓成單行。改為分次 `append-log` 逐段追加（每次單行），或於 NeedsContext 記錄「內容已備妥但無法保留換行」並交由 PM 落檔 |
+| 代理人 | 守衛拒收多行參數時，不要壓成單行。首選以 Write 寫入 scratchpad 內容檔（非票檔）再 `append-log --content-file <路徑>` 傳入（命令列不含換行）；`--content-file` 不可用時改為分次 `append-log` 逐段追加（每次單行），或於 NeedsContext 記錄「內容已備妥但無法保留換行」並交由 PM 落檔 |
 | PM | 於主倉庫（無 worktree guard）以 `ticket track append-log --section <章節> --replace` 重寫該章節，還原換行、標題層級與 backtick。文字內容取自代理人產出，不改寫，並於節末標註排版還原者與原因 |
 | PM | 禁止代填章節的實質內容——排版還原與內容代寫是兩件事。前者可做，後者等於捏造代理人的自檢記錄 |
 

@@ -164,8 +164,9 @@ WORKTREE_CLI_REJECT_LINE = (
     "票面 CLI（append-log、set-acceptance 等）被拒時，不以 Edit／Write 改 worktree 內票檔；"
     "把要寫入的內容原文放進回報，由 PM 於主倉庫寫入。"
 )
-WORKTREE_HEREDOC_LINE = (
-    "多行內容以 heredoc 傳給 append-log，`### 自檢結果` 須獨立成行。"
+WORKTREE_MULTILINE_LINE = (
+    "多行內容先以 Write 寫入 scratchpad 內容檔（非票檔），再以 append-log --content-file <路徑> 傳入，"
+    "不用 heredoc（worktree 拒收含換行的參數）；`### 自檢結果` 須獨立成行。"
 )
 # 測試入口對照（.claude/references/agent-dispatch-testing.md〈測試入口〉表）。
 # skill 以 root 下 pyproject.toml 是否存在推導：有則以其目錄為入口；無 pyproject
@@ -278,7 +279,7 @@ def build_skeleton(
         skeleton = skeleton.replace(
             _RED_RUN_ANCHOR,
             f"{WORKTREE_SIBLING_TEST_LINE}\n{WORKTREE_CLI_REJECT_LINE}\n"
-            f"{WORKTREE_HEREDOC_LINE}\n{_RED_RUN_ANCHOR}",
+            f"{WORKTREE_MULTILINE_LINE}\n{_RED_RUN_ANCHOR}",
             1,
         )
 
