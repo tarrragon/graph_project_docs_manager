@@ -17,6 +17,7 @@ import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -76,7 +77,9 @@ class DomainViewLoader extends Notifier<void> {
       _write(const DomainUnset());
       return;
     }
-    _write(_stateOfRound(round, inferredVersion: inferredVersion));
+    final next = await _stateOfRound(round, inferredVersion: inferredVersion);
+    if (!_isCurrent(generation)) return;
+    _write(next);
   }
 
   /// 重新載入（`action-domain-reload`）：回載入中，同一資料夾、同一模式——
@@ -125,10 +128,10 @@ class DomainViewLoader extends Notifier<void> {
     return round;
   }
 
-  DomainViewState _stateOfRound(
+  Future<DomainViewState> _stateOfRound(
     ScanRoundResult round, {
     required String? inferredVersion,
-  }) {
+  }) async {
     final graph = round.graph;
     if (graph is! GraphBuildAvailable) return _unavailableGraph(graph);
     final event = graph.event;
@@ -149,15 +152,19 @@ class DomainViewLoader extends Notifier<void> {
     );
   }
 
-  /// 建圖不可用時 gate 已擋下、Domain 視圖不會進入（SPEC-001 §1），屬不變式
-  /// 違反：記 level 900 後 assert；release 落未選專案（不屬測試契約）。
-  DomainViewState _unavailableGraph(GraphBuildResult graph) {
+  /// 建圖不可用（gate 每次重讀 JSON，建圖沿用快取輪次，兩者可不同步，故不是
+  /// 不變式）：記 level 900 後落 SPEC-001 §1 的 schema 不相容阻擋態。專案版本
+  /// 於此不可得，以 `null`（型別表版本無法判讀）呈現，不代位為其他值。
+  Future<DomainViewState> _unavailableGraph(GraphBuildResult graph) async {
     final reason = graph is GraphBuildUnavailable ? graph.reason : null;
-    // i18n-exempt: 開發者 debug log
-    final message = 'Domain 視圖收到建圖不可用的輪次（gate 應已擋下）：$reason';
+    final message = // i18n-exempt: 開發者 debug log
+        'Domain 視圖收到建圖不可用的輪次（gate 與輪次不同步）：$reason';
     ref.read(domainViewLogSinkProvider)(message, level: 900);
-    assert(false, message);
-    return const DomainUnset();
+    final appVersion = await ref.read(builtinSchemaVersionProvider.future);
+    return DomainSchemaIncompatible(
+      appVersion: appVersion,
+      projectVersion: null,
+    );
   }
 
   bool _isCurrent(int generation) => generation == _generation;
