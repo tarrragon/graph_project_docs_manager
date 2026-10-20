@@ -106,7 +106,7 @@ describe('Pane', () => {
     expect(await bodyOf(ui, laneGroupId(13))).toEqual([
       'general-purpose｜337.9｜實作｜3 分前',
       'general-purpose｜351｜閘門｜3 分前',
-      '排隊：337.1〔completed〕（待用戶實機驗證） → 337.3〔unknown〕 → 337.2.1〔unknown〕',
+      '排隊：337.3〔unknown〕 → 337.2.1〔unknown〕',
     ])
     expect(await bodyOf(ui, OTHER_GROUP_ID)).toEqual(['general-purpose｜345｜收尾｜3 分前'])
     expect(await headerOf(ui, OTHER_GROUP_ID)).toBe('▾ 其他｜1 派發中')
@@ -121,7 +121,7 @@ describe('Pane', () => {
     const { ui } = await startBoard($, on, dispatchFiles(JSON.stringify({ dispatches: [] })))
     // 沒有任何派發：L7 的 session 為 busy、無派發，收合；L13 的 session 為 waiting，展開
     expect(await headerOf(ui, laneGroupId(13))).toBe('▾ L13｜graph-project-docs-manager-1b［waiting：input needed］｜等你處理 · 2 排隊')
-    expect(await bodyOf(ui, laneGroupId(13))).toEqual(['排隊：337.1〔completed〕（待用戶實機驗證） → 337.3〔unknown〕 → 337.2.1〔unknown〕'])
+    expect(await bodyOf(ui, laneGroupId(13))).toEqual(['排隊：337.3〔unknown〕 → 337.2.1〔unknown〕'])
     expect(await headerOf(ui, laneGroupId(7))).toBe('▸ L7｜graph-project-docs-manager-f9［busy］｜2 排隊')
     expect(await bodyOf(ui, laneGroupId(7))).toBeUndefined()
     expect(await headerOf(ui, laneGroupId(9))).toBe('▸ L9｜graph-project-docs-manager-3e［離線］｜4 排隊')
@@ -156,7 +156,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('標題列的活動計數與展開內容一致：派發中＝派發列數、閘門＝階段為閘門的派發列＋閘門票列、排隊＝佇列列中非 completed 的票數', async ($, on) => {
+  test('標題列的活動計數與展開內容一致：派發中＝派發列數、閘門＝階段為閘門的派發列＋閘門票列、排隊＝佇列列的票數（不含 completed）', async ($, on) => {
     const stub = dispatchFiles(DISPATCH_ACTIVE)
     stub.files[`/repo/${MERGE_LOG_PATH}`] = `${overlapLogUntil('16:19:46')}\n2026-10-19T16:41:49 [合併閘門] 開始｜target main｜分支 feat/0.5.0-W1-351｜commit 52477a34f0ce\n`
     const { ui } = await startBoard($, on, stub)
@@ -177,11 +177,29 @@ describe('Pane', () => {
       const queueTickets = (body.find(line => line.startsWith('排隊：')) ?? '排隊：').slice('排隊：'.length).split(/ [→∥] /).filter(part => part !== '')
       expect(count('派發中')).toBe(dispatchRows.length)
       expect(count('閘門')).toBe(dispatchRows.filter(line => line.includes('｜閘門｜')).length + gateRows.length)
-      expect(count('排隊')).toBe(queueTickets.filter(part => !part.includes('〔completed〕')).length)
+      // 佇列列不列 completed 的票，排隊數即佇列列的票數
+      expect(queueTickets.some(part => part.includes('〔completed〕'))).toBe(false)
+      expect(count('排隊')).toBe(queueTickets.length)
     }
     // L7 的 351 由 feat 分支持有閘門，列為閘門票；L13 的派發列已標閘門，不另列閘門票
     expect(await bodyOf(ui, laneGroupId(7))).toContain('閘門｜351｜自 16:41:49')
     expect((await bodyOf(ui, laneGroupId(13)))?.some(line => line.startsWith('閘門｜'))).toBe(false)
+    await ui.unmount()
+  })
+
+  test('佇列含已完成票：佇列列不列 completed 的票，標頭的排隊數等於佇列列的票數；全部完成的線沒有佇列列也沒有排隊數', async ($, on) => {
+    const stub = dispatchFiles(JSON.stringify({ dispatches: [] }))
+    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-351.md`] = ticketFile('completed')
+    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-145.md`] = ticketFile('completed')
+    const { ui } = await startBoard($, on, stub)
+    // L13：337.1 已完成，佇列列只剩 337.3 與 337.2.1
+    expect(await headerOf(ui, laneGroupId(13))).toBe('▾ L13｜graph-project-docs-manager-1b［waiting：input needed］｜等你處理 · 2 排隊')
+    expect(await bodyOf(ui, laneGroupId(13))).toEqual(['排隊：337.3〔unknown〕 → 337.2.1〔unknown〕'])
+    expect(await ui.find({ type: 'Text', text: /〔completed〕/ })).toBeUndefined()
+    // L7：351 與 145 都已完成，標頭沒有排隊數，按開後沒有佇列列
+    expect(await headerOf(ui, laneGroupId(7))).toBe('▸ L7｜graph-project-docs-manager-f9［busy］')
+    await ui.press({ key: groupToggleKey(laneGroupId(7)) })
+    expect(await bodyOf(ui, laneGroupId(7))).toEqual([])
     await ui.unmount()
   })
 
@@ -207,7 +225,7 @@ describe('Pane', () => {
     expect(await bodyOf(ui, laneGroupId(13))).toBeUndefined()
     // 再按一次 L13：回到展開
     await ui.press({ key: groupToggleKey(laneGroupId(13)) })
-    expect(await bodyOf(ui, laneGroupId(13))).toEqual(['排隊：337.1〔completed〕（待用戶實機驗證） → 337.3〔unknown〕 → 337.2.1〔unknown〕'])
+    expect(await bodyOf(ui, laneGroupId(13))).toEqual(['排隊：337.3〔unknown〕 → 337.2.1〔unknown〕'])
     await ui.unmount()
   })
 

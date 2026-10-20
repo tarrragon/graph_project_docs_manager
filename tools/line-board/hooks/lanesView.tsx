@@ -83,9 +83,18 @@ function renderLaneGroup(elements: Elements, board: ReadyBoard, group: LaneGroup
   const isDefaultOpen = isDefaultExpanded(group.activity)
   const isOpen = isGroupExpanded(group.id, isDefaultOpen, overrides)
   const frame = { id: group.id, title: groupTitle(board.sessions, group), isOpen, isActive: isDefaultOpen }
+  // 各行的 key：派發列以序號（同一張票可能有多個代理人），閘門票以票號，佇列列每群組一行
   return renderGroup(elements, frame, onToggle, () => [
-    ...group.dispatches.map(row => <Text wrap="truncate-middle">{formatGroupDispatchRow(row, board.readAtMs)}</Text>),
-    ...group.gateTickets.map(gate => <Text color="yellow">{formatGateTicket(gate)}</Text>),
+    ...group.dispatches.map((row, index) => (
+      <Text key={`${group.id}:dispatch:${index}`} wrap="truncate-middle">
+        {formatGroupDispatchRow(row, board.readAtMs)}
+      </Text>
+    )),
+    ...group.gateTickets.map(gate => (
+      <Text key={`${group.id}:gate:${gate.serial}`} color="yellow">
+        {formatGateTicket(gate)}
+      </Text>
+    )),
     ...queueRow(Text, group, board.tickets),
   ])
 }
@@ -98,10 +107,10 @@ function groupTitle(sessions: SessionsResult, group: LaneGroup): string[] {
   return [`L${lane}`, `${session ?? '（未標 session）'}${laneStatusLabel(sessions, session)}`, laneGoalLabel(goal), activity]
 }
 
-/** 佇列列：線的票序非空時一行，「其他」群組沒有佇列列。 */
+/** 佇列列：線有未完成的票時一行（completed 的票不列）；「其他」群組沒有佇列列。 */
 function queueRow(Text: ElementConstructor<TextProps>, group: LaneGroup, tickets: readonly TicketStatus[]) {
-  if (group.lane === null || group.lane.tokens.length === 0) return []
-  return [<Text>{formatQueueRow(group.lane.tokens, tickets)}</Text>]
+  const text = group.lane === null ? null : formatQueueRow(group.lane.tokens, tickets)
+  return text === null ? [] : [<Text key={`${group.id}:queue`}>{text}</Text>]
 }
 
 /** 標題列的 `目標：<文字>`；沒有目標時為空段。hot reload 後舊 snapshot 的線沒有 goal 欄（undefined），同樣為空段。 */

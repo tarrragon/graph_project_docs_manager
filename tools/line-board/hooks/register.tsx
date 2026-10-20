@@ -98,9 +98,9 @@ export const register: Register = on => {
     }
 
     const elements: Elements = { Box, Text, Button }
-    // 按下標題列：在 onPress（ui.render 之外）寫入手動狀態，寫入後 Pane 重畫
+    // 按下標題列：onPress 寫入手動狀態後 Pane 重畫；失敗為 warning 級（$.ui.log 無級別，送 transcript 使畫面可見）
     const toggle: ToggleGroup = (id, isOpen) => {
-      const onError = (error: unknown) => $.ui.log(`line-board: 切換群組 ${id} 失敗：${messageOf(error)}`, { to: 'debug' })
+      const onError = (error: unknown) => $.ui.log(`line-board 警告：切換群組 ${id} 失敗：${messageOf(error)}`, { to: 'transcript' })
       update($, expanded, map => toggledOverrides(map, id, isOpen)).catch(onError)
     }
     const bottom = (id: string, title: string) => sectionFrame(id, title, overrides)

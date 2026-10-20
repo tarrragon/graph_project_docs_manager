@@ -144,6 +144,15 @@ describe('群組的顯示文字', () => {
     )
   })
 
+  test('佇列列不列 completed 的票：相鄰的分隔符併成一個（任一為 → 時為 →），首尾的分隔符去掉；沒有未完成的票時為 null', () => {
+    const [l7, l9, l13] = LANES
+    const done = (...serials: string[]) => serials.map(serial => ({ id: `0.5.0-W1-${serial}`, status: 'completed' }))
+    expect(formatQueueRow(l13?.tokens ?? [], done('337.1'))).toBe('排隊：337.3 → 337.2.1')
+    expect(formatQueueRow(l9?.tokens ?? [], done('353.1'))).toBe('排隊：356 → 341.2.1 → 284')
+    expect(formatQueueRow(l9?.tokens ?? [], done('341.2.1', '284'))).toBe('排隊：356 → 353.1')
+    expect(formatQueueRow(l7?.tokens ?? [], done('351', '145'))).toBeNull()
+  })
+
   test('閘門票列與佇列列', () => {
     expect(formatGateTicket({ serial: '351', since: '16:41:49' })).toBe('閘門｜351｜自 16:41:49')
     const tokens = LANES[0]?.tokens ?? []

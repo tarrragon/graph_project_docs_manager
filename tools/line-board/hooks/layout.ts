@@ -141,7 +141,30 @@ export function formatGateTicket(gate: GateTicket): string {
   return `閘門｜${gate.serial}｜自 ${gate.since}`
 }
 
-/** 佇列列：`排隊：<票序>`，票序同 formatQueue（每張票標主 checkout 的狀態，分隔符原樣）。 */
-export function formatQueueRow(tokens: readonly QueueToken[], tickets: readonly TicketStatus[]): string {
-  return `排隊：${formatQueue(tokens, tickets)}`
+/**
+ * 佇列列：`排隊：<票序>`，票序同 formatQueue（每張票標主 checkout 的狀態），但不列 completed 的票，
+ * 與標題列的排隊數一致；沒有未完成的票時回傳 null（不畫佇列列）。
+ */
+export function formatQueueRow(tokens: readonly QueueToken[], tickets: readonly TicketStatus[]): string | null {
+  const pending = pendingQueueTokens(tokens, tickets)
+  return pending.some(token => token.kind === 'ticket') ? `排隊：${formatQueue(pending, tickets)}` : null
+}
+
+/**
+ * 去掉 completed 的票（連同其註記）後的票序：被去掉的票兩側的分隔符併成一個，任一為 `→` 時為 `→`
+ * （`A → 完成 ∥ C` 中 A 先於完成票、完成票與 C 並行，A 仍先於 C）；首尾的分隔符去掉。
+ */
+function pendingQueueTokens(tokens: readonly QueueToken[], tickets: readonly TicketStatus[]): QueueToken[] {
+  const kept = tokens.filter(token => token.kind !== 'ticket' || statusOf(tickets, token.id) !== COMPLETED_STATUS)
+  const merged: QueueToken[] = []
+  for (const token of kept) {
+    const last = merged[merged.length - 1]
+    if (token.kind === 'sep' && (last === undefined || last.kind === 'sep')) {
+      if (last !== undefined && token.text === '→') merged[merged.length - 1] = token
+      continue
+    }
+    merged.push(token)
+  }
+  if (merged[merged.length - 1]?.kind === 'sep') merged.pop()
+  return merged
 }

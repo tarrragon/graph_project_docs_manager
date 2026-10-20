@@ -158,7 +158,9 @@ describe('Pane', () => {
     await ui.press({ key: groupToggleKey(laneGroupId(7)) })
     await ui.press({ key: groupToggleKey(laneGroupId(13)) })
     expect(await ui.find({ type: 'Text', text: /^排隊：351〔in_progress〕 → 145〔unknown〕$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^排隊：337\.1〔completed〕（待用戶實機驗證） → 337\.3/ })).toBeDefined()
+    // 337.1 在 main 已 completed，不在佇列列中
+    expect(await ui.find({ type: 'Text', text: /^排隊：337\.3〔unknown〕 → 337\.2\.1〔unknown〕$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /337\.1〔/ })).toBeUndefined()
     expect(await ui.find({ type: 'Button', text: /^[▸▾] L13｜graph-project-docs-manager-1b［[^］]*］｜/ })).toBeDefined()
     expect(await ui.find({ type: 'Button', text: /^[▸▾] L9｜/ })).toBeDefined()
     expect(await ui.find({ type: 'Button', text: /^[▸▾] L11｜/ })).toBeUndefined()
