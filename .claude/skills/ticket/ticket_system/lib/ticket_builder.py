@@ -986,10 +986,28 @@ _DEFAULT_PLACEHOLDERS = {
 }
 
 
-def insert_dedup_record(body: str, keywords: Optional[List[str]]) -> str:
+def _render_dedup_outcome(outcome) -> str:
+    """把 dedup 執行結果（DedupOutcome 或 None）轉為〈查重紀錄〉附段。"""
+    if outcome is None:
+        return ""
+    text = ""
+    if outcome.error:
+        text += f"查重未完成：{outcome.error}\n\n"
+    if outcome.hits:
+        hit_lines = "\n".join(f"- #{num} {title}" for num, title in outcome.hits)
+        text += f"dedup 命中 issue（請覆核關係：重複／切分／引用）：\n\n{hit_lines}\n\n"
+    elif not outcome.error:
+        text += "dedup 命中 issue：無\n\n"
+    return text
+
+
+def insert_dedup_record(
+    body: str, keywords: Optional[List[str]], dedup_outcome=None
+) -> str:
     """在 Problem Analysis 末端（調查過程註解之前）插入〈查重紀錄〉。
 
-    關鍵字逐字列出供覆核；無關鍵字時原樣回傳。
+    關鍵字逐字列出供覆核；dedup_outcome 非 None 時附命中清單或未完成說明；
+    無關鍵字時原樣回傳。
     """
     kws = [k for k in (keywords or []) if (k or "").strip()]
     if not kws:
@@ -999,6 +1017,7 @@ def insert_dedup_record(body: str, keywords: Optional[List[str]]) -> str:
         "### 查重紀錄\n\n"
         "`--dedup-checked none`，查重關鍵字（逐字）：\n\n"
         f"{lines}\n\n"
+        f"{_render_dedup_outcome(dedup_outcome)}"
     )
     pa_start = body.find("## Problem Analysis")
     if pa_start < 0:

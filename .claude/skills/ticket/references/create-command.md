@@ -210,7 +210,7 @@ ticket create --wave 1 --action "實作" --target "XXX" --allow-duplicate \
 | where.files 全數 `.claude/` 下 + `--dedup-checked none` 未附 `--dedup-keywords` | 阻擋（`PORTABLE_ISSUE_DEDUP_KEYWORDS_MISSING`） |
 | where.files 全數 `.claude/` 下 + `--dedup-checked none --dedup-keywords "k1" "k2"` | 放行；關鍵字逐字寫入新票 Problem Analysis〈查重紀錄〉 |
 
-`--dedup-checked` 的值即查重結論本身（命中的 issue 號如 `#102`，或確認未命中的 `none`），不是純存在性旗標。`none` 須附 `--dedup-keywords`（一至多組查重所用關鍵字）：未查重填 `none` 與已查重得 `none` 在票面無從區分，關鍵字留在〈查重紀錄〉供覆核。值只接受 `none`（大小寫與空白不拘）或 issue 參照：`#N`、`N`、`owner/repo#N`，可逗號分隔多個（如 `tarrragon/claude#102,#105`）；其他值一律阻擋。本旗標只記錄，不執行 dedup。範例：`--dedup-checked none --dedup-keywords "關鍵字一" "關鍵字二"`。
+`--dedup-checked` 的值即查重結論本身（命中的 issue 號如 `#102`，或確認未命中的 `none`），不是純存在性旗標。`none` 須附 `--dedup-keywords`（一至多組查重所用關鍵字）：未查重填 `none` 與已查重得 `none` 在票面無從區分，關鍵字留在〈查重紀錄〉供覆核。值只接受 `none`（大小寫與空白不拘）或 issue 參照：`#N`、`N`、`owner/repo#N`，可逗號分隔多個（如 `tarrragon/claude#102,#105`）；其他值一律阻擋。附 `--dedup-keywords` 時 create 會以子程序執行 `section_comment.py dedup`，把命中 issue（號碼＋標題）寫入〈查重紀錄〉供覆核；命中與否不阻擋建票。dedup 失敗（離線、逾時、非零退出）時建票照常，〈查重紀錄〉寫「查重未完成：<錯誤摘要>」並於 stderr 警告。範例：`--dedup-checked none --dedup-keywords "關鍵字一" "關鍵字二"`。
 
 **命中 issue 不等於不該建票**：`framework-issue` skill 的核心模型是「ticket 記執行，issue 記問題」。命中既有 issue 後要先判斷本票性質：
 
