@@ -121,11 +121,23 @@ class TestContentFile:
         assert path.read_text(encoding="utf-8") == before
 
     def test_unreadable_file_fails_ticket_unchanged(
-        self, tmp_ticket_dir, patch_paths, tmp_path
+        self, tmp_ticket_dir, patch_paths, tmp_path, capsys
     ):
         path = _make_ticket(tmp_ticket_dir)
         before = path.read_text(encoding="utf-8")
         assert _call(content_file=str(tmp_path / "missing.txt")) != 0
+        assert "--content-file" in capsys.readouterr().err
+        assert path.read_text(encoding="utf-8") == before
+
+    def test_non_utf8_file_fails_ticket_unchanged(
+        self, tmp_ticket_dir, patch_paths, tmp_path, capsys
+    ):
+        path = _make_ticket(tmp_ticket_dir)
+        before = path.read_text(encoding="utf-8")
+        f = tmp_path / "bad.bin"
+        f.write_bytes(b"\xff\xfe\x80invalid")
+        assert _call(content_file=str(f)) != 0
+        assert "--content-file" in capsys.readouterr().err
         assert path.read_text(encoding="utf-8") == before
 
     def test_positional_unchanged(self, tmp_ticket_dir, patch_paths):

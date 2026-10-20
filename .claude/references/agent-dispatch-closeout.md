@@ -16,8 +16,8 @@
 
 - 唯有 CLI 回 `[OK] 已追加日誌到 '<section>'` 才算寫入成功；輸出僅見 heredoc 內容被 echo 出來代表指令 malformed、CLI 未執行，須修正 Bash 指令重發。
 - 收尾關鍵 section（Test Results / Exit Status）後以 `grep -c "<唯一片語>" <ticket-md-path>` 確認實際持久化（固定值驗證，不信 CLI 旁白）。
-- 派發 prompt 要求被派發 agent 寫入含子章節（`###`）的 ticket body 時，須明示「守衛拒收多行參數時分次 append，不得壓成單行」（PC-GPD-003 預防節主條文）。
-- worktree 內多行內容被守衛拒收時，分次 append（每次一個章節或段落），不得把 Markdown 章節壓成單行：壓成單行後 `###` 不在行首，寫入看似成功，但 complete gate 判定必填章節缺失而擋下。
+- 派發 prompt 要求被派發 agent 寫入含子章節（`###`）的 ticket body 時，須明示「多行內容以 scratchpad 內容檔加 --content-file 傳入，不得壓成單行」（PC-GPD-003 預防節主條文）。
+- worktree 內多行內容被守衛拒收時，首選 Write 寫入 scratchpad 內容檔後以 `append-log --content-file <路徑>` 傳入；`--content-file` 不可用時才分次 append（每次一個章節或段落），不得把 Markdown 章節壓成單行：壓成單行後 `###` 不在行首，寫入看似成功，但 complete gate 判定必填章節缺失而擋下。
 - 偵測是否已壓平：`grep -n '^### <本次寫入的子章節名>' <ticket-md-path>`（例：子章節為「自檢結果」時用 `grep -n '^### 自檢結果' <ticket-md-path>`）；ticket 內已有該章節內容卻無行首命中，即為壓平，須重新分次 append。無此子章節的票不會命中，不可據此判定未壓平。
 - 引用既有規則不重複定義：heredoc 傳長文字見 `bash-tool-usage-rules` 規則 5；「只信 raw stdout、帶旁白視為自身雜訊」見 `tool-output-trust-rules` 規則 2；CLI args 跳脫見 PC-079。
 
