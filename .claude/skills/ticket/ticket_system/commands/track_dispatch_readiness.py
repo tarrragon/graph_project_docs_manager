@@ -174,7 +174,7 @@ def _load_hook_template_prefixes() -> Tuple[List[str], Callable[[str], str]]:
     )
 
     prefixes = [
-        _strip_checkbox(template.split("<待填>")[0])
+        _strip_checkbox(template.split("<待填")[0])
         for _label, template in _HOOK_ACCEPTANCE_TEMPLATES
     ]
     return prefixes, _strip_checkbox

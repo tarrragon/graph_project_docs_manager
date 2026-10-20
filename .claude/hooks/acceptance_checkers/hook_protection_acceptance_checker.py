@@ -384,8 +384,11 @@ _TEMPLATE_SUFFIX = "：" + _PLACEHOLDER
 
 
 def _is_template_placeholder(line: str) -> bool:
-    """條目是否為以「：<待填>」結尾的未填寫模板。"""
-    return line.rstrip().endswith(_TEMPLATE_SUFFIX)
+    """條目是否為未填寫模板：以「：<待填>」結尾，或以「：<待填：…>」指引形式結尾。"""
+    stripped = line.rstrip()
+    if stripped.endswith(_TEMPLATE_SUFFIX):
+        return True
+    return stripped.endswith(">") and "：<待填：" in stripped
 
 
 def _placeholder_acceptance_items(frontmatter: dict) -> List[str]:
