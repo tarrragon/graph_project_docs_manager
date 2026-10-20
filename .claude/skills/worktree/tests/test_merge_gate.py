@@ -196,6 +196,16 @@ class TestScope:
     def test_flutter_scope(self, skel):
         assert mg.select_suites(["lib/main.dart"], skel) == [mg.SUITE_FLUTTER]
 
+    def test_assets_only_runs_flutter(self, skel):
+        """E2 正向對照：只改 assets 下檔案（內嵌副本）必跑 flutter。"""
+        paths = ["assets/schema/tracking_schema.json"]
+        assert mg.needs_gate(paths)
+        assert mg.select_suites(paths, skel) == [mg.SUITE_FLUTTER]
+
+    def test_ticket_only_still_exempt(self, skel):
+        assert not mg.needs_gate([TICKET_FILE])
+        assert mg.select_suites([TICKET_FILE], skel) == []
+
     def test_hooks_and_other_claude_paths_run_hooks(self, skel):
         for p in (".claude/hooks/x.py", ".claude/rules/core/a.md", ".claude/settings.json",
                   ".claude/skills/docsonly/SKILL.md"):
