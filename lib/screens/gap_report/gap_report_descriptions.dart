@@ -101,6 +101,16 @@ String? gapItemDescriptionText(AppLocalizations l10n, GapItemDescription? d) {
       a['domain']! as String,
       _join(l10n, a['bundles']! as List<String>),
     ),
+    GapDescriptionKind.orphanEventEmittedNotConsumed =>
+      l10n.gapOrphanEventEmittedNotConsumed,
+    GapDescriptionKind.orphanEventConsumedNotEmitted =>
+      l10n.gapOrphanEventConsumedNotEmitted,
+    GapDescriptionKind.eventConsumerUnmatched => l10n.gapEventConsumerUnmatched(
+      a['domain']! as String,
+    ),
+    GapDescriptionKind.eventProducerUnmatched => l10n.gapEventProducerUnmatched(
+      a['domain']! as String,
+    ),
   };
 }
 

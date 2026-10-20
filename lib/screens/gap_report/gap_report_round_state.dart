@@ -8,6 +8,7 @@ library;
 import 'dart:developer' as developer;
 
 import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/gap_detector.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
@@ -43,6 +44,10 @@ GapReportState gapReportStateFromRound(
     },
     nodes: nodes,
     nonDomainPathsKey: nonDomainPathsKey,
+    eventGaps: detectEventGaps(
+      graph: round.graph,
+      rawNodes: round.scan.rawNodes,
+    ).report,
   );
   final declaration = _declarationOf(round);
   final reason = _undeterminedReasonOf(parse, defects);

@@ -202,5 +202,9 @@
   "pathDeclarationBundlesPartial": "{declared} of {total} domains declared",
   "pathDeclarationNonDomainMissing": "non-domain path list missing",
   "pathDeclarationNoneLine": "This project declares no paths",
-  "pathDeclarationNonDomainMalformed": "non-domain path list is malformed"
+  "pathDeclarationNonDomainMalformed": "non-domain path list is malformed",
+  "gapOrphanEventEmittedNotConsumed": "Emitted by a step, but no step consumes it and no consumers are declared",
+  "gapOrphanEventConsumedNotEmitted": "Consumed by a step, but no step emits it and no producers are declared",
+  "gapEventConsumerUnmatched": "Declared consumer {domain} has no matching step that consumes this event",
+  "gapEventProducerUnmatched": "Declared producer {domain} has no matching step that emits this event"
 }

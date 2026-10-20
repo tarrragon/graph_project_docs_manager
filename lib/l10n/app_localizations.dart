@@ -1309,6 +1309,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'非 domain 路徑清單格式錯誤'**
   String get pathDeclarationNonDomainMalformed;
+
+  /// SPEC-004 §4.0.6〈1.94 新增〉：orphan-event，形態有發出無消費
+  ///
+  /// In zh, this message translates to:
+  /// **'有步驟發出此事件，但沒有步驟消費，consumers 也未宣告'**
+  String get gapOrphanEventEmittedNotConsumed;
+
+  /// SPEC-004 §4.0.6〈1.94 新增〉：orphan-event，形態有消費無發出
+  ///
+  /// In zh, this message translates to:
+  /// **'有步驟消費此事件，但沒有步驟發出，producers 也未宣告'**
+  String get gapOrphanEventConsumedNotEmitted;
+
+  /// SPEC-004 §4.0.6〈1.94 新增〉：event-declaration-mismatch，方向 consumers；domain 為宣告值原樣
+  ///
+  /// In zh, this message translates to:
+  /// **'consumers 宣告了 {domain}，但沒有對應的步驟消費此事件'**
+  String gapEventConsumerUnmatched(String domain);
+
+  /// SPEC-004 §4.0.6〈1.94 新增〉：event-declaration-mismatch，方向 producers；domain 為宣告值原樣
+  ///
+  /// In zh, this message translates to:
+  /// **'producers 宣告了 {domain}，但沒有對應的步驟發出此事件'**
+  String gapEventProducerUnmatched(String domain);
 }
 
 class _AppLocalizationsDelegate

@@ -732,4 +732,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pathDeclarationNonDomainMalformed => '非 domain 路徑清單格式錯誤';
+
+  @override
+  String get gapOrphanEventEmittedNotConsumed =>
+      '有步驟發出此事件，但沒有步驟消費，consumers 也未宣告';
+
+  @override
+  String get gapOrphanEventConsumedNotEmitted =>
+      '有步驟消費此事件，但沒有步驟發出，producers 也未宣告';
+
+  @override
+  String gapEventConsumerUnmatched(String domain) {
+    return 'consumers 宣告了 $domain，但沒有對應的步驟消費此事件';
+  }
+
+  @override
+  String gapEventProducerUnmatched(String domain) {
+    return 'producers 宣告了 $domain，但沒有對應的步驟發出此事件';
+  }
 }

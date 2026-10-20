@@ -479,15 +479,14 @@ void main() {
   });
 
   group('K4 pathDeclaration* 五 key 與 SPEC-004 §4.0.6 逐字一致', () {
-    final zh =
-        jsonDecode(File('lib/l10n/app_zh.arb').readAsStringSync())
-            as Map<String, dynamic>;
-    final en =
-        jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
-            as Map<String, dynamic>;
-    final spec = File(
-      'docs/spec/ui/SPEC-004-component-library.md',
-    ).readAsStringSync();
+    final zh = jsonDecode(
+      File('lib/l10n/app_zh.arb').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final en = jsonDecode(
+      File('lib/l10n/app_en.arb').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final spec = File('docs/spec/ui/SPEC-004-component-library.md')
+        .readAsStringSync();
     const keys = [
       'pathDeclarationIncompleteLine',
       'pathDeclarationBundlesPartial',
@@ -511,6 +510,25 @@ void main() {
         expect(en.containsKey(k), isTrue, reason: 'en 缺 $k');
         expect(zh[k], zhText, reason: 'zh $k');
         expect(en[k], enText, reason: 'en $k');
+      }
+    });
+
+    test('K4-4 事件類四 key zh／en ARB 值與 SPEC-004 v1.94 表逐字一致', () {
+      const eventKeys = [
+        'gapOrphanEventEmittedNotConsumed',
+        'gapOrphanEventConsumedNotEmitted',
+        'gapEventConsumerUnmatched',
+        'gapEventProducerUnmatched',
+      ];
+      for (final k in eventKeys) {
+        final (zhText, enText) = specRow(k);
+        expect(zh[k], zhText, reason: 'zh $k');
+        expect(en[k], enText, reason: 'en $k');
+      }
+      for (final k in eventKeys.skip(2)) {
+        final meta = (zh['@$k'] as Map<String, dynamic>)['placeholders'];
+        expect((meta as Map<String, dynamic>).keys, ['domain']);
+        expect(en[k], contains('{domain}'));
       }
     });
 

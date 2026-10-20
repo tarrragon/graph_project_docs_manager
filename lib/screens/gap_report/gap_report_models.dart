@@ -61,6 +61,10 @@ enum GapDescriptionKind {
   traversesUndeclared,
   traversesMissing,
   domainDeclaredTwice,
+  orphanEventEmittedNotConsumed,
+  orphanEventConsumedNotEmitted,
+  eventConsumerUnmatched,
+  eventProducerUnmatched,
 }
 
 /// 項目說明：[kind] 加 ARB 佔位符的原始值 [args]（欄位名、原始值不經 i18n）。
