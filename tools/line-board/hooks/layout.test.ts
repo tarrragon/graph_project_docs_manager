@@ -137,10 +137,13 @@ describe('群組的顯示文字', () => {
     expect(formatGroupTitle(['L9', 's［離線］', '4 排隊'], false)).toBe('▸ L9｜s［離線］｜4 排隊')
   })
 
-  test('群組內的派發列不帶線號：代理人｜任務｜階段｜距派發時間', () => {
+  test('群組內的派發列不帶線號：代理人｜任務｜階段｜距派發時間；缺派發時間為時間不明', () => {
     const nowMs = Date.UTC(2026, 9, 19, 8, 0, 0)
     expect(formatGroupDispatchRow(row({ lane: 7, name: 'linux', task: '337.8', stage: '審查', dispatchedAt: '2026-10-19T07:57:00+00:00' }), nowMs)).toBe(
       'linux｜337.8｜審查｜3 分前',
+    )
+    expect(formatGroupDispatchRow(row({ lane: 7, name: 'linux', task: '337.8', stage: '審查', dispatchedAt: null }), nowMs)).toBe(
+      'linux｜337.8｜審查｜時間不明',
     )
   })
 
