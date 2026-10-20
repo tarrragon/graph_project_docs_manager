@@ -8,6 +8,16 @@ suites:
     artifacts:
       - path: .dart_tool/package_config.json
         generate: [fvm, flutter, pub, get]
+  # integration_test 冷建置約 75 秒，另立套件，僅在改動可能影響它時才跑（2026-10-21 用戶裁定）。
+  # 觸發範圍：lib/、integration_test/、macos/、依賴鎖檔，加上其唯一的 test/ 相依檔。
+  # corpus_snapshot.dart 為 integration_test 唯一依賴的 test/ 檔，故只列該檔而非整個 test/。
+  flutter-integration:
+    prefixes: [lib/, integration_test/, macos/]
+    files: [pubspec.yaml, pubspec.lock, test/helpers/spec001/corpus_snapshot.dart]
+    command: [fvm, flutter, test, integration_test, -d, macos]
+    artifacts:
+      - path: .dart_tool/package_config.json
+        generate: [fvm, flutter, pub, get]
   # line-board 不放 artifacts：閘門不跑 tsc（types 無頭生成命令未知）
   line-board:
     prefixes: [tools/line-board/]
