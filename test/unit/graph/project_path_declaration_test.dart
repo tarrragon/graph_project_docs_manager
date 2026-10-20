@@ -114,6 +114,31 @@ void main() {
       expect(d.affectedPathCount, 3);
     });
 
+    test('R1-13 同一路徑跨票只算一次（含 :: 後綴正規化）；對照組三條互異為 3', () {
+      ProjectPathDeclaration summarize(List<RawNode> tickets) =>
+          summarizeProjectPathDeclaration(
+            rawNodes: [
+              _bundle('a', patterns: ['lib/a/']),
+              ...tickets,
+            ],
+            nonDomain: _absent,
+          );
+
+      final dup = summarize([
+        _ticket('T1', ['docs/one.md']),
+        _ticket('T2', ['docs/one.md::section']),
+        _ticket('T3', ['docs/two.md']),
+      ]);
+      final distinct = summarize([
+        _ticket('T1', ['docs/one.md']),
+        _ticket('T2', ['docs/two.md']),
+        _ticket('T3', ['docs/three.md']),
+      ]);
+
+      expect(dup.affectedPathCount, 2);
+      expect(distinct.affectedPathCount, 3);
+    });
+
     test('S7 無票或票無 where.files → 0（非 null）', () {
       final d = summarizeProjectPathDeclaration(
         rawNodes: [

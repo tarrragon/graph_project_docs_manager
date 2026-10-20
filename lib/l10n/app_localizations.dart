@@ -1280,7 +1280,7 @@ abstract class AppLocalizations {
   /// **'專案型別表與 App 內建型別表都沒有路徑模式，無法判斷哪些檔案應為節點；解析失敗類別不列出'**
   String get gapsUndeterminableReasonNoPathPattern;
 
-  /// SPEC-001 §5 專案層級宣告狀態一行（部分缺口）；detail 為 pathDeclarationBundlesPartial、pathDeclarationNonDomainMissing／Malformed 片段以分隔符連接，count 為各票受影響路徑數加總
+  /// SPEC-001 §5 專案層級宣告狀態一行（部分缺口）；detail 為 pathDeclarationBundlesPartial、pathDeclarationNonDomainMissing／Malformed 片段以分隔符連接，count 為受影響路徑條數（跨票去重，同一條正規化路徑只算一次）
   ///
   /// In zh, this message translates to:
   /// **'路徑宣告不完整：{detail}（影響 {count} 條路徑）'**
@@ -1297,6 +1297,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'缺非 domain 路徑清單'**
   String get pathDeclarationNonDomainMissing;
+
+  /// SPEC-004 §4.0.6：宣告狀態行 detail 片段（bundle 總數為 0 時取代 pathDeclarationBundlesPartial）
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未宣告任何 domain'**
+  String get pathDeclarationNoBundles;
 
   /// SPEC-001 §5：兩側皆未宣告的整體狀態，不顯示路徑數
   ///
