@@ -12,3 +12,5 @@ suites:
   line-board:
     prefixes: [tools/line-board/]
     command: [claude, plugin, test, tools/line-board]
+    summary: '^Ran \d+ tests across \d+ files'
+    failure: '^\(fail\)'
