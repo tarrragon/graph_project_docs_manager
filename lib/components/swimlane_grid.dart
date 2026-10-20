@@ -114,7 +114,13 @@ class SwimlaneGrid extends StatefulWidget {
     this.laneHighlight,
     this.onSelectDomain,
     this.edges = const [],
+    this.locateColumn,
   });
+
+  /// 欄定位入口（SPEC-004 4.38）：步驟欄索引（0 起算）；與列定位同一
+  /// post-frame 另做水平 `jumpTo` 使該欄與 viewport 相交。`null` 或沒有
+  /// 列定位（[laneHighlight] 為 `null`）時不做水平捲動。
+  final int? locateColumn;
 
   /// 泳道清單（1..無上限）；列數取自輸入。
   final List<SwimlaneLane> lanes;
@@ -158,8 +164,9 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
   @override
   void didUpdateWidget(covariant SwimlaneGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.laneHighlight != oldWidget.laneHighlight &&
-        widget.laneHighlight != null) {
+    final laneChanged = widget.laneHighlight != oldWidget.laneHighlight;
+    final columnChanged = widget.locateColumn != oldWidget.locateColumn;
+    if ((laneChanged || columnChanged) && widget.laneHighlight != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToHighlight());
     }
   }
@@ -177,6 +184,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     if (!mounted || !_vController.hasClients) {
       return;
     }
+    _jumpToColumn();
     final index = widget.lanes.indexWhere(_isHighlighted);
     if (index < 0) {
       return;
@@ -196,6 +204,24 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     _vController.jumpTo(
       target.clamp(0.0, _vController.position.maxScrollExtent),
     );
+  }
+
+  /// 欄定位：釘選的泳道名欄不計入捲動範圍，步驟欄 c 的左緣 offset 為
+  /// `c * 欄寬`；jumpTo 使該欄緊貼釘選欄右側（與 viewport 相交）。
+  void _jumpToColumn() {
+    final column = widget.locateColumn;
+    if (column == null || !_hController.hasClients) {
+      return;
+    }
+    final position = _hController.position;
+    final colLeft = column * _stepColumnWidth.w;
+    final colRight = colLeft + _stepColumnWidth.w;
+    final current = position.pixels;
+    if (colLeft >= current &&
+        colRight <= current + position.viewportDimension) {
+      return;
+    }
+    _hController.jumpTo(colLeft.clamp(0.0, position.maxScrollExtent));
   }
 
   /// 只有 domain 列受 [SwimlaneGrid.laneHighlight] 高亮。

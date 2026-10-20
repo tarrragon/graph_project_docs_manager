@@ -494,8 +494,7 @@ class _CellDetailPanel extends ConsumerWidget {
             children: [
               for (final event in cell.events)
                 Badge.event(
-                  label:
-                      '${event.$2 ? 'emits' : 'consumes'} ${event.$1}', // i18n-exempt: 事件標籤前綴為契約用詞，非本地化文案
+                  label: '${event.$2 ? 'emits' : 'consumes'} ${event.$1}', // i18n-exempt: 事件標籤前綴為契約用詞，非本地化文案
                 ),
             ],
           ),
@@ -579,6 +578,7 @@ class _SwimlaneBody extends ConsumerWidget {
         ],
         fill: SwimlaneGrid(
           lanes: lanes,
+          locateColumn: state.swimlaneFocus?.column,
           laneHighlight: _highlightName(matrix, lanes, state.selectedDomainId),
           onSelectDomain: onSelectDomain,
           scrollKey: const Key('scroll-domain-swimlane'),
@@ -631,6 +631,7 @@ class _SwimlaneBody extends ConsumerWidget {
       ],
       fill: SwimlaneGrid(
         lanes: lanes,
+        locateColumn: state.swimlaneFocus?.column,
         edges: [for (final edge in swimlane.edges) _toSwimlaneEdge(edge)],
         laneHighlight: _highlightName(matrix, lanes, state.selectedDomainId),
         onSelectDomain: onSelectDomain,
