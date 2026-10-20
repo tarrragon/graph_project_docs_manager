@@ -42,6 +42,33 @@ ProviderContainer _container({
   return container;
 }
 
+ProviderContainer _slowThrowingContainer() {
+  final container = ProviderContainer(
+    overrides: [
+      scanRoundProvider.overrideWith(
+        () => FakeScanRound(
+          produce: _throwing,
+          latency: const Duration(milliseconds: 30),
+        ),
+      ),
+    ],
+  );
+  addTearDown(container.dispose);
+  container.read(scanRoundProvider);
+  return container;
+}
+
+void _expectArbMatches(
+  Map<String, dynamic> zh,
+  Map<String, dynamic> en,
+  Map<String, (String, String)> expected,
+) {
+  expected.forEach((key, value) {
+    expect(zh[key], value.$1, reason: key);
+    expect(en[key], value.$2, reason: key);
+  });
+}
+
 ScanRoundResult _throwing() => throw StateError('scan boom');
 
 void main() {
@@ -69,6 +96,24 @@ void main() {
           );
       expect(c.read(domainViewStateProvider), isA<DomainLoadFailed>());
       expect(c.read(degradedSchemaProvider), isTrue);
+    });
+  });
+
+  group('世代守衛：晚到例外', () {
+    test('載入中被 gate 阻擋作廢，舊輪次晚到例外不覆寫阻擋態', () async {
+      final c = _slowThrowingContainer();
+      final loader = c.read(domainViewLoaderProvider.notifier);
+      final pending = loader.load();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      loader.applyGateBlock(const DomainNotFramework());
+      await pending;
+      expect(c.read(domainViewStateProvider), isA<DomainNotFramework>());
+    });
+
+    test('E1 對照：未被作廢的同一載入，晚到例外落 DomainLoadFailed', () async {
+      final c = _slowThrowingContainer();
+      await c.read(domainViewLoaderProvider.notifier).load();
+      expect(c.read(domainViewStateProvider), isA<DomainLoadFailed>());
     });
   });
 
@@ -227,16 +272,15 @@ void main() {
             as Map<String, dynamic>;
 
     test('三個 key 的 zh／en 與規格一致', () {
-      final zh = arb('app_zh');
-      final en = arb('app_en');
-      expected.forEach((key, value) {
-        expect(zh[key], value.$1, reason: key);
-        expect(en[key], value.$2, reason: key);
-      });
+      _expectArbMatches(arb('app_zh'), arb('app_en'), expected);
     });
 
-    test('E2 正向對照：與規格文案不同的值會被攔下', () {
-      expect('重新整理', isNot(expected['reloadAction']!.$1));
+    test('E2 正向對照：竄改過的 ARB map 經同一段比對邏輯會失敗', () {
+      final tampered = arb('app_zh')..['reloadAction'] = '重新整理';
+      expect(
+        () => _expectArbMatches(tampered, arb('app_en'), expected),
+        throwsA(isA<TestFailure>()),
+      );
     });
 
     test('文案與 SPEC-004 §4.0.6 表格逐字一致', () {
