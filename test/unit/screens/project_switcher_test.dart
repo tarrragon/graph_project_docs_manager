@@ -260,6 +260,7 @@ Future<void> _pumpApp(
 void main() {
   _restoreContrastTest();
   _inOverlayFailureTests();
+  _unavailableRecentItemTests();
   group('收合態', () {
     testWidgets('側欄入口存在，浮層未掛載', (tester) async {
       await _pumpApp(tester);
@@ -483,10 +484,12 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // 浮層維持展開，不轉狀態，顯示 AppSnackBar。
+      // 浮層維持展開，不轉狀態；該項轉 disabled 並同列常駐原因，不跳 SnackBar
+      // （SPEC-003 §3.7；0.5.0-W1-167.4）。
       expect(find.byKey(const Key('state-switcher-expanded')), findsOneWidget);
       expect(container.read(currentWorkspaceStateProvider), before);
-      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(AppSnackBar), findsNothing);
 
       // 清單不變（未觸發 addRecentProject 重排；RecentProject 無值相等，
       // 比對 path 順序，非物件實例）。
@@ -977,6 +980,111 @@ void _inOverlayFailureTests() {
 /// restore 路徑（啟動還原先前資料夾）沿用 `workspaceUnavailable` 文案：
 /// 現況 lib 內已無 UI 掛載點（`_WorkspaceBanner` 不存在），此處以 l10n 值
 /// 作正向對照，確認新增 key 未改動既有 key（0.3.2-W1-009）。
+/// 最近專案項點擊後判定不可用與浮層失敗文字清除時機（0.5.0-W1-167.4）。
+void _unavailableRecentItemTests() {
+  const expandedKey = Key('state-switcher-expanded');
+  const failedKey = Key('card-switcher-recent-1');
+  const otherKey = Key('card-switcher-recent-0');
+  const chooseKey = Key('action-switcher-choose-folder');
+  const folderReason = '資料夾無法使用：資料夾不存在或所在磁碟未掛載';
+
+  Future<void> openOverlay(
+    WidgetTester tester,
+    WorkspaceRepository repository,
+  ) async {
+    await _pumpApp(
+      tester,
+      settle: false,
+      overrides: [
+        recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+        workspaceRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapKey(WidgetTester tester, Key key) async {
+    await tester.tap(find.byKey(key));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+  }
+
+  RecentProjectItem item(WidgetTester tester, Key key) =>
+      tester.widget<RecentProjectItem>(
+        find.ancestor(
+          of: find.byKey(key),
+          matching: find.byType(RecentProjectItem),
+        ),
+      );
+
+  group('最近專案項點擊後判定不可用', () {
+    testWidgets('該項 disabled 並同列顯示原因、不跳 SnackBar，其餘項不受影響', (tester) async {
+      await openOverlay(
+        tester,
+        _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
+      );
+      await tapKey(tester, failedKey);
+
+      final expected = AppLocalizationsZh().projectUnavailableReasonLabel(
+        '資料夾不存在或所在磁碟未掛載',
+      );
+      expect(item(tester, failedKey).enabled, isFalse);
+      expect(item(tester, failedKey).reason, expected);
+      expect(find.text(expected), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(AppSnackBar), findsNothing);
+      expect(item(tester, otherKey).enabled, isTrue);
+    });
+
+    testWidgets('收合再展開後該項恢復可點', (tester) async {
+      await openOverlay(
+        tester,
+        _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
+      );
+      await tapKey(tester, failedKey);
+      expect(item(tester, failedKey).enabled, isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+      expect(item(tester, failedKey).enabled, isTrue);
+    });
+  });
+
+  group('浮層失敗文字清除時機', () {
+    testWidgets('選擇其他失敗後再選擇其他並取消：不留前次原因', (tester) async {
+      var cancel = false;
+      final repository = WorkspaceRepository(
+        pickDirectoryPath: () async => cancel ? null : '/fake/missing',
+        preferencesPort: _SeededPreferencesPort(
+          recentProjectsJson: _encodeRecentProjects(_testRecentProjects),
+        ),
+        directoryProbe: _FakeDirectoryProbePort(probeExists: false),
+      );
+      await openOverlay(tester, repository);
+      await tapKey(tester, chooseKey);
+      expect(find.text(folderReason), findsOneWidget);
+      cancel = true;
+      await tapKey(tester, chooseKey);
+      expect(find.byKey(expandedKey), findsOneWidget);
+      expect(find.text(folderReason), findsNothing);
+    });
+
+    testWidgets('選擇其他失敗後點最近專案項：常駐文字清除', (tester) async {
+      await openOverlay(
+        tester,
+        _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
+      );
+      await tapKey(tester, chooseKey);
+      expect(find.text(folderReason), findsOneWidget);
+      await tapKey(tester, otherKey);
+      expect(find.text(folderReason), findsNothing);
+    });
+  });
+}
+
 void _restoreContrastTest() {
   test('restore 路徑文案 workspaceUnavailable 維持「先前的資料夾」', () {
     final l10n = AppLocalizationsZh();

@@ -33,6 +33,14 @@ final switcherChooseOtherFailureProvider = StateProvider.autoDispose<String?>(
   (ref) => null,
 );
 
+/// 點擊後判定不可用的最近專案項（路徑 -> 原因），SPEC-003 §3.7「最近專案項
+/// （點擊後判定不可讀或不存在）」列：該項轉 disabled 並同列顯示原因。
+///
+/// `autoDispose`：與 [switcherChooseOtherFailureProvider] 相同，浮層收合後
+/// 釋放，再次展開即為空表，該項恢復可點（「最近專案項失敗後的可用性」列）。
+final switcherUnavailableProjectsProvider =
+    StateProvider.autoDispose<Map<String, String>>((ref) => const {});
+
 /// 側欄入口顯示的目前專案名；取 [currentWorkspaceStateProvider] 的
 /// [WorkspaceReady.path] 資料夾名，非 [WorkspaceReady] 時回傳 `null`
 /// （`ProjectSwitcherEntry` 顯示元件預設 `projectSwitcherEntryLabel`）。
