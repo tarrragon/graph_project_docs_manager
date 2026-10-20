@@ -5,7 +5,7 @@ import type { ElementConstructor, TextProps } from 'claude-code'
 
 import type { ReadyBoard, SessionState } from '../types'
 import type { Elements } from './lanesView'
-import { SESSIONS_DIR, formatAge } from './parse'
+import { SESSIONS_DIR, boardStateColor, formatAge, sessionState } from './parse'
 
 /** 存活 session 各一行（依狀態排序）、已結束狀態檔的計數行；讀取失敗時只有一行錯誤。距今時間以 board 的讀取時刻計。 */
 export function renderSessions({ Text }: Elements, board: ReadyBoard) {
@@ -23,11 +23,13 @@ export function renderSessions({ Text }: Elements, board: ReadyBoard) {
 function renderSession(Text: ElementConstructor<TextProps>, readAtMs: number, session: SessionState) {
   const waitingFor = session.waitingFor === null ? '' : `：${session.waitingFor}`
   const line = `${session.name}｜${session.status}${waitingFor}｜${formatAge(readAtMs, session.statusUpdatedAt)}`
-  return session.status === 'waiting' ? (
-    <Text color="yellow" bold>
+  // waiting 為要人處理：洋紅粗體；其他狀態不上色
+  const state = sessionState(session.status)
+  return state === null ? (
+    <Text>{line}</Text>
+  ) : (
+    <Text color={boardStateColor(state)} bold>
       {line}
     </Text>
-  ) : (
-    <Text>{line}</Text>
   )
 }

@@ -16,6 +16,7 @@ import {
   isGroupExpanded,
   laneGroupId,
   laneGroups,
+  queueRowSegments,
   toggledOverrides,
 } from './layout'
 
@@ -160,5 +161,29 @@ describe('群組的顯示文字', () => {
     expect(formatGateTicket({ serial: '351', since: '16:41:49' })).toBe('閘門｜351｜自 16:41:49')
     const tokens = LANES[0]?.tokens ?? []
     expect(formatQueueRow(tokens, [{ id: '0.5.0-W1-351', status: 'in_progress' }])).toBe('排隊：351〔in_progress〕 → 145')
+  })
+
+  test('佇列列的分段：每張票一段（附完整票號與短票號），分隔符為不帶票的段；completed 的票不在其中、相鄰分隔符併成一個', () => {
+    const [l7, l9] = LANES
+    const tickets = [
+      { id: '0.5.0-W1-351', status: 'in_progress' },
+      { id: '0.5.0-W1-353.1', status: 'completed' },
+    ]
+    expect(queueRowSegments(l7?.tokens ?? [], tickets)).toEqual([
+      { text: '351〔in_progress〕', ticket: { id: '0.5.0-W1-351', serial: '351' } },
+      { text: ' → ', ticket: null },
+      { text: '145', ticket: { id: '0.5.0-W1-145', serial: '145' } },
+    ])
+    // L9：356 → 353.1 ∥ 341.2.1 → 284，353.1 完成後兩側的 → 與 ∥ 併成 →
+    const l9Segments = queueRowSegments(l9?.tokens ?? [], tickets)
+    expect(l9Segments?.map(segment => segment.text)).toEqual(['356', ' → ', '341.2.1', ' → ', '284'])
+    expect(l9Segments?.some(segment => segment.ticket?.serial === '353.1')).toBe(false)
+    // 各段相接即佇列列去掉「排隊：」的票序
+    expect(`排隊：${l9Segments?.map(segment => segment.text).join('')}`).toBe(formatQueueRow(l9?.tokens ?? [], tickets))
+  })
+
+  test('對照：佇列的票全部 completed 時分段為 null，與佇列列一致', () => {
+    const done = ['351', '145'].map(serial => ({ id: `0.5.0-W1-${serial}`, status: 'completed' }))
+    expect(queueRowSegments(LANES[0]?.tokens ?? [], done)).toBeNull()
   })
 })

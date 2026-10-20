@@ -1,5 +1,5 @@
 // 版面：以線分組的可折疊群組——每條線一個群組、對不到線的派發歸「其他」；群組的活動計數、預設展開、
-// 手動切換後的展開狀態，以及標題列與內容各行的顯示文字。
+// 手動切換後的展開狀態，以及標題列與內容各行的顯示文字（佇列列另有供依狀態上色的分段）。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；展開狀態的讀寫由 register.tsx 負責。
 
 import type {
@@ -143,8 +143,24 @@ export function formatGateTicket(gate: GateTicket): string {
  * 與標題列的排隊數一致；沒有未完成的票時回傳 null（不畫佇列列）。
  */
 export function formatQueueRow(tokens: readonly QueueToken[], tickets: readonly TicketStatus[]): string | null {
+  const segments = queueRowSegments(tokens, tickets)
+  return segments === null ? null : `排隊：${segments.map(segment => segment.text).join('')}`
+}
+
+/** 佇列列的一段：文字與所屬的票（完整票號與短票號，供依狀態上色）；分隔符與無法辨識的文字沒有票（null）。 */
+export type QueueSegment = { text: string; ticket: { id: string; serial: string } | null }
+
+/**
+ * 佇列列 `排隊：` 之後的票序分段：每個 token 一段，文字同 formatQueue，各段相接即 formatQueueRow 的票序；
+ * completed 的票與分隔符的合併同 formatQueueRow。沒有未完成的票時回傳 null（不畫佇列列）。
+ */
+export function queueRowSegments(tokens: readonly QueueToken[], tickets: readonly TicketStatus[]): QueueSegment[] | null {
   const pending = pendingQueueTokens(tokens, tickets)
-  return pending.some(token => token.kind === 'ticket') ? `排隊：${formatQueue(pending, tickets)}` : null
+  if (!pending.some(token => token.kind === 'ticket')) return null
+  return pending.map(token => ({
+    text: formatQueue([token], tickets),
+    ticket: token.kind === 'ticket' ? { id: token.id, serial: token.serial } : null,
+  }))
 }
 
 /**
