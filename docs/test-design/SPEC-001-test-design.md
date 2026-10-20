@@ -122,8 +122,8 @@ Mock 只替換外部世界（資料夾選擇、檔案系統 port）；Graph、La
 經 App 正常開啟流程進入 Domain 視圖。測試檔：`integration_test/domain_view_v050.dart`
 （IT-D1～IT-D3）、`integration_test/gap_report_declaration_line.dart`（IT-D4），兩檔不帶 `_test` 後綴，
 由 `integration_test/app_test.dart` 的 `main()` 註冊。理由：macOS 上一次 `flutter test` 呼叫只能啟動一次 app，
-`integration_test/` 下第二個 `_test.dart` 檔必定以 `Unable to start the app on the device` 失敗（0.1.0-W3-097 實測，
-CI 以 `flutter test integration_test -d macos` 整目錄呼叫）；改名不改測試內容（0.5.0-W1-114.13 派發前定案）。
+同一次呼叫放第二個 `_test.dart` 檔必定以 `Unable to start the app on the device` 失敗（0.1.0-W3-097 實測），
+`app_test.dart` 檔頭約定外層測試集中於單一入口；改名不改測試內容（0.5.0-W1-114.13 派發前定案）。
 
 ### 2.1 IT-D1 矩陣三值分布（UC-02 主流程 locate-domain、read-traversal-count）
 
