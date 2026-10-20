@@ -236,9 +236,12 @@ class DomainUnset extends DomainViewState {
 
 /// 載入中：`LoadingState.skeleton`。
 class DomainLoading extends DomainViewState {
-  const DomainLoading({this.isCancelling = false});
+  const DomainLoading({this.isCancelling = false, this.processedCount = 0});
 
   final bool isCancelling;
+
+  /// 已處理節點計數（SPEC-003 §2.6）；只顯示計數，不推算百分比。
+  final int processedCount;
 }
 
 /// 「在泳道中檢視」的跳轉落點（SPEC-001 §1〈間接依賴格的「在泳道中檢視」

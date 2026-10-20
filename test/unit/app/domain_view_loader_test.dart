@@ -81,6 +81,44 @@ _Harness _harness({
 List<String> _idsOf(Iterable<LightNode> nodes) => orderedUcColumnIds(nodes);
 
 void main() {
+  group('載入中已處理計數（SPEC-003 §2.6）', () {
+    // ignore_for_file: invalid_use_of_protected_member
+    test('DomainLoading.processedCount 隨 ScanRoundRunning 更新', () async {
+      final h = _harness(
+        produce: () => fakeRound(),
+        latency: const Duration(milliseconds: 50),
+        workspaceReady: true,
+      );
+      final pending = h.loader.load();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect((h.state as DomainLoading).processedCount, 0);
+
+      h.fake.state = const ScanRoundRunning('/ws/fake', processedCount: 32);
+      expect((h.state as DomainLoading).processedCount, 32);
+      h.fake.state = const ScanRoundRunning('/ws/fake', processedCount: 64);
+      expect((h.state as DomainLoading).processedCount, 64);
+
+      await pending;
+      expect(h.state, isA<DomainReady>());
+    });
+
+    test('E2 被取代的載入不寫入計數', () async {
+      final h = _harness(
+        produce: () => fakeRound(),
+        latency: const Duration(milliseconds: 50),
+        workspaceReady: true,
+      );
+      final pending = h.loader.load();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      h.loader.cancelLoading();
+      expect(h.state, isA<DomainUnset>());
+
+      h.fake.state = const ScanRoundRunning('/ws/fake', processedCount: 99);
+      expect(h.state, isA<DomainUnset>());
+      await pending;
+    });
+  });
+
   group('B1 狀態推導', () {
     test('gate 通過後依序 Loading → Ready（帶矩陣）', () async {
       final h = _harness(produce: () => fakeRound());
