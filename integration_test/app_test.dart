@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -100,6 +102,27 @@ void main() {
         _expectNoErrors(errors, context: viewport.name);
       });
     }
+  });
+
+  group('錯誤收集器正向對照（E2）', () {
+    testWidgets('未捕捉的非同步錯誤被收集且原文出現在失敗訊息', (tester) async {
+      const marker = 'W1-442 故意拋出的非同步錯誤';
+      final errors = await _pumpAppAndCollectErrors(
+        tester,
+        afterPump: () => Future<void>(() => throw StateError(marker)),
+      );
+
+      expect(
+        () => _expectNoErrors(errors, context: '正向對照'),
+        throwsA(
+          isA<TestFailure>().having(
+            (e) => e.message,
+            'message',
+            contains(marker),
+          ),
+        ),
+      );
+    });
   });
 
   group('多語系', () {
@@ -319,11 +342,42 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
   Locale? locale,
   WorkspaceRepository? repository,
   List<Override> overrides = const [],
+  void Function()? afterPump,
 }) async {
   final captured = <FlutterErrorDetails>[];
   final previousHandler = FlutterError.onError;
+  final previousDispatcherHandler = PlatformDispatcher.instance.onError;
   FlutterError.onError = captured.add;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    captured.add(FlutterErrorDetails(exception: error, stack: stack));
+    return true;
+  };
   try {
+    // 未捕捉的非同步錯誤不經 FlutterError.onError，會直達 test zone 的
+    // handleUncaughtError：binding 先中止測試，再報自身的
+    // _pendingExceptionDetails assert，原文丟失。把 App 的整段執行放進子
+    // zone，錯誤改由此處收集，binding 就不會接手。
+    await runZonedGuarded(
+      () => _pumpAndSettleApp(tester, locale, repository, overrides, afterPump),
+      (error, stack) =>
+          captured.add(FlutterErrorDetails(exception: error, stack: stack)),
+    );
+  } finally {
+    _drainPendingExceptions(tester, captured);
+    FlutterError.onError = previousHandler;
+    PlatformDispatcher.instance.onError = previousDispatcherHandler;
+  }
+  return captured;
+}
+
+Future<void> _pumpAndSettleApp(
+  WidgetTester tester,
+  Locale? locale,
+  WorkspaceRepository? repository,
+  List<Override> overrides,
+  void Function()? afterPump,
+) async {
+  {
     await tester.pumpWidget(
       // main() 的 runApp 才包 ProviderScope（見 lib/main.dart）；直接
       // pump DocsManagerApp 時，導覽殼（AppShell 為 ConsumerWidget）需要
@@ -340,11 +394,21 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
       ),
     );
     // ScreenUtilInit 首幀只做量測，需再 settle 一次才會渲染出真正的版面。
+    afterPump?.call();
     await _settleOrFailFast(tester);
-  } finally {
-    FlutterError.onError = previousHandler;
   }
-  return captured;
+}
+
+/// 取回 binding 已接管的未捕捉錯誤（zone 層），併入收集結果以保留原文。
+void _drainPendingExceptions(
+  WidgetTester tester,
+  List<FlutterErrorDetails> captured,
+) {
+  Object? pending;
+  while ((pending = tester.takeException()) != null) {
+    final isNew = !captured.any((d) => identical(d.exception, pending));
+    if (isNew) captured.add(FlutterErrorDetails(exception: pending!));
+  }
 }
 
 /// overflow 的錯誤訊息一律形如 "A RenderFlex overflowed by 12 pixels"。
