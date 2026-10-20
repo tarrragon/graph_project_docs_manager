@@ -1349,7 +1349,15 @@ def _register_acceptance_commands(
         required=True,
         help=TrackMessages.ARG_SECTION
     )
-    p_append_log.add_argument("content", help=TrackMessages.ARG_CONTENT)
+    p_append_log.add_argument(
+        "content", nargs="?", default=None, help=TrackMessages.ARG_CONTENT
+    )
+    p_append_log.add_argument(
+        "--content-file",
+        dest="content_file",
+        default=None,
+        help="自檔案讀取內容（逐字），與 content 位置參數擇一；內容不經命令列",
+    )
     p_append_log.add_argument("--version", help=TrackMessages.ARG_VERSION)
     p_append_log.add_argument(
         "--force",

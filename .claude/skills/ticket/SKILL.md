@@ -117,7 +117,7 @@ set-who <id> --current <agent>`）——回報 PM 執行該指令重新指派，
 /ticket <subcommand> [options]
 ```
 
-> **命令層級慣例**：`create` / `batch-create` / `show` / `handoff` / `resume` / `migrate` / `generate` 為**頂層命令**；`claim` / `complete` / `append-log` / `query` / `list` / `set-acceptance` 等狀態操作在 **`track` 之下**（`ticket track <op> ...`）。常見誤打：`ticket track create`、`ticket claim`。本標註僅說明既有慣例，零 CLI 行為變更。
+> **命令層級慣例**：`create` / `batch-create` / `show` / `handoff` / `resume` / `migrate` / `generate` 為**頂層命令**；`claim` / `complete` / `append-log` / `query` / `list` / `set-acceptance` 等狀態操作在 **`track` 之下**（`ticket track <op> ...`）。常見誤打：`ticket track create`、`ticket claim`。`append-log` 內容除位置參數外可用 `--content-file <path>` 自檔案逐字讀入（二擇一，內容不經命令列）。本標註僅說明既有慣例，零 CLI 行為變更。
 
 ## 子命令路由表
 
