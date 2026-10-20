@@ -122,6 +122,12 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 | 檔案存取 | **App Sandbox 關閉** | 開發者工具需執行專案內 doc CLI；實測沙盒下 python3 被 xcrun shim 拒絕、使用者安裝 binary 為 Operation not permitted |
 | 測試策略 | 雙層（`test/` 契約 + `integration_test/` 行為） | 內層針對「改錯無編譯期徵兆」的跨語言常數 |
 
+**Flutter／Dart 指令一律經 fvm 執行**（2026-10-20 用戶裁示）：寫成 `fvm flutter ...`、`fvm dart ...`，不直接呼叫 `flutter` 或 `dart`。
+- 理由：PATH 上的 `flutter` 是本機全域預設版，不是本專案釘選的版本。直接呼叫時，測試、分析、生成檔都落在全域版上。
+- 已發生的後果：舊版 gen-l10n 少產出一個空行，這個差異被提交進 main，之後各線合併前都要手動還原。
+- 合併閘門本身以 `fvm flutter test` 執行，閘門結果不受這個問題影響。
+- 框架層的守衛缺口追蹤於 tarrragon/claude#119。全域預設版維持不改（用戶裁定），以免影響本機其他 Flutter 專案。
+
 **已補完的原待決項**：schema 消費方式定為讀 `tracking_schema.json`（PROP-002）；
 security-scoped bookmark 實作已移除（PROP-001）；狀態管理定為 Riverpod、
 矩陣渲染委派 `two_dimensional_scrollables`、持久化為路徑字串
