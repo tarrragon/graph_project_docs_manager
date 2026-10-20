@@ -1,15 +1,32 @@
 # line-board：多線開發看板（Claude Code mod）
 
-在 Claude Code 終端機內開一個 Pane，顯示多 session 並行開發的現況：
+在 Claude Code 終端機內開一個 Pane，顯示多 session 並行開發的現況。版面以線分組：每條線一個可折疊群組，底部是「各 session」與「合併閘門最近紀錄」兩個同樣可折疊的區塊（見〈版面：以線分組的可折疊群組〉）。
 
-| 區塊 | 資料來源（相對 repo root，另註明者除外） |
+| 內容 | 資料來源（相對 repo root，另註明者除外） |
 |------|---------------------------|
-| 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一列，依線號排序：`L<n>｜<session 名稱>［<session 狀態>］｜<票序>`；該線有目標行時列尾接 `｜目標：<目標>` |
-| 佇列票即時狀態 | 票序中每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
-| 派發中代理人 | 主 checkout 的 `.claude/dispatch-active.json` 的 `dispatches` 陣列，依線分組，見〈派發中代理人〉 |
+| 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一個群組，依線號排序；線目標行接在群組標題列 |
+| 佇列票即時狀態 | 群組內佇列列的每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
+| 派發中代理人 | 主 checkout 的 `.claude/dispatch-active.json` 的 `dispatches` 陣列，列在所屬線的群組內，見〈派發中代理人〉 |
 | 各 session | `~/.claude/sessions/*.json`（家目錄取自 `HOME`），見下節 |
 | 合併閘門 | `.claude/logs/worktree-merge.log` 中 `[合併閘門] 開始` 與 `[合併閘門] 結束` 行的最後 8 行，精簡為欄位顯示（見下節）；預檢、合併前驗收、合併前測試等其他行不顯示 |
 | 更新時間 | 每 30 秒重讀一次，Pane 頂端顯示最近一次讀取的本機時間 |
+
+## 版面：以線分組的可折疊群組（337 UI 裁定）
+
+每個群組的標題列是一個按鍵，按下（Pane 取得焦點後以 Enter 或點擊）即切換展開與收合；收合時只有標題列一行，內容縮排 2 欄。
+
+- **線群組的標題列**：`▾ L<n>｜<session 名稱>［<session 狀態>］｜目標：<目標>｜<活動計數>`，收合時 `▾` 改為 `▸`；沒有目標或沒有活動計數時略過該段。session 狀態的判定見〈各 session 狀態〉最後一點
+- **活動計數**：依序為 `N 派發中`、`N 閘門`、`等你處理`、`N 排隊`，只列不為零的項目，以 ` · ` 分隔。各項與展開後的內容一一對應：
+  - `派發中`：群組內派發列的數目
+  - `閘門`：階段為 `閘門` 的派發列，加上閘門票列（佇列中某張票的 `feat/<票號>` 分支正持有合併閘門；同組已有該票標閘門的派發列時不重複列）
+  - `等你處理`：該線的 session 狀態為 `waiting`
+  - `排隊`：佇列列中狀態不是 `completed` 的票數
+- **展開後的內容**，依序：派發列（`<代理人>｜<任務>｜<流程階段>｜<距派發時間>`）、閘門票列（`閘門｜<短票號>｜自 HH:MM:SS`）、佇列列（`排隊：<票序>`）
+- **其他**：派發列對不到任何線時歸最後的「其他」群組，標題列為 `▾ 其他｜<活動計數>`，內容只有派發列；沒有這種派發時不顯示
+- **預設展開**：有派發中代理人、session 為 `waiting`、或有票在閘門中的線展開，其餘收合（只有排隊票不算活動）；預設每輪讀取後依新資料重算。底部兩個區塊預設展開。無活動的線標題列以淡色顯示
+- **手動切換**：按過的群組以群組 id（`lane:<n>`、`other`、`sessions`、`mergeGate`）把展開狀態記在 `$.state` 的 `line-board.expanded`，之後以手動狀態為準，每 30 秒的資料刷新不覆寫；hot reload 不遺失，看板 session 結束後清空
+- 提示行排在所有群組之上：349 讀不到（「解析失敗」）或沒有現行佇列行（「349 尚無現行佇列行」）、派發紀錄讀不到或格式錯誤、session 狀態讀取失敗、目前沒有派發中的代理人
+- 群組多到超出 Pane 高度時 Pane 可捲動；fullscreen 且夠寬時 Pane 停靠在側邊
 
 ## 各 session 狀態（`~/.claude/sessions/*.json`）
 
@@ -23,7 +40,7 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
   - `ps` 本身無法執行時視為存活
 - 排序：`waiting`、`busy` 與 `shell`（同組，組內依名稱）、`idle`，其他狀態值排最後；狀態一律原樣顯示。`waiting` 以黃色粗體顯示
 - 每列：`<name>｜<status>[：<waitingFor>]｜<距 statusUpdatedAt 的時間>`，時間以最近一次讀取的時刻計
-- 線列的 `［狀態］`：以 349 現行佇列行括號內的 session 名稱比對存活 session 的 `name`（同名多筆取最新一筆），比對不到標 `離線`；sessions 目錄讀不到時標 `狀態不明`
+- 線群組標題列的 `［狀態］`：以 349 現行佇列行括號內的 session 名稱比對存活 session 的 `name`（同名多筆取最新一筆），比對不到標 `離線`；sessions 目錄讀不到時標 `狀態不明`
 
 這是 Claude Code 的內部檔案，官方沒有文件承諾格式。Claude Code 升版後除了下方驗證指令，還要以真實的 sessions 目錄對照一次（檔案欄位、status 值，以及 `procStart` 是否仍與 `TZ=UTC ps -p <pid> -o lstart=` 逐字相同）。
 
@@ -39,8 +56,8 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
   3. 未結束（`turn_ended_at` 為 null）：審查類代理人為 `審查`，`incident-responder` 為 `事故分析`，其餘為 `實作`。審查類清單集中在 `hooks/dispatch.ts` 的 `REVIEW_AGENTS`，以該常數為準。**維護點**：這份清單由人手動維護，不會從 `.claude/agents/` 自動取得；`.claude/agents/` 新增審查類代理人時，要同步加進 `REVIEW_AGENTS`，漏加的代理人在未結束時會被判成 `實作`
   4. 已結束且有票號（票未 `completed`，含票檔讀不到）：`收尾`；已結束且沒有票號：不列（沒有票可收尾）
 - **不列出**：session 已不存活（狀態檔不存在或 pid 已結束），以及上列判定為不列的條目
-- 每列：`L<n> <代理人>｜<任務>｜<流程階段>｜<距 dispatched_at 的時間>`，對不到線時 `L<n>` 改為 `其他`；任務為短票號（與票序相同，去掉 `0.5.0-W1-`），沒有票號時為 `agent_description`。依線號排序、其他最後，同線保留紀錄中的順序；以 `truncate-middle` 截斷
-- 派發紀錄讀不到或格式錯誤（JSON 無效、`dispatches` 不是陣列）時本區塊顯示讀取失敗，其餘區塊照常；sessions 目錄讀不到時無從判定存活，本區塊不列條目並標明；349 或閘門紀錄讀不到時照樣列出，線一律歸其他、不判定閘門
+- 每列列在所屬線的群組內：`<代理人>｜<任務>｜<流程階段>｜<距 dispatched_at 的時間>`，所屬線由群組標題表達；對不到線的列在「其他」群組。任務為短票號（與票序相同，去掉 `0.5.0-W1-`），沒有票號時為 `agent_description`。同線保留紀錄中的順序；以 `truncate-middle` 截斷
+- 派發紀錄讀不到或格式錯誤（JSON 無效、`dispatches` 不是陣列）時，群組之上顯示讀取失敗，各群組照常但沒有派發列；sessions 目錄讀不到時無從判定存活，不列派發列並標明；349 或閘門紀錄讀不到時照樣列出，線一律歸其他、不判定閘門
 
 這是本專案框架的內部檔案，欄位由派發 hook 決定；欄位改名時本區塊的條目會被略過或顯示讀取失敗。
 
@@ -83,7 +100,7 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
 
 - 判定與現行佇列行相同：同樣只掃 Solution，行首即 `**L`、n 為數字；清單項、表格內、以反引號引用範本的行不算
 - 同一條線有多行時只取最後一行；最後一行寫 `（無）` 或留空表示清除，該線不顯示目標；清除後再寫新的目標行即恢復顯示
-- 目標只顯示在有現行佇列行的線上，接在該線列尾：`｜目標：<目標>`；沒有現行佇列行或已結束的線，目標行不顯示
+- 目標只顯示在有現行佇列行的線上，接在該線群組標題列的 session 之後：`｜目標：<目標>`；沒有現行佇列行或已結束的線，目標行不顯示
 
 ## 啟動
 
@@ -103,17 +120,21 @@ claude --plugin-dir tools/line-board
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board`、定時讀取、寫入 snapshot、組裝 Pane（區塊標題與各區塊依序排列）；讀檔與命令一律經 `$` |
-| `hooks/{lanes,dispatch,sessions,mergeGate}View.tsx` | Pane 各區塊的繪製，一檔一個區塊：線與佇列、派發中代理人、各 session、合併閘門最近紀錄；`Text` 由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入 |
+| `hooks/register.tsx` | 註冊 `/board`、定時讀取、寫入 snapshot、讀寫群組的手動展開狀態、組裝 Pane（線群組、底部兩區塊的折疊外框）；讀檔與命令一律經 `$` |
+| `hooks/lanesView.tsx` | 線群組的繪製（標題列、派發列、閘門票列、佇列列）與各群組共用的可折疊外框 |
+| `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
+| `hooks/{sessions,mergeGate}View.tsx` | 底部兩區塊的內容：各 session、合併閘門最近紀錄 |
+| 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`）由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入 |
 | `hooks/parse.ts` | 純函式的匯出彙總：register.tsx 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
 | `hooks/shared.ts` | 各 domain 共用：票號前綴與票檔位置、frontmatter 狀態解析、checkout 路徑判定、距今時間 |
 | `hooks/lanes.ts` | 線與佇列：現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化 |
 | `hooks/sessions.ts` | 各 session：狀態檔篩選／解析／排序、pid 存活比對（procStart）、本 repo 判定、線列 session 狀態 |
 | `hooks/mergeGate.ts` | 合併閘門：紀錄篩選與欄位解析、短分支名、閘門持有者判定、結果顏色 |
 | `hooks/dispatch.ts` | 派發中代理人：派發紀錄解析、流程階段推導、派發列；審查類代理人清單 `REVIEW_AGENTS` |
-| `types/index.d.ts` | `$.state` 值（`line-board.snapshot`）的型別契約 |
-| `hooks/{shared,lanes,sessions,mergeGate,dispatch}.test.ts` | `claude plugin test` 測試：各 domain 純函式，與同名產品檔一一對應 |
-| `hooks/board.test.ts`、`hooks/boardDispatch.test.ts` | `claude plugin test` 測試：Pane 端到端繪製；後者為派發中代理人區塊，前者為其餘區塊 |
+| `hooks/layout.ts` | 版面：以線分組、活動計數、預設展開、手動切換的展開狀態、群組標題列與內容各行的顯示文字 |
+| `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約 |
+| `hooks/{shared,lanes,sessions,mergeGate,dispatch,layout}.test.ts` | `claude plugin test` 測試：各 domain 純函式，與同名產品檔一一對應 |
+| `hooks/board.test.ts`、`hooks/boardDispatch.test.ts` | `claude plugin test` 測試：Pane 端到端繪製；後者為線群組的派發列、活動計數、預設展開與手動切換，前者為線標題列、票序與底部兩區塊 |
 | `hooks/fixtures.ts`、`hooks/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |
 
