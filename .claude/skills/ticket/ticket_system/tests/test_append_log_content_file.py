@@ -140,6 +140,21 @@ class TestContentFile:
         assert "--content-file" in capsys.readouterr().err
         assert path.read_text(encoding="utf-8") == before
 
+    @pytest.mark.parametrize("payload", ["", "   \n\t\n"])
+    @pytest.mark.parametrize("replace", [False, True])
+    def test_empty_or_blank_file_rejected_ticket_unchanged(
+        self, tmp_ticket_dir, patch_paths, tmp_path, capsys, payload, replace
+    ):
+        path = _make_ticket(tmp_ticket_dir)
+        before = path.read_text(encoding="utf-8")
+        f = tmp_path / "empty.txt"
+        f.write_text(payload, encoding="utf-8")
+        assert _call(content_file=str(f), replace=replace) != 0
+        assert "--content-file" in capsys.readouterr().err
+        text = path.read_text(encoding="utf-8")
+        assert text == before
+        assert "既有內容 X" in text
+
     def test_positional_unchanged(self, tmp_ticket_dir, patch_paths):
         path = _make_ticket(tmp_ticket_dir)
         assert _call(content="位置內容 Y") == 0
