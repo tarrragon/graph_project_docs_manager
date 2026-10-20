@@ -5,15 +5,17 @@ type: test-design
 status: draft
 source_spec: SPEC-001
 spec_version: "1.35"
-delta_spec_version: "1.38"
+delta_spec_version: "1.52"
 related_specs: [SPEC-004, UC-02, SPEC-007]
 ticket: 0.5.0-W1-114
-delta_ticket: 0.5.0-W1-114.4
+delta_ticket: 0.5.0-W1-114.22.2
 created: "2026-10-08"
 updated: "2026-10-20"
 ---
 
 # SPEC-001 v1.38／SPEC-004 v1.77／UC-02 v1.8 Phase 2 紅燈測試規格
+
+**v1.51～v1.52 差異（`0.5.0-W1-443`、`0.5.0-W1-114.22.2`）**：v1.51 依 `0.5.0-W1-443` 用戶裁決，宣告狀態行補零 bundle 文案與跨票去重（R1-12、R1-13、K4-3，P3-4 註記單票層級）。v1.52 補 §5 事件類項目投影（新節 §3.6 R2-1～R2-8、K4-4）：項目 id、路徑、指向、選定 UC 與說明 key，以及建圖不可用與路徑模式查詢不可用兩種情況下的出現規則。兩輪皆只增案例，既有案例不改。
 
 **v1.38 差異（`0.5.0-W1-114.4`）**：依 `0.5.0-W1-114.2` 用戶裁決 R1／J2。R1：列序規則改歸 Graph（SPEC-007 FR-13），
 L1-1～L1-3、L2-1～L2-4 移至 `docs/test-design/SPEC-007-test-design.md` G13，Layout 改測「向 Graph 取列序、不自行推導」（L8）。
@@ -421,6 +423,22 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | K4-1 | §4.0.6 | 四個 `pathDeclaration*` key、`relationProposedLabel`、`relationItemProposedA11yLabel`、`swimlaneScreenLaneName` | zh／en ARB 皆存在且值與 §4.0.6 表逐字一致 |
 | K4-2（v1.37 新增） | §4.0.6 | `pathDeclarationNonDomainMalformed`、`swimlaneFlowParseFailedHint`、`flowParseFailedMessage`、`swimlaneUnplacedLaneName` | zh／en ARB 皆存在且值與 SPEC-004 v1.77 §4.0.6 表逐字一致 |
 | K4-3（SPEC-004 v1.93 新增） | §4.0.6 | `pathDeclarationNoBundles` | zh／en ARB 皆存在且值與 SPEC-004 v1.93 §4.0.6 表逐字一致 |
+| K4-4（SPEC-004 v1.94 新增） | §4.0.6 | 〈1.94 新增〉四個事件類項目說明 key | zh／en ARB 皆存在且值與 SPEC-004 v1.94 §4.0.6 表逐字一致；帶 `domain` 的兩個 key placeholder 名一致 |
+
+### 3.6 報告頁事件類項目投影（SPEC-001 v1.52 §5〈事件類項目投影〉、SPEC-004 v1.94）
+
+**測試檔**：投影規則 R2-1～R2-5 在 `test/unit/screens/gap_report/gap_report_projection_test.dart`；輪次接線 R2-6～R2-8 在 `test/unit/screens/gap_report_round_test.dart`。偵測判準本身不在此節（`test/unit/diagnostics/event_gap_test.dart`，`0.5.0-W1-114.22.1`）。
+
+| # | Given | Then |
+|---|-------|------|
+| R2-1 | 一筆孤立事件（EVT ID `EVT-A-001`，有發出無消費，引用 UC 為 `UC-02`） | 落 `orphan-event` 分節；項目 id 為 category id 與 EVT ID 各經 URI component 編碼後以 `:` 串接；路徑為該 EVT 節點路徑；無行號；指向型別為事件類，事件 ID 與指向節點皆為 `EVT-A-001`，選定 UC 為 `UC-02` |
+| R2-2（E1） | 同一 EVT 的宣告不符兩筆：`consumers` 方向 domain `graph`、`diagnostics` | 兩項的 id 不同（成分含方向與 domain）、說明文字不同（`gapEventConsumerUnmatched` 帶各自 domain）；兩項路徑相同 |
+| R2-3（E1） | 引用 UC 清單為 `[UC-01, UC-03]` 與 `[]` 各一 | 前者選定 UC 為 `UC-01`（code point 序最小）；後者為無，點擊依其他圖節點處理（跳節點詳情顯示該 EVT）；兩項跳轉不同 |
+| R2-4（E1） | 孤立事件形態有發出無消費與有消費無發出各一；宣告不符方向 `consumers` 與 `producers` 各一（domain 皆為 `presentation`） | 四項說明 key 兩兩不同；`presentation` 原樣出現在文字中，不經 i18n |
+| R2-5 | 投影輸入的 EVT ID 在 `nodes` 查不到 | debug assert；release 降為無法指向任何節點、不提供開啟原始檔，只顯示 ID 與說明（比照〈定案〉指向節點查不到時） |
+| R2-6（E2） | 掃描輪次建圖不可用，語料含一個孤立事件；正向對照為同一語料建圖可用 | 前者兩類事件分節皆不出現，狀態為無法判定破洞；後者 `orphan-event` 分節有一項 |
+| R2-7 | 路徑模式查詢不可用、建圖可用，語料含一個孤立事件 | 狀態為無法判定破洞，且 `orphan-event` 分節照常列出該項 |
+| R2-8 | 建圖可用，語料含孤立事件、宣告不符與 `graph-defect-flow` 各一 | 分節順序為 `graph-defect-flow` → `orphan-event` → `event-declaration-mismatch`（定案 O1）；事件類項目計入破洞數 |
 
 ## 4. 覆蓋矩陣
 
@@ -443,6 +461,7 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | 比對語意：精確比對與同字串歸 domain（UC-02 v1.8 C3′、T1） | —（兩份語料皆無此類宣告值） | P4 |
 | 宣告狀態行（SPEC-001 §5；含格式錯誤、零 bundle、跨票去重） | ITD4（含 A5） | R1（含 R1-9～R1-13）、K4-1、K4-2、K4-3 |
 | proposed 標記（SPEC-004 4.19；SPEC-001 §6） | ITD3-A5 | K3、K4-1 |
+| 事件類項目投影（SPEC-001 v1.52 §5；SPEC-004 v1.94） | —（兩份語料孤立事件皆為 0 筆，宣告不符的修正方向待 `0.5.0-W1-458` 裁定，期望值未凍結） | R2、K4-4 |
 
 L6 不在外圈：兩份語料皆無懸空與循環（SPEC-001 期望值欄），外圈無資料可驅動。L7 由 ITD2-A5
 （flutter_balance 九步缺鍵）在外圈驅動。F1 不在外圈：理由見 F1 節末。
@@ -466,12 +485,13 @@ L6 不在外圈：兩份語料皆無懸空與循環（SPEC-001 期望值欄）�
 | flow 解析失敗呈現 | F1 | 7 |
 | 路徑定位 | P1～P4 | 24（加 P1-7；v1.38 加 P4 八案） |
 | 報告頁宣告狀態行 | R1 | 13（加 R1-9～R1-11；SPEC-001 v1.51 加 R1-12、R1-13） |
-| 元件 | K1～K4 | 13（加 K2-5、K4-2；K2-4 改寫不計增；SPEC-004 v1.93 加 K4-3） |
-| 合計 | | 119 |
+| 元件 | K1～K4 | 14（加 K2-5、K4-2；K2-4 改寫不計增；SPEC-004 v1.93 加 K4-3、v1.94 加 K4-4） |
+| 報告頁事件類項目投影 | R2 | 8（SPEC-001 v1.52 新增） |
+| 合計 | | 128 |
 
-守衛型案例（已附正向對照）：L2-5、L6-1、L6-2、L7-1、R1-5、P4-1、P4-2、P4-3、P4-5（L2-4 已移為 SPEC-007 G13-8）。
+守衛型案例（已附正向對照）：L2-5、L6-1、L6-2、L7-1、R1-5、R2-6、P4-1、P4-2、P4-3、P4-5（L2-4 已移為 SPEC-007 G13-8）。
 E1 對照：ITD1-A4、ITD2-A5、ITD3-A4、ITD3-A5、ITD4-A3、ITD4-A5、L3-3、L4-3、L5-3、L7-2、L7-4、L7-6、
-L8-2、L8-4、L9-2、V3-2、V3-4、F1-2、F1-4、F1-7、P1-7、P2-2、P2-3、P4-4、P4-7、P4-8、R1-7、R1-10、K2-3、K2-4、K3-1
+L8-2、L8-4、L9-2、V3-2、V3-4、F1-2、F1-4、F1-7、P1-7、P2-2、P2-3、P4-4、P4-7、P4-8、R1-7、R1-10、R2-2、R2-3、R2-4、K2-3、K2-4、K3-1
 （L1-2、L2-2 已移為 SPEC-007 G13-2、G13-5）。
 
 ## 6. 待決與交接

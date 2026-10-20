@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-10-20"
-version: "1.51"
+version: "1.52"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -581,12 +581,14 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `multiSource` | 子類名、起點 ID、邊型 |
 > | flow 四子類 | 子類名、UC ID、step id、欄位名、原始值（`traverses` 鍵缺席時為字面 `null`） |
 > | domain 重複宣告 | 子類名、domain 值 |
+> | `orphan-event`（v1.52） | category id、EVT ID |
+> | `event-declaration-mismatch`（v1.52） | category id、EVT ID、方向（字面 `consumers` 或 `producers`）、宣告的 domain 原值 |
 >
 > 產生規則：各成分以 URI component 編碼後用 `:` 串接（編碼後成分不含 `:`，串接結果與成分序列一對一）。
 > 成分只取破洞負載的資料值，不取清單索引、掃描順序或時間，因此同一缺陷在下一輪掃描得到同一 id；
 > 缺陷修正後該 id 消失，不被其他項目沿用。同一輪內兩筆破洞的成分完全相同時（例：同一欄位清單內
-> 重複出現同一個斷邊值），第二筆起依 Diagnostics 輸出順序加後綴 `#2`、`#3`。0.1 既有三個類別的項目
-> id 規則不在本段範圍。
+> 重複出現同一個斷邊值），第二筆起依 Diagnostics 輸出順序加後綴 `#2`、`#3`。0.1 既有三個類別中，缺 frontmatter
+> 已併入 `parse-failure`（定案 M1），`orphan-event` 與 `event-declaration-mismatch` 於 v1.52 補入上表。
 >
 > 表三：指向（對應上方〈破洞項的主操作與次要操作〉表的五列）
 >
@@ -600,6 +602,17 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `multiSource` | 起點節點路徑 | 起點節點 | 起點為 Ticket 時為 ticket，其餘為其他圖節點 |
 > | flow 四子類 | UC 路徑 | 該 UC 與 step id | flow 類：UC Flow 並選定該 UC、定位該步驟 |
 > | domain 重複宣告 | 衝突 DomainBundle ID 中 code point 序最小者的路徑 | 該 DomainBundle | 其他圖節點 |
+> | `orphan-event`、`event-declaration-mismatch`（v1.52） | EVT 節點路徑 | 該 EVT | 事件類：事件 ID 為 EVT ID；選定 UC 取引用該 EVT 的 UC ID 中 code point 序最小者，無任何 UC 引用時為無，改依「其他圖節點」列處理 |
+>
+> **事件類項目投影**（v1.52，`0.5.0-W1-114.22.2`；PM 確認 2026-10-20）：兩類破洞由 Diagnostics 依 SPEC-003 §3.5
+> 判準產生，負載帶 EVT ID、引用 UC ID 清單（已排序、去重，無引用時為空），宣告不符另帶方向與宣告的 domain
+> 原值。孤立事件的兩形態互斥（有發出無消費要求無任何 `consumes`，有消費無發出要求至少一個 `consumes`），
+> 一個 EVT 至多一項，故 id 不需形態成分；宣告不符一個（EVT、方向、domain）一項。事件類項目無行號。
+> 項目說明 key 見 SPEC-004 §4.0.6〈1.94 新增〉：孤立事件依形態二選一，宣告不符依方向二選一並帶 domain 原值
+> （含保留字 `presentation`，不經 i18n），同一 EVT 兩個 domain 未對應的兩項因此文字不同。指向的 EVT 節點
+> 查不到時比照下方〈定案〉「指向節點查不到時」處置。建圖不可用時兩類不產生項目（SPEC-003 §3.5，Diagnostics
+> 回報無法判定、零筆），破洞報告落「無法判定破洞」的原因沿用建圖不可用；路徑模式查詢不可用而建圖可用時，
+> 「無法判定破洞」列照常列出兩類項目（同上方「其餘類別沿用同一投影」）。
 >
 > `graphDefect` 各子類無行號，不顯示行號。項目說明 key 與參數見 SPEC-004 §4.0.6〈1.80 提案〉（2026-10-09 PM 確認）。
 >
@@ -956,6 +969,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.52 | 2026-10-20 | §5〈破洞報告項目投影〉表二、表三補事件類兩列與〈事件類項目投影〉段（`0.5.0-W1-114.22.2`，承 `0.5.0-W1-114.22.1` 偵測公開面合併與 `0.5.0-W1-114.22` 派發前查證：兩表原只定義 `parseFailure` 與 `graphDefect`，事件類項目的 id、路徑、指向與說明無規則）。項目 id 成分：孤立事件為 category id、EVT ID；宣告不符另加方向與 domain 原值。路徑為 EVT 節點路徑，指向該 EVT，選定 UC 取引用 UC ID 的 code point 序最小者，無引用時依其他圖節點處理；建圖不可用時不產生、路徑模式查詢不可用而建圖可用時照常列出。PM 確認，比照 v1.41／v1.42 投影表先例。狀態總數不變。SPEC-004 v1.94 同批 |
 | 1.51 | 2026-10-20 | §5〈專案層級宣告狀態一行不是新狀態〉表三列（用戶裁決 2026-10-20，`0.5.0-W1-443`，承 `0.5.0-W1-119.2` 執行者回報與 linux 審查）：「內容」列補 bundle 總數為 0 時以 `pathDeclarationNoBundles` 片段呈現、不顯示「0／0」；「受影響路徑數來源」列補路徑數為去重後的路徑條數，同一條正規化路徑跨票只算一次；「文案與 i18n key」列改寫 `{detail}` 組成為 bundle 側與非 domain 側各一片段，補列 `pathDeclarationNoBundles`、`pathDeclarationNonDomainMalformed`。狀態總數不變。SPEC-004 v1.93 同批 |
 | 1.50 | 2026-10-13 | §8.2 選資料夾失敗兩列補載體依觸發處區分（`0.5.0-W1-156.1`，承 `0.5.0-W1-156` 用戶裁決 2026-10-12）：§1 未選專案內容區維持 SnackBar；專案切換浮層內改由浮層內常駐文字承載、不發暫態提示；第二列補「點擊最近專案項後判定失敗」。兩列「不轉狀態」不變。表前判別方式段補一句說明浮層內觸發處不符判別式而留在表內的原因。〈Gate 三問對照〉「資料夾可用性」列失敗欄同步：新選資料夾的原因載體依觸發處區分，補最近項點擊後才判定不可用的處置（用戶裁決 2026-10-13；同版補入）。§7 不新增狀態，狀態總數不變。SPEC-003 v1.60、SPEC-004 v1.88 同批 |
 | 1.49 | 2026-10-12 | §1 新增「載入失敗」列（`state-domain-load-failed`，用戶裁決 2026-10-12，`0.5.0-W1-114.14.1`）：載入輪次拋出非預期例外時落本狀態，`BlockedState` 顯示 `domainLoadFailedMessage`，可重新載入（同一資料夾、同一模式）或切換專案，已存路徑與最近清單不變；載入中退出路徑補此落點。§1 之後「專案未就緒」共用定義與 §2–§6 五列原因改四選一（新增 `projectUnreadyReasonLoadFailed`），進入條件加入載入失敗。〈狀態總數〉§1 11 → 12、總數 40 → 41；〈返回為殼層通則〉`action-domain-switch-project` 渲染條件擴為四個狀態；§8.1 補一列（否，T2）。SPEC-003 v1.59、SPEC-004 v1.86 同批 |
