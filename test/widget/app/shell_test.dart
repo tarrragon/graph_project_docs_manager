@@ -6,6 +6,8 @@
 // 替換，本測試只鎖定錨點與行為，不鎖定樣式。
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +37,22 @@ import '../../helpers/stub_workspace_repository.dart';
 
 void main() {
   _registerFocusTests();
+  testWidgets('啟動首幀（restore 未完成）不顯示 fixture 矩陣', (tester) async {
+    final pending = Completer<WorkspaceState>();
+    addTearDown(() => pending.complete(const WorkspaceUnset()));
+    await _pumpShell(
+      tester,
+      injectDomainState: false,
+      settle: false,
+      overrides: [
+        workspaceRepositoryProvider.overrideWithValue(
+          _PendingRestoreRepository(pending.future),
+        ),
+      ],
+    );
+
+    expect(find.byKey(const Key('state-domain-matrix')), findsNothing);
+  });
   testWidgets('returnTo 為 null 時 action-<screen>-back 不存在於元件樹', (tester) async {
     await _pumpShell(tester);
 
@@ -329,14 +347,16 @@ Future<void> _pumpShell(
   void Function(ProviderContainer container)? onReady,
   List<Override> overrides = const [],
   bool settle = true,
+  bool injectDomainState = true,
 }) async {
   late BuildContext capturedContext;
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        domainViewStateProvider.overrideWith(
-          (ref) => const DomainReady(mode: DomainMode.matrix),
-        ),
+        if (injectDomainState)
+          domainViewStateProvider.overrideWith(
+            (ref) => const DomainReady(mode: DomainMode.matrix),
+          ),
         ...overrides,
       ],
       child: ScreenUtilInit(
@@ -533,6 +553,16 @@ void _expectInMainArea(FocusNode? node) {
     box.localToGlobal(Offset.zero).dx,
     greaterThanOrEqualTo(LayoutSize.sidebarWidth),
   );
+}
+
+/// `restore()` 回傳外部控制的 Future，模擬 restore 尚未完成的啟動首幀。
+class _PendingRestoreRepository extends StubWorkspaceRepository {
+  _PendingRestoreRepository(this._pending) : super(const WorkspaceUnset());
+
+  final Future<WorkspaceState> _pending;
+
+  @override
+  Future<WorkspaceState> restore() => _pending;
 }
 
 /// 經 shell 啟動並判為 DomainReady 的注入（0.3.3-W3-398 起的標準做法）。
