@@ -4,8 +4,8 @@ title: "建圖：輕節點、邊的聯集與圖結構破洞"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
-updated: "2026-10-12"
-version: "1.32"
+updated: "2026-10-21"
+version: "1.33"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -198,7 +198,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 **規則**：`rawNodes` 為空時照常建出空圖、發出 EVT-GRAPH-001，所有計數為 0，不視為錯誤（與 SPEC-006 FR-02「沒有 `docs/` 時掃描 0 檔」一致）。
 
-**負載**：`nodeCount`、`edgeCount`、`graphDefects`（主圖四類 `danglingRef`、`malformedRef`、`duplicateId`、`multiSource`，與 FR-09 的 flow 子類，逐筆）。EVT-GRAPH-001 的負載說明已於本規格定案時同步改寫（`docs/events/graph/EVT-GRAPH-001-graph-built.md`）。
+**負載**：圖本體與缺陷兩部分。圖本體是輕節點（FR-02）、邊（FR-04、FR-05）、各 UC 的 flow 子圖（FR-10，不進邊集合）與 domain 名稱索引（FR-11），FR-08、FR-10～FR-13 的查詢都在圖本體上計算；`nodeCount`、`edgeCount` 由節點與邊的筆數算出。缺陷是 `graphDefects`，逐筆列出，子類為主圖四類 `danglingRef`、`malformedRef`、`duplicateId`、`multiSource`，加上 FR-09 的 flow 子類與「domain 重複宣告」。EVT-GRAPH-001 的負載說明與本段同步（`docs/events/graph/EVT-GRAPH-001-graph-built.md`）。原文只列計數與 `graphDefects`，沒有列出圖本體，v1.33 依 `GraphBuiltEvent` 現況補上（`0.5.0-W1-460`）。
 
 **驗收條件**：
 - [ ] Given 一份分布已知的 fixture，Then 各計數項等於已知值，FR-03 守恆式成立
@@ -392,7 +392,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 介面識別名（`0.5.0-W1-114.7` 命名回填）：`BundleLayerQuery.orderedBundles() -> BundleOrderResult`，可用時為 `BundleOrderAvailable.entries: List<BundleLayerEntry{bundleId, domain, int? layer}>`，圖不可用時為 `BundleOrderGraphUnavailable`
 
 **驗收條件**：
-- [ ] Given 本專案語料的凍結快照，Then 排序結果為 `schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`（L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`，與 SPEC-001 §1 列序期望值一致）
+- [ ] Given 本專案語料的凍結快照，Then 排序結果為 `schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`（L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`，與 SPEC-001 §1 列序期望值一致；現行語料自 2026-10-21 起 `diagnostics` 依賴 `graph`、推導為 L3，快照不隨語料更新，本條期望值以快照為準，`0.5.0-W1-460`）
 - [ ] Given 兩個 bundle 互相依賴，Then 兩者接在全部可分層 bundle 之後，依 code point 序
 - [ ] Given bundle `c` 依賴 L0 的 `a` 與互相依賴的 `x`，Then `c` 推不出層、層號為 null，與 `x` 一起接在全部可分層 bundle 之後依 code point 序（不得算為 L1）；可分層者回傳各自層號（NC-8／NC-9）
 - [ ] Given FR-12 回傳 UC-04 × `schema` 的兩條同長路徑，Then 其先後與兩條路徑來源在本 FR 排序中的先後一致
@@ -444,6 +444,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.33 | 2026-10-21 | FR-06 負載補上圖本體（輕節點、邊、flow 子圖、domain 名稱索引），缺陷子類補「domain 重複宣告」；原文只列計數與 `graphDefects`，與 `GraphBuiltEvent` 現況及 Layout、Diagnostics 實際讀取的欄位不符。FR-13 快照驗收補註：現行語料的 `diagnostics` 已推導為 L3，期望值仍以凍結快照為準（`0.5.0-W1-460`） |
 | 1.32 | 2026-10-12 | FR-10 步驟屬性：`emits`／`consumes` 的正規化比照 `next`（純量視同單元素清單、空元素略過、非字串轉字串），各消費端共用同一份結果（PM 處置，`0.5.0-W1-114.20`） |
 | 1.31 | 2026-10-12 | FR-13：`domain` 無效（非字串、`null`、缺鍵、空字串）的 bundle 層號照算、同層排在有效者之後並依 bundle ID 排序（用戶裁決 Z3，取代 Z1 的「歸推不出層」，`0.5.0-W1-139`） |
 | 1.30 | 2026-10-12 | FR-12：排除經直接 domain 的路徑在取最短之前套用（用戶裁決 E-B）；FR-13：自我依賴視為循環（Y1）、非字串 domain 不消失（Z1）（皆 `0.5.0-W1-139`） |

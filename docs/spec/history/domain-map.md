@@ -6,7 +6,7 @@ related_usecases: []
 depends_on_bundles: [DOMAIN-MAP-workspace]
 path_patterns: []
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-10-21"
 ---
 
 # Domain Map — History
@@ -23,7 +23,7 @@ updated: "2026-10-07"
 
 ## 2. 分層與依賴方向
 
-層級：L2（層級圖與完整依賴邊見系統層 §2）。
+層級：L1（層級圖與完整依賴邊見系統層 §2）。只依賴 Workspace（L0），推導為 L1；系統層 §2 已於 2026-10-08 更正，本行 2026-10-21 補同步（`0.5.0-W1-460`）。
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
