@@ -287,6 +287,28 @@ void _applyViewport(WidgetTester tester, Viewport viewport) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
+/// settle 的明確逾時。
+///
+/// pumpAndSettle 預設逾時 10 分鐘；狀態停在無限進度動畫時會空等整段時間
+/// 才失敗。首幀 settle 正常只需數秒，30 秒內未靜止即視為異常。
+const Duration kSettleTimeout = Duration(seconds: 30);
+
+/// 以短逾時 settle；逾時時改拋帶情境的訊息，指出疑似停在無限動畫。
+Future<void> _settleOrFailFast(WidgetTester tester) async {
+  try {
+    await tester.pumpAndSettle(
+      const Duration(milliseconds: 100),
+      EnginePhase.sendSemanticsUpdate,
+      kSettleTimeout,
+    );
+  } on FlutterError catch (e) {
+    throw TestFailure(
+      '啟動後 ${kSettleTimeout.inSeconds} 秒內畫面未靜止，疑似停在無限進度'
+      '動畫（例如狀態卡在載入中）：${e.message}',
+    );
+  }
+}
+
 /// 啟動 App 並攔截這段期間所有 framework 錯誤。
 ///
 /// 這裡刻意接管 [FlutterError.onError]：預設行為會讓錯誤直接把測試打掛，
@@ -318,7 +340,7 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
       ),
     );
     // ScreenUtilInit 首幀只做量測，需再 settle 一次才會渲染出真正的版面。
-    await tester.pumpAndSettle();
+    await _settleOrFailFast(tester);
   } finally {
     FlutterError.onError = previousHandler;
   }
