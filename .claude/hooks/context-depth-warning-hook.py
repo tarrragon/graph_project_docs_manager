@@ -123,16 +123,16 @@ def read_last_total_context(transcript_path: str) -> Optional[int]:
     return last_value
 
 
-def tier_of(cache_read: int) -> int:
-    """cache_read 對應的去重 tier。"""
-    return cache_read // TIER_STEP
+def tier_of(total_context: int) -> int:
+    """total_context（三項合計）對應的去重 tier。"""
+    return total_context // TIER_STEP
 
 
-def should_warn(cache_read: int, last_warned_tier: int) -> bool:
+def should_warn(total_context: int, last_warned_tier: int) -> bool:
     """是否應提示：超閾值且當前 tier 比已提示的 tier 更深。"""
-    if cache_read < THRESHOLD:
+    if total_context < THRESHOLD:
         return False
-    return tier_of(cache_read) > last_warned_tier
+    return tier_of(total_context) > last_warned_tier
 
 
 def load_state(state_file: Path) -> dict:
@@ -158,9 +158,9 @@ def save_state(state_file: Path, state: dict) -> None:
         log(f"寫 state 失敗: {exc}")
 
 
-def _warning_text(total: int) -> str:
+def _warning_text(total_context: int) -> str:
     return (
-        f"[context-depth-warning] 當前 context 合計約 {total // 1000}K tokens"
+        f"[context-depth-warning] 當前 context 合計約 {total_context // 1000}K tokens"
         f"（input + cache_creation + cache_read），已超過 {THRESHOLD // 1000}K。"
         "請告知用戶擇一處理：(1) 請用戶執行 /compact（模型無法自行觸發）；"
         "(2) 先把進度寫入 ticket 與 handoff，再請用戶以 "
