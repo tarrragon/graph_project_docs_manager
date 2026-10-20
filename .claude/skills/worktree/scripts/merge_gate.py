@@ -50,6 +50,7 @@ SNAPSHOT_DIR = ".claude/worktrees"
 SNAPSHOT_PREFIX = "merge-gate-"
 _GIT_TIMEOUT_SECONDS = 120
 _FAILED_ITEMS_MAX = 20
+UNMAPPED_SHOW_MAX = 10
 _OUTPUT_TAIL_LINES = 15
 
 SUITE_FLUTTER = "flutter"
@@ -191,6 +192,25 @@ def needs_gate(changed_paths: list) -> bool:
     """改動是否可能落在任何全套件範圍內（用於決定是否值得建立快照）。"""
     return any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES or p.startswith(".claude/")
                for p in changed_paths if not is_reuse_exempt(p))
+
+
+def _in_any_suite_scope(path: str) -> bool:
+    return path.startswith(FLUTTER_SCOPE_PREFIXES) or path in FLUTTER_SCOPE_FILES or path.startswith(".claude/")
+
+
+def unmapped_paths(changed_paths: list) -> list:
+    """既非豁免、也不屬任何套件範圍的路徑（如自帶測試的子專案）：閘門不會替它們跑任何測試。"""
+    return [p for p in changed_paths if not is_reuse_exempt(p) and not _in_any_suite_scope(p)]
+
+
+def _warn_unmapped(paths: list) -> None:
+    unmapped = unmapped_paths(paths)
+    if not unmapped:
+        return
+    shown = unmapped[:UNMAPPED_SHOW_MAX]
+    more = f"，其餘 {len(unmapped) - len(shown)} 個略" if len(unmapped) > len(shown) else ""
+    print(f"[合併前測試] WARNING：{len(unmapped)} 個改動路徑不對應任何全套件，閘門不會測它們："
+          f"{', '.join(shown)}{more}")
 
 
 def select_suites(changed_paths: list, root: str) -> list:
@@ -596,6 +616,7 @@ class MergeGate:
         paths = changed_paths_between(self.repo, expected_old, commit)
         if paths is None:
             return CheckResult(False, "無法計算合併改動範圍")
+        _warn_unmapped(paths)
         if not needs_gate(paths):
             print("[合併前測試] 改動不在任何全套件範圍內，免跑")
             return CheckResult(True)
