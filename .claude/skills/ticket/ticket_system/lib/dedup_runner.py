@@ -8,12 +8,15 @@
 """
 from __future__ import annotations
 
+import logging
 import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 DEDUP_TIMEOUT_SECONDS = 90
 _SCRIPT = (
@@ -30,6 +33,7 @@ class DedupOutcome:
 
     hits: List[Tuple[int, str]] = field(default_factory=list)
     error: Optional[str] = None
+    partial: bool = False  # True：部分 token 失敗，hits 仍有效
 
 
 def parse_dedup_report(stdout: str) -> DedupOutcome:
@@ -62,10 +66,17 @@ def run_dedup(
         return _failed(f"exit {proc.returncode}: {tail[0]}")
     outcome = parse_dedup_report(proc.stdout or "")
     if outcome.error:
-        sys.stderr.write(f"[WARNING] 建票查重未完整（不阻擋建票）：{outcome.error}\n")
+        outcome.partial = True
+        _warn(f"建票查重部分未完成（不阻擋建票）：{outcome.error}")
     return outcome
 
 
+def _warn(message: str) -> None:
+    """同一訊息寫 stderr 與日誌（業務邏輯失敗須有日誌）。"""
+    sys.stderr.write(f"[WARNING] {message}\n")
+    logger.warning(message)
+
+
 def _failed(summary: str) -> DedupOutcome:
-    sys.stderr.write(f"[WARNING] 建票查重未完成（不阻擋建票）：{summary}\n")
+    _warn(f"建票查重未完成（不阻擋建票）：{summary}")
     return DedupOutcome(error=summary)

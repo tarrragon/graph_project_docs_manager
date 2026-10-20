@@ -70,10 +70,27 @@ class TestRunDedup:
         assert "exit 1" in out.error and "gh: offline" in out.error
         assert "查重未完成" in capsys.readouterr().err
 
-    def test_skipped_tokens_reported_as_error_with_hits_kept(self):
+    def test_skipped_tokens_reported_as_error_with_hits_kept(self, capsys):
         report = REPORT.replace("略過的 token 數：0", "略過的 token 數：2")
         out = _REAL_RUN_DEDUP(["k"], runner=_fake_runner(report))
         assert len(out.hits) == 2 and "2 個" in out.error
+        assert out.partial is True
+        assert "查重部分未完成" in capsys.readouterr().err
+
+    def test_failure_also_logged(self, caplog):
+        exc = subprocess.TimeoutExpired(cmd="x", timeout=1)
+        with caplog.at_level("WARNING"):
+            _REAL_RUN_DEDUP(["k"], runner=_fake_runner(exc=exc))
+        assert any("查重未完成" in r.getMessage() for r in caplog.records)
+
+    def test_partial_label_differs_from_full_failure(self, monkeypatch, tmp_path):
+        partial = DedupOutcome(hits=[(1, "x")], error="2 個", partial=True)
+        full = DedupOutcome(error="boom")
+        body_p, _ = _build(monkeypatch, tmp_path, ["k"], partial)
+        (tmp_path / "f").mkdir()
+        body_f, _ = _build(monkeypatch, tmp_path / "f", ["k"], full)
+        assert "查重部分未完成：2 個" in body_p
+        assert "查重部分未完成" not in body_f and "查重未完成：boom" in body_f
 
 
 def _config():

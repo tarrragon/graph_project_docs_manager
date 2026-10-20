@@ -992,7 +992,8 @@ def _render_dedup_outcome(outcome) -> str:
         return ""
     text = ""
     if outcome.error:
-        text += f"查重未完成：{outcome.error}\n\n"
+        label = "查重部分未完成" if getattr(outcome, "partial", False) else "查重未完成"
+        text += f"{label}：{outcome.error}\n\n"
     if outcome.hits:
         hit_lines = "\n".join(f"- #{num} {title}" for num, title in outcome.hits)
         text += f"dedup 命中 issue（請覆核關係：重複／切分／引用）：\n\n{hit_lines}\n\n"
