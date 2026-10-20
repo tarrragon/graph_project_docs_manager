@@ -6,7 +6,8 @@ import { describe, expect, test } from 'claude-code/testing'
 import { DISPATCH_ACTIVE_PATH } from './dispatch'
 import { MERGE_LOG_HOLDING, TICKET_349, dispatchJson, overlapLogUntil, ticketFile } from './fixtures'
 import { DISPATCH_TICKET_PATH } from './lanes'
-import { OTHER_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from './layout'
+import { GROUP_BORDER_STYLE, groupFrameKey, groupTitleKey } from './lanesView'
+import { MERGE_GATE_GROUP_ID, OTHER_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from './layout'
 import { MERGE_LOG_PATH } from './mergeGate'
 import { sessionStub, startBoard } from './paneHarness'
 import { TICKETS_DIR } from './shared'
@@ -29,6 +30,13 @@ function textsOf(nodes: readonly unknown[]): string[] {
 /** 群組標題列（Button）的文字；群組未畫出時為 undefined。 */
 async function headerOf(ui: Ui, id: string): Promise<string | undefined> {
   return (await ui.find({ type: 'Button', key: groupToggleKey(id) }))?.text
+}
+
+/** 群組標題的各行：標題列（Button），其後依序為目標、活動計數（缺者不畫）；群組未畫出時為 undefined。 */
+async function titleOf(ui: Ui, id: string): Promise<string[] | undefined> {
+  const header = await headerOf(ui, id)
+  const title = await ui.find({ type: 'Box', key: groupTitleKey(id) })
+  return header === undefined || title === undefined ? undefined : [header, ...textsOf(title.children)]
 }
 
 /** 群組展開內容的各行文字；收合（內容未畫出）時為 undefined。 */
@@ -109,22 +117,38 @@ describe('Pane', () => {
       '排隊：337.3〔unknown〕 → 337.2.1〔unknown〕',
     ])
     expect(await bodyOf(ui, OTHER_GROUP_ID)).toEqual(['general-purpose｜345｜收尾｜3 分前'])
-    expect(await headerOf(ui, OTHER_GROUP_ID)).toBe('▾ 其他｜1 派發中')
+    expect(await titleOf(ui, OTHER_GROUP_ID)).toEqual(['▾ 其他', '1 派發中'])
     // 群組依線號排序、其他最後
-    const headers = (await ui.findAll({ type: 'Button', text: /^[▸▾] (L\d+|其他)/ })).map(item => item.text.split('｜')[0])
+    const headers = (await ui.findAll({ type: 'Button', text: /^[▸▾] (L\d+|其他)/ })).map(item => item.text.split(' ').slice(0, 2).join(' '))
     expect(headers).toEqual(['▾ L7', '▸ L9', '▾ L13', '▾ 其他'])
     expect(await ui.find({ type: 'Text', text: /讀取 \.claude\/dispatch-active\.json 失敗/ })).toBeUndefined()
     await ui.unmount()
   })
 
-  test('預設展開：有派發中代理人（L7）、session 為 waiting（L13）的線展開；無活動的線（L9）收合為一行，只有標題列', async ($, on) => {
+  test('框線：線群組、其他、各 session、合併閘門各畫在一個有框線的 Box 內；展開的框內為標題與內容，收合的框內只有標題', async ($, on) => {
+    const { ui } = await startBoard($, on, dispatchFiles(DISPATCH_ACTIVE))
+    const ids = [laneGroupId(7), laneGroupId(9), laneGroupId(13), OTHER_GROUP_ID, SESSIONS_GROUP_ID, MERGE_GATE_GROUP_ID]
+    const frames = await Promise.all(ids.map(id => ui.find({ type: 'Box', key: groupFrameKey(id) })))
+    expect(frames.map(frame => frame?.props.borderStyle)).toEqual(ids.map(() => GROUP_BORDER_STYLE))
+    // 子節點的描述把 key 放在 props 內（FoundElement 頂層的 key 只在 find 的結果上）
+    const keyOf = (child: unknown) => (child as { props?: { key?: unknown } }).props?.key
+    const childKeys = (index: number) => (frames[index]?.children ?? []).map(keyOf)
+    // L7 有派發而展開、L9 只有排隊票而收合
+    expect(childKeys(0)).toEqual([groupTitleKey(laneGroupId(7)), groupBodyKey(laneGroupId(7))])
+    expect(childKeys(1)).toEqual([groupTitleKey(laneGroupId(9))])
+    // 標題各行不以「｜」分隔
+    for (const id of ids) for (const line of (await titleOf(ui, id)) ?? ['（未畫出）｜']) expect(line).not.toContain('｜')
+    await ui.unmount()
+  })
+
+  test('預設展開：有派發中代理人（L7）、session 為 waiting（L13）的線展開；無活動的線（L9）收合為只有標題', async ($, on) => {
     const { ui } = await startBoard($, on, dispatchFiles(JSON.stringify({ dispatches: [] })))
     // 沒有任何派發：L7 的 session 為 busy、無派發，收合；L13 的 session 為 waiting，展開
-    expect(await headerOf(ui, laneGroupId(13))).toBe('▾ L13｜graph-project-docs-manager-1b［waiting：input needed］｜等你處理 · 2 排隊')
+    expect(await titleOf(ui, laneGroupId(13))).toEqual(['▾ L13 graph-project-docs-manager-1b［waiting：input needed］', '等你處理 · 2 排隊'])
     expect(await bodyOf(ui, laneGroupId(13))).toEqual(['排隊：337.3〔unknown〕 → 337.2.1〔unknown〕'])
-    expect(await headerOf(ui, laneGroupId(7))).toBe('▸ L7｜graph-project-docs-manager-f9［busy］｜2 排隊')
+    expect(await titleOf(ui, laneGroupId(7))).toEqual(['▸ L7 graph-project-docs-manager-f9［busy］', '2 排隊'])
     expect(await bodyOf(ui, laneGroupId(7))).toBeUndefined()
-    expect(await headerOf(ui, laneGroupId(9))).toBe('▸ L9｜graph-project-docs-manager-3e［離線］｜4 排隊')
+    expect(await titleOf(ui, laneGroupId(9))).toEqual(['▸ L9 graph-project-docs-manager-3e［離線］', '4 排隊'])
     expect(await bodyOf(ui, laneGroupId(9))).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^排隊：356/ })).toBeUndefined()
     await ui.unmount()
@@ -136,7 +160,7 @@ describe('Pane', () => {
     expect(await bodyOf(ui, laneGroupId(7))).toBeUndefined()
     stub.files[`/repo/${DISPATCH_ACTIVE_PATH}`] = DISPATCH_ACTIVE
     await clock.advance(REFRESH_MS)
-    expect((await headerOf(ui, laneGroupId(7)))?.startsWith('▾ L7｜')).toBe(true)
+    expect((await headerOf(ui, laneGroupId(7)))?.startsWith('▾ L7 ')).toBe(true)
     expect((await bodyOf(ui, laneGroupId(7)))?.length).toBe(3)
     expect(await bodyOf(ui, laneGroupId(9))).toBeUndefined()
     await ui.unmount()
@@ -145,13 +169,13 @@ describe('Pane', () => {
   test('預設展開：佇列票的 feat 分支持有閘門的線即使沒有派發也展開，內容列出閘門票；對照：同一條線在閘門結束後收合', async ($, on) => {
     const stub = { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349, [`/repo/${MERGE_LOG_PATH}`]: MERGE_LOG_HOLDING } }
     const { ui, clock } = await startBoard($, on, stub)
-    expect(await headerOf(ui, laneGroupId(7))).toBe('▾ L7｜graph-project-docs-manager-f9［狀態不明］｜1 閘門 · 2 排隊')
+    expect(await titleOf(ui, laneGroupId(7))).toEqual(['▾ L7 graph-project-docs-manager-f9［狀態不明］', '1 閘門 · 2 排隊'])
     expect(await bodyOf(ui, laneGroupId(7))).toEqual(['閘門｜351｜自 16:41:49', '排隊：351〔unknown〕 → 145〔unknown〕'])
     expect(await bodyOf(ui, laneGroupId(9))).toBeUndefined()
     // 閘門結束（寫入結束行）後重讀：L7 沒有其他活動，回到預設收合
     stub.files[`/repo/${MERGE_LOG_PATH}`] = `${MERGE_LOG_HOLDING}2026-10-19T16:50:00 [合併閘門] 結束｜target main｜分支 feat/0.5.0-W1-351｜commit 1a2b3c4d5e6f｜結果 寫入\n`
     await clock.advance(REFRESH_MS)
-    expect(await headerOf(ui, laneGroupId(7))).toBe('▸ L7｜graph-project-docs-manager-f9［狀態不明］｜2 排隊')
+    expect(await titleOf(ui, laneGroupId(7))).toEqual(['▸ L7 graph-project-docs-manager-f9［狀態不明］', '2 排隊'])
     expect(await bodyOf(ui, laneGroupId(7))).toBeUndefined()
     await ui.unmount()
   })
@@ -162,14 +186,14 @@ describe('Pane', () => {
     const { ui } = await startBoard($, on, stub)
     await ui.press({ key: groupToggleKey(laneGroupId(9)) })
     const ids = [laneGroupId(7), laneGroupId(9), laneGroupId(13), OTHER_GROUP_ID]
-    expect(await Promise.all(ids.map(id => headerOf(ui, id)))).toEqual([
-      '▾ L7｜graph-project-docs-manager-f9［busy］｜2 派發中 · 1 閘門 · 2 排隊',
-      '▾ L9｜graph-project-docs-manager-3e［離線］｜4 排隊',
-      '▾ L13｜graph-project-docs-manager-1b［waiting：input needed］｜2 派發中 · 1 閘門 · 等你處理 · 2 排隊',
-      '▾ 其他｜1 派發中',
+    expect(await Promise.all(ids.map(id => titleOf(ui, id)))).toEqual([
+      ['▾ L7 graph-project-docs-manager-f9［busy］', '2 派發中 · 1 閘門 · 2 排隊'],
+      ['▾ L9 graph-project-docs-manager-3e［離線］', '4 排隊'],
+      ['▾ L13 graph-project-docs-manager-1b［waiting：input needed］', '2 派發中 · 1 閘門 · 等你處理 · 2 排隊'],
+      ['▾ 其他', '1 派發中'],
     ])
     for (const id of ids) {
-      const header = (await headerOf(ui, id)) ?? ''
+      const header = ((await titleOf(ui, id)) ?? []).join('\n')
       const body = (await bodyOf(ui, id)) ?? []
       const count = (label: string) => Number(new RegExp(`(\\d+) ${label}`).exec(header)?.[1] ?? 0)
       const dispatchRows = body.filter(line => DISPATCH_ROW.test(line))
@@ -193,11 +217,11 @@ describe('Pane', () => {
     stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-145.md`] = ticketFile('completed')
     const { ui } = await startBoard($, on, stub)
     // L13：337.1 已完成，佇列列只剩 337.3 與 337.2.1
-    expect(await headerOf(ui, laneGroupId(13))).toBe('▾ L13｜graph-project-docs-manager-1b［waiting：input needed］｜等你處理 · 2 排隊')
+    expect(await titleOf(ui, laneGroupId(13))).toEqual(['▾ L13 graph-project-docs-manager-1b［waiting：input needed］', '等你處理 · 2 排隊'])
     expect(await bodyOf(ui, laneGroupId(13))).toEqual(['排隊：337.3〔unknown〕 → 337.2.1〔unknown〕'])
     expect(await ui.find({ type: 'Text', text: /〔completed〕/ })).toBeUndefined()
     // L7：351 與 145 都已完成，標頭沒有排隊數，按開後沒有佇列列
-    expect(await headerOf(ui, laneGroupId(7))).toBe('▸ L7｜graph-project-docs-manager-f9［busy］')
+    expect(await titleOf(ui, laneGroupId(7))).toEqual(['▸ L7 graph-project-docs-manager-f9［busy］'])
     await ui.press({ key: groupToggleKey(laneGroupId(7)) })
     expect(await bodyOf(ui, laneGroupId(7))).toEqual([])
     await ui.unmount()
@@ -208,9 +232,9 @@ describe('Pane', () => {
     const { ui, clock } = await startBoard($, on, stub)
     await ui.press({ key: groupToggleKey(laneGroupId(9)) })
     await ui.press({ key: groupToggleKey(laneGroupId(13)) })
-    expect((await headerOf(ui, laneGroupId(9)))?.startsWith('▾ L9｜')).toBe(true)
+    expect((await headerOf(ui, laneGroupId(9)))?.startsWith('▾ L9 ')).toBe(true)
     expect(await bodyOf(ui, laneGroupId(9))).toEqual(['排隊：356〔unknown〕 → 353.1〔unknown〕 ∥ 341.2.1〔unknown〕 → 284〔unknown〕'])
-    expect((await headerOf(ui, laneGroupId(13)))?.startsWith('▸ L13｜')).toBe(true)
+    expect((await headerOf(ui, laneGroupId(13)))?.startsWith('▸ L13 ')).toBe(true)
     expect(await bodyOf(ui, laneGroupId(13))).toBeUndefined()
     // 同一份資料重讀：手動狀態不變
     await clock.advance(REFRESH_MS)
@@ -249,7 +273,7 @@ describe('Pane', () => {
 
   /** 派發紀錄失敗時，其餘內容（線群組、各 session、閘門紀錄）照常顯示。 */
   async function expectOtherBlocksIntact(ui: Ui) {
-    expect(await headerOf(ui, laneGroupId(7))).toBe('▸ L7｜graph-project-docs-manager-f9［busy］｜2 排隊')
+    expect(await titleOf(ui, laneGroupId(7))).toEqual(['▸ L7 graph-project-docs-manager-f9［busy］', '2 排隊'])
     expect(await ui.find({ type: 'Text', text: /^graph-project-docs-manager-1b｜waiting：input needed｜/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^閘門使用中：agent-a352c3（自 16:19:45）$/ })).toBeDefined()
     expect(await allDispatchRows(ui)).toEqual([])
