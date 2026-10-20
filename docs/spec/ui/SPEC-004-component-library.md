@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-10-20"
-version: "1.92"
+version: "1.93"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -585,7 +585,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `pathDeclarationBundlesPartial` | 已宣告 {declared}／{total} 個 domain | {declared} of {total} domains declared | declared, total | 同上，`{detail}` 片段；與 `pathDeclarationNonDomainMissing` 並存時以「、」／", " 連接 |
 | `pathDeclarationNonDomainMissing` | 缺非 domain 路徑清單 | non-domain path list missing | — | 同上，`{detail}` 片段 |
 | `pathDeclarationNoneLine` | 本專案未宣告路徑 | This project declares no paths | — | SPEC-001 §5 兩側皆未宣告時（不顯示路徑數） |
-| `pathDeclarationNonDomainMalformed` | 非 domain 路徑清單格式錯誤 | non-domain path list is malformed | — | 同 `pathDeclarationNonDomainMissing` 的 `{detail}` 片段，清單檔存在但格式錯誤時取代「缺」（UC-02 NC-1 (ii) II-a）。key 與文案已定（`0.5.0-W1-096.7` PM 處置識別名、`0.5.0-W1-114.1` NC-g），ARB 待建 |
+| `pathDeclarationNonDomainMalformed` | 非 domain 路徑清單格式錯誤 | non-domain path list is malformed | — | 同 `pathDeclarationNonDomainMissing` 的 `{detail}` 片段，清單檔存在但格式錯誤時取代「缺」（UC-02 NC-1 (ii) II-a）。key 與文案已定（`0.5.0-W1-096.7` PM 處置識別名、`0.5.0-W1-114.1` NC-g），ARB 已建（`0.5.0-W1-119.2`） |
+| `pathDeclarationNoBundles` | 尚未宣告任何 domain | no domains declared | — | SPEC-001 §5 宣告狀態行 `{detail}` 的 bundle 側片段，bundle 總數為 0（專案沒有任何 DomainBundle）時取代 `pathDeclarationBundlesPartial`，不顯示「0／0」；與非 domain 側片段並存時以「、」／", " 連接（用戶裁決 2026-10-20，`0.5.0-W1-443`） |
 | `gapNonDomainPathsNonStringElements` | 清單內 {count} 個非字串元素 | {count, plural, =1{1 non-string element in the list} other{{count} non-string elements in the list}} | count | SPEC-001 §5 破洞項目，`nonDomainPathsMalformed` 子原因 `elementNotString` 的項目說明；`count` 取破洞的 `nonStringElementCount`（SPEC-006 FR-08）。新 key，依 `0.5.0-W1-114.4` 用戶裁決第五批 NC-7（G1），識別名為 PM 決定；en 文案經 PM 確認（`0.5.0-W1-114.5` PM 處置），ARB 待建 |
 | `gapNonDomainPathsYamlInvalid` | 清單檔的 YAML 無法解析 | The list file's YAML could not be parsed | — | SPEC-001 §5 破洞項目，`nonDomainPathsMalformed` 子原因 `yamlInvalid` 的項目說明。key 與文案為 PM 決定（`0.5.0-W1-114.5` PM 處置 NC），ARB 待建 |
 | `gapNonDomainPathsKeyMissing` | 清單檔缺少 {key} 鍵 | The list file is missing the {key} key | key | 同上，子原因 `keyMissing`；`key` 取型別表 `non_domain_paths_key`（缺欄或空白時取內建表值，SPEC-006 FR-10 規則 1）。key 與文案為 PM 決定，ARB 待建 |
@@ -6541,6 +6542,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.93 | 2026-10-20 | `0.5.0-W1-443`（用戶裁決 2026-10-20，SPEC-001 v1.51 同批）：§4.0.6 新增 `pathDeclarationNoBundles`（尚未宣告任何 domain／no domains declared），bundle 總數為 0 時取代 `pathDeclarationBundlesPartial` 作為宣告狀態行的 bundle 側片段；`pathDeclarationNonDomainMalformed` 列的「ARB 待建」改為已建（`0.5.0-W1-119.2`）。不新增元件，狀態總數不變 |
 <!-- rule8-exempt: illustration:比照既有變更歷史列引用票號格式 -->
 | 1.92 | 2026-10-20 | `0.5.0-W1-114.24`（承 `0.5.0-W1-114.12` 回報：間接依賴格「在泳道中檢視」依 SPEC-001 §1 應定位到來源 X 列欄號最小的節點，畫面已算出目標欄，但 4.38 只有 `locateLane`（列），跳轉只切列不捲到目標欄）：4.38 slot 表新增 `locateColumn`（`int?`，與 `locateLane` 同次 build 設值、同一 post-frame 另做水平 `jumpTo`，`null` 不做水平捲動，`locateLane` 為 `null` 時忽略）；回饋契約 locate 列補間接依賴格的目標列取來源 X 列與水平定位；測試點新增目標欄定位與 `locateColumn` 為 `null` 的 E1 對照；§4.0.10 場景 b 同步。高亮仍由 `laneHighlight` 承載，不新增焦點綁定高亮；狀態總數不變。PM 處置：既有裁決（SPEC-001 §1 跳轉目標，`0.5.0-W1-114.2` J2）的直接後果 |
 | 1.91 | 2026-10-20 | `0.5.0-W1-114.23`（承 `0.5.0-W1-114.18` 回報：UC Flow 已能接收 flow 類跳轉的 step id 並捲動至步驟列，但 4.35 `step` 變體不接受 `isLocated`，步驟列無法高亮；SPEC-001 §5 flow 類「定位到出錯的步驟」為用戶裁決 J2）：4.35 變體表 `step` 列補「可被定位」；狀態矩陣 located 列擴及 `step`，進入條件補 flow 類破洞項跳入；回饋契約 locate 列 `step` 由「無場景，不接受 `isLocated`」改為被定位目標（捲動由 4.36 `scroll-ucFlow-steps` 執行，高亮與焦點移入同 `ticket`）；slot `isLocated` 擴及 `step`；測試點補 `step` 高亮與 located 時 `onTap` 不受影響兩項。§4.0.10 0.1 場景新增 (g)：flow 四子類帶 step id 時定位並高亮，EVT-CORPUS-004 無 step id 時不定位。手法比照既有 `ticket`／`eventFlow`，不新增 token；狀態總數不變。PM 處置：既有裁決的直接後果 |

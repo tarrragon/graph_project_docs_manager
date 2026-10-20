@@ -10,7 +10,7 @@ related_specs: [SPEC-004, UC-02, SPEC-007]
 ticket: 0.5.0-W1-114
 delta_ticket: 0.5.0-W1-114.4
 created: "2026-10-08"
-updated: "2026-10-08"
+updated: "2026-10-20"
 ---
 
 # SPEC-001 v1.38／SPEC-004 v1.77／UC-02 v1.8 Phase 2 紅燈測試規格
@@ -362,7 +362,7 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | P3-1 | 一張票 `where.files` 含命中 `graph`、命中非 domain、domain 未宣告各一 | 逐路徑各回報各自狀態，不做整票歸類 |
 | P3-2 | 同上 | 矩陣高亮集合 = 命中 domain 的聯集 {`graph`} |
 | P3-3 | 票列表摘要 | 任一路徑命中 domain 即判可定位 |
-| P3-4 | 受影響路徑數 | 等於標為兩種「未宣告」的路徑數；兩側皆無時不提供路徑數 |
+| P3-4 | 受影響路徑數 | 等於標為兩種「未宣告」的路徑數；兩側皆無時不提供路徑數（單票層級；專案層的跨票去重見 R1-13） |
 | P3-5 | flutter_balance | 整體「未宣告路徑」 |
 
 #### P4 比對語意：精確比對與同字串歸屬（UC-02 v1.8〈ticket 定位〉；`0.5.0-W1-114.3` 用戶裁決 C3′、T1；v1.38 新增）
@@ -399,6 +399,8 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | R1-9（v1.37 新增） | 8／8 宣告、非 domain 清單格式錯誤 | `{detail}` 只含 `pathDeclarationNonDomainMalformed`（zh「非 domain 路徑清單格式錯誤」／en「non-domain path list is malformed」），不含 `pathDeclarationNonDomainMissing` |
 | R1-10（E1：格式錯誤對缺席，v1.37 新增） | R1-9 與 R1-2 兩組輸入（只差清單狀態） | 兩行文字不同；受影響路徑數相同（分類相同，P1-7） |
 | R1-11（v1.37 新增） | 5／8、清單格式錯誤 | 兩片段以「、」連接，第二片段為格式錯誤文字（同 R1-3 的連接規則） |
+| R1-12（SPEC-001 v1.51 新增，E1） | 0 個 DomainBundle、非 domain 清單存在；對照組為 0／8 宣告、清單存在 | 前者 `{detail}` 為 `pathDeclarationNoBundles`（zh「尚未宣告任何 domain」），不含「0／0」；後者為 `pathDeclarationBundlesPartial`（「已宣告 0／8 個 domain」）；兩行文字不同。另一組：0 個 DomainBundle、清單格式錯誤 → 兩片段以「、」連接（NoBundles、NonDomainMalformed） |
+| R1-13（SPEC-001 v1.51 新增，E1） | 兩張票 `where.files` 各含同一條 domain 未宣告路徑，另一張票含一條不同的未宣告路徑；對照組為三條路徑互不相同 | 前者受影響路徑數為 2（同一路徑跨票只算一次），後者為 3；路徑以正規化後字串比對（`::` 後綴去除後相同者視為同一條） |
 
 ### 3.5 元件（SPEC-004）
 
@@ -418,6 +420,7 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | K3-3 | 4.19 | 朗讀 | badge 併入 chip 標籤，不另朗讀 |
 | K4-1 | §4.0.6 | 四個 `pathDeclaration*` key、`relationProposedLabel`、`relationItemProposedA11yLabel`、`swimlaneScreenLaneName` | zh／en ARB 皆存在且值與 §4.0.6 表逐字一致 |
 | K4-2（v1.37 新增） | §4.0.6 | `pathDeclarationNonDomainMalformed`、`swimlaneFlowParseFailedHint`、`flowParseFailedMessage`、`swimlaneUnplacedLaneName` | zh／en ARB 皆存在且值與 SPEC-004 v1.77 §4.0.6 表逐字一致 |
+| K4-3（SPEC-004 v1.93 新增） | §4.0.6 | `pathDeclarationNoBundles` | zh／en ARB 皆存在且值與 SPEC-004 v1.93 §4.0.6 表逐字一致 |
 
 ## 4. 覆蓋矩陣
 
@@ -438,7 +441,7 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | flow 區塊解析失敗的呈現（v1.36／v1.37） | — | F1、K4-2 |
 | ticket 定位五狀態與整體未宣告（UC-02 v1.7） | ITD4-A1、A2、A5 | P1（含 P1-7）、P2、P3 |
 | 比對語意：精確比對與同字串歸 domain（UC-02 v1.8 C3′、T1） | —（兩份語料皆無此類宣告值） | P4 |
-| 宣告狀態行（SPEC-001 §5；含格式錯誤） | ITD4（含 A5） | R1（含 R1-9～R1-11）、K4-1、K4-2 |
+| 宣告狀態行（SPEC-001 §5；含格式錯誤、零 bundle、跨票去重） | ITD4（含 A5） | R1（含 R1-9～R1-13）、K4-1、K4-2、K4-3 |
 | proposed 標記（SPEC-004 4.19；SPEC-001 §6） | ITD3-A5 | K3、K4-1 |
 
 L6 不在外圈：兩份語料皆無懸空與循環（SPEC-001 期望值欄），外圈無資料可驅動。L7 由 ITD2-A5
@@ -462,9 +465,9 @@ L6 不在外圈：兩份語料皆無懸空與循環（SPEC-001 期望值欄）�
 | domain_view | V3 | 4（V1、V2 共 12 案移至 SPEC-007 G12；v1.38 加 V3-4，V3-1、V3-2 改寫不計增） |
 | flow 解析失敗呈現 | F1 | 7 |
 | 路徑定位 | P1～P4 | 24（加 P1-7；v1.38 加 P4 八案） |
-| 報告頁宣告狀態行 | R1 | 11（加 R1-9～R1-11） |
-| 元件 | K1～K4 | 12（加 K2-5、K4-2；K2-4 改寫不計增） |
-| 合計 | | 116 |
+| 報告頁宣告狀態行 | R1 | 13（加 R1-9～R1-11；SPEC-001 v1.51 加 R1-12、R1-13） |
+| 元件 | K1～K4 | 13（加 K2-5、K4-2；K2-4 改寫不計增；SPEC-004 v1.93 加 K4-3） |
+| 合計 | | 119 |
 
 守衛型案例（已附正向對照）：L2-5、L6-1、L6-2、L7-1、R1-5、P4-1、P4-2、P4-3、P4-5（L2-4 已移為 SPEC-007 G13-8）。
 E1 對照：ITD1-A4、ITD2-A5、ITD3-A4、ITD3-A5、ITD4-A3、ITD4-A5、L3-3、L4-3、L5-3、L7-2、L7-4、L7-6、
