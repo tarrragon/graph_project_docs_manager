@@ -11,8 +11,6 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
-
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
@@ -222,6 +220,6 @@ TreeNode _buildGapNode(
 String _gapLayerName(String? gapLayer) => switch (gapLayer) {
   'spec' => 'SPEC',
   'uc' => 'UC',
-  'ticket' => ticketTypeName,
+  'ticket' => 'Ticket',
   _ => gapLayer ?? '',
 };

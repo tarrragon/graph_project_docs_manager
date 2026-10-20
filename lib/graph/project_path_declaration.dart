@@ -51,7 +51,7 @@ class ProjectPathDeclaration {
 
 /// 需求：[SPEC-001 §5、UC-02] 彙整專案層宣告狀態。
 ///
-/// 每張 Ticket（`typeName == 'Ticket'`）的 `where.files` 經 [classifyTicketPaths]
+/// 每張 Ticket（`typeName == [ticketTypeName]`）的 `where.files` 經 [classifyTicketPaths]
 /// 比對，受影響路徑數為標為兩種「未宣告」的正規化路徑跨票去重後的條數；
 /// 非字串元素略過。
 ProjectPathDeclaration summarizeProjectPathDeclaration({

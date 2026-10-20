@@ -39,7 +39,6 @@ const gapCategoryOrder = <String>[
   gapCategoryIdEventDeclarationMismatch,
 ];
 
-
 const _tag = 'GapReportProjection';
 
 /// 需求：[SPEC-001 §5 表一～三、〈定案〉O1] 投影破洞為報告分節與項目。
