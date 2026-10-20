@@ -72,6 +72,13 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 分析、修法與 `.claude/` 實作在主控方由用戶指定的 session 負責。
 理由：同一時間只有一個主控方，避免各 consumer 各自修改框架而分叉。
 
+**框架修補的節奏**（2026-10-20 用戶裁示）：工作主目標是本專案的產品進度，框架修補是手段。
+- 發現框架問題照常建票。只有 P0／P1 bug 或用戶要求才派修，其餘觀測進 issue 後關閉本地票。
+- 清理線在兩種情況下開：同一 issue 第二次被標「拖慢專案」，或每個 minor 收尾時由用戶從 open issue 摘要中挑選。
+- 開清理線前要先有產品線在跑。
+- 同時修框架或工具的線不超過兩條。
+- 細則見 `.claude/skills/framework-issue/references/escalation-flow.md`〈修復時點：派修或累積到清理線〉。
+
 **仍不在授權內**：`sync-push` 與 `skill-sync push`（同上段理由，那是改資產本體不是留一則可刪的觀測）、
 改他人 owner 的區段或 issue body、其他 remote 與其他 repo、以 `create_issue.py` 新開 issue
 （上段「建立」指 `init`／`add` 建立區段 comment，不含新開 issue；新開須逐次授權，例：#111）。
