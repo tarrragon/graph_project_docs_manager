@@ -324,9 +324,6 @@ def _is_pytest_infra_path(path: PurePosixPath) -> bool:
     return path.parent == _TOP_LEVEL_HOOKS_PREFIX and path.name in _PYTEST_INFRA_FILENAMES
 
 
-_READ_MARKER_RE = re.compile(r"(?<!\\)::read$")
-
-
 def _in_hook_scope(path: PurePosixPath) -> bool:
     """已正規化路徑是否命中 hook 範圍（tests 排除在外）。"""
     if _is_hooks_tests_path(path):
@@ -346,14 +343,6 @@ def touches_hook_protection_scope(
     檔案存在時另以 realpath 的實際路徑再判定一次（tests 下 symlink 指向 hook 本體）。
     """
     if not file_path:
-        return False
-    # 唯讀宣告不改動 hook：只剝離結尾未跳脫的 ::read（與 file_conflict 同語意）；
-    # 其他標記、中段同形字、跳脫形式皆維持原字串判定（fail-closed）。
-    read_marked = _READ_MARKER_RE.search(file_path) is not None
-    if read_marked:
-        file_path = _READ_MARKER_RE.sub("", file_path)
-        if _escapes_root(_normalize_path(file_path)):
-            return True
         return False
     normalized = _normalize_path(file_path)
     if _escapes_root(normalized):
