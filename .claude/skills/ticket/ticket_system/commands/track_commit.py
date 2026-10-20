@@ -206,6 +206,8 @@ def _expand_directory_to_changed_files(
     for line in status_out.split("\0"):
         if len(line) < 4:
             continue
+        # 解析依賴 _git_status_porcelain 帶 --no-renames：拿掉該旗標，R 項
+        # 會帶出舊名（多一段 NUL 欄位），line[3:] 會截壞路徑。
         path = line[3:]
         if not files_intersect(path, directory):
             continue
@@ -396,6 +398,18 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
         return 1
 
     unsafe = unsafe_paths(args.files, repo_root, base_dir)
+
+    # 目錄型輸入展開為具體變更檔案：commit_files_isolated 的自我驗證比對
+    # 精確檔案清單，目錄字面值不會出現在該比對結果中（見
+    # _expand_directory_to_changed_files docstring）。展開後恆為具體檔案。
+    normalized_input = _expand_directories(
+        args.files, repo_root, base_dir, args.ticket_id
+    )
+    # 展開結果（git status 列出的 symlink 項目）須再過同一判準
+    unsafe += [
+        f for f in unsafe_paths(normalized_input, repo_root, repo_root)
+        if f not in unsafe
+    ]
     if unsafe:
         print(
             "[ERROR] 以下檔案是 symlink 或解析後落在 repo 之外，拒絕提交：\n"
@@ -404,13 +418,6 @@ def execute_commit(args: argparse.Namespace, version: str) -> int:
             + CRITERIA_REJECTION_GUIDANCE
         )
         return 1
-
-    # 目錄型輸入展開為具體變更檔案：commit_files_isolated 的自我驗證比對
-    # 精確檔案清單，目錄字面值不會出現在該比對結果中（見
-    # _expand_directory_to_changed_files docstring）。展開後恆為具體檔案。
-    normalized_input = _expand_directories(
-        args.files, repo_root, base_dir, args.ticket_id
-    )
     if not normalized_input:
         print(
             "[ERROR] 宣告範圍內的目錄底下無任何變更檔案，無可提交內容，拒絕提交：\n"

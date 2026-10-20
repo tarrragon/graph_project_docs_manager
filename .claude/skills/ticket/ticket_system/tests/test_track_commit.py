@@ -515,6 +515,32 @@ class TestWriteScopeHardening:
         assert rc == 0
         mock_commit.assert_called_once()
 
+    def _commit_dir(self, repo, status_output):
+        with patch.object(track_commit, "_git_status_porcelain",
+                          return_value=status_output), \
+             patch.object(track_commit, "get_ticket_state_root",
+                          return_value=repo):
+            return self._commit(repo, ["d"], ["d"])
+
+    def test_symlink_under_directory_declaration_rejected(self, tmp_path):
+        """0.5.0-W1-398.1（E2）：目錄展開出的 symlink 檔不得進入提交。"""
+        (tmp_path / "d").mkdir()
+        (tmp_path / "d" / "real.py").write_text("x")
+        (tmp_path / "d" / "link.py").symlink_to(tmp_path / "d" / "real.py")
+        rc, mock_commit = self._commit_dir(
+            tmp_path, "?? d/real.py\0?? d/link.py\0"
+        )
+        assert rc == 1
+        mock_commit.assert_not_called()
+
+    def test_regular_files_under_directory_declaration_commit(self, tmp_path):
+        """E1：目錄宣告下一般檔案照常提交。"""
+        (tmp_path / "d").mkdir()
+        (tmp_path / "d" / "real.py").write_text("x")
+        rc, mock_commit = self._commit_dir(tmp_path, "?? d/real.py\0")
+        assert rc == 0
+        mock_commit.assert_called_once()
+
     def test_foreign_repo_worktree_rejected(self, tmp_path):
         main, foreign = tmp_path / "main", tmp_path / "foreign"
         for d in (main, foreign):
