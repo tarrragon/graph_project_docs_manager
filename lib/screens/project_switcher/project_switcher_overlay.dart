@@ -37,6 +37,7 @@ SwitcherOverlay buildProjectSwitcherOverlay({
       : null;
   final hasItems = projects.isNotEmpty;
   final failureReason = ref.watch(switcherChooseOtherFailureProvider);
+  final unavailable = ref.watch(switcherUnavailableProjectsProvider);
 
   return SwitcherOverlay(
     chooseOtherFailureReason: failureReason,
@@ -49,6 +50,7 @@ SwitcherOverlay buildProjectSwitcherOverlay({
           project: projects[i],
           index: i,
           isCurrent: projects[i].path == currentPath,
+          unavailableReason: unavailable[projects[i].path],
         ),
     ],
     chooseOther: AppButton(
@@ -74,6 +76,7 @@ RecentProjectItem _buildRecentProjectItem({
   required RecentProject project,
   required int index,
   required bool isCurrent,
+  String? unavailableReason,
 }) {
   // 節點數／票數摘要與健康徽章計數來源為真實 domain 掃描結果，0.1 尚未
   // 接線（SPEC-001 §7 註記：「計數來源... 不在本輪範圍」）；可用性探測
@@ -83,9 +86,11 @@ RecentProjectItem _buildRecentProjectItem({
   return RecentProjectItem(
     name: folderNameOf(project.path),
     summary: l10n.projectSummaryLabel(0, 0),
-    enabled: true,
+    enabled: unavailableReason == null,
     isCurrent: isCurrent,
-    reason: null,
+    reason: unavailableReason == null
+        ? null
+        : l10n.projectUnavailableReasonLabel(unavailableReason),
     health: null,
     onTap: () => _selectProject(context, ref, project),
     testKey: Key('card-switcher-recent-$index'),
@@ -106,6 +111,17 @@ Future<void> _selectProject(
   final repository = ref.read(workspaceRepositoryProvider);
   final result = await repository.openPath(project.path);
   if (!context.mounted) return;
+  if (result case ChooseFolderSelected(
+    state: WorkspaceUnavailable(:final reason),
+  )) {
+    // 點擊後判定不可用：該項轉 disabled 並同列顯示原因，不跳 SnackBar
+    // （SPEC-003 §3.7；0.5.0-W1-167.4）。
+    ref.read(switcherUnavailableProjectsProvider.notifier).state = {
+      ...ref.read(switcherUnavailableProjectsProvider),
+      project.path: reason,
+    };
+    return;
+  }
   await _handleChooseFolderResult(context, ref, result);
 }
 
