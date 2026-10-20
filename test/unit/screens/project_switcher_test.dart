@@ -23,7 +23,6 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_provi
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
-import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';

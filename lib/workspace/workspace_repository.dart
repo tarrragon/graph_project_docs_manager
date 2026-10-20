@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'workspace_types.dart';
@@ -671,3 +672,9 @@ class WorkspaceRepository {
     return WorkspaceReady(path);
   }
 }
+
+/// [WorkspaceRepository] 的接縫；測試可覆寫以注入替身，避免碰觸真實檔案
+/// 系統與平台面板（0.2.0-W1-019）。
+final workspaceRepositoryProvider = Provider<WorkspaceRepository>(
+  (ref) => WorkspaceRepository(),
+);

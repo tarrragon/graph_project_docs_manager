@@ -34,7 +34,7 @@ import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
-import '../project_switcher/project_switcher_overlay.dart'
+import '../../workspace/workspace_repository.dart'
     show workspaceRepositoryProvider;
 import '../project_switcher/project_switcher_providers.dart';
 import 'domain_view_providers.dart';
