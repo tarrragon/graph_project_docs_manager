@@ -523,7 +523,7 @@ def apply_hook_acceptance_template(
     for raw in where_files or []:
         path, intent = parse_file_intent(raw)
         if intent != "read":
-            write_paths.append(raw)
+            write_paths.append(path)
     if not any(checker.touches_hook_protection_scope(f) for f in write_paths):
         return acceptance, False
 

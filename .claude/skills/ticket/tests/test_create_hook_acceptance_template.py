@@ -51,6 +51,14 @@ def test_unmarked_hook_path_still_adds_template_e1():
     assert len(result) > len(BASE)
 
 
+def test_write_marked_hook_path_still_adds_template_e1():
+    result, touched = apply_hook_acceptance_template(
+        [".claude/hooks/x.py::write"], list(BASE)
+    )
+    assert touched is True
+    assert len(result) > len(BASE)
+
+
 def test_escaped_read_marker_still_adds_template():
     result, touched = apply_hook_acceptance_template(
         [".claude/hooks/foo-hook.py\\::read"], list(BASE)
