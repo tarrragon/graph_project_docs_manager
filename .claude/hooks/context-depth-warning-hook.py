@@ -182,8 +182,8 @@ def main() -> int:
     if not transcript_path:
         return 0
 
-    cache_read = read_last_total_context(transcript_path)
-    if cache_read is None:
+    total_context = read_last_total_context(transcript_path)
+    if total_context is None:
         return 0
 
     state_file = _state_file()
@@ -192,22 +192,22 @@ def main() -> int:
     if not isinstance(last_warned_tier, int):
         last_warned_tier = -1
 
-    if cache_read < THRESHOLD:
+    if total_context < THRESHOLD:
         if session_id in state:  # 降回門檻以下：清除去重，再超過會重新提示
             del state[session_id]
             save_state(state_file, state)
         return 0
 
-    if not should_warn(cache_read, last_warned_tier):
+    if not should_warn(total_context, last_warned_tier):
         return 0
 
-    state[session_id] = tier_of(cache_read)
+    state[session_id] = tier_of(total_context)
     save_state(state_file, state)
     log(
-        f"提示 context 深度 session={session_id!r} cache_read={cache_read} "
-        f"tier={tier_of(cache_read)}"
+        f"提示 context 深度 session={session_id!r} total={total_context} "
+        f"tier={tier_of(total_context)}"
     )
-    emit_hook_output("Stop", additional_context=_warning_text(cache_read))
+    emit_hook_output("Stop", additional_context=_warning_text(total_context))
     return 0
 
 
