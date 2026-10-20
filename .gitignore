@@ -140,3 +140,7 @@ hook-logs/
 # Dart & Flutter DevTools 的擴充啟用狀態，由 DevTools 首次開啟時自動產生。
 # 屬個別開發者的工具設定，非專案組態（Flutter 官方 gitignore 範本亦排除）。
 devtools_options.yaml
+
+# ticket track move-lines 的暫存檔（mkstemp 建在目標檔同目錄）。清理失敗時殘留，
+# 排除以免廣域 staging 一併提交（0.5.0-W1-404）。
+.move-lines-*
