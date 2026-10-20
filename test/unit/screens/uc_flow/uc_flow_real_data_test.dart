@@ -157,6 +157,52 @@ void main() {
       expect(find.byKey(lastStepKey), findsOneWidget);
     });
 
+    testWidgets('flow 類：步驟列高亮，指標按下後取消', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const UcFlowScreen(),
+        overrides: [
+          _roundOverride(),
+          selectedUcProvider.overrideWith((ref) => 'UC-01'),
+          ucFlowFocusProvider.overrideWith(
+            (ref) => const UcFlowFocus(ucId: 'UC-01', stepId: 's$_manyStepCount'),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      final stepRow = find.ancestor(
+        of: find.byKey(lastStepKey),
+        matching: find.byType(AppTableRow),
+      );
+      expect(tester.widget<AppTableRow>(stepRow.first).isLocated, isTrue);
+
+      await tester.tap(find.text('name-s$_manyStepCount'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(ucFlowFocusProvider), isNull);
+    });
+
+    testWidgets('E1 對照：無 stepId 的焦點時無列高亮', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const UcFlowScreen(),
+        overrides: [
+          _roundOverride(),
+          selectedUcProvider.overrideWith((ref) => 'UC-01'),
+          ucFlowFocusProvider.overrideWith(
+            (ref) => const UcFlowFocus(ucId: 'UC-01'),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      final anyLocated = tester
+          .widgetList<AppTableRow>(find.byType(AppTableRow))
+          .any((r) => r.isLocated);
+      expect(anyLocated, isFalse);
+    });
+
     testWidgets('事件類：定位到事件流小表的該事件列並高亮，指標按下後取消', (tester) async {
       final container = await pumpHarness(
         tester,

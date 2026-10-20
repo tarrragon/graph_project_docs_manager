@@ -59,6 +59,7 @@ void main() {
     required int eventCount,
     required VoidCallback onTap,
     required VoidCallback onDomainTap,
+    bool isLocated = false,
   }) {
     return AppTableRow.step(
       number: const StepNumber(number: 1),
@@ -78,8 +79,59 @@ void main() {
       ),
       onTap: onTap,
       testKey: stepKey,
+      isLocated: isLocated,
     );
   }
+
+  group('step：isLocated 定位高亮（SPEC-004 4.35）', () {
+    Future<Color?> stepRowColor(WidgetTester tester, bool located) async {
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(
+          child: buildStepRow(
+            eventCount: 0,
+            onTap: () {},
+            onDomainTap: () {},
+            isLocated: located,
+          ),
+        ),
+      );
+      final box = tester.widget<DecoratedBox>(
+        find
+            .ancestor(
+              of: find.byKey(stepNameKey),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      return (box.decoration as BoxDecoration).color;
+    }
+
+    testWidgets('isLocated 為 true 時整列底色為 surfaceIconTint', (tester) async {
+      expect(await stepRowColor(tester, true), AppColors.surfaceIconTint);
+    });
+
+    testWidgets('isLocated 為 false（預設）時整列無底色（E1 對照）', (tester) async {
+      expect(await stepRowColor(tester, false), isNull);
+    });
+
+    testWidgets('located 時點列本體 onTap 恰一次', (tester) async {
+      var taps = 0;
+      await pumpHarness(
+        tester,
+        child: wrapPanelWidth(
+          child: buildStepRow(
+            eventCount: 0,
+            onTap: () => taps++,
+            onDomainTap: () {},
+            isLocated: true,
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(stepNameKey));
+      expect(taps, 1);
+    });
+  });
 
   group('變體：header / ticket（含 / 不含標記）/ step（事件欄 0 / 5 個徽章）', () {
     testWidgetsAtEachSize('header：ticket 欄規格，6 個欄首格不溢位', (tester, size) async {

@@ -127,6 +127,7 @@ class AppTableRow extends StatelessWidget {
     required BadgeRow events,
     required VoidCallback onTap,
     required Key testKey,
+    bool isLocated = false,
   }) : this._(
          key: key,
          variant: _TableRowVariant.step,
@@ -134,6 +135,7 @@ class AppTableRow extends StatelessWidget {
          cells: [number, stepName, domain, events],
          onTap: onTap,
          testKey: testKey,
+         isLocated: isLocated,
        );
 
   /// 事件流小表列。欄序 事件 / 發出 / 消費 / 孤立事件標記，[marker] 可為
@@ -207,7 +209,7 @@ class AppTableRow extends StatelessWidget {
   /// `card-ucFlow-step-<stepId>`）；`ticket` / `step` 必填。
   final Key? testKey;
 
-  /// 定位高亮（`ticket` / `eventFlow` 使用；§4.0.10 高亮傳值，預設
+  /// 定位高亮（`ticket` / `step` / `eventFlow` 使用；§4.0.10 高亮傳值，預設
   /// `false`）。
   final bool isLocated;
 
