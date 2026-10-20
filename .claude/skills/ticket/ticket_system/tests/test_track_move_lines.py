@@ -203,16 +203,17 @@ class TestRejections:
 
     def test_permissions_preserved_on_success(self, tmp_path):
         _setup(tmp_path)
-        for name in ("a.md", "b.md"):
-            (tmp_path / name).chmod(0o755)
+        (tmp_path / "a.md").chmod(0o755)
+        (tmp_path / "b.md").chmod(0o640)
         assert _run(tmp_path, _args("1-1", "end")) == 0
-        for name in ("a.md", "b.md"):
-            assert (tmp_path / name).stat().st_mode & 0o777 == 0o755
+        assert (tmp_path / "a.md").stat().st_mode & 0o777 == 0o755
+        assert (tmp_path / "b.md").stat().st_mode & 0o777 == 0o640
+        assert not list(tmp_path.glob(".move-lines-*"))
 
     def test_permissions_preserved_on_restore(self, tmp_path):
         _setup(tmp_path)
-        for name in ("a.md", "b.md"):
-            (tmp_path / name).chmod(0o755)
+        (tmp_path / "a.md").chmod(0o755)
+        (tmp_path / "b.md").chmod(0o640)
         real_replace = track_move_lines.os.replace
 
         def fail_on_dst(tmp, final):
@@ -222,8 +223,8 @@ class TestRejections:
 
         with patch.object(track_move_lines.os, "replace", side_effect=fail_on_dst):
             assert _run(tmp_path, _args("1-1", "end")) != 0
-        for name in ("a.md", "b.md"):
-            assert (tmp_path / name).stat().st_mode & 0o777 == 0o755
+        assert (tmp_path / "a.md").stat().st_mode & 0o777 == 0o755
+        assert (tmp_path / "b.md").stat().st_mode & 0o777 == 0o640
 
     def test_line_boundary_is_newline_only(self, tmp_path):
         (tmp_path / "a.md").write_bytes(b"a1\na\x0c2\na3\n")
@@ -251,6 +252,39 @@ class TestRejections:
         out = capsys.readouterr().out
         assert rc != 0
         assert "還原失敗" in out and "備份" in out
+        backup = out.split("src 原始內容備份：")[1].split()[0]
+        assert (tmp_path / backup.rsplit("/", 1)[-1]).read_bytes() == b"a1\na2\na3\na4\na5\n"
+
+    def test_stat_failure_gives_clear_message(self, tmp_path, capsys):
+        _setup(tmp_path)
+        before = _snapshot(tmp_path)
+        real_stat = track_move_lines.os.stat
+
+        def fail(path, *a, **kw):
+            if str(path).endswith("b.md"):
+                raise OSError("injected stat")
+            return real_stat(path, *a, **kw)
+
+        with patch.object(track_move_lines.os, "stat", side_effect=fail):
+            rc = _run(tmp_path, _args("1-1", "end"))
+        assert rc != 0
+        assert "injected stat" in capsys.readouterr().out
+        assert _snapshot(tmp_path) == before
+
+    def test_cleanup_failure_reports_and_continues(self, tmp_path, capsys):
+        _setup(tmp_path)
+        real_unlink = track_move_lines.os.unlink
+
+        def fail(path, *a, **kw):
+            if ".move-lines-" in str(path):
+                raise OSError("injected unlink")
+            return real_unlink(path, *a, **kw)
+
+        with patch.object(track_move_lines.os, "unlink", side_effect=fail):
+            rc = _run(tmp_path, _args("1-1", "end"))
+        assert rc == 0
+        assert "injected unlink" in capsys.readouterr().err
+        assert (tmp_path / "b.md").read_text() == "b1\nb2\nb3\na1\n"
 
     def test_fullwidth_digits_rejected(self, tmp_path):
         _setup(tmp_path)
