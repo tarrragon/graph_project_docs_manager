@@ -455,6 +455,11 @@ describe('parseLanes', () => {
     ])
   })
 
+  test('線目標：寫（無）清除後再寫目標即恢復，取最後一行', () => {
+    const text = '## Solution\n**L5 現行佇列**：100\n**L5 目標**：甲\n**L5 目標**：（無）\n**L5 目標**：乙\n'
+    expect(parseLanes(text).map(lane => lane.goal)).toEqual(['乙'])
+  })
+
   test('反例：清單項、表格內、反引號範本與 Solution 之外的目標行不被採用（E2）', () => {
     expect(parseLanes(TICKET_349_GOALS).find(lane => lane.lane === 9)?.goal).toBeNull()
     for (const line of [
