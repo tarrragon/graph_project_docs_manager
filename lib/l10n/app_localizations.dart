@@ -212,6 +212,12 @@ abstract class AppLocalizations {
   /// **'此 UC 的 flow 區塊解析失敗，請開啟來源檔修正'**
   String get flowParseFailedMessage;
 
+  /// SPEC-001 §1 正常 · 泳道：選定 UC 有 flow 區塊解析失敗但仍有合法區塊時，置於 SwimlaneGrid 之上的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'此 UC 有 flow 區塊解析失敗，泳道只呈現第一個合法區塊'**
+  String get swimlaneFlowParseFailedHint;
+
   /// SPEC-001 §2 UC Flow 視圖·尚未選定 UC 狀態的顯示文案
   ///
   /// In zh, this message translates to:

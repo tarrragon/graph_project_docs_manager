@@ -123,6 +123,11 @@
     "description": "SPEC-001 §2 UC Flow 視圖·flow 未結構化狀態、flow 區塊皆解析失敗時的顯示文案（與 Domain 泳道同 key）"
   },
 
+  "swimlaneFlowParseFailedHint": "此 UC 有 flow 區塊解析失敗，泳道只呈現第一個合法區塊",
+  "@swimlaneFlowParseFailedHint": {
+    "description": "SPEC-001 §1 正常 · 泳道：選定 UC 有 flow 區塊解析失敗但仍有合法區塊時，置於 SwimlaneGrid 之上的提示"
+  },
+
   "ucUnsetPrompt": "選擇一條 UC 以檢視 flow",
   "@ucUnsetPrompt": {
     "description": "SPEC-001 §2 UC Flow 視圖·尚未選定 UC 狀態的顯示文案"

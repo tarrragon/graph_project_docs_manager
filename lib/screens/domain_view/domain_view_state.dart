@@ -42,7 +42,12 @@ class DomainCell {
     this.steps = const [],
     this.events = const [],
     this.dependencyPaths = const [],
+    this.indirectSource,
   });
+
+  /// 間接依賴格第一條依賴路徑的來源 domain 原值（跳轉目標用，取自 FR-12
+  /// 結構化路徑，不由顯示字串反解）；非間接或無路徑時為 null。
+  final String? indirectSource;
 
   /// 所在列 domain id。
   final String domainId;
@@ -236,6 +241,25 @@ class DomainLoading extends DomainViewState {
   final bool isCancelling;
 }
 
+/// 「在泳道中檢視」的跳轉落點（SPEC-001 §1〈間接依賴格的「在泳道中檢視」
+/// 跳轉目標〉）：目標列的 domain id，與 Layout 查詢回傳的節點欄號；
+/// 直接貫穿格只定位到列，[column] 為 `null`。
+class SwimlaneFocus {
+  const SwimlaneFocus({required this.domainId, this.column});
+
+  final String domainId;
+  final int? column;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SwimlaneFocus &&
+      other.domainId == domainId &&
+      other.column == column;
+
+  @override
+  int get hashCode => Object.hash(domainId, column);
+}
+
 /// 正常 · 矩陣／已選格／正常 · 泳道／泳道 · 尚未選定 UC／泳道 ·
 /// flow 未結構化五列的共用底層資料（節點已解析成功且有節點）。
 class DomainReady extends DomainViewState {
@@ -246,7 +270,11 @@ class DomainReady extends DomainViewState {
     this.isDegraded = false,
     this.inferredVersion,
     this.matrix,
+    this.swimlaneFocus,
   });
+
+  /// 最近一次「在泳道中檢視」的落點；其餘操作不清除。
+  final SwimlaneFocus? swimlaneFocus;
 
   /// 矩陣投影（0.5.0-W1-114.14）：由共用掃描輪次的建圖結果算出；`null`
   /// 代表尚未接真資料（fixture／測試注入的狀態），畫面沿用既有來源。
@@ -276,6 +304,7 @@ class DomainReady extends DomainViewState {
     String? Function()? selectedDomainId,
     bool? isDegraded,
     String? Function()? inferredVersion,
+    SwimlaneFocus? Function()? swimlaneFocus,
   }) {
     return DomainReady(
       mode: mode ?? this.mode,
@@ -288,6 +317,9 @@ class DomainReady extends DomainViewState {
           ? inferredVersion()
           : this.inferredVersion,
       matrix: matrix,
+      swimlaneFocus: swimlaneFocus != null
+          ? swimlaneFocus()
+          : this.swimlaneFocus,
     );
   }
 }
