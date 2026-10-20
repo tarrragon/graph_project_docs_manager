@@ -1,6 +1,6 @@
 // 派發中代理人：`.claude/dispatch-active.json` 解析、流程階段推導、依線分組的派發列。
 // 派發列的顯示文字由 layout.ts 的 formatGroupDispatchRow 組出（所屬線由群組標題表達）。
-// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
+// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 import type { DispatchContext, DispatchRecord, DispatchRow, DispatchStage } from '../types'
 import { COMPLETED_STATUS, TICKET_PREFIX } from './shared'

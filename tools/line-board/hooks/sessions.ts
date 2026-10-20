@@ -1,6 +1,6 @@
 // 各 session：`~/.claude/sessions/` 狀態檔篩選與解析、pid 存活比對（含 pid 重複使用的辨識）、本 repo 判定、
 // 排序，以及線列 session 名稱旁的狀態。
-// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
+// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 import type { SessionState } from '../types'
 

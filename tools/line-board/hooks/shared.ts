@@ -1,5 +1,5 @@
-// 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 狀態解析、checkout 路徑判定、距今時間的顯示。
-// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
+// 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 狀態解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
+// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 /** 佇列票號的前綴：現行佇列行只寫短票號，補上前綴才是完整票號。 */
 export const TICKET_PREFIX = '0.5.0-W1-'
@@ -47,4 +47,9 @@ export function formatAge(nowMs: number, thenMs: number | null): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours} 小時前`
   return `${Math.floor(hours / 24)} 天前`
+}
+
+/** 例外的訊息文字：Error 取 message，其他值轉字串。readers.ts 的讀取失敗日誌與 register.tsx 的刷新、切換失敗日誌都用它。 */
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }

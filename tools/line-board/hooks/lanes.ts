@@ -1,5 +1,5 @@
 // 線與佇列：349 Solution 的現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化。
-// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 register.tsx 負責。
+// 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 import type { Lane, QueueToken, TicketStatus } from '../types'
 import { TICKETS_DIR, TICKET_PREFIX } from './shared'
