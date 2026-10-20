@@ -168,6 +168,13 @@ void main() {
       );
     });
 
+    test('OE-9b E1 category 缺席：與 OE-9 同條件但無 category 鍵即不列入', () {
+      final noCategory = _evt('EVT-X-001', category: null);
+      expect(noCategory.frontmatter.containsKey('category'), isFalse);
+      expect(_report(ucs, [noCategory]).orphanEvents, isEmpty);
+      expect(_report(ucs, [_evt('EVT-X-001')]).orphanEvents, hasLength(1));
+    });
+
     test('OE-10 consumers 缺鍵或 null 視同空', () {
       final evt = RawNode(
         path: 'p.md',
@@ -482,6 +489,25 @@ void main() {
       final d = _detect([], evts);
       expect(d, isA<EventGapsDetected>());
       expect(d.report.mismatches, hasLength(1));
+    });
+
+    test('G-3 孤立事件正向對照：可用時 isOrphan 為真，不可用時為假且零筆', () {
+      final ucs = [
+        _uc('UC-01', [
+          _step('a', emits: ['EVT-X-001']),
+        ]),
+      ];
+      final orphanEvts = [_evt('EVT-X-001')];
+      final ok = _detect(ucs, orphanEvts);
+      expect(ok.report.isOrphan('EVT-X-001'), isTrue);
+      expect(ok.report.orphanOf('EVT-X-001'), isNotNull);
+      final d = detectEventGaps(
+        graph: unavailableBuildResult(),
+        rawNodes: orphanEvts,
+      );
+      expect(d, isA<EventGapsUndetermined>());
+      expect(d.report.isOrphan('EVT-X-001'), isFalse);
+      expect(d.report.orphanEvents, isEmpty);
     });
   });
 
