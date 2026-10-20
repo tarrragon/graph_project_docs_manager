@@ -4,8 +4,14 @@
 找到一份就誤以為已改過另一份（0.5.0-W1-384 閘門紅燈同型），故以守衛擋住新建同名檔。
 """
 
-import tomllib
+import ast
+import re
 from pathlib import Path
+
+try:
+    import tomllib
+except ImportError:  # Python 3.10：標準庫無 tomllib，改走下方最小解析
+    tomllib = None
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 
@@ -20,9 +26,20 @@ def find_duplicate_test_basenames(roots: list[Path]) -> set[str]:
 
 
 def _configured_roots() -> list[Path]:
-    with (SKILL_ROOT / "pyproject.toml").open("rb") as f:
-        testpaths = tomllib.load(f)["tool"]["pytest"]["ini_options"]["testpaths"]
+    pyproject = SKILL_ROOT / "pyproject.toml"
+    if tomllib is not None:
+        with pyproject.open("rb") as f:
+            testpaths = tomllib.load(f)["tool"]["pytest"]["ini_options"]["testpaths"]
+    else:
+        testpaths = _parse_testpaths_without_tomllib(pyproject.read_text(encoding="utf-8"))
     return [SKILL_ROOT / p for p in testpaths]
+
+
+def _parse_testpaths_without_tomllib(text: str) -> list[str]:
+    """3.10 後備：testpaths 為單行字串陣列，其字面值與 Python list 字面值相容。"""
+    match = re.search(r"^testpaths\s*=\s*(\[.*\])\s*$", text, re.MULTILINE)
+    assert match, "pyproject.toml 找不到單行 testpaths 宣告"
+    return ast.literal_eval(match.group(1))
 
 
 def test_configured_test_roots_have_no_duplicate_basenames():
