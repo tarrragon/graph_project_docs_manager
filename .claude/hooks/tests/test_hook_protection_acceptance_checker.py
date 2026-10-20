@@ -293,6 +293,34 @@ class TestTouchesHookProtectionScope:
         assert touches_hook_protection_scope("/.claude/hooks/foo.py") is True
 
 
+class TestReadMarkerRelaxation:
+    """::read 唯讀宣告不命中；放寬只限 ::read 一種標記（W1-406）。"""
+
+    def test_read_marker_hook_not_matched_e2(self):
+        assert touches_hook_protection_scope(".claude/hooks/foo.py::read") is False
+
+    def test_read_marker_skill_hook_not_matched(self):
+        assert touches_hook_protection_scope(".claude/skills/ticket/hooks/x.py::read") is False
+
+    def test_unmarked_hook_still_matched_e1(self):
+        assert touches_hook_protection_scope(".claude/hooks/foo.py") is True
+
+    def test_write_marker_still_matched(self):
+        assert touches_hook_protection_scope(".claude/hooks/foo.py::write") is True
+
+    def test_other_suffix_still_matched(self):
+        assert touches_hook_protection_scope(".claude/hooks/foo.py::readonly") is True
+
+    def test_escaped_read_marker_is_literal_path_still_matched(self):
+        assert touches_hook_protection_scope(".claude/hooks/foo.py\\::read") is True
+
+    def test_mid_path_read_text_still_matched(self):
+        assert touches_hook_protection_scope(".claude/hooks/a::read/foo.py") is True
+
+    def test_read_marker_escaping_root_still_matched(self):
+        assert touches_hook_protection_scope("../../x.py::read") is True
+
+
 class TestTouchesScopeDotDotBypass:
     """tests 排除判定不可被 `..` 繞過（0.5.0-W1-276.7）。"""
 
