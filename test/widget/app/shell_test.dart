@@ -217,7 +217,8 @@ void main() {
     expect(find.text(l10n.workspaceUnavailable('missing')), findsNothing);
   });
 
-  testWidgets('Unavailable 降級後選定資料夾：原因文字消失', (tester) async {
+  // 0.5.0-W1-206.2：選到仍不可讀的資料夾，以 SnackBar 回饋、畫面維持未選專案。
+  testWidgets('Unavailable 降級後選到不可讀資料夾：SnackBar 出現，仍為未選專案', (tester) async {
     await _pumpShell(
       tester,
       overrides: [_unavailableRepoOverride()],
@@ -226,8 +227,9 @@ void main() {
     final l10n = AppLocalizationsZh();
     expect(find.text(l10n.workspaceUnavailable('missing')), findsOneWidget);
     await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
-    await tester.pump();
-    expect(find.text(l10n.workspaceUnavailable('missing')), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.folderUnavailableMessage('missing')), findsOneWidget);
+    expect(find.byKey(const Key('state-domain-unset')), findsOneWidget);
   });
 
   testWidgets('啟動 restore() 回 WorkspaceReady → 不改寫為 Unset，由 gate 判定（對照）', (

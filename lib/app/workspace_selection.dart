@@ -2,6 +2,11 @@
 ///
 /// 專案切換浮層與 Domain 視圖的選擇資料夾按鈕共用同一份；浮層收合與失敗
 /// 回饋載體不在本檔，由呼叫端處理。
+///
+/// 副作用由 [WorkspaceSelectionNotifier] 以自身 `ref` 執行（隨
+/// ProviderContainer 存活）：呼叫端 widget 在 gate 偵測期間可能因狀態轉換
+/// 而卸載（Domain 視圖的 `_UnsetView`），不能讓 await 之後的步驟依賴
+/// 呼叫端的 `WidgetRef`（0.5.0-W1-206.2）。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,26 +19,43 @@ import '../workspace/workspace_types.dart';
 import 'degraded_schema.dart';
 import 'scan_round.dart';
 
-/// 套用 [WorkspaceReady]：設定目前工作區、重置降級與推定旗標、丟棄舊掃描
-/// 輪次、執行 gate 偵測、寫入最近專案清單（0.2.0-W1-042）。
-Future<void> selectWorkspace(WidgetRef ref, WorkspaceReady state) async {
-  ref.read(currentWorkspaceStateProvider.notifier).state = state;
-  ref.read(degradedSchemaProvider.notifier).state = false;
-  ref.read(degradedSchemaVersionsProvider.notifier).state = null;
-  ref.read(inferredVersionProvider.notifier).state = null;
-  // 同路徑重選時輪次監聽不會 discard；gate 即將重讀 JSON，舊輪次（含舊降級
-  // 狀態）必須在此丟棄。僅限使用者主動選專案，缺口報告再次可見不經此處。
-  ref.read(scanRoundProvider.notifier).discard('project-reselected');
-  await ref.read(gateDetectionNotifierProvider.notifier).detect(state.path);
-  await _persistRecentProjectSelection(ref, state.path);
+/// 選定工作區流程的執行者；不持有狀態。
+class WorkspaceSelectionNotifier extends Notifier<void> {
+  @override
+  void build() {}
+
+  /// 套用 [WorkspaceReady]：設定目前工作區、重置降級與推定旗標、丟棄舊掃描
+  /// 輪次、執行 gate 偵測、寫入最近專案清單（0.2.0-W1-042）。
+  Future<void> select(WorkspaceReady state) async {
+    ref.read(currentWorkspaceStateProvider.notifier).state = state;
+    ref.read(degradedSchemaProvider.notifier).state = false;
+    ref.read(degradedSchemaVersionsProvider.notifier).state = null;
+    ref.read(inferredVersionProvider.notifier).state = null;
+    // 同路徑重選時輪次監聽不會 discard；gate 即將重讀 JSON，舊輪次（含舊降級
+    // 狀態）必須在此丟棄。僅限使用者主動選專案，缺口報告再次可見不經此處。
+    ref.read(scanRoundProvider.notifier).discard('project-reselected');
+    await ref.read(gateDetectionNotifierProvider.notifier).detect(state.path);
+    await _persistRecentProjectSelection(state.path);
+  }
+
+  /// 成功載入後寫入最近專案清單（SPEC-005 §2.4「寫入時機：成功載入後」）。
+  /// 寫入失敗不影響本次載入結果，失敗原因已由 repository 內部記錄。
+  Future<void> _persistRecentProjectSelection(String path) async {
+    final repository = ref.read(workspaceRepositoryProvider);
+    final success = await repository.addRecentProject(path);
+    if (!success) return;
+    final updated = await repository.loadRecentProjects();
+    ref.read(recentProjectsProvider.notifier).state = updated;
+  }
 }
 
-/// 成功載入後寫入最近專案清單（SPEC-005 §2.4「寫入時機：成功載入後」）。
-/// 寫入失敗不影響本次載入結果，失敗原因已由 repository 內部記錄。
-Future<void> _persistRecentProjectSelection(WidgetRef ref, String path) async {
-  final repository = ref.read(workspaceRepositoryProvider);
-  final success = await repository.addRecentProject(path);
-  if (!success) return;
-  final updated = await repository.loadRecentProjects();
-  ref.read(recentProjectsProvider.notifier).state = updated;
+final workspaceSelectionProvider =
+    NotifierProvider<WorkspaceSelectionNotifier, void>(
+      WorkspaceSelectionNotifier.new,
+    );
+
+/// 薄包裝：在任何 await 之前取得 notifier，其後不再使用 [ref]。
+Future<void> selectWorkspace(WidgetRef ref, WorkspaceReady state) {
+  final notifier = ref.read(workspaceSelectionProvider.notifier);
+  return notifier.select(state);
 }
