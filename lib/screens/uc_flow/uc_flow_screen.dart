@@ -208,7 +208,7 @@ class _NormalViewState extends ConsumerState<_NormalView> {
   String get ucId => widget.ucId;
 
   /// 跳轉定位（SPEC-001 §5）：目標屬本 UC 時，於本幀之後捲動到步驟列或
-  /// 事件列；高亮只有事件列（`step` 變體不接受 `isLocated`，SPEC-004 4.35）。
+  /// 事件列，並高亮該列（SPEC-004 4.35 `step` / `eventFlow` located）。
   UcFlowFocus? _focusFor(WidgetRef ref) {
     final focus = ref.watch(ucFlowFocusProvider);
     return focus != null && focus.ucId == ucId ? focus : null;
@@ -277,6 +277,10 @@ class _NormalViewState extends ConsumerState<_NormalView> {
     return index < 0 ? null : Key('card-ucFlow-step-$ucId-${index + 1}');
   }
 
+  /// 步驟列是否為跳轉目標（flow 類帶 step id；無 id 的步驟不高亮）。
+  bool _isStepLocated(UcFlowStepItem step, UcFlowFocus? focus) =>
+      focus?.stepId != null && step.id == focus!.stepId;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -299,7 +303,13 @@ class _NormalViewState extends ConsumerState<_NormalView> {
 
     final rows = [
       for (var i = 0; i < steps.length; i++)
-        _stepRow(ref, ucId: ucId, index: i, step: steps[i]),
+        _stepRow(
+          ref,
+          ucId: ucId,
+          index: i,
+          step: steps[i],
+          isLocated: _isStepLocated(steps[i], focus),
+        ),
     ];
 
     final eventFlowTable = eventRows.isEmpty
@@ -358,8 +368,10 @@ class _NormalViewState extends ConsumerState<_NormalView> {
     required String ucId,
     required int index,
     required UcFlowStepItem step,
+    required bool isLocated,
   }) {
     return AppTableRow.step(
+      isLocated: isLocated,
       number: StepNumber(number: index + 1),
       stepName: AppText(step.label),
       domain: RelationItem(
