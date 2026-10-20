@@ -805,6 +805,7 @@ def test_worktree_skeleton_includes_cli_reject_and_multiline_lines():
     assert WORKTREE_MULTILINE_LINE in out
     assert "### 自檢結果" in WORKTREE_MULTILINE_LINE
     assert "--content-file" in WORKTREE_MULTILINE_LINE
+    assert "票號" in WORKTREE_MULTILINE_LINE
     assert "以 heredoc 傳" not in WORKTREE_MULTILINE_LINE
     assert "\n" not in WORKTREE_MULTILINE_LINE
 
