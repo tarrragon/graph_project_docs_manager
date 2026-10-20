@@ -326,6 +326,26 @@ class TestRejections:
         assert _run(tmp_path, _args("1-1", "end")) == 0
         assert (tmp_path / "b.md").read_bytes() == b"b1\r\nb2\r\na1\r\n"
 
+    def test_missing_ticket_error_to_stderr_and_logger(self, tmp_path, capsys, caplog):
+        with patch.object(track_move_lines, "load_ticket", return_value=None), \
+             caplog.at_level("ERROR"):
+            rc = track_move_lines.execute_move_lines(_args("1-1", "end"), _VERSION)
+        captured = capsys.readouterr()
+        assert rc != 0
+        assert "[ERROR]" in captured.err and "[ERROR]" not in captured.out
+        assert any(r.levelname == "ERROR" for r in caplog.records)
+
+    def test_invalid_worktree_error_to_stderr_and_logger(self, tmp_path, capsys, caplog):
+        args = _args("1-1", "end")
+        args.worktree = str(tmp_path)
+        with patch.object(track_move_lines, "resolve_repo_root", return_value=None), \
+             caplog.at_level("ERROR"):
+            rc = _run(tmp_path, args)
+        captured = capsys.readouterr()
+        assert rc != 0
+        assert "[ERROR]" in captured.err and "[ERROR]" not in captured.out
+        assert any(r.levelname == "ERROR" for r in caplog.records)
+
     def test_missing_ticket(self, tmp_path):
         _setup(tmp_path)
         with patch.object(track_move_lines, "load_ticket", return_value=None):

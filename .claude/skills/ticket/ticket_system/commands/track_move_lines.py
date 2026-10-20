@@ -241,14 +241,18 @@ def execute_move_lines(args: argparse.Namespace, version: str) -> int:
     """`ticket track move-lines`：成功回 0，任何拒絕或失敗回 1（兩檔不變）。"""
     ticket = load_ticket(version, args.ticket_id)
     if not ticket:
-        print(format_error(ErrorMessages.TICKET_NOT_FOUND, ticket_id=args.ticket_id))
+        msg = format_error(ErrorMessages.TICKET_NOT_FOUND, ticket_id=args.ticket_id)
+        logger.error("move-lines 失敗：%s", msg)
+        sys.stderr.write(f"[ERROR] {msg}\n")
         return 1
     repo_root: Optional[str] = resolve_repo_root(
         getattr(args, "worktree", None), resolve_project_cwd()
     )
     if repo_root is None:
-        print(f"[ERROR] --worktree {args.worktree} 不是合法的 git 目錄，"
-              "或不屬本 repo 的 git worktree list（查詢失敗亦拒絕）")
+        msg = (f"--worktree {args.worktree} 不是合法的 git 目錄，"
+               "或不屬本 repo 的 git worktree list（查詢失敗亦拒絕）")
+        logger.error("move-lines 失敗：%s", msg)
+        sys.stderr.write(f"[ERROR] {msg}\n")
         return 1
     try:
         print(_run_move(ticket, args, repo_root))
