@@ -93,6 +93,78 @@ void main() {
     expect(keys, contains('live'));
     expect(keys, isNot(contains('dead')));
   });
+
+  testWidgets('座標蒐集：巢狀可互動元件帶最近可互動祖先的 parent', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: GestureDetector(
+            key: const ValueKey('outer'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () {},
+            child: SizedBox(
+              width: 400,
+              height: 200,
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: TextButton(
+                  key: const ValueKey('inner'),
+                  onPressed: () {},
+                  child: const Text('x'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final coords = _collectInteractive(tester);
+    Map<String, Object?> byKey(String k) =>
+        coords.firstWhere((e) => e['key'] == k);
+    // 正向對照：內層必須指向外層 index；外層無可互動祖先為 null
+    expect(byKey('inner')['parent'], byKey('outer')['index']);
+    expect(byKey('outer')['parent'], isNull);
+    expect(byKey('outer').containsKey('parent'), isTrue);
+  });
+
+  testWidgets('座標蒐集：部分超出視口的元件保留未裁切的原始矩形', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 1180,
+              top: 10,
+              width: 200,
+              height: 40,
+              child: TextButton(
+                key: const ValueKey('wide'),
+                onPressed: () {},
+                child: const Text('y'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final e = _collectInteractive(
+      tester,
+    ).firstWhere((e) => e['key'] == 'wide');
+    final rect = (e['rect']! as List).cast<double>();
+    final raw = (e['rawRect']! as List).cast<double>();
+    // 裁切後矩形不超出視口；原始矩形必須超出視口且寬度為 200
+    expect(rect[0] + rect[2], lessThanOrEqualTo(1280.001));
+    expect(raw[0] + raw[2], greaterThan(1280));
+    expect(raw[2], closeTo(200, 0.001));
+  });
 }
 
 Widget _scrollClipFixture() => MaterialApp(
@@ -213,6 +285,7 @@ bool _isInteractive(Widget w) =>
 List<Map<String, Object?>> _collectInteractive(WidgetTester tester) {
   final viewport = Offset.zero & kCaptureLogicalSize;
   final seen = <String>{};
+  final indexOf = <Element, int>{};
   final out = <Map<String, Object?>>[];
   for (final element in tester.allElements) {
     if (!_isInteractive(element.widget)) continue;
@@ -227,14 +300,29 @@ List<Map<String, Object?>> _collectInteractive(WidgetTester tester) {
     if (!_isHitAtCenter(tester, box, visible)) continue;
     if (!seen.add(key)) continue; // 巢狀包裝（Button 內的 InkWell）同矩形只計一次
     final widgetKey = element.widget.key;
+    final index = out.length + 1;
+    indexOf[element] = index;
     out.add({
-      'index': out.length + 1,
+      'index': index,
       'type': element.widget.runtimeType.toString(),
       'key': widgetKey is ValueKey ? '${widgetKey.value}' : null,
       'rect': [visible.left, visible.top, visible.width, visible.height],
+      // 未與視口、祖先裁切取交集的原始矩形（供幾何檢查判斷超出視口）。
+      'rawRect': [rect.left, rect.top, rect.width, rect.height],
+      'parent': _nearestRecordedAncestor(element, indexOf),
     });
   }
   return out;
+}
+
+/// 最近的已入檔可互動祖先的 index；無則 null。樹序保證祖先先於後代入檔。
+int? _nearestRecordedAncestor(Element element, Map<Element, int> indexOf) {
+  int? found;
+  element.visitAncestorElements((ancestor) {
+    found = indexOf[ancestor];
+    return found == null;
+  });
+  return found;
 }
 
 /// 可見矩形中心點做 hit test，路徑上含該 RenderBox 才視為可見。
