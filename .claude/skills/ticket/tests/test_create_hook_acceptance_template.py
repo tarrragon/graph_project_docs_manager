@@ -35,6 +35,38 @@ def test_create_touching_hook_appends_four_templates():
     assert result == BASE + TEMPLATES
 
 
+def test_read_marked_hook_path_adds_no_template_e2():
+    result, touched = apply_hook_acceptance_template(
+        [".claude/hooks/foo-hook.py::read"], list(BASE)
+    )
+    assert touched is False
+    assert result == list(BASE)
+
+
+def test_unmarked_hook_path_still_adds_template_e1():
+    result, touched = apply_hook_acceptance_template(
+        [".claude/hooks/foo-hook.py"], list(BASE)
+    )
+    assert touched is True
+    assert len(result) > len(BASE)
+
+
+def test_write_marked_hook_path_still_adds_template_e1():
+    result, touched = apply_hook_acceptance_template(
+        [".claude/hooks/x.py::write"], list(BASE)
+    )
+    assert touched is True
+    assert len(result) > len(BASE)
+
+
+def test_escaped_read_marker_still_adds_template():
+    result, touched = apply_hook_acceptance_template(
+        [".claude/hooks/foo-hook.py\\::read"], list(BASE)
+    )
+    assert touched is True
+    assert len(result) > len(BASE)
+
+
 def test_create_not_touching_hook_unchanged():
     result, touched = apply_hook_acceptance_template(PLAIN_FILES, list(BASE))
     assert touched is False

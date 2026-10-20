@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from ticket_system.constants import PRIORITY_LEVELS, TICKET_TYPES
 from ticket_system.lib.git_utils import EXIT_AUTO_COMMIT_FAILED
+from ticket_system.lib.file_conflict import parse_file_intent
 from ticket_system.lib.list_args import expand_list_arg
 from ticket_system.lib.ticket_loader import (
     get_tickets_dir,
@@ -517,7 +518,13 @@ def apply_hook_acceptance_template(
     checker = _load_hook_protection_checker()
     if checker is None:
         return acceptance, False
-    if not any(checker.touches_hook_protection_scope(f) for f in (where_files or [])):
+    # 唯讀宣告（::read）不改動 hook，先濾掉再判範圍；剝離規則沿用 file_conflict
+    write_paths = []
+    for raw in where_files or []:
+        path, intent = parse_file_intent(raw)
+        if intent != "read":
+            write_paths.append(path)
+    if not any(checker.touches_hook_protection_scope(f) for f in write_paths):
         return acceptance, False
 
     current = list(acceptance or [])
