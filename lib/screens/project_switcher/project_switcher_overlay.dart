@@ -11,13 +11,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
-import '../../app/degraded_schema.dart';
-import '../../app/scan_round.dart';
+import '../../app/workspace_selection.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/workspace_repository.dart';
 import '../../workspace/workspace_types.dart';
-import '../domain_view/gate_detection_notifier.dart';
 import '../../workspace/current_workspace_provider.dart';
 import 'project_switcher_providers.dart';
 
@@ -169,16 +167,8 @@ Future<void> _handleChosenState(
   WorkspaceState state,
 ) async {
   switch (state) {
-    case WorkspaceReady(:final path):
-      ref.read(currentWorkspaceStateProvider.notifier).state = state;
-      ref.read(degradedSchemaProvider.notifier).state = false;
-      ref.read(degradedSchemaVersionsProvider.notifier).state = null;
-      ref.read(inferredVersionProvider.notifier).state = null;
-      // 同路徑重選時輪次監聽不會 discard；gate 即將重讀 JSON，舊輪次（含舊降級
-      // 狀態）必須在此丟棄。僅限使用者主動選專案，缺口報告再次可見不經此處。
-      ref.read(scanRoundProvider.notifier).discard('project-reselected');
-      await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
-      await _persistRecentProjectSelection(ref, path);
+    case WorkspaceReady():
+      await selectWorkspace(ref, state);
       if (!context.mounted) return;
       _dismiss(ref);
     case WorkspaceUnavailable(:final reason):
@@ -193,16 +183,4 @@ Future<void> _handleChosenState(
       // 不做動作（sealed class 窮盡分支，非預期路徑僅為編譯期保證）。
       break;
   }
-}
-
-/// 成功載入後寫入最近專案清單（SPEC-005 §2.4「寫入時機：成功載入後」；
-/// SPEC-003 §3.7〈互動反應〉「成功載入後該項移至頂端」）。寫入失敗
-/// （`addRecentProject` 回 `false`）不影響本次載入結果，失敗原因已由
-/// repository 內部記錄，此處不重試、不改變浮層或畫面狀態。
-Future<void> _persistRecentProjectSelection(WidgetRef ref, String path) async {
-  final repository = ref.read(workspaceRepositoryProvider);
-  final success = await repository.addRecentProject(path);
-  if (!success) return;
-  final updated = await repository.loadRecentProjects();
-  ref.read(recentProjectsProvider.notifier).state = updated;
 }
