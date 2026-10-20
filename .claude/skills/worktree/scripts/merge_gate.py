@@ -120,6 +120,18 @@ def _parse_artifacts(raw, prefix: str) -> tuple:
     return tuple(out)
 
 
+def _parse_pattern(raw, field: str) -> Optional["re.Pattern"]:
+    """選填的行正規式；未填回 None，非字串或無法編譯拋 DeclarationError 指名欄位。"""
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw:
+        raise _bad(field, "必須是非空字串（正規式）")
+    try:
+        return re.compile(raw)
+    except re.error as exc:
+        raise _bad(field, f"不是合法正規式：{exc}") from exc
+
+
 def _parse_suite(name, raw) -> dict:
     prefix = f"suites.{name}"
     if not isinstance(name, str) or name in _RESERVED_SUITES or name.startswith(SUITE_SKILL_PREFIX):
@@ -132,7 +144,9 @@ def _parse_suite(name, raw) -> dict:
         raise _bad(f"{prefix}.prefixes", "與 files 至少須有一項")
     return {"prefixes": tuple(prefixes), "files": tuple(files),
             "command": _str_list(raw.get("command"), f"{prefix}.command", required=True),
-            "artifacts": _parse_artifacts(raw.get("artifacts"), prefix)}
+            "artifacts": _parse_artifacts(raw.get("artifacts"), prefix),
+            "summary": _parse_pattern(raw.get("summary"), f"{prefix}.summary"),
+            "failure": _parse_pattern(raw.get("failure"), f"{prefix}.failure")}
 
 
 def parse_declaration(text: str) -> dict:
@@ -439,9 +453,19 @@ def default_runner(argv: list, cwd: str) -> tuple:
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
-def _failed_items(output: str) -> list:
-    """從 pytest／flutter 輸出摘出失敗項與其 E 行（assertion 訊息）；摘不到時回傳輸出尾段。"""
+def declared_patterns(suite: str, decl: Declaration) -> tuple:
+    """宣告套件的 (summary, failure) 正規式；未宣告或未填為 None。"""
+    entry = (decl or {}).get(suite) or {}
+    return entry.get("summary"), entry.get("failure")
+
+
+def _failed_items(output: str, failure: Optional["re.Pattern"] = None) -> list:
+    """從輸出摘出失敗項：宣告的 failure 正規式優先；否則 pytest／flutter 規則（含 E 行）；再退回輸出尾段。"""
     lines = output.splitlines()
+    if failure is not None:
+        declared = [ln.strip() for ln in lines if failure.search(ln)]
+        if declared:
+            return declared[:_FAILED_ITEMS_MAX]
     items = [ln.strip() for ln in lines if ln.startswith("FAILED ") or "[E]" in ln]
     items += [ln.rstrip() for ln in lines if ln.startswith("E  ")]
     if not items:
@@ -494,12 +518,13 @@ def save_failure_output(log_root: str, tag: str, suite: str, rc: int, output: st
     return str(path)
 
 
-def _rc_reason(suite: str, rc: int, output: str, detail_path: str = "") -> str:
+def _rc_reason(suite: str, rc: int, output: str, detail_path: str = "",
+               failure: Optional["re.Pattern"] = None) -> str:
     if rc == 124:
         return f"[{suite}] 全套件逾時（{SUITE_TIMEOUT_SECONDS} 秒）"
     if rc == 125:
         return f"[{suite}] 等待本機名額逾時，全套件未執行"
-    reason = f"[{suite}] 全套件紅燈（exit {rc}），失敗項：\n  " + "\n  ".join(_failed_items(output))
+    reason = f"[{suite}] 全套件紅燈（exit {rc}），失敗項：\n  " + "\n  ".join(_failed_items(output, failure))
     if detail_path:
         reason += f"\n  全輸出與記憶體快照：{detail_path}"
     return reason
@@ -526,9 +551,15 @@ _SUMMARY_PATTERNS = (
 _LOG_FILE = ".claude/logs/worktree-merge.log"
 
 
-def summarize_output(output: str) -> str:
-    """從輸出尾端取最後一個測試摘要行；取不到回傳「無摘要」。"""
-    for line in reversed(output.strip().splitlines()):
+def summarize_output(output: str, summary: Optional["re.Pattern"] = None) -> str:
+    """從輸出尾端取最後一個測試摘要行（宣告的 summary 正規式優先）；取不到回傳「無摘要」。"""
+    lines = list(reversed(output.strip().splitlines()))
+    if summary is not None:
+        for line in lines:
+            m = summary.search(line)
+            if m:
+                return m.group(0).strip(" =")
+    for line in lines:
         for pat in _SUMMARY_PATTERNS:
             m = pat.search(line)
             if m:
@@ -643,6 +674,7 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
         missing = _ensure_artifacts(suite, snapshot, project_root, runner)
         if missing:
             return missing
+        summary_pat, failure_pat = declared_patterns(suite, load_declaration(snapshot))
         start = time.monotonic()
         try:
             rc, out = runner(wrapped_argv(suite_command(suite, snapshot)), snapshot)
@@ -650,10 +682,10 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
             _emit_result(log_root, _suite_result_line(suite, "中斷", "無摘要", time.monotonic() - start))
             raise
         _emit_result(log_root, _suite_result_line(
-            suite, _STATUS_BY_RC.get(rc, "紅燈"), summarize_output(out), time.monotonic() - start))
+            suite, _STATUS_BY_RC.get(rc, "紅燈"), summarize_output(out, summary_pat), time.monotonic() - start))
         if rc != 0:
             detail = save_failure_output(log_root, tag, suite, rc, out) if rc not in (124, 125) else ""
-            return _rc_reason(suite, rc, out, detail)
+            return _rc_reason(suite, rc, out, detail, failure_pat)
         if on_green:
             on_green(suite)
     return ""

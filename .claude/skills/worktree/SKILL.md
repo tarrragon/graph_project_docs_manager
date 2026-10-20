@@ -125,11 +125,14 @@ suites:
     artifacts:                  # 選填；缺產物時先以 generate 生成
       - path: <gitignored 產物路徑>
         generate: [<argv>, ...]
+    summary: <正規式>           # 選填；摘要行（取輸出尾端最後一個命中行的命中片段）
+    failure: <正規式>           # 選填；失敗行（紅燈時列出所有命中行）
 ```
 
 - 宣告檔存在：宣告的套件**取代**上表第一列的 Flutter 對應（不疊加）；`.claude/` 下的對應固定保留、不可宣告。宣告的前綴與檔名同時視為「已對應」，不列入未對應路徑警告。套件順序為宣告順序，排在 hooks、scripts、skill 之前。
+- `summary`／`failure` 有填時優先使用；未填沿用 pytest／flutter 規則，再退回輸出尾段（失敗項）或「無摘要」。宣告命令的輸出格式由專案決定（如 bun：`summary: '^\s*\d+ (pass|fail)'`、`failure: '\(fail\)'`）。
 - 宣告檔不存在：沿用內建 Flutter 對應，並印一行 `[合併前測試] INFO：未找到專案宣告 ...`。
-- 格式錯誤（YAML 無法解析、缺 `command`、`prefixes` 與 `files` 皆空、使用保留名、`artifacts` 缺 `generate`）：閘門判紅（fail-closed），訊息指名檔案與欄位，不退回內建對應。
+- 格式錯誤（YAML 無法解析、缺 `command`、`prefixes` 與 `files` 皆空、使用保留名、`artifacts` 缺 `generate`、`summary`／`failure` 非字串或無法編譯為正規式）：閘門判紅（fail-closed），訊息指名檔案與欄位，不退回內建對應。
 
 skill 被 hooks 或 scripts 使用時加跑對應套件：改動涉及某 skill，且快照內 `.claude/hooks`、`.claude/scripts` 的 .py（1）行首 `from X`／`import X` 匯入該 skill 的頂層模組（skill 根與其 `scripts/` 下的 .py 模組名、帶 `__init__.py` 的套件名；`sys.path.insert` 之後的匯入同樣涵蓋），或（2）非測試檔含 `skills/<名稱>/` 路徑引用（讀 skill 檔案），就加跑 hooks／scripts 套件。未被使用的 skill 只跑自己的套件。通用模組名（如 `constants`）可能多報，只會多跑套件。
 
