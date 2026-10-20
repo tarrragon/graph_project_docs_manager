@@ -31,6 +31,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/main.dart';
 
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+
 import 'window_sizes.dart';
 
 /// 預設語系：繁中為樣板語系（CLAUDE.md §6）。
@@ -99,7 +102,8 @@ Future<void> pumpApp(
   setWindowSize(tester, size);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: overrides,
+      // 預設在前、呼叫端在後：同一 provider 由後者取代，不重複 override。
+      overrides: [_readyDomainOverride(), ...overrides],
       child: DocsManagerApp(locale: locale),
     ),
   );
@@ -107,6 +111,13 @@ Future<void> pumpApp(
     await tester.pumpAndSettle();
   }
 }
+
+/// 預設的 Domain 視圖狀態：明示注入矩陣模式的 `DomainReady`，測試前提不依賴
+/// `domainViewStateProvider` 的產品預設值（預設為 Loading 時背景 Domain 頁的
+/// skeleton 無限動畫會讓 `pumpAndSettle` 逾時）。
+Override _readyDomainOverride() => domainViewStateProvider.overrideWith(
+  (ref) => const DomainReady(mode: DomainMode.matrix),
+);
 
 /// 推進假時鐘 [contract] 這麼久（`Motion` 契約類 token）。
 ///
