@@ -10,10 +10,11 @@ on:
 jobs:
   flutter-integration-macos:
     runs-on: macos-latest
-    # job 逾時 20 分鐘。依據：實測 run 38512696486 建置約 67 秒；
-    # main 現況 integration_test 本機約 5 秒內完成，20 分鐘留足 runner 冷啟動餘裕，
-    # 又遠小於舊紀錄卡住拖到的約 43 分鐘。
-    timeout-minutes: 20
+    # job 逾時 = 首檔建置 + 每檔若干分鐘：10 分鐘（checkout、pub get、冷建置，
+    # 實測 run 38512696486 建置約 67 秒）+ 每檔 5 分鐘（啟動 App 與單項逾時 2 分鐘的餘裕）。
+    # 現有 1 檔，預計 114.13 後共 3 檔，取 3 檔上限 25 分鐘；檔數超過 3 時須重估。
+    # 仍遠小於舊紀錄卡住拖到的約 43 分鐘。
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7.0.1
       # Flutter 版本唯一來源為 .fvmrc（JSON），不在 workflow 寫死
@@ -28,4 +29,10 @@ jobs:
       # 單項測試逾時 2 分鐘（--timeout）。依據：單項正常數秒內完成；
       # 舊紀錄單項卡 10 分鐘（pumpAndSettle 預設逾時），0.5.0-W1-248.2 已將 settle 設為 30 秒，
       # 2 分鐘高於 30 秒並保留餘裕，卡住的測試不會佔滿 runner。
-      - run: flutter test integration_test -d macos --timeout 2m
+      # 每檔一次呼叫：macOS 一次 flutter test 只能啟動一次 App，目錄下第二個檔必報
+      # Unable to start the app on the device（見 integration_test/app_test.dart 檔頭註解，
+      # 0.1.0-W3-097 實測），故逐檔執行，任一檔失敗即中止。
+      - run: |
+          for f in integration_test/*_test.dart; do
+            flutter test "$f" -d macos --timeout 2m || exit 1
+          done
