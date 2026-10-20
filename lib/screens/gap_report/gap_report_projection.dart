@@ -9,6 +9,7 @@ import 'dart:developer' as developer;
 
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
@@ -45,17 +46,15 @@ const _tag = 'GapReportProjection';
 /// 需求：[SPEC-001 §5 表一～三、〈定案〉O1] 投影破洞為報告分節與項目。
 ///
 /// [nodes] 供查節點路徑與型別（`GraphBuiltEvent.nodes`）；
-/// [orphanEventItems]／[eventDeclarationMismatchItems] 為既有事件類項目，
-/// 原樣放入對應分節（其 id 規則不在表二範圍）；[nonDomainPathsKey] 是
-/// EVT-CORPUS-005 說明的 `{key}` 值（型別表 `non_domain_paths_key`，
-/// 缺欄時由呼叫端取內建表值）。
+/// [eventGaps] 為 Diagnostics 的事件類偵測結果（SPEC-001 v1.52 §5〈事件類項目
+/// 投影〉）；[nonDomainPathsKey] 是 EVT-CORPUS-005 說明的 `{key}` 值
+/// （型別表 `non_domain_paths_key`，缺欄時由呼叫端取內建表值）。
 List<GapReportCategory> projectGapReport({
   required List<ParseFailureGap> parseFailures,
   required List<GraphDefectGap> graphDefects,
   required List<LightNode> nodes,
   required String nonDomainPathsKey,
-  List<GapReportItem> orphanEventItems = const [],
-  List<GapReportItem> eventDeclarationMismatchItems = const [],
+  EventGapReport eventGaps = const EventGapReport.empty(),
 }) {
   final projector = _Projector(nodes, nonDomainPathsKey);
   final byCategory = <String, List<GapReportItem>>{
@@ -69,10 +68,14 @@ List<GapReportCategory> projectGapReport({
     final (category, item) = projector.graphDefect(gap);
     byCategory[category]!.add(item);
   }
-  byCategory[gapCategoryIdOrphanEvent]!.addAll(orphanEventItems);
-  byCategory[gapCategoryIdEventDeclarationMismatch]!.addAll(
-    eventDeclarationMismatchItems,
-  );
+  for (final gap in eventGaps.orphanEvents) {
+    byCategory[gapCategoryIdOrphanEvent]!.add(projector.orphanEvent(gap));
+  }
+  for (final gap in eventGaps.mismatches) {
+    byCategory[gapCategoryIdEventDeclarationMismatch]!.add(
+      projector.eventMismatch(gap),
+    );
+  }
   return [
     for (final id in gapCategoryOrder)
       if (byCategory[id]!.isNotEmpty)
@@ -210,6 +213,63 @@ class _Projector {
       {'count': gap.nonStringElementCount ?? 0},
     ),
   };
+
+  /// 需求：[SPEC-001 v1.52 §5 表二、表三] 孤立事件項目。
+  GapReportItem orphanEvent(OrphanEventGap gap) => _eventItem(
+    components: [gapCategoryIdOrphanEvent, gap.evtId],
+    evtId: gap.evtId,
+    ucIds: gap.ucIds,
+    description: GapItemDescription(switch (gap.shape) {
+      OrphanEventShape.emittedNotConsumed =>
+        GapDescriptionKind.orphanEventEmittedNotConsumed,
+      OrphanEventShape.consumedNotEmitted =>
+        GapDescriptionKind.orphanEventConsumedNotEmitted,
+    }),
+  );
+
+  /// 需求：[SPEC-001 v1.52 §5 表二、表三] 事件宣告不符項目；說明帶 domain 原值。
+  GapReportItem eventMismatch(EventDeclarationMismatchGap gap) => _eventItem(
+    components: [
+      gapCategoryIdEventDeclarationMismatch,
+      gap.evtId,
+      gap.direction.name,
+      gap.domain,
+    ],
+    evtId: gap.evtId,
+    ucIds: gap.ucIds,
+    description: GapItemDescription(
+      switch (gap.direction) {
+        EventDeclarationDirection.consumers =>
+          GapDescriptionKind.eventConsumerUnmatched,
+        EventDeclarationDirection.producers =>
+          GapDescriptionKind.eventProducerUnmatched,
+      },
+      {'domain': gap.domain},
+    ),
+  );
+
+  GapReportItem _eventItem({
+    required List<Object?> components,
+    required String evtId,
+    required List<String> ucIds,
+    required GapItemDescription description,
+  }) {
+    final id = _uniqueId(components);
+    final evt = _byId[evtId];
+    if (evt == null) {
+      _reportUnresolvedNode('event', evtId);
+      return _unresolvedItem(id, evtId, description);
+    }
+    return GapReportItem(
+      id: id,
+      filePath: evt.path,
+      pointerType: GapItemPointerType.event,
+      pointerNodeId: evtId,
+      eventId: evtId,
+      eventUcId: ucIds.firstOrNull,
+      description: description,
+    );
+  }
 
   (String, GapReportItem) graphDefect(GraphDefectGap gap) {
     final kind = gap.kind;

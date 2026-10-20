@@ -33,7 +33,11 @@ import 'package:graph_project_docs_manager/screens/gap_report/gap_report_round_s
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 
+import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart'
+    show RawNode;
+
 import '../../helpers/gap_round_fakes.dart';
+import '../../helpers/spec007/bundle_graph_fixture.dart';
 import '../../helpers/helpers.dart';
 import '../../helpers/spec006/fake_docs_fs.dart';
 
@@ -1016,6 +1020,130 @@ void main() {
           findRichText: true,
         ),
         findsOneWidget,
+      );
+    });
+  });
+
+  group('R2-6～R2-8 事件類項目的輪次接線（SPEC-001 §3.6）', () {
+    final bundles = [bundleNode('alpha'), bundleNode('beta')];
+
+    RawNode uc(List<Map<String, dynamic>> steps) => RawNode(
+      path: 'docs/usecases/UC-02.md',
+      frontmatter: {'id': 'UC-02'},
+      typeName: 'UC',
+      flowSteps: steps,
+    );
+    RawNode evt(String id, {List<String> consumers = const []}) => RawNode(
+      path: 'docs/events/x/$id-slug.md',
+      frontmatter: {
+        'id': id,
+        'category': 'domain_event',
+        'producers': const <String>[],
+        'consumers': consumers,
+      },
+      typeName: 'EVT',
+    );
+    Map<String, dynamic> step(String id, String emits, String traverse) => {
+      'id': id,
+      'emits': [emits],
+      'traverses': [traverse],
+    };
+
+    ScanRoundResult round(
+      List<RawNode> rawNodes, {
+      EdgeTypeUnavailableReason? unavailable,
+      PathPatternSource source = PathPatternSource.projectJson,
+    }) => fakeRound(
+      nodes: const [],
+      extraRawNodes: rawNodes,
+      pathSource: source,
+      graphOverride: unavailable != null
+          ? GraphBuildUnavailable(unavailable)
+          : buildResultOf(rawNodes),
+    );
+
+    List<RawNode> orphanCorpus() => [
+      ...bundles,
+      uc([step('a', 'EVT-X-001', 'alpha')]),
+      evt('EVT-X-001'),
+    ];
+
+    List<String> itemIds(GapReportState s, String category) => switch (s) {
+      GapReportFound(:final categories) ||
+      GapReportUndeterminable(:final categories) => [
+        for (final c in categories)
+          if (c.id == category) ...c.items.map((i) => i.id),
+      ],
+      _ => const [],
+    };
+
+    test('R2-6（E2）建圖不可用時事件分節不出現；同語料建圖可用則有一項', () {
+      final unavailable = gapReportStateFromRound(
+        round(
+          orphanCorpus(),
+          unavailable: EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
+        ),
+        nonDomainPathsKey: _key,
+      );
+      expect(unavailable, isA<GapReportUndeterminable>());
+      expect(
+        (unavailable as GapReportUndeterminable).reason,
+        UndeterminedGapReason.projectVersionOutOfKnownRange,
+      );
+      expect(_categoryIds(unavailable), isNot(contains('orphan-event')));
+      expect(
+        _categoryIds(unavailable),
+        isNot(contains('event-declaration-mismatch')),
+      );
+
+      final available = gapReportStateFromRound(
+        round(orphanCorpus()),
+        nonDomainPathsKey: _key,
+      );
+      expect(itemIds(available, 'orphan-event'), ['orphan-event:EVT-X-001']);
+    });
+
+    test('R2-7 路徑模式查詢不可用、建圖可用：無法判定且孤立事件照常列出', () {
+      final state = gapReportStateFromRound(
+        round(orphanCorpus(), source: PathPatternSource.noPathPattern),
+        nonDomainPathsKey: _key,
+      );
+      expect(state, isA<GapReportUndeterminable>());
+      expect(itemIds(state, 'orphan-event'), ['orphan-event:EVT-X-001']);
+    });
+
+    test('R2-8 三類並存：分節順序依 O1，事件類項目計入破洞數', () {
+      final corpus = [
+        ...bundles,
+        uc([
+          step('a', 'EVT-X-001', 'alpha'),
+          step('b', 'EVT-X-002', 'alpha'),
+          step('c', 'EVT-X-001', 'gamma'),
+        ]),
+        evt('EVT-X-001'),
+        evt('EVT-X-002', consumers: ['beta']),
+      ];
+      final state = gapReportStateFromRound(
+        round(corpus),
+        nonDomainPathsKey: _key,
+      );
+      expect(state, isA<GapReportFound>());
+      final ids = _categoryIds(state);
+      expect(ids, [
+        'graph-defect-flow',
+        'orphan-event',
+        'event-declaration-mismatch',
+      ]);
+      final found = state as GapReportFound;
+      // 步驟 c 的 traverses 含未宣告值 gamma：flow 子類 1 項。
+      expect(itemIds(state, 'graph-defect-flow'), hasLength(1));
+      expect(itemIds(state, 'orphan-event'), ['orphan-event:EVT-X-001']);
+      expect(itemIds(state, 'event-declaration-mismatch'), [
+        'event-declaration-mismatch:EVT-X-002:consumers:beta',
+      ]);
+      expect(
+        found.categories.fold<int>(0, (n, c) => n + c.items.length),
+        3,
       );
     });
   });

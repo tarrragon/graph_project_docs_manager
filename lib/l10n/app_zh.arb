@@ -1357,5 +1357,35 @@
   "pathDeclarationNonDomainMalformed": "非 domain 路徑清單格式錯誤",
   "@pathDeclarationNonDomainMalformed": {
     "description": "SPEC-004 §4.0.6：宣告狀態行 detail 片段（清單檔存在但格式錯誤，取代「缺」）"
+  },
+
+  "gapOrphanEventEmittedNotConsumed": "有步驟發出此事件，但沒有步驟消費，consumers 也未宣告",
+  "@gapOrphanEventEmittedNotConsumed": {
+    "description": "SPEC-004 §4.0.6〈1.94 新增〉：orphan-event，形態有發出無消費"
+  },
+
+  "gapOrphanEventConsumedNotEmitted": "有步驟消費此事件，但沒有步驟發出，producers 也未宣告",
+  "@gapOrphanEventConsumedNotEmitted": {
+    "description": "SPEC-004 §4.0.6〈1.94 新增〉：orphan-event，形態有消費無發出"
+  },
+
+  "gapEventConsumerUnmatched": "consumers 宣告了 {domain}，但沒有對應的步驟消費此事件",
+  "@gapEventConsumerUnmatched": {
+    "description": "SPEC-004 §4.0.6〈1.94 新增〉：event-declaration-mismatch，方向 consumers；domain 為宣告值原樣",
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gapEventProducerUnmatched": "producers 宣告了 {domain}，但沒有對應的步驟發出此事件",
+  "@gapEventProducerUnmatched": {
+    "description": "SPEC-004 §4.0.6〈1.94 新增〉：event-declaration-mismatch，方向 producers；domain 為宣告值原樣",
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
   }
 }

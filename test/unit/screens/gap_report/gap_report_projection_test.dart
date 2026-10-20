@@ -12,6 +12,7 @@ import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event_builder.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
+import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
@@ -62,6 +63,13 @@ const _nodes = [
     status: null,
     title: null,
     path: 'docs/spec/a/domain-map.md',
+  ),
+  LightNode(
+    id: 'EVT-A-001',
+    typeName: 'EVT',
+    status: null,
+    title: null,
+    path: 'docs/events/x/EVT-A-001-slug.md',
   ),
 ];
 
@@ -180,15 +188,33 @@ final _domainDup = GraphDefectGap(
 List<GapReportCategory> _project({
   List<ParseFailureGap> parse = const [],
   List<GraphDefectGap> defects = const [],
-  List<GapReportItem> orphan = const [],
-  List<GapReportItem> mismatch = const [],
+  List<OrphanEventGap> orphan = const [],
+  List<EventDeclarationMismatchGap> mismatch = const [],
+  List<LightNode>? nodes,
 }) => projectGapReport(
   parseFailures: parse,
   graphDefects: defects,
-  nodes: _nodes,
+  nodes: nodes ?? _nodes,
   nonDomainPathsKey: _key,
-  orphanEventItems: orphan,
-  eventDeclarationMismatchItems: mismatch,
+  eventGaps: EventGapReport(orphanEvents: orphan, mismatches: mismatch),
+);
+
+OrphanEventGap _orphanGap({
+  String evtId = 'EVT-A-001',
+  OrphanEventShape shape = OrphanEventShape.emittedNotConsumed,
+  List<String> ucIds = const ['UC-02'],
+}) => OrphanEventGap(evtId: evtId, shape: shape, ucIds: ucIds);
+
+EventDeclarationMismatchGap _mismatchGap({
+  String evtId = 'EVT-A-001',
+  EventDeclarationDirection direction = EventDeclarationDirection.consumers,
+  String domain = 'graph',
+  List<String> ucIds = const ['UC-02'],
+}) => EventDeclarationMismatchGap(
+  evtId: evtId,
+  direction: direction,
+  domain: domain,
+  ucIds: ucIds,
 );
 
 List<GapReportItem> _itemsOf(List<GapReportCategory> cats, String id) =>
@@ -199,15 +225,6 @@ GapReportItem _only(List<GapReportCategory> cats) {
   expect(cats.single.items, hasLength(1));
   return cats.single.items.single;
 }
-
-const _eventItem = GapReportItem(
-  id: 'evt-a',
-  filePath: 'docs/events/EVT-1.md',
-  pointerType: GapItemPointerType.event,
-  pointerNodeId: 'EVT-1',
-  eventUcId: 'UC-01',
-  eventId: 'EVT-1',
-);
 
 void main() {
   group('表一：分節', () {
@@ -308,8 +325,8 @@ void main() {
       final cats = _project(
         parse: all.reversed.toList(),
         defects: defects,
-        orphan: [_eventItem],
-        mismatch: [_eventItem],
+        orphan: [_orphanGap()],
+        mismatch: [_mismatchGap()],
       );
       expect(cats.map((c) => c.id), [
         'parse-failure',
@@ -343,10 +360,10 @@ void main() {
       expect(_project(), isEmpty);
     });
 
-    test('既有事件類項目原樣進入對應分節', () {
-      final cats = _project(orphan: [_eventItem]);
+    test('事件類偵測結果進入對應分節', () {
+      final cats = _project(orphan: [_orphanGap()]);
       expect(cats.single.id, 'orphan-event');
-      expect(cats.single.items.single, same(_eventItem));
+      expect(cats.single.items, hasLength(1));
     });
   });
 
@@ -650,13 +667,13 @@ void main() {
       }
     });
 
-    test('事件類項目經投影後原樣保留事件 id 與既有 UC id', () {
+    test('事件類項目投影帶事件 id 與選定 UC id', () {
       final projected = _itemsOf(
-        _project(orphan: [_eventItem]),
+        _project(orphan: [_orphanGap()]),
         'orphan-event',
       ).single;
-      expect(projected.eventId, 'EVT-1');
-      expect(projected.eventUcId, 'UC-01');
+      expect(projected.eventId, 'EVT-A-001');
+      expect(projected.eventUcId, 'UC-02');
       expect(projected.pointerType, GapItemPointerType.event);
     });
   });
@@ -893,6 +910,10 @@ void main() {
         for (final k in FlowDefectKind.values)
           _only(_project(defects: [_flowDefect(k)])),
         _only(_project(defects: [_domainDup])),
+        for (final s in OrphanEventShape.values)
+          _only(_project(orphan: [_orphanGap(shape: s)])),
+        for (final d in EventDeclarationDirection.values)
+          _only(_project(mismatch: [_mismatchGap(direction: d)])),
       ];
       for (final i in items) {
         produced.add(i.description!.kind);
@@ -1079,6 +1100,92 @@ void main() {
       expect(zh.containsKey('gapCategoryMissingFrontmatter'), isFalse);
       expect(zh.containsKey('@gapCategoryMissingFrontmatter'), isFalse);
       expect(en.containsKey('gapCategoryMissingFrontmatter'), isFalse);
+    });
+  });
+
+  group('表二、表三：事件類項目（SPEC-001 §3.6 R2-1～R2-5）', () {
+    final zh = AppLocalizationsZh();
+
+    test('R2-1 孤立事件：id、路徑、無行號、指向事件類、選定 UC', () {
+      final item = _only(_project(orphan: [_orphanGap()]));
+      expect(item.id, 'orphan-event:EVT-A-001');
+      expect(item.filePath, 'docs/events/x/EVT-A-001-slug.md');
+      expect(item.lineNumber, isNull);
+      expect(item.pointerType, GapItemPointerType.event);
+      expect(item.pointerNodeId, 'EVT-A-001');
+      expect(item.eventId, 'EVT-A-001');
+      expect(item.eventUcId, 'UC-02');
+      expect(item.isOpenable, isTrue);
+    });
+
+    test('R2-2（E1）同一 EVT 兩個 domain 不符：id、說明不同，路徑相同', () {
+      final items = _itemsOf(
+        _project(
+          mismatch: [
+            _mismatchGap(domain: 'graph'),
+            _mismatchGap(domain: 'diagnostics'),
+          ],
+        ),
+        'event-declaration-mismatch',
+      );
+      expect(
+        items[0].id,
+        'event-declaration-mismatch:EVT-A-001:consumers:graph',
+      );
+      expect(items[0].id, isNot(items[1].id));
+      expect(
+        gapItemDescriptionText(zh, items[0].description),
+        isNot(gapItemDescriptionText(zh, items[1].description)),
+      );
+      expect(
+        gapItemDescriptionText(zh, items[0].description),
+        contains('graph'),
+      );
+      expect(items[0].filePath, items[1].filePath);
+    });
+
+    test('R2-3（E1）引用 UC 清單有無：選定 UC 取最小者，空清單為 null', () {
+      final withUc = _only(
+        _project(
+          orphan: [
+            _orphanGap(ucIds: ['UC-01', 'UC-03']),
+          ],
+        ),
+      );
+      final withoutUc = _only(_project(orphan: [_orphanGap(ucIds: [])]));
+      expect(withUc.eventUcId, 'UC-01');
+      expect(withoutUc.eventUcId, isNull);
+      expect(withoutUc.eventId, 'EVT-A-001');
+      expect(withUc.eventUcId, isNot(withoutUc.eventUcId));
+    });
+
+    test('R2-4（E1）四種說明兩兩不同，presentation 原樣出現', () {
+      final cats = _project(
+        orphan: [
+          _orphanGap(),
+          _orphanGap(shape: OrphanEventShape.consumedNotEmitted),
+        ],
+        mismatch: [
+          _mismatchGap(domain: 'presentation'),
+          _mismatchGap(
+            direction: EventDeclarationDirection.producers,
+            domain: 'presentation',
+          ),
+        ],
+      );
+      final texts = [
+        for (final c in cats)
+          for (final i in c.items) gapItemDescriptionText(zh, i.description),
+      ];
+      expect(texts.toSet(), hasLength(4));
+      expect(texts.where((t) => t!.contains('presentation')), hasLength(2));
+    });
+
+    test('R2-5 EVT 查無節點：debug assert；release 降為不可開檔', () {
+      expect(
+        () => _project(orphan: [_orphanGap()], nodes: const []),
+        throwsA(isA<AssertionError>()),
+      );
     });
   });
 

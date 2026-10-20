@@ -84,6 +84,7 @@ ScanRoundResult fakeRound({
   GraphBuiltEvent? event,
   List<RawNode> extraRawNodes = const [],
   NonDomainPathsReadResult? nonDomainRead,
+  GraphBuildResult? graphOverride,
 }) {
   final scan = CorpusScanResult(
     rawNodes: [
@@ -110,18 +111,20 @@ ScanRoundResult fakeRound({
   return ScanRoundResult(
     workspacePath: '/ws/fake',
     scan: scan,
-    graph: graphUnavailable != null
-        ? GraphBuildUnavailable(graphUnavailable)
-        : GraphBuildAvailable(
-            event ??
-                GraphBuiltEvent(
-                  nodes: nodes,
-                  edges: const [],
-                  graphDefects: graphDefects,
-                  totalReferences: 0,
-                  resolvedCount: 0,
-                ),
-          ),
+    graph:
+        graphOverride ??
+        (graphUnavailable != null
+            ? GraphBuildUnavailable(graphUnavailable)
+            : GraphBuildAvailable(
+                event ??
+                    GraphBuiltEvent(
+                      nodes: nodes,
+                      edges: const [],
+                      graphDefects: graphDefects,
+                      totalReferences: 0,
+                      resolvedCount: 0,
+                    ),
+              )),
     schemaResolution: SchemaSourceResolution(
       typeTable: const TypeTable(
         {},

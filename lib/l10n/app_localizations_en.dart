@@ -769,4 +769,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pathDeclarationNonDomainMalformed =>
       'non-domain path list is malformed';
+
+  @override
+  String get gapOrphanEventEmittedNotConsumed =>
+      'Emitted by a step, but no step consumes it and no consumers are declared';
+
+  @override
+  String get gapOrphanEventConsumedNotEmitted =>
+      'Consumed by a step, but no step emits it and no producers are declared';
+
+  @override
+  String gapEventConsumerUnmatched(String domain) {
+    return 'Declared consumer $domain has no matching step that consumes this event';
+  }
+
+  @override
+  String gapEventProducerUnmatched(String domain) {
+    return 'Declared producer $domain has no matching step that emits this event';
+  }
 }

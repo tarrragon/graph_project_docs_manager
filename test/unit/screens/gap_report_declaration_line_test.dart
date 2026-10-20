@@ -514,6 +514,25 @@ void main() {
       }
     });
 
+    test('K4-4 事件類四 key zh／en ARB 值與 SPEC-004 v1.94 表逐字一致', () {
+      const eventKeys = [
+        'gapOrphanEventEmittedNotConsumed',
+        'gapOrphanEventConsumedNotEmitted',
+        'gapEventConsumerUnmatched',
+        'gapEventProducerUnmatched',
+      ];
+      for (final k in eventKeys) {
+        final (zhText, enText) = specRow(k);
+        expect(zh[k], zhText, reason: 'zh $k');
+        expect(en[k], enText, reason: 'en $k');
+      }
+      for (final k in eventKeys.skip(2)) {
+        final meta = (zh['@$k'] as Map<String, dynamic>)['placeholders'];
+        expect((meta as Map<String, dynamic>).keys, ['domain']);
+        expect(en[k], contains('{domain}'));
+      }
+    });
+
     test('K4（E2）規格表抽取器對不存在的 key 會失敗（正向對照）', () {
       expect(() => specRow('pathDeclarationNoSuchKey'), throwsStateError);
     });
