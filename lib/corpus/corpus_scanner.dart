@@ -93,7 +93,6 @@ class CorpusScanResult {
     required this.schemaAmbiguousNodes,
     required this.summary,
     this.flowParseFailedEvents = const <FlowParseFailedEvent>[],
-    this.nonDomainPathsParseFailedEvent,
     this.nonDomainPathsRead = const NonDomainPathsReadAbsent(),
   });
 
@@ -110,7 +109,9 @@ class CorpusScanResult {
 
   /// FR-10：非 domain 路徑清單檔格式錯誤時本輪的 EVT-CORPUS-005（至多一筆，
   /// 四種子原因皆同）；清單檔缺席或格式正確時為 `null`。
-  final NonDomainPathsParseFailedEvent? nonDomainPathsParseFailedEvent;
+  /// 由 [nonDomainPathsRead] 推得，事件與讀取結果不會不一致。
+  NonDomainPathsParseFailedEvent? get nonDomainPathsParseFailedEvent =>
+      nonDomainPathsRead.malformedEvent;
 
   /// FR-10：本輪非 domain 路徑清單的讀取結果（缺席／已宣告／格式錯誤），
   /// 供 Graph 專案層宣告彙整（0.5.0-W1-119.2）。讀取拋出非預期例外時視同
@@ -535,7 +536,6 @@ class _ScanAccumulator {
   ) {
     final nonDomainEvent = nonDomainRead.malformedEvent;
     return CorpusScanResult(
-      nonDomainPathsParseFailedEvent: nonDomainEvent,
       nonDomainPathsRead: nonDomainRead,
       rawNodes: rawNodes,
       parseErrors: parseErrors,

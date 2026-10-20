@@ -396,6 +396,27 @@ void main() {
       expect(itemCount(withGap), itemCount(noGap));
     });
 
+    test('R1-7（E1）parse 為空：宣告缺口有與無皆為無破洞、破洞數 0', () {
+      final tickets = [
+        _ticket('T1', ['docs/x.md']),
+      ];
+      final withGap = _roundState(
+        declared: 5,
+        nonDomain: _listAbsent,
+        tickets: tickets,
+      );
+      final noGap = _roundState(
+        declared: 8,
+        nonDomain: _listOk,
+        tickets: tickets,
+      );
+
+      expect(_declOf(withGap)!.hasGap, isTrue);
+      expect(_declOf(noGap)!.hasGap, isFalse);
+      expect(withGap, isA<GapReportNoGaps>());
+      expect(noGap, isA<GapReportNoGaps>());
+    });
+
     test('R1-1 受影響路徑數為各票加總（比對器結果，非 Diagnostics 計算）', () {
       final state = _roundState(
         declared: 8,

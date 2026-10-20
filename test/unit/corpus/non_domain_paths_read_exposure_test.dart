@@ -64,16 +64,18 @@ void main() {
       expect(read.declaration.declaredPatterns, ['docs/a.md']);
     });
 
-    test('X3 整份格式錯誤 → Malformed，事件與讀取結果同一份', () async {
-      final result = await _scan(const {
+    test('X3 整份格式錯誤 → Malformed 且事件內容正確；缺席時事件為 null', () async {
+      final bad = await _scan(const {
         _listFile: 'non_domain_path_patterns: nope\n',
       });
+      final absent = await _scan(const {});
 
-      expect(result.nonDomainPathsRead, isA<NonDomainPathsReadMalformed>());
-      expect(
-        result.nonDomainPathsParseFailedEvent,
-        same(result.nonDomainPathsRead.malformedEvent),
-      );
+      expect(bad.nonDomainPathsRead, isA<NonDomainPathsReadMalformed>());
+      final event = bad.nonDomainPathsParseFailedEvent;
+      expect(event, isNotNull);
+      expect(event!.path, _listFile);
+      expect(event.reason, NonDomainPathsMalformedReason.notList);
+      expect(absent.nonDomainPathsParseFailedEvent, isNull);
     });
 
     test('X4 非字串元素 → DeclaredWithBadElements，仍為已宣告', () async {
