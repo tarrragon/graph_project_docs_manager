@@ -141,6 +141,20 @@ GraphDefectGap _flowDefect(
   ),
 );
 
+List<GraphDefectGap> _mainDefectsFour() => [
+  _dangling('T-1', 'f', 'X-9'),
+  _malformed('T-1', 'f', 42),
+  _dupId,
+  _multi,
+];
+
+List<GraphDefectGap> _flowFour() => [
+  _flowDefect(FlowDefectKind.unresolvedReference),
+  _flowDefect(FlowDefectKind.duplicateStepId),
+  _flowDefect(FlowDefectKind.traversesUndeclared),
+  _flowDefect(FlowDefectKind.traversesKeyAbsent),
+];
+
 final _multi = GraphDefectGap(
   MultiSourceGraphDefect(
     from: 'T-1',
@@ -263,6 +277,21 @@ void main() {
         ],
       );
       expect(cats.map((c) => c.id), ['graph-defect', 'graph-defect-flow']);
+      expect(_itemsOf(cats, 'graph-defect-flow'), hasLength(4));
+    });
+
+    test('D4-2（E1）主圖四子類加 flow 四子類 → 主圖組四筆、flow 小組四筆', () {
+      final cats = _project(defects: [..._mainDefectsFour(), ..._flowFour()]);
+      expect(cats.map((c) => c.id), ['graph-defect', 'graph-defect-flow']);
+      expect(_itemsOf(cats, 'graph-defect'), hasLength(4));
+      expect(_itemsOf(cats, 'graph-defect-flow'), hasLength(4));
+    });
+
+    test('D5-2（E1）重複宣告歸主圖組（五筆），flow 小組仍四筆', () {
+      final cats = _project(
+        defects: [..._mainDefectsFour(), ..._flowFour(), _domainDup],
+      );
+      expect(_itemsOf(cats, 'graph-defect'), hasLength(5));
       expect(_itemsOf(cats, 'graph-defect-flow'), hasLength(4));
     });
   });

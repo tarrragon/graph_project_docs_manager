@@ -17,6 +17,7 @@ import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.dart';
@@ -236,6 +237,70 @@ void main() {
       );
       expect(find.byKey(const Key('card-gaps-spec-readme')), findsOneWidget);
       expectNoOverflow(tester);
+    });
+
+    testWidgets('flow 小組實際渲染：獨立分節標題與項目數，與主圖組分開（E1）', (tester) async {
+      GapReportItem item(String id) =>
+          GapReportItem(id: id, filePath: 'docs/$id.md');
+      final state = GapReportFound([
+        GapReportCategory(
+          id: 'graph-defect',
+          items: [for (var i = 0; i < 2; i++) item('main-$i')],
+        ),
+        GapReportCategory(
+          id: 'graph-defect-flow',
+          items: [for (var i = 0; i < 3; i++) item('flow-$i')],
+        ),
+      ]);
+      await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(() => _FixedNotifier(state)),
+        ],
+      );
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(GapReportScreen)),
+      );
+
+      final flowSection = find.byKey(
+        const Key('state-gaps-section-graph-defect-flow'),
+      );
+      final mainSection = find.byKey(
+        const Key('state-gaps-section-graph-defect'),
+      );
+      expect(flowSection, findsOneWidget);
+      expect(mainSection, findsOneWidget);
+      expect(
+        find.descendant(
+          of: flowSection,
+          matching: find.text(l10n.gapCategoryGraphDefectFlow),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: flowSection,
+          matching: find.text(l10n.gapSectionCount(3)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: mainSection,
+          matching: find.text(l10n.gapSectionCount(2)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: mainSection,
+          matching: find.text(l10n.gapCategoryGraphDefectFlow),
+        ),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('card-gaps-flow-0')), findsOneWidget);
+      expect(find.byKey(const Key('card-gaps-main-0')), findsOneWidget);
     });
 
     testWidgets('action-gaps-rescan（SplitRow.header 右格）：可操作，觸發後不拋出例外', (
