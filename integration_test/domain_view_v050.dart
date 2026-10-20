@@ -9,9 +9,9 @@
 /// Layout，只替換資料夾選擇器（由 [OpenWorkspace] 回呼注入，沿用
 /// `app_test.dart` 的 WorkspaceRepository 替身）。
 ///
-/// 未涵蓋：ITD3-A5（關聯右欄 proposed 邊標記）——節點詳情畫面目前讀
-/// `NodeDetailFixtures`、RelationItem 未傳 `isProposed`，無真實資料路徑可驅動，
-/// 見票面 NeedsContext。
+/// ITD3-A5（關聯右欄 proposed 邊標記）：節點詳情無現成 UI 入口可直達 DomainBundle，
+/// 改經 container 寫 `nodeDetailStateProvider` 並以 `navigateTo` 切到節點詳情；
+/// 驗的是關聯右欄的標示，不是入口。
 library;
 
 import 'dart:io';
@@ -19,6 +19,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
@@ -26,6 +27,8 @@ import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state.dart';
 
 import '../test/helpers/spec001/corpus_snapshot.dart';
 
@@ -315,6 +318,51 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await tester.pumpAndSettle();
       await _tapCell(tester, 'history', 'UC-04');
       expect(_dependencyPathTexts(tester), isEmpty);
+      await workspace.delete(recursive: true);
+    });
+
+    testWidgets('ITD3-A5 節點詳情 bundle_dependency 關聯有「暫定」、established 邊型沒有（E1 對照）', (
+      tester,
+    ) async {
+      final workspace = await _openProject(tester, open);
+      const nodeId = '${_bundlePrefix}ticketdetail';
+      final container = _container(tester);
+      expect(
+        container.read(nodeDetailNodesProvider),
+        contains(nodeId),
+        reason: '真實語料建圖應含 $nodeId 節點',
+      );
+
+      container.read(nodeDetailStateProvider.notifier).state =
+          const NodeDetailReady(nodeId: nodeId);
+      navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
+      await tester.pumpAndSettle();
+
+      final label = AppLocalizations.of(
+        tester.element(find.byKey(const Key('state-nodeDetail-normal'))),
+      ).relationProposedLabel;
+      Finder sectionOf(String type) =>
+          find.byKey(Key('panel-nodeDetail-relations-$type'));
+      Finder badgesIn(String type) =>
+          find.descendant(of: sectionOf(type), matching: find.text(label));
+      final items = find.descendant(
+        of: sectionOf('bundle_dependency'),
+        matching: find.byType(RelationItem),
+      );
+      expect(items, findsWidgets, reason: 'depends_on_bundles 應產生關聯項');
+      expect(badgesIn('bundle_dependency'), findsNWidgets(items.evaluate().length));
+      const prefix = 'panel-nodeDetail-relations-';
+      final others = tester
+          .widgetList<Section>(find.byType(Section))
+          .map((s) => (s.testKey as ValueKey<String>).value)
+          .where((k) => k.startsWith(prefix))
+          .map((k) => k.substring(prefix.length))
+          .where((t) => t != 'bundle_dependency')
+          .toList();
+      expect(others, isNotEmpty, reason: '同一詳情應另有 established 邊型分節作對照');
+      for (final type in others) {
+        expect(badgesIn(type), findsNothing, reason: '$type 非 proposed，不應有暫定標記');
+      }
       await workspace.delete(recursive: true);
     });
   });
