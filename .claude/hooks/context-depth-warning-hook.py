@@ -3,27 +3,29 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""context-depth-warning-hook (Stop event) — 0.20.0-W2-013
+"""context-depth-warning-hook (Stop event)
 
 Why:
-  W2-012 ANA 結論：count-token malformed tool-call 的根因在模型 sampling 層，
-  cache_read ~230K tokens 後 malformed 復發率升至 41.5%。W2-011 的偵測 + retry
-  已攔截實際危害，但未消除 retry 的 token 與回合開銷——每進入高 context 深度，
-  retry 窗口的累積成本仍在。本 hook 在 context 深度接近高頻 retry 窗口前主動提示
-  用戶考慮 /clear 或 ticket handoff，降低進入高 retry 窗口的機率。
+  用戶需求：context 合計超過 400K 時，提示做 compact 或寫 handoff 換 session。
+  背景：早期分析發現 cache_read 達 ~230K 後 tool-call malformed 復發率升高，
+  深 context 的 retry 成本也是提早收斂的理由之一。
 
 Consequence（不處理的代價）:
-  用戶在無提示下持續累積 context，進入 ~230K 後的高頻 retry 窗口，每 2.4 個
-  tool-call turn 即有一次 retry，浪費回合與重發 token，且難以察覺根因。
+  用戶在無提示下持續累積 context，品質與回合成本惡化而難以察覺根因。
 
 Action:
-  每個 Stop event 讀 transcript 最後一則 assistant entry 的
-  message.usage.cache_read_input_tokens。超過 THRESHOLD 且該 session 的當前
-  tier 尚未提示過 → stderr 提示 + 更新去重 state + 檔案日誌。
+  每個 Stop event 讀 transcript 最後一則 assistant entry 的 usage，
+  合計 input_tokens + cache_creation_input_tokens + cache_read_input_tokens。
+  合計 >= THRESHOLD（預設 400K）且當前 tier 尚未提示 → 以 emit_hook_output
+  輸出 additionalContext（模型可見；含 K 數、請用戶 /compact、或寫 handoff 後
+  claude -n 開新 session）+ 更新去重 state + 檔案日誌。
 
-  分層去重（避免提示疲勞）：tier = cache_read // TIER_STEP。每跨入更深的 tier
-  才再提示一次，同 tier 內重複的 Stop event 不重發。state file 記
-  {session_id: last_warned_tier}。
+  分層去重（避免提示疲勞）：tier = 合計 // TIER_STEP（預設 50K）。每跨入更深
+  的 tier 才再提示一次。state file 記 {session_id: last_warned_tier}；
+  合計降回 THRESHOLD 以下時清除該 session 的 state，再超過會重新提示。
+
+  環境變數覆寫：CONTEXT_DEPTH_WARNING_THRESHOLD、CONTEXT_DEPTH_WARNING_TIER_STEP、
+  CONTEXT_DEPTH_WARNING_STATE（state 檔路徑，供測試隔離）。
 
   永遠 exit 0：本 hook 為提示性質，禁 exit 2 阻擋 Stop（與同 Stop event 的
   malformed-tool-call-detector 職責分離——後者 exit 2 阻擋格式錯誤，本 hook
