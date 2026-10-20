@@ -238,6 +238,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get switcherChooseFolderUnavailableReason => '無法開啟資料夾選取面板，應用程式可能安裝不完整';
+
+  @override
+  String switcherFolderUnavailableReason(String reason) {
+    return '資料夾無法使用：$reason';
+  }
+
+  @override
   String get probeTimeoutReason => '可能是磁碟未掛載';
 
   @override

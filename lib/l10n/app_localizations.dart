@@ -500,6 +500,18 @@ abstract class AppLocalizations {
   /// **'無法使用：{reason}'**
   String projectUnavailableReasonLabel(String reason);
 
+  /// SPEC-003 §3.7：專案切換浮層內「選擇其他」選擇器無法開啟時的常駐原因文字（SPEC-004 4.42 chooseOtherFailureReason）
+  ///
+  /// In zh, this message translates to:
+  /// **'無法開啟資料夾選取面板，應用程式可能安裝不完整'**
+  String get switcherChooseFolderUnavailableReason;
+
+  /// SPEC-003 §3.7：專案切換浮層內「選擇其他」選定資料夾不可讀或不存在時的常駐原因文字（SPEC-004 4.42 chooseOtherFailureReason）
+  ///
+  /// In zh, this message translates to:
+  /// **'資料夾無法使用：{reason}'**
+  String switcherFolderUnavailableReason(String reason);
+
   /// SPEC-003 §3.7：資料夾可用性探測逾時時，作為 projectUnavailableReasonLabel 的 reason 值
   ///
   /// In zh, this message translates to:

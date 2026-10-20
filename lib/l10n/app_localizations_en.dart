@@ -245,6 +245,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get switcherChooseFolderUnavailableReason =>
+      'Could not open the folder picker; the app may not be installed correctly';
+
+  @override
+  String switcherFolderUnavailableReason(String reason) {
+    return 'Folder unavailable: $reason';
+  }
+
+  @override
   String get probeTimeoutReason => 'May be an unmounted disk';
 
   @override
