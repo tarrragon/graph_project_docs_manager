@@ -190,8 +190,7 @@ def _imports_any(text: str, modules: set) -> bool:
 
 def needs_gate(changed_paths: list) -> bool:
     """改動是否可能落在任何全套件範圍內（用於決定是否值得建立快照）。"""
-    return any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES or p.startswith(".claude/")
-               for p in changed_paths if not is_reuse_exempt(p))
+    return any(_in_any_suite_scope(p) for p in changed_paths if not is_reuse_exempt(p))
 
 
 def _in_any_suite_scope(path: str) -> bool:
