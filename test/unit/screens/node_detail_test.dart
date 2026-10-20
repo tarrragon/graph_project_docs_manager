@@ -8,6 +8,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderContainer;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/app/graph_status.dart';
@@ -115,6 +116,13 @@ void main() {
     });
   });
 
+  test('不注入狀態時預設為未選節點（NodeDetailUnset）', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    expect(container.read(nodeDetailStateProvider), isA<NodeDetailUnset>());
+  });
+
   group('正常（state-nodeDetail-normal）', () {
     testWidgetsAtEachSize('渲染 TwoColumnLayout + DocumentBody', (
       tester,
@@ -123,7 +131,7 @@ void main() {
       await pumpHarness(
         tester,
         child: const NodeDetailScreen(),
-        overrides: [_fixtureNodes],
+        overrides: [_fixtureNodes, _readyNormal],
         size: size,
       );
 
@@ -140,7 +148,7 @@ void main() {
       await pumpHarness(
         tester,
         child: const NodeDetailScreen(),
-        overrides: [_fixtureNodes],
+        overrides: [_fixtureNodes, _readyNormal],
       );
 
       await tester.tap(
@@ -160,6 +168,7 @@ void main() {
           tester,
           overrides: [
             _fixtureNodes,
+            _readyNormal,
             selectedDestinationProvider.overrideWith(
               (ref) => AppDestination.nodeDetail,
             ),
@@ -359,6 +368,7 @@ void main() {
         child: const NodeDetailScreen(),
         overrides: [
           nodeDetailNodesProvider.overrideWithValue({base.id: node}),
+          _readyNormal,
         ],
       );
 
@@ -456,6 +466,11 @@ void main() {
     });
   });
 }
+
+/// 測試注入：狀態明示為正常態（provider 預設為未選節點）。
+final _readyNormal = nodeDetailStateProvider.overrideWith(
+  (ref) => const NodeDetailReady(nodeId: NodeDetailFixtures.normalNodeId),
+);
 
 /// 測試注入：節點資料改用 fixture（預設讀共用掃描輪次）。
 final _fixtureNodes = nodeDetailNodesProvider.overrideWithValue(

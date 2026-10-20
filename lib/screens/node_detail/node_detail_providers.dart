@@ -15,11 +15,10 @@ import '../../workspace/open_path_resolver.dart';
 import 'node_detail_fixtures.dart';
 import 'node_detail_state.dart';
 
-/// 目前畫面狀態；預設 `NodeDetailReady`（正常態，
-/// [NodeDetailFixtures.normalNodeId]）。測試以 `overrideWith` 切換至其餘
-/// 四個狀態。
+/// 目前畫面狀態；預設 `NodeDetailUnset`（未選節點）。測試以 `overrideWith`
+/// 切換至其餘狀態。
 final nodeDetailStateProvider = StateProvider<NodeDetailState>(
-  (ref) => const NodeDetailReady(nodeId: NodeDetailFixtures.normalNodeId),
+  (ref) => const NodeDetailUnset(),
 );
 
 /// 節點 id → 詳情資料（不含內文）；輪次未完成或建圖不可用時為空。
