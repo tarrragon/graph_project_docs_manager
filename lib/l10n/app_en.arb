@@ -68,6 +68,8 @@
   "noNodeSelectedMessage": "No node selected",
   "gotoTraceabilityAction": "Go to Traceability View",
   "projectUnavailableReasonLabel": "Unavailable: {reason}",
+  "switcherChooseFolderUnavailableReason": "Could not open the folder picker; the app may not be installed correctly",
+  "switcherFolderUnavailableReason": "Folder unavailable: {reason}",
   "probeTimeoutReason": "May be an unmounted disk",
   "sourceFileStillMissingMessage": "File still not found",
   "expanderLabel": "Expand or collapse",
