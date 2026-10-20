@@ -398,6 +398,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | IMP-GPD-007 | 解析 git branch 給人看的輸出取分支名，漏掉 worktree 已 checkout 分支的「+ 」前綴 | 中 | 0.5.0 |
 | IMP-GPD-008 | 守衛以正則或子字串比對 git 命令，git 與子命令之間的全域選項使比對落空 | 高 | 0.5.0 |
 | IMP-GPD-009 | zsh 把變數後的冒號加字母解析為修飾符，使 `$c:path` 的路徑首字母被吃掉 | 低 | 0.5.0 |
+| IMP-GPD-010 | 專案以工具釘選語言版本，代理人直接呼叫 PATH 上的指令，產物落在全域版本 | 中 | 0.5.0 |
 
 ### 流程 (PROC)
 

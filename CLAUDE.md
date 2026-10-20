@@ -34,6 +34,7 @@ frontmatter、只能靠 grep 與人工追溯的關係顯性化、可導航、可
 | **語言** | Flutter 3.47.1 / Dart 3.13.1（由 FVM 釘選，見 `.fvmrc`） |
 | **實作代理人** | parsley-flutter-developer |
 | **識別特徵** | `pubspec.yaml`、`.fvmrc` |
+| **執行方式** | `fvm flutter ...`、`fvm dart ...`（一律經 fvm，不直接呼叫 PATH 上的 `flutter`／`dart`，理由見 §6） |
 | **目標平台** | macOS 12.0+（前期僅此平台；ios/android/linux/windows 目錄保留未啟用） |
 | **發布通路** | Developer ID + notarization，**不上架 Mac App Store** |
 
