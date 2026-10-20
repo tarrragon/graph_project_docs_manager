@@ -2,7 +2,7 @@
 // 定時讀主 checkout 的 349 現行佇列行（每條線取最後一行）、佇列票的 status、
 // 本 repo 各 session 的狀態（~/.claude/sessions/*.json）、派發紀錄（.claude/dispatch-active.json）、
 // 合併閘門的開始與結束紀錄，畫在 Pane。
-// 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析在 parse.ts。
+// 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析經 parse.ts 匯出（實作分在各 domain 模組）。
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
