@@ -51,6 +51,48 @@ export type SessionState = {
   statusUpdatedAt: number | null
   /** 行程啟動時間，UTC 的 `ps -o lstart` 格式（如 `Mon Oct 19 09:09:02 2026`）；用來辨識 pid 是否被重複使用。 */
   procStart: string | null
+  /** session 的 UUID；派發紀錄的 session_id 以此對應 session。缺少時為 null。 */
+  sessionId: string | null
+}
+
+/**
+ * 主 checkout `.claude/dispatch-active.json` 的 dispatches 一筆（只取看板要的欄位）。
+ * name 為代理人類型（linux、general-purpose 等）；ticketId 在紀錄寫空字串時為 null；
+ * dispatchedAt 與 turnEndedAt 為原樣的 ISO 時間字串，turnEndedAt 為 null 表示代理人尚未結束。
+ */
+export type DispatchRecord = {
+  agentId: string
+  name: string
+  sessionId: string
+  ticketId: string | null
+  description: string
+  dispatchedAt: string | null
+  turnEndedAt: string | null
+}
+
+/** 派發紀錄的讀取結果：ok 為 dispatches 中可辨識的條目，error 為讀檔失敗或格式錯誤的原因。 */
+export type DispatchesResult =
+  | { kind: 'ok'; records: DispatchRecord[] }
+  | { kind: 'error'; message: string }
+
+/** 派發中代理人的流程階段。 */
+export type DispatchStage = '實作' | '審查' | '事故分析' | '閘門' | '收尾'
+
+/** 派發列的判定依據：存活的 session、349 的線、主 checkout 的票狀態、閘門持有者。 */
+export type DispatchContext = {
+  sessions: readonly SessionState[]
+  lanes: readonly Lane[]
+  tickets: readonly TicketStatus[]
+  holders: readonly MergeGateHolder[]
+}
+
+/** 派發區塊的一列：所屬線（對不到為 null，顯示為「其他」）、代理人名稱、任務（票號或派發描述）、流程階段、派發時間。 */
+export type DispatchRow = {
+  lane: number | null
+  name: string
+  task: string
+  stage: DispatchStage
+  dispatchedAt: string | null
 }
 
 /** 各 session 狀態的讀取結果：ok 為本 repo 內 pid 仍存活的 session 與已結束的檔數，error 為讀取失敗原因。 */
@@ -73,6 +115,7 @@ export type BoardSnapshot =
       tickets: TicketStatus[]
       sessions: SessionsResult
       mergeLog: MergeLogResult
+      dispatches: DispatchesResult
     }
 
 declare module 'claude-code' {

@@ -1,6 +1,7 @@
 // line-board：多線開發看板。
 // 定時讀主 checkout 的 349 現行佇列行（每條線取最後一行）、佇列票的 status、
-// 本 repo 各 session 的狀態（~/.claude/sessions/*.json）、合併閘門的開始與結束紀錄，畫在 Pane。
+// 本 repo 各 session 的狀態（~/.claude/sessions/*.json）、派發紀錄（.claude/dispatch-active.json）、
+// 合併閘門的開始與結束紀錄，畫在 Pane。
 // 畫面資料放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析在 parse.ts。
 
 import { atom, read, update } from 'claude-code'
@@ -8,6 +9,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type {
   BoardSnapshot,
+  DispatchesResult,
   LanesResult,
   MergeGateEntry,
   MergeLogResult,
@@ -16,12 +18,16 @@ import type {
   TicketStatus,
 } from '../types'
 import {
+  DISPATCH_ACTIVE_PATH,
   DISPATCH_TICKET_PATH,
   MERGE_LOG_PATH,
   SESSIONS_DIR,
   TICKETS_DIR,
   UNKNOWN_STATUS,
+  dispatchRows,
+  dispatchTicketIds,
   formatAge,
+  formatDispatchRow,
   formatQueue,
   isInRepo,
   isSessionProcessAlive,
@@ -32,6 +38,7 @@ import {
   mergeGateEntries,
   mergeGateHolders,
   mergeGateResultColor,
+  parseDispatchFile,
   parseFrontmatterStatus,
   parseLanes,
   parseSessionFile,
@@ -56,7 +63,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'board',
-      description: '開啟多線看板（349 各線現行佇列、佇列票即時狀態、各 session 狀態、合併閘門紀錄）',
+      description: '開啟多線看板（349 各線現行佇列、佇列票即時狀態、派發中代理人、各 session 狀態、合併閘門紀錄）',
     })
     $.clock.every(REFRESH_MS, () => refresh($))
     void refresh($)
@@ -76,12 +83,13 @@ export const register: Register = on => {
     const { Box, Text } = $.ui.resolve(e)
     const board = await read($, snapshot)
 
-    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes、sessions 欄，或閘門紀錄仍是整行原文），
+    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes、sessions、dispatches 欄，或閘門紀錄仍是整行原文），
     // 等下一輪讀取覆寫前先顯示讀取中。
     if (
       board.kind === 'loading' ||
       board.lanes === undefined ||
       board.sessions === undefined ||
+      board.dispatches === undefined ||
       (board.mergeLog.kind === 'ok' && (board.mergeLog.entries === undefined || board.mergeLog.holders === undefined))
     ) {
       return <Text dimColor>讀取中…</Text>
@@ -95,6 +103,8 @@ export const register: Register = on => {
           {board.checkoutNote === null ? '' : `｜${board.checkoutNote}`}
         </Text>
         {renderLanes(board.lanes, board.tickets, board.sessions)}
+        <Text bold>派發中代理人</Text>
+        {renderDispatches(board.dispatches, board.lanes, board.tickets, board.sessions, board.mergeLog)}
         <Text bold>各 session</Text>
         {renderSessions(board.sessions)}
         <Text bold>合併閘門最近紀錄</Text>
@@ -126,6 +136,32 @@ export const register: Register = on => {
       if (name === null) return ''
       if (sessions.kind === 'error') return '［狀態不明］'
       return `［${laneSessionStatus(sessions.sessions, name)}］`
+    }
+
+    /**
+     * 派發中代理人：每列 `L<n> <代理人>｜<任務>｜<階段>｜<距派發時間>`，依線分組、其他最後。
+     * 派發紀錄讀取失敗只影響本區塊；sessions 讀不到時無從判定存活，不列條目。
+     * 349 或閘門紀錄讀不到時照樣列出：線一律歸其他、不判定閘門。
+     */
+    function renderDispatches(
+      dispatches: DispatchesResult,
+      lanes: LanesResult,
+      tickets: readonly TicketStatus[],
+      sessions: SessionsResult,
+      mergeLog: MergeLogResult,
+    ) {
+      if (dispatches.kind === 'error') {
+        return <Text color="red">讀取 {DISPATCH_ACTIVE_PATH} 失敗（{dispatches.message}）</Text>
+      }
+      if (sessions.kind === 'error') return <Text dimColor>（session 狀態讀取失敗，無法判定派發中的代理人）</Text>
+      const rows = dispatchRows(dispatches.records, {
+        sessions: sessions.sessions,
+        lanes: lanes.kind === 'ok' ? lanes.lanes : [],
+        tickets,
+        holders: mergeLog.kind === 'ok' ? mergeLog.holders : [],
+      })
+      if (rows.length === 0) return <Text dimColor>（目前沒有派發中的代理人）</Text>
+      return rows.map(row => <Text wrap="truncate-middle">{formatDispatchRow(row, readAtMs)}</Text>)
     }
 
     function renderSessions(sessions: SessionsResult) {
@@ -189,7 +225,10 @@ async function refresh($: EngineInterface): Promise<void> {
     const { checkoutPaths, checkoutNote } = await findCheckouts($, root)
     const mainPath = checkoutPaths[0] ?? root
     const lanes = await readLanes($, mainPath)
-    const ids = lanes.kind === 'ok' ? laneTicketIds(lanes.lanes) : []
+    const dispatches = await readDispatches($, mainPath)
+    const laneIds = lanes.kind === 'ok' ? laneTicketIds(lanes.lanes) : []
+    const dispatchIds = dispatches.kind === 'ok' ? dispatchTicketIds(dispatches.records) : []
+    const ids = [...laneIds, ...dispatchIds.filter(id => !laneIds.includes(id))]
     const tickets = await Promise.all(ids.map(id => readTicketStatus($, mainPath, id)))
     const sessions = await readSessions($, checkoutPaths)
     const mergeLog = await readMergeLog($, mainPath)
@@ -203,6 +242,7 @@ async function refresh($: EngineInterface): Promise<void> {
       tickets,
       sessions,
       mergeLog,
+      dispatches,
     }
     await update($, snapshot, () => next)
   } catch (error) {
@@ -315,6 +355,24 @@ async function readTicketStatus($: EngineInterface, mainPath: string, id: string
   } catch (error) {
     $.ui.log(`line-board: 讀取 ${path} 失敗：${messageOf(error)}`, { to: 'debug' })
     return { id, status: UNKNOWN_STATUS }
+  }
+}
+
+/**
+ * 讀主 checkout 的派發紀錄：讀不到或格式錯誤（JSON 無效、dispatches 不是陣列）都回傳 error，只影響派發區塊。
+ * 不讀各 worktree 的副本：派發紀錄由主 checkout 的 hook 維護，worktree 內的檔案是分支開出當下的舊副本。
+ */
+async function readDispatches($: EngineInterface, mainPath: string): Promise<DispatchesResult> {
+  try {
+    const records = parseDispatchFile(await $.fs.read(`${mainPath}/${DISPATCH_ACTIVE_PATH}`))
+    if (records === null) {
+      $.ui.log(`line-board: ${DISPATCH_ACTIVE_PATH} 格式無法辨識`, { to: 'debug' })
+      return { kind: 'error', message: '格式無法辨識' }
+    }
+    return { kind: 'ok', records }
+  } catch (error) {
+    $.ui.log(`line-board: 讀取 ${DISPATCH_ACTIVE_PATH} 失敗：${messageOf(error)}`, { to: 'debug' })
+    return { kind: 'error', message: messageOf(error) }
   }
 }
 
