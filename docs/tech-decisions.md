@@ -1916,3 +1916,19 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 
 - 依賴維持在 9/24 的解析，pub 回報 23 個套件有超出約束的新版，由 449 處理。
 - l10n 產物在 gen-l10n 重新產出後與入庫版差一個空行，與 lock 無關，另由 `0.5.0-W1-450` 處理；在那之前，worktree 合併前仍須還原這兩檔。
+
+## 2026-10-21 — 合併閘門依路徑觸發 macOS integration_test（用戶裁定方案 B，`0.5.0-W3-010`）
+
+**背景**：閘門的 flutter 套件命令為 `fvm flutter test`，不帶路徑時只跑 `test/`，`integration_test/` 從未經閘門。`0.5.0-W3-003.2` 改 Domain 預設狀態即落在此缺口，事後由 `0.5.0-W3-009` 補驗（結果全綠）。
+
+**決策**：`merge-gate.yaml` 新增 `flutter-integration` 套件，改動觸及 `lib/`、`integration_test/`、`macos/`、`pubspec.*` 或 `test/helpers/spec001/corpus_snapshot.dart` 時跑 `fvm flutter test integration_test -d macos`（由 `0.5.0-W3-010.1` 落地）。
+
+**Why**：
+
+- 實測 integration_test 全套穩定：6 次執行皆 36 通過、0 失敗；閘門快照每次新建，以冷建置 75 秒估成本。
+- 近 7 天 331 次合併中，觸及上列路徑者 32 次；全跑方案（觸及 flutter 套件即跑）為 57 次，多出的主要是 docs 與純 widget 測試改動，與 integration_test 無關。
+- 維持現狀依賴人工判斷何時開驗證票，`0.5.0-W3-003.2` 已示範該判斷會漏。
+
+**被放棄的選項**：全跑（成本多 25 次且拉長 heavy 名額持有時間約 70%）；維持現狀並靠驗證票補位。
+
+**已知代價**：觸發時閘門多約 75 秒並在本機啟動 App 視窗；integration_test 新增 `test/` 下的 import 時須同步更新套件 files，否則該相依改動不觸發；CI 落地時需 macOS runner 才能延續此套件。
