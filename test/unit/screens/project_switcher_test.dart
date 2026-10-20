@@ -11,6 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
+import 'package:graph_project_docs_manager/corpus/scan_summary.dart';
+import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
@@ -26,6 +31,7 @@ import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
+import '../../helpers/spec006/fake_docs_fs.dart';
 
 /// 開啟即拋例外的假偏好設定管道，模擬管道本身不可用（對應
 /// [ChooseFolderNotRemembered] 的持久化失敗分支）。
@@ -541,6 +547,82 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(spy.reasons, contains('project-reselected'));
+    });
+
+    testWidgets('同路徑重選：舊降級輪次不被沿用，下一輪為新物件且 isDegraded 為假', (tester) async {
+      const path = '/fake/unipos';
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+          ..._gateDetectionOverrides,
+          scanCorpusFnProvider.overrideWithValue(
+            ({
+              required fileSystem,
+              required table,
+              required builtinTable,
+            }) async => const CorpusScanResult(
+              rawNodes: <RawNode>[],
+              parseErrors: <ParseError>[],
+              parseFailureEvents: [],
+              schemaAmbiguousNodes: [],
+              summary: ScanSummary(
+                totalFilesScanned: 0,
+                nodeCount: 0,
+                nonNodeWithFrontmatterCount: 0,
+                failureReasonCounts: <ParseResultKind, int>{},
+                hitCarrierCount: 0,
+                noHitCount: 0,
+                undeterminedCount: 0,
+                carrierPathQueryAvailable: false,
+              ),
+            ),
+          ),
+          buildGraphFnProvider.overrideWithValue(
+            ({
+              required rawNodes,
+              required projectSchemaJson,
+              required builtinSchemaJson,
+            }) => const GraphBuildUnavailable(
+              EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
+            ),
+          ),
+          docsFileSystemFactoryProvider.overrideWithValue(
+            (_) => FakeDocsFileSystem(),
+          ),
+          builtinTrackingSchemaJsonProvider.overrideWith(
+            (ref) => <String, dynamic>{
+              'schema_generated_at_framework_version': '1.0.0',
+              'node_types': <String, dynamic>{},
+            },
+          ),
+        ],
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(app_shell.AppShell)),
+      );
+      container.read(currentWorkspaceStateProvider.notifier).state =
+          const WorkspaceReady(path);
+      container.read(degradedSchemaProvider.notifier).state = true;
+      final stale = (await tester.runAsync(
+        () => container.read(scanRoundProvider.notifier).ensureRound(),
+      ))!;
+      expect(stale.isDegraded, isTrue);
+
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+      await tester.pumpAndSettle();
+
+      expect(container.read(degradedSchemaProvider), isFalse);
+      final fresh = (await tester.runAsync(
+        () => container.read(scanRoundProvider.notifier).ensureRound(),
+      ))!;
+      expect(identical(fresh, stale), isFalse);
+      expect(fresh.isDegraded, isFalse);
     });
   });
 
