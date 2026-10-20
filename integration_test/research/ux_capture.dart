@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 
 import 'ux_variants.dart';
 
@@ -47,7 +48,79 @@ void main() {
       });
     }
   }
+
+  testWidgets('座標蒐集：二維捲動視口外的快取格子不得入檔', (tester) async {
+    await tester.pumpWidget(_scrollClipFixture());
+    final coords = _collectInteractive(tester);
+    final keys = coords.map((e) => e['key']).toSet();
+    // 正向對照：視口內（200x100，格 100x50 → 前 2 欄 x 前 2 列）必須在檔內
+    expect(keys, containsAll(['cell-0-0', 'cell-0-1', 'cell-1-0', 'cell-1-1']));
+    // 已知被捲出視口、僅因快取而建構的格子必須被剔除
+    expect(keys, isNot(contains('cell-0-2')));
+    expect(keys, isNot(contains('cell-3-0')));
+    expect(keys, isNot(contains('cell-4-4')));
+    expect(coords.length, 4);
+    // 所有矩形不得超出所屬視口（左上 100,100 起 200x100）
+    for (final e in coords) {
+      final r = (e['rect']! as List).cast<double>();
+      expect(r[0] + r[2], lessThanOrEqualTo(300.001));
+      expect(r[1] + r[3], lessThanOrEqualTo(200.001));
+    }
+  });
+
+  testWidgets('座標蒐集：不可被點到的元件（IgnorePointer）不得入檔', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            TextButton(
+              key: const ValueKey('live'),
+              onPressed: () {},
+              child: const Text('a'),
+            ),
+            IgnorePointer(
+              child: TextButton(
+                key: const ValueKey('dead'),
+                onPressed: () {},
+                child: const Text('b'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final keys = _collectInteractive(tester).map((e) => e['key']).toSet();
+    expect(keys, contains('live'));
+    expect(keys, isNot(contains('dead')));
+  });
 }
+
+Widget _scrollClipFixture() => MaterialApp(
+  home: Align(
+    alignment: Alignment.topLeft,
+    child: Padding(
+      padding: const EdgeInsets.all(100),
+      child: SizedBox(
+        width: 200,
+        height: 100,
+        child: TableView.builder(
+          columnCount: 5,
+          rowCount: 5,
+          columnBuilder: (_) =>
+              const TableSpan(extent: FixedTableSpanExtent(100)),
+          rowBuilder: (_) => const TableSpan(extent: FixedTableSpanExtent(50)),
+          cellBuilder: (_, v) => TableViewCell(
+            child: TextButton(
+              key: ValueKey('cell-${v.row}-${v.column}'),
+              onPressed: () {},
+              child: const Text('x'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
 
 Future<void> _capture(
   WidgetTester tester,
@@ -148,7 +221,10 @@ List<Map<String, Object?>> _collectInteractive(WidgetTester tester) {
     final rect = box.localToGlobal(Offset.zero) & box.size;
     final visible = _clipByAncestors(box, rect.intersect(viewport));
     if (visible.isEmpty) continue;
-    final key = '${visible.left},${visible.top},${visible.width},${visible.height}';
+    final key =
+        '${visible.left},${visible.top},${visible.width},${visible.height}';
+    // 實際可被點到者才算可見：排除透明切換殘留、被覆蓋、IgnorePointer 內的元件。
+    if (!_isHitAtCenter(tester, box, visible)) continue;
     if (!seen.add(key)) continue; // 巢狀包裝（Button 內的 InkWell）同矩形只計一次
     final widgetKey = element.widget.key;
     out.add({
@@ -161,6 +237,13 @@ List<Map<String, Object?>> _collectInteractive(WidgetTester tester) {
   return out;
 }
 
+/// 可見矩形中心點做 hit test，路徑上含該 RenderBox 才視為可見。
+bool _isHitAtCenter(WidgetTester tester, RenderBox box, Rect visible) {
+  final result = HitTestResult();
+  tester.binding.hitTestInView(result, visible.center, tester.view.viewId);
+  return result.path.any((entry) => entry.target == box);
+}
+
 /// 逐層套用祖先的繪製裁切（捲動區、圓角卡片），避免回報被裁掉的部分。
 Rect _clipByAncestors(RenderBox box, Rect initial) {
   var visible = initial;
@@ -168,9 +251,15 @@ Rect _clipByAncestors(RenderBox box, Rect initial) {
   var parent = box.parent;
   while (parent != null && !visible.isEmpty) {
     final clip = parent.describeApproximatePaintClip(child);
-    if (clip != null) {
+    // 捲動視口（含 two_dimensional_scrollables）於 paint 時才裁切，
+    // describeApproximatePaintClip 不一定回報，故以視口自身邊界補上。
+    final bounds = parent is RenderAbstractViewport && parent is RenderBox
+        ? Offset.zero & (parent as RenderBox).size
+        : null;
+    final effective = clip ?? bounds;
+    if (effective != null) {
       final matrix = parent.getTransformTo(null);
-      visible = visible.intersect(MatrixUtils.transformRect(matrix, clip));
+      visible = visible.intersect(MatrixUtils.transformRect(matrix, effective));
     }
     child = parent;
     parent = parent.parent;
