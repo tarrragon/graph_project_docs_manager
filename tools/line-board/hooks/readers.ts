@@ -23,6 +23,7 @@ import {
   isSessionProcessAlive,
   mergeGateEntries,
   mergeGateHolders,
+  messageOf,
   parseDispatchFile,
   parseFrontmatterStatus,
   parseLanes,
@@ -167,9 +168,4 @@ export async function readMergeLog($: EngineInterface, mainPath: string): Promis
     $.ui.log(`line-board: 讀取 ${MERGE_LOG_PATH} 失敗：${messageOf(error)}`, { to: 'debug' })
     return { kind: 'error', message: messageOf(error) }
   }
-}
-
-/** 例外的訊息文字：Error 取 message，其他值轉字串。register.tsx 的失敗日誌也用它。 */
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }

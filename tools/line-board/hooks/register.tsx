@@ -12,16 +12,15 @@ import type { BoardSnapshot } from '../types'
 import { renderGroup, renderLaneGroups, sectionFrame } from './lanesView'
 import type { Elements, ToggleGroup } from './lanesView'
 import { renderMergeLog } from './mergeGateView'
-import { MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, dispatchTicketIds, laneTicketIds, toggledOverrides } from './parse'
 import {
-  findCheckouts,
+  MERGE_GATE_GROUP_ID,
+  SESSIONS_GROUP_ID,
+  dispatchTicketIds,
+  laneTicketIds,
   messageOf,
-  readDispatches,
-  readLanes,
-  readMergeLog,
-  readSessions,
-  readTicketStatus,
-} from './readers'
+  toggledOverrides,
+} from './parse'
+import { findCheckouts, readDispatches, readLanes, readMergeLog, readSessions, readTicketStatus } from './readers'
 import { renderSessions } from './sessionsView'
 
 const PANE = 'line-board'
