@@ -680,10 +680,20 @@ class TestGhostForensicsUnknownPropagation:
         assert "拒絕 reclaim" in text
 
 
+_REAL_SUBJECT_HIT_BRANCHES = lease._subject_hit_branches
+
+
 @pytest.fixture(autouse=True)
 def _isolate_dispatch_state(tmp_path, monkeypatch):
-    """預設注入不存在的 dispatch-active 檔，避免測試讀主倉庫真實檔。"""
+    """預設注入不存在的 dispatch-active 檔，並隔離 commit 主旨掃描，
+    避免測試讀主倉庫真實檔或對真實 repo 的 worktree-agent-* 分支逐一跑 git log。
+    需要真實主旨掃描的測試呼叫 `_use_real_subject_scan`。"""
     monkeypatch.setattr(lease, "_dispatch_state_path", lambda: tmp_path / "absent.json")
+    monkeypatch.setattr(lease, "_subject_hit_branches", lambda unmerged, ticket_id: [])
+
+
+def _use_real_subject_scan(monkeypatch) -> None:
+    monkeypatch.setattr(lease, "_subject_hit_branches", _REAL_SUBJECT_HIT_BRANCHES)
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -742,7 +752,7 @@ class TestGhostForensicsDispatchTrace:
         repo = _make_repo(tmp_path)
         wt = tmp_path / "wt"
         _git(repo, "worktree", "add", "-q", "-b", "worktree-agent-abc123", str(wt))
-        (wt / "dirty.txt").write_text("x")
+        (wt / "a.txt").write_text("modified")
         monkeypatch.chdir(repo)
         _seed_dispatch(tmp_path, monkeypatch, [{"ticket_id": TID, "agent_id": "abc123"}])
 
@@ -780,6 +790,7 @@ class TestGhostForensicsDispatchTrace:
     def test_missing_state_uses_subject_signal_only(self, tmp_path, monkeypatch):
         repo = _make_repo(tmp_path)
         _add_agent_branch(repo, "abc123", f"fix({TID}): partial")
+        _use_real_subject_scan(monkeypatch)
         monkeypatch.chdir(repo)
         monkeypatch.setattr(lease, "_dispatch_state_path", lambda: tmp_path / "nope.json")
 
@@ -793,6 +804,7 @@ class TestGhostForensicsDispatchTrace:
         repo = _make_repo(tmp_path)
         _add_agent_branch(repo, "abc123", "fix(0.0.0-W1-0011): other")
         _add_agent_branch(repo, "def456", "fix(0.0.0-W1-001.1): child")
+        _use_real_subject_scan(monkeypatch)
         monkeypatch.chdir(repo)
         monkeypatch.setattr(lease, "_dispatch_state_path", lambda: tmp_path / "nope.json")
 
@@ -808,6 +820,196 @@ class TestGhostForensicsDispatchTrace:
         report = lease.run_ghost_forensics(TID, [], "## Exit Status\nfilled\n")
 
         assert report.clean is True
+
+
+def _merged_agent_worktree(tmp_path: Path, repo: Path, agent_id: str = "abc123") -> Path:
+    """建立 worktree-agent-<id> 分支（與 main 同點＝已合併）及其 worktree。"""
+    wt = tmp_path / "wt"
+    _git(repo, "worktree", "add", "-q", "-b", f"worktree-agent-{agent_id}", str(wt))
+    return wt
+
+
+def _forensics(tmp_path, monkeypatch, repo, ticket_files=()):
+    monkeypatch.chdir(repo)
+    _seed_dispatch(tmp_path, monkeypatch, [{"ticket_id": TID, "agent_id": "abc123"}])
+    return lease.run_ghost_forensics(TID, list(ticket_files), "## Exit Status\nfilled\n")
+
+
+class TestGhostForensicsRelaxations:
+    """(A) prunable worktree、(B) 無關未追蹤檔 放寬；E2 三情境仍判殘留。"""
+
+    def test_prunable_worktree_of_merged_branch_not_hit_and_listed(self, tmp_path, monkeypatch):
+        import shutil
+
+        repo = _make_repo(tmp_path)
+        wt = _merged_agent_worktree(tmp_path, repo)
+        shutil.rmtree(wt)
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.clean is True
+        assert report.stale_worktrees == ["worktree-agent-abc123"]
+        text = lease.render_ghost_report(TID, report)
+        assert "worktree 已失效（需 prune）" in text
+        assert "鑑識通過" in text
+
+    def test_unrelated_untracked_build_artifact_not_hit_and_warned(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        wt = _merged_agent_worktree(tmp_path, repo)
+        (wt / "tsconfig.json").write_text("{}")
+
+        report = _forensics(tmp_path, monkeypatch, repo, ["src/other.py"])
+
+        assert report.clean is True
+        assert report.untracked_warning_files == ["tsconfig.json"]
+        assert "tsconfig.json" in lease.render_ghost_report(TID, report)
+
+    def test_e2_unmerged_branch_still_hits(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        _add_agent_branch(repo, "abc123", "feat: unrelated work")
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.clean is False
+        assert "worktree-agent-abc123" in report.unmerged_branch_names
+
+    def test_e2_tracked_uncommitted_change_still_hits(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        wt = _merged_agent_worktree(tmp_path, repo)
+        (wt / "a.txt").write_text("modified")
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.clean is False
+        assert "worktree-agent-abc123" in report.unmerged_branch_names
+
+    def test_e2_untracked_file_intersecting_ticket_files_still_hits(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        wt = _merged_agent_worktree(tmp_path, repo)
+        (wt / "new_feature.py").write_text("x")
+
+        report = _forensics(tmp_path, monkeypatch, repo, ["new_feature.py"])
+
+        assert report.clean is False
+        assert "worktree-agent-abc123" in report.unmerged_branch_names
+
+    def test_worktree_list_failure_is_unknown_and_not_clean(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        _merged_agent_worktree(tmp_path, repo)
+        real = lease._run_git_lines
+
+        def _fail_worktree_list(args, cwd=None):
+            if args[:2] == ["worktree", "list"]:
+                return None
+            return real(args, cwd=cwd)
+
+        monkeypatch.setattr(lease, "_run_git_lines", _fail_worktree_list)
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.unmerged_branch_unknown is True
+        assert report.clean is False
+
+
+class TestGhostForensicsFailureAndMergedOnly:
+    """主控追加：E1 對照、函式層失敗落點、(A) 僅限分支已合併。"""
+
+    def test_e1_same_worktree_untracked_inside_vs_outside_ticket_files(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        wt = _merged_agent_worktree(tmp_path, repo)
+        (wt / "built.js").write_text("x")
+
+        inside = _forensics(tmp_path, monkeypatch, repo, ["built.js"])
+        outside = _forensics(tmp_path, monkeypatch, repo, ["src/other.py"])
+
+        assert inside.clean is False
+        assert outside.clean is True
+        text = lease.render_ghost_report(TID, outside)
+        assert "built.js" in text
+        assert "有未追蹤檔，接手前先檢查舊 worktree" in text
+
+    def _fail_git_call(self, monkeypatch, matcher):
+        real = lease._run_git_lines
+
+        def _wrapped(args, cwd=None):
+            return None if matcher(args) else real(args, cwd=cwd)
+
+        monkeypatch.setattr(lease, "_run_git_lines", _wrapped)
+
+    def test_status_query_failure_is_hit(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        _merged_agent_worktree(tmp_path, repo)
+        self._fail_git_call(monkeypatch, lambda a: "--untracked-files=no" in a)
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.clean is False
+        assert "worktree-agent-abc123" in report.unmerged_branch_names
+
+    def test_untracked_query_failure_is_hit(self, tmp_path, monkeypatch):
+        repo = _make_repo(tmp_path)
+        _merged_agent_worktree(tmp_path, repo)
+        self._fail_git_call(monkeypatch, lambda a: a[:1] == ["ls-files"])
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.clean is False
+        assert "worktree-agent-abc123" in report.unmerged_branch_names
+
+    def test_missing_dir_without_prunable_marker_is_hit(self, tmp_path, monkeypatch):
+        import shutil
+
+        repo = _make_repo(tmp_path)
+        shutil.rmtree(_merged_agent_worktree(tmp_path, repo))
+        real = lease._run_git_lines
+
+        def _no_prunable(args, cwd=None):
+            lines = real(args, cwd=cwd)
+            if args[:2] == ["worktree", "list"] and lines is not None:
+                return [x for x in lines if not x.startswith("prunable")]
+            return lines
+
+        monkeypatch.setattr(lease, "_run_git_lines", _no_prunable)
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.stale_worktrees == []
+        assert report.clean is False
+
+    def test_e2_unmerged_branch_with_prunable_worktree_still_hits(self, tmp_path, monkeypatch):
+        import shutil
+
+        repo = _make_repo(tmp_path)
+        wt = _merged_agent_worktree(tmp_path, repo)
+        (wt / "w.txt").write_text("w")
+        _git(wt, "add", "w.txt")
+        _git(wt, "commit", "-q", "-m", "unmerged work")
+        shutil.rmtree(wt)
+
+        report = _forensics(tmp_path, monkeypatch, repo)
+
+        assert report.clean is False
+        assert "worktree-agent-abc123" in report.unmerged_branch_names
+        assert report.stale_worktrees == []
+
+
+class TestDispatchStatePathRealImpl:
+    """`_dispatch_state_path` 真實實作（不 patch）：tmp repo 內解析並被讀取。"""
+
+    def test_real_path_resolves_inside_tmp_repo_and_is_read(self, tmp_path, monkeypatch):
+        monkeypatch.undo()  # 移除 autouse 對 _dispatch_state_path 的替身
+        repo = _make_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        path = lease._dispatch_state_path()
+
+        assert path is not None
+        assert Path(path).resolve().is_relative_to(repo.resolve())
+        assert lease._dispatch_branches_for_ticket(TID) == []
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"dispatches": [{"ticket_id": TID, "agent_id": "zz9"}]}))
+        assert lease._dispatch_branches_for_ticket(TID) == ["worktree-agent-zz9"]
 
 
 class TestDirtyFilePaths:
