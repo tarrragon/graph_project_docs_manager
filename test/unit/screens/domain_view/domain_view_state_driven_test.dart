@@ -29,7 +29,9 @@ DomainCell _cell(
   List<String> steps = const [],
   List<(String, bool)> events = const [],
   List<String> dependencyPaths = const [],
+  String? explanation,
 }) => DomainCell(
+  explanation: explanation,
   domainId: domainId,
   ucId: ucId,
   relation: relation,
@@ -74,12 +76,14 @@ List<Override> _stateOverrides(
   String? selectedDomainId,
   DomainSwimlaneView? swimlane,
   String? selectedUc,
+  (String, String)? selectedCell,
 }) => [
   domainViewStateProvider.overrideWith(
     (ref) => DomainReady(
       mode: mode,
       matrix: matrix,
       selectedDomainId: selectedDomainId,
+      selectedCell: selectedCell,
     ),
   ),
   domainSwimlaneProvider.overrideWith((ref) => swimlane),
@@ -117,7 +121,14 @@ void main() {
 
       expect(find.byKey(const Key('action-domain-select-alpha')), findsOne);
       expect(find.text('alpha-name'), findsOneWidget);
-      expect(find.text('UC-01'), findsWidgets);
+      // 限定在矩陣欄首：UC id 只出現在欄首一處（原 findsWidgets 恆真）。
+      expect(
+        find.descendant(
+          of: find.byType(MatrixGrid),
+          matching: find.text('UC-01'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('標題乙'), findsOneWidget);
       expect(_relationOf(tester, 'cell-domain-alpha-UC-01'), Relation.direct);
       expect(_relationOf(tester, 'cell-domain-alpha-UC-02'), Relation.none);
@@ -196,7 +207,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('間接依賴格：每條依賴路徑一行，以分隔符串接', (tester) async {
+    testWidgets('間接依賴格：每條依賴路徑各顯示為一行文字（路徑字串由資料提供）', (tester) async {
       await select(tester, 'schema');
 
       expect(find.text('graph → corpus → schema'), findsOneWidget);
@@ -204,7 +215,7 @@ void main() {
       expect(find.byType(ListRow), findsNothing);
     });
 
-    testWidgets('直接格：步驟與事件標籤，無依賴路徑區塊（E1：同資料的間接格有）', (tester) async {
+    testWidgets('直接格：步驟與事件標籤，不顯示該格自身的依賴路徑（E1 對照：間接格測試顯示其路徑）', (tester) async {
       await select(tester, 'graph');
 
       expect(find.byType(ListRow), findsNWidgets(2));
@@ -212,6 +223,57 @@ void main() {
       expect(find.text('emits graph.index.rebuilt'), findsOneWidget);
       expect(find.text('consumes graph.sync'), findsOneWidget);
       expect(find.text('不應出現 → 於直接格'), findsNothing);
+    });
+
+    testWidgets('說明、標題與在泳道中檢視取自詳情卡資料', (tester) async {
+      final data = DomainMatrix(
+        columns: [_uc('UC-09', '新標題')],
+        rows: [
+          _row('delta', 'delta-name', [
+            _cell(
+              'delta',
+              'UC-09',
+              DomainRelation.direct,
+              explanation: '新說明文字',
+            ),
+          ]),
+        ],
+      );
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: _stateOverrides(data),
+      );
+      await tester.tap(find.byKey(const Key('cell-domain-delta-UC-09')));
+      await tester.pumpAndSettle();
+      expect(find.text('新說明文字'), findsOneWidget);
+      expect(find.text('delta-name × UC-09'), findsOneWidget);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(DomainViewScreen)),
+      );
+      await tester.tap(
+        find.byKey(const Key('action-domain-cell-goto-swimlane')),
+      );
+      await tester.pump();
+      final ready = container.read(domainViewStateProvider) as DomainReady;
+      expect(ready.mode, DomainMode.swimlane);
+      expect(ready.selectedDomainId, 'delta');
+      expect(container.read(selectedUcProvider), 'UC-09');
+    });
+
+    testWidgets('關閉詳情卡：回到未選格提示（E1：關閉前詳情卡存在）', (tester) async {
+      await select(tester, 'graph');
+      expect(find.byKey(const Key('panel-domain-cell-detail')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('action-domain-cell-clear')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('panel-domain-cell-detail')), findsNothing);
+      expect(
+        find.byKey(const Key('panel-domain-cell-detail-empty')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('無關格：顯示「此 domain 不參與此 UC」', (tester) async {
@@ -259,14 +321,14 @@ void main() {
       return AppLocalizations.of(tester.element(find.byType(DomainViewScreen)));
     }
 
-    testWidgets('畫面列：列首走 i18n，不解參考 domainId', (tester) async {
+    testWidgets('畫面列：列首走 i18n，傳入元件的 domainId 為 null', (tester) async {
       final l10n = await pumpLanes(tester);
 
       expect(find.text(l10n.swimlaneScreenLaneName), findsOneWidget);
       expect(_laneOf(tester, SwimlaneLaneKind.screen).domainId, isNull);
     });
 
-    testWidgets('未定位列：列首走 i18n，不解參考 domainId', (tester) async {
+    testWidgets('未定位列：列首走 i18n，傳入元件的 domainId 為 null', (tester) async {
       final l10n = await pumpLanes(tester);
 
       expect(find.text(l10n.swimlaneUnplacedLaneName), findsOneWidget);
@@ -364,6 +426,206 @@ void main() {
     });
   });
 
+  group('S7 讀 state 的退路與泳道分支', () {
+    Future<AppLocalizations> pumpScreen(
+      WidgetTester tester,
+      List<Override> overrides,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides,
+      );
+      return AppLocalizations.of(tester.element(find.byType(DomainViewScreen)));
+    }
+
+    testWidgets('退路一：未選定 UC 的列結構含畫面列與矩陣各列，皆無節點', (tester) async {
+      final l10n = await pumpScreen(
+        tester,
+        _stateOverrides(_matrixA, mode: DomainMode.swimlane),
+      );
+
+      expect(
+        find.byKey(const Key('state-domain-swimlane-uc-unset')),
+        findsOneWidget,
+      );
+      expect(find.text(l10n.swimlaneScreenLaneName), findsOneWidget);
+      final lanes = tester
+          .widget<SwimlaneGrid>(find.byType(SwimlaneGrid))
+          .lanes;
+      expect(
+        [for (final l in lanes) (l.kind, l.name)],
+        [
+          (SwimlaneLaneKind.screen, ''),
+          (SwimlaneLaneKind.domain, 'alpha-name'),
+          (SwimlaneLaneKind.domain, 'beta-name'),
+        ],
+      );
+      expect(lanes.every((l) => l.nodes.isEmpty), isTrue);
+    });
+
+    testWidgets('退路二（特徵測試）：已選定 UC 而投影為 null，現行呈現同未選定 UC', (tester) async {
+      // 待另一張分析票定案期望呈現；此處只記錄現行行為，定案後依其結論改寫。
+      await pumpScreen(
+        tester,
+        _stateOverrides(
+          _matrixA,
+          mode: DomainMode.swimlane,
+          selectedUc: 'UC-01',
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('state-domain-swimlane-uc-unset')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('state-domain-swimlane')), findsNothing);
+      expect(_laneOf(tester, SwimlaneLaneKind.screen).nodes, isEmpty);
+    });
+
+    testWidgets('退路三：UC 標題為空字串時面板標題只顯示 UC id', (tester) async {
+      final matrix = DomainMatrix(
+        columns: [_uc('UC-01', '')],
+        rows: _matrixA.rows,
+      );
+      await pumpScreen(
+        tester,
+        _stateOverrides(
+          matrix,
+          mode: DomainMode.swimlane,
+          selectedUc: 'UC-01',
+          swimlane: const DomainSwimlaneUnstructured(),
+        ),
+      );
+
+      expect(find.text('UC-01'), findsOneWidget);
+    });
+
+    testWidgets('退路三 E1：UC 標題非空時面板標題為 id 與標題組合', (tester) async {
+      final l10n = await pumpScreen(
+        tester,
+        _stateOverrides(
+          _matrixA,
+          mode: DomainMode.swimlane,
+          selectedUc: 'UC-01',
+          swimlane: const DomainSwimlaneUnstructured(),
+        ),
+      );
+
+      expect(
+        find.text(l10n.swimlanePanelTitle('UC-01', '標題甲')),
+        findsOneWidget,
+      );
+      expect(find.text('UC-01'), findsNothing);
+    });
+
+    testWidgets('退路四：選中的格不在矩陣時退回未選格提示', (tester) async {
+      await pumpScreen(
+        tester,
+        _stateOverrides(_matrixA, selectedCell: ('alpha', 'UC-99')),
+      );
+
+      expect(
+        find.byKey(const Key('panel-domain-cell-detail-empty')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('panel-domain-cell-detail')), findsNothing);
+    });
+
+    testWidgets('退路四 E1：選中的格在矩陣內時顯示詳情卡', (tester) async {
+      await pumpScreen(
+        tester,
+        _stateOverrides(_matrixA, selectedCell: ('alpha', 'UC-01')),
+      );
+
+      expect(find.byKey(const Key('panel-domain-cell-detail')), findsOneWidget);
+    });
+
+    testWidgets('泳道未結構化：面板標題、說明文案與開啟原始檔動作', (tester) async {
+      final l10n = await pumpScreen(
+        tester,
+        _stateOverrides(
+          _matrixA,
+          mode: DomainMode.swimlane,
+          selectedUc: 'UC-01',
+          swimlane: const DomainSwimlaneUnstructured(),
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('state-domain-swimlane-unstructured')),
+        findsOneWidget,
+      );
+      expect(find.text(l10n.flowUnstructuredMessage), findsOneWidget);
+      expect(find.text(l10n.flowParseFailedMessage), findsNothing);
+      expect(
+        find.byKey(const Key('action-domain-open-source')),
+        findsOneWidget,
+      );
+      expect(find.byType(SwimlaneGrid), findsNothing);
+    });
+
+    testWidgets('泳道未結構化 E1：解析失敗改用解析失敗文案', (tester) async {
+      final l10n = await pumpScreen(
+        tester,
+        _stateOverrides(
+          _matrixA,
+          mode: DomainMode.swimlane,
+          selectedUc: 'UC-01',
+          swimlane: const DomainSwimlaneUnstructured(isFlowParseFailed: true),
+        ),
+      );
+
+      expect(find.text(l10n.flowParseFailedMessage), findsOneWidget);
+      expect(find.text(l10n.flowUnstructuredMessage), findsNothing);
+    });
+
+    testWidgets('高亮名退回泳道列：矩陣無該 domain 時取泳道列名', (tester) async {
+      await pumpScreen(
+        tester,
+        _stateOverrides(
+          _matrixA,
+          mode: DomainMode.swimlane,
+          selectedDomainId: 'bundle-zeta',
+          selectedUc: 'UC-01',
+          swimlane: const DomainSwimlane(
+            lanes: [
+              DomainLane(
+                domainId: 'bundle-zeta',
+                domainName: 'zeta-core',
+                nodes: [],
+              ),
+            ],
+            edges: [],
+          ),
+        ),
+      );
+
+      expect(
+        tester.widget<SwimlaneGrid>(find.byType(SwimlaneGrid)).laneHighlight,
+        'zeta-core',
+      );
+    });
+
+    testWidgets('高亮名 E1：矩陣與泳道列皆無該 domain 時為 null', (tester) async {
+      await pumpScreen(
+        tester,
+        _stateOverrides(
+          _matrixA,
+          mode: DomainMode.swimlane,
+          selectedDomainId: 'nowhere',
+          selectedUc: 'UC-01',
+          swimlane: const DomainSwimlane(lanes: [], edges: []),
+        ),
+      );
+
+      expect(
+        tester.widget<SwimlaneGrid>(find.byType(SwimlaneGrid)).laneHighlight,
+        isNull,
+      );
+    });
+  });
+
   group('S5 載入中取消', () {
     Future<_CountingLoader> pumpLoading(WidgetTester tester) async {
       final loader = _CountingLoader();
@@ -421,19 +683,23 @@ void main() {
       expect(fixtureImportsIn(sample), hasLength(3));
     });
 
-    test('lib 內無任何檔案 import domain_view_fixtures，且檔案不在 lib', () {
-      final offenders = <String>[
-        for (final entity in Directory('lib').listSync(recursive: true))
-          if (entity is File &&
-              entity.path.endsWith('.dart') &&
-              fixtureImportsIn(entity.readAsStringSync()).isNotEmpty)
-            entity.path,
-      ];
-      expect(offenders, isEmpty);
-      expect(
-        File('lib/screens/domain_view/domain_view_fixtures.dart').existsSync(),
-        isFalse,
-      );
-    });
+    test(
+      'lib 內無單行 import／export domain_view_fixtures（多行寫法不在守衛涵蓋），且檔案不在 lib',
+      () {
+        final offenders = <String>[
+          for (final entity in Directory('lib').listSync(recursive: true))
+            if (entity is File &&
+                entity.path.endsWith('.dart') &&
+                fixtureImportsIn(entity.readAsStringSync()).isNotEmpty)
+              entity.path,
+        ];
+        expect(offenders, isEmpty);
+        expect(
+          File('lib/screens/domain_view/domain_view_fixtures.dart')
+              .existsSync(),
+          isFalse,
+        );
+      },
+    );
   });
 }
