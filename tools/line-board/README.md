@@ -103,8 +103,9 @@ claude --plugin-dir tools/line-board
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board`、定時讀取、繪製 Pane（線、派發中代理人、各 session、合併閘門）；讀檔與命令一律經 `$` |
-| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx 只從這裡取用，本身不含實作 |
+| `hooks/register.tsx` | 註冊 `/board`、定時讀取、寫入 snapshot、組裝 Pane（區塊標題與各區塊依序排列）；讀檔與命令一律經 `$` |
+| `hooks/{lanes,dispatch,sessions,mergeGate}View.tsx` | Pane 各區塊的繪製，一檔一個區塊：線與佇列、派發中代理人、各 session、合併閘門最近紀錄；`Text` 由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入 |
+| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
 | `hooks/shared.ts` | 各 domain 共用：票號前綴與票檔位置、frontmatter 狀態解析、checkout 路徑判定、距今時間 |
 | `hooks/lanes.ts` | 線與佇列：現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化 |
 | `hooks/sessions.ts` | 各 session：狀態檔篩選／解析／排序、pid 存活比對（procStart）、本 repo 判定、線列 session 狀態 |
