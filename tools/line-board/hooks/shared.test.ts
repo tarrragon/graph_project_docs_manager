@@ -1,9 +1,9 @@
-// shared.ts 的測試：checkout 路徑判定、距今時間、票檔 frontmatter 狀態解析。
+// shared.ts 的測試：checkout 路徑判定、距今時間、票檔 frontmatter 狀態與 title 解析。
 
 import { describe, expect, test } from 'claude-code/testing'
 
 import { ticketFile } from './fixtures'
-import { formatAge, parseFrontmatterStatus, parseWorktreePaths } from './shared'
+import { formatAge, parseFrontmatterStatus, parseFrontmatterTitle, parseWorktreePaths } from './shared'
 
 describe('parseWorktreePaths', () => {
   test('取 git worktree list 的所有 checkout，主 checkout 在第一筆', () => {
@@ -46,5 +46,22 @@ describe('parseFrontmatterStatus', () => {
   test('沒有 frontmatter 或沒有 status 欄時回傳 null', () => {
     expect(parseFrontmatterStatus('status: pending\n')).toBeNull()
     expect(parseFrontmatterStatus('---\nid: x\n---\nstatus: pending\n')).toBeNull()
+  })
+})
+
+describe('parseFrontmatterTitle', () => {
+  test('讀 frontmatter 內的 title，不讀本文；單引號與雙引號包住的值去掉引號', () => {
+    expect(parseFrontmatterTitle(ticketFile('pending', '實作 line-board 佇列票摘要'))).toBe('實作 line-board 佇列票摘要')
+    expect(parseFrontmatterTitle(ticketFile('pending', "'補上 has_functional_requirements: false 宣告'"))).toBe(
+      '補上 has_functional_requirements: false 宣告',
+    )
+    expect(parseFrontmatterTitle(ticketFile('pending', "'含 ''引號'' 的標題'"))).toBe("含 '引號' 的標題")
+    expect(parseFrontmatterTitle(ticketFile('pending', '"雙引號 \\"內含\\" 的標題"'))).toBe('雙引號 "內含" 的標題')
+  })
+
+  test('沒有 frontmatter、沒有 title 欄或 title 為空時回傳 null', () => {
+    expect(parseFrontmatterTitle('title: x\n')).toBeNull()
+    expect(parseFrontmatterTitle(ticketFile('pending'))).toBeNull()
+    expect(parseFrontmatterTitle(ticketFile('pending', "''"))).toBeNull()
   })
 })

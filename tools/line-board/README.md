@@ -6,6 +6,7 @@
 |------|---------------------------|
 | 線與佇列 | `docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md` 的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一個群組，依線號排序；線目標顯示在群組標題的第二行 |
 | 佇列票即時狀態 | 群組內佇列列的每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
+| 佇列票摘要 | 佇列細節（見〈版面〉）列出的 title，與狀態同一次讀取主 checkout 票檔 frontmatter 的 `title:`；讀不到時標 `（讀不到 title）` |
 | 派發中代理人 | 主 checkout 的 `.claude/dispatch-active.json` 的 `dispatches` 陣列，列在所屬線的群組內，見〈派發中代理人〉 |
 | 各 session | `~/.claude/sessions/*.json`（家目錄取自 `HOME`），見下節 |
 | 合併閘門 | `.claude/logs/worktree-merge.log` 中 `[合併閘門] 開始` 與 `[合併閘門] 結束` 行的最後 8 行，精簡為欄位顯示（見下節）；預檢、合併前驗收、合併前測試等其他行不顯示 |
@@ -27,7 +28,17 @@
   - `閘門`：階段為 `閘門` 的派發列，加上閘門票列（佇列中某張票的 `feat/<票號>` 分支正持有合併閘門；同組已有該票標閘門的派發列時不重複列）
   - `等你處理`：該線的 session 狀態為 `waiting`
   - `排隊`：佇列列的票數
-- **展開後的內容**，依序：派發列（`<代理人>｜<任務>｜<流程階段>｜<距派發時間>`）、閘門票列（`閘門｜<短票號>｜自 HH:MM:SS`）、佇列列（`排隊：<票序>`）
+- **展開後的內容**，依序：派發列（`<代理人>｜<任務>｜<流程階段>｜<距派發時間>`）、閘門票列（`閘門｜<短票號>｜自 HH:MM:SS`）、佇列列（`排隊：<票序>`）、佇列細節按鍵
+- **佇列細節**：佇列列維持一行，其下一個按鍵 `▸ 佇列細節`，預設收合；按下後改為 `▾ 佇列細節`，其下縮排 2 欄逐張列出佇列列中的票，每張一行：
+
+  ```text
+  <短票號>｜<status>｜<title>
+  ```
+
+  - 只列佇列列中的票：`completed` 不列，同一張票在票序中出現多次只列一次；沒有佇列列的線（整條線已完成）與「其他」群組沒有這個按鍵
+  - 各行依該票在佇列列中的五色狀態上色，以 `truncate-end` 截斷（寬度不足時保留短票號與狀態）
+  - title 取自主 checkout 票檔 frontmatter 的 `title:`（單引號或雙引號包住的值去掉引號），與 status 同一次讀檔；票檔讀不到或沒有 title 欄時標 `（讀不到 title）`
+  - 展開狀態與群組相同，記在 `line-board.expanded`，鍵為 `lane:<n>:detail`；收合整個線群組再展開時維持原狀態
 - **五色狀態**（依「輪到誰處理」，判定集中在 `hooks/statusColor.ts`）：
 
   | 狀態 | 顏色 | 派發列 | 佇列列中的票 | 各 session |
@@ -44,7 +55,7 @@
 - **其他**：派發列對不到任何線時歸最後的「其他」群組，標題為 `▾ 其他` 與其下一行活動計數，內容只有派發列；沒有這種派發時不顯示
 - **底部兩區塊**的標題只有名稱一行（`▾ 各 session`、`▾ 合併閘門最近紀錄`）
 - **預設展開**：有派發中代理人、session 為 `waiting`、或有票在閘門中的線展開，其餘收合（只有排隊票不算活動）；預設每輪讀取後依新資料重算。底部兩個區塊預設展開。無活動的線，標題列之下的目標與活動計數以淡色顯示；標題列維持藍色粗體不變淡（實機上淡色會把藍色換成灰色，標題列就與其下各行同色）
-- **手動切換**：按過的群組以群組 id（`lane:<n>`、`other`、`sessions`、`mergeGate`）把展開狀態記在 `$.state` 的 `line-board.expanded`，之後以手動狀態為準，每 30 秒的資料刷新不覆寫；hot reload 不遺失，看板 session 結束後清空
+- **手動切換**：按過的群組以群組 id（`lane:<n>`、`other`、`sessions`、`mergeGate`，佇列細節為 `lane:<n>:detail`）把展開狀態記在 `$.state` 的 `line-board.expanded`，之後以手動狀態為準，每 30 秒的資料刷新不覆寫；hot reload 不遺失，看板 session 結束後清空
 - 提示行排在所有群組之上：349 讀不到（「解析失敗」）或沒有現行佇列行（「349 尚無現行佇列行」）、派發紀錄讀不到或格式錯誤、session 狀態讀取失敗、目前沒有派發中的代理人
 - 群組多到超出 Pane 高度時 Pane 可捲動；fullscreen 且夠寬時 Pane 停靠在側邊
 
@@ -141,13 +152,13 @@ claude --plugin-dir tools/line-board
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約 |
 | `hooks/hooks.json` | 指向 hooks module |
 | `hooks/register.tsx` | 註冊 `/board`、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）、讀寫群組的手動展開狀態、組裝 Pane（線群組、底部兩區塊的折疊外框） |
-| `hooks/readers.ts` | 一輪 snapshot 所需各項的讀取：checkout 清單、349、票檔 status、session 狀態檔與 pid 存活、派發紀錄、合併閘門紀錄；讀檔與命令一律經 `$`，各項失敗只影響該項 |
-| `hooks/lanesView.tsx` | 線群組的繪製（標題三行、派發列、閘門票列、佇列列，各依五色狀態上色）與各群組共用的可折疊外框（框線、藍色粗體標題列、內容） |
+| `hooks/readers.ts` | 一輪 snapshot 所需各項的讀取：checkout 清單、349、票檔 status 與 title、session 狀態檔與 pid 存活、派發紀錄、合併閘門紀錄；讀檔與命令一律經 `$`，各項失敗只影響該項 |
+| `hooks/lanesView.tsx` | 線群組的繪製（標題三行、派發列、閘門票列、佇列列、佇列細節，各依五色狀態上色）與各群組共用的可折疊外框（框線、藍色粗體標題列、內容） |
 | `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
 | `hooks/{sessions,mergeGate}View.tsx` | 底部兩區塊的內容：各 session、合併閘門最近紀錄 |
 | 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`，型別 `Elements`）由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入；各區塊的繪製函式以元素與 snapshot（`ReadyBoard`）為參數 |
 | `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、readers.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
-| `hooks/shared.ts` | 各 domain 共用：票號前綴與票檔位置、frontmatter 狀態解析、checkout 路徑判定、距今時間 |
+| `hooks/shared.ts` | 各 domain 共用：票號前綴與票檔位置、frontmatter 狀態與 title 解析、checkout 路徑判定、距今時間 |
 | `hooks/lanes.ts` | 線與佇列：現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化 |
 | `hooks/sessions.ts` | 各 session：狀態檔篩選／解析／排序、pid 存活比對（procStart）、本 repo 判定、線列 session 狀態 |
 | `hooks/mergeGate.ts` | 合併閘門：紀錄篩選與欄位解析、短分支名、閘門持有者判定、結果顏色 |
@@ -156,7 +167,7 @@ claude --plugin-dir tools/line-board
 | `hooks/statusColor.ts` | 五色狀態：派發階段、佇列票與 session 狀態歸成哪一種狀態，以及各狀態的顏色 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約 |
 | `hooks/{shared,lanes,sessions,mergeGate,dispatch,layout,statusColor}.test.ts` | `claude plugin test` 測試：各 domain 純函式，與同名產品檔一一對應 |
-| `hooks/board.test.ts`、`hooks/boardDispatch.test.ts` | `claude plugin test` 測試：Pane 端到端繪製；後者為線群組的派發列、活動計數、預設展開與手動切換，前者為線標題列、票序與底部兩區塊 |
+| `hooks/board.test.ts`、`hooks/boardDispatch.test.ts` | `claude plugin test` 測試：Pane 端到端繪製；後者為線群組的派發列、活動計數、預設展開與手動切換，前者為線標題列、票序、佇列細節與底部兩區塊 |
 | `hooks/fixtures.ts`、`hooks/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |
 

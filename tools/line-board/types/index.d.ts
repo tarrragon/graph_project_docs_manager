@@ -14,8 +14,11 @@ export type LanesResult =
   | { kind: 'ok'; lanes: Lane[] }
   | { kind: 'error'; message: string }
 
-/** 佇列中一張票在主 checkout 的狀態；票檔讀不到或沒有 status 欄時為 'unknown'。 */
-export type TicketStatus = { id: string; status: string }
+/**
+ * 佇列中一張票在主 checkout 的狀態與 title（同一次讀檔解析）；票檔讀不到或沒有 status 欄時 status 為 'unknown'，
+ * 讀不到或沒有 title 欄時 title 為 null。title 為選填：hot reload 前的舊 snapshot 沒有此欄（undefined），視同讀不到。
+ */
+export type TicketStatus = { id: string; status: string; title?: string | null }
 
 /**
  * 一行 `[合併閘門] 開始／結束` 的欄位：time 為 `HH:MM:SS`，branch 為完整分支名（顯示時才縮短），

@@ -1,9 +1,8 @@
 // line-board Pane 的派發中代理人：由 snapshot 推出派發列，以及讀取失敗、無法判定、沒有派發三種提示行。
-// 派發列本身畫在 lanesView.tsx 的線群組內；Text 由 register.tsx 的 ui.render 以 $.ui.resolve(e) 取得後傳入。
-
-import type { ElementConstructor, TextProps } from 'claude-code'
+// 派發列本身畫在 lanesView.tsx 的線群組內；元素由 register.tsx 的 ui.render 以 $.ui.resolve(e) 取得後傳入。
 
 import type { DispatchRow, ReadyBoard } from '../types'
+import type { Elements } from './lanesView'
 import { DISPATCH_ACTIVE_PATH, dispatchRows } from './parse'
 
 /**
@@ -21,7 +20,7 @@ export function dispatchRowsOf(board: ReadyBoard): DispatchRow[] {
 }
 
 /** 線群組上方的派發提示行：派發紀錄讀取失敗、session 狀態讀取失敗、沒有任何派發列；派發列照常時沒有提示。 */
-export function dispatchNotice(Text: ElementConstructor<TextProps>, board: ReadyBoard, rows: readonly DispatchRow[]) {
+export function dispatchNotice({ Text }: Elements, board: ReadyBoard, rows: readonly DispatchRow[]) {
   const { dispatches } = board
   if (dispatches.kind === 'error') return [<Text color="red">讀取 {DISPATCH_ACTIVE_PATH} 失敗（{dispatches.message}）</Text>]
   if (board.sessions.kind === 'error') return [<Text dimColor>（session 狀態讀取失敗，無法判定派發中的代理人）</Text>]
