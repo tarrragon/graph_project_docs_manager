@@ -432,9 +432,11 @@ class TestPerSuiteReuse:
 
     @staticmethod
     def _suite_of(argv):
-        if "flutter" in argv:
+        # 只看 "--" 之後的套件命令：包裝前綴含直譯器路徑，在 hooks venv 下會含 .claude/hooks
+        cmd = argv[argv.index("--") + 1:] if "--" in argv else argv
+        if "flutter" in cmd:
             return mg.SUITE_FLUTTER
-        joined = " ".join(argv)
+        joined = " ".join(cmd)
         if "../skills/foo/tests" in joined:
             return "skill:foo"
         return mg.SUITE_HOOKS if ".claude/hooks" in joined else "other"
