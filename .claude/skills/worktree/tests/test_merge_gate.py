@@ -1239,6 +1239,17 @@ class TestDeclarationInvalid:
         assert calls == []
 
 
+class TestYamlUnavailable:
+    def test_no_declaration_passes_declared_fails_closed(self, repo, monkeypatch):
+        monkeypatch.setitem(sys.modules, "yaml", None)  # import yaml 觸發 ImportError
+        head = git(repo, "rev-parse", "HEAD")
+        assert mg.MergeGate(str(repo), green_runner([]))(head, "main", head, 1).passed
+        commit_file(repo, DECL_REL, WEB_DECL, "decl")
+        head = git(repo, "rev-parse", "HEAD")
+        res = mg.MergeGate(str(repo), green_runner([]))(head, "main", head, 1)
+        assert not res.passed and "pyyaml" in res.reason and DECL_REL in res.reason
+
+
 class TestDeclaredGate:
     def _gate(self, repo, monkeypatch, paths, calls):
         monkeypatch.setattr(mg, "changed_paths_between", lambda *_a: paths)

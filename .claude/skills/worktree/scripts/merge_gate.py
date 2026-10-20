@@ -35,8 +35,6 @@ from typing import Callable, Iterator, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # .claude/，供 import lib
 from lib import slot_gate  # noqa: E402
 
-import yaml  # noqa: E402
-
 try:
     from .merge_cas import CheckResult
 except ImportError:
@@ -138,6 +136,11 @@ def _parse_suite(name, raw) -> dict:
 
 
 def parse_declaration(text: str) -> dict:
+    # 延遲匯入：hook 以無 pyyaml 的 python3 載入本模組，只有宣告存在時才需要 yaml
+    try:
+        import yaml
+    except ImportError as exc:
+        raise DeclarationError(f"{DECLARATION_PATH}: 無法匯入 pyyaml，宣告無法解析：{exc}") from exc
     try:
         doc = yaml.safe_load(text)
     except yaml.YAMLError as exc:
