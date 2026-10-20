@@ -16,6 +16,7 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -58,6 +59,7 @@ _Harness _harness({
   final container = ProviderContainer(
     overrides: [
       scanRoundProvider.overrideWith(() => fake),
+      builtinSchemaVersionProvider.overrideWith((ref) async => '1.0.0'),
       domainViewLogSinkProvider.overrideWithValue(
         (message, {level = 500}) => logs.add((message, level)),
       ),
@@ -339,17 +341,18 @@ void main() {
   });
 
   group('B8 不變式', () {
-    test('建圖不可用的輪次：記 level 900 warning，debug 下 assert', () async {
-      final h = _harness(
-        produce: () => fakeRound(
-          graphUnavailable: EdgeTypeUnavailableReason.missingDirection,
-        ),
-      );
+    test('建圖不可用的輪次：記 level 900 並落 schema 不相容阻擋態', () async {
+      for (final reason in EdgeTypeUnavailableReason.values) {
+        final h = _harness(produce: () => fakeRound(graphUnavailable: reason));
 
-      await expectLater(h.loader.load(), throwsA(isA<AssertionError>()));
+        await h.loader.load();
 
-      expect(h.logs, isNotEmpty);
-      expect(h.logs.single.$2, 900);
+        final state = h.state;
+        expect(state, isA<DomainSchemaIncompatible>(), reason: '$reason');
+        expect((state as DomainSchemaIncompatible).appVersion, isNotEmpty);
+        expect(state.projectVersion, isNull);
+        expect(h.logs.single.$2, 900);
+      }
     });
 
     test('E1 建圖可用的輪次不記 warning', () async {
