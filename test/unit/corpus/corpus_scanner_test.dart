@@ -44,6 +44,37 @@ UnreadableReason unreadableReasonOf(ParseOutcome outcome) =>
     (outcome as Unreadable).reason;
 
 void main() {
+  group('onProcessed 分批進度（0.5.0-W3-002.1）', () {
+    FakeDocsFileSystem fsWith(int n) {
+      final fs = FakeDocsFileSystem();
+      for (var i = 0; i < n; i++) {
+        fs.addFile('docs/f$i.md', _noFrontmatterBytes);
+      }
+      return fs;
+    }
+
+    test('E2：70 檔每批回報累計數 32、64、70；不傳回呼結果相同', () async {
+      final reported = <int>[];
+      final withCb = await scanCorpus(
+        fileSystem: fsWith(70),
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+        onProcessed: reported.add,
+      );
+      final without = await scanCorpus(
+        fileSystem: fsWith(70),
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
+
+      expect(reported, [32, 64, 70]);
+      expect(
+        withCb.summary.totalFilesScanned,
+        without.summary.totalFilesScanned,
+      );
+    });
+  });
+
   group('scanCorpus 掃描範圍（SPEC-006-test-design §3.2 C8, FR-02）', () {
     test('C8-1 無 docs/：掃描完成，全部計數 0，無錯誤', () async {
       final fs = FakeDocsFileSystem();
