@@ -19,6 +19,9 @@ import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import 'domain_view_v050.dart';
+import 'gap_report_declaration_line.dart';
+
 /// App 啟動後的預設落地畫面錨點（導覽殼的預設項目：Domain 視圖）。
 ///
 /// 六項導覽的路由殼掛載後，[HomePage] 不再是進入點；「啟動後抵達某個確定
@@ -285,6 +288,39 @@ void main() {
       expect(result, ExternalOpenResult.opened);
     }, skip: !_runProbe);
   });
+
+  // 外圈 IT-D1～IT-D4：測試本體在無 `_test` 後綴的兩檔（同一次 flutter test
+  // 只能啟動一次 app，不能另立第二個 `_test.dart`），由此處註冊。
+  registerDomainViewV050Tests(_openSnapshotWorkspace);
+  registerGapReportDeclarationLineTests(_openSnapshotWorkspace);
+}
+
+/// 以 [workspace]（凍結快照實體化的真實工作區）為已授權工作區啟動 App。
+///
+/// 只替換資料夾選擇器（[_StubWorkspaceRepository.restore]）與 gate 的版本訊號
+/// 探測（快照無 `VERSION` 檔）；掃描、建圖、Layout 皆為真實實作。
+Future<void> _openSnapshotWorkspace(
+  WidgetTester tester,
+  Directory workspace, {
+  Locale? locale,
+  List<Override> overrides = const [],
+  bool settle = true,
+}) async {
+  _applyViewport(tester, kViewports.last);
+  final builtinVersion = await _readBuiltinSchemaVersion();
+  final errors = await _pumpAppAndCollectErrors(
+    tester,
+    locale: locale,
+    repository: _StubWorkspaceRepository(WorkspaceReady(workspace.path)),
+    overrides: [
+      frameworkSignalProbeProvider.overrideWithValue(
+        _ReadyFrameworkSignalProbe(builtinVersion),
+      ),
+      ...overrides,
+    ],
+    settle: settle,
+  );
+  if (settle) _expectNoErrors(errors, context: '外圈 ${workspace.path}');
 }
 
 /// 執行 [action] 並回傳它拋出的例外；沒有例外時回傳 `null`。
@@ -343,6 +379,7 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
   WorkspaceRepository? repository,
   List<Override> overrides = const [],
   void Function()? afterPump,
+  bool settle = true,
 }) async {
   final captured = <FlutterErrorDetails>[];
   final previousHandler = FlutterError.onError;
@@ -358,7 +395,14 @@ Future<List<FlutterErrorDetails>> _pumpAppAndCollectErrors(
     // _pendingExceptionDetails assert，原文丟失。把 App 的整段執行放進子
     // zone，錯誤改由此處收集，binding 就不會接手。
     await runZonedGuarded(
-      () => _pumpAndSettleApp(tester, locale, repository, overrides, afterPump),
+      () => _pumpAndSettleApp(
+        tester,
+        locale,
+        repository,
+        overrides,
+        afterPump,
+        settle,
+      ),
       (error, stack) =>
           captured.add(FlutterErrorDetails(exception: error, stack: stack)),
     );
@@ -376,6 +420,7 @@ Future<void> _pumpAndSettleApp(
   WorkspaceRepository? repository,
   List<Override> overrides,
   void Function()? afterPump,
+  bool settle,
 ) async {
   {
     await tester.pumpWidget(
@@ -383,6 +428,9 @@ Future<void> _pumpAndSettleApp(
       // pump DocsManagerApp 時，導覽殼（AppShell 為 ConsumerWidget）需要
       // 自行補上這層祖先，否則 ref.watch 會找不到 ProviderScope 而拋錯。
       ProviderScope(
+        // 同一案例內重開 App（換工作區／語系）須是全新狀態；同型別同位置的
+        // ProviderScope 會沿用既有 container，新的 overrides 與 repository 不生效。
+        key: UniqueKey(),
         overrides: overrides,
         child: DocsManagerApp(
           locale: locale,
@@ -395,7 +443,8 @@ Future<void> _pumpAndSettleApp(
     );
     // ScreenUtilInit 首幀只做量測，需再 settle 一次才會渲染出真正的版面。
     afterPump?.call();
-    await _settleOrFailFast(tester);
+    // settle:false 供需觀察「進行中」中間態的案例（如 ITD4-A4 掃描中）。
+    if (settle) await _settleOrFailFast(tester);
   }
 }
 
