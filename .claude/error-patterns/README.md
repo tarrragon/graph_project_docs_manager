@@ -169,6 +169,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | TEST-GPD-004 | 守衛測試以自由文字子字串斷言決策，被輸出中的無關文字滿足而在決策未發生時仍綠 | 中 | 0.5.0 |
 | TEST-GPD-005 | 上限守衛測試只量產生器的單一組合，後續增加的變體越過上限仍維持綠燈 | 中 | 0.5.0 |
 | TEST-GPD-006 | 相容性 fallback 只在舊版執行環境走到，閘門跑在新版時該分支從未被執行 | 中 | 0.5.0 |
+| TEST-GPD-1000 | 把 provider 預設值改成帶無限動畫的狀態，被 IndexedStack 保活的背景頁讓不相關的全 App 測試 pumpAndSettle 逾時 | 中 | 0.5.0 |
 
 ### 文件 (DOC)
 
