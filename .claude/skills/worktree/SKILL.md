@@ -107,7 +107,7 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 
 | 改動範圍（相對當下 main） | 跑的套件 |
 |--------------------------|---------|
-| `lib/`、`test/`、`integration_test/`、`macos/`、`docs/`（票檔與版本日誌除外）、`pubspec.*` 等 | Flutter：`fvm flutter test` |
+| `lib/`、`test/`、`integration_test/`、`macos/`、`docs/`、`assets/`（票檔與版本日誌除外）、`pubspec.*` 等 | Flutter：`fvm flutter test` |
 | `.claude/skills/<名稱>/`（該 skill 帶 `tests/`） | `skill:<名稱>`：有 `pyproject.toml` 跑 `uv --directory .claude/skills/<名稱> run pytest`；無則借 hooks 環境 `uv --directory .claude/hooks run pytest -p no:cacheprovider ../skills/<名稱>/tests` |
 | `.claude/scripts/` | scripts pytest：`uv --directory .claude/scripts run pytest` |
 | `.claude/lib/` | hooks pytest（其 testpaths 已含 `../lib/tests`）＋ scripts pytest ＋ 所有「帶 `tests/` 且有 .py 匯入 `lib`」的 skill（掃描快照得出，不寫死清單） |
