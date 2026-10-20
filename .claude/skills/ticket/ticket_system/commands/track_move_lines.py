@@ -19,8 +19,10 @@ if __name__ == "__main__":
 
 
 import argparse
+import logging
 import os
 import stat
+import sys
 import tempfile
 from typing import List, Optional, Tuple
 
@@ -37,6 +39,9 @@ from ticket_system.lib.write_scope import (
     to_repo_relative,
     unsafe_paths,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class MoveLinesError(Exception):
@@ -133,10 +138,10 @@ def _write_both(src: str, dst: str, new_src: bytes, new_dst: bytes,
 
     還原本身失敗時保留備份檔並在訊息寫明兩檔狀態與備份位置。
     """
-    src_mode = stat.S_IMODE(os.stat(src).st_mode)
-    dst_mode = stat.S_IMODE(os.stat(dst).st_mode)
     tmps: List[str] = []
     try:
+        src_mode = stat.S_IMODE(os.stat(src).st_mode)
+        dst_mode = stat.S_IMODE(os.stat(dst).st_mode)
         tmp_src = _stage_temp(src, new_src, src_mode)
         tmps.append(tmp_src)
         tmp_dst = _stage_temp(dst, new_dst, dst_mode)
@@ -172,9 +177,15 @@ def _recover(src: str, dst: str, backup: str, tmps: List[str],
 
 
 def _cleanup(tmps: List[str]) -> None:
+    """刪除暫存檔；單檔刪除失敗只記錄並繼續（搬移結果已定，不應回報失敗）。"""
     for tmp in tmps:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+        try:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        except OSError as exc:
+            msg = f"暫存檔清理失敗（搬移已完成，請手動刪除）：{tmp}（{exc}）"
+            logger.warning(msg)
+            sys.stderr.write(f"[WARNING] {msg}\n")
 
 
 def _read_lines(path: str) -> Tuple[bytes, List[str]]:
