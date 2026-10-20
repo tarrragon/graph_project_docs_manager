@@ -167,6 +167,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | TEST-GPD-002 | 契約守衛斷言常數等於其值，而非驗證使用該常數的行為 | 中 | 0.4.0 |
 | TEST-GPD-003 | 以 monkeypatch 替換全域 time.sleep 作假時鐘，被 subprocess 的等待輪詢呼叫而使推進量不固定 | 中 | 0.4.1 |
 | TEST-GPD-004 | 守衛測試以自由文字子字串斷言決策，被輸出中的無關文字滿足而在決策未發生時仍綠 | 中 | 0.5.0 |
+| TEST-GPD-005 | 上限守衛測試只量產生器的單一組合，後續增加的變體越過上限仍維持綠燈 | 中 | 0.5.0 |
 
 ### 文件 (DOC)
 
