@@ -36,7 +36,7 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
 - **流程階段**，依序判定：
   1. 有票號且該票在主 checkout 為 `completed`：不列
   2. 分支 `worktree-agent-<agent_id>` 是合併閘門的持有者（見〈合併閘門紀錄的顯示〉）：`閘門`，代理人是否已結束皆同。`branch_name` 欄只記 `worktree`，分支名由 `agent_id` 組出
-  3. 未結束（`turn_ended_at` 為 null）：審查類代理人為 `審查`，`incident-responder` 為 `事故分析`，其餘為 `實作`。審查類清單集中在 `parse.ts` 的 `REVIEW_AGENTS`，以該常數為準，新增審查類代理人時改那裡
+  3. 未結束（`turn_ended_at` 為 null）：審查類代理人為 `審查`，`incident-responder` 為 `事故分析`，其餘為 `實作`。審查類清單集中在 `parse.ts` 的 `REVIEW_AGENTS`，以該常數為準。**維護點**：這份清單由人手動維護，不會從 `.claude/agents/` 自動取得；`.claude/agents/` 新增審查類代理人時，要同步加進 `REVIEW_AGENTS`，漏加的代理人在未結束時會被判成 `實作`
   4. 已結束且有票號（票未 `completed`，含票檔讀不到）：`收尾`；已結束且沒有票號：不列（沒有票可收尾）
 - **不列出**：session 已不存活（狀態檔不存在或 pid 已結束），以及上列判定為不列的條目
 - 每列：`L<n> <代理人>｜<任務>｜<流程階段>｜<距 dispatched_at 的時間>`，對不到線時 `L<n>` 改為 `其他`；任務為短票號（與票序相同，去掉 `0.5.0-W1-`），沒有票號時為 `agent_description`。依線號排序、其他最後，同線保留紀錄中的順序；以 `truncate-middle` 截斷

@@ -940,7 +940,7 @@ describe('Pane', () => {
       ...PANE,
       props: { ...PANE.props, bodyColumns },
     })
-    return { ui, readPaths, psCalls }
+    return { ui, readPaths, psCalls, clock }
   }
 
   /**
@@ -1272,6 +1272,60 @@ describe('Pane', () => {
   test('派發紀錄格式錯誤（dispatches 不是陣列）時，派發區塊顯示讀取失敗', async ($, on) => {
     const { ui } = await startBoard($, on, dispatchFiles('{"dispatches": {}}'))
     expect(await ui.find({ type: 'Text', text: /^讀取 \.claude\/dispatch-active\.json 失敗（/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  /** 下一輪定時讀取：時鐘前進一個更新間隔（30 秒），看板依 stub 的現況重讀。 */
+  const REFRESH_MS = 30_000
+
+  /** 派發列去掉末尾的時間欄（重讀後時間會前進），只比對線、代理人、任務與階段。 */
+  const withoutAge = (text: string) => text.replace(/｜[^｜]*$/, '')
+
+  test('349 讀不到時，派發條目照常列出並全歸「其他」；對照：同一份 fixture 讀得到 349 後歸到對應的線', async ($, on) => {
+    const stub = dispatchFiles(DISPATCH_ACTIVE)
+    const ticket349 = stub.files[`/repo/${DISPATCH_TICKET_PATH}`] ?? ''
+    delete stub.files[`/repo/${DISPATCH_TICKET_PATH}`]
+    const { ui, clock } = await startBoard($, on, stub)
+    expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeDefined()
+    const missing = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(missing).toEqual([
+      '其他 general-purpose｜337.9｜實作',
+      '其他 linux｜Readonly review of 337.8｜審查',
+      '其他 incident-responder｜分析 354.1 閘門紅燈｜事故分析',
+      '其他 general-purpose｜351｜閘門',
+      '其他 general-purpose｜345｜收尾',
+    ])
+    // 正向對照：補回 349 後重讀，同一批條目歸到 session 所在的線
+    stub.files[`/repo/${DISPATCH_TICKET_PATH}`] = ticket349
+    await clock.advance(REFRESH_MS)
+    const present = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(present).toEqual([
+      'L7 linux｜Readonly review of 337.8｜審查',
+      'L7 incident-responder｜分析 354.1 閘門紅燈｜事故分析',
+      'L13 general-purpose｜337.9｜實作',
+      'L13 general-purpose｜351｜閘門',
+      '其他 general-purpose｜345｜收尾',
+    ])
+    await ui.unmount()
+  })
+
+  test('閘門紀錄讀不到時，派發條目照常列出且沒有任何一列為「閘門」；對照：同一份 fixture 讀得到閘門紀錄後標為閘門', async ($, on) => {
+    const stub = dispatchFiles(DISPATCH_ACTIVE)
+    const mergeLog = stub.files[`/repo/${MERGE_LOG_PATH}`] ?? ''
+    delete stub.files[`/repo/${MERGE_LOG_PATH}`]
+    const { ui, clock } = await startBoard($, on, stub)
+    expect(await ui.find({ type: 'Text', text: /^讀取 \.claude\/logs\/worktree-merge\.log 失敗/ })).toBeDefined()
+    const missing = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(missing.length).toBe(5)
+    expect(missing.some(text => text.endsWith('｜閘門'))).toBe(false)
+    // 持有閘門的 a352 已結束且票未完成，閘門紀錄讀不到時落回「收尾」
+    expect(missing).toContain('L13 general-purpose｜351｜收尾')
+    // 正向對照：補回閘門紀錄後重讀，同一條目標為閘門
+    stub.files[`/repo/${MERGE_LOG_PATH}`] = mergeLog
+    await clock.advance(REFRESH_MS)
+    const present = (await ui.findAll({ type: 'Text', text: DISPATCH_ROW })).map(row => withoutAge(row.text))
+    expect(present).toContain('L13 general-purpose｜351｜閘門')
+    expect(present.filter(text => text.endsWith('｜閘門')).length).toBe(1)
     await ui.unmount()
   })
 
