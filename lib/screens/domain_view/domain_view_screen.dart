@@ -125,9 +125,11 @@ Future<void> _chooseFolder(BuildContext context, WidgetRef ref) async {
     case ChooseFolderSelected(:final state):
       await _applyChosenState(context, ref, l10n, state);
     case ChooseFolderNotRemembered(:final state):
+      // 載入會使本畫面卸載（context 失效），提示須在 await 之前顯示。
+      if (state is WorkspaceReady) {
+        _showFailure(context, l10n.workspaceNotRemembered);
+      }
       await _applyChosenState(context, ref, l10n, state);
-      if (!context.mounted) return;
-      _showFailure(context, l10n.workspaceNotRemembered);
   }
 }
 

@@ -58,6 +58,13 @@ class _ChooseRepo extends StubWorkspaceRepository {
 
   final ChooseFolderResult _result;
   int chooseCalls = 0;
+  final List<String> addedRecent = [];
+
+  @override
+  Future<bool> addRecentProject(String path) async {
+    addedRecent.add(path);
+    return true;
+  }
 
   @override
   Future<ChooseFolderResult> chooseFolder() async {
@@ -72,9 +79,15 @@ class _CountingProbe extends StubFrameworkSignalProbe {
 
   final List<String> readVersionPaths = [];
 
+  /// gate 讀取期間的副作用；用來模擬載入編排接手畫面（`_UnsetView` 卸載）。
+  void Function()? onRead;
+
   @override
   Future<String?> readVersion(String workspacePath) async {
     readVersionPaths.add(workspacePath);
+    onRead?.call();
+    // 讓出時間，使 pumpAndSettle 在 gate 完成前渲染一幀（卸載生效）。
+    await Future<void>.delayed(const Duration(milliseconds: 250));
     return null;
   }
 }
@@ -118,6 +131,35 @@ void main() {
 
       expect(repo.chooseCalls, 1);
       expect(probe.readVersionPaths, ['/ws']);
+    });
+
+    testWidgets('選定但未能記住：照常載入，另顯示 workspaceNotRemembered', (tester) async {
+      final repo = _ChooseRepo(
+        const ChooseFolderNotRemembered(
+          state: WorkspaceReady('/ws'),
+          reason: 'prefs-failed',
+        ),
+      );
+      final probe = _CountingProbe();
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: _chooseOverrides(repo, probe),
+      );
+      // 載入編排在 gate 期間把畫面轉為載入中，_UnsetView 隨之卸載。
+      probe.onRead = () => container.read(domainViewStateProvider.notifier).state =
+          const DomainLoading();
+
+      await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
+      await tester.pumpAndSettle();
+
+      expect(probe.readVersionPaths, ['/ws']);
+      // 畫面卸載後最近專案清單仍須寫入（共用流程不依賴呼叫端 ref）。
+      expect(repo.addedRecent, ['/ws']);
+      expect(
+        find.text(AppLocalizationsZh().workspaceNotRemembered),
+        findsOneWidget,
+      );
     });
 
     testWidgets('選擇器取消：仍為未選專案，無 SnackBar，gate 未觸發', (tester) async {
