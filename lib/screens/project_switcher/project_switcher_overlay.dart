@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/attention_level.dart';
 import '../../app/degraded_schema.dart';
+import '../../app/scan_round.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/workspace_repository.dart';
@@ -173,6 +174,9 @@ Future<void> _handleChosenState(
       ref.read(degradedSchemaProvider.notifier).state = false;
       ref.read(degradedSchemaVersionsProvider.notifier).state = null;
       ref.read(inferredVersionProvider.notifier).state = null;
+      // 同路徑重選時輪次監聽不會 discard；gate 即將重讀 JSON，舊輪次（含舊降級
+      // 狀態）必須在此丟棄。僅限使用者主動選專案，缺口報告再次可見不經此處。
+      ref.read(scanRoundProvider.notifier).discard('project-reselected');
       await ref.read(gateDetectionNotifierProvider.notifier).detect(path);
       await _persistRecentProjectSelection(ref, path);
       if (!context.mounted) return;
