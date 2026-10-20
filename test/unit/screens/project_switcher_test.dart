@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
@@ -34,6 +35,17 @@ class _FakePreferencesPort implements WorkspacePreferencesPort {
   @override
   Future<WorkspacePreferencesHandle> open() async {
     throw StateError('fake: preferences unavailable');
+  }
+}
+
+/// 記錄 discard 原因的輪次替身（0.5.0-W1-248.3.2）。
+class _SpyScanRound extends ScanRoundNotifier {
+  final List<String> reasons = [];
+
+  @override
+  void discard([String reason = 'cancel']) {
+    reasons.add(reason);
+    super.discard(reason);
   }
 }
 
@@ -501,6 +513,34 @@ void main() {
       expect(container.read(degradedSchemaProvider), isFalse);
       expect(container.read(degradedSchemaVersionsProvider), isNull);
       expect(container.read(inferredVersionProvider), isNull);
+    });
+  });
+
+  group('重選專案丟棄陳舊輪次（0.5.0-W1-248.3.2）', () {
+    testWidgets('選取專案走 gate 前丟棄現有掃描輪次，原因為 project-reselected', (tester) async {
+      final spy = _SpyScanRound();
+      await pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+          ..._gateDetectionOverrides,
+          scanRoundProvider.overrideWith(() => spy),
+        ],
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(app_shell.AppShell)),
+      );
+      container.read(scanRoundProvider);
+
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+      await tester.pumpAndSettle();
+
+      expect(spy.reasons, contains('project-reselected'));
     });
   });
 
