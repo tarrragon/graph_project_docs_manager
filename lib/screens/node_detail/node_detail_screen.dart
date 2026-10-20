@@ -82,7 +82,8 @@ class _ReadyView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final node = NodeDetailFixtures.nodes[nodeId]!;
+    final node = ref.watch(nodeDetailNodesProvider)[nodeId];
+    if (node == null) return const _UnsetView();
     final isPartial = node.damagedFields.isNotEmpty;
     final isTypeDamaged = node.damagedFields.contains('type');
 
@@ -104,7 +105,7 @@ class _ReadyView extends ConsumerWidget {
         BadgeRow(children: [Badge.status(label: node.status)]),
         const Divider(),
         DocumentBody(
-          markdown: node.markdown,
+          markdown: ref.watch(nodeDetailBodyProvider(nodeId)),
           testKey: const Key('panel-nodeDetail-document-body'),
         ),
       ],
@@ -121,6 +122,7 @@ class _ReadyView extends ConsumerWidget {
               for (final relatedId in category.nodeIds)
                 RelationItem(
                   id: relatedId,
+                  isProposed: category.isProposed,
                   onTap: () =>
                       ref.read(nodeDetailStateProvider.notifier).state =
                           NodeDetailReady(nodeId: relatedId),
@@ -156,7 +158,8 @@ class NodeDetailHeaderTrailing extends ConsumerWidget {
       return const SizedBox.shrink();
     }
     final l10n = AppLocalizations.of(context);
-    final node = NodeDetailFixtures.nodes[state.nodeId]!;
+    final node = ref.watch(nodeDetailNodesProvider)[state.nodeId];
+    if (node == null) return const SizedBox.shrink();
     return ButtonRow(
       alignment: ButtonRowAlignment.end,
       children: [

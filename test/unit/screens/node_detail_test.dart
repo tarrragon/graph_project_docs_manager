@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_screen.dart';
@@ -118,7 +120,12 @@ void main() {
       tester,
       size,
     ) async {
-      await pumpHarness(tester, child: const NodeDetailScreen(), size: size);
+      await pumpHarness(
+        tester,
+        child: const NodeDetailScreen(),
+        overrides: [_fixtureNodes],
+        size: size,
+      );
 
       expect(AnchorFinder.state(Screen.nodeDetail, 'normal'), findsOneWidget);
       expect(find.byType(TwoColumnLayout), findsOneWidget);
@@ -130,7 +137,11 @@ void main() {
     testWidgets('card-nodeDetail-relation-<id>：同畫面替換主欄內容為部分損壞節點', (
       tester,
     ) async {
-      await pumpHarness(tester, child: const NodeDetailScreen());
+      await pumpHarness(
+        tester,
+        child: const NodeDetailScreen(),
+        overrides: [_fixtureNodes],
+      );
 
       await tester.tap(
         find.byKey(
@@ -148,6 +159,7 @@ void main() {
         await pumpApp(
           tester,
           overrides: [
+            _fixtureNodes,
             selectedDestinationProvider.overrideWith(
               (ref) => AppDestination.nodeDetail,
             ),
@@ -179,6 +191,7 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
+          _fixtureNodes,
           nodeDetailStateProvider.overrideWith(
             (ref) => const NodeDetailReady(
               nodeId: NodeDetailFixtures.partialNodeId,
@@ -200,6 +213,7 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
+          _fixtureNodes,
           nodeDetailStateProvider.overrideWith(
             (ref) => const NodeDetailReady(
               nodeId: NodeDetailFixtures.partialNodeId,
@@ -282,6 +296,7 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
+          _fixtureNodes,
           nodeDetailStateProvider.overrideWith(
             (ref) => NodeDetailMissing(
               nodeId: NodeDetailFixtures.normalNodeId,
@@ -317,4 +332,132 @@ void main() {
       expect(AnchorFinder.action(Screen.nodeDetail, 'open-source'), findsNothing);
     });
   });
+
+  group('關聯項 isProposed（SPEC-001 §6、SPEC-004 4.19）', () {
+    testWidgets('E1 對照：同一節點詳情內 proposed 分節項目有「暫定」，established 無', (
+      tester,
+    ) async {
+      final base = NodeDetailFixtures.nodes[NodeDetailFixtures.normalNodeId]!;
+      final node = NodeDetailFixture(
+        id: base.id,
+        type: base.type,
+        status: base.status,
+        title: base.title,
+        filePath: base.filePath,
+        markdown: base.markdown,
+        relations: const [
+          NodeRelationCategory(
+            label: 'bundle_dependency',
+            nodeIds: ['P1'],
+            isProposed: true,
+          ),
+          NodeRelationCategory(label: 'spawn', nodeIds: ['E1']),
+        ],
+      );
+      await pumpHarness(
+        tester,
+        child: const NodeDetailScreen(),
+        overrides: [
+          nodeDetailNodesProvider.overrideWithValue({base.id: node}),
+        ],
+      );
+
+      Finder badgeIn(String label) => find.descendant(
+        of: find.byKey(Key('panel-nodeDetail-relations-$label')),
+        matching: find.text('暫定'),
+      );
+      expect(badgeIn('bundle_dependency'), findsOneWidget);
+      expect(badgeIn('spawn'), findsNothing);
+    });
+
+    test('同一節點對的 proposed 與 established 邊分成兩個分節各自標示', () {
+      GraphEdge edge(String type, String layer) => GraphEdge(
+        edgeType: type,
+        from: 'A',
+        to: 'B',
+        declaredBy: {'A'},
+        isUndirected: false,
+        layer: layer,
+      );
+      final event = GraphBuiltEvent(
+        nodes: const [],
+        edges: [
+          edge('bundle_dependency', 'proposed'),
+          edge('spawn', 'established'),
+        ],
+        graphDefects: const [],
+        totalReferences: 0,
+        resolvedCount: 0,
+      );
+      final event2 = GraphBuiltEvent(
+        nodes: const [
+          LightNode(
+            id: 'A',
+            typeName: 'SPEC',
+            status: null,
+            title: 'A',
+            path: 'a.md',
+          ),
+        ],
+        edges: event.edges,
+        graphDefects: const [],
+        totalReferences: 0,
+        resolvedCount: 0,
+      );
+
+      final cats = projectNodeDetails(event2)['A']!.relations;
+
+      expect([for (final c in cats) (c.label, c.isProposed)], [
+        ('bundle_dependency', true),
+        ('spawn', false),
+      ]);
+    });
+
+    test('projectNodeDetails 由建圖結果投影節點與相鄰關聯', () {
+      final event = GraphBuiltEvent(
+        nodes: const [
+          LightNode(
+            id: 'A',
+            typeName: 'SPEC',
+            status: 'draft',
+            title: 'Alpha',
+            path: 'a.md',
+          ),
+          LightNode(
+            id: 'B',
+            typeName: 'UC',
+            status: null,
+            title: null,
+            path: 'b.md',
+          ),
+        ],
+        edges: [
+          GraphEdge(
+            edgeType: 't',
+            from: 'A',
+            to: 'B',
+            declaredBy: {'A'},
+            isUndirected: false,
+            layer: 'established',
+          ),
+        ],
+        graphDefects: const [],
+        totalReferences: 0,
+        resolvedCount: 0,
+      );
+
+      final nodes = projectNodeDetails(event);
+
+      expect(nodes['A']!.title, 'Alpha');
+      expect(nodes['A']!.markdown, isEmpty); // 內文延遲讀取
+      expect(nodes['A']!.relations.single.label, 't');
+      expect(nodes['A']!.relations.single.nodeIds, ['B']);
+      expect(nodes['B']!.relations.single.nodeIds, ['A']);
+    });
+  });
 }
+
+/// 測試注入：節點資料改用 fixture（預設讀共用掃描輪次）。
+final _fixtureNodes = nodeDetailNodesProvider.overrideWithValue(
+  NodeDetailFixtures.nodes,
+);
