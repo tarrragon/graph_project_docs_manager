@@ -12,7 +12,6 @@ import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/flow_key.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
-import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 /// EVT 節點的型別表節點型別名。
 const eventTypeName = 'EVT';
@@ -107,9 +106,7 @@ class EventGapsDetected extends EventGapDetection {
 
 /// 建圖不可用：無法判定，零筆。
 class EventGapsUndetermined extends EventGapDetection {
-  const EventGapsUndetermined(this.reason);
-
-  final EdgeTypeUnavailableReason reason;
+  const EventGapsUndetermined();
 
   @override
   EventGapReport get report => const EventGapReport.empty();
@@ -123,7 +120,7 @@ EventGapDetection detectEventGaps({
   required GraphBuildResult graph,
   required Iterable<RawNode> rawNodes,
 }) => switch (graph) {
-  GraphBuildUnavailable(:final reason) => EventGapsUndetermined(reason),
+  GraphBuildUnavailable() => const EventGapsUndetermined(),
   GraphBuildAvailable(:final event) => EventGapsDetected(
     _detect(_FlowIndex(event.flowSubgraphs.values), _eventsOf(rawNodes)),
   ),
