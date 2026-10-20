@@ -1,7 +1,10 @@
 /// 實機字型截圖產生器（路徑 b：integration_test + RepaintBoundary.toImage）。
 ///
 /// 0.5.0-W1-466.2。單獨執行（macOS 一次只能啟動一次 app）：
-/// `fvm flutter test integration_test/research/ux_capture_test.dart -d macos`
+/// `fvm flutter test integration_test/research/ux_capture.dart -d macos`
+///
+/// 刻意不帶 `_test` 後綴：合併閘門以 `flutter test integration_test` 掃描目錄，
+/// 帶後綴會在同一次執行中啟動第二個 App 而失敗；明確指定檔名時不受後綴影響。
 ///
 /// 每個（版本 x 語系）輸出三個檔案到 `<repo>/build/ux_capture/<variant>/`：
 /// - `<locale>.png`          無標記截圖（固定 1280x800）
