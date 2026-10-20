@@ -575,6 +575,33 @@ class TestDedupNoneRequiresKeywords:
         assert not build_mock.call_args[0][2].get("dedup_keywords")
 
 
+# ============================================================
+# G 層：--dedup-checked 值格式限定為 none 或 issue 參照（0.5.0-W1-354.3）
+# ============================================================
+
+
+class TestDedupValueFormat:
+    @pytest.mark.parametrize("bad", ["no", "-", "0", "n/a", "#", "abc", "#1,x"])
+    def test_invalid_value_blocks(self, bad, capsys):
+        result = validate_portable_issue_gate(
+            [".claude/hooks/foo.py"], bad, ["k"]
+        )
+        assert result is False
+        assert "PORTABLE_ISSUE_DEDUP_VALUE_INVALID" in capsys.readouterr().out
+
+    @pytest.mark.parametrize("good", [
+        "#102", "102", "tarrragon/claude#102", "#1,#2", "102, 7",
+        "tarrragon/claude#102,#5", "none", " NONE ",
+    ])
+    def test_valid_value_passes(self, good):
+        assert validate_portable_issue_gate(
+            [".claude/hooks/foo.py"], good, ["k"]
+        ) is True
+
+    def test_non_portable_ignores_value_format(self):
+        assert validate_portable_issue_gate(["lib/a.dart"], "no") is True
+
+
 class TestDedupRecordInBody:
     def test_record_lists_keywords_verbatim_in_problem_analysis(self):
         from ticket_system.lib.ticket_builder import (
