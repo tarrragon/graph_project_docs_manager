@@ -361,6 +361,32 @@ def advance_main(repo, name, text):
     commit_file(repo, name, text, f"advance {name}")
 
 
+class TestUnmappedWarning:
+    def _run(self, repo, monkeypatch, capsys, paths):
+        monkeypatch.setattr(mg, "changed_paths_between", lambda *_a: paths)
+        head = git(repo, "rev-parse", "HEAD")
+        res = mg.MergeGate(str(repo), art(lambda argv, cwd: (0, "")))(head, "main", head, 1)
+        assert res.passed
+        return capsys.readouterr().out
+
+    def test_all_exempt_lists_unmapped_paths(self, repo, monkeypatch, capsys):
+        out = self._run(repo, monkeypatch, capsys, ["tools/sub/a.py", "README.md"])
+        assert "WARNING" in out and "tools/sub/a.py" in out and "README.md" in out and "免跑" in out
+
+    def test_partial_lists_unmapped_paths(self, repo, monkeypatch, capsys):
+        out = self._run(repo, monkeypatch, capsys, ["lib/a.dart", "tools/sub/a.py"])
+        assert "WARNING" in out and "tools/sub/a.py" in out and "lib/a.dart" not in out
+
+    def test_exempt_only_has_no_warning(self, repo, monkeypatch, capsys):
+        out = self._run(repo, monkeypatch, capsys, [TICKET_FILE, "docs/work-logs/topic-assignments.txt"])
+        assert "WARNING" not in out and "免跑" in out
+
+    def test_truncates_with_total(self, repo, monkeypatch, capsys):
+        paths = [f"tools/f{i}.py" for i in range(mg.UNMAPPED_SHOW_MAX + 3)]
+        out = self._run(repo, monkeypatch, capsys, paths)
+        assert f"{len(paths)} 個" in out and "其餘 3 個略" in out and paths[-1] not in out
+
+
 class TestRetryReuse:
     def _merge_with_advance(self, repo, advance_path):
         state = {"n": 0}
