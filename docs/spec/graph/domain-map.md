@@ -3,10 +3,10 @@ id: DOMAIN-MAP-graph
 domain: "graph"
 source_specs: [SPEC-007]
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05]
-depends_on_bundles: [DOMAIN-MAP-corpus]
+depends_on_bundles: [DOMAIN-MAP-corpus, DOMAIN-MAP-schema]
 path_patterns: [lib/graph/]
 created: "2026-08-26"
-updated: "2026-10-08"
+updated: "2026-10-21"
 ---
 
 # Domain Map — Graph
@@ -28,7 +28,9 @@ updated: "2026-10-08"
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
 | 出邊 | Corpus（`DOMAIN-MAP-corpus`） | 圖建自解析產物 |
+| 出邊 | Schema（`DOMAIN-MAP-schema`） | 建邊依 Schema 的邊型表（正向欄位、反向欄位、正向基數、方向；SPEC-007 FR-01）；`lib/graph/graph_builder.dart` 等五檔 import `lib/schema/`。2026-10-21 補記（`0.5.0-W1-460`），原本漏列 |
 | 入邊 | Layout | 布局的輸入是圖 |
+| 入邊 | Diagnostics | 經 EVT-GRAPH-001 取 `graphDefects` 與 flow 子圖產生破洞（SPEC-007 FR-09、SPEC-003 §3.5） |
 
 ## 2.5 通道與協調圖
 

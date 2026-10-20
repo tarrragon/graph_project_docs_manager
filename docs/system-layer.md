@@ -2,7 +2,7 @@
 title: "系統層 — graph_project_docs_manager"
 bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-corpus, DOMAIN-MAP-graph, DOMAIN-MAP-ticketdetail, DOMAIN-MAP-layout, DOMAIN-MAP-diagnostics, DOMAIN-MAP-history]
 created: "2026-08-26"
-updated: "2026-10-08"
+updated: "2026-10-21"
 ---
 
 # 系統層 — graph_project_docs_manager
@@ -44,7 +44,7 @@ updated: "2026-10-08"
 | **Graph** | L2 | 圖語意改變（如 symmetric union 規則） | `docs/spec/graph/domain-map.md` |
 | **TicketDetail** | L2 | ticket 的 5W1H 結構語意改變 | `docs/spec/ticketdetail/domain-map.md` |
 | **Layout** | L3 | 布局演算法或版型規則改變 | `docs/spec/layout/domain-map.md` |
-| **Diagnostics** | L2 | 「什麼算破洞」的定義改變 | `docs/spec/diagnostics/domain-map.md` |
+| **Diagnostics** | L3 | 「什麼算破洞」的定義改變 | `docs/spec/diagnostics/domain-map.md` |
 | **History** | L1 | git 查詢方式或歷史語意改變 | `docs/spec/history/domain-map.md` |
 
 **畫面狀態不是 domain，是 layer。** 布局演算法（有真實規則與演算法）與
@@ -70,13 +70,13 @@ updated: "2026-10-08"
 
 ```
 L4   畫面狀態（layer，非 domain）
-L3   Layout
-L2   Graph      Diagnostics      TicketDetail
+L3   Diagnostics      Layout
+L2   Graph      TicketDetail
 L1   Corpus     History
 L0   Schema     Workspace
 ```
 
-**層由 `bundle_dependency` 推導**（2026-10-08 用戶裁決，`docs/tech-decisions.md` 同日補記第 1 項）：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；上圖為推導結果，非手寫指派。`History` 只依賴 `Workspace`，推導為 L1（原寫 L2，已更正）。泳道列序依此層序與同層字母序（SPEC-001 §1〈泳道布局規則〉）。
+**層由 `bundle_dependency` 推導**（2026-10-08 用戶裁決，`docs/tech-decisions.md` 同日補記第 1 項）：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；上圖為推導結果，非手寫指派。`History` 只依賴 `Workspace`，推導為 L1（原寫 L2，已更正）。`Diagnostics` 在 2026-10-21 補上 `Graph` 出邊後推導為 L3（原為 L2，`0.5.0-W1-460`）；`Graph` 補上 `Schema` 出邊後仍是 L2。泳道列序依此層序與同層字母序（SPEC-001 §1〈泳道布局規則〉）。
 
 **依賴邊（完整列舉）**：出邊的唯一權威是各 domain map frontmatter 的 `depends_on_bundles`，下表為彙整視圖；兩者不一致時以 frontmatter 為準。
 
@@ -84,8 +84,10 @@ L0   Schema     Workspace
 |------|------|--------|
 | Layout | Graph | 布局的輸入是圖 |
 | Graph | Corpus | 圖建自解析產物 |
+| Graph | Schema | 建邊依 Schema 的邊型表（SPEC-007 FR-01）；2026-10-21 補記，原本漏列（`0.5.0-W1-460`） |
 | TicketDetail | Corpus | 詳情取自同一份解析產物 |
-| Diagnostics | Corpus | 取解析錯誤事件（EVT-CORPUS-003），由此產生破洞 |
+| Diagnostics | Corpus | 取解析錯誤事件（EVT-CORPUS-003、004、005），由此產生破洞 |
+| Diagnostics | Graph | 經 EVT-GRAPH-001 取 `graphDefects` 與 flow 子圖，產生 `graphDefect` 與事件類破洞（SPEC-007 FR-09、SPEC-003 §3.5）；2026-10-21 補記，原本漏列（`0.5.0-W1-460`） |
 | Corpus | Schema | 以 `id_pattern` 為有 frontmatter 的檔案判型；以「路徑對型別」查詢分流沒拿到可用 frontmatter 的檔案（SPEC-006 FR-03、FR-06，見系統層 §5） |
 | Corpus | Workspace | 取得專案根路徑 |
 | History | Workspace | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見系統層 §4.3） |
@@ -162,7 +164,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 使用者呈現焦點
    ├── Workspace     (L0)
    ├── Schema        (L0)
-   └── Diagnostics   (L2)
+   └── Diagnostics   (L3)
 ```
 
 三者兩兩相鄰，共三對；與 §2 依賴圖逐對比對：

@@ -4,8 +4,8 @@ title: "畫面狀態矩陣與 gate 退出路徑"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-10-20"
-version: "1.52"
+updated: "2026-10-21"
+version: "1.53"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -246,7 +246,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 >
 > | 項目 | 判定式 | 期望值（UC-02 實例） |
 > |------|--------|---------------------|
-> | 列集合與列序 | 「畫面」列在最上，其下每個 DomainBundle 一列。DomainBundle 列的順序取自 Graph 公開面的分層與層內排序（SPEC-007 FR-13，權威條文在該處；Layout 不自行推導，`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08），以下為摘錄。DomainBundle 的層由 `bundle_dependency` 邊（各 domain map frontmatter `depends_on_bundles`）推導：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；列序依層遞增（L0 在上），同層依 `DomainBundle.domain` 字面的 Unicode code point 逐字元遞增排序（不依 locale 排序規則）。推不出層的 bundle（依賴循環，或 `depends_on_bundles` 指向未宣告的 bundle）不消失：依 `DomainBundle.domain` code point 序接在最後一列之後，其依賴邊照常依存在的端點繪製、指向未宣告者的邊不畫。規則不寫死 domain 名；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 本專案推導：L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`。列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列；UC-02 下 `schema`、`workspace`、`history`、`diagnostics` 為空列 |
+> | 列集合與列序 | 「畫面」列在最上，其下每個 DomainBundle 一列。DomainBundle 列的順序取自 Graph 公開面的分層與層內排序（SPEC-007 FR-13，權威條文在該處；Layout 不自行推導，`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08），以下為摘錄。DomainBundle 的層由 `bundle_dependency` 邊（各 domain map frontmatter `depends_on_bundles`）推導：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；列序依層遞增（L0 在上），同層依 `DomainBundle.domain` 字面的 Unicode code point 逐字元遞增排序（不依 locale 排序規則）。推不出層的 bundle（依賴循環，或 `depends_on_bundles` 指向未宣告的 bundle）不消失：依 `DomainBundle.domain` code point 序接在最後一列之後，其依賴邊照常依存在的端點繪製、指向未宣告者的邊不畫。規則不寫死 domain 名；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 本專案語料的凍結快照（`test/fixtures/spec001/corpus_snapshot/`）推導：L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`。列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列；UC-02 下 `schema`、`workspace`、`history`、`diagnostics` 為空列。現行語料自 2026-10-21 起 `diagnostics` 依賴 `graph`（`0.5.0-W1-460` 補記漏列的依賴邊），推導為 L3，列序變為「畫面」、`schema`、`workspace`、`corpus`、`history`、`graph`、`ticketdetail`、`diagnostics`、`layout`；快照不隨語料更新，驗收期望值以快照為準 |
 > | 列鍵比對 | 列鍵為 `DomainBundle.domain` 宣告字面；步驟 `traverses` 值與列鍵精確比對（不做大小寫轉換）；列首顯示 `DomainBundle.domain` 原值（未知 domain 亦同），只有「畫面」列經 i18n | `traverses: ["graph"]` 落 `graph` 列 |
 > | 主線 | `branch_from == null` 的步驟為主線，主線順序為其在 flow 清單中的檔內順序 `i`（不沿 `next` 推導；與 2026-10-07 `next` (c) 裁決同源） | locate-domain → read-traversal-count → switch-to-swimlane → inspect-steps |
 > | 欄序 | 依主線順序逐一輸出主線步驟 M；輸出 M 後，緊接輸出所有 `branch_from == M.id` 的分支步驟（多個時依檔內順序 `i`）；每輸出一個分支步驟 B 後，對 B 遞迴套用同一規則（緊接輸出 `branch_from == B.id` 的巢狀分支，再處理 B 的下一個同層分支）；步驟的欄號 = 輸出序（0 起），每步驟恰一欄 | 0 locate-domain、1 enter-from-ticket、2 read-traversal-count、3 matrix-overview-only、4 switch-to-swimlane、5 flow-not-structured、6 inspect-steps |
@@ -969,6 +969,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.53 | 2026-10-21 | §1〈泳道布局規則〉列集合與列序：「本專案推導」改標為凍結快照的推導，另記現行語料的推導（`diagnostics` 補上 `graph` 出邊後為 L3）；驗收期望值仍以凍結快照為準，規則本身不變（`0.5.0-W1-460`） |
 | 1.52 | 2026-10-20 | §5〈破洞報告項目投影〉表二、表三補事件類兩列與〈事件類項目投影〉段（`0.5.0-W1-114.22.2`，承 `0.5.0-W1-114.22.1` 偵測公開面合併與 `0.5.0-W1-114.22` 派發前查證：兩表原只定義 `parseFailure` 與 `graphDefect`，事件類項目的 id、路徑、指向與說明無規則）。項目 id 成分：孤立事件為 category id、EVT ID；宣告不符另加方向與 domain 原值。路徑為 EVT 節點路徑，指向該 EVT，選定 UC 取引用 UC ID 的 code point 序最小者，無引用時依其他圖節點處理；建圖不可用時不產生、路徑模式查詢不可用而建圖可用時照常列出。PM 確認，比照 v1.41／v1.42 投影表先例。狀態總數不變。SPEC-004 v1.94 同批 |
 | 1.51 | 2026-10-20 | §5〈專案層級宣告狀態一行不是新狀態〉表三列（用戶裁決 2026-10-20，`0.5.0-W1-443`，承 `0.5.0-W1-119.2` 執行者回報與 linux 審查）：「內容」列補 bundle 總數為 0 時以 `pathDeclarationNoBundles` 片段呈現、不顯示「0／0」；「受影響路徑數來源」列補路徑數為去重後的路徑條數，同一條正規化路徑跨票只算一次；「文案與 i18n key」列改寫 `{detail}` 組成為 bundle 側與非 domain 側各一片段，補列 `pathDeclarationNoBundles`、`pathDeclarationNonDomainMalformed`。狀態總數不變。SPEC-004 v1.93 同批 |
 | 1.50 | 2026-10-13 | §8.2 選資料夾失敗兩列補載體依觸發處區分（`0.5.0-W1-156.1`，承 `0.5.0-W1-156` 用戶裁決 2026-10-12）：§1 未選專案內容區維持 SnackBar；專案切換浮層內改由浮層內常駐文字承載、不發暫態提示；第二列補「點擊最近專案項後判定失敗」。兩列「不轉狀態」不變。表前判別方式段補一句說明浮層內觸發處不符判別式而留在表內的原因。〈Gate 三問對照〉「資料夾可用性」列失敗欄同步：新選資料夾的原因載體依觸發處區分，補最近項點擊後才判定不可用的處置（用戶裁決 2026-10-13；同版補入）。§7 不新增狀態，狀態總數不變。SPEC-003 v1.60、SPEC-004 v1.88 同批 |
