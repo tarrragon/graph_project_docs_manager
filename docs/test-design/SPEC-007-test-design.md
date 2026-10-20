@@ -589,7 +589,7 @@ L2-6（換 UC 列序不變）與 L1-4（單一 bundle 的總列數）屬 Layout 
 | D3-4（守衛） | 建圖不可用狀態 | 零筆 `graphDefect`，回報無法判定並帶原因；正向對照為 D3-1 |
 | D3-5 | 同時輸入 EVT-CORPUS-003 | `parseFailure` 與 `graphDefect` 各自產生，互不影響（SPEC-006 D1 不變） |
 
-#### D4 flow 四子類（FR-09；v1.12 新增，v1.16 改為四子類）
+#### D4 flow 子類（FR-09；v1.12 新增，v1.16 改為四子類，v1.34 加 D4-7、D4-8）
 
 **測試檔**：`test/unit/diagnostics/flow_defect_gap_test.dart`
 

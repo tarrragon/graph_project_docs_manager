@@ -59,13 +59,14 @@ updated: "2026-10-21"
 | Diagnostics | EVT-CORPUS-005 破洞的 `nonStringElementCount` 只在子原因為 `elementNotString` 時有值且為 1 以上，其餘子原因為空 | SPEC-006 FR-08 |
 | Diagnostics | EVT-GRAPH-001 的 `graphDefects` 每一筆各對應一筆 `graphDefect` 破洞；破洞數 = `graphDefects` 筆數，不合併、不去重 | SPEC-007 FR-09 |
 | Diagnostics | 主圖四子類的破洞負載：`danglingRef`、`malformedRef` 帶來源節點 ID 與路徑、欄位名、原始值、邊型、原因碼；`duplicateId` 帶 ID 與全部路徑；`multiSource` 帶起點、邊型、全部終點與各自的宣告來源 | SPEC-007 FR-09 |
-| Diagnostics | flow 四子類的破洞負載一律為 {UC ID, step id, 欄位, 原始值}，不帶邊型；「domain 重複宣告」的負載為 {domain, 衝突的 DomainBundle ID 清單} | SPEC-007 FR-09 |
+| Diagnostics | flow 各子類（SPEC-007 FR-09 子類表，含 v1.34 的「事件引用未解析」）的破洞負載一律為 {UC ID, step id, 欄位, 原始值}，不帶邊型；「domain 重複宣告」的負載為 {domain, 衝突的 DomainBundle ID 清單} | SPEC-007 FR-09 |
 | Diagnostics | 破洞的原始值原樣保存，不正規化 | SPEC-007 FR-09 |
 | Diagnostics | 建圖不可用時不產生任何 `graphDefect` 破洞，回報「無法判定」；無法判定原因取自 Diagnostics 既有列舉（編排層已轉換），Diagnostics 不依賴 Schema 的原因型別 | SPEC-007 FR-09 |
-| Diagnostics | 孤立事件（`orphan-event`）每個符合判準的 EVT 一項：「有發出無消費」與「有消費無發出」兩形態各自三條件皆成立才列入；`category: process_event` 的 EVT 不列入；EVT 已宣告 `consumers`（或 `producers`）時不屬本類別 | SPEC-003 §3.5〈孤立事件判準〉 |
+| Diagnostics | 孤立事件（`orphan-event`）每個符合判準的 EVT 一項：「有發出無消費」與「有消費無發出」兩形態各自三條件皆成立才列入；只有 `category` 字面為 `domain_event` 的 EVT 列入（`process_event`、鍵缺席、`null`、非字串或其他值皆不列入）；EVT 已宣告 `consumers`（或 `producers`）時不屬本類別 | SPEC-003 §3.5〈孤立事件判準〉 |
 | Diagnostics | 事件宣告與 flow 不符（`event-declaration-mismatch`）每個未對應的宣告 domain 一項（同一 EVT 兩個 domain 未對應即兩項）；對應以 `traverses` 包含比對；`consumers` 的 `presentation` 比對 `traverses` 為空的步驟，`producers` 的 `presentation` 與未宣告值同視為未對應 | SPEC-003 §3.5〈事件宣告與 flow 不符判準〉 |
 | Diagnostics | 兩類事件破洞的每一項帶 EVT id 與引用該 EVT 的 UC id 清單（任一 FlowStep `emits` 或 `consumes` 含之，依 UC id 排序）；無 UC 引用時清單為空；負載不含在地化字串 | SPEC-003 §3.5 設定入口 4、SPEC-001 §5 事件類主操作 |
 | Diagnostics | 建圖不可用時不產生兩類事件破洞，回報「無法判定」 | SPEC-003 §3.5（比照 SPEC-007 FR-09 的無法判定語意） |
+| Diagnostics | FlowStep `emits`／`consumes` 引用的 id 不是任何 EVT 節點的 id 時，兩類事件破洞都不產生以該 id 為 EVT ID 的項；該引用只以一筆 `graphDefect`（flow 子類「事件引用未解析」）出現 | SPEC-003 §3.5〈引用不存在的 EVT id 不屬本節兩類〉、SPEC-007 FR-10〈事件引用〉 |
 
 ## 6. 待決事項
 
@@ -94,4 +95,4 @@ updated: "2026-10-21"
 
 ---
 
-**Last Updated**: 2026-10-20（`0.5.0-W1-114.22.1`：不變式清單補事件類破洞四列，判準出處 SPEC-003 §3.5；引言改為三處出處）；2026-10-13（`0.5.0-W1-176`：§2 出邊、不變式清單、§7 SPEC-006 FR-08 列對齊 EVT-CORPUS-004／005 之後的 SPEC-006 FR-08；不變式列同行寫明 SPEC id；`0.5.0-W1-178`：不變式清單引言改為兩份規格分屬並寫明 `graphDefect` 的落點依據，補 SPEC-007 FR-09 五列，欄名改「SPEC 條款」，既有五列未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-21（`0.5.0-W1-459`：孤立事件列寫明 `category` 缺席或非 `domain_event` 時不列入；新增「引用不存在的 EVT id 不產生事件類破洞、只成 flow 缺陷」一列；flow 子類負載列改為不寫死子類數，補上 `0.5.0-W1-458.3` 漏改的「flow 四子類」）；2026-10-20（`0.5.0-W1-114.22.1`：不變式清單補事件類破洞四列，判準出處 SPEC-003 §3.5；引言改為三處出處）；2026-10-13（`0.5.0-W1-176`：§2 出邊、不變式清單、§7 SPEC-006 FR-08 列對齊 EVT-CORPUS-004／005 之後的 SPEC-006 FR-08；不變式列同行寫明 SPEC id；`0.5.0-W1-178`：不變式清單引言改為兩份規格分屬並寫明 `graphDefect` 的落點依據，補 SPEC-007 FR-09 五列，欄名改「SPEC 條款」，既有五列未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
