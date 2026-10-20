@@ -196,5 +196,10 @@
   "gapsUndeterminableReasonScanFailed": "An unexpected error occurred during the scan, so gaps cannot be determined. Try rescanning.",
   "gapsUndeterminableTitle": "Gaps cannot be determined",
   "gapsUndeterminableReasonVersionOutOfRange": "The project schema version is outside the range this app knows and lacks path patterns, so node files cannot be identified; parse failures are not listed",
-  "gapsUndeterminableReasonNoPathPattern": "Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed"
+  "gapsUndeterminableReasonNoPathPattern": "Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed",
+  "pathDeclarationIncompleteLine": "Path declarations incomplete: {detail} ({count} paths affected)",
+  "pathDeclarationBundlesPartial": "{declared} of {total} domains declared",
+  "pathDeclarationNonDomainMissing": "non-domain path list missing",
+  "pathDeclarationNoneLine": "This project declares no paths",
+  "pathDeclarationNonDomainMalformed": "non-domain path list is malformed"
 }

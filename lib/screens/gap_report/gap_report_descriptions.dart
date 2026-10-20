@@ -4,6 +4,9 @@
 /// bundles／types）依語系以「、」／", " 連接。
 library;
 
+import 'package:graph_project_docs_manager/graph/path_declaration_state.dart';
+import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
+
 import '../../l10n/app_localizations.dart';
 import 'gap_report_models.dart';
 import 'gap_report_projection.dart';
@@ -104,6 +107,36 @@ String? gapItemDescriptionText(AppLocalizations l10n, GapItemDescription? d) {
 /// 歸屬型別不明的附註（`ambiguousTypes` 為空時回傳 `null`）。
 String? gapAmbiguousTypesText(AppLocalizations l10n, List<String> types) =>
     types.isEmpty ? null : l10n.gapParseTypeAmbiguous(_join(l10n, types));
+
+/// 需求：[SPEC-001 §5〈專案層級宣告狀態一行〉、SPEC-004 §4.0.6] 宣告狀態行
+/// 文字；兩側皆完整宣告（無缺口）回傳 `null`。
+///
+/// 整體未宣告只顯示 `pathDeclarationNoneLine`（不含路徑數）；部分缺口的
+/// `{detail}` 由 domain 側與非 domain 側片段以語系連接符號連接，格式錯誤
+/// 與缺席是不同片段。
+String? pathDeclarationLineText(
+  AppLocalizations l10n,
+  ProjectPathDeclaration? declaration,
+) {
+  if (declaration == null || !declaration.hasGap) return null;
+  if (declaration.overallUndeclared) return l10n.pathDeclarationNoneLine;
+  final fragments = <String>[
+    if (!declaration.isBundleSideComplete)
+      l10n.pathDeclarationBundlesPartial(
+        declaration.declaredBundleCount,
+        declaration.totalBundleCount,
+      ),
+    ?switch (declaration.nonDomainSide) {
+      NonDomainSideState.absent => l10n.pathDeclarationNonDomainMissing,
+      NonDomainSideState.malformed => l10n.pathDeclarationNonDomainMalformed,
+      NonDomainSideState.declared => null,
+    },
+  ];
+  return l10n.pathDeclarationIncompleteLine(
+    _join(l10n, fragments),
+    declaration.affectedPathCount ?? 0,
+  );
+}
 
 /// 連接符號依語系選擇；只支援 zh／en（新增語系時須在此補分支）。
 String _join(AppLocalizations l10n, List<String> values) => values.join(

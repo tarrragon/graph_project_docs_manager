@@ -744,4 +744,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get gapsUndeterminableReasonNoPathPattern =>
       'Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed';
+
+  @override
+  String pathDeclarationIncompleteLine(String detail, int count) {
+    return 'Path declarations incomplete: $detail ($count paths affected)';
+  }
+
+  @override
+  String pathDeclarationBundlesPartial(int declared, int total) {
+    return '$declared of $total domains declared';
+  }
+
+  @override
+  String get pathDeclarationNonDomainMissing => 'non-domain path list missing';
+
+  @override
+  String get pathDeclarationNoneLine => 'This project declares no paths';
+
+  @override
+  String get pathDeclarationNonDomainMalformed =>
+      'non-domain path list is malformed';
 }

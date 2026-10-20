@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
+import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 
 import '../../app/attention_level.dart';
 import '../../app/project_unready_view.dart';
@@ -43,37 +44,63 @@ class GapReportScreen extends ConsumerWidget {
         actionKey: const Key('action-gaps-goto-domain'),
       ),
       GapReportScanning() => _ScanningView(state: state),
-      GapReportNoGaps(:final isPathPatternFromBuiltin) => _WithBuiltinBadge(
-        show: isPathPatternFromBuiltin,
-        child: const _NoGapsView(),
+      GapReportNoGaps(
+        :final isPathPatternFromBuiltin,
+        :final pathDeclaration,
+      ) =>
+        _WithHeaderNotes(
+          showBuiltinBadge: isPathPatternFromBuiltin,
+          pathDeclaration: pathDeclaration,
+          child: const _NoGapsView(),
+        ),
+      GapReportFound(:final isPathPatternFromBuiltin, :final pathDeclaration) =>
+        _WithHeaderNotes(
+          showBuiltinBadge: isPathPatternFromBuiltin,
+          pathDeclaration: pathDeclaration,
+          child: _FoundView(state: state),
+        ),
+      GapReportUndeterminable(:final pathDeclaration) => _WithHeaderNotes(
+        showBuiltinBadge: false,
+        pathDeclaration: pathDeclaration,
+        child: _UndeterminableView(state: state),
       ),
-      GapReportFound(:final isPathPatternFromBuiltin) => _WithBuiltinBadge(
-        show: isPathPatternFromBuiltin,
-        child: _FoundView(state: state),
-      ),
-      GapReportUndeterminable() => _UndeterminableView(state: state),
     };
   }
 }
 
-/// 「路徑模式取自內建表」徽章（SPEC-001 §1，`badge-gaps-builtin-path-pattern`）：
-/// 旗標生效期間於內容上方常駐；只出現在破洞報告。
-class _WithBuiltinBadge extends StatelessWidget {
-  const _WithBuiltinBadge({required this.show, required this.child});
+/// 頁首說明區（內容之上）：「路徑模式取自內建表」徽章（SPEC-001 §1，
+/// `badge-gaps-builtin-path-pattern`，旗標生效期間常駐）與專案層級宣告狀態
+/// 一行（SPEC-001 §5，`text-gaps-declaration-line`，`AppText`，有宣告缺口時
+/// 顯示）。兩者皆無時不包裝，內容照舊。
+class _WithHeaderNotes extends StatelessWidget {
+  const _WithHeaderNotes({
+    required this.showBuiltinBadge,
+    required this.pathDeclaration,
+    required this.child,
+  });
 
-  final bool show;
+  final bool showBuiltinBadge;
+  final ProjectPathDeclaration? pathDeclaration;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    if (!show) return child;
+    final l10n = AppLocalizations.of(context);
+    final declarationText = pathDeclarationLineText(l10n, pathDeclaration);
+    if (!showBuiltinBadge && declarationText == null) return child;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Badge.tag(
-          key: const Key('badge-gaps-builtin-path-pattern'),
-          label: AppLocalizations.of(context).builtinPathPatternBadgeLabel,
-        ),
+        if (showBuiltinBadge)
+          Badge.tag(
+            key: const Key('badge-gaps-builtin-path-pattern'),
+            label: l10n.builtinPathPatternBadgeLabel,
+          ),
+        if (declarationText != null)
+          AppText(
+            declarationText,
+            key: const Key('text-gaps-declaration-line'),
+          ),
         Expanded(child: child),
       ],
     );

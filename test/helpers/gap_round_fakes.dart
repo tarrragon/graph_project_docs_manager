@@ -53,6 +53,24 @@ NonDomainPathsParseFailedEvent fakeNonDomainPathsEvent() =>
       reason: NonDomainPathsWholeFileReason.keyMissing,
     ).malformedEvent;
 
+/// 005 事件 → 產生該事件的讀取結果（無事件為缺席）。
+NonDomainPathsReadResult _readOfEvent(NonDomainPathsParseFailedEvent? e) {
+  if (e == null) return const NonDomainPathsReadAbsent();
+  if (e.reason == NonDomainPathsMalformedReason.elementNotString) {
+    return NonDomainPathsReadDeclaredWithBadElements(
+      path: e.path,
+      patterns: const [],
+      nonStringElementCount: e.nonStringElementCount!,
+    );
+  }
+  return NonDomainPathsReadMalformed(
+    path: e.path,
+    reason: NonDomainPathsWholeFileReason.values.firstWhere(
+      (r) => r.eventReason == e.reason,
+    ),
+  );
+}
+
 /// 一份已完成輪次結果；預設為「路徑查詢可用、建圖可用、零破洞」。
 ScanRoundResult fakeRound({
   List<ParseFailureEvent> parseFailureEvents = const [],
@@ -64,12 +82,16 @@ ScanRoundResult fakeRound({
   List<LightNode> nodes = const [fakeUcNode],
   bool isDegraded = false,
   GraphBuiltEvent? event,
+  List<RawNode> extraRawNodes = const [],
+  NonDomainPathsReadResult? nonDomainRead,
 }) {
   final scan = CorpusScanResult(
     rawNodes: [
       for (final n in nodes)
         RawNode(path: n.path, frontmatter: {'id': n.id}, typeName: n.typeName),
+      ...extraRawNodes,
     ],
+    nonDomainPathsRead: nonDomainRead ?? _readOfEvent(nonDomainPathsEvent),
     parseErrors: const [],
     parseFailureEvents: parseFailureEvents,
     schemaAmbiguousNodes: const [],
@@ -84,7 +106,6 @@ ScanRoundResult fakeRound({
       carrierPathQueryAvailable: true,
     ),
     flowParseFailedEvents: flowEvents,
-    nonDomainPathsParseFailedEvent: nonDomainPathsEvent,
   );
   return ScanRoundResult(
     workspacePath: '/ws/fake',
