@@ -4,8 +4,8 @@ title: "畫面狀態矩陣與 gate 退出路徑"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-10-13"
-version: "1.50"
+updated: "2026-10-20"
+version: "1.51"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -498,11 +498,11 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > |---|---|
 > | 出現的狀態列 | 只在掃描完成的三列：無破洞、有破洞、無法判定破洞；掃描中不出現 |
 > | 何時顯示 | 只在有任何宣告缺口時顯示；兩側皆完整宣告時隱藏 |
-> | 內容 | 列出缺哪一側——`path_patterns` 已宣告的 bundle 數／bundle 總數、非 domain 清單有或無——加上受影響路徑數；兩側皆無時的整體「未宣告路徑」也在此行呈現，不另設位置 |
+> | 內容 | 列出缺哪一側——`path_patterns` 已宣告的 bundle 數／bundle 總數、非 domain 清單有或無——加上受影響路徑數；兩側皆無時的整體「未宣告路徑」也在此行呈現，不另設位置。bundle 總數為 0（專案沒有任何 DomainBundle）而非 domain 清單存在或格式錯誤時，bundle 側改以 `pathDeclarationNoBundles` 片段呈現，不顯示「0／0」（用戶裁決 2026-10-20，`0.5.0-W1-443`） |
 > | 元件 | `AppText`（不新增元件），置於頁首說明區 |
-> | 受影響路徑數來源 | Graph 的路徑比對器結果（對照表由 Graph 持有與查詢）；報告頁只消費，不由 Diagnostics 計算 |
+> | 受影響路徑數來源 | Graph 的路徑比對器結果（對照表由 Graph 持有與查詢）；報告頁只消費，不由 Diagnostics 計算。路徑數為去重後的路徑條數：同一條正規化路徑出現在多張票的 `where.files` 只算一次（用戶裁決 2026-10-20，`0.5.0-W1-443`） |
 > | 兩側皆未宣告 | 整體「未宣告路徑」時不顯示路徑數，只顯示整體狀態 |
-> | 文案與 i18n key | 部分缺口：`pathDeclarationIncompleteLine`，`{detail}` 由 `pathDeclarationBundlesPartial`、`pathDeclarationNonDomainMissing` 組成（兩者並存時以「、」／", " 連接）；整體未宣告：`pathDeclarationNoneLine`。zh／en 文案登記於 SPEC-004 §4.0.6（`0.5.0-W1-096.9` PM 處置，2026-10-08） |
+> | 文案與 i18n key | 部分缺口：`pathDeclarationIncompleteLine`，`{detail}` 由 bundle 側片段（`pathDeclarationBundlesPartial`；bundle 總數為 0 時改 `pathDeclarationNoBundles`）與非 domain 側片段（`pathDeclarationNonDomainMissing` 或 `pathDeclarationNonDomainMalformed`）組成（兩者並存時以「、」／", " 連接）；整體未宣告：`pathDeclarationNoneLine`。zh／en 文案登記於 SPEC-004 §4.0.6（`0.5.0-W1-096.9` PM 處置，2026-10-08） |
 
 > **掃描範圍說明的出處**：取自 SPEC-004 §3.6 對照表 §5「無破洞」列（`EmptyState.page` 的
 > 說明 slot）與 §4.21 `EmptyState` 條目的既有 i18n key `noGapsScanScope`；訊息的既有 key
@@ -956,6 +956,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.51 | 2026-10-20 | §5〈專案層級宣告狀態一行不是新狀態〉表三列（用戶裁決 2026-10-20，`0.5.0-W1-443`，承 `0.5.0-W1-119.2` 執行者回報與 linux 審查）：「內容」列補 bundle 總數為 0 時以 `pathDeclarationNoBundles` 片段呈現、不顯示「0／0」；「受影響路徑數來源」列補路徑數為去重後的路徑條數，同一條正規化路徑跨票只算一次；「文案與 i18n key」列改寫 `{detail}` 組成為 bundle 側與非 domain 側各一片段，補列 `pathDeclarationNoBundles`、`pathDeclarationNonDomainMalformed`。狀態總數不變。SPEC-004 v1.93 同批 |
 | 1.50 | 2026-10-13 | §8.2 選資料夾失敗兩列補載體依觸發處區分（`0.5.0-W1-156.1`，承 `0.5.0-W1-156` 用戶裁決 2026-10-12）：§1 未選專案內容區維持 SnackBar；專案切換浮層內改由浮層內常駐文字承載、不發暫態提示；第二列補「點擊最近專案項後判定失敗」。兩列「不轉狀態」不變。表前判別方式段補一句說明浮層內觸發處不符判別式而留在表內的原因。〈Gate 三問對照〉「資料夾可用性」列失敗欄同步：新選資料夾的原因載體依觸發處區分，補最近項點擊後才判定不可用的處置（用戶裁決 2026-10-13；同版補入）。§7 不新增狀態，狀態總數不變。SPEC-003 v1.60、SPEC-004 v1.88 同批 |
 | 1.49 | 2026-10-12 | §1 新增「載入失敗」列（`state-domain-load-failed`，用戶裁決 2026-10-12，`0.5.0-W1-114.14.1`）：載入輪次拋出非預期例外時落本狀態，`BlockedState` 顯示 `domainLoadFailedMessage`，可重新載入（同一資料夾、同一模式）或切換專案，已存路徑與最近清單不變；載入中退出路徑補此落點。§1 之後「專案未就緒」共用定義與 §2–§6 五列原因改四選一（新增 `projectUnreadyReasonLoadFailed`），進入條件加入載入失敗。〈狀態總數〉§1 11 → 12、總數 40 → 41；〈返回為殼層通則〉`action-domain-switch-project` 渲染條件擴為四個狀態；§8.1 補一列（否，T2）。SPEC-003 v1.59、SPEC-004 v1.86 同批 |
 | 1.48 | 2026-10-12 | §5「無法判定破洞」列：掃描輪次拋出非預期例外時亦落本狀態，原因說明改三選一，新增「掃描發生非預期錯誤」（用戶裁決，`0.5.0-W1-114.15`）；路徑模式查詢與建圖同時不可用時原因取路徑模式查詢（PM 處置）。狀態總數不變。SPEC-004 v1.83 同批 |
