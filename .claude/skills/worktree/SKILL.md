@@ -114,6 +114,23 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 | `.claude/hooks/`、無 `tests/` 的 skill、rules、settings.json 等其他 `.claude/` 路徑 | hooks pytest：`uv --directory .claude/hooks run pytest`（hook 測試會讀這些檔） |
 | 只改票檔、版本日誌或其他範圍外路徑 | 免跑；範圍外路徑（豁免清單除外）以 `WARNING` 列出，超過 10 個截斷並附總數，部分免跑時同樣列出；只提醒，不改變放行與否 |
 
+**專案宣告（取代內建 Flutter 對應）**：專案可在 `.claude/project-integration/merge-gate.yaml`（根層 `project-integration/`，sync 雙向排除）宣告套件對應；閘門從合併快照（合併 commit）讀取，分支自身新增或修改的宣告對該分支即時生效。
+
+```yaml
+suites:
+  <套件名>:                     # 不可為 hooks、scripts 或 skill: 開頭（框架保留）
+    prefixes: [<路徑前綴>, ...]  # 與 files 至少一項
+    files: [<精確檔名>, ...]
+    command: [<argv>, ...]      # 相對快照根目錄執行
+    artifacts:                  # 選填；缺產物時先以 generate 生成
+      - path: <gitignored 產物路徑>
+        generate: [<argv>, ...]
+```
+
+- 宣告檔存在：宣告的套件**取代**上表第一列的 Flutter 對應（不疊加）；`.claude/` 下的對應固定保留、不可宣告。宣告的前綴與檔名同時視為「已對應」，不列入未對應路徑警告。套件順序為宣告順序，排在 hooks、scripts、skill 之前。
+- 宣告檔不存在：沿用內建 Flutter 對應，並印一行 `[合併前測試] INFO：未找到專案宣告 ...`。
+- 格式錯誤（YAML 無法解析、缺 `command`、`prefixes` 與 `files` 皆空、使用保留名、`artifacts` 缺 `generate`）：閘門判紅（fail-closed），訊息指名檔案與欄位，不退回內建對應。
+
 skill 被 hooks 或 scripts 使用時加跑對應套件：改動涉及某 skill，且快照內 `.claude/hooks`、`.claude/scripts` 的 .py（1）行首 `from X`／`import X` 匯入該 skill 的頂層模組（skill 根與其 `scripts/` 下的 .py 模組名、帶 `__init__.py` 的套件名；`sys.path.insert` 之後的匯入同樣涵蓋），或（2）非測試檔含 `skills/<名稱>/` 路徑引用（讀 skill 檔案），就加跑 hooks／scripts 套件。未被使用的 skill 只跑自己的套件。通用模組名（如 `constants`）可能多報，只會多跑套件。
 
 多個套件依 flutter、hooks、scripts、skill（名稱排序）的固定順序執行，任一紅燈即停。

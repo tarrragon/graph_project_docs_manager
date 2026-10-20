@@ -35,6 +35,8 @@ from typing import Callable, Iterator, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # .claude/，供 import lib
 from lib import slot_gate  # noqa: E402
 
+import yaml  # noqa: E402
+
 try:
     from .merge_cas import CheckResult
 except ImportError:
@@ -75,6 +77,106 @@ REQUIRED_ARTIFACTS = {
     SUITE_HOOKS: (),
     SUITE_SCRIPTS: (),
 }
+
+# 專案宣告：取代內建 Flutter 對應；位於根層 project-integration/，sync 雙向排除。見 SKILL.md〈合併前全套件〉
+DECLARATION_PATH = ".claude/project-integration/merge-gate.yaml"
+_RESERVED_SUITES = (SUITE_HOOKS, SUITE_SCRIPTS)
+
+
+class DeclarationError(ValueError):
+    """宣告檔格式錯誤；訊息指名檔案與欄位。閘門 fail-closed：不退回內建對應。"""
+
+
+# 宣告：套件名 -> {"prefixes": tuple, "files": tuple, "command": list, "artifacts": tuple[(path, generate)]}
+Declaration = Optional[dict]
+
+
+def _bad(field: str, why: str) -> DeclarationError:
+    return DeclarationError(f"{DECLARATION_PATH}: {field} {why}")
+
+
+def _str_list(value, field: str, required: bool = False) -> list:
+    if value is None:
+        value = []
+    if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
+        raise _bad(field, "必須是非空字串的清單")
+    if required and not value:
+        raise _bad(field, "不可為空")
+    return value
+
+
+def _parse_artifacts(raw, prefix: str) -> tuple:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise _bad(f"{prefix}.artifacts", "必須是清單")
+    out = []
+    for i, item in enumerate(raw):
+        field = f"{prefix}.artifacts[{i}]"
+        if not isinstance(item, dict):
+            raise _bad(field, "必須是含 path 與 generate 的對應")
+        path = item.get("path")
+        if not isinstance(path, str) or not path:
+            raise _bad(f"{field}.path", "必須是非空字串")
+        out.append((path, _str_list(item.get("generate"), f"{field}.generate", required=True)))
+    return tuple(out)
+
+
+def _parse_suite(name, raw) -> dict:
+    prefix = f"suites.{name}"
+    if not isinstance(name, str) or name in _RESERVED_SUITES or name.startswith(SUITE_SKILL_PREFIX):
+        raise _bad(prefix, "套件名不可為框架保留名（hooks、scripts、skill:*）")
+    if not isinstance(raw, dict):
+        raise _bad(prefix, "必須是對應")
+    prefixes = _str_list(raw.get("prefixes"), f"{prefix}.prefixes")
+    files = _str_list(raw.get("files"), f"{prefix}.files")
+    if not prefixes and not files:
+        raise _bad(f"{prefix}.prefixes", "與 files 至少須有一項")
+    return {"prefixes": tuple(prefixes), "files": tuple(files),
+            "command": _str_list(raw.get("command"), f"{prefix}.command", required=True),
+            "artifacts": _parse_artifacts(raw.get("artifacts"), prefix)}
+
+
+def parse_declaration(text: str) -> dict:
+    try:
+        doc = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise DeclarationError(f"{DECLARATION_PATH}: YAML 無法解析：{exc}") from exc
+    suites = doc.get("suites") if isinstance(doc, dict) else None
+    if not isinstance(suites, dict):
+        raise _bad("suites", "必須是套件名對應")
+    return {name: _parse_suite(name, raw) for name, raw in suites.items()}
+
+
+def load_declaration(root: str) -> Declaration:
+    """從目錄（合併快照）讀宣告；檔案不存在回 None（沿用內建），格式錯誤拋 DeclarationError。"""
+    path = Path(root) / DECLARATION_PATH
+    if not path.is_file():
+        return None
+    return parse_declaration(_read_text(path))
+
+
+def load_declaration_at(repo: str, ref: str) -> Declaration:
+    """從 git ref（commit／分支）讀宣告，不需快照；供建立快照前的範圍判定。"""
+    if _git(["cat-file", "-e", f"{ref}:{DECLARATION_PATH}"], repo).returncode != 0:
+        return None
+    proc = _git(["show", f"{ref}:{DECLARATION_PATH}"], repo)
+    if proc.returncode != 0:
+        raise DeclarationError(
+            f"{DECLARATION_PATH}: 無法自 {ref[:12]} 讀取：{proc.stderr.decode('utf-8', 'replace').strip()}")
+    return parse_declaration(proc.stdout.decode("utf-8", "replace"))
+
+
+def _in_declared_scope(path: str, decl: dict) -> bool:
+    return any(path.startswith(s["prefixes"]) or path in s["files"] for s in decl.values())
+
+
+def declared_artifacts(suite: str, decl: Declaration) -> tuple:
+    """套件快照內須就緒的產物：宣告優先，其餘沿用 REQUIRED_ARTIFACTS。"""
+    if decl is not None and suite in decl:
+        return decl[suite]["artifacts"]
+    return REQUIRED_ARTIFACTS.get(suite, ())
+
 
 # CAS 重試沿用驗證結果的豁免清單：測試不讀取這些檔，只改它們不影響全套件結果。
 # 安全性由 test_merge_gate 的守衛測試維持（掃描測試目錄，出現讀取清單內實際檔案即紅）。
@@ -188,22 +290,27 @@ def _imports_any(text: str, modules: set) -> bool:
     ) is not None
 
 
-def needs_gate(changed_paths: list) -> bool:
+def needs_gate(changed_paths: list, decl: Declaration = None) -> bool:
     """改動是否可能落在任何全套件範圍內（用於決定是否值得建立快照）。"""
-    return any(_in_any_suite_scope(p) for p in changed_paths if not is_reuse_exempt(p))
+    return any(_in_any_suite_scope(p, decl) for p in changed_paths if not is_reuse_exempt(p))
 
 
-def _in_any_suite_scope(path: str) -> bool:
-    return path.startswith(FLUTTER_SCOPE_PREFIXES) or path in FLUTTER_SCOPE_FILES or path.startswith(".claude/")
+def _in_any_suite_scope(path: str, decl: Declaration = None) -> bool:
+    """範圍判準唯一處：警告與 needs_gate 共用，宣告前綴與內建 Flutter 範圍都經此判定。"""
+    if path.startswith(".claude/"):
+        return True
+    if decl is not None:
+        return _in_declared_scope(path, decl)
+    return path.startswith(FLUTTER_SCOPE_PREFIXES) or path in FLUTTER_SCOPE_FILES
 
 
-def unmapped_paths(changed_paths: list) -> list:
+def unmapped_paths(changed_paths: list, decl: Declaration = None) -> list:
     """既非豁免、也不屬任何套件範圍的路徑（如自帶測試的子專案）：閘門不會替它們跑任何測試。"""
-    return [p for p in changed_paths if not is_reuse_exempt(p) and not _in_any_suite_scope(p)]
+    return [p for p in changed_paths if not is_reuse_exempt(p) and not _in_any_suite_scope(p, decl)]
 
 
-def _warn_unmapped(paths: list) -> None:
-    unmapped = unmapped_paths(paths)
+def _warn_unmapped(paths: list, decl: Declaration = None) -> None:
+    unmapped = unmapped_paths(paths, decl)
     if not unmapped:
         return
     shown = unmapped[:UNMAPPED_SHOW_MAX]
@@ -217,11 +324,16 @@ def select_suites(changed_paths: list, root: str) -> list:
 
     套件識別：flutter／hooks／scripts／skill:<名稱>。回傳順序固定，空清單表示免跑。
     """
+    decl = load_declaration(root)
     paths = [p for p in changed_paths if not is_reuse_exempt(p)]
     want = set()
     touched_skills = {n for n in (_skill_name(p) for p in paths) if n}
-    if any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES for p in paths):
-        want.add(SUITE_FLUTTER)
+    if decl is None:
+        if any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES for p in paths):
+            want.add(SUITE_FLUTTER)
+    else:
+        want.update(n for n, s in decl.items()
+                    if any(p.startswith(s["prefixes"]) or p in s["files"] for p in paths))
     for p in (p for p in paths if p.startswith(".claude/")):
         skill = _skill_name(p)
         if skill and _skill_has_tests(root, skill):
@@ -235,12 +347,16 @@ def select_suites(changed_paths: list, root: str) -> list:
             want.add(SUITE_HOOKS)
     if touched_skills:
         want |= _consumer_suites(root, touched_skills)  # hooks／scripts 匯入該 skill 時加跑
-    head = [s for s in (SUITE_FLUTTER, SUITE_HOOKS, SUITE_SCRIPTS) if s in want]
+    declared = [n for n in (decl or {}) if n in want]  # 宣告順序在前，與內建 flutter 居首一致
+    head = declared + [s for s in (SUITE_FLUTTER, SUITE_HOOKS, SUITE_SCRIPTS) if s in want and s not in declared]
     return head + sorted(s for s in want if s.startswith(SUITE_SKILL_PREFIX))
 
 
 def suite_command(suite: str, root: str) -> list:
     """套件的執行命令；skill 有 pyproject 沿用 uv --directory，無則借 hooks 的環境跑其 tests 目錄。"""
+    decl = load_declaration(root)
+    if decl is not None and suite in decl:
+        return decl[suite]["command"]
     if not suite.startswith(SUITE_SKILL_PREFIX):
         return SUITE_COMMANDS[suite]
     name = suite[len(SUITE_SKILL_PREFIX):]
@@ -388,7 +504,7 @@ def _rc_reason(suite: str, rc: int, output: str, detail_path: str = "") -> str:
 
 def _ensure_artifacts(suite: str, snapshot: str, project_root: str, runner: SuiteRunner) -> str:
     """缺 gitignored 生成產物時先生成；生成失敗或仍缺則回傳指名缺漏的理由，否則空字串。"""
-    for artifact, generator in REQUIRED_ARTIFACTS.get(suite, ()):
+    for artifact, generator in declared_artifacts(suite, load_declaration(snapshot)):
         if os.path.exists(os.path.join(snapshot, artifact)):
             continue
         rc, out = runner(wrapped_argv(generator), snapshot)
@@ -558,7 +674,11 @@ class MergeGate:
         if base_proc.returncode != 0:
             return True
         paths = changed_paths_between(self.repo, base_proc.stdout.decode().strip(), branch)
-        return paths is None or needs_gate(paths)
+        try:
+            decl = load_declaration_at(self.repo, branch)
+        except DeclarationError:
+            return True  # 宣告壞掉：保守取名額，合併時的檢查會判紅
+        return paths is None or needs_gate(paths, decl)
 
     def _estimate_hold_seconds(self, branch: str, base: str) -> Optional[float]:
         """本次合併預計持有名額的秒數；套件範圍算不出來時回 None（交由 slot_gate 用命令預設值）。"""
@@ -612,11 +732,17 @@ class MergeGate:
         return last
 
     def __call__(self, commit: str, ref: str, expected_old: str, attempt: int) -> CheckResult:
+        try:
+            decl = load_declaration_at(self.repo, commit)  # 先於範圍判定：格式錯誤 fail-closed，不得因免跑而放行
+        except DeclarationError as exc:
+            return CheckResult(False, f"[宣告] 套件宣告格式錯誤，閘門判紅：{exc}")
+        if decl is None:
+            print(f"[合併前測試] INFO：未找到專案宣告 {DECLARATION_PATH}，沿用內建 Flutter 對應")
         paths = changed_paths_between(self.repo, expected_old, commit)
         if paths is None:
             return CheckResult(False, "無法計算合併改動範圍")
-        _warn_unmapped(paths)
-        if not needs_gate(paths):
+        _warn_unmapped(paths, decl)
+        if not needs_gate(paths, decl):
             print("[合併前測試] 改動不在任何全套件範圍內，免跑")
             return CheckResult(True)
         with _sigterm_as_interrupt(), merge_snapshot(self.repo, commit) as snap:

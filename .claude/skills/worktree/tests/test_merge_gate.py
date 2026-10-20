@@ -1138,3 +1138,143 @@ class TestPrecheckException:
         log = (repo / ".claude/logs/worktree-merge.log").read_text(encoding="utf-8")
         lines = [ln for ln in log.splitlines() if mg.GATE_LINE_PREFIX in ln]
         assert len(lines) == 2 and f"結果 {mg.GATE_ABORTED}" in lines[1]
+
+
+# ---- 專案宣告的套件對應（410.3.1）----
+
+DECL_REL = ".claude/project-integration/merge-gate.yaml"
+WEB_DECL = """\
+suites:
+  web:
+    prefixes: [web/]
+    files: [package.json]
+    command: [npm, test]
+    artifacts:
+      - path: node_modules/.ready
+        generate: [npm, ci]
+"""
+# 與內建 Flutter 對應等價的宣告：改寫後選套件結果須與內建一致
+FLUTTER_DECL = """\
+suites:
+  flutter:
+    prefixes: [lib/, test/, integration_test/, macos/, docs/, assets/]
+    files: [pubspec.yaml, pubspec.lock, l10n.yaml, analysis_options.yaml]
+    command: [fvm, flutter, test]
+    artifacts:
+      - path: .dart_tool/package_config.json
+        generate: [fvm, flutter, pub, get]
+"""
+
+
+def declare(root, text):
+    _touch(Path(root), DECL_REL, text)
+
+
+class TestDeclaration:
+    def test_declared_prefix_and_file_hit(self, skel):
+        declare(skel, WEB_DECL)
+        assert mg.select_suites(["web/a.js"], skel) == ["web"]
+        assert mg.select_suites(["package.json"], skel) == ["web"]
+
+    def test_declared_replaces_builtin_flutter_miss(self, skel):
+        """E1 未命中向：宣告取代內建，lib/ 不再對應 flutter。"""
+        declare(skel, WEB_DECL)
+        assert mg.select_suites(["lib/main.dart"], skel) == []
+        assert not mg.needs_gate(["lib/main.dart"], mg.load_declaration(skel))
+
+    def test_claude_mapping_kept_with_declaration(self, skel):
+        declare(skel, WEB_DECL)
+        assert mg.select_suites([".claude/hooks/a.py"], skel) == [mg.SUITE_HOOKS]
+
+    def test_declared_command(self, skel):
+        declare(skel, WEB_DECL)
+        assert mg.suite_command("web", skel) == ["npm", "test"]
+
+    def test_builtin_flutter_equals_declared_flutter(self, skel):
+        paths = ["lib/a.dart", "pubspec.lock", "docs/x.md", "assets/a.json", "tools/z.py",
+                 ".claude/hooks/h.py", "README.md"]
+        builtin = ([mg.select_suites([p], skel) for p in paths], mg.suite_command("flutter", skel),
+                   [mg.needs_gate([p]) for p in paths], mg.unmapped_paths(paths))
+        declare(skel, FLUTTER_DECL)
+        decl = mg.load_declaration(skel)
+        declared = ([mg.select_suites([p], skel) for p in paths], mg.suite_command("flutter", skel),
+                    [mg.needs_gate([p], decl) for p in paths], mg.unmapped_paths(paths, decl))
+        assert declared == builtin
+        assert mg.declared_artifacts("flutter", decl) == mg.REQUIRED_ARTIFACTS["flutter"]
+
+    def test_absent_declaration_is_none(self, skel):
+        assert mg.load_declaration(skel) is None
+
+
+BAD_DECLS = [
+    ("suites: [1]\n", "suites"),
+    ("suites:\n  web:\n    prefixes: [web/]\n", "suites.web.command"),
+    ("suites:\n  web:\n    command: [npm, test]\n", "suites.web.prefixes"),
+    ("suites:\n  web:\n    prefixes: []\n    files: []\n    command: [npm]\n", "suites.web.prefixes"),
+    ("suites:\n  hooks:\n    prefixes: [a/]\n    command: [x]\n", "suites.hooks"),
+    ("suites:\n  scripts:\n    prefixes: [a/]\n    command: [x]\n", "suites.scripts"),
+    ("suites:\n  skill:foo:\n    prefixes: [a/]\n    command: [x]\n", "suites.skill:foo"),
+    ("suites:\n  web:\n    prefixes: [a/]\n    command: [x]\n    artifacts: [{path: p}]\n",
+     "suites.web.artifacts[0].generate"),
+    ("suites: {\n", "YAML"),
+]
+
+
+class TestDeclarationInvalid:
+    @pytest.mark.parametrize("text,field", BAD_DECLS)
+    def test_load_raises_naming_file_and_field(self, skel, text, field):
+        declare(skel, text)
+        with pytest.raises(mg.DeclarationError) as exc:
+            mg.load_declaration(skel)
+        assert DECL_REL in str(exc.value) and field in str(exc.value)
+
+    @pytest.mark.parametrize("text,field", BAD_DECLS)
+    def test_gate_red_fail_closed(self, repo, text, field):
+        """E2：格式錯誤的宣告使閘門判紅（正向對照見 TestDeclaredGate 的合法宣告通過）。"""
+        commit_file(repo, DECL_REL, text, "bad decl")
+        head = git(repo, "rev-parse", "HEAD")
+        calls = []
+        res = mg.MergeGate(str(repo), green_runner(calls))(head, "main", head, 1)
+        assert not res.passed and DECL_REL in res.reason and field in res.reason
+        assert calls == []
+
+
+class TestDeclaredGate:
+    def _gate(self, repo, monkeypatch, paths, calls):
+        monkeypatch.setattr(mg, "changed_paths_between", lambda *_a: paths)
+        head = git(repo, "rev-parse", "HEAD")
+
+        def run(argv, cwd):
+            calls.append(argv[argv.index("--") + 1:])
+            if "ci" in argv:
+                _touch(Path(cwd), "node_modules/.ready")
+            elif "pub" in argv:
+                make_artifact(cwd)
+            return 0, ""
+
+        return mg.MergeGate(str(repo), run)(head, "main", head, 1)
+
+    def test_hit_runs_declared_command_after_artifact(self, repo, monkeypatch):
+        commit_file(repo, DECL_REL, WEB_DECL, "decl")
+        calls = []
+        assert self._gate(repo, monkeypatch, ["web/a.js"], calls).passed
+        assert calls == [["npm", "ci"], ["npm", "test"]]
+
+    def test_miss_runs_nothing(self, repo, monkeypatch, capsys):
+        commit_file(repo, DECL_REL, WEB_DECL, "decl")
+        calls = []
+        assert self._gate(repo, monkeypatch, ["lib/a.dart"], calls).passed
+        assert calls == [] and "免跑" in capsys.readouterr().out
+
+    def test_declared_prefix_not_warned_as_unmapped(self, repo, monkeypatch, capsys):
+        commit_file(repo, DECL_REL, WEB_DECL, "decl")
+        self._gate(repo, monkeypatch, ["web/a.js", "tools/x.py"], [])
+        out = capsys.readouterr().out
+        assert "tools/x.py" in out and "web/a.js" not in out
+
+    def test_absent_declaration_prints_info_and_uses_flutter(self, repo, monkeypatch, capsys):
+        calls = []
+        assert self._gate(repo, monkeypatch, ["lib/a.dart"], calls).passed
+        out = capsys.readouterr().out
+        assert "INFO" in out and DECL_REL in out
+        assert ["fvm", "flutter", "test"] in calls
