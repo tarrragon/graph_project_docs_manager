@@ -9,6 +9,8 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_provi
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtures.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
@@ -154,6 +156,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
+          nodeDetailNodesProvider.overrideWithValue(NodeDetailFixtures.nodes),
           externalOpenerProvider.overrideWithValue(fake),
           currentWorkspaceStateProvider.overrideWith(
             (ref) => const WorkspaceReady('/ws/proj'),

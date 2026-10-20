@@ -15,10 +15,17 @@ library;
 /// 一個關聯節點分節：標題 + 節點 id 清單（`Section.static` 一節對應一個
 /// 分類，`RelationItem` chip 逐項渲染，SPEC-004 §3.6 §6「正常」列）。
 class NodeRelationCategory {
-  const NodeRelationCategory({required this.label, required this.nodeIds});
+  const NodeRelationCategory({
+    required this.label,
+    required this.nodeIds,
+    this.isProposed = false,
+  });
 
-  /// 分節標題（`AppText.caption`）。
+  /// 分節標題（`AppText.caption`）；真實資料為邊型識別名（資料值，不走 i18n）。
   final String label;
+
+  /// 此邊型的 layer 是否為 `proposed`；分節內每個 `RelationItem` 傳此值。
+  final bool isProposed;
 
   /// 關聯節點 id 清單（[NodeDetailFixtures.nodes] 鍵值）。
   final List<String> nodeIds;
