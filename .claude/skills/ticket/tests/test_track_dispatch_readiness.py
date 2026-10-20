@@ -66,12 +66,10 @@ class TestResponsibilityCount:
 class TestResponsibilityCountHookTemplate:
     """0.5.0-W1-387：閾值 1 計數前排除 hook 證據模板條目。"""
 
-    TEMPLATES = [
-        "[ ] 當次執行環境下的觸發驗證結果：<待填>",
-        "[ ] 載入與執行的確認方式（如何確認 hook 被載入並執行）：<待填>",
-        "[ ] 異常時的放行或阻擋行為：<待填>",
-        "[ ] 產生路徑盤點表已寫入 how.strategy：<待填>",
-    ]
+    # 取自 create 的模板常數（0.5.0-W1-394：佔位符改寫後硬編碼副本會漂移）
+    from ticket_system.commands.create import _HOOK_ACCEPTANCE_TEMPLATES
+
+    TEMPLATES = [t for _, t in _HOOK_ACCEPTANCE_TEMPLATES]
 
     def test_templates_excluded_from_count(self):
         """E2：4 項模板 + 3 項功能項 → 以 3 計並註明排除 4 項。"""

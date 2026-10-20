@@ -452,11 +452,27 @@ def _report_dry_run_preview(ticket_id: str, config: TicketConfig) -> None:
 # 防護類 hook 票的四條 acceptance 模板（label 對應 hook_protection_acceptance_checker
 # 的 _CATEGORY_KEYWORDS，第四條對應 how.strategy 的盤點表）。文字刻意避開 gate
 # 關鍵詞，使未填的模板本身不會讓 gate 通過；<待填> 為佔位。
+#
+# 佔位符以「<待填：」起頭、「>」結尾，內含改寫指引與該項證據的形式與位置；
+# 前綴（佔位符之前）只留穩定的條目名稱，不放說明性括號（改寫者會刪，使前綴比對失準）。
+#（須為純字面常數：hooks 測試以 ast.literal_eval 讀取，不可用 f-string 或變數）
 _HOOK_ACCEPTANCE_TEMPLATES = (
-    ("本 session 實地觸發確認", "[ ] 當次執行環境下的觸發驗證結果：<待填>"),
-    ("liveness 驗證方式", "[ ] 載入與執行的確認方式（如何確認 hook 被載入並執行）：<待填>"),
-    ("失敗語意（fail-open/fail-closed）", "[ ] 異常時的放行或阻擋行為：<待填>"),
-    ("產生路徑盤點結果", "[ ] 產生路徑盤點表已寫入 how.strategy：<待填>"),
+    ("本 session 實地觸發確認",
+     "[ ] 當次執行環境下的觸發驗證結果：<待填：以 ticket track set-acceptance <id> "
+     "--edit <編號> 改寫本條，勾選不算填寫；"
+     "證據寫在 Test Results 或 Solution，貼 hook-logs/ 日誌行引文>"),
+    ("liveness 驗證方式",
+     "[ ] 載入與執行的確認方式：<待填：以 ticket track set-acceptance <id> "
+     "--edit <編號> 改寫本條，勾選不算填寫；"
+     "證據寫在 Test Results 或 Solution，貼 hook-logs/ 引文或 hook 存活查詢輸出（含「解析名稱:」）>"),
+    ("失敗語意（fail-open/fail-closed）",
+     "[ ] 異常時的放行或阻擋行為：<待填：以 ticket track set-acceptance <id> "
+     "--edit <編號> 改寫本條，勾選不算填寫；"
+     "證據寫在 Test Results 或 Solution，明寫放行或阻擋並附「觸發條件：」>"),
+    ("產生路徑盤點結果",
+     "[ ] 產生路徑盤點表已寫入 how.strategy：<待填：以 ticket track set-acceptance <id> "
+     "--edit <編號> 改寫本條，勾選不算填寫；"
+     "盤點表須併入 how.strategy，gate 不讀 Solution>"),
 )
 _PATH_INVENTORY_LABEL = "產生路徑盤點結果"
 
@@ -515,7 +531,7 @@ def apply_hook_acceptance_template(
         # 模板文字刻意避開 gate 關鍵詞，_missing_categories 看不見已帶入的模板，
         # 故以模板前綴（<待填> 之前）比對既有條目，不論有無填寫皆視為已帶入。
         # 呼叫端傳入的條目可能尚未補核取框，兩側皆去框後再比對。
-        prefix = _strip_checkbox(template.split("<待填>")[0])
+        prefix = _strip_checkbox(template.split("<待填")[0])
         if label in missing and prefix not in plain_text:
             current.append(template)
     return current, True
