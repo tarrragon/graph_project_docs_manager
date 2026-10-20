@@ -93,11 +93,12 @@ void main() {
 
       expect(gaps, hasLength(8));
       expect(gaps.map((g) => g.category).toSet(), {GapCategory.graphDefect});
-      expect(gaps.where((g) => g.defect is FlowGraphDefect), hasLength(4));
-      expect(gaps.where((g) => g.defect is! FlowGraphDefect), hasLength(4));
+      // 主圖組／flow 小組的分組由 projection 測試的 D4-2 驗。
     });
 
-    test('D4-3 原始值帶前後空白 → 原樣保存，不修剪', () {
+    // 偵測層原樣傳遞；建圖層的不修剪由 test/unit/graph/
+    // domain_name_resolution_test.dart 的 G11-3（' corpus' 原值保留）負責。
+    test('D4-3 偵測層原樣傳遞：原始值帶前後空白不修剪', () {
       final gaps = _detect([
         _flow(FlowDefectKind.unresolvedReference, rawValue: '  s9 '),
         _flow(FlowDefectKind.duplicateStepId, stepId: ' s1 ', field: 'id'),
@@ -136,7 +137,10 @@ void main() {
       }
     });
 
-    test('D4-6（E1）traverses 鍵缺席原始值為 null，對照 "" 的名稱未宣告', () {
+    // 偵測層原樣傳遞；建圖層 null 與 "" 的區分由
+    // domain_name_resolution_test.dart 的 G11-13（缺鍵 rawValue null）與
+    // 「空字串 domain 不入索引」（rawValue ""）、「traverses: null 視同空」負責。
+    test('D4-6（E1）偵測層原樣傳遞：null 不轉空字串，對照 "" 的名稱未宣告', () {
       final gaps = _detect([
         _flow(
           FlowDefectKind.traversesKeyAbsent,
@@ -170,18 +174,12 @@ void main() {
       expect(d.bundleIds, ['P1', 'P2']);
     });
 
-    test('D5-2 與 flow 四子類、主圖四子類同輪 → 九筆；重複宣告不是 flow 缺陷', () {
+    test('D5-2 與 flow 四子類、主圖四子類同輪 → 九筆 graphDefect', () {
       final gaps = _detect([..._mainFour(), ..._flowFour(), _domainDup()]);
 
       expect(gaps, hasLength(9));
-      final flow = gaps.where((g) => g.defect is FlowGraphDefect);
-      final main = gaps.where((g) => g.defect is! FlowGraphDefect);
-      expect(flow, hasLength(4));
-      expect(main, hasLength(5));
-      expect(
-        main.map((g) => g.kind),
-        contains(GraphDefectKind.domainDuplicateDeclaration),
-      );
+      expect(gaps.map((g) => g.category).toSet(), {GapCategory.graphDefect});
+      // 重複宣告歸主圖組（五筆）、flow 小組四筆，由 projection 測試的 D5-2 驗。
     });
 
     test('D5-3 負載不含在地化字串，亦不含 UC ID、step id 欄', () {

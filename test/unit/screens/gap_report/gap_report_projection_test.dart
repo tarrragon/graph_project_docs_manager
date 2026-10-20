@@ -296,7 +296,7 @@ void main() {
     });
   });
 
-  group('O1分節順序與空分節', () {
+  group('O1 分節順序與空分節', () {
     final all = <ParseFailureGap>[
       _carrier('docs/a.md', CarrierParseFailureReason.noFrontmatter),
       _flowGap,
