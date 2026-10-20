@@ -18,7 +18,7 @@
 
 ## 骨架（權威版）
 
-> **用途**：PM 派發前最常用的中文對話式骨架（原稱「三段式快速填空骨架」，W17-048 方案 F）。把 context 寫入 ticket 後，直接複製以下骨架填三個空格即可派發。骨架本體（`SKELETON_TEMPLATE_NORMAL`，不含 commit 制式句）約 10-15 行（含一條固定句：測試與其結果為後續步驟前置的命令一律前景執行，`run_in_background` 僅限真正可並行的旁路任務）；`--commit-policy agent`（預設）另附精準 staging 短版指標句（約 6 行，26 行全文改冪等寫入票的「### Commit 規範」章節，見下方「精準 staging 制式句」節），完整輸出實測約 21-30 行（觸及 `.claude/hooks/` 之票另加提醒，已頂到 Layer 1 硬上限）。agent-prompt-length-guard 的 Layer 1 硬上限（30 行）**無任何豁免**——模板關鍵字只影響 Layer 2 軟提示（10-30 行缺關鍵字時的提示），不影響 Layer 1 判定；骨架實際行數與硬上限的綁定測試見 `.claude/hooks/tests/test_agent_prompt_length_guard_hook.py`。
+> **用途**：PM 派發前最常用的中文對話式骨架（原稱「三段式快速填空骨架」，W17-048 方案 F）。把 context 寫入 ticket 後，直接複製以下骨架填三個空格即可派發。骨架本體（`SKELETON_TEMPLATE_NORMAL`，不含 commit 制式句）約 10 行（含一條固定句：測試與其結果為後續步驟前置的命令一律前景執行，`run_in_background` 僅限真正可並行的旁路任務）；`--commit-policy agent`（預設）另附精準 staging 短版指標句（3 行，26 行全文改冪等寫入票的「### Commit 規範」章節，見下方「精準 staging 制式句」節），最長組合 22 行（hook 提醒、worktree 搜尋句、測試入口、紅燈句全疊加；參數化守衛量測，留至少 8 行給 PM 填寫）。agent-prompt-length-guard 的 Layer 1 硬上限（30 行）**無任何豁免**——模板關鍵字只影響 Layer 2 軟提示（10-30 行缺關鍵字時的提示），不影響 Layer 1 判定；骨架實際行數與硬上限的綁定測試見 `.claude/hooks/tests/test_agent_prompt_length_guard_hook.py`。
 
 > **機制選擇前置（0.38.0-W2-002 ANA 落地）**：呼叫 `Agent(...)` 時**預設不帶 `name` 參數**（一般 subagent）。僅當任務符合「平行派發且 Agent A 的發現會改變 Agent B 正在進行的工作」（改用 Agent Teams）或「同 Wave 有 3+ 張同類型 ticket 且預期逐一派發」（named agent 可選續用）時才加 `name`。循序一次性任務、獨立分析/實作任務一律不帶 `name`。完整選用準則決策表見 `.claude/pm-rules/parallel-dispatch.md`「派發機制選用準則」章節。
 >
@@ -203,17 +203,13 @@ Ticket: 0.18.0-W17-048.3
 ticket track dispatch <ticket_id> --as <agent_name> --commit-policy agent
 ```
 
-`--commit-policy agent`（預設）於骨架末尾附上 `STAGING_PHRASE_AGENT_PROMPT` 短版指標句（約 6 行，逐句保留 dispatch-staging-phrase-guard-hook 判定所需的 Category A/B/C 正面片語），並**冪等寫入/更新**該票「## Problem Analysis」下「### Commit 規範」子節為 `STAGING_PHRASE_AGENT` 全文——骨架瘦身落地：26 行全文若逐字嵌入骨架會使骨架超出 agent-prompt-length-guard 的 30 行硬上限（PC-040 實測 39-48 行兩次被 Layer 1 阻擋），改為骨架只留短版指標句 + 指向 ticket 固定章節，代理人 `ticket track full <ticket_id>` 即可讀到全文。`--commit-policy pm` / `--commit-policy none` 分別輸出一行對應說明（PM 統一 commit / 本次派發不涉及 commit），不寫入 Commit 規範章節。主路徑為 `ticket track commit`（隔離索引提交 where.files 子集，全程不觸碰共用 index，從工具層消除 PC-092/PC-BAL-008 兩類根因）；裸 `git add` + `git commit` 降為 fallback，僅於新命令失敗或不可用時使用，措辭仍涵蓋三類獨立根因，缺一不足：precise `git add`（防 PC-092，廣域 `git add .` / `git add -A` 併入其他並行代理人尚未 commit 的變更）；`git diff --cached --name-only` 核對 + `git restore --staged`（防 PC-BAL-008，他人已 stage 在共用 index 的內容會被動吸收——即使 `git add` 精準，仍可能在收尾前才發現 index 裡混入非本票內容）；禁 pathspec / `--only` / `-o` 裸 commit（防丟棄既有 index、誤吸他人未 stage 的編輯，`.claude/rules/core/bash-tool-usage-rules.md` 規則七）。
+`--commit-policy agent`（預設）於骨架末尾附上 `STAGING_PHRASE_AGENT_PROMPT` 短版指標句（3 行，逐句保留 dispatch-staging-phrase-guard-hook 判定所需的 Category A/B/C 正面片語），並**冪等寫入/更新**該票「## Problem Analysis」下「### Commit 規範」子節為 `STAGING_PHRASE_AGENT` 全文——骨架瘦身落地：26 行全文若逐字嵌入骨架會使骨架超出 agent-prompt-length-guard 的 30 行硬上限（PC-040 實測 39-48 行兩次被 Layer 1 阻擋），改為骨架只留短版指標句 + 指向 ticket 固定章節，代理人 `ticket track full <ticket_id>` 即可讀到全文。`--commit-policy pm` / `--commit-policy none` 分別輸出一行對應說明（PM 統一 commit / 本次派發不涉及 commit），不寫入 Commit 規範章節。主路徑為 `ticket track commit`（隔離索引提交 where.files 子集，全程不觸碰共用 index，從工具層消除 PC-092/PC-BAL-008 兩類根因）；裸 `git add` + `git commit` 降為 fallback，僅於新命令失敗或不可用時使用，措辭仍涵蓋三類獨立根因，缺一不足：precise `git add`（防 PC-092，廣域 `git add .` / `git add -A` 併入其他並行代理人尚未 commit 的變更）；`git diff --cached --name-only` 核對 + `git restore --staged`（防 PC-BAL-008，他人已 stage 在共用 index 的內容會被動吸收——即使 `git add` 精準，仍可能在收尾前才發現 index 裡混入非本票內容）；禁 pathspec / `--only` / `-o` 裸 commit（防丟棄既有 index、誤吸他人未 stage 的編輯，`.claude/rules/core/bash-tool-usage-rules.md` 規則七）。
 
 以下為 `--commit-policy agent` 骨架末尾附加的短版指標句示意（如與 CLI 實際輸出不一致，以 CLI 為準）：
 
 ```
-Commit: prefer `ticket track commit <ticket-id> -m "..." -- {exact files}`
-  (isolated index, precise staging; in a linked worktree add `--worktree
-  <abs-worktree-path>`). Fallback: `git add {exact files}` ->
-  `git diff --cached --name-only` to verify -> verified bare commit, no
-  pathspec (forbid `-- <paths>` / `--only` / `-o` / `-a` / `git add .` /
-  `git add -A`). Swept-in content: forbid revert/reset/amend, stop & report.
+Commit: `ticket track commit <ticket-id> -m "..." -- {exact files}` (isolated index, precise staging; linked worktree: add `--worktree <abs-path>`). Scope/criteria rejection: no fallback, stop & report PM. Swept-in content: forbid revert/reset/amend, stop & report.
+Environmental failure: re-run first; if it persists, fallback `git add {exact files}` -> `git diff --cached --name-only` to verify -> verified bare commit, no pathspec (forbid `-- <paths>` / `--only` / `-o` / `-a` / `git add .` / `git add -A`).
 Full text: this ticket's "### Commit 規範" section (`ticket track full <ticket-id>`).
 ```
 
@@ -446,6 +442,7 @@ ticket track complete 0.19.0-W3-032.1 --as <agent-name>
 ---
 
 **Last Updated**: 2026-10-20
+**Version**: 1.49.0 — 骨架同步壓縮：模板去分隔空行、短版指標句改 3 行（示意區塊逐字對應 `STAGING_PHRASE_AGENT_PROMPT`）、hook 提醒壓為 2 行、worktree 骨架新增「改行為前以改動物字面 grep 所有測試目錄（範圍見 agent-dispatch-testing.md〈相關測試檔怎麼找〉），需改的測試檔不在 where.files 內即停手回報」一句，骨架不另列目錄清單（`WORKTREE_SIBLING_TEST_LINE`）；最長組合 34 行降為 22 行，參數化守衛涵蓋全部變體。
 **Version**: 1.48.0 — `agent-dispatch-testing.md`〈全套件由合併閘門執行，代理人只跑相關測試檔〉補〈相關測試檔怎麼找〉：以被改動物的字面（hook 檔名、模組名、參數的 dest 與旗標名、改動前的輸出字面）grep 所有測試目錄，命中幾個套件就各以該套件入口跑一次；寫明只憑目錄或檔名挑選會漏的兩類（同名檔分處兩套件、以被改參數作旁路的使用端）與間接執行的盲區。兩類各有一次合併閘門紅燈實例。
 **Version**: 1.47.0 — 〈骨架（3 段）〉補一句路由：IMP 票 acceptance 含測試或 E1／E2 時，CLI 骨架條件式加入「修改產品碼前先實跑紅燈並貼輸出摘要」一行，權威在 `dispatch_skeleton.py`。
 **Version**: 1.46.0 — `agent-dispatch-testing.md`〈測試入口〉佔位符由 `<root>`（專案根）改為 `<checkout>`（執行測試所在 checkout 的根，linked worktree 內為該 worktree 路徑），並補單檔或相關測試檔的指令示例。原定義在 worktree 內會被代入主倉庫路徑，改跑主倉庫的程式碼而 worktree 內的修改未被測到，結果照樣綠燈；新寫法與 hooks conftest 缺依賴時提示的指令字面一致。

@@ -24,11 +24,8 @@ DRY_RUN_WATERMARK = "[DRY-RUN 未落票]"
 # （3 段）」逐字一致。修改本常數須同步該文件（單一權威決策：CLI 為權威，
 # 文件端改為引用本模組輸出）。
 SKELETON_TEMPLATE_NORMAL = """Ticket: {ticket_id}
-
 ## 任務
-
 {task_summary}
-
 讀取 ticket：`ticket track full {ticket_id}`
 認領：`ticket track claim {ticket_id} --as {agent_name}`
 依 Context Bundle 執行流程。
@@ -139,13 +136,9 @@ actions above would also undo the peer's legitimate work."""
 # （已以該 hook 的 `_missing_categories` 實測驗證為空集）。識別依據不可偽造
 # 的顧慮不適用於本取向：本取向未對 agent-prompt-length-guard 的 Layer 1
 # 硬上限新增豁免路徑，純粹是縮短骨架本體行數，判準仍是唯一的行數比較。
-STAGING_PHRASE_AGENT_PROMPT = """Commit: prefer `ticket track commit <ticket-id> -m "..." -- {exact files}`
-  (isolated index, precise staging; linked worktree: add `--worktree <abs-path>`).
-  Scope/criteria rejection: no fallback, stop & report PM. Environmental failure:
-  re-run first; if it persists, fallback `git add {exact files}` -> `git diff --cached --name-only` to verify -> verified bare commit, no
-  pathspec (forbid `-- <paths>` / `--only` / `-o` / `-a` / `git add .` / `git add -A`).
-  Swept-in content: forbid revert/reset/amend, stop & report. Full text: this
-  ticket's "### Commit 規範" section (`ticket track full <ticket-id>`)."""
+STAGING_PHRASE_AGENT_PROMPT = """Commit: `ticket track commit <ticket-id> -m "..." -- {exact files}` (isolated index, precise staging; linked worktree: add `--worktree <abs-path>`). Scope/criteria rejection: no fallback, stop & report PM. Swept-in content: forbid revert/reset/amend, stop & report.
+Environmental failure: re-run first; if it persists, fallback `git add {exact files}` -> `git diff --cached --name-only` to verify -> verified bare commit, no pathspec (forbid `-- <paths>` / `--only` / `-o` / `-a` / `git add .` / `git add -A`).
+Full text: this ticket's "### Commit 規範" section (`ticket track full <ticket-id>`)."""
 
 # --commit-policy pm/none 的對應一行輸出。
 STAGING_PHRASE_PM = "Commit policy: PM 統一 commit，agent 不執行 git commit（完成後回報變更檔案清單）。"
@@ -156,14 +149,8 @@ STAGING_PHRASE_NONE = "Commit policy: none（本次派發不涉及 git commit）
 # liveness 驗證方式 / 失敗語意 fail-open/fail-closed / 產生路徑盤點表寫入
 # how.strategy）。文字與該 checker 的關鍵詞判準保持語意一致，供代理人在
 # 執行中即填妥，避免代理人未填四項、complete 被 gate 擋下、PM 事後補料重演。
-HOOK_TICKET_REMINDER = """本票 where.files 觸及 hooks 目錄，acceptance-gate 檢查證據（非 acceptance 字句）：
-  1. 實地觸發確認：Test Results/Solution 引用 hook-logs/ 下的日誌行
-  2. liveness：同上，或貼 ticket track hook-liveness 輸出
-  3. 失敗語意：Solution 寫 fail-open 或 fail-closed，並附「觸發條件：...」
-  4. 產生路徑盤點表（寫入 how.strategy，缺則 Solution；格式與限制見
-     .claude/pm-rules/ticket-body-schema.md「防護類 ticket：威脅事件寫
-     acceptance，攔截點寫 how.strategy」節的「格式限制」段）
-執行中請一併填寫，勿留到 complete 前才補。"""
+HOOK_TICKET_REMINDER = """本票觸及 hooks 目錄，acceptance 中 hook 模板各條的 <待填：…> 說明即為須填的證據；寫入 Test Results/Solution：hook-logs/ 日誌行（實地觸發、liveness，或貼 `ticket track hook-liveness` 輸出）、fail-open 或 fail-closed 並附「觸發條件：...」。
+產生路徑盤點表寫入 how.strategy，格式見 .claude/pm-rules/ticket-body-schema.md「防護類 ticket」節；執行中填寫，勿留到 complete 前。"""
 
 
 # 含測試 acceptance 的 IMP 票加一行：修改產品碼前先實跑紅燈。
@@ -183,6 +170,10 @@ WORKTREE_HEREDOC_LINE = (
 # 測試入口對照（.claude/references/agent-dispatch-testing.md〈測試入口〉表）。
 # skill 以 root 下 pyproject.toml 是否存在推導：有則以其目錄為入口；無 pyproject
 # 但有 tests 目錄則借 hooks 入口；兩者皆無回 None。
+WORKTREE_SIBLING_TEST_LINE = (
+    "改行為前以改動物字面 grep 所有測試目錄"
+    "（範圍見 agent-dispatch-testing.md〈相關測試檔怎麼找〉）；需改的測試檔不在 where.files 內即停手回報。"
+)
 TEST_ENTRY_LINE = "測試入口（不自拼 --with）：{commands}"
 _HOOKS_ENTRY = "uv --directory <checkout>/.claude/hooks run pytest"
 
@@ -286,7 +277,8 @@ def build_skeleton(
     if isolation == "worktree":
         skeleton = skeleton.replace(
             _RED_RUN_ANCHOR,
-            f"{WORKTREE_CLI_REJECT_LINE}\n{WORKTREE_HEREDOC_LINE}\n{_RED_RUN_ANCHOR}",
+            f"{WORKTREE_SIBLING_TEST_LINE}\n{WORKTREE_CLI_REJECT_LINE}\n"
+            f"{WORKTREE_HEREDOC_LINE}\n{_RED_RUN_ANCHOR}",
             1,
         )
 
