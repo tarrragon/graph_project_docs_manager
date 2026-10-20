@@ -21,6 +21,7 @@
 /// 假資料階段步驟未帶對應節點 id，見本票 Solution）。
 library;
 
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,6 +31,7 @@ import '../../app/router.dart';
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
+import '../../tokens/tokens.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/current_workspace_provider.dart';
@@ -290,6 +292,7 @@ class _NormalViewState extends ConsumerState<_NormalView> {
     final steps = uc.steps;
     final eventRows = _buildEventFlowRows(l10n, steps);
     final locatedEvent = focus?.eventId;
+    final gaps = ref.watch(ucFlowEventGapsProvider);
 
     final header = AppTableRow.header(
       columns: AppTableRow.stepColumns,
@@ -334,6 +337,15 @@ class _NormalViewState extends ConsumerState<_NormalView> {
                   event: AppText(row.event, variant: AppTextVariant.mono),
                   emittedBy: AppText(row.emittedBy),
                   consumedBy: AppText(row.consumedBy),
+                  marker: gaps.isOrphan(row.event)
+                      ? AppIcon(
+                          key: Key('badge-ucFlow-event-orphan-${row.event}'),
+                          icon: Icons.warning_amber_rounded,
+                          size: IconSize.sm,
+                          color: AppColors.error,
+                          semanticLabel: l10n.orphanEventMarkerLabel,
+                        )
+                      : null,
                 ),
             ],
             key: const Key('panel-ucFlow-event-flow'),

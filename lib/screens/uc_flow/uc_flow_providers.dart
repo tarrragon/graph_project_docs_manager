@@ -12,6 +12,7 @@ import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart'
     show FlowParseFailedEvent;
+import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
 import 'package:graph_project_docs_manager/graph/flow_query.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
@@ -29,6 +30,17 @@ final ucFlowUcListProvider = Provider<List<UcFlowUcItem>>((ref) {
     event: graph.event,
     failedEvents: round.result.scan.flowParseFailedEvents,
   );
+});
+
+/// 需求：[SPEC-003 §3.2／§3.5] 事件類破洞偵測結果；判準只由偵測端決定，
+/// 畫面僅以 EVT id 查詢。輪次未完成時為零筆，建圖不可用時偵測端自回零筆。
+final ucFlowEventGapsProvider = Provider<EventGapReport>((ref) {
+  final round = ref.watch(scanRoundProvider);
+  if (round is! ScanRoundCompleted) return const EventGapReport.empty();
+  return detectEventGaps(
+    graph: round.result.graph,
+    rawNodes: round.result.scan.rawNodes,
+  ).report;
 });
 
 /// 跳轉定位目標（破洞報告 flow 類／事件類項目寫入，UC Flow 消費）；`null`
