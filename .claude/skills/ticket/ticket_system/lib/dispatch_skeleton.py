@@ -149,7 +149,7 @@ STAGING_PHRASE_NONE = "Commit policy: none（本次派發不涉及 git commit）
 # liveness 驗證方式 / 失敗語意 fail-open/fail-closed / 產生路徑盤點表寫入
 # how.strategy）。文字與該 checker 的關鍵詞判準保持語意一致，供代理人在
 # 執行中即填妥，避免代理人未填四項、complete 被 gate 擋下、PM 事後補料重演。
-HOOK_TICKET_REMINDER = """本票觸及 hooks 目錄，acceptance 中 hook 模板各條的 <待填：…> 說明即為須填的證據；寫入 Test Results/Solution：hook-logs/ 日誌行（實地觸發、liveness）、fail-open 或 fail-closed 並附「觸發條件：...」。
+HOOK_TICKET_REMINDER = """本票觸及 hooks 目錄，acceptance 中 hook 模板各條的 <待填：…> 說明即為須填的證據；寫入 Test Results/Solution：hook-logs/ 日誌行（實地觸發、liveness，或貼 `ticket track hook-liveness` 輸出）、fail-open 或 fail-closed 並附「觸發條件：...」。
 產生路徑盤點表寫入 how.strategy，格式見 .claude/pm-rules/ticket-body-schema.md「防護類 ticket」節；執行中填寫，勿留到 complete 前。"""
 
 
@@ -171,8 +171,8 @@ WORKTREE_HEREDOC_LINE = (
 # skill 以 root 下 pyproject.toml 是否存在推導：有則以其目錄為入口；無 pyproject
 # 但有 tests 目錄則借 hooks 入口；兩者皆無回 None。
 WORKTREE_SIBLING_TEST_LINE = (
-    "改行為前依〈相關測試檔怎麼找〉（.claude/references/agent-dispatch-testing.md）"
-    "搜尋兩個測試根與 .claude/hooks/tests/；需改的測試檔不在 where.files 內即停手回報。"
+    "改行為前以改動物字面 grep 所有測試目錄"
+    "（範圍見 agent-dispatch-testing.md〈相關測試檔怎麼找〉）；需改的測試檔不在 where.files 內即停手回報。"
 )
 TEST_ENTRY_LINE = "測試入口（不自拼 --with）：{commands}"
 _HOOKS_ENTRY = "uv --directory <checkout>/.claude/hooks run pytest"

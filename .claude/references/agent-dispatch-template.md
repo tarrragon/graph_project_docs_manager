@@ -442,7 +442,7 @@ ticket track complete 0.19.0-W3-032.1 --as <agent-name>
 ---
 
 **Last Updated**: 2026-10-20
-**Version**: 1.49.0 — 骨架同步壓縮：模板去分隔空行、短版指標句改 3 行（示意區塊逐字對應 `STAGING_PHRASE_AGENT_PROMPT`）、hook 提醒壓為 2 行、worktree 骨架新增「改行為前依〈相關測試檔怎麼找〉搜尋，需改的測試檔不在 where.files 內即停手回報」一句（`WORKTREE_SIBLING_TEST_LINE`）；最長組合 34 行降為 22 行，參數化守衛涵蓋全部變體。
+**Version**: 1.49.0 — 骨架同步壓縮：模板去分隔空行、短版指標句改 3 行（示意區塊逐字對應 `STAGING_PHRASE_AGENT_PROMPT`）、hook 提醒壓為 2 行、worktree 骨架新增「改行為前以改動物字面 grep 所有測試目錄（範圍見 agent-dispatch-testing.md〈相關測試檔怎麼找〉），需改的測試檔不在 where.files 內即停手回報」一句，骨架不另列目錄清單（`WORKTREE_SIBLING_TEST_LINE`）；最長組合 34 行降為 22 行，參數化守衛涵蓋全部變體。
 **Version**: 1.48.0 — `agent-dispatch-testing.md`〈全套件由合併閘門執行，代理人只跑相關測試檔〉補〈相關測試檔怎麼找〉：以被改動物的字面（hook 檔名、模組名、參數的 dest 與旗標名、改動前的輸出字面）grep 所有測試目錄，命中幾個套件就各以該套件入口跑一次；寫明只憑目錄或檔名挑選會漏的兩類（同名檔分處兩套件、以被改參數作旁路的使用端）與間接執行的盲區。兩類各有一次合併閘門紅燈實例。
 **Version**: 1.47.0 — 〈骨架（3 段）〉補一句路由：IMP 票 acceptance 含測試或 E1／E2 時，CLI 骨架條件式加入「修改產品碼前先實跑紅燈並貼輸出摘要」一行，權威在 `dispatch_skeleton.py`。
 **Version**: 1.46.0 — `agent-dispatch-testing.md`〈測試入口〉佔位符由 `<root>`（專案根）改為 `<checkout>`（執行測試所在 checkout 的根，linked worktree 內為該 worktree 路徑），並補單檔或相關測試檔的指令示例。原定義在 worktree 內會被代入主倉庫路徑，改跑主倉庫的程式碼而 worktree 內的修改未被測到，結果照樣綠燈；新寫法與 hooks conftest 缺依賴時提示的指令字面一致。
