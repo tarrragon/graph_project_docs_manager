@@ -79,5 +79,26 @@ def test_declared_failure_regex_matches_failure_not_pass():
     assert not rx.search("Failed to foreground app; open returned 1")
 
 
+def _research():
+    root = HERE.parents[2]
+    decl = yaml.safe_load((root / ".claude/project-integration/merge-gate.yaml").read_text())
+    return decl["suites"]["research-python"]
+
+
+def test_research_suite_triggers_on_research_dir_and_declares_both_dirs():
+    s = _research()
+    assert "docs/research/" in s["prefixes"]
+    assert "docs/research/common" in s["command"] and "docs/research/ui-vision-choice" in s["command"]
+
+
+def test_research_regexes_red_vs_green():
+    s = _research()
+    summary, failure = re.compile(s["summary"]), re.compile(s["failure"])
+    red = ["FAILED docs/research/common/test_sampler.py::t - assert False", "1 failed, 22 passed in 0.06s"]
+    green = ["22 passed in 0.14s"]
+    assert any(failure.search(ln) for ln in red) and not any(failure.search(ln) for ln in green)
+    assert summary.search(red[1]) and summary.search(green[0])
+
+
 def test_declared_command_calls_wrapper():
     assert _declared()["command"] == ["python3", ".claude/project-integration/run_integration_tests.py"]
