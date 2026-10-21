@@ -45,7 +45,10 @@ void main() {
         size: size,
       );
 
-      expect(AnchorFinder.state(Screen.ucFlow, 'project-unready'), findsOneWidget);
+      expect(
+        AnchorFinder.state(Screen.ucFlow, 'project-unready'),
+        findsOneWidget,
+      );
       expect(find.byType(EmptyState), findsOneWidget);
       expect(find.text('尚未選擇專案'), findsOneWidget);
       expectNoOverflow(tester);
@@ -87,7 +90,9 @@ void main() {
 
       expect(AnchorFinder.state(Screen.ucFlow, 'empty'), findsOneWidget);
       expect(find.byType(EmptyState), findsOneWidget);
-      final l10n = AppLocalizations.of(tester.element(find.byType(UcFlowScreen)));
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(UcFlowScreen)),
+      );
       expect(find.text(l10n.emptyUcMessage), findsOneWidget);
       expectNoOverflow(tester);
     });
@@ -120,8 +125,10 @@ void main() {
       await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [_withFixtures,
-          selectedUcProvider.overrideWith((ref) => null)],
+        overrides: [
+          _withFixtures,
+          selectedUcProvider.overrideWith((ref) => null),
+        ],
         size: size,
       );
 
@@ -138,8 +145,10 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [_withFixtures,
-          selectedUcProvider.overrideWith((ref) => null)],
+        overrides: [
+          _withFixtures,
+          selectedUcProvider.overrideWith((ref) => null),
+        ],
       );
 
       await tester.tap(find.byKey(const Key('action-ucFlow-select-uc-UC-02')));
@@ -162,8 +171,10 @@ void main() {
         await pumpHarness(
           tester,
           child: const UcFlowScreen(),
-          overrides: [_withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-06')],
+          overrides: [
+            _withFixtures,
+            selectedUcProvider.overrideWith((ref) => 'UC-06'),
+          ],
           size: size,
         );
 
@@ -176,7 +187,10 @@ void main() {
           find.byKey(const Key('panel-ucFlow-unstructured-meta')),
           findsOneWidget,
         );
-        expect(find.text('docs/usecases/UC-06.md'), findsOneWidget);
+        expect(
+          find.text('docs/usecases/UC-06-find-and-fix-document-gaps.md'),
+          findsOneWidget,
+        );
         expect(find.text('找出並修復文件破洞'), findsOneWidget);
         expect(find.byType(EmptyState), findsOneWidget);
         expect(find.text('尚未填寫結構化 flow'), findsOneWidget);
@@ -205,8 +219,10 @@ void main() {
       final container = await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [_withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-06')],
+        overrides: [
+          _withFixtures,
+          selectedUcProvider.overrideWith((ref) => 'UC-06'),
+        ],
       );
 
       await tester.tap(find.byKey(const Key('action-ucFlow-select-uc-UC-04')));
@@ -241,53 +257,45 @@ void main() {
   });
 
   group('正常 state-ucFlow-normal（UcFlowNormal）', () {
-    testWidgetsAtEachSize(
-      '渲染 TwoColumnLayout + 步驟表 + 事件流小表 + UC 選擇入口',
-      (tester, size) async {
-        await pumpHarness(
-          tester,
-          child: const UcFlowScreen(),
-          overrides: [_withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-02')],
-          size: size,
-        );
+    testWidgetsAtEachSize('渲染 TwoColumnLayout + 步驟表 + 事件流小表 + UC 選擇入口', (
+      tester,
+      size,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: const UcFlowScreen(),
+        overrides: [
+          _withFixtures,
+          selectedUcProvider.overrideWith((ref) => 'UC-02'),
+        ],
+        size: size,
+      );
 
-        expect(AnchorFinder.state(Screen.ucFlow, 'normal'), findsOneWidget);
-        expect(find.byType(TwoColumnLayout), findsOneWidget);
-        expect(find.byType(AppDataTable), findsNWidgets(2));
-        expect(find.byType(StepNumber), findsNWidgets(3));
-        expect(find.byType(RelationItem), findsNWidgets(3));
-        expect(
-          find.byKey(const Key('scroll-ucFlow-steps')),
-          findsOneWidget,
-        );
-        expect(
-          find.byKey(const Key('panel-ucFlow-event-flow')),
-          findsOneWidget,
-        );
-        expect(
-          find.byKey(const Key('panel-ucFlow-uc-selector')),
-          findsOneWidget,
-        );
-        expectNoOverflow(tester);
-      },
-    );
+      expect(AnchorFinder.state(Screen.ucFlow, 'normal'), findsOneWidget);
+      expect(find.byType(TwoColumnLayout), findsOneWidget);
+      expect(find.byType(AppDataTable), findsNWidgets(2));
+      expect(find.byType(StepNumber), findsNWidgets(3));
+      expect(find.byType(RelationItem), findsNWidgets(3));
+      expect(find.byKey(const Key('scroll-ucFlow-steps')), findsOneWidget);
+      expect(find.byKey(const Key('panel-ucFlow-event-flow')), findsOneWidget);
+      expect(find.byKey(const Key('panel-ucFlow-uc-selector')), findsOneWidget);
+      expectNoOverflow(tester);
+    });
 
     testWidgetsAtEachSize('本 UC 無事件時不渲染事件流小表', (tester, size) async {
       await pumpHarness(
         tester,
         child: const UcFlowScreen(),
-        overrides: [_withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-04')],
+        overrides: [
+          _withFixtures,
+          selectedUcProvider.overrideWith((ref) => 'UC-04'),
+        ],
         size: size,
       );
 
       expect(AnchorFinder.state(Screen.ucFlow, 'normal'), findsOneWidget);
       expect(find.byType(AppDataTable), findsOneWidget);
-      expect(
-        find.byKey(const Key('panel-ucFlow-event-flow')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('panel-ucFlow-event-flow')), findsNothing);
       expectNoOverflow(tester);
     });
 

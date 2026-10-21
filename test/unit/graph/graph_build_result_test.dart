@@ -15,7 +15,7 @@ RawNode _bundle(String id, String domain) => buildRawNode(
 );
 
 RawNode _ucNode(List<Map<String, dynamic>> steps) => RawNode(
-  path: 'docs/usecases/UC-01.md',
+  path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
   frontmatter: {'id': 'UC-01'},
   typeName: flowSourceTypeName,
   flowSteps: steps,

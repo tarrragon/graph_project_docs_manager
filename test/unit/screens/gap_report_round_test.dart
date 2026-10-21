@@ -1028,7 +1028,7 @@ void main() {
     final bundles = [bundleNode('alpha'), bundleNode('beta')];
 
     RawNode uc(List<Map<String, dynamic>> steps) => RawNode(
-      path: 'docs/usecases/UC-02.md',
+      path: 'docs/usecases/UC-02-assess-change-impact-by-domain.md',
       frontmatter: {'id': 'UC-02'},
       typeName: 'UC',
       flowSteps: steps,
@@ -1141,10 +1141,7 @@ void main() {
       expect(itemIds(state, 'event-declaration-mismatch'), [
         'event-declaration-mismatch:EVT-X-002:consumers:beta',
       ]);
-      expect(
-        found.categories.fold<int>(0, (n, c) => n + c.items.length),
-        3,
-      );
+      expect(found.categories.fold<int>(0, (n, c) => n + c.items.length), 3);
     });
   });
 }

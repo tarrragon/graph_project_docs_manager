@@ -78,7 +78,7 @@ void main() {
 
     test('L1-4 負載帶 flow 缺陷數：含缺陷步驟的 UC 為 2，同語料無缺陷為 0', () {
       RawNode uc(List<Map<String, dynamic>> steps) => RawNode(
-        path: 'docs/UC-01.md',
+        path: 'docs/UC-01-open-project-and-reach-usable-state.md',
         frontmatter: {'id': 'UC-01'},
         typeName: 'UC',
         flowSteps: steps,
