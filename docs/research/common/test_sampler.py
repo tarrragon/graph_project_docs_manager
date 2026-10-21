@@ -90,9 +90,41 @@ def test_seeds_recorded_distinct():
 
 
 def test_make_client_requires_env(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("RESEARCH_ANTHROPIC_API_KEY", raising=False)
     try:
         sampler.make_client()
     except SystemExit:
         return
     raise AssertionError("未設 key 時應拒絕")
+
+
+def test_make_client_ignores_old_name(monkeypatch):
+    # 正向對照：舊名存在、新名不存在 → 仍判定缺 key
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-old")
+    monkeypatch.delenv("RESEARCH_ANTHROPIC_API_KEY", raising=False)
+    try:
+        sampler.make_client()
+    except SystemExit:
+        return
+    raise AssertionError("舊名存在不應被接受")
+
+
+def test_make_client_passes_api_key_explicitly(monkeypatch):
+    seen = {}
+    fake = SimpleNamespace(Anthropic=lambda **kw: seen.update(kw) or "client")
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-old")
+    monkeypatch.setenv("RESEARCH_ANTHROPIC_API_KEY", "fake-new")
+    assert sampler.make_client() == "client"
+    assert seen == {"api_key": "fake-new"}
+
+
+def test_temperature_omitted_vs_passed():
+    # E1 對照：不傳與傳入的請求與紀錄必須不同
+    c = FakeClient(["A"])
+    r0 = sampler.sample_once(c, "m", "q?", OPTIONS, seed=1)
+    r1 = sampler.sample_once(c, "m", "q?", OPTIONS, seed=1, temperature=0.3)
+    assert "temperature" not in c.calls[0]
+    assert r0["temperature"] is None
+    assert c.calls[1]["temperature"] == 0.3
+    assert r1["temperature"] == 0.3

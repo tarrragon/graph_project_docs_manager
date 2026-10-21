@@ -4,7 +4,7 @@
 # ///
 """Claude 單 token 選項代碼取樣（研究線共用）。
 
-API key 只從環境變數 ANTHROPIC_API_KEY 讀取，不接受參數、不記錄。
+API key 只從環境變數 RESEARCH_ANTHROPIC_API_KEY 讀取（不與 Claude Code 自身認證共用），不接受參數、不記錄。
 用法：uv run sampler.py --model claude-haiku-5-5 --question "..." \
         --option A=alpha --option B=beta [--image x.png] [-k 1]
 """
@@ -19,18 +19,19 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-KEY_ENV = "ANTHROPIC_API_KEY"
+KEY_ENV = "RESEARCH_ANTHROPIC_API_KEY"
 ANSWER_INSTRUCTION = "只回覆一個選項代碼，不加任何其他文字。"  # i18n-exempt
 MISSING_KEY_MSG = f"[ERROR] 環境變數 {KEY_ENV} 未設定"  # i18n-exempt
 
 
 def make_client():
     """建立 client；key 僅取自環境變數，未設則結束。"""
-    if not os.environ.get(KEY_ENV):
+    api_key = os.environ.get(KEY_ENV)
+    if not api_key:
         sys.exit(MISSING_KEY_MSG)
     import anthropic
 
-    return anthropic.Anthropic()
+    return anthropic.Anthropic(api_key=api_key)
 
 
 def shuffled_order(codes, seed):
@@ -64,17 +65,19 @@ def _build_prompt(question, options, order):
 
 
 def sample_once(client, model, question, options, seed, *, max_tokens=1,
-                temperature=1.0, image_paths=()):
+                temperature=None, image_paths=()):
     """取樣一次並回傳完整記錄。options: {代碼: 選項文字}。"""
     order = shuffled_order(options, seed)
     content = [_image_block(p) for p in image_paths]
     content.append({"type": "text", "text": _build_prompt(question, options, order)})
-    resp = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        messages=[{"role": "user", "content": content}],
-    )
+    params = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": [{"role": "user", "content": content}],
+    }
+    if temperature is not None:  # 未指定時不送，沿用 API 預設
+        params["temperature"] = temperature
+    resp = client.messages.create(**params)
     raw = resp.content[0].text if resp.content else ""
     return {
         "model": resp.model,
@@ -112,7 +115,7 @@ def _parse_args(argv):
     p.add_argument("--image", action="append", default=[])
     p.add_argument("-k", type=int, default=1)
     p.add_argument("--max-tokens", type=int, default=1)
-    p.add_argument("--temperature", type=float, default=1.0)
+    p.add_argument("--temperature", type=float, default=None)
     p.add_argument("--seed", type=int, default=0)
     return p.parse_args(argv)
 
