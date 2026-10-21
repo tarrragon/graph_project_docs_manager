@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/attention_level.dart';
 import '../../app/domain_view_loader.dart';
 import '../../app/router.dart';
+import '../../app/scan_round.dart';
 import '../../app/selected_uc.dart';
 import '../../app/workspace_selection.dart';
 import '../../components/components.dart';
@@ -44,11 +45,51 @@ import 'domain_view_state.dart';
 const String _tag = 'DomainViewScreen';
 
 /// Domain 視圖畫面。
-class DomainViewScreen extends ConsumerWidget {
+class DomainViewScreen extends ConsumerStatefulWidget {
   const DomainViewScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DomainViewScreen> createState() => _DomainViewScreenState();
+}
+
+class _DomainViewScreenState extends ConsumerState<DomainViewScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 掛載時輪次已是 Idle 且尚無完成輪次（如他處丟棄後才進入本畫面）。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _restartRoundIfNoneCompleted();
+    });
+  }
+
+  /// 生命週期條款（SPEC-001 v1.55〈矩陣與泳道同由掃描輪次衍生〉）：本畫面可見、
+  /// 輪次 Idle 且該專案沒有任何完成輪次時重啟輪次；已有上一輪結果時不重啟，
+  /// 以免推翻使用者在破洞報告按下的取消重掃。
+  void _restartRoundIfNoneCompleted() {
+    if (ref.read(domainViewStateProvider) is! DomainReady) return;
+    if (ref.read(scanRoundProvider) is! ScanRoundIdle) return;
+    if (ref.read(lastCompletedRoundProvider) != null) return;
+    unawaited(
+      ref.read(scanRoundProvider.notifier).ensureRound().then<void>(
+        (_) {},
+        onError: (Object e, StackTrace st) => developer.log(
+          '投影準備中重啟輪次失敗', // i18n-exempt: 開發者 debug log
+          name: _tag,
+          level: 900,
+          error: e,
+          stackTrace: st,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Running → Idle 是輪次失敗或進行中取消，不重啟（避免持續失敗時無限重試）。
+    ref.listen<ScanRoundState>(scanRoundProvider, (prev, next) {
+      if (prev is ScanRoundRunning) return;
+      _restartRoundIfNoneCompleted();
+    });
     final state = ref.watch(domainViewStateProvider);
     return switch (state) {
       DomainUnset() => const _UnsetView(),
@@ -614,19 +655,35 @@ class _SwimlaneBody extends ConsumerWidget {
     final matrix = ref.watch(domainMatrixProvider);
     final swimlane = ref.watch(domainSwimlaneProvider);
 
-    // 未選定 UC，或選定 UC 尚無投影（輪次未完成）：列結構同正常 · 泳道、
-    // 不含步驟節點（SPEC-001 §1「泳道 · 尚未選定 UC」）。
+    // 已選定 UC 而該專案尚無完成輪次：投影準備中（SPEC-001 v1.55 §1）；
+    // 未選定 UC：尚未選定 UC。兩者列結構同正常 · 泳道、不含步驟節點。
+    final isProjectionPending =
+        selectedUcId != null && ref.watch(lastCompletedRoundProvider) == null;
     if (selectedUcId == null || swimlane == null) {
       final lanes = [
         for (final lane in ref.watch(domainEmptyLanesProvider))
           _toSwimlaneLane(lane, state.selectedDomainId),
       ];
+      final ucTitle = isProjectionPending
+          ? _ucTitleOf(matrix, selectedUcId)
+          : '';
       return Panel(
         leading: [
+          if (isProjectionPending)
+            AppText(
+              ucTitle.isEmpty
+                  ? selectedUcId
+                  : l10n.swimlanePanelTitle(selectedUcId, ucTitle),
+              variant: AppTextVariant.subtitle,
+            ),
           EmptyState(
             variant: EmptyStateVariant.section,
-            message: l10n.swimlaneUcUnsetPrompt,
-            testKey: const Key('state-domain-swimlane-uc-unset'),
+            message: isProjectionPending
+                ? l10n.swimlaneProjectionPendingPrompt
+                : l10n.swimlaneUcUnsetPrompt,
+            testKey: isProjectionPending
+                ? const Key('state-domain-swimlane-projection-pending')
+                : const Key('state-domain-swimlane-uc-unset'),
           ),
         ],
         fill: SwimlaneGrid(
