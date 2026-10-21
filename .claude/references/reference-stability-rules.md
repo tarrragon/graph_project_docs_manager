@@ -182,6 +182,8 @@
 
 另有目錄豁免 `.claude/handoff/archive/`（歷史歸檔不再被消費）。
 
+**per-project 路徑區段豁免**：路徑任一區段（整段相等，部分包含不算）屬 `.claude/lib/sync_exclude_manifest.py` 的 `PER_PROJECT_PATTERNS`（現含 `project-integration`）者不掃描。**Why**：規則 8 的失效軸是跨專案 sync，這類目錄被 sync 雙向排除，不會到達其他 consumer。**Consequence**：守衛不內嵌區段字面，直接 import manifest，sync 排除契約只維護一處；manifest 載入失敗時不豁免、照常掃描，並寫 stderr 與日誌。**Action**：專案設定（含協調票號）放 per-project 區段內，不需 marker。
+
 **逃生閥**：行內 marker `rule8-exempt: <category>:<reason>`，同行或下一行皆可，逐行生效非整檔放行。合法 category 有三個——`testdata`（守衛或工具自身 self-test 需真實 ID 形態）、`illustration`（規則正文示範 ID 形態且不便置於 code fence）、`relocation`（既有內容的逐字位置搬移，reason 須含來源檔路徑，形如「自 `<來源檔路徑>` 逐字搬移」）。category 不在清單內、reason 為空，或 `relocation` 類別的 reason 缺來源檔路徑，視為格式錯誤仍阻擋。
 
 **`relocation` 類別的適用邊界**：僅限既有內容的**逐字**位置搬移——搬移後內容與來源段落逐字一致，可用 diff 直接比對。內容經任何編修（改寫、精簡、補充、格式調整）即不再適用此類別，須改走一般規則 8 判準（依五類分類逐句判定，見「引用性質判準」章節）。**Why**：本類別的可驗證性正建立在「移除來源後仍可用 diff 復原/核對」這一機械可判定基準上；一旦內容被編修，diff 比對即失去意義，此時該引用的合法性只能回到語意判準（是否落入第 1-5 類），與其他豁免類別一視同仁，不能沿用 `relocation` 的免判定待遇。**Action**：搬移前若已知會順帶編修內容，不要用 `relocation` marker；改用移除 ID 並依「兩層分流指引」處理（見前述第 1 類論證依據型的處置路徑）。
