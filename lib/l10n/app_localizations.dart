@@ -836,6 +836,12 @@ abstract class AppLocalizations {
   /// **'尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC'**
   String get swimlaneUcUnsetPrompt;
 
+  /// SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-001 v1.55 §1）：泳道投影準備中提示文案（已選定 UC 而該專案尚無完成輪次）
+  ///
+  /// In zh, this message translates to:
+  /// **'泳道投影準備中，掃描完成後即顯示此 UC 的步驟'**
+  String get swimlaneProjectionPendingPrompt;
+
   /// SPEC-004 §4.0.6：泳道面板標題（正常 · 泳道、泳道 · flow 未結構化，AppText.subtitle）
   ///
   /// In zh, this message translates to:
