@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../tokens/tokens.dart';
 import 'app_icon.dart';
+import 'design_overrides.dart';
 
 /// [AppButton] 的三種變體（SPEC-004 §4.4「變體」）。
 enum AppButtonVariant {
@@ -91,6 +92,17 @@ class _AppButtonState extends State<AppButton> {
   }
 
   _ButtonColors get _colors {
+    final base = _baseColors;
+    final o = DesignOverrides.maybeOf(context)?.buttonColors[widget.variant];
+    if (o == null) return base;
+    return _ButtonColors(
+      background: o.background ?? base.background,
+      foreground: o.foreground ?? base.foreground,
+      border: o.border ?? base.border,
+    );
+  }
+
+  _ButtonColors get _baseColors {
     switch (widget.variant) {
       case AppButtonVariant.primary:
         return const _ButtonColors(

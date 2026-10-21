@@ -9,6 +9,7 @@ library;
 import 'package:flutter/widgets.dart';
 
 import '../tokens/tokens.dart';
+import 'design_overrides.dart';
 
 /// 節首形式與收合能力（SPEC-004 4.41「變體」）。
 enum SectionVariant {
@@ -72,7 +73,7 @@ class Section extends StatelessWidget {
         AnimatedSize(
           duration: Motion.transition(context),
           alignment: Alignment.topCenter,
-          child: _showItems ? _buildItems() : const SizedBox.shrink(),
+          child: _showItems ? _buildItems(context) : const SizedBox.shrink(),
         ),
       ],
     );
@@ -90,14 +91,15 @@ class Section extends StatelessWidget {
     );
   }
 
-  Widget _buildItems() {
+  Widget _buildItems(BuildContext context) {
+    final gap = DesignOverrides.maybeOf(context)?.sectionItemGap ?? Space.xxs;
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final item in items) ...[SizedBox(height: Space.xxs), item],
+        for (final item in items) ...[SizedBox(height: gap), item],
       ],
     );
   }
