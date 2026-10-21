@@ -21,6 +21,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_text.dart';
+import 'design_overrides.dart';
 
 /// 單一篩選選項（不含「全部」，該項由元件自動前置）。
 class FilterOption {
@@ -266,9 +267,11 @@ class _FilterDropdownState extends State<FilterDropdown> {
               .label;
     final isActive = widget.selected != null;
 
-    final borderColor = isActive
-        ? AppColors.accent
-        : (_triggerHasFocus ? AppColors.accent : AppColors.border);
+    final colors = DesignOverrides.maybeOf(context)?.filterDropdownColors;
+    final borderColor = isActive || _triggerHasFocus
+        ? (colors?.activeBorder ?? AppColors.accent)
+        : (colors?.border ?? AppColors.border);
+    final background = colors?.background ?? AppColors.surfaceBase;
 
     return CompositedTransformTarget(
       link: _layerLink,
@@ -312,7 +315,7 @@ class _FilterDropdownState extends State<FilterDropdown> {
                       vertical: Space.xs,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceBase,
+                      color: background,
                       border: Border.all(color: borderColor),
                       borderRadius: BorderRadius.circular(Radius.md),
                     ),
@@ -348,6 +351,7 @@ class _FilterDropdownState extends State<FilterDropdown> {
   Widget _buildOverlay(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final allLabel = widget.allOptionLabel ?? l10n.filterAllOption;
+    final colors = DesignOverrides.maybeOf(context)?.filterDropdownColors;
 
     return Stack(
       children: [
@@ -373,8 +377,10 @@ class _FilterDropdownState extends State<FilterDropdown> {
                 borderRadius: BorderRadius.circular(Radius.md),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceBase,
-                    border: Border.all(color: AppColors.border),
+                    color: colors?.background ?? AppColors.surfaceBase,
+                    border: Border.all(
+                      color: colors?.border ?? AppColors.border,
+                    ),
                     borderRadius: BorderRadius.circular(Radius.md),
                   ),
                   child: IntrinsicWidth(

@@ -16,6 +16,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
+import 'design_overrides.dart';
 import 'list_row.dart';
 
 /// 樹節點：一列 + 其子層（SPEC-004 5.13 子件契約）。
@@ -73,8 +74,10 @@ class Tree extends StatelessWidget {
 
   Widget _buildNode(BuildContext context, TreeNode node) {
     final l10n = AppLocalizations.of(context);
+    final indent =
+        DesignOverrides.maybeOf(context)?.treeIndent ?? LayoutSize.treeIndent;
     final row = Padding(
-      padding: EdgeInsets.only(left: LayoutSize.treeIndent.w * node.depth),
+      padding: EdgeInsets.only(left: indent.w * node.depth),
       child: Semantics(
         label: l10n.treeDepthA11yLabel(node.depth),
         child: node.row,
