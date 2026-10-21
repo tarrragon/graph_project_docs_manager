@@ -18,6 +18,7 @@ import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_icon.dart';
 import 'badge.dart';
+import 'design_overrides.dart';
 import 'relation_item.dart';
 
 /// 三個變體（SPEC-004 4.6「變體」表）。
@@ -116,22 +117,25 @@ class IssueMarker extends StatelessWidget {
   /// `fieldCorruptedMessage` 等既有 key 的值）。
   final String? explanation;
 
+  Color _markerColor(BuildContext context) =>
+      DesignOverrides.maybeOf(context)?.issueMarkerColor ?? AppColors.error;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     switch (variant) {
       case IssueMarkerVariant.damagedEdge:
-        return _buildDamagedEdge(l10n);
+        return _buildDamagedEdge(context, l10n);
       case IssueMarkerVariant.damagedDetail:
-        return _buildDamagedDetail(l10n);
+        return _buildDamagedDetail(context, l10n);
       case IssueMarkerVariant.gap:
-        return _buildGap(l10n);
+        return _buildGap(context, l10n);
     }
   }
 
   /// child 的既有語意標籤（若有）與本元件的 [AppLocalizations.damagedEdgeMarkerLabel]
   /// 合併為一個朗讀節點（SPEC-004 4.6「{child 標籤}，damagedEdgeMarkerLabel」）。
-  Widget _buildDamagedEdge(AppLocalizations l10n) {
+  Widget _buildDamagedEdge(BuildContext context, AppLocalizations l10n) {
     return MergeSemantics(
       key: testKey,
       child: Semantics(
@@ -142,7 +146,7 @@ class IssueMarker extends StatelessWidget {
             onTap: onTap,
             excludeFromSemantics: true,
             child: CustomPaint(
-              painter: const _DashedBoxPainter(),
+              painter: _DashedBoxPainter(_markerColor(context)),
               child: Padding(
                 padding: EdgeInsets.all(Space.xxs.w),
                 child: IgnorePointer(child: child),
@@ -154,7 +158,7 @@ class IssueMarker extends StatelessWidget {
     );
   }
 
-  Widget _buildDamagedDetail(AppLocalizations l10n) {
+  Widget _buildDamagedDetail(BuildContext context, AppLocalizations l10n) {
     final String? suffix = count != null
         ? l10n.corruptedTicketsBadge(count!)
         : explanation;
@@ -174,10 +178,10 @@ class IssueMarker extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const AppIcon(
+                AppIcon(
                   icon: Icons.warning_amber_rounded,
                   size: IconSize.sm,
-                  color: AppColors.error,
+                  color: _markerColor(context),
                 ),
                 if (count != null) ...[
                   SizedBox(width: Space.xs.w),
@@ -192,7 +196,7 @@ class IssueMarker extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: AppFontSize.caption.sp,
-                        color: AppColors.error,
+                        color: _markerColor(context),
                       ),
                     ),
                   ),
@@ -205,7 +209,7 @@ class IssueMarker extends StatelessWidget {
     );
   }
 
-  Widget _buildGap(AppLocalizations l10n) {
+  Widget _buildGap(BuildContext context, AppLocalizations l10n) {
     return Semantics(
       key: testKey,
       button: true,
@@ -215,7 +219,7 @@ class IssueMarker extends StatelessWidget {
           onTap: onTap,
           excludeFromSemantics: true,
           child: CustomPaint(
-            painter: const _DashedBoxPainter(),
+            painter: _DashedBoxPainter(_markerColor(context)),
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: Space.sm.w,
@@ -228,7 +232,7 @@ class IssueMarker extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: AppFontSize.caption.sp,
-                    color: AppColors.error,
+                    color: _markerColor(context),
                   ),
                 ),
               ),
@@ -257,7 +261,9 @@ class IssueMarker extends StatelessWidget {
 /// [CustomPainter] 逐段畫短劃，樣式沿用 `lib/components/section.dart` 的
 /// 頂部虛線繪製慣例，延伸至四邊）。
 class _DashedBoxPainter extends CustomPainter {
-  const _DashedBoxPainter();
+  const _DashedBoxPainter(this.color);
+
+  final Color color;
 
   static const double _dashWidth = 4;
   static const double _dashGap = 3;
@@ -265,7 +271,7 @@ class _DashedBoxPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.error
+      ..color = color
       ..strokeWidth = 1;
     _drawDashedLine(canvas, paint, const Offset(0, 0), Offset(size.width, 0));
     _drawDashedLine(
@@ -300,5 +306,6 @@ class _DashedBoxPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DashedBoxPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DashedBoxPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
