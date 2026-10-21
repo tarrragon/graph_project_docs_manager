@@ -24,6 +24,7 @@ import '../../helpers/helpers.dart';
 const _opened = '已在外部開啟';
 const _failed = '無法以系統預設方式開啟';
 const _notFound = '找不到檔案';
+const _domainSelectedUc = 'UC-06';
 
 void main() {
   group('Domain 開啟 docs 目錄（SPEC-003 §3.1）', () {
@@ -83,7 +84,7 @@ void main() {
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
           ...domainFixtureOverrides(mode: DomainMode.swimlane),
-          selectedUcProvider.overrideWith((ref) => 'UC-06'),
+          selectedUcProvider.overrideWith((ref) => _domainSelectedUc),
         ],
       );
       await tester.tap(find.byKey(const Key('action-domain-open-source')));
@@ -93,7 +94,8 @@ void main() {
 
     testWidgets('opened', (tester) async {
       final fake = await tapSource(tester, ExternalOpenResult.opened);
-      expect(fake.calls, ['/ws/proj/docs/usecases/UC-06.md']);
+      // Domain 畫面以 `docs/usecases/<已選 UC id>.md` 建路徑（非真實檔名）。
+      expect(fake.calls, ['/ws/proj/docs/usecases/$_domainSelectedUc.md']);
       expect(find.text(_opened), findsOneWidget);
     });
 
@@ -133,7 +135,9 @@ void main() {
 
     testWidgets('opened', (tester) async {
       final fake = await tapSource(tester, ExternalOpenResult.opened);
-      expect(fake.calls, ['/ws/proj/docs/usecases/UC-06.md']);
+      expect(fake.calls, [
+        '/ws/proj/docs/usecases/UC-06-find-and-fix-document-gaps.md',
+      ]);
       expect(find.text(_opened), findsOneWidget);
     });
 

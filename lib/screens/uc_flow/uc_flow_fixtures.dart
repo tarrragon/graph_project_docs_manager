@@ -13,7 +13,7 @@ abstract final class UcFlowFixtures {
     UcFlowUcItem(
       id: 'UC-02',
       title: '依 domain 盤點變更影響面', // i18n-exempt: fixture UC 標題，非 App UI 文案
-      filePath: 'docs/usecases/UC-02.md', // i18n-exempt: fixture 路徑字面
+      filePath: 'docs/usecases/UC-02-assess-change-impact-by-domain.md', // i18n-exempt: fixture 路徑字面
       steps: [
         UcFlowStepItem(
           id: 'pick-folder', // i18n-exempt: fixture 步驟 id
@@ -37,7 +37,7 @@ abstract final class UcFlowFixtures {
     UcFlowUcItem(
       id: 'UC-04',
       title: '追溯一項需求的實現鏈', // i18n-exempt: fixture UC 標題，非 App UI 文案
-      filePath: 'docs/usecases/UC-04.md', // i18n-exempt: fixture 路徑字面
+      filePath: 'docs/usecases/UC-04-trace-a-requirement-implementation-chain.md', // i18n-exempt: fixture 路徑字面
       steps: [
         UcFlowStepItem(
           label: '讀取 schema 定義', // i18n-exempt: fixture 步驟標籤
@@ -56,7 +56,7 @@ abstract final class UcFlowFixtures {
     UcFlowUcItem(
       id: 'UC-06',
       title: '找出並修復文件破洞', // i18n-exempt: fixture UC 標題，非 App UI 文案
-      filePath: 'docs/usecases/UC-06.md', // i18n-exempt: fixture 路徑字面
+      filePath: 'docs/usecases/UC-06-find-and-fix-document-gaps.md', // i18n-exempt: fixture 路徑字面
     ),
   ];
 }

@@ -84,7 +84,10 @@ Future<CorpusScanResult> _scanThreeSourceFixture({
       'docs/carrier/badyaml.md',
       utf8.encode('---\nkey: "unterminated\n---\n'),
     )
-    ..addFile('docs/usecases/UC-01.md', ucBytes(blocks: [malformedFlowBlock]))
+    ..addFile(
+      'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
+      ucBytes(blocks: [malformedFlowBlock]),
+    )
     ..addFile('docs/non-domain-paths.yaml', utf8.encode(listContent));
   return scanCorpus(
     fileSystem: fs,
@@ -347,7 +350,7 @@ void main() {
         _singleMatchEvent(path: 'docs/b.md', type: 'Proposal'),
       ];
       final flowEvent = FlowParseFailedEvent(
-        path: 'docs/usecases/UC-01.md',
+        path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
         reason: flowBlockMalformedReasonCode,
       );
 
@@ -365,7 +368,10 @@ void main() {
 
         expect(gaps, hasLength(1));
         final gap = gaps.single as FlowBlockMalformedGap;
-        expect(gap.path, 'docs/usecases/UC-01.md');
+        expect(
+          gap.path,
+          'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
+        );
         expect(gap.nodeType, 'UC');
         expect(gap.reasonCode, flowBlockMalformedReasonCode);
         expect(gap.category, GapCategory.parseFailure);
@@ -379,7 +385,7 @@ void main() {
             unavailableReason: null,
             flowEvents: [
               FlowParseFailedEvent(
-                path: 'docs/usecases/UC-02.md',
+                path: 'docs/usecases/UC-02-assess-change-impact-by-domain.md',
                 reason: '$flowBlockMalformedReasonCode：語法錯誤；非 map 項目',
               ),
             ],
@@ -405,7 +411,7 @@ void main() {
             unavailableReason: null,
             flowEvents: [
               FlowParseFailedEvent(
-                path: 'docs/usecases/UC-04.md',
+                path: 'docs/usecases/UC-04-trace-a-requirement-implementation-chain.md',
                 reason: upstreamViolation,
               ),
             ],
@@ -418,7 +424,10 @@ void main() {
         // reason 原文不得被當成原因碼。
         expect(gap.reasonCode, isNot(upstreamViolation));
         expect(gap.reason, upstreamViolation);
-        expect(gap.path, 'docs/usecases/UC-04.md');
+        expect(
+          gap.path,
+          'docs/usecases/UC-04-trace-a-requirement-implementation-chain.md',
+        );
       });
 
       test('D1-6（E1）兩筆 003＋一筆 004 對照零筆 004：三筆對兩筆', () {
@@ -631,7 +640,7 @@ void main() {
       final result = unavailable(
         flows: [
           FlowParseFailedEvent(
-            path: 'docs/usecases/UC-01.md',
+            path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
             reason: flowBlockMalformedReasonCode,
           ),
         ],

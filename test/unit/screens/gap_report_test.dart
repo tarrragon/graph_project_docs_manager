@@ -473,7 +473,7 @@ void main() {
     ) async {
       const item = GapReportItem(
         id: 'flow-item',
-        filePath: 'docs/usecases/UC-02.md',
+        filePath: 'docs/usecases/UC-02-assess-change-impact-by-domain.md',
         pointerType: GapItemPointerType.flow,
         pointerNodeId: 'UC-02',
         flowUcId: 'UC-02',
@@ -525,7 +525,7 @@ void main() {
         tester,
         const GapReportItem(
           id: 'flow-focus',
-          filePath: 'docs/usecases/UC-02.md',
+          filePath: 'docs/usecases/UC-02-assess-change-impact-by-domain.md',
           pointerType: GapItemPointerType.flow,
           flowUcId: 'UC-02',
           flowStepId: 's3',
@@ -542,7 +542,7 @@ void main() {
         tester,
         const GapReportItem(
           id: 'flow-nostep',
-          filePath: 'docs/usecases/UC-02.md',
+          filePath: 'docs/usecases/UC-02-assess-change-impact-by-domain.md',
           pointerType: GapItemPointerType.flow,
           flowUcId: 'UC-02',
         ),

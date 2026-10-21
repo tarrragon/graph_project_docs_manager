@@ -38,7 +38,7 @@ void main() {
           typeName: 'UC',
           status: null,
           title: '新一輪標題',
-          path: 'docs/usecases/UC-02.md',
+          path: 'docs/usecases/UC-02-assess-change-impact-by-domain.md',
         ),
       ],
     );
@@ -96,10 +96,11 @@ void main() {
 
   testWidgets('新一輪完成：面板標題與高亮名取自新一輪', (tester) async {
     final (fake, container) = await pumpOnRoundA(tester);
-    final l10n = AppLocalizations.of(tester.element(find.byType(DomainViewScreen)));
-    final domainLane = grid(
-      tester,
-    ).lanes.firstWhere((l) => l.kind == SwimlaneLaneKind.domain);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(DomainViewScreen)),
+    );
+    final domainLane = grid(tester).lanes
+        .firstWhere((l) => l.kind == SwimlaneLaneKind.domain);
     container.read(domainViewStateProvider.notifier).state = DomainReady(
       mode: DomainMode.swimlane,
       selectedDomainId: domainLane.domainId,
