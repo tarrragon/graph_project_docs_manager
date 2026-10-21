@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-10-21"
-version: "1.34"
+version: "1.35"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -458,6 +458,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.35 | 2026-10-21 | FR-09 識別名段與 FR-10 規則清單回填「事件引用未解析」的程式識別名 `FlowDefectKind.eventUnresolved`／`GraphDefectKind.flowEventUnresolved`，並記缺陷在同 UC 內的排序（`traverses` 兩子類之後，依步驟順序、先 `emits` 後 `consumes`）（`0.5.0-W1-458.4` 命名回填，PM 追認） |
 | 1.34 | 2026-10-21 | 新增 flow 子類「事件引用未解析」（`0.5.0-W1-458` 用戶裁決題 E，`0.5.0-W1-458.3`）：FR-10 新增〈事件引用〉段，`emits`／`consumes` 元素比對 `rawNodes` 中型別為 `EVT` 的 id 集合（與 SPEC-003 §3.5 同一集合），比對不到者報缺陷；同步驟同欄位同值只報一筆，重複 EVT id 算存在，建圖不可用不產生；補三條驗收。FR-09 子類表加一列，負載欄位加 `emits`、`consumes`；「flow 四子類」改為「flow 各子類」，D4 改指 FR-09 子類表，不寫死子類數。〈本版範圍外〉B 層邊列同步。識別名由 `0.5.0-W1-458.4` 命名 |
 | 1.33 | 2026-10-21 | FR-06 負載補上圖本體（輕節點、邊、flow 子圖、domain 名稱索引），缺陷子類補「domain 重複宣告」；原文只列計數與 `graphDefects`，與 `GraphBuiltEvent` 現況及 Layout、Diagnostics 實際讀取的欄位不符。FR-13 快照驗收補註：現行語料的 `diagnostics` 已推導為 L3，期望值仍以凍結快照為準（`0.5.0-W1-460`） |
 | 1.32 | 2026-10-12 | FR-10 步驟屬性：`emits`／`consumes` 的正規化比照 `next`（純量視同單元素清單、空元素略過、非字串轉字串），各消費端共用同一份結果（PM 處置，`0.5.0-W1-114.20`） |
