@@ -5,10 +5,19 @@
 
 import type { BoxProps, ButtonProps, ElementConstructor, RenderChildren, TextProps, ThemeKey } from 'claude-code'
 
-import type { DispatchRow, GroupOverrides, LaneGroup, LanesResult, ReadyBoard, SessionsResult, TicketStatus } from '../types'
+import type {
+  BoardSnapshot,
+  DispatchRow,
+  GroupOverrides,
+  LaneGroup,
+  LanesResult,
+  ReadyBoard,
+  SessionsResult,
+  TicketStatus,
+  UnsetProjectConfig,
+} from '../types'
 import { dispatchNotice, dispatchRowsOf } from './dispatchView'
 import {
-  DISPATCH_TICKET_PATH,
   GROUP_INDENT,
   OTHER_LANE_LABEL,
   UNKNOWN_STATUS,
@@ -120,7 +129,7 @@ export function renderGroup({ Box, Text, Button }: Elements, frame: GroupFrame, 
   )
 }
 
-/** 線群組區：349 與派發紀錄的提示行在最上方，其後依線號排列各線群組，「其他」最後。 */
+/** 線群組區：協調票與派發紀錄的提示行在最上方，其後依線號排列各線群組，「其他」最後。 */
 export function renderLaneGroups(elements: Elements, board: ReadyBoard, overrides: GroupOverrides, onToggle: ToggleGroup) {
   const rows = dispatchRowsOf(board)
   const groups = laneGroups(board.lanes.kind === 'ok' ? board.lanes.lanes : [], rows, {
@@ -135,10 +144,38 @@ export function renderLaneGroups(elements: Elements, board: ReadyBoard, override
   ]
 }
 
-/** 349 的兩種提示：讀不到為「解析失敗」，讀得到但沒有現行佇列行為「349 尚無現行佇列行」。 */
+/** 協調票的兩種提示：讀不到為「解析失敗：協調票讀不到」（附票檔路徑與原因），讀得到但沒有現行佇列行為「協調票尚無現行佇列行」。 */
 function lanesNotice(Text: ElementConstructor<TextProps>, lanes: LanesResult) {
-  if (lanes.kind === 'error') return [<Text color="red">解析失敗：讀取 {DISPATCH_TICKET_PATH} 時發生錯誤（{lanes.message}）</Text>]
-  return lanes.lanes.length === 0 ? [<Text color="yellow">349 尚無現行佇列行</Text>] : []
+  if (lanes.kind === 'error') return [<Text color="red">解析失敗：協調票讀不到（{lanes.message}）</Text>]
+  return lanes.lanes.length === 0 ? [<Text color="yellow">協調票尚無現行佇列行</Text>] : []
+}
+
+/** 專案設定檔的格式說明，設定不成立時顯示在提示中。 */
+export const PROJECT_CONFIG_FORMAT = '{ "coordinationTicket": "<協調票的完整票號>" }'
+
+/** 設定不成立的原因文字，各原因可區分。 */
+function unsetReason(config: UnsetProjectConfig): string {
+  switch (config.kind) {
+    case 'missing':
+      return `設定檔讀不到（${config.message}）`
+    case 'invalid-json':
+      return `設定檔不是有效的 JSON（${config.message}）`
+    case 'missing-field':
+      return '設定檔缺少 coordinationTicket 欄位'
+    case 'invalid-format':
+      return `coordinationTicket 不是完整票號（${JSON.stringify(config.value)}）`
+  }
+}
+
+/** 專案設定不成立時 Pane 的全部內容：原因、設定檔的絕對路徑與格式，不畫任何群組。 */
+export function renderConfigNotice({ Box, Text }: Elements, board: Extract<BoardSnapshot, { kind: 'unconfigured' }>) {
+  return (
+    <Box flexDirection="column">
+      <Text color="yellow">尚未設定協調票：{unsetReason(board.config)}</Text>
+      <Text>設定檔：{board.configPath}</Text>
+      <Text>格式：{PROJECT_CONFIG_FORMAT}</Text>
+    </Box>
+  )
 }
 
 /** allRows 為所有群組的派發列：佇列票的上色依該票所有的派發列，派發列不一定在同一群組（session 與線不一定對應）。 */

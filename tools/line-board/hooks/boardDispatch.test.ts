@@ -403,12 +403,12 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('349 讀不到時，派發條目照常列出並全歸「其他」；對照：同一份 fixture 讀得到 349 後歸到對應的線', async ($, on) => {
+  test('協調票讀不到時，派發條目照常列出並全歸「其他」；對照：同一份 fixture 讀得到協調票後歸到對應的線', async ($, on) => {
     const stub = dispatchFiles(DISPATCH_ACTIVE)
     const ticket349 = stub.files[`/repo/${DISPATCH_TICKET_PATH}`] ?? ''
     delete stub.files[`/repo/${DISPATCH_TICKET_PATH}`]
     const { ui, clock } = await startBoard($, on, stub)
-    expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^解析失敗：協調票讀不到/ })).toBeDefined()
     expect((await bodyOf(ui, OTHER_GROUP_ID))?.map(withoutAge)).toEqual([
       'general-purpose｜337.9｜實作',
       'linux｜Readonly review of 337.8｜審查',
@@ -416,7 +416,7 @@ describe('Pane', () => {
       'general-purpose｜351｜閘門',
       'general-purpose｜345｜收尾',
     ])
-    // 正向對照：補回 349 後重讀，同一批條目歸到 session 所在的線
+    // 正向對照：補回協調票後重讀，同一批條目歸到 session 所在的線
     stub.files[`/repo/${DISPATCH_TICKET_PATH}`] = ticket349
     await clock.advance(REFRESH_MS)
     const dispatchesOf = async (id: string) => ((await bodyOf(ui, id)) ?? []).filter(line => DISPATCH_ROW.test(line)).map(withoutAge)
