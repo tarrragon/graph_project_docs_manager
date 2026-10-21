@@ -417,8 +417,8 @@ G9 只斷言操作計數，結果是確定性的，不屬 D1 禁止的計時斷�
 | G10-7（守衛，v1.28 重算） | 步驟 `x`（主線）、`x`（`branch_from: x`） | 兩步都在子圖內、各依自身 `branch_from` 落位（主線 `x`、分支 `x`）；恰一筆「UC 內 step id 重複」，欄位 `id`、原始值 `x`。第二個 `x` 的 `branch_from` 指向重複 id，依 FR-10 另有一筆「flow 參照未解析」（`x`，`branch_from`，`x`），缺陷共兩筆；正向對照：第二步 id 改為 `y`（`branch_from: x`）時零缺陷 |
 | G10-8（v1.28 重算） | 步驟 `x`（主線）、`x`（`branch_from: x`）、`r`（`branch_from: x`、`return_to: x`） | `r` 的 `branch_from`、`return_to` 與第二個 `x` 的 `branch_from` 皆標未解析；缺陷依序恰四筆：(1) 重複，`x`，`id`，`x`；(2) 未解析，`x`（第二個），`branch_from`，`x`；(3) 未解析，`r`，`branch_from`，`x`；(4) 未解析，`r`，`return_to`，`x` |
 | G10-8b（v1.28） | 步驟 `x`、`x`（皆主線）、`b`（`branch_from: x`、`next: x`） | `b` 的 `next` 參照標未解析；缺陷依序恰三筆：重複（`x`，`id`，`x`）、未解析（`b`，`branch_from`，`x`）、未解析（`b`，`next`，`x`） |
-| G10-9 | UC-A、UC-B 各有一步 id 為 `rescan` | 零缺陷；`flowOf(UC-A)` 與 `flowOf(UC-B)` 各含自己的 `rescan` |
-| G10-10（守衛） | UC-A 的 b1 `branch_from: only_in_b`，該 id 只存在於 UC-B | b1 的參照標未解析、一筆缺陷（不跨 UC 解析）；正向對照為 G10-9 |
+| G10-9 | UC-01、UC-02 各有一步 id 為 `rescan` | 零缺陷；`flowOf(UC-01)` 與 `flowOf(UC-02)` 各含自己的 `rescan` |
+| G10-10（守衛） | UC-01 的 b1 `branch_from: only_in_b`，該 id 只存在於 UC-02 | b1 的參照標未解析、一筆缺陷（不跨 UC 解析）；正向對照為 G10-9 |
 | G10-11 | 步驟屬性 | 每步帶 `id`、`name`、`next`、`emits`、`consumes`、`traverses` 原值與 `traverses` 解析結果；原值不修剪、不轉型 |
 | G10-12 | 步驟清單為空的 UC；不在圖上的 ID；SPEC 節點的 ID | 前者回傳空子圖（主線、分支、回指皆空）；後兩者回傳「不存在」。三種回傳可窮舉區分 |
 | G10-13（守衛） | 建圖不可用（S6-7 的型別表）；建圖尚未完成 | 皆回傳「圖不可用」，不是空子圖、不是「不存在」；正向對照為 G10-12 的空子圖 |
