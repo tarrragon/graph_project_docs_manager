@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["anthropic"]
+# dependencies = ["anthropic==1.17.0"]
 # ///
 """Claude 單 token 選項代碼取樣（研究線共用）。
 
@@ -76,7 +76,8 @@ def sample_once(client, model, question, options, seed, *, max_tokens=1,
         "messages": [{"role": "user", "content": content}],
     }
     if temperature is not None:  # 未指定時不送，沿用 API 預設
-        params["temperature"] = temperature
+        # SDK 1.17.0 的 create() 已無 temperature 關鍵字參數，改經 extra_body
+        params["extra_body"] = {"temperature": temperature}
     resp = client.messages.create(**params)
     raw = resp.content[0].text if resp.content else ""
     return {
