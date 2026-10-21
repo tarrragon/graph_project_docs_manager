@@ -17,6 +17,7 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_provi
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 
+import '../../../helpers/domain_view_fixtures.dart' show emptyLanesOfMatrix;
 import '../../../helpers/helpers.dart';
 
 DomainUc _uc(String id, String title, {bool hasFlowStep = true}) =>
@@ -81,11 +82,12 @@ List<Override> _stateOverrides(
   domainViewStateProvider.overrideWith(
     (ref) => DomainReady(
       mode: mode,
-      matrix: matrix,
       selectedDomainId: selectedDomainId,
       selectedCell: selectedCell,
     ),
   ),
+  domainMatrixProvider.overrideWith((ref) => matrix),
+  domainEmptyLanesProvider.overrideWith((ref) => emptyLanesOfMatrix(matrix)),
   domainSwimlaneProvider.overrideWith((ref) => swimlane),
   if (selectedUc != null) selectedUcProvider.overrideWith((ref) => selectedUc),
 ];

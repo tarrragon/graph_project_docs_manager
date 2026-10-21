@@ -1,7 +1,7 @@
 /// Domain 視圖資料編排（0.5.0-W1-114.14）：gate 通過後經共用掃描輪次
 /// （[scanRoundProvider]）取得建圖結果，推導 [DomainViewState]。
 ///
-/// 流程：`DomainLoading` → 取得輪次 → 節點數 > 0 為 `DomainReady`（帶矩陣）、
+/// 流程：`DomainLoading` → 取得輪次 → 節點數 > 0 為 `DomainReady`（矩陣由 domainMatrixProvider 衍生）、
 /// 0 為 `DomainEmpty`。輪次取不到時（SPEC-001 §1 載入中列）：工作區非 Ready
 /// 落「未選專案」，等待中被丟棄則接續新輪次（同破洞報告頁處置）。
 ///
@@ -12,10 +12,8 @@ import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
-import 'package:graph_project_docs_manager/app/domain_uc_columns.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
@@ -53,6 +51,8 @@ class DomainViewLoader extends Notifier<void> {
   /// 版本旗標，原樣帶入 `DomainReady`／`DomainEmpty`。
   Future<void> load({String? inferredVersion}) async {
     final generation = ++_generation;
+    // 確保「最後完成輪次」擁有者先於輪次存在，才能收到本次完成。
+    ref.read(lastCompletedRoundProvider);
     _write(const DomainLoading());
     // provider 的建構期間不可修改其他 provider；讓出一個 microtask。
     await Future<void>.microtask(() {});
@@ -178,10 +178,6 @@ class DomainViewLoader extends Notifier<void> {
       mode: DomainMode.matrix,
       isDegraded: round.isDegraded,
       inferredVersion: inferredVersion,
-      matrix: projectDomainMatrix(
-        event: event,
-        ucIds: orderedUcColumnIds(event.nodes),
-      ),
     );
   }
 

@@ -272,16 +272,11 @@ class DomainReady extends DomainViewState {
     this.selectedCell,
     this.isDegraded = false,
     this.inferredVersion,
-    this.matrix,
     this.swimlaneFocus,
   });
 
   /// 最近一次「在泳道中檢視」的落點；其餘操作不清除。
   final SwimlaneFocus? swimlaneFocus;
-
-  /// 矩陣投影（0.5.0-W1-114.14）：由共用掃描輪次的建圖結果算出；`null`
-  /// 代表尚未接真資料（fixture／測試注入的狀態），畫面沿用既有來源。
-  final DomainMatrix? matrix;
 
   /// 目前檢視模式（矩陣／泳道，SPEC-004 §4.10）。
   final DomainMode mode;
@@ -319,7 +314,6 @@ class DomainReady extends DomainViewState {
       inferredVersion: inferredVersion != null
           ? inferredVersion()
           : this.inferredVersion,
-      matrix: matrix,
       swimlaneFocus: swimlaneFocus != null
           ? swimlaneFocus()
           : this.swimlaneFocus,

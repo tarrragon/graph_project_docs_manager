@@ -64,6 +64,19 @@ DomainSwimlaneView projectDomainSwimlane({
   );
 }
 
+/// 需求：[SPEC-001 §1 泳道 · 尚未選定 UC] 未選定 UC 的列結構：頂端「畫面」列 +
+/// FR-13 列序的各 DomainBundle 列（與 [projectDomainSwimlane] 共用
+/// [_orderedBundles]），皆無節點。
+List<DomainLane> projectEmptyLanes(GraphBuiltEvent event) => [
+  const DomainLane(domainId: null, kind: DomainLaneKind.screen, nodes: []),
+  for (final bundle in _orderedBundles(GraphBuildAvailable(event)))
+    DomainLane(
+      domainId: bundle.bundleId,
+      domainName: bundle.domain,
+      nodes: const [],
+    ),
+];
+
 /// 需求：[SPEC-001 §1 間接依賴格的「在泳道中檢視」跳轉目標] 給定 UC 與列的
 /// domain 字面，回傳 Layout 公開面「該列欄號最小的節點」（L9）；UC 無 flow
 /// 或該列無節點時為 null。畫面不自行組合欄號。

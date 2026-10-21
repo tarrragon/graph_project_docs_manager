@@ -4,8 +4,8 @@
 /// （正常 · 矩陣／已選格／正常 · 泳道／泳道 · 尚未選定 UC／泳道 ·
 /// flow 未結構化）共用 [DomainReady]，實際子列由 [DomainReady.mode] +
 /// App 層共用值 `selectedUcProvider`（`app/selected_uc.dart`）計算，見
-/// [_readyBody]。矩陣取自 [DomainReady.matrix]、泳道取自
-/// `domainSwimlaneProvider`，畫面只讀 state、不自算（`0.5.0-W1-114.21`）。
+/// [_readyBody]。矩陣取自 `domainMatrixProvider`、泳道取自
+/// `domainSwimlaneProvider`（兩者同讀最後完成輪次），畫面只讀 state、不自算（`0.5.0-W1-114.21`）。
 /// 頁首模式切換（`SegmentedControl`）由 [DomainHeaderTrailing]
 /// 承載，經 `lib/app/shell.dart` 接線至 `SplitRow.header` 右格（僅
 /// `AppDestination.domain` 一行條件式 trailing，其餘五個目的地不受影響）。
@@ -394,8 +394,8 @@ class _MatrixBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final matrix = state.matrix;
-    final rows = matrix?.rows ?? const <DomainRow>[];
+    final matrix = ref.watch(domainMatrixProvider);
+    final rows =matrix?.rows ?? const <DomainRow>[];
 
     void onSelectDomain(String domainId) {
       final current = state.selectedCell;
@@ -587,7 +587,7 @@ SwimlaneFocus _jumpFocus(WidgetRef ref, DomainCell cell) {
     return direct;
   }
   final node = ref.read(firstNodeInLaneQueryProvider)(cell.ucId, source);
-  final matrix = (ref.read(domainViewStateProvider) as DomainReady).matrix;
+  final matrix = ref.read(domainMatrixProvider);
   final row = matrix?.rows.where((r) => r.domainName == source).firstOrNull;
   if (node == null || row == null) return direct;
   return SwimlaneFocus(domainId: row.domainId, column: node.column);
@@ -611,13 +611,16 @@ class _SwimlaneBody extends ConsumerWidget {
       );
     }
 
-    final matrix = state.matrix;
+    final matrix = ref.watch(domainMatrixProvider);
     final swimlane = ref.watch(domainSwimlaneProvider);
 
     // 未選定 UC，或選定 UC 尚無投影（輪次未完成）：列結構同正常 · 泳道、
     // 不含步驟節點（SPEC-001 §1「泳道 · 尚未選定 UC」）。
     if (selectedUcId == null || swimlane == null) {
-      final lanes = _emptyLanes(matrix);
+      final lanes = [
+        for (final lane in ref.watch(domainEmptyLanesProvider))
+          _toSwimlaneLane(lane, state.selectedDomainId),
+      ];
       return Panel(
         leading: [
           EmptyState(
@@ -757,13 +760,6 @@ String _ucTitleOf(DomainMatrix? matrix, String ucId) {
   }
   return '';
 }
-
-/// 未選定 UC 的列結構：頂端「畫面」列 + 矩陣各 domain 列，皆無節點。
-List<SwimlaneLane> _emptyLanes(DomainMatrix? matrix) => [
-  const SwimlaneLane(name: '', kind: SwimlaneLaneKind.screen, nodes: []),
-  for (final row in matrix?.rows ?? const <DomainRow>[])
-    SwimlaneLane(name: row.domainName, nodes: const [], domainId: row.domainId),
-];
 
 /// 選中 domain 的列首字面：先查矩陣列，再查泳道列；查無為 `null`。
 String? _highlightName(
