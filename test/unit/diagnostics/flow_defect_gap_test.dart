@@ -160,6 +160,30 @@ void main() {
       expect(empty.rawValue, '');
       expect(gaps[0].kind, isNot(gaps[1].kind));
     });
+
+    test('D4-7 事件引用未解析與 flow 參照未解析並列 → 兩筆，子類與負載相符', () {
+      final gaps = _detect([
+        _flow(
+          FlowDefectKind.eventUnresolved,
+          field: 'consumes',
+          rawValue: 'EVT-GHOST',
+        ),
+        _flow(FlowDefectKind.unresolvedReference, rawValue: 'nope'),
+      ]);
+
+      expect(gaps.map((g) => g.kind), [
+        GraphDefectKind.flowEventUnresolved,
+        GraphDefectKind.flowUnresolvedRef,
+      ]);
+      expect(gaps.every((g) => g.category == GapCategory.graphDefect), isTrue);
+      final d = gaps.first.defect as FlowGraphDefect;
+      expect((d.ucId, d.stepId, d.field, d.rawValue), (
+        'UC-01',
+        's1',
+        'consumes',
+        'EVT-GHOST',
+      ));
+    });
   });
 
   group('domain 重複宣告（D5）', () {

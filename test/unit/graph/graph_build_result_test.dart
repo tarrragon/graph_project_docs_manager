@@ -27,14 +27,15 @@ Map<String, dynamic> _step(
   String? branchFrom,
 }) => {'id': id, 'traverses': traverses, 'branch_from': ?branchFrom};
 
-/// flow 四子類各一的 UC。
-RawNode _flowFourSubclassUc() => _ucNode([
+/// flow 各子類各一的 UC（含事件引用未解析）。
+RawNode _flowEachSubclassUc() => _ucNode([
   _step('a'),
   _step('b', branchFrom: 'ghost'),
   _step('x'),
   _step('x'),
   _step('c', traverses: ['nope']),
   {'id': 'd'},
+  {'id': 'e', 'traverses': <Object?>[], 'emits': 'EVT-GHOST'},
 ]);
 
 /// 無任何主圖缺陷。
@@ -105,10 +106,10 @@ void main() {
       expect(event.graphDefects, isEmpty);
     });
 
-    test('G6-3 九類全式（NC-4／NC-11）：主圖四類 + flow 四子類 + domain 重複宣告 = 9 筆', () {
+    test('G6-3 十類全式（NC-4／NC-11）：主圖四類 + flow 五子類 + domain 重複宣告 = 10 筆', () {
       final event = buildGraphEvent([
         ..._mainGraphFourDefects(),
-        _flowFourSubclassUc(),
+        _flowEachSubclassUc(),
         _bundle('B1', 'corpus'),
         _bundle('B2', 'corpus'),
       ]);
@@ -124,14 +125,14 @@ void main() {
         event.graphDefects.whereType<DomainDuplicateDeclarationGraphDefect>(),
         hasLength(1),
       );
-      expect(event.graphDefects.length, 9);
-      // 對照：拿掉重複宣告的一個 bundle，總數回到 8（重複宣告那一筆確實計入）。
+      expect(event.graphDefects.length, 10);
+      // 對照：拿掉重複宣告的一個 bundle，總數回到 9（重複宣告那一筆確實計入）。
       final without = buildGraphEvent([
         ..._mainGraphFourDefects(),
-        _flowFourSubclassUc(),
+        _flowEachSubclassUc(),
         _bundle('B1', 'corpus'),
       ]);
-      expect(without.graphDefects.length, 8);
+      expect(without.graphDefects.length, 9);
     });
 
     test('G6-5 守衛：主圖無缺陷、一步 traverses 未宣告名稱 -> 恰 1 筆', () {

@@ -187,6 +187,7 @@
   "gapMalformedRefSelfReference": "{field} refers to the node itself",
   "gapDuplicateId": "ID {id} appears in {count} files: {paths}",
   "gapMultiSource": "{edgeType} allows one target but points to {targets}",
+  "gapFlowEventUnresolved": "Step {stepId}: {field} refers to an event that does not exist: {value}",
   "gapFlowRefUnresolved": "Step {stepId}: {field} cannot be resolved: {value}",
   "gapFlowStepIdDuplicated": "Step ID {stepId} is duplicated in this UC",
   "gapTraversesUndeclared": "Step {stepId}: traverses has an undeclared domain: {value}",

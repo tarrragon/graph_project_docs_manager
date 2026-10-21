@@ -511,6 +511,23 @@ void main() {
     });
   });
 
+  group('與「事件引用未解析」不重疊', () {
+    test('D4-8（守衛）不存在的 EVT id 不成為事件類破洞；孤立 EVT-A 為正向對照', () {
+      final r = _report(
+        [
+          _uc('UC-01', [
+            _step('s', emits: ['EVT-GHOST']),
+            _step('a', emits: ['EVT-A']),
+          ]),
+        ],
+        [_evt('EVT-A')],
+      );
+      expect([for (final o in r.orphanEvents) o.evtId], ['EVT-A']);
+      expect(r.isOrphan('EVT-GHOST'), isFalse);
+      expect(r.mismatches.where((m) => m.evtId == 'EVT-GHOST'), isEmpty);
+    });
+  });
+
   group('輸入過濾', () {
     test('F-1 非 EVT 型別節點與缺 id 的節點略過', () {
       final r = _report([], [

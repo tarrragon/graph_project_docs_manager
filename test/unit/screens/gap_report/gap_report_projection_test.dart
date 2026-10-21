@@ -297,6 +297,48 @@ void main() {
       expect(_itemsOf(cats, 'graph-defect-flow'), hasLength(4));
     });
 
+    test('事件引用未解析 → graph-defect-flow，指向 UC Flow 步驟，說明含欄位與值', () {
+      final cats = _project(
+        defects: [
+          _flowDefect(
+            FlowDefectKind.eventUnresolved,
+            stepId: 's9',
+            field: 'consumes',
+            raw: 'EVT-GHOST',
+          ),
+        ],
+      );
+      final item = _only(cats);
+      expect(cats.single.id, 'graph-defect-flow');
+      expect(item.pointerType, GapItemPointerType.flow);
+      expect(item.flowUcId, 'UC-01');
+      expect(item.flowStepId, 's9');
+      expect(item.description!.kind, GapDescriptionKind.flowEventUnresolved);
+      for (final l in [AppLocalizationsZh(), AppLocalizationsEn()]) {
+        final t = gapItemDescriptionText(l, item.description)!;
+        expect(t, allOf(contains('s9'), contains('consumes')));
+        expect(t, contains('EVT-GHOST'));
+      }
+      // 對照：與 flow 參照未解析的說明文字不同。
+      final other = _only(
+        _project(
+          defects: [
+            _flowDefect(
+              FlowDefectKind.unresolvedReference,
+              stepId: 's9',
+              field: 'consumes',
+              raw: 'EVT-GHOST',
+            ),
+          ],
+        ),
+      );
+      final zh = AppLocalizationsZh();
+      expect(
+        gapItemDescriptionText(zh, item.description),
+        isNot(gapItemDescriptionText(zh, other.description)),
+      );
+    });
+
     test('D4-2（E1）主圖四子類加 flow 四子類 → 主圖組四筆、flow 小組四筆', () {
       final cats = _project(defects: [..._mainDefectsFour(), ..._flowFour()]);
       expect(cats.map((c) => c.id), ['graph-defect', 'graph-defect-flow']);

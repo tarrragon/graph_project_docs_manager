@@ -579,6 +579,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String gapFlowEventUnresolved(String stepId, String field, String value) {
+    return '步驟 $stepId 的 $field 引用的事件不存在：$value';
+  }
+
+  @override
   String gapFlowRefUnresolved(String stepId, String field, String value) {
     return '步驟 $stepId 的 $field 無法解析：$value';
   }

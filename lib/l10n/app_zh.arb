@@ -1063,6 +1063,21 @@
     }
   },
 
+  "gapFlowEventUnresolved": "步驟 {stepId} 的 {field} 引用的事件不存在：{value}",
+  "@gapFlowEventUnresolved": {
+    "description": "SPEC-004 §4.0.6〈1.96 新增〉：flow 子類事件引用未解析",
+    "placeholders": {
+      "stepId": {
+        "type": "String"
+      },
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "gapFlowRefUnresolved": "步驟 {stepId} 的 {field} 無法解析：{value}",
   "@gapFlowRefUnresolved": {
     "description": "SPEC-004 §4.0.6〈1.80 提案〉：flow 參照未解析",

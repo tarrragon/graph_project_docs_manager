@@ -606,6 +606,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String gapFlowEventUnresolved(String stepId, String field, String value) {
+    return 'Step $stepId: $field refers to an event that does not exist: $value';
+  }
+
+  @override
   String gapFlowRefUnresolved(String stepId, String field, String value) {
     return 'Step $stepId: $field cannot be resolved: $value';
   }

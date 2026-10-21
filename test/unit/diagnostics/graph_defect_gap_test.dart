@@ -142,6 +142,7 @@ void main() {
         'flowDuplicateStepId',
         'flowTraversesUndeclared',
         'flowTraversesKeyAbsent',
+        'flowEventUnresolved',
         'domainDuplicateDeclaration',
       ]);
     });

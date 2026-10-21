@@ -44,6 +44,14 @@ GraphBuiltEvent _build(List<RawNode> nodes) => (buildGraph(
 List<FlowGraphDefect> _flowDefects(GraphBuiltEvent e) =>
     e.graphDefects.whereType<FlowGraphDefect>().toList();
 
+/// 只取 FR-11 的兩個子類（名稱未宣告、鍵缺席）。
+List<FlowGraphDefect> _traversesDefects(GraphBuiltEvent e) => [
+  for (final d in _flowDefects(e))
+    if (d.kind == FlowDefectKind.traversesUndeclared ||
+        d.kind == FlowDefectKind.traversesKeyAbsent)
+      d,
+];
+
 List<DomainDuplicateDeclarationGraphDefect> _dupDefects(GraphBuiltEvent e) =>
     e.graphDefects.whereType<DomainDuplicateDeclarationGraphDefect>().toList();
 
@@ -548,7 +556,9 @@ void main() {
       expect(declared, greaterThan(0));
       expect(resolved, declared);
       // 其餘 dangling 來自 domain-map 指向未載入的 SPEC／UC，與 FR-11 無關。
-      expect(_flowDefects(e), isEmpty);
+      // 快照不含 docs/events/，「事件引用未解析」必有；本案只驗 FR-11 兩子類
+      // （0.5.0-W1-458.4，test-design §6.1）。
+      expect(_traversesDefects(e), isEmpty);
       expect(_dupDefects(e), isEmpty);
     });
 
@@ -557,7 +567,7 @@ void main() {
       expect(e.domainResolver.resolve('balance-sheet'), isNotNull);
       final steps = [for (final g in e.flowSubgraphs.values) ...g.steps];
       expect(steps, isNotEmpty);
-      final defects = _flowDefects(e);
+      final defects = _traversesDefects(e);
       expect(defects, hasLength(steps.length));
       expect(
         defects.every((d) => d.kind == FlowDefectKind.traversesKeyAbsent),
