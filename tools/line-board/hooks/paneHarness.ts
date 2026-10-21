@@ -6,6 +6,7 @@ import { mock } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import { sessionJson } from './fixtures'
+import { PROJECT_CONFIG_PATH } from './readers'
 import { SESSIONS_DIR } from './sessions'
 
 /** 家目錄與 session 狀態檔目錄（測試用的固定值）。 */
@@ -14,8 +15,17 @@ export const SESSIONS = `${HOME}/${SESSIONS_DIR}`
 /** 讀取當下的時間：2026-10-19 08:00:00 UTC（epoch 毫秒）。 */
 export const NOW_MS = Date.UTC(2026, 9, 19, 8, 0, 0)
 
+/** 預設專案設定的協調票：fixtures 的佇列票檔與 lanes.ts 的票檔路徑皆以它為準。 */
+export const COORDINATION_TICKET = '0.5.0-W1-349'
+/** 主 checkout `/repo` 內的專案設定檔。 */
+export const PROJECT_CONFIG = `/repo/${PROJECT_CONFIG_PATH}`
+/** 專案設定檔內容：fields 原樣寫成 JSON。 */
+export const configJson = (fields: Record<string, unknown>): string => JSON.stringify(fields)
+
 export type Stub = {
   files: Record<string, string>
+  /** 專案設定檔的內容；未給時為以 COORDINATION_TICKET 為協調票的有效設定，null 表示設定檔不存在。 */
+  projectConfig?: string | null
   /** `~/.claude/sessions/` 內的檔名；undefined 表示該目錄無法列出。 */
   sessionEntries?: string[]
   /** `ps -p` 回報已結束的 pid。 */
@@ -27,11 +37,19 @@ export type Stub = {
 /**
  * 以 test 端 hook 代替 engine：看板 session 在 worktree `/wt` 內啟動（session root 為 `/wt`），
  * git 列出主 checkout `/repo` 與 `/wt`。$ 呼叫的 hook 回 `{ value }` 或 `{ deny }`（deny 即 reject，代表檔案不存在）。
- * 回傳 fs.read 被呼叫過的所有路徑，供斷言 `.key` 從未被讀取。
+ * 專案設定檔依 stub.projectConfig 提供（見 Stub）。
+ * 回傳 fs.read 被呼叫過的所有路徑（供斷言 `.key` 從未被讀取）、ps 的呼叫、ui.open 開過的 Pane id 與註冊的指令名稱。
  */
-function stubRepo(on: On, stub: Stub): { readPaths: string[]; psCalls: { argv: readonly string[]; env: unknown }[] } {
+function stubRepo(on: On, stub: Stub) {
   const readPaths: string[] = []
   const psCalls: { argv: readonly string[]; env: unknown }[] = []
+  const opened: string[] = []
+  const registered: string[] = []
+  const fileOf = (path: string): string | undefined => {
+    if (path !== PROJECT_CONFIG) return stub.files[path]
+    if (stub.projectConfig === null) return undefined
+    return stub.projectConfig ?? configJson({ coordinationTicket: COORDINATION_TICKET })
+  }
   mock.env(on, { HOME })
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('session.root', () => ({ value: '/wt' }))
@@ -56,13 +74,19 @@ function stubRepo(on: On, stub: Stub): { readPaths: string[]; psCalls: { argv: r
   })
   on('fs.read', (_$, e) => {
     readPaths.push(e.path)
-    const text = stub.files[e.path]
+    const text = fileOf(e.path)
     return text === undefined ? { deny: `ENOENT: ${e.path}` } : { value: text }
   })
-  on('command.register', (_$, e) => ({ value: { command: e.name } }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('command.register', (_$, e) => {
+    registered.push(e.name)
+    return { value: { command: e.name } }
+  })
+  on('ui.open', (_$, e) => {
+    opened.push(e.id)
+    return { value: { isPlaced: true } }
+  })
   on('ui.log', () => ({ value: undefined }))
-  return { readPaths, psCalls }
+  return { readPaths, psCalls, opened, registered }
 }
 
 const PANE = {
@@ -81,7 +105,7 @@ const PANE = {
 /** bodyColumns：面板內容寬（欄），預設 100；停靠在側邊的窄面板以 60 測。 */
 export async function startBoard($: Engine, on: On, stub: Stub, bodyColumns: number = PANE.props.bodyColumns) {
   const clock = mock.clock(on, { now: NOW_MS })
-  const { readPaths, psCalls } = stubRepo(on, stub)
+  const { readPaths, psCalls, opened, registered } = stubRepo(on, stub)
   await $.session.start({ cwd: '/wt', surface: 'terminal', isInteractive: true })
   await clock.advance(1)
   const ui = await $.ui.mount({
@@ -90,7 +114,18 @@ export async function startBoard($: Engine, on: On, stub: Stub, bodyColumns: num
     ...PANE,
     props: { ...PANE.props, bodyColumns },
   })
-  return { ui, readPaths, psCalls, clock }
+  return { ui, readPaths, psCalls, opened, registered, clock }
+}
+
+/** 使用者在終端機輸入 `/board`；回傳指令的輸出文字。 */
+export async function runBoardCommand($: Engine): Promise<string | undefined> {
+  const result = await $.command.run({
+    command: 'board',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: true, columns: 120 },
+  })
+  return result.text
 }
 
 /**

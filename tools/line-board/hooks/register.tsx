@@ -1,15 +1,16 @@
 // line-board：多線開發看板。
-// 定時讀主 checkout 的 349 現行佇列行（每條線取最後一行）、佇列票的 status、
+// 主 checkout 的專案設定（.claude/project-integration/multi-session.json）指定協調票；設定成立時 session 啟動即開 Pane，
+// 定時讀協調票的現行佇列行（每條線取最後一行）、佇列票的 status、
 // 本 repo 各 session 的狀態（~/.claude/sessions/*.json）、派發紀錄（.claude/dispatch-active.json）、
-// 合併閘門的開始與結束紀錄，畫在 Pane。
+// 合併閘門的開始與結束紀錄，畫在 Pane。設定不成立時不自動開 Pane、不定時讀取，/board 開啟後顯示設定提示。
 // 畫面資料與群組的手動展開狀態放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析經 parse.ts 匯出（實作分在各 domain 模組）。
 // 本檔負責 hook 註冊、定時刷新的協調、snapshot 與 Pane 組裝；各項的讀取在 readers.ts，各區塊的繪製在 *View.tsx。
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { BoardSnapshot } from '../types'
-import { renderGroup, renderLaneGroups, sectionFrame } from './lanesView'
+import type { BoardSnapshot, UnsetProjectConfig } from '../types'
+import { renderConfigNotice, renderGroup, renderLaneGroups, sectionFrame } from './lanesView'
 import type { Elements, ToggleGroup } from './lanesView'
 import { renderMergeLog } from './mergeGateView'
 import {
@@ -20,7 +21,16 @@ import {
   messageOf,
   toggledOverrides,
 } from './parse'
-import { findCheckouts, readDispatches, readLanes, readMergeLog, readSessions, readTicketStatus } from './readers'
+import {
+  PROJECT_CONFIG_PATH,
+  findCheckouts,
+  readDispatches,
+  readLanes,
+  readMergeLog,
+  readProjectConfig,
+  readSessions,
+  readTicketStatus,
+} from './readers'
 import { renderSessions } from './sessionsView'
 
 const PANE = 'line-board'
@@ -34,21 +44,22 @@ const expanded = atom({ plugin: 'line-board', key: 'expanded' } as const, {})
 
 /** 讀取中旗標：避免上一輪尚未結束時重疊讀取。屬執行期控制，非畫面資料，reload 時歸零即可。 */
 let isRefreshing = false
+/** 定時讀取已啟動：設定成立的 session 啟動時或第一次執行 /board 時啟動一次。屬執行期控制，同 isRefreshing。 */
+let isTimerStarted = false
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'board',
-      description: '開啟多線看板（349 各線現行佇列、佇列票即時狀態、派發中代理人、各 session 狀態、合併閘門紀錄）',
+      description: '開啟多線看板（協調票各線現行佇列、佇列票即時狀態、派發中代理人、各 session 狀態、合併閘門紀錄）',
     })
-    $.clock.every(REFRESH_MS, () => refresh($))
-    void refresh($)
-    void $.ui.open({ id: PANE, title: PANE_TITLE })
+    void openIfConfigured($)
 
     return next(e)
   })
 
   on('command.run', { command: 'board' }, async $ => {
+    startTimer($)
     await $.ui.open({ id: PANE, title: PANE_TITLE })
     void refresh($)
 
@@ -59,7 +70,9 @@ export const register: Register = on => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const board = await read($, snapshot)
     const overrides = await read($, expanded)
+    const elements: Elements = { Box, Text, Button }
 
+    if (board.kind === 'unconfigured') return renderConfigNotice(elements, board)
     // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes、sessions、dispatches 欄，或閘門紀錄仍是整行原文），
     // 等下一輪讀取覆寫前先顯示讀取中。
     if (
@@ -72,7 +85,6 @@ export const register: Register = on => {
       return <Text dimColor>讀取中…</Text>
     }
 
-    const elements: Elements = { Box, Text, Button }
     // 按下標題列：onPress 寫入手動狀態後 Pane 重畫；失敗為 warning 級（$.ui.log 無級別，送 transcript 使畫面可見）
     const toggle: ToggleGroup = (id, isOpen) => {
       const onError = (error: unknown) => $.ui.log(`line-board 警告：切換群組 ${id} 失敗：${messageOf(error)}`, { to: 'transcript' })
@@ -93,7 +105,44 @@ export const register: Register = on => {
   })
 }
 
-/** 讀一輪資料並寫入 $.state；任何一項失敗只影響該項的顯示（各讀取函式自行吸收失敗，見 readers.ts）。 */
+/** 啟動定時讀取（只啟動一次）。 */
+function startTimer($: EngineInterface): void {
+  if (isTimerStarted) return
+  isTimerStarted = true
+  $.clock.every(REFRESH_MS, () => refresh($))
+}
+
+/**
+ * session 啟動時：專案設定成立才啟動定時讀取並開 Pane；不成立時只把設定提示寫入 $.state（/board 開啟後顯示），
+ * 不定時讀取。失敗只記 debug log，不影響 session 啟動。
+ */
+async function openIfConfigured($: EngineInterface): Promise<void> {
+  try {
+    const root = await $.session.root()
+    const { checkoutPaths } = await findCheckouts($, root)
+    const mainPath = checkoutPaths[0] ?? root
+    const config = await readProjectConfig($, mainPath)
+    if (config.kind !== 'ok') {
+      await update($, snapshot, () => unconfiguredSnapshot(mainPath, config))
+      return
+    }
+    startTimer($)
+    void refresh($)
+    await $.ui.open({ id: PANE, title: PANE_TITLE })
+  } catch (error) {
+    $.ui.log(`line-board 啟動檢查失敗：${messageOf(error)}`, { to: 'debug' })
+  }
+}
+
+/** 設定不成立時的 snapshot：設定檔的絕對路徑與原因。 */
+function unconfiguredSnapshot(mainPath: string, config: UnsetProjectConfig): BoardSnapshot {
+  return { kind: 'unconfigured', configPath: `${mainPath}/${PROJECT_CONFIG_PATH}`, config }
+}
+
+/**
+ * 讀一輪資料並寫入 $.state：先讀專案設定，不成立時只寫設定提示；成立時讀其他各項，
+ * 任何一項失敗只影響該項的顯示（各讀取函式自行吸收失敗，見 readers.ts）。
+ */
 async function refresh($: EngineInterface): Promise<void> {
   if (isRefreshing) return
   isRefreshing = true
@@ -102,7 +151,12 @@ async function refresh($: EngineInterface): Promise<void> {
     const root = await $.session.root()
     const { checkoutPaths, checkoutNote } = await findCheckouts($, root)
     const mainPath = checkoutPaths[0] ?? root
-    const lanes = await readLanes($, mainPath)
+    const config = await readProjectConfig($, mainPath)
+    if (config.kind !== 'ok') {
+      await update($, snapshot, () => unconfiguredSnapshot(mainPath, config))
+      return
+    }
+    const lanes = await readLanes($, mainPath, config.coordinationTicket)
     const dispatches = await readDispatches($, mainPath)
     const laneIds = lanes.kind === 'ok' ? laneTicketIds(lanes.lanes) : []
     const dispatchIds = dispatches.kind === 'ok' ? dispatchTicketIds(dispatches.records) : []

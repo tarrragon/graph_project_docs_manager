@@ -1,4 +1,5 @@
-// Pane 的端到端繪製：線群組的標題列（session 狀態、目標）與票序、佇列細節、可折疊的各 session 與合併閘門兩區塊、349 的兩種空狀態。
+// Pane 的端到端繪製：線群組的標題列（session 狀態、目標）與票序、佇列細節、可折疊的各 session 與合併閘門兩區塊、協調票的兩種空狀態，
+// 以及專案設定（協調票）的讀取：有設定才自動開 Pane、沒有設定時 /board 顯示設定提示、協調票與佇列票的票檔路徑推導。
 // 群組的派發列、活動計數、預設展開與手動切換在 boardDispatch.test.ts；各 domain 的純函式在同名的 *.test.ts。
 
 import { describe, expect, test } from 'claude-code/testing'
@@ -20,7 +21,7 @@ import { DISPATCH_TICKET_PATH } from './lanes'
 import { GROUP_BORDER_COLUMNS, groupTitleKey, laneDetailId } from './lanesView'
 import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from './layout'
 import { MERGE_LOG_PATH } from './mergeGate'
-import { SESSIONS, sessionStub, startBoard } from './paneHarness'
+import { PROJECT_CONFIG, SESSIONS, configJson, runBoardCommand, sessionStub, startBoard } from './paneHarness'
 import { TICKETS_DIR } from './shared'
 
 type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
@@ -143,7 +144,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('對照：349 沒有任何目標行時，所有線標題都沒有目標行', async ($, on) => {
+  test('對照：協調票沒有任何目標行時，所有線標題都沒有目標行', async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
     const rows = await ui.findAll({ type: 'Button', text: /^[▸▾] L\d+ / })
     expect(rows.length).toBe(3)
@@ -278,7 +279,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('349 讀得到但沒有任何現行佇列行時顯示「349 尚無現行佇列行」', async ($, on) => {
+  test('協調票讀得到但沒有任何現行佇列行時顯示「協調票尚無現行佇列行」', async ($, on) => {
     const { ui } = await startBoard($, on, {
       files: {
         [`/repo/${DISPATCH_TICKET_PATH}`]: `---\nstatus: pending\n---\n## Solution\n${TEMPLATE_NOTE}\n`,
@@ -286,15 +287,15 @@ describe('Pane', () => {
       },
       sessionEntries: [],
     })
-    expect(await ui.find({ type: 'Text', text: /^349 尚無現行佇列行$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^協調票尚無現行佇列行$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^（本 repo 沒有執行中的 session）$/ })).toBeDefined()
     await ui.unmount()
   })
 
-  test('對照：349 票檔讀不到時顯示「解析失敗」而非「尚無現行佇列行」', async ($, on) => {
+  test('對照：協調票檔讀不到時顯示「解析失敗：協調票讀不到」與票檔路徑，而非「尚無現行佇列行」', async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/wt/${DISPATCH_TICKET_PATH}`]: TICKET_349 } })
-    expect(await ui.find({ type: 'Text', text: /^解析失敗/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: new RegExp(`^解析失敗：協調票讀不到（${DISPATCH_TICKET_PATH}：`) })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /尚無現行佇列行/ })).toBeUndefined()
     await ui.unmount()
   })
@@ -378,6 +379,107 @@ describe('Pane', () => {
     await ui.press({ key: groupToggleKey(laneGroupId(13)) })
     expect(await ui.find({ type: 'Button', key: groupToggleKey(laneDetailId(laneGroupId(7))) })).toBeUndefined()
     expect(await ui.find({ type: 'Button', key: groupToggleKey(laneDetailId(laneGroupId(13))) })).toBeDefined()
+    await ui.unmount()
+  })
+})
+
+describe('專案設定', () => {
+  /** 有設定與沒有設定兩組共用的 fixture：協調票、session 狀態檔與佇列票的票檔。 */
+  const sharedFiles = () =>
+    sessionStub({
+      [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+      [`/repo/${TICKETS_DIR}/0.5.0-W1-351.md`]: ticketFile('in_progress'),
+    })
+
+  test('有設定：session 啟動時自動開 Pane 並畫出各線，/board 已註冊', async ($, on) => {
+    const { ui, opened, registered } = await startBoard($, on, sharedFiles())
+    expect(opened).toEqual(['line-board'])
+    expect(registered).toEqual(['board'])
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 / })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('對照：同一批 fixture 沒有設定檔時不自動開 Pane、不讀協調票也不定時讀取，/board 仍註冊', async ($, on) => {
+    const { ui, opened, registered, readPaths, clock } = await startBoard($, on, { ...sharedFiles(), projectConfig: null })
+    expect(opened).toEqual([])
+    expect(registered).toEqual(['board'])
+    await clock.advance(30_000)
+    expect(readPaths.length).toBeGreaterThan(0)
+    expect(readPaths.every(path => path === PROJECT_CONFIG)).toBe(true)
+    await ui.unmount()
+  })
+
+  /** 不成立的設定：名稱、設定檔內容（null 為缺席）、提示行的原因。 */
+  const UNSET_CASES: [string, string | null, RegExp][] = [
+    ['設定檔缺席', null, /^尚未設定協調票：設定檔讀不到（/],
+    ['JSON 無效', '{ "coordinationTicket": ', /^尚未設定協調票：設定檔不是有效的 JSON（/],
+    ['coordinationTicket 缺漏', configJson({ coordinator: '0.5.0-W1-001' }), /^尚未設定協調票：設定檔缺少 coordinationTicket 欄位$/],
+    ['設定不是 JSON 物件', '["0.5.0-W1-001"]', /^尚未設定協調票：設定檔缺少 coordinationTicket 欄位$/],
+    ['coordinationTicket 只寫序號', configJson({ coordinationTicket: '001' }), /^尚未設定協調票：coordinationTicket 不是完整票號（"001"）$/],
+    ['coordinationTicket 不是字串', configJson({ coordinationTicket: 1 }), /^尚未設定協調票：coordinationTicket 不是完整票號（1）$/],
+  ]
+
+  for (const [name, config, reason] of UNSET_CASES) {
+    test(`${name}：不自動開 Pane；執行 /board 後開啟並顯示原因、設定檔路徑與格式，不畫線群組`, async ($, on) => {
+      const { ui, opened, readPaths } = await startBoard($, on, { ...sharedFiles(), projectConfig: config })
+      expect(opened).toEqual([])
+      await runBoardCommand($)
+      expect(opened).toEqual(['line-board'])
+      expect(await ui.find({ type: 'Text', text: reason })).toBeDefined()
+      expect(await ui.find({ type: 'Text', text: `設定檔：${PROJECT_CONFIG}` })).toBeDefined()
+      expect(await ui.find({ type: 'Text', text: '格式：{ "coordinationTicket": "<協調票的完整票號>" }' })).toBeDefined()
+      expect(await ui.find({ type: 'Button', text: /^[▸▾] L\d+ / })).toBeUndefined()
+      expect(readPaths).not.toContain(`/repo/${DISPATCH_TICKET_PATH}`)
+      await ui.unmount()
+    })
+  }
+
+  test('對照：設定檔缺席時執行 /board 顯示提示；補上設定檔後再執行 /board 畫出各線', async ($, on) => {
+    const stub = { ...sharedFiles(), projectConfig: null as string | null }
+    const { ui } = await startBoard($, on, stub)
+    await runBoardCommand($)
+    expect(await ui.find({ type: 'Text', text: /^尚未設定協調票：/ })).toBeDefined()
+    stub.projectConfig = configJson({ coordinationTicket: '0.5.0-W1-349' })
+    await runBoardCommand($)
+    expect(await ui.find({ type: 'Text', text: /^尚未設定協調票：/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 / })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('協調票檔的路徑由設定的票號推導：協調票不是預設票號時讀 hierarchical 路徑', async ($, on) => {
+    const path = '/repo/docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W2-010.md'
+    const { ui, readPaths } = await startBoard($, on, {
+      files: { [path]: TICKET_349 },
+      projectConfig: configJson({ coordinationTicket: '0.6.0-W2-010' }),
+    })
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 / })).toBeDefined()
+    expect(readPaths).toContain(path)
+    expect(readPaths).not.toContain(`/repo/${DISPATCH_TICKET_PATH}`)
+    await ui.unmount()
+  })
+
+  test('對照：協調票只有 flat 票檔時先試 hierarchical、再退回 flat 路徑', async ($, on) => {
+    const hierarchical = '/repo/docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W2-010.md'
+    const flat = '/repo/docs/work-logs/v0.6.0/tickets/0.6.0-W2-010.md'
+    const { ui, readPaths } = await startBoard($, on, {
+      files: { [flat]: TICKET_349 },
+      projectConfig: configJson({ coordinationTicket: '0.6.0-W2-010' }),
+    })
+    expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 / })).toBeDefined()
+    expect(readPaths.indexOf(hierarchical)).toBeGreaterThanOrEqual(0)
+    expect(readPaths.indexOf(hierarchical)).toBeLessThan(readPaths.indexOf(flat))
+    await ui.unmount()
+  })
+
+  test('佇列票的票檔路徑由票號推導：票檔只在 flat 路徑時退回讀取', async ($, on) => {
+    const { ui } = await startBoard($, on, {
+      files: {
+        [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+        '/repo/docs/work-logs/v0.5.0/tickets/0.5.0-W1-351.md': ticketFile('in_progress'),
+      },
+    })
+    await ui.press({ key: groupToggleKey(laneGroupId(7)) })
+    expect(await ui.find({ type: 'Text', text: /^排隊：351〔in_progress〕 → 145〔unknown〕$/ })).toBeDefined()
     await ui.unmount()
   })
 })
