@@ -29,9 +29,9 @@ consumers: ['graph', 'ticketdetail', 'diagnostics']
 | 部分 | 欄位 | 內容 | 讀取方 |
 |------|------|------|--------|
 | 本事件負載 | `rawNodes: List<RawNode>` | 每個節點檔的完整 frontmatter map、相對路徑與判定型別；UC 另帶 flow 步驟清單（SPEC-006 FR-07、FR-09） | Graph（建輕節點與邊，`lib/app/scan_round.dart` 呼叫建圖）；TicketDetail（ticket 全文索引，`lib/ticket_detail/ticket_detail.dart`，SPEC-007 FR-07）；Diagnostics（事件類破洞，`detectEventGaps`）；UC Flow 畫面 |
-| 本事件負載 | `parseErrors: List<ParseError>` | 本輪全部失敗檔的逐檔紀錄（SPEC-006 FR-04、FR-07）；carrier 外的失敗檔不發 003，只記在這裡 | 只有掃描器自身的完成日誌讀取筆數；其餘消費方不讀，破洞改由下方 003／004／005 產生（去留評估見 `0.5.0-W1-471`） |
+| 本事件負載 | `parseErrors: List<ParseError>` | 本輪全部失敗檔的逐檔紀錄（SPEC-006 FR-04、FR-07）；carrier 外的失敗檔不發 003，只記在這裡 | 只有掃描器自身的完成日誌讀取筆數；其餘消費方不讀，破洞改由下方 003／004／005 產生。保留作逐檔可追溯紀錄與測試觀測點（SPEC-006 FR-07〈逐檔紀錄的用途〉，`0.5.0-W1-471` 結論） |
 | 本事件負載 | `summary: ScanSummary` | FR-07 的計數項（節點數、各失敗原因數、carrier 命中與未判定數、flow 失敗 UC 數、`nonDomainPathsMalformedCount` 等）與兩條守恆式 | Diagnostics（取 `undeterminedCount`，SPEC-006 FR-08） |
-| 本事件負載 | `schemaAmbiguousNodes: List<SchemaAmbiguousNode>` | `id` 互斥被打破的可用檔案，各附路徑與候選型別（SPEC-006 FR-03） | 目前沒有產品程式讀取（只有測試） |
+| 本事件負載 | `schemaAmbiguousNodes: List<SchemaAmbiguousNode>` | `id` 互斥被打破的可用檔案，各附路徑與候選型別（SPEC-006 FR-03） | 目前沒有產品程式讀取（只有測試）；保留理由為 FR-03 要求歧義檔出現在掃描結果（SPEC-006 FR-07〈逐檔紀錄的用途〉，`0.5.0-W1-471` 結論） |
 | 同輪其他事件 | `parseFailureEvents: List<ParseFailureEvent>` | EVT-CORPUS-003，未進入圖譜的檔案各一筆 | Diagnostics（`parseFailure` 破洞，SPEC-006 FR-08） |
 | 同輪其他事件 | `flowParseFailedEvents: List<FlowParseFailedEvent>` | EVT-CORPUS-004，flow 區塊解析失敗的 UC 各一筆 | Diagnostics；Domain 視圖與 UC Flow 畫面（標示該 UC 的 flow 無法顯示） |
 | 同輪其他事件 | `nonDomainPathsRead: NonDomainPathsReadResult` | 非 domain 路徑清單的讀取結果（缺席／已宣告／格式錯誤，SPEC-006 FR-10）；格式錯誤時由此推得 EVT-CORPUS-005（`nonDomainPathsParseFailedEvent`，至多一筆） | Graph（專案層路徑宣告彙整，`lib/graph/project_path_declaration.dart`）；Diagnostics（005 的 `parseFailure` 破洞） |
