@@ -14,10 +14,21 @@ suites:
   flutter-integration:
     prefixes: [lib/, integration_test/, macos/]
     files: [pubspec.yaml, pubspec.lock, test/helpers/spec001/corpus_snapshot.dart]
-    command: [fvm, flutter, test, integration_test, -d, macos]
+    # 逐檔啟動：同次執行第二個 macOS App 確定性起不來，故經包裝腳本
+    command: [python3, .claude/project-integration/run_integration_tests.py]
+    # 通過時也會印 Failed to foreground app，不可當失敗訊號，正規式刻意不含它
+    failure: 'Unable to start the app|Error waiting for a debug connection'
     artifacts:
       - path: .dart_tool/package_config.json
         generate: [fvm, flutter, pub, get]
+  # 研究腳本測試：common 為 pytest 風格（tmp_path、monkeypatch），unittest 收集為 0 個，
+  # 故以 pytest 跑；pytest 也能收集 ui-vision-choice 的 unittest 類，單一 argv 即足夠。
+  research-python:
+    prefixes: [docs/research/]
+    command: [uv, run, --quiet, --with, pytest, python, -m, pytest, -q, -p, 'no:cacheprovider',
+              docs/research/common, docs/research/ui-vision-choice]
+    summary: '^\d+ (passed|failed)'
+    failure: '^FAILED '
   # line-board 不放 artifacts：閘門不跑 tsc（types 無頭生成命令未知）
   line-board:
     prefixes: [tools/line-board/]
