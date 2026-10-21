@@ -182,7 +182,7 @@
 
 另有目錄豁免 `.claude/handoff/archive/`（歷史歸檔不再被消費）。
 
-**per-project 路徑區段豁免**：路徑任一區段（整段相等，部分包含不算）屬 `.claude/lib/sync_exclude_manifest.py` 的 `PER_PROJECT_PATTERNS`（現含 `project-integration`）者不掃描。**Why**：規則 8 的失效軸是跨專案 sync，這類目錄被 sync 雙向排除，不會到達其他 consumer。**Consequence**：守衛不內嵌區段字面，直接 import manifest，sync 排除契約只維護一處；manifest 載入失敗時不豁免、照常掃描，並寫 stderr 與日誌。**Action**：專案設定（含協調票號）放 per-project 區段內，不需 marker。
+**per-project 路徑區段豁免**：路徑任一區段（整段相等，部分包含不算）屬 `.claude/lib/sync_exclude_manifest.py` 的 `PER_PROJECT_PATTERNS`（現含 `project-integration`）者不掃描。**Why**：規則 8 的失效軸是跨專案 sync，這類目錄被 sync 雙向排除，不會到達其他 consumer。**Consequence**：守衛不內嵌區段字面，直接 import manifest，sync 排除契約只維護一處；manifest 載入失敗時不豁免、照常掃描，並寫 stderr 與日誌。**Action**：專案設定（含協調票號）放 per-project 區段內，不需 marker。本豁免的範圍隨 `PER_PROJECT_PATTERNS` 擴張：在 manifest 新增成員時，確認該名稱不會整段命中本應受規則 8 掃描的框架目錄，否則該目錄的票號引用將不再被擋。
 
 **逃生閥**：行內 marker `rule8-exempt: <category>:<reason>`，同行或下一行皆可，逐行生效非整檔放行。合法 category 有三個——`testdata`（守衛或工具自身 self-test 需真實 ID 形態）、`illustration`（規則正文示範 ID 形態且不便置於 code fence）、`relocation`（既有內容的逐字位置搬移，reason 須含來源檔路徑，形如「自 `<來源檔路徑>` 逐字搬移」）。category 不在清單內、reason 為空，或 `relocation` 類別的 reason 缺來源檔路徑，視為格式錯誤仍阻擋。
 
