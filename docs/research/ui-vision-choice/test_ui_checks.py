@@ -106,6 +106,24 @@ class GeometryTest(unittest.TestCase):
         rep = gc.check(self.doc([self.el(1, [1180, 750, 100, 50])]))
         self.assertEqual(rep["outOfViewport"], [])
 
+    def test_raw_rect_out_of_viewport_reported(self):  # 正向對照：rect 已裁切在內、rawRect 超出
+        e = self.el(1, [1180, 10, 100, 50])
+        e["rawRect"] = [1180, 10, 300, 50]
+        rep = gc.check(self.doc([e]))
+        self.assertEqual([o["index"] for o in rep["outOfViewport"]], [1])
+        self.assertEqual(rep["outOfViewport"][0]["rectSource"], "rawRect")
+        self.assertEqual(rep["rectFallback"], [])
+
+    def test_raw_rect_inside_overrides_rect(self):  # 對照：rawRect 在內時以 rawRect 為準
+        e = self.el(1, [1200, 10, 100, 50])
+        e["rawRect"] = [0, 0, 10, 10]
+        self.assertEqual(gc.check(self.doc([e]))["outOfViewport"], [])
+
+    def test_missing_raw_rect_falls_back_and_is_marked(self):
+        rep = gc.check(self.doc([self.el(1, [1200, 10, 100, 50]), self.el(2, [0, 0, 10, 10])]))
+        self.assertEqual(rep["outOfViewport"][0]["rectSource"], "rect(fallback)")
+        self.assertEqual(rep["rectFallback"], [1, 2])
+
     def test_load_file(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d, "c.json")
