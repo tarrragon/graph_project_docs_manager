@@ -237,8 +237,19 @@ DomainReady fixtureReady({
 }) => DomainReady(
   mode: mode,
   selectedDomainId: selectedDomainId,
-  matrix: DomainViewFixtures.matrix,
 );
+
+/// 測試注入矩陣時的空泳道列（畫面列 + 矩陣各 domain 列），形狀同
+/// `projectEmptyLanes`（真實路徑由輪次事件算出，測試以矩陣代之）。
+List<DomainLane> emptyLanesOfMatrix(DomainMatrix? matrix) => [
+  const DomainLane(domainId: null, kind: DomainLaneKind.screen, nodes: []),
+  for (final row in matrix?.rows ?? const <DomainRow>[])
+    DomainLane(
+      domainId: row.domainId,
+      domainName: row.domainName,
+      nodes: const [],
+    ),
+];
 
 /// 載入編排替身：載入完成即寫入 [fixtureReady]，供經 shell 啟動（gate 通過
 /// 後由編排載入真實輪次）的測試取得 fixture 矩陣。
@@ -261,6 +272,10 @@ List<Override> domainFixtureLoaderOverrides() => [
 List<Override> domainFixtureOverrides({DomainMode mode = DomainMode.matrix}) =>
     [
       domainViewStateProvider.overrideWith((ref) => fixtureReady(mode: mode)),
+      domainMatrixProvider.overrideWith((ref) => DomainViewFixtures.matrix),
+      domainEmptyLanesProvider.overrideWith(
+        (ref) => emptyLanesOfMatrix(DomainViewFixtures.matrix),
+      ),
       domainSwimlaneProvider.overrideWith(
         (ref) => DomainViewFixtures.swimlaneFor(ref.watch(selectedUcProvider)),
       ),

@@ -2,8 +2,9 @@
 ///
 /// [domainViewStateProvider] 為狀態注入點：gate 偵測與資料載入
 /// （`app/domain_view_loader.dart`，0.5.0-W1-114.14）寫入真實狀態，測試以
-/// `overrideWith` 切換至其餘十個狀態，畫面直接渲染。[domainSwimlaneProvider]
-/// 依選定 UC 與共用掃描輪次投影泳道。
+/// `overrideWith` 切換至其餘十個狀態，畫面直接渲染。矩陣
+/// （[domainMatrixProvider]）與泳道（[domainSwimlaneProvider]）同讀
+/// `lastCompletedRoundProvider`（同一專案最後完成的掃描輪次，0.5.0-W1-205.2.1）。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,35 +23,60 @@ final domainViewStateProvider = StateProvider<DomainViewState>(
   (ref) => const DomainLoading(),
 );
 
+/// 最後完成輪次的建圖事件；無完成輪次或建圖不可用時為 `null`。
+GraphBuiltEvent? _eventOf(ScanRoundResult? round) {
+  final graph = round?.graph;
+  return graph is GraphBuildAvailable ? graph.event : null;
+}
+
+/// 矩陣投影（SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉）：讀同一專案最後完成
+/// 的輪次；無輪次、建圖不可用或無節點時為 `null`。
+final domainMatrixProvider = Provider<DomainMatrix?>((ref) {
+  final event = _eventOf(ref.watch(lastCompletedRoundProvider));
+  if (event == null || event.nodes.isEmpty) return null;
+  return projectDomainMatrix(
+    event: event,
+    ucIds: orderedUcColumnIds(event.nodes),
+  );
+});
+
+/// 未選定 UC 的空泳道列結構；無完成輪次時僅有「畫面」列。
+final domainEmptyLanesProvider = Provider<List<DomainLane>>((ref) {
+  final event = _eventOf(ref.watch(lastCompletedRoundProvider));
+  if (event == null) {
+    return const [
+      DomainLane(domainId: null, kind: DomainLaneKind.screen, nodes: []),
+    ];
+  }
+  return projectEmptyLanes(event);
+});
+
 /// Layout 公開面「給定一列，回傳欄號最小的節點」查詢（SPEC-001 §1 跳轉目標，
-/// L9）；測試以 `overrideWith` 注入替身。預設依共用掃描輪次的建圖結果計算。
+/// L9）；測試以 `overrideWith` 注入替身。預設依最後完成輪次的建圖結果計算。
 typedef FirstNodeInLaneQuery = LayoutNode? Function(String ucId, String domain);
 
 final firstNodeInLaneQueryProvider = Provider<FirstNodeInLaneQuery>((ref) {
   return (ucId, domain) {
-    final round = ref.read(scanRoundProvider);
-    if (round is! ScanRoundCompleted) return null;
-    final graph = round.result.graph;
-    if (graph is! GraphBuildAvailable) return null;
-    return firstNodeInLaneOf(event: graph.event, ucId: ucId, domain: domain);
+    final event = _eventOf(ref.read(lastCompletedRoundProvider));
+    if (event == null) return null;
+    return firstNodeInLaneOf(event: event, ucId: ucId, domain: domain);
   };
 });
 
-/// 選定 UC 的泳道投影；未選定 UC、輪次尚未完成或建圖不可用時為 `null`
+/// 選定 UC 的泳道投影；未選定 UC、尚無完成輪次或建圖不可用時為 `null`
 /// （建圖不可用時 Domain 視圖不會進入，見 SPEC-001 §1〈FR-13 回傳「圖不可用」
-/// 時 Layout 不另處理〉）。選定 UC 或輪次變更時隨之重算。
+/// 時 Layout 不另處理〉）。讀最後完成輪次，故重掃期間照常顯示上一輪。
 final domainSwimlaneProvider = Provider<DomainSwimlaneView?>((ref) {
   final ucId = ref.watch(selectedUcProvider);
-  final round = ref.watch(scanRoundProvider);
-  if (ucId == null || round is! ScanRoundCompleted) return null;
-  final graph = round.result.graph;
-  if (graph is! GraphBuildAvailable) return null;
+  final round = ref.watch(lastCompletedRoundProvider);
+  final event = _eventOf(round);
+  if (ucId == null || round == null || event == null) return null;
   return projectDomainSwimlane(
-    event: graph.event,
+    event: event,
     ucId: ucId,
     flowParseFailedUcIds: flowParseFailedUcIdsOf(
-      failedEvents: round.result.scan.flowParseFailedEvents,
-      event: graph.event,
+      failedEvents: round.scan.flowParseFailedEvents,
+      event: event,
     ),
   );
 });

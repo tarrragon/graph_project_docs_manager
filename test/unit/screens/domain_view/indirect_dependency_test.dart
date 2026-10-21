@@ -53,10 +53,10 @@ Future<ProviderContainer> _pumpAndClickGoto(
     domainViewStateProvider.overrideWith(
       (ref) => DomainReady(
         mode: DomainMode.matrix,
-        matrix: matrix,
         selectedCell: (selectedDomain, 'UC-04'),
       ),
     ),
+    domainMatrixProvider.overrideWith((ref) => matrix),
     firstNodeInLaneQueryProvider.overrideWith(
       (ref) => (ucId, domain) {
         calls.add('$ucId/$domain');

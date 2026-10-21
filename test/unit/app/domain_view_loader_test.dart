@@ -132,7 +132,7 @@ void main() {
 
       expect(seen, [DomainLoading, DomainReady]);
       final ready = h.state as DomainReady;
-      expect(ready.matrix, isNotNull);
+      expect(h.container.read(domainMatrixProvider), isNotNull);
       expect(ready.mode, DomainMode.matrix);
     });
 
@@ -216,7 +216,7 @@ void main() {
 
       await h.loader.load();
 
-      final matrix = (h.state as DomainReady).matrix!;
+      final matrix = h.container.read(domainMatrixProvider)!;
       expect(
         [for (final c in matrix.columns) c.id],
         ['UC-01', 'UC-02', 'UC-03', 'UC-04', 'UC-05', 'UC-06'],
