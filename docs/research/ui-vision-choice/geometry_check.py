@@ -5,7 +5,9 @@ logicalSize = [寬, 高]），報告：
 - overlaps：非父子（含祖孫）關係的元件矩形重疊（面積 > 0；僅邊相接不算）。
   父子關係取自元素的選填 `parent`（父元素 index）；466.2 現行格式無此欄，
   缺欄時所有成對皆視為非父子。
-- outOfViewport：矩形任一邊超出 logicalSize 的元件。
+- outOfViewport：矩形任一邊超出 logicalSize 的元件。讀 `rawRect`（未與視口、
+  祖先裁切取交集）；`rect` 已裁切，永遠在視口內。缺 `rawRect` 時退回 `rect`，
+  該元素 index 列入輸出的 `rectFallback`，報告項的 `rectSource` 標為 "rect(fallback)"。
 """
 import argparse
 import json
@@ -39,12 +41,17 @@ def check(doc):
         area = _overlap_area(a["rect"], b["rect"])
         if area > 0:
             overlaps.append({"a": a["index"], "b": b["index"], "area": area})
-    out = []
+    out, fallback = [], []
     for e in elements:
-        x, y, w, h = e["rect"]
+        if "rawRect" in e:
+            rect, source = e["rawRect"], "rawRect"
+        else:
+            rect, source = e["rect"], "rect(fallback)"
+            fallback.append(e["index"])
+        x, y, w, h = rect
         if x < 0 or y < 0 or x + w > vw or y + h > vh:
-            out.append({"index": e["index"], "rect": e["rect"]})
-    return {"overlaps": overlaps, "outOfViewport": out}
+            out.append({"index": e["index"], "rect": rect, "rectSource": source})
+    return {"overlaps": overlaps, "outOfViewport": out, "rectFallback": fallback}
 
 
 def check_file(path):
