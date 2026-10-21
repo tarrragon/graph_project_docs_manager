@@ -15,7 +15,11 @@ class FakeClient:
         self.messages = SimpleNamespace(create=self._create)
         self.model = model
 
-    def _create(self, **kwargs):
+    def _create(self, *, model, max_tokens, messages, extra_body=None):
+        # 簽章比照 SDK 1.17.0：不接受 temperature 關鍵字參數
+        kwargs = {"model": model, "max_tokens": max_tokens, "messages": messages}
+        if extra_body is not None:
+            kwargs["extra_body"] = extra_body
         self.calls.append(kwargs)
         text = self.replies[(len(self.calls) - 1) % len(self.replies)]
         return SimpleNamespace(
@@ -44,7 +48,7 @@ def test_record_fields_and_params():
     assert r["raw_reply"] == "A" and r["parsed"] == "A"
     assert r["usage"] == {"input_tokens": 11, "output_tokens": 1}
     assert c.calls[0]["max_tokens"] == 1  # 預設值
-    assert c.calls[0]["temperature"] == 0.5
+    assert c.calls[0]["extra_body"] == {"temperature": 0.5}
 
 
 def test_seed_reproducible_and_shuffles():
@@ -125,6 +129,19 @@ def test_temperature_omitted_vs_passed():
     r0 = sampler.sample_once(c, "m", "q?", OPTIONS, seed=1)
     r1 = sampler.sample_once(c, "m", "q?", OPTIONS, seed=1, temperature=0.3)
     assert "temperature" not in c.calls[0]
+    assert "extra_body" not in c.calls[0]
     assert r0["temperature"] is None
-    assert c.calls[1]["temperature"] == 0.3
+    assert "temperature" not in c.calls[1]
+    assert c.calls[1]["extra_body"] == {"temperature": 0.3}
+    assert c.calls[0] != c.calls[1]
     assert r1["temperature"] == 0.3
+
+
+def test_fake_rejects_temperature_kwarg():
+    # 回歸防護：以關鍵字參數傳 temperature 必須翻紅
+    c = FakeClient(["A"])
+    try:
+        c.messages.create(model="m", max_tokens=1, messages=[], temperature=0.1)
+    except TypeError:
+        return
+    raise AssertionError("替身不應接受 temperature 關鍵字參數")
