@@ -32,6 +32,31 @@ const QUEUE_SEPARATOR = /\s*(→|∥)\s*/
 /** 一步的開頭短票號：三位數，可帶任意層 `.n` 子序號（如 `337.2.1`）；其後為註記。 */
 const STEP_SERIAL = /^(\d{3}(?:\.\d+)*)(.*)$/
 
+/** 一步的開頭完整票號：`<major.minor.patch>-W<n>-<序號>`（ticket-id-conventions 的版本為三段數字）；其後為註記。 */
+const STEP_FULL_ID = /^(\d+\.\d+\.\d+-W\d+-\d+(?:\.\d+)*)(.*)$/
+
+/** 一步的開頭同版本異 wave 寫法：`W<n>-<序號>`，補上前綴的版本即為完整票號；其後為註記。 */
+const STEP_WAVE_ID = /^(W\d+-\d+(?:\.\d+)*)(.*)$/
+
+/** 短票號前綴的版本部分：`<版本>-W<n>-` 的 `<版本>`；前綴不是此形式時 W 寫法無法補成完整票號。 */
+const PREFIX_VERSION = /^(.+)-W\d+-$/
+
+/**
+ * 一步的開頭票號換成 [顯示用寫法, 完整票號, 註記]：完整票號原樣、`W<n>-<序號>` 補前綴的版本、短票號補整個前綴；
+ * 皆不符時為 null。顯示用寫法保留佇列行的原文。
+ */
+function stepTicket(part: string, prefix: string): [string, string, string] | null {
+  const full = STEP_FULL_ID.exec(part)
+  if (full !== null) return [full[1] ?? '', full[1] ?? '', full[2] ?? '']
+  const wave = STEP_WAVE_ID.exec(part)
+  if (wave !== null) {
+    const version = PREFIX_VERSION.exec(prefix)
+    return version === null ? null : [wave[1] ?? '', `${version[1]}-${wave[1]}`, wave[2] ?? '']
+  }
+  const short = STEP_SERIAL.exec(part)
+  return short === null ? null : [short[1] ?? '', `${prefix}${short[1]}`, short[2] ?? '']
+}
+
 /** 取 Solution 段落的各行（自 `## Solution` 起到下一個 `## ` 標題前）；沒有該標題時回傳空陣列。 */
 function solutionLines(text: string): string[] {
   const lines = text.split('\n').map(line => line.trimEnd())
@@ -42,8 +67,12 @@ function solutionLines(text: string): string[] {
   return end === -1 ? rest : rest.slice(0, end)
 }
 
-/** 票序拆成票號、分隔符與無法辨識的文字，保留原順序。 */
-export function parseQueue(queue: string): QueueToken[] {
+/**
+ * 票序拆成票號、分隔符與無法辨識的文字，保留原順序。票號接受三種寫法：短票號（補 prefix）、完整票號、
+ * `W<n>-<序號>`（補 prefix 的版本）；serial 為佇列行的原寫法。prefix 為短票號前綴（見 shared.ts ticketPrefixOf），
+ * 未傳時用 TICKET_PREFIX。
+ */
+export function parseQueue(queue: string, prefix: string = TICKET_PREFIX): QueueToken[] {
   const tokens: QueueToken[] = []
   for (const part of queue.trim().split(QUEUE_SEPARATOR)) {
     if (part === '') continue
@@ -51,13 +80,13 @@ export function parseQueue(queue: string): QueueToken[] {
       tokens.push({ kind: 'sep', text: part })
       continue
     }
-    const match = STEP_SERIAL.exec(part)
-    if (match === null) {
+    const ticket = stepTicket(part, prefix)
+    if (ticket === null) {
       tokens.push({ kind: 'text', text: part })
       continue
     }
-    const serial = match[1] ?? ''
-    tokens.push({ kind: 'ticket', serial, id: `${TICKET_PREFIX}${serial}`, note: (match[2] ?? '').trim() })
+    const [serial, id, note] = ticket
+    tokens.push({ kind: 'ticket', serial, id, note: note.trim() })
   }
   return tokens
 }

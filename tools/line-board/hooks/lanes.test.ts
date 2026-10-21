@@ -112,6 +112,43 @@ describe('parseQueue', () => {
     ])
   })
 
+  test('短票號以傳入的前綴補成完整票號；不傳時用預設前綴（E1 對照）', () => {
+    const withPrefix = parseQueue('100 → 337.1', '0.6.0-W2-')
+    expect(withPrefix).not.toEqual(parseQueue('100 → 337.1'))
+    expect(withPrefix).toEqual([
+      { kind: 'ticket', serial: '100', id: '0.6.0-W2-100', note: '' },
+      { kind: 'sep', text: '→' },
+      { kind: 'ticket', serial: '337.1', id: '0.6.0-W2-337.1', note: '' },
+    ])
+  })
+
+  test('完整票號原樣作為 id，不套前綴；顯示用 serial 保留原寫法，其後為註記', () => {
+    expect(parseQueue('0.6.0-W3-012.1（跨版）∥ 100', '0.5.0-W1-')).toEqual([
+      { kind: 'ticket', serial: '0.6.0-W3-012.1', id: '0.6.0-W3-012.1', note: '（跨版）' },
+      { kind: 'sep', text: '∥' },
+      { kind: 'ticket', serial: '100', id: '0.5.0-W1-100', note: '' },
+    ])
+  })
+
+  test('W<n>-<序號> 以前綴的版本補成完整票號（同版本異 wave）', () => {
+    expect(parseQueue('W2-005.1（異 wave）→ W1-349', '0.5.0-W1-')).toEqual([
+      { kind: 'ticket', serial: 'W2-005.1', id: '0.5.0-W2-005.1', note: '（異 wave）' },
+      { kind: 'sep', text: '→' },
+      { kind: 'ticket', serial: 'W1-349', id: '0.5.0-W1-349', note: '' },
+    ])
+  })
+
+  test('無法辨識的文字仍為 text：W 寫法缺序號、版本不完整、前綴推不出版本時的 W 寫法', () => {
+    expect(parseQueue('W2-x → 0.5-W1-001 → 12', '0.5.0-W1-')).toEqual([
+      { kind: 'text', text: 'W2-x' },
+      { kind: 'sep', text: '→' },
+      { kind: 'text', text: '0.5-W1-001' },
+      { kind: 'sep', text: '→' },
+      { kind: 'text', text: '12' },
+    ])
+    expect(parseQueue('W2-005', 'L7-')).toEqual([{ kind: 'text', text: 'W2-005' }])
+  })
+
   test('不以票號開頭的一步保留為文字', () => {
     expect(parseQueue('待定 → 100')).toEqual([
       { kind: 'text', text: '待定' },

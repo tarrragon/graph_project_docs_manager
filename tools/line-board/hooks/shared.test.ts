@@ -3,7 +3,72 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { ticketFile } from './fixtures'
-import { formatAge, parseFrontmatterStatus, parseFrontmatterTitle, parseWorktreePaths } from './shared'
+import {
+  formatAge,
+  parseFrontmatterStatus,
+  parseFrontmatterTitle,
+  parseWorktreePaths,
+  resolveTicketFile,
+  ticketFileCandidates,
+  ticketPrefixOf,
+} from './shared'
+
+describe('ticketFileCandidates', () => {
+  test('版本可解析 major.minor：先 hierarchical 再 flat', () => {
+    expect(ticketFileCandidates('0.5.0-W1-349')).toEqual([
+      'docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md',
+      'docs/work-logs/v0.5.0/tickets/0.5.0-W1-349.md',
+    ])
+    expect(ticketFileCandidates('1.12.3-W20-001.2.1')).toEqual([
+      'docs/work-logs/v1/v1.12/v1.12.3/tickets/1.12.3-W20-001.2.1.md',
+      'docs/work-logs/v1.12.3/tickets/1.12.3-W20-001.2.1.md',
+    ])
+  })
+
+  test('版本字串無法解析 major.minor：只有 flat', () => {
+    expect(ticketFileCandidates('1-W1-001')).toEqual(['docs/work-logs/v1/tickets/1-W1-001.md'])
+  })
+
+  test('不是票號時沒有候選', () => {
+    expect(ticketFileCandidates('待定')).toEqual([])
+    expect(ticketFileCandidates('W1-001')).toEqual([])
+  })
+})
+
+describe('resolveTicketFile', () => {
+  const hierarchical = 'docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-349.md'
+  const flat = 'docs/work-logs/v0.5.0/tickets/0.5.0-W1-349.md'
+
+  test('hierarchical 存在時用之（flat 也存在亦同）', () => {
+    expect(resolveTicketFile('0.5.0-W1-349', () => true)).toBe(hierarchical)
+    expect(resolveTicketFile('0.5.0-W1-349', path => path === hierarchical)).toBe(hierarchical)
+  })
+
+  test('hierarchical 不存在而 flat 存在時退回 flat', () => {
+    expect(resolveTicketFile('0.5.0-W1-349', path => path === flat)).toBe(flat)
+  })
+
+  test('兩者皆不存在時預設 hierarchical（對齊 paths.py get_tickets_dir_under_root）', () => {
+    expect(resolveTicketFile('0.5.0-W1-349', () => false)).toBe(hierarchical)
+  })
+
+  test('版本字串無法解析 major.minor 時為 flat；不是票號時為 null', () => {
+    expect(resolveTicketFile('1-W1-001', () => false)).toBe('docs/work-logs/v1/tickets/1-W1-001.md')
+    expect(resolveTicketFile('待定', () => true)).toBeNull()
+  })
+})
+
+describe('ticketPrefixOf', () => {
+  test('協調票 ID 去掉流水號（含子序號）得短票號前綴', () => {
+    expect(ticketPrefixOf('0.5.0-W1-349')).toBe('0.5.0-W1-')
+    expect(ticketPrefixOf('0.6.0-W12-007.3.1')).toBe('0.6.0-W12-')
+  })
+
+  test('不是票號時回傳 null', () => {
+    expect(ticketPrefixOf('349')).toBeNull()
+    expect(ticketPrefixOf('0.5.0-W1-')).toBeNull()
+  })
+})
 
 describe('parseWorktreePaths', () => {
   test('取 git worktree list 的所有 checkout，主 checkout 在第一筆', () => {
