@@ -205,7 +205,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('線群組標題列為藍色粗體、不變淡；無活動的線（L9）只有標題列下的各行為淡色', async ($, on) => {
+  test('線群組標題列為主題鍵 suggestion 色粗體、不變淡；無活動的線（L9）只有標題列下的各行為淡色', async ($, on) => {
     const { ui } = await startBoard($, on, dispatchFiles(DISPATCH_ACTIVE))
     type Styled = { props?: { color?: unknown; bold?: unknown; dimColor?: unknown } }
     // L7、L13、其他有活動，L9 只有排隊票（無活動）
@@ -213,7 +213,7 @@ describe('Pane', () => {
       const header = await ui.find({ type: 'Button', key: groupToggleKey(id) })
       const label = childrenOf(header).find(child => (child as Described).type === 'Text') as Styled | undefined
       const dim = [header?.props.dimColor, label?.props?.dimColor].some(value => value === true)
-      expect([id, label?.props?.color, label?.props?.bold, dim]).toEqual([id, 'blue', true, false])
+      expect([id, label?.props?.color, label?.props?.bold, dim]).toEqual([id, 'suggestion', true, false])
     }
     // 對照：L9 標題列下的活動計數行為淡色，L7 的不是
     const detailDim = async (id: string) => {

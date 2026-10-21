@@ -1,9 +1,9 @@
 // line-board Pane 的線群組：每條線一個以框線框起的可折疊群組，標題分三行——標題列為 Button（▸／▾、線號、session 與狀態），
 // 其下為目標、活動計數——展開後依序列出派發列、閘門票、佇列列與佇列細節（按鍵展開，逐張列出佇列票的狀態與 title）；
-// 對不到線的派發歸最後的「其他」群組。標題列為藍色粗體，派發列、閘門票、佇列列中的每張票與佇列細節各行依 statusColor.ts 的五種狀態上色。renderGroup 是各群組共用的
+// 對不到線的派發歸最後的「其他」群組。標題列為主題鍵 suggestion 色粗體，派發列、閘門票、佇列列中的每張票與佇列細節各行依 statusColor.ts 的五種狀態上色。renderGroup 是各群組共用的
 // 可折疊外框，register.tsx 的「各 session」「合併閘門」兩區塊也用它。元素由 register.tsx 以 $.ui.resolve(e) 取得後傳入；分組經 parse.ts 匯出。
 
-import type { BoxProps, ButtonProps, ElementConstructor, RenderChildren, TextProps } from 'claude-code'
+import type { BoxProps, ButtonProps, ElementConstructor, RenderChildren, TextProps, ThemeKey } from 'claude-code'
 
 import type { DispatchRow, GroupOverrides, LaneGroup, LanesResult, ReadyBoard, SessionsResult, TicketStatus } from '../types'
 import { dispatchNotice, dispatchRowsOf } from './dispatchView'
@@ -33,8 +33,11 @@ import type { QueueSegment } from './parse'
 export const GROUP_BORDER_STYLE = 'round'
 /** 框線在左右兩側共占的欄數：內容可用的寬度為面板寬減去此數。 */
 export const GROUP_BORDER_COLUMNS = 2
-/** 群組標題列的顏色（粗體）：與內容各行的狀態色區分；五種狀態色不用藍（statusColor.ts）。 */
-export const GROUP_TITLE_COLOR = 'blue'
+/**
+ * 群組標題列的顏色（粗體）：主題鍵 suggestion，隨 Claude Code 主題變化（深色主題為淺藍、淺色主題為較深的藍）；
+ * ANSI 藍在黑底終端機上不明顯。與內容各行的狀態色區分；五種狀態色不用藍（statusColor.ts）。
+ */
+export const GROUP_TITLE_COLOR: ThemeKey = 'suggestion'
 
 /** 群組外框 Box 的 key。 */
 export function groupFrameKey(id: string): string {
@@ -94,7 +97,7 @@ export function renderGroup({ Box, Text, Button }: Elements, frame: GroupFrame, 
     ))
   const title = (
     <Box key={titleKey} flexDirection="column">
-      {/* 標題列不隨無活動變淡：實機上淡色會把藍色換成灰色，標題列就與其下的淡色各行同色；無活動由其下各行的淡色與 ▸ 表達 */}
+      {/* 標題列不隨無活動變淡：實機上淡色會把標題色換成灰色，標題列就與其下的淡色各行同色；無活動由其下各行的淡色與 ▸ 表達 */}
       <Button key={groupToggleKey(frame.id)} plain onPress={() => onToggle(frame.id, frame.isOpen)}>
         <Text color={GROUP_TITLE_COLOR} bold>
           {formatGroupTitle([frame.title], frame.isOpen)}
