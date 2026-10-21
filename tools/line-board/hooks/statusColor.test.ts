@@ -13,10 +13,10 @@ describe('boardStateColor', () => {
     expect(boardStateColor('要人處理')).toBe('magenta')
   })
 
-  test('五色互不相同，且「進行中」避開藍（標題列）、紅（錯誤）', () => {
+  test('五色互不相同，且「進行中」避開標題列的主題鍵 suggestion、紅（錯誤）', () => {
     const colors = (['待辦', '進行中', '代理人執行中', '閘門', '要人處理'] as const).map(boardStateColor)
     expect(new Set(colors).size).toBe(5)
-    expect(['blue', 'red', 'yellow', 'magenta', 'cyan']).not.toContain(boardStateColor('進行中'))
+    expect(['suggestion', 'red', 'yellow', 'magenta', 'cyan']).not.toContain(boardStateColor('進行中'))
   })
 
   test('對照：不屬五種的輸入與 null 不上色', () => {
