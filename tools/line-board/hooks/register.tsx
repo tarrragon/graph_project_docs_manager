@@ -19,6 +19,7 @@ import {
   dispatchTicketIds,
   laneTicketIds,
   messageOf,
+  ticketPrefixOf,
   toggledOverrides,
 } from './parse'
 import {
@@ -170,6 +171,8 @@ async function refresh($: EngineInterface): Promise<void> {
       readAtMs,
       mainPath,
       checkoutNote,
+      // readProjectConfig 已確認協調票推導得出前綴，?? 只為型別收窄；空字串表示不去前綴
+      ticketPrefix: ticketPrefixOf(config.coordinationTicket) ?? '',
       lanes,
       tickets,
       sessions,
