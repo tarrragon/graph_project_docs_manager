@@ -56,7 +56,7 @@ created: 2026-10-27
 
 - 搬移類的票，acceptance 加一條：「目標目錄的慣例檢查（SessionStart 與框架測試）全綠」
 - 派發 prompt 指名要跑的框架套件，不只寫元件的測試指令
-- 判定方若依子目錄名推斷語意，應能以更強的訊號排除誤認（例如同層有 `.claude-plugin/plugin.json` 時不視為 skill hook）
+- 判定方若依子目錄名推斷語意，應改以該目錄的**內容**判定（例如 `hooks/` 內有沒有可執行腳本、`hooks.json` 有沒有事件鍵），不以旁證判定。「同層有 `.claude-plugin/plugin.json` 就不視為 hook」這類旁證太寬：plugin 的 `hooks.json` 本身就能宣告真正的事件 hook，用旁證豁免會讓真 hook 一併逃過防護要求
 
 ## 相關
 
