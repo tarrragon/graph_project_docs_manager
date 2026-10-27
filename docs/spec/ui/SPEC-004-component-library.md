@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-10-27"
-version: "1.101"
+version: "1.102"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -949,7 +949,7 @@ EVT-CORPUS-004 項目說明：
 |------|---------|---------|---------|
 | `title` | `AppFontSize.title`、`AppColors.textTitle`、粗體 | 單行 | 頁面標題、節點詳情主標 |
 | `subtitle` | `AppFontSize.subtitle`、`AppColors.textTitle`、半粗 | 單行；恆標記 `Semantics.header`（header 語意，非副標用途） | 面板標題、格詳情卡標題、泳道面板標題、頁首畫面名（4.11）。非 header 的次要一行文字（頁首副標、選取摘要）不用本變體，改 `body` + `secondary` + `maxLines: 1` |
-| `body` | `AppFontSize.body`、`AppColors.textPrimary` | 可多行（`maxLines` 由呼叫端傳入，預設無上限） | 說明、內文、列主文字；加 `secondary` 與 `maxLines: 1` 時作頁首副標（4.11） |
+| `body` | `AppFontSize.body`、`AppColors.textPrimary` | 行數政策由呼叫端明示：`AppText.multiLine`（`maxLines` 必填，`null` 為無上限、真的換行）或 `AppText.singleLine`（一行省略號）；無隱含預設 | 說明、內文、列主文字；加 `secondary` 與 `maxLines: 1` 時作頁首副標（4.11） |
 | `caption` | `AppFontSize.caption`、`AppColors.textSecondary` | 單行 | 欄首、小計、群組小標、次文字（頁首副標見 `body` 列，非本變體） |
 | `mono` | `AppFontSize.body`、等寬字型、`AppColors.textPrimary` | 單行 | ID、路徑、版本值 |
 
@@ -999,11 +999,12 @@ EVT-CORPUS-004 項目說明：
 |-----------|---------|---------|---------|-------------|
 | `text`（`title`） | 否 | 1 | 截斷 | `TestCopy.nodeTitle`；`TestCopy.longToken` |
 | `text`（`subtitle`） | 否 | 1 | 截斷 | `TestCopy.ucName`；`TestCopy.longZh` |
-| `text`（`body`） | 是 | `maxLines`（預設無上限） | 換行；有 `maxLines` 時末行截斷 | `notFrameworkProjectExplanation`（zh 較長）；`TestCopy.longEn` |
+| `text`（`body`，`multiLine`） | 是 | `maxLines`（必填；`null` 無上限） | 換行；有 `maxLines` 時末行截斷 |
+| `text`（`body`，`singleLine`） | 否 | 1 | 截斷 | `notFrameworkProjectExplanation`（zh 較長）；`TestCopy.longEn` |
 | `text`（`caption`） | 否 | 1 | 截斷 | `noGapsScanScope`（en 較長）；`TestCopy.longZh` |
 | `text`（`mono`） | 否 | 1 | 截斷 | `TestCopy.filePath`；`TestCopy.longToken` |
 
-呼叫端不得傳入比本表更寬鬆的處置（`softWrap` / `overflow` 不開放為參數）；`body` 只開放 `maxLines`。
+呼叫端不得傳入比本表更寬鬆的處置（`softWrap` / `overflow` 不開放為參數）；`body` 只開放 `maxLines`，且必須以 `AppText.multiLine` 或 `AppText.singleLine` 明示（`0.5.0-W1-508.1`）。截斷責任歸屬：由呼叫端承擔，元件不依內容自行猜測；過渡期保留的預設建構子漏傳 `maxLines` 等同無上限，於 `0.5.0-W1-508.8` 移除。
 
 #### slot 契約
 
@@ -5850,7 +5851,7 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
-| 不適用 | 無自有文字 slot（主文字 / 次文字 / trailing 依 `AppText` 各變體契約：主文字 `TestCopy.nodeTitle` / `TestCopy.topicName` / `TestCopy.gapTitle`、次文字 `TestCopy.gapDescription`、trailing `topicSectionSummary` / `gapSectionCount`） | | | |
+| 不適用 | 無自有文字 slot（截斷責任歸呼叫端：主文字／次文字的行數政策由呼叫端建構 `AppText` 時以 `AppText.singleLine`（單行省略號）或 `AppText.multiLine`（`maxLines` 必填）明示，本容器重染主文字時經 `copyWithModifiers` 原樣保留，不代為決定截斷或換行；主文字 / 次文字 / trailing 依 `AppText` 各變體契約：主文字 `TestCopy.nodeTitle` / `TestCopy.topicName` / `TestCopy.gapTitle`、次文字 `TestCopy.gapDescription`、trailing `topicSectionSummary` / `gapSectionCount`） | | | |
 
 #### slot 契約
 
@@ -6567,6 +6568,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.102 | 2026-10-28 | `0.5.0-W1-508.1`（用戶裁定 508 方案 C）：4.1 `AppText` `body` 行數政策改為必須明示——新增 `AppText.multiLine`（`maxLines` 必填）與 `AppText.singleLine`；變體表、內容政策表同步，並寫明截斷責任歸呼叫端。4.40 `ListRow` 內容政策補截斷責任歸屬與 `copyWithModifiers` 重染保留政策。預設建構子過渡保留至 `0.5.0-W1-508.8` |
 | 1.101 | 2026-10-27 | `0.5.0-W3-008` 條文追認（依實作讀碼，未實機，不改行為）：4.14 `TableColumnHeader` `sortable` 最小寬補 label 與排序指示間 `Space.xs`（排序中才計）；4.24 `LoadingState` 最小尺寸補自身內距 2 × `Space.md`、訊息與取消鈕間 `Space.sm`、骨架與訊息列間 `Space.sm`，`countText` 為可換行不計入；4.26 `AppSnackBar` 內距指名水平 2 × `Space.md`／垂直 2 × `Space.sm`，`withAction` 補 `Space.sm` 與動作 label 最小寬（2 × `Space.xs` + 一字元 + 省略號）及 3：1 分寬；4.35 `TableRow` 填滿欄由單數改為各變體兩個填滿欄依 flex 比例計算所需寬，`step` 事件欄取 4.33 `BadgeRow` 最小寬；4.21 `EmptyState`〈何時不用〉與反例表補「專案資料載入失敗」改用 `BlockedState`（ticket 記為 4.22，實際位於 4.21）。4.29／4.35／4.40 主文字截斷或換行的責任歸屬未改，候選待用戶裁決 |
 | 1.100 | 2026-10-27 | `0.5.0-W1-486.1` 修正（對齊 SPEC-001 v1.58，用戶裁定 2026-10-27；SPEC-003 v1.67 同批）：§3.6「圖不可用」列補掃描輪次進行期間的列內呈現——`EmptyState.section` 訊息換成 `domainGraphUnavailableScanning`、附計數文字 `gapsScanningProcessedCount`（indeterminate），重新掃描 disabled，結束後換回原因文字或離開本列；§4.0.6〈1.99 新增〉表補 `domainGraphUnavailableScanning`（提案文案）；正文版本行補記 1.99 漏寫的「頁首模式切換渲染範圍」 |
 | 1.99 | 2026-10-27 | `0.5.0-W1-486.1`（對齊 SPEC-001 v1.57 §1 新增「圖不可用」，`0.5.0-W1-486` 用戶裁定 B+；SPEC-003 v1.66 同批）：§3.6 對照表補一列（`EmptyState.section` 帶 `AppButton.secondary` 重新掃描 `action-domain-rescan`，矩陣與泳道同一組成）；§4.0.6 新增〈1.99 新增〉表 `domainGraphUnavailableMessage`（placeholder `appVersion`，提案文案；原因與載入當下阻擋態同一 reason，並說明型別表未修正前重掃仍不可用）；動作沿用 `rescanAction`；4.21 `EmptyState` 出現畫面與 `section` 變體、頁首模式切換渲染範圍補本狀態 |
