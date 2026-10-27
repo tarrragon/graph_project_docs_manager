@@ -40,7 +40,8 @@ enum AppTextVariant {
   /// 面板標題、格詳情卡標題、泳道面板標題。單行、`AppFontSize.subtitle`、半粗。
   subtitle,
 
-  /// 說明、內文、列主文字。可多行（`maxLines` 由呼叫端傳入）。
+  /// 說明、內文、列主文字。行數政策由呼叫端明示：[AppText.multiLine]
+  /// （`maxLines` 必填）或 [AppText.singleLine]。
   body,
 
   /// 副標、欄首、小計、群組小標、次文字。單行、`AppFontSize.caption`。
@@ -64,7 +65,54 @@ class AppText extends StatelessWidget {
     this.secondary = false,
     this.tone,
     this.textAlign,
+  })  : _forceSingleLine = false,
+        _explicitWrap = false;
+
+  /// 明示單行：恆一行、超出以省略號截斷（任一變體，預設 `body`）。
+  ///
+  /// 截斷責任由呼叫端以本建構子明示承擔（SPEC-004 §4.1／§4.40）。
+  const AppText.singleLine(
+    this.text, {
+    super.key,
+    this.variant = AppTextVariant.body,
+    this.emphasis = false,
+    this.secondary = false,
+    this.tone,
+    this.textAlign,
+  })  : maxLines = 1,
+        _forceSingleLine = true,
+        _explicitWrap = false;
+
+  /// 明示多行：`body` 變體，`maxLines` 必填——`null` 為無上限（真的換行），
+  /// 整數為限行、超出末行省略號。漏傳在編譯期暴露。
+  const AppText.multiLine(
+    this.text, {
+    super.key,
+    required this.maxLines,
+    this.emphasis = false,
+    this.secondary = false,
+    this.tone,
+    this.textAlign,
+  })  : variant = AppTextVariant.body,
+        _forceSingleLine = false,
+        _explicitWrap = true;
+
+  const AppText._(
+    this.text, {
+    required this.variant,
+    required this.maxLines,
+    required this._forceSingleLine,
+    required this._explicitWrap,
+    required this.emphasis,
+    required this.secondary,
+    required this.tone,
+    required this.textAlign,
   });
+
+  final bool _forceSingleLine;
+
+  /// 僅 [AppText.multiLine] 為真：明示換行，無上限時 overflow 用 clip。
+  final bool _explicitWrap;
 
   /// 顯示文字，唸出全文（截斷不影響朗讀）。
   final String text;
@@ -72,8 +120,12 @@ class AppText extends StatelessWidget {
   /// 語意角色，決定字級、顏色、單行或多行。
   final AppTextVariant variant;
 
-  /// 僅 [AppTextVariant.body] 生效：限制最大行數，超出末行截斷；
-  /// 不傳則無上限。其餘變體固定單行，此參數被忽略。
+  /// 僅 [AppTextVariant.body] 生效：限制最大行數，超出末行截斷；`null`
+  /// 為無上限。其餘變體固定單行，此參數被忽略。
+  ///
+  /// 預設建構子過渡期維持舊行為（body 未傳即單行省略號，`0.5.0-W1-508.8`
+  /// 移除）；新程式碼
+  /// 一律用 [AppText.singleLine] 或 [AppText.multiLine] 明示行數政策。
   final int? maxLines;
 
   /// 粗體修飾（非變體）。
@@ -91,7 +143,22 @@ class AppText extends StatelessWidget {
   /// 格位內的水平對齊；不影響換行或截斷處置。
   final TextAlign? textAlign;
 
-  bool get _isSingleLine => variant != AppTextVariant.body;
+  /// 只改修飾（粗體、語意色），保留文字、變體與行數政策。容器需重染主文字
+  /// 時用此法，避免以預設建構子重建而丟失呼叫端明示的行數政策。
+  AppText copyWithModifiers({bool? emphasis, AppTextTone? tone}) =>
+      AppText._(
+        text,
+        variant: variant,
+        maxLines: maxLines,
+        forceSingleLine: _forceSingleLine,
+        explicitWrap: _explicitWrap,
+        emphasis: emphasis ?? this.emphasis,
+        secondary: secondary,
+        tone: tone ?? this.tone,
+        textAlign: textAlign,
+      );
+
+  bool get _isSingleLine => _forceSingleLine || variant != AppTextVariant.body;
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +174,12 @@ class AppText extends StatelessWidget {
         textAlign: textAlign,
         softWrap: !_isSingleLine,
         maxLines: _isSingleLine ? 1 : maxLines,
-        overflow: TextOverflow.ellipsis,
+        // 無行數上限時 ellipsis 會被引擎當成單行截斷（508 根因），故明示
+        // 換行（multiLine）且無上限時用 clip。預設建構子過渡期維持舊行為
+        // （一律 ellipsis），508.8 移除。
+        overflow: _explicitWrap && maxLines == null
+            ? TextOverflow.clip
+            : TextOverflow.ellipsis,
       ),
     );
   }

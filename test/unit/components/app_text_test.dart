@@ -77,11 +77,13 @@ void main() {
             expectNoOverflow(tester);
 
             final text = tester.widget<Text>(find.byType(Text));
-            expect(text.overflow, TextOverflow.ellipsis);
             if (variant == AppTextVariant.body) {
+              expect(text.overflow, TextOverflow.ellipsis,
+                  reason: '預設建構子過渡期維持舊行為');
               expect(text.softWrap, isTrue, reason: 'body 可換行');
               expect(text.maxLines, isNull, reason: 'body 預設無行數上限');
             } else {
+              expect(text.overflow, TextOverflow.ellipsis);
               expect(text.softWrap, isFalse, reason: '單行變體不換行');
               expect(text.maxLines, 1, reason: '單行變體固定一行截斷');
             }
@@ -115,6 +117,59 @@ void main() {
         );
       }
     }
+  });
+
+  group('行數政策明示（508.1）', () {
+    const long = TestCopy.longEn;
+    // Scaffold body 給緊約束，需 Align 才讓 120 寬生效。
+    Widget narrow(Widget c) =>
+        Align(alignment: Alignment.topLeft, child: _constrained(c));
+
+    testWidgets('singleLine 只畫一行並省略號', (tester) async {
+      await pumpHarness(
+        tester,
+        child: narrow(const AppText.singleLine(long)),
+      );
+      final text = tester.widget<Text>(find.text(long));
+      expect(text.maxLines, 1);
+      expect(text.softWrap, isFalse);
+      expect(text.overflow, TextOverflow.ellipsis);
+    });
+
+    testWidgets('multiLine 無上限時真的換行', (tester) async {
+      await pumpHarness(
+        tester,
+        child: narrow(const AppText.singleLine(long)),
+      );
+      final oneLine = tester.getSize(find.byType(AppText)).height;
+      await pumpHarness(
+        tester,
+        child: narrow(const AppText.multiLine(long, maxLines: null)),
+      );
+      final multi = tester.getSize(find.byType(AppText)).height;
+      expect(multi, greaterThan(oneLine), reason: '多行高度應大於單行');
+      expect(tester.widget<Text>(find.text(long)).softWrap, isTrue);
+    });
+
+    testWidgets('預設建構子 body 不傳 maxLines 時高度等於單行', (tester) async {
+      await pumpHarness(
+        tester,
+        child: narrow(const AppText.singleLine(long)),
+      );
+      final oneLine = tester.getSize(find.byType(AppText)).height;
+      await pumpHarness(tester, child: narrow(const AppText(long)));
+      expect(tester.getSize(find.byType(AppText)).height, oneLine);
+    });
+
+    testWidgets('multiLine 有 maxLines 時限行並省略號', (tester) async {
+      await pumpHarness(
+        tester,
+        child: narrow(const AppText.multiLine(long, maxLines: 2)),
+      );
+      final text = tester.widget<Text>(find.text(long));
+      expect(text.maxLines, 2);
+      expect(text.overflow, TextOverflow.ellipsis);
+    });
   });
 
   group('無障礙：Semantics.header', () {

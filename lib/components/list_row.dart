@@ -11,9 +11,13 @@
 ///
 /// `sectionHeader` 主文字需 `emphasis` + `accentStrong`（SPEC-004
 /// 4.40「變體」）。本元件依 [AppText.tone]（SPEC-004 §4.1「修飾參數優先
-/// 序」）以呼叫端傳入 [AppText] 的 `text` 與 `variant` 重建
-/// `AppText(tone: AppTextTone.accentStrong, emphasis: true)`，維持文字
-/// 恆以 [AppText] 承載（不繞道建 `Text`）。
+/// 序」）以 [AppText.copyWithModifiers] 重染呼叫端傳入的 [AppText]
+/// （`emphasis: true`、`tone: AppTextTone.accentStrong`），維持文字恆以
+/// [AppText] 承載（不繞道建 `Text`）。
+///
+/// 截斷責任：`primary` / `secondary` 的行數政策（單行省略號或多行）由
+/// 呼叫端建構 [AppText] 時以 [AppText.singleLine] / [AppText.multiLine]
+/// 明示，本容器不代為決定，重染時原樣保留（SPEC-004 §4.40）。
 library;
 
 import 'package:flutter/material.dart' show InkWell;
@@ -267,15 +271,13 @@ class ListRow extends StatelessWidget {
 
   Widget _buildPrimary() {
     if (variant == ListRowVariant.sectionHeader) {
-      return AppText(
-        primary.text,
-        variant: primary.variant,
+      return primary.copyWithModifiers(
         emphasis: true,
         tone: AppTextTone.accentStrong,
       );
     }
     if (variant == ListRowVariant.option && isSelected) {
-      return AppText(primary.text, variant: primary.variant, emphasis: true);
+      return primary.copyWithModifiers(emphasis: true);
     }
     return primary;
   }
