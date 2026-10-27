@@ -235,7 +235,9 @@ def _skill_name(path: str) -> Optional[str]:
 
 
 def _skill_has_tests(root: str, name: str) -> bool:
-    return os.path.isdir(os.path.join(root, ".claude", "skills", name, "tests"))
+    """tests 目錄內（遞迴）有 pytest 可收的 test_*.py／*_test.py 才算；僅有其他語言測試者不產生 skill 套件。"""
+    tests = Path(root) / ".claude" / "skills" / name / "tests"
+    return any(tests.rglob("test_*.py")) or any(tests.rglob("*_test.py"))
 
 
 _LIB_IMPORT = re.compile(r"^\s*(?:from|import)\s+lib(?:\.|\s|$)", re.MULTILINE)
@@ -246,7 +248,7 @@ def _skills_importing_lib(root: str) -> list:
     base = Path(root) / ".claude" / "skills"
     found = []
     for skill in sorted(p for p in base.iterdir() if p.is_dir()) if base.is_dir() else []:
-        if not (skill / "tests").is_dir():
+        if not _skill_has_tests(root, skill.name):
             continue
         for dirpath, dirnames, filenames in os.walk(skill):
             dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]

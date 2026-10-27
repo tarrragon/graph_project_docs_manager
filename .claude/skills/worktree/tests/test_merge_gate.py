@@ -189,6 +189,8 @@ def skel(tmp_path):
         if pyproject:
             _touch(r, f".claude/skills/{name}/pyproject.toml")
     _touch(r, ".claude/skills/docsonly/SKILL.md")
+    _touch(r, ".claude/skills/tsonly/tests/a.test.ts")
+    _touch(r, ".claude/skills/tsonly/mod.py", "from lib import x\n")
     return str(r)
 
 
@@ -255,6 +257,21 @@ class TestScope:
         assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == ["skill:lone"]
         _touch(Path(skel), ".claude/hooks/g.py", "p = '.claude/skills/lone/x.json'\n")
         assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == [mg.SUITE_HOOKS, "skill:lone"]
+
+    def test_skill_without_pytest_files_gets_no_suite(self, skel):
+        assert mg.select_suites([".claude/skills/tsonly/mod.py"], skel) != ["skill:tsonly"]
+        assert "skill:tsonly" not in mg.select_suites([".claude/lib/x.py"], skel)
+
+    def test_e2_skill_with_pytest_file_keeps_suite(self, skel):
+        assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == ["skill:lone"]
+        _touch(Path(skel), ".claude/skills/tsonly/tests/sub/x_test.py")
+        assert "skill:tsonly" in mg.select_suites([".claude/skills/tsonly/mod.py"], skel)
+
+    def test_skill_with_only_non_test_named_py_gets_no_suite(self, skel):
+        """刻意行為：conftest.py／helper 命名的 .py，pytest 預設也收不到測試。"""
+        _touch(Path(skel), ".claude/skills/helperonly/tests/conftest.py")
+        _touch(Path(skel), ".claude/skills/helperonly/tests/helpers.py")
+        assert not mg._skill_has_tests(skel, "helperonly")
 
     def test_suite_commands(self, skel):
         assert mg.suite_command("skill:withpy", skel) == ["uv", "--directory", ".claude/skills/withpy", "run", "pytest"]
