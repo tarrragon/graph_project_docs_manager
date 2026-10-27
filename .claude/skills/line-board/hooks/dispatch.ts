@@ -122,7 +122,7 @@ export function dispatchTicketIds(records: readonly DispatchRecord[]): string[] 
 
 /**
  * 派發區塊的列：session_id 對不到存活 session（sessionId）的條目不列；dispatchStage 為 null 的不列。
- * 以 session 的名稱對到 349 現行佇列行括號內的 session 名稱取線號，對不到為 null（其他）。
+ * 以 session 的名稱對到協調票現行佇列行括號內的 session 名稱取線號，對不到為 null（其他）。
  * 依線號排序、其他最後，同線保留紀錄中的順序。任務欄為短票號（完整票號去掉 ticketPrefix），沒有票號時為派發描述。
  * ticketPrefix 為協調票推導的短票號前綴（shared.ts ticketPrefixOf），由 snapshot 的 ticketPrefix 傳入。
  */

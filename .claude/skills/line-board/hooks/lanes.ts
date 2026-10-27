@@ -1,13 +1,13 @@
-// 線與佇列：349 Solution 的現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化。
+// 線與佇列：協調票 Solution 的現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 import type { Lane, QueueToken, TicketStatus } from '../types'
 
-/** 現行佇列行掃描範圍的起點：349 的 Solution 二級標題，讀到下一個二級標題前。 */
+/** 現行佇列行掃描範圍的起點：協調票的 Solution 二級標題，讀到下一個二級標題前。 */
 const SOLUTION_HEADING = '## Solution'
 
 /**
- * 現行佇列行（349〈看板讀取約定〉）：行首即 `**L<n> 現行佇列**`，n 為數字，
+ * 現行佇列行（協調票〈看板讀取約定〉）：行首即 `**L<n> 現行佇列**`，n 為數字，
  * 其後可帶全形括號的 session 名稱，再接全形冒號與票序。
  * 只比對行首：清單項（`- **L7 …`）與以反引號引用範本的說明行都不算。
  */
@@ -17,7 +17,7 @@ const LANE_LINE = /^\*\*L(\d+) 現行佇列\*\*(?:（([^）]*)）)?：(.*)$/
 const LANE_ENDED = '（無）'
 
 /**
- * 線目標行（349，337 UI 裁定）：行首即 `**L<n> 目標**`，n 為數字，接全形冒號與一句話目標。
+ * 線目標行（協調票，337 UI 裁定）：行首即 `**L<n> 目標**`，n 為數字，接全形冒號與一句話目標。
  * 判定與現行佇列行相同：只比對行首，清單項、表格內與以反引號引用範本的行都不算。
  */
 const GOAL_LINE = /^\*\*L(\d+) 目標\*\*：(.*)$/
@@ -87,7 +87,7 @@ export function parseQueue(queue: string, prefix: string): QueueToken[] {
 }
 
 /**
- * 掃 349 Solution 的線目標行，每條線只取最後一行；最後一行寫 `（無）` 或為空的線不在結果中（目標已清除）。
+ * 掃協調票 Solution 的線目標行，每條線只取最後一行；最後一行寫 `（無）` 或為空的線不在結果中（目標已清除）。
  */
 export function parseLaneGoals(text: string): Map<number, string> {
   const goals = new Map<number, string>()
@@ -112,7 +112,7 @@ function lastMatchPerLane(text: string, pattern: RegExp): Map<number, RegExpExec
 }
 
 /**
- * 掃 349 的 Solution，每條線只取最後一次出現的現行佇列行，依線號排序；各線附上 parseLaneGoals 的目標（沒有時為 null）。
+ * 掃協調票的 Solution，每條線只取最後一次出現的現行佇列行，依線號排序；各線附上 parseLaneGoals 的目標（沒有時為 null）。
  * 最後一行票序為 `（無）` 的線不回傳；歷史行（同線較早的行）的票號不進結果。
  * prefix 為協調票推導的短票號前綴（shared.ts ticketPrefixOf），原樣傳給 parseQueue 補全短票號。
  */
