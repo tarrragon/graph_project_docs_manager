@@ -100,8 +100,12 @@ final _guidelines = <String, AccessibilityGuideline>{
 
 /// 已知失敗基線：key = `畫面|尺寸|準則`，value = 失敗訊息行集合。
 ///
-/// 兩項皆為 textContrast：量測到文字色與取樣背景（白）比值約 1.17～1.18，
-/// 為「區段標題」節點；測試字型下取樣不可靠，屬粗篩結果（見 0.5.0-W1-466.1）。
+/// 兩項皆為 textContrast，原註解稱「區段標題文字色對白比值約 1.17～1.18」
+/// 屬取樣誤判（出處 0.5.0-W1-468）：
+/// - 1.18 是 surfaceIconTint #E0EFED 對白；1.17 是 surfaceChip #E9EEED 對白，
+///   取到的是色塊底色而非標題文字色。
+/// - 標題實際為 textSecondary #6A7674 對 surfaceBase #FFFFFF = 4.71:1，達標。
+/// 清單內容與 0.5.0-W1-468 結論一致，保留作基線鎖定（原見 0.5.0-W1-466.1）。
 const Map<String, Set<String>> _knownFailures = {
   'ucFlow|min|textContrast': {'選擇 UC'},
   'ucFlow|design|textContrast': {'選擇 UC'},
