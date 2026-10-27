@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart' show InkWell;
+import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -385,6 +386,47 @@ void main() {
         closeTo(idMin, 0.5),
       );
       expect(minTrue - minFalse, closeTo(Space.sm.w + badgeIntrinsic, 0.5));
+    });
+  });
+
+  group('語意 tap action（輔助技術可觸發）', () {
+    Future<void> pumpItem(WidgetTester tester, VoidCallback? onTap) {
+      return pumpHarness(
+        tester,
+        size: WindowSize.values.first,
+        child: SizedBox(
+          width: 200,
+          child: RelationItem(
+            id: TestCopy.nodeId,
+            onTap: onTap,
+            testKey: _relationKey,
+          ),
+        ),
+      );
+    }
+
+    testWidgets('有 onTap 帶 tap action，無 onTap 不帶', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpItem(tester, () {});
+      final withTap = tester.getSemantics(find.byKey(_relationKey));
+      expect(withTap.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+
+      await pumpItem(tester, null);
+      final noTap = tester.getSemantics(find.byKey(_relationKey));
+      expect(noTap.getSemanticsData().hasAction(SemanticsAction.tap), isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('語意 tap 呼叫 onTap', (tester) async {
+      final handle = tester.ensureSemantics();
+      var taps = 0;
+      await pumpItem(tester, () => taps++);
+      final node = tester.getSemantics(find.byKey(_relationKey));
+      // ignore: deprecated_member_use
+      tester.binding.pipelineOwner.semanticsOwner!
+          .performAction(node.id, SemanticsAction.tap);
+      expect(taps, 1);
+      handle.dispose();
     });
   });
 }
