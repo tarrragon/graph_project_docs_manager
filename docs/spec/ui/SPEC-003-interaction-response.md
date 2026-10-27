@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-10-27"
-version: "1.66"
+version: "1.67"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1682,7 +1682,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 切換專案 | `project-switcher-entry`（既有） | 點擊 | 浮層展開（§3.7） |
 | 阻擋狀態切換專案 | `action-domain-switch-project` | 點擊（僅於三個阻擋狀態與 `state-domain-load-failed` 共四個狀態渲染，`0.5.0-W1-114.14.1`） | 浮層展開（§3.7），不改變 `IndexedStack` 索引；結果同 `project-switcher-entry` |
 | 重新載入（載入失敗） | `action-domain-reload` | 點擊（僅於 `state-domain-load-failed` 渲染） | `state-domain-load-failed` 消失、`state-domain-loading` 出現；以同一資料夾、同一模式重新載入（失敗的載入若是降級檢視，重試仍為降級檢視）；已存路徑與最近清單不變；不發 SnackBar 或通知（SPEC-001 §8.1，`0.5.0-W1-114.14.1`） |
-| 重新掃描（圖不可用） | `action-domain-rescan` | 點擊（僅於 `state-domain-graph-unavailable` 渲染） | 在本畫面啟動新一輪掃描（與 `action-gaps-rescan` 產生的是同一種輪次，SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉）；輪次進行期間 `state-domain-graph-unavailable` 維持、原因文字不變，`action-domain-rescan` 為 disabled（防重複觸發，輪次結束後恢復 enabled）；該輪完成且建圖可用 → `state-domain-graph-unavailable` 消失，依當前模式出現 `state-domain-matrix`（選中格仍在時含 `panel-domain-cell-detail`）或泳道各態（依「切至泳道」列的分支，選中 domain 與選定 UC 沿用）；該輪完成仍不可用、輪次失敗或被取消 → 仍為 `state-domain-graph-unavailable`，原因文字不變；不發 SnackBar 或通知（SPEC-001 §8.1，`0.5.0-W1-486.1`） |
+| 重新掃描（圖不可用） | `action-domain-rescan` | 點擊（僅於 `state-domain-graph-unavailable` 渲染） | 在本畫面啟動新一輪掃描（與 `action-gaps-rescan` 產生的是同一種輪次，SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉）；掃描輪次進行期間（不論由本列或他頁觸發）`state-domain-graph-unavailable` 維持，列內原因文字換成「掃描中」（`domainGraphUnavailableScanning`）並附進度提示——indeterminate + 已掃描項目計數文字（`gapsScanningProcessedCount`），與 `state-gaps-scanning` 同一進度型別（§2.6，同受誠實性硬規則與 `Motion.progressTick` 約束），`action-domain-rescan` 為 disabled（防重複觸發）；輪次結束後顯示結果：該輪完成且建圖可用 → `state-domain-graph-unavailable` 消失，依當前模式出現 `state-domain-matrix`（選中格仍在時含 `panel-domain-cell-detail`）或泳道各態（依「切至泳道」列的分支，選中 domain 與選定 UC 沿用）；該輪完成仍不可用、輪次失敗或被取消 → 仍為 `state-domain-graph-unavailable`，列內恢復顯示原因文字、`action-domain-rescan` 恢復 enabled；不發 SnackBar 或通知，留在本列即為結果（SPEC-001 §8.1）。與破洞報告按 `action-gaps-rescan` 後轉 `state-gaps-scanning`、結束後顯示結果同一呈現順序；差別是本列不換狀態根節點，掃描中為列內呈現（用戶裁定 2026-10-27，`0.5.0-W1-486.1`） |
 | 以 App 內建型別表檢視 | `action-domain-degraded-view` | 點擊（僅於 `state-domain-schema-unconsumable` 且 `VERSION` 不高於內建表產生版本時渲染） | `state-domain-matrix` 或 `state-domain-empty` 出現並疊加 `badge-domain-degraded-schema`，不經 `state-domain-loading`（`0.1.0-W3-335.59` S3-1） |
 
 **格詳情卡的內容契約**（`panel-domain-cell-detail`）：
@@ -1766,7 +1766,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 由 jump 帶 domain 進入（`action-ucFlow-goto-domain-<domainId>`，`0.1.0-W3-335.38` S-20） | 模式不變；選中 domain 寫入該 domain，依「選 domain」列規則處理選中格（與選中格不同列即清除）；該 domain 列首 rect 與 viewport rect 有交集（`jumpTo`，SPEC-004 §4.0.10 定位場景） |
 | 切換專案 | 中止載入；重置為 `state-domain-loading`（新專案）或 `state-domain-unset`；選中格清除；選定 UC 清除（§2.8〈選定 UC〉） |
 | 回到本畫面時選定 UC 已被 UC Flow 改寫 | 泳道模式依新值重新判定（依「切至泳道」列的三分支：`state-domain-swimlane` 標題換為新 UC、或在 `state-domain-swimlane`／`state-domain-swimlane-uc-unset`／`state-domain-swimlane-projection-pending`／`state-domain-swimlane-unstructured` 之間轉換）；選中格不隨之改變 |
-| 掃描輪次離開 Completed（他頁重掃、取消重掃、輪次失敗） | 矩陣與泳道都讀同一專案最後一次完成的輪次結果（SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉），期間照常顯示上一輪、狀態不變，矩陣模式維持原樣；新一輪完成後兩者一併更新（`0.5.0-W1-205.1`）；新完成的輪次建圖不可用時，矩陣與泳道一併轉為 `state-domain-graph-unavailable`，下一個可用輪次完成時依當前模式轉回，選中 domain、選中格與選定 UC 全程保留（SPEC-001 §1〈FR-13 回傳「圖不可用」時的 Domain 視圖呈現〉，`0.5.0-W1-486.1`） |
+| 掃描輪次離開 Completed（他頁重掃、取消重掃、輪次失敗） | 矩陣與泳道都讀同一專案最後一次完成的輪次結果（SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉），期間照常顯示上一輪、狀態不變，矩陣模式維持原樣；新一輪完成後兩者一併更新（`0.5.0-W1-205.1`）；新完成的輪次建圖不可用時，矩陣與泳道一併轉為 `state-domain-graph-unavailable`；處於該狀態時輪次轉入 Running（他頁重掃或 `action-domain-rescan`），列內改顯示掃描中與進度提示、`action-domain-rescan` disabled，輪次結束後顯示結果（見〈互動反應〉「重新掃描（圖不可用）」列）；下一個可用輪次完成時依當前模式轉回，選中 domain、選中格與選定 UC 全程保留（SPEC-001 §1〈FR-13 回傳「圖不可用」時的 Domain 視圖呈現〉，`0.5.0-W1-486.1`） |
 | 本畫面可見、掃描輪次為 Idle，且該專案沒有任何完成輪次 | 本列不適用 `state-domain-graph-unavailable`（該狀態已有完成輪次，不自動重啟，出口為 `action-domain-rescan`）。重新啟動掃描輪次，使 `state-domain-swimlane-projection-pending` 有出口；已有上一輪結果時不重啟，以免推翻使用者在破洞報告按下的取消重掃（`0.5.0-W1-205` 用戶裁決）；由 Running 轉入的 Idle（輪次失敗、進行中取消）不重啟，以免持續失敗時無限重試，此時 `state-domain-swimlane-projection-pending` 持續顯示至使用者手動重掃（SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉，用戶裁定 2026-10-27，`0.5.0-W1-205.2.2`） |
 | 視窗尺寸變更 | 矩陣以左上角為錨定保留 offset；不重新解析 |
 
@@ -2547,6 +2547,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.67 | 2026-10-27 | 對齊 SPEC-001 v1.58（用戶裁定 2026-10-27，`0.5.0-W1-486.1` 修正）：§3.1〈互動反應〉「重新掃描（圖不可用）」列改寫——輪次進行期間列內原因文字換成「掃描中」（`domainGraphUnavailableScanning`）並附 indeterminate + 已掃描項目計數的進度提示（與 `state-gaps-scanning` 同一進度型別），`action-domain-rescan` disabled，結束後顯示結果；仍不可用、失敗或取消時列內恢復原因文字、按鈕恢復 enabled，不另發提示；v1.66 誤寫「原因文字不變」。〈生命週期〉「掃描輪次離開 Completed」列補處於圖不可用時輪次轉入 Running 的列內掃描中呈現。狀態數不變（43）。SPEC-001 v1.58、SPEC-004 v1.100 同批 |
 | 1.66 | 2026-10-27 | 對齊 SPEC-001 v1.57（`0.5.0-W1-486` 用戶裁定 B+，`0.5.0-W1-486.1`）：§0 與 §4 標題、覆蓋完整性算式、同步提醒、FR-01 驗收的狀態數 42 → 43，§4 新增 #43「圖不可用」（`state-domain-graph-unavailable`）、#42 補首輪建圖不可用的落點；§1.2 雙模式列補該狀態與泳道各錨點互斥、切模式不離開；§3.1〈互動反應〉新增「重新掃描（圖不可用）」`action-domain-rescan`（輪次進行中 disabled，可用則依模式恢復、仍不可用／失敗／取消則留在本狀態，不發提示），切至矩陣／切至泳道兩列補該狀態下只切模式選中值；〈導航跳轉與退出〉正常 · 矩陣列補出口、新增圖不可用列；〈生命週期〉「掃描輪次離開 Completed」列補建圖不可用的轉入與轉回，自動重啟列註明不適用該狀態。設計約束「42 列」改為「各列」（規則 10）。SPEC-004 v1.99 同批 |
 | 1.65 | 2026-10-27 | 對齊 SPEC-001 v1.56（用戶裁定 2026-10-27，`0.5.0-W1-205.2.2`）：§3.1〈生命週期〉「本畫面可見、輪次 Idle 且該專案沒有任何完成輪次」列補例外——由 Running 轉入的 Idle（輪次失敗、進行中取消）不重啟，投影準備中持續顯示至手動重掃。§4 #42 退出路徑不變 |
 | 1.64 | 2026-10-21 | 對齊 SPEC-001 v1.55（`0.5.0-W1-205.1`，`0.5.0-W1-205` 用戶裁決 2026-10-21：泳道新增「投影準備中」、矩陣與泳道同由掃描輪次衍生）：§1.1 #2、§1.2 雙模式列、§1.3 適用狀態、§3.1〈互動反應〉切至矩陣／切至泳道／泳道拖曳／泳道捲動四列納入 `state-domain-swimlane-projection-pending`（切至泳道改四分支）；〈導航跳轉與退出〉正常 · 矩陣列與 §4 #3 改「泳道四態」、新增投影準備中列；〈生命週期〉新增「掃描輪次離開 Completed（照常顯示上一輪結果）」「本畫面可見、輪次 Idle 且該專案沒有任何完成輪次（重新啟動輪次）」兩列，「選定 UC 已被改寫」列補本錨點；§4 新增 #42，標題、覆蓋完整性算式（§1 12 → 13）、同步提醒、FR-01 驗收、§0 概述、設計約束的 41 → 42。§2.14 未增列：本狀態非阻擋狀態、無提示升級 |
