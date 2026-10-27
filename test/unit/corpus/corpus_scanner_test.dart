@@ -82,7 +82,7 @@ void main() {
       final result = await scanCorpus(
         fileSystem: fs,
         table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
       );
 
       expect(result.rawNodes, isEmpty);
@@ -99,7 +99,7 @@ builtinTable: _tableWithoutCarrier(),
       final result = await scanCorpus(
         fileSystem: fs,
         table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
       );
 
       expect(
@@ -108,47 +108,41 @@ builtinTable: _tableWithoutCarrier(),
       );
     });
 
-    test(
-      'C8-3（守衛）docs/X.MD、根層 README.md、docs/x.txt 不進入；'
-      '同目錄 docs/x.md 進入（正向對照）',
-      () async {
-        final fs = FakeDocsFileSystem()
-          ..addFile('docs/X.MD', _noFrontmatterBytes)
-          ..addFile('README.md', _noFrontmatterBytes)
-          ..addFile('docs/x.txt', _noFrontmatterBytes)
-          ..addFile('docs/x.md', _noFrontmatterBytes);
+    test('C8-3（守衛）docs/X.MD、根層 README.md、docs/x.txt 不進入；'
+        '同目錄 docs/x.md 進入（正向對照）', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/X.MD', _noFrontmatterBytes)
+        ..addFile('README.md', _noFrontmatterBytes)
+        ..addFile('docs/x.txt', _noFrontmatterBytes)
+        ..addFile('docs/x.md', _noFrontmatterBytes);
 
-        final result = await scanCorpus(
-          fileSystem: fs,
-          table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
-        );
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
 
-        final scannedPaths = result.parseErrors.map((e) => e.path).toSet();
-        expect(scannedPaths, {'docs/x.md'});
-      },
-    );
+      final scannedPaths = result.parseErrors.map((e) => e.path).toSet();
+      expect(scannedPaths, {'docs/x.md'});
+    });
 
-    test(
-      'C8-4（守衛）docs/link 為符號連結目錄：不經連結重複列出，'
-      'docs/spec/ 下的檔案只出現一次',
-      () async {
-        final fs = FakeDocsFileSystem()
-          ..addFile('docs/spec/domain-map.md', _noFrontmatterBytes)
-          ..addSymlinkDirectory('docs/link');
+    test('C8-4（守衛）docs/link 為符號連結目錄：不經連結重複列出，'
+        'docs/spec/ 下的檔案只出現一次', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/spec/domain-map.md', _noFrontmatterBytes)
+        ..addSymlinkDirectory('docs/link');
 
-        final result = await scanCorpus(
-          fileSystem: fs,
-          table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
-        );
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
 
-        final matches = result.parseErrors
-            .where((e) => e.path == 'docs/spec/domain-map.md')
-            .toList();
-        expect(matches, hasLength(1));
-      },
-    );
+      final matches = result.parseErrors
+          .where((e) => e.path == 'docs/spec/domain-map.md')
+          .toList();
+      expect(matches, hasLength(1));
+    });
 
     test('C8-5 回傳路徑相對於工作區根、以 / 分隔、不含前導 ./', () async {
       final fs = FakeDocsFileSystem()
@@ -157,7 +151,7 @@ builtinTable: _tableWithoutCarrier(),
       final result = await scanCorpus(
         fileSystem: fs,
         table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
       );
 
       final path = result.parseErrors.single.path;
@@ -166,73 +160,61 @@ builtinTable: _tableWithoutCarrier(),
       expect(path.contains(r'\'), isFalse);
     });
 
-    test(
-      'C8-6 工作區根取自注入的 DocsFileSystem（fake Workspace 提供），'
-      '不自行推導：兩個獨立的 fake 各自獨立產生對應結果',
-      () async {
-        final workspaceA = FakeDocsFileSystem()
-          ..addFile('docs/a.md', _noFrontmatterBytes);
-        final workspaceB = FakeDocsFileSystem();
+    test('C8-6 工作區根取自注入的 DocsFileSystem（fake Workspace 提供），'
+        '不自行推導：兩個獨立的 fake 各自獨立產生對應結果', () async {
+      final workspaceA = FakeDocsFileSystem()
+        ..addFile('docs/a.md', _noFrontmatterBytes);
+      final workspaceB = FakeDocsFileSystem();
 
-        final resultA = await scanCorpus(
-          fileSystem: workspaceA,
-          table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
-        );
-        final resultB = await scanCorpus(
-          fileSystem: workspaceB,
-          table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
-        );
+      final resultA = await scanCorpus(
+        fileSystem: workspaceA,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
+      final resultB = await scanCorpus(
+        fileSystem: workspaceB,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
 
-        expect(resultA.summary.totalFilesScanned, 1);
-        expect(resultB.summary.totalFilesScanned, 0);
-      },
-    );
+      expect(resultA.summary.totalFilesScanned, 1);
+      expect(resultB.summary.totalFilesScanned, 0);
+    });
 
-    test(
-      'C8-7 子目錄沒有權限：記入「無法列出的目錄」清單、不中止、不計入'
-      '總數，守恆式成立；同層正常子目錄照常計數（正向對照）',
-      () async {
-        final fs = FakeDocsFileSystem()
-          ..addFile('docs/normal/a.md', _noFrontmatterBytes)
-          ..addDirectory('docs/denied')
-          ..denyListPermission('docs/denied');
+    test('C8-7 子目錄沒有權限：記入「無法列出的目錄」清單、不中止、不計入'
+        '總數，守恆式成立；同層正常子目錄照常計數（正向對照）', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/normal/a.md', _noFrontmatterBytes)
+        ..addDirectory('docs/denied')
+        ..denyListPermission('docs/denied');
 
-        final result = await scanCorpus(
-          fileSystem: fs,
-          table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
-        );
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
 
-        expect(result.summary.unlistableDirectories, ['docs/denied']);
-        expect(
-          result.parseErrors.map((e) => e.path),
-          ['docs/normal/a.md'],
-        );
-        expect(result.summary.totalFilesScanned, 1);
-        expect(checkScanSummaryConservation(result.summary), isTrue);
-      },
-    );
+      expect(result.summary.unlistableDirectories, ['docs/denied']);
+      expect(result.parseErrors.map((e) => e.path), ['docs/normal/a.md']);
+      expect(result.summary.totalFilesScanned, 1);
+      expect(checkScanSummaryConservation(result.summary), isTrue);
+    });
 
-    test(
-      'C8-8 非目錄非檔案項目（other）：不進入結果、不遞迴、不冒稱 symlink；'
-      '同目錄檔案照常計數（正向對照）',
-      () async {
-        final fs = FakeDocsFileSystem()
-          ..addFile('docs/normal.md', _noFrontmatterBytes)
-          ..addOtherEntry('docs/weird');
+    test('C8-8 非目錄非檔案項目（other）：不進入結果、不遞迴、不冒稱 symlink；'
+        '同目錄檔案照常計數（正向對照）', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/normal.md', _noFrontmatterBytes)
+        ..addOtherEntry('docs/weird');
 
-        final result = await scanCorpus(
-          fileSystem: fs,
-          table: _tableWithoutCarrier(),
-builtinTable: _tableWithoutCarrier(),
-        );
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
 
-        expect(result.parseErrors.map((e) => e.path), ['docs/normal.md']);
-        expect(result.summary.totalFilesScanned, 1);
-      },
-    );
+      expect(result.parseErrors.map((e) => e.path), ['docs/normal.md']);
+      expect(result.summary.totalFilesScanned, 1);
+    });
   });
 
   group('scanCorpus 讀取失敗（SPEC-006-test-design §3.2 C9, FR-05）', () {
@@ -240,10 +222,10 @@ builtinTable: _tableWithoutCarrier(),
         .addType(
           'CarrierType',
           carrierPathPatterns: [
-            PathPatternSpec(pattern: r'^docs/carrier/.*\.md$', specificity: [
-              2,
-              0,
-            ]),
+            PathPatternSpec(
+              pattern: r'^docs/carrier/.*\.md$',
+              specificity: [2, 0],
+            ),
           ],
         )
         .build();
@@ -255,7 +237,7 @@ builtinTable: _tableWithoutCarrier(),
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
-builtinTable: tableWithCarrier(),
+        builtinTable: tableWithCarrier(),
       );
 
       final error = result.parseErrors.single;
@@ -271,7 +253,7 @@ builtinTable: tableWithCarrier(),
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
-builtinTable: tableWithCarrier(),
+        builtinTable: tableWithCarrier(),
       );
 
       expect(result.parseErrors, hasLength(1));
@@ -290,7 +272,7 @@ builtinTable: tableWithCarrier(),
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
-builtinTable: tableWithCarrier(),
+        builtinTable: tableWithCarrier(),
       );
 
       final error = result.parseErrors.single;
@@ -306,7 +288,7 @@ builtinTable: tableWithCarrier(),
       final result = await scanCorpus(
         fileSystem: fs,
         table: tableWithCarrier(),
-builtinTable: tableWithCarrier(),
+        builtinTable: tableWithCarrier(),
       );
 
       final error = result.parseErrors.single;
@@ -324,28 +306,22 @@ builtinTable: tableWithCarrier(),
         .addType(
           'CarrierType',
           carrierPathPatterns: [
-            PathPatternSpec(pattern: r'^docs/carrier/.*\.md$', specificity: [
-              2,
-              0,
-            ]),
+            PathPatternSpec(
+              pattern: r'^docs/carrier/.*\.md$',
+              specificity: [2, 0],
+            ),
           ],
         )
         .addType(
           'TieTypeA',
           carrierPathPatterns: [
-            PathPatternSpec(pattern: r'^docs/tie/.*\.md$', specificity: [
-              2,
-              0,
-            ]),
+            PathPatternSpec(pattern: r'^docs/tie/.*\.md$', specificity: [2, 0]),
           ],
         )
         .addType(
           'TieTypeB',
           carrierPathPatterns: [
-            PathPatternSpec(pattern: r'^docs/tie/.*\.md$', specificity: [
-              2,
-              0,
-            ]),
+            PathPatternSpec(pattern: r'^docs/tie/.*\.md$', specificity: [2, 0]),
           ],
         )
         .build();
@@ -363,26 +339,17 @@ builtinTable: tableWithCarrier(),
       final result = await scanCorpus(
         fileSystem: distributionFixture(),
         table: distributionTable(),
-builtinTable: distributionTable(),
+        builtinTable: distributionTable(),
       );
       final summary = result.summary;
 
       expect(summary.totalFilesScanned, 7);
       expect(summary.nodeCount, 1);
       expect(summary.nonNodeWithFrontmatterCount, 1);
-      expect(
-        summary.failureReasonCounts[ParseResultKind.noFrontmatter],
-        1,
-      );
+      expect(summary.failureReasonCounts[ParseResultKind.noFrontmatter], 1);
       expect(summary.failureReasonCounts[ParseResultKind.unclosed], 1);
-      expect(
-        summary.failureReasonCounts[ParseResultKind.emptyOrNotMap],
-        1,
-      );
-      expect(
-        summary.failureReasonCounts[ParseResultKind.yamlSyntaxError],
-        1,
-      );
+      expect(summary.failureReasonCounts[ParseResultKind.emptyOrNotMap], 1);
+      expect(summary.failureReasonCounts[ParseResultKind.yamlSyntaxError], 1);
       expect(summary.failureReasonCounts[ParseResultKind.unreadable], 1);
       expect(summary.hitCarrierCount, 3);
       expect(summary.noHitCount, 2);
@@ -394,7 +361,7 @@ builtinTable: distributionTable(),
       final result = await scanCorpus(
         fileSystem: distributionFixture(),
         table: distributionTable(),
-builtinTable: distributionTable(),
+        builtinTable: distributionTable(),
       );
 
       final tieEvent = result.parseFailureEvents.singleWhere(
@@ -414,7 +381,7 @@ builtinTable: distributionTable(),
       final result = await scanCorpus(
         fileSystem: distributionFixture(),
         table: unavailableTable,
-builtinTable: unavailableTable,
+        builtinTable: unavailableTable,
       );
       final summary = result.summary;
 
@@ -466,51 +433,53 @@ builtinTable: unavailableTable,
       expect(checkScanSummaryConservation(fixedSummary), isTrue);
     });
 
-    test(
-      'C10-5 EVT-CORPUS-001 rawNodes：每筆帶完整 frontmatter map、'
-      '相對路徑、判定型別；不含邊',
-      () async {
-        final fs = FakeDocsFileSystem()
-          ..addFile(
-            'docs/node.md',
-            utf8.encode('---\nid: A-1\nextra: value\n---\n'),
-          );
-        final table = TypeTableBuilder()
-            .addType('Alpha', idPattern: r'^A-\d+$')
-            .build();
+    test('C10-5 EVT-CORPUS-001 rawNodes：每筆帶完整 frontmatter map、'
+        '相對路徑、判定型別；不含邊', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile(
+          'docs/node.md',
+          utf8.encode('---\nid: A-1\nextra: value\n---\n'),
+        );
+      final table = TypeTableBuilder()
+          .addType('Alpha', idPattern: r'^A-\d+$')
+          .build();
 
-        final result = await scanCorpus(fileSystem: fs, table: table, builtinTable: table);
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: table,
+        builtinTable: table,
+      );
 
-        final node = result.rawNodes.single;
-        expect(node.path, 'docs/node.md');
-        expect(node.typeName, 'Alpha');
-        expect(node.frontmatter, {'id': 'A-1', 'extra': 'value'});
-      },
-    );
+      final node = result.rawNodes.single;
+      expect(node.path, 'docs/node.md');
+      expect(node.typeName, 'Alpha');
+      expect(node.frontmatter, {'id': 'A-1', 'extra': 'value'});
+    });
   });
 
   group('scanCorpus FR-03 歧義檔案（0.3.0-W3-534）', () {
-    test(
-      '互斥被打破的可用檔案：以路徑與候選型別出現在 schemaAmbiguousNodes，'
-      '並仍計入 nonNodeWithFrontmatterCount（先前只計數，歧義檔案本身不可追溯）',
-      () async {
-        final ambiguousTable = TypeTableBuilder()
-            .addType('Alpha', idPattern: r'^X-\d+$')
-            .addType('Beta', idPattern: r'^X-\d+$')
-            .build();
-        final fs = FakeDocsFileSystem()
-          ..addFile('docs/ambiguous.md', _validFrontmatter('X-1'));
+    test('互斥被打破的可用檔案：以路徑與候選型別出現在 schemaAmbiguousNodes，'
+        '並仍計入 nonNodeWithFrontmatterCount（先前只計數，歧義檔案本身不可追溯）', () async {
+      final ambiguousTable = TypeTableBuilder()
+          .addType('Alpha', idPattern: r'^X-\d+$')
+          .addType('Beta', idPattern: r'^X-\d+$')
+          .build();
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/ambiguous.md', _validFrontmatter('X-1'));
 
-        final result = await scanCorpus(fileSystem: fs, table: ambiguousTable, builtinTable: ambiguousTable);
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: ambiguousTable,
+        builtinTable: ambiguousTable,
+      );
 
-        expect(result.schemaAmbiguousNodes, hasLength(1));
-        final node = result.schemaAmbiguousNodes.single;
-        expect(node.path, 'docs/ambiguous.md');
-        expect(node.candidateTypes, ['Alpha', 'Beta']);
-        expect(result.summary.nonNodeWithFrontmatterCount, 1);
-        expect(result.rawNodes, isEmpty);
-      },
-    );
+      expect(result.schemaAmbiguousNodes, hasLength(1));
+      final node = result.schemaAmbiguousNodes.single;
+      expect(node.path, 'docs/ambiguous.md');
+      expect(node.candidateTypes, ['Alpha', 'Beta']);
+      expect(result.summary.nonNodeWithFrontmatterCount, 1);
+      expect(result.rawNodes, isEmpty);
+    });
 
     test('正向對照：只留一型時同一個 id 判為節點，不進入歧義清單', () async {
       final singleTable = TypeTableBuilder()
@@ -519,7 +488,11 @@ builtinTable: unavailableTable,
       final fs = FakeDocsFileSystem()
         ..addFile('docs/single.md', _validFrontmatter('X-1'));
 
-      final result = await scanCorpus(fileSystem: fs, table: singleTable, builtinTable: singleTable);
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: singleTable,
+        builtinTable: singleTable,
+      );
 
       expect(result.schemaAmbiguousNodes, isEmpty);
       expect(result.rawNodes, hasLength(1));
@@ -531,39 +504,36 @@ builtinTable: unavailableTable,
         .addType(
           'CarrierType',
           carrierPathPatterns: [
-            PathPatternSpec(pattern: r'^docs/carrier/.*\.md$', specificity: [
-              2,
-              0,
-            ]),
+            PathPatternSpec(
+              pattern: r'^docs/carrier/.*\.md$',
+              specificity: [2, 0],
+            ),
           ],
         )
         .build();
 
-    test(
-      '每個失敗檔只呼叫一次 lookupCarrierPath：命中 carrier（組裝事件）與'
-      '未命中 carrier 各只查一次，不因後續組裝事件而重查',
-      () async {
-        var callCount = 0;
-        CarrierPathLookupResult countingLookup(TypeTable table, String path) {
-          callCount++;
-          return lookupCarrierPathType(table, path);
-        }
+    test('每個失敗檔只呼叫一次 lookupCarrierPath：命中 carrier（組裝事件）與'
+        '未命中 carrier 各只查一次，不因後續組裝事件而重查', () async {
+      var callCount = 0;
+      CarrierPathLookupResult countingLookup(TypeTable table, String path) {
+        callCount++;
+        return lookupCarrierPathType(table, path);
+      }
 
-        final fs = FakeDocsFileSystem()
-          ..addFile('docs/carrier/hit.md', _noFrontmatterBytes)
-          ..addFile('docs/other/miss.md', _noFrontmatterBytes);
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/carrier/hit.md', _noFrontmatterBytes)
+        ..addFile('docs/other/miss.md', _noFrontmatterBytes);
 
-        final result = await scanCorpus(
-          fileSystem: fs,
-          table: tableWithCarrier(),
-builtinTable: tableWithCarrier(),
-          lookupCarrierPath: countingLookup,
-        );
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: tableWithCarrier(),
+        builtinTable: tableWithCarrier(),
+        lookupCarrierPath: countingLookup,
+      );
 
-        expect(callCount, 2);
-        expect(result.parseFailureEvents, hasLength(1));
-      },
-    );
+      expect(callCount, 2);
+      expect(result.parseFailureEvents, hasLength(1));
+    });
   });
 
   group('scanCorpus 失敗隔離（SPEC-006-test-design §3.2 C11, NFR-01）', () {
@@ -572,10 +542,10 @@ builtinTable: tableWithCarrier(),
         .addType(
           'CarrierType',
           carrierPathPatterns: [
-            PathPatternSpec(pattern: r'^docs/carrier/.*\.md$', specificity: [
-              2,
-              0,
-            ]),
+            PathPatternSpec(
+              pattern: r'^docs/carrier/.*\.md$',
+              specificity: [2, 0],
+            ),
           ],
         )
         .build();
@@ -590,52 +560,54 @@ builtinTable: tableWithCarrier(),
     };
 
     test('C11-1 基準 fixture 一輪結果 R0（基準）', () async {
-      final r0 = await scanCorpus(fileSystem: baselineFixture(), table: table(), builtinTable: table());
+      final r0 = await scanCorpus(
+        fileSystem: baselineFixture(),
+        table: table(),
+        builtinTable: table(),
+      );
 
       expect(r0.rawNodes, hasLength(2));
     });
 
-    test(
-      'C11-2 另插入每種單檔失敗各一：原有檔案結果與 R0 逐項相同，'
-      '新增檔各得對應結果',
-      () async {
-        final r0 = await scanCorpus(
-          fileSystem: baselineFixture(),
-          table: table(),
-builtinTable: table(),
-        );
-        final r0Results = resultByPath(r0);
+    test('C11-2 另插入每種單檔失敗各一：原有檔案結果與 R0 逐項相同，'
+        '新增檔各得對應結果', () async {
+      final r0 = await scanCorpus(
+        fileSystem: baselineFixture(),
+        table: table(),
+        builtinTable: table(),
+      );
+      final r0Results = resultByPath(r0);
 
-        final fs = baselineFixture()
-          ..addFile('docs/carrier/enc.md', _invalidUtf8Bytes)
-          ..addFile('docs/carrier/unc.md', _unclosedBytes)
-          ..addFile('docs/carrier/empty.md', _emptyOrNotMapBytes)
-          ..addFile('docs/carrier/yamlerr.md', _yamlSyntaxErrorBytes)
-          ..addFile('docs/carrier/perm.md', _validFrontmatter('A-3'))
-          ..denyReadPermission('docs/carrier/perm.md')
-          ..addFile('docs/carrier/gone.md', _validFrontmatter('A-4'))
-          ..markDisappearedAfterListing('docs/carrier/gone.md');
+      final fs = baselineFixture()
+        ..addFile('docs/carrier/enc.md', _invalidUtf8Bytes)
+        ..addFile('docs/carrier/unc.md', _unclosedBytes)
+        ..addFile('docs/carrier/empty.md', _emptyOrNotMapBytes)
+        ..addFile('docs/carrier/yamlerr.md', _yamlSyntaxErrorBytes)
+        ..addFile('docs/carrier/perm.md', _validFrontmatter('A-3'))
+        ..denyReadPermission('docs/carrier/perm.md')
+        ..addFile('docs/carrier/gone.md', _validFrontmatter('A-4'))
+        ..markDisappearedAfterListing('docs/carrier/gone.md');
 
-        final result = await scanCorpus(fileSystem: fs, table: table(), builtinTable: table());
-        final results = resultByPath(result);
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: table(),
+        builtinTable: table(),
+      );
+      final results = resultByPath(result);
 
-        for (final entry in r0Results.entries) {
-          expect(results[entry.key], entry.value, reason: entry.key);
-        }
-        expect(results['docs/carrier/enc.md'], ParseResultKind.unreadable);
-        expect(results['docs/carrier/unc.md'], ParseResultKind.unclosed);
-        expect(
-          results['docs/carrier/empty.md'],
-          ParseResultKind.emptyOrNotMap,
-        );
-        expect(
-          results['docs/carrier/yamlerr.md'],
-          ParseResultKind.yamlSyntaxError,
-        );
-        expect(results['docs/carrier/perm.md'], ParseResultKind.unreadable);
-        expect(results['docs/carrier/gone.md'], ParseResultKind.unreadable);
-      },
-    );
+      for (final entry in r0Results.entries) {
+        expect(results[entry.key], entry.value, reason: entry.key);
+      }
+      expect(results['docs/carrier/enc.md'], ParseResultKind.unreadable);
+      expect(results['docs/carrier/unc.md'], ParseResultKind.unclosed);
+      expect(results['docs/carrier/empty.md'], ParseResultKind.emptyOrNotMap);
+      expect(
+        results['docs/carrier/yamlerr.md'],
+        ParseResultKind.yamlSyntaxError,
+      );
+      expect(results['docs/carrier/perm.md'], ParseResultKind.unreadable);
+      expect(results['docs/carrier/gone.md'], ParseResultKind.unreadable);
+    });
 
     test('C11-3 失敗檔排在列舉順序最前與最後兩種排列：結果相同', () async {
       final fsFirst = FakeDocsFileSystem()
@@ -651,121 +623,120 @@ builtinTable: table(),
       final resultFirst = await scanCorpus(
         fileSystem: fsFirst,
         table: table(),
-builtinTable: table(),
+        builtinTable: table(),
       );
-      final resultLast = await scanCorpus(fileSystem: fsLast, table: table(), builtinTable: table());
+      final resultLast = await scanCorpus(
+        fileSystem: fsLast,
+        table: table(),
+        builtinTable: table(),
+      );
 
       expect(resultByPath(resultFirst), resultByPath(resultLast));
     });
 
-    test(
-      'C11-4（E1 鑑別）以會拋非預期例外的 fake 讀取插入一檔：'
-      '該檔歸入無法讀取，其他檔案結果與 R0 相同，不是整輪中止',
-      () async {
-        final r0 = await scanCorpus(
-          fileSystem: baselineFixture(),
-          table: table(),
-builtinTable: table(),
-        );
-        final r0Results = resultByPath(r0);
+    test('C11-4（E1 鑑別）以會拋非預期例外的 fake 讀取插入一檔：'
+        '該檔歸入無法讀取，其他檔案結果與 R0 相同，不是整輪中止', () async {
+      final r0 = await scanCorpus(
+        fileSystem: baselineFixture(),
+        table: table(),
+        builtinTable: table(),
+      );
+      final r0Results = resultByPath(r0);
 
-        final throwing = _ThrowingDocsFileSystem(
-          delegate: baselineFixture()
-            ..addFile('docs/carrier/throws.md', _validFrontmatter('A-9')),
-          throwOnReadPath: 'docs/carrier/throws.md',
-        );
+      final throwing = _ThrowingDocsFileSystem(
+        delegate: baselineFixture()
+          ..addFile('docs/carrier/throws.md', _validFrontmatter('A-9')),
+        throwOnReadPath: 'docs/carrier/throws.md',
+      );
 
-        final result = await scanCorpus(fileSystem: throwing, table: table(), builtinTable: table());
-        final results = resultByPath(result);
+      final result = await scanCorpus(
+        fileSystem: throwing,
+        table: table(),
+        builtinTable: table(),
+      );
+      final results = resultByPath(result);
 
-        for (final entry in r0Results.entries) {
-          expect(results[entry.key], entry.value, reason: entry.key);
-        }
-        expect(
-          results['docs/carrier/throws.md'],
-          ParseResultKind.unreadable,
-        );
-      },
-    );
+      for (final entry in r0Results.entries) {
+        expect(results[entry.key], entry.value, reason: entry.key);
+      }
+      expect(results['docs/carrier/throws.md'], ParseResultKind.unreadable);
+    });
 
-    test(
-      'NFR-01 兜底 catch：errno 1（EPERM）經非預期例外拋出時判為權限不足，'
-      '不誤歸檔案消失（0.3.0-W3-535）',
-      () async {
-        final throwing = _ThrowingDocsFileSystem(
-          delegate: baselineFixture()
-            ..addFile('docs/carrier/eperm.md', _validFrontmatter('A-9')),
-          throwOnReadPath: 'docs/carrier/eperm.md',
-          readError: () => FileSystemException(
-            '模擬 EPERM', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
-            'docs/carrier/eperm.md',
-            OSError('模擬 EPERM', 1), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
-          ),
-        );
+    test('NFR-01 兜底 catch：errno 1（EPERM）經非預期例外拋出時判為權限不足，'
+        '不誤歸檔案消失（0.3.0-W3-535）', () async {
+      final throwing = _ThrowingDocsFileSystem(
+        delegate: baselineFixture()
+          ..addFile('docs/carrier/eperm.md', _validFrontmatter('A-9')),
+        throwOnReadPath: 'docs/carrier/eperm.md',
+        readError: () => FileSystemException(
+          '模擬 EPERM', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+          'docs/carrier/eperm.md',
+          OSError('模擬 EPERM', 1), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+        ),
+      );
 
-        final result = await scanCorpus(fileSystem: throwing, table: table(), builtinTable: table());
-        final error = result.parseErrors.singleWhere(
-          (e) => e.path == 'docs/carrier/eperm.md',
-        );
+      final result = await scanCorpus(
+        fileSystem: throwing,
+        table: table(),
+        builtinTable: table(),
+      );
+      final error = result.parseErrors.singleWhere(
+        (e) => e.path == 'docs/carrier/eperm.md',
+      );
 
-        expect(
-          unreadableReasonOf(error.outcome),
-          UnreadableReason.permission,
-        );
-      },
-    );
+      expect(unreadableReasonOf(error.outcome), UnreadableReason.permission);
+    });
 
-    test(
-      'NFR-01 兜底 catch：errno 13（EACCES）經非預期例外拋出時判為權限'
-      '不足，不誤歸檔案消失（0.3.0-W3-535）',
-      () async {
-        final throwing = _ThrowingDocsFileSystem(
-          delegate: baselineFixture()
-            ..addFile('docs/carrier/eacces.md', _validFrontmatter('A-9')),
-          throwOnReadPath: 'docs/carrier/eacces.md',
-          readError: () => FileSystemException(
-            '模擬 EACCES', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
-            'docs/carrier/eacces.md',
-            OSError('模擬 EACCES', 13), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
-          ),
-        );
+    test('NFR-01 兜底 catch：errno 13（EACCES）經非預期例外拋出時判為權限'
+        '不足，不誤歸檔案消失（0.3.0-W3-535）', () async {
+      final throwing = _ThrowingDocsFileSystem(
+        delegate: baselineFixture()
+          ..addFile('docs/carrier/eacces.md', _validFrontmatter('A-9')),
+        throwOnReadPath: 'docs/carrier/eacces.md',
+        readError: () => FileSystemException(
+          '模擬 EACCES', // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+          'docs/carrier/eacces.md',
+          OSError('模擬 EACCES', 13), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
+        ),
+      );
 
-        final result = await scanCorpus(fileSystem: throwing, table: table(), builtinTable: table());
-        final error = result.parseErrors.singleWhere(
-          (e) => e.path == 'docs/carrier/eacces.md',
-        );
+      final result = await scanCorpus(
+        fileSystem: throwing,
+        table: table(),
+        builtinTable: table(),
+      );
+      final error = result.parseErrors.singleWhere(
+        (e) => e.path == 'docs/carrier/eacces.md',
+      );
 
-        expect(
-          unreadableReasonOf(error.outcome),
-          UnreadableReason.permission,
-        );
-      },
-    );
+      expect(unreadableReasonOf(error.outcome), UnreadableReason.permission);
+    });
   });
 
   group('scanCorpus 分批並行讀檔（0.3.0-W3-537）', () {
-    test(
-      '批次內確實並行讀檔：同一批次的檔案在讀取期間互相重疊（有一刻同時'
-      '進行中的讀取數 > 1），非逐一等待前一筆完成才開始下一筆',
-      () async {
-        final delegate = FakeDocsFileSystem();
-        final paths = List.generate(8, (i) => 'docs/p/f$i.md');
-        for (final p in paths) {
-          delegate.addFile(p, _validFrontmatter('A-1'));
-        }
-        final tracking = _ConcurrencyTrackingDocsFileSystem(delegate);
+    test('批次內確實並行讀檔：同一批次的檔案在讀取期間互相重疊（有一刻同時'
+        '進行中的讀取數 > 1），非逐一等待前一筆完成才開始下一筆', () async {
+      final delegate = FakeDocsFileSystem();
+      final paths = List.generate(8, (i) => 'docs/p/f$i.md');
+      for (final p in paths) {
+        delegate.addFile(p, _validFrontmatter('A-1'));
+      }
+      final tracking = _ConcurrencyTrackingDocsFileSystem(delegate);
 
-        await scanCorpus(fileSystem: tracking, table: _tableWithoutCarrier(), builtinTable: _tableWithoutCarrier());
+      await scanCorpus(
+        fileSystem: tracking,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
 
-        expect(
-          tracking.maxConcurrentReads,
-          greaterThan(1),
-          reason:
-              '批次大小 > 1 且同批次內以 Future.wait 併發發起讀取時，讀取'
-              '期間應有重疊；若退化為逐一循序讀檔，最大並行數恆為 1',
-        );
-      },
-    );
+      expect(
+        tracking.maxConcurrentReads,
+        greaterThan(1),
+        reason:
+            '批次大小 > 1 且同批次內以 Future.wait 併發發起讀取時，讀取'
+            '期間應有重疊；若退化為逐一循序讀檔，最大並行數恆為 1',
+      );
+    });
 
     test('分批並行讀檔後，結果順序與循序讀檔完全相同（含失敗與可用混合）', () async {
       final fs = FakeDocsFileSystem()
@@ -775,16 +746,21 @@ builtinTable: table(),
         ..addFile('docs/b/4.md', _unclosedBytes)
         ..addFile('docs/b/5.md', _validFrontmatter('A-1'));
 
-      final result = await scanCorpus(fileSystem: fs, table: _tableWithoutCarrier(), builtinTable: _tableWithoutCarrier());
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: _tableWithoutCarrier(),
+        builtinTable: _tableWithoutCarrier(),
+      );
 
-      expect(
-        result.rawNodes.map((n) => n.path).toList(),
-        ['docs/a/1.md', 'docs/a/3.md', 'docs/b/5.md'],
-      );
-      expect(
-        result.parseErrors.map((e) => e.path).toList(),
-        ['docs/a/2.md', 'docs/b/4.md'],
-      );
+      expect(result.rawNodes.map((n) => n.path).toList(), [
+        'docs/a/1.md',
+        'docs/a/3.md',
+        'docs/b/5.md',
+      ]);
+      expect(result.parseErrors.map((e) => e.path).toList(), [
+        'docs/a/2.md',
+        'docs/b/4.md',
+      ]);
       expect(result.summary.totalFilesScanned, 5);
     });
   });
@@ -837,8 +813,7 @@ class _ThrowingDocsFileSystem implements DocsFileSystem {
     required this.delegate,
     required this.throwOnReadPath,
     Object Function()? readError,
-  }) : readError =
-           readError ?? (() => StateError('非預期例外（C11-4 測試用）'));
+  }) : readError = readError ?? (() => StateError('非預期例外（C11-4 測試用）'));
 
   final DocsFileSystem delegate;
   final String throwOnReadPath;
