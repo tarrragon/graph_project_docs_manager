@@ -466,8 +466,9 @@ void main() {
       expect(lanes.every((l) => l.nodes.isEmpty), isTrue);
     });
 
-    testWidgets('退路二（特徵測試）：已選定 UC 而投影為 null，現行呈現同未選定 UC', (tester) async {
-      // 待另一張分析票定案期望呈現；此處只記錄現行行為，定案後依其結論改寫。
+    testWidgets('退路二：已選定 UC 而尚無完成輪次，呈現投影準備中（0.5.0-W1-205.2.2）', (
+      tester,
+    ) async {
       await pumpScreen(
         tester,
         _stateOverrides(
@@ -478,8 +479,12 @@ void main() {
       );
 
       expect(
-        find.byKey(const Key('state-domain-swimlane-uc-unset')),
+        find.byKey(const Key('state-domain-swimlane-projection-pending')),
         findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('state-domain-swimlane-uc-unset')),
+        findsNothing,
       );
       expect(find.byKey(const Key('state-domain-swimlane')), findsNothing);
       expect(_laneOf(tester, SwimlaneLaneKind.screen).nodes, isEmpty);

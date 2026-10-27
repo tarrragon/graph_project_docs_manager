@@ -762,6 +762,11 @@
     "description": "SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-003 §3.1）：泳道尚未選定 UC 提示文案"
   },
 
+  "swimlaneProjectionPendingPrompt": "泳道投影準備中，掃描完成後即顯示此 UC 的步驟",
+  "@swimlaneProjectionPendingPrompt": {
+    "description": "SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-001 v1.55 §1）：泳道投影準備中提示文案（已選定 UC 而該專案尚無完成輪次）"
+  },
+
   "swimlanePanelTitle": "{ucId} {ucTitle}",
   "@swimlanePanelTitle": {
     "description": "SPEC-004 §4.0.6：泳道面板標題（正常 · 泳道、泳道 · flow 未結構化，AppText.subtitle）",

@@ -124,6 +124,7 @@
   "cellDetailCloseAction": "Close",
   "cellDetailViewInSwimlaneAction": "View in swimlane",
   "swimlaneUcUnsetPrompt": "No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view",
+  "swimlaneProjectionPendingPrompt": "Preparing swimlane: this UC's steps appear when the scan completes",
   "swimlanePanelTitle": "{ucId} {ucTitle}",
   "degradedSchemaBadgeLabel": "Degraded schema (builtin {builtinVersion} / project {projectVersion})",
   "inferredVersionBadgeLabel": "Version inferred from schema (v{inferredVersion})",
