@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from 'claude-code/testing'
 
-import { boardStateColor, dispatchStageState, queueTicketState, sessionState } from './statusColor'
+import { boardStateColor, dispatchStageState, queueTicketState, sessionState } from '../hooks/statusColor'
 
 describe('boardStateColor', () => {
   test('五種狀態各一色：待辦灰、進行中綠、代理人執行中青、閘門黃、要人處理洋紅', () => {

@@ -6,8 +6,8 @@ import { mock } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import { sessionJson } from './fixtures'
-import { PROJECT_CONFIG_PATH } from './readers'
-import { SESSIONS_DIR } from './sessions'
+import { PROJECT_CONFIG_PATH } from '../hooks/readers'
+import { SESSIONS_DIR } from '../hooks/sessions'
 
 /** 家目錄與 session 狀態檔目錄（測試用的固定值）。 */
 export const HOME = '/home/u'

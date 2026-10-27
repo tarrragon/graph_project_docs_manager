@@ -17,11 +17,11 @@ import {
   sessionJson,
   ticketFile,
 } from './fixtures'
-import { GROUP_BORDER_COLUMNS, groupTitleKey, laneDetailId } from './lanesView'
-import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from './layout'
-import { MERGE_LOG_PATH } from './mergeGate'
+import { GROUP_BORDER_COLUMNS, groupTitleKey, laneDetailId } from '../hooks/lanesView'
+import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from '../hooks/layout'
+import { MERGE_LOG_PATH } from '../hooks/mergeGate'
 import { COORDINATION_TICKET, PROJECT_CONFIG, SESSIONS, configJson, runBoardCommand, sessionStub, startBoard } from './paneHarness'
-import { ticketFileCandidates } from './shared'
+import { ticketFileCandidates } from '../hooks/shared'
 
 /** 預設協調票的票檔（相對 repo root）：由票號推導，取 ticketFileCandidates 的第一個候選（hierarchical）。 */
 const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''

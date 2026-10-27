@@ -11,7 +11,7 @@ import {
   parseSessionFile,
   sessionStatusFileNames,
   sortSessions,
-} from './sessions'
+} from '../hooks/sessions'
 
 describe('sessionStatusFileNames', () => {
   test('只取 .json 一般檔案；.key 金鑰與目錄不在其中', () => {
