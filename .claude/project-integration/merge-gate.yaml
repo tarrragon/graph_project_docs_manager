@@ -2,7 +2,7 @@
 # 宣告取代內建 Flutter 預設，故 flutter 與 line-board 兩個套件都必須寫出。
 suites:
   flutter:
-    prefixes: [lib/, test/, integration_test/, macos/, docs/, assets/]
+    prefixes: [lib/, test/, integration_test/, macos/, docs/spec/, assets/]
     files: [pubspec.yaml, pubspec.lock, l10n.yaml, analysis_options.yaml]
     command: [fvm, flutter, test]
     artifacts:
