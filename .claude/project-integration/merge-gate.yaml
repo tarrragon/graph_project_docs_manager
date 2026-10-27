@@ -3,7 +3,8 @@
 suites:
   flutter:
     prefixes: [lib/, test/, integration_test/, macos/, docs/spec/, assets/]
-    files: [pubspec.yaml, pubspec.lock, l10n.yaml, analysis_options.yaml]
+    files: [pubspec.yaml, pubspec.lock, l10n.yaml, analysis_options.yaml,
+            .claude/project-integration/merge-gate.yaml]
     command: [fvm, flutter, test]
     artifacts:
       - path: .dart_tool/package_config.json
