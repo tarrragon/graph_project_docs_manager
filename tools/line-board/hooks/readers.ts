@@ -185,8 +185,14 @@ async function isSessionAlive($: EngineInterface, session: SessionState): Promis
 
 /** 讀協調票（專案設定的 coordinationTicket）的現行佇列行；票檔路徑由票號推導，讀不到時的訊息含票檔路徑。 */
 export async function readLanes($: EngineInterface, mainPath: string, coordinationTicket: string): Promise<LanesResult> {
+  const prefix = ticketPrefixOf(coordinationTicket)
+  if (prefix === null) {
+    // readProjectConfig 已以 ticketPrefixOf 驗過協調票，此分支只在呼叫端繞過設定判定時發生
+    $.ui.log(`line-board: 協調票 ${coordinationTicket} 不是完整票號，推不出短票號前綴`, { to: 'debug' })
+    return { kind: 'error', message: `${coordinationTicket}：不是完整票號` }
+  }
   const file = await readTicketFile($, mainPath, coordinationTicket)
-  if (file.kind === 'ok') return { kind: 'ok', lanes: parseLanes(file.text) }
+  if (file.kind === 'ok') return { kind: 'ok', lanes: parseLanes(file.text, prefix) }
   $.ui.log(`line-board: 讀取協調票 ${file.path} 失敗：${file.message}`, { to: 'debug' })
   return { kind: 'error', message: `${file.path}：${file.message}` }
 }

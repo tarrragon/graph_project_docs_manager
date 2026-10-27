@@ -1,12 +1,6 @@
 // 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 的狀態與 title 解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
-/** 佇列票號的前綴：現行佇列行只寫短票號，補上前綴才是完整票號。 */
-export const TICKET_PREFIX = '0.5.0-W1-'
-
-/** 票檔所在目錄，相對 repo root。 */
-export const TICKETS_DIR = 'docs/work-logs/v0/v0.5/v0.5.0/tickets'
-
 /** 票號拆成版本與 wave 之後的部分：`<版本>-W<wave>-<序號>`，序號可帶任意層 `.n` 子序號。版本只要求不為空，major.minor 的解析交給呼叫端。 */
 const TICKET_ID = /^(.+?)-(W\d+-)\d+(?:\.\d+)*$/
 
@@ -38,7 +32,7 @@ export function resolveTicketFile(ticketId: string, exists: (path: string) => bo
   return candidates.find(exists) ?? candidates[0] ?? null
 }
 
-/** 協調票 ID 去掉序號（含子序號）得短票號前綴，如 `0.5.0-W1-349` 得 `0.5.0-W1-`；不是票號時為 null。 */
+/** 協調票 ID 去掉序號（含子序號）得短票號前綴，如 `1.2.0-W3-045` 得 `1.2.0-W3-`；不是票號時為 null。 */
 export function ticketPrefixOf(coordinatorId: string): string | null {
   const match = TICKET_ID.exec(coordinatorId)
   return match === null ? null : `${match[1]}-${match[2]}`
