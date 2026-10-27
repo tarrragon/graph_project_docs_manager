@@ -157,6 +157,8 @@ export type BoardSnapshot =
       mainPath: string
       /** 無法以 `git worktree list` 判定主 checkout 時的原因；此時退回 session root。 */
       checkoutNote: string | null
+      /** 短票號前綴（如 `0.5.0-W1-`）：由專案設定的協調票推導（shared.ts ticketPrefixOf），派發列以它去掉票號前綴。 */
+      ticketPrefix: string
       lanes: LanesResult
       tickets: TicketStatus[]
       sessions: SessionsResult

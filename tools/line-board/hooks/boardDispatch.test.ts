@@ -9,7 +9,7 @@ import { DISPATCH_TICKET_PATH } from './lanes'
 import { GROUP_BORDER_STYLE, groupFrameKey, groupTitleKey } from './lanesView'
 import { MERGE_GATE_GROUP_ID, OTHER_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from './layout'
 import { MERGE_LOG_PATH } from './mergeGate'
-import { sessionStub, startBoard } from './paneHarness'
+import { configJson, sessionStub, startBoard } from './paneHarness'
 import { TICKETS_DIR } from './shared'
 
 type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
@@ -401,6 +401,27 @@ describe('Pane', () => {
     const { ui } = await startBoard($, on, dispatchFiles('{"dispatches": {}}'))
     expect(await ui.find({ type: 'Text', text: /^讀取 \.claude\/dispatch-active\.json 失敗（/ })).toBeDefined()
     await ui.unmount()
+  })
+
+  test('E1：派發列的短票號以設定檔的協調票推導前綴；同一批派發紀錄換成另一版本的協調票時，改去掉該版本的前綴', async ($, on) => {
+    const records = JSON.stringify({
+      dispatches: [
+        dispatchJson({ agent_id: 'a05', session_id: 'sid-103', ticket_id: '0.5.0-W1-337.9' }),
+        dispatchJson({ agent_id: 'a06', session_id: 'sid-103', ticket_id: '0.6.0-W2-12.3' }),
+      ],
+    })
+    const stub = { ...dispatchFiles(records), projectConfig: configJson({ coordinationTicket: '0.5.0-W1-349' }) }
+    const { ui, clock } = await startBoard($, on, stub)
+    const otherRows = async () => ((await bodyOf(ui, OTHER_GROUP_ID)) ?? []).filter(line => DISPATCH_ROW.test(line)).map(withoutAge)
+    const under05 = await otherRows()
+    // 對照：同一批派發紀錄，設定檔改為另一版本的協調票後重讀
+    stub.projectConfig = configJson({ coordinationTicket: '0.6.0-W2-349' })
+    await clock.advance(REFRESH_MS)
+    const under06 = await otherRows()
+    await ui.unmount()
+    expect(under05).not.toEqual(under06)
+    expect(under05).toEqual(['general-purpose｜337.9｜實作', 'general-purpose｜0.6.0-W2-12.3｜實作'])
+    expect(under06).toEqual(['general-purpose｜0.5.0-W1-337.9｜實作', 'general-purpose｜12.3｜實作'])
   })
 
   test('協調票讀不到時，派發條目照常列出並全歸「其他」；對照：同一份 fixture 讀得到協調票後歸到對應的線', async ($, on) => {

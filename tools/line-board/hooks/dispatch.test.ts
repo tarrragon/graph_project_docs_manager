@@ -135,6 +135,7 @@ describe('dispatchRows', () => {
   ]
   const lanes = parseLanes('## Solution\n**L13 現行佇列**（s-l13）：337.9\n\n**L7 現行佇列**（s-l7）：351\n')
   const context = { sessions, lanes, tickets: [{ id: '0.5.0-W1-337.1', status: 'completed' }], holders: [] }
+  const PREFIX = '0.5.0-W1-'
 
   test('session_id 對到存活 session，以其名稱對到線；對不到線的歸其他（null）；依線號排序、其他最後；票號顯示短票號', () => {
     const rows = dispatchRows(
@@ -144,6 +145,7 @@ describe('dispatchRows', () => {
         dispatch({ agentId: 'a-7', sessionId: 'sid-7', name: 'linux', description: '審查 351' }),
       ],
       context,
+      PREFIX,
     )
     expect(rows.map(row => [row.lane, row.name, row.task, row.stage])).toEqual([
       [7, 'linux', '審查 351', '審查'],
@@ -155,10 +157,21 @@ describe('dispatchRows', () => {
   test('E2：session 不存活或票已 completed 的舊條目不列；對照：同一條目在 session 存活且票未完成時列出', () => {
     const deadSession = dispatch({ agentId: 'a-dead', sessionId: 'sid-gone' })
     const completed = dispatch({ agentId: 'a-done', sessionId: 'sid-13', ticketId: '0.5.0-W1-337.1' })
-    expect(dispatchRows([deadSession, completed], context)).toEqual([])
+    expect(dispatchRows([deadSession, completed], context, PREFIX)).toEqual([])
     const alive = { ...deadSession, sessionId: 'sid-13' }
     const pending = { ...completed, ticketId: '0.5.0-W1-337.9' }
-    expect(dispatchRows([alive, pending], context).map(row => row.stage)).toEqual(['實作', '實作'])
+    expect(dispatchRows([alive, pending], context, PREFIX).map(row => row.stage)).toEqual(['實作', '實作'])
+  })
+
+  test('E1：同一批紀錄以兩個不同前綴呼叫，任務欄不同，且各自只去掉該前綴', () => {
+    const records = [
+      dispatch({ agentId: 'a-5', sessionId: 'sid-13', ticketId: '0.5.0-W1-337.9' }),
+      dispatch({ agentId: 'a-6', sessionId: 'sid-7', ticketId: '0.6.0-W2-12.3' }),
+    ]
+    const tasksOf = (prefix: string) => dispatchRows(records, context, prefix).map(row => row.task)
+    expect(tasksOf('0.5.0-W1-')).not.toEqual(tasksOf('0.6.0-W2-'))
+    expect(tasksOf('0.5.0-W1-')).toEqual(['0.6.0-W2-12.3', '337.9'])
+    expect(tasksOf('0.6.0-W2-')).toEqual(['12.3', '0.5.0-W1-337.9'])
   })
 
   test('dispatchTicketIds：有票號的條目的完整票號，去重並保留順序', () => {
