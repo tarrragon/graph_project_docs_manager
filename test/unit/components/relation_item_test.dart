@@ -325,4 +325,66 @@ void main() {
       handle.dispose();
     });
   });
+
+  group('isProposed 最小寬（SPEC-004 4.19 尺寸契約）', () {
+    Widget itemAt({required double width, required bool proposed}) => Align(
+      alignment: Alignment.topLeft,
+      child: SizedBox(
+        width: width,
+        child: RelationItem(
+          id: TestCopy.longToken,
+          isProposed: proposed,
+          onTap: () {},
+          testKey: _relationKey,
+        ),
+      ),
+    );
+
+    // 一字元加省略號的 id slot 固有寬（字級取 id slot 實際樣式）。
+    double oneCharWithEllipsisWidth(WidgetTester tester) {
+      final style = tester.widget<Text>(find.text(TestCopy.longToken)).style;
+      final painter = TextPainter(
+        text: TextSpan(text: '${TestCopy.longToken[0]}…', style: style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      return painter.width;
+    }
+
+    testWidgets('true 最小寬 id 剩一字元加省略號、badge 為固有寬；E1 false 不含 badge', (
+      tester,
+    ) async {
+      await pumpHarness(tester, child: itemAt(width: 600, proposed: true));
+      final badgeIntrinsic = tester.getSize(find.byType(Badge)).width;
+      final idMin = oneCharWithEllipsisWidth(tester);
+      final minTrue = idMin + Space.sm.w + badgeIntrinsic + 2 * Space.sm.w;
+
+      await pumpHarness(tester, child: itemAt(width: minTrue, proposed: true));
+      expectNoOverflow(tester);
+      expect(
+        tester.getSize(find.byType(Badge)).width,
+        closeTo(badgeIntrinsic, 0.5),
+      );
+      expect(find.text('暫定'), findsOneWidget);
+      expect(
+        tester.getSize(find.text(TestCopy.longToken)).width,
+        closeTo(idMin, 0.5),
+        reason: 'id 只剩一字元加省略號',
+      );
+
+      await pumpHarness(tester, child: itemAt(width: 600, proposed: false));
+      expect(find.byType(Badge), findsNothing);
+      final minFalse = idMin + 2 * Space.sm.w;
+      await pumpHarness(
+        tester,
+        child: itemAt(width: minFalse, proposed: false),
+      );
+      expectNoOverflow(tester);
+      expect(find.byType(Badge), findsNothing);
+      expect(
+        tester.getSize(find.text(TestCopy.longToken)).width,
+        closeTo(idMin, 0.5),
+      );
+      expect(minTrue - minFalse, closeTo(Space.sm.w + badgeIntrinsic, 0.5));
+    });
+  });
 }
