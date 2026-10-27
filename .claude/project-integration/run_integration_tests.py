@@ -9,6 +9,7 @@
 逾時，故在此實作）；超時以 killpg 終止整個程序群組（含 flutter_tester 與 App），並印 TIMEOUT_MESSAGE。
 名額：閘門持有者的子程序，本腳本直接啟動 fvm，不經 run-with-timeout，故不會再取名額。
 """
+import argparse
 import os
 import signal
 import subprocess
@@ -16,13 +17,14 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple
 
 TEST_DIR = "integration_test"
 TEST_SUFFIX = "_test.dart"
 EXIT_FAILED = 1
 EXIT_NO_TESTS = 2
 EXIT_TIMEOUT = 3
+EXIT_USAGE = 64  # sysexits EX_USAGE；避開 1/2/3 已用值，--help 與未知參數共用
 TOTAL_TIMEOUT_SECONDS = 900
 READER_JOIN_SECONDS = 5
 # 逾時訊息字面；merge-gate.yaml 的 failure 正規式須含它
@@ -106,7 +108,31 @@ def run_all(files: Iterable[str], runner: Callable[[str], Tuple[int, str]] = run
     return 0
 
 
-def main() -> int:
+class _UsageParser(argparse.ArgumentParser):
+    """用法錯誤改用 EXIT_USAGE（argparse 預設 2 會與 EXIT_NO_TESTS 混淆）。"""
+
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        sys.stderr.write(f"{self.prog}: error: {message}\n")
+        raise SystemExit(EXIT_USAGE)
+
+
+def parse_args(argv: Optional[List[str]]) -> int:
+    """解析參數；本腳本無參數。--help 回傳 EXIT_USAGE，未知參數拋 SystemExit(EXIT_USAGE)，無參數回傳 0。"""
+    # i18n-exempt: 開發者工具用法說明，非 App UI
+    parser = _UsageParser(description="逐檔執行 integration_test（不接受任何參數）", add_help=False)
+    # i18n-exempt: 開發者工具用法說明，非 App UI
+    parser.add_argument("-h", "--help", action="store_true", help="顯示用法後結束（結束碼 64，不執行測試）")
+    if parser.parse_args(argv).help:
+        parser.print_help()
+        return EXIT_USAGE
+    return 0
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    usage_code = parse_args(argv)
+    if usage_code:
+        return usage_code
     root = Path(__file__).resolve().parents[2]
     deadline = time.monotonic() + TOTAL_TIMEOUT_SECONDS
     return run_all(discover_tests(root), lambda f: run_streaming(f, deadline))
