@@ -97,6 +97,11 @@ def _check_rule8(sf: StagedFile, logger) -> List[Finding]:
         return []
     if m.is_class4_whitelisted(sf.rel_path) or m.is_class5_test_path(sf.rel_path):
         return []
+    # per-project 區段（sync 雙向排除）與編輯層一致豁免。gitignore 本機檔豁免
+    # 不比照：staged 檔必為 tracked，check-ignore 對 tracked 檔恆回「未忽略」，
+    # 且 sf.rel_path 為相對路徑、此處無可靠 repo 起點（編輯層函式對相對路徑亦回 False）。
+    if m.is_per_project_path(sf.rel_path):
+        return []
     new_hits = m.diff_new_hits(sf.pre_text, sf.post_text)
     if not new_hits:
         return []
