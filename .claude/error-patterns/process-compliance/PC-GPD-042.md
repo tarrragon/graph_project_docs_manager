@@ -38,8 +38,9 @@ created: 2026-10-27
 | 目錄必須有 SKILL.md | skill 註冊 SessionStart 檢查 | 每次 session 啟動 | 報 `missing SKILL.md` |
 | 版號必須可擷取 | 版本擷取器與其覆蓋率測試 | 合併閘門的框架套件 | 測試紅燈「版本擷取落空」 |
 | `<skill>/hooks/` 是 Claude Code hook 腳本 | 派發骨架與 acceptance-gate 的防護類 hook 範圍判定 | 派發與 complete | 要求 hook-logs、fail-open 等不相干的證據 |
+| `<skill>/tests/` 是 pytest 測試 | 合併閘門的套件產生規則 | 補上版號後重送閘門 | 自動產生 pytest 套件，收集 0 個測試回 exit 5，判紅 |
 
-元件自己的測試套件三次都全綠，代理人據此回報完成。
+元件自己的測試套件每次都全綠，代理人據此回報完成。第四項在前三項修完後才暴露：閘門遇到第一個紅燈就停，後面的慣例檢查要等前一個修好才輪得到。
 
 ## 根因
 
