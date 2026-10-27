@@ -1245,6 +1245,21 @@
     "description": "SPEC-001 §1 Domain 視圖·載入失敗的顯示文案（state-domain-load-failed；只寫結果與原因，操作由按鈕承載）"
   },
 
+  "domainGraphUnavailableMessage": "此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜；型別表修正或重新產生之前，重新掃描仍會得到相同結果",
+  "@domainGraphUnavailableMessage": {
+    "description": "SPEC-001 §1 Domain 視圖·圖不可用的原因文案（state-domain-graph-unavailable；appVersion 為 App 內建型別表產生版本）",
+    "placeholders": {
+      "appVersion": {
+        "type": "String"
+      }
+    }
+  },
+
+  "domainGraphUnavailableScanning": "掃描中",
+  "@domainGraphUnavailableScanning": {
+    "description": "SPEC-001 §1 Domain 視圖·圖不可用列在掃描輪次進行期間取代原因文字的訊息（SPEC-004 §4.0.6）"
+  },
+
   "reloadAction": "重新載入",
   "@reloadAction": {
     "description": "SPEC-001 §1 Domain 視圖·載入失敗的重新載入動作（action-domain-reload）"

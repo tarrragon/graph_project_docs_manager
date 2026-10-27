@@ -13,6 +13,7 @@
 //   不是框架專案                state-domain-not-framework          BlockedState.plain
 //   無可消費的型別表            state-domain-schema-unconsumable    BlockedState.plain
 //   schema 不相容               state-domain-schema-incompatible    BlockedState.withDetail
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -34,6 +35,7 @@ import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_no
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/domain_view_fixtures.dart';
@@ -1094,6 +1096,210 @@ void main() {
       expect(graphLane.nodes.map((n) => n.column), [1, 2]);
       final workspaceLane = lanes.firstWhere((l) => l.domainId == 'workspace');
       expect(workspaceLane.nodes, isEmpty);
+    });
+  });
+
+  group('圖不可用 state-domain-graph-unavailable（§4 #43，0.5.0-W1-486.2）', () {
+    // 已有完成輪次、最後一輪建圖不可用；produce 決定重掃結果。
+    ScanRoundResult unavailableRound() => fakeRound(
+      graphUnavailable: EdgeTypeUnavailableReason.projectVersionOutOfKnownRange,
+    );
+
+    List<Override> overrides({
+      required DomainMode mode,
+      ScanRoundResult? Function()? produce,
+      Duration latency = Duration.zero,
+      DomainReady? ready,
+    }) => [
+      scanRoundProvider.overrideWith(
+        () => FakeScanRound(
+          produce: produce ?? unavailableRound,
+          initial: unavailableRound(),
+          latency: latency,
+        ),
+      ),
+      domainViewStateProvider.overrideWith(
+        (ref) => ready ?? DomainReady(mode: mode),
+      ),
+      selectedUcProvider.overrideWith((ref) => 'UC-02'),
+      builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+    ];
+
+    final unavailable = AnchorFinder.state(Screen.domain, 'graph-unavailable');
+
+    testWidgets('RED：矩陣模式落圖不可用列，不渲染矩陣', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides(mode: DomainMode.matrix),
+      );
+      expect(unavailable, findsOneWidget);
+      expect(AnchorFinder.state(Screen.domain, 'matrix'), findsNothing);
+      expect(find.byType(MatrixGrid), findsNothing);
+    });
+
+    testWidgets('RED：泳道模式落圖不可用列，不顯示 uc-unset', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides(mode: DomainMode.swimlane),
+      );
+      expect(unavailable, findsOneWidget);
+      expect(
+        AnchorFinder.state(Screen.domain, 'swimlane-uc-unset'),
+        findsNothing,
+      );
+      expect(AnchorFinder.state(Screen.domain, 'swimlane'), findsNothing);
+    });
+
+    final l10n = AppLocalizationsZh();
+    const latency = Duration(seconds: 5);
+    final rescanButton = find.descendant(
+      of: unavailable,
+      matching: find.byType(AppButton),
+    );
+    bool buttonEnabled(WidgetTester tester) =>
+        tester.widget<AppButton>(rescanButton).enabled;
+    Finder textIn(String text) =>
+        find.descendant(of: unavailable, matching: find.text(text));
+    final reasonText = l10n.domainGraphUnavailableMessage('0.0.1');
+
+    testWidgets('原因文字含內建型別表版本，按鈕可按', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides(mode: DomainMode.matrix),
+      );
+      expect(textIn(reasonText), findsOneWidget);
+      expect(buttonEnabled(tester), isTrue);
+      expect(find.text(l10n.rescanAction), findsOneWidget);
+    });
+
+    testWidgets('掃描中（本列觸發）：掃描中文字與計數、按鈕停用；結束仍不可用 → 恢復原因文字', (
+      tester,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides(mode: DomainMode.matrix, latency: latency),
+      );
+      await tester.tap(find.byKey(const Key('action-domain-rescan')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(textIn(l10n.domainGraphUnavailableScanning), findsOneWidget);
+      expect(textIn(l10n.gapsScanningProcessedCount(0)), findsOneWidget);
+      expect(textIn(reasonText), findsNothing);
+      expect(buttonEnabled(tester), isFalse);
+
+      await tester.pump(latency);
+      await tester.pump();
+      expect(unavailable, findsOneWidget);
+      expect(textIn(l10n.domainGraphUnavailableScanning), findsNothing);
+      expect(textIn(l10n.gapsScanningProcessedCount(0)), findsNothing);
+      expect(textIn(reasonText), findsOneWidget);
+      expect(buttonEnabled(tester), isTrue);
+      expect(find.byType(AppSnackBar), findsNothing);
+    });
+
+    testWidgets('掃描中（他頁觸發）：同樣顯示掃描中並停用按鈕，結束後消失', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides(mode: DomainMode.swimlane, latency: latency),
+      );
+      expect(buttonEnabled(tester), isTrue);
+
+      unawaited(container.read(scanRoundProvider.notifier).rescan());
+      await tester.pump();
+      await tester.pump();
+      expect(textIn(l10n.domainGraphUnavailableScanning), findsOneWidget);
+      expect(textIn(l10n.gapsScanningProcessedCount(0)), findsOneWidget);
+      expect(buttonEnabled(tester), isFalse);
+
+      await tester.pump(latency);
+      await tester.pump();
+      expect(textIn(l10n.domainGraphUnavailableScanning), findsNothing);
+      expect(textIn(reasonText), findsOneWidget);
+      expect(buttonEnabled(tester), isTrue);
+    });
+
+    testWidgets('重掃後建圖可用 → 回矩陣；選中 domain、選中格與選定 UC 保留', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides(
+          mode: DomainMode.matrix,
+          latency: latency,
+          produce: () => fakeRound(),
+          ready: const DomainReady(
+            mode: DomainMode.matrix,
+            selectedDomainId: 'workspace',
+            selectedCell: ('workspace', 'UC-02'),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('action-domain-rescan')));
+      await tester.pump();
+      await tester.pump(latency);
+      await tester.pump();
+      await tester.pump();
+
+      expect(unavailable, findsNothing);
+      expect(AnchorFinder.state(Screen.domain, 'matrix'), findsOneWidget);
+      final state = container.read(domainViewStateProvider) as DomainReady;
+      expect(state.mode, DomainMode.matrix);
+      expect(state.selectedDomainId, 'workspace');
+      expect(state.selectedCell, ('workspace', 'UC-02'));
+      expect(container.read(selectedUcProvider), 'UC-02');
+    });
+
+    testWidgets('切模式只改選中值，圖不可用列維持', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: overrides(mode: DomainMode.matrix),
+      );
+      container.read(domainViewStateProvider.notifier).state =
+          const DomainReady(mode: DomainMode.swimlane);
+      await tester.pump();
+      expect(unavailable, findsOneWidget);
+    });
+
+    // §4 #43 逐列導航：渲染 → tap 錨點 → 斷言目標錨點。
+    testWidgets('§4 #43：nav-item 破洞報告 → 離開本狀態並抵達該頁', (tester) async {
+      await pumpApp(
+        tester,
+        settle: false,
+        overrides: overrides(mode: DomainMode.matrix),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(unavailable, findsOneWidget);
+
+      await tester.tap(AnchorFinder.navItem(AppDestination.gaps));
+      await tester.pump();
+      await tester.pump();
+      expect(unavailable, findsNothing);
+      expect(AnchorFinder.navPage(AppDestination.gaps), findsOneWidget);
+    });
+
+    testWidgets('§4 #43：project-switcher-entry → 浮層展開', (tester) async {
+      await pumpApp(
+        tester,
+        settle: false,
+        overrides: overrides(mode: DomainMode.matrix),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(AnchorFinder.projectSwitcherEntry);
+      await tester.pumpAndSettle();
+      // 浮層內容（expanded／no-recent）取決於最近專案資料；本列只驗證出口
+      // 已觸發浮層開啟，浮層本身由 project_switcher_test 覆蓋。
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(DomainViewScreen)),
+      );
+      expect(container.read(switcherOpenProvider), isTrue);
     });
   });
 }

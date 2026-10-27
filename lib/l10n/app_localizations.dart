@@ -1196,6 +1196,18 @@ abstract class AppLocalizations {
   /// **'掃描此專案時發生非預期錯誤，無法載入圖譜'**
   String get domainLoadFailedMessage;
 
+  /// SPEC-001 §1 Domain 視圖·圖不可用的原因文案（state-domain-graph-unavailable；appVersion 為 App 內建型別表產生版本）
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜；型別表修正或重新產生之前，重新掃描仍會得到相同結果'**
+  String domainGraphUnavailableMessage(String appVersion);
+
+  /// SPEC-001 §1 Domain 視圖·圖不可用列在掃描輪次進行期間取代原因文字的訊息（SPEC-004 §4.0.6）
+  ///
+  /// In zh, this message translates to:
+  /// **'掃描中'**
+  String get domainGraphUnavailableScanning;
+
   /// SPEC-001 §1 Domain 視圖·載入失敗的重新載入動作（action-domain-reload）
   ///
   /// In zh, this message translates to:

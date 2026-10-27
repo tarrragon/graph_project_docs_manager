@@ -704,6 +704,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'An unexpected error occurred while scanning this project, so the graph could not be loaded.';
 
   @override
+  String domainGraphUnavailableMessage(String appVersion) {
+    return 'This project\'s schema version is outside the range this app knows (up to $appVersion), so the latest scan could not build the graph. Until the schema is fixed or regenerated, rescanning will give the same result';
+  }
+
+  @override
+  String get domainGraphUnavailableScanning => 'Scanning…';
+
+  @override
   String get reloadAction => 'Reload';
 
   @override
