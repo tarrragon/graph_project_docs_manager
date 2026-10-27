@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.9.0
+  version: 1.10.0
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -94,6 +94,7 @@ metadata:
 | 收到只有標題的審查標記、判定回歸、驗證守衛修正 | `references/review-flags-and-verification.md` |
 | 階段收尾、交接、總表格式 | `references/wrap-up-and-handoff.md` |
 | 開線時命名 session、改名、線完結或轉階段時換 session | `references/session-naming.md` |
+| 啟用或關閉看板、設定協調票、看板顯示異常 | `.claude/skills/line-board/SKILL.md` |
 
 ---
 
