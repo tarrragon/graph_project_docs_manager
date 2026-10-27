@@ -8,9 +8,9 @@ import {
   dispatchTicketIds,
   parseDispatchFile,
   parseIsoMs,
-} from './dispatch'
+} from '../hooks/dispatch'
 import { dispatch, dispatchJson, session } from './fixtures'
-import { parseLanes } from './lanes'
+import { parseLanes } from '../hooks/lanes'
 
 describe('parseDispatchFile', () => {
   test('取 dispatches 各筆的代理人、session、票號、描述與時間；空字串票號為 null，tombstones 不讀', () => {

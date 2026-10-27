@@ -12,7 +12,7 @@ import {
   resolveTicketFile,
   ticketFileCandidates,
   ticketPrefixOf,
-} from './shared'
+} from '../hooks/shared'
 
 describe('ticketFileCandidates', () => {
   test('版本可解析 major.minor：先 hierarchical 再 flat', () => {

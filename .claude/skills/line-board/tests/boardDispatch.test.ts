@@ -3,13 +3,13 @@
 
 import { describe, expect, test } from 'claude-code/testing'
 
-import { DISPATCH_ACTIVE_PATH } from './dispatch'
+import { DISPATCH_ACTIVE_PATH } from '../hooks/dispatch'
 import { MERGE_LOG_HOLDING, TICKET_349, dispatchJson, overlapLogUntil, ticketFile } from './fixtures'
-import { GROUP_BORDER_STYLE, groupFrameKey, groupTitleKey } from './lanesView'
-import { MERGE_GATE_GROUP_ID, OTHER_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from './layout'
-import { MERGE_LOG_PATH } from './mergeGate'
+import { GROUP_BORDER_STYLE, groupFrameKey, groupTitleKey } from '../hooks/lanesView'
+import { MERGE_GATE_GROUP_ID, OTHER_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from '../hooks/layout'
+import { MERGE_LOG_PATH } from '../hooks/mergeGate'
 import { COORDINATION_TICKET, configJson, sessionStub, startBoard } from './paneHarness'
-import { ticketFileCandidates } from './shared'
+import { ticketFileCandidates } from '../hooks/shared'
 
 /** 預設協調票的票檔（相對 repo root）：由票號推導，取 ticketFileCandidates 的第一個候選（hierarchical）。 */
 const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''

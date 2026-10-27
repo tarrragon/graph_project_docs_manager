@@ -31,7 +31,7 @@ suites:
     failure: '^FAILED '
   # line-board 不放 artifacts：閘門不跑 tsc（types 無頭生成命令未知）
   line-board:
-    prefixes: [tools/line-board/]
-    command: [claude, plugin, test, tools/line-board]
+    prefixes: [.claude/skills/line-board/]
+    command: [claude, plugin, test, .claude/skills/line-board]
     summary: '^Ran \d+ tests across \d+ files'
     failure: '^\(fail\)'

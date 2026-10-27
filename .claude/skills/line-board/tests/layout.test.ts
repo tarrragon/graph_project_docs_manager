@@ -4,7 +4,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { DispatchRow, GroupActivity } from '../types'
 import { TICKET_349, session } from './fixtures'
-import { parseLanes } from './lanes'
+import { parseLanes } from '../hooks/lanes'
 import {
   OTHER_GROUP_ID,
   formatActivity,
@@ -18,7 +18,7 @@ import {
   laneGroups,
   queueRowSegments,
   toggledOverrides,
-} from './layout'
+} from '../hooks/layout'
 
 /** TICKET_349 的線：L7（f9）351 → 145、L9（3e）356 → 353.1 ∥ 341.2.1 → 284、L13（1b）337.1 → 337.3 → 337.2.1。 */
 const LANES = parseLanes(TICKET_349, '0.5.0-W1-')

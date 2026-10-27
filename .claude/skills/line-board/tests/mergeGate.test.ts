@@ -12,7 +12,7 @@ import {
   mergeGateResultColor,
   parseMergeGateLine,
   shortBranch,
-} from './mergeGate'
+} from '../hooks/mergeGate'
 
 describe('mergeGateLines', () => {
   test('只保留 [合併閘門] 的開始與結束行；預檢、驗收、測試行濾掉', () => {

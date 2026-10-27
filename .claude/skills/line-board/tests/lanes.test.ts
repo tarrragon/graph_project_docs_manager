@@ -3,8 +3,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { TEMPLATE_AT_LINE_START, TEMPLATE_NOTE, TICKET_349, TICKET_349_GOALS } from './fixtures'
-import { formatQueue, laneTicketIds, parseLaneGoals, parseLanes, parseQueue } from './lanes'
-import { ticketPrefixOf } from './shared'
+import { formatQueue, laneTicketIds, parseLaneGoals, parseLanes, parseQueue } from '../hooks/lanes'
+import { ticketPrefixOf } from '../hooks/shared'
 
 /** fixtures 的協調票（349）推導出的短票號前綴；本檔的完整票號皆以它補全。 */
 const PREFIX = '0.5.0-W1-'
