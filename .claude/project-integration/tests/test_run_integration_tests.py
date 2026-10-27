@@ -127,5 +127,31 @@ def test_timeout_kills_process_group_with_no_survivors(monkeypatch):
     assert out == []
 
 
+def _main_with(monkeypatch, argv):
+    """以 mock 取代子程序啟動，回傳 (結束碼, run_streaming 呼叫次數)。"""
+    started = []
+    monkeypatch.setattr(rit, "run_streaming", lambda f, deadline=0: started.append(f) or (0, PASS_OUT))
+    monkeypatch.setattr(rit, "discover_tests", lambda root: ["integration_test/a_test.dart"])
+    try:
+        code = rit.main(argv)
+    except SystemExit as e:
+        code = e.code
+    return code, len(started)
+
+
+@pytest.mark.parametrize("argv", [["--help"], ["-h"], ["--bogus"], ["extra"]])
+def test_help_and_unknown_args_start_nothing_and_exit_usage(monkeypatch, argv):
+    code, started = _main_with(monkeypatch, argv)
+    assert started == 0
+    assert code == rit.EXIT_USAGE
+    assert code not in (0, rit.EXIT_TIMEOUT, rit.EXIT_NO_TESTS, rit.EXIT_FAILED)
+
+
+def test_no_args_still_runs_tests(monkeypatch):
+    code, started = _main_with(monkeypatch, [])
+    assert started == 1  # 正向對照：mock 有鑑別力
+    assert code == 0
+
+
 def test_declared_command_calls_wrapper():
     assert _declared()["command"] == ["python3", ".claude/project-integration/run_integration_tests.py"]
