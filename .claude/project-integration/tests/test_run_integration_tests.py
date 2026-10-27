@@ -100,5 +100,32 @@ def test_research_regexes_red_vs_green():
     assert summary.search(red[1]) and summary.search(green[0])
 
 
+def test_timeout_returns_nonzero_and_message_matches_declared_failure(capsys):
+    def runner(f):
+        raise rit.SuiteTimeout()
+    assert rit.run_all(["a", "b"], runner) == rit.EXIT_TIMEOUT
+    err = capsys.readouterr().err
+    assert rit.TIMEOUT_MESSAGE in err
+    rx = re.compile(_declared()["failure"])
+    assert any(rx.search(ln) for ln in err.splitlines())  # 正向對照
+    assert not any(rx.search(ln) for ln in PASS_OUT.splitlines())
+
+
+def test_timeout_kills_process_group_with_no_survivors(monkeypatch):
+    import subprocess
+    import time
+    real = subprocess.Popen
+
+    def fake_popen(argv, **kw):
+        return real(["sh", "-c", "sleep 307 & wait"], **kw)
+    monkeypatch.setattr(rit.subprocess, "Popen", fake_popen)
+    with pytest.raises(rit.SuiteTimeout):
+        rit.run_streaming("x", deadline=time.monotonic() + 1)
+    monkeypatch.undo()  # subprocess.Popen 是全域物件，須還原才能跑 pgrep
+    time.sleep(0.3)
+    out = subprocess.run(["pgrep", "-f", "sleep 307"], capture_output=True, text=True).stdout.split()
+    assert out == []
+
+
 def test_declared_command_calls_wrapper():
     assert _declared()["command"] == ["python3", ".claude/project-integration/run_integration_tests.py"]
