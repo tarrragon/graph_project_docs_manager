@@ -29,10 +29,10 @@ const fakeUcNode = LightNode(
   typeName: 'UC',
   status: null,
   title: null,
-  path: 'docs/usecases/UC-01.md',
+  path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
 );
 
-const fakeUcPath = 'docs/usecases/UC-01.md';
+const fakeUcPath = 'docs/usecases/UC-01-open-project-and-reach-usable-state.md';
 
 /// 003 破洞用的缺 frontmatter 事件。
 ParseFailureEvent fakeCarrierEvent(String path) => ParseFailureEvent(

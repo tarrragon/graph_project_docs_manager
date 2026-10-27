@@ -11,12 +11,16 @@ import { DISPATCH_ACTIVE_PATH, dispatchRows } from './parse'
  */
 export function dispatchRowsOf(board: ReadyBoard): DispatchRow[] {
   if (board.dispatches.kind === 'error' || board.sessions.kind === 'error') return []
-  return dispatchRows(board.dispatches.records, {
-    sessions: board.sessions.sessions,
-    lanes: board.lanes.kind === 'ok' ? board.lanes.lanes : [],
-    tickets: board.tickets,
-    holders: board.mergeLog.kind === 'ok' ? board.mergeLog.holders : [],
-  })
+  return dispatchRows(
+    board.dispatches.records,
+    {
+      sessions: board.sessions.sessions,
+      lanes: board.lanes.kind === 'ok' ? board.lanes.lanes : [],
+      tickets: board.tickets,
+      holders: board.mergeLog.kind === 'ok' ? board.mergeLog.holders : [],
+    },
+    board.ticketPrefix,
+  )
 }
 
 /** 線群組上方的派發提示行：派發紀錄讀取失敗、session 狀態讀取失敗、沒有任何派發列；派發列照常時沒有提示。 */

@@ -148,6 +148,33 @@ final scanRoundProvider = NotifierProvider<ScanRoundNotifier, ScanRoundState>(
   ScanRoundNotifier.new,
 );
 
+/// 同一專案最後一次完成的輪次結果（0.5.0-W1-205.2.1，SPEC-001 §1〈矩陣與泳道
+/// 同由掃描輪次衍生〉）：重掃中、取消重掃（Idle）、輪次失敗時皆保留上一輪；
+/// 切換專案（工作區路徑變更）時清除。Domain 矩陣與泳道共讀此來源，兩者同輪。
+final lastCompletedRoundProvider =
+    NotifierProvider<LastCompletedRoundNotifier, ScanRoundResult?>(
+      LastCompletedRoundNotifier.new,
+    );
+
+/// [lastCompletedRoundProvider] 的擁有者。
+class LastCompletedRoundNotifier extends Notifier<ScanRoundResult?> {
+  @override
+  ScanRoundResult? build() {
+    ref.listen<ScanRoundState>(scanRoundProvider, (_, next) {
+      if (next is ScanRoundCompleted) state = next.result;
+    });
+    ref.listen<WorkspaceState>(currentWorkspaceStateProvider, (prev, next) {
+      final same =
+          prev is WorkspaceReady &&
+          next is WorkspaceReady &&
+          prev.path == next.path;
+      if (!same) state = null;
+    });
+    final current = ref.read(scanRoundProvider);
+    return current is ScanRoundCompleted ? current.result : null;
+  }
+}
+
 /// 輪次擁有者。消費者呼叫 [ensureRound] 取得（或開始）本工作區的輪次。
 class ScanRoundNotifier extends Notifier<ScanRoundState> {
   Future<ScanRoundResult?>? _inFlight;

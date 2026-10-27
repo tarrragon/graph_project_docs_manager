@@ -1,11 +1,63 @@
-// 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 的狀態與 title 解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
+// 各 domain 共用的小工具：票號前綴與票檔位置、專案設定檔內容的判定、票狀態常數、票檔 frontmatter 的狀態與 title 解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
-/** 佇列票號的前綴：現行佇列行只寫短票號，補上前綴才是完整票號。 */
-export const TICKET_PREFIX = '0.5.0-W1-'
+import type { ProjectConfigResult } from '../types'
 
-/** 票檔所在目錄，相對 repo root。 */
-export const TICKETS_DIR = 'docs/work-logs/v0/v0.5/v0.5.0/tickets'
+/** 票號拆成版本與 wave 之後的部分：`<版本>-W<wave>-<序號>`，序號可帶任意層 `.n` 子序號。版本只要求不為空，major.minor 的解析交給呼叫端。 */
+const TICKET_ID = /^(.+?)-(W\d+-)\d+(?:\.\d+)*$/
+
+/** 票目錄的根，相對 repo root；與 ticket_system/lib/paths.py 的 WORK_LOGS_DIR 一致。 */
+const WORK_LOGS_DIR = 'docs/work-logs'
+
+/**
+ * 票號對應的票檔路徑候選（相對 repo root），依優先序排列，對齊 paths.py get_tickets_dir_under_root：
+ * 版本可解析 major.minor 時為 hierarchical `v{major}/v{major}.{minor}/v{version}/tickets/` 再 flat `v{version}/tickets/`，
+ * 否則只有 flat；不是票號時為空陣列。版本前的 `v` 去掉後再加回。
+ */
+export function ticketFileCandidates(ticketId: string): string[] {
+  const match = TICKET_ID.exec(ticketId)
+  if (match === null) return []
+  const version = (match[1] ?? '').replace(/^v+/, '')
+  const file = `v${version}/tickets/${ticketId}.md`
+  const flat = `${WORK_LOGS_DIR}/${file}`
+  const [major, minor] = version.split('.')
+  if (minor === undefined) return [flat]
+  return [`${WORK_LOGS_DIR}/v${major}/v${major}.${minor}/${file}`, flat]
+}
+
+/**
+ * 票號對應的票檔路徑：取第一個 exists 判定存在的候選，皆不存在時取第一個候選（paths.py 新版本一律 hierarchical）；
+ * 不是票號時為 null。檔案存在性由呼叫端以 exists 注入，本函式不碰檔案系統。
+ */
+export function resolveTicketFile(ticketId: string, exists: (path: string) => boolean): string | null {
+  const candidates = ticketFileCandidates(ticketId)
+  return candidates.find(exists) ?? candidates[0] ?? null
+}
+
+/** 協調票 ID 去掉序號（含子序號）得短票號前綴，如 `1.2.0-W3-045` 得 `1.2.0-W3-`；不是票號時為 null。 */
+export function ticketPrefixOf(coordinatorId: string): string | null {
+  const match = TICKET_ID.exec(coordinatorId)
+  return match === null ? null : `${match[1]}-${match[2]}`
+}
+
+/**
+ * 專案設定檔內容的判定：須為 JSON 物件，coordinationTicket 為可推導出短票號前綴的完整票號（ticketPrefixOf）。
+ * 只判定已讀到的文字；讀不到檔案（missing）由 readers.ts readProjectConfig 判定。
+ */
+export function parseProjectConfig(text: string): ProjectConfigResult {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (error) {
+    return { kind: 'invalid-json', message: messageOf(error) }
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed) || !('coordinationTicket' in parsed)) {
+    return { kind: 'missing-field' }
+  }
+  const value: unknown = parsed.coordinationTicket
+  if (typeof value !== 'string' || ticketPrefixOf(value) === null) return { kind: 'invalid-format', value }
+  return { kind: 'ok', coordinationTicket: value }
+}
 
 /** 票檔讀不到或沒有 status 欄時顯示的狀態。 */
 export const UNKNOWN_STATUS = 'unknown'

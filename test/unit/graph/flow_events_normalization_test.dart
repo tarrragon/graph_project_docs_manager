@@ -9,7 +9,7 @@ import '../../helpers/spec007/bundle_graph_fixture.dart';
 FlowStepNode _stepWith(Map<String, dynamic> extra) {
   final result = buildResultOf([
     RawNode(
-      path: 'docs/usecases/UC-01.md',
+      path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
       frontmatter: {'id': 'UC-01'},
       typeName: flowSourceTypeName,
       flowSteps: [

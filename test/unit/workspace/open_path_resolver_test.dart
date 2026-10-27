@@ -24,10 +24,10 @@ void main() {
       expect(
         resolveOpenPath(
           const WorkspaceReady('/ws/proj'),
-          'docs/usecases/UC-02.md',
+          'docs/usecases/UC-02-assess-change-impact-by-domain.md',
           log: capture,
         ),
-        '/ws/proj/docs/usecases/UC-02.md',
+        '/ws/proj/docs/usecases/UC-02-assess-change-impact-by-domain.md',
       );
       expect(logs, isEmpty);
     });

@@ -14,7 +14,7 @@ import '../../helpers/spec006/fake_docs_fs.dart';
 import '../../helpers/spec006/type_table_builder.dart';
 import '../../helpers/spec006/uc_body_builder.dart';
 
-const _ucPath = 'docs/usecases/UC-01.md';
+const _ucPath = 'docs/usecases/UC-01-open-project-and-reach-usable-state.md';
 
 TypeTable _table() => TypeTableBuilder()
     .addType(
@@ -423,11 +423,14 @@ void main() {
             ],
           ),
         )
-        ..addFile('docs/usecases/UC-02.md', ucBytes(id: 'UC-02'));
+        ..addFile(
+          'docs/usecases/UC-02-assess-change-impact-by-domain.md',
+          ucBytes(id: 'UC-02'),
+        );
       final r = await scanCorpus(
         fileSystem: fs,
         table: _table(),
-builtinTable: _table(),
+        builtinTable: _table(),
         extractFlow: (bytes, path) {
           if (path == _ucPath) {
             throw StateError('模擬 YAML 解析器的非預期例外');
@@ -445,7 +448,9 @@ builtinTable: _table(),
       expect(event.reason, contains('StateError'));
       // E1 對照：同輪另一份無區塊的 UC 不發 004。
       expect(
-        r.flowParseFailedEvents.any((e) => e.path.endsWith('UC-02.md')),
+        r.flowParseFailedEvents.any(
+          (e) => e.path.endsWith('UC-02-assess-change-impact-by-domain.md'),
+        ),
         isFalse,
       );
       expect(r.summary.flowBlockMalformedUcCount, 1);
@@ -457,7 +462,7 @@ builtinTable: _table(),
         fileSystem: FakeDocsFileSystem()
           ..addFile(_ucPath, ucBytes(blocks: [malformedFlowBlock])),
         table: _table(),
-builtinTable: _table(),
+        builtinTable: _table(),
         extractFlow: (bytes, path) => const UcFlowExtraction(
           steps: <Map<String, dynamic>>[],
           hasMalformedFlowBlock: true,
@@ -555,7 +560,11 @@ builtinTable: _table(),
           ...file.readAsBytesSync(),
         ]);
       }
-      final result = await scanCorpus(fileSystem: fs, table: _table(), builtinTable: _table());
+      final result = await scanCorpus(
+        fileSystem: fs,
+        table: _table(),
+        builtinTable: _table(),
+      );
       expect(result.flowParseFailedEvents, isEmpty);
       return {
         for (final n in result.rawNodes.where((n) => n.typeName == 'UC'))

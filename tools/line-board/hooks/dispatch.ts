@@ -3,7 +3,7 @@
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 import type { DispatchContext, DispatchRecord, DispatchRow, DispatchStage } from '../types'
-import { COMPLETED_STATUS, TICKET_PREFIX } from './shared'
+import { COMPLETED_STATUS } from './shared'
 
 /** 派發紀錄檔，相對 repo root；只讀主 checkout 的這一份。 */
 export const DISPATCH_ACTIVE_PATH = '.claude/dispatch-active.json'
@@ -106,9 +106,9 @@ export function dispatchStage(
   return record.ticketId === null ? null : '收尾'
 }
 
-/** 完整票號去掉佇列前綴，與票序的短票號一致；不帶前綴的票號原樣。 */
-function shortTicketId(id: string): string {
-  return id.startsWith(TICKET_PREFIX) ? id.slice(TICKET_PREFIX.length) : id
+/** 完整票號去掉短票號前綴（如 `1.2.0-W3-`），與票序的短票號一致；不帶該前綴的票號原樣。 */
+function shortTicketId(id: string, prefix: string): string {
+  return id.startsWith(prefix) ? id.slice(prefix.length) : id
 }
 
 /** 派發紀錄中有票號的條目的完整票號，保留首次出現順序並去重。 */
@@ -123,9 +123,14 @@ export function dispatchTicketIds(records: readonly DispatchRecord[]): string[] 
 /**
  * 派發區塊的列：session_id 對不到存活 session（sessionId）的條目不列；dispatchStage 為 null 的不列。
  * 以 session 的名稱對到 349 現行佇列行括號內的 session 名稱取線號，對不到為 null（其他）。
- * 依線號排序、其他最後，同線保留紀錄中的順序。任務欄為短票號，沒有票號時為派發描述。
+ * 依線號排序、其他最後，同線保留紀錄中的順序。任務欄為短票號（完整票號去掉 ticketPrefix），沒有票號時為派發描述。
+ * ticketPrefix 為協調票推導的短票號前綴（shared.ts ticketPrefixOf），由 snapshot 的 ticketPrefix 傳入。
  */
-export function dispatchRows(records: readonly DispatchRecord[], context: DispatchContext): DispatchRow[] {
+export function dispatchRows(
+  records: readonly DispatchRecord[],
+  context: DispatchContext,
+  ticketPrefix: string,
+): DispatchRow[] {
   const statusById = new Map(context.tickets.map(ticket => [ticket.id, ticket.status]))
   const holderBranches = context.holders.map(holder => holder.branch)
   const rows: DispatchRow[] = []
@@ -135,7 +140,7 @@ export function dispatchRows(records: readonly DispatchRecord[], context: Dispat
     const status = record.ticketId === null ? undefined : statusById.get(record.ticketId)
     const stage = dispatchStage(record, status, holderBranches)
     if (stage === null) continue
-    const task = record.ticketId === null ? record.description || NO_DESCRIPTION : shortTicketId(record.ticketId)
+    const task = record.ticketId === null ? record.description || NO_DESCRIPTION : shortTicketId(record.ticketId, ticketPrefix)
     const lane = context.lanes.find(item => item.session === session.name)?.lane ?? null
     rows.push({ lane, name: record.name, task, stage, dispatchedAt: record.dispatchedAt })
   }

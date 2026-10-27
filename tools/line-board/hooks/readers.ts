@@ -1,6 +1,6 @@
 // line-board 的讀取：以 $ 讀檔與執行命令，取得一輪 snapshot 所需的各項資料，解析經 parse.ts 匯出。
 // 每個讀取函式自行吸收失敗（回傳 error 結果、null 或 unknown，並記 debug log），只影響該項的顯示。
-// register.tsx 的 refresh 依序呼叫本檔各函式並組成 snapshot。
+// register.tsx 的 refresh 先讀專案設定（協調票），成立時才依序呼叫本檔其餘函式並組成 snapshot。
 
 import type { EngineInterface } from 'claude-code'
 
@@ -8,16 +8,15 @@ import type {
   DispatchesResult,
   LanesResult,
   MergeLogResult,
+  ProjectConfigResult,
   SessionState,
   SessionsResult,
   TicketStatus,
 } from '../types'
 import {
   DISPATCH_ACTIVE_PATH,
-  DISPATCH_TICKET_PATH,
   MERGE_LOG_PATH,
   SESSIONS_DIR,
-  TICKETS_DIR,
   UNKNOWN_STATUS,
   isInRepo,
   isSessionProcessAlive,
@@ -28,11 +27,57 @@ import {
   parseFrontmatterStatus,
   parseFrontmatterTitle,
   parseLanes,
+  parseProjectConfig,
   parseSessionFile,
   parseWorktreePaths,
   sessionStatusFileNames,
   sortSessions,
+  ticketFileCandidates,
+  ticketPrefixOf,
 } from './parse'
+
+/** 專案設定檔，相對主 checkout：協調票（coordinationTicket，完整票號）由此提供。 */
+export const PROJECT_CONFIG_PATH = '.claude/project-integration/multi-session.json'
+
+/**
+ * 讀主 checkout 的專案設定檔，取協調票的完整票號。設定不成立時回傳可區分的原因（見 ProjectConfigResult）並記 debug log；
+ * 看板只在 ok 時自動開 Pane 與讀其他各項，沒有使用多 session 協調的專案因此不受影響。
+ */
+export async function readProjectConfig($: EngineInterface, mainPath: string): Promise<ProjectConfigResult> {
+  let text: string
+  try {
+    text = await $.fs.read(`${mainPath}/${PROJECT_CONFIG_PATH}`)
+  } catch (error) {
+    $.ui.log(`line-board: 讀取 ${PROJECT_CONFIG_PATH} 失敗：${messageOf(error)}，不讀協調票`, { to: 'debug' })
+    return { kind: 'missing', message: messageOf(error) }
+  }
+  const config = parseProjectConfig(text)
+  if (config.kind !== 'ok') $.ui.log(`line-board: ${PROJECT_CONFIG_PATH} 設定不成立（${config.kind}），不讀協調票`, { to: 'debug' })
+  return config
+}
+
+/** 一張票的票檔讀取結果：ok 為內容；error 為讀不到時的票檔路徑（相對 repo root，不是票號時為票號本身）與原因。 */
+type TicketFileRead = { kind: 'ok'; text: string } | { kind: 'error'; path: string; message: string }
+
+/**
+ * 依 ticketFileCandidates 的優先序讀主 checkout 的票檔，取第一個讀得到的（與 resolveTicketFile 同序：先 hierarchical、再 flat）；
+ * 都讀不到時回傳第一個候選的路徑與錯誤（ticket 系統新建票檔的位置）。
+ */
+async function readTicketFile($: EngineInterface, mainPath: string, id: string): Promise<TicketFileRead> {
+  const candidates = ticketFileCandidates(id)
+  const first = candidates[0]
+  if (first === undefined) return { kind: 'error', path: id, message: '不是票號' }
+  let firstError: unknown = null
+  for (const path of candidates) {
+    try {
+      return { kind: 'ok', text: await $.fs.read(`${mainPath}/${path}`) }
+    } catch (error) {
+      // 候選路徑不存在是正常情形（先試 hierarchical 再試 flat）；都讀不到時由呼叫端記 debug log
+      firstError ??= error
+    }
+  }
+  return { kind: 'error', path: first, message: messageOf(firstError) }
+}
 
 /** 合併閘門紀錄顯示的行數（只計開始與結束行）。 */
 const MERGE_LOG_LINES = 8
@@ -123,25 +168,29 @@ async function isSessionAlive($: EngineInterface, session: SessionState): Promis
   }
 }
 
-export async function readLanes($: EngineInterface, mainPath: string): Promise<LanesResult> {
-  try {
-    return { kind: 'ok', lanes: parseLanes(await $.fs.read(`${mainPath}/${DISPATCH_TICKET_PATH}`)) }
-  } catch (error) {
-    $.ui.log(`line-board: 讀取 ${DISPATCH_TICKET_PATH} 失敗：${messageOf(error)}`, { to: 'debug' })
-    return { kind: 'error', message: messageOf(error) }
+/** 讀協調票（專案設定的 coordinationTicket）的現行佇列行；票檔路徑由票號推導，讀不到時的訊息含票檔路徑。 */
+export async function readLanes($: EngineInterface, mainPath: string, coordinationTicket: string): Promise<LanesResult> {
+  const prefix = ticketPrefixOf(coordinationTicket)
+  if (prefix === null) {
+    // readProjectConfig 已以 ticketPrefixOf 驗過協調票，此分支只在呼叫端繞過設定判定時發生
+    $.ui.log(`line-board: 協調票 ${coordinationTicket} 不是完整票號，推不出短票號前綴`, { to: 'debug' })
+    return { kind: 'error', message: `${coordinationTicket}：不是完整票號` }
   }
+  const file = await readTicketFile($, mainPath, coordinationTicket)
+  if (file.kind === 'ok') return { kind: 'ok', lanes: parseLanes(file.text, prefix) }
+  $.ui.log(`line-board: 讀取協調票 ${file.path} 失敗：${file.message}`, { to: 'debug' })
+  return { kind: 'error', message: `${file.path}：${file.message}` }
 }
 
-/** 讀主 checkout 內票檔的 status 與 title（一次讀檔）；讀不到或無 status 欄時 status 為 unknown，讀不到或無 title 欄時 title 為 null。 */
+/**
+ * 讀主 checkout 內票檔的 status 與 title（一次讀檔，路徑由票號推導）；讀不到或無 status 欄時 status 為 unknown，
+ * 讀不到或無 title 欄時 title 為 null。
+ */
 export async function readTicketStatus($: EngineInterface, mainPath: string, id: string): Promise<TicketStatus> {
-  const path = `${TICKETS_DIR}/${id}.md`
-  try {
-    const text = await $.fs.read(`${mainPath}/${path}`)
-    return { id, status: parseFrontmatterStatus(text) ?? UNKNOWN_STATUS, title: parseFrontmatterTitle(text) }
-  } catch (error) {
-    $.ui.log(`line-board: 讀取 ${path} 失敗：${messageOf(error)}`, { to: 'debug' })
-    return { id, status: UNKNOWN_STATUS, title: null }
-  }
+  const file = await readTicketFile($, mainPath, id)
+  if (file.kind === 'ok') return { id, status: parseFrontmatterStatus(file.text) ?? UNKNOWN_STATUS, title: parseFrontmatterTitle(file.text) }
+  $.ui.log(`line-board: 讀取 ${file.path} 失敗：${file.message}`, { to: 'debug' })
+  return { id, status: UNKNOWN_STATUS, title: null }
 }
 
 /**

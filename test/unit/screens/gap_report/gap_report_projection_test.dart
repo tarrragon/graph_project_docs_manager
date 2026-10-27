@@ -48,7 +48,7 @@ const _nodes = [
     typeName: 'UC',
     status: null,
     title: null,
-    path: 'docs/usecases/UC-01.md',
+    path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
   ),
   LightNode(
     id: 'DB-b',
@@ -111,7 +111,7 @@ NonDomainPathsMalformedGap _nonDomain(
 );
 
 const _flowGap = FlowBlockMalformedGap(
-  path: 'docs/usecases/UC-01.md',
+  path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
   reason: 'flowBlockMalformed',
 );
 
@@ -423,7 +423,7 @@ void main() {
       );
       expect(
         _only(_project(parse: [_flowGap])).id,
-        'flow-block-malformed:docs%2Fusecases%2FUC-01.md',
+        'flow-block-malformed:docs%2Fusecases%2FUC-01-open-project-and-reach-usable-state.md',
       );
       expect(
         _only(
@@ -577,7 +577,10 @@ void main() {
 
     test('T3-2 EVT-CORPUS-004：flow 類，帶 UC id，無 step id', () {
       final item = _only(_project(parse: [_flowGap]));
-      expect(item.filePath, 'docs/usecases/UC-01.md');
+      expect(
+        item.filePath,
+        'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
+      );
       expect(item.pointerType, GapItemPointerType.flow);
       expect(item.flowUcId, 'UC-01');
       expect(item.flowStepId, isNull);
@@ -680,7 +683,11 @@ void main() {
       for (final kind in FlowDefectKind.values) {
         final item = _only(_project(defects: [_flowDefect(kind)]));
         expect(item.pointerType, GapItemPointerType.flow, reason: '$kind');
-        expect(item.filePath, 'docs/usecases/UC-01.md', reason: '$kind');
+        expect(
+          item.filePath,
+          'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
+          reason: '$kind',
+        );
         expect(item.flowUcId, 'UC-01', reason: '$kind');
         expect(item.flowStepId, 's1', reason: '$kind');
       }

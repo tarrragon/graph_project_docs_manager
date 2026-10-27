@@ -28,7 +28,7 @@ ScanRoundResult _round({EdgeTypeUnavailableReason? unavailable}) {
     typeName: 'UC',
     status: null,
     title: 'uc',
-    path: 'docs/usecases/UC-01.md',
+    path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
   );
   final subgraphs = buildFlowSubgraphs(
     [
@@ -62,9 +62,8 @@ ScanRoundResult _round({EdgeTypeUnavailableReason? unavailable}) {
   );
 }
 
-Override _roundOverride(ScanRoundResult round) => scanRoundProvider.overrideWith(
-  () => FakeScanRound(produce: () => round, initial: round),
-);
+Override _roundOverride(ScanRoundResult round) => scanRoundProvider
+    .overrideWith(() => FakeScanRound(produce: () => round, initial: round));
 
 Future<void> _pump(WidgetTester tester, List<Override> overrides) =>
     pumpHarness(
@@ -117,9 +116,7 @@ void main() {
 
   test('E2：建圖不可用 → provider 回零筆', () {
     final round = _round(unavailable: EdgeTypeUnavailableReason.values.first);
-    final container = ProviderContainer(
-      overrides: [_roundOverride(round)],
-    );
+    final container = ProviderContainer(overrides: [_roundOverride(round)]);
     addTearDown(container.dispose);
     container.read(scanRoundProvider);
 

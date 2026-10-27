@@ -17,7 +17,7 @@ suites:
     # 逐檔啟動：同次執行第二個 macOS App 確定性起不來，故經包裝腳本
     command: [python3, .claude/project-integration/run_integration_tests.py]
     # 通過時也會印 Failed to foreground app，不可當失敗訊號，正規式刻意不含它
-    failure: 'Unable to start the app|Error waiting for a debug connection'
+    failure: 'Unable to start the app|Error waiting for a debug connection|integration 逾時'
     artifacts:
       - path: .dart_tool/package_config.json
         generate: [fvm, flutter, pub, get]

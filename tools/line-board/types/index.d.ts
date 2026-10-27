@@ -6,10 +6,25 @@ export type QueueToken =
   | { kind: 'sep'; text: '→' | '∥' }
   | { kind: 'text'; text: string }
 
-/** 一條線的現行佇列：線號、session 名稱（行內未寫時為 null）、線目標（349 沒有目標行或已寫（無）清除時為 null）、票序。 */
+/** 一條線的現行佇列：線號、session 名稱（行內未寫時為 null）、線目標（協調票沒有目標行或已寫（無）清除時為 null）、票序。 */
 export type Lane = { lane: number; session: string | null; goal: string | null; tokens: QueueToken[] }
 
-/** 349 現行佇列的讀取結果：ok 為解析出的線（可能為空），error 為讀檔失敗原因。 */
+/**
+ * 主 checkout 專案設定檔（.claude/project-integration/multi-session.json）的讀取結果：ok 為協調票的完整票號；
+ * 其餘為設定不成立的原因——missing 讀不到檔案、invalid-json JSON 無效、missing-field 不是物件或缺 coordinationTicket、
+ * invalid-format 值不是完整票號（value 為原值）。
+ */
+export type ProjectConfigResult =
+  | { kind: 'ok'; coordinationTicket: string }
+  | { kind: 'missing'; message: string }
+  | { kind: 'invalid-json'; message: string }
+  | { kind: 'missing-field' }
+  | { kind: 'invalid-format'; value: unknown }
+
+/** 設定不成立的讀取結果。 */
+export type UnsetProjectConfig = Exclude<ProjectConfigResult, { kind: 'ok' }>
+
+/** 協調票現行佇列的讀取結果：ok 為解析出的線（可能為空），error 為讀檔失敗原因（含票檔路徑）。 */
 export type LanesResult =
   | { kind: 'ok'; lanes: Lane[] }
   | { kind: 'error'; message: string }
@@ -81,7 +96,7 @@ export type DispatchesResult =
 /** 派發中代理人的流程階段。 */
 export type DispatchStage = '實作' | '審查' | '事故分析' | '閘門' | '收尾'
 
-/** 派發列的判定依據：存活的 session、349 的線、主 checkout 的票狀態、閘門持有者。 */
+/** 派發列的判定依據：存活的 session、協調票的線、主 checkout 的票狀態、閘門持有者。 */
 export type DispatchContext = {
   sessions: readonly SessionState[]
   lanes: readonly Lane[]
@@ -127,9 +142,13 @@ export type SessionsResult =
   | { kind: 'ok'; sessions: SessionState[]; endedCount: number }
   | { kind: 'error'; message: string }
 
-/** 一次讀取的完整結果。loading 表示 session 啟動後尚未完成第一次讀取。 */
+/**
+ * 一次讀取的完整結果。loading 表示 session 啟動後尚未完成第一次讀取；
+ * unconfigured 表示專案設定不成立（設定檔的絕對路徑與原因），此時不讀其他各項。
+ */
 export type BoardSnapshot =
   | { kind: 'loading' }
+  | { kind: 'unconfigured'; configPath: string; config: UnsetProjectConfig }
   | {
       kind: 'ready'
       updatedAt: string
@@ -138,6 +157,8 @@ export type BoardSnapshot =
       mainPath: string
       /** 無法以 `git worktree list` 判定主 checkout 時的原因；此時退回 session root。 */
       checkoutNote: string | null
+      /** 短票號前綴（如 `1.2.0-W3-`）：由專案設定的協調票推導（shared.ts ticketPrefixOf），派發列以它去掉票號前綴。 */
+      ticketPrefix: string
       lanes: LanesResult
       tickets: TicketStatus[]
       sessions: SessionsResult

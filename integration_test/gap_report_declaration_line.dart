@@ -26,7 +26,8 @@ import 'package:graph_project_docs_manager/screens/gap_report/gap_report_project
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 
 import '../test/helpers/spec001/corpus_snapshot.dart';
-import 'domain_view_v050.dart' show OpenWorkspace;
+import 'domain_view_v050.dart'
+    show OpenWorkspace, itWidgets, pumpFramesGuarded, settleGuarded;
 
 const _projectSnapshot = 'graph_project_docs_manager';
 const _balanceSnapshot = 'flutter_balance';
@@ -46,7 +47,7 @@ const _domains = [
 
 void registerGapReportDeclarationLineTests(OpenWorkspace open) {
   group('IT-D4 破洞報告宣告狀態行', () {
-    testWidgets('ITD4-A1 兩側皆無宣告：本專案未宣告路徑，不含路徑數', (tester) async {
+    itWidgets('ITD4-A1 兩側皆無宣告：本專案未宣告路徑，不含路徑數', (tester) async {
       final workspace = await materializeSnapshotWorkspace(_balanceSnapshot);
       await open(tester, workspace);
 
@@ -56,7 +57,7 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD4-A2 部分宣告：5／8 個 domain、缺非 domain 清單', (tester) async {
+    itWidgets('ITD4-A2 部分宣告：5／8 個 domain、缺非 domain 清單', (tester) async {
       final workspace = await _partialWorkspace();
       final expected = await _declarationOf(workspace);
       await open(tester, workspace);
@@ -83,7 +84,7 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD4-A3 補齊宣告後行消失，破洞數與 A2 相同（E1 對照）', (tester) async {
+    itWidgets('ITD4-A3 補齊宣告後行消失，破洞數與 A2 相同（E1 對照）', (tester) async {
       final partial = await _partialWorkspace();
       await open(tester, partial);
       await _openGapReport(tester);
@@ -99,7 +100,7 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
       await full.delete(recursive: true);
     });
 
-    testWidgets('ITD4-A4 掃描中宣告狀態行不出現', (tester) async {
+    itWidgets('ITD4-A4 掃描中宣告狀態行不出現', (tester) async {
       final workspace = await materializeSnapshotWorkspace(_balanceSnapshot);
       final gate = Completer<void>();
       addTearDown(() {
@@ -132,12 +133,12 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
       expect(find.byKey(const Key('state-gaps-scanning')), findsOneWidget);
       expect(find.byKey(_lineKey), findsNothing);
       gate.complete();
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
       expect(find.byKey(_lineKey), findsOneWidget, reason: '掃描完成後（兩側皆無宣告）行出現');
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD4-A5 非 domain 清單格式錯誤與缺席的對照（E1 對照）', (tester) async {
+    itWidgets('ITD4-A5 非 domain 清單格式錯誤與缺席的對照（E1 對照）', (tester) async {
       final full = await _fullWorkspace();
       await open(tester, full);
       await _openGapReport(tester);
@@ -220,14 +221,11 @@ Future<ProjectPathDeclaration> _declarationOf(Directory workspace) async {
 
 Future<void> _openGapReport(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('nav-item-gaps')));
-  await tester.pumpAndSettle();
+  await settleGuarded(tester, 'pumpAndSettle');
 }
 
-Future<void> _pumpFrames(WidgetTester tester) async {
-  for (var i = 0; i < 5; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-}
+Future<void> _pumpFrames(WidgetTester tester) =>
+    pumpFramesGuarded(tester, 'gap-report pump 5 幀');
 
 AppLocalizations _l10n(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byKey(const Key('nav-page-gaps'))));

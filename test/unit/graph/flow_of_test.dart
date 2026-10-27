@@ -396,11 +396,11 @@ void main() {
 
     test('G10-9 不同 UC 的相同 step id 不是缺陷', () {
       final built = _build([
-        _uc01([_s('rescan')], id: 'UC-A'),
-        _uc01([_s('rescan')], id: 'UC-B'),
+        _uc01([_s('rescan')], id: 'UC-01'),
+        _uc01([_s('rescan')], id: 'UC-02'),
       ]);
       expect(_flowDefects(built.event), isEmpty);
-      for (final id in ['UC-A', 'UC-B']) {
+      for (final id in ['UC-01', 'UC-02']) {
         final g = (built.query.flowOf(id) as FlowOfAvailable).subgraph;
         expect(g.ucId, id);
         expect(_ids(g.steps), ['rescan']);
@@ -412,11 +412,11 @@ void main() {
         _uc01([
           _s('a'),
           _s('b1', {'branch_from': 'only_in_b'}),
-        ], id: 'UC-A'),
-        _uc01([_s('only_in_b')], id: 'UC-B'),
+        ], id: 'UC-01'),
+        _uc01([_s('only_in_b')], id: 'UC-02'),
       ]);
       final d = _flowDefects(built.event).single;
-      expect((d.ucId, d.stepId, d.rawValue), ('UC-A', 'b1', 'only_in_b'));
+      expect((d.ucId, d.stepId, d.rawValue), ('UC-01', 'b1', 'only_in_b'));
     });
 
     test('G10-11 步驟屬性原值原樣保存', () {
