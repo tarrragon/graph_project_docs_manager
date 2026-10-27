@@ -17,7 +17,9 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show Override, ProviderScope;
+import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
@@ -37,6 +39,7 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import '../../helpers/domain_view_fixtures.dart';
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/helpers.dart';
+import '../../helpers/spec001/corpus_snapshot.dart';
 import '../../helpers/stub_workspace_repository.dart';
 
 /// 讓經 shell 啟動的測試抵達 DomainReady：restore 回 Ready，gate 訊號齊備
@@ -50,6 +53,15 @@ List<Override> _readyGateOverrides() => [
   ),
   builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
   fakeScanRoundOverride(),
+];
+
+/// 泳道模式、已選定 UC、尚無完成輪次；[produce] 決定重啟後輪次結果（§4 #42）。
+List<Override> _pendingOverrides(ScanRoundResult? Function() produce) => [
+  scanRoundProvider.overrideWith(() => FakeScanRound(produce: produce)),
+  domainViewStateProvider.overrideWith(
+    (ref) => const DomainReady(mode: DomainMode.swimlane),
+  ),
+  selectedUcProvider.overrideWith((ref) => 'UC-02'),
 ];
 
 /// chooseFolder 回固定結果並計次的替身（0.5.0-W1-206.2）。
@@ -538,6 +550,61 @@ void main() {
       // （同樣渲染 SwimlaneGrid，但額外渲染 BadgeRow.legend）的鑑別點。
       expect(find.byType(BadgeRow), findsNothing);
       expectNoOverflow(tester);
+    });
+  });
+
+  group('泳道 · 投影準備中 state-domain-swimlane-projection-pending（§4 #42）', () {
+    // 真實檔案 I/O 不可在 testWidgets 的 fake async 內等待，於 setUpAll 載入。
+    late final dynamic pendingSnapshotEvent;
+    setUpAll(() async {
+      pendingSnapshotEvent = await loadSnapshotEvent(
+        'graph_project_docs_manager',
+      );
+    });
+
+    testWidgets('渲染該狀態後切回矩陣 → state-domain-matrix', (tester) async {
+      await pumpApp(
+        tester,
+        settle: false,
+        overrides: _pendingOverrides(() => null),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(
+        AnchorFinder.state(Screen.domain, 'swimlane-projection-pending'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('mode-domain-matrix')));
+      await tester.pump();
+      await tester.pump();
+      expect(AnchorFinder.state(Screen.domain, 'matrix'), findsOneWidget);
+    });
+
+    testWidgets('首次輪次完成 → 轉為 swimlane 或 swimlane-unstructured', (
+      tester,
+    ) async {
+      final round = fakeRound(event: pendingSnapshotEvent);
+      await pumpApp(
+        tester,
+        settle: false,
+        overrides: _pendingOverrides(() => round),
+      );
+      for (var i = 0; i < 5; i++) {
+        await tester.pump();
+      }
+      final pendingKey = AnchorFinder.state(
+        Screen.domain,
+        'swimlane-projection-pending',
+      );
+      expect(pendingKey, findsNothing);
+      final landed =
+          AnchorFinder.state(Screen.domain, 'swimlane').evaluate().isNotEmpty ||
+          AnchorFinder.state(
+            Screen.domain,
+            'swimlane-unstructured',
+          ).evaluate().isNotEmpty;
+      expect(landed, isTrue);
     });
   });
 
