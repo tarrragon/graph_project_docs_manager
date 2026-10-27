@@ -83,7 +83,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('首頁啟動煙霧測試', () {
-    testWidgets('App 能啟動並抵達首頁，且無任何 framework 錯誤', (tester) async {
+    itWidgets('App 能啟動並抵達首頁，且無任何 framework 錯誤', (tester) async {
       final errors = await _pumpAppAndCollectErrors(tester);
 
       expect(
@@ -95,7 +95,7 @@ void main() {
     });
 
     for (final viewport in kViewports) {
-      testWidgets('${viewport.name} (${viewport.size.width.toInt()}'
+      itWidgets('${viewport.name} (${viewport.size.width.toInt()}'
           'x${viewport.size.height.toInt()}) 下版面無溢位', (tester) async {
         _applyViewport(tester, viewport);
 
@@ -108,7 +108,7 @@ void main() {
   });
 
   group('錯誤收集器正向對照（E2）', () {
-    testWidgets('未捕捉的非同步錯誤被收集且原文出現在失敗訊息', (tester) async {
+    itWidgets('未捕捉的非同步錯誤被收集且原文出現在失敗訊息', (tester) async {
       const marker = 'W1-442 故意拋出的非同步錯誤';
       final errors = await _pumpAppAndCollectErrors(
         tester,
@@ -126,6 +126,36 @@ void main() {
         ),
       );
     });
+
+    // 0.5.0-W1-479.1 E2：永不收斂的畫面須在逾時內以步驟名稱失敗，而非空等。
+    itWidgets('永不收斂的畫面在步驟逾時內失敗並指名步驟', (tester) async {
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      Object? caught;
+      try {
+        await settleGuarded(
+          tester,
+          'W1-479.1 正向對照步驟',
+          timeout: const Duration(seconds: 2),
+        );
+      } on TestFailure catch (e) {
+        caught = e;
+      }
+      expect(
+        caught,
+        isA<TestFailure>().having(
+          (e) => e.message,
+          'message',
+          contains('W1-479.1 正向對照步驟'),
+        ),
+        reason: '永不收斂時 settleGuarded 必須失敗且訊息含步驟名稱',
+      );
+    });
   });
 
   group('多語系', () {
@@ -137,7 +167,7 @@ void main() {
     ];
 
     for (final (locale, expectedTitle) in cases) {
-      testWidgets('以 ${locale.languageCode} 啟動時顯示對應語系文案', (tester) async {
+      itWidgets('以 ${locale.languageCode} 啟動時顯示對應語系文案', (tester) async {
         final errors = await _pumpAppAndCollectErrors(tester, locale: locale);
 
         expect(
@@ -163,7 +193,7 @@ void main() {
     };
 
     cases.forEach((label, state) {
-      testWidgets('$label 狀態在最窄視窗下不溢位', (tester) async {
+      itWidgets('$label 狀態在最窄視窗下不溢位', (tester) async {
         _applyViewport(tester, kViewports.first);
 
         final errors = await _pumpAppAndCollectErrors(
@@ -183,7 +213,7 @@ void main() {
     // 內含內建版本的 tracking_schema.json 與最小 docs 語料。
     // 不涵蓋真實磁碟上的 gate 偵測（見 0.3.3-W3-383 Problem Analysis）。
     for (final viewport in kViewports) {
-      testWidgets('${viewport.name} (${viewport.size.width.toInt()}'
+      itWidgets('${viewport.name} (${viewport.size.width.toInt()}'
           'x${viewport.size.height.toInt()}) 矩陣狀態無溢位', (tester) async {
         _applyViewport(tester, viewport);
         final builtinVersion = await _readBuiltinSchemaVersion();
@@ -213,7 +243,7 @@ void main() {
   group('scan_notifier 原生端接線', () {
     const MethodChannel channel = MethodChannel(scanNotifierChannelName);
 
-    testWidgets('withdraw 有原生端回應（handler 已註冊）', (tester) async {
+    itWidgets('withdraw 有原生端回應（handler 已註冊）', (tester) async {
       final error = await _invokeAndCaptureError(
         () => channel.invokeMethod<void>('withdraw'),
       );
@@ -228,7 +258,7 @@ void main() {
       expect(error, isNull, reason: 'withdraw 不應拋出任何例外');
     });
 
-    testWidgets('authorizationStatus 回傳真實授權狀態而非接線失敗', (tester) async {
+    itWidgets('authorizationStatus 回傳真實授權狀態而非接線失敗', (tester) async {
       String? status;
       final error = await _invokeAndCaptureError(() async {
         status = await channel.invokeMethod<String>('authorizationStatus');
@@ -261,7 +291,7 @@ void main() {
       }
     });
 
-    testWidgets('開啟真實檔案', (tester) async {
+    itWidgets('開啟真實檔案', (tester) async {
       final file = File('${tempDir.path}/probe.txt')
         ..writeAsStringSync('probe');
       final opener = MacosExternalOpener();
@@ -276,7 +306,7 @@ void main() {
       expect(result, ExternalOpenResult.opened);
     }, skip: !_runProbe);
 
-    testWidgets('開啟真實目錄', (tester) async {
+    itWidgets('開啟真實目錄', (tester) async {
       final opener = MacosExternalOpener();
 
       final result = await opener.open(tempDir.path);
@@ -346,27 +376,10 @@ void _applyViewport(WidgetTester tester, Viewport viewport) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
-/// settle 的明確逾時。
-///
-/// pumpAndSettle 預設逾時 10 分鐘；狀態停在無限進度動畫時會空等整段時間
-/// 才失敗。首幀 settle 正常只需數秒，30 秒內未靜止即視為異常。
-const Duration kSettleTimeout = Duration(seconds: 30);
-
-/// 以短逾時 settle；逾時時改拋帶情境的訊息，指出疑似停在無限動畫。
-Future<void> _settleOrFailFast(WidgetTester tester) async {
-  try {
-    await tester.pumpAndSettle(
-      const Duration(milliseconds: 100),
-      EnginePhase.sendSemanticsUpdate,
-      kSettleTimeout,
-    );
-  } on FlutterError catch (e) {
-    throw TestFailure(
-      '啟動後 ${kSettleTimeout.inSeconds} 秒內畫面未靜止，疑似停在無限進度'
-      '動畫（例如狀態卡在載入中）：${e.message}',
-    );
-  }
-}
+/// 啟動後 settle，走 [settleGuarded]：涵蓋「不送幀」（Future 逾時）與
+/// 「永不收斂」（無限進度動畫）兩種卡住形態，失敗訊息帶步驟名稱。
+Future<void> _settleOrFailFast(WidgetTester tester) =>
+    settleGuarded(tester, '啟動後 settle（疑似停在無限進度動畫或不送幀）');
 
 /// 啟動 App 並攔截這段期間所有 framework 錯誤。
 ///
