@@ -78,11 +78,8 @@ void main() {
 
             final text = tester.widget<Text>(find.byType(Text));
             if (variant == AppTextVariant.body) {
-              expect(
-                text.overflow,
-                TextOverflow.clip,
-                reason: '無上限不可設 ellipsis，否則引擎只畫一行',
-              );
+              expect(text.overflow, TextOverflow.ellipsis,
+                  reason: '預設建構子過渡期維持舊行為');
               expect(text.softWrap, isTrue, reason: 'body 可換行');
               expect(text.maxLines, isNull, reason: 'body 預設無行數上限');
             } else {
@@ -152,6 +149,16 @@ void main() {
       final multi = tester.getSize(find.byType(AppText)).height;
       expect(multi, greaterThan(oneLine), reason: '多行高度應大於單行');
       expect(tester.widget<Text>(find.text(long)).softWrap, isTrue);
+    });
+
+    testWidgets('預設建構子 body 不傳 maxLines 時高度等於單行', (tester) async {
+      await pumpHarness(
+        tester,
+        child: narrow(const AppText.singleLine(long)),
+      );
+      final oneLine = tester.getSize(find.byType(AppText)).height;
+      await pumpHarness(tester, child: narrow(const AppText(long)));
+      expect(tester.getSize(find.byType(AppText)).height, oneLine);
     });
 
     testWidgets('multiLine 有 maxLines 時限行並省略號', (tester) async {

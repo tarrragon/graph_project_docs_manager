@@ -65,7 +65,8 @@ class AppText extends StatelessWidget {
     this.secondary = false,
     this.tone,
     this.textAlign,
-  }) : _forceSingleLine = false;
+  })  : _forceSingleLine = false,
+        _explicitWrap = false;
 
   /// 明示單行：恆一行、超出以省略號截斷（任一變體，預設 `body`）。
   ///
@@ -79,7 +80,8 @@ class AppText extends StatelessWidget {
     this.tone,
     this.textAlign,
   })  : maxLines = 1,
-        _forceSingleLine = true;
+        _forceSingleLine = true,
+        _explicitWrap = false;
 
   /// 明示多行：`body` 變體，`maxLines` 必填——`null` 為無上限（真的換行），
   /// 整數為限行、超出末行省略號。漏傳在編譯期暴露。
@@ -92,13 +94,15 @@ class AppText extends StatelessWidget {
     this.tone,
     this.textAlign,
   })  : variant = AppTextVariant.body,
-        _forceSingleLine = false;
+        _forceSingleLine = false,
+        _explicitWrap = true;
 
   const AppText._(
     this.text, {
     required this.variant,
     required this.maxLines,
     required this._forceSingleLine,
+    required this._explicitWrap,
     required this.emphasis,
     required this.secondary,
     required this.tone,
@@ -106,6 +110,9 @@ class AppText extends StatelessWidget {
   });
 
   final bool _forceSingleLine;
+
+  /// 僅 [AppText.multiLine] 為真：明示換行，無上限時 overflow 用 clip。
+  final bool _explicitWrap;
 
   /// 顯示文字，唸出全文（截斷不影響朗讀）。
   final String text;
@@ -116,7 +123,8 @@ class AppText extends StatelessWidget {
   /// 僅 [AppTextVariant.body] 生效：限制最大行數，超出末行截斷；`null`
   /// 為無上限。其餘變體固定單行，此參數被忽略。
   ///
-  /// 預設建構子漏傳即 `null`（過渡路徑，`0.5.0-W1-508.8` 移除）；新程式碼
+  /// 預設建構子過渡期維持舊行為（body 未傳即單行省略號，`0.5.0-W1-508.8`
+  /// 移除）；新程式碼
   /// 一律用 [AppText.singleLine] 或 [AppText.multiLine] 明示行數政策。
   final int? maxLines;
 
@@ -143,6 +151,7 @@ class AppText extends StatelessWidget {
         variant: variant,
         maxLines: maxLines,
         forceSingleLine: _forceSingleLine,
+        explicitWrap: _explicitWrap,
         emphasis: emphasis ?? this.emphasis,
         secondary: secondary,
         tone: tone ?? this.tone,
@@ -165,11 +174,12 @@ class AppText extends StatelessWidget {
         textAlign: textAlign,
         softWrap: !_isSingleLine,
         maxLines: _isSingleLine ? 1 : maxLines,
-        // 無行數上限時不能設 ellipsis：引擎會把省略號當成單行截斷，
-        // 長文只畫一行（508 根因）。
-        overflow: _isSingleLine || maxLines != null
-            ? TextOverflow.ellipsis
-            : TextOverflow.clip,
+        // 無行數上限時 ellipsis 會被引擎當成單行截斷（508 根因），故明示
+        // 換行（multiLine）且無上限時用 clip。預設建構子過渡期維持舊行為
+        // （一律 ellipsis），508.8 移除。
+        overflow: _explicitWrap && maxLines == null
+            ? TextOverflow.clip
+            : TextOverflow.ellipsis,
       ),
     );
   }

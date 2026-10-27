@@ -1004,7 +1004,7 @@ EVT-CORPUS-004 項目說明：
 | `text`（`caption`） | 否 | 1 | 截斷 | `noGapsScanScope`（en 較長）；`TestCopy.longZh` |
 | `text`（`mono`） | 否 | 1 | 截斷 | `TestCopy.filePath`；`TestCopy.longToken` |
 
-呼叫端不得傳入比本表更寬鬆的處置（`softWrap` / `overflow` 不開放為參數）；`body` 只開放 `maxLines`，且必須以 `AppText.multiLine` 或 `AppText.singleLine` 明示（`0.5.0-W1-508.1`）。截斷責任歸屬：由呼叫端承擔，元件不依內容自行猜測；過渡期保留的預設建構子漏傳 `maxLines` 等同無上限，於 `0.5.0-W1-508.8` 移除。
+呼叫端不得傳入比本表更寬鬆的處置（`softWrap` / `overflow` 不開放為參數）；`body` 只開放 `maxLines`，且必須以 `AppText.multiLine` 或 `AppText.singleLine` 明示（`0.5.0-W1-508.1`）。截斷責任歸屬：由呼叫端承擔，元件不依內容自行猜測；過渡期保留的預設建構子維持舊行為（所有變體 `ellipsis`，body 未傳 `maxLines` 為單行省略號），於 `0.5.0-W1-508.8` 移除；僅 `multiLine(maxLines: null)` 用 `clip` 真的換行。
 
 #### slot 契約
 
