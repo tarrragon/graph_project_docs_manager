@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:integration_test/integration_test.dart';
@@ -37,15 +38,25 @@ void main() {
 
   for (final variant in kCaptureVariants) {
     for (final locale in kCaptureLocales) {
-      testWidgets('擷取 ${variant.id}/${locale.languageCode}', (tester) async {
-        final fixture = UxFixture(
-          snapshot: 'graph_project_docs_manager',
-          locale: locale,
-        );
-        await fixture.materialize();
-        addTearDown(fixture.dispose);
-        await _capture(tester, fixture, variant);
-      });
+      for (final destination in AppDestination.values) {
+        // 長標題變體以 wrapApp 取代整個 App，與畫面無關；各畫面輸出會完全相同。
+        if (variant == kLongTitleVariant &&
+            destination != AppDestination.domain) {
+          continue;
+        }
+        final title = destination == AppDestination.domain
+            ? '擷取 ${variant.id}/${locale.languageCode}'
+            : '擷取 ${variant.id}/${destination.name}/${locale.languageCode}';
+        testWidgets(title, (tester) async {
+          final fixture = UxFixture(
+            snapshot: 'graph_project_docs_manager',
+            locale: locale,
+          );
+          await fixture.materialize();
+          addTearDown(fixture.dispose);
+          await _capture(tester, fixture, variant, destination);
+        });
+      }
     }
   }
 
@@ -198,6 +209,7 @@ Future<void> _capture(
   WidgetTester tester,
   UxFixture fixture,
   UxVariant variant,
+  AppDestination destination,
 ) async {
   tester.view
     ..devicePixelRatio = kCaptureDpr
@@ -206,7 +218,14 @@ Future<void> _capture(
   addTearDown(tester.view.resetDevicePixelRatio);
 
   final boundaryKey = GlobalKey();
-  final overrides = [...await fixtureOverrides(), ...variant.overrides];
+  // 切換方式：以 provider 初值指定畫面（確定性高、不經導覽動畫）。
+  // 落地畫面不加 override，維持與本票前相同的 widget 樹。
+  final overrides = [
+    ...await fixtureOverrides(),
+    ...variant.overrides,
+    if (destination != AppDestination.domain)
+      selectedDestinationProvider.overrideWith((ref) => destination),
+  ];
   await tester.pumpWidget(
     RepaintBoundary(
       key: boundaryKey,
@@ -243,14 +262,17 @@ Future<void> _capture(
   }))!;
 
   final coords = _collectInteractive(tester);
-  final dir = Directory('${_repoRoot()}/build/ux_capture/${variant.id}')
-    ..createSync(recursive: true);
+  final base = '${_repoRoot()}/build/ux_capture/${variant.id}';
+  final dir = Directory(
+    destination == AppDestination.domain ? base : '$base/${destination.name}',
+  )..createSync(recursive: true);
   final name = fixture.locale.languageCode;
   final pngFile = File('${dir.path}/$name.png')..writeAsBytesSync(png.bytes);
   final sha = await _sha256(pngFile.path);
   File('${dir.path}/$name.coords.json').writeAsStringSync(
     const JsonEncoder.withIndent('  ').convert({
       'variant': variant.id,
+      'destination': destination.name,
       'locale': name,
       'devicePixelRatio': kCaptureDpr,
       'logicalSize': [kCaptureLogicalSize.width, kCaptureLogicalSize.height],
