@@ -7,7 +7,7 @@ import { DISPATCH_ACTIVE_PATH, dispatchRows } from './parse'
 
 /**
  * 應列出的派發列，依線號排序、其他最後。派發紀錄讀取失敗時沒有派發列；sessions 讀不到時無從判定存活，同樣沒有。
- * 349 或閘門紀錄讀不到時照樣列出：線一律歸其他、不判定閘門。
+ * 協調票或閘門紀錄讀不到時照樣列出：線一律歸其他、不判定閘門。
  */
 export function dispatchRowsOf(board: ReadyBoard): DispatchRow[] {
   if (board.dispatches.kind === 'error' || board.sessions.kind === 'error') return []
