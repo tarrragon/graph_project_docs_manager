@@ -14,6 +14,7 @@
 /// 驗的是關聯右欄的標示，不是入口。
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -84,9 +85,76 @@ const _balanceColumns = {
   'periodic-inventory': 8,
 };
 
+/// 單一 pump／settle 步驟的逾時（0.5.0-W1-479.1）。
+///
+/// pump 要等引擎送來一幀才返回；App 不在前景時 macOS 不送幀，會無限等待，
+/// 而 IntegrationTest binding 的 defaultTestTimeout 為 Timeout.none。步驟逾時
+/// 讓卡住變成帶步驟名稱的失敗。須小於 [kItTestTimeout]。
+const Duration kPumpStepTimeout = Duration(seconds: 12);
+
+/// 外層 Future 逾時相對步驟逾時的寬限（見 [settleGuarded]）。
+const Duration kPumpGrace = Duration(seconds: 4);
+
+/// 單一整合測試案例的逾時；案例總數乘此值須小於閘門套件逾時（900 秒）。
+const Timeout kItTestTimeout = Timeout(Duration(seconds: 20));
+
+/// 帶逾時的 testWidgets：每個案例都有明確 timeout。
+void itWidgets(
+  String description,
+  WidgetTesterCallback callback, {
+  bool skip = false,
+}) {
+  testWidgets(description, callback, skip: skip, timeout: kItTestTimeout);
+}
+
+/// 帶逾時的 pumpAndSettle；逾時或不收斂時以 [step] 指名失敗。
+Future<void> settleGuarded(
+  WidgetTester tester,
+  String step, {
+  Duration timeout = kPumpStepTimeout,
+}) async {
+  try {
+    await tester
+        .pumpAndSettle(
+          const Duration(milliseconds: 100),
+          EnginePhase.sendSemanticsUpdate,
+          timeout,
+        )
+        // 外層逾時只是「不送幀」的最後防線，須晚於 pumpAndSettle 自身逾時：
+        // 放棄進行中的 pump 會讓 LiveTestWidgetsFlutterBinding 殘留 pending
+        // frame，連帶使後續案例失敗；不收斂形態應由內層逾時乾淨收尾。
+        .timeout(timeout + kPumpGrace);
+  } on TimeoutException {
+    throw TestFailure(
+      '[$step] settle 逾時 ${(timeout + kPumpGrace).inSeconds} 秒，疑似不送幀',
+    );
+  } on FlutterError catch (e) {
+    throw TestFailure('[$step] ${timeout.inSeconds} 秒內畫面未靜止：${e.message}');
+  }
+}
+
+/// 帶逾時的固定幀數 pump；逾時時以 [step] 指名失敗。
+Future<void> pumpFramesGuarded(
+  WidgetTester tester,
+  String step, {
+  int frames = 5,
+}) async {
+  try {
+    for (var i = 0; i < frames; i++) {
+      await tester
+          .pump(const Duration(milliseconds: 100))
+          .timeout(kPumpStepTimeout);
+    }
+  } on TimeoutException {
+    throw TestFailure(
+      '[$step] pump 逾時 ${kPumpStepTimeout.inSeconds} 秒，疑似不送幀',
+    );
+  }
+}
+
 void registerDomainViewV050Tests(OpenWorkspace open) {
   group('IT-D1 矩陣三值分布', () {
-    testWidgets('ITD1-A1 本專案快照 48 格直接 19／間接 10／無關 19', (tester) async {
+    itWidgets('ITD1-A1 本專案快照 48 格直接 19／間接 10／無關 19', (tester) async {
       final workspace = await _openProject(tester, open);
 
       final cells = _matrixCells(tester);
@@ -98,7 +166,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD1-A2 間接格集合與 history 列全無關', (tester) async {
+    itWidgets('ITD1-A2 間接格集合與 history 列全無關', (tester) async {
       final workspace = await _openProject(tester, open);
 
       final cells = _matrixCells(tester);
@@ -125,7 +193,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD1-A3 列首文字逐字等於 domain 原值，切 en 不變', (tester) async {
+    itWidgets('ITD1-A3 列首文字逐字等於 domain 原值，切 en 不變', (tester) async {
       final workspace = await _openProject(tester, open);
 
       _expectRowHeaders(tester);
@@ -134,7 +202,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD1-A4 flutter_balance 間接依賴 0 格（E1 對照）', (tester) async {
+    itWidgets('ITD1-A4 flutter_balance 間接依賴 0 格（E1 對照）', (tester) async {
       final workspace = await materializeSnapshotWorkspace(_balanceSnapshot);
       await open(tester, workspace);
 
@@ -149,7 +217,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
   });
 
   group('IT-D2 泳道布局', () {
-    testWidgets('ITD2-A1 UC-02 九列列序', (tester) async {
+    itWidgets('ITD2-A1 UC-02 九列列序', (tester) async {
       final workspace = await _openProject(tester, open);
 
       await _selectUcAndShowSwimlane(tester, 'UC-02');
@@ -159,7 +227,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD2-A2 UC-02 節點欄序與列位置', (tester) async {
+    itWidgets('ITD2-A2 UC-02 節點欄序與列位置', (tester) async {
       final workspace = await _openProject(tester, open);
 
       await _selectUcAndShowSwimlane(tester, 'UC-02');
@@ -182,7 +250,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD2-A3 回指為弧線、前向為直線', (tester) async {
+    itWidgets('ITD2-A3 回指為弧線、前向為直線', (tester) async {
       final workspace = await _openProject(tester, open);
 
       await _selectUcAndShowSwimlane(tester, 'UC-02');
@@ -201,13 +269,13 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD2-A4 改選 UC-04 列序與 UC-02 相同', (tester) async {
+    itWidgets('ITD2-A4 改選 UC-04 列序與 UC-02 相同', (tester) async {
       final workspace = await _openProject(tester, open);
       await _selectUcAndShowSwimlane(tester, 'UC-02');
       final uc02Titles = _laneTitles(_swimlane(tester).lanes);
 
       await tester.tap(find.byKey(const Key('mode-domain-matrix')));
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
       await _selectUcAndShowSwimlane(tester, 'UC-04');
 
       expect(_laneTitles(_swimlane(tester).lanes), uc02Titles);
@@ -215,15 +283,15 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD2-A5 flutter_balance 三列含「未定位」（E1 對照）', (tester) async {
+    itWidgets('ITD2-A5 flutter_balance 三列含「未定位」（E1 對照）', (tester) async {
       final workspace = await materializeSnapshotWorkspace(_balanceSnapshot);
       await open(tester, workspace);
       final onlyCell = _matrixCells(tester).keys.single;
 
       await tester.tap(find.byKey(Key(onlyCell)));
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
       await tester.tap(find.byKey(const Key('mode-domain-swimlane')));
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
 
       final swimlane = _swimlane(tester);
       expect(
@@ -254,7 +322,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
   });
 
   group('IT-D3 間接格詳情卡與跳轉', () {
-    testWidgets('ITD3-A1 UC-04 × schema 間接依賴路徑兩行', (tester) async {
+    itWidgets('ITD3-A1 UC-04 × schema 間接依賴路徑兩行', (tester) async {
       final workspace = await _openProject(tester, open);
 
       await _tapCell(tester, 'schema', 'UC-04');
@@ -269,7 +337,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD3-A2 UC-06 × schema 依賴路徑一行', (tester) async {
+    itWidgets('ITD3-A2 UC-06 × schema 依賴路徑一行', (tester) async {
       final workspace = await _openProject(tester, open);
 
       await _tapCell(tester, 'schema', 'UC-06');
@@ -280,12 +348,12 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD3-A3 UC-04 × schema 在泳道中檢視定位到 graph 列最小欄節點', (tester) async {
+    itWidgets('ITD3-A3 UC-04 × schema 在泳道中檢視定位到 graph 列最小欄節點', (tester) async {
       final workspace = await _openProject(tester, open);
       await _tapCell(tester, 'schema', 'UC-04');
 
       await tester.tap(find.byKey(const Key('action-domain-cell-goto-swimlane')));
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
 
       final container = _container(tester);
       expect(container.read(selectedUcProvider), 'UC-04');
@@ -303,25 +371,25 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD3-A4 直接貫穿與無關格無依賴路徑（E1 對照）', (tester) async {
+    itWidgets('ITD3-A4 直接貫穿與無關格無依賴路徑（E1 對照）', (tester) async {
       final workspace = await _openProject(tester, open);
 
       await _tapCell(tester, 'graph', 'UC-04');
       expect(_dependencyPathTexts(tester), isEmpty);
       await tester.tap(find.byKey(const Key('action-domain-cell-goto-swimlane')));
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
       final ready = _container(tester).read(domainViewStateProvider);
       expect((ready as DomainReady).swimlaneFocus?.domainId, '${_bundlePrefix}graph');
       expect(ready.swimlaneFocus?.column, isNull, reason: '直接貫穿格只落在該列');
 
       await tester.tap(find.byKey(const Key('mode-domain-matrix')));
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
       await _tapCell(tester, 'history', 'UC-04');
       expect(_dependencyPathTexts(tester), isEmpty);
       await workspace.delete(recursive: true);
     });
 
-    testWidgets('ITD3-A5 節點詳情 bundle_dependency 關聯有「暫定」、established 邊型沒有（E1 對照）', (
+    itWidgets('ITD3-A5 節點詳情 bundle_dependency 關聯有「暫定」、established 邊型沒有（E1 對照）', (
       tester,
     ) async {
       final workspace = await _openProject(tester, open);
@@ -336,7 +404,7 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       container.read(nodeDetailStateProvider.notifier).state =
           const NodeDetailReady(nodeId: nodeId);
       navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
-      await tester.pumpAndSettle();
+      await settleGuarded(tester, 'pumpAndSettle');
 
       final label = AppLocalizations.of(
         tester.element(find.byKey(const Key('state-nodeDetail-normal'))),
@@ -417,13 +485,13 @@ Future<void> _tapCell(WidgetTester tester, String domain, String uc) async {
   final key = Key('$_cellPrefix$domain-$uc');
   await tester.ensureVisible(find.byKey(key));
   await tester.tap(find.byKey(key));
-  await tester.pumpAndSettle();
+  await settleGuarded(tester, 'pumpAndSettle');
 }
 
 Future<void> _selectUcAndShowSwimlane(WidgetTester tester, String uc) async {
   await _tapCell(tester, _firstDomainOf(tester), uc);
   await tester.tap(find.byKey(const Key('mode-domain-swimlane')));
-  await tester.pumpAndSettle();
+  await settleGuarded(tester, 'pumpAndSettle');
 }
 
 String _firstDomainOf(WidgetTester tester) =>
