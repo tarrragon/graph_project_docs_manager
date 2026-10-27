@@ -41,6 +41,14 @@ created: 2026-10-27
 
 本案的方向是多擋（fail-closed），代價是合法提交被擋、阻塞產品線。反方向同樣成立：若調整的是收緊（新增擋下條件），沒跟上的執行點會靜默放行，而且沒有任何訊號。
 
+### 變體：同一執行點在各 worktree 有不同版本的守衛副本
+
+git hook 的 shim 以 `git rev-parse --show-toplevel` 定位守衛腳本，所以在 linked worktree 內提交時，跑的是**該 worktree 分支上的守衛程式**，不是 main 上的版本。守衛的修正合併進 main 之後，分出時間早於這次合併的 worktree 仍跑舊判定：同樣的提交在主 checkout 會放行，在舊 worktree 會被擋。
+
+實例：修正 commit 層豁免的票合併後，另一張早已派發、等著提交的票在自己的 worktree 重跑提交，仍被舊版守衛擋下。把 main 快轉（或合併）進該 worktree 分支後才通過。
+
+處置：守衛修正合併後，等待提交的 worktree 先同步 main 再重試；分支有自己的 commit 時，以合併同步，不用 rebase 改寫已回報的 commit。
+
 ## 解決方案
 
 1. 以守衛模組名稱 grep 全部載入點（`_load_module(..., "<guard>.py")`、`import`），列出每個執行點實際呼叫的判定函式
