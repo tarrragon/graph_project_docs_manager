@@ -99,4 +99,104 @@ void main() {
     expect(markerColor(tester), const Color(0xFF00AA00));
     expect(markerColor(tester), isNot(base));
   });
+
+  Widget tree() => Tree(
+    expanded: const {},
+    onToggle: (_) {},
+    nodes: [
+      TreeNode(
+        id: 'n',
+        depth: 2,
+        row: ListRow.tree(
+          leading: const SizedBox(),
+          primary: const AppText('r'),
+          onTap: () {},
+          testKey: const ValueKey('row'),
+        ),
+      ),
+    ],
+  );
+
+  testWidgets('樹縮排：不注入為 LayoutSize.treeIndent，注入後不同', (tester) async {
+    await pumpHarness(tester, child: tree());
+    final base = tester.getTopLeft(find.byKey(const ValueKey('row'))).dx;
+
+    await pumpHarness(
+      tester,
+      child: DesignOverrides(treeIndent: 60, child: tree()),
+    );
+    final changed = tester.getTopLeft(find.byKey(const ValueKey('row'))).dx;
+    expect(changed, isNot(base));
+    expect(changed, greaterThan(base));
+  });
+
+  Widget expander() => const ExpanderIcon(
+    isExpanded: false,
+    testKey: ValueKey('ex'),
+  );
+
+  IconData expanderIconData(WidgetTester tester) => tester
+      .widget<Icon>(
+        find.descendant(
+          of: find.byKey(const ValueKey('ex')),
+          matching: find.byType(Icon),
+        ),
+      )
+      .icon!;
+
+  testWidgets('展開圖示：不注入為預設箭頭，注入後不同', (tester) async {
+    await pumpHarness(tester, child: expander());
+    final base = expanderIconData(tester);
+    expect(base, Icons.keyboard_arrow_right);
+
+    await pumpHarness(
+      tester,
+      child: DesignOverrides(
+        expanderIconCollapsed: Icons.add,
+        child: expander(),
+      ),
+    );
+    expect(expanderIconData(tester), Icons.add);
+    expect(expanderIconData(tester), isNot(base));
+  });
+
+  Widget filter() => FilterDropdown(
+    label: 'L',
+    options: const [FilterOption(value: 'a', label: 'A')],
+    selected: null,
+    onChanged: (_) {},
+    testKey: const ValueKey('fd'),
+    screen: 'tickets',
+    kind: 'filter-status',
+  );
+
+  BoxDecoration filterDecoration(WidgetTester tester) {
+    final c = tester.widget<Container>(
+      find.descendant(
+        of: find.byType(FilterDropdown),
+        matching: find.byWidgetPredicate(
+          (w) => w is Container && w.decoration is BoxDecoration,
+        ),
+      ),
+    );
+    return c.decoration! as BoxDecoration;
+  }
+
+  testWidgets('篩選下拉配色：不注入為原 token，注入後不同', (tester) async {
+    await pumpHarness(tester, child: filter());
+    final base = filterDecoration(tester);
+    expect(base.color, AppColors.surfaceBase);
+
+    await pumpHarness(
+      tester,
+      child: DesignOverrides(
+        filterDropdownColors: const FilterDropdownColorOverride(
+          background: Color(0xFF223344),
+        ),
+        child: filter(),
+      ),
+    );
+    expect(filterDecoration(tester).color, const Color(0xFF223344));
+    expect(filterDecoration(tester).color, isNot(base.color));
+  });
 }

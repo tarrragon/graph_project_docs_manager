@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
+import 'design_overrides.dart';
 
 /// 展開觸發器。
 ///
@@ -88,6 +89,10 @@ class _ExpanderIconState extends State<ExpanderIcon> {
     }
 
     final l10n = AppLocalizations.of(context);
+    final overrides = DesignOverrides.maybeOf(context);
+    final icon = widget.isExpanded
+        ? (overrides?.expanderIconExpanded ?? Icons.keyboard_arrow_down)
+        : (overrides?.expanderIconCollapsed ?? Icons.keyboard_arrow_right);
 
     return Semantics(
       key: widget.testKey,
@@ -130,9 +135,7 @@ class _ExpanderIconState extends State<ExpanderIcon> {
                 borderRadius: BorderRadius.circular(Radius.sm),
                 child: Center(
                   child: Icon(
-                    widget.isExpanded
-                        ? Icons.keyboard_arrow_down
-                        : Icons.keyboard_arrow_right,
+                    icon,
                     size: LayoutSize.iconSm,
                     color: AppColors.textDisabled,
                   ),
