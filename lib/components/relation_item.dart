@@ -30,7 +30,7 @@ class RelationItem extends StatefulWidget {
     required this.id,
     this.isMono = true,
     this.isProposed = false,
-    required this.onTap,
+    this.onTap,
     required this.testKey,
   });
 
@@ -46,7 +46,7 @@ class RelationItem extends StatefulWidget {
 
   /// 點選回呼；呼叫端依所在情境決定行為（替換主欄／jump 至 Domain 視圖／
   /// 跳轉破洞報告）。
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   /// 呼叫端定址 key（`card-nodeDetail-relation-<nodeId>` /
   /// `action-ucFlow-goto-domain-<domainId>`，SPEC-004 4.19 slot 契約）。
@@ -84,6 +84,7 @@ class _RelationItemState extends State<RelationItem> {
     return Semantics(
       key: widget.testKey,
       button: true,
+      onTap: widget.onTap,
       // badge 併入 chip 標籤，不另朗讀（SPEC-004 4.19）。
       excludeSemantics: true,
       label: widget.isProposed
