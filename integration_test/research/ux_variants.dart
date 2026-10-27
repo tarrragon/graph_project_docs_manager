@@ -11,8 +11,12 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' hide Badge;
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
+import 'package:graph_project_docs_manager/main.dart' show kDesignSize;
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
@@ -45,6 +49,72 @@ Widget _identity(Widget app) => app;
 
 /// 第一批唯一的版本：未經覆寫的原設計。
 const UxVariant kOriginalVariant = UxVariant(id: 'original');
+
+/// 長標題變體（0.5.0-W1-505）：以真實元件直接組出三處超長文字，不經畫面資料。
+///
+/// ticket_list 的 SplitRow 左格是 l10n 字串、清單資料為固定假資料，overrides
+/// 無法注入長文字，故由 [wrapApp] 以同一套 ScreenUtil／l10n／Theme 外殼承載
+/// 真實的 SplitRow.footer、AppTableRow.ticket、ListRow.item，內容區寬度取
+/// 1280 減側欄 172。每處各一筆中文無空白長字串與一筆英文長字串。
+const UxVariant kLongTitleVariant = UxVariant(
+  id: 'long_title',
+  wrapApp: _longTitleHarness,
+);
+
+const String _zhLong =
+    '這是一段沒有任何空白的超長中文標題用來測試固定列高下的呈現方式是換行還是溢出還是被裁切掉了'
+    '而且還要更長一些以確保超過任何合理的欄寬上限所以再接續一整段沒有空白的文字'
+    '直到寬度遠遠超過一千一百邏輯像素為止這樣每一處元件都會碰到自己的邊界';
+const String _enLong =
+    'This is an extremely long English title that keeps going well beyond any reasonable column '
+    'width so that we can observe wrapping overflow or clipping behavior in a fixed height row';
+
+Widget _longTitleHarness(Widget _) => ScreenUtilInit(
+  designSize: kDesignSize,
+  minTextAdapt: true,
+  splitScreenMode: false,
+  builder: (context, child) => MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    debugShowCheckedModeBanner: false,
+    home: child,
+  ),
+  child: Scaffold(
+    body: Align(
+      alignment: Alignment.topRight,
+      child: SizedBox(
+        width: 1280 - 172,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final text in const [_zhLong, _enLong]) ...[
+              SplitRow.footer(
+                leading: AppText(text),
+                trailing: const AppText('trailing'),
+              ),
+              AppTableRow.ticket(
+                id: const AppText('0.5.0-W1-505', variant: AppTextVariant.mono),
+                title: AppText(text),
+                status: const Badge.status(label: 'in_progress'),
+                priority: const AppText('P3', variant: AppTextVariant.caption),
+                blockedBy: const AppText('—', variant: AppTextVariant.mono),
+                onTap: () {},
+                testKey: Key('long-ticket-${text.length}'),
+              ),
+              ListRow.item(
+                primary: AppText(text),
+                onTap: () {},
+                testKey: Key('long-list-${text.length}'),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ],
+        ),
+      ),
+    ),
+  ),
+);
 
 /// 同一份 fixture 狀態：凍結快照實體化出的真實工作區 + 固定語系。
 class UxFixture {

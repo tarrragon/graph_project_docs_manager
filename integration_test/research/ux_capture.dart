@@ -29,7 +29,7 @@ import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 import 'ux_variants.dart';
 
 /// 要擷取的版本；第二批在此加入壞版本。
-const List<UxVariant> kCaptureVariants = [kOriginalVariant];
+const List<UxVariant> kCaptureVariants = [kOriginalVariant, kLongTitleVariant];
 const List<Locale> kCaptureLocales = [Locale('zh'), Locale('en')];
 
 void main() {
