@@ -2,8 +2,9 @@
 # 宣告取代內建 Flutter 預設，故 flutter 與 line-board 兩個套件都必須寫出。
 suites:
   flutter:
-    prefixes: [lib/, test/, integration_test/, macos/, docs/, assets/]
-    files: [pubspec.yaml, pubspec.lock, l10n.yaml, analysis_options.yaml]
+    prefixes: [lib/, test/, integration_test/, macos/, docs/spec/, assets/]
+    files: [pubspec.yaml, pubspec.lock, l10n.yaml, analysis_options.yaml,
+            .claude/project-integration/merge-gate.yaml]
     command: [fvm, flutter, test]
     artifacts:
       - path: .dart_tool/package_config.json
