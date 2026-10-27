@@ -27,6 +27,7 @@ import {
   parseFrontmatterStatus,
   parseFrontmatterTitle,
   parseLanes,
+  parseProjectConfig,
   parseSessionFile,
   parseWorktreePaths,
   sessionStatusFileNames,
@@ -53,22 +54,6 @@ export async function readProjectConfig($: EngineInterface, mainPath: string): P
   const config = parseProjectConfig(text)
   if (config.kind !== 'ok') $.ui.log(`line-board: ${PROJECT_CONFIG_PATH} 設定不成立（${config.kind}），不讀協調票`, { to: 'debug' })
   return config
-}
-
-/** 專案設定檔內容的判定：須為 JSON 物件，coordinationTicket 為可推導出短票號前綴的完整票號（shared.ts ticketPrefixOf）。 */
-function parseProjectConfig(text: string): ProjectConfigResult {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch (error) {
-    return { kind: 'invalid-json', message: messageOf(error) }
-  }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed) || !('coordinationTicket' in parsed)) {
-    return { kind: 'missing-field' }
-  }
-  const value: unknown = parsed.coordinationTicket
-  if (typeof value !== 'string' || ticketPrefixOf(value) === null) return { kind: 'invalid-format', value }
-  return { kind: 'ok', coordinationTicket: value }
 }
 
 /** 一張票的票檔讀取結果：ok 為內容；error 為讀不到時的票檔路徑（相對 repo root，不是票號時為票號本身）與原因。 */

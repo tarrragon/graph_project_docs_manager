@@ -1,5 +1,7 @@
-// 各 domain 共用的小工具：票號前綴與票檔位置、票狀態常數、票檔 frontmatter 的狀態與 title 解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
+// 各 domain 共用的小工具：票號前綴與票檔位置、專案設定檔內容的判定、票狀態常數、票檔 frontmatter 的狀態與 title 解析、checkout 路徑判定、距今時間的顯示、例外的訊息文字。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
+
+import type { ProjectConfigResult } from '../types'
 
 /** 票號拆成版本與 wave 之後的部分：`<版本>-W<wave>-<序號>`，序號可帶任意層 `.n` 子序號。版本只要求不為空，major.minor 的解析交給呼叫端。 */
 const TICKET_ID = /^(.+?)-(W\d+-)\d+(?:\.\d+)*$/
@@ -36,6 +38,25 @@ export function resolveTicketFile(ticketId: string, exists: (path: string) => bo
 export function ticketPrefixOf(coordinatorId: string): string | null {
   const match = TICKET_ID.exec(coordinatorId)
   return match === null ? null : `${match[1]}-${match[2]}`
+}
+
+/**
+ * 專案設定檔內容的判定：須為 JSON 物件，coordinationTicket 為可推導出短票號前綴的完整票號（ticketPrefixOf）。
+ * 只判定已讀到的文字；讀不到檔案（missing）由 readers.ts readProjectConfig 判定。
+ */
+export function parseProjectConfig(text: string): ProjectConfigResult {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (error) {
+    return { kind: 'invalid-json', message: messageOf(error) }
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed) || !('coordinationTicket' in parsed)) {
+    return { kind: 'missing-field' }
+  }
+  const value: unknown = parsed.coordinationTicket
+  if (typeof value !== 'string' || ticketPrefixOf(value) === null) return { kind: 'invalid-format', value }
+  return { kind: 'ok', coordinationTicket: value }
 }
 
 /** 票檔讀不到或沒有 status 欄時顯示的狀態。 */

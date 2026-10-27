@@ -1,4 +1,4 @@
-// shared.ts 的測試：checkout 路徑判定、距今時間、票檔 frontmatter 狀態與 title 解析。
+// shared.ts 的測試：票號前綴與票檔位置、專案設定檔內容的判定、checkout 路徑判定、距今時間、票檔 frontmatter 狀態與 title 解析。
 
 import { describe, expect, test } from 'claude-code/testing'
 
@@ -7,6 +7,7 @@ import {
   formatAge,
   parseFrontmatterStatus,
   parseFrontmatterTitle,
+  parseProjectConfig,
   parseWorktreePaths,
   resolveTicketFile,
   ticketFileCandidates,
@@ -67,6 +68,30 @@ describe('ticketPrefixOf', () => {
   test('不是票號時回傳 null', () => {
     expect(ticketPrefixOf('349')).toBeNull()
     expect(ticketPrefixOf('0.5.0-W1-')).toBeNull()
+  })
+})
+
+describe('parseProjectConfig', () => {
+  test('coordinationTicket 為完整票號時成立，取其值', () => {
+    expect(parseProjectConfig('{ "coordinationTicket": "0.6.0-W2-010" }')).toEqual({
+      kind: 'ok',
+      coordinationTicket: '0.6.0-W2-010',
+    })
+  })
+
+  test('JSON 無效時為 invalid-json', () => {
+    expect(parseProjectConfig('{ "coordinationTicket": ').kind).toBe('invalid-json')
+  })
+
+  test('不是 JSON 物件或缺 coordinationTicket 時為 missing-field', () => {
+    expect(parseProjectConfig('{ "otherField": "0.6.0-W2-010" }')).toEqual({ kind: 'missing-field' })
+    expect(parseProjectConfig('["0.6.0-W2-010"]')).toEqual({ kind: 'missing-field' })
+    expect(parseProjectConfig('null')).toEqual({ kind: 'missing-field' })
+  })
+
+  test('coordinationTicket 不是完整票號時為 invalid-format，帶原值', () => {
+    expect(parseProjectConfig('{ "coordinationTicket": "010" }')).toEqual({ kind: 'invalid-format', value: '010' })
+    expect(parseProjectConfig('{ "coordinationTicket": 10 }')).toEqual({ kind: 'invalid-format', value: 10 })
   })
 })
 
