@@ -449,6 +449,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view';
 
   @override
+  String get swimlaneProjectionPendingPrompt =>
+      'Preparing swimlane: this UC\'s steps appear when the scan completes';
+
+  @override
   String swimlanePanelTitle(String ucId, String ucTitle) {
     return '$ucId $ucTitle';
   }

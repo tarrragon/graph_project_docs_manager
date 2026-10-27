@@ -434,6 +434,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get swimlaneUcUnsetPrompt => '尚未選定 UC，請至矩陣點格或於 UC Flow 視圖選擇一條 UC';
 
   @override
+  String get swimlaneProjectionPendingPrompt => '泳道投影準備中，掃描完成後即顯示此 UC 的步驟';
+
+  @override
   String swimlanePanelTitle(String ucId, String ucTitle) {
     return '$ucId $ucTitle';
   }
