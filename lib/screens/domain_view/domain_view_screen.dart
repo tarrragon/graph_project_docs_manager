@@ -4,7 +4,8 @@
 /// （正常 · 矩陣／已選格／正常 · 泳道／泳道 · 尚未選定 UC／泳道 ·
 /// flow 未結構化）共用 [DomainReady]，實際子列由 [DomainReady.mode] +
 /// App 層共用值 `selectedUcProvider`（`app/selected_uc.dart`）計算，見
-/// [_readyBody]。矩陣取自 `domainMatrixProvider`、泳道取自
+/// [_ReadyBody]（最後完成輪次建圖不可用時改落「圖不可用」列，見
+/// [_GraphUnavailableBody]）。矩陣取自 `domainMatrixProvider`、泳道取自
 /// `domainSwimlaneProvider`（兩者同讀最後完成輪次），畫面只讀 state、不自算（`0.5.0-W1-114.21`）。
 /// 頁首模式切換（`SegmentedControl`）由 [DomainHeaderTrailing]
 /// 承載，經 `lib/app/shell.dart` 接線至 `SplitRow.header` 右格（僅
@@ -94,7 +95,7 @@ class _DomainViewScreenState extends ConsumerState<DomainViewScreen> {
     return switch (state) {
       DomainUnset() => const _UnsetView(),
       DomainLoading() => _LoadingView(state: state),
-      DomainReady() => _readyBody(state),
+      DomainReady() => _ReadyBody(state: state),
       DomainEmpty() => _EmptyView(state: state),
       DomainNotFramework() => const _NotFrameworkView(),
       DomainSchemaUnconsumable() => _SchemaUnconsumableView(state: state),
@@ -386,9 +387,74 @@ class _SchemaIncompatibleView extends ConsumerWidget {
 /// flow 未結構化五列的共用渲染入口：純依 [DomainReady.mode] 分派子件，
 /// 不在頁面層另組合排版容器（模式切換由 [DomainHeaderTrailing] 於
 /// `SplitRow.header` 右格承載，見檔頭說明）。
-Widget _readyBody(DomainReady state) => state.mode == DomainMode.matrix
-    ? _MatrixBody(state: state)
-    : _SwimlaneBody(state: state);
+class _ReadyBody extends ConsumerWidget {
+  const _ReadyBody({required this.state});
+
+  final DomainReady state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(domainGraphUnavailableProvider)) {
+      return const _GraphUnavailableBody();
+    }
+    return state.mode == DomainMode.matrix
+        ? _MatrixBody(state: state)
+        : _SwimlaneBody(state: state);
+  }
+}
+
+/// 圖不可用（SPEC-001 §1，`0.5.0-W1-486.2`）：矩陣與泳道共用。顯示建圖不可用
+/// 原因與重新掃描；輪次進行中（本列或他頁觸發）改顯示掃描中與計數、按鈕停用，
+/// 輪次結束後依結果恢復原因文字或離開本列。選取（domain／格／UC）不在此清除。
+class _GraphUnavailableBody extends ConsumerWidget {
+  const _GraphUnavailableBody();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final round = ref.watch(scanRoundProvider);
+    final appVersion = ref
+        .watch(builtinSchemaVersionProvider)
+        .maybeWhen(data: (v) => v, orElse: () => '');
+    final running = round is ScanRoundRunning;
+    return Panel(
+      fill: EmptyState(
+        variant: EmptyStateVariant.section,
+        message: running
+            ? l10n.domainGraphUnavailableScanning
+            : l10n.domainGraphUnavailableMessage(appVersion),
+        explanation: running
+            ? l10n.gapsScanningProcessedCount(round.processedCount)
+            : null,
+        testKey: const Key('state-domain-graph-unavailable'),
+        actions: [
+          AppButton(
+            label: l10n.rescanAction,
+            variant: AppButtonVariant.secondary,
+            enabled: !running,
+            // 掃描中的原因已由列內訊息承載，不另顯示同列說明文字。
+            disabledReason: running ? '' : null,
+            onPressed: () => _rescan(ref),
+            testKey: const Key('action-domain-rescan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _rescan(WidgetRef ref) => unawaited(
+    ref.read(scanRoundProvider.notifier).rescan().then<void>(
+      (_) {},
+      onError: (Object e, StackTrace st) => developer.log(
+        '圖不可用列重新掃描失敗', // i18n-exempt: 開發者 debug log
+        name: _tag,
+        level: 900,
+        error: e,
+        stackTrace: st,
+      ),
+    ),
+  );
+}
 
 /// `SplitRow.header` 右格內容（`lib/app/shell.dart` 接線，見檔頭說明）：
 /// 僅 [DomainReady]（矩陣／泳道模式共用的五列）渲染 `SegmentedControl`，

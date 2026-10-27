@@ -29,6 +29,13 @@ GraphBuiltEvent? _eventOf(ScanRoundResult? round) {
   return graph is GraphBuildAvailable ? graph.event : null;
 }
 
+/// 最後完成輪次建圖不可用（SPEC-001 §1「圖不可用」列，`0.5.0-W1-486.2`）：
+/// 有完成輪次且其建圖結果為 [GraphBuildUnavailable] 時為真；無完成輪次為假
+/// （該情況走泳道投影準備中）。矩陣與泳道兩模式共用此判定。
+final domainGraphUnavailableProvider = Provider<bool>(
+  (ref) => ref.watch(lastCompletedRoundProvider)?.graph is GraphBuildUnavailable,
+);
+
 /// 矩陣投影（SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉）：讀同一專案最後完成
 /// 的輪次；無輪次、建圖不可用或無節點時為 `null`。
 final domainMatrixProvider = Provider<DomainMatrix?>((ref) {
@@ -63,9 +70,10 @@ final firstNodeInLaneQueryProvider = Provider<FirstNodeInLaneQuery>((ref) {
   };
 });
 
-/// 選定 UC 的泳道投影；未選定 UC、尚無完成輪次或建圖不可用時為 `null`
-/// （建圖不可用時 Domain 視圖不會進入，見 SPEC-001 §1〈FR-13 回傳「圖不可用」
-/// 時 Layout 不另處理〉）。讀最後完成輪次，故重掃期間照常顯示上一輪。
+/// 選定 UC 的泳道投影；未選定 UC、尚無完成輪次或建圖不可用時為 `null`。
+/// 建圖不可用時畫面不讀本 provider，改落「圖不可用」列（見
+/// [domainGraphUnavailableProvider]、SPEC-001 §1〈FR-13 回傳「圖不可用」時的
+/// Domain 視圖呈現〉）。讀最後完成輪次，故重掃期間照常顯示上一輪。
 final domainSwimlaneProvider = Provider<DomainSwimlaneView?>((ref) {
   final ucId = ref.watch(selectedUcProvider);
   final round = ref.watch(lastCompletedRoundProvider);

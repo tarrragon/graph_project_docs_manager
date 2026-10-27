@@ -669,6 +669,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get domainLoadFailedMessage => '掃描此專案時發生非預期錯誤，無法載入圖譜';
 
   @override
+  String domainGraphUnavailableMessage(String appVersion) {
+    return '此專案的型別表版本不在 App 已知範圍內（不高於 $appVersion），最近一次掃描無法建立圖譜；型別表修正或重新產生之前，重新掃描仍會得到相同結果';
+  }
+
+  @override
+  String get domainGraphUnavailableScanning => '掃描中';
+
+  @override
   String get reloadAction => '重新載入';
 
   @override
