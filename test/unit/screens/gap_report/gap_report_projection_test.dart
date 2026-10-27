@@ -949,7 +949,18 @@ void main() {
           ),
         _only(_project(parse: [_flowGap])),
         for (final r in NonDomainPathsMalformedReason.values)
-          _only(_project(parse: [_nonDomain(r, count: 1)])),
+          _only(
+            _project(
+              parse: [
+                _nonDomain(
+                  r,
+                  count: r == NonDomainPathsMalformedReason.elementNotString
+                      ? 1
+                      : null,
+                ),
+              ],
+            ),
+          ),
         for (final d in DanglingReason.values)
           _only(_project(defects: [_dangling('T-1', 'f', 'V', d)])),
         for (final m in MalformedReason.values)

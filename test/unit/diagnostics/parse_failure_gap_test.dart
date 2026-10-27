@@ -670,4 +670,141 @@ void main() {
       expect(result.undeterminedCount, 3);
     });
   });
+
+  group('0.5.0-W1-134 sealed 子型別不變式', () {
+    CarrierParseFailureGap carrier({List<String> types = const ['UC']}) =>
+        CarrierParseFailureGap(
+          path: 'a.md',
+          reason: 'r',
+          failureReason: CarrierParseFailureReason.yamlInvalid,
+          candidateTypes: types,
+          schemaAmbiguous: false,
+        );
+
+    test('N3 CarrierParseFailureGap 值相等（含清單內容）與 hashCode 一致', () {
+      expect(carrier(), carrier());
+      expect(carrier().hashCode, carrier().hashCode);
+      expect(carrier(), isNot(carrier(types: const ['UC', 'EVT'])));
+    });
+
+    test('N3 FlowBlockMalformedGap 值相等', () {
+      const a = FlowBlockMalformedGap(path: 'p', reason: 'flowBlockMalformed');
+      const b = FlowBlockMalformedGap(path: 'p', reason: 'flowBlockMalformed');
+      const c = FlowBlockMalformedGap(path: 'q', reason: 'flowBlockMalformed');
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+      expect(a, isNot(c));
+    });
+
+    test('N3 NonDomainPathsMalformedGap 值相等', () {
+      NonDomainPathsMalformedGap make(NonDomainPathsMalformedReason r) =>
+          NonDomainPathsMalformedGap(path: 'p', reason: r.name, subReason: r);
+      expect(
+        make(NonDomainPathsMalformedReason.notList),
+        make(NonDomainPathsMalformedReason.notList),
+      );
+      expect(
+        make(NonDomainPathsMalformedReason.notList).hashCode,
+        make(NonDomainPathsMalformedReason.notList).hashCode,
+      );
+      expect(
+        make(NonDomainPathsMalformedReason.notList),
+        isNot(make(NonDomainPathsMalformedReason.keyMissing)),
+      );
+    });
+
+    test('N3 不同子型別即使 path／reason 相同也不相等', () {
+      const flow = FlowBlockMalformedGap(path: 'p', reason: 'x');
+      final nonDomain = NonDomainPathsMalformedGap(
+        path: 'p',
+        reason: 'x',
+        subReason: NonDomainPathsMalformedReason.notList,
+      );
+      expect(flow == nonDomain, isFalse);
+    });
+
+    test('N3 三個子型別宣告為 final class', () {
+      final src = File('lib/diagnostics/parse_failure_gap.dart')
+          .readAsStringSync();
+      for (final name in [
+        'CarrierParseFailureGap',
+        'FlowBlockMalformedGap',
+        'NonDomainPathsMalformedGap',
+      ]) {
+        expect(src, contains('final class $name '), reason: name);
+      }
+    });
+
+    test('N4（E2）非 elementNotString 卻帶 count 的組合被擋下', () {
+      for (final r in NonDomainPathsMalformedReason.values) {
+        if (r == NonDomainPathsMalformedReason.elementNotString) continue;
+        expect(
+          () => NonDomainPathsMalformedGap(
+            path: 'p',
+            reason: r.name,
+            subReason: r,
+            nonStringElementCount: 2,
+          ),
+          throwsAssertionError,
+          reason: r.name,
+        );
+      }
+    });
+
+    test('N4 elementNotString 不帶 count 的組合同樣被擋下；合法組合可建', () {
+      expect(
+        () => NonDomainPathsMalformedGap(
+          path: 'p',
+          reason: 'elementNotString',
+          subReason: NonDomainPathsMalformedReason.elementNotString,
+        ),
+        throwsAssertionError,
+      );
+      final ok = NonDomainPathsMalformedGap(
+        path: 'p',
+        reason: 'elementNotString',
+        subReason: NonDomainPathsMalformedReason.elementNotString,
+        nonStringElementCount: 2,
+      );
+      expect(ok.nonStringElementCount, 2);
+    });
+
+    test('N5 gaps 不可變：修改拋錯，來源清單變動不外洩', () {
+      final source = <ParseFailureGap>[carrier()];
+      final detected = GapsDetected(source);
+      source.add(carrier());
+      expect(detected.gaps, hasLength(1));
+      expect(() => detected.gaps.add(carrier()), throwsUnsupportedError);
+      final undetermined = Undetermined(
+        undeterminedCount: 0,
+        reason: UndeterminedGapReason.noPathPattern,
+        gaps: source,
+      );
+      source.clear();
+      expect(undetermined.gaps, hasLength(2));
+      expect(() => undetermined.gaps.clear(), throwsUnsupportedError);
+      expect(
+        () => Undetermined(
+          undeterminedCount: 0,
+          reason: UndeterminedGapReason.noPathPattern,
+        ).gaps.add(carrier()),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('N6 flowBlockMalformed 原因碼 literal 在 lib/ 只定義一次', () {
+      final hits = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .where((f) => f.readAsStringSync().contains("= 'flowBlockMalformed'"))
+          .map((f) => f.path)
+          .toList();
+      expect(hits, ['lib/corpus/uc_flow_extractor.dart']);
+      expect(
+        const FlowBlockMalformedGap(path: 'p', reason: 'r').reasonCode,
+        flowBlockMalformedReasonCode,
+      );
+    });
+  });
 }
