@@ -51,6 +51,7 @@ created: 2026-10-27
 1. 搬移前列出目標目錄的慣例來源：以目錄名 grep 框架測試、SessionStart hook、CLI 的路徑判定（如 `skills/`、`/hooks/`）
 2. 每條慣例逐一決定「符合」（補 SKILL.md、補版號）或「判定誤認」（向判定方回報，例如 plugin 的 `hooks/` 不是 hook 腳本）
 3. 驗收時除了元件測試，也在 worktree 內跑會掃描該目錄的框架測試，以及相關的 SessionStart 檢查
+4. 搬移清單除了 tracked 檔，也列出原位置的生成物與其 ignore 規則：生成物目錄內 tracked 的 `.gitignore`（如內容為 `*`）若未一起搬，新位置一旦產生生成物就會以 untracked 出現；原位置留下的 gitignored 生成物則成為孤兒，須指定清除時點。實例：plugin 的型別生成目錄搬移後，新位置 `git check-ignore` 不命中，舊位置的型別目錄仍被臨時型別檢查引用
 
 ## 預防措施
 
