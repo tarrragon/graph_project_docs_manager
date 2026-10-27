@@ -2,10 +2,6 @@
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
 import type { Lane, QueueToken, TicketStatus } from '../types'
-import { TICKETS_DIR, TICKET_PREFIX } from './shared'
-
-/** 線與佇列的權威票檔，相對 repo root。 */
-export const DISPATCH_TICKET_PATH = `${TICKETS_DIR}/0.5.0-W1-349.md`
 
 /** 現行佇列行掃描範圍的起點：349 的 Solution 二級標題，讀到下一個二級標題前。 */
 const SOLUTION_HEADING = '## Solution'
@@ -69,10 +65,9 @@ function solutionLines(text: string): string[] {
 
 /**
  * 票序拆成票號、分隔符與無法辨識的文字，保留原順序。票號接受三種寫法：短票號（補 prefix）、完整票號、
- * `W<n>-<序號>`（補 prefix 的版本）；serial 為佇列行的原寫法。prefix 為短票號前綴（見 shared.ts ticketPrefixOf），
- * 未傳時用 TICKET_PREFIX。
+ * `W<n>-<序號>`（補 prefix 的版本）；serial 為佇列行的原寫法。prefix 為短票號前綴（見 shared.ts ticketPrefixOf）。
  */
-export function parseQueue(queue: string, prefix: string = TICKET_PREFIX): QueueToken[] {
+export function parseQueue(queue: string, prefix: string): QueueToken[] {
   const tokens: QueueToken[] = []
   for (const part of queue.trim().split(QUEUE_SEPARATOR)) {
     if (part === '') continue
@@ -119,14 +114,15 @@ function lastMatchPerLane(text: string, pattern: RegExp): Map<number, RegExpExec
 /**
  * 掃 349 的 Solution，每條線只取最後一次出現的現行佇列行，依線號排序；各線附上 parseLaneGoals 的目標（沒有時為 null）。
  * 最後一行票序為 `（無）` 的線不回傳；歷史行（同線較早的行）的票號不進結果。
+ * prefix 為協調票推導的短票號前綴（shared.ts ticketPrefixOf），原樣傳給 parseQueue 補全短票號。
  */
-export function parseLanes(text: string): Lane[] {
+export function parseLanes(text: string, prefix: string): Lane[] {
   const goals = parseLaneGoals(text)
   return [...lastMatchPerLane(text, LANE_LINE)]
     .map(([lane, match]) => [lane, { session: match[2] ?? null, queue: (match[3] ?? '').trim() }] as const)
     .filter(([, { queue }]) => queue !== LANE_ENDED)
     .sort(([a], [b]) => a - b)
-    .map(([lane, { session, queue }]) => ({ lane, session, goal: goals.get(lane) ?? null, tokens: parseQueue(queue) }))
+    .map(([lane, { session, queue }]) => ({ lane, session, goal: goals.get(lane) ?? null, tokens: parseQueue(queue, prefix) }))
 }
 
 /** 所有線的佇列完整票號，保留首次出現順序並去重。 */

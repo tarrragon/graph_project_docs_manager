@@ -21,7 +21,7 @@ import {
 } from './layout'
 
 /** TICKET_349 的線：L7（f9）351 → 145、L9（3e）356 → 353.1 ∥ 341.2.1 → 284、L13（1b）337.1 → 337.3 → 337.2.1。 */
-const LANES = parseLanes(TICKET_349)
+const LANES = parseLanes(TICKET_349, '0.5.0-W1-')
 
 const row = (fields: Partial<DispatchRow> = {}): DispatchRow => ({
   lane: null,

@@ -133,9 +133,9 @@ describe('dispatchRows', () => {
     session({ name: 's-l7', status: 'idle', sessionId: 'sid-7' }),
     session({ name: 's-free', status: 'idle', sessionId: 'sid-free' }),
   ]
-  const lanes = parseLanes('## Solution\n**L13 現行佇列**（s-l13）：337.9\n\n**L7 現行佇列**（s-l7）：351\n')
-  const context = { sessions, lanes, tickets: [{ id: '0.5.0-W1-337.1', status: 'completed' }], holders: [] }
   const PREFIX = '0.5.0-W1-'
+  const lanes = parseLanes('## Solution\n**L13 現行佇列**（s-l13）：337.9\n\n**L7 現行佇列**（s-l7）：351\n', PREFIX)
+  const context = { sessions, lanes, tickets: [{ id: '0.5.0-W1-337.1', status: 'completed' }], holders: [] }
 
   test('session_id 對到存活 session，以其名稱對到線；對不到線的歸其他（null）；依線號排序、其他最後；票號顯示短票號', () => {
     const rows = dispatchRows(

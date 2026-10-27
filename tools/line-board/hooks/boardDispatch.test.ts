@@ -5,12 +5,16 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { DISPATCH_ACTIVE_PATH } from './dispatch'
 import { MERGE_LOG_HOLDING, TICKET_349, dispatchJson, overlapLogUntil, ticketFile } from './fixtures'
-import { DISPATCH_TICKET_PATH } from './lanes'
 import { GROUP_BORDER_STYLE, groupFrameKey, groupTitleKey } from './lanesView'
 import { MERGE_GATE_GROUP_ID, OTHER_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from './layout'
 import { MERGE_LOG_PATH } from './mergeGate'
-import { configJson, sessionStub, startBoard } from './paneHarness'
-import { TICKETS_DIR } from './shared'
+import { COORDINATION_TICKET, configJson, sessionStub, startBoard } from './paneHarness'
+import { ticketFileCandidates } from './shared'
+
+/** 預設協調票的票檔（相對 repo root）：由票號推導，取 ticketFileCandidates 的第一個候選（hierarchical）。 */
+const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''
+/** 與預設協調票同版本的票檔所在目錄（相對 repo root）。 */
+const TICKET_FOLDER = COORDINATION_TICKET_FILE.slice(0, COORDINATION_TICKET_FILE.lastIndexOf('/'))
 
 type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
 
@@ -124,13 +128,13 @@ describe('Pane', () => {
 
   const dispatchFiles = (dispatchText: string) =>
     sessionStub({
-      [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349,
+      [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349,
       [`/repo/${DISPATCH_ACTIVE_PATH}`]: dispatchText,
       [`/wt/${DISPATCH_ACTIVE_PATH}`]: JSON.stringify({ dispatches: [dispatchJson({ session_id: 'sid-102', agent_description: 'WORKTREE 副本' })] }),
-      [`/repo/${TICKETS_DIR}/0.5.0-W1-337.9.md`]: ticketFile('in_progress'),
-      [`/repo/${TICKETS_DIR}/0.5.0-W1-351.md`]: ticketFile('in_progress'),
-      [`/repo/${TICKETS_DIR}/0.5.0-W1-345.md`]: ticketFile('pending'),
-      [`/repo/${TICKETS_DIR}/0.5.0-W1-337.1.md`]: ticketFile('completed'),
+      [`/repo/${TICKET_FOLDER}/0.5.0-W1-337.9.md`]: ticketFile('in_progress'),
+      [`/repo/${TICKET_FOLDER}/0.5.0-W1-351.md`]: ticketFile('in_progress'),
+      [`/repo/${TICKET_FOLDER}/0.5.0-W1-345.md`]: ticketFile('pending'),
+      [`/repo/${TICKET_FOLDER}/0.5.0-W1-337.1.md`]: ticketFile('completed'),
       [`/repo/${MERGE_LOG_PATH}`]: overlapLogUntil('16:19:46'),
     })
 
@@ -157,8 +161,8 @@ describe('Pane', () => {
 
   test('五色狀態：派發列依階段上色（代理人執行中青、閘門黃、收尾洋紅），佇列票依狀態上色（待辦灰、進行中綠、閘門黃）', async ($, on) => {
     const stub = dispatchFiles(DISPATCH_ACTIVE)
-    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-337.3.md`] = ticketFile('pending')
-    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-337.2.1.md`] = ticketFile('in_progress')
+    stub.files[`/repo/${TICKET_FOLDER}/0.5.0-W1-337.3.md`] = ticketFile('pending')
+    stub.files[`/repo/${TICKET_FOLDER}/0.5.0-W1-337.2.1.md`] = ticketFile('in_progress')
     const { ui } = await startBoard($, on, stub)
     // 該群組內的派發列（各列文字在本 fixture 中不重複）與其顏色
     const rowColors = async (id: string) => {
@@ -196,7 +200,7 @@ describe('Pane', () => {
         dispatches: [dispatchJson({ agent_id: 'awrap', session_id: 'sid-102', ticket_id: '0.5.0-W1-337.3', turn_ended_at: '2026-10-19T07:59:00+00:00' })],
       }),
     )
-    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-337.3.md`] = ticketFile('in_progress')
+    stub.files[`/repo/${TICKET_FOLDER}/0.5.0-W1-337.3.md`] = ticketFile('in_progress')
     const { ui } = await startBoard($, on, stub)
     expect(await queueSegmentsOf(ui, laneGroupId(13))).toEqual([
       { text: '337.3〔in_progress〕', color: 'magenta' },
@@ -269,7 +273,7 @@ describe('Pane', () => {
   })
 
   test('預設展開：佇列票的 feat 分支持有閘門的線即使沒有派發也展開，內容列出閘門票；對照：同一條線在閘門結束後收合', async ($, on) => {
-    const stub = { files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349, [`/repo/${MERGE_LOG_PATH}`]: MERGE_LOG_HOLDING } }
+    const stub = { files: { [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349, [`/repo/${MERGE_LOG_PATH}`]: MERGE_LOG_HOLDING } }
     const { ui, clock } = await startBoard($, on, stub)
     expect(await titleOf(ui, laneGroupId(7))).toEqual(['▾ L7 graph-project-docs-manager-f9［狀態不明］', '1 閘門 · 2 排隊'])
     expect(await bodyOf(ui, laneGroupId(7))).toEqual(['閘門｜351｜自 16:41:49', '排隊：351〔unknown〕 → 145〔unknown〕'])
@@ -315,8 +319,8 @@ describe('Pane', () => {
 
   test('佇列含已完成票：佇列列不列 completed 的票，標頭的排隊數等於佇列列的票數；全部完成的線沒有佇列列也沒有排隊數', async ($, on) => {
     const stub = dispatchFiles(JSON.stringify({ dispatches: [] }))
-    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-351.md`] = ticketFile('completed')
-    stub.files[`/repo/${TICKETS_DIR}/0.5.0-W1-145.md`] = ticketFile('completed')
+    stub.files[`/repo/${TICKET_FOLDER}/0.5.0-W1-351.md`] = ticketFile('completed')
+    stub.files[`/repo/${TICKET_FOLDER}/0.5.0-W1-145.md`] = ticketFile('completed')
     const { ui } = await startBoard($, on, stub)
     // L13：337.1 已完成，佇列列只剩 337.3 與 337.2.1
     expect(await titleOf(ui, laneGroupId(13))).toEqual(['▾ L13 graph-project-docs-manager-1b［waiting：input needed］', '等你處理 · 2 排隊'])
@@ -426,8 +430,8 @@ describe('Pane', () => {
 
   test('協調票讀不到時，派發條目照常列出並全歸「其他」；對照：同一份 fixture 讀得到協調票後歸到對應的線', async ($, on) => {
     const stub = dispatchFiles(DISPATCH_ACTIVE)
-    const ticket349 = stub.files[`/repo/${DISPATCH_TICKET_PATH}`] ?? ''
-    delete stub.files[`/repo/${DISPATCH_TICKET_PATH}`]
+    const ticket349 = stub.files[`/repo/${COORDINATION_TICKET_FILE}`] ?? ''
+    delete stub.files[`/repo/${COORDINATION_TICKET_FILE}`]
     const { ui, clock } = await startBoard($, on, stub)
     expect(await ui.find({ type: 'Text', text: /^解析失敗：協調票讀不到/ })).toBeDefined()
     expect((await bodyOf(ui, OTHER_GROUP_ID))?.map(withoutAge)).toEqual([
@@ -438,7 +442,7 @@ describe('Pane', () => {
       'general-purpose｜345｜收尾',
     ])
     // 正向對照：補回協調票後重讀，同一批條目歸到 session 所在的線
-    stub.files[`/repo/${DISPATCH_TICKET_PATH}`] = ticket349
+    stub.files[`/repo/${COORDINATION_TICKET_FILE}`] = ticket349
     await clock.advance(REFRESH_MS)
     const dispatchesOf = async (id: string) => ((await bodyOf(ui, id)) ?? []).filter(line => DISPATCH_ROW.test(line)).map(withoutAge)
     expect(await dispatchesOf(laneGroupId(7))).toEqual(['linux｜Readonly review of 337.8｜審查', 'incident-responder｜分析 354.1 閘門紅燈｜事故分析'])
@@ -469,7 +473,7 @@ describe('Pane', () => {
 
   test('sessions 目錄無法列出時，不列派發條目，標明無法判定', async ($, on) => {
     const { ui } = await startBoard($, on, {
-      files: { [`/repo/${DISPATCH_TICKET_PATH}`]: TICKET_349, [`/repo/${DISPATCH_ACTIVE_PATH}`]: DISPATCH_ACTIVE },
+      files: { [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349, [`/repo/${DISPATCH_ACTIVE_PATH}`]: DISPATCH_ACTIVE },
     })
     expect(await ui.find({ type: 'Text', text: /^（session 狀態讀取失敗，無法判定派發中的代理人）$/ })).toBeDefined()
     expect(await allDispatchRows(ui)).toEqual([])

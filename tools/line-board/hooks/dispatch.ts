@@ -106,7 +106,7 @@ export function dispatchStage(
   return record.ticketId === null ? null : '收尾'
 }
 
-/** 完整票號去掉短票號前綴（如 `0.5.0-W1-`），與票序的短票號一致；不帶該前綴的票號原樣。 */
+/** 完整票號去掉短票號前綴（如 `1.2.0-W3-`），與票序的短票號一致；不帶該前綴的票號原樣。 */
 function shortTicketId(id: string, prefix: string): string {
   return id.startsWith(prefix) ? id.slice(prefix.length) : id
 }
