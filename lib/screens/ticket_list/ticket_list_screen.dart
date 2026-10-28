@@ -343,14 +343,14 @@ class _ReadyListView extends ConsumerWidget {
       ),
       trailing: [
         SplitRow.footer(
-          leading: AppText(
+          leading: AppText.singleLine(
             l10n.ticketsSummaryLabel(
               visible.isEmpty ? 0 : 1,
               visible.length,
               state.tickets.length,
             ),
           ),
-          trailing: AppText(
+          trailing: AppText.singleLine(
             l10n.ticketsVirtualScrollNote,
             variant: AppTextVariant.caption,
           ),
@@ -403,7 +403,7 @@ class _ReadyTopicView extends ConsumerWidget {
             onCorruptedTap: onCorruptedTap,
             targetId: state.targetTicketId,
           ),
-        AppText(
+        AppText.singleLine(
           l10n.ticketsVirtualScrollNote,
           variant: AppTextVariant.caption,
         ),
@@ -452,8 +452,8 @@ class _TopicSection extends StatelessWidget {
           ),
           onToggle: onToggle,
         ),
-        primary: AppText(label),
-        trailing: AppText(
+        primary: AppText.singleLine(label),
+        trailing: AppText.singleLine(
           l10n.topicSectionSummary(group.tickets.length, priority),
           variant: AppTextVariant.caption,
         ),
@@ -484,14 +484,14 @@ AppTableRow _ticketRow(
 }) {
   const placeholder = '—'; // i18n-exempt: 解析失敗票欄位的資料態佔位符，非 UI 文案
   return AppTableRow.ticket(
-    id: AppText(ticket.id, variant: AppTextVariant.mono),
-    title: AppText(ticket.title),
+    id: AppText.singleLine(ticket.id, variant: AppTextVariant.mono),
+    title: AppText.singleLine(ticket.title),
     status: Badge.status(label: ticket.status ?? placeholder),
-    priority: AppText(
+    priority: AppText.singleLine(
       ticket.priority ?? placeholder,
       variant: AppTextVariant.caption,
     ),
-    blockedBy: AppText(
+    blockedBy: AppText.singleLine(
       ticket.blockedBy.isEmpty ? placeholder : ticket.blockedBy.join(', '), // i18n-exempt: 串接分隔字面與規則同，非 UI 文案
       variant: AppTextVariant.mono,
     ),
