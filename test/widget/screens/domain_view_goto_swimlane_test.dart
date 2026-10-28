@@ -1,4 +1,4 @@
-// 需求：0.5.0-W1-205.2.3；SPEC-001 v1.55〈矩陣與泳道同由掃描輪次衍生〉。
+// 需求：0.5.0-W1-205.2.3；SPEC-001 v1.56〈矩陣與泳道同由掃描輪次衍生〉。
 // 路徑 B：詳情卡「在泳道中檢視」於輪次 Running／Idle 時進入泳道，
 // 須為正常泳道且定位欄可用（firstNodeInLaneQueryProvider 非 null 的畫面表現）。
 // 一律經真實 tap action-domain-cell-goto-swimlane 進入，不直接改 provider。
