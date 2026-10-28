@@ -73,7 +73,7 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
       final detail = [
         l10n.pathDeclarationBundlesPartial(5, 8),
         l10n.pathDeclarationNonDomainMissing,
-      ].join('、');
+      ].join(_listSeparator(l10n));
       expect(
         _lineText(tester),
         l10n.pathDeclarationIncompleteLine(
@@ -226,6 +226,10 @@ Future<void> _openGapReport(WidgetTester tester) async {
 
 Future<void> _pumpFrames(WidgetTester tester) =>
     pumpFramesGuarded(tester, 'gap-report pump 5 幀');
+
+/// 期望分隔符的獨立語系對照（不複製 lib 判斷式；新增語系時須補項）。
+String _listSeparator(AppLocalizations l10n) =>
+    const {'zh': '、', 'en': ', '}[l10n.localeName.split('_').first]!;
 
 AppLocalizations _l10n(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byKey(const Key('nav-page-gaps'))));
