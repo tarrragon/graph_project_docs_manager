@@ -20,6 +20,7 @@ import {
 import { GROUP_BORDER_COLUMNS, groupTitleKey, laneDetailId } from '../hooks/lanesView'
 import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from '../hooks/layout'
 import { MERGE_LOG_PATH } from '../hooks/mergeGate'
+import { PROJECT_CONFIG_PATH } from '../hooks/readers'
 import { COORDINATION_TICKET, PROJECT_CONFIG, SESSIONS, configJson, runBoardCommand, sessionStub, startBoard } from './paneHarness'
 import { ticketFileCandidates } from '../hooks/shared'
 
@@ -27,6 +28,8 @@ import { ticketFileCandidates } from '../hooks/shared'
 const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''
 /** 與預設協調票同版本的票檔所在目錄（相對 repo root）。 */
 const TICKET_FOLDER = COORDINATION_TICKET_FILE.slice(0, COORDINATION_TICKET_FILE.lastIndexOf('/'))
+/** worktree `/wt` 內的專案設定檔路徑（harness 不提供內容，讀取一律失敗）。 */
+const WT_PROJECT_CONFIG = `/wt/${PROJECT_CONFIG_PATH}`
 
 type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
 
@@ -409,7 +412,44 @@ describe('專案設定', () => {
     expect(registered).toEqual(['board'])
     await clock.advance(30_000)
     expect(readPaths.length).toBeGreaterThan(0)
-    expect(readPaths.every(path => path === PROJECT_CONFIG)).toBe(true)
+    // 啟動時先讀 session root（/wt）的設定檔，讀不到才讀主 checkout 的；兩者以外的檔案都不讀
+    expect(readPaths.every(path => path === PROJECT_CONFIG || path === WT_PROJECT_CONFIG)).toBe(true)
+    await ui.unmount()
+  })
+
+  test('session 在主 checkout 啟動且有設定：開 Pane 先於任何 git 呼叫（E1）', async ($, on) => {
+    const { ui, opened, callOrder } = await startBoard($, on, { ...sharedFiles(), sessionRoot: '/repo' })
+    expect(opened).toEqual(['line-board'])
+    expect(callOrder[0]).toBe('ui.open line-board')
+    await ui.unmount()
+  })
+
+  test('對照：session 在 worktree 啟動時，root 讀不到設定，先跑 git worktree list 找主 checkout 再開 Pane（E1）', async ($, on) => {
+    const { ui, opened, callOrder } = await startBoard($, on, sharedFiles())
+    expect(opened).toEqual(['line-board'])
+    expect(callOrder[0]).toBe('git worktree list --porcelain')
+    expect(callOrder.indexOf('ui.open line-board')).toBeGreaterThan(0)
+    await ui.unmount()
+  })
+
+  test('對照：session 在主 checkout 啟動但沒有設定時不開 Pane，主 checkout 的設定檔只讀一次', async ($, on) => {
+    const { ui, opened, readPaths } = await startBoard($, on, { ...sharedFiles(), sessionRoot: '/repo', projectConfig: null })
+    expect(opened).toEqual([])
+    expect(readPaths.filter(path => path === PROJECT_CONFIG)).toHaveLength(1)
+    await ui.unmount()
+  })
+
+  test('啟動檢查丟例外時，失敗原因寫入 transcript（使用者可見）（E2）', async ($, on) => {
+    const { ui, opened, logs } = await startBoard($, on, { ...sharedFiles(), rootError: 'session root 讀取失敗' })
+    expect(opened).toEqual([])
+    expect(logs.filter(log => log.to === 'transcript' && log.text.startsWith('line-board 啟動檢查失敗'))).toHaveLength(1)
+    await ui.unmount()
+  })
+
+  test('對照：啟動檢查沒有例外時，transcript 沒有啟動檢查失敗的行（E2）', async ($, on) => {
+    const { ui, opened, logs } = await startBoard($, on, sharedFiles())
+    expect(opened).toEqual(['line-board'])
+    expect(logs.filter(log => log.text.startsWith('line-board 啟動檢查失敗'))).toEqual([])
     await ui.unmount()
   })
 
