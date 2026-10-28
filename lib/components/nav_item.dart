@@ -137,9 +137,8 @@ class _NavItemState extends State<NavItem> {
                       effectiveIcon,
                       SizedBox(width: Space.sm),
                       Flexible(
-                        child: AppText(
+                        child: AppText.singleLine(
                           label,
-                          maxLines: 1,
                           emphasis: isSelected,
                           tone: isSelected
                               ? AppTextTone.accentStrong

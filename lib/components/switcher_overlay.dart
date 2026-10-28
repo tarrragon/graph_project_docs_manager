@@ -147,7 +147,10 @@ class _SwitcherOverlayState extends State<SwitcherOverlay> {
                       ),
                       child: Semantics(
                         header: true,
-                        child: AppText(title, variant: AppTextVariant.caption),
+                        child: AppText.singleLine(
+                          title,
+                          variant: AppTextVariant.caption,
+                        ),
                       ),
                     ),
                     if (hasItems) ...[
@@ -179,7 +182,11 @@ class _SwitcherOverlayState extends State<SwitcherOverlay> {
       padding: EdgeInsets.only(top: Space.xxs, left: Space.xs, right: Space.xs),
       child: Semantics(
         liveRegion: true,
-        child: AppText(reason, maxLines: 2, tone: AppTextTone.textSecondary),
+        child: AppText.multiLine(
+          reason,
+          maxLines: 2,
+          tone: AppTextTone.textSecondary,
+        ),
       ),
     );
   }

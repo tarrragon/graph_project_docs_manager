@@ -154,9 +154,8 @@ class RecentProjectItem extends StatelessWidget {
           ),
           if (_isDisabled && reason != null) ...[
             SizedBox(height: Space.xxs),
-            AppText(
+            AppText.multiLine(
               reason!,
-              variant: AppTextVariant.body,
               maxLines: 2,
               tone: AppTextTone.textSecondary,
             ),
@@ -171,7 +170,7 @@ class RecentProjectItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppText(name, maxLines: 1, emphasis: true, tone: _nameTone),
+        AppText.singleLine(name, emphasis: true, tone: _nameTone),
         SizedBox(height: Space.xxs),
         isDegraded ? _buildSummaryWithDegradedBadge(l10n) : _buildSummary(),
       ],
@@ -179,7 +178,7 @@ class RecentProjectItem extends StatelessWidget {
   }
 
   Widget _buildSummary() {
-    return AppText(
+    return AppText.singleLine(
       summary,
       variant: AppTextVariant.caption,
       tone: _summaryTone,
