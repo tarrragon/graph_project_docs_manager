@@ -16,8 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/degraded_schema.dart';
 import '../app/router.dart';
 import '../l10n/app_localizations.dart';
-import '../screens/domain_view/gate_detection_notifier.dart'
-    show inferredVersionProvider;
+import '../screens/domain_view/gate_detection_notifier.dart' show inferredVersionProvider;
 import '../tokens/tokens.dart';
 import 'app_button.dart';
 import 'app_text.dart';
@@ -101,7 +100,10 @@ class AppShell extends ConsumerWidget {
           child: FocusTraversalOrder(
             order: const NumericFocusOrder(0),
             child: FocusTraversalGroup(
-              child: _Sidebar(switcherEntry: switcherEntry, navItems: navItems),
+              child: _Sidebar(
+                switcherEntry: switcherEntry,
+                navItems: navItems,
+              ),
             ),
           ),
         ),
