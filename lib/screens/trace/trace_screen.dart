@@ -97,7 +97,7 @@ class _TraceTree extends ConsumerWidget {
       scrollKey: const Key('scroll-traceability-tree'),
       children: [
         if (!ticketsLoaded) ...[
-          AppText(
+          AppText.singleLine(
             l10n.traceabilityTicketsNotLoadedHint,
             variant: AppTextVariant.caption,
           ),
@@ -158,7 +158,7 @@ TreeNode _buildTreeNode(
       onToggle: isLeaf ? null : () => onToggle(node.id),
       testKey: Key('expander-traceability-${node.id}'),
     ),
-    primary: AppText(
+    primary: AppText.singleLine(
       node.label,
       variant: AppTextVariant.body,
       emphasis: depth == 0,
@@ -201,7 +201,7 @@ TreeNode _buildGapNode(
     leading: ExpanderIcon.leaf(
       testKey: Key('expander-traceability-gap-${parent.id}'),
     ),
-    primary: AppText(
+    primary: AppText.singleLine(
       l10n.traceabilityNoDownstream(_gapLayerName(parent.gapLayer)),
       variant: AppTextVariant.body,
     ),
