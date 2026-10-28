@@ -356,7 +356,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
             padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: AppText(title, maxLines: 1),
+              child: AppText.singleLine(title),
             ),
           ),
         );
@@ -374,7 +374,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
             padding: EdgeInsets.symmetric(horizontal: Space.sm.w),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: AppText(lane.name, maxLines: 1),
+              child: AppText.singleLine(lane.name),
             ),
           ),
         ),

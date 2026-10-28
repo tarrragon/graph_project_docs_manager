@@ -30,14 +30,13 @@ class PageTitle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppText(title, variant: AppTextVariant.subtitle),
+        AppText.singleLine(title, variant: AppTextVariant.subtitle),
         if (subtitleText != null) ...[
           SizedBox(height: Space.xxs),
-          AppText(
+          AppText.singleLine(
             subtitleText,
             variant: AppTextVariant.body,
             secondary: true,
-            maxLines: 1,
           ),
         ],
       ],

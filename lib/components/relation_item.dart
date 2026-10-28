@@ -118,12 +118,11 @@ class _RelationItemState extends State<RelationItem> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Flexible(
-                    child: AppText(
+                    child: AppText.singleLine(
                       widget.id,
                       variant: widget.isMono
                           ? AppTextVariant.mono
                           : AppTextVariant.body,
-                      maxLines: 1,
                     ),
                   ),
                   if (widget.isProposed) ...[

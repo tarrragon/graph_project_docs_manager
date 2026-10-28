@@ -156,7 +156,7 @@ class TableColumnHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppText(label, variant: AppTextVariant.mono),
+            AppText.singleLine(label, variant: AppTextVariant.mono),
             SizedBox(height: Space.xxs.h),
             _LabelText(secondLine!),
           ],
