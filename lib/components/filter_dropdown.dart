@@ -323,9 +323,8 @@ class _FilterDropdownState extends State<FilterDropdown> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
-                          child: AppText(
+                          child: AppText.singleLine(
                             '${widget.label}：$currentLabel',
-                            variant: AppTextVariant.body,
                           ),
                         ),
                         SizedBox(width: Space.xs),
@@ -433,7 +432,7 @@ class _FilterDropdownState extends State<FilterDropdown> {
               vertical: Space.xs,
             ),
             alignment: Alignment.centerLeft,
-            child: AppText(label, variant: AppTextVariant.body),
+            child: AppText.singleLine(label),
           ),
         ),
       ),
