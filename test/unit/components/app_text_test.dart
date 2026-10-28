@@ -39,7 +39,7 @@ void main() {
                 tester,
                 size: size,
                 child: _constrained(
-                  AppText(
+                  AppText.singleLine(
                     TestCopy.longZh,
                     variant: variant,
                     emphasis: emphasis,
@@ -72,21 +72,14 @@ void main() {
             await pumpHarness(
               tester,
               size: size,
-              child: _constrained(AppText(copy, variant: variant)),
+              child: _constrained(AppText.singleLine(copy, variant: variant)),
             );
             expectNoOverflow(tester);
 
             final text = tester.widget<Text>(find.byType(Text));
-            if (variant == AppTextVariant.body) {
-              expect(text.overflow, TextOverflow.ellipsis,
-                  reason: '預設建構子過渡期維持舊行為');
-              expect(text.softWrap, isTrue, reason: 'body 可換行');
-              expect(text.maxLines, isNull, reason: 'body 預設無行數上限');
-            } else {
-              expect(text.overflow, TextOverflow.ellipsis);
-              expect(text.softWrap, isFalse, reason: '單行變體不換行');
-              expect(text.maxLines, 1, reason: '單行變體固定一行截斷');
-            }
+            expect(text.overflow, TextOverflow.ellipsis);
+            expect(text.softWrap, isFalse, reason: '單行不換行');
+            expect(text.maxLines, 1, reason: '單行固定一行截斷');
           },
         );
       }
@@ -105,7 +98,7 @@ void main() {
               locale: locale,
               child: _constrained(
                 Builder(
-                  builder: (context) => AppText(
+                  builder: (context) => AppText.singleLine(
                     AppLocalizations.of(context).notFrameworkProjectExplanation,
                     variant: variant,
                   ),
@@ -151,16 +144,6 @@ void main() {
       expect(tester.widget<Text>(find.text(long)).softWrap, isTrue);
     });
 
-    testWidgets('預設建構子 body 不傳 maxLines 時高度等於單行', (tester) async {
-      await pumpHarness(
-        tester,
-        child: narrow(const AppText.singleLine(long)),
-      );
-      final oneLine = tester.getSize(find.byType(AppText)).height;
-      await pumpHarness(tester, child: narrow(const AppText(long)));
-      expect(tester.getSize(find.byType(AppText)).height, oneLine);
-    });
-
     testWidgets('multiLine 有 maxLines 時限行並省略號', (tester) async {
       await pumpHarness(
         tester,
@@ -176,7 +159,7 @@ void main() {
     testWidgets('title 標記 header', (tester) async {
       await pumpHarness(
         tester,
-        child: const AppText('t', variant: AppTextVariant.title),
+        child: const AppText.singleLine('t', variant: AppTextVariant.title),
       );
       expect(
         tester.getSemantics(find.text('t')),
@@ -187,7 +170,7 @@ void main() {
     testWidgets('subtitle 標記 header', (tester) async {
       await pumpHarness(
         tester,
-        child: const AppText('s', variant: AppTextVariant.subtitle),
+        child: const AppText.singleLine('s', variant: AppTextVariant.subtitle),
       );
       expect(
         tester.getSemantics(find.text('s')),
@@ -198,7 +181,7 @@ void main() {
     testWidgets('body 不是 header', (tester) async {
       await pumpHarness(
         tester,
-        child: const AppText('b', variant: AppTextVariant.body),
+        child: const AppText.singleLine('b', variant: AppTextVariant.body),
       );
       expect(
         tester.getSemantics(find.text('b')),
@@ -229,7 +212,7 @@ void main() {
         await pumpHarness(
           tester,
           size: WindowSize.design,
-          child: AppText('x', variant: variant),
+          child: AppText.singleLine('x', variant: variant),
         );
         final style = tester.widget<Text>(find.byType(Text)).style!;
         expect(style.fontSize, expectedFontSize[variant]! * 1.0);
