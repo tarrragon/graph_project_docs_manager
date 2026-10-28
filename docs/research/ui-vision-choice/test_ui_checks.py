@@ -6,6 +6,7 @@ import unittest
 import zlib
 from pathlib import Path
 
+import build_dataset as bd
 import geometry_check as gc
 import pixel_diff as pd
 
@@ -168,6 +169,174 @@ class GeometryTest(unittest.TestCase):
             p = Path(d, "c.json")
             p.write_text(json.dumps(self.doc([self.el(1, [0, 0, 10, 10])])))
             self.assertEqual(gc.check_file(p)["overlaps"], [])
+
+
+class MergeRegionsTest(unittest.TestCase):
+    def test_gap_32_merges_gap_33_does_not(self):
+        self.assertEqual(bd.merge_regions([(0, 0, 10, 10), (42, 0, 10, 10)]), [(0, 0, 52, 10)])
+        self.assertEqual(len(bd.merge_regions([(0, 0, 10, 10), (43, 0, 10, 10)])), 2)
+
+    def test_euclidean_diagonal(self):
+        # 水平、垂直間隙各 23 -> 距離約 32.5 > 32，不合併；各 22 -> 約 31.1，合併
+        self.assertEqual(len(bd.merge_regions([(0, 0, 10, 10), (33, 33, 10, 10)])), 2)
+        self.assertEqual(len(bd.merge_regions([(0, 0, 10, 10), (32, 32, 10, 10)])), 1)
+
+    def test_overlap_merges(self):
+        self.assertEqual(bd.merge_regions([(0, 0, 50, 50), (20, 20, 50, 50)]), [(0, 0, 70, 70)])
+
+    def test_chain_merge(self):
+        chain = [(i * 40, 0, 10, 10) for i in range(4)]  # 間隙各 30
+        self.assertEqual(bd.merge_regions(chain), [(0, 0, 130, 10)])
+
+    def test_merged_box_merges_again(self):
+        # A、B 合併後的外接框變大，才與 C 距離 <=32；A、C 原本相距 > 32
+        a, b, c = (0, 0, 10, 10), (40, 0, 10, 100), (0, 130, 10, 10)
+        self.assertGreater(bd.region_distance(a, c), 32)
+        self.assertEqual(bd.merge_regions([a, b, c]), [(0, 0, 50, 140)])
+
+    def test_order_independent(self):
+        rs = [(0, 0, 10, 10), (40, 0, 10, 100), (0, 130, 10, 10), (300, 300, 5, 5)]
+        self.assertEqual(sorted(bd.merge_regions(rs)), sorted(bd.merge_regions(rs[::-1])))
+
+
+class Rule7Test(unittest.TestCase):
+    def regions(self, n):
+        return [(i * 100, 0, 10, 10) for i in range(n)]
+
+    def test_n11_not_applied(self):
+        out, applied = bd.apply_rule7(self.regions(11), 1280, 800)
+        self.assertFalse(applied)
+        self.assertEqual(len(out), 11)
+
+    def test_n12_applied(self):
+        out, applied = bd.apply_rule7(self.regions(12), 1280, 800)
+        self.assertTrue(applied)
+        self.assertEqual(out, [(0, 0, 1280, 800)])
+
+
+class CropBoxTest(unittest.TestCase):
+    def test_expand_min_16_then_pad(self):
+        # 40x40 外擴 16 -> 72x72，不足 96，以區塊中心 (220,220) 補到 96
+        self.assertEqual(bd.crop_box((200, 200, 40, 40), 1280, 800), (172, 172, 96, 96))
+
+    def test_expand_quarter(self):
+        self.assertEqual(bd.crop_box((300, 300, 200, 200), 1280, 800), (250, 250, 300, 300))
+
+    def test_edge_clamped(self):
+        self.assertEqual(bd.crop_box((0, 0, 100, 100), 1280, 800), (0, 0, 125, 125))
+
+    def test_small_block_padded_to_96_around_center(self):
+        self.assertEqual(bd.crop_box((600, 400, 16, 16), 1280, 800), (560, 360, 96, 96))
+
+    def test_small_block_at_corner_shifts_inward(self):
+        self.assertEqual(bd.crop_box((0, 0, 16, 16), 1280, 800), (0, 0, 96, 96))
+        self.assertEqual(bd.crop_box((1264, 784, 16, 16), 1280, 800), (1184, 704, 96, 96))
+
+    def test_each_side_uses_own_direction(self):
+        # 寬 400 高 20：左右外擴 100，上下外擴 16 -> 高 52 補到 96（中心 y=310）
+        self.assertEqual(bd.crop_box((500, 300, 400, 20), 1280, 800), (400, 262, 600, 96))
+
+    def test_whole_image_box(self):
+        self.assertEqual(bd.crop_box((0, 0, 1280, 800), 1280, 800), (0, 0, 1280, 800))
+
+
+class ScaleCropTest(unittest.TestCase):
+    def test_upscale_integer_nearest(self):
+        img = solid(100, 50, (1, 2, 3))
+        paint(img, 0, 0, 1, 1, (9, 9, 9))
+        out, scale = bd.scale_crop(img)
+        self.assertEqual(scale, 4)  # 384/100 -> 4
+        self.assertEqual((out.width, out.height), (400, 200))
+        self.assertEqual(out.rows[3][0:3], bytes((9, 9, 9)))
+        self.assertEqual(out.rows[4][0:3], bytes((1, 2, 3)))
+
+    def test_upscale_minimal_factor(self):
+        self.assertEqual(bd.scale_crop(solid(192, 10))[1], 2)
+        self.assertEqual(bd.scale_crop(solid(383, 10))[1], 2)
+
+    def test_384_unchanged(self):
+        out, scale = bd.scale_crop(solid(384, 10))
+        self.assertEqual((scale, out.width), (1, 384))
+
+    def test_mid_range_unchanged(self):
+        out, scale = bd.scale_crop(solid(1280, 800))
+        self.assertEqual((scale, out.width, out.height), (1, 1280, 800))
+
+    def test_2576_unchanged(self):
+        out, scale = bd.scale_crop(solid(2576, 4))
+        self.assertEqual((scale, out.width), (1, 2576))
+
+    def test_downscale_area_average(self):
+        img = solid(5152, 2, (0, 0, 0))
+        paint(img, 0, 0, 1, 2, (200, 100, 50))
+        out, scale = bd.scale_crop(img)
+        self.assertEqual((out.width, out.height), (2576, 1))
+        self.assertEqual(out.rows[0][0:3], bytes((100, 50, 25)))
+        self.assertAlmostEqual(scale, 0.5)
+
+
+class BuildPairTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.base = solid(400, 300)
+        self.new = solid(400, 300)
+        paint(self.new, 100, 100, 20, 20, (0, 0, 0))
+        (self.dir / "b.png").write_bytes(pd.encode_png(self.base))
+        (self.dir / "n.png").write_bytes(pd.encode_png(self.new))
+        self.entry = {"code": "T1", "kind": "defect", "truth": "defect", "granularity": "coarse",
+                      "screen": "domain", "source": "unit", "head": "abc123",
+                      "base": str(self.dir / "b.png"), "new": str(self.dir / "n.png")}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_record_fields_and_files(self):
+        import hashlib
+        rec, reason = bd.build_pair(self.entry, self.dir / "out")
+        self.assertIsNone(reason)
+        for k in ("code", "kind", "truth", "granularity", "screen", "source", "head", "n",
+                  "rule7", "regions", "crops", "base_sha256", "new_sha256"):
+            self.assertIn(k, rec)
+        self.assertEqual((rec["n"], rec["rule7"]), (1, False))
+        self.assertEqual(rec["regions"], [[96, 96, 32, 32]])
+        crop = rec["crops"][0]
+        self.assertEqual(crop["box"], [64, 64, 96, 96])
+        self.assertEqual(crop["scale"], 4)
+        data = Path(crop["base_path"]).read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest(), crop["base_sha256"])
+        img = pd.decode_png(Path(crop["new_path"]).read_bytes())
+        self.assertEqual((img.width, img.height), (384, 384))
+        self.assertEqual(rec["base_sha256"],
+                         hashlib.sha256((self.dir / "b.png").read_bytes()).hexdigest())
+
+    def test_identical_pair_skips_without_output(self):
+        (self.dir / "n.png").write_bytes((self.dir / "b.png").read_bytes())
+        rec, reason = bd.build_pair(self.entry, self.dir / "out")
+        self.assertIsNone(rec)
+        self.assertIn("skip", reason)
+        out = self.dir / "out"
+        self.assertFalse(out.exists() and any(out.iterdir()))
+
+    def test_rule7_whole_image(self):
+        new = solid(400, 300)
+        for i in range(12):
+            paint(new, 4 + (i % 4) * 90, 4 + (i // 4) * 90, 5, 5, (0, 0, 0))
+        (self.dir / "n.png").write_bytes(pd.encode_png(new))
+        rec, _ = bd.build_pair(self.entry, self.dir / "out")
+        self.assertTrue(rec["rule7"])
+        self.assertEqual(rec["n"], 12)
+        self.assertEqual(rec["crops"][0]["box"], [0, 0, 400, 300])
+
+    def test_build_dataset_writes_jsonl_and_reports_skip(self):
+        same = dict(self.entry, code="T2", new=str(self.dir / "b.png"))
+        manifest = self.dir / "m.json"
+        manifest.write_text(json.dumps([self.entry, same]))
+        records, skipped = bd.build_dataset(manifest, self.dir / "out")
+        self.assertEqual([r["code"] for r in records], ["T1"])
+        self.assertEqual([s["code"] for s in skipped], ["T2"])
+        lines = (self.dir / "out" / "dataset.jsonl").read_text().splitlines()
+        self.assertEqual([json.loads(line)["code"] for line in lines], ["T1"])
 
 
 if __name__ == "__main__":
