@@ -90,20 +90,20 @@ Widget _longTitleHarness(Widget _) => ScreenUtilInit(
           children: [
             for (final text in const [_zhLong, _enLong]) ...[
               SplitRow.footer(
-                leading: AppText(text),
-                trailing: const AppText('trailing'),
+                leading: AppText.singleLine(text),
+                trailing: const AppText.singleLine('trailing'),
               ),
               AppTableRow.ticket(
-                id: const AppText('0.5.0-W1-505', variant: AppTextVariant.mono),
-                title: AppText(text),
+                id: const AppText.singleLine('0.5.0-W1-505', variant: AppTextVariant.mono),
+                title: AppText.singleLine(text),
                 status: const Badge.status(label: 'in_progress'),
-                priority: const AppText('P3', variant: AppTextVariant.caption),
-                blockedBy: const AppText('—', variant: AppTextVariant.mono),
+                priority: const AppText.singleLine('P3', variant: AppTextVariant.caption),
+                blockedBy: const AppText.singleLine('—', variant: AppTextVariant.mono),
                 onTap: () {},
                 testKey: Key('long-ticket-${text.length}'),
               ),
               ListRow.item(
-                primary: AppText(text),
+                primary: AppText.singleLine(text),
                 onTap: () {},
                 testKey: Key('long-list-${text.length}'),
               ),
