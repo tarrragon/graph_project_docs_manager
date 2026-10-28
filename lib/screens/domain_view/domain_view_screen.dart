@@ -638,13 +638,13 @@ class _CellDetailPanel extends ConsumerWidget {
           variant: AppTextVariant.caption,
         ),
         if (cell.relation == DomainRelation.none)
-          AppText(l10n.cellDetailNotInvolved, variant: AppTextVariant.body)
+          AppText.multiLine(l10n.cellDetailNotInvolved, maxLines: null)
         else if (cell.explanation != null)
-          AppText(cell.explanation!, variant: AppTextVariant.body),
+          AppText.multiLine(cell.explanation!, maxLines: null),
         for (var i = 0; i < cell.steps.length; i++)
           ListRow.numbered(
             leading: StepNumber(number: i + 1),
-            primary: AppText(cell.steps[i], variant: AppTextVariant.body),
+            primary: AppText.singleLine(cell.steps[i]),
           ),
         if (cell.events.isNotEmpty)
           BadgeRow(
@@ -658,7 +658,7 @@ class _CellDetailPanel extends ConsumerWidget {
         // 依賴路徑僅間接依賴格渲染（SPEC-004 §3.6；SPEC-001 §1）。
         if (cell.relation == DomainRelation.indirect)
           for (final path in cell.dependencyPaths)
-            AppText(path, variant: AppTextVariant.body),
+            AppText.multiLine(path, maxLines: null),
         ButtonRow(
           alignment: ButtonRowAlignment.end,
           children: [

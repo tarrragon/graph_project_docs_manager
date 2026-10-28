@@ -227,6 +227,29 @@ void main() {
       expect(find.text('不應出現 → 於直接格'), findsNothing);
     });
 
+    testWidgets('詳情卡說明長文真的換行（非單行省略號）', (tester) async {
+      final longText = List.filled(60, '很長的說明文字').join();
+      final data = DomainMatrix(
+        columns: [_uc('UC-09', '標題')],
+        rows: [
+          _row('delta', 'delta-name', [
+            _cell('delta', 'UC-09', DomainRelation.direct,
+                explanation: longText),
+          ]),
+        ],
+      );
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: _stateOverrides(data),
+      );
+      await tester.tap(find.byKey(const Key('cell-domain-delta-UC-09')));
+      await tester.pumpAndSettle();
+      final text = tester.widget<Text>(find.text(longText));
+      expect(text.maxLines, isNull);
+      expect(text.overflow, isNot(TextOverflow.ellipsis));
+    });
+
     testWidgets('說明、標題與在泳道中檢視取自詳情卡資料', (tester) async {
       final data = DomainMatrix(
         columns: [_uc('UC-09', '新標題')],
