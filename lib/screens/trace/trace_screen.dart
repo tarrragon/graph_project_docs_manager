@@ -97,7 +97,7 @@ class _TraceTree extends ConsumerWidget {
       scrollKey: const Key('scroll-traceability-tree'),
       children: [
         if (!ticketsLoaded) ...[
-          AppText(
+          AppText.singleLine(
             l10n.traceabilityTicketsNotLoadedHint,
             variant: AppTextVariant.caption,
           ),
