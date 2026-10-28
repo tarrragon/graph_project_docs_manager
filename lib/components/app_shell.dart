@@ -190,12 +190,7 @@ class _TitleBar extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Semantics(
               header: true,
-              child: AppText(
-                title,
-                variant: AppTextVariant.body,
-                emphasis: true,
-                maxLines: 1,
-              ),
+              child: AppText.singleLine(title, emphasis: true),
             ),
           ),
         ),

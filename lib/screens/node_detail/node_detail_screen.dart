@@ -99,9 +99,12 @@ class _ReadyView extends ConsumerWidget {
                   testKey: const Key('action-nodeDetail-goto-gaps'),
                 )
               : Badge.type(label: node.type),
-          primary: AppText(node.filePath, variant: AppTextVariant.mono),
+          primary: AppText.singleLine(
+            node.filePath,
+            variant: AppTextVariant.mono,
+          ),
         ),
-        AppText(node.title, variant: AppTextVariant.title),
+        AppText.singleLine(node.title, variant: AppTextVariant.title),
         BadgeRow(children: [Badge.status(label: node.status)]),
         const Divider(),
         DocumentBody(
@@ -117,7 +120,10 @@ class _ReadyView extends ConsumerWidget {
         for (final category in node.relations)
           Section(
             variant: SectionVariant.static,
-            header: AppText(category.label, variant: AppTextVariant.caption),
+            header: AppText.singleLine(
+              category.label,
+              variant: AppTextVariant.caption,
+            ),
             items: [
               for (final relatedId in category.nodeIds)
                 RelationItem(
