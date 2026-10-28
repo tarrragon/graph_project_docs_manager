@@ -621,7 +621,7 @@ class _CellDetailPanel extends ConsumerWidget {
       children: [
         SplitRow.header(
           compactHeader: true,
-          leading: AppText(
+          leading: AppText.singleLine(
             '${row.domainName} × $ucId', // i18n-exempt: 資料值組字，非 UI 文案
             variant: AppTextVariant.subtitle,
           ),
@@ -633,7 +633,7 @@ class _CellDetailPanel extends ConsumerWidget {
             testKey: const Key('action-domain-cell-clear'),
           ),
         ),
-        AppText(
+        AppText.singleLine(
           _relationLabel(l10n, cell.relation),
           variant: AppTextVariant.caption,
         ),
@@ -736,7 +736,7 @@ class _SwimlaneBody extends ConsumerWidget {
       return Panel(
         leading: [
           if (isProjectionPending)
-            AppText(
+            AppText.singleLine(
               ucTitle.isEmpty
                   ? selectedUcId
                   : l10n.swimlanePanelTitle(selectedUcId, ucTitle),
@@ -770,7 +770,7 @@ class _SwimlaneBody extends ConsumerWidget {
 
     if (swimlane is! DomainSwimlane) {
       return Panel(
-        leading: [AppText(panelTitle, variant: AppTextVariant.subtitle)],
+        leading: [AppText.singleLine(panelTitle, variant: AppTextVariant.subtitle)],
         fill: EmptyState(
           variant: EmptyStateVariant.section,
           message:
@@ -798,9 +798,9 @@ class _SwimlaneBody extends ConsumerWidget {
     return Panel(
       key: const Key('state-domain-swimlane'),
       leading: [
-        AppText(panelTitle, variant: AppTextVariant.subtitle),
+        AppText.singleLine(panelTitle, variant: AppTextVariant.subtitle),
         if (swimlane.hasFlowParseFailure)
-          AppText(
+          AppText.singleLine(
             l10n.swimlaneFlowParseFailedHint,
             variant: AppTextVariant.caption,
           ),
