@@ -32,10 +32,7 @@ void main() {
 
   group('page 變體：一／二／三個動作', () {
     for (final count in [1, 2, 3]) {
-      testWidgetsAtEachSize('page 含 $count 個動作不溢位且內容置中', (
-        tester,
-        size,
-      ) async {
+      testWidgetsAtEachSize('page 含 $count 個動作不溢位且內容置中', (tester, size) async {
         await pumpHarness(
           tester,
           size: size,
@@ -143,10 +140,7 @@ void main() {
       expectNoOverflow(tester);
       final text = tester.widget<Text>(
         find
-            .descendant(
-              of: find.byKey(testKey),
-              matching: find.byType(Text),
-            )
+            .descendant(of: find.byKey(testKey), matching: find.byType(Text))
             .first,
       );
       expect(text.maxLines, 2);
@@ -173,7 +167,10 @@ void main() {
       expectNoOverflow(tester);
       final texts = tester
           .widgetList<Text>(
-            find.descendant(of: find.byKey(testKey), matching: find.byType(Text)),
+            find.descendant(
+              of: find.byKey(testKey),
+              matching: find.byType(Text),
+            ),
           )
           .toList();
       expect(texts.last.maxLines, 4);
@@ -248,20 +245,19 @@ void main() {
       );
     });
 
-    testWidgets(
-      'pageActionsException 為 none（非例外清單內狀態）時傳空 actions 仍觸發 assert',
-      (tester) async {
-        expect(
-          () => EmptyState(
-            variant: EmptyStateVariant.page,
-            message: '訊息',
-            testKey: testKey,
-            pageActionsException: EmptyStatePageActionsException.none,
-          ),
-          throwsAssertionError,
-        );
-      },
-    );
+    testWidgets('pageActionsException 為 none（非例外清單內狀態）時傳空 actions 仍觸發 assert', (
+      tester,
+    ) async {
+      expect(
+        () => EmptyState(
+          variant: EmptyStateVariant.page,
+          message: '訊息',
+          testKey: testKey,
+          pageActionsException: EmptyStatePageActionsException.none,
+        ),
+        throwsAssertionError,
+      );
+    });
 
     testWidgets(
       'pageActionsException 為 actionsRelocatedToHeader 時傳空 actions 不觸發 assert',
@@ -295,7 +291,10 @@ void main() {
 
       final sizedBoxes = tester
           .widgetList<SizedBox>(
-            find.descendant(of: find.byKey(testKey), matching: find.byType(SizedBox)),
+            find.descendant(
+              of: find.byKey(testKey),
+              matching: find.byType(SizedBox),
+            ),
           )
           .where((box) => box.height != null)
           .map((box) => box.height)

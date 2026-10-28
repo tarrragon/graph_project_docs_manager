@@ -13,11 +13,8 @@ import 'package:graph_project_docs_manager/tokens/tokens.dart';
 import '../../helpers/helpers.dart';
 
 void main() {
-  Widget button() => AppButton(
-    label: 'go',
-    onPressed: () {},
-    testKey: const ValueKey('btn'),
-  );
+  Widget button() =>
+      AppButton(label: 'go', onPressed: () {}, testKey: const ValueKey('btn'));
 
   Widget section() => Section(
     variant: SectionVariant.static,
@@ -29,10 +26,8 @@ void main() {
     testKey: const ValueKey('sec'),
   );
 
-  Widget marker() => IssueMarker.damagedDetail(
-    onTap: () {},
-    testKey: const ValueKey('mk'),
-  );
+  Widget marker() =>
+      IssueMarker.damagedDetail(onTap: () {}, testKey: const ValueKey('mk'));
 
   Color? buttonBackground(WidgetTester tester) {
     final b = tester.widget<TextButton>(find.byKey(const ValueKey('btn')));
@@ -130,10 +125,8 @@ void main() {
     expect(changed, greaterThan(base));
   });
 
-  Widget expander() => const ExpanderIcon(
-    isExpanded: false,
-    testKey: ValueKey('ex'),
-  );
+  Widget expander() =>
+      const ExpanderIcon(isExpanded: false, testKey: ValueKey('ex'));
 
   IconData expanderIconData(WidgetTester tester) => tester
       .widget<Icon>(

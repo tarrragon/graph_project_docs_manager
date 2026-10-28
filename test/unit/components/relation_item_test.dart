@@ -423,8 +423,10 @@ void main() {
       await pumpItem(tester, () => taps++);
       final node = tester.getSemantics(find.byKey(_relationKey));
       // ignore: deprecated_member_use
-      tester.binding.pipelineOwner.semanticsOwner!
-          .performAction(node.id, SemanticsAction.tap);
+      tester.binding.pipelineOwner.semanticsOwner!.performAction(
+        node.id,
+        SemanticsAction.tap,
+      );
       expect(taps, 1);
       handle.dispose();
     });

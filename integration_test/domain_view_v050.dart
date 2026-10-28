@@ -34,14 +34,13 @@ import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state
 import '../test/helpers/spec001/corpus_snapshot.dart';
 
 /// 以 [workspace] 為已授權工作區啟動 App 並 settle（由 `app_test.dart` 實作）。
-typedef OpenWorkspace =
-    Future<void> Function(
-      WidgetTester tester,
-      Directory workspace, {
-      Locale? locale,
-      List<Override> overrides,
-      bool settle,
-    });
+typedef OpenWorkspace = Future<void> Function(
+  WidgetTester tester,
+  Directory workspace, {
+  Locale? locale,
+  List<Override> overrides,
+  bool settle,
+});
 
 const _projectSnapshot = 'graph_project_docs_manager';
 const _balanceSnapshot = 'flutter_balance';
@@ -146,9 +145,7 @@ Future<void> pumpFramesGuarded(
           .timeout(kPumpStepTimeout);
     }
   } on TimeoutException {
-    throw TestFailure(
-      '[$step] pump 逾時 ${kPumpStepTimeout.inSeconds} 秒，疑似不送幀',
-    );
+    throw TestFailure('[$step] pump 逾時 ${kPumpStepTimeout.inSeconds} 秒，疑似不送幀');
   }
 }
 
@@ -234,14 +231,19 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
 
       final lanes = _swimlane(tester).lanes;
       final placed = _nodesByStep(lanes);
-      expect({
-        for (final e in placed.entries) e.key: e.value.map((p) => p.$2).toSet(),
-      }, {for (final e in _uc02Columns.entries) e.key: {e.value}});
       expect(
-        placed['enter-from-ticket']!.map((p) => p.$1).toSet(),
-        {'graph', 'ticketdetail'},
-        reason: 'enter-from-ticket 的 traverses 為 graph、ticketdetail',
+        {
+          for (final e in placed.entries)
+            e.key: e.value.map((p) => p.$2).toSet(),
+        },
+        {
+          for (final e in _uc02Columns.entries) e.key: {e.value},
+        },
       );
+      expect(placed['enter-from-ticket']!.map((p) => p.$1).toSet(), {
+        'graph',
+        'ticketdetail',
+      }, reason: 'enter-from-ticket 的 traverses 為 graph、ticketdetail');
       expect(placed['locate-domain']!.map((p) => p.$1), [_screenTitle]);
       for (final empty in ['schema', 'workspace', 'history', 'diagnostics']) {
         final lane = lanes.firstWhere((l) => l.domainName == empty);
@@ -294,17 +296,19 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await settleGuarded(tester, 'pumpAndSettle');
 
       final swimlane = _swimlane(tester);
-      expect(
-        swimlane.lanes.map((l) => l.kind),
-        [DomainLaneKind.screen, DomainLaneKind.domain, DomainLaneKind.unplaced],
-      );
+      expect(swimlane.lanes.map((l) => l.kind), [
+        DomainLaneKind.screen,
+        DomainLaneKind.domain,
+        DomainLaneKind.unplaced,
+      ]);
       expect(swimlane.lanes[1].domainName, 'balance-sheet');
       expect(swimlane.lanes[0].nodes, isEmpty);
       expect(swimlane.lanes[1].nodes, isEmpty);
       final unplaced = swimlane.lanes[2];
-      expect({for (final n in unplaced.nodes) n.stepId: n.column}, {
-        ..._balanceColumns,
-      });
+      expect(
+        {for (final n in unplaced.nodes) n.stepId: n.column},
+        {..._balanceColumns},
+      );
       expect(
         swimlane.edges.where((e) => e.shape == DomainLaneEdgeShape.arc),
         hasLength(4),
@@ -352,16 +356,17 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       final workspace = await _openProject(tester, open);
       await _tapCell(tester, 'schema', 'UC-04');
 
-      await tester.tap(find.byKey(const Key('action-domain-cell-goto-swimlane')));
+      await tester.tap(
+        find.byKey(const Key('action-domain-cell-goto-swimlane')),
+      );
       await settleGuarded(tester, 'pumpAndSettle');
 
       final container = _container(tester);
       expect(container.read(selectedUcProvider), 'UC-04');
       final ready = container.read(domainViewStateProvider) as DomainReady;
       expect(ready.mode, DomainMode.swimlane);
-      final graphLane = _swimlane(
-        tester,
-      ).lanes.firstWhere((l) => l.domainName == 'graph');
+      final graphLane = _swimlane(tester).lanes
+          .firstWhere((l) => l.domainName == 'graph');
       final expected = graphLane.nodes
           .where((n) => n.stepTraverses.contains('${_bundlePrefix}graph'))
           .map((n) => n.column)
@@ -376,10 +381,15 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
 
       await _tapCell(tester, 'graph', 'UC-04');
       expect(_dependencyPathTexts(tester), isEmpty);
-      await tester.tap(find.byKey(const Key('action-domain-cell-goto-swimlane')));
+      await tester.tap(
+        find.byKey(const Key('action-domain-cell-goto-swimlane')),
+      );
       await settleGuarded(tester, 'pumpAndSettle');
       final ready = _container(tester).read(domainViewStateProvider);
-      expect((ready as DomainReady).swimlaneFocus?.domainId, '${_bundlePrefix}graph');
+      expect(
+        (ready as DomainReady).swimlaneFocus?.domainId,
+        '${_bundlePrefix}graph',
+      );
       expect(ready.swimlaneFocus?.column, isNull, reason: '直接貫穿格只落在該列');
 
       await tester.tap(find.byKey(const Key('mode-domain-matrix')));
@@ -389,50 +399,58 @@ void registerDomainViewV050Tests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    itWidgets('ITD3-A5 節點詳情 bundle_dependency 關聯有「暫定」、established 邊型沒有（E1 對照）', (
-      tester,
-    ) async {
-      final workspace = await _openProject(tester, open);
-      const nodeId = '${_bundlePrefix}ticketdetail';
-      final container = _container(tester);
-      expect(
-        container.read(nodeDetailNodesProvider),
-        contains(nodeId),
-        reason: '真實語料建圖應含 $nodeId 節點',
-      );
+    itWidgets(
+      'ITD3-A5 節點詳情 bundle_dependency 關聯有「暫定」、established 邊型沒有（E1 對照）',
+      (tester) async {
+        final workspace = await _openProject(tester, open);
+        const nodeId = '${_bundlePrefix}ticketdetail';
+        final container = _container(tester);
+        expect(
+          container.read(nodeDetailNodesProvider),
+          contains(nodeId),
+          reason: '真實語料建圖應含 $nodeId 節點',
+        );
 
-      container.read(nodeDetailStateProvider.notifier).state =
-          const NodeDetailReady(nodeId: nodeId);
-      navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
-      await settleGuarded(tester, 'pumpAndSettle');
+        container.read(nodeDetailStateProvider.notifier).state =
+            const NodeDetailReady(nodeId: nodeId);
+        navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
+        await settleGuarded(tester, 'pumpAndSettle');
 
-      final label = AppLocalizations.of(
-        tester.element(find.byKey(const Key('state-nodeDetail-normal'))),
-      ).relationProposedLabel;
-      Finder sectionOf(String type) =>
-          find.byKey(Key('panel-nodeDetail-relations-$type'));
-      Finder badgesIn(String type) =>
-          find.descendant(of: sectionOf(type), matching: find.text(label));
-      final items = find.descendant(
-        of: sectionOf('bundle_dependency'),
-        matching: find.byType(RelationItem),
-      );
-      expect(items, findsWidgets, reason: 'depends_on_bundles 應產生關聯項');
-      expect(badgesIn('bundle_dependency'), findsNWidgets(items.evaluate().length));
-      const prefix = 'panel-nodeDetail-relations-';
-      final others = tester
-          .widgetList<Section>(find.byType(Section))
-          .map((s) => (s.testKey as ValueKey<String>).value)
-          .where((k) => k.startsWith(prefix))
-          .map((k) => k.substring(prefix.length))
-          .where((t) => t != 'bundle_dependency')
-          .toList();
-      expect(others, isNotEmpty, reason: '同一詳情應另有 established 邊型分節作對照');
-      for (final type in others) {
-        expect(badgesIn(type), findsNothing, reason: '$type 非 proposed，不應有暫定標記');
-      }
-      await workspace.delete(recursive: true);
-    });
+        final label = AppLocalizations.of(
+          tester.element(find.byKey(const Key('state-nodeDetail-normal'))),
+        ).relationProposedLabel;
+        Finder sectionOf(String type) =>
+            find.byKey(Key('panel-nodeDetail-relations-$type'));
+        Finder badgesIn(String type) =>
+            find.descendant(of: sectionOf(type), matching: find.text(label));
+        final items = find.descendant(
+          of: sectionOf('bundle_dependency'),
+          matching: find.byType(RelationItem),
+        );
+        expect(items, findsWidgets, reason: 'depends_on_bundles 應產生關聯項');
+        expect(
+          badgesIn('bundle_dependency'),
+          findsNWidgets(items.evaluate().length),
+        );
+        const prefix = 'panel-nodeDetail-relations-';
+        final others = tester
+            .widgetList<Section>(find.byType(Section))
+            .map((s) => (s.testKey as ValueKey<String>).value)
+            .where((k) => k.startsWith(prefix))
+            .map((k) => k.substring(prefix.length))
+            .where((t) => t != 'bundle_dependency')
+            .toList();
+        expect(others, isNotEmpty, reason: '同一詳情應另有 established 邊型分節作對照');
+        for (final type in others) {
+          expect(
+            badgesIn(type),
+            findsNothing,
+            reason: '$type 非 proposed，不應有暫定標記',
+          );
+        }
+        await workspace.delete(recursive: true);
+      },
+    );
   });
 }
 

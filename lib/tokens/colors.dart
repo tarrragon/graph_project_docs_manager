@@ -35,8 +35,12 @@ abstract final class _Palette {
   static const Color surfaceSegmentTrack = Color(0xFFDEE6E4); // color-exempt 2026-09-02 調淺：分段控制軌道底（對 textPrimary 4.56:1，達 WCAG AA），原畫布值 #DCE4E2 對 textPrimary 4.48:1 未達
 
   // 品牌強調色
-  static const Color teal900 = Color(0xFF0F4B47); // color-exempt 深色強調（圖示、標籤文字），59 次
-  static const Color teal600 = Color(0xFF2E6F6A); // color-exempt seed／強調（按鈕底、作用中標記），47 次
+  static const Color teal900 = Color(
+    0xFF0F4B47,
+  ); // color-exempt 深色強調（圖示、標籤文字），59 次
+  static const Color teal600 = Color(
+    0xFF2E6F6A,
+  ); // color-exempt seed／強調（按鈕底、作用中標記），47 次
 
   // 語意狀態色
   static const Color green600 = Color(0xFF2E6F3E); // color-exempt 成功，13 次

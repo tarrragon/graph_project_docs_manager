@@ -54,18 +54,24 @@ void main() {
         child: const TicketListScreen(),
         overrides: [
           ticketListStateProvider.overrideWith(
-            (ref) => const TicketsProjectUnready(ProjectUnreadyReason.notSelected),
+            (ref) =>
+                const TicketsProjectUnready(ProjectUnreadyReason.notSelected),
           ),
         ],
         size: size,
       );
 
-      expect(AnchorFinder.state(Screen.tickets, 'project-unready'), findsOneWidget);
+      expect(
+        AnchorFinder.state(Screen.tickets, 'project-unready'),
+        findsOneWidget,
+      );
       expect(find.byType(EmptyState), findsOneWidget);
       expectNoOverflow(tester);
     });
 
-    testWidgets('action-tickets-goto-domain → jump 至 Domain 視圖', (tester) async {
+    testWidgets('action-tickets-goto-domain → jump 至 Domain 視圖', (
+      tester,
+    ) async {
       final container = await pumpHarness(
         tester,
         child: const TicketListScreen(),
@@ -79,7 +85,10 @@ void main() {
       await tester.tap(AnchorFinder.action(Screen.tickets, 'goto-domain'));
       await tester.pump();
 
-      expect(container.read(selectedDestinationProvider), AppDestination.domain);
+      expect(
+        container.read(selectedDestinationProvider),
+        AppDestination.domain,
+      );
     });
   });
 
@@ -209,7 +218,10 @@ void main() {
         expect(AnchorFinder.state(Screen.tickets, 'list'), findsOneWidget);
         expect(find.byType(Toolbar), findsOneWidget);
         expect(find.byType(AppDataTable), findsOneWidget);
-        expect(find.byType(AppTableRow), findsNWidgets(1 + _readyTickets.length));
+        expect(
+          find.byType(AppTableRow),
+          findsNWidgets(1 + _readyTickets.length),
+        );
         expect(find.byType(SplitRow), findsOneWidget);
         expectNoOverflow(tester);
       },
@@ -232,13 +244,14 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byKey(const Key('card-tickets-0.1.0-W1-001')), findsOneWidget);
+      expect(
+        find.byKey(const Key('card-tickets-0.1.0-W1-001')),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('card-tickets-0.1.0-W1-002')), findsNothing);
     });
 
-    testWidgets('action-tickets-filter-status 選狀態 → 清單依狀態過濾', (
-      tester,
-    ) async {
+    testWidgets('action-tickets-filter-status 選狀態 → 清單依狀態過濾', (tester) async {
       // SPEC-003 §3.4 F3 的 `menu-tickets-filter-<key>` /
       // `option-tickets-filter-<key>-<value>` 測試錨點已由
       // `0.1.0-W1-077` 補齊（見 `lib/components/filter_dropdown.dart`），
@@ -260,7 +273,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('card-tickets-0.1.0-W1-002')), findsOneWidget);
+      expect(
+        find.byKey(const Key('card-tickets-0.1.0-W1-002')),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('card-tickets-0.1.0-W1-001')), findsNothing);
     });
 
@@ -356,68 +372,62 @@ void main() {
       },
     );
 
-    testWidgets(
-      '帶目標跳入按 undoAction → 還原清除前的搜尋詞與篩選（不撤銷定位）',
-      (tester) async {
-        final container = await pumpHarness(
-          tester,
-          child: const TicketListScreen(),
-          overrides: [
-            ticketListStateProvider.overrideWith(
-              (ref) => const TicketsReady(
-                tickets: _readyTickets,
-                statusFilter: 'pending',
-                targetTicketId: '0.1.0-W1-001',
-              ),
+    testWidgets('帶目標跳入按 undoAction → 還原清除前的搜尋詞與篩選（不撤銷定位）', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const TicketListScreen(),
+        overrides: [
+          ticketListStateProvider.overrideWith(
+            (ref) => const TicketsReady(
+              tickets: _readyTickets,
+              statusFilter: 'pending',
+              targetTicketId: '0.1.0-W1-001',
             ),
-          ],
-          settle: false,
-          size: WindowSize.design,
-        );
+          ),
+        ],
+        settle: false,
+        size: WindowSize.design,
+      );
 
-        await tester.pump();
-        await tester.pump();
-        // 讓 SnackBar 進場動畫完全落地，避免動作按鈕仍在位移中導致命中
-        // 測試失準（不用 pumpAndSettle：停留計時到會自動消失）。
-        await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+      // 讓 SnackBar 進場動畫完全落地，避免動作按鈕仍在位移中導致命中
+      // 測試失準（不用 pumpAndSettle：停留計時到會自動消失）。
+      await tester.pump(const Duration(milliseconds: 300));
 
-        await tester.tap(find.byKey(const Key('undoAction')));
-        await tester.pump();
+      await tester.tap(find.byKey(const Key('undoAction')));
+      await tester.pump();
 
-        final state = container.read(ticketListStateProvider) as TicketsReady;
-        expect(state.statusFilter, 'pending');
-      },
-    );
+      final state = container.read(ticketListStateProvider) as TicketsReady;
+      expect(state.statusFilter, 'pending');
+    });
 
-    testWidgets(
-      '帶目標跳入（未被篩選隱藏）→ 目標列呈定位高亮（0.1.0-W1-080）',
-      (tester) async {
-        await pumpHarness(
-          tester,
-          child: const TicketListScreen(),
-          overrides: [
-            ticketListStateProvider.overrideWith(
-              (ref) => const TicketsReady(
-                tickets: _readyTickets,
-                targetTicketId: '0.1.0-W1-001',
-              ),
+    testWidgets('帶目標跳入（未被篩選隱藏）→ 目標列呈定位高亮（0.1.0-W1-080）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const TicketListScreen(),
+        overrides: [
+          ticketListStateProvider.overrideWith(
+            (ref) => const TicketsReady(
+              tickets: _readyTickets,
+              targetTicketId: '0.1.0-W1-001',
             ),
-          ],
-        );
+          ),
+        ],
+      );
 
-        final decoratedBox = tester.widget<DecoratedBox>(
-          find
-              .descendant(
-                of: find.byKey(const Key('card-tickets-0.1.0-W1-001')),
-                matching: find.byType(DecoratedBox),
-              )
-              .first,
-        );
-        final decoration = decoratedBox.decoration as BoxDecoration;
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byKey(const Key('card-tickets-0.1.0-W1-001')),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
 
-        expect(decoration.color, AppColors.surfaceIconTint);
-      },
-    );
+      expect(decoration.color, AppColors.surfaceIconTint);
+    });
 
     testWidgets(
       '帶目標跳入且目標不在清單 → 顯示 ticketsTargetNotFoundMessage，搜尋／篩選／模式不變、無定位高亮（0.3.3-W3-381）',
@@ -478,65 +488,60 @@ void main() {
       },
     );
 
-    testWidgets(
-      '目標不在清單的提示同一次進入只顯示一次（重建不重複，0.3.3-W3-381）',
-      (tester) async {
-        final container = await pumpHarness(
-          tester,
-          child: const TicketListScreen(),
-          overrides: [
-            ticketListStateProvider.overrideWith(
-              (ref) => const TicketsReady(
-                tickets: _readyTickets,
-                targetTicketId: 'no-such-ticket',
-              ),
+    testWidgets('目標不在清單的提示同一次進入只顯示一次（重建不重複，0.3.3-W3-381）', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const TicketListScreen(),
+        overrides: [
+          ticketListStateProvider.overrideWith(
+            (ref) => const TicketsReady(
+              tickets: _readyTickets,
+              targetTicketId: 'no-such-ticket',
             ),
-          ],
-          settle: false,
-        );
-        await tester.pump();
-        await tester.pump();
-        await tester.pump();
-        expect(find.text(_targetNotFoundZh), findsOneWidget);
+          ),
+        ],
+        settle: false,
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text(_targetNotFoundZh), findsOneWidget);
 
-        // 觸發重建（搜尋詞變更）後，提示不得再發送第二次。
-        final current = container.read(ticketListStateProvider) as TicketsReady;
-        container.read(ticketListStateProvider.notifier).state = current
-            .copyWith(searchQuery: 'x');
-        await tester.pump();
-        await tester.pump();
-        await tester.pump();
-        expect(find.text(_targetNotFoundZh), findsOneWidget);
-        expect(find.byType(SnackBar), findsOneWidget);
-      },
-    );
+      // 觸發重建（搜尋詞變更）後，提示不得再發送第二次。
+      final current = container.read(ticketListStateProvider) as TicketsReady;
+      container.read(ticketListStateProvider.notifier).state = current.copyWith(
+        searchQuery: 'x',
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text(_targetNotFoundZh), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
 
-    testWidgets(
-      '無目標跳入 → 票列無定位高亮（E1 對照，0.1.0-W1-080）',
-      (tester) async {
-        await pumpHarness(
-          tester,
-          child: const TicketListScreen(),
-          overrides: [
-            ticketListStateProvider.overrideWith(
-              (ref) => const TicketsReady(tickets: _readyTickets),
-            ),
-          ],
-        );
+    testWidgets('無目標跳入 → 票列無定位高亮（E1 對照，0.1.0-W1-080）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const TicketListScreen(),
+        overrides: [
+          ticketListStateProvider.overrideWith(
+            (ref) => const TicketsReady(tickets: _readyTickets),
+          ),
+        ],
+      );
 
-        final decoratedBox = tester.widget<DecoratedBox>(
-          find
-              .descendant(
-                of: find.byKey(const Key('card-tickets-0.1.0-W1-001')),
-                matching: find.byType(DecoratedBox),
-              )
-              .first,
-        );
-        final decoration = decoratedBox.decoration as BoxDecoration;
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byKey(const Key('card-tickets-0.1.0-W1-001')),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
 
-        expect(decoration.color, isNull);
-      },
-    );
+      expect(decoration.color, isNull);
+    });
   });
 
   group('頁首模式切換（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
@@ -567,9 +572,7 @@ void main() {
       expect(AnchorFinder.state(Screen.tickets, 'list'), findsOneWidget);
     });
 
-    testWidgets('未載入等非 TicketsReady 狀態不渲染頁首模式切換（正向對照）', (
-      tester,
-    ) async {
+    testWidgets('未載入等非 TicketsReady 狀態不渲染頁首模式切換（正向對照）', (tester) async {
       await pumpApp(
         tester,
         overrides: [
@@ -588,30 +591,30 @@ void main() {
   });
 
   group('含損壞（疊加） badge-tickets-corrupted', () {
-    testWidgetsAtEachSize(
-      '工具列與損壞列皆渲染 IssueMarker.damagedDetail',
-      (tester, size) async {
-        await pumpHarness(
-          tester,
-          child: const TicketListScreen(),
-          overrides: [
-            ticketListStateProvider.overrideWith(
-              (ref) => const TicketsReady(tickets: _readyTickets),
-            ),
-          ],
-          size: size,
-        );
+    testWidgetsAtEachSize('工具列與損壞列皆渲染 IssueMarker.damagedDetail', (
+      tester,
+      size,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: const TicketListScreen(),
+        overrides: [
+          ticketListStateProvider.overrideWith(
+            (ref) => const TicketsReady(tickets: _readyTickets),
+          ),
+        ],
+        size: size,
+      );
 
-        expect(AnchorFinder.state(Screen.tickets, 'list'), findsOneWidget);
-        expect(find.byKey(const Key('badge-tickets-corrupted')), findsOneWidget);
-        expect(
-          find.byKey(const Key('badge-tickets-corrupted-broken-file')),
-          findsOneWidget,
-        );
-        expect(find.byType(IssueMarker), findsNWidgets(2));
-        expectNoOverflow(tester);
-      },
-    );
+      expect(AnchorFinder.state(Screen.tickets, 'list'), findsOneWidget);
+      expect(find.byKey(const Key('badge-tickets-corrupted')), findsOneWidget);
+      expect(
+        find.byKey(const Key('badge-tickets-corrupted-broken-file')),
+        findsOneWidget,
+      );
+      expect(find.byType(IssueMarker), findsNWidgets(2));
+      expectNoOverflow(tester);
+    });
 
     testWidgets('badge-tickets-corrupted → jump 至破洞報告', (tester) async {
       final container = await pumpHarness(

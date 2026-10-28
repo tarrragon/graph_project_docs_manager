@@ -78,7 +78,9 @@ List<NodeRelationCategory> _categoriesOf(
   Map<(String, String), Set<String>> byType,
 ) {
   final keys = byType.keys.toList()
-    ..sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+    ..sort(
+      (a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2),
+    );
   return [
     for (final key in keys)
       NodeRelationCategory(

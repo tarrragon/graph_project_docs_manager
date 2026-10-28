@@ -158,13 +158,12 @@ void main() {
       const panelBorder = 1;
       const ucColumnCount = 5;
 
-      final dualColumnWidth =
-          artboardWidth - sidebarWidth - contentPadding * 2;
-      final matrixPanelWidth =
-          dualColumnWidth - detailPaneWidth - panelGap;
+      final dualColumnWidth = artboardWidth - sidebarWidth - contentPadding * 2;
+      final matrixPanelWidth = dualColumnWidth - detailPaneWidth - panelGap;
       final gridContentWidth =
           matrixPanelWidth - panelPadding * 2 - panelBorder * 2;
-      final ucColumnsTotal = gridContentWidth -
+      final ucColumnsTotal =
+          gridContentWidth -
           LayoutSize.matrixLeadColumnWidth -
           LayoutSize.matrixSubtotalWidth;
       final perColumn = ucColumnsTotal / ucColumnCount;

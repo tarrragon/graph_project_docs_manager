@@ -117,11 +117,15 @@ class FakeDocsFileSystem implements DocsFileSystem {
         OSError('模擬列出失敗', deniedErrno), // i18n-exempt: 測試模擬訊息，非 UI 顯示字串
       );
     }
-    final children = _entries.entries
-        .where((entry) => _parentOf(entry.key) == relativePath)
-        .map((entry) => DocsFileSystemEntry(path: entry.key, kind: entry.value))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final children =
+        _entries.entries
+            .where((entry) => _parentOf(entry.key) == relativePath)
+            .map(
+              (entry) =>
+                  DocsFileSystemEntry(path: entry.key, kind: entry.value),
+            )
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
     return children;
   }
 

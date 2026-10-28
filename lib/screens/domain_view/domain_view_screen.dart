@@ -71,16 +71,19 @@ class _DomainViewScreenState extends ConsumerState<DomainViewScreen> {
     if (ref.read(scanRoundProvider) is! ScanRoundIdle) return;
     if (ref.read(lastCompletedRoundProvider) != null) return;
     unawaited(
-      ref.read(scanRoundProvider.notifier).ensureRound().then<void>(
-        (_) {},
-        onError: (Object e, StackTrace st) => developer.log(
-          '投影準備中重啟輪次失敗', // i18n-exempt: 開發者 debug log
-          name: _tag,
-          level: 900,
-          error: e,
-          stackTrace: st,
-        ),
-      ),
+      ref
+          .read(scanRoundProvider.notifier)
+          .ensureRound()
+          .then<void>(
+            (_) {},
+            onError: (Object e, StackTrace st) => developer.log(
+              '投影準備中重啟輪次失敗', // i18n-exempt: 開發者 debug log
+              name: _tag,
+              level: 900,
+              error: e,
+              stackTrace: st,
+            ),
+          ),
     );
   }
 
@@ -443,16 +446,19 @@ class _GraphUnavailableBody extends ConsumerWidget {
   }
 
   void _rescan(WidgetRef ref) => unawaited(
-    ref.read(scanRoundProvider.notifier).rescan().then<void>(
-      (_) {},
-      onError: (Object e, StackTrace st) => developer.log(
-        '圖不可用列重新掃描失敗', // i18n-exempt: 開發者 debug log
-        name: _tag,
-        level: 900,
-        error: e,
-        stackTrace: st,
-      ),
-    ),
+    ref
+        .read(scanRoundProvider.notifier)
+        .rescan()
+        .then<void>(
+          (_) {},
+          onError: (Object e, StackTrace st) => developer.log(
+            '圖不可用列重新掃描失敗', // i18n-exempt: 開發者 debug log
+            name: _tag,
+            level: 900,
+            error: e,
+            stackTrace: st,
+          ),
+        ),
   );
 }
 
@@ -502,7 +508,7 @@ class _MatrixBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final matrix = ref.watch(domainMatrixProvider);
-    final rows =matrix?.rows ?? const <DomainRow>[];
+    final rows = matrix?.rows ?? const <DomainRow>[];
 
     void onSelectDomain(String domainId) {
       final current = state.selectedCell;
@@ -770,7 +776,9 @@ class _SwimlaneBody extends ConsumerWidget {
 
     if (swimlane is! DomainSwimlane) {
       return Panel(
-        leading: [AppText.singleLine(panelTitle, variant: AppTextVariant.subtitle)],
+        leading: [
+          AppText.singleLine(panelTitle, variant: AppTextVariant.subtitle),
+        ],
         fill: EmptyState(
           variant: EmptyStateVariant.section,
           message:

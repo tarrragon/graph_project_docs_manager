@@ -151,10 +151,7 @@ void main() {
 
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration! as BoxDecoration;
-      expect(
-        (decoration.borderRadius! as BorderRadius).topLeft.x,
-        Radius.md.r,
-      );
+      expect((decoration.borderRadius! as BorderRadius).topLeft.x, Radius.md.r);
     });
   });
 

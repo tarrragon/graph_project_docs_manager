@@ -94,11 +94,20 @@ Widget _longTitleHarness(Widget _) => ScreenUtilInit(
                 trailing: const AppText.singleLine('trailing'),
               ),
               AppTableRow.ticket(
-                id: const AppText.singleLine('0.5.0-W1-505', variant: AppTextVariant.mono),
+                id: const AppText.singleLine(
+                  '0.5.0-W1-505',
+                  variant: AppTextVariant.mono,
+                ),
                 title: AppText.singleLine(text),
                 status: const Badge.status(label: 'in_progress'),
-                priority: const AppText.singleLine('P3', variant: AppTextVariant.caption),
-                blockedBy: const AppText.singleLine('—', variant: AppTextVariant.mono),
+                priority: const AppText.singleLine(
+                  'P3',
+                  variant: AppTextVariant.caption,
+                ),
+                blockedBy: const AppText.singleLine(
+                  '—',
+                  variant: AppTextVariant.mono,
+                ),
                 onTap: () {},
                 testKey: Key('long-ticket-${text.length}'),
               ),

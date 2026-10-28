@@ -51,12 +51,10 @@ void main() {
         ]),
       ]);
       final d = _eventDefects(e).single;
-      expect((d.ucId, d.stepId, d.field, d.rawValue), (
-        _uc,
-        's',
-        'emits',
-        'EVT-GHOST',
-      ));
+      expect(
+        (d.ucId, d.stepId, d.field, d.rawValue),
+        (_uc, 's', 'emits', 'EVT-GHOST'),
+      );
       final step = e.flowSubgraphs[_uc]!.steps.single;
       expect(step.emits, ['EVT-GHOST']);
     });
@@ -112,11 +110,7 @@ void main() {
         _ucNode([
           _step('a', emits: 'EVT-GHOST'),
           _step('b', emits: ['EVT-GHOST']),
-          {
-            'id': 'c',
-            'traverses': const <String>[],
-            'emits': null,
-          },
+          {'id': 'c', 'traverses': const <String>[], 'emits': null},
           _step('d', emits: ['']),
         ]),
       ]);
@@ -144,10 +138,10 @@ void main() {
           _step('s', emits: ['SPEC-007', 'evt-real', 'EVT-REAL']),
         ]),
       ]);
-      expect([for (final d in _eventDefects(e)) d.rawValue], [
-        'SPEC-007',
-        'evt-real',
-      ]);
+      expect(
+        [for (final d in _eventDefects(e)) d.rawValue],
+        ['SPEC-007', 'evt-real'],
+      );
     });
   });
 }

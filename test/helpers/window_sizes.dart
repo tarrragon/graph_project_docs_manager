@@ -31,8 +31,7 @@ enum WindowSize {
   final Size size;
 
   /// 描述用字串，例：`min(960x640)`。
-  String get label =>
-      '$name(${size.width.toInt()}x${size.height.toInt()})';
+  String get label => '$name(${size.width.toInt()}x${size.height.toInt()})';
 }
 
 /// 把 [tester] 的視窗設為 [windowSize]，並登記 tearDown 還原。

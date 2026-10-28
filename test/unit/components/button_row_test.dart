@@ -23,8 +23,7 @@ List<AppButton> _buildButtons(int count, {String Function(int)? labelOf}) {
 }
 
 /// 取得 [key] 對應 widget 在螢幕上的 [Rect]。
-Rect _rectOf(WidgetTester tester, Key key) =>
-    tester.getRect(find.byKey(key));
+Rect _rectOf(WidgetTester tester, Key key) => tester.getRect(find.byKey(key));
 
 /// 兩個矩形是否相交（含邊界貼齊視為不相交）。
 bool _intersects(Rect a, Rect b) => a.overlaps(b);
@@ -34,24 +33,23 @@ void main() {
     for (final size in WindowSize.values) {
       for (final count in [1, 2, 3]) {
         for (final alignment in ButtonRowAlignment.values) {
-          testWidgets(
-            'N=$count / ${alignment.name} @ ${size.label} 不溢位',
-            (tester) async {
-              await pumpHarness(
-                tester,
-                size: size,
-                child: ButtonRow(
-                  alignment: alignment,
-                  children: _buildButtons(count),
-                ),
-              );
+          testWidgets('N=$count / ${alignment.name} @ ${size.label} 不溢位', (
+            tester,
+          ) async {
+            await pumpHarness(
+              tester,
+              size: size,
+              child: ButtonRow(
+                alignment: alignment,
+                children: _buildButtons(count),
+              ),
+            );
 
-              expectNoOverflow(tester);
-              for (var i = 0; i < count; i++) {
-                expect(find.byKey(Key('button-row-child-$i')), findsOneWidget);
-              }
-            },
-          );
+            expectNoOverflow(tester);
+            for (var i = 0; i < count; i++) {
+              expect(find.byKey(Key('button-row-child-$i')), findsOneWidget);
+            }
+          });
         }
       }
     }
@@ -122,10 +120,7 @@ void main() {
 
   group('間距引用 token（非硬編碼）', () {
     testWidgets('Wrap 的 spacing / runSpacing 引用 Space.sm', (tester) async {
-      await pumpHarness(
-        tester,
-        child: ButtonRow(children: _buildButtons(2)),
-      );
+      await pumpHarness(tester, child: ButtonRow(children: _buildButtons(2)));
 
       final wrap = tester.widget<Wrap>(find.byType(Wrap));
       expect(wrap.spacing, Space.sm.w);
@@ -134,9 +129,7 @@ void main() {
   });
 
   group('slot 契約', () {
-    testWidgets('primary 變體至多 1 且置於首位（違反時 assert 拋出）', (
-      tester,
-    ) async {
+    testWidgets('primary 變體至多 1 且置於首位（違反時 assert 拋出）', (tester) async {
       expect(
         () => ButtonRow(
           children: [

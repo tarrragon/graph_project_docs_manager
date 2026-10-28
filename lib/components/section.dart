@@ -84,10 +84,7 @@ class Section extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(top: Space.sm),
-      child: CustomPaint(
-        painter: const _DashedTopPainter(),
-        child: body,
-      ),
+      child: CustomPaint(painter: const _DashedTopPainter(), child: body),
     );
   }
 

@@ -19,10 +19,10 @@ Widget _build(_Variant variant, String copy) {
     width: 200,
     child: switch (variant) {
       _Variant.singleLine => Text(
-          copy,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        copy,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       _Variant.multiLine => Text(copy, softWrap: true),
     },
   );

@@ -151,7 +151,6 @@ final firstVisibleProvider = Provider.family<bool, AppDestination>((
   return isFirst;
 });
 
-
 /// 依 [destination] 產生對應的畫面內容（窮舉，六項皆有畫面）。
 Widget buildDestinationPage(BuildContext context, AppDestination destination) {
   final key = destination.pageKey;

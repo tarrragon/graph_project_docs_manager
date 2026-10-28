@@ -100,14 +100,9 @@ void main() {
   group('投影的 indirectSource', () {
     test('間接格等於第一條路徑的來源；直接格為 null（E1）', () async {
       final event = await loadSnapshotEvent('graph_project_docs_manager');
-      final matrix = projectDomainMatrix(
-        event: event,
-        ucIds: const ['UC-04'],
-      );
-      DomainCell cellOf(String d) => matrix.rows
-          .firstWhere((r) => r.domainName == d)
-          .cells
-          .single;
+      final matrix = projectDomainMatrix(event: event, ucIds: const ['UC-04']);
+      DomainCell cellOf(String d) =>
+          matrix.rows.firstWhere((r) => r.domainName == d).cells.single;
       final schema = cellOf('schema');
       expect(schema.relation, DomainRelation.indirect);
       expect(
@@ -164,10 +159,7 @@ void main() {
         calls: calls,
       );
       expect(calls, isEmpty);
-      expect(
-        _ready(c).swimlaneFocus,
-        const SwimlaneFocus(domainId: 'schema'),
-      );
+      expect(_ready(c).swimlaneFocus, const SwimlaneFocus(domainId: 'schema'));
       expect(_ready(c).selectedDomainId, 'schema');
     });
 

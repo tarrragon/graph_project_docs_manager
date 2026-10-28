@@ -177,12 +177,10 @@ void main() {
       ]);
       expect(gaps.every((g) => g.category == GapCategory.graphDefect), isTrue);
       final d = gaps.first.defect as FlowGraphDefect;
-      expect((d.ucId, d.stepId, d.field, d.rawValue), (
-        'UC-01',
-        's1',
-        'consumes',
-        'EVT-GHOST',
-      ));
+      expect(
+        (d.ucId, d.stepId, d.field, d.rawValue),
+        ('UC-01', 's1', 'consumes', 'EVT-GHOST'),
+      );
     });
   });
 

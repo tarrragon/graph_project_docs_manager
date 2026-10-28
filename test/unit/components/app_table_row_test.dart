@@ -35,7 +35,11 @@ void main() {
     bool isLocated = false,
   }) {
     return AppTableRow.ticket(
-      id: AppText.singleLine(TestCopy.nodeId, key: idKey, variant: AppTextVariant.mono),
+      id: AppText.singleLine(
+        TestCopy.nodeId,
+        key: idKey,
+        variant: AppTextVariant.mono,
+      ),
       title: AppText.singleLine(title, key: titleKey),
       status: Badge.status(key: statusKey, label: TestCopy.status),
       priority: AppText.singleLine(
@@ -215,10 +219,7 @@ void main() {
       );
 
       expectNoOverflow(tester);
-      expect(
-        tester.widget<AppText>(find.byKey(blockedByKey)).text,
-        '—',
-      );
+      expect(tester.widget<AppText>(find.byKey(blockedByKey)).text, '—');
     });
 
     testWidgetsAtEachSize('ticket：blockedBy 多值截斷不溢位', (tester, size) async {
@@ -228,7 +229,8 @@ void main() {
         child: wrapPanelWidth(
           child: buildTicketRow(
             onTap: () {},
-            blockedBy: '${TestCopy.nodeId}, ${TestCopy.nodeId}, '
+            blockedBy:
+                '${TestCopy.nodeId}, ${TestCopy.nodeId}, '
                 '${TestCopy.nodeId}, ${TestCopy.nodeId}',
           ),
         ),
@@ -269,7 +271,11 @@ void main() {
     String consumedBy = TestCopy.stepName,
   }) {
     return AppTableRow.eventFlow(
-      event: AppText.singleLine(TestCopy.nodeId, key: eventKey, variant: AppTextVariant.mono),
+      event: AppText.singleLine(
+        TestCopy.nodeId,
+        key: eventKey,
+        variant: AppTextVariant.mono,
+      ),
       emittedBy: AppText.singleLine(emittedBy, key: emittedByKey),
       consumedBy: AppText.singleLine(consumedBy, key: consumedByKey),
       marker: marker,
@@ -341,10 +347,12 @@ void main() {
       );
 
       final decoratedBox = tester.widget<DecoratedBox>(
-        find.ancestor(
-          of: find.byKey(eventKey),
-          matching: find.byType(DecoratedBox),
-        ).first,
+        find
+            .ancestor(
+              of: find.byKey(eventKey),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
       );
       final decoration = decoratedBox.decoration as BoxDecoration;
 
@@ -358,10 +366,12 @@ void main() {
       );
 
       final decoratedBox = tester.widget<DecoratedBox>(
-        find.ancestor(
-          of: find.byKey(eventKey),
-          matching: find.byType(DecoratedBox),
-        ).first,
+        find
+            .ancestor(
+              of: find.byKey(eventKey),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
       );
       final decoration = decoratedBox.decoration as BoxDecoration;
 
@@ -456,9 +466,7 @@ void main() {
       var tapCount = 0;
       await pumpHarness(
         tester,
-        child: wrapPanelWidth(
-          child: buildTicketRow(onTap: () => tapCount++),
-        ),
+        child: wrapPanelWidth(child: buildTicketRow(onTap: () => tapCount++)),
       );
 
       await tester.tap(find.byKey(ticketKey));
@@ -565,10 +573,7 @@ void main() {
           .where((box) => box.width != null)
           .toList();
 
-      expect(
-        sizedBoxes.first.width,
-        LayoutSize.ticketIdColumnWidth.w,
-      );
+      expect(sizedBoxes.first.width, LayoutSize.ticketIdColumnWidth.w);
     });
 
     testWidgetsAtEachSize('空間不足策略：不觸發，欄公式內固定寬欄寬等於 token（step domain 欄）', (
@@ -595,10 +600,7 @@ void main() {
           .where((box) => box.width != null)
           .toList();
 
-      expect(
-        sizedBoxes.first.width,
-        LayoutSize.stepDomainColumnWidth.w,
-      );
+      expect(sizedBoxes.first.width, LayoutSize.stepDomainColumnWidth.w);
     });
   });
 }

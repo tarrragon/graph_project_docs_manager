@@ -297,25 +297,25 @@ class AppTableRow extends StatelessWidget {
   String get _semanticLabel {
     final parts = switch (_variant) {
       _TableRowVariant.ticket => [
-          (cells[0] as AppText).text,
-          (cells[1] as AppText).text,
-          (cells[2] as Badge).label ?? '',
-          (cells[3] as AppText).text,
-          (cells[4] as AppText).text,
-        ],
+        (cells[0] as AppText).text,
+        (cells[1] as AppText).text,
+        (cells[2] as Badge).label ?? '',
+        (cells[3] as AppText).text,
+        (cells[4] as AppText).text,
+      ],
       _TableRowVariant.step => [
-          '${(cells[0] as StepNumber).number}',
-          (cells[1] as AppText).text,
-          (cells[2] as RelationItem).id,
-        ],
+        '${(cells[0] as StepNumber).number}',
+        (cells[1] as AppText).text,
+        (cells[2] as RelationItem).id,
+      ],
       _TableRowVariant.eventFlow => [
-          (cells[0] as AppText).text,
-          (cells[1] as AppText).text,
-          (cells[2] as AppText).text,
-          if (cells[3] case final AppIcon marker
-              when marker.semanticLabel != null)
-            marker.semanticLabel!,
-        ],
+        (cells[0] as AppText).text,
+        (cells[1] as AppText).text,
+        (cells[2] as AppText).text,
+        if (cells[3] case final AppIcon marker
+            when marker.semanticLabel != null)
+          marker.semanticLabel!,
+      ],
       _TableRowVariant.header => const <String>[],
     };
     return parts.join('，');

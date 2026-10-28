@@ -53,17 +53,11 @@ void main() {
 
   group('classifySchemaVersion（0.3.0-W3-545：分辨版本太新與版本無法判讀）', () {
     test('version 為 null 分類為 Unreadable', () {
-      expect(
-        classifySchemaVersion(null, '2.40.3'),
-        isA<Unreadable>(),
-      );
+      expect(classifySchemaVersion(null, '2.40.3'), isA<Unreadable>());
     });
 
     test('version 為 "unknown" 分類為 Unreadable', () {
-      expect(
-        classifySchemaVersion('unknown', '2.40.3'),
-        isA<Unreadable>(),
-      );
+      expect(classifySchemaVersion('unknown', '2.40.3'), isA<Unreadable>());
     });
 
     test('version 高於內建分類為 HigherThanBuiltin', () {
@@ -74,24 +68,15 @@ void main() {
     });
 
     test('version 等於內建分類為 InKnownRange', () {
-      expect(
-        classifySchemaVersion('2.40.3', '2.40.3'),
-        isA<InKnownRange>(),
-      );
+      expect(classifySchemaVersion('2.40.3', '2.40.3'), isA<InKnownRange>());
     });
 
     test('version 低於內建分類為 InKnownRange', () {
-      expect(
-        classifySchemaVersion('2.30.0', '2.40.3'),
-        isA<InKnownRange>(),
-      );
+      expect(classifySchemaVersion('2.30.0', '2.40.3'), isA<InKnownRange>());
     });
 
     test('段數不足補零：2.40 對 2.40.0 分類為 InKnownRange', () {
-      expect(
-        classifySchemaVersion('2.40', '2.40.0'),
-        isA<InKnownRange>(),
-      );
+      expect(classifySchemaVersion('2.40', '2.40.0'), isA<InKnownRange>());
     });
   });
 }

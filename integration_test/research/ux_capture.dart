@@ -166,9 +166,7 @@ void main() {
         ),
       ),
     );
-    final e = _collectInteractive(
-      tester,
-    ).firstWhere((e) => e['key'] == 'wide');
+    final e = _collectInteractive(tester).firstWhere((e) => e['key'] == 'wide');
     final rect = (e['rect']! as List).cast<double>();
     final raw = (e['rawRect']! as List).cast<double>();
     // 裁切後矩形不超出視口；原始矩形必須超出視口且寬度為 200

@@ -539,15 +539,14 @@ void main() {
   });
 
   group('K4 pathDeclaration* 五 key 與 SPEC-004 §4.0.6 逐字一致', () {
-    final zh =
-        jsonDecode(File('lib/l10n/app_zh.arb').readAsStringSync())
-            as Map<String, dynamic>;
-    final en =
-        jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
-            as Map<String, dynamic>;
-    final spec = File(
-      'docs/spec/ui/SPEC-004-component-library.md',
-    ).readAsStringSync();
+    final zh = jsonDecode(
+      File('lib/l10n/app_zh.arb').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final en = jsonDecode(
+      File('lib/l10n/app_en.arb').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final spec = File('docs/spec/ui/SPEC-004-component-library.md')
+        .readAsStringSync();
     const keys = [
       'pathDeclarationIncompleteLine',
       'pathDeclarationBundlesPartial',

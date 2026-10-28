@@ -159,9 +159,7 @@ void main() {
   });
 
   group('無障礙', () {
-    testWidgets('開始載入按鈕在朗讀樹中，訊息為 header 且以 liveRegion 播報', (
-      tester,
-    ) async {
+    testWidgets('開始載入按鈕在朗讀樹中，訊息為 header 且以 liveRegion 播報', (tester) async {
       final handle = tester.ensureSemantics();
       await pumpHarness(
         tester,
@@ -180,7 +178,10 @@ void main() {
       final startSemantics = tester.getSemantics(
         AnchorFinder.action(Screen.tickets, 'start-load'),
       );
-      expect(startSemantics.flagsCollection.isEnabled.toString(), contains('True'));
+      expect(
+        startSemantics.flagsCollection.isEnabled.toString(),
+        contains('True'),
+      );
 
       final messageFinder = find.ancestor(
         of: find.byType(Text).first,

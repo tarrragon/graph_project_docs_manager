@@ -16,29 +16,29 @@ void main() {
   group('變體與狀態矩陣：skeleton（matrix/sections）× loading/cancelling', () {
     for (final layout in SkeletonLayout.values) {
       for (final cancelling in [false, true]) {
-        testWidgetsAtEachSize(
-          'skeleton $layout cancelling=$cancelling 不溢位',
-          (tester, size) async {
-            await pumpHarness(
-              tester,
-              size: size,
-              settle: false,
-              child: LoadingState.skeleton(
-                message: 'domainLoading',
-                skeletonLayout: layout,
-                countText: 'count',
-                isCancelling: cancelling,
-                onCancel: () {},
-                testKey: testKey,
-                cancelKey: cancelKey,
-              ),
-            );
-            await tester.pump();
+        testWidgetsAtEachSize('skeleton $layout cancelling=$cancelling 不溢位', (
+          tester,
+          size,
+        ) async {
+          await pumpHarness(
+            tester,
+            size: size,
+            settle: false,
+            child: LoadingState.skeleton(
+              message: 'domainLoading',
+              skeletonLayout: layout,
+              countText: 'count',
+              isCancelling: cancelling,
+              onCancel: () {},
+              testKey: testKey,
+              cancelKey: cancelKey,
+            ),
+          );
+          await tester.pump();
 
-            expectNoOverflow(tester);
-            expect(find.byKey(testKey), findsOneWidget);
-          },
-        );
+          expectNoOverflow(tester);
+          expect(find.byKey(testKey), findsOneWidget);
+        });
       }
     }
   });
@@ -156,41 +156,38 @@ void main() {
       expect(button.onPressed, isNotNull);
     });
 
-    testWidgets(
-      'C2/C4：按下取消後 Motion.feedback 內取消鈕 disabled 且文字換為取消中',
-      (tester) async {
-        var isCancelling = false;
-        await tester.pumpWidget(
-          MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: StatefulBuilder(
-                builder: (context, setState) => LoadingState.progressBar(
-                  message: 'domainLoading',
-                  progress: 0.1,
-                  isCancelling: isCancelling,
-                  onCancel: () => setState(() => isCancelling = true),
-                  testKey: testKey,
-                  cancelKey: cancelKey,
-                ),
+    testWidgets('C2/C4：按下取消後 Motion.feedback 內取消鈕 disabled 且文字換為取消中', (
+      tester,
+    ) async {
+      var isCancelling = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => LoadingState.progressBar(
+                message: 'domainLoading',
+                progress: 0.1,
+                isCancelling: isCancelling,
+                onCancel: () => setState(() => isCancelling = true),
+                testKey: testKey,
+                cancelKey: cancelKey,
               ),
             ),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.byKey(cancelKey));
-        await tester.pump(Motion.feedback);
+      await tester.tap(find.byKey(cancelKey));
+      await tester.pump(Motion.feedback);
 
-        final l10n = AppLocalizations.of(
-          tester.element(find.byKey(testKey)),
-        );
-        final button = tester.widget<TextButton>(find.byKey(cancelKey));
-        expect(button.onPressed, isNull);
-        expect(find.text(l10n.cancelInProgressAction), findsOneWidget);
-      },
-    );
+      final l10n = AppLocalizations.of(tester.element(find.byKey(testKey)));
+      final button = tester.widget<TextButton>(find.byKey(cancelKey));
+      expect(button.onPressed, isNull);
+      expect(find.text(l10n.cancelInProgressAction), findsOneWidget);
+    });
 
     testWidgets('C3：取消進行中骨架根錨點恆存在，無 SnackBar / Dialog', (tester) async {
       await pumpHarness(
@@ -270,9 +267,7 @@ void main() {
   });
 
   group('indeterminate 誠實性硬規則', () {
-    testWidgets('skeleton 畫面無 % 字元、無 LinearProgressIndicator', (
-      tester,
-    ) async {
+    testWidgets('skeleton 畫面無 % 字元、無 LinearProgressIndicator', (tester) async {
       await pumpHarness(
         tester,
         settle: false,
@@ -351,9 +346,7 @@ void main() {
     });
   });
 
-  testWidgets('cancelLabel 覆寫：非取消中時採用覆寫文案（如 cancelScanAction）', (
-    tester,
-  ) async {
+  testWidgets('cancelLabel 覆寫：非取消中時採用覆寫文案（如 cancelScanAction）', (tester) async {
     await pumpHarness(
       tester,
       settle: false,

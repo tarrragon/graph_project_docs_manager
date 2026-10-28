@@ -13,36 +13,33 @@ void main() {
       expect(result, unorderedEquals({'id', 'domain'}));
     });
 
-    test(
-      'C6-2（E1 鑑別，守衛）以鍵存在而非真值判斷；null／空清單算已寫出',
-      () {
-        final withNullAndEmpty = lostFields(
-          completenessFields: {'id', 'title', 'status'},
-          writtenFields: const {'id': 'X', 'title': null, 'status': <String>[]},
-          isTied: false,
-        );
+    test('C6-2（E1 鑑別，守衛）以鍵存在而非真值判斷；null／空清單算已寫出', () {
+      final withNullAndEmpty = lostFields(
+        completenessFields: {'id', 'title', 'status'},
+        writtenFields: const {'id': 'X', 'title': null, 'status': <String>[]},
+        isTied: false,
+      );
 
-        expect(
-          withNullAndEmpty,
-          isEmpty,
-          reason: 'title:null、status:[] 皆算已寫出的鍵，不列入 lostFields',
-        );
+      expect(
+        withNullAndEmpty,
+        isEmpty,
+        reason: 'title:null、status:[] 皆算已寫出的鍵，不列入 lostFields',
+      );
 
-        // 對照輸入：只寫出 id，title/status 完全未出現在寫出鍵集合中。
-        final withoutTitleStatus = lostFields(
-          completenessFields: {'id', 'title', 'status'},
-          writtenFields: const {'id': 'X'},
-          isTied: false,
-        );
+      // 對照輸入：只寫出 id，title/status 完全未出現在寫出鍵集合中。
+      final withoutTitleStatus = lostFields(
+        completenessFields: {'id', 'title', 'status'},
+        writtenFields: const {'id': 'X'},
+        isTied: false,
+      );
 
-        expect(withoutTitleStatus, unorderedEquals({'title', 'status'}));
+      expect(withoutTitleStatus, unorderedEquals({'title', 'status'}));
 
-        // 兩者結果必須不同，證明實作以「鍵是否存在於寫出鍵集合」判斷，
-        // 而非以「值是否為真」判斷（若誤用真值判斷，null/[] 會被誤報為
-        // 缺漏，withNullAndEmpty 會等於 withoutTitleStatus）。
-        expect(withNullAndEmpty, isNot(equals(withoutTitleStatus)));
-      },
-    );
+      // 兩者結果必須不同，證明實作以「鍵是否存在於寫出鍵集合」判斷，
+      // 而非以「值是否為真」判斷（若誤用真值判斷，null/[] 會被誤報為
+      // 缺漏，withNullAndEmpty 會等於 withoutTitleStatus）。
+      expect(withNullAndEmpty, isNot(equals(withoutTitleStatus)));
+    });
 
     test('C6-3 平手', () {
       final result = lostFields(

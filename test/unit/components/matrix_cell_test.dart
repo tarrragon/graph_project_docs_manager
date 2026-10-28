@@ -77,10 +77,7 @@ void main() {
   group('點選行為', () {
     testWidgets('未選格點選呼叫 onTap 恰一次', (tester) async {
       var callCount = 0;
-      await pumpHarness(
-        tester,
-        child: _sized(_cell(onTap: () => callCount++)),
-      );
+      await pumpHarness(tester, child: _sized(_cell(onTap: () => callCount++)));
 
       await tester.tap(find.byKey(_directKey));
       await tester.pump();
@@ -106,9 +103,7 @@ void main() {
       var callCount = 0;
       await pumpHarness(
         tester,
-        child: _sized(
-          _cell(isSelected: true, onTap: () => callCount++),
-        ),
+        child: _sized(_cell(isSelected: true, onTap: () => callCount++)),
       );
 
       await tester.tap(find.byKey(_directKey), warnIfMissed: false);
@@ -145,7 +140,11 @@ void main() {
           children: [
             _sized(_cell(testKey: _indirectKey, isSelected: true)),
             _sized(
-              _cell(testKey: _noneKey, isRowSelected: true, relation: Relation.none),
+              _cell(
+                testKey: _noneKey,
+                isRowSelected: true,
+                relation: Relation.none,
+              ),
             ),
           ],
         ),
@@ -187,7 +186,10 @@ void main() {
       );
 
       final text = tester.widget<Text>(
-        find.descendant(of: find.byKey(_directKey), matching: find.byType(Text)),
+        find.descendant(
+          of: find.byKey(_directKey),
+          matching: find.byType(Text),
+        ),
       );
       expect(text.data, '●');
       expect(text.style!.color, AppColors.accent);
@@ -196,7 +198,9 @@ void main() {
     testWidgets('indirect 符號為 ○，色 textSecondary', (tester) async {
       await pumpHarness(
         tester,
-        child: _sized(_cell(testKey: _indirectKey, relation: Relation.indirect)),
+        child: _sized(
+          _cell(testKey: _indirectKey, relation: Relation.indirect),
+        ),
       );
 
       final text = tester.widget<Text>(
@@ -223,13 +227,13 @@ void main() {
     });
 
     testWidgets('selected 態符號色改為 surfaceBase（成對設計）', (tester) async {
-      await pumpHarness(
-        tester,
-        child: _sized(_cell(isSelected: true)),
-      );
+      await pumpHarness(tester, child: _sized(_cell(isSelected: true)));
 
       final text = tester.widget<Text>(
-        find.descendant(of: find.byKey(_directKey), matching: find.byType(Text)),
+        find.descendant(
+          of: find.byKey(_directKey),
+          matching: find.byType(Text),
+        ),
       );
       expect(text.style!.color, AppColors.surfaceBase);
     });

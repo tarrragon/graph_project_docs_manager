@@ -48,10 +48,7 @@ void main() {
       expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
     });
 
-    testWidgetsAtEachSize('collapsed + 無專案名 顯示元件預設 key', (
-      tester,
-      size,
-    ) async {
+    testWidgetsAtEachSize('collapsed + 無專案名 顯示元件預設 key', (tester, size) async {
       final container = await pumpHarness(
         tester,
         size: size,
@@ -91,30 +88,27 @@ void main() {
     // 表現為工作區名的中文字形上下緣被切。上面的「高不小於 hitTargetMin」與
     // 所有 expectNoOverflow 對此形態皆恆成立，故另立本測試（W3-094）。
     for (final locale in kTestLocales) {
-      testWidgetsAtEachSize(
-        '內容不被固定高度裁切 locale=${locale.languageCode}',
-        (tester, size) async {
-          await pumpHarness(
-            tester,
-            size: size,
-            locale: locale,
-            child: ProjectSwitcherEntry(
-              projectName: TestCopy.projectName,
-              isExpanded: false,
-              onTap: () {},
-              testKey: testKey,
-            ),
-          );
+      testWidgetsAtEachSize('內容不被固定高度裁切 locale=${locale.languageCode}', (
+        tester,
+        size,
+      ) async {
+        await pumpHarness(
+          tester,
+          size: size,
+          locale: locale,
+          child: ProjectSwitcherEntry(
+            projectName: TestCopy.projectName,
+            isExpanded: false,
+            onTap: () {},
+            testKey: testKey,
+          ),
+        );
 
-          expectNoVerticalClip(
-            tester,
-            find.descendant(
-              of: find.byKey(testKey),
-              matching: find.byType(Row),
-            ),
-          );
-        },
-      );
+        expectNoVerticalClip(
+          tester,
+          find.descendant(of: find.byKey(testKey), matching: find.byType(Row)),
+        );
+      });
     }
   });
 

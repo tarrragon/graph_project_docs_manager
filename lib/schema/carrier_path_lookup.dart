@@ -35,9 +35,7 @@ class CarrierPathSingleMatch extends CarrierPathHit {
 /// 具體度打平，多個候選型別（schema 歧義，規則 5、6）。
 class CarrierPathTie extends CarrierPathHit {
   CarrierPathTie(Iterable<String> candidateTypeNames)
-      : candidateTypeNames = List.unmodifiable(
-          [...candidateTypeNames]..sort(),
-        );
+    : candidateTypeNames = List.unmodifiable([...candidateTypeNames]..sort());
 
   /// 依名稱排序，確保結果穩定（實際順序不影響語意，僅供測試比對）。
   final List<String> candidateTypeNames;
@@ -79,11 +77,13 @@ CarrierPathLookupResult lookupCarrierPathType(TypeTable table, String path) {
 /// （規則 6 附註：「以該型命中元素中最高的具體度參與比較」，S2-4）。
 PathSpecificity? _bestSpecificityFor(NodeTypeEntry entry, String path) {
   PathSpecificity? best;
-  for (final candidate in entry.carrierPathPatterns ?? const <CarrierPathPattern>[]) {
+  for (final candidate
+      in entry.carrierPathPatterns ?? const <CarrierPathPattern>[]) {
     if (!candidate.toRegExp().hasMatch(path)) {
       continue;
     }
-    if (best == null || comparePathSpecificity(candidate.specificity, best) < 0) {
+    if (best == null ||
+        comparePathSpecificity(candidate.specificity, best) < 0) {
       best = candidate.specificity;
     }
   }

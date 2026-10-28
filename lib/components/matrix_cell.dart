@@ -124,7 +124,10 @@ class _MatrixCellState extends State<MatrixCell> {
       ),
       child: Text(
         widget.relation.symbol,
-        style: TextStyle(fontSize: AppFontSize.subtitle.sp, color: _symbolColor),
+        style: TextStyle(
+          fontSize: AppFontSize.subtitle.sp,
+          color: _symbolColor,
+        ),
       ),
     );
 

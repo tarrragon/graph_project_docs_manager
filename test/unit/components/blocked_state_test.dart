@@ -53,10 +53,7 @@ void main() {
   });
 
   group('對照組：onDegradedView slot（傳與不傳，E1）', () {
-    testWidgetsAtEachSize('不傳 onDegradedView 時不渲染降級檢視按鈕', (
-      tester,
-      size,
-    ) async {
+    testWidgetsAtEachSize('不傳 onDegradedView 時不渲染降級檢視按鈕', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -340,7 +337,10 @@ void main() {
 class _StatefulHarness extends StatefulWidget {
   const _StatefulHarness({required this.builder});
 
-  final Widget Function(BuildContext context, void Function(VoidCallback) setState)
+  final Widget Function(
+    BuildContext context,
+    void Function(VoidCallback) setState,
+  )
   builder;
 
   @override

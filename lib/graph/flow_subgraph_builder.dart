@@ -2,7 +2,8 @@
 library;
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
-import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
+import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
+import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 
 /// [buildFlowSubgraphs] 結果：每個 UC 一份子圖，加上全部 flow 缺陷。

@@ -29,8 +29,10 @@ void main() {
       await repo.chooseFolder();
 
       expect(picker.calls.length, 1);
-      expect(log.containsEvent(WorkspaceLogEvent.chooseFolderPanelOpening),
-          isTrue);
+      expect(
+        log.containsEvent(WorkspaceLogEvent.chooseFolderPanelOpening),
+        isTrue,
+      );
     });
 
     test('G1-2 使用者取消時「呼叫發出」事件仍存在（提早返回路徑）', () async {
@@ -42,10 +44,14 @@ void main() {
 
       await repo.chooseFolder();
 
-      expect(log.containsEvent(WorkspaceLogEvent.chooseFolderPanelOpening),
-          isTrue);
-      expect(log.containsEvent(WorkspaceLogEvent.chooseFolderCancelled),
-          isTrue);
+      expect(
+        log.containsEvent(WorkspaceLogEvent.chooseFolderPanelOpening),
+        isTrue,
+      );
+      expect(
+        log.containsEvent(WorkspaceLogEvent.chooseFolderCancelled),
+        isTrue,
+      );
     });
 
     test('G1-3 面板拋例外時「呼叫發出」事件仍存在（提早返回路徑）', () async {
@@ -57,10 +63,12 @@ void main() {
 
       await repo.chooseFolder();
 
-      final issuedIndex =
-          log.indexOfEvent(WorkspaceLogEvent.chooseFolderPanelOpening);
-      final failureIndex =
-          log.indexOfEvent(WorkspaceLogEvent.chooseFolderPanelUnavailable);
+      final issuedIndex = log.indexOfEvent(
+        WorkspaceLogEvent.chooseFolderPanelOpening,
+      );
+      final failureIndex = log.indexOfEvent(
+        WorkspaceLogEvent.chooseFolderPanelUnavailable,
+      );
       expect(issuedIndex, greaterThanOrEqualTo(0));
       expect(failureIndex, greaterThan(issuedIndex));
     });
@@ -81,8 +89,11 @@ void main() {
       expect(
         log.entries
             .where((e) => e.event == WorkspaceLogEvent.persistIssuing)
-            .every((e) => e.message.contains('workspace.path') &&
-                e.message.contains('/tmp/ws')),
+            .every(
+              (e) =>
+                  e.message.contains('workspace.path') &&
+                  e.message.contains('/tmp/ws'),
+            ),
         isTrue,
       );
     });
@@ -107,42 +118,46 @@ void main() {
       expect(preferences.calls.any((c) => c.method == 'open'), isTrue);
     });
 
-    test('G1-6 _inspect 的 Directory.exists 有呼叫發出事件（acceptance 第 5 條）',
-        () async {
-      final probe = _DirectoryProbeRecorder();
-      final log = _LogRecorder();
-      final repo = WorkspaceRepository(
-        preferencesPort: _FakePreferencesPort(readValue: '/tmp/ws'),
-        directoryProbe: probe,
-        logSink: log.call,
-      );
+    test(
+      'G1-6 _inspect 的 Directory.exists 有呼叫發出事件（acceptance 第 5 條）',
+      () async {
+        final probe = _DirectoryProbeRecorder();
+        final log = _LogRecorder();
+        final repo = WorkspaceRepository(
+          preferencesPort: _FakePreferencesPort(readValue: '/tmp/ws'),
+          directoryProbe: probe,
+          logSink: log.call,
+        );
 
-      await repo.restore();
+        await repo.restore();
 
-      expect(probe.calls.any((c) => c.method == 'exists'), isTrue);
-      expect(log.containsEvent(WorkspaceLogEvent.inspectExistsIssuing),
-          isTrue);
-    });
+        expect(probe.calls.any((c) => c.method == 'exists'), isTrue);
+        expect(
+          log.containsEvent(WorkspaceLogEvent.inspectExistsIssuing),
+          isTrue,
+        );
+      },
+    );
 
-    test('G1-7 _inspect 的 dir.list().first 有呼叫發出事件（acceptance 第 5 條）',
-        () async {
-      final probe = _DirectoryProbeRecorder();
-      final log = _LogRecorder();
-      final repo = WorkspaceRepository(
-        preferencesPort: _FakePreferencesPort(readValue: '/tmp/ws'),
-        directoryProbe: probe,
-        logSink: log.call,
-      );
+    test(
+      'G1-7 _inspect 的 dir.list().first 有呼叫發出事件（acceptance 第 5 條）',
+      () async {
+        final probe = _DirectoryProbeRecorder();
+        final log = _LogRecorder();
+        final repo = WorkspaceRepository(
+          preferencesPort: _FakePreferencesPort(readValue: '/tmp/ws'),
+          directoryProbe: probe,
+          logSink: log.call,
+        );
 
-      await repo.restore();
+        await repo.restore();
 
-      expect(probe.calls.any((c) => c.method == 'readFirstEntry'), isTrue);
-      expect(
-          log.containsEvent(WorkspaceLogEvent.inspectReadIssuing), isTrue);
-    });
+        expect(probe.calls.any((c) => c.method == 'readFirstEntry'), isTrue);
+        expect(log.containsEvent(WorkspaceLogEvent.inspectReadIssuing), isTrue);
+      },
+    );
 
-    test('G1-8 restore() 儲存層拋例外時「呼叫發出」事件仍存在（提早返回路徑）',
-        () async {
+    test('G1-8 restore() 儲存層拋例外時「呼叫發出」事件仍存在（提早返回路徑）', () async {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
         preferencesPort: _FakePreferencesPort(openError: Exception('讀取失敗')),
@@ -211,8 +226,9 @@ void main() {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
         pickDirectoryPath: _FakePicker(path: '/tmp/ws').call,
-        preferencesPort:
-            _FakePreferencesPort(writeError: Exception('寫入失敗：磁碟已滿')),
+        preferencesPort: _FakePreferencesPort(
+          writeError: Exception('寫入失敗：磁碟已滿'),
+        ),
         directoryProbe: _FakeDirectoryProbe(),
         logSink: log.call,
       );
@@ -222,10 +238,7 @@ void main() {
       expect(result, isA<ChooseFolderNotRemembered>());
       final notRemembered = result as ChooseFolderNotRemembered;
       expect(notRemembered.reason, contains('寫入失敗'));
-      expect(
-        log.entries.any((e) => e.level == 900),
-        isTrue,
-      );
+      expect(log.entries.any((e) => e.level == 900), isTrue);
     });
 
     test('G2-4 NotRemembered 攜帶而非取代 state（跨案例等價斷言）', () async {
@@ -252,8 +265,7 @@ void main() {
       );
     });
 
-    test('G2-5 使用者取消 → ChooseFolderCancelled 且不觸碰 SharedPreferences',
-        () async {
+    test('G2-5 使用者取消 → ChooseFolderCancelled 且不觸碰 SharedPreferences', () async {
       final preferences = _PreferencesRecorder();
       final repo = WorkspaceRepository(
         pickDirectoryPath: _FakePicker(path: null).call,
@@ -270,8 +282,9 @@ void main() {
       final preferences = _PreferencesRecorder();
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
-        pickDirectoryPath:
-            _FakePicker(error: Exception('MissingPluginException')).call,
+        pickDirectoryPath: _FakePicker(
+          error: Exception('MissingPluginException'),
+        ).call,
         preferencesPort: preferences,
         logSink: log.call,
       );
@@ -281,49 +294,45 @@ void main() {
       expect(result, isA<ChooseFolderUnavailable>());
       expect((result as ChooseFolderUnavailable).reason, isNotEmpty);
       expect(preferences.calls, isEmpty);
-      expect(
-        log.entries.any((e) => e.level == 900),
-        isTrue,
-      );
+      expect(log.entries.any((e) => e.level == 900), isTrue);
     });
   });
 
   group('G2b｜openPath 與 chooseFolder 共用 _persistAndInspect（0.2.1-W1-054）', () {
-    test('G2b-1 成功：寫入已存路徑，探測可用 → ChooseFolderSelected(WorkspaceReady)',
-        () async {
-      final values = <String, String?>{};
-      final repo = WorkspaceRepository(
-        preferencesPort: _FakeKeyedPreferencesPort(values: values),
-        directoryProbe: _FakeDirectoryProbe(),
-      );
-
-      final result = await repo.openPath('/tmp/recent-project');
-
-      expect(result, isA<ChooseFolderSelected>());
-      final selected = result as ChooseFolderSelected;
-      expect(selected.state, isA<WorkspaceReady>());
-      expect((selected.state as WorkspaceReady).path, '/tmp/recent-project');
-      // 已存路徑確實被寫入（下次 restore() 可讀回，非僅回傳值正確）。
-      expect(values['workspace.path'], '/tmp/recent-project');
-    });
-
     test(
-      'G2b-2 探測失敗（不可讀或不存在）→ WorkspaceUnavailable，'
-      '已存路徑仍被寫入但呼叫端依此判定失敗回饋（不轉狀態、清單不變由呼叫端負責）',
+      'G2b-1 成功：寫入已存路徑，探測可用 → ChooseFolderSelected(WorkspaceReady)',
       () async {
         final values = <String, String?>{};
         final repo = WorkspaceRepository(
           preferencesPort: _FakeKeyedPreferencesPort(values: values),
-          directoryProbe: _FakeDirectoryProbe(existsResult: false),
+          directoryProbe: _FakeDirectoryProbe(),
         );
 
-        final result = await repo.openPath('/tmp/missing-project');
+        final result = await repo.openPath('/tmp/recent-project');
 
         expect(result, isA<ChooseFolderSelected>());
         final selected = result as ChooseFolderSelected;
-        expect(selected.state, isA<WorkspaceUnavailable>());
+        expect(selected.state, isA<WorkspaceReady>());
+        expect((selected.state as WorkspaceReady).path, '/tmp/recent-project');
+        // 已存路徑確實被寫入（下次 restore() 可讀回，非僅回傳值正確）。
+        expect(values['workspace.path'], '/tmp/recent-project');
       },
     );
+
+    test('G2b-2 探測失敗（不可讀或不存在）→ WorkspaceUnavailable，'
+        '已存路徑仍被寫入但呼叫端依此判定失敗回饋（不轉狀態、清單不變由呼叫端負責）', () async {
+      final values = <String, String?>{};
+      final repo = WorkspaceRepository(
+        preferencesPort: _FakeKeyedPreferencesPort(values: values),
+        directoryProbe: _FakeDirectoryProbe(existsResult: false),
+      );
+
+      final result = await repo.openPath('/tmp/missing-project');
+
+      expect(result, isA<ChooseFolderSelected>());
+      final selected = result as ChooseFolderSelected;
+      expect(selected.state, isA<WorkspaceUnavailable>());
+    });
 
     test('G2b-3 不呼叫 pickDirectoryPath（路徑來源不經系統選擇器）', () async {
       final picker = _PickerRecorder();
@@ -374,20 +383,17 @@ void main() {
       expect((result as WorkspaceUnavailable).lastKnownPath, isNull);
       expect(result.reason, isNotEmpty);
       expect(result.runtimeType, isNot(const WorkspaceUnset().runtimeType));
-      expect(
-        log.entries.any((e) => e.level == 900),
-        isTrue,
-      );
+      expect(log.entries.any((e) => e.level == 900), isTrue);
     });
 
     // 3b-E 回歸鎖：restore() 例外路徑的 reason 曾直接插值原始例外字串
     // （'$e'），使未選專案畫面（_UnsetView）顯示例外型別名給使用者看。日誌拿例外
     // 細節、reason 拿固定文案，兩者不互相抵扣，此測試鎖住這條界線。
-    test('G3-2b restore() 例外路徑的 reason 不含例外型別名（不外露原始例外字串）',
-        () async {
+    test('G3-2b restore() 例外路徑的 reason 不含例外型別名（不外露原始例外字串）', () async {
       final repo = WorkspaceRepository(
-        preferencesPort:
-            _FakePreferencesPort(openError: Exception('儲存層失效：磁碟已拔除')),
+        preferencesPort: _FakePreferencesPort(
+          openError: Exception('儲存層失效：磁碟已拔除'),
+        ),
       );
 
       final result = await repo.restore();
@@ -438,10 +444,12 @@ void main() {
       await repo.restore();
 
       final issuedIndex = log.indexOfEvent(WorkspaceLogEvent.restoreIssuing);
-      final acceptedIndex =
-          log.indexOfEvent(WorkspaceLogEvent.restorePreferencesReady);
-      final resultIndex =
-          log.indexOfEvent(WorkspaceLogEvent.restoreNoStoredPath);
+      final acceptedIndex = log.indexOfEvent(
+        WorkspaceLogEvent.restorePreferencesReady,
+      );
+      final resultIndex = log.indexOfEvent(
+        WorkspaceLogEvent.restoreNoStoredPath,
+      );
       expect(acceptedIndex, greaterThan(issuedIndex));
       expect(resultIndex, greaterThan(acceptedIndex));
     });
@@ -455,12 +463,13 @@ void main() {
 
       await repo.restore();
 
-      expect(log.containsEvent(WorkspaceLogEvent.restorePreferencesReady),
-          isFalse);
+      expect(
+        log.containsEvent(WorkspaceLogEvent.restorePreferencesReady),
+        isFalse,
+      );
     });
 
-    test('G4-3 file_selector 無受理事件（負向，鎖定裁決 C 的不適用判定）',
-        () async {
+    test('G4-3 file_selector 無受理事件（負向，鎖定裁決 C 的不適用判定）', () async {
       final picker = _PickerRecorder();
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
@@ -472,14 +481,15 @@ void main() {
 
       // 記錄器只回中性 null，chooseFolder 走取消路徑，不觸碰 preferences；
       // picker 相關的日誌只有「呼叫發出」與「使用者取消」兩類，無受理事件。
-      expect(log.containsEvent(WorkspaceLogEvent.persistPreferencesReady),
-          isFalse);
+      expect(
+        log.containsEvent(WorkspaceLogEvent.persistPreferencesReady),
+        isFalse,
+      );
     });
   });
 
   group('G5｜schema 版本化與遷移（0.2.0-W1-021）', () {
-    test('G5-1 v0 舊資料（有 path 無版號 key）→ 遷移後仍還原出同一個 path',
-        () async {
+    test('G5-1 v0 舊資料（有 path 無版號 key）→ 遷移後仍還原出同一個 path', () async {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
         preferencesPort: _FakeKeyedPreferencesPort(
@@ -496,8 +506,7 @@ void main() {
       expect(log.containsEvent(WorkspaceLogEvent.restoreMigrated), isTrue);
     });
 
-    test('G5-2 目前版號（path + 版號皆存在且相符）→ 直接還原，不觸發遷移日誌',
-        () async {
+    test('G5-2 目前版號（path + 版號皆存在且相符）→ 直接還原，不觸發遷移日誌', () async {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
         preferencesPort: _FakeKeyedPreferencesPort(
@@ -517,8 +526,7 @@ void main() {
       expect(log.containsEvent(WorkspaceLogEvent.restoreMigrated), isFalse);
     });
 
-    test('G5-3 無 path 無版號（真正首次啟動）→ WorkspaceUnset，不判定為遷移',
-        () async {
+    test('G5-3 無 path 無版號（真正首次啟動）→ WorkspaceUnset，不判定為遷移', () async {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
         preferencesPort: _FakeKeyedPreferencesPort(values: const {}),
@@ -531,8 +539,7 @@ void main() {
       expect(log.containsEvent(WorkspaceLogEvent.restoreMigrated), isFalse);
     });
 
-    test('G5-4 版號比目前版本更新（未來格式）→ 遷移失敗，降級為 WorkspaceUnset，不阻擋 App',
-        () async {
+    test('G5-4 版號比目前版本更新（未來格式）→ 遷移失敗，降級為 WorkspaceUnset，不阻擋 App', () async {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
         preferencesPort: _FakeKeyedPreferencesPort(
@@ -548,14 +555,10 @@ void main() {
       final result = await repo.restore();
 
       expect(result, isA<WorkspaceUnset>());
-      expect(
-        log.entries.any((e) => e.level == 900),
-        isTrue,
-      );
+      expect(log.entries.any((e) => e.level == 900), isTrue);
     });
 
-    test('G5-5 chooseFolder 成功時版號 key 與 path key 同一次操作寫入',
-        () async {
+    test('G5-5 chooseFolder 成功時版號 key 與 path key 同一次操作寫入', () async {
       final preferences = _PreferencesRecorder();
       final repo = WorkspaceRepository(
         pickDirectoryPath: _FakePicker(path: '/tmp/ws').call,
@@ -564,8 +567,9 @@ void main() {
 
       await repo.chooseFolder();
 
-      final writeCalls =
-          preferences.calls.where((c) => c.method == 'writeString').toList();
+      final writeCalls = preferences.calls
+          .where((c) => c.method == 'writeString')
+          .toList();
       expect(writeCalls.length, 2);
       expect(writeCalls[0].args, ['workspace.path', '/tmp/ws']);
       expect(writeCalls[1].args, ['workspace.schemaVersion', '1']);
@@ -573,8 +577,7 @@ void main() {
   });
 
   group('G6｜_inspect 探測結局', () {
-    test('G6-1 資料夾不存在 → WorkspaceUnavailable(lastKnownPath: path)',
-        () async {
+    test('G6-1 資料夾不存在 → WorkspaceUnavailable(lastKnownPath: path)', () async {
       final repo = WorkspaceRepository(
         preferencesPort: _FakePreferencesPort(readValue: '/tmp/missing'),
         directoryProbe: _FakeDirectoryProbe(existsResult: false),
@@ -586,15 +589,13 @@ void main() {
       expect((result as WorkspaceUnavailable).lastKnownPath, '/tmp/missing');
     });
 
-    test(
-        'G6-2 readFirstEntry 拋 FileSystemException → WorkspaceUnavailable '
+    test('G6-2 readFirstEntry 拋 FileSystemException → WorkspaceUnavailable '
         '+ level 900 日誌', () async {
       final log = _LogRecorder();
       final repo = WorkspaceRepository(
         preferencesPort: _FakePreferencesPort(readValue: '/tmp/broken'),
         directoryProbe: _FakeDirectoryProbe(
-          readFirstEntryError:
-              const FileSystemException('讀取失敗', '/tmp/broken'),
+          readFirstEntryError: const FileSystemException('讀取失敗', '/tmp/broken'),
         ),
         logSink: log.call,
       );
@@ -602,10 +603,7 @@ void main() {
       final result = await repo.restore();
 
       expect(result, isA<WorkspaceUnavailable>());
-      expect(
-        log.entries.any((e) => e.level == 900),
-        isTrue,
-      );
+      expect(log.entries.any((e) => e.level == 900), isTrue);
     });
 
     // Phase 4b 回歸鎖：_inspect() 的 FileSystemException 分支曾把
@@ -613,8 +611,7 @@ void main() {
     // 用一個帶有明顯可辨識訊息的 OSError 驗證該訊息不會外露到 reason。
     // 比照 G3-2b 的裝置，鎖住 WorkspaceUnavailable.reason 契約的第二條
     // 產生路徑（restore() 例外路徑已由 G3-2b 鎖定）。
-    test(
-        'G6-2b _inspect 的 FileSystemException 分支 reason 不含 OSError '
+    test('G6-2b _inspect 的 FileSystemException 分支 reason 不含 OSError '
         '原始訊息（不外露 OS 語系文字）', () async {
       final repo = WorkspaceRepository(
         preferencesPort: _FakePreferencesPort(readValue: '/tmp/broken'),
@@ -635,22 +632,24 @@ void main() {
       expect(reason, isNotEmpty);
     });
 
-    test('G6-3 readFirstEntry 拋 StateError（空資料夾）→ WorkspaceReady（不是失敗）',
-        () async {
-      final log = _LogRecorder();
-      final repo = WorkspaceRepository(
-        preferencesPort: _FakePreferencesPort(readValue: '/tmp/empty'),
-        directoryProbe: _FakeDirectoryProbe(
-          readFirstEntryError: StateError('No element'),
-        ),
-        logSink: log.call,
-      );
+    test(
+      'G6-3 readFirstEntry 拋 StateError（空資料夾）→ WorkspaceReady（不是失敗）',
+      () async {
+        final log = _LogRecorder();
+        final repo = WorkspaceRepository(
+          preferencesPort: _FakePreferencesPort(readValue: '/tmp/empty'),
+          directoryProbe: _FakeDirectoryProbe(
+            readFirstEntryError: StateError('No element'),
+          ),
+          logSink: log.call,
+        );
 
-      final result = await repo.restore();
+        final result = await repo.restore();
 
-      expect(result, isA<WorkspaceReady>());
-      expect(log.entries.any((e) => e.level == 900), isFalse);
-    });
+        expect(result, isA<WorkspaceReady>());
+        expect(log.entries.any((e) => e.level == 900), isFalse);
+      },
+    );
 
     test('G6-4 探測成功 → WorkspaceReady', () async {
       final repo = WorkspaceRepository(
@@ -713,9 +712,7 @@ void main() {
     test('G7-4 元素缺欄位（型別不符）→ 整份視為損壞，回空清單', () async {
       final repo = WorkspaceRepository(
         preferencesPort: _FakeKeyedPreferencesPort(
-          values: {
-            'workspace.recentProjects': '[{"path": "/tmp/a"}]',
-          },
+          values: {'workspace.recentProjects': '[{"path": "/tmp/a"}]'},
         ),
       );
 
@@ -726,9 +723,7 @@ void main() {
 
     test('G7-5 開啟儲存管道例外 → 空清單', () async {
       final repo = WorkspaceRepository(
-        preferencesPort: _FakePreferencesPort(
-          openError: Exception('讀取失敗'),
-        ),
+        preferencesPort: _FakePreferencesPort(openError: Exception('讀取失敗')),
       );
 
       final result = await repo.loadRecentProjects();
@@ -770,8 +765,7 @@ void main() {
       expect(reloaded.first.path, '/tmp/b');
     });
 
-    test('G7-8 addRecentProject 讀到損壞內容以空清單為基底寫入 + level 900 日誌',
-        () async {
+    test('G7-8 addRecentProject 讀到損壞內容以空清單為基底寫入 + level 900 日誌', () async {
       final log = _LogRecorder();
       final values = <String, String?>{
         'workspace.recentProjects': '{"not": "an array"}',
@@ -791,9 +785,7 @@ void main() {
 
     test('G7-9 addRecentProject 開啟儲存管道例外 → false', () async {
       final repo = WorkspaceRepository(
-        preferencesPort: _FakePreferencesPort(
-          openError: Exception('開不起來'),
-        ),
+        preferencesPort: _FakePreferencesPort(openError: Exception('開不起來')),
       );
 
       final success = await repo.addRecentProject('/tmp/new');
@@ -1004,10 +996,7 @@ class _FakeKeyedPreferencesHandle implements WorkspacePreferencesHandle {
 }
 
 class _FakeDirectoryProbe implements WorkspaceDirectoryProbePort {
-  _FakeDirectoryProbe({
-    this.existsResult = true,
-    this.readFirstEntryError,
-  });
+  _FakeDirectoryProbe({this.existsResult = true, this.readFirstEntryError});
 
   final bool existsResult;
   final Object? readFirstEntryError;

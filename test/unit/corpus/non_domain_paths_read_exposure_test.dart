@@ -35,9 +35,8 @@ const _listFile = 'docs/non-domain-paths.yaml';
 
 TypeTable _builtinTable() => typeTableFromJson(
   jsonDecode(
-        File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
-      )
-      as Map<String, dynamic>,
+    File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
+  ) as Map<String, dynamic>,
 );
 
 Future<CorpusScanResult> _scan(Map<String, String> files) => scanCorpus(

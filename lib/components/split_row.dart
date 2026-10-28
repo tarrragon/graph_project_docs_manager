@@ -110,9 +110,7 @@ class SplitRow extends StatelessWidget {
     );
 
     final height = _fixedHeight;
-    final content = height == null
-        ? row
-        : SizedBox(height: height, child: row);
+    final content = height == null ? row : SizedBox(height: height, child: row);
 
     final border = _border;
     final background = _background;

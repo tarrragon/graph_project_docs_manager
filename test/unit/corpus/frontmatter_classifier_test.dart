@@ -18,7 +18,9 @@ void main() {
 
   group('結果分類', () {
     test('C1-1 合法 frontmatter 為可用', () {
-      final result = classifyFrontmatter(bytesOf('---\ntitle: hello\n---\nbody'));
+      final result = classifyFrontmatter(
+        bytesOf('---\ntitle: hello\n---\nbody'),
+      );
 
       expect(result.kind, ParseResultKind.available);
       expect(frontmatterOf(result), {'title': 'hello'});
@@ -115,19 +117,16 @@ void main() {
   });
 
   group('結尾定位', () {
-    test(
-      'C2-1 引號包住的 |---|---| 不截斷，正文的 --- 不影響，鍵集合含其後所有鍵',
-      () {
-        final content =
-            '---\ntitle: "|---|---|"\nauthor: alice\n---\nbody with --- inside';
+    test('C2-1 引號包住的 |---|---| 不截斷，正文的 --- 不影響，鍵集合含其後所有鍵', () {
+      final content =
+          '---\ntitle: "|---|---|"\nauthor: alice\n---\nbody with --- inside';
 
-        final result = classifyFrontmatter(bytesOf(content));
+      final result = classifyFrontmatter(bytesOf(content));
 
-        expect(result.kind, ParseResultKind.available);
-        expect(frontmatterOf(result).keys.toSet(), {'title', 'author'});
-        expect(frontmatterOf(result)['title'], '|---|---|');
-      },
-    );
+      expect(result.kind, ParseResultKind.available);
+      expect(frontmatterOf(result).keys.toSet(), {'title', 'author'});
+      expect(frontmatterOf(result)['title'], '|---|---|');
+    });
 
     test('C2-2 兩個獨立 --- 行在第二行之後，取第一個作結尾', () {
       final content = '---\ntitle: hello\n---\nauthor: alice\n---\n';
@@ -173,7 +172,9 @@ void main() {
     });
 
     test('C3-2 只有註解為空或非 map', () {
-      final result = classifyFrontmatter(bytesOf('---\n# just a comment\n---\n'));
+      final result = classifyFrontmatter(
+        bytesOf('---\n# just a comment\n---\n'),
+      );
 
       expect(result.kind, ParseResultKind.emptyOrNotMap);
     });
@@ -203,15 +204,12 @@ void main() {
       expect(frontmatterOf(result), {'a': 1});
     });
 
-    test(
-      'C3-7 頂層鍵非字串（YAML 布林鍵 true:）歸入空或非 map，'
-      '不拋出 TypeError（0.3.0-W4-001 Phase 4 linux 審查）',
-      () {
-        final result = classifyFrontmatter(bytesOf('---\ntrue: value\n---\n'));
+    test('C3-7 頂層鍵非字串（YAML 布林鍵 true:）歸入空或非 map，'
+        '不拋出 TypeError（0.3.0-W4-001 Phase 4 linux 審查）', () {
+      final result = classifyFrontmatter(bytesOf('---\ntrue: value\n---\n'));
 
-        expect(result.kind, ParseResultKind.emptyOrNotMap);
-      },
-    );
+      expect(result.kind, ParseResultKind.emptyOrNotMap);
+    });
 
     test('C3-8（正向對照）頂層鍵皆為字串時仍可用（對照 C3-7）', () {
       final result = classifyFrontmatter(bytesOf('---\n"true": value\n---\n'));
@@ -249,10 +247,7 @@ void main() {
     test('C4-3 frontmatter map 不可變：寫入丟出 UnsupportedError', () {
       final result = classifyFrontmatter(bytesOf('---\na: 1\n---\n'));
 
-      expect(
-        () => frontmatterOf(result)['a'] = 2,
-        throwsUnsupportedError,
-      );
+      expect(() => frontmatterOf(result)['a'] = 2, throwsUnsupportedError);
     });
 
     test('C4-4 巢狀 map 亦不可變：寫入丟出 UnsupportedError（對照 C4-1）', () {
@@ -260,8 +255,7 @@ void main() {
         bytesOf('---\nnested:\n  a: 1\n---\n'),
       );
 
-      final nested =
-          frontmatterOf(result)['nested'] as Map<String, dynamic>;
+      final nested = frontmatterOf(result)['nested'] as Map<String, dynamic>;
       expect(() => nested['a'] = 2, throwsUnsupportedError);
     });
   });

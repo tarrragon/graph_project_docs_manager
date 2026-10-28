@@ -14,21 +14,21 @@ void main() {
         AppColors.textSecondary,
         AppColors.accent,
       ]) {
-        testWidgetsAtEachSize(
-          '${size.name} / $color 不溢位且尺寸正確',
-          (tester, windowSize) async {
-            await pumpHarness(
-              tester,
-              size: windowSize,
-              child: AppIcon(icon: Icons.folder, size: size, color: color),
-            );
-            expectNoOverflow(tester);
+        testWidgetsAtEachSize('${size.name} / $color 不溢位且尺寸正確', (
+          tester,
+          windowSize,
+        ) async {
+          await pumpHarness(
+            tester,
+            size: windowSize,
+            child: AppIcon(icon: Icons.folder, size: size, color: color),
+          );
+          expectNoOverflow(tester);
 
-            final renderedIcon = tester.widget<Icon>(find.byType(Icon));
-            expect(renderedIcon.size, size.logicalSize);
-            expect(renderedIcon.color, color);
-          },
-        );
+          final renderedIcon = tester.widget<Icon>(find.byType(Icon));
+          expect(renderedIcon.size, size.logicalSize);
+          expect(renderedIcon.color, color);
+        });
       }
     }
   });
@@ -57,10 +57,7 @@ void main() {
   group('無障礙：semanticLabel', () {
     testWidgets('semanticLabel 為 null 時語意樹無節點', (tester) async {
       final handle = tester.ensureSemantics();
-      await pumpHarness(
-        tester,
-        child: const AppIcon(icon: Icons.folder),
-      );
+      await pumpHarness(tester, child: const AppIcon(icon: Icons.folder));
       expect(
         find.descendant(
           of: find.byType(AppIcon),

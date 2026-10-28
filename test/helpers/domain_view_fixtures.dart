@@ -234,10 +234,7 @@ abstract final class DomainViewFixtures {
 DomainReady fixtureReady({
   DomainMode mode = DomainMode.matrix,
   String? selectedDomainId,
-}) => DomainReady(
-  mode: mode,
-  selectedDomainId: selectedDomainId,
-);
+}) => DomainReady(mode: mode, selectedDomainId: selectedDomainId);
 
 /// 測試注入矩陣時的空泳道列（畫面列 + 矩陣各 domain 列），形狀同
 /// `projectEmptyLanes`（真實路徑由輪次事件算出，測試以矩陣代之）。

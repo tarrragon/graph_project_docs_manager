@@ -145,7 +145,8 @@ void main() {
           } on YamlException {
             threw = true;
           }
-          final expectedAvailable = !threw && reparsed is YamlMap && reparsed.isNotEmpty;
+          final expectedAvailable =
+              !threw && reparsed is YamlMap && reparsed.isNotEmpty;
           expect(
             expectedAvailable,
             isFalse,
@@ -162,7 +163,11 @@ void main() {
 
       for (final sample in realSamples) {
         final result = classifyFrontmatter(bytesOf(sample));
-        expect(result.kind, ParseResultKind.available, reason: '${sample['name']} 應為可用');
+        expect(
+          result.kind,
+          ParseResultKind.available,
+          reason: '${sample['name']} 應為可用',
+        );
 
         final naiveYamlError = sample['naive_yaml_error'] as bool;
         final naiveKeyCount = sample['naive_key_count'] as int?;
@@ -280,7 +285,11 @@ void main() {
         'IT1-S6',
         'IT1-S7',
       ]) {
-        expect(syntheticNames.contains(expectedName), isTrue, reason: '$expectedName 應至少一筆');
+        expect(
+          syntheticNames.contains(expectedName),
+          isTrue,
+          reason: '$expectedName 應至少一筆',
+        );
       }
     });
   });

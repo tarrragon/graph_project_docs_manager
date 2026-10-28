@@ -97,8 +97,12 @@ final x = 1;
   });
 
   group('內容政策：zh/en 混排段落', () {
-    testWidgetsAtEachSize('最長測試文案（zh / en / 無斷字 token）不溢位', (tester, size) async {
-      final mixed = '''
+    testWidgetsAtEachSize('最長測試文案（zh / en / 無斷字 token）不溢位', (
+      tester,
+      size,
+    ) async {
+      final mixed =
+          '''
 ${TestCopy.longZh}
 
 ${TestCopy.longEn}

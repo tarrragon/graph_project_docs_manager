@@ -13,8 +13,10 @@ void main() {
 
   Widget buildHeader({String text = 'header'}) => AppText.singleLine(text);
 
-  List<Widget> buildItems(int count) =>
-      List.generate(count, (i) => AppText.singleLine('item-$i', key: ValueKey('item-$i')));
+  List<Widget> buildItems(int count) => List.generate(
+    count,
+    (i) => AppText.singleLine('item-$i', key: ValueKey('item-$i')),
+  );
 
   group('變體與狀態矩陣：collapsible expanded/collapsed、static', () {
     testWidgetsAtEachSize('collapsible expanded 渲染節首與 50 項且不溢位', (
@@ -64,10 +66,7 @@ void main() {
       expect(find.byKey(const ValueKey('item-0')), findsNothing);
     });
 
-    testWidgetsAtEachSize('collapsible 0 項時只渲染節首，不例外', (
-      tester,
-      size,
-    ) async {
+    testWidgetsAtEachSize('collapsible 0 項時只渲染節首，不例外', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -135,9 +134,9 @@ void main() {
       );
 
       final headerBottom = tester.getBottomLeft(find.text('header')).dy;
-      final firstItemTop = tester.getTopLeft(
-        find.byKey(const ValueKey('item-0')),
-      ).dy;
+      final firstItemTop = tester
+          .getTopLeft(find.byKey(const ValueKey('item-0')))
+          .dy;
 
       // 不重疊：第一個項目頂端不早於節首底部。
       expect(firstItemTop, greaterThanOrEqualTo(headerBottom));
@@ -155,12 +154,12 @@ void main() {
         ),
       );
 
-      final item0Bottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('item-0')),
-      ).dy;
-      final item1Top = tester.getTopLeft(
-        find.byKey(const ValueKey('item-1')),
-      ).dy;
+      final item0Bottom = tester
+          .getBottomLeft(find.byKey(const ValueKey('item-0')))
+          .dy;
+      final item1Top = tester
+          .getTopLeft(find.byKey(const ValueKey('item-1')))
+          .dy;
 
       expect(item1Top - item0Bottom, Space.xxs);
     });
@@ -217,9 +216,7 @@ void main() {
 
       state.setExpanded(false);
       await tester.pump();
-      await tester.pump(
-        Motion.transition(tester.element(find.byKey(testKey))),
-      );
+      await tester.pump(Motion.transition(tester.element(find.byKey(testKey))));
 
       expect(controller.offset, before);
     });

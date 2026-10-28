@@ -80,17 +80,23 @@ void main() {
       expect(result, isA<CarrierPathNoMatch>());
     });
 
-    test('S1-4（S1-3 正向對照）docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md 命中 Ticket', () {
-      final result = lookupCarrierPathType(
-        table,
-        'docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md',
-      );
-      expect(result, isA<CarrierPathSingleMatch>());
-      expect((result as CarrierPathSingleMatch).typeName, 'Ticket');
-    });
+    test(
+      'S1-4（S1-3 正向對照）docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md 命中 Ticket',
+      () {
+        final result = lookupCarrierPathType(
+          table,
+          'docs/work-logs/v0/v0.1/tickets/0.1.0-W1-001.md',
+        );
+        expect(result, isA<CarrierPathSingleMatch>());
+        expect((result as CarrierPathSingleMatch).typeName, 'Ticket');
+      },
+    );
 
     test('S1-5 大小寫不同的路徑皆未命中（區分大小寫）', () {
-      final specResult = lookupCarrierPathType(table, 'docs/Spec/ui/SPEC-001-x.md');
+      final specResult = lookupCarrierPathType(
+        table,
+        'docs/Spec/ui/SPEC-001-x.md',
+      );
       final ucResult = lookupCarrierPathType(table, 'docs/usecases/uc-01-x.md');
       expect(specResult, isA<CarrierPathNoMatch>());
       expect(ucResult, isA<CarrierPathNoMatch>());
@@ -115,35 +121,53 @@ void main() {
           )
           .build();
 
-      final result = lookupCarrierPathType(dirOnlyTable, 'docs/testdir/thing.txt');
+      final result = lookupCarrierPathType(
+        dirOnlyTable,
+        'docs/testdir/thing.txt',
+      );
       expect(result, isA<CarrierPathNoMatch>());
 
       // 正向對照：同目錄、同檔名主幹，副檔名為 .md 時應命中。
-      final positive = lookupCarrierPathType(dirOnlyTable, 'docs/testdir/thing.md');
+      final positive = lookupCarrierPathType(
+        dirOnlyTable,
+        'docs/testdir/thing.md',
+      );
       expect(positive, isA<CarrierPathSingleMatch>());
     });
   });
 
   group('具體度（S2，FR-06 規則 6）', () {
-    test('S2-1 docs/spec/corpus/domain-map.md 回傳 DomainBundle（字面段 3 > SPEC 的 2）', () {
-      final table = _realLikeTypeTable();
-      final result = lookupCarrierPathType(table, 'docs/spec/corpus/domain-map.md');
-      expect(result, isA<CarrierPathSingleMatch>());
-      expect((result as CarrierPathSingleMatch).typeName, 'DomainBundle');
-    });
+    test(
+      'S2-1 docs/spec/corpus/domain-map.md 回傳 DomainBundle（字面段 3 > SPEC 的 2）',
+      () {
+        final table = _realLikeTypeTable();
+        final result = lookupCarrierPathType(
+          table,
+          'docs/spec/corpus/domain-map.md',
+        );
+        expect(result, isA<CarrierPathSingleMatch>());
+        expect((result as CarrierPathSingleMatch).typeName, 'DomainBundle');
+      },
+    );
 
     test('S2-2 字面段多者優先，即使跨段萬用較多', () {
       final table = TypeTableBuilder()
           .addType(
             'A',
             carrierPathPatterns: const [
-              PathPatternSpec(pattern: r'^docs/multi\.md$', specificity: [3, 1]),
+              PathPatternSpec(
+                pattern: r'^docs/multi\.md$',
+                specificity: [3, 1],
+              ),
             ],
           )
           .addType(
             'B',
             carrierPathPatterns: const [
-              PathPatternSpec(pattern: r'^docs/multi\.md$', specificity: [2, 0]),
+              PathPatternSpec(
+                pattern: r'^docs/multi\.md$',
+                specificity: [2, 0],
+              ),
             ],
           )
           .build();
@@ -158,13 +182,19 @@ void main() {
           .addType(
             'A',
             carrierPathPatterns: const [
-              PathPatternSpec(pattern: r'^docs/multi\.md$', specificity: [2, 1]),
+              PathPatternSpec(
+                pattern: r'^docs/multi\.md$',
+                specificity: [2, 1],
+              ),
             ],
           )
           .addType(
             'B',
             carrierPathPatterns: const [
-              PathPatternSpec(pattern: r'^docs/multi\.md$', specificity: [2, 0]),
+              PathPatternSpec(
+                pattern: r'^docs/multi\.md$',
+                specificity: [2, 0],
+              ),
             ],
           )
           .build();
@@ -505,7 +535,10 @@ void main() {
           .addType(
             'SPEC',
             carrierPathPatterns: const [
-              PathPatternSpec(pattern: r'^docs/spec/.+\.md$', specificity: [1, 0]),
+              PathPatternSpec(
+                pattern: r'^docs/spec/.+\.md$',
+                specificity: [1, 0],
+              ),
             ],
           )
           .build();

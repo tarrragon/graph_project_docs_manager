@@ -59,10 +59,9 @@ void main() {
   });
 
   test('正向對照：docs/research/ 路徑判紅，docs/spec/ 路徑不判紅', () {
-    expect(
-      uncoveredDocsLiterals("File('docs/research/x.md')", prefixes),
-      ['docs/research/x.md'],
-    );
+    expect(uncoveredDocsLiterals("File('docs/research/x.md')", prefixes), [
+      'docs/research/x.md',
+    ]);
     expect(
       uncoveredDocsLiterals("File('docs/spec/ui/a.md')", prefixes),
       isEmpty,

@@ -79,7 +79,9 @@ UcFlowUcItem _toUcItem(
     id: ucId,
     title: node.displayTitle,
     filePath: node.path,
-    steps: [for (final s in subgraph?.steps ?? const <FlowStepNode>[]) _step(s)],
+    steps: [
+      for (final s in subgraph?.steps ?? const <FlowStepNode>[]) _step(s),
+    ],
     isFlowParseFailed: isFailed,
   );
 }

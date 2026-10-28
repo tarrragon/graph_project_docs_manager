@@ -114,9 +114,11 @@ const Map<String, Set<String>> _knownFailures = {
 };
 
 /// 從準則失敗訊息取出失敗節點的 label（每個節點一個 `label: "..."`）。
-Set<String> _failedLabels(String reason) => RegExp(
-  r'label: "([^"]*)"',
-).allMatches(reason).map((m) => m.group(1)!).toSet();
+Set<String> _failedLabels(String reason) =>
+    RegExp(r'label: "([^"]*)"')
+        .allMatches(reason)
+        .map((m) => m.group(1)!)
+        .toSet();
 
 void main() {
   for (final c in _cases) {

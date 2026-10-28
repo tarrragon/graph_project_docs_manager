@@ -34,26 +34,26 @@ class TraceabilityScreen extends ConsumerWidget {
 
     return switch (state) {
       TraceabilityNormal(:final roots) => _TraceTree(
-          key: const Key('state-traceability-normal'),
-          roots: roots,
-        ),
+        key: const Key('state-traceability-normal'),
+        roots: roots,
+      ),
       TraceabilityBroken(:final roots) => _TraceTree(
-          key: const Key('state-traceability-broken'),
-          roots: roots,
-        ),
+        key: const Key('state-traceability-broken'),
+        roots: roots,
+      ),
       TraceabilityNoProposal() => EmptyState(
-          variant: EmptyStateVariant.page,
-          testKey: const Key('state-traceability-empty'),
-          message: l10n.emptyProposalMessage,
-          actions: [
-            AppButton(
-              label: l10n.gotoGapsReportAction,
-              testKey: const Key('action-traceability-goto-gaps'),
-              onPressed: () =>
-                  navigateTo(ref.read, AppDestination.gaps, NavIntent.jump),
-            ),
-          ],
-        ),
+        variant: EmptyStateVariant.page,
+        testKey: const Key('state-traceability-empty'),
+        message: l10n.emptyProposalMessage,
+        actions: [
+          AppButton(
+            label: l10n.gotoGapsReportAction,
+            testKey: const Key('action-traceability-goto-gaps'),
+            onPressed: () =>
+                navigateTo(ref.read, AppDestination.gaps, NavIntent.jump),
+          ),
+        ],
+      ),
       TraceabilityProjectUnready(:final reason) => ProjectUnreadyView(
         reason: reason,
         stateKey: const Key('state-traceability-project-unready'),

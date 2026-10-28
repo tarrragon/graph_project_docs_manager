@@ -14,54 +14,51 @@ void main() {
   group('AppButton 全變體 × 全狀態渲染', () {
     for (final size in WindowSize.values) {
       for (final locale in kTestLocales) {
-        testWidgets(
-          '三變體 enabled/disabled 皆可渲染不拋例外 @ ${size.label} @ '
-          '${locale.languageCode}',
-          (tester) async {
-            await pumpHarness(
-              tester,
-              size: size,
-              locale: locale,
-              child: Builder(
-                builder: (context) {
-                  final l10n = AppLocalizations.of(context);
-                  return SizedBox(
-                    width: 300,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final variant in AppButtonVariant.values) ...[
-                          AppButton(
-                            testKey: Anchor.action(
-                              Screen.domain,
-                              'button-${variant.name}-enabled',
-                            ),
-                            label: l10n.backAction,
-                            variant: variant,
-                            onPressed: () {},
+        testWidgets('三變體 enabled/disabled 皆可渲染不拋例外 @ ${size.label} @ '
+            '${locale.languageCode}', (tester) async {
+          await pumpHarness(
+            tester,
+            size: size,
+            locale: locale,
+            child: Builder(
+              builder: (context) {
+                final l10n = AppLocalizations.of(context);
+                return SizedBox(
+                  width: 300,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final variant in AppButtonVariant.values) ...[
+                        AppButton(
+                          testKey: Anchor.action(
+                            Screen.domain,
+                            'button-${variant.name}-enabled',
                           ),
-                          AppButton(
-                            testKey: Anchor.action(
-                              Screen.domain,
-                              'button-${variant.name}-disabled',
-                            ),
-                            label: l10n.backAction,
-                            variant: variant,
-                            enabled: false,
-                            disabledReason: l10n.probeTimeoutReason,
-                            onPressed: () {},
+                          label: l10n.backAction,
+                          variant: variant,
+                          onPressed: () {},
+                        ),
+                        AppButton(
+                          testKey: Anchor.action(
+                            Screen.domain,
+                            'button-${variant.name}-disabled',
                           ),
-                        ],
+                          label: l10n.backAction,
+                          variant: variant,
+                          enabled: false,
+                          disabledReason: l10n.probeTimeoutReason,
+                          onPressed: () {},
+                        ),
                       ],
-                    ),
-                  );
-                },
-              ),
-            );
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
 
-            expectNoOverflow(tester);
-          },
-        );
+          expectNoOverflow(tester);
+        });
       }
     }
   });
@@ -108,9 +105,7 @@ void main() {
       expect(text.maxLines, 1);
     });
 
-    testWidgets('disabledReason 使用 TestCopy.longZh 不溢位（截斷）', (
-      tester,
-    ) async {
+    testWidgets('disabledReason 使用 TestCopy.longZh 不溢位（截斷）', (tester) async {
       final key = Anchor.action(Screen.domain, 'button-long-reason');
       await pumpHarness(
         tester,
@@ -136,7 +131,11 @@ void main() {
       final key = Anchor.action(Screen.domain, 'button-tap');
       await pumpHarness(
         tester,
-        child: AppButton(testKey: key, label: 'x', onPressed: () => callCount++),
+        child: AppButton(
+          testKey: key,
+          label: 'x',
+          onPressed: () => callCount++,
+        ),
       );
 
       await tester.tap(find.byKey(key));
@@ -171,7 +170,11 @@ void main() {
       final key = Anchor.action(Screen.domain, 'button-key-trigger');
       await pumpHarness(
         tester,
-        child: AppButton(testKey: key, label: 'x', onPressed: () => callCount++),
+        child: AppButton(
+          testKey: key,
+          label: 'x',
+          onPressed: () => callCount++,
+        ),
       );
 
       final textFinder = find.descendant(
@@ -220,7 +223,11 @@ void main() {
       final handle = tester.ensureSemantics();
       await pumpHarness(
         tester,
-        child: AppButton(testKey: key, label: TestCopy.nodeTitle, onPressed: () {}),
+        child: AppButton(
+          testKey: key,
+          label: TestCopy.nodeTitle,
+          onPressed: () {},
+        ),
       );
 
       final semantics = tester.getSemantics(find.byKey(key));

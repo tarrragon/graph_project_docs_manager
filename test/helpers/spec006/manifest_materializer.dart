@@ -59,8 +59,7 @@ class ManifestExpected {
       ManifestExpected(
         kind: json['kind'] as String,
         nodeType: json['node_type'] as String?,
-        candidateTypes: (json['candidate_types'] as List)
-            .cast<String>(),
+        candidateTypes: (json['candidate_types'] as List).cast<String>(),
         schemaAmbiguous: json['schema_ambiguous'] as bool,
         reason: json['reason'] as String?,
       );

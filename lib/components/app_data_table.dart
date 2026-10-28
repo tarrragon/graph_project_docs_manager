@@ -97,28 +97,28 @@ class AppDataTable extends StatelessWidget {
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [header, Expanded(child: _buildRows())],
+      children: [
+        header,
+        Expanded(child: _buildRows()),
+      ],
     );
   }
 
   Widget _buildRows() {
     return switch (variant) {
       AppDataTableVariant.virtual => ListView.builder(
-          key: scrollKey,
-          itemExtent: LayoutSize.rowHeightRelaxed.h,
-          itemCount: rows.length,
-          itemBuilder: (context, index) => rows[index],
-        ),
+        key: scrollKey,
+        itemExtent: LayoutSize.rowHeightRelaxed.h,
+        itemCount: rows.length,
+        itemBuilder: (context, index) => rows[index],
+      ),
       AppDataTableVariant.plain => ListView(
-          key: scrollKey,
-          children: [
-            ...rows,
-            if (appendix != null) ...[
-              SizedBox(height: Space.lg.h),
-              appendix!,
-            ],
-          ],
-        ),
+        key: scrollKey,
+        children: [
+          ...rows,
+          if (appendix != null) ...[SizedBox(height: Space.lg.h), appendix!],
+        ],
+      ),
     };
   }
 }
