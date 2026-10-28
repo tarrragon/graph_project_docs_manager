@@ -34,7 +34,7 @@ void main() {
         size: size,
         child: SplitRow.header(
           leading: const PageTitle(title: 'Domain 視圖'),
-          trailing: const AppText('矩陣', variant: AppTextVariant.caption),
+          trailing: const AppText.singleLine('矩陣', variant: AppTextVariant.caption),
         ),
       );
       expect(find.text('Domain 視圖'), findsOneWidget);
@@ -73,11 +73,11 @@ void main() {
         tester,
         size: size,
         child: SplitRow.header(
-          leading: const AppText(
+          leading: const AppText.singleLine(
             TestCopy.longZh,
             variant: AppTextVariant.subtitle,
           ),
-          trailing: const AppText('操作', variant: AppTextVariant.caption),
+          trailing: const AppText.singleLine('操作', variant: AppTextVariant.caption),
         ),
       );
       expectNoOverflow(tester);
@@ -96,7 +96,7 @@ void main() {
       await pumpHarness(
         tester,
         child: SplitRow.header(
-          leading: const AppText('詳情卡標題', variant: AppTextVariant.subtitle),
+          leading: const AppText.singleLine('詳情卡標題', variant: AppTextVariant.subtitle),
           compactHeader: true,
         ),
       );
@@ -114,8 +114,8 @@ void main() {
         tester,
         size: size,
         child: SplitRow.footer(
-          leading: const AppText('顯示 1–20 / 共 100', variant: AppTextVariant.body),
-          trailing: const AppText('虛擬捲動，不分頁', variant: AppTextVariant.caption),
+          leading: const AppText.singleLine('顯示 1–20 / 共 100', variant: AppTextVariant.body),
+          trailing: const AppText.singleLine('虛擬捲動，不分頁', variant: AppTextVariant.caption),
         ),
       );
       expectNoOverflow(tester);
@@ -125,7 +125,7 @@ void main() {
       await pumpHarness(
         tester,
         child: SplitRow.footer(
-          leading: const AppText('摘要', variant: AppTextVariant.body),
+          leading: const AppText.singleLine('摘要', variant: AppTextVariant.body),
         ),
       );
       final size = tester.getSize(find.byType(SplitRow));
@@ -140,8 +140,8 @@ void main() {
       await pumpHarness(
         tester,
         child: SplitRow.header(
-          leading: SizedBox(key: leadingKey, height: 20, child: const AppText('左')),
-          trailing: SizedBox(key: trailingKey, height: 20, child: const AppText('右')),
+          leading: SizedBox(key: leadingKey, height: 20, child: const AppText.singleLine('左')),
+          trailing: SizedBox(key: trailingKey, height: 20, child: const AppText.singleLine('右')),
         ),
       );
 
@@ -161,12 +161,12 @@ void main() {
             key: leadingKey,
             width: 40,
             height: 20,
-            child: const AppText('左'),
+            child: const AppText.singleLine('左'),
           ),
           trailing: SizedBox(
             key: trailingKey,
             height: 20,
-            child: const AppText('右'),
+            child: const AppText.singleLine('右'),
           ),
         ),
       );
@@ -183,7 +183,7 @@ void main() {
         tester,
         size: WindowSize.min,
         child: SplitRow.header(
-          leading: const AppText('短', variant: AppTextVariant.subtitle),
+          leading: const AppText.singleLine('短', variant: AppTextVariant.subtitle),
           trailing: _fakeButtonRow(),
         ),
       );
@@ -208,7 +208,7 @@ void main() {
         tester,
         child: const SplitRow.header(
           leading: PageTitle(title: 'Domain 視圖'),
-          trailing: AppText('矩陣', variant: AppTextVariant.caption),
+          trailing: AppText.singleLine('矩陣', variant: AppTextVariant.caption),
         ),
       );
 
@@ -221,7 +221,7 @@ void main() {
       await pumpHarness(
         tester,
         child: const SplitRow.header(
-          leading: AppText('詳情卡標題', variant: AppTextVariant.subtitle),
+          leading: AppText.singleLine('詳情卡標題', variant: AppTextVariant.subtitle),
           compactHeader: true,
         ),
       );
@@ -235,8 +235,8 @@ void main() {
       await pumpHarness(
         tester,
         child: const SplitRow.footer(
-          leading: AppText('摘要', variant: AppTextVariant.body),
-          trailing: AppText('虛擬捲動，不分頁', variant: AppTextVariant.caption),
+          leading: AppText.singleLine('摘要', variant: AppTextVariant.body),
+          trailing: AppText.singleLine('虛擬捲動，不分頁', variant: AppTextVariant.caption),
         ),
       );
 
@@ -271,7 +271,7 @@ void main() {
       await pumpHarness(
         tester,
         child: SplitRow.footer(
-          leading: const AppText('摘要', variant: AppTextVariant.body),
+          leading: const AppText.singleLine('摘要', variant: AppTextVariant.body),
         ),
       );
       final decoratedBox = tester.widget<DecoratedBox>(
