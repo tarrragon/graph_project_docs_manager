@@ -42,6 +42,20 @@ def test_format_only_reflow_yields_no_finding():
     assert _run(EXISTING, REINDENTED) == []
 
 
+def test_multiline_merged_into_one_line_yields_no_finding():
+    """482.2 實況：多行 EdgeInsets.only(...) 被 dart format 合併為一行。"""
+    pre = (
+        "Widget build() {\n"
+        "  return Padding(\n"
+        "    padding: EdgeInsets.only(\n"
+        "      left: isHeader ? 0 : LayoutSize.treeIndent.w,\n"
+        "    ),\n"
+        "  );\n"
+        "}\n"
+    )
+    assert _run(pre, EXISTING) == []
+
+
 def test_new_magic_number_in_existing_file_still_denied():
     """正向對照（規則 E2）：同檔新增魔術數字仍須 deny。"""
     post = REINDENTED.replace(

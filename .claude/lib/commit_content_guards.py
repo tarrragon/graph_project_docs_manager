@@ -435,19 +435,58 @@ def _squash_whitespace(snippet: str) -> str:
     return re.sub(r"\s+", "", snippet)
 
 
+def _join_wrapped_lines(text: str) -> str:
+    """把括號未閉合的多行合併為單行，並去除 `,)` 的尾逗號。
+
+    dart format 會合併、拆分行並增刪尾逗號，逐行片段不穩定；合併後
+    「拆成多行」與「合併成一行」的同一敘述得到相同字面。
+    """
+    out: List[str] = []
+    buf = ""
+    depth = 0
+    for line in text.split("\n"):
+        buf += line.strip() if buf else line
+        depth += line.count("(") - line.count(")")
+        if depth <= 0:
+            out.append(re.sub(r",\s*\)", ")", buf))
+            buf, depth = "", 0
+    if buf:
+        out.append(re.sub(r",\s*\)", ")", buf))
+    return "\n".join(out)
+
+
+def _violation_key(m, profile, text: str, v: dict) -> Tuple[str, str]:
+    """比對鍵：(category, 命中的字面)，與整行排版、前後文無關。
+
+    snippet 為整行且截斷 80 字，不穩定；改取 profile 的命中片段。
+    已知取捨：同檔把某魔術數字換成另一處同字面者不會被抓到。
+    """
+    line = text.split("\n")[v["line"] - 1]
+    category = v["category"]
+    if category == "i18n":
+        literal = "".join(m._string_literal_contents(line))
+    else:
+        patterns = profile.color_detect if category == "color" else profile.magic_detect
+        hit = next((p.search(line) for p in patterns if p.search(line)), None)
+        literal = hit.group(0) if hit else line
+    return (category, _squash_whitespace(literal))
+
+
 def _net_new_violations(m, profile, pre_text: str, post_text: str) -> list:
     """pre -> post 的淨增量發現（多重集合比對，比照 rule8 diff_new_hits）。
 
     純排版 diff（重排、縮排）使行文字改變但字面不變，掃 added_text 會誤判；
     改掃 post_text 並扣除 pre_text 已存在的同類同字面發現。
     """
+    pre_text = _join_wrapped_lines(pre_text)
+    post_text = _join_wrapped_lines(post_text)
     remaining: Dict[Tuple[str, str], int] = {}
     for v in m.detect_violations(pre_text, profile):
-        key = (v["category"], _squash_whitespace(v["snippet"]))
+        key = _violation_key(m, profile, pre_text, v)
         remaining[key] = remaining.get(key, 0) + 1
     new_violations = []
     for v in m.detect_violations(post_text, profile):
-        key = (v["category"], _squash_whitespace(v["snippet"]))
+        key = _violation_key(m, profile, post_text, v)
         if remaining.get(key, 0) > 0:
             remaining[key] -= 1
             continue
