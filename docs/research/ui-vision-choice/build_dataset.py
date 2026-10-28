@@ -150,6 +150,10 @@ def build_pair(entry, out_dir):
     base_bytes = Path(entry["base"]).read_bytes()
     new_bytes = Path(entry["new"]).read_bytes()
     base, new = pd.decode_png(base_bytes), pd.decode_png(new_bytes)
+    if (base.width, base.height) != (new.width, new.height):
+        raise ValueError(
+            f"{entry['code']}: size mismatch base {base.width}x{base.height} "
+            f"vs new {new.width}x{new.height}")
     result = pd.compare(base, new)
     if result.skip:
         return None, f"skip: {result.reason}"
@@ -166,7 +170,7 @@ def build_pair(entry, out_dir):
             data = pd.encode_png(scaled)
             path = out / f"{entry['code']}.region{n}.{tag}.png"
             path.write_bytes(data)
-            pair.append((str(path), _sha256(data)))
+            pair.append((path.relative_to(out).as_posix(), _sha256(data)))
         crops.append({"box": list(box), "scale": scale,
                       "base_path": pair[0][0], "base_sha256": pair[0][1],
                       "new_path": pair[1][0], "new_sha256": pair[1][1]})

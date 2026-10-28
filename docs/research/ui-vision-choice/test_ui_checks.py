@@ -303,9 +303,13 @@ class BuildPairTest(unittest.TestCase):
         crop = rec["crops"][0]
         self.assertEqual(crop["box"], [64, 64, 96, 96])
         self.assertEqual(crop["scale"], 4)
-        data = Path(crop["base_path"]).read_bytes()
+        out = self.dir / "out"
+        for key in ("base_path", "new_path"):
+            self.assertFalse(Path(crop[key]).is_absolute())
+            self.assertTrue((out / crop[key]).is_file())
+        data = (out / crop["base_path"]).read_bytes()
         self.assertEqual(hashlib.sha256(data).hexdigest(), crop["base_sha256"])
-        img = pd.decode_png(Path(crop["new_path"]).read_bytes())
+        img = pd.decode_png((out / crop["new_path"]).read_bytes())
         self.assertEqual((img.width, img.height), (384, 384))
         self.assertEqual(rec["base_sha256"],
                          hashlib.sha256((self.dir / "b.png").read_bytes()).hexdigest())
@@ -317,6 +321,14 @@ class BuildPairTest(unittest.TestCase):
         self.assertIn("skip", reason)
         out = self.dir / "out"
         self.assertFalse(out.exists() and any(out.iterdir()))
+
+    def test_size_mismatch_raises_with_code_and_sizes(self):
+        (self.dir / "n.png").write_bytes(pd.encode_png(solid(410, 300)))
+        with self.assertRaises(ValueError) as cm:
+            bd.build_pair(self.entry, self.dir / "out")
+        msg = str(cm.exception)
+        for part in ("T1", "400x300", "410x300"):
+            self.assertIn(part, msg)
 
     def test_rule7_whole_image(self):
         new = solid(400, 300)
