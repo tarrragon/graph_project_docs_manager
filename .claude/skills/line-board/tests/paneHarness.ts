@@ -32,19 +32,26 @@ export type Stub = {
   deadPids?: number[]
   /** `ps -p <pid> -o lstart=` 對各 pid 的輸出；未列者輸出為空（看板退回只看 exit code）。 */
   lstart?: Record<number, string>
+  /** session root；未給時為 worktree `/wt`，`/repo` 表示 session 在主 checkout 啟動。 */
+  sessionRoot?: string
+  /** 給定時 session.root 以此訊息拒絕（啟動檢查丟例外）。 */
+  rootError?: string
 }
 
 /**
- * 以 test 端 hook 代替 engine：看板 session 在 worktree `/wt` 內啟動（session root 為 `/wt`），
+ * 以 test 端 hook 代替 engine：看板 session 預設在 worktree `/wt` 內啟動（session root 為 `/wt`，stub.sessionRoot 可改為 `/repo`），
  * git 列出主 checkout `/repo` 與 `/wt`。$ 呼叫的 hook 回 `{ value }` 或 `{ deny }`（deny 即 reject，代表檔案不存在）。
- * 專案設定檔依 stub.projectConfig 提供（見 Stub）。
- * 回傳 fs.read 被呼叫過的所有路徑（供斷言 `.key` 從未被讀取）、ps 的呼叫、ui.open 開過的 Pane id 與註冊的指令名稱。
+ * 專案設定檔只在 `/repo` 內，依 stub.projectConfig 提供（見 Stub）。
+ * 回傳 fs.read 被呼叫過的所有路徑（供斷言 `.key` 從未被讀取）、ps 的呼叫、ui.open 開過的 Pane id、註冊的指令名稱、
+ * ui.log 寫出的行，以及 git 與 ui.open 的呼叫序（`git <引數>`、`ui.open <id>`，供斷言開 Pane 是否先於 git）。
  */
 function stubRepo(on: On, stub: Stub) {
   const readPaths: string[] = []
   const psCalls: { argv: readonly string[]; env: unknown }[] = []
   const opened: string[] = []
   const registered: string[] = []
+  const logs: { text: string; to: string }[] = []
+  const callOrder: string[] = []
   const fileOf = (path: string): string | undefined => {
     if (path !== PROJECT_CONFIG) return stub.files[path]
     if (stub.projectConfig === null) return undefined
@@ -52,9 +59,10 @@ function stubRepo(on: On, stub: Stub) {
   }
   mock.env(on, { HOME })
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
-  on('session.root', () => ({ value: '/wt' }))
+  on('session.root', () => (stub.rootError === undefined ? { value: stub.sessionRoot ?? '/wt' } : { deny: stub.rootError }))
   on('process.run', (_$, e) => {
     const isPs = e.argv[0] === 'ps'
+    if (e.argv[0] === 'git') callOrder.push(e.argv.join(' '))
     const pid = Number(e.argv[2])
     if (isPs) psCalls.push({ argv: e.argv, env: e.init?.env })
     const isDead = isPs && (stub.deadPids ?? []).includes(pid)
@@ -83,10 +91,14 @@ function stubRepo(on: On, stub: Stub) {
   })
   on('ui.open', (_$, e) => {
     opened.push(e.id)
+    callOrder.push(`ui.open ${e.id}`)
     return { value: { isPlaced: true } }
   })
-  on('ui.log', () => ({ value: undefined }))
-  return { readPaths, psCalls, opened, registered }
+  on('ui.log', (_$, e) => {
+    logs.push({ text: e.text, to: e.to })
+    return { value: undefined }
+  })
+  return { readPaths, psCalls, opened, registered, logs, callOrder }
 }
 
 const PANE = {
@@ -105,8 +117,8 @@ const PANE = {
 /** bodyColumns：面板內容寬（欄），預設 100；停靠在側邊的窄面板以 60 測。 */
 export async function startBoard($: Engine, on: On, stub: Stub, bodyColumns: number = PANE.props.bodyColumns) {
   const clock = mock.clock(on, { now: NOW_MS })
-  const { readPaths, psCalls, opened, registered } = stubRepo(on, stub)
-  await $.session.start({ cwd: '/wt', surface: 'terminal', isInteractive: true })
+  const { readPaths, psCalls, opened, registered, logs, callOrder } = stubRepo(on, stub)
+  await $.session.start({ cwd: stub.sessionRoot ?? '/wt', surface: 'terminal', isInteractive: true })
   await clock.advance(1)
   const ui = await $.ui.mount({
     plugin: 'line-board',
@@ -114,7 +126,7 @@ export async function startBoard($: Engine, on: On, stub: Stub, bodyColumns: num
     ...PANE,
     props: { ...PANE.props, bodyColumns },
   })
-  return { ui, readPaths, psCalls, opened, registered, clock }
+  return { ui, readPaths, psCalls, opened, registered, logs, callOrder, clock }
 }
 
 /** 使用者在終端機輸入 `/board`；回傳指令的輸出文字。 */

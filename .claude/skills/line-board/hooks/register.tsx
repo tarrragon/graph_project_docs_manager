@@ -115,24 +115,37 @@ function startTimer($: EngineInterface): void {
 
 /**
  * session 啟動時：專案設定成立才啟動定時讀取並開 Pane；不成立時只把設定提示寫入 $.state（/board 開啟後顯示），
- * 不定時讀取。失敗只記 debug log，不影響 session 啟動。
+ * 不定時讀取。先讀 session root 的設定，成立即開 Pane，不等 git（主 checkout 的 session 不需找主 checkout）；
+ * root 讀不到才以 git worktree list 找主 checkout 再讀（worktree 內的 session）。
+ * 失敗送 transcript（使用者可見，否則 Pane 沒開與無設定在畫面上同形），不影響 session 啟動。
  */
 async function openIfConfigured($: EngineInterface): Promise<void> {
   try {
     const root = await $.session.root()
+    const rootConfig = await readProjectConfig($, root)
+    if (rootConfig.kind === 'ok') {
+      await openConfiguredPane($)
+      return
+    }
     const { checkoutPaths } = await findCheckouts($, root)
     const mainPath = checkoutPaths[0] ?? root
-    const config = await readProjectConfig($, mainPath)
+    const config = mainPath === root ? rootConfig : await readProjectConfig($, mainPath)
     if (config.kind !== 'ok') {
       await update($, snapshot, () => unconfiguredSnapshot(mainPath, config))
       return
     }
-    startTimer($)
-    void refresh($)
-    await $.ui.open({ id: PANE, title: PANE_TITLE })
+    await openConfiguredPane($)
   } catch (error) {
-    $.ui.log(`line-board 啟動檢查失敗：${messageOf(error)}`, { to: 'debug' })
+    $.ui.log(`line-board 啟動檢查失敗：${messageOf(error)}`, { to: 'transcript' })
   }
+}
+
+/** 設定成立：啟動定時讀取、開 Pane，並讀第一輪資料。先發出開 Pane 再讀，Pane 不等第一輪讀取；開 Pane 失敗由呼叫端 catch。 */
+async function openConfiguredPane($: EngineInterface): Promise<void> {
+  startTimer($)
+  const opening = $.ui.open({ id: PANE, title: PANE_TITLE })
+  void refresh($)
+  await opening
 }
 
 /** 設定不成立時的 snapshot：設定檔的絕對路徑與原因。 */
