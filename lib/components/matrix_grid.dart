@@ -187,7 +187,7 @@ class MatrixGrid extends StatelessWidget {
     }
     if (column == _columnCount - 1) {
       return Center(
-        child: AppText(
+        child: AppText.singleLine(
           '${matrixRow.subtotal}',
           variant: AppTextVariant.caption,
         ),
@@ -229,11 +229,10 @@ class _DomainHeaderCell extends StatelessWidget {
         },
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: Space.xs),
-          child: AppText(
+          child: AppText.singleLine(
             domainName,
             variant: AppTextVariant.body,
             emphasis: true,
-            maxLines: 1,
           ),
         ),
       ),
