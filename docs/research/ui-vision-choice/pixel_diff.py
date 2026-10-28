@@ -66,7 +66,7 @@ def _unfilter(raw, width, height, bpp):
 
 
 def decode_png(data):
-    """解 8-bit RGB / RGBA 非交錯 PNG，輸出統一為 RGB（alpha 丟棄）。"""
+    """解 8／16-bit RGB / RGBA 非交錯 PNG，輸出統一為 8-bit RGB（alpha 丟棄）。"""
     if not data.startswith(_PNG_SIG):
         raise ValueError("not a PNG")
     pos, idat, hdr = 8, b"", None
@@ -80,11 +80,15 @@ def decode_png(data):
         elif kind == b"IDAT":
             idat += body
     width, height, depth, ctype, _, _, interlace = hdr
-    if depth != 8 or ctype not in (2, 6) or interlace:
+    if depth not in (8, 16) or ctype not in (2, 6) or interlace:
         raise ValueError(f"unsupported PNG depth={depth} type={ctype} interlace={interlace}")
-    bpp = 3 if ctype == 2 else 4
+    channels = 3 if ctype == 2 else 4
+    bytes_per_sample = depth // 8
+    bpp = channels * bytes_per_sample
     rows = _unfilter(zlib.decompress(idat), width, height, bpp)
-    if bpp == 4:
+    if bytes_per_sample == 2:
+        rows = [r[0::2] for r in rows]  # 16-bit 取每通道高位元組，縮成 8-bit
+    if channels == 4:
         rows = [bytes(v for i in range(width) for v in r[i * 4:i * 4 + 3]) for r in rows]
     return Image(width, height, rows)
 

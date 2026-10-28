@@ -1,7 +1,9 @@
 """pixel_diff / geometry_check 的測試（含正向對照，E2）。"""
 import json
+import struct
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 
 import geometry_check as gc
@@ -17,6 +19,43 @@ def paint(img, x, y, w, h, rgb):
         row = bytearray(img.rows[r])
         row[x * 3:(x + w) * 3] = bytes(rgb) * w
         img.rows[r] = bytes(row)
+
+
+def png16(img, rgba=True):
+    """測試用：把 8-bit Image 編成 16-bit PNG（高位元組=值，低位元組=0x55）。"""
+    def chunk(kind, body):
+        crc = zlib.crc32(kind + body) & 0xFFFFFFFF
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", crc)
+
+    raw = b""
+    for r in img.rows:
+        px = b"".join(
+            bytes([r[i], 0x55, r[i + 1], 0x55, r[i + 2], 0x55] + ([255, 255] if rgba else []))
+            for i in range(0, len(r), 3))
+        raw += b"\x00" + px
+    ihdr = struct.pack(">IIBBBBB", img.width, img.height, 16, 6 if rgba else 2, 0, 0, 0)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+            + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+class PixelDiff16BitTest(unittest.TestCase):
+    def test_decode_16bit_rgb_and_rgba(self):
+        img = solid(5, 4, (10, 20, 30))
+        for rgba in (True, False):
+            out = pd.decode_png(png16(img, rgba))
+            self.assertEqual((out.width, out.height, out.rows), (5, 4, img.rows))
+
+    def test_16bit_known_diff_is_reported(self):  # 正向對照
+        a, b = solid(100, 80), solid(100, 80)
+        paint(b, 30, 20, 10, 8, (255, 0, 0))
+        r = pd.compare(pd.decode_png(png16(a)), pd.decode_png(png16(b)))
+        self.assertFalse(r.skip)
+        x, y, w, h = r.regions[0]
+        self.assertTrue(x <= 30 and y <= 20 and x + w >= 40 and y + h >= 28)
+
+    def test_16bit_self_compare_is_skip(self):  # 負向對照
+        a = pd.decode_png(png16(solid(64, 64, (7, 8, 9))))
+        self.assertTrue(pd.compare(a, a).skip)
 
 
 class PixelDiffTest(unittest.TestCase):
