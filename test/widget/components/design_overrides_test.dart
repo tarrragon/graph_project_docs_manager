@@ -21,10 +21,10 @@ void main() {
 
   Widget section() => Section(
     variant: SectionVariant.static,
-    header: const AppText('h'),
+    header: const AppText.singleLine('h'),
     items: const [
-      AppText('a', key: ValueKey('a')),
-      AppText('b', key: ValueKey('b')),
+      AppText.singleLine('a', key: ValueKey('a')),
+      AppText.singleLine('b', key: ValueKey('b')),
     ],
     testKey: const ValueKey('sec'),
   );
@@ -109,7 +109,7 @@ void main() {
         depth: 2,
         row: ListRow.tree(
           leading: const SizedBox(),
-          primary: const AppText('r'),
+          primary: const AppText.singleLine('r'),
           onTap: () {},
           testKey: const ValueKey('row'),
         ),

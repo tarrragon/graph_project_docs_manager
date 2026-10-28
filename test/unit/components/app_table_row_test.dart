@@ -35,15 +35,15 @@ void main() {
     bool isLocated = false,
   }) {
     return AppTableRow.ticket(
-      id: AppText(TestCopy.nodeId, key: idKey, variant: AppTextVariant.mono),
-      title: AppText(title, key: titleKey),
+      id: AppText.singleLine(TestCopy.nodeId, key: idKey, variant: AppTextVariant.mono),
+      title: AppText.singleLine(title, key: titleKey),
       status: Badge.status(key: statusKey, label: TestCopy.status),
-      priority: AppText(
+      priority: AppText.singleLine(
         'P1',
         key: priorityKey,
         variant: AppTextVariant.caption,
       ),
-      blockedBy: AppText(
+      blockedBy: AppText.singleLine(
         blockedBy,
         key: blockedByKey,
         variant: AppTextVariant.mono,
@@ -63,7 +63,7 @@ void main() {
   }) {
     return AppTableRow.step(
       number: const StepNumber(number: 1),
-      stepName: AppText(TestCopy.stepName, key: stepNameKey),
+      stepName: AppText.singleLine(TestCopy.stepName, key: stepNameKey),
       domain: RelationItem(
         id: TestCopy.domainName,
         key: domainKey,
@@ -142,12 +142,12 @@ void main() {
           child: AppTableRow.header(
             columns: AppTableRow.ticketColumns,
             cells: const [
-              AppText('ID', variant: AppTextVariant.caption),
-              AppText('標題', variant: AppTextVariant.caption),
-              AppText('狀態', variant: AppTextVariant.caption),
-              AppText('優先', variant: AppTextVariant.caption),
-              AppText('blockedBy', variant: AppTextVariant.caption),
-              AppText('', variant: AppTextVariant.caption),
+              AppText.singleLine('ID', variant: AppTextVariant.caption),
+              AppText.singleLine('標題', variant: AppTextVariant.caption),
+              AppText.singleLine('狀態', variant: AppTextVariant.caption),
+              AppText.singleLine('優先', variant: AppTextVariant.caption),
+              AppText.singleLine('blockedBy', variant: AppTextVariant.caption),
+              AppText.singleLine('', variant: AppTextVariant.caption),
             ],
           ),
         ),
@@ -164,10 +164,10 @@ void main() {
           child: AppTableRow.header(
             columns: AppTableRow.stepColumns,
             cells: const [
-              AppText('', variant: AppTextVariant.caption),
-              AppText('步驟', variant: AppTextVariant.caption),
-              AppText('Domain', variant: AppTextVariant.caption),
-              AppText('發送事件', variant: AppTextVariant.caption),
+              AppText.singleLine('', variant: AppTextVariant.caption),
+              AppText.singleLine('步驟', variant: AppTextVariant.caption),
+              AppText.singleLine('Domain', variant: AppTextVariant.caption),
+              AppText.singleLine('發送事件', variant: AppTextVariant.caption),
             ],
           ),
         ),
@@ -269,9 +269,9 @@ void main() {
     String consumedBy = TestCopy.stepName,
   }) {
     return AppTableRow.eventFlow(
-      event: AppText(TestCopy.nodeId, key: eventKey, variant: AppTextVariant.mono),
-      emittedBy: AppText(emittedBy, key: emittedByKey),
-      consumedBy: AppText(consumedBy, key: consumedByKey),
+      event: AppText.singleLine(TestCopy.nodeId, key: eventKey, variant: AppTextVariant.mono),
+      emittedBy: AppText.singleLine(emittedBy, key: emittedByKey),
+      consumedBy: AppText.singleLine(consumedBy, key: consumedByKey),
       marker: marker,
       isLocated: isLocated,
     );

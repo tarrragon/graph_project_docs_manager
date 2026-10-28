@@ -30,11 +30,11 @@ void main() {
 
   AppTableRow buildTicketRow(int index) => AppTableRow.ticket(
         key: ValueKey('ticket-row-$index'),
-        id: AppText('T-$index'),
-        title: AppText(TestCopy.longZh),
+        id: AppText.singleLine('T-$index'),
+        title: AppText.singleLine(TestCopy.longZh),
         status: Badge.status(label: 'in_progress'),
-        priority: AppText('P0'),
-        blockedBy: const AppText('—'),
+        priority: AppText.singleLine('P0'),
+        blockedBy: const AppText.singleLine('—'),
         onTap: () {},
         testKey: ValueKey('card-tickets-$index'),
       );
@@ -56,7 +56,7 @@ void main() {
   AppTableRow buildStepRow(int index) => AppTableRow.step(
         key: ValueKey('step-row-$index'),
         number: StepNumber(number: index + 1),
-        stepName: AppText(TestCopy.stepName),
+        stepName: AppText.singleLine(TestCopy.stepName),
         domain: RelationItem(
           id: TestCopy.domainName,
           isMono: false,
@@ -86,9 +86,9 @@ void main() {
 
   AppTableRow buildEventFlowRow(int index) => AppTableRow.eventFlow(
         key: ValueKey('event-flow-row-$index'),
-        event: AppText('EVT-$index'),
-        emittedBy: AppText(TestCopy.stepName),
-        consumedBy: AppText(TestCopy.stepName),
+        event: AppText.singleLine('EVT-$index'),
+        emittedBy: AppText.singleLine(TestCopy.stepName),
+        consumedBy: AppText.singleLine(TestCopy.stepName),
       );
 
   List<AppTableRow> buildEventFlowRows(int count) =>
