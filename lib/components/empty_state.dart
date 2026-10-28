@@ -121,12 +121,13 @@ class EmptyState extends StatelessWidget {
     final children = <Widget>[
       Semantics(
         liveRegion: true,
-        child: AppText(
-          message,
-          variant: _isPage ? AppTextVariant.subtitle : AppTextVariant.body,
-          maxLines: _isPage ? null : 2,
-          textAlign: _isPage ? TextAlign.center : null,
-        ),
+        child: _isPage
+            ? AppText.singleLine(
+                message,
+                variant: AppTextVariant.subtitle,
+                textAlign: TextAlign.center,
+              )
+            : AppText.multiLine(message, maxLines: 2),
       ),
     ];
 
@@ -134,9 +135,8 @@ class EmptyState extends StatelessWidget {
       children
         ..add(SizedBox(height: Space.xs))
         ..add(
-          AppText(
+          AppText.multiLine(
             explanation!,
-            variant: AppTextVariant.body,
             secondary: true,
             maxLines: 4,
             textAlign: _isPage ? TextAlign.center : null,

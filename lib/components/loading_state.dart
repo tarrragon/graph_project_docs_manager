@@ -236,11 +236,11 @@ class _LoadingStateState extends State<LoadingState>
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: Space.sm.w,
             children: [
-              AppText(widget.message, maxLines: 1),
+              AppText.singleLine(widget.message),
               if (widget.countText != null)
                 Semantics(
                   liveRegion: true,
-                  child: AppText(
+                  child: AppText.singleLine(
                     widget.countText!,
                     variant: AppTextVariant.caption,
                     secondary: true,
