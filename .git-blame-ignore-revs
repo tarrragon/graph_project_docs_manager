@@ -1,0 +1,6 @@
+# 一次性格式化提交，git blame 忽略清單。
+# 啟用方式：git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub 網頁 blame 會自動讀取此檔。
+
+# 0.5.0-W1-482.2：fvm dart format 一次性格式化
+5df5d140720744ff6b8a1f5431cf5dce64159e14
