@@ -57,32 +57,37 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
       await workspace.delete(recursive: true);
     });
 
-    itWidgets('ITD4-A2 部分宣告：5／8 個 domain、缺非 domain 清單', (tester) async {
-      final workspace = await _partialWorkspace();
-      final expected = await _declarationOf(workspace);
-      await open(tester, workspace);
+    for (final locale in const [Locale('zh'), Locale('en')]) {
+      itWidgets(
+        'ITD4-A2 部分宣告：5／8 個 domain、缺非 domain 清單（${locale.languageCode}）',
+        (tester) async {
+          final workspace = await _partialWorkspace();
+          final expected = await _declarationOf(workspace);
+          await open(tester, workspace, locale: locale);
 
-      await _openGapReport(tester);
+          await _openGapReport(tester);
 
-      final l10n = _l10n(tester);
-      expect(
-        expected.affectedPathCount,
-        greaterThan(0),
-        reason: '快照無 ticket 時 count 恆為 0；本案補了 ticket 才有鑑別力',
+          final l10n = _l10n(tester);
+          expect(
+            expected.affectedPathCount,
+            greaterThan(0),
+            reason: '快照無 ticket 時 count 恆為 0；本案補了 ticket 才有鑑別力',
+          );
+          final detail = [
+            l10n.pathDeclarationBundlesPartial(5, 8),
+            l10n.pathDeclarationNonDomainMissing,
+          ].join(_listSeparator(l10n));
+          expect(
+            _lineText(tester),
+            l10n.pathDeclarationIncompleteLine(
+              detail,
+              expected.affectedPathCount ?? 0,
+            ),
+          );
+          await workspace.delete(recursive: true);
+        },
       );
-      final detail = [
-        l10n.pathDeclarationBundlesPartial(5, 8),
-        l10n.pathDeclarationNonDomainMissing,
-      ].join(_listSeparator(l10n));
-      expect(
-        _lineText(tester),
-        l10n.pathDeclarationIncompleteLine(
-          detail,
-          expected.affectedPathCount ?? 0,
-        ),
-      );
-      await workspace.delete(recursive: true);
-    });
+    }
 
     itWidgets('ITD4-A3 補齊宣告後行消失，破洞數與 A2 相同（E1 對照）', (tester) async {
       final partial = await _partialWorkspace();
