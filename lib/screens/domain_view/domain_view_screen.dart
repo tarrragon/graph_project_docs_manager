@@ -621,7 +621,7 @@ class _CellDetailPanel extends ConsumerWidget {
       children: [
         SplitRow.header(
           compactHeader: true,
-          leading: AppText(
+          leading: AppText.singleLine(
             '${row.domainName} × $ucId', // i18n-exempt: 資料值組字，非 UI 文案
             variant: AppTextVariant.subtitle,
           ),
@@ -633,18 +633,18 @@ class _CellDetailPanel extends ConsumerWidget {
             testKey: const Key('action-domain-cell-clear'),
           ),
         ),
-        AppText(
+        AppText.singleLine(
           _relationLabel(l10n, cell.relation),
           variant: AppTextVariant.caption,
         ),
         if (cell.relation == DomainRelation.none)
-          AppText(l10n.cellDetailNotInvolved, variant: AppTextVariant.body)
+          AppText.multiLine(l10n.cellDetailNotInvolved, maxLines: null)
         else if (cell.explanation != null)
-          AppText(cell.explanation!, variant: AppTextVariant.body),
+          AppText.multiLine(cell.explanation!, maxLines: null),
         for (var i = 0; i < cell.steps.length; i++)
           ListRow.numbered(
             leading: StepNumber(number: i + 1),
-            primary: AppText(cell.steps[i], variant: AppTextVariant.body),
+            primary: AppText.singleLine(cell.steps[i]),
           ),
         if (cell.events.isNotEmpty)
           BadgeRow(
@@ -658,7 +658,7 @@ class _CellDetailPanel extends ConsumerWidget {
         // 依賴路徑僅間接依賴格渲染（SPEC-004 §3.6；SPEC-001 §1）。
         if (cell.relation == DomainRelation.indirect)
           for (final path in cell.dependencyPaths)
-            AppText(path, variant: AppTextVariant.body),
+            AppText.multiLine(path, maxLines: null),
         ButtonRow(
           alignment: ButtonRowAlignment.end,
           children: [
@@ -736,7 +736,7 @@ class _SwimlaneBody extends ConsumerWidget {
       return Panel(
         leading: [
           if (isProjectionPending)
-            AppText(
+            AppText.singleLine(
               ucTitle.isEmpty
                   ? selectedUcId
                   : l10n.swimlanePanelTitle(selectedUcId, ucTitle),
@@ -770,7 +770,7 @@ class _SwimlaneBody extends ConsumerWidget {
 
     if (swimlane is! DomainSwimlane) {
       return Panel(
-        leading: [AppText(panelTitle, variant: AppTextVariant.subtitle)],
+        leading: [AppText.singleLine(panelTitle, variant: AppTextVariant.subtitle)],
         fill: EmptyState(
           variant: EmptyStateVariant.section,
           message:
@@ -798,9 +798,9 @@ class _SwimlaneBody extends ConsumerWidget {
     return Panel(
       key: const Key('state-domain-swimlane'),
       leading: [
-        AppText(panelTitle, variant: AppTextVariant.subtitle),
+        AppText.singleLine(panelTitle, variant: AppTextVariant.subtitle),
         if (swimlane.hasFlowParseFailure)
-          AppText(
+          AppText.singleLine(
             l10n.swimlaneFlowParseFailedHint,
             variant: AppTextVariant.caption,
           ),
