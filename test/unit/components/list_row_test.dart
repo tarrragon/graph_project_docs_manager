@@ -536,4 +536,36 @@ void main() {
       expect(callCount, 1);
     });
   });
+
+  group('item 的 secondary 可省（SPEC-004 4.40）', () {
+    Future<double> pumpItem(WidgetTester tester, {AppText? secondary}) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          child: ListRow.item(
+            primary: AppText(TestCopy.gapTitle),
+            secondary: secondary,
+            onTap: () {},
+            testKey: _itemKey,
+          ),
+        ),
+      );
+      return tester.getSize(find.byKey(_itemKey)).height;
+    }
+
+    testWidgets('不帶 secondary：單行，不渲染次文字，與帶 secondary 對照較矮', (tester) async {
+      final withoutHeight = await pumpItem(tester);
+      expect(find.text(TestCopy.gapTitle), findsOneWidget);
+      expect(find.text(TestCopy.gapDescription), findsNothing);
+      expectNoOverflow(tester);
+
+      final withHeight = await pumpItem(
+        tester,
+        secondary: AppText(TestCopy.gapDescription, variant: AppTextVariant.caption),
+      );
+      expect(find.text(TestCopy.gapDescription), findsOneWidget);
+      expect(withHeight, greaterThan(withoutHeight));
+    });
+  });
 }
