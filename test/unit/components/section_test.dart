@@ -11,10 +11,10 @@ import '../../helpers/helpers.dart';
 void main() {
   const testKey = ValueKey('section-test');
 
-  Widget buildHeader({String text = 'header'}) => AppText(text);
+  Widget buildHeader({String text = 'header'}) => AppText.singleLine(text);
 
   List<Widget> buildItems(int count) =>
-      List.generate(count, (i) => AppText('item-$i', key: ValueKey('item-$i')));
+      List.generate(count, (i) => AppText.singleLine('item-$i', key: ValueKey('item-$i')));
 
   group('變體與狀態矩陣：collapsible expanded/collapsed、static', () {
     testWidgetsAtEachSize('collapsible expanded 渲染節首與 50 項且不溢位', (
@@ -90,7 +90,7 @@ void main() {
         size: size,
         child: Section(
           variant: SectionVariant.static,
-          header: AppText('關聯群', variant: AppTextVariant.caption),
+          header: AppText.singleLine('關聯群', variant: AppTextVariant.caption),
           items: buildItems(3),
           isExpanded: false,
           testKey: testKey,

@@ -27,7 +27,7 @@ ListRow _buildVariant(ListRowVariant variant, {required bool withTrailing}) {
           isExpanded: false,
           testKey: ValueKey('tree-expander'),
         ),
-        primary: AppText(TestCopy.nodeTitle, emphasis: true),
+        primary: AppText.singleLine(TestCopy.nodeTitle, emphasis: true),
         trailing: withTrailing ? const Badge.status(label: 'completed') : null,
         onTap: () {},
         testKey: _treeKey,
@@ -37,14 +37,14 @@ ListRow _buildVariant(ListRowVariant variant, {required bool withTrailing}) {
           isExpanded: true,
           testKey: ValueKey('section-expander'),
         ),
-        primary: AppText(TestCopy.topicName),
+        primary: AppText.singleLine(TestCopy.topicName),
         trailing: withTrailing
-            ? const AppText('12 items', variant: AppTextVariant.caption)
+            ? const AppText.singleLine('12 items', variant: AppTextVariant.caption)
             : null,
       ),
     ListRowVariant.item => ListRow.item(
-        primary: AppText(TestCopy.gapTitle),
-        secondary: AppText(TestCopy.gapDescription, variant: AppTextVariant.caption),
+        primary: AppText.singleLine(TestCopy.gapTitle),
+        secondary: AppText.singleLine(TestCopy.gapDescription, variant: AppTextVariant.caption),
         trailing: withTrailing
             ? const AppIcon(icon: material.Icons.open_in_new)
             : null,
@@ -52,17 +52,17 @@ ListRow _buildVariant(ListRowVariant variant, {required bool withTrailing}) {
         testKey: _itemKey,
       ),
     ListRowVariant.option => ListRow.option(
-        primary: AppText(TestCopy.nodeTitle),
+        primary: AppText.singleLine(TestCopy.nodeTitle),
         onTap: () {},
         testKey: _optionKey,
       ),
     ListRowVariant.meta => ListRow.meta(
         leading: const Badge.type(label: 'PROP'),
-        primary: AppText(TestCopy.filePath, variant: AppTextVariant.mono),
+        primary: AppText.singleLine(TestCopy.filePath, variant: AppTextVariant.mono),
       ),
     ListRowVariant.numbered => ListRow.numbered(
         leading: const SizedBox(width: 24, height: 24),
-        primary: AppText(TestCopy.stepName),
+        primary: AppText.singleLine(TestCopy.stepName),
       ),
   };
 }
@@ -121,7 +121,7 @@ void main() {
               testKey: ValueKey('tree-expander-tap'),
               onToggle: null,
             ),
-            primary: AppText(TestCopy.nodeTitle),
+            primary: AppText.singleLine(TestCopy.nodeTitle),
             onTap: () => callCount++,
             testKey: _treeKey,
           ),
@@ -141,8 +141,8 @@ void main() {
         child: SizedBox(
           width: 300,
           child: ListRow.item(
-            primary: AppText(TestCopy.gapTitle),
-            secondary: AppText(
+            primary: AppText.singleLine(TestCopy.gapTitle),
+            secondary: AppText.singleLine(
               TestCopy.gapDescription,
               variant: AppTextVariant.caption,
             ),
@@ -165,7 +165,7 @@ void main() {
         child: SizedBox(
           width: 300,
           child: ListRow.option(
-            primary: AppText(TestCopy.nodeTitle),
+            primary: AppText.singleLine(TestCopy.nodeTitle),
             onTap: () => callCount++,
             testKey: _optionKey,
           ),
@@ -193,7 +193,7 @@ void main() {
               testKey: expanderKey,
               onToggle: () => expanderToggleCount++,
             ),
-            primary: AppText(TestCopy.nodeTitle),
+            primary: AppText.singleLine(TestCopy.nodeTitle),
             onTap: () => rowTapCount++,
             testKey: _treeKey,
           ),
@@ -224,7 +224,7 @@ void main() {
               width: 24,
               height: 24,
             ),
-            primary: const AppText(
+            primary: const AppText.singleLine(
               key: primaryKey,
               'primary text',
             ),
@@ -257,7 +257,7 @@ void main() {
           width: 300,
           child: ListRow.tree(
             leading: const SizedBox(key: leadingKey, width: 24, height: 24),
-            primary: const AppText(key: primaryKey, 'p'),
+            primary: const AppText.singleLine(key: primaryKey, 'p'),
             trailing: const SizedBox(key: trailingKey, width: 24, height: 24),
             onTap: () {},
             testKey: _treeKey,
@@ -283,7 +283,7 @@ void main() {
           width: 200,
           child: ListRow.tree(
             leading: const SizedBox(width: 24, height: 24),
-            primary: AppText(TestCopy.longToken),
+            primary: AppText.singleLine(TestCopy.longToken),
             trailing: const SizedBox(width: 24, height: 24),
             onTap: () {},
             testKey: _treeKey,
@@ -305,7 +305,7 @@ void main() {
           width: 300,
           child: ListRow.meta(
             leading: const Badge.type(label: 'PROP'),
-            primary: const AppText('a', variant: AppTextVariant.mono),
+            primary: const AppText.singleLine('a', variant: AppTextVariant.mono),
           ),
         ),
       );
@@ -322,8 +322,8 @@ void main() {
         child: SizedBox(
           width: 300,
           child: ListRow.item(
-            primary: AppText(TestCopy.gapTitle),
-            secondary: AppText(
+            primary: AppText.singleLine(TestCopy.gapTitle),
+            secondary: AppText.singleLine(
               TestCopy.gapDescription,
               variant: AppTextVariant.caption,
             ),
@@ -350,7 +350,7 @@ void main() {
               isExpanded: true,
               testKey: ValueKey('section-color-expander'),
             ),
-            primary: AppText(TestCopy.topicName),
+            primary: AppText.singleLine(TestCopy.topicName),
           ),
         ),
       );
@@ -369,7 +369,7 @@ void main() {
           child: SizedBox(
             width: 300,
             child: ListRow.option(
-              primary: AppText(TestCopy.nodeTitle),
+              primary: AppText.singleLine(TestCopy.nodeTitle),
               onTap: () {},
               testKey: _optionKey,
             ),
@@ -386,7 +386,7 @@ void main() {
           child: SizedBox(
             width: 300,
             child: ListRow.option(
-              primary: AppText(TestCopy.nodeTitle),
+              primary: AppText.singleLine(TestCopy.nodeTitle),
               onTap: () {},
               testKey: _optionKey,
               isSelected: true,
@@ -412,7 +412,7 @@ void main() {
               isExpanded: true,
               testKey: ValueKey('section-a11y-expander'),
             ),
-            primary: AppText(TestCopy.topicName),
+            primary: AppText.singleLine(TestCopy.topicName),
           ),
         ),
       );
@@ -432,7 +432,7 @@ void main() {
               testKey: ValueKey('tree-a11y-expander'),
               onToggle: null,
             ),
-            primary: AppText(TestCopy.nodeTitle),
+            primary: AppText.singleLine(TestCopy.nodeTitle),
             onTap: () {},
             testKey: _treeKey,
           ),
@@ -451,7 +451,7 @@ void main() {
           child: SizedBox(
             width: 300,
             child: ListRow.option(
-              primary: AppText(TestCopy.nodeTitle),
+              primary: AppText.singleLine(TestCopy.nodeTitle),
               onTap: () {},
               testKey: _optionKey,
             ),
@@ -464,7 +464,7 @@ void main() {
           child: SizedBox(
             width: 300,
             child: ListRow.option(
-              primary: AppText(TestCopy.nodeTitle),
+              primary: AppText.singleLine(TestCopy.nodeTitle),
               onTap: () {},
               testKey: _optionKey,
               isSelected: true,
@@ -490,7 +490,7 @@ void main() {
             leading: const ExpanderIcon.leaf(
               testKey: ValueKey('tree-leaf-expander'),
             ),
-            primary: AppText(TestCopy.nodeTitle),
+            primary: AppText.singleLine(TestCopy.nodeTitle),
             onTap: onTap,
             testKey: _treeKey,
           ),
@@ -544,7 +544,7 @@ void main() {
         child: SizedBox(
           width: 300,
           child: ListRow.item(
-            primary: AppText(TestCopy.gapTitle),
+            primary: AppText.singleLine(TestCopy.gapTitle),
             secondary: secondary,
             onTap: () {},
             testKey: _itemKey,
@@ -562,7 +562,7 @@ void main() {
 
       final withHeight = await pumpItem(
         tester,
-        secondary: AppText(TestCopy.gapDescription, variant: AppTextVariant.caption),
+        secondary: AppText.singleLine(TestCopy.gapDescription, variant: AppTextVariant.caption),
       );
       expect(find.text(TestCopy.gapDescription), findsOneWidget);
       expect(withHeight, greaterThan(withoutHeight));
