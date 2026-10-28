@@ -97,8 +97,9 @@ class _WithHeaderNotes extends StatelessWidget {
             label: l10n.builtinPathPatternBadgeLabel,
           ),
         if (declarationText != null)
-          AppText(
+          AppText.multiLine(
             declarationText,
+            maxLines: null,
             key: const Key('text-gaps-declaration-line'),
           ),
         Expanded(child: child),
@@ -124,11 +125,13 @@ class _UndeterminableView extends StatelessWidget {
         Section(
           variant: SectionVariant.static,
           testKey: const Key('state-gaps-undeterminable-reason'),
-          header: AppText(
+          header: AppText.singleLine(
             l10n.gapsUndeterminableTitle,
             variant: AppTextVariant.subtitle,
           ),
-          items: [AppText(_reasonText(l10n, state.reason))],
+          items: [
+            AppText.multiLine(_reasonText(l10n, state.reason), maxLines: null),
+          ],
         ),
         for (final category in state.categories)
           _CategorySection(category: category),
@@ -235,8 +238,8 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
           testKey: Key('expander-gaps-${widget.category.id}'),
           onToggle: () => setState(() => _isExpanded = !_isExpanded),
         ),
-        primary: AppText(_categoryLabel(l10n, widget.category.id)),
-        trailing: AppText(
+        primary: AppText.singleLine(_categoryLabel(l10n, widget.category.id)),
+        trailing: AppText.singleLine(
           l10n.gapSectionCount(widget.category.items.length),
           variant: AppTextVariant.caption,
         ),
@@ -250,14 +253,14 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
               // 是路徑與行號）；沒有說明（事件類、0.1 項目）時一行（主文字是
               // 路徑與行號，不渲染次文字）。行號有值才附（SPEC-001 §5）。
               primary: item.description == null
-                  ? AppText(
+                  ? AppText.singleLine(
                       _pathWithLine(l10n, item),
                       variant: AppTextVariant.mono,
                     )
-                  : AppText(_primaryText(l10n, item)),
+                  : AppText.singleLine(_primaryText(l10n, item)),
               secondary: item.description == null
                   ? null
-                  : AppText(
+                  : AppText.singleLine(
                       _pathWithLine(l10n, item),
                       variant: AppTextVariant.caption,
                       secondary: true,
