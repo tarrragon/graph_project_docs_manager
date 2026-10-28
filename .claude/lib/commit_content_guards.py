@@ -422,12 +422,37 @@ def _check_presence_detection(sf: StagedFile, logger) -> List[Finding]:
         return []
     if m.should_skip_file(sf.rel_path, profile):
         return []
-    if not sf.added_text.strip():
+    if not sf.post_text.strip():
         return []
-    violations = m.detect_violations(sf.added_text, profile)
+    violations = _net_new_violations(m, profile, sf.pre_text, sf.post_text)
     if not violations:
         return []
     return [Finding("deny", "presence-detection", m.build_block_message(sf.rel_path, violations))]
+
+
+def _squash_whitespace(snippet: str) -> str:
+    """去除所有空白，使換行、縮排不同的同一字面視為同一筆。"""
+    return re.sub(r"\s+", "", snippet)
+
+
+def _net_new_violations(m, profile, pre_text: str, post_text: str) -> list:
+    """pre -> post 的淨增量發現（多重集合比對，比照 rule8 diff_new_hits）。
+
+    純排版 diff（重排、縮排）使行文字改變但字面不變，掃 added_text 會誤判；
+    改掃 post_text 並扣除 pre_text 已存在的同類同字面發現。
+    """
+    remaining: Dict[Tuple[str, str], int] = {}
+    for v in m.detect_violations(pre_text, profile):
+        key = (v["category"], _squash_whitespace(v["snippet"]))
+        remaining[key] = remaining.get(key, 0) + 1
+    new_violations = []
+    for v in m.detect_violations(post_text, profile):
+        key = (v["category"], _squash_whitespace(v["snippet"]))
+        if remaining.get(key, 0) > 0:
+            remaining[key] -= 1
+            continue
+        new_violations.append(v)
+    return new_violations
 
 
 def _check_proposal_evaluation(sf: StagedFile, logger) -> List[Finding]:
