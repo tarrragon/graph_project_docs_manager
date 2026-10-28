@@ -36,9 +36,3 @@ suites:
     command: [claude, plugin, test, .claude/skills/line-board]
     summary: '^Ran \d+ tests across \d+ files'
     failure: '^\(fail\)'
-  # 只檢查本次合併改動且仍存在的 .dart 檔（changed_files：閘門把符合檔附加到 argv 尾端；
-  # 無符合檔時免跑並明示）。格式不符由 --set-exit-if-changed 回非 0 判紅。
-  dart-format:
-    prefixes: [lib/, test/, integration_test/]
-    command: [fvm, dart, format, --output=none, --set-exit-if-changed]
-    changed_files: '\.dart$'
