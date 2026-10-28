@@ -1508,7 +1508,14 @@ def _cleanup_check_level1(worktree_path: str) -> tuple[bool, int]:
             - bool: True 表示通過（無未 commit 變更）
             - int: 未 commit 變更數量
     """
-    return _check_working_tree_clean(worktree_path)
+    clean, count = _check_working_tree_clean(worktree_path)
+    if clean:
+        return True, count
+    # 半刪 worktree（status 全為 tracked 刪除且 HEAD 為 main 祖先）改走收尾路徑，
+    # 判定重用 _recovery_unmet_conditions；有 untracked 或 modified 照樣擋下
+    if not _recovery_unmet_conditions(worktree_path):
+        return True, count
+    return False, count
 
 
 def _cleanup_check_level2(branch: str) -> tuple[bool, str]:

@@ -519,6 +519,31 @@ class TestRemoveTimeoutAndRecovery:
         assert repo["wt"].exists()
 
 
+class TestLevel1HalfRemoved:
+    def _half_delete(self, repo, untracked=False):
+        for name in ("a.txt", "b.txt"):
+            (repo["wt"] / name).unlink()
+        if untracked:
+            (repo["wt"] / "scratch.txt").write_text("u")
+
+    def test_half_removed_cleaned_by_fresh_run(self, repo):
+        """E1：先前留下的半刪 worktree，全新一次 cleanup 即可清除。"""
+        self._half_delete(repo)
+        rc = cmd_cleanup(branch="worktree-agent-x", force=True)
+        assert rc == 0
+        assert not repo["wt"].exists()
+        assert not _registered(repo["root"], repo["wt"])
+        assert _branches(repo["root"]) == ""
+
+    def test_half_removed_with_untracked_blocked_by_level1(self, repo, capsys):
+        """E2：半刪但有 untracked，Level 1 擋下、不移除。"""
+        self._half_delete(repo, untracked=True)
+        rc = cmd_cleanup(branch="worktree-agent-x", force=True)
+        assert rc == 1
+        assert "拒絕" in capsys.readouterr().out
+        assert repo["wt"].exists()
+
+
 class TestWorktreeLock:
     def _lock(self, repo, pid):
         _git(repo["root"], "worktree", "lock", "--reason", f"claude agent x (pid {pid})", str(repo["wt"]))
