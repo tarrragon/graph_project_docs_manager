@@ -56,18 +56,6 @@ enum AppTextVariant {
 /// 用途、變體選用時機、反例見 SPEC-004 §4.1。文字內容一律由呼叫端傳入
 /// （i18n key 取值或資料文字），本元件無自有 i18n key。
 class AppText extends StatelessWidget {
-  const AppText(
-    this.text, {
-    super.key,
-    this.variant = AppTextVariant.body,
-    this.maxLines,
-    this.emphasis = false,
-    this.secondary = false,
-    this.tone,
-    this.textAlign,
-  })  : _forceSingleLine = false,
-        _explicitWrap = false;
-
   /// 明示單行：恆一行、超出以省略號截斷（任一變體，預設 `body`）。
   ///
   /// 截斷責任由呼叫端以本建構子明示承擔（SPEC-004 §4.1／§4.40）。
@@ -123,9 +111,7 @@ class AppText extends StatelessWidget {
   /// 僅 [AppTextVariant.body] 生效：限制最大行數，超出末行截斷；`null`
   /// 為無上限。其餘變體固定單行，此參數被忽略。
   ///
-  /// 預設建構子過渡期維持舊行為（body 未傳即單行省略號，`0.5.0-W1-508.8`
-  /// 移除）；新程式碼
-  /// 一律用 [AppText.singleLine] 或 [AppText.multiLine] 明示行數政策。
+  /// 行數政策一律由 [AppText.singleLine] 或 [AppText.multiLine] 明示。
   final int? maxLines;
 
   /// 粗體修飾（非變體）。
@@ -144,7 +130,7 @@ class AppText extends StatelessWidget {
   final TextAlign? textAlign;
 
   /// 只改修飾（粗體、語意色），保留文字、變體與行數政策。容器需重染主文字
-  /// 時用此法，避免以預設建構子重建而丟失呼叫端明示的行數政策。
+  /// 時用此法，避免重建而丟失呼叫端明示的行數政策。
   AppText copyWithModifiers({bool? emphasis, AppTextTone? tone}) =>
       AppText._(
         text,
@@ -175,8 +161,7 @@ class AppText extends StatelessWidget {
         softWrap: !_isSingleLine,
         maxLines: _isSingleLine ? 1 : maxLines,
         // 無行數上限時 ellipsis 會被引擎當成單行截斷（508 根因），故明示
-        // 換行（multiLine）且無上限時用 clip。預設建構子過渡期維持舊行為
-        // （一律 ellipsis），508.8 移除。
+        // 換行（multiLine）且無上限時用 clip。
         overflow: _explicitWrap && maxLines == null
             ? TextOverflow.clip
             : TextOverflow.ellipsis,
