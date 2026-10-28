@@ -56,7 +56,7 @@ class LoadPrompt extends StatelessWidget {
           // 進入本狀態時訊息以 liveRegion 播報一次（SPEC-004 無障礙子節）。
           Semantics(
             liveRegion: true,
-            child: AppText(
+            child: AppText.singleLine(
               resolvedMessage,
               variant: AppTextVariant.subtitle,
               textAlign: TextAlign.center,

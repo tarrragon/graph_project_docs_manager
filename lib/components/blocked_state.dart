@@ -132,7 +132,7 @@ class BlockedState extends StatelessWidget {
           _buildMessageBlock(),
           if (explanation != null) ...[
             SizedBox(height: Space.xs),
-            AppText(explanation!, variant: AppTextVariant.body, maxLines: 4),
+            AppText.multiLine(explanation!, maxLines: 4),
           ],
           SizedBox(height: Space.lg),
           _buildActions(l10n),
@@ -175,15 +175,10 @@ class BlockedState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AppText(
-            message,
-            variant: AppTextVariant.body,
-            maxLines: 3,
-            textAlign: TextAlign.center,
-          ),
+          AppText.multiLine(message, maxLines: 3, textAlign: TextAlign.center),
           if (versionText != null) ...[
             SizedBox(height: Space.xxs),
-            AppText(versionText, variant: AppTextVariant.mono),
+            AppText.singleLine(versionText, variant: AppTextVariant.mono),
           ],
         ],
       ),
@@ -261,11 +256,11 @@ class BlockedState extends StatelessWidget {
                   header: const SizedBox.shrink(),
                   testKey: const ValueKey('section-domain-schema-detail'),
                   items: [
-                    AppText(
+                    AppText.singleLine(
                       l10n.schemaKnownRangeLabel,
                       variant: AppTextVariant.caption,
                     ),
-                    AppText(
+                    AppText.singleLine(
                       l10n.schemaKnownRangeValue(appVersion!),
                       variant: AppTextVariant.mono,
                     ),

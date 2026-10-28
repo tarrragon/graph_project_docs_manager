@@ -58,14 +58,14 @@ class MissingSourceState extends StatelessWidget {
           children: [
             Semantics(
               liveRegion: true,
-              child: AppText(
+              child: AppText.singleLine(
                 l10n.sourceFileMissingMessage,
                 variant: AppTextVariant.subtitle,
                 textAlign: TextAlign.center,
               ),
             ),
             SizedBox(height: Space.xs.h),
-            AppText(
+            AppText.singleLine(
               l10n.lastKnownPathLabel(path),
               variant: AppTextVariant.mono,
               secondary: true,
