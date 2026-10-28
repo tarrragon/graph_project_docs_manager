@@ -53,7 +53,28 @@ suites:
     failure: '^\(fail\)'
 ```
 
-宣告會取代內建預設套件，所以專案原有的套件（如 flutter）要一併寫在 `suites:` 下。閘門不跑 `tsc`，型別檢查須手動執行。
+宣告會取代內建預設套件，所以專案原有的套件（如 flutter）要一併寫在 `suites:` 下。
+
+### 合併前型別檢查（手動）
+
+閘門不跑 `tsc`：平台型別（`.claude-plugin/types/`）只在以互動方式 `claude --plugin-dir .claude/skills/line-board` 啟動時產生，skills 目錄載入、headless 啟動與 `claude plugin test` 都不產生，閘門快照與 worktree 因此沒有型別。改到 `.claude/skills/line-board/` 的分支，由 PM 在合併前以主 checkout 的型別檢查 worktree 的程式：
+
+```bash
+MAIN=<主 checkout 絕對路徑>   # 須已以互動式 --plugin-dir 啟動過一次
+WT=<worktree 絕對路徑>
+CFG="$(mktemp -d)/tsconfig.json"
+cat > "$CFG" <<EOF
+{
+  "extends": "$MAIN/.claude/skills/line-board/.claude-plugin/types/tsconfig.json",
+  "compilerOptions": { "noEmit": true, "typeRoots": ["$MAIN/.claude/skills/line-board/.claude-plugin/types"] },
+  "include": ["$WT/.claude/skills/line-board/hooks/**/*", "$WT/.claude/skills/line-board/types/**/*"]
+}
+EOF
+out=$(npx --no-install tsc -p "$CFG" --listFiles 2>&1); rc=$?
+echo "rc=$rc errors=$(printf '%s\n' "$out" | grep -c 'error TS') hooks=$(printf '%s\n' "$out" | grep -c "$WT/.claude/skills/line-board/hooks/")"
+```
+
+判準：`rc=0`、`errors=0`，且 `hooks` 大於 0（確認檢查的是 worktree 的檔案）。主 checkout 沒有型別時 `extends` 解析失敗、rc 非 0，屬未執行，不算通過；先以互動式 `--plugin-dir` 啟動一次再跑。產生型別時 Claude Code 會在 `types/` 內寫出內容為 `*` 的 `.gitignore`，型別不會進版控。
 
 ## 佇列行格式與多 session 協調
 
