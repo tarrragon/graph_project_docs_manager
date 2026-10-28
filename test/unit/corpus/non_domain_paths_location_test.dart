@@ -39,9 +39,8 @@ const _builtinKey = 'non_domain_path_patterns';
 
 TypeTable _builtinTable() => typeTableFromJson(
   jsonDecode(
-        File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
-      )
-      as Map<String, dynamic>,
+    File('assets/schema/builtin_tracking_schema.json').readAsStringSync(),
+  ) as Map<String, dynamic>,
 );
 
 Future<(_MemoryFileSystem, NonDomainPathsReadResult)> _read(

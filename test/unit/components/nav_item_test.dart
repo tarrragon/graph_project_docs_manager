@@ -43,7 +43,8 @@ const _enNavLabels = [
 void main() {
   const testKey = ValueKey('nav-item-test');
 
-  AppIcon icon() => const AppIcon(icon: Icons.folder_outlined, size: IconSize.lg);
+  AppIcon icon() =>
+      const AppIcon(icon: Icons.folder_outlined, size: IconSize.lg);
 
   group('狀態矩陣：unselected / selected', () {
     testWidgetsAtEachSize('unselected 渲染且不溢位', (tester, size) async {

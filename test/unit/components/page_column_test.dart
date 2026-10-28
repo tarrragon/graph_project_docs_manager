@@ -94,9 +94,7 @@ void main() {
       );
       expectNoOverflow(tester);
 
-      final headerRect = tester.getRect(
-        find.byKey(const ValueKey('header')),
-      );
+      final headerRect = tester.getRect(find.byKey(const ValueKey('header')));
       final contentRect = tester.getRect(
         find.byKey(const ValueKey('content-panel')),
       );
@@ -122,10 +120,7 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgetsAtEachSize('disableAnimations 時內容換件一幀抵達', (
-      tester,
-      size,
-    ) async {
+    testWidgetsAtEachSize('disableAnimations 時內容換件一幀抵達', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -156,10 +151,12 @@ void main() {
       // 本容器只承載內容區內距（§4.28 token 表僅列此一項）；頁首 slot 的
       // 水平內距由 SplitRow 自己承載（§4.29），故取內容區那一個 Padding。
       final padding = tester.widget<Padding>(
-        find.ancestor(
-          of: find.byType(AnimatedSwitcher),
-          matching: find.byType(Padding),
-        ).first,
+        find
+            .ancestor(
+              of: find.byType(AnimatedSwitcher),
+              matching: find.byType(Padding),
+            )
+            .first,
       );
       expect(padding.padding, EdgeInsets.all(Space.xl));
     });

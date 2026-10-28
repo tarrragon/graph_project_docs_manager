@@ -197,9 +197,8 @@ class _AppChrome extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(useMaterial3: true),
         builder: (context, app) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            disableAnimations: disableAnimations,
-          ),
+          data: MediaQuery.of(context)
+              .copyWith(disableAnimations: disableAnimations),
           child: app!,
         ),
         home: Scaffold(body: child),

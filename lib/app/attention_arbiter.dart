@@ -644,19 +644,15 @@ class AttentionArbiterImpl implements AttentionArbiter {
     final level = event == AttentionArbiterLogEvent.expired
         ? _levelForOrigin(leaving.arrival)
         : null;
-    _logSink(
-      event,
-      {
-        'requestId': leaving.requestId,
-        'arrival': leaving.arrival,
-        'level': leaving.level,
-        'channel': _channelUserFocus,
-        'reason': reason.name,
-        'occupancy': _occupancySnapshotFor(currentHolder),
-        ..._deadlineFields(leaving.deadline),
-      },
-      level: level,
-    );
+    _logSink(event, {
+      'requestId': leaving.requestId,
+      'arrival': leaving.arrival,
+      'level': leaving.level,
+      'channel': _channelUserFocus,
+      'reason': reason.name,
+      'occupancy': _occupancySnapshotFor(currentHolder),
+      ..._deadlineFields(leaving.deadline),
+    }, level: level);
     // 先清空再廣播（3a.4：即使日後改為同步投遞，訂閱者看到的也是「通道
     // 已空」而非中間態）。
     _holder = null;

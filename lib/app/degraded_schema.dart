@@ -36,5 +36,6 @@ class DegradedSchemaVersions {
 
 /// 降級徽章版本文字，與 [degradedSchemaProvider] 同步寫入／重置；
 /// `null` 表示尚未降級（不應被畫面讀取渲染文字）。
-final degradedSchemaVersionsProvider =
-    StateProvider<DegradedSchemaVersions?>((ref) => null);
+final degradedSchemaVersionsProvider = StateProvider<DegradedSchemaVersions?>(
+  (ref) => null,
+);

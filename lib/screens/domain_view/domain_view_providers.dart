@@ -33,7 +33,8 @@ GraphBuiltEvent? _eventOf(ScanRoundResult? round) {
 /// 有完成輪次且其建圖結果為 [GraphBuildUnavailable] 時為真；無完成輪次為假
 /// （該情況走泳道投影準備中）。矩陣與泳道兩模式共用此判定。
 final domainGraphUnavailableProvider = Provider<bool>(
-  (ref) => ref.watch(lastCompletedRoundProvider)?.graph is GraphBuildUnavailable,
+  (ref) =>
+      ref.watch(lastCompletedRoundProvider)?.graph is GraphBuildUnavailable,
 );
 
 /// 矩陣投影（SPEC-001 §1〈矩陣與泳道同由掃描輪次衍生〉）：讀同一專案最後完成

@@ -253,14 +253,20 @@ abstract final class AppSnackBar {
     // 出口 1／出口 2 皆早於下方唯一的清除，使 INV-SNACKBAR-NOQUEUE
     // （T-205-16(c)(d)(e)）結構性成立——本區塊之後不得再出現任何 return。
     if (decision == _Preemption.yieldToHolder) {
-      logSink(AppSnackBarLogEvent.yielded, {
-        ...baseFields,
-        'level': level,
-        'holderShowId': currentHolder?.showId,
-        'holderLevel': currentHolder?.level,
-        'variant': variant,
-        'message': message,
-      }, level: origin == AppSnackBarOrigin.background ? _levelWarning : _levelInfo);
+      logSink(
+        AppSnackBarLogEvent.yielded,
+        {
+          ...baseFields,
+          'level': level,
+          'holderShowId': currentHolder?.showId,
+          'holderLevel': currentHolder?.level,
+          'variant': variant,
+          'message': message,
+        },
+        level: origin == AppSnackBarOrigin.background
+            ? _levelWarning
+            : _levelInfo,
+      );
       return;
     }
 

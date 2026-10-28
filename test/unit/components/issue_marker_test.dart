@@ -77,7 +77,10 @@ void main() {
       await pumpHarness(
         tester,
         size: size,
-        child: IssueMarker.damagedDetail(testKey: damagedDetailKey, onTap: () {}),
+        child: IssueMarker.damagedDetail(
+          testKey: damagedDetailKey,
+          onTap: () {},
+        ),
       );
 
       expectNoOverflow(tester);
@@ -209,7 +212,10 @@ void main() {
     testWidgets('damagedDetail 純圖示形態命中區不小於 hitTargetMin', (tester) async {
       await pumpHarness(
         tester,
-        child: IssueMarker.damagedDetail(testKey: damagedDetailKey, onTap: () {}),
+        child: IssueMarker.damagedDetail(
+          testKey: damagedDetailKey,
+          onTap: () {},
+        ),
       );
 
       final box = tester.getSize(find.byKey(damagedDetailKey));
@@ -234,22 +240,23 @@ void main() {
   });
 
   group('無障礙', () {
-    testWidgets('damagedEdge：Semantics.button 為 true，label 含 damagedEdgeMarkerLabel', (
-      tester,
-    ) async {
-      await pumpHarness(
-        tester,
-        child: IssueMarker.damagedEdge(
-          testKey: damagedEdgeKey,
-          onTap: () {},
-          child: _buildChildRelationItem(),
-        ),
-      );
+    testWidgets(
+      'damagedEdge：Semantics.button 為 true，label 含 damagedEdgeMarkerLabel',
+      (tester) async {
+        await pumpHarness(
+          tester,
+          child: IssueMarker.damagedEdge(
+            testKey: damagedEdgeKey,
+            onTap: () {},
+            child: _buildChildRelationItem(),
+          ),
+        );
 
-      final data = tester.getSemantics(find.byKey(damagedEdgeKey));
-      expect(data.flagsCollection.isButton, isTrue);
-      expect(data.label, contains('邊損壞'));
-    });
+        final data = tester.getSemantics(find.byKey(damagedEdgeKey));
+        expect(data.flagsCollection.isButton, isTrue);
+        expect(data.label, contains('邊損壞'));
+      },
+    );
 
     testWidgets('damagedDetail：label 含 damagedDetailMarkerLabel 與計數', (
       tester,
@@ -274,7 +281,10 @@ void main() {
     ) async {
       await pumpHarness(
         tester,
-        child: IssueMarker.damagedDetail(testKey: damagedDetailKey, onTap: () {}),
+        child: IssueMarker.damagedDetail(
+          testKey: damagedDetailKey,
+          onTap: () {},
+        ),
       );
 
       final data = tester.getSemantics(find.byKey(damagedDetailKey));

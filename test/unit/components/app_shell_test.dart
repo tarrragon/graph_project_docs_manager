@@ -67,10 +67,7 @@ void main() {
       expect(find.byKey(AppShell.shellKey), findsOneWidget);
       expect(find.byKey(AppShell.projectSwitcherEntryKey), findsOneWidget);
       for (final destination in AppDestination.values) {
-        expect(
-          find.byKey(Key('nav-item-${destination.name}')),
-          findsOneWidget,
-        );
+        expect(find.byKey(Key('nav-item-${destination.name}')), findsOneWidget);
       }
       expectNoOverflow(tester);
     });
@@ -152,7 +149,10 @@ void main() {
       },
     );
 
-    testWidgetsAtEachSize('側欄寬等於 LayoutSize.sidebarWidth', (tester, size) async {
+    testWidgetsAtEachSize('側欄寬等於 LayoutSize.sidebarWidth', (
+      tester,
+      size,
+    ) async {
       await pumpHarness(
         tester,
         size: size,
@@ -210,41 +210,35 @@ void main() {
       expect(find.text('專案文件流'), findsOneWidget);
     });
 
-    testWidgetsAtEachSize('returnTo 非 null 時 action-<screen>-back 存在，null 時不存在', (
-      tester,
-      size,
-    ) async {
-      final container = await pumpHarness(
-        tester,
-        size: size,
-        overrides: [
-          selectedDestinationProvider.overrideWith(
-            (ref) => AppDestination.tickets,
+    testWidgetsAtEachSize(
+      'returnTo 非 null 時 action-<screen>-back 存在，null 時不存在',
+      (tester, size) async {
+        final container = await pumpHarness(
+          tester,
+          size: size,
+          overrides: [
+            selectedDestinationProvider.overrideWith(
+              (ref) => AppDestination.tickets,
+            ),
+            returnToProvider.overrideWith((ref) => AppDestination.domain),
+          ],
+          child: AppShell(
+            switcherEntry: _buildSwitcherEntry(),
+            navItems: _buildNavItems(selected: AppDestination.tickets),
+            pages: _buildPages(),
           ),
-          returnToProvider.overrideWith((ref) => AppDestination.domain),
-        ],
-        child: AppShell(
-          switcherEntry: _buildSwitcherEntry(),
-          navItems: _buildNavItems(selected: AppDestination.tickets),
-          pages: _buildPages(),
-        ),
-      );
-      expectNoOverflow(tester);
+        );
+        expectNoOverflow(tester);
 
-      expect(
-        find.byKey(const Key('action-tickets-back')),
-        findsOneWidget,
-      );
+        expect(find.byKey(const Key('action-tickets-back')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('action-tickets-back')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('action-tickets-back')));
+        await tester.pumpAndSettle();
 
-      expect(container.read(returnToProvider), isNull);
-      expect(
-        find.byKey(const Key('action-tickets-back')),
-        findsNothing,
-      );
-    });
+        expect(container.read(returnToProvider), isNull);
+        expect(find.byKey(const Key('action-tickets-back')), findsNothing);
+      },
+    );
 
     testWidgetsAtEachSize(
       '真實 TicketListScreen（未載入態、returnTo 非 null）經 AppShell：action-tickets-back 只出現一顆（0.4.1-W1-008）',
@@ -385,10 +379,7 @@ void main() {
         find.byKey(const Key('badge-tickets-degraded-schema')),
         findsOneWidget,
       );
-      expect(
-        find.byKey(const Key('action-tickets-back')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('action-tickets-back')), findsOneWidget);
 
       final badgeRect = tester.getRect(
         find.byKey(const Key('badge-tickets-degraded-schema')),
@@ -414,9 +405,7 @@ void main() {
       );
       expectNoOverflow(tester);
 
-      final titleBarBottom = tester
-          .getRect(find.text('專案文件流'))
-          .bottom;
+      final titleBarBottom = tester.getRect(find.text('專案文件流')).bottom;
       final sidebarRect = tester.getRect(
         find.byKey(AppShell.projectSwitcherEntryKey),
       );
@@ -455,10 +444,7 @@ void main() {
         find.byKey(Key('nav-item-${AppDestination.values[1].name}')),
       );
 
-      expect(
-        firstNavRect.top - entryRect.bottom,
-        moreOrLessEquals(Space.sm),
-      );
+      expect(firstNavRect.top - entryRect.bottom, moreOrLessEquals(Space.sm));
       expect(
         secondNavRect.top - firstNavRect.bottom,
         moreOrLessEquals(Space.xxs),
@@ -481,10 +467,7 @@ void main() {
       expectNoOverflow(tester);
 
       for (final destination in AppDestination.values) {
-        expect(
-          find.byKey(Key('nav-item-${destination.name}')),
-          findsOneWidget,
-        );
+        expect(find.byKey(Key('nav-item-${destination.name}')), findsOneWidget);
       }
     });
 

@@ -10,12 +10,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/schema/schema_version.dart';
 
-const _builtinTrackingSchemaPath =
-    'assets/schema/builtin_tracking_schema.json';
+const _builtinTrackingSchemaPath = 'assets/schema/builtin_tracking_schema.json';
 const _builtinSchemaVersionPath = 'assets/schema/builtin_schema_version.json';
 
 String? _readVersionField(String path) {
-  final json = jsonDecode(File(path).readAsStringSync()) as Map<String, dynamic>;
+  final json =
+      jsonDecode(File(path).readAsStringSync()) as Map<String, dynamic>;
   return json['schema_generated_at_framework_version'] as String?;
 }
 
@@ -28,8 +28,16 @@ void main() {
       final tableVersion = _readVersionField(_builtinTrackingSchemaPath);
       final gateVersion = _readVersionField(_builtinSchemaVersionPath);
 
-      expect(tableVersion, isNotNull, reason: '內建型別表副本缺 schema_generated_at_framework_version');
-      expect(gateVersion, isNotNull, reason: 'builtin_schema_version.json 缺該欄位');
+      expect(
+        tableVersion,
+        isNotNull,
+        reason: '內建型別表副本缺 schema_generated_at_framework_version',
+      );
+      expect(
+        gateVersion,
+        isNotNull,
+        reason: 'builtin_schema_version.json 缺該欄位',
+      );
       expect(
         tableVersion,
         gateVersion,
@@ -63,9 +71,9 @@ void main() {
   });
 
   group('K6 內建副本含 non-domain 路徑 carrier 位置欄位（0.5.0-W1-096.8）', () {
-    Map<String, dynamic> readBuiltin() => jsonDecode(
-          File(_builtinTrackingSchemaPath).readAsStringSync(),
-        ) as Map<String, dynamic>;
+    Map<String, dynamic> readBuiltin() =>
+        jsonDecode(File(_builtinTrackingSchemaPath).readAsStringSync())
+            as Map<String, dynamic>;
 
     test('K6-1 non_domain_paths_file 與 non_domain_paths_key 存在且值正確', () {
       final json = readBuiltin();

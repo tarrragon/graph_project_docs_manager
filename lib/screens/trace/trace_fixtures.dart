@@ -20,20 +20,17 @@ abstract final class TraceabilityFixtures {
   static const List<TraceNode> normal = [
     TraceNode(
       id: 'PROP-001',
-      label:
-          'PROP-001 Monitor MVP — 端到端事件收集與查詢', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-001 Monitor MVP — 端到端事件收集與查詢', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       children: [
         TraceNode(
           id: 'SPEC-001',
-          label:
-              'SPEC-001 事件格式契約（Event Schema）', // i18n-exempt: fixture 節點標題，非 App UI 文案
+          label: 'SPEC-001 事件格式契約（Event Schema）', // i18n-exempt: fixture 節點標題，非 App UI 文案
           status: 'draft',
           children: [
             TraceNode(
               id: 'UC-01',
-              label:
-                  'UC-01 端到端事件流', // i18n-exempt: fixture 節點標題，非 App UI 文案
+              label: 'UC-01 端到端事件流', // i18n-exempt: fixture 節點標題，非 App UI 文案
               status: 'draft',
             ),
           ],
@@ -50,30 +47,26 @@ abstract final class TraceabilityFixtures {
     ...normal,
     TraceNode(
       id: 'PROP-005',
-      label:
-          'PROP-005 JSONL 匯出與備份', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-005 JSONL 匯出與備份', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       hasGap: true,
       gapLayer: 'spec',
     ),
     TraceNode(
       id: 'PROP-006',
-      label:
-          'PROP-006 容器化部署', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-006 容器化部署', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       hasGap: true,
       gapLayer: 'spec',
     ),
     TraceNode(
       id: 'PROP-007',
-      label:
-          'PROP-007 稽核軌跡匯出', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-007 稽核軌跡匯出', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       children: [
         TraceNode(
           id: 'SPEC-007',
-          label:
-              'SPEC-007 稽核事件格式', // i18n-exempt: fixture 節點標題，非 App UI 文案
+          label: 'SPEC-007 稽核事件格式', // i18n-exempt: fixture 節點標題，非 App UI 文案
           status: 'draft',
           hasGap: true,
           gapLayer: 'uc',
@@ -87,14 +80,12 @@ abstract final class TraceabilityFixtures {
   /// 出現位置共用展開狀態（SPEC-003 §3.3〈多父節點〉，`0.1.0-W3-383`）。
   static const TraceNode _sharedSpec008 = TraceNode(
     id: 'SPEC-008',
-    label:
-        'SPEC-008 共用契約（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
+    label: 'SPEC-008 共用契約（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
     status: 'draft',
     children: [
       TraceNode(
         id: 'UC-08',
-        label:
-            'UC-08 共用流程（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
+        label: 'UC-08 共用流程（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
         status: 'draft',
       ),
     ],
@@ -106,8 +97,7 @@ abstract final class TraceabilityFixtures {
   /// （SPEC-003 §3.3〈多父節點〉，`0.1.0-W3-383`）。
   static const TraceNode _sharedGapSpec009 = TraceNode(
     id: 'SPEC-009',
-    label:
-        'SPEC-009 缺口示例（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
+    label: 'SPEC-009 缺口示例（多父節點示例）', // i18n-exempt: fixture 節點標題，非 App UI 文案
     status: 'draft',
     hasGap: true,
     gapLayer: 'uc',
@@ -123,29 +113,25 @@ abstract final class TraceabilityFixtures {
   static const List<TraceNode> multiParent = [
     TraceNode(
       id: 'PROP-008',
-      label:
-          'PROP-008 多父節點示例 A', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-008 多父節點示例 A', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       children: [_sharedSpec008],
     ),
     TraceNode(
       id: 'PROP-009',
-      label:
-          'PROP-009 多父節點示例 B', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-009 多父節點示例 B', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       children: [_sharedSpec008],
     ),
     TraceNode(
       id: 'PROP-010',
-      label:
-          'PROP-010 多父節點缺口示例 A', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-010 多父節點缺口示例 A', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       children: [_sharedGapSpec009],
     ),
     TraceNode(
       id: 'PROP-011',
-      label:
-          'PROP-011 多父節點缺口示例 B', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      label: 'PROP-011 多父節點缺口示例 B', // i18n-exempt: fixture 節點標題，非 App UI 文案
       status: 'draft',
       children: [_sharedGapSpec009],
     ),

@@ -16,57 +16,57 @@ void main() {
   const headerKey = ValueKey('header-row');
 
   AppTableRow buildTicketHeader() => AppTableRow.header(
-        key: headerKey,
-        columns: AppTableRow.ticketColumns,
-        cells: const [
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-        ],
-      );
+    key: headerKey,
+    columns: AppTableRow.ticketColumns,
+    cells: const [
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+    ],
+  );
 
   AppTableRow buildTicketRow(int index) => AppTableRow.ticket(
-        key: ValueKey('ticket-row-$index'),
-        id: AppText.singleLine('T-$index'),
-        title: AppText.singleLine(TestCopy.longZh),
-        status: Badge.status(label: 'in_progress'),
-        priority: AppText.singleLine('P0'),
-        blockedBy: const AppText.singleLine('—'),
-        onTap: () {},
-        testKey: ValueKey('card-tickets-$index'),
-      );
+    key: ValueKey('ticket-row-$index'),
+    id: AppText.singleLine('T-$index'),
+    title: AppText.singleLine(TestCopy.longZh),
+    status: Badge.status(label: 'in_progress'),
+    priority: AppText.singleLine('P0'),
+    blockedBy: const AppText.singleLine('—'),
+    onTap: () {},
+    testKey: ValueKey('card-tickets-$index'),
+  );
 
   List<AppTableRow> buildTicketRows(int count) =>
       List.generate(count, buildTicketRow);
 
   AppTableRow buildStepHeader() => AppTableRow.header(
-        key: headerKey,
-        columns: AppTableRow.stepColumns,
-        cells: const [
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-        ],
-      );
+    key: headerKey,
+    columns: AppTableRow.stepColumns,
+    cells: const [
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+    ],
+  );
 
   AppTableRow buildStepRow(int index) => AppTableRow.step(
-        key: ValueKey('step-row-$index'),
-        number: StepNumber(number: index + 1),
-        stepName: AppText.singleLine(TestCopy.stepName),
-        domain: RelationItem(
-          id: TestCopy.domainName,
-          isMono: false,
-          onTap: () {},
-          testKey: ValueKey('action-ucFlow-goto-domain-$index'),
-        ),
-        events: const BadgeRow(children: []),
-        onTap: () {},
-        testKey: ValueKey('card-ucFlow-step-$index'),
-      );
+    key: ValueKey('step-row-$index'),
+    number: StepNumber(number: index + 1),
+    stepName: AppText.singleLine(TestCopy.stepName),
+    domain: RelationItem(
+      id: TestCopy.domainName,
+      isMono: false,
+      onTap: () {},
+      testKey: ValueKey('action-ucFlow-goto-domain-$index'),
+    ),
+    events: const BadgeRow(children: []),
+    onTap: () {},
+    testKey: ValueKey('card-ucFlow-step-$index'),
+  );
 
   List<AppTableRow> buildStepRows(int count) =>
       List.generate(count, buildStepRow);
@@ -74,32 +74,32 @@ void main() {
   const eventFlowHeaderKey = ValueKey('panel-ucFlow-event-flow-header');
 
   AppTableRow buildEventFlowHeader() => AppTableRow.header(
-        key: eventFlowHeaderKey,
-        columns: AppTableRow.eventFlowColumns,
-        cells: const [
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-          SizedBox.shrink(),
-        ],
-      );
+    key: eventFlowHeaderKey,
+    columns: AppTableRow.eventFlowColumns,
+    cells: const [
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+      SizedBox.shrink(),
+    ],
+  );
 
   AppTableRow buildEventFlowRow(int index) => AppTableRow.eventFlow(
-        key: ValueKey('event-flow-row-$index'),
-        event: AppText.singleLine('EVT-$index'),
-        emittedBy: AppText.singleLine(TestCopy.stepName),
-        consumedBy: AppText.singleLine(TestCopy.stepName),
-      );
+    key: ValueKey('event-flow-row-$index'),
+    event: AppText.singleLine('EVT-$index'),
+    emittedBy: AppText.singleLine(TestCopy.stepName),
+    consumedBy: AppText.singleLine(TestCopy.stepName),
+  );
 
   List<AppTableRow> buildEventFlowRows(int count) =>
       List.generate(count, buildEventFlowRow);
 
   AppDataTable buildEventFlowAppendix(int count) => AppDataTable(
-        variant: AppDataTableVariant.plain,
-        columns: AppTableRow.eventFlowColumns,
-        header: buildEventFlowHeader(),
-        rows: buildEventFlowRows(count),
-      );
+    variant: AppDataTableVariant.plain,
+    columns: AppTableRow.eventFlowColumns,
+    header: buildEventFlowHeader(),
+    rows: buildEventFlowRows(count),
+  );
 
   group('變體與規模：virtual（1313 列）與 plain（39 列）', () {
     testWidgetsAtEachSize('virtual 渲染 1313 列假資料不溢位', (tester, size) async {
@@ -164,22 +164,22 @@ void main() {
       );
 
       final finder = find.byKey(scrollKeyTickets);
-      final before = tester.state<ScrollableState>(
-        find.descendant(
-          of: finder,
-          matching: find.byType(Scrollable),
-        ),
-      ).position.pixels;
+      final before = tester
+          .state<ScrollableState>(
+            find.descendant(of: finder, matching: find.byType(Scrollable)),
+          )
+          .position
+          .pixels;
 
       await tester.fling(finder, const Offset(0, -3000), 3000);
       await tester.pump();
 
-      final after = tester.state<ScrollableState>(
-        find.descendant(
-          of: finder,
-          matching: find.byType(Scrollable),
-        ),
-      ).position.pixels;
+      final after = tester
+          .state<ScrollableState>(
+            find.descendant(of: finder, matching: find.byType(Scrollable)),
+          )
+          .position
+          .pixels;
 
       expectNoOverflow(tester);
       expect(after, greaterThan(before));
@@ -244,10 +244,7 @@ void main() {
       expect(row1Top - row0Top, LayoutSize.rowHeightRelaxed.h);
     });
 
-    testWidgetsAtEachSize('空間不足時（列數 × 列高 > 可用高）觸發垂直捲動', (
-      tester,
-      size,
-    ) async {
+    testWidgetsAtEachSize('空間不足時（列數 × 列高 > 可用高）觸發垂直捲動', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -347,9 +344,7 @@ void main() {
       expect(find.byKey(eventFlowHeaderKey), findsNothing);
     });
 
-    testWidgets('有 appendix 時渲染事件流小表（表頭 + 列），與無 appendix 產物不同', (
-      tester,
-    ) async {
+    testWidgets('有 appendix 時渲染事件流小表（表頭 + 列），與無 appendix 產物不同', (tester) async {
       await pumpHarness(
         tester,
         child: SizedBox(

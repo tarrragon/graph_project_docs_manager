@@ -441,79 +441,73 @@ void main() {
       expect(after.flagsCollection.isExpanded.toBoolOrNull(), isTrue);
     });
 
-    testWidgets(
-      '選單根節點 menu-tickets-filter-status、選項 option-tickets-filter-status-<value> '
-      '可定位，role 分別為 menu／menuItem（SPEC-003 §2.9 命名表）',
-      (tester) async {
-        await pumpHarness(
-          tester,
-          child: FilterDropdown(
-            label: '狀態',
-            options: options,
-            selected: 'pending',
-            onChanged: (_) {},
-            testKey: testKey,
-            screen: 'tickets',
-            kind: 'filter-status',
-          ),
-        );
+    testWidgets('選單根節點 menu-tickets-filter-status、選項 option-tickets-filter-status-<value> '
+        '可定位，role 分別為 menu／menuItem（SPEC-003 §2.9 命名表）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: FilterDropdown(
+          label: '狀態',
+          options: options,
+          selected: 'pending',
+          onChanged: (_) {},
+          testKey: testKey,
+          screen: 'tickets',
+          kind: 'filter-status',
+        ),
+      );
 
-        await tester.tap(find.byKey(testKey));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(testKey));
+      await tester.pumpAndSettle();
 
-        final menuKey = const Key('menu-tickets-filter-status');
-        expect(find.byKey(menuKey), findsOneWidget);
-        final menuWidget = tester.widget<Semantics>(find.byKey(menuKey));
-        expect(menuWidget.properties.role, SemanticsRole.menu);
+      final menuKey = const Key('menu-tickets-filter-status');
+      expect(find.byKey(menuKey), findsOneWidget);
+      final menuWidget = tester.widget<Semantics>(find.byKey(menuKey));
+      expect(menuWidget.properties.role, SemanticsRole.menu);
 
-        final selectedOptionKey = const Key(
-          'option-tickets-filter-status-pending',
-        );
-        expect(find.byKey(selectedOptionKey), findsOneWidget);
-        final selectedOptionWidget = tester.widget<Semantics>(
-          find.byKey(selectedOptionKey),
-        );
-        expect(selectedOptionWidget.properties.role, SemanticsRole.menuItem);
-        expect(selectedOptionWidget.properties.selected, isTrue);
+      final selectedOptionKey = const Key(
+        'option-tickets-filter-status-pending',
+      );
+      expect(find.byKey(selectedOptionKey), findsOneWidget);
+      final selectedOptionWidget = tester.widget<Semantics>(
+        find.byKey(selectedOptionKey),
+      );
+      expect(selectedOptionWidget.properties.role, SemanticsRole.menuItem);
+      expect(selectedOptionWidget.properties.selected, isTrue);
 
-        final allOptionKey = const Key('option-tickets-filter-status-all');
-        expect(find.byKey(allOptionKey), findsOneWidget);
-        final allOptionWidget = tester.widget<Semantics>(
-          find.byKey(allOptionKey),
-        );
-        expect(allOptionWidget.properties.role, SemanticsRole.menuItem);
-        expect(allOptionWidget.properties.selected, isFalse);
-      },
-    );
+      final allOptionKey = const Key('option-tickets-filter-status-all');
+      expect(find.byKey(allOptionKey), findsOneWidget);
+      final allOptionWidget = tester.widget<Semantics>(
+        find.byKey(allOptionKey),
+      );
+      expect(allOptionWidget.properties.role, SemanticsRole.menuItem);
+      expect(allOptionWidget.properties.selected, isFalse);
+    });
 
-    testWidgets(
-      'selected 為空時開啟選單，焦點落在該 key 的全部選項'
-      '（SPEC-003 §3.4「篩選 · 開啟」列焦點契約）',
-      (tester) async {
-        await pumpHarness(
-          tester,
-          child: FilterDropdown(
-            label: '狀態',
-            options: options,
-            selected: null,
-            onChanged: (_) {},
-            testKey: testKey,
-            screen: 'tickets',
-            kind: 'filter-status',
-          ),
-        );
+    testWidgets('selected 為空時開啟選單，焦點落在該 key 的全部選項'
+        '（SPEC-003 §3.4「篩選 · 開啟」列焦點契約）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: FilterDropdown(
+          label: '狀態',
+          options: options,
+          selected: null,
+          onChanged: (_) {},
+          testKey: testKey,
+          screen: 'tickets',
+          kind: 'filter-status',
+        ),
+      );
 
-        await tester.tap(find.byKey(testKey));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byKey(testKey));
+      await tester.pumpAndSettle();
 
-        final allOptionKey = const Key('option-tickets-filter-status-all');
-        final focusNode = Focus.of(
-          tester.element(find.byKey(allOptionKey)),
-          scopeOk: true,
-        );
-        expect(focusNode.hasFocus, isTrue);
-      },
-    );
+      final allOptionKey = const Key('option-tickets-filter-status-all');
+      final focusNode = Focus.of(
+        tester.element(find.byKey(allOptionKey)),
+        scopeOk: true,
+      );
+      expect(focusNode.hasFocus, isTrue);
+    });
 
     testWidgets('觸發器可透過 Tab 取得焦點', (tester) async {
       await pumpHarness(

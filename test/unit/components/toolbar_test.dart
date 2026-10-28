@@ -54,34 +54,30 @@ void main() {
     for (final size in WindowSize.values) {
       for (final count in [1, 2, 3]) {
         for (final hasMarker in [false, true]) {
-          testWidgets(
-            'N=$count / marker=$hasMarker @ ${size.label} 不溢位',
-            (tester) async {
-              await pumpHarness(
-                tester,
-                size: size,
-                child: Toolbar(
-                  testKey: const Key('toolbar'),
-                  search: _buildSearch(),
-                  filters: _buildFilters(count),
-                  marker: hasMarker ? _buildMarker() : null,
-                ),
-              );
+          testWidgets('N=$count / marker=$hasMarker @ ${size.label} 不溢位', (
+            tester,
+          ) async {
+            await pumpHarness(
+              tester,
+              size: size,
+              child: Toolbar(
+                testKey: const Key('toolbar'),
+                search: _buildSearch(),
+                filters: _buildFilters(count),
+                marker: hasMarker ? _buildMarker() : null,
+              ),
+            );
 
-              expectNoOverflow(tester);
-              expect(find.byKey(const Key('toolbar-search')), findsOneWidget);
-              for (var i = 0; i < count; i++) {
-                expect(
-                  find.byKey(Key('toolbar-filter-$i')),
-                  findsOneWidget,
-                );
-              }
-              expect(
-                find.byKey(const Key('toolbar-marker')),
-                hasMarker ? findsOneWidget : findsNothing,
-              );
-            },
-          );
+            expectNoOverflow(tester);
+            expect(find.byKey(const Key('toolbar-search')), findsOneWidget);
+            for (var i = 0; i < count; i++) {
+              expect(find.byKey(Key('toolbar-filter-$i')), findsOneWidget);
+            }
+            expect(
+              find.byKey(const Key('toolbar-marker')),
+              hasMarker ? findsOneWidget : findsNothing,
+            );
+          });
         }
       }
     }

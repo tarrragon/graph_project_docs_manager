@@ -23,47 +23,56 @@ const _optionKey = ValueKey('action-ucFlow-select-uc-UC-01');
 ListRow _buildVariant(ListRowVariant variant, {required bool withTrailing}) {
   return switch (variant) {
     ListRowVariant.tree => ListRow.tree(
-        leading: const ExpanderIcon(
-          isExpanded: false,
-          testKey: ValueKey('tree-expander'),
-        ),
-        primary: AppText.singleLine(TestCopy.nodeTitle, emphasis: true),
-        trailing: withTrailing ? const Badge.status(label: 'completed') : null,
-        onTap: () {},
-        testKey: _treeKey,
+      leading: const ExpanderIcon(
+        isExpanded: false,
+        testKey: ValueKey('tree-expander'),
       ),
+      primary: AppText.singleLine(TestCopy.nodeTitle, emphasis: true),
+      trailing: withTrailing ? const Badge.status(label: 'completed') : null,
+      onTap: () {},
+      testKey: _treeKey,
+    ),
     ListRowVariant.sectionHeader => ListRow.sectionHeader(
-        leading: const ExpanderIcon(
-          isExpanded: true,
-          testKey: ValueKey('section-expander'),
-        ),
-        primary: AppText.singleLine(TestCopy.topicName),
-        trailing: withTrailing
-            ? const AppText.singleLine('12 items', variant: AppTextVariant.caption)
-            : null,
+      leading: const ExpanderIcon(
+        isExpanded: true,
+        testKey: ValueKey('section-expander'),
       ),
+      primary: AppText.singleLine(TestCopy.topicName),
+      trailing: withTrailing
+          ? const AppText.singleLine(
+              '12 items',
+              variant: AppTextVariant.caption,
+            )
+          : null,
+    ),
     ListRowVariant.item => ListRow.item(
-        primary: AppText.singleLine(TestCopy.gapTitle),
-        secondary: AppText.singleLine(TestCopy.gapDescription, variant: AppTextVariant.caption),
-        trailing: withTrailing
-            ? const AppIcon(icon: material.Icons.open_in_new)
-            : null,
-        onTap: () {},
-        testKey: _itemKey,
+      primary: AppText.singleLine(TestCopy.gapTitle),
+      secondary: AppText.singleLine(
+        TestCopy.gapDescription,
+        variant: AppTextVariant.caption,
       ),
+      trailing: withTrailing
+          ? const AppIcon(icon: material.Icons.open_in_new)
+          : null,
+      onTap: () {},
+      testKey: _itemKey,
+    ),
     ListRowVariant.option => ListRow.option(
-        primary: AppText.singleLine(TestCopy.nodeTitle),
-        onTap: () {},
-        testKey: _optionKey,
-      ),
+      primary: AppText.singleLine(TestCopy.nodeTitle),
+      onTap: () {},
+      testKey: _optionKey,
+    ),
     ListRowVariant.meta => ListRow.meta(
-        leading: const Badge.type(label: 'PROP'),
-        primary: AppText.singleLine(TestCopy.filePath, variant: AppTextVariant.mono),
+      leading: const Badge.type(label: 'PROP'),
+      primary: AppText.singleLine(
+        TestCopy.filePath,
+        variant: AppTextVariant.mono,
       ),
+    ),
     ListRowVariant.numbered => ListRow.numbered(
-        leading: const SizedBox(width: 24, height: 24),
-        primary: AppText.singleLine(TestCopy.stepName),
-      ),
+      leading: const SizedBox(width: 24, height: 24),
+      primary: AppText.singleLine(TestCopy.stepName),
+    ),
   };
 }
 
@@ -219,15 +228,8 @@ void main() {
         child: SizedBox(
           width: 300,
           child: ListRow.tree(
-            leading: const SizedBox(
-              key: leadingKey,
-              width: 24,
-              height: 24,
-            ),
-            primary: const AppText.singleLine(
-              key: primaryKey,
-              'primary text',
-            ),
+            leading: const SizedBox(key: leadingKey, width: 24, height: 24),
+            primary: const AppText.singleLine(key: primaryKey, 'primary text'),
             trailing: const SizedBox(key: trailingKey, width: 24, height: 24),
             onTap: () {},
             testKey: _treeKey,
@@ -305,14 +307,17 @@ void main() {
           width: 300,
           child: ListRow.meta(
             leading: const Badge.type(label: 'PROP'),
-            primary: const AppText.singleLine('a', variant: AppTextVariant.mono),
+            primary: const AppText.singleLine(
+              'a',
+              variant: AppTextVariant.mono,
+            ),
           ),
         ),
       );
 
-      final sizedBox = tester.widgetList<SizedBox>(find.byType(SizedBox)).firstWhere(
-        (box) => box.height == LayoutSize.rowHeightDense.h,
-      );
+      final sizedBox = tester
+          .widgetList<SizedBox>(find.byType(SizedBox))
+          .firstWhere((box) => box.height == LayoutSize.rowHeightDense.h);
       expect(sizedBox.height, LayoutSize.rowHeightDense.h);
     });
 
@@ -379,7 +384,9 @@ void main() {
           (widget) =>
               widget is ColoredBox && widget.color == AppColors.surfaceIconTint,
         );
-        final unselectedTintCount = tester.widgetList(selectedTintFinder).length;
+        final unselectedTintCount = tester
+            .widgetList(selectedTintFinder)
+            .length;
 
         await pumpHarness(
           tester,
@@ -511,7 +518,9 @@ void main() {
       final data = tester.getSemantics(find.text(TestCopy.nodeTitle));
       expect(data.flagsCollection.isButton, isFalse);
       expect(find.byKey(_treeKey), findsOneWidget);
-      final hit = tester.hitTestOnBinding(tester.getCenter(find.byKey(_treeKey)));
+      final hit = tester.hitTestOnBinding(
+        tester.getCenter(find.byKey(_treeKey)),
+      );
       expect(
         hit.path.any((e) => e.target is RenderMouseRegion),
         isFalse,
@@ -562,7 +571,10 @@ void main() {
 
       final withHeight = await pumpItem(
         tester,
-        secondary: AppText.singleLine(TestCopy.gapDescription, variant: AppTextVariant.caption),
+        secondary: AppText.singleLine(
+          TestCopy.gapDescription,
+          variant: AppTextVariant.caption,
+        ),
       );
       expect(find.text(TestCopy.gapDescription), findsOneWidget);
       expect(withHeight, greaterThan(withoutHeight));

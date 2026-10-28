@@ -16,15 +16,16 @@ void main() {
   late String swiftSource;
 
   setUpAll(() {
-    swiftSource =
-        File('macos/Runner/MainFlutterWindow.swift').readAsStringSync();
+    swiftSource = File('macos/Runner/MainFlutterWindow.swift')
+        .readAsStringSync();
   });
 
   test('macOS minSize 與 Dart kMinWindowSize 一致', () {
     expect(
       _parseNSSize(swiftSource, 'minimumSize'),
       kMinWindowSize,
-      reason: 'Swift 的視窗下限與 Dart 的驗收下限不符 —— '
+      reason:
+          'Swift 的視窗下限與 Dart 的驗收下限不符 —— '
           '整合測試將無法涵蓋實機可達到的最窄視窗',
     );
   });

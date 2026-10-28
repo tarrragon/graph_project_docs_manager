@@ -142,16 +142,13 @@ class Badge extends StatelessWidget {
 
   /// 票列狀態、節點 draft chip、樹列狀態。`tone` 由 [label] 值依
   /// [_statusToneMap] 自動決定，呼叫端不可覆寫（SPEC-004 §4.5）。
-  const Badge.status({
-    Key? key,
-    required String label,
-    bool inline = false,
-  }) : this._(
-         key: key,
-         variant: BadgeVariant.status,
-         label: label,
-         inline: inline,
-       );
+  const Badge.status({Key? key, required String label, bool inline = false})
+    : this._(
+        key: key,
+        variant: BadgeVariant.status,
+        label: label,
+        inline: inline,
+      );
 
   /// PROP / SPEC / UC / Ticket 型別，tone 固定 [BadgeTone.neutral]。
   const Badge.type({Key? key, required String label, bool inline = false})
@@ -193,24 +190,16 @@ class Badge extends StatelessWidget {
 
   /// `domain: schema`、`N 個 FR` 等標籤，tone 固定 [BadgeTone.neutral]。
   const Badge.tag({Key? key, required String label, bool inline = false})
-    : this._(
-        key: key,
-        variant: BadgeVariant.tag,
-        label: label,
-        inline: inline,
-      );
+    : this._(key: key, variant: BadgeVariant.tag, label: label, inline: inline);
 
   /// 矩陣與泳道圖例：符號 slot（`●` / `○` / `·`）+ 文字，無底色。
-  const Badge.legend({
-    Key? key,
-    required String symbol,
-    required String label,
-  }) : this._(
-         key: key,
-         variant: BadgeVariant.legend,
-         symbol: symbol,
-         label: label,
-       );
+  const Badge.legend({Key? key, required String symbol, required String label})
+    : this._(
+        key: key,
+        variant: BadgeVariant.legend,
+        symbol: symbol,
+        label: label,
+      );
 
   /// 專案健康計數。`semanticLabel` 與 `key`（`badge-switcher-health-<index>`）
   /// 皆必填（SPEC-004 §4.5「slot 契約」）。
@@ -310,14 +299,16 @@ class Badge extends StatelessWidget {
   }
 
   Widget _buildLegend() {
-    final symbolColor =
-        _legendSymbolColors[symbol] ?? AppColors.textSecondary;
+    final symbolColor = _legendSymbolColors[symbol] ?? AppColors.textSecondary;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           symbol ?? '',
-          style: TextStyle(fontSize: AppFontSize.caption.sp, color: symbolColor),
+          style: TextStyle(
+            fontSize: AppFontSize.caption.sp,
+            color: symbolColor,
+          ),
         ),
         SizedBox(width: Space.xs.w),
         Flexible(

@@ -32,10 +32,7 @@ void main() {
         tester,
         size: size,
         child: _column(
-          const TableColumnHeader.twoLine(
-            label: 'UC-01',
-            secondLine: '節點瀏覽',
-          ),
+          const TableColumnHeader.twoLine(label: 'UC-01', secondLine: '節點瀏覽'),
         ),
       );
       expectNoOverflow(tester);
@@ -68,9 +65,7 @@ void main() {
     testWidgets('plain 最長文案截斷不溢位', (tester) async {
       await pumpHarness(
         tester,
-        child: _column(
-          TableColumnHeader.plain(label: TestCopy.longToken),
-        ),
+        child: _column(TableColumnHeader.plain(label: TestCopy.longToken)),
       );
       expectNoOverflow(tester);
       final textWidget = tester.widget<Text>(find.text(TestCopy.longToken));
@@ -90,9 +85,7 @@ void main() {
       );
       expectNoOverflow(tester);
 
-      final secondLineWidget = tester.widget<Text>(
-        find.text(TestCopy.ucName),
-      );
+      final secondLineWidget = tester.widget<Text>(find.text(TestCopy.ucName));
       expect(secondLineWidget.maxLines, 1);
       expect(secondLineWidget.overflow, TextOverflow.ellipsis);
     });
@@ -353,9 +346,7 @@ void main() {
       const key = ValueKey('plain-header-test');
       await pumpHarness(
         tester,
-        child: _column(
-          const TableColumnHeader.plain(key: key, label: 'ID'),
-        ),
+        child: _column(const TableColumnHeader.plain(key: key, label: 'ID')),
       );
 
       final data = tester.getSemantics(find.byKey(key));

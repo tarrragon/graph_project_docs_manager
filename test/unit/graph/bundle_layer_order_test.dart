@@ -17,9 +17,8 @@ import '../../helpers/spec007/log_recorder.dart';
 import '../../helpers/spec007/raw_node_builder.dart';
 
 List<BundleLayerEntry> _order(List<RawNode> nodes) {
-  final result = BundleLayerQuery(
-    buildResult: buildResultOf(nodes),
-  ).orderedBundles();
+  final result = BundleLayerQuery(buildResult: buildResultOf(nodes))
+      .orderedBundles();
   return (result as BundleOrderAvailable).entries;
 }
 
@@ -97,13 +96,10 @@ void main() {
     });
 
     test('同一依賴值宣告兩次只算一條依賴邊', () {
-      final event =
-          (buildResultOf([
-                    bundleNode('a'),
-                    bundleNode('b', dependsOn: ['a', 'a']),
-                  ])
-                  as GraphBuildAvailable)
-              .event;
+      final event = (buildResultOf([
+        bundleNode('a'),
+        bundleNode('b', dependsOn: ['a', 'a']),
+      ]) as GraphBuildAvailable).event;
       expect(bundleDependenciesOf(event), hasLength(1));
     });
   });
@@ -269,9 +265,8 @@ void main() {
     });
 
     test('G13-12 守衛：圖不可用與未完成建圖不是空排序；正向對照為可用圖', () {
-      final bad = BundleLayerQuery(
-        buildResult: unavailableBuildResult(),
-      ).orderedBundles();
+      final bad = BundleLayerQuery(buildResult: unavailableBuildResult())
+          .orderedBundles();
       expect(
         (bad as BundleOrderGraphUnavailable).cause,
         AdjacencyUnavailableCause.buildUnavailable,
@@ -281,9 +276,8 @@ void main() {
         (pending as BundleOrderGraphUnavailable).cause,
         AdjacencyUnavailableCause.buildNotCompleted,
       );
-      final ok = BundleLayerQuery(
-        buildResult: buildResultOf([bundleNode('a')]),
-      ).orderedBundles();
+      final ok = BundleLayerQuery(buildResult: buildResultOf([bundleNode('a')]))
+          .orderedBundles();
       expect(ok, isA<BundleOrderAvailable>());
       expect((ok as BundleOrderAvailable).entries, isNotEmpty);
     });
@@ -387,45 +381,42 @@ void main() {
       ]);
     });
 
-    test(
-      'G13-21 Z3：domain 為 [] 與 {} 的 bundle 留列、列首為轉字串值、層號照算、同層排在有效者之後；E1 改為有效字串則排序位置不同',
-      () {
-        List<RawNode> nodes(Object? eDomain, Object? fDomain) => [
-          bundleNode('z', domain: 'zz'),
-          _rawBundle('e', {domainBundleDomainField: eDomain}),
-          _rawBundle('f', {domainBundleDomainField: fDomain}),
-          _rawBundle('d', {
-            domainBundleDomainField: 'dd',
-            'depends_on_bundles': [bundleIdOf('e')],
-          }),
-        ];
-        final empty = _order(nodes(<Object?>[], <String, Object?>{}));
-        expect(_ids(empty), [
-          bundleIdOf('z'),
-          bundleIdOf('e'),
-          bundleIdOf('f'),
-          bundleIdOf('d'),
-        ]);
-        expect(_asLayoutRecords(empty), [
-          (domain: 'zz', layer: 0),
-          (domain: '[]', layer: 0),
-          (domain: '{}', layer: 0),
-          (domain: 'dd', layer: 1),
-        ]);
-        // E1：同 fixture 改為有效字串 domain，層號相同、排序位置不同。
-        final valid = _order(nodes('aa', 'bb'));
-        expect(_ids(valid), [
-          bundleIdOf('e'),
-          bundleIdOf('f'),
-          bundleIdOf('z'),
-          bundleIdOf('d'),
-        ]);
-        Map<String, int?> layers(List<BundleLayerEntry> es) => {
-          for (final x in es) x.bundleId: x.layer,
-        };
-        expect(layers(valid), layers(empty));
-      },
-    );
+    test('G13-21 Z3：domain 為 [] 與 {} 的 bundle 留列、列首為轉字串值、層號照算、同層排在有效者之後；E1 改為有效字串則排序位置不同', () {
+      List<RawNode> nodes(Object? eDomain, Object? fDomain) => [
+        bundleNode('z', domain: 'zz'),
+        _rawBundle('e', {domainBundleDomainField: eDomain}),
+        _rawBundle('f', {domainBundleDomainField: fDomain}),
+        _rawBundle('d', {
+          domainBundleDomainField: 'dd',
+          'depends_on_bundles': [bundleIdOf('e')],
+        }),
+      ];
+      final empty = _order(nodes(<Object?>[], <String, Object?>{}));
+      expect(_ids(empty), [
+        bundleIdOf('z'),
+        bundleIdOf('e'),
+        bundleIdOf('f'),
+        bundleIdOf('d'),
+      ]);
+      expect(_asLayoutRecords(empty), [
+        (domain: 'zz', layer: 0),
+        (domain: '[]', layer: 0),
+        (domain: '{}', layer: 0),
+        (domain: 'dd', layer: 1),
+      ]);
+      // E1：同 fixture 改為有效字串 domain，層號相同、排序位置不同。
+      final valid = _order(nodes('aa', 'bb'));
+      expect(_ids(valid), [
+        bundleIdOf('e'),
+        bundleIdOf('f'),
+        bundleIdOf('z'),
+        bundleIdOf('d'),
+      ]);
+      Map<String, int?> layers(List<BundleLayerEntry> es) => {
+        for (final x in es) x.bundleId: x.layer,
+      };
+      expect(layers(valid), layers(empty));
+    });
 
     test('T5 依賴指向存在但不是 DomainBundle 的節點：推不出層', () {
       final entries = _order([

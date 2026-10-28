@@ -134,7 +134,8 @@ class MatrixGrid extends StatelessWidget {
   /// [_buildCell] 頂對齊裝入，使相鄰列之間留出 `Space.xxs` 空白。
   TableSpan _buildRowSpan(int row) {
     final double extent = row == 0
-        ? LayoutSize.rowHeightRelaxed * 2 // twoLine 欄首列高（SPEC-004 4.37）
+        ? LayoutSize.rowHeightRelaxed *
+              2 // twoLine 欄首列高（SPEC-004 4.37）
         : LayoutSize.rowHeightRelaxed + Space.xxs;
     return TableSpan(
       extent: FixedTableSpanExtent(extent),
@@ -217,7 +218,8 @@ class _DomainHeaderCell extends StatelessWidget {
     return Semantics(
       key: Key('action-domain-select-$domainId'),
       button: true,
-      label: '$domainName，'
+      label:
+          '$domainName，'
           '${AppLocalizations.of(context).matrixSubtotalA11yLabel(subtotal)}', // i18n-exempt: 分隔符字面，SPEC-004 4.37 朗讀格式「{domain}，小計 N」
       excludeSemantics: true,
       child: InkWell(

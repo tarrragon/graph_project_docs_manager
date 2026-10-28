@@ -42,9 +42,7 @@ class TwoColumnLayout extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Semantics(container: true, child: main),
-        ),
+        Expanded(child: Semantics(container: true, child: main)),
         SizedBox(width: Space.md),
         SizedBox(
           width: LayoutSize.detailPaneWidth,

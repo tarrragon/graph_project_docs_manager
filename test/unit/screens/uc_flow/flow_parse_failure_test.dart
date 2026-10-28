@@ -54,10 +54,7 @@ void main() {
     );
     expect(find.text(l10n.flowParseFailedMessage), findsOneWidget);
     expect(find.text(l10n.flowUnstructuredMessage), findsNothing);
-    expect(
-      find.byKey(const Key('action-ucFlow-open-source')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('action-ucFlow-open-source')), findsOneWidget);
   });
 
   testWidgets('F1-7（E1）無步驟、無解析失敗破洞 → 原文案，且與 F1-6 不同', (tester) async {

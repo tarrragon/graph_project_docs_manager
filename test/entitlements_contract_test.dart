@@ -42,7 +42,8 @@ void main() {
         expect(
           _valueOf(plist, 'com.apple.security.app-sandbox'),
           isFalse,
-          reason: 'sandbox 一旦開啟，Process.run 就無法執行 doc CLI —— '
+          reason:
+              'sandbox 一旦開啟，Process.run 就無法執行 doc CLI —— '
               'App 會靜默失去核心能力，且沒有任何編譯期徵兆',
         );
       });

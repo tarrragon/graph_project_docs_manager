@@ -39,10 +39,7 @@ Map<String, dynamic> _step(String id, {List<String> emits = const []}) => {
 ScanRoundResult _round() {
   final steps = [
     for (var i = 1; i <= _manyStepCount; i++)
-      _step(
-        's$i',
-        emits: i == _manyStepCount ? const ['evt.last'] : const [],
-      ),
+      _step('s$i', emits: i == _manyStepCount ? const ['evt.last'] : const []),
   ];
   final nodes = [_uc('UC-01', 'first uc'), _uc('UC-02', 'second uc')];
   final subgraphs = buildFlowSubgraphs(
@@ -87,7 +84,10 @@ void main() {
 
     expect(find.byKey(const Key('action-ucFlow-select-uc-UC-01')), findsOne);
     expect(find.byKey(const Key('action-ucFlow-select-uc-UC-02')), findsOne);
-    expect(find.byKey(const Key('action-ucFlow-select-uc-UC-04')), findsNothing);
+    expect(
+      find.byKey(const Key('action-ucFlow-select-uc-UC-04')),
+      findsNothing,
+    );
     expect(find.text('UC-01 first uc'), findsOneWidget);
   });
 
@@ -148,7 +148,8 @@ void main() {
           _roundOverride(),
           selectedUcProvider.overrideWith((ref) => 'UC-01'),
           ucFlowFocusProvider.overrideWith(
-            (ref) => const UcFlowFocus(ucId: 'UC-01', stepId: 's$_manyStepCount'),
+            (ref) =>
+                const UcFlowFocus(ucId: 'UC-01', stepId: 's$_manyStepCount'),
           ),
         ],
       );
@@ -165,7 +166,8 @@ void main() {
           _roundOverride(),
           selectedUcProvider.overrideWith((ref) => 'UC-01'),
           ucFlowFocusProvider.overrideWith(
-            (ref) => const UcFlowFocus(ucId: 'UC-01', stepId: 's$_manyStepCount'),
+            (ref) =>
+                const UcFlowFocus(ucId: 'UC-01', stepId: 's$_manyStepCount'),
           ),
         ],
       );
@@ -222,7 +224,10 @@ void main() {
       expect(tester.widget<AppTableRow>(find.byKey(rowKey)).isLocated, isTrue);
 
       await tester.tap(
-        find.descendant(of: find.byKey(rowKey), matching: find.text('evt.last')),
+        find.descendant(
+          of: find.byKey(rowKey),
+          matching: find.text('evt.last'),
+        ),
       );
       await tester.pumpAndSettle();
 

@@ -132,7 +132,9 @@ void main() {
 
     // 0.5.0-W1-206.2：按鈕開啟選擇器並依四種結果分流（SPEC-003 §3.1）。
     testWidgets('選定資料夾：chooseFolder 一次，經共用流程呼叫 gate detect', (tester) async {
-      final repo = _ChooseRepo(const ChooseFolderSelected(WorkspaceReady('/ws')));
+      final repo = _ChooseRepo(
+        const ChooseFolderSelected(WorkspaceReady('/ws')),
+      );
       final probe = _CountingProbe();
       await pumpHarness(
         tester,
@@ -161,8 +163,9 @@ void main() {
         overrides: _chooseOverrides(repo, probe),
       );
       // 載入編排在 gate 期間把畫面轉為載入中，_UnsetView 隨之卸載。
-      probe.onRead = () => container.read(domainViewStateProvider.notifier).state =
-          const DomainLoading();
+      probe.onRead = () =>
+          container.read(domainViewStateProvider.notifier).state =
+              const DomainLoading();
 
       await tester.tap(find.byKey(const Key('action-domain-choose-folder')));
       await tester.pumpAndSettle();
@@ -231,7 +234,10 @@ void main() {
       await tester.pumpAndSettle();
 
       final l10n = AppLocalizationsZh();
-      expect(find.text(l10n.folderUnavailableMessage('missing')), findsOneWidget);
+      expect(
+        find.text(l10n.folderUnavailableMessage('missing')),
+        findsOneWidget,
+      );
       expect(AnchorFinder.state(Screen.domain, 'unset'), findsOneWidget);
       expect(probe.readVersionPaths, isEmpty);
     });
@@ -583,9 +589,7 @@ void main() {
       expect(AnchorFinder.state(Screen.domain, 'matrix'), findsOneWidget);
     });
 
-    testWidgets('首次輪次完成 → 轉為 swimlane 或 swimlane-unstructured', (
-      tester,
-    ) async {
+    testWidgets('首次輪次完成 → 轉為 swimlane 或 swimlane-unstructured', (tester) async {
       final round = fakeRound(event: pendingSnapshotEvent);
       await pumpApp(
         tester,
@@ -1175,9 +1179,7 @@ void main() {
       expect(find.text(l10n.rescanAction), findsOneWidget);
     });
 
-    testWidgets('掃描中（本列觸發）：掃描中文字與計數、按鈕停用；結束仍不可用 → 恢復原因文字', (
-      tester,
-    ) async {
+    testWidgets('掃描中（本列觸發）：掃描中文字與計數、按鈕停用；結束仍不可用 → 恢復原因文字', (tester) async {
       await pumpHarness(
         tester,
         child: const DomainViewScreen(),

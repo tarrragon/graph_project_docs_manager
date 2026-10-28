@@ -83,9 +83,7 @@ void main() {
 
   group('內容政策：最長測試文案截斷', () {
     for (final size in WindowSize.values) {
-      testWidgets('${size.name} 尺寸下 TestCopy.longToken 截斷不溢位', (
-        tester,
-      ) async {
+      testWidgets('${size.name} 尺寸下 TestCopy.longToken 截斷不溢位', (tester) async {
         await pumpHarness(
           tester,
           size: size,
@@ -105,7 +103,10 @@ void main() {
 
         expectNoOverflow(tester);
         final textWidget = tester.widget<Text>(
-          find.descendant(of: find.byKey(matrixKey), matching: find.byType(Text)),
+          find.descendant(
+            of: find.byKey(matrixKey),
+            matching: find.byType(Text),
+          ),
         );
         expect(textWidget.maxLines, 1);
         expect(textWidget.overflow, TextOverflow.ellipsis);
@@ -272,7 +273,10 @@ void main() {
         find.descendant(of: find.byKey(matrixKey), matching: find.byType(Text)),
       );
       final unselectedText = tester.widget<Text>(
-        find.descendant(of: find.byKey(swimlaneKey), matching: find.byType(Text)),
+        find.descendant(
+          of: find.byKey(swimlaneKey),
+          matching: find.byType(Text),
+        ),
       );
 
       expect(selectedText.style?.color, AppColors.accentStrong);

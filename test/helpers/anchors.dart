@@ -62,8 +62,7 @@ abstract final class Anchor {
   static Key navPage(AppDestination destination) => destination.pageKey;
 
   /// 狀態根節點 `state-<screen>-<state>`。
-  static Key state(Screen screen, String state) =>
-      _key('state', screen, state);
+  static Key state(Screen screen, String state) => _key('state', screen, state);
 
   /// 動作 `action-<screen>-<action>`。
   static Key action(Screen screen, String action) =>
@@ -73,19 +72,16 @@ abstract final class Anchor {
   static Key mode(Screen screen, String mode) => _key('mode', screen, mode);
 
   /// 捲動容器 `scroll-<screen>-<area>`。
-  static Key scroll(Screen screen, String area) =>
-      _key('scroll', screen, area);
+  static Key scroll(Screen screen, String area) => _key('scroll', screen, area);
 
   /// 拖曳畫布 `drag-<screen>-<area>`。
   static Key drag(Screen screen, String area) => _key('drag', screen, area);
 
   /// 徽章 `badge-<screen>-<kind>`。
-  static Key badge(Screen screen, String kind) =>
-      _key('badge', screen, kind);
+  static Key badge(Screen screen, String kind) => _key('badge', screen, kind);
 
   /// 面板 `panel-<screen>-<kind>`。
-  static Key panel(Screen screen, String kind) =>
-      _key('panel', screen, kind);
+  static Key panel(Screen screen, String kind) => _key('panel', screen, kind);
 
   /// 卡片 `card-<screen>-<name>`。§2.9 表未列此類，但 §4 第 11、12、17、
   /// 24、28 列以 `card-<screen>-*` 作跳轉觸發錨點，故一併提供。

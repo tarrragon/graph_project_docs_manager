@@ -45,42 +45,40 @@ Widget _buildDetailCard() {
 void main() {
   group('TwoColumnLayout 單一變體矩陣（§4.31 測試點）', () {
     for (final size in WindowSize.values) {
-      testWidgets(
-        '主欄資料視圖 + 右欄 EmptyState.section @ ${size.label} 不溢位',
-        (tester) async {
-          await pumpHarness(
-            tester,
-            size: size,
-            child: TwoColumnLayout(
-              main: _buildMain(),
-              detail: _buildDetailEmpty(),
-            ),
-          );
+      testWidgets('主欄資料視圖 + 右欄 EmptyState.section @ ${size.label} 不溢位', (
+        tester,
+      ) async {
+        await pumpHarness(
+          tester,
+          size: size,
+          child: TwoColumnLayout(
+            main: _buildMain(),
+            detail: _buildDetailEmpty(),
+          ),
+        );
 
-          expectNoOverflow(tester);
-        },
-      );
+        expectNoOverflow(tester);
+      });
 
-      testWidgets(
-        '主欄資料視圖 + 右欄詳情卡 @ ${size.label} 不溢位；右欄寬恆等於 detailPaneWidth',
-        (tester) async {
-          await pumpHarness(
-            tester,
-            size: size,
-            child: TwoColumnLayout(
-              main: _buildMain(),
-              detail: _buildDetailCard(),
-            ),
-          );
+      testWidgets('主欄資料視圖 + 右欄詳情卡 @ ${size.label} 不溢位；右欄寬恆等於 detailPaneWidth', (
+        tester,
+      ) async {
+        await pumpHarness(
+          tester,
+          size: size,
+          child: TwoColumnLayout(
+            main: _buildMain(),
+            detail: _buildDetailCard(),
+          ),
+        );
 
-          expectNoOverflow(tester);
+        expectNoOverflow(tester);
 
-          final detailSize = tester.getSize(
-            find.byKey(const Key('two-column-detail-card')),
-          );
-          expect(detailSize.width, LayoutSize.detailPaneWidth);
-        },
-      );
+        final detailSize = tester.getSize(
+          find.byKey(const Key('two-column-detail-card')),
+        );
+        expect(detailSize.width, LayoutSize.detailPaneWidth);
+      });
     }
   });
 
@@ -89,10 +87,7 @@ void main() {
       await pumpHarness(
         tester,
         size: WindowSize.design,
-        child: TwoColumnLayout(
-          main: _buildMain(),
-          detail: _buildDetailCard(),
-        ),
+        child: TwoColumnLayout(main: _buildMain(), detail: _buildDetailCard()),
       );
 
       final mainRect = tester.getRect(
@@ -113,10 +108,7 @@ void main() {
       await pumpHarness(
         tester,
         size: WindowSize.design,
-        child: TwoColumnLayout(
-          main: _buildMain(),
-          detail: _buildDetailCard(),
-        ),
+        child: TwoColumnLayout(main: _buildMain(), detail: _buildDetailCard()),
       );
 
       final mainRect = tester.getRect(
@@ -156,10 +148,7 @@ void main() {
       await pumpHarness(
         tester,
         size: WindowSize.design,
-        child: TwoColumnLayout(
-          main: _buildMain(),
-          detail: _buildDetailCard(),
-        ),
+        child: TwoColumnLayout(main: _buildMain(), detail: _buildDetailCard()),
       );
 
       final mainFinder = find.byKey(const Key('two-column-main-scroll'));
@@ -191,10 +180,7 @@ void main() {
       await pumpHarness(
         tester,
         size: WindowSize.design,
-        child: TwoColumnLayout(
-          main: _buildMain(),
-          detail: _buildDetailEmpty(),
-        ),
+        child: TwoColumnLayout(main: _buildMain(), detail: _buildDetailEmpty()),
       );
 
       await tester.drag(mainFinder, const Offset(0, -100));
@@ -205,10 +191,7 @@ void main() {
       await pumpHarness(
         tester,
         size: WindowSize.design,
-        child: TwoColumnLayout(
-          main: _buildMain(),
-          detail: _buildDetailCard(),
-        ),
+        child: TwoColumnLayout(main: _buildMain(), detail: _buildDetailCard()),
       );
       await tester.pump(Motion.transition(tester.element(mainFinder)));
       await tester.pumpAndSettle();
@@ -228,10 +211,7 @@ void main() {
       await pumpHarness(
         tester,
         size: WindowSize.design,
-        child: TwoColumnLayout(
-          main: _buildMain(),
-          detail: _buildDetailCard(),
-        ),
+        child: TwoColumnLayout(main: _buildMain(), detail: _buildDetailCard()),
       );
 
       final sizedBoxes = tester

@@ -31,9 +31,7 @@ void main() {
     });
 
     test('G1-2 未設定覆寫時回傳 defaultResult', () async {
-      final fake = FakeExternalOpener(
-        defaultResult: ExternalOpenResult.failed,
-      );
+      final fake = FakeExternalOpener(defaultResult: ExternalOpenResult.failed);
 
       final result = await fake.open('/a/one.md');
 
@@ -86,16 +84,15 @@ void main() {
 
   group('G3｜呼叫發出日誌的靜態結構驗證（INV-PORT-OBSERVE-001）', () {
     test('G3-1 open 方法體第一語句為入口日誌，位於前置檢查之前', () {
-      final source = File(
-        'lib/workspace/external_opener.dart',
-      ).readAsStringSync();
+      final source = File('lib/workspace/external_opener.dart')
+          .readAsStringSync();
 
       final methodStart = source.indexOf('Future<ExternalOpenResult> open(');
-      final entryLogIndex = source.indexOf(
-        'developer.log(path, name: _tag);',
-      );
+      final entryLogIndex = source.indexOf('developer.log(path, name: _tag);');
       final precheckIndex = source.indexOf('FileSystemEntity.type(path)');
-      final processRunIndex = source.indexOf('Process.run(_executable, [path])');
+      final processRunIndex = source.indexOf(
+        'Process.run(_executable, [path])',
+      );
 
       expect(methodStart, greaterThanOrEqualTo(0));
       expect(entryLogIndex, greaterThan(methodStart));

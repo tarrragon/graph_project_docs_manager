@@ -58,13 +58,13 @@ class _DomainPageStub extends ConsumerWidget {
       _Unset() => SizedBox(key: Anchor.state(Screen.domain, 'unset')),
       _Matrix() => SizedBox(key: Anchor.state(Screen.domain, 'matrix')),
       _Loading() => _LoadingStub(
-          onCancel: () {
-            // SPEC-003 §2.5：按下取消後於 cancelDeadline 內抵達未選專案態。
-            Timer(Motion.cancelDeadline, () {
-              ref.read(_domainStateProvider.notifier).state = const _Unset();
-            });
-          },
-        ),
+        onCancel: () {
+          // SPEC-003 §2.5：按下取消後於 cancelDeadline 內抵達未選專案態。
+          Timer(Motion.cancelDeadline, () {
+            ref.read(_domainStateProvider.notifier).state = const _Unset();
+          });
+        },
+      ),
       _SchemaIncompatible() => const _SchemaIncompatibleStub(),
     };
   }
@@ -171,8 +171,9 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets('action-domain-schema-detail → panel-domain-schema-detail',
-        (tester) async {
+    testWidgets('action-domain-schema-detail → panel-domain-schema-detail', (
+      tester,
+    ) async {
       await pumpHarness(
         tester,
         child: const _DomainPageStub(),
@@ -195,8 +196,10 @@ void main() {
   });
 
   group('載入態 #2 state-domain-loading', () {
-    testWidgetsAtEachSize('注入後渲染載入態（含無限動畫，settle: false）',
-        (tester, size) async {
+    testWidgetsAtEachSize('注入後渲染載入態（含無限動畫，settle: false）', (
+      tester,
+      size,
+    ) async {
       await pumpHarness(
         tester,
         child: const _DomainPageStub(),
@@ -211,25 +214,27 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets('action-domain-cancel-load → cancelDeadline 內抵達 state-domain-unset',
-        (tester) async {
-      final container = await pumpHarness(
-        tester,
-        child: const _DomainPageStub(),
-        overrides: [
-          _domainStateProvider.overrideWith((ref) => const _Loading()),
-        ],
-        settle: false,
-      );
+    testWidgets(
+      'action-domain-cancel-load → cancelDeadline 內抵達 state-domain-unset',
+      (tester) async {
+        final container = await pumpHarness(
+          tester,
+          child: const _DomainPageStub(),
+          overrides: [
+            _domainStateProvider.overrideWith((ref) => const _Loading()),
+          ],
+          settle: false,
+        );
 
-      await tester.tap(AnchorFinder.action(Screen.domain, 'cancel-load'));
-      // 時限走假時鐘（Motion 契約類 token），不量測真實耗時。
-      await pumpContract(tester, Motion.cancelDeadline);
-      await tester.pump();
+        await tester.tap(AnchorFinder.action(Screen.domain, 'cancel-load'));
+        // 時限走假時鐘（Motion 契約類 token），不量測真實耗時。
+        await pumpContract(tester, Motion.cancelDeadline);
+        await tester.pump();
 
-      expect(AnchorFinder.state(Screen.domain, 'unset'), findsOneWidget);
-      expect(AnchorFinder.state(Screen.domain, 'loading'), findsNothing);
-      expect(container.read(_domainStateProvider), isA<_Unset>());
-    });
+        expect(AnchorFinder.state(Screen.domain, 'unset'), findsOneWidget);
+        expect(AnchorFinder.state(Screen.domain, 'loading'), findsNothing);
+        expect(container.read(_domainStateProvider), isA<_Unset>());
+      },
+    );
   });
 }

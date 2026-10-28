@@ -70,9 +70,7 @@ void main() {
       expect(value, const Duration(milliseconds: 150));
     });
 
-    testWidgets('overlay 於 disableAnimations=false 回溯 200 ms', (
-      tester,
-    ) async {
+    testWidgets('overlay 於 disableAnimations=false 回溯 200 ms', (tester) async {
       late Duration value;
       await tester.pumpWidget(
         _wrapWithDisableAnimations(

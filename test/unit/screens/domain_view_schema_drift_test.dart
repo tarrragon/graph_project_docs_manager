@@ -63,9 +63,7 @@ void main() {
     test('.claude/VERSION 與內嵌資產版本的差距未超過門檻', () {
       final liveVersion = File('.claude/VERSION').readAsStringSync().trim();
       final assetJson = jsonDecode(
-        File(
-          'assets/schema/builtin_schema_version.json',
-        ).readAsStringSync(),
+        File('assets/schema/builtin_schema_version.json').readAsStringSync(),
       ) as Map<String, dynamic>;
       final assetVersion =
           assetJson['schema_generated_at_framework_version'] as String;

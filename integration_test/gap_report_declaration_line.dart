@@ -158,15 +158,24 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
       final l10n = _l10n(tester);
       final malformedLine = _lineText(tester);
       expect(malformedLine, contains(l10n.pathDeclarationNonDomainMalformed));
-      expect(malformedLine, isNot(contains(l10n.pathDeclarationNonDomainMissing)));
+      expect(
+        malformedLine,
+        isNot(contains(l10n.pathDeclarationNonDomainMissing)),
+      );
       expect(_gapCount(tester), fullGaps + 1);
-      expect(_itemsOf(tester, gapCategoryIdNonDomainPathsMalformed), hasLength(1));
+      expect(
+        _itemsOf(tester, gapCategoryIdNonDomainPathsMalformed),
+        hasLength(1),
+      );
 
       await open(tester, missing);
       await _openGapReport(tester);
       final missingLine = _lineText(tester);
       expect(missingLine, contains(l10n.pathDeclarationNonDomainMissing));
-      expect(missingLine, isNot(contains(l10n.pathDeclarationNonDomainMalformed)));
+      expect(
+        missingLine,
+        isNot(contains(l10n.pathDeclarationNonDomainMalformed)),
+      );
       expect(_gapCount(tester), fullGaps, reason: '刪除清單檔只是缺席，不新增破洞');
       for (final dir in [full, malformed, missing]) {
         await dir.delete(recursive: true);
@@ -179,8 +188,7 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
 /// 帶一張 `where.files` 落在任何 bundle 與非 domain 清單之外的 ticket，使
 /// 受影響路徑數大於 0（否則 `{count}` 恆為 0，斷言恆真）。
 const _ticketFile = {
-  'docs/work-logs/v0.0.1/tickets/0.0.1-W1-001.md':
-      '---\nid: 0.0.1-W1-001\nwhere:\n  files:\n    - outside/undeclared/a.txt\n    - outside/undeclared/b.txt\n---\n',
+  'docs/work-logs/v0.0.1/tickets/0.0.1-W1-001.md': '---\nid: 0.0.1-W1-001\nwhere:\n  files:\n    - outside/undeclared/a.txt\n    - outside/undeclared/b.txt\n---\n',
 };
 
 Future<Directory> _partialWorkspace() => materializeSnapshotWorkspace(
@@ -209,9 +217,9 @@ Map<String, SnapshotTransform> _pathPatternTransforms(
 };
 
 Future<ProjectPathDeclaration> _declarationOf(Directory workspace) async {
-  final schemaJson =
-      jsonDecode(File('${workspace.path}/$_schemaPath').readAsStringSync())
-          as Map<String, dynamic>;
+  final schemaJson = jsonDecode(
+    File('${workspace.path}/$_schemaPath').readAsStringSync(),
+  ) as Map<String, dynamic>;
   final table = typeTableFromJson(schemaJson);
   final scan = await scanCorpus(
     fileSystem: DefaultDocsFileSystem(workspace.path),

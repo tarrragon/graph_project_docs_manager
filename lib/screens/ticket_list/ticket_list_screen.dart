@@ -42,9 +42,10 @@ class TicketListScreen extends ConsumerWidget {
       TicketsUnloaded() => _UnloadedView(state: state),
       TicketsLoading() => _LoadingView(state: state),
       TicketsEmpty() => const _EmptyView(),
-      TicketsReady() => state.mode == TicketListMode.list
-          ? _ReadyListView(state: state)
-          : _ReadyTopicView(state: state),
+      TicketsReady() =>
+        state.mode == TicketListMode.list
+            ? _ReadyListView(state: state)
+            : _ReadyTopicView(state: state),
     };
   }
 }
@@ -292,8 +293,7 @@ class _ReadyListView extends ConsumerWidget {
         Toolbar(
           search: SearchField(
             value: state.searchQuery,
-            onChanged: (value) =>
-                update((s) => s.copyWith(searchQuery: value)),
+            onChanged: (value) => update((s) => s.copyWith(searchQuery: value)),
             testKey: const Key('input-tickets-search'),
           ),
           filters: [
@@ -492,7 +492,9 @@ AppTableRow _ticketRow(
       variant: AppTextVariant.caption,
     ),
     blockedBy: AppText.singleLine(
-      ticket.blockedBy.isEmpty ? placeholder : ticket.blockedBy.join(', '), // i18n-exempt: 串接分隔字面與規則同，非 UI 文案
+      ticket.blockedBy.isEmpty
+          ? placeholder
+          : ticket.blockedBy.join(', '), // i18n-exempt: 串接分隔字面與規則同，非 UI 文案
       variant: AppTextVariant.mono,
     ),
     marker: ticket.corrupted
@@ -525,10 +527,7 @@ TicketsReady _advanceSort(TicketsReady state, TicketSortKey key) {
     TicketSortOrder.desc => TicketSortOrder.none,
   };
   if (next == TicketSortOrder.none) {
-    return state.copyWith(
-      sortKey: () => null,
-      sortOrder: TicketSortOrder.none,
-    );
+    return state.copyWith(sortKey: () => null, sortOrder: TicketSortOrder.none);
   }
   return state.copyWith(sortOrder: next);
 }

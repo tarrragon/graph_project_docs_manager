@@ -32,7 +32,9 @@ void main() {
         child: const NodeDetailScreen(),
         overrides: [
           nodeDetailStateProvider.overrideWith(
-            (ref) => const NodeDetailProjectUnready(ProjectUnreadyReason.notSelected),
+            (ref) => const NodeDetailProjectUnready(
+              ProjectUnreadyReason.notSelected,
+            ),
           ),
         ],
         size: size,
@@ -54,7 +56,9 @@ void main() {
         child: const NodeDetailScreen(),
         overrides: [
           nodeDetailStateProvider.overrideWith(
-            (ref) => const NodeDetailProjectUnready(ProjectUnreadyReason.notSelected),
+            (ref) => const NodeDetailProjectUnready(
+              ProjectUnreadyReason.notSelected,
+            ),
           ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.nodeDetail,
@@ -79,7 +83,9 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith((ref) => const NodeDetailUnset()),
+          nodeDetailStateProvider.overrideWith(
+            (ref) => const NodeDetailUnset(),
+          ),
         ],
         size: size,
       );
@@ -96,7 +102,9 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith((ref) => const NodeDetailUnset()),
+          nodeDetailStateProvider.overrideWith(
+            (ref) => const NodeDetailUnset(),
+          ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.nodeDetail,
           ),
@@ -178,9 +186,7 @@ void main() {
           ],
         );
 
-        await tester.tap(
-          AnchorFinder.action(Screen.nodeDetail, 'open-source'),
-        );
+        await tester.tap(AnchorFinder.action(Screen.nodeDetail, 'open-source'));
         await tester.pump();
 
         expect(
@@ -202,9 +208,8 @@ void main() {
         overrides: [
           _fixtureNodes,
           nodeDetailStateProvider.overrideWith(
-            (ref) => const NodeDetailReady(
-              nodeId: NodeDetailFixtures.partialNodeId,
-            ),
+            (ref) =>
+                const NodeDetailReady(nodeId: NodeDetailFixtures.partialNodeId),
           ),
         ],
         size: size,
@@ -224,9 +229,8 @@ void main() {
         overrides: [
           _fixtureNodes,
           nodeDetailStateProvider.overrideWith(
-            (ref) => const NodeDetailReady(
-              nodeId: NodeDetailFixtures.partialNodeId,
-            ),
+            (ref) =>
+                const NodeDetailReady(nodeId: NodeDetailFixtures.partialNodeId),
           ),
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.nodeDetail,
@@ -237,10 +241,7 @@ void main() {
       await tester.tap(AnchorFinder.action(Screen.nodeDetail, 'goto-gaps'));
       await tester.pump();
 
-      expect(
-        container.read(selectedDestinationProvider),
-        AppDestination.gaps,
-      );
+      expect(container.read(selectedDestinationProvider), AppDestination.gaps);
       expect(container.read(returnToProvider), AppDestination.nodeDetail);
     });
   });
@@ -274,9 +275,7 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets('action-nodeDetail-refresh（檔案仍不存在）：維持本狀態並提示', (
-      tester,
-    ) async {
+    testWidgets('action-nodeDetail-refresh（檔案仍不存在）：維持本狀態並提示', (tester) async {
       await pumpHarness(
         tester,
         child: const NodeDetailScreen(),
@@ -319,10 +318,7 @@ void main() {
       await tester.pump();
 
       expect(AnchorFinder.state(Screen.nodeDetail, 'normal'), findsOneWidget);
-      expect(
-        container.read(nodeDetailStateProvider),
-        isA<NodeDetailReady>(),
-      );
+      expect(container.read(nodeDetailStateProvider), isA<NodeDetailReady>());
     });
   });
 
@@ -334,11 +330,16 @@ void main() {
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.nodeDetail,
           ),
-          nodeDetailStateProvider.overrideWith((ref) => const NodeDetailUnset()),
+          nodeDetailStateProvider.overrideWith(
+            (ref) => const NodeDetailUnset(),
+          ),
         ],
       );
 
-      expect(AnchorFinder.action(Screen.nodeDetail, 'open-source'), findsNothing);
+      expect(
+        AnchorFinder.action(Screen.nodeDetail, 'open-source'),
+        findsNothing,
+      );
     });
   });
 
@@ -417,10 +418,10 @@ void main() {
 
       final cats = projectNodeDetails(event2)['A']!.relations;
 
-      expect([for (final c in cats) (c.label, c.isProposed)], [
-        ('bundle_dependency', true),
-        ('spawn', false),
-      ]);
+      expect(
+        [for (final c in cats) (c.label, c.isProposed)],
+        [('bundle_dependency', true), ('spawn', false)],
+      );
     });
 
     test('projectNodeDetails 由建圖結果投影節點與相鄰關聯', () {

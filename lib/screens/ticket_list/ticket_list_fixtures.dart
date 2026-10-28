@@ -43,9 +43,7 @@ abstract final class TicketListFixtures {
       title: '實作破洞報告畫面', // i18n-exempt: fixture 資料值
       status: 'in_progress', // i18n-exempt: fixture 資料值
       priority: 'P1', // i18n-exempt: fixture 資料值
-      blockedBy: [
-        '0.1.0-W1-002',
-      ], // i18n-exempt: fixture 資料值（ticket ID 清單）
+      blockedBy: ['0.1.0-W1-002'], // i18n-exempt: fixture 資料值（ticket ID 清單）
       topic: 'screens', // i18n-exempt: fixture 主題名
     ),
     TicketFixtureItem(

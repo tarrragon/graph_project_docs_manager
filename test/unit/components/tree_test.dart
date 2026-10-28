@@ -11,10 +11,7 @@ import '../../helpers/helpers.dart';
 
 void main() {
   ListRow buildRow(String id, {Widget? trailing}) => ListRow.tree(
-    leading: ExpanderIcon(
-      isExpanded: true,
-      testKey: ValueKey('expander-$id'),
-    ),
+    leading: ExpanderIcon(isExpanded: true, testKey: ValueKey('expander-$id')),
     primary: AppText.singleLine(id),
     trailing: trailing,
     onTap: () {},
@@ -39,9 +36,7 @@ void main() {
                 id: 'n2',
                 row: buildRow('n2'),
                 depth: 2,
-                children: [
-                  TreeNode(id: 'n3', row: buildRow('n3'), depth: 3),
-                ],
+                children: [TreeNode(id: 'n3', row: buildRow('n3'), depth: 3)],
               ),
             ],
           ),
@@ -122,12 +117,12 @@ void main() {
         ),
       );
 
-      final row0Bottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('row-n0')),
-      ).dy;
-      final gapTop = tester.getTopLeft(
-        find.byKey(const ValueKey('row-gap0')),
-      ).dy;
+      final row0Bottom = tester
+          .getBottomLeft(find.byKey(const ValueKey('row-n0')))
+          .dy;
+      final gapTop = tester
+          .getTopLeft(find.byKey(const ValueKey('row-gap0')))
+          .dy;
 
       expect(gapTop, greaterThanOrEqualTo(row0Bottom));
     });
@@ -142,12 +137,12 @@ void main() {
         ),
       );
 
-      final row0Bottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('row-n0')),
-      ).dy;
-      final gapTop = tester.getTopLeft(
-        find.byKey(const ValueKey('row-gap0')),
-      ).dy;
+      final row0Bottom = tester
+          .getBottomLeft(find.byKey(const ValueKey('row-n0')))
+          .dy;
+      final gapTop = tester
+          .getTopLeft(find.byKey(const ValueKey('row-gap0')))
+          .dy;
 
       expect(gapTop - row0Bottom, 0);
     });

@@ -233,8 +233,12 @@ void main() {
         columns: [_uc('UC-09', '標題')],
         rows: [
           _row('delta', 'delta-name', [
-            _cell('delta', 'UC-09', DomainRelation.direct,
-                explanation: longText),
+            _cell(
+              'delta',
+              'UC-09',
+              DomainRelation.direct,
+              explanation: longText,
+            ),
           ]),
         ],
       );
@@ -489,9 +493,7 @@ void main() {
       expect(lanes.every((l) => l.nodes.isEmpty), isTrue);
     });
 
-    testWidgets('退路二：已選定 UC 而尚無完成輪次，呈現投影準備中（0.5.0-W1-205.2.2）', (
-      tester,
-    ) async {
+    testWidgets('退路二：已選定 UC 而尚無完成輪次，呈現投影準備中（0.5.0-W1-205.2.2）', (tester) async {
       await pumpScreen(
         tester,
         _stateOverrides(

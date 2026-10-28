@@ -153,8 +153,7 @@ typedef WorkspaceLogSink = void Function(
   Object? error,
 });
 
-class _DefaultWorkspacePreferencesHandle
-    implements WorkspacePreferencesHandle {
+class _DefaultWorkspacePreferencesHandle implements WorkspacePreferencesHandle {
   _DefaultWorkspacePreferencesHandle(this._prefs);
   final SharedPreferences _prefs;
 
@@ -230,12 +229,12 @@ class WorkspaceRepository {
     WorkspacePreferencesPort? preferencesPort,
     WorkspaceDirectoryProbePort? directoryProbe,
     WorkspaceLogSink? logSink,
-  })  : _pickDirectoryPath = pickDirectoryPath ?? getDirectoryPath,
-        _preferencesPort =
-            preferencesPort ?? const _DefaultWorkspacePreferencesPort(),
-        _directoryProbe =
-            directoryProbe ?? const _DefaultWorkspaceDirectoryProbePort(),
-        _log = logSink ?? _defaultLogSink;
+  }) : _pickDirectoryPath = pickDirectoryPath ?? getDirectoryPath,
+       _preferencesPort =
+           preferencesPort ?? const _DefaultWorkspacePreferencesPort(),
+       _directoryProbe =
+           directoryProbe ?? const _DefaultWorkspaceDirectoryProbePort(),
+       _log = logSink ?? _defaultLogSink;
 
   static const _pathKey = 'workspace.path';
 
@@ -322,10 +321,7 @@ class WorkspaceRepository {
       // 補救）。
       final success = await handle.writeString(_pathKey, path);
       if (success) {
-        await handle.writeString(
-          _schemaVersionKey,
-          '$_currentSchemaVersion',
-        );
+        await handle.writeString(_schemaVersionKey, '$_currentSchemaVersion');
         _log(
           '已持久化', // i18n-exempt: 開發者 debug log
           event: WorkspaceLogEvent.persistCompleted,

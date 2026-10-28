@@ -168,10 +168,7 @@ class _LoadingStateState extends State<LoadingState>
           child: Semantics(
             label: l10n.loadingSkeletonA11yLabel,
             child: _shimmerController == null
-                ? _SkeletonArea(
-                    layout: widget.skeletonLayout!,
-                    opacity: 1,
-                  )
+                ? _SkeletonArea(layout: widget.skeletonLayout!, opacity: 1)
                 : AnimatedBuilder(
                     animation: _shimmerController!,
                     builder: (context, _) => _SkeletonArea(
@@ -201,9 +198,7 @@ class _LoadingStateState extends State<LoadingState>
 
     return Center(
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: LayoutSize.detailPaneWidth.w * 2,
-        ),
+        constraints: BoxConstraints(maxWidth: LayoutSize.detailPaneWidth.w * 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -295,9 +290,7 @@ class _SkeletonArea extends StatelessWidget {
     }
     final isHeader = index.isEven;
     return Padding(
-      padding: EdgeInsets.only(
-        left: isHeader ? 0 : LayoutSize.treeIndent.w,
-      ),
+      padding: EdgeInsets.only(left: isHeader ? 0 : LayoutSize.treeIndent.w),
       child: SizedBox(
         height: height,
         width: isHeader ? double.infinity : LayoutSize.detailPaneWidth.w,

@@ -35,41 +35,34 @@ import '../../helpers/helpers.dart';
 import 'scan_notification_controller_test.dart' show FakeScanNotifier;
 
 void main() {
-  testWidgets(
-    'App 啟動（不覆寫 gapReportProvider，預設可見頁 domain、視窗前景）：'
-    '掃描不因啟動路徑觸發，authorizationStatus 全程未被呼叫',
-    (tester) async {
-      final fake = FakeScanNotifier();
-      await pumpApp(
-        tester,
-        overrides: [scanNotifierProvider.overrideWithValue(fake)],
-        settle: false,
-      );
+  testWidgets('App 啟動（不覆寫 gapReportProvider，預設可見頁 domain、視窗前景）：'
+      '掃描不因啟動路徑觸發，authorizationStatus 全程未被呼叫', (tester) async {
+    final fake = FakeScanNotifier();
+    await pumpApp(
+      tester,
+      overrides: [scanNotifierProvider.overrideWithValue(fake)],
+      settle: false,
+    );
 
-      // build() 剛完成：預設可見頁為 domain（≠ gaps），
-      // firstVisibleProvider(gaps) 為 false，掃描不應被排程。
-      expect(
-        fake.authorizationStatusCalls,
-        0,
-        reason: '啟動當下可見頁非 gaps，掃描不應被觸發',
-      );
+    // build() 剛完成：預設可見頁為 domain（≠ gaps），
+    // firstVisibleProvider(gaps) 為 false，掃描不應被排程。
+    expect(fake.authorizationStatusCalls, 0, reason: '啟動當下可見頁非 gaps，掃描不應被觸發');
 
-      await pumpContract(tester, Motion.spinnerMinVisible);
-      await tester.pump();
+    await pumpContract(tester, Motion.spinnerMinVisible);
+    await tester.pump();
 
-      // 鑑別證據（E1）：即使時間推進超過 Motion.spinnerMinVisible（修復前
-      // 掃描完成、觸發通知評估的時間點），authorizationStatus 仍應維持
-      // 0 次——因為掃描從未被排程。若觸發時機退回 build()（本票修復前的
-      // 行為），本斷言會翻紅為 1。
-      expect(
-        fake.authorizationStatusCalls,
-        0,
-        reason:
-            'App 啟動路徑修復後：掃描觸發改掛在首次可見 nav-page-gaps，'
-            '啟動當下使用者未曾造訪該頁，authorizationStatus 應全程為 0。'
-            '若此斷言翻紅為 1，代表觸發時機退回了 build()（0.3.1-W3-122 '
-            '修復前的缺陷行為）。',
-      );
-    },
-  );
+    // 鑑別證據（E1）：即使時間推進超過 Motion.spinnerMinVisible（修復前
+    // 掃描完成、觸發通知評估的時間點），authorizationStatus 仍應維持
+    // 0 次——因為掃描從未被排程。若觸發時機退回 build()（本票修復前的
+    // 行為），本斷言會翻紅為 1。
+    expect(
+      fake.authorizationStatusCalls,
+      0,
+      reason:
+          'App 啟動路徑修復後：掃描觸發改掛在首次可見 nav-page-gaps，'
+          '啟動當下使用者未曾造訪該頁，authorizationStatus 應全程為 0。'
+          '若此斷言翻紅為 1，代表觸發時機退回了 build()（0.3.1-W3-122 '
+          '修復前的缺陷行為）。',
+    );
+  });
 }

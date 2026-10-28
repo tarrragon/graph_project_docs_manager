@@ -60,9 +60,7 @@ void main() {
       final ticketFiles = workLogsDir
           .listSync(recursive: true)
           .whereType<File>()
-          .where(
-            (f) => f.path.endsWith('.md') && f.path.contains('/tickets/'),
-          )
+          .where((f) => f.path.endsWith('.md') && f.path.contains('/tickets/'))
           .toList();
 
       final missingFrontmatterPaths = knownMissingFrontmatterFiles
@@ -86,9 +84,7 @@ void main() {
       final ticketFiles = workLogsDir
           .listSync(recursive: true)
           .whereType<File>()
-          .where(
-            (f) => f.path.endsWith('.md') && f.path.contains('/tickets/'),
-          )
+          .where((f) => f.path.endsWith('.md') && f.path.contains('/tickets/'))
           .toList();
 
       final missingFrontmatterPaths = knownMissingFrontmatterFiles

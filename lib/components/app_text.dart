@@ -67,9 +67,9 @@ class AppText extends StatelessWidget {
     this.secondary = false,
     this.tone,
     this.textAlign,
-  })  : maxLines = 1,
-        _forceSingleLine = true,
-        _explicitWrap = false;
+  }) : maxLines = 1,
+       _forceSingleLine = true,
+       _explicitWrap = false;
 
   /// 明示多行：`body` 變體，`maxLines` 必填——`null` 為無上限（真的換行），
   /// 整數為限行、超出末行省略號。漏傳在編譯期暴露。
@@ -81,9 +81,9 @@ class AppText extends StatelessWidget {
     this.secondary = false,
     this.tone,
     this.textAlign,
-  })  : variant = AppTextVariant.body,
-        _forceSingleLine = false,
-        _explicitWrap = true;
+  }) : variant = AppTextVariant.body,
+       _forceSingleLine = false,
+       _explicitWrap = true;
 
   const AppText._(
     this.text, {
@@ -131,18 +131,17 @@ class AppText extends StatelessWidget {
 
   /// 只改修飾（粗體、語意色），保留文字、變體與行數政策。容器需重染主文字
   /// 時用此法，避免重建而丟失呼叫端明示的行數政策。
-  AppText copyWithModifiers({bool? emphasis, AppTextTone? tone}) =>
-      AppText._(
-        text,
-        variant: variant,
-        maxLines: maxLines,
-        forceSingleLine: _forceSingleLine,
-        explicitWrap: _explicitWrap,
-        emphasis: emphasis ?? this.emphasis,
-        secondary: secondary,
-        tone: tone ?? this.tone,
-        textAlign: textAlign,
-      );
+  AppText copyWithModifiers({bool? emphasis, AppTextTone? tone}) => AppText._(
+    text,
+    variant: variant,
+    maxLines: maxLines,
+    forceSingleLine: _forceSingleLine,
+    explicitWrap: _explicitWrap,
+    emphasis: emphasis ?? this.emphasis,
+    secondary: secondary,
+    tone: tone ?? this.tone,
+    textAlign: textAlign,
+  );
 
   bool get _isSingleLine => _forceSingleLine || variant != AppTextVariant.body;
 
@@ -191,34 +190,34 @@ class AppText extends StatelessWidget {
   }
 
   Color _colorForTone(AppTextTone tone) => switch (tone) {
-        AppTextTone.textPrimary => AppColors.textPrimary,
-        AppTextTone.textSecondary => AppColors.textSecondary,
-        AppTextTone.textTitle => AppColors.textTitle,
-        AppTextTone.accentStrong => AppColors.accentStrong,
-        AppTextTone.textDisabled => AppColors.textDisabled,
-      };
+    AppTextTone.textPrimary => AppColors.textPrimary,
+    AppTextTone.textSecondary => AppColors.textSecondary,
+    AppTextTone.textTitle => AppColors.textTitle,
+    AppTextTone.accentStrong => AppColors.accentStrong,
+    AppTextTone.textDisabled => AppColors.textDisabled,
+  };
 
   double get _fontSize => switch (variant) {
-        AppTextVariant.title => AppFontSize.title,
-        AppTextVariant.subtitle => AppFontSize.subtitle,
-        AppTextVariant.body => AppFontSize.body,
-        AppTextVariant.caption => AppFontSize.caption,
-        AppTextVariant.mono => AppFontSize.body,
-      };
+    AppTextVariant.title => AppFontSize.title,
+    AppTextVariant.subtitle => AppFontSize.subtitle,
+    AppTextVariant.body => AppFontSize.body,
+    AppTextVariant.caption => AppFontSize.caption,
+    AppTextVariant.mono => AppFontSize.body,
+  };
 
   Color get _defaultColor => switch (variant) {
-        AppTextVariant.title => AppColors.textTitle,
-        AppTextVariant.subtitle => AppColors.textTitle,
-        AppTextVariant.body => AppColors.textPrimary,
-        AppTextVariant.caption => AppColors.textSecondary,
-        AppTextVariant.mono => AppColors.textPrimary,
-      };
+    AppTextVariant.title => AppColors.textTitle,
+    AppTextVariant.subtitle => AppColors.textTitle,
+    AppTextVariant.body => AppColors.textPrimary,
+    AppTextVariant.caption => AppColors.textSecondary,
+    AppTextVariant.mono => AppColors.textPrimary,
+  };
 
   FontWeight get _defaultWeight => switch (variant) {
-        AppTextVariant.title => FontWeight.bold,
-        AppTextVariant.subtitle => FontWeight.w600,
-        AppTextVariant.body => FontWeight.normal,
-        AppTextVariant.caption => FontWeight.normal,
-        AppTextVariant.mono => FontWeight.normal,
-      };
+    AppTextVariant.title => FontWeight.bold,
+    AppTextVariant.subtitle => FontWeight.w600,
+    AppTextVariant.body => FontWeight.normal,
+    AppTextVariant.caption => FontWeight.normal,
+    AppTextVariant.mono => FontWeight.normal,
+  };
 }

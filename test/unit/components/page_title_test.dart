@@ -32,10 +32,7 @@ void main() {
         size: size,
         child: const Align(
           alignment: Alignment.topLeft,
-          child: SizedBox(
-            width: 300,
-            child: PageTitle(title: 'Ticket 清單'),
-          ),
+          child: SizedBox(width: 300, child: PageTitle(title: 'Ticket 清單')),
         ),
       );
       expect(find.text('Ticket 清單'), findsOneWidget);
@@ -68,16 +65,10 @@ void main() {
       );
 
       final titleNode = tester.getSemantics(find.text('Domain 視圖'));
-      expect(
-        titleNode.flagsCollection.isHeader,
-        isTrue,
-      );
+      expect(titleNode.flagsCollection.isHeader, isTrue);
 
       final subtitleNode = tester.getSemantics(find.text('副標'));
-      expect(
-        subtitleNode.flagsCollection.isHeader,
-        isFalse,
-      );
+      expect(subtitleNode.flagsCollection.isHeader, isFalse);
 
       handle.dispose();
     });

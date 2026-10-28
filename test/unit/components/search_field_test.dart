@@ -40,11 +40,7 @@ void main() {
       await pumpHarness(
         tester,
         size: size,
-        child: SearchField(
-          value: 'abc',
-          onChanged: (_) {},
-          testKey: testKey,
-        ),
+        child: SearchField(value: 'abc', onChanged: (_) {}, testKey: testKey),
       );
 
       expectNoOverflow(tester);
@@ -158,11 +154,7 @@ void main() {
       final calls = <String>[];
       await pumpHarness(
         tester,
-        child: SearchField(
-          value: '',
-          onChanged: calls.add,
-          testKey: testKey,
-        ),
+        child: SearchField(value: '', onChanged: calls.add, testKey: testKey),
       );
 
       await tester.enterText(find.byType(TextField), 'a');
@@ -196,11 +188,7 @@ void main() {
       final calls = <String>[];
       await pumpHarness(
         tester,
-        child: SearchField(
-          value: 'a',
-          onChanged: calls.add,
-          testKey: testKey,
-        ),
+        child: SearchField(value: 'a', onChanged: calls.add, testKey: testKey),
       );
 
       await tester.enterText(find.byType(TextField), '');
@@ -214,11 +202,7 @@ void main() {
     testWidgets('Semantics.textField 有 label 與 value', (tester) async {
       await pumpHarness(
         tester,
-        child: SearchField(
-          value: 'abc',
-          onChanged: (_) {},
-          testKey: testKey,
-        ),
+        child: SearchField(value: 'abc', onChanged: (_) {}, testKey: testKey),
       );
 
       final data = tester.getSemantics(find.bySemanticsLabel('搜尋'));
@@ -231,11 +215,7 @@ void main() {
     ) async {
       await pumpHarness(
         tester,
-        child: SearchField(
-          value: 'abc',
-          onChanged: (_) {},
-          testKey: testKey,
-        ),
+        child: SearchField(value: 'abc', onChanged: (_) {}, testKey: testKey),
       );
 
       final data = tester.getSemantics(find.bySemanticsLabel('清除搜尋'));

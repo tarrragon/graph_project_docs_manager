@@ -125,7 +125,10 @@ class _UnstructuredView extends ConsumerWidget {
           ListRow.meta(
             key: const Key('panel-ucFlow-unstructured-meta'),
             leading: Badge.type(label: 'UC'), // i18n-exempt: 節點型別代碼
-            primary: AppText.singleLine(uc.filePath, variant: AppTextVariant.mono),
+            primary: AppText.singleLine(
+              uc.filePath,
+              variant: AppTextVariant.mono,
+            ),
           ),
           AppText.singleLine(uc.title, variant: AppTextVariant.title),
         ],
@@ -334,7 +337,10 @@ class _NormalViewState extends ConsumerState<_NormalView> {
                 AppTableRow.eventFlow(
                   key: _eventRowKey(row.event),
                   isLocated: row.event == locatedEvent,
-                  event: AppText.singleLine(row.event, variant: AppTextVariant.mono),
+                  event: AppText.singleLine(
+                    row.event,
+                    variant: AppTextVariant.mono,
+                  ),
                   emittedBy: AppText.singleLine(row.emittedBy),
                   consumedBy: AppText.singleLine(row.consumedBy),
                   marker: gaps.isOrphan(row.event)

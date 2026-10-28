@@ -15,8 +15,7 @@ import 'package:graph_project_docs_manager/tokens/tokens.dart';
 import '../../helpers/helpers.dart';
 
 /// 置於寬度受限的父格位（SPEC-004 §4.1 測試點第二項的寫法）。
-Widget _constrained(Widget child) =>
-    SizedBox(width: 120, child: child);
+Widget _constrained(Widget child) => SizedBox(width: 120, child: child);
 
 /// 每個變體對應 SPEC-004 §4.1 內容政策表的最長測試文案（各兩條）。
 const Map<AppTextVariant, List<String>> _longestPerVariant = {
@@ -89,25 +88,25 @@ void main() {
   group('zh / en 兩語系值皆不溢位', () {
     for (final locale in kTestLocales) {
       for (final variant in AppTextVariant.values) {
-        testWidgetsAtEachSize(
-          '${locale.languageCode} / ${variant.name} 不溢位',
-          (tester, size) async {
-            await pumpHarness(
-              tester,
-              size: size,
-              locale: locale,
-              child: _constrained(
-                Builder(
-                  builder: (context) => AppText.singleLine(
-                    AppLocalizations.of(context).notFrameworkProjectExplanation,
-                    variant: variant,
-                  ),
+        testWidgetsAtEachSize('${locale.languageCode} / ${variant.name} 不溢位', (
+          tester,
+          size,
+        ) async {
+          await pumpHarness(
+            tester,
+            size: size,
+            locale: locale,
+            child: _constrained(
+              Builder(
+                builder: (context) => AppText.singleLine(
+                  AppLocalizations.of(context).notFrameworkProjectExplanation,
+                  variant: variant,
                 ),
               ),
-            );
-            expectNoOverflow(tester);
-          },
-        );
+            ),
+          );
+          expectNoOverflow(tester);
+        });
       }
     }
   });
@@ -119,10 +118,7 @@ void main() {
         Align(alignment: Alignment.topLeft, child: _constrained(c));
 
     testWidgets('singleLine 只畫一行並省略號', (tester) async {
-      await pumpHarness(
-        tester,
-        child: narrow(const AppText.singleLine(long)),
-      );
+      await pumpHarness(tester, child: narrow(const AppText.singleLine(long)));
       final text = tester.widget<Text>(find.text(long));
       expect(text.maxLines, 1);
       expect(text.softWrap, isFalse);
@@ -130,10 +126,7 @@ void main() {
     });
 
     testWidgets('multiLine 無上限時真的換行', (tester) async {
-      await pumpHarness(
-        tester,
-        child: narrow(const AppText.singleLine(long)),
-      );
+      await pumpHarness(tester, child: narrow(const AppText.singleLine(long)));
       final oneLine = tester.getSize(find.byType(AppText)).height;
       await pumpHarness(
         tester,

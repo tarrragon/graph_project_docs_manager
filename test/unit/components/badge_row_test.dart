@@ -14,8 +14,7 @@ import '../../helpers/helpers.dart';
 Badge _badge(int index) => Badge.tag(label: 'tag-$index');
 
 /// 建 [count] 個代表性徽章（供 0 / 1 / 20 情境展開）。
-List<Badge> _badges(int count) =>
-    List.generate(count, (i) => _badge(i));
+List<Badge> _badges(int count) => List.generate(count, (i) => _badge(i));
 
 /// 取出目前已渲染的 [Badge] 的邊界盒（供不重疊 / 換行斷言）。
 List<Rect> _badgeRects(WidgetTester tester) {
@@ -30,27 +29,23 @@ void main() {
     for (final size in WindowSize.values) {
       for (final variant in BadgeRowVariant.values) {
         for (final count in [0, 1, 20]) {
-          testWidgets(
-            '${variant.name} / $count 個徽章 @ ${size.label} 不溢位',
-            (tester) async {
-              await pumpHarness(
-                tester,
-                size: size,
-                child: material.Center(
-                  child: SizedBox(
-                    width: 300,
-                    child: BadgeRow(
-                      variant: variant,
-                      children: _badges(count),
-                    ),
-                  ),
+          testWidgets('${variant.name} / $count 個徽章 @ ${size.label} 不溢位', (
+            tester,
+          ) async {
+            await pumpHarness(
+              tester,
+              size: size,
+              child: material.Center(
+                child: SizedBox(
+                  width: 300,
+                  child: BadgeRow(variant: variant, children: _badges(count)),
                 ),
-              );
+              ),
+            );
 
-              expectNoOverflow(tester);
-              expect(find.byType(Badge), findsNWidgets(count));
-            },
-          );
+            expectNoOverflow(tester);
+            expect(find.byType(Badge), findsNWidgets(count));
+          });
         }
       }
     }
@@ -112,15 +107,15 @@ void main() {
         ),
       );
 
-      final rects = _badgeRects(tester)
-        ..sort((a, b) => a.top.compareTo(b.top));
+      final rects = _badgeRects(tester)..sort((a, b) => a.top.compareTo(b.top));
       final rowTops = rects.map((r) => r.top).toSet().toList()..sort();
       expect(rowTops.length, greaterThan(1), reason: '受限寬度下應換為多列');
 
       // 取每列最大 bottom 與下一列 top 比較，驗證列間垂直間距。
       for (var i = 0; i < rowTops.length - 1; i++) {
-        final rowRects =
-            rects.where((r) => (r.top - rowTops[i]).abs() < 1).toList();
+        final rowRects = rects
+            .where((r) => (r.top - rowTops[i]).abs() < 1)
+            .toList();
         final rowBottom = rowRects
             .map((r) => r.bottom)
             .reduce((a, b) => a > b ? a : b);

@@ -57,32 +57,29 @@ void main() {
       expect((result as NodeTypingNonNode).schemaAmbiguous, isFalse);
     });
 
-    test(
-      'C4-5（守衛）測試型別表兩型 id_pattern 都命中 X-1：非節點，標記 schema 歧義',
-      () {
-        final ambiguousTable = TypeTableBuilder()
-            .addType('Alpha', idPattern: r'^X-\d+$')
-            .addType('Beta', idPattern: r'^X-\d+$')
-            .build();
+    test('C4-5（守衛）測試型別表兩型 id_pattern 都命中 X-1：非節點，標記 schema 歧義', () {
+      final ambiguousTable = TypeTableBuilder()
+          .addType('Alpha', idPattern: r'^X-\d+$')
+          .addType('Beta', idPattern: r'^X-\d+$')
+          .build();
 
-        final result = classifyNodeType(ambiguousTable, {'id': 'X-1'});
+      final result = classifyNodeType(ambiguousTable, {'id': 'X-1'});
 
-        expect(result, isA<NodeTypingNonNode>());
-        expect((result as NodeTypingNonNode).schemaAmbiguous, isTrue);
-        expect(result.candidateTypes, ['Alpha', 'Beta']);
+      expect(result, isA<NodeTypingNonNode>());
+      expect((result as NodeTypingNonNode).schemaAmbiguous, isTrue);
+      expect(result.candidateTypes, ['Alpha', 'Beta']);
 
-        // 正向對照：只留一型時，同一個 id 應判為該型（證明歧義來自「兩型
-        // 同時命中」，不是 id 本身有問題）。
-        final singleTable = TypeTableBuilder()
-            .addType('Alpha', idPattern: r'^X-\d+$')
-            .build();
+      // 正向對照：只留一型時，同一個 id 應判為該型（證明歧義來自「兩型
+      // 同時命中」，不是 id 本身有問題）。
+      final singleTable = TypeTableBuilder()
+          .addType('Alpha', idPattern: r'^X-\d+$')
+          .build();
 
-        final singleResult = classifyNodeType(singleTable, {'id': 'X-1'});
+      final singleResult = classifyNodeType(singleTable, {'id': 'X-1'});
 
-        expect(singleResult, isA<NodeTypingMatch>());
-        expect((singleResult as NodeTypingMatch).typeName, 'Alpha');
-      },
-    );
+      expect(singleResult, isA<NodeTypingMatch>());
+      expect((singleResult as NodeTypingMatch).typeName, 'Alpha');
+    });
 
     test('C4-6 依 id_pattern 判型，不依路徑（domain-map §7）', () {
       // 規則性案例：驗證的是 classifyNodeType 簽章本身不接受路徑參數這條

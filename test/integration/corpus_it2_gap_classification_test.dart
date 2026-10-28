@@ -124,7 +124,10 @@ const _testOnlySyntheticTypeNames = {'SyntheticTie', 'ClashB'};
 
 /// test-design §2.2〈樣本覆蓋〉七類逐一判定 [rows] 是否至少涵蓋，回傳
 /// 缺漏類別的中文標籤集合（空集合代表全數涵蓋）。
-Set<String> _missingCoverageCategories(List<ManifestRow> rows, TypeTable table) {
+Set<String> _missingCoverageCategories(
+  List<ManifestRow> rows,
+  TypeTable table,
+) {
   final missing = <String>{};
 
   const failureShapes = {
@@ -476,13 +479,7 @@ void main() {
         typeTable,
       );
 
-      expect(
-        missing,
-        containsAll({
-          '多型別衝突（平手）的失敗檔',
-          '多型別命中、具體度可分出者的失敗檔',
-        }),
-      );
+      expect(missing, containsAll({'多型別衝突（平手）的失敗檔', '多型別命中、具體度可分出者的失敗檔'}));
     });
   });
 
@@ -538,7 +535,10 @@ void main() {
       );
 
       // 正常型別表下，同一批合成列會產生非零破洞數，對照出本組的差異。
-      expect(gapByPath.keys.any((path) => syntheticRows.any((r) => r.path == path)), isTrue);
+      expect(
+        gapByPath.keys.any((path) => syntheticRows.any((r) => r.path == path)),
+        isTrue,
+      );
     });
   });
 }

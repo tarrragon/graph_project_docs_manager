@@ -23,8 +23,11 @@ const _materialTransition = Duration(milliseconds: 250);
 
 /// 一次 [AppSnackBarLogSink] 呼叫的紀錄快照（0.1.0-W3-176 Phase 4b：原為
 /// 四處重複的匿名 record 型別字面，改用檔案私有 typedef 收斂）。
-typedef _SnackBarLogRecord =
-    ({AppSnackBarLogEvent event, Map<String, Object?> fields, int? level});
+typedef _SnackBarLogRecord = ({
+  AppSnackBarLogEvent event,
+  Map<String, Object?> fields,
+  int? level,
+});
 
 /// SnackBar 的進出動畫由 Material 內建 [Timer] + [AnimationController] 驅動
 /// （SPEC-004 §4.26「Material 預設進出，不覆寫」）；`flutter_test` 的
@@ -351,7 +354,10 @@ void main() {
       await tester.tap(find.byKey(_triggerPlainKey));
       await tester.pump();
 
-      expect(events, [AppSnackBarLogEvent.preempted, AppSnackBarLogEvent.shown]);
+      expect(events, [
+        AppSnackBarLogEvent.preempted,
+        AppSnackBarLogEvent.shown,
+      ]);
       expect(levels, [null, null]);
 
       await _pumpBy(tester, _materialTransition);
@@ -383,7 +389,10 @@ void main() {
 
       await tester.tap(find.byKey(_triggerActionKey));
       await tester.pump();
-      expect(events, [AppSnackBarLogEvent.preempted, AppSnackBarLogEvent.shown]);
+      expect(events, [
+        AppSnackBarLogEvent.preempted,
+        AppSnackBarLogEvent.shown,
+      ]);
 
       await _pumpBy(tester, _materialTransition);
       await tester.tap(find.byKey(_snackBarActionKey));
@@ -458,8 +467,11 @@ void main() {
     // 直接回傳 ElevatedButton，不用 Builder 包裝——測試以
     // tester.element(find.byKey(anchorKey)) 取得 context，Builder 的
     // context 參數未被使用（0.1.0-W3-176 Phase 4b：移除無作用外殼）。
-    Widget anchorHarness() =>
-        ElevatedButton(key: anchorKey, onPressed: () {}, child: const Text('anchor'));
+    Widget anchorHarness() => ElevatedButton(
+      key: anchorKey,
+      onPressed: () {},
+      child: const Text('anchor'),
+    );
 
     testWidgets('T-1 基準線：plain 自然逾時', (tester) async {
       await pumpHarness(tester, child: anchorHarness());
@@ -626,9 +638,7 @@ void main() {
               actionLabel: variant == AppSnackBarVariant.withAction
                   ? 'action-label'
                   : null,
-              onAction: variant == AppSnackBarVariant.withAction
-                  ? () {}
-                  : null,
+              onAction: variant == AppSnackBarVariant.withAction ? () {} : null,
               origin: origin,
             ),
           );
@@ -817,18 +827,38 @@ void main() {
       (null, AttentionLevel.discardable, 'holderUnknown'),
       (null, AttentionLevel.mustLeaveTrace, 'holderUnknown'),
       (null, AttentionLevel.undroppable, 'holderUnknown'),
-      (AttentionLevel.discardable, AttentionLevel.discardable, 'replaceSameLevel'),
-      (AttentionLevel.discardable, AttentionLevel.mustLeaveTrace, 'preemptLower'),
+      (
+        AttentionLevel.discardable,
+        AttentionLevel.discardable,
+        'replaceSameLevel',
+      ),
+      (
+        AttentionLevel.discardable,
+        AttentionLevel.mustLeaveTrace,
+        'preemptLower',
+      ),
       (AttentionLevel.discardable, AttentionLevel.undroppable, 'preemptLower'),
-      (AttentionLevel.mustLeaveTrace, AttentionLevel.discardable, 'yieldToHolder'),
+      (
+        AttentionLevel.mustLeaveTrace,
+        AttentionLevel.discardable,
+        'yieldToHolder',
+      ),
       (
         AttentionLevel.mustLeaveTrace,
         AttentionLevel.mustLeaveTrace,
         'replaceSameLevel',
       ),
-      (AttentionLevel.mustLeaveTrace, AttentionLevel.undroppable, 'preemptLower'),
+      (
+        AttentionLevel.mustLeaveTrace,
+        AttentionLevel.undroppable,
+        'preemptLower',
+      ),
       (AttentionLevel.undroppable, AttentionLevel.discardable, 'yieldToHolder'),
-      (AttentionLevel.undroppable, AttentionLevel.mustLeaveTrace, 'yieldToHolder'),
+      (
+        AttentionLevel.undroppable,
+        AttentionLevel.mustLeaveTrace,
+        'yieldToHolder',
+      ),
       (
         AttentionLevel.undroppable,
         AttentionLevel.undroppable,
@@ -844,108 +874,110 @@ void main() {
     for (final holderLevel in holderLevels) {
       for (final newLevel in newLevels) {
         final decision = decisionOf(holderLevel, newLevel);
-        testWidgets(
-          'T-205-1：holder=$holderLevel new=$newLevel -> $decision',
-          (tester) async {
-            await pumpHarness(tester, child: anchorHarness());
-            final anchor = tester.element(find.byKey(anchorKey));
-            expect(records, isEmpty);
-            expect(find.byType(SnackBar), findsNothing);
-            expect(anchor.mounted, isTrue);
+        testWidgets('T-205-1：holder=$holderLevel new=$newLevel -> $decision', (
+          tester,
+        ) async {
+          await pumpHarness(tester, child: anchorHarness());
+          final anchor = tester.element(find.byKey(anchorKey));
+          expect(records, isEmpty);
+          expect(find.byType(SnackBar), findsNothing);
+          expect(anchor.mounted, isTrue);
 
-            AttentionHolderHint? currentHolder;
-            if (holderLevel != null) {
-              AppSnackBar.show(
-                anchor,
-                message: 'holder-message',
-                level: holderLevel,
-              );
-              await tester.pump();
-              await _pumpBy(tester, _materialTransition);
-              expect(records, isNotEmpty);
-              final shownRecord = records.singleWhere(
-                (r) => r.event == AppSnackBarLogEvent.shown,
-              );
-              currentHolder = AttentionHolderHint(
-                showId: showIdOf(shownRecord),
-                level: holderLevel,
-              );
-              records.clear();
-            }
-
+          AttentionHolderHint? currentHolder;
+          if (holderLevel != null) {
             AppSnackBar.show(
               anchor,
-              message: 'incoming-message',
-              level: newLevel,
-              currentHolder: currentHolder,
+              message: 'holder-message',
+              level: holderLevel,
             );
             await tester.pump();
-            await _pumpBy(tester, _materialTransition * 2);
+            await _pumpBy(tester, _materialTransition);
+            expect(records, isNotEmpty);
+            final shownRecord = records.singleWhere(
+              (r) => r.event == AppSnackBarLogEvent.shown,
+            );
+            currentHolder = AttentionHolderHint(
+              showId: showIdOf(shownRecord),
+              level: holderLevel,
+            );
+            records.clear();
+          }
 
-            switch (decision) {
-              case 'holderUnknown':
-                expect(find.text('incoming-message'), findsOneWidget);
-                expect(
-                  records.map((r) => r.event),
-                  containsAllInOrder([
-                    AppSnackBarLogEvent.preempted,
-                    AppSnackBarLogEvent.shown,
-                  ]),
-                );
-                final preempted = records.firstWhere(
-                  (r) => r.event == AppSnackBarLogEvent.preempted,
-                );
-                expect(preempted.fields['holderUnknown'], isTrue);
-                expect(preempted.fields['preemptedShowId'], isNull);
-                expect(preempted.fields['preemptedLevel'], isNull);
-                expect(preempted.fields['sameLevelReplace'], isFalse);
-                expect(preempted.fields['level'], newLevel);
-              case 'preemptLower':
-              case 'replaceSameLevel':
-                expect(find.text('incoming-message'), findsOneWidget);
-                expect(find.text('holder-message'), findsNothing);
-                final preempted = records.firstWhere(
-                  (r) => r.event == AppSnackBarLogEvent.preempted,
-                );
-                expect(preempted.fields['holderUnknown'], isFalse);
-                expect(preempted.fields['preemptedShowId'], currentHolder!.showId);
-                expect(preempted.fields['preemptedLevel'], holderLevel);
-                expect(
-                  preempted.fields['sameLevelReplace'],
-                  decision == 'replaceSameLevel',
-                );
-              case 'yieldToHolder':
-                expect(find.text('holder-message'), findsOneWidget);
-                expect(find.text('incoming-message'), findsNothing);
-                expect(
-                  records.where((r) => r.event == AppSnackBarLogEvent.preempted),
-                  isEmpty,
-                );
-                expect(
-                  records.where((r) => r.event == AppSnackBarLogEvent.shown),
-                  isEmpty,
-                );
-                expect(
-                  records
-                      .where(
-                        (r) =>
-                            r.event == AppSnackBarLogEvent.closed &&
-                            r.fields['reason'] == SnackBarClosedReason.hide,
-                      )
-                      .isEmpty,
-                  isTrue,
-                );
-                final yielded = records.singleWhere(
-                  (r) => r.event == AppSnackBarLogEvent.yielded,
-                );
-                expect(yielded.fields['holderShowId'], currentHolder!.showId);
-                expect(yielded.fields['holderLevel'], holderLevel);
-                expect(yielded.fields['level'], newLevel);
-                expect(yielded.fields['message'], 'incoming-message');
-                expect(yielded.fields['variant'], AppSnackBarVariant.plain);
-            }
-          },
-        );
+          AppSnackBar.show(
+            anchor,
+            message: 'incoming-message',
+            level: newLevel,
+            currentHolder: currentHolder,
+          );
+          await tester.pump();
+          await _pumpBy(tester, _materialTransition * 2);
+
+          switch (decision) {
+            case 'holderUnknown':
+              expect(find.text('incoming-message'), findsOneWidget);
+              expect(
+                records.map((r) => r.event),
+                containsAllInOrder([
+                  AppSnackBarLogEvent.preempted,
+                  AppSnackBarLogEvent.shown,
+                ]),
+              );
+              final preempted = records.firstWhere(
+                (r) => r.event == AppSnackBarLogEvent.preempted,
+              );
+              expect(preempted.fields['holderUnknown'], isTrue);
+              expect(preempted.fields['preemptedShowId'], isNull);
+              expect(preempted.fields['preemptedLevel'], isNull);
+              expect(preempted.fields['sameLevelReplace'], isFalse);
+              expect(preempted.fields['level'], newLevel);
+            case 'preemptLower':
+            case 'replaceSameLevel':
+              expect(find.text('incoming-message'), findsOneWidget);
+              expect(find.text('holder-message'), findsNothing);
+              final preempted = records.firstWhere(
+                (r) => r.event == AppSnackBarLogEvent.preempted,
+              );
+              expect(preempted.fields['holderUnknown'], isFalse);
+              expect(
+                preempted.fields['preemptedShowId'],
+                currentHolder!.showId,
+              );
+              expect(preempted.fields['preemptedLevel'], holderLevel);
+              expect(
+                preempted.fields['sameLevelReplace'],
+                decision == 'replaceSameLevel',
+              );
+            case 'yieldToHolder':
+              expect(find.text('holder-message'), findsOneWidget);
+              expect(find.text('incoming-message'), findsNothing);
+              expect(
+                records.where((r) => r.event == AppSnackBarLogEvent.preempted),
+                isEmpty,
+              );
+              expect(
+                records.where((r) => r.event == AppSnackBarLogEvent.shown),
+                isEmpty,
+              );
+              expect(
+                records
+                    .where(
+                      (r) =>
+                          r.event == AppSnackBarLogEvent.closed &&
+                          r.fields['reason'] == SnackBarClosedReason.hide,
+                    )
+                    .isEmpty,
+                isTrue,
+              );
+              final yielded = records.singleWhere(
+                (r) => r.event == AppSnackBarLogEvent.yielded,
+              );
+              expect(yielded.fields['holderShowId'], currentHolder!.showId);
+              expect(yielded.fields['holderLevel'], holderLevel);
+              expect(yielded.fields['level'], newLevel);
+              expect(yielded.fields['message'], 'incoming-message');
+              expect(yielded.fields['variant'], AppSnackBarVariant.plain);
+          }
+        });
       }
     }
 
@@ -986,7 +1018,8 @@ void main() {
         expect(
           yielded.level,
           origin == AppSnackBarOrigin.background ? 900 : 800,
-          reason: '0.1.0-W3-205 T-205-2：鍵是 origin 不是 variant——與 '
+          reason:
+              '0.1.0-W3-205 T-205-2：鍵是 origin 不是 variant——與 '
               'SPEC-003〈截斷事件的日誌等級〉同一判準。',
         );
       }
@@ -1038,7 +1071,8 @@ void main() {
       expect(
         records.where((r) => r.event == AppSnackBarLogEvent.yielded),
         hasLength(1),
-        reason: '0.1.0-W3-205 T-205-3：被讓步的訊息不重送、不延後呈現、'
+        reason:
+            '0.1.0-W3-205 T-205-3：被讓步的訊息不重送、不延後呈現、'
             '不排隊。',
       );
     });
@@ -1083,7 +1117,8 @@ void main() {
         expect(
           records.where((r) => r.event == AppSnackBarLogEvent.yielded),
           hasLength(1),
-          reason: '0.1.0-W3-205 T-205-4：裁決對 variant 不敏感（$variant '
+          reason:
+              '0.1.0-W3-205 T-205-4：裁決對 variant 不敏感（$variant '
               '仍讓步），與 T-205-17 的靜態檢查構成雙重確認。',
         );
         expect(
@@ -1135,16 +1170,15 @@ void main() {
         expect(
           yielded.fields[key],
           isNotNull,
-          reason: '0.1.0-W3-205 T-205-5：yielded 五鍵（$key）皆須非 null'
+          reason:
+              '0.1.0-W3-205 T-205-5：yielded 五鍵（$key）皆須非 null'
               '——被丟棄的告知不得只留事件類型而無內容。',
         );
       }
       expect(yielded.fields['message'], 'incoming-message');
     });
 
-    testWidgets('T-205-6：過渡缺口可搜尋——holderUnknown 鍵恆存在、值二分', (
-      tester,
-    ) async {
+    testWidgets('T-205-6：過渡缺口可搜尋——holderUnknown 鍵恆存在、值二分', (tester) async {
       await pumpHarness(tester, child: anchorHarness());
       final anchor = tester.element(find.byKey(anchorKey));
       expect(records, isEmpty);
@@ -1343,7 +1377,8 @@ void main() {
       expect(
         actionCalledAfterHide,
         isTrue,
-        reason: '0.1.0-W3-205 T-205-10：onAction 的呼叫時點應在 hide('
+        reason:
+            '0.1.0-W3-205 T-205-10：onAction 的呼叫時點應在 hide('
             'reason: action) 之後。',
       );
     });
@@ -1398,15 +1433,19 @@ void main() {
         (r) => r.fields['showId'] == secondShown[1].fields['showId'],
       );
       expect(
-        secondClosed.any((r) => r.fields['reason'] == SnackBarClosedReason.action),
+        secondClosed.any(
+          (r) => r.fields['reason'] == SnackBarClosedReason.action,
+        ),
         isFalse,
-        reason: '0.1.0-W3-205 T-205-11：新 showId 的 closed 不得帶 '
+        reason:
+            '0.1.0-W3-205 T-205-11：新 showId 的 closed 不得帶 '
             'reason: action。',
       );
       expect(
         find.text('second-message'),
         findsOneWidget,
-        reason: '0.1.0-W3-205 T-205-11：改序前的形態（新的一則被 '
+        reason:
+            '0.1.0-W3-205 T-205-11：改序前的形態（新的一則被 '
             'reason: action 無聲關掉）即為紅燈——新訊息文字應在退場動畫走完'
             '後仍可見。',
       );
@@ -1485,9 +1524,7 @@ void main() {
       await _pumpBy(tester, Motion.snackBar * 2);
     });
 
-    testWidgets('T-205-12：onAction 未 await 同步段不顯示則不受影響（現況鎖定）', (
-      tester,
-    ) async {
+    testWidgets('T-205-12：onAction 未 await 同步段不顯示則不受影響（現況鎖定）', (tester) async {
       await pumpHarness(
         tester,
         child: _triggerHarness(
@@ -1513,7 +1550,10 @@ void main() {
           .where((r) => r.event == AppSnackBarLogEvent.closed)
           .toList();
       expect(closedRecords, hasLength(1));
-      expect(closedRecords.single.fields['reason'], SnackBarClosedReason.action);
+      expect(
+        closedRecords.single.fields['reason'],
+        SnackBarClosedReason.action,
+      );
       final showIds = records
           .where((r) => r.event == AppSnackBarLogEvent.shown)
           .map((r) => r.fields['showId'])
@@ -1541,7 +1581,8 @@ void main() {
           variant: AppSnackBarVariant.withAction,
         ),
         throwsA(isA<AssertionError>()),
-        reason: '0.1.0-W3-205 T-205-13：必填 level 的加入不得改變本斷言的'
+        reason:
+            '0.1.0-W3-205 T-205-13：必填 level 的加入不得改變本斷言的'
             '觸發條件——level 為編譯期必填，不產生執行期分支。',
       );
     });

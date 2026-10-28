@@ -46,10 +46,7 @@ class NodeDetailReady extends NodeDetailState {
 
 /// 原始檔已消失：訊息 + 最後已知路徑 + 重新整理／返回。
 class NodeDetailMissing extends NodeDetailState {
-  const NodeDetailMissing({
-    required this.nodeId,
-    required this.lastKnownPath,
-  });
+  const NodeDetailMissing({required this.nodeId, required this.lastKnownPath});
 
   /// 消失前顯示的節點 id（重新整理成功後據此決定顯示哪個節點）。
   final String nodeId;

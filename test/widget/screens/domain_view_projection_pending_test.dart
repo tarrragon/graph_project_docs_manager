@@ -23,7 +23,9 @@ void main() {
   late ScanRoundResult round;
 
   setUpAll(() async {
-    round = fakeRound(event: await loadSnapshotEvent('graph_project_docs_manager'));
+    round = fakeRound(
+      event: await loadSnapshotEvent('graph_project_docs_manager'),
+    );
   });
 
   Future<FakeScanRound> pump(
@@ -32,7 +34,10 @@ void main() {
     required String? selectedUc,
     ScanRoundResult? Function()? produce,
   }) async {
-    final fake = FakeScanRound(produce: produce ?? () => null, initial: initial);
+    final fake = FakeScanRound(
+      produce: produce ?? () => null,
+      initial: initial,
+    );
     await pumpHarness(
       tester,
       child: const DomainViewScreen(),
@@ -50,7 +55,9 @@ void main() {
 
   testWidgets('已選定 UC 且無完成輪次：投影準備中，不顯示需先選定 UC，標題只有 UC id', (tester) async {
     await pump(tester, initial: null, selectedUc: 'UC-02');
-    final l10n = AppLocalizations.of(tester.element(find.byType(DomainViewScreen)));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(DomainViewScreen)),
+    );
 
     expect(find.byKey(_pending), findsOneWidget);
     expect(find.byKey(_unset), findsNothing);
@@ -84,10 +91,14 @@ void main() {
 
     expect(fake.ensureCalls + fake.rescanCalls, greaterThanOrEqualTo(1));
     expect(find.byKey(_pending), findsNothing);
-    expect(find.byKey(_normal).evaluate().isNotEmpty ||
-        find.byKey(const Key('state-domain-swimlane-unstructured'))
-            .evaluate()
-            .isNotEmpty, isTrue);
+    expect(
+      find.byKey(_normal).evaluate().isNotEmpty ||
+          find
+              .byKey(const Key('state-domain-swimlane-unstructured'))
+              .evaluate()
+              .isNotEmpty,
+      isTrue,
+    );
   });
 
   testWidgets('E1 對照：已有完成輪次，取消重掃（Idle）後不自動重啟', (tester) async {

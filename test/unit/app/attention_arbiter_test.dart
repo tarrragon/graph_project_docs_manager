@@ -42,7 +42,10 @@ void _expectSevenFields(_Record record) {
   expect(fields.containsKey('arrival'), isTrue);
   expect(fields.containsKey('level'), isTrue);
   expect(fields.containsKey('channel'), isTrue);
-  expect(fields.containsKey('decision') || fields.containsKey('reason'), isTrue);
+  expect(
+    fields.containsKey('decision') || fields.containsKey('reason'),
+    isTrue,
+  );
   expect(fields.containsKey('occupancy'), isTrue);
   expect(fields.containsKey('deadlineRemaining'), isTrue);
   final occupancy = fields['occupancy'] as Map;
@@ -75,10 +78,7 @@ void main() {
     );
   }
 
-  AttentionHandle hold(
-    AttentionRequest request, {
-    Duration? naturalLifespan,
-  }) {
+  AttentionHandle hold(AttentionRequest request, {Duration? naturalLifespan}) {
     final decision = arbiter.request(request);
     expect(decision, isA<AttentionAccepted>());
     final handle = (decision as AttentionAccepted).handle;
@@ -90,7 +90,10 @@ void main() {
     arbiter.dispose();
     clock = _FakeClock();
     recorder = _Recorder();
-    arbiter = AttentionArbiterImpl(now: () => clock.now, logSink: recorder.sink);
+    arbiter = AttentionArbiterImpl(
+      now: () => clock.now,
+      logSink: recorder.sink,
+    );
     consumedLog = [];
     arbiter.consumed.listen(consumedLog.add);
   }
@@ -98,7 +101,10 @@ void main() {
   setUp(() {
     clock = _FakeClock();
     recorder = _Recorder();
-    arbiter = AttentionArbiterImpl(now: () => clock.now, logSink: recorder.sink);
+    arbiter = AttentionArbiterImpl(
+      now: () => clock.now,
+      logSink: recorder.sink,
+    );
     consumedLog = [];
     arbiter.consumed.listen(consumedLog.add);
   });
@@ -159,7 +165,11 @@ void main() {
 
     test('T-2 空通道接受自發型', () {
       final decision = arbiter.request(
-        req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
       expect(decision, isA<AttentionAccepted>());
       expect((decision as AttentionAccepted).preempted, isNull);
@@ -171,7 +181,11 @@ void main() {
 
     test('T-3 呈現、消費、訊號', () async {
       final handle = hold(
-        req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
         naturalLifespan: Motion.snackBar,
       );
       expect(arbiter.holder!.presentedAt, clock.now);
@@ -196,7 +210,11 @@ void main() {
 
     test('F-1 released 對 spontaneous 持有者的等級為 null 或 800', () {
       final handle = hold(
-        req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
       arbiter.release(handle, AttentionReleaseReason.responded);
       final released = recorder.singleOf(AttentionArbiterLogEvent.released);
@@ -205,7 +223,11 @@ void main() {
 
     test('T-4 序列重借合法', () {
       final handle = hold(
-        req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
       arbiter.release(handle, AttentionReleaseReason.responded);
       expect(arbiter.holder, isNull);
@@ -276,17 +298,26 @@ void main() {
       for (final value in [Duration.zero, const Duration(seconds: -1)]) {
         setUp2();
         final handle = arbiter.request(
-              req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
-            )
-            as AttentionAccepted;
+          req(
+            'r1',
+            level: AttentionLevel.discardable,
+            arrival: AttentionArrival.waiting,
+          ),
+        ) as AttentionAccepted;
         arbiter.presented(handle.handle, naturalLifespan: value);
         clock.advance(const Duration(days: 1));
         final decision = arbiter.request(
-          req('r2', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+          req(
+            'r2',
+            level: AttentionLevel.discardable,
+            arrival: AttentionArrival.spontaneous,
+          ),
         );
 
         expect(arbiter.holder!.naturalLifespan, isNull);
-        final presentedRecord = recorder.singleOf(AttentionArbiterLogEvent.presented);
+        final presentedRecord = recorder.singleOf(
+          AttentionArbiterLogEvent.presented,
+        );
         expect(presentedRecord.fields['naturalLifespanRaw'], value);
         expect(recorder.of(AttentionArbiterLogEvent.expired), isEmpty);
         expect(decision, isA<AttentionAccepted>());
@@ -316,33 +347,45 @@ void main() {
 
   group('G-B 裁決表 2.4', () {
     test('T-9 高級別搶佔低級別（三列）', () async {
-      final cases = <(AttentionLevel, AttentionArrival, AttentionLevel, AttentionArrival, AttentionSource)>[
-        (
-          AttentionLevel.discardable,
-          AttentionArrival.waiting,
-          AttentionLevel.undroppable,
-          AttentionArrival.spontaneous,
-          AttentionSource.schema,
-        ),
-        (
-          AttentionLevel.discardable,
-          AttentionArrival.waiting,
-          AttentionLevel.mustLeaveTrace,
-          AttentionArrival.spontaneous,
-          AttentionSource.diagnostics,
-        ),
-        (
-          AttentionLevel.mustLeaveTrace,
-          AttentionArrival.spontaneous,
-          AttentionLevel.undroppable,
-          AttentionArrival.waiting,
-          AttentionSource.workspace,
-        ),
-      ];
+      final cases =
+          <
+            (
+              AttentionLevel,
+              AttentionArrival,
+              AttentionLevel,
+              AttentionArrival,
+              AttentionSource,
+            )
+          >[
+            (
+              AttentionLevel.discardable,
+              AttentionArrival.waiting,
+              AttentionLevel.undroppable,
+              AttentionArrival.spontaneous,
+              AttentionSource.schema,
+            ),
+            (
+              AttentionLevel.discardable,
+              AttentionArrival.waiting,
+              AttentionLevel.mustLeaveTrace,
+              AttentionArrival.spontaneous,
+              AttentionSource.diagnostics,
+            ),
+            (
+              AttentionLevel.mustLeaveTrace,
+              AttentionArrival.spontaneous,
+              AttentionLevel.undroppable,
+              AttentionArrival.waiting,
+              AttentionSource.workspace,
+            ),
+          ];
 
       for (final c in cases) {
         setUp2();
-        hold(req('low', level: c.$1, arrival: c.$2), naturalLifespan: Motion.snackBar);
+        hold(
+          req('low', level: c.$1, arrival: c.$2),
+          naturalLifespan: Motion.snackBar,
+        );
 
         final decision = arbiter.request(
           req('high', level: c.$3, arrival: c.$4, source: c.$5),
@@ -357,7 +400,9 @@ void main() {
         expect(arbiter.holder!.handle.requestId, 'high');
         expect(arbiter.holder!.presentedAt, isNull);
 
-        final preemptedRecord = recorder.singleOf(AttentionArbiterLogEvent.preempted);
+        final preemptedRecord = recorder.singleOf(
+          AttentionArbiterLogEvent.preempted,
+        );
         expect(preemptedRecord.fields['requestId'], 'low');
         expect(preemptedRecord.fields['reason'], 'preempted');
         final acceptedRecord = recorder
@@ -369,7 +414,10 @@ void main() {
               recorder.records.indexOf(acceptedRecord),
           isTrue,
         );
-        expect(recorder.of(AttentionArbiterLogEvent.sameLevelReplaced), isEmpty);
+        expect(
+          recorder.of(AttentionArbiterLogEvent.sameLevelReplaced),
+          isEmpty,
+        );
         expect(consumedLog.length, 1);
         expect(consumedLog.single.handle.requestId, 'low');
         expect(consumedLog.single.reason, AttentionReleaseReason.preempted);
@@ -396,7 +444,9 @@ void main() {
       );
       await pumpEventQueue();
 
-      final preemptedRecord = recorder.singleOf(AttentionArbiterLogEvent.preempted);
+      final preemptedRecord = recorder.singleOf(
+        AttentionArbiterLogEvent.preempted,
+      );
       expect(preemptedRecord.fields['requestId'], 'low');
       expect(preemptedRecord.fields['deadlineRemaining'], Motion.snackBar);
       expect(
@@ -408,15 +458,29 @@ void main() {
 
     test('T-10 同級別取代（三列）', () async {
       final cases = <(AttentionLevel, AttentionArrival, AttentionArrival)>[
-        (AttentionLevel.discardable, AttentionArrival.waiting, AttentionArrival.spontaneous),
-        (AttentionLevel.mustLeaveTrace, AttentionArrival.spontaneous, AttentionArrival.waiting),
-        (AttentionLevel.undroppable, AttentionArrival.spontaneous, AttentionArrival.spontaneous),
+        (
+          AttentionLevel.discardable,
+          AttentionArrival.waiting,
+          AttentionArrival.spontaneous,
+        ),
+        (
+          AttentionLevel.mustLeaveTrace,
+          AttentionArrival.spontaneous,
+          AttentionArrival.waiting,
+        ),
+        (
+          AttentionLevel.undroppable,
+          AttentionArrival.spontaneous,
+          AttentionArrival.spontaneous,
+        ),
       ];
 
       for (final c in cases) {
         setUp2();
         hold(req('old', level: c.$1, arrival: c.$2));
-        final decision = arbiter.request(req('new', level: c.$1, arrival: c.$3));
+        final decision = arbiter.request(
+          req('new', level: c.$1, arrival: c.$3),
+        );
         await pumpEventQueue();
 
         expect(decision, isA<AttentionAccepted>());
@@ -425,7 +489,9 @@ void main() {
         expect(accepted.sameLevelReplace, isTrue);
         expect(arbiter.holder!.handle.requestId, 'new');
 
-        final sameLevel = recorder.singleOf(AttentionArbiterLogEvent.sameLevelReplaced);
+        final sameLevel = recorder.singleOf(
+          AttentionArbiterLogEvent.sameLevelReplaced,
+        );
         expect(sameLevel.fields['requestId'], 'old');
         expect(recorder.of(AttentionArbiterLogEvent.preempted), isEmpty);
         expect(consumedLog.length, 1);
@@ -435,12 +501,25 @@ void main() {
     });
 
     test('T-11 低級別自發型被跳過（兩列）', () {
-      for (final holderLevel in [AttentionLevel.undroppable, AttentionLevel.mustLeaveTrace]) {
+      for (final holderLevel in [
+        AttentionLevel.undroppable,
+        AttentionLevel.mustLeaveTrace,
+      ]) {
         setUp2();
-        hold(req('gate', level: holderLevel, arrival: AttentionArrival.spontaneous));
+        hold(
+          req(
+            'gate',
+            level: holderLevel,
+            arrival: AttentionArrival.spontaneous,
+          ),
+        );
 
         final decision = arbiter.request(
-          req('bg', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+          req(
+            'bg',
+            level: AttentionLevel.discardable,
+            arrival: AttentionArrival.spontaneous,
+          ),
         );
 
         expect(decision, isA<AttentionSkipped>());
@@ -462,11 +541,19 @@ void main() {
 
     test('T-12 自發型須留痕被延後、訊號後重新請求', () async {
       final gateHandle = hold(
-        req('gate', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous),
+        req(
+          'gate',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
 
       final d1 = arbiter.request(
-        req('trace', level: AttentionLevel.mustLeaveTrace, arrival: AttentionArrival.spontaneous),
+        req(
+          'trace',
+          level: AttentionLevel.mustLeaveTrace,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
       expect(d1, isA<AttentionDeferred>());
       final deferred = d1 as AttentionDeferred;
@@ -493,29 +580,66 @@ void main() {
       expect(signalLog.single.reason, AttentionReleaseReason.responded);
       expect(d2, isA<AttentionAccepted>());
       expect((d2 as AttentionAccepted).preempted, isNull);
-      expect(recorder.singleOf(AttentionArbiterLogEvent.deferred).fields['requestId'], 'trace');
+      expect(
+        recorder
+            .singleOf(AttentionArbiterLogEvent.deferred)
+            .fields['requestId'],
+        'trace',
+      );
       expect(recorder.singleOf(AttentionArbiterLogEvent.deferred).level, 900);
       expect(
-        recorder.of(AttentionArbiterLogEvent.accepted).any(
-          (r) => r.fields['requestId'] == 'trace',
-        ),
+        recorder
+            .of(AttentionArbiterLogEvent.accepted)
+            .any((r) => r.fields['requestId'] == 'trace'),
         isFalse,
       );
     });
 
     test('T-13 等待型被拒絕並可重試（三列）', () async {
-      final cases = <(AttentionLevel, AttentionArrival, AttentionLevel, AttentionSource, bool)>[
-        (AttentionLevel.undroppable, AttentionArrival.spontaneous, AttentionLevel.discardable, AttentionSource.workspace, false),
-        (AttentionLevel.mustLeaveTrace, AttentionArrival.spontaneous, AttentionLevel.discardable, AttentionSource.diagnostics, false),
-        (AttentionLevel.undroppable, AttentionArrival.spontaneous, AttentionLevel.mustLeaveTrace, AttentionSource.workspace, true),
-      ];
+      final cases =
+          <
+            (
+              AttentionLevel,
+              AttentionArrival,
+              AttentionLevel,
+              AttentionSource,
+              bool,
+            )
+          >[
+            (
+              AttentionLevel.undroppable,
+              AttentionArrival.spontaneous,
+              AttentionLevel.discardable,
+              AttentionSource.workspace,
+              false,
+            ),
+            (
+              AttentionLevel.mustLeaveTrace,
+              AttentionArrival.spontaneous,
+              AttentionLevel.discardable,
+              AttentionSource.diagnostics,
+              false,
+            ),
+            (
+              AttentionLevel.undroppable,
+              AttentionArrival.spontaneous,
+              AttentionLevel.mustLeaveTrace,
+              AttentionSource.workspace,
+              true,
+            ),
+          ];
 
       for (final c in cases) {
         setUp2();
         final gateHandle = hold(req('gate', level: c.$1, arrival: c.$2));
 
         final d = arbiter.request(
-          req('user', level: c.$3, arrival: AttentionArrival.waiting, source: c.$4),
+          req(
+            'user',
+            level: c.$3,
+            arrival: AttentionArrival.waiting,
+            source: c.$4,
+          ),
         );
         expect(d, isA<AttentionRejected>());
         final rejected = d as AttentionRejected;
@@ -534,46 +658,86 @@ void main() {
         expect(retryLog.single.handle.requestId, 'gate');
         expect(retryLog.single.reason, AttentionReleaseReason.responded);
 
-        final rejectedRecord = recorder.singleOf(AttentionArbiterLogEvent.rejected);
+        final rejectedRecord = recorder.singleOf(
+          AttentionArbiterLogEvent.rejected,
+        );
         expect(rejectedRecord.fields['requestId'], 'user');
         expect(rejectedRecord.fields['decision'], 'rejected');
-        expect(rejectedRecord.level == null || rejectedRecord.level == 800, isTrue);
+        expect(
+          rejectedRecord.level == null || rejectedRecord.level == 800,
+          isTrue,
+        );
       }
     });
 
     test('T-14 持有者再請求被拒（兩列）', () {
       // 列 1
-      hold(req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      hold(
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
       var decision = arbiter.request(
-        req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
       );
       expect(decision, isA<AttentionRejected>());
       expect((decision as AttentionRejected).blockedBy!.requestId, 'r1');
       expect(arbiter.holder!.handle.requestId, 'r1');
-      expect(recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).level, 900);
+      expect(
+        recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).level,
+        900,
+      );
       expect(recorder.of(AttentionArbiterLogEvent.preempted), isEmpty);
       expect(recorder.of(AttentionArbiterLogEvent.sameLevelReplaced), isEmpty);
       expect(consumedLog, isEmpty);
 
       // 列 2：同 id 判定先於級別比較
       setUp2();
-      hold(req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      hold(
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
       decision = arbiter.request(
-        req('r1', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous),
+        req(
+          'r1',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
       expect(decision, isA<AttentionRejected>());
       expect((decision as AttentionRejected).blockedBy!.requestId, 'r1');
       expect(arbiter.holder!.handle.requestId, 'r1');
-      expect(recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).fields['requestId'], 'r1');
+      expect(
+        recorder
+            .singleOf(AttentionArbiterLogEvent.invalidRequest)
+            .fields['requestId'],
+        'r1',
+      );
     });
 
     test('T-15 級別傳播單調不升（四列）', () {
       // 列 1：空持有者，U/D -> Accepted，D，levelClamped
       var decision = arbiter.request(
-        req('r1', level: AttentionLevel.undroppable, parentLevel: AttentionLevel.discardable),
+        req(
+          'r1',
+          level: AttentionLevel.undroppable,
+          parentLevel: AttentionLevel.discardable,
+        ),
       );
       expect(decision, isA<AttentionAccepted>());
-      expect((decision as AttentionAccepted).handle.level, AttentionLevel.discardable);
+      expect(
+        (decision as AttentionAccepted).handle.level,
+        AttentionLevel.discardable,
+      );
       final clamp1 = recorder.singleOf(AttentionArbiterLogEvent.levelClamped);
       expect(clamp1.level, 900);
       expect(clamp1.fields['requestedLevel'], AttentionLevel.undroppable);
@@ -582,24 +746,44 @@ void main() {
       // 列 2：D/D -> Accepted，D，無 clamp
       setUp2();
       decision = arbiter.request(
-        req('r1', level: AttentionLevel.discardable, parentLevel: AttentionLevel.discardable),
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          parentLevel: AttentionLevel.discardable,
+        ),
       );
       expect(decision, isA<AttentionAccepted>());
-      expect((decision as AttentionAccepted).handle.level, AttentionLevel.discardable);
+      expect(
+        (decision as AttentionAccepted).handle.level,
+        AttentionLevel.discardable,
+      );
       expect(recorder.of(AttentionArbiterLogEvent.levelClamped), isEmpty);
 
       // 列 3：D/U -> Accepted，D（降不夾）
       setUp2();
       decision = arbiter.request(
-        req('r1', level: AttentionLevel.discardable, parentLevel: AttentionLevel.undroppable),
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          parentLevel: AttentionLevel.undroppable,
+        ),
       );
       expect(decision, isA<AttentionAccepted>());
-      expect((decision as AttentionAccepted).handle.level, AttentionLevel.discardable);
+      expect(
+        (decision as AttentionAccepted).handle.level,
+        AttentionLevel.discardable,
+      );
       expect(recorder.of(AttentionArbiterLogEvent.levelClamped), isEmpty);
 
       // 列 4：持有者 T/spontaneous，請求 U/D(spontaneous) -> 夾成 D，Skipped
       setUp2();
-      hold(req('gate', level: AttentionLevel.mustLeaveTrace, arrival: AttentionArrival.spontaneous));
+      hold(
+        req(
+          'gate',
+          level: AttentionLevel.mustLeaveTrace,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
       decision = arbiter.request(
         req(
           'r2',
@@ -629,16 +813,36 @@ void main() {
 
       // 拒絕點 2：持有期間再次請求（協定違規，非仲裁結局）。
       final holder1Handle = hold(
-        req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'holder1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
       );
       arbiter.request(
-        req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'holder1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
       );
 
       // 拒絕點 3：等待型被更高級別持有（裁決表判定的仲裁結局）。
       arbiter.release(holder1Handle, AttentionReleaseReason.responded);
-      hold(req('gate', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
-      arbiter.request(req('user', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      hold(
+        req(
+          'gate',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
+      arbiter.request(
+        req(
+          'user',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
 
       // 單一篩選條件：fields['outcome'] == 'rejected' 取得全部三筆拒絕，
       // 不需同時比對事件名 rejected 與 invalidRequest 兩者。
@@ -670,19 +874,32 @@ void main() {
     test('T-16c 輸入驗證失敗與協定違規共用 invalidRequest 事件與欄位集', () {
       // 拒絕點 1：請求識別為空。
       arbiter.request(req(''));
-      final emptyIdRecord = recorder.singleOf(AttentionArbiterLogEvent.invalidRequest);
+      final emptyIdRecord = recorder.singleOf(
+        AttentionArbiterLogEvent.invalidRequest,
+      );
       expect(emptyIdRecord.fields['reason'], 'emptyId');
       expect(emptyIdRecord.fields['outcome'], 'rejected');
       expect(emptyIdRecord.fields.containsKey('decision'), isFalse);
 
       // 拒絕點 2：持有期間再次請求。
       setUp2();
-      hold(req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
-      arbiter.request(
-        req('holder1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+      hold(
+        req(
+          'holder1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
       );
-      final heldAndRequestedRecord =
-          recorder.singleOf(AttentionArbiterLogEvent.invalidRequest);
+      arbiter.request(
+        req(
+          'holder1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
+      final heldAndRequestedRecord = recorder.singleOf(
+        AttentionArbiterLogEvent.invalidRequest,
+      );
       expect(heldAndRequestedRecord.fields['reason'], 'heldAndRequested');
       expect(heldAndRequestedRecord.fields['outcome'], 'rejected');
       expect(heldAndRequestedRecord.fields.containsKey('decision'), isFalse);
@@ -697,7 +914,11 @@ void main() {
 
     test('3a.8 空 id 驗證先於逾期懶檢查（順序覆蓋）', () {
       hold(
-        req('old', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'old',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
         naturalLifespan: Motion.snackBar,
       );
       clock.advance(Motion.snackBar + Motion.feedback);
@@ -713,14 +934,22 @@ void main() {
   group('G-C 逾期懶檢查', () {
     test('T-17 逾期懶檢查', () async {
       hold(
-        req('old', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'old',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
         naturalLifespan: Motion.snackBar,
       );
       clock.advance(Motion.snackBar + Motion.feedback);
       expect(arbiter.holder!.handle.requestId, 'old');
 
       final decision = arbiter.request(
-        req('new', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'new',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
       );
       await pumpEventQueue();
 
@@ -748,13 +977,21 @@ void main() {
 
     test('T-18 恰等於存活期不逾期', () {
       hold(
-        req('old', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'old',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
         naturalLifespan: Motion.snackBar,
       );
       clock.advance(Motion.snackBar);
 
       final decision = arbiter.request(
-        req('new', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'new',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
       );
 
       expect(recorder.of(AttentionArbiterLogEvent.expired), isEmpty);
@@ -764,11 +1001,21 @@ void main() {
     });
 
     test('T-19 無自然存活期不逾期', () {
-      hold(req('gate', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
+      hold(
+        req(
+          'gate',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
       clock.advance(const Duration(days: 1));
 
       final decision = arbiter.request(
-        req('bg', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+        req(
+          'bg',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
 
       expect(recorder.of(AttentionArbiterLogEvent.expired), isEmpty);
@@ -784,7 +1031,11 @@ void main() {
       expect(arbiter.holder!.presentedAt, isNull);
 
       final decision = arbiter.request(
-        req('r2', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+        req(
+          'r2',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
 
       expect(recorder.of(AttentionArbiterLogEvent.expired), isEmpty);
@@ -798,7 +1049,11 @@ void main() {
 
     test('T-21 holder 讀取不觸發懶檢查', () {
       hold(
-        req('old', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'old',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
         naturalLifespan: Motion.snackBar,
       );
       clock.advance(Motion.snackBar + Motion.feedback);
@@ -817,16 +1072,29 @@ void main() {
     test('T-22 每種事件、決策、離開原因各至少一則', () async {
       // 步 1
       arbiter.request(req('r0'));
-      final r0Handle = (arbiter.request(req('r0-holder')) as AttentionAccepted).handle;
+      final r0Handle =
+          (arbiter.request(req('r0-holder')) as AttentionAccepted).handle;
       arbiter.release(r0Handle, AttentionReleaseReason.responded);
       await pumpEventQueue();
 
-      final r1Decision = arbiter.request(req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      final r1Decision = arbiter.request(
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
       // r1 became holder replacing r0
       final r1Handle = (r1Decision as AttentionAccepted).handle;
 
       // 步 2
-      arbiter.request(req('r1', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      arbiter.request(
+        req(
+          'r1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
 
       // 步 3
       arbiter.presented(r1Handle, naturalLifespan: Motion.snackBar);
@@ -835,24 +1103,51 @@ void main() {
 
       // 步 4
       arbiter.request(
-        req('r2', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous, parentLevel: AttentionLevel.discardable),
+        req(
+          'r2',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+          parentLevel: AttentionLevel.discardable,
+        ),
       );
       await pumpEventQueue();
 
       // 步 5
       final r3Decision = arbiter.request(
-        req('r3', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous),
+        req(
+          'r3',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
       await pumpEventQueue();
 
       // 步 6
-      arbiter.request(req('r4', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous));
+      arbiter.request(
+        req(
+          'r4',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
 
       // 步 7
-      arbiter.request(req('r5', level: AttentionLevel.mustLeaveTrace, arrival: AttentionArrival.spontaneous));
+      arbiter.request(
+        req(
+          'r5',
+          level: AttentionLevel.mustLeaveTrace,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
 
       // 步 8
-      arbiter.request(req('r6', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      arbiter.request(
+        req(
+          'r6',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
 
       // 步 9
       final r3Handle = (r3Decision as AttentionAccepted).handle;
@@ -860,11 +1155,23 @@ void main() {
       await pumpEventQueue();
 
       // 步 10
-      final r7Decision = arbiter.request(req('r7', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      final r7Decision = arbiter.request(
+        req(
+          'r7',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
       final r7Handle = (r7Decision as AttentionAccepted).handle;
       arbiter.presented(r7Handle, naturalLifespan: Motion.snackBar);
       clock.advance(Motion.snackBar + Motion.feedback);
-      final r8Decision = arbiter.request(req('r8', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      final r8Decision = arbiter.request(
+        req(
+          'r8',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
       await pumpEventQueue();
 
       // 步 11
@@ -886,11 +1193,7 @@ void main() {
       await pumpEventQueue();
 
       for (final e in AttentionArbiterLogEvent.values) {
-        expect(
-          recorder.of(e),
-          isNotEmpty,
-          reason: '$e 未出現於 records',
-        );
+        expect(recorder.of(e), isNotEmpty, reason: '$e 未出現於 records');
       }
 
       final reasonsSeen = recorder.records
@@ -917,27 +1220,69 @@ void main() {
 
     test('T-23 日誌等級依發起者，契約違反類恆為 warning', () {
       // 列 1：skipped，spontaneous -> 900
-      hold(req('gate1', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
-      arbiter.request(req('bg1', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous));
+      hold(
+        req(
+          'gate1',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
+      arbiter.request(
+        req(
+          'bg1',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
       expect(recorder.singleOf(AttentionArbiterLogEvent.skipped).level, 900);
 
       // 列 2：deferred，spontaneous -> 900
       setUp2();
-      hold(req('gate2', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
-      arbiter.request(req('bg2', level: AttentionLevel.mustLeaveTrace, arrival: AttentionArrival.spontaneous));
+      hold(
+        req(
+          'gate2',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
+      arbiter.request(
+        req(
+          'bg2',
+          level: AttentionLevel.mustLeaveTrace,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
       expect(recorder.singleOf(AttentionArbiterLogEvent.deferred).level, 900);
 
       // 列 3：rejected，waiting -> null 或 800
       setUp2();
-      hold(req('gate3', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
-      arbiter.request(req('bg3', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
-      final rejectedLevel = recorder.singleOf(AttentionArbiterLogEvent.rejected).level;
+      hold(
+        req(
+          'gate3',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
+      arbiter.request(
+        req(
+          'bg3',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
+      final rejectedLevel = recorder
+          .singleOf(AttentionArbiterLogEvent.rejected)
+          .level;
       expect(rejectedLevel == null || rejectedLevel == 800, isTrue);
 
       // 列 4：expired，逾期持有者為 spontaneous -> 900
       setUp2();
       hold(
-        req('gate4', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous),
+        req(
+          'gate4',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
         naturalLifespan: Motion.snackBar,
       );
       clock.advance(Motion.snackBar + Motion.feedback);
@@ -947,19 +1292,40 @@ void main() {
       // 列 5：expired，逾期持有者為 waiting -> null 或 800
       setUp2();
       hold(
-        req('gate5', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'gate5',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
         naturalLifespan: Motion.snackBar,
       );
       clock.advance(Motion.snackBar + Motion.feedback);
       arbiter.request(req('trigger5'));
-      final expiredLevel = recorder.singleOf(AttentionArbiterLogEvent.expired).level;
+      final expiredLevel = recorder
+          .singleOf(AttentionArbiterLogEvent.expired)
+          .level;
       expect(expiredLevel == null || expiredLevel == 800, isTrue);
 
       // 列 6：invalidRequest（協定違規），持有者為 waiting -> 恆 900
       setUp2();
-      hold(req('gate6', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
-      arbiter.request(req('gate6', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
-      expect(recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).level, 900);
+      hold(
+        req(
+          'gate6',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
+      arbiter.request(
+        req(
+          'gate6',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
+      expect(
+        recorder.singleOf(AttentionArbiterLogEvent.invalidRequest).level,
+        900,
+      );
 
       // 列 7：levelClamped，請求 waiting -> 恆 900
       setUp2();
@@ -971,52 +1337,96 @@ void main() {
           parentLevel: AttentionLevel.discardable,
         ),
       );
-      expect(recorder.singleOf(AttentionArbiterLogEvent.levelClamped).level, 900);
+      expect(
+        recorder.singleOf(AttentionArbiterLogEvent.levelClamped).level,
+        900,
+      );
 
       // 列 8：releasedNonHolder，對應 handle 為 waiting -> 恆 900
       setUp2();
-      final gate8Handle = hold(req('gate8', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
+      final gate8Handle = hold(
+        req(
+          'gate8',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
       arbiter.release(gate8Handle, AttentionReleaseReason.responded);
       hold(req('gate8b'));
       arbiter.release(gate8Handle, AttentionReleaseReason.dismissed);
-      expect(recorder.singleOf(AttentionArbiterLogEvent.releasedNonHolder).level, 900);
+      expect(
+        recorder.singleOf(AttentionArbiterLogEvent.releasedNonHolder).level,
+        900,
+      );
     });
 
     test('T-24 occupancy 三項分列與年齡', () {
       // 列 1：空通道接受
       arbiter.request(req('r1'));
-      expect(recorder.singleOf(AttentionArbiterLogEvent.accepted).fields['occupancy'], {
-        'inFlight': 0,
-        'queueDepth': 0,
-        'oldestAge': null,
-      });
+      expect(
+        recorder
+            .singleOf(AttentionArbiterLogEvent.accepted)
+            .fields['occupancy'],
+        {'inFlight': 0, 'queueDepth': 0, 'oldestAge': null},
+      );
 
       // 列 2：持有者存在、同一 tick 被跳過
       setUp2();
-      hold(req('gate', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
-      arbiter.request(req('bg', level: AttentionLevel.discardable, arrival: AttentionArrival.spontaneous));
-      expect(recorder.singleOf(AttentionArbiterLogEvent.skipped).fields['occupancy'], {
-        'inFlight': 1,
-        'queueDepth': 0,
-        'oldestAge': Duration.zero,
-      });
+      hold(
+        req(
+          'gate',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
+      arbiter.request(
+        req(
+          'bg',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
+      expect(
+        recorder.singleOf(AttentionArbiterLogEvent.skipped).fields['occupancy'],
+        {'inFlight': 1, 'queueDepth': 0, 'oldestAge': Duration.zero},
+      );
 
       // 列 3：推進 Δ 後被拒絕（無存活期）
       setUp2();
-      hold(req('gate2', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
+      hold(
+        req(
+          'gate2',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
       clock.advance(Motion.snackBarWithAction);
-      arbiter.request(req('user', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting));
-      expect(recorder.singleOf(AttentionArbiterLogEvent.rejected).fields['occupancy'], {
-        'inFlight': 1,
-        'queueDepth': 0,
-        'oldestAge': Motion.snackBarWithAction,
-      });
+      arbiter.request(
+        req(
+          'user',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
+      );
+      expect(
+        recorder
+            .singleOf(AttentionArbiterLogEvent.rejected)
+            .fields['occupancy'],
+        {
+          'inFlight': 1,
+          'queueDepth': 0,
+          'oldestAge': Motion.snackBarWithAction,
+        },
+      );
     });
   });
 
   group('G-E 結構、單例與訊號語意', () {
     test('T-26 推送型不可表達', () {
-      expect(AttentionArrival.values, [AttentionArrival.waiting, AttentionArrival.spontaneous]);
+      expect(AttentionArrival.values, [
+        AttentionArrival.waiting,
+        AttentionArrival.spontaneous,
+      ]);
     });
 
     test('T-27 級別列舉順序即優先序', () {
@@ -1026,8 +1436,10 @@ void main() {
         AttentionLevel.undroppable,
       ]);
       expect(
-        AttentionLevel.undroppable.index > AttentionLevel.mustLeaveTrace.index &&
-            AttentionLevel.mustLeaveTrace.index > AttentionLevel.discardable.index,
+        AttentionLevel.undroppable.index >
+                AttentionLevel.mustLeaveTrace.index &&
+            AttentionLevel.mustLeaveTrace.index >
+                AttentionLevel.discardable.index,
         isTrue,
       );
     });
@@ -1067,7 +1479,10 @@ void main() {
     });
 
     test('T-31 consumed 無訂閱者不緩衝、不重播', () async {
-      final freshArbiter = AttentionArbiterImpl(now: () => clock.now, logSink: recorder.sink);
+      final freshArbiter = AttentionArbiterImpl(
+        now: () => clock.now,
+        logSink: recorder.sink,
+      );
       addTearDown(freshArbiter.dispose);
 
       final decision1 = freshArbiter.request(req('r1'));
@@ -1090,17 +1505,31 @@ void main() {
     });
 
     test('T-32 retryAfter／signal 為 blockedBy 那一筆的過濾視圖', () async {
-      hold(req('g1', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous));
+      hold(
+        req(
+          'g1',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
+      );
 
       final d = arbiter.request(
-        req('user', level: AttentionLevel.discardable, arrival: AttentionArrival.waiting),
+        req(
+          'user',
+          level: AttentionLevel.discardable,
+          arrival: AttentionArrival.waiting,
+        ),
       );
       final rejected = d as AttentionRejected;
       final viewLog = <AttentionConsumed>[];
       rejected.retryAfter.listen(viewLog.add);
 
       final g2Decision = arbiter.request(
-        req('g2', level: AttentionLevel.undroppable, arrival: AttentionArrival.spontaneous),
+        req(
+          'g2',
+          level: AttentionLevel.undroppable,
+          arrival: AttentionArrival.spontaneous,
+        ),
       );
       await pumpEventQueue();
 

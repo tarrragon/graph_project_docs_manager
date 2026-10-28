@@ -20,29 +20,31 @@ Badge _buildVariant(
 }) {
   return switch (variant) {
     BadgeVariant.count => Badge.count(
-        count: 3,
-        tone: tone,
-        semanticLabel: '3 個問題',
-        inline: inline,
-      ),
-    BadgeVariant.status =>
-      Badge.status(label: 'completed', inline: inline),
+      count: 3,
+      tone: tone,
+      semanticLabel: '3 個問題',
+      inline: inline,
+    ),
+    BadgeVariant.status => Badge.status(label: 'completed', inline: inline),
     BadgeVariant.type => Badge.type(label: 'PROP', inline: inline),
-    BadgeVariant.category =>
-      Badge.category(label: '資料損壞', tone: tone, inline: inline),
+    BadgeVariant.category => Badge.category(
+      label: '資料損壞',
+      tone: tone,
+      inline: inline,
+    ),
     BadgeVariant.event => Badge.event(
-        label: 'emits EVT-DIAGNOSTICS-001',
-        tone: tone,
-        inline: inline,
-      ),
+      label: 'emits EVT-DIAGNOSTICS-001',
+      tone: tone,
+      inline: inline,
+    ),
     BadgeVariant.tag => Badge.tag(label: 'domain: schema', inline: inline),
     BadgeVariant.legend => Badge.legend(symbol: '●', label: '直接貫穿'),
     BadgeVariant.health => Badge.health(
-        key: const Key('badge-switcher-health-0'),
-        count: 5,
-        semanticLabel: '5 個問題',
-        inline: inline,
-      ),
+      key: const Key('badge-switcher-health-0'),
+      count: 5,
+      semanticLabel: '5 個問題',
+      inline: inline,
+    ),
   };
 }
 
@@ -52,28 +54,23 @@ void main() {
       for (final variant in BadgeVariant.values) {
         for (final tone in BadgeTone.values) {
           for (final inline in [false, true]) {
-            testWidgets(
-              '${variant.name} / ${tone.name} / '
-              '${inline ? 'inline' : 'chip'} @ ${size.label} 不溢位',
-              (tester) async {
-                await pumpHarness(
-                  tester,
-                  size: size,
-                  child: material.Center(
-                    child: SizedBox(
-                      width: 200,
-                      child: _buildVariant(
-                        variant,
-                        tone: tone,
-                        inline: inline,
-                      ),
-                    ),
+            testWidgets('${variant.name} / ${tone.name} / '
+                '${inline ? 'inline' : 'chip'} @ ${size.label} 不溢位', (
+              tester,
+            ) async {
+              await pumpHarness(
+                tester,
+                size: size,
+                child: material.Center(
+                  child: SizedBox(
+                    width: 200,
+                    child: _buildVariant(variant, tone: tone, inline: inline),
                   ),
-                );
+                ),
+              );
 
-                expectNoOverflow(tester);
-              },
-            );
+              expectNoOverflow(tester);
+            });
           }
         }
       }
@@ -112,9 +109,7 @@ void main() {
 
   group('zh / en 兩語系不溢位', () {
     for (final locale in kTestLocales) {
-      testWidgets('長中文與長英文文案在 ${locale.languageCode} 不溢位', (
-        tester,
-      ) async {
+      testWidgets('長中文與長英文文案在 ${locale.languageCode} 不溢位', (tester) async {
         await pumpHarness(
           tester,
           locale: locale,
@@ -137,13 +132,8 @@ void main() {
   });
 
   group('點擊無反應', () {
-    testWidgets('點擊不產生任何反應，元件樹無 InkWell / ButtonStyleButton', (
-      tester,
-    ) async {
-      await pumpHarness(
-        tester,
-        child: Badge.status(label: 'draft'),
-      );
+    testWidgets('點擊不產生任何反應，元件樹無 InkWell / ButtonStyleButton', (tester) async {
+      await pumpHarness(tester, child: Badge.status(label: 'draft'));
 
       expect(find.byType(material.InkWell), findsNothing);
       expect(find.byType(material.ButtonStyleButton), findsNothing);
@@ -204,18 +194,12 @@ void main() {
 
   group('token 引用（非硬編碼）', () {
     testWidgets('chip 底色、內距、圓角引用 token', (tester) async {
-      await pumpHarness(
-        tester,
-        child: Badge.tag(label: 'domain: schema'),
-      );
+      await pumpHarness(tester, child: Badge.tag(label: 'domain: schema'));
 
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration! as BoxDecoration;
       expect(decoration.color, AppColors.surfaceChip);
-      expect(
-        (decoration.borderRadius! as BorderRadius).topLeft.x,
-        Radius.sm.r,
-      );
+      expect((decoration.borderRadius! as BorderRadius).topLeft.x, Radius.sm.r);
       final padding = container.padding! as EdgeInsets;
       expect(padding.left, Space.sm.w);
       expect(padding.top, Space.xxs.h);
@@ -272,10 +256,7 @@ void main() {
       );
 
       final semantics = tester.getSemantics(find.byType(Badge));
-      expect(
-        semantics.flagsCollection.isButton,
-        isFalse,
-      );
+      expect(semantics.flagsCollection.isButton, isFalse);
     });
   });
 }

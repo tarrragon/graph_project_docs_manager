@@ -62,7 +62,10 @@ final class Unreadable extends SchemaVersionClass {
 /// [version] 為 `null` 或任一段無法解析為整數時回傳 [Unreadable]；
 /// 高於 [builtinVersion] 時回傳 [HigherThanBuiltin]；否則（等於或低於）
 /// 回傳 [InKnownRange]。
-SchemaVersionClass classifySchemaVersion(String? version, String builtinVersion) {
+SchemaVersionClass classifySchemaVersion(
+  String? version,
+  String builtinVersion,
+) {
   if (version == null) return const Unreadable();
 
   final target = version.split('.').map(int.tryParse).toList();

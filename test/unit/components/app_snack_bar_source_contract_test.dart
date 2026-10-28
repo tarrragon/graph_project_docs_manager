@@ -75,11 +75,12 @@ String _readFile(String path) {
   return file.readAsStringSync();
 }
 
-List<File> _dartFilesUnder(String dir) => Directory(dir)
-    .listSync(recursive: true)
-    .whereType<File>()
-    .where((file) => file.path.endsWith('.dart'))
-    .toList();
+List<File> _dartFilesUnder(String dir) =>
+    Directory(dir)
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'))
+        .toList();
 
 int _countOccurrences(String text, Pattern pattern) =>
     pattern.allMatches(text).length;
@@ -182,7 +183,8 @@ void main() {
       expect(
         _countOccurrences(stripped, 'removeCurrentSnackBar'),
         0,
-        reason: '0.1.0-W3-205：removeCurrentSnackBar 不應出現——本元件不引入'
+        reason:
+            '0.1.0-W3-205：removeCurrentSnackBar 不應出現——本元件不引入'
             '任何形式的提示佇列（0.1.0-W3-239）。',
       );
       expect(
@@ -191,21 +193,22 @@ void main() {
         reason: '0.1.0-W3-205：clearSnackBars 不應出現，理由同上。',
       );
       expect(
-        _countOccurrences(
-          stripped,
-          RegExp(r'hideCurrentSnackBar\(\s*\)'),
-        ),
+        _countOccurrences(stripped, RegExp(r'hideCurrentSnackBar\(\s*\)')),
         1,
-        reason: '0.1.0-W3-205：無引數清除（INV-SNACKBAR-NOQUEUE 的唯一清除）'
+        reason:
+            '0.1.0-W3-205：無引數清除（INV-SNACKBAR-NOQUEUE 的唯一清除）'
             '恰應出現 1 次。',
       );
       expect(
         _countOccurrences(
           stripped,
-          RegExp(r'hideCurrentSnackBar\(\s*reason:\s*SnackBarClosedReason\.action'),
+          RegExp(
+            r'hideCurrentSnackBar\(\s*reason:\s*SnackBarClosedReason\.action',
+          ),
         ),
         1,
-        reason: '0.1.0-W3-205：帶 reason: action 的清除恰應出現 1 次'
+        reason:
+            '0.1.0-W3-205：帶 reason: action 的清除恰應出現 1 次'
             '（動作回呼順序改動，觀察 B 處置）。',
       );
     });
@@ -224,7 +227,8 @@ void main() {
           expect(
             content.contains(symbol),
             isFalse,
-            reason: '0.1.0-W3-205：$symbol 在 ${file.path} 出現，'
+            reason:
+                '0.1.0-W3-205：$symbol 在 ${file.path} 出現，'
                 '應僅限 $_snackBarPath 內部（觀察 A 的承重前提）。',
           );
         }
@@ -252,11 +256,7 @@ void main() {
 
       final hideIndex = stripped.indexOf(RegExp(r'hideCurrentSnackBar\(\s*\)'));
       final showIndex = stripped.indexOf('messenger.showSnackBar(');
-      expect(
-        hideIndex,
-        isNot(-1),
-        reason: 'T-205-16(b)：無引數清除應恰 1 次存在。',
-      );
+      expect(hideIndex, isNot(-1), reason: 'T-205-16(b)：無引數清除應恰 1 次存在。');
       expect(
         showIndex,
         greaterThan(hideIndex),
@@ -267,7 +267,8 @@ void main() {
       expect(
         between.contains('return'),
         isFalse,
-        reason: 'T-205-16(d)：清除與呈現之間不得出現 return——INV-SNACKBAR-'
+        reason:
+            'T-205-16(d)：清除與呈現之間不得出現 return——INV-SNACKBAR-'
             'NOQUEUE 要求兩者間無早退，否則會使 Material 內建 FIFO 生效，'
             '構成 0.1.0-W3-239 禁止的提示佇列。',
       );
@@ -298,7 +299,8 @@ void main() {
       expect(
         sigMatch,
         isNotNull,
-        reason: '0.1.0-W3-205 T-205-17(a)：找不到 _resolvePreemption 的'
+        reason:
+            '0.1.0-W3-205 T-205-17(a)：找不到 _resolvePreemption 的'
             '簽名，應恰兩個具型別參數。',
       );
       expect(sigMatch!.group(1), 'AttentionLevel');
@@ -318,7 +320,8 @@ void main() {
         expect(
           body.contains(forbidden),
           isFalse,
-          reason: '0.1.0-W3-205 T-205-17(b)：裁決函式體不得引用 $forbidden'
+          reason:
+              '0.1.0-W3-205 T-205-17(b)：裁決函式體不得引用 $forbidden'
               '——裁決輸入恰為級別與持有者快照。',
         );
       }
@@ -361,7 +364,8 @@ void main() {
       expect(
         extra,
         isEmpty,
-        reason: '0.1.0-W3-205 T-205-18(a)：發現白名單外的新增靜態成員：'
+        reason:
+            '0.1.0-W3-205 T-205-18(a)：發現白名單外的新增靜態成員：'
             '$extra。新增靜態成員需先確認不是在引入持有者狀態或待顯集合'
             '（票面 acceptance 4：元件內無「當前顯示者」狀態欄位）。',
       );
@@ -369,13 +373,15 @@ void main() {
       expect(
         missing,
         isEmpty,
-        reason: '0.1.0-W3-205 T-205-18(a)：既有靜態成員被移除或改名：'
+        reason:
+            '0.1.0-W3-205 T-205-18(a)：既有靜態成員被移除或改名：'
             '$missing。',
       );
 
-      final enumNames = RegExp(
-        r'enum\s+(\w+)\s*\{',
-      ).allMatches(stripped).map((m) => m.group(1)!).toSet();
+      final enumNames = RegExp(r'enum\s+(\w+)\s*\{')
+          .allMatches(stripped)
+          .map((m) => m.group(1)!)
+          .toSet();
       const expectedEnums = {
         'AppSnackBarVariant',
         'AppSnackBarOrigin',
@@ -385,7 +391,8 @@ void main() {
       expect(
         enumNames,
         expectedEnums,
-        reason: '0.1.0-W3-205 T-205-18(b)：本檔宣告的 enum 集合應恰為'
+        reason:
+            '0.1.0-W3-205 T-205-18(b)：本檔宣告的 enum 集合應恰為'
             '$expectedEnums，實際為 $enumNames。',
       );
     });
@@ -401,7 +408,8 @@ void main() {
           expect(
             file.path,
             _levelPath,
-            reason: '0.1.0-W3-205 T-205-19(a)：AttentionLevel 的宣告位置'
+            reason:
+                '0.1.0-W3-205 T-205-19(a)：AttentionLevel 的宣告位置'
                 '應僅在 $_levelPath，實際發現於 ${file.path}。',
           );
         }
@@ -409,7 +417,8 @@ void main() {
       expect(
         declarationCount,
         1,
-        reason: '0.1.0-W3-205 T-205-19(a)：AttentionLevel 應在 lib/ 內恰 '
+        reason:
+            '0.1.0-W3-205 T-205-19(a)：AttentionLevel 應在 lib/ 內恰 '
             '1 處宣告，實際 $declarationCount 處——多於一處即兩份平行定義'
             '（SPEC-003 §2.15 警告的兩份同一事實）。',
       );
@@ -418,9 +427,9 @@ void main() {
     test('三個值依序為 discardable、mustLeaveTrace、undroppable', () {
       final raw = _readFile(_levelPath);
       final stripped = _stripComments(raw);
-      final order = RegExp(
-        r'enum\s+AttentionLevel\s*\{([^}]*)\}',
-      ).firstMatch(stripped)!.group(1)!;
+      final order = RegExp(r'enum\s+AttentionLevel\s*\{([^}]*)\}')
+          .firstMatch(stripped)!
+          .group(1)!;
       final values = order
           .split(',')
           .map((s) => s.trim())
@@ -429,7 +438,8 @@ void main() {
       expect(
         values,
         ['discardable', 'mustLeaveTrace', 'undroppable'],
-        reason: '0.1.0-W3-205 T-205-19(b)：列舉宣告順序即優先序，index '
+        reason:
+            '0.1.0-W3-205 T-205-19(b)：列舉宣告順序即優先序，index '
             '越大級別越高，順序不可調換。',
       );
 
@@ -437,7 +447,8 @@ void main() {
         expect(
           raw.contains(mainName),
           isTrue,
-          reason: '0.1.0-W3-205 T-205-19(c)：$_levelPath 的 dartdoc 應含'
+          reason:
+              '0.1.0-W3-205 T-205-19(c)：$_levelPath 的 dartdoc 應含'
               '主名「$mainName」（權威來源為《事件流負載仲裁方法論》'
               '〈級別〉表，不對 SPEC-003 §2.14 表格做剖析比對）。',
         );
@@ -445,7 +456,8 @@ void main() {
       expect(
         raw.contains('注意力通道的到達類別與級別指派表'),
         isTrue,
-        reason: '0.1.0-W3-205 T-205-19(d)：$_levelPath 應以標題文字引用 '
+        reason:
+            '0.1.0-W3-205 T-205-19(d)：$_levelPath 應以標題文字引用 '
             'SPEC-003〈注意力通道的到達類別與級別指派表〉。',
       );
     });
@@ -459,13 +471,15 @@ void main() {
         expect(
           _countOccurrences(stripped, 'ScaffoldMessenger'),
           0,
-          reason: '0.1.0-W3-205 T-205-20：main.dart 不應再直接引用 '
+          reason:
+              '0.1.0-W3-205 T-205-20：main.dart 不應再直接引用 '
               'ScaffoldMessenger（票面 acceptance 1）。',
         );
         expect(
           _countOccurrences(stripped, 'showSnackBar'),
           0,
-          reason: '0.1.0-W3-205 T-205-20：main.dart 不應再直接呼叫 '
+          reason:
+              '0.1.0-W3-205 T-205-20：main.dart 不應再直接呼叫 '
               'showSnackBar。',
         );
         // 0.1.0-W1-028：HomePage（main.dart 內唯一的 AppSnackBar.show
@@ -476,7 +490,8 @@ void main() {
         expect(
           _countOccurrences(stripped, 'class DocsManagerApp'),
           greaterThanOrEqualTo(1),
-          reason: '0.1.0-W3-205 T-205-20（0.1.0-W1-028 改寫）：非空哨兵'
+          reason:
+              '0.1.0-W3-205 T-205-20（0.1.0-W1-028 改寫）：非空哨兵'
               '——main.dart 應至少一處宣告 DocsManagerApp；若計數降為 0，'
               '代表剝除器把整份檔案剝空或本檔內容被誤刪，而非收斂完成。',
         );
@@ -497,8 +512,7 @@ void main() {
         'before();\n\n\nafter();',
       );
       // 行數守恆：任意 fixture 剝除前後行數相等。
-      const fixture =
-          '// a\ncode();\n/* b\nc */\nmore(); // d\nlast();';
+      const fixture = '// a\ncode();\n/* b\nc */\nmore(); // d\nlast();';
       expect(
         '\n'.allMatches(_stripComments(fixture)).length,
         '\n'.allMatches(fixture).length,
@@ -514,55 +528,49 @@ void main() {
     // 的現行（錯誤）輸出：不解析字串字面量，`//` 之後直到行尾（或字串
     // 結尾）皆被當作行註解剝除。紅燈代表剝除器行為已變更，需重新特徵化
     // 或改寫剝除器，不得放寬本斷言消紅燈。
-    test(
-      'T-205-21(a-characterize)：字串字面量內的 // 目前被誤剝（已知限制）',
-      () {
-        expect(
-          _stripComments('final url = "http://x";'),
-          'final url = "http:',
-        );
-      },
-    );
+    test('T-205-21(a-characterize)：字串字面量內的 // 目前被誤剝（已知限制）', () {
+      expect(_stripComments('final url = "http://x";'), 'final url = "http:');
+    });
 
     // 真正的發現點：掃描 lib/**/*.dart，斷言無字串字面量含 // 或 /*——
     // 這是「剝除器不解析字串字面量」限制在本專案是否已被觸發的唯一守衛。
-    test(
-      'T-205-21(a-scan)：lib/ 內無字串字面量含 // 或 /*（剝除器限制的發現點）',
-      () {
-        // 字元類需排除 \n——否則配對跨行貫穿到後續無關的引號，把中間任意
-        // 內容（含真正的 // 或註解）誤判為同一字串字面量的一部分。
-        final literalWithCommentMarker = RegExp(
-          r'"(?:[^"\\\n]|\\.)*(?:\/\/|\/\*)(?:[^"\\\n]|\\.)*"'
-          r"|'(?:[^'\\\n]|\\.)*(?:\/\/|\/\*)(?:[^'\\\n]|\\.)*'",
-        );
-        final offenders = <String>[
-          for (final file in _dartFilesUnder(_libDir))
-            if (literalWithCommentMarker.hasMatch(file.readAsStringSync()))
-              file.path,
-        ];
-        expect(
-          offenders,
-          isEmpty,
-          reason: '0.1.0-W3-205 T-205-21(a-scan)：發現字串字面量內含 // 或 '
-              '/*（$offenders）——剝除器不解析字串字面量，此形態會被誤剝。'
-              '不得以放寬 T-205-21(a-characterize) 消紅燈；正確處置是改寫'
-              '剝除器為引號感知，或改該字串內容避開 // ／ /*。',
-        );
-      },
-    );
+    test('T-205-21(a-scan)：lib/ 內無字串字面量含 // 或 /*（剝除器限制的發現點）', () {
+      // 字元類需排除 \n——否則配對跨行貫穿到後續無關的引號，把中間任意
+      // 內容（含真正的 // 或註解）誤判為同一字串字面量的一部分。
+      final literalWithCommentMarker = RegExp(
+        r'"(?:[^"\\\n]|\\.)*(?:\/\/|\/\*)(?:[^"\\\n]|\\.)*"'
+        r"|'(?:[^'\\\n]|\\.)*(?:\/\/|\/\*)(?:[^'\\\n]|\\.)*'",
+      );
+      final offenders = <String>[
+        for (final file in _dartFilesUnder(_libDir))
+          if (literalWithCommentMarker.hasMatch(file.readAsStringSync()))
+            file.path,
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            '0.1.0-W3-205 T-205-21(a-scan)：發現字串字面量內含 // 或 '
+            '/*（$offenders）——剝除器不解析字串字面量，此形態會被誤剝。'
+            '不得以放寬 T-205-21(a-characterize) 消紅燈；正確處置是改寫'
+            '剝除器為引號感知，或改該字串內容避開 // ／ /*。',
+      );
+    });
 
     test('T-205-21(b)：正向對照——shell.dart 剝除後 ScaffoldMessenger 命中為 0', () {
       final raw = _readFile(_shellPath);
       expect(
         _countOccurrences(raw, 'ScaffoldMessenger'),
         greaterThan(0),
-        reason: '0.1.0-W3-205 T-205-21(b) 前置：剝除前應能命中'
+        reason:
+            '0.1.0-W3-205 T-205-21(b) 前置：剝除前應能命中'
             '（2026-09-10 實測為 2），否則本正向對照無意義。',
       );
       expect(
         _countOccurrences(_stripComments(raw), 'ScaffoldMessenger'),
         0,
-        reason: '0.1.0-W3-205 T-205-21(b)：剝除器若失效變成空操作，本斷言'
+        reason:
+            '0.1.0-W3-205 T-205-21(b)：剝除器若失效變成空操作，本斷言'
             '應先紅——lib/app/shell.dart 內的 ScaffoldMessenger 皆在'
             '說明註解中，剝除後應零命中。',
       );
@@ -580,7 +588,8 @@ void main() {
         expect(
           spec.contains(heading),
           isTrue,
-          reason: '0.1.0-W3-205 T-205-21(c)：SPEC-003 的章節標題「$heading」'
+          reason:
+              '0.1.0-W3-205 T-205-21(c)：SPEC-003 的章節標題「$heading」'
               '已變更或消失，請同步更新 lib/app/attention_level.dart 與 '
               'lib/components/app_snack_bar.dart 的 dartdoc 章節引用'
               '（本斷言為該引用的唯一守衛）。',

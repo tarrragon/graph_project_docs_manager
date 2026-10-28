@@ -152,9 +152,7 @@ class _AppButtonState extends State<AppButton> {
         foregroundColor: foreground,
         disabledForegroundColor: AppColors.textDisabled,
         disabledBackgroundColor: colors.background,
-        side: colors.border == null
-            ? null
-            : BorderSide(color: colors.border!),
+        side: colors.border == null ? null : BorderSide(color: colors.border!),
         padding: EdgeInsets.symmetric(horizontal: Space.md),
         minimumSize: Size(LayoutSize.hitTargetMin, LayoutSize.hitTargetMin),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -167,10 +165,7 @@ class _AppButtonState extends State<AppButton> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (leadingIcon != null) ...[
-            leadingIcon,
-            SizedBox(width: Space.xs),
-          ],
+          if (leadingIcon != null) ...[leadingIcon, SizedBox(width: Space.xs)],
           Flexible(
             child: Text(
               widget.label,

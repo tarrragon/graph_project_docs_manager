@@ -13,23 +13,21 @@ class _Counts {
   final int ucs;
 }
 
-List<File> _filesUnder(Directory dir, bool Function(String) match) => dir
-    .listSync(recursive: true)
-    .whereType<File>()
-    .where((f) => match(f.path))
-    .toList()
-  ..sort((a, b) => a.path.compareTo(b.path));
+List<File> _filesUnder(Directory dir, bool Function(String) match) =>
+    dir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => match(f.path))
+        .toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
 
 List<File> _domainMaps(Directory c) =>
     _filesUnder(c, (p) => p.endsWith('domain-map.md'));
 
-List<File> _ucs(Directory c) => _filesUnder(
-  c,
-  (p) => p.contains('/docs/usecases/') && p.endsWith('.md'),
-);
+List<File> _ucs(Directory c) =>
+    _filesUnder(c, (p) => p.contains('/docs/usecases/') && p.endsWith('.md'));
 
-_Counts _count(Directory c) =>
-    _Counts(_domainMaps(c).length, _ucs(c).length);
+_Counts _count(Directory c) => _Counts(_domainMaps(c).length, _ucs(c).length);
 
 YamlMap _frontmatter(File f) {
   final lines = f.readAsStringSync().split('\n');
@@ -55,14 +53,17 @@ void main() {
       expect(c.ucs, 6);
     });
 
-    test('flutter_balance：DomainBundle 1（balance-sheet）、無 bundle_dependency', () {
-      final maps = _domainMaps(bal);
-      expect(maps, hasLength(1));
-      final fm = _frontmatter(maps.single);
-      expect(fm['domain'], 'balance-sheet');
-      expect(fm.containsKey('depends_on_bundles'), isFalse);
-      expect(fm.containsKey('path_patterns'), isFalse);
-    });
+    test(
+      'flutter_balance：DomainBundle 1（balance-sheet）、無 bundle_dependency',
+      () {
+        final maps = _domainMaps(bal);
+        expect(maps, hasLength(1));
+        final fm = _frontmatter(maps.single);
+        expect(fm['domain'], 'balance-sheet');
+        expect(fm.containsKey('depends_on_bundles'), isFalse);
+        expect(fm.containsKey('path_patterns'), isFalse);
+      },
+    );
 
     test('flutter_balance：UC 1、UC-01 九步、四分支步皆帶 return_to、無 traverses', () {
       final ucs = _ucs(bal);
@@ -76,9 +77,10 @@ void main() {
     });
 
     test('flutter_balance：無非 domain 清單', () {
-      final text = _filesUnder(bal, (p) => p.endsWith('domain-map.md'))
-          .single
-          .readAsStringSync();
+      final text = _filesUnder(
+        bal,
+        (p) => p.endsWith('domain-map.md'),
+      ).single.readAsStringSync();
       expect(text.contains('path_patterns'), isFalse);
       expect(text.contains('non_domain'), isFalse);
     });
