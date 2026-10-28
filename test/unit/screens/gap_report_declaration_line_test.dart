@@ -394,6 +394,19 @@ void main() {
           .dy;
       expect(lineTop, lessThanOrEqualTo(sectionTop));
     });
+
+    testWidgets('508.3 宣告說明行明示多行：不以省略號截斷（overflow 非 ellipsis）', (tester) async {
+      await _pump(
+        tester,
+        GapReportFound(_categories, pathDeclaration: gapDecl),
+      );
+
+      final inner = tester.widget<Text>(
+        find.descendant(of: find.byKey(_lineKey), matching: find.byType(Text)),
+      );
+      expect(inner.maxLines, isNull);
+      expect(inner.overflow, isNot(TextOverflow.ellipsis));
+    });
   });
 
   group('R1 經真實比對器的彙整（輪次 → 狀態）', () {
@@ -526,15 +539,14 @@ void main() {
   });
 
   group('K4 pathDeclaration* 五 key 與 SPEC-004 §4.0.6 逐字一致', () {
-    final zh =
-        jsonDecode(File('lib/l10n/app_zh.arb').readAsStringSync())
-            as Map<String, dynamic>;
-    final en =
-        jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
-            as Map<String, dynamic>;
-    final spec = File(
-      'docs/spec/ui/SPEC-004-component-library.md',
-    ).readAsStringSync();
+    final zh = jsonDecode(
+      File('lib/l10n/app_zh.arb').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final en = jsonDecode(
+      File('lib/l10n/app_en.arb').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final spec = File('docs/spec/ui/SPEC-004-component-library.md')
+        .readAsStringSync();
     const keys = [
       'pathDeclarationIncompleteLine',
       'pathDeclarationBundlesPartial',
