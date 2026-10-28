@@ -335,8 +335,8 @@ class _NormalViewState extends ConsumerState<_NormalView> {
                   key: _eventRowKey(row.event),
                   isLocated: row.event == locatedEvent,
                   event: AppText(row.event, variant: AppTextVariant.mono),
-                  emittedBy: AppText(row.emittedBy),
-                  consumedBy: AppText(row.consumedBy),
+                  emittedBy: AppText.singleLine(row.emittedBy),
+                  consumedBy: AppText.singleLine(row.consumedBy),
                   marker: gaps.isOrphan(row.event)
                       ? AppIcon(
                           key: Key('badge-ucFlow-event-orphan-${row.event}'),
@@ -385,7 +385,7 @@ class _NormalViewState extends ConsumerState<_NormalView> {
     return AppTableRow.step(
       isLocated: isLocated,
       number: StepNumber(number: index + 1),
-      stepName: AppText(step.label),
+      stepName: AppText.singleLine(step.label),
       domain: RelationItem(
         id: step.domain,
         isMono: false,
@@ -432,7 +432,7 @@ class _UcSelectorPanel extends ConsumerWidget {
           items: [
             for (final uc in ucList)
               ListRow.option(
-                primary: AppText('${uc.id} ${uc.title}'),
+                primary: AppText.singleLine('${uc.id} ${uc.title}'),
                 isSelected: uc.id == selectedUcId,
                 onTap: () =>
                     ref.read(selectedUcProvider.notifier).state = uc.id,
