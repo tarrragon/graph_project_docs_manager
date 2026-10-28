@@ -146,7 +146,8 @@ def _parse_suite(name, raw) -> dict:
             "command": _str_list(raw.get("command"), f"{prefix}.command", required=True),
             "artifacts": _parse_artifacts(raw.get("artifacts"), prefix),
             "summary": _parse_pattern(raw.get("summary"), f"{prefix}.summary"),
-            "failure": _parse_pattern(raw.get("failure"), f"{prefix}.failure")}
+            "failure": _parse_pattern(raw.get("failure"), f"{prefix}.failure"),
+            "changed_files": _parse_pattern(raw.get("changed_files"), f"{prefix}.changed_files")}
 
 
 def parse_declaration(text: str) -> dict:
@@ -338,6 +339,14 @@ def _warn_unmapped(paths: list, decl: Declaration = None) -> None:
           f"{', '.join(shown)}{more}")
 
 
+def _suite_scope_files(suite_decl: dict, paths: list) -> list:
+    """落在套件範圍內的改動路徑；套件宣告 changed_files 時另須符合該正規式。"""
+    pattern = suite_decl.get("changed_files")
+    return [p for p in paths
+            if (p.startswith(suite_decl["prefixes"]) or p in suite_decl["files"])
+            and (pattern is None or pattern.search(p))]
+
+
 def select_suites(changed_paths: list, root: str) -> list:
     """依改動路徑決定套件範圍（root 為合併 commit 的快照，供掃描 skill）。對應表見 SKILL.md。
 
@@ -351,8 +360,7 @@ def select_suites(changed_paths: list, root: str) -> list:
         if any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES for p in paths):
             want.add(SUITE_FLUTTER)
     else:
-        want.update(n for n, s in decl.items()
-                    if any(p.startswith(s["prefixes"]) or p in s["files"] for p in paths))
+        want.update(n for n, s in decl.items() if _suite_scope_files(s, paths))
     for p in (p for p in paths if p.startswith(".claude/")):
         skill = _skill_name(p)
         if skill and _skill_has_tests(root, skill):
@@ -371,11 +379,21 @@ def select_suites(changed_paths: list, root: str) -> list:
     return head + sorted(s for s in want if s.startswith(SUITE_SKILL_PREFIX))
 
 
-def suite_command(suite: str, root: str) -> list:
-    """套件的執行命令；skill 有 pyproject 沿用 uv --directory，無則借 hooks 的環境跑其 tests 目錄。"""
+def existing_changed_files(suite: str, decl: Declaration, paths: list, root: str) -> Optional[list]:
+    """宣告 changed_files 的套件：範圍內、符合正規式且仍存在於快照的改動檔；未宣告者回 None。"""
+    if decl is None or suite not in decl or decl[suite].get("changed_files") is None:
+        return None
+    return [p for p in _suite_scope_files(decl[suite], paths) if os.path.isfile(os.path.join(root, p))]
+
+
+def suite_command(suite: str, root: str, files: Optional[list] = None) -> list:
+    """套件的執行命令；skill 有 pyproject 沿用 uv --directory，無則借 hooks 的環境跑其 tests 目錄。
+
+    files 非 None（套件宣告 changed_files）時附加在宣告 argv 尾端。
+    """
     decl = load_declaration(root)
     if decl is not None and suite in decl:
-        return decl[suite]["command"]
+        return decl[suite]["command"] + (files or [])
     if not suite.startswith(SUITE_SKILL_PREFIX):
         return SUITE_COMMANDS[suite]
     name = suite[len(SUITE_SKILL_PREFIX):]
@@ -666,20 +684,29 @@ def emit_gate_line(log_root: str, line: str) -> None:
 
 def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRunner,
                 log_root: Optional[str] = None, on_green: Optional[Callable[[str], None]] = None,
-                tag: str = "nocommit") -> str:
+                tag: str = "nocommit", paths: Optional[list] = None) -> str:
     """依序跑各套件；任一紅燈即停。每個套件結束輸出一行結果（含紅燈、逾時、中斷）。回傳空字串表示全綠。
 
     on_green：套件綠燈時立即回呼，後面套件紅燈時前面已綠者仍可記錄供重試沿用。
     """
     log_root = log_root or project_root
     for suite in suites:
+        decl = load_declaration(snapshot)
+        files = existing_changed_files(suite, decl, paths or [], snapshot)
+        if files is not None and not files:
+            _emit_result(log_root, _suite_result_line(
+                suite, "免跑", "符合 changed_files 的改動檔皆已刪除，無檔可檢查", 0.0))
+            if on_green:
+                on_green(suite)
+            continue
         missing = _ensure_artifacts(suite, snapshot, project_root, runner)
         if missing:
             return missing
-        summary_pat, failure_pat = declared_patterns(suite, load_declaration(snapshot))
+        summary_pat, failure_pat = declared_patterns(suite, decl)
         start = time.monotonic()
         try:
-            rc, out = runner(wrapped_argv(suite_command(suite, snapshot)), snapshot)
+            command = suite_command(suite, snapshot) if files is None else suite_command(suite, snapshot, files)
+            rc, out = runner(wrapped_argv(command), snapshot)
         except BaseException:  # 中斷也留一行紀錄後原樣再拋，讓上層清快照
             _emit_result(log_root, _suite_result_line(suite, "中斷", "無摘要", time.monotonic() - start))
             raise
@@ -796,7 +823,8 @@ class MergeGate:
                 print(f"[合併前測試] 快照內跑全套件：{', '.join(todo)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
                 self.suite_runs += 1
             reason = _run_suites(todo, snap, self.project_root, self.runner, self.repo,
-                                 on_green=lambda s: self.verified_suites.__setitem__(s, commit), tag=commit)
+                                 on_green=lambda s: self.verified_suites.__setitem__(s, commit), tag=commit,
+                                 paths=paths)
         return CheckResult(False, reason) if reason else CheckResult(True)
 
 
