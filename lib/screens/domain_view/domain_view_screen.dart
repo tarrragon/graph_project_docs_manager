@@ -800,9 +800,10 @@ class _SwimlaneBody extends ConsumerWidget {
       leading: [
         AppText.singleLine(panelTitle, variant: AppTextVariant.subtitle),
         if (swimlane.hasFlowParseFailure)
-          AppText.singleLine(
+          AppText.multiLine(
             l10n.swimlaneFlowParseFailedHint,
-            variant: AppTextVariant.caption,
+            maxLines: 2,
+            secondary: true,
           ),
       ],
       fill: SwimlaneGrid(
