@@ -1555,37 +1555,136 @@ def _cleanup_check_level3(branch: str, base: str = DEFAULT_BASE_BRANCH) -> tuple
     return False, warning_msg
 
 
-def _cleanup_execute(worktree_path: str, branch: str) -> tuple[bool, str]:
+# worktree remove 逐檔刪除，大型工作樹（數千檔）在高負載下遠超 git_utils 預設 10 秒；
+# 逾時殺掉 git 會留下全量 tracked 刪除的半刪 worktree
+WORKTREE_REMOVE_TIMEOUT_SECONDS = 300
+
+
+def _parse_worktree_lock(porcelain: str, worktree_path: str) -> Optional[str]:
+    """從 `git worktree list --porcelain` 輸出取得指定 worktree 的鎖原因；未鎖回 None（無原因的鎖回空字串）。"""
+    target = os.path.realpath(worktree_path)
+    for block in porcelain.split("\n\n"):
+        lines = block.strip().splitlines()
+        if not lines or not lines[0].startswith("worktree "):
+            continue
+        if os.path.realpath(lines[0][len("worktree "):]) != target:
+            continue
+        for line in lines[1:]:
+            if line == "locked" or line.startswith("locked "):
+                return line[len("locked"):].strip()
+    return None
+
+
+def _lock_holder_alive(reason: str) -> str:
+    """從鎖原因擷取 pid 並判斷存活；回傳訊息用字串。"""
+    match = re.search(r"pid (\d+)", reason)
+    if not match:
+        return "原因未含 pid，無法判斷存活"
+    pid = int(match.group(1))
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return f"pid {pid} 已不存在"
+    except PermissionError:
+        return f"pid {pid} 存活（屬其他使用者）"
+    return f"pid {pid} 存活"
+
+
+def _cleanup_handle_lock(worktree_path: str, unlock: bool) -> tuple[bool, str]:
+    """移除前處理 worktree 鎖。回傳 (可繼續, 停手說明)；鎖可能屬仍在使用的代理人，未明示 --unlock 不解鎖。"""
+    ok, porcelain = run_git_command(["worktree", "list", "--porcelain"])
+    reason = _parse_worktree_lock(porcelain, worktree_path) if ok else None
+    if reason is None:
+        return True, ""
+    holder = _lock_holder_alive(reason)
+    if not unlock:
+        return False, CleanupMessages.REMOVE_LOCKED.format(reason=reason or "（無原因）", holder=holder)
+    ok, output = run_git_command(["worktree", "unlock", worktree_path])
+    if not ok:
+        return False, CleanupMessages.UNLOCK_FAILED.format(error=output)
+    return True, ""
+
+
+def _timed_git_remove(worktree_path: str, extra_args: list[str]) -> tuple[bool, str]:
+    """以 WORKTREE_REMOVE_TIMEOUT_SECONDS 執行 worktree remove，實際耗時寫入 worktree-merge.log。"""
+    started = time.monotonic()
+    ok, output = run_git_command(
+        ["worktree", "remove", *extra_args, worktree_path], timeout=WORKTREE_REMOVE_TIMEOUT_SECONDS
+    )
+    elapsed = time.monotonic() - started
+    result = "成功" if ok else "失敗"
+    flags = "".join(f" {arg}" for arg in extra_args)
+    emit_gate_line(
+        str(get_project_root()),
+        f"[清理移除]worktree remove{flags}｜target {worktree_path}"
+        f"｜耗時 {elapsed:.1f}s｜上限 {WORKTREE_REMOVE_TIMEOUT_SECONDS}s｜結果 {result}",
+    )
+    return ok, output
+
+
+def _recovery_unmet_conditions(worktree_path: str) -> list[str]:
+    """半刪收尾的兩條件：status 全為 tracked 刪除、HEAD 為 main 祖先。回傳不成立項（空表示可收尾）。"""
+    unmet = []
+    ok, status = run_git_command(["status", "--porcelain"], cwd=worktree_path, timeout=WORKTREE_REMOVE_TIMEOUT_SECONDS)
+    lines = [line for line in status.splitlines() if line] if ok else []
+    others = [line for line in lines if not line.startswith(" D")]
+    if not ok:
+        unmet.append(f"無法讀取 status：{status}")
+    elif not lines:
+        unmet.append("status 無任何 tracked 刪除（不是半刪狀態）")
+    elif others:
+        unmet.append(f"status 含非 tracked 刪除項 {len(others)} 筆（untracked 或 modified），例：{others[0]}")
+    ancestor_ok, _ = run_git_command(
+        ["merge-base", "--is-ancestor", "HEAD", DEFAULT_BASE_BRANCH], cwd=worktree_path
+    )
+    if not ancestor_ok:
+        unmet.append(f"HEAD 不是 {DEFAULT_BASE_BRANCH} 的祖先（有未併入的 commit）")
+    return unmet
+
+
+def _cleanup_recover(worktree_path: str, original_error: str) -> tuple[bool, str]:
+    """remove 失敗後的收尾：兩條件皆成立才 remove --force 並 prune，否則停手並列出不成立項。"""
+    unmet = _recovery_unmet_conditions(worktree_path)
+    if unmet:
+        return False, CleanupMessages.RECOVER_REFUSED.format(
+            error=original_error, unmet="\n".join(f"  - {item}" for item in unmet)
+        )
+    ok, output = _timed_git_remove(worktree_path, ["--force"])
+    if not ok:
+        return False, CleanupMessages.REMOVE_FAILED.format(error=output)
+    run_git_command(["worktree", "prune"])
+    return True, ""
+
+
+def _cleanup_execute(worktree_path: str, branch: str, unlock: bool = False) -> tuple[bool, str]:
     """
     執行 worktree 清理（移除 worktree 目錄和分支）
 
     依序執行：
-    1. git worktree remove <path>
-    2. git branch -d <branch>（-d 要求已合併，若失敗則提示 -D）
-
-    Args:
-        worktree_path: worktree 絕對路徑
-        branch: 分支名稱
+    1. 讀鎖：有鎖停手回報，--unlock 才解鎖
+    2. git worktree remove <path>（逾時 WORKTREE_REMOVE_TIMEOUT_SECONDS）；
+       失敗時若為可證明安全的半刪狀態則 --force 收尾並 prune
+    3. git branch -d <branch>；失敗視為清理未完成（回傳 False，rc 非 0）
 
     Returns:
-        tuple[bool, str]:
-            - bool: True 表示 worktree 和分支均已清理
-            - str: 結果說明（成功訊息或部分失敗提示）
+        tuple[bool, str]: (worktree 與分支均已清理, 結果說明)
     """
-    # 移除 worktree
-    success, output = run_git_command(["worktree", "remove", worktree_path])
-    if not success:
-        error_msg = CleanupMessages.REMOVE_FAILED.format(error=output)
-        return False, error_msg
+    can_continue, lock_msg = _cleanup_handle_lock(worktree_path, unlock)
+    if not can_continue:
+        return False, lock_msg
 
-    # 刪除分支
+    success, output = _timed_git_remove(worktree_path, [])
+    if not success:
+        success, output = _cleanup_recover(worktree_path, output)
+        if not success:
+            return False, output
+
     success, output = run_git_command(["branch", "-d", branch])
     if not success:
-        partial_msg = CleanupMessages.BRANCH_DELETE_FAILED.format(
+        return False, CleanupMessages.BRANCH_DELETE_FAILED.format(
             branch=branch,
             force_flag=BRANCH_FORCE_DELETE_FLAG
         )
-        return True, partial_msg  # 部分成功
 
     success_msg = CleanupMessages.CLEANUP_SUCCESS.format(path=worktree_path, branch=branch)
     return True, success_msg
@@ -1648,7 +1747,8 @@ def _cleanup_print_initial_header(ticket_id: str) -> None:
 
 def _cleanup_execute_and_report(
     path: str,
-    branch: str
+    branch: str,
+    unlock: bool = False
 ) -> int:
     """
     執行清理操作並輸出結果
@@ -1662,7 +1762,7 @@ def _cleanup_execute_and_report(
     Returns:
         int: exit code（0 成功，1 失敗）
     """
-    success, result_msg = _cleanup_execute(path, branch)
+    success, result_msg = _cleanup_execute(path, branch, unlock)
     print(result_msg)
     return 0 if success else 1
 
@@ -1707,7 +1807,8 @@ def _cleanup_verify_all_gates(
 def _cleanup_single(
     worktree: dict,
     ticket_id: str,
-    force: bool
+    force: bool,
+    unlock: bool = False
 ) -> int:
     """
     清理指定 worktree（精確模式核心邏輯）
@@ -1736,7 +1837,7 @@ def _cleanup_single(
         return 1
 
     # 執行清理
-    return _cleanup_execute_and_report(path, branch)
+    return _cleanup_execute_and_report(path, branch, unlock)
 
 
 def _cleanup_filter_feature_worktrees(worktrees: list[dict]) -> list[dict]:
@@ -1896,7 +1997,8 @@ def _cleanup_find_by_branch(branch: str) -> Optional[dict]:
 
 
 def cmd_cleanup(
-    ticket_id: Optional[str] = None, force: bool = False, branch: Optional[str] = None
+    ticket_id: Optional[str] = None, force: bool = False, branch: Optional[str] = None,
+    unlock: bool = False,
 ) -> int:
     """
     cleanup 子命令 — 三閘門安全清理 worktree
@@ -1917,7 +2019,7 @@ def cmd_cleanup(
         worktree = _cleanup_find_by_branch(branch)
         if worktree is None:
             return 1
-        return _cleanup_single(worktree, branch, force)
+        return _cleanup_single(worktree, branch, force, unlock)
 
     # 無參數：掃描模式
     if ticket_id is None:
@@ -1931,7 +2033,7 @@ def cmd_cleanup(
         return 1
 
     # Step 3: 執行清理
-    return _cleanup_single(worktree, ticket_id, force)
+    return _cleanup_single(worktree, ticket_id, force, unlock)
 
 
 # ===== 主程式入口 =====
@@ -2032,6 +2134,12 @@ def main():
         help="略過 Level 2（未 push）和 Level 3（未合併）警告（Level 1 永不可繞過）"
     )
 
+    cleanup_parser.add_argument(
+        "--unlock",
+        action="store_true",
+        help="worktree 被鎖時解鎖後再移除（預設遇鎖停手；鎖可能屬仍在使用的代理人）"
+    )
+
     args = parser.parse_args()
 
     if args.command == "create":
@@ -2054,7 +2162,7 @@ def main():
         if args.ticket_id and args.branch:
             print("[錯誤] cleanup 的 <ticket-id> 與 --branch 擇一，不可同時指定")
             return 1
-        return cmd_cleanup(args.ticket_id, force=args.force, branch=args.branch)
+        return cmd_cleanup(args.ticket_id, force=args.force, branch=args.branch, unlock=args.unlock)
     else:
         parser.print_help()
         return 1

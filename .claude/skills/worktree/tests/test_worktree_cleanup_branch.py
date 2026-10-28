@@ -36,7 +36,7 @@ def env(monkeypatch):
     monkeypatch.setattr("worktree_manager._is_branch_pushed", lambda b: True)
     monkeypatch.setattr("worktree_manager._is_branch_merged_to_base", lambda b, base="main": True)
 
-    def fake_execute(path, branch):
+    def fake_execute(path, branch, unlock=False):
         removed.append((path, branch))
         return True, "ok"
 
