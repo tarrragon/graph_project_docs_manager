@@ -14,7 +14,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:graph_project_docs_manager/app/attention_level.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/app/workspace_selection.dart';
 import 'package:graph_project_docs_manager/app/shell.dart';
 // `components.dart` 與 `app/shell.dart` 各有一個 `AppShell`（元件庫的殼與
 // 應用層的殼），不加前綴會撞名。
@@ -53,6 +55,32 @@ void main() {
 
     expect(find.byKey(const Key('state-domain-matrix')), findsNothing);
   });
+  testWidgets('專案改變（select）時 AppShell 清除顯示中的 SnackBar（0.5.0-W1-168.2.1）', (
+    tester,
+  ) async {
+    late ProviderContainer container;
+    await _pumpShell(
+      tester,
+      overrides: _readyOverrides(),
+      onReady: (c) => container = c,
+    );
+    components.AppSnackBar.show(
+      tester.element(find.byType(Scaffold).first),
+      message: 'shell-wiring-message',
+      level: AttentionLevel.discardable,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('shell-wiring-message'), findsOneWidget);
+
+    await container
+        .read(workspaceSelectionProvider.notifier)
+        .select(const WorkspaceReady('/ws'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('shell-wiring-message'), findsNothing);
+  });
+
   testWidgets('returnTo 為 null 時 action-<screen>-back 不存在於元件樹', (tester) async {
     await _pumpShell(tester);
 
