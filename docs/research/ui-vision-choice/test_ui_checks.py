@@ -9,6 +9,7 @@ from pathlib import Path
 import build_dataset as bd
 import geometry_check as gc
 import pixel_diff as pd
+import run_sampling as rs
 
 
 def solid(w, h, rgb=(255, 255, 255)):
@@ -349,6 +350,157 @@ class BuildPairTest(unittest.TestCase):
         self.assertEqual([s["code"] for s in skipped], ["T2"])
         lines = (self.dir / "out" / "dataset.jsonl").read_text().splitlines()
         self.assertEqual([json.loads(line)["code"] for line in lines], ["T1"])
+
+
+class FakeResp:
+    def __init__(self, text, model, stop="end_turn"):
+        self.content = [type("B", (), {"type": "text", "text": text})()]
+        self.stop_reason, self.model = stop, model
+        self.usage = type("U", (), {"input_tokens": 1, "output_tokens": 1})()
+
+
+class FakeClient:
+    """依模型逐次回放腳本；記錄每次呼叫參數。"""
+
+    def __init__(self, haiku, opus=()):
+        self.q = {"haiku": list(haiku), "opus": list(opus)}
+        self.calls = []
+        self.messages = self
+
+    def create(self, **kw):
+        self.calls.append(kw)
+        key = "haiku" if "haiku" in kw["model"] else "opus"
+        item = self.q[key].pop(0)
+        text, stop = item if isinstance(item, tuple) else (item, "end_turn")
+        return FakeResp(text, kw["model"], stop)
+
+
+class RunSamplingTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = Path(self.tmp.name)
+        self.regions = []
+        for code, kind, n in (("X1", "defect", 1), ("X2", "expected", 2),
+                              ("M9", "mirror", 1)):
+            for i in range(1, n + 1):
+                png = self.dir / f"{code}.{i}.png"
+                png.write_bytes(b"\x89PNG")
+                self.regions.append({"code": code, "kind": kind, "region": i,
+                                     "paths": [png, png]})
+        self.out = self.dir / "out"
+
+    def run_with(self, client, sample_fn=None):
+        kw = {"sample_fn": sample_fn} if sample_fn else {}
+        r = rs.Runner(client, self.out, **kw)
+        return r, r.run(self.regions)
+
+    def test_constants_match_appendix(self):
+        self.assertEqual(rs.PERMUTATIONS, (("ABC", 5), ("BCA", 1), ("CAB", 7),
+                                           ("ACB", 0), ("BAC", 6)))
+        self.assertEqual(rs.HAIKU["max_tokens"], 8)
+        self.assertEqual(rs.HAIKU["thinking"], "disabled")
+        self.assertEqual(rs.HAIKU["temperature"], 1.0)
+        self.assertEqual(rs.OPUS["max_tokens"], 4096)
+        self.assertEqual(rs.OPUS["effort"], "medium")
+        self.assertIsNone(rs.OPUS["temperature"])
+        self.assertIsNone(rs.OPUS["thinking"])
+
+    def test_seed_to_permutation_mapping(self):
+        for perm, seed in rs.PERMUTATIONS:
+            self.assertEqual("".join(rs.sampler.shuffled_order("ABC", seed)), perm)
+
+    def test_decide_boundaries(self):
+        self.assertEqual(rs.decide_haiku({"B": 4, "A": 1}), rs.RELEASE)
+        self.assertEqual(rs.decide_haiku({"A": 4, "B": 1}), rs.TO_USER)
+        self.assertEqual(rs.decide_haiku({"B": 3, "A": 2}), rs.TO_OPUS)
+        self.assertEqual(rs.decide_haiku({"A": 3, "B": 1}), rs.TO_OPUS)
+        self.assertEqual(rs.decide_haiku({"B": 3}), rs.TO_OPUS)
+        self.assertEqual(rs.decide_opus({"B": 4}), rs.RELEASE)
+        self.assertEqual(rs.decide_opus({"B": 3, "A": 2}), rs.TO_USER)
+        self.assertEqual(rs.decide_opus({"B": 3}), rs.TO_USER)
+
+    def test_pair_all_release_only(self):
+        self.assertEqual(rs.decide_pair([rs.RELEASE, rs.RELEASE]), rs.RELEASE)
+        self.assertEqual(rs.decide_pair([rs.RELEASE, rs.TO_USER]), rs.TO_USER)
+
+    def test_flow_order_truncation_and_summary(self):
+        # X1 全 B 放行；X2.1 全 A 交用戶；X2.2 含截斷轉 Opus；M9 全 C 轉 Opus
+        haiku = (["B"] * 5 + ["A"] * 5 + ["B", "B", "B", ("B", "max_tokens"), "A"]
+                 + ["C"] * 5)
+        client = FakeClient(haiku, ["B"] * 5 + ["A"] * 5)
+        _, s = self.run_with(client)
+        models = [c["model"] for c in client.calls]
+        self.assertEqual(models, ["claude-haiku-5-5"] * 20 + ["claude-opus-5-5"] * 10)
+        self.assertEqual(s["regions"]["X2.region2"]["haiku_counts"], {"B": 3, "A": 1})
+        self.assertEqual(s["regions"]["X2.region2"]["opus_decision"], rs.RELEASE)
+        self.assertEqual(s["pairs"]["X1"]["verdict"], rs.RELEASE)
+        self.assertEqual(s["pairs"]["X2"]["verdict"], rs.TO_USER)
+        self.assertEqual(s["mirror_pairs"]["M9"]["verdict"], rs.TO_USER)
+        self.assertNotIn("M9", s["pairs"])
+        self.assertEqual(s["max_tokens_stops"]["claude-haiku-5-5"], 1)
+        lines = (self.out / "results.jsonl").read_text().splitlines()
+        self.assertEqual(len(lines), 30)
+        first, last = json.loads(lines[0]), json.loads(lines[-1])
+        self.assertEqual(first["thinking"], "disabled")
+        self.assertIsNone(first["effort"])
+        self.assertEqual(last["effort"], "medium")
+        self.assertIsNone(last["temperature"])
+
+    def test_opus_request_omits_temperature_and_thinking(self):
+        client = FakeClient(["C"] * 20, ["B"] * 20)
+        self.run_with(client)
+        opus_call = [c for c in client.calls if "opus" in c["model"]][0]
+        self.assertNotIn("thinking", opus_call.get("extra_body", {}))
+        self.assertNotIn("temperature", opus_call.get("extra_body", {}))
+
+    def test_position_table_counts(self):
+        _, s = self.run_with(FakeClient(["B"] * 20))
+        t = s["b_position_tables"]["claude-haiku-5-5"]
+        self.assertEqual({k: v["chose_B"] for k, v in t.items()},
+                         {"1": 8, "2": 4, "3": 8})
+
+    def test_order_mismatch_fail_closed(self):
+        calls = []
+
+        def bad(client, model, q, opts, seed, **kw):
+            calls.append(seed)
+            rec = rs.sampler.sample_once(client, model, q, opts, seed, **kw)
+            if len(calls) == 3:
+                rec["option_order"] = ["C", "B", "A"]
+            return rec
+        client = FakeClient(["B"] * 20)
+        with self.assertRaises(rs.OrderMismatch):
+            rs.Runner(client, self.out, sample_fn=bad).run(self.regions)
+        self.assertEqual(len(client.calls), 3)
+        self.assertEqual(len((self.out / "results.jsonl").read_text().splitlines()), 2)
+        mm = json.loads((self.out / rs.MISMATCH_NAME).read_text())
+        self.assertEqual(mm["actual_order"], ["C", "B", "A"])
+
+    def test_expected_order_from_table_not_seed(self):
+        # 模擬 shuffled_order 實作改變：sampler 與核對若共用 seed 推導會一起變而放行
+        orig = rs.sampler.shuffled_order
+        rs.sampler.shuffled_order = lambda codes, seed: ["C", "A", "B"]
+        self.addCleanup(setattr, rs.sampler, "shuffled_order", orig)
+        client = FakeClient(["B"] * 20)
+        with self.assertRaises(rs.OrderMismatch):
+            rs.Runner(client, self.out).run(self.regions)
+        self.assertEqual(len(client.calls), 1)
+        mm = json.loads((self.out / rs.MISMATCH_NAME).read_text())
+        self.assertEqual(mm["expected_order"], ["A", "B", "C"])
+
+    def test_response_model_recorded(self):
+        self.run_with(FakeClient(["B"] * 20))
+        row = json.loads((self.out / "results.jsonl").read_text().splitlines()[0])
+        self.assertEqual(row["model"], "claude-haiku-5-5")
+        self.assertEqual(row["response_model"], "claude-haiku-5-5")
+
+    def test_refuse_existing_results(self):
+        self.out.mkdir()
+        (self.out / "results.jsonl").write_text("keep")
+        with self.assertRaises(FileExistsError):
+            rs.Runner(FakeClient([]), self.out).run(self.regions)
+        self.assertEqual((self.out / "results.jsonl").read_text(), "keep")
 
 
 if __name__ == "__main__":
