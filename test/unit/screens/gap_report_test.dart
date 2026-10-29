@@ -7,6 +7,7 @@
 // （取消、重新掃描、破洞項）可實際操作走通。
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart' show Icons, SnackBar;
@@ -16,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
+import 'package:graph_project_docs_manager/app/workspace_selection.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
@@ -696,6 +698,32 @@ void main() {
       expect(find.text('無法以系統預設方式開啟'), findsNothing);
     });
 
+    // 0.5.0-W1-168.2.2：切換前發出、切換後才回來的結果不呈現（只留痕）。
+    for (final bump in [true, false]) {
+      testWidgets('晚回結果：世代${bump ? '已變不呈現' : '未變照常呈現（E2 對照）'}', (tester) async {
+        final gate = Completer<ExternalOpenResult>();
+        final opener = _GatedOpener(gate);
+        final container = await pumpHarness(
+          tester,
+          child: const GapReportScreen(),
+          overrides: [
+            gapReportProvider.overrideWith(
+              () => _FixedNotifier(stateWithExistingFile),
+            ),
+            externalOpenerProvider.overrideWithValue(opener),
+          ],
+        );
+        await tester.tap(find.byKey(const Key('card-gaps-spec-readme')));
+        await tester.pump();
+        expect(opener.calls, hasLength(1));
+        if (bump) container.read(projectGenerationProvider.notifier).state++;
+        gate.complete(ExternalOpenResult.opened);
+        await tester.pumpAndSettle();
+
+        expect(find.text('已在外部開啟'), bump ? findsNothing : findsOneWidget);
+      });
+    }
+
     testWidgets('exitCode 非零：提示無法開啟，不回報成功', (tester) async {
       await tapItem(
         tester,
@@ -814,6 +842,19 @@ void main() {
 /// 測試用固定狀態 notifier：`build()` 直接回傳注入值，不觸發真實掃描
 /// microtask，維持狀態穩定供斷言（`overrideWith` 慣例，見
 /// `pump_harness.dart` 檔頭說明）。
+class _GatedOpener implements ExternalOpener {
+  _GatedOpener(this._gate);
+
+  final Completer<ExternalOpenResult> _gate;
+  final List<String> calls = [];
+
+  @override
+  Future<ExternalOpenResult> open(String path) {
+    calls.add(path);
+    return _gate.future;
+  }
+}
+
 class _FixedNotifier extends GapReportNotifier {
   _FixedNotifier(this._fixed);
 

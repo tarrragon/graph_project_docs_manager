@@ -5,6 +5,8 @@
 /// 承載，本畫面只處理狀態內的退出路徑（取消、重新掃描、破洞項）。
 library;
 
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +17,7 @@ import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 import '../../app/attention_level.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
+import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
@@ -29,6 +32,21 @@ import 'gap_report_provider.dart';
 import 'scan_notification_controller.dart';
 
 const String _tag = 'GapReportScreen';
+
+/// 切換專案前發出、切換後才回來的開啟結果不呈現，只留痕
+/// （SPEC-003 §2.8 切換專案列、SPEC-004 §4.26 等待與結果列）。
+String _openResultKey(ExternalOpenResult result) => switch (result) {
+  ExternalOpenResult.opened => 'openedExternallyMessage',
+  ExternalOpenResult.notFound => 'sourceFileNotFoundSnackbarMessage',
+  ExternalOpenResult.failed => 'externalOpenFailedMessage',
+};
+
+void _logStaleOpenResult(String i18nKey) {
+  developer.log(
+    '開啟結果未呈現（$i18nKey）：因專案已改變而丟棄', // i18n-exempt: 開發者診斷 log
+    name: _tag,
+  );
+}
 
 /// 破洞報告畫面。
 class GapReportScreen extends ConsumerWidget {
@@ -365,9 +383,14 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
       ref.read(currentWorkspaceStateProvider),
       item.filePath,
     );
+    final generation = ref.read(projectGenerationProvider);
     final result = path == null
         ? ExternalOpenResult.notFound
         : await ref.read(externalOpenerProvider).open(path);
+    if (ref.read(projectGenerationProvider) != generation) {
+      _logStaleOpenResult(_openResultKey(result));
+      return;
+    }
     if (!context.mounted) return;
     if (result == ExternalOpenResult.notFound) {
       AppSnackBar.show(
