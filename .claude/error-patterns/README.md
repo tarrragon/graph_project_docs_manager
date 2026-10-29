@@ -171,6 +171,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | TEST-GPD-006 | 相容性 fallback 只在舊版執行環境走到，閘門跑在新版時該分支從未被執行 | 中 | 0.5.0 |
 | TEST-GPD-1000 | 把 provider 預設值改成帶無限動畫的狀態，被 IndexedStack 保活的背景頁讓不相關的全 App 測試 pumpAndSettle 逾時 | 中 | 0.5.0 |
 | TEST-GPD-1001 | 以精簡測試輸出中累計計數器的出現位置推定單一測試的結果，歸屬會錯位 | 低 | 0.5.0 |
+| TEST-GPD-1002 | 以實測觀察到的結構形狀寫成斷言，比規格嚴且把疑似缺陷鎖成測試要求 | 中 | 0.5.0 |
 
 ### 文件 (DOC)
 
