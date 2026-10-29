@@ -16,7 +16,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/semantics.dart' show SemanticsNode;
+import 'package:flutter/semantics.dart' show DebugSemanticsDumpOrder, SemanticsNode;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
@@ -1177,6 +1177,31 @@ void main() {
       return false;
     }
 
+    // 以 traversal 順序前序展平 [a]、[b] 所屬樹，回傳兩者之間 label 非空
+    // 的節點（不含兩端）；空清單 = 朗讀順序相鄰。
+    List<SemanticsNode> namedNodesBetween(SemanticsNode a, SemanticsNode b) {
+      SemanticsNode root = a;
+      while (root.parent != null) {
+        root = root.parent!;
+      }
+      final flat = <SemanticsNode>[];
+      void walk(SemanticsNode n) {
+        flat.add(n);
+        n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+            .forEach(walk);
+      }
+
+      walk(root);
+      final i = flat.indexWhere((n) => n.id == a.id);
+      final j = flat.indexWhere((n) => n.id == b.id);
+      final lo = i < j ? i : j;
+      final hi = i < j ? j : i;
+      return [
+        for (var k = lo + 1; k < hi; k++)
+          if (flat[k].label.isNotEmpty) flat[k],
+      ];
+    }
+
     testWidgets('原因文字含內建型別表版本，按鈕可按', (tester) async {
       await pumpHarness(
         tester,
@@ -1218,6 +1243,14 @@ void main() {
           break;
         }
       }
+      // 共同祖先實測為全畫面容器（任兩節點必有此祖先，單靠它不能界定
+      // 「同一或相鄰區塊」），故另以朗讀順序相鄰界定：訊息與按鈕之間
+      // 不得夾其他具名節點。
+      expect(
+        namedNodesBetween(messageNode, buttonNode),
+        isEmpty,
+        reason: '訊息與按鈕在朗讀順序上須相鄰（SPEC-004 §4.4 條件 2）',
+      );
       expect(blockNode, isNotNull);
       expect(blockNode!.id, isNot(messageNode.id));
       expect(chainIncludes(messageNode, blockNode), isTrue);
@@ -1282,6 +1315,35 @@ void main() {
       );
       // messageNode 為訊息所在容器（block）；按鈕祖先鏈上不應含它。
       expect(chainIncludes(buttonNode, messageNode), isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('E2 對照：按鈕在訊息之外且中間夾具名節點時判定為不相鄰', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(container: true, child: const Text('msg')),
+            Semantics(container: true, child: const Text('中間節點')),
+            AppButton(
+              label: 'btn',
+              enabled: false,
+              reasonShownNearby: true,
+              onPressed: () {},
+              testKey: const Key('control-btn-2'),
+            ),
+          ],
+        ),
+      );
+      final messageNode = tester.getSemantics(find.text('msg'));
+      final buttonNode = tester.getSemantics(
+        find.byKey(const Key('control-btn-2')),
+      );
+      final between = namedNodesBetween(messageNode, buttonNode);
+      expect(between.map((n) => n.label), contains('中間節點'));
+      expect(between, isNotEmpty);
       handle.dispose();
     });
 
