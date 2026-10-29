@@ -1,9 +1,17 @@
 /// AppSnackBar 元件測試（SPEC-004 §4.26「測試點」）。
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/attention_level.dart';
+import 'package:graph_project_docs_manager/app/workspace_selection.dart';
+import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
@@ -82,7 +90,137 @@ Widget _triggerHarness({
   );
 }
 
+class _GatedGate extends GateDetectionNotifier {
+  final Completer<void> release = Completer<void>();
+
+  @override
+  Future<void> detect(String workspacePath) => release.future;
+}
+
+class _NoopRepository extends WorkspaceRepository {
+  @override
+  Future<bool> addRecentProject(String path) async => false;
+}
+
 void main() {
+  group('專案改變清除顯示中的提示（0.5.0-W1-168.2.1）', () {
+    late _GatedGate gate;
+    late ProviderContainer container;
+    late BuildContext shellContext;
+
+    // 與 AppShell.build 相同的接線：監聽專案世代並以自身 context 清除。
+    Future<void> pumpShellLike(
+      WidgetTester tester, {
+      bool gateOpen = true,
+    }) async {
+      gate = _GatedGate();
+      if (gateOpen) gate.release.complete();
+      container = ProviderContainer(
+        overrides: [
+          gateDetectionNotifierProvider.overrideWith(() => gate),
+          workspaceRepositoryProvider.overrideWithValue(_NoopRepository()),
+        ],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: ScreenUtilInit(
+            designSize: const Size(1280, 800),
+            builder: (context, _) => MaterialApp(
+              home: Scaffold(
+                body: Consumer(
+                  builder: (context, ref, _) {
+                    shellContext = context;
+                    ref.listen<int>(
+                      projectGenerationProvider,
+                      (_, _) => AppSnackBar.clearForProjectChange(context),
+                    );
+                    return const SizedBox();
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Future<void> select(String path) => container
+        .read(workspaceSelectionProvider.notifier)
+        .select(WorkspaceReady(path));
+
+    void showPlain(String message) => AppSnackBar.show(
+      shellContext,
+      message: message,
+      level: AttentionLevel.discardable,
+    );
+
+    testWidgets('世代遞增發生在 await 之前；同路徑重選亦遞增（對照）', (tester) async {
+      await pumpShellLike(tester, gateOpen: false);
+      expect(container.read(projectGenerationProvider), 0);
+      final pending = select('/tmp/p');
+      expect(
+        container.read(projectGenerationProvider),
+        1,
+        reason: 'gate 尚未完成（await 未返回）時世代已遞增',
+      );
+      gate.release.complete();
+      await pending;
+      await select('/tmp/p');
+      expect(container.read(projectGenerationProvider), 2, reason: '同路徑重選仍遞增');
+    });
+
+    testWidgets('選定失敗不經 select()：不遞增，失敗提示仍在畫面上（E2）', (tester) async {
+      await pumpShellLike(tester);
+      showPlain('failure-message');
+      await tester.pump();
+      expect(container.read(projectGenerationProvider), 0);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('failure-message'), findsOneWidget);
+    });
+
+    testWidgets('專案改變後 plain 與 withAction（rescan／undo）皆立即消失', (tester) async {
+      for (final label in ['rescan-action', 'undo-action']) {
+        await pumpShellLike(tester);
+        AppSnackBar.show(
+          shellContext,
+          message: 'with-$label',
+          level: AttentionLevel.discardable,
+          variant: AppSnackBarVariant.withAction,
+          actionLabel: label,
+          onAction: () {},
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('with-$label'), findsOneWidget);
+        await select('/tmp/p');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('with-$label'), findsNothing, reason: label);
+      }
+      await pumpShellLike(tester);
+      showPlain('plain-message');
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('plain-message'), findsOneWidget);
+      await select('/tmp/p');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('plain-message'), findsNothing);
+    });
+
+    testWidgets('順序：清除先發生，列 16 未能記住提示於其後出現且不被清除', (tester) async {
+      await pumpShellLike(tester);
+      showPlain('old-message');
+      await tester.pump(const Duration(milliseconds: 300));
+      await select('/tmp/p');
+      showPlain('not-remembered');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('old-message'), findsNothing);
+      expect(find.text('not-remembered'), findsOneWidget);
+    });
+  });
+
   group('AppSnackBar 全變體渲染', () {
     testWidgets('plain 觸發後顯示 SnackBar 且文字相符', (tester) async {
       await pumpHarness(
@@ -781,6 +919,7 @@ void main() {
         AppSnackBarLogEvent.closed,
         AppSnackBarLogEvent.preempted,
         AppSnackBarLogEvent.yielded,
+        AppSnackBarLogEvent.clearedByProjectChange,
       ]);
     });
   });
