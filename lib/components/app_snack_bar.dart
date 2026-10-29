@@ -68,6 +68,9 @@ enum AppSnackBarLogEvent {
   /// [shown]，此事件是它唯一的痕跡——`0.1.0-W3-239` 裁定不引入佇列，讓步
   /// 的處置是不呈現並留痕，不是排隊等待。
   yielded,
+
+  /// 專案改變時清除顯示中的提示（SPEC-003 §2.8 切換專案列）。
+  clearedByProjectChange,
 }
 
 /// 呼叫端已知的當前通道持有者快照（0.1.0-W3-205，過渡形態）。
@@ -373,6 +376,21 @@ abstract final class AppSnackBar {
         'reason': reason,
       }, level: _resolveClosedLevel(reason, origin, actionPressed));
     });
+  }
+
+  /// 專案改變時清除顯示中的 SnackBar（SPEC-003 §2.8、SPEC-004 §4.26）。
+  ///
+  /// 由殼層以自身 context 呼叫；plain 與 withAction 一併清除。這是 SPEC
+  /// v1.68 新增的退出路徑，故為 [show] 之外第二處無引數清除。
+  static void clearForProjectChange(BuildContext context) {
+    if (!context.mounted) {
+      logSink(AppSnackBarLogEvent.skippedUnmounted, {
+        'reason': 'projectChange',
+      }, level: _levelWarning);
+      return;
+    }
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    logSink(AppSnackBarLogEvent.clearedByProjectChange, {});
   }
 }
 

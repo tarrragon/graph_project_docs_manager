@@ -33,6 +33,7 @@ import '../screens/project_switcher/project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
 import 'app_lifecycle.dart';
+import 'workspace_selection.dart' show projectGenerationProvider;
 import 'router.dart';
 
 /// 可觀測性（observability 規則 5）：`didChangeAppLifecycleState`
@@ -129,6 +130,11 @@ class _AppShellState extends ConsumerState<AppShell>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     _scanNotificationController.syncLocalizedStrings(l10n);
+    // 專案改變（含同路徑重選）：清除顯示中的暫態提示（SPEC-003 §2.8）。
+    ref.listen<int>(
+      projectGenerationProvider,
+      (_, _) => components.AppSnackBar.clearForProjectChange(context),
+    );
     final destination = ref.watch(selectedDestinationProvider);
     final isSwitcherOpen = ref.watch(switcherOpenProvider);
     final projectName = ref.watch(currentProjectNameProvider);

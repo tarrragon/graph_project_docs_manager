@@ -170,13 +170,14 @@ void main() {
       stripped = _stripComments(_readFile(_snackBarPath));
     });
 
-    test('T-205-14：app_snack_bar.dart 內 hideCurrentSnackBar 恰 2 次', () {
+    test('T-205-14：app_snack_bar.dart 內 hideCurrentSnackBar 恰 3 次', () {
       expect(
         _countOccurrences(stripped, 'hideCurrentSnackBar'),
-        2,
+        3,
         reason:
             '0.1.0-W3-205 INV-SNACKBAR-NOQUEUE／觀察 A：hideCurrentSnackBar '
-            '應恰 2 處（無引數清除 1 次 + reason: action 清除 1 次）。新增'
+            '應恰 3 處（show 內無引數清除 1 + 專案改變清除入口 1 + '
+            'reason: action 清除 1）。新增'
             '第三個呼叫點使 reason == hide 不再恆等於「被截斷」，須同步'
             '確認觀察 A 的承重前提。',
       );
@@ -194,10 +195,10 @@ void main() {
       );
       expect(
         _countOccurrences(stripped, RegExp(r'hideCurrentSnackBar\(\s*\)')),
-        1,
+        2,
         reason:
-            '0.1.0-W3-205：無引數清除（INV-SNACKBAR-NOQUEUE 的唯一清除）'
-            '恰應出現 1 次。',
+            '0.1.0-W3-205：無引數清除恰 2 處（show 內 1、專案改變清除入口 1；'
+            '後者為 SPEC-003 v1.68 新增退出路徑，不得放寬為至少 1）。',
       );
       expect(
         _countOccurrences(
@@ -358,6 +359,7 @@ void main() {
         '_resolveClosedLevel',
         '_resolvePreemption',
         '_defaultLogSink',
+        'clearForProjectChange',
         'show',
       };
       final extra = staticNames.difference(expectedStatic);

@@ -20,6 +20,11 @@ import '../workspace/workspace_types.dart';
 import 'degraded_schema.dart';
 import 'scan_round.dart';
 
+/// 專案世代（SPEC-003 §2.8 切換專案列、SPEC-004 §4.26）：每次進入
+/// [WorkspaceSelectionNotifier.select] 即遞增，含同路徑重選。殼層監聽此值，
+/// 於專案改變當下清除顯示中的暫態提示。選定失敗路徑不經 select()，故不遞增。
+final projectGenerationProvider = StateProvider<int>((ref) => 0);
+
 /// 選定工作區流程的執行者；不持有狀態。
 class WorkspaceSelectionNotifier extends Notifier<void> {
   @override
@@ -28,6 +33,8 @@ class WorkspaceSelectionNotifier extends Notifier<void> {
   /// 套用 [WorkspaceReady]：設定目前工作區、重置降級與推定旗標、丟棄舊掃描
   /// 輪次、執行 gate 偵測、寫入最近專案清單（0.2.0-W1-042）。
   Future<void> select(WorkspaceReady state) async {
+    // 世代遞增必須是第一行、位於任何 await 之前（殼層清除先於後續提示）。
+    ref.read(projectGenerationProvider.notifier).state++;
     ref.read(currentWorkspaceStateProvider.notifier).state = state;
     ref.read(degradedSchemaProvider.notifier).state = false;
     ref.read(degradedSchemaVersionsProvider.notifier).state = null;
