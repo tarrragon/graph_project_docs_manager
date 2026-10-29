@@ -24,6 +24,7 @@ import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_fixtures.dart
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
+import 'package:graph_project_docs_manager/workspace/stale_open_result.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/domain_view_fixtures.dart';
@@ -243,8 +244,21 @@ void main() {
   });
 
   // 0.5.0-W1-168.2.2：切換前發出、切換後才回來的結果不呈現（SPEC-003 §2.8、
-  // SPEC-004 §4.26）。留痕為 developer.log，測試環境無法擷取，故只斷言不呈現。
+  // SPEC-004 §4.26）。留痕經 staleOpenLogSink 擷取，斷言 name 與內容。
   group('專案世代比對：晚回結果', () {
+    const tags = <String, String>{
+      'domain 開啟 docs 目錄': 'DomainViewScreen',
+      'domain 泳道開啟原始檔': 'DomainViewScreen',
+      'UC Flow 開啟原始檔': 'UcFlowScreen',
+      '節點詳情開啟原始檔': 'NodeDetailScreen',
+    };
+    final logged = <(String, String)>[];
+    setUp(() {
+      logged.clear();
+      staleOpenLogSink = (name, message) => logged.add((name, message));
+    });
+    tearDown(() => staleOpenLogSink = defaultStaleOpenLogSink);
+
     final sites = <String, Future<_GatedOpener> Function(WidgetTester)>{
       'domain 開啟 docs 目錄': (tester) async {
         final g = _GatedOpener();
@@ -346,6 +360,10 @@ void main() {
             AnchorFinder.state(Screen.nodeDetail, 'missing'),
             findsNothing,
           );
+          expect(logged, hasLength(1));
+          expect(logged.single.$1, tags[entry.key]);
+          expect(logged.single.$2, contains(openResultKey(result)));
+          expect(logged.single.$2, contains('因專案已改變而丟棄'));
         });
       }
 
@@ -354,6 +372,7 @@ void main() {
         g.gate.complete(ExternalOpenResult.opened);
         await tester.pumpAndSettle();
         expect(find.text(_opened), findsOneWidget);
+        expect(logged, isEmpty);
       });
     }
   });
