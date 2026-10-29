@@ -74,7 +74,8 @@ def decide_pair(region_finals):
 def _record(region, params, rec):
     return {
         "code": region["code"], "region": region["region"],
-        "model": params["model"], "seed": rec["seed"],
+        "model": params["model"], "response_model": rec["model"],
+        "seed": rec["seed"],
         "option_order": rec["option_order"], "raw_reply": rec["raw_reply"],
         "parsed": rec["parsed"], "stop_reason": rec["stop_reason"],
         "usage": rec["usage"], "temperature": params["temperature"],
@@ -88,13 +89,13 @@ class Runner:
         self.client, self.out_dir, self.sample_fn = client, Path(out_dir), sample_fn
         self.rows = []
 
-    def _call(self, region, params, seed, out_file):
+    def _call(self, region, params, perm, seed, out_file):
         rec = self.sample_fn(
             self.client, params["model"], QUESTION, OPTIONS, seed,
             max_tokens=params["max_tokens"], temperature=params["temperature"],
             image_paths=region["paths"], thinking=params["thinking"],
             effort=params["effort"])
-        expected = sampler.shuffled_order(OPTIONS, seed)
+        expected = list(perm)  # 權威是附錄排列表本身，不由 seed 推導
         if rec["option_order"] != expected:
             self._save_mismatch(region, params, seed, expected, rec)
             raise OrderMismatch(f"{region['code']} r{region['region']} seed={seed}")
@@ -115,7 +116,8 @@ class Runner:
         counts = {}
         for r in regions:
             key = (r["code"], r["region"])
-            rows = [self._call(r, params, seed, out_file) for _, seed in PERMUTATIONS]
+            rows = [self._call(r, params, perm, seed, out_file)
+                    for perm, seed in PERMUTATIONS]
             counts[key] = dict(Counter(x["parsed"] for x in rows if x["parsed"]))
         return counts
 

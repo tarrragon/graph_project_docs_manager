@@ -477,6 +477,24 @@ class RunSamplingTest(unittest.TestCase):
         mm = json.loads((self.out / rs.MISMATCH_NAME).read_text())
         self.assertEqual(mm["actual_order"], ["C", "B", "A"])
 
+    def test_expected_order_from_table_not_seed(self):
+        # 模擬 shuffled_order 實作改變：sampler 與核對若共用 seed 推導會一起變而放行
+        orig = rs.sampler.shuffled_order
+        rs.sampler.shuffled_order = lambda codes, seed: ["C", "A", "B"]
+        self.addCleanup(setattr, rs.sampler, "shuffled_order", orig)
+        client = FakeClient(["B"] * 20)
+        with self.assertRaises(rs.OrderMismatch):
+            rs.Runner(client, self.out).run(self.regions)
+        self.assertEqual(len(client.calls), 1)
+        mm = json.loads((self.out / rs.MISMATCH_NAME).read_text())
+        self.assertEqual(mm["expected_order"], ["A", "B", "C"])
+
+    def test_response_model_recorded(self):
+        self.run_with(FakeClient(["B"] * 20))
+        row = json.loads((self.out / "results.jsonl").read_text().splitlines()[0])
+        self.assertEqual(row["model"], "claude-haiku-5-5")
+        self.assertEqual(row["response_model"], "claude-haiku-5-5")
+
     def test_refuse_existing_results(self):
         self.out.mkdir()
         (self.out / "results.jsonl").write_text("keep")
