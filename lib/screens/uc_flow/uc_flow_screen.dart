@@ -21,8 +21,6 @@
 /// 假資料階段步驟未帶對應節點 id，見本票 Solution）。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,25 +36,11 @@ import '../../tokens/tokens.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/current_workspace_provider.dart';
+import '../../workspace/stale_open_result.dart';
 import 'uc_flow_providers.dart';
 import 'uc_flow_state.dart';
 
 const String _tag = 'UcFlowScreen';
-
-String _openResultKey(ExternalOpenResult result) => switch (result) {
-  ExternalOpenResult.opened => 'openedExternallyMessage',
-  ExternalOpenResult.notFound => 'sourceFileNotFoundSnackbarMessage',
-  ExternalOpenResult.failed => 'externalOpenFailedMessage',
-};
-
-/// 切換專案前發出、切換後才回來的開啟結果不呈現，只留痕
-/// （SPEC-003 §2.8 切換專案列、SPEC-004 §4.26 等待與結果列）。
-void _logStaleOpenResult(String i18nKey) {
-  developer.log(
-    '開啟結果未呈現（$i18nKey）：因專案已改變而丟棄', // i18n-exempt: 開發者診斷 log
-    name: _tag,
-  );
-}
 
 /// UC Flow 視圖畫面。
 class UcFlowScreen extends ConsumerWidget {
@@ -199,7 +183,7 @@ class _UnstructuredView extends ConsumerWidget {
         ? ExternalOpenResult.notFound
         : await ref.read(externalOpenerProvider).open(path);
     if (ref.read(projectGenerationProvider) != generation) {
-      _logStaleOpenResult(_openResultKey(result));
+      logStaleOpenResult(tag: _tag, i18nKey: openResultKey(result));
       return;
     }
     if (!context.mounted) return;

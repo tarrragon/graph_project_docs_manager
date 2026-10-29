@@ -28,6 +28,7 @@ import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_state.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
+import 'package:graph_project_docs_manager/workspace/stale_open_result.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
@@ -701,6 +702,9 @@ void main() {
     // 0.5.0-W1-168.2.2：切換前發出、切換後才回來的結果不呈現（只留痕）。
     for (final bump in [true, false]) {
       testWidgets('晚回結果：世代${bump ? '已變不呈現' : '未變照常呈現（E2 對照）'}', (tester) async {
+        final logged = <(String, String)>[];
+        staleOpenLogSink = (name, message) => logged.add((name, message));
+        addTearDown(() => staleOpenLogSink = defaultStaleOpenLogSink);
         final gate = Completer<ExternalOpenResult>();
         final opener = _GatedOpener(gate);
         final container = await pumpHarness(
@@ -721,6 +725,14 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('已在外部開啟'), bump ? findsNothing : findsOneWidget);
+        if (bump) {
+          expect(logged, hasLength(1));
+          expect(logged.single.$1, 'GapReportScreen');
+          expect(logged.single.$2, contains('openedExternallyMessage'));
+          expect(logged.single.$2, contains('因專案已改變而丟棄'));
+        } else {
+          expect(logged, isEmpty);
+        }
       });
     }
 

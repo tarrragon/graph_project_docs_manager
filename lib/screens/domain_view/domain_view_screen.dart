@@ -36,6 +36,7 @@ import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
+import '../../workspace/stale_open_result.dart';
 import '../../workspace/workspace_repository.dart'
     show workspaceRepositoryProvider;
 import '../project_switcher/project_switcher_providers.dart';
@@ -44,21 +45,6 @@ import 'domain_view_schema_version.dart';
 import 'domain_view_state.dart';
 
 const String _tag = 'DomainViewScreen';
-
-/// 切換專案前發出、切換後才回來的開啟結果不呈現，只留痕
-/// （SPEC-003 §2.8 切換專案列、SPEC-004 §4.26 等待與結果列）。
-String _openResultKey(ExternalOpenResult result) => switch (result) {
-  ExternalOpenResult.opened => 'openedExternallyMessage',
-  ExternalOpenResult.notFound => 'sourceFileNotFoundSnackbarMessage',
-  ExternalOpenResult.failed => 'externalOpenFailedMessage',
-};
-
-void _logStaleOpenResult(String i18nKey) {
-  developer.log(
-    '開啟結果未呈現（$i18nKey）：因專案已改變而丟棄', // i18n-exempt: 開發者診斷 log
-    name: _tag,
-  );
-}
 
 /// Domain 視圖畫面。
 class DomainViewScreen extends ConsumerStatefulWidget {
@@ -287,11 +273,7 @@ class _EmptyView extends ConsumerWidget {
     final generation = ref.read(projectGenerationProvider);
     final result = await ref.read(externalOpenerProvider).open(path);
     if (ref.read(projectGenerationProvider) != generation) {
-      _logStaleOpenResult(
-        result == ExternalOpenResult.opened
-            ? 'openedExternallyMessage'
-            : 'externalOpenFailedMessage',
-      );
+      logStaleOpenResult(tag: _tag, i18nKey: openResultKey(result));
       return;
     }
     if (!context.mounted) return;
@@ -880,7 +862,7 @@ class _SwimlaneBody extends ConsumerWidget {
         ? ExternalOpenResult.notFound
         : await ref.read(externalOpenerProvider).open(path);
     if (ref.read(projectGenerationProvider) != generation) {
-      _logStaleOpenResult(_openResultKey(result));
+      logStaleOpenResult(tag: _tag, i18nKey: openResultKey(result));
       return;
     }
     if (!context.mounted) return;
