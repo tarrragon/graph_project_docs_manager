@@ -1180,6 +1180,7 @@ void main() {
     });
 
     testWidgets('掃描中（本列觸發）：掃描中文字與計數、按鈕停用；結束仍不可用 → 恢復原因文字', (tester) async {
+      final handle = tester.ensureSemantics();
       await pumpHarness(
         tester,
         child: const DomainViewScreen(),
@@ -1193,6 +1194,18 @@ void main() {
       expect(textIn(l10n.gapsScanningProcessedCount(0)), findsOneWidget);
       expect(textIn(reasonText), findsNothing);
       expect(buttonEnabled(tester), isFalse);
+      // SPEC-004 §4.4 適用條件 2：原因文案與按鈕同一語意區塊。實測語意樹
+      // 中「掃描中」文字、按鈕與 state 區塊解析到同一 SemanticsNode（live
+      // region 容器，label 含掃描中文字）；按鈕移出區塊或訊息改暫態提示
+      // 時，節點 id 會分離而轉紅。
+      final blockNode = tester.getSemantics(unavailable);
+      final messageNode = tester.getSemantics(
+        find.text(l10n.domainGraphUnavailableScanning),
+      );
+      final buttonNode = tester.getSemantics(rescanButton);
+      expect(messageNode.id, blockNode.id);
+      expect(buttonNode.id, blockNode.id);
+      expect(blockNode.label, contains(l10n.domainGraphUnavailableScanning));
       // 停用原因由列內訊息承載：按鈕內僅 label 一個文字節點（無空 caption）。
       expect(
         find.descendant(
@@ -1217,6 +1230,36 @@ void main() {
       expect(textIn(reasonText), findsOneWidget);
       expect(buttonEnabled(tester), isTrue);
       expect(find.byType(AppSnackBar), findsNothing);
+      handle.dispose();
+    });
+
+    testWidgets('E2 正向對照：訊息與按鈕分屬不同語意容器時節點 id 不同（斷言可鑑別）', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(container: true, child: const Text('msg')),
+            Semantics(
+              container: true,
+              child: AppButton(
+                label: 'btn',
+                enabled: false,
+                reasonShownNearby: true,
+                onPressed: () {},
+                testKey: const Key('control-btn'),
+              ),
+            ),
+          ],
+        ),
+      );
+      final messageNode = tester.getSemantics(find.text('msg'));
+      final buttonNode = tester.getSemantics(
+        find.byKey(const Key('control-btn')),
+      );
+      expect(buttonNode.id, isNot(messageNode.id));
+      handle.dispose();
     });
 
     testWidgets('掃描中（他頁觸發）：同樣顯示掃描中並停用按鈕，結束後消失', (tester) async {

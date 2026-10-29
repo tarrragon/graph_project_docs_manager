@@ -189,7 +189,9 @@ void main() {
       expect(find.text(l10n.cancelInProgressAction), findsOneWidget);
     });
 
-    testWidgets('取消中：原因由鈕文案承載，鈕為唯一文字節點且與其相鄰，無空 caption', (tester) async {
+    testWidgets('取消中：原因由鈕文案承載，原因文字即鈕 label（同一節點），按鈕內無額外 caption', (
+      tester,
+    ) async {
       await pumpHarness(
         tester,
         settle: false,
