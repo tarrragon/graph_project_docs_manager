@@ -1194,6 +1194,8 @@ void main() {
       walk(root);
       final i = flat.indexWhere((n) => n.id == a.id);
       final j = flat.indexWhere((n) => n.id == b.id);
+      expect(i, isNot(-1));
+      expect(j, isNot(-1));
       final lo = i < j ? i : j;
       final hi = i < j ? j : i;
       return [
