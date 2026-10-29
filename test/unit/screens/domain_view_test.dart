@@ -16,7 +16,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/semantics.dart' show DebugSemanticsDumpOrder, SemanticsNode;
+import 'package:flutter/semantics.dart'
+    show DebugSemanticsDumpOrder, SemanticsNode;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
@@ -1187,7 +1188,8 @@ void main() {
       final flat = <SemanticsNode>[];
       void walk(SemanticsNode n) {
         flat.add(n);
-        n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+        n
+            .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
             .forEach(walk);
       }
 
