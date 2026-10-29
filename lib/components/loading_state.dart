@@ -139,10 +139,9 @@ class _LoadingStateState extends State<LoadingState>
       testKey: widget.cancelKey,
       variant: AppButtonVariant.secondary,
       enabled: !widget.isCancelling,
-      // disabled 時 disabledReason 為 AppButton 必填（SPEC-004 §4.4）；取消
-      // 中的說明已由鈕文案本身承載（cancelInProgressAction），此處傳空字串
-      // 只滿足必填 assert，不重複渲染同一段文字。
-      disabledReason: widget.isCancelling ? '' : null,
+      // 取消中的說明已由鈕文案本身承載（cancelInProgressAction），宣告
+      // reasonShownNearby 而非傳空字串（SPEC-004 §4.4）。
+      reasonShownNearby: widget.isCancelling,
     );
 
     final body = widget._isSkeleton

@@ -441,8 +441,8 @@ class _GraphUnavailableBody extends ConsumerWidget {
             label: l10n.rescanAction,
             variant: AppButtonVariant.secondary,
             enabled: !running,
-            // 掃描中的原因已由列內訊息承載，不另顯示同列說明文字。
-            disabledReason: running ? '' : null,
+            // 掃描中的原因已由列內訊息承載（SPEC-004 §4.4）。
+            reasonShownNearby: running,
             onPressed: () => _rescan(ref),
             testKey: const Key('action-domain-rescan'),
           ),

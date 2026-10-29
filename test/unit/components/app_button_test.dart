@@ -307,6 +307,67 @@ void main() {
       );
     });
 
+    testWidgets('E2：停用且 disabledReason 為空字串、未宣告旗標時觸發 assert', (tester) async {
+      expect(
+        () => AppButton(
+          testKey: Anchor.action(Screen.domain, 'button-invalid-empty'),
+          label: 'x',
+          enabled: false,
+          disabledReason: '',
+          onPressed: () {},
+        ),
+        throwsAssertionError,
+      );
+    });
+
+    testWidgets('reasonShownNearby 為 true 且停用：不觸發 assert', (tester) async {
+      expect(
+        () => AppButton(
+          testKey: Anchor.action(Screen.domain, 'button-nearby-ok'),
+          label: 'x',
+          enabled: false,
+          reasonShownNearby: true,
+          onPressed: () {},
+        ),
+        returnsNormally,
+      );
+    });
+
+    testWidgets('reasonShownNearby 為 true 停用時：無 caption、無間距、無 hint', (
+      tester,
+    ) async {
+      final key = Anchor.action(Screen.domain, 'button-nearby-render');
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: AppButton(
+          testKey: key,
+          label: 'lbl',
+          enabled: false,
+          reasonShownNearby: true,
+          onPressed: () {},
+        ),
+      );
+      final buttonTexts = find.descendant(
+        of: find.byType(AppButton),
+        matching: find.byType(Text),
+      );
+      expect(buttonTexts, findsOneWidget);
+      expect(tester.widget<Text>(buttonTexts).data, 'lbl');
+      expect(
+        find.descendant(
+          of: find.byType(AppButton),
+          matching: find.byWidgetPredicate(
+            (w) => w is SizedBox && w.width == Space.xs,
+          ),
+        ),
+        findsNothing,
+      );
+      final semantics = tester.getSemantics(find.byKey(key));
+      expect(semantics.hint, isEmpty);
+      handle.dispose();
+    });
+
     testWidgets('secondary/primary 變體帶 leading 觸發 assert', (tester) async {
       expect(
         () => AppButton(
