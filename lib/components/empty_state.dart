@@ -121,6 +121,9 @@ class EmptyState extends StatelessWidget {
     final children = <Widget>[
       Semantics(
         liveRegion: true,
+        // container：獨立語意節點，不併入外層容器（否則 label 含說明計數、
+        // 按鈕落入其子樹，違反 SPEC-004 §4.21「訊息播報一次」）。
+        container: true,
         child: _isPage
             ? AppText.singleLine(
                 message,

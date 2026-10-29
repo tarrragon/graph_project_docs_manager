@@ -16,7 +16,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/semantics.dart' show SemanticsNode;
+import 'package:flutter/semantics.dart'
+    show DebugSemanticsDumpOrder, SemanticsNode;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
@@ -1177,6 +1178,34 @@ void main() {
       return false;
     }
 
+    // 以 traversal 順序前序展平 [a]、[b] 所屬樹，回傳兩者之間 label 非空
+    // 的節點（不含兩端）；空清單 = 朗讀順序相鄰。
+    List<SemanticsNode> namedNodesBetween(SemanticsNode a, SemanticsNode b) {
+      SemanticsNode root = a;
+      while (root.parent != null) {
+        root = root.parent!;
+      }
+      final flat = <SemanticsNode>[];
+      void walk(SemanticsNode n) {
+        flat.add(n);
+        n
+            .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+            .forEach(walk);
+      }
+
+      walk(root);
+      final i = flat.indexWhere((n) => n.id == a.id);
+      final j = flat.indexWhere((n) => n.id == b.id);
+      expect(i, isNot(-1));
+      expect(j, isNot(-1));
+      final lo = i < j ? i : j;
+      final hi = i < j ? j : i;
+      return [
+        for (var k = lo + 1; k < hi; k++)
+          if (flat[k].label.isNotEmpty) flat[k],
+      ];
+    }
+
     testWidgets('原因文字含內建型別表版本，按鈕可按', (tester) async {
       await pumpHarness(
         tester,
@@ -1203,18 +1232,39 @@ void main() {
       expect(textIn(l10n.gapsScanningProcessedCount(0)), findsOneWidget);
       expect(textIn(reasonText), findsNothing);
       expect(buttonEnabled(tester), isFalse);
-      // SPEC-004 §4.4 適用條件 2：原因文案與按鈕同一語意區塊。實測語意樹
-      // 中「掃描中」文字、按鈕與 state 區塊解析到同一 SemanticsNode（live
-      // region 容器，label 含掃描中文字）；按鈕移出區塊或訊息改暫態提示
-      // 時，節點 id 會分離而轉紅。
-      final blockNode = tester.getSemantics(unavailable);
+      // SPEC-004 §4.4 適用條件 2：原因文案與按鈕同一語意區塊。530.1 起
+      // liveRegion 只包訊息並獨立成節點（不再併入外層容器），故訊息節點與
+      // 按鈕節點分離；「同一語意區塊」改以兩者的共同祖先表達——該祖先須為
+      // 真實節點、不等於訊息節點，且訊息節點 label 含掃描中文字、不含計數。
       final messageNode = tester.getSemantics(
         find.text(l10n.domainGraphUnavailableScanning),
       );
       final buttonNode = tester.getSemantics(rescanButton);
+      SemanticsNode? blockNode;
+      for (SemanticsNode? n = messageNode.parent; n != null; n = n.parent) {
+        if (chainIncludes(buttonNode, n)) {
+          blockNode = n;
+          break;
+        }
+      }
+      // 共同祖先實測為全畫面容器（任兩節點必有此祖先，單靠它不能界定
+      // 「同一或相鄰區塊」），故另以朗讀順序相鄰界定：訊息與按鈕之間
+      // 不得夾其他具名節點。
+      expect(
+        namedNodesBetween(messageNode, buttonNode),
+        isEmpty,
+        reason: '訊息與按鈕在朗讀順序上須相鄰（SPEC-004 §4.4 條件 2）',
+      );
+      expect(blockNode, isNotNull);
+      expect(blockNode!.id, isNot(messageNode.id));
       expect(chainIncludes(messageNode, blockNode), isTrue);
       expect(chainIncludes(buttonNode, blockNode), isTrue);
-      expect(blockNode.label, contains(l10n.domainGraphUnavailableScanning));
+      expect(chainIncludes(buttonNode, messageNode), isFalse);
+      expect(messageNode.label, contains(l10n.domainGraphUnavailableScanning));
+      expect(
+        messageNode.label,
+        isNot(contains(l10n.gapsScanningProcessedCount(0))),
+      );
       // 停用原因由列內訊息承載：按鈕內僅 label 一個文字節點（無空 caption）。
       expect(
         find.descendant(
@@ -1269,6 +1319,35 @@ void main() {
       );
       // messageNode 為訊息所在容器（block）；按鈕祖先鏈上不應含它。
       expect(chainIncludes(buttonNode, messageNode), isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('E2 對照：按鈕在訊息之外且中間夾具名節點時判定為不相鄰', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(container: true, child: const Text('msg')),
+            Semantics(container: true, child: const Text('中間節點')),
+            AppButton(
+              label: 'btn',
+              enabled: false,
+              reasonShownNearby: true,
+              onPressed: () {},
+              testKey: const Key('control-btn-2'),
+            ),
+          ],
+        ),
+      );
+      final messageNode = tester.getSemantics(find.text('msg'));
+      final buttonNode = tester.getSemantics(
+        find.byKey(const Key('control-btn-2')),
+      );
+      final between = namedNodesBetween(messageNode, buttonNode);
+      expect(between.map((n) => n.label), contains('中間節點'));
+      expect(between, isNotEmpty);
       handle.dispose();
     });
 
