@@ -189,6 +189,35 @@ void main() {
       expect(find.text(l10n.cancelInProgressAction), findsOneWidget);
     });
 
+    testWidgets('取消中：原因由鈕文案承載，鈕為唯一文字節點且與其相鄰，無空 caption', (tester) async {
+      await pumpHarness(
+        tester,
+        settle: false,
+        child: LoadingState.skeleton(
+          message: 'domainLoading',
+          skeletonLayout: SkeletonLayout.matrix,
+          isCancelling: true,
+          onCancel: () {},
+          testKey: testKey,
+          cancelKey: cancelKey,
+        ),
+      );
+      await tester.pump();
+      final l10n = AppLocalizations.of(tester.element(find.byKey(testKey)));
+      final button = find.ancestor(
+        of: find.text(l10n.cancelInProgressAction),
+        matching: find.byKey(cancelKey),
+      );
+      expect(button, findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AppButton),
+          matching: find.byType(Text),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('C3：取消進行中骨架根錨點恆存在，無 SnackBar / Dialog', (tester) async {
       await pumpHarness(
         tester,

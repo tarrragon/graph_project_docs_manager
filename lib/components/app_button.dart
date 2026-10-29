@@ -39,11 +39,14 @@ class AppButton extends StatefulWidget {
     this.leading,
     this.enabled = true,
     this.disabledReason,
+    this.reasonShownNearby = false,
     this.semanticExpanded,
   }) : assert(
-         enabled || disabledReason != null,
+         enabled ||
+             reasonShownNearby ||
+             (disabledReason != null && disabledReason != ''),
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'disabledReason 為必填：enabled 為 false 時必須提供原因（SPEC-004 §4.4 slot 契約）',
+         'disabledReason 須為非空字串：enabled 為 false 時必須提供原因，或宣告 reasonShownNearby（SPEC-004 §4.4 slot 契約）',
        ),
        assert(
          leading == null || variant == AppButtonVariant.text,
@@ -72,6 +75,10 @@ class AppButton extends StatefulWidget {
 
   /// disabled 時的常駐說明文字（同列顯示，非 tooltip；SPEC-003 §2.2、FR-06）。
   final String? disabledReason;
+
+  /// 停用原因已由同區常駐文案說明時為 `true`（SPEC-004 §4.4〈停用原因由同區
+  /// 文案承載〉）：不渲染 caption、間距與 hint。預設 `false`。
+  final bool reasonShownNearby;
 
   /// 語意樹的展開狀態旗標（SPEC-004 §4.4 slot 契約）。`null` 時不附加該
   /// 旗標；非 `null` 時附加於本元件既有語意節點，供呼叫端標示本按鈕控制
@@ -192,7 +199,10 @@ class _AppButtonState extends State<AppButton> {
       child: SizedBox(height: LayoutSize.hitTargetMin, child: button),
     );
 
-    final Widget result = (widget.enabled || widget.disabledReason == null)
+    final Widget result =
+        (widget.enabled ||
+            widget.reasonShownNearby ||
+            widget.disabledReason == null)
         ? decoratedButton
         // disabled 原因：同列常駐文字，非 tooltip（SPEC-003 §2.2、FR-06）。
         : Semantics(

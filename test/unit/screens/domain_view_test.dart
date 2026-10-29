@@ -1193,6 +1193,21 @@ void main() {
       expect(textIn(l10n.gapsScanningProcessedCount(0)), findsOneWidget);
       expect(textIn(reasonText), findsNothing);
       expect(buttonEnabled(tester), isFalse);
+      // 停用原因由列內訊息承載：按鈕內僅 label 一個文字節點（無空 caption）。
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('action-domain-rescan')),
+          matching: find.byType(Text),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AppButton),
+          matching: find.byType(Text),
+        ),
+        findsOneWidget,
+      );
 
       await tester.pump(latency);
       await tester.pump();
