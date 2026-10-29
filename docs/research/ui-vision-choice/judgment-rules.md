@@ -112,7 +112,7 @@
 
 ### 紀錄
 
-`results.jsonl` 每次呼叫一行：code、region（從 1 起）、model、seed、option_order、raw_reply、parsed、stop_reason、usage、temperature、thinking、effort、max_tokens（未送的參數記為 null）。不寫入 key；提交前 `sk-ant` 計數必須為 0。
+`results.jsonl` 每次呼叫一行：code、region（從 1 起）、model、seed、option_order、raw_reply、parsed、stop_reason、usage、temperature、thinking、effort、max_tokens（未送的參數記為 null）。不寫入 key；提交前依 465 AC9 檢查 key 前綴的計數必須為 0。
 
 ### 報告揭露（除〈報告必須揭露〉三項外）
 
