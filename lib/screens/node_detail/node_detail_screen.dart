@@ -8,6 +8,7 @@
 /// （`lib/app/shell.dart` 接線）。
 library;
 
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -16,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/attention_level.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
+import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
@@ -24,6 +26,23 @@ import '../../workspace/current_workspace_provider.dart';
 import 'node_detail_fixtures.dart';
 import 'node_detail_providers.dart';
 import 'node_detail_state.dart';
+
+const String _tag = 'NodeDetailScreen';
+
+String _openResultKey(ExternalOpenResult result) => switch (result) {
+  ExternalOpenResult.opened => 'openedExternallyMessage',
+  ExternalOpenResult.notFound => 'sourceFileNotFoundSnackbarMessage',
+  ExternalOpenResult.failed => 'externalOpenFailedMessage',
+};
+
+/// 切換專案前發出、切換後才回來的開啟結果不呈現，只留痕
+/// （SPEC-003 §2.8 切換專案列、SPEC-004 §4.26 等待與結果列）。
+void _logStaleOpenResult(String i18nKey) {
+  developer.log(
+    '開啟結果未呈現（$i18nKey）：因專案已改變而丟棄', // i18n-exempt: 開發者診斷 log
+    name: _tag,
+  );
+}
 
 /// 節點詳情畫面。
 class NodeDetailScreen extends ConsumerWidget {
@@ -192,9 +211,14 @@ class NodeDetailHeaderTrailing extends ConsumerWidget {
       ref.read(currentWorkspaceStateProvider),
       node.filePath,
     );
+    final generation = ref.read(projectGenerationProvider);
     final result = path == null
         ? ExternalOpenResult.notFound
         : await ref.read(externalOpenerProvider).open(path);
+    if (ref.read(projectGenerationProvider) != generation) {
+      _logStaleOpenResult(_openResultKey(result));
+      return;
+    }
     if (result == ExternalOpenResult.notFound) {
       ref.read(nodeDetailStateProvider.notifier).state = NodeDetailMissing(
         nodeId: node.id,

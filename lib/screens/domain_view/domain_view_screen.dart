@@ -45,6 +45,21 @@ import 'domain_view_state.dart';
 
 const String _tag = 'DomainViewScreen';
 
+/// 切換專案前發出、切換後才回來的開啟結果不呈現，只留痕
+/// （SPEC-003 §2.8 切換專案列、SPEC-004 §4.26 等待與結果列）。
+String _openResultKey(ExternalOpenResult result) => switch (result) {
+  ExternalOpenResult.opened => 'openedExternallyMessage',
+  ExternalOpenResult.notFound => 'sourceFileNotFoundSnackbarMessage',
+  ExternalOpenResult.failed => 'externalOpenFailedMessage',
+};
+
+void _logStaleOpenResult(String i18nKey) {
+  developer.log(
+    '開啟結果未呈現（$i18nKey）：因專案已改變而丟棄', // i18n-exempt: 開發者診斷 log
+    name: _tag,
+  );
+}
+
 /// Domain 視圖畫面。
 class DomainViewScreen extends ConsumerStatefulWidget {
   const DomainViewScreen({super.key});
@@ -269,7 +284,16 @@ class _EmptyView extends ConsumerWidget {
       return;
     }
     final path = '${workspace.path}/docs'; // i18n-exempt: 路徑組成
+    final generation = ref.read(projectGenerationProvider);
     final result = await ref.read(externalOpenerProvider).open(path);
+    if (ref.read(projectGenerationProvider) != generation) {
+      _logStaleOpenResult(
+        result == ExternalOpenResult.opened
+            ? 'openedExternallyMessage'
+            : 'externalOpenFailedMessage',
+      );
+      return;
+    }
     if (!context.mounted) return;
     AppSnackBar.show(
       context,
@@ -851,9 +875,14 @@ class _SwimlaneBody extends ConsumerWidget {
       ref.read(currentWorkspaceStateProvider),
       'docs/usecases/$ucId.md', // i18n-exempt: fixture 路徑字面,
     );
+    final generation = ref.read(projectGenerationProvider);
     final result = path == null
         ? ExternalOpenResult.notFound
         : await ref.read(externalOpenerProvider).open(path);
+    if (ref.read(projectGenerationProvider) != generation) {
+      _logStaleOpenResult(_openResultKey(result));
+      return;
+    }
     if (!context.mounted) return;
     final message = switch (result) {
       ExternalOpenResult.opened => l10n.openedExternallyMessage,
