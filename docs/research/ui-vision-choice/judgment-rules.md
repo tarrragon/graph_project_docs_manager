@@ -41,3 +41,84 @@
 - 無障礙準則基線測試（`test/widget/accessibility/guideline_baseline_test.dart`）不涵蓋 app shell 側欄。D5 因此計入模型樣本；M4 的對比以 WCAG 算式為準（選取項文字 accentStrong 對 surfaceChip 8.46:1），由 0.5.0-W1-523 追蹤。
 - 容差 2 對每通道差 ≤2 的刻意色調微調看不到（例：30671a332 的 `surfaceSegmentTrack`，已排除）。
 - 規則 7 的門檻是依合併前的區塊數（M2 34、M3 25）訂的；凍結時依規則 1–2 重算，沒有任何一對適用。
+
+## 附錄：取樣協議
+
+本附錄晚於資料集凍結 commit `fe17e8fc5`、早於任何資料集內取樣，提交後不得調整。
+
+### 輸入
+
+- 每次呼叫送一個區塊的裁切對：先送基準圖、再送新圖（兩個 image 區塊），最後送問題文字。路徑取 `dataset/dataset.jsonl` 各對 `crops[i].base_path`、`crops[i].new_path`。
+- 問題文字（逐字）：「以上兩張圖是同一個 App 畫面在程式修改前後、同一位置的裁切。第一張是「基準」（修改前），第二張是「新」（修改後）。請判斷新圖相對於基準圖的變化屬於哪一種。」
+- 腳本 `docs/research/common/sampler.py` 會在選項後附上「只回覆一個選項代碼，不加任何其他文字。」
+
+### 選項
+
+| 代碼 | 選項文字 |
+|---|---|
+| A | 缺陷：變化使畫面顯示錯誤，例如文字被裁切、元素重疊或錯位、對比不足 |
+| B | 預期修改：變化是刻意的設計調整，畫面仍正確 |
+| C | 無法判斷：無法從兩張圖判斷 |
+
+代碼用 A／B／C、中文放在選項文字。理由：中文詞不一定是單一 token；代碼和語意分開後，max_tokens 很小時也能完整回覆。
+
+### 選項順序
+
+每個區塊取樣 5 次，依序使用下表 5 種排列（由上而下為第 1、2、3 位）；所有區塊共用同一組。
+
+| 序 | 排列 | 實作 seed |
+|---|---|---|
+| 1 | A B C | 5 |
+| 2 | B C A | 1 |
+| 3 | C A B | 7 |
+| 4 | A C B | 0 |
+| 5 | B A C | 6 |
+
+- 捨棄的排列：C B A。B 的位置：第 1 位 2 次、第 2 位 1 次、第 3 位 2 次；A：第 1 位 2 次、第 2 位 2 次、第 3 位 1 次。
+- 權威是排列本身。seed 與排列的對應依賴凍結當時 sampler 的實作（CPython 的 `random.Random(seed).shuffle`），換 Python 版本或改動 sampler 後不保證相同；重現時以本表與每筆紀錄的 `option_order` 為準。
+- 每個區塊以 `-k 1 --seed <s>` 呼叫 5 次。
+
+### 模型參數
+
+| 項目 | Haiku | Opus |
+|---|---|---|
+| model | claude-haiku-5-5 | claude-opus-5-5 |
+| K | 5 | 5 |
+| temperature | 1.0 | 不送（參數已移除） |
+| thinking | disabled | 不送（adaptive，無法關閉） |
+| effort | 不送（用預設） | medium |
+| max_tokens | 8 | 4096 |
+
+- 依據：試跑（465 Test Results〈取樣協議試跑〉，只用資料集外的圖）三次成功的呼叫都是 end_turn 且可解析；Opus 在 effort=medium 下 output 97 token。
+- Opus 的 max_tokens 取 4096：試跑的圖是明顯的構造缺陷，資料集內難判的區塊 thinking 可能更長。截斷會記為無法解析並轉交用戶，系統性壓低預期修改的放行率；計費只算實際產出的 token，上限調高不增加費用。
+
+### 解析
+
+回覆取第一個 text 區塊，去空白後必須恰為 A／B／C（不分大小寫）。stop_reason=max_tokens 或無法解析時，記為「無法解析」，不算任何代碼。
+
+### 判定（以區塊為單位，再彙整成整對）
+
+1. Haiku 對每個區塊取樣 5 次：B ≥4 → 該區塊放行；A ≥4 → 該區塊交用戶；其餘（含無法解析造成的不足）→ 轉 Opus。
+2. Opus 對轉送的區塊取樣 5 次，完整取樣、不提前停止：B ≥4 → 放行；其餘 → 交用戶。
+3. 整對：所有區塊都放行才放行（規則 5）；任一區塊交用戶，整對交用戶。
+4. 執行順序：Haiku 先跑完全部區塊，再對轉送的區塊跑 Opus。
+5. M5、M6（鏡像）依同一流程取樣，報告另列為方向鑑別，不計入計數。
+
+### option_order 不一致時（fail-closed）
+
+1. 停在該次呼叫：該筆不寫入計分紀錄，另存為「順序不符」紀錄（seed、預期排列、實際 option_order）；整個取樣程序立即停止。
+2. 不重抽、不改用其他排列；回報並查明原因。修正後已完成的取樣全部作廢，從頭重跑整輪。
+3. 報告揭露是否發生、發生在哪一次呼叫、原因與處置、作廢輪次的呼叫數；作廢輪次不計入任何結論。
+
+### 紀錄
+
+`results.jsonl` 每次呼叫一行：code、region（從 1 起）、model、seed、option_order、raw_reply、parsed、stop_reason、usage、temperature、thinking、effort、max_tokens（未送的參數記為 null）。不寫入 key；提交前 `sk-ant` 計數必須為 0。
+
+### 報告揭露（除〈報告必須揭露〉三項外）
+
+- 本附錄晚於資料集凍結、早於任何資料集內取樣。
+- 兩模型的 thinking 條件不對等：Haiku 關閉，Opus 無法關閉。本研究驗證的是「Haiku 初篩、再轉 Opus」管線的實際配置，不比較兩模型的能力。
+- 選項 A 的例子（文字被裁切、元素重疊或錯位、對比不足）與資料集中構造的缺陷類型重疊，選項 B 沒有舉例。這可能高估缺陷的偵測率並使模型偏向選 A；結果不能推論到例子以外的缺陷類型。
+- 交叉表「B 的位置 × 是否選 B」，Haiku、Opus 各一張。
+- 兩模型各有幾筆 stop_reason=max_tokens。
+- 試跑只用資料集外的圖（已剔除的 D7 裁切）：Haiku 3 次（2 次被 API 拒絕、沒有模型回覆：`req_011CgVnthCKdfrV6K5fkBzVk` 為 key 未綁 workspace，`req_011CgVypV4jbUSPquonJUXFY` 為工具 shell 仍用舊 key）、Opus 2 次。
