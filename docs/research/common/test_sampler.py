@@ -8,6 +8,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 import sampler  # noqa: E402
 
 
+def _block(kind, text):
+    # thinking 區塊比照真實回應：有 thinking 欄位、沒有 text 屬性
+    if kind == "thinking":
+        return SimpleNamespace(type="thinking", thinking=text)
+    return SimpleNamespace(type="text", text=text)
+
+
 class FakeClient:
     def __init__(self, replies, model="claude-fake-1"):
         self.replies = list(replies)
@@ -21,10 +28,17 @@ class FakeClient:
         if extra_body is not None:
             kwargs["extra_body"] = extra_body
         self.calls.append(kwargs)
-        text = self.replies[(len(self.calls) - 1) % len(self.replies)]
+        reply = self.replies[(len(self.calls) - 1) % len(self.replies)]
+        stop_reason = "end_turn"
+        if isinstance(reply, dict):  # {"blocks": [(type, text)], "stop_reason": ...}
+            stop_reason = reply.get("stop_reason", stop_reason)
+            content = [_block(t, x) for t, x in reply["blocks"]]
+        else:
+            content = [_block("text", reply)] if reply is not None else []
         return SimpleNamespace(
             model=self.model,
-            content=[SimpleNamespace(text=text)] if text is not None else [],
+            content=content,
+            stop_reason=stop_reason,
             usage=SimpleNamespace(input_tokens=11, output_tokens=1),
         )
 
@@ -135,6 +149,60 @@ def test_temperature_omitted_vs_passed():
     assert c.calls[1]["extra_body"] == {"temperature": 0.3}
     assert c.calls[0] != c.calls[1]
     assert r1["temperature"] == 0.3
+
+
+def test_thinking_effort_omitted_vs_passed():
+    # E1 對照：thinking、effort 各自指定／不指定，請求必須不同且各自正確
+    c = FakeClient(["A"])
+    sampler.sample_once(c, "m", "q?", OPTIONS, seed=1)
+    sampler.sample_once(c, "m", "q?", OPTIONS, seed=1, thinking="adaptive")
+    sampler.sample_once(c, "m", "q?", OPTIONS, seed=1, effort="high")
+    sampler.sample_once(c, "m", "q?", OPTIONS, seed=1, thinking="disabled",
+                        effort="low", temperature=0.2)
+    base, th, ef, both = c.calls
+    assert "extra_body" not in base
+    assert th["extra_body"] == {"thinking": {"type": "adaptive"}}
+    assert ef["extra_body"] == {"output_config": {"effort": "high"}}
+    assert both["extra_body"] == {
+        "temperature": 0.2,
+        "thinking": {"type": "disabled"},
+        "output_config": {"effort": "low"},
+    }
+    assert base != th and base != ef and th != ef
+
+
+def test_thinking_block_first_text_extracted():
+    # E2 正向對照：thinking 在前、text 在後，須取到 text
+    reply = {"blocks": [("thinking", "hmm"), ("text", "B")]}
+    r = sampler.sample_once(FakeClient([reply]), "m", "q?", OPTIONS, seed=1)
+    assert r["raw_reply"] == "B" and r["parsed"] == "B"
+    assert r["stop_reason"] == "end_turn"
+
+
+def test_max_tokens_stop_reason_unparseable():
+    # E2：同一回應 stop_reason=max_tokens -> parsed 為 None 並計入 unparseable
+    reply = {"blocks": [("thinking", "hmm"), ("text", "B")],
+             "stop_reason": "max_tokens"}
+    c = FakeClient([reply])
+    r = sampler.sample_once(c, "m", "q?", OPTIONS, seed=1)
+    assert r["raw_reply"] == "B" and r["parsed"] is None
+    assert r["stop_reason"] == "max_tokens"
+    out = sampler.run_samples(c, "m", "q?", OPTIONS, k=2)
+    assert out["unparseable"] == 2 and out["counts"] == {}
+
+
+def test_no_text_block_no_exception():
+    reply = {"blocks": [("thinking", "hmm")], "stop_reason": "max_tokens"}
+    r = sampler.sample_once(FakeClient([reply]), "m", "q?", OPTIONS, seed=1)
+    assert r["raw_reply"] == "" and r["parsed"] is None
+
+
+def test_cli_thinking_effort_args():
+    base = ["--model", "m", "--question", "q", "--option", "A=a"]
+    a = sampler._parse_args(base)
+    assert a.thinking is None and a.effort is None
+    a = sampler._parse_args(base + ["--thinking", "adaptive", "--effort", "xhigh"])
+    assert a.thinking == "adaptive" and a.effort == "xhigh"
 
 
 def test_fake_rejects_temperature_kwarg():

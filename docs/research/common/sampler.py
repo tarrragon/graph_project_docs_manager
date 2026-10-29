@@ -64,8 +64,16 @@ def _build_prompt(question, options, order):
     return "\n".join(lines)
 
 
+def _first_text(content):
+    """取第一個 type 為 text 的區塊文字（thinking 區塊可能在前）；無則空字串。"""
+    for block in content or []:
+        if getattr(block, "type", None) == "text":
+            return block.text
+    return ""
+
+
 def sample_once(client, model, question, options, seed, *, max_tokens=1,
-                temperature=None, image_paths=()):
+                temperature=None, image_paths=(), thinking=None, effort=None):
     """取樣一次並回傳完整記錄。options: {代碼: 選項文字}。"""
     order = shuffled_order(options, seed)
     content = [_image_block(p) for p in image_paths]
@@ -75,18 +83,29 @@ def sample_once(client, model, question, options, seed, *, max_tokens=1,
         "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": content}],
     }
-    if temperature is not None:  # 未指定時不送，沿用 API 預設
-        # SDK 1.17.0 的 create() 已無 temperature 關鍵字參數，改經 extra_body
-        params["extra_body"] = {"temperature": temperature}
+    # SDK 1.17.0 的 create() 無這些關鍵字參數，一律經 extra_body；未指定者不送
+    extra = {}
+    if temperature is not None:
+        extra["temperature"] = temperature
+    if thinking is not None:
+        extra["thinking"] = {"type": thinking}
+    if effort is not None:
+        extra["output_config"] = {"effort": effort}
+    if extra:
+        params["extra_body"] = extra
     resp = client.messages.create(**params)
-    raw = resp.content[0].text if resp.content else ""
+    raw = _first_text(resp.content)
+    stop_reason = getattr(resp, "stop_reason", None)
+    # 截斷的回覆即使文字恰為合法代碼也不可信
+    parsed = None if stop_reason == "max_tokens" else parse_reply(raw, options)
     return {
         "model": resp.model,
         "temperature": temperature,
         "seed": seed,
         "option_order": order,
         "raw_reply": raw,
-        "parsed": parse_reply(raw, options),
+        "parsed": parsed,
+        "stop_reason": stop_reason,
         "usage": {
             "input_tokens": resp.usage.input_tokens,
             "output_tokens": resp.usage.output_tokens,
@@ -118,6 +137,9 @@ def _parse_args(argv):
     p.add_argument("--max-tokens", type=int, default=1)
     p.add_argument("--temperature", type=float, default=None)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--thinking", choices=["disabled", "adaptive"], default=None)
+    p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"],
+                   default=None)
     return p.parse_args(argv)
 
 
@@ -128,6 +150,7 @@ def main(argv=None):
         make_client(), args.model, args.question, options, args.k,
         base_seed=args.seed, max_tokens=args.max_tokens,
         temperature=args.temperature, image_paths=args.image,
+        thinking=args.thinking, effort=args.effort,
     )
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
