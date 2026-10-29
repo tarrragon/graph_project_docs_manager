@@ -2,7 +2,7 @@
 id: PC-GPD-043
 title: 「輸出與改動前相同」的驗收條件派進 worktree，派發前未備妥基準，執行者無從比對
 category: process-compliance
-severity: 中
+severity: medium
 source_case: 研究擷取入口擴充畫面時的落地畫面 sha256 不變條件（2026-10-28）
 related:
  - PC-BAL-022

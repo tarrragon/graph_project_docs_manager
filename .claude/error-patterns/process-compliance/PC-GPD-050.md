@@ -2,7 +2,7 @@
 id: PC-GPD-050
 title: 模型評估以連續 seed 打亂選項順序並讓所有題目共用，位置偏差同方向累積且無從察覺
 category: process-compliance
-severity: 中
+severity: medium
 source_case: 截圖差異判讀研究的取樣協議草稿，經同儕預審攔下（2026-10-29）
 related:
  - PC-168
