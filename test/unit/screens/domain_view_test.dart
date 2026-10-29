@@ -16,6 +16,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/semantics.dart' show SemanticsNode;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
@@ -1167,6 +1168,14 @@ void main() {
     Finder textIn(String text) =>
         find.descendant(of: unavailable, matching: find.text(text));
     final reasonText = l10n.domainGraphUnavailableMessage('0.0.1');
+    // 自 [node] 沿 parent 往上（含自身），以 id 判斷是否經過 [block]。
+    // 不鎖定節點合併形狀：按鈕有無獨立節點皆成立。
+    bool chainIncludes(SemanticsNode node, SemanticsNode block) {
+      for (SemanticsNode? n = node; n != null; n = n.parent) {
+        if (n.id == block.id) return true;
+      }
+      return false;
+    }
 
     testWidgets('原因文字含內建型別表版本，按鈕可按', (tester) async {
       await pumpHarness(
@@ -1203,8 +1212,8 @@ void main() {
         find.text(l10n.domainGraphUnavailableScanning),
       );
       final buttonNode = tester.getSemantics(rescanButton);
-      expect(messageNode.id, blockNode.id);
-      expect(buttonNode.id, blockNode.id);
+      expect(chainIncludes(messageNode, blockNode), isTrue);
+      expect(chainIncludes(buttonNode, blockNode), isTrue);
       expect(blockNode.label, contains(l10n.domainGraphUnavailableScanning));
       // 停用原因由列內訊息承載：按鈕內僅 label 一個文字節點（無空 caption）。
       expect(
@@ -1233,7 +1242,7 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('E2 正向對照：訊息與按鈕分屬不同語意容器時節點 id 不同（斷言可鑑別）', (tester) async {
+    testWidgets('E2 正向對照：訊息與按鈕分屬不同語意容器時祖先鏈不含對方（斷言可鑑別）', (tester) async {
       final handle = tester.ensureSemantics();
       await pumpHarness(
         tester,
@@ -1258,7 +1267,8 @@ void main() {
       final buttonNode = tester.getSemantics(
         find.byKey(const Key('control-btn')),
       );
-      expect(buttonNode.id, isNot(messageNode.id));
+      // messageNode 為訊息所在容器（block）；按鈕祖先鏈上不應含它。
+      expect(chainIncludes(buttonNode, messageNode), isFalse);
       handle.dispose();
     });
 
