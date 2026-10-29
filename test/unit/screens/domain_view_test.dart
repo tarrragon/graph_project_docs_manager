@@ -1203,18 +1203,31 @@ void main() {
       expect(textIn(l10n.gapsScanningProcessedCount(0)), findsOneWidget);
       expect(textIn(reasonText), findsNothing);
       expect(buttonEnabled(tester), isFalse);
-      // SPEC-004 §4.4 適用條件 2：原因文案與按鈕同一語意區塊。實測語意樹
-      // 中「掃描中」文字、按鈕與 state 區塊解析到同一 SemanticsNode（live
-      // region 容器，label 含掃描中文字）；按鈕移出區塊或訊息改暫態提示
-      // 時，節點 id 會分離而轉紅。
-      final blockNode = tester.getSemantics(unavailable);
+      // SPEC-004 §4.4 適用條件 2：原因文案與按鈕同一語意區塊。530.1 起
+      // liveRegion 只包訊息並獨立成節點（不再併入外層容器），故訊息節點與
+      // 按鈕節點分離；「同一語意區塊」改以兩者的共同祖先表達——該祖先須為
+      // 真實節點、不等於訊息節點，且訊息節點 label 含掃描中文字、不含計數。
       final messageNode = tester.getSemantics(
         find.text(l10n.domainGraphUnavailableScanning),
       );
       final buttonNode = tester.getSemantics(rescanButton);
+      SemanticsNode? blockNode;
+      for (SemanticsNode? n = messageNode.parent; n != null; n = n.parent) {
+        if (chainIncludes(buttonNode, n)) {
+          blockNode = n;
+          break;
+        }
+      }
+      expect(blockNode, isNotNull);
+      expect(blockNode!.id, isNot(messageNode.id));
       expect(chainIncludes(messageNode, blockNode), isTrue);
       expect(chainIncludes(buttonNode, blockNode), isTrue);
-      expect(blockNode.label, contains(l10n.domainGraphUnavailableScanning));
+      expect(chainIncludes(buttonNode, messageNode), isFalse);
+      expect(messageNode.label, contains(l10n.domainGraphUnavailableScanning));
+      expect(
+        messageNode.label,
+        isNot(contains(l10n.gapsScanningProcessedCount(0))),
+      );
       // 停用原因由列內訊息承載：按鈕內僅 label 一個文字節點（無空 caption）。
       expect(
         find.descendant(

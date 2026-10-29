@@ -7,6 +7,7 @@
 //   - zh / en 全部既有 message key 皆不溢位
 //   - page 首個動作 label 不等於 backAction（FR-03 斷言）；動作點選呼叫 callback 恰一次
 //   - 間距引用 token 非硬編碼
+import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -218,6 +219,63 @@ void main() {
 
       expect(find.text('動作0'), findsOneWidget);
       expect('動作0', isNot(equals(backActionLabel)));
+    });
+  });
+
+  group('liveRegion 語意（SPEC-004 §4.21：訊息播報一次）', () {
+    Future<SemanticsNode> pumpAndFindLive(WidgetTester tester) async {
+      // 外層 container 模擬畫面層（PageColumn／AppShell）的語意容器：
+      // 未設 container 的 liveRegion 會併入它（530 傾印實測）。
+      await pumpHarness(
+        tester,
+        child: Semantics(
+          container: true,
+          child: EmptyState(
+            variant: EmptyStateVariant.page,
+            message: '訊息文字',
+            explanation: '說明含計數 12',
+            testKey: testKey,
+            actions: [
+              AppButton(
+                label: '前往動作',
+                onPressed: () {},
+                testKey: const Key('empty-state-live-action'),
+              ),
+            ],
+          ),
+        ),
+      );
+      return tester.getSemantics(find.text('訊息文字'));
+    }
+
+    testWidgets('liveRegion 節點 label 只含訊息、不含說明', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      expect(live.label, contains('訊息文字'));
+      expect(live.label, isNot(contains('說明含計數')));
+      handle.dispose();
+    });
+
+    testWidgets('按鈕不在 liveRegion 節點子樹內', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final button = tester.getSemantics(
+        find.byKey(const Key('empty-state-live-action')),
+      );
+      var inSubtree = false;
+      for (SemanticsNode? n = button; n != null; n = n.parent) {
+        if (n.id == live.id) inSubtree = true;
+      }
+      expect(inSubtree, isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('liveRegion 節點 Rect 小於外層容器（非全畫面）', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+      expect(live.rect.height, lessThan(screen.height));
+      handle.dispose();
     });
   });
 
