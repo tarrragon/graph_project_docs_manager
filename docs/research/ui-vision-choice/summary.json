@@ -1,0 +1,442 @@
+{
+  "regions": {
+    "D1.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "A": 4,
+        "B": 1
+      },
+      "haiku_decision": "交用戶",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "交用戶"
+    },
+    "D2.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 4,
+        "A": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D2.region2": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 4,
+        "A": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D3.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "C": 1,
+        "B": 2,
+        "A": 2
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "A": 5
+      },
+      "opus_decision": "交用戶",
+      "final": "交用戶"
+    },
+    "D4.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "A": 5
+      },
+      "haiku_decision": "交用戶",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "交用戶"
+    },
+    "D5.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "A": 4,
+        "B": 1
+      },
+      "haiku_decision": "交用戶",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "交用戶"
+    },
+    "D10.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 4,
+        "C": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D10.region2": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 2,
+        "A": 3
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "A": 5
+      },
+      "opus_decision": "交用戶",
+      "final": "交用戶"
+    },
+    "D6b.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D6b.region2": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D6b.region3": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D6b.region4": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 4,
+        "C": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D6b.region5": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D6b.region6": {
+      "kind": "defect",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "D9.region1": {
+      "kind": "defect",
+      "haiku_counts": {
+        "A": 5
+      },
+      "haiku_decision": "交用戶",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "交用戶"
+    },
+    "M1.region1": {
+      "kind": "expected",
+      "haiku_counts": {
+        "C": 2,
+        "B": 3
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "C": 5
+      },
+      "opus_decision": "交用戶",
+      "final": "交用戶"
+    },
+    "M1.region2": {
+      "kind": "expected",
+      "haiku_counts": {
+        "C": 2,
+        "B": 3
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "B": 5
+      },
+      "opus_decision": "放行",
+      "final": "放行"
+    },
+    "M1.region3": {
+      "kind": "expected",
+      "haiku_counts": {
+        "C": 3,
+        "B": 2
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "C": 4,
+        "B": 1
+      },
+      "opus_decision": "交用戶",
+      "final": "交用戶"
+    },
+    "M1.region4": {
+      "kind": "expected",
+      "haiku_counts": {
+        "C": 2,
+        "B": 3
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "B": 5
+      },
+      "opus_decision": "放行",
+      "final": "放行"
+    },
+    "M1.region5": {
+      "kind": "expected",
+      "haiku_counts": {
+        "C": 2,
+        "B": 3
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "B": 5
+      },
+      "opus_decision": "放行",
+      "final": "放行"
+    },
+    "M2.region1": {
+      "kind": "expected",
+      "haiku_counts": {
+        "B": 4,
+        "A": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "M3.region1": {
+      "kind": "expected",
+      "haiku_counts": {
+        "B": 4,
+        "A": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "M3.region2": {
+      "kind": "expected",
+      "haiku_counts": {
+        "B": 4,
+        "A": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "M4.region1": {
+      "kind": "expected",
+      "haiku_counts": {
+        "B": 4,
+        "C": 1
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "M7.region1": {
+      "kind": "expected",
+      "haiku_counts": {
+        "B": 3,
+        "A": 1,
+        "C": 1
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "B": 5
+      },
+      "opus_decision": "放行",
+      "final": "放行"
+    },
+    "M8.region1": {
+      "kind": "expected",
+      "haiku_counts": {
+        "B": 3,
+        "A": 2
+      },
+      "haiku_decision": "轉Opus",
+      "opus_counts": {
+        "B": 5
+      },
+      "opus_decision": "放行",
+      "final": "放行"
+    },
+    "M5.region1": {
+      "kind": "mirror",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "M5.region2": {
+      "kind": "mirror",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    },
+    "M6.region1": {
+      "kind": "mirror",
+      "haiku_counts": {
+        "B": 5
+      },
+      "haiku_decision": "放行",
+      "opus_counts": null,
+      "opus_decision": null,
+      "final": "放行"
+    }
+  },
+  "pairs": {
+    "D1": {
+      "kind": "defect",
+      "verdict": "交用戶"
+    },
+    "D2": {
+      "kind": "defect",
+      "verdict": "放行"
+    },
+    "D3": {
+      "kind": "defect",
+      "verdict": "交用戶"
+    },
+    "D4": {
+      "kind": "defect",
+      "verdict": "交用戶"
+    },
+    "D5": {
+      "kind": "defect",
+      "verdict": "交用戶"
+    },
+    "D10": {
+      "kind": "defect",
+      "verdict": "交用戶"
+    },
+    "D6b": {
+      "kind": "defect",
+      "verdict": "放行"
+    },
+    "D9": {
+      "kind": "defect",
+      "verdict": "交用戶"
+    },
+    "M1": {
+      "kind": "expected",
+      "verdict": "交用戶"
+    },
+    "M2": {
+      "kind": "expected",
+      "verdict": "放行"
+    },
+    "M3": {
+      "kind": "expected",
+      "verdict": "放行"
+    },
+    "M4": {
+      "kind": "expected",
+      "verdict": "放行"
+    },
+    "M7": {
+      "kind": "expected",
+      "verdict": "放行"
+    },
+    "M8": {
+      "kind": "expected",
+      "verdict": "放行"
+    }
+  },
+  "mirror_pairs": {
+    "M5": {
+      "kind": "mirror",
+      "verdict": "放行"
+    },
+    "M6": {
+      "kind": "mirror",
+      "verdict": "放行"
+    }
+  },
+  "max_tokens_stops": {
+    "claude-haiku-5-5": 0,
+    "claude-opus-5-5": 0
+  },
+  "b_position_tables": {
+    "claude-haiku-5-5": {
+      "1": {
+        "chose_B": 35,
+        "not_B": 23,
+        "unparsed": 0
+      },
+      "2": {
+        "chose_B": 19,
+        "not_B": 10,
+        "unparsed": 0
+      },
+      "3": {
+        "chose_B": 44,
+        "not_B": 14,
+        "unparsed": 0
+      }
+    },
+    "claude-opus-5-5": {
+      "1": {
+        "chose_B": 11,
+        "not_B": 7,
+        "unparsed": 0
+      },
+      "2": {
+        "chose_B": 5,
+        "not_B": 4,
+        "unparsed": 0
+      },
+      "3": {
+        "chose_B": 10,
+        "not_B": 8,
+        "unparsed": 0
+      }
+    }
+  }
+}
