@@ -349,11 +349,113 @@ Future<void> _capture(
     await _writeGuidelines(tester, dir, name, variant);
   }
 
+  if (variant.checksGuidelines) {
+    _writeAnswers(tester, dir, name, variant);
+  }
+
   expect(png.width, 1280);
   expect(png.height, 800);
   expect(coords, isNotEmpty, reason: '畫面上應至少有一個可互動元件');
   // ignore: avoid_print
   print('UX_CAPTURE ${pngFile.path} sha256=$sha interactive=${coords.length}');
+}
+
+/// 0.5.0-W1-466.8：成對變體的正解輸出 `<locale>.answers.json`。
+/// 區域題記錄目標的全域 rect（含 key）；數字題記錄正解數值。找不到目標即失敗。
+void _writeAnswers(
+  WidgetTester tester,
+  Directory dir,
+  String name,
+  UxVariant variant,
+) {
+  final code = variant.id.split('_').first;
+  final answer = <String, Object?>{
+    'variant': variant.id,
+    'locale': name,
+    'answerKey': variant.answerKey,
+  };
+  switch (code) {
+    case 'T-C':
+      answer['value'] = _countKeys(tester, 'badge-traceability-broken-');
+    case 'K-C':
+      answer['value'] = _countKeys(tester, 'badge-tickets-corrupted-');
+    case 'G-B':
+      answer['value'] = _gapsSecondSectionCount(tester);
+    case 'G-C':
+      answer['targets'] = _targetRects(
+        tester,
+        (k) => k.startsWith('expander-gaps-'),
+      );
+    default:
+      answer['targets'] = _targetRects(tester, (k) => k == variant.answerKey);
+  }
+  File('${dir.path}/$name.answers.json')
+      .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(answer));
+}
+
+Iterable<(String, Element)> _keyedElements(
+  WidgetTester tester,
+  bool Function(String key) match,
+) sync* {
+  for (final e in tester.allElements) {
+    final k = e.widget.key;
+    if (k is ValueKey && match('${k.value}')) yield ('${k.value}', e);
+  }
+}
+
+List<Map<String, Object?>> _targetRects(
+  WidgetTester tester,
+  bool Function(String key) match,
+) {
+  final out = <Map<String, Object?>>[];
+  final seen = <String>{};
+  for (final (key, e) in _keyedElements(tester, match)) {
+    final box = e.renderObject;
+    if (box is! RenderBox || !box.attached || !box.hasSize) continue;
+    final r = box.localToGlobal(Offset.zero) & box.size;
+    if (!seen.add('$key|${r.left},${r.top},${r.width},${r.height}')) continue;
+    out.add({
+      'key': key,
+      'rect': [r.left, r.top, r.width, r.height],
+    });
+  }
+  expect(out, isNotEmpty, reason: '找不到正解目標');
+  return out;
+}
+
+int _countKeys(WidgetTester tester, String prefix) {
+  final keys = _keyedElements(
+    tester,
+    (k) => k.startsWith(prefix),
+  ).map((e) => e.$1).toSet();
+  expect(keys, isNotEmpty, reason: '找不到正解目標 $prefix');
+  return keys.length;
+}
+
+double _globalTop(Element e) =>
+    (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dy;
+
+/// 由上往下第二個破洞分組底下的 card-gaps-* 條數。
+int _gapsSecondSectionCount(WidgetTester tester) {
+  final sections =
+      _keyedElements(
+          tester,
+          (k) => k.startsWith('state-gaps-section-'),
+        ).map((e) => e.$2).where((e) => e.renderObject is RenderBox).toList()
+        ..sort((a, b) => _globalTop(a).compareTo(_globalTop(b)));
+  expect(sections.length, greaterThanOrEqualTo(2), reason: '找不到第二個分組');
+  final keys = <String>{};
+  void walk(Element e) {
+    final k = e.widget.key;
+    if (k is ValueKey && '${k.value}'.startsWith('card-gaps-')) {
+      keys.add('${k.value}');
+    }
+    e.visitChildren(walk);
+  }
+
+  walk(sections[1]);
+  expect(keys, isNotEmpty, reason: '第二個分組找不到條目');
+  return keys.length;
 }
 
 /// 破洞畫面落「無法判定破洞」時印出標記與可取得的狀態並使擷取失敗。
