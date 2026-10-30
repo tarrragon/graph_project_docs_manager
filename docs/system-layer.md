@@ -108,7 +108,7 @@ Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影�
 上圖的 L4 只寫「畫面狀態」。L4 對應 lib 的三個目錄與組裝根，它們之間也是單向依賴，由下而上：
 
 ```
-組裝根      shell 與畫面組裝（buildDestinationPage）；lib/main.dart
+組裝根      lib/assembly/：shell 與畫面組裝（buildDestinationPage）；lib/main.dart
 screens     lib/screens/<功能>/：各畫面的 widget、投影與畫面專屬狀態
 app         lib/app/：畫面共用的應用狀態與服務（掃描輪次、選定 UC、導覽狀態等）
 components  lib/components/：元件庫，只依賴 tokens、l10n 與 Flutter
