@@ -226,23 +226,20 @@ void main() {
     Future<SemanticsNode> pumpAndFindLive(WidgetTester tester) async {
       // 外層 container 模擬畫面層（PageColumn／AppShell）的語意容器：
       // 未設 container 的 liveRegion 會併入它（530 傾印實測）。
-      await pumpHarness(
+      await pumpInSemanticsContainer(
         tester,
-        child: Semantics(
-          container: true,
-          child: EmptyState(
-            variant: EmptyStateVariant.page,
-            message: '訊息文字',
-            explanation: '說明含計數 12',
-            testKey: testKey,
-            actions: [
-              AppButton(
-                label: '前往動作',
-                onPressed: () {},
-                testKey: const Key('empty-state-live-action'),
-              ),
-            ],
-          ),
+        child: EmptyState(
+          variant: EmptyStateVariant.page,
+          message: '訊息文字',
+          explanation: '說明含計數 12',
+          testKey: testKey,
+          actions: [
+            AppButton(
+              label: '前往動作',
+              onPressed: () {},
+              testKey: const Key('empty-state-live-action'),
+            ),
+          ],
         ),
       );
       return tester.getSemantics(find.text('訊息文字'));
@@ -262,18 +259,14 @@ void main() {
       final button = tester.getSemantics(
         find.byKey(const Key('empty-state-live-action')),
       );
-      var inSubtree = false;
-      for (SemanticsNode? n = button; n != null; n = n.parent) {
-        if (n.id == live.id) inSubtree = true;
-      }
-      expect(inSubtree, isFalse);
+      expect(isInSemanticsSubtree(button, live), isFalse);
       handle.dispose();
     });
 
     testWidgets('liveRegion 節點 Rect 小於外層容器（非全畫面）', (tester) async {
       final handle = tester.ensureSemantics();
       final live = await pumpAndFindLive(tester);
-      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+      final screen = logicalViewSize(tester);
       expect(live.rect.height, lessThan(screen.height));
       handle.dispose();
     });

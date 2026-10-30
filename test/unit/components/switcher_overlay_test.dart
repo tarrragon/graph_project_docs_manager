@@ -1,7 +1,6 @@
 /// SwitcherOverlay 元件測試（SPEC-004 4.42、5.16）。
 library;
 
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -95,32 +94,22 @@ void main() {
       // 回歸測試：失敗原因為獨立語意節點，成因是浮層根 Semantics 設了
       // explicitChildNodes（元件本身保證，不靠 liveRegion 的 container）。
       // 外層包無兄弟結構的 container 以排除父層兄弟結構的偶然成立。
-      await pumpHarness(
+      await pumpInSemanticsContainer(
         tester,
-        child: Semantics(
-          container: true,
-          child: SwitcherOverlay(
-            items: const [],
-            chooseOther: buildChooseOther(label: '選擇其他XYZ'),
-            onDismiss: () {},
-            testKey: noRecentKey,
-            scrollKey: scrollKey,
-            chooseOtherFailureReason: reasonText,
-          ),
+        child: SwitcherOverlay(
+          items: const [],
+          chooseOther: buildChooseOther(label: '選擇其他XYZ'),
+          onDismiss: () {},
+          testKey: noRecentKey,
+          scrollKey: scrollKey,
+          chooseOtherFailureReason: reasonText,
         ),
       );
       final live = tester.getSemantics(find.text(reasonText));
       expect(live.label, reasonText);
       expect(live.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
-      var buttonInLive = false;
-      for (
-        SemanticsNode? n = tester.getSemantics(find.byKey(chooseKey));
-        n != null;
-        n = n.parent
-      ) {
-        if (n.id == live.id) buttonInLive = true;
-      }
-      expect(buttonInLive, isFalse);
+      final button = tester.getSemantics(find.byKey(chooseKey));
+      expect(isInSemanticsSubtree(button, live), isFalse);
       handle.dispose();
     });
   });
