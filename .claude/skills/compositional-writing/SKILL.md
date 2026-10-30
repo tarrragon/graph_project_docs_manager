@@ -4,7 +4,7 @@ description: "Composes atomic, intent-revealing, grep-friendly writing (Zettelka
 license: MIT
 metadata:
   portable: true
-  version: 1.50.0
+  version: 1.50.1
   category: writing-methodology
 ---
 
@@ -28,7 +28,7 @@ metadata:
 | 人類教材         | 來理解一件事的人   | 引導與脈絡：講清楚為什麼是這個順序           | `writing-articles.md`              |
 | 程式碼註解       | 正在讀那段程式的人 | 只解釋商業邏輯，原理讀程式碼就有             | `writing-code-comments.md`         |
 
-會讓稿件被讀成手冊的裝置（表徵對映清單、檢查順序、配比數字、順序加顛倒後果、可執行判斷標準、具體器具、序列連接詞）改的是框架、不是刪資訊。裝置清單與處置見 `references/core-principles.md`〈動手之前先定這一份的定位〉與 [positioning-decides-form-before-any-rule-applies](references/principles/positioning-decides-form-before-any-rule-applies.md)。
+會讓稿件被讀成手冊的裝置（表徵對映清單、檢查順序、配比數字、順序加顛倒後果、可執行判斷標準、具體器具、序列連接詞（「首先」「接著」「最後」這類標出步驟順序的詞））改的是框架、不是刪資訊。裝置清單與處置見 `references/core-principles.md`〈動手之前先定這一份的定位〉與 [positioning-decides-form-before-any-rule-applies](references/principles/positioning-decides-form-before-any-rule-applies.md)。
 
 ## 每一句先填槽位再成句（生成端規格）
 
@@ -65,7 +65,7 @@ metadata:
 
 ### 2. 索引建立（Indexing）
 
-入口文件只做路由，引用深度最多一層。引用錨點用語意標題、不用位置編號或相對位置；同一個結構單位只有一個 canonical 名字；集合命名用角色、不內嵌數量；正文對象用內容名、不用序數或字母代號；切開集合時先寫依據再命名；摘要另一份內容時寫出成員、不寫計數；被多處逐字引用的標籤自帶限定語。
+入口文件只做路由，引用深度最多一層。引用錨點用語意標題、不用位置編號或相對位置；同一個結構單位只有一個 canonical 名字（全篇指稱它時都用同一個名字，不換同義詞）；集合命名用角色、不內嵌數量；正文對象用內容名、不用序數或字母代號；切開集合時先寫依據再命名；摘要另一份內容時寫出成員、不寫計數；被多處逐字引用的標籤自帶限定語。
 
 ### 3. 意圖顯性與層級貼合（Explicit Intent & Layer Alignment）
 
@@ -73,7 +73,7 @@ metadata:
 
 ### 4. 可查詢性（Searchability）
 
-關鍵字前置、使用可 grep 的分隔符（`:` `|` `→` `==`）、欄位名稱用 regex 友善格式。行自足是配套義務：單句消費位（checklist 項、表格格、判斷標準句、章節首句）要命題完整、指涉閉合、實詞可反推、一句一命題。句子層文法標準見上方〈每一句先填槽位再成句〉。
+關鍵字前置、使用可 grep 的分隔符（`:` `|` `→` `==`）、欄位名稱用 regex 友善格式。行自足（一句話被單獨拿出來讀仍然看得懂）是配套義務：單句消費位（checklist 項、表格格、判斷標準句、章節首句這類常被單獨讀的位置）要命題完整、指涉閉合、實詞可反推、一句一命題，全文在 [sentence-self-sufficiency-by-consumption-unit](references/principles/sentence-self-sufficiency-by-consumption-unit.md)。句子層文法標準見上方〈每一句先填槽位再成句〉。
 
 ### 5. 欄位設計（Field Design）
 
@@ -86,6 +86,8 @@ metadata:
 ---
 
 ## When to Consult This Skill（觸發路由）
+
+審查一份剛寫好的稿件時，第一步是依體裁開下表對應的 reference，逐項跑它的檢查項；接著開 `references/keyword-bank.md` 逐類跑字句層 grep；最後依原則 6 換 frame 重讀。
 
 | 觸發情境                                                                 | 讀哪份                                                                      | 涵蓋章節                                                         |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |

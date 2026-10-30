@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.50.1 — 分拆後的入口檔讀者探針回饋：觸發路由表前補審查稿件的三步（先跑體裁 reference 的檢查項，再跑 keyword bank，最後依原則 6 換 frame 重讀）；「序列連接詞」「canonical 名字」「行自足」三個詞在入口檔首次出現處就地帶定義，行自足另連到 sentence-self-sufficiency-by-consumption-unit 卡
+
 **Version**: 1.50.0 — SKILL.md 從約 40.5k tokens 分拆到 5k tokens 以內（入口檔預算；估算公式見 skill-design-guide），論證與清單外移、內容逐字保留：字句層 keyword bank 全節移到新檔 `references/keyword-bank.md`（H1 沿用節名〈字句層 keyword bank（完整清單）〉，指名式引用仍可解析；其內 51 條 rg 指令與拆分前逐字相同）；原則 1 至 5 的論證、定位的裝置清單、特化流程分工移到新檔 `references/core-principles.md`；原則 6 全文移入 `principles/writing-multi-pass-review.md`；生成端規格全文移入 `principles/noun-without-its-owner-passes-the-slot-check.md`；示範指令的引數檢查全文移入 `references/demonstrating-commands.md`。SKILL.md 每條原則只留主張與路由，觸發路由表新增「涵蓋章節」欄寫出外移節名，Directory Index 與 Reading Order 併入路由表；frontmatter description 不再逐類列舉 bank 類別，改指向節名。外部引用 PC-111 改為指名式。
 
 **Version**: 1.49.0 — bank〈結構譬喻頂替主詞與動詞〉跟規則檔 sentences.md 新節對齊：規則類文件的未判定範圍從兩個片語改成依用法分類（承接、住在、落在描述路由目的地、資料夾、或規則與推導寫在哪個檔），處置加「改寫到這些行時保留原詞」；合規邊界補讀者或改動「落在」某個條件、選項或分類；描述系統、市場或領域對象的命中多半合規，仍逐處問主詞做不做得了這個動作。〈替讀者假設情境與頻率〉的來源寫法從「依來源（書、文件）中的分析」改成寫出來源的名字（前者的「來源」缺所屬）。principle 卡同步。
