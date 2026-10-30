@@ -256,12 +256,13 @@ void main() {
       await tester.pump();
 
       expect(find.text('檔案仍不存在'), findsOneWidget);
+      expect(find.text('檔案存在但無法解析，詳見破洞報告'), findsNothing);
       expect(AnchorFinder.state(Screen.nodeDetail, 'missing'), findsOneWidget);
     });
 
     testWidgets('action-nodeDetail-refresh（檔案已存在）：轉為正常', (tester) async {
       final file = File('${tempDir.path}/restored.md')
-        ..writeAsStringSync('# restored');
+        ..writeAsStringSync('---\ntitle: restored\n---\n# restored');
 
       final container = await pumpHarness(
         tester,
@@ -282,6 +283,37 @@ void main() {
 
       expect(AnchorFinder.state(Screen.nodeDetail, 'normal'), findsOneWidget);
       expect(container.read(nodeDetailStateProvider), isA<NodeDetailReady>());
+      expect(find.text('檔案仍不存在'), findsNothing);
+      expect(find.text('檔案存在但無法解析，詳見破洞報告'), findsNothing);
+    });
+
+    testWidgets('action-nodeDetail-refresh（存在但解析失敗）：維持本狀態並提示無法解析', (
+      tester,
+    ) async {
+      final file = File('${tempDir.path}/broken.md')
+        ..writeAsStringSync('---\ntitle: broken\n# 未閉合');
+
+      final container = await pumpHarness(
+        tester,
+        child: const NodeDetailScreen(),
+        overrides: [
+          _fixtureNodes,
+          nodeDetailStateProvider.overrideWith(
+            (ref) => NodeDetailMissing(
+              nodeId: NodeDetailFixtures.normalNodeId,
+              lastKnownPath: file.path,
+            ),
+          ),
+        ],
+      );
+
+      await tester.tap(find.byKey(const Key('action-nodeDetail-refresh')));
+      await tester.pump();
+
+      expect(find.text('檔案存在但無法解析，詳見破洞報告'), findsOneWidget);
+      expect(find.text('檔案仍不存在'), findsNothing);
+      expect(AnchorFinder.state(Screen.nodeDetail, 'missing'), findsOneWidget);
+      expect(container.read(nodeDetailStateProvider), isA<NodeDetailMissing>());
     });
   });
 

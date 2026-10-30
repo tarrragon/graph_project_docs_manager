@@ -125,9 +125,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noGapsScanScope => '已掃描全部節點與邊';
 
   @override
-  String get fieldCorruptedMessage => '因檔案損壞而無法讀取';
-
-  @override
   String get sourceFileMissingMessage => '原始檔已不存在';
 
   @override
@@ -250,6 +247,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sourceFileStillMissingMessage => '檔案仍不存在';
+
+  @override
+  String get sourceFileUnparsableMessage => '檔案存在但無法解析，詳見破洞報告';
 
   @override
   String get expanderLabel => '展開或收合';

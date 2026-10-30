@@ -290,12 +290,6 @@ abstract class AppLocalizations {
   /// **'已掃描全部節點與邊'**
   String get noGapsScanScope;
 
-  /// SPEC-001 §6 節點詳情·部分損壞狀態的欄位標示文案
-  ///
-  /// In zh, this message translates to:
-  /// **'因檔案損壞而無法讀取'**
-  String get fieldCorruptedMessage;
-
   /// SPEC-001 §6 節點詳情·原始檔已消失狀態的顯示文案
   ///
   /// In zh, this message translates to:
@@ -523,6 +517,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'檔案仍不存在'**
   String get sourceFileStillMissingMessage;
+
+  /// SPEC-003 §3.6：action-nodeDetail-refresh 重新整理後，檔案存在但 frontmatter 解析失敗分支的 SnackBar 文案
+  ///
+  /// In zh, this message translates to:
+  /// **'檔案存在但無法解析，詳見破洞報告'**
+  String get sourceFileUnparsableMessage;
 
   /// SPEC-004 §4.18：Expander 展開/收合朗讀標籤
   ///
