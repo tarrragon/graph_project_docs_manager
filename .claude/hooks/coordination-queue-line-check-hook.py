@@ -13,7 +13,9 @@ coordination-queue-line-check-hook - PostToolUse Hook（Bash / Edit / Write / Mu
 檢查（解析規則照 .claude/skills/line-board/hooks/lanes.ts：行首、只掃 Solution、每線取最後一行）:
   1. 作用中（票序不是（無））且有括號的線，括號內文不等於任何存活 session 名稱
      （~/.claude/sessions/*.json，cwd 屬本 repo 任一 checkout）-> 提示兩種可能原因
-  2. 票序票號全部可解析且狀態皆 completed/closed，卻未寫（無）-> 提示可結束
+  2. 票序票號全部可解析且狀態皆 completed/closed，卻未寫（無）-> 提示可結束，附完整格式
+  3. 以「**L<n> 現行佇列**」開頭卻不符 LANE_LINE 的行（如漏冒號），若在該線最後一筆合格行之後
+     -> 報出原文與格式；解析層照 lanes.ts 不採用此行，不報會被誤以為已寫入
 
 受眾: 模型 -> emit_model_reminder("PostToolUse", ...)。multi-session.json 缺席/不成立時不輸出。
 """
@@ -44,6 +46,8 @@ WRITE_TOOLS = ("Edit", "Write", "MultiEdit")
 
 # 以下常數與解析函式逐項對應 lanes.ts / shared.ts
 LANE_LINE = re.compile(r"^\*\*L(\d+) 現行佇列\*\*(?:（([^）]*)）)?：(.*)$")
+LANE_LINE_PREFIX = re.compile(r"^\*\*L(\d+) 現行佇列\*\*")
+LANE_FORMAT = "**L%d 現行佇列**（<session 名稱>）：<票序，或（無）>"
 QUEUE_SEPARATOR = re.compile(r"\s*(→|∥)\s*")
 STEP_SERIAL = re.compile(r"^(\d{3}(?:\.\d+)*)(.*)$")
 STEP_FULL_ID = re.compile(r"^(\d+\.\d+\.\d+-W\d+-\d+(?:\.\d+)*)(.*)$")
@@ -149,8 +153,29 @@ def find_problems(lanes, alive_names: Optional[set], status_of) -> List[str]:
         if tickets:
             statuses = [status_of(t["id"]) for t in tickets]
             if all(s in TERMINAL_STATUSES for s in statuses):
-                msgs.append("L%d 佇列票皆已終態，若線已結束請寫（無）" % n)
+                msgs.append(
+                    "L%d 佇列票皆已終態，若線已結束請寫（無），格式：%s" % (n, LANE_FORMAT % n)
+                )
     return msgs
+
+
+def find_malformed_lines(text: str) -> List[str]:
+    """檢查 3：每線最後一筆合格行之後，仍以佇列行開頭卻不合格的行（解析層會忽略它）。"""
+    pending = {}
+    for line in solution_lines(text):
+        head = LANE_LINE_PREFIX.match(line)
+        if head is None:
+            continue
+        n = int(head.group(1))
+        if LANE_LINE.match(line):
+            pending.pop(n, None)
+        else:
+            pending.setdefault(n, []).append(line)
+    return [
+        "L%d 有一行佇列行格式不符，未被採用：『%s』；格式：%s" % (n, line, LANE_FORMAT % n)
+        for n in sorted(pending)
+        for line in pending[n]
+    ]
 
 
 def alive_session_names(logger, checkouts: List[str]) -> Optional[set]:
@@ -233,7 +258,9 @@ def main() -> int:
         return 0
     lanes = parse_lanes(text, ticket_prefix_of(coord_id))
     alive = alive_session_names(logger, list_checkouts(logger, root))
-    msgs = find_problems(lanes, alive, lambda tid: read_ticket_status(root, tid))
+    msgs = find_malformed_lines(text) + find_problems(
+        lanes, alive, lambda tid: read_ticket_status(root, tid)
+    )
     if not msgs:
         return 0
     logger.info("協調票佇列行提示 %d 項", len(msgs))

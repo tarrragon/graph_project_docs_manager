@@ -95,7 +95,25 @@ def test_check2_all_terminal_without_none_prompts():
     text = "## Solution\n**L5 現行佇列**：100 → 101\n"
     st = {"0.5.0-W1-100": "completed", "0.5.0-W1-101": "closed"}
     msgs = _problems(text, set(), st)
-    assert msgs == ["L5 佇列票皆已終態，若線已結束請寫（無）"]
+    assert msgs == ["L5 佇列票皆已終態，若線已結束請寫（無），格式：%s" % (hook.LANE_FORMAT % 5)]
+    assert "（<session 名稱>）：<票序，或（無）>" in msgs[0]
+
+
+def test_check3_missing_colon_after_last_valid_prompts():
+    # 正向對照（E2）：線已結束卻漏冒號，解析層忽略此行，必須報出原文
+    text = "## Solution\n**L5 現行佇列**（s-a）：100\n**L5 現行佇列**（無）\n"
+    msgs = hook.find_malformed_lines(text)
+    assert len(msgs) == 1
+    assert "『**L5 現行佇列**（無）』" in msgs[0] and hook.LANE_FORMAT % 5 in msgs[0]
+
+
+def test_check3_malformed_superseded_by_valid_is_silent():
+    # 之後已補上合格行：歷史的錯誤行不再報
+    text = "## Solution\n**L5 現行佇列**（無）\n**L5 現行佇列**（s-a）：（無）\n"
+    assert hook.find_malformed_lines(text) == []
+    # 合格行、其他線、Solution 以外的段落都不報
+    ok = "## Problem Analysis\n**L5 現行佇列** 壞\n## Solution\n**L5 現行佇列**：100\n**L6 現行佇列**（x）：（無）\n"
+    assert hook.find_malformed_lines(ok) == []
 
 
 def test_normal_forms_do_not_prompt():
@@ -155,6 +173,12 @@ def test_main_all_terminal_emits(tmp_path, monkeypatch, capsys):
     t.write_text("---\nstatus: completed\n---\n", encoding="utf-8")
     ctx = json.loads(_run(monkeypatch, BASH, capsys))["hookSpecificOutput"]["additionalContext"]
     assert "L5 佇列票皆已終態，若線已結束請寫（無）" in ctx
+
+
+def test_main_malformed_line_emits(tmp_path, monkeypatch, capsys):
+    _setup_project(tmp_path, monkeypatch, "**L5 現行佇列**（s-a）：100\n**L5 現行佇列**（無）\n")
+    ctx = json.loads(_run(monkeypatch, BASH, capsys))["hookSpecificOutput"]["additionalContext"]
+    assert "L5 有一行佇列行格式不符" in ctx
 
 
 def test_main_normal_is_silent(tmp_path, monkeypatch, capsys):
