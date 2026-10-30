@@ -22,7 +22,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/main.dart';
+import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
+import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
@@ -70,6 +73,30 @@ void main() {
       }
     }
   }
+
+  testWidgets('擷取入口：破洞畫面落無法判定破洞時必須紅燈並印出標記', (tester) async {
+    final fixture = UxFixture(
+      snapshot: 'graph_project_docs_manager',
+      locale: const Locale('zh'),
+    );
+    await fixture.materialize();
+    addTearDown(fixture.dispose);
+    await expectLater(
+      _capture(
+        tester,
+        fixture,
+        kCaptureVariants.first,
+        AppDestination.gaps,
+        extraOverrides: [
+          scanCorpusFnProvider.overrideWithValue(
+            ({required fileSystem, required table, required builtinTable}) =>
+                throw StateError('E2 注入：掃描輪次拋出例外'),
+          ),
+        ],
+      ),
+      throwsA(isA<TestFailure>()),
+    );
+  });
 
   testWidgets('座標蒐集：二維捲動視口外的快取格子不得入檔', (tester) async {
     await tester.pumpWidget(_scrollClipFixture());
@@ -218,8 +245,9 @@ Future<void> _capture(
   WidgetTester tester,
   UxFixture fixture,
   UxVariant variant,
-  AppDestination destination,
-) async {
+  AppDestination destination, {
+  List<Override> extraOverrides = const [],
+}) async {
   tester.view
     ..devicePixelRatio = kCaptureDpr
     ..physicalSize = kCaptureLogicalSize * kCaptureDpr;
@@ -232,6 +260,7 @@ Future<void> _capture(
   final overrides = [
     ...await fixtureOverrides(),
     ...variant.overrides,
+    ...extraOverrides,
     if (destination != AppDestination.domain)
       selectedDestinationProvider.overrideWith((ref) => destination),
   ];
@@ -257,6 +286,8 @@ Future<void> _capture(
     EnginePhase.sendSemanticsUpdate,
     const Duration(seconds: 30),
   );
+
+  _failIfGapsUndeterminable(tester, destination);
 
   final boundary =
       boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -304,6 +335,27 @@ Future<void> _capture(
   expect(coords, isNotEmpty, reason: '畫面上應至少有一個可互動元件');
   // ignore: avoid_print
   print('UX_CAPTURE ${pngFile.path} sha256=$sha interactive=${coords.length}');
+}
+
+/// 破洞畫面落「無法判定破洞」時印出標記與可取得的狀態並使擷取失敗。
+/// 掃描例外只進 developer.log、不出現在 flutter test stdout，故需在此顯式印出。
+void _failIfGapsUndeterminable(
+  WidgetTester tester,
+  AppDestination destination,
+) {
+  if (destination != AppDestination.gaps) return;
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(DocsManagerApp)),
+  );
+  final state = container.read(gapReportProvider);
+  if (state is! GapReportUndeterminable) return;
+  final detail =
+      'reason=${state.reason} isScanFailure=${state.isScanFailure} '
+      'categories=${state.categories.length} '
+      'pathDeclaration=${state.pathDeclaration}';
+  // ignore: avoid_print
+  print('UX_CAPTURE_GAPS_UNDETERMINABLE $detail');
+  fail('破洞畫面落無法判定破洞（$detail）；擷取產物不可信');
 }
 
 /// 466.1 三準則（textContrast／labeledTapTarget／minTapTarget28）與區段間距量測，
