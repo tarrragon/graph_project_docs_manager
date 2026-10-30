@@ -3,6 +3,91 @@
 
 import type { DispatchRecord, SessionState } from '../types'
 
+/**
+ * queue-line-cases.json 全文的逐字副本（claude-code/testing 不能 import .json 也不能 node:fs）。
+ * 兩個標記之間的第一個反引號到最後一個反引號即 JSON 全文，漂移守衛（538.2 Python 測試）逐字比對；改案例時兩處同改。
+ */
+// BEGIN queue-line-cases.json
+const QUEUE_LINE_CASES_RAW = String.raw`{
+  "_doc": "佇列行解析的唯一案例來源：lanes.test.ts 與後續 Python hook 共用。text 為協調票全文，prefix 為短票號前綴，expect 為各線 {lane, session, tickets[{serial,id,note}]}（只列 ticket token）。category: positive_control = 容易被誤判的寫法（括號附註、全終態但未寫（無）），normal = 一般寫法。",
+  "cases": [
+    {
+      "name": "正常寫法：session 名稱、→ 與 ∥",
+      "category": "normal",
+      "prefix": "0.5.0-W1-",
+      "text": "## Solution\n**L5 現行佇列**（s-a）：100 → 337.1 ∥ 353\n",
+      "expect": [
+        {
+          "lane": 5,
+          "session": "s-a",
+          "tickets": [
+            { "serial": "100", "id": "0.5.0-W1-100", "note": "" },
+            { "serial": "337.1", "id": "0.5.0-W1-337.1", "note": "" },
+            { "serial": "353", "id": "0.5.0-W1-353", "note": "" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "正常寫法：最後一行票序為（無）的線不列入",
+      "category": "normal",
+      "prefix": "0.5.0-W1-",
+      "text": "## Solution\n**L5 現行佇列**：100\n**L5 現行佇列**：（無）\n",
+      "expect": []
+    },
+    {
+      "name": "正向對照：票號後括號附註原樣進 note，仍是活線",
+      "category": "positive_control",
+      "prefix": "0.5.0-W1-",
+      "text": "## Solution\n**L5 現行佇列**：100（已完成，待合併）→ 101（待用戶驗證）\n",
+      "expect": [
+        {
+          "lane": 5,
+          "session": null,
+          "tickets": [
+            { "serial": "100", "id": "0.5.0-W1-100", "note": "（已完成，待合併）" },
+            { "serial": "101", "id": "0.5.0-W1-101", "note": "（待用戶驗證）" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "正向對照：票序為（無）加括號附註不等於（無），線仍列入",
+      "category": "positive_control",
+      "prefix": "0.5.0-W1-",
+      "text": "## Solution\n**L5 現行佇列**：（無）（全數終態）\n",
+      "expect": [{ "lane": 5, "session": null, "tickets": [] }]
+    },
+    {
+      "name": "正向對照：票全為終態但行尾未寫（無），解析不推斷終態，線仍列入",
+      "category": "positive_control",
+      "prefix": "0.5.0-W1-",
+      "text": "## Solution\n**L5 現行佇列**：100（completed）→ 101（completed）\n",
+      "expect": [
+        {
+          "lane": 5,
+          "session": null,
+          "tickets": [
+            { "serial": "100", "id": "0.5.0-W1-100", "note": "（completed）" },
+            { "serial": "101", "id": "0.5.0-W1-101", "note": "（completed）" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+`
+// END queue-line-cases.json
+
+/** 佇列行共用案例（解析自上方逐字副本）。 */
+export const QUEUE_LINE_CASES: {
+  name: string
+  category: 'normal' | 'positive_control'
+  prefix: string
+  text: string
+  expect: { lane: number; session: string | null; tickets: { serial: string; id: string; note: string }[] }[]
+}[] = JSON.parse(QUEUE_LINE_CASES_RAW).cases
+
 /** 〈看板讀取約定〉的格式說明行：行首不是 `**L`，行內以反引號引用範本，不得被當成一條線。 */
 export const TEMPLATE_NOTE =
   '337 看板掃本票整個 Solution，每個 `L<n>` 只取最後一次出現的現行佇列行。格式：`**L<n> 現行佇列**（<ListAgents 顯示的 session 名稱>）：<短票號，以 → 與 ∥ 分隔>`，獨立成段、行首即 `**L`。'
