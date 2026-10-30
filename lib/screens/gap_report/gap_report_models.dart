@@ -26,8 +26,8 @@ enum GapItemPointerType {
   event,
 
   /// flow 類（SPEC-001 §5〈定案〉J2）：EVT-CORPUS-004 與 flow 四子類，
-  /// 點擊選定 UC 並 jump 至 UC Flow；步驟定位由 UC Flow 接真資料票承接，
-  /// 本類只攜帶 [GapReportItem.flowUcId]／[GapReportItem.flowStepId]。
+  /// 點擊選定 UC 並 jump 至 UC Flow；步驟定位由 `ucFlowFocusProvider`
+  /// （`0.5.0-W1-114.18`）承接，本類只攜帶 [GapReportItem.flowUcId]／[GapReportItem.flowStepId]。
   flow,
 
   /// 無法指向任何節點。

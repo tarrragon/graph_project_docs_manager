@@ -2,8 +2,7 @@
 ///
 /// 五個狀態列依 [UcFlowState] 切換，內容由 [ucFlowStateProvider] 供給
 /// （`0.5.0-W1-114.18` 起由真實輪次與 `flowOf` 驅動，見
-/// `ucFlowUcListProvider`；原假資料僅供測試注入，本票決策：只交狀態渲染與退出
-/// 路徑，不接真實資料）。
+/// `ucFlowUcListProvider`；假資料僅供測試注入）。
 ///
 /// **`0.1.0-W2-010` 補齊**：`尚未選定 UC`／`flow 未結構化`／`正常`三態
 /// 依 SPEC-004 §3.6 §2 對應行組成——前置票 `0.1.0-W3-634`（`ListRow.option`）
@@ -17,8 +16,8 @@
 /// （[_UnstructuredView]）；所需 UC 基本資訊擴充於 `UcFlowUcItem`
 /// （新增 `filePath`）。步驟表「點步驟→節點詳情」亦接上真實跳轉
 /// （[_stepRow]，沿用 `trace_screen.dart` `onTapNode` 既有簡化：跳轉不
-/// 額外設定 `nodeDetailStateProvider`，節點詳情固定顯示其預設值，0.1
-/// 假資料階段步驟未帶對應節點 id，見本票 Solution）。
+/// 額外設定 `nodeDetailStateProvider`，節點詳情固定顯示其預設值；步驟
+/// 跳轉時帶目標節點由 `0.6.0-W1-077` 承接）。
 library;
 
 import 'package:flutter/material.dart' show Icons;
