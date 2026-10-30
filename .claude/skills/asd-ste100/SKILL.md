@@ -2,7 +2,7 @@
 name: asd-ste100
 description: "Applies ASD-STE100 controlled-language principles (one term per concept, short sentences, active voice, can/will/must) as a language-agnostic core, then loads the en or zh-TW pack by output language. zh-TW discourse structure: compositional-writing."
 metadata:
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # ASD-STE100 受控寫作
@@ -42,7 +42,7 @@ ASD-STE100（Simplified Technical English，簡化技術英文）是航太維修
 
 - **預設寫法**：輸出正體中文時，直接以正體中文套用核心原則與 zh-TW pack。
 - **英文 STE 只用於思考過程**：可以先用英文 STE 整理想法，但寫入 ticket、log、回覆的文字必須維持正體中文（`language-constraints` 規則 1 不變）。
-- **英文中轉**是指先寫英文 STE，再轉成正體中文。英文中轉要不要成為預設寫法，要等一項實測來決定：用同一批素材，比較「直接寫正體中文」和「英文中轉」兩種寫法的讀者誤讀與追問次數。這項實測目前還沒有做。實測的結論會寫回本檔的〈語言邊界〉這一節。
+- **不採英文中轉**：英文中轉是指先寫英文 STE，再轉成正體中文。正體中文回報直接寫，不經英文稿。實測（2026-10-30，5 則回報情境，每則每組 3 名讀者）結果：兩種寫法的誤讀數相同，追問數相差 1 條，英文中轉沒有帶來可觀察的好處。另外，英文中轉有一項機制上的風險：英文 STE 的情態詞只有 can、will、must，沒有表示推測的詞。所以原文的「可能」在英文稿中會被改成 can（能力），推測的標記就此消失。用戶只讀中文版，看不到這處漂移。
 
 ## 合規的界線
 
