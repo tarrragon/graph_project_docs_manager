@@ -409,53 +409,56 @@ void main() {
       return tester.getSemantics(find.text(countLabel));
     }
 
-    void expectOnlyCount(SemanticsNode live, WidgetTester tester) {
-      expect(live.label, countLabel);
-      expect(live.value, isEmpty);
-      expect(live.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
-      final cancel = tester.getSemantics(find.byKey(cancelKey));
-      expect(isInSemanticsSubtree(cancel, live), isFalse);
+    // 每條斷言各自一個 testWidgets，各自得到 E2 判定（不被前一條擋下）。
+    void liveTest(
+      String variant,
+      String what,
+      Widget loading,
+      void Function(SemanticsNode live, WidgetTester tester) check,
+    ) {
+      testWidgets('$variant live：$what', (tester) async {
+        final handle = tester.ensureSemantics();
+        final live = await pumpAndFindLive(tester, loading);
+        check(live, tester);
+        handle.dispose();
+      });
     }
 
     for (final cancelling in [false, true]) {
-      testWidgets('skeleton cancelling=$cancelling live label 只含計數文字', (
-        tester,
-      ) async {
-        final handle = tester.ensureSemantics();
-        final live = await pumpAndFindLive(
-          tester,
-          LoadingState.skeleton(
-            message: messageLabel,
-            skeletonLayout: SkeletonLayout.matrix,
-            countText: countLabel,
-            isCancelling: cancelling,
-            onCancel: () {},
-            testKey: testKey,
-            cancelKey: cancelKey,
-          ),
-        );
-        expectOnlyCount(live, tester);
-        handle.dispose();
-      });
-
-      testWidgets('progressBar cancelling=$cancelling live label 只含計數文字', (
-        tester,
-      ) async {
-        final handle = tester.ensureSemantics();
-        final live = await pumpAndFindLive(
-          tester,
-          LoadingState.progressBar(
-            message: messageLabel,
-            progress: 0.45,
-            countText: countLabel,
-            isCancelling: cancelling,
-            onCancel: () {},
-            testKey: testKey,
-            cancelKey: cancelKey,
-          ),
-        );
-        expectOnlyCount(live, tester);
-        handle.dispose();
+      final variants = <String, Widget>{
+        'skeleton cancelling=$cancelling': LoadingState.skeleton(
+          message: messageLabel,
+          skeletonLayout: SkeletonLayout.matrix,
+          countText: countLabel,
+          isCancelling: cancelling,
+          onCancel: () {},
+          testKey: testKey,
+          cancelKey: cancelKey,
+        ),
+        'progressBar cancelling=$cancelling': LoadingState.progressBar(
+          message: messageLabel,
+          progress: 0.45,
+          countText: countLabel,
+          isCancelling: cancelling,
+          onCancel: () {},
+          testKey: testKey,
+          cancelKey: cancelKey,
+        ),
+      };
+      variants.forEach((variant, loading) {
+        liveTest(variant, 'label 等於計數文字', loading, (live, t) {
+          expect(live.label, countLabel);
+        });
+        liveTest(variant, 'value 為空', loading, (live, t) {
+          expect(live.value, isEmpty);
+        });
+        liveTest(variant, '帶 isLiveRegion 旗標', loading, (live, t) {
+          expect(live.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
+        });
+        liveTest(variant, '取消鈕不在 live 子樹', loading, (live, t) {
+          final cancel = t.getSemantics(find.byKey(cancelKey));
+          expect(isInSemanticsSubtree(cancel, live), isFalse);
+        });
       });
     }
   });

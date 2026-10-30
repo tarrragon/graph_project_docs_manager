@@ -367,17 +367,23 @@ void main() {
       liveTest(variant, 'live label 只含訊息', (t, live) {
         expect(live.label, msg);
       });
-      liveTest(variant, 'live 節點帶 header 與 liveRegion 旗標', (t, live) {
+      liveTest(variant, 'live 節點帶 liveRegion 旗標', (t, live) {
         final flags = live.getSemanticsData().flagsCollection;
         expect(flags.isLiveRegion, isTrue);
+      });
+      liveTest(variant, 'live 節點帶 header 旗標', (t, live) {
+        final flags = live.getSemanticsData().flagsCollection;
         expect(flags.isHeader, isTrue);
       });
       liveTest(variant, '切換專案按鈕不在 live 子樹', (t, live) {
         expect(inSubtree(t, live, find.byKey(switchKey)), isFalse);
       });
-      liveTest(variant, 'live 節點無 focus action 且非 focused', (t, live) {
+      liveTest(variant, 'live 節點無 focus action', (t, live) {
         final data = live.getSemanticsData();
         expect(data.hasAction(SemanticsAction.focus), isFalse);
+      });
+      liveTest(variant, 'live 節點非 focused', (t, live) {
+        final data = live.getSemanticsData();
         expect(data.flagsCollection.isFocused.toBoolOrNull(), isNot(isTrue));
       });
     }
@@ -399,8 +405,10 @@ void main() {
       expect(inSubtree(t, live, find.byKey(detailPanelKey)), isFalse);
     });
 
-    testWidgets('withDetail 展開前後 live label 不變', (tester) async {
-      final handle = tester.ensureSemantics();
+    // 各案例自行建構展開前後狀態，不依賴另一案例結果。
+    Future<({String before, String after})> pumpAndExpand(
+      WidgetTester tester,
+    ) async {
       var expanded = false;
       await pumpInSemanticsContainer(
         tester,
@@ -424,9 +432,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(detailPanelKey), findsOneWidget);
       final after = tester.getSemantics(find.text(msg)).label;
+      return (before: before, after: after);
+    }
 
-      expect(before, msg);
-      expect(after, before);
+    testWidgets('withDetail 展開前 live label 等於訊息', (tester) async {
+      final handle = tester.ensureSemantics();
+      final labels = await pumpAndExpand(tester);
+      expect(labels.before, msg);
+      handle.dispose();
+    });
+
+    testWidgets('withDetail 展開後 live label 等於展開前', (tester) async {
+      final handle = tester.ensureSemantics();
+      final labels = await pumpAndExpand(tester);
+      expect(labels.after, labels.before);
       handle.dispose();
     });
 
