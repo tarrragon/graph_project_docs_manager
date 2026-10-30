@@ -6,7 +6,7 @@
 /// 由 `AppShell` 之下的頁面框架統一渲染，本畫面不重複渲染（SPEC-003
 /// §2.4）。「開啟原始檔」依 SPEC-004 §3.7 第 17 項核定置於
 /// `SplitRow.header` 右側 `ButtonRow`，見 [NodeDetailHeaderTrailing]
-/// （`lib/app/shell.dart` 接線）。
+/// （`lib/assembly/shell.dart` 接線）。
 library;
 
 import 'dart:developer' as developer;
@@ -94,7 +94,7 @@ class _ReadyView extends ConsumerWidget {
     final node = ref.watch(nodeDetailNodesProvider)[nodeId];
     if (node == null) return const _UnsetView();
     // 部分損壞分支（state-nodeDetail-partial）在 0.x 不可達而退場，
-    // 恢復條件見 0.5.0-W1-540.1.1。
+    // 恢復條件見 1.0.0-W3-656。
     final main = Panel.scrollable(
       scrollKey: const Key('scroll-nodeDetail-content'),
       children: [
@@ -149,7 +149,7 @@ class _ReadyView extends ConsumerWidget {
   }
 }
 
-/// `SplitRow.header` 右格內容（`lib/app/shell.dart` 接線，同
+/// `SplitRow.header` 右格內容（`lib/assembly/shell.dart` 接線，同
 /// `DomainHeaderTrailing`／`TicketsHeaderTrailing`／`GapReportHeaderTrailing`
 /// 慣例）：僅「正常／部分損壞」列渲染開啟原始檔鈕（SPEC-004 §3.7 第 17
 /// 項；返回鍵由 `AppShell` 之下的頁面框架單一渲染，不在此重複）。

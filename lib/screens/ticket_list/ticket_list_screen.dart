@@ -5,7 +5,7 @@
 /// 分派（[_ReadyListView] / [_ReadyTopicView]）。內容由
 /// [TicketListFixtures] 供給（本票決策：假資料驅動，不串真實資料）。
 /// 頁首模式切換（`SegmentedControl`）由 [TicketsHeaderTrailing] 承載，經
-/// `lib/app/shell.dart` 接線至 `SplitRow.header` 右格（同
+/// `lib/assembly/shell.dart` 接線至 `SplitRow.header` 右格（同
 /// `DomainHeaderTrailing` 慣例，僅 `AppDestination.tickets` 一行條件式
 /// trailing）。
 ///
@@ -50,7 +50,7 @@ class TicketListScreen extends ConsumerWidget {
   }
 }
 
-/// 頁首右格（`lib/app/shell.dart` 接線，見檔頭說明）：僅 [TicketsReady]
+/// 頁首右格（`lib/assembly/shell.dart` 接線，見檔頭說明）：僅 [TicketsReady]
 /// 渲染 `SegmentedControl`，其餘狀態不渲染頁首模式切換。
 class TicketsHeaderTrailing extends ConsumerWidget {
   const TicketsHeaderTrailing({super.key});

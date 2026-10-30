@@ -45,7 +45,7 @@ class AppIcon extends StatelessWidget {
     this.semanticLabel,
   });
 
-  /// 圖示資料（Material Icons，沿用 `lib/app/shell.dart` 既有慣例）。
+  /// 圖示資料（Material Icons，沿用 `lib/assembly/shell.dart` 既有慣例）。
   final IconData icon;
 
   /// 尺寸階，預設 [IconSize.md]。

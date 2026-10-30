@@ -208,7 +208,7 @@ void main() {
     );
   });
 
-  // 部分損壞測試群組在 0.x 不可達而退場，恢復條件見 0.5.0-W1-540.1.1。
+  // 部分損壞測試群組在 0.x 不可達而退場，恢復條件見 1.0.0-W3-656。
 
   group('原始檔已消失（state-nodeDetail-missing）', () {
     late Directory tempDir;
@@ -343,7 +343,7 @@ void main() {
     });
   });
 
-  group('頁首開啟原始檔鈕（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
+  group('頁首開啟原始檔鈕（SplitRow.header 右格，lib/assembly/shell.dart 接線）', () {
     testWidgets('未選節點不渲染開啟原始檔鈕（正向對照）', (tester) async {
       await pumpApp(
         tester,

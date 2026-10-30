@@ -573,7 +573,7 @@ void main() {
         0,
         reason:
             '0.1.0-W3-205 T-205-21(b)：剝除器若失效變成空操作，本斷言'
-            '應先紅——lib/app/shell.dart 內的 ScaffoldMessenger 皆在'
+            '應先紅——lib/assembly/shell.dart 內的 ScaffoldMessenger 皆在'
             '說明註解中，剝除後應零命中。',
       );
     });

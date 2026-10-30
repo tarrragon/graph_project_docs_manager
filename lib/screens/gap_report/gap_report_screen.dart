@@ -399,7 +399,7 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
   }
 }
 
-/// `SplitRow.header` 右格內容（`lib/app/shell.dart` 接線，同
+/// `SplitRow.header` 右格內容（`lib/assembly/shell.dart` 接線，同
 /// `DomainHeaderTrailing`／`TicketsHeaderTrailing` 慣例）：僅無破洞與有
 /// 破洞兩列渲染重新掃描鈕，其餘列（專案未就緒、掃描中）不渲染（SPEC-004
 /// §3.7 第 18 項，`0.1.0-W3-335.37` R10：涵蓋無破洞與有破洞兩狀態）。

@@ -21,7 +21,7 @@ import 'trace_state.dart';
 /// `nav-page-traceability` 的內容（追溯視圖）。
 ///
 /// 只回傳 `PageColumn` 的 `content` slot 該有的子件（SPEC-004 §4.28 slot
-/// 契約）——頁首由 `AppShell`（`lib/app/shell.dart`）為六個導覽項各建一個
+/// 契約）——頁首由 `AppShell`（`lib/assembly/shell.dart`）為六個導覽項各建一個
 /// `PageColumn` 單一渲染，畫面不得自建 `PageColumn` 外殼（`0.1.0-W3-127`：
 /// 自建外殼曾造成頁首重複渲染與內容區內距疊加）。
 class TraceabilityScreen extends ConsumerWidget {

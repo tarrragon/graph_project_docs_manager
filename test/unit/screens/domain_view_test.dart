@@ -521,7 +521,7 @@ void main() {
       expect(state.selectedDomainId, 'graph');
 
       // 矩陣與泳道共用同一 domainViewStateProvider：模式切換不重置
-      // selectedDomainId（頁首 SegmentedControl 由 lib/app/shell.dart 接線，
+      // selectedDomainId（頁首 SegmentedControl 由 lib/assembly/shell.dart 接線，
       // 不在 DomainViewScreen 樹內，此處直接切換 mode 驗證同一 provider
       // 承載的值不因模式切換清除）。
       container.read(domainViewStateProvider.notifier).state = state.copyWith(
@@ -1009,7 +1009,7 @@ void main() {
     });
   });
 
-  group('頁首模式切換（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
+  group('頁首模式切換（SplitRow.header 右格，lib/assembly/shell.dart 接線）', () {
     testWidgets('mode-domain-swimlane → 切至泳道；mode-domain-matrix → 切回矩陣', (
       tester,
     ) async {

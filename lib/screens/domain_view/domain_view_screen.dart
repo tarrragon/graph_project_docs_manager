@@ -8,7 +8,7 @@
 /// [_GraphUnavailableBody]）。矩陣取自 `domainMatrixProvider`、泳道取自
 /// `domainSwimlaneProvider`（兩者同讀最後完成輪次），畫面只讀 state、不自算（`0.5.0-W1-114.21`）。
 /// 頁首模式切換（`SegmentedControl`）由 [DomainHeaderTrailing]
-/// 承載，經 `lib/app/shell.dart` 接線至 `SplitRow.header` 右格（僅
+/// 承載，經 `lib/assembly/shell.dart` 接線至 `SplitRow.header` 右格（僅
 /// `AppDestination.domain` 一行條件式 trailing，其餘五個目的地不受影響）。
 /// 降級型別表旗標（[DomainReady.isDegraded]）的觸發入口
 /// `action-domain-degraded-view` 已接線（`0.1.0-W2-011`，見
@@ -476,7 +476,7 @@ class _GraphUnavailableBody extends ConsumerWidget {
   );
 }
 
-/// `SplitRow.header` 右格內容（`lib/app/shell.dart` 接線，見檔頭說明）：
+/// `SplitRow.header` 右格內容（`lib/assembly/shell.dart` 接線，見檔頭說明）：
 /// 僅 [DomainReady]（矩陣／泳道模式共用的五列）渲染 `SegmentedControl`，
 /// 其餘六列（未選專案／載入中／空圖／三個阻擋狀態）不渲染頁首模式切換
 /// （SPEC-004 §3.6 §1 表下段落）。

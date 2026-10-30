@@ -5,7 +5,7 @@
 /// `.claude/skills/doc/doc_system/core/tracking_schema.json`）存在性、
 /// 該 JSON 的 `schema_generated_at_framework_version` 欄。本檔以介面
 /// 定義三項訊號讀取，讓 `GateDetectionNotifier`（見
-/// `screens/domain_view/gate_detection_notifier.dart`）與其測試可注入
+/// `app/gate_detection_notifier.dart`）與其測試可注入
 /// mock，不依賴真實檔案系統（`test/integration/gate_manifest_test.dart`
 /// 的 17 列凍結 manifest 不觸碰 `~/project`）。
 library;
