@@ -12,9 +12,8 @@ import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
-import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
+import 'package:graph_project_docs_manager/app/uc_flow_focus.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
-import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_state.dart';
 
 import '../../../helpers/gap_round_fakes.dart';
 import '../../../helpers/helpers.dart';

@@ -29,6 +29,7 @@ import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../app/selected_uc.dart';
+import '../../app/uc_flow_focus.dart';
 import '../../components/components.dart';
 import '../../diagnostics/event_gap.dart' show presentationReservedWord;
 import '../../l10n/app_localizations.dart';
