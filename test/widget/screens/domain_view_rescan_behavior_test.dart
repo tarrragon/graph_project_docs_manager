@@ -109,7 +109,7 @@ void main() {
 
     // 舊輪：快照 UC-02 無標題，面板標題僅 UC id；高亮名為該 domain 的列首。
     expect(find.text('UC-02'), findsOneWidget);
-    expect(grid(tester).laneHighlight, domainLane.name);
+    expect(grid(tester).laneHighlight, domainLane.domainId);
 
     fake.completeExternally(roundB);
     await tester.pump();

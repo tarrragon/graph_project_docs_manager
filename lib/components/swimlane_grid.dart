@@ -99,7 +99,7 @@ class SwimlaneLane {
 /// | slot | 必填 | 說明 |
 /// |------|------|------|
 /// | [lanes] | 是（1..無上限） | 泳道清單，垂直排列 |
-/// | [laneHighlight] | 否 | 選中 domain 的泳道名；命中列底改 [AppColors.surfaceIconTint] |
+/// | [laneHighlight] | 否 | 選中 domain 的 domainId（比對 [SwimlaneLane.domainId]）；命中列底改 [AppColors.surfaceIconTint] |
 /// | [onSelectDomain] | 否 | 點泳道名格觸發，傳入該列 [SwimlaneLane.domainId]；`null`
 /// 或該列 `domainId` 為 `null` 時泳道名格維持唯讀（與 `MatrixGrid.onSelectDomain`
 /// 同一「選 domain」動作，兩模式共用同一點擊區域與焦點行為） |
@@ -128,7 +128,7 @@ class SwimlaneGrid extends StatefulWidget {
   /// 步驟間的邊；空清單時不渲染邊列。
   final List<SwimlaneEdge> edges;
 
-  /// 選中 domain 的泳道名；`null` 時無列高亮。容器無自身狀態集，本欄位
+  /// 選中 domain 的 domainId；`null` 時無列高亮。容器無自身狀態集，本欄位
   /// 由呼叫端傳入（SPEC-004 4.38「狀態矩陣」）。
   final String? laneHighlight;
 
@@ -224,9 +224,10 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     _hController.jumpTo(colLeft.clamp(0.0, position.maxScrollExtent));
   }
 
-  /// 只有 domain 列受 [SwimlaneGrid.laneHighlight] 高亮。
+  /// 只有 domain 列受 [SwimlaneGrid.laneHighlight] 高亮，以 domainId 精確比對。
   bool _isHighlighted(SwimlaneLane lane) =>
-      lane.kind == SwimlaneLaneKind.domain && lane.name == widget.laneHighlight;
+      lane.kind == SwimlaneLaneKind.domain &&
+      lane.domainId == widget.laneHighlight;
 
   int get _stepColumnCount {
     var maxColumn = _maxNodeColumn;

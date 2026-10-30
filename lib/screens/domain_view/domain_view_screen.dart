@@ -789,7 +789,7 @@ class _SwimlaneBody extends ConsumerWidget {
         fill: SwimlaneGrid(
           lanes: lanes,
           locateColumn: state.swimlaneFocus?.column,
-          laneHighlight: _highlightName(matrix, lanes, state.selectedDomainId),
+          laneHighlight: state.selectedDomainId,
           onSelectDomain: onSelectDomain,
           scrollKey: const Key('scroll-domain-swimlane'),
           dragKey: const Key('drag-domain-swimlane'),
@@ -846,7 +846,7 @@ class _SwimlaneBody extends ConsumerWidget {
         lanes: lanes,
         locateColumn: state.swimlaneFocus?.column,
         edges: [for (final edge in swimlane.edges) _toSwimlaneEdge(edge)],
-        laneHighlight: _highlightName(matrix, lanes, state.selectedDomainId),
+        laneHighlight: state.selectedDomainId,
         onSelectDomain: onSelectDomain,
         scrollKey: const Key('scroll-domain-swimlane'),
         dragKey: const Key('drag-domain-swimlane'),
@@ -924,22 +924,6 @@ String _ucTitleOf(DomainMatrix? matrix, String ucId) {
     if (uc.id == ucId) return uc.title;
   }
   return '';
-}
-
-/// 選中 domain 的列首字面：先查矩陣列，再查泳道列；查無為 `null`。
-String? _highlightName(
-  DomainMatrix? matrix,
-  List<SwimlaneLane> lanes,
-  String? domainId,
-) {
-  if (domainId == null) return null;
-  for (final row in matrix?.rows ?? const <DomainRow>[]) {
-    if (row.domainId == domainId) return row.domainName;
-  }
-  for (final lane in lanes) {
-    if (lane.domainId == domainId) return lane.name;
-  }
-  return null;
 }
 
 /// 投影列轉元件列：domain 列列首為 `domainName` 原值；畫面列與未定位列

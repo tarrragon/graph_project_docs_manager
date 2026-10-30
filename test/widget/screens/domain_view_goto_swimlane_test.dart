@@ -71,7 +71,8 @@ void main() {
     final grid = tester.widget<SwimlaneGrid>(find.byType(SwimlaneGrid));
     // 定位欄可用：間接格以來源 domain 查得節點，定位到其欄號與列。
     expect(grid.locateColumn, isNotNull);
-    expect(grid.laneHighlight, 'graph');
+    final graphLane = grid.lanes.firstWhere((l) => l.name == 'graph');
+    expect(grid.laneHighlight, graphLane.domainId);
   }
 
   testWidgets('E1 基準：無輪次進行時 tap 進入 → 正常泳道且定位欄可用', (tester) async {

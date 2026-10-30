@@ -375,11 +375,11 @@ void main() {
       expect(_laneOf(tester, SwimlaneLaneKind.domain).name, 'zeta-core');
     });
 
-    testWidgets('選中 domain 的名稱取自矩陣列的 domainName', (tester) async {
+    testWidgets('高亮值為選中 domain 的 domainId', (tester) async {
       await pumpLanes(tester, selectedDomainId: 'beta');
       expect(
         tester.widget<SwimlaneGrid>(find.byType(SwimlaneGrid)).laneHighlight,
-        'beta-name',
+        'beta',
       );
     });
 
@@ -612,7 +612,7 @@ void main() {
       expect(find.text(l10n.flowUnstructuredMessage), findsNothing);
     });
 
-    testWidgets('高亮名退回泳道列：矩陣無該 domain 時取泳道列名', (tester) async {
+    testWidgets('高亮值為 domainId：矩陣無該 domain 時仍傳該 id', (tester) async {
       await pumpScreen(
         tester,
         _stateOverrides(
@@ -635,11 +635,11 @@ void main() {
 
       expect(
         tester.widget<SwimlaneGrid>(find.byType(SwimlaneGrid)).laneHighlight,
-        'zeta-core',
+        'bundle-zeta',
       );
     });
 
-    testWidgets('高亮名 E1：矩陣與泳道列皆無該 domain 時為 null', (tester) async {
+    testWidgets('高亮值 E1：不查名稱，泳道列無該 domain 時仍傳選中 id', (tester) async {
       await pumpScreen(
         tester,
         _stateOverrides(
@@ -653,7 +653,7 @@ void main() {
 
       expect(
         tester.widget<SwimlaneGrid>(find.byType(SwimlaneGrid)).laneHighlight,
-        isNull,
+        'nowhere',
       );
     });
   });
