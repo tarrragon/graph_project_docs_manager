@@ -174,6 +174,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | TEST-GPD-1002 | 以實測觀察到的結構形狀寫成斷言，比規格嚴且把疑似缺陷鎖成測試要求 | 中 | 0.5.0 |
 | TEST-GPD-1003 | 對照測試（拿掉修正後應轉紅）在同一個測試案例內放多條斷言，第一條失敗就中止，後面的斷言沒有執行，整體紅燈被誤讀成每一條斷言都有鑑別力 | 中 | 0.5.0 |
 | TEST-GPD-1004 | package:test 的 setUpAll／tearDownAll 預設逾時是 12 分鐘而非 30 秒，以一般測試的 30 秒推論合成測試的逾時行為會對不上紀錄 | 低 | 0.5.0 |
+| TEST-GPD-1005 | 以 async 函式 override Riverpod 的 FutureProvider 來模擬「已載入」，首幀仍是 loading，畫面先走未載入分支 | 低 | 0.5.0 |
 
 ### 文件 (DOC)
 
