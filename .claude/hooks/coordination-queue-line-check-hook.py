@@ -129,6 +129,7 @@ def read_ticket_status(root: Path, ticket_id: str) -> Optional[str]:
         try:
             text = (root / rel).read_text(encoding="utf-8")
         except OSError:
+            # 候選路徑逐一試讀，找不到即試下一個；全部失敗回傳 None，視為非終態，不誤報（規則 4／IMP-013）
             continue
         m = re.search(r"^status:\s*(\S+)", text, re.M)
         return m.group(1).strip("'\"") if m else None
