@@ -234,6 +234,10 @@ class _LoadingStateState extends State<LoadingState>
               if (widget.countText != null)
                 Semantics(
                   liveRegion: true,
+                  // container：獨立語意節點，不併入外層容器（否則 label 混入
+                  // 訊息、骨架朗讀，value 帶進度，取消鈕落入其子樹；
+                  // SPEC-004 §4.24 規定計數文字為 liveRegion）。
+                  container: true,
                   child: AppText.singleLine(
                     widget.countText!,
                     variant: AppTextVariant.caption,

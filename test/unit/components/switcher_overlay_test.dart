@@ -1,6 +1,7 @@
 /// SwitcherOverlay 元件測試（SPEC-004 4.42、5.16）。
 library;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -87,6 +88,40 @@ void main() {
       await pumpWith(tester, size, items: const [], reason: longReason);
       expectNoOverflow(tester);
       expect(find.text(longReason), findsOneWidget);
+    });
+
+    testWidgets('liveRegion 節點 label 只含失敗原因（外層無兄弟 container）', (tester) async {
+      final handle = tester.ensureSemantics();
+      // 外層為無兄弟結構的 container。實測（0.5.0-W1-531.2）：拿掉元件
+      // container 本斷言仍綠（浮層根節點 explicitChildNodes 已隔離子節點），
+      // 故此為現況守護、無 E2 鑑別力。
+      await pumpHarness(
+        tester,
+        child: Semantics(
+          container: true,
+          child: SwitcherOverlay(
+            items: const [],
+            chooseOther: buildChooseOther(label: '選擇其他XYZ'),
+            onDismiss: () {},
+            testKey: noRecentKey,
+            scrollKey: scrollKey,
+            chooseOtherFailureReason: reasonText,
+          ),
+        ),
+      );
+      final live = tester.getSemantics(find.text(reasonText));
+      expect(live.label, reasonText);
+      expect(live.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
+      var buttonInLive = false;
+      for (
+        SemanticsNode? n = tester.getSemantics(find.byKey(chooseKey));
+        n != null;
+        n = n.parent
+      ) {
+        if (n.id == live.id) buttonInLive = true;
+      }
+      expect(buttonInLive, isFalse);
+      handle.dispose();
     });
   });
 

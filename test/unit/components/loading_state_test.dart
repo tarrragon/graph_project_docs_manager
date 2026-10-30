@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
@@ -394,5 +395,82 @@ void main() {
     await tester.pump();
 
     expect(find.text('Cancel'), findsOneWidget);
+  });
+
+  group('liveRegion 語意（SPEC-004 §4.24：計數文字為 liveRegion）', () {
+    const countLabel = 'count 12';
+    const messageLabel = 'domainLoading';
+
+    Future<SemanticsNode> pumpAndFindLive(
+      WidgetTester tester,
+      Widget loading,
+    ) async {
+      // 外層 container 模擬畫面層語意容器：未設 container 的 liveRegion
+      // 會併入它（531 傾印實測）。
+      await pumpHarness(
+        tester,
+        settle: false,
+        child: Semantics(container: true, child: loading),
+      );
+      await tester.pump();
+      return tester.getSemantics(find.text(countLabel));
+    }
+
+    void expectOnlyCount(SemanticsNode live, WidgetTester tester) {
+      expect(live.label, countLabel);
+      expect(live.value, isEmpty);
+      expect(live.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
+      var cancelInLive = false;
+      for (
+        SemanticsNode? n = tester.getSemantics(find.byKey(cancelKey));
+        n != null;
+        n = n.parent
+      ) {
+        if (n.id == live.id) cancelInLive = true;
+      }
+      expect(cancelInLive, isFalse);
+    }
+
+    for (final cancelling in [false, true]) {
+      testWidgets('skeleton cancelling=$cancelling live label 只含計數文字', (
+        tester,
+      ) async {
+        final handle = tester.ensureSemantics();
+        final live = await pumpAndFindLive(
+          tester,
+          LoadingState.skeleton(
+            message: messageLabel,
+            skeletonLayout: SkeletonLayout.matrix,
+            countText: countLabel,
+            isCancelling: cancelling,
+            onCancel: () {},
+            testKey: testKey,
+            cancelKey: cancelKey,
+          ),
+        );
+        expectOnlyCount(live, tester);
+        handle.dispose();
+      });
+
+      testWidgets('progressBar cancelling=$cancelling live label 只含計數文字', (
+        tester,
+      ) async {
+        final handle = tester.ensureSemantics();
+        final live = await pumpAndFindLive(
+          tester,
+          LoadingState.progressBar(
+            message: messageLabel,
+            progress: 0.45,
+            countText: countLabel,
+            isCancelling: cancelling,
+            onCancel: () {},
+            testKey: testKey,
+            cancelKey: cancelKey,
+          ),
+        );
+        expectOnlyCount(live, tester);
+        handle.dispose();
+      });
+    }
   });
 }
