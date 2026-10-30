@@ -2,22 +2,16 @@
 ///
 /// 標題列 / 側欄（`ProjectSwitcherEntry` + `NavItem` × 6）/ 主區
 /// （`PageColumn` × 6，`IndexedStack`）三格；承載視窗邊緣內距與專案切換
-/// 覆蓋層。與其他純「傳值 + callback」元件不同，本容器依 §2 定案為
-/// `ConsumerWidget`，直接讀取 `lib/app/router.dart` 的
-/// `selectedDestinationProvider` / `returnToProvider`（唯讀引用，非本票
-/// 修改範圍）決定當前可見頁與返回鍵狀態。
+/// 覆蓋層。本容器為純「傳值 + callback」元件（0.5.0-W1-213.3：元件層不依賴
+/// app／screens）：當前可見頁、返回鍵、降級旗標與推定版本皆由建構參數傳入，
+/// 由組裝根（`lib/assembly/shell.dart`）讀 provider 後組裝。
 ///
 /// 契約來源：`docs/spec/ui/SPEC-004-component-library.md` §4.27、§5.1。
 library;
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../app/degraded_schema.dart';
-import '../app/router.dart';
 import '../l10n/app_localizations.dart';
-import '../screens/domain_view/gate_detection_notifier.dart'
-    show inferredVersionProvider;
 import '../tokens/tokens.dart';
 import 'app_button.dart';
 import 'app_text.dart';
@@ -33,17 +27,28 @@ import 'switcher_overlay.dart';
 /// |------|------|------|
 /// | [title] | 否 | `null` 時顯示元件預設 `appTitle` |
 /// | [switcherEntry] | 是 | 側欄頂端專案切換入口（恰 1） |
-/// | [navItems] | 是 | 六個導覽項，依 `AppDestination.values` 順序 |
+/// | [navItems] | 是 | 六個導覽項，依導覽目的地宣告順序 |
 /// | [pages] | 是 | 六個頁面，與 [navItems] 同序，於 `IndexedStack` 一次建構 |
+/// | [selectedIndex] / [screenName] | 是 | 當前頁序號與其錨點用名稱 |
+/// | [hasBackAction] / [onBack] | 否 | 返回鍵是否顯示與其動作 |
+/// | [isDegraded] 等 | 否 | 降級旗標、兩個版本值、推定版本 |
 /// | [overlay] | 否 | `non-null` 即 overlayOpen 態（SPEC-004 4.27 狀態矩陣） |
 /// | [testKey] | 是 | 呼叫端定址 key，預設 [AppShell.shellKey] |
-class AppShell extends ConsumerWidget {
+class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
     this.title,
     required this.switcherEntry,
     required this.navItems,
     required this.pages,
+    this.selectedIndex = 0,
+    this.screenName = 'domain',
+    this.hasBackAction = false,
+    this.onBack,
+    this.isDegraded = false,
+    this.degradedBuiltinVersion,
+    this.degradedProjectVersion,
+    this.inferredVersion,
     this.overlay,
     this.testKey = shellKey,
   }) : assert(
@@ -76,6 +81,30 @@ class AppShell extends ConsumerWidget {
   /// 六個頁面，與 [navItems] 同序（SPEC-004 4.27 slot 契約）。
   final List<PageColumn> pages;
 
+  /// 當前可見頁序號（`IndexedStack.index`）。
+  final int selectedIndex;
+
+  /// 當前畫面名稱，用於 `action-<screen>-back`、`badge-<screen>-*` 錨點。
+  final String screenName;
+
+  /// 為真時主區返回列顯示返回鍵。
+  final bool hasBackAction;
+
+  /// 返回鍵動作；[hasBackAction] 為真時使用。
+  final VoidCallback? onBack;
+
+  /// 降級型別表旗標；為真時常駐渲染降級徽章。
+  final bool isDegraded;
+
+  /// 降級徽章文字所需的內建版本；`null` 退回空字串。
+  final String? degradedBuiltinVersion;
+
+  /// 降級徽章文字所需的專案版本；`null` 退回空字串。
+  final String? degradedProjectVersion;
+
+  /// 推定版本；非 `null` 時渲染推定版本徽章，與 [isDegraded] 互斥。
+  final String? inferredVersion;
+
   /// `non-null` 即 overlayOpen 態（SPEC-004 §4.27 slot 契約）。
   final SwitcherOverlay? overlay;
 
@@ -85,13 +114,8 @@ class AppShell extends ConsumerWidget {
   bool get _isOverlayOpen => overlay != null;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final destination = ref.watch(selectedDestinationProvider);
-    final returnTo = ref.watch(returnToProvider);
-    final isDegraded = ref.watch(degradedSchemaProvider);
-    final degradedVersions = ref.watch(degradedSchemaVersionsProvider);
-    final inferredVersion = ref.watch(inferredVersionProvider);
 
     Widget body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,12 +143,14 @@ class AppShell extends ConsumerWidget {
             order: const NumericFocusOrder(1),
             child: FocusTraversalGroup(
               child: _MainArea(
-                destination: destination,
-                returnTo: returnTo,
+                selectedIndex: selectedIndex,
+                screenName: screenName,
+                hasBackAction: hasBackAction,
                 pages: pages,
-                onBack: () => consumeReturnTo(ref.read),
+                onBack: onBack ?? () {},
                 isDegraded: isDegraded,
-                degradedVersions: degradedVersions,
+                degradedBuiltinVersion: degradedBuiltinVersion,
+                degradedProjectVersion: degradedProjectVersion,
                 inferredVersion: inferredVersion,
               ),
             ),
@@ -244,39 +270,39 @@ class _Sidebar extends StatelessWidget {
 /// `0.2.0-W1-042`）。
 class _MainArea extends StatelessWidget {
   const _MainArea({
-    required this.destination,
-    required this.returnTo,
+    required this.selectedIndex,
+    required this.screenName,
+    required this.hasBackAction,
     required this.pages,
     required this.onBack,
     required this.isDegraded,
-    required this.degradedVersions,
+    required this.degradedBuiltinVersion,
+    required this.degradedProjectVersion,
     required this.inferredVersion,
   });
 
-  final AppDestination destination;
-  final AppDestination? returnTo;
+  final int selectedIndex;
+  final String screenName;
+  final bool hasBackAction;
   final List<PageColumn> pages;
   final VoidCallback onBack;
 
-  /// 降級型別表旗標（`lib/app/degraded_schema.dart`）。為真時本列常駐渲染
-  /// `badge-<screen>-degraded-schema`，即使 `returnTo` 為 `null`。
+  /// 降級型別表旗標。為真時本列常駐渲染
+  /// `badge-<screen>-degraded-schema`，即使無返回動作。
   final bool isDegraded;
 
-  /// 徽章文字所需的兩個版本值；[isDegraded] 為真時應非 `null`
-  /// （寫入端同步設定，見 `lib/app/degraded_schema.dart`）。`null` 時徽章
-  /// 版本文字退回空字串，不阻擋渲染（防禦性處理，非預期路徑）。
-  final DegradedSchemaVersions? degradedVersions;
+  /// 徽章文字所需的兩個版本值；`null` 時徽章版本文字退回空字串，不阻擋
+  /// 渲染（防禦性處理，非預期路徑）。
+  final String? degradedBuiltinVersion;
+  final String? degradedProjectVersion;
 
-  /// 推定版本旗標（`inferredVersionProvider`，
-  /// `lib/screens/domain_view/gate_detection_notifier.dart`）。非 `null`
-  /// 時本列常駐渲染 `badge-<screen>-inferred-version`；與 [isDegraded] 互斥
-  /// （SPEC-001 v1.19〈推定版本〉註記）。
+  /// 推定版本。非 `null` 時本列常駐渲染 `badge-<screen>-inferred-version`；
+  /// 與 [isDegraded] 互斥（SPEC-001 v1.19〈推定版本〉註記）。
   final String? inferredVersion;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final hasBackAction = returnTo != null;
     final hasInferredVersion = inferredVersion != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -292,15 +318,15 @@ class _MainArea extends StatelessWidget {
               children: [
                 if (isDegraded)
                   Badge.tag(
-                    key: Key('badge-${destination.name}-degraded-schema'),
+                    key: Key('badge-$screenName-degraded-schema'),
                     label: l10n.degradedSchemaBadgeLabel(
-                      degradedVersions?.builtinVersion ?? '',
-                      degradedVersions?.projectVersion ?? '',
+                      degradedBuiltinVersion ?? '',
+                      degradedProjectVersion ?? '',
                     ),
                   )
                 else if (hasInferredVersion)
                   Badge.tag(
-                    key: Key('badge-${destination.name}-inferred-version'),
+                    key: Key('badge-$screenName-inferred-version'),
                     label: l10n.inferredVersionBadgeLabel(
                       inferredVersion ?? '',
                     ),
@@ -311,7 +337,7 @@ class _MainArea extends StatelessWidget {
                   AppButton(
                     label: l10n.backAction,
                     onPressed: onBack,
-                    testKey: Key('action-${destination.name}-back'),
+                    testKey: Key('action-$screenName-back'),
                     variant: AppButtonVariant.secondary,
                   )
                 else
@@ -320,7 +346,7 @@ class _MainArea extends StatelessWidget {
             ),
           ),
         Expanded(
-          child: IndexedStack(index: destination.index, children: pages),
+          child: IndexedStack(index: selectedIndex, children: pages),
         ),
       ],
     );
