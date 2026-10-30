@@ -30,6 +30,7 @@ import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../app/selected_uc.dart';
 import '../../components/components.dart';
+import '../../diagnostics/event_gap.dart' show presentationReservedWord;
 import '../../l10n/app_localizations.dart';
 import '../../tokens/tokens.dart';
 import '../../workspace/external_opener.dart';
@@ -301,7 +302,7 @@ class _NormalViewState extends ConsumerState<_NormalView> {
     final focus = _focusFor(ref);
     _scheduleLocate(uc, focus);
     final steps = uc.steps;
-    final eventRows = _buildEventFlowRows(l10n, steps);
+    final eventRows = _buildEventFlowRows(l10n, steps, uc.eventSides);
     final locatedEvent = focus?.eventId;
     final gaps = ref.watch(ucFlowEventGapsProvider);
 
@@ -501,6 +502,7 @@ class _EventFlowRowData {
 List<_EventFlowRowData> _buildEventFlowRows(
   AppLocalizations l10n,
   List<UcFlowStepItem> steps,
+  Map<String, UcFlowEventSides> eventSides,
 ) {
   final seen = <String>[];
   for (final step in steps) {
@@ -514,22 +516,35 @@ List<_EventFlowRowData> _buildEventFlowRows(
     for (final event in seen)
       _EventFlowRowData(
         event: event,
-        emittedBy: _joinStepDomain(l10n, steps, event, emits: true),
-        consumedBy: _joinStepDomain(l10n, steps, event, emits: false),
+        emittedBy: _joinStepDomain(
+          l10n,
+          steps,
+          event,
+          emits: true,
+          oppositeDomains: eventSides[event]?.producers ?? const [],
+        ),
+        consumedBy: _joinStepDomain(
+          l10n,
+          steps,
+          event,
+          emits: false,
+          oppositeDomains: eventSides[event]?.consumers ?? const [],
+        ),
       ),
   ];
 }
 
 /// [event] 於 [steps] 中發出（[emits] 為 `true`）或消費（`false`）的
 /// 「步驟序號 · domain」清單，多個以「、」串接；缺側依 SPEC-001 §2〈事件
-/// 流小表〉回退「本 UC 外」（本畫面尚未接線 EVT 節點 frontmatter，見檔頭
-/// 「本票擴充」說明；真實資料下事件在本 UC 只發出或只消費時即走此分支，
-/// 由 `test/unit/screens/uc_flow_test.dart` 的缺側測試覆蓋）。
+/// 流小表〉回退「本 UC 外」，附 [oppositeDomains]（EVT 節點宣告的對側
+/// domain，`presentation` 顯示為「畫面」）；清單為空（含找不到 EVT 節點）
+/// 時不帶括號。由 `test/unit/screens/uc_flow_test.dart` 的缺側測試覆蓋。
 String _joinStepDomain(
   AppLocalizations l10n,
   List<UcFlowStepItem> steps,
   String event, {
   required bool emits,
+  required List<String> oppositeDomains,
 }) {
   final parts = <String>[];
   for (var i = 0; i < steps.length; i++) {
@@ -539,7 +554,19 @@ String _joinStepDomain(
     }
   }
   if (parts.isEmpty) {
-    return l10n.eventOutsideUc('');
+    return _outsideUcText(l10n, oppositeDomains);
   }
-  return parts.join('、'); // i18n-exempt: 中文頓號為 SPEC-001 §2 串接分隔符定義值
+  return parts.join(_domainSeparator);
+}
+
+const _domainSeparator = '、'; // i18n-exempt: 中文頓號為 SPEC-001 §2 串接分隔符定義值
+
+/// 「本 UC 外」格文字：對側清單為空時不帶括號（SPEC-001 v1.62 §2）。
+String _outsideUcText(AppLocalizations l10n, List<String> domains) {
+  if (domains.isEmpty) return l10n.eventOutsideUcBare;
+  final shown = [
+    for (final d in domains)
+      d == presentationReservedWord ? l10n.swimlaneScreenLaneName : d,
+  ];
+  return l10n.eventOutsideUc(shown.join(_domainSeparator));
 }

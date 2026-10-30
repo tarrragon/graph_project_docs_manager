@@ -35,6 +35,19 @@ class UcFlowStepItem {
   final List<String> consumes;
 }
 
+/// EVT 節點 frontmatter 宣告的對側 domain（SPEC-001 §2〈事件流小表〉
+/// 「本 UC 外」列）：[producers] 供缺發出側、[consumers] 供缺消費側時附帶。
+/// 值為宣告原字面（含本地保留字 `presentation`），空清單代表未宣告。
+class UcFlowEventSides {
+  const UcFlowEventSides({
+    this.producers = const [],
+    this.consumers = const [],
+  });
+
+  final List<String> producers;
+  final List<String> consumers;
+}
+
 /// UC 清單項：id、標題、原始檔路徑、步驟，以及 flow 區塊是否解析失敗
 /// （EVT-CORPUS-004，決定未結構化態用哪一則訊息）。
 class UcFlowUcItem {
@@ -44,12 +57,16 @@ class UcFlowUcItem {
     required this.filePath,
     this.steps = const [],
     this.isFlowParseFailed = false,
+    this.eventSides = const {},
   });
 
   final String id;
   final String title;
   final String filePath;
   final List<UcFlowStepItem> steps;
+
+  /// 以 EVT id 為鍵的對側宣告；找不到 EVT 節點的事件不在其中。
+  final Map<String, UcFlowEventSides> eventSides;
   final bool isFlowParseFailed;
 
   /// 含結構化 flow：步驟清單非空。

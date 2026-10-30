@@ -1335,12 +1335,16 @@
 
   "eventOutsideUc": "本 UC 外（{domains}）",
   "@eventOutsideUc": {
-    "description": "SPEC-004 4.35 `eventFlow`（SPEC-003 §3.2「本 UC 外」列；domains 為空時仍顯示括號內空值，提案）",
+    "description": "SPEC-004 4.35 `eventFlow`（SPEC-003 §3.2「本 UC 外」列，有對側 domain 時附括號；對側為空或無 EVT 節點時改用 eventOutsideUcBare，見 SPEC-001 §2〈事件流小表〉）",
     "placeholders": {
       "domains": {
         "type": "String"
       }
     }
+  },
+  "eventOutsideUcBare": "本 UC 外",
+  "@eventOutsideUcBare": {
+    "description": "SPEC-003 §3.2「本 UC 外」列：對側清單為空或找不到 EVT 節點時，不帶括號（SPEC-001 §2〈事件流小表〉，用戶裁決 A）"
   },
 
   "orphanEventMarkerLabel": "孤立事件",

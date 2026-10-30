@@ -722,6 +722,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get eventOutsideUcBare => '本 UC 外';
+
+  @override
   String get orphanEventMarkerLabel => '孤立事件';
 
   @override

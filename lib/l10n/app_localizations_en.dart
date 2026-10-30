@@ -760,6 +760,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get eventOutsideUcBare => 'Outside this UC';
+
+  @override
   String get orphanEventMarkerLabel => 'Orphan event';
 
   @override
