@@ -109,7 +109,8 @@ class DomainLaneNode {
   /// 本節點所屬步驟的完整 `traverses` 清單（可能含多個 domain）。
   final List<String> stepTraverses;
 
-  /// 步驟 `id`（轉字串）；fixture 時代的節點為 null。
+  /// 步驟 `id`（轉字串）；fixture 時代的節點為 null。lib 內無讀取者，保留
+  /// 供投影測試以步驟 id 辨識節點（domain_view_projection_test）。
   final String? stepId;
 }
 
@@ -166,6 +167,10 @@ class DomainLaneEdge {
 
   final int fromColumn;
   final int toColumn;
+
+  /// 端點所在列的位置（SPEC-001 §1 邊的端點取各步驟最上方節點）。lib 內無
+  /// 讀取者（SwimlaneEdge 尚無列欄位），保留由 domain_view_projection_test
+  /// 斷言端點規則。
   final int fromLane;
   final int toLane;
   final DomainLaneEdgeShape shape;
