@@ -28,7 +28,7 @@ related:
 
 實證（2026-10-29）：空狀態元件在「掃描中」時，liveRegion 節點為 960×640 全畫面，label 為「掃描中\n已掃描 0 項」；按鈕則是其子節點。
 
-後續全面盤點（2026-10-30）：同一元件庫內另有 5 處 `Semantics(liveRegion: true)` 未設 container。逐一傾印後，4 處同樣併入外層，label 分別混入路徑、骨架與進度值、版本與說明，或讓按鈕落進 live 子樹。剩下 1 處有獨立節點，原因是父層的兄弟結構剛好把它分開，換一個父層就會併入，屬於偶然符合，不是元件本身保證。
+後續全面盤點（2026-10-30）：同一元件庫內另有 5 處 `Semantics(liveRegion: true)` 未設 container。逐一傾印後，4 處同樣併入外層，label 分別混入路徑、骨架與進度值、版本與說明，或讓按鈕落進 live 子樹。剩下 1 處有獨立節點。盤點時一度判讀為「靠父層兄弟結構偶然分開」，實作修正時才發現是元件根節點設了 `explicitChildNodes: true`，子節點一律各自成節點，屬於元件本身的保證。加上 container 沒有任何可觀測差異，對照測試也做不出轉紅。教訓：判讀「偶然符合」之前，要先沿祖先鏈檢查每一層 Semantics 的 `container`、`explicitChildNodes`、`scopesRoute` 設定，不能只看傾印出來的節點形狀就推測成因。
 
 ## 根因
 
@@ -43,7 +43,7 @@ related:
 
 ## 預防措施
 
-- 凡是設定 liveRegion、header、button 等語意角色的 Semantics，檢查是否需要 `container: true` 才能形成獨立節點。傾印顯示目前已是獨立節點，也要確認這是元件自己保證的，還是靠父層結構偶然成立；後者同樣要加 container。
+- 凡是設定 liveRegion、header、button 等語意角色的 Semantics，檢查是否需要 `container: true` 才能形成獨立節點。傾印顯示目前已是獨立節點，也要確認這是元件自己保證的，還是靠父層結構偶然成立；後者同樣要加 container。判定方法：替換外層容器重新傾印，並逐層查看祖先的 `explicitChildNodes`／`container` 設定。已由元件保證的就不要再加 container，因為加了沒有可觀測效果，測試也驗證不到。
 - 發現一處時，對同一元件庫全面 grep 同型寫法。這類偏離通常整批出現，因為寫法是互相抄來的。
 - 涉及播報行為的規格條文，驗收要用語意樹傾印或節點斷言，不能只用文字查找。
 - 實機讀屏（VoiceOver 等）會不會重播仍需實機確認；widget 測試只能斷言結構。
