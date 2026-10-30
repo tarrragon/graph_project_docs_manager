@@ -22,6 +22,7 @@ import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_state.dart';
 
 import '../../helpers/helpers.dart';
 
@@ -297,6 +298,60 @@ void main() {
       expect(find.byType(AppDataTable), findsOneWidget);
       expect(find.byKey(const Key('panel-ucFlow-event-flow')), findsNothing);
       expectNoOverflow(tester);
+    });
+
+    // 事件流小表缺側回退（SPEC-001 §2〈事件流小表〉）。E1 對照：同一事件在
+    // 兩側皆有時不出現回退文案；只剩一側時恰出現一次。
+    Future<void> pumpEventUc(
+      WidgetTester tester,
+      List<UcFlowStepItem> steps,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: const UcFlowScreen(),
+        overrides: [
+          ucFlowUcListProvider.overrideWithValue([
+            UcFlowUcItem(
+              id: 'edge-case',
+              title: 'edge-uc', // i18n-exempt: 測試 UC 標題
+              filePath: 'docs/usecases/edge-case.md', // i18n-exempt: 測試路徑
+              steps: steps,
+            ),
+          ]),
+          selectedUcProvider.overrideWith((ref) => 'edge-case'),
+        ],
+      );
+    }
+
+    const outside = '本 UC 外（）'; // i18n-exempt: 斷言 zh 樣板文案
+    const emitStep = UcFlowStepItem(
+      label: 'e', // i18n-exempt: 測試步驟標籤
+      domain: 'graph',
+      emits: ['x.y.z'], // i18n-exempt: 測試事件 ID
+    );
+    const consumeStep = UcFlowStepItem(
+      label: 'c', // i18n-exempt: 測試步驟標籤
+      domain: 'graph',
+      consumes: ['x.y.z'], // i18n-exempt: 測試事件 ID
+    );
+
+    testWidgets('事件兩側皆在本 UC 內時不顯示「本 UC 外」（對照）', (tester) async {
+      await pumpEventUc(tester, [emitStep, consumeStep]);
+
+      expect(find.byKey(const Key('panel-ucFlow-event-flow')), findsOneWidget);
+      expect(find.text(outside), findsNothing);
+    });
+
+    testWidgets('事件只發出、無本 UC 內消費者時消費側顯示「本 UC 外」', (tester) async {
+      await pumpEventUc(tester, [emitStep]);
+
+      expect(find.text(outside), findsOneWidget);
+    });
+
+    testWidgets('事件只消費、無本 UC 內發出者時發出側顯示「本 UC 外」', (tester) async {
+      await pumpEventUc(tester, [consumeStep]);
+
+      expect(find.text(outside), findsOneWidget);
     });
 
     testWidgets('點 domain → 切至 Domain 視圖', (tester) async {

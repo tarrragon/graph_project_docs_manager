@@ -524,8 +524,8 @@ List<_EventFlowRowData> _buildEventFlowRows(
 /// [event] 於 [steps] 中發出（[emits] 為 `true`）或消費（`false`）的
 /// 「步驟序號 · domain」清單，多個以「、」串接；缺側依 SPEC-001 §2〈事件
 /// 流小表〉回退「本 UC 外」（本畫面尚未接線 EVT 節點 frontmatter，見檔頭
-/// 「本票擴充」說明，0.1 fixture 恆同 UC 內發出消費皆有，此分支現無測試
-/// 覆蓋）。
+/// 「本票擴充」說明；真實資料下事件在本 UC 只發出或只消費時即走此分支，
+/// 由 `test/unit/screens/uc_flow_test.dart` 的缺側測試覆蓋）。
 String _joinStepDomain(
   AppLocalizations l10n,
   List<UcFlowStepItem> steps,
