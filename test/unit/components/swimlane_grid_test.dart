@@ -19,11 +19,13 @@ void main() {
     int laneCount = 6,
     int columnCount = 6,
     String Function(int lane)? nameOf,
+    bool withDomainId = false,
   }) {
     return List.generate(laneCount, (laneIndex) {
       final name = nameOf?.call(laneIndex) ?? 'lane-$laneIndex';
       return SwimlaneLane(
         name: name,
+        domainId: withDomainId ? 'lane-$laneIndex' : null,
         nodes: [
           for (var column = 0; column < columnCount; column++)
             (
@@ -133,7 +135,11 @@ void main() {
 
   group('互動反應：jumpTo 使命中列 rect 與 viewport 相交（自詳情卡進入）', () {
     testWidgets('laneHighlight 指向不在可視範圍的泳道時自動捲動至可見', (tester) async {
-      final lanes = buildLanes(laneCount: 20, columnCount: 2);
+      final lanes = buildLanes(
+        laneCount: 20,
+        columnCount: 2,
+        withDomainId: true,
+      );
       final container = SizedBox(
         width: 300,
         height: 200,
@@ -168,6 +174,51 @@ void main() {
     });
   });
 
+  group('高亮以 domainId 比對：兩列同字面（SPEC-004 4.38 laneHighlight）', () {
+    // 20 列全部同字面、domainId 各異；命中列以 jumpTo 可觀測
+    // （第 19 列在初始 viewport 外，第 0 列在其內）。
+    final lanes = buildLanes(
+      laneCount: 20,
+      columnCount: 2,
+      nameOf: (_) => 'same-name',
+      withDomainId: true,
+    );
+
+    Future<void> pumpHighlight(WidgetTester tester, String? id) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          height: 200,
+          child: SwimlaneGrid(
+            lanes: lanes,
+            laneHighlight: id,
+            scrollKey: scrollKey,
+            dragKey: dragKey,
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    // 表格延遲建構：視窗外的節點不存在，視為不可見。
+    bool lastLaneVisible(WidgetTester tester) {
+      final node = find.byKey(const ValueKey('node-19-0'));
+      if (node.evaluate().isEmpty) return false;
+      return tester.getRect(node).overlaps(tester.getRect(find.byKey(dragKey)));
+    }
+
+    testWidgets('指向 lane-19 的 domainId：只該列命中並捲動至可見', (tester) async {
+      await pumpHighlight(tester, 'lane-19');
+      expect(lastLaneVisible(tester), isTrue);
+    });
+
+    testWidgets('E1 對照：改指向 lane-0 的 domainId：高亮在首列，末列不捲入', (tester) async {
+      await pumpHighlight(tester, 'lane-0');
+      expect(lastLaneVisible(tester), isFalse);
+    });
+  });
+
   group('互動反應：locateColumn 水平捲到目標欄（SPEC-004 4.38）', () {
     Widget gridWith(List<SwimlaneLane> lanes, {int? column, String? lane}) {
       return SizedBox(
@@ -186,7 +237,11 @@ void main() {
     testWidgets('locateColumn 指向 viewport 外的欄時目標節點與 viewport 相交', (
       tester,
     ) async {
-      final lanes = buildLanes(laneCount: 3, columnCount: 20);
+      final lanes = buildLanes(
+        laneCount: 3,
+        columnCount: 20,
+        withDomainId: true,
+      );
       await pumpHarness(tester, child: gridWith(lanes));
       await pumpHarness(
         tester,
