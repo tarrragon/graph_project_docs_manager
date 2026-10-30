@@ -127,6 +127,24 @@ L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import
 
 **裁決來源**：`0.5.0-W1-213`（2026-10-30 用戶裁決，經主控轉達，`0.5.0-W1-349` 同日記錄），三個候選中採「app 是應用狀態層、組裝根移出 app」一案。裁決當時的現況違規邊與收斂順序見 213 的 children（213.2～213.6），守衛由 `0.5.0-W1-213.6` 建立。
 
+### 2.2 畫面層的四個名稱
+
+畫面層（L4）在不同載體有四種寫法。四者都指同一層，但各有消費端，語意層次也不同，所以不統一寫法：
+
+| 名稱 | 載體 | 語意 | 消費端與行為 |
+|---|---|---|---|
+| `ui` | 目錄 `docs/spec/ui/` | 規格檔的存放位置 | 只供人工導航，工具不依目錄名分流 |
+| `ui` | SPEC-001～004 frontmatter 的 `domain` 欄 | 規格分類：這是層級 SPEC，不是 domain SPEC | spec 的 domain 覆蓋檢查：`domain` 欄的值不在已宣告 domain 集合內，就判為層級 SPEC，改依本檔 §8 判定 FR 歸屬 |
+| `presentation` | EVT frontmatter 的 `consumers` | 資料中的本地保留字，表示消費方是畫面層 | Diagnostics 的事件類破洞判定：此值改為比對 `traverses == []` 的步驟（SPEC-003 §3.5）；`producers` 不可用此值 |
+| L4 畫面狀態 | 本檔 §2 分層圖與 §8 歸屬表 | 架構層：layer，不是 domain | 只供人工閱讀；覆蓋檢查以 FR 號比對，不比對「L4」字面 |
+
+**前提**：`ui` 和 `presentation` 兩個值能正確運作，都是因為沒有任何 DomainBundle 以這兩個名稱宣告 `domain`。若有 DomainBundle 用了其中一個名稱：
+
+- 用 `ui`：SPEC-001～004 會從層級 SPEC 改判為 domain SPEC，輸出不會有任何提示。
+- 用 `presentation`：該 domain 在 EVT `consumers` 中的值，永遠走保留字路徑。
+
+因此 DomainBundle 不得以 `ui` 或 `presentation` 宣告 `domain`。目前這條限制只寫在本段，還沒有工具守衛。
+
 ## 3. 通道與協調圖
 
 > 判準見《事件流負載仲裁方法論》
