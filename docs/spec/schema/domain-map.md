@@ -46,7 +46,7 @@ updated: "2026-10-13"
 
 ### Bundle 不變式清單
 
-供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威在 SPEC-006，本表只列可獨立斷言的不變式；目標路徑為 `lib/schema/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
+供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威依條款分屬兩處：路徑對型別查詢在 SPEC-006 FR-06，邊型表在 SPEC-007 FR-01（各列的 SPEC 條款欄寫明出處）。本表只列可獨立斷言的不變式；目標路徑為 `lib/schema/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
 
 | Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
 |---|---|---|
@@ -56,6 +56,15 @@ updated: "2026-10-13"
 | Schema | 型別表中不帶 `carrier_path_patterns` 的型別（例如 FlowStep）不參與路徑比對；依欄位判定，不依型別名 | SPEC-006 FR-06 規則 3、D9 |
 | Schema | 路徑模式以 ASCII 語意比對：`\d` 不匹配全形數字 | SPEC-006 FR-06 規則 2、D9 |
 | Schema | 型別表來源三分：JSON 有路徑模式用 JSON；缺欄位且 JSON 版本不高於內建版本，只補路徑模式；其餘情況查詢不可用 | SPEC-006 FR-06 規則 7 |
+| Schema | 邊型的鍵名、`class`、`forward_field`、`reverse_field`、正向基數、`direction`、`layer` 一律取自型別表；程式內以鍵名寫死的只有兩處：排除 `domain_dependency`、納入 `bundle_dependency` | SPEC-007 FR-01、D6 |
+| Schema | 使用中邊型＝established 邊型扣除 `domain_dependency`、加上 `bundle_dependency`；其餘 proposed 邊型不是使用中邊型 | SPEC-007 FR-01 |
+| Schema | 專案型別表缺 `edge_types`（或其值不是 map）、或缺正向基數：版本在 App 已知範圍內時從內建表補；否則建圖不可用並回報原因碼 | SPEC-007 FR-01 |
+| Schema | 邊型條目缺 `direction`：版本在已知範圍內時依鍵名取內建表的值，回報來源為內建表；內建表也沒有該鍵名時照 `directed` 處理，回報來源為「預設（有向）」；版本不在已知範圍時建圖不可用（`missingDirection`），不得當 `directed` | SPEC-007 FR-01 |
+| Schema | 單一邊型條目不合法（值不是 map、必要欄位缺席或型別錯、`direction` 存在但不是 `directed`／`undirected`）時整筆拒收並寫日誌，視同該邊型缺席；不得只補不合法的欄位而沿用條目其餘欄位 | SPEC-007 FR-01 |
+| Schema | 版本在已知範圍內、內建表也沒有該鍵名、且條目不合法時，該邊型不建邊，只寫拒收日誌，建圖仍可用 | SPEC-007 FR-01 |
+| Schema | 建圖不可用的原因碼優先序：`invalidEdgeTypeEntry` ＞ `missingForwardCardinality` ＞ `missingDirection` | SPEC-007 FR-01 |
+| Schema | 邊型條目的問題不中斷同一型別表 `node_types` 的解碼 | SPEC-007 FR-01 |
+| Schema | 專案型別表整份缺席時建圖不可用，回報版本不在已知範圍的原因碼；以內建表作為專案型別表傳入（降級模式）時建圖可用 | SPEC-007 FR-01 |
 
 ## 6. 待決事項
 
@@ -90,4 +99,4 @@ updated: "2026-10-13"
 
 ---
 
-**Last Updated**: 2026-10-13（`0.5.0-W1-178`：不變式清單各列同行寫明 SPEC id，欄名改「SPEC 條款」；不變式內容未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-31（`0.5.0-W1-184`：不變式清單補 SPEC-007 FR-01 邊型表九列，引言改寫規則權威分屬兩處；前次 `0.5.0-W1-178`：各列同行寫明 SPEC id） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
