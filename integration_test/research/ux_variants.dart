@@ -14,7 +14,18 @@ import 'dart:io';
 import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/components/design_overrides.dart';
+import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
+import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_fixtures.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_providers.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
+import 'package:graph_project_docs_manager/tokens/tokens.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/main.dart' show kDesignSize;
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
@@ -38,11 +49,28 @@ class UxVariant {
     required this.id,
     this.overrides = const [],
     this.wrapApp = _identity,
+    this.destination,
+    this.locales,
+    this.question,
+    this.answerKey,
   });
 
   final String id;
   final List<Override> overrides;
   final Widget Function(Widget app) wrapApp;
+
+  /// 非 null 時只擷取該畫面（成對變體專用）；null 沿用全部畫面。
+  final AppDestination? destination;
+
+  /// 非 null 時只擷取這些語系；null 沿用全部語系。
+  final List<Locale>? locales;
+
+  /// 成對變體的任務式問句與正解元件 key（0.5.0-W1-466.4，供凍結目錄使用）。
+  final String? question;
+  final String? answerKey;
+
+  /// 成對變體（有指定畫面）才在擷取後評估 466.1 三準則。
+  bool get checksGuidelines => destination != null;
 }
 
 Widget _identity(Widget app) => app;
@@ -194,3 +222,197 @@ class UxStubRepository implements WorkspaceRepository {
   @override
   Future<bool> addRecentProject(String path) async => true;
 }
+
+// ---------------------------------------------------------------------------
+// 0.5.0-W1-466.4：成對變體（原設計 / 壞版本），壞版本以 DesignOverrides 注入。
+// 同一列的兩個版本共用同一組 overrides（狀態前提），差別只在 wrapApp。
+// ---------------------------------------------------------------------------
+
+/// 一列成對變體。
+class UxPair {
+  UxPair({
+    required this.code,
+    required AppDestination destination,
+    required List<Override> overrides,
+    required String question,
+    required this.answerKey,
+    required Widget Function(Widget app) inject,
+  }) : original = UxVariant(
+         id: '${code}_orig',
+         overrides: overrides,
+         destination: destination,
+         locales: const [Locale('zh')],
+         question: question,
+         answerKey: answerKey,
+       ),
+       broken = UxVariant(
+         id: '${code}_bad',
+         overrides: overrides,
+         wrapApp: inject,
+         destination: destination,
+         locales: const [Locale('zh')],
+         question: question,
+         answerKey: answerKey,
+       );
+
+  final String code;
+  final String answerKey;
+  final UxVariant original;
+  final UxVariant broken;
+}
+
+const FilterDropdownColorOverride _filterFlat = FilterDropdownColorOverride(
+  background: AppColors.surfaceBase,
+  border: AppColors.surfaceBase,
+  activeBorder: AppColors.surfaceBase,
+);
+
+/// 固定破洞狀態：兩個類別（2 項、4 項）。真實快照掃描有 8 與 13 項，內容超出
+/// 1280x800 視口，B 類加大間距會把項目擠出視口而使 N 不相等（466.4 查核調整 1）。
+class _FixedGap extends GapReportNotifier {
+  @override
+  GapReportState build() => const GapReportFound([
+    GapReportCategory(
+      id: 'graph-defect',
+      items: [
+        GapReportItem(id: 'g1', filePath: 'docs/spec/corpus/domain-map.md'),
+        GapReportItem(id: 'g2', filePath: 'docs/spec/graph/domain-map.md'),
+      ],
+    ),
+    GapReportCategory(
+      id: 'graph-defect-flow',
+      items: [
+        GapReportItem(id: 'f1', filePath: 'docs/usecases/UC-01.md'),
+        GapReportItem(id: 'f2', filePath: 'docs/usecases/UC-02.md'),
+        GapReportItem(id: 'f3', filePath: 'docs/usecases/UC-03.md'),
+        GapReportItem(id: 'f4', filePath: 'docs/usecases/UC-04.md'),
+      ],
+    ),
+  ]);
+}
+
+final List<Override> _gapsFixed = [
+  gapReportProvider.overrideWith(_FixedGap.new),
+];
+
+final List<Override> _traceExpanded = [
+  expandedTraceNodesProvider.overrideWith((ref) => {'PROP-001', 'SPEC-001'}),
+];
+final List<Override> _traceBroken = [
+  traceabilityStateProvider.overrideWith(
+    (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
+  ),
+];
+final List<Override> _ticketsList = [
+  ticketListStateProvider.overrideWith(
+    (ref) => const TicketsReady(tickets: TicketListFixtures.all),
+  ),
+];
+final List<Override> _ticketsTopic = [
+  ticketListStateProvider.overrideWith(
+    (ref) => const TicketsReady(
+      tickets: TicketListFixtures.all,
+      mode: TicketListMode.topic,
+      expandedTopics: {'shell', 'fixture', 'screens', 'unassigned'},
+    ),
+  ),
+];
+
+/// 九列成對變體；注入值見 466 〈變體目錄修訂稿〉與 466.4 Solution。
+/// 代碼省略 C' 的撇號（T-C 即 T-C'），避免目錄名含撇號。
+final List<UxPair> kUxPairs = [
+  UxPair(
+    code: 'T-A',
+    destination: AppDestination.traceability,
+    overrides: const [],
+    question: '想看這些需求往下拆出的工作單，要按哪個位置？',
+    answerKey: 'action-traceability-goto-tickets',
+    inject: (app) => DesignOverrides(
+      buttonColors: const {
+        AppButtonVariant.text: ButtonColorOverride(
+          foreground: AppColors.textSecondary,
+        ),
+      },
+      child: app,
+    ),
+  ),
+  UxPair(
+    code: 'T-B',
+    destination: AppDestination.traceability,
+    overrides: _traceExpanded,
+    question: '哪一個項目緊接在最上層需求的下一層？',
+    answerKey: 'card-traceability-SPEC-001',
+    inject: (app) => DesignOverrides(treeIndent: 0, child: app),
+  ),
+  UxPair(
+    code: 'T-C',
+    destination: AppDestination.traceability,
+    overrides: _traceBroken,
+    question: '這棵樹裡一共有幾處往下接不到後續的地方？',
+    answerKey: 'badge-traceability-broken-<id> x3',
+    inject: (app) =>
+        DesignOverrides(issueMarkerColor: AppColors.textSecondary, child: app),
+  ),
+  UxPair(
+    code: 'G-A',
+    destination: AppDestination.gaps,
+    overrides: _gapsFixed,
+    question: '想讓這頁照最新的內容再查核一遍，要按哪個位置？',
+    answerKey: 'action-gaps-rescan',
+    inject: (app) => DesignOverrides(
+      buttonColors: const {
+        AppButtonVariant.secondary: ButtonColorOverride(
+          foreground: AppColors.textSecondary,
+          border: AppColors.surfaceBase,
+        ),
+      },
+      child: app,
+    ),
+  ),
+  UxPair(
+    code: 'G-B',
+    destination: AppDestination.gaps,
+    overrides: _gapsFixed,
+    question: '由上往下數，第二個分組底下共列了幾條？',
+    answerKey: 'state-gaps-section-<第二類> 下的 card-gaps-*',
+    inject: (app) => DesignOverrides(sectionItemGap: Space.sm, child: app),
+  ),
+  UxPair(
+    code: 'G-C',
+    destination: AppDestination.gaps,
+    overrides: _gapsFixed,
+    question: '要把整個分組收起來，要按哪個位置？',
+    answerKey: 'expander-gaps-<category.id>',
+    inject: (app) => DesignOverrides(
+      expanderIconExpanded: Icons.open_in_new,
+      expanderIconCollapsed: Icons.open_in_new,
+      child: app,
+    ),
+  ),
+  UxPair(
+    code: 'K-A',
+    destination: AppDestination.tickets,
+    overrides: _ticketsList,
+    question: '只想留下還沒動工的那幾張，要按哪個位置？',
+    answerKey: 'action-tickets-filter-status',
+    inject: (app) =>
+        DesignOverrides(filterDropdownColors: _filterFlat, child: app),
+  ),
+  UxPair(
+    code: 'K-B',
+    destination: AppDestination.tickets,
+    overrides: _ticketsTopic,
+    question: '單號 0.1.0-W2-006 那一張排在哪一組底下？',
+    answerKey: 'state-tickets-topic-section-screens',
+    inject: (app) => DesignOverrides(sectionItemGap: Space.sm, child: app),
+  ),
+  UxPair(
+    code: 'K-C',
+    destination: AppDestination.tickets,
+    overrides: _ticketsList,
+    question: '這一頁裡有幾張單子的內容讀不出來？',
+    answerKey: 'badge-tickets-corrupted',
+    inject: (app) =>
+        DesignOverrides(issueMarkerColor: AppColors.textSecondary, child: app),
+  ),
+];
