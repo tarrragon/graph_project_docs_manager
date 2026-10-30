@@ -12,7 +12,6 @@ import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/assembly/shell.dart';
-import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
