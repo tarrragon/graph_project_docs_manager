@@ -98,6 +98,25 @@ void main() {
     );
   });
 
+  // E2 正向對照：違規輸入在真實字型環境下必須被各自的準則判為失敗。
+  // 僅 pump 自帶 widget，不寫入 build/ux_capture。
+  for (final name in const [
+    'textContrast',
+    'labeledTapTarget',
+    'minTapTarget28',
+  ]) {
+    testWidgets('準則正向對照：$name 對已知違規輸入必須判失敗', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(_violationFixture(name));
+      await tester.pump(const Duration(milliseconds: 500));
+      final r = await _evaluateGuideline(_guidelineSet()[name]!, tester);
+      handle.dispose();
+      // ignore: avoid_print
+      print('UX_E2 $name passed=${r.passed} reason=${r.reason}');
+      expect(r.passed, isFalse, reason: '$name 未攔下已知違規輸入');
+    });
+  }
+
   testWidgets('座標蒐集：二維捲動視口外的快取格子不得入檔', (tester) async {
     await tester.pumpWidget(_scrollClipFixture());
     final coords = _collectInteractive(tester);
@@ -358,6 +377,49 @@ void _failIfGapsUndeterminable(
   fail('破洞畫面落無法判定破洞（$detail）；擷取產物不可信');
 }
 
+/// 466.1 三準則集合；擷取與正向對照共用同一份，避免對照測到別的評估器。
+Map<String, AccessibilityGuideline> _guidelineSet() => {
+  'textContrast': textContrastGuideline,
+  'labeledTapTarget': labeledTapTargetGuideline,
+  'minTapTarget28': const MinimumTapTargetGuideline(
+    size: Size(28, 28),
+    link: 'lib/tokens/layout.dart hitTargetMin',
+  ),
+};
+
+Future<Evaluation> _evaluateGuideline(
+  AccessibilityGuideline g,
+  WidgetTester tester,
+) async => g.evaluate(tester);
+
+/// 已知違規輸入：每條準則一個，各自只違反自己那條。
+Widget _violationFixture(String guideline) {
+  final Widget body = switch (guideline) {
+    'textContrast' => const Text(
+      'low contrast sample text',
+      style: TextStyle(color: Color(0xFFEEEEEE), fontSize: 14),
+    ),
+    'labeledTapTarget' => GestureDetector(
+      onTap: () {},
+      child: const SizedBox(width: 48, height: 48),
+    ),
+    _ => Semantics(
+      label: 'tiny',
+      child: GestureDetector(
+        onTap: () {},
+        child: const SizedBox(width: 20, height: 20),
+      ),
+    ),
+  };
+  return MaterialApp(
+    home: Scaffold(
+      backgroundColor: Colors.white,
+      // 準則會略過貼著視窗邊緣的節點，故置中而非貼角。
+      body: Center(child: body),
+    ),
+  );
+}
+
 /// 466.1 三準則（textContrast／labeledTapTarget／minTapTarget28）與區段間距量測，
 /// 結果寫入 `<locale>.guidelines.json`；準則失敗只記錄、不使測試失敗。
 Future<void> _writeGuidelines(
@@ -368,17 +430,10 @@ Future<void> _writeGuidelines(
 ) async {
   final handle = tester.ensureSemantics();
   await tester.pump(const Duration(milliseconds: 500));
-  final guidelines = <String, AccessibilityGuideline>{
-    'textContrast': textContrastGuideline,
-    'labeledTapTarget': labeledTapTargetGuideline,
-    'minTapTarget28': const MinimumTapTargetGuideline(
-      size: Size(28, 28),
-      link: 'lib/tokens/layout.dart hitTargetMin',
-    ),
-  };
+  final guidelines = _guidelineSet();
   final results = <String, Object?>{};
   for (final g in guidelines.entries) {
-    final r = await g.value.evaluate(tester);
+    final r = await _evaluateGuideline(g.value, tester);
     results[g.key] = {
       'passed': r.passed,
       'labels': RegExp(r'label: "([^"]*)"')
