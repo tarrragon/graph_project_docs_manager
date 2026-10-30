@@ -4,6 +4,7 @@ title: "平台系統指令要求暫存檔一律放 scratchpad，框架卻禁止�
 severity: low
 related:
  - PC-GPD-038
+ - PC-GPD-031
 ---
 
 # PC-GPD-056: 平台系統指令要求暫存檔一律放 scratchpad，框架卻禁止主線程寫 scratchpad；主線程以 Bash 重新導向（> file）存閘門或測試輸出時，Edit/Write 守衛看不到，違規靜默發生
@@ -28,6 +29,8 @@ related:
 **兩個來源的指令互相衝突，而且平台指令出現得更頻繁**。平台的系統指令要求「暫存檔一律使用 scratchpad，不要用 /tmp」，每個 session 都會看到；框架的禁令寫在主線程角色規則的可寫路徑表裡。主線程要存暫存輸出時，最先想到的是平台給的位置。
 
 **守衛只看 Edit／Write 工具**。可寫路徑的強制層攔的是 Edit／Write 的目標路徑，Bash 的 `>`、`tee` 不經過那一層，所以違規不會被即時擋下，只能靠事後審查發現。
+
+**同一類衝突的另一面**：PC-GPD-031 記錄平台允許以 Bash 改檔、代理人因此繞過工具選擇規則。兩則都是平台指令與框架規則衝突、守衛又只攔 Edit／Write，所以 Bash 路徑上的違規都看不見；同日 implementation 代理人兩度以 Python heredoc 寫 lib/test，被 Bash 寫入邊界守衛擋下，屬於 PC-GPD-031 那一面。
 
 ## 解決方案
 
