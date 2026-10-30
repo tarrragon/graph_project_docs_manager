@@ -41,15 +41,13 @@ class NodeDetailFixture {
     required this.title,
     required this.filePath,
     required this.markdown,
-    this.damagedFields = const [],
     this.relations = const [],
   });
 
   final String id;
 
   /// 節點型別（PROP／SPEC／UC／Ticket），`ListRow.meta` leading
-  /// `Badge.type`；[damagedFields] 含 `'type'` 時該欄改渲染
-  /// `IssueMarker.damagedDetail`。
+  /// `Badge.type`。
   final String type;
 
   /// 節點狀態（`Badge.status`，值需落在元件庫 `_statusToneMap` 對映內）。
@@ -64,12 +62,6 @@ class NodeDetailFixture {
   /// 主欄 `DocumentBody` 的 markdown 原文。
   final String markdown;
 
-  /// 因檔案損壞而無法讀取的欄位名（目前只示範 `'type'`）；0.1 fixture
-  /// 只示範單一欄位損壞，多欄同時損壞的多實例錨點模式（SPEC-003 §3.6
-  /// 「同一錨點多實例，斷言以祖先限定 finder」）留待真實資料整合後視
-  /// 情況擴充。
-  final List<String> damagedFields;
-
   /// 右欄關聯分節（`Section.static` × N）。
   final List<NodeRelationCategory> relations;
 }
@@ -79,8 +71,11 @@ abstract final class NodeDetailFixtures {
   /// 正常態節點 id（`e2e-contract`，長文樣本）。
   static const String normalNodeId = 'e2e-contract';
 
-  /// 部分損壞態節點 id（`csv-export-spec`，缺 frontmatter 樣本）。
-  static const String partialNodeId = 'csv-export-spec';
+  /// 第二個正常態節點 id（`csv-export-spec`，關聯跳轉目標）。
+  static const String secondNodeId = 'csv-export-spec';
+
+  // 部分損壞樣本（csv-export-spec，原缺 frontmatter）與 damagedFields 在 0.x 不可達而退場，
+  // 恢復條件見 0.5.0-W1-540.1.1。
 
   /// 節點 id → 完整假資料。
   static final Map<String, NodeDetailFixture> nodes = {
@@ -95,19 +90,17 @@ abstract final class NodeDetailFixtures {
       relations: const [
         NodeRelationCategory(
           label: '關聯節點', // i18n-exempt: fixture 分節標題，非 App UI 文案
-          nodeIds: [partialNodeId],
+          nodeIds: [secondNodeId],
         ),
       ],
     ),
-    partialNodeId: NodeDetailFixture(
-      id: partialNodeId,
+    secondNodeId: NodeDetailFixture(
+      id: secondNodeId,
       type: 'SPEC', // i18n-exempt: fixture 資料值
       status: 'draft', // i18n-exempt: fixture 資料值
       title: 'CSV 匯出規格', // i18n-exempt: fixture 節點標題，非 App UI 文案
       filePath: 'docs/spec/csv-export-spec.md', // i18n-exempt: fixture 路徑字面
-      markdown:
-          '# CSV 匯出規格\n\n本檔缺 frontmatter，型別欄位無法解析。', // i18n-exempt: fixture 內文
-      damagedFields: const ['type'],
+      markdown: '# CSV 匯出規格\n\n第二個正常節點。', // i18n-exempt: fixture 內文
       relations: const [
         NodeRelationCategory(
           label: '關聯節點', // i18n-exempt: fixture 分節標題，非 App UI 文案

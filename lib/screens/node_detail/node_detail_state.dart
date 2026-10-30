@@ -33,10 +33,8 @@ class NodeDetailUnset extends NodeDetailState {
   const NodeDetailUnset();
 }
 
-/// 正常／部分損壞共用：節點是否有損壞欄位由 [NodeDetailFixtures] 中該
-/// nodeId 的資料決定，畫面依此渲染欄位級 `IssueMarker.damagedDetail`
-/// （SPEC-001 §6「部分損壞」非獨立資料形狀，是同一節點資料的疊加呈現，
-/// 同 `domain_view_state.dart` `DomainReady.isDegraded` 疊加旗標慣例）。
+/// 正常態：節點存在即渲染正常態（部分損壞在 0.x 不可達，恢復條件見
+/// 0.5.0-W1-540.1.1）。
 class NodeDetailReady extends NodeDetailState {
   const NodeDetailReady({required this.nodeId});
 
