@@ -216,7 +216,7 @@ class _LoadingView extends ConsumerWidget {
       skeletonLayout: SkeletonLayout.matrix,
       isCancelling: state.isCancelling,
       countText: l10n.domainLoadingProcessedCount(state.processedCount),
-      // 取消由載入編排擁有：作廢進行中的輪次與結果，再寫回未選專案。
+      // 取消的語意由載入編排擁有，畫面只轉交，不自行改狀態。
       onCancel: () =>
           ref.read(domainViewLoaderProvider.notifier).cancelLoading(),
       testKey: const Key('state-domain-loading'),
@@ -310,8 +310,7 @@ class _NotFrameworkView extends ConsumerWidget {
 /// `.claude/VERSION` 值（[state.version]）不高於內建型別表資產版本
 /// （[builtinSchemaVersionProvider]，讀自實際內嵌資產，見
 /// `domain_view_schema_version.dart` 檔頭；0.1 資產化本身涵蓋版本閘門
-/// 判斷所需欄位，完整型別表內嵌副本不在本票範圍——畫面全域仍為 fixture
-/// 驅動，見檔頭與 [domainViewStateProvider]）時傳入 `onDegradedView`，
+/// 判斷所需欄位，完整型別表內嵌副本另行處理，不在此畫面範圍）時傳入 `onDegradedView`，
 /// 渲染「以 App 內建型別表檢視」動作（`action-domain-degraded-view`，
 /// `0.1.0-W1-035`／`0.1.0-W2-011`）；按下後轉為 [DomainReady]（矩陣模式）
 /// 並設 `isDegraded` 為真。高於時不傳入，退出路徑只剩切換專案
@@ -644,7 +643,6 @@ class _CellDetailPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final ucId = cell.ucId;
-    final ready = state;
 
     return Panel.scrollable(
       key: const Key('panel-domain-cell-detail'),
@@ -660,7 +658,7 @@ class _CellDetailPanel extends ConsumerWidget {
             label: l10n.cellDetailCloseAction,
             variant: AppButtonVariant.text,
             onPressed: () => ref.read(domainViewStateProvider.notifier).state =
-                ready.copyWith(selectedCell: () => null),
+                state.copyWith(selectedCell: () => null),
             testKey: const Key('action-domain-cell-clear'),
           ),
         ),
@@ -686,7 +684,8 @@ class _CellDetailPanel extends ConsumerWidget {
                 ),
             ],
           ),
-        // 依賴路徑僅間接依賴格渲染（SPEC-004 §3.6；SPEC-001 §1）。
+        // 依賴路徑僅間接依賴格渲染（SPEC-004 §3.6〈SPEC-001 狀態列與 SPEC-002
+        // 八類的歸屬對照〉；SPEC-001 §1〈間接依賴格的詳情卡：依賴路徑〉）。
         if (cell.relation == DomainRelation.indirect)
           for (final path in cell.dependencyPaths)
             AppText.multiLine(path, maxLines: null),
@@ -699,7 +698,7 @@ class _CellDetailPanel extends ConsumerWidget {
               onPressed: () {
                 ref.read(selectedUcProvider.notifier).state = ucId;
                 final focus = _jumpFocus(ref, cell);
-                ref.read(domainViewStateProvider.notifier).state = ready
+                ref.read(domainViewStateProvider.notifier).state = state
                     .copyWith(
                       mode: DomainMode.swimlane,
                       selectedDomainId: () => focus.domainId,
@@ -715,7 +714,7 @@ class _CellDetailPanel extends ConsumerWidget {
   }
 }
 
-/// 需求：[SPEC-001 §1 「在泳道中檢視」跳轉目標] 間接依賴格取依賴路徑第一行的
+/// 需求：[SPEC-001 §1〈間接依賴格的「在泳道中檢視」跳轉目標〉] 間接依賴格取依賴路徑第一行的
 /// 來源 X，以 X 呼叫 Layout 查詢並採用其回傳節點；直接貫穿格（或查無節點、
 /// 查無對應列）定位到該格 domain 所在列。
 SwimlaneFocus _jumpFocus(WidgetRef ref, DomainCell cell) {
@@ -924,7 +923,7 @@ String _ucTitleOf(DomainMatrix? matrix, String ucId) {
   return '';
 }
 
-/// 投影列轉元件列：domain 列列首為 `domainName` 原值；畫面列與未定位列
+/// 投影列轉元件列：domain 列的列首為 `domainName` 原值；畫面列與未定位列
 /// 不帶名稱與 domainId，列首由元件走 i18n。
 SwimlaneLane _toSwimlaneLane(DomainLane lane, String? selectedDomainId) =>
     SwimlaneLane(

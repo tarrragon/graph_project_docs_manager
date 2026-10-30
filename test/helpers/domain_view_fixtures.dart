@@ -1,18 +1,17 @@
 /// Domain 視圖矩陣／泳道兩模式的固定假資料（設計約束：以假資料驅動格
-/// 詳情卡與泳道節點，非真實 repo 解析，`0.1.0-W1-003`／CLAUDE.md §6
-/// 「Domain 視圖的列無來源」現行待決同源）。
+/// 詳情卡與泳道節點，非真實 repo 解析）。
 ///
 /// domain id 取自 `docs/system-layer.md` §1.3 Bundle 索引既有四個
-/// domain（workspace／schema／corpus／graph），UC id 沿用
-/// `docs/usecases/`（UC-02／UC-04／UC-06）；步驟標籤為 fixture 資料本身，
-/// 非 App UI 文案，故標 `i18n-exempt`（同 `trace_fixtures.dart` 慣例）。
+/// domain（workspace／schema／corpus／graph），UC 欄沿用 `docs/usecases/`
+/// 既有 UC；步驟標籤為 fixture 資料本身，非 App UI 文案，故標
+/// `i18n-exempt`（同 `trace_fixtures.dart` 慣例）。
 /// 單一 [_FlowStepFixture] 清單是矩陣格詳情、矩陣關係符號、列小計、泳道
 /// 節點四者的共同來源——`traverses` 包含即為該格「直接貫穿」，
 /// 與 SPEC-001 §1〈矩陣格與泳道列的判定依據 FlowStep.traverses〉一致。
 ///
-/// 本檔屬測試資料建構器（0.5.0-W1-114.21 自 lib 搬入）：畫面只讀 state，
-/// 測試經 [domainFixtureOverrides] 把本檔資料注入 `domainViewStateProvider`
-/// 與 `domainSwimlaneProvider`，不再有 production 讀取路徑。
+/// 本檔屬測試資料建構器：畫面只讀 state，測試經 [domainFixtureOverrides]
+/// 把本檔資料注入 `domainViewStateProvider`、`domainMatrixProvider` 與
+/// `domainSwimlaneProvider`，不經 production 讀取路徑。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
@@ -201,7 +200,7 @@ abstract final class DomainViewFixtures {
   static DomainMatrix get matrix =>
       DomainMatrix(columns: ucColumns, rows: rows);
 
-  /// 注入用的泳道投影：`UC-06` 無 FlowStep 為未結構化；未選定為 `null`。
+  /// 注入用的泳道投影：`hasFlowStep` 為假的 UC 為未結構化；未選定為 `null`。
   static DomainSwimlaneView? swimlaneFor(String? ucId) {
     if (ucId == null) return null;
     final uc = ucColumns.firstWhere((u) => u.id == ucId);
@@ -211,8 +210,7 @@ abstract final class DomainViewFixtures {
 
   /// 泳道列（SPEC-001 §1 acceptance 第四項：泳道節點所屬列依
   /// `FlowStep.traverses`，欄序即步驟在該 UC 內的原始順序索引）。
-  /// [ucId] 須為 `hasFlowStep == true` 的 UC，呼叫端保證（`UC-06` 不應
-  /// 呼叫本函式）。
+  /// [ucId] 須為 `hasFlowStep == true` 的 UC，由呼叫端保證。
   static List<DomainLane> lanesForUc(String ucId) {
     final steps = _stepsByUc[ucId] ?? const [];
     return [
@@ -234,7 +232,8 @@ abstract final class DomainViewFixtures {
   }
 }
 
-/// 帶 fixture 矩陣的 [DomainReady]（測試以 `overrideWith` 注入）。
+/// 測試注入用的 [DomainReady]（矩陣不在狀態內，由 [domainFixtureOverrides]
+/// 的 `domainMatrixProvider` 覆寫提供）。
 DomainReady fixtureReady({
   DomainMode mode = DomainMode.matrix,
   String? selectedDomainId,
@@ -252,8 +251,9 @@ List<DomainLane> emptyLanesOfMatrix(DomainMatrix? matrix) => [
     ),
 ];
 
-/// 載入編排替身：載入完成即寫入 [fixtureReady]，供經 shell 啟動（gate 通過
-/// 後由編排載入真實輪次）的測試取得 fixture 矩陣。
+/// 載入編排替身：不掃描、不載入真實輪次，被呼叫即寫入 [fixtureReady]，
+/// 使經 shell 啟動（gate 通過後觸發 load）的測試進入就緒狀態；矩陣另由
+/// [domainFixtureOverrides] 的覆寫提供。
 class FixtureDomainViewLoader extends DomainViewLoader {
   @override
   Future<void> load({String? inferredVersion}) async {
