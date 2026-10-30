@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.51.1 — 觸發路由表 asd-ste100 一列的目的地由檔案路徑改為 skill 名稱。本 skill 宣告為可攜，指向其他 skill 的檔案路徑在別的專案不一定存在，skill-sync 的可攜性閘門因此拒絕推送。路由的意思不變
+
 **Version**: 1.51.0 — 觸發路由表新增一列：句子與用詞層的受控寫作（一事一名、一詞一義、情態詞只用可以／會／必須、句長門檻）路由到 `asd-ste100` skill，正體中文讀它的 zh-TW pack（句子規則與詞庫）。本 skill 不重寫這組規則，避免同一組規則有兩個定義處。篇章結構仍由本 skill 負責
 
 **Version**: 1.50.1 — 分拆後的入口檔讀者探針回饋：觸發路由表前補審查稿件的三步（先跑體裁 reference 的檢查項，再跑 keyword bank，最後依原則 6 換 frame 重讀）；「序列連接詞」「canonical 名字」「行自足」三個詞在入口檔首次出現處就地帶定義，行自足另連到 sentence-self-sufficiency-by-consumption-unit 卡
