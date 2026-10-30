@@ -99,7 +99,7 @@ class IssueMarker extends StatelessWidget {
   final VoidCallback onTap;
 
   /// 呼叫端定址 key（`badge-tickets-corrupted` /
-  /// `badge-traceability-broken-<nodeId>` / 欄位級 `action-nodeDetail-goto-gaps`）。
+  /// `badge-traceability-broken-<nodeId>`）。
   final Key testKey;
 
   /// `damagedEdge` 必填：被包住的節點，契約型別為 `RelationItem`
@@ -114,7 +114,7 @@ class IssueMarker extends StatelessWidget {
   final int? count;
 
   /// `damagedDetail` 可選：欄位級說明文字（呼叫端傳入
-  /// `fieldCorruptedMessage` 等既有 key 的值）。
+  /// 對應 l10n key 的值）。
   final String? explanation;
 
   Color _markerColor(BuildContext context) =>

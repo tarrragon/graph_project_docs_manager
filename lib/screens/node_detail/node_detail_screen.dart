@@ -8,6 +8,7 @@
 /// （`lib/app/shell.dart` 接線）。
 library;
 
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -18,6 +19,8 @@ import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../components/components.dart';
+import '../../corpus/frontmatter_classifier.dart';
+import '../../corpus/parse_outcome.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
@@ -229,25 +232,49 @@ class _MissingView extends ConsumerWidget {
     );
   }
 
-  /// 重新整理三分支（SPEC-003 §3.6）：0.1 fixture 檔案存在時恆判定為
-  /// 完整解析（無真實 re-parse 邏輯，斷點偵測待真實資料整合，CLAUDE.md
-  /// §6「跨邊界驗證是正交屬性」現況盤點）；檔案仍不存在則維持本狀態並
-  /// 提示 `sourceFileStillMissingMessage`。
+  /// 重新整理三分支（SPEC-003 §3.6）：讀取單一檔案並以
+  /// [classifyFrontmatter] 分類，不重跑整輪掃描。
+  /// - 檔案仍不存在：維持本狀態，SnackBar `sourceFileStillMissingMessage`。
+  /// - 存在且解析完整（[Available]）：轉為 [NodeDetailReady]。
+  /// - 存在但解析失敗（其餘五種 [ParseOutcome]，含讀取失敗）：維持本狀態，
+  ///   SnackBar `sourceFileUnparsableMessage`。
   Future<void> _refresh(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
-    final exists = File(lastKnownPath).existsSync();
-    if (!exists) {
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        message: l10n.sourceFileStillMissingMessage,
-        level: AttentionLevel.discardable,
-        origin: AppSnackBarOrigin.userInitiated,
+    // i18n-exempt: debug log
+    developer.log('refresh start: $lastKnownPath', name: _tag);
+    final outcome = _readOutcome();
+    // i18n-exempt: debug log
+    developer.log(
+      'refresh result: ${outcome?.kind.name ?? 'missing'}',
+      name: _tag,
+    );
+    if (outcome is Available) {
+      ref.read(nodeDetailStateProvider.notifier).state = NodeDetailReady(
+        nodeId: nodeId,
       );
       return;
     }
-    ref.read(nodeDetailStateProvider.notifier).state = NodeDetailReady(
-      nodeId: nodeId,
+    if (!context.mounted) return;
+    AppSnackBar.show(
+      context,
+      message: outcome == null
+          ? l10n.sourceFileStillMissingMessage
+          : l10n.sourceFileUnparsableMessage,
+      level: AttentionLevel.discardable,
+      origin: AppSnackBarOrigin.userInitiated,
     );
+  }
+
+  /// 檔案不存在回傳 null；存在則讀取位元組分類，讀取失敗視為解析失敗。
+  ParseOutcome? _readOutcome() {
+    final file = File(lastKnownPath);
+    if (!file.existsSync()) return null;
+    try {
+      return classifyFrontmatter(file.readAsBytesSync());
+    } on FileSystemException catch (error) {
+      // i18n-exempt: debug log
+      developer.log('refresh read failed: $error', name: _tag, level: 900);
+      return ParseOutcome.unreadable(UnreadableReason.permission);
+    }
   }
 }

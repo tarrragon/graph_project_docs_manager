@@ -131,9 +131,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noGapsScanScope => 'Scanned all nodes and edges';
 
   @override
-  String get fieldCorruptedMessage => 'Unreadable due to file corruption';
-
-  @override
   String get sourceFileMissingMessage => 'Source file no longer exists';
 
   @override
@@ -258,6 +255,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sourceFileStillMissingMessage => 'File still not found';
+
+  @override
+  String get sourceFileUnparsableMessage =>
+      'File exists but cannot be parsed; see the gap report';
 
   @override
   String get expanderLabel => 'Expand or collapse';

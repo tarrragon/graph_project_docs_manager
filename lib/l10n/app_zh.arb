@@ -203,11 +203,6 @@
     "description": "SPEC-001 §5 破洞報告·無破洞狀態的掃描範圍說明文案"
   },
 
-  "fieldCorruptedMessage": "因檔案損壞而無法讀取",
-  "@fieldCorruptedMessage": {
-    "description": "SPEC-001 §6 節點詳情·部分損壞狀態的欄位標示文案"
-  },
-
   "sourceFileMissingMessage": "原始檔已不存在",
   "@sourceFileMissingMessage": {
     "description": "SPEC-001 §6 節點詳情·原始檔已消失狀態的顯示文案"
@@ -421,6 +416,11 @@
   "sourceFileStillMissingMessage": "檔案仍不存在",
   "@sourceFileStillMissingMessage": {
     "description": "SPEC-003 §3.6：action-nodeDetail-refresh 重新整理後，檔案仍不存在分支的 SnackBar 文案"
+  },
+
+  "sourceFileUnparsableMessage": "檔案存在但無法解析，詳見破洞報告",
+  "@sourceFileUnparsableMessage": {
+    "description": "SPEC-003 §3.6：action-nodeDetail-refresh 重新整理後，檔案存在但 frontmatter 解析失敗分支的 SnackBar 文案"
   },
 
   "expanderLabel": "展開或收合",
