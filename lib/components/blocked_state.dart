@@ -166,22 +166,29 @@ class BlockedState extends StatelessWidget {
     return KeyEventResult.ignored;
   }
 
+  /// SPEC-004 4.23 無障礙：header 與 liveRegion 只包訊息並設 `container`，
+  /// 版本值為朗讀順序接續的獨立節點（不併入 live 節點 label）。
   Widget _buildMessageBlock() {
     final versionText = version;
-    return Semantics(
-      header: true,
-      liveRegion: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          AppText.multiLine(message, maxLines: 3, textAlign: TextAlign.center),
-          if (versionText != null) ...[
-            SizedBox(height: Space.xxs),
-            AppText.singleLine(versionText, variant: AppTextVariant.mono),
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Semantics(
+          header: true,
+          liveRegion: true,
+          container: true,
+          child: AppText.multiLine(
+            message,
+            maxLines: 3,
+            textAlign: TextAlign.center,
+          ),
+        ),
+        if (versionText != null) ...[
+          SizedBox(height: Space.xxs),
+          AppText.singleLine(versionText, variant: AppTextVariant.mono),
         ],
-      ),
+      ],
     );
   }
 

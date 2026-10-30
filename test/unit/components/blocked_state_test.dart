@@ -1,6 +1,7 @@
 /// BlockedState 元件測試（SPEC-004 4.23）。
 library;
 
+import 'package:flutter/rendering.dart' show SemanticsNode, SemanticsAction;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -291,6 +292,173 @@ void main() {
       expect(semantics.flagsCollection.isExpanded.toBoolOrNull(), isTrue);
 
       handle.dispose();
+    });
+  });
+
+  group('liveRegion 語意（SPEC-004 §4.23：header 與 liveRegion 只包訊息）', () {
+    const msg = 'schema unavailable';
+    const ver = '1.0.0';
+    const expl = 'explanation text';
+
+    // 外層 container 模擬畫面層語意容器：未設 container 的 liveRegion 會併入它。
+    Future<SemanticsNode> pumpAndFindLive(
+      WidgetTester tester,
+      Widget blocked,
+    ) async {
+      await pumpHarness(
+        tester,
+        child: Semantics(container: true, child: blocked),
+      );
+      await tester.pump();
+      return tester.getSemantics(find.text(msg));
+    }
+
+    bool inSubtree(WidgetTester tester, SemanticsNode live, Finder target) {
+      for (
+        SemanticsNode? n = tester.getSemantics(target);
+        n != null;
+        n = n.parent
+      ) {
+        if (n.id == live.id) return true;
+      }
+      return false;
+    }
+
+    void expectHeaderLive(SemanticsNode live) {
+      final flags = live.getSemanticsData().flagsCollection;
+      expect(flags.isLiveRegion, isTrue);
+      expect(flags.isHeader, isTrue);
+      expect(live.value, isEmpty);
+      // 焦點旗標屬 Esc 收合用的外層 Focus，不得落在 live 節點。
+      expect(live.getSemanticsData().hasAction(SemanticsAction.focus), isFalse);
+      expect(flags.isFocused.toBoolOrNull(), isNot(isTrue));
+    }
+
+    testWidgets('plain 完整：live label 只含訊息，版本與說明不在 live 子樹', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(
+        tester,
+        BlockedState.plain(
+          message: msg,
+          version: ver,
+          explanation: expl,
+          onSwitchProject: () {},
+          testKey: plainKey,
+        ),
+      );
+      expect(live.label, msg);
+      expectHeaderLive(live);
+      expect(inSubtree(tester, live, find.text(ver)), isFalse);
+      expect(inSubtree(tester, live, find.text(expl)), isFalse);
+      expect(inSubtree(tester, live, find.byKey(switchKey)), isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('plain 僅訊息：live label 只含訊息，按鈕不在 live 子樹', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(
+        tester,
+        BlockedState.plain(
+          message: msg,
+          onSwitchProject: () {},
+          testKey: plainKey,
+        ),
+      );
+      expect(live.label, msg);
+      expectHeaderLive(live);
+      expect(inSubtree(tester, live, find.byKey(switchKey)), isFalse);
+      handle.dispose();
+    });
+
+    for (final expanded in [false, true]) {
+      testWidgets('withDetail expanded=$expanded：live label 只含訊息', (
+        tester,
+      ) async {
+        final handle = tester.ensureSemantics();
+        final live = await pumpAndFindLive(
+          tester,
+          BlockedState.withDetail(
+            message: msg,
+            explanation: expl,
+            appVersion: ver,
+            projectVersion: '2.0.0',
+            onSwitchProject: () {},
+            isDetailExpanded: expanded,
+            onToggleDetail: () {},
+            testKey: withDetailKey,
+          ),
+        );
+        expect(live.label, msg);
+        expectHeaderLive(live);
+        expect(inSubtree(tester, live, find.text(expl)), isFalse);
+        expect(inSubtree(tester, live, find.byKey(switchKey)), isFalse);
+        expect(inSubtree(tester, live, find.byKey(detailButtonKey)), isFalse);
+        if (expanded) {
+          expect(inSubtree(tester, live, find.byKey(detailPanelKey)), isFalse);
+        }
+        handle.dispose();
+      });
+    }
+
+    testWidgets('withDetail 展開前後 live label 不變', (tester) async {
+      final handle = tester.ensureSemantics();
+      var expanded = false;
+      await pumpHarness(
+        tester,
+        child: Semantics(
+          container: true,
+          child: _StatefulHarness(
+            builder: (context, toggle) => BlockedState.withDetail(
+              message: msg,
+              explanation: expl,
+              appVersion: ver,
+              projectVersion: '2.0.0',
+              onSwitchProject: () {},
+              isDetailExpanded: expanded,
+              onToggleDetail: () => toggle(() => expanded = !expanded),
+              testKey: withDetailKey,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final before = tester.getSemantics(find.text(msg)).label;
+
+      await tester.tap(find.byKey(detailButtonKey));
+      await tester.pumpAndSettle();
+      expect(find.byKey(detailPanelKey), findsOneWidget);
+      final after = tester.getSemantics(find.text(msg)).label;
+
+      expect(before, msg);
+      expect(after, before);
+      handle.dispose();
+    });
+
+    testWidgets('Esc 收合後焦點仍停在 action-domain-schema-detail', (tester) async {
+      var expanded = true;
+      await pumpHarness(
+        tester,
+        child: _StatefulHarness(
+          builder: (context, toggle) => BlockedState.withDetail(
+            message: msg,
+            appVersion: ver,
+            projectVersion: '2.0.0',
+            onSwitchProject: () {},
+            isDetailExpanded: expanded,
+            onToggleDetail: () => toggle(() => expanded = !expanded),
+            testKey: withDetailKey,
+          ),
+        ),
+      );
+      final buttonFocus = Focus.of(tester.element(find.byKey(detailButtonKey)));
+      buttonFocus.requestFocus();
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(detailPanelKey), findsNothing);
+      expect(FocusManager.instance.primaryFocus, same(buttonFocus));
     });
   });
 
