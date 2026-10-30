@@ -210,15 +210,33 @@ void main() {
       return tester.getSemantics(find.text(l10n.sourceFileMissingMessage));
     }
 
-    testWidgets('label 只含訊息、不含路徑行，且 isHeader 仍在訊息節點', (tester) async {
+    // 每條 expect 各自一個 testWidgets，各自得到 E2 判定（不被前一條擋下）。
+    testWidgets('label 含訊息', (tester) async {
       final handle = tester.ensureSemantics();
       final live = await pumpAndFindLive(tester);
       final l10n = AppLocalizations.of(tester.element(find.byKey(_testKey)));
       expect(live.label, contains(l10n.sourceFileMissingMessage));
+      handle.dispose();
+    });
+
+    testWidgets('label 不含路徑行', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
       expect(live.label, isNot(contains('最後路徑')));
-      final data = live.getSemanticsData();
-      expect(data.flagsCollection.isHeader, isTrue);
-      expect(data.flagsCollection.isLiveRegion, isTrue);
+      handle.dispose();
+    });
+
+    testWidgets('訊息節點帶 isHeader', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      expect(live.getSemanticsData().flagsCollection.isHeader, isTrue);
+      handle.dispose();
+    });
+
+    testWidgets('訊息節點帶 isLiveRegion', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      expect(live.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
       handle.dispose();
     });
 
