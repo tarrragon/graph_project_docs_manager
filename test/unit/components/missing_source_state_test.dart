@@ -198,17 +198,12 @@ void main() {
 
   group('liveRegion 語意（SPEC-004 §4.22：訊息播報一次）', () {
     Future<SemanticsNode> pumpAndFindLive(WidgetTester tester) async {
-      // 外層 container 模擬畫面層語意容器：未設 container 的 liveRegion
-      // 會併入它（531 傾印實測）。
-      await pumpHarness(
+      await pumpInSemanticsContainer(
         tester,
-        child: Semantics(
-          container: true,
-          child: MissingSourceState(
-            path: '/tmp/最後路徑.md',
-            onRefresh: () {},
-            testKey: _testKey,
-          ),
+        child: MissingSourceState(
+          path: '/tmp/最後路徑.md',
+          onRefresh: () {},
+          testKey: _testKey,
         ),
       );
       final l10n = AppLocalizations.of(tester.element(find.byKey(_testKey)));
@@ -231,18 +226,14 @@ void main() {
       final handle = tester.ensureSemantics();
       final live = await pumpAndFindLive(tester);
       final button = tester.getSemantics(find.byKey(_refreshKey));
-      var inSubtree = false;
-      for (SemanticsNode? n = button; n != null; n = n.parent) {
-        if (n.id == live.id) inSubtree = true;
-      }
-      expect(inSubtree, isFalse);
+      expect(isInSemanticsSubtree(button, live), isFalse);
       handle.dispose();
     });
 
     testWidgets('liveRegion 節點 Rect 小於外層容器（非全畫面）', (tester) async {
       final handle = tester.ensureSemantics();
       final live = await pumpAndFindLive(tester);
-      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+      final screen = logicalViewSize(tester);
       expect(live.rect.height, lessThan(screen.height));
       handle.dispose();
     });
