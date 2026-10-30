@@ -109,7 +109,7 @@ class DomainLaneNode {
   /// 本節點所屬步驟的完整 `traverses` 清單（可能含多個 domain）。
   final List<String> stepTraverses;
 
-  /// 步驟 `id`（轉字串）；fixture 時代的節點為 null。lib 內無讀取者，保留
+  /// 步驟 `id`（轉字串），可缺。lib 內無讀取者，保留
   /// 供投影測試以步驟 id 辨識節點（domain_view_projection_test）。
   final String? stepId;
 }
