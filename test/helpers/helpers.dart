@@ -7,11 +7,13 @@
 /// |------|------|
 /// | `window_sizes.dart` | [WindowSize]（min / design）、[setWindowSize]、[testWidgetsAtEachSize] |
 /// | `pump_harness.dart` | [pumpHarness]（狀態注入 + 渲染）、[pumpApp]、[pumpContract]、[expectNoOverflow]、[expectNoVerticalClip]、[kTestLocales] |
+/// | `live_region_semantics.dart` | [pumpInSemanticsContainer]、[isInSemanticsSubtree]、[logicalViewSize]（liveRegion 語意斷言） |
 /// | `anchors.dart` | [Screen]、[Anchor]（組 Key）、[AnchorFinder]（組 Finder） |
 /// | `test_copy.dart` | [TestCopy] 最長文案常數（SPEC-004 §4.0.4） |
 library;
 
 export 'anchors.dart';
+export 'live_region_semantics.dart';
 export 'pump_harness.dart';
 export 'test_copy.dart';
 export 'window_sizes.dart';

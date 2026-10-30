@@ -405,14 +405,7 @@ void main() {
       WidgetTester tester,
       Widget loading,
     ) async {
-      // 外層 container 模擬畫面層語意容器：未設 container 的 liveRegion
-      // 會併入它（531 傾印實測）。
-      await pumpHarness(
-        tester,
-        settle: false,
-        child: Semantics(container: true, child: loading),
-      );
-      await tester.pump();
+      await pumpInSemanticsContainer(tester, settle: false, child: loading);
       return tester.getSemantics(find.text(countLabel));
     }
 
@@ -420,15 +413,8 @@ void main() {
       expect(live.label, countLabel);
       expect(live.value, isEmpty);
       expect(live.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
-      var cancelInLive = false;
-      for (
-        SemanticsNode? n = tester.getSemantics(find.byKey(cancelKey));
-        n != null;
-        n = n.parent
-      ) {
-        if (n.id == live.id) cancelInLive = true;
-      }
-      expect(cancelInLive, isFalse);
+      final cancel = tester.getSemantics(find.byKey(cancelKey));
+      expect(isInSemanticsSubtree(cancel, live), isFalse);
     }
 
     for (final cancelling in [false, true]) {
