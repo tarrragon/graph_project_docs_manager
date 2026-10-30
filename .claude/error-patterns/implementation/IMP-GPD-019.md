@@ -28,7 +28,7 @@ related:
 
 實證（2026-10-29）：空狀態元件在「掃描中」時，liveRegion 節點為 960×640 全畫面，label 為「掃描中\n已掃描 0 項」；按鈕則是其子節點。
 
-後續全面盤點（2026-10-30）：同一元件庫內另有 5 處 `Semantics(liveRegion: true)` 未設 container。逐一傾印後，4 處同樣併入外層，label 分別混入路徑、骨架與進度值、版本與說明，或讓按鈕落進 live 子樹。剩下 1 處有獨立節點。盤點時一度判讀為「靠父層兄弟結構偶然分開」，實作修正時才發現是元件根節點設了 `explicitChildNodes: true`，子節點一律各自成節點，屬於元件本身的保證。加上 container 沒有任何可觀測差異，對照測試也做不出轉紅。教訓：判讀「偶然符合」之前，要先沿祖先鏈檢查每一層 Semantics 的 `container`、`explicitChildNodes`、`scopesRoute` 設定，不能只看傾印出來的節點形狀就推測成因。
+後續全面盤點（2026-10-30）：同一元件庫內另有 5 處 `Semantics(liveRegion: true)` 未設 container。逐一傾印後，4 處同樣併入外層，label 分別混入路徑、骨架與進度值、版本與說明，或讓按鈕落進 live 子樹。剩下 1 處有獨立節點。盤點時一度判讀為「靠父層兄弟結構偶然分開」，實作修正時才發現是元件根節點設了 `explicitChildNodes: true`，子節點一律各自成節點，屬於元件本身的保證。加上 container 沒有任何可觀測差異，對照測試也做不出轉紅。改成只拿掉 `explicitChildNodes` 來做對照，也不可行：該節點同時設了 `scopesRoute: true`，框架會以 assertion 強制要求 `explicitChildNodes` 為 true，元件會直接建構失敗，得不到斷言層級的紅燈。這類由框架約束鎖住的保證，測試只能定位為回歸斷言，不能當作鑑別力證據。教訓：判讀「偶然符合」之前，要先沿祖先鏈檢查每一層 Semantics 的 `container`、`explicitChildNodes`、`scopesRoute` 設定，不能只看傾印出來的節點形狀就推測成因。
 
 ## 根因
 
