@@ -85,24 +85,15 @@ class _ReadyView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
     final node = ref.watch(nodeDetailNodesProvider)[nodeId];
     if (node == null) return const _UnsetView();
-    final isPartial = node.damagedFields.isNotEmpty;
-    final isTypeDamaged = node.damagedFields.contains('type');
-
+    // 部分損壞分支（state-nodeDetail-partial）在 0.x 不可達而退場，
+    // 恢復條件見 0.5.0-W1-540.1.1。
     final main = Panel.scrollable(
       scrollKey: const Key('scroll-nodeDetail-content'),
       children: [
         ListRow.meta(
-          leading: isTypeDamaged
-              ? IssueMarker.damagedDetail(
-                  explanation: l10n.fieldCorruptedMessage,
-                  onTap: () =>
-                      navigateTo(ref.read, AppDestination.gaps, NavIntent.jump),
-                  testKey: const Key('action-nodeDetail-goto-gaps'),
-                )
-              : Badge.type(label: node.type),
+          leading: Badge.type(label: node.type),
           primary: AppText.singleLine(
             node.filePath,
             variant: AppTextVariant.mono,
@@ -145,9 +136,7 @@ class _ReadyView extends ConsumerWidget {
     );
 
     return TwoColumnLayout(
-      key: Key(
-        isPartial ? 'state-nodeDetail-partial' : 'state-nodeDetail-normal',
-      ),
+      key: const Key('state-nodeDetail-normal'),
       main: main,
       detail: detail,
     );

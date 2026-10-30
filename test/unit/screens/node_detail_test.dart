@@ -150,25 +150,6 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    testWidgets('card-nodeDetail-relation-<id>：同畫面替換主欄內容為部分損壞節點', (
-      tester,
-    ) async {
-      await pumpHarness(
-        tester,
-        child: const NodeDetailScreen(),
-        overrides: [_fixtureNodes, _readyNormal],
-      );
-
-      await tester.tap(
-        find.byKey(
-          Key('card-nodeDetail-relation-${NodeDetailFixtures.partialNodeId}'),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(AnchorFinder.state(Screen.nodeDetail, 'partial'), findsOneWidget);
-    });
-
     testWidgets(
       'action-nodeDetail-open-source（SplitRow.header 右格；檔案不存在）：同畫面轉為原始檔已消失',
       (tester) async {
@@ -197,54 +178,7 @@ void main() {
     );
   });
 
-  group('部分損壞（state-nodeDetail-partial）', () {
-    testWidgetsAtEachSize('渲染欄位級 IssueMarker.damagedDetail', (
-      tester,
-      size,
-    ) async {
-      await pumpHarness(
-        tester,
-        child: const NodeDetailScreen(),
-        overrides: [
-          _fixtureNodes,
-          nodeDetailStateProvider.overrideWith(
-            (ref) =>
-                const NodeDetailReady(nodeId: NodeDetailFixtures.partialNodeId),
-          ),
-        ],
-        size: size,
-      );
-
-      expect(AnchorFinder.state(Screen.nodeDetail, 'partial'), findsOneWidget);
-      expect(find.byType(IssueMarker), findsOneWidget);
-      expectNoOverflow(tester);
-    });
-
-    testWidgets('action-nodeDetail-goto-gaps：jump 至破洞報告並記錄 returnTo', (
-      tester,
-    ) async {
-      final container = await pumpHarness(
-        tester,
-        child: const NodeDetailScreen(),
-        overrides: [
-          _fixtureNodes,
-          nodeDetailStateProvider.overrideWith(
-            (ref) =>
-                const NodeDetailReady(nodeId: NodeDetailFixtures.partialNodeId),
-          ),
-          selectedDestinationProvider.overrideWith(
-            (ref) => AppDestination.nodeDetail,
-          ),
-        ],
-      );
-
-      await tester.tap(AnchorFinder.action(Screen.nodeDetail, 'goto-gaps'));
-      await tester.pump();
-
-      expect(container.read(selectedDestinationProvider), AppDestination.gaps);
-      expect(container.read(returnToProvider), AppDestination.nodeDetail);
-    });
-  });
+  // 部分損壞測試群組在 0.x 不可達而退場，恢復條件見 0.5.0-W1-540.1.1。
 
   group('原始檔已消失（state-nodeDetail-missing）', () {
     late Directory tempDir;
