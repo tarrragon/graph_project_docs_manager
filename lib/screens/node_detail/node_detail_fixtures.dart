@@ -71,7 +71,10 @@ abstract final class NodeDetailFixtures {
   /// 正常態節點 id（`e2e-contract`，長文樣本）。
   static const String normalNodeId = 'e2e-contract';
 
-  // 部分損壞樣本（csv-export-spec）與 damagedFields 在 0.x 不可達而退場，
+  /// 第二個正常態節點 id（`csv-export-spec`，關聯跳轉目標）。
+  static const String secondNodeId = 'csv-export-spec';
+
+  // 部分損壞樣本（csv-export-spec，原缺 frontmatter）與 damagedFields 在 0.x 不可達而退場，
   // 恢復條件見 0.5.0-W1-540.1.1。
 
   /// 節點 id → 完整假資料。
@@ -84,6 +87,26 @@ abstract final class NodeDetailFixtures {
       filePath:
           'docs/spec/extraction/e2e-contract.md', // i18n-exempt: fixture 路徑字面
       markdown: _longMarkdownSample,
+      relations: const [
+        NodeRelationCategory(
+          label: '關聯節點', // i18n-exempt: fixture 分節標題，非 App UI 文案
+          nodeIds: [secondNodeId],
+        ),
+      ],
+    ),
+    secondNodeId: NodeDetailFixture(
+      id: secondNodeId,
+      type: 'SPEC', // i18n-exempt: fixture 資料值
+      status: 'draft', // i18n-exempt: fixture 資料值
+      title: 'CSV 匯出規格', // i18n-exempt: fixture 節點標題，非 App UI 文案
+      filePath: 'docs/spec/csv-export-spec.md', // i18n-exempt: fixture 路徑字面
+      markdown: '# CSV 匯出規格\n\n第二個正常節點。', // i18n-exempt: fixture 內文
+      relations: const [
+        NodeRelationCategory(
+          label: '關聯節點', // i18n-exempt: fixture 分節標題，非 App UI 文案
+          nodeIds: [normalNodeId],
+        ),
+      ],
     ),
   };
 

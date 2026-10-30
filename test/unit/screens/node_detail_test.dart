@@ -150,6 +150,35 @@ void main() {
       expectNoOverflow(tester);
     });
 
+    testWidgets('card-nodeDetail-relation-<id>：同畫面替換主欄為該節點，returnTo 不變', (
+      tester,
+    ) async {
+      final container = await pumpHarness(
+        tester,
+        child: const NodeDetailScreen(),
+        overrides: [_fixtureNodes, _readyNormal],
+      );
+      final before = container.read(returnToProvider);
+      final firstTitle =
+          NodeDetailFixtures.nodes[NodeDetailFixtures.normalNodeId]!.title;
+      final secondTitle =
+          NodeDetailFixtures.nodes[NodeDetailFixtures.secondNodeId]!.title;
+      expect(find.text(firstTitle), findsWidgets);
+      expect(find.text(secondTitle), findsNothing);
+
+      await tester.tap(
+        find.byKey(
+          Key('card-nodeDetail-relation-${NodeDetailFixtures.secondNodeId}'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(AnchorFinder.state(Screen.nodeDetail, 'normal'), findsOneWidget);
+      expect(find.text(firstTitle), findsNothing);
+      expect(find.text(secondTitle), findsWidgets);
+      expect(container.read(returnToProvider), before);
+    });
+
     testWidgets(
       'action-nodeDetail-open-source（SplitRow.header 右格；檔案不存在）：同畫面轉為原始檔已消失',
       (tester) async {
