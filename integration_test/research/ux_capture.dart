@@ -378,7 +378,7 @@ void _writeAnswers(
     case 'T-C':
       answer['value'] = _countKeys(tester, 'badge-traceability-broken-');
     case 'K-C':
-      answer['value'] = _countKeys(tester, 'badge-tickets-corrupted');
+      answer['value'] = _countKeys(tester, 'badge-tickets-corrupted-');
     case 'G-B':
       answer['value'] = _gapsSecondSectionCount(tester);
     case 'G-C':
