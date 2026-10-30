@@ -24,7 +24,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/attention_level.dart';
+import '../../components/attention_level.dart';
 import '../../app/domain_view_loader.dart';
 import '../../app/router.dart';
 import '../../app/scan_round.dart';

@@ -17,7 +17,7 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/attention_level.dart';
+import '../../components/attention_level.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';

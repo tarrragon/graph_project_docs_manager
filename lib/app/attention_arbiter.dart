@@ -28,7 +28,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'attention_level.dart';
+import '../components/attention_level.dart';
 
 /// 到達類別（SPEC-003 §2.14 到達類別欄）。
 ///

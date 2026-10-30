@@ -592,7 +592,7 @@ void main() {
           isTrue,
           reason:
               '0.1.0-W3-205 T-205-21(c)：SPEC-003 的章節標題「$heading」'
-              '已變更或消失，請同步更新 lib/app/attention_level.dart 與 '
+              '已變更或消失，請同步更新 lib/components/attention_level.dart 與 '
               'lib/components/app_snack_bar.dart 的 dartdoc 章節引用'
               '（本斷言為該引用的唯一守衛）。',
         );

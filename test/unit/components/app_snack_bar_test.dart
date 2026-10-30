@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:graph_project_docs_manager/app/attention_level.dart';
+import 'package:graph_project_docs_manager/components/attention_level.dart';
 import 'package:graph_project_docs_manager/app/workspace_selection.dart';
 import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
