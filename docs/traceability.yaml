@@ -58,7 +58,7 @@ mappings:
       - matrix-overview-only
       - enter-from-ticket
       - flow-not-structured
-    # 0.5.0-W1-114 指定（docs/test-design/SPEC-001-test-design.md §2、§3），Step 6 實作票建立前檔案尚不存在。
+    # 0.5.0-W1-114 指定（docs/test-design/SPEC-001-test-design.md §2、§3），由 0.5.0-W1-114 的 children 實作。
     tests:
       - integration_test/domain_view_v050.dart
       - integration_test/gap_report_declaration_line.dart
