@@ -13,7 +13,7 @@ import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/layout/lane_order.dart';
 import 'package:graph_project_docs_manager/layout/swim_lane_layout.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 
 /// 依賴路徑各 domain 之間的連接字面（SPEC-001 §1：`X → … → Y`）。
 const dependencyPathSeparator = ' → ';

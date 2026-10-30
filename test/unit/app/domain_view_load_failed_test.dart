@@ -13,10 +13,10 @@ import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
-import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/project_switcher_providers.dart';
 
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/helpers.dart';

@@ -1,8 +1,7 @@
-/// Domain 視圖的 providers。
+/// Domain 視圖的投影 providers。
 ///
-/// [domainViewStateProvider] 為狀態注入點：gate 偵測與資料載入
-/// （`app/domain_view_loader.dart`，0.5.0-W1-114.14）寫入真實狀態，測試以
-/// `overrideWith` 切換至其餘十個狀態，畫面直接渲染。矩陣
+/// 畫面狀態注入點 `domainViewStateProvider` 已移至
+/// `app/domain_view_providers.dart`（0.5.0-W1-213.4）。矩陣
 /// （[domainMatrixProvider]）與泳道（[domainSwimlaneProvider]）同讀
 /// `lastCompletedRoundProvider`（同一專案最後完成的掃描輪次，0.5.0-W1-205.2.1）。
 library;
@@ -14,14 +13,9 @@ import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/layout/swim_lane_layout.dart';
 
-import 'domain_view_projection.dart';
-import 'domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 
-/// 目前畫面狀態；預設 `DomainLoading`：App 啟動到 restore 完成前不顯示
-/// fixture 矩陣（0.5.0-W3-003），由 shell 啟動流程寫入真實狀態。
-final domainViewStateProvider = StateProvider<DomainViewState>(
-  (ref) => const DomainLoading(),
-);
+import 'domain_view_projection.dart';
 
 /// 最後完成輪次的建圖事件；無完成輪次或建圖不可用時為 `null`。
 GraphBuiltEvent? _eventOf(ScanRoundResult? round) {

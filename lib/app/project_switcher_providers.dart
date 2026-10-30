@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 
-import '../../workspace/workspace_types.dart';
+import '../workspace/workspace_types.dart';
 
 /// 浮層展開態；`true` 對應 SPEC-001 §7「展開」或「無最近專案」（依
 /// [recentProjectsProvider] 是否為空清單區分），`false` 對應「收合」。

@@ -9,10 +9,10 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 
 import '../helpers/gap_round_fakes.dart';

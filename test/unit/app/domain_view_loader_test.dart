@@ -15,9 +15,10 @@ import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
@@ -420,9 +421,8 @@ void main() {
     test(
       'project_switcher_providers.dart 不再轉出 currentWorkspaceStateProvider',
       () {
-        final source = File(
-          'lib/screens/project_switcher/project_switcher_providers.dart',
-        ).readAsStringSync();
+        final source = File('lib/app/project_switcher_providers.dart')
+            .readAsStringSync();
         expect(transit.hasMatch(source), isFalse);
       },
     );

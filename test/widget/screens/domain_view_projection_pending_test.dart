@@ -7,9 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/helpers.dart';

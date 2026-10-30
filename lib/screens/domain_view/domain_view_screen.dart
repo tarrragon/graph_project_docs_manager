@@ -39,10 +39,11 @@ import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/stale_open_result.dart';
 import '../../workspace/workspace_repository.dart'
     show workspaceRepositoryProvider;
-import '../project_switcher/project_switcher_providers.dart';
+import '../../app/domain_view_providers.dart';
+import '../../app/domain_view_schema_version.dart';
+import '../../app/domain_view_state.dart';
+import '../../app/project_switcher_providers.dart';
 import 'domain_view_providers.dart';
-import 'domain_view_schema_version.dart';
-import 'domain_view_state.dart';
 
 const String _tag = 'DomainViewScreen';
 

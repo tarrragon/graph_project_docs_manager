@@ -7,9 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/layout/lane_order.dart';
 import 'package:graph_project_docs_manager/layout/swim_lane_layout.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 
 import '../../../helpers/helpers.dart';
 import '../../../helpers/spec001/corpus_snapshot.dart';

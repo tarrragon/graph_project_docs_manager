@@ -32,13 +32,13 @@ import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/gate_detection_notifier.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
-import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_providers.dart';
+import 'package:graph_project_docs_manager/app/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 

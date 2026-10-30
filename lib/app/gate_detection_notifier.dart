@@ -18,10 +18,10 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/domain_view_loader.dart';
-import '../../schema/schema_version.dart'
+import '../schema/schema_version.dart'
     show InKnownRange, Unreadable, classifySchemaVersion;
-import '../../workspace/framework_signal_probe.dart';
+import '../workspace/framework_signal_probe.dart';
+import 'domain_view_loader.dart';
 import 'domain_view_providers.dart';
 import 'domain_view_schema_version.dart';
 import 'domain_view_state.dart';
