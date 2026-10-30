@@ -847,6 +847,31 @@ void main() {
 
       expect(AnchorFinder.action(Screen.gaps, 'rescan'), findsNothing);
     });
+
+    testWidgets('無法判定破洞渲染重新掃描鈕，點擊後轉掃描中（SPEC-003 互動表）', (tester) async {
+      await pumpApp(
+        tester,
+        overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.gaps,
+          ),
+          gapReportProvider.overrideWith(
+            () => _FixedNotifier(const GapReportUndeterminable.scanFailed()),
+          ),
+        ],
+        settle: false,
+      );
+
+      expect(AnchorFinder.action(Screen.gaps, 'rescan'), findsOneWidget);
+      expect(AnchorFinder.state(Screen.gaps, 'undeterminable'), findsOneWidget);
+
+      await tester.tap(AnchorFinder.action(Screen.gaps, 'rescan'));
+      await tester.pump();
+
+      expect(AnchorFinder.state(Screen.gaps, 'undeterminable'), findsNothing);
+      expect(AnchorFinder.state(Screen.gaps, 'scanning'), findsOneWidget);
+      await pumpContract(tester, Motion.spinnerMinVisible);
+    });
   });
 }
 
