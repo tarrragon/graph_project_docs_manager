@@ -812,7 +812,7 @@ void main() {
     });
   });
 
-  group('頁首重新掃描鈕（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
+  group('頁首重新掃描鈕（SplitRow.header 右格，lib/assembly/shell.dart 接線）', () {
     testWidgets('掃描中不渲染重新掃描鈕（正向對照）', (tester) async {
       await pumpApp(
         tester,

@@ -75,7 +75,7 @@ abstract final class NodeDetailFixtures {
   static const String secondNodeId = 'csv-export-spec';
 
   // 部分損壞樣本（csv-export-spec，原缺 frontmatter）與 damagedFields 在 0.x 不可達而退場，
-  // 恢復條件見 0.5.0-W1-540.1.1。
+  // 恢復條件見 1.0.0-W3-656。
 
   /// 節點 id → 完整假資料。
   static final Map<String, NodeDetailFixture> nodes = {

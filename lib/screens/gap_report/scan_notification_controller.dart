@@ -1,6 +1,6 @@
 /// 掃描完成系統層通知的觸發／撤回／導向邏輯（SPEC-003 §2.2）。
 ///
-/// 純邏輯類別，不繼承任何 Riverpod 基底——由 `app/shell.dart` 的
+/// 純邏輯類別，不繼承任何 Riverpod 基底——由 `assembly/shell.dart` 的
 /// `_AppShellState.initState` 建立一次並以 `ref.listenManual` 掛上三個
 /// 監聽（掃描狀態、目前可見頁、生命週期）與一個 stream 訂閱
 /// （[ScanNotifier.activated]），`dispose` 時一併清理。拆成獨立檔案

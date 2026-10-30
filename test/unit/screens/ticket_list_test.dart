@@ -544,7 +544,7 @@ void main() {
     });
   });
 
-  group('頁首模式切換（SplitRow.header 右格，lib/app/shell.dart 接線）', () {
+  group('頁首模式切換（SplitRow.header 右格，lib/assembly/shell.dart 接線）', () {
     testWidgets('mode-tickets-topic → 切至正常 · 主題；mode-tickets-list → 切回列表', (
       tester,
     ) async {

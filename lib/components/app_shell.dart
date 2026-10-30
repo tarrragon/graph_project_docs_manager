@@ -261,7 +261,7 @@ class _Sidebar extends StatelessWidget {
 ///
 /// 既有 `PageColumn` 已建構完成，本容器不改寫其內部——以獨立返回列疊於
 /// 內容之上呈現同一份對外行為（`action-<screen>-back` 錨點與行為不變），
-/// 沿用 `lib/app/shell.dart` 既有的 `_ReturnToHeader` 佈局慣例。降級徽章
+/// 沿用 `lib/assembly/shell.dart` 既有的 `_ReturnToHeader` 佈局慣例。降級徽章
 /// （`badge-<screen>-degraded-schema`）比照同一實作方式疊於本列左側，
 /// 兩者互不覆蓋——`isDegraded` 為真且 `returnTo` 亦非 `null` 時，本列同時
 /// 顯示徽章（左）與返回鍵（右）（SPEC-004 §4.27〈實作註記〉）。推定版本
