@@ -43,6 +43,16 @@ updated: "2026-10-07"
 |--------|------------|-------------|-------|
 | **TicketDetail** | ticket 的 5W1H 結構語意改變 | 單張 ticket 全文與生命週期欄位 | 欄位解讀、佔位值處理 |
 
+### Bundle 不變式清單
+
+供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威在 SPEC-007，本表只列可獨立斷言的不變式，目標路徑為 `lib/ticket_detail/`。
+
+| Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
+|---|---|---|
+| TicketDetail | 查詢來源為同一輪 Corpus 的 `rawNodes`，只收節點型別為 Ticket 者；其他型別的 `id` 查詢結果為「不存在」 | SPEC-007 FR-07 |
+| TicketDetail | 查得時回傳的 map 與該 ticket `rawNode` 的 frontmatter 逐鍵相等，含 5W1H 與生命週期欄位 | SPEC-007 FR-07 |
+| TicketDetail | 查無該 ID（含主圖因重複而排除的 ID）時回傳「不存在」，不拋例外 | SPEC-007 FR-07 |
+
 ## 4. 邊界決策
 
 ### 4.1 Commodity check（本專案的退化形式）
@@ -67,4 +77,4 @@ updated: "2026-10-07"
 
 ---
 
-**Last Updated**: 2026-10-07 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-31（`0.5.0-W1-184`：§3 新增〈Bundle 不變式清單〉，列 SPEC-007 FR-07） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）

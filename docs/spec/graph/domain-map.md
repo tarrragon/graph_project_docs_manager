@@ -46,6 +46,46 @@ updated: "2026-10-21"
 |--------|------------|-------------|-------|
 | **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**domain × UC 關係與依賴路徑**（延伸貫穿數：直接貫穿／間接依賴／無關三值，間接依賴另帶依賴路徑；SPEC-007 FR-12，`0.5.0-W1-114` 用戶裁決 O1——畫面只顯示，規則不落 Layout 或畫面層）、**DomainBundle 分層與層內排序**（1a max+1、2b code point；Layout 泳道列序與 FR-12 依賴路徑排序共用；SPEC-007 FR-13，`0.5.0-W1-114.2` 用戶裁決 R1）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
 
+### Bundle 不變式清單
+
+供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威在 SPEC-007，本表只列可獨立斷言的不變式，目標路徑為 `lib/graph/`。SPEC-007 歸屬其他 bundle 的條款各在其 map：FR-01 在 Schema，FR-07 在 TicketDetail，FR-09 在 Diagnostics（§7）。
+
+| Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
+|---|---|---|
+| Graph | 輕節點的欄位恰為 `id`、節點型別、`status`、`title`、相對路徑五項，與 frontmatter map 無共用引用；`status`、`title` 不是字串時為 null，不中止建圖 | SPEC-007 FR-02 |
+| Graph | 同一 `id` 出現在兩個以上 `rawNode` 時兩者都不建節點，回報一筆帶全部路徑的 `duplicateId`；這些節點的欄位不抽取引用值，也不計入引用值總數 | SPEC-007 FR-02 |
+| Graph | 欄位缺席、null、空字串、空清單不產生引用值；清單內的 null 項跳過不計 | SPEC-007 FR-03〈抽取〉 |
+| Graph | 反向欄位的值是 map 時，依值的形狀逐子鍵展開，不依欄位名；子鍵值不是清單時該子鍵計一個格式錯誤 | SPEC-007 FR-03〈抽取〉 |
+| Graph | 每個引用值依序落入第一個成立的類別：格式錯誤（形狀不合法，或原樣比對不符任何 `id_pattern`，不去除空白）→ 格式錯誤 `selfReference` → 斷邊（`targetMissing`／`targetDuplicated`）→ 解析成功 | SPEC-007 FR-03〈分類〉 |
+| Graph | 守恆式：引用值總數＝解析成功數＋斷邊數＋格式錯誤數 | SPEC-007 FR-03 |
+| Graph | 同一條邊（邊型、起點、終點相同；無向邊為兩端集合相同）只建一次，宣告來源取各次宣告的聯集 | SPEC-007 FR-04 |
+| Graph | 有反向欄位的邊型：起點的正向欄位列出終點，或終點的反向欄位列出起點，任一成立即建邊 | SPEC-007 FR-04 |
+| Graph | 正向基數為 `one` 的邊型，一個起點指向兩個以上解析成功的終點時全部照建，另回報一筆 `multiSource`；斷邊的終點不參與此判定 | SPEC-007 FR-04 |
+| Graph | 是否無向只讀邊型條目的 `direction`，不依鍵名或 `class` | SPEC-007 FR-05 |
+| Graph | 無向邊型 A 列出 B 或 B 列出 A，都建同一條 {A, B}，宣告來源為列出對方的端點集合 | SPEC-007 FR-05 |
+| Graph | `rawNodes` 為空時照常發出 EVT-GRAPH-001，所有計數為 0，`graphDefects` 為空 | SPEC-007 FR-06 |
+| Graph | `graphDefects` 筆數＝斷邊數＋格式錯誤數＋`duplicateId` 數＋`multiSource` 數＋flow 各子類缺陷數＋domain 重複宣告數 | SPEC-007 FR-06 |
+| Graph | `edgeCount` 只計主圖的邊：flow 子圖的連線不進邊集合 | SPEC-007 FR-06、FR-10 |
+| Graph | 鄰接查詢：節點不在圖上回傳空清單；建圖不可用或尚未完成時回傳「圖不可用」，不回傳空清單 | SPEC-007 FR-08 |
+| Graph | 鄰接查詢：無向邊在任何方向篩選下都回傳，方向標為無向；每項的 `layer` 取自型別表，不依鍵名 | SPEC-007 FR-08 |
+| Graph | 建圖不可用時，`flowOf`、domain × UC 關係、分層排序三個查詢皆回傳「圖不可用」，並寫與鄰接查詢同形的日誌事件 | SPEC-007 FR-10、FR-12、FR-13 |
+| Graph | `flowOf` 主線取 `branch_from` 為空的步驟，依清單順序，不沿 `next` 推導；主線 `next` 解析不到時只標於解析結果，不產生缺陷 | SPEC-007 FR-10 |
+| Graph | `branch_from`、`return_to`、分支步 `next` 只在同一 UC 的步驟 id 內解析；解析不到時步驟留在子圖內、參照標為未解析，每個參照報一筆「flow 參照未解析」 | SPEC-007 FR-10 |
+| Graph | 同一 UC 內 step id 重複時全部步驟保留，報一筆「UC 內 step id 重複」，指向該 id 的參照全部標為未解析並各報一筆；不同 UC 的 step id 相同不是缺陷 | SPEC-007 FR-10 |
+| Graph | 分支步 `next` 逐元素解析，純量視同單元素清單，`[]` 不報缺陷；step id 與參照值為非空非字串時轉字串比對，不報缺陷 | SPEC-007 FR-10 |
+| Graph | UC ID 不在圖上或不是 UC 時回傳「不存在」；步驟清單為空時回傳空子圖，兩者區分 | SPEC-007 FR-10 |
+| Graph | `emits`／`consumes` 的元素不在事件節點 id 集合中時，各報一筆「事件引用未解析」。id 集合取 Corpus `rawNodes` 中型別為 EVT 者，含重複 id 的檔；同一步驟同一欄位內同一值只報一筆 | SPEC-007 FR-10〈事件引用〉 |
+| Graph | 名稱索引以 DomainBundle 的 `domain` 精確比對，區分大小寫、不去除空白；不以 ID 字串拼接代替索引 | SPEC-007 FR-11 |
+| Graph | `traverses` 的未宣告值以（步驟, 值）去重，各報一筆；同一步驟的已宣告值照常解析 | SPEC-007 FR-11 |
+| Graph | 步驟缺 `traverses` 鍵時報一筆「`traverses` 鍵缺席」（欄位 `traverses`、原始值 `null`），不視同 `[]`；鍵存在而值為 `null` 時視同 `[]`，不報缺陷 | SPEC-007 FR-11 |
+| Graph | 兩個以上 DomainBundle 宣告同一 `domain` 時全部不進名稱索引，引用該名稱的值報未宣告，另報一筆 domain 重複宣告 {domain, 衝突的 DomainBundle ID 清單}；這些 bundle 仍是節點 | SPEC-007 FR-11 |
+| Graph | domain × UC 關係只把 FR-11 解析成功的值算作直接貫穿；直接貫穿與無關的依賴路徑為空；DomainBundle 或 UC 不在圖上時回傳無關且路徑為空 | SPEC-007 FR-12 |
+| Graph | 間接依賴路徑：對每個來源，先排除中間節點為直接 domain 的路徑，再取最短路徑，同長全列；排序先比長度，再比來源在分層排序中的先後，再比中間節點的先後 | SPEC-007 FR-12 |
+| Graph | 分層：沒有 `bundle_dependency` 出邊者為 L0，其餘為所依賴 bundle 的最大層加 1；任一所依賴 bundle 推不出層時，本身也推不出層 | SPEC-007 FR-13 |
+| Graph | 同層依 `domain` 字面的 Unicode code point 遞增排序，不依 locale | SPEC-007 FR-13 |
+| Graph | 推不出層的 bundle（依賴循環、`depends_on_bundles` 指向自己、依賴指向非 DomainBundle 或不存在者）不消失，依 code point 序接在最後，層號為 null | SPEC-007 FR-13 |
+| Graph | `domain` 無效（非字串、`null`、缺鍵、空字串）不影響層號，也不影響依賴它的 bundle；同層排在 `domain` 有效者之後，彼此依 DomainBundle ID 的 code point 序 | SPEC-007 FR-13 |
+
 ## 5. 對實作票的切分指引
 
 - Graph 的票不得依賴 UI —— 遍歷與 symmetric union 皆為純函式，可獨立測試
@@ -87,4 +127,4 @@ Diagnostics 經 EVT-GRAPH-001 接收缺陷，不依賴 Graph 的內部結構。
 
 ---
 
-**Last Updated**: 2026-10-08（`0.5.0-W1-114.3`：§3 公開面補 DomainBundle 分層與層內排序、§7 補 FR-13；前次 `0.5.0-W1-114.1`：§3 公開面補 domain × UC 關係與依賴路徑、§6 間接依賴歸屬、§7 補 FR-12） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-10-31（`0.5.0-W1-184`：§3 新增〈Bundle 不變式清單〉，列 SPEC-007 FR-02～06、FR-08、FR-10～13）；前次 2026-10-08（`0.5.0-W1-114.3`：§3 公開面補 DomainBundle 分層與層內排序、§7 補 FR-13；前次 `0.5.0-W1-114.1`：§3 公開面補 domain × UC 關係與依賴路徑、§6 間接依賴歸屬、§7 補 FR-12） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
