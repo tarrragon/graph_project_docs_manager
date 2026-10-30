@@ -4,7 +4,7 @@ description: "Composes atomic, intent-revealing, grep-friendly writing (Zettelka
 license: MIT
 metadata:
   portable: true
-  version: 1.50.1
+  version: 1.51.0
   category: writing-methodology
 ---
 
@@ -98,6 +98,7 @@ metadata:
 | 撰寫長篇技術文章（blog、post-mortem、架構決策、除錯復盤）                | `references/writing-articles.md`                                            |                                                                  |
 | 外部分析 / 經驗談轉成教學型分析文章                                      | `references/source-to-teaching-analysis.md`                                 |                                                                  |
 | 翻譯 / 轉譯、檢查譯名與超譯                                              | `references/translation-review.md`                                          |                                                                  |
+| 句子與用詞層的受控寫作：一事一名、一詞一義、情態詞只用可以／會／必須、句長門檻 | `.claude/skills/asd-ste100/SKILL.md`（正體中文讀 zh-TW pack：句子規則與詞庫） | 本 skill 不重寫這組規則；篇章結構仍由本 skill 負責               |
 | 管理多篇文章的結構（系列、MOC、跨篇引用、同一對象在兩個集合各有一頁）    | `references/managing-article-collections.md`                                |                                                                  |
 | 結構決策（拆篇、擴充點、依賴方向、讀者分流）、拆成多檔後查交界           | `references/structuring-with-solid.md`                                      |                                                                  |
 | 對高 stakes 內容做 reviewer-style audit                                  | `references/auditing-articles.md`                                           |                                                                  |

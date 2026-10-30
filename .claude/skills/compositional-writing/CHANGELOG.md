@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.51.0 — 觸發路由表新增一列：句子與用詞層的受控寫作（一事一名、一詞一義、情態詞只用可以／會／必須、句長門檻）路由到 `asd-ste100` skill，正體中文讀它的 zh-TW pack（句子規則與詞庫）。本 skill 不重寫這組規則，避免同一組規則有兩個定義處。篇章結構仍由本 skill 負責
+
 **Version**: 1.50.1 — 分拆後的入口檔讀者探針回饋：觸發路由表前補審查稿件的三步（先跑體裁 reference 的檢查項，再跑 keyword bank，最後依原則 6 換 frame 重讀）；「序列連接詞」「canonical 名字」「行自足」三個詞在入口檔首次出現處就地帶定義，行自足另連到 sentence-self-sufficiency-by-consumption-unit 卡
 
 **Version**: 1.50.0 — SKILL.md 從約 40.5k tokens 分拆到 5k tokens 以內（入口檔預算；估算公式見 skill-design-guide），論證與清單外移、內容逐字保留：字句層 keyword bank 全節移到新檔 `references/keyword-bank.md`（H1 沿用節名〈字句層 keyword bank（完整清單）〉，指名式引用仍可解析；其內 51 條 rg 指令與拆分前逐字相同）；原則 1 至 5 的論證、定位的裝置清單、特化流程分工移到新檔 `references/core-principles.md`；原則 6 全文移入 `principles/writing-multi-pass-review.md`；生成端規格全文移入 `principles/noun-without-its-owner-passes-the-slot-check.md`；示範指令的引數檢查全文移入 `references/demonstrating-commands.md`。SKILL.md 每條原則只留主張與路由，觸發路由表新增「涵蓋章節」欄寫出外移節名，Directory Index 與 Reading Order 併入路由表；frontmatter description 不再逐類列舉 bank 類別，改指向節名。外部引用 PC-111 改為指名式。
