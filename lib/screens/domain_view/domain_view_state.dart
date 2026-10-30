@@ -220,10 +220,14 @@ class DomainUc {
     required this.id,
     required this.title,
     required this.hasFlowStep,
+    this.filePath,
   });
 
   final String id;
   final String title;
+
+  /// UC 節點的來源檔路徑（相對工作區根目錄）；查無節點時為 `null`。
+  final String? filePath;
 
   /// `false` 時該 UC 對應「flow 未結構化」（SPEC-001 §1）。
   final bool hasFlowStep;

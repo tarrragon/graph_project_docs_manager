@@ -16,12 +16,24 @@ import 'package:graph_project_docs_manager/screens/domain_view/domain_view_proje
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/workspace/external_opener.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../../helpers/domain_view_fixtures.dart' show emptyLanesOfMatrix;
 import '../../../helpers/helpers.dart';
 
-DomainUc _uc(String id, String title, {bool hasFlowStep = true}) =>
-    DomainUc(id: id, title: title, hasFlowStep: hasFlowStep);
+DomainUc _uc(
+  String id,
+  String title, {
+  bool hasFlowStep = true,
+  String? filePath,
+}) => DomainUc(
+  id: id,
+  title: title,
+  hasFlowStep: hasFlowStep,
+  filePath: filePath,
+);
 
 DomainCell _cell(
   String domainId,
@@ -733,5 +745,56 @@ void main() {
         );
       },
     );
+  });
+
+  group('泳道未結構化態開啟原始檔取自 UC 節點路徑（0.5.0-W1-212）', () {
+    const realPath = 'docs/usecases/UC-02-assess-change-impact-by-domain.md';
+
+    Future<FakeExternalOpener> tapOpenSource(
+      WidgetTester tester, {
+      String? filePath,
+    }) async {
+      final fake = FakeExternalOpener(defaultResult: ExternalOpenResult.opened);
+      final matrix = DomainMatrix(
+        columns: [_uc('UC-02', '標題乙', filePath: filePath)],
+        rows: const [],
+      );
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          ..._stateOverrides(
+            matrix,
+            mode: DomainMode.swimlane,
+            swimlane: const DomainSwimlaneUnstructured(),
+            selectedUc: 'UC-02',
+          ),
+          externalOpenerProvider.overrideWithValue(fake),
+          currentWorkspaceStateProvider.overrideWith(
+            (ref) => const WorkspaceReady('/ws/proj'),
+          ),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('action-domain-open-source')));
+      await tester.pumpAndSettle();
+      return fake;
+    }
+
+    testWidgets('開啟呼叫收到節點 path（檔名帶描述字尾，與 UC id 不等）', (tester) async {
+      final fake = await tapOpenSource(tester, filePath: realPath);
+      expect(fake.calls, ['/ws/proj/$realPath']);
+    });
+
+    testWidgets('對照：不會傳出舊的寫死樣式路徑', (tester) async {
+      final fake = await tapOpenSource(tester, filePath: realPath);
+      expect(fake.calls, isNot(contains('/ws/proj/docs/usecases/UC-02.md')));
+      expect(fake.calls, hasLength(1));
+    });
+
+    testWidgets('filePath 為 null：不呼叫 opener，提示找不到檔案', (tester) async {
+      final fake = await tapOpenSource(tester);
+      expect(fake.calls, isEmpty);
+      expect(find.text('找不到檔案'), findsOneWidget);
+    });
   });
 }

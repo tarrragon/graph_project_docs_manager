@@ -134,8 +134,10 @@ void main() {
 
     testWidgets('opened', (tester) async {
       final fake = await tapSource(tester, ExternalOpenResult.opened);
-      // Domain 畫面以 `docs/usecases/<已選 UC id>.md` 建路徑（非真實檔名）。
-      expect(fake.calls, ['/ws/proj/docs/usecases/$_domainSelectedUc.md']);
+      // Domain 畫面取矩陣欄上該 UC 節點的來源路徑（fixture 的 filePath）。
+      expect(fake.calls, [
+        '/ws/proj/docs/usecases/UC-06-find-and-fix-document-gaps.md',
+      ]);
       expect(find.text(_opened), findsOneWidget);
     });
 

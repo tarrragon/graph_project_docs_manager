@@ -57,16 +57,20 @@ abstract final class DomainViewFixtures {
       id: 'UC-02',
       title: '選擇並載入工作資料夾', // i18n-exempt: fixture UC 標題，非 App UI 文案
       hasFlowStep: true,
+      filePath: 'docs/usecases/UC-02-assess-change-impact-by-domain.md',
     ),
     DomainUc(
       id: 'UC-04',
       title: '解析圖譜節點與邊', // i18n-exempt: fixture UC 標題，非 App UI 文案
       hasFlowStep: true,
+      filePath:
+          'docs/usecases/UC-04-trace-a-requirement-implementation-chain.md',
     ),
     DomainUc(
       id: 'UC-06',
       title: '檢視節點詳情', // i18n-exempt: fixture UC 標題，非 App UI 文案
       hasFlowStep: false,
+      filePath: 'docs/usecases/UC-06-find-and-fix-document-gaps.md',
     ),
   ];
 
