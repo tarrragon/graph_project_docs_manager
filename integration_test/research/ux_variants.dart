@@ -291,7 +291,9 @@ class _FixedGap extends GapReportNotifier {
   ]);
 }
 
-final List<Override> _gapsFixed = [gapReportProvider.overrideWith(_FixedGap.new)];
+final List<Override> _gapsFixed = [
+  gapReportProvider.overrideWith(_FixedGap.new),
+];
 
 final List<Override> _traceExpanded = [
   expandedTraceNodesProvider.overrideWith((ref) => {'PROP-001', 'SPEC-001'}),
@@ -348,10 +350,8 @@ final List<UxPair> kUxPairs = [
     overrides: _traceBroken,
     question: '這棵樹裡一共有幾處往下接不到後續的地方？',
     answerKey: 'badge-traceability-broken-<id> x3',
-    inject: (app) => DesignOverrides(
-      issueMarkerColor: AppColors.textSecondary,
-      child: app,
-    ),
+    inject: (app) =>
+        DesignOverrides(issueMarkerColor: AppColors.textSecondary, child: app),
   ),
   UxPair(
     code: 'G-A',
@@ -412,9 +412,7 @@ final List<UxPair> kUxPairs = [
     overrides: _ticketsList,
     question: '這一頁裡有幾張單子的內容讀不出來？',
     answerKey: 'badge-tickets-corrupted',
-    inject: (app) => DesignOverrides(
-      issueMarkerColor: AppColors.textSecondary,
-      child: app,
-    ),
+    inject: (app) =>
+        DesignOverrides(issueMarkerColor: AppColors.textSecondary, child: app),
   ),
 ];
