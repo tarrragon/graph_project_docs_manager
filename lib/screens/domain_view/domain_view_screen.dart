@@ -521,6 +521,9 @@ class _MatrixBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    // DomainReady 下 matrix 仍可為 null（業務狀態：無完成輪次——工作區切換後
+    // lastCompletedRoundProvider 清空而狀態尚未重載、或重掃結果無節點），
+    // 退路保留：以空矩陣渲染。
     final matrix = ref.watch(domainMatrixProvider);
     final rows = matrix?.rows ?? const <DomainRow>[];
 
@@ -610,6 +613,7 @@ class _MatrixBody extends ConsumerWidget {
               'panel-domain-cell-detail-${selected.$2.domainId}-'
               '${selected.$2.ucId}',
             ),
+            state: state,
             row: selected.$1,
             cell: selected.$2,
           );
@@ -624,8 +628,15 @@ class _MatrixBody extends ConsumerWidget {
 
 /// 已選格右欄詳情卡內容（SPEC-003 §3.1〈格詳情卡的內容契約〉）。
 class _CellDetailPanel extends ConsumerWidget {
-  const _CellDetailPanel({super.key, required this.row, required this.cell});
+  const _CellDetailPanel({
+    super.key,
+    required this.state,
+    required this.row,
+    required this.cell,
+  });
 
+  /// 父層 [_MatrixBody] 持有的畫面狀態；寫回選取與跳轉皆以此為基底。
+  final DomainReady state;
   final DomainRow row;
   final DomainCell cell;
 
@@ -633,7 +644,7 @@ class _CellDetailPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final ucId = cell.ucId;
-    final ready = ref.read(domainViewStateProvider) as DomainReady;
+    final ready = state;
 
     return Panel.scrollable(
       key: const Key('panel-domain-cell-detail'),
@@ -714,6 +725,7 @@ SwimlaneFocus _jumpFocus(WidgetRef ref, DomainCell cell) {
     return direct;
   }
   final node = ref.read(firstNodeInLaneQueryProvider)(cell.ucId, source);
+  // matrix 為 null 的業務狀態：無完成輪次／建圖不可用／無節點，退路為直接定位。
   final matrix = ref.read(domainMatrixProvider);
   final row = matrix?.rows.where((r) => r.domainName == source).firstOrNull;
   if (node == null || row == null) return direct;
@@ -738,6 +750,8 @@ class _SwimlaneBody extends ConsumerWidget {
       );
     }
 
+    // matrix 為 null 的業務狀態：無完成輪次（含投影準備中）／無節點，
+    // 退路為空標題與無高亮；DomainReady 不保證矩陣有值。
     final matrix = ref.watch(domainMatrixProvider);
     final swimlane = ref.watch(domainSwimlaneProvider);
 
