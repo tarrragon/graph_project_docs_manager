@@ -424,7 +424,7 @@ class _GraphUnavailableBody extends ConsumerWidget {
     final round = ref.watch(scanRoundProvider);
     final appVersion = ref
         .watch(builtinSchemaVersionProvider)
-        .maybeWhen(data: (v) => v, orElse: () => '');
+        .maybeWhen(data: (v) => v, orElse: () => _logVersionNotLoaded(ref));
     final running = round is ScanRoundRunning;
     return Panel(
       fill: EmptyState(
@@ -449,6 +449,14 @@ class _GraphUnavailableBody extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _logVersionNotLoaded(WidgetRef ref) {
+    ref.read(domainViewLogSinkProvider)(
+      '$_tag：型別表版本未載入即渲染圖不可用列', // i18n-exempt: 開發者 debug log
+      level: 900,
+    );
+    return '';
   }
 
   void _rescan(WidgetRef ref) => unawaited(

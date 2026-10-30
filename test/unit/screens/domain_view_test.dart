@@ -16,6 +16,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show SynchronousFuture;
 import 'package:flutter/semantics.dart'
     show DebugSemanticsDumpOrder, SemanticsNode;
 import 'package:flutter/services.dart';
@@ -25,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
+import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -1156,6 +1158,53 @@ void main() {
         findsNothing,
       );
       expect(AnchorFinder.state(Screen.domain, 'swimlane'), findsNothing);
+    });
+
+    // 0.5.0-W1-504.1：型別表版本未載入即渲染圖不可用列，須留 level 900 診斷。
+    // E2 正反對照：同一畫面，僅版本 provider 載入與否不同。
+    Future<List<(String, int)>> pumpUnavailableCapturingLogs(
+      WidgetTester tester, {
+      required Override version,
+    }) async {
+      final logs = <(String, int)>[];
+      await pumpHarness(
+        tester,
+        child: const DomainViewScreen(),
+        overrides: [
+          ...overrides(mode: DomainMode.matrix),
+          version,
+          domainViewLogSinkProvider.overrideWithValue(
+            (message, {level = 500}) => logs.add((message, level)),
+          ),
+        ],
+      );
+      return logs;
+    }
+
+    testWidgets('版本未載入：圖不可用列記 1 筆 level 900 診斷', (tester) async {
+      final pending = Completer<String>();
+      final logs = await pumpUnavailableCapturingLogs(
+        tester,
+        version: builtinSchemaVersionProvider.overrideWith(
+          (ref) => pending.future,
+        ),
+      );
+      expect(unavailable, findsOneWidget);
+      final diagnostics = logs.where((l) => l.$2 == 900).toList();
+      expect(diagnostics, hasLength(1));
+      expect(diagnostics.single.$1, contains('型別表版本未載入即渲染圖不可用列'));
+    });
+
+    testWidgets('版本已載入：圖不可用列不記診斷', (tester) async {
+      final logs = await pumpUnavailableCapturingLogs(
+        tester,
+        // 同步完成的 Future：首幀即為 AsyncData（模擬正式路徑已載入）。
+        version: builtinSchemaVersionProvider.overrideWith(
+          (ref) => SynchronousFuture('0.0.1'),
+        ),
+      );
+      expect(unavailable, findsOneWidget);
+      expect(logs.where((l) => l.$2 == 900), isEmpty);
     });
 
     final l10n = AppLocalizationsZh();
