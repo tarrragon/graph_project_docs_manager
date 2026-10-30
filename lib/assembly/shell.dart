@@ -33,6 +33,7 @@ import '../screens/project_switcher/project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
 import '../app/app_lifecycle.dart';
+import '../app/degraded_schema.dart';
 import '../app/router.dart';
 import '../app/workspace_selection.dart' show projectGenerationProvider;
 import 'destination_pages.dart';
@@ -139,6 +140,10 @@ class _AppShellState extends ConsumerState<AppShell>
     final destination = ref.watch(selectedDestinationProvider);
     final isSwitcherOpen = ref.watch(switcherOpenProvider);
     final projectName = ref.watch(currentProjectNameProvider);
+    final returnTo = ref.watch(returnToProvider);
+    final isDegraded = ref.watch(degradedSchemaProvider);
+    final degradedVersions = ref.watch(degradedSchemaVersionsProvider);
+    final inferredVersion = ref.watch(inferredVersionProvider);
 
     // `MaterialApp.home` 不自動提供 Material／Scaffold 祖先；
     // `components.AppShell` 是純骨架容器不含 `Scaffold`，故在此補上唯一
@@ -151,6 +156,14 @@ class _AppShellState extends ConsumerState<AppShell>
     // 此前提，屬既有設計缺口，隨本票一併修正）。
     return Scaffold(
       body: components.AppShell(
+        selectedIndex: destination.index,
+        screenName: destination.name,
+        hasBackAction: returnTo != null,
+        onBack: () => consumeReturnTo(ref.read),
+        isDegraded: isDegraded,
+        degradedBuiltinVersion: degradedVersions?.builtinVersion,
+        degradedProjectVersion: degradedVersions?.projectVersion,
+        inferredVersion: inferredVersion,
         switcherEntry: components.ProjectSwitcherEntry(
           projectName: projectName,
           isExpanded: isSwitcherOpen,

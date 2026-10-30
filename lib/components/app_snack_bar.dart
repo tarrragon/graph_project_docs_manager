@@ -13,7 +13,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../app/attention_level.dart';
+import 'attention_level.dart';
 import '../tokens/tokens.dart';
 
 /// [AppSnackBar] 的兩種變體（SPEC-004 §4.26「變體」）。

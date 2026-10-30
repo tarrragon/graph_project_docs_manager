@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _libDir = 'lib';
 const _snackBarPath = 'lib/components/app_snack_bar.dart';
-const _levelPath = 'lib/app/attention_level.dart';
+const _levelPath = 'lib/components/attention_level.dart';
 const _mainPath = 'lib/main.dart';
 const _shellPath = 'lib/assembly/shell.dart';
 const _specPath = 'docs/spec/ui/SPEC-003-interaction-response.md';

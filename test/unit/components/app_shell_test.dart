@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
@@ -53,6 +52,40 @@ ProjectSwitcherEntry _buildSwitcherEntry() {
 
 void main() {
   group('AppShell', () {
+    testWidgetsAtEachSize('建構參數驅動：選中頁與徽章取自參數而非 provider（0.5.0-W1-213.3）', (
+      tester,
+      size,
+    ) async {
+      var backTapped = false;
+      await pumpHarness(
+        tester,
+        size: size,
+        // provider 預設選中 domain；參數傳 tickets，畫面必須顯示參數值。
+        child: AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(selected: AppDestination.tickets),
+          pages: _buildPages(),
+          selectedIndex: AppDestination.tickets.index,
+          screenName: AppDestination.tickets.name,
+          hasBackAction: true,
+          onBack: () => backTapped = true,
+          inferredVersion: '9.9.9',
+        ),
+      );
+      expectNoOverflow(tester);
+
+      expect(find.byKey(const Key('action-tickets-back')), findsOneWidget);
+      expect(find.byKey(const Key('action-domain-back')), findsNothing);
+      expect(
+        find.byKey(const Key('badge-tickets-inferred-version')),
+        findsOneWidget,
+      );
+      final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
+      expect(stack.index, AppDestination.tickets.index);
+      await tester.tap(find.byKey(const Key('action-tickets-back')));
+      expect(backTapped, isTrue);
+    });
+
     testWidgetsAtEachSize('default 態渲染，六格導覽項與六頁不溢位', (tester, size) async {
       await pumpHarness(
         tester,
@@ -213,19 +246,24 @@ void main() {
     testWidgetsAtEachSize(
       'returnTo 非 null 時 action-<screen>-back 存在，null 時不存在',
       (tester, size) async {
-        final container = await pumpHarness(
+        var hasBack = true;
+        late StateSetter rebuild;
+        await pumpHarness(
           tester,
           size: size,
-          overrides: [
-            selectedDestinationProvider.overrideWith(
-              (ref) => AppDestination.tickets,
-            ),
-            returnToProvider.overrideWith((ref) => AppDestination.domain),
-          ],
-          child: AppShell(
-            switcherEntry: _buildSwitcherEntry(),
-            navItems: _buildNavItems(selected: AppDestination.tickets),
-            pages: _buildPages(),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              rebuild = setState;
+              return AppShell(
+                switcherEntry: _buildSwitcherEntry(),
+                navItems: _buildNavItems(selected: AppDestination.tickets),
+                pages: _buildPages(),
+                selectedIndex: AppDestination.tickets.index,
+                screenName: AppDestination.tickets.name,
+                hasBackAction: hasBack,
+                onBack: () => rebuild(() => hasBack = false),
+              );
+            },
           ),
         );
         expectNoOverflow(tester);
@@ -235,7 +273,7 @@ void main() {
         await tester.tap(find.byKey(const Key('action-tickets-back')));
         await tester.pumpAndSettle();
 
-        expect(container.read(returnToProvider), isNull);
+        expect(hasBack, isFalse);
         expect(find.byKey(const Key('action-tickets-back')), findsNothing);
       },
     );
@@ -247,10 +285,6 @@ void main() {
           tester,
           size: size,
           overrides: [
-            selectedDestinationProvider.overrideWith(
-              (ref) => AppDestination.tickets,
-            ),
-            returnToProvider.overrideWith((ref) => AppDestination.domain),
             ticketListStateProvider.overrideWith(
               (ref) => const TicketsUnloaded(count: 3),
             ),
@@ -258,6 +292,10 @@ void main() {
           child: AppShell(
             switcherEntry: _buildSwitcherEntry(),
             navItems: _buildNavItems(selected: AppDestination.tickets),
+            selectedIndex: AppDestination.tickets.index,
+            screenName: AppDestination.tickets.name,
+            hasBackAction: true,
+            onBack: () {},
             pages: [
               for (final destination in AppDestination.values)
                 PageColumn(
@@ -309,14 +347,15 @@ void main() {
           await pumpHarness(
             tester,
             size: size,
-            overrides: [
-              selectedDestinationProvider.overrideWith((ref) => destination),
-              degradedSchemaProvider.overrideWith((ref) => true),
-            ],
             child: AppShell(
               switcherEntry: _buildSwitcherEntry(),
               navItems: _buildNavItems(selected: destination),
               pages: _buildPages(),
+              selectedIndex: destination.index,
+              screenName: destination.name,
+              isDegraded: true,
+              degradedBuiltinVersion: '1.0',
+              degradedProjectVersion: '2.0',
             ),
           );
           expectNoOverflow(tester);
@@ -338,7 +377,6 @@ void main() {
       await pumpHarness(
         tester,
         size: size,
-        overrides: [degradedSchemaProvider.overrideWith((ref) => false)],
         child: AppShell(
           switcherEntry: _buildSwitcherEntry(),
           navItems: _buildNavItems(selected: AppDestination.domain),
@@ -360,17 +398,17 @@ void main() {
       await pumpHarness(
         tester,
         size: size,
-        overrides: [
-          selectedDestinationProvider.overrideWith(
-            (ref) => AppDestination.tickets,
-          ),
-          returnToProvider.overrideWith((ref) => AppDestination.domain),
-          degradedSchemaProvider.overrideWith((ref) => true),
-        ],
         child: AppShell(
           switcherEntry: _buildSwitcherEntry(),
           navItems: _buildNavItems(selected: AppDestination.tickets),
           pages: _buildPages(),
+          selectedIndex: AppDestination.tickets.index,
+          screenName: AppDestination.tickets.name,
+          hasBackAction: true,
+          onBack: () {},
+          isDegraded: true,
+          degradedBuiltinVersion: '1.0',
+          degradedProjectVersion: '2.0',
         ),
       );
       expectNoOverflow(tester);

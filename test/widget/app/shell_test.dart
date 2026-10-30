@@ -15,6 +15,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/app/attention_level.dart';
+import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/workspace_selection.dart';
 import 'package:graph_project_docs_manager/assembly/shell.dart';
@@ -318,6 +319,32 @@ void main() {
 
     expect(
       find.byKey(const Key('badge-domain-inferred-version')),
+      findsOneWidget,
+    );
+  });
+
+  // 0.5.0-W1-213.3：components.AppShell 改由參數驅動後，組裝根必須把
+  // provider 值傳到畫面（降級旗標與版本文字）。
+  testWidgets('degradedSchemaProvider 為真時組裝根傳入降級徽章，版本文字取自 provider', (
+    tester,
+  ) async {
+    await _pumpShell(
+      tester,
+      overrides: [
+        degradedSchemaProvider.overrideWith((ref) => true),
+        degradedSchemaVersionsProvider.overrideWith(
+          (ref) => const DegradedSchemaVersions(
+            builtinVersion: '1.2.3',
+            projectVersion: '4.5.6',
+          ),
+        ),
+      ],
+    );
+
+    final badge = find.byKey(const Key('badge-domain-degraded-schema'));
+    expect(badge, findsOneWidget);
+    expect(
+      find.descendant(of: badge, matching: find.textContaining('1.2.3')),
       findsOneWidget,
     );
   });
