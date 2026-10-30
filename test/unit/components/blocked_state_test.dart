@@ -324,81 +324,90 @@ void main() {
       return false;
     }
 
-    void expectHeaderLive(SemanticsNode live) {
-      final flags = live.getSemanticsData().flagsCollection;
-      expect(flags.isLiveRegion, isTrue);
-      expect(flags.isHeader, isTrue);
-      expect(live.value, isEmpty);
-      // 焦點旗標屬 Esc 收合用的外層 Focus，不得落在 live 節點。
-      expect(live.getSemanticsData().hasAction(SemanticsAction.focus), isFalse);
-      expect(flags.isFocused.toBoolOrNull(), isNot(isTrue));
-    }
+    // 每條斷言各自一個 testWidgets，各自得到 E2 判定（不被前一條擋下）。
+    final variants = <String, Widget Function(bool expanded)>{
+      'plain 完整': (_) => BlockedState.plain(
+        message: msg,
+        version: ver,
+        explanation: expl,
+        onSwitchProject: () {},
+        testKey: plainKey,
+      ),
+      'plain 僅訊息': (_) => BlockedState.plain(
+        message: msg,
+        onSwitchProject: () {},
+        testKey: plainKey,
+      ),
+      'withDetail 收合': (_) => BlockedState.withDetail(
+        message: msg,
+        explanation: expl,
+        appVersion: ver,
+        projectVersion: '2.0.0',
+        onSwitchProject: () {},
+        isDetailExpanded: false,
+        onToggleDetail: () {},
+        testKey: withDetailKey,
+      ),
+      'withDetail 展開': (_) => BlockedState.withDetail(
+        message: msg,
+        explanation: expl,
+        appVersion: ver,
+        projectVersion: '2.0.0',
+        onSwitchProject: () {},
+        isDetailExpanded: true,
+        onToggleDetail: () {},
+        testKey: withDetailKey,
+      ),
+    };
 
-    testWidgets('plain 完整：live label 只含訊息，版本與說明不在 live 子樹', (tester) async {
-      final handle = tester.ensureSemantics();
-      final live = await pumpAndFindLive(
-        tester,
-        BlockedState.plain(
-          message: msg,
-          version: ver,
-          explanation: expl,
-          onSwitchProject: () {},
-          testKey: plainKey,
-        ),
-      );
-      expect(live.label, msg);
-      expectHeaderLive(live);
-      expect(inSubtree(tester, live, find.text(ver)), isFalse);
-      expect(inSubtree(tester, live, find.text(expl)), isFalse);
-      expect(inSubtree(tester, live, find.byKey(switchKey)), isFalse);
-      handle.dispose();
-    });
-
-    testWidgets('plain 僅訊息：live label 只含訊息，按鈕不在 live 子樹', (tester) async {
-      final handle = tester.ensureSemantics();
-      final live = await pumpAndFindLive(
-        tester,
-        BlockedState.plain(
-          message: msg,
-          onSwitchProject: () {},
-          testKey: plainKey,
-        ),
-      );
-      expect(live.label, msg);
-      expectHeaderLive(live);
-      expect(inSubtree(tester, live, find.byKey(switchKey)), isFalse);
-      handle.dispose();
-    });
-
-    for (final expanded in [false, true]) {
-      testWidgets('withDetail expanded=$expanded：live label 只含訊息', (
-        tester,
-      ) async {
+    void liveTest(
+      String variant,
+      String what,
+      void Function(WidgetTester tester, SemanticsNode live) check,
+    ) {
+      testWidgets('$variant：$what', (tester) async {
         final handle = tester.ensureSemantics();
-        final live = await pumpAndFindLive(
-          tester,
-          BlockedState.withDetail(
-            message: msg,
-            explanation: expl,
-            appVersion: ver,
-            projectVersion: '2.0.0',
-            onSwitchProject: () {},
-            isDetailExpanded: expanded,
-            onToggleDetail: () {},
-            testKey: withDetailKey,
-          ),
-        );
-        expect(live.label, msg);
-        expectHeaderLive(live);
-        expect(inSubtree(tester, live, find.text(expl)), isFalse);
-        expect(inSubtree(tester, live, find.byKey(switchKey)), isFalse);
-        expect(inSubtree(tester, live, find.byKey(detailButtonKey)), isFalse);
-        if (expanded) {
-          expect(inSubtree(tester, live, find.byKey(detailPanelKey)), isFalse);
-        }
+        final live = await pumpAndFindLive(tester, variants[variant]!(false));
+        check(tester, live);
         handle.dispose();
       });
     }
+
+    for (final variant in variants.keys) {
+      liveTest(variant, 'live label 只含訊息', (t, live) {
+        expect(live.label, msg);
+      });
+      liveTest(variant, 'live 節點帶 header 與 liveRegion 旗標', (t, live) {
+        final flags = live.getSemanticsData().flagsCollection;
+        expect(flags.isLiveRegion, isTrue);
+        expect(flags.isHeader, isTrue);
+      });
+      liveTest(variant, '切換專案按鈕不在 live 子樹', (t, live) {
+        expect(inSubtree(t, live, find.byKey(switchKey)), isFalse);
+      });
+      liveTest(variant, 'live 節點無 focus action 且非 focused', (t, live) {
+        final data = live.getSemanticsData();
+        expect(data.hasAction(SemanticsAction.focus), isFalse);
+        expect(data.flagsCollection.isFocused.toBoolOrNull(), isNot(isTrue));
+      });
+    }
+
+    for (final variant in ['plain 完整', 'withDetail 收合', 'withDetail 展開']) {
+      liveTest(variant, 'explanation 不在 live 子樹', (t, live) {
+        expect(inSubtree(t, live, find.text(expl)), isFalse);
+      });
+    }
+    liveTest('plain 完整', '版本值不在 live 子樹', (t, live) {
+      expect(inSubtree(t, live, find.text(ver)), isFalse);
+    });
+    for (final variant in ['withDetail 收合', 'withDetail 展開']) {
+      liveTest(variant, '檢視詳情按鈕不在 live 子樹', (t, live) {
+        expect(inSubtree(t, live, find.byKey(detailButtonKey)), isFalse);
+      });
+    }
+    liveTest('withDetail 展開', '詳情面板不在 live 子樹', (t, live) {
+      expect(inSubtree(t, live, find.byKey(detailPanelKey)), isFalse);
+    });
 
     testWidgets('withDetail 展開前後 live label 不變', (tester) async {
       final handle = tester.ensureSemantics();
