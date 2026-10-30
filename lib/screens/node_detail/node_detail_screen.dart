@@ -1,7 +1,8 @@
 /// 節點詳情（SPEC-001 §6；SPEC-003 §3.6；SPEC-004 §3.6）。
 ///
-/// 五個狀態列依 [NodeDetailState] 切換，內容由 [NodeDetailFixtures] 供給
-/// （本票決策：假資料驅動，不串真實資料）。返回鍵（`action-nodeDetail-back`）
+/// 五個狀態列依 [NodeDetailState] 切換，節點資料預設由共用掃描輪次的建圖
+/// 結果投影（`0.5.0-W1-114.25`，見 `node_detail_providers.dart`）；
+/// [NodeDetailFixtures] 只供測試注入。返回鍵（`action-nodeDetail-back`）
 /// 由 `AppShell` 之下的頁面框架統一渲染，本畫面不重複渲染（SPEC-003
 /// §2.4）。「開啟原始檔」依 SPEC-004 §3.7 第 17 項核定置於
 /// `SplitRow.header` 右側 `ButtonRow`，見 [NodeDetailHeaderTrailing]

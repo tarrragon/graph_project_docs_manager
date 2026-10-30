@@ -1,9 +1,9 @@
 /// 節點詳情（SPEC-001 §6）的畫面狀態模型。
 ///
-/// 本票決策：只交狀態渲染與退出路徑，不接真實資料——節點內容來自
-/// [NodeDetailFixtures]（`node_detail_fixtures.dart`），非解析
-/// `test/fixtures/corpus/` 或使用者工作資料夾（同 `trace_state.dart`
-/// 慣例）。「專案未就緒」為 SPEC-001 五個非 Domain 畫面共用定義
+/// 本檔只定義狀態模型；節點內容預設由共用掃描輪次的建圖結果投影
+/// （`0.5.0-W1-114.25`，見 `node_detail_providers.dart`），
+/// [NodeDetailFixtures]（`node_detail_fixtures.dart`）只供測試注入。
+/// 「專案未就緒」為 SPEC-001 五個非 Domain 畫面共用定義
 /// （`0.1.0-W3-335.37` R9），本票以獨立狀態列舉呈現，不 watch
 /// `projectUnreadyReasonProvider`（同 `trace_state.dart`／`domain_view_state.dart`
 /// 的簡單 `StateProvider` 慣例——`gap_report_provider.dart` 改用 Notifier

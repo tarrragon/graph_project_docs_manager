@@ -1,8 +1,8 @@
 /// 泳道容器（SPEC-004 4.38、5.12）。
 ///
 /// 泳道列（[AppText] 泳道名 + [SwimlaneNode] 置於步驟欄）× N 垂直、列間
-/// 虛線；底部步驟箭頭列（裝飾，排除於語意樹）。0.1 以寫死座標的假資料
-/// 靜態排版（SPEC-001 設計約束）——步驟欄寬非畫布量測值，本檔以私有常數
+/// 虛線；底部步驟箭頭列（裝飾，排除於語意樹）。節點的列與欄由呼叫端以
+/// Layout 真實布局供給（SPEC-001 設計約束）——步驟欄寬非畫布量測值，本檔以私有常數
 /// [_stepColumnWidth] 承載，SPEC-004 4.38「尺寸契約」明文「不設 token」。
 ///
 /// 二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）委派
@@ -89,8 +89,9 @@ class SwimlaneLane {
   /// [SwimlaneGrid.onSelectDomain] 輸入端，呼叫端未提供 domain 對映關係）。
   final String? domainId;
 
-  /// 該泳道的節點清單：`(節點, 所在步驟欄索引)`。假資料須保證每欄至多
-  /// 一節點（SPEC-004 5.12「不重疊」，由測試斷言，非本元件強制）。
+  /// 該泳道的節點清單：`(節點, 所在步驟欄索引)`。每欄至多一節點
+  /// （SPEC-004 5.12「不重疊」）由 `swim_lane_layout.dart` 保證：欄號是步驟
+  /// 的排列，每步驟獨佔一欄；非本元件強制。
   final List<(SwimlaneNode node, int column)> nodes;
 }
 
@@ -438,7 +439,7 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
   }
 }
 
-/// 步驟欄寬：假資料座標值，非畫布量測值（SPEC-004 4.38「尺寸契約」明文
+/// 步驟欄寬：固定常數，非畫布量測值（SPEC-004 4.38「尺寸契約」明文
 /// 不設 token）。
 const double _stepColumnWidth = 96;
 
