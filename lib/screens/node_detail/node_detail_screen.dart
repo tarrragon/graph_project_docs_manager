@@ -11,6 +11,7 @@ library;
 
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,7 @@ import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../components/components.dart';
+import '../../corpus/docs_file_system.dart' show reasonForFileSystemFailure;
 import '../../corpus/frontmatter_classifier.dart';
 import '../../corpus/parse_outcome.dart';
 import '../../l10n/app_localizations.dart';
@@ -267,15 +269,26 @@ class _MissingView extends ConsumerWidget {
   }
 
   /// 檔案不存在回傳 null；存在則讀取位元組分類，讀取失敗視為解析失敗。
-  ParseOutcome? _readOutcome() {
-    final file = File(lastKnownPath);
-    if (!file.existsSync()) return null;
-    try {
-      return classifyFrontmatter(file.readAsBytesSync());
-    } on FileSystemException catch (error) {
-      // i18n-exempt: debug log
-      developer.log('refresh read failed: $error', name: _tag, level: 900);
-      return ParseOutcome.unreadable(UnreadableReason.permission);
-    }
+  ParseOutcome? _readOutcome() => readRefreshOutcome(lastKnownPath);
+}
+
+/// 重新整理的讀檔分類；[readBytes] 為測試接縫（預設同步讀檔），讓測試能
+/// 注入特定 errno 的 [FileSystemException]。失敗原因與掃描器共用
+/// [reasonForFileSystemFailure]。
+@visibleForTesting
+ParseOutcome? readRefreshOutcome(
+  String path, {
+  Uint8List Function(File file)? readBytes,
+}) {
+  final file = File(path);
+  if (!file.existsSync()) return null;
+  try {
+    return classifyFrontmatter((readBytes ?? _readSync)(file));
+  } on FileSystemException catch (error) {
+    // i18n-exempt: debug log
+    developer.log('refresh read failed: $error', name: _tag, level: 900);
+    return ParseOutcome.unreadable(reasonForFileSystemFailure(error));
   }
 }
+
+Uint8List _readSync(File file) => file.readAsBytesSync();

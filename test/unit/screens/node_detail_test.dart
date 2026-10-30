@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtures.dart';
@@ -314,6 +315,31 @@ void main() {
       expect(find.text('檔案仍不存在'), findsNothing);
       expect(AnchorFinder.state(Screen.nodeDetail, 'missing'), findsOneWidget);
       expect(container.read(nodeDetailStateProvider), isA<NodeDetailMissing>());
+    });
+  });
+
+  group('重新整理讀檔失敗分類（readRefreshOutcome）', () {
+    late Directory dir;
+    setUp(() => dir = Directory.systemTemp.createTempSync('refresh_reason_'));
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    Unreadable readWithErrno(int errno) {
+      final file = File('${dir.path}/a.md')..writeAsStringSync('x');
+      final outcome = readRefreshOutcome(
+        file.path,
+        readBytes: (_) =>
+            throw FileSystemException('read', file.path, OSError('', errno)),
+      );
+      return outcome! as Unreadable;
+    }
+
+    test('E1 對照：errno 13 為 permission、errno 2 為 fileDeleted，且分類不同', () {
+      final denied = readWithErrno(13);
+      final gone = readWithErrno(2);
+      expect(denied.reason, UnreadableReason.permission);
+      expect(gone.reason, UnreadableReason.fileDeleted);
+      expect(denied.reason, isNot(gone.reason));
+      expect(denied.kind, gone.kind); // 同為 unreadable，畫面皆提示無法解析
     });
   });
 
