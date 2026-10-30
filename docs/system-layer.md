@@ -2,7 +2,7 @@
 title: "系統層 — graph_project_docs_manager"
 bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-corpus, DOMAIN-MAP-graph, DOMAIN-MAP-ticketdetail, DOMAIN-MAP-layout, DOMAIN-MAP-diagnostics, DOMAIN-MAP-history]
 created: "2026-08-26"
-updated: "2026-10-21"
+updated: "2026-10-30"
 ---
 
 # 系統層 — graph_project_docs_manager
@@ -102,6 +102,30 @@ Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影�
 本表原有一條 Diagnostics → Schema，理由正是這個判定；判定移給 Corpus 後這條邊
 沒有用途，2026-09-24 刪除（SPEC-006 D7，用戶裁決）。日後若有破洞類別需要型別表，
 附上理由再加回。
+
+### 2.1 L4 內部的分層：components、app、screens 與組裝根
+
+上圖的 L4 只寫「畫面狀態」。L4 對應 lib 的三個目錄與組裝根，它們之間也是單向依賴，由下而上：
+
+```
+組裝根      shell 與畫面組裝（buildDestinationPage）；lib/main.dart
+screens     lib/screens/<功能>/：各畫面的 widget、投影與畫面專屬狀態
+app         lib/app/：畫面共用的應用狀態與服務（掃描輪次、選定 UC、導覽狀態等）
+components  lib/components/：元件庫，只依賴 tokens、l10n 與 Flutter
+```
+
+**允許方向**：上層可 import 下層，反向禁止。四條規則：
+
+- components 不 import app、screens、組裝根。元件庫要能脫離特定畫面與應用狀態重用（SPEC-002）。元件需要的狀態一律由建構參數傳入。
+- app 不 import screens 與組裝根。app 讀寫的狀態若定義在畫面目錄，移到 app。
+- screens 不 import 組裝根。
+- screens 內的畫面功能目錄之間不互相 import。兩個畫面共用的狀態或 provider 下沉到 app，共用的展示 widget 下沉到 components。
+
+L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import 本節任何一層。這條已有反向守衛：graph、diagnostics、layout 各有 import 方向測試。
+
+**目錄即層**：判斷一個檔案屬於哪一層只看它所在的目錄，不逐檔指派。守衛以目錄規則寫成，新增檔案時依職責放進對應目錄即可。
+
+**裁決來源**：`0.5.0-W1-213`（2026-10-30 用戶裁決，經主控轉達，`0.5.0-W1-349` 同日記錄），三個候選中採「app 是應用狀態層、組裝根移出 app」一案。裁決當時的現況違規邊與收斂順序見 213 的 children（213.2～213.6），守衛由 `0.5.0-W1-213.6` 建立。
 
 ## 3. 通道與協調圖
 
