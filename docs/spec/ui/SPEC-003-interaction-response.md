@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-10-29"
-version: "1.68"
+updated: "2026-10-30"
+version: "1.69"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -982,6 +982,7 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 | 16 | `externalOpenFailedMessage`（§3.1 開啟 docs 目錄 `notFound`，與 `failed` 共用同一則訊息） | 是 | 否（畫面狀態不變） | 否 | 否 | `plain` | §3.1：`plain` | 是 |
 | 17 | 專案切換浮層內「選擇其他」：選擇器無法開啟（§3.7） | 是 | 否（畫面狀態不變；T2 三種形式皆不命中——作用元件的內容值、選取與 `enabled` 皆不變） | 否 | 否 | `plain` | §3.7：浮層內常駐文字，不出現 SnackBar（v1.60） | **否，判準的具名例外：條文為準**（用戶裁決 2026-10-12，`0.5.0-W1-156`，理由見下） |
 | 18 | 專案切換浮層內選定資料夾或最近專案項判定不可讀或不存在（§3.7） | 是 | 「選擇其他」選定後判定失敗：否（同列 17）。最近專案項：是 (ii)——該項 `enabled` 轉為 `false` 且同列常駐原因（用戶裁決 2026-10-13） | 否 | 否 | 「選擇其他」：`plain`；最近專案項：不用暫態提示 | §3.7：浮層內常駐文字，不出現 SnackBar（v1.60） | 「選擇其他」：**否，判準的具名例外：條文為準**（同列 17）；最近專案項：是 |
+| 19 | `sourceFileUnparsableMessage`（§3.6 重新整理後檔案存在但 frontmatter 解析失敗；`0.5.0-W1-540.1.2`） | 是 | **否**（維持 `state-nodeDetail-missing`，無轉換；同列 4） | 否 | 否 | `plain` | §3.6：`plain` | 是 |
 
 **列 17 與列 18 的「選擇其他」分支是判準 T 的具名例外：條文為準，改由浮層內常駐文字承載**
 （用戶裁決 2026-10-12，`0.5.0-W1-156`；為 `0.1.0-W3-335.38` S-13／S-38 當時預留的退路）。
@@ -1171,6 +1172,7 @@ T1 判否且三個承接落到 (c) 時，該事件對使用者完全不可見。
 | 16 | 選定成功但未能記住（`ChooseFolderNotRemembered`：偏好設定寫入失敗） | 等待型（使用者於專案切換浮層按下「選擇其他」並選定、點擊最近專案項，或於 §3.1 未選專案按 `action-domain-choose-folder` 並選定觸發） | 可棄 | 進入邊界時：`WorkspaceRepository.chooseFolder()` 或 `WorkspaceRepository.openPath()` 呼叫發出當下 | — | `AppSnackBar.plain`（`workspaceNotRemembered`）。呼叫點：浮層為 `_handleChooseFolderResult` 的 `ChooseFolderNotRemembered` 分支；§3.1 為 Domain 視圖 `_chooseFolder` 的同名分支，於載入開始前送出（§3.1〈互動反應〉「選定成功但未能記住」列，`0.5.0-W1-456`）。§2.13 對照表列 15（`0.3.3-W3-380`）。提示顯示中而阻擋狀態或載入失敗到達時不清除，見 §2.15〈跨級別：規則 1／3 對可棄組與不可棄組的驗收〉。`0.3.2-W3-248` 補登 |
 | 17 | 帶目標跳入時清除搜尋與篩選（§3.4） | 等待型（使用者自他畫面帶目標跳入觸發） | 可棄 | 進入邊界時：Ticket 清單以帶目標的跳轉意圖抵達、判定需清除搜尋與篩選的當下 | — | `AppSnackBar.withAction`（`ticketsFiltersClearedSnackbarMessage`，動作 `undoAction`，§2.13 對照表列 14）。`0.3.2-W3-248` 補登 |
 | 18 | Domain 視圖載入失敗（阻擋狀態，`state-domain-load-failed`） | 自發型 | 不可棄（使用者必須重新載入或切換專案才能繼續） | 發起點：載入輪次拋出非預期例外的當下（不落入未選專案與列 11–13 三個阻擋狀態判定者，SPEC-001 §1「載入失敗」列） | — | 顯式阻擋狀態，非 SnackBar／系統通知（SPEC-001 §8.1 判否）。`0.5.0-W1-114.14.1` 補登 |
+| 19 | §3.6〈重新整理的三分支〉：重新整理後檔案存在但 frontmatter 解析失敗 | 等待型（同列 10） | 可棄 | 同列 10 | — | `AppSnackBar.plain`（`sourceFileUnparsableMessage`）。`0.5.0-W1-540.1.2` 補登（用戶裁決 2026-10-30） |
 
 **與功能需求的對應**：列 1–4 的驗收落在 FR-11；列 5–10 與列 14–17 的載體選擇，同時落在
 FR-16（判準 T 推導）與 FR-17（截斷與不顯示皆有紀錄）的驗收範圍內，兩者不
@@ -2179,20 +2181,30 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 關聯項 | `card-nodeDetail-relation-<nodeId>` | 點擊 | 主欄內容替換為該節點；`returnTo` **不變**（同一畫面內的節點切換不是跨畫面跳轉） |
 | 主欄捲動 | `scroll-nodeDetail-content` | drag / 捲軸 | 主欄 offset 改變、右欄 offset 不變 |
 | 右欄捲動 | `scroll-nodeDetail-relations` | drag / 捲軸 | 右欄 offset 改變、主欄 offset 不變 |
-| 欄位級損壞標記（`IssueMarker.damagedDetail`，每個損失欄位一個） | `action-nodeDetail-goto-gaps` | 點擊（僅於 `state-nodeDetail-partial` 渲染；同一錨點多實例，斷言以祖先限定 finder，同 §3.3〈多父節點〉） | jump 至 `nav-page-gaps`；`returnTo` 設為 `nodeDetail`。不另設頁首跳轉按鈕 |
+| 欄位級損壞標記（`IssueMarker.damagedDetail`，每個損失欄位一個；**0.x 不可達**，隨 `state-nodeDetail-partial`，見下方〈部分損壞在 0.x 不可達〉） | `action-nodeDetail-goto-gaps` | 點擊（僅於 `state-nodeDetail-partial` 渲染；同一錨點多實例，斷言以祖先限定 finder，同 §3.3〈多父節點〉） | jump 至 `nav-page-gaps`；`returnTo` 設為 `nodeDetail`。不另設頁首跳轉按鈕 |
 | 重新整理 | `action-nodeDetail-refresh` | 點擊 | 見下方三分支 |
 | 前往 Domain 視圖（專案未就緒） | `action-nodeDetail-goto-domain` | 點擊 | jump 至 `nav-page-domain`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.37` R9，SPEC-001 共用定義） |
 | 前往追溯視圖（未選節點） | `action-nodeDetail-goto-traceability` | 點擊（僅於 `state-nodeDetail-unset` 渲染） | jump 至 `nav-page-traceability`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.59` S3-6） |
 
-**重新整理的三分支**（`state-nodeDetail-missing` 下）：
+**重新整理的三分支**（`state-nodeDetail-missing` 下；`0.5.0-W1-540.1.2` 改寫：三分支指 0.x 可達的三種結果，「解析有斷點」一列 0.x 不可達，見下方〈部分損壞在 0.x 不可達〉）：
+
+重新整理須實際讀取並解析該檔案的 frontmatter，不得只以檔案存在判定結果。
 
 | 重新解析結果 | 可觀察結果 |
 |------------|-----------|
 | 檔案仍不存在 | 維持 `state-nodeDetail-missing`；SnackBar `sourceFileStillMissingMessage`，停留 `Motion.snackBar`（`0.1.0-W3-335.59` S3-7） |
 | 檔案存在且解析完整 | 轉為 `state-nodeDetail-normal` |
-| 檔案存在但解析有斷點 | 轉為 `state-nodeDetail-partial` |
+| 檔案存在但 frontmatter 解析失敗（SPEC-006 FR-01 的四種失敗或 FR-05 無法讀取；此時檔案不是圖節點） | 維持 `state-nodeDetail-missing`；SnackBar `sourceFileUnparsableMessage`（「檔案存在但無法解析，詳見破洞報告」），停留 `Motion.snackBar`。不轉為其他狀態：解析失敗的檔案沒有節點 id，節點詳情沒有可顯示的節點 |
+| 檔案存在但解析有斷點（**0.x 不可達**） | 轉為 `state-nodeDetail-partial` |
 
-三分支皆須在 `Motion.cancelDeadline` 內抵達（重新整理是單檔操作，不套用批次載入態）。
+**部分損壞在 0.x 不可達**（`0.5.0-W1-540.1`，用戶裁決 2026-10-30；SPEC-001 §6 同名註記）：
+「斷點」需要圖節點的欄位級損壞資料。frontmatter 解析成功的檔案不產生這類資料；解析失敗的檔案
+不進入圖譜，且依 SPEC-006 FR-04 本版不做部分救回，無「可讀欄位」可顯示。上表最後一列與
+`state-nodeDetail-partial`、欄位級損壞標記在 0.x 都不會發生，條文保留，恢復條件綁觸發票
+`0.5.0-W1-540.1.1`。「檔案存在但 frontmatter 解析失敗」一列是本次新增的可達分支，原三分支
+表把它與「解析有斷點」視為同一件事。
+
+各分支皆須在 `Motion.cancelDeadline` 內抵達（重新整理是單檔操作，不套用批次載入態）。
 此條是品質保證而非逾時觸發條件：不存在「逾時」這個結果，也沒有逾時後的行為可定義——
 檔案系統層級不可用一律歸入「檔案仍不存在」分支。服務類型為短暫非同步（§2.12）；
 元件層寫法見 SPEC-004 §4.22 `MissingSourceState` 回饋契約「等待與結果」列。
@@ -2201,7 +2213,7 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 
 | 轉換 | 形式 |
 |------|------|
-| 未選節點、正常、部分損壞、原始檔已消失之間 | cross-fade，`Motion.transition` |
+| 未選節點、正常、部分損壞（0.x 不可達）、原始檔已消失之間 | cross-fade，`Motion.transition` |
 | 關聯項點擊造成的主欄內容替換 | cross-fade，`Motion.transition`；主欄 offset 歸零（新節點的舊 offset 無意義），右欄 offset 保留 |
 | 損壞欄位標示 | 靜態，不做閃爍 |
 
@@ -2212,7 +2224,7 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 專案未就緒 | `action-nodeDetail-goto-domain` → `nav-page-domain`（jump）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層 |
 | 未選節點 | `action-nodeDetail-goto-traceability` → `nav-page-traceability`（jump，`returnTo`=nodeDetail）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層；`action-nodeDetail-back` 不渲染（`0.1.0-W3-335.59` S3-6） |
 | 正常 | `action-nodeDetail-back` → `returnTo`；`card-nodeDetail-relation-*` → 同畫面替換內容；`nav-item-<d>` → 其他畫面；`action-nodeDetail-open-source`（結果 `notFound`）→ `state-nodeDetail-missing`（同畫面轉換，`0.1.0-W3-335.59` S1-P1(a)） |
-| 部分損壞 | 同正常，另加欄位級標記 `action-nodeDetail-goto-gaps` → jump |
+| 部分損壞（0.x 不可達） | 同正常，另加欄位級標記 `action-nodeDetail-goto-gaps` → jump |
 | 原始檔已消失 | `action-nodeDetail-refresh` → 三分支；`action-nodeDetail-back` → `returnTo`；`nav-item-<d>` |
 
 **經導覽列直接進入本畫面且無選定節點時**，SPEC-001 §6「未選節點」（v1.3 新增，
@@ -2346,7 +2358,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 22 | 破洞 | 無破洞 | `state-gaps-none` | 同畫面轉換：`action-gaps-rescan` → `state-gaps-scanning`；rail；覆蓋層 |
 | 23 | 破洞 | 有破洞 | `state-gaps-found` | 同 #22，另加 jump（`returnTo`=gaps）：`card-gaps-*` 依指向節點型別 → `nav-page-tickets`（§3.4〈帶目標跳入〉）／`nav-page-nodeDetail`／`nav-page-ucFlow`（事件流小表定位）；無指向節點者為外部開啟，不計為導航反應。`action-gaps-open-source-*` 為外部開啟動作，不計為導航反應 |
 | 24 | 節點詳情 | 正常 | `state-nodeDetail-normal` | 返回：`action-nodeDetail-back` → `returnTo`；同畫面替換：`card-nodeDetail-relation-*`；同畫面轉換：`action-nodeDetail-open-source`（結果 `notFound`）→ `state-nodeDetail-missing`；rail |
-| 25 | 節點詳情 | 部分損壞 | `state-nodeDetail-partial` | 同 #24，另加 jump：欄位級標記 `action-nodeDetail-goto-gaps` → `nav-page-gaps` |
+| 25 | 節點詳情 | 部分損壞（0.x 不可達，§3.6） | `state-nodeDetail-partial` | 同 #24，另加 jump：欄位級標記 `action-nodeDetail-goto-gaps` → `nav-page-gaps` |
 | 26 | 節點詳情 | 原始檔已消失 | `state-nodeDetail-missing` | 返回：`action-nodeDetail-back` → `returnTo`；同畫面轉換：`action-nodeDetail-refresh` → 三分支（§3.6） |
 | 27 | 浮層 | 收合 | `state-switcher-collapsed` | 進入：`project-switcher-entry` → `state-switcher-expanded`。本列不要求退出路徑（靜止態，SPEC-001 FR-01 唯一例外） |
 | 28 | 浮層 | 展開 | `state-switcher-expanded` | 覆蓋層關閉：`card-switcher-recent-*` → 收合 + 全域重置 + `state-domain-loading`；`action-switcher-choose-folder` → 收合 + `state-domain-loading`（同 §3.7 導航表「展開」列，`0.3.3-W3-408` 補登）；Esc／點外部 → `state-switcher-collapsed` |
@@ -2548,6 +2560,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.69 | 2026-10-30 | 節點詳情部分損壞態 0.x 不可達與重新整理新分支（`0.5.0-W1-540.1.2`，依 `0.5.0-W1-540.1` 用戶裁決 C 與同日問題 1 裁決 A）：§3.6〈重新整理的三分支〉改為三個 0.x 可達的結果——仍不存在、存在且解析完整、存在但 frontmatter 解析失敗（新增；維持 `state-nodeDetail-missing`，SnackBar `sourceFileUnparsableMessage`「檔案存在但無法解析，詳見破洞報告」）——加上一列 0.x 不可達的「解析有斷點」；補明重新整理須實際讀取並解析 frontmatter，不得只以檔案存在判定；新增〈部分損壞在 0.x 不可達〉註記（理由：欄位級斷點資料只存在於不進入圖譜的解析失敗檔，顯示可讀欄位須先部分救回，與 SPEC-006 FR-04 本版不救回牴觸），恢復條件綁觸發票 `0.5.0-W1-540.1.1`。§3.6〈互動反應〉欄位級損壞標記列、〈動畫提示〉、〈導航跳轉與退出〉與 §4 #25 的部分損壞同步標不可達。§2.13〈判準與既有條文的對照〉補列 19、§2.14 指派表補列 19（新訊息結局；既有列號不變）。i18n key 由 `0.5.0-W1-540.1.4` 實作。SPEC-001 v1.61、SPEC-004 4.22 同批同步 |
 | 1.68 | 2026-10-29 | 切換專案時顯示中提示與延遲結果的處置（用戶裁決 2026-10-29，`0.5.0-W1-168` 候選 A，`0.5.0-W1-168.1`）：§2.8 切換專案（L2）列補「顯示中的暫態提示於專案改變當下清除；切換前發出、切換後才回來的結果不呈現、只留痕」，界定「專案改變」含浮層與 §3.1 內容區兩入口，排除 §2.14 列 2（§2.2 承載）與列 4（系統原生對話框），並寫明與列 16「不清除」的區分（列 16 提示於清除後送出、其不清除只管新一輪載入落到不可棄組成員）。§2.15〈跨級別〉結論、表第一、二列規則 1 欄與證據鏈「切換專案重置整個窗口」一步改寫為空成立，〈邊界〉表刪除對應列。§2.17「可達實例的更正」末句改寫。留痕句補註非 §2.13 判準 T 的 (c) 事件、不適用其四欄位。SPEC-004 v1.105 同批（4.26 退出路徑、等待與結果列、測試點）。lib 尚未對齊（清除點與延遲結果的丟棄） |
 | 1.67 | 2026-10-27 | 對齊 SPEC-001 v1.58（用戶裁定 2026-10-27，`0.5.0-W1-486.1` 修正）：§3.1〈互動反應〉「重新掃描（圖不可用）」列改寫——輪次進行期間列內原因文字換成「掃描中」（`domainGraphUnavailableScanning`）並附 indeterminate + 已掃描項目計數的進度提示（與 `state-gaps-scanning` 同一進度型別），`action-domain-rescan` disabled，結束後顯示結果；仍不可用、失敗或取消時列內恢復原因文字、按鈕恢復 enabled，不另發提示；v1.66 誤寫「原因文字不變」。〈生命週期〉「掃描輪次離開 Completed」列補處於圖不可用時輪次轉入 Running 的列內掃描中呈現。狀態數不變（43）。SPEC-001 v1.58、SPEC-004 v1.100 同批 |
 | 1.66 | 2026-10-27 | 對齊 SPEC-001 v1.57（`0.5.0-W1-486` 用戶裁定 B+，`0.5.0-W1-486.1`）：§0 與 §4 標題、覆蓋完整性算式、同步提醒、FR-01 驗收的狀態數 42 → 43，§4 新增 #43「圖不可用」（`state-domain-graph-unavailable`）、#42 補首輪建圖不可用的落點；§1.2 雙模式列補該狀態與泳道各錨點互斥、切模式不離開；§3.1〈互動反應〉新增「重新掃描（圖不可用）」`action-domain-rescan`（輪次進行中 disabled，可用則依模式恢復、仍不可用／失敗／取消則留在本狀態，不發提示），切至矩陣／切至泳道兩列補該狀態下只切模式選中值；〈導航跳轉與退出〉正常 · 矩陣列補出口、新增圖不可用列；〈生命週期〉「掃描輪次離開 Completed」列補建圖不可用的轉入與轉回，自動重啟列註明不適用該狀態。設計約束「42 列」改為「各列」（規則 10）。SPEC-004 v1.99 同批 |
