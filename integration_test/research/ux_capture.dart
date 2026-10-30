@@ -30,7 +30,11 @@ import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 import 'ux_variants.dart';
 
 /// 要擷取的版本；第二批在此加入壞版本。
-const List<UxVariant> kCaptureVariants = [kOriginalVariant, kLongTitleVariant];
+final List<UxVariant> kCaptureVariants = [
+  kOriginalVariant,
+  kLongTitleVariant,
+  for (final pair in kUxPairs) ...[pair.original, pair.broken],
+];
 const List<Locale> kCaptureLocales = [Locale('zh'), Locale('en')];
 
 void main() {
@@ -38,7 +42,14 @@ void main() {
 
   for (final variant in kCaptureVariants) {
     for (final locale in kCaptureLocales) {
+      if (variant.locales != null && !variant.locales!.contains(locale)) {
+        continue;
+      }
       for (final destination in AppDestination.values) {
+        // 成對變體只擷取自己的畫面。
+        if (variant.destination != null && variant.destination != destination) {
+          continue;
+        }
         // 長標題變體以 wrapApp 取代整個 App，與畫面無關；各畫面輸出會完全相同。
         if (variant == kLongTitleVariant &&
             destination != AppDestination.domain) {
@@ -284,11 +295,87 @@ Future<void> _capture(
   );
   File('${dir.path}/$name.marked.png').writeAsBytesSync(marked!);
 
+  if (variant.checksGuidelines) {
+    await _writeGuidelines(tester, dir, name, variant);
+  }
+
   expect(png.width, 1280);
   expect(png.height, 800);
   expect(coords, isNotEmpty, reason: '畫面上應至少有一個可互動元件');
   // ignore: avoid_print
   print('UX_CAPTURE ${pngFile.path} sha256=$sha interactive=${coords.length}');
+}
+
+/// 466.1 三準則（textContrast／labeledTapTarget／minTapTarget28）與區段間距量測，
+/// 結果寫入 `<locale>.guidelines.json`；準則失敗只記錄、不使測試失敗。
+Future<void> _writeGuidelines(
+  WidgetTester tester,
+  Directory dir,
+  String name,
+  UxVariant variant,
+) async {
+  final handle = tester.ensureSemantics();
+  await tester.pump(const Duration(milliseconds: 500));
+  final guidelines = <String, AccessibilityGuideline>{
+    'textContrast': textContrastGuideline,
+    'labeledTapTarget': labeledTapTargetGuideline,
+    'minTapTarget28': const MinimumTapTargetGuideline(
+      size: Size(28, 28),
+      link: 'lib/tokens/layout.dart hitTargetMin',
+    ),
+  };
+  final results = <String, Object?>{};
+  for (final g in guidelines.entries) {
+    final r = await g.value.evaluate(tester);
+    results[g.key] = {
+      'passed': r.passed,
+      'labels': RegExp(r'label: "([^"]*)"')
+          .allMatches(r.reason ?? '')
+          .map((m) => m.group(1))
+          .toList(),
+      'reason': r.reason,
+    };
+  }
+  handle.dispose();
+  File('${dir.path}/$name.guidelines.json').writeAsStringSync(
+    const JsonEncoder.withIndent('  ').convert({
+      'variant': variant.id,
+      'question': variant.question,
+      'answerKey': variant.answerKey,
+      'guidelines': results,
+      'sectionGaps': _sectionGaps(tester),
+    }),
+  );
+}
+
+/// 相鄰區段（gaps 類別／tickets 主題）之間的實際垂直間距，供 sectionItemGap 定值。
+Map<String, Object?> _sectionGaps(WidgetTester tester) {
+  final out = <String, Object?>{};
+  for (final prefix in const [
+    'state-gaps-section-',
+    'state-tickets-topic-section-',
+  ]) {
+    final rects = <(String, Rect)>[];
+    for (final e in tester.allElements) {
+      final k = e.widget.key;
+      if (k is! ValueKey || !'${k.value}'.startsWith(prefix)) continue;
+      final box = e.renderObject;
+      if (box is! RenderBox || !box.hasSize) continue;
+      rects.add(('${k.value}', box.localToGlobal(Offset.zero) & box.size));
+    }
+    rects.sort((a, b) => a.$2.top.compareTo(b.$2.top));
+    if (rects.isEmpty) continue;
+    out[prefix] = [
+      for (var i = 0; i < rects.length; i++)
+        {
+          'key': rects[i].$1,
+          'top': rects[i].$2.top,
+          'bottom': rects[i].$2.bottom,
+          if (i > 0) 'gapAbove': rects[i].$2.top - rects[i - 1].$2.bottom,
+        },
+    ];
+  }
+  return out;
 }
 
 bool _isInteractive(Widget w) =>
