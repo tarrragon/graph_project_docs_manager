@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 
-import '../../app/attention_level.dart';
+import '../../components/attention_level.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;

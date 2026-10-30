@@ -1,5 +1,5 @@
 import 'package:graph_project_docs_manager/app/attention_arbiter.dart';
-import 'package:graph_project_docs_manager/app/attention_level.dart';
+import 'package:graph_project_docs_manager/components/attention_level.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

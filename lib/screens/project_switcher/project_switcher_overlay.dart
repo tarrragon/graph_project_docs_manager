@@ -10,7 +10,7 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/attention_level.dart';
+import '../../components/attention_level.dart';
 import '../../app/workspace_selection.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
