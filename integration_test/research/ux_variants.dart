@@ -323,7 +323,7 @@ final List<UxPair> kUxPairs = [
     code: 'T-A',
     destination: AppDestination.traceability,
     overrides: const [],
-    question: '想打開另一個畫面，看這些需求往下拆出的工作單，要按哪個位置？',
+    question: '想看這些需求往下拆出的工作單，要按哪個位置？',
     answerKey: 'action-traceability-goto-tickets',
     inject: (app) => DesignOverrides(
       buttonColors: const {
@@ -338,7 +338,7 @@ final List<UxPair> kUxPairs = [
     code: 'T-B',
     destination: AppDestination.traceability,
     overrides: _traceExpanded,
-    question: '哪一個項目是最上層需求的直接下一層？',
+    question: '哪一個項目緊接在最上層需求的下一層？',
     answerKey: 'card-traceability-SPEC-001',
     inject: (app) => DesignOverrides(treeIndent: 0, child: app),
   ),
@@ -357,7 +357,7 @@ final List<UxPair> kUxPairs = [
     code: 'G-A',
     destination: AppDestination.gaps,
     overrides: _gapsFixed,
-    question: '想讓這頁依照目前的檔案內容再檢查一次，要按哪個位置？',
+    question: '想讓這頁照最新的內容再查核一遍，要按哪個位置？',
     answerKey: 'action-gaps-rescan',
     inject: (app) => DesignOverrides(
       buttonColors: const {
@@ -393,7 +393,7 @@ final List<UxPair> kUxPairs = [
     code: 'K-A',
     destination: AppDestination.tickets,
     overrides: _ticketsList,
-    question: '只想看還沒動工的那些，要從哪裡縮小範圍？',
+    question: '只想留下還沒動工的那幾張，要按哪個位置？',
     answerKey: 'action-tickets-filter-status',
     inject: (app) =>
         DesignOverrides(filterDropdownColors: _filterFlat, child: app),
@@ -410,7 +410,7 @@ final List<UxPair> kUxPairs = [
     code: 'K-C',
     destination: AppDestination.tickets,
     overrides: _ticketsList,
-    question: '這份清單裡有幾張單子的內容讀不出來？',
+    question: '這一頁裡有幾張單子的內容讀不出來？',
     answerKey: 'badge-tickets-corrupted',
     inject: (app) => DesignOverrides(
       issueMarkerColor: AppColors.textSecondary,
