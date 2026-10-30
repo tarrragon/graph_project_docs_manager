@@ -32,9 +32,10 @@ import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../screens/project_switcher/project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
-import 'app_lifecycle.dart';
-import 'workspace_selection.dart' show projectGenerationProvider;
-import 'router.dart';
+import '../app/app_lifecycle.dart';
+import '../app/router.dart';
+import '../app/workspace_selection.dart' show projectGenerationProvider;
+import 'destination_pages.dart';
 
 /// 可觀測性（observability 規則 5）：`didChangeAppLifecycleState`
 /// 屬生命週期回調，狀態轉換以 `developer.log` 記錄（開發者診斷字串，

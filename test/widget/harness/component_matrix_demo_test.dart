@@ -5,7 +5,7 @@
 // 各元件票把 `_variants` 換成該元件的變體列舉、`_build` 換成該元件即可。
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:graph_project_docs_manager/app/shell.dart';
+import 'package:graph_project_docs_manager/assembly/shell.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
 
