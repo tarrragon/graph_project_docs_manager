@@ -123,7 +123,7 @@ components  lib/components/：元件庫，只依賴 tokens、l10n 與 Flutter
 
 L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import 本節任何一層。這條已有反向守衛：graph、diagnostics、layout 各有 import 方向測試。
 
-**目錄即層**：判斷一個檔案屬於哪一層只看它所在的目錄，不逐檔指派。守衛以目錄規則寫成，新增檔案時依職責放進對應目錄即可。
+**目錄即層**：判斷一個檔案屬於哪一層只看它所在的目錄，不逐檔指派。守衛以目錄規則寫成，新增檔案時依職責放進對應目錄即可。上列四條規則由 `test/unit/architecture/presentation_import_direction_test.dart` 守衛。
 
 **裁決來源**：`0.5.0-W1-213`（2026-10-30 用戶裁決，經主控轉達，`0.5.0-W1-349` 同日記錄），三個候選中採「app 是應用狀態層、組裝根移出 app」一案。裁決當時的現況違規邊與收斂順序見 213 的 children（213.2～213.6），守衛由 `0.5.0-W1-213.6` 建立。
 
