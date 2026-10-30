@@ -1,6 +1,7 @@
 /// LoadPrompt 元件測試（SPEC-004 §4.25「測試點」）。
 library;
 
+import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -218,6 +219,57 @@ void main() {
           )
           .where((box) => box.height != null && box.height! > 0);
       expect(gaps, isNotEmpty);
+    });
+  });
+
+  group('liveRegion 語意（SPEC-004 §4.25：訊息播報一次）', () {
+    final startKey = Anchor.action(Screen.tickets, 'start-load');
+
+    Future<SemanticsNode> pumpAndFindLive(WidgetTester tester) async {
+      // 外層 container 模擬畫面層語意容器（531 傾印實測）。
+      await pumpHarness(
+        tester,
+        child: Semantics(
+          container: true,
+          child: LoadPrompt(
+            count: 12,
+            onStart: () {},
+            testKey: Anchor.state(Screen.tickets, 'unloaded'),
+            startKey: startKey,
+          ),
+        ),
+      );
+      final l10n = AppLocalizations.of(tester.element(find.byKey(startKey)));
+      return tester.getSemantics(find.text(l10n.ticketsLoadPrompt(12)));
+    }
+
+    testWidgets('label 只含訊息、不含按鈕文字', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final l10n = AppLocalizations.of(tester.element(find.byKey(startKey)));
+      expect(live.label, contains(l10n.ticketsLoadPrompt(12)));
+      expect(live.label, isNot(contains(l10n.startLoadAction)));
+      handle.dispose();
+    });
+
+    testWidgets('按鈕不在 liveRegion 節點子樹內', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final button = tester.getSemantics(find.byKey(startKey));
+      var inSubtree = false;
+      for (SemanticsNode? n = button; n != null; n = n.parent) {
+        if (n.id == live.id) inSubtree = true;
+      }
+      expect(inSubtree, isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('liveRegion 節點 Rect 小於外層容器（非全畫面）', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+      expect(live.rect.height, lessThan(screen.height));
+      handle.dispose();
     });
   });
 }

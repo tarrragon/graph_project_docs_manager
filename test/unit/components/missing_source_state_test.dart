@@ -4,9 +4,11 @@
 /// 點選行為、無障礙朗讀與焦點順序、token 引用。
 library;
 
+import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
+import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 
 import '../../helpers/helpers.dart';
 
@@ -191,6 +193,58 @@ void main() {
       final column = tester.widget<Column>(find.byType(Column));
       expect(column.crossAxisAlignment, CrossAxisAlignment.center);
       expect(column.mainAxisSize, MainAxisSize.min);
+    });
+  });
+
+  group('liveRegion 語意（SPEC-004 §4.22：訊息播報一次）', () {
+    Future<SemanticsNode> pumpAndFindLive(WidgetTester tester) async {
+      // 外層 container 模擬畫面層語意容器：未設 container 的 liveRegion
+      // 會併入它（531 傾印實測）。
+      await pumpHarness(
+        tester,
+        child: Semantics(
+          container: true,
+          child: MissingSourceState(
+            path: '/tmp/最後路徑.md',
+            onRefresh: () {},
+            testKey: _testKey,
+          ),
+        ),
+      );
+      final l10n = AppLocalizations.of(tester.element(find.byKey(_testKey)));
+      return tester.getSemantics(find.text(l10n.sourceFileMissingMessage));
+    }
+
+    testWidgets('label 只含訊息、不含路徑行，且 isHeader 仍在訊息節點', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final l10n = AppLocalizations.of(tester.element(find.byKey(_testKey)));
+      expect(live.label, contains(l10n.sourceFileMissingMessage));
+      expect(live.label, isNot(contains('最後路徑')));
+      final data = live.getSemanticsData();
+      expect(data.flagsCollection.isHeader, isTrue);
+      expect(data.flagsCollection.isLiveRegion, isTrue);
+      handle.dispose();
+    });
+
+    testWidgets('按鈕不在 liveRegion 節點子樹內', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final button = tester.getSemantics(find.byKey(_refreshKey));
+      var inSubtree = false;
+      for (SemanticsNode? n = button; n != null; n = n.parent) {
+        if (n.id == live.id) inSubtree = true;
+      }
+      expect(inSubtree, isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('liveRegion 節點 Rect 小於外層容器（非全畫面）', (tester) async {
+      final handle = tester.ensureSemantics();
+      final live = await pumpAndFindLive(tester);
+      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+      expect(live.rect.height, lessThan(screen.height));
+      handle.dispose();
     });
   });
 }

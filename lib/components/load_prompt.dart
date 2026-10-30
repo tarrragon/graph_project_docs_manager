@@ -56,6 +56,9 @@ class LoadPrompt extends StatelessWidget {
           // 進入本狀態時訊息以 liveRegion 播報一次（SPEC-004 無障礙子節）。
           Semantics(
             liveRegion: true,
+            // container：獨立語意節點，不併入外層容器（否則開始載入按鈕
+            // 落入其子樹，違反 SPEC-004 §4.25 訊息播報一次）。
+            container: true,
             child: AppText.singleLine(
               resolvedMessage,
               variant: AppTextVariant.subtitle,
