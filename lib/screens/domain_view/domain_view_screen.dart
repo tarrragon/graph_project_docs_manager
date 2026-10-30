@@ -864,21 +864,19 @@ class _SwimlaneBody extends ConsumerWidget {
   }
 
   /// 開啟選定 UC 的原始檔（SPEC-003 §3.1「泳道開啟原始檔」；契約同
-  /// `gap_report_screen.dart._openExternally`，此處簡化為單一結局分支：
-  /// 假資料無真實檔案路徑，0.1 恆走 `notFound`／`failed` 分支——路徑存在
-  /// 性檢查與行程呼叫仍走真實 `dart:io`，只是 fixture 路徑本身不對應
-  /// 磁碟上的檔案，故此路徑的「opened」分支在 0.1 假資料下不可達，
-  /// 待真實資料整合後才會走到。
+  /// `gap_report_screen.dart._openExternally`）。路徑取自矩陣欄上該 UC
+  /// 節點的來源路徑；查無路徑時走 `notFound`，不呼叫開啟器。
   Future<void> _openSource(
     BuildContext context,
     WidgetRef ref,
     String ucId,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final path = resolveOpenPath(
-      ref.read(currentWorkspaceStateProvider),
-      'docs/usecases/$ucId.md', // i18n-exempt: fixture 路徑字面,
-    );
+    final columns = ref.read(domainMatrixProvider)?.columns ?? const [];
+    final filePath = columns.where((c) => c.id == ucId).firstOrNull?.filePath;
+    final path = filePath == null
+        ? null
+        : resolveOpenPath(ref.read(currentWorkspaceStateProvider), filePath);
     final generation = ref.read(projectGenerationProvider);
     final result = path == null
         ? ExternalOpenResult.notFound

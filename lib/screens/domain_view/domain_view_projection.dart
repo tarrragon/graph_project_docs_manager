@@ -115,6 +115,7 @@ DomainUc _ucColumn(GraphBuiltEvent event, FlowQuery flows, String ucId) {
     id: ucId,
     title: node?.displayTitle ?? '',
     hasFlowStep: _flowOf(flows, ucId)?.steps.isNotEmpty ?? false,
+    filePath: node?.path,
   );
 }
 
