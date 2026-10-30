@@ -2,7 +2,8 @@
 // 與 Graph `flowOf` 驅動，不讀 `UcFlowFixtures`；跳轉定位（flow 類步驟、事件類
 // 事件列）。
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show Override, ProviderContainer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
@@ -13,7 +14,9 @@ import 'package:graph_project_docs_manager/graph/flow_subgraph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/app/uc_flow_focus.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_state.dart';
 
 import '../../../helpers/gap_round_fakes.dart';
 import '../../../helpers/helpers.dart';
@@ -231,6 +234,106 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(container.read(ucFlowFocusProvider), isNull);
+    });
+  });
+
+  group('projectUcFlowItems 的 rawNodes 對側宣告', () {
+    final ucNode = _uc('UC-01', 'first uc');
+    final event = GraphBuiltEvent(
+      nodes: [ucNode],
+      edges: const [],
+      graphDefects: const [],
+      totalReferences: 0,
+      resolvedCount: 0,
+      flowSubgraphs: const {},
+    );
+
+    RawNode evt(String id, String type, List<String> p, List<String> c) =>
+        RawNode(
+          path: 'docs/events/x/$id.md',
+          frontmatter: {'id': id, 'producers': p, 'consumers': c},
+          typeName: type,
+        );
+
+    Map<String, UcFlowEventSides> sidesOf(Iterable<RawNode>? rawNodes) {
+      final items = rawNodes == null
+          ? projectUcFlowItems(event: event, failedEvents: const [])
+          : projectUcFlowItems(
+              event: event,
+              failedEvents: const [],
+              rawNodes: rawNodes,
+            );
+      return items.single.eventSides;
+    }
+
+    test('E1 對照：不傳 rawNodes 為空，傳入後取到對側宣告', () {
+      final raws = [
+        evt('EVT-A', 'EVT', ['d-prod'], ['d-cons']),
+      ];
+
+      final without = sidesOf(null);
+      final withRaw = sidesOf(raws);
+
+      expect(without, isEmpty);
+      expect(withRaw, isNot(equals(without)));
+      expect(withRaw['EVT-A']!.producers, ['d-prod']);
+      expect(withRaw['EVT-A']!.consumers, ['d-cons']);
+    });
+
+    test('非 EVT 型別不納入', () {
+      final sides = sidesOf([
+        evt('EVT-NOT-EVENT', 'SPEC', ['x'], ['y']),
+        evt('EVT-B', 'EVT', ['p'], []),
+      ]);
+
+      expect(sides.keys, ['EVT-B']);
+    });
+
+    test('同 id 兩筆先出現者勝', () {
+      final sides = sidesOf([
+        evt('EVT-C', 'EVT', ['first'], ['first-c']),
+        evt('EVT-C', 'EVT', ['second'], ['second-c']),
+      ]);
+
+      expect(sides['EVT-C']!.producers, ['first']);
+      expect(sides['EVT-C']!.consumers, ['first-c']);
+    });
+
+    test('id 缺漏的 EVT 節點不納入', () {
+      final sides = sidesOf([
+        const RawNode(
+          path: 'docs/events/x/none.md',
+          frontmatter: {
+            'producers': ['p'],
+          },
+          typeName: 'EVT',
+        ),
+      ]);
+
+      expect(sides, isEmpty);
+    });
+
+    test('ucFlowUcListProvider 傳入 scan.rawNodes', () {
+      final round = fakeRound(
+        nodes: [ucNode],
+        event: event,
+        extraRawNodes: [
+          evt('EVT-D', 'EVT', ['prod-d'], ['cons-d']),
+        ],
+      );
+      final container = ProviderContainer(
+        overrides: [
+          scanRoundProvider.overrideWith(
+            () => FakeScanRound(produce: () => round, initial: round),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final items = container.read(ucFlowUcListProvider);
+
+      expect(items.single.eventSides['EVT-D']!.producers, ['prod-d']);
+      expect(items.single.eventSides['EVT-D']!.consumers, ['cons-d']);
     });
   });
 }
