@@ -1,5 +1,5 @@
 /// UC Flow 視圖的固定假資料（0.5.0-W1-114.18 起僅供測試注入，畫面與
-/// providers 不讀取；UC id 沿用 `domain_view_fixtures.dart` 既有三個 UC）。
+/// providers 不讀取；UC id 取自下方 `ucList` 的三個 UC）。
 ///
 /// 事件配對刻意維持同 UC 內發出／消費皆有（不觸發「本 UC 外」分支）。
 library;
