@@ -6,7 +6,15 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
+import 'package:graph_project_docs_manager/assembly/shell.dart';
+import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_screen.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
@@ -24,6 +32,8 @@ import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dar
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 
 import '../../helpers/domain_view_fixtures.dart';
+import '../../helpers/gap_round_fakes.dart';
+import '../../helpers/stub_workspace_repository.dart';
 import '../../helpers/helpers.dart';
 
 class _FixedGap extends GapReportNotifier {
@@ -50,6 +60,20 @@ class _Case {
 }
 
 final _cases = <_Case>[
+  // 含 app shell：側欄 NavItem 唯一使用處（0.5.0-W1-523）。
+  _Case('shell', const AppShell(), [
+    domainViewStateProvider.overrideWith(
+      (ref) => const DomainReady(mode: DomainMode.matrix),
+    ),
+    workspaceRepositoryProvider.overrideWithValue(
+      StubWorkspaceRepository(const WorkspaceReady('/ws')),
+    ),
+    frameworkSignalProbeProvider.overrideWithValue(
+      const StubFrameworkSignalProbe(version: '0.0.1', schemaJson: true),
+    ),
+    builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+    fakeScanRoundOverride(),
+  ]),
   _Case('domain', const DomainViewScreen(), domainFixtureOverrides()),
   _Case('ucFlow', const UcFlowScreen(), [
     ucFlowUcListProvider.overrideWithValue(UcFlowFixtures.ucList),
@@ -133,6 +157,14 @@ void main() {
           settle: false,
         );
         await tester.pump(const Duration(milliseconds: 500));
+        if (c.name == 'shell') {
+          // 側欄導覽項必須在受測語意樹內，否則準則通過不代表側欄被檢查。
+          expect(find.byKey(const Key('nav-item-domain')), findsOneWidget);
+          expect(
+            find.bySemanticsLabel(RegExp('.+'), skipOffstage: false),
+            findsWidgets,
+          );
+        }
         final actual = <String, Set<String>>{};
         for (final g in _guidelines.entries) {
           final r = await g.value.evaluate(tester);
