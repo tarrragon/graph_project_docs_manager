@@ -8,7 +8,7 @@ import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 
 import '../../../helpers/spec001/corpus_snapshot.dart';
 import '../../../helpers/spec007/bundle_graph_fixture.dart';
@@ -487,7 +487,7 @@ void main() {
           "export 'package:graph_project_docs_manager/app/selected_uc.dart';\n"
           "import 'package:graph_project_docs_manager/graph/flow_query.dart';\n"
           "import 'package:graph_project_docs_manager/layout/lane_order.dart';\n"
-          "import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';\n"
+          "import 'package:graph_project_docs_manager/app/domain_view_state.dart';\n"
           "import 'dart:collection';\n";
       expect(disallowedImportsIn(sample), [
         'package:graph_project_docs_manager/corpus/corpus_scanner.dart',
@@ -514,7 +514,7 @@ const _allowedPrefixes = [
   'package:graph_project_docs_manager/layout/',
 ];
 const _allowedFiles = [
-  'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart',
+  'package:graph_project_docs_manager/app/domain_view_state.dart',
 ];
 
 /// 白名單外的 import／export 目標（含一切相對路徑）。

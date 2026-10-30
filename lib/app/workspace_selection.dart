@@ -11,10 +11,10 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../screens/domain_view/gate_detection_notifier.dart';
+import 'gate_detection_notifier.dart';
 import '../workspace/workspace_repository.dart'
     show workspaceRepositoryProvider;
-import '../screens/project_switcher/project_switcher_providers.dart';
+import 'project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
 import 'degraded_schema.dart';

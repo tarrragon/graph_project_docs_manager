@@ -17,7 +17,7 @@ import '../../l10n/app_localizations.dart';
 import '../../workspace/workspace_repository.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
-import 'project_switcher_providers.dart';
+import '../../app/project_switcher_providers.dart';
 
 // provider 定義已搬至 workspace 層；此處 re-export 讓既有測試的 override
 // 照常解析（0.5.0-W1-453）。

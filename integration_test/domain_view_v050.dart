@@ -26,8 +26,9 @@ import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_projection.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state.dart';
 

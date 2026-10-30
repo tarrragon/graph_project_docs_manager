@@ -5,7 +5,7 @@
 //   門檻：schemaVersionMinorDrift（.claude/VERSION 與內嵌資產版本的
 //         次版號差距）超過 kSchemaVersionDriftThreshold（現行 25）。
 //   承擔者：下一位執行涉及
-//         lib/screens/domain_view/domain_view_schema_version.dart 或
+//         lib/app/domain_view_schema_version.dart 或
 //         assets/schema/builtin_schema_version.json 的 IMP ticket 之
 //         parsley-flutter-developer——本測試轉紅即為其入口 ticket 的
 //         acceptance 訊號，不需另建監測 ticket。
@@ -15,7 +15,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:graph_project_docs_manager/screens/domain_view/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 
 void main() {
   group('schemaVersionMinorDrift（純函式，固定 fixture）', () {
