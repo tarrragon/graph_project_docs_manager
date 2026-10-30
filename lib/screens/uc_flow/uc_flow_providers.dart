@@ -10,9 +10,12 @@ import 'package:graph_project_docs_manager/app/domain_uc_columns.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
+import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart'
+    show RawNode;
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart'
     show FlowParseFailedEvent;
 import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
+import 'package:graph_project_docs_manager/graph/flow_key.dart';
 import 'package:graph_project_docs_manager/graph/flow_query.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
@@ -29,6 +32,7 @@ final ucFlowUcListProvider = Provider<List<UcFlowUcItem>>((ref) {
   return projectUcFlowItems(
     event: graph.event,
     failedEvents: round.result.scan.flowParseFailedEvents,
+    rawNodes: round.result.scan.rawNodes,
   );
 });
 
@@ -48,20 +52,41 @@ final ucFlowEventGapsProvider = Provider<EventGapReport>((ref) {
 final ucFlowFocusProvider = StateProvider<UcFlowFocus?>((ref) => null);
 
 /// 需求：[SPEC-001 §2] UC 清單取圖上全部 UC 型別節點（欄序同 Domain 矩陣），
-/// 步驟取 `flowOf`，解析失敗旗標取 EVT-CORPUS-004 對應的同路徑 UC。
+/// 步驟取 `flowOf`，解析失敗旗標取 EVT-CORPUS-004 對應的同路徑 UC；
+/// 事件流小表「本 UC 外」附帶的對側 domain 取 [rawNodes] 中 EVT 節點的
+/// `producers`／`consumers`（找不到 EVT 節點的事件不產生對側宣告）。
 List<UcFlowUcItem> projectUcFlowItems({
   required GraphBuiltEvent event,
   required Iterable<FlowParseFailedEvent> failedEvents,
+  Iterable<RawNode> rawNodes = const [],
 }) {
   final flows = FlowQuery(buildResult: GraphBuildAvailable(event));
   final failedIds = flowParseFailedUcIdsOf(
     failedEvents: failedEvents,
     event: event,
   );
+  final sides = _eventSidesOf(rawNodes);
   return [
     for (final id in orderedUcColumnIds(event.nodes))
-      _toUcItem(event, flows, id, failedIds.contains(id)),
+      _toUcItem(event, flows, id, failedIds.contains(id), sides),
   ];
+}
+
+/// EVT id → 對側宣告；同 id 先出現者勝（同 [detectEventGaps] 取法）。
+Map<String, UcFlowEventSides> _eventSidesOf(Iterable<RawNode> rawNodes) {
+  final result = <String, UcFlowEventSides>{};
+  for (final n in rawNodes) {
+    final id = flowKeyOf(n.frontmatter['id']);
+    if (n.typeName != eventTypeName || id == null) continue;
+    result.putIfAbsent(
+      id,
+      () => UcFlowEventSides(
+        producers: flowKeysOf(n.frontmatter['producers']),
+        consumers: flowKeysOf(n.frontmatter['consumers']),
+      ),
+    );
+  }
+  return result;
 }
 
 UcFlowUcItem _toUcItem(
@@ -69,6 +94,7 @@ UcFlowUcItem _toUcItem(
   FlowQuery flows,
   String ucId,
   bool isFailed,
+  Map<String, UcFlowEventSides> sides,
 ) {
   final node = event.nodes.firstWhere((n) => n.id == ucId);
   final subgraph = switch (flows.flowOf(ucId)) {
@@ -83,6 +109,7 @@ UcFlowUcItem _toUcItem(
       for (final s in subgraph?.steps ?? const <FlowStepNode>[]) _step(s),
     ],
     isFlowParseFailed: isFailed,
+    eventSides: sides,
   );
 }
 

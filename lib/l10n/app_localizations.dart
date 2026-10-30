@@ -1280,11 +1280,17 @@ abstract class AppLocalizations {
   /// **'{step} · {domain}'**
   String eventFlowStepDomain(String step, String domain);
 
-  /// SPEC-004 4.35 `eventFlow`（SPEC-003 §3.2「本 UC 外」列；domains 為空時仍顯示括號內空值，提案）
+  /// SPEC-004 4.35 `eventFlow`（SPEC-003 §3.2「本 UC 外」列，有對側 domain 時附括號；對側為空或無 EVT 節點時改用 eventOutsideUcBare，見 SPEC-001 §2〈事件流小表〉）
   ///
   /// In zh, this message translates to:
   /// **'本 UC 外（{domains}）'**
   String eventOutsideUc(String domains);
+
+  /// SPEC-003 §3.2「本 UC 外」列：對側清單為空或找不到 EVT 節點時，不帶括號（SPEC-001 §2〈事件流小表〉，用戶裁決 A）
+  ///
+  /// In zh, this message translates to:
+  /// **'本 UC 外'**
+  String get eventOutsideUcBare;
 
   /// SPEC-004 4.35 `eventFlow` 標記格朗讀
   ///

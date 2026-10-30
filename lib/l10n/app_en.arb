@@ -164,6 +164,7 @@
   "columnConsumer": "Consumed by",
   "eventFlowStepDomain": "{step} · {domain}",
   "eventOutsideUc": "Outside this UC ({domains})",
+  "eventOutsideUcBare": "Outside this UC",
   "orphanEventMarkerLabel": "Orphan event",
   "gapCategoryParseFailure": "Parse Failures",
   "gapCategoryFlowBlockMalformed": "Flow Block Parse Failures",

@@ -300,12 +300,13 @@ void main() {
       expectNoOverflow(tester);
     });
 
-    // 事件流小表缺側回退（SPEC-001 §2〈事件流小表〉）。E1 對照：同一事件在
-    // 兩側皆有時不出現回退文案；只剩一側時恰出現一次。
+    // 事件流小表缺側回退（SPEC-001 §2〈事件流小表〉「本 UC 外」列）。E1 對照：
+    // 同一事件在兩側皆有時不出現回退文案；只剩一側時恰出現一次。
     Future<void> pumpEventUc(
       WidgetTester tester,
-      List<UcFlowStepItem> steps,
-    ) async {
+      List<UcFlowStepItem> steps, {
+      Map<String, UcFlowEventSides> eventSides = const {},
+    }) async {
       await pumpHarness(
         tester,
         child: const UcFlowScreen(),
@@ -316,6 +317,7 @@ void main() {
               title: 'edge-uc', // i18n-exempt: 測試 UC 標題
               filePath: 'docs/usecases/edge-case.md', // i18n-exempt: 測試路徑
               steps: steps,
+              eventSides: eventSides,
             ),
           ]),
           selectedUcProvider.overrideWith((ref) => 'edge-case'),
@@ -323,7 +325,10 @@ void main() {
       );
     }
 
-    const outside = '本 UC 外（）'; // i18n-exempt: 斷言 zh 樣板文案
+    // 預期文字取自 SPEC-001 v1.62 §2／SPEC-003 v1.70 §3.2 條文；原
+    // '本 UC 外（）' 斷言反映的是未接線缺口而非規格行為（0.5.0-W1-547）。
+    const outside = '本 UC 外'; // i18n-exempt: 斷言 zh 樣板文案
+    const eventKey = 'x.y.z'; // i18n-exempt: 測試事件 ID
     const emitStep = UcFlowStepItem(
       label: 'e', // i18n-exempt: 測試步驟標籤
       domain: 'graph',
@@ -336,22 +341,88 @@ void main() {
     );
 
     testWidgets('事件兩側皆在本 UC 內時不顯示「本 UC 外」（對照）', (tester) async {
-      await pumpEventUc(tester, [emitStep, consumeStep]);
+      await pumpEventUc(
+        tester,
+        [emitStep, consumeStep],
+        eventSides: {
+          eventKey: const UcFlowEventSides(consumers: ['storage']),
+        },
+      );
 
       expect(find.byKey(const Key('panel-ucFlow-event-flow')), findsOneWidget);
-      expect(find.text(outside), findsNothing);
+      expect(find.textContaining(outside), findsNothing);
     });
 
-    testWidgets('事件只發出、無本 UC 內消費者時消費側顯示「本 UC 外」', (tester) async {
-      await pumpEventUc(tester, [emitStep]);
+    testWidgets('缺消費側時附 EVT consumers 所列 domain（多個以「、」串接）', (tester) async {
+      await pumpEventUc(
+        tester,
+        [emitStep],
+        eventSides: {
+          eventKey: const UcFlowEventSides(
+            producers: ['ignored'], // i18n-exempt: 對側以外的欄位不得顯示
+            consumers: ['storage', 'graph'],
+          ),
+        },
+      );
+
+      expect(find.text('$outside（storage、graph）'), findsOneWidget);
+      expect(find.textContaining('ignored'), findsNothing);
+    });
+
+    testWidgets('缺發出側時附 EVT producers 所列 domain', (tester) async {
+      await pumpEventUc(
+        tester,
+        [consumeStep],
+        eventSides: {
+          eventKey: const UcFlowEventSides(
+            producers: ['corpus'],
+            consumers: ['ignored'], // i18n-exempt: 對側以外的欄位不得顯示
+          ),
+        },
+      );
+
+      expect(find.text('$outside（corpus）'), findsOneWidget);
+      expect(find.textContaining('ignored'), findsNothing);
+    });
+
+    testWidgets('對側值為 presentation 時顯示「畫面」', (tester) async {
+      await pumpEventUc(
+        tester,
+        [emitStep],
+        eventSides: {
+          eventKey: const UcFlowEventSides(
+            consumers: ['presentation', 'graph'],
+          ),
+        },
+      );
+
+      expect(find.text('$outside（畫面、graph）'), findsOneWidget);
+      expect(find.textContaining('presentation'), findsNothing);
+    });
+
+    testWidgets('對側清單為空時顯示「本 UC 外」不帶括號', (tester) async {
+      await pumpEventUc(
+        tester,
+        [emitStep],
+        eventSides: {eventKey: const UcFlowEventSides()},
+      );
 
       expect(find.text(outside), findsOneWidget);
+      expect(find.textContaining('（'), findsNothing);
     });
 
-    testWidgets('事件只消費、無本 UC 內發出者時發出側顯示「本 UC 外」', (tester) async {
+    testWidgets('找不到 EVT 節點時發出側顯示「本 UC 外」不帶括號', (tester) async {
       await pumpEventUc(tester, [consumeStep]);
 
       expect(find.text(outside), findsOneWidget);
+      expect(find.textContaining('（'), findsNothing);
+    });
+
+    testWidgets('找不到 EVT 節點時消費側顯示「本 UC 外」不帶括號', (tester) async {
+      await pumpEventUc(tester, [emitStep]);
+
+      expect(find.text(outside), findsOneWidget);
+      expect(find.textContaining('（'), findsNothing);
     });
 
     testWidgets('點 domain → 切至 Domain 視圖', (tester) async {
