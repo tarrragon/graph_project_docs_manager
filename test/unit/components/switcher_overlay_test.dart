@@ -92,9 +92,9 @@ void main() {
 
     testWidgets('liveRegion 節點 label 只含失敗原因（外層無兄弟 container）', (tester) async {
       final handle = tester.ensureSemantics();
-      // 外層為無兄弟結構的 container。實測（0.5.0-W1-531.2）：拿掉元件
-      // container 本斷言仍綠（浮層根節點 explicitChildNodes 已隔離子節點），
-      // 故此為現況守護、無 E2 鑑別力。
+      // 回歸測試：失敗原因為獨立語意節點，成因是浮層根 Semantics 設了
+      // explicitChildNodes（元件本身保證，不靠 liveRegion 的 container）。
+      // 外層包無兄弟結構的 container 以排除父層兄弟結構的偶然成立。
       await pumpHarness(
         tester,
         child: Semantics(

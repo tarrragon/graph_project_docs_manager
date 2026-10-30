@@ -182,9 +182,6 @@ class _SwitcherOverlayState extends State<SwitcherOverlay> {
       padding: EdgeInsets.only(top: Space.xxs, left: Space.xs, right: Space.xs),
       child: Semantics(
         liveRegion: true,
-        // container：獨立語意節點，不依賴父層兄弟結構才與其他節點分離
-        // （拿掉會併入外層，label 混入其他文字）。
-        container: true,
         child: AppText.multiLine(
           reason,
           maxLines: 2,
