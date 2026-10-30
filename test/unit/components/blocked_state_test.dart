@@ -305,23 +305,13 @@ void main() {
       WidgetTester tester,
       Widget blocked,
     ) async {
-      await pumpHarness(
-        tester,
-        child: Semantics(container: true, child: blocked),
-      );
+      await pumpInSemanticsContainer(tester, child: blocked);
       await tester.pump();
       return tester.getSemantics(find.text(msg));
     }
 
     bool inSubtree(WidgetTester tester, SemanticsNode live, Finder target) {
-      for (
-        SemanticsNode? n = tester.getSemantics(target);
-        n != null;
-        n = n.parent
-      ) {
-        if (n.id == live.id) return true;
-      }
-      return false;
+      return isInSemanticsSubtree(tester.getSemantics(target), live);
     }
 
     // 每條斷言各自一個 testWidgets，各自得到 E2 判定（不被前一條擋下）。
@@ -412,21 +402,18 @@ void main() {
     testWidgets('withDetail 展開前後 live label 不變', (tester) async {
       final handle = tester.ensureSemantics();
       var expanded = false;
-      await pumpHarness(
+      await pumpInSemanticsContainer(
         tester,
-        child: Semantics(
-          container: true,
-          child: _StatefulHarness(
-            builder: (context, toggle) => BlockedState.withDetail(
-              message: msg,
-              explanation: expl,
-              appVersion: ver,
-              projectVersion: '2.0.0',
-              onSwitchProject: () {},
-              isDetailExpanded: expanded,
-              onToggleDetail: () => toggle(() => expanded = !expanded),
-              testKey: withDetailKey,
-            ),
+        child: _StatefulHarness(
+          builder: (context, toggle) => BlockedState.withDetail(
+            message: msg,
+            explanation: expl,
+            appVersion: ver,
+            projectVersion: '2.0.0',
+            onSwitchProject: () {},
+            isDetailExpanded: expanded,
+            onToggleDetail: () => toggle(() => expanded = !expanded),
+            testKey: withDetailKey,
           ),
         ),
       );

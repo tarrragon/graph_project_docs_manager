@@ -227,16 +227,13 @@ void main() {
 
     Future<SemanticsNode> pumpAndFindLive(WidgetTester tester) async {
       // 外層 container 模擬畫面層語意容器（531 傾印實測）。
-      await pumpHarness(
+      await pumpInSemanticsContainer(
         tester,
-        child: Semantics(
-          container: true,
-          child: LoadPrompt(
-            count: 12,
-            onStart: () {},
-            testKey: Anchor.state(Screen.tickets, 'unloaded'),
-            startKey: startKey,
-          ),
+        child: LoadPrompt(
+          count: 12,
+          onStart: () {},
+          testKey: Anchor.state(Screen.tickets, 'unloaded'),
+          startKey: startKey,
         ),
       );
       final l10n = AppLocalizations.of(tester.element(find.byKey(startKey)));
@@ -256,18 +253,14 @@ void main() {
       final handle = tester.ensureSemantics();
       final live = await pumpAndFindLive(tester);
       final button = tester.getSemantics(find.byKey(startKey));
-      var inSubtree = false;
-      for (SemanticsNode? n = button; n != null; n = n.parent) {
-        if (n.id == live.id) inSubtree = true;
-      }
-      expect(inSubtree, isFalse);
+      expect(isInSemanticsSubtree(button, live), isFalse);
       handle.dispose();
     });
 
     testWidgets('liveRegion 節點 Rect 小於外層容器（非全畫面）', (tester) async {
       final handle = tester.ensureSemantics();
       final live = await pumpAndFindLive(tester);
-      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+      final screen = logicalViewSize(tester);
       expect(live.rect.height, lessThan(screen.height));
       handle.dispose();
     });
