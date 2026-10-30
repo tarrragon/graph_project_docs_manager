@@ -58,6 +58,9 @@ class MissingSourceState extends StatelessWidget {
           children: [
             Semantics(
               liveRegion: true,
+              // container：獨立語意節點，不併入外層容器（否則 label 含路徑行、
+              // 重新整理按鈕落入其子樹，違反 SPEC-004 §4.22 訊息播報一次）。
+              container: true,
               child: AppText.singleLine(
                 l10n.sourceFileMissingMessage,
                 variant: AppTextVariant.subtitle,
