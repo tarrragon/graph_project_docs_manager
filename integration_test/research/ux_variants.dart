@@ -241,7 +241,6 @@ class UxPair {
          id: '${code}_orig',
          overrides: overrides,
          destination: destination,
-         locales: const [Locale('zh')],
          question: question,
          answerKey: answerKey,
        ),
@@ -250,7 +249,6 @@ class UxPair {
          overrides: overrides,
          wrapApp: inject,
          destination: destination,
-         locales: const [Locale('zh')],
          question: question,
          answerKey: answerKey,
        );
