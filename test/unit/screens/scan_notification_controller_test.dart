@@ -15,7 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/app/app_lifecycle.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
-import 'package:graph_project_docs_manager/app/shell.dart' show AppShell;
+import 'package:graph_project_docs_manager/assembly/shell.dart' show AppShell;
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart'
     show UndeterminedGapReason;
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';

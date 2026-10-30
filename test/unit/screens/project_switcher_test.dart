@@ -16,7 +16,7 @@ import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
 import 'package:graph_project_docs_manager/corpus/scan_summary.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
-import 'package:graph_project_docs_manager/app/shell.dart' as app_shell;
+import 'package:graph_project_docs_manager/assembly/shell.dart' as app_shell;
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';

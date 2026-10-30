@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import 'app/shell.dart';
+import 'assembly/shell.dart';
 import 'components/components.dart' show BlockedState;
 import 'l10n/app_localizations.dart';
 import 'tokens/tokens.dart';

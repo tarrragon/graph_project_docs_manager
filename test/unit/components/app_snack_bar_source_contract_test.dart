@@ -13,7 +13,7 @@ const _libDir = 'lib';
 const _snackBarPath = 'lib/components/app_snack_bar.dart';
 const _levelPath = 'lib/app/attention_level.dart';
 const _mainPath = 'lib/main.dart';
-const _shellPath = 'lib/app/shell.dart';
+const _shellPath = 'lib/assembly/shell.dart';
 const _specPath = 'docs/spec/ui/SPEC-003-interaction-response.md';
 
 /// 剝除 `///`／`//` 行尾、`/* */` 跨行區塊；字串字面量內的 `//` 不解析

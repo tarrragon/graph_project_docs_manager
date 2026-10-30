@@ -2,7 +2,7 @@
 ///
 /// 這不是完整的 URL-based 路由系統——桌面單視窗 App 目前不需要瀏覽器式的
 /// history stack。[AppDestination] 是六個畫面的型別化列舉，[selectedDestinationProvider]
-/// 持有目前選取項，[AppShell]（見 `shell.dart`）依此在 `IndexedStack` 中切換內容。
+/// 持有目前選取項，[AppShell]（見 `assembly/shell.dart`）依此在 `IndexedStack` 中切換內容。
 /// 未來若真的需要 deep link，再升級為完整路由套件，介面（enum + provider）不必變。
 library;
 
@@ -10,12 +10,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
-import '../screens/domain_view/domain_view_screen.dart';
-import '../screens/trace/trace_screen.dart';
-import '../screens/gap_report/gap_report_screen.dart';
-import '../screens/node_detail/node_detail_screen.dart';
-import '../screens/ticket_list/ticket_list_screen.dart';
-import '../screens/uc_flow/uc_flow_screen.dart';
 
 /// 六個畫面，順序即導覽列的顯示順序（SPEC-001 §1-6 逐項對應）。
 enum AppDestination {
@@ -150,16 +144,3 @@ final firstVisibleProvider = Provider.family<bool, AppDestination>((
   }
   return isFirst;
 });
-
-/// 依 [destination] 產生對應的畫面內容（窮舉，六項皆有畫面）。
-Widget buildDestinationPage(BuildContext context, AppDestination destination) {
-  final key = destination.pageKey;
-  return switch (destination) {
-    AppDestination.domain => DomainViewScreen(key: key),
-    AppDestination.traceability => TraceabilityScreen(key: key),
-    AppDestination.gaps => GapReportScreen(key: key),
-    AppDestination.tickets => TicketListScreen(key: key),
-    AppDestination.nodeDetail => NodeDetailScreen(key: key),
-    AppDestination.ucFlow => UcFlowScreen(key: key),
-  };
-}

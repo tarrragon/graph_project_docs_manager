@@ -17,7 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/attention_level.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/workspace_selection.dart';
-import 'package:graph_project_docs_manager/app/shell.dart';
+import 'package:graph_project_docs_manager/assembly/shell.dart';
 // `components.dart` 與 `app/shell.dart` 各有一個 `AppShell`（元件庫的殼與
 // 應用層的殼），不加前綴會撞名。
 import 'package:graph_project_docs_manager/components/components.dart'
