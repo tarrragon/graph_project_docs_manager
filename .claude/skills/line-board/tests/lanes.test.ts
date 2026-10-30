@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from 'claude-code/testing'
 
-import { TEMPLATE_AT_LINE_START, TEMPLATE_NOTE, TICKET_349, TICKET_349_GOALS } from './fixtures'
+import { QUEUE_LINE_CASES, TEMPLATE_AT_LINE_START,TEMPLATE_NOTE, TICKET_349, TICKET_349_GOALS } from './fixtures'
 import { formatQueue, laneTicketIds, parseLaneGoals, parseLanes, parseQueue } from '../hooks/lanes'
 import { ticketPrefixOf } from '../hooks/shared'
 
@@ -111,6 +111,19 @@ describe('parseLanes', () => {
     // 對照：同一段文字寫在行首即被採用，確認上列輸入是被判定排除，不是解析本身失效
     expect(parseLanes('## Solution\n**L5 現行佇列**：100\n**L5 目標**：行首\n', PREFIX).map(lane => lane.goal)).toEqual(['行首'])
   })
+})
+
+describe('parseLanes 共用案例（queue-line-cases.json 的 TS 副本 QUEUE_LINE_CASES）', () => {
+  for (const c of QUEUE_LINE_CASES) {
+    test(`${c.category}：${c.name}`, () => {
+      const actual = parseLanes(c.text, c.prefix).map(lane => ({
+        lane: lane.lane,
+        session: lane.session,
+        tickets: lane.tokens.flatMap(t => (t.kind === 'ticket' ? [{ serial: t.serial, id: t.id, note: t.note }] : [])),
+      }))
+      expect(actual).toEqual(c.expect)
+    })
+  }
 })
 
 describe('parseQueue', () => {
