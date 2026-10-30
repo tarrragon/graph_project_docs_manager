@@ -47,10 +47,6 @@ final ucFlowEventGapsProvider = Provider<EventGapReport>((ref) {
   ).report;
 });
 
-/// 跳轉定位目標（破洞報告 flow 類／事件類項目寫入，UC Flow 消費）；`null`
-/// 代表無待定位目標。
-final ucFlowFocusProvider = StateProvider<UcFlowFocus?>((ref) => null);
-
 /// 需求：[SPEC-001 §2] UC 清單取圖上全部 UC 型別節點（欄序同 Domain 矩陣），
 /// 步驟取 `flowOf`，解析失敗旗標取 EVT-CORPUS-004 對應的同路徑 UC；
 /// 事件流小表「本 UC 外」附帶的對側 domain 取 [rawNodes] 中 EVT 節點的
