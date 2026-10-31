@@ -8,7 +8,7 @@
 //   可能小於 window；auto-compact 以它為準。兩者都記，門檻採哪一個由實測後寫在票面。
 // compact 剛完成、下一次回應前 tokens 與 percent 缺席：記為 null，不寫成 0（0 會被讀成幾乎沒用）。
 
-import type { ContextUsageRecord } from '../types'
+import type { ContextUsageRecord, ResumePhase } from '../types'
 
 /** 用量檔目錄，相對主 checkout。 */
 export const CONTEXT_USAGE_DIR = '.claude/hook-logs/line-board/context'
@@ -36,11 +36,15 @@ export function contextUsagePath(mainPath: string, sessionId: string): string | 
   return `${mainPath}/${CONTEXT_USAGE_DIR}/${sessionId}.json`
 }
 
-/** 組一筆用量記錄：缺席的量測一律為 null；compactPercent 只在 tokens 與 compaction window 都有時計算。 */
+/**
+ * 組一筆用量記錄：缺席的量測一律為 null；compactPercent 只在 tokens 與 compaction window 都有時計算。
+ * phase 是恢復開工通知的輔管道（resumeNotice.ts 的 resumePhaseOf），每次寫檔都帶上，未給為 null。
+ */
 export function contextUsageRecord(input: {
   sessionId: string
   context: ContextFill
   compaction: CompactionWindow | null
+  phase?: ResumePhase | null
   measuredAt: number
 }): ContextUsageRecord {
   const { sessionId, context, compaction, measuredAt } = input
@@ -48,6 +52,7 @@ export function contextUsageRecord(input: {
   const compactWindow = compaction?.rawMaxTokens ?? null
   return {
     sessionId,
+    phase: input.phase ?? null,
     tokens,
     window: context.window,
     percent: context.percent ?? null,

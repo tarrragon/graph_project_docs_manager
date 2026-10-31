@@ -9,6 +9,7 @@
 // - continuity.ts：各線接續狀態（line_status 工具）：來源紀錄解析、接續狀態判定、過期偵測、等用戶偵測與輸出文字
 // - userTodos.ts：協調票的用戶待辦行與完成行配對、「用戶待辦」群組的各行
 // - contextUsage.ts：各 session 的 context 用量檔（session.measure 寫入）：何時寫、路徑、記錄內容
+// - resumeNotice.ts：線 session 在 /compact、/clear 後恢復開工的判定、通知對象、通知文字與用量檔 phase
 
 export * from './shared'
 export * from './lanes'
@@ -20,3 +21,4 @@ export * from './statusColor'
 export * from './continuity'
 export * from './userTodos'
 export * from './contextUsage'
+export * from './resumeNotice'

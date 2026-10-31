@@ -211,6 +211,37 @@ EOF
 
 **這套流程的前提**：主控在 `/clear` 之前，已經把只存在對話中的待辦寫進協調票（`wrap-up-and-handoff.md` §3）。沒有寫進去的事項，接續之後無法找回。
 
+### 線 session 的恢復開工通知
+
+一般的線在 `/compact` 或 `/clear` 之後重新開工時，該線的 line-board plugin 自動通知主控。主控不必呼叫工具或詢問該線，就知道它已經回到工作狀態。
+
+**判定**（plugin 事件，不靠 AI 回報）：
+
+| 時點 | 事件 |
+|------|------|
+| compact 完成 | `session.compact` 完成且未被否決；`/compact` 與 auto compact 都算，precompute 與 subagent 自己的 compact 不算 |
+| clear 完成 | `session.end` 的 reason 為 `clear` |
+| 已恢復開工 | 上兩者之後第一個送出的 prompt（含 slash command）；`/compact`、`/clear` 本身不算 |
+
+只有「已恢復開工」才通知。compact 做完時 session 可能還停著沒動，主控要知道的是它開始工作了。
+
+**不通知**：新開的 session、resume、主控自身、已收線的線、名稱比對不到協調票現行佇列行的 session。
+
+**兩個管道**：
+
+| 管道 | 內容 | 主控怎麼看到 |
+|------|------|-------------|
+| 主管道 | 一則跨 session 訊息，固定一行：`L<n>（<名稱>）已恢復開工：<時間>，來源 compact／clear` | 直接出現在主控的對話 |
+| 輔管道 | 該 session 的用量檔（`.claude/hook-logs/line-board/context/<sessionId>.json`）的 `phase` 欄位：`compacted`（做完未開工）或 `resumed`（已開工），附來源與時間 | 看板線標題與 `line_status`（讀取端依序上線） |
+
+**主控收到通知時**：只核對，不回覆該線。核對內容：該線現行佇列行的下一張票是否和它接著要做的一致；不一致就依 §3 步驟 6 更正，並寫進協調票。
+
+**已知限制**：
+
+- 待通知狀態存在 plugin 的模組層變數。plugin 在 compact／clear 與下一個 prompt 之間熱重載時，狀態遺失，這一次不會發通知。不補救：輔管道的 `phase` 也會缺這一筆，主控以 `line_status` 判讀接續狀態（§3）為準。
+- session 名稱以 `sessionId` 比對 `~/.claude/sessions/<pid>.json` 取得。`/clear` 換新 sessionId 但不換 pid，狀態檔若尚未更新成新的 sessionId，就比對不到名稱，主管道不送；`phase` 仍會寫入。
+- 主管道的訊息在雙方權限模式不同時，會先被主控那邊暫扣，等用戶核可。實測被暫扣時，line-board 會關閉主管道，改以輔管道為主。
+
 ### Stop hook 保護提醒的判讀
 
 Stop hook〈Session Context 保護提醒〉會在回合結束時列出未完成的 context 敏感票，並要求評估「能不能清除」。這個提醒是給一般線的；在主控身上，正確的判讀問題不是「能不能清除」，而是「萬一要清除，協調票是否已經足以重建」。

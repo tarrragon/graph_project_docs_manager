@@ -49,6 +49,7 @@ describe('contextUsageRecord', () => {
     })
     expect(record).toEqual({
       sessionId: SESSION_ID,
+      phase: null,
       tokens: 120_000,
       window: 200_000,
       percent: 60,
@@ -86,6 +87,21 @@ describe('contextUsageRecord', () => {
     expect(record.compactPercent).toBe(25)
     expect(record.autoCompactThreshold).toBe(380_000)
     expect(record.percent).toBe(10)
+  })
+
+  test('正向對照：帶 phase 時記錄保留 phase；不帶時為 null（不省略欄位）', () => {
+    const phase = { kind: 'resumed', source: 'compact', at: MEASURED_AT - 1 } as const
+    const withPhase = contextUsageRecord({
+      sessionId: SESSION_ID,
+      context: { tokens: 1, window: 200_000, percent: 0 },
+      compaction: null,
+      phase,
+      measuredAt: MEASURED_AT,
+    })
+    const withoutPhase = contextUsageRecord({ sessionId: SESSION_ID, context: { tokens: 1, window: 200_000, percent: 0 }, compaction: null, measuredAt: MEASURED_AT })
+    expect(withPhase.phase).toEqual(phase)
+    expect(withoutPhase.phase).toBeNull()
+    expect(JSON.parse(serializeContextUsage(withoutPhase))).toHaveProperty('phase', null)
   })
 
   test('auto-compact 關閉時 autoCompactThreshold 為 null', () => {

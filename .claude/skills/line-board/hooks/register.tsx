@@ -18,17 +18,22 @@ import { renderMergeLog } from './mergeGateView'
 import {
   MERGE_GATE_GROUP_ID,
   SESSIONS_GROUP_ID,
+  COORDINATOR_SESSION_NAME,
   contextUsagePath,
   contextUsageRecord,
   dispatchTicketIds,
   isContextChanged,
   laneTicketIds,
   messageOf,
+  resumeNoticeTarget,
+  resumeNoticeText,
+  resumePhaseOf,
   serializeContextUsage,
+  stepResume,
   ticketPrefixOf,
   toggledOverrides,
 } from './parse'
-import type { CompactionWindow, ContextFill } from './parse'
+import type { CompactionWindow, ContextFill, PendingResume, ResumeEvent, ResumedEvent } from './parse'
 import {
   PROJECT_CONFIG_PATH,
   findCheckouts,
@@ -67,6 +72,17 @@ let usageMainPath: string | null = null
 let compactionCache: { window: number; compaction: CompactionWindow | null } | null = null
 /** 用量檔寫入失敗已送 transcript：只送第一次（每輪回應都寫，連續失敗不洗版），之後只記 debug。 */
 let hasReportedUsageWriteFailure = false
+/**
+ * 恢復開工通知的主管道（session.send 給主控）開關。接收端與傳送端權限模式不同時訊息會被暫扣等用戶核可；
+ * 實測被暫扣即改為 false，由用量檔的 phase（輔管道）擔任主管道。
+ */
+const IS_RESUME_NOTICE_SEND_ENABLED = true
+/**
+ * 恢復開工判定的待通知狀態與最近一次恢復開工（resumeNotice.ts）。放在模組層：/clear 換新 session id 但行程繼續，
+ * 狀態必須跨 session id 保留。限制：plugin 熱重載時遺失，該次漏送，由 phase 兜底不補救（line-continuity.md）。
+ */
+let pendingResume: PendingResume | null = null
+let lastResumed: ResumedEvent | null = null
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -89,6 +105,28 @@ export const register: Register = on => {
   // 只觀察：context 用量變動時寫本 session 的用量檔；失敗不影響量測結果的傳遞
   on('session.measure', async ($, e, next) => {
     if (isContextChanged(e.changed)) await writeContextUsage($, e.context)
+    return next(e)
+  })
+
+  // 恢復開工通知：compact 在 next 回來後才知道是否真的壓縮了（skip 為否決）
+  on('session.compact', async ($, e, next) => {
+    const result = await next(e)
+    const at = await $.clock.now()
+    applyResumeEvent({ kind: 'compact', trigger: e.trigger, agentId: e.agentId, isSkipped: result.skip !== undefined, at })
+    void writePhase($)
+    return result
+  })
+
+  // /clear 是舊 session 的結束：只更新模組層狀態，不做 I/O（session.end 共用一個很短的時限）
+  on('session.end', async ($, e, next) => {
+    applyResumeEvent({ kind: 'end', reason: e.reason, at: await $.clock.now() })
+    return next(e)
+  })
+
+  // 第一個 prompt 視為恢復開工；通知不阻擋 prompt 進入
+  on('prompt.submit', async ($, e, next) => {
+    const resumed = applyResumeEvent({ kind: 'submit', command: e.command?.name, at: await $.clock.now() })
+    if (resumed !== null) void notifyResumed($, resumed)
     return next(e)
   })
 
@@ -259,12 +297,62 @@ async function writeContextUsage($: EngineInterface, context: ContextFill): Prom
       return
     }
     const compaction = await compactionWindowOf($, context.window)
-    const record = contextUsageRecord({ sessionId, context, compaction, measuredAt: await $.clock.now() })
+    const phase = resumePhaseOf(pendingResume, lastResumed)
+    const record = contextUsageRecord({ sessionId, context, compaction, phase, measuredAt: await $.clock.now() })
     await $.fs.write(path, serializeContextUsage(record))
   } catch (error) {
     const message = `line-board 警告：寫 context 用量檔失敗：${messageOf(error)}`
     $.ui.log(message, { to: hasReportedUsageWriteFailure ? 'debug' : 'transcript' })
     hasReportedUsageWriteFailure = true
+  }
+}
+
+/** 套用一個恢復開工判定事件到模組層狀態；這一步恢復開工時回傳該事件（同時記為最近一次）。 */
+function applyResumeEvent(event: ResumeEvent): ResumedEvent | null {
+  const step = stepResume(pendingResume, event)
+  pendingResume = step.pending
+  if (step.resumed !== null) lastResumed = step.resumed
+  return step.resumed
+}
+
+/** phase 改變時立即重寫用量檔（不等下一次 measure）；context 取 $.session.usage() 不帶 breakdown，不計費。 */
+async function writePhase($: EngineInterface): Promise<void> {
+  try {
+    await writeContextUsage($, (await $.session.usage()).context)
+  } catch (error) {
+    $.ui.log(`line-board: 寫入恢復開工 phase 失敗：${messageOf(error)}`, { to: 'debug' })
+  }
+}
+
+/**
+ * 恢復開工：先寫 phase（輔管道，一定執行），再以 session.send 傳一行給主控（主管道，開關見 IS_RESUME_NOTICE_SEND_ENABLED）。
+ * 本 session 的名稱以 sessionId 比對 ~/.claude/sessions 的狀態檔取得，線號以名稱比對協調票的現行佇列行；
+ * 比對不到、是主控自身或已收線時不送。送不出去記 debug（phase 已寫，不重試）。
+ */
+async function notifyResumed($: EngineInterface, resumed: ResumedEvent): Promise<void> {
+  await writePhase($)
+  if (!IS_RESUME_NOTICE_SEND_ENABLED) return
+  try {
+    const sessionId = await $.session.id()
+    const root = await $.session.root()
+    const { checkoutPaths } = await findCheckouts($, root)
+    const mainPath = checkoutPaths[0] ?? root
+    const config = await readProjectConfig($, mainPath)
+    if (config.kind !== 'ok') return
+    const sessions = await readSessions($, checkoutPaths)
+    const lanes = await readLanes($, mainPath, config.coordinationTicket)
+    if (sessions.kind !== 'ok' || lanes.kind !== 'ok') {
+      $.ui.log('line-board: session 狀態或協調票讀不到，不送恢復開工通知', { to: 'debug' })
+      return
+    }
+    const sessionName = sessions.sessions.find(state => state.sessionId === sessionId)?.name ?? null
+    const target = resumeNoticeTarget({ sessionName, lines: lanes.lines })
+    if (target === null) return
+    const text = resumeNoticeText(target, formatTime(new Date(resumed.resumedAt)).slice(-8), resumed.source)
+    const sent = await $.session.send({ to: COORDINATOR_SESSION_NAME, text })
+    if (!sent.isDelivered) $.ui.log(`line-board: 恢復開工通知未送達主控：${sent.reason}`, { to: 'debug' })
+  } catch (error) {
+    $.ui.log(`line-board: 送恢復開工通知失敗：${messageOf(error)}`, { to: 'debug' })
   }
 }
 
