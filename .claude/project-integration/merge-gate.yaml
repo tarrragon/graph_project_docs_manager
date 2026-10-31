@@ -29,12 +29,15 @@ suites:
         generate: [fvm, flutter, pub, get]
   # 研究腳本測試：common 為 pytest 風格（tmp_path、monkeypatch），unittest 收集為 0 個，
   # 故以 pytest 跑；pytest 也能收集 ui-vision-choice 的 unittest 類，單一 argv 即足夠。
+  # weak-observer-ux 的測試需要 pillow；新增有測試的研究目錄時，同步列進 command 的目錄清單。
+  # 紅綠由結束碼決定，failure 只用於列出失敗項；ERROR 行（收集或 fixture 失敗）一併列出。
   research-python:
     prefixes: [docs/research/]
-    command: [uv, run, --quiet, --with, pytest, python, -m, pytest, -q, -p, 'no:cacheprovider',
-              docs/research/common, docs/research/ui-vision-choice]
+    command: [uv, run, --quiet, --with, pytest, --with, pillow, python, -m, pytest, -q,
+              -p, 'no:cacheprovider',
+              docs/research/common, docs/research/ui-vision-choice, docs/research/weak-observer-ux]
     summary: '^\d+ (passed|failed)'
-    failure: '^FAILED '
+    failure: '^(FAILED|ERROR) '
   # line-board 不放 artifacts：閘門不跑 tsc（types 無頭生成命令未知）
   line-board:
     prefixes: [.claude/skills/line-board/]
