@@ -675,6 +675,7 @@ versions:
     codename: "Layout"
     description: "Domain 視圖接真資料：矩陣的列與格由真實資料驅動，點交叉格定位至泳道"
     status: "active"
+    scope: "frozen"    # 2026-11-01 凍結（用戶裁定）：0.5.0 收尾清理（0.5.0-W1-349.1）完成後，版本內票除協調票 W1-349 外皆已完成或關閉，無待標 scope_blocker 的必要票；新票路由至 0.6.0
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.5/v0.5.0/"
