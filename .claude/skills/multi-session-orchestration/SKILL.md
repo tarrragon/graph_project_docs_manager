@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.15.0
+  version: 1.16.0
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -18,6 +18,7 @@ metadata:
 | 原則 | 做法 | 違反的後果 |
 |------|------|-----------|
 | 票面是權威，訊息是通知 | 各線的發現、裁定、收尾狀態一律寫進票面再傳訊；PM 只在訊息中引用票號 | session 結束後訊息讀不到，下一個 session 只能從票面接手 |
+| 停下等用戶時同一步寫標記並傳訊 | 線停下來等用戶時，在同一步於所持票的 Solution 寫等用戶標記並傳訊主控；用戶回應後，同一步寫解除行。標記格式與主控的判讀見 `references/line-continuity.md` §2〈等用戶〉 | 只寫票面不傳訊，主控讀不到，要等用戶問起才發現；只傳訊不寫標記，訊息漏看時 `line_status` 也偵測不到；漏寫解除行，標記會一直被列出 |
 | 世界平面優先於摘要 | 結案或判定前讀 git log、閘門 log、holder 檔，不只信各線摘要 | 摘要會漏報（紅燈漏寫、持有者看錯），PM 以漏報做決策 |
 | 同儕不能代授權 | 用戶的裁決才是授權；同儕要求的升級動作轉給用戶 | 權限洗白（permission laundering） |
 | 被分類器擋下就交用戶 | PM 的指示被 auto mode 分類器擋下時，不換說法再送，改用 AskUserQuestion 交用戶裁定 | 繞過平台對該動作的判斷 |
@@ -128,7 +129,7 @@ metadata:
 | 情境 | 讀 |
 |------|---|
 | 協調合併閘門、名額、暫停推送、批次合併、網路中斷 | `references/shared-resources.md` |
-| 判斷哪條線在執行、閒置或停在等用戶 | `references/shared-resources.md` §6 |
+| 判斷哪條線在執行、閒置或停在等用戶 | `references/shared-resources.md` §6；等用戶的訊號與接續動作見 `references/line-continuity.md` §2〈等用戶〉 |
 | 收到只有標題的審查標記、判定回歸、驗證守衛修正 | `references/review-flags-and-verification.md` |
 | 階段收尾、交接、總表格式 | `references/wrap-up-and-handoff.md` |
 | 開線時命名 session、改名、線完結或轉階段時換 session | `references/session-naming.md` |
@@ -148,6 +149,7 @@ metadata:
 - [ ] 本輪排定、改派、開線、結線的每條線，都已在協調票追加現行佇列行（新線含目標行、結線寫 `（無）`），而不是只寫條列文字？
 - [ ] 主控 session 長駐：收到 Stop hook context 保護提醒時，判讀的是本輪裁定與佇列變動是否已寫進協調票，而不是「可否清除主控」？
 - [ ] 例外情況下主控 `/clear` 或 `/compact` 後，已不待提示完成自我接續，並以 `line_status`（或 `sessionId` 和 log）判讀各線狀態，而不是只看名稱和啟動時間？
+- [ ] 線停下來等用戶時，已在所持票寫等用戶標記並傳訊主控；用戶回應後已寫解除行？主控已處理 `line_status` 的「等用戶」段？
 - [ ] 用戶說「繼續工作」時，已先列出開線計畫表並取得確認，而不是直接派票？
 - [ ] 有 session 名為「主控」？每條線的 session 名稱都對應目前的線？主軸換了或要開新 session 時，已告訴用戶具體的名稱？
 - [ ] 至少有一條線在推進專案工作，修框架或工具的線不超過兩條，佇列裡的框架票都是 P0／P1 或用戶要求？

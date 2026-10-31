@@ -27,14 +27,13 @@ import {
   mergeGateHolders,
   messageOf,
   parseDispatchFile,
-  parseFrontmatterStatus,
-  parseFrontmatterTitle,
   parseLaneLines,
   parseLanes,
   parseProjectConfig,
   parseSessionFile,
   parseSourceLog,
   parseWorktreePaths,
+  ticketStatusOf,
   sessionStatusFileNames,
   sortSessions,
   ticketFileCandidates,
@@ -227,9 +226,9 @@ export async function readSourceLog(
  */
 export async function readTicketStatus($: EngineInterface, mainPath: string, id: string): Promise<TicketStatus> {
   const file = await readTicketFile($, mainPath, id)
-  if (file.kind === 'ok') return { id, status: parseFrontmatterStatus(file.text) ?? UNKNOWN_STATUS, title: parseFrontmatterTitle(file.text) }
+  if (file.kind === 'ok') return ticketStatusOf(id, file.text)
   $.ui.log(`line-board: 讀取 ${file.path} 失敗：${file.message}`, { to: 'debug' })
-  return { id, status: UNKNOWN_STATUS, title: null }
+  return { id, status: UNKNOWN_STATUS, title: null, waiting: null }
 }
 
 /**

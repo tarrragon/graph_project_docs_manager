@@ -1,9 +1,9 @@
-// continuity.ts 的測試：來源紀錄解析、四種接續狀態與來源不明、三種過期偵測（各含 E2 正向對照）、輸出文字。
+// continuity.ts 的測試：來源紀錄解析、四種接續狀態與來源不明、三種過期偵測與三種等用戶訊號（各含 E2 正向對照）、輸出文字。
 
 import { describe, expect, test } from 'claude-code/testing'
 
 import { session } from './fixtures'
-import { continuityTicketIds, formatLineStatus, lastSourceOf, lineStatusReport, parseSourceLog } from '../hooks/continuity'
+import { continuityTicketIds, formatLineStatus, lastSourceOf, lineStatusReport, parseSourceLog, parseWaitingMark, ticketStatusOf } from '../hooks/continuity'
 import { endedForm, parseLaneLines, parseLanes } from '../hooks/lanes'
 import type { LaneLine, SessionState, SourceLogEntry, TicketStatus } from '../types'
 
@@ -190,8 +190,102 @@ describe('continuityTicketIds', () => {
   })
 })
 
+describe('parseWaitingMark', () => {
+  const ticketText = (...solution: string[]) =>
+    ['---', 'status: in_progress', '---', '## Problem Analysis', '格式：`**等用戶**：<事項>`', '## Solution', ...solution, '## Test Results', '**等用戶**：不在 Solution 段'].join('\n')
+
+  test('取 Solution 段最後一行標記的事項', () => {
+    expect(parseWaitingMark(ticketText('**等用戶**：開 --debug 重啟', '說明', '**等用戶**：在 worktree 開 session'))).toBe('在 worktree 開 session')
+  })
+
+  test('最後一行是解除行時為 null；解除後再標記則重新列出', () => {
+    expect(parseWaitingMark(ticketText('**等用戶**：開 --debug', '**等用戶解除**：已重啟'))).toBeNull()
+    expect(parseWaitingMark(ticketText('**等用戶**：a', '**等用戶解除**：b', '**等用戶**：c'))).toBe('c')
+  })
+
+  test('其他段落的標記、Solution 內行中引用的格式、自由文字「待用戶」都不算', () => {
+    expect(parseWaitingMark(ticketText('待用戶：在 worktree 路徑開互動式 session', 'S1 格式為 `**等用戶**：<事項>`'))).toBeNull()
+  })
+
+  test('縮排行與 fenced code block 內的格式示例不算；fence 結束後的標記照算', () => {
+    expect(parseWaitingMark(ticketText('  **等用戶**：縮排', '```', '**等用戶**：<事項>', '```'))).toBeNull()
+    expect(parseWaitingMark(ticketText('```', '**等用戶解除**：示例', '```', '**等用戶**：真的在等'))).toBe('真的在等')
+  })
+
+  test('冒號後沒寫事項的標記照樣列出，不視為解除', () => {
+    expect(parseWaitingMark(ticketText('**等用戶**：開 --debug', '**等用戶**：'))).toBe('標記未附事項')
+  })
+})
+
+describe('ticketStatusOf：票檔原文組成佇列票狀態（readers.ts 讀到票檔後一律經此）', () => {
+  const ticketText = (...solution: string[]) => ['---', 'title: 示例', 'status: in_progress', '---', '## Solution', ...solution].join('\n')
+
+  test('E2 正向對照：Solution 末行為標記時，waiting 為事項，與 status、title 同一次組成', () => {
+    expect(ticketStatusOf('0.5.0-W1-200', ticketText('**等用戶**：開 --debug 重啟'))).toEqual({
+      id: '0.5.0-W1-200',
+      status: 'in_progress',
+      title: '示例',
+      waiting: '開 --debug 重啟',
+    })
+  })
+
+  test('負向對照：Solution 末行為解除行時，waiting 為 null', () => {
+    expect(ticketStatusOf('0.5.0-W1-200', ticketText('**等用戶**：開 --debug 重啟', '**等用戶解除**：已重啟')).waiting).toBeNull()
+  })
+})
+
+describe('等用戶偵測', () => {
+  const sessions = [live('a', 'aaaaaaaa-0')]
+  const log = [entry('t', 'startup', 'aaaaaaaa')]
+  const pending = (id: string, waiting: string | null = null): TicketStatus => ({ id, status: 'in_progress', waiting })
+
+  test('E2 正向對照 S1：佇列中未完成的票有等用戶標記', () => {
+    const result = report({ lanes: [lane(1, 'a', '100 → 200')], sessions, log, tickets: [pending('0.5.0-W1-100'), pending('0.5.0-W1-200', '開 --debug 重啟')] })
+    expect(result.waiting).toEqual([{ lane: 1, session: 'a', ticketId: '0.5.0-W1-200', item: '開 --debug 重啟', source: 'S1' }])
+  })
+
+  test('E2 正向對照 S2：該線 session 的 status 為 waiting，事項取 waitingFor', () => {
+    const waitingSession = session({ name: 'a', status: 'waiting', waitingFor: 'approve Bash', pid: 100, cwd: '/repo', sessionId: 'aaaaaaaa-0' })
+    const result = report({ lanes: [lane(1, 'a', '100')], sessions: [waitingSession], log, tickets: [pending('0.5.0-W1-100')] })
+    expect(result.waiting).toEqual([{ lane: 1, session: 'a', ticketId: null, item: 'approve Bash', source: 'S2' }])
+  })
+
+  test('E2 正向對照 S3：佇列行的票註記或文字含「等用戶」', () => {
+    const result = report({ lanes: [lane(1, 'a', '511（等用戶開 --debug）→ 512')], sessions, log, tickets: [pending('0.5.0-W1-511')] })
+    expect(result.waiting).toEqual([{ lane: 1, session: 'a', ticketId: '0.5.0-W1-511', item: '等用戶開 --debug', source: 'S3' }])
+    const textOnly = report({ lanes: [lane(2, 'a', '等用戶裁定方向')], sessions, log })
+    expect(textOnly.waiting).toEqual([{ lane: 2, session: 'a', ticketId: null, item: '等用戶裁定方向', source: 'S3' }])
+  })
+
+  test('負向對照：已 completed 的票，標記與佇列註記都不列', () => {
+    const tickets = [{ id: '0.5.0-W1-100', status: 'completed', waiting: '開 --debug' }]
+    expect(report({ lanes: [lane(1, 'a', '100（等用戶）')], sessions, log, tickets }).waiting).toEqual([])
+  })
+
+  test('負向對照：自由文字「待用戶」、session idle、已收線的線都不列', () => {
+    const tickets = [pending('0.5.0-W1-100', parseWaitingMark('## Solution\n待用戶：在 worktree 開 session'))]
+    expect(report({ lanes: [lane(1, 'a', '100（待用戶回覆）')], sessions, log, tickets }).waiting).toEqual([])
+    expect(report({ lanes: [lane(2, 'b', '（無）')], sessions: [session({ name: 'b', status: 'waiting', pid: 101, cwd: '/repo' })] }).waiting).toEqual([])
+  })
+
+  test('負向對照：收線附說明的線（說明含「等用戶」、佇列票帶標記）也不判 S1／S3', () => {
+    const result = report({ lanes: [lane(3, 'a', '（無）— 300 等用戶裁定')], sessions, log, tickets: [pending('0.5.0-W1-300', '開 --debug')] })
+    expect(result.waiting).toEqual([])
+  })
+
+  test('負向對照：同一條線較早的佇列行含「等用戶」，現行佇列行沒有時不列', () => {
+    const text = [
+      '## Solution',
+      '**L1 現行佇列**（a）：511（等用戶開 --debug）',
+      '**L1 現行佇列**（a）：512',
+    ].join('\n')
+    const result = report({ lanes: parseLaneLines(text), sessions, log, tickets: [pending('0.5.0-W1-512')] })
+    expect(result.waiting).toEqual([])
+  })
+})
+
 describe('formatLineStatus', () => {
-  test('未收線各線一行、已收線合併一行、過期項逐條、末行為判讀規則路由', () => {
+  test('未收線各線一行、已收線合併一行、過期項逐條、等用戶逐條、末行為判讀規則路由', () => {
     const text = formatLineStatus(
       {
         lanes: [
@@ -200,6 +294,11 @@ describe('formatLineStatus', () => {
           { lane: 36, session: 'y', state: 'ended', evidence: '票序「（無）」' },
         ],
         stale: [{ lane: 35, kind: 'ended-with-note', detail: '說明' }],
+        waiting: [
+          { lane: 3, session: '看板工具', ticketId: '0.5.0-W1-580', item: '開 --debug 重啟', source: 'S1' },
+          { lane: 3, session: '看板工具', ticketId: null, item: 'approve Bash', source: 'S2' },
+          { lane: 4, session: null, ticketId: '0.5.0-W1-511', item: '等用戶開 --debug', source: 'S3' },
+        ],
       },
       { coordinationTicket: '0.5.0-W1-349', readAt: '2026-10-31 15:30:00' },
     )
@@ -209,13 +308,18 @@ describe('formatLineStatus', () => {
       '已收線：L35、L36',
       '過期項（1）：',
       '- L35 收線寫法：說明',
+      '等用戶（3）：',
+      '- L3（看板工具）0.5.0-W1-580：開 --debug 重啟（S1）',
+      '- L3（看板工具）：approve Bash（S2）',
+      '- L4 0.5.0-W1-511：等用戶開 --debug（S3）',
       '判讀規則與各狀態的接續動作：.claude/skills/multi-session-orchestration/references/line-continuity.md §2',
     ])
   })
 
-  test('沒有未收線的線、沒有過期項時明寫「無」', () => {
-    const text = formatLineStatus({ lanes: [], stale: [] }, { coordinationTicket: 'c', readAt: 't' })
+  test('沒有未收線的線、沒有過期項、沒有等用戶時明寫「無」', () => {
+    const text = formatLineStatus({ lanes: [], stale: [], waiting: [] }, { coordinationTicket: 'c', readAt: 't' })
     expect(text).toContain('未收線的線：無')
     expect(text).toContain('過期項：無')
+    expect(text).toContain('等用戶：無')
   })
 })

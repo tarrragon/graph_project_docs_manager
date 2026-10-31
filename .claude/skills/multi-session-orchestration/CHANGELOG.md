@@ -2,6 +2,14 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.16.0（2026-10-31）— 線停在等用戶的偵測與規則：
+
+- SKILL.md 核心原則表新增「停下等用戶時同一步寫標記並傳訊」：線停下來等用戶時，同一步於所持票的 Solution 寫等用戶標記並傳訊主控，用戶回應後寫解除行。
+- `references/line-continuity.md` §2 新增〈等用戶〉：三種訊號（S1 票面標記 `**等用戶**：`／`**等用戶解除**：`、S2 session `status=waiting`、S3 現行佇列行含「等用戶」）、不算訊號的寫法、漏報邊界、`line_status` 的「等用戶（N）」輸出、主控依訊號的接續動作；§3 工具輸出補「等用戶」一項。
+- SKILL.md〈按需讀取〉與〈檢查清單〉同步。
+
+起因：一條線把待用戶實測的事項寫在票面卻沒有傳訊，主控沒讀到，直到用戶問起才發現；用戶裁定 `line_status` 加入等用戶偵測（2026-10-31）。
+
 **Version**: 1.15.0（2026-10-31）— 主控 session 長駐的定位：
 
 - SKILL.md 工作流 §6 與 `references/line-continuity.md` §4 寫明主控不例行 `/clear` 或 `/compact`，§4 的自我接續改定位為例外時的程序。
