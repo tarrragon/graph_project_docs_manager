@@ -182,7 +182,7 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | 可見範圍 | plugin 載入的 session 都看得到，代理人 session 也看得到（實測 2026-10-31，Explore 代理人可呼叫）。工具唯讀、無副作用，不限只給主控 |
 | 讀取 | 每次呼叫都重讀，不取 Pane 的 snapshot：Pane 只在設定成立時定時刷新，且最多落後一個刷新間隔 |
 | 失敗 | 設定不成立、協調票或 session 讀不到時回傳說明原因的文字，不 deny，模型才讀得到「為何判不出」 |
-| 等用戶 | 票面標記（S1）在 `readers.ts` 讀佇列票 status 的同一次讀檔中解析（`TicketStatus.waiting`），看板與工具共用該讀取；判定與輸出在 `continuity.ts`。訊號定義的權威是 `line-continuity.md` §2〈等用戶〉 |
+| 等用戶 | 票面標記（S1）在 `readers.ts` 讀佇列票 status 的同一次讀檔中解析（`TicketStatus.waiting`），看板與工具共用該讀取；判定在 `waiting.ts`，`line_status` 的輸出在 `continuity.ts`。訊號定義的權威是 `line-continuity.md` §2〈等用戶〉 |
 | 來源紀錄 | 合併各 checkout 的 `.claude/hook-logs/session-source-diagnostic/diagnostic.log`（worktree 內啟動的 session 寫入該 worktree 的檔），同一 sessionId 取時間最晚的一筆 |
 | 型別 | 平台型別根的 MCP 條目列出已連線 server 的工具後，`tool.call` 的過濾名稱就收窄為那些名稱；自己註冊的工具須在 `types/index.d.ts` 的 `McpToolInputs` 補宣告，否則 `tsc` 報 TS2322。閘門快照沒有 MCP 條目時過濾名稱不收窄，所以只有手動型別檢查會擋 |
 
@@ -201,7 +201,7 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/lanesView.tsx` | 線群組的繪製（標題三行、派發列、閘門票列、佇列列、佇列細節，各依五色狀態上色）與各群組共用的可折疊外框（框線、主題鍵 `suggestion` 色粗體標題列、內容）；設定提示的繪製 |
 | `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
 | `hooks/{sessions,mergeGate}View.tsx` | 底部兩區塊的內容：各 session、合併閘門最近紀錄 |
-| `hooks/userTodosView.tsx` | 用戶待辦群組的繪製：以 `continuity.ts` 判 U2、`userTodos.ts` 組成各行，S2 洋紅粗體；沒有任何一項時為一行「用戶待辦：無」 |
+| `hooks/userTodosView.tsx` | 用戶待辦群組的繪製：以 `waiting.ts` 判 U2、`userTodos.ts` 組成各行，S2 洋紅粗體；沒有任何一項時為一行「用戶待辦：無」 |
 | 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`，型別 `Elements`）由 register.tsx 以 `$.ui.resolve(e)` 取得後經 `boardPane.tsx` 傳入；各區塊的繪製函式以元素與 snapshot（`ReadyBoard`）為參數 |
 | `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、boardPane.tsx、usageWriter.ts、resumeFlow.ts、readers.ts、usageReaders.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
 | `hooks/shared.ts` | 各 domain 共用：專案設定解析、票號前綴與票檔位置、frontmatter 狀態與 title 解析、checkout 路徑判定、距今時間、本機時間格式 |
@@ -211,7 +211,8 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/dispatch.ts` | 派發中代理人：派發紀錄解析、流程階段推導、派發列；審查類代理人清單 `REVIEW_AGENTS` |
 | `hooks/layout.ts` | 版面：以線分組、活動計數、預設展開、手動切換的展開狀態、群組標題列與內容各行的顯示文字、佇列列的分段（供逐票上色） |
 | `hooks/statusColor.ts` | 五色狀態：派發階段、佇列票與 session 狀態歸成哪一種狀態，以及各狀態的顏色 |
-| `hooks/continuity.ts` | 各線接續狀態：SessionStart 來源紀錄解析、每條線的接續狀態判定、過期偵測、等用戶偵測與票面標記解析、`line_status` 的輸出文字（判讀規則唯一實作） |
+| `hooks/continuity.ts` | 各線接續狀態：SessionStart 來源紀錄解析、每條線的接續狀態判定、過期偵測、`line_status` 的輸出文字（判讀規則唯一實作；等用戶段取 `waiting.ts`） |
+| `hooks/waiting.ts` | 等用戶偵測：S1 票面標記解析、S2 session 等待中、S3 佇列行註記，各線的等用戶項（看板 U2 與 `line_status` 共用同一函式）；票檔原文組成佇列票狀態（`ticketStatusOf`） |
 | `hooks/userTodos.ts` | 用戶待辦：協調票的待辦行與完成行配對（U1）、用戶待辦群組各行的顯示文字（U1 + U2） |
 | `hooks/contextUsage.ts` | context 用量檔的寫入端：何時寫、路徑、記錄內容（含恢復開工的 `phase`） |
 | `hooks/contextJudge.ts` | context 用量的讀取端：用量檔解析（含失敗原因）、分母選擇、待 compact／待 clear 判定與門檻常數、各 session 列的用量字尾、線標題的標記與徽章、`line_status` 的 context 段、清理的路徑檢查與孤兒檔挑選 |
@@ -219,7 +220,7 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/resumeNoticeLog.ts` | 恢復開工通知的送出紀錄檔 `.claude/hook-logs/line-board/resume-notice.log`：紀錄行格式（步驟、不送原因、傳送回傳）與上限截斷 |
 | `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄、佇列票 status 與等用戶標記、主 checkout 的用量檔，交 `continuity.ts` 判讀 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約；`McpToolInputs` 補宣告本 plugin 註冊的工具 |
-| `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts`、`boardUserTodos.test.ts` 為 Pane 端到端繪製，`boardDispatch` 為線群組的派發列、活動計數、預設展開與手動切換，`boardUserTodos` 為用戶待辦群組，`board` 為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`continuity.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |
+| `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts`、`boardUserTodos.test.ts` 為 Pane 端到端繪製，`boardDispatch` 為線群組的派發列、活動計數、預設展開與手動切換，`boardUserTodos` 為用戶待辦群組，`board` 為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`waiting.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |
 | `tests/fixtures.ts`、`tests/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |
 

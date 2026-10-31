@@ -3,7 +3,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { session } from './fixtures'
-import { continuityTicketIds, formatLineStatus, lastSourceOf, lineStatusReport, parseSourceLog, parseWaitingMark, ticketStatusOf } from '../hooks/continuity'
+import { continuityTicketIds, formatLineStatus, lastSourceOf, lineStatusReport, parseSourceLog } from '../hooks/continuity'
+import { parseWaitingMark, ticketStatusOf } from '../hooks/waiting'
 import { endedForm, parseLaneLines, parseLanes } from '../hooks/lanes'
 import type { ContextUsageRecord, LaneLine, SessionState, SourceLogEntry, TicketStatus } from '../types'
 
