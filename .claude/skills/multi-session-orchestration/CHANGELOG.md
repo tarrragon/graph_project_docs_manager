@@ -2,6 +2,21 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.11.0（2026-10-31）— 新增 `references/line-continuity.md`，涵蓋：
+
+- 判讀四種接續狀態：已收線、`/clear` 後繼續、`/compact` 後繼續、新 session 接手。判讀依據是現行佇列行、session 檔的 `sessionId`，以及 `hook-logs/session-source-diagnostic/diagnostic.log` 中 SessionStart 的 `source`。實測：`/clear` 會換新 `sessionId`，名稱不變；`/compact` 沿用原本的 `sessionId`。
+- 主控在 `/clear` 或 `/compact` 後的自我接續：收到第一則訊息時先完成接續，不等用戶提示。
+- 主控線的認定：名稱為「主控」的 session 就是主控。沒有這樣的 session 時，請用戶指定一個並改名。
+- 名稱與線不一致時，主控要提醒用戶改名或告知新 session 的名稱。
+
+其他檔案的連動修改：
+
+- SKILL.md 新增工作流 §6，〈按需讀取〉與〈檢查清單〉同步更新。
+- `session-naming.md` 的規則表新增兩列，§2 補上 `/clear` 保留 user 名稱的實測。
+- `wrap-up-and-handoff.md` §5 新增第 0 步。
+
+起因：主控換 session 後要靠用戶提示接續點，並把剛 `/clear` 過的線誤判為未換手的舊 session（用戶裁定，2026-10-31）。
+
 **Version**: 1.10.0（2026-10-28）— 〈按需讀取〉加一列路由到 `line-board` skill（啟用或關閉看板、設定協調票、看板顯示異常）；`references/session-naming.md` §6 狀態列補：`--coord-ticket` 未給時預設讀專案設定檔 `.claude/project-integration/multi-session.json` 的 `coordinationTicket`，與看板同源。起因：看板改為所有專案預設開啟，使用說明住在 `line-board` skill（用戶裁定，2026-10-21）。
 
 **Version**: 1.9.0（2026-10-21）— 〈開線與分線〉新增「佇列變動時同一步寫現行佇列行」一列：排定、改派、開新線、結線時，主控在同一步於協調票 `## Solution` 段追加現行佇列行（獨立成段、行首即 `**L`），新線另寫目標行，結線票序寫 `（無）`。〈檢查清單〉加一項。格式原本只定義在 `references/session-naming.md`〈用語〉，工作流沒有要求何時寫。起因：主控在 context 壓縮後改用條列文字記錄佇列，看板與狀態列對不到線，用戶在看板上看到某線的派發落入「其他」群組（用戶裁定，2026-10-21）。
