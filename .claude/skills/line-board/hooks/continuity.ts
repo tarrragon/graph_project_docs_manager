@@ -1,4 +1,4 @@
-// 各線接續狀態（line_status 工具）：diagnostic.log 解析、每條線的接續狀態判定、過期偵測與工具輸出文字。
+// 各線接續狀態（line_status 工具）：diagnostic.log 解析、每條線的接續狀態判定、過期偵測、等用戶偵測與工具輸出文字。
 // 判讀規則的權威是 multi-session-orchestration 的 references/line-continuity.md §2；判讀只在本檔實作一份。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔由 readers.ts 負責、組裝由 lineStatus.ts 負責。
 
@@ -11,8 +11,9 @@ import type {
   SourceLogEntry,
   StaleItem,
   TicketStatus,
+  WaitingItem,
 } from '../types'
-import { LANE_ENDED, endedForm, parseQueue } from './lanes'
+import { LANE_ENDED, endedForm, parseQueue, solutionLines } from './lanes'
 import { findSessionByName } from './sessions'
 import { COMPLETED_STATUS } from './shared'
 
@@ -43,6 +44,33 @@ const STALE_LABELS: Readonly<Record<StaleItem['kind'], string>> = {
   'ended-with-note': '收線寫法',
   orphan: '無人持有',
   'all-done': '佇列已完成未收線',
+}
+
+/** S1 等用戶標記行與解除行的開頭（票的 Solution 段，行首；格式權威見 line-continuity.md §2〈等用戶〉）。 */
+const WAITING_MARK = '**等用戶**：'
+const WAITING_RELEASE = '**等用戶解除**：'
+
+/** S3：現行佇列行的票註記或文字含此字面即判為等用戶。 */
+const WAITING_KEYWORD = '等用戶'
+
+/** S2：session 檔的 status 為此值表示停下來等用戶（AskUserQuestion、權限詢問）。 */
+const WAITING_STATUS = 'waiting'
+
+/** S2 的 session 檔沒有 waitingFor 時的事項文字。 */
+const WAITING_FOR_MISSING = 'session 等待中，未附原因'
+
+/**
+ * 票 Solution 段最後一行等用戶標記（S1）的事項：最後一行是解除行、或沒有任何標記行時為 null。
+ * 只認行首的固定格式，所以票面其他段落引用格式（如判準說明）或自由文字（「待用戶」）都不算。
+ */
+export function parseWaitingMark(text: string): string | null {
+  let waiting: string | null = null
+  for (const line of solutionLines(text)) {
+    const trimmed = line.trimStart()
+    if (trimmed.startsWith(WAITING_MARK)) waiting = trimmed.slice(WAITING_MARK.length).trim()
+    else if (trimmed.startsWith(WAITING_RELEASE)) waiting = null
+  }
+  return waiting === '' ? null : waiting
 }
 
 /** 解析來源紀錄：不符格式的行略過（例如手動註記）；保留原順序。 */
@@ -93,17 +121,50 @@ function liveLaneState(lane: LaneLine, sessions: readonly SessionState[], log: r
 }
 
 /** 一條線的過期項（收線寫法另判，不在此）：無人持有、佇列的票全部 completed。 */
-function liveLaneStale(lane: LaneLine, state: LaneContinuity, tickets: ReadonlyMap<string, string>, prefix: string): StaleItem[] {
+function liveLaneStale(lane: LaneLine, state: LaneContinuity, tickets: ReadonlyMap<string, TicketStatus>, prefix: string): StaleItem[] {
   const stale: StaleItem[] = []
   // 佇列行沒寫名稱的線同樣沒有可定址的持有者，一併列為無人持有（狀態仍為來源不明，因為持有者無從查起）
   if (state.state === 'orphan' || lane.session === null) {
     stale.push({ lane: lane.lane, kind: 'orphan', detail: `${state.evidence}，佇列仍有內容` })
   }
   const ids = parseQueue(lane.queue, prefix).flatMap(token => (token.kind === 'ticket' ? [token.id] : []))
-  if (ids.length > 0 && ids.every(id => tickets.get(id) === COMPLETED_STATUS)) {
+  if (ids.length > 0 && ids.every(id => tickets.get(id)?.status === COMPLETED_STATUS)) {
     stale.push({ lane: lane.lane, kind: 'all-done', detail: `佇列的 ${ids.length} 張票都已 completed，現行佇列行尚未寫（無）` })
   }
   return stale
+}
+
+/** 佇列票註記去掉外層全形括號（`（等用戶開 --debug）` → `等用戶開 --debug`）；不是整段括號時原樣回傳。 */
+function unwrapNote(note: string): string {
+  return note.startsWith('（') && note.endsWith('）') ? note.slice(1, -1).trim() : note
+}
+
+/**
+ * 一條未收線的線的等用戶項，依 S1（票面標記）、S3（佇列行註記）、S2（session 等待中）的順序。
+ * S1 與 S3 只看現行佇列行裡未 completed 的票；S3 的純文字片段沒有票號，照列。
+ */
+function liveLaneWaiting(
+  lane: LaneLine,
+  sessions: readonly SessionState[],
+  tickets: ReadonlyMap<string, TicketStatus>,
+  prefix: string,
+): WaitingItem[] {
+  const base = { lane: lane.lane, session: lane.session }
+  const marks: WaitingItem[] = []
+  const notes: WaitingItem[] = []
+  for (const token of parseQueue(lane.queue, prefix)) {
+    if (token.kind === 'text' && token.text.includes(WAITING_KEYWORD)) {
+      notes.push({ ...base, ticketId: null, item: token.text, source: 'S3' })
+    }
+    if (token.kind !== 'ticket') continue
+    const ticket = tickets.get(token.id)
+    if (ticket?.status === COMPLETED_STATUS) continue
+    if (ticket?.waiting != null) marks.push({ ...base, ticketId: token.id, item: ticket.waiting, source: 'S1' })
+    if (token.note.includes(WAITING_KEYWORD)) notes.push({ ...base, ticketId: token.id, item: unwrapNote(token.note), source: 'S3' })
+  }
+  const session = lane.session === null ? undefined : findSessionByName(sessions, lane.session)
+  const held = session?.status === WAITING_STATUS ? [{ ...base, ticketId: null, item: session.waitingFor ?? WAITING_FOR_MISSING, source: 'S2' as const }] : []
+  return [...marks, ...notes, ...held]
 }
 
 /**
@@ -117,9 +178,10 @@ export function lineStatusReport(input: {
   tickets: readonly TicketStatus[]
   prefix: string
 }): LineStatusReport {
-  const tickets = new Map(input.tickets.map(ticket => [ticket.id, ticket.status]))
+  const tickets = new Map(input.tickets.map(ticket => [ticket.id, ticket]))
   const lanes: LaneContinuity[] = []
   const stale: StaleItem[] = []
+  const waiting: WaitingItem[] = []
   for (const lane of input.lanes) {
     const form = endedForm(lane.queue)
     if (form !== null) {
@@ -136,8 +198,9 @@ export function lineStatusReport(input: {
     const state = liveLaneState(lane, input.sessions, input.log)
     lanes.push(state)
     stale.push(...liveLaneStale(lane, state, tickets, input.prefix))
+    waiting.push(...liveLaneWaiting(lane, input.sessions, tickets, input.prefix))
   }
-  return { lanes, stale }
+  return { lanes, stale, waiting }
 }
 
 /** 線的標示：`L<n>（名稱）`，佇列行未寫名稱時只有線號。 */
@@ -145,8 +208,14 @@ function laneLabel(lane: { lane: number; session: string | null }): string {
   return lane.session === null ? `L${lane.lane}` : `L${lane.lane}（${lane.session}）`
 }
 
+/** 等用戶項的標示：線的標示後直接接票號；佇列行未寫名稱時以空白分隔，沒有票號時只有線的標示。 */
+function waitingLabel(item: WaitingItem): string {
+  if (item.ticketId === null) return laneLabel(item)
+  return item.session === null ? `${laneLabel(item)} ${item.ticketId}` : `${laneLabel(item)}${item.ticketId}`
+}
+
 /**
- * line_status 的輸出文字：標題、未收線各線一行（狀態｜依據）、已收線合併為一行、過期項逐條。
+ * line_status 的輸出文字：標題、未收線各線一行（狀態｜依據）、已收線合併為一行、過期項逐條、等用戶逐條（與過期項分列）。
  * 讀者是主控的模型，判讀規則路由放在最後一行，讓它知道各狀態該怎麼接續。
  */
 export function formatLineStatus(report: LineStatusReport, header: { coordinationTicket: string; readAt: string }): string {
@@ -161,6 +230,12 @@ export function formatLineStatus(report: LineStatusReport, header: { coordinatio
   } else {
     lines.push(`過期項（${report.stale.length}）：`)
     for (const item of report.stale) lines.push(`- L${item.lane} ${STALE_LABELS[item.kind]}：${item.detail}`)
+  }
+  if (report.waiting.length === 0) {
+    lines.push('等用戶：無')
+  } else {
+    lines.push(`等用戶（${report.waiting.length}）：`)
+    for (const item of report.waiting) lines.push(`- ${waitingLabel(item)}：${item.item}（${item.source}）`)
   }
   lines.push('判讀規則與各狀態的接續動作：.claude/skills/multi-session-orchestration/references/line-continuity.md §2')
   return lines.join('\n')

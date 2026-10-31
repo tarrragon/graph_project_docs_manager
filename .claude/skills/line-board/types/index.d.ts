@@ -33,8 +33,17 @@ export type StaleKind = 'ended-with-note' | 'orphan' | 'all-done'
 
 export type StaleItem = { lane: number; kind: StaleKind; detail: string }
 
-/** line_status 工具的判讀結果：各線接續狀態（依線號）與過期項。 */
-export type LineStatusReport = { lanes: LaneContinuity[]; stale: StaleItem[] }
+/**
+ * 等用戶的訊號來源（line-continuity.md §2〈等用戶〉）：S1 票 Solution 段的等用戶標記、
+ * S2 該線 session 的 status 為 waiting、S3 現行佇列行的註記或文字含「等用戶」。
+ */
+export type WaitingSource = 'S1' | 'S2' | 'S3'
+
+/** 一項等用戶：所屬線、session 名稱、相關票號（S2 與佇列行的純文字沒有票號，為 null）、等待的事項、訊號來源。 */
+export type WaitingItem = { lane: number; session: string | null; ticketId: string | null; item: string; source: WaitingSource }
+
+/** line_status 工具的判讀結果：各線接續狀態（依線號）、過期項、等用戶（與過期項分列，等用戶不代表過期）。 */
+export type LineStatusReport = { lanes: LaneContinuity[]; stale: StaleItem[]; waiting: WaitingItem[] }
 
 /**
  * 主 checkout 專案設定檔（.claude/project-integration/multi-session.json）的讀取結果：ok 為協調票的完整票號；
@@ -59,8 +68,9 @@ export type LanesResult =
 /**
  * 佇列中一張票在主 checkout 的狀態與 title（同一次讀檔解析）；票檔讀不到或沒有 status 欄時 status 為 'unknown'，
  * 讀不到或沒有 title 欄時 title 為 null。title 為選填：hot reload 前的舊 snapshot 沒有此欄（undefined），視同讀不到。
+ * waiting 為 Solution 段最後一行等用戶標記的事項（S1）；沒有標記、最後一行是解除行、或讀不到時為 null，選填理由同 title。
  */
-export type TicketStatus = { id: string; status: string; title?: string | null }
+export type TicketStatus = { id: string; status: string; title?: string | null; waiting?: string | null }
 
 /**
  * 一行 `[合併閘門] 開始／結束` 的欄位：time 為 `HH:MM:SS`，branch 為完整分支名（顯示時才縮短），

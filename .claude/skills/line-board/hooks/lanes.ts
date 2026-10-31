@@ -70,7 +70,7 @@ function stepTicket(part: string, prefix: string): [string, string, string] | nu
 }
 
 /** 取 Solution 段落的各行（自 `## Solution` 起到下一個 `## ` 標題前）；沒有該標題時回傳空陣列。 */
-function solutionLines(text: string): string[] {
+export function solutionLines(text: string): string[] {
   const lines = text.split('\n').map(line => line.trimEnd())
   const start = lines.findIndex(line => line === SOLUTION_HEADING || line.startsWith(`${SOLUTION_HEADING} `))
   if (start === -1) return []
