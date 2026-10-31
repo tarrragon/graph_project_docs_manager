@@ -161,7 +161,7 @@ def run(client, capture_root, out_dir, max_edge=None):
                 record = sampler.sample_once(
                     client, MODEL, question[4], cell[2], seed_for(qi, vi, si),
                     max_tokens=MAX_TOKENS, temperature=TEMPERATURE,
-                    image_paths=[cell[0]])
+                    image_paths=[cell[0]], thinking="disabled")
                 rows.append(build_row(question, variant, si, cell, record))
     with dataset.open("w", encoding="utf-8") as f:
         for row in rows:
