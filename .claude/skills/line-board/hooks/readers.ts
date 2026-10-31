@@ -23,7 +23,7 @@ import {
   contextUsagePath,
   isDeletableUsagePath,
   orphanUsageFiles,
-  parseContextUsageFile,
+  parseContextUsageDetailed,
   SESSIONS_DIR,
   SOURCE_LOG_PATH,
   UNKNOWN_STATUS,
@@ -277,24 +277,45 @@ export async function readContextUsages(
   mainPath: string,
   sessions: SessionsResult,
 ): Promise<Record<string, ContextUsageRecord>> {
+  return (await readContextUsageStates($, mainPath, sessions)).usages
+}
+
+/**
+ * readContextUsages 的完整版：另回傳「用量檔存在但解析不成立」的 sessionId 與原因，供 line_status 寫出原因
+ * （看板只取 usages，解析失敗與沒有檔同樣不加字尾）。檔案讀不到仍視為沒有用量檔，不列入 failures。
+ */
+export async function readContextUsageStates(
+  $: EngineInterface,
+  mainPath: string,
+  sessions: SessionsResult,
+): Promise<{ usages: Record<string, ContextUsageRecord>; failures: Record<string, string> }> {
   const usages: Record<string, ContextUsageRecord> = {}
-  if (sessions.kind !== 'ok') return usages
+  const failures: Record<string, string> = {}
+  if (sessions.kind !== 'ok') return { usages, failures }
   const ids = new Set(sessions.sessions.map(session => session.sessionId).filter((id): id is string => id !== null))
   for (const id of ids) {
     const path = contextUsagePath(mainPath, id)
     if (path === null) continue
+    let text: string
     try {
-      const record = parseContextUsageFile(await $.fs.read(path))
-      if (record === null || record.sessionId !== id) {
-        $.ui.log(`line-board: 用量檔 ${id}.json 格式不符，略過`, { to: 'debug' })
-        continue
-      }
-      usages[id] = record
+      text = await $.fs.read(path)
     } catch {
       // 用量檔不存在是正常情形（session 尚未回應過、plugin 尚未載入 0.6.0 以上）：不列入，看板該列沒有用量字尾
+      continue
     }
+    const parsed = parseContextUsageDetailed(text)
+    const reason =
+      parsed.kind === 'invalid' ? parsed.reason
+      : parsed.record.sessionId !== id ? `檔內 sessionId 為 ${parsed.record.sessionId}，與檔名不符`
+      : null
+    if (parsed.kind === 'ok' && reason === null) {
+      usages[id] = parsed.record
+      continue
+    }
+    $.ui.log(`line-board: 用量檔 ${id}.json 不成立（${reason}），略過`, { to: 'debug' })
+    failures[id] = reason ?? '不明'
   }
-  return usages
+  return { usages, failures }
 }
 
 /**

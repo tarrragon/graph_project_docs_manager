@@ -38,26 +38,45 @@ export type ContextRole = 'coordinator' | 'lane' | 'none'
 
 /** 解析用量檔；JSON 無效或缺 sessionId、window、measuredAt 時回傳 null。0.6.0 寫出的檔沒有 phase，以 null 讀入。 */
 export function parseContextUsageFile(text: string): ContextUsageRecord | null {
+  const parsed = parseContextUsageDetailed(text)
+  return parsed.kind === 'ok' ? parsed.record : null
+}
+
+/** 用量檔解析結果：ok 為記錄；invalid 附原因（line_status 要寫出原因，不與「無用量檔」同形）。 */
+export type ContextUsageParse = { kind: 'ok'; record: ContextUsageRecord } | { kind: 'invalid'; reason: string }
+
+/** 解析用量檔並在失敗時回傳原因：JSON 無效（附解析器訊息）、不是物件、缺必要欄位。 */
+export function parseContextUsageDetailed(text: string): ContextUsageParse {
   let value: unknown
   try {
     value = JSON.parse(text)
-  } catch {
-    // session 寫到一半時讀到的半份檔：視為不存在，下一輪重讀即可；呼叫端記 debug log
-    return null
+  } catch (error) {
+    // session 寫到一半時讀到的半份檔也走這裡：看板視為不存在、下一輪重讀；line_status 照實寫出原因
+    return { kind: 'invalid', reason: `JSON 無效（${error instanceof Error ? error.message : String(error)}）` }
   }
-  if (typeof value !== 'object' || value === null) return null
+  if (typeof value !== 'object' || value === null) return { kind: 'invalid', reason: '內容不是 JSON 物件' }
   const raw = value as Record<string, unknown>
-  if (typeof raw.sessionId !== 'string' || typeof raw.window !== 'number' || typeof raw.measuredAt !== 'number') return null
+  if (typeof raw.sessionId !== 'string' || typeof raw.window !== 'number' || typeof raw.measuredAt !== 'number') {
+    return { kind: 'invalid', reason: '缺 sessionId、window 或 measuredAt' }
+  }
+  return { kind: 'ok', record: usageRecordOf(raw, { sessionId: raw.sessionId, window: raw.window, measuredAt: raw.measuredAt }) }
+}
+
+/** 已確認型別的必要欄位加上原物件的選填欄位，組成用量記錄；選填欄位缺席或型別不符時為 null。 */
+function usageRecordOf(
+  raw: Record<string, unknown>,
+  required: { sessionId: string; window: number; measuredAt: number },
+): ContextUsageRecord {
   return {
-    sessionId: raw.sessionId,
+    sessionId: required.sessionId,
     phase: phaseOf(raw.phase),
     tokens: numberOrNull(raw.tokens),
-    window: raw.window,
+    window: required.window,
     percent: numberOrNull(raw.percent),
     compactWindow: numberOrNull(raw.compactWindow),
     compactPercent: numberOrNull(raw.compactPercent),
     autoCompactThreshold: numberOrNull(raw.autoCompactThreshold),
-    measuredAt: raw.measuredAt,
+    measuredAt: required.measuredAt,
   }
 }
 
@@ -98,9 +117,19 @@ export function recentResume(record: ContextUsageRecord | null, nowMs: number): 
 
 /** 恢復開工徽章：`［/<來源> 後已恢復 HH:MM］`，時間為本機時間。 */
 export function resumeBadgeText(phase: ResumePhase): string {
-  const date = new Date(phase.at)
+  return `［/${phase.source} 後已恢復 ${localHourMinute(phase.at)}］`
+}
+
+/** line_status 的 phase 段：`phase <compacted|resumed>（<來源>，HH:MM）`，本機時間；不受徽章的 10 分鐘限制。 */
+export function phaseText(phase: ResumePhase): string {
+  return `phase ${phase.kind}（${phase.source}，${localHourMinute(phase.at)}）`
+}
+
+/** 毫秒時間的本機 `HH:MM`。 */
+function localHourMinute(at: number): string {
+  const date = new Date(at)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `［/${phase.source} 後已恢復 ${pad(date.getHours())}:${pad(date.getMinutes())}］`
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 /**
@@ -125,6 +154,29 @@ export function laneContextLabel(input: {
   const holdsInProgress = tokens.some(token => token.kind === 'ticket' && inProgress.has(token.id))
   const resumed = recentResume(record, nowMs)
   return contextMarkLabel(contextMarkOf({ record, role, holdsInProgress })) + (resumed === null ? '' : resumeBadgeText(resumed))
+}
+
+/** 用量檔存在但解析不成立的 session：以 sessionId 為鍵，值為原因（readers.ts 的 readContextUsageStates 產生）。 */
+export type ContextUsageFailures = Readonly<Record<string, string>>
+
+/**
+ * line_status 一條未收線的線的 context 段（接在依據之後）：
+ * - 有用量檔：`ctx <百分比>%（<距量測>）` 接看板線標題同一份的標記與徽章（laneContextLabel），有 phase 再接 `｜phase …`
+ * - 用量檔存在但解析失敗：`ctx 用量檔解析失敗：<原因>`
+ * - 沒有用量檔：`ctx 無用量檔`
+ * 名稱未寫、名稱不在存活 session 中、session 檔沒有 sessionId 時為 null：持有者無從查起，依據段已說明。
+ */
+export function laneContextStatus(input: Parameters<typeof laneContextLabel>[0] & { failures: ContextUsageFailures }): string | null {
+  const { sessionName, sessions, usages, failures, nowMs } = input
+  if (sessionName === null) return null
+  const sessionId = findSessionByName(sessions, sessionName)?.sessionId ?? null
+  if (sessionId === null) return null
+  const failure = failures[sessionId]
+  if (failure !== undefined) return `ctx 用量檔解析失敗：${failure}`
+  const record = usages[sessionId] ?? null
+  if (record === null) return 'ctx 無用量檔'
+  const usage = `${contextUsageSuffix(record, nowMs)}${laneContextLabel(input)}`
+  return record.phase === null ? usage : `${usage}｜${phaseText(record.phase)}`
 }
 
 /** 刪除前的路徑檢查：必須直接位於主 checkout 的用量檔目錄下，檔名符合 sessionId 格式；不符就不刪。 */

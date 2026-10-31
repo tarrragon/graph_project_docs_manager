@@ -111,6 +111,7 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
   - 標記：判定為待 compact 標 `［待 compact］`、待 clear 標 `［待 clear］`。以佇列行括號內的 session 名稱找存活 session（同〈各 session 狀態〉的比對），再以其 `sessionId` 取用量檔；名稱為「主控」套主控門檻，其他套一般線門檻。「持有 in_progress 票」指該線佇列中有票在主 checkout 為 `in_progress`。收線的線不在看板上，不會被標
   - 恢復開工徽章：用量檔的 `phase` 為 `resumed` 且距今不超過 10 分鐘（`RESUME_BADGE_MS`，含 10 分鐘）時標 `［/<compact|clear> 後已恢復 HH:MM］`，時間為進入 resumed 的本機時間；`compacted`（compact 完成但尚未開工）不標。徽章讓主控在恢復開工通知之外，回頭看板時仍看得到哪條線剛恢復
   - 沒有 session 名稱、session 不存活、沒有用量檔、用量缺席（compact 後下一次回應前）時都不標
+- **`line_status` 的 context 段**（`laneContextStatus`）：未收線的線在依據之後接 `｜<context 段>`，標記與徽章取 `laneContextLabel`（與線標題同一份），另加 `phase` 段（不受徽章 10 分鐘限制）。與看板不同，沒有用量檔明寫 `ctx 無用量檔`，用量檔存在但解析不成立寫 `ctx 用量檔解析失敗：<原因>`（`readers.ts` 的 `readContextUsageStates` 回傳原因；看板只取成立的記錄）。各寫法的判讀與主控接續動作見 `multi-session-orchestration` 的 `references/line-continuity.md` §3〈context 段的判讀〉
 - **清理**：每個 session 在 `session.end`（任何 reason）刪自己的用量檔，`/clear` 刪的是舊 id 的檔；看板每小時掃一次 context 目錄，刪除 mtime 超過 24 小時且不屬於存活 session 的檔。刪除前檢查路徑直接位於 context 目錄下、檔名符合 `[A-Za-z0-9_-]+\.json`，不符就不刪（`isDeletableUsagePath`）。`$.fs` 沒有刪除操作，以 `rm -f` 刪除
 
 ## 派發中代理人（`.claude/dispatch-active.json`）
@@ -209,10 +210,10 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/continuity.ts` | 各線接續狀態：SessionStart 來源紀錄解析、每條線的接續狀態判定、過期偵測、等用戶偵測與票面標記解析、`line_status` 的輸出文字（判讀規則唯一實作） |
 | `hooks/userTodos.ts` | 用戶待辦：協調票的待辦行與完成行配對（U1）、用戶待辦群組各行的顯示文字（U1 + U2） |
 | `hooks/contextUsage.ts` | context 用量檔的寫入端：何時寫、路徑、記錄內容（含恢復開工的 `phase`） |
-| `hooks/contextJudge.ts` | context 用量的讀取端：用量檔解析、分母選擇、待 compact／待 clear 判定與門檻常數、各 session 列的用量字尾、清理的路徑檢查與孤兒檔挑選 |
+| `hooks/contextJudge.ts` | context 用量的讀取端：用量檔解析（含失敗原因）、分母選擇、待 compact／待 clear 判定與門檻常數、各 session 列的用量字尾、線標題的標記與徽章、`line_status` 的 context 段、清理的路徑檢查與孤兒檔挑選 |
 | `hooks/resumeNotice.ts` | 恢復開工通知：compact／clear 後第一個 prompt 的判定狀態機、送或不送（不送帶原因）、通知文字、用量檔 `phase` |
 | `hooks/resumeNoticeLog.ts` | 恢復開工通知的送出紀錄檔 `.claude/hook-logs/line-board/resume-notice.log`：紀錄行格式（步驟、不送原因、傳送回傳）與上限截斷 |
-| `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄與佇列票 status 與等用戶標記，交 `continuity.ts` 判讀 |
+| `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄、佇列票 status 與等用戶標記、主 checkout 的用量檔，交 `continuity.ts` 判讀 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約；`McpToolInputs` 補宣告本 plugin 註冊的工具 |
 | `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts`、`boardUserTodos.test.ts` 為 Pane 端到端繪製，`boardDispatch` 為線群組的派發列、活動計數、預設展開與手動切換，`boardUserTodos` 為用戶待辦群組，`board` 為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`continuity.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |
 | `tests/fixtures.ts`、`tests/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |

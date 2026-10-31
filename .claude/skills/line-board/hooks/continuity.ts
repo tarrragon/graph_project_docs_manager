@@ -3,6 +3,7 @@
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔由 readers.ts 負責、組裝由 lineStatus.ts 負責。
 
 import type {
+  ContextUsageRecord,
   ContinuityState,
   LaneContinuity,
   LaneLine,
@@ -13,6 +14,7 @@ import type {
   TicketStatus,
   WaitingItem,
 } from '../types'
+import { type ContextUsageFailures, laneContextStatus } from './contextJudge'
 import { LANE_ENDED, endedForm, parseQueue, unfencedSolutionLines } from './lanes'
 import { findSessionByName } from './sessions'
 import { COMPLETED_STATUS, UNKNOWN_STATUS, parseFrontmatterStatus, parseFrontmatterTitle } from './shared'
@@ -195,9 +197,17 @@ export function lanesWaiting(input: {
     .flatMap(lane => liveLaneWaiting(lane, input.sessions, tickets, input.prefix))
 }
 
+/** line_status 用量段的輸入：存活 session 的用量檔、解析失敗的原因與判定時間（毫秒）。 */
+export type LineStatusContextInput = {
+  usages: Readonly<Record<string, ContextUsageRecord>>
+  failures: ContextUsageFailures
+  nowMs: number
+}
+
 /**
  * 判讀每條線的接續狀態與過期項。收線（含附說明的收線寫法）判為已收線，不再判持有者；
  * 附說明的收線寫法另列過期項，因為看板只認整段為收線記號的寫法，否則仍把該線顯示為離線。
+ * 提供 context 時，未收線的線另帶用量段，判定取看板線標題同一個函式（laneContextLabel，經 laneContextStatus）。
  */
 export function lineStatusReport(input: {
   lanes: readonly LaneLine[]
@@ -205,6 +215,7 @@ export function lineStatusReport(input: {
   log: readonly SourceLogEntry[]
   tickets: readonly TicketStatus[]
   prefix: string
+  context?: LineStatusContextInput
 }): LineStatusReport {
   const tickets = new Map(input.tickets.map(ticket => [ticket.id, ticket]))
   const lanes: LaneContinuity[] = []
@@ -223,11 +234,29 @@ export function lineStatusReport(input: {
       continue
     }
     const state = liveLaneState(lane, input.sessions, input.log)
-    lanes.push(state)
+    const context = input.context === undefined ? null : liveLaneContext(lane, input, input.context)
+    lanes.push(context === null ? state : { ...state, context })
     stale.push(...liveLaneStale(lane, state, tickets, input.prefix))
   }
   // 等用戶直接取看板用的同一個函式，「line_status 與看板同一份判定」由呼叫結構保證
   return { lanes, stale, waiting: lanesWaiting(input) }
+}
+
+/** 一條未收線的線的用量段：佇列 token 與票狀態交給 laneContextStatus 判定是否持有 in_progress 票。 */
+function liveLaneContext(
+  lane: LaneLine,
+  input: { sessions: readonly SessionState[]; tickets: readonly TicketStatus[]; prefix: string },
+  context: LineStatusContextInput,
+): string | null {
+  return laneContextStatus({
+    sessionName: lane.session,
+    tokens: parseQueue(lane.queue, input.prefix),
+    tickets: input.tickets,
+    sessions: input.sessions,
+    usages: context.usages,
+    failures: context.failures,
+    nowMs: context.nowMs,
+  })
 }
 
 /** 線的標示：`L<n>（名稱）`，佇列行未寫名稱時只有線號。 */
@@ -250,7 +279,10 @@ export function formatLineStatus(report: LineStatusReport, header: { coordinatio
   const ended = report.lanes.filter(lane => lane.state === 'ended')
   const lines = [`各線接續狀態（協調票 ${header.coordinationTicket}，讀取 ${header.readAt}）`]
   if (live.length === 0) lines.push('未收線的線：無')
-  for (const lane of live) lines.push(`${laneLabel(lane)}：${STATE_LABELS[lane.state]}｜${lane.evidence}`)
+  for (const lane of live) {
+    const context = lane.context === undefined ? '' : `｜${lane.context}`
+    lines.push(`${laneLabel(lane)}：${STATE_LABELS[lane.state]}｜${lane.evidence}${context}`)
+  }
   if (ended.length > 0) lines.push(`已收線：${ended.map(lane => `L${lane.lane}`).join('、')}`)
   if (report.stale.length === 0) {
     lines.push('過期項：無')

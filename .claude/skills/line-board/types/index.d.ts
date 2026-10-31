@@ -23,7 +23,8 @@ export type SourceLogEntry = { time: string; source: string; sessionPrefix: stri
 export type ContinuityState = 'ended' | 'clear' | 'compact' | 'startup' | 'orphan' | 'unknown'
 
 /** 一條線的判讀結果：evidence 為判讀依據（sessionId 前 8 碼、log 時間與 source，或判不出的原因）。 */
-export type LaneContinuity = { lane: number; session: string | null; state: ContinuityState; evidence: string }
+/** context 為 line_status 的用量段（contextJudge.ts laneContextStatus）；已收線、持有者無從查起或未提供用量時缺席。 */
+export type LaneContinuity = { lane: number; session: string | null; state: ContinuityState; evidence: string; context?: string }
 
 /**
  * 過期項：ended-with-note 票序以收線記號開頭但後面還有文字（看板不視為收線）、

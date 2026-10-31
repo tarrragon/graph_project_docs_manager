@@ -3,7 +3,16 @@
 
 import type { EngineInterface } from 'claude-code'
 
-import { PROJECT_CONFIG_PATH, findCheckouts, readLaneLines, readProjectConfig, readSessions, readSourceLog, readTicketStatus } from './readers'
+import {
+  PROJECT_CONFIG_PATH,
+  findCheckouts,
+  readContextUsageStates,
+  readLaneLines,
+  readProjectConfig,
+  readSessions,
+  readSourceLog,
+  readTicketStatus,
+} from './readers'
 import { continuityTicketIds, formatLineStatus, lineStatusReport, ticketPrefixOf } from './parse'
 
 /**
@@ -27,7 +36,10 @@ export async function lineStatusText($: EngineInterface, readAt: string): Promis
   // readProjectConfig 已確認前綴推導得出；推不出時短票號無從補全，佇列已完成的偵測因此不可靠，須註明
   const ids = continuityTicketIds(laneLines.lines, prefix ?? '')
   const tickets = await Promise.all(ids.map(id => readTicketStatus($, mainPath, id)))
-  const report = lineStatusReport({ lanes: laneLines.lines, sessions: sessions.sessions, log: log.entries, tickets, prefix: prefix ?? '' })
+  // 用量檔只在主 checkout（contextUsage.ts 寫入位置）；每次呼叫重讀，與看板的 snapshot 無關
+  const { usages, failures } = await readContextUsageStates($, mainPath, sessions)
+  const context = { usages, failures, nowMs: await $.clock.now() }
+  const report = lineStatusReport({ lanes: laneLines.lines, sessions: sessions.sessions, log: log.entries, tickets, prefix: prefix ?? '', context })
   const text = formatLineStatus(report, { coordinationTicket: config.coordinationTicket, readAt })
   return withNotes(text, [
     checkoutNote,

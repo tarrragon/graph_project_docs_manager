@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.19.0（2026-10-31）— `references/line-continuity.md` §3：`line_status` 每條未收線的線多一段 context，新增〈context 段的判讀〉表，逐一列出各寫法（用量、待 compact、待 clear、恢復開工徽章、phase compacted／resumed、未量測、無用量檔、解析失敗）的意義與主控接續動作。
+
 **Version**: 1.18.2（2026-10-31）— `references/line-continuity.md` §4〈線 session 的恢復開工通知〉：主管道標為預設關閉；〈已知限制〉補一條「auto mode 下主管道不可用，以用量檔 phase、看板徽章、`line_status` 為準」，附實測紀錄（classifier 不給判定）與不自動重送、不設法讓 classifier 放行的理由。
 
 **Version**: 1.18.1（2026-10-31）— `references/line-continuity.md` §4〈線 session 的恢復開工通知〉補〈送出紀錄檔〉：主管道沒收到通知時讀 `.claude/hook-logs/line-board/resume-notice.log`，列出每行欄位、各步驟（sent、skipped、config-unavailable、state-unavailable、error、send-disabled）的意義與結果欄位，並寫明沒有對應行代表恢復開工未被判定到。
