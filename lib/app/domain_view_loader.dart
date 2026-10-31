@@ -114,10 +114,26 @@ class DomainViewLoader extends Notifier<void> {
   /// gate 阻擋結果（NotFramework／SchemaUnconsumable／SchemaIncompatible）的
   /// 寫入口：遞增世代使進行中的載入失效，再寫入阻擋態
   /// （SPEC-003 §3.1〈導航跳轉與退出〉切換專案中止載入）。
-  void applyGateBlock(DomainViewState blocked) {
+  ///
+  /// [generation] 為 [beginGateProbe] 回傳的起始世代；世代已變（probe 期間
+  /// 取消載入或另有新輪次）就放棄寫入並回傳 false。
+  bool applyGateBlock(DomainViewState blocked, {int? generation}) {
+    if (generation != null && !_isCurrent(generation)) return false;
     _generation++;
     _write(blocked);
+    return true;
   }
+
+  /// gate 偵測的第一個動作（0.5.0-W1-169.3，SPEC-001 §1「選定資料夾一律先
+  /// 進入載入中」）：寫入 [DomainLoading]，回傳起始世代供之後比對。
+  int beginGateProbe() {
+    final generation = ++_generation;
+    _write(const DomainLoading());
+    return generation;
+  }
+
+  /// [generation]（[beginGateProbe] 的回傳值）是否仍為最新世代。
+  bool isGateProbeCurrent(int generation) => _isCurrent(generation);
 
   /// 取消載入（SPEC-001 §1 載入中列：取消 → 未選專案）：Running 輪次一併
   /// 丟棄，進行中的載入結果作廢。

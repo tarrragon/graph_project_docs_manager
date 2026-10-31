@@ -195,8 +195,10 @@ Future<void> _handleChooseFolderResult(
         l10n,
         state,
         fromChooseOther: fromChooseOther,
+        notRemembered: true,
       );
-      if (!context.mounted) return;
+      // Ready 時提示已由 _handleChosenState 於載入窗口內送出（0.5.0-W1-169.3）。
+      if (state is WorkspaceReady || !context.mounted) return;
       AppSnackBar.show(
         context,
         message: l10n.workspaceNotRemembered,
@@ -216,12 +218,24 @@ Future<void> _handleChosenState(
   AppLocalizations l10n,
   WorkspaceState state, {
   bool fromChooseOther = false,
+  bool notRemembered = false,
 }) async {
   switch (state) {
     case WorkspaceReady():
-      await selectWorkspace(ref, state);
-      if (!context.mounted) return;
+      // 先收合再載入（SPEC-003 §3.7；0.5.0-W1-169.3）。
       _dismiss(ref);
+      // select 的同步段（世代遞增、清除舊提示）在呼叫時執行；提示須在其後、
+      // 等待 gate 偵測之前送出，才落在新一輪載入窗口內（SPEC-003 §2.15）。
+      final selecting = selectWorkspace(ref, state);
+      if (notRemembered && context.mounted) {
+        AppSnackBar.show(
+          context,
+          message: l10n.workspaceNotRemembered,
+          level: AttentionLevel.discardable,
+          origin: AppSnackBarOrigin.userInitiated,
+        );
+      }
+      await selecting;
     case WorkspaceUnavailable(:final reason):
       if (fromChooseOther) {
         _showChooseOtherFailure(

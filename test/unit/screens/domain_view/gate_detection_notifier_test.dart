@@ -252,4 +252,84 @@ void main() {
       expect(logs.where((l) => l.$2 == 900), isEmpty);
     });
   });
+
+  group('阻擋輪次先進入載入中（0.5.0-W1-169.3）', () {
+    final blockedCases =
+        <(String, _GatedProbe Function(Completer<void>), Matcher)>[
+          ('NotFramework', (g) => _GatedProbe(g), isA<DomainNotFramework>()),
+          (
+            'SchemaUnconsumable',
+            (g) => _GatedProbe(g, version: '2.22.1'),
+            isA<DomainSchemaUnconsumable>(),
+          ),
+          (
+            'SchemaIncompatible',
+            (g) => _GatedProbe(
+              g,
+              version: '2.10.0',
+              jsonExists: true,
+              jsonVersion: '2.90.0',
+            ),
+            isA<DomainSchemaIncompatible>(),
+          ),
+        ];
+    for (final (name, makeProbe, expected) in blockedCases) {
+      test('$name：probe 進行中為 DomainLoading，完成後落該阻擋狀態', () async {
+        final gate = Completer<void>();
+        final container = _buildContainer(makeProbe(gate));
+
+        final detecting = container
+            .read(gateDetectionNotifierProvider.notifier)
+            .detect('/fake');
+        expect(container.read(domainViewStateProvider), isA<DomainLoading>());
+
+        gate.complete();
+        await detecting;
+        expect(container.read(domainViewStateProvider), expected);
+      });
+    }
+
+    test('probe 期間取消載入 → 最終為 DomainUnset（世代檢查）', () async {
+      final gate = Completer<void>();
+      final container = _buildContainer(_GatedProbe(gate));
+
+      final detecting = container
+          .read(gateDetectionNotifierProvider.notifier)
+          .detect('/fake');
+      container.read(domainViewLoaderProvider.notifier).cancelLoading();
+      expect(container.read(domainViewStateProvider), isA<DomainUnset>());
+
+      gate.complete();
+      await detecting;
+      // E2：拿掉世代檢查時，後續阻擋寫入會把狀態覆蓋為 DomainNotFramework。
+      expect(container.read(domainViewStateProvider), isA<DomainUnset>());
+    });
+  });
+}
+
+/// readVersion 卡在 [gate] 的 probe。
+class _GatedProbe implements FrameworkSignalProbePort {
+  _GatedProbe(
+    this.gate, {
+    this.version,
+    this.jsonExists = false,
+    this.jsonVersion,
+  });
+  final Completer<void> gate;
+  final String? version;
+  final bool jsonExists;
+  final String? jsonVersion;
+
+  @override
+  Future<String?> readVersion(String workspacePath) async {
+    await gate.future;
+    return version;
+  }
+
+  @override
+  Future<bool> schemaJsonExists(String workspacePath) async => jsonExists;
+
+  @override
+  Future<String?> readSchemaJsonVersion(String workspacePath) async =>
+      jsonVersion;
 }

@@ -1,6 +1,7 @@
 /// 專案切換浮層三個狀態測試（SPEC-001 §7；SPEC-004 §3.6；SPEC-003 §3.7）。
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart' show SnackBar;
@@ -1083,6 +1084,102 @@ void _unavailableRecentItemTests() {
       expect(find.text(folderReason), findsNothing);
     });
   });
+
+  group('先收合再載入（0.5.0-W1-169.3，SPEC-003 §3.7）', () {
+    testWidgets('未能記住提示於載入窗口內到達：SnackBar 出現時仍為載入中、浮層已收合', (tester) async {
+      final gate = Completer<void>();
+      await _pumpApp(
+        tester,
+        overrides: [
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryReady(rememberSucceeds: false),
+          ),
+          frameworkSignalProbeProvider.overrideWithValue(
+            _GatedSignalProbe(gate),
+          ),
+          builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+        ],
+        settle: false,
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(app_shell.AppShell)),
+      );
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('action-switcher-choose-folder')));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump();
+      }
+
+      // E2：改回「先 await selectWorkspace 再收合」時，probe 卡住使
+      // 提示根本未送出（或浮層仍展開），本組斷言翻紅。
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
+      expect(container.read(domainViewStateProvider), isA<DomainLoading>());
+
+      gate.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('gate probe 進行中：浮層已收合且狀態為 state-domain-loading', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      await _pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(_testRecentProjects),
+          ),
+          frameworkSignalProbeProvider.overrideWithValue(
+            _GatedSignalProbe(gate),
+          ),
+          builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+        ],
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(app_shell.AppShell)),
+      );
+
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('card-switcher-recent-1')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // E2：順序改回「先 await detect 再收合」時，此處浮層仍展開而翻紅。
+      expect(find.byKey(const Key('state-switcher-expanded')), findsNothing);
+      expect(container.read(switcherOpenProvider), isFalse);
+      expect(container.read(domainViewStateProvider), isA<DomainLoading>());
+
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(
+        container.read(domainViewStateProvider),
+        isA<DomainNotFramework>(),
+      );
+    });
+  });
+}
+
+/// readVersion 卡在 [gate]，模擬 gate probe 進行中。
+class _GatedSignalProbe implements FrameworkSignalProbePort {
+  _GatedSignalProbe(this.gate);
+  final Completer<void> gate;
+
+  @override
+  Future<String?> readVersion(String workspacePath) async {
+    await gate.future;
+    return null;
+  }
+
+  @override
+  Future<bool> schemaJsonExists(String workspacePath) async => false;
+
+  @override
+  Future<String?> readSchemaJsonVersion(String workspacePath) async => null;
 }
 
 void _restoreContrastTest() {
