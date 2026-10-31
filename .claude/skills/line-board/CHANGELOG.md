@@ -5,7 +5,8 @@
 **Version**: 0.4.0（2026-10-31）— 跨專案行為變更：`line_status` 輸出多一段「等用戶（N）」，列出停在等用戶的線，每項一行 `L<n>（名稱）<票號>：<事項>（S1／S2／S3）`；沒有任何一項時寫「等用戶：無」。這一段與過期項分列。
 
 - 三種訊號：S1 佇列中未 completed 的票，其 Solution 段最後一行等用戶標記（`**等用戶**：`，`**等用戶解除**：` 解除）；S2 該線 session 的 `status` 為 `waiting`；S3 現行佇列行的票註記或文字含「等用戶」。已收線的線不判。訊號定義的權威是 multi-session-orchestration 的 `references/line-continuity.md` §2〈等用戶〉。
-- `continuity.ts` 新增 `parseWaitingMark` 與等用戶判定；`readers.ts` 的 `readTicketStatus` 同一次讀檔多解析 `waiting`；`lanes.ts` 匯出 `solutionLines`；`types/index.d.ts` 新增 `WaitingSource`、`WaitingItem`，`LineStatusReport` 加 `waiting`，`TicketStatus` 加選填的 `waiting`。
+- S1 標記只認嚴格行首、不在 fenced code block 內的行；冒號後沒寫事項照樣列出（`標記未附事項`），只有解除行能清除。
+- `continuity.ts` 新增 `parseWaitingMark`、`ticketStatusOf`（票檔原文組成 status、title、waiting，`readers.ts` 的 `readTicketStatus` 讀到票檔後一律經此）與等用戶判定；`lanes.ts` 匯出 `solutionLines`；`types/index.d.ts` 新增 `WaitingSource`、`WaitingItem`，`LineStatusReport` 加 `waiting`，`TicketStatus` 加選填的 `waiting`。
 - 看板畫面不變。
 
 起因：一條線把待用戶實測的事項寫在票面卻沒有傳訊，主控沒讀到，直到用戶問起才發現；用戶裁定加入偵測（2026-10-31）。

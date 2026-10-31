@@ -15,7 +15,7 @@ import type {
 } from '../types'
 import { LANE_ENDED, endedForm, parseQueue, solutionLines } from './lanes'
 import { findSessionByName } from './sessions'
-import { COMPLETED_STATUS } from './shared'
+import { COMPLETED_STATUS, UNKNOWN_STATUS, parseFrontmatterStatus, parseFrontmatterTitle } from './shared'
 
 /** SessionStart 來源紀錄檔，相對各 checkout（worktree 內啟動的 session 寫入該 worktree 自己的檔）。 */
 export const SOURCE_LOG_PATH = '.claude/hook-logs/session-source-diagnostic/diagnostic.log'
@@ -59,18 +59,35 @@ const WAITING_STATUS = 'waiting'
 /** S2 的 session 檔沒有 waitingFor 時的事項文字。 */
 const WAITING_FOR_MISSING = 'session 等待中，未附原因'
 
+/** S1 標記冒號後沒寫事項時的事項文字：照樣列出，只有解除行能清除標記。 */
+const WAITING_MARK_EMPTY = '標記未附事項'
+
+/** fenced code block 的界線行開頭：區間內的行是示例，不判為標記。 */
+const CODE_FENCE = '```'
+
 /**
  * 票 Solution 段最後一行等用戶標記（S1）的事項：最後一行是解除行、或沒有任何標記行時為 null。
- * 只認行首的固定格式，所以票面其他段落引用格式（如判準說明）或自由文字（「待用戶」）都不算。
+ * 只認嚴格行首（不容前導空白）且不在 fenced code block 內的固定格式，
+ * 所以縮排行、格式示例、其他段落的引用與自由文字（「待用戶」）都不算。
  */
 export function parseWaitingMark(text: string): string | null {
   let waiting: string | null = null
+  let inFence = false
   for (const line of solutionLines(text)) {
-    const trimmed = line.trimStart()
-    if (trimmed.startsWith(WAITING_MARK)) waiting = trimmed.slice(WAITING_MARK.length).trim()
-    else if (trimmed.startsWith(WAITING_RELEASE)) waiting = null
+    if (line.startsWith(CODE_FENCE)) inFence = !inFence
+    else if (inFence) continue
+    else if (line.startsWith(WAITING_MARK)) waiting = line.slice(WAITING_MARK.length).trim() || WAITING_MARK_EMPTY
+    else if (line.startsWith(WAITING_RELEASE)) waiting = null
   }
-  return waiting === '' ? null : waiting
+  return waiting
+}
+
+/**
+ * 票檔原文解析為佇列票的狀態：status（缺欄為 unknown）、title、S1 等用戶標記。readers.ts 讀到票檔後一律經此函式，
+ * 所以看板與 line_status 取得的欄位只在這裡組成一次。
+ */
+export function ticketStatusOf(id: string, text: string): TicketStatus {
+  return { id, status: parseFrontmatterStatus(text) ?? UNKNOWN_STATUS, title: parseFrontmatterTitle(text), waiting: parseWaitingMark(text) }
 }
 
 /** 解析來源紀錄：不符格式的行略過（例如手動註記）；保留原順序。 */
@@ -163,8 +180,9 @@ function liveLaneWaiting(
     if (token.note.includes(WAITING_KEYWORD)) notes.push({ ...base, ticketId: token.id, item: unwrapNote(token.note), source: 'S3' })
   }
   const session = lane.session === null ? undefined : findSessionByName(sessions, lane.session)
-  const held = session?.status === WAITING_STATUS ? [{ ...base, ticketId: null, item: session.waitingFor ?? WAITING_FOR_MISSING, source: 'S2' as const }] : []
-  return [...marks, ...notes, ...held]
+  const sessionWaiting =
+    session?.status === WAITING_STATUS ? [{ ...base, ticketId: null, item: session.waitingFor ?? WAITING_FOR_MISSING, source: 'S2' as const }] : []
+  return [...marks, ...notes, ...sessionWaiting]
 }
 
 /**

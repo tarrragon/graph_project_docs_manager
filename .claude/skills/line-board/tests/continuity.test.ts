@@ -3,7 +3,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { session } from './fixtures'
-import { continuityTicketIds, formatLineStatus, lastSourceOf, lineStatusReport, parseSourceLog, parseWaitingMark } from '../hooks/continuity'
+import { continuityTicketIds, formatLineStatus, lastSourceOf, lineStatusReport, parseSourceLog, parseWaitingMark, ticketStatusOf } from '../hooks/continuity'
 import { endedForm, parseLaneLines, parseLanes } from '../hooks/lanes'
 import type { LaneLine, SessionState, SourceLogEntry, TicketStatus } from '../types'
 
@@ -206,6 +206,32 @@ describe('parseWaitingMark', () => {
   test('其他段落的標記、Solution 內行中引用的格式、自由文字「待用戶」都不算', () => {
     expect(parseWaitingMark(ticketText('待用戶：在 worktree 路徑開互動式 session', 'S1 格式為 `**等用戶**：<事項>`'))).toBeNull()
   })
+
+  test('縮排行與 fenced code block 內的格式示例不算；fence 結束後的標記照算', () => {
+    expect(parseWaitingMark(ticketText('  **等用戶**：縮排', '```', '**等用戶**：<事項>', '```'))).toBeNull()
+    expect(parseWaitingMark(ticketText('```', '**等用戶解除**：示例', '```', '**等用戶**：真的在等'))).toBe('真的在等')
+  })
+
+  test('冒號後沒寫事項的標記照樣列出，不視為解除', () => {
+    expect(parseWaitingMark(ticketText('**等用戶**：開 --debug', '**等用戶**：'))).toBe('標記未附事項')
+  })
+})
+
+describe('ticketStatusOf：票檔原文組成佇列票狀態（readers.ts 讀到票檔後一律經此）', () => {
+  const ticketText = (...solution: string[]) => ['---', 'title: 示例', 'status: in_progress', '---', '## Solution', ...solution].join('\n')
+
+  test('E2 正向對照：Solution 末行為標記時，waiting 為事項，與 status、title 同一次組成', () => {
+    expect(ticketStatusOf('0.5.0-W1-200', ticketText('**等用戶**：開 --debug 重啟'))).toEqual({
+      id: '0.5.0-W1-200',
+      status: 'in_progress',
+      title: '示例',
+      waiting: '開 --debug 重啟',
+    })
+  })
+
+  test('負向對照：Solution 末行為解除行時，waiting 為 null', () => {
+    expect(ticketStatusOf('0.5.0-W1-200', ticketText('**等用戶**：開 --debug 重啟', '**等用戶解除**：已重啟')).waiting).toBeNull()
+  })
 })
 
 describe('等用戶偵測', () => {
@@ -231,12 +257,6 @@ describe('等用戶偵測', () => {
     expect(textOnly.waiting).toEqual([{ lane: 2, session: 'a', ticketId: null, item: '等用戶裁定方向', source: 'S3' }])
   })
 
-  test('負向對照：S1 已寫解除行的票不列（readers 解析為 null）', () => {
-    const released = parseWaitingMark(['## Solution', '**等用戶**：開 --debug', '**等用戶解除**：已重啟'].join('\n'))
-    const result = report({ lanes: [lane(1, 'a', '100')], sessions, log, tickets: [pending('0.5.0-W1-100', released)] })
-    expect(result.waiting).toEqual([])
-  })
-
   test('負向對照：已 completed 的票，標記與佇列註記都不列', () => {
     const tickets = [{ id: '0.5.0-W1-100', status: 'completed', waiting: '開 --debug' }]
     expect(report({ lanes: [lane(1, 'a', '100（等用戶）')], sessions, log, tickets }).waiting).toEqual([])
@@ -246,6 +266,11 @@ describe('等用戶偵測', () => {
     const tickets = [pending('0.5.0-W1-100', parseWaitingMark('## Solution\n待用戶：在 worktree 開 session'))]
     expect(report({ lanes: [lane(1, 'a', '100（待用戶回覆）')], sessions, log, tickets }).waiting).toEqual([])
     expect(report({ lanes: [lane(2, 'b', '（無）')], sessions: [session({ name: 'b', status: 'waiting', pid: 101, cwd: '/repo' })] }).waiting).toEqual([])
+  })
+
+  test('負向對照：收線附說明的線（說明含「等用戶」、佇列票帶標記）也不判 S1／S3', () => {
+    const result = report({ lanes: [lane(3, 'a', '（無）— 300 等用戶裁定')], sessions, log, tickets: [pending('0.5.0-W1-300', '開 --debug')] })
+    expect(result.waiting).toEqual([])
   })
 
   test('負向對照：同一條線較早的佇列行含「等用戶」，現行佇列行沒有時不列', () => {
