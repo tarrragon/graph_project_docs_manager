@@ -172,7 +172,7 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/continuity.ts` | 各線接續狀態：SessionStart 來源紀錄解析、每條線的接續狀態判定、過期偵測、等用戶偵測與票面標記解析、`line_status` 的輸出文字（判讀規則唯一實作） |
 | `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄與佇列票 status 與等用戶標記，交 `continuity.ts` 判讀 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約；`McpToolInputs` 補宣告本 plugin 註冊的工具 |
-| `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts` 為 Pane 端到端繪製，後者為線群組的派發列、活動計數、預設展開與手動切換，前者為線標題列、票序、佇列細節與底部兩區塊 |
+| `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts` 為 Pane 端到端繪製，後者為線群組的派發列、活動計數、預設展開與手動切換，前者為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`continuity.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |
 | `tests/fixtures.ts`、`tests/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |
 
