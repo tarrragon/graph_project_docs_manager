@@ -2,6 +2,12 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.8.1（2026-10-31）— 恢復開工通知新增送出紀錄檔：每次恢復開工在主 checkout 的 `.claude/hook-logs/line-board/resume-notice.log` 寫一行（時間、sessionId 前 8 碼、來源、走到的步驟、跨 session 傳送的回傳或例外），只保留最後 500 行。原本設定讀不到、session 或協調票讀不到、判定不送三處只 return 或只記 debug，送出被拒也只記 debug，主管道沒收到通知時無從定位原因。通知的判定與文字不變。
+
+- 新增 `hooks/resumeNoticeLog.ts`（`resumeNoticeLogLine`、`appendCappedLog`、`RESUME_NOTICE_LOG_PATH`、`RESUME_NOTICE_LOG_MAX_LINES`、`ResumeNoticeOutcome`）。
+- `hooks/resumeNotice.ts`：`resumeNoticeTarget` 改為 `resumeNoticeDecision`，不送時回傳原因（`no-session-name`、`coordinator`、`lane-not-found`、`lane-ended`）。
+- `register.tsx`：`notifyResumed` 拆為 `sendResumeNotice`（回傳步驟與結果）與 `appendResumeNoticeLog`（寫不進去送 transcript）。
+
 **Version**: 0.8.0（2026-10-31）— 跨專案行為變更：「各 session」區塊每列在有用量檔時，行尾加 `｜ctx <百分比>%（<距量測的時間>）`；compact 後沒有用量時寫 `ctx 未量測`。沒有用量檔的 session 不加字尾。用量檔開始有清理：session 結束時刪自己的檔，看板每小時刪 24 小時以上的孤兒檔。
 
 - 新增 `hooks/contextJudge.ts`：`parseContextUsageFile`、`selectedPercent`（auto-compact 開啟用 `compactPercent`，關閉用 `percent`）、`contextMarkOf`（待 compact／待 clear，一般線 45／30、主控 60 且不判待 clear；收線或不屬於任何線不判定）、`contextUsageSuffix`、`isDeletableUsagePath`、`orphanUsageFiles`，門檻常數 `LANE_T_COMPACT`、`LANE_T_CLEAR`、`COORDINATOR_T_COMPACT`、`ORPHAN_AGE_MS`。判定函式供線標題標記與 `line_status` 共用（後續版本接上）。

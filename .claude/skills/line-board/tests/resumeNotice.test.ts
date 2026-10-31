@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from 'claude-code/testing'
 
-import { resumeNoticeTarget, resumeNoticeText, resumePhaseOf, stepResume } from '../hooks/resumeNotice'
+import { resumeNoticeDecision, resumeNoticeText, resumePhaseOf, stepResume } from '../hooks/resumeNotice'
 import type { PendingResume, ResumeEvent } from '../hooks/resumeNotice'
 import type { LaneLine } from '../types'
 
@@ -92,23 +92,17 @@ const lines: LaneLine[] = [
   { lane: 42, session: '收線附說明', queue: '無（併入 L39）' },
 ]
 
-describe('resumeNoticeTarget', () => {
-  test('正向對照：名稱比對到未收線的線，回傳線號與名稱', () => {
-    expect(resumeNoticeTarget({ sessionName: '看板工具', lines })).toEqual({ lane: 39, name: '看板工具' })
+describe('resumeNoticeDecision：送或不送，不送時帶原因（寫入送出紀錄檔）', () => {
+  test('正向對照：比對到未收線的線為 send，帶線號與名稱', () => {
+    expect(resumeNoticeDecision({ sessionName: '看板工具', lines })).toEqual({ kind: 'send', target: { lane: 39, name: '看板工具' } })
   })
 
-  test('主控自身不送', () => {
-    expect(resumeNoticeTarget({ sessionName: '主控', lines })).toBeNull()
-  })
-
-  test('已收線的線不送（合規收線與附說明的收線都算）', () => {
-    expect(resumeNoticeTarget({ sessionName: '已收線的線', lines })).toBeNull()
-    expect(resumeNoticeTarget({ sessionName: '收線附說明', lines })).toBeNull()
-  })
-
-  test('名稱比對不到或取不到名稱時不送', () => {
-    expect(resumeNoticeTarget({ sessionName: '不存在的線', lines })).toBeNull()
-    expect(resumeNoticeTarget({ sessionName: null, lines })).toBeNull()
+  test('每個不送條件各帶自己的原因', () => {
+    expect(resumeNoticeDecision({ sessionName: null, lines })).toEqual({ kind: 'skip', reason: 'no-session-name' })
+    expect(resumeNoticeDecision({ sessionName: '主控', lines })).toEqual({ kind: 'skip', reason: 'coordinator' })
+    expect(resumeNoticeDecision({ sessionName: '不存在的線', lines })).toEqual({ kind: 'skip', reason: 'lane-not-found' })
+    expect(resumeNoticeDecision({ sessionName: '已收線的線', lines })).toEqual({ kind: 'skip', reason: 'lane-ended' })
+    expect(resumeNoticeDecision({ sessionName: '收線附說明', lines })).toEqual({ kind: 'skip', reason: 'lane-ended' })
   })
 })
 

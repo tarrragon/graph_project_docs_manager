@@ -204,7 +204,8 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/userTodos.ts` | 用戶待辦：協調票的待辦行與完成行配對（U1）、用戶待辦群組各行的顯示文字（U1 + U2） |
 | `hooks/contextUsage.ts` | context 用量檔的寫入端：何時寫、路徑、記錄內容（含恢復開工的 `phase`） |
 | `hooks/contextJudge.ts` | context 用量的讀取端：用量檔解析、分母選擇、待 compact／待 clear 判定與門檻常數、各 session 列的用量字尾、清理的路徑檢查與孤兒檔挑選 |
-| `hooks/resumeNotice.ts` | 恢復開工通知：compact／clear 後第一個 prompt 的判定狀態機、通知對象與文字、用量檔 `phase` |
+| `hooks/resumeNotice.ts` | 恢復開工通知：compact／clear 後第一個 prompt 的判定狀態機、送或不送（不送帶原因）、通知文字、用量檔 `phase` |
+| `hooks/resumeNoticeLog.ts` | 恢復開工通知的送出紀錄檔 `.claude/hook-logs/line-board/resume-notice.log`：紀錄行格式（步驟、不送原因、傳送回傳）與上限截斷 |
 | `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄與佇列票 status 與等用戶標記，交 `continuity.ts` 判讀 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約；`McpToolInputs` 補宣告本 plugin 註冊的工具 |
 | `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts`、`boardUserTodos.test.ts` 為 Pane 端到端繪製，`boardDispatch` 為線群組的派發列、活動計數、預設展開與手動切換，`boardUserTodos` 為用戶待辦群組，`board` 為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`continuity.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |

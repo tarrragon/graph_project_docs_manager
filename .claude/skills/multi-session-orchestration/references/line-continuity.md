@@ -234,6 +234,19 @@ EOF
 | 主管道 | 一則跨 session 訊息，固定一行：`L<n>（<名稱>）已恢復開工：<時間>，來源 compact／clear` | 直接出現在主控的對話 |
 | 輔管道 | 該 session 的用量檔（`.claude/hook-logs/line-board/context/<sessionId>.json`）的 `phase` 欄位：`compacted`（做完未開工）或 `resumed`（已開工），附來源與時間 | 看板線標題與 `line_status`（讀取端依序上線） |
 
+**送出紀錄檔**：主管道沒收到通知時，讀主 checkout 的 `.claude/hook-logs/line-board/resume-notice.log` 定位原因。該線每次恢復開工寫一行，欄位以 tab 分隔：`<時間>`、`session=<sessionId 前 8 碼>`、`source=<compact|clear>`、`step=<步驟>`，之後依步驟帶結果欄位。檔案只保留最後 500 行。
+
+| step | 意義 | 結果欄位 |
+|------|------|---------|
+| `sent` | 已呼叫跨 session 傳送 | `isDelivered=true`；或 `isDelivered=false` 加 `reason=<拒絕原因>` |
+| `skipped` | 判定不送 | `reason=`：`no-session-name`（狀態檔比對不到 sessionId）、`coordinator`（主控自身）、`lane-not-found`（名稱比對不到現行佇列行）、`lane-ended`（已收線） |
+| `config-unavailable` | 專案設定讀不到或不成立 | `detail=<判定>：<訊息>` |
+| `state-unavailable` | session 狀態檔或協調票讀不到 | `detail=session 狀態：<訊息>` 或 `detail=協調票：<訊息>` |
+| `error` | 過程中丟出例外 | `detail=<例外訊息>` |
+| `send-disabled` | 主管道開關關閉 | 無 |
+
+紀錄檔沒有對應的一行，代表恢復開工沒有被判定到（例如熱重載遺失待通知狀態），問題不在傳送。
+
 **主控收到通知時**：只核對，不回覆該線。核對內容：該線現行佇列行的下一張票是否和它接著要做的一致；不一致就依 §3 步驟 6 更正，並寫進協調票。
 
 **已知限制**：

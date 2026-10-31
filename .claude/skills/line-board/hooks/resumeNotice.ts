@@ -55,13 +55,21 @@ export function stepResume(pending: PendingResume | null, event: ResumeEvent): R
   }
 }
 
-/** 通知對象：名稱比對到協調票上未收線的線；主控自身、已收線、比對不到或沒有名稱時為 null。 */
-export function resumeNoticeTarget(input: { sessionName: string | null; lines: readonly LaneLine[] }): ResumeNoticeTarget | null {
+/** 不送通知的原因：取不到本 session 名稱、主控自身、名稱比對不到線、該線已收線。 */
+export type ResumeNoticeSkipReason = 'no-session-name' | 'coordinator' | 'lane-not-found' | 'lane-ended'
+
+/** 送或不送：送時帶通知對象，不送時帶原因（寫入送出紀錄檔）。 */
+export type ResumeNoticeDecision = { kind: 'send'; target: ResumeNoticeTarget } | { kind: 'skip'; reason: ResumeNoticeSkipReason }
+
+/** 判定送或不送：名稱比對到協調票上未收線的線才送。 */
+export function resumeNoticeDecision(input: { sessionName: string | null; lines: readonly LaneLine[] }): ResumeNoticeDecision {
   const { sessionName, lines } = input
-  if (sessionName === null || sessionName === COORDINATOR_SESSION_NAME) return null
+  if (sessionName === null) return { kind: 'skip', reason: 'no-session-name' }
+  if (sessionName === COORDINATOR_SESSION_NAME) return { kind: 'skip', reason: 'coordinator' }
   const line = lines.find(candidate => candidate.session === sessionName)
-  if (line === undefined || endedForm(line.queue) !== null) return null
-  return { lane: line.lane, name: sessionName }
+  if (line === undefined) return { kind: 'skip', reason: 'lane-not-found' }
+  if (endedForm(line.queue) !== null) return { kind: 'skip', reason: 'lane-ended' }
+  return { kind: 'send', target: { lane: line.lane, name: sessionName } }
 }
 
 /** 主管道的通知文字：固定一行 `L<n>（<名稱>）已恢復開工：<時間>，來源 <compact|clear>`。 */
