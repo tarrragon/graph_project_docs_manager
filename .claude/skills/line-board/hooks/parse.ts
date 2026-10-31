@@ -10,6 +10,7 @@
 // - userTodos.ts：協調票的用戶待辦行與完成行配對、「用戶待辦」群組的各行
 // - contextUsage.ts：各 session 的 context 用量檔（session.measure 寫入）：何時寫、路徑、記錄內容
 // - resumeNotice.ts：線 session 在 /compact、/clear 後恢復開工的判定、通知對象、通知文字與用量檔 phase
+// - contextJudge.ts：用量檔解析、待 compact／待 clear 判定（看板與 line_status 共用）、各 session 列的用量字尾、清理的路徑檢查
 
 export * from './shared'
 export * from './lanes'
@@ -22,3 +23,4 @@ export * from './continuity'
 export * from './userTodos'
 export * from './contextUsage'
 export * from './resumeNotice'
+export * from './contextJudge'

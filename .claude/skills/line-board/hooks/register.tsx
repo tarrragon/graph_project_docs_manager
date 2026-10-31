@@ -39,10 +39,13 @@ import {
   findCheckouts,
   readDispatches,
   readLanes,
+  readContextUsages,
   readMergeLog,
   readProjectConfig,
   readSessions,
   readTicketStatus,
+  removeUsageFile,
+  sweepOrphanUsageFiles,
 } from './readers'
 import { renderSessions } from './sessionsView'
 import { renderUserTodos } from './userTodosView'
@@ -83,6 +86,10 @@ const IS_RESUME_NOTICE_SEND_ENABLED = true
  */
 let pendingResume: PendingResume | null = null
 let lastResumed: ResumedEvent | null = null
+/** 孤兒用量檔的掃描間隔：每小時一次（refresh 每 30 秒，不每輪掃）。 */
+const ORPHAN_SWEEP_MS = 60 * 60 * 1000
+/** 上次掃孤兒用量檔的時間（毫秒）；0 表示本行程尚未掃過，第一輪 refresh 就掃。 */
+let lastOrphanSweepAt = 0
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -120,6 +127,9 @@ export const register: Register = on => {
   // /clear 是舊 session 的結束：只更新模組層狀態，不做 I/O（session.end 共用一個很短的時限）
   on('session.end', async ($, e, next) => {
     applyResumeEvent({ kind: 'end', reason: e.reason, at: await $.clock.now() })
+    // 刪自己的用量檔（任何 reason；/clear 刪的是舊 id 的檔，新 id 之後重寫）。主 checkout 只用快取，不在時限內跑 git
+    const path = usageMainPath === null ? null : contextUsagePath(usageMainPath, e.sessionId)
+    if (usageMainPath !== null && path !== null) await removeUsageFile($, usageMainPath, path)
     return next(e)
   })
 
@@ -162,6 +172,7 @@ export const register: Register = on => {
       board.lanes === undefined ||
       (board.lanes.kind === 'ok' && (board.lanes.lines === undefined || board.lanes.todos === undefined)) ||
       board.sessions === undefined ||
+      board.usages === undefined ||
       board.dispatches === undefined ||
       (board.mergeLog.kind === 'ok' && (board.mergeLog.entries === undefined || board.mergeLog.holders === undefined))
     ) {
@@ -260,6 +271,12 @@ async function refresh($: EngineInterface): Promise<void> {
     const ids = [...laneIds, ...dispatchIds.filter(id => !laneIds.includes(id))]
     const tickets = await Promise.all(ids.map(id => readTicketStatus($, mainPath, id)))
     const sessions = await readSessions($, checkoutPaths)
+    const usages = await readContextUsages($, mainPath, sessions)
+    if (sessions.kind === 'ok' && readAtMs - lastOrphanSweepAt >= ORPHAN_SWEEP_MS) {
+      lastOrphanSweepAt = readAtMs
+      const liveIds = new Set(sessions.sessions.map(session => session.sessionId).filter((id): id is string => id !== null))
+      void sweepOrphanUsageFiles($, mainPath, liveIds, readAtMs)
+    }
     const mergeLog = await readMergeLog($, mainPath)
     const next: BoardSnapshot = {
       kind: 'ready',
@@ -272,6 +289,7 @@ async function refresh($: EngineInterface): Promise<void> {
       lanes,
       tickets,
       sessions,
+      usages,
       mergeLog,
       dispatches,
     }

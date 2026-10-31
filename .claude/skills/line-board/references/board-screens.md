@@ -84,10 +84,28 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
   - 無從比對時退回只看 exit code：狀態檔沒有 `procStart`、或任一方不符上述格式（例如 Claude Code 改了 `procStart` 的格式）。這時 pid 重複使用不會被辨識出來
   - `ps` 本身無法執行時視為存活
 - 排序：`waiting`、`busy` 與 `shell`（同組，組內依名稱）、`idle`，其他狀態值排最後；狀態一律原樣顯示。`waiting` 以洋紅粗體顯示（要人處理，見〈版面〉的五色狀態；黃色留給閘門）
-- 每列：`<name>｜<status>[：<waitingFor>]｜<距 statusUpdatedAt 的時間>`，時間以最近一次讀取的時刻計
+- 每列：`<name>｜<status>[：<waitingFor>]｜<距 statusUpdatedAt 的時間>[｜ctx <百分比>%（<距量測的時間>）]`，時間以最近一次讀取的時刻計。用量字尾見下方〈context 用量〉；沒有用量檔的 session 不加
 - 線群組標題列的 `［狀態］`：以協調票現行佇列行括號內的 session 名稱比對存活 session 的 `name`（同名多筆取最新一筆），比對不到標 `離線`；sessions 目錄讀不到時標 `狀態不明`
 
 這是 Claude Code 的內部檔案，官方沒有文件承諾格式。Claude Code 升版後除了〈驗證〉的指令，還要以真實的 sessions 目錄對照一次（檔案欄位、status 值，以及 `procStart` 是否仍與 `TZ=UTC ps -p <pid> -o lstart=` 逐字相同）。
+
+### context 用量（`.claude/hook-logs/line-board/context/<sessionId>.json`）
+
+每個載入 line-board 的 session 以 `session.measure` 把自己的用量寫進主 checkout 的用量檔（`hooks/contextUsage.ts`），看板讀檔（`hooks/contextJudge.ts`），不靠 AI 回報。
+
+- **只讀存活 session 的檔**：以上方存活判定後的 `sessionId` 逐一讀 `<sessionId>.json`，不列目錄，所以已結束 session 留下的檔不會被讀到。內容的 `sessionId` 與檔名不符的檔不採用
+- **百分比的分母**：`autoCompactThreshold` 有值（auto-compact 開啟）用 `compactPercent`（以 compaction window 為分母），為 null 用 `percent`（以模型 window 為分母，同狀態列）。compact 剛完成、下一次回應前沒有用量，寫「ctx 未量測」，不寫 0%
+- **量測時間只顯示不停判**：用量檔只在用量變動時寫入，閒置 session 最後一次的值仍然準確；閒置正是最可能去 compact 的時候
+- **待 compact／待 clear 判定**（`contextMarkOf`，看板線標題與 `line_status` 共用）：
+
+  | session | 待 compact | 待 clear |
+  |---------|-----------|----------|
+  | 一般線（未收線） | 持有 in_progress 票且達 `LANE_T_COMPACT`（45） | 未持有 in_progress 票且達 `LANE_T_CLEAR`（30） |
+  | 主控 | 達 `COORDINATOR_T_COMPACT`（60） | 不判定 |
+  | 收線或不屬於任何線 | 不判定 | 不判定 |
+
+  門檻依據：583 盤點的兩次實際 compact 在 45% 與 33%；主控長駐，compact 屬例外處理
+- **清理**：每個 session 在 `session.end`（任何 reason）刪自己的用量檔，`/clear` 刪的是舊 id 的檔；看板每小時掃一次 context 目錄，刪除 mtime 超過 24 小時且不屬於存活 session 的檔。刪除前檢查路徑直接位於 context 目錄下、檔名符合 `[A-Za-z0-9_-]+\.json`，不符就不刪（`isDeletableUsagePath`）。`$.fs` 沒有刪除操作，以 `rm -f` 刪除
 
 ## 派發中代理人（`.claude/dispatch-active.json`）
 
@@ -184,6 +202,9 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/statusColor.ts` | 五色狀態：派發階段、佇列票與 session 狀態歸成哪一種狀態，以及各狀態的顏色 |
 | `hooks/continuity.ts` | 各線接續狀態：SessionStart 來源紀錄解析、每條線的接續狀態判定、過期偵測、等用戶偵測與票面標記解析、`line_status` 的輸出文字（判讀規則唯一實作） |
 | `hooks/userTodos.ts` | 用戶待辦：協調票的待辦行與完成行配對（U1）、用戶待辦群組各行的顯示文字（U1 + U2） |
+| `hooks/contextUsage.ts` | context 用量檔的寫入端：何時寫、路徑、記錄內容（含恢復開工的 `phase`） |
+| `hooks/contextJudge.ts` | context 用量的讀取端：用量檔解析、分母選擇、待 compact／待 clear 判定與門檻常數、各 session 列的用量字尾、清理的路徑檢查與孤兒檔挑選 |
+| `hooks/resumeNotice.ts` | 恢復開工通知：compact／clear 後第一個 prompt 的判定狀態機、通知對象與文字、用量檔 `phase` |
 | `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄與佇列票 status 與等用戶標記，交 `continuity.ts` 判讀 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約；`McpToolInputs` 補宣告本 plugin 註冊的工具 |
 | `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts`、`boardUserTodos.test.ts` 為 Pane 端到端繪製，`boardDispatch` 為線群組的派發列、活動計數、預設展開與手動切換，`boardUserTodos` 為用戶待辦群組，`board` 為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`continuity.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |

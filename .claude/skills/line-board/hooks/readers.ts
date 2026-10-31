@@ -5,6 +5,7 @@
 import type { EngineInterface } from 'claude-code'
 
 import type {
+  ContextUsageRecord,
   DispatchesResult,
   LaneLine,
   LanesResult,
@@ -16,8 +17,13 @@ import type {
   TicketStatus,
 } from '../types'
 import {
+  CONTEXT_USAGE_DIR,
   DISPATCH_ACTIVE_PATH,
   MERGE_LOG_PATH,
+  contextUsagePath,
+  isDeletableUsagePath,
+  orphanUsageFiles,
+  parseContextUsageFile,
   SESSIONS_DIR,
   SOURCE_LOG_PATH,
   UNKNOWN_STATUS,
@@ -259,5 +265,71 @@ export async function readMergeLog($: EngineInterface, mainPath: string): Promis
   } catch (error) {
     $.ui.log(`line-board: 讀取 ${MERGE_LOG_PATH} 失敗：${messageOf(error)}`, { to: 'debug' })
     return { kind: 'error', message: messageOf(error) }
+  }
+}
+
+/**
+ * 讀存活 session 的 context 用量檔：以 readSessions 的 sessionId 逐一讀 `<id>.json`，不列目錄，所以已結束 session 留下的檔不會被讀到。
+ * 讀不到（尚未寫過、plugin 未載入）或格式不符的不列入，回傳以 sessionId 為鍵的記錄。sessions 讀不到時為空。
+ */
+export async function readContextUsages(
+  $: EngineInterface,
+  mainPath: string,
+  sessions: SessionsResult,
+): Promise<Record<string, ContextUsageRecord>> {
+  const usages: Record<string, ContextUsageRecord> = {}
+  if (sessions.kind !== 'ok') return usages
+  const ids = new Set(sessions.sessions.map(session => session.sessionId).filter((id): id is string => id !== null))
+  for (const id of ids) {
+    const path = contextUsagePath(mainPath, id)
+    if (path === null) continue
+    try {
+      const record = parseContextUsageFile(await $.fs.read(path))
+      if (record === null || record.sessionId !== id) {
+        $.ui.log(`line-board: 用量檔 ${id}.json 格式不符，略過`, { to: 'debug' })
+        continue
+      }
+      usages[id] = record
+    } catch {
+      // 用量檔不存在是正常情形（session 尚未回應過、plugin 尚未載入 0.6.0 以上）：不列入，看板該列沒有用量字尾
+    }
+  }
+  return usages
+}
+
+/**
+ * 刪除孤兒用量檔：context 目錄下 mtime 超過 24 小時且不屬於存活 session 的檔。每個路徑刪除前再以 isDeletableUsagePath 檢查，
+ * 不符就不刪。$.fs 沒有刪除操作，以 `rm -f` 刪除。目錄不存在時直接結束；失敗記 debug，不影響看板。
+ */
+export async function sweepOrphanUsageFiles(
+  $: EngineInterface,
+  mainPath: string,
+  liveSessionIds: ReadonlySet<string>,
+  nowMs: number,
+): Promise<void> {
+  const dir = `${mainPath}/${CONTEXT_USAGE_DIR}`
+  let entries
+  try {
+    entries = await $.fs.list(dir)
+  } catch {
+    // 目錄不存在：還沒有任何 session 寫過用量檔，沒有東西要清
+    return
+  }
+  for (const name of orphanUsageFiles(entries, liveSessionIds, nowMs)) {
+    await removeUsageFile($, mainPath, `${dir}/${name}`)
+  }
+}
+
+/** 刪一個用量檔：路徑檢查不通過就不刪並記 debug；rm 失敗記 debug。session.end 刪自己的檔也經此。 */
+export async function removeUsageFile($: EngineInterface, mainPath: string, path: string): Promise<void> {
+  if (!isDeletableUsagePath(mainPath, path)) {
+    $.ui.log(`line-board: 拒絕刪除不在用量檔目錄或檔名不符的路徑：${path}`, { to: 'debug' })
+    return
+  }
+  try {
+    const result = await $.process.run(['rm', '-f', path])
+    if (result.exitCode !== 0) $.ui.log(`line-board: 刪除用量檔失敗（exit ${result.exitCode}）：${path}`, { to: 'debug' })
+  } catch (error) {
+    $.ui.log(`line-board: 刪除用量檔失敗：${path}：${messageOf(error)}`, { to: 'debug' })
   }
 }
