@@ -292,14 +292,23 @@ class WorkspaceRepository {
     return _persistAndInspect(path);
   }
 
-  /// 持久化 [path] 並探測其可用性，回傳對應的 [ChooseFolderResult]。
+  /// 先探測 [path]，資料夾可用才持久化，回傳對應的 [ChooseFolderResult]。
   ///
-  /// [_inspect] 刻意放在 try/catch **之外**、且只呼叫一次：持久化的
-  /// 成敗與資料夾本身是否可用是兩件事，若把 [_inspect] 留在同一個 try
-  /// 內，它拋出的非吞型例外會被本函式的 catch 誤判為「持久化失敗」，
-  /// 且該 catch 分支若仍呼叫一次 `_inspect(path)` 組裝回傳值，就會對
-  /// 同一個 path 探測兩次。
+  /// [_inspect] 在 try/catch **之外**、且只呼叫一次：探測結果決定是否寫入，
+  /// 持久化的成敗與資料夾是否可用是兩件事，不可互相誤判。資料夾不可用
+  /// （[WorkspaceUnavailable]）時不開偏好設定 handle、不寫入已存路徑，回
+  /// [ChooseFolderSelected]（SPEC-003 §3.1、§3.7：不寫入已存路徑）。
+  ///
+  /// 可用時 path 先寫、版號後寫（0.2.0-W1-021：兩者同一次操作寫入）。path
+  /// 寫入失敗回 [ChooseFolderNotRemembered]；path 已寫入後版號回 false 或
+  /// 拋例外只記 level 900 日誌，不設失敗原因（有 path 無版號由
+  /// [_migrateSchema] 承接），[WorkspaceLogEvent.persistCompleted] 僅在兩者
+  /// 皆成功時記錄。
   Future<ChooseFolderResult> _persistAndInspect(String path) async {
+    final state = await _inspect(path);
+    if (state is! WorkspaceReady) {
+      return ChooseFolderSelected(state);
+    }
     _log(
       '持久化，key=$_pathKey，path=$path', // i18n-exempt: 開發者 debug log
       event: WorkspaceLogEvent.persistIssuing,
@@ -321,11 +330,7 @@ class WorkspaceRepository {
       // 補救）。
       final success = await handle.writeString(_pathKey, path);
       if (success) {
-        await handle.writeString(_schemaVersionKey, '$_currentSchemaVersion');
-        _log(
-          '已持久化', // i18n-exempt: 開發者 debug log
-          event: WorkspaceLogEvent.persistCompleted,
-        );
+        await _writeSchemaVersion(handle);
       } else {
         _log(
           '持久化失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
@@ -343,18 +348,48 @@ class WorkspaceRepository {
       );
       failureReason = '$e'; // i18n-exempt: 診斷用回傳值，非 log
     }
-    final state = await _inspect(path);
     if (failureReason == null) {
       return ChooseFolderSelected(state);
     }
     return ChooseFolderNotRemembered(state: state, reason: failureReason);
   }
 
+  /// path 已寫入後寫版號 key：失敗只記日誌，不影響回傳（見
+  /// [_persistAndInspect]）；成功才記 persistCompleted。
+  Future<void> _writeSchemaVersion(WorkspacePreferencesHandle handle) async {
+    try {
+      final ok = await handle.writeString(
+        _schemaVersionKey,
+        '$_currentSchemaVersion',
+      );
+      if (ok) {
+        _log(
+          '已持久化', // i18n-exempt: 開發者 debug log
+          event: WorkspaceLogEvent.persistCompleted,
+        );
+        return;
+      }
+      _log(
+        '版號 key 寫入回報 false', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.persistWriteReturnedFalse,
+        level: 900,
+      );
+    } catch (e) {
+      _log(
+        '版號 key 寫入拋例外', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.persistWriteThrew,
+        level: 900,
+        error: e,
+      );
+    }
+  }
+
   /// 依既有路徑重新載入（點擊最近專案項，SPEC-003 §3.7 最近專案項列）：
-  /// 與 [chooseFolder] 共用持久化與探測邏輯（[_persistAndInspect]），差別
+  /// 與 [chooseFolder] 共用探測與持久化邏輯（[_persistAndInspect]），差別
   /// 只在路徑來源不經系統選擇器——不呼叫 [_pickDirectoryPath]，直接以
-  /// [path] 走同一段「寫入已存路徑並探測」流程，因此失敗時的回饋（浮層
-  /// 維持展開、不轉狀態、不寫已存路徑、清單不變）與「選擇其他資料夾」
+  /// [path] 走同一段「先探測、可用才寫入已存路徑」流程；資料夾不可用時
+  /// 不寫入已存路徑，回 [ChooseFolderSelected]（[WorkspaceUnavailable]），
+  /// 失敗時的回饋（浮層維持展開、不轉狀態、清單不變）與「選擇其他資料夾」
   /// 選定後失敗完全一致（`0.2.1-W1-054`）。
   Future<ChooseFolderResult> openPath(String path) async {
     _log(

@@ -79,6 +79,7 @@ void main() {
       final repo = WorkspaceRepository(
         pickDirectoryPath: _FakePicker(path: '/tmp/ws').call,
         preferencesPort: preferences,
+        directoryProbe: _FakeDirectoryProbe(),
         logSink: log.call,
       );
 
@@ -319,8 +320,7 @@ void main() {
       },
     );
 
-    test('G2b-2 探測失敗（不可讀或不存在）→ WorkspaceUnavailable，'
-        '已存路徑仍被寫入但呼叫端依此判定失敗回饋（不轉狀態、清單不變由呼叫端負責）', () async {
+    test('G2b-2 探測失敗 → WorkspaceUnavailable，不寫入已存路徑', () async {
       final values = <String, String?>{};
       final repo = WorkspaceRepository(
         preferencesPort: _FakeKeyedPreferencesPort(values: values),
@@ -332,6 +332,7 @@ void main() {
       expect(result, isA<ChooseFolderSelected>());
       final selected = result as ChooseFolderSelected;
       expect(selected.state, isA<WorkspaceUnavailable>());
+      expect(values, isEmpty);
     });
 
     test('G2b-3 不呼叫 pickDirectoryPath（路徑來源不經系統選擇器）', () async {
@@ -345,6 +346,119 @@ void main() {
       await repo.openPath('/tmp/recent-project');
 
       expect(picker.calls, isEmpty);
+    });
+  });
+
+  group('G2c｜不可用不寫入、版號 key 失敗處理（0.5.0-W1-169.1.1）', () {
+    Future<ChooseFolderResult> run(
+      bool viaOpenPath,
+      WorkspacePreferencesPort prefs,
+      WorkspaceDirectoryProbePort probe,
+      _LogRecorder log,
+    ) {
+      final repo = WorkspaceRepository(
+        pickDirectoryPath: _FakePicker(path: '/tmp/ws').call,
+        preferencesPort: prefs,
+        directoryProbe: probe,
+        logSink: log.call,
+      );
+      return viaOpenPath ? repo.openPath('/tmp/ws') : repo.chooseFolder();
+    }
+
+    final unavailableProbes = <String, WorkspaceDirectoryProbePort>{
+      'exists false': _FakeDirectoryProbe(existsResult: false),
+      'readFirstEntry 拋 FileSystemException': _FakeDirectoryProbe(
+        readFirstEntryError: const FileSystemException('denied'),
+      ),
+    };
+
+    for (final viaOpenPath in [false, true]) {
+      final name = viaOpenPath ? 'openPath' : 'chooseFolder';
+      for (final entry in unavailableProbes.entries) {
+        test(
+          'G2c-1 $name／${entry.key}：不呼叫 writeString，回 Selected(Unavailable)',
+          () async {
+            final prefs = _PreferencesRecorder();
+            final result = await run(
+              viaOpenPath,
+              prefs,
+              entry.value,
+              _LogRecorder(),
+            );
+
+            expect(
+              prefs.calls.where((c) => c.method == 'writeString'),
+              isEmpty,
+            );
+            expect(result, isA<ChooseFolderSelected>());
+            expect(
+              (result as ChooseFolderSelected).state,
+              isA<WorkspaceUnavailable>(),
+            );
+          },
+        );
+      }
+
+      test('G2c-2 $name 對照：可用時 writeString 會被呼叫', () async {
+        final prefs = _PreferencesRecorder();
+        await run(viaOpenPath, prefs, _FakeDirectoryProbe(), _LogRecorder());
+
+        final writes = prefs.calls.where((c) => c.method == 'writeString');
+        expect(writes.map((c) => c.args.first), [
+          'workspace.path',
+          'workspace.schemaVersion',
+        ]);
+      });
+    }
+
+    test(
+      'G2c-3 版號 key 回 false：Selected、level 900、不記 persistCompleted',
+      () async {
+        final log = _LogRecorder();
+        final result = await run(
+          true,
+          _VersionKeyPort(writeResult: false),
+          _FakeDirectoryProbe(),
+          log,
+        );
+
+        expect(result, isA<ChooseFolderSelected>());
+        expect(log.entries.any((e) => e.level == 900), isTrue);
+        expect(log.containsEvent(WorkspaceLogEvent.persistCompleted), isFalse);
+      },
+    );
+
+    test('G2c-4 版號 key 拋例外：Selected、level 900、不記 persistCompleted', () async {
+      final log = _LogRecorder();
+      final result = await run(
+        true,
+        _VersionKeyPort(error: Exception('版號寫入失敗')),
+        _FakeDirectoryProbe(),
+        log,
+      );
+
+      expect(result, isA<ChooseFolderSelected>());
+      expect(log.entries.any((e) => e.level == 900), isTrue);
+      expect(log.containsEvent(WorkspaceLogEvent.persistCompleted), isFalse);
+    });
+
+    test('G2c-5 失敗的偏好替身＋不存在的探測替身：不回 NotRemembered', () async {
+      for (final prefs in <WorkspacePreferencesPort>[
+        _FakePreferencesPort(writeResult: false),
+        _FakePreferencesPort(writeError: Exception('磁碟已滿')),
+      ]) {
+        final result = await run(
+          false,
+          prefs,
+          _FakeDirectoryProbe(existsResult: false),
+          _LogRecorder(),
+        );
+        expect(result, isA<ChooseFolderSelected>());
+        expect(
+          (result as ChooseFolderSelected).state,
+          isA<WorkspaceUnavailable>(),
+        );
+      }
     });
   });
 
@@ -563,6 +677,7 @@ void main() {
       final repo = WorkspaceRepository(
         pickDirectoryPath: _FakePicker(path: '/tmp/ws').call,
         preferencesPort: preferences,
+        directoryProbe: _FakeDirectoryProbe(),
       );
 
       await repo.chooseFolder();
@@ -1008,5 +1123,33 @@ class _FakeDirectoryProbe implements WorkspaceDirectoryProbePort {
   Future<void> readFirstEntry(String path) async {
     final err = readFirstEntryError;
     if (err != null) throw err;
+  }
+}
+
+/// path key 寫入成功，版號 key 依配置回 false 或拋例外。
+class _VersionKeyPort implements WorkspacePreferencesPort {
+  _VersionKeyPort({this.writeResult = true, this.error});
+  final bool writeResult;
+  final Object? error;
+
+  @override
+  Future<WorkspacePreferencesHandle> open() async =>
+      _VersionKeyHandle(writeResult, error);
+}
+
+class _VersionKeyHandle implements WorkspacePreferencesHandle {
+  _VersionKeyHandle(this.writeResult, this.error);
+  final bool writeResult;
+  final Object? error;
+
+  @override
+  String? readString(String key) => null;
+
+  @override
+  Future<bool> writeString(String key, String value) async {
+    if (key == 'workspace.path') return true;
+    final err = error;
+    if (err != null) throw err;
+    return writeResult;
   }
 }
