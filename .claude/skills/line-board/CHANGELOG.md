@@ -2,6 +2,13 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.11.0（2026-10-31）— 跨專案行為變更：`line_status` 每條未收線的線在依據之後接 context 段：`ctx <百分比>%（<距量測>）`、看板線標題同一份的 `［待 compact］`／`［待 clear］` 標記與恢復開工徽章，用量檔有 `phase` 時再接 `｜phase <compacted|resumed>（<來源>，HH:MM）`（不受徽章 10 分鐘限制）。沒有用量檔寫 `ctx 無用量檔`，用量檔存在但解析不成立寫 `ctx 用量檔解析失敗：<原因>`；持有者無從查起的線沒有 context 段。看板 Pane 不變。
+
+- `hooks/contextJudge.ts` 新增 `laneContextStatus`（標記與徽章經 `laneContextLabel`）、`phaseText`、`parseContextUsageDetailed`（失敗附原因：JSON 無效、不是物件、缺必要欄位；`parseContextUsageFile` 改為經此函式）、型別 `ContextUsageParse`、`ContextUsageFailures`。
+- `readers.ts` 新增 `readContextUsageStates`（另回傳解析失敗的 sessionId 與原因，含檔內 sessionId 與檔名不符）；`readContextUsages` 改為取其 `usages`。
+- `continuity.ts` 的 `lineStatusReport` 新增選填輸入 `context`（用量、失敗原因、判定時間），`LaneContinuity` 新增選填 `context`；`formatLineStatus` 接在依據之後。`lineStatus.ts` 每次呼叫讀主 checkout 的用量檔並傳入。
+- `references/board-screens.md`〈context 用量〉補 `line_status` 的 context 段。
+
 **Version**: 0.10.0（2026-10-31）— 跨專案行為變更：恢復開工通知的主管道（跨 session 訊息給主控）預設關閉。實測 auto mode 下 plugin 在事件中主動送訊沒有對應的使用者請求，classifier 不給判定而拒送（紀錄檔 `step=sent isDelivered=false`），與 0.7.0 寫明的「暫扣就關」同類。關閉後紀錄檔改寫 `step=send-disabled`；輔管道（用量檔 `phase`）與線標題的恢復開工徽章不變，主控以這兩者與 `line_status` 為準。
 
 - `register.tsx`：`IS_RESUME_NOTICE_SEND_ENABLED` 改為 `false`，註解寫明關閉理由。送出路徑與 `resume-notice.log` 保留。

@@ -15,8 +15,11 @@ import {
   contextUsageSuffix,
   isDeletableUsagePath,
   laneContextLabel,
+  laneContextStatus,
   orphanUsageFiles,
+  parseContextUsageDetailed,
   parseContextUsageFile,
+  phaseText,
   recentResume,
   resumeBadgeText,
   selectedPercent,
@@ -249,5 +252,72 @@ describe('laneContextLabel：線標題的標記與徽章', () => {
     expect(label(null, ['1'], { 'sid-a': record({ percent: 90 }) })).toBe('')
     expect(label('L-gone', ['1'], { 'sid-a': record({ percent: 90 }) })).toBe('')
     expect(label('L-a', ['1'], {})).toBe('')
+  })
+})
+
+describe('parseContextUsageDetailed：解析失敗附原因', () => {
+  test('成立時回傳與 parseContextUsageFile 相同的記錄', () => {
+    const text = JSON.stringify(record())
+    expect(parseContextUsageDetailed(text)).toEqual({ kind: 'ok', record: record() })
+  })
+
+  test('JSON 無效、不是物件、缺必要欄位各有不同原因', () => {
+    const invalid = parseContextUsageDetailed('{"sessionId":')
+    expect(invalid.kind).toBe('invalid')
+    expect((invalid.kind === 'invalid' ? invalid.reason : '').startsWith('JSON 無效（')).toBe(true)
+    expect(parseContextUsageDetailed('[]')).toEqual({ kind: 'invalid', reason: '缺 sessionId、window 或 measuredAt' })
+    expect(parseContextUsageDetailed('3')).toEqual({ kind: 'invalid', reason: '內容不是 JSON 物件' })
+    expect(parseContextUsageDetailed(JSON.stringify({ ...record(), window: 'x' }))).toEqual({
+      kind: 'invalid',
+      reason: '缺 sessionId、window 或 measuredAt',
+    })
+  })
+})
+
+describe('phaseText', () => {
+  test('compacted 與 resumed 都列，附來源與本機 HH:MM，不受徽章 10 分鐘限制', () => {
+    const at = NOW - RESUME_BADGE_MS - 60_000
+    expect(phaseText({ kind: 'compacted', source: 'compact', at })).toBe(`phase compacted（compact，${hhmm(at)}）`)
+    expect(phaseText({ kind: 'resumed', source: 'clear', at })).toBe(`phase resumed（clear，${hhmm(at)}）`)
+  })
+})
+
+describe('laneContextStatus：line_status 的用量段', () => {
+  const ticketToken = (serial: string): QueueToken => ({ kind: 'ticket', serial, id: `0.5.0-W1-${serial}`, note: '' })
+  const tickets: TicketStatus[] = [{ id: '0.5.0-W1-1', status: 'in_progress' }]
+  const sessions = [session({ name: 'L-a', status: 'busy', sessionId: 'sid-a' }), session({ name: 'L-nosid', status: 'busy', sessionId: null })]
+  const status = (
+    sessionName: string | null,
+    usages: Record<string, ContextUsageRecord>,
+    failures: Record<string, string> = {},
+  ) => laneContextStatus({ sessionName, tokens: [ticketToken('1')], tickets, sessions, usages, failures, nowMs: NOW })
+
+  test('有用量檔：用量接看板同一份的標記與徽章，有 phase 再接 phase 段', () => {
+    const at = NOW - 60_000
+    const usage = record({ percent: 47, phase: { kind: 'resumed', source: 'compact', at } })
+    expect(status('L-a', { 'sid-a': usage })).toBe(`ctx 47%（1 分前）［待 compact］［/compact 後已恢復 ${hhmm(at)}］｜phase resumed（compact，${hhmm(at)}）`)
+    expect(status('L-a', { 'sid-a': record({ percent: 20 }) })).toBe('ctx 20%（1 分前）')
+  })
+
+  test('無用量檔：寫「ctx 無用量檔」', () => {
+    expect(status('L-a', {})).toBe('ctx 無用量檔')
+  })
+
+  test('compact 後尚未量測：寫「ctx 未量測」不標記，phase 為 compacted', () => {
+    const at = NOW - 30_000
+    const usage = record({ tokens: null, percent: null, compactPercent: null, phase: { kind: 'compacted', source: 'compact', at } })
+    expect(status('L-a', { 'sid-a': usage })).toBe(`ctx 未量測（1 分前）｜phase compacted（compact，${hhmm(at)}）`)
+  })
+
+  test('用量檔解析失敗：寫出原因，不與「無用量檔」同句', () => {
+    const text = status('L-a', {}, { 'sid-a': 'JSON 無效（Unexpected end）' })
+    expect(text).toBe('ctx 用量檔解析失敗：JSON 無效（Unexpected end）')
+    expect(text).not.toBe(status('L-a', {}))
+  })
+
+  test('持有者無從查起時沒有用量段：名稱未寫、名稱不存活、session 檔沒有 sessionId', () => {
+    expect(status(null, { 'sid-a': record() })).toBeNull()
+    expect(status('L-gone', { 'sid-a': record() })).toBeNull()
+    expect(status('L-nosid', {})).toBeNull()
   })
 })

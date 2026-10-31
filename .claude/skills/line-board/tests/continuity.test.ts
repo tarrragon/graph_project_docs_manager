@@ -5,7 +5,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import { session } from './fixtures'
 import { continuityTicketIds, formatLineStatus, lastSourceOf, lineStatusReport, parseSourceLog, parseWaitingMark, ticketStatusOf } from '../hooks/continuity'
 import { endedForm, parseLaneLines, parseLanes } from '../hooks/lanes'
-import type { LaneLine, SessionState, SourceLogEntry, TicketStatus } from '../types'
+import type { ContextUsageRecord, LaneLine, SessionState, SourceLogEntry, TicketStatus } from '../types'
 
 const PREFIX = '0.5.0-W1-'
 
@@ -316,10 +316,70 @@ describe('formatLineStatus', () => {
     ])
   })
 
+  test('未收線的線帶用量段時接在依據之後；沒有用量段的線維持原樣', () => {
+    const text = formatLineStatus(
+      {
+        lanes: [
+          { lane: 1, session: 'a', state: 'compact', evidence: 'e1', context: 'ctx 47%（1 分前）［待 compact］' },
+          { lane: 2, session: 'b', state: 'orphan', evidence: 'e2' },
+        ],
+        stale: [],
+        waiting: [],
+      },
+      { coordinationTicket: 'c', readAt: 't' },
+    )
+    expect(text).toContain('L1（a）：/compact 後繼續｜e1｜ctx 47%（1 分前）［待 compact］')
+    expect(text).toContain('L2（b）：無人持有｜e2\n')
+  })
+
   test('沒有未收線的線、沒有過期項、沒有等用戶時明寫「無」', () => {
     const text = formatLineStatus({ lanes: [], stale: [], waiting: [] }, { coordinationTicket: 'c', readAt: 't' })
     expect(text).toContain('未收線的線：無')
     expect(text).toContain('過期項：無')
     expect(text).toContain('等用戶：無')
+  })
+})
+
+describe('lineStatusReport：用量段', () => {
+  const usage = (sessionId: string, percent: number | null): ContextUsageRecord => ({
+    sessionId,
+    phase: null,
+    tokens: percent === null ? null : percent * 10_000,
+    window: 1_000_000,
+    percent,
+    compactWindow: null,
+    compactPercent: null,
+    autoCompactThreshold: null,
+    measuredAt: 1_000,
+  })
+  const lanes = [lane(1, 'a', '0.5.0-W1-10'), lane(2, 'b', '0.5.0-W1-11'), lane(3, 'c', '（無）')]
+  const sessions = [live('a', 'aaaaaaaa-1', 101), live('b', 'bbbbbbbb-1', 102), live('c', 'cccccccc-1', 103)]
+  const tickets: TicketStatus[] = [{ id: '0.5.0-W1-10', status: 'in_progress' }, { id: '0.5.0-W1-11', status: 'pending' }]
+
+  test('正向對照：達門檻的線帶標記（持有 in_progress 待 compact、未持有待 clear）', () => {
+    const result = lineStatusReport({
+      lanes,
+      sessions,
+      log: [],
+      tickets,
+      prefix: PREFIX,
+      context: { usages: { 'aaaaaaaa-1': usage('aaaaaaaa-1', 45), 'bbbbbbbb-1': usage('bbbbbbbb-1', 30) }, failures: {}, nowMs: 61_000 },
+    })
+    expect(result.lanes.map(item => item.context)).toEqual(['ctx 45%（1 分前）［待 compact］', 'ctx 30%（1 分前）［待 clear］', undefined])
+  })
+
+  test('反向對照：未達門檻不標；無用量檔與解析失敗各自明寫；不提供 context 時沒有用量段', () => {
+    const result = lineStatusReport({
+      lanes,
+      sessions,
+      log: [],
+      tickets,
+      prefix: PREFIX,
+      context: { usages: { 'aaaaaaaa-1': usage('aaaaaaaa-1', 44) }, failures: { 'bbbbbbbb-1': '內容不是 JSON 物件' }, nowMs: 61_000 },
+    })
+    expect(result.lanes.map(item => item.context)).toEqual(['ctx 44%（1 分前）', 'ctx 用量檔解析失敗：內容不是 JSON 物件', undefined])
+    const noUsage = lineStatusReport({ lanes, sessions, log: [], tickets, prefix: PREFIX, context: { usages: {}, failures: {}, nowMs: 0 } })
+    expect(noUsage.lanes[0]?.context).toBe('ctx 無用量檔')
+    expect(report({ lanes, sessions, tickets }).lanes.every(item => item.context === undefined)).toBe(true)
   })
 })
