@@ -472,7 +472,7 @@
           {
             "type": "command",
             "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/multi-session-orchestration/scripts/master_resume_hint.py",
-            "timeout": 15
+            "timeout": 30
           },
           {
             "type": "command",
