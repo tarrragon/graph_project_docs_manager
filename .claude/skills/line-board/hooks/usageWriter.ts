@@ -8,7 +8,8 @@ import type { EngineInterface } from 'claude-code'
 import type { ResumePhase } from '../types'
 import { contextUsagePath, contextUsageRecord, messageOf, serializeContextUsage } from './parse'
 import type { CompactionWindow, ContextFill } from './parse'
-import { findCheckouts, removeUsageFile } from './readers'
+import { findCheckouts } from './readers'
+import { removeUsageFile } from './usageReaders'
 
 /** 用量檔所在的主 checkout：第一次寫用量檔時以 findCheckouts 取得後沿用（每輪回應都寫，不每次跑 git）。reload 時重取即可。 */
 let usageMainPath: string | null = null

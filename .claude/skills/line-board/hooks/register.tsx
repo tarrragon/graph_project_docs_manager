@@ -20,14 +20,13 @@ import {
   findCheckouts,
   readDispatches,
   readLanes,
-  readContextUsages,
   readMergeLog,
   readProjectConfig,
   readSessions,
   readTicketStatus,
-  sweepOrphanUsageFiles,
 } from './readers'
 import { applyResumeEvent, currentResumePhase, notifyResumed } from './resumeFlow'
+import { readContextUsages, sweepOrphanUsageFiles } from './usageReaders'
 import { removeOwnUsageFile, writeContextUsage, writePhase } from './usageWriter'
 
 const PANE = 'line-board'

@@ -1,18 +1,10 @@
 // line_status 工具的組裝：每次呼叫都重讀（不取 Pane 的 snapshot：Pane 只在設定成立時定時刷新，且最多落後 30 秒），
-// 讀取經 readers.ts，判讀與輸出文字經 parse.ts 匯出的 continuity.ts。
+// 讀取經 readers.ts（用量檔經 usageReaders.ts），判讀與輸出文字經 parse.ts 匯出的 continuity.ts。
 
 import type { EngineInterface } from 'claude-code'
 
-import {
-  PROJECT_CONFIG_PATH,
-  findCheckouts,
-  readContextUsageStates,
-  readLaneLines,
-  readProjectConfig,
-  readSessions,
-  readSourceLog,
-  readTicketStatus,
-} from './readers'
+import { PROJECT_CONFIG_PATH, findCheckouts, readLaneLines, readProjectConfig, readSessions, readSourceLog, readTicketStatus } from './readers'
+import { readContextUsageStates } from './usageReaders'
 import { continuityTicketIds, formatLineStatus, lineStatusReport, ticketPrefixOf } from './parse'
 
 /**
