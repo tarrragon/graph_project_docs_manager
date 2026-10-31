@@ -4,7 +4,7 @@ description: "Use this skill for managing git worktrees for Ticket-based develop
 argument-hint: "<subcommand> [args]"
 allowed-tools: Bash, Read, Write, Edit
 metadata:
-  version: 1.6.6
+  version: 1.6.7
 ---
 
 # Worktree Management SKILL
@@ -99,7 +99,7 @@ cc runtime 派發 `isolation: "worktree"` 的 subagent 時自動建立隔離 wor
 - `create`：建立 worktree，見 `references/subcommands.md`〈create — 建立 Worktree〉
 - `status`：查看 worktree 狀態，見 `references/subcommands.md`〈status — 查看 Worktree 狀態〉
 - `merge`：前置驗證後以隔離索引 CAS 直接完成合併（支援 `--branch <分支名>`、`--pre-acceptance <理由>`、`--message <合併訊息>`、`--ticket <票號>`；落後 base 僅提示）（不再輸出 `git merge` 指令）；含 `pre_merge_check` 合併前檢查掛點（簽名、時機、失敗語意、重試成本），見 `references/subcommands.md`〈merge — 以隔離索引 CAS 合併分支〉
-- `cleanup`：三閘門安全清理。無參數為掃描模式；`<ticket-id>` 或 `--branch <分支名>`（擇一，後者用於 `worktree-agent-<id>`）為精確模式；`--force` 略過 Level 2／3 警告，Level 1 未 commit 不可繞過；移除逾時上限 300 秒（`WORKTREE_REMOVE_TIMEOUT_SECONDS`），實際耗時寫入 `worktree-merge.log`；移除失敗時僅在「status 全為 tracked 刪除且 HEAD 為 main 祖先」兩條件皆成立才以 `remove --force` 收尾並 prune，否則非 0 並列出不成立項；worktree 被鎖時停手回報鎖原因與 pid 存活，`--unlock` 明示才解鎖；半刪 worktree（status 全為 tracked 刪除且 HEAD 為 main 祖先）重跑 cleanup 時 Level 1 放行並走收尾，有 untracked 或 modified 仍擋下；語意變更：`git branch -d` 失敗時 rc 由原本的 0 改為 1
+- `cleanup`：三閘門安全清理。無參數為掃描模式；`<ticket-id>` 或 `--branch <分支名>`（擇一，後者用於 `worktree-agent-<id>`）為精確模式；`--force` 略過 Level 2／3 警告，Level 1 未 commit 不可繞過；移除逾時上限 300 秒（`WORKTREE_REMOVE_TIMEOUT_SECONDS`），實際耗時寫入 `worktree-merge.log`；移除失敗時僅在「status 全為 tracked 刪除且 HEAD 為 main 祖先」兩條件皆成立才以 `remove --force` 收尾並 prune，否則非 0 並列出不成立項；worktree 被鎖時停手回報鎖原因與 pid 存活，`--unlock` 明示才解鎖；半刪 worktree（status 全為 tracked 刪除且 HEAD 為 main 祖先）重跑 cleanup 時 Level 1 放行並走收尾，有 untracked 或 modified 仍擋下；語意變更：`git branch -d` 失敗時 rc 由原本的 0 改為 1；實作在 `scripts/cleanup_command.py`，模組位置與測試替換規則見 `references/subcommands.md`〈cleanup — 模組位置〉
 
 ### 合併前全套件（merge 預設行為）
 
