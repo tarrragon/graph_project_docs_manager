@@ -41,7 +41,10 @@ test binding 在每個案例開始時 `resetInternalState`，把 `framesEnabled`
 
 1. **settle helper 返回後檢查前提**：`pumpAndSettle` 正常返回後，若 `tester.binding.framesEnabled` 為 false，拋出指名步驟的 TestFailure，訊息帶固定字串（例如 `framesEnabled=false`），讓閘門可以辨識並歸類為已知 flaky。「已靜止」只有在幀能被排程時才有意義。
 2. **所有 pump 都帶步驟逾時**：`pumpWidget`／`pump` 包一層 `Future.timeout` 並指名步驟，讓等幀卡住能說出卡在哪一步，而不是等案例的總逾時。
-3. **消除根源（另行評估）**：在 integration binding 初始化時註冊 lifecycle observer，收到 hidden 時強制送幀，或把 lifecycle 拉回 resumed。代價是測試環境的 lifecycle 行為與真實 App 不同。
+3. **消除根源**：在 integration binding 初始化時註冊 lifecycle observer，收到 hidden（或 paused）時依序送 inactive、resumed，把 lifecycle 拉回 resumed，並提供可關閉的開關，供需要測 lifecycle 行為的案例關掉。代價是測試環境的 lifecycle 序列與真實 App 不同：App 端反應 resumed 的邏輯（撤除提示、顯示通知等）可能在案例中途被觸發。
+   - 「只強制送幀、lifecycle 不動」的做法實測不可行，有兩個原因：
+     - `flutter test` 在呼叫測試檔的 `main()` 之前就已初始化 `IntegrationTestWidgetsFlutterBinding`，無法改用覆寫 `scheduleFrame` 的子類，建構時會觸發 `Binding is already initialized` 斷言
+     - 在 observer 裡呼叫一次 `scheduleForcedFrame` 不夠，之後每次 pump 仍走 `scheduleFrame`，照樣被 `framesEnabled` 擋下
 
 ## 預防措施
 
