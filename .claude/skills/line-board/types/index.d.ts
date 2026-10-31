@@ -238,6 +238,8 @@ export type BoardSnapshot =
       lanes: LanesResult
       tickets: TicketStatus[]
       sessions: SessionsResult
+      /** 存活 session 的 context 用量檔（readContextUsages），以 sessionId 為鍵；讀不到的 session 不在其中。 */
+      usages: Record<string, ContextUsageRecord>
       mergeLog: MergeLogResult
       dispatches: DispatchesResult
     }

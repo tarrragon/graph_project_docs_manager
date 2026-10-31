@@ -1,0 +1,113 @@
+// context 用量的讀取端：解析各 session 的用量檔（contextUsage.ts 寫出）、判定待 compact／待 clear、
+// 「各 session」列的用量字尾，以及用量檔清理的路徑檢查與孤兒檔挑選。看板（583.2、583.4）與 line_status（583.3）共用本檔的判定。
+// 不碰 $；讀檔、刪檔由 readers.ts 與 register.tsx 負責。
+//
+// 判定（主控裁定，2026-10-31）：
+// - 百分比依 auto-compact 狀態選分母：autoCompactThreshold 有值用 compactPercent，為 null 用 percent；選中值為 null 不判定
+// - 一般線：持有 in_progress 票且達 LANE_T_COMPACT → 待 compact；未持有且達 LANE_T_CLEAR → 待 clear
+// - 主控：達 COORDINATOR_T_COMPACT → 待 compact；不判待 clear（主控長駐，compact 是例外處理）
+// - 存活的 session 一律判定，不因量測時間舊而停判：用量檔只在用量變動時寫入，閒置 session 最後一次的值仍準確
+
+import type { ContextUsageRecord, ResumePhase } from '../types'
+import { CONTEXT_USAGE_DIR } from './contextUsage'
+import { formatAge } from './shared'
+
+/** 一般線的待 compact 門檻：583 盤點的兩次實際 compact 在 45% 與 33%，45 在最晚一次之前提醒。 */
+export const LANE_T_COMPACT = 45
+/** 一般線的待 clear 門檻：沒有進行中的票時，用量到 30% 就提醒 /clear。 */
+export const LANE_T_CLEAR = 30
+/** 主控的待 compact 門檻：主控長駐，套 45 會在正常運作時一直被標記。 */
+export const COORDINATOR_T_COMPACT = 60
+/** 孤兒用量檔的年齡下限：mtime 超過 24 小時且不屬於存活 session 才刪。 */
+export const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
+
+/** 用量檔檔名：sessionId（英數、連字號、底線）加 .json；與 contextUsagePath 的 sessionId 檢查一致。 */
+const USAGE_FILE_NAME = /^[A-Za-z0-9_-]+\.json$/
+
+/** 判定結果：compact 待 compact、clear 待 clear、null 不標。 */
+export type ContextMark = 'compact' | 'clear' | null
+
+/** session 在協調中的角色：coordinator 主控、lane 未收線的線、none 收線或不屬於任何線（不判定）。 */
+export type ContextRole = 'coordinator' | 'lane' | 'none'
+
+/** 解析用量檔；JSON 無效或缺 sessionId、window、measuredAt 時回傳 null。0.6.0 寫出的檔沒有 phase，以 null 讀入。 */
+export function parseContextUsageFile(text: string): ContextUsageRecord | null {
+  let value: unknown
+  try {
+    value = JSON.parse(text)
+  } catch {
+    // session 寫到一半時讀到的半份檔：視為不存在，下一輪重讀即可；呼叫端記 debug log
+    return null
+  }
+  if (typeof value !== 'object' || value === null) return null
+  const raw = value as Record<string, unknown>
+  if (typeof raw.sessionId !== 'string' || typeof raw.window !== 'number' || typeof raw.measuredAt !== 'number') return null
+  return {
+    sessionId: raw.sessionId,
+    phase: phaseOf(raw.phase),
+    tokens: numberOrNull(raw.tokens),
+    window: raw.window,
+    percent: numberOrNull(raw.percent),
+    compactWindow: numberOrNull(raw.compactWindow),
+    compactPercent: numberOrNull(raw.compactPercent),
+    autoCompactThreshold: numberOrNull(raw.autoCompactThreshold),
+    measuredAt: raw.measuredAt,
+  }
+}
+
+/** 判定用的百分比：auto-compact 開啟用 compactPercent，關閉用 percent；選中值缺席為 null。 */
+export function selectedPercent(record: ContextUsageRecord): number | null {
+  return record.autoCompactThreshold === null ? record.percent : record.compactPercent
+}
+
+/** 待 compact／待 clear 判定；沒有用量檔、選中值缺席或 role 為 none 時不標。 */
+export function contextMarkOf(input: { record: ContextUsageRecord | null; role: ContextRole; holdsInProgress: boolean }): ContextMark {
+  const { record, role, holdsInProgress } = input
+  const percent = record === null ? null : selectedPercent(record)
+  if (percent === null || role === 'none') return null
+  if (role === 'coordinator') return percent >= COORDINATOR_T_COMPACT ? 'compact' : null
+  if (holdsInProgress) return percent >= LANE_T_COMPACT ? 'compact' : null
+  return percent >= LANE_T_CLEAR ? 'clear' : null
+}
+
+/** 「各 session」列的用量字尾：`ctx <百分比>%（<量測距今>）`；用量缺席寫「ctx 未量測」；沒有用量檔為 null。 */
+export function contextUsageSuffix(record: ContextUsageRecord | null, nowMs: number): string | null {
+  if (record === null) return null
+  const percent = selectedPercent(record)
+  const value = percent === null ? '未量測' : `${percent}%`
+  return `ctx ${value}（${formatAge(nowMs, record.measuredAt)}）`
+}
+
+/** 刪除前的路徑檢查：必須直接位於主 checkout 的用量檔目錄下，檔名符合 sessionId 格式；不符就不刪。 */
+export function isDeletableUsagePath(mainPath: string, path: string): boolean {
+  const dir = `${mainPath}/${CONTEXT_USAGE_DIR}/`
+  if (!path.startsWith(dir)) return false
+  return USAGE_FILE_NAME.test(path.slice(dir.length))
+}
+
+/** 孤兒用量檔：一般檔、檔名符合格式、不屬於存活 session，且 mtime 超過 ORPHAN_AGE_MS。回傳檔名。 */
+export function orphanUsageFiles(
+  entries: readonly { name: string; kind: string; mtimeMs: number }[],
+  liveSessionIds: ReadonlySet<string>,
+  nowMs: number,
+): string[] {
+  return entries
+    .filter(entry => entry.kind === 'file' && USAGE_FILE_NAME.test(entry.name))
+    .filter(entry => !liveSessionIds.has(entry.name.slice(0, -'.json'.length)))
+    .filter(entry => nowMs - entry.mtimeMs > ORPHAN_AGE_MS)
+    .map(entry => entry.name)
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === 'number' ? value : null
+}
+
+/** phase 欄位：形狀不符（含舊版沒有此欄）一律為 null。 */
+function phaseOf(value: unknown): ResumePhase | null {
+  if (typeof value !== 'object' || value === null) return null
+  const raw = value as Record<string, unknown>
+  const isKind = raw.kind === 'compacted' || raw.kind === 'resumed'
+  const isSource = raw.source === 'compact' || raw.source === 'clear'
+  if (!isKind || !isSource || typeof raw.at !== 'number') return null
+  return { kind: raw.kind as ResumePhase['kind'], source: raw.source as ResumePhase['source'], at: raw.at }
+}

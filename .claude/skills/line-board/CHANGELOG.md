@@ -2,6 +2,13 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.8.0（2026-10-31）— 跨專案行為變更：「各 session」區塊每列在有用量檔時，行尾加 `｜ctx <百分比>%（<距量測的時間>）`；compact 後沒有用量時寫 `ctx 未量測`。沒有用量檔的 session 不加字尾。用量檔開始有清理：session 結束時刪自己的檔，看板每小時刪 24 小時以上的孤兒檔。
+
+- 新增 `hooks/contextJudge.ts`：`parseContextUsageFile`、`selectedPercent`（auto-compact 開啟用 `compactPercent`，關閉用 `percent`）、`contextMarkOf`（待 compact／待 clear，一般線 45／30、主控 60 且不判待 clear；收線或不屬於任何線不判定）、`contextUsageSuffix`、`isDeletableUsagePath`、`orphanUsageFiles`，門檻常數 `LANE_T_COMPACT`、`LANE_T_CLEAR`、`COORDINATOR_T_COMPACT`、`ORPHAN_AGE_MS`。判定函式供線標題標記與 `line_status` 共用（後續版本接上）。
+- `readers.ts` 新增 `readContextUsages`（只讀存活 session 的 `<sessionId>.json`，不列目錄）、`sweepOrphanUsageFiles`、`removeUsageFile`（刪除前檢查路徑與檔名，以 `rm -f` 刪除）；`register.tsx` 把用量放進 snapshot、每小時掃孤兒檔、`session.end` 刪自己的檔；`types/index.d.ts` 的 ready snapshot 新增 `usages`。
+- 量測時間只顯示不停判：用量檔只在用量變動時寫入，閒置 session 的最後一次值仍準確。
+- `references/board-screens.md` 新增〈context 用量〉，結構表補三個用量相關模組。
+
 **Version**: 0.7.0（2026-10-31）— 跨專案行為變更：一般的線在 `/compact` 或 `/clear` 之後重新開工時，line-board 以跨 session 訊息通知名為「主控」的 session，固定一行 `L<n>（<名稱>）已恢復開工：<時間>，來源 compact／clear`；用量檔新增 `phase` 欄位（`compacted`／`resumed`、來源、時間）。看板與 `line_status` 的畫面與輸出不變（`phase` 的讀取端在後續版本）。
 
 - 判定以 plugin 事件為準：`session.compact` 完成且未被否決（含 auto compact，不含 precompute 與 subagent 自己的 compact）、`session.end` 的 reason 為 `clear`；之後第一個送出的 prompt（`/compact`、`/clear` 本身除外）視為恢復開工。
