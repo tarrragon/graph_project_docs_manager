@@ -43,7 +43,7 @@ QUESTIONS = [
     ("G-C'", "G-C", "C'", "region", "要把整個分組收起來，要按哪個位置？", None, None),  # i18n-exempt
     ("K-A", "K-A", "A2", "region", "只想留下還沒動工的那幾張，要按哪個位置？", None, None),  # i18n-exempt
     ("K-B", "K-B", "B", "region", "單號 0.1.0-W2-006 那一張排在哪一組底下？", None, None),  # i18n-exempt
-    ("K-C'", "K-C", "C'", "number", "這一頁裡有幾張單子的內容讀不出來？", "處", 3),  # i18n-exempt
+    ("K-C'", "K-C", "C'", "number", "這一頁裡有幾張單子的內容讀不出來？", "張", 3),  # i18n-exempt
 ]
 
 

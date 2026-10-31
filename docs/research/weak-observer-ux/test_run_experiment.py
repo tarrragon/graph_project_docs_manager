@@ -225,6 +225,12 @@ def test_option_sets():
     assert len(number) == 10 and number["0"] == "找不到或沒有" and number["3"] == "3 處"
 
 
+def test_number_question_units_follow_question_wording():
+    units = {q[0]: rx.number_options(q[5])["3"] for q in rx.QUESTIONS
+             if q[3] == "number"}
+    assert units == {"T-C'": "3 處", "G-B": "3 條", "K-C'": "3 張"}
+
+
 def test_overlay_keeps_size_and_changes_pixels():
     from PIL import Image
 
