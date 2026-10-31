@@ -111,7 +111,7 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
   - 標記：判定為待 compact 標 `［待 compact］`、待 clear 標 `［待 clear］`。以佇列行括號內的 session 名稱找存活 session（同〈各 session 狀態〉的比對），再以其 `sessionId` 取用量檔；名稱為「主控」套主控門檻，其他套一般線門檻。「持有 in_progress 票」指該線佇列中有票在主 checkout 為 `in_progress`。收線的線不在看板上，不會被標
   - 恢復開工徽章：用量檔的 `phase` 為 `resumed` 且距今不超過 10 分鐘（`RESUME_BADGE_MS`，含 10 分鐘）時標 `［/<compact|clear> 後已恢復 HH:MM］`，時間為進入 resumed 的本機時間；`compacted`（compact 完成但尚未開工）不標。徽章讓主控在恢復開工通知之外，回頭看板時仍看得到哪條線剛恢復
   - 沒有 session 名稱、session 不存活、沒有用量檔、用量缺席（compact 後下一次回應前）時都不標
-- **`line_status` 的 context 段**（`laneContextStatus`）：未收線的線在依據之後接 `｜<context 段>`，標記與徽章取 `laneContextLabel`（與線標題同一份），另加 `phase` 段（不受徽章 10 分鐘限制）。與看板不同，沒有用量檔明寫 `ctx 無用量檔`，用量檔存在但解析不成立寫 `ctx 用量檔解析失敗：<原因>`（`readers.ts` 的 `readContextUsageStates` 回傳原因；看板只取成立的記錄）。各寫法的判讀與主控接續動作見 `multi-session-orchestration` 的 `references/line-continuity.md` §3〈context 段的判讀〉
+- **`line_status` 的 context 段**（`laneContextStatus`）：未收線的線在依據之後接 `｜<context 段>`，標記與徽章取 `laneContextLabel`（與線標題同一份），另加 `phase` 段（不受徽章 10 分鐘限制）。與看板不同，沒有用量檔明寫 `ctx 無用量檔`，用量檔存在但解析不成立寫 `ctx 用量檔解析失敗：<原因>`（`usageReaders.ts` 的 `readContextUsageStates` 回傳原因；看板只取成立的記錄）。各寫法的判讀與主控接續動作見 `multi-session-orchestration` 的 `references/line-continuity.md` §3〈context 段的判讀〉
 - **清理**：每個 session 在 `session.end`（任何 reason）刪自己的用量檔，`/clear` 刪的是舊 id 的檔；看板每小時掃一次 context 目錄，刪除 mtime 超過 24 小時且不屬於存活 session 的檔。刪除前檢查路徑直接位於 context 目錄下、檔名符合 `[A-Za-z0-9_-]+\.json`，不符就不刪（`isDeletableUsagePath`）。`$.fs` 沒有刪除操作，以 `rm -f` 刪除
 
 ## 派發中代理人（`.claude/dispatch-active.json`）
@@ -197,12 +197,13 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/usageWriter.ts` | context 用量檔的寫入串接：主 checkout 的快取、compaction window 量測與快取、寫入失敗只送一次 transcript、`session.end` 刪自己的用量檔；`phase` 由呼叫端傳入取值函式（`resumeFlow.ts` 的 `currentResumePhase`） |
 | `hooks/resumeFlow.ts` | 恢復開工通知的流程：持有判定狀態（`pendingResume`、`lastResumed`，跨 `/clear` 保留）、寫 phase → `session.send` 給主控（開關 `IS_RESUME_NOTICE_SEND_ENABLED`）→ 寫送出紀錄檔 |
 | `hooks/readers.ts` | 一輪 snapshot 所需各項的讀取：專案設定、checkout 清單、協調票、票檔 status 與 title、session 狀態檔與 pid 存活、派發紀錄、合併閘門紀錄；讀檔與命令一律經 `$`，各項失敗只影響該項 |
+| `hooks/usageReaders.ts` | context 用量檔的讀取與清理：存活 session 的用量檔讀取（含解析失敗原因，供 `line_status`）、孤兒用量檔掃除、單檔刪除前的路徑檢查與 `rm -f`（`session.end` 經 `usageWriter.ts` 也走這裡） |
 | `hooks/lanesView.tsx` | 線群組的繪製（標題三行、派發列、閘門票列、佇列列、佇列細節，各依五色狀態上色）與各群組共用的可折疊外框（框線、主題鍵 `suggestion` 色粗體標題列、內容）；設定提示的繪製 |
 | `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
 | `hooks/{sessions,mergeGate}View.tsx` | 底部兩區塊的內容：各 session、合併閘門最近紀錄 |
 | `hooks/userTodosView.tsx` | 用戶待辦群組的繪製：以 `continuity.ts` 判 U2、`userTodos.ts` 組成各行，S2 洋紅粗體；沒有任何一項時為一行「用戶待辦：無」 |
 | 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`，型別 `Elements`）由 register.tsx 以 `$.ui.resolve(e)` 取得後經 `boardPane.tsx` 傳入；各區塊的繪製函式以元素與 snapshot（`ReadyBoard`）為參數 |
-| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、boardPane.tsx、usageWriter.ts、resumeFlow.ts、readers.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
+| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、boardPane.tsx、usageWriter.ts、resumeFlow.ts、readers.ts、usageReaders.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
 | `hooks/shared.ts` | 各 domain 共用：專案設定解析、票號前綴與票檔位置、frontmatter 狀態與 title 解析、checkout 路徑判定、距今時間、本機時間格式 |
 | `hooks/lanes.ts` | 線與佇列：現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化 |
 | `hooks/sessions.ts` | 各 session：狀態檔篩選／解析／排序、pid 存活比對（procStart）、本 repo 判定、線列 session 狀態 |
