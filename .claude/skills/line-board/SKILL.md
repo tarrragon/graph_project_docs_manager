@@ -2,7 +2,7 @@
 name: line-board
 description: "多線開發看板 plugin：在 Pane 顯示每條線的現行佇列、各 session 狀態與合併閘門最近紀錄，並註冊模型可呼叫的 line_status 工具（各線接續狀態與過期項）。Use when: 查看多線並行進度、啟用或關閉看板、設定協調票、看板或 line_status 顯示異常。"
 metadata:
-  version: 0.3.0
+  version: 0.3.1
 ---
 
 # line-board
@@ -87,5 +87,6 @@ echo "rc=$rc errors=$(printf '%s\n' "$out" | grep -c 'error TS') hooks=$(printf 
 | 看板各區塊的資料來源、版面、五色狀態、派發階段判定、合併閘門顯示 | `references/board-screens.md` |
 | 調整看板程式的檔案分工與職責 | `references/board-screens.md`〈結構〉 |
 | Claude Code 升版後驗證 | `references/board-screens.md`〈驗證〉；指令為 `claude plugin validate`、`tsc -p`、`claude plugin test`（皆對 `.claude/skills/line-board`） |
+| 在既有 session 實測 plugin 改動（`/clear` 不重新載入 plugin、檔案變動可能熱重載） | `references/board-screens.md`〈實機驗證時的載入時機〉 |
 
 版本紀錄見同目錄 `CHANGELOG.md`。

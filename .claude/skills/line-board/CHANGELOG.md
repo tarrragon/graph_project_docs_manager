@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.3.1（2026-10-31）— 文件：`references/board-screens.md` 新增〈實機驗證時的載入時機〉，記錄 `/clear` 不重新觸發 plugin 的 `session.start`，以及 plugin 檔案變動時既有 session 可能熱重載（實測時間點不一）；`SKILL.md` 按需讀取表加路由。起因：`line_status` 合併後實測，有一個 session 晚數分鐘才看到工具（2026-10-31）。
+
 **Version**: 0.3.0（2026-10-31）— 跨專案行為變更：plugin 載入的 session（含代理人 session）多一個模型可呼叫的唯讀工具 `mcp__line-board__line_status`，位於 ToolSearch 後面。
 
 - 輸出每條未收線的線的接續狀態（/clear 後繼續、/compact 後繼續、新 session 接手、無人持有、來源不明）與判讀依據，已收線合併一行。

@@ -188,3 +188,14 @@ claude plugin test .claude/skills/line-board       # 執行 tests/*.test.ts
 ```
 
 合併閘門會在改動觸及 `.claude/skills/line-board/` 時自動執行 `claude plugin test .claude/skills/line-board`（宣告見 `.claude/project-integration/merge-gate.yaml`），失敗即判紅不合併；閘門不跑 `tsc`，型別檢查仍須手動執行。
+
+### 實機驗證時的載入時機
+
+在既有 session 實測 plugin 改動（例如新註冊的工具）前，先確認該 session 已載入新版程式。兩項實測（2026-10-31，Claude Code 2.1.316）：
+
+| 行為 | 實測 | 驗證時的做法 |
+|------|------|-------------|
+| `/clear` 不重新觸發 plugin 的 `session.start` | 型別定義寫明 `session.start` 在每次全新載入時觸發，「never `/clear`」 | 不以 `/clear` 作為「讓 session 載入新版 plugin」的手段 |
+| plugin 檔案變動時，既有 session 可能熱重載 | 合併後，兩個在合併前啟動的 session 都在未重開的情況下收到 deferred tools 通知，`line_status` 出現；兩者出現的時間點不同，其中一個晚了數分鐘 | 合併後先等 deferred tools 通知；沒有出現就重開 session 再驗，不判定為工具註冊失敗 |
+
+`session.start` 只在載入時執行一次，所以在 `session.start` 註冊的工具與 `/board` 指令，都要等 plugin 重新載入後才會更新。
