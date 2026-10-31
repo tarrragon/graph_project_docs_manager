@@ -126,6 +126,12 @@ export function formatAge(nowMs: number, thenMs: number | null): string {
   return `${Math.floor(hours / 24)} 天前`
 }
 
+/** 本機時間 `YYYY-MM-DD HH:MM:SS`。register.tsx 的刷新時間與 line_status、resumeFlow.ts 的通知與紀錄時間都用它。 */
+export function formatTime(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 /** 例外的訊息文字：Error 取 message，其他值轉字串。readers.ts 的讀取失敗日誌與 register.tsx 的刷新、切換失敗日誌都用它。 */
 export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
