@@ -12,6 +12,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { BoardSnapshot, UnsetProjectConfig } from '../types'
 import { renderConfigNotice, renderGroup, renderLaneGroups, sectionFrame } from './lanesView'
 import type { Elements, ToggleGroup } from './lanesView'
+import { lineStatusText } from './lineStatus'
 import { renderMergeLog } from './mergeGateView'
 import {
   MERGE_GATE_GROUP_ID,
@@ -36,6 +37,12 @@ import { renderSessions } from './sessionsView'
 
 const PANE = 'line-board'
 const PANE_TITLE = '多線看板'
+/** 模型可呼叫的接續狀態工具：短名與完整名（mcp__<plugin>__<name>）。 */
+const LINE_STATUS_TOOL = 'line_status'
+const LINE_STATUS_TOOL_FULL = `mcp__line-board__${LINE_STATUS_TOOL}`
+/** 工具說明（模型讀的）：用途、何時呼叫、輸出內容。 */
+const LINE_STATUS_DESCRIPTION =
+  '多 session 協調：回報協調票上每條線的接續狀態（已收線、/clear 後繼續、/compact 後繼續、新 session 接手、無人持有、來源不明）與判讀依據，並列出過期項（收線寫法不合規、名稱不在存活 session 中但仍有佇列、佇列的票全部 completed 但還沒收線）。主控在 /clear 或 /compact 後自我接續、每輪佇列更新前呼叫。唯讀，不需參數。'
 /** 更新間隔：30 秒。 */
 const REFRESH_MS = 30_000
 
@@ -54,9 +61,26 @@ export const register: Register = on => {
       name: 'board',
       description: '開啟多線看板（協調票各線現行佇列、佇列票即時狀態、派發中代理人、各 session 狀態、合併閘門紀錄）',
     })
+    // 工具註冊失敗不影響看板與 session 啟動；送 transcript 使使用者可見（否則與「工具不存在」同形）
+    await $.tool
+      .register({
+        name: LINE_STATUS_TOOL,
+        description: LINE_STATUS_DESCRIPTION,
+      })
+      .catch(error => $.ui.log(`line-board 警告：註冊 ${LINE_STATUS_TOOL} 失敗：${messageOf(error)}`, { to: 'transcript' }))
     void openIfConfigured($)
 
     return next(e)
+  })
+
+  // 讀取失敗時回傳說明文字（不 deny）：模型要讀得到「為何判不出」，否則與工具壞掉同形
+  on('tool.call', { tool: LINE_STATUS_TOOL_FULL }, async $ => {
+    try {
+      return { result: await lineStatusText($, formatTime(new Date(await $.clock.now()))) }
+    } catch (error) {
+      $.ui.log(`line-board 警告：${LINE_STATUS_TOOL} 判讀失敗：${messageOf(error)}`, { to: 'debug' })
+      return { result: `line_status 判讀失敗：${messageOf(error)}` }
+    }
   })
 
   on('command.run', { command: 'board' }, async $ => {

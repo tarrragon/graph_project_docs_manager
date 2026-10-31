@@ -1,13 +1,13 @@
 ---
 name: line-board
-description: "多線開發看板 plugin：在 Pane 顯示每條線的現行佇列、各 session 狀態與合併閘門最近紀錄。Use when: 查看多線並行進度、啟用或關閉看板、設定協調票、看板顯示異常。"
+description: "多線開發看板 plugin：在 Pane 顯示每條線的現行佇列、各 session 狀態與合併閘門最近紀錄，並註冊模型可呼叫的 line_status 工具（各線接續狀態與過期項）。Use when: 查看多線並行進度、啟用或關閉看板、設定協調票、看板或 line_status 顯示異常。"
 metadata:
-  version: 0.2.0
+  version: 0.3.0
 ---
 
 # line-board
 
-多線開發看板（Claude Code plugin，同目錄 `.claude-plugin/` 與 `hooks/`）。在終端機內開一個 Pane，顯示多 session 並行開發的現況：每條線的現行佇列與票狀態、派發中的代理人、本 repo 各 session 的狀態、合併閘門最近紀錄。只讀本機檔案，並執行 `git worktree list` 與 `ps -p <pid> -o lstart=`；不改任何設定、不連網。
+多線開發看板（Claude Code plugin，同目錄 `.claude-plugin/` 與 `hooks/`）。在終端機內開一個 Pane，顯示多 session 並行開發的現況：每條線的現行佇列與票狀態、派發中的代理人、本 repo 各 session 的狀態、合併閘門最近紀錄。另外註冊模型可呼叫的唯讀工具 `mcp__line-board__line_status`，回報各線接續狀態與過期項（讀法見 `multi-session-orchestration` 的 `references/line-continuity.md` §3，實作面見 `references/board-screens.md`〈line_status 工具〉）。只讀本機檔案，並執行 `git worktree list` 與 `ps -p <pid> -o lstart=`；不改任何設定、不連網。
 
 ## 啟用與關閉
 

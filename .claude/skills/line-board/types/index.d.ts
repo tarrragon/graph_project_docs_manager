@@ -9,6 +9,33 @@ export type QueueToken =
 /** 一條線的現行佇列：線號、session 名稱（行內未寫時為 null）、線目標（協調票沒有目標行或已寫（無）清除時為 null）、票序。 */
 export type Lane = { lane: number; session: string | null; goal: string | null; tokens: QueueToken[] }
 
+/** 協調票一條線最後一行現行佇列行的原文：線號、session 名稱（行內未寫時為 null）、票序原文（含收線寫法，未過濾）。 */
+export type LaneLine = { lane: number; session: string | null; queue: string }
+
+/** `.claude/hook-logs/session-source-diagnostic/diagnostic.log` 的一筆：時間原文、SessionStart 的 source、sessionId 前 8 碼。 */
+export type SourceLogEntry = { time: string; source: string; sessionPrefix: string }
+
+/**
+ * 一條線的接續狀態（multi-session-orchestration 的 line-continuity.md §2）：
+ * ended 已收線、clear／compact 為該 session 最近一次 SessionStart 的來源、startup 新 session 接手、
+ * orphan 佇列行的名稱不在本 repo 存活的 session 中、unknown 來源不明（不猜測）。
+ */
+export type ContinuityState = 'ended' | 'clear' | 'compact' | 'startup' | 'orphan' | 'unknown'
+
+/** 一條線的判讀結果：evidence 為判讀依據（sessionId 前 8 碼、log 時間與 source，或判不出的原因）。 */
+export type LaneContinuity = { lane: number; session: string | null; state: ContinuityState; evidence: string }
+
+/**
+ * 過期項：ended-with-note 票序以收線記號開頭但後面還有文字（看板不視為收線）、
+ * orphan 名稱不在存活 session 中但仍有佇列、all-done 佇列的票全部 completed 但還沒收線。
+ */
+export type StaleKind = 'ended-with-note' | 'orphan' | 'all-done'
+
+export type StaleItem = { lane: number; kind: StaleKind; detail: string }
+
+/** line_status 工具的判讀結果：各線接續狀態（依線號）與過期項。 */
+export type LineStatusReport = { lanes: LaneContinuity[]; stale: StaleItem[] }
+
 /**
  * 主 checkout 專案設定檔（.claude/project-integration/multi-session.json）的讀取結果：ok 為協調票的完整票號；
  * 其餘為設定不成立的原因——missing 讀不到檔案、invalid-json JSON 無效、missing-field 不是物件或缺 coordinationTicket、
@@ -172,5 +199,12 @@ export type ReadyBoard = Extract<BoardSnapshot, { kind: 'ready' }>
 declare module 'claude-code' {
   interface PluginState {
     'line-board': { snapshot: BoardSnapshot; expanded: GroupOverrides }
+  }
+  /**
+   * 本 plugin 以 $.tool.register 註冊的工具。平台型別根的 MCP 條目只列已連線 server 的工具，
+   * 列了之後 tool.call 的過濾名稱就收窄為那些名稱；自己註冊的工具須在此補上，過濾器才接受。
+   */
+  interface McpToolInputs {
+    'mcp__line-board__line_status': Record<string, never>
   }
 }

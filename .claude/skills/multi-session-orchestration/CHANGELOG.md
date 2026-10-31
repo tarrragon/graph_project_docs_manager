@@ -2,6 +2,14 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.13.0（2026-10-31）— `references/line-continuity.md` §3 改以 line-board 的 `line_status` 工具為判讀主路徑：
+
+- 工具一次完成 §3 步驟 1、3、4、5，並列出過期項；時間比對與 `ListAgents` 名稱核對仍由主控做。
+- 原步驟改為工具不可用時的備援；python 查詢註明只讀主 checkout 的 log。
+- §4 自我接續步驟 2 改為先呼叫工具。
+
+起因：判讀手動步驟改由工具提供，判讀規則只在 line-board 實作一份（2026-10-31）。
+
 **Version**: 1.12.0（2026-10-31）— `references/line-continuity.md` 新增 §5〈用戶說「繼續工作」時：開線計畫表〉：
 
 - 順序：自我接續 → 整理工作內容 → 列開線計畫表 → 用戶確認後才開線。

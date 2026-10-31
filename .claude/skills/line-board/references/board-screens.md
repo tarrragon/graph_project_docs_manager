@@ -120,7 +120,7 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
 
 - 行首即 `**L`，n 必須是數字；清單項（`- **L7 …`）、表格內、以反引號引用範本的說明行都不算
 - 同一條線有多行時只取最後一行，較早的行是歷史，其票號不出現在看板
-- 最後一行的票序寫 `（無）` 表示這條線結束，看板不顯示該線
+- 最後一行的票序整段寫 `（無）` 或 `（結束）` 表示這條線結束，看板不顯示該線；收線記號後面再接說明（如 `（無）— 說明`、`無（…）`）不算收線，看板照常顯示，`line_status` 列為過期項（判定在 `lanes.ts` 的 `endedForm`，看板與工具共用）
 - 括號內的 session 名稱原樣顯示；行內沒寫時顯示「（未標 session）」
 
 畫面能分辨兩種空狀態：「協調票尚無現行佇列行」（票檔讀得到但 Solution 內沒有任何現行佇列行）與「解析失敗」（票檔讀不到）。
@@ -135,13 +135,26 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
 - 同一條線有多行時只取最後一行；最後一行寫 `（無）` 或留空表示清除，該線不顯示目標；清除後再寫新的目標行即恢復顯示
 - 目標只顯示在有現行佇列行的線上，為該線群組標題的第二行：`目標：<目標>`；沒有現行佇列行或已結束的線，目標行不顯示
 
+## line_status 工具（模型可呼叫）
+
+plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_status`，給主控的模型讀各線接續狀態與過期項。工具的用途、輸出內容與讀法屬 `multi-session-orchestration` 的 `references/line-continuity.md` §3；本節只記實作面。
+
+| 項目 | 內容 |
+|------|------|
+| 位置 | 未指定 `isDeferred`，依平台規則放在 ToolSearch 後面；模型先以 ToolSearch 搜尋 `line_status` 再呼叫 |
+| 可見範圍 | plugin 載入的 session 都看得到，代理人 session 也看得到（實測 2026-10-31，Explore 代理人可呼叫）。工具唯讀、無副作用，不限只給主控 |
+| 讀取 | 每次呼叫都重讀，不取 Pane 的 snapshot：Pane 只在設定成立時定時刷新，且最多落後一個刷新間隔 |
+| 失敗 | 設定不成立、協調票或 session 讀不到時回傳說明原因的文字，不 deny，模型才讀得到「為何判不出」 |
+| 來源紀錄 | 合併各 checkout 的 `.claude/hook-logs/session-source-diagnostic/diagnostic.log`（worktree 內啟動的 session 寫入該 worktree 的檔），同一 sessionId 取時間最晚的一筆 |
+| 型別 | 平台型別根的 MCP 條目列出已連線 server 的工具後，`tool.call` 的過濾名稱就收窄為那些名稱；自己註冊的工具須在 `types/index.d.ts` 的 `McpToolInputs` 補宣告，否則 `tsc` 報 TS2322。閘門快照沒有 MCP 條目時過濾名稱不收窄，所以只有手動型別檢查會擋 |
+
 ## 結構
 
 | 檔案 | 職責 |
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約，`defaultEnabled: true` |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board`、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）、讀寫群組的手動展開狀態、組裝 Pane（線群組、底部兩區塊的折疊外框）；設定不成立時只寫設定提示 |
+| `hooks/register.tsx` | 註冊 `/board` 與 `line_status` 工具（`tool.call` 交給 `lineStatus.ts`）、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）、讀寫群組的手動展開狀態、組裝 Pane（線群組、底部兩區塊的折疊外框）；設定不成立時只寫設定提示 |
 | `hooks/readers.ts` | 一輪 snapshot 所需各項的讀取：專案設定、checkout 清單、協調票、票檔 status 與 title、session 狀態檔與 pid 存活、派發紀錄、合併閘門紀錄；讀檔與命令一律經 `$`，各項失敗只影響該項 |
 | `hooks/lanesView.tsx` | 線群組的繪製（標題三行、派發列、閘門票列、佇列列、佇列細節，各依五色狀態上色）與各群組共用的可折疊外框（框線、主題鍵 `suggestion` 色粗體標題列、內容）；設定提示的繪製 |
 | `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
@@ -155,7 +168,9 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
 | `hooks/dispatch.ts` | 派發中代理人：派發紀錄解析、流程階段推導、派發列；審查類代理人清單 `REVIEW_AGENTS` |
 | `hooks/layout.ts` | 版面：以線分組、活動計數、預設展開、手動切換的展開狀態、群組標題列與內容各行的顯示文字、佇列列的分段（供逐票上色） |
 | `hooks/statusColor.ts` | 五色狀態：派發階段、佇列票與 session 狀態歸成哪一種狀態，以及各狀態的顏色 |
-| `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約 |
+| `hooks/continuity.ts` | 各線接續狀態：SessionStart 來源紀錄解析、每條線的接續狀態判定、過期偵測、`line_status` 的輸出文字（判讀規則唯一實作） |
+| `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄與佇列票 status，交 `continuity.ts` 判讀 |
+| `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約；`McpToolInputs` 補宣告本 plugin 註冊的工具 |
 | `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts` 為 Pane 端到端繪製，後者為線群組的派發列、活動計數、預設展開與手動切換，前者為線標題列、票序、佇列細節與底部兩區塊 |
 | `tests/fixtures.ts`、`tests/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |
