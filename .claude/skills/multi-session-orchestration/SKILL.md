@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.14.0
+  version: 1.15.0
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -87,7 +87,12 @@ metadata:
 
 主控線就是名稱為「主控」的 session。沒有這個名稱的 session 時，請用戶指定一個 session 擔任主控，由用戶執行 `/rename 主控`。
 
-主控在 `/clear` 或 `/compact` 後收到的第一則訊息，不論內容是什麼，都先完成自我接續，不等用戶提示接續點：
+**主控 session 長駐**（用戶裁定，2026-10-31）：主控不例行 `/clear` 或 `/compact`。各線的佇列、裁定與交接都經主控，主控的對話是協調脈絡最完整的一份，清除之後只能從協調票重建，票面沒寫到的脈絡就會遺失。所以：
+
+- `/clear`、`/compact` 屬例外（context 耗盡、用戶明示要清），下方的自我接續是例外發生後的程序，不是例行步驟。
+- 主控收到 Stop hook〈Session Context 保護提醒〉時，判讀的是「本輪新增的裁定與佇列變動是否已寫進協調票」，沒寫的當下補寫；不以「可否清除」作結論，也不向用戶建議清除主控。判讀步驟見 `references/line-continuity.md` §4〈Stop hook 保護提醒的判讀〉。
+
+例外發生後，主控在 `/clear` 或 `/compact` 後收到的第一則訊息，不論內容是什麼，都先完成自我接續，不等用戶提示接續點：
 
 1. 讀設定檔，找出協調票。
 2. 判讀每條線目前的狀態，分為：已收線、`/clear` 後繼續、`/compact` 後繼續、新 session 接手。
@@ -127,7 +132,7 @@ metadata:
 | 收到只有標題的審查標記、判定回歸、驗證守衛修正 | `references/review-flags-and-verification.md` |
 | 階段收尾、交接、總表格式 | `references/wrap-up-and-handoff.md` |
 | 開線時命名 session、改名、線完結或轉階段時換 session | `references/session-naming.md` |
-| 主控 `/clear` 或 `/compact` 後接續、判斷各線是收線、clear、compact 還是新 session、沒有 session 名為「主控」 | `references/line-continuity.md` |
+| 主控 `/clear` 或 `/compact` 後接續、判斷各線是收線、clear、compact 還是新 session、沒有 session 名為「主控」、主控收到 Stop hook context 保護提醒 | `references/line-continuity.md` |
 | 啟用或關閉看板、設定協調票、看板顯示異常 | `.claude/skills/line-board/SKILL.md` |
 
 ---
@@ -141,7 +146,8 @@ metadata:
 - [ ] 暫行規則有寫明撤除條件，工具承擔後已撤除？
 - [ ] 每條線各有一個以線主題命名的 session，改名後現行佇列行的 session 名稱已同步？
 - [ ] 本輪排定、改派、開線、結線的每條線，都已在協調票追加現行佇列行（新線含目標行、結線寫 `（無）`），而不是只寫條列文字？
-- [ ] 主控 `/clear` 或 `/compact` 後，已不待提示完成自我接續，並以 `sessionId` 和 log 判讀各線狀態，而不是只看名稱和啟動時間？
+- [ ] 主控 session 長駐：收到 Stop hook context 保護提醒時，判讀的是本輪裁定與佇列變動是否已寫進協調票，而不是「可否清除主控」？
+- [ ] 例外情況下主控 `/clear` 或 `/compact` 後，已不待提示完成自我接續，並以 `line_status`（或 `sessionId` 和 log）判讀各線狀態，而不是只看名稱和啟動時間？
 - [ ] 用戶說「繼續工作」時，已先列出開線計畫表並取得確認，而不是直接派票？
 - [ ] 有 session 名為「主控」？每條線的 session 名稱都對應目前的線？主軸換了或要開新 session 時，已告訴用戶具體的名稱？
 - [ ] 至少有一條線在推進專案工作，修框架或工具的線不超過兩條，佇列裡的框架票都是 P0／P1 或用戶要求？
