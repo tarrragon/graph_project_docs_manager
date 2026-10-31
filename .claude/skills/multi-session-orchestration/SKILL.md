@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.10.0
+  version: 1.11.0
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -83,6 +83,32 @@ metadata:
 
 額度限制、session 結束前，依 `references/wrap-up-and-handoff.md` 執行：各線停止派發、寫票面〈階段收尾狀態〉、推送、回報摘要；PM 彙整總表寫進版本工作日誌，並把只存在 PM 對話中的待辦一併寫入。
 
+### 6. 各線接續狀態與主控自我接續
+
+主控線就是名稱為「主控」的 session。沒有這個名稱的 session 時，請用戶指定一個 session 擔任主控，由用戶執行 `/rename 主控`。
+
+主控在 `/clear` 或 `/compact` 後收到的第一則訊息，不論內容是什麼，都先完成自我接續，不等用戶提示接續點：
+
+1. 讀設定檔，找出協調票。
+2. 判讀每條線目前的狀態，分為：已收線、`/clear` 後繼續、`/compact` 後繼續、新 session 接手。
+3. 把判讀結果寫進協調票。
+4. 向用戶回報。
+
+判讀依據包括三項：
+
+- 現行佇列行
+- `~/.claude/sessions/*.json` 中的 `sessionId`
+- `diagnostic.log` 中 SessionStart 的 `source`
+
+不要只看 session 名稱和啟動時間：`/clear` 不會改變名稱，也不會更新 `startedAt`。
+
+名稱和線對不上時，主控要提醒用戶，並寫出具體名稱：
+
+- 某個 session 換了主軸：請用戶執行 `/rename <新線主題>`。
+- 要開新 session：先告訴用戶新 session 的名稱。
+
+完整的判讀表、查詢指令和接續動作見 `references/line-continuity.md`。
+
 ---
 
 ## 按需讀取
@@ -94,6 +120,7 @@ metadata:
 | 收到只有標題的審查標記、判定回歸、驗證守衛修正 | `references/review-flags-and-verification.md` |
 | 階段收尾、交接、總表格式 | `references/wrap-up-and-handoff.md` |
 | 開線時命名 session、改名、線完結或轉階段時換 session | `references/session-naming.md` |
+| 主控 `/clear` 或 `/compact` 後接續、判斷各線是收線、clear、compact 還是新 session、沒有 session 名為「主控」 | `references/line-continuity.md` |
 | 啟用或關閉看板、設定協調票、看板顯示異常 | `.claude/skills/line-board/SKILL.md` |
 
 ---
@@ -107,4 +134,6 @@ metadata:
 - [ ] 暫行規則有寫明撤除條件，工具承擔後已撤除？
 - [ ] 每條線各有一個以線主題命名的 session，改名後現行佇列行的 session 名稱已同步？
 - [ ] 本輪排定、改派、開線、結線的每條線，都已在協調票追加現行佇列行（新線含目標行、結線寫 `（無）`），而不是只寫條列文字？
+- [ ] 主控 `/clear` 或 `/compact` 後，已不待提示完成自我接續，並以 `sessionId` 和 log 判讀各線狀態，而不是只看名稱和啟動時間？
+- [ ] 有 session 名為「主控」？每條線的 session 名稱都對應目前的線？主軸換了或要開新 session 時，已告訴用戶具體的名稱？
 - [ ] 至少有一條線在推進專案工作，修框架或工具的線不超過兩條，佇列裡的框架票都是 P0／P1 或用戶要求？
