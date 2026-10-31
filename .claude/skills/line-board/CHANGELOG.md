@@ -2,6 +2,15 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.6.0（2026-10-31）— 跨專案行為變更：每個載入 line-board 的 session 以 `session.measure` 把自己的 context 用量寫到主 checkout 的 `.claude/hook-logs/line-board/context/<sessionId>.json`，每輪回應 context 用量變動時覆寫一次。看板與 `line_status` 的畫面與輸出不變（讀檔與「待 compact／待 clear」判定在後續版本）。
+
+- 記錄欄位：`sessionId`、`tokens`、`window`、`percent`（以模型 window 為分母，同狀態列）、`compactWindow`、`compactPercent`（以 /context 的 compaction window 為分母）、`autoCompactThreshold`、`measuredAt`（毫秒）。缺席的量測寫 `null`，不寫 0：compact 剛完成到下一次回應前 `tokens`／`percent` 為 `null`。
+- compaction window 以 `$.session.usage({ breakdown: 'summary' })` 本機估算量測（不送 API），依模型 window 快取。
+- 不看專案設定：沒有協調票的專案也會寫用量檔（只在 `hook-logs/` 下，已被 `.gitignore` 涵蓋）。寫入失敗第一次送 transcript，之後只記 debug。
+- 新增 `hooks/contextUsage.ts`（`isContextChanged`、`contextUsagePath`、`contextUsageRecord`、`serializeContextUsage`）；`types/index.d.ts` 新增 `ContextUsageRecord`；`register.tsx` 註冊 `session.measure`。
+
+起因：多線協調時主控要知道哪條線該 `/compact`、哪條該 `/clear`，靠各線自報不可靠；改由每個 session 自己量測寫檔（2026-10-31）。
+
 **Version**: 0.5.0（2026-10-31）— 跨專案行為變更：看板最上方新增「用戶待辦（N）」群組，集中列出要用戶處理的事項，預設展開；沒有任何一項時只顯示一行「用戶待辦：無」。
 
 - 兩種來源，都從票面讀出：U1 協調票 Solution 段的待辦行 `**用戶待辦**（<鍵>）：<事項>`，以同鍵的完成行 `**用戶待辦完成**（<鍵>）：` 解除（不帶鍵的行以事項全文配對）；U2 各線等用戶，判定同 `line_status` 的等用戶段。格式權威是 multi-session-orchestration 的 `references/line-continuity.md` §2〈用戶待辦〉。
