@@ -231,7 +231,7 @@ EOF
 
 | 管道 | 內容 | 主控怎麼看到 |
 |------|------|-------------|
-| 主管道 | 一則跨 session 訊息，固定一行：`L<n>（<名稱>）已恢復開工：<時間>，來源 compact／clear` | 直接出現在主控的對話 |
+| 主管道（預設關閉，見〈已知限制〉） | 一則跨 session 訊息，固定一行：`L<n>（<名稱>）已恢復開工：<時間>，來源 compact／clear` | 直接出現在主控的對話 |
 | 輔管道 | 該 session 的用量檔（`.claude/hook-logs/line-board/context/<sessionId>.json`）的 `phase` 欄位：`compacted`（做完未開工）或 `resumed`（已開工），附來源與時間 | 看板線標題與 `line_status`（讀取端依序上線） |
 
 **送出紀錄檔**：主管道沒收到通知時，讀主 checkout 的 `.claude/hook-logs/line-board/resume-notice.log` 定位原因。該線每次恢復開工寫一行，欄位以 tab 分隔：`<時間>`、`session=<sessionId 前 8 碼>`、`source=<compact|clear>`、`step=<步驟>`，之後依步驟帶結果欄位。檔案只保留最後 500 行。
@@ -254,6 +254,7 @@ EOF
 - 待通知狀態存在 plugin 的模組層變數。plugin 在 compact／clear 與下一個 prompt 之間熱重載時，狀態遺失，這一次不會發通知。不補救：輔管道的 `phase` 也會缺這一筆，主控以 `line_status` 判讀接續狀態（§3）為準。
 - session 名稱以 `sessionId` 比對 `~/.claude/sessions/<pid>.json` 取得。`/clear` 換新 sessionId 但不換 pid，狀態檔若尚未更新成新的 sessionId，就比對不到名稱，主管道不送；`phase` 仍會寫入。
 - 主管道的訊息在雙方權限模式不同時，會先被主控那邊暫扣，等用戶核可。實測被暫扣時，line-board 會關閉主管道，改以輔管道為主。
+- **auto mode 下主管道不可用，以用量檔 phase、看板徽章、`line_status` 為準。** 實測（2026-10-31）plugin 在事件中主動送訊沒有對應的使用者請求，auto mode classifier 不給判定，紀錄檔為 `step=sent isDelivered=false`。這與暫扣同類，line-board 因此預設關閉主管道（紀錄檔為 `step=send-disabled`）。拒絕訊息裡的「重送一次」是給模型的指示，plugin 不自動重送，也不改用其他時點設法讓 classifier 放行。
 
 ### Stop hook 保護提醒的判讀
 

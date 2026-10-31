@@ -2,6 +2,10 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.10.0（2026-10-31）— 跨專案行為變更：恢復開工通知的主管道（跨 session 訊息給主控）預設關閉。實測 auto mode 下 plugin 在事件中主動送訊沒有對應的使用者請求，classifier 不給判定而拒送（紀錄檔 `step=sent isDelivered=false`），與 0.7.0 寫明的「暫扣就關」同類。關閉後紀錄檔改寫 `step=send-disabled`；輔管道（用量檔 `phase`）與線標題的恢復開工徽章不變，主控以這兩者與 `line_status` 為準。
+
+- `register.tsx`：`IS_RESUME_NOTICE_SEND_ENABLED` 改為 `false`，註解寫明關閉理由。送出路徑與 `resume-notice.log` 保留。
+
 **Version**: 0.9.1（2026-10-31）— 恢復開工通知新增送出紀錄檔：每次恢復開工在主 checkout 的 `.claude/hook-logs/line-board/resume-notice.log` 寫一行（時間、sessionId 前 8 碼、來源、走到的步驟、跨 session 傳送的回傳或例外），只保留最後 500 行。原本設定讀不到、session 或協調票讀不到、判定不送三處只 return 或只記 debug，送出被拒也只記 debug，主管道沒收到通知時無從定位原因。通知的判定與文字不變。
 
 - 新增 `hooks/resumeNoticeLog.ts`（`resumeNoticeLogLine`、`appendCappedLog`、`RESUME_NOTICE_LOG_PATH`、`RESUME_NOTICE_LOG_MAX_LINES`、`ResumeNoticeOutcome`）。

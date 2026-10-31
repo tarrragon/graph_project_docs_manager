@@ -80,10 +80,12 @@ let compactionCache: { window: number; compaction: CompactionWindow | null } | n
 /** 用量檔寫入失敗已送 transcript：只送第一次（每輪回應都寫，連續失敗不洗版），之後只記 debug。 */
 let hasReportedUsageWriteFailure = false
 /**
- * 恢復開工通知的主管道（session.send 給主控）開關。接收端與傳送端權限模式不同時訊息會被暫扣等用戶核可；
- * 實測被暫扣即改為 false，由用量檔的 phase（輔管道）擔任主管道。
+ * 恢復開工通知的主管道（session.send 給主控）開關，預設關閉。
+ * 實測 auto mode 下 plugin 在事件中主動送訊沒有對應的使用者請求，classifier 不給判定而拒送；
+ * 與「接收端權限模式不同時被暫扣」同類，依「暫扣就關」關閉，不設法讓 classifier 放行。
+ * 關閉時仍寫 resume-notice.log（step=send-disabled），主控以用量檔 phase、線標題徽章、line_status 為準。
  */
-const IS_RESUME_NOTICE_SEND_ENABLED = true
+const IS_RESUME_NOTICE_SEND_ENABLED = false
 /**
  * 恢復開工判定的待通知狀態與最近一次恢復開工（resumeNotice.ts）。放在模組層：/clear 換新 session id 但行程繼續，
  * 狀態必須跨 session id 保留。限制：plugin 熱重載時遺失，該次漏送，由 phase 兜底不補救（line-continuity.md）。
