@@ -31,6 +31,7 @@ import {
   groupToggleKey,
   isDefaultExpanded,
   isGroupExpanded,
+  laneContextLabel,
   laneGroups,
   laneSessionStatus,
   queueRowSegments,
@@ -190,7 +191,7 @@ function renderLaneGroup(
   const { Text } = elements
   const isDefaultOpen = isDefaultExpanded(group.activity)
   const isOpen = isGroupExpanded(group.id, isDefaultOpen, overrides)
-  const frame = { id: group.id, ...groupTitle(board.sessions, group), isOpen, isActive: isDefaultOpen }
+  const frame = { id: group.id, ...groupTitle(board, group), isOpen, isActive: isDefaultOpen }
   const segments = group.lane === null ? null : queueRowSegments(group.lane.tokens, board.tickets)
   const colorOf = queueColorOf(group, board.tickets, allRows)
   // 各行的 key：派發列以序號（同一張票可能有多個代理人），閘門票以票號，佇列列每群組一行
@@ -229,14 +230,25 @@ function queueColorOf(group: LaneGroup, tickets: readonly TicketStatus[], allRow
 }
 
 /**
- * 線群組的標題三行：標題列為線號、session 名稱與狀態（`L<n> <session>［狀態］`），其下為目標、活動計數各一行；
- * 「其他」群組的標題列只有名稱，其下為活動計數。缺目標或活動計數時該行為空字串，由 renderGroup 略過。
+ * 線群組的標題三行：標題列為線號、session 名稱與狀態，其後接 context 用量的標記與恢復開工徽章
+ * （`L<n> <session>［狀態］［待 compact］［/compact 後已恢復 HH:MM］`，contextJudge.ts laneContextLabel），
+ * 其下為目標、活動計數各一行；「其他」群組的標題列只有名稱，其下為活動計數。缺目標或活動計數時該行為空字串，由 renderGroup 略過。
  */
-function groupTitle(sessions: SessionsResult, group: LaneGroup): Pick<GroupFrame, 'title' | 'details'> {
+function groupTitle(board: ReadyBoard, group: LaneGroup): Pick<GroupFrame, 'title' | 'details'> {
   const activity = formatActivity(group.activity)
   if (group.lane === null) return { title: OTHER_LANE_LABEL, details: [activity] }
-  const { lane, session, goal } = group.lane
-  return { title: `L${lane} ${session ?? '（未標 session）'}${laneStatusLabel(sessions, session)}`, details: [laneGoalLabel(goal), activity] }
+  const { lane, session, goal, tokens } = group.lane
+  const { sessions, tickets, usages, readAtMs } = board
+  const context = laneContextLabel({
+    sessionName: session,
+    tokens,
+    tickets,
+    sessions: sessions.kind === 'ok' ? sessions.sessions : [],
+    usages,
+    nowMs: readAtMs,
+  })
+  const title = `L${lane} ${session ?? '（未標 session）'}${laneStatusLabel(sessions, session)}${context}`
+  return { title, details: [laneGoalLabel(goal), activity] }
 }
 
 /**

@@ -33,10 +33,12 @@
 - **線群組的標題**分三行，不以 `｜` 分隔，收合時 `▾` 改為 `▸`；沒有目標或沒有活動計數時省略該行。session 狀態的判定見〈各 session 狀態〉最後一點：
 
   ```text
-  ▾ L<n> <session 名稱>［<session 狀態>］
+  ▾ L<n> <session 名稱>［<session 狀態>］[［待 compact］|［待 clear］][［/compact 後已恢復 HH:MM］]
   目標：<目標>
   <活動計數>
   ```
+
+  `［狀態］` 之後的標記與徽章見〈context 用量〉的〈線標題的標記與徽章〉；兩者皆無時標題列只到 `［狀態］`
 - **活動計數**：依序為 `N 派發中`、`N 閘門`、`等你處理`、`N 排隊`，只列不為零的項目，以 ` · ` 分隔。各項與展開後的內容一一對應：
   - `派發中`：群組內派發列的數目
   - `閘門`：階段為 `閘門` 的派發列，加上閘門票列（佇列中某張票的 `feat/<票號>` 分支正持有合併閘門；同組已有該票標閘門的派發列時不重複列）
@@ -105,6 +107,10 @@ Claude Code 為每個執行中的 session 寫一個 `<pid>.json`，含 `sessionI
   | 收線或不屬於任何線 | 不判定 | 不判定 |
 
   門檻依據：583 盤點的兩次實際 compact 在 45% 與 33%；主控長駐，compact 屬例外處理
+- **線標題的標記與徽章**（`laneContextLabel`）：線群組標題列 `［狀態］` 之後依序接：
+  - 標記：判定為待 compact 標 `［待 compact］`、待 clear 標 `［待 clear］`。以佇列行括號內的 session 名稱找存活 session（同〈各 session 狀態〉的比對），再以其 `sessionId` 取用量檔；名稱為「主控」套主控門檻，其他套一般線門檻。「持有 in_progress 票」指該線佇列中有票在主 checkout 為 `in_progress`。收線的線不在看板上，不會被標
+  - 恢復開工徽章：用量檔的 `phase` 為 `resumed` 且距今不超過 10 分鐘（`RESUME_BADGE_MS`，含 10 分鐘）時標 `［/<compact|clear> 後已恢復 HH:MM］`，時間為進入 resumed 的本機時間；`compacted`（compact 完成但尚未開工）不標。徽章讓主控在恢復開工通知之外，回頭看板時仍看得到哪條線剛恢復
+  - 沒有 session 名稱、session 不存活、沒有用量檔、用量缺席（compact 後下一次回應前）時都不標
 - **清理**：每個 session 在 `session.end`（任何 reason）刪自己的用量檔，`/clear` 刪的是舊 id 的檔；看板每小時掃一次 context 目錄，刪除 mtime 超過 24 小時且不屬於存活 session 的檔。刪除前檢查路徑直接位於 context 目錄下、檔名符合 `[A-Za-z0-9_-]+\.json`，不符就不刪（`isDeletableUsagePath`）。`$.fs` 沒有刪除操作，以 `rm -f` 刪除
 
 ## 派發中代理人（`.claude/dispatch-active.json`）

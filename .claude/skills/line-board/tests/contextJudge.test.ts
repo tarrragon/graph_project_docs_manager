@@ -1,5 +1,5 @@
 // contextJudge.ts 的測試：用量檔的解析、待 compact／待 clear 判定（分母選擇、主控與一般線門檻）、
-// 各 session 列的用量字尾，以及用量檔清理的路徑檢查與孤兒檔挑選。
+// 各 session 列的用量字尾、線標題的標記與恢復開工徽章，以及用量檔清理的路徑檢查與孤兒檔挑選。
 
 import { describe, expect, test } from 'claude-code/testing'
 
@@ -9,14 +9,20 @@ import {
   LANE_T_CLEAR,
   LANE_T_COMPACT,
   ORPHAN_AGE_MS,
+  RESUME_BADGE_MS,
+  contextMarkLabel,
   contextMarkOf,
   contextUsageSuffix,
   isDeletableUsagePath,
+  laneContextLabel,
   orphanUsageFiles,
   parseContextUsageFile,
+  recentResume,
+  resumeBadgeText,
   selectedPercent,
 } from '../hooks/contextJudge'
-import type { ContextUsageRecord } from '../types'
+import type { ContextUsageRecord, QueueToken, TicketStatus } from '../types'
+import { session } from './fixtures'
 
 const NOW = 1_793_450_000_000
 const ID = 'b953833f-4d2e-43c3-82c6-7ef169a4b86b'
@@ -175,5 +181,73 @@ describe('orphanUsageFiles：孤兒檔挑選', () => {
   test('反向對照：存活 session 的檔、未滿 24 小時、非一般檔、檔名格式不符都不列入', () => {
     const entries = [file(`${ID}.json`, old), file('young.json', fresh), file('dir.json', old, 'directory'), file('a b.json', old), file('x.txt', old)]
     expect(orphanUsageFiles(entries, new Set([ID]), NOW)).toEqual([])
+  })
+})
+
+/** 本機時間的 `HH:MM`（徽章以本機時間顯示，測試機的時區不固定）。 */
+const hhmm = (ms: number): string => {
+  const date = new Date(ms)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+describe('contextMarkLabel：線標題的待 compact／待 clear 標記', () => {
+  test('compact、clear 各有標記，null 為空字串', () => {
+    expect([contextMarkLabel('compact'), contextMarkLabel('clear'), contextMarkLabel(null)]).toEqual(['［待 compact］', '［待 clear］', ''])
+  })
+})
+
+describe('recentResume：恢復開工徽章的判定', () => {
+  const resumed = (ago: number, source: 'compact' | 'clear' = 'compact') => record({ phase: { kind: 'resumed', source, at: NOW - ago } })
+
+  test('正向對照：resumed 且未滿 10 分鐘（含剛好 10 分鐘）回傳 phase', () => {
+    expect(RESUME_BADGE_MS).toBe(10 * 60 * 1000)
+    expect(recentResume(resumed(9 * 60_000), NOW)).toEqual({ kind: 'resumed', source: 'compact', at: NOW - 9 * 60_000 })
+    expect(recentResume(resumed(RESUME_BADGE_MS, 'clear'), NOW)?.source).toBe('clear')
+  })
+
+  test('反向對照：超過 10 分鐘、compacted 尚未開工、沒有 phase、沒有用量檔都為 null', () => {
+    expect(recentResume(resumed(RESUME_BADGE_MS + 1), NOW)).toBeNull()
+    expect(recentResume(record({ phase: { kind: 'compacted', source: 'compact', at: NOW - 1000 } }), NOW)).toBeNull()
+    expect(recentResume(record(), NOW)).toBeNull()
+    expect(recentResume(null, NOW)).toBeNull()
+  })
+
+  test('徽章文字：`［/<來源> 後已恢復 HH:MM］`，時間為本機時間', () => {
+    const at = NOW - 120_000
+    expect(resumeBadgeText({ kind: 'resumed', source: 'compact', at })).toBe(`［/compact 後已恢復 ${hhmm(at)}］`)
+    expect(resumeBadgeText({ kind: 'resumed', source: 'clear', at })).toBe(`［/clear 後已恢復 ${hhmm(at)}］`)
+  })
+})
+
+describe('laneContextLabel：線標題的標記與徽章', () => {
+  const ticketToken = (serial: string): QueueToken => ({ kind: 'ticket', serial, id: `0.5.0-W1-${serial}`, note: '' })
+  const tickets: TicketStatus[] = [
+    { id: '0.5.0-W1-1', status: 'in_progress' },
+    { id: '0.5.0-W1-2', status: 'pending' },
+  ]
+  const sessions = [session({ name: 'L-a', status: 'busy', sessionId: 'sid-a' }), session({ name: '主控', status: 'busy', sessionId: 'sid-m' })]
+  const label = (sessionName: string | null, serials: string[], usages: Record<string, ContextUsageRecord>) =>
+    laneContextLabel({ sessionName, tokens: serials.map(ticketToken), tickets, sessions, usages, nowMs: NOW })
+
+  test('正向對照：持有 in_progress 票且達 45 標待 compact；未持有且達 30 標待 clear；主控達 60 標待 compact', () => {
+    expect(label('L-a', ['2', '1'], { 'sid-a': record({ percent: 45 }) })).toBe('［待 compact］')
+    expect(label('L-a', ['2'], { 'sid-a': record({ percent: 30 }) })).toBe('［待 clear］')
+    expect(label('主控', ['2'], { 'sid-m': record({ percent: 60 }) })).toBe('［待 compact］')
+  })
+
+  test('正向對照：標記之後接恢復開工徽章', () => {
+    const at = NOW - 60_000
+    const usage = record({ percent: 50, phase: { kind: 'resumed', source: 'compact', at } })
+    expect(label('L-a', ['1'], { 'sid-a': usage })).toBe(`［待 compact］［/compact 後已恢復 ${hhmm(at)}］`)
+  })
+
+  test('反向對照：低於門檻、主控未達 60、用量缺席、沒有 session 名稱、session 不存活或沒有用量檔都不標', () => {
+    expect(label('L-a', ['1'], { 'sid-a': record({ percent: 44 }) })).toBe('')
+    expect(label('L-a', ['2'], { 'sid-a': record({ percent: 29 }) })).toBe('')
+    expect(label('主控', ['1'], { 'sid-m': record({ percent: 59 }) })).toBe('')
+    expect(label('L-a', ['1'], { 'sid-a': record({ percent: null, compactPercent: null }) })).toBe('')
+    expect(label(null, ['1'], { 'sid-a': record({ percent: 90 }) })).toBe('')
+    expect(label('L-gone', ['1'], { 'sid-a': record({ percent: 90 }) })).toBe('')
+    expect(label('L-a', ['1'], {})).toBe('')
   })
 })
