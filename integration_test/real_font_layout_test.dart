@@ -119,18 +119,7 @@ void main() {
           for (var i = 0; i < hosts; i++) {
             final content = _contentOf[name]!(_hosts(name).at(i));
             for (var j = 0; j < content.evaluate().length; j++) {
-              if (name == 'FilterDropdown' && size == WindowSize.min) {
-                // 已知缺陷釘住（0.5.0-W1-572）：實機字型下 FilterDropdown 在
-                // kMinWindowSize 實得高度 12.4 < 固有高度 15.0。修復後此處
-                // 轉紅，屆時移除釘住改回直接斷言。
-                expect(
-                  () => expectNoVerticalClip(tester, content.at(j)),
-                  throwsA(isA<TestFailure>()),
-                  reason: 'W1-572 已修復，請移除釘住',
-                );
-              } else {
-                expectNoVerticalClip(tester, content.at(j));
-              }
+              expectNoVerticalClip(tester, content.at(j));
               checked++;
             }
           }
