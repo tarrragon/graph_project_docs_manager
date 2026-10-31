@@ -2,6 +2,8 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.18.2（2026-10-31）— `references/line-continuity.md` §4〈線 session 的恢復開工通知〉：主管道標為預設關閉；〈已知限制〉補一條「auto mode 下主管道不可用，以用量檔 phase、看板徽章、`line_status` 為準」，附實測紀錄（classifier 不給判定）與不自動重送、不設法讓 classifier 放行的理由。
+
 **Version**: 1.18.1（2026-10-31）— `references/line-continuity.md` §4〈線 session 的恢復開工通知〉補〈送出紀錄檔〉：主管道沒收到通知時讀 `.claude/hook-logs/line-board/resume-notice.log`，列出每行欄位、各步驟（sent、skipped、config-unavailable、state-unavailable、error、send-disabled）的意義與結果欄位，並寫明沒有對應行代表恢復開工未被判定到。
 
 **Version**: 1.18.0（2026-10-31）— `references/line-continuity.md` §4 新增〈線 session 的恢復開工通知〉：一般的線在 `/compact` 或 `/clear` 後重新開工時，line-board 自動通知主控（主管道為一行跨 session 訊息，輔管道為用量檔的 `phase`）。寫明判定時點、不通知的情況、主控收到後只核對不回覆，以及三項已知限制：熱重載遺失待通知狀態（不補救）、`/clear` 後狀態檔尚未更新時比對不到名稱、權限模式不同時訊息被暫扣。
