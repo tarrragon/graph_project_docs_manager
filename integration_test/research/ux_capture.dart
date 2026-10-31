@@ -417,10 +417,42 @@ List<Map<String, Object?>> _targetRects(
     out.add({
       'key': key,
       'rect': [r.left, r.top, r.width, r.height],
+      if (r.width > _anchorWidthThreshold) 'anchor': _firstTextAnchor(e, key),
     });
   }
   expect(out, isNotEmpty, reason: '找不到正解目標');
   return out;
+}
+
+/// 寬目標改用標題錨點的寬度門檻（466 用戶裁定）。
+const double _anchorWidthThreshold = 320;
+
+/// 目標子樹中依閱讀順序（上到下、左到右）第一個文字元素的文字與全域 rect。
+Map<String, Object?> _firstTextAnchor(Element target, String key) {
+  final found = <(String, Rect)>[];
+  void walk(Element e) {
+    final w = e.widget;
+    final box = e.renderObject;
+    if (w is RichText && box is RenderBox && box.hasSize) {
+      final text = w.text.toPlainText().trim();
+      if (text.isNotEmpty) {
+        found.add((text, box.localToGlobal(Offset.zero) & box.size));
+      }
+    }
+    e.visitChildren(walk);
+  }
+
+  walk(target);
+  expect(found, isNotEmpty, reason: '寬目標 $key 子樹找不到文字錨點');
+  found.sort((a, b) {
+    final c = a.$2.top.compareTo(b.$2.top);
+    return c != 0 ? c : a.$2.left.compareTo(b.$2.left);
+  });
+  final (text, r) = found.first;
+  return {
+    'text': text,
+    'rect': [r.left, r.top, r.width, r.height],
+  };
 }
 
 int _countKeys(WidgetTester tester, String prefix) {
