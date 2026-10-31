@@ -25,7 +25,11 @@ import {
   isContextChanged,
   laneTicketIds,
   messageOf,
-  resumeNoticeTarget,
+  RESUME_NOTICE_LOG_MAX_LINES,
+  RESUME_NOTICE_LOG_PATH,
+  appendCappedLog,
+  resumeNoticeDecision,
+  resumeNoticeLogLine,
   resumeNoticeText,
   resumePhaseOf,
   serializeContextUsage,
@@ -33,7 +37,7 @@ import {
   ticketPrefixOf,
   toggledOverrides,
 } from './parse'
-import type { CompactionWindow, ContextFill, PendingResume, ResumeEvent, ResumedEvent } from './parse'
+import type { CompactionWindow, ContextFill, PendingResume, ResumeEvent, ResumedEvent, ResumeNoticeOutcome } from './parse'
 import {
   PROJECT_CONFIG_PATH,
   findCheckouts,
@@ -343,34 +347,53 @@ async function writePhase($: EngineInterface): Promise<void> {
 }
 
 /**
- * 恢復開工：先寫 phase（輔管道，一定執行），再以 session.send 傳一行給主控（主管道，開關見 IS_RESUME_NOTICE_SEND_ENABLED）。
- * 本 session 的名稱以 sessionId 比對 ~/.claude/sessions 的狀態檔取得，線號以名稱比對協調票的現行佇列行；
- * 比對不到、是主控自身或已收線時不送。送不出去記 debug（phase 已寫，不重試）。
+ * 恢復開工：先寫 phase（輔管道，一定執行），再以 session.send 傳一行給主控（主管道，開關見 IS_RESUME_NOTICE_SEND_ENABLED），
+ * 最後把走到的步驟與結果寫一行到送出紀錄檔（resumeNoticeLog.ts）。送不出去不重試（phase 已寫）。
  */
 async function notifyResumed($: EngineInterface, resumed: ResumedEvent): Promise<void> {
   await writePhase($)
-  if (!IS_RESUME_NOTICE_SEND_ENABLED) return
+  const outcome = await sendResumeNotice($, resumed)
+  await appendResumeNoticeLog($, resumed, outcome)
+}
+
+/**
+ * 主管道：本 session 的名稱以 sessionId 比對 ~/.claude/sessions 的狀態檔取得，線號以名稱比對協調票的現行佇列行；
+ * 比對不到、是主控自身或已收線時不送。每個提早結束的分支都回傳原因，由呼叫端寫入紀錄檔。
+ */
+async function sendResumeNotice($: EngineInterface, resumed: ResumedEvent): Promise<ResumeNoticeOutcome> {
+  if (!IS_RESUME_NOTICE_SEND_ENABLED) return { step: 'send-disabled' }
   try {
     const sessionId = await $.session.id()
     const root = await $.session.root()
     const { checkoutPaths } = await findCheckouts($, root)
     const mainPath = checkoutPaths[0] ?? root
     const config = await readProjectConfig($, mainPath)
-    if (config.kind !== 'ok') return
+    if (config.kind !== 'ok') return { step: 'config-unavailable', detail: 'message' in config ? `${config.kind}：${config.message}` : config.kind }
     const sessions = await readSessions($, checkoutPaths)
+    if (sessions.kind !== 'ok') return { step: 'state-unavailable', detail: `session 狀態：${sessions.message}` }
     const lanes = await readLanes($, mainPath, config.coordinationTicket)
-    if (sessions.kind !== 'ok' || lanes.kind !== 'ok') {
-      $.ui.log('line-board: session 狀態或協調票讀不到，不送恢復開工通知', { to: 'debug' })
-      return
-    }
+    if (lanes.kind !== 'ok') return { step: 'state-unavailable', detail: `協調票：${lanes.message}` }
     const sessionName = sessions.sessions.find(state => state.sessionId === sessionId)?.name ?? null
-    const target = resumeNoticeTarget({ sessionName, lines: lanes.lines })
-    if (target === null) return
-    const text = resumeNoticeText(target, formatTime(new Date(resumed.resumedAt)).slice(-8), resumed.source)
+    const decision = resumeNoticeDecision({ sessionName, lines: lanes.lines })
+    if (decision.kind === 'skip') return { step: 'skipped', reason: decision.reason }
+    const text = resumeNoticeText(decision.target, formatTime(new Date(resumed.resumedAt)).slice(-8), resumed.source)
     const sent = await $.session.send({ to: COORDINATOR_SESSION_NAME, text })
-    if (!sent.isDelivered) $.ui.log(`line-board: 恢復開工通知未送達主控：${sent.reason}`, { to: 'debug' })
+    return sent.isDelivered ? { step: 'sent', isDelivered: true } : { step: 'sent', isDelivered: false, reason: String(sent.reason) }
   } catch (error) {
-    $.ui.log(`line-board: 送恢復開工通知失敗：${messageOf(error)}`, { to: 'debug' })
+    return { step: 'error', detail: messageOf(error) }
+  }
+}
+
+/** 寫一行到主 checkout 的送出紀錄檔（保留最後 RESUME_NOTICE_LOG_MAX_LINES 行）；寫不進去送 transcript（恢復開工才寫，不洗版）。 */
+async function appendResumeNoticeLog($: EngineInterface, resumed: ResumedEvent, outcome: ResumeNoticeOutcome): Promise<void> {
+  try {
+    const path = `${await mainCheckoutForUsage($)}/${RESUME_NOTICE_LOG_PATH}`
+    const line = resumeNoticeLogLine({ time: formatTime(new Date(resumed.resumedAt)), sessionId: await $.session.id(), source: resumed.source, outcome })
+    // 檔案不存在（第一次寫）讀取會拒絕，視為空檔
+    const existing = await $.fs.read(path).catch(() => '')
+    await $.fs.write(path, appendCappedLog(existing, line, RESUME_NOTICE_LOG_MAX_LINES))
+  } catch (error) {
+    $.ui.log(`line-board 警告：寫恢復開工送出紀錄檔失敗：${messageOf(error)}`, { to: 'transcript' })
   }
 }
 
