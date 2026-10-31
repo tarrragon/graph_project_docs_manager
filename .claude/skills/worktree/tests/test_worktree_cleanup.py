@@ -11,7 +11,7 @@ from pathlib import Path
 # 加入模組路徑
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from worktree_manager import (
+from cleanup_command import (
     cmd_cleanup,
     _cleanup_check_level1,
     _cleanup_check_level2,
@@ -50,10 +50,12 @@ class TestCleanupSuccess:
             return [{"path": "/path/ccsession-0.1.1-W9-001", "branch": "feat/0.1.1-W9-001"}]
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
-        monkeypatch.setattr("worktree_manager._is_branch_pushed", mock_is_pushed)
-        monkeypatch.setattr("worktree_manager._is_branch_merged_to_base", mock_is_merged)
+        monkeypatch.setattr("cleanup_command._is_branch_pushed", mock_is_pushed)
+        monkeypatch.setattr("cleanup_command._is_branch_merged_to_base", mock_is_merged)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W9-001")
 
@@ -83,7 +85,9 @@ class TestCleanupLevel1:
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W10-001.1", force=False)
 
@@ -110,7 +114,9 @@ class TestCleanupLevel1:
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W10-001.1", force=True)
 
@@ -142,9 +148,11 @@ class TestCleanupLevel2:
             return [{"path": "/path/ccsession-0.1.1-W9-002", "branch": "feat/0.1.1-W9-002"}]
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
-        monkeypatch.setattr("worktree_manager._is_branch_pushed", mock_is_pushed)
+        monkeypatch.setattr("cleanup_command._is_branch_pushed", mock_is_pushed)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W9-002", force=False)
 
@@ -179,10 +187,12 @@ class TestCleanupLevel2:
             return [{"path": "/path/ccsession-0.1.1-W9-002", "branch": "feat/0.1.1-W9-002"}]
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
-        monkeypatch.setattr("worktree_manager._is_branch_pushed", mock_is_pushed)
-        monkeypatch.setattr("worktree_manager._is_branch_merged_to_base", mock_is_merged)
+        monkeypatch.setattr("cleanup_command._is_branch_pushed", mock_is_pushed)
+        monkeypatch.setattr("cleanup_command._is_branch_merged_to_base", mock_is_merged)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W9-002", force=True)
 
@@ -217,10 +227,12 @@ class TestCleanupLevel3:
             return [{"path": "/path/ccsession-0.1.1-W9-002", "branch": "feat/0.1.1-W9-002"}]
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
-        monkeypatch.setattr("worktree_manager._is_branch_pushed", mock_is_pushed)
-        monkeypatch.setattr("worktree_manager._is_branch_merged_to_base", mock_is_merged)
+        monkeypatch.setattr("cleanup_command._is_branch_pushed", mock_is_pushed)
+        monkeypatch.setattr("cleanup_command._is_branch_merged_to_base", mock_is_merged)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W9-002", force=False)
 
@@ -255,10 +267,12 @@ class TestCleanupLevel3:
             return [{"path": "/path/ccsession-0.1.1-W9-002", "branch": "feat/0.1.1-W9-002"}]
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
-        monkeypatch.setattr("worktree_manager._is_branch_pushed", mock_is_pushed)
-        monkeypatch.setattr("worktree_manager._is_branch_merged_to_base", mock_is_merged)
+        monkeypatch.setattr("cleanup_command._is_branch_pushed", mock_is_pushed)
+        monkeypatch.setattr("cleanup_command._is_branch_merged_to_base", mock_is_merged)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W9-002", force=True)
 
@@ -303,9 +317,10 @@ class TestCleanupScan:
             ]
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
-        monkeypatch.setattr("worktree_manager._is_branch_pushed", mock_is_pushed)
-        monkeypatch.setattr("worktree_manager._is_branch_merged_to_base", mock_is_merged)
+        monkeypatch.setattr("cleanup_command._is_branch_pushed", mock_is_pushed)
+        monkeypatch.setattr("cleanup_command._is_branch_merged_to_base", mock_is_merged)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup(None)  # 掃描模式
 
@@ -324,6 +339,7 @@ class TestCleanupScan:
             return [{"path": "/path/ccsession", "branch": "main"}]
 
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup(None)
 
@@ -347,6 +363,7 @@ class TestCleanupError:
             ]
 
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W9-999")
 
@@ -381,10 +398,12 @@ class TestCleanupError:
             return [{"path": "/path/ccsession-0.1.1-W9-001", "branch": "feat/0.1.1-W9-001"}]
 
         monkeypatch.setattr("worktree_manager.get_worktree_uncommitted_count", mock_get_uncommitted)
-        monkeypatch.setattr("worktree_manager._is_branch_pushed", mock_is_pushed)
-        monkeypatch.setattr("worktree_manager._is_branch_merged_to_base", mock_is_merged)
+        monkeypatch.setattr("cleanup_command._is_branch_pushed", mock_is_pushed)
+        monkeypatch.setattr("cleanup_command._is_branch_merged_to_base", mock_is_merged)
         monkeypatch.setattr("worktree_manager.run_git_command", mock_run_git)
+        monkeypatch.setattr("cleanup_command.run_git_command", mock_run_git)
         monkeypatch.setattr("worktree_manager.get_worktree_list", mock_get_worktree_list)
+        monkeypatch.setattr("cleanup_command.get_worktree_list", mock_get_worktree_list)
 
         exit_code = cmd_cleanup("0.1.1-W9-001")
 
@@ -400,6 +419,7 @@ class TestCleanupError:
 import os
 import subprocess
 
+import cleanup_command
 import worktree_manager
 
 
@@ -424,6 +444,7 @@ def repo(tmp_path, monkeypatch):
     _git(root, "worktree", "add", "-b", "worktree-agent-x", str(wt))
     monkeypatch.chdir(root)
     monkeypatch.setattr(worktree_manager, "get_project_root", lambda: str(tmp_path / "logroot"))
+    monkeypatch.setattr(cleanup_command, "get_project_root", lambda: str(tmp_path / "logroot"))
     return {"root": root, "wt": wt, "log": tmp_path / "logroot"}
 
 
@@ -456,17 +477,18 @@ def _inject_remove_timeout(monkeypatch, repo, delete_tracked=True, untracked=Fal
         return real(args, cwd=cwd, timeout=timeout)
 
     monkeypatch.setattr(worktree_manager, "run_git_command", fake)
+    monkeypatch.setattr(cleanup_command, "run_git_command", fake)
     return seen
 
 
 class TestRemoveTimeoutAndRecovery:
     def test_remove_timeout_constant_is_300(self):
-        assert worktree_manager.WORKTREE_REMOVE_TIMEOUT_SECONDS == 300
+        assert cleanup_command.WORKTREE_REMOVE_TIMEOUT_SECONDS == 300
 
     def test_remove_uses_constant_and_logs_elapsed(self, repo, monkeypatch):
-        monkeypatch.setattr(worktree_manager, "WORKTREE_REMOVE_TIMEOUT_SECONDS", 7)
+        monkeypatch.setattr(cleanup_command, "WORKTREE_REMOVE_TIMEOUT_SECONDS", 7)
         seen = _inject_remove_timeout(monkeypatch, repo)
-        worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert seen["timeouts"] == [7]
         log = next(repo["log"].rglob("worktree-merge.log"))
         assert "耗時" in log.read_text(encoding="utf-8")
@@ -474,7 +496,7 @@ class TestRemoveTimeoutAndRecovery:
     def test_half_removed_with_both_conditions_is_recovered(self, repo, monkeypatch):
         """E1 正向：逾時半刪 + 兩條件成立 → 目錄、登記、分支皆清除。"""
         _inject_remove_timeout(monkeypatch, repo)
-        ok, _ = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        ok, _ = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert ok
         assert not repo["wt"].exists()
         assert not _registered(repo["root"], repo["wt"])
@@ -483,8 +505,8 @@ class TestRemoveTimeoutAndRecovery:
     def test_half_removed_stays_when_recovery_disabled(self, repo, monkeypatch):
         """E1 對照：同 fixture 關閉收尾 → 半刪殘留且 rc 非 0。"""
         _inject_remove_timeout(monkeypatch, repo)
-        monkeypatch.setattr(worktree_manager, "_cleanup_recover", lambda p, e: (False, e))
-        ok, _ = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        monkeypatch.setattr(cleanup_command, "_cleanup_recover", lambda p, e: (False, e))
+        ok, _ = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert not ok
         assert repo["wt"].exists()
         assert _registered(repo["root"], repo["wt"])
@@ -493,7 +515,7 @@ class TestRemoveTimeoutAndRecovery:
     def test_untracked_blocks_recovery(self, repo, monkeypatch):
         """E2：存在 untracked 時不收尾，並列出不成立項。"""
         _inject_remove_timeout(monkeypatch, repo, untracked=True)
-        ok, msg = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        ok, msg = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert not ok
         assert "非 tracked 刪除" in msg
         assert repo["wt"].exists() and _registered(repo["root"], repo["wt"])
@@ -502,7 +524,7 @@ class TestRemoveTimeoutAndRecovery:
         """E2：存在 modified 時不收尾。"""
         _inject_remove_timeout(monkeypatch, repo, delete_tracked=False)
         (repo["wt"] / "a.txt").write_text("changed")
-        ok, msg = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        ok, msg = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert not ok
         assert "非 tracked 刪除" in msg
         assert repo["wt"].exists()
@@ -513,7 +535,7 @@ class TestRemoveTimeoutAndRecovery:
         _git(repo["wt"], "add", "c.txt")
         _git(repo["wt"], "commit", "-m", "extra")
         _inject_remove_timeout(monkeypatch, repo)
-        ok, msg = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        ok, msg = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert not ok
         assert "不是 main 的祖先" in msg
         assert repo["wt"].exists()
@@ -550,7 +572,7 @@ class TestWorktreeLock:
 
     def test_locked_worktree_is_not_removed_by_default(self, repo):
         self._lock(repo, os.getpid())
-        ok, msg = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        ok, msg = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert not ok
         assert "claude agent x" in msg
         assert f"pid {os.getpid()} 存活" in msg
@@ -558,13 +580,13 @@ class TestWorktreeLock:
 
     def test_dead_pid_reported(self, repo):
         self._lock(repo, 99999999)
-        ok, msg = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
+        ok, msg = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x")
         assert not ok
         assert "已不存在" in msg
 
     def test_unlock_flag_unlocks_then_removes(self, repo):
         self._lock(repo, os.getpid())
-        ok, _ = worktree_manager._cleanup_execute(str(repo["wt"]), "worktree-agent-x", unlock=True)
+        ok, _ = cleanup_command._cleanup_execute(str(repo["wt"]), "worktree-agent-x", unlock=True)
         assert ok
         assert not repo["wt"].exists()
         assert _branches(repo["root"]) == ""
