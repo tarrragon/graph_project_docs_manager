@@ -2,6 +2,12 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.9.0（2026-10-31）— 跨專案行為變更：線群組標題列在 `［狀態］` 之後加 context 用量的標記與恢復開工徽章。達門檻的線標 `［待 compact］` 或 `［待 clear］`（判定同 0.8.0 的 `contextMarkOf`）；恢復開工後 10 分鐘內標 `［/compact 後已恢復 HH:MM］`（`/clear` 同理，本機時間）。沒有用量檔、未達門檻、超過 10 分鐘的線，標題列與 0.8.0 相同。
+
+- `hooks/contextJudge.ts` 新增 `laneContextLabel`（依 session 名稱找存活 session 與用量檔；名稱為主控以主控門檻判定；持有 in_progress 票＝佇列中有票在主 checkout 為 in_progress）、`contextMarkLabel`、`recentResume`、`resumeBadgeText` 與常數 `RESUME_BADGE_MS`，供 `line_status` 共用（後續版本接上）。
+- `hooks/lanesView.tsx` 的線群組標題列接上 `laneContextLabel`。
+- `references/board-screens.md` 的線群組標題格式與〈context 用量〉補標記與徽章。
+
 **Version**: 0.8.0（2026-10-31）— 跨專案行為變更：「各 session」區塊每列在有用量檔時，行尾加 `｜ctx <百分比>%（<距量測的時間>）`；compact 後沒有用量時寫 `ctx 未量測`。沒有用量檔的 session 不加字尾。用量檔開始有清理：session 結束時刪自己的檔，看板每小時刪 24 小時以上的孤兒檔。
 
 - 新增 `hooks/contextJudge.ts`：`parseContextUsageFile`、`selectedPercent`（auto-compact 開啟用 `compactPercent`，關閉用 `percent`）、`contextMarkOf`（待 compact／待 clear，一般線 45／30、主控 60 且不判待 clear；收線或不屬於任何線不判定）、`contextUsageSuffix`、`isDeletableUsagePath`、`orphanUsageFiles`，門檻常數 `LANE_T_COMPACT`、`LANE_T_CLEAR`、`COORDINATOR_T_COMPACT`、`ORPHAN_AGE_MS`。判定函式供線標題標記與 `line_status` 共用（後續版本接上）。

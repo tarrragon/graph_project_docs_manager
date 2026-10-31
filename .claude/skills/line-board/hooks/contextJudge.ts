@@ -8,8 +8,10 @@
 // - 主控：達 COORDINATOR_T_COMPACT → 待 compact；不判待 clear（主控長駐，compact 是例外處理）
 // - 存活的 session 一律判定，不因量測時間舊而停判：用量檔只在用量變動時寫入，閒置 session 最後一次的值仍準確
 
-import type { ContextUsageRecord, ResumePhase } from '../types'
+import type { ContextUsageRecord, QueueToken, ResumePhase, SessionState, TicketStatus } from '../types'
 import { CONTEXT_USAGE_DIR } from './contextUsage'
+import { COORDINATOR_SESSION_NAME } from './resumeNotice'
+import { findSessionByName } from './sessions'
 import { formatAge } from './shared'
 
 /** 一般線的待 compact 門檻：583 盤點的兩次實際 compact 在 45% 與 33%，45 在最晚一次之前提醒。 */
@@ -20,6 +22,10 @@ export const LANE_T_CLEAR = 30
 export const COORDINATOR_T_COMPACT = 60
 /** 孤兒用量檔的年齡下限：mtime 超過 24 小時且不屬於存活 session 才刪。 */
 export const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
+/** 恢復開工徽章的顯示時間：恢復開工後 10 分鐘內（含 10 分鐘）顯示，讓主控回頭看板時仍看得到。 */
+export const RESUME_BADGE_MS = 10 * 60 * 1000
+/** 佇列票持有中的狀態：線的佇列有這個狀態的票，即為持有 in_progress 票。 */
+const IN_PROGRESS_STATUS = 'in_progress'
 
 /** 用量檔檔名：sessionId（英數、連字號、底線）加 .json；與 contextUsagePath 的 sessionId 檢查一致。 */
 const USAGE_FILE_NAME = /^[A-Za-z0-9_-]+\.json$/
@@ -76,6 +82,49 @@ export function contextUsageSuffix(record: ContextUsageRecord | null, nowMs: num
   const percent = selectedPercent(record)
   const value = percent === null ? '未量測' : `${percent}%`
   return `ctx ${value}（${formatAge(nowMs, record.measuredAt)}）`
+}
+
+/** 線標題的標記：`［待 compact］`、`［待 clear］`；不標為空字串。 */
+export function contextMarkLabel(mark: ContextMark): string {
+  return mark === null ? '' : `［待 ${mark}］`
+}
+
+/** 恢復開工徽章的判定：phase 為 resumed 且距今不超過 RESUME_BADGE_MS 時回傳該 phase；compacted（尚未開工）不顯示。 */
+export function recentResume(record: ContextUsageRecord | null, nowMs: number): ResumePhase | null {
+  const phase = record?.phase ?? null
+  if (phase === null || phase.kind !== 'resumed') return null
+  return nowMs - phase.at <= RESUME_BADGE_MS ? phase : null
+}
+
+/** 恢復開工徽章：`［/<來源> 後已恢復 HH:MM］`，時間為本機時間。 */
+export function resumeBadgeText(phase: ResumePhase): string {
+  const date = new Date(phase.at)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `［/${phase.source} 後已恢復 ${pad(date.getHours())}:${pad(date.getMinutes())}］`
+}
+
+/**
+ * 線標題列 `［狀態］` 之後的文字：待 compact／待 clear 標記接恢復開工徽章，皆無時為空字串。
+ * 依 session 名稱找存活 session 與其用量檔；名稱為主控以主控門檻判定，其他為一般線（收線的線不在看板上，不會呼叫）。
+ * 持有 in_progress 票＝佇列中有票在主 checkout 為 in_progress。
+ */
+export function laneContextLabel(input: {
+  sessionName: string | null
+  tokens: readonly QueueToken[]
+  tickets: readonly TicketStatus[]
+  sessions: readonly SessionState[]
+  usages: Readonly<Record<string, ContextUsageRecord>>
+  nowMs: number
+}): string {
+  const { sessionName, tokens, tickets, sessions, usages, nowMs } = input
+  if (sessionName === null) return ''
+  const sessionId = findSessionByName(sessions, sessionName)?.sessionId ?? null
+  const record = sessionId === null ? null : (usages[sessionId] ?? null)
+  const role: ContextRole = sessionName === COORDINATOR_SESSION_NAME ? 'coordinator' : 'lane'
+  const inProgress = new Set(tickets.filter(ticket => ticket.status === IN_PROGRESS_STATUS).map(ticket => ticket.id))
+  const holdsInProgress = tokens.some(token => token.kind === 'ticket' && inProgress.has(token.id))
+  const resumed = recentResume(record, nowMs)
+  return contextMarkLabel(contextMarkOf({ record, role, holdsInProgress })) + (resumed === null ? '' : resumeBadgeText(resumed))
 }
 
 /** 刪除前的路徑檢查：必須直接位於主 checkout 的用量檔目錄下，檔名符合 sessionId 格式；不符就不刪。 */
