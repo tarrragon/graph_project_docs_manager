@@ -155,9 +155,13 @@ def test_cell_status_undecidable_when_two_unparseable():
     assert score.cell_status(v)["fail"] is True  # 恰 1 次不可解析仍可判
 
 
+OPTION_ORDER = [chr(ord("A") + i) for i in range(16)] + ["0"]
+
+
 def _rows(question, qtype, variant, verdict_parsed):
     return [{"question": question, "type": qtype, "variant": variant,
-             "parsed": p, "correct": ["A"]} for p in verdict_parsed]
+             "parsed": p, "raw_reply": p or "", "option_order": OPTION_ORDER,
+             "correct": ["A"]} for p in verdict_parsed]
 
 
 def _pair(question, qtype, orig_pass, bad_pass):
@@ -203,6 +207,27 @@ def test_undecidable_cell_excluded_from_numerator():
     rows += _rows("q1", "bad", "bad", [None, None, "B", "B", "B"])
     cond = score.summarize(rows)["conditions"]
     assert cond["a"]["forward"] == [] and cond["undecidable"] == ["q1/bad"]
+
+
+def _row_with_reply(raw_reply, parsed=None):
+    return {"question": "q1", "type": "B", "variant": "orig", "parsed": parsed,
+            "raw_reply": raw_reply, "option_order": OPTION_ORDER, "correct": ["A"]}
+
+
+def _orig_verdicts(rows):
+    return score.summarize(rows)["questions"]["q1"]["orig_verdicts"]
+
+
+def test_e1_dataset_parsed_none_but_valid_reply_is_resolved():
+    rows = [_row_with_reply(" a\n")] * 5  # parsed=None 為 sampler 在 max_tokens 時的寫法
+    assert score.judge(rows[0]["parsed"], {"A"}) == score.UNPARSEABLE  # 修正前
+    assert _orig_verdicts(rows) == [score.CORRECT] * 5  # 修正後
+
+
+@pytest.mark.parametrize("reply", ["The", "", "Z9", "Q"])
+def test_e2_non_option_reply_stays_unparseable(reply):
+    rows = [_row_with_reply(reply, parsed="A")] * 5  # 即使 parsed 欄有值也不採信
+    assert _orig_verdicts(rows) == [score.UNPARSEABLE] * 5
 
 
 # ---------- 取樣協定 ----------
