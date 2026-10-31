@@ -145,6 +145,36 @@ def build_row(question, variant, sample_idx, cell, record):
     }
 
 
+def iter_cells(capture_root, overlay_dir, max_edge=None):
+    """依登記順序產出 (題序, 題, 版本序, 版本, 疊圖 cell)；run 與 dry-run 共用。"""
+    for qi, question in enumerate(QUESTIONS):
+        for vi, variant in enumerate(VARIANTS):
+            yield qi, question, vi, variant, prepare_cell(
+                capture_root, question, variant, overlay_dir, max_edge)
+
+
+def run_dry(capture_root, dry_dir, max_edge=None):
+    """離線檢查：產疊圖與 plan.jsonl；不建 client、不讀 key、不寫 dataset。"""
+    dry_dir = Path(dry_dir)
+    overlay_dir = dry_dir / "images"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+    plan = []
+    for qi, question, vi, variant, cell in iter_cells(capture_root, overlay_dir, max_edge):
+        for si in range(K):
+            seed = seed_for(qi, vi, si)
+            order = sampler.shuffled_order(cell[2], seed)
+            plan.append({
+                "question": question[0], "variant": variant, "sample": si,
+                "seed": seed, "option_order": order,
+                "prompt": sampler.build_prompt(question[4], cell[2], order),
+                "image_path": str(cell[0]),
+            })
+    with (dry_dir / "plan.jsonl").open("w", encoding="utf-8") as f:
+        for row in plan:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return plan
+
+
 def run(client, capture_root, out_dir, max_edge=None):
     """跑完 90 次並寫入 dataset.jsonl；已存在則拒絕覆蓋。"""
     out_dir = Path(out_dir)
@@ -154,15 +184,13 @@ def run(client, capture_root, out_dir, max_edge=None):
     overlay_dir = out_dir / "images"
     overlay_dir.mkdir(parents=True, exist_ok=True)
     rows = []
-    for qi, question in enumerate(QUESTIONS):
-        for vi, variant in enumerate(VARIANTS):
-            cell = prepare_cell(capture_root, question, variant, overlay_dir, max_edge)
-            for si in range(K):
-                record = sampler.sample_once(
-                    client, MODEL, question[4], cell[2], seed_for(qi, vi, si),
-                    max_tokens=MAX_TOKENS, temperature=TEMPERATURE,
-                    image_paths=[cell[0]], thinking="disabled")
-                rows.append(build_row(question, variant, si, cell, record))
+    for qi, question, vi, variant, cell in iter_cells(capture_root, overlay_dir, max_edge):
+        for si in range(K):
+            record = sampler.sample_once(
+                client, MODEL, question[4], cell[2], seed_for(qi, vi, si),
+                max_tokens=MAX_TOKENS, temperature=TEMPERATURE,
+                image_paths=[cell[0]], thinking="disabled")
+            rows.append(build_row(question, variant, si, cell, record))
     with dataset.open("w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -174,7 +202,14 @@ def main(argv=None):
     p.add_argument("--capture-root", default="build/ux_capture")
     p.add_argument("--out-dir", default=str(Path(__file__).parent))
     p.add_argument("--max-edge", type=int, default=None)
+    p.add_argument("--dry-run", action="store_true",
+                   help="離線產疊圖與 plan.jsonl；不連網、不讀 key、不寫 dataset")  # i18n-exempt
+    p.add_argument("--dry-run-dir", default="build/ux_dryrun")
     args = p.parse_args(argv)
+    if args.dry_run:
+        plan = run_dry(args.capture_root, args.dry_run_dir, args.max_edge)
+        print(f"[OK] dry-run 寫入 {len(plan)} 筆 plan 至 {args.dry_run_dir}")  # i18n-exempt
+        return
     rows = run(sampler.make_client(), args.capture_root, args.out_dir, args.max_edge)
     print(f"[OK] 寫入 {len(rows)} 筆")  # i18n-exempt
 

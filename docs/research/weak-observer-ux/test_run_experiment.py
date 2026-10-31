@@ -327,6 +327,37 @@ def test_unparseable_reply_recorded_not_dropped(capture_root, tmp_path):
     assert all(r["verdict"] == score.UNPARSEABLE for r in rows)
 
 
+# ---------- dry-run ----------
+
+def test_dry_run_without_key_makes_18_images_and_90_plans(capture_root, tmp_path, monkeypatch):
+    monkeypatch.delenv(rx.sampler.KEY_ENV, raising=False)
+    monkeypatch.setattr(rx.sampler, "make_client",
+                        lambda: pytest.fail("dry-run called make_client"))
+    dry = tmp_path / "dry"
+    rx.main(["--dry-run", "--capture-root", str(capture_root),
+             "--dry-run-dir", str(dry), "--out-dir", str(tmp_path / "out")])
+    assert len(list((dry / "images").glob("*.png"))) == 18
+    plan = [json.loads(line) for line in
+            (dry / "plan.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert len(plan) == 90
+    first = plan[0]
+    assert set(first) == {"question", "variant", "sample", "seed",
+                          "option_order", "prompt", "image_path"}
+    assert first["seed"] == 100 and first["prompt"].endswith(rx.sampler.ANSWER_INSTRUCTION)
+    assert not (tmp_path / "out" / "dataset.jsonl").exists()
+
+
+def test_dry_run_differs_from_real_run_and_order_matches(capture_root, tmp_path):
+    """E1 對照：真跑寫 dataset 不寫 plan，dry-run 反之；且 seed 與選項順序逐筆一致。"""
+    real_dir, dry_dir = tmp_path / "real", tmp_path / "dry"
+    rows = rx.run(FakeClient("A"), capture_root, real_dir)
+    plan = rx.run_dry(capture_root, dry_dir)
+    assert (real_dir / "dataset.jsonl").exists() and not (real_dir / "plan.jsonl").exists()
+    assert (dry_dir / "plan.jsonl").exists() and not (dry_dir / "dataset.jsonl").exists()
+    assert [p["option_order"] for p in plan] == [r["option_order"] for r in rows]
+    assert [p["seed"] for p in plan] == [r["seed"] for r in rows]
+
+
 # ---------- 衛生 ----------
 
 def test_sources_do_not_mention_foreign_key_name():

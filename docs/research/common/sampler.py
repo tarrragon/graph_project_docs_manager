@@ -58,10 +58,13 @@ def _image_block(path):
     }
 
 
-def _build_prompt(question, options, order):
+def build_prompt(question, options, order):
     lines = [question, ""] + [f"{c}: {options[c]}" for c in order]
     lines += ["", ANSWER_INSTRUCTION]
     return "\n".join(lines)
+
+
+_build_prompt = build_prompt  # 舊名相容（既有測試與呼叫端）
 
 
 def _first_text(content):
@@ -77,7 +80,7 @@ def sample_once(client, model, question, options, seed, *, max_tokens=1,
     """取樣一次並回傳完整記錄。options: {代碼: 選項文字}。"""
     order = shuffled_order(options, seed)
     content = [_image_block(p) for p in image_paths]
-    content.append({"type": "text", "text": _build_prompt(question, options, order)})
+    content.append({"type": "text", "text": build_prompt(question, options, order)})
     params = {
         "model": model,
         "max_tokens": max_tokens,
