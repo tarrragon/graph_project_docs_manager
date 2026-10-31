@@ -186,6 +186,22 @@ function liveLaneWaiting(
 }
 
 /**
+ * 各條未收線的線的等用戶項（依線號，各線內 S1、S3、S2）：看板「用戶待辦」群組的 U2。
+ * 與 lineStatusReport 的等用戶段同一份判定；收線（含附說明的收線寫法）的線不判。
+ */
+export function lanesWaiting(input: {
+  lanes: readonly LaneLine[]
+  sessions: readonly SessionState[]
+  tickets: readonly TicketStatus[]
+  prefix: string
+}): WaitingItem[] {
+  const tickets = new Map(input.tickets.map(ticket => [ticket.id, ticket]))
+  return input.lanes
+    .filter(lane => endedForm(lane.queue) === null)
+    .flatMap(lane => liveLaneWaiting(lane, input.sessions, tickets, input.prefix))
+}
+
+/**
  * 判讀每條線的接續狀態與過期項。收線（含附說明的收線寫法）判為已收線，不再判持有者；
  * 附說明的收線寫法另列過期項，因為看板只認整段為收線記號的寫法，否則仍把該線顯示為離線。
  */

@@ -6,7 +6,8 @@
 // - dispatch.ts：派發紀錄解析、流程階段推導、派發列
 // - layout.ts：以線分組的群組、活動計數、預設展開與手動切換、群組的顯示文字與佇列列分段
 // - statusColor.ts：五種狀態（輪到誰處理）的判定與顏色
-// - continuity.ts：各線接續狀態（line_status 工具）：來源紀錄解析、接續狀態判定、過期偵測與輸出文字
+// - continuity.ts：各線接續狀態（line_status 工具）：來源紀錄解析、接續狀態判定、過期偵測、等用戶偵測與輸出文字
+// - userTodos.ts：協調票的用戶待辦行與完成行配對、「用戶待辦」群組的各行
 
 export * from './shared'
 export * from './lanes'
@@ -16,3 +17,4 @@ export * from './dispatch'
 export * from './layout'
 export * from './statusColor'
 export * from './continuity'
+export * from './userTodos'
