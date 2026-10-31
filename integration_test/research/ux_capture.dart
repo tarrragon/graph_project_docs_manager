@@ -417,10 +417,57 @@ List<Map<String, Object?>> _targetRects(
     out.add({
       'key': key,
       'rect': [r.left, r.top, r.width, r.height],
+      if (r.width > _anchorWidthThreshold) 'anchor': _firstTextAnchor(e, key),
     });
   }
   expect(out, isNotEmpty, reason: '找不到正解目標');
   return out;
+}
+
+/// 寬目標改用標題錨點的寬度門檻（466 用戶裁定）。
+const double _anchorWidthThreshold = 320;
+
+/// 目標子樹中依閱讀順序（上到下、左到右）第一個文字元素的文字與全域 rect。
+Map<String, Object?> _firstTextAnchor(Element target, String key) {
+  final found = <(String, Rect, Rect)>[];
+  void walk(Element e) {
+    final w = e.widget;
+    final box = e.renderObject;
+    if (w is RichText && box is RenderParagraph && box.hasSize) {
+      final plain = w.text.toPlainText();
+      final text = plain.trim();
+      final layout = box.localToGlobal(Offset.zero) & box.size;
+      final ink = _inkRect(box, plain.length);
+      if (text.isNotEmpty && ink != null) found.add((text, ink, layout));
+    }
+    e.visitChildren(walk);
+  }
+
+  walk(target);
+  expect(found, isNotEmpty, reason: '寬目標 $key 子樹找不到文字錨點');
+  found.sort((a, b) {
+    final c = a.$2.top.compareTo(b.$2.top);
+    return c != 0 ? c : a.$2.left.compareTo(b.$2.left);
+  });
+  final (text, r, layout) = found.first;
+  return {
+    'text': text,
+    'rect': [r.left, r.top, r.width, r.height],
+    'layoutRect': [layout.left, layout.top, layout.width, layout.height],
+  };
+}
+
+/// 段落實際畫出的文字範圍（全文選取各框的聯集），轉為全域座標。
+Rect? _inkRect(RenderParagraph p, int length) {
+  final boxes = p.getBoxesForSelection(
+    TextSelection(baseOffset: 0, extentOffset: length),
+  );
+  if (boxes.isEmpty) return null;
+  var u = boxes.first.toRect();
+  for (final b in boxes.skip(1)) {
+    u = u.expandToInclude(b.toRect());
+  }
+  return MatrixUtils.transformRect(p.getTransformTo(null), u);
 }
 
 int _countKeys(WidgetTester tester, String prefix) {
