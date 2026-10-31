@@ -809,7 +809,7 @@ versions:
   - version: "0.6.0"
     codename: "Screens"
     description: "其餘畫面接真資料：Ticket 清單、節點詳情、追溯視圖"
-    status: "planned"
+    status: "active"
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.6/v0.6.0/"
