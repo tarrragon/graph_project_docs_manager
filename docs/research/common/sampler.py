@@ -99,8 +99,12 @@ def sample_once(client, model, question, options, seed, *, max_tokens=1,
     resp = client.messages.create(**params)
     raw = _first_text(resp.content)
     stop_reason = getattr(resp, "stop_reason", None)
-    # 截斷的回覆即使文字恰為合法代碼也不可信
-    parsed = None if stop_reason == "max_tokens" else parse_reply(raw, options)
+    # max_tokens > 1 時，截斷的回覆即使文字恰為合法代碼也不可信（ui-vision-choice
+    # judgment-rules.md 解析規則）。max_tokens == 1 時每筆回覆都以 max_tokens 結束，
+    # stop_reason 不帶截斷資訊，只依文字判定：非合法代碼才無法解析（466 預登記規則
+    # 〈4. 解析〉）。
+    truncated = stop_reason == "max_tokens" and max_tokens > 1
+    parsed = None if truncated else parse_reply(raw, options)
     return {
         "model": resp.model,
         "temperature": temperature,
