@@ -471,6 +471,11 @@
           },
           {
             "type": "command",
+            "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/multi-session-orchestration/scripts/master_resume_hint.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
             "command": "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/uv-tool-ownership-guard-hook.py"
           },
           {

@@ -99,6 +99,8 @@ EOF
 
 **觸發條件**：主控 session 在 `/clear` 或 `/compact` 之後收到第一則訊息時，不論訊息內容是什麼，都先完成以下步驟，再處理訊息。不需要等用戶指出協調票或接續點。
 
+**自動提示**：SessionStart hook `scripts/master_resume_hint.py`（專案 `settings.json` 註冊）在名為「主控」的 session 以 `source=clear` 或 `compact` 啟動時，以 additionalContext 提示本節步驟：呼叫 `line_status`、讀協調票、追加〈主控接續〉段。其他名稱或 `startup`／`resume` 不提示。名稱取自 `~/.claude/sessions/<pid>.json`：先以 `sessionId` 比對，比對不到再沿父行程鏈找 `<pid>.json`（`/clear` 不換 pid）。hook 只負責提醒，判讀由 `line_status` 做；沒收到提示不代表不用接續，觸發條件仍以本段為準。
+
 **判斷自己是不是主控**：名稱是「主控」的 session 就是主控線（用戶裁定，2026-10-31）。以 `ListAgents` 第一行列出的本 session 自稱為準。
 
 | 情況 | 做法 |
