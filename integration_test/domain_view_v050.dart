@@ -15,11 +15,13 @@
 library;
 
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -133,6 +135,7 @@ Future<void> settleGuarded(
   }
   // framesEnabled 為 false 時 scheduleFrame 不設旗標，pumpAndSettle 一次 pump
   // 即視為已靜止；此時「已靜止」無法判定，改以失敗指名步驟（0.5.0-W1-581.1）。
+  // [ensureItBinding] 生效時不應走到此處；守衛保留作為其關閉或失效時的偵測。
   if (!tester.binding.framesEnabled) {
     throw TestFailure(
       '[$step] framesEnabled=false，無法判定畫面已靜止'
@@ -155,6 +158,71 @@ Future<void> pumpFramesGuarded(
     }
   } on TimeoutException {
     throw TestFailure('[$step] pump 逾時 ${kPumpStepTimeout.inSeconds} 秒，疑似不送幀');
+  }
+}
+
+/// 帶逾時的 pumpWidget；等不到幀時以 [step] 指名失敗（0.5.0-W1-479.3.1 C2）。
+///
+/// 未受保護的 pumpWidget 等不到幀時只能等到案例的 [kItTestTimeout]，訊息不含
+/// 步驟名。
+Future<void> pumpWidgetGuarded(
+  WidgetTester tester,
+  Widget widget,
+  String step, {
+  Duration timeout = kPumpStepTimeout,
+}) async {
+  try {
+    await tester.pumpWidget(widget).timeout(timeout);
+  } on TimeoutException {
+    throw TestFailure('[$step] pumpWidget 逾時 ${timeout.inSeconds} 秒，疑似不送幀');
+  }
+}
+
+/// 是否在 App 失去可見時把 lifecycle 拉回 resumed（0.5.0-W1-479.3.1 C1）。
+///
+/// macOS 在閘門環境會於測試途中送出 hidden，framesEnabled 變 false，
+/// scheduleFrame 從此不再排幀：等幀的 pump 卡住，或 pumpAndSettle 一次即返回
+/// （0.5.0-W1-479.3 實驗 B）。integration 測的是畫面與流程，不測 lifecycle，
+/// 所以預設拉回 resumed 讓 framesEnabled 維持 true。日後要測 lifecycle 行為
+/// （如 SPEC-003 §3.5 再次可見自動重掃）時，在該案例把本值設為 false，結束時
+/// 還原。
+///
+/// 不採「只強制送幀、lifecycle 不動」：flutter test 在呼叫 main() 前已初始化
+/// IntegrationTestWidgetsFlutterBinding，無法換成覆寫 scheduleFrame 的子類；
+/// 單次 scheduleForcedFrame 之後的 scheduleFrame 仍被 framesEnabled 擋下。
+bool resumeWhenHidden = true;
+
+/// 初始化 integration binding 並註冊 [resumeWhenHidden] 的 lifecycle 觀察者。
+IntegrationTestWidgetsFlutterBinding ensureItBinding() {
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  if (!_resumeObserverInstalled) {
+    binding.addObserver(_ResumeWhenHiddenObserver(binding));
+    _resumeObserverInstalled = true;
+  }
+  return binding;
+}
+
+bool _resumeObserverInstalled = false;
+
+class _ResumeWhenHiddenObserver with WidgetsBindingObserver {
+  _ResumeWhenHiddenObserver(this._binding);
+
+  final IntegrationTestWidgetsFlutterBinding _binding;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!resumeWhenHidden) return;
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      // 觀察點：閘門 log 可據此對帳 hidden 的發生與處置。
+      developer.log(
+        'lifecycle=${state.name} 拉回 resumed（resumeWhenHidden）',
+        name: 'it.lifecycle',
+      );
+      // 依序補 inactive 再 resumed，符合 AppLifecycleState 的合法轉換。
+      _binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      _binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    }
   }
 }
 
