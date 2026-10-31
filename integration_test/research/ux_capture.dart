@@ -23,6 +23,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
+import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
@@ -87,12 +89,11 @@ void main() {
         fixture,
         kCaptureVariants.first,
         AppDestination.gaps,
-        extraOverrides: [
-          scanCorpusFnProvider.overrideWithValue(
-            ({required fileSystem, required table, required builtinTable}) =>
-                throw StateError('E2 注入：掃描輪次拋出例外'),
-          ),
-        ],
+        scanCorpusImpl: ({
+          required fileSystem,
+          required table,
+          required builtinTable,
+        }) => throw StateError('E2 注入：掃描輪次拋出例外'),
       ),
       throwsA(isA<TestFailure>()),
     );
@@ -266,7 +267,9 @@ Future<void> _capture(
   UxVariant variant,
   AppDestination destination, {
   List<Override> extraOverrides = const [],
+  ScanCorpusFn? scanCorpusImpl,
 }) async {
+  final roundErrors = _RoundErrorLog();
   tester.view
     ..devicePixelRatio = kCaptureDpr
     ..physicalSize = kCaptureLogicalSize * kCaptureDpr;
@@ -279,6 +282,7 @@ Future<void> _capture(
   final overrides = [
     ...await fixtureOverrides(),
     ...variant.overrides,
+    ..._roundErrorOverrides(roundErrors, scanCorpusImpl ?? scanCorpus),
     ...extraOverrides,
     if (destination != AppDestination.domain)
       selectedDestinationProvider.overrideWith((ref) => destination),
@@ -306,7 +310,7 @@ Future<void> _capture(
     const Duration(seconds: 30),
   );
 
-  _failIfGapsUndeterminable(tester, destination);
+  _failIfGapsUndeterminable(tester, destination, roundErrors);
 
   final boundary =
       boundaryKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -505,11 +509,67 @@ int _gapsSecondSectionCount(WidgetTester tester) {
   return keys.length;
 }
 
+/// 記錄掃描輪次經接縫（掃描、建圖）拋出的例外與堆疊；每次 `_capture` 新建。
+class _RoundErrorLog {
+  final List<({String step, Object error, StackTrace stack})> entries = [];
+
+  String describe() {
+    if (entries.isEmpty) {
+      return 'UX_CAPTURE_ROUND_ERRORS 未經接縫攔到例外'
+          '（失敗可能出自 resolveSchemaSource／typeTableFromJson 等未涵蓋步驟）';
+    }
+    return entries
+        .map(
+          (e) =>
+              'UX_CAPTURE_ROUND_ERROR step=${e.step} '
+              'type=${e.error.runtimeType} message=${e.error}\n${e.stack}',
+        )
+        .join('\n');
+  }
+}
+
+/// 以裝飾器包住掃描與建圖：呼叫實作、記錄例外與堆疊後 rethrow，語意不變。
+List<Override> _roundErrorOverrides(_RoundErrorLog log, ScanCorpusFn scan) => [
+  scanCorpusFnProvider.overrideWithValue(({
+    required fileSystem,
+    required table,
+    required builtinTable,
+  }) async {
+    try {
+      return await scan(
+        fileSystem: fileSystem,
+        table: table,
+        builtinTable: builtinTable,
+      );
+    } catch (e, st) {
+      log.entries.add((step: 'scanCorpus', error: e, stack: st));
+      rethrow;
+    }
+  }),
+  buildGraphFnProvider.overrideWithValue(({
+    required rawNodes,
+    required projectSchemaJson,
+    required builtinSchemaJson,
+  }) {
+    try {
+      return buildGraph(
+        rawNodes: rawNodes,
+        projectSchemaJson: projectSchemaJson,
+        builtinSchemaJson: builtinSchemaJson,
+      );
+    } catch (e, st) {
+      log.entries.add((step: 'buildGraph', error: e, stack: st));
+      rethrow;
+    }
+  }),
+];
+
 /// 破洞畫面落「無法判定破洞」時印出標記與可取得的狀態並使擷取失敗。
 /// 掃描例外只進 developer.log、不出現在 flutter test stdout，故需在此顯式印出。
 void _failIfGapsUndeterminable(
   WidgetTester tester,
   AppDestination destination,
+  _RoundErrorLog roundErrors,
 ) {
   if (destination != AppDestination.gaps) return;
   final container = ProviderScope.containerOf(
@@ -523,6 +583,8 @@ void _failIfGapsUndeterminable(
       'pathDeclaration=${state.pathDeclaration}';
   // ignore: avoid_print
   print('UX_CAPTURE_GAPS_UNDETERMINABLE $detail');
+  // ignore: avoid_print
+  print(roundErrors.describe());
   fail('破洞畫面落無法判定破洞（$detail）；擷取產物不可信');
 }
 
