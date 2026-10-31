@@ -13,6 +13,9 @@ export const USER_TODOS_TITLE = '用戶待辦'
 /** 沒有任何一項時的單行文字（不畫群組外框）。 */
 export const USER_TODOS_EMPTY = `${USER_TODOS_TITLE}：無`
 
+/** 沒有任何一項、但 session 狀態讀不到（S2 判不出）時的單行文字。 */
+export const USER_TODOS_EMPTY_UNSURE = `${USER_TODOS_EMPTY}（session 狀態讀不到，S2 未判）`
+
 /**
  * 有待辦時為可折疊群組（預設展開，使用者按過後依手動狀態），沒有時為一行「用戶待辦：無」。
  * 協調票讀不到時不畫（線群組區的「解析失敗」提示已說明，此時判不出有沒有待辦，寫「無」會誤導）。
@@ -27,7 +30,8 @@ export function renderUserTodos(elements: Elements, board: ReadyBoard, overrides
     prefix: board.ticketPrefix,
   })
   const rows = userTodoRows(board.lanes.todos, waiting, board.ticketPrefix)
-  if (rows.length === 0) return [<Text dimColor>{USER_TODOS_EMPTY}</Text>]
+  // session 狀態讀不到時 S2 判不出：不寫「無」，註明未判
+  if (rows.length === 0) return [<Text dimColor>{board.sessions.kind === 'ok' ? USER_TODOS_EMPTY : USER_TODOS_EMPTY_UNSURE}</Text>]
   const frame = sectionFrame(USER_TODOS_GROUP_ID, `${USER_TODOS_TITLE}（${rows.length}）`, overrides)
   return [
     renderGroup(elements, frame, onToggle, () =>

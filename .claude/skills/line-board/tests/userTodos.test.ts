@@ -41,6 +41,26 @@ describe('parseUserTodos', () => {
     expect(after).toEqual(before)
   })
 
+  test('帶鍵與不帶鍵分開配對：不帶鍵的完成行內容恰等於某個鍵，或帶鍵的完成行鍵恰等於某個不帶鍵的事項，都不刪除對方', () => {
+    const todos = parseUserTodos(
+      coordination([
+        '**用戶待辦**（560）：裁定標注',
+        '**用戶待辦**：sync-push',
+        '**用戶待辦完成**：560',
+        '**用戶待辦完成**（sync-push）：無關',
+      ]),
+    )
+    expect(todos).toEqual([
+      { key: '560', item: '裁定標注' },
+      { key: null, item: 'sync-push' },
+    ])
+  })
+
+  test('空括號的行略過：不列為待辦，也不當作全文配對的完成行', () => {
+    const todos = parseUserTodos(coordination(['**用戶待辦**：開 L44 session', '**用戶待辦**（）：空鍵待辦', '**用戶待辦完成**（）：開 L44 session']))
+    expect(todos).toEqual([{ key: null, item: '開 L44 session' }])
+  })
+
   test('同一個鍵以最後一行為準：完成後再寫待辦行即重新列出，並排到最後', () => {
     const todos = parseUserTodos(
       coordination([

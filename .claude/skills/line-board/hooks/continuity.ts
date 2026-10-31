@@ -13,7 +13,7 @@ import type {
   TicketStatus,
   WaitingItem,
 } from '../types'
-import { LANE_ENDED, endedForm, parseQueue, solutionLines } from './lanes'
+import { LANE_ENDED, endedForm, parseQueue, unfencedSolutionLines } from './lanes'
 import { findSessionByName } from './sessions'
 import { COMPLETED_STATUS, UNKNOWN_STATUS, parseFrontmatterStatus, parseFrontmatterTitle } from './shared'
 
@@ -62,9 +62,6 @@ const WAITING_FOR_MISSING = 'session 等待中，未附原因'
 /** S1 標記冒號後沒寫事項時的事項文字：照樣列出，只有解除行能清除標記。 */
 const WAITING_MARK_EMPTY = '標記未附事項'
 
-/** fenced code block 的界線行開頭：區間內的行是示例，不判為標記。 */
-const CODE_FENCE = '```'
-
 /**
  * 票 Solution 段最後一行等用戶標記（S1）的事項：最後一行是解除行、或沒有任何標記行時為 null。
  * 只認嚴格行首（不容前導空白）且不在 fenced code block 內的固定格式，
@@ -72,11 +69,8 @@ const CODE_FENCE = '```'
  */
 export function parseWaitingMark(text: string): string | null {
   let waiting: string | null = null
-  let inFence = false
-  for (const line of solutionLines(text)) {
-    if (line.startsWith(CODE_FENCE)) inFence = !inFence
-    else if (inFence) continue
-    else if (line.startsWith(WAITING_MARK)) waiting = line.slice(WAITING_MARK.length).trim() || WAITING_MARK_EMPTY
+  for (const line of unfencedSolutionLines(text)) {
+    if (line.startsWith(WAITING_MARK)) waiting = line.slice(WAITING_MARK.length).trim() || WAITING_MARK_EMPTY
     else if (line.startsWith(WAITING_RELEASE)) waiting = null
   }
   return waiting
@@ -215,7 +209,6 @@ export function lineStatusReport(input: {
   const tickets = new Map(input.tickets.map(ticket => [ticket.id, ticket]))
   const lanes: LaneContinuity[] = []
   const stale: StaleItem[] = []
-  const waiting: WaitingItem[] = []
   for (const lane of input.lanes) {
     const form = endedForm(lane.queue)
     if (form !== null) {
@@ -232,9 +225,9 @@ export function lineStatusReport(input: {
     const state = liveLaneState(lane, input.sessions, input.log)
     lanes.push(state)
     stale.push(...liveLaneStale(lane, state, tickets, input.prefix))
-    waiting.push(...liveLaneWaiting(lane, input.sessions, tickets, input.prefix))
   }
-  return { lanes, stale, waiting }
+  // 等用戶直接取看板用的同一個函式，「line_status 與看板同一份判定」由呼叫結構保證
+  return { lanes, stale, waiting: lanesWaiting(input) }
 }
 
 /** 線的標示：`L<n>（名稱）`，佇列行未寫名稱時只有線號。 */

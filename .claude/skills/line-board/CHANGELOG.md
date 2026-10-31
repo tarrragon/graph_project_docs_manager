@@ -6,7 +6,8 @@
 
 - 兩種來源，都從票面讀出：U1 協調票 Solution 段的待辦行 `**用戶待辦**（<鍵>）：<事項>`，以同鍵的完成行 `**用戶待辦完成**（<鍵>）：` 解除（不帶鍵的行以事項全文配對）；U2 各線等用戶，判定同 `line_status` 的等用戶段。格式權威是 multi-session-orchestration 的 `references/line-continuity.md` §2〈用戶待辦〉。
 - 每項一行：U1 為 `<事項>｜<鍵>`（不帶鍵寫「主控」），U2 為 `<事項>｜L<n> <短票號>（S#）`；S2 洋紅粗體。
-- 新增 `hooks/userTodos.ts`（`parseUserTodos`、`userTodoRows`）與 `hooks/userTodosView.tsx`；`continuity.ts` 匯出 `lanesWaiting`；`readers.ts` 的 `readLanes` 另帶出現行佇列行原文（`lines`）與待辦（`todos`）；`types/index.d.ts` 新增 `UserTodo`、`UserTodoRow`，`LanesResult` 加兩欄。
+- 帶鍵與不帶鍵的項目分開配對；空括號的行略過；session 狀態讀不到且沒有任何一項時寫「用戶待辦：無（session 狀態讀不到，S2 未判）」。
+- 新增 `hooks/userTodos.ts`（`parseUserTodos`、`userTodoRows`）與 `hooks/userTodosView.tsx`；`lanes.ts` 新增 `unfencedSolutionLines`，S1 標記與待辦行共用 fence 過濾；`continuity.ts` 匯出 `lanesWaiting`，`lineStatusReport` 的等用戶段改為直接呼叫它；`readers.ts` 的 `readLanes` 另帶出現行佇列行原文（`lines`）與待辦（`todos`）；`types/index.d.ts` 新增 `UserTodo`、`UserTodoRow`，`LanesResult` 加兩欄。
 - `line_status` 的輸出不變。
 
 起因：用戶回報主控要用戶處理的事項散在回覆裡，被 Stop hook 回應與各線訊息淹沒，找不到（2026-10-31）。

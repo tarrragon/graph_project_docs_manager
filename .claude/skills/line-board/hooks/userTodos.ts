@@ -4,7 +4,7 @@
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔由 readers.ts 負責、繪製由 userTodosView.tsx 負責。
 
 import type { UserTodo, UserTodoRow, WaitingItem } from '../types'
-import { solutionLines } from './lanes'
+import { unfencedSolutionLines } from './lanes'
 
 /** 「用戶待辦」群組的 id，也是展開狀態的鍵。 */
 export const USER_TODOS_GROUP_ID = 'userTodos'
@@ -15,34 +15,32 @@ export const USER_TODOS_GROUP_ID = 'userTodos'
  */
 const TODO_LINE = /^\*\*用戶待辦(完成)?\*\*(?:（([^）]*)）)?：(.*)$/
 
-/** fenced code block 的界線行開頭：區間內的行是示例，不判為待辦行。 */
-const CODE_FENCE = '```'
+/** 配對用的內部鍵前綴：帶鍵的項以鍵、不帶鍵的項以全文配對，兩者分屬不同命名空間。 */
+const KEY_PREFIX = 'key:'
+const TEXT_KEY_PREFIX = 'text:'
 
 /** 不帶鍵的待辦行在看板上的來源標示：待辦由主控寫入。 */
 const KEYLESS_SOURCE = '主控'
 
 /**
  * 協調票 Solution 段中仍待用戶處理的待辦，依各鍵最後一次寫入待辦行的順序。
- * 鍵為括號內文字；不帶鍵時以冒號後全文為鍵（完成行須逐字相同才配對）。同一個鍵以最後一行為準：
+ * 鍵為括號內文字；不帶鍵時以冒號後全文為鍵（完成行須逐字相同才配對），兩種鍵各自配對、互不影響。
+ * 空括號的行略過；鍵含全形右括號的行不符格式，不列。同一個鍵以最後一行為準：
  * 完成行把該鍵移除，之後再寫待辦行即重新列出。完成行配不到任何待辦時不影響其他項。
  */
 export function parseUserTodos(text: string): UserTodo[] {
   const pending = new Map<string, UserTodo>()
-  let inFence = false
-  for (const line of solutionLines(text)) {
-    if (line.startsWith(CODE_FENCE)) {
-      inFence = !inFence
-      continue
-    }
-    if (inFence) continue
+  for (const line of unfencedSolutionLines(text)) {
     const match = TODO_LINE.exec(line)
     if (match === null) continue
-    const key = (match[2] ?? '').trim()
+    const key = match[2] === undefined ? null : match[2].trim()
     const content = (match[3] ?? '').trim()
-    const matchKey = key === '' ? content : key
-    if (matchKey === '') continue
+    // 空括號（`（）`）不是合法的鍵，也不退回全文配對：略過，避免靜默改變配對語意
+    if (key === '' || (key === null && content === '')) continue
+    // 帶鍵與不帶鍵分開配對：不帶鍵的完成行內容恰等於某個鍵時，不得刪除該帶鍵項，反之亦然
+    const matchKey = key === null ? `${TEXT_KEY_PREFIX}${content}` : `${KEY_PREFIX}${key}`
     pending.delete(matchKey)
-    if (match[1] === undefined) pending.set(matchKey, { key: key === '' ? null : key, item: content })
+    if (match[1] === undefined) pending.set(matchKey, { key, item: content })
   }
   return [...pending.values()]
 }
