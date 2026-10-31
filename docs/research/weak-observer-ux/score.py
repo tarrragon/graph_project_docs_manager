@@ -10,6 +10,10 @@ run_experiment.py 匯入本檔的判定函式；直接執行本檔則由 dataset
 import json
 import sys
 from collections import defaultdict
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "common"))
+import sampler  # noqa: E402
 
 GRID = 4
 CELL_W, CELL_H = 320, 200
@@ -105,18 +109,23 @@ def cell_status(verdicts):
     return {"status": STATUS_FAIL if failed else STATUS_PASS, "fail": failed}
 
 
+def reparse(row):
+    """依預登記規則由 raw_reply 重算；不讀 dataset 的 parsed／verdict 欄。"""
+    return sampler.parse_reply(row["raw_reply"], row["option_order"])
+
+
 def load_dataset(path):
     with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 
 def summarize(rows):
-    """由資料列重算題級結果與 (a)(b)(c)；判定一律由 parsed 與正解集合重算。"""
+    """由資料列重算題級結果與 (a)(b)(c)；判定一律由 raw_reply 經 sampler.parse_reply 重算。"""
     grouped = defaultdict(list)
     types = {}
     for r in rows:
         grouped[(r["question"], r["variant"])].append(
-            judge(r["parsed"], set(r["correct"])))
+            judge(reparse(r), set(r["correct"])))
         types[r["question"]] = r["type"]
     questions = {}
     for q in sorted(types):
@@ -157,7 +166,7 @@ def _not_found_rate(rows):
     total, hit = defaultdict(int), defaultdict(int)
     for r in rows:
         total[r["variant"]] += 1
-        hit[r["variant"]] += r["parsed"] == NOT_FOUND
+        hit[r["variant"]] += reparse(r) == NOT_FOUND
     return {v: hit[v] / total[v] for v in total}
 
 
