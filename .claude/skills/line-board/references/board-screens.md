@@ -214,3 +214,16 @@ claude plugin test .claude/skills/line-board       # 執行 tests/*.test.ts
 | plugin 檔案變動時，既有 session 可能熱重載 | 合併後，兩個在合併前啟動的 session 都在未重開的情況下收到 deferred tools 通知，`line_status` 出現；兩者出現的時間點不同，其中一個晚了數分鐘 | 合併後先等 deferred tools 通知；沒有出現就重開 session 再驗，不判定為工具註冊失敗 |
 
 `session.start` 只在載入時執行一次，所以在 `session.start` 註冊的工具與 `/board` 指令，都要等 plugin 重新載入後才會更新。
+
+### plugin 事件與 settings hooks 同名不同義
+
+plugin 的事件和 `settings.json` 的 hooks（SessionStart、SessionEnd 等）名稱相近，欄位與觸發時機不同。設計時以 plugin 型別定義（`.claude-plugin/types/claude-code/index.d.ts`）為準，不沿用 settings hooks 的欄位。
+
+| 想偵測的事 | settings hooks | plugin 事件 |
+|-----------|---------------|------------|
+| session 是不是 compact／clear 後啟動 | SessionStart 的 `source`（startup／resume／clear／compact） | `session.start` 沒有 source，且 `/clear`、compact 都不觸發。compact 用 `session.compact`（`await next(e)` 回傳無 `skip` 才是真的壓縮了）；clear 用 `session.end` 的 `reason === 'clear'`（行程繼續、換新 session id） |
+| 本 session 的名稱 | 讀 `~/.claude/sessions/<pid>.json` | 沒有名稱 API；以 `$.session.id()` 比對 sessions 狀態檔的 `sessionId` |
+
+要跨 `/clear` 保留的 plugin 狀態只能放模組層變數（session id 換了，行程沒換），熱重載時會遺失。
+
+`恢復開工通知`（`hooks/resumeNotice.ts`）即依此表實作，判讀與限制見 multi-session-orchestration 的 `references/line-continuity.md` §4〈線 session 的恢復開工通知〉。

@@ -48,6 +48,12 @@ export type UserTodo = { key: string | null; item: string }
 /** 「用戶待辦」群組的一行：顯示文字，與是否為 session 等待中（S2，以要人處理色顯示）。 */
 export type UserTodoRow = { text: string; isSessionWaiting: boolean }
 
+/** 恢復開工通知的來源：/compact（含 auto compact）或 /clear。 */
+export type ResumeSource = 'compact' | 'clear'
+
+/** 用量檔的 phase：compacted 為已完成 compact／clear 尚未開工、resumed 為已恢復開工；at 為進入該狀態的時間（毫秒）。 */
+export type ResumePhase = { kind: 'compacted' | 'resumed'; source: ResumeSource; at: number }
+
 /**
  * 一個 session 的 context 用量檔內容（`.claude/hook-logs/line-board/context/<sessionId>.json`）：
  * tokens／percent 以模型 window 為分母（同狀態列），compactWindow／compactPercent 以 compaction window 為分母；
@@ -56,6 +62,8 @@ export type UserTodoRow = { text: string; isSessionWaiting: boolean }
  */
 export type ContextUsageRecord = {
   sessionId: string
+  /** 恢復開工通知的輔管道（resumeNotice.ts）：最近一次 compact／clear 後的狀態；沒有發生過為 null。 */
+  phase: ResumePhase | null
   tokens: number | null
   window: number
   percent: number | null

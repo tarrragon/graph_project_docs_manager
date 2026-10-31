@@ -2,6 +2,17 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.7.0（2026-10-31）— 跨專案行為變更：一般的線在 `/compact` 或 `/clear` 之後重新開工時，line-board 以跨 session 訊息通知名為「主控」的 session，固定一行 `L<n>（<名稱>）已恢復開工：<時間>，來源 compact／clear`；用量檔新增 `phase` 欄位（`compacted`／`resumed`、來源、時間）。看板與 `line_status` 的畫面與輸出不變（`phase` 的讀取端在後續版本）。
+
+- 判定以 plugin 事件為準：`session.compact` 完成且未被否決（含 auto compact，不含 precompute 與 subagent 自己的 compact）、`session.end` 的 reason 為 `clear`；之後第一個送出的 prompt（`/compact`、`/clear` 本身除外）視為恢復開工。
+- 不通知：新開的 session、resume、主控自身、已收線的線、名稱比對不到協調票現行佇列行的 session。名稱以 `sessionId` 比對 `~/.claude/sessions` 的狀態檔取得。
+- 主管道以 `register.tsx` 的 `IS_RESUME_NOTICE_SEND_ENABLED` 控制，預設開啟；接收端與傳送端權限模式不同時訊息會被暫扣，實測被暫扣時改為關閉。
+- 待通知狀態放在模組層變數（`/clear` 換 session id 但行程繼續），plugin 熱重載時遺失，該次漏送不補救。
+- 新增 `hooks/resumeNotice.ts`（`stepResume`、`resumeNoticeTarget`、`resumeNoticeText`、`resumePhaseOf`、`COORDINATOR_SESSION_NAME`）；`types/index.d.ts` 新增 `ResumeSource`、`ResumePhase`，`ContextUsageRecord` 加 `phase`；`register.tsx` 註冊 `session.compact`、`session.end`、`prompt.submit`。
+- `references/board-screens.md` 新增〈plugin 事件與 settings hooks 同名不同義〉。
+
+起因：多線協調時，線 session 做完 `/compact` 或 `/clear` 後，主控要主動詢問才知道它是否已經回到工作（2026-10-31）。
+
 **Version**: 0.6.0（2026-10-31）— 跨專案行為變更：每個載入 line-board 的 session 以 `session.measure` 把自己的 context 用量寫到主 checkout 的 `.claude/hook-logs/line-board/context/<sessionId>.json`，每輪回應 context 用量變動時覆寫一次。看板與 `line_status` 的畫面與輸出不變（讀檔與「待 compact／待 clear」判定在後續版本）。
 
 - 記錄欄位：`sessionId`、`tokens`、`window`、`percent`（以模型 window 為分母，同狀態列）、`compactWindow`、`compactPercent`（以 /context 的 compaction window 為分母）、`autoCompactThreshold`、`measuredAt`（毫秒）。缺席的量測寫 `null`，不寫 0：compact 剛完成到下一次回應前 `tokens`／`percent` 為 `null`。
