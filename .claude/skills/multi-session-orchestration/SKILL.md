@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.11.0
+  version: 1.12.0
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -107,7 +107,14 @@ metadata:
 - 某個 session 換了主軸：請用戶執行 `/rename <新線主題>`。
 - 要開新 session：先告訴用戶新 session 的名稱。
 
-完整的判讀表、查詢指令和接續動作見 `references/line-continuity.md`。
+用戶說「繼續工作」這類沒有指定對象的指示時，主控不直接派票。順序是：
+
+1. 完成自我接續。
+2. 整理工作內容。
+3. 以固定格式的開線計畫表列出要開哪些線，欄位包括線、動作、session 名稱、用戶要做的事、目標、佇列、名額、注意。
+4. 用戶確認後，才開線。
+
+完整的判讀表、查詢指令、接續動作和開線計畫表格式，見 `references/line-continuity.md`。
 
 ---
 
@@ -135,5 +142,6 @@ metadata:
 - [ ] 每條線各有一個以線主題命名的 session，改名後現行佇列行的 session 名稱已同步？
 - [ ] 本輪排定、改派、開線、結線的每條線，都已在協調票追加現行佇列行（新線含目標行、結線寫 `（無）`），而不是只寫條列文字？
 - [ ] 主控 `/clear` 或 `/compact` 後，已不待提示完成自我接續，並以 `sessionId` 和 log 判讀各線狀態，而不是只看名稱和啟動時間？
+- [ ] 用戶說「繼續工作」時，已先列出開線計畫表並取得確認，而不是直接派票？
 - [ ] 有 session 名為「主控」？每條線的 session 名稱都對應目前的線？主軸換了或要開新 session 時，已告訴用戶具體的名稱？
 - [ ] 至少有一條線在推進專案工作，修框架或工具的線不超過兩條，佇列裡的框架票都是 P0／P1 或用戶要求？

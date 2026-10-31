@@ -2,6 +2,17 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.12.0（2026-10-31）— `references/line-continuity.md` 新增 §5〈用戶說「繼續工作」時：開線計畫表〉：
+
+- 順序：自我接續 → 整理工作內容 → 列開線計畫表 → 用戶確認後才開線。
+- 表格固定八欄：線、動作、session 名稱、用戶要做的事、目標、佇列、名額、注意。
+- 動作分五種：新開、/clear 後接續、/compact 後接續、沿用、改名接續。
+- 表格下方另列「未分派的票」與「待用戶裁定」。
+
+原 §5 改為 §6。SKILL.md 工作流 §6 與〈檢查清單〉同步更新。
+
+起因：用戶裁定，「繼續工作」的意思是先確認工作內容與要開哪些線，開線計畫的表達格式要標準化（2026-10-31）。
+
 **Version**: 1.11.0（2026-10-31）— 新增 `references/line-continuity.md`，涵蓋：
 
 - 判讀四種接續狀態：已收線、`/clear` 後繼續、`/compact` 後繼續、新 session 接手。判讀依據是現行佇列行、session 檔的 `sessionId`，以及 `hook-logs/session-source-diagnostic/diagnostic.log` 中 SessionStart 的 `source`。實測：`/clear` 會換新 `sessionId`，名稱不變；`/compact` 沿用原本的 `sessionId`。
