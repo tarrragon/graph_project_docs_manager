@@ -219,7 +219,7 @@ def _orig_verdicts(rows):
 
 
 def test_e1_dataset_parsed_none_but_valid_reply_is_resolved():
-    rows = [_row_with_reply(" a\n")] * 5  # parsed=None 為 sampler 在 max_tokens 時的寫法
+    rows = [_row_with_reply(" a\n")] * 5  # parsed=None 為既有 dataset 的寫法（0.5.0-W1-569 修正 sampler 前產生）
     assert score.judge(rows[0]["parsed"], {"A"}) == score.UNPARSEABLE  # 修正前
     assert _orig_verdicts(rows) == [score.CORRECT] * 5  # 修正後
 

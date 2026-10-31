@@ -180,15 +180,39 @@ def test_thinking_block_first_text_extracted():
 
 
 def test_max_tokens_stop_reason_unparseable():
-    # E2：同一回應 stop_reason=max_tokens -> parsed 為 None 並計入 unparseable
+    # E2：max_tokens > 1 時，同一回應 stop_reason=max_tokens -> parsed 為 None
+    # 並計入 unparseable（ui-vision-choice 解析規則）
     reply = {"blocks": [("thinking", "hmm"), ("text", "B")],
              "stop_reason": "max_tokens"}
     c = FakeClient([reply])
-    r = sampler.sample_once(c, "m", "q?", OPTIONS, seed=1)
+    r = sampler.sample_once(c, "m", "q?", OPTIONS, seed=1, max_tokens=8)
     assert r["raw_reply"] == "B" and r["parsed"] is None
     assert r["stop_reason"] == "max_tokens"
-    out = sampler.run_samples(c, "m", "q?", OPTIONS, k=2)
+    out = sampler.run_samples(c, "m", "q?", OPTIONS, k=2, max_tokens=8)
     assert out["unparseable"] == 2 and out["counts"] == {}
+
+
+def test_max_tokens_one_valid_code_parsed():
+    # E1 對照：同一回應（合法代碼、stop_reason=max_tokens）在 max_tokens=1 與 8
+    # 下結果不同；max_tokens=1 時依 466 預登記規則〈4. 解析〉取該代碼
+    reply = {"blocks": [("text", " b\n")], "stop_reason": "max_tokens"}
+    one = sampler.sample_once(FakeClient([reply]), "m", "q?", OPTIONS, seed=1,
+                              max_tokens=1)
+    eight = sampler.sample_once(FakeClient([reply]), "m", "q?", OPTIONS, seed=1,
+                                max_tokens=8)
+    assert one["parsed"] != eight["parsed"]
+    assert one["parsed"] == "B" and eight["parsed"] is None
+    out = sampler.run_samples(FakeClient([reply]), "m", "q?", OPTIONS, k=2,
+                              max_tokens=1)
+    assert out["unparseable"] == 0 and out["counts"] == {"B": 2}
+
+
+def test_max_tokens_one_non_code_unparseable():
+    # E2 正向對照：max_tokens=1 且截斷文字不是合法代碼 -> 仍無法解析
+    reply = {"blocks": [("text", "The")], "stop_reason": "max_tokens"}
+    r = sampler.sample_once(FakeClient([reply]), "m", "q?", OPTIONS, seed=1,
+                            max_tokens=1)
+    assert r["parsed"] is None
 
 
 def test_no_text_block_no_exception():
