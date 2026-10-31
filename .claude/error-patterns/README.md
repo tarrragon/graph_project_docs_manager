@@ -421,6 +421,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | IMP-GPD-021 | 刪檔或搬檔前以完整路徑字串搜尋引用端，同目錄的相對 import 只寫檔名、不含目錄段，盤點清單漏列 | 低 | 0.5.0 |
 | IMP-GPD-022 | 父容器的固定高度乘了等比縮放係數，子件高度契約寫的是未縮放 token，小視窗下子件被壓扁，內容被靜默裁切 | 中 | 0.5.0 |
 | IMP-GPD-023 | zsh 不對未加引號的變數做字詞拆分，把檔案清單存進變數再傳給掃描命令時，整串被當成一個不存在的路徑，掃描結果與零命中同形 | 中 | 0.5.0 |
+| IMP-GPD-024 | plugin 在事件處理中主動以 session.send 傳跨 session 訊息，auto mode 的 classifier 因沒有對應的使用者請求而不給判定，訊息不送達；失敗只記 debug 通道時，與「沒觸發」同形 | 中 | 0.5.0 |
 
 ### 流程 (PROC)
 
