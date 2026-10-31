@@ -2,6 +2,15 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.15.0（2026-10-31）— 主控 session 長駐的定位：
+
+- SKILL.md 工作流 §6 與 `references/line-continuity.md` §4 寫明主控不例行 `/clear` 或 `/compact`，§4 的自我接續改定位為例外時的程序。
+- `line-continuity.md` §4 新增〈Stop hook 保護提醒的判讀〉：主控的判讀問題是「本輪協調事項是否已寫進協調票」，不以「可否清除」作結論，也不向用戶建議清除主控。
+- `references/session-naming.md` 主控命名列補「長駐」，並註明「線完結就換 session」不適用於主控。
+- SKILL.md〈檢查清單〉與〈按需讀取〉同步。
+
+起因：用戶裁定主控是框架通用設計、主控 session 長駐（2026-10-31）；主控曾把 Stop hook 提醒讀成「隨時可以清除主控」。
+
 **Version**: 1.14.0（2026-10-31）— 新增 SessionStart hook `scripts/master_resume_hint.py`：名為「主控」的 session 以 `source=clear` 或 `compact` 啟動時，以 additionalContext 提示先呼叫 `line_status`、讀協調票、依 `references/line-continuity.md` §4 完成自我接續。其他名稱或 `startup`／`resume` 不輸出。consumer 專案需在自己的 `settings.json` 的 SessionStart 註冊：`uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/multi-session-orchestration/scripts/master_resume_hint.py`。`line-continuity.md` §4 補〈自動提示〉段。
 
 起因：主控 `/clear` 後要等第一則訊息才想起要接續；plugin 的 `session.start` 拿不到 source、不能回傳 additionalContext，所以用 shell hook 實作（2026-10-31）。
