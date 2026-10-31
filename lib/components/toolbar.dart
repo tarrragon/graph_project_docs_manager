@@ -78,9 +78,12 @@ class Toolbar extends StatelessWidget {
             border: Border(bottom: BorderSide(color: AppColors.borderStrong)),
           ),
           child: SizedBox(
-            height: (LayoutSize.hitTargetMin + 2 * Space.xs).h,
+            // 高度與垂直內距不乘 ScreenUtil 縮放：SPEC-004 §4.32 尺寸契約為
+            // `hitTargetMin + 2 × Space.xs`（固定值），扣除內距後須恆等於子件
+            // 契約高 `hitTargetMin`（572 根因：縮放使 960x640 僅得 22.4）。
+            height: LayoutSize.hitTargetMin + 2 * Space.xs,
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: Space.xs.h),
+              padding: EdgeInsets.symmetric(vertical: Space.xs),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: children,
