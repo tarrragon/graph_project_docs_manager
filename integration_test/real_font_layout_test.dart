@@ -22,10 +22,11 @@ import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_fixtu
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
-import 'package:integration_test/integration_test.dart';
 
 import '../test/helpers/pump_harness.dart';
 import '../test/helpers/window_sizes.dart';
+import 'domain_view_v050.dart'
+    show ensureItBinding, pumpWidgetGuarded, settleGuarded;
 import 'research/ux_variants.dart';
 
 /// 元件 -> 其固定高度容器內的內容節點 finder（對照 test/unit/components）。
@@ -62,7 +63,7 @@ const Map<AppDestination, String> _readyKey = {
 };
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  ensureItBinding();
 
   for (final destination in AppDestination.values) {
     for (final size in WindowSize.values) {
@@ -74,7 +75,8 @@ void main() {
         await fixture.materialize();
         addTearDown(fixture.dispose);
         setWindowSize(tester, size);
-        await tester.pumpWidget(
+        await pumpWidgetGuarded(
+          tester,
           ProviderScope(
             key: UniqueKey(),
             overrides: [
@@ -99,11 +101,12 @@ void main() {
               ),
             ),
           ),
+          '${destination.name} @ ${size.label} pumpWidget',
         );
-        await tester.pumpAndSettle(
-          const Duration(milliseconds: 100),
-          EnginePhase.sendSemanticsUpdate,
-          const Duration(seconds: 30),
+        await settleGuarded(
+          tester,
+          '${destination.name} @ ${size.label} settle',
+          timeout: const Duration(seconds: 30),
         );
 
         expectNoOverflow(tester);
@@ -137,7 +140,8 @@ void main() {
   }
 
   testWidgets('正向對照：固定高度小於內容固有高度時 expectNoVerticalClip 紅燈', (tester) async {
-    await tester.pumpWidget(
+    await pumpWidgetGuarded(
+      tester,
       const MaterialApp(
         home: Align(
           alignment: Alignment.topLeft,
@@ -149,6 +153,7 @@ void main() {
           ),
         ),
       ),
+      '正向對照 pumpWidget',
     );
     tester.takeException();
     expect(

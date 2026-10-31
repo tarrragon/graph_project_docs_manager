@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
 
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
@@ -80,7 +79,7 @@ const bool _runProbe = bool.fromEnvironment('RUN_OPEN_PROBE');
 /// `fvm flutter test integration_test/ -d macos` 會因此變紅，而紅燈的原因與被
 /// 測功能無關，最容易被誤診。
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  ensureItBinding();
 
   group('首頁啟動煙霧測試', () {
     itWidgets('App 能啟動並抵達首頁，且無任何 framework 錯誤', (tester) async {
@@ -129,11 +128,13 @@ void main() {
 
     // 0.5.0-W1-479.1 E2：永不收斂的畫面須在逾時內以步驟名稱失敗，而非空等。
     itWidgets('永不收斂的畫面在步驟逾時內失敗並指名步驟', (tester) async {
-      await tester.pumpWidget(
+      await pumpWidgetGuarded(
+        tester,
         const Directionality(
           textDirection: TextDirection.ltr,
           child: CircularProgressIndicator(),
         ),
+        'W1-479.1 正向對照 pumpWidget',
       );
 
       Object? caught;
@@ -436,7 +437,8 @@ Future<void> _pumpAndSettleApp(
   bool settle,
 ) async {
   {
-    await tester.pumpWidget(
+    await pumpWidgetGuarded(
+      tester,
       // main() 的 runApp 才包 ProviderScope（見 lib/main.dart）；直接
       // pump DocsManagerApp 時，導覽殼（AppShell 為 ConsumerWidget）需要
       // 自行補上這層祖先，否則 ref.watch 會找不到 ProviderScope 而拋錯。
@@ -453,6 +455,7 @@ Future<void> _pumpAndSettleApp(
               repository ?? _StubWorkspaceRepository(const WorkspaceUnset()),
         ),
       ),
+      '啟動 App（pumpWidget）',
     );
     // ScreenUtilInit 首幀只做量測，需再 settle 一次才會渲染出真正的版面。
     afterPump?.call();
