@@ -2,10 +2,11 @@
 
 本檔是 `SKILL.md` 的依據：看板各區塊的資料來源、版面、狀態判定與讀取約定。調整看板或看板顯示異常時查閱。啟用、關閉與設定檔見 `SKILL.md`。
 
-版面以線分組：每條線一個可折疊群組，底部是「各 session」與「合併閘門最近紀錄」兩個同樣可折疊的區塊（見〈版面：以線分組的可折疊群組〉）。
+版面以線分組：最上方是「用戶待辦」群組，其下每條線一個可折疊群組，底部是「各 session」與「合併閘門最近紀錄」兩個同樣可折疊的區塊（見〈版面：以線分組的可折疊群組〉）。
 
 | 內容 | 資料來源（相對 repo root，另註明者除外） |
 |------|---------------------------|
+| 用戶待辦 | 協調票 Solution 段的用戶待辦行與完成行（U1），加上各線等用戶（U2，判定同 `line_status` 的等用戶段）；格式權威是 multi-session-orchestration 的 `references/line-continuity.md` §2〈用戶待辦〉，見〈版面〉 |
 | 線與佇列 | 協調票（專案設定檔的 `coordinationTicket`）的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一個群組，依線號排序；線目標顯示在群組標題的第二行 |
 | 佇列票即時狀態 | 群組內佇列列的每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
 | 佇列票摘要 | 佇列細節（見〈版面〉）列出的 title，與狀態同一次讀取主 checkout 票檔 frontmatter 的 `title:`；讀不到時標 `（讀不到 title）` |
@@ -16,8 +17,19 @@
 
 ## 版面：以線分組的可折疊群組
 
-每個群組（線群組、其他、各 session、合併閘門）畫在一個圓角框線（`borderStyle="round"`）的 Box 內，框線左右共占 2 欄。框內先是標題，標題的第一行（標題列）是一個按鍵，按下（Pane 取得焦點後以 Enter 或點擊）即切換展開與收合；收合時框內只有標題，展開時標題之後接內容，內容縮排 2 欄。標題列一律為主題鍵 `suggestion` 色的粗體，與內容各行的狀態色區分；主題鍵的實際顏色隨 Claude Code 主題變化（深色主題為淺藍、淺色主題為較深的藍），不用 ANSI 藍是因為它在黑底終端機上不明顯。
+每個群組（用戶待辦、線群組、其他、各 session、合併閘門）畫在一個圓角框線（`borderStyle="round"`）的 Box 內，框線左右共占 2 欄。框內先是標題，標題的第一行（標題列）是一個按鍵，按下（Pane 取得焦點後以 Enter 或點擊）即切換展開與收合；收合時框內只有標題，展開時標題之後接內容，內容縮排 2 欄。標題列一律為主題鍵 `suggestion` 色的粗體，與內容各行的狀態色區分；主題鍵的實際顏色隨 Claude Code 主題變化（深色主題為淺藍、淺色主題為較深的藍），不用 ANSI 藍是因為它在黑底終端機上不明顯。
 
+- **用戶待辦**：畫在更新時間之下、所有提示行與線群組之上，標題只有一行 `▾ 用戶待辦（N）`，預設展開。內容每項一行，U1 在前、U2 在後：
+
+  ```text
+  <事項>｜<鍵>                      U1，不帶鍵的待辦行寫「主控」
+  <事項>｜L<n> <短票號>（S1／S3）    U2，有票號
+  <事項>｜L<n>（S2／S3）             U2，沒有票號
+  ```
+
+  - U1 依各鍵最後一次寫入待辦行的順序；同一個鍵以最後一行為準，最後一行是完成行就不列。U2 依線號，各線內依 S1、S3、S2
+  - S2（session 停下來等用戶）為要人處理的洋紅粗體，其他各行不上色
+  - 沒有任何一項時不畫群組，只畫一行淡色的 `用戶待辦：無`（session 狀態讀不到時為 `用戶待辦：無（session 狀態讀不到，S2 未判）`）；協調票讀不到時不畫（判不出有沒有待辦，由「解析失敗」提示說明）
 - **線群組的標題**分三行，不以 `｜` 分隔，收合時 `▾` 改為 `▸`；沒有目標或沒有活動計數時省略該行。session 狀態的判定見〈各 session 狀態〉最後一點：
 
   ```text
@@ -56,9 +68,9 @@
 - **佇列列不列 `completed` 的票**（連同其註記）：被去掉的票兩側的分隔符併成一個，任一為 `→` 時為 `→`，首尾的分隔符去掉；整條線都已完成時沒有佇列列，標題的活動計數也沒有排隊數
 - **其他**：派發列對不到任何線時歸最後的「其他」群組，標題為 `▾ 其他` 與其下一行活動計數，內容只有派發列；沒有這種派發時不顯示
 - **底部兩區塊**的標題只有名稱一行（`▾ 各 session`、`▾ 合併閘門最近紀錄`）
-- **預設展開**：有派發中代理人、session 為 `waiting`、或有票在閘門中的線展開，其餘收合（只有排隊票不算活動）；預設每輪讀取後依新資料重算。底部兩個區塊預設展開。無活動的線，標題列之下的目標與活動計數以淡色顯示；標題列維持 `suggestion` 色粗體不變淡（實機上淡色會把標題色換成灰色，標題列就與其下各行同色）
-- **手動切換**：按過的群組以群組 id（`lane:<n>`、`other`、`sessions`、`mergeGate`，佇列細節為 `lane:<n>:detail`）把展開狀態記在 `$.state` 的 `line-board.expanded`，之後以手動狀態為準，每 30 秒的資料刷新不覆寫；hot reload 不遺失，看板 session 結束後清空
-- 提示行排在所有群組之上：協調票讀不到（「解析失敗」）或沒有現行佇列行（「協調票尚無現行佇列行」）、派發紀錄讀不到或格式錯誤、session 狀態讀取失敗、目前沒有派發中的代理人
+- **預設展開**：有派發中代理人、session 為 `waiting`、或有票在閘門中的線展開，其餘收合（只有排隊票不算活動）；預設每輪讀取後依新資料重算。用戶待辦與底部兩個區塊預設展開。無活動的線，標題列之下的目標與活動計數以淡色顯示；標題列維持 `suggestion` 色粗體不變淡（實機上淡色會把標題色換成灰色，標題列就與其下各行同色）
+- **手動切換**：按過的群組以群組 id（`userTodos`、`lane:<n>`、`other`、`sessions`、`mergeGate`，佇列細節為 `lane:<n>:detail`）把展開狀態記在 `$.state` 的 `line-board.expanded`，之後以手動狀態為準，每 30 秒的資料刷新不覆寫；hot reload 不遺失，看板 session 結束後清空
+- 提示行排在用戶待辦之下、線群組之上：協調票讀不到（「解析失敗」）或沒有現行佇列行（「協調票尚無現行佇列行」）、派發紀錄讀不到或格式錯誤、session 狀態讀取失敗、目前沒有派發中的代理人
 - 群組多到超出 Pane 高度時 Pane 可捲動；fullscreen 且夠寬時 Pane 停靠在側邊
 
 ## 各 session 狀態（`~/.claude/sessions/*.json`）
@@ -155,11 +167,12 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約，`defaultEnabled: true` |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board` 與 `line_status` 工具（`tool.call` 交給 `lineStatus.ts`）、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）、讀寫群組的手動展開狀態、組裝 Pane（線群組、底部兩區塊的折疊外框）；設定不成立時只寫設定提示 |
+| `hooks/register.tsx` | 註冊 `/board` 與 `line_status` 工具（`tool.call` 交給 `lineStatus.ts`）、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）、讀寫群組的手動展開狀態、組裝 Pane（用戶待辦、線群組、底部兩區塊的折疊外框）；設定不成立時只寫設定提示 |
 | `hooks/readers.ts` | 一輪 snapshot 所需各項的讀取：專案設定、checkout 清單、協調票、票檔 status 與 title、session 狀態檔與 pid 存活、派發紀錄、合併閘門紀錄；讀檔與命令一律經 `$`，各項失敗只影響該項 |
 | `hooks/lanesView.tsx` | 線群組的繪製（標題三行、派發列、閘門票列、佇列列、佇列細節，各依五色狀態上色）與各群組共用的可折疊外框（框線、主題鍵 `suggestion` 色粗體標題列、內容）；設定提示的繪製 |
 | `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
 | `hooks/{sessions,mergeGate}View.tsx` | 底部兩區塊的內容：各 session、合併閘門最近紀錄 |
+| `hooks/userTodosView.tsx` | 用戶待辦群組的繪製：以 `continuity.ts` 判 U2、`userTodos.ts` 組成各行，S2 洋紅粗體；沒有任何一項時為一行「用戶待辦：無」 |
 | 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`，型別 `Elements`）由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入；各區塊的繪製函式以元素與 snapshot（`ReadyBoard`）為參數 |
 | `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、readers.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
 | `hooks/shared.ts` | 各 domain 共用：專案設定解析、票號前綴與票檔位置、frontmatter 狀態與 title 解析、checkout 路徑判定、距今時間 |
@@ -170,9 +183,10 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | `hooks/layout.ts` | 版面：以線分組、活動計數、預設展開、手動切換的展開狀態、群組標題列與內容各行的顯示文字、佇列列的分段（供逐票上色） |
 | `hooks/statusColor.ts` | 五色狀態：派發階段、佇列票與 session 狀態歸成哪一種狀態，以及各狀態的顏色 |
 | `hooks/continuity.ts` | 各線接續狀態：SessionStart 來源紀錄解析、每條線的接續狀態判定、過期偵測、等用戶偵測與票面標記解析、`line_status` 的輸出文字（判讀規則唯一實作） |
+| `hooks/userTodos.ts` | 用戶待辦：協調票的待辦行與完成行配對（U1）、用戶待辦群組各行的顯示文字（U1 + U2） |
 | `hooks/lineStatus.ts` | `line_status` 的組裝：每次呼叫重讀專案設定、協調票、session 狀態檔、各 checkout 的來源紀錄與佇列票 status 與等用戶標記，交 `continuity.ts` 判讀 |
 | `types/index.d.ts` | `$.state` 值（`line-board.snapshot`、`line-board.expanded`）與純函式輸入輸出的型別契約；`McpToolInputs` 補宣告本 plugin 註冊的工具 |
-| `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts` 為 Pane 端到端繪製，後者為線群組的派發列、活動計數、預設展開與手動切換，前者為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`continuity.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |
+| `tests/*.test.ts` | `claude plugin test` 測試：各 domain 純函式與同名產品檔一一對應；`board.test.ts`、`boardDispatch.test.ts`、`boardUserTodos.test.ts` 為 Pane 端到端繪製，`boardDispatch` 為線群組的派發列、活動計數、預設展開與手動切換，`boardUserTodos` 為用戶待辦群組，`board` 為線標題列、票序、佇列細節與底部兩區塊。`test()` 傳入的 `$` 是測試端 engine，不是 hooks 收到的 plugin `$`（沒有 `ui.log` 等），`readers.ts` 的函式不能直接拿它呼叫；讀到內容後的解析與組裝一律放進 domain 檔的純函式（例：`continuity.ts` 的 `ticketStatusOf`），測試該函式，讀檔本身只經 Pane 端到端覆蓋 |
 | `tests/fixtures.ts`、`tests/paneHarness.ts` | 測試共用（非測試檔）：仿真資料與建構函式；Pane 測試的 repo stub、啟動看板、session 狀態檔組 |
 | `tsconfig.json` | 只有一行 `extends ./.claude-plugin/types/tsconfig.json`；納入版控 |
 

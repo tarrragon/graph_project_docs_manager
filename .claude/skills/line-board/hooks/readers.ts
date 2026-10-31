@@ -32,6 +32,7 @@ import {
   parseProjectConfig,
   parseSessionFile,
   parseSourceLog,
+  parseUserTodos,
   parseWorktreePaths,
   ticketStatusOf,
   sessionStatusFileNames,
@@ -172,7 +173,7 @@ async function isSessionAlive($: EngineInterface, session: SessionState): Promis
   }
 }
 
-/** 讀協調票（專案設定的 coordinationTicket）的現行佇列行；票檔路徑由票號推導，讀不到時的訊息含票檔路徑。 */
+/** 讀協調票（專案設定的 coordinationTicket）的現行佇列行（濾掉收線的、原文兩份）與用戶待辦行；票檔路徑由票號推導，讀不到時的訊息含票檔路徑。 */
 export async function readLanes($: EngineInterface, mainPath: string, coordinationTicket: string): Promise<LanesResult> {
   const prefix = ticketPrefixOf(coordinationTicket)
   if (prefix === null) {
@@ -181,7 +182,9 @@ export async function readLanes($: EngineInterface, mainPath: string, coordinati
     return { kind: 'error', message: `${coordinationTicket}：不是完整票號` }
   }
   const file = await readTicketFile($, mainPath, coordinationTicket)
-  if (file.kind === 'ok') return { kind: 'ok', lanes: parseLanes(file.text, prefix) }
+  if (file.kind === 'ok') {
+    return { kind: 'ok', lanes: parseLanes(file.text, prefix), lines: parseLaneLines(file.text), todos: parseUserTodos(file.text) }
+  }
   $.ui.log(`line-board: 讀取協調票 ${file.path} 失敗：${file.message}`, { to: 'debug' })
   return { kind: 'error', message: `${file.path}：${file.message}` }
 }

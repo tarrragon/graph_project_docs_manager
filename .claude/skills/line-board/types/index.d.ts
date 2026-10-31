@@ -42,6 +42,12 @@ export type WaitingSource = 'S1' | 'S2' | 'S3'
 /** 一項等用戶：所屬線、session 名稱、相關票號（S2 與佇列行的純文字沒有票號，為 null）、等待的事項、訊號來源。 */
 export type WaitingItem = { lane: number; session: string | null; ticketId: string | null; item: string; source: WaitingSource }
 
+/** 協調票的一項用戶待辦（U1）：鍵（待辦行未帶鍵時為 null，此時以事項全文配對完成行）與事項。 */
+export type UserTodo = { key: string | null; item: string }
+
+/** 「用戶待辦」群組的一行：顯示文字，與是否為 session 等待中（S2，以要人處理色顯示）。 */
+export type UserTodoRow = { text: string; isSessionWaiting: boolean }
+
 /** line_status 工具的判讀結果：各線接續狀態（依線號）、過期項、等用戶（與過期項分列，等用戶不代表過期）。 */
 export type LineStatusReport = { lanes: LaneContinuity[]; stale: StaleItem[]; waiting: WaitingItem[] }
 
@@ -62,7 +68,15 @@ export type UnsetProjectConfig = Exclude<ProjectConfigResult, { kind: 'ok' }>
 
 /** 協調票現行佇列的讀取結果：ok 為解析出的線（可能為空），error 為讀檔失敗原因（含票檔路徑）。 */
 export type LanesResult =
-  | { kind: 'ok'; lanes: Lane[] }
+  | {
+      kind: 'ok'
+      /** 未收線的線（parseLanes，收線記號整段相符的線已濾掉）。 */
+      lanes: Lane[]
+      /** 各線最後一行現行佇列行的原文（parseLaneLines，含收線的線）：判各線等用戶（U2）用。 */
+      lines: LaneLine[]
+      /** 仍待用戶處理的待辦（U1，parseUserTodos）。 */
+      todos: UserTodo[]
+    }
   | { kind: 'error'; message: string }
 
 /**

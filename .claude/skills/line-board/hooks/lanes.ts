@@ -79,6 +79,23 @@ export function solutionLines(text: string): string[] {
   return end === -1 ? rest : rest.slice(0, end)
 }
 
+/** fenced code block 的界線行開頭：區間內的行是示例。 */
+const CODE_FENCE = '```'
+
+/**
+ * Solution 段落中不在 fenced code block 內的行（界線行本身也去掉）。票面的固定格式行（等用戶標記、用戶待辦行）
+ * 一律經此過濾，所以說明段裡以 fence 引用的格式範例不會被判為該行；判定只在這裡實作一份。
+ */
+export function unfencedSolutionLines(text: string): string[] {
+  const lines: string[] = []
+  let inFence = false
+  for (const line of solutionLines(text)) {
+    if (line.startsWith(CODE_FENCE)) inFence = !inFence
+    else if (!inFence) lines.push(line)
+  }
+  return lines
+}
+
 /**
  * 票序拆成票號、分隔符與無法辨識的文字，保留原順序。票號接受三種寫法：短票號（補 prefix）、完整票號、
  * `W<n>-<序號>`（補 prefix 的版本）；serial 為佇列行的原寫法。prefix 為短票號前綴（見 shared.ts ticketPrefixOf）。

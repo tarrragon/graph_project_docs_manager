@@ -34,6 +34,7 @@ import {
   readTicketStatus,
 } from './readers'
 import { renderSessions } from './sessionsView'
+import { renderUserTodos } from './userTodosView'
 
 const PANE = 'line-board'
 const PANE_TITLE = '多線看板'
@@ -98,11 +99,12 @@ export const register: Register = on => {
     const elements: Elements = { Box, Text, Button }
 
     if (board.kind === 'unconfigured') return renderConfigNotice(elements, board)
-    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes、sessions、dispatches 欄，或閘門紀錄仍是整行原文），
-    // 等下一輪讀取覆寫前先顯示讀取中。
+    // hot reload 後 $.state 可能仍是舊版 snapshot（沒有 lanes、sessions、dispatches 欄，協調票結果沒有原文行與待辦，
+    // 或閘門紀錄仍是整行原文），等下一輪讀取覆寫前先顯示讀取中。
     if (
       board.kind === 'loading' ||
       board.lanes === undefined ||
+      (board.lanes.kind === 'ok' && (board.lanes.lines === undefined || board.lanes.todos === undefined)) ||
       board.sessions === undefined ||
       board.dispatches === undefined ||
       (board.mergeLog.kind === 'ok' && (board.mergeLog.entries === undefined || board.mergeLog.holders === undefined))
@@ -122,6 +124,7 @@ export const register: Register = on => {
           更新 {board.updatedAt}
           {board.checkoutNote === null ? '' : `｜${board.checkoutNote}`}
         </Text>
+        {renderUserTodos(elements, board, overrides, toggle)}
         {renderLaneGroups(elements, board, overrides, toggle)}
         {renderGroup(elements, bottom(SESSIONS_GROUP_ID, '各 session'), toggle, () => renderSessions(elements, board))}
         {renderGroup(elements, bottom(MERGE_GATE_GROUP_ID, '合併閘門最近紀錄'), toggle, () => renderMergeLog(elements, board))}
