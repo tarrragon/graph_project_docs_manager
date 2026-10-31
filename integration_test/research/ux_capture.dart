@@ -89,9 +89,11 @@ void main() {
         fixture,
         kCaptureVariants.first,
         AppDestination.gaps,
-        scanCorpusImpl:
-            ({required fileSystem, required table, required builtinTable}) =>
-                throw StateError('E2 注入：掃描輪次拋出例外'),
+        scanCorpusImpl: ({
+          required fileSystem,
+          required table,
+          required builtinTable,
+        }) => throw StateError('E2 注入：掃描輪次拋出例外'),
       ),
       throwsA(isA<TestFailure>()),
     );
@@ -528,38 +530,38 @@ class _RoundErrorLog {
 
 /// 以裝飾器包住掃描與建圖：呼叫實作、記錄例外與堆疊後 rethrow，語意不變。
 List<Override> _roundErrorOverrides(_RoundErrorLog log, ScanCorpusFn scan) => [
-  scanCorpusFnProvider.overrideWithValue(
-    ({required fileSystem, required table, required builtinTable}) async {
-      try {
-        return await scan(
-          fileSystem: fileSystem,
-          table: table,
-          builtinTable: builtinTable,
-        );
-      } catch (e, st) {
-        log.entries.add((step: 'scanCorpus', error: e, stack: st));
-        rethrow;
-      }
-    },
-  ),
-  buildGraphFnProvider.overrideWithValue(
-    ({
-      required rawNodes,
-      required projectSchemaJson,
-      required builtinSchemaJson,
-    }) {
-      try {
-        return buildGraph(
-          rawNodes: rawNodes,
-          projectSchemaJson: projectSchemaJson,
-          builtinSchemaJson: builtinSchemaJson,
-        );
-      } catch (e, st) {
-        log.entries.add((step: 'buildGraph', error: e, stack: st));
-        rethrow;
-      }
-    },
-  ),
+  scanCorpusFnProvider.overrideWithValue(({
+    required fileSystem,
+    required table,
+    required builtinTable,
+  }) async {
+    try {
+      return await scan(
+        fileSystem: fileSystem,
+        table: table,
+        builtinTable: builtinTable,
+      );
+    } catch (e, st) {
+      log.entries.add((step: 'scanCorpus', error: e, stack: st));
+      rethrow;
+    }
+  }),
+  buildGraphFnProvider.overrideWithValue(({
+    required rawNodes,
+    required projectSchemaJson,
+    required builtinSchemaJson,
+  }) {
+    try {
+      return buildGraph(
+        rawNodes: rawNodes,
+        projectSchemaJson: projectSchemaJson,
+        builtinSchemaJson: builtinSchemaJson,
+      );
+    } catch (e, st) {
+      log.entries.add((step: 'buildGraph', error: e, stack: st));
+      rethrow;
+    }
+  }),
 ];
 
 /// 破洞畫面落「無法判定破洞」時印出標記與可取得的狀態並使擷取失敗。
