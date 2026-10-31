@@ -1,7 +1,7 @@
 // 線與佇列：協調票 Solution 的現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化。
 // 不碰 $（無檔案、無行程），讓 *.test.ts 能直接驗證；讀檔與執行命令由 readers.ts 負責。
 
-import type { Lane, QueueToken, TicketStatus } from '../types'
+import type { Lane, LaneLine, QueueToken, TicketStatus } from '../types'
 
 /** 現行佇列行掃描範圍的起點：協調票的 Solution 二級標題，讀到下一個二級標題前。 */
 const SOLUTION_HEADING = '## Solution'
@@ -14,7 +14,23 @@ const SOLUTION_HEADING = '## Solution'
 const LANE_LINE = /^\*\*L(\d+) 現行佇列\*\*(?:（([^）]*)）)?：(.*)$/
 
 /** 票序寫此值表示這條線結束，看板不顯示；目標行寫此值表示清除目標。 */
-const LANE_ENDED = '（無）'
+export const LANE_ENDED = '（無）'
+
+/** 票序整段等於其一即為收線（multi-session-orchestration 的 line-continuity.md §2：`（無）` 或 `（結束）`）。 */
+const ENDED_MARKS: readonly string[] = [LANE_ENDED, '（結束）']
+
+/** 收線但附說明的寫法：`無（…）`（沒有括號的「無」後接說明）。以收線記號開頭再接文字的寫法另由 ENDED_MARKS 判定。 */
+const BARE_ENDED_WITH_NOTE = /^無（/
+
+/**
+ * 票序的收線寫法：exact 為合規的收線（看板不顯示該線）、with-note 為收線記號後還有文字（看板仍顯示，
+ * line_status 列為過期項）、null 為沒有收線。看板與 line_status 共用此判定，收線的定義只有這一份。
+ */
+export function endedForm(queue: string): 'exact' | 'with-note' | null {
+  if (ENDED_MARKS.includes(queue)) return 'exact'
+  if (ENDED_MARKS.some(mark => queue.startsWith(mark)) || BARE_ENDED_WITH_NOTE.test(queue)) return 'with-note'
+  return null
+}
 
 /**
  * 線目標行（協調票，UI 裁定）：行首即 `**L<n> 目標**`，n 為數字，接全形冒號與一句話目標。
@@ -118,11 +134,19 @@ function lastMatchPerLane(text: string, pattern: RegExp): Map<number, RegExpExec
  */
 export function parseLanes(text: string, prefix: string): Lane[] {
   const goals = parseLaneGoals(text)
+  return parseLaneLines(text)
+    .filter(({ queue }) => endedForm(queue) !== 'exact')
+    .map(({ lane, session, queue }) => ({ lane, session, goal: goals.get(lane) ?? null, tokens: parseQueue(queue, prefix) }))
+}
+
+/**
+ * 掃協調票的 Solution，每條線只取最後一次出現的現行佇列行，依線號排序，保留票序原文（含收線的線）。
+ * parseLanes 以此濾掉收線的線；接續判讀（continuity.ts）要看收線與收線寫法，直接用此結果。
+ */
+export function parseLaneLines(text: string): LaneLine[] {
   return [...lastMatchPerLane(text, LANE_LINE)]
-    .map(([lane, match]) => [lane, { session: match[2] ?? null, queue: (match[3] ?? '').trim() }] as const)
-    .filter(([, { queue }]) => queue !== LANE_ENDED)
-    .sort(([a], [b]) => a - b)
-    .map(([lane, { session, queue }]) => ({ lane, session, goal: goals.get(lane) ?? null, tokens: parseQueue(queue, prefix) }))
+    .map(([lane, match]) => ({ lane, session: match[2] ?? null, queue: (match[3] ?? '').trim() }))
+    .sort((a, b) => a.lane - b.lane)
 }
 
 /** 所有線的佇列完整票號，保留首次出現順序並去重。 */

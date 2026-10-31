@@ -6,17 +6,20 @@ import type { EngineInterface } from 'claude-code'
 
 import type {
   DispatchesResult,
+  LaneLine,
   LanesResult,
   MergeLogResult,
   ProjectConfigResult,
   SessionState,
   SessionsResult,
+  SourceLogEntry,
   TicketStatus,
 } from '../types'
 import {
   DISPATCH_ACTIVE_PATH,
   MERGE_LOG_PATH,
   SESSIONS_DIR,
+  SOURCE_LOG_PATH,
   UNKNOWN_STATUS,
   isInRepo,
   isSessionProcessAlive,
@@ -26,9 +29,11 @@ import {
   parseDispatchFile,
   parseFrontmatterStatus,
   parseFrontmatterTitle,
+  parseLaneLines,
   parseLanes,
   parseProjectConfig,
   parseSessionFile,
+  parseSourceLog,
   parseWorktreePaths,
   sessionStatusFileNames,
   sortSessions,
@@ -180,6 +185,40 @@ export async function readLanes($: EngineInterface, mainPath: string, coordinati
   if (file.kind === 'ok') return { kind: 'ok', lanes: parseLanes(file.text, prefix) }
   $.ui.log(`line-board: 讀取協調票 ${file.path} 失敗：${file.message}`, { to: 'debug' })
   return { kind: 'error', message: `${file.path}：${file.message}` }
+}
+
+/** 讀協調票每條線最後一行現行佇列行的原文（含收線的線），供 line_status 判讀；讀不到時的訊息含票檔路徑。 */
+export async function readLaneLines(
+  $: EngineInterface,
+  mainPath: string,
+  coordinationTicket: string,
+): Promise<{ kind: 'ok'; lines: LaneLine[] } | { kind: 'error'; message: string }> {
+  const file = await readTicketFile($, mainPath, coordinationTicket)
+  if (file.kind === 'ok') return { kind: 'ok', lines: parseLaneLines(file.text) }
+  $.ui.log(`line-board: 讀取協調票 ${file.path} 失敗：${file.message}`, { to: 'debug' })
+  return { kind: 'error', message: `${file.path}：${file.message}` }
+}
+
+/**
+ * 讀各 checkout 的 SessionStart 來源紀錄並合併（worktree 內啟動的 session 寫入該 worktree 的檔）。
+ * 某個 checkout 沒有紀錄檔是正常情形（尚未有 session 在其中啟動），只記 debug log；readCount 為讀到的檔數，供輸出註明。
+ */
+export async function readSourceLog(
+  $: EngineInterface,
+  checkoutPaths: readonly string[],
+): Promise<{ entries: SourceLogEntry[]; readCount: number }> {
+  const texts = await Promise.all(
+    checkoutPaths.map(async path => {
+      try {
+        return await $.fs.read(`${path}/${SOURCE_LOG_PATH}`)
+      } catch (error) {
+        $.ui.log(`line-board: 讀取 ${path}/${SOURCE_LOG_PATH} 失敗：${messageOf(error)}`, { to: 'debug' })
+        return null
+      }
+    }),
+  )
+  const found = texts.filter((text): text is string => text !== null)
+  return { entries: found.flatMap(parseSourceLog), readCount: found.length }
 }
 
 /**
