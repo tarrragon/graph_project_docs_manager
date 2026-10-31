@@ -219,9 +219,9 @@ Future<void> _handleChosenState(
 }) async {
   switch (state) {
     case WorkspaceReady():
-      await selectWorkspace(ref, state);
-      if (!context.mounted) return;
+      // 先收合再載入（SPEC-003 §3.7；0.5.0-W1-169.3）。
       _dismiss(ref);
+      await selectWorkspace(ref, state);
     case WorkspaceUnavailable(:final reason):
       if (fromChooseOther) {
         _showChooseOtherFailure(

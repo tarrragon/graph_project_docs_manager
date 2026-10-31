@@ -252,4 +252,57 @@ void main() {
       expect(logs.where((l) => l.$2 == 900), isEmpty);
     });
   });
+
+  group('阻擋輪次先進入載入中（0.5.0-W1-169.3）', () {
+    test('probe 進行中狀態為 DomainLoading，完成後落阻擋狀態', () async {
+      final gate = Completer<void>();
+      final container = _buildContainer(_GatedProbe(gate));
+
+      final detecting = container
+          .read(gateDetectionNotifierProvider.notifier)
+          .detect('/fake');
+      expect(container.read(domainViewStateProvider), isA<DomainLoading>());
+
+      gate.complete();
+      await detecting;
+      expect(
+        container.read(domainViewStateProvider),
+        isA<DomainNotFramework>(),
+      );
+    });
+
+    test('probe 期間取消載入 → 最終為 DomainUnset（世代檢查）', () async {
+      final gate = Completer<void>();
+      final container = _buildContainer(_GatedProbe(gate));
+
+      final detecting = container
+          .read(gateDetectionNotifierProvider.notifier)
+          .detect('/fake');
+      container.read(domainViewLoaderProvider.notifier).cancelLoading();
+      expect(container.read(domainViewStateProvider), isA<DomainUnset>());
+
+      gate.complete();
+      await detecting;
+      // E2：拿掉世代檢查時，後續阻擋寫入會把狀態覆蓋為 DomainNotFramework。
+      expect(container.read(domainViewStateProvider), isA<DomainUnset>());
+    });
+  });
+}
+
+/// readVersion 卡在 [gate] 的 probe。
+class _GatedProbe implements FrameworkSignalProbePort {
+  _GatedProbe(this.gate);
+  final Completer<void> gate;
+
+  @override
+  Future<String?> readVersion(String workspacePath) async {
+    await gate.future;
+    return null;
+  }
+
+  @override
+  Future<bool> schemaJsonExists(String workspacePath) async => false;
+
+  @override
+  Future<String?> readSchemaJsonVersion(String workspacePath) async => null;
 }

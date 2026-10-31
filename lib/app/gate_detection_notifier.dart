@@ -48,17 +48,21 @@ class GateDetectionNotifier extends Notifier<void> {
 
   /// 對 [workspacePath] 執行 gate 偵測。
   Future<void> detect(String workspacePath) async {
+    final loader = ref.read(domainViewLoaderProvider.notifier);
+    // 第一個動作：先進入載入中並記錄世代；probe 期間世代已變就放棄寫入。
+    final generation = loader.beginGateProbe();
     final probe = ref.read(frameworkSignalProbeProvider);
     final version = await probe.readVersion(workspacePath);
     final jsonExists = await probe.schemaJsonExists(workspacePath);
 
     if (version == null && !jsonExists) {
-      _apply(const DomainNotFramework(), inferredVersion: null);
+      _apply(const DomainNotFramework(), generation, inferredVersion: null);
       return;
     }
     if (!jsonExists) {
       _apply(
         DomainSchemaUnconsumable(version: version!),
+        generation,
         inferredVersion: null,
       );
       return;
@@ -69,6 +73,7 @@ class GateDetectionNotifier extends Notifier<void> {
     final isInferred = version == null;
     final displayVersion = version ?? jsonVersion;
 
+    if (!loader.isGateProbeCurrent(generation)) return;
     final classification = classifySchemaVersion(jsonVersion, builtinVersion);
 
     if (classification is InKnownRange) {
@@ -87,12 +92,20 @@ class GateDetectionNotifier extends Notifier<void> {
         projectVersion: classification is Unreadable ? null : displayVersion,
         isVersionInferred: isInferred,
       ),
+      generation,
       inferredVersion: null,
     );
   }
 
-  void _apply(DomainViewState state, {required String? inferredVersion}) {
-    ref.read(domainViewLoaderProvider.notifier).applyGateBlock(state);
+  void _apply(
+    DomainViewState state,
+    int generation, {
+    required String? inferredVersion,
+  }) {
+    final applied = ref
+        .read(domainViewLoaderProvider.notifier)
+        .applyGateBlock(state, generation: generation);
+    if (!applied) return;
     ref.read(inferredVersionProvider.notifier).state = inferredVersion;
   }
 }
