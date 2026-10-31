@@ -36,6 +36,11 @@ import { renderSessions } from './sessionsView'
 
 const PANE = 'line-board'
 const PANE_TITLE = '多線看板'
+/** 模型可呼叫的接續狀態工具：短名與完整名（mcp__<plugin>__<name>）。 */
+const LINE_STATUS_TOOL = 'line_status'
+const LINE_STATUS_TOOL_FULL = `mcp__line-board__${LINE_STATUS_TOOL}`
+/** 試水溫：先只回固定字串，確認主控與代理人 session 是否找得到此工具、能否呼叫。 */
+const LINE_STATUS_PROBE_TEXT = 'line_status probe OK（line-board 試水溫版，尚未實作判讀）'
 /** 更新間隔：30 秒。 */
 const REFRESH_MS = 30_000
 
@@ -54,10 +59,19 @@ export const register: Register = on => {
       name: 'board',
       description: '開啟多線看板（協調票各線現行佇列、佇列票即時狀態、派發中代理人、各 session 狀態、合併閘門紀錄）',
     })
+    // 工具註冊失敗不影響看板與 session 啟動；送 transcript 使使用者可見（否則與「工具不存在」同形）
+    await $.tool
+      .register({
+        name: LINE_STATUS_TOOL,
+        description: '多線協調：回報各線接續狀態與過期線（試水溫版，目前只回固定字串）',
+      })
+      .catch(error => $.ui.log(`line-board 警告：註冊 ${LINE_STATUS_TOOL} 失敗：${messageOf(error)}`, { to: 'transcript' }))
     void openIfConfigured($)
 
     return next(e)
   })
+
+  on('tool.call', { tool: LINE_STATUS_TOOL_FULL }, async () => ({ result: LINE_STATUS_PROBE_TEXT }))
 
   on('command.run', { command: 'board' }, async $ => {
     startTimer($)

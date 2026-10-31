@@ -173,4 +173,11 @@ declare module 'claude-code' {
   interface PluginState {
     'line-board': { snapshot: BoardSnapshot; expanded: GroupOverrides }
   }
+  /**
+   * 本 plugin 以 $.tool.register 註冊的工具。平台型別根的 MCP 條目只列已連線 server 的工具，
+   * 列了之後 tool.call 的過濾名稱就收窄為那些名稱；自己註冊的工具須在此補上，過濾器才接受。
+   */
+  interface McpToolInputs {
+    'mcp__line-board__line_status': Record<string, never>
+  }
 }
