@@ -2,6 +2,10 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.14.0（2026-10-31）— 新增 SessionStart hook `scripts/master_resume_hint.py`：名為「主控」的 session 以 `source=clear` 或 `compact` 啟動時，以 additionalContext 提示先呼叫 `line_status`、讀協調票、依 `references/line-continuity.md` §4 完成自我接續。其他名稱或 `startup`／`resume` 不輸出。consumer 專案需在自己的 `settings.json` 的 SessionStart 註冊：`uv run --quiet $CLAUDE_PROJECT_DIR/.claude/skills/multi-session-orchestration/scripts/master_resume_hint.py`。`line-continuity.md` §4 補〈自動提示〉段。
+
+起因：主控 `/clear` 後要等第一則訊息才想起要接續；plugin 的 `session.start` 拿不到 source、不能回傳 additionalContext，所以用 shell hook 實作（2026-10-31）。
+
 **Version**: 1.13.0（2026-10-31）— `references/line-continuity.md` §3 改以 line-board 的 `line_status` 工具為判讀主路徑：
 
 - 工具一次完成 §3 步驟 1、3、4、5，並列出過期項；時間比對與 `ListAgents` 名稱核對仍由主控做。
