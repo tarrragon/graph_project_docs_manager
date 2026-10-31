@@ -48,6 +48,23 @@ export type UserTodo = { key: string | null; item: string }
 /** 「用戶待辦」群組的一行：顯示文字，與是否為 session 等待中（S2，以要人處理色顯示）。 */
 export type UserTodoRow = { text: string; isSessionWaiting: boolean }
 
+/**
+ * 一個 session 的 context 用量檔內容（`.claude/hook-logs/line-board/context/<sessionId>.json`）：
+ * tokens／percent 以模型 window 為分母（同狀態列），compactWindow／compactPercent 以 compaction window 為分母；
+ * 缺席的量測（compact 後下一次回應前、compaction window 未量到、auto-compact 關閉）為 null，不寫成 0。
+ * measuredAt 為 $.clock.now() 的毫秒。
+ */
+export type ContextUsageRecord = {
+  sessionId: string
+  tokens: number | null
+  window: number
+  percent: number | null
+  compactWindow: number | null
+  compactPercent: number | null
+  autoCompactThreshold: number | null
+  measuredAt: number
+}
+
 /** line_status 工具的判讀結果：各線接續狀態（依線號）、過期項、等用戶（與過期項分列，等用戶不代表過期）。 */
 export type LineStatusReport = { lanes: LaneContinuity[]; stale: StaleItem[]; waiting: WaitingItem[] }
 

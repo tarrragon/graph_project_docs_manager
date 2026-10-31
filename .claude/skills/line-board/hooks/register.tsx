@@ -5,6 +5,7 @@
 // 合併閘門的開始與結束紀錄，畫在 Pane。設定不成立時不自動開 Pane、不定時讀取，/board 開啟後顯示設定提示。
 // 畫面資料與群組的手動展開狀態放 $.state（hot reload 不遺失）；讀檔與命令一律經 $，解析經 parse.ts 匯出（實作分在各 domain 模組）。
 // 本檔負責 hook 註冊、定時刷新的協調、snapshot 與 Pane 組裝；各項的讀取在 readers.ts，各區塊的繪製在 *View.tsx。
+// 另以 session.measure 把本 session 的 context 用量寫到主 checkout 的用量檔（記錄內容見 contextUsage.ts），不論專案設定是否成立。
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -17,12 +18,17 @@ import { renderMergeLog } from './mergeGateView'
 import {
   MERGE_GATE_GROUP_ID,
   SESSIONS_GROUP_ID,
+  contextUsagePath,
+  contextUsageRecord,
   dispatchTicketIds,
+  isContextChanged,
   laneTicketIds,
   messageOf,
+  serializeContextUsage,
   ticketPrefixOf,
   toggledOverrides,
 } from './parse'
+import type { CompactionWindow, ContextFill } from './parse'
 import {
   PROJECT_CONFIG_PATH,
   findCheckouts,
@@ -55,6 +61,12 @@ const expanded = atom({ plugin: 'line-board', key: 'expanded' } as const, {})
 let isRefreshing = false
 /** 定時讀取已啟動：設定成立的 session 啟動時或第一次執行 /board 時啟動一次。屬執行期控制，同 isRefreshing。 */
 let isTimerStarted = false
+/** 用量檔所在的主 checkout：第一次寫用量檔時以 findCheckouts 取得後沿用（每輪回應都寫，不每次跑 git）。reload 時重取即可。 */
+let usageMainPath: string | null = null
+/** compaction window 的快取：以模型 window 為鍵，換模型（window 變了）才重量；量測失敗不快取，下次重試。 */
+let compactionCache: { window: number; compaction: CompactionWindow | null } | null = null
+/** 用量檔寫入失敗已送 transcript：只送第一次（每輪回應都寫，連續失敗不洗版），之後只記 debug。 */
+let hasReportedUsageWriteFailure = false
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -71,6 +83,12 @@ export const register: Register = on => {
       .catch(error => $.ui.log(`line-board 警告：註冊 ${LINE_STATUS_TOOL} 失敗：${messageOf(error)}`, { to: 'transcript' }))
     void openIfConfigured($)
 
+    return next(e)
+  })
+
+  // 只觀察：context 用量變動時寫本 session 的用量檔；失敗不影響量測結果的傳遞
+  on('session.measure', async ($, e, next) => {
+    if (isContextChanged(e.changed)) await writeContextUsage($, e.context)
     return next(e)
   })
 
@@ -224,6 +242,55 @@ async function refresh($: EngineInterface): Promise<void> {
     $.ui.log(`line-board refresh 失敗：${messageOf(error)}`, { to: 'debug' })
   } finally {
     isRefreshing = false
+  }
+}
+
+/**
+ * 把本 session 的 context 用量寫到主 checkout 的用量檔（看板與 line_status 據以判定待 compact／待 clear）。
+ * 不看專案設定：用量檔只在主 checkout 的 hook-logs 下，沒有協調票的專案也無害。
+ * 失敗第一次送 transcript（使用者可見，否則與「用量檔沒人寫」同形），之後記 debug，不影響 session。
+ */
+async function writeContextUsage($: EngineInterface, context: ContextFill): Promise<void> {
+  try {
+    const sessionId = await $.session.id()
+    const path = contextUsagePath(await mainCheckoutForUsage($), sessionId)
+    if (path === null) {
+      $.ui.log(`line-board: sessionId 含不允許的字元（${sessionId}），不寫用量檔`, { to: 'debug' })
+      return
+    }
+    const compaction = await compactionWindowOf($, context.window)
+    const record = contextUsageRecord({ sessionId, context, compaction, measuredAt: await $.clock.now() })
+    await $.fs.write(path, serializeContextUsage(record))
+  } catch (error) {
+    const message = `line-board 警告：寫 context 用量檔失敗：${messageOf(error)}`
+    $.ui.log(message, { to: hasReportedUsageWriteFailure ? 'debug' : 'transcript' })
+    hasReportedUsageWriteFailure = true
+  }
+}
+
+/** 用量檔所在的主 checkout：第一次以 findCheckouts 取得後快取（失敗時 findCheckouts 退回 session root）。 */
+async function mainCheckoutForUsage($: EngineInterface): Promise<string> {
+  if (usageMainPath !== null) return usageMainPath
+  const root = await $.session.root()
+  const { checkoutPaths } = await findCheckouts($, root)
+  usageMainPath = checkoutPaths[0] ?? root
+  return usageMainPath
+}
+
+/**
+ * compaction window（/context 的 rawMaxTokens 與 auto-compact 門檻）：以 summary breakdown 量測（本機估算，不送 API），
+ * 依模型 window 快取。量不到時回傳 null 並記 debug，用量檔的 compact 欄位為 null。
+ */
+async function compactionWindowOf($: EngineInterface, window: number): Promise<CompactionWindow | null> {
+  if (compactionCache !== null && compactionCache.window === window) return compactionCache.compaction
+  try {
+    const { breakdown } = (await $.session.usage({ breakdown: 'summary' })).context
+    const compaction = breakdown === undefined ? null : { rawMaxTokens: breakdown.rawMaxTokens, autoCompactThreshold: breakdown.autoCompactThreshold }
+    compactionCache = { window, compaction }
+    return compaction
+  } catch (error) {
+    $.ui.log(`line-board: 量測 compaction window 失敗：${messageOf(error)}，用量檔的 compact 欄位為 null`, { to: 'debug' })
+    return null
   }
 }
 
