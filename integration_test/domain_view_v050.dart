@@ -131,6 +131,14 @@ Future<void> settleGuarded(
   } on FlutterError catch (e) {
     throw TestFailure('[$step] ${timeout.inSeconds} 秒內畫面未靜止：${e.message}');
   }
+  // framesEnabled 為 false 時 scheduleFrame 不設旗標，pumpAndSettle 一次 pump
+  // 即視為已靜止；此時「已靜止」無法判定，改以失敗指名步驟（0.5.0-W1-581.1）。
+  if (!tester.binding.framesEnabled) {
+    throw TestFailure(
+      '[$step] framesEnabled=false，無法判定畫面已靜止'
+      '（App lifecycle 非 resumed／inactive，見 0.5.0-W1-581.1）',
+    );
+  }
 }
 
 /// 帶逾時的固定幀數 pump；逾時時以 [step] 指名失敗。
