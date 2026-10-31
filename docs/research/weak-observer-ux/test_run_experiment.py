@@ -270,13 +270,32 @@ def test_run_produces_90_rows_with_registered_seeds(capture_root, tmp_path):
     rows = rx.run(client, capture_root, tmp_path)
     assert len(rows) == 90 and len(client.calls) == 90
     assert {c["model"] for c in client.calls} == {"claude-haiku-5-5"}
-    assert all(c["max_tokens"] == 1 and c["extra_body"] == {"temperature": 1.0}
+    assert all(c["max_tokens"] == 1 and c["extra_body"] == {
+        "temperature": 1.0, "thinking": {"type": "disabled"}}
                for c in client.calls)
     assert sorted(r["seed"] for r in rows)[:2] == [100, 101]
     assert len({r["seed"] for r in rows}) == 90
     first = rows[0]
     assert first["question"] == "T-A" and first["variant"] == "orig"
     assert first["correct"] == ["A"] and first["verdict"] == score.CORRECT
+
+
+def test_run_sends_thinking_disabled_and_omitting_it_differs(capture_root, tmp_path):
+    """E1 對照：同一 fixture，run() 送 thinking disabled；不傳 thinking 則 extra_body 不同。"""
+    sent = FakeClient("A")
+    rx.run(sent, capture_root, tmp_path)
+    assert all(c["extra_body"]["thinking"] == {"type": "disabled"} for c in sent.calls)
+    assert all("effort" not in c["extra_body"] and "output_config" not in c["extra_body"]
+               for c in sent.calls)
+
+    q = rx.QUESTIONS[0]
+    cell = rx.prepare_cell(capture_root, q, rx.VARIANTS[0], tmp_path / "images")
+    omitted = FakeClient("A")
+    rx.sampler.sample_once(omitted, rx.MODEL, q[4], cell[2], 100,
+                           max_tokens=rx.MAX_TOKENS, temperature=rx.TEMPERATURE,
+                           image_paths=[cell[0]])
+    assert "thinking" not in omitted.calls[0]["extra_body"]
+    assert omitted.calls[0]["extra_body"] != sent.calls[0]["extra_body"]
 
 
 def test_run_records_image_sha256_of_sent_bytes(capture_root, tmp_path):
