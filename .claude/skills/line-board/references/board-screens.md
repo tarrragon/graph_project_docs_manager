@@ -192,15 +192,18 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約，`defaultEnabled: true` |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board` 與 `line_status` 工具（`tool.call` 交給 `lineStatus.ts`）、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）、讀寫群組的手動展開狀態、組裝 Pane（用戶待辦、線群組、底部兩區塊的折疊外框）；設定不成立時只寫設定提示 |
+| `hooks/register.tsx` | 註冊 `/board` 與 `line_status` 工具（`tool.call` 交給 `lineStatus.ts`）與各 session 事件、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）；設定不成立時只寫設定提示。snapshot 的 atom 定義在本檔（平台的靜態掃描要求 atom 定義在使用它的檔案內），`ui.render` 讀出後交給 `boardPane.tsx` |
+| `hooks/boardPane.tsx` | 組裝 Pane（用戶待辦、線群組、底部兩區塊的折疊外框）、讀寫群組的手動展開狀態（`line-board.expanded`）、hot reload 後舊版 snapshot 的讀取中判定 |
+| `hooks/usageWriter.ts` | context 用量檔的寫入串接：主 checkout 的快取、compaction window 量測與快取、寫入失敗只送一次 transcript、`session.end` 刪自己的用量檔；`phase` 由呼叫端傳入取值函式（`resumeFlow.ts` 的 `currentResumePhase`） |
+| `hooks/resumeFlow.ts` | 恢復開工通知的流程：持有判定狀態（`pendingResume`、`lastResumed`，跨 `/clear` 保留）、寫 phase → `session.send` 給主控（開關 `IS_RESUME_NOTICE_SEND_ENABLED`）→ 寫送出紀錄檔 |
 | `hooks/readers.ts` | 一輪 snapshot 所需各項的讀取：專案設定、checkout 清單、協調票、票檔 status 與 title、session 狀態檔與 pid 存活、派發紀錄、合併閘門紀錄；讀檔與命令一律經 `$`，各項失敗只影響該項 |
 | `hooks/lanesView.tsx` | 線群組的繪製（標題三行、派發列、閘門票列、佇列列、佇列細節，各依五色狀態上色）與各群組共用的可折疊外框（框線、主題鍵 `suggestion` 色粗體標題列、內容）；設定提示的繪製 |
 | `hooks/dispatchView.tsx` | 由 snapshot 推出派發列，以及派發紀錄讀取失敗等提示行 |
 | `hooks/{sessions,mergeGate}View.tsx` | 底部兩區塊的內容：各 session、合併閘門最近紀錄 |
 | `hooks/userTodosView.tsx` | 用戶待辦群組的繪製：以 `continuity.ts` 判 U2、`userTodos.ts` 組成各行，S2 洋紅粗體；沒有任何一項時為一行「用戶待辦：無」 |
-| 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`，型別 `Elements`）由 register.tsx 以 `$.ui.resolve(e)` 取得後傳入；各區塊的繪製函式以元素與 snapshot（`ReadyBoard`）為參數 |
-| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、readers.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
-| `hooks/shared.ts` | 各 domain 共用：專案設定解析、票號前綴與票檔位置、frontmatter 狀態與 title 解析、checkout 路徑判定、距今時間 |
+| 各 `*View.tsx` 共通 | 元素（`Box`、`Text`、`Button`，型別 `Elements`）由 register.tsx 以 `$.ui.resolve(e)` 取得後經 `boardPane.tsx` 傳入；各區塊的繪製函式以元素與 snapshot（`ReadyBoard`）為參數 |
+| `hooks/parse.ts` | 純函式的匯出彙總：register.tsx、boardPane.tsx、usageWriter.ts、resumeFlow.ts、readers.ts 與各 `*View.tsx` 只從這裡取用，本身不含實作 |
+| `hooks/shared.ts` | 各 domain 共用：專案設定解析、票號前綴與票檔位置、frontmatter 狀態與 title 解析、checkout 路徑判定、距今時間、本機時間格式 |
 | `hooks/lanes.ts` | 線與佇列：現行佇列行與線目標行解析（每線取最後一行）、票序拆分與格式化 |
 | `hooks/sessions.ts` | 各 session：狀態檔篩選／解析／排序、pid 存活比對（procStart）、本 repo 判定、線列 session 狀態 |
 | `hooks/mergeGate.ts` | 合併閘門：紀錄篩選與欄位解析、短分支名、閘門持有者判定、結果顏色 |
