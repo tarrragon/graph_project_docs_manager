@@ -242,13 +242,42 @@ void main() {
         find.byKey(const Key('input-tickets-search')),
         'Alpha',
       );
-      await tester.pump();
+      await tester.pump(Motion.searchDebounce);
 
       expect(
         find.byKey(const Key('card-tickets-0.1.0-W1-001')),
         findsOneWidget,
       );
       expect(find.byKey(const Key('card-tickets-0.1.0-W1-002')), findsNothing);
+    });
+
+    // 0.6.0-W3-124：防抖於 provider 層；輸入框值即時，過濾延遲。
+    testWidgets('搜尋防抖：期間未過濾、期滿已過濾、清空立即還原', (tester) async {
+      await pumpHarness(
+        tester,
+        child: const TicketListScreen(),
+        overrides: [
+          ticketListStateProvider.overrideWith(
+            (ref) => const TicketsReady(tickets: _readyTickets),
+          ),
+        ],
+      );
+      final input = find.byKey(const Key('input-tickets-search'));
+      final beta = find.byKey(const Key('card-tickets-0.1.0-W1-002'));
+
+      await tester.enterText(input, 'Alpha');
+      await tester.pump(
+        Motion.searchDebounce - const Duration(milliseconds: 1),
+      );
+      expect(beta, findsOneWidget, reason: '防抖期間不過濾');
+      expect(find.text('Alpha'), findsOneWidget, reason: '輸入框顯示值即時');
+
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(beta, findsNothing, reason: '期滿已過濾');
+
+      await tester.enterText(input, '');
+      await tester.pump();
+      expect(beta, findsOneWidget, reason: '清空立即還原，不等防抖');
     });
 
     testWidgets('action-tickets-filter-status 選狀態 → 清單依狀態過濾', (tester) async {

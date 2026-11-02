@@ -3,8 +3,12 @@
 /// 慣例）。
 library;
 
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../tokens/tokens.dart';
 import 'ticket_list_fixtures.dart';
 import 'ticket_list_state.dart';
 
@@ -27,6 +31,46 @@ const List<String> statusValues = [
 final ticketListStateProvider = StateProvider<TicketListState>(
   (ref) => TicketsUnloaded(count: TicketListFixtures.all.length),
 );
+
+/// 搜尋輸入框的即時顯示值；`null` 代表尚未輸入，顯示值取
+/// [TicketsReady.searchQuery]。過濾詞（`searchQuery`）才經防抖更新。
+final ticketSearchInputProvider = StateProvider<String?>((ref) => null);
+
+/// 搜尋防抖服務（SPEC-003 §3.4；`0.6.0-W3-124`）：輸入值即時寫入
+/// [ticketSearchInputProvider]，過濾詞延遲 [Motion.searchDebounce] 才寫入
+/// [TicketsReady.searchQuery]；清空輸入不等防抖立即生效。
+class TicketSearchDebouncer {
+  TicketSearchDebouncer(this._ref);
+
+  final Ref _ref;
+  Timer? _timer;
+
+  void onInput(String value) {
+    _ref.read(ticketSearchInputProvider.notifier).state = value;
+    _timer?.cancel();
+    if (value.isEmpty) {
+      _apply(value);
+      return;
+    }
+    _timer = Timer(Motion.searchDebounce, () => _apply(value));
+  }
+
+  void _apply(String value) {
+    final current = _ref.read(ticketListStateProvider);
+    if (current is! TicketsReady) return;
+    _ref.read(ticketListStateProvider.notifier).state = current.copyWith(
+      searchQuery: value,
+    );
+  }
+
+  void dispose() => _timer?.cancel();
+}
+
+final ticketSearchDebouncerProvider = Provider<TicketSearchDebouncer>((ref) {
+  final debouncer = TicketSearchDebouncer(ref);
+  ref.onDispose(debouncer.dispose);
+  return debouncer;
+});
 
 /// 正常 · 列表的可見票（依搜尋詞、篩選、排序運算，S5：三者獨立）。
 List<TicketFixtureItem> visibleListTickets(TicketsReady state) {

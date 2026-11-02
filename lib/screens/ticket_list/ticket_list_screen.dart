@@ -200,6 +200,7 @@ class _ReadyListView extends ConsumerWidget {
       final restorePriority = state.priorityFilter;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
+        ref.read(ticketSearchInputProvider.notifier).state = '';
         update(
           (s) => s.copyWith(
             searchQuery: '',
@@ -216,13 +217,16 @@ class _ReadyListView extends ConsumerWidget {
           variant: AppSnackBarVariant.withAction,
           actionLabel: l10n.undoAction,
           actionTestKey: const Key('undoAction'),
-          onAction: () => update(
-            (s) => s.copyWith(
-              searchQuery: restoreSearch,
-              statusFilter: () => restoreStatus,
-              priorityFilter: () => restorePriority,
-            ),
-          ),
+          onAction: () {
+            ref.read(ticketSearchInputProvider.notifier).state = restoreSearch;
+            update(
+              (s) => s.copyWith(
+                searchQuery: restoreSearch,
+                statusFilter: () => restoreStatus,
+                priorityFilter: () => restorePriority,
+              ),
+            );
+          },
         );
       });
     }
@@ -292,8 +296,8 @@ class _ReadyListView extends ConsumerWidget {
       leading: [
         Toolbar(
           search: SearchField(
-            value: state.searchQuery,
-            onChanged: (value) => update((s) => s.copyWith(searchQuery: value)),
+            value: ref.watch(ticketSearchInputProvider) ?? state.searchQuery,
+            onChanged: ref.read(ticketSearchDebouncerProvider).onInput,
             testKey: const Key('input-tickets-search'),
           ),
           filters: [
