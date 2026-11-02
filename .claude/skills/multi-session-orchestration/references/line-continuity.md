@@ -165,7 +165,7 @@ S1 已列了很久，但用戶其實已經回應過：多半是該線漏寫解�
 
 **備援：工具不可用時**（plugin 未載入、ToolSearch 查不到、工具回報無法判讀）依序執行：
 
-1. 讀 `.claude/project-integration/multi-session.json` 的 `coordinationTicket`，再以 `ticket track full <協調票>` 取得 `## Solution` 段。每條線以這一段中最後一行現行佇列行為準。Completion Info 中若有舊的佇列行，不要當作現況。
+1. 以 `python3 .claude/skills/multi-session-orchestration/scripts/coordination_ticket.py --json` 自動解析協調票（active 版本中 `coordination: true` 且 `in_progress` 的票；結果為 none 或 multiple 時請用戶裁定），再以 `ticket track full <協調票>` 取得 `## Solution` 段。每條線以這一段中最後一行現行佇列行為準。Completion Info 中若有舊的佇列行，不要當作現況。
 2. 執行 `ListAgents`，記下每個同儕的名稱和本 session 的自稱。
 3. 讀 `~/.claude/sessions/*.json`，以 `cwd` 篩出本 repo 的 session，取得每個名稱對應的 `pid` 和 `sessionId`。
 4. 以每個 `sessionId` 的前 8 碼 grep `diagnostic.log`，取最後一筆的 `source` 和時間。

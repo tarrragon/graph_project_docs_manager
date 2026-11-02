@@ -20,7 +20,7 @@ TODOLIST_RELATIVE_PATH = "docs/todolist.yaml"
 CONFIG_RELATIVE_PATH = ".claude/project-integration/multi-session.json"
 WORK_LOGS_DIR = "docs/work-logs"
 CLOSED_STATUSES = frozenset({"completed", "closed"})
-# 與 statusline_lane.py 的 TICKET_ID 同一規則。
+# 與 line-board hooks/shared.ts 的 TICKET_ID 同一規則。
 TICKET_ID = re.compile(r"^(.+?)-(W\d+-)\d+(?:\.\d+)*$")
 VERSION_LINE = re.compile(r'^  - version:\s*["\']?([^"\'\s#]+)')
 STATUS_LINE = re.compile(r'^    status:\s*["\']?([^"\'\s#]+)')
