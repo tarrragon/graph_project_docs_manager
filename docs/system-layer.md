@@ -2,7 +2,7 @@
 title: "系統層 — graph_project_docs_manager"
 bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-corpus, DOMAIN-MAP-graph, DOMAIN-MAP-ticketdetail, DOMAIN-MAP-layout, DOMAIN-MAP-diagnostics, DOMAIN-MAP-history]
 created: "2026-08-26"
-updated: "2026-10-30"
+updated: "2026-11-02"
 ---
 
 # 系統層 — graph_project_docs_manager
@@ -86,7 +86,7 @@ L0   Schema     Workspace
 | Graph | Corpus | 圖建自解析產物 |
 | Graph | Schema | 建邊依 Schema 的邊型表（SPEC-007 FR-01）；2026-10-21 補記，原本漏列（`0.5.0-W1-460`） |
 | TicketDetail | Corpus | 詳情取自同一份解析產物 |
-| Diagnostics | Corpus | 取解析錯誤事件（EVT-CORPUS-003、004、005），由此產生破洞 |
+| Diagnostics | Corpus | 取解析錯誤事件（EVT-CORPUS-003、004、005、006），由此產生破洞；006 為主題檔破洞，2026-11-02 補記（`0.6.0-W1-112`） |
 | Diagnostics | Graph | 經 EVT-GRAPH-001 取 `graphDefects` 與 flow 子圖，產生 `graphDefect` 與事件類破洞（SPEC-007 FR-09、SPEC-003 §3.5）；2026-10-21 補記，原本漏列（`0.5.0-W1-460`） |
 | Corpus | Schema | 以 `id_pattern` 為有 frontmatter 的檔案判型；以「路徑對型別」查詢分流沒拿到可用 frontmatter 的檔案（SPEC-006 FR-03、FR-06，見系統層 §5） |
 | Corpus | Workspace | 取得專案根路徑 |
