@@ -6,7 +6,7 @@ related_usecases: [UC-01, UC-02, UC-03, UC-05, UC-06]
 depends_on_bundles: [DOMAIN-MAP-schema, DOMAIN-MAP-workspace]
 path_patterns: [lib/corpus/]
 created: "2026-08-26"
-updated: "2026-10-13"
+updated: "2026-11-02"
 ---
 
 # Domain Map — Corpus
@@ -31,7 +31,7 @@ updated: "2026-10-13"
 | 出邊 | Workspace（`DOMAIN-MAP-workspace`） | 取得專案根路徑 |
 | 入邊 | Graph | 圖建自解析產物 |
 | 入邊 | TicketDetail | 詳情取自同一份解析產物 |
-| 入邊 | Diagnostics | 取解析錯誤事件（EVT-CORPUS-003、004、005），由此產生破洞 |
+| 入邊 | Diagnostics | 取解析錯誤事件（EVT-CORPUS-003、004、005、006），由此產生破洞 |
 
 ## 2.5 通道與協調圖
 
@@ -45,7 +45,7 @@ updated: "2026-10-13"
 
 | Domain | 唯一變更理由 | 公開面（OCP） | 內部面 |
 |--------|------------|-------------|-------|
-| **Corpus** | 文件格式或解析寬容度改變 | 原始節點與邊、解析錯誤清單 | 掃描策略、YAML 容錯、檔案監看 |
+| **Corpus** | 文件格式或解析寬容度改變 | 原始節點與邊、解析錯誤清單、ticket→主題映射與主題檔狀態（SPEC-006 FR-12） | 掃描策略、YAML 容錯、主題檔的行解析、檔案監看 |
 
 ### Bundle 不變式清單
 
@@ -68,6 +68,10 @@ updated: "2026-10-13"
 | Corpus | 「無區塊」與「區塊壞掉」的步驟清單可同為空清單，但只有後者發 EVT-CORPUS-004；沒有頂層 `flow:` 行的壞 yaml 區塊不發 | SPEC-006 FR-09 規則 3a、3b |
 | Corpus | 非 domain 路徑清單檔 YAML 解析失敗、缺鍵、鍵值不是清單時，各發一筆 EVT-CORPUS-005（`reason` 為對應子原因），非 domain 側視為未宣告；檔案不存在時不發事件 | SPEC-006 FR-10 規則 2、3、4 |
 | Corpus | 清單內的非字串元素略過、其餘元素照常生效；一輪至多一筆 `reason` 為 `elementNotString` 的 EVT-CORPUS-005，`nonStringElementCount` 等於非字串元素數；此時非 domain 側不視為未宣告；字串元素不檢查格式、不發事件 | SPEC-006 FR-10 規則 2a、2b |
+| Corpus | 指派檔跳過空行、不含 tab 的行與任一側為空的行；容忍檔尾缺換行；同一 ticket 多筆取最後一筆 | SPEC-006 FR-12 規則 3～5 |
+| Corpus | 指派檔不存在時映射為空且不發 EVT-CORPUS-006；主題清單不存在時不做一致性檢查且不發事件 | SPEC-006 FR-12 規則 6 |
+| Corpus | 兩檔皆存在、指派的主題名不在主題清單時，一輪恰發一筆 EVT-CORPUS-006，映射仍含該指派 | SPEC-006 FR-12 規則 7 |
+| Corpus | 主題檔的任何結果不改變語料結果與 FR-07 兩條守恆式；映射屬同一輪結果，隨輪次一併替換 | SPEC-006 FR-12 規則 2、9 |
 
 ## 4. 邊界決策
 
@@ -95,6 +99,20 @@ updated: "2026-10-13"
 **Corpus domain 必須採逐行語意。** 契約測試以此為斷言：對既有語料解析失敗數
 應為 0；若改用天真語意即得 130，兩者的差即為該測試的鑑別力。
 
+### 4.3 主題檔由 Corpus 讀取（含絆腳索）
+
+`0.6.0-W1-105.3` 用戶裁定 G-T4 選 A（2026-11-02）：被觀測專案的 `topic-assignments.txt` 與 `topics-registry.txt` 由 Corpus 讀取，公開面加「ticket→主題映射」，Ticket 清單只投影（SPEC-006 FR-12）。
+
+| 面向 | 決定 | 理由 |
+|------|------|------|
+| 歸屬 | Corpus | 系統層 §2「Corpus 是唯一的解析者」；倉內先例為非 domain 路徑清單檔由 Corpus 讀（SPEC-006 FR-10）；檔案監看與破洞通報沿用 Corpus 既有路徑，不新增依賴邊 |
+| 未採 | TicketDetail 讀取、獨立 bundle、畫面直讀 | 前者使 TicketDetail 多出 I/O 與第二個變更理由；獨立 bundle 為兩個純文字檔新增一個 domain，牽動系統層與泳道列數；畫面直讀接不上監看與破洞。評估全文見 `0.6.0-W1-105.3` Solution |
+| 代價 | Corpus 帶上一項 ticket 系統專屬知識 | 唯一變更理由「文件格式或解析寬容度」被延伸到 ticket 系統的附屬檔 |
+
+**絆腳索**：出現第二個 ticket 系統專屬附屬檔需要 App 讀取時，重評獨立 bundle（`0.6.0-W1-105.3` 候選 C），不直接再加進 Corpus 公開面。觀測點：本節 §3 公開面出現第二項只服務單一節點型別的附屬檔讀取。框架改變主題檔的位置或格式（觸及 `.claude/skills/ticket/ticket_system/lib/topic_assignments.py`）時，修訂 SPEC-006 FR-12，不觸發重評。
+
+回退成本：讀取器為獨立單元（比照非 domain 路徑清單讀取器），搬到獨立 bundle 時只移讀取器與公開面歸屬，資料形狀不變。
+
 ## 5. 對實作票的切分指引
 
 - Corpus 的票必須帶容錯情境（舊框架版本的殘缺文件是常態，非例外）
@@ -115,6 +133,8 @@ updated: "2026-10-13"
 | FR-08 | 由 EVT-CORPUS-003、004、005 產生 `parseFailure` 破洞 | Diagnostics | domain unit；IT-2 |
 | FR-09 | UC flow 區塊解析：步驟清單附掛於 UC `rawNode`，壞區塊發 EVT-CORPUS-004 | Corpus（破洞由 Diagnostics 依 FR-08 產生） | domain unit |
 | FR-10 | 非 domain 路徑清單檔格式錯誤：發 EVT-CORPUS-005，非 domain 側視為未宣告 | Corpus（讀 Schema 型別表的清單檔位置與鍵名；破洞由 Diagnostics 依 FR-08 產生） | domain unit |
+| FR-11 | 檔案監看與自動重新解析 | Corpus | domain unit（監看以 port 注入） |
+| FR-12 | 主題檔讀取與 ticket→主題映射；主題檔破洞發 EVT-CORPUS-006 | Corpus（破洞由 Diagnostics 依 FR-08 產生） | domain unit |
 | NFR-01 | 失敗隔離 | Corpus | domain unit |
 
 全部 FR 皆有歸屬，無標為非 domain 者（破洞報告畫面接真實資料屬 0.6+，不在本版）。
@@ -125,4 +145,4 @@ FR-09、FR-10 的歸屬依據（`0.5.0-W1-159`，判準見系統層 §8：驗收
 
 ---
 
-**Last Updated**: 2026-10-13（`0.5.0-W1-159`：§7 補 FR-09、FR-10 與歸屬依據；`0.5.0-W1-176`：§2 入邊、§7 FR-08 列對齊 EVT-CORPUS-004／005，不變式清單補 FR-07 計數項、FR-09、FR-10；`0.5.0-W1-178`：不變式清單既有九列同行寫明 SPEC id，欄名改「SPEC 條款」，不變式內容未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-11-02（`0.6.0-W1-105.3.1`：§3 公開面加 ticket→主題映射、不變式清單補 FR-12 四列、新增 §4.3 主題檔歸屬與絆腳索、§7 補 FR-11、FR-12）；2026-10-13（`0.5.0-W1-159`：§7 補 FR-09、FR-10 與歸屬依據；`0.5.0-W1-176`：§2 入邊、§7 FR-08 列對齊 EVT-CORPUS-004／005，不變式清單補 FR-07 計數項、FR-09、FR-10；`0.5.0-W1-178`：不變式清單既有九列同行寫明 SPEC id，欄名改「SPEC 條款」，不變式內容未動） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
