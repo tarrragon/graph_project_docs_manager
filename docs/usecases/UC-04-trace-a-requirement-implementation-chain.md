@@ -4,8 +4,8 @@ title: "追溯一項需求的實現鏈"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-10-21"
-version: "1.2"
+updated: "2026-11-02"
+version: "1.3"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -51,11 +51,23 @@ ticket_refs: []
 
 ### 反向追溯
 
-使用者自 Ticket 出發，沿 source_ticket 與 implements_requirements 往上追溯至來源提案
+使用者自 Ticket 出發，沿各跳的邊往上追溯至來源提案
 
-**0.1 規格未涵蓋**：前提為各層向上欄位對照表與 UC → Ticket 語意邊尚未建立，
-見 `docs/system-layer.md` §6；UC → Ticket 資料來源定案（`0.1.0-W3-365`）後
-重評本場景是否可規格化
+**重評結論（`0.6.0-W1-110`）：資料前提已具備，畫面互動未規格化，0.6 不涵蓋。**
+各層的「向上」欄位在 UC → Ticket 邊定案後皆已存在，每一跳讀的邊與追溯視圖該跳相同，只是方向相反
+（SPEC-001 §3〈四層樹由掃描輪次衍生〉）：
+
+| 向上跳 | 取法 |
+|--------|------|
+| Ticket → UC | 反查：`ticket_refs` 含該 ticket id 的 UC |
+| UC → SPEC | 正查：UC 的 `related_specs` |
+| SPEC → PROP | 正查：SPEC 的 `source_proposal` |
+
+原寫法的 `source_ticket` 是 ticket 之間的衍生邊，`implements_requirements` 也不是
+追溯視圖所取的邊，兩者都不在本場景的路徑上，已改寫。
+
+追溯視圖（SPEC-001 §3）只定義以 PROP 為根的樹，沒有「選定起點」的狀態或錨點，
+本場景需要的起點選擇、反向樹的呈現與缺口判定都尚未規格化；是否排入版本由 PM 裁定。
 
 ## 流程拓撲（結構化 Flow 區塊）
 
@@ -135,13 +147,14 @@ flow:
 - [ ] 樹狀結構完整呈現四層，缺口層以視覺差異標示而非省略
       （第三跳無邊、第二跳欄位未定，見 §9）
 - [ ] 反向追溯可自任一層出發，不限於自 PROP 開始
-      （各層的「向上」欄位對照表尚未建立）
+      （各層向上欄位已具備，見〈反向追溯〉；畫面互動未規格化）
 - [ ] 點選節點開啟的詳情與該節點一致，且部分損壞的節點仍能開啟
 
 ## 變更歷史
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.3 | 2026-11-02 | `0.6.0-W1-110`：〈反向追溯〉依 UC → Ticket 新邊重評——各層向上欄位已具備（Ticket → UC 反查 `ticket_refs`、UC → SPEC 取 `related_specs`、SPEC → PROP 取 `source_proposal`），更正原寫法的 `source_ticket`／`implements_requirements` 路徑；畫面互動未規格化，0.6 不涵蓋，排入與否由 PM 裁定。驗收條件註記同步。flow 區塊不動 |
 | 1.2 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定類 B）：`jump-to-detail` 補 consumes `EVT-CORPUS-001`（TicketDetail 取 5W1H 全文）；不新增步驟，EVT 宣告不動 |
 | 1.1 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` R8）：主要成功場景步驟 1「選定提案」改「展開提案」，flow 區塊 `select-proposal` 的 `name` 同步；替代場景〈反向追溯〉標「0.1 規格未涵蓋」並補缺的前提，重評條件綁 `0.1.0-W3-365` |
 | 1.0 | 2026-08-26 | 初版，`saas-tech-selection` Stage 6 產出 |
