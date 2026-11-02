@@ -4,8 +4,8 @@ title: "Corpus 解析與破洞判定"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
-updated: "2026-10-21"
-version: "1.28"
+updated: "2026-11-02"
+version: "1.29"
 owner: "主線程（PM）"
 
 domain: "corpus"
@@ -26,7 +26,7 @@ depends_on_domains: [schema, workspace]
 | Domain | 本規格內的職責 | 對應 FR |
 |--------|--------------|--------|
 | **Schema** | 提供「路徑對到哪個節點型別」的查詢 | FR-06 |
-| **Corpus** | 唯一的解析者：切出 frontmatter、判型；對命中 carrier 的失敗檔發出解析錯誤事件；讀 UC 本文的 flow 區塊，flow 區塊解析失敗時發出 EVT-CORPUS-004；非 domain 路徑清單檔格式錯誤時發出 EVT-CORPUS-005 | FR-01～FR-05、FR-07、FR-09、FR-10 |
+| **Corpus** | 唯一的解析者：切出 frontmatter、判型；對命中 carrier 的失敗檔發出解析錯誤事件；讀 UC 本文的 flow 區塊，flow 區塊解析失敗時發出 EVT-CORPUS-004；非 domain 路徑清單檔格式錯誤時發出 EVT-CORPUS-005；監看檔案變動並自動重新解析 | FR-01～FR-05、FR-07、FR-09～FR-11 |
 | **Diagnostics** | 由解析錯誤事件（EVT-CORPUS-003、004、005）產生破洞 | FR-08 |
 
 Corpus 沿既有的依賴邊 Corpus → Schema 呼叫路徑查詢，因此能在發事件前就知道
@@ -58,7 +58,7 @@ Corpus 沿既有的依賴邊 Corpus → Schema 呼叫路徑查詢，因此能在
 | 原始邊（`rawEdges`）的抽取 | 建圖屬 0.4（Graph），兩項整合測試都不需要邊 | PROP-005 §0.4 |
 | 破洞類別 `graphDefect`／`traceGap`／`unlocatable` | 需要圖或追溯資料；本版只實作 `parseFailure`。`unlocatable` 的定義以 EVT-DIAGNOSTICS-001 為準：只在被觀測專案兩側皆已宣告（DomainBundle `path_patterns` 與 `docs/non-domain-paths.yaml`）時，對兩者皆未命中的 `where.files` 路徑成立；只宣告一側時為「domain 未宣告」或「非 domain 未宣告」，兩側皆無時專案整體為「未宣告路徑」，皆不屬本類（`0.5.0-W1-096`／`0.5.0-W1-096.1` 用戶裁決）。`path_patterns` 逐 bundle 判定：仍有 bundle 未宣告時，未命中路徑為「domain 未宣告」而非 `unlocatable`（2026-10-08 用戶裁決 5c；非 domain 清單同時缺席時亦同，用戶裁決 E1）。兩種「未宣告」不進破洞報告，報告頁另顯示一行專案層級宣告狀態（7a）；路徑逐條判定，不做整票歸類（6a）。完整分類見 UC-02〈ticket 定位的五種狀態與整體未宣告〉 | EVT-DIAGNOSTICS-001、UC-02、PROP-005 §0.4／§0.6+ |
 | frontmatter 可用、位於 carrier 路徑內，但 `id` 缺席或不符合任何型別的 `id_pattern` | 已定案（`0.3.1-W1-081`，用戶裁決 2026-09-29）：歸 `parseFailure`，新增原因碼 `idMissing`／`idPatternMismatch`，不另立類別。本版 FR-03 維持「不產生破洞」，FR 修訂與實作不在本版。另：量測中 85.8% 是子票 ID（`NNN.M`）被 Ticket 型 `id_pattern` 漏收，屬 schema 缺陷而非歸類問題，由 `0.3.1-W1-092` 修正 | 歸類實作 `1.0.0-W1-084`；pattern 修正 `0.3.1-W1-092` |
-| 掃描中途取消（UC-05）與重新掃描（UC-06；整輪重新解析，發出 EVT-CORPUS-001） | 屬畫面接真實資料的互動，排在 0.6+；兩項整合測試都只跑單輪完整掃描。檔案監看（外部改動自動偵測，EVT-CORPUS-002）不是重新掃描，目前未排入任何版本（`0.5.0-W1-458.5` 更正原寫法，458 用戶裁定題 D2） | PROP-005 §0.6+；檔案監看 `0.5.0-W1-458.6` |
+| 掃描中途取消（UC-05）與重新掃描（UC-06；整輪重新解析，發出 EVT-CORPUS-001） | 屬畫面接真實資料的互動，排在 0.6+；兩項整合測試都只跑單輪完整掃描。檔案監看（外部改動自動偵測，EVT-CORPUS-002）不是重新掃描，排入 0.6.0，規格見 FR-11（`0.5.0-W1-458.5` 更正原寫法，458 用戶裁定題 D2） | PROP-005 §0.6+；檔案監看見 FR-11 |
 | YAML 損壞檔的部分欄位救回 | 語料中 YAML 錯誤僅 1 件（`docs/system-layer.md` §5，2026-08-27 對五個語料專案 7106 份文件量測），部分救回的演算法沒有樣本可以校準 | 本版只回報、不救回（FR-04） |
 
 ## 功能需求
@@ -300,6 +300,57 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 - [ ] Given 清單為 `["docs/a/", 1, true]`，Then 只發出一筆 EVT-CORPUS-005，`nonStringElementCount` 為 2（A3：一輪一筆）
 - [ ] Given 清單為 `["", "docs/a/"]`，Then 不發 EVT-CORPUS-005，兩個值都納入（C3′：字串不檢查格式）
 
+### FR-11：檔案監看與自動重新解析
+
+**描述**：工作區就緒後，Corpus 監看掃描輸入檔案的變動（UC-06〈檔案監看〉分支 `detect-external-change`），把一段時間內的變動合併為一筆 EVT-CORPUS-002，再以整輪重新解析（`reparse`）發出 EVT-CORPUS-001。EVT-CORPUS-002 只在 Corpus 內部流動，下游只看到 EVT-CORPUS-001；結果以狀態承載呈現，不經提示通道通知（`docs/spec/corpus/domain-map.md` 通道表 Corpus 列）。對應 PROP-003「外部改動自動偵測並重新載入」（`0.6.0-W1-080` Phase 1）。
+
+**監看機制**：候選與取捨如下，選定為待裁項 W1。
+
+| 候選 | macOS 底層 | 取得的事件 | App 需自建 | 已知行為 |
+|------|-----------|-----------|-----------|---------|
+| A：`dart:io` `Directory.watch(recursive: true)` | FSEvents | `FileSystemEvent`（create／modify／delete／move），含目錄事件與可能的重複事件 | 事件正規化（move 拆為刪加）、目錄事件過濾、監看非預期關閉時重開 | SDK 內建，無新依賴 |
+| B：`package:watcher` `DirectoryWatcher`（1.2.1 原始碼查證，SDK 下限 3.4.0） | macOS 上建 `RecursiveDirectoryWatcher`，內部同為 `Directory.watch(recursive: true)` | `WatchEvent`（`ChangeType.ADD`／`REMOVE`／`MODIFY`，只含檔案）；`ready` Future 表示監看就緒 | 無上述三項；`FileSystemEntity.isWatchSupported` 為假時自動改輪詢（`pollingDelay` 預設 1 秒） | 已處理「監看開始前的刪除事件使監看提前關閉」（dart-lang/sdk#14373）並自動重開 |
+
+兩者在 macOS 的偵測來源相同（FSEvents），使用者可見的差異只在 B 的輪詢後備與重開；A 若自建正規化與重開，行為等同 B。建議預設 B：事件三值正好對應 EVT-CORPUS-002 的 `kind`，重開邏輯由套件承擔。
+
+**規則**：
+
+| # | 規則 |
+|---|------|
+| 1 | **啟動時機**：首輪掃描（FR-02）開始前建立監看，監看就緒後才開始首輪掃描，避免首輪期間的變動落在監看之前而遺失。切換或關閉專案時停止監看並釋放資源（與 SPEC-003 §2.8 L2 同時機） |
+| 2 | **監看根目錄**：工作區根目錄下的 `docs/`，遞迴。`docs/` 不存在時不建立監看，等同 FR-02 掃描 0 檔；之後才建立的 `docs/` 是否偵測為待裁項 W5，未裁前不偵測 |
+| 3 | **事件過濾**：只保留掃描輸入路徑——FR-02 範圍（`docs/` 下副檔名為小寫 `.md` 者），加上 FR-10 非 domain 路徑清單檔的位置。其餘路徑（版本控制目錄、編輯器暫存檔如 `*.swp`／`*~`、`.DS_Store`、大寫 `.MD`）丟棄，不觸發重新解析。專案型別表不在 `docs/` 下，其變動不觸發（型別表變動仍經 SPEC-003 §3.7 重新選取專案反映） |
+| 4 | **去抖**：保留的事件累積至「靜默窗」內無新事件後，合併為一筆 EVT-CORPUS-002；持續有事件時，自第一筆起至遲經「最長等待」也送出一筆，避免批次寫入（例：版本控制切換分支）期間永不觸發。兩值為待裁項 W3；未裁前暫定靜默窗 500 ms、最長等待 3 s |
+| 5 | **EVT-CORPUS-002 負載**：`changes` 清單，每筆含相對路徑（FR-02 的 `/` 形式）與 `kind`（`created`／`modified`／`deleted`）；同一路徑一窗內多次變動只保留最後一筆的 `kind`，一窗內先建立後刪除者整筆捨棄。清單為空時不發事件 |
+| 6 | **重新解析粒度**：收到 EVT-CORPUS-002 後重跑整輪掃描（FR-01～FR-10），發出一筆 EVT-CORPUS-001，與 UC-06 `rescan` 同語意；`changes` 只供日誌與測試觀測。逐檔增量解析為待裁項 W2，未裁前不做 |
+| 7 | **與進行中掃描合併**：同一時間只跑一輪掃描。進行中收到 EVT-CORPUS-002 時不中止當輪、不並行第二輪，標記「待重跑」，當輪完成後立即再跑一輪；進行中收到多筆仍只重跑一輪 |
+| 8 | **與手動重掃、再次可見去重**：監看觸發、`action-gaps-rescan`、再次可見自動掃描（SPEC-003 §3.5〈生命週期〉）共用同一個掃描排程，皆遵守規則 7。去抖窗內使用者按下重新掃描時，掃描立即開始並清空尚未送出的累積事件——整輪掃描已涵蓋它們 |
+| 9 | **破洞報告畫面**：不改變 SPEC-003 §3.5「再次可見不重新掃描」條文——監看使既有結果保持最新，再次可見時無需重掃。監看觸發的掃描期間畫面是否轉為 `state-gaps-scanning`，為待裁項 W4 |
+| 10 | **監看失敗降級**：監看建立失敗、或事件串流回報錯誤或非預期結束時：停止監看，寫 warning 日誌（元件標籤、錯誤訊息、工作區路徑），畫面上的結果與狀態不變、不轉阻擋狀態，手動重新掃描照常可用。是否自動重試、是否於畫面顯示「自動更新已停止」為待裁項 W6；未裁前不重試、不顯示 |
+| 11 | **可觀測性**：以 `developer.log` 記錄——監看建立（根目錄、採用原生或輪詢）與停止為 info；每筆送出的 EVT-CORPUS-002 的路徑數與 `kind` 分布為 debug；規則 7 標記待重跑為 debug；規則 10 的錯誤為 warning |
+
+**待裁項**（產品行為取捨，未裁前依各規則所列暫定行為）：
+
+| # | 題目 | 選項 |
+|---|------|------|
+| W1 | 監看機制 | A `dart:io` 自建正規化／B `package:watcher`（建議） |
+| W2 | 重新解析粒度 | 整輪重掃（暫定，與 `rescan` 同語意）／逐檔增量（依賴 SPEC-007 增量重建） |
+| W3 | 去抖兩值 | 靜默窗與最長等待的數值；影響「改完多久畫面更新」與批次寫入期間的掃描次數 |
+| W4 | 監看觸發掃描期間的破洞報告畫面 | 轉 `state-gaps-scanning`（與手動重掃一致）／保留舊結果、完成後直接替換（靜默更新） |
+| W5 | 監看建立後才出現的 `docs/` | 不偵測（暫定）／監看工作區根目錄以偵測 `docs/` 建立 |
+| W6 | 監看失敗後 | 是否自動重試；是否於畫面顯示「自動更新已停止」 |
+
+**驗收條件**：
+- [ ] Given 工作區已就緒且破洞報告已有結果，When 外部程序把 `docs/` 下一份既有 `.md` 的 frontmatter 改為 YAML 語法錯誤，Then 不經使用者操作，於最長等待加一輪掃描時間內發出 EVT-CORPUS-001，破洞報告出現該檔的 `parseFailure`
+- [ ] Given 同上 fixture，When 外部程序只修改 `docs/a.swp`、`docs/a.MD`、`docs/.DS_Store`，Then 不發出 EVT-CORPUS-002（E2 正向對照：與上一條同批 fixture，只換路徑）
+- [ ] Given 靜默窗內對 20 個 `.md` 各寫入一次，Then 只發出一筆 EVT-CORPUS-002，`changes` 含 20 筆，只跑一輪掃描
+- [ ] Given 每 100 ms 寫入一次、持續超過最長等待，Then 自第一筆起不晚於最長等待即送出第一筆 EVT-CORPUS-002
+- [ ] Given 一窗內同一檔先建立後刪除，Then 該路徑不出現在 `changes`；清單因此為空時不發事件
+- [ ] Given 掃描進行中收到三筆 EVT-CORPUS-002，Then 當輪不中止，完成後恰好再跑一輪
+- [ ] Given 去抖窗內使用者按下 `action-gaps-rescan`，Then 掃描立即開始，窗結束時不因已累積事件另跑一輪
+- [ ] Given 監看事件串流回報錯誤，Then 寫一筆 warning 日誌，畫面狀態不變，`action-gaps-rescan` 仍能完成一輪掃描
+- [ ] Given 切換專案，Then 舊專案的監看停止，修改舊專案檔案不發出 EVT-CORPUS-002
+
 ## 非功能需求
 
 ### NFR-01：失敗隔離
@@ -345,6 +396,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.29 | 2026-11-02 | 新增 FR-11 檔案監看與自動重新解析（`0.6.0-W1-080` Phase 1）：監看候選 `dart:io`／`package:watcher` 取捨、監看範圍與排除、去抖（靜默窗加最長等待）、EVT-CORPUS-002 負載、整輪重新解析、與進行中掃描／手動重掃／再次可見的合併去重、監看失敗降級與日誌；待裁項 W1～W6；〈概述〉職責表與〈本版範圍外〉檔案監看列同步 |
 | 1.28 | 2026-10-21 | FR-07 補〈逐檔紀錄的用途〉：`parseErrors` 與 schema 歧義檔清單是逐檔可追溯紀錄而非破洞來源，目前無畫面讀取，保留理由為可追溯性與測試觀測點（`0.5.0-W1-471` 評估結論：保留；`0.5.0-W1-471.1`）。條文語意不變 |
 | 1.27 | 2026-10-21 | 〈本版不做〉表「重新掃描」列：原寫「重新掃描（UC-06、EVT-CORPUS-002）」，重新掃描實際是整輪重新解析、發出 EVT-CORPUS-001；EVT-CORPUS-002 屬檔案監看，另記未排入版本（`0.5.0-W1-458.5`，458 用戶裁定題 D2）。SPEC-007 增量重建列不動 |
 | 1.26 | 2026-10-09 | PM 處置（`0.5.0-W1-119.1` 複審 S1～S3）：FR-08 寫明 warning 最低內容、005 與 003 平手的區分載體為破洞型別、破洞側 `nonStringElementCount` 不變式 |
