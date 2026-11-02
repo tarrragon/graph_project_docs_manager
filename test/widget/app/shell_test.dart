@@ -10,6 +10,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,6 +37,7 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/domain_view_fixtures.dart';
 import '../../helpers/gap_round_fakes.dart';
+import '../../helpers/pump_harness.dart' show lastWinsByProvider;
 import '../../helpers/stub_workspace_repository.dart';
 
 void main() {
@@ -407,13 +409,13 @@ Future<void> _pumpShell(
   late BuildContext capturedContext;
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [
+      overrides: lastWinsByProvider([
         if (injectDomainState)
           domainViewStateProvider.overrideWith(
             (ref) => const DomainReady(mode: DomainMode.matrix),
           ),
         ...overrides,
-      ],
+      ]),
       child: ScreenUtilInit(
         designSize: const Size(1280, 800),
         builder: (context, child) => MaterialApp(

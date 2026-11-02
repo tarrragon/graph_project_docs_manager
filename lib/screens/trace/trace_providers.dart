@@ -1,7 +1,7 @@
 /// 追溯視圖的狀態注入點（SPEC-003 §設計約束「狀態注入而非等待真實解析」）。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'trace_fixtures.dart';
 import 'trace_state.dart';

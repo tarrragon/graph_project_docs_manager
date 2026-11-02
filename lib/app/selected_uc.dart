@@ -9,7 +9,7 @@
 /// 切換專案時清空為空，其餘操作不影響此值（見 SPEC-003 §2.8 表）。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 /// 目前選定的 UC 節點 id；空代表尚未選定。
 final selectedUcProvider = StateProvider<String?>((ref) => null);

@@ -1,6 +1,7 @@
 // F1-1～F1-5：flow 區塊解析失敗的泳道呈現（SPEC-001 §1）。
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';

@@ -2,7 +2,7 @@
 /// 0.5.0-W1-114.19：lib/app 不得反向依賴 lib/screens）。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 /// 目前工作資料夾狀態；初始為 [WorkspaceUnset]（App 剛啟動、`restore()`

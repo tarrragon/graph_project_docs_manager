@@ -88,12 +88,18 @@ void installGlobalErrorHandlers() {
   };
 }
 
+/// 關閉 Riverpod 3 預設的失敗自動重試（0.6.0-W1-079），維持 2.x 的「失敗即
+/// 錯誤態」行為：內建型別表載入失敗屬確定性失敗，重試只會延後降級路徑出現。
+Duration? _noAutomaticRetry(int retryCount, Object error) => null;
+
 void main() {
   installGlobalErrorHandlers();
   // 非同步層：runApp 之外、未被上兩層捕捉到的 Future/Stream 例外
   // （例如未 await 的非同步呼叫）。
   runZonedGuarded(
-    () => runApp(const ProviderScope(child: DocsManagerApp())),
+    () => runApp(
+      ProviderScope(retry: _noAutomaticRetry, child: const DocsManagerApp()),
+    ),
     (error, stack) => reportFatalError('runZonedGuarded', error, stack),
   );
 }

@@ -12,6 +12,7 @@ import 'dart:async' show unawaited;
 import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_lifecycle.dart';

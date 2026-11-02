@@ -2,8 +2,8 @@
 // 與 Graph `flowOf` 驅動，不讀 `UcFlowFixtures`；跳轉定位（flow 類步驟、事件類
 // 事件列）。
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'
-    show Override, ProviderContainer;
+import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderContainer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';

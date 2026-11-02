@@ -14,7 +14,7 @@
 /// `domainSwimlaneProvider`，不經 production 讀取路徑。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+import 'package:flutter_riverpod/misc.dart';
 import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';

@@ -3,8 +3,9 @@
 // 每畫面（正常態）× 兩尺寸 × 三準則。已知失敗以 [_knownFailures] 鎖定：
 // 失敗集合與清單不一致即紅燈（新增失敗或修好舊失敗都須同步更新清單）。
 // 注意：widget test 使用測試字型（方塊），對比量測只作粗篩。
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';

@@ -25,6 +25,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -70,7 +71,8 @@ Future<ProviderContainer> pumpHarness(
   final chromeKey = UniqueKey();
   await tester.pumpWidget(
     ProviderScope(
-      overrides: overrides,
+      // Riverpod 3 禁止重複 override：同一 provider 後者取代前者（同 2.x）。
+      overrides: lastWinsByProvider(overrides),
       child: _AppChrome(
         key: chromeKey,
         locale: locale,
@@ -102,14 +104,25 @@ Future<void> pumpApp(
   setWindowSize(tester, size);
   await tester.pumpWidget(
     ProviderScope(
-      // 預設在前、呼叫端在後：同一 provider 由後者取代，不重複 override。
-      overrides: [_readyDomainOverride(), ...overrides],
+      // Riverpod 3 禁止同一容器重複 override 同一 provider：預設在前、
+      // 呼叫端在後，同一 provider 保留最後一個（維持 2.x 的後者取代語意）。
+      overrides: lastWinsByProvider([_readyDomainOverride(), ...overrides]),
       child: DocsManagerApp(locale: locale),
     ),
   );
   if (settle) {
     await tester.pumpAndSettle();
   }
+}
+
+/// 同一 provider 的多個 override 只保留最後一個，順序維持原樣。
+List<Override> lastWinsByProvider(List<Override> overrides) {
+  final seen = <Object>{};
+  final kept = <Override>[];
+  for (final o in overrides.reversed) {
+    if (seen.add(o.origin)) kept.add(o);
+  }
+  return kept.reversed.toList();
 }
 
 /// 預設的 Domain 視圖狀態：明示注入矩陣模式的 `DomainReady`，測試前提不依賴

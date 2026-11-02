@@ -3,7 +3,7 @@
 /// 慣例）。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'ticket_list_fixtures.dart';
 import 'ticket_list_state.dart';

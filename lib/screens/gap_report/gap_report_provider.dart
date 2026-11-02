@@ -261,7 +261,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
   String _nonDomainPathsKeyOf(ScanRoundResult round) {
     final fromProject = round.schemaResolution.typeTable.nonDomainPathsKey;
     if (fromProject != null) return fromProject;
-    final builtin = ref.read(builtinTrackingSchemaJsonProvider).valueOrNull;
+    final builtin = ref.read(builtinTrackingSchemaJsonProvider).value;
     final fromBuiltin = builtin == null
         ? null
         : typeTableFromJson(builtin).nonDomainPathsKey;
