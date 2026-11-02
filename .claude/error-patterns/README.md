@@ -178,6 +178,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | TEST-GPD-1006 | 補測既有分支時寫不出紅燈，改用對照測試；預期值抄自現行輸出而非規格，把程式缺陷釘成預期值 | 中 | 0.5.0 |
 | TEST-GPD-1007 | 以固定行號抽取實驗素材，漏掉段落邊界外的一行，使理解題的答案不在素材內 | 低 | 0.5.0 |
 | TEST-GPD-1008 | integration_test 的 App 進入 hidden 時 framesEnabled 為 false，pumpAndSettle 一次 pump 即返回使正向對照假綠，未受保護的 pump 則卡到案例逾時 | 中 | 0.5.0 |
+| TEST-GPD-1009 | 依行為的名稱（如「不可見時暫停」）判定自動化測不到而轉交人工實機操作，未先查該行為的實際觸發條件是否能在測試框架中製造 | 中 | 0.6.0 |
 
 ### 文件 (DOC)
 
