@@ -280,7 +280,8 @@ CARRIER_PATH_TYPES = frozenset(
 # 完整性集合的共通語意（#99 第三項裁決，2026-09-24）：欄位必須存在；值
 # 可為 None（單值）或空清單 []（多值），代表「明確沒有」。此語意對應
 # JSON Schema 的 `required`（只管鍵存在，不管值是否為空）。更嚴格的值
-# 規則（例如 EVT 的 producers/consumers 不得為空）屬各型別 validator 的
+# 規則（例如 category 為 domain_event 的 EVT，其 producers/consumers 不得
+# 為空；process_event 允許 consumers 為空）屬各型別 validator 的
 # 附加規則，不放進本節的完整性集合。判斷一律用 `in`（鍵是否存在），不
 # 用真值判斷，否則合法的 null/[] 會被誤判為缺漏。
 
