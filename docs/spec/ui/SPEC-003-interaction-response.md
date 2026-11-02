@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-02"
-version: "1.74"
+version: "1.75"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -21,7 +21,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 
 ## 概述
 
-SPEC-001 界定七個畫面的 41 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
+SPEC-001 界定七個畫面的 43 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
 
 | 類別 | 界定什麼 |
@@ -2160,8 +2160,8 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 右欄捲動 | `scroll-nodeDetail-relations` | drag / 捲軸 | 右欄 offset 改變、主欄 offset 不變 |
 | 欄位級損壞標記（`IssueMarker.damagedDetail`，每個損失欄位一個；**0.x 不可達**，隨 `state-nodeDetail-partial`，見下方〈部分損壞在 0.x 不可達〉） | `action-nodeDetail-goto-gaps` | 點擊（僅於 `state-nodeDetail-partial` 渲染；同一錨點多實例，斷言以祖先限定 finder，同 §3.3〈多父節點〉） | jump 至 `nav-page-gaps`；`returnTo` 設為 `nodeDetail`。不另設頁首跳轉按鈕 |
 | 重新整理 | `action-nodeDetail-refresh` | 點擊 | 見下方三分支 |
-| 前往 Domain 視圖（專案未就緒） | `action-nodeDetail-goto-domain` | 點擊 | jump 至 `nav-page-domain`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.37` R9，SPEC-001 共用定義） |
-| 前往追溯視圖（未選節點） | `action-nodeDetail-goto-traceability` | 點擊（僅於 `state-nodeDetail-unset` 渲染） | jump 至 `nav-page-traceability`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.59` S3-6） |
+| 前往 Domain 視圖（專案未就緒、圖不可用） | `action-nodeDetail-goto-domain` | 點擊 | jump 至 `nav-page-domain`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.37` R9，SPEC-001 共用定義；圖不可用沿用同一錨點，`0.6.0-W1-105.2`） |
+| 前往追溯視圖（未選節點、節點不在目前的圖上） | `action-nodeDetail-goto-traceability` | 點擊（僅於 `state-nodeDetail-unset` 與 `state-nodeDetail-node-absent` 渲染；後者 `0.6.0-W1-105.2`） | jump 至 `nav-page-traceability`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.59` S3-6） |
 
 **重新整理的三分支**（`state-nodeDetail-missing` 下；`0.5.0-W1-540.1.2` 改寫：三分支指 0.x 可達的三種結果，「解析有斷點」一列 0.x 不可達，見下方〈部分損壞在 0.x 不可達〉）：
 
@@ -2186,11 +2186,19 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 檔案系統層級不可用一律歸入「檔案仍不存在」分支。服務類型為短暫非同步（§2.12）；
 元件層寫法見 SPEC-004 §4.22 `MissingSourceState` 回饋契約「等待與結果」列。
 
+**主欄內文的取得與退路**（`0.6.0-W1-105` 缺口 G-N4，`0.6.0-W1-105.2`；補已實作行為的條文）：
+主欄內文（SPEC-004 `DocumentBody`）只讀選定節點自身的一個檔案，不讀其他檔案、不經掃描輪次快取。
+該檔可讀時渲染其全文；檔案不存在或路徑無法解析時，內文退為以節點標題組成的單行 markdown 標題
+（`# <標題>`，標題取該節點在圖上的顯示標題），不轉狀態、不發提示——主欄的型別、狀態、標題、標籤列
+與關聯右欄照常取自輪次結果，退路只影響內文區。狀態判定不讀內文：節點是否存在由圖成員判定
+（SPEC-001 §6〈「圖不可用」「節點不在目前的圖上」的成列理由與判定順序〉），檔案是否存在由開啟
+原始檔的 `notFound` 判定；內文讀不到時仍是「正常」，使用者按開啟原始檔才轉原始檔已消失。
+
 #### 動畫提示
 
 | 轉換 | 形式 |
 |------|------|
-| 未選節點、正常、部分損壞（0.x 不可達）、原始檔已消失之間 | cross-fade，`Motion.transition` |
+| 未選節點、正常、部分損壞（0.x 不可達）、原始檔已消失、圖不可用、節點不在目前的圖上之間 | cross-fade，`Motion.transition` |
 | 關聯項點擊造成的主欄內容替換 | cross-fade，`Motion.transition`；主欄 offset 歸零（新節點的舊 offset 無意義），右欄 offset 保留 |
 | 損壞欄位標示 | 靜態，不做閃爍 |
 
@@ -2203,6 +2211,8 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 正常 | `action-nodeDetail-back` → `returnTo`；`card-nodeDetail-relation-*` → 同畫面替換內容；`nav-item-<d>` → 其他畫面；`action-nodeDetail-open-source`（結果 `notFound`）→ `state-nodeDetail-missing`（同畫面轉換，`0.1.0-W3-335.59` S1-P1(a)） |
 | 部分損壞（0.x 不可達） | 同正常，另加欄位級標記 `action-nodeDetail-goto-gaps` → jump |
 | 原始檔已消失 | `action-nodeDetail-refresh` → 三分支；`action-nodeDetail-back` → `returnTo`；`nav-item-<d>` |
+| 圖不可用 | `action-nodeDetail-goto-domain` → `nav-page-domain`（jump，`returnTo`=nodeDetail）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層；下一個建圖可用的輪次完成 → 依 SPEC-001 §6 判定順序重新判定（同畫面轉換） |
+| 節點不在目前的圖上 | `action-nodeDetail-goto-traceability` → `nav-page-traceability`（jump，`returnTo`=nodeDetail）；`action-nodeDetail-back` → `returnTo`；`nav-item-<d>`；`project-switcher-entry` → 浮層 |
 
 **經導覽列直接進入本畫面且無選定節點時**，SPEC-001 §6「未選節點」（v1.3 新增，
 狀態錨點 `state-nodeDetail-unset`）承接此路徑：渲染空狀態元件，訊息為「尚未選取節點」，
@@ -2220,7 +2230,9 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 |------|------|
 | 建構 | 隨 `IndexedStack` 建構，內容為空（無選定節點） |
 | 經導覽列進入且圖未建立 | 渲染 `state-nodeDetail-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9；優先於「未選節點」判定，見上方註記）；圖建立完成後依有無選定節點回到「由 jump 進入」或「未選節點」 |
-| 由 jump 進入 | 主欄與右欄依 payload 的 nodeId 渲染 |
+| 由 jump 進入 | 選定節點設為 payload 的 nodeId，依 SPEC-001 §6〈「圖不可用」「節點不在目前的圖上」的成列理由與判定順序〉判定：在圖上時主欄與右欄依該節點渲染；不在圖上時進入 `state-nodeDetail-node-absent`；建圖不可用時進入 `state-nodeDetail-graph-unavailable`（jump 本身不檢查檔案存在，§3.6〈互動反應〉） |
+| 掃描輪次離開 Completed（他頁重掃、取消重掃、輪次失敗、檔案監看觸發的重掃）／新一輪完成（`0.6.0-W1-105` 缺口 G-N3，`0.6.0-W1-105.2`，比照 §3.1、§3.4 同名列） | 輪次不是 Completed 期間照常顯示上一輪結果：狀態、選定節點、主欄、關聯右欄與兩欄 offset 全部不變，不另設狀態、不清空（對齊 SPEC-006 FR-11 掃描期間保留舊結果、完成後替換）。新一輪完成後依 SPEC-001 §6 判定順序重新判定：選定節點仍在圖上 → 維持或回到 `state-nodeDetail-normal`，主欄與關聯右欄改用新輪次的值，兩欄 offset 夾在新的可捲範圍內、不歸零（同 §2.8「視窗尺寸變更」）；選定節點不在圖上 → `state-nodeDetail-node-absent`，選定 id 保留，之後的輪次再出現時回到正常；該輪建圖不可用 → `state-nodeDetail-graph-unavailable`，選定 id 保留；無選定節點時維持 `state-nodeDetail-unset`。處於 `state-nodeDetail-missing` 時：節點仍在圖上則維持（檔案是否已恢復仍由重新整理判定），節點已不在圖上則轉 `state-nodeDetail-node-absent`（SPEC-001 §6 兩者同時成立時後者優先）。`returnTo` 不變。不發提示（狀態承載，§2.13 T1 承接 (b1)） |
+| 重新整理與掃描輪次的關係 | `action-nodeDetail-refresh` 只讀該節點一個檔案（上方〈重新整理的三分支〉），不產生掃描輪次、不回寫共用輪次結果，其他畫面不因此更新；下一輪完成時本畫面依上一列重新判定，以輪次結果為準（`0.6.0-W1-105` 缺口 G-N3 併入項） |
 | 切至其他導覽項 | 選定節點、兩欄 offset 保留；`returnTo` 依 §2.3 規則 1 設為 `null`（回到本畫面時 `action-nodeDetail-back` 不渲染） |
 | 切換專案 | 選定節點清除；`returnTo` 設為 `null` |
 
@@ -2294,7 +2306,7 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 
 ---
 
-## 4. SPEC-001 全 41 狀態的導航反應對照
+## 4. SPEC-001 全 43 狀態的導航反應對照
 
 本表逐一列出 SPEC-001 §1–§7 的每一個狀態，**無一遺漏**。「畫面」「狀態」兩欄即指向
 SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑」欄為準，本表不複製
@@ -2352,18 +2364,20 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 41 | Domain | 載入失敗 | `state-domain-load-failed` | 同畫面轉換：`action-domain-reload` → `state-domain-loading`；覆蓋層：`project-switcher-entry`；本體按鈕：`action-domain-switch-project` → 浮層（結果同上） |
 | 42 | Domain | 泳道 · 投影準備中 | `state-domain-swimlane-projection-pending` | 同畫面轉換：該專案首次輪次完成 → `state-domain-swimlane` 或 `state-domain-swimlane-unstructured`（該輪建圖不可用 → `state-domain-graph-unavailable`）；`mode-domain-matrix` → `state-domain-matrix`；rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded` |
 | 43 | Domain | 圖不可用 | `state-domain-graph-unavailable` | 同畫面轉換：`action-domain-rescan` → 本畫面產生下一輪，該輪完成且建圖可用 → `state-domain-matrix`（含 `panel-domain-cell-detail`，選中格仍在時）或泳道各態（依當前模式），仍不可用、失敗或取消 → 留在 `state-domain-graph-unavailable`；rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded` |
+| 44 | 節點詳情 | 圖不可用 | `state-nodeDetail-graph-unavailable` | jump：`action-nodeDetail-goto-domain` → `nav-page-domain`，`returnTo`=nodeDetail（重新掃描在 Domain 視圖「圖不可用」列）；同畫面轉換：下一個建圖可用的輪次完成 → 依 SPEC-001 §6 判定順序 3–5 轉為 `state-nodeDetail-unset`、`state-nodeDetail-node-absent` 或 `state-nodeDetail-normal`；rail；覆蓋層 |
+| 45 | 節點詳情 | 節點不在目前的圖上 | `state-nodeDetail-node-absent` | jump：`action-nodeDetail-goto-traceability` → `nav-page-traceability`，`returnTo`=nodeDetail；返回：`action-nodeDetail-back` → `returnTo`（非 null 時）；同畫面轉換：之後完成的輪次圖上又出現該 id → `state-nodeDetail-normal`；rail；覆蓋層 |
 
-**覆蓋完整性**：41 列，對應 SPEC-001 §1（14）+ §2（5）+ §3（4）+ §4（5）+ §5（5）
-+ §6（5）+ §7（3）= 41。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
+**覆蓋完整性**：43 列，對應 SPEC-001 §1（14）+ §2（5）+ §3（4）+ §4（5）+ §5（5）
++ §6（7）+ §7（3）= 43。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
 #30、#31 為 SPEC-001 v1.3／v1.4 新增，#32、#33 為 SPEC-001 v1.8 新增，#34 為 SPEC-001 v1.9
 新增，#35–#39 為 SPEC-001 v1.11 新增（五個非 Domain 畫面共用同一則「專案未就緒」
 定義，`0.1.0-W3-335.37` R9），#40 為 SPEC-001 v1.21 新增（`0.3.0-W1-082`），#41 為 SPEC-001 v1.49 新增
-（`0.5.0-W1-114.14.1`），#42 為 SPEC-001 v1.55 新增（`0.5.0-W1-205.1`），#43 為 SPEC-001 v1.57 新增（`0.5.0-W1-486.1`），依 SPEC-001
+（`0.5.0-W1-114.14.1`），#42 為 SPEC-001 v1.55 新增（`0.5.0-W1-205.1`），#43 為 SPEC-001 v1.57 新增（`0.5.0-W1-486.1`），#44、#45 為 SPEC-001 v1.65 新增（`0.6.0-W1-105.2`），依 SPEC-001
 §狀態總數 的順序編號，不重排既有列。#15「未載入」、#16「載入中」隨 SPEC-001 v1.64 刪除
-（`0.6.0-W1-105.1`），編號留空不重用，故最大編號為 43、列數為 41。
+（`0.6.0-W1-105.1`），編號留空不重用，故最大編號為 45、列數為 43。
 
 **同步提醒**：本節標題、本段算式、下方 FR-01 驗收、§0 概述四處皆耦合 SPEC-001
-§狀態總數 的狀態數字（現為 41）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
+§狀態總數 的狀態數字（現為 43）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
 缺一處會使對照表列數與 FR-01 驗收範圍失去覆蓋完整性保證。
 
 ---
@@ -2395,7 +2409,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | §4 對照表 41 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
+| 驗收 | §4 對照表 43 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
 
 ### FR-02: 取消契約的十條行為全部成立
 
@@ -2534,6 +2548,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.75 | 2026-11-02 | 對齊 SPEC-001 v1.65（`0.6.0-W1-105.2`，依 `0.6.0-W1-105` 缺口 G-N1～G-N4 與用戶裁定 2026-11-02）：§3.6 節點詳情新增兩狀態 `state-nodeDetail-graph-unavailable`（沿用 `action-nodeDetail-goto-domain`）與 `state-nodeDetail-node-absent`（沿用 `action-nodeDetail-goto-traceability`、通則返回）；〈互動反應〉兩列渲染範圍、〈導航跳轉與退出〉補兩列、動畫提示轉換列補兩態；新增〈主欄內文的取得與退路〉（G-N4：只讀單檔，讀不到退為 `# <標題>`，不轉狀態）；〈生命週期〉「由 jump 進入」改依判定順序，新增「掃描輪次離開 Completed／新一輪完成」列（G-N3，比照 §3.1、§3.4，對齊 SPEC-006 FR-11 保留舊結果、完成後替換）與「重新整理與掃描輪次的關係」列。§4 對照表補 #44、#45，標題、加總式、同步提醒、§0 概述、FR-01 驗收 41 → 43。SPEC-004 v1.113 同批 |
 | 1.74 | 2026-11-02 | 對齊 SPEC-001 v1.64（`0.6.0-W1-105.1`，依 `0.6.0-W1-105` 缺口 G-T1／T2／T3／T5／T6／T7 與用戶裁定 2026-11-02）：Ticket 清單改由掃描輪次衍生，移除使用者觸發的載入與進度。§3.4〈互動反應〉刪開始載入、取消載入兩列，「開票」列補 payload 為該列 `<ticketId>`（G-T7）；〈動畫提示〉刪未載入→載入中、進度條、已解析筆數三列，新增「專案未就緒 → 正常／無 ticket；輪次更新使正常 ↔ 無 ticket」cross-fade 列；〈導航跳轉與退出〉刪未載入、載入中兩列；〈生命週期〉改寫建構、首次可見、「首次可見但專案未就緒」（含尚無完成輪次）三列，刪「N 為 0」列，新增「掃描輪次離開 Completed／新一輪完成」列（G-T6，比照 §3.1），刪「未載入態不顯示預估耗時」段；〈帶目標跳入〉刪三個載入相關列；S3 與排序循環列的「載入完成當下」改「最後完成輪次結果」。§2.2 適用範圍、§2.3、§2.4、§2.5（適用範圍、C3、C3 斷言、目標態對照）、§2.6、§2.7、§2.8 首次可見斷言、§2.9 範例、§2.11、§2.12、§2.13 (b1) 實例、§5 判讀註記、FR-02／FR-04／FR-07／FR-13／FR-14 與設計約束同步移除 Ticket 載入；§3.3 刪 `action-traceability-goto-tickets` 列並改寫 Ticket 層更新的生命週期列；§3.5 破洞項（指向 ticket）刪「清單未載入」情形。§0、§4 標題、覆蓋完整性算式、同步提醒、FR-01 驗收的狀態數 43 → 41，§4 刪 #15、#16（編號留空不重用）。SPEC-001 v1.64、SPEC-004 v1.112 同批 |
 | 1.73 | 2026-10-31 | 選定工作區後浮層先收合再載入、阻擋輪次先進入載入中已實作（`0.5.0-W1-169.3`）：§2.15〈邊界〉表移除「未能記住」提示顯示時點一列與「同時攜帶資料夾不可用」一列；跨級別表「選定成功但未能記住」列規則 3 格移除「取決於顯示時點，見〈邊界〉」末句；§2.17「可達實例的更正」段移除指向該組合的末句；§3.1「未能記住」列的組合指涉改指 `0.5.0-W1-169.1.1` |
 | 1.72 | 2026-10-31 | 依引用穩定性規則 7 修正內文 8 處依賴型票號引用（`0.5.0-W1-524`，用戶裁決 A）。各處的處理：§2.2〈外部開啟契約〉的實測依據改為以內文四項量測為準；§2.12 刪除「歸屬修正」票號，結論本來就在內文；§2.13〈判準與既有條文的對照〉的呼叫點計數改以 `lib/` 即時計數為準；§2.13〈顯示位爭用〉刪除裁決全文指向，三項結論本來就在內文；§2.13〈因判準而不顯示時的日誌承接〉改指 §2.17 小節；§2.17 開頭的消費方改寫為「注意力仲裁點的實作」；§2.17 小節標題去票號，改為〈與 `AppSnackBarLogSink` 的關係〉，同節第 2 點的引用同步改；§3.3 缺口虛線框改指同節〈多父節點〉註記。出處型標注不在本次範圍。只改引用，不改條文，狀態數不變 |
