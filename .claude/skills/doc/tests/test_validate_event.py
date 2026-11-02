@@ -309,8 +309,22 @@ class TestValidateEventConsumersByCategory:
 class TestValidateEventCategoryDomain:
     """category 值域單一來源：與 tracking_schema.EVT_CATEGORIES 相等。"""
 
-    def test_valid_categories_equal_schema(self):
-        from doc_system.commands.validate import EVENT_VALID_CATEGORIES
-        from doc_system.core.tracking_schema import EVT_CATEGORIES
+    def test_valid_categories_follow_schema(self, monkeypatch):
+        """值域跟著 tracking_schema 走：schema 多一個值，validate 值域隨之多一個。
 
-        assert set(EVENT_VALID_CATEGORIES) == set(EVT_CATEGORIES)
+        集合相等比對擋不住「自持同值 tuple」，故改注入新值再 reload 觀察。
+        """
+        import importlib
+
+        from doc_system.commands import validate
+        from doc_system.core import tracking_schema
+
+        extra = "probe_category_for_test"
+        patched = frozenset(tracking_schema.EVT_CATEGORIES) | {extra}
+        monkeypatch.setattr(tracking_schema, "EVT_CATEGORIES", patched)
+        try:
+            importlib.reload(validate)
+            assert extra in validate.EVENT_VALID_CATEGORIES
+        finally:
+            monkeypatch.undo()
+            importlib.reload(validate)
