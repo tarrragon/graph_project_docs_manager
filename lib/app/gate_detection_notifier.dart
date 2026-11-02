@@ -16,6 +16,7 @@
 ///    builtin）因 JSON 版本等於 builtin 而正常載入，即為此設計的直接驗證。
 library;
 
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../schema/schema_version.dart'

@@ -21,8 +21,8 @@ import 'package:flutter/semantics.dart'
     show DebugSemanticsDumpOrder, SemanticsNode;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'
-    show Override, ProviderScope;
+import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';

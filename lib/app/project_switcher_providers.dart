@@ -8,6 +8,7 @@
 /// `addRecentProject()` 成功後同步（`0.2.1-W1-003`）。
 library;
 
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';

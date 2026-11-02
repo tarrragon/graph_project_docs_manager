@@ -9,7 +9,7 @@
 library;
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 /// 目前的 [AppLifecycleState]。初值 `resumed`：App 啟動當下即在前景，
 /// 與 [WidgetsBinding] 的預設假設一致。

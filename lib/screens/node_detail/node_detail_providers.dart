@@ -6,6 +6,7 @@ library;
 
 import 'dart:io';
 
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/scan_round.dart';

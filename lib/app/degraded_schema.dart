@@ -13,7 +13,7 @@
 /// `_selectProject`（切換專案）重置兩者。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 /// 降級型別表旗標，預設 `false`（未降級）。
 final degradedSchemaProvider = StateProvider<bool>((ref) => false);

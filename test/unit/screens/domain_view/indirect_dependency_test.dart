@@ -1,8 +1,9 @@
 // V3-1～V3-4：間接依賴格「在泳道中檢視」的跳轉目標（SPEC-001 §1）。
 // FR-12 的依賴路徑以格資料注入，Layout L9 查詢以替身注入。
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
-    show Override, ProviderContainer, ProviderScope;
+    show ProviderContainer, ProviderScope;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/layout/lane_order.dart';
 import 'package:graph_project_docs_manager/layout/swim_lane_layout.dart';

@@ -5,9 +5,10 @@
 /// 關心輪次結果，不重測 `scan_round_test.dart` 已覆蓋的輪次生命週期。
 library;
 
+import 'package:flutter_riverpod/misc.dart';
+
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';

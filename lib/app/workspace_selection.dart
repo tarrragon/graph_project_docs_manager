@@ -9,6 +9,7 @@
 /// 呼叫端的 `WidgetRef`（0.5.0-W1-206.2）。
 library;
 
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'gate_detection_notifier.dart';

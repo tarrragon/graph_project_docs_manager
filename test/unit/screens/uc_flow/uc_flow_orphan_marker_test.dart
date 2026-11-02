@@ -1,8 +1,8 @@
 // UC Flow 事件流小表孤立事件標記（0.5.0-W1-451，SPEC-003 §3.2）：判準由
 // Diagnostics 偵測端決定，畫面只查詢；輪次未完成或建圖不可用時零標記。
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'
-    show Override, ProviderContainer;
+import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderContainer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';

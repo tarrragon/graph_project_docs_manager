@@ -4,7 +4,7 @@
 /// （docs/system-layer.md §2.1）。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 /// 跳轉定位目標（SPEC-001 §5 主操作表事件類／flow 類兩列）：[ucId] 為目標 UC，
 /// [stepId] 定位步驟、[eventId] 定位事件流小表列；兩者皆可缺。
