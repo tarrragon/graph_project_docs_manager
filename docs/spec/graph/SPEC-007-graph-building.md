@@ -4,8 +4,8 @@ title: "建圖：輕節點、邊的聯集與圖結構破洞"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
-updated: "2026-10-21"
-version: "1.35"
+updated: "2026-11-02"
+version: "1.36"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -214,10 +214,12 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 查詢來源為同一輪 Corpus 的 `rawNodes`；只收節點型別為 Ticket 者
 - 查無該 ID（含 FR-02 排除的重複 ID）時回傳「不存在」，不拋例外
 - 本版只提供查詢，不涉及畫面（節點詳情接真資料屬 0.6）
+- 另提供列舉：回傳同一輪收錄的全部 ticket（`id` 與 frontmatter map），順序同 `rawNodes`。Ticket 清單的列與票列欄位取自此列舉，各欄取值規則見 SPEC-001 §4〈票列欄位的取值來源〉；列舉與以 `id` 查詢須出自同一輪，不得混用兩輪（`0.6.0-W1-105` 缺口 G-T3，`0.6.0-W1-105.1`）
 
 **驗收條件**：
 - [ ] Given 一張 ticket 的 `id`，Then TicketDetail 回傳的 map 與該 ticket `rawNode` 的 frontmatter 逐鍵相等（含 `who`／`what`／`when`／`where`／`why`／`how`）
 - [ ] Given 不存在的 ID，Then 回傳「不存在」
+- [ ] Given 一輪含三張 ticket 與兩張重複 ID 的 ticket，Then 列舉回傳三筆、順序同 `rawNodes`，重複 ID 兩張皆不在列舉中
 
 ### FR-08：鄰接查詢（Graph 公開面）
 
@@ -458,6 +460,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.36 | 2026-11-02 | FR-07 新增列舉規則與一條驗收（`0.6.0-W1-105.1`，`0.6.0-W1-105` 缺口 G-T3）：TicketDetail 提供同一輪收錄 ticket 的列舉，順序同 `rawNodes`，作為 Ticket 清單的列來源；欄位取值規則在 SPEC-001 §4〈票列欄位的取值來源〉 |
 | 1.35 | 2026-10-21 | FR-09 識別名段與 FR-10 規則清單回填「事件引用未解析」的程式識別名 `FlowDefectKind.eventUnresolved`／`GraphDefectKind.flowEventUnresolved`，並記缺陷在同 UC 內的排序（`traverses` 兩子類之後，依步驟順序、先 `emits` 後 `consumes`）（`0.5.0-W1-458.4` 命名回填，PM 追認） |
 | 1.34 | 2026-10-21 | 新增 flow 子類「事件引用未解析」（`0.5.0-W1-458` 用戶裁決題 E，`0.5.0-W1-458.3`）：FR-10 新增〈事件引用〉段，`emits`／`consumes` 元素比對 `rawNodes` 中型別為 `EVT` 的 id 集合（與 SPEC-003 §3.5 同一集合），比對不到者報缺陷；同步驟同欄位同值只報一筆，重複 EVT id 算存在，建圖不可用不產生；補三條驗收。FR-09 子類表加一列，負載欄位加 `emits`、`consumes`；「flow 四子類」改為「flow 各子類」，D4 改指 FR-09 子類表，不寫死子類數。〈本版範圍外〉B 層邊列同步。識別名由 `0.5.0-W1-458.4` 命名 |
 | 1.33 | 2026-10-21 | FR-06 負載補上圖本體（輕節點、邊、flow 子圖、domain 名稱索引），缺陷子類補「domain 重複宣告」；原文只列計數與 `graphDefects`，與 `GraphBuiltEvent` 現況及 Layout、Diagnostics 實際讀取的欄位不符。FR-13 快照驗收補註：現行語料的 `diagnostics` 已推導為 L3，期望值仍以凍結快照為準（`0.5.0-W1-460`） |

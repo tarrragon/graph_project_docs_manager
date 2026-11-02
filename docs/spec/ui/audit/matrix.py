@@ -78,8 +78,7 @@ STATES = [
     (2, '正常', 'state-ucFlow-normal'),  # i18n-exempt
     (3, '專案未就緒', 'state-traceability-project-unready'), (3, '正常', 'state-traceability-normal'),  # i18n-exempt
     (3, '鏈路斷裂', 'state-traceability-broken'), (3, '無提案', 'state-traceability-empty'),  # i18n-exempt
-    (4, '專案未就緒', 'state-tickets-project-unready'), (4, '未載入', 'state-tickets-unloaded'),  # i18n-exempt
-    (4, '載入中', 'state-tickets-loading'), (4, '正常 · 列表', 'state-tickets-list'),  # i18n-exempt
+    (4, '專案未就緒', 'state-tickets-project-unready'), (4, '正常 · 列表', 'state-tickets-list'),  # i18n-exempt
     (4, '正常 · 主題', 'state-tickets-topic'), (4, '無 ticket', 'state-tickets-empty'),  # i18n-exempt
     (4, '含損壞', 'badge-tickets-corrupted'),  # i18n-exempt
     (5, '專案未就緒', 'state-gaps-project-unready'), (5, '掃描中', 'state-gaps-scanning'),  # i18n-exempt

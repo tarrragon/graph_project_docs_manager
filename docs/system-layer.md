@@ -193,7 +193,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 |--------|:---:|------|
 | Workspace | 是 | 公開面含「可用性狀態」；資料夾不可用與開啟原始檔結果（`opened`／`notFound`／`failed`，SPEC-003 §2.2〈外部開啟契約〉）皆佔用使用者呈現焦點 |
 | Schema | 是 | 型別表缺席時降級為顯式啟動關卡（`docs/tech-decisions.md` 補記段「2026-09-03：型別表缺席時降級而非拒絕」，使用者需按「以 App 內建型別表檢視」才能進入） |
-| Corpus | 否 | 檔案監看觸發的重新解析以狀態承載呈現——下游 domain 開啟對應畫面即見最新值，不透過提示通道通知（SPEC-003 §2.2 三層表「(b1) 狀態承載」的「Domain 載入完成、Ticket 載入完成」即此模式）；解析錯誤清單是資料輸出，需先由 Diagnostics 轉譯才進入通道 |
+| Corpus | 否 | 檔案監看觸發的重新解析以狀態承載呈現——下游 domain 開啟對應畫面即見最新值，不透過提示通道通知（SPEC-003 §2.2 三層表「(b1) 狀態承載」的「Domain 載入完成」即此模式；Ticket 清單自 SPEC-001 v1.64 起無載入態，直接讀掃描輪次結果）；解析錯誤清單是資料輸出，需先由 Diagnostics 轉譯才進入通道 |
 | Graph | 否 | 索引與遍歷為內部計算，無對外呈現面 |
 | TicketDetail | 否 | 全文查看由使用者操作觸發（等待型），結果在同一畫面內呈現，不另佔用呈現焦點通道 |
 | Layout | 否 | 排列演算法為內部計算，無對外呈現面 |
@@ -591,18 +591,18 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 | FR | 內容 | Bundle | 跨在哪裡 |
 |----|------|--------|---------|
 | FR-01 | 每個狀態的退出路徑皆有具名觸發錨點 | L4 畫面狀態（非 domain） | 驗收對象為 §4 對照表的錨點與狀態錨點 |
-| FR-02 | 取消契約的十條行為 | L4 畫面狀態；Corpus、Diagnostics | 載入態（L4）承載取消錨點與時限；取消後結果不得寫回由長時操作的承擔方兌現——Domain／Ticket 載入為 Corpus 解析，破洞掃描為 Diagnostics |
+| FR-02 | 取消契約的十條行為 | L4 畫面狀態；Corpus、Diagnostics | 載入態（L4）承載取消錨點與時限；取消後結果不得寫回由長時操作的承擔方兌現——Domain 載入為 Corpus 解析，破洞掃描為 Diagnostics（Ticket 清單自 SPEC-001 v1.64 起無載入態） |
 | FR-03 | 導航來源單槽記錄 | L4 畫面狀態（非 domain） | `returnTo` 為畫面導航狀態 |
 | FR-04 | 惰性載入以首次可見觸發、保留狀態 | Corpus、Workspace；L4 畫面狀態 | 「解析計數為 0」為 Corpus 解析的觸發時機；「切換專案後重置」以 Workspace 目前路徑改變為觸發；offset／搜尋詞／模式保留屬 L4 |
 | FR-05 | 時間值具名、減少動態效果仍抵達目標態 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/tokens/` 與狀態錨點 |
 | FR-06 | 未接線動作不得無回饋上線 | L4 畫面狀態（非 domain） | 驗收對象為可點錨點的回饋；「外部程序被呼叫」為 Workspace 開啟原始檔的呼叫端觀測，不以 Workspace 行為為驗收對象 |
-| FR-07 | 進度指示誠實 | Corpus、Diagnostics；L4 畫面狀態 | Ticket 載入進度值取自 Corpus 已解析筆數；破洞掃描的進度呈現（不含百分比）以 Diagnostics 掃描為承擔方；呈現屬 L4 |
+| FR-07 | 進度指示誠實 | Corpus、Diagnostics；L4 畫面狀態 | 破洞掃描的進度呈現（不含百分比）以 Diagnostics 掃描為承擔方；呈現屬 L4 |
 | FR-08 | 捲動、換頁、拖拉可斷言 | L4 畫面狀態（非 domain） | 泳道拖曳平移量為手勢反應，不以 Layout 座標計算為驗收對象 |
 | FR-09 | 焦點與鍵盤下界 | L4 畫面狀態（非 domain） | 驗收對象為焦點序列與焦點裝飾 |
 | FR-10 | 兩個獨立捲動區不連動 | L4 畫面狀態（非 domain） | 驗收對象為兩個捲動錨點的 offset |
 | FR-11 | 掃描完成的系統層通知 | Diagnostics | 與 §3.4「破洞掃描完成」列一致（自發型、可棄，驗收落點 FR-11） |
 | FR-12 | 第一層回饋不因服務狀態而免除 | L4 畫面狀態（非 domain） | 驗收以永不受理的服務替身驅動元件層，服務行為不在驗收範圍 |
-| FR-13 | 各類服務的回饋形式依 §2.12 成立 | Corpus、Diagnostics、Workspace；L4 畫面狀態 | 長時操作的承擔方為 Corpus（Domain／Ticket 載入）與 Diagnostics（破洞掃描）；短暫非同步的承擔方為 Workspace（外部開啟、資料夾選擇）；各類回饋形式的呈現屬 L4 |
+| FR-13 | 各類服務的回饋形式依 §2.12 成立 | Corpus、Diagnostics、Workspace；L4 畫面狀態 | 長時操作的承擔方為 Corpus（Domain 載入）與 Diagnostics（破洞掃描）；短暫非同步的承擔方為 Workspace（外部開啟、資料夾選擇）；各類回饋形式的呈現屬 L4 |
 | FR-14 | 等待期輸入阻擋範圍依服務類型成立 | L4 畫面狀態；Corpus、Diagnostics | 阻擋範圍由載入態（L4）承載；長時操作來源同 FR-13 |
 | FR-15 | 重複觸發防護由服務承擔 | Workspace；L4 畫面狀態 | (d) 外部開啟冪等為 Workspace 公開面「開啟原始檔」；(a)(b) 元件層不實作計時器屬 L4；(c) 搜尋防抖的服務歸屬依 §6「搜尋與全域導覽」待決項 |
 | FR-16 | 暫態提示載體可由判準 T 推導 | Workspace、Diagnostics；L4 畫面狀態 | 與 §3.4「開啟原始檔結果」列一致（Workspace，驗收落點 FR-16）；掃描完成 `denied` fallback 為 Diagnostics；判準表與載體選擇屬 L4 仲裁層（§3.1 仲裁器落層） |
@@ -615,7 +615,7 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 | FR | 內容 | Bundle | 跨在哪裡 |
 |----|------|--------|---------|
 | FR-01 | 所有狀態皆有非空退出路徑 | L4 畫面狀態（非 domain） | 驗收對象為本 spec §1–7 每列的退出路徑欄 |
-| FR-02 | 長時操作可取消 | L4 畫面狀態；Corpus、Diagnostics | 取消操作恆可用屬載入態（L4）；三處長時操作的承擔方為 Corpus（Domain 視圖載入、Ticket 載入）與 Diagnostics（破洞掃描），與上表 SPEC-003 取消契約列的分法一致 |
+| FR-02 | 長時操作可取消 | L4 畫面狀態；Corpus、Diagnostics | 取消操作恆可用屬載入態（L4）；兩處長時操作的承擔方為 Corpus（Domain 視圖載入）與 Diagnostics（破洞掃描），與上表 SPEC-003 取消契約列的分法一致 |
 | FR-03 | 空狀態必須提供前進動作 | L4 畫面狀態（非 domain） | 驗收對象為空狀態畫面提供的動作 |
 | FR-04 | 版本不符時拒絕渲染 | Schema；L4 畫面狀態 | 「schema 版本超出已知範圍」由 Schema 公開面「版本相容判定」產生（Schema domain map §3）；顯示兩個版本值與不繪製圖譜屬 L4 |
 | FR-05 | 損壞資料依嚴重度分級標記 | L4 畫面狀態（非 domain） | 驗收對象為虛線框／不透明度／圖示與徽章等視覺差異；損壞資料的來源不在驗收範圍 |
