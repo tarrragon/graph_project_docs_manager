@@ -59,7 +59,9 @@ void main() {
 
     test('E2 版本高於內建時仍判超出已知範圍（守衛正向對照）', () {
       final builtinVersion = _readVersionField(_builtinSchemaVersionPath)!;
-      expect(isWithinKnownSchemaRange('2.78.0', builtinVersion), isFalse);
+      final parts = builtinVersion.split('.');
+      final higher = '${parts[0]}.${int.parse(parts[1]) + 1}.0';
+      expect(isWithinKnownSchemaRange(higher, builtinVersion), isFalse);
     });
 
     test('內建型別表副本與專案 JSON 逐位元組一致', () {
