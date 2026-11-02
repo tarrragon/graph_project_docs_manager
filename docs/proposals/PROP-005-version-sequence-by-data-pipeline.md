@@ -200,6 +200,16 @@ UC Flow、Ticket 清單、破洞報告、節點詳情、追溯視圖。各自的
 | 追溯視圖 | 【上游】UC → Ticket 在 `GRAPH_EDGE_TYPES` 的語意邊中無對應邊；【本地】四層樹第二跳的欄位未明訂 |
 | UC Flow | 無 |
 
+> 補記（2026-11-02，0.6 規劃波）：追溯視圖的【上游】阻擋已裁定（用戶裁定 T1）。
+> `GRAPH_EDGE_TYPES` 新增一條 UC → Ticket 邊。這條邊的 forward_field 是 UC frontmatter
+> 既有的 `ticket_refs`，layer 是 `established`。決策、理由與被放棄的選項見
+> `docs/tech-decisions.md` 補記段「2026-11-02 — UC → Ticket 邊」。三張落地票：
+> - `0.6.0-W1-102`：框架 schema
+> - `0.6.0-W1-103`：內建副本同批同步
+> - `0.6.0-W1-104`：6 份 UC 的 `ticket_refs` 回填
+>
+> 【本地】第二跳（SPEC → UC）的資料來源是 UC 的 `related_specs` 反查，在追溯視圖的規格中定案。
+
 ### 0.7 — History：git 邊層級變更記錄（原「0.x — History」）
 
 **整合測試**：單次 `git log -p` 掃描 9409 commits 為 2.28 秒量級；

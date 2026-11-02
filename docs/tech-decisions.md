@@ -1932,3 +1932,40 @@ HEAD 的內容  ←→  工作目錄的內容  ←→  App 記憶體中的內容
 **被放棄的選項**：全跑（成本多 25 次且拉長 heavy 名額持有時間約 70%）；維持現狀並靠驗證票補位。
 
 **已知代價**：觸發時閘門多約 75 秒並在本機啟動 App 視窗；integration_test 新增 `test/` 下的 import 時須同步更新套件 files，否則該相依改動不觸發；CI 落地時需 macOS runner 才能延續此套件。
+
+## 2026-11-02 — UC → Ticket 邊：沿用 UC 的 `ticket_refs`，layer 定為 established（用戶裁定 T1，0.6 規劃波）
+
+**背景**：
+- 追溯視圖（UC-04）要呈現 PROP → SPEC → UC → Ticket 四層，但 `GRAPH_EDGE_TYPES` 中沒有任何一條邊的欄位把 UC 連到 Ticket（`docs/system-layer.md` §6 待決項；PROP-005 §0.6 的【上游】阻擋）。
+- 實測：
+  - work-logs 下沒有任何一張票帶指向 UC 或 SPEC 的欄位。
+  - UC 模板與 doc CLI 已經有 `ticket_refs` 欄位（doc nav 會讀），但這個欄位沒有登記為圖邊。
+  - 6 份 UC 的 `ticket_refs` 全部是空的。
+  - SPEC 與 PROP 的頂層都沒有 `ticket_refs`（PROP 的是巢狀的 `outputs.ticket_refs`）。所以新邊只會從 UC 產生。
+
+**決策**：
+1. `GRAPH_EDGE_TYPES` 新增一條 UC → Ticket 邊：
+   - forward_field 為 `ticket_refs`，forward_cardinality 為 many，direction 為 directed，reverse_field 為 None，maintainer 為手動。
+   - 鍵名與 class 由 `0.6.0-W1-102` 在 Phase 1 決定。
+2. 這條邊的 layer 定為 `established`。
+
+**Why（layer）**：
+- App 的建圖範圍由 layer 決定，不只是降級模式受影響。`EdgeTypeResolution.activeEdgeTypes`（`lib/schema/edge_type.dart`）只收 established 層的邊（扣掉 `domain_dependency`）；proposed 層只依鍵名白名單放行 `bundle_dependency`。
+  - 定為 proposed：正常模式下這條邊也不會進圖，追溯視圖第四層照樣沒有資料。要讓它進圖，就得在 lib 的白名單再加一個鍵名例外。
+  - 定為 established：lib 不用改。內建副本同步後，降級模式也會渲染這條邊。
+- layer 的語意是穩定性承諾（CLAUDE.md §7 語意約定 1）。`ticket_refs` 從 doc 模板建立以來，名稱、位置（UC 頂層）與值形態（裸 ticket ID 清單，`.claude/skills/doc/references/tracking.md`）都沒有變過，可以承擔這個承諾。目前的 proposed 邊（emission／consumption／branching／returning／bundle_dependency）列為 proposed，是因為它們的形狀還可能變動，這條邊不屬於這種情況。
+
+**落地**：
+- `0.6.0-W1-102`：框架 schema 加邊並升 `TYPE_TABLE_COMPAT_VERSION`。
+- `0.6.0-W1-103`：內建副本同批同步，合併前跑 `test/unit/schema`。依 2026-10-12 合併閘門條文，102 不單獨進 main。
+- `0.6.0-W1-104`：回填 6 份 UC 的 `ticket_refs`。
+- 推送 canonical（sync-push）需要用戶另外授權，不在上述三張票的範圍內。
+
+**被放棄的選項**：
+- T2（在 Ticket 端新增指向 UC 的欄位，反向推導）：要改 ticket_system 的欄位與驗證器，屬跨 skill 修改；既有票全部沒有這個欄位，回填面比 T1 大。
+- T3（追溯視圖只做三層）：0.6 不再有上游阻擋，但 UC-04 的承諾要縮小。
+
+**已知代價**：
+- `ticket_refs` 靠手動維護。104 回填完成前，以及之後每張新票建立後沒有回填的時候，追溯視圖第四層會顯示為缺口。
+- SPEC-001 有寫死的 established 邊數，由 103 改為引用權威名稱。
+- 型別表變更後，其他 consumer 要等 canonical 推送後才會拿到這條邊。
