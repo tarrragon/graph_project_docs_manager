@@ -91,7 +91,8 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 由使用者按「以 App 內建型別表檢視」進入。進入後以 App build 時內嵌的
 > `tracking_schema.json` 副本取代該專案缺席的檔案解析節點與邊，全部六個畫面皆可進入，
 > 可見範圍限定如下：(1) 節點：七型皆依內建 `id_pattern` 辨識；(2) 邊：只渲染
-> `layer: established` 的 12 條，`proposed` 的 4 條（emission／consumption／branching／
+> `layer: established` 的邊（`GRAPH_EDGE_TYPES` 中 established 的成員），`proposed` 的邊
+> （`GRAPH_EDGE_TYPES` 中 proposed 的成員，如 emission／consumption／branching／
 > returning）一律不渲染——實測三個缺檔語料（monitor 2.22.1、screen_clock 2.24.0、
 > book_overview_app 2.27.8）A 層 12 條中 10～11 條有非空實例、B 層 0 實例，且 B 層形狀
 > 不受穩定性承諾；(3) 破洞報告：「舊框架版本缺欄位」不列為破洞（判準來源是內建表而非
@@ -135,7 +136,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 專案 JSON | 不存在 | 存在 |
 > | 內建表取代範圍 | 整份型別表（節點、邊、欄位） | 只有 carrier 路徑模式一個欄位 |
 > | 進入方式 | 阻擋狀態，使用者按「以 App 內建型別表檢視」才進入（不自動降級） | 自動生效，不阻擋 |
-> | 可見範圍限制 | 只渲染 established 12 條邊、缺欄位不列破洞 | 無限制，依專案 JSON 照常渲染 |
+> | 可見範圍限制 | 只渲染 `GRAPH_EDGE_TYPES` 中 established 的邊、缺欄位不列破洞 | 無限制，依專案 JSON 照常渲染 |
 > | 徽章 | `badge-<screen>-degraded-schema`，六畫面 | `badge-gaps-builtin-path-pattern`，只在破洞報告 |
 >
 > 自動生效的理由：只補一個欄位，其餘仍讀專案 JSON，使用者看到的節點與邊與專案自述一致，
