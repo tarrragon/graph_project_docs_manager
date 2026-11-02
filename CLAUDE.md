@@ -144,7 +144,7 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 **`tracking_schema.json` 缺席的下界策略已定案為降級**（W1-035，補記段
 「2026-09-03：型別表缺席時降級而非拒絕」）：「無可消費的型別表」為顯式關卡不自動降級，
 使用者按「以 App 內建型別表檢視」後以 build 內嵌的 JSON 副本解析，六畫面皆可進入，
-只渲染 established 12 條邊、每畫面常駐降級徽章；`VERSION` 高於內建表產生版本時不提供。
+只渲染 `GRAPH_EDGE_TYPES` 中 established 的邊、每畫面常駐降級徽章；`VERSION` 高於內建表產生版本時不提供。
 規格在 SPEC-001 v1.5 §1 與 SPEC-003 v1.7 §3.1／§5。
 
 **跨邊界驗證是正交屬性，不是新測試層**（W3-081，補記段「2026-09-08：跨邊界驗證形態
@@ -156,10 +156,13 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 
 **改 schema 匯出的框架票之合併閘門**：同批同步內嵌副本、合併前跑 `test/unit/schema`，見 `docs/tech-decisions.md` 補記段「2026-10-12 — 改 schema 匯出的框架票之合併閘門」。
 
+**UC → Ticket 邊已定案並落地**（用戶裁定 T1，補記段「2026-11-02 — UC → Ticket 邊」）：
+`GRAPH_EDGE_TYPES` 新增 `uc_ticket_refs`（UC 的 `ticket_refs`，class `see-also`，layer
+established），由 `0.6.0-W1-102`／`0.6.0-W1-103` 同批進 main，內嵌副本同步；6 份 UC 的
+`ticket_refs` 回填由 `0.6.0-W1-104` 承接，回填前追溯視圖第四層顯示為缺口。推送 canonical 尚待用戶授權。
+
 **現行待決**（每一項都是版本規劃的前置，見 `docs/system-layer.md` §6 與各 `docs/spec/{domain}/domain-map.md` §6）：
 
-- **UC → Ticket 在上游 17 條語意邊中無對應邊**。追溯視圖（UC-04）承諾的
-  四層鏈，第三跳沒有資料來源
 - **Domain 視圖的列**：2026-10-06 用戶裁決列取 `DomainBundle` 節點，`0.5.0-W1-070.3` 已把
   單檔 domain-map 拆為每個 domain 一份 `docs/spec/{domain}/domain-map.md`（跨 domain 內容在
   `docs/system-layer.md`）。格的來源已定案（`0.1.0-W3-341`，經 WRAP
@@ -220,7 +223,7 @@ SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不
 ### 上游 schema（唯一權威，禁止另建副本）
 
 `.claude/skills/doc/doc_system/core/tracking_schema.py`
-— `GRAPH_NODE_TYPES`（7）、`GRAPH_EDGE_TYPES`（17，established 12 / proposed 5）
+— `GRAPH_NODE_TYPES`、`GRAPH_EDGE_TYPES`（各分 established / proposed 兩層；數量以該檔為準，此處不寫死）
 
 三項語意約定：
 
