@@ -297,3 +297,20 @@ class TestValidateEventConsumersByCategory:
         )
         assert code == 1
         assert "producer" in out.lower()
+
+    def test_unknown_category_empty_consumers_still_reports_consumer(self, tmp_path, capsys):
+        """未知 category 且 consumers 為空：category 錯誤之外，訊息仍含缺 consumer。"""
+        extra = "producers: [CheckoutService]\nconsumers: []"
+        code, out = self._run(tmp_path, capsys, "EVT-LIBRARY-025", "bogus_event", extra)
+        assert code == 1
+        assert "consumer" in out
+
+
+class TestValidateEventCategoryDomain:
+    """category 值域單一來源：與 tracking_schema.EVT_CATEGORIES 相等。"""
+
+    def test_valid_categories_equal_schema(self):
+        from doc_system.commands.validate import EVENT_VALID_CATEGORIES
+        from doc_system.core.tracking_schema import EVT_CATEGORIES
+
+        assert set(EVENT_VALID_CATEGORIES) == set(EVT_CATEGORIES)
