@@ -4,8 +4,8 @@ title: "互動反應規格：七畫面的反應、動畫、導航與生命週期
 status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
-updated: "2026-10-31"
-version: "1.73"
+updated: "2026-11-02"
+version: "1.74"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -21,7 +21,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 
 ## 概述
 
-SPEC-001 界定七個畫面的 43 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
+SPEC-001 界定七個畫面的 41 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
 
 | 類別 | 界定什麼 |
@@ -234,9 +234,9 @@ SPEC-002 的唯一硬規則要求所有值先具名。時間值同樣適用，�
 〈結果通知的形式選擇〉「操作成功、結果不在視線範圍」列，與〈gate-fallback〉權限
 gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 state-change 列引用本節。
 
-**適用範圍**：0.1 僅破洞掃描完成一處。Domain 視圖載入與 Ticket 載入不升級：兩者
+**適用範圍**：0.1 僅破洞掃描完成一處。Domain 視圖載入不升級：它
 的完成落點就是使用者觸發時停留的畫面，離開後回來即見結果，且 SPEC-001 未定義
-其完成需喚回使用者。擴充至其他事件須另經用戶簽核，不由實作票自行擴充。
+其完成需喚回使用者。Ticket 清單沒有載入態（SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉），不在此列。擴充至其他事件須另經用戶簽核，不由實作票自行擴充。
 
 | 項目 | 契約 |
 |------|------|
@@ -413,7 +413,7 @@ fallback」需求已由 `0.3.1-W3-113` 提出並經用戶裁決（2026-09-29）�
 現行 `lib/app/router.dart` 以 `selectedDestinationProvider` 加 `IndexedStack`
 實作六項平行導覽，**沒有 history stack**。**返回鍵為頁面框架通則**（`0.1.0-W3-335.37`
 R2）：六畫面任一狀態，`returnTo` 非 null 即渲染 `action-<screen>-back`（規則見下）；
-SPEC-001 §4 未載入的返回上一畫面、§6 節點詳情的返回來源畫面，皆為本通則的既有
+SPEC-001 §6 節點詳情的返回來源畫面為本通則的既有
 列舉，非額外規則。§2 flow 未結構化原有的返回已隨 R7 裁決移除（退出改依選擇 UC、
 導覽、切換專案，見 §3.2）。因此仍需要來源記錄。§5 掃描中的取消（`action-gaps-
 cancel-scan`）不是返回鍵：它中止掃描後以 `returnTo` 為目標並將其設為 `null`；
@@ -443,7 +443,7 @@ cancel-scan`）不是返回鍵：它中止掃描後以 `returnTo` 為目標並�
 
 **返回鍵渲染為頁面框架通則**（`0.1.0-W3-335.37` R2，取代舊版「並非所有 jump 目標
 畫面都渲染規則 4 的返回錨點」的逐畫面例外寫法）：六畫面任一狀態，只要 `returnTo`
-非 `null` 即渲染 `action-<screen>-back`；不逐狀態列舉，SPEC-001 §4「未載入」、§6
+非 `null` 即渲染 `action-<screen>-back`；不逐狀態列舉，SPEC-001 §6
 各列的返回為本通則的既有列舉。舊版例外（SPEC-001 §1 Domain 視圖、§3 追溯視圖、§5
 破洞報告正常態「不渲染返回」）的唯一理由是「SPEC-001 退出欄未列」，屬循環引用，
 本次一併移除——這些畫面經 jump 抵達時（如自破洞報告切入節點詳情、UC Flow domain
@@ -479,8 +479,8 @@ SPEC-001 退出路徑欄的所有措辭，歸為四類反應，不存在第五�
 
 **渲染位置統一，不由各畫面各自決定**：`action-<screen>-back` 一律置於該畫面
 `PageColumn` 根堆疊的 `SplitRow.header` 右側 `ButtonRow`（與重新掃描、開啟原始檔
-等頁面級動作同一區塊；狀態元件自身的動作，如 `MissingSourceState` 的重新整理、
-`LoadPrompt` 的開始載入，不屬頁面級動作），由 `AppShell` 之下的頁面框架容器單一
+等頁面級動作同一區塊；狀態元件自身的動作，如 `MissingSourceState` 的重新整理，
+不屬頁面級動作），由 `AppShell` 之下的頁面框架容器單一
 渲染；六個畫面不各自決定返回鍵的擺放方式或樣式，與 SPEC-004 §3.7 第 17、18 項
 一致。
 
@@ -512,7 +512,7 @@ L2 後 `findsNothing`）。
 
 ### 2.5 取消契約（FR-02 的行為定義）
 
-適用三處載入態：`state-domain-loading`、`state-tickets-loading`、`state-gaps-scanning`。
+適用兩處載入態：`state-domain-loading`、`state-gaps-scanning`（Ticket 清單自 v1.74 起無載入態，SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉）。
 
 **C1 併入原 C2**：兩者皆描述「取消錨點在使用者尚未按下取消前恆可用」，差異
 只在觀察時間點（第一幀 / 任何進度），無獨立驗收價值，故合併為單一條件並限定
@@ -522,7 +522,7 @@ L2 後 `findsNothing`）。
 |---|------|-----------|
 | C1 | 載入進行中且尚未按下取消的任一時刻（含渲染的第一幀） | 取消錨點存在且 `enabled` 恆為 `true`；不存在「收尾中所以不能取消」的時間窗 |
 | C2 | 按下取消後 `Motion.feedback` 內 | 取消錨點 `enabled` 轉為 `false`；其文字改為取消中的 i18n 值 |
-| C3 | 按下取消後至目標態錨點出現之前 | 畫面維持載入態版面（§2.6 所列形式與版位不變：Domain 與破洞為骨架，Ticket 為進度條）；進度指示改為 indeterminate；計數文字凍結於最後值；不得閃現空白、不得出現錯誤文字（可執行斷言見下方「C3 的斷言方式」） |
+| C3 | 按下取消後至目標態錨點出現之前 | 畫面維持載入態版面（§2.6 所列形式與版位不變：Domain 與破洞皆為骨架）；進度指示改為 indeterminate；計數文字凍結於最後值；不得閃現空白、不得出現錯誤文字（可執行斷言見下方「C3 的斷言方式」） |
 | C4 | 按下取消後 `Motion.cancelDeadline` 內 | 目標狀態錨點存在，載入態錨點不存在 |
 | C5 | 取消完成後 | 不出現任何 SnackBar、Dialog 或錯誤標記（取消是使用者意圖，不是失敗） |
 | C6 | 取消完成後 | 已解析的部分結果全數丟棄；不存在「半渲染」的矩陣或清單 |
@@ -536,7 +536,7 @@ L2 後 `findsNothing`）。
 **C3 的斷言方式（強制）**：自按下取消起，以固定幀距
 （`tester.pump(const Duration(milliseconds: 16))`）逐幀推進直到目標態錨點出現，
 上限 `Motion.cancelDeadline`；目標態錨點出現前，每一幀載入態根錨點
-（`state-domain-loading` / `state-tickets-loading` / `state-gaps-scanning` 之一）
+（`state-domain-loading` / `state-gaps-scanning` 之一）
 皆為 `findsOneWidget`——任一幀不存在即為「閃現空白」，斷言失敗；目標態錨點出現後
 至 `Motion.cancelDeadline` 的 cross-fade 期間，每一幀載入態與目標態錨點至少一個
 存在（`findsOneWidget`）。全區間 `find.byType(SnackBar)` 與 `find.byType(Dialog)`
@@ -547,7 +547,6 @@ L2 後 `findsNothing`）。
 | 來源狀態 | 目標狀態 | 依據 |
 |---------|---------|------|
 | `state-domain-loading` | `state-domain-unset` | SPEC-001 §1「取消 → 未選專案」 |
-| `state-tickets-loading` | `state-tickets-unloaded` | SPEC-001 §4「取消 → 未載入」 |
 | `state-gaps-scanning` | `returnTo` 指定的畫面；`returnTo` 為 `null` 時為 `nav-page-domain` | SPEC-001 §5「取消 → 返回」（「返回」的目標由本規格定義，見 §5 註記） |
 
 **C4 的斷言方式（強制）**：以 `await tester.tap(...)` 後
@@ -568,7 +567,6 @@ L2 後 `findsNothing`）。
 | 狀態 | 形式 | 進度型別 | 理由 |
 |------|------|---------|------|
 | `state-domain-loading` | 骨架（矩陣版位） | indeterminate + 已處理節點計數文字 | 結果形狀已知（矩陣），節點總數在解析完成前未知 |
-| `state-tickets-loading` | 進度條 + 已解析筆數 | determinate | 總數 N 已於未載入態顯示，分母存在 |
 | `state-gaps-scanning` | 骨架（分節版位） | indeterminate + 已掃描項目計數文字 | 結果形狀已知（依類別分節），破洞總數掃完才知 |
 
 **誠實性硬規則**：分母未知時**不得**顯示百分比、不得顯示預估剩餘時間、不得
@@ -577,7 +575,7 @@ L2 後 `findsNothing`）。
 
 **計數文字更新頻率**：兩次更新之間至少間隔 `Motion.progressTick`。
 
-**延遲顯示不適用於上述三者。** 它們是 SPEC-001 明列的一級狀態、由使用者主動
+**延遲顯示不適用於上述兩者。** 它們是 SPEC-001 明列的一級狀態、由使用者主動
 觸發、且是整個畫面的內容，必須立即渲染。0.1 無「非狀態級短暫等待需要延遲
 顯示」的情境，故不定義對應 token；此類情境出現時應另行評估並新增 token，
 不得沿用本節既有值。
@@ -589,8 +587,7 @@ L2 後 `findsNothing`）。
 ### 2.7 空狀態與阻擋狀態的動線
 
 SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格定其行為差異；SPEC-001
-§4 未載入（有 N 筆內容尚未載入）不屬兩者，由載入提示元件承載，見 §2.11；
-原始檔已消失由 `MissingSourceState` 承載，不屬本節兩者之一，見 §3.6（`0.1.0-W3-335.59` S3-10）：
+§6 原始檔已消失由 `MissingSourceState` 承載，不屬本節兩者之一，見 §3.6（`0.1.0-W3-335.59` S3-10）：
 
 | 面向 | 空狀態元件 | 阻擋狀態元件 |
 |------|-----------|-------------|
@@ -646,10 +643,9 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 **斷言形式（狀態保留）**：於 Ticket 清單捲動至 offset X → 點 `nav-item-gaps`
 → 點 `nav-item-tickets` → `scroll-tickets-list` 的 offset 仍為 X。
 
-**斷言形式（首次可見）**：App 啟動並 `pumpAndSettle` 後，
-`state-tickets-unloaded` 存在但**尚未**觸發解析（以假的解析計數器為 0 斷言）；
-點 `nav-item-tickets` 後仍為 `state-tickets-unloaded`（Ticket 清單的載入需使用者
-按下「開始載入」，見 §3.4）。
+**斷言形式（首次可見）**：App 啟動並 `pumpAndSettle` 後，Ticket 清單頁未觸發任何解析
+（以假的解析計數器為 0 斷言）；點 `nav-item-tickets` 後解析計數仍為 0——本畫面的列取自
+掃描輪次結果，不持有解析工作（§3.4〈生命週期〉）。
 
 ### 2.9 測試錨點命名規範
 
@@ -658,7 +654,7 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 | 導覽項（既有，沿用不改） | `nav-item-<destination>` | `nav-item-ucFlow` |
 | 導覽頁（既有，沿用不改） | `nav-page-<destination>` | `nav-page-ucFlow` |
 | 狀態根節點 | `state-<screen>-<state>` | `state-domain-loading` |
-| 動作 | `action-<screen>-<action>` | `action-tickets-start-load` |
+| 動作 | `action-<screen>-<action>` | `action-tickets-goto-gaps` |
 | 換頁控制 | `mode-<screen>-<mode>` | `mode-tickets-topic` |
 | 捲動容器 | `scroll-<screen>-<area>` | `scroll-gaps-sections` |
 | 拖曳畫布 | `drag-<screen>-<area>` | `drag-domain-swimlane` |
@@ -734,7 +730,6 @@ fixture 直接給定；該項指向哪個圖節點屬 CLAUDE.md §6「破洞分�
 | 空狀態（訊息 + 前進動作） | §2.7 空狀態欄、§2.4 內容跳轉 |
 | 阻擋狀態（訊息 + 說明（可缺）+ 版本值（可缺）+ 出口 + 降級檢視出口（可缺）） | §2.7 阻擋狀態欄、浮層可用性斷言 |
 | 原始檔已消失（訊息 + 路徑 + 重新整理；SPEC-004 4.22） | §3.6 重新整理三分支 |
-| 載入提示（訊息 + 票數 N + 開始載入；SPEC-004 4.25 `LoadPrompt`） | §3.4 未載入與開始載入列、§2.6 分母 N、§2.3 返回由頁面框架承載 |
 | 導覽項 | §2.3 `rail` intent、§2.8 狀態保留 |
 | 專案切換浮層 | §3.7 全節、§2.10 焦點限制 |
 | 節點卡 | §1.3 不可拖曳、§2.4 內容跳轉 |
@@ -744,7 +739,7 @@ fixture 直接給定；該項指向哪個圖節點屬 CLAUDE.md §6「破洞分�
 | 表格欄首（SPEC-004 4.14 `TableColumnHeader.sortable`） | §3.4 排序兩列與元件級契約 S1–S8 |
 | SnackBar（SPEC-004 4.26 `AppSnackBar.withAction`） | §2.2「系統層通知」權限 `denied` 列的 App 內 fallback、§2.12 短暫非同步的第三層回饋 |
 
-**取消契約由載入態元件單一承擔，不由三個畫面各自實作。** 三處載入態的差異為
+**取消契約由載入態元件單一承擔，不由兩個畫面各自實作。** 兩處載入態的差異為
 目標態、進度型別與骨架版位（`matrix`／`sections`，僅骨架型；SPEC-004 4.24
 `skeletonLayout`），其中破洞的目標態為執行期 `returnTo` 指定畫面（§2.5〈目標態
 對照〉）而非固定狀態錨點；其餘行為（§2.5 的 C1–C8 與 §2.8 的 L1–L2，共 10 條）
@@ -768,7 +763,7 @@ fixture 直接給定；該項指向哪個圖節點屬 CLAUDE.md §6「破洞分�
 | 本地即時 | 零（同一幀內完成） | 不可能失敗（純本地狀態操作） | 導覽切換、模式切換、樹展開收合、篩選選取、返回、Esc 收合 |
 | 延遲觸發 | 使用者持續輸入中、停頓後才觸發；感知為「輸入 → 結果更新」之間的延遲 | 不可能失敗（本地過濾運算） | 搜尋輸入防抖後觸發過濾（`input-tickets-search`） |
 | 短暫非同步 | 亞秒（可感知短暫等待，但不需要進度指示） | 可能失敗（外部程序不存在、執行失敗、平台 API 拒絕） | 外部開啟（§2.2 外部開啟契約）、系統通知發送與撤回、通知授權查詢與請求（§2.2 系統層通知） |
-| 長時操作 | 秒至分鐘（明確感知等待，需要進度指示與取消能力） | 可能失敗（解析錯誤、平台錯誤、資料損壞） | Domain 載入、Ticket 載入、破洞掃描 |
+| 長時操作 | 秒至分鐘（明確感知等待，需要進度指示與取消能力） | 可能失敗（解析錯誤、平台錯誤、資料損壞） | Domain 載入、破洞掃描 |
 
 **各類的切分理由**（「它的政策哪裡與相鄰類不同」）：
 
@@ -943,7 +938,7 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 | 序 | 承接 | 0.1 的適用範圍 |
 |----|------|--------------|
 | (a) 升級通道 | 升級為可跨越 App 視窗邊界的載體（0.1 僅 macOS 系統通知） | **僅破洞掃描完成一處**（§2.2〈系統層通知〉〈適用範圍〉，用戶簽核）。擴充至其他事件須另經用戶簽核，不由實作票或本節自行擴充 |
-| (b) 延後至可見時機 | 兩種形態：**(b1) 狀態承載**——結果為持久狀態時由狀態本身滿足，使用者回到該畫面即見，不另發提示；**(b2) 延後顯示**——提示照樣顯示，只是推遲到視窗回到 `resumed` 的那一刻；視窗已在前景（可見頁非觸發頁）時即時顯示於當前可見頁，顯示時刻依 T3、T4 決定載體 | (b1)：Domain 載入完成、Ticket 載入完成（§2.2〈適用範圍〉不升級的理由即此）。(b2)：`denied` 分支的掃描完成 SnackBar（§2.2 權限 gate 表「顯示時機」，且回到前景前使用者已自行進入 `nav-page-gaps` 時不顯示） |
+| (b) 延後至可見時機 | 兩種形態：**(b1) 狀態承載**——結果為持久狀態時由狀態本身滿足，使用者回到該畫面即見，不另發提示；**(b2) 延後顯示**——提示照樣顯示，只是推遲到視窗回到 `resumed` 的那一刻；視窗已在前景（可見頁非觸發頁）時即時顯示於當前可見頁，顯示時刻依 T3、T4 決定載體 | (b1)：Domain 載入完成（§2.2〈適用範圍〉不升級的理由即此）。(b2)：`denied` 分支的掃描完成 SnackBar（§2.2 權限 gate 表「顯示時機」，且回到前景前使用者已自行進入 `nav-page-gaps` 時不顯示） |
 | (c) 日誌承接 | (a)(b) 皆不可行——事件不留下任何持久痕跡、無升級通道、亦無可延後至的顯示時機 | 見下方〈因判準而不顯示時的日誌承接〉 |
 
 **(b1) 的可行條件是可機械判定的**：事件的結果是否已寫入一個在使用者回來時仍然成立的
@@ -1847,7 +1842,6 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 跳轉破洞報告 | `action-traceability-goto-gaps` | 點擊（僅於 `state-traceability-empty` 渲染，為空狀態前進動作，`0.1.0-W3-335.59` S3-P2） | jump 至 `nav-page-gaps`；`returnTo` 設為 `traceability` |
 | 缺口虛線框 | `badge-traceability-broken-<nodeId>`（`<nodeId>` 為缺下游的父節點；每個此類父節點的每個出現位置一個，用戶簽核 2026-09-14；多父節點見本節表後的〈多父節點〉註記） | 點擊 | 同上（缺口標示本身即為跳轉入口） |
 | 前往 Domain 視圖（專案未就緒） | `action-traceability-goto-domain` | 點擊 | jump 至 `nav-page-domain`；`returnTo` 設為 `traceability`（`0.1.0-W3-335.37` R9，SPEC-001 共用定義） |
-| 前往 Ticket 清單（Ticket 未載入時） | `action-traceability-goto-tickets` | 點擊（僅於 Ticket 清單未載入時渲染） | jump 至 `nav-page-tickets`；`returnTo` 設為 `traceability`（`0.1.0-W3-335.38` S-28） |
 
 > **多父節點**（`0.1.0-W3-335.38` S-27）：同一 `<nodeId>` 可有多個實例（多父節點時
 > 於每個父節點下各出現一次），斷言以祖先限定 finder 區分特定出現位置，不能一律
@@ -1868,7 +1862,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 狀態 | 退出動作 → 目標 |
 |------|----------------|
 | 專案未就緒 | `action-traceability-goto-domain` → `nav-page-domain`（jump）；`nav-item-<d>` → 其他畫面；`project-switcher-entry` → 浮層 |
-| 正常 | `nav-item-<d>` → 其他畫面；`card-traceability-*` → jump 至節點詳情；`project-switcher-entry` → 浮層；`action-traceability-goto-tickets` → `nav-page-tickets`（jump，僅 Ticket 未載入時，`0.1.0-W3-335.38` S-28） |
+| 正常 | `nav-item-<d>` → 其他畫面；`card-traceability-*` → jump 至節點詳情；`project-switcher-entry` → 浮層 |
 | 鏈路斷裂 | 同正常，另加 `badge-traceability-broken-*`（缺口標示）→ `nav-page-gaps`（jump，`0.1.0-W3-335.59` S3-P2） |
 | 無提案 | `action-traceability-goto-gaps` → `nav-page-gaps`（jump）；`nav-item-<d>`；`project-switcher-entry` |
 
@@ -1879,7 +1873,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 首次可見但圖未建立 | 渲染 `state-traceability-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）；不進入下列三態；圖建立完成後依「首次可見」列重新判定 |
 | 首次可見 | 依已建立的圖判定三個狀態之一，無載入態 |
 | 展開集合初始值 | 首次可見與切換專案後：只顯示 PROP 層（全部 PROP 收合）；含缺口的分支自動展開至缺口所在層，使每個 `badge-traceability-broken-<nodeId>` 的全部祖先於首次渲染時皆在展開集合內（結構可見；不要求與 viewport 相交，斷言時先捲動至該列，`0.1.0-W3-335.38` S-29）；不含缺口的分支維持收合（用戶簽核 2026-09-14） |
-| Ticket 清單載入完成後再次可見（`0.1.0-W3-335.38` S-28） | Ticket 層出現，展開集合依上列初始值規則對新增缺口補展開；新增缺口使狀態可由 `state-traceability-normal` 轉為 `state-traceability-broken` |
+| 新一輪掃描輪次完成（`0.6.0-W1-105.1`；原「Ticket 清單載入完成後再次可見」列，`0.1.0-W3-335.38` S-28） | Ticket 層與 Ticket 清單讀同一輪結果（SPEC-001 §3〈Ticket 層的資料來源〉），隨新輪次更新；展開集合依上列初始值規則對新增缺口補展開；缺口增減使狀態在 `state-traceability-normal` 與 `state-traceability-broken` 之間轉換 |
 | 切至其他導覽項 | 樹的展開集合與 offset 保留 |
 | 切換專案 | 展開集合重設為初始值（見上列）、offset 歸零、重新判定狀態 |
 
@@ -1889,8 +1883,6 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 | 元素 | 錨點 | 觸發 | 可觀察結果 |
 |------|------|------|-----------|
-| 開始載入 | `action-tickets-start-load` | 點擊 | `state-tickets-unloaded` 消失、`state-tickets-loading` 出現 |
-| 取消載入 | `action-tickets-cancel-load` | 點擊 | 依 §2.5，目標態 `state-tickets-unloaded` |
 | 返回上一畫面 | `action-tickets-back` | 點擊 | 切至 `returnTo`；`returnTo` 為 `null` 時**此錨點不渲染**（§2.3 規則 4） |
 | 搜尋 | `input-tickets-search` | 輸入 | 輸入停止 `Motion.searchDebounce` 後清單筆數更新（防抖動，不逐字元觸發）；清空輸入立即還原全部筆數；比對範圍為 ID 與標題兩欄，子字串比對、不分大小寫、忽略搜尋詞前後空白，任一欄命中即保留該列（`0.1.0-W3-335.38` S-05） |
 | 篩選 · 開啟 | `action-tickets-filter-<key>` | 點擊（選單收合時）；或焦點在此時按 Enter／Space／↓ | `Motion.overlay` 內 `menu-tickets-filter-<key>` 出現；觸發器 `Semantics` 的 `expanded` 為 `true`；焦點移至目前值對應的選項（`selected` 為 `null` 時為 `option-tickets-filter-<key>-all`）；`onChanged` 不被呼叫；清單筆數與 offset 不變 |
@@ -1900,12 +1892,12 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 篩選 · 點外部收合 | — | 點擊選單與其觸發器以外任一處 | 選單收合；`onChanged` 不被呼叫；該次點擊被選單吸收、不傳遞至下層元素（斷言：點在 `card-tickets-<ticketId>` 上時選單收合且不 jump、`returnTo` 不變；點在 `action-tickets-filter-<key2>` 上時 `menu-tickets-filter-<key2>` 不出現；點在 `nav-item-<d>` 上時 `IndexedStack` 可見頁不變） |
 | 篩選 · 再點觸發器 | `action-tickets-filter-<key>` | 點擊（選單展開時） | 選單收合；`onChanged` 不被呼叫；焦點停在觸發器 |
 | 篩選 · Tab 離開 | `menu-tickets-filter-<key>` | 按 Tab／Shift+Tab | 選單收合；`onChanged` 不被呼叫；焦點依 §2.10 順序移至觸發器之後（Shift+Tab 為之前）的元素 |
-| 排序 · 循環 | `action-tickets-sort-<key>` | 點擊；或焦點在此時按 Enter／Space | `onSort` 被呼叫恰一次；呼叫端依 `none → asc → desc → none` 推進該欄 `order`（三態循環，`desc` 之後回到 `none`，不停留於 `desc`）；`Motion.feedback` 內欄首指示與朗讀標籤更新（S4）；轉入 `asc`／`desc` 時首列與末列的內容改變；轉回 `none` 時首列與末列等於載入完成當下的首列與末列（S3）；每次轉換 offset 歸零（排序改變後保留舊 offset 無意義） |
+| 排序 · 循環 | `action-tickets-sort-<key>` | 點擊；或焦點在此時按 Enter／Space | `onSort` 被呼叫恰一次；呼叫端依 `none → asc → desc → none` 推進該欄 `order`（三態循環，`desc` 之後回到 `none`，不停留於 `desc`）；`Motion.feedback` 內欄首指示與朗讀標籤更新（S4）；轉入 `asc`／`desc` 時首列與末列的內容改變；轉回 `none` 時首列與末列等於最後完成輪次結果的首列與末列（S3）；每次轉換 offset 歸零（排序改變後保留舊 offset 無意義） |
 | 排序 · 換欄 | `action-tickets-sort-<key2>` | 點擊（`<key>` 的 `order` 非 `none` 時） | `<key>` 的 `order` 回到 `none`、其指示消失；`<key2>` 的 `order` 為 `asc`（自 `none` 起算，不繼承前欄方向）；首列與末列的內容改變；offset 歸零 |
 | 切至列表 | `mode-tickets-list` | 點擊 | `state-tickets-list` 出現、`state-tickets-topic` 消失 |
 | 切至主題 | `mode-tickets-topic` | 點擊 | 反向；兩模式各自保留自己的 offset |
 | 主題節展開收合 | `expander-tickets-topic-<name>`；未歸屬節為 `expander-tickets-unassigned`（不用 topic 族，避免與名為 `unassigned` 的主題撞名，`0.1.0-W3-335.38` S-08） | 點擊 | 該節票行出現或消失 |
-| 開票 | `card-tickets-<ticketId>` | 點擊 | jump 至 `nav-page-nodeDetail`；`returnTo` 設為 `tickets` |
+| 開票 | `card-tickets-<ticketId>` | 點擊 | jump 至 `nav-page-nodeDetail`，payload 為該列的 `<ticketId>`（節點詳情以此為選定節點，依 §3.6〈生命週期〉「由 jump 進入」列呈現；`0.6.0-W1-105` 缺口 G-T7）；`returnTo` 設為 `tickets` |
 | 清單捲動 | `scroll-tickets-list` / `scroll-tickets-topics` | drag / 捲軸 | offset 改變；虛擬捲動下捲動至末端不拋出 framework 錯誤 |
 | 損壞徽章 | `badge-tickets-corrupted` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `tickets` |
 | 損壞列標記 | `badge-tickets-corrupted-<ticketId>` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `tickets`；不觸發 `card-tickets-<ticketId>`；不定位破洞項（`0.1.0-W3-335.47` D2） |
@@ -1914,7 +1906,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 **「含損壞」是疊加態不是互斥態**：`badge-tickets-corrupted` 與
 `state-tickets-list`（或 `state-tickets-topic`）**同時存在**。整合測試枚舉狀態時
-須將其視為正常態的一個修飾，不視為第七個互斥狀態。
+須將其視為正常態的一個修飾，不視為另一個互斥狀態。
 
 #### 篩選與排序的 key 值域
 
@@ -1956,7 +1948,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 |---|------|-----------|
 | S1 | 任一時刻 | `order` 非 `none` 的欄首至多一個——單欄排序，各欄互斥，不存在多欄排序（0.1 明示不做）；呼叫端於 `onSort` 以「設定目標欄、其餘欄歸 `none`」實作 |
 | S2 | 每次 `onSort` | 下一個 `order` 只由該欄自身的當前值決定：`none → asc`、`asc → desc`、`desc → none`；換欄一律自 `asc` 起算 |
-| S3 | `order` 為 `none` 時 | 列序等於載入完成當下的列序（載入順序即「未排序」的定義，不是任意順序）；欄首無排序指示圖示；朗讀標籤 `{order}` 為 `l10n.sortNone` |
+| S3 | `order` 為 `none` 時 | 列序等於最後完成輪次結果的列序（輪次結果的順序即「未排序」的定義，不是任意順序）；欄首無排序指示圖示；朗讀標籤 `{order}` 為 `l10n.sortNone` |
 | S4 | 排序改變後（播報契約） | 欄首重建，其 `Semantics.button` 的 label 等於 `sortA11yLabel(label, order)`，`{order}` 依 `order` 為 `l10n.sortNone`／`l10n.sortAscending`／`l10n.sortDescending`（斷言 `tester.getSemantics(find.byKey(Key('action-tickets-sort-<key>'))).label`）；焦點停在該欄首，重建即為播報載體，不另發 `SemanticsService.announce`（與 F6 同一機制） |
 | S5 | 排序與篩選／搜尋並存 | 三者獨立：篩選或搜尋改變後 `order` 不變、子集依現行 `order` 排列；排序改變後篩選值與搜尋詞不變 |
 | S6 | 切模式 | 排序與篩選只於 `state-tickets-list` 可觸發（SPEC-001 §4 主題模式的可用操作不含之）；切至主題再切回列表，`order`、篩選值、列序皆不變（§2.8 保留）；主題模式不套用搜尋詞與篩選，一律呈現全部已載入票，值保留、切回列表時照原值套用（`0.1.0-W3-335.37` R1） |
@@ -1967,9 +1959,7 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 | 轉換 | 形式 |
 |------|------|
-| 未載入 → 載入中 → 正常／無 ticket | cross-fade，`Motion.transition` |
-| 進度條推進 | determinate，值來自實際已解析筆數／總數 N；不得自行推進 |
-| 已解析筆數文字 | 每 `Motion.progressTick` 更新一次 |
+| 專案未就緒 → 正常／無 ticket；輪次更新使正常 ↔ 無 ticket | cross-fade，`Motion.transition`（前者同 §2.1 專案未就緒進出的轉場） |
 | 列表首次渲染 | 不做逐列入場動畫（虛擬捲動下逐列動畫會在捲動時反覆觸發） |
 | 列表 ↔ 主題 | cross-fade，`Motion.transition` |
 | 損壞徽章出現 | 無入場動畫（靜態標記） |
@@ -1982,8 +1972,6 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 狀態 | 退出動作 → 目標 |
 |------|----------------|
 | 專案未就緒 | `action-tickets-goto-domain` → `nav-page-domain`（jump）；`nav-item-<d>`；`project-switcher-entry` → 浮層 |
-| 未載入 | `action-tickets-back` → `returnTo`（`null` 時不渲染，改由 `nav-item-<d>` 承擔退出）；`project-switcher-entry` → 浮層；`action-tickets-start-load` → `state-tickets-loading`（同畫面轉換，`0.1.0-W3-335.59` S1-P1(a)） |
-| 載入中 | `action-tickets-cancel-load` → `state-tickets-unloaded`；完成 → `state-tickets-list` 或 `state-tickets-empty`（`0.1.0-W3-335.59` S1-1）；載入中亦可 `nav-item-<d>` 切至其他畫面（載入繼續，見 §2.8 L1）；`project-switcher-entry` 恆可點（浮層展開，切換專案中止載入，同 §2.8 L1，`0.1.0-W3-335.61` 補明文） |
 | 正常 · 列表 | `nav-item-<d>`；`card-tickets-*` → jump；`project-switcher-entry`；`mode-tickets-topic` → `state-tickets-topic`（同畫面轉換，`0.1.0-W3-335.59` S3-2） |
 | 正常 · 主題 | `mode-tickets-list` → `state-tickets-list`（同畫面轉換，`0.1.0-W3-335.59` S3-2）；其餘同正常 · 列表 |
 | 無 ticket | `action-tickets-goto-gaps` → jump；`nav-item-<d>`；`project-switcher-entry` |
@@ -1993,18 +1981,15 @@ API 設計範疇，本 DOC 票不代為決定。**
 
 | 事件 | 規格 |
 |------|------|
-| 建構 | 隨 `IndexedStack` 於 App 啟動時建構，但**不觸發解析** |
-| 首次可見但圖未建立 | 渲染 `state-tickets-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）；不進入 `state-tickets-unloaded`；圖建立完成後依「首次可見」列重新判定 |
-| 首次可見 | 進入 `state-tickets-unloaded`；解析仍**不觸發**，須使用者按 `action-tickets-start-load`（SPEC-001 §4 的「開始載入」是使用者操作） |
-| N 為 0（`0.1.0-W3-335.38` S-03） | 仍進入 `state-tickets-unloaded`；按 `action-tickets-start-load` 後依 §2.6 最短顯示時間渲染載入態，完成落 `state-tickets-empty` |
+| 建構 | 隨 `IndexedStack` 於 App 啟動時建構；本畫面**不持有解析工作**，列、票數與損壞集合取自同一專案最後一次完成的掃描輪次結果（SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉） |
+| 首次可見但專案未就緒 | 渲染 `state-tickets-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）；Domain 視圖已就緒但該專案尚無完成輪次時同樣落此狀態，原因取「載入中」（SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉）；首次完成輪次出現後依「首次可見」列重新判定 |
+| 首次可見 | 依最後完成輪次的票數直接進入 `state-tickets-list`（票數 > 0）或 `state-tickets-empty`（票數為 0），無載入態、無進度（用戶裁定 2026-11-02，`0.6.0-W1-105` 缺口 G-T2）；損壞集合非空時疊加 `badge-tickets-corrupted` |
 | 首次切至主題（`0.1.0-W3-335.38` S-08） | 全部節（含未歸屬）收合；之後展開狀態依 §2.8 保留；切換專案重置為全部收合 |
-| 切至其他導覽項 | 載入繼續（見 §2.8 L1）；搜尋詞、篩選、排序、模式、offset 全部保留；篩選選單展開時點導覽項只收合選單、不切換（F7），故切換發生時選單必為收合態 |
-| 再次可見 | 已載入者直接顯示正常態，不重新解析；0.1 不提供畫面內重新載入，需反映外部修改時經 `project-switcher-entry` 選取目前專案（§3.7，全頁重置，`0.1.0-W3-335.38` S-10） |
-| 切換專案 | 中止載入；頁面狀態重置為初始，下次可見時依「首次可見但圖未建立」與「首次可見」兩列判定；搜尋詞與篩選清空；全部欄首 `order` 重置為 `none` |
+| 切至其他導覽項 | 搜尋詞、篩選、排序、模式、offset 全部保留；篩選選單展開時點導覽項只收合選單、不切換（F7），故切換發生時選單必為收合態 |
+| 再次可見 | 顯示最後完成輪次的結果，不重新解析；本畫面不提供重新載入，外部修改經掃描輪次反映（破洞報告 `action-gaps-rescan`、Domain 視圖 `action-domain-rescan`），或經 `project-switcher-entry` 選取目前專案全頁重置（§3.7，`0.1.0-W3-335.38` S-10）；輪次更新的反應見下列 |
+| 掃描輪次離開 Completed（他頁重掃、取消重掃、輪次失敗）／新一輪完成（`0.6.0-W1-105` 缺口 G-T6，比照 §3.1 同名列） | 輪次不是 Completed 期間照常顯示上一輪的列與損壞集合，狀態不變，不另設狀態；新一輪完成後列集合、票數與損壞集合一併更新，依新票數在正常態（模式不變）與 `state-tickets-empty` 之間轉換；搜尋詞、篩選值、`order` 與模式保留並套用於新列集合，`order` 為 `none` 時列序依新輪次（S3）；捲動 offset 夾在新的可捲範圍內，不歸零（同 §2.8「視窗尺寸變更」）；不發提示（狀態承載，§2.13 T1 承接 (b1)）。該輪建圖不可用不影響本畫面：列取自 TicketDetail，其查詢來源為 Corpus 的 `rawNodes`，不經建圖（SPEC-007 FR-07） |
+| 切換專案 | 頁面狀態重置為初始，下次可見時依「首次可見但專案未就緒」與「首次可見」兩列判定；搜尋詞與篩選清空；全部欄首 `order` 重置為 `none` |
 
-**未載入態不顯示預估耗時。** SPEC-001 §4 顯示欄原含「預估耗時」（v1.7 已回寫移除），預估耗時的
-計算依據屬 CLAUDE.md 現行待決的五項空殼判準之一，尚無定義。依 §2.6 誠實性硬規則，
-無依據的時間承諾不得顯示；0.1 只顯示票數 N。此為缺料下的明確決策，非延後。
 
 #### 帶目標跳入（由破洞項定位一張票）
 
@@ -2013,14 +1998,11 @@ jump payload 帶目標 `<ticketId>`。
 
 | 進入時條件 | 可觀察結果 |
 |-----------|-----------|
-| `state-tickets-unloaded` | 自動開始載入（`state-tickets-loading` 出現），完成後定位目標。**這不是「首次進入自動載入」**：§生命週期「首次可見不觸發解析」仍成立，自動載入只由帶目標的跳轉觸發 |
-| 帶目標觸發的載入期間按 `action-tickets-cancel-load` | 依 §2.5 回到 `state-tickets-unloaded`；不定位，目標作廢 |
-| `state-tickets-loading`（使用者先前已觸發的載入） | 載入完成後定位目標（沿用上兩列的「完成後定位」與「取消即作廢」） |
-| 已載入且目標可見 | scroll-into-view 至 `card-tickets-<ticketId>`，短暫高亮、焦點移入（定位手法同 §2.2「系統層通知」點擊導向列） |
-| 已載入但目標被搜尋詞或篩選隱藏（限**列表模式**，`0.1.0-W3-335.37` R1） | 清除搜尋詞與全部篩選（`order` 不變）、**不切換模式**；而後定位。同時顯示 SnackBar `ticketsFiltersClearedSnackbarMessage`（`AppSnackBar.withAction`，動作 `undoAction`；§2.13 列 14、§2.14 列 17），停留 `Motion.snackBarWithAction`（key 名 `0.3.3-W3-408` 補登）。主題模式的隱藏處理見下方「目標僅因主題節收合而不可見」列 |
+| 目標可見 | scroll-into-view 至 `card-tickets-<ticketId>`，短暫高亮、焦點移入（定位手法同 §2.2「系統層通知」點擊導向列） |
+| 目標被搜尋詞或篩選隱藏（限**列表模式**，`0.1.0-W3-335.37` R1） | 清除搜尋詞與全部篩選（`order` 不變）、**不切換模式**；而後定位。同時顯示 SnackBar `ticketsFiltersClearedSnackbarMessage`（`AppSnackBar.withAction`，動作 `undoAction`；§2.13 列 14、§2.14 列 17），停留 `Motion.snackBarWithAction`（key 名 `0.3.3-W3-408` 補登）。主題模式的隱藏處理見下方「目標僅因主題節收合而不可見」列 |
 | 按 SnackBar「復原」（`undoAction`） | 還原清除前的搜尋詞與全部篩選值；**不撤銷定位**（焦點與 offset 不因復原而回到跳入前）；主題節展開狀態不還原 |
 | 目標僅因主題節收合而不可見（無搜尋與篩選隱藏） | 展開該主題節後定位；不顯示 SnackBar（未清除任何使用者輸入） |
-| 載入完成後目標 `<ticketId>` 不在清單（`0.1.0-W3-335.38` S-11） | 不捲動、不切模式、不清除搜尋篩選；SnackBar `ticketsTargetNotFoundMessage`，停留 `Motion.snackBar` |
+| 目標 `<ticketId>` 不在最後完成輪次的清單（`0.1.0-W3-335.38` S-11） | 不捲動、不切模式、不清除搜尋篩選；SnackBar `ticketsTargetNotFoundMessage`，停留 `Motion.snackBar` |
 
 SnackBar 的訊息與「復原」動作文案 key 由 SPEC-004 承接（`0.1.0-W3-335.16`）。
 「主題節展開狀態不還原」與「僅收合時不顯示 SnackBar」兩列，是依裁示「復原即還原清除前的
@@ -2034,7 +2016,7 @@ SnackBar 的訊息與「復原」動作文案 key 由 SPEC-004 承接（`0.1.0-W
 |------|------|------|-----------|
 | 取消掃描 | `action-gaps-cancel-scan` | 點擊 | 依 §2.5，目標態為 `returnTo` 指定畫面；`returnTo` 為 `null` 時為 `nav-page-domain`；抵達後 `returnTo` 設為 `null`（`0.1.0-W3-335.47` D12） |
 | 重新掃描 | `action-gaps-rescan` | 點擊 | `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable` 消失、`state-gaps-scanning` 出現 |
-| 破洞項（指向 ticket） | `card-gaps-<itemId>` | 點擊 | jump 至 `nav-page-tickets`，`returnTo` 設為 `gaps`；依 §3.4〈帶目標跳入〉定位該票的 `card-tickets-<ticketId>`（含清單未載入與目標被隱藏兩種情形）；不呼叫 `ExternalOpener`（以 UC-05 替代場景〈自破洞報告切入〉為準） |
+| 破洞項（指向 ticket） | `card-gaps-<itemId>` | 點擊 | jump 至 `nav-page-tickets`，`returnTo` 設為 `gaps`；依 §3.4〈帶目標跳入〉定位該票的 `card-tickets-<ticketId>`（含目標被隱藏的情形）；不呼叫 `ExternalOpener`（以 UC-05 替代場景〈自破洞報告切入〉為準） |
 | 破洞項（指向其他圖節點：提案、規格、UC 等） | `card-gaps-<itemId>` | 點擊 | jump 至 `nav-page-nodeDetail`，`jump` payload 為指向節點 ID，`returnTo` 設為 `gaps`；依 §3.6 生命週期「由 jump 進入」渲染該節點 |
 | 破洞項（類別 `orphan-event` 或 `event-declaration-mismatch`） | `card-gaps-<itemId>` | 點擊 | 選定 UC 寫入引用該 EVT（任一 FlowStep `emits` 或 `consumes` 含之）的 UC，多條時取 UC 編號最小者（§2.8〈選定 UC〉設定入口 4）；jump 至 `nav-page-ucFlow`，`returnTo` 設為 `gaps`；`state-ucFlow-normal` 出現，`panel-ucFlow-event-flow` 內事件欄等於該 EVT ID 的列 scroll-into-view 並短暫高亮（定位手法同 §2.2「系統層通知」點擊導向列）。**無任何 UC 引用該 EVT 時**，依「指向其他圖節點」列處理：jump 至 `nav-page-nodeDetail`，payload 為該 EVT ID；次要操作（開啟原始檔）不變（`0.1.0-W3-335.38` S-31） |
 | 破洞項（無指向節點） | `card-gaps-<itemId>` | 點擊 | 主操作為開啟原始檔，結果同下方「破洞項開啟原始檔」三列；此類項不渲染 `action-gaps-open-source-<itemId>` |
@@ -2312,7 +2294,7 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 
 ---
 
-## 4. SPEC-001 全 43 狀態的導航反應對照
+## 4. SPEC-001 全 41 狀態的導航反應對照
 
 本表逐一列出 SPEC-001 §1–§7 的每一個狀態，**無一遺漏**。「畫面」「狀態」兩欄即指向
 SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑」欄為準，本表不複製
@@ -2340,11 +2322,9 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 9 | UC Flow | 無 UC | `state-ucFlow-empty` | jump：`action-ucFlow-goto-gaps` → `nav-page-gaps`；rail；覆蓋層 |
 | 10 | UC Flow | flow 未結構化 | `state-ucFlow-unstructured` | 同畫面轉換：`action-ucFlow-select-uc-<ucId>`；rail；覆蓋層；R2 通用返回 `action-ucFlow-back` → `returnTo`（非 null 時渲染）；jump：`action-ucFlow-relations` → `nav-page-nodeDetail`，`returnTo`=ucFlow（`0.1.0-W3-335.59` S3-4）。`action-ucFlow-open-source` 為外部動作，不計為導航反應；`action-ucFlow-back-to-domain` 已刪除（`0.1.0-W3-335.37` R7） |
 | 11 | UC Flow | 正常 | `state-ucFlow-normal` | rail；jump：`card-ucFlow-step-*` → `nav-page-nodeDetail`、`action-ucFlow-goto-domain-*` → `nav-page-domain`；覆蓋層；同畫面轉換：`action-ucFlow-select-uc-<ucId>` → `state-ucFlow-normal` 或 `state-ucFlow-unstructured`（`0.1.0-W3-335.59` S3-3） |
-| 12 | 追溯 | 正常 | `state-traceability-normal` | rail；jump：`card-traceability-*` → `nav-page-nodeDetail`、`action-traceability-goto-tickets` → `nav-page-tickets`（僅 Ticket 未載入時渲染）；覆蓋層 |
+| 12 | 追溯 | 正常 | `state-traceability-normal` | rail；jump：`card-traceability-*` → `nav-page-nodeDetail`；覆蓋層 |
 | 13 | 追溯 | 鏈路斷裂 | `state-traceability-broken` | 同 #12，另加 jump：`badge-traceability-broken-*` → `nav-page-gaps`（「跳轉破洞報告」由缺口標示承載，屬可用操作欄；本態不渲染 `action-traceability-goto-gaps`，SPEC-001 退出路徑欄與正常態相同，皆為「導覽、切換專案」，`0.1.0-W3-335.59` S3-P2） |
 | 14 | 追溯 | 無提案 | `state-traceability-empty` | jump：`action-traceability-goto-gaps` → `nav-page-gaps`（僅於 `state-traceability-empty` 渲染，為空狀態前進動作，`0.1.0-W3-335.59` S3-P2）；rail；覆蓋層 |
-| 15 | Ticket | 未載入 | `state-tickets-unloaded` | 同畫面轉換：`action-tickets-start-load` → `state-tickets-loading`；返回：`action-tickets-back` → `returnTo`（`null` 時不渲染，退出由 rail 承擔）；覆蓋層 |
-| 16 | Ticket | 載入中 | `state-tickets-loading` | 同畫面轉換：`action-tickets-cancel-load` → `state-tickets-unloaded`（§2.5）；完成 → `state-tickets-list` 或 `state-tickets-empty`（`0.1.0-W3-335.59` S1-1）；rail 可離開且載入繼續（見 §2.8 L1）；覆蓋層：`project-switcher-entry` 恆可點（`0.1.0-W3-335.61` 補明文） |
 | 17 | Ticket | 正常 · 列表 | `state-tickets-list` | rail；jump：`card-tickets-*` → `nav-page-nodeDetail`；覆蓋層；同畫面轉換：`mode-tickets-topic` → `state-tickets-topic`（`0.1.0-W3-335.59` S3-2） |
 | 18 | Ticket | 正常 · 主題 | `state-tickets-topic` | 同 #17，另加同畫面轉換 `mode-tickets-list` → `state-tickets-list`（`0.1.0-W3-335.59` S3-2） |
 | 19 | Ticket | 無 ticket | `state-tickets-empty` | jump：`action-tickets-goto-gaps` → `nav-page-gaps`；rail；覆蓋層 |
@@ -2373,16 +2353,17 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 42 | Domain | 泳道 · 投影準備中 | `state-domain-swimlane-projection-pending` | 同畫面轉換：該專案首次輪次完成 → `state-domain-swimlane` 或 `state-domain-swimlane-unstructured`（該輪建圖不可用 → `state-domain-graph-unavailable`）；`mode-domain-matrix` → `state-domain-matrix`；rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded` |
 | 43 | Domain | 圖不可用 | `state-domain-graph-unavailable` | 同畫面轉換：`action-domain-rescan` → 本畫面產生下一輪，該輪完成且建圖可用 → `state-domain-matrix`（含 `panel-domain-cell-detail`，選中格仍在時）或泳道各態（依當前模式），仍不可用、失敗或取消 → 留在 `state-domain-graph-unavailable`；rail：`nav-item-<d>` → 對應頁；覆蓋層：`project-switcher-entry` → `state-switcher-expanded` |
 
-**覆蓋完整性**：43 列，對應 SPEC-001 §1（14）+ §2（5）+ §3（4）+ §4（7）+ §5（5）
-+ §6（5）+ §7（3）= 43。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
+**覆蓋完整性**：41 列，對應 SPEC-001 §1（14）+ §2（5）+ §3（4）+ §4（5）+ §5（5）
++ §6（5）+ §7（3）= 41。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
 #30、#31 為 SPEC-001 v1.3／v1.4 新增，#32、#33 為 SPEC-001 v1.8 新增，#34 為 SPEC-001 v1.9
 新增，#35–#39 為 SPEC-001 v1.11 新增（五個非 Domain 畫面共用同一則「專案未就緒」
 定義，`0.1.0-W3-335.37` R9），#40 為 SPEC-001 v1.21 新增（`0.3.0-W1-082`），#41 為 SPEC-001 v1.49 新增
 （`0.5.0-W1-114.14.1`），#42 為 SPEC-001 v1.55 新增（`0.5.0-W1-205.1`），#43 為 SPEC-001 v1.57 新增（`0.5.0-W1-486.1`），依 SPEC-001
-§狀態總數 的順序編號，不重排既有列。
+§狀態總數 的順序編號，不重排既有列。#15「未載入」、#16「載入中」隨 SPEC-001 v1.64 刪除
+（`0.6.0-W1-105.1`），編號留空不重用，故最大編號為 43、列數為 41。
 
 **同步提醒**：本節標題、本段算式、下方 FR-01 驗收、§0 概述四處皆耦合 SPEC-001
-§狀態總數 的狀態數字（現為 43）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
+§狀態總數 的狀態數字（現為 41）。SPEC-001 日後新增或刪除狀態時，四處須同步更新，
 缺一處會使對照表列數與 FR-01 驗收範圍失去覆蓋完整性保證。
 
 ---
@@ -2395,17 +2376,15 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | SPEC-001 措辭 | 本規格的判讀 |
 |--------------|-------------|
 | §5 掃描中「取消 → 返回」 | 「返回」的目標未具名。判讀為 `returnTo`，`null` 時為 Domain 視圖（App 的預設落地頁）；此「返回」指取消後的落點，不是通則返回鍵（`action-gaps-cancel-scan` 非 `action-gaps-back`，`0.1.0-W3-335.47` D12） |
-| §4 未載入「返回上一畫面」 | 同上判讀。`returnTo` 為 `null` 時返回錨點不渲染，退出由導覽列承擔 |
 | §2 flow 未結構化「選擇 UC、導覽、切換專案」（`0.1.0-W3-335.37` R7 改寫後現行文字） | 三者對應本規格 §3.2 的同畫面轉換、rail、覆蓋層；R2 通用返回另補一條（`returnTo` 非 null 時）。判讀沿革：v1.10 以前為「開啟原始檔、返回 Domain 視圖」，`action-ucFlow-back-to-domain` 固定回 Domain 且不用 `returnTo`，與 `nav-item-domain` 重疊，R7 裁決後移除；「開啟原始檔」仍為外部動作，不改變畫面狀態，不計為退出路徑 |
 | UC-05 flow `filter-in-list-mode` 的 `return_to: switch-to-topic`（`0.1.0-W3-335.38` S-12） | 判讀為使用者經 `mode-tickets-topic` 手動切回，系統不自動切換（SPEC-003 §1.2 模式切換只有 `mode-*` 錨點觸發；R1 已定主題態不套用篩選，自動切回會使篩選結果立即不可見） |
 | §4 含損壞「同正常」 | 判讀為疊加態而非互斥態：損壞徽章與正常視圖同時渲染 |
 | §1 無可消費的型別表「以 App 內建型別表檢視」（SPEC-001 v1.5 起現行文字） | 判讀為條件式渲染的同畫面轉換：`VERSION` 不高於內建表產生版本時渲染 `action-domain-degraded-view`，目標為正常／空圖並疊加 `badge-<screen>-degraded-schema`（六畫面皆常駐）；高於時不渲染（依 §2.2 形態 a），退出由「切換專案」單獨承擔。判讀沿革：v1.4 以前該欄為「（若支援降級）以純檔案模式檢視」，括號表示未定案，0.1 曾判為不渲染；`0.1.0-W1-035` 定案後改為現行判讀 |
-| §4 未載入「預估耗時」 | 預估依據屬待決事項，0.1 不顯示（依 §2.6 誠實性硬規則），只顯示票數 N |
-| FR-02 驗收「三處長時操作期間」（SPEC-001 v1.3 起現行文字） | 三處（Domain 視圖載入、Ticket 載入、破洞掃描）與本規格 §2.5 取消契約定義的三個目標態逐一對應，現行文字已與本規格一致；此列存留判讀沿革——SPEC-001 v1.2 以前僅列「Ticket 載入與破洞掃描」兩處，遺漏 §1 Domain 視圖載入中的取消操作，該缺口已於 SPEC-001 v1.3 補齊 |
+| FR-02 驗收「兩處長時操作期間」（SPEC-001 v1.64 起現行文字） | 兩處（Domain 視圖載入、破洞掃描）與本規格 §2.5 取消契約定義的兩個目標態逐一對應。判讀沿革：SPEC-001 v1.2 以前列「Ticket 載入與破洞掃描」兩處，v1.3 補入 §1 Domain 視圖載入為三處，v1.64 隨 Ticket 清單改由掃描輪次衍生移除 Ticket 載入（`0.6.0-W1-105.1`） |
 | §6 三個狀態的進入條件 | 皆預設已有選定節點。經導覽列直接進入時的缺口已由 SPEC-001 v1.3「未選節點」補上，本規格 §3.6 與 §4 第 30 列對應之 |
 | §1 已選格「點格子→已選格」 | 「點格子」判讀為單擊；切泳道改由詳情卡內按鈕承擔（§3.1 四案比較，PM 核定）。若 PM 改採他案，本規格 §3.1 兩列改寫，SPEC-001 §1 可用操作欄同步 |
 | §1 三個阻擋狀態（不是框架專案／無可消費的型別表／schema 不相容） | 「阻擋狀態」是畫面狀態的一種（這個專案不適用本 App），與 §2.12 的「輸入阻擋範圍」不是同一件事——後者指等待期間畫面是否吸收使用者輸入。兩者的驗收不共用：前者落在 §2.7 與 FR-01（退出路徑錨點），後者落在 FR-14。此列存留以防讀者因用字相同而把兩者的驗收互相代入 |
-| §1、§4、§5 三處載入中的「取消」 | SPEC-001 只述取消是可用操作，未述載入期間其餘輸入如何處理。判讀為 §2.12 長時操作類的「阻擋頁面內容」：內容區正常態錨點不存在、導覽列恆可點（§2.8 L1）、取消錨點存在。取消本身的行為驗收落在 FR-02，阻擋範圍的驗收落在 FR-14 |
+| §1、§5 兩處載入中的「取消」 | SPEC-001 只述取消是可用操作，未述載入期間其餘輸入如何處理。判讀為 §2.12 長時操作類的「阻擋頁面內容」：內容區正常態錨點不存在、導覽列恆可點（§2.8 L1）、取消錨點存在。取消本身的行為驗收落在 FR-02，阻擋範圍的驗收落在 FR-14 |
 
 ---
 
@@ -2416,14 +2395,14 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | §4 對照表 43 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
+| 驗收 | §4 對照表 41 列，導航反應欄皆非空且皆含一個具名錨點；整合測試對每一列執行「渲染該狀態 → 觸發錨點 → 斷言目標狀態錨點存在」；浮層收合態（#27）為唯一豁免 |
 
 ### FR-02: 取消契約的十條行為全部成立
 
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | 三處載入態（`state-domain-loading`／`state-tickets-loading`／`state-gaps-scanning`）各自通過 §2.5 的 C1–C8 與 §2.8 的 L1–L2（共 10 條）；C4 以 `tester.pump(Motion.cancelDeadline)` 推進假時鐘後斷言，不得使用 `Stopwatch` 加 `lessThan` |
+| 驗收 | 兩處載入態（`state-domain-loading`／`state-gaps-scanning`）各自通過 §2.5 的 C1–C8 與 §2.8 的 L1–L2（共 10 條）；C4 以 `tester.pump(Motion.cancelDeadline)` 推進假時鐘後斷言，不得使用 `Stopwatch` 加 `lessThan` |
 
 ### FR-03: 導航來源以單槽記錄，返回目標唯一
 
@@ -2437,7 +2416,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | App 啟動並 settle 後 Ticket 清單的解析計數為 0；切至 Ticket 清單再切走再切回，`scroll-tickets-list` 的 offset、搜尋詞、當前模式與離開前相同；切換專案後三者皆重置 |
+| 驗收 | App 啟動並 settle 後 Ticket 清單頁的解析計數為 0（列取自掃描輪次結果，本頁不持有解析工作）；切至 Ticket 清單再切走再切回，`scroll-tickets-list` 的 offset、搜尋詞、當前模式與離開前相同；切換專案後三者皆重置 |
 
 ### FR-05: 時間值皆具名，且減少動態效果時仍抵達目標態
 
@@ -2458,7 +2437,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P1 |
-| 驗收 | `state-domain-loading` 與 `state-gaps-scanning` 的畫面中不存在 `%` 字元、不存在帶非 null `value` 的進度指示；`state-tickets-loading` 的進度值等於已解析筆數除以未載入態顯示的 N；三者皆不顯示預估剩餘時間 |
+| 驗收 | `state-domain-loading` 與 `state-gaps-scanning` 的畫面中不存在 `%` 字元、不存在帶非 null `value` 的進度指示；兩者皆不顯示預估剩餘時間 |
 
 ### FR-08: 捲動、換頁、拖拉三類互動逐一可斷言
 
@@ -2500,14 +2479,14 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P0 |
-| 驗收 | 四類逐一成立。**長時操作**：三處觸發後 `pump()` 一幀內對應載入態錨點（`state-domain-loading`／`state-tickets-loading`／`state-gaps-scanning`）存在，且含 §2.6 指定的計數或進度文字。**短暫非同步**：外部開啟錨點集（`action-domain-open-docs`、`action-domain-open-source`、`action-ucFlow-open-source`、`action-gaps-open-source-<itemId>`、`card-gaps-<itemId>`（無指向項）、`action-nodeDetail-open-source`，`0.1.0-W3-335.59` S3-14）× `ExternalOpener` fake 的三個結果值（`opened`／`notFound`／`failed`）的全部組合，每一個組合的第三層回饋皆非空，且等於該畫面 §3.x 互動反應表對應列所指定的結果——SnackBar 文字等於該列具名的 i18n key 的值，或該列指定的狀態錨點改變（例如 §3.6 的 `notFound` 為轉入 `state-nodeDetail-missing` 且不出現 SnackBar）；同一組合下畫面中不存在任何載入態錨點（該類不提供第二層）。**延遲觸發**：`pump(Motion.searchDebounce)` 前後皆不存在載入態錨點，結果為清單筆數改變。**本地即時**：觸發後 `pump()` 一幀內狀態錨點改變，且不存在載入態錨點與 SnackBar |
+| 驗收 | 四類逐一成立。**長時操作**：兩處觸發後 `pump()` 一幀內對應載入態錨點（`state-domain-loading`／`state-gaps-scanning`）存在，且含 §2.6 指定的計數或進度文字。**短暫非同步**：外部開啟錨點集（`action-domain-open-docs`、`action-domain-open-source`、`action-ucFlow-open-source`、`action-gaps-open-source-<itemId>`、`card-gaps-<itemId>`（無指向項）、`action-nodeDetail-open-source`，`0.1.0-W3-335.59` S3-14）× `ExternalOpener` fake 的三個結果值（`opened`／`notFound`／`failed`）的全部組合，每一個組合的第三層回饋皆非空，且等於該畫面 §3.x 互動反應表對應列所指定的結果——SnackBar 文字等於該列具名的 i18n key 的值，或該列指定的狀態錨點改變（例如 §3.6 的 `notFound` 為轉入 `state-nodeDetail-missing` 且不出現 SnackBar）；同一組合下畫面中不存在任何載入態錨點（該類不提供第二層）。**延遲觸發**：`pump(Motion.searchDebounce)` 前後皆不存在載入態錨點，結果為清單筆數改變。**本地即時**：觸發後 `pump()` 一幀內狀態錨點改變，且不存在載入態錨點與 SnackBar |
 
 ### FR-14: 等待期的輸入阻擋範圍依服務類型成立
 
 | 項目 | 值 |
 |------|-----|
 | 優先級 | P1 |
-| 驗收 | 兩組皆成立。**長時操作（阻擋頁面內容）**：三處載入態渲染期間，該畫面內容區的正常態互動錨點皆不存在於元件樹（已被載入態取代），而六個 `nav-item-<d>` 皆存在且 `enabled` 為 `true`（§2.8 L1：離開不取消任務）；同期間該畫面的取消錨點存在——取消的可用性、時限與其後續行為由 FR-02（§2.5 C1–C8 與 §2.8 L1–L2）承擔驗收，本條只斷言「阻擋期間取消錨點存在」，不重複斷言其行為。**其餘三類（不阻擋）**：本地即時、延遲觸發、短暫非同步的觸發後 `pump()`，畫面中不存在覆蓋內容區的載入態錨點，觸發當時可見的其他互動錨點仍存在且 `enabled` 為 `true`；`input-tickets-search` 於防抖窗口內可繼續接受輸入，連續輸入的字元皆進入其 `TextEditingValue.text` |
+| 驗收 | 兩組皆成立。**長時操作（阻擋頁面內容）**：兩處載入態渲染期間，該畫面內容區的正常態互動錨點皆不存在於元件樹（已被載入態取代），而六個 `nav-item-<d>` 皆存在且 `enabled` 為 `true`（§2.8 L1：離開不取消任務）；同期間該畫面的取消錨點存在——取消的可用性、時限與其後續行為由 FR-02（§2.5 C1–C8 與 §2.8 L1–L2）承擔驗收，本條只斷言「阻擋期間取消錨點存在」，不重複斷言其行為。**其餘三類（不阻擋）**：本地即時、延遲觸發、短暫非同步的觸發後 `pump()`，畫面中不存在覆蓋內容區的載入態錨點，觸發當時可見的其他互動錨點仍存在且 `enabled` 為 `true`；`input-tickets-search` 於防抖窗口內可繼續接受輸入，連續輸入的字元皆進入其 `TextEditingValue.text` |
 
 ### FR-15: 重複觸發防護由服務承擔，元件不實作
 
@@ -2536,7 +2515,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 - 本規格描述行為與時間，不描述視覺樣式；顏色、字級、間距、圓角以 SPEC-002 為準
 - 時間值一律具名於 `lib/tokens/motion.dart`，該檔是唯一允許出現時間字面值的位置
-- 取消契約由 SPEC-002 的「載入態」元件單一承擔，三個畫面以參數（目標態、進度型別）
+- 取消契約由 SPEC-002 的「載入態」元件單一承擔，兩個畫面以參數（目標態、進度型別）
   差異化，不各自實作
 - 導航來源記錄為單槽而非堆疊；若日後導入 deep link 或多視窗，此決策須重新評估，
   屆時 §2.3 的四條規則是重評的起點
@@ -2555,6 +2534,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.74 | 2026-11-02 | 對齊 SPEC-001 v1.64（`0.6.0-W1-105.1`，依 `0.6.0-W1-105` 缺口 G-T1／T2／T3／T5／T6／T7 與用戶裁定 2026-11-02）：Ticket 清單改由掃描輪次衍生，移除使用者觸發的載入與進度。§3.4〈互動反應〉刪開始載入、取消載入兩列，「開票」列補 payload 為該列 `<ticketId>`（G-T7）；〈動畫提示〉刪未載入→載入中、進度條、已解析筆數三列，新增「專案未就緒 → 正常／無 ticket；輪次更新使正常 ↔ 無 ticket」cross-fade 列；〈導航跳轉與退出〉刪未載入、載入中兩列；〈生命週期〉改寫建構、首次可見、「首次可見但專案未就緒」（含尚無完成輪次）三列，刪「N 為 0」列，新增「掃描輪次離開 Completed／新一輪完成」列（G-T6，比照 §3.1），刪「未載入態不顯示預估耗時」段；〈帶目標跳入〉刪三個載入相關列；S3 與排序循環列的「載入完成當下」改「最後完成輪次結果」。§2.2 適用範圍、§2.3、§2.4、§2.5（適用範圍、C3、C3 斷言、目標態對照）、§2.6、§2.7、§2.8 首次可見斷言、§2.9 範例、§2.11、§2.12、§2.13 (b1) 實例、§5 判讀註記、FR-02／FR-04／FR-07／FR-13／FR-14 與設計約束同步移除 Ticket 載入；§3.3 刪 `action-traceability-goto-tickets` 列並改寫 Ticket 層更新的生命週期列；§3.5 破洞項（指向 ticket）刪「清單未載入」情形。§0、§4 標題、覆蓋完整性算式、同步提醒、FR-01 驗收的狀態數 43 → 41，§4 刪 #15、#16（編號留空不重用）。SPEC-001 v1.64、SPEC-004 v1.112 同批 |
 | 1.73 | 2026-10-31 | 選定工作區後浮層先收合再載入、阻擋輪次先進入載入中已實作（`0.5.0-W1-169.3`）：§2.15〈邊界〉表移除「未能記住」提示顯示時點一列與「同時攜帶資料夾不可用」一列；跨級別表「選定成功但未能記住」列規則 3 格移除「取決於顯示時點，見〈邊界〉」末句；§2.17「可達實例的更正」段移除指向該組合的末句；§3.1「未能記住」列的組合指涉改指 `0.5.0-W1-169.1.1` |
 | 1.72 | 2026-10-31 | 依引用穩定性規則 7 修正內文 8 處依賴型票號引用（`0.5.0-W1-524`，用戶裁決 A）。各處的處理：§2.2〈外部開啟契約〉的實測依據改為以內文四項量測為準；§2.12 刪除「歸屬修正」票號，結論本來就在內文；§2.13〈判準與既有條文的對照〉的呼叫點計數改以 `lib/` 即時計數為準；§2.13〈顯示位爭用〉刪除裁決全文指向，三項結論本來就在內文；§2.13〈因判準而不顯示時的日誌承接〉改指 §2.17 小節；§2.17 開頭的消費方改寫為「注意力仲裁點的實作」；§2.17 小節標題去票號，改為〈與 `AppSnackBarLogSink` 的關係〉，同節第 2 點的引用同步改；§3.3 缺口虛線框改指同節〈多父節點〉註記。出處型標注不在本次範圍。只改引用，不改條文，狀態數不變 |
 | 1.71 | 2026-10-30 | 引用字面更正（`0.5.0-W1-213.7`）：§3.6 〈重新整理的三分支〉註記的觸發票 ID 由 `0.5.0-W1-540.1.1` 改為遷移後的 `1.0.0-W3-656`；v1.69 變更歷史列的舊 ID 保留原文並補遷移註記。只改引用字面，不改條文，狀態數不變 |
