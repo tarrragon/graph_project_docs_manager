@@ -22,9 +22,7 @@ consumers: ['corpus']
 
 ## 負載結構
 
-`changedPaths: List<String>`、`kind: created | modified | deleted`
-
-> 具體型別待 SPEC 產出後定案。
+`changes`：清單，每筆含相對路徑與 `kind: created | modified | deleted`；一個去抖窗合併為一筆事件，合併規則見 SPEC-006 FR-11 規則 4、5。
 
 ## 設計註記
 
