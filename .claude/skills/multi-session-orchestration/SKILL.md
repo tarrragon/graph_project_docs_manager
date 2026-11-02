@@ -36,6 +36,7 @@ metadata:
 
 | 步驟 | 做法 |
 |------|------|
+| 開工先建協調票 | 協調票以 `ticket create --coordination ...` 建立；既有票用 `ticket track set-coordination <id>` 補標（`--clear` 清除），寫入 frontmatter `coordination: true`，`scripts/coordination_ticket.py` 讀此旗標 |
 | 按主題分線 | 同一主題（同一組檔案、同一個子系統）的票歸同一條線，前一張讀過的程式與事實下一張可直接用 |
 | 一個 session 一條線，以線主題命名 | 每條線配一個 session，以線主題命名（開新 session 用 `claude -n <名稱>`；格式只守命名底線）；線完結或轉階段就收尾舊 session、另開新 session。改名後舊名立即無法定址，主控要在同一步更新現行佇列行的 session 名稱。規則、改名方法與同步位置見 `references/session-naming.md` |
 | 每線一份佇列 | 在給該線的訊息中寫明順序與理由，該線在票面維護 |
