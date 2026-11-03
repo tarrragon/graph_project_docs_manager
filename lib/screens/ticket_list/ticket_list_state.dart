@@ -1,8 +1,6 @@
 /// Ticket 清單（SPEC-001 §4；SPEC-003 §3.4；SPEC-004 §3.6）的畫面狀態模型。
 ///
-/// 本票決策：只交狀態渲染與退出路徑，不接真實資料——票列資料來自
-/// [TicketListFixtures]（`ticket_list_fixtures.dart`），非解析
-/// `test/fixtures/corpus/` 或使用者工作資料夾；「含損壞」為疊加於
+/// 票列資料取自最後完成的掃描輪次（`0.6.0-W1-073.3`）；「含損壞」為疊加於
 /// [TicketsReady] 之上的計算結果（[TicketsReady.corruptedCount]），不是
 /// 獨立的第七種狀態（SPEC-001 §4 表下段落）。
 library;

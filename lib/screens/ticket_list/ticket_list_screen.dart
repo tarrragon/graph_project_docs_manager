@@ -2,8 +2,8 @@
 ///
 /// 七個狀態列（含「含損壞」疊加態）依 [TicketListState] 切換；正常 ·
 /// 列表／正常 · 主題共用 [TicketsReady]，實際子列由 [TicketsReady.mode]
-/// 分派（[_ReadyListView] / [_ReadyTopicView]）。內容由
-/// [TicketListFixtures] 供給（本票決策：假資料驅動，不串真實資料）。
+/// 分派（[_ReadyListView] / [_ReadyTopicView]）。內容取自最後完成的掃描輪次
+/// （SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉，`ticket_list_providers.dart`）。
 /// 頁首模式切換（`SegmentedControl`）由 [TicketsHeaderTrailing] 承載，經
 /// `lib/assembly/shell.dart` 接線至 `SplitRow.header` 右格（同
 /// `DomainHeaderTrailing` 慣例，僅 `AppDestination.tickets` 一行條件式
@@ -22,7 +22,6 @@ import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
-import 'ticket_list_fixtures.dart';
 import 'ticket_list_providers.dart';
 import 'ticket_list_state.dart';
 
