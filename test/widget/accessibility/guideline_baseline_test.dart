@@ -26,7 +26,10 @@ import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_screen.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_providers.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_screen.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
@@ -79,7 +82,11 @@ final _cases = <_Case>[
     ucFlowUcListProvider.overrideWithValue(UcFlowFixtures.ucList),
     selectedUcProvider.overrideWith((ref) => 'UC-02'),
   ]),
-  _Case('traceability', const TraceabilityScreen(), const []),
+  _Case('traceability', const TraceabilityScreen(), [
+    traceabilityStateProvider.overrideWith(
+      (ref) => const TraceabilityNormal(TraceabilityFixtures.normal),
+    ),
+  ]),
   _Case('gaps', const GapReportScreen(), [
     gapReportProvider.overrideWith(_FixedGap.new),
   ]),
@@ -163,6 +170,13 @@ void main() {
           expect(
             find.bySemanticsLabel(RegExp('.+'), skipOffstage: false),
             findsWidgets,
+          );
+        }
+        if (c.name == 'traceability') {
+          // 檢查的必須是正常畫面，而非專案未就緒。
+          expect(
+            find.byKey(const Key('state-traceability-normal')),
+            findsOneWidget,
           );
         }
         final actual = <String, Set<String>>{};

@@ -1238,6 +1238,12 @@ abstract class AppLocalizations {
   /// **'此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜；型別表修正或重新產生之前，重新掃描仍會得到相同結果'**
   String domainGraphUnavailableMessage(String appVersion);
 
+  /// SPEC-001 §3 追溯視圖·圖不可用的訊息（state-traceability-graph-unavailable；appVersion 為 App 內建型別表產生版本）
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜，追溯視圖暫無法顯示；可至 Domain 視圖重新掃描'**
+  String traceabilityGraphUnavailableMessage(String appVersion);
+
   /// SPEC-001 §1 Domain 視圖·圖不可用列在掃描輪次進行期間取代原因文字的訊息（SPEC-004 §4.0.6）
   ///
   /// In zh, this message translates to:

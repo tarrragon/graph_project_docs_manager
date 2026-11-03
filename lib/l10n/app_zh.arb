@@ -1295,6 +1295,16 @@
     }
   },
 
+  "traceabilityGraphUnavailableMessage": "此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜，追溯視圖暫無法顯示；可至 Domain 視圖重新掃描",
+  "@traceabilityGraphUnavailableMessage": {
+    "description": "SPEC-001 §3 追溯視圖·圖不可用的訊息（state-traceability-graph-unavailable；appVersion 為 App 內建型別表產生版本）",
+    "placeholders": {
+      "appVersion": {
+        "type": "String"
+      }
+    }
+  },
+
   "domainGraphUnavailableScanning": "掃描中",
   "@domainGraphUnavailableScanning": {
     "description": "SPEC-001 §1 Domain 視圖·圖不可用列在掃描輪次進行期間取代原因文字的訊息（SPEC-004 §4.0.6）"

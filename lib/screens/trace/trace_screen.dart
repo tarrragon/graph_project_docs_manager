@@ -11,6 +11,7 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/domain_view_schema_version.dart';
 import '../../app/jump_targets.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
@@ -55,12 +56,40 @@ class TraceabilityScreen extends ConsumerWidget {
           ),
         ],
       ),
+      TraceabilityGraphUnavailable() => const _GraphUnavailable(),
       TraceabilityProjectUnready(:final reason) => ProjectUnreadyView(
         reason: reason,
         stateKey: const Key('state-traceability-project-unready'),
         actionKey: const Key('action-traceability-goto-domain'),
       ),
     };
+  }
+}
+
+/// 圖不可用（SPEC-001 §3；SPEC-004 §3.6）：說明 + 前往 Domain 視圖，不設
+/// 重新掃描。
+class _GraphUnavailable extends ConsumerWidget {
+  const _GraphUnavailable();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final appVersion = ref
+        .watch(builtinSchemaVersionProvider)
+        .maybeWhen(data: (v) => v, orElse: () => '');
+    return EmptyState(
+      variant: EmptyStateVariant.page,
+      testKey: const Key('state-traceability-graph-unavailable'),
+      message: l10n.traceabilityGraphUnavailableMessage(appVersion),
+      actions: [
+        AppButton(
+          label: l10n.gotoDomainViewAction,
+          testKey: const Key('action-traceability-goto-domain'),
+          onPressed: () =>
+              navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
+        ),
+      ],
+    );
   }
 }
 

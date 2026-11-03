@@ -151,6 +151,7 @@
   "projectUnreadyReasonLoadFailed": "Graph failed to load",
   "domainLoadFailedMessage": "An unexpected error occurred while scanning this project, so the graph could not be loaded.",
   "domainGraphUnavailableMessage": "This project's schema version is outside the range this app knows (up to {appVersion}), so the latest scan could not build the graph. Until the schema is fixed or regenerated, rescanning will give the same result",
+  "traceabilityGraphUnavailableMessage": "This project's schema version is outside the range this app knows (up to {appVersion}), so the latest scan could not build the graph and the traceability view is unavailable. You can rescan from the Domain view",
   "domainGraphUnavailableScanning": "Scanning…",
   "reloadAction": "Reload",
   "gotoDomainViewAction": "Go to Domain View",

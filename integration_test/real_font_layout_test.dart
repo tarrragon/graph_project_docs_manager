@@ -18,6 +18,9 @@ import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_providers.dart';
+import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
@@ -88,6 +91,11 @@ void main() {
               if (destination == AppDestination.nodeDetail)
                 nodeDetailStateProvider.overrideWith(
                   (ref) => const NodeDetailReady(nodeId: 'UC-04'),
+                ),
+              if (destination == AppDestination.traceability)
+                traceabilityStateProvider.overrideWith(
+                  (ref) =>
+                      const TraceabilityNormal(TraceabilityFixtures.normal),
                 ),
               if (destination == AppDestination.tickets)
                 ticketListStateProvider.overrideWith(
