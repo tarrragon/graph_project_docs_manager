@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-03"
-version: "1.68"
+version: "1.69"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -623,6 +623,11 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > `keyMissing` → `gapNonDomainPathsKeyMissing`、`notList` → `gapNonDomainPathsNotList`（後兩者帶鍵名參數）。
 > 項目路徑為清單檔相對路徑，無行號；無指向節點，點擊開啟原始檔。狀態總數不變。
 >
+> **主題檔破洞的項目說明**（v1.68，`0.6.0-W1-112`）：「有破洞」列中原因碼 `topicFilesMalformed` 的破洞項
+> （EVT-CORPUS-006），子原因 `unreadable` → SPEC-004 §4.0.6 `gapTopicFilesUnreadable`；`registryMismatch` →
+> `gapTopicFilesUnregisteredTopics`，顯示「N 個主題名不在主題清單」，N 取破洞的 `unregisteredTopicCount`。
+> 不列出是哪些主題名。項目路徑為主題檔相對路徑，無行號；無指向節點，點擊開啟原始檔。狀態總數不變。
+>
 > **專案層級宣告狀態一行不是新狀態**（`0.5.0-W1-096.9`，依 `0.5.0-W1-096.3` 用戶裁決 7a，
 > 2026-10-08；分類見 UC-02〈ticket 定位的五種狀態與整體未宣告〉）：ticket 定位的「domain 未宣告」
 > 「非 domain 未宣告」是宣告缺口，**不作為破洞項列入任何分節**，也不計入破洞數（不影響有／無破洞
@@ -698,6 +703,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `parseFailure` · EVT-CORPUS-003 | 全部原因 | `parse-failure` | `gapCategoryParseFailure` |
 > | `parseFailure` · EVT-CORPUS-004 | `flowBlockMalformed` | `flow-block-malformed` | `gapCategoryFlowBlockMalformed` |
 > | `parseFailure` · EVT-CORPUS-005 | `nonDomainPathsMalformed` 四個子原因 | `non-domain-paths-malformed` | `gapCategoryNonDomainPathsMalformed` |
+> | `parseFailure` · EVT-CORPUS-006（v1.69） | `topicFilesMalformed` 兩個子原因 | `topic-files-malformed` | `gapCategoryTopicFilesMalformed` |
 > | `graphDefect` 主圖 | `danglingRef`、`malformedRef`、`duplicateId`、`multiSource` | `graph-defect` | `gapCategoryGraphDefect` |
 > | `graphDefect` 名稱索引 | domain 重複宣告 | `graph-defect`（與主圖同節） | 同上 |
 > | `graphDefect` flow 子圖 | flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告、`traverses` 鍵缺席、事件引用未解析（v1.54） | `graph-defect-flow` | `gapCategoryGraphDefectFlow` |
@@ -712,6 +718,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 子類 | 鑑別成分（依序） |
 > |---|---|
 > | EVT-CORPUS-003／004／005 | category id、相對路徑 |
+> | EVT-CORPUS-006（v1.69） | category id、相對路徑、子原因（同一檔同輪的兩子原因依 SPEC-006 FR-12 規則 8 互斥；子原因仍列為成分，id 不依賴該互斥） |
 > | `danglingRef`／`malformedRef` | 子類名、來源節點 ID、欄位名、原始值 |
 > | `duplicateId` | 子類名、重複的 ID |
 > | `multiSource` | 子類名、起點 ID、邊型 |
@@ -733,6 +740,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | EVT-CORPUS-003 | 失敗檔相對路徑，行號有值時附 | 無（檔案未成節點） | 無法指向任何節點 |
 > | EVT-CORPUS-004 | UC 相對路徑 | 該 UC | flow 類：UC Flow 並選定該 UC（無步驟可定位，畫面顯示 `flowParseFailedMessage`） |
 > | EVT-CORPUS-005 | 清單檔相對路徑（見〈非字串元素破洞的項目說明〉） | 無 | 無法指向任何節點 |
+> | EVT-CORPUS-006（v1.69） | 主題檔相對路徑（見〈主題檔破洞的項目說明〉） | 無 | 無法指向任何節點 |
 > | `danglingRef`／`malformedRef` | 來源節點路徑 | 來源節點（引用值寫在該節點上） | 來源節點為 Ticket 時為 ticket，其餘為其他圖節點 |
 > | `duplicateId` | 全部路徑中 code point 序最小者 | 無（同一 ID 對應多個檔案，無單一節點） | 無法指向任何節點；點擊開啟該路徑 |
 > | `multiSource` | 起點節點路徑 | 起點節點 | 起點為 Ticket 時為 ticket，其餘為其他圖節點 |
@@ -1160,6 +1168,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.69 | 2026-11-03 | §5 主題檔破洞投影（`0.6.0-W1-112`，EVT-CORPUS-006 同批建立，SPEC-004 v1.115）：〈破洞報告項目投影〉表一新增分節 `topic-files-malformed`、表二新增項目 id 成分（含子原因）、表三新增指向列；新增〈主題檔破洞的項目說明〉。狀態總數不變 |
 | 1.68 | 2026-11-03 | §5 破洞報告新增註記〈檔案監看觸發的輪次不經「掃描中」〉（`0.6.0-W1-080`，對齊 SPEC-006 v1.31 FR-11 W4）：監看輪次期間停留在結果三態之一，完成後三態直接轉換；D1～D3 待裁指向 SPEC-006 FR-11〈W4 衍生待裁〉。狀態總數不變（44）。SPEC-003 v1.77、SPEC-006 v1.31 同批 |
 | 1.67 | 2026-11-02 | 追溯視圖接真資料（`0.6.0-W1-110`，依 `docs/tech-decisions.md` 補記段「2026-11-02 — UC → Ticket 邊」與 PROP-005 §0.6 補記）：§3 以〈四層樹由掃描輪次衍生〉取代〈第二跳欄位待決〉——三跳各寫明邊（`provenance`／`spec_association`／UC → Ticket 新邊）、欄位、取法與缺口判定，說明 1-hop 對稱聯集不適用的理由、不取的另一側欄位、`ticket_refs` 回填前第四層多為缺口屬預期、降級模式照常渲染、輪次更新比照 §4 與 SPEC-006 FR-11，並給五步判定順序；〈Ticket 層的資料來源〉刪「待 `0.1.0-W3-365` 定案」與 fixture 給定掛接；專案未就緒進入條件補「尚無完成輪次」；正常／鏈路斷裂／無提案進入條件補「建圖可用」；新增「圖不可用」列（第 46 列）。§8.1 補一列（判否）。狀態總數 43 → 44；SPEC-003、SPEC-004 同批同步 |
 | 1.66 | 2026-11-02 | §4 新增〈主題模式的資料來源與缺檔呈現〉註記（`0.6.0-W1-105.3.1`，依 `0.6.0-W1-105.3` 用戶裁定 G-T4 選 A）：主題取自同一掃描輪次的 Corpus ticket→主題映射（SPEC-006 FR-12），隨輪次替換；指派檔或主題清單缺檔、無法讀取、主題名不一致、孤兒指派、損壞票的主題模式呈現與破洞報告承載；主題檔破洞不計入「含損壞」。狀態數不變 |
