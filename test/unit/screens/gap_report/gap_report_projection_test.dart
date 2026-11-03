@@ -238,6 +238,18 @@ GapReportItem _only(List<GapReportCategory> cats) {
   return cats.single.items.single;
 }
 
+/// 規格表有、但 zh 或 en ARB 缺少的 key。
+List<String> missingInArb(
+  Map<String, (String, String)> rows,
+  Map<String, dynamic> zh,
+  Map<String, dynamic> en,
+) {
+  return [
+    for (final k in rows.keys)
+      if (!zh.containsKey(k) || !en.containsKey(k)) k,
+  ];
+}
+
 void main() {
   group('表一：分節', () {
     test('T1-1 EVT-CORPUS-003 全部原因 → parse-failure', () {
@@ -1166,50 +1178,47 @@ void main() {
       if (rows.containsKey(key)) duplicateKeys.add(key);
       rows[key] = (cells[2], cells[3]);
     }
-    // 〈1.80 提案〉表與 gapNonDomainPaths* 四列。
-    final keys = rows.keys
-        .where(
-          (k) =>
-              k.startsWith('gapCategory') ||
-              k.startsWith('gapParse') ||
-              k.startsWith('gapNonDomainPaths') ||
-              k.startsWith('gapTopicFiles') ||
-              const {
-                'gapFlowBlockMalformed',
-                'gapDanglingRefTargetMissing',
-                'gapDanglingRefTargetDuplicated',
-                'gapMalformedRefInvalidShape',
-                'gapMalformedRefPatternMismatch',
-                'gapMalformedRefSelfReference',
-                'gapDuplicateId',
-                'gapMultiSource',
-                'gapFlowRefUnresolved',
-                'gapFlowStepIdDuplicated',
-                'gapTraversesUndeclared',
-                'gapTraversesMissing',
-                'gapDomainDeclaredTwice',
-              }.contains(k),
-        )
-        .toList();
+    final keys = rows.keys.toList();
 
     test('規格表抽到重複 key 即失敗', () {
       expect(duplicateKeys, isEmpty);
     });
 
     test('SPEC-004 表中的 gap* key 全數存在於 zh／en ARB 且文案逐字相同', () {
-      // 〈1.80 提案〉26 個 + gapNonDomainPaths* 4 個 + 既有的
-      // gapCategoryOrphanEvent／gapCategoryEventDeclarationMismatch
-      // + EVT-CORPUS-006 的三個 key（gapCategoryTopicFilesMalformed、
-      // gapTopicFilesUnreadable、gapTopicFilesUnregisteredTopics）。
-      expect(keys, hasLength(35));
+      // 下界：防解析器抽到 0 列時空轉通過。
+      expect(keys, isNotEmpty);
       expect(keys, contains('gapCategoryOrphanEvent'));
       expect(keys, contains('gapCategoryEventDeclarationMismatch'));
+      expect(missingInArb(rows, zh, en), isEmpty);
       for (final k in keys) {
-        expect(zh.containsKey(k), isTrue, reason: 'zh 缺 $k');
-        expect(en.containsKey(k), isTrue, reason: 'en 缺 $k');
         expect(zh[k], rows[k]!.$1, reason: 'zh 文案 $k');
         expect(en[k], rows[k]!.$2, reason: 'en 文案 $k');
       }
+    });
+
+    test('ARB 的 gap* key 扣除具名豁免後全數出現在規格表（反向集合相等）', () {
+      // 豁免：掃描中畫面的 key，不屬 SPEC-004 gap 表。
+      const exempt = {'gapReportScanning', 'gapsScanningProcessedCount'};
+      for (final arb in [zh, en]) {
+        final extra = arb.keys
+            .where((k) => RegExp(r'^gap[A-Za-z]+$').hasMatch(k))
+            .where((k) => !exempt.contains(k) && !rows.containsKey(k))
+            .toList();
+        expect(extra, isEmpty, reason: 'ARB 有、規格表無：$extra');
+      }
+    });
+
+    test('E2 對照：規格有、ARB 無的 key 會被抓到', () {
+      final synthetic = <String, (String, String)>{
+        'gapSyntheticOnlyInSpec': ('甲', 'A'),
+        'gapCategoryOrphanEvent': (
+          zh['gapCategoryOrphanEvent'] as String,
+          en['gapCategoryOrphanEvent'] as String,
+        ),
+      };
+      final missing = missingInArb(synthetic, zh, en);
+      expect(missing, contains('gapSyntheticOnlyInSpec'));
+      expect(missing, isNot(contains('gapCategoryOrphanEvent')));
     });
 
     test('表格含跳脫豎線的文案可正確比對（解析器自檢）', () {
