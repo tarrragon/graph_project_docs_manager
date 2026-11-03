@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-03"
-version: "1.7"
+version: "1.8"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -15,7 +15,7 @@ extension_status: "not-applicable"
 
 runtime_surface: "yes"
 
-related_specs: [SPEC-001, SPEC-003, SPEC-006]
+related_specs: [SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-006, SPEC-007]
 related_usecases: []
 ticket_refs: [0.1.0-W2-004, 0.1.0-W3-064, 0.1.0-W3-096, 0.1.0-W3-112, 0.1.0-W3-205, 0.1.0-W3-379, 0.3.1-W1-097, 0.3.1-W3-113, 0.3.1-W3-122, 0.3.2-W1-004, 0.3.2-W1-007, 0.3.2-W1-008, 0.3.2-W1-010, 0.3.3-W3-389, 0.5.0-W1-114.15, 0.5.0-W1-114.17, 0.5.0-W1-114.18, 0.5.0-W1-114.22, 0.5.0-W1-119, 0.5.0-W1-119.2, 0.5.0-W1-119.3, 0.5.0-W1-168.2.2, 0.5.0-W1-443.1, 0.5.0-W1-458.4, 0.5.0-W1-513.1.1, 0.6.0-W1-077]
 ---
@@ -184,6 +184,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.8 | 2026-11-03 | `related_specs` 對齊 SPEC 端宣告（`0.6.0-W1-116`，用戶裁定 B：UC 列出畫面所依賴的每一份 SPEC，橫切 SPEC 亦列）：補 SPEC-002、SPEC-004、SPEC-007（圖結構破洞出自 FR-09）；不動正文與結構化 flow |
 | 1.7 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填 26 張實作票（依該票〈入選判準修訂版〉，以 lib/screens/gap_report/ 為對照目錄）；不動正文與結構化 flow 區塊 |
 | 1.6 | 2026-10-21 | `0.5.0-W1-458.5`（458 用戶裁定題 D2、D3）：`rescan` emits 由 `EVT-CORPUS-002` 改為 `EVT-CORPUS-001`（重新掃描是整輪重新解析，比照 UC-05 `trigger-load`）；新增分支〈檔案監看（尚未實作）〉兩步 `detect-external-change`（emits `EVT-CORPUS-002`）→ `reparse`（consumes `EVT-CORPUS-002`，emits `EVT-CORPUS-001`），traverses 皆為 `[corpus]`；替代場景同步 |
 | 1.5 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定類 B）：`enter-gap-report` 補 consumes `EVT-CORPUS-001`（原始節點）、`EVT-CORPUS-004`、`EVT-CORPUS-005`（解析失敗）與 `EVT-GRAPH-001`（`graphDefects` 與 flow 子圖）；不新增步驟，EVT 宣告不動 |

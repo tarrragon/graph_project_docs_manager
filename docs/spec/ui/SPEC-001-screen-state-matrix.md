@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-03"
-version: "1.69"
+version: "1.70"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -450,7 +450,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > |----|------|------|------|------|
 > | PROP → SPEC | `provenance` | SPEC 的 `source_proposal` | 反查：`source_proposal` 含該 PROP id 的 SPEC 皆為其子 | PROP 沒有任何 SPEC 子節點 |
 > | SPEC → UC | `spec_association` | UC 的 `related_specs` | 反查：`related_specs` 含該 SPEC id 的 UC 皆為其子 | SPEC 沒有任何 UC 子節點 |
-> | UC → Ticket | 新邊（forward_field 為 `ticket_refs`，鍵名待定，`0.6.0-W1-102`） | UC 的 `ticket_refs` | 正查：`ticket_refs` 列出的 ticket 皆為其子 | UC 沒有任何 Ticket 子節點 |
+> | UC → Ticket | 新邊（forward_field 為 `ticket_refs`，邊型鍵名 `uc_ticket_refs`，`0.6.0-W1-102` 已定案） | UC 的 `ticket_refs` | 正查：`ticket_refs` 列出的 ticket 皆為其子 | UC 沒有任何 Ticket 子節點 |
 >
 > - **指向不存在的 id**：不成子節點，該值由破洞報告的 `danglingRef` 承載（SPEC-007 斷邊交 Diagnostics）；
 >   父節點只有這類值時，缺口判定與「沒有子節點」相同。
@@ -1168,6 +1168,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.70 | 2026-11-03 | §3 三跳表 UC → Ticket 列的「鍵名待定」改為已定的邊型鍵名 `uc_ticket_refs`（`0.6.0-W1-116`，`0.6.0-W1-102` 已定案）；不動其他條文 |
 | 1.69 | 2026-11-03 | §5 主題檔破洞投影（`0.6.0-W1-112`，EVT-CORPUS-006 同批建立，SPEC-004 v1.115）：〈破洞報告項目投影〉表一新增分節 `topic-files-malformed`、表二新增項目 id 成分（含子原因）、表三新增指向列；新增〈主題檔破洞的項目說明〉。狀態總數不變 |
 | 1.68 | 2026-11-03 | §5 破洞報告新增註記〈檔案監看觸發的輪次不經「掃描中」〉（`0.6.0-W1-080`，對齊 SPEC-006 v1.31 FR-11 W4）：監看輪次期間停留在結果三態之一，完成後三態直接轉換；D1～D3 待裁指向 SPEC-006 FR-11〈W4 衍生待裁〉。狀態總數不變（44）。SPEC-003 v1.77、SPEC-006 v1.31 同批 |
 | 1.67 | 2026-11-02 | 追溯視圖接真資料（`0.6.0-W1-110`，依 `docs/tech-decisions.md` 補記段「2026-11-02 — UC → Ticket 邊」與 PROP-005 §0.6 補記）：§3 以〈四層樹由掃描輪次衍生〉取代〈第二跳欄位待決〉——三跳各寫明邊（`provenance`／`spec_association`／UC → Ticket 新邊）、欄位、取法與缺口判定，說明 1-hop 對稱聯集不適用的理由、不取的另一側欄位、`ticket_refs` 回填前第四層多為缺口屬預期、降級模式照常渲染、輪次更新比照 §4 與 SPEC-006 FR-11，並給五步判定順序；〈Ticket 層的資料來源〉刪「待 `0.1.0-W3-365` 定案」與 fixture 給定掛接；專案未就緒進入條件補「尚無完成輪次」；正常／鏈路斷裂／無提案進入條件補「建圖可用」；新增「圖不可用」列（第 46 列）。§8.1 補一列（判否）。狀態總數 43 → 44；SPEC-003、SPEC-004 同批同步 |
