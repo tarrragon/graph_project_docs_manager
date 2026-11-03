@@ -2,6 +2,7 @@
 /// （0.6.0-W1-080，批 B4）。真實 FSEvents 行為交實機驗證。
 library;
 
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
@@ -10,6 +11,8 @@ import 'package:watcher/watcher.dart';
 
 const String _docsDirName = 'docs';
 const String _posixSeparator = '/';
+const String _tag = 'DirectoryWatchSource';
+const int _traceLevel = 500; // magic-exempt: developer.log 500 級別，B10 實機定位用
 
 class DirectoryWatchSource implements WatchSource {
   DirectoryWatchSource();
@@ -28,7 +31,15 @@ class DirectoryWatchSource implements WatchSource {
   Stream<WatchChange> watch(String workspaceRoot) {
     final watcher = DirectoryWatcher(_docsPathOf(workspaceRoot));
     _watchers[workspaceRoot] = watcher;
-    return watcher.events.map((e) => toWatchChange(workspaceRoot, e));
+    return watcher.events.map((e) {
+      developer.log(
+        // i18n-exempt: developer log
+        'raw event type=${e.type} path=${e.path} root=$workspaceRoot',
+        name: _tag,
+        level: _traceLevel,
+      );
+      return toWatchChange(workspaceRoot, e);
+    });
   }
 
   @override

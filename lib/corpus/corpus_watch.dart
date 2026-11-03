@@ -30,6 +30,7 @@ const Set<String> _topicFiles = {
 };
 const int _warningLevel = 900; // magic-exempt: developer.log warning 級別
 const int _infoLevel = 800; // magic-exempt: developer.log info 級別
+const int _traceLevel = 500; // magic-exempt: developer.log 500 級別，B10 實機定位用
 
 /// EVT-CORPUS-002 單筆變動的種類（FR-11 規則 5）。
 enum WatchChangeKind { created, modified, deleted }
@@ -170,7 +171,13 @@ class CorpusWatcher {
        _clock = clock,
        _log = log,
        _nonDomainPathsLocation = nonDomainPathsLocation {
-    _debouncer = WatchDebouncer(clock: clock, onFlush: onChanged);
+    _debouncer = WatchDebouncer(
+      clock: clock,
+      onFlush: (event) {
+        _log(_flushSummary(event), level: _traceLevel);
+        onChanged(event);
+      },
+    );
   }
 
   final Duration readyTimeout;
@@ -245,12 +252,26 @@ class CorpusWatcher {
   }
 
   void _onChange(WatchChange change) {
-    if (isScanInputPath(
+    final keep = isScanInputPath(
       change.relativePath,
       nonDomainPathsLocation: _nonDomainPathsLocation,
-    )) {
-      _debouncer.add(change);
+    );
+    _log(
+      // i18n-exempt: developer log
+      'watch change ${change.relativePath} (${change.kind.name}): '
+      '${keep ? 'kept' : 'dropped'}',
+      level: _traceLevel,
+    );
+    if (keep) _debouncer.add(change);
+  }
+
+  static String _flushSummary(CorpusChangedEvent event) {
+    final kinds = <String, int>{};
+    for (final c in event.changes) {
+      kinds[c.kind.name] = (kinds[c.kind.name] ?? 0) + 1;
     }
+    // i18n-exempt: developer log
+    return 'EVT-CORPUS-002 flush: ${event.changes.length} changes $kinds';
   }
 
   /// [gate] 為發起該次 start 的閘門；已被新的 start 取代者的失敗不生效（F4）。
