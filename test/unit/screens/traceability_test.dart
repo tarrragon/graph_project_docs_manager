@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart' show InkWell;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/jump_targets.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
@@ -69,6 +70,23 @@ void main() {
         expect(container.read(returnToProvider), AppDestination.traceability);
       },
     );
+
+    testWidgets('點節點列 → nodeDetailTargetProvider 帶該節點 id', (tester) async {
+      final container = await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [
+          selectedDestinationProvider.overrideWith(
+            (ref) => AppDestination.traceability,
+          ),
+        ],
+      );
+
+      await tester.tap(find.byKey(const Key('card-traceability-PROP-001')));
+      await tester.pumpAndSettle();
+
+      expect(container.read(nodeDetailTargetProvider), 'PROP-001');
+    });
   });
 
   group('鏈路斷裂態 state-traceability-broken', () {
