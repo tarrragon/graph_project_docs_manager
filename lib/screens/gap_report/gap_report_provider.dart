@@ -140,18 +140,37 @@ class GapReportNotifier extends Notifier<GapReportState> {
   /// （如 Domain 視圖）建立完成時，直接呈現該輪結果。
   void _recoverWhenRoundCompletes() {
     ref.listen<ScanRoundState>(scanRoundProvider, (_, next) {
-      if (!_awaitingRound || next is! ScanRoundCompleted) return;
-      _awaitingRound = false;
-      final projected = _stateOfCompletedRound();
-      if (projected == null) return;
-      _presentation.onRoundCompleted(
-        ScanTrigger.manual,
-        gapItemIdsOf(next.result),
-        rerunPending: false,
-      );
-      state = projected;
-      _lastResult = projected;
+      if (next is ScanRoundCompleted) _onRoundCompleted(next.result);
     });
+  }
+
+  /// 輪次完成的唯一入口（0.6.0-W1-139）：以 scanRoundProvider 進入
+  /// Completed 為完成訊號。只接受「本頁正在等」的輪次：排程輪次進行中，
+  /// 或先前輪次取不到而等待新輪（[_awaitingRound]）；其他消費者在本頁已有
+  /// 結果時完成的輪次不覆蓋本頁。失敗與不可用不屬完成訊號，仍由
+  /// [_onRoundEvent] 處理（ScanRoundState 無失敗狀態）。
+  void _onRoundCompleted(ScanRoundResult result) {
+    if (_cancelHold) return;
+    final awaiting = _awaitingRound;
+    final scheduler = ref.read(corpusWatchProvider).scheduler;
+    if (!awaiting && !scheduler.isRunning) return;
+    _awaitingRound = false;
+    _presentation.onRoundCompleted(
+      ScanTrigger.manual,
+      gapItemIdsOf(result),
+      rerunPending: scheduler.hasPendingRerun,
+    );
+    if (awaiting) return _presentRecoveredRound();
+    if (!_presentation.isScanning) unawaited(_applyCompletedRound());
+  }
+
+  /// 等待中的輪次完成：頁面不在掃描中（未就緒態），直接呈現，不等最短
+  /// 顯示期限。
+  void _presentRecoveredRound() {
+    final projected = _stateOfCompletedRound();
+    if (projected == null) return;
+    state = projected;
+    _lastResult = projected;
   }
 
   /// 訂閱輪次事件；每次 build 重訂（上一份隨 onDispose 取消）。
@@ -167,17 +186,9 @@ class GapReportNotifier extends Notifier<GapReportState> {
       _showScanFailed();
       return;
     }
-    final ids = event.itemIds;
-    if (ids == null) {
-      _onRoundUnavailable();
-      return;
-    }
-    _presentation.onRoundCompleted(
-      event.trigger,
-      ids,
-      rerunPending: event.rerunPending,
-    );
-    if (!_presentation.isScanning) unawaited(_applyCompletedRound());
+    // 有結果的完成由 [_onRoundCompleted] 經 scanRoundProvider 處理；此處
+    // 只留輪次不可用（itemIds 為 null）。
+    if (event.itemIds == null) _onRoundUnavailable();
   }
 
   bool get _isScanningNow {
