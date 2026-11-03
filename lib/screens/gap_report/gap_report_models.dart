@@ -49,6 +49,8 @@ enum GapDescriptionKind {
   nonDomainPathsKeyMissing,
   nonDomainPathsNotList,
   nonDomainPathsNonStringElements,
+  topicFilesUnreadable,
+  topicFilesUnregisteredTopics,
   danglingRefTargetMissing,
   danglingRefTargetDuplicated,
   malformedRefInvalidShape,

@@ -85,6 +85,7 @@ GapDetectionResult _detectParseFailures(
     ),
     flowEvents: scan.flowParseFailedEvents,
     nonDomainPathsEvent: scan.nonDomainPathsParseFailedEvent,
+    topicFilesEvents: scan.topicFilesParseFailedEvents,
   );
 }
 

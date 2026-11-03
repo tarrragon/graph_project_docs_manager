@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 import 'package:graph_project_docs_manager/corpus/uc_flow_extractor.dart';
 import 'package:graph_project_docs_manager/diagnostics/gap_detector.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
@@ -804,6 +805,127 @@ void main() {
       expect(
         const FlowBlockMalformedGap(path: 'p', reason: 'r').reasonCode,
         flowBlockMalformedReasonCode,
+      );
+    });
+  });
+
+  group('0.6.0-W1-113.2 EVT-CORPUS-006 主題檔破洞（FR-08 第四項）', () {
+    const unreadableEvent = TopicFilesParseFailedEvent(
+      path: topicAssignmentsPath,
+      reason: TopicFilesMalformedReason.unreadable,
+    );
+    const mismatchEvent = TopicFilesParseFailedEvent(
+      path: topicsRegistryPath,
+      reason: TopicFilesMalformedReason.registryMismatch,
+      unregisteredTopicCount: 2,
+    );
+
+    test('每筆事件一筆破洞，欄位逐一對齊，原因碼為常數', () {
+      final result = detectParseFailureGaps(
+        events: const [],
+        undeterminedCount: 0,
+        unavailableReason: null,
+        topicFilesEvents: const [unreadableEvent, mismatchEvent],
+      );
+      final gaps = result.gaps.cast<TopicFilesMalformedGap>();
+      expect(gaps, hasLength(2));
+      expect(gaps[0].path, topicAssignmentsPath);
+      expect(gaps[0].subReason, TopicFilesMalformedReason.unreadable);
+      expect(gaps[0].unregisteredTopicCount, isNull);
+      expect(gaps[1].subReason, TopicFilesMalformedReason.registryMismatch);
+      expect(gaps[1].unregisteredTopicCount, 2);
+      expect(gaps[1].reasonCode, topicFilesMalformedGapReasonCode);
+      expect(topicFilesMalformedGapReasonCode, 'topicFilesMalformed');
+    });
+
+    test('對照：不傳 topicFilesEvents 時無主題檔破洞', () {
+      final result = detectParseFailureGaps(
+        events: const [],
+        undeterminedCount: 0,
+        unavailableReason: null,
+      );
+      expect(result.gaps.whereType<TopicFilesMalformedGap>(), isEmpty);
+    });
+
+    test('查詢不可用時照報（不依賴路徑查詢）', () {
+      final result = detectParseFailureGaps(
+        events: const [],
+        undeterminedCount: 0,
+        unavailableReason: UndeterminedGapReason.noPathPattern,
+        topicFilesEvents: const [mismatchEvent],
+      );
+      expect(result, isA<Undetermined>());
+      expect(result.gaps.single, isA<TopicFilesMalformedGap>());
+    });
+
+    test('值相等與 hashCode', () {
+      TopicFilesMalformedGap make(int count) => TopicFilesMalformedGap(
+        path: 'p',
+        reason: 'registryMismatch',
+        subReason: TopicFilesMalformedReason.registryMismatch,
+        unregisteredTopicCount: count,
+      );
+      expect(make(1), make(1));
+      expect(make(1).hashCode, make(1).hashCode);
+      expect(make(1), isNot(make(2)));
+    });
+
+    test('count 只在 registryMismatch 時有值（斷言）', () {
+      expect(
+        () => TopicFilesMalformedGap(
+          path: 'p',
+          reason: 'r',
+          subReason: TopicFilesMalformedReason.unreadable,
+          unregisteredTopicCount: 1,
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => TopicFilesMalformedGap(
+          path: 'p',
+          reason: 'r',
+          subReason: TopicFilesMalformedReason.registryMismatch,
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('D1-3 守恆含第四項：四項計數皆非零時破洞數等於四項和', () async {
+      final fs = FakeDocsFileSystem()
+        ..addFile('docs/carrier/nofm.md', utf8.encode('# title\n'))
+        ..addFile(
+          'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
+          ucBytes(blocks: [malformedFlowBlock]),
+        )
+        ..addFile('docs/non-domain-paths.yaml', utf8.encode(_badListYaml))
+        ..addFile(topicAssignmentsPath, utf8.encode('A\tq\n'))
+        ..addFile(topicsRegistryPath, utf8.encode('x\n'));
+      final scan = await scanCorpus(
+        fileSystem: fs,
+        table: _threeSourceTable(),
+        builtinTable: _builtinTable(),
+      );
+      final summary = scan.summary;
+      final result = detectParseFailureGaps(
+        events: scan.parseFailureEvents,
+        undeterminedCount: summary.undeterminedCount,
+        unavailableReason: null,
+        flowEvents: scan.flowParseFailedEvents,
+        nonDomainPathsEvent: scan.nonDomainPathsParseFailedEvent,
+        topicFilesEvents: scan.topicFilesParseFailedEvents,
+      );
+      expect(summary.hitCarrierCount, 1);
+      expect(summary.flowBlockMalformedUcCount, 1);
+      expect(summary.nonDomainPathsMalformedCount, 1);
+      expect(summary.topicFilesMalformedCount, 1);
+      expect(
+        result.gaps,
+        hasLength(
+          summary.hitCarrierCount +
+              summary.flowBlockMalformedUcCount +
+              summary.nonDomainPathsMalformedCount +
+              summary.topicFilesMalformedCount,
+        ),
       );
     });
   });

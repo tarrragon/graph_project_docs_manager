@@ -34,7 +34,8 @@ import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart'
-    show RawNode;
+    show CorpusScanResult, RawNode;
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/spec007/bundle_graph_fixture.dart';
@@ -130,6 +131,51 @@ void main() {
           gapCategoryIdGraphDefect,
         ]),
       );
+    });
+
+    test('A2（EVT-CORPUS-006）輪次帶主題檔事件 → 報告出現主題檔分節；對照無事件則無', () {
+      final base = fakeRound();
+      final scan = base.scan;
+      ScanRoundResult withTopicEvents(
+        List<TopicFilesParseFailedEvent> events,
+      ) => ScanRoundResult(
+        workspacePath: base.workspacePath,
+        scan: CorpusScanResult(
+          rawNodes: scan.rawNodes,
+          parseErrors: scan.parseErrors,
+          parseFailureEvents: scan.parseFailureEvents,
+          schemaAmbiguousNodes: scan.schemaAmbiguousNodes,
+          summary: scan.summary,
+          topicFilesRead: TopicFilesReadResult(
+            ticketTopics: const {},
+            assignmentsStatus: TopicFileStatus.present,
+            registryStatus: TopicFileStatus.present,
+            events: events,
+          ),
+        ),
+        graph: base.graph,
+        schemaResolution: base.schemaResolution,
+        isDegraded: base.isDegraded,
+      );
+
+      final clean = gapReportStateFromRound(
+        withTopicEvents(const []),
+        nonDomainPathsKey: _key,
+      );
+      final dirty = gapReportStateFromRound(
+        withTopicEvents(const [
+          TopicFilesParseFailedEvent(
+            path: topicsRegistryPath,
+            reason: TopicFilesMalformedReason.registryMismatch,
+            unregisteredTopicCount: 2,
+          ),
+        ]),
+        nonDomainPathsKey: _key,
+      );
+
+      expect(clean, isA<GapReportNoGaps>());
+      expect(dirty, isA<GapReportFound>());
+      expect(_categoryIds(dirty), ['topic-files-malformed']);
     });
 
     test('A1（E1）零事件零缺陷 → 無破洞；同輪加一筆 003 → 有破洞，兩者不同', () {

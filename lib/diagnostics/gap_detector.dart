@@ -9,6 +9,7 @@ import 'dart:developer' as developer;
 
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 import 'package:graph_project_docs_manager/corpus/uc_flow_extractor.dart';
 
 import 'parse_failure_gap.dart';
@@ -34,10 +35,13 @@ GapDetectionResult detectParseFailureGaps({
   required UndeterminedGapReason? unavailableReason,
   List<FlowParseFailedEvent> flowEvents = const <FlowParseFailedEvent>[],
   NonDomainPathsParseFailedEvent? nonDomainPathsEvent,
+  List<TopicFilesParseFailedEvent> topicFilesEvents =
+      const <TopicFilesParseFailedEvent>[],
 }) {
   final independentGaps = <ParseFailureGap>[
     ...flowEvents.map(_toFlowGap),
     if (nonDomainPathsEvent != null) _toNonDomainPathsGap(nonDomainPathsEvent),
+    ...topicFilesEvents.map(_toTopicFilesGap),
   ];
   if (unavailableReason != null) {
     return Undetermined(
@@ -104,4 +108,15 @@ ParseFailureGap _toNonDomainPathsGap(NonDomainPathsParseFailedEvent event) =>
       reason: event.reason.name,
       subReason: event.reason,
       nonStringElementCount: event.nonStringElementCount,
+    );
+
+/// 需求：[SPEC-006 FR-08〈規則〉、EVT-CORPUS-006] 一筆事件一筆破洞，帶主題檔
+/// 路徑與子原因；`unregisteredTopicCount` 只在 `registryMismatch` 時有值
+/// （事件側保證），直接沿用。負載不含在地化字串。
+ParseFailureGap _toTopicFilesGap(TopicFilesParseFailedEvent event) =>
+    TopicFilesMalformedGap(
+      path: event.path,
+      reason: event.reason.name,
+      subReason: event.reason,
+      unregisteredTopicCount: event.unregisteredTopicCount,
     );

@@ -512,6 +512,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Malformed Non-domain Path List';
 
   @override
+  String get gapCategoryTopicFilesMalformed =>
+      'Unreadable or Inconsistent Topic Files';
+
+  @override
+  String get gapTopicFilesUnreadable => 'Could not read the topic file';
+
+  @override
+  String gapTopicFilesUnregisteredTopics(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count topic names are not in the topic registry',
+      one: '1 topic name is not in the topic registry',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get gapCategoryGraphDefect => 'Graph Defects';
 
   @override

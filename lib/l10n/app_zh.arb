@@ -882,6 +882,26 @@
     "description": "SPEC-004 §4.0.6〈1.80 提案〉：分節 non-domain-paths-malformed（EVT-CORPUS-005）"
   },
 
+  "gapCategoryTopicFilesMalformed": "主題檔無法讀取或不一致",
+  "@gapCategoryTopicFilesMalformed": {
+    "description": "SPEC-004 §4.0.6：分節 topic-files-malformed（EVT-CORPUS-006）"
+  },
+
+  "gapTopicFilesUnreadable": "無法讀取主題檔",
+  "@gapTopicFilesUnreadable": {
+    "description": "SPEC-004 §4.0.6：EVT-CORPUS-006 子原因 unreadable"
+  },
+
+  "gapTopicFilesUnregisteredTopics": "{count} 個主題名不在主題清單",
+  "@gapTopicFilesUnregisteredTopics": {
+    "description": "SPEC-004 §4.0.6：EVT-CORPUS-006 子原因 registryMismatch；count 取破洞的 unregisteredTopicCount",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
   "gapCategoryGraphDefect": "圖結構缺陷",
   "@gapCategoryGraphDefect": {
     "description": "SPEC-004 §4.0.6〈1.80 提案〉：分節 graph-defect（主圖四子類與 domain 重複宣告）"
