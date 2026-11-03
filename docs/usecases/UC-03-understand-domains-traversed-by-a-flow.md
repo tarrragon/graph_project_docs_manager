@@ -4,8 +4,8 @@ title: "理解一條 flow 貫穿哪些 domain"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-09-15"
-version: "1.3"
+updated: "2026-11-03"
+version: "1.4"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -17,7 +17,7 @@ runtime_surface: "yes"
 
 related_specs: [SPEC-001, SPEC-003]
 related_usecases: []
-ticket_refs: []
+ticket_refs: [0.1.0-W2-010, 0.1.0-W2-013, 0.3.2-W1-004, 0.3.2-W1-007, 0.3.3-W3-389, 0.5.0-W1-114.18, 0.5.0-W1-114.23, 0.5.0-W1-168.2.2, 0.5.0-W1-451, 0.5.0-W1-547, 0.6.0-W1-077]
 ---
 
 # UC-03: 理解一條 flow 貫穿哪些 domain
@@ -137,6 +137,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.4 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填 11 張實作票（依該票〈入選判準修訂版〉，以 lib/screens/uc_flow/ 為對照目錄）；不動正文與結構化 flow 區塊 |
 | 1.3 | 2026-09-15 | 追修同步稽核裁決議題 P2（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：`related_specs` 補 SPEC-003（內文〈檢視事件流〉引用 SPEC-003 §3.2 而 frontmatter 未列） |
 | 1.2 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` .36 #15）：替代場景〈檢視事件流〉改「沿發送事件欄」，消費資訊改指向事件流小表（步驟表僅有發送事件欄，消費資訊由 SPEC-003 §3.2〈事件流小表〉承載） |
 | 1.1 | 2026-09-14 | 驗收前提改為已定案：步驟 domain 來源為 `FlowStep.traverses`（`0.1.0-W3-345` SR-2） |

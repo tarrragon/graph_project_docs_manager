@@ -4,8 +4,8 @@ title: "開啟專案並抵達可用狀態"
 status: draft
 source_proposal: [PROP-003, PROP-002]
 created: "2026-08-26"
-updated: "2026-10-21"
-version: "1.7"
+updated: "2026-11-03"
+version: "1.8"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -17,7 +17,7 @@ runtime_surface: "yes"
 
 related_specs: [SPEC-001, SPEC-006]
 related_usecases: []
-ticket_refs: []
+ticket_refs: [0.1.0-W2-006, 0.1.0-W2-014, 0.2.0-W1-019, 0.2.0-W1-042, 0.2.1-W1-003, 0.2.1-W1-054, 0.3.2-W1-009, 0.3.2-W1-010, 0.5.0-W1-167, 0.5.0-W1-167.2, 0.5.0-W1-167.4, 0.5.0-W1-168.2.1, 0.5.0-W1-169.3, 0.5.0-W1-205.2.1, 0.5.0-W1-206.2, 0.5.0-W1-248.3.2, 0.5.0-W3-002.1, 0.6.0-W1-018, 0.6.0-W1-019, 0.6.0-W1-073.3]
 ---
 
 # UC-01: 開啟專案並抵達可用狀態
@@ -189,6 +189,7 @@ FR-09，EVT-CORPUS-004）；非 domain 路徑清單檔格式錯誤時，非 doma
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.8 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填 20 張實作票（依該票〈入選判準修訂版〉，以 lib/screens/project_switcher/、lib/app/workspace_selection.dart、lib/app/scan_round.dart 為對照目錄）；不動正文與結構化 flow 區塊 |
 | 1.7 | 2026-10-21 | `0.5.0-W1-458.1`（458 用戶裁定類 A、C）：flow 新增 `build-graph`（traverses `[graph]`，consumes `EVT-CORPUS-001`、`EVT-SCHEMA-001`，emits `EVT-GRAPH-001`），`parse-nodes` 的 next 與 `empty-graph` 的 branch_from 改接它；新增分支步驟 `partial-parse-failure`（branch_from `parse-nodes`，emits `EVT-CORPUS-003`／`004`／`005`）；`parse-nodes` 補 consumes `EVT-WORKSPACE-001`；`reach-domain-view` traverses 由 `[corpus]` 改 `[graph]`（消費步驟的 traverses 即消費方 domain）。正文主要成功場景加「建立圖譜」，〈空專案〉〈部分檔案解析失敗〉同步 |
 | 1.6 | 2026-10-09 | `0.5.0-W1-095.2`：結構化 flow 區塊新增純畫面步驟 `show-version-mismatch`（traverses `[]`，consumes `EVT-SCHEMA-002`），接在 `schema-rejected` 之後；`return_to: select-folder` 由 `schema-rejected` 移至新步驟 |
 | 1.5 | 2026-09-30 | `source_proposal` 由 `PROP-003` 改為 `[PROP-003, PROP-002]`：PROP-002 `outputs.usecase_refs` 已列 UC-01，補上對應的正向宣告（`0.4.0-W2-001`；`provenance` 正向基數為 `many`，SPEC-007 D7）；不動正文與結構化 flow 區塊 |
