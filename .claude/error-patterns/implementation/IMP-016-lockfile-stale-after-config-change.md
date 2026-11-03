@@ -77,7 +77,7 @@ requires-python = ">=3.11"
 - 合併的變更動到 `pubspec.yaml`、`pyproject.toml`、`package.json` 等依賴宣告檔時，合併後在主 checkout 重跑對應的安裝命令（`fvm flutter pub get`、`uv sync`、`npm install`）。
 - 在主 checkout 遇到「import 解析不到」時，先查最近合併的 commit 有沒有動到依賴宣告檔，再判斷是不是程式缺陷。
 
-**實例**：2026-11-03，某 Flutter 專案的一條線新增 watcher 依賴並合併。另一條線在主 checkout 跑 `dart analyze` 回 rc=3，跑完 `pub get` 後就沒問題了，`pubspec.lock` 沒有變動。
+**實例**：2026-11-03，某 Flutter 專案的一條線新增 watcher 依賴並合併。另一條線在主 checkout 跑 `dart analyze` 回 rc=3，跑完 `pub get` 後就沒問題了，`pubspec.lock` 沒有變動。同一天另一條線也在新建的 worktree 遇到同樣情況：worktree 從含新依賴的 main 切出，但沒有先跑 `pub get`，analyze 就誤報。新建 worktree 時也要先跑一次安裝命令。
 
 ---
 
