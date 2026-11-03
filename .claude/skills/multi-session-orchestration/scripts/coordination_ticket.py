@@ -7,6 +7,10 @@
 回傳 kind：ok／none／multiple／error，不靜默。覆寫來源依序為呼叫端傳入的票號、
 `.claude/project-integration/multi-session.json` 的 `coordinationTicket`；
 覆寫票已結案時加 warning 並退回自動解析。
+
+todolist 以逐行 regex 解析而不用 PyYAML：執行環境（hook／statusline 的 python3）不保證裝有
+第三方套件。代價是只認 2 格縮排 `  - version:` 與 4 格縮排 `    status:`；格式不符時
+todolist 非空卻解析出 0 個版本，視為 error 並寫 stderr，不回 none。
 """
 import argparse
 import json
@@ -198,10 +202,15 @@ def resolve_coordination_ticket(project_dir: Path, override: Optional[str] = Non
             return hit
     todolist = project_dir / TODOLIST_RELATIVE_PATH
     try:
-        worklogs = active_version_worklogs(todolist.read_text(encoding="utf-8"))
+        todolist_text = todolist.read_text(encoding="utf-8")
+        worklogs = active_version_worklogs(todolist_text)
     except OSError as exc:
         _warn(f"todolist 不可用 {todolist}：{exc}")
         return _result("error", warnings=warnings, reason=f"todolist 不可用：{exc}")
+    if todolist_text.strip() and not any(VERSION_LINE.match(ln) for ln in todolist_text.split("\n")):
+        reason = f"todolist 非空但解析出 0 個版本（縮排或欄位格式不符）：{todolist}"
+        _warn(reason)
+        return _result("error", warnings=warnings, reason=reason)
     candidates = scan_candidates(project_dir, worklogs)
     if not candidates:
         return _result("none", warnings=warnings)

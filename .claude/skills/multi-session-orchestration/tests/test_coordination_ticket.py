@@ -86,13 +86,39 @@ def test_todolist_missing_is_error(tmp_path, capsys):
     assert "todolist" in capsys.readouterr().err
 
 
+FOUR_SPACE = """versions:
+    - version: "0.6.0"
+      status: "active"
+      worklog: "docs/work-logs/v0/v0.6/v0.6.0/"
+"""
+INLINE_STATUS = """versions:
+  - status: "active"
+    version: "0.6.0"
+  - { version: "0.6.0", status: "active" }
+"""
+
+
+@pytest.mark.parametrize("todolist", [FOUR_SPACE, INLINE_STATUS], ids=["four-space", "inline-item"])
+def test_unparsable_todolist_is_error(tmp_path, capsys, todolist):
+    """E2 正向對照：格式不符不可安靜回 none。"""
+    make_repo(tmp_path, {"0.6.0-W1-099": COORD}, todolist=todolist)
+    r = ct.resolve_coordination_ticket(tmp_path)
+    assert r["kind"] == "error" and "0 個版本" in r["reason"]
+    assert "0 個版本" in capsys.readouterr().err
+
+
+def test_completed_version_coordination_ticket_not_scanned(tmp_path):
+    make_repo(tmp_path, {"0.5.0-W1-001": COORD})
+    assert ct.resolve_coordination_ticket(tmp_path)["kind"] == "none"
+
+
 def test_cli_json_fields(tmp_path):
     make_repo(tmp_path, {"0.6.0-W1-099": COORD})
     out = subprocess.run([sys.executable, str(SCRIPTS / "coordination_ticket.py"), "--json",
                           "--project-dir", str(tmp_path)], capture_output=True, text=True)
     data = json.loads(out.stdout)
     assert out.returncode == 0
-    assert {"kind", "ticket", "path", "source", "warnings", "candidates"} <= set(data)
+    assert {"kind", "ticket", "path", "source", "warnings", "candidates", "reason"} <= set(data)
 
 
 # ---------------------------------------------------------------- U1 配對（對應 userTodos.ts parseUserTodos）
