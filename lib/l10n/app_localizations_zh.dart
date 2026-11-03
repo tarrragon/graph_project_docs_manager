@@ -105,6 +105,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ticketsUnassignedSection => '未歸屬';
 
   @override
+  String get ticketsNoTopicFilesNotice => '此專案無主題檔';
+
+  @override
   String get emptyTicketsMessage => '此專案尚無 ticket';
 
   @override

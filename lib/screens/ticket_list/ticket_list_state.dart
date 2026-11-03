@@ -118,6 +118,7 @@ class TicketsReady extends TicketListState {
     this.targetTicketId,
     this.targetFiltersAutoCleared = false,
     this.targetNotFoundNotified = false,
+    this.noTopicFilesNotice = false,
   });
 
   /// 全部已載入票（未經搜尋／篩選／排序）。
@@ -160,6 +161,10 @@ class TicketsReady extends TicketListState {
   /// （SPEC-003 §3.4〈帶目標跳入〉末列）；防重入旗標，避免重建重複發送。
   final bool targetNotFoundNotified;
 
+  /// 本輪指派檔不存在時為 `true`：主題模式頂部顯示「此專案無主題檔」說明列
+  /// （SPEC-001 §4）。由輪次衍生，非畫面操作。
+  final bool noTopicFilesNotice;
+
   /// 解析失敗票數（SPEC-001 §4「含損壞」疊加態的計入依據）。
   int get corruptedCount => tickets.where((t) => t.corrupted).length;
 
@@ -175,6 +180,7 @@ class TicketsReady extends TicketListState {
     String? Function()? targetTicketId,
     bool? targetFiltersAutoCleared,
     bool? targetNotFoundNotified,
+    bool? noTopicFilesNotice,
   }) {
     return TicketsReady(
       tickets: tickets ?? this.tickets,
@@ -194,6 +200,7 @@ class TicketsReady extends TicketListState {
           targetFiltersAutoCleared ?? this.targetFiltersAutoCleared,
       targetNotFoundNotified:
           targetNotFoundNotified ?? this.targetNotFoundNotified,
+      noTopicFilesNotice: noTopicFilesNotice ?? this.noTopicFilesNotice,
     );
   }
 }

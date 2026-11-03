@@ -395,6 +395,12 @@ class _ReadyTopicView extends ConsumerWidget {
       key: const Key('state-tickets-topic'),
       scrollKey: const Key('scroll-tickets-topics'),
       children: [
+        if (state.noTopicFilesNotice)
+          AppText.singleLine(
+            l10n.ticketsNoTopicFilesNotice,
+            variant: AppTextVariant.caption,
+            key: const Key('text-tickets-no-topic-files'),
+          ),
         for (final group in groups)
           _TopicSection(
             group: group,

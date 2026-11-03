@@ -9,6 +9,7 @@ import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_screen.dart';
@@ -66,6 +67,39 @@ ScanRoundResult _round({
   if (first != null) fake.completeExternally(first);
   return (container, fake);
 }
+
+ScanRoundResult _roundWithTopics(
+  TopicFilesReadResult read, {
+  List<RawNode> tickets = const [],
+}) {
+  final base = _round(tickets: tickets);
+  final s = base.scan;
+  return ScanRoundResult(
+    workspacePath: base.workspacePath,
+    scan: CorpusScanResult(
+      rawNodes: s.rawNodes,
+      parseErrors: s.parseErrors,
+      parseFailureEvents: s.parseFailureEvents,
+      schemaAmbiguousNodes: s.schemaAmbiguousNodes,
+      summary: s.summary,
+      topicFilesRead: read,
+    ),
+    graph: base.graph,
+    schemaResolution: base.schemaResolution,
+    isDegraded: base.isDegraded,
+  );
+}
+
+TopicFilesReadResult _topicRead(
+  TopicFileStatus assignments,
+  TopicFileStatus registry, [
+  Map<String, String> topics = const {},
+]) => TopicFilesReadResult(
+  ticketTopics: topics,
+  assignmentsStatus: assignments,
+  registryStatus: registry,
+  events: const [],
+);
 
 TicketsReady _ready(ProviderContainer c) =>
     c.read(ticketListStateProvider) as TicketsReady;
@@ -377,6 +411,83 @@ void main() {
       await tester.pump(Motion.searchDebounce);
       expect(find.byKey(const Key('card-tickets-T-2')), findsNothing);
       expect(find.byKey(const Key('card-tickets-T-1')), findsOneWidget);
+    });
+  });
+
+  group('主題模式讀輪次映射與缺主題檔提示（0.6.0-W1-113.3）', () {
+    const present = TopicFileStatus.present;
+    const absent = TopicFileStatus.absent;
+    const unreadable = TopicFileStatus.unreadable;
+
+    TicketsReady stateOf(TopicFilesReadResult read) {
+      final (c, _) = _harness(
+        first: _roundWithTopics(
+          read,
+          tickets: [_ticket('T-1'), _ticket('T-2')],
+        ),
+      );
+      return _ready(c);
+    }
+
+    test('topic 取輪次映射，不讀票 frontmatter 的 topic', () {
+      final (c, _) = _harness(
+        first: _roundWithTopics(
+          _topicRead(present, present, {'T-1': 'alpha'}),
+          tickets: [
+            _ticket('T-1', {'topic': 'fm'}),
+            _ticket('T-2', {'topic': 'fm'}),
+          ],
+        ),
+      );
+      final topics = _ready(c).tickets.map((t) => t.topic).toList();
+      expect(topics, ['alpha', null]);
+    });
+
+    test('指派檔 absent（清單 absent／present）→ 顯示提示', () {
+      expect(stateOf(_topicRead(absent, absent)).noTopicFilesNotice, isTrue);
+      expect(stateOf(_topicRead(absent, present)).noTopicFilesNotice, isTrue);
+    });
+
+    test('E1 對照：unreadable、只缺清單、兩檔在但無指派 → 不提示', () {
+      for (final read in [
+        _topicRead(unreadable, present),
+        _topicRead(unreadable, absent),
+        _topicRead(present, unreadable),
+        _topicRead(present, absent, {'T-1': 'alpha'}),
+        _topicRead(present, present),
+      ]) {
+        expect(stateOf(read).noTopicFilesNotice, isFalse);
+      }
+    });
+
+    testWidgets('主題模式頂部說明列：absent 顯示、對照不顯示', (tester) async {
+      final fake = FakeScanRound(produce: () => _round());
+      final container = await pumpHarness(
+        tester,
+        child: const TicketListScreen(),
+        overrides: [scanRoundProvider.overrideWith(() => fake)],
+      );
+      container.read(currentWorkspaceStateProvider.notifier).state =
+          const WorkspaceReady('/ws/fake');
+      fake.completeExternally(
+        _roundWithTopics(_topicRead(absent, absent), tickets: [_ticket('T-1')]),
+      );
+      await tester.pumpAndSettle();
+      container.read(ticketListStateProvider.notifier).state = (container.read(
+        ticketListStateProvider,
+      ) as TicketsReady).copyWith(mode: TicketListMode.topic);
+      await tester.pumpAndSettle();
+      const key = Key('text-tickets-no-topic-files');
+      expect(find.byKey(key), findsOneWidget);
+
+      fake.completeExternally(
+        _roundWithTopics(
+          _topicRead(present, present),
+          tickets: [_ticket('T-1')],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(key), findsNothing);
     });
   });
 }
