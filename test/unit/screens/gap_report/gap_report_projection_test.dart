@@ -12,6 +12,7 @@ import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event_builder.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
@@ -109,6 +110,17 @@ NonDomainPathsMalformedGap _nonDomain(
   subReason: reason,
   nonStringElementCount: count,
 );
+
+TopicFilesMalformedGap _topicFiles(TopicFilesMalformedReason reason) =>
+    TopicFilesMalformedGap(
+      path: reason == TopicFilesMalformedReason.unreadable
+          ? topicAssignmentsPath
+          : topicsRegistryPath,
+      reason: reason.name,
+      subReason: reason,
+      unregisteredTopicCount:
+          reason == TopicFilesMalformedReason.registryMismatch ? 3 : null,
+    );
 
 const _flowGap = FlowBlockMalformedGap(
   path: 'docs/usecases/UC-01-open-project-and-reach-usable-state.md',
@@ -360,9 +372,10 @@ void main() {
       _carrier('docs/a.md', CarrierParseFailureReason.noFrontmatter),
       _flowGap,
       _nonDomain(NonDomainPathsMalformedReason.notList),
+      _topicFiles(TopicFilesMalformedReason.unreadable),
     ];
 
-    test('七個分節依 O1 固定順序，與輸入順序無關', () {
+    test('八個分節依 O1 固定順序，與輸入順序無關', () {
       final defects = [_flowDefect(FlowDefectKind.duplicateStepId), _dupId];
       final cats = _project(
         parse: all.reversed.toList(),
@@ -374,6 +387,7 @@ void main() {
         'parse-failure',
         'flow-block-malformed',
         'non-domain-paths-malformed',
+        'topic-files-malformed',
         'graph-defect',
         'graph-defect-flow',
         'orphan-event',
@@ -432,6 +446,60 @@ void main() {
           ),
         ).id,
         'non-domain-paths-malformed:docs%2Fnon-domain.yaml',
+      );
+    });
+
+    test('T2-1 EVT-CORPUS-006：category id、路徑、子原因名；子原因不同 id 不同', () {
+      final unreadable = _only(
+        _project(parse: [_topicFiles(TopicFilesMalformedReason.unreadable)]),
+      );
+      final mismatch = _only(
+        _project(
+          parse: [_topicFiles(TopicFilesMalformedReason.registryMismatch)],
+        ),
+      );
+      expect(
+        unreadable.id,
+        'topic-files-malformed:docs%2Fwork-logs%2Ftopic-assignments.txt:unreadable',
+      );
+      expect(
+        mismatch.id,
+        'topic-files-malformed:docs%2Fwork-logs%2Ftopics-registry.txt:registryMismatch',
+      );
+    });
+
+    test('表三 EVT-CORPUS-006：指向主題檔路徑，不指向節點，說明依子原因', () {
+      final unreadable = _only(
+        _project(parse: [_topicFiles(TopicFilesMalformedReason.unreadable)]),
+      );
+      final mismatch = _only(
+        _project(
+          parse: [_topicFiles(TopicFilesMalformedReason.registryMismatch)],
+        ),
+      );
+      expect(unreadable.filePath, topicAssignmentsPath);
+      expect(unreadable.pointerNodeId, isNull);
+      expect(unreadable.pointerType, isNot(GapItemPointerType.ticket));
+      expect(
+        unreadable.description!.kind,
+        GapDescriptionKind.topicFilesUnreadable,
+      );
+      expect(
+        mismatch.description!.kind,
+        GapDescriptionKind.topicFilesUnregisteredTopics,
+      );
+      expect(mismatch.description!.args['count'], 3);
+      expect(
+        gapItemDescriptionText(AppLocalizationsEn(), unreadable.description),
+        'Could not read the topic file',
+      );
+      expect(
+        gapItemDescriptionText(AppLocalizationsZh(), mismatch.description),
+        '3 個主題名不在主題清單',
+      );
+      expect(
+        gapCategoryLabel(AppLocalizationsEn(), 'topic-files-malformed'),
+        'Unreadable or Inconsistent Topic Files',
       );
     });
 
@@ -961,6 +1029,8 @@ void main() {
               ],
             ),
           ),
+        for (final r in TopicFilesMalformedReason.values)
+          _only(_project(parse: [_topicFiles(r)])),
         for (final d in DanglingReason.values)
           _only(_project(defects: [_dangling('T-1', 'f', 'V', d)])),
         for (final m in MalformedReason.values)
@@ -1103,6 +1173,7 @@ void main() {
               k.startsWith('gapCategory') ||
               k.startsWith('gapParse') ||
               k.startsWith('gapNonDomainPaths') ||
+              k.startsWith('gapTopicFiles') ||
               const {
                 'gapFlowBlockMalformed',
                 'gapDanglingRefTargetMissing',
@@ -1127,8 +1198,10 @@ void main() {
 
     test('SPEC-004 表中的 gap* key 全數存在於 zh／en ARB 且文案逐字相同', () {
       // 〈1.80 提案〉26 個 + gapNonDomainPaths* 4 個 + 既有的
-      // gapCategoryOrphanEvent／gapCategoryEventDeclarationMismatch。
-      expect(keys, hasLength(32));
+      // gapCategoryOrphanEvent／gapCategoryEventDeclarationMismatch
+      // + EVT-CORPUS-006 的三個 key（gapCategoryTopicFilesMalformed、
+      // gapTopicFilesUnreadable、gapTopicFilesUnregisteredTopics）。
+      expect(keys, hasLength(35));
       expect(keys, contains('gapCategoryOrphanEvent'));
       expect(keys, contains('gapCategoryEventDeclarationMismatch'));
       for (final k in keys) {

@@ -926,6 +926,24 @@ abstract class AppLocalizations {
   /// **'非 domain 路徑清單格式錯誤'**
   String get gapCategoryNonDomainPathsMalformed;
 
+  /// SPEC-004 §4.0.6：分節 topic-files-malformed（EVT-CORPUS-006）
+  ///
+  /// In zh, this message translates to:
+  /// **'主題檔無法讀取或不一致'**
+  String get gapCategoryTopicFilesMalformed;
+
+  /// SPEC-004 §4.0.6：EVT-CORPUS-006 子原因 unreadable
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取主題檔'**
+  String get gapTopicFilesUnreadable;
+
+  /// SPEC-004 §4.0.6：EVT-CORPUS-006 子原因 registryMismatch；count 取破洞的 unregisteredTopicCount
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 個主題名不在主題清單'**
+  String gapTopicFilesUnregisteredTopics(int count);
+
   /// SPEC-004 §4.0.6〈1.80 提案〉：分節 graph-defect（主圖四子類與 domain 重複宣告）
   ///
   /// In zh, this message translates to:

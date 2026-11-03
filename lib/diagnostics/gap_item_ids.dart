@@ -13,6 +13,7 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 const gapCategoryIdParseFailure = 'parse-failure';
 const gapCategoryIdFlowBlockMalformed = 'flow-block-malformed';
 const gapCategoryIdNonDomainPathsMalformed = 'non-domain-paths-malformed';
+const gapCategoryIdTopicFilesMalformed = 'topic-files-malformed';
 const gapCategoryIdGraphDefect = 'graph-defect';
 const gapCategoryIdGraphDefectFlow = 'graph-defect-flow';
 const gapCategoryIdOrphanEvent = 'orphan-event';
@@ -42,6 +43,11 @@ List<Object?> parseFailureIdComponents(ParseFailureGap gap) => switch (gap) {
   NonDomainPathsMalformedGap() => [
     gapCategoryIdNonDomainPathsMalformed,
     gap.path,
+  ],
+  TopicFilesMalformedGap() => [
+    gapCategoryIdTopicFilesMalformed,
+    gap.path,
+    gap.subReason.name,
   ],
 };
 

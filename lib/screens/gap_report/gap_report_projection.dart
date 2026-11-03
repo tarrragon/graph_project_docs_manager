@@ -10,6 +10,8 @@ import 'dart:developer' as developer;
 import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart'
+    show TopicFilesMalformedReason;
 import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
@@ -25,6 +27,7 @@ export 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart'
         gapCategoryIdParseFailure,
         gapCategoryIdFlowBlockMalformed,
         gapCategoryIdNonDomainPathsMalformed,
+        gapCategoryIdTopicFilesMalformed,
         gapCategoryIdGraphDefect,
         gapCategoryIdGraphDefectFlow,
         gapCategoryIdOrphanEvent,
@@ -36,6 +39,7 @@ const gapCategoryOrder = <String>[
   gapCategoryIdParseFailure,
   gapCategoryIdFlowBlockMalformed,
   gapCategoryIdNonDomainPathsMalformed,
+  gapCategoryIdTopicFilesMalformed,
   gapCategoryIdGraphDefect,
   gapCategoryIdGraphDefectFlow,
   gapCategoryIdOrphanEvent,
@@ -122,7 +126,27 @@ class _Projector {
       gapCategoryIdNonDomainPathsMalformed,
       _nonDomainPathsItem(gap),
     ),
+    TopicFilesMalformedGap() => (
+      gapCategoryIdTopicFilesMalformed,
+      _topicFilesItem(gap),
+    ),
   };
+
+  /// 需求：[SPEC-001 v1.69 §5 表二、表三] 主題檔不是節點：指向主題檔路徑，
+  /// 不指向節點；說明依子原因，`registryMismatch` 帶 `{count}`。
+  GapReportItem _topicFilesItem(TopicFilesMalformedGap gap) => GapReportItem(
+    id: _uniqueId(parseFailureIdComponents(gap)),
+    filePath: gap.path,
+    description: switch (gap.subReason) {
+      TopicFilesMalformedReason.unreadable => const GapItemDescription(
+        GapDescriptionKind.topicFilesUnreadable,
+      ),
+      TopicFilesMalformedReason.registryMismatch => GapItemDescription(
+        GapDescriptionKind.topicFilesUnregisteredTopics,
+        {'count': gap.unregisteredTopicCount ?? 0},
+      ),
+    },
+  );
 
   GapReportItem _carrierItem(CarrierParseFailureGap gap) => GapReportItem(
     id: _uniqueId(parseFailureIdComponents(gap)),

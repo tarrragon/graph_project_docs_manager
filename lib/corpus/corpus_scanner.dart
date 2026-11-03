@@ -589,6 +589,7 @@ class _ScanAccumulator {
         unlistableDirectories: List.unmodifiable(unlistableDirectories),
         flowBlockMalformedUcCount: flowParseFailedEvents.length,
         nonDomainPathsMalformedCount: nonDomainEvent == null ? 0 : 1,
+        topicFilesMalformedCount: topicFilesRead.events.length,
       ),
     );
   }

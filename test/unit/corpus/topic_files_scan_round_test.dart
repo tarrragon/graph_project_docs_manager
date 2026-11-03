@@ -101,5 +101,16 @@ void main() {
       expect(r.topicFilesRead.assignmentsStatus, TopicFileStatus.absent);
       expect(r.topicFilesParseFailedEvents, isEmpty);
     });
+
+    test('FR-08 第四項：topicFilesMalformedCount 0／1 對照', () async {
+      final ok = await _scan({_assignments: 'A\tq\n', _registry: 'q\n'});
+      final bad = await _scan({_assignments: 'A\tq\n', _registry: 'x\n'});
+      expect(ok.summary.topicFilesMalformedCount, 0);
+      expect(bad.summary.topicFilesMalformedCount, 1);
+      expect(
+        bad.summary.topicFilesMalformedCount,
+        bad.topicFilesParseFailedEvents.length,
+      );
+    });
   });
 }

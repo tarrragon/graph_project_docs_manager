@@ -17,6 +17,7 @@ class ScanSummary {
     this.unlistableDirectories = const <String>[],
     this.flowBlockMalformedUcCount = 0,
     this.nonDomainPathsMalformedCount = 0,
+    this.topicFilesMalformedCount = 0,
   });
 
   /// 掃描到的檔案總數。刻意作為獨立觀測值傳入、不由其他欄位推導——讓
@@ -59,6 +60,10 @@ class ScanSummary {
   /// FR-08 破洞數公式第三項：非 domain 路徑清單格式錯誤數（0 或 1；
   /// EVT-CORPUS-005 一輪至多一筆）。不進兩條守恆式。
   final int nonDomainPathsMalformedCount;
+
+  /// FR-08 破洞數公式第四項：主題檔破洞數（0～3；EVT-CORPUS-006 一輪至多
+  /// 三筆，FR-12）。不進兩條守恆式。
+  final int topicFilesMalformedCount;
 
   int get totalFailureCount =>
       failureReasonCounts.values.fold(0, (sum, count) => sum + count);

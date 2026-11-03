@@ -18,6 +18,7 @@ String gapCategoryLabel(AppLocalizations l10n, String categoryId) =>
       gapCategoryIdFlowBlockMalformed => l10n.gapCategoryFlowBlockMalformed,
       gapCategoryIdNonDomainPathsMalformed =>
         l10n.gapCategoryNonDomainPathsMalformed,
+      gapCategoryIdTopicFilesMalformed => l10n.gapCategoryTopicFilesMalformed,
       gapCategoryIdGraphDefect => l10n.gapCategoryGraphDefect,
       gapCategoryIdGraphDefectFlow => l10n.gapCategoryGraphDefectFlow,
       gapCategoryIdOrphanEvent => l10n.gapCategoryOrphanEvent,
@@ -51,6 +52,9 @@ String? gapItemDescriptionText(AppLocalizations l10n, GapItemDescription? d) {
     ),
     GapDescriptionKind.nonDomainPathsNonStringElements =>
       l10n.gapNonDomainPathsNonStringElements(a['count']! as int),
+    GapDescriptionKind.topicFilesUnreadable => l10n.gapTopicFilesUnreadable,
+    GapDescriptionKind.topicFilesUnregisteredTopics =>
+      l10n.gapTopicFilesUnregisteredTopics(a['count']! as int),
     GapDescriptionKind.danglingRefTargetMissing =>
       l10n.gapDanglingRefTargetMissing(
         a['field']! as String,

@@ -4,6 +4,8 @@ library;
 
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart'
+    show TopicFilesMalformedReason;
 import 'package:graph_project_docs_manager/corpus/uc_flow_extractor.dart'
     show flowBlockMalformedReasonCode;
 
@@ -28,6 +30,9 @@ enum GapCategory {
 
 /// `EVT-CORPUS-005` 對應破洞的原因碼（FR-08；資料值，不是顯示字串）。
 const nonDomainPathsMalformedGapReasonCode = 'nonDomainPathsMalformed';
+
+/// `EVT-CORPUS-006` 對應破洞的原因碼（FR-08；資料值，不是顯示字串）。
+const topicFilesMalformedGapReasonCode = 'topicFilesMalformed';
 
 /// 004 破洞的歸屬型別（FR-09 規則 6：UC 仍是節點，型別已知）。
 const flowBlockMalformedGapNodeType = 'UC';
@@ -178,6 +183,48 @@ final class NonDomainPathsMalformedGap extends ParseFailureGap {
   @override
   int get hashCode =>
       Object.hash(path, reason, subReason, nonStringElementCount);
+}
+
+/// EVT-CORPUS-006 來源：主題檔無法讀取或與主題清單不一致。主題檔不是節點，
+/// 沒有型別欄位；原因碼恆為 `topicFilesMalformed`（[reasonCode]）。
+final class TopicFilesMalformedGap extends ParseFailureGap {
+  const TopicFilesMalformedGap({
+    required super.path,
+    required super.reason,
+    required this.subReason,
+    this.unregisteredTopicCount,
+  }) : assert(
+         (subReason == TopicFilesMalformedReason.registryMismatch) ==
+             (unregisteredTopicCount != null),
+         // i18n-exempt: 開發者斷言訊息
+         'unregisteredTopicCount 只在 subReason 為 registryMismatch 時有值',
+       );
+
+  /// 原因碼，恆為 [topicFilesMalformedGapReasonCode]。
+  String get reasonCode => topicFilesMalformedGapReasonCode;
+
+  /// 子原因（FR-12 規則 7、8）。
+  final TopicFilesMalformedReason subReason;
+
+  /// 不在主題清單的相異主題名數：只在 `registryMismatch` 時有值。
+  final int? unregisteredTopicCount;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TopicFilesMalformedGap &&
+      other.path == path &&
+      other.reason == reason &&
+      other.subReason == subReason &&
+      other.unregisteredTopicCount == unregisteredTopicCount;
+
+  @override
+  int get hashCode => Object.hash(
+    TopicFilesMalformedGap,
+    path,
+    reason,
+    subReason,
+    unregisteredTopicCount,
+  );
 }
 
 /// FR-06 查詢不可用時「無法判定破洞」的原因碼（FR-08〈規則〉第 2 項）。

@@ -494,6 +494,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gapCategoryNonDomainPathsMalformed => '非 domain 路徑清單格式錯誤';
 
   @override
+  String get gapCategoryTopicFilesMalformed => '主題檔無法讀取或不一致';
+
+  @override
+  String get gapTopicFilesUnreadable => '無法讀取主題檔';
+
+  @override
+  String gapTopicFilesUnregisteredTopics(int count) {
+    return '$count 個主題名不在主題清單';
+  }
+
+  @override
   String get gapCategoryGraphDefect => '圖結構缺陷';
 
   @override
