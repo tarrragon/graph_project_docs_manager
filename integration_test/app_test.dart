@@ -21,6 +21,7 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import 'domain_view_v050.dart';
 import 'gap_report_declaration_line.dart';
+import 'watch_polling_rescan.dart';
 
 /// App 啟動後的預設落地畫面錨點（導覽殼的預設項目：Domain 視圖）。
 ///
@@ -325,6 +326,7 @@ void main() {
   // 只能啟動一次 app，不能另立第二個 `_test.dart`），由此處註冊。
   registerDomainViewV050Tests(_openSnapshotWorkspace);
   registerGapReportDeclarationLineTests(_openSnapshotWorkspace);
+  registerWatchPollingRescanTests(_openSnapshotWorkspace);
 }
 
 /// 以 [workspace]（凍結快照實體化的真實工作區）為已授權工作區啟動 App。
