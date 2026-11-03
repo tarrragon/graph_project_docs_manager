@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-03"
-version: "1.4"
+version: "1.5"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -15,7 +15,7 @@ extension_status: "not-applicable"
 
 runtime_surface: "yes"
 
-related_specs: [SPEC-001]
+related_specs: [SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-007]
 related_usecases: []
 ticket_refs: [0.1.0-W2-007, 0.1.0-W3-127, 0.1.0-W3-380, 0.1.0-W3-383, 0.3.3-W3-401]
 ---
@@ -154,6 +154,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.5 | 2026-11-03 | `related_specs` 對齊 SPEC 端宣告（`0.6.0-W1-116`，用戶裁定 B：UC 列出畫面所依賴的每一份 SPEC，橫切 SPEC 亦列）：補 SPEC-002、SPEC-003、SPEC-004、SPEC-007（追溯樹由建圖結果衍生）；不動正文與結構化 flow |
 | 1.4 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填 5 張實作票（依該票〈入選判準修訂版〉，以 lib/screens/trace/ 為對照目錄）；不動正文與結構化 flow 區塊 |
 | 1.3 | 2026-11-02 | `0.6.0-W1-110`：〈反向追溯〉依 UC → Ticket 新邊重評——各層向上欄位已具備（Ticket → UC 反查 `ticket_refs`、UC → SPEC 取 `related_specs`、SPEC → PROP 取 `source_proposal`），更正原寫法的 `source_ticket`／`implements_requirements` 路徑；畫面互動未規格化，0.6 不涵蓋，排入與否由 PM 裁定。驗收條件註記同步。flow 區塊不動 |
 | 1.2 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定類 B）：`jump-to-detail` 補 consumes `EVT-CORPUS-001`（TicketDetail 取 5W1H 全文）；不新增步驟，EVT 宣告不動 |

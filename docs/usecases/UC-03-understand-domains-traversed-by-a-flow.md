@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-03"
-version: "1.4"
+version: "1.5"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -15,7 +15,7 @@ extension_status: "not-applicable"
 
 runtime_surface: "yes"
 
-related_specs: [SPEC-001, SPEC-003]
+related_specs: [SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-007]
 related_usecases: []
 ticket_refs: [0.1.0-W2-010, 0.1.0-W2-013, 0.3.2-W1-004, 0.3.2-W1-007, 0.3.3-W3-389, 0.5.0-W1-114.18, 0.5.0-W1-114.23, 0.5.0-W1-168.2.2, 0.5.0-W1-451, 0.5.0-W1-547, 0.6.0-W1-077]
 ---
@@ -137,6 +137,7 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.5 | 2026-11-03 | `related_specs` 對齊 SPEC 端宣告（`0.6.0-W1-116`，用戶裁定 B：UC 列出畫面所依賴的每一份 SPEC，橫切 SPEC 亦列）：補 SPEC-002、SPEC-004、SPEC-007（flow 子圖取自 SPEC-007 FR-10）；不動正文與結構化 flow |
 | 1.4 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填 11 張實作票（依該票〈入選判準修訂版〉，以 lib/screens/uc_flow/ 為對照目錄）；不動正文與結構化 flow 區塊 |
 | 1.3 | 2026-09-15 | 追修同步稽核裁決議題 P2（`0.1.0-W3-335.59` WRAP，`0.1.0-W3-335.63` 落檔）：`related_specs` 補 SPEC-003（內文〈檢視事件流〉引用 SPEC-003 §3.2 而 frontmatter 未列） |
 | 1.2 | 2026-09-14 | 追修 spec 間矛盾（`0.1.0-W3-335.37` .36 #15）：替代場景〈檢視事件流〉改「沿發送事件欄」，消費資訊改指向事件流小表（步驟表僅有發送事件欄，消費資訊由 SPEC-003 §3.2〈事件流小表〉承載） |

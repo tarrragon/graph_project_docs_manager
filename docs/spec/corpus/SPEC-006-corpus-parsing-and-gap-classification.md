@@ -5,13 +5,13 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-11-03"
-version: "1.32"
+version: "1.33"
 owner: "主線程（PM）"
 
 domain: "corpus"
 subdomain: null
 
-related_usecases: [UC-01, UC-05, UC-06]
+related_usecases: [UC-01, UC-02, UC-05, UC-06]
 related_specs: [SPEC-001, SPEC-005]
 implements_requirements: []
 depends_on_domains: [schema, workspace]
@@ -442,6 +442,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.33 | 2026-11-03 | `related_usecases` 補 UC-02（`0.6.0-W1-116`，PM 裁決：UC-02 Domain 視圖顯示的非 domain 清單格式錯誤宣告狀態來自本規格解析）；不動條文 |
 | 1.32 | 2026-11-03 | FR-08 EVT-CORPUS-006 破洞列補原因碼 `topicFilesMalformed` 與子原因識別名，移除「待 PM 定名」（`0.6.0-W1-112`，EVT-CORPUS-006 事件文件同批建立） |
 | 1.31 | 2026-11-03 | FR-11 待裁項 W1～W6 改為已裁（`0.6.0-W1-080`，用戶裁定 2026-11-02）：〈監看機制〉寫明選 B 並保留候選表作為理由記錄；規則 2、4、6、9、10 的待裁與暫定字樣改為定案條文（規則 10 補監看於下次選取專案時重建）；〈待裁項〉表改為〈已裁項〉表；新增〈W4 衍生待裁〉表 D1～D3（系統層通知、監看輪次中按重新掃描、無既有結果時的監看輪次）。SPEC-003 v1.77、SPEC-001 v1.68 同批 |
 | 1.30 | 2026-11-02 | 新增 FR-12 主題檔讀取與 ticket→主題映射（`0.6.0-W1-105.3.1`，依 `0.6.0-W1-105.3` 用戶裁定 G-T4 選 A）：兩檔位置、同輪讀取與輪次替換（沿 FR-11）、解析寬容度、一票多筆取最後一筆、缺檔不屬破洞、主題清單不一致與無法讀取發 EVT-CORPUS-006；FR-07 計數項、FR-08 破洞規則與公式第四項、FR-11 規則 3 事件過濾與規則 6 重新解析範圍、〈概述〉職責表同步。EVT-CORPUS-006 事件文件與原因碼識別名待建 |

@@ -4,14 +4,14 @@ title: "建圖：輕節點、邊的聯集與圖結構破洞"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
-updated: "2026-11-02"
-version: "1.36"
+updated: "2026-11-03"
+version: "1.37"
 owner: "主線程（PM）"
 
 domain: "graph"
 subdomain: null
 
-related_usecases: []
+related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06]
 related_specs: [SPEC-006]
 implements_requirements: []
 depends_on_domains: [schema, corpus, diagnostics]
@@ -460,6 +460,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.37 | 2026-11-03 | `related_usecases` 由空清單補為 UC-01～UC-06（`0.6.0-W1-116`，對齊 UC 端 `related_specs`）：UC-01 圖譜、UC-02 FR-12、UC-03 FR-10、UC-04 追溯樹、UC-05 FR-07 列舉、UC-06 FR-09；不動條文 |
 | 1.36 | 2026-11-02 | FR-07 新增列舉規則與一條驗收（`0.6.0-W1-105.1`，`0.6.0-W1-105` 缺口 G-T3）：TicketDetail 提供同一輪收錄 ticket 的列舉，順序同 `rawNodes`，作為 Ticket 清單的列來源；欄位取值規則在 SPEC-001 §4〈票列欄位的取值來源〉 |
 | 1.35 | 2026-10-21 | FR-09 識別名段與 FR-10 規則清單回填「事件引用未解析」的程式識別名 `FlowDefectKind.eventUnresolved`／`GraphDefectKind.flowEventUnresolved`，並記缺陷在同 UC 內的排序（`traverses` 兩子類之後，依步驟順序、先 `emits` 後 `consumes`）（`0.5.0-W1-458.4` 命名回填，PM 追認） |
 | 1.34 | 2026-10-21 | 新增 flow 子類「事件引用未解析」（`0.5.0-W1-458` 用戶裁決題 E，`0.5.0-W1-458.3`）：FR-10 新增〈事件引用〉段，`emits`／`consumes` 元素比對 `rawNodes` 中型別為 `EVT` 的 id 集合（與 SPEC-003 §3.5 同一集合），比對不到者報缺陷；同步驟同欄位同值只報一筆，重複 EVT id 算存在，建圖不可用不產生；補三條驗收。FR-09 子類表加一列，負載欄位加 `emits`、`consumes`；「flow 四子類」改為「flow 各子類」，D4 改指 FR-09 子類表，不寫死子類數。〈本版範圍外〉B 層邊列同步。識別名由 `0.5.0-W1-458.4` 命名 |
