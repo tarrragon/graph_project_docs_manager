@@ -6,7 +6,7 @@
 library;
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderContainer;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/corpus_watch_provider.dart';
@@ -15,8 +15,7 @@ import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
-import 'package:graph_project_docs_manager/state/state_holder.dart'
-    show StateHolderOverride;
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
