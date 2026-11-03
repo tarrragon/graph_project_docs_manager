@@ -2,6 +2,12 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.12.1（2026-11-03）— 線群組標題列新增 `［佇列無票號］` 標示：現行佇列行的票序不含任何票號、只有非票號文字（如 `（結束了）`、`等主控通知`）時，標在 `［狀態］` 之後。這類線沒有佇列列，原本看板上只剩標題列、沒有任何警示；`line_status` 已列為過期項「佇列無票號」。含票號的票序不標。
+
+- `hooks/lanes.ts` 新增 `isQueueWithoutTicket`（輸入為 `parseQueue` 的 token），看板與 `line_status` 共用；`continuity.ts` 的 `liveLaneStale` 改呼叫它，no-ticket 過期項的說明文字改為「看板該線只剩標了［佇列無票號］的線標題」。
+- `hooks/lanesView.tsx` 新增 `QUEUE_NO_TICKET_LABEL`，`groupTitle` 接上。`layout.ts` 不變。
+- `references/board-screens.md`〈版面：以線分組的可折疊群組〉的線群組標題補標示格式與判定，〈協調票現行佇列行的格式〉同步。
+
 **Version**: 0.12.0（2026-11-03）— 跨專案行為變更：協調票來源由專案設定檔 `.claude/project-integration/multi-session.json` 改為協調票解析 CLI（`multi-session-orchestration` 的 `scripts/coordination_ticket.py --json`，以 `$.process.run` 呼叫）。consumer 不再需要設定檔，換版不用手改；協調票以 `ticket create --coordination` 或 `ticket track set-coordination` 標記。0 張時不自動開 Pane，`/board` 與 `line_status` 顯示「active 版本沒有標記 `coordination: true` 的進行中票」與補法；多張時列候選不自行擇一；CLI 不可用（python3 缺、無法執行、輸出不可解析）或回報 error 時顯示原因。解析警告列在 `line_status` 輸出。`multi-session.json` 若仍存在，其 `coordinationTicket` 仍由 CLI 當覆寫讀取（已結案則警告後退回自動解析）。起因：同一事實（現行協調票）存在設定檔與票面兩份，換版需手改。
 
 - `readers.ts` 的 `readProjectConfig` 改呼叫 CLI（移除 `PROJECT_CONFIG_PATH`，新增 `COORDINATION_CLI_PATH`）；`shared.ts` 的 `parseProjectConfig` 改解析 CLI 的 JSON；`ProjectConfigResult` 型別改為 ok／none／multiple／error，`BoardSnapshot` 的 unconfigured 不再帶設定檔路徑。

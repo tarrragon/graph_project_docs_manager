@@ -8,6 +8,7 @@ import {
   MALFORMED_GATE_LINES,
   MERGE_LOG,
   MERGE_LOG_HOLDING,
+  NO_TICKET_LANE_LINES,
   REAL_LSTART_UTC,
   REAL_PROC_START,
   TEMPLATE_NOTE,
@@ -38,6 +39,8 @@ import { ticketFileCandidates } from '../hooks/shared'
 const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''
 /** 與預設協調票同版本的票檔所在目錄（相對 repo root）。 */
 const TICKET_FOLDER = COORDINATION_TICKET_FILE.slice(0, COORDINATION_TICKET_FILE.lastIndexOf('/'))
+/** 佇列無票號的線在標題列的標示（board-screens.md〈線群組的標題〉）：以字面寫在測試，標示文字改動時測試跟著改。 */
+const QUEUE_NO_TICKET_LABEL = '［佇列無票號］'
 
 /** 呼叫 line_status 工具，回傳工具結果文字。 */
 async function callLineStatus($: Parameters<typeof runBoardCommand>[0]): Promise<string> {
@@ -318,6 +321,20 @@ describe('Pane', () => {
     const { ui } = await startBoard($, on, { files: { [`/wt/${COORDINATION_TICKET_FILE}`]: TICKET_349 } })
     expect(await ui.find({ type: 'Text', text: new RegExp(`^解析失敗：協調票讀不到（${COORDINATION_TICKET_FILE}：`) })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /尚無現行佇列行/ })).toBeUndefined()
+    await ui.unmount()
+  })
+
+  test('佇列行只含非票號文字的線，標題列標「佇列無票號」（E2）；同一協調票含票號的線不標（E1 對照）', async ($, on) => {
+    const text = `## Solution\n${NO_TICKET_LANE_LINES}\n`
+    const { ui } = await startBoard($, on, { files: { [`/repo/${COORDINATION_TICKET_FILE}`]: text } })
+    for (const lane of [5, 6]) {
+      expect((await titleOf(ui, laneGroupId(lane)))?.[0]).toContain(QUEUE_NO_TICKET_LABEL)
+    }
+    for (const lane of [7, 8]) {
+      const title = await titleOf(ui, laneGroupId(lane))
+      expect(title?.[0]).toMatch(new RegExp(`^[▸▾] L${lane} `))
+      expect(title?.[0]).not.toContain(QUEUE_NO_TICKET_LABEL)
+    }
     await ui.unmount()
   })
 

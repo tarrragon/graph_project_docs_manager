@@ -33,6 +33,7 @@ import {
   groupToggleKey,
   isDefaultExpanded,
   isGroupExpanded,
+  isQueueWithoutTicket,
   laneContextLabel,
   laneGroups,
   laneSessionStatus,
@@ -66,6 +67,12 @@ export const QUEUE_DETAIL_LABEL = '佇列細節'
 
 /** 佇列細節中讀不到 title 的票（票檔讀不到、沒有 title 欄，或 hot reload 前的舊 snapshot）顯示的文字。 */
 export const MISSING_TITLE = '（讀不到 title）'
+
+/**
+ * 佇列行只含非票號文字（lanes.ts isQueueWithoutTicket，與 line_status 的 no-ticket 過期項同一判定）時，標題列在 `［狀態］` 之後的標示。
+ * 這類線沒有佇列列（layout.ts queueRowSegments 回傳 null），沒有此標示時看板上只剩標題列、看不出佇列寫錯。
+ */
+export const QUEUE_NO_TICKET_LABEL = '［佇列無票號］'
 
 /** 群組標題 Box 的 key：內含標題列與其下的目標、活動計數各行。 */
 export function groupTitleKey(id: string): string {
@@ -228,8 +235,8 @@ function queueColorOf(group: LaneGroup, tickets: readonly TicketStatus[], allRow
 }
 
 /**
- * 線群組的標題三行：標題列為線號、session 名稱與狀態，其後接 context 用量的標記與恢復開工徽章
- * （`L<n> <session>［狀態］［待 compact］［/compact 後已恢復 HH:MM］`，contextJudge.ts laneContextLabel），
+ * 線群組的標題三行：標題列為線號、session 名稱與狀態，佇列無票號時接 QUEUE_NO_TICKET_LABEL，其後接 context 用量的標記與恢復開工徽章
+ * （`L<n> <session>［狀態］［佇列無票號］［待 compact］［/compact 後已恢復 HH:MM］`，contextJudge.ts laneContextLabel），
  * 其下為目標、活動計數各一行；「其他」群組的標題列只有名稱，其下為活動計數。缺目標或活動計數時該行為空字串，由 renderGroup 略過。
  */
 function groupTitle(board: ReadyBoard, group: LaneGroup): Pick<GroupFrame, 'title' | 'details'> {
@@ -245,7 +252,8 @@ function groupTitle(board: ReadyBoard, group: LaneGroup): Pick<GroupFrame, 'titl
     usages,
     nowMs: readAtMs,
   })
-  const title = `L${lane} ${session ?? '（未標 session）'}${laneStatusLabel(sessions, session)}${context}`
+  const noTicket = isQueueWithoutTicket(tokens) ? QUEUE_NO_TICKET_LABEL : ''
+  const title = `L${lane} ${session ?? '（未標 session）'}${laneStatusLabel(sessions, session)}${noTicket}${context}`
   return { title, details: [laneGoalLabel(goal), activity] }
 }
 

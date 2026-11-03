@@ -16,7 +16,7 @@ import type {
   WaitingItem,
 } from '../types'
 import { type ContextUsageFailures, laneContextStatus } from './contextJudge'
-import { LANE_ENDED, endedForm, parseQueue } from './lanes'
+import { LANE_ENDED, endedForm, isQueueWithoutTicket, parseQueue } from './lanes'
 import { findSessionByName } from './sessions'
 import { COMPLETED_STATUS } from './shared'
 import { userTodoRows } from './userTodos'
@@ -111,11 +111,11 @@ function liveLaneStale(lane: LaneLine, state: LaneContinuity, tickets: ReadonlyM
   }
   const tokens = parseQueue(lane.queue, prefix)
   const ids = tokens.flatMap(token => (token.kind === 'ticket' ? [token.id] : []))
-  if (ids.length === 0 && tokens.some(token => token.kind === 'text')) {
+  if (isQueueWithoutTicket(tokens)) {
     stale.push({
       lane: lane.lane,
       kind: 'no-ticket',
-      detail: `票序「${lane.queue}」不含任何票號，也不是收線記號，看板該線只剩線標題；已收線請只寫${LANE_ENDED}或（結束），仍在進行請寫票號`,
+      detail: `票序「${lane.queue}」不含任何票號，也不是收線記號，看板該線只剩標了［佇列無票號］的線標題；已收線請只寫${LANE_ENDED}或（結束），仍在進行請寫票號`,
     })
   }
   if (ids.length > 0 && ids.every(id => tickets.get(id)?.status === COMPLETED_STATUS)) {
