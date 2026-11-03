@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-03"
-version: "1.78"
+version: "1.79"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -1775,14 +1775,14 @@ API 設計範疇，本 DOC 票不代為決定。**
 | 元素 | 錨點 | 觸發 | 可觀察結果 |
 |------|------|------|-----------|
 | 選擇 UC | `action-ucFlow-select-uc-<ucId>` | 點擊（於 `state-ucFlow-uc-unset`、`state-ucFlow-unstructured`、`state-ucFlow-normal` 三態皆渲染） | 選定 UC 寫入 `<ucId>`（§2.8〈選定 UC〉設定入口 2）；該 UC 含 FlowStep → `state-ucFlow-normal` 出現，否則 `state-ucFlow-unstructured` 出現；換選時 `scroll-ucFlow-steps` offset 歸零。選擇入口的元件與排位由 SPEC-004 承接 |
-| 步驟列 | `card-ucFlow-step-<stepId>` | 點擊 | jump 至 `nav-page-nodeDetail`；`returnTo` 設為 `ucFlow` |
+| 步驟列 | `card-ucFlow-step-<stepId>` | 點擊 | jump 至 `nav-page-nodeDetail`，帶入的節點為該步驟所屬 UC 的 id（不是 `<stepId>`：FlowStep 屬 proposed 層，不在節點詳情可顯示的節點表內）；`returnTo` 設為 `ucFlow` |
 | domain 欄 | `action-ucFlow-goto-domain-<domainId>` | 點擊 | jump 至 `nav-page-domain` 且該 domain 呈選中態；`returnTo` 設為 `ucFlow` |
 | 步驟捲動 | `scroll-ucFlow-steps` | drag / 捲軸 | offset 改變 |
 | UC 清單捲動 | `scroll-ucFlow-uc-list` | drag / 捲軸（`state-ucFlow-uc-unset`／`state-ucFlow-unstructured`／`state-ucFlow-normal`） | 右欄 UC 清單 offset 改變、`scroll-ucFlow-steps` offset 不變（§1.1 連動禁令，`0.3.3-W3-402`） |
 | 開啟原始檔 | `action-ucFlow-open-source` | 點擊 | **0.1 落地**（`0.1.0-W1-036` 定案，契約見 §2.2「外部開啟契約」）：`ExternalOpener.open(path)` 以系統預設方式開啟該檔；結果 `opened` → SnackBar `openedExternallyMessage`，停留 `Motion.snackBar` |
 | 開啟原始檔（檔案不存在） | 同上 | 點擊 | 結果 `notFound` → SnackBar `sourceFileNotFoundSnackbarMessage`，不帶動作，停留 `Motion.snackBar`（`0.1.0-W3-335.38` S-18、S-22，取代原 `refreshAction`；圖的整體更新改經浮層選取目前專案，同 §3.4〈生命週期〉「再次可見」S-10） |
 | 開啟原始檔（無預設應用程式或其他開啟失敗） | 同上 | 點擊 | 結果 `failed` → SnackBar `externalOpenFailedMessage`，停留 `Motion.snackBar`；畫面狀態不變 |
-| 檢視關聯 | `action-ucFlow-relations` | 點擊 | jump 至 `nav-page-nodeDetail` 並定位於關聯右欄；`returnTo` 設為 `ucFlow` |
+| 檢視關聯 | `action-ucFlow-relations` | 點擊 | jump 至 `nav-page-nodeDetail` 並定位於關聯右欄，帶入的節點為目前選定 UC 的 id；`returnTo` 設為 `ucFlow` |
 | 導覽至破洞報告 | `action-ucFlow-goto-gaps` | 點擊 | jump 至 `nav-page-gaps`；`returnTo` 設為 `ucFlow` |
 | 前往 Domain 視圖（專案未就緒） | `action-ucFlow-goto-domain` | 點擊 | jump 至 `nav-page-domain`；`returnTo` 設為 `ucFlow`（`0.1.0-W3-335.37` R9，SPEC-001 共用定義） |
 
@@ -2559,6 +2559,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.79 | 2026-11-03 | §3.2〈互動反應〉補寫跳轉目標（`0.6.0-W1-130`，依 `0.6.0-W1-077.2` 實作時 PM 裁定）：「步驟列」寫明帶入所屬 UC 的 id，並寫明不帶 `<stepId>` 的理由（FlowStep 屬 proposed 層，不在節點詳情的節點表）；「檢視關聯」寫明帶入目前選定 UC 的 id。狀態數不變 |
 | 1.78 | 2026-11-03 | 落地 SPEC-006 v1.34 FR-11〈W4 衍生已裁項〉（`0.6.0-W1-080`，用戶裁定 2026-11-03：D1 B、D2 A、D3 A）：§2.2〈系統層通知〉新增「監看輪次觸發條件」（itemId 集合差集不為空、可見性沿用、發送前撤回舊通知）與「監看輪次通知內容」兩列，「不發送」列改寫，可觀測性撤回原因補 `watchReplace`，文案表新增 `scanCompleteWatchNotificationTitle`、`scanCompleteWatchNotificationBody`（ARB 與 SPEC-004 對照列由實作同批加入）；§2.14 新增列 20；§3.5〈生命週期〉修改「首次可見且圖已建立」「再次可見」兩列，新增「監看輪次中按重新掃描」「無既有結果時監看輪次完成」兩列，「檔案監看觸發的掃描輪次」列移除待裁字樣。狀態數不變。SPEC-006 v1.34、SPEC-001 v1.71 同批 |
 | 1.77 | 2026-11-03 | 對齊 SPEC-006 v1.31 FR-11 已裁 W4（`0.6.0-W1-080`，缺口 G1～G6）：§3.5〈生命週期〉新增「檔案監看觸發的掃描輪次」列（G1：不轉掃描中、三態直接轉換、cross-fade 只用於狀態根節點改變、收合與 offset 保留）；〈動畫提示〉補對應列；§2.2〈系統層通知〉「不發送」列寫明監看輪次在現行條文下不發送，另訂觸發條件列為待裁 D1（G2）；監看輪次中按重新掃描（G3）與無既有結果時的監看輪次（G4）列為待裁 D2、D3，條文指向 SPEC-006 FR-11〈W4 衍生待裁〉；§2.8「視窗失焦 / 前景切換」刪過期的「0.1 無檔案監看」理由（G5）；§2.15〈邊界（未涵蓋）〉檔案監看列改為已覆核（G6）。狀態數不變。SPEC-006 v1.31、SPEC-001 v1.68 同批 |
 | 1.76 | 2026-11-02 | 對齊 SPEC-001 v1.67（`0.6.0-W1-110`，追溯視圖接真資料）：§3.3 新增狀態 `state-traceability-graph-unavailable`（沿用 `action-traceability-goto-domain`），〈互動反應〉前往 Domain 視圖列、〈動畫提示〉cross-fade 列、〈導航跳轉與退出〉補該狀態；〈生命週期〉首次可見改依 SPEC-001 §3 判定順序並寫明不讀 fixture、專案未就緒含尚無完成輪次，輪次完成列改為整棵樹隨輪次替換、輪次非 Completed 期間顯示上一輪（SPEC-006 FR-11）、新一輪建圖不可用的落點。§0、§4 標題、覆蓋完整性算式、同步提醒、FR-01 驗收 43 → 44；§4 新增 #46 |
