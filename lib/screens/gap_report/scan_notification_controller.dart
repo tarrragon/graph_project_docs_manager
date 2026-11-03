@@ -116,7 +116,7 @@ class ScanNotificationController {
     final subscription = _activatedStream.listen(_onActivated);
     _cancelActivatedSubscription = subscription.cancel;
     _watchAdapter = WatchRoundNotificationAdapter(
-      port: ScanNotifierWatchPort(notifier),
+      port: ScanNotifierWatchPort(notifier, onFallback: _fallbackToSnackbar),
       isForeground: () =>
           _ref.read(appLifecycleStateProvider) == AppLifecycleState.resumed,
       isOnGapsPage: () =>
