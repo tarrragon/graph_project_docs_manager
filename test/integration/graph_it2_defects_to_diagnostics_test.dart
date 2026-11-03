@@ -15,21 +15,11 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
+import 'package:graph_project_docs_manager/screens/gap_report/gap_report_round_state.dart';
 
 import '../helpers/spec007/graph_manifest_materializer.dart';
 
 const _corpora = ['graph_project_docs_manager', 'flutter_balance'];
-
-/// 編排層映射（SPEC-007 v1.5 FR-09 #3）：兩種建圖不可用原因在 Diagnostics
-/// 一律回報「專案版本不在已知範圍」。
-UndeterminedGapReason _toUndeterminedReason(EdgeTypeUnavailableReason reason) =>
-    switch (reason) {
-      EdgeTypeUnavailableReason.projectVersionOutOfKnownRange ||
-      EdgeTypeUnavailableReason.missingForwardCardinality ||
-      EdgeTypeUnavailableReason.invalidEdgeTypeEntry ||
-      EdgeTypeUnavailableReason.missingDirection =>
-        UndeterminedGapReason.projectVersionOutOfKnownRange,
-    };
 
 GraphDefectGapResult _diagnose(CorpusGraphRun run) {
   final result = run.buildResult;
@@ -38,7 +28,7 @@ GraphDefectGapResult _diagnose(CorpusGraphRun run) {
       GraphDefectInputAvailable(event),
     ),
     GraphBuildUnavailable(:final reason) => detectGraphDefectGaps(
-      GraphDefectInputUnavailable(_toUndeterminedReason(reason)),
+      GraphDefectInputUnavailable(undeterminedReasonFromGraph(reason)),
     ),
   };
 }
