@@ -4,8 +4,8 @@ title: "依 domain 盤點變更影響面"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-10-21"
-version: "1.13"
+updated: "2026-11-03"
+version: "1.14"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -17,7 +17,7 @@ runtime_surface: "yes"
 
 related_specs: [SPEC-001]
 related_usecases: []
-ticket_refs: []
+ticket_refs: [0.5.0-W1-096.5, 0.5.0-W1-114.13, 0.5.0-W1-128, 0.5.0-W1-139]
 ---
 
 # UC-02: 依 domain 盤點變更影響面
@@ -209,6 +209,7 @@ ticket 的 `where.files` 逐路徑比對兩個宣告載體（2026-10-07 用戶�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.14 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填四張實作票（依該票〈入選判準〉）；不動正文與結構化 flow 區塊 |
 | 1.13 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定類 B）：`switch-to-swimlane` 補 consumes `EVT-GRAPH-001`（Layout 取 flow 子圖排泳道）；不新增步驟，EVT 宣告不動 |
 | 1.12 | 2026-10-09 | 票列表摘要：`where.files` 為空的票為「不判定」（`0.5.0-W1-128` 用戶裁決 K2）；新增一條驗收 |
 | 1.11 | 2026-10-09 | 〈ticket 定位〉比對語意補兩條：同一字串出現在兩個以上 bundle 時歸全部、高亮聯集（`0.5.0-W1-096.5` 用戶裁決 X1）；零個 DomainBundle 時 domain 側視為未宣告（PM 處置）；票列表摘要在兩側皆無宣告時為「不判定」（PM 處置）；新增三條驗收 |
