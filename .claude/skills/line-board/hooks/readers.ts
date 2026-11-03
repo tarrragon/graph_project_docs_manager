@@ -7,7 +7,6 @@ import type { EngineInterface } from 'claude-code'
 
 import type {
   DispatchesResult,
-  LaneLine,
   LanesResult,
   MergeLogResult,
   ProjectConfigResult,
@@ -193,18 +192,6 @@ export async function readLanes($: EngineInterface, mainPath: string, coordinati
   if (file.kind === 'ok') {
     return { kind: 'ok', lanes: parseLanes(file.text, prefix), lines: parseLaneLines(file.text), todos: parseUserTodos(file.text) }
   }
-  $.ui.log(`line-board: 讀取協調票 ${file.path} 失敗：${file.message}`, { to: 'debug' })
-  return { kind: 'error', message: `${file.path}：${file.message}` }
-}
-
-/** 讀協調票每條線最後一行現行佇列行的原文（含收線的線），供 line_status 判讀；讀不到時的訊息含票檔路徑。 */
-export async function readLaneLines(
-  $: EngineInterface,
-  mainPath: string,
-  coordinationTicket: string,
-): Promise<{ kind: 'ok'; lines: LaneLine[] } | { kind: 'error'; message: string }> {
-  const file = await readTicketFile($, mainPath, coordinationTicket)
-  if (file.kind === 'ok') return { kind: 'ok', lines: parseLaneLines(file.text) }
   $.ui.log(`line-board: 讀取協調票 ${file.path} 失敗：${file.message}`, { to: 'debug' })
   return { kind: 'error', message: `${file.path}：${file.message}` }
 }
