@@ -19,6 +19,7 @@ import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/screens/domain_view/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 
 /// 單一步驟的 fixture：標籤 + 直接觸及的 domain 清單 + 發出／消費事件。

@@ -8,9 +8,6 @@ library;
 
 import 'package:flutter/widgets.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
-
-export 'package:graph_project_docs_manager/state/state_holder.dart'
-    show StateHolderOverride;
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

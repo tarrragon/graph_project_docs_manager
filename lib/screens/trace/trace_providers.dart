@@ -3,9 +3,6 @@ library;
 
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 
-export 'package:graph_project_docs_manager/state/state_holder.dart'
-    show StateHolderOverride;
-
 import '../../app/graph_status.dart';
 import '../../app/scan_round.dart';
 import '../../corpus/corpus_scanner.dart';

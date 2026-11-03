@@ -3,9 +3,6 @@
 library;
 
 import 'package:graph_project_docs_manager/state/state_holder.dart';
-
-export 'package:graph_project_docs_manager/state/state_holder.dart'
-    show StateHolderOverride;
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 /// 目前工作資料夾狀態；初始為 [WorkspaceUnset]（App 剛啟動、`restore()`

@@ -11,8 +11,5 @@ library;
 
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 
-export 'package:graph_project_docs_manager/state/state_holder.dart'
-    show StateHolderOverride;
-
 /// 目前選定的 UC 節點 id；空代表尚未選定。
 final selectedUcProvider = stateHolderProvider<String?>((ref) => null);

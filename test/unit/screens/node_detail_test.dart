@@ -23,7 +23,6 @@ import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtu
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_screen.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state.dart';
-// ignore: unnecessary_import
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
 

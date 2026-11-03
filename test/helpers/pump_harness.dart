@@ -34,6 +34,7 @@ import 'package:graph_project_docs_manager/main.dart';
 
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 
 import 'window_sizes.dart';
 

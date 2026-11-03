@@ -29,6 +29,7 @@ import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';

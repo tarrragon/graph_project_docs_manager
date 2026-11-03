@@ -30,6 +30,7 @@ import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/main.dart' show kDesignSize;
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';

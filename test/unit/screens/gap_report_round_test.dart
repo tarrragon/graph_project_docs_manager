@@ -36,6 +36,7 @@ import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart'
     show CorpusScanResult, RawNode;
 import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/spec007/bundle_graph_fixture.dart';

@@ -23,6 +23,7 @@ import 'package:graph_project_docs_manager/screens/trace/trace_providers.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../test/helpers/pump_harness.dart';

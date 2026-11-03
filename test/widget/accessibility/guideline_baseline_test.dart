@@ -33,6 +33,7 @@ import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dart';
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 
 import '../../helpers/domain_view_fixtures.dart';
 import '../../helpers/gap_round_fakes.dart';

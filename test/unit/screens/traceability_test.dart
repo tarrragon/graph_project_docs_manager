@@ -9,11 +9,10 @@ import 'package:flutter/material.dart' show InkWell;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/jump_targets.dart';
-// ignore: unnecessary_import
-import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_providers.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_screen.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
