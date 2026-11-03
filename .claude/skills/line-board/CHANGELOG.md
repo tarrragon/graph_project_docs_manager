@@ -2,6 +2,12 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.12.2（2026-11-03）— 佇列票上色與閘門票去重改以派發列的完整票號比對，沒有票號的派發不參與。原本以任務欄比對短票號：沒有票號的派發任務欄退回派發描述，描述剛好等於某張佇列票的短票號時會誤讓該票上色，或誤把該票的閘門票列當成已由派發列表達而不列。任務欄顯示文字不變。
+
+- `types/index.d.ts` 的 `DispatchRow` 新增 `ticketId: string | null`；`hooks/dispatch.ts` 的 `dispatchRows` 填入派發紀錄的完整票號。
+- `hooks/lanesView.tsx` 的 `queueColorOf` 與 `hooks/layout.ts` 的 `laneGateTickets` 改以 `ticketId` 比對佇列 token 的完整票號。
+- `references/board-screens.md`〈五色狀態〉與閘門票列說明同步。
+
 **Version**: 0.12.1（2026-11-03）— 線群組標題列新增 `［佇列無票號］` 標示：現行佇列行的票序不含任何票號、只有非票號文字（如 `（結束了）`、`等主控通知`）時，標在 `［狀態］` 之後。這類線沒有佇列列，原本看板上只剩標題列、沒有任何警示；`line_status` 已列為過期項「佇列無票號」。含票號的票序不標。
 
 - `hooks/lanes.ts` 新增 `isQueueWithoutTicket`（輸入為 `parseQueue` 的 token），看板與 `line_status` 共用；`continuity.ts` 的 `liveLaneStale` 改呼叫它，no-ticket 過期項的說明文字改為「看板該線只剩標了［佇列無票號］的線標題」。

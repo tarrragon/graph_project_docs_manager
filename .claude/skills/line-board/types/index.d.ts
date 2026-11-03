@@ -181,11 +181,15 @@ export type DispatchContext = {
   holders: readonly MergeGateHolder[]
 }
 
-/** 派發區塊的一列：所屬線（對不到為 null，顯示為「其他」）、代理人名稱、任務（票號或派發描述）、流程階段、派發時間。 */
+/**
+ * 派發區塊的一列：所屬線（對不到為 null，顯示為「其他」）、代理人名稱、任務（票號或派發描述）、
+ * 完整票號（派發沒有票號時為 null，此列不參與佇列票的比對）、流程階段、派發時間。
+ */
 export type DispatchRow = {
   lane: number | null
   name: string
   task: string
+  ticketId: string | null
   stage: DispatchStage
   dispatchedAt: string | null
 }

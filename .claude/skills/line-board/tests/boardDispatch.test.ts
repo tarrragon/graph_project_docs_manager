@@ -209,6 +209,34 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
+  /** L13 的佇列票 337.3 為 pending，派發紀錄只有一筆 sid-102（L13）的派發。 */
+  const singleDispatchStub = (fields: Record<string, unknown>) => {
+    const stub = dispatchFiles(JSON.stringify({ dispatches: [dispatchJson({ session_id: 'sid-102', ...fields })] }))
+    stub.files[`/repo/${TICKET_FOLDER}/0.5.0-W1-337.3.md`] = ticketFile('pending')
+    return stub
+  }
+
+  test('E2：沒有票號、描述剛好等於某佇列票短票號的派發不讓該票上色（佇列票仍為待辦灰）', async ($, on) => {
+    // 無票號派發的任務欄退回描述原文「337.3」，與佇列票 337.3 的短票號同字面
+    const { ui } = await startBoard($, on, singleDispatchStub({ agent_id: 'adesc', agent_description: '337.3' }))
+    expect(await bodyOf(ui, laneGroupId(13))).toContain('general-purpose｜337.3｜實作｜3 分前')
+    expect(await queueSegmentsOf(ui, laneGroupId(13))).toEqual([
+      { text: '337.3〔pending〕', color: 'gray' },
+      { text: '337.2.1〔unknown〕', color: undefined },
+    ])
+    await ui.unmount()
+  })
+
+  test('對照：同一張票改由帶票號的派發執行中時，佇列票上色為代理人執行中（青）', async ($, on) => {
+    const { ui } = await startBoard($, on, singleDispatchStub({ agent_id: 'aticket', ticket_id: '0.5.0-W1-337.3' }))
+    expect(await bodyOf(ui, laneGroupId(13))).toContain('general-purpose｜337.3｜實作｜3 分前')
+    expect(await queueSegmentsOf(ui, laneGroupId(13))).toEqual([
+      { text: '337.3〔pending〕', color: 'cyan' },
+      { text: '337.2.1〔unknown〕', color: undefined },
+    ])
+    await ui.unmount()
+  })
+
   test('線群組標題列為主題鍵 suggestion 色粗體、不變淡；無活動的線（L9）只有標題列下的各行為淡色', async ($, on) => {
     const { ui } = await startBoard($, on, dispatchFiles(DISPATCH_ACTIVE))
     type Styled = { props?: { color?: unknown; bold?: unknown; dimColor?: unknown } }
