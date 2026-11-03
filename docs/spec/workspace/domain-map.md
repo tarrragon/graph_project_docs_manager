@@ -6,7 +6,7 @@ related_usecases: [UC-01, UC-06]
 depends_on_bundles: []
 path_patterns: [lib/workspace/]
 created: "2026-08-26"
-updated: "2026-10-07"
+updated: "2026-11-03"
 ---
 
 # Domain Map — Workspace
@@ -43,7 +43,7 @@ updated: "2026-10-07"
 
 | Domain | 唯一變更理由 | 公開面（OCP） | 內部面 |
 |--------|------------|-------------|-------|
-| **Workspace** | 資料夾存取方式改變 | 目前路徑、可用性狀態、開啟原始檔、最近專案清單、健康計數（攜帶，來源歸 Diagnostics 整合定案） | 路徑持久化、可用性探測、清單持久化 |
+| **Workspace** | 資料夾存取方式改變 | 目前路徑、可用性狀態、開啟原始檔、最近專案清單、健康計數（持久化快照：每輪掃描完成寫入最近專案清單對應項，問題數＝破洞報告總項數，SPEC-005 §2.4〈計數快照〉） | 路徑持久化、可用性探測、清單持久化 |
 
 ## 7. FR → Bundle 覆蓋對照
 
@@ -51,4 +51,4 @@ SPEC-005 無 FR 編號；本 domain 在 SPEC-006、SPEC-007 無 FR 歸屬。SPEC
 
 ---
 
-**Last Updated**: 2026-10-07 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-11-03 | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）；健康計數來源定案（0.6.0-W1-018.1）

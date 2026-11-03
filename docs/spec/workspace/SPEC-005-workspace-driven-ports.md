@@ -4,8 +4,8 @@ title: "Workspace driven port 回饋契約"
 status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
-updated: "2026-10-13"
-version: "1.3"
+updated: "2026-11-03"
+version: "1.4"
 owner: star-anise-system-designer
 has_functional_requirements: false   # 本規格只記 workspace driven port 的專案事實，不含 FR（0.5.0-W1-159 判定）
 
@@ -221,14 +221,15 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 |------|------|
 | key | `workspace.recentProjects` |
 | value | 以 `writeString` 寫入的 JSON 字串；頂層為陣列 |
-| 陣列元素 | 物件，兩欄皆必存在：`path`（string，資料夾絕對路徑）、`lastOpenedAt`（string，ISO 8601 UTC，例 `2026-09-24T01:25:50.000Z`） |
+| 陣列元素 | 物件，兩欄皆必存在：`path`（string，資料夾絕對路徑）、`lastOpenedAt`（string，ISO 8601 UTC，例 `2026-09-24T01:25:50.000Z`）；另有選填欄 `counts`（見〈計數快照〉） |
 | 唯一性 | 以 `path` 字串完全相等判定；同一 `path` 至多一項 |
 | 排序 | 依 `lastOpenedAt` 降冪；讀取端不信任儲存順序，載入後自行排序 |
 | 上限 | 本版不截斷 |
 
 ```json
 [
-  {"path": "/Users/example/project-a", "lastOpenedAt": "2026-09-24T01:25:50.000Z"},
+  {"path": "/Users/example/project-a", "lastOpenedAt": "2026-09-24T01:25:50.000Z",
+   "counts": {"nodeCount": 237, "ticketCount": 2419, "issueCount": 3}},
   {"path": "/Users/example/project-b", "lastOpenedAt": "2026-09-20T08:00:00.000Z"}
 ]
 ```
@@ -237,9 +238,11 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 | 符號 | 落點 | 定義 |
 |------|------|------|
-| `RecentProject` | `lib/workspace/workspace_types.dart` | value type，欄位 `path`（`String`）、`lastOpenedAt`（`DateTime`，UTC） |
+| `RecentProject` | `lib/workspace/workspace_types.dart` | value type，欄位 `path`（`String`）、`lastOpenedAt`（`DateTime`，UTC）、`counts`（`RecentProjectCounts?`，無快照為 `null`） |
+| `RecentProjectCounts` | 同上 | value type，三欄 `nodeCount`、`ticketCount`、`issueCount`（皆 `int`，≥ 0） |
 | `loadRecentProjects()` | `WorkspaceRepository` | 回傳 `Future<List<RecentProject>>`，已依 `lastOpenedAt` 降冪；不拋例外，失敗一律回空清單（分支見下表） |
-| `addRecentProject(String path)` | `WorkspaceRepository` | 讀出現有清單，移除同 `path` 項，以當下時刻為 `lastOpenedAt` 插入頂端後整份寫回；回傳 `Future<bool>`（寫入成功與否） |
+| `addRecentProject(String path)` | `WorkspaceRepository` | 讀出現有清單，移除同 `path` 項，以當下時刻為 `lastOpenedAt` 插入頂端後整份寫回；同 `path` 舊項的 `counts` 原樣帶入新項（不因重新開啟而清除快照）；回傳 `Future<bool>`（寫入成功與否） |
+| `saveRecentProjectCounts(String path, RecentProjectCounts counts)` | `WorkspaceRepository` | 讀出現有清單，以 `counts` 取代同 `path` 項的 `counts` 後整份寫回，不改 `lastOpenedAt` 與排序；清單內無同 `path` 項時不插入、不寫入，回 `false`；回傳 `Future<bool>` |
 
 **寫入時機**：專案**成功載入**後呼叫 `addRecentProject`（SPEC-003 §3.7：成功載入後該項移至頂端）。
 選取後載入失敗、取消載入、`clearStoredPath()` 皆不寫入、不刪除清單項。清單項的資料夾
@@ -256,6 +259,34 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 | 結果（讀，JSON 解析失敗或元素缺欄／型別不符） | 呼叫端解析 | 契約（整份視為損壞，回空清單；不部分採用） | 契約（level 900，含原始例外或首個不符元素索引） |
 | 結果（讀，成功） | `readString` 回傳值經解析 | 契約（排序後清單） | 契約（一筆，含項數） |
 | 結果（寫） | `writeString` 的 `bool` 回傳與例外 | 契約（成功／回 false／拋例外三分支，後兩者回 false） | 契約（成功一筆；失敗兩分支各一筆 level 900） |
+
+**計數快照**（`0.6.0-W1-018` 用戶裁決；`0.6.0-W1-018.1` 定案）：切換器各項的摘要（節點數 · 票數）與健康徽章
+（問題數）一律讀本欄，不讀即時掃描結果。
+
+| 項目 | 定義 |
+|------|------|
+| 欄位 | `counts`：物件，三欄皆必存在且為非負整數——`nodeCount`、`ticketCount`、`issueCount` |
+| `nodeCount` | 該輪掃描的 `ScanSummary.nodeCount`（`ScanRoundResult.scan.summary`） |
+| `ticketCount` | 該輪 `ScanRoundResult.scan.rawNodes` 中 `typeName` 等於 `ticketTypeName` 的節點數；解析失敗的 Ticket 檔不計入（它們已計入 `issueCount`） |
+| `issueCount` | 該輪的破洞報告總項數：與破洞報告畫面列出的項數同一定義，即 `GapReportFound`／`GapReportUndeterminable` 各類別 `items` 長度加總、`GapReportNoGaps` 為 0（同 `ScanNotificationController` 送通知時的計數）；以 `gapItemIdsOf(round)` 的集合大小取值，兩者須相等 |
+| 寫入時機 | 每輪掃描完成（`scanRoundProvider` 進入 `ScanRoundCompleted`）時，以 `result.workspacePath` 呼叫 `saveRecentProjectCounts`；掃描失敗、取消、未完成的輪次不寫入，快照維持前一輪值 |
+| 目前專案項 | 同樣顯示快照，不顯示即時值。理由：單一來源，切換器不需區分兩種資料路徑；輪次完成即寫入，完成後快照與即時值相同，差異只存在於輪次進行中，此時顯示上一輪值屬正確語意 |
+| 無快照 | 元素無 `counts` 欄（本欄加入前寫入的舊資料、或從未完成過掃描的項）：切換器不顯示摘要列與健康徽章 |
+| `counts` 格式不符 | 缺欄、非整數或為負：該元素視為無快照（`counts` 為 `null`），其餘欄照常採用，記一筆 level 900 日誌（含元素索引）；不判整份損壞。理由：快照可由下一輪掃描重建，整份判損會使 `addRecentProject` 以空清單為基底覆寫、遺失所有最近專案，代價與快照價值不相稱。〈損壞時不覆寫的邊界〉的「不部分採用」只針對 `path`／`lastOpenedAt` |
+| schemaVersion | 不新增版本欄位、不升版。理由：`counts` 為選填欄，新讀取端以「欄不存在」判定舊資料，無需版本號；舊版 App 讀到多出的欄位不判損（解析只檢查兩個必存在欄），寫回時會丟棄 `counts`，下一輪掃描完成即重建 |
+
+**計數寫入的回饋點**：
+
+| 時刻 | 承擔者 | 呼叫端投影 | 日誌投影 |
+|------|--------|-----------|---------|
+| 呼叫發出 | 呼叫端 `saveRecentProjectCounts()` | 契約 | 契約（入口一筆，含 path 與三個計數） |
+| 受理 | `WorkspacePreferencesPort.open()`（同 §2.2） | 契約（拋例外 → 回 false） | 契約（level 900 一筆） |
+| 結果（清單無同 path 項） | 呼叫端 | 契約（回 false，不寫入） | 契約（一筆，非錯誤級） |
+| 結果（讀到損壞清單） | 呼叫端解析 | 契約（回 false，不寫入；不以空清單為基底，因本方法不負責插入項） | 契約（level 900 一筆） |
+| 結果（寫） | `writeString` 的 `bool` 回傳與例外 | 契約（成功／回 false／拋例外，後兩者回 false） | 契約（成功一筆；失敗兩分支各一筆 level 900） |
+
+寫入失敗不呈現於畫面：快照是輔助資訊，失敗不影響本輪結果的各畫面，下一輪完成時重寫；
+失敗只進日誌。呼叫端不重試。
 
 **損壞時不覆寫的邊界**：讀取判為損壞時，`loadRecentProjects()` 不回寫、不清除該 key；
 `addRecentProject()` 讀到損壞內容時以空清單為基底寫入新項（損壞內容因此被取代），
@@ -298,6 +329,7 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.4 | 2026-11-03 | §2.4 新增〈計數快照〉：陣列元素選填欄 `counts`（`nodeCount`／`ticketCount`／`issueCount`）、三計數來源、寫入時機（每輪掃描完成）、目前專案項亦讀快照、無快照不顯示摘要與徽章、`counts` 格式不符只降為無快照、不新增 schemaVersion；新增 `RecentProjectCounts`、`saveRecentProjectCounts` 與其回饋點表；`addRecentProject` 帶入同 path 舊項的 `counts`。來源 `0.6.0-W1-018` 用戶裁決，承接票 `0.6.0-W1-018.1` |
 | 1.3 | 2026-10-13 | frontmatter 新增 `has_functional_requirements: false`：本規格不含 FR 為設計（通則在方法論〈Port 回饋契約〉，本規格只記專案事實），覆蓋檢查據此不執行 FR 比對。條文無變更。來源 `0.5.0-W1-159`，承接票 `0.5.0-W1-159.1` |
 | 1.2 | 2026-09-24 | §2.2 回饋點表新增 `remove` 結果時刻列（`clearStoredPath()` 清除已存路徑，S-21）；新增 §2.4 最近專案清單持久化：key `workspace.recentProjects`、JSON 陣列 schema（`path` + `lastOpenedAt`）、`RecentProject` 與兩個 repository 方法、寫入時機、回饋點承擔者表、損壞處理邊界（S-36）。來源 `0.2.0-W1-023`，承接票 `0.2.1-W1-043` |
 | 1.1 | 2026-09-09 | 對齊 `0.1.0-W3-146`／`0.1.0-W3-147` 落地後的現況：載體段由遷移事件敘述改寫為三條契約（接縫落點／value types 落點／不 re-export 與呼叫端 import 約束），時態問題隨之消解；§1 補與 146 對照表的列定義差異（歸屬單位 vs 計算單位）並寫出拆列會使判準把 `WorkspacePreferencesPort` 判成 typedef 的失效機制；§1.1 補軸別釐清並寫明所擋的推論與刪除代價。`docs/tech-decisions.md` 補記段有對稱一份（`0.1.0-W3-157`） |
