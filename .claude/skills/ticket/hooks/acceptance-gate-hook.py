@@ -107,6 +107,7 @@ from acceptance_checkers import (
 # 既有 ana_spawned_checker.py 已 deprecated，僅保留 check_ana_has_spawned_tickets
 # 作為「無後續 ticket」的 missing 警告（不阻擋）。
 from acceptance_checkers.ticket_parser import get_ticket_start_time
+from acceptance_checkers.coordination_todo_checker import check_unpaired_user_todos
 
 
 # ============================================================================
@@ -493,6 +494,15 @@ def check_acceptance_status(
         if hook_protection_should_block:
             return AcceptanceCheckResult(
                 True, False, hook_protection_msg, False, [], [], "", "", [], [], False
+            )
+
+        # 步驟 1.6：協調票帶未配對用戶待辦（U1）不得 complete
+        todo_should_block, todo_msg = check_unpaired_user_todos(
+            content, frontmatter, ticket_id, logger
+        )
+        if todo_should_block:
+            return AcceptanceCheckResult(
+                True, False, todo_msg, False, [], [], "", "", [], [], False
             )
 
         # 0.4.1-W2-006：偵測 complete 是否與同鏈寫入操作串接
