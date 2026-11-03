@@ -1,6 +1,6 @@
 // Pane 端到端測試共用的 harness：以 test 端 hook 代替 engine 的 repo stub、啟動看板並掛上 Pane、一組 session 狀態檔，
 // 以及從畫出的描述樹取文字的輔助函式（titleOf、textsOf 等）。
-// 由 board.test.ts 與 boardDispatch.test.ts 匯入；本檔不是測試檔，不含任何 test。
+// 由 board.test.ts、boardDispatch.test.ts 與 boardQueue.test.ts 匯入；本檔不是測試檔，不含任何 test。
 
 import type { On } from 'claude-code'
 import { mock } from 'claude-code/testing'
@@ -11,6 +11,7 @@ import { groupTitleKey } from '../hooks/lanesView'
 import { groupToggleKey } from '../hooks/layout'
 import { COORDINATION_CLI_PATH } from '../hooks/readers'
 import { SESSIONS_DIR } from '../hooks/sessions'
+import { ticketFileCandidates } from '../hooks/shared'
 
 /** 家目錄與 session 狀態檔目錄（測試用的固定值）。 */
 export const HOME = '/home/u'
@@ -20,6 +21,10 @@ export const NOW_MS = Date.UTC(2026, 9, 19, 8, 0, 0)
 
 /** 預設的協調票：fixtures 的佇列票檔與 lanes.ts 的票檔路徑皆以它為準。 */
 export const COORDINATION_TICKET = '0.5.0-W1-349'
+/** 預設協調票的票檔（相對 repo root）：由票號推導，取 ticketFileCandidates 的第一個候選（hierarchical）。 */
+export const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''
+/** 與預設協調票同版本的票檔所在目錄（相對 repo root）。 */
+export const TICKET_FOLDER = COORDINATION_TICKET_FILE.slice(0, COORDINATION_TICKET_FILE.lastIndexOf('/'))
 
 /** 協調票解析 CLI --json 的輸出（欄位與 coordination_ticket.py 的 _result 一致）。 */
 const cliResult = (kind: string, fields: Record<string, unknown>): string =>

@@ -2,6 +2,11 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.12.4（2026-11-04）— 內部重構，看板畫面與 `line_status` 輸出不變。佇列列與佇列細節的繪製從 `lanesView.tsx` 移到獨立模組，佇列細節的測試移到獨立測試檔；測試數不變。
+
+- 新增 `hooks/queueView.tsx`：`queueRow`、`queueDetail`、`queueColorOf` 與型別 `TicketColorOf`、常數 `QUEUE_DETAIL_LABEL`、`MISSING_TITLE`、`laneDetailId` 自 `hooks/lanesView.tsx` 移入；`renderLaneGroup` 改為匯入。`queueView.tsx` 對 `lanesView.tsx` 只有 `import type`（`Elements`、`ToggleGroup`），沒有執行期循環匯入。
+- 新增 `tests/boardQueue.test.ts`：〈佇列細節〉三則與〈對照：佇列票全部完成的線沒有佇列列，也沒有細節按鍵〉一則自 `tests/board.test.ts` 移入，測試名稱與內容不改。`COORDINATION_TICKET_FILE`、`TICKET_FOLDER` 由 `tests/board.test.ts` 移到 `tests/paneHarness.ts` 共用。
+
 **Version**: 0.12.3（2026-11-04）— 內部重構，看板畫面與 `line_status` 輸出不變。群組標題列與佇列細節的切換文字只有單一標題，多段以「｜」相接的能力已無呼叫端。
 
 - `hooks/layout.ts` 的 `formatGroupTitle(parts, isOpen)` 改為 `formatGroupToggle(title, isOpen)`，回傳 `▾`／`▸` 加標題；`hooks/lanesView.tsx` 兩個呼叫端同步。`formatQueueRow` 保留為佇列列整行文字的契約（產品碼改用 `queueRowSegments`），註解寫明用途。

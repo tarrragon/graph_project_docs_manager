@@ -1,6 +1,6 @@
-// Pane 的端到端繪製：線群組的標題列（session 狀態、目標）與票序、佇列細節、可折疊的各 session 與合併閘門兩區塊、協調票的兩種空狀態，
+// Pane 的端到端繪製：線群組的標題列（session 狀態、目標）與票序、可折疊的各 session 與合併閘門兩區塊、協調票的兩種空狀態，
 // 以及專案設定（協調票）的讀取：有設定才自動開 Pane、沒有設定時 /board 顯示設定提示、協調票與佇列票的票檔路徑推導。
-// 群組的派發列、活動計數、預設展開與手動切換在 boardDispatch.test.ts；各 domain 的純函式在同名的 *.test.ts。
+// 群組的派發列、活動計數、預設展開與手動切換在 boardDispatch.test.ts；佇列細節在 boardQueue.test.ts；各 domain 的純函式在同名的 *.test.ts。
 
 import { describe, expect, test } from 'claude-code/testing'
 
@@ -18,12 +18,14 @@ import {
   sessionJson,
   ticketFile,
 } from './fixtures'
-import { GROUP_BORDER_COLUMNS, laneDetailId } from '../hooks/lanesView'
-import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from '../hooks/layout'
+import { GROUP_BORDER_COLUMNS } from '../hooks/lanesView'
+import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupToggleKey, laneGroupId } from '../hooks/layout'
 import { MERGE_LOG_PATH } from '../hooks/mergeGate'
 import {
   COORDINATION_TICKET,
+  COORDINATION_TICKET_FILE,
   SESSIONS,
+  TICKET_FOLDER,
   cliError,
   cliMultiple,
   cliNone,
@@ -31,16 +33,10 @@ import {
   runBoardCommand,
   sessionStub,
   startBoard,
-  textsOf,
   titleOf,
 } from './paneHarness'
-import type { CliFailure, Ui } from './paneHarness'
-import { ticketFileCandidates } from '../hooks/shared'
+import type { CliFailure } from './paneHarness'
 
-/** 預設協調票的票檔（相對 repo root）：由票號推導，取 ticketFileCandidates 的第一個候選（hierarchical）。 */
-const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''
-/** 與預設協調票同版本的票檔所在目錄（相對 repo root）。 */
-const TICKET_FOLDER = COORDINATION_TICKET_FILE.slice(0, COORDINATION_TICKET_FILE.lastIndexOf('/'))
 /** 佇列無票號的線在標題列的標示（board-screens.md〈線群組的標題〉）：以字面寫在測試，標示文字改動時測試跟著改。 */
 const QUEUE_NO_TICKET_LABEL = '［佇列無票號］'
 
@@ -315,88 +311,6 @@ describe('Pane', () => {
       expect(title?.[0]).toMatch(new RegExp(`^[▸▾] L${lane} `))
       expect(title?.[0]).not.toContain(QUEUE_NO_TICKET_LABEL)
     }
-    await ui.unmount()
-  })
-
-  /**
-   * 佇列細節的票檔：L7 的 351 在 main 為 in_progress 並有 title（worktree 副本的 title 不同）、145 沒有票檔；
-   * L13 的 337.1 已完成、337.3 為 pending 並有 title、337.2.1 沒有票檔。
-   */
-  const detailFiles = (): Record<string, string> => ({
-    [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349,
-    [`/repo/${TICKET_FOLDER}/0.5.0-W1-351.md`]: ticketFile('in_progress', '實作看板細節'),
-    [`/wt/${TICKET_FOLDER}/0.5.0-W1-351.md`]: ticketFile('pending', 'WORKTREE 舊副本的 title'),
-    [`/repo/${TICKET_FOLDER}/0.5.0-W1-337.1.md`]: ticketFile('completed', '已完成的票'),
-    [`/repo/${TICKET_FOLDER}/0.5.0-W1-337.3.md`]: ticketFile('pending', "'等待排程的票'"),
-  })
-
-  /** 線群組的佇列細節各行；細節收合（未畫出）時為 undefined。 */
-  async function detailOf(ui: Ui, laneId: string): Promise<string[] | undefined> {
-    const box = await ui.find({ type: 'Box', key: groupBodyKey(laneDetailId(laneId)) })
-    return box === undefined ? undefined : textsOf(box.children)
-  }
-
-  test('佇列細節：有佇列列的線群組各有一個細節按鍵，預設收合；按下後逐張列出未完成佇列票的短票號、狀態與 title，title 只讀主 checkout、讀不到時標明', async ($, on) => {
-    const { ui } = await startBoard($, on, { files: detailFiles() })
-    await ui.press({ key: groupToggleKey(laneGroupId(7)) })
-    await ui.press({ key: groupToggleKey(laneGroupId(13)) })
-    for (const id of [laneGroupId(7), laneGroupId(13)]) {
-      expect((await ui.find({ type: 'Button', key: groupToggleKey(laneDetailId(id)) }))?.text).toBe('▸ 佇列細節')
-      expect(await detailOf(ui, id)).toBeUndefined()
-    }
-    // 佇列列維持一行
-    expect(await ui.find({ type: 'Text', text: /^排隊：351〔in_progress〕 → 145〔unknown〕$/ })).toBeDefined()
-    await ui.press({ key: groupToggleKey(laneDetailId(laneGroupId(7))) })
-    await ui.press({ key: groupToggleKey(laneDetailId(laneGroupId(13))) })
-    expect((await ui.find({ type: 'Button', key: groupToggleKey(laneDetailId(laneGroupId(7))) }))?.text).toBe('▾ 佇列細節')
-    expect(await detailOf(ui, laneGroupId(7))).toEqual(['351｜in_progress｜實作看板細節', '145｜unknown｜（讀不到 title）'])
-    // 337.1 已 completed，不列
-    expect(await detailOf(ui, laneGroupId(13))).toEqual(['337.3｜pending｜等待排程的票', '337.2.1｜unknown｜（讀不到 title）'])
-    expect(await ui.find({ text: /已完成的票|WORKTREE/ })).toBeUndefined()
-    await ui.unmount()
-  })
-
-  test('佇列細節：各行依佇列票的五色狀態上色、以 truncate-end 截斷', async ($, on) => {
-    const { ui } = await startBoard($, on, { files: detailFiles() })
-    for (const id of [laneGroupId(7), laneGroupId(13)]) {
-      await ui.press({ key: groupToggleKey(id) })
-      await ui.press({ key: groupToggleKey(laneDetailId(id)) })
-    }
-    const rows = await ui.findAll({ type: 'Text', text: /^\d{3}[\d.]*｜/ })
-    expect(rows.map(row => [row.text.split('｜')[0], row.props.color, row.props.wrap])).toEqual([
-      ['351', 'green', 'truncate-end'],
-      ['145', undefined, 'truncate-end'],
-      ['337.3', 'gray', 'truncate-end'],
-      ['337.2.1', undefined, 'truncate-end'],
-    ])
-    await ui.unmount()
-  })
-
-  test('佇列細節：手動展開不被 30 秒刷新覆寫，收合群組再展開後仍維持；再按一次細節按鍵收合', async ($, on) => {
-    const { ui, clock } = await startBoard($, on, { files: detailFiles() })
-    await ui.press({ key: groupToggleKey(laneGroupId(7)) })
-    await ui.press({ key: groupToggleKey(laneDetailId(laneGroupId(7))) })
-    await clock.advance(30_000)
-    expect(await detailOf(ui, laneGroupId(7))).toEqual(['351｜in_progress｜實作看板細節', '145｜unknown｜（讀不到 title）'])
-    await ui.press({ key: groupToggleKey(laneGroupId(7)) })
-    expect(await detailOf(ui, laneGroupId(7))).toBeUndefined()
-    await ui.press({ key: groupToggleKey(laneGroupId(7)) })
-    expect(await detailOf(ui, laneGroupId(7))).toBeDefined()
-    await ui.press({ key: groupToggleKey(laneDetailId(laneGroupId(7))) })
-    expect(await detailOf(ui, laneGroupId(7))).toBeUndefined()
-    expect((await ui.find({ type: 'Button', key: groupToggleKey(laneDetailId(laneGroupId(7))) }))?.text).toBe('▸ 佇列細節')
-    await ui.unmount()
-  })
-
-  test('對照：佇列票全部完成的線沒有佇列列，也沒有細節按鍵', async ($, on) => {
-    const files = detailFiles()
-    files[`/repo/${TICKET_FOLDER}/0.5.0-W1-351.md`] = ticketFile('completed', '實作看板細節')
-    files[`/repo/${TICKET_FOLDER}/0.5.0-W1-145.md`] = ticketFile('completed')
-    const { ui } = await startBoard($, on, { files })
-    await ui.press({ key: groupToggleKey(laneGroupId(7)) })
-    await ui.press({ key: groupToggleKey(laneGroupId(13)) })
-    expect(await ui.find({ type: 'Button', key: groupToggleKey(laneDetailId(laneGroupId(7))) })).toBeUndefined()
-    expect(await ui.find({ type: 'Button', key: groupToggleKey(laneDetailId(laneGroupId(13))) })).toBeDefined()
     await ui.unmount()
   })
 })
