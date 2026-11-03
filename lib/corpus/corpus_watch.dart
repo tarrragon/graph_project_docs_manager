@@ -189,14 +189,20 @@ class CorpusWatcher {
   bool get isWatching => _subscription != null;
 
   Future<void> start(String workspaceRoot) async {
-    await stop();
+    // F5：start 發起當下同步換上未完成的新閘門，stop 的 await 期間
+    // 讀 ready 的呼叫端拿到的就是新閘門；舊閘門在此放行。
+    final previousGate = _readyGate;
+    final gate = _readyGate = Completer<void>();
+    _openGate(previousGate);
+    await _teardown();
+    if (gate.isCompleted || !identical(gate, _readyGate)) return;
     if (!_source.targetExists(workspaceRoot)) {
       // 規則 2：docs/ 缺席是「不建立監看」，不是監看失敗，不記 warning。
       // i18n-exempt: 開發者日誌，非使用者介面字串
       _log('watch skipped, docs/ absent: $workspaceRoot', level: _infoLevel);
+      _openGate(gate);
       return;
     }
-    final gate = _readyGate = Completer<void>();
     _subscription = _source
         .watch(workspaceRoot)
         .listen(
@@ -259,13 +265,17 @@ class CorpusWatcher {
     _openGate(_readyGate);
   }
 
-  Future<void> stop() async {
+  Future<void> stop() {
+    _openGate(_readyGate);
+    return _teardown();
+  }
+
+  Future<void> _teardown() async {
     _readyTimer?.cancel();
     _readyTimer = null;
     final sub = _subscription;
     _subscription = null;
     _debouncer.clearPending();
-    _openGate(_readyGate);
     await sub?.cancel();
   }
 

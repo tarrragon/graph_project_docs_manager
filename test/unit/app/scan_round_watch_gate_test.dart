@@ -190,6 +190,18 @@ void main() {
     expect(events.whereType<WatchRoundCompleted>(), isEmpty);
   });
 
+  test('F5：start 已發起、stop 尚未完成時 ensureRound，就緒前不掃描；就緒後才掃描', () async {
+    h.source.readyBuilder = (_) => ready.future;
+    final starting = h.watcher.start('/ws');
+    final round = h.rounds.ensureRound();
+    await h.settle();
+    expect(h.scans, 0);
+    await starting;
+    ready.complete();
+    expect(await round, isNotNull);
+    expect(h.scans, 1);
+  });
+
   test('規則 10：就緒失敗時首輪照常開始', () async {
     h.source.readyBuilder = (_) => Future<void>.error(StateError('boom'));
     await h.watcher.start('/ws');
