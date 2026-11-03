@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../app/graph_status.dart';
+import '../../app/jump_targets.dart';
 import '../../app/scan_round.dart';
 import '../../corpus/node_type_names.dart';
 import '../../ticket_detail/ticket_detail.dart';
@@ -110,24 +111,50 @@ void _syncWithRound(
   final current = notifier.state;
   if (sameProject && current is TicketsReady && base is TicketsReady) {
     notifier.state = current.copyWith(tickets: base.tickets);
-    return;
+  } else {
+    notifier.state = base;
+    if (!sameProject) {
+      ref.read(ticketSearchInputProvider.notifier).state = null;
+    }
   }
-  notifier.state = base;
-  if (!sameProject) {
-    ref.read(ticketSearchInputProvider.notifier).state = null;
-  }
+  _applyTicketTarget(ref);
 }
 
 /// 目前畫面狀態：預設由最後完成輪次衍生（SPEC-001 §4）；搜尋、篩選、排序、
 /// 模式等畫面操作直接寫入本 provider（含 [TicketSearchDebouncer]）。測試
 /// 以 `overrideWith` 注入其餘狀態。
-final ticketListStateProvider = StateProvider<TicketListState>((ref) {
-  ref.read(_ticketRoundSyncProvider);
-  return ticketBaseStateOf(
-    ref.read(projectUnreadyReasonProvider),
-    ref.read(lastCompletedRoundProvider),
-  );
+final StateProvider<TicketListState> ticketListStateProvider =
+    StateProvider<TicketListState>((ref) {
+      ref.read(_ticketRoundSyncProvider);
+      ref.read(ticketTargetSyncProvider);
+      return ticketBaseStateOf(
+        ref.read(projectUnreadyReasonProvider),
+        ref.read(lastCompletedRoundProvider),
+      );
+    });
+
+/// 需求：[SPEC-003 §3.4] 消費跳轉意圖（`ticketListTargetProvider`）：清單為
+/// [TicketsReady] 時併入 `targetTicketId` 並清空意圖；未就緒則保留，待狀態
+/// 變動後再套用。測試覆寫狀態 provider 時可直接讀本 provider。
+final ticketTargetSyncProvider = Provider<void>((ref) {
+  ref.listen<String?>(ticketListTargetProvider, (_, _) {
+    _applyTicketTarget(ref);
+  });
+  Future.microtask(() {
+    if (ref.mounted) _applyTicketTarget(ref);
+  });
 });
+
+/// 清單為 [TicketsReady] 且有待定位意圖時，併入 `targetTicketId` 並清空意圖。
+void _applyTicketTarget(Ref ref) {
+  final id = ref.read(ticketListTargetProvider);
+  if (id == null) return;
+  final notifier = ref.read(ticketListStateProvider.notifier);
+  final current = notifier.state;
+  if (current is! TicketsReady) return;
+  notifier.state = current.copyWith(targetTicketId: () => id);
+  ref.read(ticketListTargetProvider.notifier).state = null;
+}
 
 /// 輪次與未就緒原因的同步掛點；由 [ticketListStateProvider] 初始化時啟動
 /// （獨立 provider：listener 回呼需回寫畫面狀態，不能在其建構函式內讀自己）。

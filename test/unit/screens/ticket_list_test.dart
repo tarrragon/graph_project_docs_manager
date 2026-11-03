@@ -11,7 +11,9 @@
 //   含損壞（疊加）        badge-tickets-corrupted         IssueMarker.damagedDetail
 import 'package:flutter/material.dart' show SnackBar;
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderContainer;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/jump_targets.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
@@ -197,6 +199,35 @@ void main() {
       await tester.pump();
 
       expect(container.read(selectedDestinationProvider), AppDestination.gaps);
+    });
+  });
+
+  group('跳轉意圖（ticketListTargetProvider）', () {
+    ProviderContainer harness(TicketListState initial) {
+      final c = ProviderContainer(
+        overrides: [ticketListStateProvider.overrideWith((ref) => initial)],
+      );
+      addTearDown(c.dispose);
+      c.read(ticketListStateProvider);
+      c.read(ticketTargetSyncProvider);
+      return c;
+    }
+
+    test('清單就緒：意圖併入 targetTicketId 並清空', () {
+      final c = harness(const TicketsReady(tickets: _readyTickets));
+      c.read(ticketListTargetProvider.notifier).state = '0.1.0-W1-002';
+
+      final state = c.read(ticketListStateProvider) as TicketsReady;
+      expect(state.targetTicketId, '0.1.0-W1-002');
+      expect(c.read(ticketListTargetProvider), isNull);
+    });
+
+    test('E1 對照：清單未就緒時不套用，意圖保留', () {
+      final c = harness(const TicketsEmpty());
+      c.read(ticketListTargetProvider.notifier).state = '0.1.0-W1-002';
+
+      expect(c.read(ticketListStateProvider), isA<TicketsEmpty>());
+      expect(c.read(ticketListTargetProvider), '0.1.0-W1-002');
     });
   });
 

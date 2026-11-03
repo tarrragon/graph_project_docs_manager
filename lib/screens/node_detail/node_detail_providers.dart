@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/jump_targets.dart';
 import '../../app/scan_round.dart';
 import '../../graph/adjacency_query.dart';
 import '../../graph/graph_built_event.dart';
@@ -19,9 +20,30 @@ import 'node_detail_state.dart';
 
 /// 目前畫面狀態；預設 `NodeDetailUnset`（未選節點）。測試以 `overrideWith`
 /// 切換至其餘狀態。
-final nodeDetailStateProvider = StateProvider<NodeDetailState>(
-  (ref) => const NodeDetailUnset(),
-);
+final StateProvider<NodeDetailState> nodeDetailStateProvider =
+    StateProvider<NodeDetailState>((ref) {
+      ref.read(nodeDetailTargetSyncProvider);
+      return const NodeDetailUnset();
+    });
+
+/// 需求：[SPEC-003 §3.5] 消費跳轉意圖（`nodeDetailTargetProvider`）：有目標即
+/// 轉為 [NodeDetailReady] 並清空意圖。由 [nodeDetailStateProvider] 初始化時
+/// 啟動；測試覆寫狀態 provider 時可直接讀本 provider。
+final nodeDetailTargetSyncProvider = Provider<void>((ref) {
+  void apply() {
+    final id = ref.read(nodeDetailTargetProvider);
+    if (id == null) return;
+    ref.read(nodeDetailStateProvider.notifier).state = NodeDetailReady(
+      nodeId: id,
+    );
+    ref.read(nodeDetailTargetProvider.notifier).state = null;
+  }
+
+  ref.listen<String?>(nodeDetailTargetProvider, (_, _) => apply());
+  Future.microtask(() {
+    if (ref.mounted) apply();
+  });
+});
 
 /// 節點 id → 詳情資料（不含內文）；讀同一專案最後完成的輪次（0.6.0-W1-109，
 /// SPEC-003 §3.6 掃描輪次更新列），重掃期間保留上一輪，新輪次完成後替換，

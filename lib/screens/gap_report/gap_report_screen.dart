@@ -24,6 +24,7 @@ import '../../workspace/open_path_resolver.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/stale_open_result.dart';
 import '../../app/uc_flow_focus.dart';
+import '../../app/jump_targets.dart';
 import 'gap_report_descriptions.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
@@ -316,10 +317,11 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
   Future<void> _openItem(BuildContext context, GapReportItem item) async {
     switch (item.pointerType) {
       case GapItemPointerType.ticket:
+        ref.read(ticketListTargetProvider.notifier).state = item.pointerNodeId;
         navigateTo(ref.read, AppDestination.tickets, NavIntent.jump);
         return;
       case GapItemPointerType.otherNode:
-        navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+        jumpToNodeDetail(ref.read, item.pointerNodeId);
         return;
       case GapItemPointerType.event:
         final ucId = item.eventUcId;
@@ -333,7 +335,7 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
         } else {
           // 無任何 UC 引用該 EVT：依「指向其他圖節點」處理
           // （`0.1.0-W3-335.38` S-31）。
-          navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+          jumpToNodeDetail(ref.read, item.pointerNodeId);
         }
         return;
       case GapItemPointerType.flow:
