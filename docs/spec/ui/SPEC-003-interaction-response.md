@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-03"
-version: "1.77"
+version: "1.78"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -241,13 +241,15 @@ gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 stat
 | 項目 | 契約 |
 |------|------|
 | 觸發條件 | `state-gaps-scanning` 轉換至 `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable` 的當下，**且**下列任一成立：(a) 視窗非前景——`AppLifecycleState` 不為 `resumed`；(b) 目前可見頁不是 `nav-page-gaps`——`selectedDestinationProvider` 的值不為 `AppDestination.gaps`。兩者皆不成立（使用者正看著破洞報告）時**不發送**，狀態轉換本身即結果 |
-| 不發送 | 檔案監看觸發的輪次不經 `state-gaps-scanning`（SPEC-006 FR-11 規則 9），不滿足本表「觸發條件」列，現行條文下不發送；是否另訂觸發條件、及其是否撤回未點擊的舊通知，待裁（SPEC-006 FR-11〈W4 衍生待裁〉D1）。掃描被取消（§2.5 C5：取消完成不通知）；切換專案中止掃描（§2.8 L2）；掃描未抵達完成態；同一次掃描結果已發送過（見「不重複發送」列） |
+| 監看輪次觸發條件（SPEC-006 FR-11 規則 9 (a)，D1 選 B，用戶裁定 2026-11-03） | 檔案監看觸發的輪次不經 `state-gaps-scanning`，不適用上方「觸發條件」列，改依本列：監看輪次完成的當下，**且**改變判準成立——該輪破洞項目的 itemId 集合與上一輪完成結果的 itemId 集合，兩向差集任一不為空（有任一項新增或消失）；項目內容改變但 itemId 集合相同、或僅三態間轉換而集合不變時不算改變，**且**可見性條件同「觸發條件」列 (a)／(b)（視窗非前景，或目前可見頁不是 `nav-page-gaps`）。上一輪無完成結果（本頁從未有結果，見 §3.5〈生命週期〉）時以空集合比較。**發送前撤回**：先撤回本 App 尚未被點擊的舊通知（含手動輪次與先前監看輪次所發者），再發送本則，通知中心同時至多留一則本 App 破洞通知；撤回失敗不阻擋發送，只記 log。權限 gate、點擊導向、denied fallback 同本表其餘各列，fallback SnackBar 沿用 `scanComplete*SnackbarMessage` 三則。內容見「監看輪次通知內容」列 |
+| 監看輪次通知內容 | 標題 `scanCompleteWatchNotificationTitle`；內文 `scanCompleteWatchNotificationBody`（placeholder `count`，型別 `int`，值為該輪破洞總數；三態共用一則，無法判定時 `count` 取該輪列出的項目數）。key 見本節文案表；與手動掃描完成的三則通知區分，使用者可辨識結果是外部檔案變動造成。SPEC-004 ARB 對照列與 ARB 條目由 0.6.0-W1-080 實作同批加入 |
+| 不發送 | 監看輪次未滿足「監看輪次觸發條件」列者（itemId 集合未改變，或使用者正看著破洞報告）。掃描被取消（§2.5 C5：取消完成不通知）；切換專案中止掃描（§2.8 L2）；掃描未抵達完成態；同一次掃描結果已發送過（見「不重複發送」列） |
 | 通知內容 | 標題 `scanCompleteNotificationTitle`；內文依結果二擇一：`state-gaps-found` → `scanCompleteNotificationBody`（placeholder `count`，型別 `int`，值為破洞總數）、`state-gaps-none` → `scanCompleteNoGapsNotificationBody`、`state-gaps-undeterminable` → `scanCompleteUndeterminableNotificationBody`（三擇一；key 見本節文案表，`0.3.0-W1-082` 起，內文須明示「無法判定」而非沿用無破洞文案，理由同 SPEC-001 §5〈無法判定破洞〉成列註記）。不含檔案路徑、不含逐項明細（明細由畫面承載；含關鍵資訊的結果不走自動消失的通道）；不附通知動作按鈕，唯一互動是點擊通知本體 |
 | 點擊通知的導向 | App 於收到點擊時自行前景化（原生 `NSApp.unhide` 並 `activate`，NSLog 記錄前後 `isHidden`／`isActive`；實機顯示系統不替已隱藏的執行中 App 前景化，`0.3.1-W1-097`），再執行 rail 語意切換至 `nav-page-gaps`（`returnTo` 設為 `null`，§2.3 規則 1），並依 SPEC-004 §1 回饋通道子表 locate 列定位：`state-gaps-found` → `scroll-gaps-sections` scroll-into-view 至第一個分節的第一個 `card-gaps-<itemId>` 並短暫高亮、焦點移入該項（高亮 token 與時長由 SPEC-004 第 4 章對應容器條目定義）；`state-gaps-none` → 焦點移入 `state-gaps-none` 根節點，不高亮；`state-gaps-undeterminable` → 焦點移入 `state-gaps-undeterminable` 根節點，不高亮。點擊時若已進入新一輪 `state-gaps-scanning`，只切頁、顯示當時進度、不定位；若專案已切換（結果已清空），只切頁、不定位。點擊路徑必須依序產生 `developer.log` 事件（前綴 `click-path:`）：`activated`（含狀態型別）、`navigate`（目的頁與 `returnTo`）、`locate-set`（含 `itemId`；不定位時為 `locate-skip`）、`locate-scroll`（捲動完成後記錄，含 `visible`：目標項與 viewport 是否相交）、`locate-focus`（下一幀記錄實際 `hasFocus`，已卸載則記 `unmounted`），測試以日誌 sink 斷言順序 |
 | 不重複發送 | 每一次掃描完成至多發送一則；同一結果不因視窗前景／背景往返而再發。以下事件由 App 撤回尚未被點擊的通知：結果已被看見——以 §2.13 判準 T1 的可見式（`AppLifecycleState == resumed` AND `selectedDestinationProvider == AppDestination.gaps`）為準，於兩個時刻判定：(i) 導覽切換進入 `nav-page-gaps`；(ii) App 回到前景（生命週期轉為 `resumed`）當下可見頁已是 `nav-page-gaps`（`0.3.2-W1-005`，用戶裁決 2026-09-29；短暫經過本 App 若產生 `resumed` 亦撤回，代價僅為通知中心少一則紀錄，結果仍在畫面上）——、新一輪掃描開始（舊結果已判定待汰換，與 §3.5「重新掃描」列同一理由）、切換專案（§2.8 L2）。撤回失敗不阻擋、不轉狀態，只記 log |
 | 權限 gate | 見下方三路徑表。授權狀態於**每次**觸發條件成立時重新查詢（使用者可在系統設定隨時改動，不快取上一次結果） |
 | 等待指示 | 發送與撤回期間不顯示任何等待指示：兩者皆為非同步旁路動作，不改變畫面狀態，畫面已依 §3.5 完成掃描中 → 結果的 cross-fade |
-| 可觀測性 | 授權查詢入口與結果、授權請求入口與結果、發送與撤回的入口與成功／失敗，皆以 `developer.log`（info；失敗為 warning）記錄，含破洞總數與觸發原因（非前景／已離開頁）；撤回另記觸發條件（`destination`：導覽切換進入 `nav-page-gaps`／`lifecycle`：回到前景時可見頁已是 `nav-page-gaps`／`rescan`／`projectSwitch`）與撤回後仍在通知中心的本 App 通知數（結果值，取自原生端撤回後的已遞送通知查詢）（observability 規則 5：權限 check／request 與平台 API 呼叫逐點記錄） |
+| 可觀測性 | 授權查詢入口與結果、授權請求入口與結果、發送與撤回的入口與成功／失敗，皆以 `developer.log`（info；失敗為 warning）記錄，含破洞總數與觸發原因（非前景／已離開頁）；撤回另記觸發條件（`destination`：導覽切換進入 `nav-page-gaps`／`lifecycle`：回到前景時可見頁已是 `nav-page-gaps`／`rescan`／`projectSwitch`／`watchReplace`：監看輪次發送前撤回）；監看輪次另記改變判準結果（新增與消失的 itemId 數）與撤回後仍在通知中心的本 App 通知數（結果值，取自原生端撤回後的已遞送通知查詢）（observability 規則 5：權限 check／request 與平台 API 呼叫逐點記錄） |
 
 **權限 gate 三路徑**（gate-fallback：每道 gate 必答成功／失敗／不確定）：
 
@@ -320,6 +322,8 @@ abstract class ScanNotifier {
 | `scanCompleteNoGapsSnackbarMessage` | 掃描完成，未偵測到破洞 | Scan complete: no gaps detected |
 | `scanCompleteUndeterminableNotificationBody` | 無法判定破洞，原因請見破洞報告 | Gaps could not be determined. See the gap report for the reason. |
 | `scanCompleteUndeterminableSnackbarMessage` | 掃描結束，無法判定破洞 | Scan finished: gaps could not be determined |
+| `scanCompleteWatchNotificationTitle` | 破洞報告已更新 | Gap report updated |
+| `scanCompleteWatchNotificationBody` | 檔案變動後重新掃描，目前 {count} 個破洞 | Rescanned after file changes: {count} gaps now |
 | `viewGapsAction` | 檢視 | View |
 
 **實作票驗證（實測記錄，`0.3.1-W1-028`）**：以下為實機量測結果，非規格推論。
@@ -1167,6 +1171,7 @@ T1 判否且三個承接落到 (c) 時，該事件對使用者完全不可見。
 | 17 | 帶目標跳入時清除搜尋與篩選（§3.4） | 等待型（使用者自他畫面帶目標跳入觸發） | 可棄 | 進入邊界時：Ticket 清單以帶目標的跳轉意圖抵達、判定需清除搜尋與篩選的當下 | — | `AppSnackBar.withAction`（`ticketsFiltersClearedSnackbarMessage`，動作 `undoAction`，§2.13 對照表列 14）。`0.3.2-W3-248` 補登 |
 | 18 | Domain 視圖載入失敗（阻擋狀態，`state-domain-load-failed`） | 自發型 | 不可棄（使用者必須重新載入或切換專案才能繼續） | 發起點：載入輪次拋出非預期例外的當下（不落入未選專案與列 11–13 三個阻擋狀態判定者，SPEC-001 §1「載入失敗」列） | — | 顯式阻擋狀態，非 SnackBar／系統通知（SPEC-001 §8.1 判否）。`0.5.0-W1-114.14.1` 補登 |
 | 19 | §3.6〈重新整理的三分支〉：重新整理後檔案存在但 frontmatter 解析失敗 | 等待型（同列 10） | 可棄 | 同列 10 | — | `AppSnackBar.plain`（`sourceFileUnparsableMessage`）。`0.5.0-W1-540.1.2` 補登（用戶裁決 2026-10-30） |
+| 20 | 破洞監看輪次完成且 itemId 集合改變，T1 判否（§2.2「監看輪次觸發條件」列，SPEC-006 FR-11 規則 9 (a)） | 自發型 | 可棄 | 發起點：監看輪次完成、改變判準成立的當下 | — | macOS 系統通知（`scanCompleteWatchNotificationTitle` / `scanCompleteWatchNotificationBody`）；權限 `denied` 或發送失敗時同列 3 的 `AppSnackBar.withAction`。`0.6.0-W1-080` 補登（用戶裁定 2026-11-03） |
 
 **與功能需求的對應**：列 1–4 的驗收落在 FR-11；列 5–10 與列 14–17 的載體選擇，同時落在
 FR-16（判準 T 推導）與 FR-17（截斷與不顯示皆有紀錄）的驗收範圍內，兩者不
@@ -2140,13 +2145,15 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 
 | 事件 | 規格 |
 |------|------|
-| 首次可見且圖已建立 | 自動進入 `state-gaps-scanning`（SPEC-001 §5 進入條件） |
+| 首次可見且圖已建立 | 無既有結果時自動進入 `state-gaps-scanning`（SPEC-001 §5 進入條件）；已有監看輪次完成的結果時不自動掃描，直接顯示該結果（D3，SPEC-006 FR-11 規則 9 (b)） |
 | 首次可見但圖未建立 | 不自動掃描；渲染 `state-gaps-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）；圖建立完成後依「首次可見且圖已建立」列重新判定 |
-| 再次可見 | 有既有結果時**不重新掃描**，顯示既有結果，要重掃須按 `action-gaps-rescan`；無既有結果（上一輪被取消）時自動進入 `state-gaps-scanning`（`0.1.0-W3-335.38` S-30） |
+| 再次可見 | 有既有結果（含監看輪次完成的結果，D3）時**不重新掃描**，顯示既有結果，要重掃須按 `action-gaps-rescan`；無既有結果（上一輪被取消，且其後沒有監看輪次完成）時自動進入 `state-gaps-scanning`（`0.1.0-W3-335.38` S-30） |
 | 掃描中切至其他導覽項 | 掃描繼續（見 §2.8 L1）；回來時顯示當時進度 |
 | 掃描完成時視窗非前景或已離開本頁 | 依 §2.2「系統層通知」發送（權限 `denied` 時走 App 內 SnackBar fallback）；結果已被看見時撤回未點擊的通知（導覽切換進入本頁，或 App 回到前景時可見頁已是本頁；判定見 §2.2「不重複發送」列） |
 | 切換專案 | 中止掃描；結果清空；下次可見時依「首次可見但圖未建立」與「首次可見且圖已建立」兩列判定；撤回未點擊的系統通知 |
-| 檔案監看觸發的掃描輪次（SPEC-006 FR-11 規則 9，W4） | 輪次期間不轉 `state-gaps-scanning`：停留在輪次開始時所在的 `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable`，項目、分節收合狀態與 `scroll-gaps-sections` offset 照常顯示上一輪，`action-gaps-rescan` 與各項操作照常可用（輪次期間按 `action-gaps-rescan` 的畫面反應待裁，SPEC-006 FR-11〈W4 衍生待裁〉D2）。輪次完成後依 SPEC-001 §5 進入條件重新判定，三態之間直接轉換，不經掃描中；狀態根節點改變時 cross-fade `Motion.transition`（〈動畫提示〉），同一狀態內只替換項目、不做動畫；分節收合狀態依類別保留，offset 夾在新的可捲範圍內、不歸零（同 §2.8「視窗尺寸變更」）。不發提示（狀態承載，§2.13 T1 承接 (b1)）；是否發系統層通知待裁（D1）。輪次拋出非預期例外時依 SPEC-001 §5 轉 `state-gaps-undeterminable`。本頁無既有結果時該輪結果是否算既有結果待裁（D3）。手動輪次（`state-gaps-scanning`）期間收到的監看事件依 FR-11 規則 7 於當輪完成後再跑一輪，該輪屬本列 |
+| 檔案監看觸發的掃描輪次（SPEC-006 FR-11 規則 9，W4） | 輪次期間不轉 `state-gaps-scanning`：停留在輪次開始時所在的 `state-gaps-none`、`state-gaps-found` 或 `state-gaps-undeterminable`，項目、分節收合狀態與 `scroll-gaps-sections` offset 照常顯示上一輪，`action-gaps-rescan` 與各項操作照常可用（輪次期間按 `action-gaps-rescan` 見「監看輪次中按重新掃描」列）。輪次完成後依 SPEC-001 §5 進入條件重新判定，三態之間直接轉換，不經掃描中；狀態根節點改變時 cross-fade `Motion.transition`（〈動畫提示〉），同一狀態內只替換項目、不做動畫；分節收合狀態依類別保留，offset 夾在新的可捲範圍內、不歸零（同 §2.8「視窗尺寸變更」）。不發 App 內提示（狀態承載，§2.13 T1 承接 (b1)）；系統層通知只在 itemId 集合改變時依 §2.2「監看輪次觸發條件」列發送（D1）。輪次拋出非預期例外時依 SPEC-001 §5 轉 `state-gaps-undeterminable`。本頁無既有結果時見「無既有結果時監看輪次完成」列。手動輪次（`state-gaps-scanning`）期間收到的監看事件依 FR-11 規則 7 於當輪完成後再跑一輪，該輪屬本列 |
+| 監看輪次中按重新掃描（SPEC-006 FR-11 規則 7、8，D2 選 A，用戶裁定 2026-11-03） | 立即轉 `state-gaps-scanning`，顯示進行中監看輪次的進度（不中止該輪）；該輪完成後不轉結果，接續待重跑的一輪，仍在 `state-gaps-scanning`；兩輪皆完成才依 SPEC-001 §5 進入條件轉結果三態之一。期間按 `action-gaps-cancel-scan` 中止當輪並清除待重跑，依 §2.5 返回。結果轉換屬手動輪次，依 §2.2「觸發條件」列判定系統層通知，不套用監看輪次條件 |
+| 無既有結果時監看輪次完成（SPEC-006 FR-11 規則 9 (b)，D3 選 A，用戶裁定 2026-11-03） | 本頁無既有結果（從未可見，或上一輪被取消）時監看輪次完成，該輪結果算作既有結果：頁面不可見時保存該結果，之後首次或再次可見直接顯示結果三態之一、不自動進入 `state-gaps-scanning`。系統層通知依 §2.2「監看輪次觸發條件」列，上一輪以空集合比較 |
 
 ### 3.6 節點詳情（`nav-page-nodeDetail`）
 
@@ -2552,6 +2559,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.78 | 2026-11-03 | 落地 SPEC-006 v1.34 FR-11〈W4 衍生已裁項〉（`0.6.0-W1-080`，用戶裁定 2026-11-03：D1 B、D2 A、D3 A）：§2.2〈系統層通知〉新增「監看輪次觸發條件」（itemId 集合差集不為空、可見性沿用、發送前撤回舊通知）與「監看輪次通知內容」兩列，「不發送」列改寫，可觀測性撤回原因補 `watchReplace`，文案表新增 `scanCompleteWatchNotificationTitle`、`scanCompleteWatchNotificationBody`（ARB 與 SPEC-004 對照列由實作同批加入）；§2.14 新增列 20；§3.5〈生命週期〉修改「首次可見且圖已建立」「再次可見」兩列，新增「監看輪次中按重新掃描」「無既有結果時監看輪次完成」兩列，「檔案監看觸發的掃描輪次」列移除待裁字樣。狀態數不變。SPEC-006 v1.34、SPEC-001 v1.71 同批 |
 | 1.77 | 2026-11-03 | 對齊 SPEC-006 v1.31 FR-11 已裁 W4（`0.6.0-W1-080`，缺口 G1～G6）：§3.5〈生命週期〉新增「檔案監看觸發的掃描輪次」列（G1：不轉掃描中、三態直接轉換、cross-fade 只用於狀態根節點改變、收合與 offset 保留）；〈動畫提示〉補對應列；§2.2〈系統層通知〉「不發送」列寫明監看輪次在現行條文下不發送，另訂觸發條件列為待裁 D1（G2）；監看輪次中按重新掃描（G3）與無既有結果時的監看輪次（G4）列為待裁 D2、D3，條文指向 SPEC-006 FR-11〈W4 衍生待裁〉；§2.8「視窗失焦 / 前景切換」刪過期的「0.1 無檔案監看」理由（G5）；§2.15〈邊界（未涵蓋）〉檔案監看列改為已覆核（G6）。狀態數不變。SPEC-006 v1.31、SPEC-001 v1.68 同批 |
 | 1.76 | 2026-11-02 | 對齊 SPEC-001 v1.67（`0.6.0-W1-110`，追溯視圖接真資料）：§3.3 新增狀態 `state-traceability-graph-unavailable`（沿用 `action-traceability-goto-domain`），〈互動反應〉前往 Domain 視圖列、〈動畫提示〉cross-fade 列、〈導航跳轉與退出〉補該狀態；〈生命週期〉首次可見改依 SPEC-001 §3 判定順序並寫明不讀 fixture、專案未就緒含尚無完成輪次，輪次完成列改為整棵樹隨輪次替換、輪次非 Completed 期間顯示上一輪（SPEC-006 FR-11）、新一輪建圖不可用的落點。§0、§4 標題、覆蓋完整性算式、同步提醒、FR-01 驗收 43 → 44；§4 新增 #46 |
 | 1.75 | 2026-11-02 | 對齊 SPEC-001 v1.65（`0.6.0-W1-105.2`，依 `0.6.0-W1-105` 缺口 G-N1～G-N4 與用戶裁定 2026-11-02）：§3.6 節點詳情新增兩狀態 `state-nodeDetail-graph-unavailable`（沿用 `action-nodeDetail-goto-domain`）與 `state-nodeDetail-node-absent`（沿用 `action-nodeDetail-goto-traceability`、通則返回）；〈互動反應〉兩列渲染範圍、〈導航跳轉與退出〉補兩列、動畫提示轉換列補兩態；新增〈主欄內文的取得與退路〉（G-N4：只讀單檔，讀不到退為 `# <標題>`，不轉狀態）；〈生命週期〉「由 jump 進入」改依判定順序，新增「掃描輪次離開 Completed／新一輪完成」列（G-N3，比照 §3.1、§3.4，對齊 SPEC-006 FR-11 保留舊結果、完成後替換）與「重新整理與掃描輪次的關係」列。§4 對照表補 #44、#45，標題、加總式、同步提醒、§0 概述、FR-01 驗收 41 → 43。SPEC-004 v1.113 同批 |
