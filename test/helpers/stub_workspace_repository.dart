@@ -32,6 +32,12 @@ class StubWorkspaceRepository implements WorkspaceRepository {
 
   @override
   Future<bool> addRecentProject(String path) async => true;
+
+  @override
+  Future<bool> saveRecentProjectCounts(
+    String path,
+    RecentProjectCounts counts,
+  ) async => false;
 }
 
 /// 固定回傳指定訊號的 gate 探測替身；[schemaJson] 為 false 時 gate 判

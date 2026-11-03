@@ -571,4 +571,10 @@ class _StubWorkspaceRepository implements WorkspaceRepository {
 
   @override
   Future<bool> addRecentProject(String path) async => true;
+
+  @override
+  Future<bool> saveRecentProjectCounts(
+    String path,
+    RecentProjectCounts counts,
+  ) async => false;
 }

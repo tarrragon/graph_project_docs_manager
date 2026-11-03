@@ -82,9 +82,31 @@ class ChooseFolderNotRemembered extends ChooseFolderResult {
 /// SPEC-005 §2.4）。[path] 為資料夾絕對路徑，[lastOpenedAt] 為 UTC 時間，
 /// 供清單依最近一次開啟時間降冪排序。
 class RecentProject {
-  const RecentProject({required this.path, required this.lastOpenedAt});
+  const RecentProject({
+    required this.path,
+    required this.lastOpenedAt,
+    this.counts,
+  });
   final String path;
   final DateTime lastOpenedAt;
+
+  /// 最近一輪掃描的計數快照；無快照為 `null`（SPEC-005 §2.4〈計數快照〉）。
+  final RecentProjectCounts? counts;
+
+  RecentProject withCounts(RecentProjectCounts? counts) =>
+      RecentProject(path: path, lastOpenedAt: lastOpenedAt, counts: counts);
+}
+
+/// 最近專案的計數快照（SPEC-005 §2.4〈計數快照〉）：三欄皆為非負整數。
+class RecentProjectCounts {
+  const RecentProjectCounts({
+    required this.nodeCount,
+    required this.ticketCount,
+    required this.issueCount,
+  });
+  final int nodeCount;
+  final int ticketCount;
+  final int issueCount;
 }
 
 /// `workspace.schemaVersion` 讀取後的遷移判定結果（`0.2.0-W1-021`）。

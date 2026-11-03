@@ -78,22 +78,37 @@ RecentProjectItem _buildRecentProjectItem({
   required bool isCurrent,
   String? unavailableReason,
 }) {
-  // 節點數／票數摘要與健康徽章計數來源為真實 domain 掃描結果，0.1 尚未
-  // 接線（SPEC-001 §7 註記：「計數來源... 不在本輪範圍」）；可用性探測
-  // （SPEC-003 §3.7〈生命週期〉展開時逐項探測）亦非本票範圍——本票只把
-  // 標籤與清單資料來源改為 [WorkspaceRepository] 持久化資料，故本票一律
-  // `enabled: true`、不渲染健康徽章（`0.2.1-W1-003`）。
+  // 摘要與健康徽章讀計數快照（SPEC-005 §2.4〈計數快照〉），不讀即時掃描
+  // 結果；無快照（`counts` 為 null）不傳 summary 與 health（SPEC-004 4.9
+  // 〈無計數快照〉）。可用性探測（SPEC-003 §3.7〈生命週期〉）不在本函式。
+  final counts = project.counts;
   return RecentProjectItem(
     name: folderNameOf(project.path),
-    summary: l10n.projectSummaryLabel(0, 0),
+    summary: counts == null
+        ? null
+        : l10n.projectSummaryLabel(counts.nodeCount, counts.ticketCount),
     enabled: unavailableReason == null,
     isCurrent: isCurrent,
     reason: unavailableReason == null
         ? null
         : l10n.projectUnavailableReasonLabel(unavailableReason),
-    health: null,
+    health: _healthBadgeOf(l10n, counts, index),
     onTap: () => _selectProject(context, ref, project),
     testKey: Key('card-switcher-recent-$index'),
+  );
+}
+
+/// 問題數 ≥ 1 才渲染 `Badge.health`；0 或無快照回 `null`（SPEC-001 §7）。
+Badge? _healthBadgeOf(
+  AppLocalizations l10n,
+  RecentProjectCounts? counts,
+  int index,
+) {
+  if (counts == null || counts.issueCount < 1) return null;
+  return Badge.health(
+    key: Key('badge-switcher-health-$index'),
+    count: counts.issueCount,
+    semanticLabel: l10n.healthBadgeA11yLabel(counts.issueCount),
   );
 }
 

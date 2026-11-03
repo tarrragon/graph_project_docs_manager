@@ -93,6 +93,85 @@ const _degradedStates = <String, (bool, bool)>{
 };
 
 void main() {
+  group('無計數快照：summary 為 null（SPEC-004 4.9〈無計數快照〉）', () {
+    RecentProjectItem item({String? summary, bool isCurrent = false}) =>
+        RecentProjectItem(
+          name: 'book_overview_app',
+          summary: summary,
+          enabled: true,
+          isCurrent: isCurrent,
+          onTap: () {},
+          testKey: _enabledKey,
+        );
+
+    testWidgets('不渲染摘要列；有 summary 時渲染（E1 對照）', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: LayoutSize.overlayWidth,
+          child: Column(
+            children: [
+              item(summary: '237 節點 · 2419 票'),
+              item(),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('237 節點 · 2419 票'), findsOneWidget);
+      expect(find.text('book_overview_app'), findsNWidgets(2));
+      expectNoOverflow(tester);
+    });
+
+    testWidgets('朗讀標籤省略摘要段', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: SizedBox(width: LayoutSize.overlayWidth, child: item()),
+      );
+
+      final node = tester.getSemantics(find.byKey(_enabledKey));
+      expect(node.label, 'book_overview_app');
+      handle.dispose();
+    });
+
+    testWidgets('目前專案無快照：朗讀為「名稱，目前專案」', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: LayoutSize.overlayWidth,
+          child: item(isCurrent: true),
+        ),
+      );
+
+      final node = tester.getSemantics(find.byKey(_enabledKey));
+      expect(node.label, 'book_overview_app，目前專案');
+      handle.dispose();
+    });
+
+    testWidgets('無快照且 isDegraded：只剩降級徽章', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: LayoutSize.overlayWidth,
+          child: RecentProjectItem(
+            name: 'book_overview_app',
+            enabled: true,
+            isCurrent: false,
+            onTap: () {},
+            testKey: _enabledKey,
+            isDegraded: true,
+          ),
+        ),
+      );
+
+      expect(find.byType(Badge), findsOneWidget);
+      expect(find.text(_degradedZh), findsOneWidget);
+      expectNoOverflow(tester);
+    });
+  });
+
   group('isDegraded 降級徽章（SPEC-004 4.9 S-34）', () {
     for (final entry in _degradedStates.entries) {
       final (enabled, isCurrent) = entry.value;

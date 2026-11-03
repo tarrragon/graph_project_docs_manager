@@ -918,6 +918,166 @@ void main() {
       expect(success, isFalse);
     });
   });
+
+  group('G8｜計數快照（SPEC-005 §2.4〈計數快照〉）', () {
+    const key = 'workspace.recentProjects';
+    const countsJson =
+        '"counts": {"nodeCount": 237, "ticketCount": 2419, "issueCount": 3}';
+    const counts1 = RecentProjectCounts(
+      nodeCount: 1,
+      ticketCount: 1,
+      issueCount: 1,
+    );
+
+    WorkspaceRepository repoWith(
+      Map<String, String?> values, [
+      _LogRecorder? log,
+    ]) => WorkspaceRepository(
+      preferencesPort: _FakeKeyedPreferencesPort(values: values),
+      logSink: log?.call,
+    );
+
+    test('G8-1 含 counts 的元素讀得 RecentProjectCounts', () async {
+      final repo = repoWith({
+        key:
+            '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z", '
+            '$countsJson}]',
+      });
+
+      final result = await repo.loadRecentProjects();
+
+      final counts = result.single.counts;
+      expect(counts, isNotNull);
+      expect(counts!.nodeCount, 237);
+      expect(counts.ticketCount, 2419);
+      expect(counts.issueCount, 3);
+    });
+
+    test('G8-2 無 counts 的元素 counts 為 null（舊資料遷移）', () async {
+      final repo = repoWith({
+        key: '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z"}]',
+      });
+
+      final result = await repo.loadRecentProjects();
+
+      expect(result.single.counts, isNull);
+    });
+
+    for (final bad in const {
+      '缺欄': '"counts": {"nodeCount": 1, "ticketCount": 2}',
+      '非整數': '"counts": {"nodeCount": "1", "ticketCount": 2, "issueCount": 0}',
+      '負數': '"counts": {"nodeCount": -1, "ticketCount": 2, "issueCount": 0}',
+      '非物件': '"counts": 5',
+    }.entries) {
+      test('G8-3 counts ${bad.key} → 該項 null、其餘項照常、level 900', () async {
+        final log = _LogRecorder();
+        final repo = repoWith({
+          key:
+              '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z", '
+              '${bad.value}}, '
+              '{"path": "/tmp/b", "lastOpenedAt": "2026-09-19T08:00:00.000Z", '
+              '$countsJson}]',
+        }, log);
+
+        final result = await repo.loadRecentProjects();
+
+        expect(result.map((p) => p.path).toList(), ['/tmp/a', '/tmp/b']);
+        expect(result[0].counts, isNull);
+        expect(result[1].counts, isNotNull);
+        expect(log.entries.any((e) => e.level == 900), isTrue);
+      });
+    }
+
+    test('G8-4 addRecentProject 重新開啟同 path 保留舊 counts', () async {
+      final repo = repoWith({
+        key:
+            '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z", '
+            '$countsJson}]',
+      });
+
+      await repo.addRecentProject('/tmp/a');
+
+      final reloaded = await repo.loadRecentProjects();
+      expect(reloaded.single.counts?.nodeCount, 237);
+    });
+
+    test('G8-5 saveRecentProjectCounts 只改同 path 項的 counts', () async {
+      final repo = repoWith({
+        key:
+            '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z"}, '
+            '{"path": "/tmp/b", "lastOpenedAt": "2026-09-24T01:25:50.000Z"}]',
+      });
+
+      final ok = await repo.saveRecentProjectCounts(
+        '/tmp/a',
+        const RecentProjectCounts(nodeCount: 5, ticketCount: 6, issueCount: 7),
+      );
+
+      expect(ok, isTrue);
+      final reloaded = await repo.loadRecentProjects();
+      expect(reloaded.map((p) => p.path).toList(), ['/tmp/b', '/tmp/a']);
+      expect(reloaded[1].counts?.issueCount, 7);
+      expect(reloaded[1].lastOpenedAt, DateTime.utc(2026, 9, 20, 8));
+      expect(reloaded[0].counts, isNull);
+    });
+
+    test('G8-6 無同 path 項 → false 且不寫入', () async {
+      const raw =
+          '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z"}]';
+      final values = <String, String?>{key: raw};
+      final repo = repoWith(values);
+
+      final ok = await repo.saveRecentProjectCounts('/tmp/none', counts1);
+
+      expect(ok, isFalse);
+      expect(values[key], raw);
+    });
+
+    test('G8-7 讀到損壞清單 → false、不寫入、level 900', () async {
+      final log = _LogRecorder();
+      final values = <String, String?>{key: '{"not": "an array"}'};
+      final repo = repoWith(values, log);
+
+      final ok = await repo.saveRecentProjectCounts('/tmp/a', counts1);
+
+      expect(ok, isFalse);
+      expect(values[key], '{"not": "an array"}');
+      expect(log.entries.any((e) => e.level == 900), isTrue);
+    });
+
+    test('G8-8 開啟管道例外與寫入回 false／拋例外皆回 false', () async {
+      const raw =
+          '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z"}]';
+      final openThrows = WorkspaceRepository(
+        preferencesPort: _FakePreferencesPort(openError: Exception('x')),
+      );
+      final writeFalse = WorkspaceRepository(
+        preferencesPort: _FakePreferencesPort(
+          readValue: raw,
+          writeResult: false,
+        ),
+      );
+      final writeThrows = WorkspaceRepository(
+        preferencesPort: _FakePreferencesPort(
+          readValue: raw,
+          writeError: Exception('x'),
+        ),
+      );
+
+      expect(
+        await openThrows.saveRecentProjectCounts('/tmp/a', counts1),
+        isFalse,
+      );
+      expect(
+        await writeFalse.saveRecentProjectCounts('/tmp/a', counts1),
+        isFalse,
+      );
+      expect(
+        await writeThrows.saveRecentProjectCounts('/tmp/a', counts1),
+        isFalse,
+      );
+    });
+  });
 }
 
 // ============================================================

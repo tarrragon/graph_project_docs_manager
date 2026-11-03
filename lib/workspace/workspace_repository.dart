@@ -129,6 +129,30 @@ enum WorkspaceLogEvent {
   /// [_readRecentProjectsForWrite] 既有清單損壞，以空清單為基底被取代。
   recentProjectsWriteBaseCorrupted,
 
+  /// [_parseRecentProjects] 某元素的 `counts` 格式不符，該項視為無快照。
+  recentProjectCountsInvalid,
+
+  /// [saveRecentProjectCounts] 進入時的「呼叫發出」事件。
+  countsSaveIssuing,
+
+  /// [saveRecentProjectCounts] 開啟儲存管道拋例外。
+  countsSaveOpenThrew,
+
+  /// [saveRecentProjectCounts] 清單無同 path 項，不寫入。
+  countsSaveNoMatchingProject,
+
+  /// [saveRecentProjectCounts] 讀到損壞清單，不寫入。
+  countsSaveBaseCorrupted,
+
+  /// [saveRecentProjectCounts] 寫入成功完成。
+  countsSaveWriteSucceeded,
+
+  /// [saveRecentProjectCounts] 寫入回報 `false`。
+  countsSaveWriteReturnedFalse,
+
+  /// [saveRecentProjectCounts] 寫入拋例外。
+  countsSaveWriteThrew,
+
   /// [_inspect] 探測資料夾是否存在前的「呼叫發出」事件。
   inspectExistsIssuing,
 
@@ -553,18 +577,20 @@ class WorkspaceRepository {
       return false;
     }
     final existing = _readRecentProjectsForWrite(handle);
+    final previousCounts = existing
+        .where((project) => project.path == path)
+        .map((project) => project.counts)
+        .firstOrNull;
     final updated = [
-      RecentProject(path: path, lastOpenedAt: DateTime.now().toUtc()),
+      RecentProject(
+        path: path,
+        lastOpenedAt: DateTime.now().toUtc(),
+        counts: previousCounts,
+      ),
       for (final project in existing)
         if (project.path != path) project,
     ];
-    final encoded = jsonEncode([
-      for (final project in updated)
-        {
-          'path': project.path,
-          'lastOpenedAt': project.lastOpenedAt.toIso8601String(),
-        },
-    ]);
+    final encoded = _encodeRecentProjects(updated);
     try {
       final success = await handle.writeString(_recentProjectsKey, encoded);
       if (success) {
@@ -590,6 +616,109 @@ class WorkspaceRepository {
       return false;
     }
   }
+
+  /// 更新同 [path] 項的計數快照（SPEC-005 §2.4〈計數快照〉〈計數寫入的回饋
+  /// 點〉）：不改 `lastOpenedAt` 與排序；清單無同 path 項或讀到損壞清單時
+  /// 不寫入、回 `false`。失敗只進日誌，呼叫端不重試。
+  Future<bool> saveRecentProjectCounts(
+    String path,
+    RecentProjectCounts counts,
+  ) async {
+    final summary =
+        '${counts.nodeCount}/${counts.ticketCount}/${counts.issueCount}';
+    _log(
+      '更新最近專案計數，path=$path counts=$summary', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.countsSaveIssuing,
+    );
+    final WorkspacePreferencesHandle handle;
+    try {
+      handle = await _preferencesPort.open();
+    } catch (e) {
+      _log(
+        '更新最近專案計數失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.countsSaveOpenThrew,
+        level: 900,
+        error: e,
+      );
+      return false;
+    }
+    final projects = _readListForCountsSave(handle);
+    if (projects == null) return false;
+    if (!projects.any((project) => project.path == path)) {
+      _log(
+        '更新最近專案計數略過：清單無同 path 項', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.countsSaveNoMatchingProject,
+      );
+      return false;
+    }
+    final updated = [
+      for (final project in projects)
+        project.path == path ? project.withCounts(counts) : project,
+    ];
+    return _writeCounts(handle, _encodeRecentProjects(updated));
+  }
+
+  /// [saveRecentProjectCounts] 用：讀現有清單；key 不存在視為空清單，損壞
+  /// 時記 level 900 並回 `null`（不以空清單為基底，本方法不負責插入項）。
+  List<RecentProject>? _readListForCountsSave(
+    WorkspacePreferencesHandle handle,
+  ) {
+    final raw = handle.readString(_recentProjectsKey);
+    if (raw == null) return const [];
+    final parsed = _parseRecentProjects(raw);
+    if (parsed == null) {
+      _log(
+        '更新最近專案計數失敗：清單損壞，不寫入', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.countsSaveBaseCorrupted,
+        level: 900,
+      );
+    }
+    return parsed;
+  }
+
+  Future<bool> _writeCounts(
+    WorkspacePreferencesHandle handle,
+    String encoded,
+  ) async {
+    try {
+      final success = await handle.writeString(_recentProjectsKey, encoded);
+      if (success) {
+        _log(
+          '已寫入最近專案計數快照', // i18n-exempt: 開發者 debug log
+          event: WorkspaceLogEvent.countsSaveWriteSucceeded,
+        );
+      } else {
+        _log(
+          '更新最近專案計數失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
+          event: WorkspaceLogEvent.countsSaveWriteReturnedFalse,
+          level: 900,
+        );
+      }
+      return success;
+    } catch (e) {
+      _log(
+        '更新最近專案計數失敗（例外）', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.countsSaveWriteThrew,
+        level: 900,
+        error: e,
+      );
+      return false;
+    }
+  }
+
+  String _encodeRecentProjects(List<RecentProject> projects) => jsonEncode([
+    for (final project in projects)
+      {
+        'path': project.path,
+        'lastOpenedAt': project.lastOpenedAt.toIso8601String(),
+        if (project.counts case final counts?)
+          'counts': {
+            'nodeCount': counts.nodeCount,
+            'ticketCount': counts.ticketCount,
+            'issueCount': counts.issueCount,
+          },
+      },
+  ]);
 
   /// [loadRecentProjects] 的讀取＋排序邏輯，共用已開啟的 [handle]。
   List<RecentProject> _readRecentProjects(WorkspacePreferencesHandle handle) {
@@ -644,19 +773,55 @@ class WorkspaceRepository {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return null;
       final result = <RecentProject>[];
-      for (final item in decoded) {
+      for (final (index, item) in decoded.indexed) {
         if (item is! Map) return null;
         final path = item['path'];
         final lastOpenedAtRaw = item['lastOpenedAt'];
         if (path is! String || lastOpenedAtRaw is! String) return null;
         final lastOpenedAt = DateTime.tryParse(lastOpenedAtRaw);
         if (lastOpenedAt == null) return null;
-        result.add(RecentProject(path: path, lastOpenedAt: lastOpenedAt));
+        result.add(
+          RecentProject(
+            path: path,
+            lastOpenedAt: lastOpenedAt,
+            counts: _parseCounts(item['counts'], index),
+          ),
+        );
       }
       return result;
     } catch (e) {
       return null;
     }
+  }
+
+  /// 解析單一元素的 `counts`（SPEC-005 §2.4〈計數快照〉）：欄不存在回
+  /// `null`（舊資料，不記日誌）；存在但缺欄、非整數、負數或非物件回
+  /// `null` 並記 level 900（含元素 [index]），不判整份損壞。
+  RecentProjectCounts? _parseCounts(Object? raw, int index) {
+    if (raw == null) return null;
+    if (raw is Map) {
+      final node = raw['nodeCount'];
+      final ticket = raw['ticketCount'];
+      final issue = raw['issueCount'];
+      if (node is int &&
+          ticket is int &&
+          issue is int &&
+          node >= 0 &&
+          ticket >= 0 &&
+          issue >= 0) {
+        return RecentProjectCounts(
+          nodeCount: node,
+          ticketCount: ticket,
+          issueCount: issue,
+        );
+      }
+    }
+    _log(
+      '最近專案 counts 格式不符，視為無快照，index=$index', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.recentProjectCountsInvalid,
+      level: 900,
+    );
+    return null;
   }
 
   /// 路徑字串會過期（資料夾被搬移、重新命名、刪除，或位於未掛載的磁碟），
