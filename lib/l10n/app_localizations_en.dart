@@ -111,6 +111,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ticketsUnassignedSection => 'Unassigned';
 
   @override
+  String get ticketsNoTopicFilesNotice => 'This project has no topic files';
+
+  @override
   String get emptyTicketsMessage => 'This project has no tickets yet';
 
   @override

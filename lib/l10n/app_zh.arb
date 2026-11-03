@@ -168,6 +168,11 @@
     "description": "SPEC-001 §4 Ticket 清單·正常·主題狀態的未歸屬節標題文案"
   },
 
+  "ticketsNoTopicFilesNotice": "此專案無主題檔",
+  "@ticketsNoTopicFilesNotice": {
+    "description": "SPEC-001 §4 Ticket 清單·正常·主題狀態頂部說明列：指派檔不存在時顯示"
+  },
+
   "emptyTicketsMessage": "此專案尚無 ticket",
   "@emptyTicketsMessage": {
     "description": "SPEC-001 §4 Ticket 清單·無 ticket 狀態的顯示文案"

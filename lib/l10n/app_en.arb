@@ -27,6 +27,7 @@
   "ticketsLoadPrompt": "Load {count} tickets",
   "ticketsLoadingProgress": "Parsed {parsed} so far",
   "ticketsUnassignedSection": "Unassigned",
+  "ticketsNoTopicFilesNotice": "This project has no topic files",
   "emptyTicketsMessage": "This project has no tickets yet",
   "corruptedTicketsBadge": "{count} corrupted",
   "gapReportScanning": "Scanning for gaps…",

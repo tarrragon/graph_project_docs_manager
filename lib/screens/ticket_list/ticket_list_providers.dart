@@ -12,6 +12,7 @@ import '../../app/graph_status.dart';
 import '../../app/jump_targets.dart';
 import '../../app/scan_round.dart';
 import '../../corpus/node_type_names.dart';
+import '../../corpus/topic_files_reader.dart';
 import '../../ticket_detail/ticket_detail.dart';
 import '../../tokens/tokens.dart';
 import 'ticket_list_state.dart';
@@ -44,8 +45,12 @@ List<String> _blockedByOf(Object? value) => value is List
 
 /// 需求：[SPEC-001 §4〈票列欄位的取值來源〉] 正常票各欄取 TicketDetail 的
 /// frontmatter；標題缺席或非字串以佔位符頂替。
-TicketFixtureItem ticketRowOf(Map<String, dynamic> frontmatter) {
+TicketFixtureItem ticketRowOf(
+  Map<String, dynamic> frontmatter, {
+  String? topic,
+}) {
   return TicketFixtureItem(
+    topic: topic,
     id: frontmatter['id'] as String,
     title: _stringOrNull(frontmatter['title']) ?? _absentPlaceholder,
     status: _stringOrNull(frontmatter['status']),
@@ -54,12 +59,17 @@ TicketFixtureItem ticketRowOf(Map<String, dynamic> frontmatter) {
   );
 }
 
-TicketFixtureItem _corruptedRowOf(String path) {
+TicketFixtureItem _corruptedRowOf(String path, Map<String, String> topics) {
   final fileName = path.split('/').last;
   final id = fileName.endsWith('.md')
       ? fileName.substring(0, fileName.length - 3)
       : fileName;
-  return TicketFixtureItem(id: id, title: fileName, corrupted: true);
+  return TicketFixtureItem(
+    id: id,
+    title: fileName,
+    corrupted: true,
+    topic: topics[id],
+  );
 }
 
 /// 需求：[SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉] 一輪的票列：正常票（該輪
@@ -67,17 +77,20 @@ TicketFixtureItem _corruptedRowOf(String path) {
 /// Ticket 者）。重複 ID 查無 TicketDetail，不成列。
 List<TicketFixtureItem> ticketRowsOfRound(ScanRoundResult round) {
   final detail = TicketDetail.fromRawNodes(round.scan.rawNodes);
+  final topics = round.scan.topicFilesRead.ticketTopics;
   final seen = <String>{};
   final rows = <TicketFixtureItem>[];
   for (final node in round.scan.rawNodes) {
     final id = node.frontmatter['id'];
     if (node.typeName != ticketTypeName || id is! String) continue;
     final frontmatter = detail.findById(id);
-    if (frontmatter != null && seen.add(id)) rows.add(ticketRowOf(frontmatter));
+    if (frontmatter != null && seen.add(id)) {
+      rows.add(ticketRowOf(frontmatter, topic: topics[id]));
+    }
   }
   for (final event in round.scan.parseFailureEvents) {
     if (event.nodeType == ticketTypeName) {
-      rows.add(_corruptedRowOf(event.path));
+      rows.add(_corruptedRowOf(event.path, topics));
     }
   }
   return rows;
@@ -94,7 +107,11 @@ TicketListState ticketBaseStateOf(
     return const TicketsProjectUnready(ProjectUnreadyReason.loading);
   }
   final rows = ticketRowsOfRound(round);
-  return rows.isEmpty ? const TicketsEmpty() : TicketsReady(tickets: rows);
+  if (rows.isEmpty) return const TicketsEmpty();
+  // 需求：[SPEC-001 §4] 僅指派檔不存在時提示；unreadable 交由破洞報告。
+  final absent =
+      round.scan.topicFilesRead.assignmentsStatus == TopicFileStatus.absent;
+  return TicketsReady(tickets: rows, noTopicFilesNotice: absent);
 }
 
 /// 輪次或未就緒原因變動時同步畫面狀態：同一專案的新輪次只替換票列，保留
@@ -110,7 +127,10 @@ void _syncWithRound(
   final notifier = ref.read(ticketListStateProvider.notifier);
   final current = notifier.state;
   if (sameProject && current is TicketsReady && base is TicketsReady) {
-    notifier.state = current.copyWith(tickets: base.tickets);
+    notifier.state = current.copyWith(
+      tickets: base.tickets,
+      noTopicFilesNotice: base.noTopicFilesNotice,
+    );
   } else {
     notifier.state = base;
     if (!sameProject) {

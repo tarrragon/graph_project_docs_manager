@@ -254,6 +254,12 @@ abstract class AppLocalizations {
   /// **'未歸屬'**
   String get ticketsUnassignedSection;
 
+  /// SPEC-001 §4 Ticket 清單·正常·主題狀態頂部說明列：指派檔不存在時顯示
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案無主題檔'**
+  String get ticketsNoTopicFilesNotice;
+
   /// SPEC-001 §4 Ticket 清單·無 ticket 狀態的顯示文案
   ///
   /// In zh, this message translates to:
