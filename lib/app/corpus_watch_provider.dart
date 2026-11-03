@@ -35,7 +35,11 @@ class WatchRoundCompleted extends WatchRoundEvent {
     super.trigger, {
     required this.itemIds,
     required this.rerunPending,
+    this.failed = false,
   });
+
+  /// 取得輪次時拋出非預期例外（破洞頁落「無法判定」）。
+  final bool failed;
 
   /// 本輪破洞項 itemId 集合；輪次不可用或失敗時為 null。
   final Set<String>? itemIds;
@@ -99,18 +103,36 @@ class CorpusWatchController {
   Future<void> _runRound(ScanTrigger trigger) async {
     _events.add(WatchRoundStarted(trigger));
     Set<String>? ids;
+    var failed = false;
     try {
-      final round = await _ref.read(scanRoundProvider.notifier).rescan();
+      final round = await _obtainRound(trigger);
       if (round != null) ids = gapItemIdsOf(round);
-    } finally {
-      _events.add(
-        WatchRoundCompleted(
-          trigger,
-          itemIds: ids,
-          rerunPending: scheduler.hasPendingRerun,
-        ),
+    } catch (e, st) {
+      failed = true;
+      developer.log(
+        '取得掃描輪次失敗', // i18n-exempt: 開發者 debug log
+        name: _tag,
+        level: 900,
+        error: e,
+        stackTrace: st,
       );
     }
+    _events.add(
+      WatchRoundCompleted(
+        trigger,
+        itemIds: ids,
+        rerunPending: scheduler.hasPendingRerun,
+        failed: failed,
+      ),
+    );
+  }
+
+  /// visibility 共用已完成或進行中的輪次；watch、manual 丟棄後重掃。
+  Future<ScanRoundResult?> _obtainRound(ScanTrigger trigger) {
+    final rounds = _ref.read(scanRoundProvider.notifier);
+    return trigger == ScanTrigger.visibility
+        ? rounds.ensureRound()
+        : rounds.rescan();
   }
 
   Future<void> dispose() async {
