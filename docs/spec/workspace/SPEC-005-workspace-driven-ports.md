@@ -4,8 +4,8 @@ title: "Workspace driven port 回饋契約"
 status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
-updated: "2026-11-03"
-version: "1.4"
+updated: "2026-11-04"
+version: "1.5"
 owner: star-anise-system-designer
 has_functional_requirements: false   # 本規格只記 workspace driven port 的專案事實，不含 FR（0.5.0-W1-159 判定）
 
@@ -247,7 +247,7 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 **寫入時機**：專案**成功載入**後呼叫 `addRecentProject`（SPEC-003 §3.7：成功載入後該項移至頂端）。
 選取後載入失敗、取消載入、`clearStoredPath()` 皆不寫入、不刪除清單項。清單項的資料夾
 不可用時不從清單移除——可用性由切換器展開時逐項探測（SPEC-003 §3.7〈生命週期〉），
-探測沿用 §2.3 `WorkspaceDirectoryProbePort`，不屬本節。
+探測的契約見 §2.5，不屬本節。
 
 **回饋點承擔者**：
 
@@ -295,6 +295,47 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 **不互相抵扣**：讀取失敗分支呼叫端只得空清單（切換器落 `state-switcher-no-recent`），
 失敗原因只進日誌；兩投影各自完整，同 §2.2。
 
+### 2.5 最近專案項可用性探測
+
+來源：`0.6.0-W1-019` 用戶裁決。本節是新接縫的規格，實作尚未存在，「契約」欄意同 §2.4。
+消費方為切換器展開時的逐項探測（SPEC-003 §3.7〈生命週期〉「展開時」列）。
+
+**載體**：沿用 §2.3 `WorkspaceDirectoryProbePort`，不新增 port。判定邏輯沿用
+`WorkspaceRepository._inspect()`：資料夾存在與可讀的判準、兩種不可用原因常數，與點選後
+開啟該路徑的判定相同，探測與點選對同一資料夾的結論因此一致。
+
+**逾時值**：每項探測 **2 秒**。計時自該項探測呼叫發出起算，各項獨立計時、互不阻塞。
+
+**型別與方法**：
+
+| 符號 | 落點 | 定義 |
+|------|------|------|
+| `RecentProjectAvailability` | `lib/workspace/workspace_types.dart` | sealed，三個子型別：`RecentProjectAvailable`、`RecentProjectUnavailable`（欄位 `reason`：`String`，取 `_inspect()` 回傳的 `WorkspaceUnavailable.reason`）、`RecentProjectProbeTimedOut`（無欄位） |
+| `probeRecentProject(String path)` | `WorkspaceRepository` | 回傳 `Future<RecentProjectAvailability>`；以 2 秒為上限等待 `_inspect(path)`，`WorkspaceReady` → `RecentProjectAvailable`，`WorkspaceUnavailable` → `RecentProjectUnavailable`，逾時 → `RecentProjectProbeTimedOut`；不拋例外 |
+
+**回饋點承擔者**：
+
+| 時刻 | 承擔者 | 呼叫端投影 | 日誌投影 |
+|------|--------|-----------|---------|
+| 呼叫發出 | 呼叫端 `_inspect()` | 契約 | 既有（§2.3 兩列），不另加入口日誌 |
+| 受理 | 無（理由同 §2.3） | N/A | N/A |
+| 結果（可用／不可用） | `_inspect()` 回傳值 | 契約（`RecentProjectAvailable`／`RecentProjectUnavailable`） | 沿用 §2.3 各結果列，含缺口 G-1 |
+| 結果（逾時） | `probeRecentProject` 的計時 | 契約（`RecentProjectProbeTimedOut`） | 契約（level 900 一筆，含 path 與逾時值；事件 `WorkspaceLogEvent.probeRecentProjectTimedOut`） |
+
+**畫面上的原因文字**：`RecentProjectProbeTimedOut` 以
+`projectUnavailableReasonLabel(probeTimeoutReason)` 呈現；`RecentProjectUnavailable` 以
+`projectUnavailableReasonLabel(reason)` 呈現，與點選失敗相同（SPEC-004 4.9 disabled 列）。
+
+**設計點與理由**：
+
+| 設計點 | 定案 | 理由 |
+|--------|------|------|
+| 逾時實作位置 | repository（`probeRecentProject`） | 逾時值屬 workspace domain（SPEC-003 §3.7 原已如此劃分）；放在呼叫端會讓 UI 層持有領域常數，且逾時日誌無法與 §2.3 的探測日誌同處 |
+| 逾時與失敗是否分型別 | 分，用 `RecentProjectAvailability` 三型 | `WorkspaceUnavailable.reason` 是固定中文常數，`probeTimeoutReason` 是 l10n key，兩者來源不同；若把逾時塞進 `WorkspaceUnavailable` 須新增一個非 l10n 的逾時常數，與 key 重複且不隨語系切換 |
+| 不沿用 `WorkspaceState` 作回傳 | 不沿用 | `WorkspaceState` 描述目前專案的狀態（含 `WorkspaceUnset`），探測結果沒有「未設定」這個值 |
+| 逾時後底層 I/O | 不取消，結果丟棄 | `dart:io` 的 `exists`／`list` 無取消介面；逾時後晚到的結果不改變已回傳的 `RecentProjectProbeTimedOut` |
+| 探測進行中收合浮層 | 結果丟棄，不寫入任何狀態 | 可用性只在單次展開內有效，下次展開重新探測（SPEC-003 §3.7「最近專案項失敗後的可用性」列）；保留舊結果會讓下次展開先顯示過期狀態 |
+
 ## 三、現況缺口
 
 | 編號 | 缺口 | 據實描述 | 承接票 |
@@ -329,6 +370,7 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.5 | 2026-11-04 | 新增 §2.5 最近專案項可用性探測：每項逾時 2 秒、沿用 `_inspect()` 判定、`RecentProjectAvailability` 三型與 `probeRecentProject`、回饋點表（逾時 level 900 日誌）、原因文字來源、五項設計點與理由；§2.4 寫入時機段改引 §2.5。來源 `0.6.0-W1-019` 用戶裁決，承接票 `0.6.0-W1-019.1` |
 | 1.4 | 2026-11-03 | §2.4 新增〈計數快照〉：陣列元素選填欄 `counts`（`nodeCount`／`ticketCount`／`issueCount`）、三計數來源、寫入時機（每輪掃描完成）、目前專案項亦讀快照、無快照不顯示摘要與徽章、`counts` 格式不符只降為無快照、不新增 schemaVersion；新增 `RecentProjectCounts`、`saveRecentProjectCounts` 與其回饋點表；`addRecentProject` 帶入同 path 舊項的 `counts`。來源 `0.6.0-W1-018` 用戶裁決，承接票 `0.6.0-W1-018.1` |
 | 1.3 | 2026-10-13 | frontmatter 新增 `has_functional_requirements: false`：本規格不含 FR 為設計（通則在方法論〈Port 回饋契約〉，本規格只記專案事實），覆蓋檢查據此不執行 FR 比對。條文無變更。來源 `0.5.0-W1-159`，承接票 `0.5.0-W1-159.1` |
 | 1.2 | 2026-09-24 | §2.2 回饋點表新增 `remove` 結果時刻列（`clearStoredPath()` 清除已存路徑，S-21）；新增 §2.4 最近專案清單持久化：key `workspace.recentProjects`、JSON 陣列 schema（`path` + `lastOpenedAt`）、`RecentProject` 與兩個 repository 方法、寫入時機、回饋點承擔者表、損壞處理邊界（S-36）。來源 `0.2.0-W1-023`，承接票 `0.2.1-W1-043` |
