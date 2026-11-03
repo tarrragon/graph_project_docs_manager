@@ -23,6 +23,10 @@ import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
+import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
 import 'package:graph_project_docs_manager/app/uc_flow_focus.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
@@ -394,6 +398,9 @@ void main() {
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.gaps,
           ),
+          ticketListStateProvider.overrideWith(
+            (ref) => const TicketsReady(tickets: []),
+          ),
         ],
       );
 
@@ -410,6 +417,8 @@ void main() {
         AppDestination.tickets,
       );
       expect(container.read(returnToProvider), AppDestination.gaps);
+      final list = container.read(ticketListStateProvider) as TicketsReady;
+      expect(list.targetTicketId, 'example-ticket');
     });
 
     testWidgets('指向其他圖節點：主操作 jump 至節點詳情', (tester) async {
@@ -438,6 +447,32 @@ void main() {
         container.read(selectedDestinationProvider),
         AppDestination.nodeDetail,
       );
+      final detail = container.read(nodeDetailStateProvider);
+      expect(detail, isA<NodeDetailReady>());
+      expect((detail as NodeDetailReady).nodeId, 'PROP-001');
+    });
+
+    testWidgets('事件類（無 UC 引用）：節點詳情顯示該事件節點', (tester) async {
+      const item = GapReportItem(
+        id: 'event-no-uc',
+        filePath: 'docs/events/example/EVT-002.md',
+        pointerType: GapItemPointerType.event,
+        pointerNodeId: 'EVT-002',
+      );
+      const state = GapReportFound([
+        GapReportCategory(id: 'orphan-event', items: [item]),
+      ]);
+      final container = await pumpHarness(
+        tester,
+        child: const GapReportScreen(),
+        overrides: [
+          gapReportProvider.overrideWith(() => _FixedNotifier(state)),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('card-gaps-event-no-uc')));
+      await tester.pump();
+      final detail = container.read(nodeDetailStateProvider);
+      expect((detail as NodeDetailReady).nodeId, 'EVT-002');
     });
 
     testWidgets('事件類（有 UC 引用）：寫入選定 UC 並 jump 至 UC Flow', (tester) async {

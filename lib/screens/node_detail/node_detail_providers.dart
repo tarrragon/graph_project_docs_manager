@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/router.dart';
 import '../../app/scan_round.dart';
 import '../../graph/adjacency_query.dart';
 import '../../graph/graph_built_event.dart';
@@ -22,6 +23,17 @@ import 'node_detail_state.dart';
 final nodeDetailStateProvider = StateProvider<NodeDetailState>(
   (ref) => const NodeDetailUnset(),
 );
+
+/// 需求：[SPEC-003 §3.5] 帶目標跳至節點詳情：先寫入選定節點，再 jump。
+/// [nodeId] 為空時僅跳轉（無目標可寫）。
+void jumpToNodeDetail(ProviderReader read, String? nodeId) {
+  if (nodeId != null) {
+    read(nodeDetailStateProvider.notifier).state = NodeDetailReady(
+      nodeId: nodeId,
+    );
+  }
+  navigateTo(read, AppDestination.nodeDetail, NavIntent.jump);
+}
 
 /// 節點 id → 詳情資料（不含內文）；讀同一專案最後完成的輪次（0.6.0-W1-109，
 /// SPEC-003 §3.6 掃描輪次更新列），重掃期間保留上一輪，新輪次完成後替換，

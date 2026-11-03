@@ -24,6 +24,9 @@ import '../../workspace/open_path_resolver.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/stale_open_result.dart';
 import '../../app/uc_flow_focus.dart';
+import '../node_detail/node_detail_providers.dart';
+import '../ticket_list/ticket_list_providers.dart';
+import '../ticket_list/ticket_list_state.dart';
 import 'gap_report_descriptions.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
@@ -316,10 +319,11 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
   Future<void> _openItem(BuildContext context, GapReportItem item) async {
     switch (item.pointerType) {
       case GapItemPointerType.ticket:
+        _setTicketTarget(item.pointerNodeId);
         navigateTo(ref.read, AppDestination.tickets, NavIntent.jump);
         return;
       case GapItemPointerType.otherNode:
-        navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+        jumpToNodeDetail(ref.read, item.pointerNodeId);
         return;
       case GapItemPointerType.event:
         final ucId = item.eventUcId;
@@ -333,7 +337,7 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
         } else {
           // 無任何 UC 引用該 EVT：依「指向其他圖節點」處理
           // （`0.1.0-W3-335.38` S-31）。
-          navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+          jumpToNodeDetail(ref.read, item.pointerNodeId);
         }
         return;
       case GapItemPointerType.flow:
@@ -353,6 +357,16 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
         if (!item.isOpenable) return;
         await _openExternally(context, item);
     }
+  }
+
+  /// 需求：[SPEC-003 §3.4] 破洞項指向 ticket：寫入 Ticket 清單的定位目標。
+  /// 清單非載入完成態時無目標欄位可寫，維持既有行為（僅跳轉）。
+  void _setTicketTarget(String? ticketId) {
+    if (ticketId == null) return;
+    final notifier = ref.read(ticketListStateProvider.notifier);
+    final current = notifier.state;
+    if (current is! TicketsReady) return;
+    notifier.state = current.copyWith(targetTicketId: () => ticketId);
   }
 
   /// 開啟原始檔（SPEC-003 §3.5）：三種結局各有一則對應的回饋，缺任一則即為
