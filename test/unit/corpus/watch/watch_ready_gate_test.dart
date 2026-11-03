@@ -1,15 +1,12 @@
-/// 0.6.0-W1-080 B7：FR-11 規則 1 就緒閘門、規則 2 docs/ 缺席、規則 10 失敗放行。
+/// 0.6.0-W1-080 B7／B9：FR-11 規則 1 就緒、規則 2 docs/ 缺席、規則 10 失敗放行
+/// 與就緒逾時、舊 start 晚到失敗不影響新訂閱（F3、F4）。
+/// 首輪被閘門擋住的對照組／實驗組在 test/unit/app/scan_round_watch_gate_test.dart。
 library;
 
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:graph_project_docs_manager/app/corpus_watch_provider.dart';
-import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
-import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
-import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../../helpers/fake_watch_source.dart';
 import '../../../helpers/manual_debounce_clock.dart';
@@ -27,14 +24,16 @@ void main() {
   group('CorpusWatcher 就緒與 docs 缺席', () {
     late FakeWatchSource source;
     late List<_Log> logs;
+    late ManualDebounceClock clock;
     late CorpusWatcher watcher;
 
     setUp(() {
       source = FakeWatchSource();
       logs = <_Log>[];
+      clock = ManualDebounceClock();
       watcher = CorpusWatcher(
         source: source,
-        clock: ManualDebounceClock(),
+        clock: clock,
         onChanged: (_) {},
         log: (m, {int level = 0}) => logs.add(_Log(m, level)),
       );
@@ -77,49 +76,41 @@ void main() {
       expect(source.watchCalls, 1);
       expect(watcher.isWatching, isTrue);
     });
-  });
 
-  group('首輪（visibility）等監看就緒', () {
-    test('ready 前不開始，ready 後才開始；manual 不受閘門影響', () async {
-      final gate = Completer<void>();
-      final source = FakeWatchSource()..readyBuilder = (_) => gate.future;
-      final container = ProviderContainer(
-        overrides: [watchSourceProvider.overrideWithValue(source)],
-      );
-      addTearDown(container.dispose);
-      final controller = container.read(corpusWatchProvider);
-      container.read(currentWorkspaceStateProvider.notifier).state =
-          const WorkspaceReady('/ws');
+    test('F3：就緒逾時（注入時鐘）記一筆 warning、停止監看、ready 放行', () async {
+      source.readyBuilder = (_) => Completer<void>().future;
+      await watcher.start('/ws');
+      var done = false;
+      unawaited(watcher.ready.then((_) => done = true));
+      clock.advance(watchReadyTimeout - const Duration(milliseconds: 1));
       await pumpEventQueue();
-
-      final started = <WatchRoundEvent>[];
-      controller.events.listen(started.add);
-      controller.scheduler.request(ScanTrigger.visibility);
+      expect(done, isFalse);
+      expect(logs.where((l) => l.level == _warningLevel), isEmpty);
+      clock.advance(const Duration(milliseconds: 1));
       await pumpEventQueue();
-      expect(started, isEmpty);
-
-      gate.complete();
-      await pumpEventQueue();
-      expect(started.whereType<WatchRoundStarted>(), isNotEmpty);
+      expect(done, isTrue);
+      expect(watcher.isWatching, isFalse);
+      expect(logs.where((l) => l.level == _warningLevel), hasLength(1));
     });
 
-    test('ready 失敗：首輪照常開始', () async {
-      final source = FakeWatchSource()
-        ..readyBuilder = (_) => Future<void>.error(StateError('boom'));
-      final container = ProviderContainer(
-        overrides: [watchSourceProvider.overrideWithValue(source)],
-      );
-      addTearDown(container.dispose);
-      final controller = container.read(corpusWatchProvider);
-      container.read(currentWorkspaceStateProvider.notifier).state =
-          const WorkspaceReady('/ws');
+    test('F4：舊 start 的 ready 晚到失敗，不取消新工作區的訂閱', () async {
+      final oldReady = Completer<void>();
+      source.readyBuilder = (root) =>
+          root == '/ws-a' ? oldReady.future : Future<void>.value();
+      await watcher.start('/ws-a');
+      await watcher.start('/ws-b');
       await pumpEventQueue();
+      oldReady.completeError(StateError('late'));
+      await pumpEventQueue();
+      expect(watcher.isWatching, isTrue);
+      expect(logs.where((l) => l.level == _warningLevel), isEmpty);
+    });
 
-      final started = <WatchRoundEvent>[];
-      controller.events.listen(started.add);
-      controller.scheduler.request(ScanTrigger.visibility);
+    test('F4 對照：目前 start 的 ready 失敗照常停止監看', () async {
+      source.readyBuilder = (_) => Future<void>.error(StateError('boom'));
+      await watcher.start('/ws-b');
       await pumpEventQueue();
-      expect(started.whereType<WatchRoundStarted>(), isNotEmpty);
+      expect(watcher.isWatching, isFalse);
     });
   });
 }
