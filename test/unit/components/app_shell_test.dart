@@ -279,15 +279,13 @@ void main() {
     );
 
     testWidgetsAtEachSize(
-      '真實 TicketListScreen（未載入態、returnTo 非 null）經 AppShell：action-tickets-back 只出現一顆（0.4.1-W1-008）',
+      '真實 TicketListScreen（無 ticket 態、returnTo 非 null）經 AppShell：action-tickets-back 只出現一顆（0.4.1-W1-008）',
       (tester, size) async {
         await pumpHarness(
           tester,
           size: size,
           overrides: [
-            ticketListStateProvider.overrideWith(
-              (ref) => const TicketsUnloaded(count: 3),
-            ),
+            ticketListStateProvider.overrideWith((ref) => const TicketsEmpty()),
           ],
           child: AppShell(
             switcherEntry: _buildSwitcherEntry(),
