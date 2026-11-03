@@ -33,6 +33,7 @@ import '../app/project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
 import '../app/app_lifecycle.dart';
+import '../app/corpus_watch_provider.dart';
 import '../app/degraded_schema.dart';
 import '../app/router.dart';
 import '../app/workspace_selection.dart' show projectGenerationProvider;
@@ -65,6 +66,8 @@ class _AppShellState extends ConsumerState<AppShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // SPEC-006 FR-11 規則 1：常駐殼啟動即掛上監看，早於還原工作區後的首輪掃描。
+    ref.read(corpusWatchProvider);
     // `AppShell` 是應用程式常駐殼：以 `context` 作為系統通知 fallback
     // SnackBar 的載體，掛載期間內恆有效（SPEC-003 §2.2）。
     _scanNotificationController = ScanNotificationController(ref, () => context)
