@@ -26,37 +26,22 @@ enum SkeletonLayout {
 
 /// SPEC-001「載入中」「掃描中」狀態的唯一承載元件（SPEC-004 §4.24）。
 ///
-/// 兩個具名建構子對應兩個變體：[LoadingState.skeleton]（分母未知，
-/// indeterminate）與 [LoadingState.progressBar]（determinate，
-/// `progress` = 已解析筆數 / 總數）。分母未知時不得顯示百分比或預估，
-/// 不得自行推進（SPEC-003 §2.6 誠實性硬規則）——本元件對此的落實是
-/// `skeleton` 變體完全不引用 [progress]。
+/// 唯一變體為 [LoadingState.skeleton]（分母未知，indeterminate）。分母未知時
+/// 不得顯示百分比或預估，不得自行推進（SPEC-003 §2.6 誠實性硬規則）——
+/// 本元件不接收任何進度值。
 class LoadingState extends StatefulWidget {
   /// 骨架變體：分母未知，shimmer + indeterminate + 計數文字。
   const LoadingState.skeleton({
     super.key,
     required this.message,
-    required SkeletonLayout this.skeletonLayout,
+    required this.skeletonLayout,
     required this.isCancelling,
     required this.onCancel,
     required this.testKey,
     required this.cancelKey,
     this.countText,
     this.cancelLabel,
-  }) : progress = null;
-
-  /// 進度條變體：determinate，`progress` = 已解析筆數 / 總數。
-  const LoadingState.progressBar({
-    super.key,
-    required this.message,
-    required double this.progress,
-    required this.isCancelling,
-    required this.onCancel,
-    required this.testKey,
-    required this.cancelKey,
-    this.countText,
-    this.cancelLabel,
-  }) : skeletonLayout = null;
+  });
 
   /// 訊息文字（呼叫端傳入 i18n key 取值），單行截斷。
   final String message;
@@ -64,12 +49,8 @@ class LoadingState extends StatefulWidget {
   /// 計數文字（呼叫端傳入 i18n key 取值），單行截斷；不傳則不顯示。
   final String? countText;
 
-  /// determinate 進度值（`progressBar` 變體專用），`isCancelling` 為
-  /// `true` 時忽略、改為 indeterminate（C3：進度改 indeterminate）。
-  final double? progress;
-
-  /// 骨架版位形狀（`skeleton` 變體專用）。
-  final SkeletonLayout? skeletonLayout;
+  /// 骨架版位形狀。
+  final SkeletonLayout skeletonLayout;
 
   /// 是否正處於取消流程（C2–C4）；狀態存於呼叫端。
   final bool isCancelling;
@@ -89,8 +70,6 @@ class LoadingState extends StatefulWidget {
   /// 取消鈕定址 key（`action-*-cancel-load` / `action-gaps-cancel-scan`）。
   final Key cancelKey;
 
-  bool get _isSkeleton => skeletonLayout != null;
-
   @override
   State<LoadingState> createState() => _LoadingStateState();
 }
@@ -103,9 +82,6 @@ class _LoadingStateState extends State<LoadingState>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!widget._isSkeleton) {
-      return;
-    }
     final duration = Motion.skeletonCycle(context);
     if (duration == _shimmerDuration) {
       return;
@@ -144,14 +120,10 @@ class _LoadingStateState extends State<LoadingState>
       reasonShownNearby: widget.isCancelling,
     );
 
-    final body = widget._isSkeleton
-        ? _buildSkeletonBody(context, l10n, cancelButton)
-        : _buildProgressBarBody(context, l10n, cancelButton);
-
     return Container(
       key: widget.testKey,
       padding: EdgeInsets.all(Space.md.r),
-      child: body,
+      child: _buildSkeletonBody(context, l10n, cancelButton),
     );
   }
 
@@ -167,11 +139,11 @@ class _LoadingStateState extends State<LoadingState>
           child: Semantics(
             label: l10n.loadingSkeletonA11yLabel,
             child: _shimmerController == null
-                ? _SkeletonArea(layout: widget.skeletonLayout!, opacity: 1)
+                ? _SkeletonArea(layout: widget.skeletonLayout, opacity: 1)
                 : AnimatedBuilder(
                     animation: _shimmerController!,
                     builder: (context, _) => _SkeletonArea(
-                      layout: widget.skeletonLayout!,
+                      layout: widget.skeletonLayout,
                       opacity: 0.5 + 0.5 * _shimmerController!.value,
                     ),
                   ),
@@ -180,45 +152,6 @@ class _LoadingStateState extends State<LoadingState>
         SizedBox(height: Space.sm.h),
         _messageFooter(cancelButton),
       ],
-    );
-  }
-
-  Widget _buildProgressBarBody(
-    BuildContext context,
-    AppLocalizations l10n,
-    Widget cancelButton,
-  ) {
-    // C3：取消中時進度改 indeterminate，計數凍結由呼叫端不再更新
-    // countText 承擔（本元件只忽略 progress）。
-    final effectiveProgress = widget.isCancelling ? null : widget.progress;
-    final semanticsValue = effectiveProgress == null
-        ? null
-        : l10n.progressA11yLabel((effectiveProgress * 100).round(), 100);
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: LayoutSize.detailPaneWidth.w * 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Semantics(
-              value: semanticsValue,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(Radius.sm),
-                child: LinearProgressIndicator(
-                  value: effectiveProgress,
-                  minHeight: Space.sm.h,
-                  backgroundColor: AppColors.border,
-                  valueColor: const AlwaysStoppedAnimation(AppColors.accent),
-                ),
-              ),
-            ),
-            SizedBox(height: Space.sm.h),
-            _messageFooter(cancelButton),
-          ],
-        ),
-      ),
     );
   }
 

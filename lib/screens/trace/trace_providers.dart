@@ -137,11 +137,6 @@ List<String> _stringValues(Object? value) => switch (value) {
   _ => const [],
 };
 
-/// Ticket 清單（§4）是否已載入完成；預設 `false`（惰性載入尚未觸發）。
-/// 為 `false` 時追溯視圖渲染 `action-traceability-goto-tickets`
-/// （SPEC-003 §3.3，`0.1.0-W3-335.38` S-28）。
-final ticketsLoadedProvider = StateProvider<bool>((ref) => false);
-
 /// 目前展開的樹節點 id 集合（SPEC-004 §5.13 slot 契約：存於呼叫端
 /// provider）。初始值依 [traceabilityStateProvider] 目前的樹計算（SPEC-003
 /// §3.3〈生命週期〉：首次可見與切換專案後只顯示 PROP 層，含缺口的分支

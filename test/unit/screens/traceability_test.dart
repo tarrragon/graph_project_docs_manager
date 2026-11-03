@@ -287,32 +287,11 @@ void main() {
       expect(find.byType(IssueMarker), findsNothing);
     });
 
-    testWidgets('Ticket 未載入：樹上方常駐說明文字，前往動作為 text 變體', (tester) async {
+    testWidgets('真實輪次下不渲染 Ticket 未載入說明列與前往動作（SPEC-001 §3）', (tester) async {
       await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
         overrides: [_normalOverride],
-      );
-
-      expect(find.text('Ticket 尚未載入'), findsOneWidget);
-      // testKey 落在 AppButton 內部按鈕上，向上取 AppButton 本體。
-      final button = tester.widget<AppButton>(
-        find.ancestor(
-          of: find.byKey(const Key('action-traceability-goto-tickets')),
-          matching: find.byType(AppButton),
-        ),
-      );
-      expect(button.variant, AppButtonVariant.text);
-    });
-
-    testWidgets('Ticket 已載入：說明文字與動作皆不渲染（正向對照）', (tester) async {
-      await pumpHarness(
-        tester,
-        child: const TraceabilityScreen(),
-        overrides: [
-          _normalOverride,
-          ticketsLoadedProvider.overrideWith((ref) => true),
-        ],
       );
 
       expect(find.text('Ticket 尚未載入'), findsNothing);
@@ -370,63 +349,6 @@ void main() {
       expect(
         container.read(selectedDestinationProvider),
         AppDestination.domain,
-      );
-      expect(container.read(returnToProvider), AppDestination.traceability);
-    });
-  });
-
-  group('前往 Ticket 清單 action-traceability-goto-tickets', () {
-    testWidgets('Ticket 未載入時（預設）渲染該動作', (tester) async {
-      await pumpHarness(
-        tester,
-        child: const TraceabilityScreen(),
-        overrides: [_normalOverride],
-      );
-
-      expect(
-        find.byKey(const Key('action-traceability-goto-tickets')),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('Ticket 已載入時不渲染該動作（正向對照）', (tester) async {
-      await pumpHarness(
-        tester,
-        child: const TraceabilityScreen(),
-        overrides: [
-          _normalOverride,
-          ticketsLoadedProvider.overrideWith((ref) => true),
-        ],
-      );
-
-      expect(
-        find.byKey(const Key('action-traceability-goto-tickets')),
-        findsNothing,
-      );
-    });
-
-    testWidgets('點擊 → jump 至 Ticket 清單，returnTo 設為 traceability', (
-      tester,
-    ) async {
-      final container = await pumpHarness(
-        tester,
-        child: const TraceabilityScreen(),
-        overrides: [
-          _normalOverride,
-          selectedDestinationProvider.overrideWith(
-            (ref) => AppDestination.traceability,
-          ),
-        ],
-      );
-
-      await tester.tap(
-        find.byKey(const Key('action-traceability-goto-tickets')),
-      );
-      await tester.pumpAndSettle();
-
-      expect(
-        container.read(selectedDestinationProvider),
-        AppDestination.tickets,
       );
       expect(container.read(returnToProvider), AppDestination.traceability);
     });

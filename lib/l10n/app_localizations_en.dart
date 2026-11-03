@@ -98,16 +98,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emptyProposalMessage => 'This project has no proposals yet';
 
   @override
-  String ticketsLoadPrompt(int count) {
-    return 'Load $count tickets';
-  }
-
-  @override
-  String ticketsLoadingProgress(int parsed) {
-    return 'Parsed $parsed so far';
-  }
-
-  @override
   String get ticketsUnassignedSection => 'Unassigned';
 
   @override
@@ -432,11 +422,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loadingSkeletonA11yLabel => 'Loading';
 
   @override
-  String progressA11yLabel(int parsed, int total) {
-    return 'Progress $parsed of $total';
-  }
-
-  @override
   String get cellDetailPrompt => 'Select a cell to view details';
 
   @override
@@ -753,15 +738,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gotoDomainViewAction => 'Go to Domain View';
 
   @override
-  String get gotoTicketsListAction => 'Go to Ticket List';
-
-  @override
   String traceabilityNoDownstream(String layer) {
     return '(No $layer yet)';
   }
-
-  @override
-  String get traceabilityTicketsNotLoadedHint => 'Tickets not loaded yet';
 
   @override
   String get ticketsFiltersClearedSnackbarMessage =>

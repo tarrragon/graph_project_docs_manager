@@ -20,7 +20,6 @@ import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/components/design_overrides.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
-import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
@@ -302,15 +301,51 @@ final List<Override> _traceBroken = [
     (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
   ),
 ];
+// i18n-exempt: 研究用固定票列資料值
+const List<TicketFixtureItem> _fixtureTickets = [
+  TicketFixtureItem(
+    id: '0.1.0-W1-002',
+    title: '建立六項導覽的路由殼',
+    status: 'completed',
+    priority: 'P1',
+    topic: 'shell',
+  ),
+  TicketFixtureItem(
+    id: '0.1.0-W1-023',
+    title: '抽取 Ticket 節點檔為測試 fixture（版本切片策略）',
+    status: 'completed',
+    priority: 'P2',
+    topic: 'fixture',
+  ),
+  TicketFixtureItem(
+    id: '0.1.0-W2-002',
+    title: '實作破洞報告畫面',
+    status: 'in_progress',
+    priority: 'P1',
+    blockedBy: ['0.1.0-W1-002'],
+    topic: 'screens',
+  ),
+  TicketFixtureItem(
+    id: '0.1.0-W3-076',
+    title: '回填四軸追溯矩陣現況',
+    status: 'pending',
+    priority: 'P2',
+  ),
+  TicketFixtureItem(
+    id: '0.25.0-W1-010',
+    title: '0.25.0-W1-010.md',
+    corrupted: true,
+  ),
+];
 final List<Override> _ticketsList = [
   ticketListStateProvider.overrideWith(
-    (ref) => const TicketsReady(tickets: TicketListFixtures.all),
+    (ref) => const TicketsReady(tickets: _fixtureTickets),
   ),
 ];
 final List<Override> _ticketsTopic = [
   ticketListStateProvider.overrideWith(
     (ref) => const TicketsReady(
-      tickets: TicketListFixtures.all,
+      tickets: _fixtureTickets,
       mode: TicketListMode.topic,
       expandedTopics: {'shell', 'fixture', 'screens', 'unassigned'},
     ),
@@ -320,21 +355,8 @@ final List<Override> _ticketsTopic = [
 /// 九列成對變體；注入值見 466 〈變體目錄修訂稿〉與 466.4 Solution。
 /// 代碼省略 C' 的撇號（T-C 即 T-C'），避免目錄名含撇號。
 final List<UxPair> kUxPairs = [
-  UxPair(
-    code: 'T-A',
-    destination: AppDestination.traceability,
-    overrides: const [],
-    question: '想看這些需求往下拆出的工作單，要按哪個位置？',
-    answerKey: 'action-traceability-goto-tickets',
-    inject: (app) => DesignOverrides(
-      buttonColors: const {
-        AppButtonVariant.text: ButtonColorOverride(
-          foreground: AppColors.textSecondary,
-        ),
-      },
-      child: app,
-    ),
-  ),
+  // T-A 的作答目標 action-traceability-goto-tickets 已隨 SPEC-001 §3 退役
+  // （0.6.0-W1-108），該對隨之移除。
   UxPair(
     code: 'T-B',
     destination: AppDestination.traceability,
