@@ -12,12 +12,14 @@ import type {
   SourceLogEntry,
   StaleItem,
   TicketStatus,
+  UserTodo,
   WaitingItem,
 } from '../types'
 import { type ContextUsageFailures, laneContextStatus } from './contextJudge'
 import { LANE_ENDED, endedForm, parseQueue } from './lanes'
 import { findSessionByName } from './sessions'
 import { COMPLETED_STATUS } from './shared'
+import { userTodoRows } from './userTodos'
 import { lanesWaiting } from './waiting'
 
 /** SessionStart 來源紀錄檔，相對各 checkout（worktree 內啟動的 session 寫入該 worktree 自己的檔）。 */
@@ -124,6 +126,8 @@ export type LineStatusContextInput = {
  */
 export function lineStatusReport(input: {
   lanes: readonly LaneLine[]
+  /** 協調票仍待用戶處理的待辦（U1，parseUserTodos）；省略視為無。 */
+  todos?: readonly UserTodo[]
   sessions: readonly SessionState[]
   log: readonly SourceLogEntry[]
   tickets: readonly TicketStatus[]
@@ -152,7 +156,7 @@ export function lineStatusReport(input: {
     stale.push(...liveLaneStale(lane, state, tickets, input.prefix))
   }
   // 等用戶直接取看板用的同一個函式，「line_status 與看板同一份判定」由呼叫結構保證
-  return { lanes, stale, waiting: lanesWaiting(input) }
+  return { lanes, stale, todos: [...(input.todos ?? [])], waiting: lanesWaiting(input) }
 }
 
 /** 一條未收線的線的用量段：佇列 token 與票狀態交給 laneContextStatus 判定是否持有 in_progress 票。 */
@@ -202,6 +206,14 @@ export function formatLineStatus(report: LineStatusReport, header: { coordinatio
   } else {
     lines.push(`過期項（${report.stale.length}）：`)
     for (const item of report.stale) lines.push(`- L${item.lane} ${STALE_LABELS[item.kind]}：${item.detail}`)
+  }
+  // U1 與 U2 分段：行格式取看板同一個函式（userTodoRows），這裡只傳 U1
+  const todoRows = userTodoRows(report.todos, [], '')
+  if (todoRows.length === 0) {
+    lines.push('用戶待辦：無')
+  } else {
+    lines.push(`用戶待辦（${todoRows.length}）：`)
+    for (const row of todoRows) lines.push(`- ${row.text}`)
   }
   if (report.waiting.length === 0) {
     lines.push('等用戶：無')

@@ -4,7 +4,7 @@
 import type { EngineInterface } from 'claude-code'
 
 import type { ProjectConfigResult } from '../types'
-import { findCheckouts, readLaneLines, readProjectConfig, readSessions, readSourceLog, readTicketStatus } from './readers'
+import { findCheckouts, readLanes, readProjectConfig, readSessions, readSourceLog, readTicketStatus } from './readers'
 import { readContextUsageStates } from './usageReaders'
 import { COORDINATION_HOWTO, COORDINATION_NONE, continuityTicketIds, formatLineStatus, lineStatusReport, ticketPrefixOf } from './parse'
 
@@ -21,7 +21,7 @@ export async function lineStatusText($: EngineInterface, readAt: string): Promis
   const config = await readProjectConfig($, mainPath)
   if (config.kind !== 'ok') return cannot(coordinationUnavailable(config))
   const prefix = ticketPrefixOf(config.coordinationTicket)
-  const laneLines = await readLaneLines($, mainPath, config.coordinationTicket)
+  const laneLines = await readLanes($, mainPath, config.coordinationTicket)
   if (laneLines.kind !== 'ok') return cannot(`協調票讀取失敗（${laneLines.message}）`)
   const sessions = await readSessions($, checkoutPaths)
   if (sessions.kind !== 'ok') return cannot(`~/.claude/sessions 讀取失敗（${sessions.message}）`)
@@ -32,7 +32,7 @@ export async function lineStatusText($: EngineInterface, readAt: string): Promis
   // 用量檔只在主 checkout（contextUsage.ts 寫入位置）；每次呼叫重讀，與看板的 snapshot 無關
   const { usages, failures } = await readContextUsageStates($, mainPath, sessions)
   const context = { usages, failures, nowMs: await $.clock.now() }
-  const report = lineStatusReport({ lanes: laneLines.lines, sessions: sessions.sessions, log: log.entries, tickets, prefix: prefix ?? '', context })
+  const report = lineStatusReport({ lanes: laneLines.lines, todos: laneLines.todos, sessions: sessions.sessions, log: log.entries, tickets, prefix: prefix ?? '', context })
   const text = formatLineStatus(report, { coordinationTicket: config.coordinationTicket, readAt })
   return withNotes(text, [
     checkoutNote,

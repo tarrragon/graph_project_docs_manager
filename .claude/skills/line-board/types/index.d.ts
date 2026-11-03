@@ -75,7 +75,7 @@ export type ContextUsageRecord = {
 }
 
 /** line_status 工具的判讀結果：各線接續狀態（依線號）、過期項、等用戶（與過期項分列，等用戶不代表過期）。 */
-export type LineStatusReport = { lanes: LaneContinuity[]; stale: StaleItem[]; waiting: WaitingItem[] }
+export type LineStatusReport = { lanes: LaneContinuity[]; stale: StaleItem[]; todos: UserTodo[]; waiting: WaitingItem[] }
 
 /**
  * 協調票解析 CLI（multi-session-orchestration 的 scripts/coordination_ticket.py --json）的讀取結果：
