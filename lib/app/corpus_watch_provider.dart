@@ -1,0 +1,132 @@
+/// [SPEC-006 FR-11] 監看接線（0.6.0-W1-080，批 B4）。
+///
+/// 工作區 [WorkspaceReady] 時啟動監看，其餘狀態停止；監看變動經
+/// [ScanScheduler] 觸發整輪重掃，並對外送出輪次開始／完成事件
+/// （供破洞頁呈現 B5、系統通知 B6 使用）。
+library;
+
+import 'dart:async';
+import 'dart:developer' as developer;
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
+import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
+import 'package:graph_project_docs_manager/app/round_gaps.dart';
+import 'package:graph_project_docs_manager/services/directory_watch_source.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
+
+const String _tag = 'corpus_watch';
+
+/// 輪次事件。
+sealed class WatchRoundEvent {
+  const WatchRoundEvent(this.trigger);
+
+  final ScanTrigger trigger;
+}
+
+class WatchRoundStarted extends WatchRoundEvent {
+  const WatchRoundStarted(super.trigger);
+}
+
+class WatchRoundCompleted extends WatchRoundEvent {
+  const WatchRoundCompleted(
+    super.trigger, {
+    required this.itemIds,
+    required this.rerunPending,
+  });
+
+  /// 本輪破洞項 itemId 集合；輪次不可用或失敗時為 null。
+  final Set<String>? itemIds;
+
+  /// 完成當下是否仍有待重跑輪次。
+  final bool rerunPending;
+}
+
+/// 監看事件來源；測試覆寫為假來源。
+final watchSourceProvider = Provider<WatchSource>(
+  (ref) => const DirectoryWatchSource(),
+);
+
+class _TimerHandle implements DebounceTimer {
+  _TimerHandle(this._timer);
+  final Timer _timer;
+  @override
+  void cancel() => _timer.cancel();
+}
+
+class _RealDebounceClock implements DebounceClock {
+  const _RealDebounceClock();
+  @override
+  DebounceTimer schedule(Duration delay, void Function() callback) =>
+      _TimerHandle(Timer(delay, callback));
+}
+
+/// 監看與排程的擁有者。
+class CorpusWatchController {
+  CorpusWatchController(this._ref, {DebounceClock? clock}) {
+    _watcher = CorpusWatcher(
+      source: _ref.read(watchSourceProvider),
+      clock: clock ?? const _RealDebounceClock(),
+      onChanged: (_) => scheduler.request(ScanTrigger.watch),
+      log: _log,
+    );
+    scheduler = ScanScheduler(
+      runRound: _runRound,
+      clearPendingWatchEvents: _watcher.clearPending,
+    );
+  }
+
+  final Ref _ref;
+  late final CorpusWatcher _watcher;
+  late final ScanScheduler scheduler;
+  final StreamController<WatchRoundEvent> _events =
+      StreamController<WatchRoundEvent>.broadcast();
+
+  Stream<WatchRoundEvent> get events => _events.stream;
+
+  bool get isWatching => _watcher.isWatching;
+
+  void _log(String message, {int level = 0}) =>
+      developer.log(message, name: _tag, level: level);
+
+  Future<void> sync(WorkspaceState state) => switch (state) {
+    WorkspaceReady(:final path) => _watcher.start(path),
+    _ => _watcher.stop(),
+  };
+
+  Future<void> _runRound(ScanTrigger trigger) async {
+    _events.add(WatchRoundStarted(trigger));
+    Set<String>? ids;
+    try {
+      final round = await _ref.read(scanRoundProvider.notifier).rescan();
+      if (round != null) ids = gapItemIdsOf(round);
+    } finally {
+      _events.add(
+        WatchRoundCompleted(
+          trigger,
+          itemIds: ids,
+          rerunPending: scheduler.hasPendingRerun,
+        ),
+      );
+    }
+  }
+
+  Future<void> dispose() async {
+    await _watcher.stop();
+    await _events.close();
+  }
+}
+
+/// 監看控制器；啟動後隨工作區狀態啟停。
+final corpusWatchProvider = Provider<CorpusWatchController>((ref) {
+  final controller = CorpusWatchController(ref);
+  ref.listen<WorkspaceState>(
+    currentWorkspaceStateProvider,
+    (_, next) => unawaited(controller.sync(next)),
+    fireImmediately: true,
+  );
+  ref.onDispose(() => unawaited(controller.dispose()));
+  return controller;
+});
