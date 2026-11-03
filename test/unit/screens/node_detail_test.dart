@@ -15,6 +15,7 @@ import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
+import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtures.dart';
@@ -483,6 +484,52 @@ void main() {
       expect(nodes['A']!.title, 'Alpha');
       expect(nodes['A']!.markdown, isEmpty); // 內文延遲讀取
       expect(nodes['A']!.relations.single.label, 't');
+      expect(nodes['A']!.relations.single.nodeIds, ['B']);
+      expect(nodes['B']!.relations.single.nodeIds, ['A']);
+    });
+
+    test('同一條邊從兩端節點都查得到（AdjacencyQuery 方向 both）', () {
+      final event = GraphBuiltEvent(
+        nodes: const [
+          LightNode(
+            id: 'A',
+            typeName: 'SPEC',
+            status: null,
+            title: null,
+            path: 'a.md',
+          ),
+          LightNode(
+            id: 'B',
+            typeName: 'UC',
+            status: null,
+            title: null,
+            path: 'b.md',
+          ),
+        ],
+        edges: [
+          GraphEdge(
+            edgeType: 't',
+            from: 'A',
+            to: 'B',
+            declaredBy: {'A'},
+            isUndirected: false,
+            layer: 'established',
+          ),
+        ],
+        graphDefects: const [],
+        totalReferences: 0,
+        resolvedCount: 0,
+      );
+      final query = AdjacencyQuery(buildResult: GraphBuildAvailable(event));
+
+      final fromA = (query.query('A') as AdjacencyAvailable).entries.single;
+      final fromB = (query.query('B') as AdjacencyAvailable).entries.single;
+
+      expect(fromA.otherId, 'B');
+      expect(fromA.direction, AdjacencyEntryDirection.out);
+      expect(fromB.otherId, 'A');
+      expect(fromB.direction, AdjacencyEntryDirection.incoming);
+      final nodes = projectNodeDetails(event);
       expect(nodes['A']!.relations.single.nodeIds, ['B']);
       expect(nodes['B']!.relations.single.nodeIds, ['A']);
     });
