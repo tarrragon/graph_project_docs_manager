@@ -24,7 +24,7 @@ import 'badge.dart';
 /// | slot | 必填 | 說明 |
 /// |------|------|------|
 /// | [name] | 是 | 專案名稱，單行截斷 |
-/// | [summary] | 是 | 摘要（呼叫端取 `projectSummaryLabel` 值），單行截斷 |
+/// | [summary] | 否 | 摘要（呼叫端取 `projectSummaryLabel` 值），單行截斷；無計數快照時不傳 |
 /// | [health] | 否 | 問題數為 0 時不傳 |
 /// | [enabled] | 是 | 可用性；為 `false` 時 [reason] 必填 |
 /// | [isCurrent] | 是 | 是否為目前開啟的專案（`selected` 態） |
@@ -36,11 +36,11 @@ class RecentProjectItem extends StatelessWidget {
   const RecentProjectItem({
     super.key,
     required this.name,
-    required this.summary,
     required this.enabled,
     required this.isCurrent,
     required this.onTap,
     required this.testKey,
+    this.summary,
     this.health,
     this.reason,
     this.isDegraded = false,
@@ -53,8 +53,9 @@ class RecentProjectItem extends StatelessWidget {
   /// 專案名稱（單行截斷，SPEC-004 4.9 內容政策）。
   final String name;
 
-  /// 摘要文字，呼叫端取 `projectSummaryLabel` 值（單行截斷）。
-  final String summary;
+  /// 摘要文字，呼叫端取 `projectSummaryLabel` 值（單行截斷）；無計數快照
+  /// 時為 `null`，不渲染摘要列（SPEC-004 4.9〈無計數快照〉）。
+  final String? summary;
 
   /// 健康徽章 slot（`Badge.health`）；問題數為 0 時不傳。
   final Badge? health;
@@ -103,9 +104,11 @@ class RecentProjectItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final semanticsLabel = isCurrent
-        ? '$name，$summary，${l10n.currentProjectA11yLabel}'
-        : '$name，$summary';
+    final semanticsLabel = [
+      name,
+      ?summary,
+      if (isCurrent) l10n.currentProjectA11yLabel,
+    ].join('，');
 
     return MergeSemantics(
       child: Semantics(
@@ -171,15 +174,17 @@ class RecentProjectItem extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AppText.singleLine(name, emphasis: true, tone: _nameTone),
-        SizedBox(height: Space.xxs),
-        isDegraded ? _buildSummaryWithDegradedBadge(l10n) : _buildSummary(),
+        if (summary != null || isDegraded) ...[
+          SizedBox(height: Space.xxs),
+          isDegraded ? _buildSummaryWithDegradedBadge(l10n) : _buildSummary(),
+        ],
       ],
     );
   }
 
   Widget _buildSummary() {
     return AppText.singleLine(
-      summary,
+      summary!,
       variant: AppTextVariant.caption,
       tone: _summaryTone,
     );
@@ -190,14 +195,18 @@ class RecentProjectItem extends StatelessWidget {
   Widget _buildSummaryWithDegradedBadge(AppLocalizations l10n) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final badgeMaxWidth = (constraints.maxWidth - Space.sm).clamp(
+        final hasSummary = summary != null;
+        final reserved = hasSummary ? Space.sm : 0.0;
+        final badgeMaxWidth = (constraints.maxWidth - reserved).clamp(
           0.0,
           double.infinity,
         );
         return Row(
           children: [
-            Flexible(child: _buildSummary()),
-            SizedBox(width: Space.sm),
+            if (hasSummary) ...[
+              Flexible(child: _buildSummary()),
+              SizedBox(width: Space.sm),
+            ],
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: badgeMaxWidth),
               child: Badge.tag(label: l10n.degradedSchemaShortLabel),

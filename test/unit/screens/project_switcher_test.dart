@@ -73,6 +73,12 @@ String _encodeRecentProjects(List<RecentProject> projects) => jsonEncode([
     {
       'path': project.path,
       'lastOpenedAt': project.lastOpenedAt.toIso8601String(),
+      if (project.counts case final counts?)
+        'counts': {
+          'nodeCount': counts.nodeCount,
+          'ticketCount': counts.ticketCount,
+          'issueCount': counts.issueCount,
+        },
     },
 ]);
 
@@ -263,6 +269,7 @@ void main() {
   _restoreContrastTest();
   _inOverlayFailureTests();
   _unavailableRecentItemTests();
+  _countSnapshotTests();
   group('收合態', () {
     testWidgets('側欄入口存在，浮層未掛載', (tester) async {
       await _pumpApp(tester);
@@ -1181,6 +1188,82 @@ class _GatedSignalProbe implements FrameworkSignalProbePort {
 
   @override
   Future<String?> readSchemaJsonVersion(String workspacePath) async => null;
+}
+
+/// 計數快照的摘要與健康徽章（SPEC-005 §2.4〈計數快照〉、SPEC-004 §4.9
+/// 〈無計數快照〉）。E1 對照：同一份清單內有／無快照各一項，斷言呈現不同。
+void _countSnapshotTests() {
+  group('計數快照顯示（0.6.0-W1-018.2）', () {
+    final withCounts = RecentProject(
+      path: '/fake/with_counts',
+      lastOpenedAt: DateTime.utc(2026, 9, 24),
+      counts: const RecentProjectCounts(
+        nodeCount: 237,
+        ticketCount: 2419,
+        issueCount: 3,
+      ),
+    );
+    final cleanCounts = RecentProject(
+      path: '/fake/clean_counts',
+      lastOpenedAt: DateTime.utc(2026, 9, 23),
+      counts: const RecentProjectCounts(
+        nodeCount: 10,
+        ticketCount: 20,
+        issueCount: 0,
+      ),
+    );
+    final noCounts = RecentProject(
+      path: '/fake/no_counts',
+      lastOpenedAt: DateTime.utc(2026, 9, 22),
+    );
+    final projects = [withCounts, cleanCounts, noCounts];
+
+    Future<void> openOverlay(WidgetTester tester) async {
+      await _pumpApp(
+        tester,
+        overrides: [
+          recentProjectsProvider.overrideWith((ref) => projects),
+          workspaceRepositoryProvider.overrideWithValue(
+            _fakeRepositoryWithRecents(projects),
+          ),
+        ],
+      );
+      await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('有快照項顯示「節點數 · 票數」，無快照項不顯示摘要', (tester) async {
+      await openOverlay(tester);
+      final l10n = AppLocalizationsZh();
+
+      expect(find.text(l10n.projectSummaryLabel(237, 2419)), findsOneWidget);
+      expect(find.text(l10n.projectSummaryLabel(10, 20)), findsOneWidget);
+      // 無快照項與 0/0 佔位皆不得出現。
+      expect(find.text(l10n.projectSummaryLabel(0, 0)), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(RecentProjectItem),
+          matching: find.textContaining('節點'),
+        ),
+        findsNWidgets(2),
+      );
+      expectNoOverflow(tester);
+    });
+
+    testWidgets('問題數 ≥ 1 渲染 Badge.health 與朗讀標籤；0 與無快照不渲染', (tester) async {
+      await openOverlay(tester);
+      final l10n = AppLocalizationsZh();
+
+      final badges = tester.widgetList<Badge>(find.byType(Badge)).toList();
+      expect(badges, hasLength(1));
+      expect(badges.single.variant, BadgeVariant.health);
+      expect(badges.single.count, 3);
+      expect(badges.single.semanticLabel, l10n.healthBadgeA11yLabel(3));
+      expect(find.byKey(const Key('badge-switcher-health-0')), findsOneWidget);
+      expect(find.byKey(const Key('badge-switcher-health-1')), findsNothing);
+      expect(find.byKey(const Key('badge-switcher-health-2')), findsNothing);
+    });
+  });
 }
 
 void _restoreContrastTest() {
