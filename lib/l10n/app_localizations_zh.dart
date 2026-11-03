@@ -239,6 +239,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get probeTimeoutReason => '可能是磁碟未掛載';
 
   @override
+  String get probingReason => '檢查中…';
+
+  @override
   String get sourceFileStillMissingMessage => '檔案仍不存在';
 
   @override

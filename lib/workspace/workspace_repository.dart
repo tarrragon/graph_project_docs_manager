@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
@@ -161,6 +162,10 @@ enum WorkspaceLogEvent {
 
   /// [_inspect] 讀取資料夾內容拋 [FileSystemException]。
   inspectReadFailed,
+
+  /// [WorkspaceRepository.probeRecentProject] 探測超過逾時值未回應
+  /// （SPEC-005 §2.5）。
+  probeRecentProjectTimedOut,
 }
 
 /// 日誌投影的接縫。生產預設轉呼 `developer.log(name: 'WorkspaceRepository')`。
@@ -283,6 +288,29 @@ class WorkspaceRepository {
   final WorkspacePreferencesPort _preferencesPort;
   final WorkspaceDirectoryProbePort _directoryProbe;
   final WorkspaceLogSink _log;
+
+  /// 最近專案項單次探測的逾時值（SPEC-005 §2.5）。
+  // magic-exempt: 具名常數本身即為 SPEC-005 §2.5 定義的逾時值
+  static const probeTimeout = Duration(seconds: 2);
+
+  /// 探測最近專案項的可用性（SPEC-005 §2.5）：沿用 [_inspect] 判定，以
+  /// [probeTimeout] 為上限；逾時不取消底層 I/O，晚到結果丟棄；不拋例外。
+  Future<RecentProjectAvailability> probeRecentProject(String path) async {
+    try {
+      final state = await _inspect(path).timeout(probeTimeout);
+      if (state case WorkspaceUnavailable(:final reason)) {
+        return RecentProjectUnavailable(reason);
+      }
+      return const RecentProjectAvailable();
+    } on TimeoutException {
+      _log(
+        '最近專案探測逾時：$path，逾時值 ${probeTimeout.inSeconds} 秒', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.probeRecentProjectTimedOut,
+        level: 900,
+      );
+      return const RecentProjectProbeTimedOut();
+    }
+  }
 
   /// 開啟系統面板讓使用者選取資料夾。
   Future<ChooseFolderResult> chooseFolder() async {

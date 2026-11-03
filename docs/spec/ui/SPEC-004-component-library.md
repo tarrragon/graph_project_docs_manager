@@ -2033,7 +2033,7 @@ EVT-CORPUS-004 項目說明：
 | `reason`（disabled） | 是 | 2 | 末行截斷（提案：浮層寬有限，原因須可讀） | `projectUnavailableReasonLabel`（reason 代入 `probeTimeoutReason`）；`TestCopy.longZh` |
 | 降級標籤（`isDegraded`） | 否 | 1 | 截斷 | `degradedSchemaShortLabel` 的 zh／en 實際值，於最小寬下截斷不溢位（`0.1.0-W3-335.38` S-34）。標籤文字由元件內部取 l10n、slot 只有 `isDegraded: bool`，`TestCopy` 無法注入，故不列 `TestCopy.longToken`（`0.5.0-W3-001` NC-1） |
 
-`reason`（disabled）的取值依探測結果分兩種：逾時代入 `probeTimeoutReason`，非逾時的不可用代入 `WorkspaceUnavailable.reason`（SPEC-005 §2.5）。上表最長測試文案仍以 `probeTimeoutReason` 為準，表列不變；若後續需新增 key，表列、ARB 與 P7 計數由 `0.6.0-W1-019.2` 同批加入。
+`reason`（disabled）的取值依探測結果分兩種：逾時代入 `probeTimeoutReason`，非逾時的不可用代入 `WorkspaceUnavailable.reason`（SPEC-005 §2.5）。上表最長測試文案仍以 `probeTimeoutReason` 為準，表列不變；探測未完成的 `probingReason` 表列、ARB 與 P7 計數已由 `0.6.0-W1-019.2` 同批落地。
 
 #### slot 契約
 

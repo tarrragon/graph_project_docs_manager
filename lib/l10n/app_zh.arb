@@ -398,6 +398,11 @@
     "description": "SPEC-003 §3.7：資料夾可用性探測逾時時，作為 projectUnavailableReasonLabel 的 reason 值"
   },
 
+  "probingReason": "檢查中…",
+  "@probingReason": {
+    "description": "SPEC-004 4.9：最近專案項可用性探測未完成時的 disabled 原因文字"
+  },
+
   "sourceFileStillMissingMessage": "檔案仍不存在",
   "@sourceFileStillMissingMessage": {
     "description": "SPEC-003 §3.6：action-nodeDetail-refresh 重新整理後，檔案仍不存在分支的 SnackBar 文案"
