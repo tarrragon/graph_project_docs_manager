@@ -389,6 +389,7 @@ void main() {
         container.read(selectedDestinationProvider),
         AppDestination.nodeDetail,
       );
+      expect(container.read(nodeDetailTargetProvider), '0.1.0-W1-001');
     });
 
     testWidgets(
