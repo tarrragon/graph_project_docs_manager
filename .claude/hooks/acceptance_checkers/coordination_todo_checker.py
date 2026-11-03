@@ -1,5 +1,5 @@
 """
-Coordination Todo Checker - 協調票 complete 前的未配對用戶待辦檢查
+Coordination Todo Checker - 協調票 complete／close 前的未配對用戶待辦檢查
 
 Why: 協調票帶未配對的用戶待辦（U1）結案，殘留事項被埋在已完成的舊票，看板讀不到。
 Consequence: 不擋則用戶待辦靜默遺失。
@@ -28,23 +28,23 @@ def _is_coordination(frontmatter: dict) -> bool:
     return str(frontmatter.get("coordination", "")).strip().lower() == "true"
 
 
-def _format_block_message(ticket_id: str, todos: list) -> str:
+def _format_block_message(ticket_id: str, todos: list, action: str = "complete") -> str:
     rows = "\n".join(
         "  - %s：%s" % (t["key"] if t["key"] is not None else "（無鍵）", t["item"])
         for t in todos
     )
     return (
-        "協調票 %s 仍有 %d 項未配對的用戶待辦，complete 被阻擋：\n%s\n\n"
+        "協調票 %s 仍有 %d 項未配對的用戶待辦，%s 被阻擋：\n%s\n\n"
         "解法一：在 Solution 為每項寫完成行 `%s`。\n"
         "解法二（轉移）：寫完成行並註明轉移，`%s`，"
         "再到新協調票用新鍵重寫待辦行。\n"
         "格式見 .claude/skills/multi-session-orchestration/references/line-continuity.md §2〈用戶待辦〉"
-        % (ticket_id, len(todos), rows, TODO_DONE_FORMAT, TODO_TRANSFER_FORMAT)
+        % (ticket_id, len(todos), action, rows, TODO_DONE_FORMAT, TODO_TRANSFER_FORMAT)
     )
 
 
 def check_unpaired_user_todos(
-    content: str, frontmatter: dict, ticket_id: str, logger
+    content: str, frontmatter: dict, ticket_id: str, logger, action: str = "complete"
 ) -> Tuple[bool, str]:
     """回傳 (should_block, message)。非協調票或無未配對項回 (False, "")。"""
     if not _is_coordination(frontmatter):
@@ -61,4 +61,4 @@ def check_unpaired_user_todos(
         return False, ""
     if not todos:
         return False, ""
-    return True, _format_block_message(ticket_id, todos)
+    return True, _format_block_message(ticket_id, todos, action)

@@ -74,6 +74,7 @@ from lib.git_command_parse import parse_command_statements
 from lib.ticket_command_parse import (
     COMPLETE_VERBS,
     find_complete_invocations,
+    find_ticket_track_invocations,
     is_complete_statement,
 )
 
@@ -1065,6 +1066,73 @@ def _parse_and_validate_input(input_data: Dict[str, Any], logger) -> Optional[Tu
     return tool_name, command
 
 
+def extract_close_ticket_ids(command: str, logger) -> List[str]:
+    """掃描 `ticket track close` 命令，回傳其後全部 Ticket ID（保序、去重）。
+
+    失敗語意：命令無法解析（掃描回 None）時視為非 close 命令，回空清單（fail-open）。
+    觸發條件：未閉合引號、管線或 here-string 餵 stdin shell、巢狀過深。
+    """
+    invocations = find_ticket_track_invocations(command, ("close",))
+    if invocations is None:
+        logger.warning("close 命令掃描無法解析，略過協調票待辦檢查（fail-open）")
+        return []
+    return _dedupe([
+        token
+        for _verb, args in invocations
+        for token in args
+        if re.fullmatch(TICKET_ID_PATTERN, token)
+    ])
+
+
+def check_close_coordination_todos(
+    ticket_ids: List[str], project_dir: Path, logger
+) -> Optional[Tuple[str, str]]:
+    """close 專用：只做協調票未配對用戶待辦檢查，不套用 complete 的其他步驟。
+
+    回傳第一張應擋票的 (ticket_id, message)；皆放行回 None。
+    票檔不存在或讀取失敗時略過該張（fail-open，已寫日誌）。
+    """
+    for ticket_id in ticket_ids:
+        ticket_file = find_ticket_file(ticket_id, project_dir, logger)
+        if not ticket_file:
+            logger.warning(f"close 檢查找不到 Ticket 檔案，略過: {ticket_id}")
+            continue
+        try:
+            content = ticket_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            logger.error(f"close 檢查讀取票檔失敗，略過 {ticket_id}: {exc}")
+            sys.stderr.write(f"[acceptance-gate] close 檢查讀取失敗，放行 {ticket_id}: {exc}\n")
+            continue
+        should_block, message = check_unpaired_user_todos(
+            content, parse_ticket_frontmatter(content), ticket_id, logger, action="close"
+        )
+        if should_block:
+            return ticket_id, message
+    return None
+
+
+def _handle_close_command(command: str, logger) -> int:
+    """處理非 complete 的 Bash 命令：為 close 執行協調票待辦檢查，輸出 allow/deny。"""
+    close_ids = extract_close_ticket_ids(command, logger) if command else []
+    blocked = None
+    if close_ids:
+        project_dir = get_shared_state_root(get_project_root())
+        blocked = check_close_coordination_todos(close_ids, project_dir, logger)
+    if blocked is None:
+        _output_allow_json()
+        return EXIT_SUCCESS
+    ticket_id, message = blocked
+    logger.warning(f"協調票 {ticket_id} close 被阻擋：未配對用戶待辦")
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "additionalContext": message,
+        }
+    }, ensure_ascii=False, indent=2))
+    return EXIT_BLOCK
+
+
 def _extract_ticket_ids_or_skip(tool_name: str, command: str, logger) -> List[str]:
     """識別 complete 命令並提取全部 Ticket ID；非 complete 或無 ID 時輸出 allow 並回空清單。"""
     if tool_name != "Bash":
@@ -1125,9 +1193,11 @@ def main() -> int:
                 input_data.get("tool_name") == "Bash" and is_complete_command(_fp_command)
             )
             if not _fp_is_complete:
-                logger.debug("Fast-path skip: 非 ticket track complete 命令")
-                _output_allow_json()
-                return EXIT_SUCCESS
+                logger.debug("非 complete 命令：僅檢查 close 的協調票待辦")
+                if input_data.get("tool_name") != "Bash":
+                    _output_allow_json()
+                    return EXIT_SUCCESS
+                return _handle_close_command(_fp_command, logger)
 
         # Effort 感知（v2.1.133+，W14-034）：僅記錄 effort 供除錯，
         # 不再作為短路放行條件（0.2.1-W3-018）。此處已確定為
