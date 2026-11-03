@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-03"
-version: "1.71"
+version: "1.72"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -580,7 +580,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | 標題 | frontmatter `title` | 缺席或非字串顯示「—」（與 SPEC-007 FR-02 視為缺席的判準相同） |
 > | 狀態 | frontmatter `status` | 同上；值不在框架生命週期內時照原值顯示，排序依 SPEC-003 §3.4 S8 排最後 |
 > | 優先 | frontmatter `priority` | 同上；值不在 `PRIORITY_LEVELS` 內時照原值顯示，排序同上 |
-> | blockedBy | frontmatter `blockedBy` 清單的原值，依清單順序以「、」串接 | 缺席、空清單或非清單顯示「—」；非字串元素略過 |
+> | blockedBy | frontmatter `blockedBy` 清單的原值，依清單順序依語系串接：zh「、」、en「, 」（與破洞說明的多值串接同慣例） | 缺席、空清單或非清單顯示「—」；非字串元素略過 |
 >
 > blockedBy 取 frontmatter 欄位而非圖上的 `blocking` 邊：型別表中 `blocking` 的 `reverse_field` 為
 > null，圖上的邊全部來自同一欄位，兩者宣告集合相同；取欄位可保留指向不存在 ID 的值，使用者在
@@ -1169,6 +1169,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.72 | 2026-11-03 | §4〈票列欄位的取值來源〉blockedBy 列補 en 串接形式：zh「、」、en「, 」，與多值串接慣例一致（`0.6.0-W1-073.4`，源自 `0.6.0-W1-073.3` NeedsContext）；不動其他條文 |
 | 1.71 | 2026-11-03 | §5「掃描中」進入條件改寫：由「進入畫面且圖已建立」（首次可見必掃一次）改為有既有結果（含監看輪次）時不自動掃描，並列入重新掃描（含監看輪次中按下）；〈檔案監看觸發的輪次不經「掃描中」〉註記的待裁改為已裁（`0.6.0-W1-080`，用戶裁定 2026-11-03，D1 B、D2 A、D3 A）。狀態總數不變。SPEC-006 v1.34、SPEC-003 v1.78 同批 |
 | 1.70 | 2026-11-03 | §3 三跳表 UC → Ticket 列的「鍵名待定」改為已定的邊型鍵名 `uc_ticket_refs`（`0.6.0-W1-116`，`0.6.0-W1-102` 已定案）；不動其他條文 |
 | 1.69 | 2026-11-03 | §5 主題檔破洞投影（`0.6.0-W1-112`，EVT-CORPUS-006 同批建立，SPEC-004 v1.115）：〈破洞報告項目投影〉表一新增分節 `topic-files-malformed`、表二新增項目 id 成分（含子原因）、表三新增指向列；新增〈主題檔破洞的項目說明〉。狀態總數不變 |

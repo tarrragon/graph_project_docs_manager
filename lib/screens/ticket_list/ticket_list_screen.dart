@@ -284,6 +284,7 @@ class _ReadyListView extends ConsumerWidget {
       for (final ticket in visible)
         _ticketRow(
           ticket,
+          blockedBySeparator: _blockedBySeparator(l10n),
           onOpenTicket: onOpenTicket,
           onCorruptedTap: onCorruptedTap,
           targetId: targetId,
@@ -465,6 +466,7 @@ class _TopicSection extends StatelessWidget {
         for (final ticket in group.tickets)
           _ticketRow(
             ticket,
+            blockedBySeparator: _blockedBySeparator(l10n),
             onOpenTicket: onOpenTicket,
             onCorruptedTap: onCorruptedTap,
             targetId: targetId,
@@ -474,13 +476,18 @@ class _TopicSection extends StatelessWidget {
   }
 }
 
+/// blockedBy 串接符依語系選擇（與 gap_report `_join` 同慣例）；只支援 zh／en。
+String _blockedBySeparator(AppLocalizations l10n) =>
+    l10n.localeName.startsWith('zh') ? '、' : ', '; // i18n-exempt: 語系分隔符
+
 /// 票列（列表模式與主題模式共用）：欄序 ID／標題／狀態／優先／blockedBy／
 /// 損壞標記（SPEC-004 §3.2 `TicketListA` 票列；blockedBy 值為被阻擋的
-/// ticket ID 以「, 」串接，無則「—」，SPEC-001 §4）。[targetId] 與
+/// ticket ID 依語系以「、」（zh）或「, 」（en）串接，無則「—」，SPEC-001 §4）。[targetId] 與
 /// `ticket.id` 相同時渲染定位高亮（SPEC-003 §3.4〈帶目標跳入〉，
 /// SPEC-004 §4.0.10 場景 d，`0.1.0-W1-080`）。
 AppTableRow _ticketRow(
   TicketFixtureItem ticket, {
+  required String blockedBySeparator,
   required void Function(String ticketId) onOpenTicket,
   required VoidCallback onCorruptedTap,
   String? targetId,
@@ -497,7 +504,7 @@ AppTableRow _ticketRow(
     blockedBy: AppText.singleLine(
       ticket.blockedBy.isEmpty
           ? placeholder
-          : ticket.blockedBy.join(', '), // i18n-exempt: 串接分隔字面與規則同，非 UI 文案
+          : ticket.blockedBy.join(blockedBySeparator),
       variant: AppTextVariant.mono,
     ),
     marker: ticket.corrupted
