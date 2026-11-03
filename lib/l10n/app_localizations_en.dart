@@ -681,6 +681,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Scan finished: gaps could not be determined';
 
   @override
+  String get scanCompleteWatchNotificationTitle => 'Gap report updated';
+
+  @override
+  String scanCompleteWatchNotificationBody(int count) {
+    return 'Rescanned after file changes: $count gaps now';
+  }
+
+  @override
   String get gapsUndeterminableReasonScanFailed =>
       'An unexpected error occurred during the scan, so gaps cannot be determined. Try rescanning.';
 

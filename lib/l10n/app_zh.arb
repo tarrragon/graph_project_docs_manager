@@ -1210,6 +1210,21 @@
     "description": "SPEC-003 §2.2 系統層通知：權限 denied fallback 的 App 內 SnackBar 文字（無法判定破洞）"
   },
 
+  "scanCompleteWatchNotificationTitle": "破洞報告已更新",
+  "@scanCompleteWatchNotificationTitle": {
+    "description": "SPEC-003 §2.2 系統層通知：檔案監看輪次完成的通知標題"
+  },
+
+  "scanCompleteWatchNotificationBody": "檔案變動後重新掃描，目前 {count} 個破洞",
+  "@scanCompleteWatchNotificationBody": {
+    "description": "SPEC-003 §2.2 系統層通知：檔案監看輪次完成的通知內文（三態共用）",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
   "gapsUndeterminableReasonScanFailed": "掃描時發生非預期錯誤，無法判斷破洞；請重新掃描",
   "@gapsUndeterminableReasonScanFailed": {
     "description": "SPEC-001 §5「無法判定破洞」原因說明之三（掃描輪次拋出非預期例外）"

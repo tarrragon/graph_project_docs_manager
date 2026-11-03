@@ -648,6 +648,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scanCompleteUndeterminableSnackbarMessage => '掃描結束，無法判定破洞';
 
   @override
+  String get scanCompleteWatchNotificationTitle => '破洞報告已更新';
+
+  @override
+  String scanCompleteWatchNotificationBody(int count) {
+    return '檔案變動後重新掃描，目前 $count 個破洞';
+  }
+
+  @override
   String get gapsUndeterminableReasonScanFailed => '掃描時發生非預期錯誤，無法判斷破洞；請重新掃描';
 
   @override
