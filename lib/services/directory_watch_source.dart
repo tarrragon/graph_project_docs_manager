@@ -12,21 +12,28 @@ const String _docsDirName = 'docs';
 const String _posixSeparator = '/';
 
 class DirectoryWatchSource implements WatchSource {
-  const DirectoryWatchSource();
+  DirectoryWatchSource();
 
-  /// 只監看 `<root>/docs`；錯誤原樣經串流傳出。
+  final Map<String, DirectoryWatcher> _watchers = <String, DirectoryWatcher>{};
+
+  static String _docsPathOf(String root) => p.join(root, _docsDirName);
+
+  /// docs 不存在時套件會無限重試；由 CorpusWatcher 先檢查而不建立監看。
+  @override
+  bool targetExists(String workspaceRoot) =>
+      Directory(_docsPathOf(workspaceRoot)).existsSync();
+
+  /// 只監看 `<root>/docs`；呼叫前須先確認 [targetExists]。
   @override
   Stream<WatchChange> watch(String workspaceRoot) {
-    final docsPath = p.join(workspaceRoot, _docsDirName);
-    // docs 不存在時套件會無限重試；改為立即回報錯誤，由 CorpusWatcher 記錄並停止。
-    if (!Directory(docsPath).existsSync()) {
-      return Stream<WatchChange>.error(
-        PathNotFoundException(docsPath, const OSError()),
-      );
-    }
-    final watcher = DirectoryWatcher(docsPath);
+    final watcher = DirectoryWatcher(_docsPathOf(workspaceRoot));
+    _watchers[workspaceRoot] = watcher;
     return watcher.events.map((e) => toWatchChange(workspaceRoot, e));
   }
+
+  @override
+  Future<void> ready(String workspaceRoot) =>
+      _watchers[workspaceRoot]?.ready ?? Future<void>.value();
 
   /// 絕對路徑轉相對工作區根的 `/` 形式，ADD/MODIFY/REMOVE 對應三值。
   static WatchChange toWatchChange(String workspaceRoot, WatchEvent event) {
