@@ -16,7 +16,6 @@ import { renderBoardPane } from './boardPane'
 import { lineStatusText } from './lineStatus'
 import { dispatchTicketIds, formatTime, isContextChanged, laneTicketIds, messageOf, ticketPrefixOf } from './parse'
 import {
-  PROJECT_CONFIG_PATH,
   findCheckouts,
   readDispatches,
   readLanes,
@@ -149,7 +148,7 @@ async function openIfConfigured($: EngineInterface): Promise<void> {
     const mainPath = checkoutPaths[0] ?? root
     const config = mainPath === root ? rootConfig : await readProjectConfig($, mainPath)
     if (config.kind !== 'ok') {
-      await update($, snapshot, () => unconfiguredSnapshot(mainPath, config))
+      await update($, snapshot, () => unconfiguredSnapshot(config))
       return
     }
     await openConfiguredPane($)
@@ -166,9 +165,9 @@ async function openConfiguredPane($: EngineInterface): Promise<void> {
   await opening
 }
 
-/** 設定不成立時的 snapshot：設定檔的絕對路徑與原因。 */
-function unconfiguredSnapshot(mainPath: string, config: UnsetProjectConfig): BoardSnapshot {
-  return { kind: 'unconfigured', configPath: `${mainPath}/${PROJECT_CONFIG_PATH}`, config }
+/** 協調票不成立時的 snapshot：0 張、多張或解析失敗的原因。 */
+function unconfiguredSnapshot(config: UnsetProjectConfig): BoardSnapshot {
+  return { kind: 'unconfigured', config }
 }
 
 /**
@@ -185,7 +184,7 @@ async function refresh($: EngineInterface): Promise<void> {
     const mainPath = checkoutPaths[0] ?? root
     const config = await readProjectConfig($, mainPath)
     if (config.kind !== 'ok') {
-      await update($, snapshot, () => unconfiguredSnapshot(mainPath, config))
+      await update($, snapshot, () => unconfiguredSnapshot(config))
       return
     }
     const lanes = await readLanes($, mainPath, config.coordinationTicket)

@@ -3,9 +3,10 @@
 
 import type { EngineInterface } from 'claude-code'
 
-import { PROJECT_CONFIG_PATH, findCheckouts, readLaneLines, readProjectConfig, readSessions, readSourceLog, readTicketStatus } from './readers'
+import type { ProjectConfigResult } from '../types'
+import { findCheckouts, readLaneLines, readProjectConfig, readSessions, readSourceLog, readTicketStatus } from './readers'
 import { readContextUsageStates } from './usageReaders'
-import { continuityTicketIds, formatLineStatus, lineStatusReport, ticketPrefixOf } from './parse'
+import { COORDINATION_HOWTO, COORDINATION_NONE, continuityTicketIds, formatLineStatus, lineStatusReport, ticketPrefixOf } from './parse'
 
 /**
  * 產生 line_status 的輸出文字。設定不成立、協調票或 session 讀不到時，回傳說明原因的文字而不是拋出，
@@ -18,7 +19,7 @@ export async function lineStatusText($: EngineInterface, readAt: string): Promis
   // checkout 清單取不到時 mainPath 可能是 worktree：每個提前回傳都附上原因，否則模型看不出讀錯了位置
   const cannot = (reason: string) => withNotes(`line_status 無法判讀：${reason}`, [checkoutNote])
   const config = await readProjectConfig($, mainPath)
-  if (config.kind !== 'ok') return cannot(`專案設定 ${mainPath}/${PROJECT_CONFIG_PATH} 不成立（${config.kind}），沒有協調票可讀`)
+  if (config.kind !== 'ok') return cannot(coordinationUnavailable(config))
   const prefix = ticketPrefixOf(config.coordinationTicket)
   const laneLines = await readLaneLines($, mainPath, config.coordinationTicket)
   if (laneLines.kind !== 'ok') return cannot(`協調票讀取失敗（${laneLines.message}）`)
@@ -36,8 +37,21 @@ export async function lineStatusText($: EngineInterface, readAt: string): Promis
   return withNotes(text, [
     checkoutNote,
     sourceLogNote(log.readCount, checkoutPaths.length),
+    ...config.warnings.map(warning => `協調票解析警告：${warning}`),
     prefix === null ? `協調票 ${config.coordinationTicket} 推不出短票號前綴，「佇列已完成未收線」的偵測不可靠` : null,
   ])
+}
+
+/** 協調票不成立的說明（0 張、多張、CLI 失敗）；0 張的用語與看板 /board 共用。 */
+function coordinationUnavailable(config: Exclude<ProjectConfigResult, { kind: 'ok' }>): string {
+  switch (config.kind) {
+    case 'none':
+      return `${COORDINATION_NONE}；${COORDINATION_HOWTO}`
+    case 'multiple':
+      return `active 版本有多張標記 coordination: true 的進行中票，不自行擇一，請用戶裁定：${config.candidates.join('、')}`
+    case 'error':
+      return `協調票解析失敗：${config.message}`
+  }
 }
 
 /**

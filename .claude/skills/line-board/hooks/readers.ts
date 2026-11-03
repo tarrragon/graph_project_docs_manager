@@ -42,24 +42,31 @@ import {
   ticketPrefixOf,
 } from './parse'
 
-/** 專案設定檔，相對主 checkout：協調票（coordinationTicket，完整票號）由此提供。 */
-export const PROJECT_CONFIG_PATH = '.claude/project-integration/multi-session.json'
+/** 協調票解析 CLI，相對主 checkout；與 statusline、主控接續提示共用同一支（multi-session-orchestration）。 */
+export const COORDINATION_CLI_PATH = '.claude/skills/multi-session-orchestration/scripts/coordination_ticket.py'
 
 /**
- * 讀主 checkout 的專案設定檔，取協調票的完整票號。設定不成立時回傳可區分的原因（見 ProjectConfigResult）並記 debug log；
- * 看板只在 ok 時自動開 Pane 與讀其他各項，沒有使用多 session 協調的專案因此不受影響。
+ * 呼叫協調票解析 CLI 取得協調票。CLI 無法執行（python3 不可用等）、輸出不可解析或回報 error 時回傳 error 並帶原因，不靜默。
+ * 看板只在 ok 時自動開 Pane 與讀其他各項，沒有協調票的專案因此不受影響。
  */
 export async function readProjectConfig($: EngineInterface, mainPath: string): Promise<ProjectConfigResult> {
-  let text: string
+  const argv = ['python3', COORDINATION_CLI_PATH, '--json', '--project-dir', mainPath]
+  let config: ProjectConfigResult
   try {
-    text = await $.fs.read(`${mainPath}/${PROJECT_CONFIG_PATH}`)
+    const result = await $.process.run(argv, { cwd: mainPath })
+    config = parseCliResult(result.exitCode, result.stdout, result.stderr)
   } catch (error) {
-    $.ui.log(`line-board: 讀取 ${PROJECT_CONFIG_PATH} 失敗：${messageOf(error)}，不讀協調票`, { to: 'debug' })
-    return { kind: 'missing', message: messageOf(error) }
+    config = { kind: 'error', message: `python3 無法執行（${messageOf(error)}）` }
   }
-  const config = parseProjectConfig(text)
-  if (config.kind !== 'ok') $.ui.log(`line-board: ${PROJECT_CONFIG_PATH} 設定不成立（${config.kind}），不讀協調票`, { to: 'debug' })
+  if (config.kind !== 'ok') $.ui.log(`line-board: 協調票解析結果為 ${config.kind}，不讀協調票`, { to: 'debug' })
   return config
+}
+
+/** CLI 在回報 error 時結束碼為 1 但仍輸出 JSON，故有 stdout 就以其為準；結束碼非 0 且 stdout 為空時，原因附結束碼與 stderr。 */
+function parseCliResult(exitCode: number, stdout: string, stderr: string): ProjectConfigResult {
+  if (exitCode === 0 || stdout.trim() !== '') return parseProjectConfig(stdout)
+  const detail = stderr.trim() === '' ? '無輸出' : stderr.trim()
+  return { kind: 'error', message: `解析 CLI 失敗（exit ${exitCode}）：${detail}` }
 }
 
 /** 一張票的票檔讀取結果：ok 為內容；error 為讀不到時的票檔路徑（相對 repo root，不是票號時為票號本身）與原因。 */

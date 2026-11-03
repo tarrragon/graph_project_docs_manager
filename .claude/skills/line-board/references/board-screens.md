@@ -1,13 +1,13 @@
 # line-board 畫面規格與資料來源
 
-本檔是 `SKILL.md` 的依據：看板各區塊的資料來源、版面、狀態判定與讀取約定。調整看板或看板顯示異常時查閱。啟用、關閉與設定檔見 `SKILL.md`。
+本檔是 `SKILL.md` 的依據：看板各區塊的資料來源、版面、狀態判定與讀取約定。調整看板或看板顯示異常時查閱。啟用、關閉與協調票來源見 `SKILL.md`。
 
 版面以線分組：最上方是「用戶待辦」群組，其下每條線一個可折疊群組，底部是「各 session」與「合併閘門最近紀錄」兩個同樣可折疊的區塊（見〈版面：以線分組的可折疊群組〉）。
 
 | 內容 | 資料來源（相對 repo root，另註明者除外） |
 |------|---------------------------|
 | 用戶待辦 | 協調票 Solution 段的用戶待辦行與完成行（U1），加上各線等用戶（U2，判定同 `line_status` 的等用戶段）；格式權威是 multi-session-orchestration 的 `references/line-continuity.md` §2〈用戶待辦〉，見〈版面〉 |
-| 線與佇列 | 協調票（專案設定檔的 `coordinationTicket`）的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一個群組，依線號排序；線目標顯示在群組標題的第二行 |
+| 線與佇列 | 協調票（協調票解析 CLI 回傳的現行協調票，見 SKILL.md〈協調票來源〉）的 Solution 段落（自 `## Solution` 起到下一個 `## ` 標題前）中的現行佇列行，每條線一個群組，依線號排序；線目標顯示在群組標題的第二行 |
 | 佇列票即時狀態 | 群組內佇列列的每個票號旁標 `〔status〕`，`→`（依序）與 `∥`（並行）原樣保留，票號後的註記接在狀態後；狀態只讀主 checkout（`git worktree list` 第一筆）的票檔 frontmatter，讀不到時標 `unknown`。不讀各 worktree 的票檔：ticket CLI 在 worktree 中也把票務寫回主 repo，worktree 內的票檔是分支開出當下的舊副本 |
 | 佇列票摘要 | 佇列細節（見〈版面〉）列出的 title，與狀態同一次讀取主 checkout 票檔 frontmatter 的 `title:`；讀不到時標 `（讀不到 title）` |
 | 派發中代理人 | 主 checkout 的 `.claude/dispatch-active.json` 的 `dispatches` 陣列，列在所屬線的群組內，見〈派發中代理人〉 |
@@ -181,7 +181,7 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 | 位置 | 未指定 `isDeferred`，依平台規則放在 ToolSearch 後面；模型先以 ToolSearch 搜尋 `line_status` 再呼叫 |
 | 可見範圍 | plugin 載入的 session 都看得到，代理人 session 也看得到（實測 2026-10-31，Explore 代理人可呼叫）。工具唯讀、無副作用，不限只給主控 |
 | 讀取 | 每次呼叫都重讀，不取 Pane 的 snapshot：Pane 只在設定成立時定時刷新，且最多落後一個刷新間隔 |
-| 失敗 | 設定不成立、協調票或 session 讀不到時回傳說明原因的文字，不 deny，模型才讀得到「為何判不出」 |
+| 失敗 | 協調票 0 張、多張或解析失敗、協調票檔或 session 讀不到時回傳說明原因的文字，不 deny，模型才讀得到「為何判不出」 |
 | 等用戶 | 票面標記（S1）在 `readers.ts` 讀佇列票 status 的同一次讀檔中解析（`TicketStatus.waiting`），看板與工具共用該讀取；判定在 `waiting.ts`，`line_status` 的輸出在 `continuity.ts`。訊號定義的權威是 `line-continuity.md` §2〈等用戶〉 |
 | 來源紀錄 | 合併各 checkout 的 `.claude/hook-logs/session-source-diagnostic/diagnostic.log`（worktree 內啟動的 session 寫入該 worktree 的檔），同一 sessionId 取時間最晚的一筆 |
 | 型別 | 平台型別根的 MCP 條目列出已連線 server 的工具後，`tool.call` 的過濾名稱就收窄為那些名稱；自己註冊的工具須在 `types/index.d.ts` 的 `McpToolInputs` 補宣告，否則 `tsc` 報 TS2322。閘門快照沒有 MCP 條目時過濾名稱不收窄，所以只有手動型別檢查會擋 |
@@ -192,7 +192,7 @@ plugin 在 `session.start` 以 `$.tool.register` 註冊 `mcp__line-board__line_s
 |------|------|
 | `.claude-plugin/plugin.json` | manifest，`types` 指向契約，`defaultEnabled: true` |
 | `hooks/hooks.json` | 指向 hooks module |
-| `hooks/register.tsx` | 註冊 `/board` 與 `line_status` 工具（`tool.call` 交給 `lineStatus.ts`）與各 session 事件、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）；設定不成立時只寫設定提示。snapshot 的 atom 定義在本檔（平台的靜態掃描要求 atom 定義在使用它的檔案內），`ui.render` 讀出後交給 `boardPane.tsx` |
+| `hooks/register.tsx` | 註冊 `/board` 與 `line_status` 工具（`tool.call` 交給 `lineStatus.ts`）與各 session 事件、定時刷新的協調（依序呼叫 `readers.ts` 並寫入 snapshot）；協調票不成立時只寫提示。snapshot 的 atom 定義在本檔（平台的靜態掃描要求 atom 定義在使用它的檔案內），`ui.render` 讀出後交給 `boardPane.tsx` |
 | `hooks/boardPane.tsx` | 組裝 Pane（用戶待辦、線群組、底部兩區塊的折疊外框）、讀寫群組的手動展開狀態（`line-board.expanded`）、hot reload 後舊版 snapshot 的讀取中判定 |
 | `hooks/usageWriter.ts` | context 用量檔的寫入串接：主 checkout 的快取、compaction window 量測與快取、寫入失敗只送一次 transcript、`session.end` 刪自己的用量檔；`phase` 由呼叫端傳入取值函式（`resumeFlow.ts` 的 `currentResumePhase`） |
 | `hooks/resumeFlow.ts` | 恢復開工通知的流程：持有判定狀態（`pendingResume`、`lastResumed`，跨 `/clear` 保留）、寫 phase → `session.send` 給主控（開關 `IS_RESUME_NOTICE_SEND_ENABLED`）→ 寫送出紀錄檔 |
