@@ -143,6 +143,12 @@ class WatchDebouncer {
 /// 監看事件來源埠。事件路徑已轉為相對工作區根的 `/` 形式。
 abstract interface class WatchSource {
   Stream<WatchChange> watch(String workspaceRoot);
+
+  /// 規則 2：監看目標（`<root>/docs`）是否存在；不存在則不建立監看。
+  bool targetExists(String workspaceRoot);
+
+  /// 規則 1：[watch] 建立的監看就緒時完成；失敗則以錯誤完成。
+  Future<void> ready(String workspaceRoot);
 }
 
 /// FR-11 規則 1、2、10、11：監看生命週期（過濾 → 去抖 → 送出 EVT-CORPUS-002）。
@@ -165,11 +171,22 @@ class CorpusWatcher {
   final String? _nonDomainPathsLocation;
   late final WatchDebouncer _debouncer;
   StreamSubscription<WatchChange>? _subscription;
+  Completer<void> _readyGate = Completer<void>()..complete();
+
+  /// 規則 1：監看就緒（或未建立、已失敗、已停止）時完成，首輪掃描在此之後開始。
+  Future<void> get ready => _readyGate.future;
 
   bool get isWatching => _subscription != null;
 
   Future<void> start(String workspaceRoot) async {
     await stop();
+    if (!_source.targetExists(workspaceRoot)) {
+      // 規則 2：docs/ 缺席是「不建立監看」，不是監看失敗，不記 warning。
+      // i18n-exempt: 開發者日誌，非使用者介面字串
+      _log('watch skipped, docs/ absent: $workspaceRoot', level: _infoLevel);
+      return;
+    }
+    final gate = _readyGate = Completer<void>();
     _subscription = _source
         .watch(workspaceRoot)
         .listen(
@@ -181,6 +198,20 @@ class CorpusWatcher {
         );
     // i18n-exempt: 開發者日誌，非使用者介面字串
     _log('watch started: $workspaceRoot', level: _infoLevel);
+    _source
+        .ready(workspaceRoot)
+        .then(
+          (_) => _openGate(gate),
+          onError: (Object e) {
+            // i18n-exempt: 開發者日誌，非使用者介面字串
+            _fail(workspaceRoot, 'ready error: $e');
+            _openGate(gate);
+          },
+        );
+  }
+
+  void _openGate(Completer<void> gate) {
+    if (!gate.isCompleted) gate.complete();
   }
 
   void _onChange(WatchChange change) {
@@ -200,12 +231,14 @@ class CorpusWatcher {
     _subscription?.cancel();
     _subscription = null;
     _debouncer.clearPending();
+    _openGate(_readyGate);
   }
 
   Future<void> stop() async {
     final sub = _subscription;
     _subscription = null;
     _debouncer.clearPending();
+    _openGate(_readyGate);
     await sub?.cancel();
   }
 

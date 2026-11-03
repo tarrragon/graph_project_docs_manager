@@ -10,9 +10,23 @@ class FakeWatchSource implements WatchSource {
   final Map<String, StreamController<WatchChange>> controllers =
       <String, StreamController<WatchChange>>{};
 
+  /// 預設 docs 存在、ready 立即完成；測試可改寫。
+  bool docsExists = true;
+  int watchCalls = 0;
+  Future<void> Function(String root) readyBuilder = (_) => Future<void>.value();
+
   @override
-  Stream<WatchChange> watch(String workspaceRoot) =>
-      (controllers[workspaceRoot] = StreamController<WatchChange>()).stream;
+  bool targetExists(String workspaceRoot) => docsExists;
+
+  @override
+  Future<void> ready(String workspaceRoot) => readyBuilder(workspaceRoot);
+
+  @override
+  Stream<WatchChange> watch(String workspaceRoot) {
+    watchCalls++;
+    return (controllers[workspaceRoot] = StreamController<WatchChange>())
+        .stream;
+  }
 }
 
 /// 測試用監看錯誤值（取代平台錯誤）。

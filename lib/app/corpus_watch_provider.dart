@@ -50,7 +50,7 @@ class WatchRoundCompleted extends WatchRoundEvent {
 
 /// 監看事件來源；測試覆寫為假來源。
 final watchSourceProvider = Provider<WatchSource>(
-  (ref) => const DirectoryWatchSource(),
+  (ref) => DirectoryWatchSource(),
 );
 
 class _TimerHandle implements DebounceTimer {
@@ -101,6 +101,8 @@ class CorpusWatchController {
   };
 
   Future<void> _runRound(ScanTrigger trigger) async {
+    // 規則 1：首輪（visibility）在監看就緒後才開始；失敗已由監看端記錄並放行。
+    if (trigger == ScanTrigger.visibility) await _watcher.ready;
     _events.add(WatchRoundStarted(trigger));
     Set<String>? ids;
     var failed = false;
