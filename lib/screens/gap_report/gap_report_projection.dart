@@ -11,6 +11,7 @@ import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
+import 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
@@ -19,14 +20,16 @@ import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 
 import 'gap_report_models.dart';
 
-/// 分節 category id（SPEC-001 §5 表一）。
-const gapCategoryIdParseFailure = 'parse-failure';
-const gapCategoryIdFlowBlockMalformed = 'flow-block-malformed';
-const gapCategoryIdNonDomainPathsMalformed = 'non-domain-paths-malformed';
-const gapCategoryIdGraphDefect = 'graph-defect';
-const gapCategoryIdGraphDefectFlow = 'graph-defect-flow';
-const gapCategoryIdOrphanEvent = 'orphan-event';
-const gapCategoryIdEventDeclarationMismatch = 'event-declaration-mismatch';
+export 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart'
+    show
+        gapCategoryIdParseFailure,
+        gapCategoryIdFlowBlockMalformed,
+        gapCategoryIdNonDomainPathsMalformed,
+        gapCategoryIdGraphDefect,
+        gapCategoryIdGraphDefectFlow,
+        gapCategoryIdOrphanEvent,
+        gapCategoryIdEventDeclarationMismatch,
+        gapItemIdOf;
 
 /// 分節順序（SPEC-001 §5〈定案〉O1）。
 const gapCategoryOrder = <String>[
@@ -81,11 +84,6 @@ List<GapReportCategory> projectGapReport({
   ];
 }
 
-/// 需求：[SPEC-001 §5 表二] 各成分以 URI component 編碼後以 `:` 串接。
-/// 編碼後成分不含 `:`，串接結果與成分序列一對一。
-String gapItemIdOf(List<Object?> components) =>
-    components.map((c) => Uri.encodeComponent('$c')).join(':');
-
 /// 以 code point 序取最小者（SPEC-001 §5 表三 `duplicateId`／domain 重複宣告）。
 String _minByCodePoint(Iterable<String> values) =>
     values.reduce((a, b) => _compareCodePoints(a, b) <= 0 ? a : b);
@@ -110,15 +108,9 @@ class _Projector {
   final Map<String, String> _idByPath;
   final String _nonDomainPathsKey;
 
-  /// 同輪內已出現的 id 次數；成分完全相同者第二筆起加 `#N` 後綴。
-  final Map<String, int> _seen = {};
+  final GapItemIdAllocator _ids = GapItemIdAllocator();
 
-  String _uniqueId(List<Object?> components) {
-    final base = gapItemIdOf(components);
-    final count = (_seen[base] ?? 0) + 1;
-    _seen[base] = count;
-    return count == 1 ? base : '$base#$count';
-  }
+  String _uniqueId(List<Object?> components) => _ids.next(components);
 
   (String, GapReportItem) parseFailure(ParseFailureGap gap) => switch (gap) {
     CarrierParseFailureGap() => (gapCategoryIdParseFailure, _carrierItem(gap)),
@@ -133,7 +125,7 @@ class _Projector {
   };
 
   GapReportItem _carrierItem(CarrierParseFailureGap gap) => GapReportItem(
-    id: _uniqueId([gapCategoryIdParseFailure, gap.path]),
+    id: _uniqueId(parseFailureIdComponents(gap)),
     filePath: gap.path,
     lineNumber: gap.lineNumber,
     description: GapItemDescription(_carrierKind(gap)),
@@ -145,7 +137,7 @@ class _Projector {
     const description = GapItemDescription(
       GapDescriptionKind.flowBlockMalformed,
     );
-    final id = _uniqueId([gapCategoryIdFlowBlockMalformed, gap.path]);
+    final id = _uniqueId(parseFailureIdComponents(gap));
     if (ucId == null) {
       // 004 的 UC 查無節點：不變式違反（UC 仍是節點，SPEC-006 FR-09）。
       _reportUnresolvedNode('flowBlockMalformed', gap.path);
@@ -187,7 +179,7 @@ class _Projector {
 
   GapReportItem _nonDomainPathsItem(NonDomainPathsMalformedGap gap) =>
       GapReportItem(
-        id: _uniqueId([gapCategoryIdNonDomainPathsMalformed, gap.path]),
+        id: _uniqueId(parseFailureIdComponents(gap)),
         filePath: gap.path,
         description: _nonDomainPathsDescription(gap),
       );
@@ -214,7 +206,7 @@ class _Projector {
 
   /// 需求：[SPEC-001 v1.52 §5 表二、表三] 孤立事件項目。
   GapReportItem orphanEvent(OrphanEventGap gap) => _eventItem(
-    components: [gapCategoryIdOrphanEvent, gap.evtId],
+    components: orphanEventIdComponents(gap),
     evtId: gap.evtId,
     ucIds: gap.ucIds,
     description: GapItemDescription(switch (gap.shape) {
@@ -227,12 +219,7 @@ class _Projector {
 
   /// 需求：[SPEC-001 v1.52 §5 表二、表三] 事件宣告不符項目；說明帶 domain 原值。
   GapReportItem eventMismatch(EventDeclarationMismatchGap gap) => _eventItem(
-    components: [
-      gapCategoryIdEventDeclarationMismatch,
-      gap.evtId,
-      gap.direction.name,
-      gap.domain,
-    ],
+    components: eventMismatchIdComponents(gap),
     evtId: gap.evtId,
     ucIds: gap.ucIds,
     description: GapItemDescription(
@@ -271,30 +258,31 @@ class _Projector {
 
   (String, GapReportItem) graphDefect(GraphDefectGap gap) {
     final kind = gap.kind;
+    final id = _uniqueId(graphDefectIdComponents(gap));
     return switch (gap.defect) {
       final DanglingRefGraphDefect d => (
         gapCategoryIdGraphDefect,
-        _danglingItem(kind, d),
+        _danglingItem(kind, d, id),
       ),
       final MalformedRefGraphDefect d => (
         gapCategoryIdGraphDefect,
-        _malformedItem(kind, d),
+        _malformedItem(kind, d, id),
       ),
       final DuplicateIdGraphDefect d => (
         gapCategoryIdGraphDefect,
-        _duplicateIdItem(kind, d),
+        _duplicateIdItem(kind, d, id),
       ),
       final MultiSourceGraphDefect d => (
         gapCategoryIdGraphDefect,
-        _multiSourceItem(kind, d),
+        _multiSourceItem(kind, d, id),
       ),
       final DomainDuplicateDeclarationGraphDefect d => (
         gapCategoryIdGraphDefect,
-        _domainDuplicateItem(kind, d),
+        _domainDuplicateItem(kind, d, id),
       ),
       final FlowGraphDefect d => (
         gapCategoryIdGraphDefectFlow,
-        _flowItem(kind, d),
+        _flowItem(kind, d, id),
       ),
     };
   }
@@ -304,30 +292,29 @@ class _Projector {
       ? GapItemPointerType.ticket
       : GapItemPointerType.otherNode;
 
-  GapReportItem _danglingItem(GraphDefectKind kind, DanglingRefGraphDefect d) =>
-      GapReportItem(
-        id: _uniqueId([
-          kind.name,
-          d.ref.sourceId,
-          d.ref.fieldName,
-          d.ref.value,
-        ]),
-        filePath: d.ref.sourcePath,
-        pointerType: _nodePointerType(d.ref.sourceId),
-        pointerNodeId: d.ref.sourceId,
-        description: GapItemDescription(
-          d.reason == DanglingReason.targetMissing
-              ? GapDescriptionKind.danglingRefTargetMissing
-              : GapDescriptionKind.danglingRefTargetDuplicated,
-          {'field': d.ref.fieldName, 'value': '${d.ref.value}'},
-        ),
-      );
+  GapReportItem _danglingItem(
+    GraphDefectKind kind,
+    DanglingRefGraphDefect d,
+    String id,
+  ) => GapReportItem(
+    id: id,
+    filePath: d.ref.sourcePath,
+    pointerType: _nodePointerType(d.ref.sourceId),
+    pointerNodeId: d.ref.sourceId,
+    description: GapItemDescription(
+      d.reason == DanglingReason.targetMissing
+          ? GapDescriptionKind.danglingRefTargetMissing
+          : GapDescriptionKind.danglingRefTargetDuplicated,
+      {'field': d.ref.fieldName, 'value': '${d.ref.value}'},
+    ),
+  );
 
   GapReportItem _malformedItem(
     GraphDefectKind kind,
     MalformedRefGraphDefect d,
+    String id,
   ) => GapReportItem(
-    id: _uniqueId([kind.name, d.ref.sourceId, d.ref.fieldName, d.ref.value]),
+    id: id,
     filePath: d.ref.sourcePath,
     pointerType: _nodePointerType(d.ref.sourceId),
     pointerNodeId: d.ref.sourceId,
@@ -340,8 +327,9 @@ class _Projector {
   GapReportItem _duplicateIdItem(
     GraphDefectKind kind,
     DuplicateIdGraphDefect d,
+    String id,
   ) => GapReportItem(
-    id: _uniqueId([kind.name, d.id]),
+    id: id,
     filePath: _minByCodePoint(d.paths),
     description: GapItemDescription(GapDescriptionKind.duplicateId, {
       'id': d.id,
@@ -353,9 +341,9 @@ class _Projector {
   GapReportItem _multiSourceItem(
     GraphDefectKind kind,
     MultiSourceGraphDefect d,
+    String id,
   ) {
     final origin = _byId[d.from];
-    final id = _uniqueId([kind.name, d.from, d.edgeType]);
     final description = GapItemDescription(GapDescriptionKind.multiSource, {
       'edgeType': d.edgeType,
       'targets': [for (final t in d.targets) t.to],
@@ -376,10 +364,10 @@ class _Projector {
   GapReportItem _domainDuplicateItem(
     GraphDefectKind kind,
     DomainDuplicateDeclarationGraphDefect d,
+    String id,
   ) {
     final bundleId = _minByCodePoint(d.bundleIds);
     final bundle = _byId[bundleId];
-    final id = _uniqueId([kind.name, d.domain]);
     final description = GapItemDescription(
       GapDescriptionKind.domainDeclaredTwice,
       {'domain': d.domain, 'bundles': d.bundleIds},
@@ -397,10 +385,9 @@ class _Projector {
     );
   }
 
-  GapReportItem _flowItem(GraphDefectKind kind, FlowGraphDefect d) {
+  GapReportItem _flowItem(GraphDefectKind kind, FlowGraphDefect d, String id) {
     final uc = _byId[d.ucId];
     final stepId = '${d.stepId}';
-    final id = _uniqueId([kind.name, d.ucId, d.stepId, d.field, d.rawValue]);
     if (uc == null) {
       _reportUnresolvedNode(kind.name, d.ucId);
       return _unresolvedItem(id, d.ucId, _flowDescription(d, stepId));

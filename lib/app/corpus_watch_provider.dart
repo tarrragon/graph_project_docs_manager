@@ -12,8 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
-import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
-import 'package:graph_project_docs_manager/screens/gap_report/gap_report_round_state.dart';
+import 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart';
 import 'package:graph_project_docs_manager/services/directory_watch_source.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -102,7 +101,7 @@ class CorpusWatchController {
     Set<String>? ids;
     try {
       final round = await _ref.read(scanRoundProvider.notifier).rescan();
-      if (round != null) ids = _itemIdsOf(round);
+      if (round != null) ids = gapItemIdsOf(round);
     } finally {
       _events.add(
         WatchRoundCompleted(
@@ -112,20 +111,6 @@ class CorpusWatchController {
         ),
       );
     }
-  }
-
-  Set<String> _itemIdsOf(ScanRoundResult round) {
-    final key = round.schemaResolution.typeTable.nonDomainPathsKey ?? '';
-    final state = gapReportStateFromRound(round, nonDomainPathsKey: key);
-    final categories = switch (state) {
-      GapReportFound(:final categories) => categories,
-      GapReportUndeterminable(:final categories) => categories,
-      _ => const <GapReportCategory>[],
-    };
-    return {
-      for (final c in categories)
-        for (final item in c.items) item.id,
-    };
   }
 
   Future<void> dispose() async {

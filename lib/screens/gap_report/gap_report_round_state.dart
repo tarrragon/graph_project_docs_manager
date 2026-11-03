@@ -5,23 +5,17 @@
 /// 編排層（SPEC-007 v1.24 FR-09），在本檔完成。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/app/scan_round.dart';
-import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
-import 'package:graph_project_docs_manager/diagnostics/gap_detector.dart';
+import 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
-import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
-import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
-import 'package:graph_project_docs_manager/schema/edge_type.dart';
-import 'package:graph_project_docs_manager/schema/schema_source_resolver.dart';
 
 import 'gap_report_models.dart';
 import 'gap_report_projection.dart';
 
-const String _tag = 'GapReportRoundState';
+export 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart'
+    show undeterminedReasonFromGraph;
 
 /// 需求：[SPEC-001 §5、SPEC-006 FR-08、SPEC-007 FR-09] 輪次結果 → 報告狀態。
 ///
@@ -34,8 +28,7 @@ GapReportState gapReportStateFromRound(
   required String nonDomainPathsKey,
 }) {
   final resolution = round.schemaResolution;
-  final parse = _detectParseFailures(round, resolution);
-  final (defects, nodes) = _detectGraphDefects(round);
+  final RoundGaps(:parse, :defects, :nodes) = detectRoundGaps(round);
   final categories = projectGapReport(
     parseFailures: parse.gaps,
     graphDefects: switch (defects) {
@@ -44,10 +37,7 @@ GapReportState gapReportStateFromRound(
     },
     nodes: nodes,
     nonDomainPathsKey: nonDomainPathsKey,
-    eventGaps: detectEventGaps(
-      graph: round.graph,
-      rawNodes: round.scan.rawNodes,
-    ).report,
+    eventGaps: detectRoundEventGaps(round),
   );
   final declaration = _declarationOf(round);
   final reason = _undeterminedReasonOf(parse, defects);
@@ -78,68 +68,6 @@ ProjectPathDeclaration _declarationOf(ScanRoundResult round) =>
       rawNodes: round.scan.rawNodes,
       nonDomain: round.scan.nonDomainPathsRead,
     );
-
-GapDetectionResult _detectParseFailures(
-  ScanRoundResult round,
-  SchemaSourceResolution resolution,
-) {
-  final scan = round.scan;
-  return detectParseFailureGaps(
-    events: scan.parseFailureEvents,
-    undeterminedCount: scan.summary.undeterminedCount,
-    unavailableReason: _pathQueryUnavailableReason(
-      resolution.pathPatternSource,
-    ),
-    flowEvents: scan.flowParseFailedEvents,
-    nonDomainPathsEvent: scan.nonDomainPathsParseFailedEvent,
-  );
-}
-
-/// FR-06 查詢不可用的原因碼；可用時 `null`。
-UndeterminedGapReason? _pathQueryUnavailableReason(PathPatternSource source) =>
-    switch (source) {
-      PathPatternSource.projectJson || PathPatternSource.builtinTable => null,
-      PathPatternSource.projectVersionOutOfKnownRange =>
-        UndeterminedGapReason.projectVersionOutOfKnownRange,
-      PathPatternSource.noPathPattern => UndeterminedGapReason.noPathPattern,
-    };
-
-/// 建圖結果 → graphDefect 破洞與供投影查詢的節點。建圖不可用時節點改由
-/// 掃描的原始節點建（004 的 UC 仍是節點，不因建圖不可用而查無）。
-(GraphDefectGapResult, List<LightNode>) _detectGraphDefects(
-  ScanRoundResult round,
-) => switch (round.graph) {
-  GraphBuildAvailable(:final event) => (
-    detectGraphDefectGaps(GraphDefectInputAvailable(event)),
-    event.nodes,
-  ),
-  GraphBuildUnavailable(:final reason) => (
-    detectGraphDefectGaps(
-      GraphDefectInputUnavailable(undeterminedReasonFromGraph(reason)),
-    ),
-    buildLightNodes(round.scan.rawNodes).nodes,
-  ),
-};
-
-/// 需求：[SPEC-007 v1.24 FR-09] 建圖不可用的四個原因碼皆轉為「專案版本
-/// 不在已知範圍」；區分只留在日誌。
-UndeterminedGapReason undeterminedReasonFromGraph(
-  EdgeTypeUnavailableReason reason,
-) {
-  developer.log(
-    // i18n-exempt: 開發者診斷 log
-    'graph unavailable reason=${reason.name}',
-    name: _tag,
-    level: 900,
-  );
-  return switch (reason) {
-    EdgeTypeUnavailableReason.projectVersionOutOfKnownRange ||
-    EdgeTypeUnavailableReason.missingForwardCardinality ||
-    EdgeTypeUnavailableReason.invalidEdgeTypeEntry ||
-    EdgeTypeUnavailableReason.missingDirection =>
-      UndeterminedGapReason.projectVersionOutOfKnownRange,
-  };
-}
 
 UndeterminedGapReason? _undeterminedReasonOf(
   GapDetectionResult parse,
