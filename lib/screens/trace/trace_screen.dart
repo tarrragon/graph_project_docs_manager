@@ -11,6 +11,7 @@ library;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/jump_targets.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
@@ -86,7 +87,7 @@ class _TraceTree extends ConsumerWidget {
     }
 
     void onTapNode(String nodeId) {
-      navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+      jumpToNodeDetail(ref.read, nodeId);
     }
 
     void onTapGap(String nodeId) {
