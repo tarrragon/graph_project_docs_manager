@@ -13,10 +13,13 @@
 /// `_selectProject`（切換專案）重置兩者。
 library;
 
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 
 /// 降級型別表旗標，預設 `false`（未降級）。
-final degradedSchemaProvider = StateProvider<bool>((ref) => false);
+final degradedSchemaProvider = stateHolderProvider<bool>((ref) => false);
 
 /// 降級徽章版本文字所需的兩個值（`badge-<screen>-degraded-schema` 徽章
 /// `{builtinVersion}` / `{projectVersion}` placeholder，`app_zh.arb`
@@ -36,6 +39,5 @@ class DegradedSchemaVersions {
 
 /// 降級徽章版本文字，與 [degradedSchemaProvider] 同步寫入／重置；
 /// `null` 表示尚未降級（不應被畫面讀取渲染文字）。
-final degradedSchemaVersionsProvider = StateProvider<DegradedSchemaVersions?>(
-  (ref) => null,
-);
+final degradedSchemaVersionsProvider =
+    stateHolderProvider<DegradedSchemaVersions?>((ref) => null);

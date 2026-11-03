@@ -316,7 +316,9 @@ void main() {
   testWidgets('inferredVersionProvider 非 null 時渲染推定版本徽章', (tester) async {
     await _pumpShell(
       tester,
-      overrides: [inferredVersionProvider.overrideWith((ref) => '2.40.3')],
+      overrides: [
+        inferredVersionProvider.overrideWithInitial((ref) => '2.40.3'),
+      ],
     );
 
     expect(
@@ -333,8 +335,8 @@ void main() {
     await _pumpShell(
       tester,
       overrides: [
-        degradedSchemaProvider.overrideWith((ref) => true),
-        degradedSchemaVersionsProvider.overrideWith(
+        degradedSchemaProvider.overrideWithInitial((ref) => true),
+        degradedSchemaVersionsProvider.overrideWithInitial(
           (ref) => const DegradedSchemaVersions(
             builtinVersion: '1.2.3',
             projectVersion: '4.5.6',
@@ -411,7 +413,7 @@ Future<void> _pumpShell(
     ProviderScope(
       overrides: lastWinsByProvider([
         if (injectDomainState)
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainReady(mode: DomainMode.matrix),
           ),
         ...overrides,

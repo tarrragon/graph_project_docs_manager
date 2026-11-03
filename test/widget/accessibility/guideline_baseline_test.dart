@@ -65,7 +65,7 @@ class _Case {
 final _cases = <_Case>[
   // 含 app shell：側欄 NavItem 唯一使用處（0.5.0-W1-523）。
   _Case('shell', const AppShell(), [
-    domainViewStateProvider.overrideWith(
+    domainViewStateProvider.overrideWithInitial(
       (ref) => const DomainReady(mode: DomainMode.matrix),
     ),
     workspaceRepositoryProvider.overrideWithValue(
@@ -80,10 +80,10 @@ final _cases = <_Case>[
   _Case('domain', const DomainViewScreen(), domainFixtureOverrides()),
   _Case('ucFlow', const UcFlowScreen(), [
     ucFlowUcListProvider.overrideWithValue(UcFlowFixtures.ucList),
-    selectedUcProvider.overrideWith((ref) => 'UC-02'),
+    selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
   ]),
   _Case('traceability', const TraceabilityScreen(), [
-    traceabilityStateProvider.overrideWith(
+    traceabilityStateProvider.overrideWithInitial(
       (ref) => const TraceabilityNormal(TraceabilityFixtures.normal),
     ),
   ]),
@@ -91,7 +91,7 @@ final _cases = <_Case>[
     gapReportProvider.overrideWith(_FixedGap.new),
   ]),
   _Case('tickets', const TicketListScreen(), [
-    ticketListStateProvider.overrideWith(
+    ticketListStateProvider.overrideWithInitial(
       (ref) => const TicketsReady(
         tickets: [
           TicketFixtureItem(
@@ -114,7 +114,7 @@ final _cases = <_Case>[
   ]),
   _Case('nodeDetail', const NodeDetailScreen(), [
     nodeDetailNodesProvider.overrideWithValue(NodeDetailFixtures.nodes),
-    nodeDetailStateProvider.overrideWith(
+    nodeDetailStateProvider.overrideWithInitial(
       (ref) => const NodeDetailReady(nodeId: NodeDetailFixtures.normalNodeId),
     ),
   ]),

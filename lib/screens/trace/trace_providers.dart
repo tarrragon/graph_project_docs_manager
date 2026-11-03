@@ -1,7 +1,10 @@
 /// 追溯視圖的狀態注入點（SPEC-003 §設計約束「狀態注入而非等待真實解析」）。
 library;
 
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 
 import '../../app/graph_status.dart';
 import '../../app/scan_round.dart';
@@ -18,7 +21,7 @@ const String _absentStatus = '—'; // i18n-exempt: 資料態佔位符，非 UI 
 
 /// 目前畫面狀態；預設由最後完成輪次衍生（SPEC-001 §3〈四層樹由掃描輪次
 /// 衍生〉）。測試以 `overrideWith` 注入其餘狀態。
-final traceabilityStateProvider = StateProvider<TraceabilityScreenState>(
+final traceabilityStateProvider = stateHolderProvider<TraceabilityScreenState>(
   (ref) => traceabilityStateOf(
     ref.watch(projectUnreadyReasonProvider),
     ref.watch(lastCompletedRoundProvider),
@@ -144,7 +147,7 @@ List<String> _stringValues(Object? value) => switch (value) {
 /// （即本票以 fixture 切換模擬的「切換專案」）會使本 provider 重新計算，
 /// 天然滿足展開集合重設（`0.1.0-W3-335.38` S-28／S-29）。本票不接真實
 /// 專案切換 listener，狀態改變仍需由呼叫端（測試或未來真實資料層）觸發。
-final expandedTraceNodesProvider = StateProvider<Set<String>>(
+final expandedTraceNodesProvider = stateHolderProvider<Set<String>>(
   (ref) => _initialExpansion(ref.watch(traceabilityStateProvider)),
 );
 

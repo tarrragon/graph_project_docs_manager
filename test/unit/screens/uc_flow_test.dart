@@ -64,7 +64,7 @@ void main() {
           projectUnreadyReasonProvider.overrideWithValue(
             ProjectUnreadyReason.notSelected,
           ),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.ucFlow,
           ),
         ],
@@ -105,7 +105,7 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           ucFlowUcListProvider.overrideWithValue(const []),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.ucFlow,
           ),
         ],
@@ -129,7 +129,7 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => null),
+          selectedUcProvider.overrideWithInitial((ref) => null),
         ],
         size: size,
       );
@@ -149,7 +149,7 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => null),
+          selectedUcProvider.overrideWithInitial((ref) => null),
         ],
       );
 
@@ -175,7 +175,7 @@ void main() {
           child: const UcFlowScreen(),
           overrides: [
             _withFixtures,
-            selectedUcProvider.overrideWith((ref) => 'UC-06'),
+            selectedUcProvider.overrideWithInitial((ref) => 'UC-06'),
           ],
           size: size,
         );
@@ -223,7 +223,7 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-06'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-06'),
         ],
       );
 
@@ -240,8 +240,8 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-06'),
-          selectedDestinationProvider.overrideWith(
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-06'),
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.ucFlow,
           ),
         ],
@@ -269,7 +269,7 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-02'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
         ],
         size: size,
       );
@@ -291,7 +291,7 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-04'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-04'),
         ],
         size: size,
       );
@@ -322,7 +322,7 @@ void main() {
               eventSides: eventSides,
             ),
           ]),
-          selectedUcProvider.overrideWith((ref) => 'edge-case'),
+          selectedUcProvider.overrideWithInitial((ref) => 'edge-case'),
         ],
       );
     }
@@ -433,8 +433,8 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-02'),
-          selectedDestinationProvider.overrideWith(
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.ucFlow,
           ),
         ],
@@ -458,8 +458,8 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _withFixtures,
-          selectedUcProvider.overrideWith((ref) => 'UC-02'),
-          selectedDestinationProvider.overrideWith(
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.ucFlow,
           ),
         ],

@@ -46,12 +46,12 @@ class _Harness {
       settle: false,
       overrides: <Override>[
         if (onGaps)
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
         scanRoundProvider.overrideWith(() => round),
         watchSourceProvider.overrideWithValue(FakeWatchSource()),
-        currentWorkspaceStateProvider.overrideWith(
+        currentWorkspaceStateProvider.overrideWithInitial(
           (ref) => const WorkspaceReady('/ws/fake'),
         ),
       ],

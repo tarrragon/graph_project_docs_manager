@@ -20,7 +20,6 @@
 library;
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/app/graph_status.dart';
@@ -28,6 +27,7 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 
 import '../../helpers/gap_round_fakes.dart';
@@ -36,7 +36,7 @@ import '../../helpers/helpers.dart';
 /// 本檔共用：模擬使用者已在破洞報告頁，使 `firstVisibleProvider(gaps)`
 /// 於 build() 首次讀取時為 `true`。
 final _onGapsPage = [
-  selectedDestinationProvider.overrideWith((ref) => AppDestination.gaps),
+  selectedDestinationProvider.overrideWithInitial((ref) => AppDestination.gaps),
   // 完成時機與資料來源無關：輪次替身即時回傳一筆 003 破洞（0.5.0-W1-114.15
   // 起報告頁讀共用輪次，不再有 fixture 常數）。
   scanRoundProvider.overrideWith(
@@ -51,8 +51,10 @@ final _onGapsPage = [
 /// 可於測試中動態切換的 `projectUnreadyReasonProvider` 替身（0.3.1-W3-122 補測：
 /// 圖建立狀態 true→false→true 往返）。`projectUnreadyReasonProvider` 本身是
 /// `Provider<bool>`（不可變），改以 override 間接綁定到一個
-/// `StateProvider`，測試才能在同一 `ProviderContainer` 生命週期內改變它。
-final _graphBuiltState = StateProvider<ProjectUnreadyReason?>((ref) => null);
+/// 單值 provider，測試才能在同一 `ProviderContainer` 生命週期內改變它。
+final _graphBuiltState = stateHolderProvider<ProjectUnreadyReason?>(
+  (ref) => null,
+);
 
 void main() {
   group('掃描完成時機（SPEC-003 §2.6 最短顯示時間適用）', () {

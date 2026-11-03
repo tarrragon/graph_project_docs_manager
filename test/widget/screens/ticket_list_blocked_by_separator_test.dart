@@ -22,7 +22,7 @@ Future<void> _pump(WidgetTester tester, Locale locale) => pumpHarness(
   locale: locale,
   child: const TicketListScreen(),
   overrides: [
-    ticketListStateProvider.overrideWith(
+    ticketListStateProvider.overrideWithInitial(
       (ref) => const TicketsReady(tickets: _tickets),
     ),
   ],

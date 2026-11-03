@@ -6,7 +6,10 @@ library;
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 
 import '../../app/graph_status.dart';
 import '../../app/jump_targets.dart';
@@ -143,15 +146,15 @@ void _syncWithRound(
 /// 目前畫面狀態：預設由最後完成輪次衍生（SPEC-001 §4）；搜尋、篩選、排序、
 /// 模式等畫面操作直接寫入本 provider（含 [TicketSearchDebouncer]）。測試
 /// 以 `overrideWith` 注入其餘狀態。
-final StateProvider<TicketListState> ticketListStateProvider =
-    StateProvider<TicketListState>((ref) {
-      ref.read(_ticketRoundSyncProvider);
-      ref.read(ticketTargetSyncProvider);
-      return ticketBaseStateOf(
-        ref.read(projectUnreadyReasonProvider),
-        ref.read(lastCompletedRoundProvider),
-      );
-    });
+final NotifierProvider<StateHolder<TicketListState>, TicketListState>
+ticketListStateProvider = stateHolderProvider<TicketListState>((ref) {
+  ref.read(_ticketRoundSyncProvider);
+  ref.read(ticketTargetSyncProvider);
+  return ticketBaseStateOf(
+    ref.read(projectUnreadyReasonProvider),
+    ref.read(lastCompletedRoundProvider),
+  );
+});
 
 /// 需求：[SPEC-003 §3.4] 消費跳轉意圖（`ticketListTargetProvider`）：清單為
 /// [TicketsReady] 時併入 `targetTicketId` 並清空意圖；未就緒則保留，待狀態
@@ -203,7 +206,7 @@ final _ticketRoundSyncProvider = Provider<void>((ref) {
 
 /// 搜尋輸入框的即時顯示值；`null` 代表尚未輸入，顯示值取
 /// [TicketsReady.searchQuery]。過濾詞（`searchQuery`）才經防抖更新。
-final ticketSearchInputProvider = StateProvider<String?>((ref) => null);
+final ticketSearchInputProvider = stateHolderProvider<String?>((ref) => null);
 
 /// 搜尋防抖服務（SPEC-003 §3.4；`0.6.0-W3-124`）：輸入值即時寫入
 /// [ticketSearchInputProvider]，過濾詞延遲 [Motion.searchDebounce] 才寫入

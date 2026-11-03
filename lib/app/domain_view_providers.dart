@@ -6,11 +6,14 @@
 /// （矩陣、泳道等）留在 `screens/domain_view/domain_view_providers.dart`。
 library;
 
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 
 /// 目前畫面狀態；預設 `DomainLoading`：App 啟動到 restore 完成前不顯示
 /// fixture 矩陣（0.5.0-W3-003），由 shell 啟動流程寫入真實狀態。
-final domainViewStateProvider = StateProvider<DomainViewState>(
+final domainViewStateProvider = stateHolderProvider<DomainViewState>(
   (ref) => const DomainLoading(),
 );

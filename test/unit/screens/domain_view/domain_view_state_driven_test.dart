@@ -92,7 +92,7 @@ List<Override> _stateOverrides(
   String? selectedUc,
   (String, String)? selectedCell,
 }) => [
-  domainViewStateProvider.overrideWith(
+  domainViewStateProvider.overrideWithInitial(
     (ref) => DomainReady(
       mode: mode,
       selectedDomainId: selectedDomainId,
@@ -102,7 +102,8 @@ List<Override> _stateOverrides(
   domainMatrixProvider.overrideWith((ref) => matrix),
   domainEmptyLanesProvider.overrideWith((ref) => emptyLanesOfMatrix(matrix)),
   domainSwimlaneProvider.overrideWith((ref) => swimlane),
-  if (selectedUc != null) selectedUcProvider.overrideWith((ref) => selectedUc),
+  if (selectedUc != null)
+    selectedUcProvider.overrideWithInitial((ref) => selectedUc),
 ];
 
 Relation? _relationOf(WidgetTester tester, String key) {
@@ -678,7 +679,9 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainLoading()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainLoading(),
+          ),
           domainViewLoaderProvider.overrideWith(() => loader),
         ],
         settle: false,
@@ -771,7 +774,7 @@ void main() {
             selectedUc: 'UC-02',
           ),
           externalOpenerProvider.overrideWithValue(fake),
-          currentWorkspaceStateProvider.overrideWith(
+          currentWorkspaceStateProvider.overrideWithInitial(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
         ],

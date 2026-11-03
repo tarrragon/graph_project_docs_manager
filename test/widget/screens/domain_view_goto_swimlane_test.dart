@@ -41,7 +41,7 @@ void main() {
       child: const DomainViewScreen(),
       overrides: [
         scanRoundProvider.overrideWith(() => fake),
-        domainViewStateProvider.overrideWith(
+        domainViewStateProvider.overrideWithInitial(
           (ref) => const DomainReady(mode: DomainMode.matrix),
         ),
       ],

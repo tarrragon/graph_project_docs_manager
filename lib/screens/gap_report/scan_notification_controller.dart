@@ -12,7 +12,7 @@ import 'dart:async' show StreamSubscription, unawaited;
 import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_lifecycle.dart';
@@ -65,7 +65,9 @@ void defaultWithdrawLogSink(String message, String name) =>
 
 /// 命中時定位到的破洞項 id（SPEC-004 §1 locate 列）；`null` 表示無待定位
 /// 項。[GapReportScreen] 消費本值捲動並移入焦點後，清空回 `null`。
-final pendingLocateGapItemProvider = StateProvider<String?>((ref) => null);
+final pendingLocateGapItemProvider = stateHolderProvider<String?>(
+  (ref) => null,
+);
 
 class ScanNotificationController {
   ScanNotificationController(this._ref, this._contextProvider);

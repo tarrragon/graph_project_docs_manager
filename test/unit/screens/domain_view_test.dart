@@ -64,10 +64,10 @@ List<Override> _readyGateOverrides() => [
 /// 泳道模式、已選定 UC、尚無完成輪次；[produce] 決定重啟後輪次結果（§4 #42）。
 List<Override> _pendingOverrides(ScanRoundResult? Function() produce) => [
   scanRoundProvider.overrideWith(() => FakeScanRound(produce: produce)),
-  domainViewStateProvider.overrideWith(
+  domainViewStateProvider.overrideWithInitial(
     (ref) => const DomainReady(mode: DomainMode.swimlane),
   ),
-  selectedUcProvider.overrideWith((ref) => 'UC-02'),
+  selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
 ];
 
 /// chooseFolder 回固定結果並計次的替身（0.5.0-W1-206.2）。
@@ -111,7 +111,7 @@ class _CountingProbe extends StubFrameworkSignalProbe {
 }
 
 List<Override> _chooseOverrides(_ChooseRepo repo, _CountingProbe probe) => [
-  domainViewStateProvider.overrideWith((ref) => const DomainUnset()),
+  domainViewStateProvider.overrideWithInitial((ref) => const DomainUnset()),
   workspaceRepositoryProvider.overrideWithValue(repo),
   frameworkSignalProbeProvider.overrideWithValue(probe),
   fakeScanRoundOverride(),
@@ -124,7 +124,9 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainUnset()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainUnset(),
+          ),
         ],
         size: size,
       );
@@ -253,7 +255,9 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainLoading()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainLoading(),
+          ),
         ],
         size: size,
         settle: false,
@@ -269,7 +273,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainLoading(processedCount: 64),
           ),
         ],
@@ -291,7 +295,9 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainLoading()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainLoading(),
+          ),
         ],
         settle: false,
       );
@@ -475,7 +481,7 @@ void main() {
         child: const DomainViewScreen(),
         overrides: [
           ...domainFixtureOverrides(mode: DomainMode.swimlane),
-          selectedUcProvider.overrideWith((ref) => 'UC-02'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
         ],
         size: size,
       );
@@ -507,7 +513,7 @@ void main() {
         child: const DomainViewScreen(),
         overrides: [
           ...domainFixtureOverrides(mode: DomainMode.swimlane),
-          selectedUcProvider.overrideWith((ref) => 'UC-02'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
         ],
       );
 
@@ -628,7 +634,7 @@ void main() {
         child: const DomainViewScreen(),
         overrides: [
           ...domainFixtureOverrides(mode: DomainMode.swimlane),
-          selectedUcProvider.overrideWith((ref) => 'UC-06'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-06'),
         ],
         size: size,
       );
@@ -662,7 +668,9 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainEmpty()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainEmpty(),
+          ),
         ],
         size: size,
       );
@@ -677,8 +685,10 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainEmpty()),
-          selectedDestinationProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainEmpty(),
+          ),
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.domain,
           ),
         ],
@@ -696,7 +706,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainEmpty(docsDirExists: false),
           ),
         ],
@@ -712,7 +722,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainNotFramework(),
           ),
         ],
@@ -732,7 +742,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainNotFramework(),
           ),
         ],
@@ -754,7 +764,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
           ),
         ],
@@ -777,7 +787,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
           ),
           // 降級進入經共用輪次重掃（0.5.0-W1-114.14）；輪次讀降級旗標。
@@ -816,7 +826,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaUnconsumable(version: '9.99.9'),
           ),
         ],
@@ -842,7 +852,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaUnconsumable(version: '0.0.3'),
           ),
         ],
@@ -860,7 +870,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaUnconsumable(version: '9.99.9'),
           ),
         ],
@@ -886,7 +896,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) =>
                 DomainSchemaUnconsumable(version: higherThanBuiltinVersion),
           ),
@@ -913,7 +923,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaIncompatible(
               appVersion: '2.60.1',
               projectVersion: '9.99.9',
@@ -936,7 +946,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaIncompatible(
               appVersion: '2.60.1',
               projectVersion: '9.99.9',
@@ -968,7 +978,7 @@ void main() {
           tester,
           child: const DomainViewScreen(),
           overrides: [
-            domainViewStateProvider.overrideWith(
+            domainViewStateProvider.overrideWithInitial(
               (ref) => const DomainSchemaIncompatible(
                 appVersion: '2.60.1',
                 projectVersion: null,
@@ -990,7 +1000,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainSchemaIncompatible(
               appVersion: '2.60.1',
               projectVersion: '9.99.9',
@@ -1035,7 +1045,9 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainUnset()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainUnset(),
+          ),
         ],
       );
 
@@ -1126,10 +1138,10 @@ void main() {
           latency: latency,
         ),
       ),
-      domainViewStateProvider.overrideWith(
+      domainViewStateProvider.overrideWithInitial(
         (ref) => ready ?? DomainReady(mode: mode),
       ),
-      selectedUcProvider.overrideWith((ref) => 'UC-02'),
+      selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
       builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
     ];
 

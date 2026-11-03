@@ -286,7 +286,7 @@ Future<void> _capture(
     ..._roundErrorOverrides(roundErrors, scanCorpusImpl ?? scanCorpus),
     ...extraOverrides,
     if (destination != AppDestination.domain)
-      selectedDestinationProvider.overrideWith((ref) => destination),
+      selectedDestinationProvider.overrideWithInitial((ref) => destination),
   ];
   await tester.pumpWidget(
     RepaintBoundary(

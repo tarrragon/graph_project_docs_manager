@@ -99,7 +99,7 @@ void main() {
       child: const UcFlowScreen(),
       overrides: [
         _roundOverride(),
-        selectedUcProvider.overrideWith((ref) => 'UC-01'),
+        selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
       ],
     );
 
@@ -113,7 +113,7 @@ void main() {
       child: const UcFlowScreen(),
       overrides: [
         _roundOverride(),
-        selectedUcProvider.overrideWith((ref) => 'UC-02'),
+        selectedUcProvider.overrideWithInitial((ref) => 'UC-02'),
       ],
     );
 
@@ -135,7 +135,7 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _roundOverride(),
-          selectedUcProvider.overrideWith((ref) => 'UC-01'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
         ],
       );
 
@@ -148,8 +148,8 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _roundOverride(),
-          selectedUcProvider.overrideWith((ref) => 'UC-01'),
-          ucFlowFocusProvider.overrideWith(
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
+          ucFlowFocusProvider.overrideWithInitial(
             (ref) =>
                 const UcFlowFocus(ucId: 'UC-01', stepId: 's$_manyStepCount'),
           ),
@@ -166,8 +166,8 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _roundOverride(),
-          selectedUcProvider.overrideWith((ref) => 'UC-01'),
-          ucFlowFocusProvider.overrideWith(
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
+          ucFlowFocusProvider.overrideWithInitial(
             (ref) =>
                 const UcFlowFocus(ucId: 'UC-01', stepId: 's$_manyStepCount'),
           ),
@@ -193,8 +193,8 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _roundOverride(),
-          selectedUcProvider.overrideWith((ref) => 'UC-01'),
-          ucFlowFocusProvider.overrideWith(
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
+          ucFlowFocusProvider.overrideWithInitial(
             (ref) => const UcFlowFocus(ucId: 'UC-01'),
           ),
         ],
@@ -213,8 +213,8 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           _roundOverride(),
-          selectedUcProvider.overrideWith((ref) => 'UC-01'),
-          ucFlowFocusProvider.overrideWith(
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
+          ucFlowFocusProvider.overrideWithInitial(
             (ref) => const UcFlowFocus(ucId: 'UC-01', eventId: 'evt.last'),
           ),
         ],

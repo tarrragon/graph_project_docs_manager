@@ -53,7 +53,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) =>
                 const TicketsProjectUnready(ProjectUnreadyReason.notSelected),
           ),
@@ -76,7 +76,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsProjectUnready(ProjectUnreadyReason.loading),
           ),
         ],
@@ -98,7 +98,9 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith((ref) => const TicketsEmpty()),
+          ticketListStateProvider.overrideWithInitial(
+            (ref) => const TicketsEmpty(),
+          ),
         ],
         size: size,
       );
@@ -113,7 +115,9 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith((ref) => const TicketsEmpty()),
+          ticketListStateProvider.overrideWithInitial(
+            (ref) => const TicketsEmpty(),
+          ),
         ],
       );
 
@@ -127,7 +131,9 @@ void main() {
   group('跳轉意圖（ticketListTargetProvider）', () {
     ProviderContainer harness(TicketListState initial) {
       final c = ProviderContainer(
-        overrides: [ticketListStateProvider.overrideWith((ref) => initial)],
+        overrides: [
+          ticketListStateProvider.overrideWithInitial((ref) => initial),
+        ],
       );
       addTearDown(c.dispose);
       c.read(ticketListStateProvider);
@@ -161,7 +167,7 @@ void main() {
           tester,
           child: const TicketListScreen(),
           overrides: [
-            ticketListStateProvider.overrideWith(
+            ticketListStateProvider.overrideWithInitial(
               (ref) => const TicketsReady(tickets: _readyTickets),
             ),
           ],
@@ -185,7 +191,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -210,7 +216,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -242,7 +248,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -269,7 +275,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -298,7 +304,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -321,7 +327,7 @@ void main() {
           tester,
           child: const TicketListScreen(),
           overrides: [
-            ticketListStateProvider.overrideWith(
+            ticketListStateProvider.overrideWithInitial(
               (ref) => const TicketsReady(
                 tickets: _readyTickets,
                 statusFilter: 'pending',
@@ -360,7 +366,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(
               tickets: _readyTickets,
               statusFilter: 'pending',
@@ -390,7 +396,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(
               tickets: _readyTickets,
               targetTicketId: '0.1.0-W1-001',
@@ -419,7 +425,7 @@ void main() {
           tester,
           child: const TicketListScreen(),
           overrides: [
-            ticketListStateProvider.overrideWith(
+            ticketListStateProvider.overrideWithInitial(
               (ref) => const TicketsReady(
                 tickets: _readyTickets,
                 searchQuery: 'Alpha',
@@ -453,7 +459,7 @@ void main() {
           tester,
           child: const TicketListScreen(),
           overrides: [
-            ticketListStateProvider.overrideWith(
+            ticketListStateProvider.overrideWithInitial(
               (ref) => const TicketsReady(
                 tickets: _readyTickets,
                 targetTicketId: '0.1.0-W1-001',
@@ -476,7 +482,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(
               tickets: _readyTickets,
               targetTicketId: 'no-such-ticket',
@@ -507,7 +513,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -534,10 +540,10 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.tickets,
           ),
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -559,10 +565,12 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.tickets,
           ),
-          ticketListStateProvider.overrideWith((ref) => const TicketsEmpty()),
+          ticketListStateProvider.overrideWithInitial(
+            (ref) => const TicketsEmpty(),
+          ),
         ],
       );
 
@@ -580,7 +588,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -602,7 +610,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(tickets: _readyTickets),
           ),
         ],
@@ -624,7 +632,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(
               tickets: _readyTickets,
               mode: TicketListMode.topic,
@@ -644,7 +652,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(
               tickets: _readyTickets,
               mode: TicketListMode.topic,
@@ -669,7 +677,7 @@ void main() {
         tester,
         child: const TicketListScreen(),
         overrides: [
-          ticketListStateProvider.overrideWith(
+          ticketListStateProvider.overrideWithInitial(
             (ref) => const TicketsReady(
               tickets: _readyTickets,
               mode: TicketListMode.topic,

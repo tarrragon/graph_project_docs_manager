@@ -3,15 +3,15 @@
 /// （docs/system-layer.md §2.1）。
 library;
 
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 
 import 'router.dart';
 
 /// 待顯示的節點 id（節點詳情消費）；`null` 代表無待定位目標。
-final nodeDetailTargetProvider = StateProvider<String?>((ref) => null);
+final nodeDetailTargetProvider = stateHolderProvider<String?>((ref) => null);
 
 /// 待定位的 ticket id（Ticket 清單消費）；`null` 代表無待定位目標。
-final ticketListTargetProvider = StateProvider<String?>((ref) => null);
+final ticketListTargetProvider = stateHolderProvider<String?>((ref) => null);
 
 /// 需求：[SPEC-003 §3.5] 帶目標跳至節點詳情：寫入意圖後 jump。
 /// [nodeId] 為空時僅跳轉（無目標可寫）。

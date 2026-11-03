@@ -70,7 +70,7 @@ List<String> _categoryIds(GapReportState s) => switch (s) {
   _ => const [],
 };
 
-final _onGaps = selectedDestinationProvider.overrideWith(
+final _onGaps = selectedDestinationProvider.overrideWithInitial(
   (ref) => AppDestination.gaps,
 );
 
@@ -544,7 +544,7 @@ void main() {
         overrides: [
           _onGaps,
           scanRoundProvider.overrideWith(() => fake),
-          currentWorkspaceStateProvider.overrideWith((ref) => wsA),
+          currentWorkspaceStateProvider.overrideWithInitial((ref) => wsA),
         ],
       );
       container.listen(gapReportProvider, (_, _) {});
@@ -571,7 +571,9 @@ void main() {
 
   group('B／D／E：輪次三種回應、取消後恢復、離開再回到本頁', () {
     const wsA = WorkspaceReady('/ws/a');
-    final wsOverride = currentWorkspaceStateProvider.overrideWith((ref) => wsA);
+    final wsOverride = currentWorkspaceStateProvider.overrideWithInitial(
+      (ref) => wsA,
+    );
 
     Future<ProviderContainer> pumpWith(
       WidgetTester tester,
@@ -803,7 +805,7 @@ void main() {
           ),
       ),
       builtinTrackingSchemaJsonProvider.overrideWith((ref) => _builtinJson),
-      currentWorkspaceStateProvider.overrideWith(
+      currentWorkspaceStateProvider.overrideWithInitial(
         (ref) => const WorkspaceReady('/ws/a'),
       ),
     ];

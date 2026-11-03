@@ -285,7 +285,9 @@ void main() {
           tester,
           size: size,
           overrides: [
-            ticketListStateProvider.overrideWith((ref) => const TicketsEmpty()),
+            ticketListStateProvider.overrideWithInitial(
+              (ref) => const TicketsEmpty(),
+            ),
           ],
           child: AppShell(
             switcherEntry: _buildSwitcherEntry(),

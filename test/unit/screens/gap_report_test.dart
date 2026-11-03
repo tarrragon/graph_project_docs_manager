@@ -82,7 +82,7 @@ void main() {
               const GapReportProjectUnready(ProjectUnreadyReason.notSelected),
             ),
           ),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
         ],
@@ -195,7 +195,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
           gapReportProvider.overrideWith(
@@ -312,7 +312,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
           gapReportProvider.overrideWith(() => _FixedNotifier(_foundState)),
@@ -392,7 +392,7 @@ void main() {
         child: const GapReportScreen(),
         overrides: [
           gapReportProvider.overrideWith(() => _FixedNotifier(state)),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
         ],
@@ -814,7 +814,7 @@ void main() {
             ),
           ),
           externalOpenerProvider.overrideWithValue(opener),
-          currentWorkspaceStateProvider.overrideWith((ref) => workspace),
+          currentWorkspaceStateProvider.overrideWithInitial((ref) => workspace),
         ],
       );
       await tester.tap(find.byKey(const Key('card-gaps-spec-readme')));
@@ -842,7 +842,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
           gapReportProvider.overrideWith(
@@ -859,7 +859,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
           gapReportProvider.overrideWith(
@@ -877,7 +877,7 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.gaps,
           ),
           gapReportProvider.overrideWith(

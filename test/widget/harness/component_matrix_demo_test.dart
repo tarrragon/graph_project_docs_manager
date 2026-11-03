@@ -74,7 +74,7 @@ void main() {
         tester,
         size: size,
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainReady(mode: DomainMode.matrix),
           ),
         ],

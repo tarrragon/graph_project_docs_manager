@@ -114,20 +114,22 @@ void main() {
             overrides: [
               ...await fixtureOverrides(),
               if (destination != AppDestination.domain)
-                selectedDestinationProvider.overrideWith((ref) => destination),
+                selectedDestinationProvider.overrideWithInitial(
+                  (ref) => destination,
+                ),
               if (destination == AppDestination.ucFlow)
-                selectedUcProvider.overrideWith((ref) => 'UC-04'),
+                selectedUcProvider.overrideWithInitial((ref) => 'UC-04'),
               if (destination == AppDestination.nodeDetail)
-                nodeDetailStateProvider.overrideWith(
+                nodeDetailStateProvider.overrideWithInitial(
                   (ref) => const NodeDetailReady(nodeId: 'UC-04'),
                 ),
               if (destination == AppDestination.traceability)
-                traceabilityStateProvider.overrideWith(
+                traceabilityStateProvider.overrideWithInitial(
                   (ref) =>
                       const TraceabilityNormal(TraceabilityFixtures.normal),
                 ),
               if (destination == AppDestination.tickets)
-                ticketListStateProvider.overrideWith(
+                ticketListStateProvider.overrideWithInitial(
                   (ref) => const TicketsReady(tickets: _fixtureTickets),
                 ),
             ],

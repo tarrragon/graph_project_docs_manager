@@ -87,7 +87,7 @@ String _encodeRecentProjects(List<RecentProject> projects) => jsonEncode([
 ///
 /// `AppShell._restoreWorkspaceAndDetect` 啟動時一定會呼叫一次
 /// `loadRecentProjects()` 並覆寫 `recentProjectsProvider`（`0.2.1-W1-003`）
-/// ——測試若只用 `recentProjectsProvider.overrideWith(...)` 注入初始值，
+/// ——測試若只用 `recentProjectsProvider.overrideWithInitial(...)` 注入初始值，
 /// 會被這次啟動覆寫競態取代（未指定 `workspaceRepositoryProvider` 時預設
 /// 建構的 [WorkspaceRepository] 走真實 SharedPreferences，結果不可預期）。
 /// 本類別讓假 repository 的 `loadRecentProjects()` 收斂到與測試斷言一致
@@ -258,7 +258,7 @@ Future<void> _pumpApp(
   tester,
   settle: settle,
   overrides: [
-    domainViewStateProvider.overrideWith(
+    domainViewStateProvider.overrideWithInitial(
       (ref) => const DomainReady(mode: DomainMode.matrix),
     ),
     ...overrides,
@@ -287,7 +287,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -306,7 +308,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -325,7 +329,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -344,7 +350,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -366,7 +374,9 @@ void main() {
       // 項」而非「點在浮層自身空白區」。
       await _pumpApp(
         tester,
-        overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
+        overrides: [
+          recentProjectsProvider.overrideWithInitial((ref) => const []),
+        ],
       );
       final element = tester.element(find.byType(app_shell.AppShell));
       final container = ProviderScope.containerOf(element);
@@ -392,7 +402,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -436,7 +448,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(repository),
           ..._gateDetectionOverrides,
         ],
@@ -476,7 +490,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(repository),
         ],
         settle: false,
@@ -515,19 +531,21 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
           ..._gateDetectionOverrides,
-          degradedSchemaProvider.overrideWith((ref) => true),
-          degradedSchemaVersionsProvider.overrideWith(
+          degradedSchemaProvider.overrideWithInitial((ref) => true),
+          degradedSchemaVersionsProvider.overrideWithInitial(
             (ref) => const DegradedSchemaVersions(
               builtinVersion: '0.0.1',
               projectVersion: '0.0.1',
             ),
           ),
-          inferredVersionProvider.overrideWith((ref) => '0.0.1'),
+          inferredVersionProvider.overrideWithInitial((ref) => '0.0.1'),
         ],
       );
       final element = tester.element(find.byType(app_shell.AppShell));
@@ -556,7 +574,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -582,7 +602,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -658,7 +680,9 @@ void main() {
     testWidgets('清單為空時渲染 SwitcherOverlay 零項 + 選擇資料夾按鈕', (tester) async {
       await _pumpApp(
         tester,
-        overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
+        overrides: [
+          recentProjectsProvider.overrideWithInitial((ref) => const []),
+        ],
       );
 
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
@@ -676,7 +700,9 @@ void main() {
     testWidgets('Esc 收合浮層', (tester) async {
       await _pumpApp(
         tester,
-        overrides: [recentProjectsProvider.overrideWith((ref) => const [])],
+        overrides: [
+          recentProjectsProvider.overrideWithInitial((ref) => const []),
+        ],
       );
       await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
       await tester.pumpAndSettle();
@@ -691,7 +717,7 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => const []),
+          recentProjectsProvider.overrideWithInitial((ref) => const []),
           workspaceRepositoryProvider.overrideWithValue(_fakeRepositoryReady()),
           ..._gateDetectionOverrides,
         ],
@@ -711,7 +737,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryCancelled(recentProjects: _testRecentProjects),
           ),
@@ -736,7 +764,9 @@ void main() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryPickerUnavailable(
               recentProjects: _testRecentProjects,
@@ -822,7 +852,9 @@ void main() {
         await _pumpApp(
           tester,
           overrides: [
-            recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+            recentProjectsProvider.overrideWithInitial(
+              (ref) => _testRecentProjects,
+            ),
             workspaceRepositoryProvider.overrideWithValue(
               _fakeRepositoryUnavailable(recentProjects: _testRecentProjects),
             ),
@@ -896,12 +928,14 @@ void _inOverlayFailureTests() {
       tester,
       settle: false,
       overrides: [
-        domainViewStateProvider.overrideWith(
+        domainViewStateProvider.overrideWithInitial(
           (ref) => blocked
               ? const DomainNotFramework()
               : const DomainReady(mode: DomainMode.matrix),
         ),
-        recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+        recentProjectsProvider.overrideWithInitial(
+          (ref) => _testRecentProjects,
+        ),
         workspaceRepositoryProvider.overrideWithValue(repository),
       ],
     );
@@ -1005,7 +1039,9 @@ void _unavailableRecentItemTests() {
       tester,
       settle: false,
       overrides: [
-        recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+        recentProjectsProvider.overrideWithInitial(
+          (ref) => _testRecentProjects,
+        ),
         workspaceRepositoryProvider.overrideWithValue(repository),
       ],
     );
@@ -1137,7 +1173,9 @@ void _unavailableRecentItemTests() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => _testRecentProjects),
+          recentProjectsProvider.overrideWithInitial(
+            (ref) => _testRecentProjects,
+          ),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(_testRecentProjects),
           ),
@@ -1222,7 +1260,7 @@ void _countSnapshotTests() {
       await _pumpApp(
         tester,
         overrides: [
-          recentProjectsProvider.overrideWith((ref) => projects),
+          recentProjectsProvider.overrideWithInitial((ref) => projects),
           workspaceRepositoryProvider.overrideWithValue(
             _fakeRepositoryWithRecents(projects),
           ),

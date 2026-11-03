@@ -38,7 +38,7 @@ Future<AppLocalizations> _pumpUnstructured(
       scanRoundProvider.overrideWith(
         () => FakeScanRound(produce: () => round, initial: round),
       ),
-      selectedUcProvider.overrideWith((ref) => fakeUcNode.id),
+      selectedUcProvider.overrideWithInitial((ref) => fakeUcNode.id),
     ],
   );
   return AppLocalizations.of(tester.element(find.byType(UcFlowScreen)));

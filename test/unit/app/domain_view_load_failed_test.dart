@@ -167,7 +167,7 @@ void main() {
               produce: () => shouldFail ? _throwing() : fakeRound(),
             ),
           ),
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainLoadFailed(),
           ),
         ],
@@ -222,7 +222,7 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainLoadFailed(),
           ),
         ],
@@ -245,7 +245,9 @@ void main() {
         await pumpHarness(
           tester,
           child: const DomainViewScreen(),
-          overrides: [domainViewStateProvider.overrideWith((ref) => state)],
+          overrides: [
+            domainViewStateProvider.overrideWithInitial((ref) => state),
+          ],
         );
         expect(
           find.byKey(const Key('action-domain-switch-project')),

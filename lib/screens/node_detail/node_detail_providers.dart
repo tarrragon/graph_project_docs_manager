@@ -6,7 +6,10 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/jump_targets.dart';
@@ -20,11 +23,11 @@ import 'node_detail_state.dart';
 
 /// 目前畫面狀態；預設 `NodeDetailUnset`（未選節點）。測試以 `overrideWith`
 /// 切換至其餘狀態。
-final StateProvider<NodeDetailState> nodeDetailStateProvider =
-    StateProvider<NodeDetailState>((ref) {
-      ref.read(nodeDetailTargetSyncProvider);
-      return const NodeDetailUnset();
-    });
+final NotifierProvider<StateHolder<NodeDetailState>, NodeDetailState>
+nodeDetailStateProvider = stateHolderProvider<NodeDetailState>((ref) {
+  ref.read(nodeDetailTargetSyncProvider);
+  return const NodeDetailUnset();
+});
 
 /// 需求：[SPEC-003 §3.5] 消費跳轉意圖（`nodeDetailTargetProvider`）：有目標即
 /// 轉為 [NodeDetailReady] 並清空意圖。由 [nodeDetailStateProvider] 初始化時

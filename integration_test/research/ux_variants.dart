@@ -300,10 +300,12 @@ final List<Override> _gapsFixed = [
 ];
 
 final List<Override> _traceExpanded = [
-  expandedTraceNodesProvider.overrideWith((ref) => {'PROP-001', 'SPEC-001'}),
+  expandedTraceNodesProvider.overrideWithInitial(
+    (ref) => {'PROP-001', 'SPEC-001'},
+  ),
 ];
 final List<Override> _traceBroken = [
-  traceabilityStateProvider.overrideWith(
+  traceabilityStateProvider.overrideWithInitial(
     (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
   ),
 ];
@@ -344,12 +346,12 @@ const List<TicketFixtureItem> _fixtureTickets = [
   ),
 ];
 final List<Override> _ticketsList = [
-  ticketListStateProvider.overrideWith(
+  ticketListStateProvider.overrideWithInitial(
     (ref) => const TicketsReady(tickets: _fixtureTickets),
   ),
 ];
 final List<Override> _ticketsTopic = [
-  ticketListStateProvider.overrideWith(
+  ticketListStateProvider.overrideWithInitial(
     (ref) => const TicketsReady(
       tickets: _fixtureTickets,
       mode: TicketListMode.topic,
