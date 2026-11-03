@@ -51,12 +51,13 @@ TICKET_ID_IN_TEXT = re.compile(r"(?<![\w.-])(\d+\.\d+\.\d+-W\d+-\d+(?:\.\d+)*)(?
 LANE_ENDED = "（無）"
 TERMINAL_STATUSES = ("completed", "closed")
 WRITE_TOOLS = ("Edit", "Write", "MultiEdit")
+# 檢查 4 的完成行格式（line-continuity.md §2〈用戶待辦〉）
+TODO_DONE_FORMAT = "**用戶待辦完成**（%s）：<結果>"
+TODO_DONE_KEYLESS = "**用戶待辦完成**：%s"
 
 # 以下常數與解析函式逐項對應 lanes.ts / shared.ts
 LANE_LINE = re.compile(r"^\*\*L(\d+) 現行佇列\*\*(?:（([^）]*)）)?：(.*)$")
-TODO_DONE_FORMAT = "**用戶待辦完成**（%s）：<結果>"
-TODO_DONE_KEYLESS = "**用戶待辦完成**：%s"
-LANE_LINE_PREFIX =re.compile(r"^\*\*L(\d+) 現行佇列\*\*")
+LANE_LINE_PREFIX = re.compile(r"^\*\*L(\d+) 現行佇列\*\*")
 LANE_FORMAT = "**L%d 現行佇列**（<session 名稱>）：<票序，或（無）>"
 QUEUE_SEPARATOR = re.compile(r"\s*(→|∥)\s*")
 STEP_SERIAL = re.compile(r"^(\d{3}(?:\.\d+)*)(.*)$")
