@@ -16,7 +16,10 @@
 ///    builtin）因 JSON 版本等於 builtin 而正常載入，即為此設計的直接驗證。
 library;
 
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../schema/schema_version.dart'
@@ -37,7 +40,7 @@ final frameworkSignalProbeProvider = Provider<FrameworkSignalProbePort>(
 /// 存在時，由 [GateDetectionNotifier] 寫入 JSON 版本值；切換專案時應由
 /// 呼叫端重置為 `null`（比照 `app/degraded_schema.dart` 的
 /// `degradedSchemaProvider` 先例）。
-final inferredVersionProvider = StateProvider<String?>((ref) => null);
+final inferredVersionProvider = stateHolderProvider<String?>((ref) => null);
 
 /// gate 偵測邏輯的唯一入口。本 notifier 不持有自身狀態（`build()` 不做
 /// 事）——[detect] 是每次呼叫皆完整重算的動作，副作用寫入

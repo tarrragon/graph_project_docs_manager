@@ -273,7 +273,9 @@ List<Override> domainFixtureLoaderOverrides() => [
 /// 注入 fixture 矩陣狀態與依選定 UC 投影的泳道。
 List<Override> domainFixtureOverrides({DomainMode mode = DomainMode.matrix}) =>
     [
-      domainViewStateProvider.overrideWith((ref) => fixtureReady(mode: mode)),
+      domainViewStateProvider.overrideWithInitial(
+        (ref) => fixtureReady(mode: mode),
+      ),
       domainMatrixProvider.overrideWith((ref) => DomainViewFixtures.matrix),
       domainEmptyLanesProvider.overrideWith(
         (ref) => emptyLanesOfMatrix(DomainViewFixtures.matrix),

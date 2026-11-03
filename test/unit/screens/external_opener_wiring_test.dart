@@ -78,10 +78,12 @@ void main() {
         child: const DomainViewScreen(),
         overrides: [
           externalOpenerProvider.overrideWithValue(fake),
-          currentWorkspaceStateProvider.overrideWith(
+          currentWorkspaceStateProvider.overrideWithInitial(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
-          domainViewStateProvider.overrideWith((ref) => const DomainEmpty()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainEmpty(),
+          ),
         ],
       );
       await tester.tap(find.byKey(const Key('action-domain-open-docs')));
@@ -120,11 +122,11 @@ void main() {
         child: const DomainViewScreen(),
         overrides: [
           externalOpenerProvider.overrideWithValue(fake),
-          currentWorkspaceStateProvider.overrideWith(
+          currentWorkspaceStateProvider.overrideWithInitial(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
           ...domainFixtureOverrides(mode: DomainMode.swimlane),
-          selectedUcProvider.overrideWith((ref) => _domainSelectedUc),
+          selectedUcProvider.overrideWithInitial((ref) => _domainSelectedUc),
         ],
       );
       await tester.tap(find.byKey(const Key('action-domain-open-source')));
@@ -163,11 +165,11 @@ void main() {
         child: const UcFlowScreen(),
         overrides: [
           externalOpenerProvider.overrideWithValue(fake),
-          currentWorkspaceStateProvider.overrideWith(
+          currentWorkspaceStateProvider.overrideWithInitial(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
           ucFlowUcListProvider.overrideWithValue(UcFlowFixtures.ucList),
-          selectedUcProvider.overrideWith((ref) => 'UC-06'),
+          selectedUcProvider.overrideWithInitial((ref) => 'UC-06'),
         ],
       );
       await tester.tap(find.byKey(const Key('action-ucFlow-open-source')));
@@ -204,18 +206,18 @@ void main() {
         tester,
         overrides: [
           nodeDetailNodesProvider.overrideWithValue(NodeDetailFixtures.nodes),
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) =>
                 const NodeDetailReady(nodeId: NodeDetailFixtures.normalNodeId),
           ),
           externalOpenerProvider.overrideWithValue(fake),
-          currentWorkspaceStateProvider.overrideWith(
+          currentWorkspaceStateProvider.overrideWithInitial(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.nodeDetail,
           ),
-          domainViewStateProvider.overrideWith(
+          domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainReady(mode: DomainMode.matrix),
           ),
         ],
@@ -269,10 +271,12 @@ void main() {
           child: const DomainViewScreen(),
           overrides: [
             externalOpenerProvider.overrideWithValue(g),
-            currentWorkspaceStateProvider.overrideWith(
+            currentWorkspaceStateProvider.overrideWithInitial(
               (ref) => const WorkspaceReady('/ws/proj'),
             ),
-            domainViewStateProvider.overrideWith((ref) => const DomainEmpty()),
+            domainViewStateProvider.overrideWithInitial(
+              (ref) => const DomainEmpty(),
+            ),
           ],
         );
         await tester.tap(find.byKey(const Key('action-domain-open-docs')));
@@ -286,11 +290,11 @@ void main() {
           child: const DomainViewScreen(),
           overrides: [
             externalOpenerProvider.overrideWithValue(g),
-            currentWorkspaceStateProvider.overrideWith(
+            currentWorkspaceStateProvider.overrideWithInitial(
               (ref) => const WorkspaceReady('/ws/proj'),
             ),
             ...domainFixtureOverrides(mode: DomainMode.swimlane),
-            selectedUcProvider.overrideWith((ref) => _domainSelectedUc),
+            selectedUcProvider.overrideWithInitial((ref) => _domainSelectedUc),
           ],
         );
         await tester.tap(find.byKey(const Key('action-domain-open-source')));
@@ -304,11 +308,11 @@ void main() {
           child: const UcFlowScreen(),
           overrides: [
             externalOpenerProvider.overrideWithValue(g),
-            currentWorkspaceStateProvider.overrideWith(
+            currentWorkspaceStateProvider.overrideWithInitial(
               (ref) => const WorkspaceReady('/ws/proj'),
             ),
             ucFlowUcListProvider.overrideWithValue(UcFlowFixtures.ucList),
-            selectedUcProvider.overrideWith((ref) => 'UC-06'),
+            selectedUcProvider.overrideWithInitial((ref) => 'UC-06'),
           ],
         );
         await tester.tap(find.byKey(const Key('action-ucFlow-open-source')));
@@ -321,19 +325,19 @@ void main() {
           tester,
           overrides: [
             nodeDetailNodesProvider.overrideWithValue(NodeDetailFixtures.nodes),
-            nodeDetailStateProvider.overrideWith(
+            nodeDetailStateProvider.overrideWithInitial(
               (ref) => const NodeDetailReady(
                 nodeId: NodeDetailFixtures.normalNodeId,
               ),
             ),
             externalOpenerProvider.overrideWithValue(g),
-            currentWorkspaceStateProvider.overrideWith(
+            currentWorkspaceStateProvider.overrideWithInitial(
               (ref) => const WorkspaceReady('/ws/proj'),
             ),
-            selectedDestinationProvider.overrideWith(
+            selectedDestinationProvider.overrideWithInitial(
               (ref) => AppDestination.nodeDetail,
             ),
-            domainViewStateProvider.overrideWith(
+            domainViewStateProvider.overrideWithInitial(
               (ref) => const DomainReady(mode: DomainMode.matrix),
             ),
           ],
@@ -385,7 +389,9 @@ void main() {
         tester,
         child: const DomainViewScreen(),
         overrides: [
-          domainViewStateProvider.overrideWith((ref) => const DomainUnset()),
+          domainViewStateProvider.overrideWithInitial(
+            (ref) => const DomainUnset(),
+          ),
           workspaceRepositoryProvider.overrideWithValue(_NotRememberedRepo()),
           frameworkSignalProbeProvider.overrideWithValue(
             StubFrameworkSignalProbe(version: null, schemaJson: false),

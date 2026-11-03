@@ -23,6 +23,8 @@ import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtu
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_screen.dart';
 import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state.dart';
+// ignore: unnecessary_import
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
 
 import '../../helpers/helpers.dart';
@@ -34,7 +36,7 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => const NodeDetailProjectUnready(
               ProjectUnreadyReason.notSelected,
             ),
@@ -58,12 +60,12 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => const NodeDetailProjectUnready(
               ProjectUnreadyReason.notSelected,
             ),
           ),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.nodeDetail,
           ),
         ],
@@ -86,7 +88,7 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => const NodeDetailUnset(),
           ),
         ],
@@ -105,10 +107,10 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => const NodeDetailUnset(),
           ),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.nodeDetail,
           ),
         ],
@@ -210,7 +212,7 @@ void main() {
           overrides: [
             _fixtureNodes,
             _readyNormal,
-            selectedDestinationProvider.overrideWith(
+            selectedDestinationProvider.overrideWithInitial(
               (ref) => AppDestination.nodeDetail,
             ),
             externalOpenerProvider.overrideWithValue(
@@ -246,7 +248,7 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => NodeDetailMissing(
               nodeId: NodeDetailFixtures.normalNodeId,
               lastKnownPath: '${tempDir.path}/missing.md',
@@ -266,7 +268,7 @@ void main() {
         tester,
         child: const NodeDetailScreen(),
         overrides: [
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => NodeDetailMissing(
               nodeId: NodeDetailFixtures.normalNodeId,
               lastKnownPath: '${tempDir.path}/missing.md',
@@ -292,7 +294,7 @@ void main() {
         child: const NodeDetailScreen(),
         overrides: [
           _fixtureNodes,
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => NodeDetailMissing(
               nodeId: NodeDetailFixtures.normalNodeId,
               lastKnownPath: file.path,
@@ -321,7 +323,7 @@ void main() {
         child: const NodeDetailScreen(),
         overrides: [
           _fixtureNodes,
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => NodeDetailMissing(
               nodeId: NodeDetailFixtures.normalNodeId,
               lastKnownPath: file.path,
@@ -370,10 +372,10 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.nodeDetail,
           ),
-          nodeDetailStateProvider.overrideWith(
+          nodeDetailStateProvider.overrideWithInitial(
             (ref) => const NodeDetailUnset(),
           ),
         ],
@@ -558,7 +560,7 @@ void main() {
 }
 
 /// 測試注入：狀態明示為正常態（provider 預設為未選節點）。
-final _readyNormal = nodeDetailStateProvider.overrideWith(
+final _readyNormal = nodeDetailStateProvider.overrideWithInitial(
   (ref) => const NodeDetailReady(nodeId: NodeDetailFixtures.normalNodeId),
 );
 

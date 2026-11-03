@@ -128,7 +128,7 @@ List<Override> lastWinsByProvider(List<Override> overrides) {
 /// 預設的 Domain 視圖狀態：明示注入矩陣模式的 `DomainReady`，測試前提不依賴
 /// `domainViewStateProvider` 的產品預設值（預設為 Loading 時背景 Domain 頁的
 /// skeleton 無限動畫會讓 `pumpAndSettle` 逾時）。
-Override _readyDomainOverride() => domainViewStateProvider.overrideWith(
+Override _readyDomainOverride() => domainViewStateProvider.overrideWithInitial(
   (ref) => const DomainReady(mode: DomainMode.matrix),
 );
 

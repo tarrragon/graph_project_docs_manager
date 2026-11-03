@@ -12,9 +12,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 
 import '../../helpers/helpers.dart';
@@ -44,7 +44,7 @@ class _SchemaIncompatible extends _DomainState {
 }
 
 /// 狀態注入點：測試用 `overrideWith` 指定初始狀態。
-final _domainStateProvider = StateProvider<_DomainState>(
+final _domainStateProvider = stateHolderProvider<_DomainState>(
   (ref) => const _Unset(),
 );
 
@@ -137,7 +137,7 @@ void main() {
         tester,
         child: const _DomainPageStub(),
         overrides: [
-          _domainStateProvider.overrideWith((ref) => const _Matrix()),
+          _domainStateProvider.overrideWithInitial((ref) => const _Matrix()),
         ],
         size: size,
       );
@@ -154,7 +154,7 @@ void main() {
         tester,
         child: const _DomainPageStub(),
         overrides: [
-          _domainStateProvider.overrideWith(
+          _domainStateProvider.overrideWithInitial(
             (ref) => const _SchemaIncompatible(),
           ),
         ],
@@ -179,7 +179,7 @@ void main() {
         tester,
         child: const _DomainPageStub(),
         overrides: [
-          _domainStateProvider.overrideWith(
+          _domainStateProvider.overrideWithInitial(
             (ref) => const _SchemaIncompatible(),
           ),
         ],
@@ -205,7 +205,7 @@ void main() {
         tester,
         child: const _DomainPageStub(),
         overrides: [
-          _domainStateProvider.overrideWith((ref) => const _Loading()),
+          _domainStateProvider.overrideWithInitial((ref) => const _Loading()),
         ],
         size: size,
         settle: false,
@@ -222,7 +222,7 @@ void main() {
           tester,
           child: const _DomainPageStub(),
           overrides: [
-            _domainStateProvider.overrideWith((ref) => const _Loading()),
+            _domainStateProvider.overrideWithInitial((ref) => const _Loading()),
           ],
           settle: false,
         );

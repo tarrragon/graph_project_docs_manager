@@ -60,7 +60,7 @@ _Harness _harness({
   final container = ProviderContainer(
     overrides: [
       scanRoundProvider.overrideWith(() => fake),
-      domainViewStateProvider.overrideWith(
+      domainViewStateProvider.overrideWithInitial(
         (ref) => const DomainReady(mode: DomainMode.matrix),
       ),
       builtinSchemaVersionProvider.overrideWith((ref) async => '1.0.0'),

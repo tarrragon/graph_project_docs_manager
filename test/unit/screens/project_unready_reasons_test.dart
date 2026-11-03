@@ -59,7 +59,7 @@ void main() {
           tester,
           child: const NodeDetailScreen(),
           overrides: [
-            nodeDetailStateProvider.overrideWith(
+            nodeDetailStateProvider.overrideWithInitial(
               (ref) => NodeDetailProjectUnready(reason),
             ),
           ],

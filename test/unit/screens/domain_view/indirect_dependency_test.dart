@@ -52,7 +52,7 @@ Future<ProviderContainer> _pumpAndClickGoto(
   required List<String> calls,
 }) async {
   final overrides = <Override>[
-    domainViewStateProvider.overrideWith(
+    domainViewStateProvider.overrideWithInitial(
       (ref) => DomainReady(
         mode: DomainMode.matrix,
         selectedCell: (selectedDomain, 'UC-04'),

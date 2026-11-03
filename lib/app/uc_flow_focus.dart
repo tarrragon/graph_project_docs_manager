@@ -4,7 +4,10 @@
 /// （docs/system-layer.md §2.1）。
 library;
 
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 
 /// 跳轉定位目標（SPEC-001 §5 主操作表事件類／flow 類兩列）：[ucId] 為目標 UC，
 /// [stepId] 定位步驟、[eventId] 定位事件流小表列；兩者皆可缺。
@@ -18,4 +21,4 @@ class UcFlowFocus {
 
 /// 跳轉定位目標（破洞報告 flow 類／事件類項目寫入，UC Flow 消費）；`null`
 /// 代表無待定位目標。
-final ucFlowFocusProvider = StateProvider<UcFlowFocus?>((ref) => null);
+final ucFlowFocusProvider = stateHolderProvider<UcFlowFocus?>((ref) => null);

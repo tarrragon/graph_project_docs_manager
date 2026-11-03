@@ -7,7 +7,10 @@
 library;
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
+
+export 'package:graph_project_docs_manager/state/state_holder.dart'
+    show StateHolderOverride;
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -52,7 +55,7 @@ enum AppDestination {
 
 /// 目前選取的導覽項。預設落在 [AppDestination.domain]——六個畫面中，
 /// Domain 視圖是 SPEC-001 §1 列出的第一個，也是概念上的總覽入口。
-final selectedDestinationProvider = StateProvider<AppDestination>(
+final selectedDestinationProvider = stateHolderProvider<AppDestination>(
   (ref) => AppDestination.domain,
 );
 
@@ -81,7 +84,7 @@ enum NavIntent {
 /// 2. `jump` 切換 → 設為跳轉前的 destination
 /// 3. 連續 `jump`（A→B→C）→ 為 B，此為明確定義而非未定義行為
 /// 4. 觸發返回時 → 切至 `returnTo`，隨即設為 `null`
-final returnToProvider = StateProvider<AppDestination?>((ref) => null);
+final returnToProvider = stateHolderProvider<AppDestination?>((ref) => null);
 
 /// [navigateTo] / [consumeReturnTo] 共用的讀取簽章。[WidgetRef.read] 與
 /// [ProviderContainer.read] 皆符合此簽章，讓兩函式在 widget 與純
@@ -120,7 +123,7 @@ void consumeReturnTo(ProviderReader read) {
 /// [firstVisibleProvider] 讀取時仍判定為「首次」；此後由
 /// [firstVisibleProvider] 寫入。判斷來源完全在 provider 層（本值 +
 /// [selectedDestinationProvider]），不依賴任何 widget 生命週期。
-final visitedDestinationsProvider = StateProvider<Set<AppDestination>>(
+final visitedDestinationsProvider = stateHolderProvider<Set<AppDestination>>(
   (ref) => <AppDestination>{},
 );
 

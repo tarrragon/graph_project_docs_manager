@@ -70,7 +70,7 @@ Future<void> _pump(WidgetTester tester, List<Override> overrides) =>
       tester,
       child: const UcFlowScreen(),
       overrides: [
-        selectedUcProvider.overrideWith((ref) => 'UC-01'),
+        selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
         ...overrides,
       ],
     );

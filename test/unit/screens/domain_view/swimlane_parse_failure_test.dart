@@ -14,11 +14,11 @@ import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import '../../../helpers/helpers.dart';
 
 List<Override> _overrides(DomainSwimlaneView swimlane) => [
-  domainViewStateProvider.overrideWith(
+  domainViewStateProvider.overrideWithInitial(
     (ref) => const DomainReady(mode: DomainMode.swimlane),
   ),
   domainSwimlaneProvider.overrideWith((ref) => swimlane),
-  selectedUcProvider.overrideWith((ref) => 'UC-01'),
+  selectedUcProvider.overrideWithInitial((ref) => 'UC-01'),
 ];
 
 DomainSwimlane _lanes({required bool failed}) => DomainSwimlane(

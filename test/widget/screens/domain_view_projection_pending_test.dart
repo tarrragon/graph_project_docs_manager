@@ -43,10 +43,10 @@ void main() {
       child: const DomainViewScreen(),
       overrides: [
         scanRoundProvider.overrideWith(() => fake),
-        domainViewStateProvider.overrideWith(
+        domainViewStateProvider.overrideWithInitial(
           (ref) => const DomainReady(mode: DomainMode.swimlane),
         ),
-        selectedUcProvider.overrideWith((ref) => selectedUc),
+        selectedUcProvider.overrideWithInitial((ref) => selectedUc),
       ],
     );
     await tester.pump();

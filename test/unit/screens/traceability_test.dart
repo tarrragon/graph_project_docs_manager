@@ -9,6 +9,8 @@ import 'package:flutter/material.dart' show InkWell;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/jump_targets.dart';
+// ignore: unnecessary_import
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
@@ -19,7 +21,7 @@ import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
 import '../../helpers/helpers.dart';
 
 /// 預設狀態改由掃描輪次衍生後，既有渲染測試以 fixture 注入正常態。
-final _normalOverride = traceabilityStateProvider.overrideWith(
+final _normalOverride = traceabilityStateProvider.overrideWithInitial(
   (ref) => const TraceabilityNormal(TraceabilityFixtures.normal),
 );
 
@@ -69,7 +71,7 @@ void main() {
           child: const TraceabilityScreen(),
           overrides: [
             _normalOverride,
-            selectedDestinationProvider.overrideWith(
+            selectedDestinationProvider.overrideWithInitial(
               (ref) => AppDestination.traceability,
             ),
           ],
@@ -92,7 +94,7 @@ void main() {
         child: const TraceabilityScreen(),
         overrides: [
           _normalOverride,
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.traceability,
           ),
         ],
@@ -114,7 +116,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
           ),
         ],
@@ -147,7 +149,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
           ),
         ],
@@ -167,10 +169,10 @@ void main() {
           tester,
           child: const TraceabilityScreen(),
           overrides: [
-            traceabilityStateProvider.overrideWith(
+            traceabilityStateProvider.overrideWithInitial(
               (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
             ),
-            selectedDestinationProvider.overrideWith(
+            selectedDestinationProvider.overrideWithInitial(
               (ref) => AppDestination.traceability,
             ),
           ],
@@ -194,10 +196,10 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
           ),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.traceability,
           ),
         ],
@@ -214,7 +216,7 @@ void main() {
   });
 
   group('缺口列與 Ticket 未載入說明（0.3.3-W3-394）', () {
-    final brokenOverride = traceabilityStateProvider.overrideWith(
+    final brokenOverride = traceabilityStateProvider.overrideWithInitial(
       (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
     );
 
@@ -308,7 +310,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityProjectUnready(
               ProjectUnreadyReason.notSelected,
             ),
@@ -331,11 +333,11 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) =>
                 const TraceabilityProjectUnready(ProjectUnreadyReason.loading),
           ),
-          selectedDestinationProvider.overrideWith(
+          selectedDestinationProvider.overrideWithInitial(
             (ref) => AppDestination.traceability,
           ),
         ],
@@ -360,7 +362,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityBroken(TraceabilityFixtures.broken),
           ),
         ],
@@ -401,7 +403,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityBroken(TraceabilityFixtures.multiParent),
           ),
         ],
@@ -447,7 +449,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityBroken(TraceabilityFixtures.multiParent),
           ),
         ],
@@ -482,7 +484,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
-          traceabilityStateProvider.overrideWith(
+          traceabilityStateProvider.overrideWithInitial(
             (ref) => const TraceabilityNoProposal(),
           ),
         ],
@@ -501,10 +503,10 @@ void main() {
           tester,
           child: const TraceabilityScreen(),
           overrides: [
-            traceabilityStateProvider.overrideWith(
+            traceabilityStateProvider.overrideWithInitial(
               (ref) => const TraceabilityNoProposal(),
             ),
-            selectedDestinationProvider.overrideWith(
+            selectedDestinationProvider.overrideWithInitial(
               (ref) => AppDestination.traceability,
             ),
           ],

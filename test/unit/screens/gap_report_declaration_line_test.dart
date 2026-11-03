@@ -629,7 +629,7 @@ void main() {
         overrides: [
           gapReportProvider.overrideWith(() => _FixedNotifier(state)),
           externalOpenerProvider.overrideWithValue(opener),
-          currentWorkspaceStateProvider.overrideWith(
+          currentWorkspaceStateProvider.overrideWithInitial(
             (ref) => const WorkspaceReady('/ws/proj'),
           ),
         ],
