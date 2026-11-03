@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
-import 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart';
+import 'package:graph_project_docs_manager/app/round_gaps.dart';
 import 'package:graph_project_docs_manager/services/directory_watch_source.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';

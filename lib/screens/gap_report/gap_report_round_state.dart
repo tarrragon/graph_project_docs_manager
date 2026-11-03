@@ -6,7 +6,7 @@
 library;
 
 import 'package:graph_project_docs_manager/app/scan_round.dart';
-import 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart';
+import 'package:graph_project_docs_manager/app/round_gaps.dart';
 import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
@@ -14,7 +14,7 @@ import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 import 'gap_report_models.dart';
 import 'gap_report_projection.dart';
 
-export 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart'
+export 'package:graph_project_docs_manager/app/round_gaps.dart'
     show undeterminedReasonFromGraph;
 
 /// 需求：[SPEC-001 §5、SPEC-006 FR-08、SPEC-007 FR-09] 輪次結果 → 報告狀態。
