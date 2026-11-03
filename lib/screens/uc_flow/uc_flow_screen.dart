@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/attention_level.dart';
 import '../../app/project_unready_view.dart';
+import '../../app/jump_targets.dart';
 import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../app/selected_uc.dart';
@@ -153,11 +154,7 @@ class _UnstructuredView extends ConsumerWidget {
             AppButton(
               label: l10n.viewRelationsAction,
               variant: AppButtonVariant.secondary,
-              onPressed: () => navigateTo(
-                ref.read,
-                AppDestination.nodeDetail,
-                NavIntent.jump,
-              ),
+              onPressed: () => jumpToNodeDetail(ref.read, uc.id),
               testKey: const Key('action-ucFlow-view-relations'),
             ),
           ],
@@ -417,8 +414,7 @@ class _NormalViewState extends ConsumerState<_NormalView> {
       ),
       // 點步驟→節點詳情（沿用 `trace_screen.dart` `onTapNode` 既有簡化，
       // 見檔頭說明）。
-      onTap: () =>
-          navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump),
+      onTap: () => jumpToNodeDetail(ref.read, ucId),
       testKey: Key('card-ucFlow-step-$ucId-${index + 1}'),
     );
   }

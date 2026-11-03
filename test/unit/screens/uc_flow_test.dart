@@ -15,6 +15,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
+import 'package:graph_project_docs_manager/app/jump_targets.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -254,6 +255,7 @@ void main() {
         AppDestination.nodeDetail,
       );
       expect(container.read(returnToProvider), AppDestination.ucFlow);
+      expect(container.read(nodeDetailTargetProvider), 'UC-06');
     });
   });
 
@@ -473,6 +475,7 @@ void main() {
         AppDestination.nodeDetail,
       );
       expect(container.read(returnToProvider), AppDestination.ucFlow);
+      expect(container.read(nodeDetailTargetProvider), 'UC-02');
     });
   });
 }
