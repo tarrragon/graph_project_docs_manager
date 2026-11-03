@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/scan_round.dart';
+import '../../graph/adjacency_query.dart';
 import '../../graph/graph_built_event.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/open_path_resolver.dart';
@@ -51,18 +52,7 @@ final nodeDetailBodyProvider = Provider.family<String, String>((ref, nodeId) {
 /// 需求：[SPEC-001 §6] 由建圖結果投影節點詳情；關聯依邊型分節（語意約定
 /// 3：不同邊型不合併），每節 `isProposed` 取該邊型 layer。內文延遲讀取。
 Map<String, NodeDetailFixture> projectNodeDetails(GraphBuiltEvent event) {
-  final related = <String, Map<(String, String), Set<String>>>{};
-  void add(String node, GraphEdge edge, String other) {
-    related
-        .putIfAbsent(node, () => {})
-        .putIfAbsent((edge.edgeType, edge.layer), () => {})
-        .add(other);
-  }
-
-  for (final edge in event.edges) {
-    add(edge.from, edge, edge.to);
-    add(edge.to, edge, edge.from);
-  }
+  final query = AdjacencyQuery(buildResult: GraphBuildAvailable(event));
   return {
     for (final node in event.nodes)
       node.id: NodeDetailFixture(
@@ -72,9 +62,25 @@ Map<String, NodeDetailFixture> projectNodeDetails(GraphBuiltEvent event) {
         title: node.displayTitle,
         filePath: node.path,
         markdown: '',
-        relations: _categoriesOf(related[node.id] ?? const {}),
+        relations: _categoriesOf(_relatedOf(query, node.id)),
       ),
   };
+}
+
+/// 由鄰接查詢取該節點的相鄰節點，依 (邊型, layer) 分組並去重。
+Map<(String, String), Set<String>> _relatedOf(
+  AdjacencyQuery query,
+  String nodeId,
+) {
+  final byType = <(String, String), Set<String>>{};
+  final result = query.query(nodeId);
+  if (result is! AdjacencyAvailable) return byType;
+  for (final entry in result.entries) {
+    byType
+        .putIfAbsent((entry.edgeType, entry.layer), () => {})
+        .add(entry.otherId);
+  }
+  return byType;
 }
 
 List<NodeRelationCategory> _categoriesOf(
