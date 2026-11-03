@@ -56,12 +56,10 @@ ticket_refs: [0.1.0-W2-004, 0.1.0-W3-064, 0.1.0-W3-096, 0.1.0-W3-112, 0.1.0-W3-2
 使用者修復後觸發重新掃描，系統重新解析並更新報告。重新掃描是整輪重新解析，
 發出的是 EVT-CORPUS-001，不是 EVT-CORPUS-002
 
-### 檔案監看（尚未實作）
+### 檔案監看
 
 使用者在外部編輯器修改原始檔後，系統偵測到變動（EVT-CORPUS-002），自動重新解析
-並更新報告，不需手動重新掃描。對應 PROP-003「外部改動自動偵測並重新載入」；
-lib 目前沒有檔案監看，排入哪個版本由 `0.5.0-W1-458.6` 決定，實作後移除本節與
-對應步驟名稱中的「尚未實作」標註
+並更新報告，不需手動重新掃描。對應 PROP-003「外部改動自動偵測並重新載入」。
 
 ## 流程拓撲（結構化 Flow 區塊）
 
@@ -116,7 +114,7 @@ flow:
     consumes: []
     traverses: ["corpus"]
   - id: "detect-external-change"
-    name: "偵測到外部修改（尚未實作）"
+    name: "偵測到外部修改"
     next: ["reparse"]
     branch_from: "open-source-file"
     return_to: null
@@ -124,7 +122,7 @@ flow:
     consumes: []
     traverses: ["corpus"]
   - id: "reparse"
-    name: "重新解析（尚未實作）"
+    name: "重新解析"
     next: ["view-categories"]
     branch_from: "detect-external-change"
     return_to: "view-categories"

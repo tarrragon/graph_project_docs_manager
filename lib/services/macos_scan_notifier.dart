@@ -54,6 +54,14 @@ class MacosScanNotifier implements ScanNotifier {
   String Function() undeterminableBodyBuilder = () =>
       'Gaps could not be determined'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
 
+  /// 監看輪次通知標題產生器。
+  String Function() watchTitleBuilder = () =>
+      'Gap report updated'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
+
+  /// 監看輪次通知內文產生器。
+  String Function(int gapCount) watchBodyBuilder = (count) =>
+      'Rescanned after file changes: $count gaps now'; // i18n-exempt: fallback，正式路徑由 controller 覆寫
+
   /// controller 於每次 build 時呼叫，注入當前語系的字串產生器
   /// （[AppLocalizations] 需要 `BuildContext`，本類別無法自行取得）。
   void updateLocalizedStrings({
@@ -61,7 +69,11 @@ class MacosScanNotifier implements ScanNotifier {
     required String Function(int gapCount) foundBody,
     required String Function() noGapsBody,
     required String Function() undeterminableBody,
+    String Function()? watchTitle,
+    String Function(int gapCount)? watchBody,
   }) {
+    if (watchTitle != null) watchTitleBuilder = watchTitle;
+    if (watchBody != null) watchBodyBuilder = watchBody;
     titleBuilder = title;
     foundBodyBuilder = foundBody;
     noGapsBodyBuilder = noGapsBody;
@@ -140,8 +152,12 @@ class MacosScanNotifier implements ScanNotifier {
       '發送通知：gapCount=$gapCount', // i18n-exempt: 開發者診斷 log
       name: _tag,
     );
-    final title = titleBuilder();
-    final body = notification.isUndeterminable
+    final title = notification.isWatchRound
+        ? watchTitleBuilder()
+        : titleBuilder();
+    final body = notification.isWatchRound
+        ? watchBodyBuilder(gapCount)
+        : notification.isUndeterminable
         ? undeterminableBodyBuilder()
         : gapCount == 0
         ? noGapsBodyBuilder()

@@ -1154,6 +1154,18 @@ abstract class AppLocalizations {
   /// **'掃描結束，無法判定破洞'**
   String get scanCompleteUndeterminableSnackbarMessage;
 
+  /// SPEC-003 §2.2 系統層通知：檔案監看輪次完成的通知標題
+  ///
+  /// In zh, this message translates to:
+  /// **'破洞報告已更新'**
+  String get scanCompleteWatchNotificationTitle;
+
+  /// SPEC-003 §2.2 系統層通知：檔案監看輪次完成的通知內文（三態共用）
+  ///
+  /// In zh, this message translates to:
+  /// **'檔案變動後重新掃描，目前 {count} 個破洞'**
+  String scanCompleteWatchNotificationBody(int count);
+
   /// SPEC-001 §5「無法判定破洞」原因說明之三（掃描輪次拋出非預期例外）
   ///
   /// In zh, this message translates to:

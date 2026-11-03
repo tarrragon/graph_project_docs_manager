@@ -33,6 +33,7 @@ class ScanCompleteNotification {
   const ScanCompleteNotification({
     required this.gapCount,
     this.isUndeterminable = false,
+    this.isWatchRound = false,
   });
 
   /// 破洞總數。0 表示無破洞，對應 `scanCompleteNoGapsNotificationBody`。
@@ -41,6 +42,10 @@ class ScanCompleteNotification {
   /// 掃描結果為 `state-gaps-undeterminable`：內文須明示「無法判定」，
   /// 對應 `scanCompleteUndeterminableNotificationBody`（優先於 [gapCount]）。
   final bool isUndeterminable;
+
+  /// 檔案監看輪次的通知：改用專用標題與內文（`scanCompleteWatchNotification*`，
+  /// 三態共用一則，優先於 [isUndeterminable]）。
+  final bool isWatchRound;
 }
 
 /// 掃描完成的系統層通知抽象（SPEC-003 §2.2）。

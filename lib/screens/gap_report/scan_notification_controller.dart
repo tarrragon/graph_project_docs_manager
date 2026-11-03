@@ -8,7 +8,7 @@
 /// 與未來獨立測試，不與導覽殼骨架程式碼混在一起。
 library;
 
-import 'dart:async' show unawaited;
+import 'dart:async' show StreamSubscription, unawaited;
 import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
@@ -16,6 +16,8 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_lifecycle.dart';
+import '../../app/corpus_watch_provider.dart';
+import 'watch_round_notification_adapter.dart';
 import '../../components/attention_level.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
@@ -113,7 +115,23 @@ class ScanNotificationController {
     _activatedStream = notifier.activated;
     final subscription = _activatedStream.listen(_onActivated);
     _cancelActivatedSubscription = subscription.cancel;
+    _watchAdapter = WatchRoundNotificationAdapter(
+      port: ScanNotifierWatchPort(notifier),
+      isForeground: () =>
+          _ref.read(appLifecycleStateProvider) == AppLifecycleState.resumed,
+      isOnGapsPage: () =>
+          _ref.read(selectedDestinationProvider) == AppDestination.gaps,
+    );
+    _watchRoundSubscription = _ref
+        .read(corpusWatchProvider)
+        .events
+        .where((e) => e is WatchRoundCompleted)
+        .cast<WatchRoundCompleted>()
+        .listen((e) => unawaited(_watchAdapter.onRoundCompleted(e)));
   }
+
+  late final WatchRoundNotificationAdapter _watchAdapter;
+  StreamSubscription<WatchRoundCompleted>? _watchRoundSubscription;
 
   void dispose() {
     _gapReportSubscription.close();
@@ -121,6 +139,7 @@ class ScanNotificationController {
     _lifecycleSubscription.close();
     _workspaceSubscription.close();
     _cancelActivatedSubscription?.call();
+    unawaited(_watchRoundSubscription?.cancel());
   }
 
   /// 每次 build 由 `AppShell` 呼叫，確保 [MacosScanNotifier] 使用當前語系
@@ -135,6 +154,8 @@ class ScanNotificationController {
         noGapsBody: () => l10n.scanCompleteNoGapsNotificationBody,
         undeterminableBody: () =>
             l10n.scanCompleteUndeterminableNotificationBody,
+        watchTitle: () => l10n.scanCompleteWatchNotificationTitle,
+        watchBody: l10n.scanCompleteWatchNotificationBody,
       );
     }
   }
@@ -173,6 +194,7 @@ class ScanNotificationController {
   void _onWorkspaceChange(WorkspaceState? previous, WorkspaceState next) {
     if (previous is! WorkspaceReady) return;
     if (next is WorkspaceReady && next.path == previous.path) return;
+    _watchAdapter.reset();
     if (_pendingWithdrawableState == null) return;
     _withdraw(WithdrawTrigger.projectSwitch);
   }

@@ -719,6 +719,8 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `emptyUcMessage` | 此專案尚無 UC 節點 | This project has no UC nodes yet | — | §2 無 UC（4.21 `page` 的 `message`，`state-ucFlow-empty`）；1.62 起取代同文案的 `noUcNodesMessage`（該 key 已自 ARB 移除，`0.3.3-W3-395`） |
 | `workspaceNotRemembered` | 已選定，但下次啟動需重新選擇 | Selected, but you will need to choose again next time | — | 4.26 `AppSnackBar.plain`（SPEC-003 §3.7 選定資料夾成功但偏好設定寫入失敗，`ChooseFolderNotRemembered`；SPEC-003 §2.13 對照表列 15、§2.14 指派表列 16） |
 | `scanCompleteNotificationTitle` | 破洞掃描完成 | Gap scan complete | — | macOS 系統通知標題（非本檔元件承載，權威定義為 SPEC-003 §2.2〈系統層通知〉通知內容列；本列僅為 ARB 對照） |
+| `scanCompleteWatchNotificationTitle` | 破洞報告已更新 | Gap report updated | — | macOS 系統通知標題，檔案監看輪次專用（非本檔元件承載，權威定義為 SPEC-003 §2.2〈系統層通知〉監看輪次通知內容列；本列僅為 ARB 對照，`0.6.0-W1-080`） |
+| `scanCompleteWatchNotificationBody` | 檔案變動後重新掃描，目前 {count} 個破洞 | Rescanned after file changes: {count} gaps now | count | macOS 系統通知內文，檔案監看輪次專用，三態共用（同上，`0.6.0-W1-080`） |
 
 **1.69 新增（`0.5.0-W1-106`，「畫面」列顯示名；1.71 依用戶裁決 K6 收窄；ARB 實檔狀態待建，由對應實作票加入，zh／en 值為本檔提案文案）**：domain 列首不經 i18n，4.37 `MatrixGrid` 與 4.38 `SwimlaneGrid` 一律顯示 `DomainBundle.domain` 原值（未知 domain 亦同）；只有 App 自身詞彙 `presentation` 有 key——用於泳道「畫面」列與 SPEC-003 §3.2「本 UC 外」的 `presentation` 值，不成矩陣列（CLAUDE.md §6、`docs/tech-decisions.md` 2026-10-08 補記「domain 列首顯示原值，只有「畫面」列走 i18n」）。
 
