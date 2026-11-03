@@ -1110,7 +1110,7 @@ def extract_close_ticket_ids(command: str, logger) -> List[str]:
 
 
 def check_close_coordination_todos(
-    ticket_ids: List[str], project_dir: Path, logger
+    ticket_ids: List[str], project_dir: Path, logger, action: str = "close"
 ) -> Optional[Tuple[str, str]]:
     """close 專用：只做協調票未配對用戶待辦檢查，不套用 complete 的其他步驟。
 
@@ -1129,11 +1129,75 @@ def check_close_coordination_todos(
             sys.stderr.write(f"[acceptance-gate] close 檢查讀取失敗，放行 {ticket_id}: {exc}\n")
             continue
         should_block, message = check_unpaired_user_todos(
-            content, parse_ticket_frontmatter(content), ticket_id, logger, action="close"
+            content, parse_ticket_frontmatter(content), ticket_id, logger, action=action
         )
         if should_block:
             return ticket_id, message
     return None
+
+
+def _option_value(args: List[str], name: str) -> Optional[str]:
+    """取 `--name V` 或 `--name=V` 的值；不存在回 None。"""
+    for i, token in enumerate(args):
+        if token == name and i + 1 < len(args):
+            return args[i + 1]
+        if token.startswith(name + "="):
+            return token[len(name) + 1:]
+    return None
+
+
+def extract_batch_wave_selectors(command: str, logger) -> List[Tuple[int, str, Optional[str]]]:
+    """掃描 `batch-complete --wave N`，回傳 (wave, status, version) 清單。
+
+    失敗語意：掃描無法解析（回 None）、--wave 值非整數時略過該項（fail-open），
+    已寫 logger.warning。觸發條件：未閉合引號、管線或 here-string 餵 stdin shell、
+    巢狀過深、`--wave abc`。
+    """
+    invocations = find_ticket_track_invocations(command, ("batch-complete",))
+    if invocations is None:
+        logger.warning("batch-complete 掃描無法解析，略過 --wave 協調票待辦檢查（fail-open）")
+        return []
+    selectors: List[Tuple[int, str, Optional[str]]] = []
+    for _verb, args in invocations:
+        raw_wave = _option_value(args, "--wave")
+        if raw_wave is None:
+            continue
+        if not re.fullmatch(r"\d+", raw_wave):
+            logger.warning(f"--wave 值非整數，略過協調票待辦檢查（fail-open）: {raw_wave}")
+            continue
+        selectors.append((
+            int(raw_wave),
+            _option_value(args, "--status") or "in_progress",
+            _option_value(args, "--version"),
+        ))
+    return selectors
+
+
+def expand_wave_coordination_ids(
+    selectors: List[Tuple[int, str, Optional[str]]], project_dir: Path, logger
+) -> List[str]:
+    """把 --wave 展開為符合條件的協調票 ID（frontmatter coordination: true）。
+
+    與 CLI 一致以 wave 與 status 篩選；有 --version 時限該版本目錄，否則掃全部版本
+    （hook 不知 CLI 自動選版結果，多擋不少放）。讀檔失敗略過該票並寫日誌（fail-open）。
+    """
+    ids: List[str] = []
+    for wave, status, version in selectors:
+        pattern = f"v{version}" if version else "v*"
+        for ticket_file in sorted((project_dir / "docs" / "work-logs").glob(f"{pattern}/tickets/*.md")):
+            try:
+                fm = parse_ticket_frontmatter(ticket_file.read_text(encoding="utf-8"))
+            except OSError as exc:
+                logger.error(f"wave 展開讀取票檔失敗，略過 {ticket_file.name}: {exc}")
+                continue
+            if (
+                str(fm.get("wave", "")).strip() == str(wave)
+                and str(fm.get("status", "")).strip() == status
+                and str(fm.get("coordination", "")).strip().lower() == "true"
+                and fm.get("id")
+            ):
+                ids.append(str(fm["id"]))
+    return _dedupe(ids)
 
 
 def _handle_close_command(command: str, logger) -> int:
@@ -1158,6 +1222,32 @@ def _handle_close_command(command: str, logger) -> int:
     return EXIT_BLOCK
 
 
+def _check_wave_coordination(selectors, logger) -> List[str]:
+    """batch-complete --wave：展開協調票並檢查未配對待辦。
+
+    擋下時輸出 deny 並以 SystemExit(EXIT_BLOCK) 結束；無協調票或皆已配對時
+    輸出 allow，回空清單（主流程直接放行）。
+    """
+    project_dir = get_shared_state_root(get_project_root())
+    coord_ids = expand_wave_coordination_ids(selectors, project_dir, logger)
+    blocked = check_close_coordination_todos(
+        coord_ids, project_dir, logger, action="complete"
+    ) if coord_ids else None
+    if blocked is None:
+        _output_allow_json()
+        return []
+    ticket_id, message = blocked
+    logger.warning(f"協調票 {ticket_id} 經 batch-complete --wave 被阻擋：未配對用戶待辦")
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "additionalContext": message,
+        }
+    }, ensure_ascii=False, indent=2))
+    raise SystemExit(EXIT_BLOCK)
+
+
 def _extract_ticket_ids_or_skip(tool_name: str, command: str, logger) -> List[str]:
     """識別 complete 命令並提取全部 Ticket ID；非 complete 或無 ID 時輸出 allow 並回空清單。"""
     if tool_name != "Bash":
@@ -1174,6 +1264,9 @@ def _extract_ticket_ids_or_skip(tool_name: str, command: str, logger) -> List[st
 
     ticket_ids = extract_ticket_ids_from_command(command, logger)
     if not ticket_ids:
+        selectors = extract_batch_wave_selectors(command, logger)
+        if selectors:
+            return _check_wave_coordination(selectors, logger)
         logger.error("無法從命令中提取 Ticket ID")
         _output_allow_json()
         return []
