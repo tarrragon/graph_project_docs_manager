@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/assembly/shell.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 
 import '../../helpers/helpers.dart';
 

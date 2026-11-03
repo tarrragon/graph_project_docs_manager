@@ -15,9 +15,6 @@ library;
 
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 
-export 'package:graph_project_docs_manager/state/state_holder.dart'
-    show StateHolderOverride;
-
 /// 降級型別表旗標，預設 `false`（未降級）。
 final degradedSchemaProvider = stateHolderProvider<bool>((ref) => false);
 

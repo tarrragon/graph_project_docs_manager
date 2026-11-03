@@ -14,6 +14,7 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/main.dart' show DocsManagerApp;
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';

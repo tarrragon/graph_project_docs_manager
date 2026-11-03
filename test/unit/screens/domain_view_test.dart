@@ -40,6 +40,7 @@ import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/screens/project_switcher/project_switcher_overlay.dart';
 import 'package:graph_project_docs_manager/app/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/domain_view_fixtures.dart';
