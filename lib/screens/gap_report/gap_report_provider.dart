@@ -149,6 +149,10 @@ class GapReportNotifier extends Notifier<GapReportState> {
   /// 或先前輪次取不到而等待新輪（[_awaitingRound]）；其他消費者在本頁已有
   /// 結果時完成的輪次不覆蓋本頁。失敗與不可用不屬完成訊號，仍由
   /// [_onRoundEvent] 處理（ScanRoundState 無失敗狀態）。
+  ///
+  /// 前提：ScanRoundCompleted 在 _runGuarded 的 await 之後同步設定，早於
+  /// scheduler _onDone（whenComplete）把 _running 設為 false，故此處讀
+  /// scheduler.isRunning 仍為 true。
   void _onRoundCompleted(ScanRoundResult result) {
     if (_cancelHold) return;
     final awaiting = _awaitingRound;
@@ -156,7 +160,6 @@ class GapReportNotifier extends Notifier<GapReportState> {
     if (!awaiting && !scheduler.isRunning) return;
     _awaitingRound = false;
     _presentation.onRoundCompleted(
-      ScanTrigger.manual,
       gapItemIdsOf(result),
       rerunPending: scheduler.hasPendingRerun,
     );

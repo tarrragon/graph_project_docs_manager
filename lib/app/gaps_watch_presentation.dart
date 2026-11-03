@@ -33,11 +33,7 @@ class GapsWatchPresentation {
   }
 
   /// 一輪完成；[rerunPending] 表示排程尚有待重跑的一輪。
-  void onRoundCompleted(
-    ScanTrigger trigger,
-    Set<String> itemIds, {
-    required bool rerunPending,
-  }) {
+  void onRoundCompleted(Set<String> itemIds, {required bool rerunPending}) {
     if (_awaitManual && rerunPending) return;
     _shown = itemIds;
     _scanning = false;
