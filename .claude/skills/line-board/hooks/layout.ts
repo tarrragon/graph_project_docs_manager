@@ -75,13 +75,14 @@ function activityOf(dispatches: readonly DispatchRow[], gateTickets: readonly Ga
 
 /**
  * 佇列中正持有閘門的票：閘門持有者的分支為 `feat/<完整票號>`（shortBranch 縮成完整票號）。
- * 同組已有該票階段為閘門的派發列時不重複列；worktree 代理人的分支由派發列的階段表達，不在此判定。
+ * 同組已有該票階段為閘門的派發列（以完整票號比對，沒有票號的派發不參與）時不重複列；
+ * worktree 代理人的分支由派發列的階段表達，不在此判定。
  */
 function laneGateTickets(lane: Lane, dispatches: readonly DispatchRow[], context: LayoutContext): GateTicket[] {
-  const shownInGate = dispatches.filter(row => row.stage === '閘門').map(row => row.task)
+  const shownInGate = dispatches.filter(row => row.stage === '閘門').map(row => row.ticketId)
   const gates: GateTicket[] = []
   for (const token of lane.tokens) {
-    if (token.kind !== 'ticket' || shownInGate.includes(token.serial) || gates.some(gate => gate.serial === token.serial)) continue
+    if (token.kind !== 'ticket' || shownInGate.includes(token.id) || gates.some(gate => gate.serial === token.serial)) continue
     const holder = context.holders.find(item => item.branch.startsWith('feat/') && shortBranch(item.branch) === token.id)
     if (holder !== undefined) gates.push({ serial: token.serial, since: holder.since })
   }

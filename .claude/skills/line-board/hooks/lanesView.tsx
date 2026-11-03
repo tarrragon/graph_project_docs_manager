@@ -220,14 +220,14 @@ function renderLaneGroup(
 type TicketColorOf = (id: string, serial: string) => string | undefined
 
 /**
- * 佇列票的顏色，佇列列與佇列細節共用：依該票所有的派發列階段（不限同一群組，以短票號比對任務欄）、
- * 同群組的閘門票列與主 checkout 的狀態，經 queueTicketState 判定。
+ * 佇列票的顏色，佇列列與佇列細節共用：依該票所有的派發列階段（不限同一群組，以完整票號比對派發列的 ticketId，
+ * 沒有票號的派發不參與）、同群組的閘門票列與主 checkout 的狀態，經 queueTicketState 判定。
  */
 function queueColorOf(group: LaneGroup, tickets: readonly TicketStatus[], allRows: readonly DispatchRow[]): TicketColorOf {
   const statusById = new Map(tickets.map(ticket => [ticket.id, ticket.status]))
   return (id, serial) => {
     const stages = [
-      ...allRows.filter(row => row.task === serial).map(row => row.stage),
+      ...allRows.filter(row => row.ticketId === id).map(row => row.stage),
       ...(group.gateTickets.some(gate => gate.serial === serial) ? (['閘門'] as const) : []),
     ]
     return boardStateColor(queueTicketState(statusById.get(id), stages))
