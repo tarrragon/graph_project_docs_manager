@@ -18,7 +18,7 @@ import {
   sessionJson,
   ticketFile,
 } from './fixtures'
-import { GROUP_BORDER_COLUMNS, groupTitleKey, laneDetailId } from '../hooks/lanesView'
+import { GROUP_BORDER_COLUMNS, laneDetailId } from '../hooks/lanesView'
 import { GROUP_INDENT, MERGE_GATE_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from '../hooks/layout'
 import { MERGE_LOG_PATH } from '../hooks/mergeGate'
 import {
@@ -31,8 +31,10 @@ import {
   runBoardCommand,
   sessionStub,
   startBoard,
+  textsOf,
+  titleOf,
 } from './paneHarness'
-import type { CliFailure } from './paneHarness'
+import type { CliFailure, Ui } from './paneHarness'
 import { ticketFileCandidates } from '../hooks/shared'
 
 /** 預設協調票的票檔（相對 repo root）：由票號推導，取 ticketFileCandidates 的第一個候選（hierarchical）。 */
@@ -46,28 +48,6 @@ const QUEUE_NO_TICKET_LABEL = '［佇列無票號］'
 async function callLineStatus($: Parameters<typeof runBoardCommand>[0]): Promise<string> {
   const outcome = await $.tool.call({ tool: 'mcp__line-board__line_status' } as never)
   return String((outcome as { result?: unknown }).result)
-}
-
-type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
-
-/** 群組標題的各行：標題列（Button）的文字，其後為標題 Box 內各 Text 的文字（目標、活動計數）；群組未畫出時為 undefined。 */
-async function titleOf(ui: Ui, id: string): Promise<string[] | undefined> {
-  const header = await ui.find({ type: 'Button', key: groupToggleKey(id) })
-  const title = await ui.find({ type: 'Box', key: groupTitleKey(id) })
-  return header === undefined || title === undefined ? undefined : [header.text, ...textLines(title.children)]
-}
-
-/** 描述節點內所有 Text 的文字，依文件順序（Text 包在縮排的 Box 內時往下找）；Button 的文字不在其中。 */
-function textLines(nodes: readonly unknown[]): string[] {
-  const texts: string[] = []
-  for (const node of nodes) {
-    if (typeof node !== 'object' || node === null) continue
-    const element = node as { type?: unknown; children?: unknown; props?: { children?: unknown } }
-    const children = Array.isArray(element.children) ? element.children : Array.isArray(element.props?.children) ? element.props.children : []
-    if (element.type === 'Text') texts.push(children.filter((child): child is string => typeof child === 'string').join(''))
-    else if (element.type !== 'Button') texts.push(...textLines(children))
-  }
-  return texts
 }
 
 /**
@@ -353,7 +333,7 @@ describe('Pane', () => {
   /** 線群組的佇列細節各行；細節收合（未畫出）時為 undefined。 */
   async function detailOf(ui: Ui, laneId: string): Promise<string[] | undefined> {
     const box = await ui.find({ type: 'Box', key: groupBodyKey(laneDetailId(laneId)) })
-    return box === undefined ? undefined : textLines(box.children)
+    return box === undefined ? undefined : textsOf(box.children)
   }
 
   test('佇列細節：有佇列列的線群組各有一個細節按鍵，預設收合；按下後逐張列出未完成佇列票的短票號、狀態與 title，title 只讀主 checkout、讀不到時標明', async ($, on) => {

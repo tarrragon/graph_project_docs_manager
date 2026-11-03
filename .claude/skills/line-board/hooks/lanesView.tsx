@@ -28,7 +28,7 @@ import {
   formatActivity,
   formatGateTicket,
   formatGroupDispatchRow,
-  formatGroupTitle,
+  formatGroupToggle,
   groupBodyKey,
   groupToggleKey,
   isDefaultExpanded,
@@ -119,7 +119,7 @@ export function renderGroup({ Box, Text, Button }: Elements, frame: GroupFrame, 
       {/* 標題列不隨無活動變淡：實機上淡色會把標題色換成灰色，標題列就與其下的淡色各行同色；無活動由其下各行的淡色與 ▸ 表達 */}
       <Button key={groupToggleKey(frame.id)} plain onPress={() => onToggle(frame.id, frame.isOpen)}>
         <Text color={GROUP_TITLE_COLOR} bold>
-          {formatGroupTitle([frame.title], frame.isOpen)}
+          {formatGroupToggle(frame.title, frame.isOpen)}
         </Text>
       </Button>
       {details}
@@ -292,7 +292,7 @@ function queueDetail(
   const isOpen = isGroupExpanded(id, false, toggle.overrides)
   const button = (
     <Button key={groupToggleKey(id)} plain onPress={() => toggle.onToggle(id, isOpen)}>
-      <Text>{formatGroupTitle([QUEUE_DETAIL_LABEL], isOpen)}</Text>
+      <Text>{formatGroupToggle(QUEUE_DETAIL_LABEL, isOpen)}</Text>
     </Button>
   )
   if (!isOpen) return [button]

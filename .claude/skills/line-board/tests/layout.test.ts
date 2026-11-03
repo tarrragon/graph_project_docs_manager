@@ -10,7 +10,7 @@ import {
   formatActivity,
   formatGateTicket,
   formatGroupDispatchRow,
-  formatGroupTitle,
+  formatGroupToggle,
   formatQueueRow,
   isDefaultExpanded,
   isGroupExpanded,
@@ -147,9 +147,9 @@ describe('群組的顯示文字', () => {
     expect(formatActivity({ dispatching: 0, inGate: 0, isWaiting: false, queued: 0 })).toBe('')
   })
 
-  test('標題列：展開為 ▾、收合為 ▸，各段以「｜」分隔，空段略過', () => {
-    expect(formatGroupTitle(['L7', 's［busy］', '', '2 派發中'], true)).toBe('▾ L7｜s［busy］｜2 派發中')
-    expect(formatGroupTitle(['L9', 's［離線］', '4 排隊'], false)).toBe('▸ L9｜s［離線］｜4 排隊')
+  test('切換文字：展開為 ▾ 加標題、收合為 ▸ 加標題', () => {
+    expect(formatGroupToggle('L7 s［busy］', true)).toBe('▾ L7 s［busy］')
+    expect(formatGroupToggle('佇列細節', false)).toBe('▸ 佇列細節')
   })
 
   test('群組內的派發列不帶線號：代理人｜任務｜階段｜距派發時間；缺派發時間為時間不明', () => {
