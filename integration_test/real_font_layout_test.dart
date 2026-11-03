@@ -21,7 +21,6 @@ import 'package:graph_project_docs_manager/screens/node_detail/node_detail_state
 import 'package:graph_project_docs_manager/screens/trace/trace_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_providers.dart';
 import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
-import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_fixtures.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_providers.dart';
 import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -65,6 +64,36 @@ const Map<AppDestination, String> _readyKey = {
   AppDestination.nodeDetail: 'state-nodeDetail-normal',
 };
 
+// i18n-exempt: 版面測試用固定票列資料值
+const List<TicketFixtureItem> _fixtureTickets = [
+  TicketFixtureItem(
+    id: '0.1.0-W1-002',
+    title: '建立六項導覽的路由殼',
+    status: 'completed',
+    priority: 'P1',
+    topic: 'shell',
+  ),
+  TicketFixtureItem(
+    id: '0.1.0-W2-002',
+    title: '實作破洞報告畫面',
+    status: 'in_progress',
+    priority: 'P1',
+    blockedBy: ['0.1.0-W1-002'],
+    topic: 'screens',
+  ),
+  TicketFixtureItem(
+    id: '0.1.0-W3-076',
+    title: '回填四軸追溯矩陣現況',
+    status: 'pending',
+    priority: 'P2',
+  ),
+  TicketFixtureItem(
+    id: '0.25.0-W1-010',
+    title: '0.25.0-W1-010.md',
+    corrupted: true,
+  ),
+];
+
 void main() {
   ensureItBinding();
 
@@ -99,7 +128,7 @@ void main() {
                 ),
               if (destination == AppDestination.tickets)
                 ticketListStateProvider.overrideWith(
-                  (ref) => const TicketsReady(tickets: TicketListFixtures.all),
+                  (ref) => const TicketsReady(tickets: _fixtureTickets),
                 ),
             ],
             child: DocsManagerApp(

@@ -104,7 +104,6 @@ class _TraceTree extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final expanded = ref.watch(expandedTraceNodesProvider);
-    final ticketsLoaded = ref.watch(ticketsLoadedProvider);
 
     void onToggle(String nodeId) {
       final notifier = ref.read(expandedTraceNodesProvider.notifier);
@@ -126,27 +125,6 @@ class _TraceTree extends ConsumerWidget {
     return Panel.scrollable(
       scrollKey: const Key('scroll-traceability-tree'),
       children: [
-        if (!ticketsLoaded) ...[
-          AppText.singleLine(
-            l10n.traceabilityTicketsNotLoadedHint,
-            variant: AppTextVariant.caption,
-          ),
-          ButtonRow(
-            alignment: ButtonRowAlignment.end,
-            children: [
-              AppButton(
-                label: l10n.gotoTicketsListAction,
-                testKey: const Key('action-traceability-goto-tickets'),
-                variant: AppButtonVariant.text,
-                onPressed: () => navigateTo(
-                  ref.read,
-                  AppDestination.tickets,
-                  NavIntent.jump,
-                ),
-              ),
-            ],
-          ),
-        ],
         Tree(
           nodes: [
             for (final root in roots)

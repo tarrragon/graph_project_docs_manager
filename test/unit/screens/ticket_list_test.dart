@@ -3,8 +3,6 @@
 //
 // 涵蓋：
 //   專案未就緒          state-tickets-project-unready   EmptyState.page
-//   未載入              state-tickets-unloaded          LoadPrompt
-//   載入中              state-tickets-loading           LoadingState.progressBar
 //   正常 · 列表          state-tickets-list              Panel[Toolbar,AppDataTable,SplitRow.footer]
 //   正常 · 主題          state-tickets-topic             Panel.scrollable[Section.collapsible...]
 //   無 ticket           state-tickets-empty             EmptyState.page
@@ -91,82 +89,6 @@ void main() {
         container.read(selectedDestinationProvider),
         AppDestination.domain,
       );
-    });
-  });
-
-  group('未載入 state-tickets-unloaded', () {
-    testWidgetsAtEachSize('渲染 LoadPrompt', (tester, size) async {
-      await pumpHarness(
-        tester,
-        child: const TicketListScreen(),
-        overrides: [
-          ticketListStateProvider.overrideWith(
-            (ref) => const TicketsUnloaded(count: 7),
-          ),
-        ],
-        size: size,
-      );
-
-      expect(AnchorFinder.state(Screen.tickets, 'unloaded'), findsOneWidget);
-      expect(find.byType(LoadPrompt), findsOneWidget);
-      expectNoOverflow(tester);
-    });
-
-    testWidgets('action-tickets-start-load → 進入載入中', (tester) async {
-      final container = await pumpHarness(
-        tester,
-        child: const TicketListScreen(),
-        overrides: [
-          ticketListStateProvider.overrideWith(
-            (ref) => const TicketsUnloaded(count: 3),
-          ),
-        ],
-      );
-
-      await tester.tap(AnchorFinder.action(Screen.tickets, 'start-load'));
-      await tester.pump();
-
-      expect(container.read(ticketListStateProvider), isA<TicketsLoading>());
-    });
-  });
-
-  group('載入中 state-tickets-loading', () {
-    testWidgetsAtEachSize('渲染 LoadingState.progressBar', (tester, size) async {
-      await pumpHarness(
-        tester,
-        child: const TicketListScreen(),
-        overrides: [
-          ticketListStateProvider.overrideWith(
-            (ref) => const TicketsLoading(total: 5, processedCount: 2),
-          ),
-        ],
-        size: size,
-        settle: false,
-      );
-
-      expect(AnchorFinder.state(Screen.tickets, 'loading'), findsOneWidget);
-      expect(find.byType(LoadingState), findsOneWidget);
-      expectNoOverflow(tester);
-    });
-
-    testWidgets('action-tickets-cancel-load → 回到未載入', (tester) async {
-      final container = await pumpHarness(
-        tester,
-        child: const TicketListScreen(),
-        overrides: [
-          ticketListStateProvider.overrideWith(
-            (ref) => const TicketsLoading(total: 5, processedCount: 2),
-          ),
-        ],
-        settle: false,
-      );
-
-      await tester.tap(AnchorFinder.action(Screen.tickets, 'cancel-load'));
-      await tester.pump();
-
-      final state = container.read(ticketListStateProvider);
-      expect(state, isA<TicketsUnloaded>());
-      expect((state as TicketsUnloaded).count, 5);
     });
   });
 
@@ -633,16 +555,14 @@ void main() {
       expect(AnchorFinder.state(Screen.tickets, 'list'), findsOneWidget);
     });
 
-    testWidgets('未載入等非 TicketsReady 狀態不渲染頁首模式切換（正向對照）', (tester) async {
+    testWidgets('無 ticket 等非 TicketsReady 狀態不渲染頁首模式切換（正向對照）', (tester) async {
       await pumpApp(
         tester,
         overrides: [
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.tickets,
           ),
-          ticketListStateProvider.overrideWith(
-            (ref) => const TicketsUnloaded(count: 3),
-          ),
+          ticketListStateProvider.overrideWith((ref) => const TicketsEmpty()),
         ],
       );
 

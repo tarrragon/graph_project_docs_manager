@@ -44,38 +44,6 @@ void main() {
     }
   });
 
-  group('變體與狀態矩陣：progressBar × loading/cancelling', () {
-    for (final cancelling in [false, true]) {
-      testWidgetsAtEachSize('progressBar cancelling=$cancelling 不溢位', (
-        tester,
-        size,
-      ) async {
-        // cancelling=true 時 progress 改 indeterminate（C3），
-        // LinearProgressIndicator 進入連續動畫，settle 永不收斂。
-        await pumpHarness(
-          tester,
-          size: size,
-          settle: !cancelling,
-          child: LoadingState.progressBar(
-            message: 'domainLoading',
-            progress: 0.45,
-            countText: 'count',
-            isCancelling: cancelling,
-            onCancel: () {},
-            testKey: testKey,
-            cancelKey: cancelKey,
-          ),
-        );
-        if (cancelling) {
-          await tester.pump();
-        }
-
-        expectNoOverflow(tester);
-        expect(find.byKey(testKey), findsOneWidget);
-      });
-    }
-  });
-
   group('最長測試文案：訊息與計數截斷', () {
     testWidgetsAtEachSize('skeleton 最長訊息與計數不溢位', (tester, size) async {
       await pumpHarness(
@@ -96,41 +64,25 @@ void main() {
 
       expectNoOverflow(tester);
     });
-
-    testWidgetsAtEachSize('progressBar 最長訊息與計數不溢位', (tester, size) async {
-      await pumpHarness(
-        tester,
-        size: size,
-        child: LoadingState.progressBar(
-          message: TestCopy.longZh,
-          progress: 0.5,
-          countText: TestCopy.longEn,
-          isCancelling: false,
-          onCancel: () {},
-          testKey: testKey,
-          cancelKey: cancelKey,
-        ),
-      );
-
-      expectNoOverflow(tester);
-    });
   });
 
   group('zh / en 既有 key 不溢位', () {
     for (final locale in kTestLocales) {
-      testWidgets('progressBar @ $locale 不溢位', (tester) async {
+      testWidgets('skeleton @ $locale 不溢位', (tester) async {
         await pumpHarness(
           tester,
           locale: locale,
-          child: LoadingState.progressBar(
+          settle: false,
+          child: LoadingState.skeleton(
             message: 'domainLoading',
-            progress: 0.5,
+            skeletonLayout: SkeletonLayout.matrix,
             isCancelling: false,
             onCancel: () {},
             testKey: testKey,
             cancelKey: cancelKey,
           ),
         );
+        await tester.pump();
 
         expectNoOverflow(tester);
       });
@@ -141,9 +93,10 @@ void main() {
     testWidgets('C1：第一幀取消鈕 enabled', (tester) async {
       await pumpHarness(
         tester,
-        child: LoadingState.progressBar(
+        settle: false,
+        child: LoadingState.skeleton(
           message: 'domainLoading',
-          progress: 0.1,
+          skeletonLayout: SkeletonLayout.matrix,
           isCancelling: false,
           onCancel: () {},
           testKey: testKey,
@@ -167,9 +120,9 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: StatefulBuilder(
-              builder: (context, setState) => LoadingState.progressBar(
+              builder: (context, setState) => LoadingState.skeleton(
                 message: 'domainLoading',
-                progress: 0.1,
+                skeletonLayout: SkeletonLayout.matrix,
                 isCancelling: isCancelling,
                 onCancel: () => setState(() => isCancelling = true),
                 testKey: testKey,
@@ -179,7 +132,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       await tester.tap(find.byKey(cancelKey));
       await tester.pump(Motion.feedback);
@@ -242,27 +195,6 @@ void main() {
       expect(find.byType(Dialog), findsNothing);
     });
 
-    testWidgets('C3：progressBar 取消中進度改 indeterminate', (tester) async {
-      await pumpHarness(
-        tester,
-        settle: false,
-        child: LoadingState.progressBar(
-          message: 'domainLoading',
-          progress: 0.7,
-          isCancelling: true,
-          onCancel: () {},
-          testKey: testKey,
-          cancelKey: cancelKey,
-        ),
-      );
-      await tester.pump();
-
-      final indicator = tester.widget<LinearProgressIndicator>(
-        find.byType(LinearProgressIndicator),
-      );
-      expect(indicator.value, isNull);
-    });
-
     testWidgets('C8：連按取消 onCancel 只呼叫一次（disabled 後不再觸發）', (tester) async {
       var callCount = 0;
       var isCancelling = false;
@@ -272,9 +204,9 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: StatefulBuilder(
-              builder: (context, setState) => LoadingState.progressBar(
+              builder: (context, setState) => LoadingState.skeleton(
                 message: 'domainLoading',
-                progress: 0.1,
+                skeletonLayout: SkeletonLayout.matrix,
                 isCancelling: isCancelling,
                 onCancel: () {
                   callCount++;
@@ -287,7 +219,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       await tester.tap(find.byKey(cancelKey));
       await tester.pump(Motion.feedback);
@@ -318,34 +250,16 @@ void main() {
       expect(find.textContaining('%'), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsNothing);
     });
-
-    testWidgets('progressBar 的 value 等於 parsed / total', (tester) async {
-      await pumpHarness(
-        tester,
-        child: LoadingState.progressBar(
-          message: 'domainLoading',
-          progress: 0.42,
-          isCancelling: false,
-          onCancel: () {},
-          testKey: testKey,
-          cancelKey: cancelKey,
-        ),
-      );
-
-      final indicator = tester.widget<LinearProgressIndicator>(
-        find.byType(LinearProgressIndicator),
-      );
-      expect(indicator.value, 0.42);
-    });
   });
 
   group('最短顯示與 disableAnimations', () {
     testWidgets('pump(Motion.feedback) 後根錨點仍存在（最短顯示）', (tester) async {
       await pumpHarness(
         tester,
-        child: LoadingState.progressBar(
+        settle: false,
+        child: LoadingState.skeleton(
           message: 'domainLoading',
-          progress: 0.1,
+          skeletonLayout: SkeletonLayout.matrix,
           isCancelling: false,
           onCancel: () {},
           testKey: testKey,
@@ -435,9 +349,9 @@ void main() {
           testKey: testKey,
           cancelKey: cancelKey,
         ),
-        'progressBar cancelling=$cancelling': LoadingState.progressBar(
+        'skeleton sections cancelling=$cancelling': LoadingState.skeleton(
           message: messageLabel,
-          progress: 0.45,
+          skeletonLayout: SkeletonLayout.sections,
           countText: countLabel,
           isCancelling: cancelling,
           onCancel: () {},

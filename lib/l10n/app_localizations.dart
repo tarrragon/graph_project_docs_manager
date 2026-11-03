@@ -236,18 +236,6 @@ abstract class AppLocalizations {
   /// **'此專案尚無提案'**
   String get emptyProposalMessage;
 
-  /// SPEC-001 §4 Ticket 清單·未載入狀態的顯示文案
-  ///
-  /// In zh, this message translates to:
-  /// **'載入 {count} 張 ticket'**
-  String ticketsLoadPrompt(int count);
-
-  /// SPEC-001 §4 Ticket 清單·載入中狀態的顯示文案
-  ///
-  /// In zh, this message translates to:
-  /// **'已解析 {parsed} 筆'**
-  String ticketsLoadingProgress(int parsed);
-
   /// SPEC-001 §4 Ticket 清單·正常·主題狀態的未歸屬節標題文案
   ///
   /// In zh, this message translates to:
@@ -806,12 +794,6 @@ abstract class AppLocalizations {
   /// **'載入中'**
   String get loadingSkeletonA11yLabel;
 
-  /// SPEC-004 §4.24：進度朗讀標籤
-  ///
-  /// In zh, this message translates to:
-  /// **'進度 {parsed} / {total}'**
-  String progressA11yLabel(int parsed, int total);
-
   /// SPEC-004 §1 畫面（4.21 section 呼叫端；SPEC-003 §3.1）：格詳情卡提示文案
   ///
   /// In zh, this message translates to:
@@ -1262,23 +1244,11 @@ abstract class AppLocalizations {
   /// **'前往 Domain 視圖'**
   String get gotoDomainViewAction;
 
-  /// SPEC-003 §3.3 追溯視圖：Ticket 清單未載入時的前往動作文案（`0.1.0-W3-335.38` S-28）
-  ///
-  /// In zh, this message translates to:
-  /// **'前往 Ticket 清單'**
-  String get gotoTicketsListAction;
-
   /// SPEC-004 §4.0.6：追溯視圖鏈路斷裂缺口列主文字，layer 為缺的下游層型別名
   ///
   /// In zh, this message translates to:
   /// **'（尚無 {layer}）'**
   String traceabilityNoDownstream(String layer);
-
-  /// SPEC-004 §4.0.6：追溯視圖 Ticket 清單未載入時樹上方常駐說明文字（S-28）
-  ///
-  /// In zh, this message translates to:
-  /// **'Ticket 尚未載入'**
-  String get traceabilityTicketsNotLoadedHint;
 
   /// SPEC-004 §4.26；SPEC-003 §3.4〈帶目標跳入〉目標被搜尋詞或篩選隱藏時清除後的提示
   ///

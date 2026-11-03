@@ -92,16 +92,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get emptyProposalMessage => '此專案尚無提案';
 
   @override
-  String ticketsLoadPrompt(int count) {
-    return '載入 $count 張 ticket';
-  }
-
-  @override
-  String ticketsLoadingProgress(int parsed) {
-    return '已解析 $parsed 筆';
-  }
-
-  @override
   String get ticketsUnassignedSection => '未歸屬';
 
   @override
@@ -417,11 +407,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loadingSkeletonA11yLabel => '載入中';
 
   @override
-  String progressA11yLabel(int parsed, int total) {
-    return '進度 $parsed / $total';
-  }
-
-  @override
   String get cellDetailPrompt => '點選一格檢視詳情';
 
   @override
@@ -710,15 +695,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gotoDomainViewAction => '前往 Domain 視圖';
 
   @override
-  String get gotoTicketsListAction => '前往 Ticket 清單';
-
-  @override
   String traceabilityNoDownstream(String layer) {
     return '（尚無 $layer）';
   }
-
-  @override
-  String get traceabilityTicketsNotLoadedHint => 'Ticket 尚未載入';
 
   @override
   String get ticketsFiltersClearedSnackbarMessage => '已清除搜尋與篩選以顯示目標 ticket';

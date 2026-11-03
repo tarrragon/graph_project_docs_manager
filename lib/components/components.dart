@@ -22,7 +22,6 @@ export 'expander_icon.dart';
 export 'filter_dropdown.dart';
 export 'issue_marker.dart';
 export 'list_row.dart';
-export 'load_prompt.dart';
 export 'loading_state.dart';
 export 'matrix_cell.dart';
 export 'matrix_grid.dart';

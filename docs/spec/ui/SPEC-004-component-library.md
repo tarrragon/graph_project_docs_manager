@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-03"
-version: "1.117"
+version: "1.118"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -151,8 +151,7 @@ depends_on_domains: [layout]
 | `EmptyState`（空狀態） | 元件 | L3 | 「這裡目前沒有內容」+ 至少一個非返回的前進動作（FR-03，`page` 列舉狀態；無破洞與 `section` 例外見 SPEC-003 §2.7）；訊息、說明、動作為 slot | §1（未選專案、空圖、未選格右欄、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化）、§2（專案未就緒、無 UC、尚未選定 UC、flow 未結構化）、§3（專案未就緒、無提案、圖不可用）、§4（專案未就緒、無 ticket）、§5（專案未就緒、無破洞）、§6（專案未就緒、未選節點、圖不可用、節點不在目前的圖上） | `page`（全頁）/ `section`（區塊內：與 UC 基本資訊並列、未選格右欄、泳道 · 尚未選定 UC、泳道 · flow 未結構化、§2 尚未選定 UC）；`missing` 改為獨立元件 `MissingSourceState`、`compact` 刪除（§3.7 第 3 項） |
 | `MissingSourceState`（原始檔已消失） | 元件 | L3 | 「原始檔已不存在」+ 最後已知路徑 + 重新整理／返回；退出留在畫面內（重新整理三分支，SPEC-003 §3.6），與 `EmptyState.page` 的跳轉層級不同故獨立 | §6（原始檔已消失） | `default` |
 | `BlockedState`（阻擋狀態） | 元件 | L3 | 「這個專案不適用本 App」+ 版本值（不是框架專案無）+ 說明 + 切換專案出口（恆可用，FR-07）；無可消費的型別表時另提供「以 App 內建型別表檢視」條件式渲染出口（`action-domain-degraded-view`，SPEC-003 §3.1，`0.1.0-W1-035` 定案）。載入失敗不屬「不適用」，同以本元件承載但內容不同：訊息改為結果與原因（`domainLoadFailedMessage`）+ 「重新載入」（`action-domain-reload`，`onReload` 非 null 時渲染）+ 切換專案出口，無版本值、無說明（§3.6 該列，`0.5.0-W1-114.14.1`） | §1（不是框架專案、無可消費的型別表、schema 不相容、載入失敗） | `plain` / `withDetail`（附「檢視詳情」展開 `panel-domain-schema-detail`，內容為「App 已知版本範圍」一列標籤 + 值的 `Section`） |
-| `LoadingState`（載入態） | 元件 | L3 | 骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（共 10 條，SPEC-003 §2.5、§2.8）由本元件單一承擔 | §1（載入中）、§5（掃描中） | `skeleton`（indeterminate + 計數文字；骨架版位 slot：`matrix` / `sections`）/ `progressBar`（determinate + 已解析筆數／總數 N；v1.112 起無使用畫面，見 4.24〈變體〉） |
-| `LoadPrompt`（待載入提示） | 元件 | L3 | 「載入 N 張 ticket」+ 開始載入；不顯示預估耗時（SPEC-003 §3.4）；返回由頁面框架承載（4.25，`0.1.0-W3-335.57` E1） | 無（v1.112 起，原 §4 未載入） | `default`；v1.112 起無使用畫面，見 4.25 開頭的退役註記 |
+| `LoadingState`（載入態） | 元件 | L3 | 骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（共 10 條，SPEC-003 §2.5、§2.8）由本元件單一承擔 | §1（載入中）、§5（掃描中） | `skeleton`（indeterminate + 計數文字；骨架版位 slot：`matrix` / `sections`） |
 | `AppSnackBar`（即時訊息） | 元件 | L2 | 「已在外部開啟」「找不到檔案」類的暫時訊息，Material 預設動畫不覆寫 | §1、§2、§4、§5、§6、§7（`denied` fallback 於任一畫面） | `plain`（停留 `Motion.snackBar`）/ `withAction`（帶一個動作，停留 `Motion.snackBarWithAction`）；封裝為元件（§3.7 第 8 項） |
 
 #### 容器
@@ -227,7 +226,7 @@ depends_on_domains: [layout]
 | 1 | 空狀態 vs 阻擋狀態 | **不合併**（維持 SPEC-002 決定） | 語氣不同（「這裡目前沒有東西」vs「這個專案不適用」）、退出層級不同（跳轉至其他畫面 vs 離開專案）、FR-03 與 FR-07 的驗收會互相污染；SPEC-003 §2.7 已依此定行為差異 |
 | 2 | 未選專案（§1）併入空狀態 | **合併**為 `EmptyState.page` | SPEC-002 空狀態清單未列此狀態，但語意同為「沒有內容」，前進動作（選擇資料夾）非返回、觸發後進入載入中；與其他空狀態的差異只在動作目的地，依 skill 步驟 3「只是目的地不同者為 slot」 |
 | 3 | flow 未結構化、原始檔已消失、無最近專案 併入空狀態 | **合併**為 `EmptyState` 變體 `section` / `missing` / `compact` | 三者語意皆為「此處目前沒有內容」：flow 區塊無內容（與 UC 基本資訊並列，故為區塊級）、原始檔不在了（附最後已知路徑，前進動作重新整理）、最近清單為空（僅剩選擇資料夾動作）。反面理由：`missing` 的重新整理留在畫面內，與 `page` 的跳轉層級不同——若 PM 認定退出層級差異足以拆件，`missing` 改為獨立元件，其餘結論不變 |
-| 4 | 未載入（§4）併入空狀態 | **不合併**，立 `LoadPrompt` | 語意相反：空狀態說「沒有內容」，未載入說「有 N 筆內容尚未載入」；含數值角色（N）；前進動作進入載入態並由 FR-02 取消契約承接；FR-03 對它不適用。合併會讓「空狀態必有前進動作」與「未載入必顯示票數」兩條驗收互相污染 |
+| 4 | 未載入（§4）併入空狀態 | **不合併**，立 `LoadPrompt`（v1.118 起元件退役，見 4.25） | 語意相反：空狀態說「沒有內容」，未載入說「有 N 筆內容尚未載入」；含數值角色（N）；前進動作進入載入態並由 FR-02 取消契約承接；FR-03 對它不適用。合併會讓「空狀態必有前進動作」與「未載入必顯示票數」兩條驗收互相污染 |
 | 5 | 三處載入態合為一個元件 | **合併**為 `LoadingState`，變體依進度型別 | SPEC-003 §2.11「取消契約由載入態元件單一承擔」，三處差異只有目標態與進度型別（骨架 indeterminate ×2、進度條 determinate ×1）；骨架版位（矩陣／分節）為 slot 不是變體 |
 | 6 | 損壞標記（兩級）+ 追溯缺口 合為一族 | **合併**為 `IssueMarker`（SPEC-002 的「損壞標記」更名） | 三者皆為修飾既有節點或欄位的問題標記、皆可點擊跳轉破洞報告（`badge-tickets-corrupted`、`badge-traceability-broken-*`）；差異在觸發原因（損壞 vs 缺口）與外觀（虛線框 vs 圖示計數），為變體 |
 | 7 | 損壞計數徽章併入 `Badge` | **不合併** | `Badge` 為非互動元素（SPEC-003 §3.7 健康徽章「點擊不產生任何反應且不呈現按鈕形態」），損壞計數可點擊跳轉；行為差異足以拆件 |
@@ -604,7 +603,6 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `treeDepthA11yLabel` | 第 {depth} 層 | Level {depth} | depth | 4.39 |
 | `openExternallyA11yLabel` | 在外部開啟 | Opens externally | — | 4.40（`item`） |
 | `loadingSkeletonA11yLabel` | 載入中 | Loading | — | 4.24 |
-| `progressA11yLabel` | 進度 {parsed} / {total} | Progress {parsed} of {total} | parsed, total | 4.24 |
 | `cellDetailPrompt` | 點選一格檢視詳情 | Select a cell to view details | — | §1 畫面（4.21 `section` 呼叫端；SPEC-003 §3.1） |
 | `cellDetailNotInvolved` | 此 domain 不參與此 UC | This domain is not involved in this UC | — | §1 畫面（SPEC-003 §3.1） |
 | `cellDetailCloseAction` | 關閉 | Close | — | §1 畫面（4.4 `text` 呼叫端） |
@@ -660,8 +658,6 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `chooseFolderUnavailableMessage`（既有 key；原提案 `folderPickerUnavailableMessage` 與之語意完全重疊，`0.3.2-W3-368` 裁定沿用既有 key、不另立） | 無法開啟資料夾選取面板，應用程式可能安裝不完整 | Could not open the folder picker; the app may not be installed correctly | — | 4.26 `AppSnackBar.plain`（選擇器無法開啟，SPEC-003 §3.1，S-13／S-38；專案切換浮層內觸發者自 1.88 起改用 `switcherChooseFolderUnavailableReason`，不經 SnackBar，SPEC-003 §3.7）。文案為「結果陳述＋一般語言原因」，符合 §4.0.12 M1（原因非技術細節、非操作指引）；原 ARB 值「請確認應用程式安裝完整後重新啟動」屬操作指引，已依裁決改寫（用戶，2026-09-29，經 e1 以 AUQ，`0.3.3-W3-377` 候選 C）；ARB 實檔由實作票更新 |
 | `workspaceUnavailable`（既有 key） | 無法存取先前的資料夾：{reason} | Cannot access the previous folder: {reason} | reason | §1 未選專案說明區的常駐文字（`EmptyState.page` 的 `explanation`，取代 `folderAccessRationale`）：App 啟動且已存路徑還原失敗時降級為 `state-domain-unset` 並顯示，選定資料夾後消失（SPEC-001 §1、SPEC-003 §3.1〈生命週期〉，`0.3.3-W3-378` 用戶裁決 B）；`reason` 取 `WorkspaceUnavailable.reason` |
 | `folderUnavailableMessage` | 資料夾無法使用：{reason} | Folder unavailable: {reason} | reason | 4.26 `AppSnackBar.plain`（選定資料夾不可讀或不存在，`reason` 取 `WorkspaceUnavailable.reason`，SPEC-003 §3.1，S-13／S-38；專案切換浮層內觸發者自 1.88 起改用 `switcherFolderUnavailableReason` 或 4.9 `reason`，不經 SnackBar，SPEC-003 §3.7）。與既有 `workspaceUnavailable`（「無法存取先前的資料夾：{reason}」，啟動時還原上次資料夾的情境）語意不同——本 key 的對象是剛在選擇器選定的資料夾，不是「先前的」，`0.3.2-W3-368` 裁定保留新 key |
-| `traceabilityTicketsNotLoadedHint` | Ticket 尚未載入 | Tickets not loaded yet | — | v1.112 起無使用處（SPEC-001 v1.64 移除 Ticket 未載入情形）；原為 §3 正常／鏈路斷裂常駐說明列（4.40 `sectionHeader` 型式的說明列呼叫端，SPEC-003 §3.3，S-28） |
-| `gotoTicketsListAction`（原規格名 `gotoTicketsAction`，1.56 改用 ARB 名） | 前往 Ticket 清單 | Go to Ticket List | — | v1.112 起無使用處（同上）；原為 §3 常駐說明列動作（`AppButton.text` 呼叫端，`action-traceability-goto-tickets`，S-28）；en 大小寫取 ARB 現值（SPEC-001 未定 en 字面） |
 | `degradedSchemaShortLabel` | 內建型別表 | Built-in schema | — | 4.9 `RecentProjectItem`（`Badge.tag`，`isDegraded` 為 `true` 時，S-34） |
 | `probingReason` | 檢查中… | Checking… | — | 4.9 `RecentProjectItem`（disabled 列 `reason`，探測未完成時，S-37） |
 
@@ -3572,7 +3568,6 @@ EVT-CORPUS-004 項目說明：
 | 不該拿它做什麼 | 應改用 |
 |---------------|--------|
 | 「這個專案不適用本 App」、專案資料載入失敗 | `BlockedState` |
-| 「載入 N 張 ticket」 | `LoadPrompt` |
 | 「原始檔已不存在」 | `MissingSourceState` |
 | 浮層無最近專案 | `SwitcherOverlay` 零項 + `AppButton.text` |
 
@@ -3852,7 +3847,6 @@ EVT-CORPUS-004 項目說明：
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
 | `skeleton` | 骨架版位（`matrix` / `sections` slot）shimmer + indeterminate + 計數文字 | 分母未知：不顯示百分比、不顯示預估、不自行推進（SPEC-003 §2.6 誠實性硬規則） | `state-domain-loading`（版位 `matrix`）、`state-gaps-scanning`（版位 `sections`） |
-| `progressBar` | determinate 進度條 + 已解析筆數／總數 N | 進度值 = parsed / total | v1.112 起無使用畫面（原 `state-tickets-loading`，SPEC-001 v1.64 刪除該狀態）；保留定義至退役票處置 |
 
 #### 狀態矩陣
 
@@ -3872,7 +3866,7 @@ EVT-CORPUS-004 項目說明：
 | 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
 | 可互動提示 affordance | 使用者接近 | 取消鈕經 4.4 `AppButton`（loading：hover 態、`SystemMouseCursors.click`；cancelling：disabled 無 hover overlay，§4.0.1 disabled 列）；骨架、進度條、訊息、計數無 hover | 無（Material 內建，經 `AppButton`） | 無（同 4.4） | §1 子表「可互動提示」列（由 4.4 `AppButton` 承載） | 不適用 | 規格撰寫者 |
-| 焦點 focus | 使用者／輔助技術 | 取消鈕經 4.4 `AppButton` 進入 Tab 內容區段，C1 期間恆可聚焦（SPEC-003 §2.5、§2.10）；cancelling 時 disabled 不可聚焦；骨架區朗讀 `loadingSkeletonA11yLabel`、進度條朗讀 `progressA11yLabel`（無障礙子節），皆非停留點 | 無 | 無（SPEC-003 §2.10 只斷言焦點兩態裝飾可區分，不設時限；提案） | §1 子表「焦點」列（由 4.4 `AppButton` 承載） | loading →（取消鈕 focused）→ loading | 反應：UX 審查（SPEC-003 §2.5 C1、§2.10）；通道／狀態邊：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 取消鈕經 4.4 `AppButton` 進入 Tab 內容區段，C1 期間恆可聚焦（SPEC-003 §2.5、§2.10）；cancelling 時 disabled 不可聚焦；骨架區朗讀 `loadingSkeletonA11yLabel`（無障礙子節），非停留點 | 無 | 無（SPEC-003 §2.10 只斷言焦點兩態裝飾可區分，不設時限；提案） | §1 子表「焦點」列（由 4.4 `AppButton` 承載） | loading →（取消鈕 focused）→ loading | 反應：UX 審查（SPEC-003 §2.5 C1、§2.10）；通道／狀態邊：規格撰寫者 |
 | 按下確認 press-ack | 使用者 | 取消鈕經 4.4 `AppButton`（pressed 態 + ripple）；`Motion.feedback` 內取消鈕 `enabled=false` 且 label 換為 `cancelInProgressAction`（C2）；呼叫 `onCancel` 恰一次，連按 N 次狀態轉換只發生一次（C8 冪等）；呼叫端執行批次中止（C4 實作約束） | Material 內建 ripple（經 `AppButton`）；取消鈕 enabled → disabled 為離散替換 | pressed 態與 C2 轉換皆於 `Motion.feedback` 內（SPEC-003 §2.2、§2.5 C2） | §1 子表「按下確認」列（由 4.4 `AppButton` 承載） | loading → pressed → cancelling | 反應／時限：UX 審查（SPEC-003 §2.2、§2.5 C2、C8）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 由容器承載（4.28 `PageColumn`）：0.1 無定位至本元件的場景——載入態為全頁內容；系統通知點擊時若已進入新一輪 `state-gaps-scanning`，只切頁、顯示當時進度、不定位（SPEC-003 §2.2「點擊通知的導向」列） | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
 | 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：頁面層依載入 provider 改 `progress` / `countText` / `isCancelling` 傳值；含切換導覽項後回到畫面顯示當時進度（L1）、切換專案中止（L2），SPEC-003 §2.8） | 計數文字更新：兩次更新間隔不小於 `Motion.progressTick`，文字以 `liveRegion` 播報（SPEC-003 §2.6；無障礙子節）；loading → cancelling：版面不變、進度改 indeterminate、計數凍結於最後值（C3），取消中由取消鈕 label 換文案播報（無障礙子節）；骨架 shimmer 循環 `Motion.skeletonCycle`，`disableAnimations` 時靜態灰塊（SPEC-003 §2.1、§2.6）；進入本狀態自前一狀態 cross-fade `Motion.transition`（SPEC-003 §3.1、§3.4、§3.5 動畫提示）由畫面承載，重新掃描時現有結果立即被骨架取代、不做兩段動畫（§3.5 動畫提示） | `Motion.skeletonCycle`（骨架，動畫類，`disableAnimations` 下歸零）；cross-fade `Motion.transition` 由畫面承載；進度條推進為 determinate 值變化無動畫（SPEC-003 §3.4 動畫提示） | `Motion.progressTick`（計數更新最小間隔，契約類不歸零，SPEC-003 §2.6）；`Motion.spinnerMinVisible`（一旦渲染的最短存續，極小資料亦然，SPEC-003 §2.6）；C3 期間逐幀骨架根錨點存在直至 `Motion.cancelDeadline`（SPEC-003 §2.5 C3 斷言方式） | §1 子表「狀態變更提示」列（`Motion.*` 過渡適用（骨架、cross-fade）；無障礙播報適用（計數 `liveRegion`、取消鈕 label）；不升級系統通知——掃描**完成**的系統通知由頁面層依 SPEC-003 §2.2「系統層通知」承載，觸發於本元件被拆除的當下，非本元件的事件） | loading → loading（進度更新）/ loading → cancelling（C2）/ cancelling → 目標態（C4，由呼叫端拆除本元件） | 反應／時限：UX 審查（SPEC-003 §2.1、§2.5 C3、§2.6、§2.8）；通道／狀態邊：規格撰寫者 |
@@ -3900,16 +3894,15 @@ EVT-CORPUS-004 項目說明：
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
 | `message` | 否 | 1 | 截斷 | `domainLoading`（en「Resolving graph nodes…」）/ `gapReportScanning`；`TestCopy.longZh` |
-| `countText` | 否 | 1 | 截斷 | `domainLoadingProcessedCount`（count 代入 99999）/ `ticketsLoadingProgress`；`TestCopy.longEn` |
+| `countText` | 否 | 1 | 截斷 | `domainLoadingProcessedCount`（count 代入 99999）；`TestCopy.longEn` |
 | 取消鈕 label | 經 `AppButton` | | | `cancelLoadingAction`（en「Cancel loading」）、`cancelInProgressAction`（en「Cancelling…」） |
 
 #### slot 契約
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `message` | `String` | 是 | 呼叫端（`domainLoading` / `gapReportScanning`；tickets 用 `ticketsLoadingProgress` 作 countText，message 可空） |
-| `countText` | `String?` | 否 | 呼叫端（`domainLoadingProcessedCount` / `gapsScanningProcessedCount` / `ticketsLoadingProgress`） |
-| `progress` | `double?`（`progressBar`：parsed / total） | `progressBar` 必填 | 不適用 |
+| `message` | `String` | 是 | 呼叫端（`domainLoading` / `gapReportScanning`） |
+| `countText` | `String?` | 否 | 呼叫端（`domainLoadingProcessedCount` / `gapsScanningProcessedCount`） |
 | `skeletonLayout` | `SkeletonLayout { matrix, sections }`（`skeleton`） | `skeleton` 必填 | 不適用 |
 | `isCancelling` | `bool` | 是（狀態存於頁面層） | 不適用 |
 | `onCancel` | `VoidCallback` | 是 | 不適用 |
@@ -3930,9 +3923,9 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 | i18n key |
 |------|---------|
-| 訊息 / 計數 | `domainLoading` / `gapReportScanning` / `domainLoadingProcessedCount` / `gapsScanningProcessedCount` / `ticketsLoadingProgress`（既有） |
+| 訊息 / 計數 | `domainLoading` / `gapReportScanning` / `domainLoadingProcessedCount` / `gapsScanningProcessedCount`（既有） |
 | 取消 | `cancelLoadingAction` / `cancelScanAction` / `cancelInProgressAction`（既有） |
-| 骨架朗讀 | `loadingSkeletonA11yLabel`；進度朗讀 `progressA11yLabel` |
+| 骨架朗讀 | `loadingSkeletonA11yLabel` |
 
 #### 組合規則
 
@@ -3947,22 +3940,21 @@ EVT-CORPUS-004 項目說明：
 
 | 面向 | 要求 |
 |------|------|
-| 朗讀標籤 | 骨架區 `loadingSkeletonA11yLabel`；進度條 `progressA11yLabel`（parsed / total 代入）；取消鈕經 `AppButton` |
+| 朗讀標籤 | 骨架區 `loadingSkeletonA11yLabel`；取消鈕經 `AppButton` |
 | 狀態變化播報 | 計數文字為 `liveRegion`（更新間隔 `Motion.progressTick`）；取消中由取消鈕 label 換文案播報 |
 | 非視覺替代訊號 | 進度由文字計數承載，進度條顏色非唯一訊號 |
 | 焦點順序與操作路徑（桌機） | 取消鈕進入 Tab 內容區段；C1 期間恆可聚焦 |
 | 對比 | 依 §4.0.2 表 1：計數文字 `textSecondary` / `surfaceBase` 4.71:1，通過；取消鈕 enabled 與 cancelling 後的 disabled 依 4.4（disabled label `textDisabled` 屬非作用中元件豁免） |
 
-**實作註記**：`progressA11yLabel` 需要離散計數（parsed / total），但 slot 契約只提供 `progress: double?`（比值）。實作採比值轉百分比的等價語意：`progressA11yLabel((progress*100).round(), 100)`，讀作「進度 45 / 100」即 45%，為螢幕報讀器對百分比進度條的常見慣例，不影響朗讀語意，`progress` 型別不變。
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染 `skeleton`（`matrix` / `sections`）× loading / cancelling 與 `progressBar` × loading / cancelling
+- [ ] 一支測試渲染 `skeleton`（`matrix` / `sections`）× loading / cancelling
 - [ ] 兩種視窗尺寸下不溢位
 - [ ] 最長測試文案：訊息與計數截斷
 - [ ] zh / en 全部 key 皆不溢位
 - [ ] C1–C8 逐條：第一幀取消鈕 enabled；按下後 `pump(Motion.feedback)` 取消鈕 disabled 且文字為 `cancelInProgressAction`；逐幀 `pump(16 ms)` 至 `Motion.cancelDeadline` 根錨點恆存在、無 SnackBar / Dialog；連按取消 `onCancel` 只呼叫一次
-- [ ] indeterminate 情境畫面無 `%` 字元、無 `LinearProgressIndicator(value: 非 null)`；`progressBar` 的 value 等於 parsed / total
+- [ ] indeterminate 情境畫面無 `%` 字元、無 `LinearProgressIndicator(value: 非 null)`
 - [ ] `pump(Motion.feedback)` 後根錨點仍存在（最短顯示）；`disableAnimations` 為 `true` 時骨架靜態
 - [ ] 顏色、間距、時間值引用 token 非硬編碼
 
@@ -3971,133 +3963,12 @@ EVT-CORPUS-004 項目說明：
 | 不該拿它做什麼 | 應改用 |
 |---------------|--------|
 | 按鈕內的等待指示 | 禁止（SPEC-003 §2.2） |
-| 「載入 N 張 ticket」的觸發前提示 | `LoadPrompt` |
 | 重新整理單檔的等待 | 不套用（SPEC-003 §3.6：`Motion.cancelDeadline` 內直接抵達分支） |
 
-### 4.25 LoadPrompt
+### 4.25（已退役）
 
-> **v1.112 起無使用畫面**（`0.6.0-W1-105.1`）：SPEC-001 v1.64 刪除 §4「未載入」「載入中」兩列，Ticket
-> 清單改由掃描輪次衍生（SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉），本元件不再被任何畫面渲染。
-> 下列契約保留原文，作為元件與 `ticketsLoadPrompt` 等 key 退役處置的依據；退役由本票登記的
-> spawn request 承接，處置前不得為新畫面引用本元件。
-
-**用途**：「載入 N 張 ticket」+ 開始載入（SPEC-001 §4 未載入）；不顯示預估耗時（SPEC-003 §3.4，依據待 `0.1.0-W1-037`）；返回由頁面框架承載（SPEC-003 §2.4）。
-**內容角色**：內文 + 數值（N）+ 動作。
-**何時不用**：沒有內容（`EmptyState`）；載入進行中（`LoadingState`）。
-**出現畫面**：§4（未載入）。
-**層級**：L3
-
-#### 變體
-
-| 變體 | 外觀差異 | 行為差異 | 何時選用 |
-|------|---------|---------|---------|
-| `default` | 單一變體 | | |
-
-#### 狀態矩陣
-
-| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
-|------|------|---------|---------|---------|------|---------|
-| default | 訊息 `AppText.subtitle`（`ticketsLoadPrompt`，N 代入）+ `ButtonRow`[開始載入 `primary`] | 開始載入 | 呼叫端渲染（`state-tickets-unloaded`，首次可見） | 開始載入 → `state-tickets-loading`；返回（頁面框架的 `action-tickets-back`，`returnTo` 為 `null` 時不渲染）→ `returnTo` | —（建構即渲染；`count` 由呼叫端傳值，元件不 watch，§2。是否渲染本元件為 Ticket 清單畫面的資料態（`state-tickets-unloaded`），該畫面的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），由對應畫面票補填） | 本地即時（元件自身）；票數 N 為圖建立時已知的資料，是否渲染由頁面 provider 依首次可見／取消回復／切換專案重置（下次可見且圖已建立時，`0.1.0-W3-335.57` E5）決定（SPEC-003 §3.4 生命週期；§2 樂觀更新政策：0.1 無樂觀操作） |
-
-互動瞬態（hover / pressed / focused）由開始載入按鈕 4.4 `AppButton` 承載，本元件不另列。
-
-#### 回饋契約
-
-> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
-> 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
-> 返回（`action-tickets-back`）依 SPEC-003 §2.3 規則 4 由頁面框架渲染於 `SplitRow.header`，本元件不重複渲染，其回饋不在下表。
-
-| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
-|------|--------|------|-----------|---------|-----------------|-----------|--------|
-| 可互動提示 affordance | 使用者接近 | 開始載入按鈕經 4.4 `AppButton`（hover 態、`SystemMouseCursors.click`）；訊息文字無 hover | 無（Material 內建，經 `AppButton`） | 無（同 4.4） | §1 子表「可互動提示」列（由 4.4 `AppButton` 承載） | 不適用 | 規格撰寫者 |
-| 焦點 focus | 使用者／輔助技術 | 開始載入按鈕經 4.4 `AppButton` 進入 Tab 內容區段（SPEC-003 §2.10）；訊息為 `Semantics.header`，非停留點（無障礙子節） | 無 | 無（同 4.4） | §1 子表「焦點」列（由 4.4 `AppButton` 承載） | 不適用（本元件單一狀態） | 規格撰寫者 |
-| 按下確認 press-ack | 使用者 | 開始載入按鈕經 4.4 `AppButton`（pressed 態 + ripple）；呼叫 `onStart` 恰一次；呼叫端執行：`state-tickets-unloaded` 消失、`state-tickets-loading` 出現（SPEC-003 §3.4 開始載入列） | Material 內建 ripple（經 `AppButton`）；未載入 → 載入中 cross-fade `Motion.transition` 由畫面承載（SPEC-003 §3.4 動畫提示） | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2，經 4.4） | §1 子表「按下確認」列（由 4.4 `AppButton` 承載） | 不適用（結果為畫面級轉換，本元件單一狀態） | 反應／時限：UX 審查（SPEC-003 §2.2、§3.4）；通道：規格撰寫者 |
-| 定位提示 locate | 系統 | 由容器承載（4.28 `PageColumn`）：0.1 無定位至本元件的場景——未載入態為全頁內容，首次可見即渲染 | — | — | 由容器承載（§1 子表「定位提示」列） | 不適用 | 規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（§2 過渡提示觸發點：頁面層依 Ticket 清單 provider 於首次可見、取消載入回復（SPEC-003 §2.5 目標態 `state-tickets-unloaded`）、切換專案重置（§3.4 生命週期，下次可見且圖已建立時，`0.1.0-W3-335.57` E5）時渲染本元件） | 進入本狀態時訊息以 `liveRegion` 播報一次（無障礙子節）；自載入中 cross-fade（取消回復）由畫面承載；首次可見與切換專案重置無前一狀態、無過渡；本元件單一狀態，無內部過渡；不顯示預估耗時（SPEC-003 §3.4「未載入態不顯示預估耗時」） | `Motion.transition`（由畫面承載；`disableAnimations` 下歸零，SPEC-003 §2.1） | 取消回復於 `Motion.cancelDeadline` 內抵達（SPEC-003 §2.5 C4）；其餘無時限條文（提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡由畫面承載；無障礙播報適用（`liveRegion` 一次）；不升級系統通知） | 不適用（本元件單一狀態；畫面級狀態邊由 SPEC-001 §4 承載） | 反應：規格撰寫者（`liveRegion` 提案，沿用無障礙子節）；時限：UX 審查（SPEC-003 §2.5 C4）；通道：規格撰寫者 |
-| 等待與結果 | 系統 | 掛載點：第一層（互動元件層）由開始載入按鈕 4.4 `AppButton` 承載，本元件不另有自身互動層——第二層委派 4.24 `LoadingState`（`progressBar`），第三層即結果通知本身（`state-tickets-loading` 出現的狀態轉換，SPEC-003 §2.2 結果通知列）。服務類型：長時操作（Ticket 載入，SPEC-003 §2.12 0.1 實例逐字命中；依兩軸判定：使用者感知的等待為秒至分鐘、失敗形態為可能失敗，第二層由 4.24 承載後才顯現）。成功：`state-tickets-loading` 出現，由 4.24 承載後續載入完成的目標態；失敗：由 4.24 依長時操作類政策呈現，本元件不重述；逾時：同（由 4.24 承載）；服務不可用：同（由 4.24 承載）；Ticket 載入完成不升級系統通知（SPEC-003 §2.2「系統層通知」適用範圍）。輸入阻擋範圍：不適用於本元件——由 4.24 依長時操作類政策阻擋頁面內容（SPEC-003 §2.12），本元件按下後即被 4.24 取代。重複觸發防護：不適用於本元件——依不變式 INV-FEEDBACK-001，開始載入按鈕每次按下皆無條件回應，重複觸發防護在 4.24 出現後由觸發入口消失達成（SPEC-003 §2.12） | Material 內建（經 `AppButton`） | `Motion.feedback`（經 4.4） | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.12、§3.4）；通道：規格撰寫者 |
-
-#### 操作機制
-
-| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
-|------|---------|-------------|--------------|---------|---------|
-| 桌機 | 依 §4.0.7 點選列 | | | | |
-
-#### 尺寸契約
-
-| 項目 | 值 |
-|------|-----|
-| 尺寸模式 | 填滿父容器（寬與高），內容置中 |
-| 最小尺寸 | 寬：`ButtonRow` 最小寬；高：訊息一行 + `LayoutSize.hitTargetMin` + 2 × `Space.sm` |
-| 最小命中區 | `LayoutSize.hitTargetMin` |
-| 最大尺寸 | 文字塊最大寬 `LayoutSize.detailPaneWidth` × 2；高無上限 |
-| `kMinWindowSize` 下的行為 | 維持 |
-| `kDesignSize` 下的行為 | 維持 |
-
-#### 內容政策
-
-| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
-|-----------|---------|---------|---------|-------------|
-| `message` | 否 | 1 | 末端省略 | `ticketsLoadPrompt`（count 代入 1313；en 較長）；`TestCopy.longZh` |
-
-#### slot 契約
-
-| slot | 接受型別 | 必填 | 文字來源 |
-|------|---------|------|---------|
-| `count` | `int` | 是（訊息由元件預設 key 組字，參數 `message` 可覆蓋） | 元件預設 `ticketsLoadPrompt` |
-| `onStart` | `VoidCallback` | 是 | 不適用 |
-| `testKey` / `startKey` | `Key` | 是（`state-tickets-unloaded` / `action-tickets-start-load`） | 不適用 |
-
-#### 使用 design token
-
-| 面向 | token |
-|------|-------|
-| 色彩 | 經 `AppText`、`AppButton` |
-| 間距 | 訊息與動作列間 `Space.lg` |
-| 字體 | 經 `AppText` |
-| 圓角 | 無 |
-| 動畫 | `Motion.transition` |
-
-#### i18n
-
-| 文字 | i18n key |
-|------|---------|
-| 訊息 | `ticketsLoadPrompt`（既有，元件預設） |
-| 開始載入 | `startLoadAction`（既有，元件預設） |
-
-#### 組合規則
-
-| 項目 | 值 |
-|------|-----|
-| 可放入的容器 | `PageColumn`（內容 slot） |
-| 不得放置的區域 | 依 §4.0.8 |
-| 對齊基準 | 置中 |
-| 作為表格或列表的一欄時 | 不適用 |
-
-#### 無障礙
-
-| 面向 | 要求 |
-|------|------|
-| 朗讀標籤 | 訊息為 `Semantics.header`；按鈕經 `AppButton` |
-| 狀態變化播報 | 進入本狀態時訊息以 `liveRegion` 播報一次 |
-| 非視覺替代訊號 | 純文字 + 按鈕 |
-| 焦點順序與操作路徑（桌機） | 開始載入按鈕進入 Tab 內容區段 |
-| 對比 | 依 §4.0.2（`textTitle` / `surfaceBase` 通過） |
-
-#### 測試點（widget test）
-
-- [ ] 一支測試渲染單一狀態（count 1 與 99999）
-- [ ] 兩種視窗尺寸下不溢位
-- [ ] 最長測試文案單行末端省略
-- [ ] zh / en 兩個 key 皆不溢位
-- [ ] 開始載入呼叫 `onStart` 恰一次；畫面中不存在 `%`、無預估耗時文字（SPEC-003 FR-07）
-- [ ] 間距引用 token 非硬編碼
-
-#### 反例
-
-| 不該拿它做什麼 | 應改用 |
-|---------------|--------|
-| 「此專案尚無 ticket」 | `EmptyState.page` |
-| 顯示預估耗時 | 禁止（SPEC-003 §2.6 誠實性硬規則） |
+> v1.118 起退役（`0.6.0-W1-108`）：原 `LoadPrompt` 元件隨 SPEC-001 v1.64 刪除 Ticket 清單載入態而無使用畫面，
+> 元件與其 i18n key 已自 lib 移除。編號保留不遞補，避免外部引用錯位。
 
 ### 4.26 AppSnackBar
 
@@ -4421,7 +4292,7 @@ EVT-CORPUS-004 項目說明：
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
 | `header` | `SplitRow.header` | 是（恰 1） | 不適用 |
-| `content` | `Panel` \| `Panel.scrollable` \| `TwoColumnLayout` \| `EmptyState.page` \| `BlockedState` \| `LoadingState` \| `LoadPrompt` \| `MissingSourceState` | 是（恰 1） | 不適用 |
+| `content` | `Panel` \| `Panel.scrollable` \| `TwoColumnLayout` \| `EmptyState.page` \| `BlockedState` \| `LoadingState` \| `MissingSourceState` | 是（恰 1） | 不適用 |
 | `testKey` | `Key` | 是（`nav-page-<destination>`） | 不適用 |
 
 #### 使用 design token
@@ -6260,7 +6131,7 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 接受的子件類型 | `SplitRow.header`；內容：`Panel` \| `Panel.scrollable` \| `TwoColumnLayout` \| `EmptyState.page` \| `BlockedState` \| `LoadingState` \| `LoadPrompt` \| `MissingSourceState` |
+| 接受的子件類型 | `SplitRow.header`；內容：`Panel` \| `Panel.scrollable` \| `TwoColumnLayout` \| `EmptyState.page` \| `BlockedState` \| `LoadingState` \| `MissingSourceState` |
 | 子件數量上限 | 2（頁首 1 + 內容 1） |
 
 #### 排列不變式
@@ -6611,6 +6482,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.118 | 2026-11-03 | `0.6.0-W1-108`：退役 `LoadPrompt`（4.25 改為已退役標示）與 `LoadingState.progressBar` 變體（4.24 變體列、slot `progress`、無障礙與測試點同步刪除）；§3.1 總表、反例、容器接受清單移除 `LoadPrompt`；§4.0.6 刪 `progressA11yLabel`、`traceabilityTicketsNotLoadedHint`、`gotoTicketsListAction`；`ticketsLoadPrompt`、`ticketsLoadingProgress` 隨元件移除。lib 與 ARB 同批 |
 | 1.117 | 2026-11-03 | `0.6.0-W1-113.3`：§4.0.6 新增 `ticketsNoTopicFilesNotice`（此專案無主題檔 / This project has no topic files），Ticket 清單主題模式指派檔不存在時的頂部說明列；ARB 同批，對應 SPEC-001 v1.73 |
 | 1.116 | 2026-11-03 | `0.6.0-W1-113.2`：§4.0.6 將 1.115 以表外敘述登記的三個 key 加入表列（分節標籤表加 `gapCategoryTopicFilesMalformed`，新增「EVT-CORPUS-006 項目說明」表列 `gapTopicFilesUnreadable`、`gapTopicFilesUnregisteredTopics`），文案逐字沿用；刪除「暫不列入」敘述；ARB 與 P7 契約測試計數（32 → 35）同批 |
 | 1.115 | 2026-11-03 | 對齊 SPEC-001 v1.69（`0.6.0-W1-112`，EVT-CORPUS-006 同批建立）：§4.0.6 以表外敘述登記分節標籤 `gapCategoryTopicFilesMalformed` 與項目說明 `gapTopicFilesUnreadable`、`gapTopicFilesUnregisteredTopics`（ICU plural）的定案文案；不列入 key 表，表列、ARB 與 P7 契約測試計數由 `0.6.0-W1-113` 同批加入（P7 逐列比對 key 表與 ARB，表列先行會使閘門翻紅） |

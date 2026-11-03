@@ -1,6 +1,6 @@
 /// Ticket 清單（SPEC-001 §4；SPEC-003 §3.4；SPEC-004 §3.6）。
 ///
-/// 七個狀態列（含「含損壞」疊加態）依 [TicketListState] 切換；正常 ·
+/// 各狀態列（含「含損壞」疊加態）依 [TicketListState] 切換；正常 ·
 /// 列表／正常 · 主題共用 [TicketsReady]，實際子列由 [TicketsReady.mode]
 /// 分派（[_ReadyListView] / [_ReadyTopicView]）。內容取自最後完成的掃描輪次
 /// （SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉，`ticket_list_providers.dart`）。
@@ -39,8 +39,6 @@ class TicketListScreen extends ConsumerWidget {
         stateKey: const Key('state-tickets-project-unready'),
         actionKey: const Key('action-tickets-goto-domain'),
       ),
-      TicketsUnloaded() => _UnloadedView(state: state),
-      TicketsLoading() => _LoadingView(state: state),
       TicketsEmpty() => const _EmptyView(),
       TicketsReady() =>
         state.mode == TicketListMode.list
@@ -84,49 +82,6 @@ class TicketsHeaderTrailing extends ConsumerWidget {
   }
 }
 
-/// 未載入：`LoadPrompt`；返回動作由頁面框架（`AppShell`）通則承載，本畫面
-/// 不重複渲染（SPEC-004 §4.25、SPEC-003 §2.4）。
-class _UnloadedView extends ConsumerWidget {
-  const _UnloadedView({required this.state});
-
-  final TicketsUnloaded state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return LoadPrompt(
-      count: state.count,
-      onStart: () => ref.read(ticketListStateProvider.notifier).state =
-          TicketsLoading(total: state.count),
-      testKey: const Key('state-tickets-unloaded'),
-      startKey: const Key('action-tickets-start-load'),
-    );
-  }
-}
-
-/// 載入中：`LoadingState.progressBar`（已解析筆數 + 取消）。
-class _LoadingView extends ConsumerWidget {
-  const _LoadingView({required this.state});
-
-  final TicketsLoading state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final progress = state.total == 0
-        ? 0.0
-        : state.processedCount / state.total;
-    return LoadingState.progressBar(
-      message: l10n.ticketsLoadingProgress(state.processedCount),
-      progress: progress,
-      isCancelling: state.isCancelling,
-      onCancel: () => ref.read(ticketListStateProvider.notifier).state =
-          TicketsUnloaded(count: state.total),
-      testKey: const Key('state-tickets-loading'),
-      cancelKey: const Key('action-tickets-cancel-load'),
-    );
-  }
-}
-
 /// 無 ticket：`EmptyState.page`。
 class _EmptyView extends ConsumerWidget {
   const _EmptyView();
@@ -140,7 +95,7 @@ class _EmptyView extends ConsumerWidget {
       testKey: const Key('state-tickets-empty'),
       actions: [
         AppButton(
-          label: l10n.gotoTicketsListAction,
+          label: l10n.gotoGapsReportAction,
           onPressed: () =>
               navigateTo(ref.read, AppDestination.gaps, NavIntent.jump),
           testKey: const Key('action-tickets-goto-gaps'),

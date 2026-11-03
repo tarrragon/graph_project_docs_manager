@@ -143,26 +143,6 @@
     "description": "SPEC-001 §3 追溯視圖·無提案狀態的顯示文案"
   },
 
-  "ticketsLoadPrompt": "載入 {count} 張 ticket",
-  "@ticketsLoadPrompt": {
-    "description": "SPEC-001 §4 Ticket 清單·未載入狀態的顯示文案",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-
-  "ticketsLoadingProgress": "已解析 {parsed} 筆",
-  "@ticketsLoadingProgress": {
-    "description": "SPEC-001 §4 Ticket 清單·載入中狀態的顯示文案",
-    "placeholders": {
-      "parsed": {
-        "type": "int"
-      }
-    }
-  },
-
   "ticketsUnassignedSection": "未歸屬",
   "@ticketsUnassignedSection": {
     "description": "SPEC-001 §4 Ticket 清單·正常·主題狀態的未歸屬節標題文案"
@@ -727,19 +707,6 @@
   "loadingSkeletonA11yLabel": "載入中",
   "@loadingSkeletonA11yLabel": {
     "description": "SPEC-004 §4.24：載入骨架朗讀標籤"
-  },
-
-  "progressA11yLabel": "進度 {parsed} / {total}",
-  "@progressA11yLabel": {
-    "description": "SPEC-004 §4.24：進度朗讀標籤",
-    "placeholders": {
-      "parsed": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
   },
 
   "cellDetailPrompt": "點選一格檢視詳情",
@@ -1320,11 +1287,6 @@
     "description": "SPEC-001「專案未就緒」共用定義：前往 Domain 視圖的動作文案（SPEC-003 §2.9 `action-<screen>-goto-domain`）"
   },
 
-  "gotoTicketsListAction": "前往 Ticket 清單",
-  "@gotoTicketsListAction": {
-    "description": "SPEC-003 §3.3 追溯視圖：Ticket 清單未載入時的前往動作文案（`0.1.0-W3-335.38` S-28）"
-  },
-
   "traceabilityNoDownstream": "（尚無 {layer}）",
   "@traceabilityNoDownstream": {
     "description": "SPEC-004 §4.0.6：追溯視圖鏈路斷裂缺口列主文字，layer 為缺的下游層型別名",
@@ -1333,11 +1295,6 @@
         "type": "String"
       }
     }
-  },
-
-  "traceabilityTicketsNotLoadedHint": "Ticket 尚未載入",
-  "@traceabilityTicketsNotLoadedHint": {
-    "description": "SPEC-004 §4.0.6：追溯視圖 Ticket 清單未載入時樹上方常駐說明文字（S-28）"
   },
 
   "ticketsFiltersClearedSnackbarMessage": "已清除搜尋與篩選以顯示目標 ticket",

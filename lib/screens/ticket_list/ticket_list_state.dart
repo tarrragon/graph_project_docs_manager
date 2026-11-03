@@ -2,7 +2,7 @@
 ///
 /// 票列資料取自最後完成的掃描輪次（`0.6.0-W1-073.3`）；「含損壞」為疊加於
 /// [TicketsReady] 之上的計算結果（[TicketsReady.corruptedCount]），不是
-/// 獨立的第七種狀態（SPEC-001 §4 表下段落）。
+/// 獨立的狀態列（SPEC-001 §4 表下段落）。
 library;
 
 import '../../app/graph_status.dart';
@@ -71,32 +71,6 @@ class TicketsProjectUnready extends TicketListState {
   const TicketsProjectUnready(this.reason);
 
   final ProjectUnreadyReason reason;
-}
-
-/// 未載入：`LoadPrompt`（SPEC-004 §4.25）。
-class TicketsUnloaded extends TicketListState {
-  const TicketsUnloaded({required this.count});
-
-  /// 待載入 ticket 檔案數（列舉不解析，含之後解析失敗者）。
-  final int count;
-}
-
-/// 載入中：`LoadingState.progressBar`（已解析筆數 + 取消）。
-class TicketsLoading extends TicketListState {
-  const TicketsLoading({
-    this.total = 0,
-    this.processedCount = 0,
-    this.isCancelling = false,
-  });
-
-  /// 分母（與 [TicketsUnloaded.count] 相同）。
-  final int total;
-
-  /// 已解析筆數。
-  final int processedCount;
-
-  /// 取消契約 C2：按下取消後 `Motion.feedback` 內轉為 `true`。
-  final bool isCancelling;
 }
 
 /// 無 ticket：載入完成且 ticket 檔案數為 0。
