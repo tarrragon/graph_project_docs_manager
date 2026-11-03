@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderContainer;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/app/graph_status.dart';
+import 'package:graph_project_docs_manager/app/jump_targets.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
@@ -130,6 +131,26 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
+    expect(container.read(nodeDetailStateProvider), isA<NodeDetailUnset>());
+  });
+
+  test('跳轉意圖：寫入 nodeDetailTargetProvider 後轉為 NodeDetailReady 並清空意圖', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    expect(container.read(nodeDetailStateProvider), isA<NodeDetailUnset>());
+
+    container.read(nodeDetailTargetProvider.notifier).state = 'PROP-001';
+
+    final state = container.read(nodeDetailStateProvider);
+    expect((state as NodeDetailReady).nodeId, 'PROP-001');
+    expect(container.read(nodeDetailTargetProvider), isNull);
+  });
+
+  test('跳轉意圖（E1 對照）：無意圖時維持未選節點', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    container.read(nodeDetailTargetSyncProvider);
+    await Future<void>.delayed(Duration.zero);
     expect(container.read(nodeDetailStateProvider), isA<NodeDetailUnset>());
   });
 
