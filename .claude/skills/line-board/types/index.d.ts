@@ -28,9 +28,10 @@ export type LaneContinuity = { lane: number; session: string | null; state: Cont
 
 /**
  * 過期項：ended-with-note 票序以收線記號開頭但後面還有文字（看板不視為收線）、
- * orphan 名稱不在存活 session 中但仍有佇列、all-done 佇列的票全部 completed 但還沒收線。
+ * orphan 名稱不在存活 session 中但仍有佇列、all-done 佇列的票全部 completed 但還沒收線、
+ * no-ticket 票序只有文字沒有任何票號且不是收線記號（不當成收線）。
  */
-export type StaleKind = 'ended-with-note' | 'orphan' | 'all-done'
+export type StaleKind = 'ended-with-note' | 'orphan' | 'all-done' | 'no-ticket'
 
 export type StaleItem = { lane: number; kind: StaleKind; detail: string }
 
