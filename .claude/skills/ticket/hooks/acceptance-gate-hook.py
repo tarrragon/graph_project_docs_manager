@@ -163,6 +163,25 @@ class AcceptanceCheckResult(NamedTuple):
     # 串接於同一 Bash 呼叫時為 True，代表 acceptance / execution log 檢查因讀檔
     # 時序早於同鏈操作執行而略過（避免滯後誤報，見 detect_chained_pre_complete_write）
     chained_write_detected: bool = False
+    # 阻擋來源識別碼（should_block=True 時填入，供 WARNING 行寫出原因）；
+    # 取值見 BLOCK_REASONS。空字串代表來源未標示，log 退回通用文字。
+    block_source: str = ""
+
+
+# 阻擋來源 -> WARNING 行原因文字（鍵即 AcceptanceCheckResult.block_source）
+BLOCK_REASONS = {
+    "children": "子任務未完成",
+    "hook_protection": "防護類 hook ticket 缺必含項目",
+    "unpaired_user_todos": "協調票帶未配對用戶待辦",
+    "ana_spawn": "ANA Solution spawn 規劃未落地",
+    "multi_view_status": "multi_view_status 值非法",
+    "experiment_artifact": "實驗器材殘留未處置",
+}
+
+
+def describe_block_reason(check_result: "AcceptanceCheckResult") -> str:
+    """依阻擋來源回傳 WARNING 行原因；來源未標示時回通用文字。"""
+    return BLOCK_REASONS.get(check_result.block_source, "驗收檢查未通過（來源未標示）")
 
 
 # ============================================================================
@@ -483,6 +502,7 @@ def check_acceptance_status(
                 return AcceptanceCheckResult(
                     True, False, error_msg, False, [], [],
                     frontmatter.get("type", ""), "", [], [], False,
+                    block_source="children",
                 )
             force_bypassed_children = bypassed
 
@@ -494,7 +514,8 @@ def check_acceptance_status(
         )
         if hook_protection_should_block:
             return AcceptanceCheckResult(
-                True, False, hook_protection_msg, False, [], [], "", "", [], [], False
+                True, False, hook_protection_msg, False, [], [], "", "", [], [], False,
+                block_source="hook_protection",
             )
 
         # 步驟 1.6：協調票帶未配對用戶待辦（U1）不得 complete
@@ -503,7 +524,8 @@ def check_acceptance_status(
         )
         if todo_should_block:
             return AcceptanceCheckResult(
-                True, False, todo_msg, False, [], [], "", "", [], [], False
+                True, False, todo_msg, False, [], [], "", "", [], [], False,
+                block_source="unpaired_user_todos",
             )
 
         # 0.4.1-W2-006：偵測 complete 是否與同鏈寫入操作串接
@@ -561,7 +583,8 @@ def check_acceptance_status(
             )
             if spawn_should_block:
                 return AcceptanceCheckResult(
-                    True, False, spawn_msg, False, [], [], "", "", [], [], False
+                    True, False, spawn_msg, False, [], [], "", "", [], [], False,
+                    block_source="ana_spawn",
                 )
             if spawn_msg:
                 if warning_msg:
@@ -588,7 +611,8 @@ def check_acceptance_status(
                         "--reason \"<修正理由，至少 10 字元>\""
                     )
                     return AcceptanceCheckResult(
-                        True, False, mv_msg + fix_hint, False, [], [], "", "", [], [], False
+                        True, False, mv_msg + fix_hint, False, [], [], "", "", [], [], False,
+                        block_source="multi_view_status",
                     )
                 try:
                     mv_chained = chained_write_detected and detect_chained_multi_view_write(command)
@@ -704,7 +728,8 @@ def check_acceptance_status(
         )
         if exp_should_block:
             return AcceptanceCheckResult(
-                True, False, exp_msg, False, [], [], "", "", [], [], False
+                True, False, exp_msg, False, [], [], "", "", [], [], False,
+                block_source="experiment_artifact",
             )
 
         task_type = frontmatter.get("type", "")
@@ -1278,7 +1303,9 @@ def main() -> int:
 
         # 步驟 5: 決定 exit code
         if result.should_block:
-            logger.warning("Acceptance Gate Hook：子任務未完成，阻止執行")
+            logger.warning(
+                f"Acceptance Gate Hook：{describe_block_reason(result)}，阻止執行"
+            )
             return EXIT_BLOCK
         logger.info("Acceptance Gate Hook 檢查完成：允許執行")
         return EXIT_SUCCESS
