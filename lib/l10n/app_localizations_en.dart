@@ -739,6 +739,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String traceabilityGraphUnavailableMessage(String appVersion) {
+    return 'This project\'s schema version is outside the range this app knows (up to $appVersion), so the latest scan could not build the graph and the traceability view is unavailable. You can rescan from the Domain view';
+  }
+
+  @override
   String get domainGraphUnavailableScanning => 'Scanning…';
 
   @override

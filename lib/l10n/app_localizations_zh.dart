@@ -696,6 +696,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String traceabilityGraphUnavailableMessage(String appVersion) {
+    return '此專案的型別表版本不在 App 已知範圍內（不高於 $appVersion），最近一次掃描無法建立圖譜，追溯視圖暫無法顯示；可至 Domain 視圖重新掃描';
+  }
+
+  @override
   String get domainGraphUnavailableScanning => '掃描中';
 
   @override

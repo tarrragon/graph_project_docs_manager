@@ -89,6 +89,11 @@ class TraceabilityNoProposal extends TraceabilityScreenState {
   const TraceabilityNoProposal();
 }
 
+/// 圖不可用：最後完成輪次建圖不可用（SPEC-001 §3 判定順序第 2 步）。
+class TraceabilityGraphUnavailable extends TraceabilityScreenState {
+  const TraceabilityGraphUnavailable();
+}
+
 /// 專案未就緒：五個非 Domain 畫面共用狀態（SPEC-001 共用定義），取代本
 /// 畫面原本依圖判定的三個狀態。
 class TraceabilityProjectUnready extends TraceabilityScreenState {

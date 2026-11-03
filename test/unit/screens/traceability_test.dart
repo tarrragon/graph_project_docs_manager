@@ -18,13 +18,23 @@ import 'package:graph_project_docs_manager/screens/trace/trace_state.dart';
 
 import '../../helpers/helpers.dart';
 
+/// 預設狀態改由掃描輪次衍生後，既有渲染測試以 fixture 注入正常態。
+final _normalOverride = traceabilityStateProvider.overrideWith(
+  (ref) => const TraceabilityNormal(TraceabilityFixtures.normal),
+);
+
 void main() {
   group('正常態 state-traceability-normal', () {
     testWidgetsAtEachSize('渲染 Panel.scrollable[Tree[ListRow.tree]]', (
       tester,
       size,
     ) async {
-      await pumpHarness(tester, child: const TraceabilityScreen(), size: size);
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        size: size,
+        overrides: [_normalOverride],
+      );
 
       expect(AnchorFinder.state(Screen.traceability, 'normal'), findsOneWidget);
       expect(find.byType(Panel), findsOneWidget);
@@ -34,7 +44,11 @@ void main() {
     });
 
     testWidgets('展開 PROP-001 後子層 SPEC-001 列出現', (tester) async {
-      await pumpHarness(tester, child: const TraceabilityScreen());
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [_normalOverride],
+      );
 
       expect(find.byKey(const Key('card-traceability-SPEC-001')), findsNothing);
 
@@ -54,6 +68,7 @@ void main() {
           tester,
           child: const TraceabilityScreen(),
           overrides: [
+            _normalOverride,
             selectedDestinationProvider.overrideWith(
               (ref) => AppDestination.traceability,
             ),
@@ -76,6 +91,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
+          _normalOverride,
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.traceability,
           ),
@@ -261,14 +277,22 @@ void main() {
     });
 
     testWidgets('無缺口時不渲染缺口列（正向對照，正常態）', (tester) async {
-      await pumpHarness(tester, child: const TraceabilityScreen());
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [_normalOverride],
+      );
 
       expect(find.textContaining('尚無'), findsNothing);
       expect(find.byType(IssueMarker), findsNothing);
     });
 
     testWidgets('Ticket 未載入：樹上方常駐說明文字，前往動作為 text 變體', (tester) async {
-      await pumpHarness(tester, child: const TraceabilityScreen());
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [_normalOverride],
+      );
 
       expect(find.text('Ticket 尚未載入'), findsOneWidget);
       // testKey 落在 AppButton 內部按鈕上，向上取 AppButton 本體。
@@ -285,7 +309,10 @@ void main() {
       await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
-        overrides: [ticketsLoadedProvider.overrideWith((ref) => true)],
+        overrides: [
+          _normalOverride,
+          ticketsLoadedProvider.overrideWith((ref) => true),
+        ],
       );
 
       expect(find.text('Ticket 尚未載入'), findsNothing);
@@ -350,7 +377,11 @@ void main() {
 
   group('前往 Ticket 清單 action-traceability-goto-tickets', () {
     testWidgets('Ticket 未載入時（預設）渲染該動作', (tester) async {
-      await pumpHarness(tester, child: const TraceabilityScreen());
+      await pumpHarness(
+        tester,
+        child: const TraceabilityScreen(),
+        overrides: [_normalOverride],
+      );
 
       expect(
         find.byKey(const Key('action-traceability-goto-tickets')),
@@ -362,7 +393,10 @@ void main() {
       await pumpHarness(
         tester,
         child: const TraceabilityScreen(),
-        overrides: [ticketsLoadedProvider.overrideWith((ref) => true)],
+        overrides: [
+          _normalOverride,
+          ticketsLoadedProvider.overrideWith((ref) => true),
+        ],
       );
 
       expect(
@@ -378,6 +412,7 @@ void main() {
         tester,
         child: const TraceabilityScreen(),
         overrides: [
+          _normalOverride,
           selectedDestinationProvider.overrideWith(
             (ref) => AppDestination.traceability,
           ),
