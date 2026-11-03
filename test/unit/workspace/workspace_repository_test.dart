@@ -9,6 +9,7 @@
 // - 行為替身（_Fake*）：另一組類別，只用於受理／結果測試，可配置結局。
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -16,7 +17,80 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+/// 永不回應的探測替身：模擬卡住的磁碟（SPEC-005 §2.5）。
+class _HangingDirectoryProbe implements WorkspaceDirectoryProbePort {
+  @override
+  Future<bool> exists(String path) => Completer<bool>().future;
+
+  @override
+  Future<void> readFirstEntry(String path) => Completer<void>().future;
+}
+
+void _probeRecentProjectTests() {
+  group('probeRecentProject（SPEC-005 §2.5）', () {
+    test('資料夾存在可讀：RecentProjectAvailable', () async {
+      final repo = WorkspaceRepository(directoryProbe: _FakeDirectoryProbe());
+      expect(
+        await repo.probeRecentProject('/ws'),
+        isA<RecentProjectAvailable>(),
+      );
+    });
+
+    test('資料夾不存在：RecentProjectUnavailable，reason 與 openPath 同值', () async {
+      final repo = WorkspaceRepository(
+        directoryProbe: _FakeDirectoryProbe(existsResult: false),
+        preferencesPort: _FakePreferencesPort(),
+      );
+      final probed = await repo.probeRecentProject('/ws');
+      final opened = await repo.openPath('/ws');
+      final reason =
+          ((opened as ChooseFolderSelected).state as WorkspaceUnavailable)
+              .reason;
+      expect(probed, isA<RecentProjectUnavailable>());
+      expect((probed as RecentProjectUnavailable).reason, reason);
+    });
+
+    test('資料夾不可讀：RecentProjectUnavailable，不拋例外', () async {
+      final repo = WorkspaceRepository(
+        directoryProbe: _FakeDirectoryProbe(
+          readFirstEntryError: const FileSystemException('denied'),
+        ),
+      );
+      final probed = await repo.probeRecentProject('/ws');
+      expect(probed, isA<RecentProjectUnavailable>());
+      expect((probed as RecentProjectUnavailable).reason, isNotEmpty);
+    });
+
+    testWidgets('探測超過 2 秒未回：RecentProjectProbeTimedOut 並記 level 900', (
+      tester,
+    ) async {
+      final log = _LogRecorder();
+      final repo = WorkspaceRepository(
+        directoryProbe: _HangingDirectoryProbe(),
+        logSink: log.call,
+      );
+      RecentProjectAvailability? result;
+      unawaited(repo.probeRecentProject('/ws').then((v) => result = v));
+
+      await tester.pump(const Duration(milliseconds: 1900));
+      expect(result, isNull);
+      expect(
+        log.containsEvent(WorkspaceLogEvent.probeRecentProjectTimedOut),
+        isFalse,
+      );
+
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(result, isA<RecentProjectProbeTimedOut>());
+      final entry = log.entries.singleWhere(
+        (e) => e.event == WorkspaceLogEvent.probeRecentProjectTimedOut,
+      );
+      expect(entry.level, 900);
+    });
+  });
+}
+
 void main() {
+  _probeRecentProjectTests();
   group('G1｜呼叫發出時刻（INV-PORT-OBSERVE-001 覆蓋）', () {
     test('G1-1 開啟選取面板前發出呼叫事件', () async {
       final picker = _PickerRecorder();

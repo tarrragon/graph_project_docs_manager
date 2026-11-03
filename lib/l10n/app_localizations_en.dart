@@ -247,6 +247,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get probeTimeoutReason => 'May be an unmounted disk';
 
   @override
+  String get probingReason => 'Checking…';
+
+  @override
   String get sourceFileStillMissingMessage => 'File still not found';
 
   @override

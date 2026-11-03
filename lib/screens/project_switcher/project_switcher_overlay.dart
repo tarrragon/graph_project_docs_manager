@@ -38,6 +38,7 @@ SwitcherOverlay buildProjectSwitcherOverlay({
   final hasItems = projects.isNotEmpty;
   final failureReason = ref.watch(switcherChooseOtherFailureProvider);
   final unavailable = ref.watch(switcherUnavailableProjectsProvider);
+  final probed = ref.watch(switcherProbeResultsProvider);
 
   return SwitcherOverlay(
     chooseOtherFailureReason: failureReason,
@@ -50,7 +51,12 @@ SwitcherOverlay buildProjectSwitcherOverlay({
           project: projects[i],
           index: i,
           isCurrent: projects[i].path == currentPath,
-          unavailableReason: unavailable[projects[i].path],
+          unavailableReason: _unavailableReasonOf(
+            l10n,
+            projects[i].path,
+            unavailable,
+            probed,
+          ),
         ),
     ],
     chooseOther: AppButton(
@@ -67,6 +73,30 @@ SwitcherOverlay buildProjectSwitcherOverlay({
         : const Key('state-switcher-no-recent'),
     scrollKey: const Key('scroll-switcher-recent'),
   );
+}
+
+/// 該項的 disabled 原因文字（已本地化）；`null` 代表可點（SPEC-004 4.9、
+/// SPEC-005 §2.5）。點選後判定不可用優先，其次依探測結果：未完成顯示
+/// `probingReason`、逾時顯示 `probeTimeoutReason`、不可用顯示固定原因。
+String? _unavailableReasonOf(
+  AppLocalizations l10n,
+  String path,
+  Map<String, String> clicked,
+  Map<String, RecentProjectAvailability> probed,
+) {
+  final clickedReason = clicked[path];
+  if (clickedReason != null) {
+    return l10n.projectUnavailableReasonLabel(clickedReason);
+  }
+  return switch (probed[path]) {
+    null => l10n.probingReason,
+    RecentProjectAvailable() => null,
+    RecentProjectProbeTimedOut() => l10n.projectUnavailableReasonLabel(
+      l10n.probeTimeoutReason,
+    ),
+    RecentProjectUnavailable(:final reason) =>
+      l10n.projectUnavailableReasonLabel(reason),
+  };
 }
 
 RecentProjectItem _buildRecentProjectItem({
@@ -89,9 +119,7 @@ RecentProjectItem _buildRecentProjectItem({
         : l10n.projectSummaryLabel(counts.nodeCount, counts.ticketCount),
     enabled: unavailableReason == null,
     isCurrent: isCurrent,
-    reason: unavailableReason == null
-        ? null
-        : l10n.projectUnavailableReasonLabel(unavailableReason),
+    reason: unavailableReason,
     health: _healthBadgeOf(l10n, counts, index),
     onTap: () => _selectProject(context, ref, project),
     testKey: Key('card-switcher-recent-$index'),

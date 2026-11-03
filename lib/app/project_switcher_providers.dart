@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 
+import '../workspace/workspace_repository.dart';
 import '../workspace/workspace_types.dart';
 
 /// 浮層展開態；`true` 對應 SPEC-001 §7「展開」或「無最近專案」（依
@@ -40,6 +41,35 @@ final switcherChooseOtherFailureProvider =
 /// 釋放，再次展開即為空表，該項恢復可點（「最近專案項失敗後的可用性」列）。
 final switcherUnavailableProjectsProvider =
     autoDisposeStateHolderProvider<Map<String, String>>((ref) => const {});
+
+/// 展開期間各最近專案項的探測結果（路徑 -> 結果），SPEC-005 §2.5、
+/// SPEC-003 §3.7〈生命週期〉「展開時」列。缺席的路徑代表探測未完成。
+///
+/// `autoDispose`：build 時同時對每個最近專案發出探測（各項互不阻塞）；浮層
+/// 收合後釋放，進行中的探測結果被丟棄，再次展開重新探測。
+final switcherProbeResultsProvider =
+    NotifierProvider.autoDispose<
+      SwitcherProbeResultsNotifier,
+      Map<String, RecentProjectAvailability>
+    >(SwitcherProbeResultsNotifier.new);
+
+/// [switcherProbeResultsProvider] 的 Notifier。
+class SwitcherProbeResultsNotifier
+    extends Notifier<Map<String, RecentProjectAvailability>> {
+  @override
+  Map<String, RecentProjectAvailability> build() {
+    var disposed = false;
+    ref.onDispose(() => disposed = true);
+    final repository = ref.read(workspaceRepositoryProvider);
+    for (final project in ref.read(recentProjectsProvider)) {
+      repository.probeRecentProject(project.path).then((result) {
+        if (disposed) return;
+        state = {...state, project.path: result};
+      });
+    }
+    return const {};
+  }
+}
 
 /// 側欄入口顯示的目前專案名；取 [currentWorkspaceStateProvider] 的
 /// [WorkspaceReady.path] 資料夾名，非 [WorkspaceReady] 時回傳 `null`

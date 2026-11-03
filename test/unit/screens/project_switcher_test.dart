@@ -149,7 +149,7 @@ WorkspaceRepository _fakeRepositoryWithRecents(
   List<RecentProject> recents, {
   bool directoryProbeExists = true,
 }) {
-  return WorkspaceRepository(
+  return _ProbeAvailableRepository(
     preferencesPort: _SeededPreferencesPort(
       recentProjectsJson: _encodeRecentProjects(recents),
     ),
@@ -202,7 +202,7 @@ WorkspaceRepository _fakeRepositoryReady({
   bool rememberSucceeds = true,
   List<RecentProject> recentProjects = const [],
 }) {
-  return WorkspaceRepository(
+  return _ProbeAvailableRepository(
     pickDirectoryPath: () async => '/fake/workspace',
     preferencesPort: rememberSucceeds
         ? _SeededPreferencesPort(
@@ -217,7 +217,7 @@ WorkspaceRepository _fakeRepositoryReady({
 WorkspaceRepository _fakeRepositoryUnavailable({
   List<RecentProject> recentProjects = const [],
 }) {
-  return WorkspaceRepository(
+  return _ProbeAvailableRepository(
     pickDirectoryPath: () async => '/fake/missing',
     preferencesPort: _SeededPreferencesPort(
       recentProjectsJson: _encodeRecentProjects(recentProjects),
@@ -230,7 +230,7 @@ WorkspaceRepository _fakeRepositoryUnavailable({
 WorkspaceRepository _fakeRepositoryCancelled({
   List<RecentProject> recentProjects = const [],
 }) {
-  return WorkspaceRepository(
+  return _ProbeAvailableRepository(
     pickDirectoryPath: () async => null,
     preferencesPort: _SeededPreferencesPort(
       recentProjectsJson: _encodeRecentProjects(recentProjects),
@@ -242,7 +242,7 @@ WorkspaceRepository _fakeRepositoryCancelled({
 WorkspaceRepository _fakeRepositoryPickerUnavailable({
   List<RecentProject> recentProjects = const [],
 }) {
-  return WorkspaceRepository(
+  return _ProbeAvailableRepository(
     pickDirectoryPath: () async => throw PlatformException(code: 'unavailable'),
     preferencesPort: _SeededPreferencesPort(
       recentProjectsJson: _encodeRecentProjects(recentProjects),
@@ -270,6 +270,7 @@ void main() {
   _restoreContrastTest();
   _inOverlayFailureTests();
   _unavailableRecentItemTests();
+  _probeRecentItemTests();
   _countSnapshotTests();
   group('收合態', () {
     testWidgets('側欄入口存在，浮層未掛載', (tester) async {
@@ -442,7 +443,7 @@ void main() {
           ),
         },
       );
-      final repository = WorkspaceRepository(
+      final repository = _ProbeAvailableRepository(
         preferencesPort: preferences,
         directoryProbe: _FakeDirectoryProbePort(probeExists: true),
       );
@@ -482,7 +483,7 @@ void main() {
     testWidgets('點擊最近專案項但該路徑不可讀或不存在：依選擇其他失敗列回饋，不轉'
         '狀態、不寫已存路徑、清單不變（SPEC-003 §3.7；0.2.1-W1-054）', (tester) async {
       late ProviderContainer container;
-      final repository = WorkspaceRepository(
+      final repository = _ProbeAvailableRepository(
         preferencesPort: _SeededPreferencesPort(
           recentProjectsJson: _encodeRecentProjects(_testRecentProjects),
         ),
@@ -1025,6 +1026,141 @@ void _inOverlayFailureTests() {
 /// 現況 lib 內已無 UI 掛載點（`_WorkspaceBanner` 不存在），此處以 l10n 值
 /// 作正向對照，確認新增 key 未改動既有 key（0.3.2-W1-009）。
 /// 最近專案項點擊後判定不可用與浮層失敗文字清除時機（0.5.0-W1-167.4）。
+/// 展開時探測一律回報可用的 repository：本檔既有測試聚焦「點選後才判定
+/// 不可用」與選擇器結果，不讓展開探測（SPEC-005 §2.5）改變其前提；探測
+/// 行為由 `_probeRecentItemTests` 專測。
+class _ProbeAvailableRepository extends WorkspaceRepository {
+  _ProbeAvailableRepository({
+    super.pickDirectoryPath,
+    super.preferencesPort,
+    super.directoryProbe,
+  });
+
+  @override
+  Future<RecentProjectAvailability> probeRecentProject(String path) async =>
+      const RecentProjectAvailable();
+}
+
+/// 探測結果由測試以 [Completer] 手動完成的 repository（SPEC-005 §2.5）。
+class _ControlledProbeRepository extends WorkspaceRepository {
+  _ControlledProbeRepository()
+    : super(
+        preferencesPort: _SeededPreferencesPort(
+          recentProjectsJson: _encodeRecentProjects(_testRecentProjects),
+        ),
+      );
+
+  final Map<String, List<Completer<RecentProjectAvailability>>> calls = {};
+
+  @override
+  Future<RecentProjectAvailability> probeRecentProject(String path) {
+    final completer = Completer<RecentProjectAvailability>();
+    calls.putIfAbsent(path, () => []).add(completer);
+    return completer.future;
+  }
+
+  void complete(String path, RecentProjectAvailability result) =>
+      calls[path]!.last.complete(result);
+}
+
+/// 展開時逐項可用性探測（SPEC-005 §2.5；SPEC-003 §3.7〈生命週期〉）。
+void _probeRecentItemTests() {
+  const firstKey = Key('card-switcher-recent-0');
+  const secondKey = Key('card-switcher-recent-1');
+  final firstPath = _testRecentProjects[0].path;
+  final secondPath = _testRecentProjects[1].path;
+  final l10n = AppLocalizationsZh();
+
+  Future<void> expand(WidgetTester tester) async {
+    await tester.tap(find.byKey(app_shell.AppShell.projectSwitcherEntryKey));
+    await tester.pumpAndSettle();
+  }
+
+  Future<_ControlledProbeRepository> open(WidgetTester tester) async {
+    final repository = _ControlledProbeRepository();
+    await _pumpApp(
+      tester,
+      settle: false,
+      overrides: [
+        recentProjectsProvider.overrideWithInitial(
+          (ref) => _testRecentProjects,
+        ),
+        workspaceRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    await expand(tester);
+    return repository;
+  }
+
+  RecentProjectItem item(WidgetTester tester, Key key) =>
+      tester.widget<RecentProjectItem>(
+        find.ancestor(
+          of: find.byKey(key),
+          matching: find.byType(RecentProjectItem),
+        ),
+      );
+
+  group('展開時逐項可用性探測', () {
+    testWidgets('探測未完成的項 disabled 並顯示 probingReason，各項互不阻塞', (tester) async {
+      final repository = await open(tester);
+      expect(item(tester, firstKey).enabled, isFalse);
+      expect(item(tester, firstKey).reason, l10n.probingReason);
+      expect(item(tester, secondKey).enabled, isFalse);
+      expect(item(tester, secondKey).reason, l10n.probingReason);
+
+      repository.complete(firstPath, const RecentProjectAvailable());
+      await tester.pumpAndSettle();
+
+      expect(item(tester, firstKey).enabled, isTrue);
+      expect(item(tester, secondKey).enabled, isFalse);
+      expect(item(tester, secondKey).reason, l10n.probingReason);
+    });
+
+    testWidgets('逾時項與非逾時失敗項顯示各自原因，兩者文字不同', (tester) async {
+      final repository = await open(tester);
+      repository.complete(firstPath, const RecentProjectProbeTimedOut());
+      repository.complete(
+        secondPath,
+        const RecentProjectUnavailable('資料夾不存在或所在磁碟未掛載'),
+      );
+      await tester.pumpAndSettle();
+
+      final timedOut = l10n.projectUnavailableReasonLabel(
+        l10n.probeTimeoutReason,
+      );
+      final failed = l10n.projectUnavailableReasonLabel('資料夾不存在或所在磁碟未掛載');
+      expect(item(tester, firstKey).enabled, isFalse);
+      expect(item(tester, firstKey).reason, timedOut);
+      expect(item(tester, secondKey).enabled, isFalse);
+      expect(item(tester, secondKey).reason, failed);
+      expect(timedOut, isNot(failed));
+    });
+
+    testWidgets('探測中收合再展開：舊結果不沿用，重新探測', (tester) async {
+      final repository = await open(tester);
+      repository.complete(firstPath, const RecentProjectAvailable());
+      await tester.pumpAndSettle();
+      expect(item(tester, firstKey).enabled, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      await expand(tester);
+
+      expect(repository.calls[firstPath]!.length, 2);
+      expect(repository.calls[secondPath]!.length, 2);
+      expect(item(tester, firstKey).enabled, isFalse);
+      expect(item(tester, firstKey).reason, l10n.probingReason);
+
+      // 第一次展開遺留的探測晚到：結果丟棄，不影響本次展開。
+      repository.calls[secondPath]!.first.complete(
+        const RecentProjectAvailable(),
+      );
+      await tester.pumpAndSettle();
+      expect(item(tester, secondKey).enabled, isFalse);
+    });
+  });
+}
+
 void _unavailableRecentItemTests() {
   const expandedKey = Key('state-switcher-expanded');
   const failedKey = Key('card-switcher-recent-1');
@@ -1102,7 +1238,7 @@ void _unavailableRecentItemTests() {
   group('浮層失敗文字清除時機', () {
     testWidgets('選擇其他失敗後再選擇其他並取消：不留前次原因', (tester) async {
       var cancel = false;
-      final repository = WorkspaceRepository(
+      final repository = _ProbeAvailableRepository(
         pickDirectoryPath: () async => cancel ? null : '/fake/missing',
         preferencesPort: _SeededPreferencesPort(
           recentProjectsJson: _encodeRecentProjects(_testRecentProjects),

@@ -506,6 +506,12 @@ abstract class AppLocalizations {
   /// **'可能是磁碟未掛載'**
   String get probeTimeoutReason;
 
+  /// SPEC-004 4.9：最近專案項可用性探測未完成時的 disabled 原因文字
+  ///
+  /// In zh, this message translates to:
+  /// **'檢查中…'**
+  String get probingReason;
+
   /// SPEC-003 §3.6：action-nodeDetail-refresh 重新整理後，檔案仍不存在分支的 SnackBar 文案
   ///
   /// In zh, this message translates to:

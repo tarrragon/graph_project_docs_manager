@@ -575,6 +575,10 @@ class _StubWorkspaceRepository implements WorkspaceRepository {
   Future<bool> addRecentProject(String path) async => true;
 
   @override
+  Future<RecentProjectAvailability> probeRecentProject(String path) async =>
+      const RecentProjectAvailable();
+
+  @override
   Future<bool> saveRecentProjectCounts(
     String path,
     RecentProjectCounts counts,

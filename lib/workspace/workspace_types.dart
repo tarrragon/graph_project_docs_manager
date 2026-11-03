@@ -109,6 +109,30 @@ class RecentProjectCounts {
   final int issueCount;
 }
 
+/// 最近專案項的可用性探測結果（SPEC-005 §2.5）。與 [WorkspaceState] 正交：
+/// 探測結果沒有「未設定」這個值，逾時也不是 [WorkspaceUnavailable]（原因文字
+/// 來源不同：逾時是 l10n key，不可用是固定文案常數）。
+sealed class RecentProjectAvailability {
+  const RecentProjectAvailability();
+}
+
+/// 資料夾存在且可讀。
+class RecentProjectAvailable extends RecentProjectAvailability {
+  const RecentProjectAvailable();
+}
+
+/// 資料夾不存在或不可讀；[reason] 取 `_inspect()` 回傳的
+/// [WorkspaceUnavailable.reason]，與點選失敗同源。
+class RecentProjectUnavailable extends RecentProjectAvailability {
+  const RecentProjectUnavailable(this.reason);
+  final String reason;
+}
+
+/// 探測超過逾時值仍未回應；畫面以 `probeTimeoutReason` 呈現。
+class RecentProjectProbeTimedOut extends RecentProjectAvailability {
+  const RecentProjectProbeTimedOut();
+}
+
 /// `workspace.schemaVersion` 讀取後的遷移判定結果（`0.2.0-W1-021`）。
 ///
 /// 三種結局刻意不共用同一個 `path` 欄位形狀（見 [SchemaMigrationFailed]
