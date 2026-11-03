@@ -27,6 +27,56 @@ STATUS_LINE = re.compile(r'^    status:\s*["\']?([^"\'\s#]+)')
 WORKLOG_LINE = re.compile(r'^    worklog:\s*["\']?([^"\'#]+?)["\']?\s*$')
 
 
+# 以下 U1 配對規則逐項對應 line-board hooks/userTodos.ts 的 parseUserTodos 與 lanes.ts 的
+# solutionLines／unfencedSolutionLines；共用案例 user-todo-cases.json 防漂移。
+SOLUTION_HEADING = "## Solution"
+CODE_FENCE = "```"
+TODO_LINE = re.compile(r"^\*\*用戶待辦(完成)?\*\*(?:（([^）]*)）)?：(.*)$")
+KEY_PREFIX = "key:"
+TEXT_KEY_PREFIX = "text:"
+
+
+def unfenced_solution_lines(text: str) -> list:
+    """Solution 段中不在 fenced code block 內的行（界線行本身去掉）。"""
+    lines = [ln.rstrip() for ln in text.split("\n")]
+    start = next(
+        (i for i, ln in enumerate(lines) if ln == SOLUTION_HEADING or ln.startswith(SOLUTION_HEADING + " ")),
+        -1,
+    )
+    if start == -1:
+        return []
+    rest = lines[start + 1:]
+    end = next((i for i, ln in enumerate(rest) if ln.startswith("## ")), len(rest))
+    result, in_fence = [], False
+    for ln in rest[:end]:
+        if ln.startswith(CODE_FENCE):
+            in_fence = not in_fence
+        elif not in_fence:
+            result.append(ln)
+    return result
+
+
+def parse_user_todos(text: str) -> list:
+    """未配對的用戶待辦（U1），依各鍵最後一次寫入待辦行的順序；回傳 [{"key": str|None, "item": str}]。
+
+    帶鍵與不帶鍵分開配對；空括號行略過；完成行配不到待辦時不影響其他項。
+    """
+    pending = {}
+    for line in unfenced_solution_lines(text):
+        match = TODO_LINE.match(line)
+        if match is None:
+            continue
+        key = None if match.group(2) is None else match.group(2).strip()
+        content = match.group(3).strip()
+        if key == "" or (key is None and content == ""):
+            continue
+        match_key = (TEXT_KEY_PREFIX + content) if key is None else (KEY_PREFIX + key)
+        pending.pop(match_key, None)
+        if match.group(1) is None:
+            pending[match_key] = {"key": key, "item": content}
+    return list(pending.values())
+
+
 def _warn(message: str) -> None:
     sys.stderr.write(f"[coordination_ticket] {message}\n")
 

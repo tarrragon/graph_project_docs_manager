@@ -222,6 +222,36 @@ def test_main_multiple_flagged_tickets_each_checked(tmp_path, monkeypatch, capsy
     assert "[協調票佇列行檢查] " + COORD in _run(monkeypatch, EDIT, capsys)
 
 
+# ---------------------------------------------------------------- 5 檢查 4：未配對用戶待辦（U1）
+def test_main_unpaired_u1_emits_key_item_and_done_format(tmp_path, monkeypatch, capsys):
+    """E2 正向對照：帶未配對 U1 的協調票，兩條寫入路徑都輸出該鍵、事項與完成行格式。"""
+    for i, payload in enumerate((BASH, EDIT)):
+        _setup_project(tmp_path / f"u{i}", monkeypatch, "**用戶待辦**（560）：裁定 SPEC 內文\n")
+        ctx = json.loads(_run(monkeypatch, payload, capsys))["hookSpecificOutput"]["additionalContext"]
+        assert "560" in ctx and "裁定 SPEC 內文" in ctx
+        assert "**用戶待辦完成**（560）：<結果>" in ctx
+
+
+def test_main_unpaired_u1_keyless_shows_full_text_done_line(tmp_path, monkeypatch, capsys):
+    _setup_project(tmp_path, monkeypatch, "**用戶待辦**：開 L44 session\n")
+    ctx = json.loads(_run(monkeypatch, BASH, capsys))["hookSpecificOutput"]["additionalContext"]
+    assert "**用戶待辦完成**：開 L44 session" in ctx
+
+
+def test_main_paired_u1_is_silent(tmp_path, monkeypatch, capsys):
+    """未配對數為 0 時不輸出（對照上一個測試：加上完成行即無輸出）。"""
+    body = "**用戶待辦**（560）：裁定\n**用戶待辦完成**（560）：已裁定\n"
+    _setup_project(tmp_path, monkeypatch, body)
+    assert _run(monkeypatch, BASH, capsys) == ""
+
+
+def test_find_unpaired_todos_counts_only_unpaired():
+    text = "## Solution\n**用戶待辦**（a）：一\n**用戶待辦**（b）：二\n**用戶待辦完成**（a）：好\n"
+    msgs = hook.find_unpaired_todos(text)
+    assert len(msgs) == 1 and "1 項" in msgs[0] and "b：二" in msgs[0] and "a：一" not in msgs[0]
+    assert hook.find_unpaired_todos("## Solution\n") == []
+
+
 def test_has_coordination_flag_parsing():
     assert hook.has_coordination_flag("---\ncoordination: true\n---\n")
     assert not hook.has_coordination_flag("---\ncoordination: false\n---\n")
