@@ -2,6 +2,11 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 0.12.3（2026-11-04）— 內部重構，看板畫面與 `line_status` 輸出不變。群組標題列與佇列細節的切換文字只有單一標題，多段以「｜」相接的能力已無呼叫端。
+
+- `hooks/layout.ts` 的 `formatGroupTitle(parts, isOpen)` 改為 `formatGroupToggle(title, isOpen)`，回傳 `▾`／`▸` 加標題；`hooks/lanesView.tsx` 兩個呼叫端同步。`formatQueueRow` 保留為佇列列整行文字的契約（產品碼改用 `queueRowSegments`），註解寫明用途。
+- `tests/board.test.ts` 與 `tests/boardDispatch.test.ts` 各自的 `titleOf` 與抽文字輔助函式合併到 `tests/paneHarness.ts`（`titleOf`、`headerOf`、`textsOf`、`textOf`、`childrenOf`，以及 `Ui`、`Described` 型別）。
+
 **Version**: 0.12.2（2026-11-03）— 佇列票上色與閘門票去重改以派發列的完整票號比對，沒有票號的派發不參與。原本以任務欄比對短票號：沒有票號的派發任務欄退回派發描述，描述剛好等於某張佇列票的短票號時會誤讓該票上色，或誤把該票的閘門票列當成已由派發列表達而不列。任務欄顯示文字不變。
 
 - `types/index.d.ts` 的 `DispatchRow` 新增 `ticketId: string | null`；`hooks/dispatch.ts` 的 `dispatchRows` 填入派發紀錄的完整票號。

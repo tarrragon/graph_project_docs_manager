@@ -124,9 +124,9 @@ export function formatActivity(activity: GroupActivity): string {
   return parts.filter(part => part !== '').join(' · ')
 }
 
-/** 標題列：展開為 `▾`、收合為 `▸`，其後各段以「｜」分隔，空段略過。 */
-export function formatGroupTitle(parts: readonly string[], isOpen: boolean): string {
-  return `${isOpen ? '▾' : '▸'} ${parts.filter(part => part !== '').join('｜')}`
+/** 可折疊區塊的切換文字：展開為 `▾ <標題>`、收合為 `▸ <標題>`。 */
+export function formatGroupToggle(title: string, isOpen: boolean): string {
+  return `${isOpen ? '▾' : '▸'} ${title}`
 }
 
 /** 群組內的派發列：`<代理人>｜<任務>｜<流程階段>｜<距派發時間>`；所屬線由群組標題表達，不再重複。 */
@@ -142,6 +142,8 @@ export function formatGateTicket(gate: GateTicket): string {
 /**
  * 佇列列：`排隊：<票序>`，票序同 formatQueue（每張票標主 checkout 的狀態），但不列 completed 的票，
  * 與標題列的排隊數一致；沒有未完成的票時回傳 null（不畫佇列列）。
+ * 畫面改由 queueRowSegments 分段上色，產品碼不呼叫本函式；保留它作為佇列列整行文字的契約，
+ * layout.test.ts 以它鎖定整行文字，並驗證各段相接與它一致。
  */
 export function formatQueueRow(tokens: readonly QueueToken[], tickets: readonly TicketStatus[]): string | null {
   const segments = queueRowSegments(tokens, tickets)

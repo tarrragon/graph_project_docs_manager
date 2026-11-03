@@ -1,4 +1,5 @@
-// Pane 端到端測試共用的 harness：以 test 端 hook 代替 engine 的 repo stub、啟動看板並掛上 Pane、一組 session 狀態檔。
+// Pane 端到端測試共用的 harness：以 test 端 hook 代替 engine 的 repo stub、啟動看板並掛上 Pane、一組 session 狀態檔，
+// 以及從畫出的描述樹取文字的輔助函式（titleOf、textsOf 等）。
 // 由 board.test.ts 與 boardDispatch.test.ts 匯入；本檔不是測試檔，不含任何 test。
 
 import type { On } from 'claude-code'
@@ -6,6 +7,8 @@ import { mock } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 import { sessionJson } from './fixtures'
+import { groupTitleKey } from '../hooks/lanesView'
+import { groupToggleKey } from '../hooks/layout'
 import { COORDINATION_CLI_PATH } from '../hooks/readers'
 import { SESSIONS_DIR } from '../hooks/sessions'
 
@@ -150,6 +153,52 @@ export async function startBoard($: Engine, on: On, stub: Stub, bodyColumns: num
     props: { ...PANE.props, bodyColumns },
   })
   return { ui, readPaths, psCalls, opened, registered, logs, callOrder, cliCwds, clock }
+}
+
+/** 掛上的 Pane。 */
+export type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
+
+/** 描述節點：子節點在 children 或 props.children；key、color 等在 props。 */
+export type Described = { type?: unknown; children?: unknown; props?: { children?: unknown; color?: unknown; bold?: unknown } }
+
+/** 描述節點的子節點；子節點只有一個字串時也包成陣列。 */
+export function childrenOf(node: unknown): unknown[] {
+  if (typeof node !== 'object' || node === null) return []
+  const element = node as Described
+  const children = element.children ?? element.props?.children
+  if (Array.isArray(children)) return children
+  return children === undefined ? [] : [children]
+}
+
+/** 一個 Text 的文字：字串子節點與內嵌 Text（佇列列的各票分段）的文字依序相接。 */
+export function textOf(node: unknown): string {
+  return childrenOf(node)
+    .map(child => (typeof child === 'string' ? child : (child as Described).type === 'Text' ? textOf(child) : ''))
+    .join('')
+}
+
+/** 描述節點內所有 Text 的文字，依文件順序（Text 包在縮排的 Box 內時往下找）；Button 的文字不在其中。 */
+export function textsOf(nodes: readonly unknown[]): string[] {
+  const texts: string[] = []
+  for (const node of nodes) {
+    if (typeof node !== 'object' || node === null) continue
+    // 標題列（Button）的文字由 headerOf 另取，不在其中
+    if ((node as Described).type === 'Text') texts.push(textOf(node))
+    else if ((node as Described).type !== 'Button') texts.push(...textsOf(childrenOf(node)))
+  }
+  return texts
+}
+
+/** 群組標題列（Button）的文字；群組未畫出時為 undefined。 */
+export async function headerOf(ui: Ui, id: string): Promise<string | undefined> {
+  return (await ui.find({ type: 'Button', key: groupToggleKey(id) }))?.text
+}
+
+/** 群組標題的各行：標題列（Button），其後依序為標題 Box 內各 Text 的文字（目標、活動計數，缺者不畫）；群組未畫出時為 undefined。 */
+export async function titleOf(ui: Ui, id: string): Promise<string[] | undefined> {
+  const header = await headerOf(ui, id)
+  const title = await ui.find({ type: 'Box', key: groupTitleKey(id) })
+  return header === undefined || title === undefined ? undefined : [header, ...textsOf(title.children)]
 }
 
 /** 使用者在終端機輸入 `/board`；回傳指令的輸出文字。 */

@@ -8,46 +8,14 @@ import { MERGE_LOG_HOLDING, TICKET_349, dispatchJson, overlapLogUntil, ticketFil
 import { GROUP_BORDER_STYLE, groupFrameKey, groupTitleKey } from '../hooks/lanesView'
 import { MERGE_GATE_GROUP_ID, OTHER_GROUP_ID, SESSIONS_GROUP_ID, groupBodyKey, groupToggleKey, laneGroupId } from '../hooks/layout'
 import { MERGE_LOG_PATH } from '../hooks/mergeGate'
-import { COORDINATION_TICKET, cliOk, sessionStub, startBoard } from './paneHarness'
+import { COORDINATION_TICKET, childrenOf, cliOk, headerOf, sessionStub, startBoard, textOf, textsOf, titleOf } from './paneHarness'
+import type { Described, Ui } from './paneHarness'
 import { ticketFileCandidates } from '../hooks/shared'
 
 /** 預設協調票的票檔（相對 repo root）：由票號推導，取 ticketFileCandidates 的第一個候選（hierarchical）。 */
 const COORDINATION_TICKET_FILE = ticketFileCandidates(COORDINATION_TICKET)[0] ?? ''
 /** 與預設協調票同版本的票檔所在目錄（相對 repo root）。 */
 const TICKET_FOLDER = COORDINATION_TICKET_FILE.slice(0, COORDINATION_TICKET_FILE.lastIndexOf('/'))
-
-type Ui = Awaited<ReturnType<typeof startBoard>>['ui']
-
-/** 描述節點：子節點在 children 或 props.children；key、color 等在 props。 */
-type Described = { type?: unknown; children?: unknown; props?: { children?: unknown; color?: unknown; bold?: unknown } }
-
-/** 描述節點的子節點；子節點只有一個字串時也包成陣列。 */
-function childrenOf(node: unknown): unknown[] {
-  if (typeof node !== 'object' || node === null) return []
-  const element = node as Described
-  const children = element.children ?? element.props?.children
-  if (Array.isArray(children)) return children
-  return children === undefined ? [] : [children]
-}
-
-/** 一個 Text 的文字：字串子節點與內嵌 Text（佇列列的各票分段）的文字依序相接。 */
-function textOf(node: unknown): string {
-  return childrenOf(node)
-    .map(child => (typeof child === 'string' ? child : (child as Described).type === 'Text' ? textOf(child) : ''))
-    .join('')
-}
-
-/** 一個描述節點內所有 Text 的文字，依文件順序；Text 的文字為其字串子節點與內嵌 Text 相接。 */
-function textsOf(nodes: readonly unknown[]): string[] {
-  const texts: string[] = []
-  for (const node of nodes) {
-    if (typeof node !== 'object' || node === null) continue
-    // 標題列（Button）的文字由 headerOf 另取，不在其中
-    if ((node as Described).type === 'Text') texts.push(textOf(node))
-    else if ((node as Described).type !== 'Button') texts.push(...textsOf(childrenOf(node)))
-  }
-  return texts
-}
 
 /**
  * 群組展開內容中佇列列（文字以「排隊：」開頭的 Text）內各票分段的文字與顏色，依序；分隔符（字串子節點）不在其中。
@@ -59,18 +27,6 @@ async function queueSegmentsOf(ui: Ui, id: string): Promise<{ text: string; colo
   return childrenOf(row)
     .filter(child => typeof child === 'object' && child !== null && (child as Described).type === 'Text')
     .map(child => ({ text: textOf(child), color: (child as Described).props?.color }))
-}
-
-/** 群組標題列（Button）的文字；群組未畫出時為 undefined。 */
-async function headerOf(ui: Ui, id: string): Promise<string | undefined> {
-  return (await ui.find({ type: 'Button', key: groupToggleKey(id) }))?.text
-}
-
-/** 群組標題的各行：標題列（Button），其後依序為目標、活動計數（缺者不畫）；群組未畫出時為 undefined。 */
-async function titleOf(ui: Ui, id: string): Promise<string[] | undefined> {
-  const header = await headerOf(ui, id)
-  const title = await ui.find({ type: 'Box', key: groupTitleKey(id) })
-  return header === undefined || title === undefined ? undefined : [header, ...textsOf(title.children)]
 }
 
 /** 群組展開內容的各行文字；收合（內容未畫出）時為 undefined。 */
