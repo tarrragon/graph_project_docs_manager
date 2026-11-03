@@ -22,11 +22,13 @@ final nodeDetailStateProvider = StateProvider<NodeDetailState>(
   (ref) => const NodeDetailUnset(),
 );
 
-/// 節點 id → 詳情資料（不含內文）；輪次未完成或建圖不可用時為空。
+/// 節點 id → 詳情資料（不含內文）；讀同一專案最後完成的輪次（0.6.0-W1-109，
+/// SPEC-003 §3.6 掃描輪次更新列），重掃期間保留上一輪，新輪次完成後替換，
+/// 切換專案時清除。無完成輪次或建圖不可用時為空。
 final nodeDetailNodesProvider = Provider<Map<String, NodeDetailFixture>>((ref) {
-  final round = ref.watch(scanRoundProvider);
-  if (round is! ScanRoundCompleted) return const {};
-  final graph = round.result.graph;
+  final round = ref.watch(lastCompletedRoundProvider);
+  if (round == null) return const {};
+  final graph = round.graph;
   if (graph is! GraphBuildAvailable) return const {};
   return projectNodeDetails(graph.event);
 });
