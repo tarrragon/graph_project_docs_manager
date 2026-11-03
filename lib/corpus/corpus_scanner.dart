@@ -23,6 +23,7 @@ import 'parse_failure_event.dart';
 import 'parse_failure_event_builder.dart';
 import 'parse_outcome.dart';
 import 'scan_summary.dart';
+import 'topic_files_reader.dart';
 
 /// FR-02 掃描起點：工作區根目錄下固定的 `docs/` 子目錄（規則：範圍與
 /// PROP-005 §0.3 量測時一致）。
@@ -94,6 +95,7 @@ class CorpusScanResult {
     required this.summary,
     this.flowParseFailedEvents = const <FlowParseFailedEvent>[],
     this.nonDomainPathsRead = const NonDomainPathsReadAbsent(),
+    this.topicFilesRead = const TopicFilesReadResult.absent(),
   });
 
   final List<RawNode> rawNodes;
@@ -117,6 +119,14 @@ class CorpusScanResult {
   /// 供 Graph 專案層宣告彙整（0.5.0-W1-119.2）。讀取拋出非預期例外時視同
   /// 缺席（與 [nonDomainPathsParseFailedEvent] 的「視同無事件」一致）。
   final NonDomainPathsReadResult nonDomainPathsRead;
+
+  /// FR-12：本輪 ticket→主題映射與兩檔狀態（EVT-CORPUS-001），與
+  /// [rawNodes] 同一輪結果；讀取拋出非預期例外時視同兩檔缺席。
+  final TopicFilesReadResult topicFilesRead;
+
+  /// FR-12 規則 7、8：本輪 EVT-CORPUS-006（至多三筆）。
+  List<TopicFilesParseFailedEvent> get topicFilesParseFailedEvents =>
+      topicFilesRead.events;
 }
 
 /// 測試用查詢種子（`@visibleForTesting`）：預設呼叫真正的
@@ -193,11 +203,13 @@ Future<CorpusScanResult> scanCorpus({
     table,
     builtinTable,
   );
+  final topicFilesRead = await _readTopicFiles(fileSystem);
   final result = acc.toResult(
     listing.paths.length,
     carrierPathQueryAvailable,
     listing.unlistableDirectories,
     nonDomainRead,
+    topicFilesRead,
   );
 
   developer.log(
@@ -235,6 +247,23 @@ Future<NonDomainPathsReadResult> _readNonDomainPaths(
       stackTrace: stackTrace,
     );
     return const NonDomainPathsReadAbsent();
+  }
+}
+
+/// 需求：[SPEC-006 FR-12 規則 2、9] 每輪讀一次兩個主題檔。讀取拋出非預期
+/// 例外時不中止整輪掃描（NFR-01），視同兩檔缺席並寫 warning 日誌。
+Future<TopicFilesReadResult> _readTopicFiles(DocsFileSystem fileSystem) async {
+  try {
+    return await readTopicFiles(fileSystem: fileSystem);
+  } catch (e, stackTrace) {
+    developer.log(
+      '主題檔讀取發生非預期例外，視同缺席', // i18n-exempt: 開發者 debug log
+      name: 'CorpusScanner',
+      level: 900,
+      error: e,
+      stackTrace: stackTrace,
+    );
+    return const TopicFilesReadResult.absent();
   }
 }
 
@@ -537,10 +566,12 @@ class _ScanAccumulator {
     bool carrierPathQueryAvailable,
     List<String> unlistableDirectories,
     NonDomainPathsReadResult nonDomainRead,
+    TopicFilesReadResult topicFilesRead,
   ) {
     final nonDomainEvent = nonDomainRead.malformedEvent;
     return CorpusScanResult(
       nonDomainPathsRead: nonDomainRead,
+      topicFilesRead: topicFilesRead,
       rawNodes: rawNodes,
       parseErrors: parseErrors,
       parseFailureEvents: parseFailureEvents,
