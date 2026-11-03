@@ -18,6 +18,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/attention_level.dart';
+import '../../app/jump_targets.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
@@ -179,8 +180,7 @@ class _ReadyListView extends ConsumerWidget {
 
     void onSort(TicketSortKey key) => update((s) => _advanceSort(s, key));
 
-    void onOpenTicket(String id) =>
-        navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+    void onOpenTicket(String id) => jumpToNodeDetail(ref.read, id);
 
     void onCorruptedTap() =>
         navigateTo(ref.read, AppDestination.gaps, NavIntent.jump);
@@ -386,8 +386,7 @@ class _ReadyTopicView extends ConsumerWidget {
       );
     }
 
-    void onOpenTicket(String id) =>
-        navigateTo(ref.read, AppDestination.nodeDetail, NavIntent.jump);
+    void onOpenTicket(String id) => jumpToNodeDetail(ref.read, id);
 
     void onCorruptedTap() =>
         navigateTo(ref.read, AppDestination.gaps, NavIntent.jump);
