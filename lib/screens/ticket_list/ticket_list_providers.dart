@@ -8,8 +8,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../app/graph_status.dart';
+import '../../app/scan_round.dart';
+import '../../corpus/node_type_names.dart';
+import '../../ticket_detail/ticket_detail.dart';
 import '../../tokens/tokens.dart';
-import 'ticket_list_fixtures.dart';
 import 'ticket_list_state.dart';
 
 /// 優先值序（框架 `PRIORITY_LEVELS` 序的固定字面對映，S8「優先依框架
@@ -26,11 +29,130 @@ const List<String> statusValues = [
   'closed',
 ];
 
-/// 目前畫面狀態；預設未載入（[TicketListFixtures.all] 的票數）。測試以
-/// `overrideWith` 切換至其餘狀態，畫面直接渲染，不經真實載入或解析。
-final ticketListStateProvider = StateProvider<TicketListState>(
-  (ref) => TicketsUnloaded(count: TicketListFixtures.all.length),
-);
+/// 缺席欄位的資料態佔位符（SPEC-001 §4〈票列欄位的取值來源〉）。
+const String _absentPlaceholder = '—'; // i18n-exempt: 資料態佔位符，非 UI 文案
+
+String? _stringOrNull(Object? value) => value is String ? value : null;
+
+List<String> _blockedByOf(Object? value) => value is List
+    ? [
+        for (final e in value)
+          if (e is String) e,
+      ]
+    : const [];
+
+/// 需求：[SPEC-001 §4〈票列欄位的取值來源〉] 正常票各欄取 TicketDetail 的
+/// frontmatter；標題缺席或非字串以佔位符頂替。
+TicketFixtureItem ticketRowOf(Map<String, dynamic> frontmatter) {
+  return TicketFixtureItem(
+    id: frontmatter['id'] as String,
+    title: _stringOrNull(frontmatter['title']) ?? _absentPlaceholder,
+    status: _stringOrNull(frontmatter['status']),
+    priority: _stringOrNull(frontmatter['priority']),
+    blockedBy: _blockedByOf(frontmatter['blockedBy']),
+  );
+}
+
+TicketFixtureItem _corruptedRowOf(String path) {
+  final fileName = path.split('/').last;
+  final id = fileName.endsWith('.md')
+      ? fileName.substring(0, fileName.length - 3)
+      : fileName;
+  return TicketFixtureItem(id: id, title: fileName, corrupted: true);
+}
+
+/// 需求：[SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉] 一輪的票列：正常票（該輪
+/// TicketDetail 收錄者，依 rawNodes 序）+ 損壞票（EVT-CORPUS-003 歸屬型別為
+/// Ticket 者）。重複 ID 查無 TicketDetail，不成列。
+List<TicketFixtureItem> ticketRowsOfRound(ScanRoundResult round) {
+  final detail = TicketDetail.fromRawNodes(round.scan.rawNodes);
+  final seen = <String>{};
+  final rows = <TicketFixtureItem>[];
+  for (final node in round.scan.rawNodes) {
+    final id = node.frontmatter['id'];
+    if (node.typeName != ticketTypeName || id is! String) continue;
+    final frontmatter = detail.findById(id);
+    if (frontmatter != null && seen.add(id)) rows.add(ticketRowOf(frontmatter));
+  }
+  for (final event in round.scan.parseFailureEvents) {
+    if (event.nodeType == ticketTypeName) {
+      rows.add(_corruptedRowOf(event.path));
+    }
+  }
+  return rows;
+}
+
+/// 由最後完成輪次與專案未就緒原因算出的基底狀態（尚未疊加搜尋、篩選等
+/// 畫面操作）。
+TicketListState ticketBaseStateOf(
+  ProjectUnreadyReason? reason,
+  ScanRoundResult? round,
+) {
+  if (reason != null) return TicketsProjectUnready(reason);
+  if (round == null) {
+    return const TicketsProjectUnready(ProjectUnreadyReason.loading);
+  }
+  final rows = ticketRowsOfRound(round);
+  return rows.isEmpty ? const TicketsEmpty() : TicketsReady(tickets: rows);
+}
+
+/// 輪次或未就緒原因變動時同步畫面狀態：同一專案的新輪次只替換票列，保留
+/// 模式、搜尋、篩選、排序（SPEC-003 §3.4〈生命週期〉）；切換專案則重置。
+/// 以監聽回呼帶來的新值計算，不讀衍生 provider（其重算時機晚於回呼）。
+void _syncWithRound(
+  Ref ref, {
+  required ProjectUnreadyReason? reason,
+  required ScanRoundResult? round,
+  required bool sameProject,
+}) {
+  final base = ticketBaseStateOf(reason, round);
+  final notifier = ref.read(ticketListStateProvider.notifier);
+  final current = notifier.state;
+  if (sameProject && current is TicketsReady && base is TicketsReady) {
+    notifier.state = current.copyWith(tickets: base.tickets);
+    return;
+  }
+  notifier.state = base;
+  if (!sameProject) {
+    ref.read(ticketSearchInputProvider.notifier).state = null;
+  }
+}
+
+/// 目前畫面狀態：預設由最後完成輪次衍生（SPEC-001 §4）；搜尋、篩選、排序、
+/// 模式等畫面操作直接寫入本 provider（含 [TicketSearchDebouncer]）。測試
+/// 以 `overrideWith` 注入其餘狀態。
+final ticketListStateProvider = StateProvider<TicketListState>((ref) {
+  ref.read(_ticketRoundSyncProvider);
+  return ticketBaseStateOf(
+    ref.read(projectUnreadyReasonProvider),
+    ref.read(lastCompletedRoundProvider),
+  );
+});
+
+/// 輪次與未就緒原因的同步掛點；由 [ticketListStateProvider] 初始化時啟動
+/// （獨立 provider：listener 回呼需回寫畫面狀態，不能在其建構函式內讀自己）。
+final _ticketRoundSyncProvider = Provider<void>((ref) {
+  ref.listen<ScanRoundResult?>(lastCompletedRoundProvider, (prev, next) {
+    _syncWithRound(
+      ref,
+      reason: ref.read(projectUnreadyReasonProvider),
+      round: next,
+      sameProject:
+          prev != null &&
+          next != null &&
+          prev.workspacePath == next.workspacePath,
+    );
+  });
+  ref.listen<ProjectUnreadyReason?>(
+    projectUnreadyReasonProvider,
+    (prev, next) => _syncWithRound(
+      ref,
+      reason: next,
+      round: ref.read(lastCompletedRoundProvider),
+      sameProject: true,
+    ),
+  );
+});
 
 /// 搜尋輸入框的即時顯示值；`null` 代表尚未輸入，顯示值取
 /// [TicketsReady.searchQuery]。過濾詞（`searchQuery`）才經防抖更新。
