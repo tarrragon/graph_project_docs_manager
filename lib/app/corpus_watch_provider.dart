@@ -9,13 +9,16 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/corpus_watcher_provider.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
 import 'package:graph_project_docs_manager/app/round_gaps.dart';
-import 'package:graph_project_docs_manager/services/directory_watch_source.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
+
+export 'package:graph_project_docs_manager/app/corpus_watcher_provider.dart'
+    show watchClockProvider, watchSourceProvider;
 
 const String _tag = 'corpus_watch';
 
@@ -48,34 +51,12 @@ class WatchRoundCompleted extends WatchRoundEvent {
   final bool rerunPending;
 }
 
-/// 監看事件來源；測試覆寫為假來源。
-final watchSourceProvider = Provider<WatchSource>(
-  (ref) => DirectoryWatchSource(),
-);
-
-class _TimerHandle implements DebounceTimer {
-  _TimerHandle(this._timer);
-  final Timer _timer;
-  @override
-  void cancel() => _timer.cancel();
-}
-
-class _RealDebounceClock implements DebounceClock {
-  const _RealDebounceClock();
-  @override
-  DebounceTimer schedule(Duration delay, void Function() callback) =>
-      _TimerHandle(Timer(delay, callback));
-}
-
 /// 監看與排程的擁有者。
 class CorpusWatchController {
-  CorpusWatchController(this._ref, {DebounceClock? clock}) {
-    _watcher = CorpusWatcher(
-      source: _ref.read(watchSourceProvider),
-      clock: clock ?? const _RealDebounceClock(),
-      onChanged: (_) => scheduler.request(ScanTrigger.watch),
-      log: _log,
-    );
+  CorpusWatchController(this._ref) {
+    _watcher = _ref.read(corpusWatcherProvider);
+    _ref.read(watchChangedSinkProvider).listener = () =>
+        scheduler.request(ScanTrigger.watch);
     scheduler = ScanScheduler(
       runRound: _runRound,
       clearPendingWatchEvents: _watcher.clearPending,
@@ -92,17 +73,14 @@ class CorpusWatchController {
 
   bool get isWatching => _watcher.isWatching;
 
-  void _log(String message, {int level = 0}) =>
-      developer.log(message, name: _tag, level: level);
-
   Future<void> sync(WorkspaceState state) => switch (state) {
     WorkspaceReady(:final path) => _watcher.start(path),
     _ => _watcher.stop(),
   };
 
   Future<void> _runRound(ScanTrigger trigger) async {
-    // 規則 1：首輪（visibility）在監看就緒後才開始；失敗已由監看端記錄並放行。
-    if (trigger == ScanTrigger.visibility) await _watcher.ready;
+    // 規則 1 的就緒閘門在 ScanRoundNotifier.ensureRound（所有首輪路徑共用）。
+    final generation = scheduler.generation;
     _events.add(WatchRoundStarted(trigger));
     Set<String>? ids;
     var failed = false;
@@ -119,6 +97,8 @@ class CorpusWatchController {
         stackTrace: st,
       );
     }
+    // 排程已被使用者取消（含首輪等待就緒期間）：不發完成事件。
+    if (generation != scheduler.generation) return;
     _events.add(
       WatchRoundCompleted(
         trigger,

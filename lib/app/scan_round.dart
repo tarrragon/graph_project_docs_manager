@@ -14,6 +14,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/corpus_watcher_provider.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/docs_file_system.dart';
@@ -212,10 +213,10 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     if (current is ScanRoundCompleted) {
       return Future.value(current.result);
     }
-    return _inFlight ?? _startRound();
+    return _inFlight ?? _startRound(awaitWatchReady: true);
   }
 
-  /// 手動重新掃描：丟棄現有輪次並開新輪。
+  /// 手動重新掃描：丟棄現有輪次並開新輪（不等監看就緒，FR-11 規則 1）。
   Future<ScanRoundResult?> rescan() {
     discard('rescan');
     return _startRound();
@@ -230,16 +231,34 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     state = const ScanRoundIdle();
   }
 
-  Future<ScanRoundResult?> _startRound() {
+  /// FR-11 規則 1：首輪（ensureRound 開新輪）等監看就緒後才跑掃描。等待期間
+  /// 輪次已佔住進行中狀態（並行的 ensureRound 共用同一輪）；等待後世代
+  /// 不符（取消、切換、重掃）則不開輪。
+  Future<ScanRoundResult?> _startRound({bool awaitWatchReady = false}) {
     final workspace = ref.read(currentWorkspaceStateProvider);
     if (workspace is! WorkspaceReady) return Future.value(null);
     final generation = ++_generation;
     state = ScanRoundRunning(workspace.path);
     // i18n-exempt: 開發者 debug log
     _log('開始：path=${workspace.path}, generation=$generation');
-    final future = _runGuarded(workspace.path, generation);
+    final future = awaitWatchReady
+        ? _runAfterWatchReady(workspace.path, generation)
+        : _runGuarded(workspace.path, generation);
     _inFlight = future;
     return future;
+  }
+
+  Future<ScanRoundResult?> _runAfterWatchReady(
+    String path,
+    int generation,
+  ) async {
+    await ref.read(corpusWatcherProvider).ready;
+    if (generation != _generation) {
+      // i18n-exempt: 開發者 debug log
+      _log('等待監看就緒期間輪次已失效，不開輪：generation=$generation');
+      return null;
+    }
+    return _runGuarded(path, generation);
   }
 
   Future<ScanRoundResult?> _runGuarded(String path, int generation) async {

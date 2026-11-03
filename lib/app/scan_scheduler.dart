@@ -23,6 +23,9 @@ class ScanScheduler {
   ScanTrigger? _pending;
   int _generation = 0;
 
+  /// 取消世代；每次 [cancel] 遞增。
+  int get generation => _generation;
+
   bool get isRunning => _running;
 
   bool get hasPendingRerun => _pending != null;

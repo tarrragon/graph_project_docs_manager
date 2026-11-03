@@ -16,6 +16,11 @@ const Duration watchQuietWindow = Duration(
 /// FR-11 規則 4 最長等待（W3）。
 const Duration watchMaxWait = Duration(seconds: 3); // magic-exempt: 規格裁定值 W3
 
+/// FR-11 規則 10 就緒逾時（用戶裁定 2026-11-03）。
+const Duration watchReadyTimeout = Duration(
+  seconds: 5,
+); // magic-exempt: 規格裁定值 規則 10
+
 const String _docsPrefix = 'docs/';
 const String _markdownSuffix = '.md';
 const String _vcsDirName = '.git';
@@ -160,12 +165,17 @@ class CorpusWatcher {
     required void Function(CorpusChangedEvent event) onChanged,
     required void Function(String message, {int level}) log,
     String? nonDomainPathsLocation,
+    this.readyTimeout = watchReadyTimeout,
   }) : _source = source,
+       _clock = clock,
        _log = log,
        _nonDomainPathsLocation = nonDomainPathsLocation {
     _debouncer = WatchDebouncer(clock: clock, onFlush: onChanged);
   }
 
+  final Duration readyTimeout;
+  final DebounceClock _clock;
+  DebounceTimer? _readyTimer;
   final WatchSource _source;
   final void Function(String message, {int level}) _log;
   final String? _nonDomainPathsLocation;
@@ -192,19 +202,33 @@ class CorpusWatcher {
         .listen(
           _onChange,
           // i18n-exempt: 開發者日誌，非使用者介面字串
-          onError: (Object e) => _fail(workspaceRoot, 'error: $e'),
-          // i18n-exempt: 開發者日誌，非使用者介面字串
-          onDone: () => _fail(workspaceRoot, 'stream closed unexpectedly'),
+          onError: (Object e) =>
+              _fail(workspaceRoot, 'error: $e', gate), // i18n-exempt: 開發者日誌
+          onDone: () => _fail(
+            workspaceRoot,
+            'stream closed unexpectedly', // i18n-exempt: 開發者日誌
+            gate,
+          ),
         );
     // i18n-exempt: 開發者日誌，非使用者介面字串
     _log('watch started: $workspaceRoot', level: _infoLevel);
+    // 規則 10：就緒逾時視同監看失敗。
+    _readyTimer = _clock.schedule(readyTimeout, () {
+      // i18n-exempt: 開發者日誌，非使用者介面字串
+      _fail(workspaceRoot, 'ready timeout', gate);
+      _openGate(gate);
+    });
+    final timer = _readyTimer;
     _source
         .ready(workspaceRoot)
         .then(
-          (_) => _openGate(gate),
+          (_) {
+            timer?.cancel();
+            _openGate(gate);
+          },
           onError: (Object e) {
             // i18n-exempt: 開發者日誌，非使用者介面字串
-            _fail(workspaceRoot, 'ready error: $e');
+            _fail(workspaceRoot, 'ready error: $e', gate);
             _openGate(gate);
           },
         );
@@ -223,8 +247,9 @@ class CorpusWatcher {
     }
   }
 
-  void _fail(String workspaceRoot, String reason) {
-    if (!isWatching) return;
+  /// [gate] 為發起該次 start 的閘門；已被新的 start 取代者的失敗不生效（F4）。
+  void _fail(String workspaceRoot, String reason, Completer<void> gate) {
+    if (!isWatching || !identical(gate, _readyGate)) return;
     // i18n-exempt: 開發者日誌，非使用者介面字串
     final message = 'watch failed, stopped: $workspaceRoot ($reason)';
     _log(message, level: _warningLevel);
@@ -235,6 +260,8 @@ class CorpusWatcher {
   }
 
   Future<void> stop() async {
+    _readyTimer?.cancel();
+    _readyTimer = null;
     final sub = _subscription;
     _subscription = null;
     _debouncer.clearPending();
