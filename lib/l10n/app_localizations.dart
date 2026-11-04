@@ -1417,6 +1417,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'producers 宣告了 {domain}，但沒有對應的步驟發出此事件'**
   String gapEventProducerUnmatched(String domain);
+
+  /// SPEC-003 §3.5 破洞項開啟原始檔結果 openedWithoutEditor 的 SnackBar 文案：所選編輯器查無 handler，已退回系統預設方式開啟且未定位；畫面狀態不變
+  ///
+  /// In zh, this message translates to:
+  /// **'所選編輯器無法使用，已以系統預設方式開啟'**
+  String get openedWithoutEditorMessage;
+
+  /// SPEC-003 §3.8 偏好設定面板標題（⌘, 開啟）
+  ///
+  /// In zh, this message translates to:
+  /// **'偏好設定'**
+  String get preferencesTitle;
+
+  /// SPEC-001 §9 編輯器清單第一項 option-preferences-editor-system 的標籤：以系統預設方式開啟，不定位至行號
+  ///
+  /// In zh, this message translates to:
+  /// **'系統預設（不定位）'**
+  String get preferencesEditorSystemOption;
+
+  /// SPEC-001 §9 無可選編輯器狀態 state-preferences-no-editors 的說明文字；支援清單與 SPEC-003 §2.2〈編輯器對照表〉同步
+  ///
+  /// In zh, this message translates to:
+  /// **'本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed'**
+  String get preferencesNoEditorsExplanation;
 }
 
 class _AppLocalizationsDelegate

@@ -719,6 +719,8 @@ void main() {
       await tapItem(tester, opener);
 
       expect(opener.calls, ['${tempDir.path}/README.md']);
+      // 破洞項把自己的行號交給 opener 定位（SPEC-003 §3.5）。
+      expect(opener.lines, [1]);
 
       expect(find.text('已在外部開啟'), findsOneWidget);
       expect(find.text('無法以系統預設方式開啟'), findsNothing);
@@ -760,6 +762,19 @@ void main() {
         }
       });
     }
+
+    testWidgets('openedWithoutEditor：告知所選編輯器無法使用，不回報一般成功', (tester) async {
+      await tapItem(
+        tester,
+        FakeExternalOpener(
+          defaultResult: ExternalOpenResult.openedWithoutEditor,
+        ),
+      );
+
+      expect(find.text('所選編輯器無法使用，已以系統預設方式開啟'), findsOneWidget);
+      expect(find.text('已在外部開啟'), findsNothing);
+      expect(find.text('無法以系統預設方式開啟'), findsNothing);
+    });
 
     testWidgets('exitCode 非零：提示無法開啟，不回報成功', (tester) async {
       await tapItem(
@@ -911,7 +926,7 @@ class _GatedOpener implements ExternalOpener {
   final List<String> calls = [];
 
   @override
-  Future<ExternalOpenResult> open(String path) {
+  Future<ExternalOpenResult> open(String path, {int? line}) {
     calls.add(path);
     return _gate.future;
   }

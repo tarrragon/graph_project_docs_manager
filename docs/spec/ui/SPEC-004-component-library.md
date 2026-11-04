@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-04"
-version: "1.121"
+version: "1.122"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.121（1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.122（1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -375,6 +375,8 @@ depends_on_domains: [layout]
 | §7 | 收合 | 側欄頂端顯示目前專案名 | `ProjectSwitcherEntry` |
 | §7 | 展開 | 最近專案清單 + 健康徽章 + 選擇其他 | `SwitcherOverlay`[`AppText.caption`, `RecentProjectItem`（`Badge.health`）× N, `Divider`, `AppButton.text`] |
 | §7 | 無最近專案 | 僅「選擇資料夾…」 | `SwitcherOverlay` 零項 + `AppButton.text`（訊息文案 `switcherChooseFolderPrompt`；不用 `EmptyState`，§3.7 第 3 項） |
+| §9 | 編輯器清單 | 單選清單：系統預設加查得 handler 的編輯器，目前選定值標示為選取 | `Panel.scrollable`[`AppText.subtitle`（`preferencesTitle`）, `ListRow.option` × N（`option-preferences-editor-<editorId>`；首項標籤 `preferencesEditorSystemOption`，其後為編輯器名稱，產品專有名詞不進 i18n）, `AppButton.text`（關閉，`action-preferences-close`）] |
+| §9 | 無可選編輯器 | 單選清單只有「系統預設（不定位）」且為選取 + 說明文字 | 同上：`ListRow.option` × 1（`option-preferences-editor-system`）+ `AppText.multiLine`（`preferencesNoEditorsExplanation`，`maxLines: null`） |
 
 `SplitRow.header` 與 `SegmentedControl` 僅渲染於正常 · 矩陣、已選格、正常 · 泳道、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化、圖不可用七列；其餘 §1 狀態（未選專案、載入中、空圖、三個阻擋狀態）不渲染頁首模式切換（SPEC-003 §2.2 形態 a，`0.1.0-W3-335.38` S-15）。
 
@@ -844,6 +846,15 @@ EVT-CORPUS-004 項目說明：
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
 | `traceabilityGraphUnavailableMessage` | 此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜，追溯視圖暫無法顯示；可至 Domain 視圖重新掃描 | This project's schema version is outside the range this app knows (up to {appVersion}), so the latest scan could not build the graph and the traceability view is unavailable. You can rescan from the Domain view | appVersion | §3 圖不可用（4.21 `page` 訊息，`state-traceability-graph-unavailable`） |
+
+**1.122 新增（`0.6.0-W1-070.2`，對應 SPEC-001 v1.76 §9、SPEC-003 v1.82 §3.8 與 §3.5 破洞項開啟原始檔列；zh／en 與 ARB 同批）**：偏好設定面板的標題、系統預設選項、無可選編輯器說明，以及 `openedWithoutEditor` 的 SnackBar 文案。編輯器名稱（VS Code、VS Code Insiders、Cursor、Zed）為產品專有名詞，不進 i18n。
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `openedWithoutEditorMessage` | 所選編輯器無法使用，已以系統預設方式開啟 | The selected editor is unavailable; opened with the default application | — | 4.26 `AppSnackBar.plain`（SPEC-003 §3.5 破洞項開啟原始檔，結果 `openedWithoutEditor`） |
+| `preferencesTitle` | 偏好設定 | Preferences | — | SPEC-001 §9 偏好設定面板標題（`AppText.subtitle`） |
+| `preferencesEditorSystemOption` | 系統預設（不定位） | System default (no line positioning) | — | SPEC-001 §9 編輯器清單首項 `option-preferences-editor-system`（`ListRow.option` 主文字） |
+| `preferencesNoEditorsExplanation` | 本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed | No editor that can jump to a line was found on this machine. Supported editors: VS Code, VS Code Insiders, Cursor, Zed | — | SPEC-001 §9 無可選編輯器說明（`AppText.multiLine`，`state-preferences-no-editors`） |
 
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
@@ -6494,6 +6505,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.122 | 2026-11-04 | `0.6.0-W1-070.2`（對應 SPEC-001 v1.76、SPEC-003 v1.82）：§3.6 對照表補 SPEC-001 §9 兩列（編輯器清單、無可選編輯器，歸屬 `Panel.scrollable` + `ListRow.option`）；§4.0.6 新增〈1.122 新增〉表登記 `openedWithoutEditorMessage`、`preferencesTitle`、`preferencesEditorSystemOption`、`preferencesNoEditorsExplanation` 四個 key，與 zh／en ARB 同批 |
 | 1.121 | 2026-11-04 | `0.6.0-W1-152.1`（用戶裁定）：§4.0.6 `degradedSchemaBadgeLabel` 列 zh／en 改為 ARB 現值（保留「降級」一詞）；新增補登表登記 `eventOutsideUcBare`、`scanCompleteUndeterminableNotificationBody`、`scanCompleteUndeterminableSnackbarMessage`；`ucSelectorTitle` en、`swimlaneUcUnsetPrompt` zh／en、`swimlaneProjectionPendingPrompt` zh 以規格為準，ARB 同批改齊，規格列不動 |
 | 1.120 | 2026-11-04 | `0.6.0-W1-019.1`：4.9 `RecentProjectItem` disabled 列進入條件拆為探測逾時（`probeTimeoutReason`，逾時值引 SPEC-005 §2.5）與探測判定不可讀或不存在（`WorkspaceUnavailable.reason`，與點選失敗同源）；內容政策表後補表外說明 `reason` 兩種取值。§4.0.6 與各綁定 ARB 的表列未動（PC-GPD-075）。來源 `0.6.0-W1-019` 用戶裁決 |
 | 1.119 | 2026-11-03 | `0.6.0-W1-018.1`：4.9 `RecentProjectItem` 狀態矩陣 enabled／selected／disabled 來源欄與回饋契約狀態變更提示列，陳舊的 `RecentProjectFixture`／`currentProjectIndexProvider` 更正為 `recentProjectsProvider`（`StateProvider<List<RecentProject>>`）、`switcherUnavailableProjectsProvider`、`currentWorkspaceStateProvider`；新增〈無計數快照〉段，slot `summary` 改選填、朗讀標籤補無摘要形；正文版號行補記 1.118。對應 SPEC-001 v1.74、SPEC-005 v1.4 |

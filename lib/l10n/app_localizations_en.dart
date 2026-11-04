@@ -850,4 +850,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String gapEventProducerUnmatched(String domain) {
     return 'Declared producer $domain has no matching step that emits this event';
   }
+
+  @override
+  String get openedWithoutEditorMessage =>
+      'The selected editor is unavailable; opened with the default application';
+
+  @override
+  String get preferencesTitle => 'Preferences';
+
+  @override
+  String get preferencesEditorSystemOption =>
+      'System default (no line positioning)';
+
+  @override
+  String get preferencesNoEditorsExplanation =>
+      'No editor that can jump to a line was found on this machine. Supported editors: VS Code, VS Code Insiders, Cursor, Zed';
 }

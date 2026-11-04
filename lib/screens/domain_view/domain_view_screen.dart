@@ -887,7 +887,10 @@ class _SwimlaneBody extends ConsumerWidget {
     }
     if (!context.mounted) return;
     final message = switch (result) {
-      ExternalOpenResult.opened => l10n.openedExternallyMessage,
+      // 本畫面不傳行號，實務收不到 openedWithoutEditor（SPEC-003 §2.2〈行號定位〉）；
+      // 若收到，檔案已開啟，與 opened 同文案。
+      ExternalOpenResult.opened ||
+      ExternalOpenResult.openedWithoutEditor => l10n.openedExternallyMessage,
       ExternalOpenResult.notFound => l10n.sourceFileNotFoundSnackbarMessage,
       ExternalOpenResult.failed => l10n.externalOpenFailedMessage,
     };

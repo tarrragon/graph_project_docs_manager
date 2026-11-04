@@ -44,7 +44,7 @@ class _GatedOpener implements ExternalOpener {
   final List<String> calls = [];
 
   @override
-  Future<ExternalOpenResult> open(String path) {
+  Future<ExternalOpenResult> open(String path, {int? line}) {
     calls.add(path);
     return gate.future;
   }

@@ -28,7 +28,9 @@ import '../screens/gap_report/gap_report_screen.dart';
 import '../screens/gap_report/scan_notification_controller.dart';
 import '../screens/node_detail/node_detail_screen.dart';
 import '../screens/ticket_list/ticket_list_screen.dart';
+import '../screens/preferences/preferences_panel.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
+import '../services/macos_preferences_channel.dart';
 import '../app/project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
@@ -62,11 +64,18 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell>
     with WidgetsBindingObserver {
   late final ScanNotificationController _scanNotificationController;
+  StreamSubscription<void>? _preferencesRequests;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // ⌘,（選單列「Preferences…」）開啟主視窗內的偏好設定面板（SPEC-003 §3.8）；
+    // 面板已開啟時再收到請求不重複掛載、不重新偵測。
+    _preferencesRequests = ref
+        .read(preferencesChannelProvider)
+        .openRequested
+        .listen((_) => ref.read(preferencesOpenProvider.notifier).state = true);
     // SPEC-006 FR-11 規則 1：常駐殼啟動即掛上監看，早於還原工作區後的首輪掃描。
     ref.read(corpusWatchProvider);
     // 每輪掃描完成寫入最近專案計數快照（SPEC-005 §2.4〈計數快照〉）。
@@ -119,6 +128,7 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _preferencesRequests?.cancel();
     _scanNotificationController.dispose();
     super.dispose();
   }
@@ -160,58 +170,67 @@ class _AppShellState extends ConsumerState<AppShell>
     // 若樹上無任何 `Scaffold`，`ScaffoldMessengerState.showSnackBar` 會
     // 因 `_scaffolds.isEmpty` 直接拋出斷言錯誤——純 `Material` 無法滿足
     // 此前提，屬既有設計缺口，隨本票一併修正）。
+    final isPreferencesOpen = ref.watch(preferencesOpenProvider);
     return Scaffold(
-      body: components.AppShell(
-        selectedIndex: destination.index,
-        screenName: destination.name,
-        hasBackAction: returnTo != null,
-        onBack: () => consumeReturnTo(ref.read),
-        isDegraded: isDegraded,
-        degradedBuiltinVersion: degradedVersions?.builtinVersion,
-        degradedProjectVersion: degradedVersions?.projectVersion,
-        inferredVersion: inferredVersion,
-        switcherEntry: components.ProjectSwitcherEntry(
-          projectName: projectName,
-          isExpanded: isSwitcherOpen,
-          onTap: () =>
-              ref.read(switcherOpenProvider.notifier).state = !isSwitcherOpen,
-          testKey: AppShell.projectSwitcherEntryKey,
-        ),
-        navItems: [
-          for (final item in AppDestination.values)
-            components.NavItem(
-              icon: components.AppIcon(icon: _iconFor(item)),
-              label: item.label(l10n),
-              isSelected: item == destination,
-              onTap: () => navigateTo(ref.read, item, NavIntent.rail),
-              testKey: Key('nav-item-${item.name}'),
-            ),
-        ],
-        pages: [
-          for (final item in AppDestination.values)
-            components.PageColumn(
-              semanticLabel: item.label(l10n),
-              header: components.SplitRow.header(
-                leading: components.PageTitle(title: item.label(l10n)),
-                // 四個目的地已接線頁首右格內容（`SegmentedControl` 矩陣／
-                // 泳道切換、Ticket 清單主題切換、破洞報告重新掃描、節點
-                // 詳情開啟原始檔，SPEC-004 §3.6 §1／§4／§5／§6 表、§3.7
-                // 第 17、18 項）；泳道與追溯視圖 trailing 仍為 null，渲染
-                // 不受影響。
-                trailing: switch (item) {
-                  AppDestination.domain => const DomainHeaderTrailing(),
-                  AppDestination.tickets => const TicketsHeaderTrailing(),
-                  AppDestination.gaps => const GapReportHeaderTrailing(),
-                  AppDestination.nodeDetail => const NodeDetailHeaderTrailing(),
-                  _ => null,
-                },
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: components.AppShell(
+              selectedIndex: destination.index,
+              screenName: destination.name,
+              hasBackAction: returnTo != null,
+              onBack: () => consumeReturnTo(ref.read),
+              isDegraded: isDegraded,
+              degradedBuiltinVersion: degradedVersions?.builtinVersion,
+              degradedProjectVersion: degradedVersions?.projectVersion,
+              inferredVersion: inferredVersion,
+              switcherEntry: components.ProjectSwitcherEntry(
+                projectName: projectName,
+                isExpanded: isSwitcherOpen,
+                onTap: () => ref.read(switcherOpenProvider.notifier).state =
+                    !isSwitcherOpen,
+                testKey: AppShell.projectSwitcherEntryKey,
               ),
-              content: buildDestinationPage(context, item),
+              navItems: [
+                for (final item in AppDestination.values)
+                  components.NavItem(
+                    icon: components.AppIcon(icon: _iconFor(item)),
+                    label: item.label(l10n),
+                    isSelected: item == destination,
+                    onTap: () => navigateTo(ref.read, item, NavIntent.rail),
+                    testKey: Key('nav-item-${item.name}'),
+                  ),
+              ],
+              pages: [
+                for (final item in AppDestination.values)
+                  components.PageColumn(
+                    semanticLabel: item.label(l10n),
+                    header: components.SplitRow.header(
+                      leading: components.PageTitle(title: item.label(l10n)),
+                      // 四個目的地已接線頁首右格內容（`SegmentedControl` 矩陣／
+                      // 泳道切換、Ticket 清單主題切換、破洞報告重新掃描、節點
+                      // 詳情開啟原始檔，SPEC-004 §3.6 §1／§4／§5／§6 表、§3.7
+                      // 第 17、18 項）；泳道與追溯視圖 trailing 仍為 null，渲染
+                      // 不受影響。
+                      trailing: switch (item) {
+                        AppDestination.domain => const DomainHeaderTrailing(),
+                        AppDestination.tickets => const TicketsHeaderTrailing(),
+                        AppDestination.gaps => const GapReportHeaderTrailing(),
+                        AppDestination.nodeDetail =>
+                          const NodeDetailHeaderTrailing(),
+                        _ => null,
+                      },
+                    ),
+                    content: buildDestinationPage(context, item),
+                  ),
+              ],
+              overlay: isSwitcherOpen
+                  ? buildProjectSwitcherOverlay(context: context, ref: ref)
+                  : null,
             ),
+          ),
+          if (isPreferencesOpen) const Center(child: PreferencesPanel()),
         ],
-        overlay: isSwitcherOpen
-            ? buildProjectSwitcherOverlay(context: context, ref: ref)
-            : null,
       ),
     );
   }

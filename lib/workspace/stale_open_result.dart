@@ -8,6 +8,7 @@ typedef StaleOpenLogSink = void Function(String name, String message);
 /// 開啟結果對應的 i18n key 名（留痕用，結果本身不呈現）。
 String openResultKey(ExternalOpenResult result) => switch (result) {
   ExternalOpenResult.opened => 'openedExternallyMessage',
+  ExternalOpenResult.openedWithoutEditor => 'openedWithoutEditorMessage',
   ExternalOpenResult.notFound => 'sourceFileNotFoundSnackbarMessage',
   ExternalOpenResult.failed => 'externalOpenFailedMessage',
 };

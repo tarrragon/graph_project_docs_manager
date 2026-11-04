@@ -802,4 +802,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String gapEventProducerUnmatched(String domain) {
     return 'producers 宣告了 $domain，但沒有對應的步驟發出此事件';
   }
+
+  @override
+  String get openedWithoutEditorMessage => '所選編輯器無法使用，已以系統預設方式開啟';
+
+  @override
+  String get preferencesTitle => '偏好設定';
+
+  @override
+  String get preferencesEditorSystemOption => '系統預設（不定位）';
+
+  @override
+  String get preferencesNoEditorsExplanation =>
+      '本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed';
 }

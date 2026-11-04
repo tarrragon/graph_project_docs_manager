@@ -1483,5 +1483,25 @@
         "type": "String"
       }
     }
+  },
+
+  "openedWithoutEditorMessage": "所選編輯器無法使用，已以系統預設方式開啟",
+  "@openedWithoutEditorMessage": {
+    "description": "SPEC-003 §3.5 破洞項開啟原始檔結果 openedWithoutEditor 的 SnackBar 文案：所選編輯器查無 handler，已退回系統預設方式開啟且未定位；畫面狀態不變"
+  },
+
+  "preferencesTitle": "偏好設定",
+  "@preferencesTitle": {
+    "description": "SPEC-003 §3.8 偏好設定面板標題（⌘, 開啟）"
+  },
+
+  "preferencesEditorSystemOption": "系統預設（不定位）",
+  "@preferencesEditorSystemOption": {
+    "description": "SPEC-001 §9 編輯器清單第一項 option-preferences-editor-system 的標籤：以系統預設方式開啟，不定位至行號"
+  },
+
+  "preferencesNoEditorsExplanation": "本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed",
+  "@preferencesNoEditorsExplanation": {
+    "description": "SPEC-001 §9 無可選編輯器狀態 state-preferences-no-editors 的說明文字；支援清單與 SPEC-003 §2.2〈編輯器對照表〉同步"
   }
 }

@@ -16,7 +16,33 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:graph_project_docs_manager/workspace/editor_preference.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
+
+class _FixedProbe implements EditorHandlerProbe {
+  _FixedProbe(this.answer);
+
+  final bool answer;
+  final List<String> queried = [];
+
+  @override
+  Future<bool> hasHandler(String scheme) async {
+    queried.add(scheme);
+    return answer;
+  }
+}
+
+class _FixedStore implements EditorPreferenceStore {
+  _FixedStore(this.id);
+
+  final String id;
+
+  @override
+  Future<String> read() async => id;
+
+  @override
+  Future<void> write(String editorId) async {}
+}
 
 void main() {
   group('G1｜FakeExternalOpener 契約', () {
@@ -82,16 +108,130 @@ void main() {
     });
   });
 
+  group('G4｜行號定位（SPEC-003 §2.2〈行號定位〉，E1 傳與不傳對照）', () {
+    late Directory tempDir;
+    late String target;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('external_opener_line_');
+      target = (File(
+        '${tempDir.path}/含 空白/檔案.md',
+      )..createSync(recursive: true)).path;
+    });
+    tearDown(() => tempDir.deleteSync(recursive: true));
+
+    MacosExternalOpener build({
+      required String editorId,
+      required bool handler,
+      required List<List<String>> runs,
+      int exitCode = 0,
+    }) {
+      return MacosExternalOpener(
+        runner: (executable, args) async {
+          runs.add([executable, ...args]);
+          return ProcessResult(0, exitCode, '', '');
+        },
+        probe: _FixedProbe(handler),
+        store: _FixedStore(editorId),
+      );
+    }
+
+    test('G4-1 所選編輯器有 handler：以編輯器 URL 開啟並帶行號 -> opened', () async {
+      final runs = <List<String>>[];
+      final opener = build(editorId: 'vscode', handler: true, runs: runs);
+
+      final result = await opener.open(target, line: 42);
+
+      expect(result, ExternalOpenResult.opened);
+      expect(runs.single, [
+        '/usr/bin/open',
+        editorUrlFor(editorById('vscode')!, target, 42),
+      ]);
+      expect(runs.single.last, startsWith('vscode://file/'));
+      expect(runs.single.last, endsWith(':42'));
+    });
+
+    test('G4-2 對照：同一輸入 handler 失效 -> 退回不定位的原路徑 -> '
+        'openedWithoutEditor', () async {
+      final runs = <List<String>>[];
+      final opener = build(editorId: 'vscode', handler: false, runs: runs);
+
+      final result = await opener.open(target, line: 42);
+
+      expect(result, ExternalOpenResult.openedWithoutEditor);
+      expect(runs.single, ['/usr/bin/open', target]);
+    });
+
+    test('G4-3 退路的外部程序失敗 -> failed', () async {
+      final runs = <List<String>>[];
+      final opener = build(
+        editorId: 'vscode',
+        handler: false,
+        runs: runs,
+        exitCode: 1,
+      );
+
+      expect(await opener.open(target, line: 3), ExternalOpenResult.failed);
+    });
+
+    test('G4-4 選定系統預設：忽略 line，原路徑開啟 -> opened', () async {
+      final runs = <List<String>>[];
+      final opener = build(editorId: 'system', handler: true, runs: runs);
+
+      final result = await opener.open(target, line: 42);
+
+      expect(result, ExternalOpenResult.opened);
+      expect(runs.single, ['/usr/bin/open', target]);
+    });
+
+    test('G4-5 未傳 line：不查 handler、原路徑開啟（目錄與三畫面行為不變）', () async {
+      final runs = <List<String>>[];
+      final probe = _FixedProbe(true);
+      final opener = MacosExternalOpener(
+        runner: (e, a) async {
+          runs.add([e, ...a]);
+          return ProcessResult(0, 0, '', '');
+        },
+        probe: probe,
+        store: _FixedStore('vscode'),
+      );
+
+      final result = await opener.open(target);
+
+      expect(result, ExternalOpenResult.opened);
+      expect(runs.single, ['/usr/bin/open', target]);
+      expect(probe.queried, isEmpty);
+    });
+
+    test('G4-6 未知的已存編輯器 id 視同系統預設', () async {
+      final runs = <List<String>>[];
+      final opener = build(editorId: 'emacs', handler: true, runs: runs);
+
+      expect(await opener.open(target, line: 5), ExternalOpenResult.opened);
+      expect(runs.single, ['/usr/bin/open', target]);
+    });
+
+    test('G4-7 路徑含空白與中文：URL 由 Uri 百分比編碼', () {
+      final url = editorUrlFor(editorById('zed')!, '/a b/中文.md', 7);
+
+      expect(url, startsWith('zed://file/a%20b/'));
+      expect(url, endsWith(':7'));
+      expect(url, isNot(contains(' ')));
+    });
+  });
+
   group('G3｜呼叫發出日誌的靜態結構驗證（INV-PORT-OBSERVE-001）', () {
     test('G3-1 open 方法體第一語句為入口日誌，位於前置檢查之前', () {
       final source = File('lib/workspace/external_opener.dart')
           .readAsStringSync();
 
       final methodStart = source.indexOf('Future<ExternalOpenResult> open(');
-      final entryLogIndex = source.indexOf('developer.log(path, name: _tag);');
+      final entryLogIndex = source.indexOf(
+        "developer.log(line == null ? path : '\$path:\$line', name: _tag);",
+      );
       final precheckIndex = source.indexOf('FileSystemEntity.type(path)');
       final processRunIndex = source.indexOf(
-        'Process.run(_executable, [path])',
+        'await _runner(_executable, [target])',
       );
 
       expect(methodStart, greaterThanOrEqualTo(0));
