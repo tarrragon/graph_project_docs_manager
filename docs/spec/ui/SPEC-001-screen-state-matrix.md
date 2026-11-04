@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-04"
-version: "1.77"
+version: "1.78"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -644,11 +644,11 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > |---|---|
 > | 出現的狀態列 | 只在掃描完成的三列：無破洞、有破洞、無法判定破洞；掃描中不出現 |
 > | 何時顯示 | 只在有任何宣告缺口時顯示；兩側皆完整宣告時隱藏 |
-> | 內容 | 列出缺哪一側——`path_patterns` 已宣告的 bundle 數／bundle 總數、非 domain 清單有或無——加上受影響路徑數；兩側皆無時的整體「未宣告路徑」也在此行呈現，不另設位置。bundle 總數為 0（專案沒有任何 DomainBundle）而非 domain 清單存在或格式錯誤時，bundle 側改以 `pathDeclarationNoBundles` 片段呈現，不顯示「0／0」（用戶裁決 2026-10-20，`0.5.0-W1-443`） |
+> | 內容 | 列出缺哪一側——`path_patterns` 已宣告的 bundle 數／bundle 總數、非 domain 清單有或無——加上受影響路徑數；兩側皆無時的整體「未宣告路徑」也在此行呈現，不另設位置。bundle 總數為 0（專案沒有任何 DomainBundle）而非 domain 清單存在或格式錯誤時，bundle 側改以 `pathDeclarationNoBundles` 片段呈現，不顯示「0／0」（用戶裁決 2026-10-20，`0.5.0-W1-443`）。有 bundle 的 `path_patterns` 格式錯誤（值不是清單或含非字串元素，UC-02）時，比照非 domain 側的「格式錯誤」另列格式錯誤的 bundle 數；這些 bundle 不計入已宣告數，也不視為未宣告，「何時顯示」的宣告缺口包含此情形（`0.6.0-W1-075` 用戶裁決 N1=C′，2026-11-04） |
 > | 元件 | `AppText`（不新增元件），置於頁首說明區。本節的「一行」指一則狀態，不是顯示行數：內容超出可用寬時換行，不限制行數，也不以省略號截斷，對應 `AppText.multiLine(maxLines: null)`（`0.5.0-W1-508.16`，承 `0.5.0-W1-508.3`） |
 > | 受影響路徑數來源 | Graph 的路徑比對器結果（對照表由 Graph 持有與查詢）；報告頁只消費，不由 Diagnostics 計算。路徑數為去重後的路徑條數：同一條正規化路徑出現在多張票的 `where.files` 只算一次（用戶裁決 2026-10-20，`0.5.0-W1-443`） |
 > | 兩側皆未宣告 | 整體「未宣告路徑」時不顯示路徑數，只顯示整體狀態 |
-> | 文案與 i18n key | 部分缺口：`pathDeclarationIncompleteLine`，`{detail}` 由 bundle 側片段（`pathDeclarationBundlesPartial`；bundle 總數為 0 時改 `pathDeclarationNoBundles`）與非 domain 側片段（`pathDeclarationNonDomainMissing` 或 `pathDeclarationNonDomainMalformed`）組成（兩者並存時以「、」／", " 連接）；整體未宣告：`pathDeclarationNoneLine`。zh／en 文案登記於 SPEC-004 §4.0.6（`0.5.0-W1-096.9` PM 處置，2026-10-08） |
+> | 文案與 i18n key | 部分缺口：`pathDeclarationIncompleteLine`，`{detail}` 由 bundle 側片段（`pathDeclarationBundlesPartial`；bundle 總數為 0 時改 `pathDeclarationNoBundles`）、bundle 格式錯誤片段（`pathDeclarationBundlesMalformed`，有格式錯誤的 bundle 時才出現，接在 bundle 側片段之後；`0.6.0-W1-075.1` 提案，SPEC-004 與 ARB 由 `0.6.0-W1-075.2` 加入）與非 domain 側片段（`pathDeclarationNonDomainMissing` 或 `pathDeclarationNonDomainMalformed`）組成（多片段並存時以「、」／", " 連接）；整體未宣告：`pathDeclarationNoneLine`。zh／en 文案登記於 SPEC-004 §4.0.6（`0.5.0-W1-096.9` PM 處置，2026-10-08） |
 
 > **掃描範圍說明的出處**：取自 SPEC-004 §3.6 對照表 §5「無破洞」列（`EmptyState.page` 的
 > 說明 slot）與 §4.21 `EmptyState` 條目的既有 i18n key `noGapsScanScope`；訊息的既有 key
@@ -1223,6 +1223,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.78 | 2026-11-04 | `0.6.0-W1-075.1`（承 `0.6.0-W1-075` 用戶裁決 N1=C′）：§5〈專案層級宣告狀態一行不是新狀態〉表「內容」列補 bundle `path_patterns` 格式錯誤另列 bundle 數、不計入已宣告亦不視為未宣告；「文案與 i18n key」列補 `pathDeclarationBundlesMalformed` 片段（SPEC-004 與 ARB 由 `0.6.0-W1-075.2` 加入）。狀態總數不變 |
 | 1.77 | 2026-11-04 | §5〈破洞報告項目投影〉三表補 SPEC-007 v1.39 新增的孤島與缺必要邊（`0.6.0-W1-072.2`）：歸 `graph-defect` 分節、項目 id 成分、指向該節點（其他圖節點）；新增〈孤島與缺必要邊的項目說明〉，三個 key 與 zh／en 文案經 PM 確認（SPEC-004 與 ARB 由實作票加入）。狀態總數不變 |
 | 1.76 | 2026-11-04 | 依 `0.6.0-W1-070` 用戶裁定「主視窗內的設定面板」（`0.6.0-W1-070.2`）：§9 由「獨立視窗」改寫為主視窗內的面板（標題、〈編號說明〉前的敘述、兩列狀態的進入與退出、本節末兩則註記、§8.1 兩列標註、概述與 §5 行號註記中的「視窗」），退出路徑改為關閉鈕或 Esc；持久化定案沿用 `shared_preferences`（App 層鍵名）。狀態數與列數不變；SPEC-003 v1.82、SPEC-004 v1.122 同批同步 |
 | 1.75 | 2026-11-04 | 依 `0.6.0-W1-070` 用戶裁定 1–4 與入口位置裁定（選單列「偏好設定…」⌘, 開獨立視窗）回填（`0.6.0-W1-070.1`）：新增 §9 偏好設定視窗，兩列「編輯器清單」「無可選編輯器」（只列查得 handler 的編輯器、預設「系統預設（不定位）」、選定後持久化、查無編輯器時的呈現）。編號取 9 接在 §8 之後，不插入 §7 與 §8 之間，既有 §8.1 等編號不變；§8 開頭、§8.1 標題與逐狀態標註、概述、FR-01 驗收同步納入 §9。§5〈行號可空的重評條件〉改為已定案：事件類維持無行號、不定位，原重評候選不採（裁定 4），舊 ID `0.1.0-W1-070` 更正為 `0.6.0-W1-070`。狀態總數 44 → 46（追加編號第 47、48 列）；SPEC-003 v1.81 同批同步，SPEC-004 §3.6 補列與新字串由 `0.6.0-W1-070.2` 承接 |

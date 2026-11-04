@@ -4,8 +4,8 @@ title: "依 domain 盤點變更影響面"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-11-03"
-version: "1.15"
+updated: "2026-11-04"
+version: "1.16"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -156,6 +156,15 @@ ticket 的 `where.files` 逐路徑比對兩個宣告載體（2026-10-07 用戶�
 
 **非 domain 清單格式錯誤視為缺席**（2026-10-08 用戶裁決 NC-1 (ii) II-a，`0.5.0-W1-096.7`）：`docs/non-domain-paths.yaml` 存在但格式錯誤（YAML 解析失敗、缺 `non_domain_path_patterns` 鍵、值不是清單）時，非 domain 側在上表視為「非 domain 清單缺席」，依對應列分類（例：兩側只剩 `path_patterns` 時未命中者標「非 domain 未宣告」），不新增顯示狀態。錯誤本身另以 `parseFailure` 破洞回報（EVT-CORPUS-005，SPEC-006 FR-10），並在下方專案層級宣告狀態行標示「格式錯誤」，與「檔案不存在」區分。
 
+**bundle `path_patterns` 格式錯誤計為格式錯誤，不算未宣告**（`0.6.0-W1-075` 用戶裁決 N1=C′，2026-11-04）：bundle 的 `path_patterns` 欄位存在但有下列任一情形時，該 bundle 計為「格式錯誤」：
+
+- G1：值不是清單（例：純量字串、對映）
+- G2：清單內含非字串元素（例：數字、null、巢狀清單）
+
+格式錯誤的 bundle 不計入「未宣告」，也不計入「已宣告」；只在下方專案層級宣告狀態行以獨立片段標示，與未宣告分開。逐路徑分類照既有規則：G1 的 bundle 沒有可比對的值，在上表與未宣告的 bundle 同樣不收任何路徑，未命中者依 5c 標「domain 未宣告」；G2 的 bundle 其字串元素照常比對，非字串元素略過。不新立事件、不進破洞報告，FR-08 不變。
+
+**App 判為 glob 字元的字元集**（`0.6.0-W1-075` 用戶裁決 N2=G3-1，2026-11-04）：上方比對語意條所稱「含 glob 字元」指含 `*`、`?`、`[` 或反斜線 `\` 任一字元，對齊上游 `doc` 工具的 `_PATH_PATTERN_FORBIDDEN_CHARS`；`]`、`{`、`}` 不在其內，含這些字元的值依一般比對規則處理。
+
 **逐路徑顯示，不做整票歸類**（2026-10-08 用戶裁決 6a）：一張票的 `where.files` 分屬不同狀態時，每條路徑各自顯示其狀態，不把整張票歸成單一狀態。
 
 - 矩陣高亮：取該票各路徑命中 domain 的聯集，高亮聯集內每一個 domain 的列；未命中 domain 的路徑不影響高亮
@@ -165,7 +174,7 @@ ticket 的 `where.files` 逐路徑比對兩個宣告載體（2026-10-07 用戶�
 
 - 「無法定位」只出現在兩側皆已宣告時，列入破洞報告的 `unlocatable` 類（`EVT-DIAGNOSTICS-001`）
 - 「domain 未宣告」「非 domain 未宣告」是宣告缺口，不是資料問題，與「無法定位」分開，不計入 `unlocatable`，**不進破洞報告**；矩陣與票列表照常標示這兩種狀態
-- 破洞報告頁另顯示一行專案層級的宣告狀態（2026-10-08 用戶裁決 F＋G，`0.5.0-W1-096.9`）：只在有宣告缺口時出現，列出缺哪一側（`path_patterns` 已宣告的 bundle 數／bundle 總數；非 domain 清單有、無或格式錯誤——格式錯誤與檔案不存在分開標示，NC-1 (ii)）與受影響路徑數；畫面需求見 SPEC-001 §5（「格式錯誤」的文案與 i18n key 為提案，見 SPEC-004 §4.0.6 `pathDeclarationNonDomainMalformed`，待 PM 決定）
+- 破洞報告頁另顯示一行專案層級的宣告狀態（2026-10-08 用戶裁決 F＋G，`0.5.0-W1-096.9`）：只在有宣告缺口時出現，列出缺哪一側（`path_patterns` 已宣告的 bundle 數／bundle 總數；非 domain 清單有、無或格式錯誤——格式錯誤與檔案不存在分開標示，NC-1 (ii)）；有 bundle 的 `path_patterns` 格式錯誤時另列格式錯誤的 bundle 數（`0.6.0-W1-075` N1=C′）與受影響路徑數；畫面需求見 SPEC-001 §5（「格式錯誤」的文案與 i18n key 為提案，見 SPEC-004 §4.0.6 `pathDeclarationNonDomainMalformed`，待 PM 決定）
 - 「未宣告路徑」是語料層的整體狀態，不產生逐票破洞；也在上述同一行呈現，宣告狀態只有這一個位置
 - `lib/app/degraded_schema.dart` 與 `lib/services/scan_notifier*` 歸非 domain 層（2026-10-07 用戶裁決）；不以「試 `lib/<domain>/`」之類的預設規則代替宣告
 
@@ -209,6 +218,7 @@ ticket 的 `where.files` 逐路徑比對兩個宣告載體（2026-10-07 用戶�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.16 | 2026-11-04 | `0.6.0-W1-075.1`（承 `0.6.0-W1-075` 用戶裁決 N1=C′、N2=G3-1）：〈ticket 定位〉新增「bundle `path_patterns` 格式錯誤計為格式錯誤，不算未宣告」（G1 值不是清單、G2 含非字串元素）與「App 判為 glob 字元的字元集」（`*` `?` `[` 與反斜線，對齊上游）兩段；破洞報告段的宣告狀態行補格式錯誤 bundle 數。不新增顯示狀態、不新立事件 |
 | 1.15 | 2026-11-03 | `related_specs` 對齊 SPEC 端宣告（`0.6.0-W1-116`，用戶裁定 B：UC 列出畫面所依賴的每一份 SPEC，橫切 SPEC 亦列）：補 SPEC-002、SPEC-003、SPEC-004、SPEC-006（非 domain 清單格式錯誤的宣告狀態來自 SPEC-006 解析，PM 裁決）、SPEC-007（間接依賴與 domain × UC 關係取自 SPEC-007 FR-12）；不動正文與結構化 flow |
 | 1.14 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填 29 張實作票（依該票〈入選判準修訂版〉，以 lib/screens/domain_view/ 為對照目錄）；不動正文與結構化 flow 區塊 |
 | 1.13 | 2026-10-21 | `0.5.0-W1-458.2`（458 用戶裁定類 B）：`switch-to-swimlane` 補 consumes `EVT-GRAPH-001`（Layout 取 flow 子圖排泳道）；不新增步驟，EVT 宣告不動 |
