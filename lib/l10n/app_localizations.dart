@@ -1232,6 +1232,24 @@ abstract class AppLocalizations {
   /// **'此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜，追溯視圖暫無法顯示；可至 Domain 視圖重新掃描'**
   String traceabilityGraphUnavailableMessage(String appVersion);
 
+  /// SPEC-001 §6 節點詳情·圖不可用的原因文案（state-nodeDetail-graph-unavailable；appVersion 為 App 內建型別表產生版本）
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜，節點詳情暫無法顯示；可至 Domain 視圖重新掃描'**
+  String nodeDetailGraphUnavailableMessage(String appVersion);
+
+  /// SPEC-001 §6 節點詳情·節點不在目前的圖上的訊息（state-nodeDetail-node-absent）
+  ///
+  /// In zh, this message translates to:
+  /// **'節點 {nodeId} 不在目前的圖上'**
+  String nodeDetailNodeAbsentMessage(String nodeId);
+
+  /// SPEC-001 §6 節點不在目前的圖上的說明（三種可能原因，不排序、不推斷）
+  ///
+  /// In zh, this message translates to:
+  /// **'可能已被刪除、改了 ID，或因 ID 重複而被排除'**
+  String get nodeDetailNodeAbsentHint;
+
   /// SPEC-001 §1 Domain 視圖·圖不可用列在掃描輪次進行期間取代原因文字的訊息（SPEC-004 §4.0.6）
   ///
   /// In zh, this message translates to:

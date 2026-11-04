@@ -18,6 +18,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/attention_level.dart';
 import '../../app/project_unready_view.dart';
+import '../../app/domain_view_schema_version.dart'
+    show builtinSchemaVersionProvider;
 import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../components/components.dart';
@@ -41,7 +43,7 @@ class NodeDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(nodeDetailStateProvider);
+    final state = ref.watch(nodeDetailEffectiveStateProvider);
     return switch (state) {
       NodeDetailProjectUnready(:final reason) => ProjectUnreadyView(
         reason: reason,
@@ -50,6 +52,8 @@ class NodeDetailScreen extends ConsumerWidget {
       ),
       NodeDetailUnset() => const _UnsetView(),
       NodeDetailReady(:final nodeId) => _ReadyView(nodeId: nodeId),
+      NodeDetailGraphUnavailable() => const _GraphUnavailableView(),
+      NodeDetailNodeAbsent(:final nodeId) => _NodeAbsentView(nodeId: nodeId),
       NodeDetailMissing(:final nodeId, :final lastKnownPath) => _MissingView(
         nodeId: nodeId,
         lastKnownPath: lastKnownPath,
@@ -70,6 +74,59 @@ class _UnsetView extends ConsumerWidget {
       variant: EmptyStateVariant.page,
       message: l10n.noNodeSelectedMessage,
       testKey: const Key('state-nodeDetail-unset'),
+      actions: [
+        AppButton(
+          label: l10n.gotoTraceabilityAction,
+          onPressed: () =>
+              navigateTo(ref.read, AppDestination.traceability, NavIntent.jump),
+          testKey: const Key('action-nodeDetail-goto-traceability'),
+        ),
+      ],
+    );
+  }
+}
+
+/// 圖不可用：`EmptyState.page`，動作前往 Domain 視圖，不設重新掃描
+/// （SPEC-001 §6；SPEC-004 §3.6）。
+class _GraphUnavailableView extends ConsumerWidget {
+  const _GraphUnavailableView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final appVersion = ref
+        .watch(builtinSchemaVersionProvider)
+        .maybeWhen(data: (v) => v, orElse: () => '');
+    return EmptyState(
+      variant: EmptyStateVariant.page,
+      message: l10n.nodeDetailGraphUnavailableMessage(appVersion),
+      testKey: const Key('state-nodeDetail-graph-unavailable'),
+      actions: [
+        AppButton(
+          label: l10n.gotoDomainViewAction,
+          onPressed: () =>
+              navigateTo(ref.read, AppDestination.domain, NavIntent.jump),
+          testKey: const Key('action-nodeDetail-goto-domain'),
+        ),
+      ],
+    );
+  }
+}
+
+/// 節點不在目前的圖上：`EmptyState.page`，動作前往追溯視圖（SPEC-001 §6）。
+class _NodeAbsentView extends ConsumerWidget {
+  const _NodeAbsentView({required this.nodeId});
+
+  final String nodeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return EmptyState(
+      variant: EmptyStateVariant.page,
+      message: l10n.nodeDetailNodeAbsentMessage(nodeId),
+      explanation: l10n.nodeDetailNodeAbsentHint,
+      testKey: const Key('state-nodeDetail-node-absent'),
       actions: [
         AppButton(
           label: l10n.gotoTraceabilityAction,

@@ -45,6 +45,30 @@ final nodeDetailTargetSyncProvider = Provider<void>((ref) {
   });
 });
 
+/// 需求：[SPEC-001 §6] 判定順序 2、4：在 [nodeDetailStateProvider] 之上衍生
+/// 「圖不可用」「節點不在目前的圖上」。無完成輪次時不判定（沿用原狀態）。
+final nodeDetailEffectiveStateProvider = Provider<NodeDetailState>((ref) {
+  return deriveNodeDetailState(
+    base: ref.watch(nodeDetailStateProvider),
+    graph: ref.watch(lastCompletedRoundProvider)?.graph,
+    nodeIds: ref.watch(nodeDetailNodesProvider).keys,
+  );
+});
+
+/// [nodeDetailEffectiveStateProvider] 的純函式本體。
+NodeDetailState deriveNodeDetailState({
+  required NodeDetailState base,
+  required GraphBuildResult? graph,
+  required Iterable<String> nodeIds,
+}) {
+  if (base is NodeDetailProjectUnready || graph == null) return base;
+  if (graph is GraphBuildUnavailable) return const NodeDetailGraphUnavailable();
+  if (base is NodeDetailReady && !nodeIds.contains(base.nodeId)) {
+    return NodeDetailNodeAbsent(nodeId: base.nodeId);
+  }
+  return base;
+}
+
 /// 節點 id → 詳情資料（不含內文）；讀同一專案最後完成的輪次（0.6.0-W1-109，
 /// SPEC-003 §3.6 掃描輪次更新列），重掃期間保留上一輪，新輪次完成後替換，
 /// 切換專案時清除。無完成輪次或建圖不可用時為空。
