@@ -14,7 +14,7 @@ const _new = {'gap-a', 'gap-b'};
 
 GapsWatchPresentation _withResult() {
   final p = GapsWatchPresentation()..onRoundStarted(ScanTrigger.manual);
-  p.onRoundCompleted(ScanTrigger.manual, _old, rerunPending: false);
+  p.onRoundCompleted(_old, rerunPending: false);
   return p;
 }
 
@@ -24,7 +24,7 @@ void main() {
       final p = _withResult()..onRoundStarted(ScanTrigger.watch);
       expect(p.isScanning, isFalse);
       expect(p.shownItemIds, _old);
-      p.onRoundCompleted(ScanTrigger.watch, _new, rerunPending: false);
+      p.onRoundCompleted(_new, rerunPending: false);
       expect(p.shownItemIds, _new);
     });
 
@@ -40,11 +40,11 @@ void main() {
       p.onManualRescanRequested();
       expect(p.isScanning, isTrue);
 
-      p.onRoundCompleted(ScanTrigger.watch, _new, rerunPending: true);
+      p.onRoundCompleted(_new, rerunPending: true);
       expect(p.isScanning, isTrue, reason: '兩輪皆完成才轉結果');
 
       p.onRoundStarted(ScanTrigger.manual);
-      p.onRoundCompleted(ScanTrigger.manual, {'gap-c'}, rerunPending: false);
+      p.onRoundCompleted({'gap-c'}, rerunPending: false);
       expect(p.isScanning, isFalse);
       expect(p.shownItemIds, {'gap-c'});
     });
@@ -60,7 +60,7 @@ void main() {
   group('D3：無既有結果時的監看輪次', () {
     test('監看輪次完成的結果算既有結果，之後可見不自動掃描', () {
       final p = GapsWatchPresentation()..onRoundStarted(ScanTrigger.watch);
-      p.onRoundCompleted(ScanTrigger.watch, _new, rerunPending: false);
+      p.onRoundCompleted(_new, rerunPending: false);
       expect(p.shownItemIds, _new);
       expect(p.shouldAutoScanOnVisible, isFalse);
     });
@@ -74,7 +74,7 @@ void main() {
       p.onCancelled();
       expect(p.shouldAutoScanOnVisible, isTrue);
       p.onRoundStarted(ScanTrigger.watch);
-      p.onRoundCompleted(ScanTrigger.watch, _old, rerunPending: false);
+      p.onRoundCompleted(_old, rerunPending: false);
       expect(p.shouldAutoScanOnVisible, isFalse);
     });
   });

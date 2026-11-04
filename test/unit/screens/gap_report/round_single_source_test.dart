@@ -20,8 +20,8 @@ import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
-import '../../helpers/gap_round_fakes.dart';
-import '../../helpers/helpers.dart';
+import '../../../helpers/gap_round_fakes.dart';
+import '../../../helpers/helpers.dart';
 
 /// 不對外發任何輪次事件的監看控制器（排程照常運作）。
 class _SilentWatch extends CorpusWatchController {
