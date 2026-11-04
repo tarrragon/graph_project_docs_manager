@@ -29,6 +29,17 @@ node .claude/skills/verify/test_vm_log.mjs                # vm_log 截斷還原�
 | 4 | 以 sequenceNumber 連續判讀：有缺號或空 log -> exit 4；log 中路徑含 experiment 檔名的 add 與 remove 事件各至少一筆 -> exit 0（其他路徑事件不計）；否則 exit 1 App 失敗 | -- |
 | 5 | trap 收尾：刪 experiment 檔、`kill` 啟動的 PID 及子程序 | 任何路徑皆執行 |
 
+## 本專案的檢查命令
+
+承接 `system-misjudgment` skill 的 FS-3 條目移出的本專案事實（依據 PC-GPD-082：專案專用內容不放進會推 canonical 的 skill）。
+
+| 項目 | 命令或值 |
+|------|---------|
+| bundle id | 讀 `macos/Runner/Configs/AppInfo.xcconfig` 的 `PRODUCT_BUNDLE_IDENTIFIER` |
+| App 保存的 workspace | `defaults read <bundle-id> flutter.workspace.path` |
+| 監看目錄 | workspace 路徑加 `/docs`（`WV_WATCH_DIR` 可覆寫） |
+| 判讀 | experiment 檔路徑必須落在監看目錄下；讀不到 workspace -> exit 3，不退回 cwd |
+
 ## 禁止
 
 - 收 log 不接 `| grep` 管線（多層 grep 加 Monitor 曾截斷行、漏後續事件）。

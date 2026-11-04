@@ -1,6 +1,6 @@
 # macOS FSEvents／fseventsd／檔案監看
 
-被測物通常是以 `package:watcher` 一類套件監看目錄的桌面 App。可執行配方：`.claude/skills/verify/watch-verify.sh`。
+被測物通常是以 `package:watcher` 一類套件監看目錄的桌面 App。專案若有實機驗證配方，其健康閘門即 FS-1 的檢查。
 
 ## FS-1 監看零事件，被讀成 App 缺陷
 
@@ -9,9 +9,9 @@
 | 症狀 | 實機上操作檔案，App 與原生 FSEvents 探針都收不到即時事件；測試套件全綠 |
 | 常見誤判 | 程式碼在監看第一環斷鏈，派出 incident 分析或補 log 的修正批 |
 | 實際機制 | 宿主 `fseventsd` 卡住（CPU 持續約 100%），只回應歷史查詢、不推送即時事件，與 App 無關 |
-| 檢查方法 | `ps -axo pcpu,comm \| grep fseventsd` 取三次樣（間隔數秒）；再跑 `.claude/skills/verify/watch-verify.sh --gate-only`（金絲雀：新建空目錄寫檔，須收到即時事件） |
+| 檢查方法 | `ps -axo pcpu,comm \| grep fseventsd` 取三次樣（間隔數秒）；再跑金絲雀：對新建空目錄 `<空目錄>` 監看並寫檔，須收到即時事件：`node -e "const fs=require('fs');const d=process.argv[1];fs.watch(d,()=>{console.log('EVENT');process.exit(0)});setTimeout(()=>process.exit(1),5000);setTimeout(()=>fs.writeFileSync(d+'/c','x'),500)" <空目錄>`（印出 `EVENT` 且 exit 0 為收到；exit 1 為 5 秒內未收到） |
 | 正向對照 | 重啟 `fseventsd` 後同一份 build、同一組操作立即觸發事件；金絲雀在健康環境必須收到事件，收不到時先懷疑環境或探針 |
-| 判讀標準 | 三次取樣皆低於 `WV_CPU_LIMIT`（預設 50）且金絲雀收到事件 → 進入正式驗證；任一紅 → 結論「環境不可驗證」（腳本 exit 3），不判 App 失敗 |
+| 判讀標準 | 三次取樣皆低於 `WV_CPU_LIMIT`（預設 50）且金絲雀收到事件 → 進入正式驗證；任一紅 → 結論「環境不可驗證」，不判 App 失敗 |
 | 來源 | 機制：否定結果在環境與觀測工具未經正向對照前沒有鑑別力；實測依據：重啟 `fseventsd` 後同一份 build 立即收到事件 |
 
 ## FS-2 以事件總數判 PASS，被他人寫入污染成假 PASS
@@ -21,10 +21,10 @@
 | 症狀 | 驗證期間監看目錄收到的新增事件數達標，判 PASS |
 | 常見誤判 | 事件數增加等於自己的操作被偵測到 |
 | 實際機制 | 同一目錄同時有其他 session 的寫入；實測 12 筆新增事件中 9 筆來自他人票面寫入 |
-| 檢查方法 | 驗證時只建立一個帶 pid 的 experiment 檔（`experiment-watch-verify-<pid>.md`），在事件 log 中只計路徑含該檔名的 add 與 remove，其他路徑的事件不計。計數：`grep -c "experiment-watch-verify-<pid>" <vm.log>`，再分別數其中的 add 與 remove 行 |
-| 正向對照 | `test_watch_verify.sh` 的 E2 案例：只有他路徑事件時必須 exit 1；experiment 檔 add 加 remove 必須 exit 0 |
+| 檢查方法 | 驗證時只建立一個帶 pid 的 experiment 檔（`experiment-<用途>-<pid>.md`），在事件 log 中只計路徑含該檔名的 add 與 remove，其他路徑的事件不計。計數：`grep -c "experiment-<用途>-<pid>" <vm.log>`，再分別數其中的 add 與 remove 行 |
+| 正向對照 | 構造兩份 log：只含他路徑事件的 log 必須判未通過；含 experiment 檔 add 加 remove 的 log 必須判通過 |
 | 判讀標準 | experiment 檔自己的 add 與 remove 各至少一筆 → PASS；總數再多也不採計 |
-| 來源 | 機制：觀測完整性，驗證通過須以自己操作的事件為準；實測依據：verify 配方首跑 12 筆新增事件中 9 筆來自他人寫入 |
+| 來源 | 機制：觀測完整性，驗證通過須以自己操作的事件為準；實測依據：首次實機驗證 12 筆新增事件中 9 筆來自他人寫入 |
 
 ## FS-3 在 worktree 內驗證，寫到 App 沒監看的目錄
 
@@ -32,11 +32,11 @@
 |------|------|
 | 症狀 | 在 worktree 內操作檔案，App 沒有事件，判 App 失敗 |
 | 常見誤判 | 監看範圍以 cwd 為準，沒事件就是 App 沒偵測到 |
-| 實際機制 | App 監看的是它保存的 workspace（`flutter.workspace.path`），不是 cwd；worktree 內的檔案不在其中 |
-| 檢查方法 | 先取 bundle id：讀 `macos/Runner/Configs/AppInfo.xcconfig` 的 `PRODUCT_BUNDLE_IDENTIFIER`；再 `defaults read <bundle-id> flutter.workspace.path`，監看目錄為其值加 `/docs`；寫入 experiment 檔的路徑必須落在此目錄下 |
-| 正向對照 | `test_watch_verify.sh`：讀不到 workspace.path 必須 exit 3，不得退回 cwd |
+| 實際機制 | App 監看的是它自身保存的設定所指的目錄，不是 cwd；worktree 內的檔案不在其中 |
+| 檢查方法 | App 實際監看的根目錄由 App 自身保存的設定決定，不是 cwd；先查出該目錄（macOS App 的設定通常可用 `defaults read <bundle-id>` 讀取，具體鍵名查該專案的實機驗證配方），experiment 檔必須落在其下 |
+| 正向對照 | 讀不到 App 保存的監看目錄時，結論為驗證無效，不得退回 cwd 代替 |
 | 判讀標準 | 寫入路徑在 App 監看目錄下才有資格判 App 行為；路徑不在 → 驗證無效，不是 App 失敗 |
-| 來源 | 實測依據：verify 配方對 workspace.path 的取得邏輯（見 `.claude/skills/verify/SKILL.md` 步驟 3） |
+| 來源 | 專案的實機驗證配方（如有）中取得 App 監看目錄的步驟 |
 
 ## FS-4 刪除監看根目錄，後續事件被讀成遺漏
 

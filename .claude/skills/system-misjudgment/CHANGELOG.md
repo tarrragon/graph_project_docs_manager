@@ -2,6 +2,9 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.0.2 — 第二輪讀者探針與可攜性修正：MG-3 計數只計 Dart 測試檔（`'test/*.dart'`，排除 test/fixtures 的 md）；範例與 FS-1 統一以 `WV_CPU_LIMIT` 為門檻；FS-1 金絲雀改為內嵌命令；FS-2、FS-3 改為不綁專案的寫法，FS-3 來源欄改為「專案的實機驗證配方（如有）」通用指涉；移除對專案層 skill 的名稱與路徑引用（本 skill 會推 canonical）及分工表對應列。`references/dart-vm-service-log.md` 仍有專案層引用，不在本次範圍
+**Last Updated**: 2026-11-04
+
 **Version**: 1.0.1 — 讀者探針修正：移除本專案分域 error-pattern ID（來源欄改自足機制敘述）；bundle id 改 `<bundle-id>` 並寫取得方式；補 vm_log.mjs 可貼用命令與 ws-uri 取得；MG-3 改 `git grep -c <commit>`；MG-2 移除 TaskStop；FS-2 補計數命令；索引表補「測試綠但行為未變」；開頭說明句拆短
 **Last Updated**: 2026-11-04
 

@@ -31,7 +31,7 @@
 | 症狀 | 合併閘門的 passed 數比上一次少 |
 | 常見誤判 | 本批刪除了測試 |
 | 實際機制 | 兩次合併之間的總數差，可能來自任何一條並行線的 commit，不只是本批 |
-| 檢查方法 | 比對兩個 commit 之間的 test 宣告數：兩個 commit 各跑一次 `git -C <repo> grep -c "test(\|testWidgets(" <commit> -- test/`，加總各檔計數後相減；再用 `git -C <repo> log --oneline <舊>..<新> -- test/` 把差異歸因到各條線的 commit |
+| 檢查方法 | 比對兩個 commit 之間的 test 宣告數：兩個 commit 各跑一次 `git -C <repo> grep -c "test(\|testWidgets(" <commit> -- 'test/*.dart'`（只計 Dart 測試檔；`test/fixtures` 下的 md 等非測試檔也含 `test(` 字樣，不可計入），加總各檔計數後相減；再用 `git -C <repo> log --oneline <舊>..<新> -- test/` 把差異歸因到各條線的 commit |
 | 正向對照 | 對已知新增一筆測試的 commit，計數必須加一 |
 | 判讀標準 | 差異歸因到具體 commit 才下結論；歸因不到本批 → 不是本批造成 |
 | 來源 | 實測依據：閘門 passed 數變動的歸因過程 |
@@ -43,7 +43,7 @@
 | 症狀 | 修復票測試全綠，後續行為仍未改變，或後續票以「已修好」為前提推進後回歸 |
 | 常見誤判 | 綠燈等於修復生效 |
 | 實際機制 | mock 取代真實依賴、斷言只查結構時，runtime 整合路徑可以完全失效而測試照綠 |
-| 檢查方法 | 修復訊息、日誌、跨模組整合類問題時，驗收加 runtime 層級驗證：實機驅動 App 並觀察 log（配方見 `.claude/skills/verify/SKILL.md`） |
+| 檢查方法 | 修復訊息、日誌、跨模組整合類問題時，驗收加 runtime 層級驗證：實機驅動 App 並觀察 log（配方見專案的實機驗證配方，如有） |
 | 正向對照 | 先讓修復還原，runtime 驗證必須能重現問題；否則該驗證沒有鑑別力 |
 | 判讀標準 | runtime 驗證通過且還原後能重現 → 修復生效；僅單元測試綠 → 未驗證 |
 | 來源 | `PC-165` |
