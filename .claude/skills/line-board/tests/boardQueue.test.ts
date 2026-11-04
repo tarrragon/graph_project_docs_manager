@@ -1,12 +1,13 @@
 // Pane 線群組的佇列細節：細節按鍵的預設收合與手動展開、各行的短票號／狀態／title 與五色上色，以及佇列票全部完成時沒有細節按鍵的對照。
 // 線群組的標題列與票序、各 session 與合併閘門兩區塊、專案設定在 board.test.ts；派發列與活動計數在 boardDispatch.test.ts。
+// 每個 test 以 { timeoutMs: PANE_TEST_TIMEOUT_MS } 設逾時，數值與依據見 paneHarness.ts 的 PANE_TEST_TIMEOUT_MS。
 
 import { describe, expect, test } from 'claude-code/testing'
 
 import { TICKET_349, ticketFile } from './fixtures'
 import { laneDetailId } from '../hooks/queueView'
 import { groupBodyKey, groupToggleKey, laneGroupId } from '../hooks/layout'
-import { COORDINATION_TICKET_FILE, TICKET_FOLDER, startBoard, textsOf } from './paneHarness'
+import { COORDINATION_TICKET_FILE, PANE_TEST_TIMEOUT_MS, TICKET_FOLDER, startBoard, textsOf } from './paneHarness'
 import type { Ui } from './paneHarness'
 
 describe('Pane', () => {
@@ -28,7 +29,7 @@ describe('Pane', () => {
     return box === undefined ? undefined : textsOf(box.children)
   }
 
-  test('佇列細節：有佇列列的線群組各有一個細節按鍵，預設收合；按下後逐張列出未完成佇列票的短票號、狀態與 title，title 只讀主 checkout、讀不到時標明', async ($, on) => {
+  test('佇列細節：有佇列列的線群組各有一個細節按鍵，預設收合；按下後逐張列出未完成佇列票的短票號、狀態與 title，title 只讀主 checkout、讀不到時標明', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, { files: detailFiles() })
     await ui.press({ key: groupToggleKey(laneGroupId(7)) })
     await ui.press({ key: groupToggleKey(laneGroupId(13)) })
@@ -48,7 +49,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('佇列細節：各行依佇列票的五色狀態上色、以 truncate-end 截斷', async ($, on) => {
+  test('佇列細節：各行依佇列票的五色狀態上色、以 truncate-end 截斷', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, { files: detailFiles() })
     for (const id of [laneGroupId(7), laneGroupId(13)]) {
       await ui.press({ key: groupToggleKey(id) })
@@ -64,7 +65,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('佇列細節：手動展開不被 30 秒刷新覆寫，收合群組再展開後仍維持；再按一次細節按鍵收合', async ($, on) => {
+  test('佇列細節：手動展開不被 30 秒刷新覆寫，收合群組再展開後仍維持；再按一次細節按鍵收合', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, clock } = await startBoard($, on, { files: detailFiles() })
     await ui.press({ key: groupToggleKey(laneGroupId(7)) })
     await ui.press({ key: groupToggleKey(laneDetailId(laneGroupId(7))) })
@@ -80,7 +81,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('對照：佇列票全部完成的線沒有佇列列，也沒有細節按鍵', async ($, on) => {
+  test('對照：佇列票全部完成的線沒有佇列列，也沒有細節按鍵', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const files = detailFiles()
     files[`/repo/${TICKET_FOLDER}/0.5.0-W1-351.md`] = ticketFile('completed', '實作看板細節')
     files[`/repo/${TICKET_FOLDER}/0.5.0-W1-145.md`] = ticketFile('completed')

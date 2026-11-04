@@ -2,6 +2,10 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**未升版號**（2026-11-04）— 純測試改動，看板畫面、`line_status` 輸出與產品碼不變；版號是否升待定。6 個 Pane 測試檔（`board*.test.ts`）的每個 test 改傳明確逾時 `{ timeoutMs: PANE_TEST_TIMEOUT_MS }`（15000 ms），取代 `claude plugin test` 預設的 5000 ms。起因：預設 5000 ms 是隱含的計時門檻，高負載時 Pane 測試誤紅（2026-11-04 加壓取樣，load1 約 119 時單測最大 5157 ms），屬機器負載類不可靠斷言。測試名稱與斷言不變。
+
+- `tests/paneHarness.ts` 新增 `PANE_TEST_TIMEOUT_MS`，數值依據只寫在該常數的註解；6 個 Pane 測試檔檔頭各加一行指向它。
+
 **Version**: 0.12.4（2026-11-04）— 內部重構，看板畫面與 `line_status` 輸出不變。佇列列與佇列細節的繪製從 `lanesView.tsx` 移到獨立模組，佇列細節的測試移到獨立測試檔；測試數不變。
 
 - 新增 `hooks/queueView.tsx`：`queueRow`、`queueDetail`、`queueColorOf` 與型別 `TicketColorOf`、常數 `QUEUE_DETAIL_LABEL`、`MISSING_TITLE`、`laneDetailId` 自 `hooks/lanesView.tsx` 移入；`renderLaneGroup` 改為匯入。`queueView.tsx` 對 `lanesView.tsx` 只有 `import type`（`Elements`、`ToggleGroup`），沒有執行期循環匯入。
