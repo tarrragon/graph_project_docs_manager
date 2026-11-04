@@ -1,6 +1,6 @@
 // Pane 端到端測試共用的 harness：以 test 端 hook 代替 engine 的 repo stub、啟動看板並掛上 Pane、一組 session 狀態檔，
 // 以及從畫出的描述樹取文字的輔助函式（titleOf、textsOf 等）。
-// 由 board.test.ts、boardDispatch.test.ts 與 boardQueue.test.ts 匯入；本檔不是測試檔，不含任何 test。
+// 由 6 個 Pane 測試檔（board*.test.ts）匯入；本檔不是測試檔，不含任何 test。
 
 import type { On } from 'claude-code'
 import { mock } from 'claude-code/testing'
@@ -18,6 +18,16 @@ export const HOME = '/home/u'
 export const SESSIONS = `${HOME}/${SESSIONS_DIR}`
 /** 讀取當下的時間：2026-10-19 08:00:00 UTC（epoch 毫秒）。 */
 export const NOW_MS = Date.UTC(2026, 9, 19, 8, 0, 0)
+
+/**
+ * Pane 端到端測試的逐測逾時（毫秒），6 個 Pane 測試檔（board*.test.ts）的每個 test 都以 `{ timeoutMs }` 傳入。
+ *
+ * 依據（2026-11-04 加壓取樣，N=30）：`claude plugin test` 預設 5000 ms 是隱含的計時門檻，Pane 測試的斷言本身不計時，
+ * 但 pass／fail 取決於單測耗時是否在門檻內。load1 約 119 時單測最大 5157 ms，逾時重現；程式碼不變、只改負載
+ * 就翻轉結果，屬 test-assertion-design-rules D1 的「機器負載」類不可靠斷言。取 15000 ms，約為該最大值的 3 倍。
+ * 代價：真實的效能退化要到約 3 倍才會以逾時呈現；效能不由本門檻把關。
+ */
+export const PANE_TEST_TIMEOUT_MS = 15000
 
 /** 預設的協調票：fixtures 的佇列票檔與 lanes.ts 的票檔路徑皆以它為準。 */
 export const COORDINATION_TICKET = '0.5.0-W1-349'

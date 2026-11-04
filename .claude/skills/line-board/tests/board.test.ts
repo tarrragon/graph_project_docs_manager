@@ -1,6 +1,7 @@
 // Pane 的端到端繪製：線群組的標題列（session 狀態、目標）與票序、可折疊的各 session 與合併閘門兩區塊、協調票的兩種空狀態，
 // 以及專案設定（協調票）的讀取：有設定才自動開 Pane、沒有設定時 /board 顯示設定提示、協調票與佇列票的票檔路徑推導。
 // 群組的派發列、活動計數、預設展開與手動切換在 boardDispatch.test.ts；佇列細節在 boardQueue.test.ts；各 domain 的純函式在同名的 *.test.ts。
+// 每個 test 以 { timeoutMs: PANE_TEST_TIMEOUT_MS } 設逾時，數值與依據見 paneHarness.ts 的 PANE_TEST_TIMEOUT_MS。
 
 import { describe, expect, test } from 'claude-code/testing'
 
@@ -24,6 +25,7 @@ import { MERGE_LOG_PATH } from '../hooks/mergeGate'
 import {
   COORDINATION_TICKET,
   COORDINATION_TICKET_FILE,
+  PANE_TEST_TIMEOUT_MS,
   SESSIONS,
   TICKET_FOLDER,
   cliError,
@@ -68,7 +70,7 @@ function displayWidth(text: string): number {
 }
 
 describe('Pane', () => {
-  test('各 session：只列本 repo（含 worktree）且 pid 存活者，waiting 最前，shell 與 busy 同組並顯示原值，未知狀態原樣；.key 從未被讀取', async ($, on) => {
+  test('各 session：只列本 repo（含 worktree）且 pid 存活者，waiting 最前，shell 與 busy 同組並顯示原值，未知狀態原樣；.key 從未被讀取', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, readPaths } = await startBoard($, on, sessionStub({ [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349 }))
     const rows = await ui.findAll({ type: 'Text', text: /^(graph-project-docs-manager|blog|KEY)-/ })
     expect(rows.map(row => row.text)).toEqual([
@@ -84,7 +86,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('各 session：waiting 以洋紅粗體顯示（要人處理），其他狀態不上色', async ($, on) => {
+  test('各 session：waiting 以洋紅粗體顯示（要人處理），其他狀態不上色', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, sessionStub({ [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349 }))
     const rows = await ui.findAll({ type: 'Text', text: /^graph-project-docs-manager-/ })
     expect(rows.map(row => [row.text.split('｜')[1], row.props.color, row.props.bold ?? false])).toEqual([
@@ -97,7 +99,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('反例：pid 存在但 ps 的啟動時間與 procStart 不符時不列出、計入已結束；ps 以 TZ=UTC 執行', async ($, on) => {
+  test('反例：pid 存在但 ps 的啟動時間與 procStart 不符時不列出、計入已結束；ps 以 TZ=UTC 執行', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const reused = { pid: 201, name: 'graph-project-docs-manager-old', cwd: '/repo', status: 'busy', procStart: REAL_PROC_START }
     const same = { pid: 202, name: 'graph-project-docs-manager-live', cwd: '/repo', status: 'idle', procStart: REAL_PROC_START }
     const { ui, psCalls } = await startBoard($, on, {
@@ -118,7 +120,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('線標題列 session 旁標狀態：存活者取其 status，pid 已結束或找不到的為離線', async ($, on) => {
+  test('線標題列 session 旁標狀態：存活者取其 status，pid 已結束或找不到的為離線', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, sessionStub({ [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349 }))
     expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 graph-project-docs-manager-f9［busy］$/ })).toBeDefined()
     expect(await ui.find({ type: 'Button', text: /^[▸▾] L13 graph-project-docs-manager-1b［waiting：input needed］$/ })).toBeDefined()
@@ -126,7 +128,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('線標題顯示目標：有目標行的線在標題列下一行顯示「目標：<文字>」、再下一行為活動計數，寫（無）或沒有可採用目標行的線省略目標行', async ($, on) => {
+  test('線標題顯示目標：有目標行的線在標題列下一行顯示「目標：<文字>」、再下一行為活動計數，寫（無）或沒有可採用目標行的線省略目標行', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349_GOALS } })
     const l13 = await titleOf(ui, laneGroupId(13))
     expect(l13?.length).toBe(3)
@@ -144,7 +146,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('對照：協調票沒有任何目標行時，所有線標題都沒有目標行', async ($, on) => {
+  test('對照：協調票沒有任何目標行時，所有線標題都沒有目標行', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349 } })
     const rows = await ui.findAll({ type: 'Button', text: /^[▸▾] L\d+ / })
     expect(rows.length).toBe(3)
@@ -153,14 +155,14 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('sessions 目錄無法列出時，各 session 區塊顯示讀取失敗，線標題列標狀態不明', async ($, on) => {
+  test('sessions 目錄無法列出時，各 session 區塊顯示讀取失敗，線標題列標狀態不明', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349 } })
     expect(await ui.find({ type: 'Text', text: /^讀取 ~\/\.claude\/sessions 失敗/ })).toBeDefined()
     expect(await ui.find({ type: 'Button', text: /^[▸▾] L7 graph-project-docs-manager-f9［狀態不明］$/ })).toBeDefined()
     await ui.unmount()
   })
 
-  test('「各 session」與「合併閘門最近紀錄」預設展開，按標題列收合後只剩標題列，再按一次展開', async ($, on) => {
+  test('「各 session」與「合併閘門最近紀錄」預設展開，按標題列收合後只剩標題列，再按一次展開', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard(
       $,
       on,
@@ -184,7 +186,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('每條線一個群組（線號、session、票號與 main 的狀態），歷史票號不出現；收合的線按標題列後才列出票序；閘門區只有開始與結束', async ($, on) => {
+  test('每條線一個群組（線號、session、票號與 main 的狀態），歷史票號不出現；收合的線按標題列後才列出票序；閘門區只有開始與結束', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, {
       files: {
         [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349,
@@ -215,7 +217,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('面板寬 60 欄：閘門每行精簡為時間｜開始或結束｜短分支｜結果，整行放得下，持有者列在區塊最上方', async ($, on) => {
+  test('面板寬 60 欄：閘門每行精簡為時間｜開始或結束｜短分支｜結果，整行放得下，持有者列在區塊最上方', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard(
       $,
       on,
@@ -247,7 +249,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('重疊的合併：兩個分支同時持有閘門時各列一行，依開始順序；預檢行不顯示', async ($, on) => {
+  test('重疊的合併：兩個分支同時持有閘門時各列一行，依開始順序；預檢行不顯示', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, {
       files: {
         [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349,
@@ -264,7 +266,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('反例：格式不符的閘門行原樣顯示，其他行照常精簡', async ($, on) => {
+  test('反例：格式不符的閘門行原樣顯示，其他行照常精簡', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, {
       files: {
         [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349,
@@ -279,7 +281,7 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('協調票讀得到但沒有任何現行佇列行時顯示「協調票尚無現行佇列行」', async ($, on) => {
+  test('協調票讀得到但沒有任何現行佇列行時顯示「協調票尚無現行佇列行」', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, {
       files: {
         [`/repo/${COORDINATION_TICKET_FILE}`]: `---\nstatus: pending\n---\n## Solution\n${TEMPLATE_NOTE}\n`,
@@ -293,14 +295,14 @@ describe('Pane', () => {
     await ui.unmount()
   })
 
-  test('對照：協調票檔讀不到時顯示「解析失敗：協調票讀不到」與票檔路徑，而非「尚無現行佇列行」', async ($, on) => {
+  test('對照：協調票檔讀不到時顯示「解析失敗：協調票讀不到」與票檔路徑，而非「尚無現行佇列行」', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, { files: { [`/wt/${COORDINATION_TICKET_FILE}`]: TICKET_349 } })
     expect(await ui.find({ type: 'Text', text: new RegExp(`^解析失敗：協調票讀不到（${COORDINATION_TICKET_FILE}：`) })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /尚無現行佇列行/ })).toBeUndefined()
     await ui.unmount()
   })
 
-  test('佇列行只含非票號文字的線，標題列標「佇列無票號」（E2）；同一協調票含票號的線不標（E1 對照）', async ($, on) => {
+  test('佇列行只含非票號文字的線，標題列標「佇列無票號」（E2）；同一協調票含票號的線不標（E1 對照）', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const text = `## Solution\n${NO_TICKET_LANE_LINES}\n`
     const { ui } = await startBoard($, on, { files: { [`/repo/${COORDINATION_TICKET_FILE}`]: text } })
     for (const lane of [5, 6]) {
@@ -323,7 +325,7 @@ describe('專案設定', () => {
       [`/repo/${TICKET_FOLDER}/0.5.0-W1-351.md`]: ticketFile('in_progress'),
     })
 
-  test('有設定：session 啟動時自動開 Pane 並畫出各線，/board 已註冊', async ($, on) => {
+  test('有設定：session 啟動時自動開 Pane 並畫出各線，/board 已註冊', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, opened, registered } = await startBoard($, on, sharedFiles())
     expect(opened).toEqual(['line-board'])
     expect(registered).toEqual(['board'])
@@ -331,7 +333,7 @@ describe('專案設定', () => {
     await ui.unmount()
   })
 
-  test('對照：同一批 fixture 協調票 0 張時不自動開 Pane、不讀協調票檔也不定時讀取，/board 仍註冊', async ($, on) => {
+  test('對照：同一批 fixture 協調票 0 張時不自動開 Pane、不讀協調票檔也不定時讀取，/board 仍註冊', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, opened, registered, readPaths, cliCwds, clock } = await startBoard($, on, { ...sharedFiles(), projectConfig: null })
     expect(opened).toEqual([])
     expect(registered).toEqual(['board'])
@@ -342,14 +344,14 @@ describe('專案設定', () => {
     await ui.unmount()
   })
 
-  test('session 在主 checkout 啟動且有設定：開 Pane 先於任何 git 呼叫（E1）', async ($, on) => {
+  test('session 在主 checkout 啟動且有設定：開 Pane 先於任何 git 呼叫（E1）', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, opened, callOrder } = await startBoard($, on, { ...sharedFiles(), sessionRoot: '/repo' })
     expect(opened).toEqual(['line-board'])
     expect(callOrder[0]).toBe('ui.open line-board')
     await ui.unmount()
   })
 
-  test('對照：session 在 worktree 啟動時，root 讀不到設定，先跑 git worktree list 找主 checkout 再開 Pane（E1）', async ($, on) => {
+  test('對照：session 在 worktree 啟動時，root 讀不到設定，先跑 git worktree list 找主 checkout 再開 Pane（E1）', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, opened, callOrder } = await startBoard($, on, sharedFiles())
     expect(opened).toEqual(['line-board'])
     expect(callOrder[0]).toBe('git worktree list --porcelain')
@@ -357,21 +359,21 @@ describe('專案設定', () => {
     await ui.unmount()
   })
 
-  test('對照：session 在主 checkout 啟動但協調票 0 張時不開 Pane，解析 CLI 只跑一次', async ($, on) => {
+  test('對照：session 在主 checkout 啟動但協調票 0 張時不開 Pane，解析 CLI 只跑一次', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, opened, cliCwds } = await startBoard($, on, { ...sharedFiles(), sessionRoot: '/repo', projectConfig: null })
     expect(opened).toEqual([])
     expect(cliCwds).toEqual(['/repo'])
     await ui.unmount()
   })
 
-  test('啟動檢查丟例外時，失敗原因寫入 transcript（使用者可見）（E2）', async ($, on) => {
+  test('啟動檢查丟例外時，失敗原因寫入 transcript（使用者可見）（E2）', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, opened, logs } = await startBoard($, on, { ...sharedFiles(), rootError: 'session root 讀取失敗' })
     expect(opened).toEqual([])
     expect(logs.filter(log => log.to === 'transcript' && log.text.startsWith('line-board 啟動檢查失敗'))).toHaveLength(1)
     await ui.unmount()
   })
 
-  test('對照：啟動檢查沒有例外時，transcript 沒有啟動檢查失敗的行（E2）', async ($, on) => {
+  test('對照：啟動檢查沒有例外時，transcript 沒有啟動檢查失敗的行（E2）', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui, opened, logs } = await startBoard($, on, sharedFiles())
     expect(opened).toEqual(['line-board'])
     expect(logs.filter(log => log.text.startsWith('line-board 啟動檢查失敗'))).toEqual([])
@@ -406,7 +408,7 @@ describe('專案設定', () => {
   ]
 
   for (const [name, stubPart, reason, extraLines] of UNSET_CASES) {
-    test(`${name}：不自動開 Pane；執行 /board 後開啟並顯示原因，不畫線群組也不擇一`, async ($, on) => {
+    test(`${name}：不自動開 Pane；執行 /board 後開啟並顯示原因，不畫線群組也不擇一`, { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
       const { ui, opened, readPaths } = await startBoard($, on, { ...sharedFiles(), ...stubPart })
       expect(opened).toEqual([])
       await runBoardCommand($)
@@ -430,7 +432,7 @@ describe('專案設定', () => {
       [{ projectConfig: cliError('todolist 不可用：ENOENT') }, /^line_status 無法判讀：協調票解析失敗：todolist 不可用：ENOENT/],
     ]
     cases.forEach(([stubPart, expected], index) => {
-      test(`line_status：協調票不成立（情形 ${index + 1}）回傳原因文字，不拋出也不讀協調票檔`, async ($, on) => {
+      test(`line_status：協調票不成立（情形 ${index + 1}）回傳原因文字，不拋出也不讀協調票檔`, { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
         const { ui, readPaths } = await startBoard($, on, { ...sharedFiles(), sessionRoot: '/repo', ...stubPart })
         expect(await callLineStatus($)).toMatch(expected)
         expect(readPaths).not.toContain(`/repo/${COORDINATION_TICKET_FILE}`)
@@ -439,7 +441,7 @@ describe('專案設定', () => {
     })
   }
 
-  test('line_status：1 張時照常判讀，解析警告列在輸出', async ($, on) => {
+  test('line_status：1 張時照常判讀，解析警告列在輸出', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const warning = '覆寫的協調票 0.5.0-W1-349 已結案，改用自動解析'
     const { ui } = await startBoard($, on, { ...sharedFiles(), sessionRoot: '/repo', projectConfig: cliOk(COORDINATION_TICKET, [warning]) })
     const text = await callLineStatus($)
@@ -448,7 +450,7 @@ describe('專案設定', () => {
     await ui.unmount()
   })
 
-  test('對照：協調票 0 張時執行 /board 顯示提示；標記補上後再執行 /board 畫出各線', async ($, on) => {
+  test('對照：協調票 0 張時執行 /board 顯示提示；標記補上後再執行 /board 畫出各線', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const stub = { ...sharedFiles(), projectConfig: null as string | null }
     const { ui } = await startBoard($, on, stub)
     await runBoardCommand($)
@@ -460,7 +462,7 @@ describe('專案設定', () => {
     await ui.unmount()
   })
 
-  test('協調票檔的路徑由設定的票號推導：協調票不是預設票號時讀 hierarchical 路徑', async ($, on) => {
+  test('協調票檔的路徑由設定的票號推導：協調票不是預設票號時讀 hierarchical 路徑', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const path = '/repo/docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W2-010.md'
     const { ui, readPaths } = await startBoard($, on, {
       files: { [path]: TICKET_349 },
@@ -472,7 +474,7 @@ describe('專案設定', () => {
     await ui.unmount()
   })
 
-  test('佇列短票號以設定的協調票推導的前綴補全：兩個不同協調票讀同一佇列，各讀自己版本與 wave 的票檔（E1 對照）', async ($, on) => {
+  test('佇列短票號以設定的協調票推導的前綴補全：兩個不同協調票讀同一佇列，各讀自己版本與 wave 的票檔（E1 對照）', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const stub = {
       files: {
         [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349,
@@ -496,7 +498,7 @@ describe('專案設定', () => {
     expect(under06.some(path => path.includes('0.5.0-W1-'))).toBe(false)
   })
 
-  test('對照：協調票只有 flat 票檔時先試 hierarchical、再退回 flat 路徑', async ($, on) => {
+  test('對照：協調票只有 flat 票檔時先試 hierarchical、再退回 flat 路徑', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const hierarchical = '/repo/docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W2-010.md'
     const flat = '/repo/docs/work-logs/v0.6.0/tickets/0.6.0-W2-010.md'
     const { ui, readPaths } = await startBoard($, on, {
@@ -509,7 +511,7 @@ describe('專案設定', () => {
     await ui.unmount()
   })
 
-  test('佇列票的票檔路徑由票號推導：票檔只在 flat 路徑時退回讀取', async ($, on) => {
+  test('佇列票的票檔路徑由票號推導：票檔只在 flat 路徑時退回讀取', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const { ui } = await startBoard($, on, {
       files: {
         [`/repo/${COORDINATION_TICKET_FILE}`]: TICKET_349,
