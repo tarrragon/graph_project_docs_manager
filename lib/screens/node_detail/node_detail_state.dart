@@ -42,6 +42,19 @@ class NodeDetailReady extends NodeDetailState {
   final String nodeId;
 }
 
+/// 圖不可用：最後完成輪次建圖不可用（SPEC-001 §6 判定順序 2）。
+class NodeDetailGraphUnavailable extends NodeDetailState {
+  const NodeDetailGraphUnavailable();
+}
+
+/// 節點不在目前的圖上：選定 id 不在最後完成輪次的圖上（SPEC-001 §6 判定順序 4）。
+class NodeDetailNodeAbsent extends NodeDetailState {
+  const NodeDetailNodeAbsent({required this.nodeId});
+
+  /// 選定但不在圖上的節點 id。
+  final String nodeId;
+}
+
 /// 原始檔已消失：訊息 + 最後已知路徑 + 重新整理／返回。
 class NodeDetailMissing extends NodeDetailState {
   const NodeDetailMissing({required this.nodeId, required this.lastKnownPath});

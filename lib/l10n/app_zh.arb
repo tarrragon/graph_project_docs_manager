@@ -1277,6 +1277,31 @@
     }
   },
 
+  "nodeDetailGraphUnavailableMessage": "此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），最近一次掃描無法建立圖譜，節點詳情暫無法顯示；可至 Domain 視圖重新掃描",
+  "@nodeDetailGraphUnavailableMessage": {
+    "description": "SPEC-001 §6 節點詳情·圖不可用的原因文案（state-nodeDetail-graph-unavailable；appVersion 為 App 內建型別表產生版本）",
+    "placeholders": {
+      "appVersion": {
+        "type": "String"
+      }
+    }
+  },
+
+  "nodeDetailNodeAbsentMessage": "節點 {nodeId} 不在目前的圖上",
+  "@nodeDetailNodeAbsentMessage": {
+    "description": "SPEC-001 §6 節點詳情·節點不在目前的圖上的訊息（state-nodeDetail-node-absent）",
+    "placeholders": {
+      "nodeId": {
+        "type": "String"
+      }
+    }
+  },
+
+  "nodeDetailNodeAbsentHint": "可能已被刪除、改了 ID，或因 ID 重複而被排除",
+  "@nodeDetailNodeAbsentHint": {
+    "description": "SPEC-001 §6 節點不在目前的圖上的說明（三種可能原因，不排序、不推斷）"
+  },
+
   "domainGraphUnavailableScanning": "掃描中",
   "@domainGraphUnavailableScanning": {
     "description": "SPEC-001 §1 Domain 視圖·圖不可用列在掃描輪次進行期間取代原因文字的訊息（SPEC-004 §4.0.6）"

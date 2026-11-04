@@ -689,6 +689,19 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String nodeDetailGraphUnavailableMessage(String appVersion) {
+    return '此專案的型別表版本不在 App 已知範圍內（不高於 $appVersion），最近一次掃描無法建立圖譜，節點詳情暫無法顯示；可至 Domain 視圖重新掃描';
+  }
+
+  @override
+  String nodeDetailNodeAbsentMessage(String nodeId) {
+    return '節點 $nodeId 不在目前的圖上';
+  }
+
+  @override
+  String get nodeDetailNodeAbsentHint => '可能已被刪除、改了 ID，或因 ID 重複而被排除';
+
+  @override
   String get domainGraphUnavailableScanning => '掃描中';
 
   @override

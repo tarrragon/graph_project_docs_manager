@@ -732,6 +732,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String nodeDetailGraphUnavailableMessage(String appVersion) {
+    return 'This project\'s schema version is outside the range this app knows (up to $appVersion), so the latest scan could not build the graph and node details are unavailable. You can rescan from the Domain view';
+  }
+
+  @override
+  String nodeDetailNodeAbsentMessage(String nodeId) {
+    return 'Node $nodeId is not in the current graph';
+  }
+
+  @override
+  String get nodeDetailNodeAbsentHint =>
+      'It may have been deleted, renamed to another ID, or excluded because of a duplicate ID';
+
+  @override
   String get domainGraphUnavailableScanning => 'Scanning…';
 
   @override

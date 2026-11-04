@@ -278,6 +278,23 @@ void main() {
         '泳道投影準備中：掃描完成後即顯示此 UC 的步驟',
         "Preparing swimlane: this UC's steps appear when the scan completes",
       ),
+      'nodeDetailGraphUnavailableMessage': (
+        '此專案的型別表版本不在 App 已知範圍內（不高於 {appVersion}），'
+            '最近一次掃描無法建立圖譜，節點詳情暫無法顯示；可至 Domain 視圖重新掃描',
+        "This project's schema version is outside the range this app knows "
+            '(up to {appVersion}), so the latest scan could not build the '
+            'graph and node details are unavailable. '
+            'You can rescan from the Domain view',
+      ),
+      'nodeDetailNodeAbsentMessage': (
+        '節點 {nodeId} 不在目前的圖上',
+        'Node {nodeId} is not in the current graph',
+      ),
+      'nodeDetailNodeAbsentHint': (
+        '可能已被刪除、改了 ID，或因 ID 重複而被排除',
+        'It may have been deleted, renamed to another ID, '
+            'or excluded because of a duplicate ID',
+      ),
       'degradedSchemaBadgeLabel': (
         '降級型別表（內建 {builtinVersion} / 專案 {projectVersion}）',
         'Degraded schema (builtin {builtinVersion} / project {projectVersion})',
