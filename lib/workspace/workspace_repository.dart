@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -245,6 +246,65 @@ const _reasonFolderUnreadable = '無法讀取資料夾內容';
 /// （`SharedPreferences.getInstance()` 拋例外）。
 // i18n-exempt: 使用者可見欄位，本票沿用既有中文字面慣例，未接 ARB。
 const _reasonPreferencesUnavailable = '無法讀取已儲存的工作資料夾設定';
+
+/// [parseRecentProjectsPure] 的結果：解析出的清單與 counts 格式不符的元素索引。
+@visibleForTesting
+class ParsedRecentProjects {
+  const ParsedRecentProjects(this.projects, this.invalidCountsIndexes);
+  final List<RecentProject> projects;
+  final List<int> invalidCountsIndexes;
+}
+
+/// 解析 `workspace.recentProjects` 的 JSON 內容（純函式，無日誌）；任何結構
+/// 或型別不符皆視為整份損壞（不部分採用），回傳 `null`。
+@visibleForTesting
+ParsedRecentProjects? parseRecentProjectsPure(String raw) {
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) return null;
+    final projects = <RecentProject>[];
+    final invalid = <int>[];
+    for (final (index, item) in decoded.indexed) {
+      if (item is! Map) return null;
+      final path = item['path'];
+      final lastOpenedAtRaw = item['lastOpenedAt'];
+      if (path is! String || lastOpenedAtRaw is! String) return null;
+      final lastOpenedAt = DateTime.tryParse(lastOpenedAtRaw);
+      if (lastOpenedAt == null) return null;
+      final rawCounts = item['counts'];
+      final counts = _parseCounts(rawCounts);
+      if (counts == null && rawCounts != null) invalid.add(index);
+      projects.add(
+        RecentProject(path: path, lastOpenedAt: lastOpenedAt, counts: counts),
+      );
+    }
+    return ParsedRecentProjects(projects, invalid);
+  } catch (e) {
+    return null; // 解析例外視為整份損壞，由呼叫端的包裝統一回報
+  }
+}
+
+/// 解析單一元素的 `counts`（SPEC-005 §2.4〈計數快照〉）：欄不存在、缺欄、
+/// 非整數、負數或非物件皆回 `null`；是否格式不符由呼叫端依原值判斷。
+RecentProjectCounts? _parseCounts(Object? raw) {
+  if (raw is! Map) return null;
+  final node = raw['nodeCount'];
+  final ticket = raw['ticketCount'];
+  final issue = raw['issueCount'];
+  if (node is int &&
+      ticket is int &&
+      issue is int &&
+      node >= 0 &&
+      ticket >= 0 &&
+      issue >= 0) {
+    return RecentProjectCounts(
+      nodeCount: node,
+      ticketCount: ticket,
+      issueCount: issue,
+    );
+  }
+  return null;
+}
 
 /// 管理「使用者選定的工作資料夾」。
 ///
@@ -794,62 +854,18 @@ class WorkspaceRepository {
     return parsed;
   }
 
-  /// 解析 `workspace.recentProjects` 的 JSON 內容；任何結構或型別不符皆
-  /// 視為整份損壞（不部分採用），回傳 `null` 供呼叫端統一處理。
+  /// 純解析後記錄每個 counts 格式不符的元素（level 900），日誌點只此一處。
   List<RecentProject>? _parseRecentProjects(String raw) {
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return null;
-      final result = <RecentProject>[];
-      for (final (index, item) in decoded.indexed) {
-        if (item is! Map) return null;
-        final path = item['path'];
-        final lastOpenedAtRaw = item['lastOpenedAt'];
-        if (path is! String || lastOpenedAtRaw is! String) return null;
-        final lastOpenedAt = DateTime.tryParse(lastOpenedAtRaw);
-        if (lastOpenedAt == null) return null;
-        result.add(
-          RecentProject(
-            path: path,
-            lastOpenedAt: lastOpenedAt,
-            counts: _parseCounts(item['counts'], index),
-          ),
-        );
-      }
-      return result;
-    } catch (e) {
-      return null;
+    final parsed = parseRecentProjectsPure(raw);
+    if (parsed == null) return null;
+    for (final index in parsed.invalidCountsIndexes) {
+      _log(
+        '最近專案 counts 格式不符，視為無快照，index=$index', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.recentProjectCountsInvalid,
+        level: 900,
+      );
     }
-  }
-
-  /// 解析單一元素的 `counts`（SPEC-005 §2.4〈計數快照〉）：欄不存在回
-  /// `null`（舊資料，不記日誌）；存在但缺欄、非整數、負數或非物件回
-  /// `null` 並記 level 900（含元素 [index]），不判整份損壞。
-  RecentProjectCounts? _parseCounts(Object? raw, int index) {
-    if (raw == null) return null;
-    if (raw is Map) {
-      final node = raw['nodeCount'];
-      final ticket = raw['ticketCount'];
-      final issue = raw['issueCount'];
-      if (node is int &&
-          ticket is int &&
-          issue is int &&
-          node >= 0 &&
-          ticket >= 0 &&
-          issue >= 0) {
-        return RecentProjectCounts(
-          nodeCount: node,
-          ticketCount: ticket,
-          issueCount: issue,
-        );
-      }
-    }
-    _log(
-      '最近專案 counts 格式不符，視為無快照，index=$index', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.recentProjectCountsInvalid,
-      level: 900,
-    );
-    return null;
+    return parsed.projects;
   }
 
   /// 路徑字串會過期（資料夾被搬移、重新命名、刪除，或位於未掛載的磁碟），

@@ -1062,6 +1062,26 @@ void main() {
       });
     }
 
+    test('G8-3b 純解析：counts 格式不符 → counts 為 null 且回報 index', () {
+      final parsed = parseRecentProjectsPure(
+        '[{"path": "/tmp/a", "lastOpenedAt": "2026-09-20T08:00:00.000Z", '
+        '"counts": 5}, '
+        '{"path": "/tmp/b", "lastOpenedAt": "2026-09-19T08:00:00.000Z"}]',
+      );
+
+      expect(parsed, isNotNull);
+      expect(parsed!.projects.map((p) => p.path).toList(), [
+        '/tmp/a',
+        '/tmp/b',
+      ]);
+      expect(parsed.projects[0].counts, isNull);
+      expect(parsed.invalidCountsIndexes, [0]);
+    });
+
+    test('G8-3c 純解析：整份損壞回 null', () {
+      expect(parseRecentProjectsPure('{"not": "a list"}'), isNull);
+    });
+
     test('G8-4 addRecentProject 重新開啟同 path 保留舊 counts', () async {
       final repo = repoWith({
         key:
