@@ -10,6 +10,7 @@ import 'dart:developer' as developer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
 import 'package:graph_project_docs_manager/services/directory_watch_source.dart';
+import 'package:graph_project_docs_manager/services/file_watch_canary_io.dart';
 
 const String _tag = 'corpus_watch';
 
@@ -32,6 +33,11 @@ class _RealDebounceClock implements DebounceClock {
       _TimerHandle(Timer(delay, callback));
 }
 
+/// 存活檢查的檔案操作；測試覆寫為假實作。
+final watchCanaryIoProvider = Provider<WatchCanaryIo>(
+  (ref) => FileWatchCanaryIo(),
+);
+
 /// 去抖與就緒逾時共用的時鐘；測試覆寫為手動時鐘。
 final watchClockProvider = Provider<DebounceClock>(
   (ref) => const _RealDebounceClock(),
@@ -51,6 +57,7 @@ final corpusWatcherProvider = Provider<CorpusWatcher>((ref) {
   final watcher = CorpusWatcher(
     source: ref.read(watchSourceProvider),
     clock: ref.read(watchClockProvider),
+    canaryIo: ref.read(watchCanaryIoProvider),
     onChanged: (_) => ref.read(watchChangedSinkProvider).listener?.call(),
     log: (message, {int level = 0}) =>
         developer.log(message, name: _tag, level: level),
