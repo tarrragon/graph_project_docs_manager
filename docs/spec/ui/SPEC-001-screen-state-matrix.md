@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
 updated: "2026-11-04"
-version: "1.76"
+version: "1.77"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -712,6 +712,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `parseFailure` · EVT-CORPUS-006（v1.69） | `topicFilesMalformed` 兩個子原因 | `topic-files-malformed` | `gapCategoryTopicFilesMalformed` |
 > | `graphDefect` 主圖 | `danglingRef`、`malformedRef`、`duplicateId`、`multiSource` | `graph-defect` | `gapCategoryGraphDefect` |
 > | `graphDefect` 名稱索引 | domain 重複宣告 | `graph-defect`（與主圖同節） | 同上 |
+> | `graphDefect` 主圖節點層級（v1.77） | 孤島、缺必要邊 | `graph-defect`（與主圖同節） | 同上 |
 > | `graphDefect` flow 子圖 | flow 參照未解析、UC 內 step id 重複、`traverses` 名稱未宣告、`traverses` 鍵缺席、事件引用未解析（v1.54） | `graph-defect-flow` | `gapCategoryGraphDefectFlow` |
 >
 > 子類不再細分為分節，改由項目說明 key 區分（SPEC-004 §4.0.6〈1.80 提案〉）。flow 各子類另立一節，依
@@ -730,6 +731,8 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `multiSource` | 子類名、起點 ID、邊型 |
 > | flow 各子類 | 子類名、UC ID、step id、欄位名、原始值（`traverses` 鍵缺席時為字面 `null`） |
 > | domain 重複宣告 | 子類名、domain 值 |
+> | 孤島（v1.77） | 子類名、節點 ID |
+> | 缺必要邊（v1.77） | 子類名、節點 ID、未滿足的邊型清單（依 SPEC-007 FR-09 必要邊表的列序，以 `,` 串接後作為單一成分） |
 > | `orphan-event`（v1.52） | category id、EVT ID |
 > | `event-declaration-mismatch`（v1.52） | category id、EVT ID、方向（字面 `consumers` 或 `producers`）、宣告的 domain 原值 |
 >
@@ -752,6 +755,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > | `multiSource` | 起點節點路徑 | 起點節點 | 起點為 Ticket 時為 ticket，其餘為其他圖節點 |
 > | flow 各子類 | UC 路徑 | 該 UC 與 step id | flow 類：UC Flow 並選定該 UC、定位該步驟 |
 > | domain 重複宣告 | 衝突 DomainBundle ID 中 code point 序最小者的路徑 | 該 DomainBundle | 其他圖節點 |
+> | 孤島、缺必要邊（v1.77） | 該節點路徑（負載自帶） | 該節點 | 其他圖節點（兩子類都不判定 Ticket 型別） |
 > | `orphan-event`、`event-declaration-mismatch`（v1.52） | EVT 節點路徑 | 該 EVT | 事件類：事件 ID 為 EVT ID；選定 UC 取引用該 EVT 的 UC ID 中 code point 序最小者，無任何 UC 引用時為無，改依「其他圖節點」列處理 |
 >
 > **事件類項目投影**（v1.52，`0.5.0-W1-114.22.2`；PM 確認 2026-10-20）：兩類破洞由 Diagnostics 依 SPEC-003 §3.5
@@ -763,6 +767,8 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 > 查不到時比照下方〈定案〉「指向節點查不到時」處置。建圖不可用時兩類不產生項目（SPEC-003 §3.5，Diagnostics
 > 回報無法判定、零筆），破洞報告落「無法判定破洞」的原因沿用建圖不可用；路徑模式查詢不可用而建圖可用時，
 > 「無法判定破洞」列照常列出兩類項目（同上方「其餘類別沿用同一投影」）。
+>
+> **孤島與缺必要邊的項目說明**（v1.77，SPEC-007 v1.39 FR-09）：孤島帶參數節點 ID 與節點型別；缺必要邊帶參數節點 ID 與未滿足的邊型清單，邊型為型別表鍵名原值（不經 i18n）。key 與 zh／en 文案待 PM 確認，確認後由實作票同批加入 SPEC-004 §4.0.6 與 ARB。
 >
 > `graphDefect` 各子類無行號，不顯示行號。項目說明 key 與參數見 SPEC-004 §4.0.6〈1.80 提案〉（2026-10-09 PM 確認）。
 >
@@ -1209,6 +1215,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.77 | 2026-11-04 | §5〈破洞報告項目投影〉三表補 SPEC-007 v1.39 新增的孤島與缺必要邊（`0.6.0-W1-072.2`）：歸 `graph-defect` 分節、項目 id 成分、指向該節點（其他圖節點）；新增〈孤島與缺必要邊的項目說明〉，key 與文案待 PM 確認。狀態總數不變 |
 | 1.76 | 2026-11-04 | 依 `0.6.0-W1-070` 用戶裁定「主視窗內的設定面板」（`0.6.0-W1-070.2`）：§9 由「獨立視窗」改寫為主視窗內的面板（標題、〈編號說明〉前的敘述、兩列狀態的進入與退出、本節末兩則註記、§8.1 兩列標註、概述與 §5 行號註記中的「視窗」），退出路徑改為關閉鈕或 Esc；持久化定案沿用 `shared_preferences`（App 層鍵名）。狀態數與列數不變；SPEC-003 v1.82、SPEC-004 v1.122 同批同步 |
 | 1.75 | 2026-11-04 | 依 `0.6.0-W1-070` 用戶裁定 1–4 與入口位置裁定（選單列「偏好設定…」⌘, 開獨立視窗）回填（`0.6.0-W1-070.1`）：新增 §9 偏好設定視窗，兩列「編輯器清單」「無可選編輯器」（只列查得 handler 的編輯器、預設「系統預設（不定位）」、選定後持久化、查無編輯器時的呈現）。編號取 9 接在 §8 之後，不插入 §7 與 §8 之間，既有 §8.1 等編號不變；§8 開頭、§8.1 標題與逐狀態標註、概述、FR-01 驗收同步納入 §9。§5〈行號可空的重評條件〉改為已定案：事件類維持無行號、不定位，原重評候選不採（裁定 4），舊 ID `0.1.0-W1-070` 更正為 `0.6.0-W1-070`。狀態總數 44 → 46（追加編號第 47、48 列）；SPEC-003 v1.81 同批同步，SPEC-004 §3.6 補列與新字串由 `0.6.0-W1-070.2` 承接 |
 | 1.74 | 2026-11-03 | §7 健康徽章註記改為計數來源已定案：持久化快照（每輪掃描完成寫入）、問題數＝破洞報告總項數、無快照不顯示摘要與徽章，細節路由 SPEC-005 §2.4（`0.6.0-W1-018.1`，承 `0.6.0-W1-018` 用戶裁決）；不新增畫面狀態 |
