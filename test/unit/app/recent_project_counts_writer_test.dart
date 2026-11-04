@@ -206,4 +206,50 @@ void main() {
       expect(s.container.read(recentProjectsProvider).single.counts, isNull);
     });
   });
+
+  group('backfillRecentProjectCounts（0.6.0-W1-145）', () {
+    final backfillProvider = Provider<Future<void> Function(String)>(
+      (ref) =>
+          (path) => backfillRecentProjectCounts(ref, path),
+    );
+
+    Future<ProviderContainer> firstRoundBeforeAdd() async {
+      final s = _setup(seed: '[]');
+      s.container.read(recentProjectsProvider.notifier).state = [];
+      s.container.read(lastCompletedRoundProvider);
+      s.round.completeExternally(_roundWithTwoGapKinds());
+      await _settle();
+      return s.container;
+    }
+
+    test('B-1 首輪先完成、再加入清單 → 補寫並同步 provider', () async {
+      final container = await firstRoundBeforeAdd();
+      final repository = container.read(workspaceRepositoryProvider);
+      await repository.addRecentProject(_workspacePath);
+      container.read(recentProjectsProvider.notifier).state = await repository
+          .loadRecentProjects();
+
+      await container.read(backfillProvider)(_workspacePath);
+
+      final reloaded = await repository.loadRecentProjects();
+      expect(reloaded.single.counts?.issueCount, 2);
+      expect(reloaded.single.counts?.ticketCount, 2);
+      final synced = container.read(recentProjectsProvider).single.counts;
+      expect(synced?.nodeCount, 7);
+    });
+
+    test('B-2（E1 對照）最近完成輪次 workspacePath 不同 → 不補寫', () async {
+      final container = await firstRoundBeforeAdd();
+      final repository = container.read(workspaceRepositoryProvider);
+      await repository.addRecentProject('/ws/other');
+      container.read(recentProjectsProvider.notifier).state = await repository
+          .loadRecentProjects();
+
+      await container.read(backfillProvider)('/ws/other');
+
+      final reloaded = await repository.loadRecentProjects();
+      expect(reloaded.single.counts, isNull);
+      expect(container.read(recentProjectsProvider).single.counts, isNull);
+    });
+  });
 }

@@ -40,6 +40,16 @@ final recentProjectCountsWriterProvider = Provider<void>((ref) {
   });
 });
 
+/// 需求：[SPEC-005 §2.4 計數快照] 加入清單後補寫最近完成輪次。
+///
+/// 首次開啟的專案首輪可能先於 `addRecentProject` 完成而落空；加入成功後由
+/// 呼叫端呼叫本函式，最近完成輪次的 `workspacePath` 與 [path] 相同才補寫。
+Future<void> backfillRecentProjectCounts(Ref ref, String path) async {
+  final round = ref.read(lastCompletedRoundProvider);
+  if (round == null || round.workspacePath != path) return;
+  await _persistCounts(ref, round);
+}
+
 Future<void> _persistCounts(Ref ref, ScanRoundResult round) async {
   final counts = recentProjectCountsOf(round);
   final repository = ref.read(workspaceRepositoryProvider);

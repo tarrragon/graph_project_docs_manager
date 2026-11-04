@@ -5,7 +5,7 @@ status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
 updated: "2026-11-04"
-version: "1.5"
+version: "1.6"
 owner: star-anise-system-designer
 has_functional_requirements: false   # 本規格只記 workspace driven port 的專案事實，不含 FR（0.5.0-W1-159 判定）
 
@@ -269,7 +269,7 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 | `nodeCount` | 該輪掃描的 `ScanSummary.nodeCount`（`ScanRoundResult.scan.summary`） |
 | `ticketCount` | 該輪 `ScanRoundResult.scan.rawNodes` 中 `typeName` 等於 `ticketTypeName` 的節點數；解析失敗的 Ticket 檔不計入（它們已計入 `issueCount`） |
 | `issueCount` | 該輪的破洞報告總項數：與破洞報告畫面列出的項數同一定義，即 `GapReportFound`／`GapReportUndeterminable` 各類別 `items` 長度加總、`GapReportNoGaps` 為 0（同 `ScanNotificationController` 送通知時的計數）；以 `gapItemIdsOf(round)` 的集合大小取值，兩者須相等 |
-| 寫入時機 | 每輪掃描完成（`scanRoundProvider` 進入 `ScanRoundCompleted`）時，以 `result.workspacePath` 呼叫 `saveRecentProjectCounts`；掃描失敗、取消、未完成的輪次不寫入，快照維持前一輪值 |
+| 寫入時機 | 每輪掃描完成（`scanRoundProvider` 進入 `ScanRoundCompleted`）時，以 `result.workspacePath` 呼叫 `saveRecentProjectCounts`；掃描失敗、取消、未完成的輪次不寫入，快照維持前一輪值。另於 `addRecentProject` 成功後，若最近完成輪次的 `workspacePath` 與該項相同，立即以該輪補寫（首次開啟的專案首輪可能先於加入清單完成） |
 | 目前專案項 | 同樣顯示快照，不顯示即時值。理由：單一來源，切換器不需區分兩種資料路徑；輪次完成即寫入，完成後快照與即時值相同，差異只存在於輪次進行中，此時顯示上一輪值屬正確語意 |
 | 無快照 | 元素無 `counts` 欄（本欄加入前寫入的舊資料、或從未完成過掃描的項）：切換器不顯示摘要列與健康徽章 |
 | `counts` 格式不符 | 缺欄、非整數或為負：該元素視為無快照（`counts` 為 `null`），其餘欄照常採用，記一筆 level 900 日誌（含元素索引）；不判整份損壞。理由：快照可由下一輪掃描重建，整份判損會使 `addRecentProject` 以空清單為基底覆寫、遺失所有最近專案，代價與快照價值不相稱。〈損壞時不覆寫的邊界〉的「不部分採用」只針對 `path`／`lastOpenedAt` |
@@ -370,6 +370,7 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.6 | 2026-11-04 | §2.4〈計數快照〉寫入時機補一句：`addRecentProject` 成功後，若最近完成輪次的 `workspacePath` 與該項相同，立即補寫（首次開啟的專案首輪先於加入清單完成時不再落空）；不改 `addRecentProject` 的「成功載入後」時機。來源 `0.6.0-W1-145` |
 | 1.5 | 2026-11-04 | 新增 §2.5 最近專案項可用性探測：每項逾時 2 秒、沿用 `_inspect()` 判定、`RecentProjectAvailability` 三型與 `probeRecentProject`、回饋點表（逾時 level 900 日誌）、原因文字來源、五項設計點與理由；§2.4 寫入時機段改引 §2.5。來源 `0.6.0-W1-019` 用戶裁決，承接票 `0.6.0-W1-019.1` |
 | 1.4 | 2026-11-03 | §2.4 新增〈計數快照〉：陣列元素選填欄 `counts`（`nodeCount`／`ticketCount`／`issueCount`）、三計數來源、寫入時機（每輪掃描完成）、目前專案項亦讀快照、無快照不顯示摘要與徽章、`counts` 格式不符只降為無快照、不新增 schemaVersion；新增 `RecentProjectCounts`、`saveRecentProjectCounts` 與其回饋點表；`addRecentProject` 帶入同 path 舊項的 `counts`。來源 `0.6.0-W1-018` 用戶裁決，承接票 `0.6.0-W1-018.1` |
 | 1.3 | 2026-10-13 | frontmatter 新增 `has_functional_requirements: false`：本規格不含 FR 為設計（通則在方法論〈Port 回饋契約〉，本規格只記專案事實），覆蓋檢查據此不執行 FR 比對。條文無變更。來源 `0.5.0-W1-159`，承接票 `0.5.0-W1-159.1` |
