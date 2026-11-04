@@ -216,6 +216,7 @@
   "gapsUndeterminableReasonNoPathPattern": "Neither the project schema nor the built-in one has path patterns, so node files cannot be identified; parse failures are not listed",
   "pathDeclarationIncompleteLine": "Path declarations incomplete: {detail} ({count} paths affected)",
   "pathDeclarationBundlesPartial": "{declared} of {total} domains declared",
+  "pathDeclarationBundlesMalformed": "path declarations of {count} domains are malformed",
   "pathDeclarationNonDomainMissing": "non-domain path list missing",
   "pathDeclarationNoBundles": "no domains declared",
   "pathDeclarationNoneLine": "This project declares no paths",

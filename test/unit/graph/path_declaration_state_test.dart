@@ -247,12 +247,22 @@ void main() {
         PathLocationState.unlocatable,
       );
     });
-    for (final c in ['?', '[', ']', '{', '}']) {
+    for (final c in ['?', '[', r'\']) {
       test('守衛：含 glob 字元 $c 的宣告不命中字面上會命中的路徑', () {
         final pattern = 'docs/a${c}b/';
         expect(
           _one(both, nonDomainDeclared([pattern]), '${pattern}x.md'),
           PathLocationState.unlocatable,
+        );
+      });
+    }
+    // 正向對照（E2）：上游不視為 glob 的 ] { } 照常命中。
+    for (final c in [']', '{', '}']) {
+      test('正向對照：含 $c 的宣告為字面前綴，照常命中', () {
+        final pattern = 'docs/a${c}b/';
+        expect(
+          _one(both, nonDomainDeclared([pattern]), '${pattern}x.md'),
+          PathLocationState.nonDomainLayer,
         );
       });
     }

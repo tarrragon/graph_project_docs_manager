@@ -1396,6 +1396,12 @@ abstract class AppLocalizations {
   /// **'已宣告 {declared}／{total} 個 domain'**
   String pathDeclarationBundlesPartial(int declared, int total);
 
+  /// SPEC-004 §4.0.6：宣告狀態行 detail 片段（有 bundle 的 path_patterns 格式錯誤時出現，接在 bundle 側片段之後）
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 個 domain 的路徑宣告格式錯誤'**
+  String pathDeclarationBundlesMalformed(int count);
+
   /// SPEC-004 §4.0.6：宣告狀態行 detail 片段（非 domain 側缺席）
   ///
   /// In zh, this message translates to:

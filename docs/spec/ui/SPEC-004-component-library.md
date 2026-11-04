@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.122（1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.123（1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -587,6 +587,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `relationItemProposedA11yLabel` | 關聯節點 {id}，暫定邊，形狀可能變動 | Related node {id}, proposed edge, shape may change | id | 4.19（新 key，ARB 待建，`0.5.0-W1-103.2`；朗讀文案依 `0.5.0-W1-103.1` PM 處置確認） |
 | `pathDeclarationIncompleteLine` | 路徑宣告不完整：{detail}（影響 {count} 條路徑） | Path declarations incomplete: {detail} ({count} paths affected) | detail, count | SPEC-001 §5 專案層級宣告狀態一行（`AppText`；新 key，`0.5.0-W1-096.9` PM 處置） |
 | `pathDeclarationBundlesPartial` | 已宣告 {declared}／{total} 個 domain | {declared} of {total} domains declared | declared, total | 同上，`{detail}` 片段；與 `pathDeclarationNonDomainMissing` 並存時以「、」／", " 連接 |
+| `pathDeclarationBundlesMalformed` | {count} 個 domain 的路徑宣告格式錯誤 | path declarations of {count} domains are malformed | count | SPEC-001 §5 宣告狀態行 `{detail}` 片段；有 bundle 的 `path_patterns` 格式錯誤（G1 值不是清單、G2 含非字串元素）時出現，接在 bundle 側片段之後，以「、」／", " 連接（`0.6.0-W1-075` N1=C′，`0.6.0-W1-075.1` 提案，`0.6.0-W1-075.2` 落地） |
 | `pathDeclarationNonDomainMissing` | 缺非 domain 路徑清單 | non-domain path list missing | — | 同上，`{detail}` 片段 |
 | `pathDeclarationNoneLine` | 本專案未宣告路徑 | This project declares no paths | — | SPEC-001 §5 兩側皆未宣告時（不顯示路徑數） |
 | `pathDeclarationNonDomainMalformed` | 非 domain 路徑清單格式錯誤 | non-domain path list is malformed | — | 同 `pathDeclarationNonDomainMissing` 的 `{detail}` 片段，清單檔存在但格式錯誤時取代「缺」（UC-02 NC-1 (ii) II-a）。key 與文案已定（`0.5.0-W1-096.7` PM 處置識別名、`0.5.0-W1-114.1` NC-g），ARB 已建（`0.5.0-W1-119.2`） |
@@ -6508,6 +6509,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.123 | 2026-11-04 | `0.6.0-W1-075.2`（對應 SPEC-001 v1.78、UC-02 v1.16）：§4.0.6 登記 `pathDeclarationBundlesMalformed`（{count} 個 domain 的路徑宣告格式錯誤），宣告狀態行 `{detail}` 的 bundle 格式錯誤片段，接在 bundle 側片段之後；ARB 同批建立。不新增元件，狀態總數不變 |
 | 1.122 | 2026-11-04 | `0.6.0-W1-070.2`（對應 SPEC-001 v1.76、SPEC-003 v1.82）：§3.6 對照表補 SPEC-001 §9 兩列（編輯器清單、無可選編輯器，歸屬 `Panel.scrollable` + `ListRow.option`）；§4.0.6 新增〈1.122 新增〉表登記 `openedWithoutEditorMessage`、`preferencesTitle`、`preferencesEditorSystemOption`、`preferencesNoEditorsExplanation` 四個 key，與 zh／en ARB 同批 |
 | 1.121 | 2026-11-04 | `0.6.0-W1-152.1`（用戶裁定）：§4.0.6 `degradedSchemaBadgeLabel` 列 zh／en 改為 ARB 現值（保留「降級」一詞）；新增補登表登記 `eventOutsideUcBare`、`scanCompleteUndeterminableNotificationBody`、`scanCompleteUndeterminableSnackbarMessage`；`ucSelectorTitle` en、`swimlaneUcUnsetPrompt` zh／en、`swimlaneProjectionPendingPrompt` zh 以規格為準，ARB 同批改齊，規格列不動 |
 | 1.120 | 2026-11-04 | `0.6.0-W1-019.1`：4.9 `RecentProjectItem` disabled 列進入條件拆為探測逾時（`probeTimeoutReason`，逾時值引 SPEC-005 §2.5）與探測判定不可讀或不存在（`WorkspaceUnavailable.reason`，與點選失敗同源）；內容政策表後補表外說明 `reason` 兩種取值。§4.0.6 與各綁定 ARB 的表列未動（PC-GPD-075）。來源 `0.6.0-W1-019` 用戶裁決 |

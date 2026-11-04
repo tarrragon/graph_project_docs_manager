@@ -45,6 +45,48 @@ void main() {
       expect(d.hasGap, isTrue);
     });
 
+    test('S5 G1／G2 格式錯誤 bundle：不算已宣告也不算未宣告，單獨計數', () {
+      final d = summarizeProjectPathDeclaration(
+        rawNodes: [
+          _bundle('ok', patterns: ['lib/ok/']),
+          _bundle('g1', patterns: 'lib/g1/'),
+          _bundle('g1map', patterns: {'a': 'b'}),
+          _bundle('g2', patterns: ['lib/g2/', 3]),
+          _bundle('none', declared: false),
+        ],
+        nonDomain: _declared,
+      );
+
+      expect(d.declaredBundleCount, 1);
+      expect(d.totalBundleCount, 5);
+      expect(d.malformedBundleCount, 3);
+      expect(d.hasGap, isTrue);
+    });
+
+    test('S5（E1）顯式空清單不算格式錯誤，malformedBundleCount 為 0', () {
+      final d = summarizeProjectPathDeclaration(
+        rawNodes: [_bundle('a', patterns: <String>[])],
+        nonDomain: _declared,
+      );
+
+      expect(d.malformedBundleCount, 0);
+    });
+
+    test('S6 逐路徑：G1 不收路徑、G2 字串元素照常比對、非字串略過', () {
+      final d = summarizeProjectPathDeclaration(
+        rawNodes: [
+          _bundle('ok', patterns: ['lib/ok/']),
+          _bundle('g1', patterns: 'lib/g1/'),
+          _bundle('g2', patterns: ['lib/g2/', 3]),
+          _ticket('t', ['lib/g1/a.dart', 'lib/g2/a.dart']),
+        ],
+        nonDomain: _declared,
+      );
+
+      // lib/g1/ 未命中 → domain 未宣告（受影響 1）；lib/g2/ 命中不受影響。
+      expect(d.affectedPathCount, 1);
+    });
+
     test('S2（守衛）兩側完整宣告 → 無缺口；S1 為正向對照', () {
       final d = summarizeProjectPathDeclaration(
         rawNodes: [
