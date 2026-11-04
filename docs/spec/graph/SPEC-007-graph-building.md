@@ -263,7 +263,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 另有兩種主圖節點層級的缺陷，同屬 `graphDefect` 大類，不另立破洞類別（2026-11-04 用戶裁決，`0.6.0-W1-072`）：
 
-| 子類 | 識別名（提案，待 PM 確認） | 來源 | 負載 |
+| 子類 | 識別名 | 來源 | 負載 |
 |------|------|------|------|
 | 孤島 | `GraphDefectKind.isolatedNode` | 本節〈孤島與缺必要邊〉判準一 | {節點 ID, 節點型別, 路徑} |
 | 缺必要邊 | `GraphDefectKind.missingRequiredEdge` | 本節〈孤島與缺必要邊〉判準二 | {節點 ID, 節點型別, 路徑, 未滿足的邊型清單} |
@@ -271,7 +271,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **孤島與缺必要邊**：兩者都在建圖完成後、於主圖邊集合（FR-04 建邊與 FR-05 對稱聯集之後）上判定。只計解析成功而建立的邊；斷邊、格式錯誤的引用值不建邊，因此不算。flow 子圖（FR-10）與 domain 名稱索引（FR-11）不是邊，不參與判定。FR-02 排除的重複 ID 不是節點，不參與判定。建圖不可用時兩者皆不產生。
 
 1. 孤島：型別為 PROP、SPEC、UC、EVT、DomainBundle 之一的節點，在使用中邊型（〈用詞〉）上沒有任何一條邊（出、入皆無）。Ticket 型別不判定。每個節點至多一筆
-2. 缺必要邊：下表為必要邊集合，邊型名取自型別表 `GRAPH_EDGE_TYPES`；「出邊」指以該節點為起點的邊，不論由起點或終點宣告（FR-04）。每一條未滿足的要求報一筆，一個 UC 至多三筆、一個 EVT 至多一筆。其他型別不判定
+2. 缺必要邊：非孤島的節點才判定。下表為必要邊集合，邊型名取自型別表 `GRAPH_EDGE_TYPES`；「出邊」指以該節點為起點的邊，不論由起點或終點宣告（FR-04）。每一條未滿足的要求報一筆，一個 UC 至多三筆；EVT 的二擇一算一條要求，至多一筆。其他型別不判定
 
 | 節點型別 | 要求（每列一條） | 未滿足時負載的邊型清單 |
 |---------|----------------|--------------------|
@@ -280,7 +280,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | UC | 至少一條 `uc_ticket_refs` 出邊 | [`uc_ticket_refs`] |
 | EVT | `provenance` 或 `spec_association` 出邊至少一條 | [`provenance`, `spec_association`] |
 
-集合依據：兩語料（D5）實測零例外的候選（`0.6.0-W1-072` 量測表）。孤島與缺必要邊各自判定，同一 UC 或 EVT 為孤島時兩者都報（待 PM 確認）。
+集合依據：兩語料（D5）實測零例外的候選（`0.6.0-W1-072` 量測表）。節點為孤島時只報孤島，不再判定該節點的缺必要邊：孤島已涵蓋「缺任何邊」，同一根因不在破洞報告出現多筆（PM 裁定 2026-11-04）。
 
 前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（兩者皆由 `0.5.0-W1-001.5` 命名——皆屬名稱解析器，`0.5.0-W1-114.1` PM 處置 NC-c、`0.5.0-W1-114.2` PM 處置 NC-7）。實作票命名前，其他實作不得自行命名。「事件引用未解析」的識別名由 `0.5.0-W1-458.4` 命名：`FlowDefectKind.eventUnresolved`，對應 `GraphDefectKind.flowEventUnresolved`，畫面項目說明識別名 `GapDescriptionKind.flowEventUnresolved`（ARB key `gapFlowEventUnresolved`）。
 
@@ -297,7 +297,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given 一個 Ticket 節點沒有任何邊，Then 不回報孤島（E2 對照：同樣無邊的 SPEC 回報）
 - [ ] Given 一個 PROP 的唯一引用值是斷邊，且沒有其他節點引用它，Then 回報一筆 `danglingRef` 與一筆孤島
 - [ ] Given 一個 UC 有 `provenance` 與 `spec_association` 出邊、`ticket_refs` 為空，Then 回報一筆缺必要邊，邊型清單為 [`uc_ticket_refs`]
-- [ ] Given 一個 EVT 只有 `spec_association` 出邊，Then 不回報缺必要邊；Given 兩者皆無，Then 回報一筆，邊型清單為 [`provenance`, `spec_association`]
+- [ ] Given 一個 EVT 只有 `spec_association` 出邊，Then 不回報缺必要邊；Given 一個 EVT 有入邊（例：被 UC 以 `spec_association` 引用）但 `provenance` 與 `spec_association` 出邊皆無，Then 回報一筆缺必要邊，邊型清單為 [`provenance`, `spec_association`]
+- [ ] Given 一個 UC 沒有任何邊，Then 只回報一筆孤島，不回報缺必要邊（E2 對照：有其他邊但缺 `uc_ticket_refs` 出邊的 UC 回報一筆缺必要邊）
 - [ ] Given 一個 SPEC 沒有 `provenance` 出邊，Then 不回報缺必要邊（SPEC 不在必要邊集合）
 - [ ] Given 本專案與 flutter_balance 兩語料（D5），Then 孤島與缺必要邊皆為零筆
 - [ ] Given IT-2 的實體化語料，Then 每一筆破洞的子類、欄位內容與凍結的參照實作輸出一致，沒有多出或缺少的破洞
@@ -489,7 +490,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
-| 1.39 | 2026-11-04 | 依 `0.6.0-W1-072` 用戶裁決（2026-11-04）新增 `graphDefect` 子類孤島與缺必要邊（`0.6.0-W1-072.2`）：FR-09 新增子類表與〈孤島與缺必要邊〉判準（孤島只判 PROP／SPEC／UC／EVT／DomainBundle；必要邊集合為 UC 的 `provenance`、`spec_association`、`uc_ticket_refs` 出邊，EVT 的 `provenance` 或 `spec_association` 出邊至少一條），補七條驗收；FR-06 負載與 `graphDefects` 筆數驗收同步；D4 同步；〈本版範圍外〉原列改為 Ticket 孤島與其他型別必要邊。識別名與「孤島且缺必要邊時兩者都報」待 PM 確認 |
+| 1.39 | 2026-11-04 | 依 `0.6.0-W1-072` 用戶裁決（2026-11-04）新增 `graphDefect` 子類孤島與缺必要邊（`0.6.0-W1-072.2`）：FR-09 新增子類表與〈孤島與缺必要邊〉判準（孤島只判 PROP／SPEC／UC／EVT／DomainBundle；必要邊集合為 UC 的 `provenance`、`spec_association`、`uc_ticket_refs` 出邊，EVT 的 `provenance` 或 `spec_association` 出邊至少一條），補八條驗收；FR-06 負載與 `graphDefects` 筆數驗收同步；D4 同步；〈本版範圍外〉原列改為 Ticket 孤島與其他型別必要邊。識別名 `isolatedNode`、`missingRequiredEdge`；PM 裁定（同日）孤島節點不再報缺必要邊 |
 | 1.38 | 2026-11-04 | `depends_on_domains` 建 `domain_dependency` 邊（`0.6.0-W1-074`，接 FR-11 名稱解析器）：〈用詞〉使用中邊型不再扣除 `domain_dependency`；FR-01 鍵名例外改為納入 `bundle_dependency` 與 `domain_dependency` 名稱解析認定（仍兩處）及兩條驗收同步；FR-11 改寫「本版只解析 `traverses`」一條為建邊與分類規則（非字串＝`invalidShape`、未宣告＝既有 `danglingRef`／`targetMissing`，不新增缺陷子類與識別名）並補三條驗收（含 E2 正向對照、21 條邊）；D6 同步；〈本版範圍外〉移除 `depends_on_domains` 列 |
 | 1.37 | 2026-11-03 | `related_usecases` 由空清單補為 UC-01～UC-06（`0.6.0-W1-116`，對齊 UC 端 `related_specs`）：UC-01 圖譜、UC-02 FR-12、UC-03 FR-10、UC-04 追溯樹、UC-05 FR-07 列舉、UC-06 FR-09；不動條文 |
 | 1.36 | 2026-11-02 | FR-07 新增列舉規則與一條驗收（`0.6.0-W1-105.1`，`0.6.0-W1-105` 缺口 G-T3）：TicketDetail 提供同一輪收錄 ticket 的列舉，順序同 `rawNodes`，作為 Ticket 清單的列來源；欄位取值規則在 SPEC-001 §4〈票列欄位的取值來源〉 |
