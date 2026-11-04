@@ -109,15 +109,18 @@ class PathDeclarationReport {
 
 /// 需求：[UC-02 ticket 定位] 逐路徑分類 [whereFiles]。
 ///
-/// [bundlePathPatterns] 的值：`null` 為欄位缺席（未宣告）、`[]` 為已宣告且
-/// 不收任何路徑。
+/// [bundlePathPatterns] 的值：`null` 為欄位缺席（未宣告）或 G1（值不是清單，
+/// 不收任何路徑）、`[]` 為已宣告且不收任何路徑。[malformedBundles] 為 G1／G2
+/// 的 bundle 鍵，計為格式錯誤：不入已宣告數，總數仍含。
 PathDeclarationReport classifyTicketPaths({
   required Map<String, List<String>?> bundlePathPatterns,
   required NonDomainPathsReadResult nonDomain,
   required List<String> whereFiles,
+  Set<String> malformedBundles = const {},
 }) {
-  final declaredCount = bundlePathPatterns.values
-      .where((v) => v != null)
+  // 格式錯誤 bundle（G1／G2）不算已宣告；其字串元素仍留在 map 內照常比對。
+  final declaredCount = bundlePathPatterns.entries
+      .where((e) => e.value != null && !malformedBundles.contains(e.key))
       .length;
   final total = bundlePathPatterns.length;
   final nonDomainPatterns = nonDomain.declaration.declaredPatterns;
@@ -233,7 +236,9 @@ int _longestMatch(String path, List<String>? patterns) {
 bool _matches(String path, String pattern) =>
     pattern.endsWith('/') ? path.startsWith(pattern) : path == pattern;
 
-final _globChars = RegExp(r'[*?\[\]{}]');
+/// 對齊上游 `_PATH_PATTERN_FORBIDDEN_CHARS`：`*` `?` `[` 與反斜線；
+/// `]` `{` `}` 不在其內（UC-02 v1.16）。
+final _globChars = RegExp(r'[*?\[\\]');
 
 /// 上游判為格式違規的值不命中任何路徑：空字串、以 `/` 或 `./` 開頭、
 /// 含 `..` 段、含 glob 字元。

@@ -163,6 +163,8 @@ String? pathDeclarationLineText(
         declaration.declaredBundleCount,
         declaration.totalBundleCount,
       ),
+    if (declaration.malformedBundleCount > 0)
+      l10n.pathDeclarationBundlesMalformed(declaration.malformedBundleCount),
     ?switch (declaration.nonDomainSide) {
       NonDomainSideState.absent => l10n.pathDeclarationNonDomainMissing,
       NonDomainSideState.malformed => l10n.pathDeclarationNonDomainMalformed,

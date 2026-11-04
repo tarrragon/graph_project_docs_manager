@@ -23,11 +23,17 @@ class ProjectPathDeclaration {
     required this.nonDomainSide,
     required this.overallUndeclared,
     this.affectedPathCount,
+    this.malformedBundleCount = 0,
   });
 
-  /// `path_patterns` 已宣告的 DomainBundle 數／DomainBundle 總數。
+  /// `path_patterns` 已宣告的 DomainBundle 數／DomainBundle 總數。已宣告數
+  /// 不含格式錯誤 bundle，總數含之（UC-02 v1.16）。
   final int declaredBundleCount;
   final int totalBundleCount;
+
+  /// `path_patterns` 格式錯誤（G1 值不是清單、G2 含非字串元素）的 bundle 數；
+  /// 不算未宣告，宣告狀態行以獨立片段標示。
+  final int malformedBundleCount;
 
   final NonDomainSideState nonDomainSide;
 
@@ -46,6 +52,7 @@ class ProjectPathDeclaration {
   bool get hasGap =>
       overallUndeclared ||
       !isBundleSideComplete ||
+      malformedBundleCount > 0 ||
       nonDomainSide != NonDomainSideState.declared;
 }
 
@@ -59,6 +66,7 @@ ProjectPathDeclaration summarizeProjectPathDeclaration({
   required NonDomainPathsReadResult nonDomain,
 }) {
   final bundles = _bundlePathPatterns(rawNodes);
+  final malformed = _malformedBundleKeys(rawNodes);
   final tickets = [
     for (final raw in rawNodes)
       if (raw.typeName == ticketTypeName) _whereFilesOf(raw),
@@ -69,14 +77,17 @@ ProjectPathDeclaration summarizeProjectPathDeclaration({
         bundlePathPatterns: bundles,
         nonDomain: nonDomain,
         whereFiles: files,
+        malformedBundles: malformed,
       ),
   ];
   final base = classifyTicketPaths(
     bundlePathPatterns: bundles,
     nonDomain: nonDomain,
     whereFiles: const [],
+    malformedBundles: malformed,
   );
   return ProjectPathDeclaration(
+    malformedBundleCount: malformed.length,
     declaredBundleCount: base.declaredBundleCount,
     totalBundleCount: base.totalBundleCount,
     nonDomainSide: base.nonDomainSide,
@@ -107,6 +118,19 @@ Map<String, List<String>?> _bundlePathPatterns(List<RawNode> rawNodes) => {
         _ => null,
       },
 };
+
+/// 格式錯誤的 bundle 鍵：欄位存在但值不是清單（G1），或清單含非字串元素
+/// （G2）。欄位缺席（含值為 null）與顯式空清單不是格式錯誤。
+Set<String> _malformedBundleKeys(List<RawNode> rawNodes) => {
+  for (final raw in rawNodes)
+    if (raw.typeName == domainBundleTypeName &&
+        raw.frontmatter[_pathPatternsField] != null &&
+        _isMalformedPatterns(raw.frontmatter[_pathPatternsField]))
+      _bundleKey(raw),
+};
+
+bool _isMalformedPatterns(Object? value) =>
+    value is! List || value.any((e) => e is! String);
 
 String _bundleKey(RawNode raw) {
   final id = raw.frontmatter['id'];

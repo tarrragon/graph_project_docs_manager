@@ -797,6 +797,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String pathDeclarationBundlesMalformed(int count) {
+    return '$count 個 domain 的路徑宣告格式錯誤';
+  }
+
+  @override
   String get pathDeclarationNonDomainMissing => '缺非 domain 路徑清單';
 
   @override

@@ -55,7 +55,9 @@ ProjectPathDeclaration _decl({
   NonDomainSideState side = NonDomainSideState.declared,
   int? count = 0,
   bool overall = false,
+  int malformed = 0,
 }) => ProjectPathDeclaration(
+  malformedBundleCount: malformed,
   declaredBundleCount: declared,
   totalBundleCount: total,
   nonDomainSide: side,
@@ -219,6 +221,70 @@ void main() {
           '${_en.pathDeclarationBundlesPartial(5, 8)}, '
           '${_en.pathDeclarationNonDomainMissing}',
           4,
+        ),
+      );
+    });
+
+    testWidgets('R1-13 格式錯誤 bundle 片段接在 bundle 側之後，zh／en', (tester) async {
+      final g1 = GapReportFound(
+        _categories,
+        pathDeclaration: _decl(declared: 5, total: 9, malformed: 1, count: 2),
+      );
+      await _pump(tester, g1);
+      expect(
+        _lineText(tester),
+        _zh.pathDeclarationIncompleteLine(
+          '${_zh.pathDeclarationBundlesPartial(5, 9)}、'
+          '${_zh.pathDeclarationBundlesMalformed(1)}',
+          2,
+        ),
+      );
+      await _pump(tester, g1, locale: const Locale('en'));
+      expect(
+        _lineText(tester),
+        _en.pathDeclarationIncompleteLine(
+          '${_en.pathDeclarationBundlesPartial(5, 9)}, '
+          '${_en.pathDeclarationBundlesMalformed(1)}',
+          2,
+        ),
+      );
+    });
+
+    testWidgets('R1-13 G1／G2 經真實比對器：不入未宣告，整行含格式錯誤片段', (tester) async {
+      final state = gapReportStateFromRound(
+        fakeRound(
+          nonDomainRead: _listOk,
+          nonDomainPathsEvent: _listOk.malformedEvent,
+          extraRawNodes: [
+            RawNode(
+              path: 'docs/spec/g1/domain-map.md',
+              typeName: 'DomainBundle',
+              frontmatter: {'id': 'g1', 'path_patterns': 'lib/g1/'},
+            ),
+            RawNode(
+              path: 'docs/spec/g2/domain-map.md',
+              typeName: 'DomainBundle',
+              frontmatter: {
+                'id': 'g2',
+                'path_patterns': ['lib/g2/', 7],
+              },
+            ),
+            _bundle('ok', patterns: ['lib/ok/']),
+          ],
+        ),
+        nonDomainPathsKey: _nonDomainKey,
+      );
+      final d = _declOf(state)!;
+      expect(d.declaredBundleCount, 1);
+      expect(d.totalBundleCount, 3);
+      expect(d.malformedBundleCount, 2);
+      await _pump(tester, state);
+      expect(
+        _lineText(tester),
+        _zh.pathDeclarationIncompleteLine(
+          '${_zh.pathDeclarationBundlesPartial(1, 3)}、'
+          '${_zh.pathDeclarationBundlesMalformed(2)}',
+          0,
         ),
       );
     });
@@ -551,6 +617,7 @@ void main() {
     const keys = [
       'pathDeclarationIncompleteLine',
       'pathDeclarationBundlesPartial',
+      'pathDeclarationBundlesMalformed',
       'pathDeclarationNonDomainMissing',
       'pathDeclarationNoneLine',
       'pathDeclarationNonDomainMalformed',

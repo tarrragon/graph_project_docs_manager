@@ -844,6 +844,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String pathDeclarationBundlesMalformed(int count) {
+    return 'path declarations of $count domains are malformed';
+  }
+
+  @override
   String get pathDeclarationNonDomainMissing => 'non-domain path list missing';
 
   @override
