@@ -268,6 +268,20 @@ void main() {
       ),
       'reloadAction': ('重新載入', 'Reload'),
       'projectUnreadyReasonLoadFailed': ('圖譜載入失敗', 'Graph failed to load'),
+      'ucSelectorTitle': ('選擇 UC', 'Select a UC'),
+      'swimlaneUcUnsetPrompt': (
+        '尚未選定 UC：請在矩陣點選一格，或至 UC Flow 視圖選擇一條 UC',
+        'No UC selected: select a cell in the matrix, '
+            'or choose a UC in UC Flow',
+      ),
+      'swimlaneProjectionPendingPrompt': (
+        '泳道投影準備中：掃描完成後即顯示此 UC 的步驟',
+        "Preparing swimlane: this UC's steps appear when the scan completes",
+      ),
+      'degradedSchemaBadgeLabel': (
+        '降級型別表（內建 {builtinVersion} / 專案 {projectVersion}）',
+        'Degraded schema (builtin {builtinVersion} / project {projectVersion})',
+      ),
     };
 
     Map<String, dynamic> arb(String name) =>

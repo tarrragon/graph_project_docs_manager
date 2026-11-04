@@ -92,7 +92,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ucUnsetPrompt => 'Select a UC to view its flow';
 
   @override
-  String get ucSelectorTitle => 'Select UC';
+  String get ucSelectorTitle => 'Select a UC';
 
   @override
   String get emptyProposalMessage => 'This project has no proposals yet';
@@ -438,7 +438,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get swimlaneUcUnsetPrompt =>
-      'No UC selected yet — pick a cell in the matrix or select a UC in the UC Flow view';
+      'No UC selected: select a cell in the matrix, or choose a UC in UC Flow';
 
   @override
   String get swimlaneProjectionPendingPrompt =>
