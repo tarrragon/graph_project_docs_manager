@@ -9,6 +9,7 @@ import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 import '../../helpers/spec007/graph_build_support.dart';
+import '../../helpers/spec007/known_distribution_fixture.dart';
 import '../../helpers/spec007/raw_node_builder.dart';
 
 const _ticket = '0.1.0-W1-001';
@@ -212,6 +213,25 @@ void main() {
         ),
       ]);
       expect(_missing(e), isEmpty);
+    });
+  });
+
+  group('必要邊型不在使用中邊型', () {
+    test('型別表少了 uc_ticket_refs：UC 不報缺 uc_ticket_refs；對照組有該邊型時報', () {
+      final nodes = [
+        ..._targets(),
+        _uc(
+          'UC-01',
+          extra: {
+            'source_proposal': ['PROP-001'],
+            'related_specs': ['SPEC-001'],
+          },
+        ),
+      ];
+      final schema = loadBuiltinSchemaJson();
+      (schema['edge_types'] as Map<String, dynamic>).remove('uc_ticket_refs');
+      expect(_missing(buildGraphEvent(nodes, schema)), isEmpty);
+      expect(_missing(buildGraphEvent(nodes)), hasLength(1));
     });
   });
 

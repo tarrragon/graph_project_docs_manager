@@ -173,6 +173,7 @@ void main() {
 
       test('IT2-A1 graphDefect 破洞集合與凍結值一一對應', () {
         final result = _diagnose(runs[host]!) as GraphDefectsDetected;
+        // 重凍由 0.6.0-W1-171 承接。
         // 凍結語料早於 UC `ticket_refs` 回填（0.6.0-W1-104），凍結值不含節點層級
         // 缺陷（FR-09〈孤島與缺必要邊〉）；此處只允許缺 uc_ticket_refs 一種，
         // 其餘節點層級缺陷（孤島等）出現即紅。

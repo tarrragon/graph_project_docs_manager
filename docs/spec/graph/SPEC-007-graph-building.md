@@ -280,6 +280,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | UC | 至少一條 `uc_ticket_refs` 出邊 | [`uc_ticket_refs`] |
 | EVT | `provenance` 或 `spec_association` 出邊至少一條 | [`provenance`, `spec_association`] |
 
+使用中邊型（〈用詞〉）不含某條要求的任何邊型時（例：型別表少了 `uc_ticket_refs`），該條要求跳過、不判缺必要邊，並記一筆日誌（`0.6.0-W1-072.1` PM 處置，2026-11-04）。
+
 集合依據：兩語料（D5）實測零例外的候選（`0.6.0-W1-072` 量測表）。節點為孤島時只報孤島，不再判定該節點的缺必要邊：孤島已涵蓋「缺任何邊」，同一根因不在破洞報告出現多筆（PM 裁定 2026-11-04）。
 
 前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（兩者皆由 `0.5.0-W1-001.5` 命名——皆屬名稱解析器，`0.5.0-W1-114.1` PM 處置 NC-c、`0.5.0-W1-114.2` PM 處置 NC-7）。實作票命名前，其他實作不得自行命名。「事件引用未解析」的識別名由 `0.5.0-W1-458.4` 命名：`FlowDefectKind.eventUnresolved`，對應 `GraphDefectKind.flowEventUnresolved`，畫面項目說明識別名 `GapDescriptionKind.flowEventUnresolved`（ARB key `gapFlowEventUnresolved`）。
