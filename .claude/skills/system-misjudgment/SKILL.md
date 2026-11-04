@@ -2,18 +2,20 @@
 name: system-misjudgment
 description: "以系統為索引的 AI 誤判檢查庫：記錄除錯、實機驗證時對系統行為的常見錯誤判讀、實際機制與可執行檢查方法。Use when: 除錯、實機驗證、觀測不到事件或 log、懷疑系統行為、否定結果（零事件、沒有 log、分支還在）要當證據前、誤判後要記錄。"
 metadata:
-  version: 1.0.0
+  version: 1.0.1
 ---
 
 # system-misjudgment：依「正在面對的系統」查已知誤判與檢查方法
 
-除錯當下讀者知道自己面對哪個系統，未必知道錯誤屬哪個類別。error-patterns 依類別分目錄，查不到同一系統上的陷阱；本 skill 以系統為第一層索引，每個條目的核心是**可執行的檢查方法**。
+除錯當下，讀者知道自己面對哪個系統，未必知道錯誤屬哪個類別。
+
+error-patterns 依類別分目錄，查不到同一系統上的陷阱。本 skill 以系統為第一層索引。每個條目的核心是**可執行的檢查方法**。
 
 ## 用法
 
 1. 從下表找到你正在面對的系統，開對應的 reference。
 2. 在該檔找症狀與你看到的現象相符的條目，先照「檢查方法」跑命令，再依「判讀標準」下結論。
-3. 條目的原因敘事不在本 skill：用條目的「來源」欄 ID 開 `.claude/error-patterns/` 對應檔，或 `/error-pattern query <ID>`。
+3. 條目的原因敘事不在本 skill：來源欄若有 error-pattern ID，用 `/error-pattern query <ID>` 查；若是機制敘述，該敘述已自足。
 4. 找不到相符條目：照下方〈通則〉處理，事後依〈持續更新〉新增條目。
 
 | 系統 | 檔案 | 現象關鍵字 |
@@ -21,13 +23,13 @@ metadata:
 | macOS FSEvents／fseventsd／檔案監看 | `references/macos-fsevents.md` | 監看零事件、刪監看根目錄、/private 路徑、驗證 PASS 但可能被他人寫入污染 |
 | Dart VM service Logging／flutter run | `references/dart-vm-service-log.md` | 沒有 log、log 漏行、訊息被截斷、時間戳矛盾 |
 | git index／worktree／工作區 | `references/git-index-worktree.md` | index.lock、`git status` 的「改動」、index 吸入他人變更、worktree 路徑 |
-| 合併閘門與背景程序 | `references/merge-gate-background-process.md` | 分支還在、閘門像失敗、程序已結束的宣告、測試數下降 |
+| 合併閘門與背景程序 | `references/merge-gate-background-process.md` | 分支還在、閘門像失敗、程序已結束的宣告、測試數下降、測試綠但行為未變 |
 | 工具輸出與 AI 自身記錄 | `references/tool-output-and-records.md` | 輸出夾旁白、記憶中的 commit、工作區觀測當持久結論 |
 | Riverpod provider 接線 | `references/riverpod-provider-wiring.md` | 測試綠但啟動報 provider 錯誤 |
 
 ## 通則
 
-**否定結果（零事件、沒有 log、沒有輸出）在拿來當證據之前，先對環境與觀測工具各做一次正向對照。** 「沒收到」同時符合被測物壞、環境沒送、工具沒接到三種成因，單看這個結果分不出來。判讀順序：環境健康 → 觀測工具完整性 → 被測物。前一層沒過，後一層的否定結果一律不採計（`PC-GPD-080`）。
+**否定結果（零事件、沒有 log、沒有輸出）在拿來當證據之前，先對環境與觀測工具各做一次正向對照。** 「沒收到」同時符合被測物壞、環境沒送、工具沒接到三種成因，單看這個結果分不出來。判讀順序：環境健康 → 觀測工具完整性 → 被測物。前一層沒過，後一層的否定結果一律不採計。
 
 ## 條目欄位
 
@@ -53,7 +55,7 @@ metadata:
 | incident-responder 結論 | 結論的根因是「判讀者對系統行為想錯」 |
 | 實機驗證出現誤判 | 驗證中的否定或異常結果，事後證明是環境或觀測工具造成 |
 
-新增條目的步驟：(1) 寫入對應系統檔，七欄填齊，來源欄放 ID；(2) 檢查方法已實際跑過一次，輸出貼在來源 pattern 或票面，不憑推論；(3) 修改本 skill 內容的票，同票升版號並寫 `CHANGELOG.md`（`PC-GPD-077`）。
+新增條目的步驟：(1) 寫入對應系統檔，七欄填齊，來源欄放 error-pattern ID，或自足的機制敘述；(2) 檢查方法已實際跑過一次，輸出貼在來源 pattern 或票面，不憑推論；(3) 修改本 skill 內容的票，同票升版號並寫 `CHANGELOG.md`；版號不動，發佈前才會發現本地與發佈庫版號相同而內容不同。
 
 ## 與相鄰 skill 的分工
 

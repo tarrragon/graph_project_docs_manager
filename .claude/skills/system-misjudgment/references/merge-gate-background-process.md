@@ -19,7 +19,7 @@
 | 症狀 | 收尾記錄寫「代理人已終止」，唯一依據是沒收到它的產出 |
 | 常見誤判 | 沒有產出等於程序已結束 |
 | 實際機制 | 產出是否交付與程序是否終止分屬兩個平面；前者可從自己 context 觀察，後者必須查 session 外部狀態 |
-| 檢查方法 | 另一觀測面查證：`ps` 查程序，或用 `TaskStop` 實際終止後讀其回應；in-process 代理人不列在 `ListAgents` 的 peer 清單 |
+| 檢查方法 | 另一觀測面查證：`ps -axo pid,etime,command` 查程序是否仍在；in-process 代理人不列在 `ListAgents` 的 peer 清單 |
 | 正向對照 | 對已知存活的代理人，所選的觀測面必須能看到它 |
 | 判讀標準 | 狀態詞（已結束、已終止）只在查證過程狀態後才可寫；僅「無產出」只能寫成「報告未落地」 |
 | 來源 | `PC-BAL-045` |
@@ -31,7 +31,7 @@
 | 症狀 | 合併閘門的 passed 數比上一次少 |
 | 常見誤判 | 本批刪除了測試 |
 | 實際機制 | 兩次合併之間的總數差，可能來自任何一條並行線的 commit，不只是本批 |
-| 檢查方法 | 比對兩個 commit 之間的 test 宣告數：`git -C <repo> diff <舊>..<新> --stat -- test/`，再以 `grep -rc "test(\|testWidgets(" test/` 分別對兩個 commit 的檔案計數；把差異歸因到各條線的 commit |
+| 檢查方法 | 比對兩個 commit 之間的 test 宣告數：兩個 commit 各跑一次 `git -C <repo> grep -c "test(\|testWidgets(" <commit> -- test/`，加總各檔計數後相減；再用 `git -C <repo> log --oneline <舊>..<新> -- test/` 把差異歸因到各條線的 commit |
 | 正向對照 | 對已知新增一筆測試的 commit，計數必須加一 |
 | 判讀標準 | 差異歸因到具體 commit 才下結論；歸因不到本批 → 不是本批造成 |
 | 來源 | 實測依據：閘門 passed 數變動的歸因過程 |
