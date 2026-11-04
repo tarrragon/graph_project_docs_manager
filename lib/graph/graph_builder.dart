@@ -7,6 +7,7 @@ import 'package:graph_project_docs_manager/graph/flow_subgraph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
+import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 /// 需求：[SPEC-007 FR-01、FR-06] 建圖入口。
@@ -72,22 +73,31 @@ GraphBuiltEvent buildGraphFromInputs({
   final edgeList = edgeTypes.toList();
   final classified = classifyGraphReferences(
     rawNodes: rawNodes,
-    edgeTypes: edgeList,
+    edgeTypes: [
+      for (final t in edgeList)
+        if (t.name != _nameResolvedEdgeType) t,
+    ],
     nodeTypes: nodeTypes,
     onIdLookup: onIdLookup,
   );
+  final nodeIds = {for (final n in classified.lightNodes) n.id};
+  final resolver = DomainNameResolver.fromRawNodes(rawNodes, nodeIds);
+  final named = _classifyDomainNames(rawNodes, edgeList, {
+    for (final d in classified.duplicates) d.id,
+  }, resolver);
   final undirectedTypes = {
     for (final t in edgeList)
       if (t.isUndirected) t.name,
   };
   final layers = {for (final t in edgeList) t.name: t.layer};
-  final edges = _buildEdges(classified.resolved, undirectedTypes, layers);
-  final nodeIds = {for (final n in classified.lightNodes) n.id};
-  final resolver = DomainNameResolver.fromRawNodes(rawNodes, nodeIds);
+  final resolvedRefs = [...classified.resolved, ...named.resolved];
+  final edges = _buildEdges(resolvedRefs, undirectedTypes, layers);
   final flow = buildFlowSubgraphs(rawNodes, nodeIds, resolver);
   final defects = <GraphDefect>[
     ...classified.dangling,
+    ...named.dangling,
     ...classified.malformed,
+    ...named.malformed,
     ...classified.duplicates,
     ..._multiSourceDefects(edges, edgeList),
     ...flow.defects,
@@ -103,8 +113,75 @@ GraphBuiltEvent buildGraphFromInputs({
     graphDefects: defects,
     flowSubgraphs: flow.subgraphs,
     domainResolver: resolver,
-    totalReferences: classified.totalReferences,
-    resolvedCount: classified.resolved.length,
+    totalReferences: classified.totalReferences + named.total,
+    resolvedCount: resolvedRefs.length,
+  );
+}
+
+/// 值為 domain 名稱（而非節點 ID）、經 [DomainNameResolver] 解析的邊型（FR-11）。
+const _nameResolvedEdgeType = 'domain_dependency';
+
+/// 名稱型引用值的分類結果。
+typedef _NameClassification = ({
+  List<ResolvedRef> resolved,
+  List<DanglingRefGraphDefect> dangling,
+  List<MalformedRefGraphDefect> malformed,
+  int total,
+});
+
+/// 需求：[SPEC-007 FR-03、FR-11] `domain_dependency` 的引用值以名稱索引解析。
+///
+/// 值不是 ID，不比對 `id_pattern`：非字串為 `invalidShape`；索引查無（未宣告、
+/// 或因重複宣告被排除）為 `danglingRef`（`targetMissing`）；其餘解析成功。
+_NameClassification _classifyDomainNames(
+  List<RawNode> rawNodes,
+  List<EdgeTypeEntry> edgeTypes,
+  Set<String> duplicateIds,
+  DomainNameResolver resolver,
+) {
+  final named = [
+    for (final t in edgeTypes)
+      if (t.name == _nameResolvedEdgeType) t,
+  ];
+  final resolved = <ResolvedRef>[];
+  final dangling = <DanglingRefGraphDefect>[];
+  final malformed = <MalformedRefGraphDefect>[];
+  var total = 0;
+  for (final raw in rawNodes) {
+    final id = raw.frontmatter['id'];
+    if (named.isEmpty || id is! String || duplicateIds.contains(id)) continue;
+    final refs = extractReferenceValues(
+      node: raw,
+      sourceId: id,
+      edgeTypes: named,
+    );
+    total += refs.length;
+    for (final ref in refs) {
+      final target = ref.isShapeValid ? resolver.resolve(ref.value) : null;
+      if (!ref.isShapeValid) {
+        malformed.add(
+          MalformedRefGraphDefect(
+            ref: ref,
+            reason: MalformedReason.invalidShape,
+          ),
+        );
+      } else if (target == null) {
+        dangling.add(
+          DanglingRefGraphDefect(
+            ref: ref,
+            reason: DanglingReason.targetMissing,
+          ),
+        );
+      } else {
+        resolved.add(ResolvedRef(ref: ref, targetId: target));
+      }
+    }
+  }
+  return (
+    resolved: resolved,
+    dangling: dangling,
+    malformed: malformed,
+    total: total,
   );
 }
 

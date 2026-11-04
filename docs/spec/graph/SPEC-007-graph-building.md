@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-11-03"
-version: "1.37"
+version: "1.38"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -47,7 +47,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 詞 | 定義 |
 |----|------|
-| 使用中邊型 | 型別表中 `layer` 為 `established` 的邊型，扣除 `domain_dependency`，加上 `layer` 為 `proposed` 的 `bundle_dependency`（FR-01、D6） |
+| 使用中邊型 | 型別表中 `layer` 為 `established` 的邊型，加上 `layer` 為 `proposed` 的 `bundle_dependency`（FR-01、D6）；`domain_dependency` 是 established 邊型，屬使用中（v1.38 起） |
 | 無向邊 | 型別表 `direction` 欄為 `undirected` 的邊型（FR-05）；`directed` 為有向 |
 | 引用值 | 單一節點、單一欄位中的單一項。純量欄位是一個引用值；清單欄位每一項各是一個引用值；反向欄位的值是 map 時（如 `outputs`），每個子鍵的清單每一項各是一個引用值 |
 | 宣告來源 | 一條邊由哪些端點宣告，型別為端點 ID 的集合。有向邊：起點宣告＝起點的正向欄位列出終點；終點宣告＝終點的反向欄位列出起點。無向邊：列出對方的那一端 |
@@ -68,7 +68,6 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 項目 | 不在本版的理由 | 承接 |
 |------|--------------|------|
-| `depends_on_domains`（`domain_dependency` 邊） | 值是 domain 名稱而非節點 ID（兩語料實測），個別 domain 不是圖節點；與 0.5「矩陣的列無來源」是同一個問題（用戶裁決 2026-09-30） | `0.5.0-W1-001` |
 | B 層邊（`emits`／`consumes`／`branch_from`／`return_to`）與 FlowStep 主圖節點 | 已裁決（`0.5.0-W1-001` 裁決 C，2026-10-07）：FlowStep 不進主圖，`branch_from`／`return_to` 以 UC flow 子圖提供（FR-10），不建邊；`emits`／`consumes` 不建邊，子圖只檢查其引用的 EVT id 是否存在（FR-10〈事件引用〉，v1.34 起；原寫「不在 0.5.0 子圖的解析範圍」）。升級為主圖節點屬加法變更，本版不做 | FR-10 |
 | 破洞「孤島」「缺必要邊」 | 「必要邊」未定義（哪種節點必須有哪種邊）；本版的缺陷子類以 FR-09 所列為準（用戶裁決 2026-09-30） | `0.6.0-W1-072` |
 | 貫穿數、路徑→domain 查詢 | 依賴 FlowStep `traverses` 與路徑對照表，屬 0.5。`traverses` 的名稱解析已由 FR-11 定義；聚合為貫穿數與路徑→domain 查詢不在本規格。例外：domain × UC 關係（直接／間接／無關）與依賴路徑的判定歸 Graph，已由 FR-12 定義（`0.5.0-W1-114` 用戶裁決 O1） | PROP-005 §0.5 |
@@ -83,14 +82,14 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 **規則**：
 - 每個邊型帶：鍵名（如 `association`、`spawn`）、`class`、`forward_field`、`reverse_field`（可為 null）、正向基數（`one`／`many`）、`direction`（`directed`／`undirected`）、`layer`
-- 使用中邊型見〈用詞〉。欄位名、基數、是否有反向欄位、方向性一律取自型別表，不在程式內寫死。本版以鍵名寫死的只有兩處（設計約束 D6）：排除 `domain_dependency`，以及納入 `proposed` 層的 `bundle_dependency`
+- 使用中邊型見〈用詞〉。欄位名、基數、是否有反向欄位、方向性一律取自型別表，不在程式內寫死。本版以鍵名寫死的只有兩處（設計約束 D6）：納入 `proposed` 層的 `bundle_dependency`，以及認定 `domain_dependency` 的值為 domain 名稱而經 FR-11 名稱索引解析
 - 專案型別表的邊型條目缺 `direction` 欄（舊框架匯出的 JSON，例如 2.40.3 版 17 條皆缺）：版本在 App 已知範圍內時，依該邊型鍵名從內建表補 `direction`，並回報 `direction` 來源為內建表；內建表也沒有該鍵名時照 `directed` 處理，回報的來源值為「預設（有向）」（`0.5.0-W1-103.1` 用戶裁決 H1，2026-10-08，沿用 SPEC-006 D8 前例；來源值依 `0.5.0-W1-113` PM 處置 N-B）。查的是內建表的資料，不是程式內的鍵名例外，D6 的鍵名例外不因此增加。不可把缺欄一律當 `directed`：`association` 會變成單向，違反 `relatedTo` 語意對稱的約定。版本不在已知範圍時已由既有規則涵蓋，不另定：該專案 JSON 走 SPEC-001 §1「schema 不相容」關卡、不被消費；使用者改以內建型別表檢視時，內建表本身帶 `direction`（`0.5.0-W1-103.1` PM 處置，2026-10-08）。繞過關卡的呼叫路徑上，邊型解碼對「版本不在已知範圍且缺 `direction`」回報建圖不可用，與缺正向基數一致，不得當 `directed`（`0.5.0-W1-001.7` 審查回報 D2，PM 處置 2026-10-09，FR-01「不可一律當 directed」的直接推論）；原因碼為獨立的 `missingDirection`（`EdgeTypeUnavailableReason` 新增值，依缺漏欄位命名，與 `missingForwardCardinality` 並列；不重用 `projectVersionOutOfKnownRange`——該值的成因是缺 `edge_types`，不同成因各用一個原因碼，日誌據此區分，同下方「邊型條目不合法」第三個值的原則；識別名為 PM 決定）。同一張表同時缺正向基數與缺 `direction` 時回報 `missingForwardCardinality`（原因碼優先序：`invalidEdgeTypeEntry` ＞ `missingForwardCardinality` ＞ `missingDirection`；Diagnostics 對三者投影同一顯示值，優先序只影響日誌，PM 處置 2026-10-09）
 - 專案型別表缺 `edge_types`，或其中缺正向基數欄位：版本在 App 已知範圍內則從內建表補；否則建圖不可用，回報原因碼（與 SPEC-006 FR-08 同一套「無法判定」原因）
 - 單一邊型條目不合法（值不是 map；`class`、`forward_field`、`layer` 缺席或不是字串；`reverse_field` 存在但不是字串，null 合法；`direction` 存在但不是字串（含明寫 `null`；與 `reverse_field` 不同，`direction` 沒有 null 的合法語意）、或不是 `directed`／`undirected` 之一——`direction` 缺席不屬此列，依上方缺欄規則，`0.5.0-W1-001.7` 用戶裁決 Q1，2026-10-09）：該條目整筆拒收並寫日誌，視同該邊型缺席，依缺欄位的規則處置——版本在 App 已知範圍內時該邊型取內建表的定義；否則建圖不可用，原因碼為「邊型條目不合法」（與缺 `edge_types`、缺正向基數各自獨立的第三個值，日誌據此區分）。同一張表同時有不合法條目與缺正向基數的條目時，只回報「邊型條目不合法」：不合法條目在解碼階段就被拒收，先於基數補值判定。版本在已知範圍內、但內建表也沒有該鍵名時（上游已刪除該邊型，舊專案表仍留著且條目不合法），該邊型不建邊，只寫拒收日誌，建圖仍可用：兩張表都沒有可讀的定義，而內建表是已知範圍內的權威，不認得的邊型不屬於 App 所知的圖。`edge_types` 本身不是 map 時視同缺 `edge_types`。邊型條目的問題只影響 Graph，不得中斷 Corpus 對同一型別表 `node_types` 的解碼
 - 專案型別表整份缺席（`tracking_schema.json` 不存在）：建圖不可用，回報版本不在已知範圍的原因碼。這是 SPEC-001 §1「無可消費的型別表」的顯式關卡，Graph 不自動降級；使用者選「以 App 內建型別表檢視」後，呼叫端以內建表作為專案型別表傳入，建圖可用，使用中邊型取自內建表（`docs/tech-decisions.md` 2026-09-03「型別表缺席時降級而非拒絕」）。呼叫端的接線屬 PROP-005 §0.6 畫面接真資料
 
 **驗收條件**：
-- [ ] Given 內建型別表，Then 解碼出的邊型集合與內建表 `edge_types` 的鍵集合相同，使用中邊型等於 established 邊型扣除 `domain_dependency`、加上 `bundle_dependency`
+- [ ] Given 內建型別表，Then 解碼出的邊型集合與內建表 `edge_types` 的鍵集合相同，使用中邊型等於 established 邊型加上 `bundle_dependency`
 - [ ] Given 內建型別表，Then 其餘 proposed 邊型（`bundle_dependency` 以外）不是使用中邊型（E2 正向對照）
 - [ ] Given 測試用型別表新增一個 established 邊型，Then 該邊型自動成為使用中邊型，Graph 依其欄位抽取
 - [ ] Given 測試用型別表把某使用中邊型的 `forward_field` 改名，Then Graph 依新欄位名抽取，不讀舊欄位名
@@ -99,7 +98,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given 專案型別表整份缺席，Then 建圖不可用，回報版本不在已知範圍的原因碼
 - [ ] Given 專案型別表某邊型的值是字串、版本在已知範圍內，Then 不拋例外，該邊型取內建表定義，建圖可用，`node_types` 解碼結果與該條目正常時相同
 - [ ] Given 同上但版本高於內建版本，Then 建圖不可用，Corpus 掃描照常完成
-- [ ] Given 降級模式（內建表作為專案型別表傳入），Then 建圖可用，使用中邊型等於內建表 established 邊型扣除 `domain_dependency`、加上 `bundle_dependency`
+- [ ] Given 降級模式（內建表作為專案型別表傳入），Then 建圖可用，使用中邊型等於內建表 established 邊型加上 `bundle_dependency`
 - [ ] Given 專案型別表全部邊型條目缺 `direction`、版本在已知範圍內，Then `association` 的 `direction` 取自內建表為 `undirected`，A 列出 B 時查 A、B 都得到該關聯（E2 正向對照：缺欄不得當 `directed`），並回報 `direction` 來源為內建表
 - [ ] Given 專案型別表有一個內建表沒有的邊型且缺 `direction`、版本在已知範圍內，Then 該邊型照 `directed` 處理，回報的 `direction` 來源值為「預設（有向）」（不是「內建表」）
 - [ ] Given 版本在已知範圍內、某邊型 `direction` 為 `"undirect"`（或非字串），Then 該條目整筆拒收並寫日誌，該邊型取內建表定義（E2：不得只補 `direction` 而沿用條目其餘欄位）
@@ -350,7 +349,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - 缺陷程式識別名（`0.5.0-W1-001.5` 命名回填）：`FlowDefectKind.traversesUndeclared`／`traversesKeyAbsent`，對應 `GraphDefectKind.flowTraversesUndeclared`／`flowTraversesKeyAbsent`；重複宣告為 `GraphDefectKind.domainDuplicateDeclaration`，負載 `DomainDuplicateDeclarationGraphDefect{domain, bundleIds}`
 - **重複 domain 宣告**（`0.5.0-W1-113` 用戶裁決 D-3，2026-10-08）：兩個以上 DomainBundle 宣告相同 `domain` 值時，比照主圖重複 ID（FR-02），這些 DomainBundle 全部不進名稱索引，該名稱的所有 `traverses` 引用回報為未宣告，另回報一筆重複宣告缺陷。DomainBundle 的 `id` 與 `domain` 是兩個欄位，同 `domain` 不同 `id` 時 FR-02 不會觸發，須在名稱索引另行偵測。上游 `doc validate` 另擋下重複 `domain`（`0.5.0-W1-113.1`，框架變更），未升級框架的專案由本規則保護。重複宣告缺陷為 `graphDefect` 子類「domain 重複宣告」，每個重複的 `domain` 值一筆，負載 {domain, 衝突的 DomainBundle ID 清單}（見 FR-09；`0.5.0-W1-114.1` PM 處置 NC-d）。這些 DomainBundle 仍是節點，在矩陣與泳道仍各自成列（列＝DomainBundle 節點）；因被排除於名稱索引，其列沒有任何 `traverses` 命中，並帶缺陷標記
 - 解析器的輸入是名稱字串、輸出是 DomainBundle 節點 ID 或未宣告，不綁 FlowStep 型別：`depends_on_domains` 建邊時接同一解析器（`0.6.0-W1-074`），避免兩處各自比對而漂移
-- 本版只解析 `traverses`；`depends_on_domains` 不解析、不建邊（D6 排除鍵維持）
+- `depends_on_domains`（`domain_dependency` 邊）的值是 domain 名稱而非節點 ID，經本解析器解析後建 SPEC→DomainBundle 有向邊（`0.6.0-W1-074`，v1.38；D6 排除鍵移除）。分類不走 FR-03 的 `id_pattern` 比對（名稱不是 ID）：值非字串為格式錯誤（`invalidShape`）；解析不到（未宣告，含因重複宣告被排除的名稱）為斷邊，歸既有 `danglingRef`（原因碼 `targetMissing`），不新增缺陷子類與識別名；解析成功參與建邊。引用值計入 FR-03 守恆式。「以名稱解析」的邊型由鍵名 `domain_dependency` 認定（型別表沒有標示值種類的欄位），取代原排除鍵，D6 鍵名例外仍為兩處
 - Graph 對外提供 DomainBundle `domain` 的方式以本 FR 的解析器條文為準，與 `0.5.0-W1-001.5`（名稱解析器實作）同批落地，不另行設計查詢（2026-10-08 用戶裁決，`0.5.0-W1-103`）。`bundle_dependency` 的值是 DomainBundle 節點 ID（如 `DOMAIN-MAP-corpus`），走 FR-03 的 ID 解析，不經本解析器
 
 **驗收條件**：
@@ -358,7 +357,9 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 - [ ] Given `traverses: ["nope"]` 且沒有 DomainBundle 宣告 `domain: nope`，Then 回報一筆缺陷（E2 正向對照）
 - [ ] Given `traverses: ["Corpus"]` 而宣告為 `corpus`，Then 回報一筆缺陷（精確比對）
 - [ ] Given 一個 DomainBundle 的 ID 不符合 `DOMAIN-MAP-<domain>` 慣例，Then 其 `domain` 名仍可解析
-- [ ] Given SPEC 帶 `depends_on_domains`，Then 不建邊，不回報缺陷
+- [ ] Given SPEC 帶 `depends_on_domains: [corpus]` 且 DomainBundle 宣告 `domain: corpus`，Then 建一條 SPEC→該 DomainBundle 的 `domain_dependency` 邊，不回報缺陷
+- [ ] Given SPEC 帶 `depends_on_domains: [nope]` 且沒有 DomainBundle 宣告 `nope`，Then 不建邊，回報一筆 `danglingRef`（`targetMissing`），不是 `malformedRef`（E2 正向對照）
+- [ ] Given 兩語料，Then `domain_dependency` 邊數等於 `depends_on_domains` 非空值總數（本專案 21 條），無因名稱比對造成的 `targetMissing`
 - [ ] Given 一個步驟 `traverses: ["nope", "nope"]` 且 `nope` 未宣告，Then 只回報一筆缺陷
 - [ ] Given 一個步驟沒有 `traverses` 鍵，Then 回報一筆「`traverses` 鍵缺席」缺陷（E2 正向對照：不得當 `[]` 而無缺陷）；`traverses: []` 的步驟不回報（對照）
 - [ ] Given 一個步驟 `traverses: ["graph", "nope"]`、`graph` 已宣告，Then 解析結果只含 `graph` 的 DomainBundle，並回報一筆 `nope` 未宣告缺陷
@@ -444,7 +445,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | D3 | 引用值分類為解析成功、斷邊、格式錯誤三類，不部分救回 | 用戶裁決 2026-09-30 |
 | D4 | 主圖缺陷子類為 FR-09 所列四種，flow 子圖子類見 FR-09 子類表（2026-10-08 用戶裁決 1a；「`traverses` 鍵缺席」依 `0.5.0-W1-114` T1；「事件引用未解析」依 `0.5.0-W1-458` 題 E）；其中 `duplicateId` 與自我引用的處理為規格預設，用戶 2026-09-30 整批確認；孤島與缺必要邊延至 0.6 | 用戶裁決 2026-09-30 |
 | D5 | 整合測試使用凍結測資，預期值由獨立參照實作產生並凍結 | 用戶裁決 2026-09-30；同 SPEC-006 D3 |
-| D6 | 邊型的欄位名、正向基數、是否有反向欄位、方向性（`direction`）、層級取自型別表；程式內的鍵名例外只有兩處：排除 `domain_dependency`、納入 `proposed` 層的 `bundle_dependency`。`domain_dependency` 排除鍵在 0.5.0 維持（`0.5.0-W1-001` 裁決 D4，2026-10-07），建邊與移除排除鍵由 `0.6.0-W1-074` 承接。`bundle_dependency` 例外的理由：矩陣間接格與泳道分層需要「沿邊可達」，現成管線已含目標解析與破洞判定；上游升級判準要求兩個獨立專案皆有實例，目前只有本專案，不能升為 established，故以本地允許清單納入。原「以 `association` 認定無向邊」例外已移除，改讀 `direction`（FR-05） | 同 SPEC-006 D1：上游 schema 為唯一權威。`association` 例外移除依 2026-09-30 用戶裁決（上游 `0.4.0-W1-072` 已補 `direction`）；`bundle_dependency` 例外依 2026-10-08 用戶裁決（`0.5.0-W1-103` P1，WRAP） |
+| D6 | 邊型的欄位名、正向基數、是否有反向欄位、方向性（`direction`）、層級取自型別表；程式內的鍵名例外只有兩處：納入 `proposed` 層的 `bundle_dependency`、`domain_dependency` 的值以 FR-11 名稱索引解析。`domain_dependency` 排除鍵已移除（0.5.0 維持，`0.5.0-W1-001` 裁決 D4，2026-10-07；建邊與移除由 `0.6.0-W1-074` 完成，v1.38）；該邊型屬使用中，原排除鍵的位置由「名稱解析」鍵名認定取代，例外仍為兩處。`bundle_dependency` 例外的理由：矩陣間接格與泳道分層需要「沿邊可達」，現成管線已含目標解析與破洞判定；上游升級判準要求兩個獨立專案皆有實例，目前只有本專案，不能升為 established，故以本地允許清單納入。原「以 `association` 認定無向邊」例外已移除，改讀 `direction`（FR-05） | 同 SPEC-006 D1：上游 schema 為唯一權威。`association` 例外移除依 2026-09-30 用戶裁決（上游 `0.4.0-W1-072` 已補 `direction`）；`bundle_dependency` 例外依 2026-10-08 用戶裁決（`0.5.0-W1-103` P1，WRAP） |
 | D7 | 正向基數由 schema 宣告；`provenance` 為 `many`（一個節點可有多個來源提案），`spawn`、`blood` 為 `one` | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
 | D8 | FlowStep 不進主圖，Graph 以 `flowOf(ucId)` 提供單一 UC 的 flow 子圖；`next` 不當邊，主線順序取 flow 清單順序，分支步 `next` 為步驟屬性；子圖內參照只在同 UC 範圍解析 | 用戶裁決 2026-10-07（`0.5.0-W1-001` C、(c)，WRAP） |
 | D9 | domain 名稱解析器以 DomainBundle 的 `domain` 欄精確比對，本版只服務 `traverses`，不建邊；解析器不綁 FlowStep 型別 | 用戶裁決 2026-10-07（`0.5.0-W1-001` D4，WRAP） |
@@ -460,6 +461,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.38 | 2026-11-04 | `depends_on_domains` 建 `domain_dependency` 邊（`0.6.0-W1-074`，接 FR-11 名稱解析器）：〈用詞〉使用中邊型不再扣除 `domain_dependency`；FR-01 鍵名例外改為納入 `bundle_dependency` 與 `domain_dependency` 名稱解析認定（仍兩處）及兩條驗收同步；FR-11 改寫「本版只解析 `traverses`」一條為建邊與分類規則（非字串＝`invalidShape`、未宣告＝既有 `danglingRef`／`targetMissing`，不新增缺陷子類與識別名）並補三條驗收（含 E2 正向對照、21 條邊）；D6 同步；〈本版範圍外〉移除 `depends_on_domains` 列 |
 | 1.37 | 2026-11-03 | `related_usecases` 由空清單補為 UC-01～UC-06（`0.6.0-W1-116`，對齊 UC 端 `related_specs`）：UC-01 圖譜、UC-02 FR-12、UC-03 FR-10、UC-04 追溯樹、UC-05 FR-07 列舉、UC-06 FR-09；不動條文 |
 | 1.36 | 2026-11-02 | FR-07 新增列舉規則與一條驗收（`0.6.0-W1-105.1`，`0.6.0-W1-105` 缺口 G-T3）：TicketDetail 提供同一輪收錄 ticket 的列舉，順序同 `rawNodes`，作為 Ticket 清單的列來源；欄位取值規則在 SPEC-001 §4〈票列欄位的取值來源〉 |
 | 1.35 | 2026-10-21 | FR-09 識別名段與 FR-10 規則清單回填「事件引用未解析」的程式識別名 `FlowDefectKind.eventUnresolved`／`GraphDefectKind.flowEventUnresolved`，並記缺陷在同 UC 內的排序（`traverses` 兩子類之後，依步驟順序、先 `emits` 後 `consumes`）（`0.5.0-W1-458.4` 命名回填，PM 追認） |
