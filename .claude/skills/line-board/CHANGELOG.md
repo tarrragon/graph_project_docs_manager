@@ -2,7 +2,7 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
-**未升版號**（2026-11-04）— 純測試改動，看板畫面、`line_status` 輸出與產品碼不變；版號是否升待定。6 個 Pane 測試檔（`board*.test.ts`）的每個 test 改傳明確逾時 `{ timeoutMs: PANE_TEST_TIMEOUT_MS }`（15000 ms），取代 `claude plugin test` 預設的 5000 ms。起因：預設 5000 ms 是隱含的計時門檻，高負載時 Pane 測試誤紅（2026-11-04 加壓取樣，load1 約 119 時單測最大 5157 ms），屬機器負載類不可靠斷言。測試名稱與斷言不變。
+**Version**: 0.12.5（2026-11-04）— 純測試改動，看板畫面、`line_status` 輸出與產品碼不變。6 個 Pane 測試檔（`board*.test.ts`）的每個 test 改傳明確逾時 `{ timeoutMs: PANE_TEST_TIMEOUT_MS }`（15000 ms），取代 `claude plugin test` 預設的 5000 ms。起因：預設 5000 ms 是隱含的計時門檻，高負載時 Pane 測試誤紅（2026-11-04 加壓取樣，load1 約 119 時單測最大 5157 ms），屬機器負載類不可靠斷言。測試名稱與斷言不變。
 
 - `tests/paneHarness.ts` 新增 `PANE_TEST_TIMEOUT_MS`，數值依據只寫在該常數的註解；6 個 Pane 測試檔檔頭各加一行指向它。
 
