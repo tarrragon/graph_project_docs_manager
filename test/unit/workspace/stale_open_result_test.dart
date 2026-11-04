@@ -6,10 +6,14 @@ void main() {
   tearDown(() => staleOpenLogSink = defaultStaleOpenLogSink);
 
   group('openResultKey', () {
-    test('三種結果各對應既有 i18n key 名', () {
+    test('四種結果各對應 i18n key 名', () {
       expect(
         openResultKey(ExternalOpenResult.opened),
         'openedExternallyMessage',
+      );
+      expect(
+        openResultKey(ExternalOpenResult.openedWithoutEditor),
+        'openedWithoutEditorMessage',
       );
       expect(
         openResultKey(ExternalOpenResult.notFound),

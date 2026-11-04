@@ -7,6 +7,12 @@ import UserNotifications
 /// 一致（SPEC-003 §2.2「介面」）。
 private let scanNotifierChannelName = "graph_project_docs_manager/scan_notifier"
 
+/// 偏好設定 `MethodChannel` 名稱，須與
+/// `lib/services/macos_preferences_channel.dart` 的 `preferencesChannelName`
+/// 一致：原生端 → Dart `openPreferences`（⌘,）；Dart → 原生端 `hasHandler`
+/// （唯讀查詢某 URL scheme 是否有應用程式可開啟，不啟動任何應用程式）。
+private let preferencesChannelName = "graph_project_docs_manager/preferences"
+
 /// 掃描完成通知的識別碼：每次 `show` 覆蓋前一則，天然滿足「每次掃描完成
 /// 至多發送一則」（SPEC-003 §2.2「不重複發送」列）。
 private let scanCompleteNotificationIdentifier = "scan-complete-notification"
@@ -14,6 +20,7 @@ private let scanCompleteNotificationIdentifier = "scan-complete-notification"
 @main
 class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
   private var scanNotifierChannel: FlutterMethodChannel?
+  private var preferencesChannel: FlutterMethodChannel?
 
   /// 建立 `scan_notifier` channel 的時機。
   ///
@@ -31,6 +38,39 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
   override func applicationWillFinishLaunching(_ notification: Notification) {
     super.applicationWillFinishLaunching(notification)
     registerScanNotifierChannel()
+    registerPreferencesChannel()
+  }
+
+  /// 建立 `preferences` channel：Dart 端查詢 handler、原生端送出 ⌘, 事件。
+  /// 取不到 controller 時留下可見訊號（quality-baseline 規則 4）。
+  private func registerPreferencesChannel() {
+    guard let controller = mainFlutterWindow?.contentViewController as? FlutterViewController else {
+      NSLog("[AppDelegate] 找不到 FlutterViewController，%@ channel 未註冊；偏好設定與編輯器偵測失效", preferencesChannelName)
+      return
+    }
+    let channel = FlutterMethodChannel(
+      name: preferencesChannelName,
+      binaryMessenger: controller.engine.binaryMessenger
+    )
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "hasHandler" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      let scheme = (call.arguments as? [String: Any])?["scheme"] as? String ?? ""
+      let found = !scheme.isEmpty
+        && NSWorkspace.shared.urlForApplication(toOpen: URL(string: "\(scheme)://file/")!) != nil
+      NSLog("[AppDelegate] preferences hasHandler scheme=%@ found=%d", scheme, found ? 1 : 0)
+      result(found)
+    }
+    preferencesChannel = channel
+    NSLog("[AppDelegate] %@ channel 已註冊", preferencesChannelName)
+  }
+
+  /// 選單列「Preferences…」（⌘,）：交給 Dart 端開啟主視窗內的設定面板。
+  @IBAction func openPreferences(_ sender: Any?) {
+    NSLog("[AppDelegate] openPreferences invoked")
+    preferencesChannel?.invokeMethod("openPreferences", arguments: nil)
   }
 
   /// 取得 `FlutterViewController` 並掛上 channel handler。

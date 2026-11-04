@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-04"
-version: "1.81"
+version: "1.82"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -21,7 +21,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 
 ## 概述
 
-SPEC-001 界定七個畫面與偏好設定視窗的 46 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
+SPEC-001 界定七個畫面與偏好設定面板的 46 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
 
 | 類別 | 界定什麼 |
@@ -215,7 +215,7 @@ SPEC-002 的唯一硬規則要求所有值先具名。時間值同樣適用，�
 | 實作（macOS） | `Process.run('/usr/bin/open', [path])`；`exitCode == 0` → `opened`，否則 `failed`（含「無應用程式能開啟」`kLSApplicationNotFoundErr` 與其他失敗）。不新增第三方依賴：`url_launcher_macos` 等價於 `NSWorkspace.open(URL)`，回傳同為成功／失敗二值，無額外資訊 |
 | 失敗可觀測 | `failed` 時以 `developer.log`（warning 等級）記錄 stderr 與路徑（observability 規則 5），畫面以 SnackBar `externalOpenFailedMessage` 回饋，不阻擋、不轉狀態 |
 | 等待指示 | 呼叫期間**不顯示**等待指示：實測回傳在 600 ms 內（本機 200–550 ms），點擊確認由 `InkWell` pressed 態承載；§2.6「0.1 無非狀態級短暫等待」的結論不變。SnackBar 於結果返回後出現 |
-| 行號定位 | 依偏好設定視窗（§3.8）所選編輯器決定（`0.6.0-W1-070` 用戶裁定方案 A）。選定值為「系統預設（不定位）」（預設值）→ 行為同上方〈實作（macOS）〉列，不定位，`line` 忽略。選定值為〈編輯器對照表〉中的編輯器 → 呼叫當下查該編輯器 scheme 的 handler：handler 存在 → 以該 scheme 的 URL 開啟，`line` 非 `null` 時帶行號、`null` 時不帶行號，外部程序成功 → `opened`、失敗 → `failed`；handler 不存在（編輯器已移除）→ 退回系統預設方式開啟、不定位，成功 → `openedWithoutEditor`，失敗 → `failed`。前置檢查（`notFound`）先於編輯器判定。0.6 只有 §3.5 破洞項的開啟動作傳入 `line`；§3.1、§3.2、§3.6 的開啟不傳行號，行為不因選定編輯器而改變 |
+| 行號定位 | 依偏好設定面板（§3.8）所選編輯器決定（`0.6.0-W1-070` 用戶裁定方案 A）。選定值為「系統預設（不定位）」（預設值）→ 行為同上方〈實作（macOS）〉列，不定位，`line` 忽略。選定值為〈編輯器對照表〉中的編輯器 → 呼叫當下查該編輯器 scheme 的 handler：handler 存在 → 以該 scheme 的 URL 開啟，`line` 非 `null` 時帶行號、`null` 時不帶行號，外部程序成功 → `opened`、失敗 → `failed`；handler 不存在（編輯器已移除）→ 退回系統預設方式開啟、不定位，成功 → `openedWithoutEditor`，失敗 → `failed`。前置檢查（`notFound`）先於編輯器判定。0.6 只有 §3.5 破洞項的開啟動作傳入 `line`；§3.1、§3.2、§3.6 的開啟不傳行號，行為不因選定編輯器而改變 |
 | 編輯器對照表 | 首批只收本機實測過 handler 可查得的四個（`0.6.0-W1-070` 用戶裁定 2）：VS Code（`vscode://file/<絕對路徑>:<line>`）、VS Code Insiders（`vscode-insiders://file/<絕對路徑>:<line>`）、Cursor（`cursor://file/<絕對路徑>:<line>`，沿用 VS Code 格式，屬推斷）、Zed（`zed://file/<絕對路徑>:<line>`）；無行號時省略 `:<line>`。其他編輯器有實測後再加，加入時只改本列與 §3.8 選項 |
 | 逾時 | 0.1 **不設逾時**；外部程序不回傳時無 UI 結局，觸發元素 `enabled` 不變（每次點擊各發一次呼叫，冪等由外部程序承擔）；可觀測性由〈呼叫發出日誌〉承載；結局齊全性的例外依據同 §3.6〈重新整理的三分支〉段（`0.1.0-W3-335.38` S-17、S-32） |
 | 測試斷言 | 整合測試注入 fake（記錄 `calls: List<String>`），斷言路徑與呼叫次數恰一次（概述表「外部程序呼叫」列）；`opened` / `notFound` / `failed` 三個結果由 fake 指定回傳值，逐一斷言對應的 SnackBar 或狀態轉換 |
@@ -257,7 +257,7 @@ gate 的成功／失敗／不確定三問。SPEC-004 §1 回饋通道子表 stat
 | 授權狀態 | 分類 | App 行為 | fallback |
 |---------|------|---------|----------|
 | `granted` | 成功 | 發送系統通知 | 不適用 |
-| `denied`（使用者拒絕請求，或事後於系統設定關閉） | 失敗 | 不發送、**不再請求**（系統不會再彈對話框）；0.1 **不引導至系統設定**——App 的偏好設定視窗（§3.8，SPEC-001 §9）只承載編輯器選擇，不含通知權限的入口 | App 內 SnackBar `AppSnackBar.withAction`：文字 `scanCompleteSnackbarMessage`（placeholder `count`；無破洞時 `scanCompleteNoGapsSnackbarMessage`；無法判定破洞時 `scanCompleteUndeterminableSnackbarMessage`），動作 `viewGapsAction`，停留 `Motion.snackBarWithAction`；動作觸發等同「點擊通知的導向」列。顯示時機：視窗在前景且可見頁不是 `nav-page-gaps` → 立即；視窗非前景 → **延後至視窗下一次回到 `resumed`** 時顯示（SnackBar 會自動消失，背景時顯示等於沒顯示）；回到前景前使用者已自行進入 `nav-page-gaps` → 不顯示。持續性的 App 內指示（Banner、導覽項徽章）0.1 **不提供**：SPEC-004 元件庫無 Banner、`NavItem` 無徽章 slot，依元件庫優先原則不就地發明；是否補元件由 `0.1.0-W3-063` spawn request 交 PM 核定 |
+| `denied`（使用者拒絕請求，或事後於系統設定關閉） | 失敗 | 不發送、**不再請求**（系統不會再彈對話框）；0.1 **不引導至系統設定**——App 的偏好設定面板（§3.8，SPEC-001 §9）只承載編輯器選擇，不含通知權限的入口 | App 內 SnackBar `AppSnackBar.withAction`：文字 `scanCompleteSnackbarMessage`（placeholder `count`；無破洞時 `scanCompleteNoGapsSnackbarMessage`；無法判定破洞時 `scanCompleteUndeterminableSnackbarMessage`），動作 `viewGapsAction`，停留 `Motion.snackBarWithAction`；動作觸發等同「點擊通知的導向」列。顯示時機：視窗在前景且可見頁不是 `nav-page-gaps` → 立即；視窗非前景 → **延後至視窗下一次回到 `resumed`** 時顯示（SnackBar 會自動消失，背景時顯示等於沒顯示）；回到前景前使用者已自行進入 `nav-page-gaps` → 不顯示。持續性的 App 內指示（Banner、導覽項徽章）0.1 **不提供**：SPEC-004 元件庫無 Banner、`NavItem` 無徽章 slot，依元件庫優先原則不就地發明；是否補元件由 `0.1.0-W3-063` spawn request 交 PM 核定 |
 | `notDetermined` | 不確定（尚未詢問） | 於**首次**觸發條件成立的當下請求授權（功能使用時即時請求，使用者剛經歷一次「離開後掃描才完成」的情境，理解為何需要）；**不**於 App 啟動時請求、不於掃描開始時請求。請求回覆 `granted` → 立即補發本次通知；回覆 `denied` → 本次即走 `denied` 列的 fallback | 請求對話框由系統呈現，App 不另加前置說明畫面（0.1 唯一權限，且請求時機已在操作 context 內） |
 | 其他（`provisional`、查詢或請求逾時／拋錯、API 不可用） | 不確定（結果未知） | 一律**視為 `denied`** 處理，記 warning log；不重試、不阻塞掃描結果的渲染 | 同 `denied` 列 |
 | `granted`（或請求回覆 `granted`）但發送失敗——`show` 回傳 `failed`（平台拋錯、原生 handler 未註冊） | 失敗（授權已過，失敗在發送層） | 不重試發送、不重新查詢或請求授權；本次結果**不列入**「不重複發送」列的撤回對象（沒有已送達的通知可撤回）；記 warning log（見「可觀測性」列） | 同 `denied` 列：文案、停留、顯示時機（前景立即／非前景延後至 `resumed`／回到前景前已自行進入 `nav-page-gaps` 則不顯示）完全相同。§2.13 判準 T 對照表列 5／6、§2.14 列 3 所寫的 `denied` 分支皆涵蓋本路徑，不另立列（`0.3.1-W3-113`，用戶裁決 2026-09-29） |
@@ -2027,7 +2027,7 @@ SnackBar 的訊息與「復原」動作文案 key 由 SPEC-004 承接（`0.1.0-W
 | 破洞項（指向其他圖節點：提案、規格、UC 等） | `card-gaps-<itemId>` | 點擊 | jump 至 `nav-page-nodeDetail`，`jump` payload 為指向節點 ID，`returnTo` 設為 `gaps`；依 §3.6 生命週期「由 jump 進入」渲染該節點 |
 | 破洞項（類別 `orphan-event` 或 `event-declaration-mismatch`） | `card-gaps-<itemId>` | 點擊 | 選定 UC 寫入引用該 EVT（任一 FlowStep `emits` 或 `consumes` 含之）的 UC，多條時取 UC 編號最小者（§2.8〈選定 UC〉設定入口 4）；jump 至 `nav-page-ucFlow`，`returnTo` 設為 `gaps`；`state-ucFlow-normal` 出現，`panel-ucFlow-event-flow` 內事件欄等於該 EVT ID 的列 scroll-into-view 並短暫高亮（定位手法同 §2.2「系統層通知」點擊導向列）。**無任何 UC 引用該 EVT 時**，依「指向其他圖節點」列處理：jump 至 `nav-page-nodeDetail`，payload 為該 EVT ID；次要操作（開啟原始檔）不變（`0.1.0-W3-335.38` S-31） |
 | 破洞項（無指向節點） | `card-gaps-<itemId>` | 點擊 | 主操作為開啟原始檔，行號傳遞與結果同下方「破洞項開啟原始檔」各列；此類項不渲染 `action-gaps-open-source-<itemId>` |
-| 破洞項開啟原始檔（次要操作，限有指向節點的前三類） | `action-gaps-open-source-<itemId>` | 觸發（次要操作的呈現形式由 SPEC-004 承接，`0.1.0-W3-335.16`） | **0.1 落地**（`0.1.0-W1-036` 定案，契約見 §2.2「外部開啟契約」）：`ExternalOpener.open(path, line: <該項行號>)`，依偏好設定視窗所選編輯器開啟並定位至行號（§2.2〈行號定位〉列，`0.6.0-W1-070` 用戶裁定）；事件類項無行號，傳 `null`、不定位（裁定 4）；選定值為「系統預設（不定位）」時以系統預設方式開啟、不定位。結果 `opened` → SnackBar `openedExternallyMessage`，停留 `Motion.snackBar`；結果 `openedWithoutEditor`（所選編輯器已不可用，已以系統預設方式開啟）→ SnackBar 告知所選編輯器不可用、已改以系統預設方式開啟（文案 zh「所選編輯器無法使用，已以系統預設方式開啟」／en「The selected editor is unavailable; opened with the default application」，key 與 SPEC-004 表列由 `0.6.0-W1-070.2` 同批登記），停留 `Motion.snackBar`，畫面狀態不變 |
+| 破洞項開啟原始檔（次要操作，限有指向節點的前三類） | `action-gaps-open-source-<itemId>` | 觸發（次要操作的呈現形式由 SPEC-004 承接，`0.1.0-W3-335.16`） | **0.1 落地**（`0.1.0-W1-036` 定案，契約見 §2.2「外部開啟契約」）：`ExternalOpener.open(path, line: <該項行號>)`，依偏好設定面板所選編輯器開啟並定位至行號（§2.2〈行號定位〉列，`0.6.0-W1-070` 用戶裁定）；事件類項無行號，傳 `null`、不定位（裁定 4）；選定值為「系統預設（不定位）」時以系統預設方式開啟、不定位。結果 `opened` → SnackBar `openedExternallyMessage`，停留 `Motion.snackBar`；結果 `openedWithoutEditor`（所選編輯器已不可用，已以系統預設方式開啟）→ SnackBar 告知所選編輯器不可用、已改以系統預設方式開啟（文案 zh「所選編輯器無法使用，已以系統預設方式開啟」／en「The selected editor is unavailable; opened with the default application」，key `openedWithoutEditorMessage`，SPEC-004 §4.0.6 表列由 `0.6.0-W1-070.2` 同批登記），停留 `Motion.snackBar`，畫面狀態不變 |
 | 破洞項開啟原始檔（檔案不存在） | 同上 | 同上 | 結果 `notFound` → SnackBar `sourceFileNotFoundSnackbarMessage`，帶「重新掃描」動作（`rescanAction`），停留 `Motion.snackBarWithAction` |
 | 破洞項開啟原始檔（無預設應用程式或其他開啟失敗） | 同上 | 同上 | 結果 `failed` → SnackBar `externalOpenFailedMessage`，停留 `Motion.snackBar`；畫面狀態不變 |
 | 分節捲動 | `scroll-gaps-sections` | drag / 捲軸 | offset 改變 |
@@ -2315,10 +2315,10 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 收合後 | `scroll-switcher-recent` 的 offset 不保留（下次展開自頂端） |
 | 切換專案期間 | 浮層先收合再開始重載，兩者不並行 |
 
-### 3.8 偏好設定視窗（獨立視窗，非 `AppDestination`）
+### 3.8 偏好設定面板（主視窗內的面板，非 `AppDestination`）
 
 `0.6.0-W1-070` 用戶裁定方案 A 與入口位置裁定（2026-11-04）。狀態定義見 SPEC-001 §9。
-本節只描述行為，不指定獨立視窗的實作載體。錨點的 `<screen>` 取 `preferences`（同浮層取
+本節只描述行為；面板覆蓋於主視窗之上、不開第二個視窗（`0.6.0-W1-070.2` 用戶裁定）。錨點的 `<screen>` 取 `preferences`（同浮層取
 `switcher` 的慣例）；`<editorId>` 取值為 `system`（系統預設（不定位））或 §2.2〈編輯器對照表〉
 的 id：`vscode`、`vscode-insiders`、`cursor`、`zed`。
 
@@ -2326,9 +2326,9 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 
 | 元素 | 錨點 | 觸發 | 可觀察結果 |
 |------|------|------|-----------|
-| 選單列「偏好設定…」 | 無 widget 錨點（macOS 選單項） | 點擊，或按 ⌘, | 視窗未開啟 → 開啟偏好設定視窗並取得焦點，開啟時偵測對照表各編輯器的 handler，依結果渲染 `state-preferences-editors` 或 `state-preferences-no-editors`；視窗已開啟 → 帶到最前並取得焦點，不開第二個視窗，不重新偵測 |
+| 選單列「偏好設定…」 | 無 widget 錨點（macOS 選單項） | 點擊，或按 ⌘, | 面板未開啟 → 開啟偏好設定面板並取得焦點，開啟時偵測對照表各編輯器的 handler，依結果渲染 `state-preferences-editors` 或 `state-preferences-no-editors`；面板已開啟 → 維持開啟，不重複掛載，不重新偵測 |
 | 編輯器選項 | `option-preferences-editor-<editorId>` | 點擊 | 該選項成為選取項，選定值立即持久化，不需另按儲存；主視窗下一次開啟原始檔即採用新值。不顯示 SnackBar（選取標示即結果，§2.13 判準 T2） |
-| 關閉視窗 | 無 widget 錨點（視窗關閉鈕） | 點擊，或按 ⌘W | 偏好設定視窗消失；主視窗的畫面狀態不變 |
+| 關閉面板 | `action-preferences-close` | 點擊，或按 Esc | 偏好設定面板消失；主視窗的畫面狀態不變 |
 
 **選項的列出規則**：`option-preferences-editor-system` 恆列出且排第一；對照表中的編輯器只在
 開啟時查得 handler 者列出（裁定 3），順序依 §2.2〈編輯器對照表〉列序。
@@ -2344,7 +2344,7 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 開啟 | 每次開啟偵測一次，偵測完成前不渲染選項；偵測為唯讀查詢，不啟動任何編輯器 |
 | 開啟期間 | 不重新偵測；期間安裝或移除編輯器，於下次開啟時反映 |
 | 關閉 | 不保留任何畫面狀態（無捲動、無暫存選取）；選定值已於點選時持久化 |
-| 主視窗切換專案 | 不影響本視窗；選定值為 App 層設定，不隨專案改變 |
+| 主視窗切換專案 | 不影響本面板；選定值為 App 層設定，不隨專案改變 |
 
 ---
 
@@ -2409,8 +2409,8 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 44 | 節點詳情 | 圖不可用 | `state-nodeDetail-graph-unavailable` | jump：`action-nodeDetail-goto-domain` → `nav-page-domain`，`returnTo`=nodeDetail（重新掃描在 Domain 視圖「圖不可用」列）；同畫面轉換：下一個建圖可用的輪次完成 → 依 SPEC-001 §6 判定順序 3–5 轉為 `state-nodeDetail-unset`、`state-nodeDetail-node-absent` 或 `state-nodeDetail-normal`；rail；覆蓋層 |
 | 45 | 節點詳情 | 節點不在目前的圖上 | `state-nodeDetail-node-absent` | jump：`action-nodeDetail-goto-traceability` → `nav-page-traceability`，`returnTo`=nodeDetail；返回：`action-nodeDetail-back` → `returnTo`（非 null 時）；同畫面轉換：之後完成的輪次圖上又出現該 id → `state-nodeDetail-normal`；rail；覆蓋層 |
 | 46 | 追溯 | 圖不可用 | `state-traceability-graph-unavailable` | jump：`action-traceability-goto-domain` → `nav-page-domain`，`returnTo`=traceability（重新掃描在 Domain 視圖「圖不可用」列）；同畫面轉換：下一個建圖可用的輪次完成 → 依 SPEC-001 §3 判定順序 3–5 轉為 `state-traceability-empty`、`state-traceability-broken` 或 `state-traceability-normal`；rail；覆蓋層 |
-| 47 | 偏好設定視窗 | 編輯器清單 | `state-preferences-editors` | 同畫面：`option-preferences-editor-<editorId>` → 選取改變並持久化，留在 `state-preferences-editors`；關閉視窗（視窗關閉鈕或 ⌘W）→ 視窗消失，主視窗狀態不變（§3.8）。本視窗不屬 `AppDestination`，無 rail、返回與覆蓋層出口 |
-| 48 | 偏好設定視窗 | 無可選編輯器 | `state-preferences-no-editors` | 同畫面：`option-preferences-editor-system` → 選取維持系統預設；關閉視窗 → 視窗消失（§3.8）；再次開啟時若偵測到編輯器 → `state-preferences-editors` |
+| 47 | 偏好設定面板 | 編輯器清單 | `state-preferences-editors` | 同畫面：`option-preferences-editor-<editorId>` → 選取改變並持久化，留在 `state-preferences-editors`；關閉面板（關閉鈕或 Esc）→ 面板消失，主視窗狀態不變（§3.8）。本面板不屬 `AppDestination`，無返回與覆蓋層出口 |
+| 48 | 偏好設定面板 | 無可選編輯器 | `state-preferences-no-editors` | 同畫面：`option-preferences-editor-system` → 選取維持系統預設；關閉面板 → 面板消失（§3.8）；再次開啟時若偵測到編輯器 → `state-preferences-editors` |
 
 **覆蓋完整性**：46 列，對應 SPEC-001 §1（14）+ §2（5）+ §3（5）+ §4（5）+ §5（5）
 + §6（7）+ §7（3）+ §9（2）= 46。每一列的導航反應欄皆非空，且皆指向一個具名錨點。
@@ -2593,6 +2593,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.82 | 2026-11-04 | 依 `0.6.0-W1-070` 用戶裁定「主視窗內的設定面板」（`0.6.0-W1-070.2`，對應 SPEC-001 v1.76）：§3.8 由「獨立視窗」改寫為主視窗內的面板，⌘, 開啟、面板已開啟時維持開啟不重複掛載；關閉動作改為 `action-preferences-close` 或 Esc（原視窗關閉鈕與 ⌘W 取消）；§0、§2.2〈行號定位〉、§2.2 `denied` 列、§2.14 破洞項開啟原始檔列、§4 第 47、48 列的「視窗」一併改為「面板」；破洞項開啟原始檔列登記 `openedWithoutEditor` 文案 key `openedWithoutEditorMessage` |
 | 1.81 | 2026-11-04 | 依 `0.6.0-W1-070` 用戶裁定 1–4 與入口位置裁定回填行號定位（`0.6.0-W1-070.1`，對應 SPEC-001 v1.75）：§2.2〈外部開啟契約〉介面改為 `open(path, {int? line})`、結果新增 `openedWithoutEditor`，「行號定位」列由「0.1 不定位」改為依所選編輯器定位（系統預設不定位、編輯器 handler 不存在時退回系統預設），新增「編輯器對照表」列（VS Code、Insiders、Cursor、Zed）；舊追蹤 ID `0.1.0-W1-070` 更正為 `0.6.0-W1-070`。§2.2〈系統層通知〉`denied` 列「App 無設定畫面可承載入口」改為偏好設定視窗只承載編輯器選擇的事實陳述，「不引導至系統設定」的行為不變。§3.5 破洞項開啟原始檔傳入行號、事件類傳 `null`，新增 `openedWithoutEditor` 的 SnackBar 結果（文案為表外敘述，key 與 SPEC-004、ARB 由 `0.6.0-W1-070.2` 同批）。新增 §3.8 偏好設定視窗（接在 §3.7 之後，不改既有編號）。§4 新增 #47、#48，標題、加總式、同步提醒、FR-01 驗收、§0 概述由 44 改 46 |
 | 1.80 | 2026-11-04 | §3.7〈探測逾時的處理〉逾時值改引 SPEC-005 §2.5（每項 2 秒），補非逾時失敗沿用 `WorkspaceUnavailable.reason`、收合時未完成結果丟棄（`0.6.0-W1-019.1`，依 `0.6.0-W1-019` 用戶裁決） |
 | 1.79 | 2026-11-03 | §3.2〈互動反應〉補寫跳轉目標（`0.6.0-W1-130`，依 `0.6.0-W1-077.2` 實作時 PM 裁定）：「步驟列」寫明帶入所屬 UC 的 id，並寫明不帶 `<stepId>` 的理由（FlowStep 屬 proposed 層，不在節點詳情的節點表）；「檢視關聯」寫明帶入目前選定 UC 的 id。狀態數不變 |

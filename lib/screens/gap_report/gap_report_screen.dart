@@ -371,7 +371,9 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
     final generation = ref.read(projectGenerationProvider);
     final result = path == null
         ? ExternalOpenResult.notFound
-        : await ref.read(externalOpenerProvider).open(path);
+        : await ref
+              .read(externalOpenerProvider)
+              .open(path, line: item.lineNumber);
     if (ref.read(projectGenerationProvider) != generation) {
       logStaleOpenResult(tag: _tag, i18nKey: openResultKey(result));
       return;
@@ -392,9 +394,13 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
     }
     AppSnackBar.show(
       context,
-      message: result == ExternalOpenResult.opened
-          ? l10n.openedExternallyMessage
-          : l10n.externalOpenFailedMessage,
+      message: switch (result) {
+        ExternalOpenResult.opened => l10n.openedExternallyMessage,
+        ExternalOpenResult.openedWithoutEditor =>
+          l10n.openedWithoutEditorMessage,
+        ExternalOpenResult.failed ||
+        ExternalOpenResult.notFound => l10n.externalOpenFailedMessage,
+      },
       level: AttentionLevel.discardable,
       origin: AppSnackBarOrigin.userInitiated,
     );
