@@ -203,7 +203,7 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.byKey(const Key('action-ucFlow-view-relations')),
+          find.byKey(const Key('action-ucFlow-relations')),
           findsOneWidget,
         );
         expect(
@@ -235,7 +235,7 @@ void main() {
       expect(AnchorFinder.state(Screen.ucFlow, 'normal'), findsOneWidget);
     });
 
-    testWidgets('action-ucFlow-view-relations → 切至節點詳情', (tester) async {
+    testWidgets('action-ucFlow-relations → 切至節點詳情', (tester) async {
       final container = await pumpHarness(
         tester,
         child: const UcFlowScreen(),
@@ -248,7 +248,7 @@ void main() {
         ],
       );
 
-      await tester.tap(find.byKey(const Key('action-ucFlow-view-relations')));
+      await tester.tap(find.byKey(const Key('action-ucFlow-relations')));
       await tester.pump();
 
       expect(
