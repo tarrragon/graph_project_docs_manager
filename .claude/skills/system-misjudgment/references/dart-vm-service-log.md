@@ -1,6 +1,6 @@
 # Dart VM service Logging／flutter run
 
-可執行工具：`.claude/skills/verify/vm_log.mjs`（訂閱 Logging 後直接寫檔）。
+可執行工具：專案的實機驗證配方（如有）提供的 VM service Logging 訂閱腳本（訂閱後直接寫檔）。無此配方時，以任一 VM service 用戶端訂閱 Logging stream 並直接寫檔。
 
 ## DV-1 `flutter run` stdout 沒有 developer.log，被讀成沒有 log
 
@@ -9,7 +9,7 @@
 | 症狀 | `fvm flutter run` 的輸出裡看不到程式以 `developer.log` 寫的訊息 |
 | 常見誤判 | 程式沒執行到該行，或 log 沒寫出 |
 | 實際機制 | `developer.log` 走 VM service 的 Logging stream，不一定進 stdout |
-| 檢查方法 | 以 `--start-paused` 啟動，經 VM service 訂閱 Logging stream 後再 resume；用 `vm_log.mjs` 直接寫檔：`node .claude/skills/verify/vm_log.mjs <ws-uri> <out-file> <seconds> --resume`。ws-uri 取得：`fvm flutter run -d macos --start-paused` 的輸出會印出 `http://127.0.0.1:<port>/<token>/`，改寫成 `ws://127.0.0.1:<port>/<token>/ws`（`http` 換 `ws`，結尾加 `ws`） |
+| 檢查方法 | 以 `--start-paused` 啟動，經 VM service 訂閱 Logging stream 後再 resume；用專案配方的 Logging 訂閱腳本直接寫檔（輸入：ws-uri、輸出檔、秒數、訂閱後 resume；用法見該配方）。ws-uri 取得：`fvm flutter run -d macos --start-paused` 的輸出會印出 `http://127.0.0.1:<port>/<token>/`，改寫成 `ws://127.0.0.1:<port>/<token>/ws`（`http` 換 `ws`，結尾加 `ws`） |
 | 正向對照 | 訂閱後先觸發一個必定寫 log 的動作（例如啟動時的固定 log 行），檔內必須出現 |
 | 判讀標準 | 訂閱已建立且正向對照 log 出現，才可據 log 內是否有目標訊息下結論 |
 | 來源 | 機制：`developer.log` 走 VM service Logging stream 而非 stdout；實測依據：訂閱後重放得到 stdout 看不到的記錄 |

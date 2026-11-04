@@ -2,7 +2,7 @@
 name: system-misjudgment
 description: "以系統為索引的 AI 誤判檢查庫：記錄除錯、實機驗證時對系統行為的常見錯誤判讀、實際機制與可執行檢查方法。Use when: 除錯、實機驗證、觀測不到事件或 log、懷疑系統行為、否定結果（零事件、沒有 log、分支還在）要當證據前、誤判後要記錄。"
 metadata:
-  version: 1.0.2
+  version: 1.0.3
 ---
 
 # system-misjudgment：依「正在面對的系統」查已知誤判與檢查方法
