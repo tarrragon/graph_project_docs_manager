@@ -13,6 +13,8 @@ import 'package:graph_project_docs_manager/workspace/current_workspace_provider.
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import '../../helpers/gap_round_fakes.dart';
+
 class _SpyScanRound extends ScanRoundNotifier {
   final List<String> reasons = [];
 
@@ -47,6 +49,41 @@ class _FakeRepository extends WorkspaceRepository {
 
   @override
   Future<List<RecentProject>> loadRecentProjects() async => recents;
+}
+
+/// detect 期間讓輪次完成，模擬首輪先於加入清單完成。
+class _CompletingGate extends GateDetectionNotifier {
+  _CompletingGate(this.round, this.result);
+
+  final _SpyScanRound round;
+  final ScanRoundResult result;
+
+  @override
+  Future<void> detect(String workspacePath) async {
+    round.state = ScanRoundCompleted(result);
+  }
+}
+
+class _CountsRepository extends WorkspaceRepository {
+  _CountsRepository({required this.recents});
+
+  final List<RecentProject> recents;
+  final List<String> savedPaths = [];
+
+  @override
+  Future<bool> addRecentProject(String path) async => true;
+
+  @override
+  Future<List<RecentProject>> loadRecentProjects() async => recents;
+
+  @override
+  Future<bool> saveRecentProjectCounts(
+    String path,
+    RecentProjectCounts counts,
+  ) async {
+    savedPaths.add(path);
+    return true;
+  }
 }
 
 typedef _Run = ({
@@ -103,6 +140,44 @@ void main() {
     expect(r.gate.paths, [path]);
     expect(r.repo.added, [path]);
     expect(c.read(recentProjectsProvider).single.path, path);
+  });
+
+  testWidgets('首輪在 detect 期間先完成、之後才加入清單 → 清單項帶 counts（0.6.0-W1-145）', (
+    tester,
+  ) async {
+    const firstPath = '/ws/fake';
+    final round = _SpyScanRound();
+    final gate = _CompletingGate(round, fakeRound());
+    final repo = _CountsRepository(
+      recents: [RecentProject(path: firstPath, lastOpenedAt: DateTime(2026))],
+    );
+    final container = ProviderContainer(
+      overrides: [
+        scanRoundProvider.overrideWith(() => round),
+        gateDetectionNotifierProvider.overrideWith(() => gate),
+        workspaceRepositoryProvider.overrideWithValue(repo),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(lastCompletedRoundProvider);
+    late WidgetRef captured;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: Consumer(
+          builder: (context, ref, _) {
+            captured = ref;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+    expect(container.read(recentProjectsProvider), isEmpty);
+
+    await selectWorkspace(captured, const WorkspaceReady(firstPath));
+
+    expect(repo.savedPaths, [firstPath]);
+    expect(container.read(recentProjectsProvider).single.counts, isNotNull);
   });
 
   testWidgets('最近清單寫入失敗：不更新清單，其餘副作用照常', (tester) async {
