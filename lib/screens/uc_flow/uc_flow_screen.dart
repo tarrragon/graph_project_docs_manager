@@ -155,7 +155,7 @@ class _UnstructuredView extends ConsumerWidget {
               label: l10n.viewRelationsAction,
               variant: AppButtonVariant.secondary,
               onPressed: () => jumpToNodeDetail(ref.read, uc.id),
-              testKey: const Key('action-ucFlow-view-relations'),
+              testKey: const Key('action-ucFlow-relations'),
             ),
           ],
         ),
