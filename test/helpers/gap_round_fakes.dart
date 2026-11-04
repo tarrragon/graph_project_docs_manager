@@ -16,6 +16,7 @@ import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
 import 'package:graph_project_docs_manager/corpus/scan_summary.dart';
+import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
@@ -86,6 +87,7 @@ ScanRoundResult fakeRound({
   List<RawNode> extraRawNodes = const [],
   NonDomainPathsReadResult? nonDomainRead,
   GraphBuildResult? graphOverride,
+  TopicFilesReadResult? topicFilesRead,
 }) {
   final scan = CorpusScanResult(
     rawNodes: [
@@ -108,6 +110,7 @@ ScanRoundResult fakeRound({
       carrierPathQueryAvailable: true,
     ),
     flowParseFailedEvents: flowEvents,
+    topicFilesRead: topicFilesRead ?? const TopicFilesReadResult.absent(),
   );
   return ScanRoundResult(
     workspacePath: '/ws/fake',

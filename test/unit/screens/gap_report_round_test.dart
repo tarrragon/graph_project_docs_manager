@@ -34,7 +34,7 @@ import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart'
-    show CorpusScanResult, RawNode;
+    show RawNode;
 import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 
@@ -135,28 +135,15 @@ void main() {
     });
 
     test('A2（EVT-CORPUS-006）輪次帶主題檔事件 → 報告出現主題檔分節；對照無事件則無', () {
-      final base = fakeRound();
-      final scan = base.scan;
       ScanRoundResult withTopicEvents(
         List<TopicFilesParseFailedEvent> events,
-      ) => ScanRoundResult(
-        workspacePath: base.workspacePath,
-        scan: CorpusScanResult(
-          rawNodes: scan.rawNodes,
-          parseErrors: scan.parseErrors,
-          parseFailureEvents: scan.parseFailureEvents,
-          schemaAmbiguousNodes: scan.schemaAmbiguousNodes,
-          summary: scan.summary,
-          topicFilesRead: TopicFilesReadResult(
-            ticketTopics: const {},
-            assignmentsStatus: TopicFileStatus.present,
-            registryStatus: TopicFileStatus.present,
-            events: events,
-          ),
+      ) => fakeRound(
+        topicFilesRead: TopicFilesReadResult(
+          ticketTopics: const {},
+          assignmentsStatus: TopicFileStatus.present,
+          registryStatus: TopicFileStatus.present,
+          events: events,
         ),
-        graph: base.graph,
-        schemaResolution: base.schemaResolution,
-        isDegraded: base.isDegraded,
       );
 
       final clean = gapReportStateFromRound(
