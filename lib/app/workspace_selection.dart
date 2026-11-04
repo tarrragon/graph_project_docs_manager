@@ -19,6 +19,7 @@ import 'project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
 import '../workspace/workspace_types.dart';
 import 'degraded_schema.dart';
+import 'recent_project_counts_writer.dart' show backfillRecentProjectCounts;
 import 'scan_round.dart';
 
 /// 專案世代（SPEC-003 §2.8 切換專案列、SPEC-004 §4.26）：每次進入
@@ -55,6 +56,7 @@ class WorkspaceSelectionNotifier extends Notifier<void> {
     if (!success) return;
     final updated = await repository.loadRecentProjects();
     ref.read(recentProjectsProvider.notifier).state = updated;
+    await backfillRecentProjectCounts(ref, path);
   }
 }
 
