@@ -22,10 +22,11 @@ const Duration watchReadyTimeout = Duration(
 ); // magic-exempt: 規格裁定值 規則 10
 
 /// FR-11 規則 10 就緒後存活檢查的存活時限。
-/// 暫定值，待實機量測定案（0.6.0-W1-141.2.3）。
+/// 實測定案：單次實測金絲雀寫入到收到事件約 0.11 s，3 s 維持不變
+/// （0.6.0-W1-141.2.3）。
 const Duration watchAliveTimeout = Duration(
   seconds: 3,
-); // magic-exempt: 規格建議起點，待實機量測
+); // magic-exempt: 實機量測定案值
 
 /// FR-11 規則 10 金絲雀檔命名（置於 `docs/` 第一層）。
 const String watchCanaryPrefix = '.gpdm-watch-canary-';
