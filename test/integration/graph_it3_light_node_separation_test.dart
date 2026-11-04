@@ -34,14 +34,13 @@ List<_Sample> _loadSamples() => [
     ),
 ];
 
-/// 使用中邊型（established 扣 `domain_dependency`，D6）的正反向欄位名。
+/// 使用中邊型（established 全部，D6）的正反向欄位名。
 Set<String> _activeEdgeFieldNames() {
   final edgeTypes =
       loadSpec007Fixture('type_table')['edge_types'] as Map<String, dynamic>;
   return {
     for (final e in edgeTypes.entries)
-      if ((e.value as Map)['layer'] == 'established' &&
-          e.key != 'domain_dependency') ...[
+      if ((e.value as Map)['layer'] == 'established') ...[
         (e.value as Map)['forward_field'] as String,
         ?((e.value as Map)['reverse_field'] as String?),
       ],

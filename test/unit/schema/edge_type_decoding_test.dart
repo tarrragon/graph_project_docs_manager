@@ -19,13 +19,12 @@ EdgeTypeResolution _resolve(Map<String, dynamic>? project) => resolveEdgeTypes(
   builtinSchemaJson: _builtinJson(),
 );
 
-/// 預期使用中邊型：asset 的 established 扣 domain_dependency 加 bundle_dependency。
+/// 預期使用中邊型：asset 的 established 全部加 bundle_dependency。
 Set<String> _expectedActive(Map<String, dynamic> edges) =>
     edges.entries
         .where((e) => (e.value as Map)['layer'] == 'established')
         .map((e) => e.key)
         .toSet()
-      ..remove('domain_dependency')
       ..add('bundle_dependency');
 
 void main() {
@@ -49,7 +48,7 @@ void main() {
     }
   });
 
-  test('S6-2 使用中邊型 = established 扣 domain_dependency 加 bundle_dependency', () {
+  test('S6-2 使用中邊型 = established 全部加 bundle_dependency', () {
     // 本案只驗證集合形狀；鑑別力由 S6-9 守衛與 S6-17 承擔。
     final expected = _expectedActive(builtinEdges);
     final result = _resolve(builtin);
@@ -58,7 +57,7 @@ void main() {
     expect(expected, isNotEmpty);
     // 獨立斷言：直接寫規格〈用詞〉點名的鍵名，不經 helper。
     expect(names, contains('bundle_dependency'));
-    expect(names, isNot(contains('domain_dependency')));
+    expect(names, contains('domain_dependency'));
   });
 
   test('S6-3 新增 established 邊型 testEdge 成為使用中', () {

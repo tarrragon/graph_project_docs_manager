@@ -7,7 +7,9 @@ import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
+import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
+import 'package:yaml/yaml.dart';
 
 import '../../helpers/spec006/fake_docs_fs.dart';
 import '../../helpers/spec006/type_table_builder.dart';
@@ -159,7 +161,7 @@ void main() {
       ]);
     });
 
-    test('G11-8 depends_on_domains 不建邊、不產生缺陷', () {
+    test('G11-8 depends_on_domains 經名稱索引建 SPEC→DomainBundle 邊', () {
       final e = _build([
         buildRawNode(
           id: 'SPEC-001',
@@ -170,9 +172,89 @@ void main() {
         ),
         _bundle('DOMAIN-MAP-corpus', 'corpus'),
       ]);
-      expect(e.edgeCount, 0);
+      final edges = e.edges.where((x) => x.edgeType == 'domain_dependency');
+      expect(edges.map((x) => (x.from, x.to)), [
+        ('SPEC-001', 'DOMAIN-MAP-corpus'),
+      ]);
       expect(e.graphDefects, isEmpty);
+    });
+
+    test('G11-8b E2 正向對照：未宣告 domain 名成斷邊（非格式錯誤）', () {
+      final e = _build([
+        buildRawNode(
+          id: 'SPEC-001',
+          typeName: 'SPEC',
+          extra: {
+            'depends_on_domains': ['nope', 'Corpus'],
+          },
+        ),
+        _bundle('DOMAIN-MAP-corpus', 'corpus'),
+      ]);
       expect(e.edgesByType.containsKey('domain_dependency'), isFalse);
+      final dangling = e.graphDefects.whereType<DanglingRefGraphDefect>();
+      expect(dangling.map((d) => d.ref.value), ['nope', 'Corpus']);
+      expect(dangling.map((d) => d.reason).toSet(), {
+        DanglingReason.targetMissing,
+      });
+      expect(e.graphDefects.whereType<MalformedRefGraphDefect>(), isEmpty);
+    });
+
+    test('G11-8c 重複宣告的 domain 名不解析，依賴成斷邊', () {
+      final e = _build([
+        buildRawNode(
+          id: 'SPEC-001',
+          typeName: 'SPEC',
+          extra: {
+            'depends_on_domains': ['corpus'],
+          },
+        ),
+        _bundle('DOMAIN-MAP-a', 'corpus'),
+        _bundle('DOMAIN-MAP-b', 'corpus'),
+      ]);
+      expect(e.edgesByType.containsKey('domain_dependency'), isFalse);
+      expect(e.graphDefects.whereType<DanglingRefGraphDefect>(), hasLength(1));
+    });
+
+    test('G11-8d 本專案 docs/spec：21 條邊、0 假 targetMissing', () {
+      final nodes = <RawNode>[];
+      for (final f in Directory('docs/spec').listSync(recursive: true)) {
+        if (f is! File || !f.path.endsWith('.md')) continue;
+        final text = f.readAsStringSync();
+        final m = RegExp(
+          r'^---\n([\s\S]*?)\n---',
+          multiLine: false,
+        ).firstMatch(text);
+        if (m == null) continue;
+        final fm = Map<String, dynamic>.from(
+          jsonDecode(jsonEncode(loadYaml(m.group(1)!))) as Map,
+        );
+        final id = fm['id'];
+        if (id is! String) continue;
+        final isBundle = id.startsWith('DOMAIN-MAP-');
+        if (!isBundle && !id.startsWith('SPEC-')) continue;
+        nodes.add(
+          buildRawNode(
+            id: id,
+            typeName: isBundle ? domainBundleTypeName : 'SPEC',
+            extra: {...fm}..remove('id'),
+          ),
+        );
+      }
+      final e = _build(nodes);
+      final domainDeps = e.edges.where(
+        (x) => x.edgeType == 'domain_dependency',
+      );
+      final declared = nodes
+          .map((n) => n.frontmatter['depends_on_domains'])
+          .whereType<List>()
+          .expand((l) => l)
+          .length;
+      expect(domainDeps, hasLength(21));
+      expect(declared, 21);
+      final fakeMissing = e.graphDefects
+          .whereType<DanglingRefGraphDefect>()
+          .where((d) => d.ref.edgeTypeName == 'domain_dependency');
+      expect(fakeMissing, isEmpty);
     });
 
     test('G11-9 解析器公開面：名稱字串進、節點 ID 或 null 出，可反查', () {
