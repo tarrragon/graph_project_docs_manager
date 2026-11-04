@@ -21,6 +21,16 @@ const Duration watchReadyTimeout = Duration(
   seconds: 5,
 ); // magic-exempt: 規格裁定值 規則 10
 
+/// FR-11 規則 10 就緒後存活檢查的存活時限。
+/// 暫定值，待實機量測定案（0.6.0-W1-141.2.3）。
+const Duration watchAliveTimeout = Duration(
+  seconds: 3,
+); // magic-exempt: 規格建議起點，待實機量測
+
+/// FR-11 規則 10 金絲雀檔命名（置於 `docs/` 第一層）。
+const String watchCanaryPrefix = '.gpdm-watch-canary-';
+const String watchCanarySuffix = '.tmp';
+
 const String _docsPrefix = 'docs/';
 const String _markdownSuffix = '.md';
 const String _vcsDirName = '.git';
@@ -157,6 +167,20 @@ abstract interface class WatchSource {
   Future<void> ready(String workspaceRoot);
 }
 
+/// 規則 10 就緒後存活檢查的檔案操作埠；路徑為相對工作區根的 `/` 形式。
+/// 任一方法失敗以例外表示。
+abstract interface class WatchCanaryIo {
+  /// `docs/` 第一層符合金絲雀命名的殘留檔。
+  List<String> residualCanaries(String workspaceRoot);
+
+  /// 產生一個新的金絲雀相對路徑。
+  String newCanaryPath();
+
+  void write(String workspaceRoot, String relativePath);
+
+  void delete(String workspaceRoot, String relativePath);
+}
+
 /// FR-11 規則 1、2、10、11：監看生命週期（過濾 → 去抖 → 送出 EVT-CORPUS-002）。
 /// [log] 的 level 沿用 `developer.log`（900 為 warning）。
 class CorpusWatcher {
@@ -167,7 +191,10 @@ class CorpusWatcher {
     required void Function(String message, {int level}) log,
     String? nonDomainPathsLocation,
     this.readyTimeout = watchReadyTimeout,
-  }) : _source = source,
+    this.aliveTimeout = watchAliveTimeout,
+    WatchCanaryIo? canaryIo,
+  }) : _canaryIo = canaryIo,
+       _source = source,
        _clock = clock,
        _log = log,
        _nonDomainPathsLocation = nonDomainPathsLocation {
@@ -181,6 +208,11 @@ class CorpusWatcher {
   }
 
   final Duration readyTimeout;
+  final Duration aliveTimeout;
+  final WatchCanaryIo? _canaryIo;
+  DebounceTimer? _aliveTimer;
+  String? _canaryPath;
+  String? _canaryRoot;
   final DebounceClock _clock;
   DebounceTimer? _readyTimer;
   final WatchSource _source;
@@ -238,6 +270,9 @@ class CorpusWatcher {
           (_) {
             timer?.cancel();
             _openGate(gate);
+            if (isWatching && identical(gate, _readyGate)) {
+              _startAliveCheck(workspaceRoot, gate);
+            }
           },
           onError: (Object e) {
             // i18n-exempt: 開發者日誌，非使用者介面字串
@@ -251,7 +286,74 @@ class CorpusWatcher {
     if (!gate.isCompleted) gate.complete();
   }
 
+  /// 規則 10 就緒後存活檢查：清殘留、寫金絲雀、限時等原始事件。
+  void _startAliveCheck(String root, Completer<void> gate) {
+    final io = _canaryIo;
+    if (io == null) return;
+    _clearResidue(io, root);
+    final path = io.newCanaryPath();
+    try {
+      io.write(root, path);
+    } catch (e) {
+      // i18n-exempt: 開發者日誌，非使用者介面字串
+      _log('alive check skipped, cannot write canary: $e', level: _infoLevel);
+      return;
+    }
+    // i18n-exempt: 開發者日誌，非使用者介面字串
+    _log('alive check canary written: $path', level: _traceLevel);
+    _canaryPath = path;
+    _canaryRoot = root;
+    _aliveTimer = _clock.schedule(aliveTimeout, () {
+      _removeCanary(); // 時限到期即刪
+      _fail(root, 'alive check timeout', gate); // i18n-exempt: 開發者日誌
+    });
+  }
+
+  void _clearResidue(WatchCanaryIo io, String root) {
+    try {
+      for (final name in io.residualCanaries(root)) {
+        try {
+          io.delete(root, name);
+          // i18n-exempt: 開發者日誌，非使用者介面字串
+          _log('residual canary removed: $name', level: _traceLevel);
+        } catch (e) {
+          _log(
+            // i18n-exempt: 開發者日誌，非使用者介面字串
+            'residual canary removal failed: $name ($e)',
+            level: _warningLevel,
+          );
+        }
+      }
+    } catch (e) {
+      // i18n-exempt: 開發者日誌，非使用者介面字串
+      _log('residual canary scan failed: $e', level: _warningLevel);
+    }
+  }
+
+  /// 刪除進行中的金絲雀；失敗只記 warning，不重試、不影響監看狀態。
+  void _removeCanary() {
+    _aliveTimer?.cancel();
+    _aliveTimer = null;
+    final path = _canaryPath;
+    final root = _canaryRoot;
+    _canaryPath = null;
+    _canaryRoot = null;
+    if (path == null || root == null) return;
+    try {
+      _canaryIo?.delete(root, path);
+    } catch (e) {
+      // i18n-exempt: 開發者日誌，非使用者介面字串
+      _log('canary removal failed: $path ($e)', level: _warningLevel);
+    }
+  }
+
   void _onChange(WatchChange change) {
+    if (change.relativePath == _canaryPath) {
+      // i18n-exempt: 開發者日誌，非使用者介面字串
+      _log('alive check canary event received', level: _traceLevel);
+      _removeCanary();
+      return;
+    }
     final keep = isScanInputPath(
       change.relativePath,
       nonDomainPathsLocation: _nonDomainPathsLocation,
@@ -294,6 +396,7 @@ class CorpusWatcher {
   Future<void> _teardown() async {
     _readyTimer?.cancel();
     _readyTimer = null;
+    _removeCanary();
     final sub = _subscription;
     _subscription = null;
     _debouncer.clearPending();
