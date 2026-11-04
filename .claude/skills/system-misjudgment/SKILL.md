@@ -2,7 +2,7 @@
 name: system-misjudgment
 description: "以系統為索引的 AI 誤判檢查庫：記錄除錯、實機驗證時對系統行為的常見錯誤判讀、實際機制與可執行檢查方法。Use when: 除錯、實機驗證、觀測不到事件或 log、懷疑系統行為、否定結果（零事件、沒有 log、分支還在）要當證據前、誤判後要記錄。"
 metadata:
-  version: 1.0.1
+  version: 1.0.2
 ---
 
 # system-misjudgment：依「正在面對的系統」查已知誤判與檢查方法
@@ -64,13 +64,12 @@ error-patterns 依類別分目錄，查不到同一系統上的陷阱。本 skil
 | `evidence-driven-bugfix` | 除錯流程（重現、failing test、根因、最小修復） | 它管步驟順序；本 skill 管步驟中「讀系統輸出」那一環的陷阱 |
 | `error-pattern` | 錯誤經驗的記錄與查詢（依類別） | 它存原因敘事；本 skill 依系統索引檢查方法，以 ID 引用 |
 | `wrap-decision` | 決策偏誤（假選項、倉促結論） | 它管選擇怎麼做；本 skill 管觀測到的現象怎麼讀 |
-| `verify` | 檔案監看實機驗證配方 | 它是可執行配方；本 skill 的 macOS FSEvents 檔解釋配方各閘門的理由與判讀 |
 
 ## 範例
 
 情境：實機驗證時 App 監看收到 0 筆事件。
 
 1. 找系統：檔案監看，開 `references/macos-fsevents.md`。
-2. 命中條目 FS-1，檢查方法：`ps -axo pcpu,comm | grep fseventsd`，持續 100% 左右即為異常。
-3. 正向對照：`.claude/skills/verify/watch-verify.sh --gate-only` 的金絲雀必須收到即時事件。
+2. 命中條目 FS-1，檢查方法：`ps -axo pcpu,comm | grep fseventsd` 取三次樣，任一次不低於 `WV_CPU_LIMIT`（預設 50）即為異常。
+3. 正向對照：FS-1 的金絲雀命令必須收到即時事件。
 4. 判讀：閘門紅 → 結論是「環境不可驗證」，不派修正批、不判 App 失敗。
