@@ -197,6 +197,32 @@ final _domainDup = GraphDefectGap(
   ),
 );
 
+const _isolated = GraphDefectGap(
+  IsolatedNodeGraphDefect(
+    nodeId: 'SPEC-1',
+    nodeType: 'SPEC',
+    path: 'docs/spec1.md',
+  ),
+);
+
+final _missingOne = GraphDefectGap(
+  MissingRequiredEdgeGraphDefect(
+    nodeId: 'UC-01',
+    nodeType: 'UC',
+    path: 'docs/uc01.md',
+    edgeTypes: ['uc_ticket_refs'],
+  ),
+);
+
+final _missingAnyOf = GraphDefectGap(
+  MissingRequiredEdgeGraphDefect(
+    nodeId: 'EVT-A-001',
+    nodeType: 'EVT',
+    path: 'docs/evt.md',
+    edgeTypes: ['provenance', 'spec_association'],
+  ),
+);
+
 List<GapReportCategory> _project({
   List<ParseFailureGap> parse = const [],
   List<GraphDefectGap> defects = const [],
@@ -565,6 +591,51 @@ void main() {
       expect(
         _only(_project(defects: [_domainDup])).id,
         'domainDuplicateDeclaration:corpus',
+      );
+    });
+
+    test('T2-7 孤島：子類名、節點 ID；缺必要邊：再加邊型清單以 , 串接', () {
+      expect(_only(_project(defects: [_isolated])).id, 'isolatedNode:SPEC-1');
+      expect(
+        _only(_project(defects: [_missingOne])).id,
+        'missingRequiredEdge:UC-01:uc_ticket_refs',
+      );
+      expect(
+        _only(_project(defects: [_missingAnyOf])).id,
+        'missingRequiredEdge:EVT-A-001:provenance%2Cspec_association',
+      );
+    });
+
+    test('T3-7 孤島與缺必要邊：同屬 graph-defect 分節，指向該節點（其他圖節點）', () {
+      final cats = _project(defects: [_isolated, _missingOne]);
+      expect(cats.single.id, gapCategoryIdGraphDefect);
+      for (final item in cats.single.items) {
+        expect(item.pointerType, GapItemPointerType.otherNode);
+      }
+      expect(cats.single.items.first.filePath, 'docs/spec1.md');
+      expect(cats.single.items.first.pointerNodeId, 'SPEC-1');
+      expect(cats.single.items.last.filePath, 'docs/uc01.md');
+    });
+
+    test('P6b 孤島與缺必要邊三個 key 的 zh／en 文案（逐字照 SPEC-001 §5）', () {
+      final en = AppLocalizationsEn();
+      final zh = AppLocalizationsZh();
+      String text(AppLocalizations l, GraphDefectGap g) =>
+          gapItemDescriptionText(l, _only(_project(defects: [g])).description)!;
+      expect(text(zh, _isolated), 'SPEC SPEC-1 沒有任何關聯');
+      expect(text(en, _isolated), 'SPEC SPEC-1 has no relations');
+      expect(text(zh, _missingOne), 'UC UC-01 缺少必要的關聯：uc_ticket_refs');
+      expect(
+        text(en, _missingOne),
+        'UC UC-01 is missing a required relation: uc_ticket_refs',
+      );
+      expect(
+        text(zh, _missingAnyOf),
+        'EVT EVT-A-001 至少需要一種關聯：provenance、spec_association',
+      );
+      expect(
+        text(en, _missingAnyOf),
+        'EVT EVT-A-001 needs at least one relation: provenance, spec_association',
       );
     });
 
@@ -1052,6 +1123,9 @@ void main() {
         for (final k in FlowDefectKind.values)
           _only(_project(defects: [_flowDefect(k)])),
         _only(_project(defects: [_domainDup])),
+        _only(_project(defects: [_isolated])),
+        _only(_project(defects: [_missingOne])),
+        _only(_project(defects: [_missingAnyOf])),
         for (final s in OrphanEventShape.values)
           _only(_project(orphan: [_orphanGap(shape: s)])),
         for (final d in EventDeclarationDirection.values)

@@ -650,6 +650,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String gapIsolatedNode(String nodeType, String nodeId) {
+    return '$nodeType $nodeId has no relations';
+  }
+
+  @override
+  String gapMissingRequiredEdge(
+    String nodeType,
+    String nodeId,
+    String edgeType,
+  ) {
+    return '$nodeType $nodeId is missing a required relation: $edgeType';
+  }
+
+  @override
+  String gapMissingRequiredEdgeAnyOf(
+    String nodeType,
+    String nodeId,
+    String edgeTypes,
+  ) {
+    return '$nodeType $nodeId needs at least one relation: $edgeTypes';
+  }
+
+  @override
   String get gapCategoryOrphanEvent => 'Orphan Events';
 
   @override

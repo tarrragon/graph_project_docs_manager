@@ -793,6 +793,9 @@ EVT-CORPUS-004 項目說明：
 | `gapTraversesUndeclared` | 步驟 {stepId} 的 traverses 含未宣告的 domain：{value} | Step {stepId}: traverses has an undeclared domain: {value} | stepId, value | `traverses` 名稱未宣告 |
 | `gapTraversesMissing` | 步驟 {stepId} 缺少 traverses 欄位 | Step {stepId} is missing the traverses field | stepId | `traverses` 鍵缺席 |
 | `gapDomainDeclaredTwice` | domain {domain} 被多個 DomainBundle 宣告：{bundles} | Domain {domain} is declared by more than one DomainBundle: {bundles} | domain, bundles | domain 重複宣告；`bundles` 為衝突 DomainBundle ID 以「、」／", " 連接 |
+| `gapIsolatedNode` | {nodeType} {nodeId} 沒有任何關聯 | {nodeType} {nodeId} has no relations | nodeType, nodeId | 孤島（SPEC-001 v1.77） |
+| `gapMissingRequiredEdge` | {nodeType} {nodeId} 缺少必要的關聯：{edgeType} | {nodeType} {nodeId} is missing a required relation: {edgeType} | nodeType, nodeId, edgeType | 缺必要邊，單一邊型要求（UC 三列）；`edgeType` 為型別表鍵名原值 |
+| `gapMissingRequiredEdgeAnyOf` | {nodeType} {nodeId} 至少需要一種關聯：{edgeTypes} | {nodeType} {nodeId} needs at least one relation: {edgeTypes} | nodeType, nodeId, edgeTypes | 缺必要邊，二擇一要求（EVT）；`edgeTypes` 依必要邊表列序以「、」／", " 連接 |
 
 **1.86 新增（`0.5.0-W1-114.14.1`，對應 SPEC-001 v1.49 §1「載入失敗」與 §2–§6「專案未就緒」第四個原因；ARB 實檔狀態待建，由對應實作票加入，zh／en 值為 PM 處置文案）**：
 

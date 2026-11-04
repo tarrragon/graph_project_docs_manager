@@ -614,6 +614,29 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String gapIsolatedNode(String nodeType, String nodeId) {
+    return '$nodeType $nodeId 沒有任何關聯';
+  }
+
+  @override
+  String gapMissingRequiredEdge(
+    String nodeType,
+    String nodeId,
+    String edgeType,
+  ) {
+    return '$nodeType $nodeId 缺少必要的關聯：$edgeType';
+  }
+
+  @override
+  String gapMissingRequiredEdgeAnyOf(
+    String nodeType,
+    String nodeId,
+    String edgeTypes,
+  ) {
+    return '$nodeType $nodeId 至少需要一種關聯：$edgeTypes';
+  }
+
+  @override
   String get gapCategoryOrphanEvent => '孤立事件';
 
   @override

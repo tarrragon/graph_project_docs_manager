@@ -1106,6 +1106,32 @@ abstract class AppLocalizations {
   /// **'domain {domain} 被多個 DomainBundle 宣告：{bundles}'**
   String gapDomainDeclaredTwice(String domain, String bundles);
 
+  /// SPEC-004 §4.0.6〈孤島與缺必要邊〉：孤島；nodeType 為節點型別
+  ///
+  /// In zh, this message translates to:
+  /// **'{nodeType} {nodeId} 沒有任何關聯'**
+  String gapIsolatedNode(String nodeType, String nodeId);
+
+  /// SPEC-004 §4.0.6〈孤島與缺必要邊〉：缺必要邊，單一邊型要求；edgeType 為型別表鍵名原值
+  ///
+  /// In zh, this message translates to:
+  /// **'{nodeType} {nodeId} 缺少必要的關聯：{edgeType}'**
+  String gapMissingRequiredEdge(
+    String nodeType,
+    String nodeId,
+    String edgeType,
+  );
+
+  /// SPEC-004 §4.0.6〈孤島與缺必要邊〉：缺必要邊，二擇一要求；edgeTypes 依必要邊表列序以分隔符連接
+  ///
+  /// In zh, this message translates to:
+  /// **'{nodeType} {nodeId} 至少需要一種關聯：{edgeTypes}'**
+  String gapMissingRequiredEdgeAnyOf(
+    String nodeType,
+    String nodeId,
+    String edgeTypes,
+  );
+
   /// SPEC-001 §5／SPEC-003 §3.5：破洞類別 orphan-event 的分節標籤
   ///
   /// In zh, this message translates to:

@@ -46,6 +46,10 @@ Object? _sorted(Object? v) {
   return v;
 }
 
+bool _isNodeLevel(GraphDefectGap gap) =>
+    gap.kind == GraphDefectKind.isolatedNode ||
+    gap.kind == GraphDefectKind.missingRequiredEdge;
+
 String _gapKey(GraphDefectGap gap) => switch (gap.defect) {
   final DanglingRefGraphDefect d => _refKey(
     gap.kind.name,
@@ -78,6 +82,26 @@ String _gapKey(GraphDefectGap gap) => switch (gap.defect) {
       'kind': gap.kind.name,
       'domain': domain,
       'bundle_ids': (bundleIds.toList()..sort()),
+    }),
+  IsolatedNodeGraphDefect(:final nodeId, :final nodeType, :final path) =>
+    _canonical({
+      'kind': gap.kind.name,
+      'node_id': nodeId,
+      'node_type': nodeType,
+      'path': path,
+    }),
+  MissingRequiredEdgeGraphDefect(
+    :final nodeId,
+    :final nodeType,
+    :final path,
+    :final edgeTypes,
+  ) =>
+    _canonical({
+      'kind': gap.kind.name,
+      'node_id': nodeId,
+      'node_type': nodeType,
+      'path': path,
+      'edge_types': edgeTypes,
     }),
   FlowGraphDefect(:final ucId, :final stepId, :final field, :final rawValue) =>
     _canonical({
@@ -149,8 +173,25 @@ void main() {
 
       test('IT2-A1 graphDefect 破洞集合與凍結值一一對應', () {
         final result = _diagnose(runs[host]!) as GraphDefectsDetected;
+        // 凍結語料早於 UC `ticket_refs` 回填（0.6.0-W1-104），凍結值不含節點層級
+        // 缺陷（FR-09〈孤島與缺必要邊〉）；此處只允許缺 uc_ticket_refs 一種，
+        // 其餘節點層級缺陷（孤島等）出現即紅。
+        final (nodeLevel, mainGaps) = (
+          result.gaps.where(_isNodeLevel).toList(),
+          result.gaps.where((g) => !_isNodeLevel(g)).toList(),
+        );
+        for (final g in nodeLevel) {
+          final d = g.defect;
+          expect(
+            d is MissingRequiredEdgeGraphDefect &&
+                d.edgeTypes.join(',') == 'uc_ticket_refs' &&
+                d.nodeType == 'UC',
+            isTrue,
+            reason: '非預期的節點層級缺陷：${_gapKey(g)}',
+          );
+        }
         final diff = diffReport(
-          result.gaps.map(_gapKey),
+          mainGaps.map(_gapKey),
           _expectedDefectKeys(host),
         );
         expect(diff, isEmpty, reason: diff);
