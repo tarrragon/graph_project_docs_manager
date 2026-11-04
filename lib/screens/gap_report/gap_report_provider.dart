@@ -152,7 +152,9 @@ class GapReportNotifier extends Notifier<GapReportState> {
   ///
   /// 前提：ScanRoundCompleted 在 _runGuarded 的 await 之後同步設定，早於
   /// scheduler _onDone（whenComplete）把 _running 設為 false，故此處讀
-  /// scheduler.isRunning 仍為 true。
+  /// scheduler.isRunning 仍為 true。_onDone 同時把 _pending 設為 null，
+  /// 下方讀的 scheduler.hasPendingRerun 也依賴同一前提：早於 _onDone
+  /// 才讀得到該輪結束前登記的待重跑。
   void _onRoundCompleted(ScanRoundResult result) {
     if (_cancelHold) return;
     final awaiting = _awaitingRound;
