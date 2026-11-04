@@ -23,6 +23,7 @@ import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
+import '../multi_value_separator.dart';
 import 'ticket_list_providers.dart';
 import 'ticket_list_state.dart';
 
@@ -239,7 +240,7 @@ class _ReadyListView extends ConsumerWidget {
       for (final ticket in visible)
         _ticketRow(
           ticket,
-          blockedBySeparator: _blockedBySeparator(l10n),
+          blockedBySeparator: multiValueSeparator(l10n),
           onOpenTicket: onOpenTicket,
           onCorruptedTap: onCorruptedTap,
           targetId: targetId,
@@ -426,7 +427,7 @@ class _TopicSection extends StatelessWidget {
         for (final ticket in group.tickets)
           _ticketRow(
             ticket,
-            blockedBySeparator: _blockedBySeparator(l10n),
+            blockedBySeparator: multiValueSeparator(l10n),
             onOpenTicket: onOpenTicket,
             onCorruptedTap: onCorruptedTap,
             targetId: targetId,
@@ -435,10 +436,6 @@ class _TopicSection extends StatelessWidget {
     );
   }
 }
-
-/// blockedBy 串接符依語系選擇（與 gap_report `_join` 同慣例）；只支援 zh／en。
-String _blockedBySeparator(AppLocalizations l10n) =>
-    l10n.localeName.startsWith('zh') ? '、' : ', '; // i18n-exempt: 語系分隔符
 
 /// 票列（列表模式與主題模式共用）：欄序 ID／標題／狀態／優先／blockedBy／
 /// 損壞標記（SPEC-004 §3.2 `TicketListA` 票列；blockedBy 值為被阻擋的

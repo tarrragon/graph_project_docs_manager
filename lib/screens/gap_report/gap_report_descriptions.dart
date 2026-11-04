@@ -8,6 +8,7 @@ import 'package:graph_project_docs_manager/graph/path_declaration_state.dart';
 import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../multi_value_separator.dart';
 import 'gap_report_models.dart';
 import 'gap_report_projection.dart';
 
@@ -159,7 +160,5 @@ String? pathDeclarationLineText(
   );
 }
 
-/// 連接符號依語系選擇；只支援 zh／en（新增語系時須在此補分支）。
-String _join(AppLocalizations l10n, List<String> values) => values.join(
-  l10n.localeName.startsWith('zh') ? '、' : ', ',
-); // i18n-exempt: 語系分隔符
+String _join(AppLocalizations l10n, List<String> values) =>
+    values.join(multiValueSeparator(l10n));
