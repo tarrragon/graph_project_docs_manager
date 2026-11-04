@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-04"
-version: "1.120"
+version: "1.121"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.120（1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.121（1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -666,8 +666,16 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
 | `schemaUnconsumableDegradedExplanation` | 可改用 App 內建型別表（v{builtinVersion}）檢視，B 層邊不渲染 | You can view this with the app's built-in schema (v{builtinVersion}); tier-B edges will not render | builtinVersion | 4.23 `BlockedState.plain`（無可消費的型別表，`explanation` slot，`onDegradedView` 非 null 時，E2） |
-| `degradedSchemaBadgeLabel` | 內建型別表 v{builtinVersion}／專案版本 {projectVersion} | Built-in schema v{builtinVersion} / project version {projectVersion} | builtinVersion, projectVersion | 4.27 `AppShell`（`badge-<screen>-degraded-schema`，`Badge.tag`，降級旗標生效期間與返回列同一列常駐，E3） |
+| `degradedSchemaBadgeLabel` | 降級型別表（內建 {builtinVersion} / 專案 {projectVersion}） | Degraded schema (builtin {builtinVersion} / project {projectVersion}) | builtinVersion, projectVersion | 4.27 `AppShell`（`badge-<screen>-degraded-schema`，`Badge.tag`，降級旗標生效期間與返回列同一列常駐，E3） |
 | `swimlanePanelTitle` | {ucId} {ucTitle} | {ucId} {ucTitle} | ucId, ucTitle | §1 正常 · 泳道、泳道 · flow 未結構化（`AppText.subtitle`，SPEC-001 §1、SPEC-003 §3.1／§2.8，E8） |
+
+**1.121 補登（`0.6.0-W1-152.1`，用戶裁定；ARB 已有、本表原無記載，zh／en 取 ARB 現值）**：
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `eventOutsideUcBare` | 本 UC 外 | Outside this UC | — | 事件流小表「本 UC 外」列，對側為空或無 EVT 節點時使用（SPEC-001 §2〈事件流小表〉） |
+| `scanCompleteUndeterminableNotificationBody` | 無法判定破洞，原因請見破洞報告 | Gaps could not be determined. See the gap report for the reason. | — | 掃描完成系統通知內文（無法判定破洞時） |
+| `scanCompleteUndeterminableSnackbarMessage` | 掃描結束，無法判定破洞 | Scan finished: gaps could not be determined | — | 掃描完成 `AppSnackBar`（無法判定破洞時） |
 
 畫面票另需的頁面副標等文案由畫面票自行宣告，不列於此。
 
@@ -6486,6 +6494,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.121 | 2026-11-04 | `0.6.0-W1-152.1`（用戶裁定）：§4.0.6 `degradedSchemaBadgeLabel` 列 zh／en 改為 ARB 現值（保留「降級」一詞）；新增補登表登記 `eventOutsideUcBare`、`scanCompleteUndeterminableNotificationBody`、`scanCompleteUndeterminableSnackbarMessage`；`ucSelectorTitle` en、`swimlaneUcUnsetPrompt` zh／en、`swimlaneProjectionPendingPrompt` zh 以規格為準，ARB 同批改齊，規格列不動 |
 | 1.120 | 2026-11-04 | `0.6.0-W1-019.1`：4.9 `RecentProjectItem` disabled 列進入條件拆為探測逾時（`probeTimeoutReason`，逾時值引 SPEC-005 §2.5）與探測判定不可讀或不存在（`WorkspaceUnavailable.reason`，與點選失敗同源）；內容政策表後補表外說明 `reason` 兩種取值。§4.0.6 與各綁定 ARB 的表列未動（PC-GPD-075）。來源 `0.6.0-W1-019` 用戶裁決 |
 | 1.119 | 2026-11-03 | `0.6.0-W1-018.1`：4.9 `RecentProjectItem` 狀態矩陣 enabled／selected／disabled 來源欄與回饋契約狀態變更提示列，陳舊的 `RecentProjectFixture`／`currentProjectIndexProvider` 更正為 `recentProjectsProvider`（`StateProvider<List<RecentProject>>`）、`switcherUnavailableProjectsProvider`、`currentWorkspaceStateProvider`；新增〈無計數快照〉段，slot `summary` 改選填、朗讀標籤補無摘要形；正文版號行補記 1.118。對應 SPEC-001 v1.74、SPEC-005 v1.4 |
 | 1.118 | 2026-11-03 | `0.6.0-W1-108`：退役 `LoadPrompt`（4.25 改為已退役標示）與 `LoadingState.progressBar` 變體（4.24 變體列、slot `progress`、無障礙與測試點同步刪除）；§3.1 總表、反例、容器接受清單移除 `LoadPrompt`；§4.0.6 刪 `progressA11yLabel`、`traceabilityTicketsNotLoadedHint`、`gotoTicketsListAction`；`ticketsLoadPrompt`、`ticketsLoadingProgress` 隨元件移除。lib 與 ARB 同批 |
