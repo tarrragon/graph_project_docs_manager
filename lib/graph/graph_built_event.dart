@@ -123,6 +123,35 @@ class DomainDuplicateDeclarationGraphDefect extends GraphDefect {
   final List<String> bundleIds;
 }
 
+/// 孤島（FR-09〈孤島與缺必要邊〉判準一）：負載 {節點 ID, 節點型別, 路徑}。
+class IsolatedNodeGraphDefect extends GraphDefect {
+  const IsolatedNodeGraphDefect({
+    required this.nodeId,
+    required this.nodeType,
+    required this.path,
+  });
+
+  final String nodeId;
+  final String nodeType;
+  final String path;
+}
+
+/// 缺必要邊（FR-09〈孤島與缺必要邊〉判準二）：每一條未滿足的要求一筆；
+/// [edgeTypes] 為該要求的邊型清單（單一邊型一個元素，二擇一多個）。
+class MissingRequiredEdgeGraphDefect extends GraphDefect {
+  MissingRequiredEdgeGraphDefect({
+    required this.nodeId,
+    required this.nodeType,
+    required this.path,
+    required List<String> edgeTypes,
+  }) : edgeTypes = List.unmodifiable(edgeTypes);
+
+  final String nodeId;
+  final String nodeType;
+  final String path;
+  final List<String> edgeTypes;
+}
+
 /// 一筆 flow 缺陷，負載恆為 {UC ID, step id, 欄位, 原始值}，不帶邊型。
 class FlowGraphDefect extends GraphDefect {
   const FlowGraphDefect({
@@ -182,6 +211,9 @@ class GraphBuiltEvent {
   late final int duplicateIdCount = _countOf<DuplicateIdGraphDefect>();
   late final int multiSourceCount = _countOf<MultiSourceGraphDefect>();
   late final int flowDefectCount = _countOf<FlowGraphDefect>();
+  late final int isolatedNodeCount = _countOf<IsolatedNodeGraphDefect>();
+  late final int missingRequiredEdgeCount =
+      _countOf<MissingRequiredEdgeGraphDefect>();
 
   int _countOf<T extends GraphDefect>() => graphDefects.whereType<T>().length;
 

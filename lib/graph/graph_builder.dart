@@ -1,11 +1,14 @@
 /// SPEC-007 FR-04～FR-06 建邊、`relatedTo` 聯集與建圖入口。
 library;
 
+import 'dart:developer' as developer;
+
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
@@ -106,6 +109,9 @@ GraphBuiltEvent buildGraphFromInputs({
         domain: d.domain,
         bundleIds: d.bundleIds,
       ),
+    ..._nodeLevelDefects(classified.lightNodes, edges, {
+      for (final t in edgeList) t.name,
+    }),
   ];
   return GraphBuiltEvent(
     nodes: classified.lightNodes,
@@ -116,6 +122,76 @@ GraphBuiltEvent buildGraphFromInputs({
     totalReferences: classified.totalReferences + named.total,
     resolvedCount: resolvedRefs.length,
   );
+}
+
+/// 孤島判定的節點型別（FR-09〈孤島與缺必要邊〉判準一；Ticket 不判定）。
+const _isolationTypes = {'PROP', 'SPEC', 'UC', 'EVT', 'DomainBundle'};
+
+/// 一條必要邊要求：[nodeType] 的節點須至少有一條 [edgeTypes] 之一的出邊。
+typedef _RequiredEdge = ({String nodeType, List<String> edgeTypes});
+
+/// 必要邊集合（FR-09 表；列序即報告序，邊型名取自型別表）。
+const List<_RequiredEdge> _requiredEdges = [
+  (nodeType: 'UC', edgeTypes: ['provenance']),
+  (nodeType: 'UC', edgeTypes: ['spec_association']),
+  (nodeType: 'UC', edgeTypes: ['uc_ticket_refs']),
+  (nodeType: 'EVT', edgeTypes: ['provenance', 'spec_association']),
+];
+
+/// 使用中邊型不含某條要求的任何邊型時，該條要求跳過並記一筆日誌
+/// （SPEC-007 FR-09〈孤島與缺必要邊〉；該條件下要求無從滿足，不構成缺陷）。
+List<_RequiredEdge> _activeRequirements(Set<String> activeEdgeTypes) {
+  final result = <_RequiredEdge>[];
+  for (final r in _requiredEdges) {
+    if (r.edgeTypes.any(activeEdgeTypes.contains)) {
+      result.add(r);
+      continue;
+    }
+    developer.log(
+      'required edge skipped: ${r.edgeTypes.join(',')} not active', // i18n-exempt: debug log
+      name: 'GraphBuilder',
+    );
+  }
+  return result;
+}
+
+/// 需求：[SPEC-007 FR-09〈孤島與缺必要邊〉] 於主圖邊集合上判定孤島與缺必要邊。
+///
+/// 孤島只報一筆且不再判該節點的缺必要邊。「出邊」以邊的起點為準（有向）；
+/// 無向邊任一端皆算。
+List<GraphDefect> _nodeLevelDefects(
+  List<LightNode> nodes,
+  List<GraphEdge> edges,
+  Set<String> activeEdgeTypes,
+) {
+  final requirements = _activeRequirements(activeEdgeTypes);
+  final touched = <String>{
+    for (final e in edges) ...[e.from, e.to],
+  };
+  final outTypes = <String, Set<String>>{};
+  for (final e in edges) {
+    outTypes.putIfAbsent(e.from, () => {}).add(e.edgeType);
+    if (e.isUndirected) outTypes.putIfAbsent(e.to, () => {}).add(e.edgeType);
+  }
+  return [
+    for (final n in nodes)
+      if (_isolationTypes.contains(n.typeName) && !touched.contains(n.id))
+        IsolatedNodeGraphDefect(
+          nodeId: n.id,
+          nodeType: n.typeName,
+          path: n.path,
+        )
+      else
+        for (final r in requirements)
+          if (r.nodeType == n.typeName &&
+              !r.edgeTypes.any((t) => outTypes[n.id]?.contains(t) ?? false))
+            MissingRequiredEdgeGraphDefect(
+              nodeId: n.id,
+              nodeType: n.typeName,
+              path: n.path,
+              edgeTypes: r.edgeTypes,
+            ),
+  ];
 }
 
 /// 值為 domain 名稱（而非節點 ID）、經 [DomainNameResolver] 解析的邊型（FR-11）。

@@ -84,6 +84,12 @@ List<Object?> graphDefectIdComponents(GraphDefectGap gap) {
     final DuplicateIdGraphDefect d => [kind, d.id],
     final MultiSourceGraphDefect d => [kind, d.from, d.edgeType],
     final DomainDuplicateDeclarationGraphDefect d => [kind, d.domain],
+    final IsolatedNodeGraphDefect d => [kind, d.nodeId],
+    final MissingRequiredEdgeGraphDefect d => [
+      kind,
+      d.nodeId,
+      d.edgeTypes.join(','),
+    ],
     final FlowGraphDefect d => [kind, d.ucId, d.stepId, d.field, d.rawValue],
   };
 }

@@ -111,6 +111,21 @@ String? gapItemDescriptionText(AppLocalizations l10n, GapItemDescription? d) {
       a['domain']! as String,
       _join(l10n, a['bundles']! as List<String>),
     ),
+    GapDescriptionKind.isolatedNode => l10n.gapIsolatedNode(
+      a['nodeType']! as String,
+      a['nodeId']! as String,
+    ),
+    GapDescriptionKind.missingRequiredEdge => l10n.gapMissingRequiredEdge(
+      a['nodeType']! as String,
+      a['nodeId']! as String,
+      a['edgeType']! as String,
+    ),
+    GapDescriptionKind.missingRequiredEdgeAnyOf =>
+      l10n.gapMissingRequiredEdgeAnyOf(
+        a['nodeType']! as String,
+        a['nodeId']! as String,
+        _join(l10n, a['edgeTypes']! as List<String>),
+      ),
     GapDescriptionKind.orphanEventEmittedNotConsumed =>
       l10n.gapOrphanEventEmittedNotConsumed,
     GapDescriptionKind.orphanEventConsumedNotEmitted =>

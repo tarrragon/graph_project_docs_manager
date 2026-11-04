@@ -125,14 +125,17 @@ void main() {
         event.graphDefects.whereType<DomainDuplicateDeclarationGraphDefect>(),
         hasLength(1),
       );
-      expect(event.graphDefects.length, 10);
+      // 孤島（UC-01、B1、B2 無邊，FR-09〈孤島與缺必要邊〉）另計，不在十類內。
+      expect(event.isolatedNodeCount, 3);
+      expect(event.graphDefects.length - event.isolatedNodeCount, 10);
       // 對照：拿掉重複宣告的一個 bundle，總數回到 9（重複宣告那一筆確實計入）。
       final without = buildGraphEvent([
         ..._mainGraphFourDefects(),
         _flowEachSubclassUc(),
         _bundle('B1', 'corpus'),
       ]);
-      expect(without.graphDefects.length, 9);
+      expect(without.isolatedNodeCount, 2);
+      expect(without.graphDefects.length - without.isolatedNodeCount, 9);
     });
 
     test('G6-5 守衛：主圖無缺陷、一步 traverses 未宣告名稱 -> 恰 1 筆', () {
@@ -142,7 +145,8 @@ void main() {
           _step('a', traverses: ['nope']),
         ]),
       ]);
-      final d = event.graphDefects.single as FlowGraphDefect;
+      // UC-01 無邊報孤島（FR-09），與本案的 flow 缺陷無關，只取 flow 子類。
+      final d = event.graphDefects.whereType<FlowGraphDefect>().single;
       expect(d.kind, FlowDefectKind.traversesUndeclared);
     });
 
@@ -161,8 +165,8 @@ void main() {
           _step('a', traverses: ['corpus']),
         ]),
       ]);
-      expect(bad.graphDefects.length, 1);
-      expect(good.graphDefects.length, 0);
+      expect(bad.graphDefects.whereType<FlowGraphDefect>(), hasLength(1));
+      expect(good.graphDefects.whereType<FlowGraphDefect>(), isEmpty);
       expect(bad.edgeCount, good.edgeCount);
       expect(bad.nodeCount, good.nodeCount);
     });

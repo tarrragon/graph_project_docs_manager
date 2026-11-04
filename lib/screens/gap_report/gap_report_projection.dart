@@ -304,6 +304,22 @@ class _Projector {
         gapCategoryIdGraphDefect,
         _domainDuplicateItem(kind, d, id),
       ),
+      final IsolatedNodeGraphDefect d => (
+        gapCategoryIdGraphDefect,
+        _nodeLevelItem(
+          id,
+          d.nodeId,
+          d.path,
+          GapItemDescription(GapDescriptionKind.isolatedNode, {
+            'nodeType': d.nodeType,
+            'nodeId': d.nodeId,
+          }),
+        ),
+      ),
+      final MissingRequiredEdgeGraphDefect d => (
+        gapCategoryIdGraphDefect,
+        _nodeLevelItem(id, d.nodeId, d.path, _missingEdgeDescription(d)),
+      ),
       final FlowGraphDefect d => (
         gapCategoryIdGraphDefectFlow,
         _flowItem(kind, d, id),
@@ -407,6 +423,33 @@ class _Projector {
       pointerNodeId: bundleId,
       description: description,
     );
+  }
+
+  /// 孤島、缺必要邊：指向負載自帶路徑的該節點（兩子類都不判定 Ticket 型別）。
+  GapReportItem _nodeLevelItem(
+    String id,
+    String nodeId,
+    String path,
+    GapItemDescription description,
+  ) => GapReportItem(
+    id: id,
+    filePath: path,
+    pointerType: GapItemPointerType.otherNode,
+    pointerNodeId: nodeId,
+    description: description,
+  );
+
+  GapItemDescription _missingEdgeDescription(MissingRequiredEdgeGraphDefect d) {
+    final common = {'nodeType': d.nodeType, 'nodeId': d.nodeId};
+    return d.edgeTypes.length == 1
+        ? GapItemDescription(GapDescriptionKind.missingRequiredEdge, {
+            ...common,
+            'edgeType': d.edgeTypes.single,
+          })
+        : GapItemDescription(GapDescriptionKind.missingRequiredEdgeAnyOf, {
+            ...common,
+            'edgeTypes': d.edgeTypes,
+          });
   }
 
   GapReportItem _flowItem(GraphDefectKind kind, FlowGraphDefect d, String id) {

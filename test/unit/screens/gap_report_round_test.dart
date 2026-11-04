@@ -1165,11 +1165,15 @@ void main() {
       );
       expect(state, isA<GapReportFound>());
       final ids = _categoryIds(state);
+      // 本語料的兩個 bundle、UC-02 與兩個 EVT 都沒有邊，各報一筆孤島
+      // （SPEC-007 FR-09〈孤島與缺必要邊〉），歸 graph-defect 分節，排在最前。
       expect(ids, [
+        'graph-defect',
         'graph-defect-flow',
         'orphan-event',
         'event-declaration-mismatch',
       ]);
+      expect(itemIds(state, 'graph-defect'), hasLength(5));
       final found = state as GapReportFound;
       // 步驟 c 的 traverses 含未宣告值 gamma：flow 子類 1 項。
       expect(itemIds(state, 'graph-defect-flow'), hasLength(1));
@@ -1177,7 +1181,7 @@ void main() {
       expect(itemIds(state, 'event-declaration-mismatch'), [
         'event-declaration-mismatch:EVT-X-002:consumers:beta',
       ]);
-      expect(found.categories.fold<int>(0, (n, c) => n + c.items.length), 3);
+      expect(found.categories.fold<int>(0, (n, c) => n + c.items.length), 8);
     });
   });
 }

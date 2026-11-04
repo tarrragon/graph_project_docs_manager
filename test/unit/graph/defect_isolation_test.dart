@@ -48,6 +48,9 @@ Set<String> _defectSignatures(GraphBuiltEvent event) => {
       DuplicateIdGraphDefect(:final id) => 'dup:$id',
       MultiSourceGraphDefect() => 'multi:${d.from}:${d.edgeType}',
       DomainDuplicateDeclarationGraphDefect() => 'domainDup:${d.domain}',
+      IsolatedNodeGraphDefect() => 'isolated:${d.nodeId}',
+      MissingRequiredEdgeGraphDefect() =>
+        'missingEdge:${d.nodeId}:${d.edgeTypes.join(',')}',
       FlowGraphDefect() => 'flow:${d.ucId}:${d.kind.name}:${d.field}',
     },
 };

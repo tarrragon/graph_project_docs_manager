@@ -33,6 +33,12 @@ enum GraphDefectKind {
 
   /// domain 重複宣告（FR-09，非 flow 子圖的名稱索引缺陷）。
   domainDuplicateDeclaration,
+
+  /// 孤島（FR-09〈孤島與缺必要邊〉判準一）。
+  isolatedNode,
+
+  /// 缺必要邊（FR-09〈孤島與缺必要邊〉判準二）。
+  missingRequiredEdge,
 }
 
 /// 一筆 `graphDefect` 破洞：直接承載 Graph 的缺陷（原因碼與原始值，
@@ -53,6 +59,8 @@ class GraphDefectGap {
     MultiSourceGraphDefect() => GraphDefectKind.multiSource,
     DomainDuplicateDeclarationGraphDefect() =>
       GraphDefectKind.domainDuplicateDeclaration,
+    IsolatedNodeGraphDefect() => GraphDefectKind.isolatedNode,
+    MissingRequiredEdgeGraphDefect() => GraphDefectKind.missingRequiredEdge,
     FlowGraphDefect(:final kind) => switch (kind) {
       FlowDefectKind.unresolvedReference => GraphDefectKind.flowUnresolvedRef,
       FlowDefectKind.duplicateStepId => GraphDefectKind.flowDuplicateStepId,

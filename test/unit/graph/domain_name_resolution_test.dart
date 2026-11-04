@@ -373,7 +373,11 @@ void main() {
         ]),
       ]);
       expect(_resolvedIds(_only(ok, 'a')), ['DOMAIN-MAP-corpus']);
-      expect(ok.graphDefects, isEmpty);
+      // 無邊的 bundle／UC 另報孤島（FR-09），本案只關心 domain 重複宣告與 flow。
+      expect(
+        ok.graphDefects.where((d) => d is! IsolatedNodeGraphDefect),
+        isEmpty,
+      );
     });
 
     test('G11-16 三者重複：恰一筆，清單含三個', () {
@@ -568,7 +572,10 @@ void main() {
           {'id': 'b'},
         ]),
       ]);
-      expect(e.graphDefects, hasLength(3));
+      expect(
+        e.graphDefects.where((d) => d is! IsolatedNodeGraphDefect),
+        hasLength(3),
+      );
     });
   });
 

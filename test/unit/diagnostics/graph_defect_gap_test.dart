@@ -144,6 +144,8 @@ void main() {
         'flowTraversesKeyAbsent',
         'flowEventUnresolved',
         'domainDuplicateDeclaration',
+        'isolatedNode',
+        'missingRequiredEdge',
       ]);
     });
 
