@@ -12,7 +12,7 @@
 子命令：
   selftest  內嵌單元測試
   freeze    讀兩語料，產出 manifest、型別表副本、三份 expected、IT-3 樣本
-  compute   只讀 manifest 與型別表重算 expected；不帶 --out-dir 時與現有檔案比對
+  compute   只讀 manifest 與型別表重算 expected；不帶 --out-dir 時與現有檔案比對，並核對 README 凍結資訊
 執行時機：凍結時離線執行，CI 不執行。
 """
 
@@ -969,6 +969,185 @@ def _cmd_freeze(args: argparse.Namespace) -> None:
     print(json.dumps(real_only, ensure_ascii=False, indent=1))
 
 
+# ---------------------------------------------------------------------------
+# README 凍結資訊核對：README 是人工同步的副本，compute 逐欄對照凍結檔
+# ---------------------------------------------------------------------------
+
+README_NAME = "README.md"
+SEP_PAIR = "／"  # i18n-exempt: 開發者工具
+SECTION_ENV = "## 量測環境"  # i18n-exempt: 開發者工具的 README 解析標籤
+SECTION_COMPARE = "## 實測值與版本契約第 2 欄的對照"  # i18n-exempt: 開發者工具的 README 解析標籤
+SECTION_OTHER = "其他實測（`real_only`）"  # i18n-exempt: 開發者工具的 README 解析標籤
+SYNTHETIC_GROUP_RE = re.compile(r"節點 (\d+)、`duplicateId` (\d+)、引用值總數 (\d+)、`graphDefect` (\d+)")  # i18n-exempt: 開發者工具的 README 解析標籤
+COMPARE_LABELS = ("節點數", "斷邊", "格式錯誤", "spawn 只在反向", "spawn multiSource", "provenance multiSource")  # i18n-exempt: 開發者工具的 README 解析標籤
+
+
+def _section_text(text: str, start_marker: str) -> str:
+    """從 start_marker 起到下一個 `## ` 標題（不含）。找不到回傳空字串。"""
+    begin = text.find(start_marker)
+    if begin < 0:
+        return ""
+    end = text.find("\n## ", begin + len(start_marker))
+    return text[begin:] if end < 0 else text[begin:end]
+
+
+def _table_rows(section: str) -> list[list[str]]:
+    rows = []
+    for line in section.splitlines():
+        if line.startswith("|"):
+            rows.append([c.strip() for c in line.strip().strip("|").split("|")])
+    return rows
+
+
+def _find_row(rows: list[list[str]], label_prefix: str, strip_ticks: bool = False) -> list[str] | None:
+    for cells in rows:
+        label = cells[0].replace("`", "") if strip_ticks else cells[0]
+        if label.startswith(label_prefix):
+            return cells
+    return None
+
+
+def _pair(values: tuple[Any, ...]) -> str:
+    return SEP_PAIR.join(str(v) for v in values)
+
+
+def _fmt_sha(sha: str) -> str:
+    return f"{sha[:8]}...{sha[-6:]}"
+
+
+def _spawn_reverse_only(edges_by_corpus: dict[str, Any], corpus: str) -> int:
+    """spawn 邊中宣告來源只有終點者；由 expected_edges 推導（合成列不帶 spawn）。"""
+    return sum(
+        1 for e in edges_by_corpus[corpus] if e["edge_type"] == "spawn" and e["declared_by"] == [e["to"]]
+    )
+
+
+def readme_frozen_values(
+    manifest: dict[str, Any], counts: dict[str, Any], edges: dict[str, Any]
+) -> dict[str, str]:
+    """凍結檔端的權威值，鍵為 README 欄位標籤，值一律字串。"""
+    header = manifest["header"]
+    values: dict[str, str] = {"env.frozen_date": header["frozen_date"]}
+    pair_corpora = (CORPUS_GPDM, CORPUS_FB)
+    for corpus in pair_corpora:
+        snap = header["corpus_snapshots"][corpus]
+        values[f"env.{corpus}.commit"] = header["corpus_commits"][corpus]["commit"]
+        values[f"env.{corpus}.docs_md_files"] = str(snap["docs_md_files"])
+        values[f"env.{corpus}.signature"] = _fmt_sha(snap["signature_sha256"])
+    real = {c: counts[c]["real_only"] for c in pair_corpora}
+    multi = {c: real[c]["multi_source_by_edge_type"] for c in pair_corpora}
+    compare = {
+        "節點數": [real[c]["node_count"] for c in pair_corpora],  # i18n-exempt: 開發者工具
+        "斷邊": [real[c]["dangling_count"] for c in pair_corpora],  # i18n-exempt: 開發者工具
+        "格式錯誤": [real[c]["malformed_count"] for c in pair_corpora],  # i18n-exempt: 開發者工具
+        "spawn 只在反向": [_spawn_reverse_only(edges, c) for c in pair_corpora],  # i18n-exempt: 開發者工具
+        "spawn multiSource": [multi[c].get("spawn", 0) for c in pair_corpora],
+        "provenance multiSource": [multi[c].get("provenance", 0) for c in pair_corpora],
+    }
+    for label, pair in compare.items():
+        values[f"compare.{label}"] = _pair(tuple(pair))
+    for corpus, label in ((CORPUS_GPDM, "gpdm"), (CORPUS_FB, "fb")):
+        r = real[corpus]
+        typed = r["edges_by_type"]
+        values[f"other.{label}.reference_value_total"] = str(r["reference_value_total"])
+        values[f"other.{label}.resolved_dangling_malformed"] = _pair(
+            (r["resolved_count"], r["dangling_count"], r["malformed_count"])
+        )
+        values[f"other.{label}.edge_count"] = str(r["edge_count"])
+        values[f"other.{label}.typed_edges"] = _pair(
+            tuple(typed.get(k, 0) for k in ("closed_by", "uc_ticket_refs", "domain_dependency"))
+        )
+        values[f"other.{label}.closed_by_total"] = (
+            f"{r['closed_by_field_value_total']}＝{r['closed_by_reference_count']}＋{r['closed_by_skipped_count']}"  # i18n-exempt: 開發者工具
+        )
+        values[f"other.{label}.graph_defect_count"] = str(r["graph_defect_count"])
+    full = counts[CORPUS_GPDM]
+    values["synthetic_group"] = _pair(
+        (full["node_count"], full["duplicate_id_count"], full["reference_value_total"], full["graph_defect_count"])
+    )
+    return values
+
+
+def _whole_pair(cell: str, parts: int) -> str | None:
+    """「a／b」或「a／b／c」且全為整數才採用；其餘（含括號說明）回傳 None 表示不核對。"""
+    pieces = cell.split(SEP_PAIR)
+    return cell if len(pieces) == parts and all(p.isdigit() for p in pieces) else None
+
+
+def _env_claims(text: str) -> dict[str, str]:
+    claims: dict[str, str] = {}
+    env = _table_rows(_section_text(text, SECTION_ENV))
+    date_row = _find_row(env, "凍結日期")  # i18n-exempt: 開發者工具
+    found = re.search(r"\d{4}-\d{2}-\d{2}", date_row[1]) if date_row else None
+    if found:
+        claims["env.frozen_date"] = found.group(0)
+    patterns = (
+        ("commit", r"`([0-9a-f]{40})`"),
+        ("docs_md_files", r"`\.md` (\d+) 檔"),  # i18n-exempt: 開發者工具
+        ("signature", r"sha256 `([0-9a-f]+\.\.\.[0-9a-f]+)`"),
+    )
+    for corpus in (CORPUS_GPDM, CORPUS_FB):
+        row = _find_row(env, corpus)
+        for key, pattern in patterns:
+            found = re.search(pattern, row[1]) if row else None
+            if found:
+                claims[f"env.{corpus}.{key}"] = found.group(1)
+    return claims
+
+
+OTHER_SPECS = (
+    ("引用值總數", "reference_value_total", 1),  # i18n-exempt: 開發者工具
+    ("解析成功", "resolved_dangling_malformed", 3),  # i18n-exempt: 開發者工具
+    ("邊數", "edge_count", 1),  # i18n-exempt: 開發者工具
+    ("其中", "typed_edges", 3),  # i18n-exempt: 開發者工具
+    ("closed_by 欄位值總數", "closed_by_total", 0),  # i18n-exempt: 開發者工具
+    ("graphDefect 總數", "graph_defect_count", 1),  # i18n-exempt: 開發者工具
+)
+
+
+def _other_cell_ok(cell: str, parts: int) -> bool:
+    if parts == 0:
+        return re.fullmatch(r"\d+＝\d+＋\d+", cell) is not None  # i18n-exempt: 開發者工具
+    return cell.isdigit() if parts == 1 else _whole_pair(cell, parts) is not None
+
+
+def readme_claims(text: str) -> dict[str, str]:
+    """README 端宣稱值；解析不到的欄位不放入（由 check_readme 以缺漏回報）。"""
+    claims = _env_claims(text)
+    compare = _table_rows(_section_text(text, SECTION_COMPARE))
+    for label in COMPARE_LABELS:
+        row = _find_row(compare, label, strip_ticks=True)
+        cell = _whole_pair(row[2], 2) if row and len(row) >= 3 else None
+        if cell:
+            claims[f"compare.{label}"] = cell
+    other = _table_rows(_section_text(text, SECTION_OTHER))
+    for prefix, key, parts in OTHER_SPECS:
+        row = _find_row(other, prefix, strip_ticks=True)
+        if not row or len(row) < 3:
+            continue
+        for label, cell in (("gpdm", row[1]), ("fb", row[2])):
+            if _other_cell_ok(cell, parts):
+                claims[f"other.{label}.{key}"] = cell
+    group = SYNTHETIC_GROUP_RE.search(text)
+    if group:
+        claims["synthetic_group"] = _pair(tuple(int(g) for g in group.groups()))
+    return claims
+
+
+def check_readme(
+    text: str, manifest: dict[str, Any], counts: dict[str, Any], edges: dict[str, Any]
+) -> list[str]:
+    """回傳不一致欄位說明；空清單為一致。README 缺少應有欄位也算不一致（避免解析失敗即靜默通過）。"""
+    claims = readme_claims(text)
+    problems = []
+    for key, expected in readme_frozen_values(manifest, counts, edges).items():
+        if key not in claims:
+            problems.append(f"{key}: README 缺少或無法解析（凍結值 {expected}）")  # i18n-exempt: 開發者工具訊息
+        elif claims[key] != expected:
+            problems.append(f"{key}: README {claims[key]} != 凍結檔 {expected}")  # i18n-exempt: 開發者工具訊息
+    return problems
+
+
 def _cmd_compute(args: argparse.Namespace) -> None:
     fixture_dir = Path(args.fixture_dir)
     manifest = json.loads((fixture_dir / "graph_manifest.json").read_text(encoding="utf-8"))
@@ -986,8 +1165,17 @@ def _cmd_compute(args: argparse.Namespace) -> None:
         # 只比對值（corpora）；header 的 reference_version 隨參照實作升版，凍結檔不重寫
         if frozen["corpora"] != json.loads(json.dumps(data))["corpora"]:
             bad.append(name)
+    readme_problems = check_readme(
+        (fixture_dir / README_NAME).read_text(encoding="utf-8"),
+        manifest,
+        json.loads((fixture_dir / "expected_counts.json").read_text(encoding="utf-8"))["corpora"],
+        json.loads((fixture_dir / "expected_edges.json").read_text(encoding="utf-8"))["corpora"],
+    )
     print("recompute matches frozen values" if not bad else f"mismatch: {bad}")
-    sys.exit(1 if bad else 0)
+    print("README matches frozen values" if not readme_problems else "README mismatch:")
+    for problem in readme_problems:
+        print(f"  {problem}")
+    sys.exit(1 if bad or readme_problems else 0)
 
 
 # ---------------------------------------------------------------------------
@@ -1286,6 +1474,97 @@ def _test_coverage_guard() -> None:
     assert coverage_gaps([{**rows[0], "covers": list(COVERS_ALL)}]) == []
 
 
+def _readme_case() -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """最小凍結組與依其格式化的 README（格式同真實 README，值全由凍結組帶入）。"""
+    sha = {CORPUS_GPDM: "a" * 8 + "0" * 50 + "b" * 6, CORPUS_FB: "c" * 8 + "1" * 50 + "d" * 6}
+    manifest = {"header": {
+        "frozen_date": "2026-01-02",
+        "corpus_commits": {CORPUS_GPDM: {"commit": "1" * 40}, CORPUS_FB: {"commit": "2" * 40}},
+        "corpus_snapshots": {
+            c: {"docs_md_files": n, "signature_sha256": sha[c]}
+            for c, n in ((CORPUS_GPDM, 10), (CORPUS_FB, 20))
+        },
+    }}
+
+    def real(n: int) -> dict[str, Any]:
+        return {
+            "node_count": n, "dangling_count": 1, "malformed_count": 2, "edge_count": 7 + n,
+            "multi_source_by_edge_type": {"spawn": 3}, "reference_value_total": 9, "resolved_count": 6,
+            "edges_by_type": {"closed_by": 4, "uc_ticket_refs": 5, "domain_dependency": 6},
+            "closed_by_field_value_total": 9, "closed_by_reference_count": 4, "closed_by_skipped_count": 5,
+            "graph_defect_count": 6,
+        }
+
+    counts = {c: {**real(n), "real_only": real(n)} for c, n in ((CORPUS_GPDM, 50), (CORPUS_FB, 60))}
+    counts[CORPUS_GPDM].update(node_count=51, duplicate_id_count=1, reference_value_total=10, graph_defect_count=7)
+    edge = {"edge_type": "spawn", "from": "x", "to": "y", "declared_by": ["y"]}
+    edges = {CORPUS_GPDM: [edge, edge], CORPUS_FB: [edge]}
+    text = f"""# t
+
+## 量測環境（x）
+
+| 項目 | 值 |
+|------|-----|
+| 凍結日期 | 2026-01-02（重凍結） |
+| {CORPUS_GPDM} | commit `{"1" * 40}`，docs 下 `.md` 10 檔，簽章 sha256 `{_fmt_sha(sha[CORPUS_GPDM])}` |
+| {CORPUS_FB} | HEAD `{"2" * 40}`；docs 下 `.md` 20 檔，簽章 sha256 `{_fmt_sha(sha[CORPUS_FB])}` |
+
+## 實測值與版本契約第 2 欄的對照
+
+| 項目 | 預期 | 實測 | 說明 |
+|------|------|------|------|
+| 節點數 | 1／1 | 50／60 | x |
+| 斷邊 | 1／1 | 1／1 | x |
+| 格式錯誤 | 1／1 | 2／2 | x |
+| `spawn` 只在反向 | 1／1 | 2／1 | x |
+| `spawn` `multiSource` | 1／1 | 3／3 | x |
+| `provenance` `multiSource` | 0／0 | 0／0 | x |
+| 重複 ID、自我引用 | 0／0 | 0（重複 ID）、0／0（自我引用） | 說明格式不核對 |
+
+其他實測（`real_only`）：
+
+| 項目 | 本專案 | flutter_balance |
+|------|------|------|
+| 引用值總數（獨立計數） | 9 | 9 |
+| 解析成功／斷邊／格式錯誤 | 6／1／2 | 6／1／2 |
+| 邊數 | 57 | 67 |
+| 其中 `closed_by` 邊／`uc_ticket_refs` 邊／`domain_dependency` 邊 | 4／5／6 | 4／5／6 |
+| `closed_by` 欄位值總數＝引用值＋略過數 | 9＝4＋5 | 9＝4＋5 |
+| `graphDefect` 總數（x） | 6 | 6 |
+
+含合成列的組（本專案）：節點 51、`duplicateId` 1、引用值總數 10、`graphDefect` 7。
+"""
+    return text, manifest, counts, edges
+
+
+def _test_readme_check() -> None:
+    """E2 正向對照：README 與凍結檔任一欄不一致，check_readme 必須回報該欄位。"""
+    text, manifest, counts, edges = _readme_case()
+    assert check_readme(text, manifest, counts, edges) == []  # 基準：一致
+    cases = {
+        f"env.{CORPUS_GPDM}.docs_md_files": ("docs 下 `.md` 10 檔", "docs 下 `.md` 11 檔"),  # i18n-exempt: 開發者工具
+        f"env.{CORPUS_FB}.commit": ("2" * 40, "3" * 40),
+        f"env.{CORPUS_FB}.signature": ("d" * 6 + "`", "e" * 6 + "`"),
+        "env.frozen_date": ("| 2026-01-02（", "| 2026-01-03（"),
+        "compare.節點數": ("| 50／60 |", "| 50／61 |"),  # i18n-exempt: 開發者工具
+        "compare.spawn 只在反向": ("| 2／1 | x |", "| 3／1 | x |"),  # i18n-exempt: 開發者工具
+        "compare.spawn multiSource": ("| 3／3 | x |", "| 3／4 | x |"),  # i18n-exempt: 開發者工具
+        "other.gpdm.edge_count": ("| 57 | 67 |", "| 58 | 67 |"),
+        "other.fb.typed_edges": ("| 4／5／6 | 4／5／6 |\n| `closed_by`", "| 4／5／6 | 4／5／7 |\n| `closed_by`"),  # i18n-exempt: 開發者工具
+        "other.gpdm.closed_by_total": ("| 9＝4＋5 | 9＝4＋5 |", "| 9＝4＋4 | 9＝4＋5 |"),  # i18n-exempt: 開發者工具
+        "synthetic_group": ("引用值總數 10", "引用值總數 11"),  # i18n-exempt: 開發者工具
+    }
+    for key, (old, new) in cases.items():
+        assert old in text, key  # 測試自身：置換目標存在，否則對照無鑑別力
+        problems = check_readme(text.replace(old, new, 1), manifest, counts, edges)
+        assert any(p.startswith(key + ":") for p in problems), (key, problems)
+    broken = text.replace("| 邊數 |", "| 邊 |")  # 欄位消失不得靜默通過  # i18n-exempt: 開發者工具
+    assert any(p.startswith("other.gpdm.edge_count:") for p in check_readme(broken, manifest, counts, edges))
+    frozen_side = copy.deepcopy(counts)  # 反向：改凍結檔端也必須報紅
+    frozen_side[CORPUS_FB]["real_only"]["node_count"] = 61
+    assert check_readme(text, manifest, frozen_side, edges) != []
+
+
 def _run_selftests() -> None:
     tests = [
         _test_edge_types_and_patterns,
@@ -1301,6 +1580,7 @@ def _run_selftests() -> None:
         _test_counts_and_conservation,
         _test_reference_total_two_ways_on_fixture,
         _test_coverage_guard,
+        _test_readme_check,
     ]
     for test in tests:
         test()

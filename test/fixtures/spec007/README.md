@@ -52,6 +52,11 @@ python3 tool/spec007_reference.py freeze     # 讀兩語料，寫本目錄全部
 python3 tool/spec007_reference.py compute    # 只讀 manifest 與 type_table.json，與本目錄 expected_* 比對（rc=0 為一致）
 ```
 
+- `compute` 另核對本檔的凍結值：〈量測環境〉兩列的 commit／檔數／簽章／凍結日期、〈實測值與版本契約第 2 欄的對照〉
+  實測欄、〈其他實測〉兩欄與「含合成列的組」一行，對照 `graph_manifest.json` header 與 `expected_counts.json`；
+  不一致時 rc 非 0 並列出欄位。「`spawn` 只在反向」由 `expected_edges.json`（宣告來源僅有終點的 `spawn` 邊）推導，
+  「`spawn` `multiSource`」取 `expected_counts.json` 的 `multi_source_by_edge_type`，兩列皆已納入核對。
+  重凍結後須同步更新本檔上述各處，否則 `compute` 報紅。
 - `freeze` 預設語料路徑：本專案為 repo 根，flutter_balance 為 `~/project/flutter_balance`（`--fb-root` 可改）。
 - 不 import、不執行、不讀取任何 Dart 實作或其產物。Corpus 判型借用同為 Python 的
   `tool/spec006_reference.py`（`SchemaTypeTable.match_id`、`classify_text`、`scan_markdown_files`）。
