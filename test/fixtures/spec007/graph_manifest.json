@@ -7,30 +7,30 @@
   "id_pattern_dialect": "python-re",
   "corpus_commits": {
    "graph_project_docs_manager": {
-    "commit": "f60cc1292310bd5aa8bfb9df1b7a21f97a416b49",
+    "commit": "8839f8c600afc9f4f50540dfb71aac7158ed8366",
     "dirty_docs_entries": 0
    },
    "flutter_balance": {
-    "commit": "bf0baba26637f692f6eff31cda8cbea26279cd19"
+    "commit": "9b31eae5bb7ad3d4a71c5b714ddee9e300ff40bd"
    }
   },
   "corpus_snapshots": {
    "graph_project_docs_manager": {
-    "docs_md_files": 2622,
-    "signature_sha256": "231c1be630789ec758002ac566dcf39e84f90de22603ebf8460adadc4eaed5d2"
+    "docs_md_files": 2623,
+    "signature_sha256": "79aaf19ea939a257859a8875de90ebe98c93c53e0dfa77d8bcc8e1a1e4fe039e"
    },
    "flutter_balance": {
-    "docs_md_files": 1896,
-    "signature_sha256": "7e66d5597159ce2e6df2410e675917bd11cb2897fa7e5df7e016eeaec21b4554"
+    "docs_md_files": 1897,
+    "signature_sha256": "f16a87ee5f50745e5246acf10665a55537738715ef368b9e889c9f5605d1f47e"
    }
   },
   "row_counts_real": {
-   "flutter_balance": 1863,
-   "graph_project_docs_manager": 2586
+   "flutter_balance": 1864,
+   "graph_project_docs_manager": 2587
   },
   "row_counts_with_synthetic": {
-   "flutter_balance": 1863,
-   "graph_project_docs_manager": 2594
+   "flutter_balance": 1864,
+   "graph_project_docs_manager": 2595
   },
   "covers_rows": {
    "related_one_side": {
@@ -54,7 +54,7 @@
     "synthetic": 0
    },
    "dangling": {
-    "real": 5,
+    "real": 4,
     "synthetic": 0
    },
    "malformed_pattern": {
@@ -38701,6 +38701,25 @@
   },
   {
    "corpus": "flutter_balance",
+   "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W1-007.md",
+   "id": "0.3.1-W1-007",
+   "node_type": "Ticket",
+   "status": "pending",
+   "title": "驗證 framework-update-adaptation skill 於本專案下一次 sync-pull 的首次實用",
+   "edge_fields": {
+    "blockedBy": [],
+    "children": [],
+    "discovered_during": null,
+    "parent_id": null,
+    "relatedTo": [],
+    "source_ticket": null,
+    "spawned_tickets": []
+   },
+   "synthetic": false,
+   "covers": []
+  },
+  {
+   "corpus": "flutter_balance",
    "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W3-066.md",
    "id": "0.3.1-W3-066",
    "node_type": "Ticket",
@@ -53561,7 +53580,7 @@
    "edge_fields": {
     "blockedBy": [],
     "children": [],
-    "closed_by": "0.1.0-W3-417",
+    "closed_by": "0.3.1-W3-417",
     "discovered_during": null,
     "parent_id": "0.1.0-W3-437",
     "relatedTo": [],
@@ -53570,7 +53589,6 @@
    },
    "synthetic": false,
    "covers": [
-    "dangling",
     "spawn_reverse_only"
    ]
   },
@@ -93350,7 +93368,7 @@
    "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-175.md",
    "id": "0.6.0-W1-175",
    "node_type": "Ticket",
-   "status": "pending",
+   "status": "in_progress",
    "title": "分析 Layout bundle 公開面與 SPEC-001 泳道布局規則無任何 FR 承接的追溯缺口",
    "edge_fields": {
     "blockedBy": [],
@@ -93388,7 +93406,7 @@
    "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-177.md",
    "id": "0.6.0-W1-177",
    "node_type": "Ticket",
-   "status": "pending",
+   "status": "in_progress",
    "title": "查明 0.1.0-W3-437.2 的 closed_by 斷邊值 0.1.0-W3-417",
    "edge_fields": {
     "blockedBy": [],
@@ -93426,7 +93444,7 @@
    "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-179.md",
    "id": "0.6.0-W1-179",
    "node_type": "Ticket",
-   "status": "in_progress",
+   "status": "completed",
    "title": "修正 5 張票的 closed_by 自我引用",
    "edge_fields": {
     "blockedBy": [],
@@ -93447,7 +93465,7 @@
    "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-180.md",
    "id": "0.6.0-W1-180",
    "node_type": "Ticket",
-   "status": "in_progress",
+   "status": "completed",
    "title": "實作 框架更新適應 skill（framework issue #127 提案）",
    "edge_fields": {
     "blockedBy": [],
@@ -93456,7 +93474,9 @@
     "parent_id": null,
     "relatedTo": [],
     "source_ticket": null,
-    "spawned_tickets": []
+    "spawned_tickets": [
+     "0.6.0-W1-182"
+    ]
    },
    "synthetic": false,
    "covers": []
@@ -93475,6 +93495,25 @@
     "parent_id": null,
     "relatedTo": [],
     "source_ticket": "0.6.0-W1-179",
+    "spawned_tickets": []
+   },
+   "synthetic": false,
+   "covers": []
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-182.md",
+   "id": "0.6.0-W1-182",
+   "node_type": "Ticket",
+   "status": "pending",
+   "title": "append-log 的 H2 降級誤改程式碼區塊內的標題行",
+   "edge_fields": {
+    "blockedBy": [],
+    "children": [],
+    "discovered_during": null,
+    "parent_id": null,
+    "relatedTo": [],
+    "source_ticket": "0.6.0-W1-180",
     "spawned_tickets": []
    },
    "synthetic": false,

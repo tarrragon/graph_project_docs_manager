@@ -6,7 +6,7 @@
  },
  "corpora": {
   "flutter_balance": {
-   "node_count": 1863,
+   "node_count": 1864,
    "duplicate_id_count": 0,
    "duplicate_id_node_count": 0,
    "edge_count": 2498,
@@ -53,7 +53,7 @@
    "closed_by_reference_count": 95,
    "closed_by_field_value_total": 350,
    "real_only": {
-    "node_count": 1863,
+    "node_count": 1864,
     "duplicate_id_count": 0,
     "duplicate_id_node_count": 0,
     "edge_count": 2498,
@@ -102,101 +102,101 @@
    }
   },
   "graph_project_docs_manager": {
-   "node_count": 2592,
+   "node_count": 2593,
    "duplicate_id_count": 1,
    "duplicate_id_node_count": 2,
-   "edge_count": 3809,
+   "edge_count": 3811,
    "edges_by_type": {
     "association": 285,
     "blocking": 802,
     "blood": 832,
     "bundle_dependency": 9,
-    "closed_by": 113,
+    "closed_by": 114,
     "discovery": 165,
     "domain_coverage": 8,
     "domain_dependency": 21,
     "proposal_association": 6,
     "provenance": 31,
-    "spawn": 1332,
+    "spawn": 1333,
     "spec_association": 51,
     "uc_association": 54,
     "uc_ticket_refs": 100
    },
    "declaration_shapes": {
     "directed": {
-     "from_only": 1332,
+     "from_only": 1333,
      "to_only": 78,
-     "both": 2114
+     "both": 2115
     },
     "undirected": {
      "one_end": 274,
      "both": 11
     }
    },
-   "reference_value_total": 5946,
-   "resolved_count": 5934,
-   "dangling_count": 5,
+   "reference_value_total": 5948,
+   "resolved_count": 5937,
+   "dangling_count": 4,
    "malformed_count": 7,
    "reason_counts": {
     "invalidShape": 5,
     "patternMismatch": 1,
     "selfReference": 1,
     "targetDuplicated": 1,
-    "targetMissing": 4
+    "targetMissing": 3
    },
    "multi_source_count": 9,
    "multi_source_by_edge_type": {
     "spawn": 9
    },
-   "graph_defect_count": 22,
+   "graph_defect_count": 21,
    "closed_by_skipped_count": 321,
    "closed_by_reference_count": 114,
    "closed_by_field_value_total": 435,
    "real_only": {
-    "node_count": 2586,
+    "node_count": 2587,
     "duplicate_id_count": 0,
     "duplicate_id_node_count": 0,
-    "edge_count": 3806,
+    "edge_count": 3808,
     "edges_by_type": {
      "association": 285,
      "blocking": 800,
      "blood": 832,
      "bundle_dependency": 9,
-     "closed_by": 113,
+     "closed_by": 114,
      "discovery": 165,
      "domain_coverage": 8,
      "domain_dependency": 21,
      "proposal_association": 6,
      "provenance": 30,
-     "spawn": 1332,
+     "spawn": 1333,
      "spec_association": 51,
      "uc_association": 54,
      "uc_ticket_refs": 100
     },
     "declaration_shapes": {
      "directed": {
-      "from_only": 1330,
+      "from_only": 1331,
       "to_only": 77,
-      "both": 2114
+      "both": 2115
      },
      "undirected": {
       "one_end": 274,
       "both": 11
      }
     },
-    "reference_value_total": 5936,
-    "resolved_count": 5931,
-    "dangling_count": 4,
+    "reference_value_total": 5938,
+    "resolved_count": 5934,
+    "dangling_count": 3,
     "malformed_count": 1,
     "reason_counts": {
      "patternMismatch": 1,
-     "targetMissing": 4
+     "targetMissing": 3
     },
     "multi_source_count": 9,
     "multi_source_by_edge_type": {
      "spawn": 9
     },
-    "graph_defect_count": 14,
+    "graph_defect_count": 13,
     "closed_by_skipped_count": 321,
     "closed_by_reference_count": 114,
     "closed_by_field_value_total": 435
