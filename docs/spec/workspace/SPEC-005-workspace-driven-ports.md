@@ -5,7 +5,7 @@ status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
 updated: "2026-11-05"
-version: "1.7"
+version: "1.8"
 owner: star-anise-system-designer
 has_functional_requirements: false   # 本規格只記 workspace driven port 的專案事實，不含 FR（0.5.0-W1-159 判定）
 
@@ -208,8 +208,8 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 ### 2.4 最近專案清單持久化（`workspace.recentProjects`）
 
-來源：`0.2.0-W1-023` S-36 定案方案 A。本節是新接縫的規格，實作尚未存在，下列表格的
-「契約」欄意同 §2.2 `remove` 列。消費方為切換器（SPEC-003 §3.7，承接票 `0.2.1-W1-003`）。
+來源：`0.2.0-W1-023` S-36 定案方案 A。本節的接縫已實作（`WorkspaceRepository` 的 `loadRecentProjects`／`addRecentProject`／
+`saveRecentProjectCounts`），下列表格的 Y／N 依實作判定（2026-11-05 讀碼）。消費方為切換器（SPEC-003 §3.7，承接票 `0.2.1-W1-003`）。
 
 **載體**：沿用 §2.2 的 `WorkspacePreferencesPort`／`WorkspacePreferencesHandle`，不新增 port。
 清單持久化只是同一個偏好設定儲存上的另一個 key，受理時刻因此與 §2.2 相同，不重複定義。
@@ -252,12 +252,12 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 | 時刻 | 承擔者 | 呼叫端投影 | 日誌投影 |
 |------|--------|-----------|---------|
-| 呼叫發出（讀／寫） | 呼叫端 `loadRecentProjects()`／`addRecentProject()` | 契約 | 契約（各一筆入口日誌） |
-| 受理 | `WorkspacePreferencesPort.open()` 的回傳型別（同 §2.2） | 契約（`open()` 拋例外 → 讀回空清單、寫回 false） | 契約（level 900 一筆） |
-| 結果（讀，key 不存在） | `readString` 回 null | 契約（空清單） | 契約（一筆，非錯誤級） |
-| 結果（讀，JSON 解析失敗或元素缺欄／型別不符） | 呼叫端解析 | 契約（整份視為損壞，回空清單；不部分採用） | 契約（level 900，含原始例外或首個不符元素索引） |
-| 結果（讀，成功） | `readString` 回傳值經解析 | 契約（排序後清單） | 契約（一筆，含項數） |
-| 結果（寫） | `writeString` 的 `bool` 回傳與例外 | 契約（成功／回 false／拋例外三分支，後兩者回 false） | 契約（成功一筆；失敗兩分支各一筆 level 900） |
+| 呼叫發出（讀／寫） | 呼叫端 `loadRecentProjects()`／`addRecentProject()` | Y | Y（各一筆入口日誌） |
+| 受理 | `WorkspacePreferencesPort.open()` 的回傳型別（同 §2.2） | Y（`open()` 拋例外 → 讀回空清單、寫回 false） | Y（level 900 一筆） |
+| 結果（讀，key 不存在） | `readString` 回 null | Y（空清單） | Y（一筆，非錯誤級） |
+| 結果（讀，JSON 解析失敗或元素缺欄／型別不符） | 呼叫端解析 | Y（整份視為損壞，回空清單；不部分採用） | N（有 level 900 一筆，但不含原始例外與首個不符元素索引） |
+| 結果（讀，成功） | `readString` 回傳值經解析 | Y（排序後清單） | Y（一筆，含項數） |
+| 結果（寫） | `writeString` 的 `bool` 回傳與例外 | Y（成功／回 false／拋例外三分支，後兩者回 false） | Y（成功一筆；失敗兩分支各一筆 level 900） |
 
 **計數快照**（`0.6.0-W1-018` 用戶裁決；`0.6.0-W1-018.1` 定案）：切換器各項的摘要（節點數 · 票數）與健康徽章
 （問題數）一律讀本欄，不讀即時掃描結果。
@@ -278,11 +278,11 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 | 時刻 | 承擔者 | 呼叫端投影 | 日誌投影 |
 |------|--------|-----------|---------|
-| 呼叫發出 | 呼叫端 `saveRecentProjectCounts()` | 契約 | 契約（入口一筆，含 path 與三個計數） |
-| 受理 | `WorkspacePreferencesPort.open()`（同 §2.2） | 契約（拋例外 → 回 false） | 契約（level 900 一筆） |
-| 結果（清單無同 path 項） | 呼叫端 | 契約（回 false，不寫入） | 契約（一筆，非錯誤級） |
-| 結果（讀到損壞清單） | 呼叫端解析 | 契約（回 false，不寫入；不以空清單為基底，因本方法不負責插入項） | 契約（level 900 一筆） |
-| 結果（寫） | `writeString` 的 `bool` 回傳與例外 | 契約（成功／回 false／拋例外，後兩者回 false） | 契約（成功一筆；失敗兩分支各一筆 level 900） |
+| 呼叫發出 | 呼叫端 `saveRecentProjectCounts()` | Y | Y（入口一筆，含 path 與三個計數） |
+| 受理 | `WorkspacePreferencesPort.open()`（同 §2.2） | Y（拋例外 → 回 false） | Y（level 900 一筆） |
+| 結果（清單無同 path 項） | 呼叫端 | Y（回 false，不寫入） | Y（一筆，非錯誤級） |
+| 結果（讀到損壞清單） | 呼叫端解析 | Y（回 false，不寫入；不以空清單為基底，因本方法不負責插入項） | Y（level 900 一筆） |
+| 結果（寫） | `writeString` 的 `bool` 回傳與例外 | Y（成功／回 false／拋例外，後兩者回 false） | Y（成功一筆；失敗兩分支各一筆 level 900） |
 
 寫入失敗不呈現於畫面：快照是輔助資訊，失敗不影響本輪結果的各畫面，下一輪完成時重寫；
 失敗只進日誌。呼叫端不重試。
@@ -296,7 +296,7 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 ### 2.5 最近專案項可用性探測
 
-來源：`0.6.0-W1-019` 用戶裁決。本節是新接縫的規格，實作尚未存在，「契約」欄意同 §2.4。
+來源：`0.6.0-W1-019` 用戶裁決。本節的接縫已實作（`WorkspaceRepository.probeRecentProject`），下列表格的 Y／N 依實作判定（2026-11-05 讀碼）。
 消費方為切換器展開時的逐項探測（SPEC-003 §3.7〈生命週期〉「展開時」列）。
 
 **載體**：沿用 §2.3 `WorkspaceDirectoryProbePort`，不新增 port。判定邏輯沿用
@@ -316,10 +316,10 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 | 時刻 | 承擔者 | 呼叫端投影 | 日誌投影 |
 |------|--------|-----------|---------|
-| 呼叫發出 | 呼叫端 `_inspect()` | 契約 | 既有（§2.3 兩列），不另加入口日誌 |
+| 呼叫發出 | 呼叫端 `_inspect()` | Y | 既有（§2.3 兩列），不另加入口日誌 |
 | 受理 | 無（理由同 §2.3） | N/A | N/A |
-| 結果（可用／不可用） | `_inspect()` 回傳值 | 契約（`RecentProjectAvailable`／`RecentProjectUnavailable`） | 沿用 §2.3 各結果列，含缺口 G-1 |
-| 結果（逾時） | `probeRecentProject` 的計時 | 契約（`RecentProjectProbeTimedOut`） | 契約（level 900 一筆，含 path 與逾時值；事件 `WorkspaceLogEvent.probeRecentProjectTimedOut`） |
+| 結果（可用／不可用） | `_inspect()` 回傳值 | Y（`RecentProjectAvailable`／`RecentProjectUnavailable`） | 沿用 §2.3 各結果列，含缺口 G-1 |
+| 結果（逾時） | `probeRecentProject` 的計時 | Y（`RecentProjectProbeTimedOut`） | Y（level 900 一筆，含 path 與逾時值；事件 `WorkspaceLogEvent.probeRecentProjectTimedOut`） |
 
 **畫面上的原因文字**：`RecentProjectProbeTimedOut` 以
 `projectUnavailableReasonLabel(probeTimeoutReason)` 呈現；`RecentProjectUnavailable` 以
@@ -339,8 +339,8 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 | 編號 | 缺口 | 據實描述 | 承接票 |
 |------|------|---------|--------|
-| G-1 | `_DefaultWorkspaceDirectoryProbePort` **全無日誌** | 該 adapter 的 `exists` 與 `readFirstEntry` 皆為單行直呼 `dart:io`，類別內無任何 `developer.log` 呼叫（實讀 `lib/workspace/workspace_repository.dart` 確認）。`0.1.0-W3-139` 記為「`exists()=false` 日誌缺失」，實際範圍比該描述更廣——缺的不只是呼叫端 `_inspect()` 中 false 分支那一筆，adapter 端本身零日誌。後果：日誌消費者無法區分「探測過但資料夾不存在」與「根本沒探測」 | `0.1.0-W3-135` |
-| G-2 | 日誌投影集中於呼叫端 sink，adapter 端零日誌 | 全檔僅 `_defaultLogSink`（§1 第三形態的自撰預設實作）一處呼叫 `developer.log`；`_DefaultWorkspacePreferencesPort`、`_DefaultWorkspacePreferencesHandle`、`_DefaultWorkspaceDirectoryProbePort` 三個 adapter 內部皆無日誌。目前 Preferences 兩個接縫的日誌覆蓋完整，是因為呼叫端在 port 呼叫前後各記一筆；此覆蓋依附於呼叫端而非 adapter，替換 adapter 實作時日誌不隨之移動 | 未指派——形態層面的約定歸 `0.1.0-W3-146`，日誌位置的修補歸 `0.1.0-W3-135` |
+| G-1 | `_DefaultWorkspaceDirectoryProbePort` **全無日誌** | 該 adapter 的 `exists` 與 `readFirstEntry` 皆為單行直呼 `dart:io`，類別內無任何 `developer.log` 呼叫（實讀 `lib/workspace/workspace_repository.dart` 確認）。`0.1.0-W3-139` 記為「`exists()=false` 日誌缺失」，實際範圍比該描述更廣——缺的不只是呼叫端 `_inspect()` 中 false 分支那一筆，adapter 端本身零日誌。後果：日誌消費者無法區分「探測過但資料夾不存在」與「根本沒探測」 | `0.6.0-W1-192`（2026-11-05 讀碼確認仍未修；原承接票 `0.1.0-W3-135` 已不在票庫） |
+| G-2 | 日誌投影集中於呼叫端 sink，adapter 端零日誌 | 全檔僅 `_defaultLogSink`（§1 第三形態的自撰預設實作）一處呼叫 `developer.log`；`_DefaultWorkspacePreferencesPort`、`_DefaultWorkspacePreferencesHandle`、`_DefaultWorkspaceDirectoryProbePort` 三個 adapter 內部皆無日誌。目前 Preferences 兩個接縫的日誌覆蓋完整，是因為呼叫端在 port 呼叫前後各記一筆；此覆蓋依附於呼叫端而非 adapter，替換 adapter 實作時日誌不隨之移動 | 形態層面的約定歸形態約定補記段（§一）；日誌位置的修補歸 `0.6.0-W1-192`（2026-11-05 讀碼確認仍未修） |
 
 缺口的修補不在本規格範圍；本規格的職責是使缺口有可否證的書面對象。
 
@@ -369,6 +369,7 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.8 | 2026-11-05 | `0.6.0-W1-191.2`（依 `0.6.0-W1-191` 時效型註記盤點，讀碼查證）：§2.4、§2.5 原寫「實作尚未存在」，實作已落地，改為依實作判定的 Y／N，共 14 列；唯一 N 為 §2.4 讀取損壞的日誌（實作有 level 900 一筆，但不含原始例外與首個不符元素索引）。§2.2 `remove` 仍未實作，維持「契約」。§三 G-1、G-2 確認仍未修，原承接票 `0.1.0-W3-135` 已不在票庫，承接改為 `0.6.0-W1-192` |
 | 1.7 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：§一與 §1.1 原以票號 `0.1.0-W3-146` 指稱接縫形態約定，改為指稱 `docs/tech-decisions.md` 補記段「2026-09-09：driven port 接縫形態約定（W3-133／W3-146）」（下稱「形態約定補記段」），內文各處「146」同步改寫；不改結論 |
 | 1.6 | 2026-11-04 | §2.4〈計數快照〉寫入時機補一句：`addRecentProject` 成功後，若最近完成輪次的 `workspacePath` 與該項相同，立即補寫（首次開啟的專案首輪先於加入清單完成時不再落空）；不改 `addRecentProject` 的「成功載入後」時機。來源 `0.6.0-W1-145` |
 | 1.5 | 2026-11-04 | 新增 §2.5 最近專案項可用性探測：每項逾時 2 秒、沿用 `_inspect()` 判定、`RecentProjectAvailability` 三型與 `probeRecentProject`、回饋點表（逾時 level 900 日誌）、原因文字來源、五項設計點與理由；§2.4 寫入時機段改引 §2.5。來源 `0.6.0-W1-019` 用戶裁決，承接票 `0.6.0-W1-019.1` |

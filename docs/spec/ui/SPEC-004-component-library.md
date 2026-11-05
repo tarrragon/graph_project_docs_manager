@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-05"
-version: "1.125"
+version: "1.126"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.125（1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.126（1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -1358,7 +1358,7 @@ EVT-CORPUS-004 項目說明：
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
-| disabled | 依 §4.0.1；`disabledReason` 以 `AppText.caption` 顯示於 label 右側（同列常駐文字，SPEC-003 §2.2）；`reasonShownNearby` 為 `true` 時不顯示 caption、不加間距（原因由同區常駐文案承載，見下方〈停用原因由同區文案承載〉） | 無 | `enabled` 為 `false`（此時 `disabledReason` 須為非空字串，或 `reasonShownNearby` 為 `true`） | 呼叫端改 `enabled` → enabled | 資料態：停用場景兩個——(1) 4.24 `LoadingState` 取消鈕，呼叫端 provider 的「取消進行中」欄位（SPEC-003 §2.5 C2）；(2) §3.6「圖不可用」列的重新掃描鈕 `action-domain-rescan`，`scanRoundProvider` 為 `ScanRoundRunning` 時停用（`0.5.0-W1-486.2`）。兩者皆以 `reasonShownNearby: true` 宣告原因由同區文案承載（取消鈕：鈕文案 `cancelInProgressAction`；重新掃描鈕：列內 `domainGraphUnavailableScanning`）。取消進行中的欄位：破洞掃描為 `GapReportScanning.isCancelling`（`lib/screens/gap_report/gap_report_models.dart`，由 `gapReportProvider` 持有，`lib/screens/gap_report/gap_report_provider.dart`）；Domain 視圖與 Ticket 清單的載入 provider 尚未建立，欄位名由對應畫面票補填本格 | 本地即時（C2：按下取消後 `Motion.feedback` 內即轉 `false`，不等資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| disabled | 依 §4.0.1；`disabledReason` 以 `AppText.caption` 顯示於 label 右側（同列常駐文字，SPEC-003 §2.2）；`reasonShownNearby` 為 `true` 時不顯示 caption、不加間距（原因由同區常駐文案承載，見下方〈停用原因由同區文案承載〉） | 無 | `enabled` 為 `false`（此時 `disabledReason` 須為非空字串，或 `reasonShownNearby` 為 `true`） | 呼叫端改 `enabled` → enabled | 資料態：停用場景兩個——(1) 4.24 `LoadingState` 取消鈕，呼叫端 provider 的「取消進行中」欄位（SPEC-003 §2.5 C2）；(2) §3.6「圖不可用」列的重新掃描鈕 `action-domain-rescan`，`scanRoundProvider` 為 `ScanRoundRunning` 時停用（`0.5.0-W1-486.2`）。兩者皆以 `reasonShownNearby: true` 宣告原因由同區文案承載（取消鈕：鈕文案 `cancelInProgressAction`；重新掃描鈕：列內 `domainGraphUnavailableScanning`）。取消進行中的欄位：破洞掃描為 `GapReportScanning.isCancelling`（`lib/screens/gap_report/gap_report_models.dart`，由 `gapReportProvider` 持有，`lib/screens/gap_report/gap_report_provider.dart`）；Domain 視圖為 `domainViewStateProvider` 的 `DomainLoading.isCancelling`（`lib/app/domain_view_providers.dart`；取消經 `domainViewLoaderProvider` 的 `cancelLoading()`）；Ticket 清單無載入態（`TicketListState` 只有 `TicketsProjectUnready`／`TicketsEmpty`／`TicketsReady`），不渲染本列 | 本地即時（C2：按下取消後 `Motion.feedback` 內即轉 `false`，不等資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
 
 無 loading 狀態：等待指示為畫面級（SPEC-003 §2.2），按鈕內不放 spinner。取消鈕按下後的「取消中」由 4.24 `LoadingState` 以 `enabled=false` + label 換文案承載，不是本元件的狀態。
 
@@ -1627,7 +1627,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 依變體 | 點選 | 建構（存在即代表有問題） | 由呼叫端移除（問題消失） | 資料態：存在與否由呼叫端依所在畫面的損壞／缺口資料決定——追溯視圖（`gap`）為 `traceabilityStateProvider`（`lib/screens/trace/trace_providers.dart`）；Ticket 清單與節點詳情（`damagedDetail` / `damagedEdge`）的 provider 尚未建立，欄位名由對應畫面票補填本格。元件本身不 watch，只接收 `count` / `explanation` / `child` 傳值（§2） | 等確認才顯示（損壞與缺口為解析完成後的資料態，載入中不渲染本元件；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 依變體 | 點選 | 建構（存在即代表有問題） | 由呼叫端移除（問題消失） | 資料態：存在與否由呼叫端依所在畫面的損壞／缺口資料決定——追溯視圖（`gap`）為 `traceabilityStateProvider`（`lib/screens/trace/trace_providers.dart`）；Ticket 清單為 `ticketListStateProvider` 的 `TicketsReady.corruptedCount` 大於 0（`lib/screens/ticket_list/ticket_list_providers.dart`）；節點詳情的 `damagedDetail` / `damagedEdge` 隨 SPEC-001 §6「部分損壞」在 0.x 不可達而不渲染（恢復條件見 SPEC-001 §6，`1.0.0-W3-656`）。元件本身不 watch，只接收 `count` / `explanation` / `child` 傳值（§2） | 等確認才顯示（損壞與缺口為解析完成後的資料態，載入中不渲染本元件；§2 樂觀更新政策：0.1 無樂觀操作） |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
@@ -2144,7 +2144,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| segment selected | 段底 `AppColors.surfaceBase`、字 `accentStrong` 半粗；軌道底 `surfaceSegmentTrack` | 點選（無狀態改變） | `selectedIndex` 等於本段 | 點選他段 → unselected | 資料態：所在畫面的雙模式 provider——Domain 視圖（矩陣／泳道）與 Ticket 清單（列表／主題）的模式 provider 尚未建立（`lib/screens/` 無對應目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `selectedIndex` 傳值，元件不 watch（§2 頁面狀態保留：雙模式選擇存於 provider） | 本地即時（模式切換為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| segment selected | 段底 `AppColors.surfaceBase`、字 `accentStrong` 半粗；軌道底 `surfaceSegmentTrack` | 點選（無狀態改變） | `selectedIndex` 等於本段 | 點選他段 → unselected | 資料態：所在畫面的雙模式 provider——Domain 視圖為 `domainViewStateProvider` 的 `DomainReady.mode`（`lib/app/domain_view_providers.dart`），Ticket 清單為 `ticketListStateProvider` 的 `TicketsReady.mode`（`lib/screens/ticket_list/ticket_list_providers.dart`）；頁面層 watch 後以 `selectedIndex` 傳值，元件不 watch（§2 頁面狀態保留：雙模式選擇存於 provider） | 本地即時（模式切換為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
 | segment unselected | 段透明、字 `textPrimary` | 點選 | 非選取段 | 點選本段 → selected | 資料態：同上 | 本地即時 |
 | hover（僅指標形態，每段） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed（每段） | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
@@ -2379,7 +2379,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| empty | 搜尋圖示（`textDisabled`，純裝飾）+ placeholder（`searchPlaceholder`，`textSecondary`）；無清除鈕 | 輸入 | 值為空字串 | 輸入 → filled | 資料態：受控 `value` 來自 Ticket 清單畫面的搜尋詞 provider——該畫面的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `value` 傳值，元件不 watch（§2 頁面狀態保留：搜尋詞存於 provider） | 本地即時（輸入即回顯，不等資料層；過濾結果的清單筆數更新由畫面於 `Motion.searchDebounce` 後承載，非本元件狀態；§2 樂觀更新政策：0.1 無樂觀操作） |
+| empty | 搜尋圖示（`textDisabled`，純裝飾）+ placeholder（`searchPlaceholder`，`textSecondary`）；無清除鈕 | 輸入 | 值為空字串 | 輸入 → filled | 資料態：受控 `value` 來自 Ticket 清單畫面的搜尋詞 provider——顯示值取 `ticketSearchInputProvider`（為 `null` 時退回 `ticketListStateProvider` 的 `TicketsReady.searchQuery`），輸入經 `ticketSearchDebouncerProvider` 防抖後才寫入 `searchQuery`（三者皆在 `lib/screens/ticket_list/ticket_list_providers.dart`）；頁面層 watch 後以 `value` 傳值，元件不 watch（§2 頁面狀態保留：搜尋詞存於 provider） | 本地即時（輸入即回顯，不等資料層；過濾結果的清單筆數更新由畫面於 `Motion.searchDebounce` 後承載，非本元件狀態；§2 樂觀更新政策：0.1 無樂觀操作） |
 | filled | 搜尋圖示 + 值 + 清除鈕（內部 affordance，朗讀 `searchClearAction`） | 輸入、清除 | 值非空 | 清除或刪除至空 → empty | 資料態：同上 | 本地即時 |
 | hover（僅指標形態） | 依 §4.0.1（`TextField` 的 `InputDecoration` hover 底色取 `ThemeData` 預設；清除鈕為 Material `InkWell` 內建 overlay） | 輸入 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 不適用：`TextField` 無 pressed 態；清除鈕的 pressed 依 §4.0.1（Material 內建，由清除鈕的 `InkWell` 承載） | 清除 | 按下清除鈕 | 放開 | 互動瞬態 | 本地即時 |
@@ -2504,7 +2504,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default（全部） | 「{label}：{filterAllOption}」+ 向下箭頭；底 `surfaceBase`、框 `border` | 點選 → open | `selected` 為 `null` | 選取非全部 → active | 資料態：受控 `selected` 來自 Ticket 清單畫面的篩選 provider（每個 `<key>` 一個值）——該畫面的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `selected` 傳值，元件不 watch（§2 頁面狀態保留：篩選值存於 provider） | 本地即時（篩選為本地已載入資料的子集運算，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default（全部） | 「{label}：{filterAllOption}」+ 向下箭頭；底 `surfaceBase`、框 `border` | 點選 → open | `selected` 為 `null` | 選取非全部 → active | 資料態：受控 `selected` 來自 Ticket 清單畫面的篩選 provider（每個 `<key>` 一個值）——`ticketListStateProvider` 的 `TicketsReady.statusFilter`／`priorityFilter`（`lib/screens/ticket_list/ticket_list_providers.dart`）；頁面層 watch 後以 `selected` 傳值，元件不 watch（§2 頁面狀態保留：篩選值存於 provider） | 本地即時（篩選為本地已載入資料的子集運算，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
 | active（有篩選值） | 「{label}：{value}」；框 `accent`（SPEC-003「該篩選呈選中態」的視覺落點） | 點選 → open | `selected` 非 `null` | 選取全部 → default | 資料態：同上 | 本地即時 |
 | open | 選單以覆蓋層展開（F1、F4）；觸發器選取態不受影響，`open` 是疊加於 default／active 之上的修飾非第三個互斥狀態（F2） | 走選項（↑↓Home/End）、選取（Enter/Space/點擊）、Esc、點外部、再點觸發器、Tab/Shift+Tab | 點選觸發器（收合時）或聚焦時 Enter／Space／↓ | 選取且值改變 → 收合回 active／default；選取值相同、Esc、點外部、再點觸發器、Tab 離開 → 收合回原態（`selected` 不變） | 互動瞬態（選單開合為元件內部 overlay 狀態，不存於 provider：選單展開期間不會發生導覽切換或專案切換（F7），故切換導覽項時選單必為收合態，不需依 §2 頁面狀態保留） | 本地即時 |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
@@ -2652,7 +2652,7 @@ EVT-CORPUS-004 項目說明：
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
 | default（`static` / `twoLine`） | label | 無 | 建構 | 不適用：純顯示變體無狀態集 | —（建構即渲染；`label` / `secondLine` 由呼叫端傳值，元件不 watch 任何 provider，§2） | 本地即時 |
-| unsorted（`sortable`） | label，無指示 | 點選 | `order` 為 `none` | 點選 → 呼叫 `onSort`；下一個 `order`（`asc`）由呼叫端依 SPEC-003 §3.4 S2 決定 | 資料態：受控 `order` 來自 Ticket 清單畫面的排序 provider（單欄排序，S1：`order` 非 `none` 的欄至多一個）——該畫面的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `order` 傳值，元件不 watch（§2 頁面狀態保留：排序存於 provider） | 本地即時（排序為本地已載入資料的重排，列表直接重建，SPEC-003 §3.4 動畫提示；§2 樂觀更新政策：0.1 無樂觀操作） |
+| unsorted（`sortable`） | label，無指示 | 點選 | `order` 為 `none` | 點選 → 呼叫 `onSort`；下一個 `order`（`asc`）由呼叫端依 SPEC-003 §3.4 S2 決定 | 資料態：受控 `order` 來自 Ticket 清單畫面的排序 provider（單欄排序，S1：`order` 非 `none` 的欄至多一個）——`ticketListStateProvider` 的 `TicketsReady.sortKey` 與 `sortOrder`，經 `orderFor(key)` 換成 `order`（`lib/screens/ticket_list/ticket_list_providers.dart`）；頁面層 watch 後以 `order` 傳值，元件不 watch（§2 頁面狀態保留：排序存於 provider） | 本地即時（排序為本地已載入資料的重排，列表直接重建，SPEC-003 §3.4 動畫提示；§2 樂觀更新政策：0.1 無樂觀操作） |
 | asc / desc（`sortable`） | label + 向上／向下指示（`AppIcon.sm`，`accentStrong`） | 點選 | `order` 為 `asc` / `desc` | 點選 → 呼叫 `onSort`；下一個 `order`（`desc` / `none`）由呼叫端依 SPEC-003 §3.4 S2 決定 | 資料態：同上 | 本地即時 |
 | hover（僅指標形態，`sortable`） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed（`sortable`） | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
@@ -2782,7 +2782,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 透明底 + 符號 | 點選 | 未選、所在列未高亮 | 點選 → selected；所在列被選 → rowSelected | 資料態：Domain 視圖的選取 provider（選取格 rowId／colId 與選取列 domainId 兩值）——該畫面的 provider 尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格；`MatrixGrid`（資料視圖容器，`ConsumerWidget`，§2 容器例外）watch 後以 `isSelected` / `isRowSelected` 傳值，元件不 watch（§2 頁面狀態保留：選取格與選取列存於 provider，SPEC-003 §3.1 生命週期） | 本地即時（選取為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 透明底 + 符號 | 點選 | 未選、所在列未高亮 | 點選 → selected；所在列被選 → rowSelected | 資料態：Domain 視圖的選取 provider（選取格 rowId／colId 與選取列 domainId 兩值）——`domainViewStateProvider` 的 `DomainReady.selectedCell` 與 `selectedDomainId`（`lib/app/domain_view_providers.dart`），畫面層算出 `isSelected`／`isRowSelected` 後傳入；`MatrixGrid`（資料視圖容器，`ConsumerWidget`，§2 容器例外）watch 後以 `isSelected` / `isRowSelected` 傳值，元件不 watch（§2 頁面狀態保留：選取格與選取列存於 provider，SPEC-003 §3.1 生命週期） | 本地即時（選取為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
 | rowSelected | 底 `AppColors.surfaceIconTint`（列高亮，由 `MatrixGrid` 對整列套用）+ 符號 | 點選 | 所在 domain 列為選取列（`action-domain-select-<domainId>` 或選格連動） | 他列被選 → default | 資料態：同上（選取列 domainId 等於本格 rowId） | 本地即時 |
 | selected | 底 `AppColors.accent`、符號 `AppColors.surfaceBase`（成對設計，對比通過 §4.0.2；與 rowSelected 可區辨） | 點選（無狀態改變）、Esc 清除 | 單擊本格（SPEC-003 §3.1「選格」） | 點其他格 → default（換選）；Esc / `action-domain-cell-clear` → rowSelected 或 default；點另一列列首 → default（選格清除） | 資料態：同上（選取格等於本格 rowId／colId） | 本地即時 |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
@@ -3126,7 +3126,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| collapsed | 向右箭頭 `AppIcon.sm`（`textDisabled`，純裝飾箭頭，§4.0.2 表 2） | 點選 | `isExpanded` 為 `false` 且有子層 | 點選 → expanded | 資料態：受控 `isExpanded` 來自所在畫面的展開集合——追溯視圖為 `expandedTraceNodesProvider`（`StateProvider<Set<String>>`，`lib/screens/trace/trace_providers.dart`）是否含本節點 id；破洞報告分節為頁面 `State`（`_isExpanded`，`lib/screens/gap_report/gap_report_screen.dart`；§2 頁面狀態保留允許的第二種載體，非 provider）；Ticket 清單主題節的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格。容器（4.39 `Tree` / 4.41 `Section`）或頁面層持有後以 `isExpanded` 傳值，元件不 watch（§2 頁面狀態保留：樹展開集合存於 provider） | 本地即時（展開為本地畫面狀態，子層資料已載入，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| collapsed | 向右箭頭 `AppIcon.sm`（`textDisabled`，純裝飾箭頭，§4.0.2 表 2） | 點選 | `isExpanded` 為 `false` 且有子層 | 點選 → expanded | 資料態：受控 `isExpanded` 來自所在畫面的展開集合——追溯視圖為 `expandedTraceNodesProvider`（`StateProvider<Set<String>>`，`lib/screens/trace/trace_providers.dart`）是否含本節點 id；破洞報告分節為頁面 `State`（`_isExpanded`，`lib/screens/gap_report/gap_report_screen.dart`；§2 頁面狀態保留允許的第二種載體，非 provider）；Ticket 清單主題節為 `ticketListStateProvider` 的 `TicketsReady.expandedTopics`（`Set<String>`，鍵為主題或 `unassigned`，`lib/screens/ticket_list/ticket_list_providers.dart`）。容器（4.39 `Tree` / 4.41 `Section`）或頁面層持有後以 `isExpanded` 傳值，元件不 watch（§2 頁面狀態保留：樹展開集合存於 provider） | 本地即時（展開為本地畫面狀態，子層資料已載入，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
 | expanded | 向下箭頭 | 點選 | `isExpanded` 為 `true` | 點選 → collapsed | 資料態：同上 | 本地即時 |
 | leaf | 不渲染箭頭但保留寬度（對齊） | 無 | 無子層 | 不適用：靜止（資料決定，非死胡同） | —（`isLeaf` 由呼叫端依節點資料傳值，建構即決定，非狀態切換） | 本地即時 |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
@@ -3249,7 +3249,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | chip 底 `AppColors.surfaceChip`、mono `textPrimary` | 點選 | 邊完整 | 呼叫端標記損壞 → damaged | 資料態：關聯清單與邊完整性來自所在畫面的節點資料 provider——節點詳情（關聯右欄）與 UC Flow（步驟表 domain 欄）的 provider 尚未建立（`lib/screens/` 無 `node_detail` / `uc_flow` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `id` 傳值並決定是否外包 `IssueMarker.damagedEdge`，元件不 watch（§2） | 等確認才顯示（關聯清單為解析完成後的資料態，解析未完成前不渲染；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | chip 底 `AppColors.surfaceChip`、mono `textPrimary` | 點選 | 邊完整 | 呼叫端標記損壞 → damaged | 資料態：關聯清單與邊完整性來自所在畫面的節點資料 provider——節點詳情（關聯右欄）為 `nodeDetailNodesProvider` 的 `relations[].nodeIds`／`isProposed`（`lib/screens/node_detail/node_detail_providers.dart`），損壞外觀隨 SPEC-001 §6「部分損壞」在 0.x 不渲染；UC Flow（步驟表 domain 欄）為 `ucFlowUcListProvider` 的 `steps[].domain`（`lib/screens/uc_flow/uc_flow_providers.dart`）；頁面層 watch 後以 `id` 傳值並決定是否外包 `IssueMarker.damagedEdge`，元件不 watch（§2） | 等確認才顯示（關聯清單為解析完成後的資料態，解析未完成前不渲染；§2 樂觀更新政策：0.1 無樂觀操作） |
 | damaged | 由 `IssueMarker.damagedEdge` 包住（虛線框；文字維持 `textPrimary`，§4.0.2 帶色表面規則） | 點選（改為跳轉破洞報告，由 `IssueMarker` 承載） | 邊損壞（FR-05） | 重新整理後邊完整 → default | 資料態：同上（該邊的損壞旗標為 `true`；外包由頁面層決定，本元件無 `damaged` 參數） | 等確認才顯示（損壞旗標為解析結果；重新整理後的回復依 SPEC-003 §3.6 三分支於 `Motion.cancelDeadline` 內抵達） |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
@@ -3376,7 +3376,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 渲染 markdown | 捲動（由 `Panel.scrollable` 承載） | 建構 | 不適用：純顯示，無狀態集 | —（建構即渲染；`markdown` 由呼叫端傳值，關聯項點選引起的內容替換由頁面層重建本元件，元件不 watch 任何 provider，§2；節點詳情 provider 尚未建立，由對應畫面票補填） | 本地即時（元件自身；內容為解析完成後的檔案內容，是否渲染由頁面層等確認才決定） |
+| default | 渲染 markdown | 捲動（由 `Panel.scrollable` 承載） | 建構 | 不適用：純顯示，無狀態集 | —（建構即渲染；`markdown` 由呼叫端傳值，關聯項點選引起的內容替換由頁面層重建本元件，元件不 watch 任何 provider，§2；節點詳情為 `nodeDetailBodyProvider`（`lib/screens/node_detail/node_detail_providers.dart`）以 `markdown` 傳值） | 本地即時（元件自身；內容為解析完成後的檔案內容，是否渲染由頁面層等確認才決定） |
 
 #### 回饋契約
 
@@ -3491,7 +3491,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 訊息 + 說明（可缺）+ 動作列（`page` 依 §2.7 列舉） | 動作按鈕（`page`）；`section` 無動作時無 | 呼叫端渲染本元件（畫面級進入條件由 SPEC-001 承載） | 動作 → jump 或同畫面轉換（畫面級退出路徑由 SPEC-001 承載）；`section` 無動作時退出在區塊外（點格） | —（建構即渲染；`message` / `explanation` / `actions` 由呼叫端傳值，元件不 watch，§2。是否渲染本元件為畫面級資料態：破洞報告為 `gapReportProvider` 的 `GapReportNoGaps`（`lib/screens/gap_report/gap_report_provider.dart`）、追溯視圖為 `traceabilityStateProvider` 的 `TraceabilityNoProposal`（`lib/screens/trace/trace_providers.dart`）；Domain 視圖、UC Flow、Ticket 清單、節點詳情的 provider 尚未建立，由對應畫面票補填） | 本地即時（元件自身）；是否渲染由頁面 provider 等確認才決定（空狀態是解析或掃描完成後的判定，§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 訊息 + 說明（可缺）+ 動作列（`page` 依 §2.7 列舉） | 動作按鈕（`page`）；`section` 無動作時無 | 呼叫端渲染本元件（畫面級進入條件由 SPEC-001 承載） | 動作 → jump 或同畫面轉換（畫面級退出路徑由 SPEC-001 承載）；`section` 無動作時退出在區塊外（點格） | —（建構即渲染；`message` / `explanation` / `actions` 由呼叫端傳值，元件不 watch，§2。是否渲染本元件為畫面級資料態：破洞報告為 `gapReportProvider` 的 `GapReportNoGaps`（`lib/screens/gap_report/gap_report_provider.dart`）、追溯視圖為 `traceabilityStateProvider` 的 `TraceabilityNoProposal`（`lib/screens/trace/trace_providers.dart`）；Domain 視圖為 `domainViewStateProvider` 的 `DomainUnset`／`DomainEmpty` 與 `domainGraphUnavailableProvider`；UC Flow 為 `ucFlowStateProvider` 的 `UcFlowEmpty`／`UcFlowUcUnset`／`UcFlowUnstructured`；Ticket 清單為 `ticketListStateProvider` 的 `TicketsEmpty`；節點詳情為 `nodeDetailEffectiveStateProvider` 的 `NodeDetailUnset`／`NodeDetailGraphUnavailable`／`NodeDetailNodeAbsent`） | 本地即時（元件自身）；是否渲染由頁面 provider 等確認才決定（空狀態是解析或掃描完成後的判定，§2 樂觀更新政策：0.1 無樂觀操作） |
 
 元件自身只有一個狀態；空狀態的畫面級進出（`state-<screen>-empty` 等錨點）由呼叫端承載。互動瞬態（hover / pressed / focused）由動作按鈕 4.4 `AppButton` 承載，本元件不另列。
 
@@ -3616,7 +3616,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 訊息 `AppText.subtitle` + 路徑 `AppText.mono`（`secondary`）+ `ButtonRow`[重新整理 `primary`]（本元件動作列只含重新整理，返回鍵由頁面框架於 `SplitRow.header` 統一渲染，見下方「回饋契約」與「slot 契約」） | 重新整理 | 呼叫端渲染（`state-nodeDetail-missing`） | 重新整理 → 三分支（仍不存在：維持 + SnackBar；完整 → normal；斷點 → partial）；返回 → 由頁面框架的返回鍵導向 `returnTo`（SPEC-003 §3.6） | —（建構即渲染；`path` 由呼叫端傳值，元件不 watch，§2。是否渲染本元件為節點詳情畫面的資料態（`state-nodeDetail-missing`），該畫面的 provider 尚未建立（`lib/screens/` 無 `node_detail` 目錄），由對應畫面票補填） | 本地即時（元件自身）；是否渲染由頁面 provider 等確認才決定（開啟原始檔回 `notFound` 或重新整理三分支，SPEC-003 §3.6；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 訊息 `AppText.subtitle` + 路徑 `AppText.mono`（`secondary`）+ `ButtonRow`[重新整理 `primary`]（本元件動作列只含重新整理，返回鍵由頁面框架於 `SplitRow.header` 統一渲染，見下方「回饋契約」與「slot 契約」） | 重新整理 | 呼叫端渲染（`state-nodeDetail-missing`） | 重新整理 → 三分支（仍不存在：維持 + SnackBar；完整 → normal；斷點 → partial）；返回 → 由頁面框架的返回鍵導向 `returnTo`（SPEC-003 §3.6） | —（建構即渲染；`path` 由呼叫端傳值，元件不 watch，§2。是否渲染本元件為節點詳情畫面的資料態（`state-nodeDetail-missing`），由 `nodeDetailEffectiveStateProvider` 的 `NodeDetailMissing(nodeId, lastKnownPath)` 判定，`path` 取 `lastKnownPath`） | 本地即時（元件自身）；是否渲染由頁面 provider 等確認才決定（開啟原始檔回 `notFound` 或重新整理三分支，SPEC-003 §3.6；§2 樂觀更新政策：0.1 無樂觀操作） |
 
 互動瞬態（hover / pressed / focused）由重新整理按鈕 4.4 `AppButton` 承載，本元件不另列。
 
@@ -3744,7 +3744,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| collapsed | 依變體，詳情面板不存在 | 切換專案；`withDetail`：檢視詳情；`plain`（無可消費的型別表，`VERSION` 條件成立時）：以 App 內建型別表檢視；`plain`（載入失敗）：重新載入 | 呼叫端渲染 | 切換專案 → 浮層展開（覆蓋層，不改變本狀態）；檢視詳情 → expanded；重新載入 → 同畫面轉換至 `state-domain-loading`（同一資料夾、同一模式，SPEC-003 §3.1）；以 App 內建型別表檢視 → 同畫面轉換至 `state-domain-matrix` 或 `state-domain-empty`（疊加 `badge-domain-degraded-schema`，不經 `state-domain-loading`，SPEC-003 §3.1） | 資料態：受控 `isDetailExpanded` 存於 Domain 視圖頁面層（slot 契約：§2 頁面狀態保留）——該畫面的 provider 尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `isDetailExpanded` 傳值，元件不 watch。是否渲染本元件（三個阻擋狀態與載入失敗）同為該畫面 provider 的資料態 | 本地即時（面板開合為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作）；是否渲染由頁面 provider 等確認才決定（阻擋判定為載入完成後的結果） |
+| collapsed | 依變體，詳情面板不存在 | 切換專案；`withDetail`：檢視詳情；`plain`（無可消費的型別表，`VERSION` 條件成立時）：以 App 內建型別表檢視；`plain`（載入失敗）：重新載入 | 呼叫端渲染 | 切換專案 → 浮層展開（覆蓋層，不改變本狀態）；檢視詳情 → expanded；重新載入 → 同畫面轉換至 `state-domain-loading`（同一資料夾、同一模式，SPEC-003 §3.1）；以 App 內建型別表檢視 → 同畫面轉換至 `state-domain-matrix` 或 `state-domain-empty`（疊加 `badge-domain-degraded-schema`，不經 `state-domain-loading`，SPEC-003 §3.1） | 資料態：受控 `isDetailExpanded` 存於 Domain 視圖頁面層（slot 契約：§2 頁面狀態保留）——`domainViewStateProvider` 的 `DomainSchemaIncompatible.isDetailExpanded`（`lib/app/domain_view_state.dart`），經 `copyWith(isDetailExpanded:)` 切換；頁面層 watch 後以 `isDetailExpanded` 傳值，元件不 watch。是否渲染本元件（三個阻擋狀態與載入失敗）同為該畫面 provider 的資料態 | 本地即時（面板開合為本地畫面狀態，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作）；是否渲染由頁面 provider 等確認才決定（阻擋判定為載入完成後的結果） |
 | expanded（`withDetail`） | 詳情面板出現於同一狀態根節點內，含「App 已知版本範圍：不高於 <內建版本>」一列 | 同上 + 再次點擊 / Esc 收合 | 點擊檢視詳情 | 再次點擊 / Esc → collapsed（SPEC-003 §1.4、§2.10） | 資料態：同上（`isDetailExpanded` 為 `true`） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由切換專案、檢視詳情、降級檢視（`action-domain-degraded-view`，條件式渲染）各 4.4 `AppButton` 承載，本元件不另列。
@@ -3879,7 +3879,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| loading | 依變體；取消鈕 `AppButton.secondary` enabled，label `cancelLoadingAction` / `cancelScanAction` | 取消（C1：恆可用，含第一幀） | 呼叫端渲染 | 完成 → 目標正常態（呼叫端）；取消 → cancelling | 資料態：三處各自的載入 provider——破洞掃描為 `gapReportProvider`（`NotifierProvider<GapReportNotifier, GapReportState>`，`lib/screens/gap_report/gap_report_provider.dart`）的 `GapReportScanning`（`processedCount` → `countText`、`isCancelling` 為 `false`，`lib/screens/gap_report/gap_report_models.dart`）；Domain 視圖與 Ticket 清單的載入 provider 尚未建立（`lib/screens/` 無 `domain` / `tickets` 目錄），欄位名由對應畫面票補填本格；頁面層 watch 後以 `progress` / `countText` / `isCancelling` 傳值，元件不 watch（§2） | 等確認才顯示（進度值與計數為資料層實際已處理數，不得自行推進、不得顯示預估，SPEC-003 §2.6 誠實性硬規則；§2 樂觀更新政策：0.1 無樂觀操作） |
+| loading | 依變體；取消鈕 `AppButton.secondary` enabled，label `cancelLoadingAction` / `cancelScanAction` | 取消（C1：恆可用，含第一幀） | 呼叫端渲染 | 完成 → 目標正常態（呼叫端）；取消 → cancelling | 資料態：三處各自的載入 provider——破洞掃描為 `gapReportProvider`（`NotifierProvider<GapReportNotifier, GapReportState>`，`lib/screens/gap_report/gap_report_provider.dart`）的 `GapReportScanning`（`processedCount` → `countText`、`isCancelling` 為 `false`，`lib/screens/gap_report/gap_report_models.dart`）；Domain 視圖為 `domainViewStateProvider` 的 `DomainLoading`（`isCancelling`；`processedCount` 轉為 `countText`）；Ticket 清單無載入態，不渲染本元件；頁面層 watch 後以 `progress` / `countText` / `isCancelling` 傳值，元件不 watch（§2） | 等確認才顯示（進度值與計數為資料層實際已處理數，不得自行推進、不得顯示預估，SPEC-003 §2.6 誠實性硬規則；§2 樂觀更新政策：0.1 無樂觀操作） |
 | cancelling | 版面不變、進度改 indeterminate、計數凍結於最後值（C3）；取消鈕 `enabled=false`、label `cancelInProgressAction`（C2） | 無 | 按下取消 | `Motion.cancelDeadline` 內抵達目標態（C4：`state-domain-unset` / `returnTo` 或 `nav-page-domain`） | 資料態：同上（`isCancelling` 為 `true`） | 本地即時（C2：按下取消後 `Motion.feedback` 內即轉 `isCancelling`，不等資料層確認）；抵達目標態則等確認才顯示（C4：資料層完成中止後由呼叫端轉態） |
 
 互動瞬態（hover / pressed / focused）由取消鈕 4.4 `AppButton` 承載，本元件不另列；骨架與進度條為非互動元素。
@@ -4746,7 +4746,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 子件一列 | 由子件承載 | 建構 | 不適用：容器無自身狀態集 | —（建構即渲染；`search` / `filters` / `marker` 由呼叫端傳值，含損壞疊加態時 `marker` 存在與否由頁面層依 Ticket 清單 provider 決定（provider 尚未建立，由對應畫面票補填（Ticket 清單）），本容器不 watch，§2） | 本地即時 |
+| default | 子件一列 | 由子件承載 | 建構 | 不適用：容器無自身狀態集 | —（建構即渲染；`search` / `filters` / `marker` 由呼叫端傳值，含損壞疊加態時 `marker` 存在與否由頁面層依 Ticket 清單 provider 決定（`ticketListStateProvider` 的 `TicketsReady.corruptedCount` 大於 0），本容器不 watch，§2） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由子件（4.12 / 4.13 / 4.6）承載，本容器不另列。
 
@@ -5218,7 +5218,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 表頭 + 列 | 捲動、列點選、排序（表頭） | 建構（資料由 provider `select` 訂閱） | 不適用：容器無自身狀態集（空資料由畫面改渲染 `EmptyState`，本容器不承載 empty） | 資料態：列集合與排序來自所在畫面的資料 provider——Ticket 清單（`virtual`：已載入票列經搜尋詞、篩選值、`order` 過濾排序後的子集）與 UC Flow（`plain`：選定 UC 的 `FlowStep` 列）的 provider 尚未建立（`lib/screens/` 無 `tickets` / `uc_flow` 目錄），欄位名由對應畫面票補填本格（以畫面名為鍵）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），列以 builder 逐列建構；offset 由頁面層持有的 `ScrollController` 承載（§2 頁面狀態保留） | 等確認才顯示（列集合為最後完成輪次結果的資料態，Ticket 清單無載入態，SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉；搜尋、篩選、排序的子集重排為本地即時，SPEC-003 §3.4；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 表頭 + 列 | 捲動、列點選、排序（表頭） | 建構（資料由 provider `select` 訂閱） | 不適用：容器無自身狀態集（空資料由畫面改渲染 `EmptyState`，本容器不承載 empty） | 資料態：列集合與排序來自所在畫面的資料 provider——Ticket 清單（`virtual`：已載入票列經搜尋詞、篩選值、`order` 過濾排序後的子集）與 UC Flow（`plain`：選定 UC 的 `FlowStep` 列）分別來自 `ticketListStateProvider` 的 `TicketsReady.tickets`（畫面層過濾排序後以 `rows` 傳入）與 `ucFlowUcListProvider` 選定 UC 的 `steps`（事件附錄另讀 `ucFlowEventGapsProvider`）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），列以 builder 逐列建構；offset 由頁面層持有的 `ScrollController` 承載（§2 頁面狀態保留） | 等確認才顯示（列集合為最後完成輪次結果的資料態，Ticket 清單無載入態，SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉；搜尋、篩選、排序的子集重排為本地即時，SPEC-003 §3.4；§2 樂觀更新政策：0.1 無樂觀操作） |
 
 互動瞬態（hover / pressed / focused）由列（4.35）與可排序欄首（4.14）承載，本容器不另列；本容器可聚焦以承載鍵盤捲動（SPEC-003 §2.10 內容區段含捲動容器）。
 
@@ -5344,7 +5344,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 格線，無高亮列 | 點格、點列首、捲動 | 建構 | 點格或點列首 → rowSelected | 資料態：Domain 視圖的選取 provider（選取列 `selectedDomainId` 與選取格 `selectedCell` 兩值，與 4.15 同一 provider）為 `null`；格線資料（`columnHeaders` / `rows`）來自該畫面的圖資料 provider——皆尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格（以畫面名為鍵）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isSelected` / `isRowSelected` 向 4.15 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 格線資料等確認才顯示（解析完成後才進入 `state-domain-matrix`，SPEC-003 §3.1）；選取為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 格線，無高亮列 | 點格、點列首、捲動 | 建構 | 點格或點列首 → rowSelected | 資料態：Domain 視圖的選取 provider（選取列 `selectedDomainId` 與選取格 `selectedCell` 兩值，與 4.15 同一 provider）為 `null`；格線資料（`columnHeaders` / `rows`）來自該畫面的圖資料 provider——選取為 `domainViewStateProvider` 的 `DomainReady.selectedDomainId`／`selectedCell`，格線資料為 `domainMatrixProvider`（`lib/screens/domain_view/domain_view_providers.dart`）的 `columns`／`rows`；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isSelected` / `isRowSelected` 向 4.15 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 格線資料等確認才顯示（解析完成後才進入 `state-domain-matrix`，SPEC-003 §3.1）；選取為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
 | rowSelected | 該列（列首 + 格 + 小計）底 `AppColors.surfaceIconTint` | 同上 + Esc（有選格時） | `selectedDomainId` 非 `null` | 點另一列列首 → 高亮移動（選格清除）；切換專案 → default | 資料態：同上（`selectedDomainId` 非 `null`） | 本地即時 |
 
 選格（`MatrixCell.selected`）為格的狀態，與本容器 rowSelected 連動：選格時所在列高亮；列高亮唯一（SPEC-003 §3.1「右欄內容須與高亮列一致」）。
@@ -5476,7 +5476,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（`state-domain-swimlane`；或 `state-domain-swimlane-uc-unset`、`state-domain-swimlane-projection-pending`，零個節點，`0.1.0-W3-335.47` D8、`0.5.0-W1-205.1`） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為假資料，欄序由假資料給定）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——皆尚未建立（`lib/screens/` 無 `domain` 目錄），欄位名由對應畫面票補填本格（以畫面名為鍵）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isActive`（該步驟 `traverses` 含 `selectedDomainId`，`0.1.0-W3-335.47` D6）向 4.16 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（`state-domain-swimlane`；或 `state-domain-swimlane-uc-unset`、`state-domain-swimlane-projection-pending`，零個節點，`0.1.0-W3-335.47` D8、`0.5.0-W1-205.1`） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為假資料，欄序由假資料給定）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——`lanes` 為 `domainSwimlaneProvider` 的 `DomainSwimlane.lanes`（零節點時改用 `domainEmptyLanesProvider`，兩者在 `lib/screens/domain_view/domain_view_providers.dart`），`laneHighlight` 為 `domainViewStateProvider` 的 `DomainReady.selectedDomainId`；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isActive`（該步驟 `traverses` 含 `selectedDomainId`，`0.1.0-W3-335.47` D6）向 4.16 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
 
 無互動瞬態：節點不可點、不可焦點（4.16、無障礙子節），本容器可聚焦以承載鍵盤捲動（SPEC-003 §2.10 內容區段含捲動容器），焦點環見回饋契約焦點列。
 
@@ -5884,7 +5884,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| expanded | 節首 + 項目 | 收合（`collapsible`） | 預設 | 點展開器 → collapsed | 資料態（`collapsible`）：受控 `isExpanded`——破洞類別節為頁面 `State`（`_isExpanded`，`lib/screens/gap_report/gap_report_screen.dart`；§2 頁面狀態保留允許的第二種載體，非 provider，與 4.18 同一來源）；Ticket 清單主題節的 provider 尚未建立（`lib/screens/` 無 `tickets` 目錄），欄位名由對應畫面票補填本格（Ticket 清單）；頁面層持有後以 `isExpanded` 傳值、`items` 依資料傳值，本容器不 watch（§2）。`static`：—（恆展開，建構即渲染） | 本地即時（展開為本地畫面狀態，項目資料已載入，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
+| expanded | 節首 + 項目 | 收合（`collapsible`） | 預設 | 點展開器 → collapsed | 資料態（`collapsible`）：受控 `isExpanded`——破洞類別節為頁面 `State`（`_isExpanded`，`lib/screens/gap_report/gap_report_screen.dart`；§2 頁面狀態保留允許的第二種載體，非 provider，與 4.18 同一來源）；Ticket 清單主題節為 `ticketListStateProvider` 的 `TicketsReady.expandedTopics`，與 4.18 同一來源；頁面層持有後以 `isExpanded` 傳值、`items` 依資料傳值，本容器不 watch（§2）。`static`：—（恆展開，建構即渲染） | 本地即時（展開為本地畫面狀態，項目資料已載入，無資料層確認；§2 樂觀更新政策：0.1 無樂觀操作） |
 | collapsed（`collapsible`） | 只有節首 | 展開 | 點展開器 | 點展開器 → expanded | 資料態：同上（`isExpanded` 為 `false`） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由節首展開器（4.18）與項目（4.35 `ticket` / 4.40 `item` / 4.19）承載，本容器不另列。
@@ -6439,7 +6439,7 @@ EVT-CORPUS-004 項目說明：
 
 ## 6. 原生元件禁用對照表
 
-> 禁止直接使用的原生元件，及應改用的封裝元件。適用範圍：元件庫統一匯出入口（`lib/components/`，W1-005 建立）之外的所有頁面層程式碼；元件庫內部實作原生 widget 屬正常。（`0.1.0-W1-044.2` 填，提案；執法 pattern 由 `dart-style-guardian` 承接，見 `0.1.0-W1-046`）
+> 禁止直接使用的原生元件，及應改用的封裝元件。適用範圍：元件庫統一匯出入口（`lib/components/`，W1-005 建立）之外的所有頁面層程式碼；元件庫內部實作原生 widget 屬正常。（`0.1.0-W1-044.2` 填，提案）執法現況（2026-11-05 查證）：PostEdit hook `.claude/hooks/dart-style-guardian-hook.py` 攔下新增的 `TextButton`、`ElevatedButton`、`Card`、`AlertDialog`、`showDialog`、`Divider`、`Chip`、`ChoiceChip` 直用；本表其餘列目前無工具執法，批次掃描腳本 `style_checker.py` 也不偵測既有存量，目前無承接（原規劃的 `0.1.0-W1-046` 已以 not_executable 關閉）。
 
 | 禁止直接使用 | 改用 | 理由 |
 |-------------|------|------|
@@ -6509,6 +6509,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.126 | 2026-11-05 | `0.6.0-W1-191.2`（依 `0.6.0-W1-191` 時效型註記盤點，讀碼查證）：狀態矩陣「來源」欄與相關散文 19 處「provider 尚未建立，欄位名由對應畫面票補填」改為實際承載者（4.4、4.6、4.10、4.12–4.15、4.18–4.24、4.32、4.36–4.38、4.41）；Ticket 清單無載入態、節點詳情損壞外觀在 0.x 不可達者改寫為不渲染。§6 原寫「執法 pattern 由 `dart-style-guardian` 承接」，改為執法現況：PostEdit hook 攔八種新增直用，其餘列目前無承接。不改契約；4.36–4.38「本容器為 `ConsumerWidget`」與實作（傳值、不自行訂閱）不一致，另票處理 |
 | 1.125 | 2026-11-05 | `0.6.0-W1-191.1`（依 `0.6.0-W1-191` 時效型註記盤點）：§4.0.6 各批次說明與表列「使用處」欄的「ARB 待建」「ARB 實檔狀態待建，由對應票加入」改為現況（表內 key 全數已在 ARB，`spec004_key_table_contract_test` 的待加入豁免為空可證），淘汰 key 段改為「已自 ARB 刪除」；§4.0 測試基座「由 `0.1.0-W1-034` 承接，為所有元件票的 blockedBy」改為已建立；4.37 `MatrixGrid`「依賴宣告待 `0.1.0-W1-038`」改為 `pubspec.yaml` 已宣告。zh／en 值欄未動，不改契約 |
 | 1.124 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：三處依賴型票號引用改寫為定案內容，不改契約。§3.5 漂移表「畫布頂端標題列高 36…」列列出對應的 `LayoutSize` token 名；§4.0.6〈EVT-CORPUS-003 項目說明〉前導句的「原因碼識別名未定」改為列出 `CarrierParseFailureReason` 與 `UnreadableReason` 的識別名；4.35〈尺寸契約〉最小尺寸列的「截斷或換行的責任歸屬待裁決」改為 4.1〈內容政策〉已定案的呼叫端明示規則。frontmatter 版號由 1.122 對齊至本版（原與正文 1.123 不一致） |
 | 1.123 | 2026-11-04 | `0.6.0-W1-075.2`（對應 SPEC-001 v1.78、UC-02 v1.16）：§4.0.6 登記 `pathDeclarationBundlesMalformed`（{count} 個 domain 的路徑宣告格式錯誤），宣告狀態行 `{detail}` 的 bundle 格式錯誤片段，接在 bundle 側片段之後；ARB 同批建立。不新增元件，狀態總數不變 |
