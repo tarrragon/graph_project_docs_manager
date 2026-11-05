@@ -53,3 +53,25 @@ suites:
     command: [claude, plugin, test, .claude/skills/line-board]
     summary: '^Ran \d+ tests across \d+ files'
     failure: '^\(fail\)'
+  # tool/ 參照實作（187.1）：selftest／compute 決定性，紅綠由結束碼決定。
+  # 需要 PyYAML，PATH 上的 python3 未裝，故經 uv 臨時注入（與 research-python 同法）。
+  # freeze 需讀外部語料（~/project/flutter_balance），不納入閘門。
+  # 宣告檔本身列入 files：分支新增宣告時，合併即跑一次新套件。
+  tool-spec006-selftest:
+    prefixes: [tool/]
+    files: [.claude/project-integration/merge-gate.yaml]
+    command: [uv, run, --quiet, --with, pyyaml, python, tool/spec006_reference.py, selftest]
+    summary: '^SELFTEST PASSED'
+    failure: '^(FAIL|FAILED|Traceback|AssertionError|SELFTEST FAILED)'
+  tool-spec007-selftest:
+    prefixes: [tool/, test/fixtures/spec007/]
+    files: [.claude/project-integration/merge-gate.yaml]
+    command: [uv, run, --quiet, --with, pyyaml, python, tool/spec007_reference.py, selftest]
+    summary: '^selftest passed: \d+ groups'
+    failure: '^(FAIL|FAILED|Traceback|AssertionError)'
+  tool-spec007-compute:
+    prefixes: [tool/, test/fixtures/spec007/]
+    files: [.claude/project-integration/merge-gate.yaml]
+    command: [uv, run, --quiet, --with, pyyaml, python, tool/spec007_reference.py, compute]
+    summary: '^README matches frozen values'
+    failure: '^(FAIL|FAILED|Traceback|AssertionError|MISMATCH)'
