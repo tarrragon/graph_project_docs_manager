@@ -1,20 +1,20 @@
 {
  "header": {
-  "reference_version": "1.2.0",
+  "reference_version": "1.3.0",
   "frozen_date": "2026-11-05",
   "note": "expected values produced by tool/spec007_reference.py; CI does not run it"
  },
  "corpora": {
   "flutter_balance": {
-   "node_count": 1862,
+   "node_count": 1863,
    "duplicate_id_count": 0,
    "duplicate_id_node_count": 0,
-   "edge_count": 2496,
+   "edge_count": 2498,
    "edges_by_type": {
     "association": 303,
     "blocking": 564,
     "blood": 152,
-    "closed_by": 93,
+    "closed_by": 95,
     "discovery": 89,
     "domain_coverage": 2,
     "proposal_association": 2,
@@ -27,7 +27,7 @@
    },
    "declaration_shapes": {
     "directed": {
-     "from_only": 780,
+     "from_only": 782,
      "to_only": 66,
      "both": 1347
     },
@@ -36,8 +36,8 @@
      "both": 19
     }
    },
-   "reference_value_total": 3867,
-   "resolved_count": 3862,
+   "reference_value_total": 3869,
+   "resolved_count": 3864,
    "dangling_count": 1,
    "malformed_count": 4,
    "reason_counts": {
@@ -50,18 +50,18 @@
    },
    "graph_defect_count": 14,
    "closed_by_skipped_count": 255,
-   "closed_by_reference_count": 93,
-   "closed_by_field_value_total": 348,
+   "closed_by_reference_count": 95,
+   "closed_by_field_value_total": 350,
    "real_only": {
-    "node_count": 1862,
+    "node_count": 1863,
     "duplicate_id_count": 0,
     "duplicate_id_node_count": 0,
-    "edge_count": 2496,
+    "edge_count": 2498,
     "edges_by_type": {
      "association": 303,
      "blocking": 564,
      "blood": 152,
-     "closed_by": 93,
+     "closed_by": 95,
      "discovery": 89,
      "domain_coverage": 2,
      "proposal_association": 2,
@@ -74,7 +74,7 @@
     },
     "declaration_shapes": {
      "directed": {
-      "from_only": 780,
+      "from_only": 782,
       "to_only": 66,
       "both": 1347
      },
@@ -83,8 +83,8 @@
       "both": 19
      }
     },
-    "reference_value_total": 3867,
-    "resolved_count": 3862,
+    "reference_value_total": 3869,
+    "resolved_count": 3864,
     "dangling_count": 1,
     "malformed_count": 4,
     "reason_counts": {
@@ -97,15 +97,15 @@
     },
     "graph_defect_count": 14,
     "closed_by_skipped_count": 255,
-    "closed_by_reference_count": 93,
-    "closed_by_field_value_total": 348
+    "closed_by_reference_count": 95,
+    "closed_by_field_value_total": 350
    }
   },
   "graph_project_docs_manager": {
-   "node_count": 2586,
+   "node_count": 2590,
    "duplicate_id_count": 1,
    "duplicate_id_node_count": 2,
-   "edge_count": 3784,
+   "edge_count": 3808,
    "edges_by_type": {
     "association": 285,
     "blocking": 802,
@@ -114,26 +114,27 @@
     "closed_by": 113,
     "discovery": 165,
     "domain_coverage": 8,
+    "domain_dependency": 21,
     "proposal_association": 6,
     "provenance": 31,
-    "spawn": 1328,
+    "spawn": 1331,
     "spec_association": 51,
     "uc_association": 54,
     "uc_ticket_refs": 100
    },
    "declaration_shapes": {
     "directed": {
-     "from_only": 1311,
+     "from_only": 1332,
      "to_only": 78,
-     "both": 2110
+     "both": 2113
     },
     "undirected": {
      "one_end": 274,
      "both": 11
     }
    },
-   "reference_value_total": 5921,
-   "resolved_count": 5905,
+   "reference_value_total": 5948,
+   "resolved_count": 5932,
    "dangling_count": 5,
    "malformed_count": 11,
    "reason_counts": {
@@ -152,10 +153,10 @@
    "closed_by_reference_count": 119,
    "closed_by_field_value_total": 435,
    "real_only": {
-    "node_count": 2581,
+    "node_count": 2585,
     "duplicate_id_count": 0,
     "duplicate_id_node_count": 0,
-    "edge_count": 3781,
+    "edge_count": 3805,
     "edges_by_type": {
      "association": 285,
      "blocking": 800,
@@ -164,26 +165,27 @@
      "closed_by": 113,
      "discovery": 165,
      "domain_coverage": 8,
+     "domain_dependency": 21,
      "proposal_association": 6,
      "provenance": 30,
-     "spawn": 1328,
+     "spawn": 1331,
      "spec_association": 51,
      "uc_association": 54,
      "uc_ticket_refs": 100
     },
     "declaration_shapes": {
      "directed": {
-      "from_only": 1309,
+      "from_only": 1330,
       "to_only": 77,
-      "both": 2110
+      "both": 2113
      },
      "undirected": {
       "one_end": 274,
       "both": 11
      }
     },
-    "reference_value_total": 5912,
-    "resolved_count": 5902,
+    "reference_value_total": 5939,
+    "resolved_count": 5929,
     "dangling_count": 4,
     "malformed_count": 6,
     "reason_counts": {

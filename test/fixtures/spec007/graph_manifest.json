@@ -1,36 +1,36 @@
 {
  "header": {
   "frozen_date": "2026-11-05",
-  "reference_version": "1.2.0",
+  "reference_version": "1.3.0",
   "framework_version": "2.87.0",
   "schema_generated_at_framework_version": "2.84.0",
   "id_pattern_dialect": "python-re",
   "corpus_commits": {
    "graph_project_docs_manager": {
-    "commit": "7d045e52fcb64e50a4f5e97c9c3355635a9f6e2c",
+    "commit": "0184670d427b81672384270b4291fb2c5b18293e",
     "dirty_docs_entries": 0
    },
    "flutter_balance": {
-    "commit": "ffcaba4b41257de61ac63c868967ee4f214a0a4d"
+    "commit": "bf0baba26637f692f6eff31cda8cbea26279cd19"
    }
   },
   "corpus_snapshots": {
    "graph_project_docs_manager": {
-    "docs_md_files": 2617,
-    "signature_sha256": "14bcd93f67cb7aba1a11818c4a4cb4d60fcf5520b07889fe6a631a130e472861"
+    "docs_md_files": 2621,
+    "signature_sha256": "594d0356008e7834edb9982d01d66e8cb227fa2acda81eda97ca26b266fc4386"
    },
    "flutter_balance": {
-    "docs_md_files": 1898,
-    "signature_sha256": "f088a1347de72206628a0ac94c6658c5db6c7d4f90f3434f776568b384d9ce62"
+    "docs_md_files": 1896,
+    "signature_sha256": "7e66d5597159ce2e6df2410e675917bd11cb2897fa7e5df7e016eeaec21b4554"
    }
   },
   "row_counts_real": {
-   "flutter_balance": 1862,
-   "graph_project_docs_manager": 2581
+   "flutter_balance": 1863,
+   "graph_project_docs_manager": 2585
   },
   "row_counts_with_synthetic": {
-   "flutter_balance": 1862,
-   "graph_project_docs_manager": 2588
+   "flutter_balance": 1863,
+   "graph_project_docs_manager": 2592
   },
   "covers_rows": {
    "related_one_side": {
@@ -107,7 +107,8 @@
     "source_specs": [
      "SPEC-001",
      "SPEC-002"
-    ]
+    ],
+    "domain": "balance-sheet"
    },
    "synthetic": false,
    "covers": []
@@ -281,6 +282,7 @@
    "status": "approved",
    "title": "資產負債表 App 首版功能規格",
    "edge_fields": {
+    "depends_on_domains": [],
     "implements_requirements": [
      "PROP-001"
     ],
@@ -38624,11 +38626,12 @@
    "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W1-002.md",
    "id": "0.3.1-W1-002",
    "node_type": "Ticket",
-   "status": "pending",
+   "status": "closed",
    "title": "觀測 bash-edit-guard-hook 把非開頭位置的子 shell cd 誤判為裸 cd",
    "edge_fields": {
     "blockedBy": [],
     "children": [],
+    "closed_by": "0.3.1-W5-002",
     "discovered_during": null,
     "parent_id": null,
     "relatedTo": [],
@@ -38678,6 +38681,26 @@
   },
   {
    "corpus": "flutter_balance",
+   "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W1-006.md",
+   "id": "0.3.1-W1-006",
+   "node_type": "Ticket",
+   "status": "closed",
+   "title": "觀測 complete 時 hook 把 sync-pull 帶進的上游 error-pattern 歸為本票執行期間新增",
+   "edge_fields": {
+    "blockedBy": [],
+    "children": [],
+    "closed_by": "0.3.1-W5-002",
+    "discovered_during": null,
+    "parent_id": null,
+    "relatedTo": [],
+    "source_ticket": null,
+    "spawned_tickets": []
+   },
+   "synthetic": false,
+   "covers": []
+  },
+  {
+   "corpus": "flutter_balance",
    "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W3-066.md",
    "id": "0.3.1-W3-066",
    "node_type": "Ticket",
@@ -38719,7 +38742,7 @@
    "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W5-002.md",
    "id": "0.3.1-W5-002",
    "node_type": "Ticket",
-   "status": "in_progress",
+   "status": "completed",
    "title": "協調 0.2.3 發版至 0.3.0 收尾與元件庫 skill 回饋的任務線",
    "edge_fields": {
     "blockedBy": [],
@@ -38738,7 +38761,7 @@
    "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W5-003.md",
    "id": "0.3.1-W5-003",
    "node_type": "Ticket",
-   "status": "in_progress",
+   "status": "completed",
    "title": "盤點 0.3.0 元件庫實作經驗的 skill 回饋候選並判定通用性與落點",
    "edge_fields": {
     "blockedBy": [],
@@ -39081,6 +39104,10 @@
    "status": "draft",
    "title": "Corpus 解析與破洞判定",
    "edge_fields": {
+    "depends_on_domains": [
+     "schema",
+     "workspace"
+    ],
     "implements_requirements": [],
     "related_specs": [
      "SPEC-001",
@@ -39118,7 +39145,8 @@
     ],
     "source_specs": [
      "SPEC-006"
-    ]
+    ],
+    "domain": "corpus"
    },
    "synthetic": false,
    "covers": []
@@ -39142,7 +39170,8 @@
     "source_specs": [
      "SPEC-006",
      "SPEC-007"
-    ]
+    ],
+    "domain": "diagnostics"
    },
    "synthetic": false,
    "covers": []
@@ -39155,6 +39184,11 @@
    "status": "draft",
    "title": "建圖：輕節點、邊的聯集與圖結構破洞",
    "edge_fields": {
+    "depends_on_domains": [
+     "schema",
+     "corpus",
+     "diagnostics"
+    ],
     "implements_requirements": [],
     "related_specs": [
      "SPEC-006"
@@ -39193,7 +39227,8 @@
     ],
     "source_specs": [
      "SPEC-007"
-    ]
+    ],
+    "domain": "graph"
    },
    "synthetic": false,
    "covers": []
@@ -39210,7 +39245,8 @@
      "DOMAIN-MAP-workspace"
     ],
     "related_usecases": [],
-    "source_specs": []
+    "source_specs": [],
+    "domain": "history"
    },
    "synthetic": false,
    "covers": []
@@ -39230,7 +39266,8 @@
      "UC-02",
      "UC-03"
     ],
-    "source_specs": []
+    "source_specs": [],
+    "domain": "layout"
    },
    "synthetic": false,
    "covers": []
@@ -39250,7 +39287,8 @@
     "source_specs": [
      "SPEC-006",
      "SPEC-007"
-    ]
+    ],
+    "domain": "schema"
    },
    "synthetic": false,
    "covers": []
@@ -39272,7 +39310,8 @@
     ],
     "source_specs": [
      "SPEC-007"
-    ]
+    ],
+    "domain": "ticketdetail"
    },
    "synthetic": false,
    "covers": []
@@ -39285,6 +39324,15 @@
    "status": "draft",
    "title": "畫面狀態矩陣與 gate 退出路徑",
    "edge_fields": {
+    "depends_on_domains": [
+     "workspace",
+     "schema",
+     "corpus",
+     "graph",
+     "ticketdetail",
+     "layout",
+     "diagnostics"
+    ],
     "implements_requirements": [],
     "related_specs": [
      "SPEC-002",
@@ -39312,6 +39360,9 @@
    "status": "draft",
    "title": "Design token 與元件庫：所有顏色、尺寸、元件皆具名",
    "edge_fields": {
+    "depends_on_domains": [
+     "layout"
+    ],
     "implements_requirements": [],
     "related_specs": [
      "SPEC-001",
@@ -39339,6 +39390,15 @@
    "status": "draft",
    "title": "互動反應規格：七畫面的反應、動畫、導航與生命週期",
    "edge_fields": {
+    "depends_on_domains": [
+     "workspace",
+     "schema",
+     "corpus",
+     "graph",
+     "ticketdetail",
+     "layout",
+     "diagnostics"
+    ],
     "implements_requirements": [],
     "related_specs": [
      "SPEC-001",
@@ -39366,6 +39426,9 @@
    "status": "draft",
    "title": "元件庫規格：元件目錄、逐元件契約與容器排列不變式",
    "edge_fields": {
+    "depends_on_domains": [
+     "layout"
+    ],
     "implements_requirements": [],
     "related_specs": [
      "SPEC-001",
@@ -39393,6 +39456,7 @@
    "status": "draft",
    "title": "Workspace driven port 回饋契約",
    "edge_fields": {
+    "depends_on_domains": [],
     "implements_requirements": [],
     "related_specs": [
      "SPEC-003"
@@ -39420,7 +39484,8 @@
     ],
     "source_specs": [
      "SPEC-005"
-    ]
+    ],
+    "domain": "workspace"
    },
    "synthetic": false,
    "covers": []
@@ -93184,7 +93249,9 @@
     "parent_id": null,
     "relatedTo": [],
     "source_ticket": "0.6.0-W1-072",
-    "spawned_tickets": []
+    "spawned_tickets": [
+     "0.6.0-W1-177"
+    ]
    },
    "synthetic": false,
    "covers": []
@@ -93213,7 +93280,7 @@
    "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-171.md",
    "id": "0.6.0-W1-171",
    "node_type": "Ticket",
-   "status": "in_progress",
+   "status": "completed",
    "title": "重凍 SPEC-007 兩語料凍結 manifest，移除 IT2-A1 對 UC 缺 uc_ticket_refs 的暫時分離",
    "edge_fields": {
     "blockedBy": [],
@@ -93222,7 +93289,10 @@
     "parent_id": null,
     "relatedTo": [],
     "source_ticket": "0.6.0-W1-072.1",
-    "spawned_tickets": []
+    "spawned_tickets": [
+     "0.6.0-W1-178",
+     "0.6.0-W1-179"
+    ]
    },
    "synthetic": false,
    "covers": []
@@ -93311,6 +93381,82 @@
    "node_type": "Ticket",
    "status": "completed",
    "title": "改為框架預設啟用 multi-session 狀態列 statusline_lane（移入 settings.json 隨 sync 擴散）",
+   "edge_fields": {
+    "blockedBy": [],
+    "children": [],
+    "discovered_during": null,
+    "parent_id": null,
+    "relatedTo": [],
+    "source_ticket": null,
+    "spawned_tickets": []
+   },
+   "synthetic": false,
+   "covers": []
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-177.md",
+   "id": "0.6.0-W1-177",
+   "node_type": "Ticket",
+   "status": "pending",
+   "title": "查明 0.1.0-W3-437.2 的 closed_by 斷邊值 0.1.0-W3-417",
+   "edge_fields": {
+    "blockedBy": [],
+    "children": [],
+    "discovered_during": null,
+    "parent_id": null,
+    "relatedTo": [],
+    "source_ticket": "0.6.0-W1-169",
+    "spawned_tickets": []
+   },
+   "synthetic": false,
+   "covers": []
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-178.md",
+   "id": "0.6.0-W1-178",
+   "node_type": "Ticket",
+   "status": "in_progress",
+   "title": "補齊 SPEC-007 參照實作的 domain_dependency 建邊並重凍",
+   "edge_fields": {
+    "blockedBy": [],
+    "children": [],
+    "discovered_during": null,
+    "parent_id": null,
+    "relatedTo": [],
+    "source_ticket": "0.6.0-W1-171",
+    "spawned_tickets": []
+   },
+   "synthetic": false,
+   "covers": []
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-179.md",
+   "id": "0.6.0-W1-179",
+   "node_type": "Ticket",
+   "status": "pending",
+   "title": "修正 5 張票的 closed_by 自我引用",
+   "edge_fields": {
+    "blockedBy": [],
+    "children": [],
+    "discovered_during": null,
+    "parent_id": null,
+    "relatedTo": [],
+    "source_ticket": "0.6.0-W1-171",
+    "spawned_tickets": []
+   },
+   "synthetic": false,
+   "covers": []
+  },
+  {
+   "corpus": "graph_project_docs_manager",
+   "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-180.md",
+   "id": "0.6.0-W1-180",
+   "node_type": "Ticket",
+   "status": "in_progress",
+   "title": "實作 框架更新適應 skill（framework issue #127 提案）",
    "edge_fields": {
     "blockedBy": [],
     "children": [],

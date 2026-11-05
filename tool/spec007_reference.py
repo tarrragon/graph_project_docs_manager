@@ -25,6 +25,7 @@ import hashlib
 import json
 import re
 import subprocess
+import dataclasses
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -34,8 +35,10 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec006_reference as corpus_ref  # noqa: E402  只借 Corpus 判型，非 Dart
 
-REFERENCE_VERSION = "1.2.0"  # 對應 SPEC-007 v1.40
-EXCLUDED_EDGE_TYPE = "domain_dependency"  # SPEC-007 D6：唯一以鍵名排除的邊型
+REFERENCE_VERSION = "1.3.0"  # 對應 SPEC-007 v1.40
+NAME_RESOLVED_EDGE_TYPE = "domain_dependency"  # SPEC-007 FR-11／D6：引用值是 domain 名稱，走名稱索引
+DOMAIN_BUNDLE_TYPE = "DomainBundle"
+DOMAIN_FIELD = "domain"
 INCLUDED_PROPOSED_EDGE_TYPES = frozenset({"bundle_dependency", "closed_by"})  # SPEC-007 D6：納入的 proposed 層邊型
 CLOSED_BY_EDGE_TYPE = "closed_by"  # SPEC-007 FR-03〈closed_by 的略過規則〉（D6 第三處鍵名例外）
 FLOW_STEP_TYPE = "FlowStep"  # FR-10：不進主圖，略過判定時排除其 id_pattern
@@ -100,9 +103,7 @@ def resolve_direction(name: str, spec: dict[str, Any], builtin: dict[str, str]) 
 
 
 def is_active_edge_type(name: str, layer: str) -> bool:
-    """FR-01／D6：established 扣 domain_dependency，加 proposed 的 bundle_dependency、closed_by。"""
-    if name == EXCLUDED_EDGE_TYPE:
-        return False
+    """FR-01／D6：established（含 domain_dependency，v1.38 起）加 proposed 的 bundle_dependency、closed_by。"""
     return layer == "established" or name in INCLUDED_PROPOSED_EDGE_TYPES
 
 
@@ -331,6 +332,26 @@ def classify_ref(
     return "resolved", None
 
 
+def build_domain_index(nodes: dict[str, dict[str, Any]]) -> dict[str, str]:
+    """FR-11：DomainBundle 的 domain（非空字串，精確比對）-> 節點 ID；重複宣告的名稱兩者皆排除。"""
+    ids_by_name: dict[str, list[str]] = defaultdict(list)
+    for node_id, row in nodes.items():
+        name = row.get("edge_fields", {}).get(DOMAIN_FIELD)
+        if row["node_type"] == DOMAIN_BUNDLE_TYPE and isinstance(name, str) and name:
+            ids_by_name[name].append(node_id)
+    return {n: ids[0] for n, ids in ids_by_name.items() if len(ids) == 1}
+
+
+def classify_name_ref(ref: Ref, domain_index: dict[str, str]) -> tuple[str, str | None, str | None]:
+    """FR-03／FR-11：(類別, 原因, 目標 ID)；不比對 id_pattern。非字串 invalidShape，查無 targetMissing。"""
+    if ref.invalid_shape:
+        return "malformed", REASON_INVALID_SHAPE, None
+    target = domain_index.get(ref.raw)
+    if target is None:
+        return "dangling", REASON_MISSING, None
+    return "resolved", None, target
+
+
 def _edge_key(ref: Ref, undirected: set[str]) -> tuple[str, str, str]:
     if ref.edge_type in undirected:
         low, high = sorted([ref.source_id, ref.raw])
@@ -416,8 +437,20 @@ def build_graph(
     classification: Counter = Counter()
     reasons: Counter = Counter()
     closed_by_skipped = closed_by_refs = 0
+    domain_index = build_domain_index(nodes)
     for row in nodes.values():
         for ref in extract_refs(row, edge_types):
+            if ref.edge_type == NAME_RESOLVED_EDGE_TYPE:
+                category, reason, target = classify_name_ref(ref, domain_index)
+                classification[category] += 1
+                if reason:
+                    reasons[reason] += 1
+                if category == "resolved":
+                    edges[_edge_key(dataclasses.replace(ref, raw=target), undirected)].add(ref.source_id)
+                else:
+                    kind = "danglingRef" if category == "dangling" else "malformedRef"
+                    ref_defects.append(_ref_defect(ref, kind, reason))
+                continue
             if is_closed_by_skipped(ref.edge_type, ref.raw, ref.invalid_shape, main_patterns):
                 closed_by_skipped += 1
                 continue
@@ -627,7 +660,11 @@ def collect_real_rows(
                 "node_type": node_type,
                 "status": full.get("status"),
                 "title": full.get("title"),
-                "edge_fields": {k: full[k] for k in field_names if k in full},
+                "edge_fields": {
+                    k: full[k]
+                    for k in field_names + ([DOMAIN_FIELD] if node_type == DOMAIN_BUNDLE_TYPE else [])
+                    if k in full
+                },
                 "synthetic": False,
                 "covers": [],
             }
@@ -962,6 +999,7 @@ _TEST_NODE_TYPES = {
     "UC": {"id_pattern": r"^UC-\d{2,}$"},
     # FlowStep 的 id 是流程內區域名稱；其 pattern 會收 none，略過判定須排除（FR-03）
     "FlowStep": {"id_pattern": r"^[a-z][a-z0-9_]*$"},
+    "DomainBundle": {"id_pattern": r"^DB-[a-z-]+$"},
 }
 
 
@@ -1029,7 +1067,7 @@ A, B, C = "1.0.0-W1-001", "1.0.0-W1-002", "1.0.0-W1-003"
 
 def _test_edge_types_and_patterns() -> None:
     types = {e.name: e for e in load_edge_types(_test_table())}
-    assert set(types) == {"association", "blocking", "spawn", "provenance", "discovery", "bundle_dependency", "closed_by"}
+    assert set(types) == {"association", "blocking", "spawn", "provenance", "discovery", "domain_dependency", "bundle_dependency", "closed_by"}
     assert types["spawn"].cardinality == "one" and types["provenance"].cardinality == "many"
     no_bundle = copy.deepcopy(_test_table())  # E2 對照：移除 bundle_dependency 條目後集合不同
     del no_bundle["edge_types"]["bundle_dependency"]
@@ -1037,7 +1075,10 @@ def _test_edge_types_and_patterns() -> None:
     no_closed_by = copy.deepcopy(_test_table())  # E2 對照：移除 closed_by 條目後不再是使用中邊型
     del no_closed_by["edge_types"]["closed_by"]
     assert {e.name for e in load_edge_types(no_closed_by)} == set(types) - {"closed_by"}
-    assert "domain_dependency" not in types and "emission" not in types
+    assert "emission" not in types
+    no_domain = copy.deepcopy(_test_table())  # E2 對照：移除 domain_dependency 條目後不再是使用中邊型
+    del no_domain["edge_types"]["domain_dependency"]
+    assert {e.name for e in load_edge_types(no_domain)} == set(types) - {"domain_dependency"}
     changed = copy.deepcopy(_test_table())
     changed["edge_types"]["blocking"]["forward_field"] = "blocks_x"
     rows = [_row(A, blockedBy=[B], blocks_x=[C]), _row(B), _row(C)]
@@ -1175,6 +1216,37 @@ def _test_direction_fill_when_missing() -> None:
     assert not {e.name: e for e in load_edge_types(table, stub)}["association"].undirected
 
 
+def _test_domain_dependency_name_resolution() -> None:
+    """FR-11：名稱解析；E2 正向對照＝未宣告名稱是 danglingRef 而非 malformedRef。"""
+    rows = [
+        _row("DB-a", "DomainBundle", domain="alpha"),
+        _row("DB-b", "DomainBundle", domain="beta"),
+        _row("DB-d1", "DomainBundle", domain="dup"),
+        _row("DB-d2", "DomainBundle", domain="dup"),
+        _row("DB-bad", "DomainBundle", domain=7),
+        _row("DB-src", "DomainBundle", domain="src",
+             depends_on_domains=["alpha", "beta", "ghost", "dup", 42, "Alpha", "alpha"]),
+    ]
+    result = _graph(rows)
+    edges = set(result.edges)
+    assert ("domain_dependency", "DB-src", "DB-a") in edges
+    assert ("domain_dependency", "DB-src", "DB-b") in edges
+    assert len([e for e in edges if e[0] == "domain_dependency"]) == 2
+    reasons = _reasons(result)
+    assert ("danglingRef", REASON_MISSING, "ghost") in reasons  # E2：未宣告 -> dangling
+    assert ("danglingRef", REASON_MISSING, "dup") in reasons  # 重複宣告兩者皆排除
+    assert ("danglingRef", REASON_MISSING, "Alpha") in reasons  # 精確比對，區分大小寫
+    assert ("malformedRef", REASON_INVALID_SHAPE, 42) in reasons
+    assert not any(r[1] == REASON_PATTERN for r in reasons)  # 不走 id_pattern
+    c = result.classification
+    assert c["resolved"] == 3 and c["dangling"] == 3 and c["malformed"] == 1
+    assert result.reference_total == sum(c.values()) == 7  # 守恆式含名稱引用值
+    # E2 對照：移除 DB-a 的宣告後 alpha 變 dangling，邊少一條
+    fewer = _graph([r for r in rows if r["id"] != "DB-a"])
+    assert len([e for e in fewer.edges if e[0] == "domain_dependency"]) == 1
+    assert ("danglingRef", REASON_MISSING, "alpha") in _reasons(fewer)
+
+
 def _test_counts_and_conservation() -> None:
     rows = [_row(A, relatedTo=[B, "bad id"], blockedBy=[C, 7]), _row(B, relatedTo=[A]), _row(C)]
     counts = counts_output(_graph(rows))
@@ -1223,6 +1295,7 @@ def _run_selftests() -> None:
         _test_association_union,
         _test_direction_from_table,
         _test_direction_fill_when_missing,
+        _test_domain_dependency_name_resolution,
         _test_counts_and_conservation,
         _test_reference_total_two_ways_on_fixture,
         _test_coverage_guard,
