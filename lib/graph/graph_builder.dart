@@ -121,6 +121,7 @@ GraphBuiltEvent buildGraphFromInputs({
     domainResolver: resolver,
     totalReferences: classified.totalReferences + named.total,
     resolvedCount: resolvedRefs.length,
+    skippedCount: classified.skippedCount,
   );
 }
 

@@ -19,13 +19,13 @@ EdgeTypeResolution _resolve(Map<String, dynamic>? project) => resolveEdgeTypes(
   builtinSchemaJson: _builtinJson(),
 );
 
-/// 預期使用中邊型：asset 的 established 全部加 bundle_dependency。
+/// 預期使用中邊型：asset 的 established 全部加 bundle_dependency、closed_by。
 Set<String> _expectedActive(Map<String, dynamic> edges) =>
     edges.entries
         .where((e) => (e.value as Map)['layer'] == 'established')
         .map((e) => e.key)
         .toSet()
-      ..add('bundle_dependency');
+      ..addAll(['bundle_dependency', 'closed_by']);
 
 void main() {
   final builtin = _builtinJson();
@@ -57,6 +57,7 @@ void main() {
     expect(expected, isNotEmpty);
     // 獨立斷言：直接寫規格〈用詞〉點名的鍵名，不經 helper。
     expect(names, contains('bundle_dependency'));
+    expect(names, contains('closed_by'));
     expect(names, contains('domain_dependency'));
   });
 
@@ -154,7 +155,7 @@ void main() {
     final proposedOthers = builtinEdges.entries
         .where((e) => (e.value as Map)['layer'] == 'proposed')
         .map((e) => e.key)
-        .where((k) => k != 'bundle_dependency');
+        .where((k) => k != 'bundle_dependency' && k != 'closed_by');
     final names = _resolve(builtin).activeEdgeTypes.map((e) => e.name).toSet();
     for (final other in proposedOthers) {
       expect(names, isNot(contains(other)), reason: other);

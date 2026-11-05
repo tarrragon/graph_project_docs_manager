@@ -1,11 +1,15 @@
 /// SPEC-007 FR-03 引用值有序分類：格式錯誤 → 自我引用 → 斷邊 → 解析成功。
 library;
 
+import 'dart:developer' as developer;
+
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
+
+const _flowStepTypeName = 'FlowStep';
 
 enum MalformedReason { invalidShape, patternMismatch, selfReference }
 
@@ -28,6 +32,7 @@ class ReferenceClassification {
     required this.dangling,
     required this.malformed,
     required this.totalReferences,
+    this.skippedCount = 0,
   });
 
   final List<LightNode> lightNodes;
@@ -38,6 +43,9 @@ class ReferenceClassification {
 
   /// 抽取階段的引用值總數（獨立於三類加總）。
   final int totalReferences;
+
+  /// `closed_by` 略過數（FR-03〈closed_by 的略過規則〉）；不計入 [totalReferences]。
+  final int skippedCount;
 }
 
 /// 需求：[SPEC-007 FR-02、FR-03] 建輕節點、抽取引用值並依序分類。
@@ -56,10 +64,18 @@ ReferenceClassification classifyGraphReferences({
     for (final type in nodeTypes.values)
       if (type.idRegExp != null) type.idRegExp!,
   ];
+  // FlowStep 的 id 是流程內區域名稱（小寫單字），不是圖上的語料節點；其 pattern
+  // 會誤收 `none` 這類哨兵值，故判定外部格式時不計入（見 Solution 的規格缺口）。
+  final closedByPatterns = [
+    for (final entry in nodeTypes.entries)
+      if (entry.key != _flowStepTypeName && entry.value.idRegExp != null)
+        entry.value.idRegExp!,
+  ];
   final resolved = <ResolvedRef>[];
   final dangling = <DanglingRefGraphDefect>[];
   final malformed = <MalformedRefGraphDefect>[];
   var total = 0;
+  var skipped = 0;
   for (final raw in rawNodes) {
     final id = raw.frontmatter['id'];
     if (id is! String || duplicateIds.contains(id)) {
@@ -70,8 +86,16 @@ ReferenceClassification classifyGraphReferences({
       sourceId: id,
       edgeTypes: edgeTypes,
     );
-    total += refs.length;
     for (final ref in refs) {
+      if (_isClosedBySkipped(ref, closedByPatterns)) {
+        skipped++;
+        developer.log(
+          'closed_by skipped: ${ref.sourceId} -> ${ref.value}', // i18n-exempt: debug log
+          name: 'ReferenceClassification',
+        );
+        continue;
+      }
+      total++;
       final reason = _malformedReason(ref, patterns);
       if (reason != null) {
         malformed.add(MalformedRefGraphDefect(ref: ref, reason: reason));
@@ -94,7 +118,19 @@ ReferenceClassification classifyGraphReferences({
     dangling: dangling,
     malformed: malformed,
     totalReferences: total,
+    skippedCount: skipped,
   );
+}
+
+/// 需求：[SPEC-007 FR-03〈closed_by 的略過規則〉] 字串值在圖上無同 id 節點且非
+/// 字串值不符合任何本專案 id_pattern（外部格式）即略過；符合格式但語料內
+/// 不存在者照常分類為 danglingRef（用戶改判，2026-11-05）；形狀不合法不略過。
+bool _isClosedBySkipped(ReferenceValue ref, List<RegExp> patterns) {
+  final value = ref.value;
+  return ref.edgeTypeName == closedByEdgeTypeName &&
+      ref.isShapeValid &&
+      value is String &&
+      !patterns.any((pattern) => pattern.hasMatch(value));
 }
 
 /// ID 索引查詢；每次查詢通知 [onIdLookup]（G9 計數注入點）。
