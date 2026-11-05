@@ -43,7 +43,11 @@ void main() {
       expect(event.skippedCount, 0);
     });
 
-    for (final value in ['tarrragon/claude#60', 'flutter_balance:W4-007', 'none']) {
+    for (final value in [
+      'tarrragon/claude#60',
+      'flutter_balance:W4-007',
+      'none',
+    ]) {
       test('CB-2 非語料值略過：$value', () {
         final event = _build([_a('closed_by', value)]);
         expect(event.edges.where((e) => e.edgeType == 'closed_by'), isEmpty);
@@ -70,10 +74,7 @@ void main() {
 
     test('CB-5 守恆式：欄位值總數 = 引用值總數 + 略過數', () {
       final nodes = [
-        buildRawNode(
-          id: '0.1.0-W1-001',
-          extra: {'closed_by': '0.6.0-W1-010'},
-        ),
+        buildRawNode(id: '0.1.0-W1-001', extra: {'closed_by': '0.6.0-W1-010'}),
         buildRawNode(id: '0.1.0-W1-002', extra: {'closed_by': 'none'}),
         buildRawNode(
           id: '0.1.0-W1-003',

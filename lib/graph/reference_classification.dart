@@ -11,7 +11,7 @@ import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 const _flowStepTypeName = 'FlowStep';
 
-enum MalformedReason{ invalidShape, patternMismatch, selfReference }
+enum MalformedReason { invalidShape, patternMismatch, selfReference }
 
 enum DanglingReason { targetMissing, targetDuplicated }
 
