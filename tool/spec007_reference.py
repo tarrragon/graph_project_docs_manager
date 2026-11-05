@@ -35,7 +35,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec006_reference as corpus_ref  # noqa: E402  只借 Corpus 判型，非 Dart
 
-REFERENCE_VERSION = "1.3.0"  # 對應 SPEC-007 v1.40
+REFERENCE_VERSION = "1.3.1"  # 對應 SPEC-007 v1.40
 NAME_RESOLVED_EDGE_TYPE = "domain_dependency"  # SPEC-007 FR-11／D6：引用值是 domain 名稱，走名稱索引
 DOMAIN_BUNDLE_TYPE = "DomainBundle"
 DOMAIN_FIELD = "domain"
@@ -703,6 +703,8 @@ def synthetic_rows() -> list[dict[str, Any]]:
         _syn("9.9.9-W9-001", base + "9.9.9-W9-001-copy.md", t, ["duplicate_id"]),
         _syn("9.9.9-W9-002", base + "9.9.9-W9-002.md", t, ["target_duplicated"],
              relatedTo=["9.9.9-W9-001"]),
+        _syn("9.9.9-W9-003", base + "9.9.9-W9-003.md", t, ["self_reference"],
+             relatedTo=["9.9.9-W9-003"]),
         _syn("9.9.9-W9-004", base + "9.9.9-W9-004.md", t, ["invalid_shape"],
              blockedBy=["9.9.9-W9-002", 42], discovered_during=True,
              source_ticket={"a": "b"}, relatedTo=[["x"]]),
