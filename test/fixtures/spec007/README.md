@@ -59,7 +59,8 @@ python3 tool/spec007_reference.py compute    # 只讀 manifest 與 type_table.js
   重凍結後須同步更新本檔上述各處，否則 `compute` 報紅。
 - `freeze` 預設語料路徑：本專案為 repo 根，flutter_balance 為 `~/project/flutter_balance`（`--fb-root` 可改）。
 - 不 import、不執行、不讀取任何 Dart 實作或其產物。Corpus 判型借用同為 Python 的
-  `tool/spec006_reference.py`（`SchemaTypeTable.match_id`、`classify_text`、`scan_markdown_files`）。
+  `tool/spec006_reference.py`（`SchemaTypeTable.match_id`、`classify_text`、`scan_markdown_files`）；
+  該 spec006 判型只在 `tool/spec007_freeze.py` 模組內 import，入口與其餘模組不碰。
 - `id_pattern` 依型別表 `id_pattern_dialect`（`python-re`）比對；全部節點型別（含 layer 為 proposed 的
   `FlowStep`）都參與「值是否符合任何節點型別的 `id_pattern`」判定。
 - 引用值總數（`reference_value_total`）由 `count_reference_values` 遍歷 manifest 各列 `edge_fields`
