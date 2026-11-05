@@ -6,7 +6,7 @@
 
 ## 參照實作版本與規格對應
 
-`tool/spec007_reference.py` 1.3.1 對應 SPEC-007 v1.40，於 2026-11-05 重凍結（`0.6.0-W1-179`；前次 1.3.0 為 `0.6.0-W1-178`），
+`tool/spec007_reference.py` 1.3.1 對應 SPEC-007 v1.40，於 2026-11-05 重凍結（`0.6.0-W1-177`；此前依序為 `0.6.0-W1-179`、1.3.0 的 `0.6.0-W1-178`），
 凍結檔 header 的 `reference_version` 為 1.3.1。版本沿革：
 
 - 1.0.0：首次凍結（`0.4.0-W2-008`）。
@@ -65,12 +65,12 @@ python3 tool/spec007_reference.py compute    # 只讀 manifest 與 type_table.js
 
 | 項目 | 值 |
 |------|-----|
-| 凍結日期 | 2026-11-05（重凍結，`0.6.0-W1-178`；首次凍結 2026-09-30） |
+| 凍結日期 | 2026-11-05（重凍結，`0.6.0-W1-177`；前兩次重凍為 `0.6.0-W1-179`、`0.6.0-W1-178`；首次凍結 2026-09-30） |
 | Python／PyYAML | 3.14.6／6.0.3（`python3.14`；PATH 上的 `python3` 無 PyYAML 時改用之） |
 | OS | macOS 26.5 |
 | 框架版本 | `.claude/VERSION` = 2.87.0；`schema_generated_at_framework_version` = 2.84.0 |
-| graph_project_docs_manager | commit `0184670d427b81672384270b4291fb2c5b18293e`，docs 工作區無未提交變更；docs 下 `.md` 2621 檔，簽章 sha256 `594d0356...b4554` |
-| flutter_balance | HEAD `bf0baba26637f692f6eff31cda8cbea26279cd19`；docs 下 `.md` 1896 檔，簽章 sha256 `7e66d559...b4554` |
+| graph_project_docs_manager | commit `8839f8c600afc9f4f50540dfb71aac7158ed8366`，docs 工作區無未提交變更；docs 下 `.md` 2623 檔，簽章 sha256 `79aaf19e...fe039e` |
+| flutter_balance | HEAD `9b31eae5bb7ad3d4a71c5b714ddee9e300ff40bd`；docs 下 `.md` 1897 檔，簽章 sha256 `f16a87ee...d1f47e` |
 
 flutter_balance 是進行中的專案，其 docs 工作區可能含未提交檔案，故上列 HEAD 不足以重現本語料；
 可重現的識別是簽章與檔案數。`freeze` 的簽章檢查用來擋住凍結期間語料被改動。header 另存於 `graph_manifest.json`。
@@ -87,7 +87,7 @@ manifest 每一類至少一列（`coverage_gaps` 於 `freeze` 時 assert 為空�
 | `spawn_reverse_only` | 126 | 0 | 子票（邊的起點） |
 | `spawn_multi_source` | 18 | 0 | 子票（`multiSource` 的起點） |
 | `provenance_multi_source` | 1 | 0 | 本專案 UC-01（兩條 `provenance` 邊，宣告來源皆為兩端） |
-| `dangling` | 5 | 0 | 來源節點（僅計 `targetMissing`） |
+| `dangling` | 4 | 0 | 來源節點（僅計 `targetMissing`） |
 | `malformed_pattern` | 5 | 0 | 來源節點 |
 | `duplicate_id` | 0 | 2（1 對） | `9.9.9-W9-001` 兩路徑 |
 | `self_reference` | 0 | 1 | 來源節點（真實語料 `closed_by` 自指已於 `0.6.0-W1-179` 修正為外部格式值，合成列 `9.9.9-W9-003` 於 1.3.1 加回） |
@@ -108,8 +108,8 @@ manifest 每一類至少一列（`coverage_gaps` 於 `freeze` 時 assert 為空�
 
 | 語料 | status 值集合（各值的 ticket 張數；每值選 1 張） |
 |------|------|
-| graph_project_docs_manager | blocked 3、closed 435、completed 2058、in_progress 2、pending 45（5 張） |
-| flutter_balance | closed 348、completed 1492、in_progress 2、pending 6（4 張） |
+| graph_project_docs_manager | blocked 3、closed 435、completed 2062、in_progress 3、pending 46（5 張） |
+| flutter_balance | closed 350、completed 1494、pending 6（3 張） |
 
 frontmatter 中 YAML 的 date 型別會轉為 ISO 字串（Dart 的 yaml 套件不解析時間戳）；本次轉換數為 0。
 
@@ -122,26 +122,26 @@ frontmatter 中 YAML 的 date 型別會轉為 ISO 字串（Dart 的 yaml 套件�
 
 | 項目 | 預期（本專案／flutter_balance） | 實測（本專案／flutter_balance） | 說明 |
 |------|------|------|------|
-| 節點數 | 1179／1690 | 2586／1863 | 語料增長 |
-| 斷邊 | 3／0 | 4／1 | 本專案多 `0.1.0-W3-437.2` 的 `closed_by: 0.1.0-W3-417`（符合格式但語料內不存在）；flutter_balance 多 `0.3.0-W4-013` 的 `discovered_during: 0.2.3-W5-001` |
-| 格式錯誤 | 1／4 | 6／4 | 本專案多 5 筆 `closed_by` 自指（`0.5.0-W1-539`、`-574`～`-577`，`selfReference`） |
+| 節點數 | 1179／1690 | 2587／1864 | 語料增長 |
+| 斷邊 | 3／0 | 3／1 | 本專案 `0.1.0-W3-437.2` 的 `closed_by` 已於 `0.6.0-W1-177` 改為 `0.3.1-W3-417`，其斷邊消失；flutter_balance 多 `0.3.0-W4-013` 的 `discovered_during: 0.2.3-W5-001` |
+| 格式錯誤 | 1／4 | 1／4 | 本專案 5 筆 `closed_by` 自指已於 `0.6.0-W1-179` 修正 |
 | `spawn` 只在反向 | 38／52 | 72／55 | 含全部真實列（合成列不帶 `spawn`） |
 | `spawn` `multiSource` | 7／9 | 9／9 | 本專案較首次凍結多 `0.5.0-W3-008` |
 | `provenance` `multiSource` | 0／0 | 0／0 | UC-01 為兩條 `provenance` 邊，宣告來源皆為兩端，基數 many 不回報 |
-| 重複 ID、自我引用 | 0／0 | 0（重複 ID）、5／0（自我引用） | 重複 ID 以合成列覆蓋；自我引用本專案 5 筆為真實列 |
+| 重複 ID、自我引用 | 0／0 | 0（重複 ID）、0／0（自我引用） | 重複 ID 與自我引用皆以合成列覆蓋 |
 
 其他實測（`real_only`）：
 
 | 項目 | 本專案 | flutter_balance |
 |------|------|------|
-| 引用值總數（獨立計數，不含 `closed_by` 略過值） | 5939 | 3869 |
-| 解析成功／斷邊／格式錯誤 | 5929／4／6 | 3864／1／4 |
-| 邊數 | 3806 | 2498 |
-| 其中 `closed_by` 邊／`uc_ticket_refs` 邊／`domain_dependency` 邊 | 113／100／21 | 95／1／0 |
+| 引用值總數（獨立計數，不含 `closed_by` 略過值） | 5938 | 3869 |
+| 解析成功／斷邊／格式錯誤 | 5934／3／1 | 3864／1／4 |
+| 邊數 | 3808 | 2498 |
+| 其中 `closed_by` 邊／`uc_ticket_refs` 邊／`domain_dependency` 邊 | 114／100／21 | 95／1／0 |
 | `closed_by` 欄位值總數＝引用值＋略過數 | 435＝114＋321 | 350＝95＋255 |
-| `graphDefect` 總數（斷邊＋格式錯誤＋`duplicateId`＋`multiSource`） | 19 | 14 |
+| `graphDefect` 總數（斷邊＋格式錯誤＋`duplicateId`＋`multiSource`） | 13 | 14 |
 
-含合成列的組（本專案）：節點 2592、`duplicateId` 1、引用值總數 5946、`graphDefect` 22。
+含合成列的組（本專案）：節點 2593、`duplicateId` 1、引用值總數 5948、`graphDefect` 21。
 
 ## 規格未定義處與採用的解釋（不影響規格、供實作票比對）
 

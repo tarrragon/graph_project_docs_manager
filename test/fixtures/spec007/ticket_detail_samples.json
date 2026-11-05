@@ -5,14 +5,14 @@
    "graph_project_docs_manager": {
     "blocked": 3,
     "closed": 435,
-    "completed": 2060,
+    "completed": 2062,
     "in_progress": 3,
-    "pending": 47
+    "pending": 46
    },
    "flutter_balance": {
     "closed": 350,
     "completed": 1494,
-    "pending": 5
+    "pending": 6
    }
   },
   "tickets_without_string_status": {
