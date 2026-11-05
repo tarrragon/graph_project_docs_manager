@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-11-05"
-version: "1.41"
+version: "1.42"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -59,8 +59,8 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 依賴 | 擋住 | 承接 |
 |------|------|------|
-| 上游 schema 的邊型表帶正向基數欄位 | FR-01、FR-04 | `0.4.0-W1-056` |
-| App 內建型別表副本含正向基數；UC-01 的 `source_proposal` 改為兩個來源 | FR-01 的內建補值、IT-1 的凍結測資 | `0.4.0-W2-001` |
+| 上游 schema 的邊型表帶正向基數欄位 | FR-01、FR-04 | `0.4.0-W1-056`（已完成） |
+| App 內建型別表副本含正向基數；UC-01 的 `source_proposal` 改為兩個來源 | FR-01 的內建補值、IT-1 的凍結測資 | `0.4.0-W2-001`（已完成） |
 | PROP→SPEC 的反向資料與正向一致 | IT-1 的凍結測資 | `0.4.0-W1-045`（已完成） |
 | 上游 #98 第二項（`spec_refs` 存或推導） | 無：聯集規則不依賴其結果（tech-decisions 2026-09-30） | — |
 
@@ -507,6 +507,7 @@ flow 子類的程式識別名：「flow 參照未解析」為 `FlowDefectKind.un
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.42 | 2026-11-05 | `0.6.0-W1-191.1`（依 `0.6.0-W1-191` 時效型註記盤點）：〈前置依賴〉表承接欄兩列補「（已完成）」，與既有第三列一致。不改契約 |
 | 1.41 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：FR-09 識別名段首句原寫「前三種 flow 子類的識別名由 NeedsContext 上報」「實作票命名前不得自行命名」，改為直接列出 `FlowDefectKind.unresolvedReference`／`duplicateStepId` 與對應的 `GraphDefectKind`，`traverses` 兩子類與 domain 重複宣告改指 FR-11 規則清單；已命名完畢的條件句刪除。不改行為 |
 | 1.40 | 2026-11-05 | 使用中邊型加入 proposed 層的 `closed_by`（`0.6.0-W1-169.3`，依 `0.6.0-W1-169` 用戶裁決 C）：〈用詞〉、FR-01 鍵名例外（兩處改三處）與三條驗收、FR-08 proposed 標示、FR-11 例外計數敘述、D6 同步；FR-03 新增〈`closed_by` 的略過規則〉：字串值不符合任何主圖節點型別 `id_pattern`（排除 FlowStep；外部格式值）時略過，不計 `danglingRef`／`malformedRef`，不計入引用值與守恆式，另計略過數；符合 `id_pattern` 但語料內不存在者為 `danglingRef`（`targetMissing`，2026-11-05 用戶裁決）；形狀不合法仍為格式錯誤；補六條驗收（含 E2 正向對照與不外溢對照） |
 | 1.39 | 2026-11-04 | 依 `0.6.0-W1-072` 用戶裁決（2026-11-04）新增 `graphDefect` 子類孤島與缺必要邊（`0.6.0-W1-072.2`）：FR-09 新增子類表與〈孤島與缺必要邊〉判準（孤島只判 PROP／SPEC／UC／EVT／DomainBundle；必要邊集合為 UC 的 `provenance`、`spec_association`、`uc_ticket_refs` 出邊，EVT 的 `provenance` 或 `spec_association` 出邊至少一條），補八條驗收；FR-06 負載與 `graphDefects` 筆數驗收同步；D4 同步；〈本版範圍外〉原列改為 Ticket 孤島與其他型別必要邊。識別名 `isolatedNode`、`missingRequiredEdge`；PM 裁定（同日）孤島節點不再報缺必要邊 |

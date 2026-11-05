@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-05"
-version: "1.124"
+version: "1.125"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.124（1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.125（1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -557,7 +557,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 
 #### 4.0.5 測試形態與測試基座（L2 條文，提案）
 
-測試形態為 widget test（`flutter test`），不做 golden；理由：golden 對 macOS 字型渲染敏感，CI 與本機差異會使紅燈失去診斷價值。每個元件一支測試檔，依條目「測試點」逐項斷言；視窗尺寸以 `tester.view.physicalSize` 設為 `kMinWindowSize` 與 `kDesignSize` 各跑一次。測試基座（尺寸切換、`TestCopy`、`ProviderScope` 包裝）由 `0.1.0-W1-034` 承接，為所有元件票的 blockedBy。
+測試形態為 widget test（`flutter test`），不做 golden；理由：golden 對 macOS 字型渲染敏感，CI 與本機差異會使紅燈失去診斷價值。每個元件一支測試檔，依條目「測試點」逐項斷言；視窗尺寸以 `tester.view.physicalSize` 設為 `kMinWindowSize` 與 `kDesignSize` 各跑一次。測試基座（尺寸切換、`TestCopy`、`ProviderScope` 包裝）由 `0.1.0-W1-034` 建立。
 
 #### 4.0.6 i18n 標記約定與新 key 總表
 
@@ -583,8 +583,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `gapMarkerLabel` | 缺口 | Gap | — | 4.6（可見文字） |
 | `damagedEdgeMarkerLabel` / `damagedDetailMarkerLabel` | 邊損壞 / 詳情損壞 | Edge damaged / Detail damaged | — | 4.6（朗讀） |
 | `relationItemA11yLabel` | 關聯節點 {id} | Related node {id} | id | 4.19 |
-| `relationProposedLabel` | 暫定 | Proposed | — | 4.19（`isProposed=true` 的尾端 `Badge.category`；新 key，ARB 待建，`0.5.0-W1-103.2`；文案依 `0.5.0-W1-103.1` 用戶裁決 I2） |
-| `relationItemProposedA11yLabel` | 關聯節點 {id}，暫定邊，形狀可能變動 | Related node {id}, proposed edge, shape may change | id | 4.19（新 key，ARB 待建，`0.5.0-W1-103.2`；朗讀文案依 `0.5.0-W1-103.1` PM 處置確認） |
+| `relationProposedLabel` | 暫定 | Proposed | — | 4.19（`isProposed=true` 的尾端 `Badge.category`；新 key，`0.5.0-W1-103.2`；文案依 `0.5.0-W1-103.1` 用戶裁決 I2） |
+| `relationItemProposedA11yLabel` | 關聯節點 {id}，暫定邊，形狀可能變動 | Related node {id}, proposed edge, shape may change | id | 4.19（新 key，`0.5.0-W1-103.2`；朗讀文案依 `0.5.0-W1-103.1` PM 處置確認） |
 | `pathDeclarationIncompleteLine` | 路徑宣告不完整：{detail}（影響 {count} 條路徑） | Path declarations incomplete: {detail} ({count} paths affected) | detail, count | SPEC-001 §5 專案層級宣告狀態一行（`AppText`；新 key，`0.5.0-W1-096.9` PM 處置） |
 | `pathDeclarationBundlesPartial` | 已宣告 {declared}／{total} 個 domain | {declared} of {total} domains declared | declared, total | 同上，`{detail}` 片段；與 `pathDeclarationNonDomainMissing` 並存時以「、」／", " 連接 |
 | `pathDeclarationBundlesMalformed` | {count} 個 domain 的路徑宣告格式錯誤 | path declarations of {count} domains are malformed | count | SPEC-001 §5 宣告狀態行 `{detail}` 片段；有 bundle 的 `path_patterns` 格式錯誤（G1 值不是清單、G2 含非字串元素）時出現，接在 bundle 側片段之後，以「、」／", " 連接（`0.6.0-W1-075` N1=C′，`0.6.0-W1-075.1` 提案，`0.6.0-W1-075.2` 落地） |
@@ -592,12 +592,12 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `pathDeclarationNoneLine` | 本專案未宣告路徑 | This project declares no paths | — | SPEC-001 §5 兩側皆未宣告時（不顯示路徑數） |
 | `pathDeclarationNonDomainMalformed` | 非 domain 路徑清單格式錯誤 | non-domain path list is malformed | — | 同 `pathDeclarationNonDomainMissing` 的 `{detail}` 片段，清單檔存在但格式錯誤時取代「缺」（UC-02 NC-1 (ii) II-a）。key 與文案已定（`0.5.0-W1-096.7` PM 處置識別名、`0.5.0-W1-114.1` NC-g），ARB 已建（`0.5.0-W1-119.2`） |
 | `pathDeclarationNoBundles` | 尚未宣告任何 domain | no domains declared | — | SPEC-001 §5 宣告狀態行 `{detail}` 的 bundle 側片段，bundle 總數為 0（專案沒有任何 DomainBundle）時取代 `pathDeclarationBundlesPartial`，不顯示「0／0」；與非 domain 側片段並存時以「、」／", " 連接（用戶裁決 2026-10-20，`0.5.0-W1-443`） |
-| `gapNonDomainPathsNonStringElements` | 清單內 {count} 個非字串元素 | {count, plural, =1{1 non-string element in the list} other{{count} non-string elements in the list}} | count | SPEC-001 §5 破洞項目，`nonDomainPathsMalformed` 子原因 `elementNotString` 的項目說明；`count` 取破洞的 `nonStringElementCount`（SPEC-006 FR-08）。新 key，依 `0.5.0-W1-114.4` 用戶裁決第五批 NC-7（G1），識別名為 PM 決定；en 文案經 PM 確認（`0.5.0-W1-114.5` PM 處置），ARB 待建 |
-| `gapNonDomainPathsYamlInvalid` | 清單檔的 YAML 無法解析 | The list file's YAML could not be parsed | — | SPEC-001 §5 破洞項目，`nonDomainPathsMalformed` 子原因 `yamlInvalid` 的項目說明。key 與文案為 PM 決定（`0.5.0-W1-114.5` PM 處置 NC），ARB 待建 |
-| `gapNonDomainPathsKeyMissing` | 清單檔缺少 {key} 鍵 | The list file is missing the {key} key | key | 同上，子原因 `keyMissing`；`key` 取型別表 `non_domain_paths_key`（缺欄或空白時取內建表值，SPEC-006 FR-10 規則 1）。key 與文案為 PM 決定，ARB 待建 |
-| `gapNonDomainPathsNotList` | 清單檔中 {key} 的值不是清單 | The value of {key} in the list file is not a list | key | 同上，子原因 `notList`；`key` 取值同上。key 與文案為 PM 決定，ARB 待建 |
-| `swimlaneFlowParseFailedHint` | 此 UC 有 flow 區塊解析失敗，泳道只呈現第一個合法區塊 | Some flow blocks in this UC failed to parse; the lanes show the first valid block only | — | §3.6 §1 正常 · 泳道（`AppText.multiLine`，`maxLines: 2`、`secondary: true`；SPEC-001 §1〈flow 區塊解析失敗的泳道呈現〉(a)）。key 與文案已定（`0.5.0-W1-114.1` NC-g），ARB 待建 |
-| `flowParseFailedMessage` | 此 UC 的 flow 區塊解析失敗，請開啟來源檔修正 | This UC's flow block failed to parse. Open the source file to fix it. | — | §3.6 §1 泳道 · flow 未結構化（`EmptyState.section` 訊息；SPEC-001 §1〈flow 區塊解析失敗的泳道呈現〉(b)）；§2 UC Flow 視圖 flow 區塊皆解析失敗時同用此 key（`0.5.0-W1-114.1` NC-f）。key 與文案已定（NC-g），ARB 待建 |
+| `gapNonDomainPathsNonStringElements` | 清單內 {count} 個非字串元素 | {count, plural, =1{1 non-string element in the list} other{{count} non-string elements in the list}} | count | SPEC-001 §5 破洞項目，`nonDomainPathsMalformed` 子原因 `elementNotString` 的項目說明；`count` 取破洞的 `nonStringElementCount`（SPEC-006 FR-08）。新 key，依 `0.5.0-W1-114.4` 用戶裁決第五批 NC-7（G1），識別名為 PM 決定；en 文案經 PM 確認（`0.5.0-W1-114.5` PM 處置） |
+| `gapNonDomainPathsYamlInvalid` | 清單檔的 YAML 無法解析 | The list file's YAML could not be parsed | — | SPEC-001 §5 破洞項目，`nonDomainPathsMalformed` 子原因 `yamlInvalid` 的項目說明。key 與文案為 PM 決定（`0.5.0-W1-114.5` PM 處置 NC） |
+| `gapNonDomainPathsKeyMissing` | 清單檔缺少 {key} 鍵 | The list file is missing the {key} key | key | 同上，子原因 `keyMissing`；`key` 取型別表 `non_domain_paths_key`（缺欄或空白時取內建表值，SPEC-006 FR-10 規則 1）。key 與文案為 PM 決定 |
+| `gapNonDomainPathsNotList` | 清單檔中 {key} 的值不是清單 | The value of {key} in the list file is not a list | key | 同上，子原因 `notList`；`key` 取值同上。key 與文案為 PM 決定 |
+| `swimlaneFlowParseFailedHint` | 此 UC 有 flow 區塊解析失敗，泳道只呈現第一個合法區塊 | Some flow blocks in this UC failed to parse; the lanes show the first valid block only | — | §3.6 §1 正常 · 泳道（`AppText.multiLine`，`maxLines: 2`、`secondary: true`；SPEC-001 §1〈flow 區塊解析失敗的泳道呈現〉(a)）。key 與文案已定（`0.5.0-W1-114.1` NC-g） |
+| `flowParseFailedMessage` | 此 UC 的 flow 區塊解析失敗，請開啟來源檔修正 | This UC's flow block failed to parse. Open the source file to fix it. | — | §3.6 §1 泳道 · flow 未結構化（`EmptyState.section` 訊息；SPEC-001 §1〈flow 區塊解析失敗的泳道呈現〉(b)）；§2 UC Flow 視圖 flow 區塊皆解析失敗時同用此 key（`0.5.0-W1-114.1` NC-f）。key 與文案已定（NC-g） |
 | `currentProjectA11yLabel` | 目前專案 | Current project | — | 4.9 |
 | `projectSummaryLabel` | {nodes} 節點 · {tickets} 票 | {nodes} nodes · {tickets} tickets | nodes, tickets | 4.9 |
 | `healthBadgeA11yLabel` | {count} 個問題 | 單複數：1 issue／{count} issues | count | 4.5（health）；計數 0 時徽章不渲染（SPEC-001 §7） |
@@ -616,9 +616,9 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `ticketsNoTopicFilesNotice` | 此專案無主題檔 | This project has no topic files | — | §4 畫面（主題模式頂部說明列，1.117 加入；`AppText.caption`） |
 | `topicSectionSummary` | ({count} tasks, 最高優先級={priority}) | ({count} tasks, top priority={priority}) | count, priority | §4 畫面（4.40 `sectionHeader` 呼叫端） |
 | `gapSectionCount` | {count} 項 | {count} items | count | §5 畫面（4.40 `sectionHeader` 呼叫端） |
-| `viewGapsAction` | 檢視 | View | — | 4.26 `withAction`（SPEC-003 §2.2 系統層通知 `denied` fallback 動作，SPEC-003 1.9 新增；ARB 實檔由 `0.1.0-W3-064` 實作票加，狀態待建） |
+| `viewGapsAction` | 檢視 | View | — | 4.26 `withAction`（SPEC-003 §2.2 系統層通知 `denied` fallback 動作，SPEC-003 1.9 新增；ARB 實檔由 `0.1.0-W3-064` 加入） |
 
-**1.35 新增（`0.1.0-W3-335.16`，對齊 SPEC-001 v1.9／SPEC-003 v1.27；ARB 實檔狀態待建，由對應元件票或畫面票加入，zh 值為本檔提案文案，M1–M5 適用者依 §4.0.12）**：
+**1.35 新增（`0.1.0-W3-335.16`，對齊 SPEC-001 v1.9／SPEC-003 v1.27；ARB 已建，zh 值為本檔提案文案，M1–M5 適用者依 §4.0.12）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -638,7 +638,7 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 blockedBy 值為空時的「—」為字面符號，不經 i18n。
 
 **1.36 新增（`0.1.0-W3-335.37` R9，`0.1.0-W3-335.40` 落地，對齊 SPEC-001 v1.11／SPEC-003 v1.30；
-ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案）**：
+ARB 已建，zh 值為本檔提案文案）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -647,13 +647,13 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `projectUnreadyReasonIncompatible`（原規格名 `projectUnreadyBlockedMessage`，1.56 改用 ARB 名） | 此專案不適用本 App | This project is not usable with this app | — | §2–§6「專案未就緒」（4.21 `page` 呼叫端；Domain 視圖為三個阻擋狀態之一時，訊息不重述阻擋原因細節——細節僅在 Domain 視圖本身呈現） |
 | `gotoDomainViewAction`（原規格名 `gotoDomainAction`，1.59 隨 `0.3.3-W3-389` 移除舊 ARB key、統一為本 key） | 前往 Domain 視圖 | Go to Domain View | — | 4.21 `page`（`AppButton.primary` 呼叫端，`action-<screen>-goto-domain`），§2–§6「專案未就緒」共用 |
 
-**1.37 新增（`0.1.0-W3-335.37` 附帶，對齊 SPEC-003 §3.1；ARB 實檔狀態待建，由對應畫面票加入）**：
+**1.37 新增（`0.1.0-W3-335.37` 附帶，對齊 SPEC-003 §3.1；ARB 已建）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
 | `useBuiltinSchemaAction` | 以 App 內建型別表檢視 | View with the app's built-in schema | — | 4.23 `BlockedState.plain`（`AppButton.secondary` 呼叫端，`action-domain-degraded-view`） |
 
-**1.38 新增（`0.1.0-W3-335.38` S-11／S-13／S-38／S-28／S-34／S-37，對齊 SPEC-003 §3.1／§3.4／§3.3／§3.7；ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案）**：
+**1.38 新增（`0.1.0-W3-335.38` S-11／S-13／S-38／S-28／S-34／S-37，對齊 SPEC-003 §3.1／§3.4／§3.3／§3.7；ARB 已建，zh 值為本檔提案文案）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -664,7 +664,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `degradedSchemaShortLabel` | 內建型別表 | Built-in schema | — | 4.9 `RecentProjectItem`（`Badge.tag`，`isDegraded` 為 `true` 時，S-34） |
 | `probingReason` | 檢查中… | Checking… | — | 4.9 `RecentProjectItem`（disabled 列 `reason`，探測未完成時，S-37） |
 
-**1.41 新增（`0.1.0-W3-335.57`，依 `0.1.0-W3-335.53` WRAP 裁決 E2／E3／E8，對應 SPEC-001 v1.14／SPEC-003 v1.35；ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案）**：
+**1.41 新增（`0.1.0-W3-335.57`，依 `0.1.0-W3-335.53` WRAP 裁決 E2／E3／E8，對應 SPEC-001 v1.14／SPEC-003 v1.35；ARB 已建，zh 值為本檔提案文案）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -682,7 +682,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 
 畫面票另需的頁面副標等文案由畫面票自行宣告，不列於此。
 
-**1.45 新增（對齊 SPEC-001 v1.19 〈推定版本〉註記與 schema 不相容面板重評；ARB 實檔狀態待建，由對應實作票加入，zh 值為本檔提案文案）**：
+**1.45 新增（對齊 SPEC-001 v1.19 〈推定版本〉註記與 schema 不相容面板重評；ARB 已建，zh 值為本檔提案文案）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -690,7 +690,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `schemaKnownRangeValue` | 不高於 {appVersion} | Up to {appVersion} | appVersion | 4.23 `BlockedState.withDetail` 面板值（`AppText.mono`）；`appVersion` 為 App 內建型別表產生版本，與 `message` 代入的同一值 |
 | `inferredVersionBadgeLabel` | 版本推定自型別表 (v{inferredVersion}) | Version inferred from schema (v{inferredVersion}) | inferredVersion | 4.27 `AppShell`（`badge-<screen>-inferred-version`，`Badge.tag`，推定版本旗標生效期間與返回列同一列常駐，SPEC-001 §1〈推定版本〉註記） |
 
-**1.46 新增（對齊 SPEC-001 v1.21〈路徑模式取自內建表〉註記與 §5「無法判定破洞」；ARB 實檔狀態待建，由對應實作票加入，zh 值為本檔提案文案）**：
+**1.46 新增（對齊 SPEC-001 v1.21〈路徑模式取自內建表〉註記與 §5「無法判定破洞」；ARB 已建，zh 值為本檔提案文案）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -730,16 +730,16 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `scanCompleteWatchNotificationTitle` | 破洞報告已更新 | Gap report updated | — | macOS 系統通知標題，檔案監看輪次專用（非本檔元件承載，權威定義為 SPEC-003 §2.2〈系統層通知〉監看輪次通知內容列；本列僅為 ARB 對照，`0.6.0-W1-080`） |
 | `scanCompleteWatchNotificationBody` | 檔案變動後重新掃描，目前 {count} 個破洞 | Rescanned after file changes: {count} gaps now | count | macOS 系統通知內文，檔案監看輪次專用，三態共用（同上，`0.6.0-W1-080`） |
 
-**1.69 新增（`0.5.0-W1-106`，「畫面」列顯示名；1.71 依用戶裁決 K6 收窄；ARB 實檔狀態待建，由對應實作票加入，zh／en 值為本檔提案文案）**：domain 列首不經 i18n，4.37 `MatrixGrid` 與 4.38 `SwimlaneGrid` 一律顯示 `DomainBundle.domain` 原值（未知 domain 亦同）；只有 App 自身詞彙 `presentation` 有 key——用於泳道「畫面」列與 SPEC-003 §3.2「本 UC 外」的 `presentation` 值，不成矩陣列（CLAUDE.md §6、`docs/tech-decisions.md` 2026-10-08 補記「domain 列首顯示原值，只有「畫面」列走 i18n」）。
+**1.69 新增（`0.5.0-W1-106`，「畫面」列顯示名；1.71 依用戶裁決 K6 收窄；ARB 已建，zh／en 值為本檔提案文案）**：domain 列首不經 i18n，4.37 `MatrixGrid` 與 4.38 `SwimlaneGrid` 一律顯示 `DomainBundle.domain` 原值（未知 domain 亦同）；只有 App 自身詞彙 `presentation` 有 key——用於泳道「畫面」列與 SPEC-003 §3.2「本 UC 外」的 `presentation` 值，不成矩陣列（CLAUDE.md §6、`docs/tech-decisions.md` 2026-10-08 補記「domain 列首顯示原值，只有「畫面」列走 i18n」）。
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
 | `swimlaneScreenLaneName` | 畫面 | Screen | — | 4.38 「畫面」列列首（`kind: screen`）；SPEC-003 §3.2 事件流小表「本 UC 外」所列值為 `presentation` 時 |
-| `swimlaneUnplacedLaneName` | 未定位 | Unplaced | — | 4.38 「未定位」列列首（`kind: unplaced`；SPEC-001 §1〈泳道布局規則〉「`traverses` 異常的步驟」列，`0.5.0-W1-114.1` PM 處置 NC-a）。key 與文案為 lavender 提案、本輪落地，ARB 待建 |
+| `swimlaneUnplacedLaneName` | 未定位 | Unplaced | — | 4.38 「未定位」列列首（`kind: unplaced`；SPEC-001 §1〈泳道布局規則〉「`traverses` 異常的步驟」列，`0.5.0-W1-114.1` PM 處置 NC-a）。key 與文案為 lavender 提案、本輪落地 |
 
 **1.80 提案（`0.5.0-W1-114.16`，對應 SPEC-001 v1.41 §5〈破洞報告項目投影：`parseFailure` 與 `graphDefect`〉；key 識別名、zh 與 en 文案 2026-10-09 PM 確認；ARB 由 `0.5.0-W1-114.17` 建立）**：分節標籤用於 4.40 `sectionHeader`，項目說明用於 4.40 `item` 主文字；行號沿用 `gapItemLineLabel`，只有 EVT-CORPUS-003 可能帶行號。EVT-CORPUS-005 的項目說明用上方 1.78／1.79 定義的 `gapNonDomainPaths*` 四個 key（規格已定、ARB 由 `0.5.0-W1-114.17` 一併建立；原「沿用既有」措辭誤指 ARB 已存在，2026-10-11 更正），不另設。
 
-> **已淘汰的 key**（不列入上方各表，ARB 須刪除）：`gapCategoryMissingFrontmatter`（原 zh「缺少 Frontmatter」／en「Missing Frontmatter」，0.1 分節名）——2026-10-09 用戶裁決 M1 移除該分節、併入 `gapCategoryParseFailure`（SPEC-001 v1.42 §5〈定案〉），ARB 刪除由 `0.5.0-W1-114.17` 承接。2026-10-11 自表格移出，避免讀表比對 ARB 的測試需另設例外。
+> **已淘汰的 key**（不列入上方各表，ARB 須刪除）：`gapCategoryMissingFrontmatter`（原 zh「缺少 Frontmatter」／en「Missing Frontmatter」，0.1 分節名）——2026-10-09 用戶裁決 M1 移除該分節、併入 `gapCategoryParseFailure`（SPEC-001 v1.42 §5〈定案〉），已由 `0.5.0-W1-114.17` 自 ARB 刪除。2026-10-11 自表格移出，避免讀表比對 ARB 的測試需另設例外。
 
 分節標籤：
 
@@ -798,7 +798,7 @@ EVT-CORPUS-004 項目說明：
 | `gapMissingRequiredEdge` | {nodeType} {nodeId} 缺少必要的關聯：{edgeType} | {nodeType} {nodeId} is missing a required relation: {edgeType} | nodeType, nodeId, edgeType | 缺必要邊，單一邊型要求（UC 三列）；`edgeType` 為型別表鍵名原值 |
 | `gapMissingRequiredEdgeAnyOf` | {nodeType} {nodeId} 至少需要一種關聯：{edgeTypes} | {nodeType} {nodeId} needs at least one relation: {edgeTypes} | nodeType, nodeId, edgeTypes | 缺必要邊，二擇一要求（EVT）；`edgeTypes` 依必要邊表列序以「、」／", " 連接 |
 
-**1.86 新增（`0.5.0-W1-114.14.1`，對應 SPEC-001 v1.49 §1「載入失敗」與 §2–§6「專案未就緒」第四個原因；ARB 實檔狀態待建，由對應實作票加入，zh／en 值為 PM 處置文案）**：
+**1.86 新增（`0.5.0-W1-114.14.1`，對應 SPEC-001 v1.49 §1「載入失敗」與 §2–§6「專案未就緒」第四個原因；ARB 已建，zh／en 值為 PM 處置文案）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -806,7 +806,7 @@ EVT-CORPUS-004 項目說明：
 | `reloadAction` | 重新載入 | Reload | — | 4.23 `BlockedState.plain`（`AppButton.secondary` 呼叫端，`action-domain-reload`，僅載入失敗時渲染） |
 | `projectUnreadyReasonLoadFailed` | 圖譜載入失敗 | Graph failed to load | — | §2–§6「專案未就緒」（4.21 `page` 呼叫端；Domain 視圖為載入失敗時） |
 
-**1.88 新增（`0.5.0-W1-156.1`，對應 SPEC-003 v1.60 §3.7〈浮層內選資料夾失敗的常駐原因文字〉，用戶裁決 2026-10-12；ARB 實檔狀態待建，由對應實作票加入，zh／en 值沿用下列既有 SnackBar key 的現值，語意不變）**：
+**1.88 新增（`0.5.0-W1-156.1`，對應 SPEC-003 v1.60 §3.7〈浮層內選資料夾失敗的常駐原因文字〉，用戶裁決 2026-10-12；ARB 已建，zh／en 值沿用下列既有 SnackBar key 的現值，語意不變）**：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -5326,7 +5326,7 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.37 MatrixGrid（容器，資料視圖）
 
-**用途**：domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`（可點選 domain，`action-domain-select-<domainId>`）、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`，依賴宣告待 `0.1.0-W1-038`）。得為 `ConsumerWidget`。
+**用途**：domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`（可點選 domain，`action-domain-select-<domainId>`）、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`，`pubspec.yaml` 已宣告依賴，`0.1.0-W1-038`）。得為 `ConsumerWidget`。
 **內容角色**：容器。
 **何時不用**：一維表格（`DataTable`）；泳道（`SwimlaneGrid`）。
 **出現畫面**：§1。
@@ -6509,6 +6509,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.125 | 2026-11-05 | `0.6.0-W1-191.1`（依 `0.6.0-W1-191` 時效型註記盤點）：§4.0.6 各批次說明與表列「使用處」欄的「ARB 待建」「ARB 實檔狀態待建，由對應票加入」改為現況（表內 key 全數已在 ARB，`spec004_key_table_contract_test` 的待加入豁免為空可證），淘汰 key 段改為「已自 ARB 刪除」；§4.0 測試基座「由 `0.1.0-W1-034` 承接，為所有元件票的 blockedBy」改為已建立；4.37 `MatrixGrid`「依賴宣告待 `0.1.0-W1-038`」改為 `pubspec.yaml` 已宣告。zh／en 值欄未動，不改契約 |
 | 1.124 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：三處依賴型票號引用改寫為定案內容，不改契約。§3.5 漂移表「畫布頂端標題列高 36…」列列出對應的 `LayoutSize` token 名；§4.0.6〈EVT-CORPUS-003 項目說明〉前導句的「原因碼識別名未定」改為列出 `CarrierParseFailureReason` 與 `UnreadableReason` 的識別名；4.35〈尺寸契約〉最小尺寸列的「截斷或換行的責任歸屬待裁決」改為 4.1〈內容政策〉已定案的呼叫端明示規則。frontmatter 版號由 1.122 對齊至本版（原與正文 1.123 不一致） |
 | 1.123 | 2026-11-04 | `0.6.0-W1-075.2`（對應 SPEC-001 v1.78、UC-02 v1.16）：§4.0.6 登記 `pathDeclarationBundlesMalformed`（{count} 個 domain 的路徑宣告格式錯誤），宣告狀態行 `{detail}` 的 bundle 格式錯誤片段，接在 bundle 側片段之後；ARB 同批建立。不新增元件，狀態總數不變 |
 | 1.122 | 2026-11-04 | `0.6.0-W1-070.2`（對應 SPEC-001 v1.76、SPEC-003 v1.82）：§3.6 對照表補 SPEC-001 §9 兩列（編輯器清單、無可選編輯器，歸屬 `Panel.scrollable` + `ListRow.option`）；§4.0.6 新增〈1.122 新增〉表登記 `openedWithoutEditorMessage`、`preferencesTitle`、`preferencesEditorSystemOption`、`preferencesNoEditorsExplanation` 四個 key，與 zh／en ARB 同批 |
