@@ -85,12 +85,16 @@ class EdgeTypeResolution {
   Iterable<EdgeTypeEntry> get activeEdgeTypes => edgeTypes.values.where(
     (edge) =>
         edge.layer == 'established' ||
-        (edge.layer == 'proposed' && edge.name == _proposedIncludedByKeyName),
+        (edge.layer == 'proposed' &&
+            _proposedIncludedByKeyNames.contains(edge.name)),
   );
 }
 
+/// `closed_by` 邊型鍵名（D6 第三處例外：略過規則依鍵名認定，FR-03）。
+const closedByEdgeTypeName = 'closed_by';
+
 /// D6 允許清單：proposed 層中仍納入使用中邊型的鍵名。
-const _proposedIncludedByKeyName = 'bundle_dependency';
+const _proposedIncludedByKeyNames = {'bundle_dependency', closedByEdgeTypeName};
 
 /// 決議邊型（FR-01）：專案表有完整 `edge_types` 直接用；缺席或缺正向基數時，
 /// 版本在已知範圍內從內建表補，否則回報原因碼。

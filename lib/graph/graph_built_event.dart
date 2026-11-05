@@ -183,6 +183,7 @@ class GraphBuiltEvent {
     required List<GraphDefect> graphDefects,
     required this.totalReferences,
     required this.resolvedCount,
+    this.skippedCount = 0,
     Map<String, FlowSubgraph> flowSubgraphs = const {},
     DomainNameResolver? domainResolver,
   }) : domainResolver = domainResolver ?? DomainNameResolver.empty(),
@@ -202,6 +203,9 @@ class GraphBuiltEvent {
   final List<GraphDefect> graphDefects;
   final int totalReferences;
   final int resolvedCount;
+
+  /// `closed_by` 略過數（SPEC-007 FR-03）；不在 [totalReferences] 內。
+  final int skippedCount;
 
   int get nodeCount => nodes.length;
   int get edgeCount => edges.length;
