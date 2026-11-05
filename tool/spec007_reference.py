@@ -34,9 +34,11 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec006_reference as corpus_ref  # noqa: E402  只借 Corpus 判型，非 Dart
 
-REFERENCE_VERSION = "1.1.0"  # 對應 SPEC-007 v1.21
+REFERENCE_VERSION = "1.2.0"  # 對應 SPEC-007 v1.40
 EXCLUDED_EDGE_TYPE = "domain_dependency"  # SPEC-007 D6：唯一以鍵名排除的邊型
-INCLUDED_PROPOSED_EDGE_TYPE = "bundle_dependency"  # SPEC-007 D6：納入的 proposed 層邊型
+INCLUDED_PROPOSED_EDGE_TYPES = frozenset({"bundle_dependency", "closed_by"})  # SPEC-007 D6：納入的 proposed 層邊型
+CLOSED_BY_EDGE_TYPE = "closed_by"  # SPEC-007 FR-03〈closed_by 的略過規則〉（D6 第三處鍵名例外）
+FLOW_STEP_TYPE = "FlowStep"  # FR-10：不進主圖，略過判定時排除其 id_pattern
 DIRECTION_UNDIRECTED = "undirected"  # SPEC-007 FR-05：無向由 direction 欄判定
 BUILTIN_SCHEMA_RELATIVE = Path("assets/schema/builtin_tracking_schema.json")
 TICKET_TYPE = "Ticket"
@@ -98,10 +100,10 @@ def resolve_direction(name: str, spec: dict[str, Any], builtin: dict[str, str]) 
 
 
 def is_active_edge_type(name: str, layer: str) -> bool:
-    """FR-01／D6：established 扣 domain_dependency，加 proposed 的 bundle_dependency。"""
+    """FR-01／D6：established 扣 domain_dependency，加 proposed 的 bundle_dependency、closed_by。"""
     if name == EXCLUDED_EDGE_TYPE:
         return False
-    return layer == "established" or name == INCLUDED_PROPOSED_EDGE_TYPE
+    return layer == "established" or name in INCLUDED_PROPOSED_EDGE_TYPES
 
 
 def load_edge_types(
@@ -141,6 +143,27 @@ def compile_id_patterns(table: dict[str, Any]) -> list[re.Pattern[str]]:
         for spec in table["node_types"].values()
         if spec.get("id_pattern")
     ]
+
+
+def compile_main_graph_patterns(table: dict[str, Any]) -> list[re.Pattern[str]]:
+    """closed_by 外部格式判定用：主圖節點型別的 id_pattern，排除 FlowStep（FR-03、FR-10）。"""
+    return [
+        re.compile(spec["id_pattern"])
+        for name, spec in table["node_types"].items()
+        if spec.get("id_pattern") and name != FLOW_STEP_TYPE
+    ]
+
+
+def is_closed_by_skipped(
+    edge_type: str, raw: Any, invalid_shape: bool, main_patterns: list[re.Pattern[str]]
+) -> bool:
+    """字串值且不符合任何主圖節點型別 id_pattern 才略過；形狀不合法不略過。"""
+    return (
+        edge_type == CLOSED_BY_EDGE_TYPE
+        and not invalid_shape
+        and isinstance(raw, str)
+        and not any(p.match(raw) for p in main_patterns)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -224,8 +247,37 @@ def _count_units(value: Any, expand_map: bool) -> int:
     return 1
 
 
-def count_reference_values(rows: list[dict[str, Any]], edge_types: list[EdgeType]) -> int:
-    """遍歷 manifest 各列 edge_fields 計數；重複 ID 的節點不計（FR-02）。"""
+def _closed_by_units(value: Any) -> list[Any]:
+    """獨立於 extract_refs：closed_by 欄位值（不含缺席、null、空字串）逐項攤平。"""
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return [item for item in value if item is not None]
+    return [value]
+
+
+def count_closed_by_values(
+    rows: list[dict[str, Any]], main_patterns: list[re.Pattern[str]]
+) -> tuple[int, int]:
+    """(closed_by 欄位值總數, 其中外部格式略過數)；重複 ID 的節點不計（FR-02）。"""
+    id_counts = Counter(row["id"] for row in rows)
+    field_total = skipped = 0
+    for row in rows:
+        if id_counts[row["id"]] > 1:
+            continue
+        for item in _closed_by_units(row.get("edge_fields", {}).get(CLOSED_BY_EDGE_TYPE)):
+            field_total += 1
+            if isinstance(item, str) and not any(p.match(item) for p in main_patterns):
+                skipped += 1
+    return field_total, skipped
+
+
+def count_reference_values(
+    rows: list[dict[str, Any]],
+    edge_types: list[EdgeType],
+    main_patterns: list[re.Pattern[str]] | None = None,
+) -> int:
+    """遍歷 manifest 各列 edge_fields 計數；重複 ID 的節點不計（FR-02）；扣 closed_by 略過值。"""
     id_counts = Counter(row["id"] for row in rows)
     total = 0
     for row in rows:
@@ -236,6 +288,8 @@ def count_reference_values(rows: list[dict[str, Any]], edge_types: list[EdgeType
             total += _count_units(fields.get(edge.forward_field), expand_map=False)
             if edge.reverse_field:
                 total += _count_units(fields.get(edge.reverse_field), expand_map=True)
+    if main_patterns is not None and any(e.name == CLOSED_BY_EDGE_TYPE for e in edge_types):
+        total -= count_closed_by_values(rows, main_patterns)[1]
     return total
 
 
@@ -297,6 +351,9 @@ class GraphResult:
     reasons: Counter
     reference_total: int
     undirected: frozenset[str] = frozenset()
+    closed_by_skipped: int = 0
+    closed_by_refs: int = 0
+    closed_by_field_total: int = 0
 
 
 def _group_rows(
@@ -349,6 +406,7 @@ def build_graph(
     rows: list[dict[str, Any]],
     edge_types: list[EdgeType],
     id_patterns: list[re.Pattern[str]],
+    main_patterns: list[re.Pattern[str]],
 ) -> GraphResult:
     nodes, duplicates = _group_rows(rows)
     node_ids, duplicate_ids = set(nodes), set(duplicates)
@@ -357,8 +415,14 @@ def build_graph(
     ref_defects: list[dict[str, Any]] = []
     classification: Counter = Counter()
     reasons: Counter = Counter()
+    closed_by_skipped = closed_by_refs = 0
     for row in nodes.values():
         for ref in extract_refs(row, edge_types):
+            if is_closed_by_skipped(ref.edge_type, ref.raw, ref.invalid_shape, main_patterns):
+                closed_by_skipped += 1
+                continue
+            if ref.edge_type == CLOSED_BY_EDGE_TYPE:
+                closed_by_refs += 1
             category, reason = classify_ref(ref, node_ids, duplicate_ids, id_patterns)
             classification[category] += 1
             if reason:
@@ -376,8 +440,13 @@ def build_graph(
         multi_sources=_detect_multi_source(edges, edge_types),
         classification=classification,
         reasons=reasons,
-        reference_total=count_reference_values(rows, edge_types),
+        reference_total=count_reference_values(rows, edge_types, main_patterns),
         undirected=frozenset(undirected),
+        closed_by_skipped=closed_by_skipped,
+        closed_by_refs=closed_by_refs,
+        closed_by_field_total=count_closed_by_values(
+            [r for r in rows if r["id"] in nodes], main_patterns
+        )[0],
     )
 
 
@@ -421,6 +490,10 @@ def declaration_shapes(result: GraphResult) -> dict[str, dict[str, int]]:
 def assert_conservation(counts: dict[str, Any]) -> None:
     """FR-03 守恆式：獨立計得的引用值總數 == 解析成功 + 斷邊 + 格式錯誤。"""
     summed = counts["resolved_count"] + counts["dangling_count"] + counts["malformed_count"]
+    # closed_by：欄位值總數（不含缺席與 null）＝ 引用值數 ＋ 略過數；略過值不是引用值
+    by_parts = counts["closed_by_reference_count"] + counts["closed_by_skipped_count"]
+    if counts["closed_by_field_value_total"] != by_parts:
+        raise AssertionError("closed_by 欄位值總數 != 引用值 + 略過數")  # i18n-exempt: 開發者工具訊息
     if counts["reference_value_total"] != summed:
         total = counts["reference_value_total"]
         # i18n-exempt: 開發者工具的診斷訊息，非 App 使用者介面字串
@@ -448,6 +521,9 @@ def counts_output(result: GraphResult) -> dict[str, Any]:
         "multi_source_count": len(result.multi_sources),
         "multi_source_by_edge_type": dict(sorted(multi_by_type.items())),
         "graph_defect_count": defect_count,
+        "closed_by_skipped_count": result.closed_by_skipped,
+        "closed_by_reference_count": result.closed_by_refs,
+        "closed_by_field_value_total": result.closed_by_field_total,
     }
     assert_conservation(counts)
     return counts
@@ -461,18 +537,19 @@ def compute_expected(manifest: dict[str, Any], table: dict[str, Any]) -> dict[st
     """只讀 manifest 與型別表；每個語料各建一輪圖。"""
     edge_types = load_edge_types(table)
     id_patterns = compile_id_patterns(table)
+    main_patterns = compile_main_graph_patterns(table)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in manifest["rows"]:
         groups[row_corpus(row)].append(row)
     edges, defects, counts = {}, {}, {}
     for corpus in sorted(groups):
         rows = groups[corpus]
-        result = build_graph(rows, edge_types, id_patterns)
+        result = build_graph(rows, edge_types, id_patterns, main_patterns)
         edges[corpus] = edges_output(result)
         defects[corpus] = defects_output(result)
         counts[corpus] = counts_output(result)
         real_rows = [r for r in rows if not r["synthetic"]]
-        counts[corpus]["real_only"] = counts_output(build_graph(real_rows, edge_types, id_patterns))
+        counts[corpus]["real_only"] = counts_output(build_graph(real_rows, edge_types, id_patterns, main_patterns))
     return {"edges": edges, "defects": defects, "counts": counts}
 
 
@@ -589,8 +666,6 @@ def synthetic_rows() -> list[dict[str, Any]]:
         _syn("9.9.9-W9-001", base + "9.9.9-W9-001-copy.md", t, ["duplicate_id"]),
         _syn("9.9.9-W9-002", base + "9.9.9-W9-002.md", t, ["target_duplicated"],
              relatedTo=["9.9.9-W9-001"]),
-        _syn("9.9.9-W9-003", base + "9.9.9-W9-003.md", t, ["self_reference"],
-             relatedTo=["9.9.9-W9-003"]),
         _syn("9.9.9-W9-004", base + "9.9.9-W9-004.md", t, ["invalid_shape"],
              blockedBy=["9.9.9-W9-002", 42], discovered_during=True,
              source_ticket={"a": "b"}, relatedTo=[["x"]]),
@@ -636,6 +711,8 @@ def derive_real_covers(rows: list[dict[str, Any]], result: GraphResult) -> dict[
             tag(defect["source_id"], "dangling")
         if defect["reason"] == REASON_PATTERN:
             tag(defect["source_id"], "malformed_pattern")
+        if defect["reason"] == REASON_SELF:  # 真實語料已有（closed_by 自指），不再以合成列補
+            tag(defect["source_id"], "self_reference")
     return tags
 
 
@@ -665,7 +742,6 @@ def real_evidence_for_synthetic_only(
     real_rows = [r for r in rows if not r["synthetic"]]
     return {
         "duplicate_id": len(result.duplicates),
-        "self_reference": result.reasons[REASON_SELF],
         "invalid_shape": result.reasons[REASON_INVALID_SHAPE],
         "target_duplicated": result.reasons[REASON_DUPLICATED],
         "null_in_list": sum(_null_items(r) for r in real_rows),
@@ -775,6 +851,7 @@ def _finish_manifest(
     """凍結時附上 covers 標記與 header；synthetic 只補缺席類別，違反即中止。"""
     edge_types = load_edge_types(table)
     patterns = compile_id_patterns(table)
+    main_patterns = compile_main_graph_patterns(table)
     rows.sort(key=lambda r: (row_corpus(r), r["path"]))
     real_rows = [r for r in rows if not r["synthetic"]]
     for corpus in roots:  # 兩語料 ID 空間可能重疊，逐語料各建一輪
@@ -784,7 +861,7 @@ def _finish_manifest(
         clash = [r["id"] for r in corpus_rows if r["synthetic"] and r["id"] in real_ids]
         if clash:
             raise AssertionError(f"synthetic id overlaps real rows: {clash}")
-        real_result = build_graph(corpus_real, edge_types, patterns)
+        real_result = build_graph(corpus_real, edge_types, patterns, main_patterns)
         evidence = real_evidence_for_synthetic_only(corpus_rows, real_result)
         if any(evidence.values()):
             raise AssertionError(f"{corpus}: category exists in corpus, must not be synthetic: {evidence}")
@@ -883,6 +960,8 @@ _TEST_NODE_TYPES = {
     "PROP": {"id_pattern": r"^PROP-\d{3}$"},
     "SPEC": {"id_pattern": r"^SPEC-([0-9]{3}|[A-Z0-9-]+)$"},
     "UC": {"id_pattern": r"^UC-\d{2,}$"},
+    # FlowStep 的 id 是流程內區域名稱；其 pattern 會收 none，略過判定須排除（FR-03）
+    "FlowStep": {"id_pattern": r"^[a-z][a-z0-9_]*$"},
 }
 
 
@@ -911,6 +990,7 @@ def _test_table() -> dict[str, Any]:
             "domain_dependency": edge("depends_on_domains", "many"),
             "emission": edge("emits", "many", layer="proposed"),
             "bundle_dependency": edge("depends_on_bundles", "many", layer="proposed"),
+            "closed_by": edge("closed_by", "one", layer="proposed"),
         },
     }
 
@@ -931,7 +1011,9 @@ def _row(id_: str, node_type: str = "Ticket", **fields: Any) -> dict[str, Any]:
 
 def _graph(rows: list[dict[str, Any]], table: dict[str, Any] | None = None) -> GraphResult:
     table = table or _test_table()
-    return build_graph(rows, load_edge_types(table), compile_id_patterns(table))
+    return build_graph(
+        rows, load_edge_types(table), compile_id_patterns(table), compile_main_graph_patterns(table)
+    )
 
 
 def _edge_set(result: GraphResult) -> set[tuple]:
@@ -947,17 +1029,41 @@ A, B, C = "1.0.0-W1-001", "1.0.0-W1-002", "1.0.0-W1-003"
 
 def _test_edge_types_and_patterns() -> None:
     types = {e.name: e for e in load_edge_types(_test_table())}
-    assert set(types) == {"association", "blocking", "spawn", "provenance", "discovery", "bundle_dependency"}
+    assert set(types) == {"association", "blocking", "spawn", "provenance", "discovery", "bundle_dependency", "closed_by"}
     assert types["spawn"].cardinality == "one" and types["provenance"].cardinality == "many"
     no_bundle = copy.deepcopy(_test_table())  # E2 對照：移除 bundle_dependency 條目後集合不同
     del no_bundle["edge_types"]["bundle_dependency"]
     assert {e.name for e in load_edge_types(no_bundle)} == set(types) - {"bundle_dependency"}
+    no_closed_by = copy.deepcopy(_test_table())  # E2 對照：移除 closed_by 條目後不再是使用中邊型
+    del no_closed_by["edge_types"]["closed_by"]
+    assert {e.name for e in load_edge_types(no_closed_by)} == set(types) - {"closed_by"}
     assert "domain_dependency" not in types and "emission" not in types
     changed = copy.deepcopy(_test_table())
     changed["edge_types"]["blocking"]["forward_field"] = "blocks_x"
     rows = [_row(A, blockedBy=[B], blocks_x=[C]), _row(B), _row(C)]
     assert _edge_set(_graph(rows, changed)) == {("blocking", A, C, (A,))}  # E1：改名後不讀舊欄位
     assert _edge_set(_graph(rows)) == {("blocking", A, B, (A,))}
+
+
+def _test_closed_by_skip_rule() -> None:
+    """FR-03〈closed_by 的略過規則〉：外部格式略過、符合格式者照常分類。"""
+    rows = [_row(A, closed_by=B), _row(B)]
+    result = _graph(rows)  # E2 正向對照：語料內存在的票號必須建邊
+    assert _edge_set(result) == {("closed_by", A, B, (A,))} and result.closed_by_skipped == 0
+    for external in ("tarrragon/claude#60", "flutter_balance:W4-007", "none"):
+        res = _graph([_row(A, closed_by=external), _row(B)])
+        assert res.edges == {} and res.ref_defects == [] and res.closed_by_skipped == 1, external
+        assert res.reference_total == 0 and res.classification.total() == 0
+    missing = _graph([_row(A, closed_by="1.0.0-W1-999")])  # 符合格式但不存在：斷邊，不略過
+    assert [d["kind"] for d in missing.ref_defects] == ["danglingRef"] and missing.closed_by_skipped == 0
+    shape = _graph([_row(A, closed_by=42)])  # 形狀不合法：格式錯誤，不略過
+    assert _reasons(shape) == [("malformedRef", "invalidShape", 42)] and shape.closed_by_skipped == 0
+    leaked = _graph([_row(A, source_ticket="tarrragon/claude#60")])  # E2：略過規則不外溢到其他邊型
+    assert _reasons(leaked) == [("malformedRef", "patternMismatch", "tarrragon/claude#60")]
+    mixed = counts_output(_graph([_row(A, closed_by="none"), _row(B, closed_by=A), _row(C, closed_by=7)]))
+    assert mixed["closed_by_field_value_total"] == 3  # = 引用值 2 + 略過 1
+    assert mixed["closed_by_reference_count"] == 2 and mixed["closed_by_skipped_count"] == 1
+    assert mixed["reference_value_total"] == 2
 
 
 def _test_light_node_and_duplicates() -> None:
@@ -1109,6 +1215,7 @@ def _test_coverage_guard() -> None:
 def _run_selftests() -> None:
     tests = [
         _test_edge_types_and_patterns,
+        _test_closed_by_skip_rule,
         _test_light_node_and_duplicates,
         _test_extraction,
         _test_classification,
