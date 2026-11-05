@@ -1,6 +1,6 @@
 {
  "header": {
-  "reference_version": "1.2.0",
+  "reference_version": "1.3.0",
   "frozen_date": "2026-11-05",
   "note": "expected values produced by tool/spec007_reference.py; CI does not run it"
  },

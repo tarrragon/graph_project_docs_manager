@@ -6,8 +6,8 @@
 
 ## 參照實作版本與規格對應
 
-`tool/spec007_reference.py` 1.2.0 對應 SPEC-007 v1.40，於 2026-11-05 重凍結（`0.6.0-W1-171`），
-凍結檔 header 的 `reference_version` 為 1.2.0。版本沿革：
+`tool/spec007_reference.py` 1.3.0 對應 SPEC-007 v1.40，於 2026-11-05 重凍結（`0.6.0-W1-178`；前次 1.2.0 為 `0.6.0-W1-171`），
+凍結檔 header 的 `reference_version` 為 1.3.0。版本沿革：
 
 - 1.0.0：首次凍結（`0.4.0-W2-008`）。
 - 1.1.0（SPEC-007 v1.21）：使用中邊型為 established 扣 `domain_dependency` 加 proposed 的
@@ -19,11 +19,15 @@
   形狀不合法為 `invalidShape`。`expected_counts.json` 新增 `closed_by_field_value_total`（欄位值總數，獨立計數）、
   `closed_by_reference_count`、`closed_by_skipped_count`，凍結與 `compute` 皆 assert 前者等於後兩者之和。
   `uc_ticket_refs` 為 established 邊型，由型別表自動納入，無須改程式。
+- 1.3.0（SPEC-007 v1.38 起的 FR-11，D6）：`domain_dependency` 不再排除，`depends_on_domains` 的值是 domain 名稱：
+  以 DomainBundle 列的 `domain`（凍結時存於該列 `edge_fields.domain`）建名稱索引，精確比對；重複宣告的名稱兩者皆排除。
+  分類：非字串 `invalidShape`；索引查無（未宣告或重複宣告）`danglingRef`／`targetMissing`；不比對 `id_pattern`；
+  引用值計入守恆式。selftest 含 E2 對照（未宣告為 dangling 而非 malformed、移除宣告後邊少一條）。
 
 凍結的 `type_table.json` 取自現行 `tracking_schema.json`（19 邊型，含 `closed_by`、`uc_ticket_refs`、`direction`）。
 `compute` 只比對 `corpora` 值，不比對 header。
 
-仍未涵蓋的條文：flow、名稱解析、`domain_dependency` 建邊（v1.38）、FR-12、FR-13；
+仍未涵蓋的條文：flow、`traverses` 名稱解析、FR-12、FR-13；
 `isolatedNode`／`missingRequiredEdge`（FR-09，v1.39）的凍結值為零，參照實作不產生，由 IT2-A1 斷言 App 端也為零。
 
 ## 檔案
@@ -61,12 +65,12 @@ python3 tool/spec007_reference.py compute    # 只讀 manifest 與 type_table.js
 
 | 項目 | 值 |
 |------|-----|
-| 凍結日期 | 2026-11-05（重凍結，`0.6.0-W1-171`；首次凍結 2026-09-30） |
+| 凍結日期 | 2026-11-05（重凍結，`0.6.0-W1-178`；首次凍結 2026-09-30） |
 | Python／PyYAML | 3.14.6／6.0.3（`python3.14`；PATH 上的 `python3` 無 PyYAML 時改用之） |
 | OS | macOS 26.5 |
 | 框架版本 | `.claude/VERSION` = 2.87.0；`schema_generated_at_framework_version` = 2.84.0 |
-| graph_project_docs_manager | commit `7d045e52fcb64e50a4f5e97c9c3355635a9f6e2c`，docs 工作區無未提交變更；docs 下 `.md` 2617 檔，簽章 sha256 `14bcd93f...e472861` |
-| flutter_balance | HEAD `ffcaba4b41257de61ac63c868967ee4f214a0a4d`；docs 下 `.md` 1898 檔，簽章 sha256 `f088a134...9ce62` |
+| graph_project_docs_manager | commit `0184670d427b81672384270b4291fb2c5b18293e`，docs 工作區無未提交變更；docs 下 `.md` 2621 檔，簽章 sha256 `594d0356...b4554` |
+| flutter_balance | HEAD `bf0baba26637f692f6eff31cda8cbea26279cd19`；docs 下 `.md` 1896 檔，簽章 sha256 `7e66d559...b4554` |
 
 flutter_balance 是進行中的專案，其 docs 工作區可能含未提交檔案，故上列 HEAD 不足以重現本語料；
 可重現的識別是簽章與檔案數。`freeze` 的簽章檢查用來擋住凍結期間語料被改動。header 另存於 `graph_manifest.json`。
@@ -118,7 +122,7 @@ frontmatter 中 YAML 的 date 型別會轉為 ISO 字串（Dart 的 yaml 套件�
 
 | 項目 | 預期（本專案／flutter_balance） | 實測（本專案／flutter_balance） | 說明 |
 |------|------|------|------|
-| 節點數 | 1179／1690 | 2581／1862 | 語料增長 |
+| 節點數 | 1179／1690 | 2585／1863 | 語料增長 |
 | 斷邊 | 3／0 | 4／1 | 本專案多 `0.1.0-W3-437.2` 的 `closed_by: 0.1.0-W3-417`（符合格式但語料內不存在）；flutter_balance 多 `0.3.0-W4-013` 的 `discovered_during: 0.2.3-W5-001` |
 | 格式錯誤 | 1／4 | 6／4 | 本專案多 5 筆 `closed_by` 自指（`0.5.0-W1-539`、`-574`～`-577`，`selfReference`） |
 | `spawn` 只在反向 | 38／52 | 72／55 | 含全部真實列（合成列不帶 `spawn`） |
@@ -130,14 +134,14 @@ frontmatter 中 YAML 的 date 型別會轉為 ISO 字串（Dart 的 yaml 套件�
 
 | 項目 | 本專案 | flutter_balance |
 |------|------|------|
-| 引用值總數（獨立計數，不含 `closed_by` 略過值） | 5912 | 3867 |
-| 解析成功／斷邊／格式錯誤 | 5902／4／6 | 3862／1／4 |
-| 邊數 | 3781 | 2496 |
-| 其中 `closed_by` 邊／`uc_ticket_refs` 邊 | 113／100 | 93／1 |
-| `closed_by` 欄位值總數＝引用值＋略過數 | 435＝119＋316 | 348＝93＋255 |
+| 引用值總數（獨立計數，不含 `closed_by` 略過值） | 5939 | 3869 |
+| 解析成功／斷邊／格式錯誤 | 5929／4／6 | 3864／1／4 |
+| 邊數 | 3805 | 2498 |
+| 其中 `closed_by` 邊／`uc_ticket_refs` 邊／`domain_dependency` 邊 | 113／100／21 | 95／1／0 |
+| `closed_by` 欄位值總數＝引用值＋略過數 | 435＝119＋316 | 350＝95＋255 |
 | `graphDefect` 總數（斷邊＋格式錯誤＋`duplicateId`＋`multiSource`） | 19 | 14 |
 
-含合成列的組（本專案）：節點 2586、`duplicateId` 1、引用值總數 5921、`graphDefect` 26。
+含合成列的組（本專案）：節點 2590、`duplicateId` 1、引用值總數 5948、`graphDefect` 26。
 
 ## 規格未定義處與採用的解釋（不影響規格、供實作票比對）
 

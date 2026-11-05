@@ -5,15 +5,14 @@
    "graph_project_docs_manager": {
     "blocked": 3,
     "closed": 435,
-    "completed": 2058,
-    "in_progress": 2,
-    "pending": 45
+    "completed": 2059,
+    "in_progress": 3,
+    "pending": 47
    },
    "flutter_balance": {
-    "closed": 348,
-    "completed": 1492,
-    "in_progress": 2,
-    "pending": 6
+    "closed": 350,
+    "completed": 1494,
+    "pending": 5
    }
   },
   "tickets_without_string_status": {
@@ -486,76 +485,6 @@
     "created": "2026-07-20",
     "updated": "2026-07-20",
     "protocol_version": "2.0"
-   }
-  },
-  {
-   "corpus": "flutter_balance",
-   "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W5-002.md",
-   "id": "0.3.1-W5-002",
-   "frontmatter": {
-    "id": "0.3.1-W5-002",
-    "title": "協調 0.2.3 發版至 0.3.0 收尾與元件庫 skill 回饋的任務線",
-    "type": "DOC",
-    "status": "in_progress",
-    "version": "0.3.1",
-    "wave": 5,
-    "priority": "P1",
-    "parent_id": null,
-    "children": [],
-    "blockedBy": [],
-    "relatedTo": [],
-    "spawned_tickets": [],
-    "source_ticket": null,
-    "discovered_during": null,
-    "scope_blocker": null,
-    "dispatch_reason": "",
-    "decision_tree_path": null,
-    "who": {
-     "current": "主線程 PM（主控）",
-     "history": {}
-    },
-    "what": "協調 0.2.3 發版至 0.3.0 收尾與元件庫 skill 回饋的任務線",
-    "when": "2026-11-03 任務線重新規劃後，至 L1～L4 全部結線",
-    "where": {
-     "layer": "待定義",
-     "files": [
-      "docs/todolist.yaml",
-      "docs/work-logs/v0/v0.2/v0.2.3/v0.2.3-main.md",
-      "docs/work-logs/v0/v0.3/v0.3.0/v0.3.0-main.md"
-     ]
-    },
-    "why": "版本索引與實際進度不符（0.3.0 約 108/118 完成卻標 planned）；元件庫經驗無固定回饋線；用戶裁決先發 0.2.3、框架票轉 issue 暫停本地框架修改、skill 回饋先盤點再成線",
-    "how": {
-     "task_type": "Planning",
-     "strategy": "以現行佇列行記錄 L1～L4 佇列；L1 0.2.3 收尾發版 ∥ L2 框架票轉 issue → L3 0.3.0 收尾 → L4 skill 回饋盤點"
-    },
-    "acceptance": [
-     "[ ] L1～L4 各線結線（現行佇列行票序為（無））",
-     "[ ] 0.2.3 已發版且 0.3.0 已轉 active"
-    ],
-    "tdd_phase": null,
-    "tdd_stage": [],
-    "assigned": true,
-    "creation_accepted": true,
-    "started_at": "2026-11-05T12:00:09",
-    "completed_at": null,
-    "created": "2026-11-03",
-    "updated": "2026-11-03",
-    "protocol_version": "2.0",
-    "coordination": true,
-    "migrated_from": "0.3.0-W5-001",
-    "previous_ids": [
-     "0.2.3-W5-001",
-     "0.3.0-W5-002"
-    ],
-    "chain": {
-     "root": "0.3.1-W5-002",
-     "parent": null,
-     "depth": 0,
-     "sequence": [
-      2
-     ]
-    }
    }
   },
   {
