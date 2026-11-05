@@ -98,6 +98,21 @@ enum WorkspaceLogEvent {
   /// [restore] 已還原出路徑（結果時刻）。
   restoreCompleted,
 
+  /// adapter 層：資料夾探測 `exists` 的結果（SPEC-005 §三 G-1）。
+  adapterProbeExistsResult,
+
+  /// adapter 層：資料夾探測 `readFirstEntry` 的結果或例外（G-1）。
+  adapterProbeReadFirstEntryResult,
+
+  /// adapter 層：偏好設定儲存管道 `open` 的結果或例外（G-2）。
+  adapterPreferencesOpenResult,
+
+  /// adapter 層：偏好設定 `readString` 的結果（G-2）。
+  adapterPreferencesReadResult,
+
+  /// adapter 層：偏好設定 `writeString` 的結果或例外（G-2）。
+  adapterPreferencesWriteResult,
+
   /// [loadRecentProjects] 進入時的「呼叫發出」事件。
   recentProjectsLoadIssuing,
 
@@ -184,37 +199,106 @@ typedef WorkspaceLogSink = void Function(
 });
 
 class _DefaultWorkspacePreferencesHandle implements WorkspacePreferencesHandle {
-  _DefaultWorkspacePreferencesHandle(this._prefs);
+  _DefaultWorkspacePreferencesHandle(this._prefs, this._log);
   final SharedPreferences _prefs;
+  final WorkspaceLogSink _log;
 
   @override
-  String? readString(String key) => _prefs.getString(key);
+  String? readString(String key) {
+    final value = _prefs.getString(key);
+    final state = value == null ? 'null' : 'present';
+    _log(
+      'SharedPreferences read $key: $state', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.adapterPreferencesReadResult,
+    );
+    return value;
+  }
 
   @override
-  Future<bool> writeString(String key, String value) =>
-      _prefs.setString(key, value);
+  Future<bool> writeString(String key, String value) async {
+    try {
+      final ok = await _prefs.setString(key, value);
+      _log(
+        'SharedPreferences write $key: $ok', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.adapterPreferencesWriteResult,
+        level: ok ? null : 900,
+      );
+      return ok;
+    } catch (e) {
+      _log(
+        'SharedPreferences write $key threw', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.adapterPreferencesWriteResult,
+        level: 900,
+        error: e,
+      );
+      rethrow;
+    }
+  }
 }
 
 class _DefaultWorkspacePreferencesPort implements WorkspacePreferencesPort {
-  const _DefaultWorkspacePreferencesPort();
+  const _DefaultWorkspacePreferencesPort(this._log);
+  final WorkspaceLogSink _log;
 
   @override
   Future<WorkspacePreferencesHandle> open() async {
-    final prefs = await SharedPreferences.getInstance();
-    return _DefaultWorkspacePreferencesHandle(prefs);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _log(
+        'SharedPreferences opened', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.adapterPreferencesOpenResult,
+      );
+      return _DefaultWorkspacePreferencesHandle(prefs, _log);
+    } catch (e) {
+      _log(
+        'SharedPreferences open failed', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.adapterPreferencesOpenResult,
+        level: 900,
+        error: e,
+      );
+      rethrow;
+    }
   }
 }
 
 class _DefaultWorkspaceDirectoryProbePort
     implements WorkspaceDirectoryProbePort {
-  const _DefaultWorkspaceDirectoryProbePort();
+  const _DefaultWorkspaceDirectoryProbePort(this._log);
+  final WorkspaceLogSink _log;
 
   @override
-  Future<bool> exists(String path) => Directory(path).exists();
+  Future<bool> exists(String path) async {
+    final found = await Directory(path).exists();
+    _log(
+      'probe exists: $found', // i18n-exempt: 開發者 debug log
+      event: WorkspaceLogEvent.adapterProbeExistsResult,
+    );
+    return found;
+  }
 
   @override
   Future<void> readFirstEntry(String path) async {
-    await Directory(path).list().first;
+    try {
+      await Directory(path).list().first;
+      _log(
+        'probe readFirstEntry: readable', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.adapterProbeReadFirstEntryResult,
+      );
+    } on StateError {
+      _log(
+        'probe readFirstEntry: empty', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.adapterProbeReadFirstEntryResult,
+      );
+      rethrow;
+    } catch (e) {
+      _log(
+        'probe readFirstEntry threw', // i18n-exempt: 開發者 debug log
+        event: WorkspaceLogEvent.adapterProbeReadFirstEntryResult,
+        level: 900,
+        error: e,
+      );
+      rethrow;
+    }
   }
 }
 
@@ -320,9 +404,11 @@ class WorkspaceRepository {
     WorkspaceLogSink? logSink,
   }) : _pickDirectoryPath = pickDirectoryPath ?? getDirectoryPath,
        _preferencesPort =
-           preferencesPort ?? const _DefaultWorkspacePreferencesPort(),
+           preferencesPort ??
+           _DefaultWorkspacePreferencesPort(logSink ?? _defaultLogSink),
        _directoryProbe =
-           directoryProbe ?? const _DefaultWorkspaceDirectoryProbePort(),
+           directoryProbe ??
+           _DefaultWorkspaceDirectoryProbePort(logSink ?? _defaultLogSink),
        _log = logSink ?? _defaultLogSink;
 
   static const _pathKey = 'workspace.path';
