@@ -1,7 +1,7 @@
 ---
 id: DOMAIN-MAP-layout
 domain: "layout"
-source_specs: []
+source_specs: [SPEC-001]
 related_usecases: [UC-02, UC-03]
 depends_on_bundles: [DOMAIN-MAP-graph]
 path_patterns: [lib/layout/, lib/components/swimlane_grid.dart, lib/components/swimlane_node.dart, lib/components/matrix_cell.dart, lib/components/matrix_grid.dart]
@@ -75,10 +75,18 @@ updated: "2026-10-08"
 
 > 跨 domain 的待決事項見系統層 §6。
 
-## 7. FR → Bundle 覆蓋對照
+## 7. 驗收條文 → Bundle 覆蓋對照
+
+### SPEC-001（ui domain，§1 以具名判定式承接，無 FR）
+
+| 驗收條文 | 覆蓋 | 備註 |
+|---|---|---|
+| §1〈泳道布局規則〉判定式表（列集合與列序、列鍵比對、主線、欄序、節點所屬列、邊的來源／形狀／端點、欄序無法輸出、`traverses` 異常） | Layout | 附 UC-02 期望值；列序權威在 SPEC-007 FR-13（歸屬 Graph） |
+| §1〈「在泳道中檢視」跳轉目標〉 | Layout | 給定一列，回傳欄號最小的節點 |
+| §1 矩陣列（狀態表） | Layout | 矩陣座標與尺寸 |
 
 本 domain 在 SPEC-006、SPEC-007 無 FR 歸屬。SPEC-003 逐 FR 的跨 domain 對照見系統層 §8。
 
 ---
 
-**Last Updated**: 2026-10-08（`0.5.0-W1-114.3`：§3 公開面補「給定一列，回傳欄號最小的節點」查詢、§6 列序來源改 Graph） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
+**Last Updated**: 2026-11-05（`0.6.0-W1-175.1`：§7 擴充為驗收條文對照並補 SPEC-001，source_specs 改 [SPEC-001]）；前次 2026-10-08（`0.5.0-W1-114.3`：§3 公開面補「給定一列，回傳欄號最小的節點」查詢、§6 列序來源改 Graph） | **Source**: 0.5.0-W1-070.3（依 0.5.0-W1-070 盤點，拆自原單檔 domain-map）
