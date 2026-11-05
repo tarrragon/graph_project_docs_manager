@@ -5,7 +5,7 @@ status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
 updated: "2026-11-05"
-version: "1.8"
+version: "1.9"
 owner: star-anise-system-designer
 has_functional_requirements: false   # 本規格只記 workspace driven port 的專案事實，不含 FR（0.5.0-W1-159 判定）
 
@@ -196,7 +196,7 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 | 呼叫發出（`exists`） | 呼叫端 `_inspect()` | Y | Y（「探測資料夾是否存在」） |
 | 呼叫發出（`readFirstEntry`） | 呼叫端 `_inspect()` | Y | Y（「讀取資料夾內容」） |
 | 受理 | 無 | N/A | N/A |
-| 結果（`exists` 回 false） | adapter 回傳值 | Y（`WorkspaceUnavailable` + `_reasonFolderMissing`） | **N**（見 §3 缺口 G-1） |
+| 結果（`exists` 回 false） | adapter 回傳值 | Y（`WorkspaceUnavailable` + `_reasonFolderMissing`） | Y（adapter 記 `adapterProbeExistsResult`，G-1 已修） |
 | 結果（`readFirstEntry` 拋 `FileSystemException`） | adapter 例外 | Y（`WorkspaceUnavailable` + `_reasonFolderUnreadable`） | Y（level 900，含原始例外） |
 | 結果（`readFirstEntry` 拋 `StateError`） | adapter 例外 | Y（`WorkspaceReady`——空資料夾可讀） | N/A |
 
@@ -318,7 +318,7 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 |------|--------|-----------|---------|
 | 呼叫發出 | 呼叫端 `_inspect()` | Y | 既有（§2.3 兩列），不另加入口日誌 |
 | 受理 | 無（理由同 §2.3） | N/A | N/A |
-| 結果（可用／不可用） | `_inspect()` 回傳值 | Y（`RecentProjectAvailable`／`RecentProjectUnavailable`） | 沿用 §2.3 各結果列，含缺口 G-1 |
+| 結果（可用／不可用） | `_inspect()` 回傳值 | Y（`RecentProjectAvailable`／`RecentProjectUnavailable`） | 沿用 §2.3 各結果列（G-1 已修） |
 | 結果（逾時） | `probeRecentProject` 的計時 | Y（`RecentProjectProbeTimedOut`） | Y（level 900 一筆，含 path 與逾時值；事件 `WorkspaceLogEvent.probeRecentProjectTimedOut`） |
 
 **畫面上的原因文字**：`RecentProjectProbeTimedOut` 以
@@ -339,8 +339,8 @@ Handle），使受理成為一個有回傳值、可被呼叫端與日誌分別�
 
 | 編號 | 缺口 | 據實描述 | 承接票 |
 |------|------|---------|--------|
-| G-1 | `_DefaultWorkspaceDirectoryProbePort` **全無日誌** | 該 adapter 的 `exists` 與 `readFirstEntry` 皆為單行直呼 `dart:io`，類別內無任何 `developer.log` 呼叫（實讀 `lib/workspace/workspace_repository.dart` 確認）。`0.1.0-W3-139` 記為「`exists()=false` 日誌缺失」，實際範圍比該描述更廣——缺的不只是呼叫端 `_inspect()` 中 false 分支那一筆，adapter 端本身零日誌。後果：日誌消費者無法區分「探測過但資料夾不存在」與「根本沒探測」 | `0.6.0-W1-192`（2026-11-05 讀碼確認仍未修；原承接票 `0.1.0-W3-135` 已不在票庫） |
-| G-2 | 日誌投影集中於呼叫端 sink，adapter 端零日誌 | 全檔僅 `_defaultLogSink`（§1 第三形態的自撰預設實作）一處呼叫 `developer.log`；`_DefaultWorkspacePreferencesPort`、`_DefaultWorkspacePreferencesHandle`、`_DefaultWorkspaceDirectoryProbePort` 三個 adapter 內部皆無日誌。目前 Preferences 兩個接縫的日誌覆蓋完整，是因為呼叫端在 port 呼叫前後各記一筆；此覆蓋依附於呼叫端而非 adapter，替換 adapter 實作時日誌不隨之移動 | 形態層面的約定歸形態約定補記段（§一）；日誌位置的修補歸 `0.6.0-W1-192`（2026-11-05 讀碼確認仍未修） |
+| G-1（已修，2026-11-05） | `_DefaultWorkspaceDirectoryProbePort` **全無日誌**（修前現況；現已於 `exists`／`readFirstEntry` 記 `adapterProbeExistsResult`／`adapterProbeReadFirstEntryResult`，測試 `test/unit/workspace/workspace_adapter_logging_test.dart`） | 該 adapter 的 `exists` 與 `readFirstEntry` 皆為單行直呼 `dart:io`，類別內無任何 `developer.log` 呼叫（實讀 `lib/workspace/workspace_repository.dart` 確認）。`0.1.0-W3-139` 記為「`exists()=false` 日誌缺失」，實際範圍比該描述更廣——缺的不只是呼叫端 `_inspect()` 中 false 分支那一筆，adapter 端本身零日誌。後果：日誌消費者無法區分「探測過但資料夾不存在」與「根本沒探測」 | `0.6.0-W1-192`（2026-11-05 讀碼確認仍未修；原承接票 `0.1.0-W3-135` 已不在票庫） |
+| G-2（已修，2026-11-05） | 日誌投影集中於呼叫端 sink，adapter 端零日誌（修前現況；現三個 adapter 建構時接收 `WorkspaceLogSink`，記 `adapterPreferencesOpenResult`／`ReadResult`／`WriteResult`，日誌隨 adapter 實作移動；測試同 G-1） | 全檔僅 `_defaultLogSink`（§1 第三形態的自撰預設實作）一處呼叫 `developer.log`；`_DefaultWorkspacePreferencesPort`、`_DefaultWorkspacePreferencesHandle`、`_DefaultWorkspaceDirectoryProbePort` 三個 adapter 內部皆無日誌。目前 Preferences 兩個接縫的日誌覆蓋完整，是因為呼叫端在 port 呼叫前後各記一筆；此覆蓋依附於呼叫端而非 adapter，替換 adapter 實作時日誌不隨之移動 | 形態層面的約定歸形態約定補記段（§一）；日誌位置的修補歸 `0.6.0-W1-192`（2026-11-05 讀碼確認仍未修） |
 
 缺口的修補不在本規格範圍；本規格的職責是使缺口有可否證的書面對象。
 
@@ -369,6 +369,7 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.9 | 2026-11-05 | `0.6.0-W1-192`：§三 G-1、G-2 改記為已修並附測試；§2.3 `exists` 回 false 結果列 adapter 欄 N 改 Y，§2.5 對應列同步 |
 | 1.8 | 2026-11-05 | `0.6.0-W1-191.2`（依 `0.6.0-W1-191` 時效型註記盤點，讀碼查證）：§2.4、§2.5 原寫「實作尚未存在」，實作已落地，改為依實作判定的 Y／N，共 14 列；唯一 N 為 §2.4 讀取損壞的日誌（實作有 level 900 一筆，但不含原始例外與首個不符元素索引）。§2.2 `remove` 仍未實作，維持「契約」。§三 G-1、G-2 確認仍未修，原承接票 `0.1.0-W3-135` 已不在票庫，承接改為 `0.6.0-W1-192` |
 | 1.7 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：§一與 §1.1 原以票號 `0.1.0-W3-146` 指稱接縫形態約定，改為指稱 `docs/tech-decisions.md` 補記段「2026-09-09：driven port 接縫形態約定（W3-133／W3-146）」（下稱「形態約定補記段」），內文各處「146」同步改寫；不改結論 |
 | 1.6 | 2026-11-04 | §2.4〈計數快照〉寫入時機補一句：`addRecentProject` 成功後，若最近完成輪次的 `workspacePath` 與該項相同，立即補寫（首次開啟的專案首輪先於加入清單完成時不再落空）；不改 `addRecentProject` 的「成功載入後」時機。來源 `0.6.0-W1-145` |
