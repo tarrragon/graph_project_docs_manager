@@ -6,8 +6,8 @@
 
 ## 參照實作版本與規格對應
 
-`tool/spec007_reference.py` 1.3.0 對應 SPEC-007 v1.40，於 2026-11-05 重凍結（`0.6.0-W1-178`；前次 1.2.0 為 `0.6.0-W1-171`），
-凍結檔 header 的 `reference_version` 為 1.3.0。版本沿革：
+`tool/spec007_reference.py` 1.3.1 對應 SPEC-007 v1.40，於 2026-11-05 重凍結（`0.6.0-W1-179`；前次 1.3.0 為 `0.6.0-W1-178`），
+凍結檔 header 的 `reference_version` 為 1.3.1。版本沿革：
 
 - 1.0.0：首次凍結（`0.4.0-W2-008`）。
 - 1.1.0（SPEC-007 v1.21）：使用中邊型為 established 扣 `domain_dependency` 加 proposed 的
@@ -90,7 +90,7 @@ manifest 每一類至少一列（`coverage_gaps` 於 `freeze` 時 assert 為空�
 | `dangling` | 5 | 0 | 來源節點（僅計 `targetMissing`） |
 | `malformed_pattern` | 5 | 0 | 來源節點 |
 | `duplicate_id` | 0 | 2（1 對） | `9.9.9-W9-001` 兩路徑 |
-| `self_reference` | 5 | 0 | 來源節點（本專案 `0.5.0-W1-539`、`-574`～`-577` 的 `closed_by` 指向自己；原合成列 `9.9.9-W9-003` 因真實語料已有此類而於 1.2.0 移除） |
+| `self_reference` | 0 | 1 | 來源節點（真實語料 `closed_by` 自指已於 `0.6.0-W1-179` 修正為外部格式值，合成列 `9.9.9-W9-003` 於 1.3.1 加回） |
 | `invalid_shape` | 0 | 1 | `9.9.9-W9-004`（數字、布林、map、清單內清單） |
 | `target_duplicated` | 0 | 1 | `9.9.9-W9-002` 引用重複 ID |
 | `outputs_non_list_subkey` | 0 | 1 | `PROP-901`（`outputs.notes` 為字串） |
@@ -122,7 +122,7 @@ frontmatter 中 YAML 的 date 型別會轉為 ISO 字串（Dart 的 yaml 套件�
 
 | 項目 | 預期（本專案／flutter_balance） | 實測（本專案／flutter_balance） | 說明 |
 |------|------|------|------|
-| 節點數 | 1179／1690 | 2585／1863 | 語料增長 |
+| 節點數 | 1179／1690 | 2586／1863 | 語料增長 |
 | 斷邊 | 3／0 | 4／1 | 本專案多 `0.1.0-W3-437.2` 的 `closed_by: 0.1.0-W3-417`（符合格式但語料內不存在）；flutter_balance 多 `0.3.0-W4-013` 的 `discovered_during: 0.2.3-W5-001` |
 | 格式錯誤 | 1／4 | 6／4 | 本專案多 5 筆 `closed_by` 自指（`0.5.0-W1-539`、`-574`～`-577`，`selfReference`） |
 | `spawn` 只在反向 | 38／52 | 72／55 | 含全部真實列（合成列不帶 `spawn`） |
@@ -136,12 +136,12 @@ frontmatter 中 YAML 的 date 型別會轉為 ISO 字串（Dart 的 yaml 套件�
 |------|------|------|
 | 引用值總數（獨立計數，不含 `closed_by` 略過值） | 5939 | 3869 |
 | 解析成功／斷邊／格式錯誤 | 5929／4／6 | 3864／1／4 |
-| 邊數 | 3805 | 2498 |
+| 邊數 | 3806 | 2498 |
 | 其中 `closed_by` 邊／`uc_ticket_refs` 邊／`domain_dependency` 邊 | 113／100／21 | 95／1／0 |
-| `closed_by` 欄位值總數＝引用值＋略過數 | 435＝119＋316 | 350＝95＋255 |
+| `closed_by` 欄位值總數＝引用值＋略過數 | 435＝114＋321 | 350＝95＋255 |
 | `graphDefect` 總數（斷邊＋格式錯誤＋`duplicateId`＋`multiSource`） | 19 | 14 |
 
-含合成列的組（本專案）：節點 2590、`duplicateId` 1、引用值總數 5948、`graphDefect` 26。
+含合成列的組（本專案）：節點 2592、`duplicateId` 1、引用值總數 5946、`graphDefect` 22。
 
 ## 規格未定義處與採用的解釋（不影響規格、供實作票比對）
 
