@@ -9,7 +9,9 @@ import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
-enum MalformedReason { invalidShape, patternMismatch, selfReference }
+const _flowStepTypeName = 'FlowStep';
+
+enum MalformedReason{ invalidShape, patternMismatch, selfReference }
 
 enum DanglingReason { targetMissing, targetDuplicated }
 
@@ -62,6 +64,13 @@ ReferenceClassification classifyGraphReferences({
     for (final type in nodeTypes.values)
       if (type.idRegExp != null) type.idRegExp!,
   ];
+  // FlowStep 的 id 是流程內區域名稱（小寫單字），不是圖上的語料節點；其 pattern
+  // 會誤收 `none` 這類哨兵值，故判定外部格式時不計入（見 Solution 的規格缺口）。
+  final closedByPatterns = [
+    for (final entry in nodeTypes.entries)
+      if (entry.key != _flowStepTypeName && entry.value.idRegExp != null)
+        entry.value.idRegExp!,
+  ];
   final resolved = <ResolvedRef>[];
   final dangling = <DanglingRefGraphDefect>[];
   final malformed = <MalformedRefGraphDefect>[];
@@ -78,7 +87,7 @@ ReferenceClassification classifyGraphReferences({
       edgeTypes: edgeTypes,
     );
     for (final ref in refs) {
-      if (_isClosedBySkipped(ref, patterns)) {
+      if (_isClosedBySkipped(ref, closedByPatterns)) {
         skipped++;
         developer.log(
           'closed_by skipped: ${ref.sourceId} -> ${ref.value}', // i18n-exempt: debug log
