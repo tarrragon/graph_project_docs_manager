@@ -141,15 +141,15 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 **守恆式**：引用值總數＝解析成功數＋斷邊數＋格式錯誤數。`closed_by` 的略過值不是引用值，不計入引用值總數，另以略過數回報（見下節）。
 
 **`closed_by` 的略過規則**（`0.6.0-W1-169` 用戶裁決 C，2026-11-04；判定句依 2026-11-05 用戶裁決改寫；v1.40）：`closed_by`（proposed 層，正向基數 `one`、有向、無反向欄位）的值域包含語料外的關閉來源，例如框架 issue `tarrragon/claude#60`、他專案票號 `flutter_balance:W4-007`、`none`。規則如下，僅適用 `closed_by`，由鍵名認定（D6 第三處例外）：
-- 值為字串，且不符合任何節點型別的 `id_pattern`（外部格式值，值原樣比對）：略過。不建邊，不回報 `danglingRef`，不回報 `malformedRef`，不寫缺陷；計入略過數並寫一筆 debug 日誌（含來源節點 ID 與原值）
-- 值為字串，且符合某節點型別的 `id_pattern`：不略過，照上表順序 2 起分類——自我引用為 `selfReference`；圖上找不到該節點為 `danglingRef`（`targetMissing`）；重複 ID 為 `danglingRef`（`targetDuplicated`）；其餘解析成功建邊
+- 值為字串，且不符合任何主圖節點型別的 `id_pattern`（外部格式值，值原樣比對）：略過。比對排除 FlowStep：FlowStep 不進主圖（FR-10），其 id 只是 UC flow 內的區域名稱，否則 `none` 會因符合 FlowStep 的 pattern 而誤判為斷邊。不建邊，不回報 `danglingRef`，不回報 `malformedRef`，不寫缺陷；計入略過數並寫一筆 debug 日誌（含來源節點 ID 與原值）
+- 值為字串，且符合某主圖節點型別（FlowStep 除外）的 `id_pattern`：不略過，照上表順序 2 起分類——自我引用為 `selfReference`；圖上找不到該節點為 `danglingRef`（`targetMissing`）；重複 ID 為 `danglingRef`（`targetDuplicated`）；其餘解析成功建邊
 - 形狀不合法（非字串、清單、map）：照上表順序 1 歸格式錯誤（`invalidShape`），不略過
-- 略過不改 FR-03 守恆式的形式：略過值在抽取後即剔除，不是引用值。對 `closed_by` 有：欄位值總數（不含缺席與 null）＝引用值總數＋略過數，略過數只計外部格式值
+- 略過不改 FR-03 守恆式的形式：略過值在抽取後即剔除，不是引用值。對 `closed_by` 有：欄位值總數（不含缺席與 null）＝引用值總數＋略過數，略過數只計外部格式值（以主圖節點型別的 `id_pattern` 判定）
 - `previous_ids` 不是使用中邊型，不適用本規則
 
 **`closed_by` 驗收條件**：
 - [ ] Given 票 A 的 `closed_by: 0.6.0-W1-010` 且語料內有該票節點，Then 建有向邊 A→`0.6.0-W1-010`，邊型 `closed_by`、`layer` 為 `proposed`（E2 正向對照：語料內存在的票號必須建邊）
-- [ ] Given 票 A 的 `closed_by` 分別為 `tarrragon/claude#60`、`flutter_balance:W4-007`、`none`，Then 三者皆不建邊，`danglingRef` 與 `malformedRef` 計數皆不增加，略過數為 3
+- [ ] Given 票 A 的 `closed_by` 分別為 `tarrragon/claude#60`、`flutter_balance:W4-007`、`none`，Then 三者皆不建邊（`none` 雖符合 FlowStep 的 `id_pattern`，仍略過），`danglingRef` 與 `malformedRef` 計數皆不增加，略過數為 3
 - [ ] Given 票 A 的 `closed_by: 0.6.0-W1-999`（符合 Ticket `id_pattern`、語料內沒有該節點），Then 回報一筆 `danglingRef`（`targetMissing`），不略過、不計入略過數（E2：符合格式但不存在必須是斷邊）
 - [ ] Given 票 A 的 `closed_by: 42`，Then 為 `malformedRef`（`invalidShape`），不略過
 - [ ] Given 一份含上述各種 `closed_by` 值的 fixture，Then 欄位值總數＝引用值總數＋略過數，且引用值滿足 FR-03 守恆式
@@ -491,7 +491,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 | D3 | 引用值分類為解析成功、斷邊、格式錯誤三類，不部分救回 | 用戶裁決 2026-09-30 |
 | D4 | 主圖缺陷子類為 FR-09 所列四種，flow 子圖子類見 FR-09 子類表（2026-10-08 用戶裁決 1a；「`traverses` 鍵缺席」依 `0.5.0-W1-114` T1；「事件引用未解析」依 `0.5.0-W1-458` 題 E）；其中 `duplicateId` 與自我引用的處理為規格預設，用戶 2026-09-30 整批確認；孤島（限非 Ticket 型別）與缺必要邊（限 UC、EVT 的零例外集）見 FR-09〈孤島與缺必要邊〉 | 用戶裁決 2026-09-30；孤島與缺必要邊依 2026-11-04 用戶裁決（`0.6.0-W1-072`） |
 | D5 | 整合測試使用凍結測資，預期值由獨立參照實作產生並凍結 | 用戶裁決 2026-09-30；同 SPEC-006 D3 |
-| D6 | 邊型的欄位名、正向基數、是否有反向欄位、方向性（`direction`）、層級取自型別表；程式內的鍵名例外只有三處：納入 `proposed` 層的 `bundle_dependency`、納入 `proposed` 層的 `closed_by` 並套用 FR-03〈`closed_by` 的略過規則〉、`domain_dependency` 的值以 FR-11 名稱索引解析。`domain_dependency` 排除鍵已移除（0.5.0 維持，`0.5.0-W1-001` 裁決 D4，2026-10-07；建邊與移除由 `0.6.0-W1-074` 完成，v1.38）；該邊型屬使用中，原排除鍵的位置由「名稱解析」鍵名認定取代（v1.38 時為兩處）。`closed_by` 例外的理由（v1.40）：關閉關係需在圖上可導航，上游登記為 proposed（`0.6.0-W1-169.1`），其值域含語料外的 issue 與他專案票號，外部格式值若走一般分類會全成 `malformedRef`，故不符合 `id_pattern` 者略過；符合 `id_pattern` 而不存在的仍是本專案的斷邊，照常報 `danglingRef`（2026-11-05 用戶裁決）。`bundle_dependency` 例外的理由：矩陣間接格與泳道分層需要「沿邊可達」，現成管線已含目標解析與破洞判定；上游升級判準要求兩個獨立專案皆有實例，目前只有本專案，不能升為 established，故以本地允許清單納入。原「以 `association` 認定無向邊」例外已移除，改讀 `direction`（FR-05） | 同 SPEC-006 D1：上游 schema 為唯一權威。`association` 例外移除依 2026-09-30 用戶裁決（上游 `0.4.0-W1-072` 已補 `direction`）；`bundle_dependency` 例外依 2026-10-08 用戶裁決（`0.5.0-W1-103` P1，WRAP）；`closed_by` 例外依 2026-11-04 用戶裁決（`0.6.0-W1-169` C） |
+| D6 | 邊型的欄位名、正向基數、是否有反向欄位、方向性（`direction`）、層級取自型別表；程式內的鍵名例外只有三處：納入 `proposed` 層的 `bundle_dependency`、納入 `proposed` 層的 `closed_by` 並套用 FR-03〈`closed_by` 的略過規則〉、`domain_dependency` 的值以 FR-11 名稱索引解析。`domain_dependency` 排除鍵已移除（0.5.0 維持，`0.5.0-W1-001` 裁決 D4，2026-10-07；建邊與移除由 `0.6.0-W1-074` 完成，v1.38）；該邊型屬使用中，原排除鍵的位置由「名稱解析」鍵名認定取代（v1.38 時為兩處）。`closed_by` 例外的理由（v1.40）：關閉關係需在圖上可導航，上游登記為 proposed（`0.6.0-W1-169.1`），其值域含語料外的 issue 與他專案票號，外部格式值若走一般分類會全成 `malformedRef`，故不符合主圖節點型別 `id_pattern`（排除 FlowStep，FR-10）者略過；符合者而不存在的仍是本專案的斷邊，照常報 `danglingRef`（2026-11-05 用戶裁決）。`bundle_dependency` 例外的理由：矩陣間接格與泳道分層需要「沿邊可達」，現成管線已含目標解析與破洞判定；上游升級判準要求兩個獨立專案皆有實例，目前只有本專案，不能升為 established，故以本地允許清單納入。原「以 `association` 認定無向邊」例外已移除，改讀 `direction`（FR-05） | 同 SPEC-006 D1：上游 schema 為唯一權威。`association` 例外移除依 2026-09-30 用戶裁決（上游 `0.4.0-W1-072` 已補 `direction`）；`bundle_dependency` 例外依 2026-10-08 用戶裁決（`0.5.0-W1-103` P1，WRAP）；`closed_by` 例外依 2026-11-04 用戶裁決（`0.6.0-W1-169` C） |
 | D7 | 正向基數由 schema 宣告；`provenance` 為 `many`（一個節點可有多個來源提案），`spawn`、`blood` 為 `one` | 用戶裁決 2026-09-30（WRAP）；tech-decisions 同日補記 |
 | D8 | FlowStep 不進主圖，Graph 以 `flowOf(ucId)` 提供單一 UC 的 flow 子圖；`next` 不當邊，主線順序取 flow 清單順序，分支步 `next` 為步驟屬性；子圖內參照只在同 UC 範圍解析 | 用戶裁決 2026-10-07（`0.5.0-W1-001` C、(c)，WRAP） |
 | D9 | domain 名稱解析器以 DomainBundle 的 `domain` 欄精確比對，本版只服務 `traverses`，不建邊；解析器不綁 FlowStep 型別 | 用戶裁決 2026-10-07（`0.5.0-W1-001` D4，WRAP） |
@@ -507,7 +507,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
-| 1.40 | 2026-11-05 | 使用中邊型加入 proposed 層的 `closed_by`（`0.6.0-W1-169.3`，依 `0.6.0-W1-169` 用戶裁決 C）：〈用詞〉、FR-01 鍵名例外（兩處改三處）與三條驗收、FR-08 proposed 標示、FR-11 例外計數敘述、D6 同步；FR-03 新增〈`closed_by` 的略過規則〉：字串值不符合任何 `id_pattern`（外部格式值）時略過，不計 `danglingRef`／`malformedRef`，不計入引用值與守恆式，另計略過數；符合 `id_pattern` 但語料內不存在者為 `danglingRef`（`targetMissing`，2026-11-05 用戶裁決）；形狀不合法仍為格式錯誤；補六條驗收（含 E2 正向對照與不外溢對照） |
+| 1.40 | 2026-11-05 | 使用中邊型加入 proposed 層的 `closed_by`（`0.6.0-W1-169.3`，依 `0.6.0-W1-169` 用戶裁決 C）：〈用詞〉、FR-01 鍵名例外（兩處改三處）與三條驗收、FR-08 proposed 標示、FR-11 例外計數敘述、D6 同步；FR-03 新增〈`closed_by` 的略過規則〉：字串值不符合任何主圖節點型別 `id_pattern`（排除 FlowStep；外部格式值）時略過，不計 `danglingRef`／`malformedRef`，不計入引用值與守恆式，另計略過數；符合 `id_pattern` 但語料內不存在者為 `danglingRef`（`targetMissing`，2026-11-05 用戶裁決）；形狀不合法仍為格式錯誤；補六條驗收（含 E2 正向對照與不外溢對照） |
 | 1.39 | 2026-11-04 | 依 `0.6.0-W1-072` 用戶裁決（2026-11-04）新增 `graphDefect` 子類孤島與缺必要邊（`0.6.0-W1-072.2`）：FR-09 新增子類表與〈孤島與缺必要邊〉判準（孤島只判 PROP／SPEC／UC／EVT／DomainBundle；必要邊集合為 UC 的 `provenance`、`spec_association`、`uc_ticket_refs` 出邊，EVT 的 `provenance` 或 `spec_association` 出邊至少一條），補八條驗收；FR-06 負載與 `graphDefects` 筆數驗收同步；D4 同步；〈本版範圍外〉原列改為 Ticket 孤島與其他型別必要邊。識別名 `isolatedNode`、`missingRequiredEdge`；PM 裁定（同日）孤島節點不再報缺必要邊 |
 | 1.38 | 2026-11-04 | `depends_on_domains` 建 `domain_dependency` 邊（`0.6.0-W1-074`，接 FR-11 名稱解析器）：〈用詞〉使用中邊型不再扣除 `domain_dependency`；FR-01 鍵名例外改為納入 `bundle_dependency` 與 `domain_dependency` 名稱解析認定（仍兩處）及兩條驗收同步；FR-11 改寫「本版只解析 `traverses`」一條為建邊與分類規則（非字串＝`invalidShape`、未宣告＝既有 `danglingRef`／`targetMissing`，不新增缺陷子類與識別名）並補三條驗收（含 E2 正向對照、21 條邊）；D6 同步；〈本版範圍外〉移除 `depends_on_domains` 列 |
 | 1.37 | 2026-11-03 | `related_usecases` 由空清單補為 UC-01～UC-06（`0.6.0-W1-116`，對齊 UC 端 `related_specs`）：UC-01 圖譜、UC-02 FR-12、UC-03 FR-10、UC-04 追溯樹、UC-05 FR-07 列舉、UC-06 FR-09；不動條文 |
