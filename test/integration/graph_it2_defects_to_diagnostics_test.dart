@@ -46,10 +46,6 @@ Object? _sorted(Object? v) {
   return v;
 }
 
-bool _isNodeLevel(GraphDefectGap gap) =>
-    gap.kind == GraphDefectKind.isolatedNode ||
-    gap.kind == GraphDefectKind.missingRequiredEdge;
-
 String _gapKey(GraphDefectGap gap) => switch (gap.defect) {
   final DanglingRefGraphDefect d => _refKey(
     gap.kind.name,
@@ -173,26 +169,10 @@ void main() {
 
       test('IT2-A1 graphDefect 破洞集合與凍結值一一對應', () {
         final result = _diagnose(runs[host]!) as GraphDefectsDetected;
-        // 重凍由 0.6.0-W1-171 承接。
-        // 凍結語料早於 UC `ticket_refs` 回填（0.6.0-W1-104），凍結值不含節點層級
-        // 缺陷（FR-09〈孤島與缺必要邊〉）；此處只允許缺 uc_ticket_refs 一種，
-        // 其餘節點層級缺陷（孤島等）出現即紅。
-        final (nodeLevel, mainGaps) = (
-          result.gaps.where(_isNodeLevel).toList(),
-          result.gaps.where((g) => !_isNodeLevel(g)).toList(),
-        );
-        for (final g in nodeLevel) {
-          final d = g.defect;
-          expect(
-            d is MissingRequiredEdgeGraphDefect &&
-                d.edgeTypes.join(',') == 'uc_ticket_refs' &&
-                d.nodeType == 'UC',
-            isTrue,
-            reason: '非預期的節點層級缺陷：${_gapKey(g)}',
-          );
-        }
+        // 重凍（0.6.0-W1-171）後語料已含 UC 的 uc_ticket_refs 回填，節點層級缺陷
+        // （孤島、缺必要邊）凍結值為零；不設特例，出現即與凍結集合比對而紅。
         final diff = diffReport(
-          mainGaps.map(_gapKey),
+          result.gaps.map(_gapKey),
           _expectedDefectKeys(host),
         );
         expect(diff, isEmpty, reason: diff);

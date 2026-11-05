@@ -4,15 +4,16 @@
   "status_values": {
    "graph_project_docs_manager": {
     "blocked": 3,
-    "closed": 236,
-    "completed": 874,
-    "in_progress": 4,
-    "pending": 57
+    "closed": 435,
+    "completed": 2058,
+    "in_progress": 2,
+    "pending": 45
    },
    "flutter_balance": {
-    "closed": 328,
-    "completed": 1352,
-    "pending": 54
+    "closed": 348,
+    "completed": 1492,
+    "in_progress": 2,
+    "pending": 6
    }
   },
   "tickets_without_string_status": {
@@ -225,84 +226,75 @@
   },
   {
    "corpus": "graph_project_docs_manager",
-   "path": "docs/work-logs/v0/v0.4/v0.4.0/tickets/0.4.0-W2-002.md",
-   "id": "0.4.0-W2-002",
+   "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-099.md",
+   "id": "0.6.0-W1-099",
    "frontmatter": {
-    "id": "0.4.0-W2-002",
-    "title": "實作 Schema 邊型解碼（SPEC-007 FR-01）",
-    "type": "IMP",
+    "id": "0.6.0-W1-099",
+    "title": "協調 0.6.0 任務線分配與多 session 協調",
+    "type": "ANA",
     "status": "in_progress",
-    "version": "0.4.0",
-    "wave": 2,
+    "version": "0.6.0",
+    "wave": 1,
     "priority": "P1",
     "parent_id": null,
     "children": [],
     "blockedBy": [],
     "relatedTo": [],
-    "spawned_tickets": [],
-    "source_ticket": "0.4.0-W1-059",
+    "spawned_tickets": [
+     "0.6.0-W1-167"
+    ],
+    "source_ticket": null,
     "discovered_during": null,
     "scope_blocker": null,
     "dispatch_reason": "",
     "decision_tree_path": {
-     "entry_point": "version-bootstrap Step 6（W1-059 §6.2）",
-     "final_decision": "建 IMP，派實作代理人",
-     "rationale": "依測試規格切票；先寫紅燈再實作"
+     "entry_point": "用戶裁定",
+     "final_decision": "另立 0.6.0 協調票",
+     "rationale": "每版一張協調票，避免已結案票承載進行中狀態"
     },
     "who": {
-     "current": "主線程",
+     "current": "主控",
      "history": {}
     },
-    "what": "依 docs/spec/graph/SPEC-007-test-design.md §3.1 S6（S6-1～S6-10）：型別表 codec 解碼 edge_types（鍵名、class、forward_field、reverse_field、正向基數、layer），提供使用中邊型集合（established 扣 domain_dependency，D6 唯一鍵名例外）；缺 edge_types 或缺正向基數時依版本判定從內建表補或回報建圖不可用原因碼（與 SPEC-006 FR-08 同一套）",
-    "when": "W2-001 完成後（內建型別表含 forward_cardinality）",
+    "what": "協調 0.6.0 任務線分配與多 session 協調",
+    "when": "0.5.0 發版後至 0.6.0 收尾",
     "where": {
-     "layer": "Domain",
+     "layer": "待定義",
      "files": [
-      "lib/schema/type_table.dart",
-      "lib/schema/type_table_json_codec.dart",
-      "lib/schema/edge_type.dart",
-      "test/unit/schema/edge_type_decoding_test.dart",
-      "test/helpers/spec007/edge_table_builder.dart"
+      "docs/work-logs/v0/v0.6/v0.6.0/"
      ]
     },
-    "why": "SPEC-007 FR-01：Graph 的邊型、欄位名、基數一律取自型別表（D6）",
+    "why": "用戶裁定（2026-11-01）：0.5.0 協調票 0.5.0-W1-349 結案後，0.6.0 另立協調票，承接主控佇列、用戶待辦與各線接續。看板與 line_status 改讀本票。",
     "how": {
-     "task_type": "Implementation",
-     "strategy": "先依 S6 寫紅燈測試（含 E2 正向對照 S6-7／S6-8）→ 實作 → S6-10 驗既有 node_types 解碼不變；§1.3 import 方向檢查"
+     "task_type": "Planning",
+     "strategy": "依 multi-session-orchestration：各線佇列行、用戶待辦行、主控查證與裁定皆以 append-log 寫入本票 Solution"
     },
     "acceptance": [
-     "[ ] S6-1～S6-10 全綠；實作前 S6 新案例全紅，既有 schema 測試 0 紅",
-     "[ ] §1.3：test/unit/schema/ 不 import graph／ticket_detail／corpus／diagnostics",
-     "[ ] flutter analyze 與全套 flutter test 綠",
-     "[ ] Phase 4 評估記錄於 Solution"
+     "[ ] 0.6.0 各線皆收線且佇列為（無）",
+     "[ ] 用戶待辦皆有完成行"
     ],
-    "tdd_phase": "phase1",
-    "tdd_stage": [
-     "phase1",
-     "phase2",
-     "phase3a",
-     "phase3b",
-     "phase4"
-    ],
+    "tdd_phase": null,
+    "tdd_stage": [],
     "assigned": true,
-    "creation_accepted": false,
-    "started_at": "2026-09-30T16:21:12",
+    "creation_accepted": true,
+    "started_at": "2026-11-01T02:14:43",
     "completed_at": null,
-    "created": "2026-09-30",
-    "updated": "2026-09-30",
-    "protocol_version": "2.0"
+    "created": "2026-11-01",
+    "updated": "2026-11-01",
+    "protocol_version": "2.0",
+    "coordination": true
    }
   },
   {
    "corpus": "graph_project_docs_manager",
-   "path": "docs/work-logs/v0/v0.4/v0.4.0/tickets/0.4.0-W1-039.md",
-   "id": "0.4.0-W1-039",
+   "path": "docs/work-logs/v0/v0.6/v0.6.0/tickets/0.6.0-W1-084.md",
+   "id": "0.6.0-W1-084",
    "frontmatter": {
-    "id": "0.4.0-W1-039",
-    "title": "補齊 PROP-005 heavy 級完整評估章節，使檔案本身 status 可由 draft 升級為 confirmed",
+    "id": "0.6.0-W1-084",
+    "title": "驗證 framework issue 99 層級 SPEC 保留名稱守衛的修正是否抵達並適用本專案",
     "type": "ANA",
     "status": "pending",
-    "version": "0.4.0",
+    "version": "0.6.0",
     "wave": 1,
     "priority": "P3",
     "parent_id": null,
@@ -310,50 +302,55 @@
     "blockedBy": [],
     "relatedTo": [],
     "spawned_tickets": [],
-    "source_ticket": null,
-    "discovered_during": "0.2.0-W1-034",
+    "source_ticket": "0.5.0-W1-561",
+    "discovered_during": null,
     "scope_blocker": null,
     "dispatch_reason": "",
     "decision_tree_path": {
-     "entry_point": "Layer 1 版本規劃",
-     "final_decision": "列為 P3 低優先技術債；不阻擋 0.2.0 gate 實作，因契約已由 SPEC-001 與 tracking.yaml 承接",
-     "rationale": "proposal-evaluation-gate-hook 只在升級轉換當下擋，維護編輯（本次 §0.2 表更新）不受影響；PROP-005 檔案本身升級為 confirmed 需要完整 heavy 評估，成本與價值不對等於本次 DOC ticket 範圍"
+     "entry_point": "0.5.0-W1-158 用戶裁決 K1",
+     "final_decision": "建驗證票",
+     "rationale": "框架修補節奏：觀測後關本地票，另建驗證票承接落地確認"
     },
     "who": {
-     "current": "saffron-system-analyst",
+     "current": "待派發",
      "history": {}
     },
-    "what": "補齊 PROP-005 heavy 級完整評估章節，使檔案本身 status 可由 draft 升級為 confirmed",
-    "when": "0.2.0 後續 Wave；非阻擋，PROP-005 §0.1／§0.2 契約已由 SPEC-001 與 proposals-tracking.yaml 承接",
+    "what": "驗證 framework issue 99 層級 SPEC 保留名稱守衛的修正是否抵達並適用本專案",
+    "when": "修正已在本地 .claude/ 落地時（本專案為主控方），或 canonical 推送含此修正後 sync-pull 時",
     "where": {
-     "layer": "Domain",
+     "layer": "待定義",
      "files": [
-      "docs/proposals/PROP-005-version-sequence-by-data-pipeline.md"
+      "docs/spec/ui/SPEC-001-screen-state-matrix.md::read",
+      "docs/system-layer.md"
      ]
     },
-    "why": "0.2.0-W1-034 已將 docs/proposals-tracking.yaml 的 PROP-005 status 改為 confirmed（供 version-tracking guard 解除 stale 警示），但 PROP-005 md 檔案自身 frontmatter 的 status 仍為 draft——proposal-evaluation-gate-hook 於嘗試升級時擋下，因 evaluation_level: heavy 要求的替代方案（3 候選+評估表）／失敗防護（3 情境+防護）／多視角審查記錄／分階段實施計畫四章節尚未撰寫。tracking.yaml 與檔案自身 status 目前不同步，是刻意的範圍決策（見 0.2.0-W1-034 討論記錄 2026-09-23 條目），非缺陷，但長期應收斂。",
+    "why": "0.5.0-W1-561 已觀測進 tarrragon/claude#99（comment 6528836677）並以 not_executable_knowledge_captured 關閉；修正落地後須確認本專案 4 份 domain: ui 的層級 SPEC 受守衛保護，並把 docs/system-layer.md §2.2 的「目前沒有工具守衛」改寫為現況",
     "how": {
      "task_type": "Analysis",
-     "strategy": "PM 執行完整 WRAP 四階段（依 .claude/pm-rules/proposal-evaluation-gate.md 規則 2 heavy 級流程）→ 派發多視角審查（至少 linux + 1 領域視角）→ 補齊四項必填章節 → 檔案 status 由 draft 升級為 confirmed，屆時與 proposals-tracking.yaml 的 confirmed 對齊。"
+     "strategy": "臨時宣告 domain: ui 的 DomainBundle（tmp 副本），確認檢查失敗；移除後確認結果不變；更新 system-layer §2.2"
     },
     "acceptance": [
-     "[ ] PROP-005 md 補齊替代方案／失敗防護／多視角審查記錄／分階段實施計畫四章節；status 由 draft 升級為 confirmed 且 proposal-evaluation-gate-hook 不再阻擋"
+     "[ ] 宣告 domain: ui 的 DomainBundle 時守衛擋下（E2）",
+     "[ ] system-layer §2.2 守衛現況已更新"
     ],
     "tdd_phase": null,
     "tdd_stage": [],
     "assigned": false,
-    "creation_accepted": false,
+    "creation_accepted": true,
     "started_at": null,
     "completed_at": null,
-    "created": "2026-09-23",
-    "updated": "2026-09-23",
+    "created": "2026-10-31",
+    "updated": "2026-10-31",
     "protocol_version": "2.0",
+    "previous_ids": [
+     "0.5.0-W1-562"
+    ],
     "chain": {
-     "root": "0.4.0-W1-039",
+     "root": "0.6.0-W1-084",
      "parent": null,
      "depth": 0,
      "sequence": [
-      39
+      84
      ]
     }
    }
@@ -489,6 +486,76 @@
     "created": "2026-07-20",
     "updated": "2026-07-20",
     "protocol_version": "2.0"
+   }
+  },
+  {
+   "corpus": "flutter_balance",
+   "path": "docs/work-logs/v0/v0.3/v0.3.1/tickets/0.3.1-W5-002.md",
+   "id": "0.3.1-W5-002",
+   "frontmatter": {
+    "id": "0.3.1-W5-002",
+    "title": "協調 0.2.3 發版至 0.3.0 收尾與元件庫 skill 回饋的任務線",
+    "type": "DOC",
+    "status": "in_progress",
+    "version": "0.3.1",
+    "wave": 5,
+    "priority": "P1",
+    "parent_id": null,
+    "children": [],
+    "blockedBy": [],
+    "relatedTo": [],
+    "spawned_tickets": [],
+    "source_ticket": null,
+    "discovered_during": null,
+    "scope_blocker": null,
+    "dispatch_reason": "",
+    "decision_tree_path": null,
+    "who": {
+     "current": "主線程 PM（主控）",
+     "history": {}
+    },
+    "what": "協調 0.2.3 發版至 0.3.0 收尾與元件庫 skill 回饋的任務線",
+    "when": "2026-11-03 任務線重新規劃後，至 L1～L4 全部結線",
+    "where": {
+     "layer": "待定義",
+     "files": [
+      "docs/todolist.yaml",
+      "docs/work-logs/v0/v0.2/v0.2.3/v0.2.3-main.md",
+      "docs/work-logs/v0/v0.3/v0.3.0/v0.3.0-main.md"
+     ]
+    },
+    "why": "版本索引與實際進度不符（0.3.0 約 108/118 完成卻標 planned）；元件庫經驗無固定回饋線；用戶裁決先發 0.2.3、框架票轉 issue 暫停本地框架修改、skill 回饋先盤點再成線",
+    "how": {
+     "task_type": "Planning",
+     "strategy": "以現行佇列行記錄 L1～L4 佇列；L1 0.2.3 收尾發版 ∥ L2 框架票轉 issue → L3 0.3.0 收尾 → L4 skill 回饋盤點"
+    },
+    "acceptance": [
+     "[ ] L1～L4 各線結線（現行佇列行票序為（無））",
+     "[ ] 0.2.3 已發版且 0.3.0 已轉 active"
+    ],
+    "tdd_phase": null,
+    "tdd_stage": [],
+    "assigned": true,
+    "creation_accepted": true,
+    "started_at": "2026-11-05T12:00:09",
+    "completed_at": null,
+    "created": "2026-11-03",
+    "updated": "2026-11-03",
+    "protocol_version": "2.0",
+    "coordination": true,
+    "migrated_from": "0.3.0-W5-001",
+    "previous_ids": [
+     "0.2.3-W5-001",
+     "0.3.0-W5-002"
+    ],
+    "chain": {
+     "root": "0.3.1-W5-002",
+     "parent": null,
+     "depth": 0,
+     "sequence": [
+      2
+     ]
+    }
    }
   },
   {

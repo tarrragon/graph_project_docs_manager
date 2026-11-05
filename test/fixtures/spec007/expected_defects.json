@@ -1,11 +1,20 @@
 {
  "header": {
-  "reference_version": "1.0.0",
-  "frozen_date": "2026-09-30",
+  "reference_version": "1.2.0",
+  "frozen_date": "2026-11-05",
   "note": "expected values produced by tool/spec007_reference.py; CI does not run it"
  },
  "corpora": {
   "flutter_balance": [
+   {
+    "kind": "danglingRef",
+    "source_id": "0.3.0-W4-013",
+    "path": "docs/work-logs/v0/v0.3/v0.3.0/tickets/0.3.0-W4-013.md",
+    "field": "discovered_during",
+    "raw_value": "0.2.3-W5-001",
+    "edge_type": "discovery",
+    "reason": "targetMissing"
+   },
    {
     "kind": "malformedRef",
     "source_id": "0.2.1-W3-1077",
@@ -244,15 +253,6 @@
    },
    {
     "kind": "malformedRef",
-    "source_id": "9.9.9-W9-003",
-    "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-003.md",
-    "field": "relatedTo",
-    "raw_value": "9.9.9-W9-003",
-    "edge_type": "association",
-    "reason": "selfReference"
-   },
-   {
-    "kind": "malformedRef",
     "source_id": "9.9.9-W9-004",
     "path": "docs/work-logs/v9/v9.9/v9.9.9/tickets/9.9.9-W9-004.md",
     "field": "relatedTo",
@@ -270,6 +270,60 @@
     "raw_value": 42,
     "edge_type": "blocking",
     "reason": "invalidShape"
+   },
+   {
+    "kind": "danglingRef",
+    "source_id": "0.1.0-W3-437.2",
+    "path": "docs/work-logs/v0/v0.1/v0.1.0/tickets/0.1.0-W3-437.2.md",
+    "field": "closed_by",
+    "raw_value": "0.1.0-W3-417",
+    "edge_type": "closed_by",
+    "reason": "targetMissing"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.5.0-W1-539",
+    "path": "docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-539.md",
+    "field": "closed_by",
+    "raw_value": "0.5.0-W1-539",
+    "edge_type": "closed_by",
+    "reason": "selfReference"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.5.0-W1-574",
+    "path": "docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-574.md",
+    "field": "closed_by",
+    "raw_value": "0.5.0-W1-574",
+    "edge_type": "closed_by",
+    "reason": "selfReference"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.5.0-W1-575",
+    "path": "docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-575.md",
+    "field": "closed_by",
+    "raw_value": "0.5.0-W1-575",
+    "edge_type": "closed_by",
+    "reason": "selfReference"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.5.0-W1-576",
+    "path": "docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-576.md",
+    "field": "closed_by",
+    "raw_value": "0.5.0-W1-576",
+    "edge_type": "closed_by",
+    "reason": "selfReference"
+   },
+   {
+    "kind": "malformedRef",
+    "source_id": "0.5.0-W1-577",
+    "path": "docs/work-logs/v0/v0.5/v0.5.0/tickets/0.5.0-W1-577.md",
+    "field": "closed_by",
+    "raw_value": "0.5.0-W1-577",
+    "edge_type": "closed_by",
+    "reason": "selfReference"
    },
    {
     "kind": "danglingRef",
@@ -482,6 +536,26 @@
       "to": "0.1.0-W3-205",
       "declared_by": [
        "0.1.0-W3-205"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "multiSource",
+    "from": "0.5.0-W3-008",
+    "edge_type": "spawn",
+    "targets": [
+     {
+      "to": "0.5.0-W3-005",
+      "declared_by": [
+       "0.5.0-W3-005",
+       "0.5.0-W3-008"
+      ]
+     },
+     {
+      "to": "0.5.0-W3-007",
+      "declared_by": [
+       "0.5.0-W3-007"
       ]
      }
     ]

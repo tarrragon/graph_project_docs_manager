@@ -1,179 +1,204 @@
 {
  "header": {
-  "reference_version": "1.0.0",
-  "frozen_date": "2026-09-30",
+  "reference_version": "1.2.0",
+  "frozen_date": "2026-11-05",
   "note": "expected values produced by tool/spec007_reference.py; CI does not run it"
  },
  "corpora": {
   "flutter_balance": {
-   "node_count": 1748,
+   "node_count": 1862,
    "duplicate_id_count": 0,
    "duplicate_id_node_count": 0,
-   "edge_count": 2246,
+   "edge_count": 2496,
    "edges_by_type": {
-    "association": 296,
-    "blocking": 506,
-    "blood": 128,
-    "discovery": 75,
+    "association": 303,
+    "blocking": 564,
+    "blood": 152,
+    "closed_by": 93,
+    "discovery": 89,
     "domain_coverage": 2,
     "proposal_association": 2,
     "provenance": 16,
     "requirement_impl": 1,
-    "spawn": 1197,
+    "spawn": 1250,
     "spec_association": 14,
-    "uc_association": 9
+    "uc_association": 9,
+    "uc_ticket_refs": 1
    },
    "declaration_shapes": {
     "directed": {
-     "from_only": 614,
-     "to_only": 62,
-     "both": 1274
+     "from_only": 780,
+     "to_only": 66,
+     "both": 1347
     },
     "undirected": {
-     "one_end": 277,
+     "one_end": 284,
      "both": 19
     }
    },
-   "reference_value_total": 3543,
-   "resolved_count": 3539,
-   "dangling_count": 0,
+   "reference_value_total": 3867,
+   "resolved_count": 3862,
+   "dangling_count": 1,
    "malformed_count": 4,
    "reason_counts": {
-    "patternMismatch": 4
+    "patternMismatch": 4,
+    "targetMissing": 1
    },
    "multi_source_count": 9,
    "multi_source_by_edge_type": {
     "spawn": 9
    },
-   "graph_defect_count": 13,
+   "graph_defect_count": 14,
+   "closed_by_skipped_count": 255,
+   "closed_by_reference_count": 93,
+   "closed_by_field_value_total": 348,
    "real_only": {
-    "node_count": 1748,
+    "node_count": 1862,
     "duplicate_id_count": 0,
     "duplicate_id_node_count": 0,
-    "edge_count": 2246,
+    "edge_count": 2496,
     "edges_by_type": {
-     "association": 296,
-     "blocking": 506,
-     "blood": 128,
-     "discovery": 75,
+     "association": 303,
+     "blocking": 564,
+     "blood": 152,
+     "closed_by": 93,
+     "discovery": 89,
      "domain_coverage": 2,
      "proposal_association": 2,
      "provenance": 16,
      "requirement_impl": 1,
-     "spawn": 1197,
+     "spawn": 1250,
      "spec_association": 14,
-     "uc_association": 9
+     "uc_association": 9,
+     "uc_ticket_refs": 1
     },
     "declaration_shapes": {
      "directed": {
-      "from_only": 614,
-      "to_only": 62,
-      "both": 1274
+      "from_only": 780,
+      "to_only": 66,
+      "both": 1347
      },
      "undirected": {
-      "one_end": 277,
+      "one_end": 284,
       "both": 19
      }
     },
-    "reference_value_total": 3543,
-    "resolved_count": 3539,
-    "dangling_count": 0,
+    "reference_value_total": 3867,
+    "resolved_count": 3862,
+    "dangling_count": 1,
     "malformed_count": 4,
     "reason_counts": {
-     "patternMismatch": 4
+     "patternMismatch": 4,
+     "targetMissing": 1
     },
     "multi_source_count": 9,
     "multi_source_by_edge_type": {
      "spawn": 9
     },
-    "graph_defect_count": 13
+    "graph_defect_count": 14,
+    "closed_by_skipped_count": 255,
+    "closed_by_reference_count": 93,
+    "closed_by_field_value_total": 348
    }
   },
   "graph_project_docs_manager": {
-   "node_count": 1208,
+   "node_count": 2586,
    "duplicate_id_count": 1,
    "duplicate_id_node_count": 2,
-   "edge_count": 1722,
+   "edge_count": 3784,
    "edges_by_type": {
-    "association": 164,
-    "blocking": 432,
-    "blood": 192,
-    "discovery": 50,
-    "domain_coverage": 1,
+    "association": 285,
+    "blocking": 802,
+    "blood": 832,
+    "bundle_dependency": 9,
+    "closed_by": 113,
+    "discovery": 165,
+    "domain_coverage": 8,
     "proposal_association": 6,
-    "provenance": 23,
-    "spawn": 792,
-    "spec_association": 28,
-    "uc_association": 34
+    "provenance": 31,
+    "spawn": 1328,
+    "spec_association": 51,
+    "uc_association": 54,
+    "uc_ticket_refs": 100
    },
    "declaration_shapes": {
     "directed": {
-     "from_only": 551,
-     "to_only": 39,
-     "both": 968
+     "from_only": 1311,
+     "to_only": 78,
+     "both": 2110
     },
     "undirected": {
-     "one_end": 157,
-     "both": 7
+     "one_end": 274,
+     "both": 11
     }
    },
-   "reference_value_total": 2708,
-   "resolved_count": 2697,
-   "dangling_count": 4,
-   "malformed_count": 7,
+   "reference_value_total": 5921,
+   "resolved_count": 5905,
+   "dangling_count": 5,
+   "malformed_count": 11,
    "reason_counts": {
     "invalidShape": 5,
     "patternMismatch": 1,
-    "selfReference": 1,
+    "selfReference": 5,
     "targetDuplicated": 1,
-    "targetMissing": 3
+    "targetMissing": 4
    },
-   "multi_source_count": 8,
+   "multi_source_count": 9,
    "multi_source_by_edge_type": {
-    "spawn": 8
+    "spawn": 9
    },
-   "graph_defect_count": 20,
+   "graph_defect_count": 26,
+   "closed_by_skipped_count": 316,
+   "closed_by_reference_count": 119,
+   "closed_by_field_value_total": 435,
    "real_only": {
-    "node_count": 1202,
+    "node_count": 2581,
     "duplicate_id_count": 0,
     "duplicate_id_node_count": 0,
-    "edge_count": 1719,
+    "edge_count": 3781,
     "edges_by_type": {
-     "association": 164,
-     "blocking": 430,
-     "blood": 192,
-     "discovery": 50,
-     "domain_coverage": 1,
+     "association": 285,
+     "blocking": 800,
+     "blood": 832,
+     "bundle_dependency": 9,
+     "closed_by": 113,
+     "discovery": 165,
+     "domain_coverage": 8,
      "proposal_association": 6,
-     "provenance": 22,
-     "spawn": 792,
-     "spec_association": 28,
-     "uc_association": 34
+     "provenance": 30,
+     "spawn": 1328,
+     "spec_association": 51,
+     "uc_association": 54,
+     "uc_ticket_refs": 100
     },
     "declaration_shapes": {
      "directed": {
-      "from_only": 549,
-      "to_only": 38,
-      "both": 968
+      "from_only": 1309,
+      "to_only": 77,
+      "both": 2110
      },
      "undirected": {
-      "one_end": 157,
-      "both": 7
+      "one_end": 274,
+      "both": 11
      }
     },
-    "reference_value_total": 2698,
-    "resolved_count": 2694,
-    "dangling_count": 3,
-    "malformed_count": 1,
+    "reference_value_total": 5912,
+    "resolved_count": 5902,
+    "dangling_count": 4,
+    "malformed_count": 6,
     "reason_counts": {
      "patternMismatch": 1,
-     "targetMissing": 3
+     "selfReference": 5,
+     "targetMissing": 4
     },
-    "multi_source_count": 8,
+    "multi_source_count": 9,
     "multi_source_by_edge_type": {
-     "spawn": 8
+     "spawn": 9
     },
-    "graph_defect_count": 12
+    "graph_defect_count": 19,
+    "closed_by_skipped_count": 316,
+    "closed_by_reference_count": 119,
+    "closed_by_field_value_total": 435
    }
   }
  }
