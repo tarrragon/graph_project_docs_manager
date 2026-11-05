@@ -121,7 +121,21 @@ components  lib/components/：元件庫，只依賴 tokens、l10n 與 Flutter
 - screens 不 import 組裝根。
 - screens 內的畫面功能目錄之間不互相 import。兩個畫面共用的狀態或 provider 下沉到 app，共用的展示 widget 下沉到 components。
 
-L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import 本節任何一層。這條已有反向守衛：graph、diagnostics、layout 各有 import 方向測試。
+L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import 本節任何一層。
+
+**import 方向守衛一覽**：全專案共 7 支，分散在 5 個目錄。任何改動 `lib/` import 的工作，本機都要把 7 支跑齊再送合併閘門；只跑改動目錄旁邊的那一支，其他目錄的守衛會在閘門才紅燈。
+
+| 守衛（測試路徑） | 掃描範圍 | 禁止的 import 目標 |
+|---|---|---|
+| `test/unit/architecture/presentation_import_direction_test.dart` | `lib/components`、`lib/app`、`lib/screens` | 本節四條規則 |
+| `test/unit/app/scan_round_test.dart`（group R7） | `lib/corpus`、`lib/graph`、`lib/diagnostics`、`lib/schema`、`lib/layout`；另查 `lib/app/scan_round.dart` | 前五者不 import `app`、`screens`；`scan_round.dart` 不 import `screens` |
+| `test/unit/diagnostics/diagnostics_import_direction_test.dart` | `lib/diagnostics`（含子目錄） | `schema` |
+| `test/unit/graph/graph_import_direction_test.dart` | `lib/graph`（含子目錄） | `layout`、`screens`、`components` |
+| `test/unit/graph/graph_import_cycle_test.dart` | `lib/graph` 中被 `flow_subgraph.dart` 依賴的底層檔（`domain_name_resolver.dart`、`flow_key.dart`） | `flow_subgraph.dart`（反向 import 會成環） |
+| `test/unit/layout/layout_import_direction_test.dart` | `lib/layout`、`test/unit/layout` | `corpus`、`screens`、`components` |
+| `test/unit/screens/domain_view/domain_view_projection_test.dart`（group P8） | `lib/screens/domain_view/domain_view_projection.dart` | 白名單以外的一切：只允許 `dart:`、`graph/`、`layout/` 與 `app/domain_view_state.dart`，相對路徑一律禁止 |
+
+另有四支結構守衛，判準不是分層方向，但改動相關 import 時同樣會紅燈：`test/unit/architecture/riverpod_legacy_import_test.dart`（`lib/` 不 import `flutter_riverpod/legacy.dart`）、`test/unit/app/domain_view_loader_test.dart`（group「B9 依賴方向」：`lib/app/project_switcher_providers.dart` 不轉出 `current_workspace_provider.dart`）、`test/unit/screens/domain_view/domain_view_state_driven_test.dart`（group「S6 fixture 退場」：`lib/` 不 import `domain_view_fixtures.dart`）、`test/unit/corpus/non_domain_paths_reader_test.dart`（`lib/graph` 不 import `dart:io`、不直讀非 domain 路徑清單檔）。
 
 **目錄即層**：判斷一個檔案屬於哪一層只看它所在的目錄，不逐檔指派。守衛以目錄規則寫成，新增檔案時依職責放進對應目錄即可。上列四條規則由 `test/unit/architecture/presentation_import_direction_test.dart` 守衛。
 
