@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-11-04"
-version: "1.122"
+updated: "2026-11-05"
+version: "1.124"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.123（1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.124（1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -310,7 +310,7 @@ depends_on_domains: [layout]
 | 畫布未畫：空狀態、阻擋狀態、載入態、待載入提示、返回鍵、SnackBar、schema 詳情面板 | 規格有、畫布無 | 規格為準，不視為缺件；其排列（icon / 訊息 / 說明 / 動作列的堆疊）於第 4 章依 SPEC-003 §2.6–§2.7 填 |
 | `design/Main.dc.html` 矩陣模式頁首副標「點格子切換至泳道」，SPEC-003 §3.1 採方案 B 後單擊為選格 | 行為類（規格為準） | 副標改為「點格子檢視詳情」；畫布不回改，畫面票的副標文案依 SPEC-003（W1-048 消費結果） |
 | 畫布無 hover / focused / pressed 任何樣式，無格詳情卡關閉鈕、無矩陣格選取態 | 畫布不可得 | 互動瞬態視覺依 §4.0.1 通用約定（Material 內建 overlay，不自繪，標提案）；選取態依 §4.15 成對設計 |
-| 畫布頂端標題列高 36、票表固定寬欄 132 / 84 / 40 / 22、步驟表 26 / 118、樹縮排每層 24、步驟序號 16 與 24 兩值 | 視覺值，token 缺 | `0.1.0-W1-055` 已建對應 token；§4.0.9 待決清單去標 |
+| 畫布頂端標題列高 36、票表固定寬欄 132 / 84 / 40 / 22、步驟表 26 / 118、樹縮排每層 24、步驟序號 16 與 24 兩值 | 視覺值，token 缺 | 已建對應 token：`LayoutSize.titleBarHeight`（36）、`ticketIdColumnWidth`／`ticketStatusColumnWidth`／`ticketPriorityColumnWidth`／`ticketMarkerColumnWidth`（132／84／40／22）、`stepNumberColumnWidth`／`stepDomainColumnWidth`（26／118）、`treeIndent`（24）、`stepNumberSize`（16 與 24 兩值收斂為 24）（`0.1.0-W1-055`）；§4.0.9 待決清單去標 |
 
 ### 3.6 SPEC-001 狀態列與 SPEC-002 八類的歸屬對照
 
@@ -752,7 +752,7 @@ ARB 實檔狀態待建，由對應畫面票加入，zh 值為本檔提案文案�
 | `gapCategoryGraphDefect` | 圖結構缺陷 | Graph Defects | — | 分節 `graph-defect`（主圖四子類與 domain 重複宣告） |
 | `gapCategoryGraphDefectFlow` | flow 結構缺陷 | Flow Defects | — | 分節 `graph-defect-flow`（flow 各子類，見 SPEC-007 FR-09 子類表） |
 
-EVT-CORPUS-003 項目說明（依 EVT-CORPUS-003 `reason` 值域；原因碼識別名未定，見 `0.5.0-W1-114.16` NeedsContext）：
+EVT-CORPUS-003 項目說明（依 EVT-CORPUS-003 `reason` 值域；原因碼識別名為 `CarrierParseFailureReason` 的 `noFrontmatter`／`frontmatterUnclosed`／`frontmatterNotMap`／`yamlInvalid`／`unreadable`，`unreadable` 的子原因為 `UnreadableReason` 的 `encoding`／`permission`／`fileDeleted`；投影依識別名查 key，不從 `reason` 字串反解）：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
@@ -5116,7 +5116,7 @@ EVT-CORPUS-004 項目說明：
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 填滿父容器（寬）；高固定 `LayoutSize.rowHeightRelaxed` |
-| 最小尺寸 | 寬：2 × `Space.sm`（自身水平內距）+ Σ 固定寬欄 + 填滿欄所需寬 + (欄數 − 1) × `Space.md`。各變體有兩個填滿欄（`ticket` 標題 flex 2／blockedBy flex 1；`step` 步驟名與事件各 flex 1；`eventFlow` 發出與消費各 flex 1；`header` 沿用所對齊變體的欄規格），剩餘寬依 flex 比例分配，故填滿欄所需寬 = max over 各填滿欄（該欄最小寬 × Σflex ÷ 該欄 flex）。各填滿欄最小寬：文字子件為一字元 + 省略號（一字元見 §4.0.3，取該欄文字子件字級：`AppText.body` 與 `AppText.mono` 取 `AppFontSize.body`，`header` 的 `TableColumnHeader` 依 4.14 取 `AppFontSize.caption`；省略號依本表 `kMinWindowSize` 列的截斷敘述計入，截斷或換行的責任歸屬見 `0.5.0-W3-008` 待裁決）；`step` 事件欄子件為 `BadgeRow`，不適用一字元加省略號，取 4.33 `BadgeRow` 最小寬（實作 `app_table_row.dart` `AppTableRow.ticketColumns`／`stepColumns`／`eventFlowColumns` 與 `_buildColumnChildren`，1.101 追認複數填滿欄）；高：`LayoutSize.rowHeightRelaxed` |
+| 最小尺寸 | 寬：2 × `Space.sm`（自身水平內距）+ Σ 固定寬欄 + 填滿欄所需寬 + (欄數 − 1) × `Space.md`。各變體有兩個填滿欄（`ticket` 標題 flex 2／blockedBy flex 1；`step` 步驟名與事件各 flex 1；`eventFlow` 發出與消費各 flex 1；`header` 沿用所對齊變體的欄規格），剩餘寬依 flex 比例分配，故填滿欄所需寬 = max over 各填滿欄（該欄最小寬 × Σflex ÷ 該欄 flex）。各填滿欄最小寬：文字子件為一字元 + 省略號（一字元見 §4.0.3，取該欄文字子件字級：`AppText.body` 與 `AppText.mono` 取 `AppFontSize.body`，`header` 的 `TableColumnHeader` 依 4.14 取 `AppFontSize.caption`；省略號依本表 `kMinWindowSize` 列的截斷敘述計入；截斷或換行由呼叫端以 `AppText.singleLine`／`AppText.multiLine` 明示，元件不依內容自行猜測（4.1 `AppText`〈內容政策〉，`0.5.0-W1-508.1`））；`step` 事件欄子件為 `BadgeRow`，不適用一字元加省略號，取 4.33 `BadgeRow` 最小寬（實作 `app_table_row.dart` `AppTableRow.ticketColumns`／`stepColumns`／`eventFlowColumns` 與 `_buildColumnChildren`，1.101 追認複數填滿欄）；高：`LayoutSize.rowHeightRelaxed` |
 | 最小命中區 | `ticket` / `step` 整列高 `LayoutSize.rowHeightRelaxed` ≥ `LayoutSize.hitTargetMin` |
 | 最大尺寸 | 寬無上限；高固定 |
 | 欄規格（`ticket`） | ID 固定寬 `LayoutSize.ticketIdColumnWidth`（132）、標題填滿 `flex(2)`、狀態 `LayoutSize.ticketStatusColumnWidth`（84）、優先 `LayoutSize.ticketPriorityColumnWidth`（40）、blockedBy 填滿 `flex(1)`（無專屬寬度 token；ID 清單長度不定，固定寬會在多值時全部截斷，填滿欄以比例讓標題優先，提案）、標記 `LayoutSize.ticketMarkerColumnWidth`（22） |
@@ -6509,6 +6509,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.124 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：三處依賴型票號引用改寫為定案內容，不改契約。§3.5 漂移表「畫布頂端標題列高 36…」列列出對應的 `LayoutSize` token 名；§4.0.6〈EVT-CORPUS-003 項目說明〉前導句的「原因碼識別名未定」改為列出 `CarrierParseFailureReason` 與 `UnreadableReason` 的識別名；4.35〈尺寸契約〉最小尺寸列的「截斷或換行的責任歸屬待裁決」改為 4.1〈內容政策〉已定案的呼叫端明示規則。frontmatter 版號由 1.122 對齊至本版（原與正文 1.123 不一致） |
 | 1.123 | 2026-11-04 | `0.6.0-W1-075.2`（對應 SPEC-001 v1.78、UC-02 v1.16）：§4.0.6 登記 `pathDeclarationBundlesMalformed`（{count} 個 domain 的路徑宣告格式錯誤），宣告狀態行 `{detail}` 的 bundle 格式錯誤片段，接在 bundle 側片段之後；ARB 同批建立。不新增元件，狀態總數不變 |
 | 1.122 | 2026-11-04 | `0.6.0-W1-070.2`（對應 SPEC-001 v1.76、SPEC-003 v1.82）：§3.6 對照表補 SPEC-001 §9 兩列（編輯器清單、無可選編輯器，歸屬 `Panel.scrollable` + `ListRow.option`）；§4.0.6 新增〈1.122 新增〉表登記 `openedWithoutEditorMessage`、`preferencesTitle`、`preferencesEditorSystemOption`、`preferencesNoEditorsExplanation` 四個 key，與 zh／en ARB 同批 |
 | 1.121 | 2026-11-04 | `0.6.0-W1-152.1`（用戶裁定）：§4.0.6 `degradedSchemaBadgeLabel` 列 zh／en 改為 ARB 現值（保留「降級」一詞）；新增補登表登記 `eventOutsideUcBare`、`scanCompleteUndeterminableNotificationBody`、`scanCompleteUndeterminableSnackbarMessage`；`ucSelectorTitle` en、`swimlaneUcUnsetPrompt` zh／en、`swimlaneProjectionPendingPrompt` zh 以規格為準，ARB 同批改齊，規格列不動 |

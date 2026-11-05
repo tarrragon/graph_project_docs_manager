@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
 updated: "2026-11-05"
-version: "1.40"
+version: "1.41"
 owner: "主線程（PM）"
 
 domain: "graph"
@@ -299,7 +299,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 集合依據：兩語料（D5）實測零例外的候選（`0.6.0-W1-072` 量測表）。節點為孤島時只報孤島，不再判定該節點的缺必要邊：孤島已涵蓋「缺任何邊」，同一根因不在破洞報告出現多筆（PM 裁定 2026-11-04）。
 
-前三種 flow 子類的程式識別名（camelCase 字面）由 `0.5.0-W1-001.8` NeedsContext 上報；第四種 flow 子類與 domain 重複宣告的識別名交實作票定（兩者皆由 `0.5.0-W1-001.5` 命名——皆屬名稱解析器，`0.5.0-W1-114.1` PM 處置 NC-c、`0.5.0-W1-114.2` PM 處置 NC-7）。實作票命名前，其他實作不得自行命名。「事件引用未解析」的識別名由 `0.5.0-W1-458.4` 命名：`FlowDefectKind.eventUnresolved`，對應 `GraphDefectKind.flowEventUnresolved`，畫面項目說明識別名 `GapDescriptionKind.flowEventUnresolved`（ARB key `gapFlowEventUnresolved`）。
+flow 子類的程式識別名：「flow 參照未解析」為 `FlowDefectKind.unresolvedReference`，對應 `GraphDefectKind.flowUnresolvedRef`；「UC 內 step id 重複」為 `FlowDefectKind.duplicateStepId`，對應 `GraphDefectKind.flowDuplicateStepId`（`0.5.0-W1-001.8`）。`traverses` 兩子類與 domain 重複宣告的識別名見 FR-11 規則清單（`0.5.0-W1-001.5` 命名，`0.5.0-W1-114.1` PM 處置 NC-c、`0.5.0-W1-114.2` PM 處置 NC-7）。「事件引用未解析」的識別名由 `0.5.0-W1-458.4` 命名：`FlowDefectKind.eventUnresolved`，對應 `GraphDefectKind.flowEventUnresolved`，畫面項目說明識別名 `GapDescriptionKind.flowEventUnresolved`（ARB key `gapFlowEventUnresolved`）。
 
 **規則**：
 - 一筆缺陷對應一筆破洞。`danglingRef`、`malformedRef` 帶來源節點 ID 與路徑、欄位名、原始值（原樣，不正規化）、邊型、原因碼；`duplicateId` 帶 ID 與全部路徑；`multiSource` 帶起點、邊型、全部終點與各自的宣告來源
@@ -507,6 +507,7 @@ EVT-GRAPH-001 是 domain 之間的資料事件（Graph→Diagnostics／Layout）
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.41 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：FR-09 識別名段首句原寫「前三種 flow 子類的識別名由 NeedsContext 上報」「實作票命名前不得自行命名」，改為直接列出 `FlowDefectKind.unresolvedReference`／`duplicateStepId` 與對應的 `GraphDefectKind`，`traverses` 兩子類與 domain 重複宣告改指 FR-11 規則清單；已命名完畢的條件句刪除。不改行為 |
 | 1.40 | 2026-11-05 | 使用中邊型加入 proposed 層的 `closed_by`（`0.6.0-W1-169.3`，依 `0.6.0-W1-169` 用戶裁決 C）：〈用詞〉、FR-01 鍵名例外（兩處改三處）與三條驗收、FR-08 proposed 標示、FR-11 例外計數敘述、D6 同步；FR-03 新增〈`closed_by` 的略過規則〉：字串值不符合任何主圖節點型別 `id_pattern`（排除 FlowStep；外部格式值）時略過，不計 `danglingRef`／`malformedRef`，不計入引用值與守恆式，另計略過數；符合 `id_pattern` 但語料內不存在者為 `danglingRef`（`targetMissing`，2026-11-05 用戶裁決）；形狀不合法仍為格式錯誤；補六條驗收（含 E2 正向對照與不外溢對照） |
 | 1.39 | 2026-11-04 | 依 `0.6.0-W1-072` 用戶裁決（2026-11-04）新增 `graphDefect` 子類孤島與缺必要邊（`0.6.0-W1-072.2`）：FR-09 新增子類表與〈孤島與缺必要邊〉判準（孤島只判 PROP／SPEC／UC／EVT／DomainBundle；必要邊集合為 UC 的 `provenance`、`spec_association`、`uc_ticket_refs` 出邊，EVT 的 `provenance` 或 `spec_association` 出邊至少一條），補八條驗收；FR-06 負載與 `graphDefects` 筆數驗收同步；D4 同步；〈本版範圍外〉原列改為 Ticket 孤島與其他型別必要邊。識別名 `isolatedNode`、`missingRequiredEdge`；PM 裁定（同日）孤島節點不再報缺必要邊 |
 | 1.38 | 2026-11-04 | `depends_on_domains` 建 `domain_dependency` 邊（`0.6.0-W1-074`，接 FR-11 名稱解析器）：〈用詞〉使用中邊型不再扣除 `domain_dependency`；FR-01 鍵名例外改為納入 `bundle_dependency` 與 `domain_dependency` 名稱解析認定（仍兩處）及兩條驗收同步；FR-11 改寫「本版只解析 `traverses`」一條為建邊與分類規則（非字串＝`invalidShape`、未宣告＝既有 `danglingRef`／`targetMissing`，不新增缺陷子類與識別名）並補三條驗收（含 E2 正向對照、21 條邊）；D6 同步；〈本版範圍外〉移除 `depends_on_domains` 列 |
