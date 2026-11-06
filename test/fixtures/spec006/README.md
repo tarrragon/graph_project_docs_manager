@@ -234,7 +234,8 @@ usable 檔案比對（IT-1 共 176 個真實判別樣本，掃描 6173 筆 usabl
 3. **IT-2 型別表未落地為獨立 `type_table.json`**：改內嵌於 `manifest.json`
    的 `header.type_table`（原因同上，where.files 未列此檔）。
 4. **參照實作單元測試未落地為獨立測試檔**：改以內嵌於
-   `tool/spec006_reference.py` 的 `selftest` 子命令（`_run_selftests`）。
+   `tool/spec006_reference.py` 的 `selftest` 子命令（入口轉呼叫
+   `tool/spec006_selftest.py` 的 `_run_selftests`）。
 
 上述四項差異僅涉及檔案數量／格式，不影響規則實質（FR-01/02/03/05/06 規則、
 D3 全量凍結要求、D9 ASCII 語意）。IT-1 樣本截斷為體積控制手段，已在程式內
