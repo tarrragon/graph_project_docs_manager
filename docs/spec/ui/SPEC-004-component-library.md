@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-11-05"
-version: "1.126"
+updated: "2026-11-06"
+version: "1.127"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -97,13 +97,12 @@ depends_on_domains: [layout]
 | 項目 | 決定 |
 |------|------|
 | 狀態管理方案 | Riverpod（`flutter_riverpod`；理由為生態一致性：`dart-provider-architecture` skill、`parsley-flutter-developer` 代理人、flutter_balance 皆採 Riverpod） |
-| 元件接收狀態形式 | **傳值 + callback**（提案）。元件庫元件（第 3 章「元件」種類）為純 widget：建構子接收值型參數與 `VoidCallback` / `ValueChanged`，**不**在元件內 `ref.watch`；provider 的 watch 落在頁面層或容器元件層。理由：元件的測試契約要求一支 widget test 逐一渲染全部變體與狀態，純 widget 不需 `ProviderScope.overrides` 即可渲染；同一元件被多個 provider 驅動（如載入態被三個畫面的三個 provider 驅動）時，元件不綁定任一 provider 型別 |
-| 容器元件的例外 | 資料視圖容器（第 3 章標「資料視圖」的容器：矩陣、泳道、表格、樹）得為 `ConsumerWidget`，watch 其資料 provider 並以 `select` 縮小重繪範圍（提案）。理由：資料視圖的列數以真實規模（不低於 1300 筆）計，逐列傳值會使頁面層持有整份清單並在每次變更重建整棵子樹 |
-| 最小重繪邊界 | 以 `Consumer` / `ConsumerWidget` 包住需要重繪的**最小子樹**，watch 時一律 `ref.watch(provider.select((s) => s.field))` 只訂閱用到的欄位；`ref.read` 只在事件回呼內使用（提案，沿用 dart-provider-architecture skill 的 `ref.read` / `ref.watch` 規則） |
+| 元件接收狀態形式 | **傳值 + callback**（提案）。元件庫元件（第 3 章「元件」種類）為純 widget：建構子接收值型參數與 `VoidCallback` / `ValueChanged`，**不**在元件內 `ref.watch`；provider 的 watch 落在頁面層。資料視圖容器（第 3 章標「資料視圖」的容器：矩陣、泳道、表格、樹）同樣適用，不設例外（`0.6.0-W1-193` 裁決 D 案）。理由：元件的測試契約要求一支 widget test 逐一渲染全部變體與狀態，純 widget 不需 `ProviderScope.overrides` 即可渲染；同一元件被多個 provider 驅動（如載入態被三個畫面的三個 provider 驅動）時，元件不綁定任一 provider 型別 |
+| 最小重繪邊界 | 畫面層 watch 時一律 `ref.watch(provider.select((s) => s.field))`，只訂閱傳入元件或容器所需的欄位，不 watch 整個 provider；元件與容器不 watch；`ref.read` 只在事件回呼內使用（沿用 dart-provider-architecture skill 的 `ref.read` / `ref.watch` 規則；`0.6.0-W1-193` 裁決 D 案：原「容器元件的例外」列已刪除，其前提「逐列傳值會使頁面層持有整份清單並重建整棵子樹」未經量測，三個資料視圖容器皆為虛擬捲動，重建只建可見列；真實規模下的成本由「高頻場景效能檢核」列量測） |
 | 導覽狀態 | 既有 `selectedDestinationProvider`（`StateProvider<AppDestination>`，`lib/app/router.dart`）；`AppShell` 為 `ConsumerWidget`。導覽項元件本身傳值（`isSelected` + `onTap`），不 watch |
 | 頁面狀態保留 | 全部導覽頁由 `IndexedStack` 一次建構，切換導覽項不 dispose（SPEC-003 §2.8）；因此畫面級狀態（捲動 offset、雙模式選擇、搜尋詞、樹展開集合）須存於 provider 或頁面的 `State`，**不得**存於元件庫元件內部（元件庫元件為無狀態或僅持有互動瞬態如 hover） |
 | 高頻場景效能檢核 | 虛擬捲動表格（Ticket 清單，`scroll-tickets-list`）與二維捲動矩陣（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`）於元件票驗收時以真實規模假資料做 Profiler 抽查（提案；量化上限不設，依方法論 L2 判準「量化上限為選配」） |
-| 過渡提示觸發點 | **由呼叫端顯式觸發**（提案）。元件庫元件為傳值純 widget（本表「元件接收狀態形式」），不持有上一值，故「狀態變更提示」（§1 回饋通道子表 state-change 列）的過渡由持有新舊值的一方觸發：頁面層或容器元件於 `ref.listen(provider.select(...), (previous, next) { ... })` 內比對新舊值後，透過元件的觸發參數或 controller 播放過渡；元件本身不比對、不自播。資料視圖容器（本表「容器元件的例外」）為 `ConsumerWidget`，其內部子項的過渡由該容器在同一 `ref.listen` 內觸發，仍屬「呼叫端觸發」，不構成第二種觸發點。理由：(1) 元件 API 若須保留上一值以自播，等於元件內持有跨 build 的資料態，違反「頁面狀態保留」列「畫面級狀態不得存於元件庫元件內部」；(2) widget test 逐一渲染全部變體與狀態時，純 widget 不需先渲染舊值再切換才能驗證過渡是否播放；(3) 方法論〈L2 狀態綁定判準〉要求二擇一且同一狀態管理方案下不得混用，Riverpod 的 `ref.listen` 天然提供 `(previous, next)` 對，呼叫端觸發無額外成本。第 4 章各元件回饋契約 state-change 列的「觸發者」欄一律填「呼叫端」 |
+| 過渡提示觸發點 | **由呼叫端顯式觸發**（提案）。元件庫元件為傳值純 widget（本表「元件接收狀態形式」），不持有上一值，故「狀態變更提示」（§1 回饋通道子表 state-change 列）的過渡由持有新舊值的一方觸發：頁面層於 `ref.listen(provider.select(...), (previous, next) { ... })` 內比對新舊值後，透過元件的觸發參數或 controller 播放過渡；元件本身不比對、不自播。資料視圖容器內部子項的過渡同樣由頁面層觸發，容器只依傳入值重建（`0.6.0-W1-193` 裁決 D 案）。理由：(1) 元件 API 若須保留上一值以自播，等於元件內持有跨 build 的資料態，違反「頁面狀態保留」列「畫面級狀態不得存於元件庫元件內部」；(2) widget test 逐一渲染全部變體與狀態時，純 widget 不需先渲染舊值再切換才能驗證過渡是否播放；(3) 方法論〈L2 狀態綁定判準〉要求二擇一且同一狀態管理方案下不得混用，Riverpod 的 `ref.listen` 天然提供 `(previous, next)` 對，呼叫端觸發無額外成本。第 4 章各元件回饋契約 state-change 列的「觸發者」欄一律填「呼叫端」 |
 | 樂觀更新政策 | **0.x 不允許樂觀更新**（提案）：0.x 在實作層為唯讀——決策層已定 1.0 起可寫（`docs/proposals/PROP-005`〈1.0 — 編輯〉，唯讀 → 可寫屬系統基本能力改變，`0.4.0-W1-040`），但 0.x 期間 SPEC-001〈狀態總數〉所列全部狀態皆無寫回動作，所有狀態變更皆為本地即時（互動瞬態）或等資料層確認才顯示（資料態：載入、掃描、解析完成），無「先顯示結果再等伺服器」的操作類別，允許清單為空；狀態矩陣「同步策略」欄因此只得填「本地即時」或「等確認才顯示」，不得填「樂觀更新後確認」。回滾提示形式：不適用（無樂觀操作即無回滾）。重評條件：`1.0.0-W3-553`（1.0 規劃：編輯能力四項架構決策定案）重評本列——屆時允許類別限低風險、可逆的欄位編輯（如狀態值、標籤），回滾提示通道引用 §1 回饋通道子表 state-change 列且須能表達「操作未成功、已還原」；刪除節點、改寫邊等不可逆操作預設不樂觀 |
 
 ---
@@ -417,7 +416,7 @@ PM 核定 §3.3 二十項與 §1、§3.5、§3.6 的待核定項；標「用戶�
 | 16 | §3.5 矩陣格詳情卡 | **納入 0.1**（用戶簽核：規劃不足，於 0.1 補齊規劃設計）。SPEC-001 §1 顯示欄與 SPEC-003 §3.1 反應由補件票補；`TwoColumnLayout` 於 §1 與 §6 皆出現；`ListRow.numbered` 保留 | 畫布已設計，補規格的成本低於日後補畫布 |
 | 17 | §3.6 §6 返回／開啟原始檔按鈕位置 | `SplitRow.header` 右側（`ButtonRow`） | 與 §5 重新掃描一致，頁首右側為頁面級動作區 |
 | 18 | §3.6 §5 重新掃描按鈕位置 | `SplitRow.header` 右側 | 同上 |
-| 19 | §2 傳值 + callback 與資料視圖容器例外、最小重繪邊界、高頻檢核 | 核定 | 與 dart-provider-architecture skill 一致 |
+| 19 | §2 傳值 + callback 與資料視圖容器例外、最小重繪邊界、高頻檢核 | 核定 | 與 dart-provider-architecture skill 一致。2026-11-06 `0.6.0-W1-193` 裁決（D 案）：資料視圖容器例外刪除，容器一律傳值 + callback，畫面層以 `select` 訂閱；捲動 offset 由頁面層持有的 `ScrollController` 傳入容器（1.127） |
 | 20 | §1 第三種測試尺寸 | 不加入 | 無決策來源的數值不發明；拉伸上限由最大尺寸契約承載 |
 | 21 | 佈局尺寸 token（側欄寬、列高、右欄寬、浮層寬、圖示尺寸階等） | 建 token 前置票，設為 044.2 blockedBy | 尺寸契約與排列不變式公式需要具名值；右欄寬兩值由該票收斂為一 |
 | 22 | `Motion` token | 由既有 pending 票承接，設為 044.2 blockedBy | 互動反應與動畫子節需引用 |
@@ -2909,7 +2908,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 依變體 | 無（不可點、不可拖，SPEC-003 §1.3） | 建構 | 不適用：純顯示元件（active / inactive 為變體非狀態） | —（建構即渲染；`label` / `isActive` 由 `SwimlaneGrid`（資料視圖容器，§2 容器例外）傳值，`isActive` 隨選中 domain 改變時由容器重建本元件（`0.1.0-W3-335.47` D6），元件不 watch 任何 provider，§2） | 本地即時 |
+| default | 依變體 | 無（不可點、不可拖，SPEC-003 §1.3） | 建構 | 不適用：純顯示元件（active / inactive 為變體非狀態） | —（建構即渲染；`label` / `isActive` 由 `SwimlaneGrid`（資料視圖容器）依畫面層傳入值傳值，`isActive` 隨選中 domain 改變時由容器重建本元件（`0.1.0-W3-335.47` D6），元件不 watch 任何 provider，§2） | 本地即時 |
 
 #### 回饋契約
 
@@ -5201,7 +5200,7 @@ EVT-CORPUS-004 項目說明：
 
 **實作類別**：`AppDataTable`（契約名 `DataTable` 與 `package:flutter/material.dart` 內建 `DataTable` 撞名，依 `AppTableRow` 既有前綴慣例更名；本節條目名與契約值不變）。
 
-**用途**：`TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`）。得為 `ConsumerWidget`（§2 資料視圖例外）。
+**用途**：`TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`）。傳值 + callback，不 watch；捲動 offset 由頁面層持有的 `ScrollController` 傳入（§2，`0.6.0-W1-193` 裁決）。
 **內容角色**：容器。
 **何時不用**：二維格線（`MatrixGrid`）；依深度縮排的列（`Tree`）；分節（`Section`）。
 **出現畫面**：§2、§4。
@@ -5218,7 +5217,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 表頭 + 列 | 捲動、列點選、排序（表頭） | 建構（資料由 provider `select` 訂閱） | 不適用：容器無自身狀態集（空資料由畫面改渲染 `EmptyState`，本容器不承載 empty） | 資料態：列集合與排序來自所在畫面的資料 provider——Ticket 清單（`virtual`：已載入票列經搜尋詞、篩選值、`order` 過濾排序後的子集）與 UC Flow（`plain`：選定 UC 的 `FlowStep` 列）分別來自 `ticketListStateProvider` 的 `TicketsReady.tickets`（畫面層過濾排序後以 `rows` 傳入）與 `ucFlowUcListProvider` 選定 UC 的 `steps`（事件附錄另讀 `ucFlowEventGapsProvider`）；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），列以 builder 逐列建構；offset 由頁面層持有的 `ScrollController` 承載（§2 頁面狀態保留） | 等確認才顯示（列集合為最後完成輪次結果的資料態，Ticket 清單無載入態，SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉；搜尋、篩選、排序的子集重排為本地即時，SPEC-003 §3.4；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 表頭 + 列 | 捲動、列點選、排序（表頭） | 建構（資料由畫面層以 `select` 訂閱後傳入） | 不適用：容器無自身狀態集（空資料由畫面改渲染 `EmptyState`，本容器不承載 empty） | 資料態：列集合與排序來自所在畫面的資料 provider——Ticket 清單（`virtual`：已載入票列經搜尋詞、篩選值、`order` 過濾排序後的子集）與 UC Flow（`plain`：選定 UC 的 `FlowStep` 列）分別來自 `ticketListStateProvider` 的 `TicketsReady.tickets`（畫面層過濾排序後以 `rows` 傳入）與 `ucFlowUcListProvider` 選定 UC 的 `steps`（事件附錄另讀 `ucFlowEventGapsProvider`）；本容器不 watch：畫面層以 `ref.watch(provider.select(...))` 取得列集合後以 `rows` 傳入（§2 最小重繪邊界，`0.6.0-W1-193` 裁決），列以 builder 逐列建構；offset 由頁面層持有的 `ScrollController` 以 `controller` 參數傳入本容器（§2 頁面狀態保留） | 等確認才顯示（列集合為最後完成輪次結果的資料態，Ticket 清單無載入態，SPEC-001 §4〈Ticket 清單由掃描輪次衍生〉；搜尋、篩選、排序的子集重排為本地即時，SPEC-003 §3.4；§2 樂觀更新政策：0.1 無樂觀操作） |
 
 互動瞬態（hover / pressed / focused）由列（4.35）與可排序欄首（4.14）承載，本容器不另列；本容器可聚焦以承載鍵盤捲動（SPEC-003 §2.10 內容區段含捲動容器）。
 
@@ -5232,9 +5231,9 @@ EVT-CORPUS-004 項目說明：
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
 | 可互動提示 affordance | 使用者接近 | 不適用：容器自身無可點元素；列 hover 由 4.35、可排序欄首 hover 由 4.14 承載；可捲性由捲軸指示承載（操作機制子節） | — | — | 不適用（由 4.35 / 4.14 承載） | 不適用 | 規格撰寫者 |
 | 焦點 focus | 使用者／輔助技術 | 表頭可排序格 → 列依序（閱讀順序，SPEC-003 §2.10；無障礙子節）；`virtual` 下焦點移至未建構列時本容器自動捲入（Flutter `ensureVisible`，無障礙子節）；本容器為 scrollable 語意節點、可聚焦後以 PageUp / PageDown 捲動（Flutter 預設），焦點環依 §4.0.1（提案，同 4.30）；各停留點的焦點環由 4.35 / 4.14 承載 | 無 | 無（SPEC-003 §2.10 不設時限；提案） | §1 子表「焦點」列（順序與自動捲入由本容器承載；焦點環由子件承載） | 不適用（本容器單一狀態） | 反應：UX 審查（SPEC-003 §2.10）；容器焦點環與自動捲入：規格撰寫者（提案）；通道：規格撰寫者 |
-| 按下確認 press-ack | 使用者 | 由子件承載：列點選 4.35（jump 至節點詳情）、欄首排序 4.14（`onSort`）；排序後本容器依呼叫端經 controller 將 offset 歸零（SPEC-003 §3.4 排序 · 循環／換欄列） | Material 內建 ripple（經子件） | pressed 態出現於 `Motion.feedback` 內（經子件） | §1 子表「按下確認」列（由 4.35 / 4.14 承載） | 不適用 | 規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 由子件承載：列點選 4.35（jump 至節點詳情）、欄首排序 4.14（`onSort`）；排序後由頁面層對其持有的 `ScrollController` 呼叫 `jumpTo(0)` 將 offset 歸零，本容器不自行歸零（SPEC-003 §3.4 排序 · 循環／換欄列；`0.6.0-W1-193` 裁決） | Material 內建 ripple（經子件） | pressed 態出現於 `Motion.feedback` 內（經子件） | §1 子表「按下確認」列（由 4.35 / 4.14 承載） | 不適用 | 規格撰寫者 |
 | 定位提示 locate | 系統 | 依 §4.0.10 為一維執行端，0.1 無定位場景：搜尋為子集重建而非命中列高亮（SPEC-003 §3.4 搜尋列，4.12 locate 列所述「命中列定位」在 0.1 不發生）；篩選與排序後 offset 歸零屬結果通知（SPEC-003 §3.4）；跨畫面 jump 的目標是節點詳情，本容器是來源。機制備註（提案，供後續版本）：`virtual` 變體的目標列可能未建構，定位須以列索引 × `LayoutSize.rowHeightRelaxed`（`itemExtent`）計算 offset 後 `jumpTo`，不得用 `ensureVisible`；`plain` 變體依 §4.0.10 捲動方式 | — | — | §1 子表「定位提示」列（一維執行端，0.1 無場景） | 不適用 | 規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（本容器為 `ConsumerWidget`，於 `ref.listen` 依資料 provider 的列集合／`order` 改變重建列；含搜尋 debounce 到期、篩選選取、排序循環、切換專案重置（SPEC-003 §3.4 生命週期）） | 列集合改變為直接重建：無 cross-fade、無逐列入場動畫（SPEC-003 §3.4 動畫提示「列表首次渲染」「篩選或排序後的列表重繪」、§3.2「步驟表首次渲染」）；排序時 offset 歸零、篩選選取時 offset 歸零、搜尋時 offset 保留（SPEC-003 §3.4 搜尋列未定歸零，提案：保留）；列數變化由 `SplitRow.footer` 摘要文字承載播報（無障礙子節），本容器不另播報；`virtual` 捲至末端不拋 framework 錯誤（SPEC-003 §3.4 清單捲動列） | 無（SPEC-003 §3.4 明訂無動畫） | 搜尋引起的列集合更新於輸入停止 `Motion.searchDebounce` 後（SPEC-003 §3.4 搜尋列，防抖由搜尋詞 provider 承載，非 4.12 元件）；清空輸入立即還原；篩選與排序引起者隨 `onChanged` / `onSort` 瞬切（SPEC-003 §3.4 篩選 · 選取列、排序 · 循環列） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報由 4.29 `footer` 承載；不升級系統通知） | 不適用（本容器單一狀態；列集合為資料態的值變化非狀態邊） | 反應／時限：UX 審查（SPEC-003 §3.2、§3.4）；搜尋後 offset 保留：規格撰寫者（提案）；通道：規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（畫面層於 `ref.listen` 比對資料 provider 的列集合／`order` 新舊值，改傳 `rows`，本容器依傳入值重建列；排序循環、篩選選取後的 offset 歸零與切換專案重置，由頁面層對其持有的 `ScrollController` 呼叫；含搜尋 debounce 到期、篩選選取、排序循環、切換專案重置（SPEC-003 §3.4 生命週期；`0.6.0-W1-193` 裁決）） | 列集合改變為直接重建：無 cross-fade、無逐列入場動畫（SPEC-003 §3.4 動畫提示「列表首次渲染」「篩選或排序後的列表重繪」、§3.2「步驟表首次渲染」）；排序時 offset 歸零、篩選選取時 offset 歸零、搜尋時 offset 保留（SPEC-003 §3.4 搜尋列未定歸零，提案：保留）；列數變化由 `SplitRow.footer` 摘要文字承載播報（無障礙子節），本容器不另播報；`virtual` 捲至末端不拋 framework 錯誤（SPEC-003 §3.4 清單捲動列） | 無（SPEC-003 §3.4 明訂無動畫） | 搜尋引起的列集合更新於輸入停止 `Motion.searchDebounce` 後（SPEC-003 §3.4 搜尋列，防抖由搜尋詞 provider 承載，非 4.12 元件）；清空輸入立即還原；篩選與排序引起者隨 `onChanged` / `onSort` 瞬切（SPEC-003 §3.4 篩選 · 選取列、排序 · 循環列） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報由 4.29 `footer` 承載；不升級系統通知） | 不適用（本容器單一狀態；列集合為資料態的值變化非狀態邊） | 反應／時限：UX 審查（SPEC-003 §3.2、§3.4）；搜尋後 offset 保留：規格撰寫者（提案）；通道：規格撰寫者 |
 | 等待與結果 | 系統 | 掛載點（本容器兼具承載他人某層與自身操作路徑，須分開寫）：**為誰承載**——本容器是搜尋／篩選／排序結果通知（第三層）的顯示載體本身（列集合改變即結果通知，SPEC-003 §2.2 結果通知列：筆數與首末列改變）；初始 Ticket 載入的第二層由 4.24 `LoadingState` 承載，本容器於載入完成後才渲染（不承載等待指示，SPEC-003 §2.6、§3.4）；點擊確認（第一層）由列與欄首子件 4.35／4.14 承載。**自身互動掛在哪一層**——捲動與虛擬化捲入不屬六類回饋事件的三層模型，是本容器獨立的操作路徑（見表後〈捲動操作路徑的不變式〉），與上述三層無涉，不可混寫。服務類型：本容器承載的結果通知皆屬本地即時（搜尋、篩選、排序三者依 SPEC-003 §2.12 兩軸皆為零等待、不可能失敗）；初始 Ticket 載入的長時操作類第二層由 4.24 承載，非本容器自身的服務類型。成功：列集合依搜尋／篩選／排序更新，筆數與首末列改變；失敗：依兩軸判定不可能發生（純本地子集重排運算），故本容器無失敗態需呈現；逾時：同（不可能發生）；服務不可用：同（不可能發生，本地運算無外部依賴）。輸入阻擋範圍：不阻擋（本地即時類政策，SPEC-003 §2.12）。重複觸發防護：無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12；搜尋的防抖由 4.12 呼叫端 provider 承擔，非本容器，見 4.12 條目與 `0.1.0-W3-110`／`0.1.0-W3-126`） | — | — | 不適用（三層由 4.24 / 4.35 / 4.14 與列集合轉換承載） | 不適用 | 規格撰寫者 |
 
 **捲動操作路徑的不變式**（非六類回饋事件，供測試點引用）：offset 隨捲動改變；`virtual` 捲至末端不拋 framework 錯誤（SPEC-003 §3.4）；視窗尺寸變更時 offset 夾在新範圍（SPEC-003 §2.8）；切換導覽項時 offset 保留、切換專案時重置（SPEC-003 §3.4 生命週期）。
@@ -5326,7 +5325,7 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.37 MatrixGrid（容器，資料視圖）
 
-**用途**：domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`（可點選 domain，`action-domain-select-<domainId>`）、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`，`pubspec.yaml` 已宣告依賴，`0.1.0-W1-038`）。得為 `ConsumerWidget`。
+**用途**：domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`（可點選 domain，`action-domain-select-<domainId>`）、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`，`pubspec.yaml` 已宣告依賴，`0.1.0-W1-038`）。傳值 + callback，不 watch；二維捲動 offset 由頁面層持有的 `ScrollController` 傳入（§2，`0.6.0-W1-193` 裁決）。
 **內容角色**：容器。
 **何時不用**：一維表格（`DataTable`）；泳道（`SwimlaneGrid`）。
 **出現畫面**：§1。
@@ -5344,7 +5343,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 格線，無高亮列 | 點格、點列首、捲動 | 建構 | 點格或點列首 → rowSelected | 資料態：Domain 視圖的選取 provider（選取列 `selectedDomainId` 與選取格 `selectedCell` 兩值，與 4.15 同一 provider）為 `null`；格線資料（`columnHeaders` / `rows`）來自該畫面的圖資料 provider——選取為 `domainViewStateProvider` 的 `DomainReady.selectedDomainId`／`selectedCell`，格線資料為 `domainMatrixProvider`（`lib/screens/domain_view/domain_view_providers.dart`）的 `columns`／`rows`；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isSelected` / `isRowSelected` 向 4.15 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 格線資料等確認才顯示（解析完成後才進入 `state-domain-matrix`，SPEC-003 §3.1）；選取為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 格線，無高亮列 | 點格、點列首、捲動 | 建構 | 點格或點列首 → rowSelected | 資料態：Domain 視圖的選取 provider（選取列 `selectedDomainId` 與選取格 `selectedCell` 兩值，與 4.15 同一 provider）為 `null`；格線資料（`columnHeaders` / `rows`）來自該畫面的圖資料 provider——選取為 `domainViewStateProvider` 的 `DomainReady.selectedDomainId`／`selectedCell`，格線資料為 `domainMatrixProvider`（`lib/screens/domain_view/domain_view_providers.dart`）的 `columns`／`rows`；本容器不 watch：畫面層以 `ref.watch(provider.select(...))` 取得選取值與格線資料後傳入（§2 最小重繪邊界，`0.6.0-W1-193` 裁決），本容器依傳入值以 `isSelected` / `isRowSelected` 向 4.15 傳值；二維 offset 由頁面層持有的兩顆 `ScrollController`（水平、垂直）以參數傳入本容器（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 格線資料等確認才顯示（解析完成後才進入 `state-domain-matrix`，SPEC-003 §3.1）；選取為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
 | rowSelected | 該列（列首 + 格 + 小計）底 `AppColors.surfaceIconTint` | 同上 + Esc（有選格時） | `selectedDomainId` 非 `null` | 點另一列列首 → 高亮移動（選格清除）；切換專案 → default | 資料態：同上（`selectedDomainId` 非 `null`） | 本地即時 |
 
 選格（`MatrixCell.selected`）為格的狀態，與本容器 rowSelected 連動：選格時所在列高亮；列高亮唯一（SPEC-003 §3.1「右欄內容須與高亮列一致」）。
@@ -5363,7 +5362,7 @@ EVT-CORPUS-004 項目說明：
 | 焦點 focus | 使用者／輔助技術 | 依閱讀順序：欄首（不可焦點）→ 每列列首 → 該列各格（無障礙子節；SPEC-003 §2.10 `ReadingOrderTraversalPolicy`）；列首格焦點環依 §4.0.1；有選格時按 Esc 選取清除、焦點停在原格、offset 不變（SPEC-003 §2.10 矩陣已選格列，由本容器呼叫 `onClearSelection`）；列首朗讀「{domain}，`matrixSubtotalA11yLabel`」+ `selected` 旗標（無障礙子節） | 無 | 無（SPEC-003 §2.10 只斷言焦點兩態裝飾可區分，不設時限；提案） | §1 子表「焦點」列 | default / rowSelected →（列首 focused）→ 原狀態；rowSelected（有選格）→ Esc → rowSelected（選格清除、列高亮保留） | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
 | 按下確認 press-ack | 使用者 | 列首格 pressed 態 + Material ripple（§4.0.1）；呼叫 `onSelectDomain` 恰一次；呼叫端執行：該列高亮、已選格若在他列則清除且右欄回 `panel-domain-cell-detail-empty`、同列則選格不變（SPEC-003 §3.1「選 domain 與選格的關係」列）；點格由 4.15 承載並經 `onTap` 使本容器同步列高亮（SPEC-003 §3.1 選格列） | Material 內建 ripple；右欄 cross-fade `Motion.transition` 由 4.31 承載，本容器不播 | pressed 態出現於 `Motion.feedback` 內；列高亮於 `Motion.feedback` 內呈現（SPEC-003 §2.2、§3.1 選格列） | §1 子表「按下確認」列 | default → pressed（列首）→ rowSelected；rowSelected → pressed（另一列列首）→ rowSelected（高亮移動）；rowSelected → pressed（同列列首）→ rowSelected（無變化） | 反應／時限：UX 審查（SPEC-003 §2.2、§3.1）；通道／狀態邊：規格撰寫者 |
 | 定位提示 locate | 系統 | 依 §4.0.10 為二維執行端，0.1 無定位至格或列的場景：已選格捲離 viewport 時選取態與右欄皆不變、不自動捲回（SPEC-003 §3.1 矩陣捲動列；4.15 locate 列）；自泳道切回時 offset 還原、不執行 scroll-into-view（SPEC-003 §3.1 生命週期「矩陣的捲動 offset 被保留」）；矩陣 → 泳道的定位由 4.38 執行（§4.0.10 場景 b），本容器是來源；欄首與列首釘選非定位 | — | — | §1 子表「定位提示」列（二維執行端，0.1 無場景） | 不適用 | 規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（本容器為 `ConsumerWidget`，於 `ref.listen` 依選取 provider 改列高亮與向 4.15 傳值；含 Esc、`action-domain-cell-clear`、切換專案（選取清除，SPEC-003 §3.1 生命週期）等非列首點選引起的改變） | 列高亮（`surfaceIconTint`）的出現、移動、消失為離散替換，無入場動畫（持續性標記，同 SPEC-003 §3.1「矩陣格的選取標記出現」）；列首 `selected` 旗標改變由輔助技術播報（無障礙子節，原生旗標不另組字）；首次渲染不做逐格入場動畫（SPEC-003 §3.1 動畫提示） | 無（SPEC-003 §3.1 明訂無入場動畫；右欄 `Motion.transition` 由 4.31 承載） | `Motion.feedback`（選格或選列引起者，SPEC-003 §3.1 選格列）；清除與切換專案引起的 default 回復無時限條文（本地即時；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報適用（列首 `selected` 旗標）；不升級系統通知） | default → rowSelected（列首或格被選）/ rowSelected → rowSelected（高亮移動）/ rowSelected → default（切換專案） | 反應／時限：UX 審查（SPEC-003 §3.1）；通道／狀態邊：規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（畫面層於 `ref.listen` 比對選取 provider 新舊值，改傳選取值；本容器依傳入值改列高亮與向 4.15 傳值（`0.6.0-W1-193` 裁決）；含 Esc、`action-domain-cell-clear`、切換專案（選取清除，SPEC-003 §3.1 生命週期）等非列首點選引起的改變） | 列高亮（`surfaceIconTint`）的出現、移動、消失為離散替換，無入場動畫（持續性標記，同 SPEC-003 §3.1「矩陣格的選取標記出現」）；列首 `selected` 旗標改變由輔助技術播報（無障礙子節，原生旗標不另組字）；首次渲染不做逐格入場動畫（SPEC-003 §3.1 動畫提示） | 無（SPEC-003 §3.1 明訂無入場動畫；右欄 `Motion.transition` 由 4.31 承載） | `Motion.feedback`（選格或選列引起者，SPEC-003 §3.1 選格列）；清除與切換專案引起的 default 回復無時限條文（本地即時；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報適用（列首 `selected` 旗標）；不升級系統通知） | default → rowSelected（列首或格被選）/ rowSelected → rowSelected（高亮移動）/ rowSelected → default（切換專案） | 反應／時限：UX 審查（SPEC-003 §3.1）；通道／狀態邊：規格撰寫者 |
 | 等待與結果 | 系統 | 掛載點：第一層（互動元件層，列首格 pressed 態）由本容器自身承載——列首格為容器內部互動區（非獨立元件），與 4.15 `MatrixCell` 的格點擊各自獨立——第二層不適用（選列／選格為本地運算無服務受理階段），第三層即結果通知本身（列高亮與右欄內容的狀態轉換，SPEC-003 §2.2 結果通知列）。載入期間由 4.24 承載，本容器於 `state-domain-matrix` 才渲染——此為渲染時機描述，非本容器承載他人第二層。服務類型：本地即時（依兩軸判定：使用者感知的等待為零，選取為本地狀態、右欄資料為本地已解析內容，SPEC-003 §3.1「不顯示任何等待指示」；失敗形態為不可能失敗，純本地選取運算，SPEC-003 §2.12）。成功：列高亮、右欄內容更新；失敗：依兩軸判定不可能發生（純本地狀態操作），故本容器無失敗態需呈現；逾時：同（不可能發生）；服務不可用：同（不可能發生，選取為本地運算無外部依賴）。輸入阻擋範圍：不阻擋（本地即時類政策，SPEC-003 §2.12）。重複觸發防護：無需——本地狀態操作天然冪等（本地即時類政策，SPEC-003 §2.12） | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.2、§2.12、§3.1）；通道：規格撰寫者 |
 
 **二維捲動操作路徑的不變式**（非六類回饋事件，供測試點引用）：水平與垂直 offset 隨捲動改變；列首與欄首釘選、rect 不隨 offset 改變；已選格捲離 viewport 時選取態與右欄不變（SPEC-003 §3.1）；自泳道切回時 offset 還原（SPEC-003 §3.1 生命週期）；視窗尺寸變更以左上角為錨定保留 offset（SPEC-003 §3.1）；與 `scroll-domain-cell-detail` 不連動（SPEC-003 §1.1 連動禁令）。
@@ -5460,7 +5459,7 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.38 SwimlaneGrid（容器，資料視圖）
 
-**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；列序、欄序、邊形狀依 SPEC-001 §1〈泳道布局規則〉（「畫面」列 + 每個 DomainBundle 一列依 `bundle_dependency` 推導層序與同層字母序、主線清單順序與分支（含巢狀）插欄、前向直線與回指弧線；0.1 為假資料靜態排版，SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。列首 `AppText` 由本容器包成可點（`InkWell` + `action-domain-select-<domainId>`，同 4.37，`0.1.0-W3-335.38` S-14）。得為 `ConsumerWidget`。
+**用途**：泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× N 垂直、列間虛線；底部步驟箭頭列（裝飾）；列序、欄序、邊形狀依 SPEC-001 §1〈泳道布局規則〉（「畫面」列 + 每個 DomainBundle 一列依 `bundle_dependency` 推導層序與同層字母序、主線清單順序與分支（含巢狀）插欄、前向直線與回指弧線；0.1 為假資料靜態排版，SPEC-001 設計約束）；二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`）。列首 `AppText` 由本容器包成可點（`InkWell` + `action-domain-select-<domainId>`，同 4.37，`0.1.0-W3-335.38` S-14）。傳值 + callback，不 watch；二維捲動 offset 由頁面層持有的 `ScrollController` 傳入，本容器不自行建立 controller；§4.0.10 場景 b／f 的 `jumpTo` 定位在 controller 上移後須重新驗證（§2，`0.6.0-W1-193` 裁決）。
 **內容角色**：容器。
 **何時不用**：矩陣（`MatrixGrid`）。
 **出現畫面**：§1（泳道）。
@@ -5476,7 +5475,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（`state-domain-swimlane`；或 `state-domain-swimlane-uc-unset`、`state-domain-swimlane-projection-pending`，零個節點，`0.1.0-W3-335.47` D8、`0.5.0-W1-205.1`） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為假資料，欄序由假資料給定）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——`lanes` 為 `domainSwimlaneProvider` 的 `DomainSwimlane.lanes`（零節點時改用 `domainEmptyLanesProvider`，兩者在 `lib/screens/domain_view/domain_view_providers.dart`），`laneHighlight` 為 `domainViewStateProvider` 的 `DomainReady.selectedDomainId`；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isActive`（該步驟 `traverses` 含 `selectedDomainId`，`0.1.0-W3-335.47` D6）向 4.16 傳值；二維 offset 由頁面層持有的 controller 承載（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 泳道列 + 節點 | 捲動、拖曳 | 建構（`state-domain-swimlane`；或 `state-domain-swimlane-uc-unset`、`state-domain-swimlane-projection-pending`，零個節點，`0.1.0-W3-335.47` D8、`0.5.0-W1-205.1`） | 不適用：容器無自身狀態集（選取 domain 的列高亮由 `laneHighlight` 參數呈現，非本容器狀態） | 資料態：泳道資料（`lanes`，0.1 為假資料，欄序由假資料給定）與 `laneHighlight`（等於 Domain 視圖選取 provider 的 `selectedDomainId`，與 4.37 同一 provider）——`lanes` 為 `domainSwimlaneProvider` 的 `DomainSwimlane.lanes`（零節點時改用 `domainEmptyLanesProvider`，兩者在 `lib/screens/domain_view/domain_view_providers.dart`），`laneHighlight` 為 `domainViewStateProvider` 的 `DomainReady.selectedDomainId`；本容器不 watch：畫面層以 `ref.watch(provider.select(...))` 取得 `lanes` 與 `laneHighlight` 後傳入（§2 最小重繪邊界，`0.6.0-W1-193` 裁決），本容器依傳入值以 `isActive`（該步驟 `traverses` 含 `selectedDomainId`，`0.1.0-W3-335.47` D6）向 4.16 傳值；二維 offset 由頁面層持有的兩顆 `ScrollController`（水平、垂直）以參數傳入本容器，本容器不自行建立 controller（§2 頁面狀態保留：SPEC-003 §3.1 生命週期） | 泳道資料等確認才顯示（進入 `state-domain-swimlane` 前已解析）；列高亮為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
 
 無互動瞬態：節點不可點、不可焦點（4.16、無障礙子節），本容器可聚焦以承載鍵盤捲動（SPEC-003 §2.10 內容區段含捲動容器），焦點環見回饋契約焦點列。
 
@@ -5492,7 +5491,7 @@ EVT-CORPUS-004 項目說明：
 | 焦點 focus | 使用者／輔助技術 | 列首依序為停留點，其後為容器本身（可聚焦後以捲軸／滾輪捲動，無障礙子節），焦點環依 §4.0.1（提案，同 4.30；列首焦點環同 4.37）；節點不可焦點（0.1 無節點動作）；每列朗讀 `laneA11yLabel`，箭頭列排除於語意樹（無障礙子節） | 無 | 無（SPEC-003 §2.10 不設時限；提案） | §1 子表「焦點」列（列首依序為停留點，其後為容器本身，`0.1.0-W3-335.38` S-14） | 不適用（本容器單一狀態） | 反應：UX 審查（SPEC-003 §2.10）；容器焦點環：規格撰寫者（提案）；通道：規格撰寫者 |
 | 按下確認 press-ack | 使用者 | 不適用：無可點元素；對節點按下並拖曳不產生 pressed 態、節點不移動、觸發畫布平移（SPEC-003 §1.3；4.16 回饋契約） | — | — | 不適用（無可點元素；拖曳見表後不變式） | 不適用 | 規格撰寫者 |
 | 定位提示 locate | 系統 | 依 §4.0.10 執行場景 b：自詳情卡 `action-domain-cell-goto-swimlane` 進入時，頁面層以已選格對應的泳道列為目標呼叫定位入口，本容器 `jumpTo` 使該列 rect 與 viewport 有交集（不用 `animateTo`，SPEC-003 §3.1 動畫提示「矩陣 → 泳道的定位」）；間接依賴格另帶目標欄（SPEC-001 §1〈間接依賴格的「在泳道中檢視」跳轉目標〉：來源 X 列欄號最小的節點，1.92 起，`0.5.0-W1-114.24`）——目標列取來源 X 的列，本容器於同一 post-frame 另做水平 `jumpTo`，使（目標列, 目標欄）節點 rect 與 viewport 有交集；直接貫穿格無目標欄、不做水平捲動；高亮由 `laneHighlight`（該列即選取 domain 的列，底 `surfaceIconTint`）承載，為持續性標記非短暫高亮，不另加 §4.0.10 的焦點綁定高亮；焦點停在本容器（提案：SPEC-003 §3.1 未定焦點落點，泳道列非停留點）；目標列不存在（選格已清除）時不捲動、不拋錯（§4.0.10 定位失敗列） | 無（`jumpTo` 瞬間） | 無（SPEC-003 §3.1 定形式不設時限；提案） | §1 子表「定位提示」列（二維執行端；高亮由 `laneHighlight` 承載） | 不適用（本容器單一狀態） | 反應：UX 審查（SPEC-003 §3.1）；焦點落點：規格撰寫者（提案）；通道：規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（本容器為 `ConsumerWidget`，於 `ref.listen` 依選取 provider 改 `laneHighlight` 與向 4.16 傳 `isActive`；含切換專案清除、切回矩陣後再切回泳道） | 列高亮的出現、移動、消失為離散替換，無入場動畫（持續性標記，同 4.37）；節點 active ↔ inactive 隨重建替換、不播報（4.16）；列高亮改變不播報（`laneA11yLabel` 不含選取旗標，提案：沿用無障礙子節「狀態變化播報不適用」） | 無 | 無（本地即時；SPEC-003 §3.1 無泳道列高亮時限條文；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報不適用（列高亮無旗標）；不升級系統通知） | 不適用（本容器單一狀態） | 反應：規格撰寫者（提案）；通道：規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（畫面層於 `ref.listen` 比對選取 provider 新舊值，改傳 `laneHighlight`；本容器依傳入值向 4.16 傳 `isActive`；切換專案時的 offset 重置由頁面層對其持有的 `ScrollController` 呼叫（`0.6.0-W1-193` 裁決）；含切換專案清除、切回矩陣後再切回泳道） | 列高亮的出現、移動、消失為離散替換，無入場動畫（持續性標記，同 4.37）；節點 active ↔ inactive 隨重建替換、不播報（4.16）；列高亮改變不播報（`laneA11yLabel` 不含選取旗標，提案：沿用無障礙子節「狀態變化播報不適用」） | 無 | 無（本地即時；SPEC-003 §3.1 無泳道列高亮時限條文；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡不適用；無障礙播報不適用（列高亮無旗標）；不升級系統通知） | 不適用（本容器單一狀態） | 反應：規格撰寫者（提案）；通道：規格撰寫者 |
 | 等待與結果 | 系統 | 掛載點：不適用於服務三層模型——本容器無可點元素（節點不可點，SPEC-003 §1.3），自身互動限於捲動與拖曳（畫布平移），已另由〈拖曳與捲動操作路徑的不變式〉（表後）承載，不落入六類回饋事件的「等待與結果」範疇；模式切換（矩陣 ↔ 泳道）由 4.10 `SegmentedControl` 觸發，非本容器自身事件，其三層歸屬見 4.10 條目；泳道定位機制依 §4.0.10，屬定位提示列非本列。服務類型：不適用——本容器無自身服務觸發行為，不落入 SPEC-003 §2.12 四類分類。成功／失敗／逾時／服務不可用：不適用（同上，無服務觸發行為，無四種結局概念）。輸入阻擋範圍：不適用——本容器無自身觸發動作，不受阻擋政策管轄。重複觸發防護：不適用——本容器無自身觸發動作，不落入重複觸發防護模型 | — | — | 不適用 | 不適用 | 規格撰寫者 |
 
 **拖曳與捲動操作路徑的不變式**（非六類回饋事件，供測試點引用）：拖曳（`drag-domain-swimlane`）內容平移量等於位移、比例 1:1，至內容邊界生硬停止（無回彈）、無慣性，與捲軸共用同一 offset（SPEC-003 §1.3）；對節點 drag 節點不移動、觸發畫布平移（SPEC-003 §1.3）；捲動（`scroll-domain-swimlane`）offset 改變；切換導覽項時 offset 保留、切換專案時重置（SPEC-003 §3.1 生命週期）；在列首按下後位移未超過拖曳閾值時視為點擊（觸發 `action-domain-select-<domainId>`），超過閾值則視為拖曳（觸發畫布平移，`0.1.0-W3-335.38` S-14）；捲動與拖曳只平移視窗、不改變內容，`edges` 屬內容的一部分：任一條邊落在 viewport 內的部分一律可見，與其起點欄、終點欄是否在 viewport 內無關（起點欄捲出時，跨入 viewport 的邊段仍須繪製；PM 處置 2026-10-13，畫布平移不變式的直接後果，`0.5.0-W1-114.11` 修正輪回報）。
@@ -5594,7 +5593,7 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.39 Tree（容器，資料視圖）
 
-**用途**：`ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`）。得為 `ConsumerWidget`。
+**用途**：`ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`）。傳值 + callback，不 watch（§2，`0.6.0-W1-193` 裁決）。
 **內容角色**：容器。
 **何時不用**：無層級的清單（`Section` / `DataTable`）。
 **出現畫面**：§3。
@@ -5610,7 +5609,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 可見列集合（依展開集合） | 展開收合、點節點、捲動 | 建構 | 不適用：容器無自身狀態集（展開集合存於 provider） | 資料態：展開集合為 `expandedTraceNodesProvider`（`StateProvider<Set<String>>`，`lib/screens/trace/trace_providers.dart`）；節點樹為 `traceabilityStateProvider`（`StateProvider<TraceabilityScreenState>`，同檔）的正常／鏈路斷裂狀態所含資料；本容器為 `ConsumerWidget` 以 `select` 訂閱（§2 容器例外），watch 後以 `isExpanded` 向 4.18、以列資料向 4.40 傳值；offset 由頁面層持有的 `ScrollController`（4.30 `scroll-traceability-tree`）承載（§2 頁面狀態保留：SPEC-003 §3.3 生命週期） | 節點樹等確認才顯示（依已建立的圖判定，SPEC-003 §3.3 首次可見「無載入態」）；展開集合為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 可見列集合（依展開集合） | 展開收合、點節點、捲動 | 建構 | 不適用：容器無自身狀態集（展開集合存於 provider） | 資料態：展開集合為 `expandedTraceNodesProvider`（`StateProvider<Set<String>>`，`lib/screens/trace/trace_providers.dart`）；節點樹為 `traceabilityStateProvider`（`StateProvider<TraceabilityScreenState>`，同檔）的正常／鏈路斷裂狀態所含資料；本容器不 watch：畫面層以 `ref.watch(provider.select(...))` 取得展開集合與節點樹後傳入（§2 最小重繪邊界，`0.6.0-W1-193` 裁決），本容器依傳入值以 `isExpanded` 向 4.18、以列資料向 4.40 傳值；offset 由頁面層持有的 `ScrollController`（4.30 `scroll-traceability-tree`）承載（§2 頁面狀態保留：SPEC-003 §3.3 生命週期） | 節點樹等確認才顯示（依已建立的圖判定，SPEC-003 §3.3 首次可見「無載入態」）；展開集合為本地即時（§2 樂觀更新政策：0.1 無樂觀操作） |
 
 互動瞬態（hover / pressed / focused）由列（4.40 `tree`）、展開器（4.18）與缺口標記（4.6）承載，本容器不另列。
 
@@ -5623,7 +5622,7 @@ EVT-CORPUS-004 項目說明：
 | 含缺口的分支 | 自根 PROP 至每個缺下游父節點的路徑上，所有祖先與該父節點本身皆加入展開集合，使其下的缺口列首次渲染即可見；不含缺口的分支不加入 |
 | 缺口列 | 位於缺下游父節點之下一層：`ListRow.tree`，leading 為 `ExpanderIcon.leaf`（保留寬度不渲染箭頭）、主文字 `traceabilityNoDownstream`（`layer` 代入缺的那一層型別名）、trailing `IssueMarker.gap`（testKey `badge-traceability-broken-<父節點 nodeId>`）；缺口列本身不可點（整列 `onTap` 為 null，點擊由 trailing `IssueMarker.gap` 承載），不帶 `card-traceability-*` testKey |
 | 展開集合鍵 | 以節點 ID 為鍵（`Set<String>`）；多父節點下同一節點 ID 的全部出現位置共用同一筆展開狀態，展開其一即展開全部出現位置（SPEC-001 §3 註記〈多父節點〉、SPEC-003 §3.3〈互動反應〉表下段，`0.1.0-W3-335.38` S-27） |
-| 由本容器計算的理由 | 缺口位置由節點樹資料決定，本容器已 watch 節點樹（§2 容器例外）；由頁面層計算須再讀一次同一份樹 |
+| 由本容器計算的理由 | 缺口位置由節點樹資料決定，節點樹已由畫面層傳入本容器；由頁面層另算須再遍歷一次同一份樹（本容器只依傳入值計算，不 watch，§2，`0.6.0-W1-193` 裁決） |
 
 #### 回饋契約
 
@@ -5637,7 +5636,7 @@ EVT-CORPUS-004 項目說明：
 | 焦點 focus | 使用者／輔助技術 | 可見列依序：展開器 → 列本體 → 缺口標記（無障礙子節；SPEC-003 §2.10 閱讀順序）；收合節點的子層不在元件樹、不進入 Tab 順序；每列附 `treeDepthA11yLabel`（depth 代入），展開狀態由 4.18 `expanded` 旗標承載（無障礙子節）；本容器非停留點（捲動容器為 4.30） | 無 | 無（SPEC-003 §2.10 不設時限；提案） | §1 子表「焦點」列（順序由本容器的列序承載；焦點環由子件承載） | 不適用（本容器單一狀態） | 反應：UX 審查（SPEC-003 §2.10）；通道：規格撰寫者 |
 | 按下確認 press-ack | 使用者 | 由子件承載：展開器 4.18（`onToggle` → 本容器經呼叫端改展開集合，子層出現或消失、offset 不歸零，SPEC-003 §3.3 展開收合列）、列 4.40 `tree`（jump 至 `nav-page-nodeDetail`、`returnTo` 設為 `traceability`，SPEC-003 §3.3 節點列）、缺口標記 4.6 `gap`（jump 至 `nav-page-gaps`、`returnTo` 設為 `traceability`，SPEC-003 §3.3 缺口層虛線框列） | Material 內建 ripple（經子件）；子層高度 `Motion.transition` 由本容器承載（見 state-change 列） | pressed 態出現於 `Motion.feedback` 內（經子件） | §1 子表「按下確認」列（由 4.18 / 4.40 / 4.6 承載） | 不適用 | 規格撰寫者 |
 | 定位提示 locate | 系統 | 依 §4.0.10 場景 c（提案，§1 子表 locate 列「樹節點展開後的子項」；4.18 locate 列路由至此）：展開後子層第一列若在 4.30 viewport 外，本容器以該列 key 為目標經頁面層呼叫 4.30 的定位入口做最小捲動（`ensureVisible` 帶 `Duration.zero`、`alignmentPolicy: keepVisibleAtEnd`），使子層第一列進入 viewport 且展開器所在列不捲離；不高亮（焦點停在展開器，SPEC-003 §3.3 未移焦點）；offset 不歸零（SPEC-003 §3.3 展開收合列）；收合不定位。跨畫面 jump 至節點詳情的定位對象是主欄節點，本容器是來源 | 無（`ensureVisible` 帶 `Duration.zero`；子層高度動畫另見 state-change 列） | 無（SPEC-003 §3.3 未設定位時限；提案） | §1 子表「定位提示」列（目標由本容器決定，捲動由 4.30 執行，不高亮） | 不適用（本容器單一狀態） | 反應：規格撰寫者（提案，§4.0.10）；通道：規格撰寫者 |
-| 狀態變更提示 state-change | 呼叫端（本容器為 `ConsumerWidget`，於 `ref.listen` 依 `expandedTraceNodesProvider` 重建可見列集合並播子層過渡、依 `traceabilityStateProvider` 重建節點樹；含切換專案時展開集合清空、offset 歸零（SPEC-003 §3.3 生命週期）） | 子層列出現或消失的高度變化 `Motion.transition`，`disableAnimations` 時瞬間展開（SPEC-003 §3.3 動畫提示）；子層出現由 4.18 `expanded` 旗標播報（無障礙子節）；缺口虛線框靜態、不閃爍（SPEC-003 §3.3 動畫提示）；各畫面狀態之間的 cross-fade（SPEC-003 §3.3 動畫提示）由 4.28 承載 | `Motion.transition`（子層高度，本容器承載） | 無（SPEC-003 §3.3 動畫提示只定形式不設時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡適用（本容器）；無障礙播報由 4.18 承載；不升級系統通知） | 不適用（本容器單一狀態；展開集合為資料態的值變化） | 反應：UX 審查（SPEC-003 §3.3）；通道：規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（畫面層於 `ref.listen` 比對 `expandedTraceNodesProvider`、`traceabilityStateProvider` 新舊值後改傳值，本容器依傳入值重建可見列集合並播子層過渡、重建節點樹（`0.6.0-W1-193` 裁決）；含切換專案時展開集合清空、offset 歸零（SPEC-003 §3.3 生命週期）） | 子層列出現或消失的高度變化 `Motion.transition`，`disableAnimations` 時瞬間展開（SPEC-003 §3.3 動畫提示）；子層出現由 4.18 `expanded` 旗標播報（無障礙子節）；缺口虛線框靜態、不閃爍（SPEC-003 §3.3 動畫提示）；各畫面狀態之間的 cross-fade（SPEC-003 §3.3 動畫提示）由 4.28 承載 | `Motion.transition`（子層高度，本容器承載） | 無（SPEC-003 §3.3 動畫提示只定形式不設時限；提案） | §1 子表「狀態變更提示」列（`Motion.*` 過渡適用（本容器）；無障礙播報由 4.18 承載；不升級系統通知） | 不適用（本容器單一狀態；展開集合為資料態的值變化） | 反應：UX 審查（SPEC-003 §3.3）；通道：規格撰寫者 |
 | 等待與結果 | 系統 | 掛載點：不適用——本容器不承載三層中任一層，全部由子件承載（點擊確認：4.18 `ExpanderIcon` ／ 4.40 `ListRow.tree` ／ 4.6 `IssueMarker.gap`；結果通知：子層出現／消失即 4.18 承載的同一事件在容器層級的匯總描述，非本容器另有的獨立事件，SPEC-003 §2.2 結果通知列）；無等待指示（無載入態，SPEC-003 §3.3 首次可見；展開為本地重建，SPEC-003 §2.6「0.1 無非狀態級短暫等待」）。本容器亦無自身捲動（不持有 `ScrollController`，捲動委派 4.30 `Panel.scrollable`）。服務類型：不適用於本容器本身——本容器只協調子件的顯示與展開集合，不直接觸發服務，各子件的服務類型見其各自條目（SPEC-003 §2.12：4.18／4.40／4.6 皆為本地即時）。成功／失敗／逾時／服務不可用：皆不適用於本容器本身，由承載對應層級的子件各自呈現。輸入阻擋範圍：不適用於本容器——本容器無自身觸發動作。重複觸發防護：不適用於本容器——本容器無自身觸發動作，防護判斷在各子件 | — | — | 不適用 | 不適用 | 規格撰寫者 |
 
 #### 操作機制
@@ -6509,6 +6508,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.127 | 2026-11-06 | `0.6.0-W1-193.1`（`0.6.0-W1-193` 用戶裁決 D 案）：§2 刪除「容器元件的例外」列，「元件接收狀態形式」列明寫資料視圖容器同樣傳值 + callback；「最小重繪邊界」列改為畫面層 `ref.watch(provider.select(...))`、元件與容器不 watch；「過渡提示觸發點」列刪除容器自行 `ref.listen` 的分支。4.36 `DataTable`、4.37 `MatrixGrid`、4.38 `SwimlaneGrid`、4.39 `Tree` 的用途段、狀態矩陣來源欄與 state-change 列改為傳值，觸發方改為畫面層；4.36–4.38 寫明 offset 由頁面層持有的 `ScrollController` 傳入容器，排序歸零與切換專案重置由頁面層呼叫，4.38 不自行建立 controller，`jumpTo` 定位須重新驗證。4.16 與 4.39〈由本容器計算的理由〉同步刪除對容器例外的引用。§3.7 第 19 列補註裁決。§2「導覽狀態」列與 4.27 `AppShell` 的 `ConsumerWidget` 敘述不在本次範圍，另由 `0.6.0-W1-196` 追蹤 |
 | 1.126 | 2026-11-05 | `0.6.0-W1-191.2`（依 `0.6.0-W1-191` 時效型註記盤點，讀碼查證）：狀態矩陣「來源」欄與相關散文 19 處「provider 尚未建立，欄位名由對應畫面票補填」改為實際承載者（4.4、4.6、4.10、4.12–4.15、4.18–4.24、4.32、4.36–4.38、4.41）；Ticket 清單無載入態、節點詳情損壞外觀在 0.x 不可達者改寫為不渲染。§6 原寫「執法 pattern 由 `dart-style-guardian` 承接」，改為執法現況：PostEdit hook 攔八種新增直用，其餘列目前無承接。不改契約；4.36–4.38「本容器為 `ConsumerWidget`」與實作（傳值、不自行訂閱）不一致，另票處理 |
 | 1.125 | 2026-11-05 | `0.6.0-W1-191.1`（依 `0.6.0-W1-191` 時效型註記盤點）：§4.0.6 各批次說明與表列「使用處」欄的「ARB 待建」「ARB 實檔狀態待建，由對應票加入」改為現況（表內 key 全數已在 ARB，`spec004_key_table_contract_test` 的待加入豁免為空可證），淘汰 key 段改為「已自 ARB 刪除」；§4.0 測試基座「由 `0.1.0-W1-034` 承接，為所有元件票的 blockedBy」改為已建立；4.37 `MatrixGrid`「依賴宣告待 `0.1.0-W1-038`」改為 `pubspec.yaml` 已宣告。zh／en 值欄未動，不改契約 |
 | 1.124 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：三處依賴型票號引用改寫為定案內容，不改契約。§3.5 漂移表「畫布頂端標題列高 36…」列列出對應的 `LayoutSize` token 名；§4.0.6〈EVT-CORPUS-003 項目說明〉前導句的「原因碼識別名未定」改為列出 `CarrierParseFailureReason` 與 `UnreadableReason` 的識別名；4.35〈尺寸契約〉最小尺寸列的「截斷或換行的責任歸屬待裁決」改為 4.1〈內容政策〉已定案的呼叫端明示規則。frontmatter 版號由 1.122 對齊至本版（原與正文 1.123 不一致） |
