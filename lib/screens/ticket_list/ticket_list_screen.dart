@@ -160,8 +160,37 @@ class _ReadyListView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ticketListStateProvider);
-    if (state is! TicketsReady) return const SizedBox.shrink();
+    // 只取列表視圖實際用到的欄位（mode／expandedTopics／noTopicFilesNotice
+    // 變動不重建）；record 具值相等，tickets 為同一 list 參考時視為未變。
+    final fields = ref.watch(
+      ticketListStateProvider.select(
+        (s) => s is TicketsReady
+            ? (
+                tickets: s.tickets,
+                searchQuery: s.searchQuery,
+                statusFilter: s.statusFilter,
+                priorityFilter: s.priorityFilter,
+                sortKey: s.sortKey,
+                sortOrder: s.sortOrder,
+                targetTicketId: s.targetTicketId,
+                targetFiltersAutoCleared: s.targetFiltersAutoCleared,
+                targetNotFoundNotified: s.targetNotFoundNotified,
+              )
+            : null,
+      ),
+    );
+    if (fields == null) return const SizedBox.shrink();
+    final state = TicketsReady(
+      tickets: fields.tickets,
+      searchQuery: fields.searchQuery,
+      statusFilter: fields.statusFilter,
+      priorityFilter: fields.priorityFilter,
+      sortKey: fields.sortKey,
+      sortOrder: fields.sortOrder,
+      targetTicketId: fields.targetTicketId,
+      targetFiltersAutoCleared: fields.targetFiltersAutoCleared,
+      targetNotFoundNotified: fields.targetNotFoundNotified,
+    );
     final l10n = AppLocalizations.of(context);
     final visible = visibleListTickets(state);
     final corrupted = state.corruptedCount;
@@ -378,17 +407,38 @@ class _ReadyTopicView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ticketListStateProvider);
-    if (state is! TicketsReady) return const SizedBox.shrink();
+    // 只取主題視圖用到的欄位（搜尋／篩選／排序／mode 變動不重建）。
+    final fields = ref.watch(
+      ticketListStateProvider.select(
+        (s) => s is TicketsReady
+            ? (
+                tickets: s.tickets,
+                expandedTopics: s.expandedTopics,
+                targetTicketId: s.targetTicketId,
+                noTopicFilesNotice: s.noTopicFilesNotice,
+              )
+            : null,
+      ),
+    );
+    if (fields == null) return const SizedBox.shrink();
+    final state = TicketsReady(
+      tickets: fields.tickets,
+      expandedTopics: fields.expandedTopics,
+      targetTicketId: fields.targetTicketId,
+      noTopicFilesNotice: fields.noTopicFilesNotice,
+    );
     final l10n = AppLocalizations.of(context);
     final groups = topicGroups(state);
 
     void toggle(String key) {
-      final expanded = Set<String>.of(state.expandedTopics);
+      // 讀目前 provider 值為基底，避免以縮減 state 覆寫其他欄位。
+      final current = ref.read(ticketListStateProvider);
+      if (current is! TicketsReady) return;
+      final expanded = Set<String>.of(current.expandedTopics);
       if (!expanded.add(key)) {
         expanded.remove(key);
       }
-      ref.read(ticketListStateProvider.notifier).state = state.copyWith(
+      ref.read(ticketListStateProvider.notifier).state = current.copyWith(
         expandedTopics: expanded,
       );
     }

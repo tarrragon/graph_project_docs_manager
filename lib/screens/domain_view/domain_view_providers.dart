@@ -71,14 +71,21 @@ final firstNodeInLaneQueryProvider = Provider<FirstNodeInLaneQuery>((ref) {
 /// Domain 視圖呈現〉）。讀最後完成輪次，故重掃期間照常顯示上一輪。
 final domainSwimlaneProvider = Provider<DomainSwimlaneView?>((ref) {
   final ucId = ref.watch(selectedUcProvider);
-  final round = ref.watch(lastCompletedRoundProvider);
-  final event = _eventOf(round);
-  if (ucId == null || round == null || event == null) return null;
+  // 只取投影用到的兩項（建圖事件、flow 解析失敗事件）；輪次的
+  // schemaResolution／isDegraded／workspacePath 變動不重算泳道。
+  final inputs = ref.watch(
+    lastCompletedRoundProvider.select(
+      (r) => (event: _eventOf(r), failedEvents: r?.scan.flowParseFailedEvents),
+    ),
+  );
+  final event = inputs.event;
+  final failedEvents = inputs.failedEvents;
+  if (ucId == null || event == null || failedEvents == null) return null;
   return projectDomainSwimlane(
     event: event,
     ucId: ucId,
     flowParseFailedUcIds: flowParseFailedUcIdsOf(
-      failedEvents: round.scan.flowParseFailedEvents,
+      failedEvents: failedEvents,
       event: event,
     ),
   );
