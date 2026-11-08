@@ -67,11 +67,11 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 
 **本專案是 `component-contract-design` skill 的開發上游**（2026-09-29 用戶裁示）。其他 consumer 回報該 skill 的條文缺口時，除了觀測 canonical issue，也須在 active 版本建實作票、在本專案修正。完成後 sync-push 到 canonical；推送 skill 發佈庫（`skill-sync push`）仍需逐次授權。
 
-**目前由本專案擔任 `.claude/` 框架的主控方**（2026-10-13 用戶裁示，首例：flutter_balance 回報的逾時孤兒 `flutter_tester`）。
-這是現行安排，不是固定角色：主控方由用戶指定，日後可改由其他專案擔任，改派時以用戶的新裁示為準並更新本段。
-現行安排下，其他 consumer 只開 framework issue，不改框架內容；只有涉及 SKILL 的部分，才由該 consumer 自己推送 SKILL 更新。
-分析、修法與 `.claude/` 實作在主控方由用戶指定的 session 負責。
-理由：同一時間只有一個主控方，避免各 consumer 各自修改框架而分叉。
+**`.claude/` 框架的主控方已移到 `tarrragon/llm-dev`**（private，本機路徑 `~/project/llm-dev`；2026-11-09 用戶裁定，取代 2026-10-13 起由本專案擔任主控方的安排）。
+- 本專案改為一般 consumer：發現框架問題時只到 `tarrragon/claude` 開 framework issue，附上 `.claude/VERSION`，不在本專案修改框架內容。
+- 只有涉及本專案上游 SKILL（component-contract-design）的部分例外，見上一段。
+- 框架依 llm-dev 的 `docs/roadmap.md` 發版到 `tarrragon/claude`，每版打 `v<版號>` tag，從 v3.0.0 起算。本專案在發版後才執行 sync-pull。
+- 理由：開發與發佈分開，下游才知道每一版修了什麼、何時該拉。
 
 **框架修補的節奏**（2026-10-20 用戶裁示）：工作主目標是本專案的產品進度，框架修補是手段。
 - 發現框架問題照常建票。只有 P0／P1 bug 或用戶要求才派修，其餘觀測進 issue 後關閉本地票。
