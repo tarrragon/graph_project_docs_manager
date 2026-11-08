@@ -47,3 +47,15 @@
 | 正向對照 | 在主 checkout 與 worktree 各查一次同一檔案的 `git log -1 --oneline -- <path>`，兩者差異即分支差異 |
 | 判讀標準 | 先確認 toplevel 與分支，再判讀內容差異 |
 | 來源 | `PC-166`（工作區觀測屬瞬時，持久結論須以 git 歷史交叉驗證） |
+
+## GW-5 以舊路徑為 pathspec 查 git log 只見 `D`，被讀成檔案已刪除
+
+| 欄位 | 內容 |
+|------|------|
+| 症狀 | `git log -M --diff-filter=RD --name-status -- '*/<舊檔名>'` 只輸出 `D <舊路徑>`，沒有 `R` |
+| 常見誤判 | 該檔已刪除，引用它的文件指向不存在的東西 |
+| 實際機制 | rename 偵測只配對 pathspec 範圍內的兩側；新路徑不在 pathspec 內時，改名只剩「舊路徑消失」，顯示為 `D` |
+| 檢查方法 | 不帶檔名 pathspec 匯出 rename 對：`git log --name-status -M --diff-filter=R --format=@%h`，建「舊名 → 新名」映射後沿表追蹤 |
+| 正向對照 | 對已知改名的檔案，同一查法在帶目錄層級 pathspec（涵蓋新舊兩側）時會出現 `R` 行 |
+| 判讀標準 | 全 repo 對照表追不到才判為刪除；追到終點後以 `git show <commit>^:<舊路徑>` 比對內容，確認非相似度誤配對 |
+| 來源 | `IMP-GPD-028` |

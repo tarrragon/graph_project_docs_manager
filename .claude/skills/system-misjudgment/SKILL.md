@@ -22,7 +22,7 @@ error-patterns 依類別分目錄，查不到同一系統上的陷阱。本 skil
 |------|------|-----------|
 | macOS FSEvents／fseventsd／檔案監看 | `references/macos-fsevents.md` | 監看零事件、刪監看根目錄、/private 路徑、驗證 PASS 但可能被他人寫入污染 |
 | Dart VM service Logging／flutter run | `references/dart-vm-service-log.md` | 沒有 log、log 漏行、訊息被截斷、時間戳矛盾 |
-| git index／worktree／工作區 | `references/git-index-worktree.md` | index.lock、`git status` 的「改動」、index 吸入他人變更、worktree 路徑 |
+| git index／worktree／工作區 | `references/git-index-worktree.md` | index.lock、`git status` 的「改動」、index 吸入他人變更、worktree 路徑、pathspec 下 rename 顯示為刪除 |
 | 合併閘門與背景程序 | `references/merge-gate-background-process.md` | 分支還在、閘門像失敗、程序已結束的宣告、測試數下降、測試綠但行為未變 |
 | 工具輸出與 AI 自身記錄 | `references/tool-output-and-records.md` | 輸出夾旁白、記憶中的 commit、工作區觀測當持久結論 |
 | Riverpod provider 接線 | `references/riverpod-provider-wiring.md` | 測試綠但啟動報 provider 錯誤 |
