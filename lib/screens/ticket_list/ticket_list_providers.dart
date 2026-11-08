@@ -241,6 +241,36 @@ final ticketSearchDebouncerProvider = Provider<TicketSearchDebouncer>((ref) {
   return debouncer;
 });
 
+/// [visibleListTickets] 的衍生值：只在搜尋詞、篩選、排序或票集變動時重算，
+/// 其他 build 觸發沿用快取結果，不在 widget build 內排序或篩選。
+final visibleListTicketsProvider = Provider<List<TicketFixtureItem>>((ref) {
+  final fields = ref.watch(
+    ticketListStateProvider.select(
+      (s) => s is TicketsReady
+          ? (
+              tickets: s.tickets,
+              searchQuery: s.searchQuery,
+              statusFilter: s.statusFilter,
+              priorityFilter: s.priorityFilter,
+              sortKey: s.sortKey,
+              sortOrder: s.sortOrder,
+            )
+          : null,
+    ),
+  );
+  if (fields == null) return const [];
+  return visibleListTickets(
+    TicketsReady(
+      tickets: fields.tickets,
+      searchQuery: fields.searchQuery,
+      statusFilter: fields.statusFilter,
+      priorityFilter: fields.priorityFilter,
+      sortKey: fields.sortKey,
+      sortOrder: fields.sortOrder,
+    ),
+  );
+});
+
 /// 正常 · 列表的可見票（依搜尋詞、篩選、排序運算，S5：三者獨立）。
 List<TicketFixtureItem> visibleListTickets(TicketsReady state) {
   var list = state.tickets;
@@ -274,7 +304,7 @@ List<TicketFixtureItem> visibleListTickets(TicketsReady state) {
   final sortKey = state.sortKey;
   if (sortKey != null && state.sortOrder != TicketSortOrder.none) {
     final sorted = List<TicketFixtureItem>.of(list)
-      ..sort((a, b) => _compare(a, b, sortKey));
+      ..sort(_comparatorFor(list, sortKey));
     list = state.sortOrder == TicketSortOrder.desc
         ? sorted.reversed.toList()
         : sorted;
@@ -283,12 +313,20 @@ List<TicketFixtureItem> visibleListTickets(TicketsReady state) {
   return list;
 }
 
-int _compare(TicketFixtureItem a, TicketFixtureItem b, TicketSortKey key) {
+/// 排序比較器；id 鍵先一次性預切段（避免 O(n log n) 次比較各做兩次 regex split）。
+int Function(TicketFixtureItem, TicketFixtureItem) _comparatorFor(
+  List<TicketFixtureItem> list,
+  TicketSortKey key,
+) {
   return switch (key) {
-    TicketSortKey.id => _naturalCompare(a.id, b.id),
-    TicketSortKey.title => a.title.compareTo(b.title),
-    TicketSortKey.status => _indexCompare(a.status, b.status, statusValues),
-    TicketSortKey.priority => _indexCompare(
+    TicketSortKey.id => _idComparator(list),
+    TicketSortKey.title => (a, b) => a.title.compareTo(b.title),
+    TicketSortKey.status => (a, b) => _indexCompare(
+      a.status,
+      b.status,
+      statusValues,
+    ),
+    TicketSortKey.priority => (a, b) => _indexCompare(
       a.priority,
       b.priority,
       priorityLevels,
@@ -296,22 +334,27 @@ int _compare(TicketFixtureItem a, TicketFixtureItem b, TicketSortKey key) {
   };
 }
 
+int Function(TicketFixtureItem, TicketFixtureItem) _idComparator(
+  List<TicketFixtureItem> list,
+) {
+  final segments = <String, List<String>>{
+    for (final t in list) t.id: t.id.split(RegExp(r'[-.]')),
+  };
+  return (a, b) => _naturalCompareSegments(segments[a.id]!, segments[b.id]!);
+}
+
 /// ID 自然序（S8：以 `-`、`.` 分段，數字段依數值比）。
-int _naturalCompare(String a, String b) {
-  final segmentsA = a.split(RegExp(r'[-.]'));
-  final segmentsB = b.split(RegExp(r'[-.]'));
-  final length = segmentsA.length < segmentsB.length
-      ? segmentsA.length
-      : segmentsB.length;
+int _naturalCompareSegments(List<String> a, List<String> b) {
+  final length = a.length < b.length ? a.length : b.length;
   for (var i = 0; i < length; i++) {
-    final numA = int.tryParse(segmentsA[i]);
-    final numB = int.tryParse(segmentsB[i]);
+    final numA = int.tryParse(a[i]);
+    final numB = int.tryParse(b[i]);
     final cmp = (numA != null && numB != null)
         ? numA.compareTo(numB)
-        : segmentsA[i].compareTo(segmentsB[i]);
+        : a[i].compareTo(b[i]);
     if (cmp != 0) return cmp;
   }
-  return segmentsA.length.compareTo(segmentsB.length);
+  return a.length.compareTo(b.length);
 }
 
 /// 依固定序清單比較；值不在序清單中（未知值）排最後（S8）。
