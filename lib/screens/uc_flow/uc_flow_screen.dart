@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/attention_level.dart';
 import '../../app/project_unready_view.dart';
+import '../../app/graph_status.dart' show ProjectUnreadyReason;
 import '../../app/jump_targets.dart';
 import '../../app/router.dart';
 import '../../app/workspace_selection.dart' show projectGenerationProvider;
@@ -45,23 +46,57 @@ import 'uc_flow_state.dart';
 const String _tag = 'UcFlowScreen';
 
 /// UC Flow 視圖畫面。
-class UcFlowScreen extends ConsumerWidget {
+class UcFlowScreen extends ConsumerStatefulWidget {
   const UcFlowScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ucFlowStateProvider);
-    return switch (state) {
-      UcFlowProjectUnready(:final reason) => ProjectUnreadyView(
-        reason: reason,
+  ConsumerState<UcFlowScreen> createState() => _UcFlowScreenState();
+}
+
+/// 畫面只用到的欄位（select 訂閱）：狀態種類、unready 原因、UC id、解析失敗旗標。
+(Type, ProjectUnreadyReason?, String?, bool) _ucFlowViewOf(UcFlowState s) => (
+  s.runtimeType,
+  s is UcFlowProjectUnready ? s.reason : null,
+  switch (s) {
+    UcFlowUnstructured(:final ucId) => ucId,
+    UcFlowNormal(:final ucId) => ucId,
+    _ => null,
+  },
+  s is UcFlowUnstructured && s.isParseFailed,
+);
+
+class _UcFlowScreenState extends ConsumerState<UcFlowScreen> {
+  /// 步驟表捲動 offset 由頁面層持有（SPEC-004 §2）；切換專案時歸零。
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<int>(projectGenerationProvider, (_, _) {
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    });
+    // 只訂閱用到的欄位：kind／reason／ucId／isParseFailed 不變即不重建。
+    final (kind, reason, ucId, isParseFailed) = ref.watch(
+      ucFlowStateProvider.select(_ucFlowViewOf),
+    );
+    return switch (kind) {
+      const (UcFlowProjectUnready) => ProjectUnreadyView(
+        reason: reason!,
         stateKey: const Key('state-ucFlow-project-unready'),
         actionKey: const Key('action-ucFlow-goto-domain'),
       ),
-      UcFlowEmpty() => const _EmptyView(),
-      UcFlowUcUnset() => const _UcUnsetView(),
-      UcFlowUnstructured(:final ucId, :final isParseFailed) =>
-        _UnstructuredView(ucId: ucId, isParseFailed: isParseFailed),
-      UcFlowNormal(ucId: final ucId) => _NormalView(ucId: ucId),
+      const (UcFlowEmpty) => const _EmptyView(),
+      const (UcFlowUcUnset) => const _UcUnsetView(),
+      const (UcFlowUnstructured) => _UnstructuredView(
+        ucId: ucId!,
+        isParseFailed: isParseFailed,
+      ),
+      _ => _NormalView(ucId: ucId!, scrollController: _scrollController),
     };
   }
 }
@@ -205,9 +240,12 @@ class _UnstructuredView extends ConsumerWidget {
 /// 正常：`TwoColumnLayout`[`Panel`[`DataTable.plain`（步驟表 + `appendix`
 /// 事件流小表）], 〈UC 選擇入口〉]（SPEC-004 §3.6 §2）。
 class _NormalView extends ConsumerStatefulWidget {
-  const _NormalView({required this.ucId});
+  const _NormalView({required this.ucId, required this.scrollController});
 
   final String ucId;
+
+  /// 頁面層持有的步驟表捲動 controller。
+  final ScrollController scrollController;
 
   @override
   ConsumerState<_NormalView> createState() => _NormalViewState();
@@ -383,6 +421,7 @@ class _NormalViewState extends ConsumerState<_NormalView> {
             header: header,
             rows: rows,
             scrollKey: const Key('scroll-ucFlow-steps'),
+            controller: widget.scrollController,
             appendix: eventFlowTable,
           ),
         ),

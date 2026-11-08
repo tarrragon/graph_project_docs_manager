@@ -66,6 +66,8 @@ class MatrixGrid extends StatelessWidget {
     required this.onSelectDomain,
     required this.onClearSelection,
     required this.scrollKey,
+    this.horizontalController,
+    this.verticalController,
   });
 
   /// UC 欄首，長度即欄數 N。
@@ -90,6 +92,10 @@ class MatrixGrid extends StatelessWidget {
   /// 呼叫端定址 key（`scroll-domain-matrix`）。
   final Key scrollKey;
 
+  /// 水平／垂直捲動 controller，由頁面層持有並 dispose（SPEC-004 §2）。
+  final ScrollController? horizontalController;
+  final ScrollController? verticalController;
+
   int get _columnCount => columnHeaders.length + 2; // 列首欄 + UC 欄 + 小計欄
   int get _rowCount => rows.length + 1; // 欄首列 + 資料列
 
@@ -99,6 +105,12 @@ class MatrixGrid extends StatelessWidget {
       onKeyEvent: (node, event) => _handleKey(event),
       child: TableView.builder(
         key: scrollKey,
+        horizontalDetails: ScrollableDetails.horizontal(
+          controller: horizontalController,
+        ),
+        verticalDetails: ScrollableDetails.vertical(
+          controller: verticalController,
+        ),
         pinnedRowCount: 1,
         pinnedColumnCount: 1,
         columnCount: _columnCount,

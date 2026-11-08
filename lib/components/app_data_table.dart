@@ -44,6 +44,7 @@ class AppDataTable extends StatelessWidget {
     required this.rows,
     this.scrollKey,
     this.appendix,
+    this.controller,
   }) : assert(
          appendix == null || variant == AppDataTableVariant.plain,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
@@ -85,6 +86,10 @@ class AppDataTable extends StatelessWidget {
   /// `appendix`（SPEC-004 §5.10 slot 契約，1.35 新增）。
   final AppDataTable? appendix;
 
+  /// 捲動 offset 的持有者由頁面層傳入（SPEC-004 §2：元件不持有 offset）；
+  /// `null` 時由 [ListView] 自建。
+  final ScrollController? controller;
+
   @override
   Widget build(BuildContext context) {
     if (scrollKey == null) {
@@ -108,12 +113,14 @@ class AppDataTable extends StatelessWidget {
     return switch (variant) {
       AppDataTableVariant.virtual => ListView.builder(
         key: scrollKey,
+        controller: controller,
         itemExtent: LayoutSize.rowHeightRelaxed.h,
         itemCount: rows.length,
         itemBuilder: (context, index) => rows[index],
       ),
       AppDataTableVariant.plain => ListView(
         key: scrollKey,
+        controller: controller,
         children: [
           ...rows,
           if (appendix != null) ...[SizedBox(height: Space.lg.h), appendix!],

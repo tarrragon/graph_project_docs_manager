@@ -21,6 +21,7 @@ import '../../components/attention_level.dart';
 import '../../app/jump_targets.dart';
 import '../../app/project_unready_view.dart';
 import '../../app/router.dart';
+import '../../app/workspace_selection.dart' show projectGenerationProvider;
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../multi_value_separator.dart';
@@ -28,23 +29,55 @@ import 'ticket_list_providers.dart';
 import 'ticket_list_state.dart';
 
 /// Ticket 清單畫面。
-class TicketListScreen extends ConsumerWidget {
+class TicketListScreen extends ConsumerStatefulWidget {
   const TicketListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ticketListStateProvider);
-    return switch (state) {
-      TicketsProjectUnready(:final reason) => ProjectUnreadyView(
-        reason: reason,
+  ConsumerState<TicketListScreen> createState() => _TicketListScreenState();
+}
+
+class _TicketListScreenState extends ConsumerState<TicketListScreen> {
+  /// 清單捲動 offset 由頁面層持有（SPEC-004 §2）；排序與切換專案時歸零，
+  /// 切換導覽項（IndexedStack 不 dispose）時保留。
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _resetOffset() {
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<int>(projectGenerationProvider, (_, _) => _resetOffset());
+    // 只訂閱用到的欄位：狀態種類、unready 原因、模式。
+    final (kind, reason, mode) = ref.watch(
+      ticketListStateProvider.select(
+        (s) => (
+          s.runtimeType,
+          s is TicketsProjectUnready ? s.reason : null,
+          s is TicketsReady ? s.mode : null,
+        ),
+      ),
+    );
+    return switch (kind) {
+      const (TicketsProjectUnready) => ProjectUnreadyView(
+        reason: reason!,
         stateKey: const Key('state-tickets-project-unready'),
         actionKey: const Key('action-tickets-goto-domain'),
       ),
-      TicketsEmpty() => const _EmptyView(),
-      TicketsReady() =>
-        state.mode == TicketListMode.list
-            ? _ReadyListView(state: state)
-            : _ReadyTopicView(state: state),
+      const (TicketsEmpty) => const _EmptyView(),
+      _ =>
+        mode == TicketListMode.list
+            ? _ReadyListView(
+                scrollController: _scrollController,
+                onSorted: _resetOffset,
+              )
+            : const _ReadyTopicView(),
     };
   }
 }
@@ -56,8 +89,10 @@ class TicketsHeaderTrailing extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ticketListStateProvider);
-    if (state is! TicketsReady) {
+    final mode = ref.watch(
+      ticketListStateProvider.select((s) => s is TicketsReady ? s.mode : null),
+    );
+    if (mode == null) {
       return const SizedBox.shrink();
     }
     final l10n = AppLocalizations.of(context);
@@ -74,11 +109,14 @@ class TicketsHeaderTrailing extends ConsumerWidget {
           testKey: const Key('mode-tickets-topic'),
         ),
       ],
-      selectedIndex: state.mode == TicketListMode.list ? 0 : 1,
-      onChanged: (index) =>
-          ref.read(ticketListStateProvider.notifier).state = state.copyWith(
-            mode: index == 0 ? TicketListMode.list : TicketListMode.topic,
-          ),
+      selectedIndex: mode == TicketListMode.list ? 0 : 1,
+      onChanged: (index) {
+        final current = ref.read(ticketListStateProvider);
+        if (current is! TicketsReady) return;
+        ref.read(ticketListStateProvider.notifier).state = current.copyWith(
+          mode: index == 0 ? TicketListMode.list : TicketListMode.topic,
+        );
+      },
     );
   }
 }
@@ -109,12 +147,21 @@ class _EmptyView extends ConsumerWidget {
 /// 正常 · 列表（含損壞為其上的計算疊加，`corruptedCount > 0` 時
 /// `Toolbar.marker` 與各損壞列的 `AppTableRow.ticket.marker` 皆渲染）。
 class _ReadyListView extends ConsumerWidget {
-  const _ReadyListView({required this.state});
+  const _ReadyListView({
+    required this.scrollController,
+    required this.onSorted,
+  });
 
-  final TicketsReady state;
+  /// 頁面層持有的清單捲動 controller。
+  final ScrollController scrollController;
+
+  /// 排序後回呼（頁面層將 offset 歸零）。
+  final VoidCallback onSorted;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ticketListStateProvider);
+    if (state is! TicketsReady) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
     final visible = visibleListTickets(state);
     final corrupted = state.corruptedCount;
@@ -134,7 +181,10 @@ class _ReadyListView extends ConsumerWidget {
         ? _toComponentOrder(state.sortOrder)
         : SortOrder.none;
 
-    void onSort(TicketSortKey key) => update((s) => _advanceSort(s, key));
+    void onSort(TicketSortKey key) {
+      update((s) => _advanceSort(s, key));
+      onSorted();
+    }
 
     void onOpenTicket(String id) => jumpToNodeDetail(ref.read, id);
 
@@ -300,6 +350,7 @@ class _ReadyListView extends ConsumerWidget {
         header: header,
         rows: rows,
         scrollKey: const Key('scroll-tickets-list'),
+        controller: scrollController,
       ),
       trailing: [
         SplitRow.footer(
@@ -323,12 +374,12 @@ class _ReadyListView extends ConsumerWidget {
 /// 正常 · 主題：`Panel.scrollable`[`Section.collapsible` × N（含未歸屬節，
 /// `dashedTop`）, `AppText.caption`]。
 class _ReadyTopicView extends ConsumerWidget {
-  const _ReadyTopicView({required this.state});
-
-  final TicketsReady state;
+  const _ReadyTopicView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ticketListStateProvider);
+    if (state is! TicketsReady) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
     final groups = topicGroups(state);
 

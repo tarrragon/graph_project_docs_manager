@@ -112,6 +112,8 @@ class SwimlaneGrid extends StatefulWidget {
     required this.lanes,
     required this.scrollKey,
     required this.dragKey,
+    required this.horizontalController,
+    required this.verticalController,
     this.laneHighlight,
     this.onSelectDomain,
     this.edges = const [],
@@ -146,13 +148,18 @@ class SwimlaneGrid extends StatefulWidget {
   /// offset（見本檔 dartdoc）。
   final Key dragKey;
 
+  /// 水平／垂直捲動 controller，由頁面層持有並 dispose（SPEC-004 §2）；
+  /// 本元件只用它做 locate 定位與傳給 `TableView`。
+  final ScrollController horizontalController;
+  final ScrollController verticalController;
+
   @override
   State<SwimlaneGrid> createState() => _SwimlaneGridState();
 }
 
 class _SwimlaneGridState extends State<SwimlaneGrid> {
-  final ScrollController _hController = ScrollController();
-  final ScrollController _vController = ScrollController();
+  ScrollController get _hController => widget.horizontalController;
+  ScrollController get _vController => widget.verticalController;
 
   @override
   void initState() {
@@ -170,13 +177,6 @@ class _SwimlaneGridState extends State<SwimlaneGrid> {
     if ((laneChanged || columnChanged) && widget.laneHighlight != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToHighlight());
     }
-  }
-
-  @override
-  void dispose() {
-    _hController.dispose();
-    _vController.dispose();
-    super.dispose();
   }
 
   /// 自詳情卡「在泳道中檢視」進入：直接 `jumpTo` 使命中列 rect 與
