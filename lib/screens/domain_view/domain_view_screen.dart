@@ -119,12 +119,15 @@ class _DomainViewScreenState extends ConsumerState<DomainViewScreen> {
       _restartRoundIfNoneCompleted();
     });
     ref.listen<int>(projectGenerationProvider, (_, _) => _resetOffsets());
-    final state = ref.watch(domainViewStateProvider);
+    // 頂層只分派畫面狀態種類：DomainReady 內部欄位變動由 [_ReadyBody] 與
+    // 子層各自 select，不重建頂層；非 Ready 態取原值，Ready 以 null 表示。
+    final state = ref.watch(
+      domainViewStateProvider.select((s) => s is DomainReady ? null : s),
+    );
     return switch (state) {
       DomainUnset() => const _UnsetView(),
       DomainLoading() => _LoadingView(state: state),
-      DomainReady() => _ReadyBody(
-        state: state,
+      DomainReady() || null => _ReadyBody(
         matrixH: _matrixH,
         matrixV: _matrixV,
         laneH: _laneH,
@@ -427,14 +430,11 @@ class _SchemaIncompatibleView extends ConsumerWidget {
 /// `SplitRow.header` 右格承載，見檔頭說明）。
 class _ReadyBody extends ConsumerWidget {
   const _ReadyBody({
-    required this.state,
     required this.matrixH,
     required this.matrixV,
     required this.laneH,
     required this.laneV,
   });
-
-  final DomainReady state;
 
   /// 頁面層持有的捲動 controller（矩陣／泳道各一組）。
   final ScrollController matrixH;
@@ -447,9 +447,13 @@ class _ReadyBody extends ConsumerWidget {
     if (ref.watch(domainGraphUnavailableProvider)) {
       return const _GraphUnavailableBody();
     }
-    return state.mode == DomainMode.matrix
-        ? _MatrixBody(state: state, hController: matrixH, vController: matrixV)
-        : _SwimlaneBody(state: state, hController: laneH, vController: laneV);
+    final mode = ref.watch(
+      domainViewStateProvider.select((s) => s is DomainReady ? s.mode : null),
+    );
+    if (mode == null) return const SizedBox.shrink();
+    return mode == DomainMode.matrix
+        ? _MatrixBody(hController: matrixH, vController: matrixV)
+        : _SwimlaneBody(hController: laneH, vController: laneV);
   }
 }
 
@@ -560,19 +564,31 @@ class DomainHeaderTrailing extends ConsumerWidget {
 
 /// 正常 · 矩陣（含已選格疊加）。
 class _MatrixBody extends ConsumerWidget {
-  const _MatrixBody({
-    required this.state,
-    required this.hController,
-    required this.vController,
-  });
+  const _MatrixBody({required this.hController, required this.vController});
 
-  final DomainReady state;
   final ScrollController hController;
   final ScrollController vController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    // 只取矩陣用到的選取欄位（mode／swimlaneFocus 等變動不重建）。
+    final selection = ref.watch(
+      domainViewStateProvider.select(
+        (s) => s is DomainReady
+            ? (domainId: s.selectedDomainId, cell: s.selectedCell)
+            : null,
+      ),
+    );
+    if (selection == null) return const SizedBox.shrink();
+    final selectedDomainId = selection.domainId;
+    final selectedCell = selection.cell;
+    // 寫回以目前 provider 值為基底，避免以縮減欄位覆寫其他欄位。
+    DomainReady? currentReady() {
+      final current = ref.read(domainViewStateProvider);
+      return current is DomainReady ? current : null;
+    }
+
     // DomainReady 下 matrix 仍可為 null（業務狀態：無完成輪次——工作區切換後
     // lastCompletedRoundProvider 清空而狀態尚未重載、或重掃結果無節點），
     // 退路保留：以空矩陣渲染。
@@ -580,23 +596,29 @@ class _MatrixBody extends ConsumerWidget {
     final rows = matrix?.rows ?? const <DomainRow>[];
 
     void onSelectDomain(String domainId) {
-      final current = state.selectedCell;
+      final base = currentReady();
+      if (base == null) return;
+      final current = base.selectedCell;
       final keepCell = current != null && current.$1 == domainId;
-      ref.read(domainViewStateProvider.notifier).state = state.copyWith(
+      ref.read(domainViewStateProvider.notifier).state = base.copyWith(
         selectedDomainId: () => domainId,
         selectedCell: () => keepCell ? current : null,
       );
     }
 
     void onClearSelection() {
-      ref.read(domainViewStateProvider.notifier).state = state.copyWith(
+      final base = currentReady();
+      if (base == null) return;
+      ref.read(domainViewStateProvider.notifier).state = base.copyWith(
         selectedCell: () => null,
       );
     }
 
     void onSelectCell(String domainId, String ucId) {
+      final base = currentReady();
+      if (base == null) return;
       ref.read(selectedUcProvider.notifier).state = ucId;
-      ref.read(domainViewStateProvider.notifier).state = state.copyWith(
+      ref.read(domainViewStateProvider.notifier).state = base.copyWith(
         selectedDomainId: () => domainId,
         selectedCell: () => (domainId, ucId),
       );
@@ -612,8 +634,8 @@ class _MatrixBody extends ConsumerWidget {
             for (final cell in row.cells)
               MatrixCell(
                 relation: _toRelation(cell.relation),
-                isSelected: state.selectedCell == (cell.domainId, cell.ucId),
-                isRowSelected: state.selectedDomainId == row.domainId,
+                isSelected: selectedCell == (cell.domainId, cell.ucId),
+                isRowSelected: selectedDomainId == row.domainId,
                 semanticLabel: l10n.matrixCellA11yLabel(
                   row.domainName,
                   cell.ucId,
@@ -635,8 +657,8 @@ class _MatrixBody extends ConsumerWidget {
       fill: MatrixGrid(
         columnHeaders: columnHeaders,
         rows: matrixRows,
-        selectedDomainId: state.selectedDomainId,
-        selectedCell: state.selectedCell,
+        selectedDomainId: selectedDomainId,
+        selectedCell: selectedCell,
         onSelectDomain: onSelectDomain,
         onClearSelection: onClearSelection,
         scrollKey: const Key('scroll-domain-matrix'),
@@ -646,7 +668,6 @@ class _MatrixBody extends ConsumerWidget {
       trailing: [_legendBadgeRow(l10n)],
     );
 
-    final selectedCell = state.selectedCell;
     final selected = selectedCell == null
         ? null
         : _findCell(rows, selectedCell.$1, selectedCell.$2);
@@ -667,7 +688,6 @@ class _MatrixBody extends ConsumerWidget {
               'panel-domain-cell-detail-${selected.$2.domainId}-'
               '${selected.$2.ucId}',
             ),
-            state: state,
             row: selected.$1,
             cell: selected.$2,
           );
@@ -682,15 +702,8 @@ class _MatrixBody extends ConsumerWidget {
 
 /// 已選格右欄詳情卡內容（SPEC-003 §3.1〈格詳情卡的內容契約〉）。
 class _CellDetailPanel extends ConsumerWidget {
-  const _CellDetailPanel({
-    super.key,
-    required this.state,
-    required this.row,
-    required this.cell,
-  });
+  const _CellDetailPanel({super.key, required this.row, required this.cell});
 
-  /// 父層 [_MatrixBody] 持有的畫面狀態；寫回選取與跳轉皆以此為基底。
-  final DomainReady state;
   final DomainRow row;
   final DomainCell cell;
 
@@ -712,8 +725,13 @@ class _CellDetailPanel extends ConsumerWidget {
           trailing: AppButton(
             label: l10n.cellDetailCloseAction,
             variant: AppButtonVariant.text,
-            onPressed: () => ref.read(domainViewStateProvider.notifier).state =
-                state.copyWith(selectedCell: () => null),
+            onPressed: () {
+              final base = ref.read(domainViewStateProvider);
+              if (base is! DomainReady) return;
+              ref.read(domainViewStateProvider.notifier).state = base.copyWith(
+                selectedCell: () => null,
+              );
+            },
             testKey: const Key('action-domain-cell-clear'),
           ),
         ),
@@ -753,7 +771,9 @@ class _CellDetailPanel extends ConsumerWidget {
               onPressed: () {
                 ref.read(selectedUcProvider.notifier).state = ucId;
                 final focus = _jumpFocus(ref, cell);
-                ref.read(domainViewStateProvider.notifier).state = state
+                final base = ref.read(domainViewStateProvider);
+                if (base is! DomainReady) return;
+                ref.read(domainViewStateProvider.notifier).state = base
                     .copyWith(
                       mode: DomainMode.swimlane,
                       selectedDomainId: () => focus.domainId,
@@ -789,13 +809,8 @@ SwimlaneFocus _jumpFocus(WidgetRef ref, DomainCell cell) {
 /// 正常 · 泳道／泳道 · 尚未選定 UC／泳道 · flow 未結構化三列的計算入口
 /// （選定 UC 來自 App 層共用值 `selectedUcProvider`）。
 class _SwimlaneBody extends ConsumerWidget {
-  const _SwimlaneBody({
-    required this.state,
-    required this.hController,
-    required this.vController,
-  });
+  const _SwimlaneBody({required this.hController, required this.vController});
 
-  final DomainReady state;
   final ScrollController hController;
   final ScrollController vController;
 
@@ -803,9 +818,22 @@ class _SwimlaneBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final selectedUcId = ref.watch(selectedUcProvider);
+    // 只取泳道用到的欄位（selectedCell／mode 等變動不重建）。
+    final focus = ref.watch(
+      domainViewStateProvider.select(
+        (s) => s is DomainReady
+            ? (domainId: s.selectedDomainId, column: s.swimlaneFocus?.column)
+            : null,
+      ),
+    );
+    if (focus == null) return const SizedBox.shrink();
+    final selectedDomainId = focus.domainId;
+    final focusColumn = focus.column;
 
     void onSelectDomain(String domainId) {
-      ref.read(domainViewStateProvider.notifier).state = state.copyWith(
+      final base = ref.read(domainViewStateProvider);
+      if (base is! DomainReady) return;
+      ref.read(domainViewStateProvider.notifier).state = base.copyWith(
         selectedDomainId: () => domainId,
       );
     }
@@ -827,7 +855,7 @@ class _SwimlaneBody extends ConsumerWidget {
     if (selectedUcId == null || swimlane == null) {
       final lanes = [
         for (final lane in ref.watch(domainEmptyLanesProvider))
-          _toSwimlaneLane(lane, state.selectedDomainId),
+          _toSwimlaneLane(lane, selectedDomainId),
       ];
       final ucTitle = isProjectionPending ? ucTitleFromMatrix : '';
       return Panel(
@@ -851,8 +879,8 @@ class _SwimlaneBody extends ConsumerWidget {
         ],
         fill: SwimlaneGrid(
           lanes: lanes,
-          locateColumn: state.swimlaneFocus?.column,
-          laneHighlight: state.selectedDomainId,
+          locateColumn: focusColumn,
+          laneHighlight: selectedDomainId,
           onSelectDomain: onSelectDomain,
           scrollKey: const Key('scroll-domain-swimlane'),
           dragKey: const Key('drag-domain-swimlane'),
@@ -894,7 +922,7 @@ class _SwimlaneBody extends ConsumerWidget {
 
     final lanes = [
       for (final lane in swimlane.lanes)
-        _toSwimlaneLane(lane, state.selectedDomainId),
+        _toSwimlaneLane(lane, selectedDomainId),
     ];
     return Panel(
       key: const Key('state-domain-swimlane'),
@@ -909,9 +937,9 @@ class _SwimlaneBody extends ConsumerWidget {
       ],
       fill: SwimlaneGrid(
         lanes: lanes,
-        locateColumn: state.swimlaneFocus?.column,
+        locateColumn: focusColumn,
         edges: [for (final edge in swimlane.edges) _toSwimlaneEdge(edge)],
-        laneHighlight: state.selectedDomainId,
+        laneHighlight: selectedDomainId,
         onSelectDomain: onSelectDomain,
         scrollKey: const Key('scroll-domain-swimlane'),
         dragKey: const Key('drag-domain-swimlane'),
