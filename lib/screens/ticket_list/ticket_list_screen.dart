@@ -14,6 +14,8 @@
 /// 標記，見 `app_table_row.dart`），本頁渲染 [TicketFixtureItem.blockedBy]。
 library;
 
+import 'dart:collection' show ListBase;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -192,7 +194,7 @@ class _ReadyListView extends ConsumerWidget {
       targetNotFoundNotified: fields.targetNotFoundNotified,
     );
     final l10n = AppLocalizations.of(context);
-    final visible = visibleListTickets(state);
+    final visible = ref.watch(visibleListTicketsProvider);
     final corrupted = state.corruptedCount;
 
     // 讀目前 provider 值而非閉包捕捉的 build 時 `state`——`AppSnackBar`
@@ -315,16 +317,19 @@ class _ReadyListView extends ConsumerWidget {
       ],
     );
 
-    final rows = [
-      for (final ticket in visible)
-        _ticketRow(
-          ticket,
-          blockedBySeparator: multiValueSeparator(l10n),
-          onOpenTicket: onOpenTicket,
-          onCorruptedTap: onCorruptedTap,
-          targetId: targetId,
-        ),
-    ];
+    // 列物件於 itemBuilder 觸及時才建（虛擬化只取可見列），
+    // 不在每次 build 建全量 AppTableRow。
+    final separator = multiValueSeparator(l10n);
+    final rows = _LazyRows(
+      visible.length,
+      (i) => _ticketRow(
+        visible[i],
+        blockedBySeparator: separator,
+        onOpenTicket: onOpenTicket,
+        onCorruptedTap: onCorruptedTap,
+        targetId: targetId,
+      ),
+    );
 
     return Panel(
       key: const Key('state-tickets-list'),
@@ -398,6 +403,28 @@ class _ReadyListView extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// 依索引惰性建列的唯讀清單；[AppDataTable] 的 virtual 變體只以 `rows[index]`
+/// 與 `rows.length` 存取，未進入視窗的列不會被建構。
+class _LazyRows extends ListBase<AppTableRow> {
+  _LazyRows(this._length, this._build);
+
+  final int _length;
+  final AppTableRow Function(int index) _build;
+
+  @override
+  int get length => _length;
+
+  @override
+  set length(int value) => throw UnsupportedError('read-only');
+
+  @override
+  AppTableRow operator [](int index) => _build(index);
+
+  @override
+  void operator []=(int index, AppTableRow value) =>
+      throw UnsupportedError('read-only');
 }
 
 /// 正常 · 主題：`Panel.scrollable`[`Section.collapsible` × N（含未歸屬節，
