@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
@@ -21,6 +22,11 @@ const String _projectPath = String.fromEnvironment(
   'PERF_PROJECT_PATH',
   defaultValue: '/Users/mac-eric/project/graph_project_docs_manager',
 );
+
+/// 為 true 時，量測區段內開啟 widget build / layout 的 Timeline 事件，
+/// 供定位熱點 widget；預設 false，量測行為不變。
+/// 啟用：`--dart-define=PERF_PROFILE_WIDGETS=true`
+const bool _profileWidgets = bool.fromEnvironment('PERF_PROFILE_WIDGETS');
 
 const Duration _scanTimeout = Duration(minutes: 3);
 
@@ -64,6 +70,8 @@ void main() {
     binding.reportData = <String, dynamic>{'ticket_list_row_count': rowCount};
     expect(rowCount, greaterThan(0));
 
+    final restoreProfiling = _enableWidgetProfiling();
+    addTearDown(restoreProfiling);
     await binding.traceAction(() async {
       for (var i = 0; i < 6; i++) {
         await tester.fling(listFinder, const Offset(0, -2000), 4000);
@@ -81,7 +89,24 @@ void main() {
         await tester.pumpAndSettle();
       }
     }, reportKey: 'ticket_list_sort');
+    restoreProfiling();
   }, timeout: const Timeout(Duration(minutes: 10)));
+}
+
+/// 依 [_profileWidgets] 開啟 widget 級 profiling，回傳還原函式（可重複呼叫）。
+VoidCallback _enableWidgetProfiling() {
+  if (!_profileWidgets) return () {};
+  final builds = debugProfileBuildsEnabled;
+  final userBuilds = debugProfileBuildsEnabledUserWidgets;
+  final layouts = debugProfileLayoutsEnabled;
+  debugProfileBuildsEnabled = true;
+  debugProfileBuildsEnabledUserWidgets = true;
+  debugProfileLayoutsEnabled = true;
+  return () {
+    debugProfileBuildsEnabled = builds;
+    debugProfileBuildsEnabledUserWidgets = userBuilds;
+    debugProfileLayoutsEnabled = layouts;
+  };
 }
 
 Future<void> _settleLong(WidgetTester tester) => tester.pumpAndSettle(
