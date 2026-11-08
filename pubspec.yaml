@@ -34,6 +34,9 @@ dev_dependencies:
   # 雙層測試的外層：真機／模擬器上的整合測試
   integration_test:
     sdk: flutter
+  # 效能探針的 driver 端（0.6.0-W1-193.3）：TimelineSummary
+  flutter_driver:
+    sdk: flutter
   flutter_lints: ^6.0.0
 
 flutter:
