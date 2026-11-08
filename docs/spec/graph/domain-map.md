@@ -44,7 +44,7 @@ updated: "2026-10-21"
 
 | Domain | 唯一變更理由 | 公開面（OCP） | 內部面 |
 |--------|------------|-------------|-------|
-| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**domain × UC 關係與依賴路徑**（延伸貫穿數：直接貫穿／間接依賴／無關三值，間接依賴另帶依賴路徑；SPEC-007 FR-12，`0.5.0-W1-114` 用戶裁決 O1——畫面只顯示，規則不落 Layout 或畫面層）、**DomainBundle 分層與層內排序**（1a max+1、2b code point；Layout 泳道列序與 FR-12 依賴路徑排序共用；SPEC-007 FR-13，`0.5.0-W1-114.2` 用戶裁決 R1）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.0-W3-352） | 索引結構、遍歷演算法 |
+| **Graph** | 圖語意改變（如 symmetric union 規則） | 輕節點、邊、**鄰接查詢**（SPEC-007 FR-08）、**貫穿數**（domain × UC，依 FlowStep `traverses` 聚合）、**domain × UC 關係與依賴路徑**（延伸貫穿數：直接貫穿／間接依賴／無關三值，間接依賴另帶依賴路徑；SPEC-007 FR-12，`0.5.0-W1-114` 用戶裁決 O1——畫面只顯示，規則不落 Layout 或畫面層）、**DomainBundle 分層與層內排序**（1a max+1、2b code point；Layout 泳道列序與 FR-12 依賴路徑排序共用；SPEC-007 FR-13，`0.5.0-W1-114.2` 用戶裁決 R1）、**路徑→domain 查詢**（對照表由 Graph 持有，表內容待建，見 0.1.1-W3-352） | 索引結構、遍歷演算法 |
 
 ### Bundle 不變式清單
 
