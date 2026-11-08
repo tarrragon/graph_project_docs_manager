@@ -56,6 +56,28 @@ class DomainViewScreen extends ConsumerStatefulWidget {
 }
 
 class _DomainViewScreenState extends ConsumerState<DomainViewScreen> {
+  /// 矩陣與泳道的捲動 offset 由頁面層持有（SPEC-004 §2）；切換專案時歸零，
+  /// 切換導覽項（IndexedStack 不 dispose）時保留。
+  final ScrollController _matrixH = ScrollController();
+  final ScrollController _matrixV = ScrollController();
+  final ScrollController _laneH = ScrollController();
+  final ScrollController _laneV = ScrollController();
+
+  @override
+  void dispose() {
+    _matrixH.dispose();
+    _matrixV.dispose();
+    _laneH.dispose();
+    _laneV.dispose();
+    super.dispose();
+  }
+
+  void _resetOffsets() {
+    for (final c in [_matrixH, _matrixV, _laneH, _laneV]) {
+      if (c.hasClients) c.jumpTo(0);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -96,11 +118,18 @@ class _DomainViewScreenState extends ConsumerState<DomainViewScreen> {
       if (prev is ScanRoundRunning) return;
       _restartRoundIfNoneCompleted();
     });
+    ref.listen<int>(projectGenerationProvider, (_, _) => _resetOffsets());
     final state = ref.watch(domainViewStateProvider);
     return switch (state) {
       DomainUnset() => const _UnsetView(),
       DomainLoading() => _LoadingView(state: state),
-      DomainReady() => _ReadyBody(state: state),
+      DomainReady() => _ReadyBody(
+        state: state,
+        matrixH: _matrixH,
+        matrixV: _matrixV,
+        laneH: _laneH,
+        laneV: _laneV,
+      ),
       DomainEmpty() => _EmptyView(state: state),
       DomainNotFramework() => const _NotFrameworkView(),
       DomainSchemaUnconsumable() => _SchemaUnconsumableView(state: state),
@@ -397,9 +426,21 @@ class _SchemaIncompatibleView extends ConsumerWidget {
 /// 不在頁面層另組合排版容器（模式切換由 [DomainHeaderTrailing] 於
 /// `SplitRow.header` 右格承載，見檔頭說明）。
 class _ReadyBody extends ConsumerWidget {
-  const _ReadyBody({required this.state});
+  const _ReadyBody({
+    required this.state,
+    required this.matrixH,
+    required this.matrixV,
+    required this.laneH,
+    required this.laneV,
+  });
 
   final DomainReady state;
+
+  /// 頁面層持有的捲動 controller（矩陣／泳道各一組）。
+  final ScrollController matrixH;
+  final ScrollController matrixV;
+  final ScrollController laneH;
+  final ScrollController laneV;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -407,8 +448,8 @@ class _ReadyBody extends ConsumerWidget {
       return const _GraphUnavailableBody();
     }
     return state.mode == DomainMode.matrix
-        ? _MatrixBody(state: state)
-        : _SwimlaneBody(state: state);
+        ? _MatrixBody(state: state, hController: matrixH, vController: matrixV)
+        : _SwimlaneBody(state: state, hController: laneH, vController: laneV);
   }
 }
 
@@ -485,8 +526,10 @@ class DomainHeaderTrailing extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(domainViewStateProvider);
-    if (state is! DomainReady) {
+    final mode = ref.watch(
+      domainViewStateProvider.select((s) => s is DomainReady ? s.mode : null),
+    );
+    if (mode == null) {
       return const SizedBox.shrink();
     }
     final l10n = AppLocalizations.of(context);
@@ -503,20 +546,29 @@ class DomainHeaderTrailing extends ConsumerWidget {
           testKey: const Key('mode-domain-swimlane'),
         ),
       ],
-      selectedIndex: state.mode == DomainMode.matrix ? 0 : 1,
-      onChanged: (index) =>
-          ref.read(domainViewStateProvider.notifier).state = state.copyWith(
-            mode: index == 0 ? DomainMode.matrix : DomainMode.swimlane,
-          ),
+      selectedIndex: mode == DomainMode.matrix ? 0 : 1,
+      onChanged: (index) {
+        final current = ref.read(domainViewStateProvider);
+        if (current is! DomainReady) return;
+        ref.read(domainViewStateProvider.notifier).state = current.copyWith(
+          mode: index == 0 ? DomainMode.matrix : DomainMode.swimlane,
+        );
+      },
     );
   }
 }
 
 /// 正常 · 矩陣（含已選格疊加）。
 class _MatrixBody extends ConsumerWidget {
-  const _MatrixBody({required this.state});
+  const _MatrixBody({
+    required this.state,
+    required this.hController,
+    required this.vController,
+  });
 
   final DomainReady state;
+  final ScrollController hController;
+  final ScrollController vController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -588,6 +640,8 @@ class _MatrixBody extends ConsumerWidget {
         onSelectDomain: onSelectDomain,
         onClearSelection: onClearSelection,
         scrollKey: const Key('scroll-domain-matrix'),
+        horizontalController: hController,
+        verticalController: vController,
       ),
       trailing: [_legendBadgeRow(l10n)],
     );
@@ -735,9 +789,15 @@ SwimlaneFocus _jumpFocus(WidgetRef ref, DomainCell cell) {
 /// 正常 · 泳道／泳道 · 尚未選定 UC／泳道 · flow 未結構化三列的計算入口
 /// （選定 UC 來自 App 層共用值 `selectedUcProvider`）。
 class _SwimlaneBody extends ConsumerWidget {
-  const _SwimlaneBody({required this.state});
+  const _SwimlaneBody({
+    required this.state,
+    required this.hController,
+    required this.vController,
+  });
 
   final DomainReady state;
+  final ScrollController hController;
+  final ScrollController vController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -752,7 +812,12 @@ class _SwimlaneBody extends ConsumerWidget {
 
     // matrix 為 null 的業務狀態：無完成輪次（含投影準備中）／無節點，
     // 退路為空標題與無高亮；DomainReady 不保證矩陣有值。
-    final matrix = ref.watch(domainMatrixProvider);
+    // 矩陣在此只取 UC 標題，select 後矩陣其餘欄位變動不重建泳道。
+    final ucTitleFromMatrix = ref.watch(
+      domainMatrixProvider.select(
+        (m) => selectedUcId == null ? '' : _ucTitleOf(m, selectedUcId),
+      ),
+    );
     final swimlane = ref.watch(domainSwimlaneProvider);
 
     // 已選定 UC 而該專案尚無完成輪次：投影準備中（SPEC-001 v1.55 §1）；
@@ -764,9 +829,7 @@ class _SwimlaneBody extends ConsumerWidget {
         for (final lane in ref.watch(domainEmptyLanesProvider))
           _toSwimlaneLane(lane, state.selectedDomainId),
       ];
-      final ucTitle = isProjectionPending
-          ? _ucTitleOf(matrix, selectedUcId)
-          : '';
+      final ucTitle = isProjectionPending ? ucTitleFromMatrix : '';
       return Panel(
         leading: [
           if (isProjectionPending)
@@ -793,11 +856,13 @@ class _SwimlaneBody extends ConsumerWidget {
           onSelectDomain: onSelectDomain,
           scrollKey: const Key('scroll-domain-swimlane'),
           dragKey: const Key('drag-domain-swimlane'),
+          horizontalController: hController,
+          verticalController: vController,
         ),
       );
     }
 
-    final ucTitle = _ucTitleOf(matrix, selectedUcId);
+    final ucTitle = ucTitleFromMatrix;
     final panelTitle = ucTitle.isEmpty
         ? selectedUcId
         : l10n.swimlanePanelTitle(selectedUcId, ucTitle);
@@ -850,6 +915,8 @@ class _SwimlaneBody extends ConsumerWidget {
         onSelectDomain: onSelectDomain,
         scrollKey: const Key('scroll-domain-swimlane'),
         dragKey: const Key('drag-domain-swimlane'),
+        horizontalController: hController,
+        verticalController: vController,
       ),
       trailing: [
         BadgeRow(

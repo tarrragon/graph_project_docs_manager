@@ -14,6 +14,12 @@ import '../../helpers/helpers.dart';
 void main() {
   const scrollKey = ValueKey('scroll-domain-swimlane');
   const dragKey = ValueKey('drag-domain-swimlane');
+  var hCtl = ScrollController();
+  var vCtl = ScrollController();
+  setUp(() {
+    hCtl = ScrollController();
+    vCtl = ScrollController();
+  });
 
   List<SwimlaneLane> buildLanes({
     int laneCount = 6,
@@ -47,6 +53,8 @@ void main() {
         tester,
         size: size,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: buildLanes(),
           scrollKey: scrollKey,
           dragKey: dragKey,
@@ -67,6 +75,8 @@ void main() {
           width: 300,
           height: 200,
           child: SwimlaneGrid(
+            horizontalController: hCtl,
+            verticalController: vCtl,
             lanes: buildLanes(laneCount: 12, columnCount: 12),
             scrollKey: scrollKey,
             dragKey: dragKey,
@@ -94,6 +104,8 @@ void main() {
           width: 300,
           height: 200,
           child: SwimlaneGrid(
+            horizontalController: hCtl,
+            verticalController: vCtl,
             lanes: buildLanes(laneCount: 12, columnCount: 12),
             scrollKey: scrollKey,
             dragKey: dragKey,
@@ -119,6 +131,8 @@ void main() {
         tester,
         size: size,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: buildLanes(
             laneCount: 2,
             columnCount: 2,
@@ -144,6 +158,8 @@ void main() {
         width: 300,
         height: 200,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: lanes,
           scrollKey: scrollKey,
           dragKey: dragKey,
@@ -158,6 +174,8 @@ void main() {
           width: 300,
           height: 200,
           child: SwimlaneGrid(
+            horizontalController: hCtl,
+            verticalController: vCtl,
             lanes: lanes,
             laneHighlight: 'lane-19',
             scrollKey: scrollKey,
@@ -191,6 +209,8 @@ void main() {
           width: 300,
           height: 200,
           child: SwimlaneGrid(
+            horizontalController: hCtl,
+            verticalController: vCtl,
             lanes: lanes,
             laneHighlight: id,
             scrollKey: scrollKey,
@@ -225,6 +245,8 @@ void main() {
         width: 400,
         height: 200,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: lanes,
           laneHighlight: lane,
           locateColumn: column,
@@ -276,6 +298,8 @@ void main() {
         tester,
         size: WindowSize.design,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: buildLanes(laneCount: 2, columnCount: 1),
           scrollKey: scrollKey,
           dragKey: dragKey,
@@ -301,6 +325,8 @@ void main() {
           width: 600,
           height: 200,
           child: SwimlaneGrid(
+            horizontalController: hCtl,
+            verticalController: vCtl,
             lanes: buildLanes(laneCount: 1, columnCount: 4),
             scrollKey: scrollKey,
             dragKey: dragKey,
@@ -326,6 +352,8 @@ void main() {
           width: 600,
           height: 200,
           child: SwimlaneGrid(
+            horizontalController: hCtl,
+            verticalController: vCtl,
             lanes: buildLanes(laneCount: 1, columnCount: 1),
             scrollKey: scrollKey,
             dragKey: dragKey,
@@ -345,6 +373,8 @@ void main() {
         tester,
         size: size,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: buildLanes(laneCount: 20, columnCount: 20),
           scrollKey: scrollKey,
           dragKey: dragKey,
@@ -374,6 +404,8 @@ void main() {
       await pumpHarness(
         tester,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: buildLanesWithDomainId(),
           scrollKey: scrollKey,
           dragKey: dragKey,
@@ -395,6 +427,8 @@ void main() {
       await pumpHarness(
         tester,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: buildLanesWithDomainId(),
           scrollKey: scrollKey,
           dragKey: dragKey,
@@ -418,6 +452,8 @@ void main() {
       await pumpHarness(
         tester,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: buildLanes(laneCount: 1, columnCount: 1),
           scrollKey: scrollKey,
           dragKey: dragKey,
@@ -441,6 +477,8 @@ void main() {
       width: 700,
       height: 500,
       child: SwimlaneGrid(
+        horizontalController: hCtl,
+        verticalController: vCtl,
         lanes: lanes,
         edges: edges,
         laneHighlight: highlight,
@@ -622,6 +660,8 @@ void main() {
           width: 700,
           height: 300,
           child: SwimlaneGrid(
+            horizontalController: hCtl,
+            verticalController: vCtl,
             lanes: [
               SwimlaneLane(
                 name: 'dom',
@@ -679,6 +719,8 @@ void main() {
         width: 700,
         height: 100,
         child: SwimlaneGrid(
+          horizontalController: hCtl,
+          verticalController: vCtl,
           lanes: mixedLanes(),
           edges: edges,
           scrollKey: scrollKey,
