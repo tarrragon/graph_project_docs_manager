@@ -419,8 +419,15 @@ class _LazyRows extends ListBase<AppTableRow> {
   @override
   set length(int value) => throw UnsupportedError('read-only');
 
+  /// 依索引快取已建的列：同一 index 重複取用回傳同一個 widget 實例，
+  /// 讓 Element.update 以 identical 短路、不重建子樹與文字排版
+  /// （修補前全量預建即具備此性質）。實例隨 build 重建（可見清單、語系、
+  /// 目標或回呼變動）一併換新，即失效。
+  final Map<int, AppTableRow> _cache = {};
+
   @override
-  AppTableRow operator [](int index) => _build(index);
+  AppTableRow operator [](int index) =>
+      _cache.putIfAbsent(index, () => _build(index));
 
   @override
   void operator []=(int index, AppTableRow value) =>
