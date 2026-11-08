@@ -157,7 +157,7 @@ depends_on_domains: [layout]
 
 | 元件 | 種類 | 層級 | 用途 | 出現畫面 | 變體（variant） |
 |------|------|------|------|---------|----------------|
-| `AppShell`（根框架） | 容器 | L3 | 根：無父容器。標題列（`AppText.title` 應用名）/ 側欄（`ProjectSwitcherEntry` + `NavItem` × 6，垂直）/ 主區（`PageColumn`）三格；側欄固定寬、主區填滿 | 殼 | `default`；既有 `lib/assembly/shell.dart` 為其實作雛形（見 3.5 漂移） |
+| `AppShell`（根框架） | 容器 | L3 | 根：無父容器。標題列（`AppText.title` 應用名）/ 側欄（`ProjectSwitcherEntry` + `NavItem` × 6，垂直）/ 主區（`PageColumn`）三格；側欄固定寬、主區填滿 | 殼 | `default`；元件庫 `AppShell` 傳值、不 watch；訂閱由組裝層 `lib/assembly/shell.dart` 承擔（漂移見 3.5） |
 | `PageColumn`（頁面區塊堆疊） | 容器 | L3 | 每頁根堆疊：`SplitRow.header` + 內容（`Panel` 或 `TwoColumnLayout` 或狀態元件）垂直；內容區內距 `Space.xl` | §1–§6 | `default` |
 | `SplitRow`（左右分列） | 容器 | L2 | 左右兩端對齊的水平列：頁首（`PageTitle` + `SegmentedControl`）、Ticket 清單摘要底列（`AppText` + `AppText`） | §1–§6（頁首）、§4（底列） | `header`（固定高、底邊框 `AppColors.border`、底 `AppColors.surfaceBase`）/ `footer`（頂邊框）；合併為提案（3.3 第 13 項） |
 | `Panel`（面板） | 容器 | L2 | 白底（`AppColors.surfaceBase`）、邊框 `AppColors.border`、圓角 `Radius.lg`、內距 `Space.md` 的垂直堆疊；子件為具名清單（`Toolbar` / `TableRow.header` / `DataTable` / `MatrixGrid` / `SwimlaneGrid` / `Tree` / `Section` / `BadgeRow` / `Divider` / `AppText` / `DocumentBody` / `ListRow`） | §1–§6 | `default` / `scrollable`（主體可垂直捲動，承載 SPEC-003 §1.1〈捲動處清單〉中一維垂直捲動者） |
@@ -6508,7 +6508,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
-| 1.128 | 2026-11-09 | `0.6.0-W1-202`（來源含 `0.6.0-W1-196`，主控裁決方案 A：元件一律傳值，訂閱在上層）：4.15 `MatrixCell` default 列資料態欄與 state-change 列改為畫面層 watch 後經 `MatrixGrid` 傳值，不再寫 `ConsumerWidget`、§2 容器例外、`ref.listen`。§2「導覽狀態」列、4.27 `AppShell` 用途段、default 列、state-change 列改為元件庫 `AppShell` 傳值、訂閱由組裝層 `lib/assembly/shell.dart` 承擔（`ref.watch` 後傳值），刪除「實作雛形」一句；4.42 專案切換浮層 state-change 列同款敘述同步改。不改 key 表與條文編號 |
+| 1.128 | 2026-11-09 | `0.6.0-W1-202`（來源含 `0.6.0-W1-196`，主控裁決方案 A：元件一律傳值，訂閱在上層）：4.15 `MatrixCell` default 列資料態欄與 state-change 列改為畫面層 watch 後經 `MatrixGrid` 傳值，不再寫 `ConsumerWidget`、§2 容器例外、`ref.listen`。§2「導覽狀態」列、4.27 `AppShell` 用途段、default 列、state-change 列改為元件庫 `AppShell` 傳值、訂閱由組裝層 `lib/assembly/shell.dart` 承擔（`ref.watch` 後傳值），刪除「實作雛形」一句（含元件樹表 AppShell 列同款句）；4.42 專案切換浮層 state-change 列同款敘述同步改。不改 key 表與條文編號 |
 | 1.127 | 2026-11-06 | `0.6.0-W1-193.1`（`0.6.0-W1-193` 用戶裁決 D 案）：§2 刪除「容器元件的例外」列，「元件接收狀態形式」列明寫資料視圖容器同樣傳值 + callback；「最小重繪邊界」列改為畫面層 `ref.watch(provider.select(...))`、元件與容器不 watch；「過渡提示觸發點」列刪除容器自行 `ref.listen` 的分支。4.36 `DataTable`、4.37 `MatrixGrid`、4.38 `SwimlaneGrid`、4.39 `Tree` 的用途段、狀態矩陣來源欄與 state-change 列改為傳值，觸發方改為畫面層；4.36–4.38 寫明 offset 由頁面層持有的 `ScrollController` 傳入容器，排序歸零與切換專案重置由頁面層呼叫，4.38 不自行建立 controller，`jumpTo` 定位須重新驗證。4.16 與 4.39〈由本容器計算的理由〉同步刪除對容器例外的引用。§3.7 第 19 列補註裁決。§2「導覽狀態」列與 4.27 `AppShell` 的 `ConsumerWidget` 敘述不在本次範圍，另由 `0.6.0-W1-196` 追蹤 |
 | 1.126 | 2026-11-05 | `0.6.0-W1-191.2`（依 `0.6.0-W1-191` 時效型註記盤點，讀碼查證）：狀態矩陣「來源」欄與相關散文 19 處「provider 尚未建立，欄位名由對應畫面票補填」改為實際承載者（4.4、4.6、4.10、4.12–4.15、4.18–4.24、4.32、4.36–4.38、4.41）；Ticket 清單無載入態、節點詳情損壞外觀在 0.x 不可達者改寫為不渲染。§6 原寫「執法 pattern 由 `dart-style-guardian` 承接」，改為執法現況：PostEdit hook 攔八種新增直用，其餘列目前無承接。不改契約；4.36–4.38「本容器為 `ConsumerWidget`」與實作（傳值、不自行訂閱）不一致，另票處理 |
 | 1.125 | 2026-11-05 | `0.6.0-W1-191.1`（依 `0.6.0-W1-191` 時效型註記盤點）：§4.0.6 各批次說明與表列「使用處」欄的「ARB 待建」「ARB 實檔狀態待建，由對應票加入」改為現況（表內 key 全數已在 ARB，`spec004_key_table_contract_test` 的待加入豁免為空可證），淘汰 key 段改為「已自 ARB 刪除」；§4.0 測試基座「由 `0.1.0-W1-034` 承接，為所有元件票的 blockedBy」改為已建立；4.37 `MatrixGrid`「依賴宣告待 `0.1.0-W1-038`」改為 `pubspec.yaml` 已宣告。zh／en 值欄未動，不改契約 |
