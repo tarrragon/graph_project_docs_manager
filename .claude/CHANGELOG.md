@@ -1,3 +1,1943 @@
+## [3.0.0] - 2026-11-09
+
+### Summary
+框架改由上游 repo（主控方）規劃與發版。從本版起，tarrragon/claude 的每次推送都對應一個 `v<版號>` tag，版號依 SemVer 由主控方決定，不再每推一次就自動 +0.1。
+
+### 對 consumer 的影響（major）
+- **不再從 consumer 推送框架**：consumer 只開 framework issue，修改與發版只在主控方（`skills/framework-issue/references/escalation-flow.md`〈角色：主控方與 consumer〉）。宣告為某個 skill 開發上游的 consumer，以 `skill-sync push` 把該 skill 送到 tarrragon/claude-skills。
+- **回報要附版本**：`framework-issue create` 的環境資訊與 `observe` 的觀測 comment 會自動附上 `.claude/VERSION`；新的 issue 範本把框架版本設為必填。
+- **sync-pull 不帶入 `.github/`**：issue 範本只放在發佈通道，不會進到 consumer 的 `.claude/`。
+
+### Changed
+- sync-push 改為發版推送：版號取自本地 `.claude/VERSION`，本地版號不高於遠端或 tag 已存在時拒絕推送；推送後打 annotated tag，tag 失敗時 exit 非 0；CHANGELOG 由人撰寫，腳本不再自動產生條目，也不再回寫本地 VERSION。
+- 每個版本分規劃期與執行期，規劃結束即凍結，執行期的發現排進後續版本（`pm-rules/version-progression.md`〈兩期〉、〈收斂：patch 線與 minor 推進〉）。
+- 驗收只審三項：能跑、範圍內、格式對；where 以外的同概念命中由 PM 擴充 where 並記理由（`pm-rules/verification-framework.md`〈驗收三項固定檢查〉〈檢查 2 的 where 擴充程序〉）。
+- 品質基線規則 2、3、5 對齊兩期（`rules/core/quality-baseline.md` 4.0.0）。
+- 可攜問題分流閘門的提示區分主控方與 consumer。
+
+### Added
+- `.github/ISSUE_TEMPLATE/framework-issue.yml`（框架版本必填）。
+- DOC-008 變體「驗收條件以位置界定範圍」。
+- PC-GPD-081、PC-SCLK-008 的 error-pattern 更新。
+
+### Removed
+- llm-dev 停止追蹤 `analyses/`、`migration-backups/`、`plans/`、`.version-release.yaml`、`settings.local.json`。
+
+### Known issues
+- tarrragon/claude 上仍留有上述 local-only 檔案：`sync-push --clean` 以 should_exclude 過濾刪除傳播，清不掉這些名稱，3.0.1 修正。其中 `settings.local.json` 含舊路徑的 hooks 鍵，以 git clone 安裝時所有 Agent 派發都會失敗（#11）；用 sync-pull 更新的 consumer 不受影響。
+- `skill-sync pull`（不帶名稱）產生的 `.skill-sync-base` 尚未列入 local-only 清單，consumer 會看到 untracked 標記檔，3.0.1 修正。
+
+---
+
+## [2.90.0] - 2026-11-06
+
+### Summary
+feat: 合併閘門宣告 tool/ 參照實作的 selftest 與 compute 套件; docs: PC-GPD-003 觸發判準改為多行內容加串接的組合; docs: 新增 IMP-GPD-027 衍生欄位解析規則比產生端窄致聚合失真 (+1 more)
+
+Changes: 1 feat, 2 docs, 1 chore
+
+- feat: 合併閘門宣告 tool/ 參照實作的 selftest 與 compute 套件
+- docs: PC-GPD-003 觸發判準改為多行內容加串接的組合
+- docs: 新增 IMP-GPD-027 衍生欄位解析規則比產生端窄致聚合失真
+- chore: .claude/VERSION 回寫 2.89.0（sync-push 後）
+
+---
+
+## [2.89.0] - 2026-11-05
+
+### Summary
+feat: doc validate 比對 domain-map §7 子標題集合與 source_specs; docs: domain-map 範本 §7 註解依三種列型分流並補範例; docs: 新增 IMP-GPD-026 寫入端正規化補償讀取端缺陷 (+2 more)
+
+Changes: 1 feat, 3 docs, 1 chore
+
+- feat: doc validate 比對 domain-map §7 子標題集合與 source_specs
+- docs: domain-map 範本 §7 註解依三種列型分流並補範例
+- docs: 新增 IMP-GPD-026 寫入端正規化補償讀取端缺陷
+- docs: domain-map §7 擴充為驗收條文對照，layout 補 SPEC-001、workspace 補 SPEC-005，同步範本
+- chore: .claude/VERSION 回寫 2.88.0（sync-push 後）
+
+---
+
+## [2.88.0] - 2026-11-05
+
+### Summary
+feat: 新增 framework-update-adaptation skill; docs: PC-SCLK-008 補實例（裁定選項文字被逐字寫進規格）; docs: PC-GPD-086 線回報的預告句被當成已派發，線停滯無人察覺 (+1 more)
+
+Changes: 1 feat, 2 docs, 1 chore
+
+- feat: 新增 framework-update-adaptation skill
+- docs: PC-SCLK-008 補實例（裁定選項文字被逐字寫進規格）
+- docs: PC-GPD-086 線回報的預告句被當成已派發，線停滯無人察覺
+- chore: .claude/VERSION 回寫 2.87.0（sync-push 後）
+
+---
+
+## [2.87.0] - 2026-11-05
+
+### Summary
+feat: 狀態列 statusline_lane 改為框架預設啟用; feat: GRAPH_EDGE_TYPES 新增 proposed 層 closed_by 邊; docs: PC-GPD-085 功能隨 sync 擴散但啟用設定在 sync 排除檔 (+6 more)
+
+Changes: 2 feat, 6 docs, 1 chore
+
+- feat: 狀態列 statusline_lane 改為框架預設啟用
+- feat: GRAPH_EDGE_TYPES 新增 proposed 層 closed_by 邊
+- docs: PC-GPD-085 功能隨 sync 擴散但啟用設定在 sync 排除檔
+- docs: IMP-GPD-025 zsh 未加大括號變數後接冒號被當修飾詞
+- docs: PC-GPD-083 補第四例（方案代價依據的權限未查證而被高估）
+- docs: PC-GPD-083 補第三例（維持現狀方案未查現況輸出）
+- docs: README 索引補 PC-GPD-084
+- docs: ticket skill 升 2.48.0 並補 CHANGELOG
+- chore: sync-push 回寫框架版本 2.86.0
+
+---
+
+## [2.86.0] - 2026-11-04
+
+### Summary
+feat: 新增 system-misjudgment skill（依系統查 AI 誤判與檢查方法）; feat: 檔案監看實機驗證配方（fseventsd 閘門、金絲雀、seq 連續判讀、trap 收尾); feat: 看板標示佇列行只含非票號文字的線 (+28 more)
+
+Changes: 5 feat, 2 refactor, 4 fix, 17 docs, 2 chore, 1 test
+
+- feat: 新增 system-misjudgment skill（依系統查 AI 誤判與檢查方法）
+- feat: 檔案監看實機驗證配方（fseventsd 閘門、金絲雀、seq 連續判讀、trap 收尾)
+- feat: 看板標示佇列行只含非票號文字的線
+- feat: line_status 將無票號且非收線記號的佇列行列為過期項
+- feat: acceptance-gate 補 batch-complete --parent 子票協調票待辦檢查
+- refactor: 拆分 line-board 佇列列與細節的 view 模組及測試檔
+- refactor: line-board formatGroupToggle 收斂單一標題並合併測試輔助函式
+- fix: vm_log 截斷字串以 getObject 取全文
+- fix: system-misjudgment 讀者探針修正 (1.0.1)
+- fix: 監看目錄取 App workspace.path；PASS 須有 experiment 檔 add/remove 事件
+- fix: line-board 佇列票上色與閘門票去重改以完整票號比對
+- docs: PC-GPD-083 補實例：選項假設了不存在的執行工具
+- docs: system-misjudgment 1.0.3 移除對專案層 verify skill 的引用
+- docs: system-misjudgment 可攜性修正與 MG-3/WV_CPU_LIMIT/FS-3 三項
+- docs: PC-GPD-084 where.files 盤點漏列窮舉 switch 消費端
+- docs: sync-exclusion-guide 補專案專用 skill 以 private 排除的用法與限制
+- docs: 新增 PC-GPD-083 方案比較假設了不存在的承載處
+- docs: 新增 PC-GPD-082 專案專用 skill 未排除推送
+- docs: PANE_TEST_TIMEOUT_MS 註解補冷啟動占比與重新量測條件
+- docs: 新增 PC-GPD-081 裁定只落規格未建實作票
+- docs: IMP-016 變體補 analyze 綠而 test 編譯失敗的實例
+- docs: 新增 TEST-GPD-1010 語法層守衛以字面子字串偵測語法構造
+- docs: PC-GPD-080 實例補重啟 fseventsd 後恢復的因果確認
+- docs: PC-GPD-075 補預防：被測試讀取的文件票不跳過合併閘門
+- docs: 新增 PC-GPD-080 實機否定觀測需環境與觀測工具正向對照
+- docs: TEST-GPD-1000 新增變體——預設值改成另一靜態狀態，依賴預設的測試綠燈但檢查對象已換
+- docs: IMP-016 變體補新建 worktree 未先 pub get 的實例
+- docs: IMP-016 補變體：依賴變更合併進共用 checkout 後本機解析結果未更新
+- chore: line-board 版號升 某版本（依每條 CHANGELOG 升版慣例）
+- chore: sync-push 回寫框架版本 2.85.0
+- test: Pane 測試設明確逾時 PANE_TEST_TIMEOUT_MS=15000
+
+---
+
+## [2.85.0] - 2026-11-03
+
+### Summary
+feat: acceptance-gate 補 batch-complete --wave 協調票待辦檢查; feat: acceptance-gate 對 ticket track close 檢查協調票未配對用戶待辦; feat: acceptance-gate 擋下帶未配對用戶待辦的協調票 complete (+43 more)
+
+Changes: 11 feat, 4 refactor, 5 fix, 22 docs, 1 chore, 1 style, 2 test
+
+- feat: acceptance-gate 補 batch-complete --wave 協調票待辦檢查
+- feat: acceptance-gate 對 ticket track close 檢查協調票未配對用戶待辦
+- feat: acceptance-gate 擋下帶未配對用戶待辦的協調票 complete
+- feat: Python U1 配對函式、契約 fixture 與佇列行 hook 未配對提示
+- feat: line_status 新增用戶待辦（U1）段
+- feat: line-board 協調票來源改接解析 CLI，刪除 multi-session.json
+- feat: 三個協調票消費者改用自動解析
+- feat: ticket create --coordination 與 track set-coordination
+- feat: 協調票解析模組 coordination_ticket.py 與測試
+- feat: merge-gate add dart-analyze suite
+- feat: add UC to Ticket edge uc_ticket_refs
+- refactor: 移除 readers.ts 無呼叫方的 readLaneLines
+- refactor: continuity.ts 拆出等用戶偵測至 waiting.ts
+- refactor: readers.ts 拆出用量檔讀取與清理至 usageReaders.ts
+- refactor: register.tsx 拆出用量檔寫入、恢復開工流程與 Pane 組裝
+- fix: 測試替身改用 AcceptanceCheckResult 建構
+- fix: acceptance-gate 阻擋 WARNING 行依來源寫原因
+- fix: context-depth-warning 換 session 提示依主軸分流
+- fix: todolist 解析出 0 版本時回 error 並補測試
+- fix: completeness_semantics EVT example split by category, sync embedded copy
+- docs: import 守衛變體補兩句（某票 第二次閘門紅燈）
+- docs: PC-GPD-079 推論出口讓跳過紅燈成為合規路徑
+- docs: 四個 skill 補升版號與 CHANGELOG
+- docs: PC-BAL-061 補變體：改動 import 時架構守衛測試不在相關測試內
+- docs: 新增 PC-GPD-078 「沒有指示就照做」後結束回合致線閒置
+- docs: 新增 PC-GPD-077 改 skill 內容未同步升版號（某票）
+- docs: 新增 error-pattern PC-GPD-076 分類判準派發前要先用已知正例試跑
+- docs: 新增 error-pattern PC-GPD-075 被契約測試綁住的規格與實作要同批進 main
+- docs: 換 session 依主軸分流，主軸不變時原 session /clear 後重新派發
+- docs: 依 Layer 2 審查修正（某票 同線待辦）
+- docs: 新增 TEST-GPD-1009 依行為名稱判定自動化測不到（某票）
+- docs: 新增 PC-GPD-074 授權須在執行動作的 session 取得
+- docs: PC-GPD-072 補首例實際成因（對方工具輸出失效）
+- docs: 新增 PC-GPD-073 派發 prompt 範圍限制與驗收衝突
+- docs: 新增 PC-GPD-072 指派訊息送出成功未確認對方開工
+- docs: 新增 PC-GPD-071 了結寫成敘事未寫配對行（某票）
+- docs: README 補登 PC-GPD-070
+- docs: 新增 PC-GPD-070 同回合並行發出動作與已成功紀錄
+- docs: 新增 error-pattern PC-GPD-069 腳本與 harness 共用 API key 變數名
+- docs: 三種記錄錯誤形態入 error-pattern（ARCH-BAL-005 補案例、新增 PC-GPD-067／068）
+- docs: 新增 error-pattern PC-GPD-066 沿用隔離樹測試結果的論證缺項
+- docs: 用戶待辦補列入時機：只列現在就能做的事項
+- chore: sync-push 回寫框架版本 2.84.0
+- style: 佇列行 hook 常數歸位並補空格
+- test: 值域測試改為注入新值驗證跟隨 tracking_schema
+- test: 補 EVT consumers 分流與 category 值域兩個回歸測試
+
+---
+
+## [2.84.0] - 2026-11-01
+
+### Summary
+feat: line_status 各線補 context 用量、標記、徽章與 phase; feat: 恢復開工通知主管道預設關閉; feat: line-board 恢復開工通知新增送出紀錄檔 resume-notice.log (+150 more)
+
+Changes: 23 feat, 3 refactor, 17 fix, 100 docs, 4 chore, 1 style, 2 test, 3 other
+
+- feat: line_status 各線補 context 用量、標記、徽章與 phase
+- feat: 恢復開工通知主管道預設關閉
+- feat: line-board 恢復開工通知新增送出紀錄檔 resume-notice.log
+- feat: 線標題加待 compact／待 clear 標記與恢復開工徽章
+- feat: line-board 讀 context 用量檔、判定函式與各 session 列用量
+- feat: line-board 線 session 在 compact／clear 後恢復開工時通知主控
+- feat: line-board 各 session 以 session.measure 寫 context 用量檔
+- feat: line-board 新增「用戶待辦」群組
+- feat: 派發骨架依閘門宣告併入逐檔檢查命令
+- feat: line_status 偵測線停在等用戶
+- feat: 主控 clear／compact 後的 SessionStart 接續提示 hook
+- feat: line_status 實作各線接續狀態判讀與過期偵測
+- feat: line-board 註冊 line_status 試水溫工具（回傳固定字串）
+- feat: 協調票佇列行 PostToolUse 檢查 hook 與註冊
+- feat: merge gate changed_files for dart-format
+- feat: statusline 未給 --coord-ticket 時讀 multi-session.json
+- feat: integration 包裝腳本 900 秒總逾時並同步 failure 正規式
+- feat: guard exempts sync PER_PROJECT_PATTERNS path segments with E2 control
+- feat: 合併閘門新增 research-python 套件
+- feat: flutter-integration 閘門改逐檔啟動並宣告 failure 正規式
+- feat: 合併閘門新增 flutter-integration 套件
+- feat: line-board summary/failure regex in merge-gate.yaml
+- feat: 移除 parallel-suggestion-hook 步驟 6.5 Wave 收尾提醒並同步 askuserquestion-rules
+- refactor: cleanup 子命令自 worktree_manager.py 純搬移到 scripts/cleanup_command.py
+- refactor: 搬移看板到 .claude/skills/line-board 並改指閘門套件
+- refactor: 移除 python profile 已失效的 ^ 錨定 skip 樣式
+- fix: 依 linux 審查修正用戶待辦
+- fix: 依 linux 審查修正等用戶偵測的邊界
+- fix: master_resume_hint 的 SessionStart timeout 改為 30
+- fix: research-python 閘門納入 weak-observer-ux 測試
+- fix: 佇列行 hook 報出格式不符的行並附正確格式
+- fix: 收尾同步把己方提交前暫存的中途版本視為己方
+- fix: presence 比對鍵改為命中字面，處理多行合併
+- fix: commit 階段 presence-detection 只回報 pre->post 淨增量
+- fix: Level 1 放行可收尾的半刪 worktree，SKILL.md 標明 branch -d rc 語意變更
+- fix: worktree cleanup 移除逾時 300 秒、半刪條件式收尾、遇鎖停手
+- fix: 看板啟動先讀 session root 設定即開 Pane，啟動檢查失敗送 transcript
+- fix: 看板 plugin.json version 同步為 某版本
+- fix: 防護類 hook 範圍判定改以 skill hooks/ 內容為準
+- fix: 僅含 pytest 測試檔的 skill 才產生合併閘門套件
+- fix: line-board SKILL.md 補 metadata.version
+- fix: commit 層 rule8 補 per-project 區段豁免
+- fix: should_skip_file 對 repo 相對路徑補前導斜線
+- docs: 新增 IMP-GPD-024 plugin 事件中主動跨 session 傳訊於 auto mode 被拒
+- docs: 新增 PC-GPD-065 /clear 後以 repo 最近活動推定自身身份
+- docs: TEST-GPD-1008 補消除根源的實測做法與不可行方案
+- docs: 測試晚於實作時以突變確認補鑑別力的證據
+- docs: 新增 error-pattern TEST-GPD-1008（hidden lifecycle 使 pumpAndSettle 假綠與等幀卡住）
+- docs: IMP-GPD-023 zsh 不拆分變數中的檔案清單，掃描零命中與沒掃到同形
+- docs: 規則 7 補出處型票號例外與拿掉括號的判準
+- docs: parsley 提交前必跑格式化，testing reference 補閘門逐檔檢查分工
+- docs: 派發範本同步閘門逐檔檢查的骨架行為
+- docs: board-screens 記錄測試端 $ 與 plugin $ 的差異
+- docs: multi-session-orchestration 補主控 session 長駐定位與 Stop hook 提醒判讀
+- docs: line-board 補實機驗證時的 plugin 載入時機
+- docs: 新增 IMP-GPD-022 父容器縮放高度壓扁固定高子件
+- docs: worktree 1.6.7 文件同步 cleanup_command 模組位置
+- docs: 同檔競爭計數前先依 commit 主旨合併同一功能的票樹
+- docs: 新增 PC-GPD-063／064 兩條錯誤模式
+- docs: 「繼續工作」先列開線計畫表，表格欄位標準化
+- docs: multi-session-orchestration 補各線接續狀態判讀與主控自我接續
+- docs: 新增 PC-GPD-062 字面 grep 驗收機密會命中檢查描述本身
+- docs: PC-GPD-061 補反方向誤報變體
+- docs: PC-GPD-061 修改閘門套件命令的那次合併不執行該套件
+- docs: PC-GPD-060 凍結閘門的查核輸入來自被閘門擋住的票
+- docs: PC-GPD-059 搬檔重構未更正未結案票面的舊路徑
+- docs: wrap-decision 2.17.0 外移兩節情境性內容，主文 4,825 tokens
+- docs: 要件 B 補記隔離提交的第四平面（提交前快照）
+- docs: IMP-GPD-021 完整路徑搜尋漏列同目錄相對 import
+- docs: 新增 TEST-GPD-1007 以固定行號抽取實驗素材漏掉段落邊界
+- docs: CW 1.51.1 路由列改用 skill 名稱以通過可攜性閘門
+- docs: asd-ste100 1.1.0 語言邊界寫入實測結論，不採英文中轉
+- docs: CW 1.51.0 路由句子與用詞層受控寫作到 asd-ste100
+- docs: 依入口檔讀者探針第五輪修正粒度用詞
+- docs: 依入口檔讀者探針第四輪修正
+- docs: 依入口檔讀者探針第三輪修正 SKILL.md
+- docs: 依入口檔讀者探針第二輪修正 SKILL.md
+- docs: 依入口檔讀者探針第一輪修正 SKILL.md
+- docs: 修正推測改寫成事實的範例、補句長門檻、詞庫分立主控 PM
+- docs: 建立 asd-ste100 skill（語言無關核心＋en/zh-TW pack）
+- docs: compositional-writing 1.50.1 入口檔補審查首步與三個詞的就地定義
+- docs: 新增 PC-GPD-058 閘門範圍只讀專案宣告檔
+- docs: compositional-writing 主文分拆至 5k tokens 以內 1.50.0
+- docs: 新增 TEST-GPD-1006 補測對照測試把缺陷釘成預期值
+- docs: 新增 PC-GPD-057 隔離派發代理人無變更停手後 worktree 被自動移除，續用失效
+- docs: 新增 IMP-GPD-020 假資料期延後註解未綁票，接真資料後路徑慣例靜默失效
+- docs: PC-GPD-056 關聯 PC-GPD-031（平台指令與框架規則衝突的同一類）
+- docs: 新增 PC-GPD-056 平台指令與框架禁令衝突使主線程寫入 scratchpad
+- docs: session-naming 補上名稱被截斷的成因
+- docs: session-naming 補實測：口述名稱與實際記錄不符
+- docs: 新增 TEST-GPD-1005 async override 首幀仍為 loading
+- docs: read_ticket_status 靜默略過補註解
+- docs: TEST-GPD-1003 補截斷證據的可採用例外
+- docs: TEST-GPD-1003 補紅燈原文截斷不可採用的預防
+- docs: 新增 error-pattern TEST-GPD-1004、PC-GPD-055
+- docs: 新增 PC-GPD-054 口頭時段與機械名額脫節使負載實驗與閘門重疊
+- docs: 新增 TEST-GPD-1003 對照測試多斷言同案例使紅燈被誤讀為逐條鑑別力
+- docs: 新增 PC-GPD-053 使用處盤點只搜畫面目錄漏掉入口使用處
+- docs: IMP-GPD-019 補 scopesRoute 強制 explicitChildNodes 使 E2 無法隔離
+- docs: 更正 IMP-GPD-019 的偶然符合判讀（實為 explicitChildNodes 保證）
+- docs: IMP-GPD-019 補 531 盤點結果與偶然符合的預防
+- docs: 新增 PC-GPD-052 跨 session 預告申請被雙方各自解讀而互等
+- docs: 530.1 放行送閘門；TEST-GPD-1002 補反方向與對照輸入案例
+- docs: 新增 IMP-GPD-019 liveRegion 未設 container 併入外層；TEST-GPD-1002 補後續查證
+- docs: 新增 TEST-GPD-1002 依實測形狀斷言比規格嚴且鎖住疑似缺陷
+- docs: 新增 PC-GPD-051 字面計數驗收被說明文件自我污染
+- docs: 新增 IMP-GPD-018 抽共用 helper 時抹掉呼叫點識別
+- docs: PC-GPD-043、PC-GPD-050 的 severity 改為英文值 medium
+- docs: 新增 PC-GPD-050 連續 seed 打亂選項順序使位置偏差同方向累積
+- docs: 新增 IMP-GPD-017 世代守衛誤丟推進世代操作自帶的結果
+- docs: 新增 PC-GPD-049 票面約束以 session 代號指名對口
+- docs: IMP-GPD-016 提交階段守衛只掃新增行，純排版改動被判新違規
+- docs: PC-GPD-048 以識別符 grep 判零覆蓋漏掉斷言渲染字面的測試
+- docs: PC-GPD-047 收尾票 blockedBy 未隨追加兄弟票同步
+- docs: IMP-GPD-015 自動收尾只接在失敗當下、入口閘門擋下既有殘留
+- docs: IMP-GPD-014 重量級操作繼承包裝函式短預設逾時
+- docs: PC-GPD-046 閘門與 CI 環境差異致 CI 恆紅且無接收方
+- docs: 看板合併前型別檢查手動配方入 SKILL，worktree 合併收尾加一列
+- docs: 新增 PC-GPD-045 修法成本以缺陷盤點數呈現而非影響面
+- docs: 新增 PC-GPD-044 子票改寫 acceptance 無聲收窄父票覆蓋
+- docs: 新增 PC-GPD-043 不變性驗收條件派進 worktree 未備妥基準
+- docs: 新增 IMP-GPD-013 過渡路徑執行期行為未凍結
+- docs: PC-GPD-042 補搬移時生成物與 ignore 規則的處置
+- docs: line-board 使用說明、畫面規格與 CHANGELOG，multi-session 路由
+- docs: lanes.ts 註解以描述性標籤取代 337 短號
+- docs: 看板非測試檔註解的 349 改為協調票
+- docs: PC-GPD-042 預防措施改以目錄內容判定，移除過寬的 plugin.json 旁證範例
+- docs: PC-GPD-041 補變體：各 worktree 的守衛副本版本不同
+- docs: PC-GPD-042 補第四種目錄慣例（閘門依 tests/ 產生 pytest 套件）
+- docs: 新增 PC-GPD-042 元件搬入慣例目錄後慣例檢查到閘門才暴露
+- docs: 新增 PC-GPD-041 同一守衛多執行點判定漂移
+- docs: rule8 per-project 豁免註明隨 PER_PROJECT_PATTERNS 擴張
+- docs: multi-session-orchestration 工作流補佇列變動時寫現行佇列行
+- docs: 新增 TEST-GPD-1001 以累計計數器位置推定單一測試結果會歸錯
+- docs: PC-GPD-040 原則型裁定落為票面時以兄弟項結果類推寫死具體值
+- docs: 新增 TEST-GPD-1000 預設值改為動畫狀態使全 App 測試 pumpAndSettle 逾時
+- docs: 新增 IMP-GPD-012 函式型別加選填參數對實作端不相容
+- docs: IMP-GPD-011 補 WidgetRef 於 await 後使用的變體
+- docs: 新增 IMP-GPD-011 回饋排在會讓觸發者卸載的 await 之後被 mounted 守衛吞掉
+- docs: 框架注意事項：工具鏈釘選專案事先確認執行方式並寫入 CLAUDE.md
+- docs: IMP-GPD-009 zsh 變數冒號修飾符吃掉路徑首字母
+- docs: 新增 PC-GPD-039 臨時解析票面欄位的空值與真空同形
+- docs: 框架修補節奏：非 P0/P1 不派修、清理線觸發條件與護欄
+- chore: skill-sync pull 發佈庫較新的 8 個 skill
+- chore: 移除 dart-format 套件宣告，待一次性格式化同 commit 加入
+- chore: 修正 flutter-integration 註解措辭
+- chore: sync-push --clean 回寫框架版本 某版本
+- style: fvm dart format 一次性格式化並啟用閘門 dart-format 套件
+- test: 佇列行共用案例 JSON 與 lanes.test.ts 逐筆斷言
+- test: _suite_of 只依 -- 後的套件命令判套件
+- other: merge-gate 宣告檔本身加入 flutter 套件 files 補守衛觸發缺口
+- other: 縮窄 flutter 套件前綴為 docs-spec 並加漂移守衛測試
+- other: run_integration_tests 加參數解析 help 與未知參數不啟動測試 結束碼 64
+
+---
+
+## [2.83.0] - 2026-10-20
+
+### Summary
+feat: dart-style-guardian 校準檔遷至 project-integration 並加舊位置 fallback; feat: 以專案宣告接上 line-board 測試套件於合併閘門; feat: 合併閘門讀取專案宣告的套件對應 (某票.3.1) (+196 more)
+
+Changes: 29 feat, 12 refactor, 69 fix, 67 docs, 6 chore, 1 style, 15 test
+
+- feat: dart-style-guardian 校準檔遷至 project-integration 並加舊位置 fallback
+- feat: 以專案宣告接上 line-board 測試套件於合併閘門
+- feat: 合併閘門讀取專案宣告的套件對應 (某票.3.1)
+- feat: 合併閘門免跑時列出未對應路徑並警告
+- feat: context-depth hook 改合計口徑 400K additionalContext
+- feat: 多線協調狀態列 wrapper
+- feat: worktree 骨架多行內容句改 --content-file 並同步三份文件
+- feat: create dedup execution
+- feat: 壓縮 dispatch 骨架並以參數化守衛涵蓋全部變體
+- feat: hook 證據模板佔位符指引 set-acceptance --edit
+- feat: dispatch 骨架依 where.files 附測試入口命令
+- feat: --dedup-checked 值限定 none 或 issue 參照
+- feat: bash-write-boundary-guard 補 python argv 三種慣用形態
+- feat: set- 範圍欄位變更後提示同步其餘範圍欄位
+- feat: bash-write-boundary-guard deny 訊息補禁止換 Bash 寫法重試與 move-lines 通道
+- feat: append-log 新增 --content-file
+- feat: bash-write-boundary-guard 偵測 python sys.argv[n] 寫入目標
+- feat: --dedup-checked none 須附 --dedup-keywords 並寫入查重紀錄
+- feat: bash-write-boundary-guard 補十種命令的寫入目標抽取
+- feat: ticket track move-lines 依行範圍搬移並驗證行數守恆
+- feat: bash-write-boundary-guard 補 shell 層解析與逐候選跳過日誌
+- feat: bash-write-boundary-guard 以 ast 追蹤 python 內嵌腳本的變數路徑寫入
+- feat: bash-write-boundary-guard 放行與阻擋分支記判定日誌，修正 deny 訊息 ! 句
+- feat: worktree cleanup 新增 --branch，掃描報告對非 ticket 分支印可執行指令
+- feat: 合併閘門預檢無衝突時記一行 gate 日誌
+- feat: bash-write-boundary-guard 對主線程與代理人改為路徑範圍阻擋
+- feat: 合併閘門排隊前以 merge-tree 預檢文字衝突
+- feat: track conflicts table 只列票樹數 >= 2 的檔
+- feat: conflicts 輸出同檔票樹競爭數與拆分建議
+- refactor: needs_gate 與未對應警告共用範圍判準
+- refactor: tier_of/should_warn/_warning_text 形參改名 total_context
+- refactor: rename 7 ticket_system tests to facet-based names
+- refactor: 模板與條目共用同一去框函式
+- refactor: merge_gate 改用 merge_cas.CheckResult，刪除 GateVerdict
+- refactor: 隔離索引 CAS 引擎自 worktree_manager.py 純搬移到 scripts/merge_cas.py
+- refactor: 依職責拆分 bare-commit-guard（純搬移，行為不變）
+- refactor: wrap-decision-tripwire-hook 依職責拆為 tripwire/ 套件（config/state/signals/render），hook 保留 main 並 re-export
+- refactor: 拆分 check_domain_coverage 為 domain_coverage 套件四模組（純搬移）
+- refactor: parallel-dispatch-verification 改呼叫 extract_where_files(intent=write)
+- refactor: bare-commit-guard 與 ticket_parser 改呼叫 hook_ticket 單一實作
+- refactor: hook_ticket 增設 where.files 單一實作（intent/canonical/raise_on_missing）與行為測試
+- fix: yaml 延遲匯入並補無 yaml 測試 (某票.3.1)
+- fix: context-depth-warning 日誌欄位 cache_read 改 total
+- fix: rule8 守衛不掃描 gitignore 命中且未受版控的本機檔
+- fix: 合併閘門 flutter 範圍納入 assets/
+- fix: append-log content-file 空內容拒收
+- fix: 多行內容句補檔名含票號並加字面斷言
+- fix: dedup 失敗寫日誌並區分部分未完成
+- fix: 守衛測試在無 tomllib 的 3.10 改用最小解析
+- fix: 審查修正 搜尋句不列目錄、守衛涵蓋 commit_policy 與 review、hook 提醒補 liveness
+- fix: 判定收純路徑並補 ::write 對照測試
+- fix: 建票模板判定濾掉 ::read 唯讀宣告，還原 checker
+- fix: hook 範圍判定不將 ::read 唯讀宣告視為改動 hook
+- fix: track commit 目錄展開後再檢查 symlink 與逸出
+- fix: move-lines 其餘兩條拒絕路徑改 stderr 加 logger
+- fix: move-lines 錯誤路徑補日誌並保留 _stage_temp 原例外
+- fix: lease 鑑識放寬 prunable 與無關未追蹤檔，worktree list 失敗落 unknown
+- fix: 測試入口改以檔案系統推導並與 md 表比對
+- fix: dedup 值 fullmatch 與 ASCII 限定
+- fix: move-lines 補測試鑑別力與未攔截例外訊息
+- fix: dispatch hook 外部 .claude 判定排除佔位字樣與同層同 repo worktree
+- fix: argv 下標 bool 依 Python 語意視為 int
+- fix: bash-write-boundary-guard 變數展開改為可能值集合
+- fix: worktree 骨架補票面 CLI 被拒處置與 heredoc 句
+- fix: worktree-remove-deliverable-check 空目標日誌分三種情況
+- fix: 寫入範圍判定抽共用模組，解 symlink 並要求 --worktree 屬本 repo
+- fix: lease 鑑識以 dispatch-active 與 commit 主旨對回票號
+- fix: dispatch 骨架對含測試 acceptance 的 IMP 加紅燈實跑要求
+- fix: 同鏈略過 multi_view_status 警告僅限 append-log 確實寫入該欄位
+- fix: worktree remove Guard A 以 -C 指向的 repo 為基準查詢
+- fix: 查重紀錄關鍵字中和、錨點定位、僅 none 寫入
+- fix: dispatch-readiness 閾值 1 排除 hook 證據模板條目
+- fix: move-lines 保留權限、行界只認 LF、還原失敗訊息、CRLF 補行
+- fix: 票號前邊界僅排除數字與點，字母緊接仍命中
+- fix: dirty 區塊的 remove 驗證行改印 /worktree cleanup
+- fix: 已合併 worktree 清理建議改印 /worktree cleanup
+- fix: hook 匯入 fallback 補寫檔案日誌 ERROR 行
+- fix: lease 殘留鑑識以票號邊界比對並去除 worktree 前綴
+- fix: 同鏈偵測失敗日誌升為 warning
+- fix: acceptance gate 防護類判定排除 hooks 下 pytest 基礎設施檔
+- fix: 同命令鏈偵測命中時略過 multi_view_status 未標註警告
+- fix: 命令無法解析時退回正則擷取 remove 路徑，不再直接 fail-open
+- fix: hook acceptance 模板去重先去除核取框前綴
+- fix: 非必然執行的賦值不入 env，HOME／CLAUDE_PROJECT_DIR 賦值不得成為放行依據
+- fix: worktree-remove-deliverable-check 改用 git_command_parse 辨識 remove 呼叫，git -C 形式受 Guard A/C 檢查
+- fix: create 失敗清理每步寫入 worktree-merge.log
+- fix: hook 改 lazy import worktree_manager，失敗退回通用字面
+- fix: worktree hook 落地建議改走 /worktree merge 合併閘門
+- fix: worktree-branch-check 未合併分支改用 for-each-ref 取名
+- fix: worktree create add 逾時或失敗時清理自建 worktree 與分支
+- fix: 0> 與 0>> 的檔案目標亦為寫入
+- fix: fd 重導向檔案目標納入寫入候選
+- fix: bash-write-boundary-guard 涵蓋同 repo 同層 worktree 的絕對路徑寫入
+- fix: 收窄 bash-write-boundary-guard 豁免（狀態檔、建置快取、git mv 命令字）
+- fix: _is_branch_pushed 改判分支 tip 是否在任一遠端 ref 上
+- fix: worktree-branch-check 改用共用 git 命令解析，git -C 形式觸發、引號內字樣不觸發
+- fix: worktree 兩支 hook 建議指令改為規則七合規提交形式
+- fix: cleanup Level 3 合併判定改用 merge-base --is-ancestor
+- fix: fail_closed 守衛清單同步加入 bash-write-boundary-guard
+- fix: 合併前審查修正（open 模式、fd 1/3+、perl/-t/exec、子殼 cd、pushd、脫困指引）
+- fix: hooks conftest 缺 yaml 時單一明確訊息結束並指出正確指令
+- fix: bare-commit-guard 串接多筆 commit 逐筆判定，--amend 只豁免該筆
+- fix: 預檢納入 try，例外記中止結束行
+- fix: content guard 合併豁免改逐 commit 依 parent 數判定
+- fix: bare-commit-guard 無法解析覆寫的阻擋日誌措辭分流
+- fix: bare-commit-guard 追隨 gitlink 檔指向偵測進行中操作
+- fix: skill-sync status report suggests push --prune for locally deleted files
+- fix: bare-commit-guard 對無法解析的 GIT_DIR 覆寫目標保守阻擋
+- fix: bare-commit-guard 進行中操作偵測涵蓋全部 commit 目標與目錄覆寫
+- fix: hook acceptance 模板帶入具冪等性
+- docs: 改寫 hook docstring 為現行行為
+- docs: session-naming 名稱字元處理段改為實測結論
+- docs: session-naming §1 依用戶裁定改為命名底線
+- docs: 新增 PC-GPD-038 並行代理人共用 scratchpad 通用檔名互相覆蓋
+- docs: session-naming 依主控審閱修正四項
+- docs: multi-session-orchestration 新增 session 命名與換 session 時機規則
+- docs: 派發要明示的句子改為 --content-file 寫法
+- docs: 新增 PC-GPD-037 閘門行為判斷前未讀現行判定碼
+- docs: 新增 PC-GPD-036 收尾段未開票發現無人接手
+- docs: 新增 TEST-GPD-006 相容性 fallback 在閘門環境從未被執行
+- docs: multi-session-orchestration 收尾程序補未開票發現須建票
+- docs: 同步 agent-dispatch-template 骨架節至壓縮後字面
+- docs: 新增 TEST-GPD-005 上限守衛測試只量產生器的單一組合
+- docs: 註明 porcelain 解析依賴 --no-renames
+- docs: PC-BAL-061 變體補模組名為常見字時改以 import 語句 grep
+- docs: PC-BAL-040 補 2026-10-20 續案：以字面格式消費的跨套件讀取端
+- docs: 更正守衛測試 docstring 的同名檔成因敘述
+- docs: PC-GPD-035 守衛收斂後推送後審查反覆重報已登記殘留風險
+- docs: multi-session-orchestration 補已知回歸暫留 main、移票挑選判準、收斂後審查標記查表三條規則
+- docs: IMP-GPD-006 執行者位置變體補派發驗證守衛第二例
+- docs: 處置判準的回歸判別法補基準輸入要求
+- docs: 處置判準補回歸分兩輪處理的三條件
+- docs: 處置判準第 3 步區分既有差異與修改自身引入的回歸
+- docs: create-command 補 --acceptance 雙分隔符（shell 或）會被拆的例子與跳脫寫法
+- docs: 處置判準第 2 步納入常見慣用寫法，無實例紀錄不構成殘留風險理由
+- docs: 處置判準第 3 步要求登記殘留風險時指明並核對稽核欄位
+- docs: 處置判準的判定日誌列補稽核欄位區分（跳過原因 vs 命令文字）
+- docs: hook 參考新增靜態解析守衛的 parser differential 處置判準
+- docs: PC-GPD-031 補「被守衛擋下後換寫法重試」變體，強制層列改為已實作
+- docs: dispatch_tracker 68% 缺席註記改為帶日期與樣本的實測記錄
+- docs: 派發範本補相關測試檔的找法（以改動物字面 grep 所有測試目錄）
+- docs: move-lines 範圍段補 symlink 與 worktree 歸屬
+- docs: 同步 track commit 拒絕情形與 CHANGELOG
+- docs: PC-BAL-061 補變體：改 hook 輸出字面時同名測試跨套件分散
+- docs: L10N 驗證說明測試 3 的 touch lib/ 步驟註明執行限制
+- docs: 派發範本測試入口佔位符改 <checkout> 並補單檔指令，與 conftest 提示字面一致
+- docs: IMP-GPD-008 補汰換正則時保留退路
+- docs: IMP-GPD-007、008 依 Layer 2 審查修正
+- docs: IMP-GPD-007、008 檔名補描述後綴
+- docs: hook 參考的必載表補 fail_closed 宣告時同步 fallback 清單一列
+- docs: multi-session-orchestration 收緊分級列補合併前查框架文件例行範例
+- docs: error-pattern SKILL 步驟 8 改以 CLI 為主要路徑，python 片段限 .py 檔執行
+- docs: IMP-GPD-006 補「以執行者位置推導判定範圍」變體，交叉引用 IMP-GPD-008
+- docs: 新增 IMP-GPD-008 守衛以正則或子字串比對 git 命令，全域選項使比對落空
+- docs: multi-session-orchestration 1.3.0 — 行為變更判準與放行方向分級、程式讀者的介面約定、驗收證據時序、交接中轉知
+- docs: 新增 IMP-GPD-007 解析 git branch 輸出漏掉 worktree 前綴
+- docs: multi-session-orchestration 1.2.1 — shared-resources §1 閘門期間提交列指向 §4 提交位置
+- docs: multi-session-orchestration 1.2.0 — shared-resources 補讀取各線 session 狀態的方法
+- docs: multi-session-orchestration 1.1.0 — 補可預見裁決提前問、驗收需他線分支時由 owner 自行合併
+- docs: worktree SKILL/CHANGELOG 同步 cleanup --branch (1.6.4)
+- docs: 新增 IMP-GPD-006 守衛以實作路徑副產物判定操作類型
+- docs: PC-GPD-034 文字修正——歸因語氣、定語堆疊、口語結論句、不可解析的票引用
+- docs: add PC-GPD-034 suggested command not validated by own parser
+- docs: multi-session-orchestration 1.0.1 — 收尾流程補 PM 換 session 時的 CLI handoff 寫法
+- docs: file-split-by-contention 補 portable skill 拆分時搬移來源記在 commit 訊息；cognitive-load-assessment 2.1.1
+- docs: 新增 IMP-GPD-005 fail-open 守衛新增阻擋種類漏補資源
+- docs: 回寫拆分與閘門協調教訓、補 track conflicts --since-days 文件
+- docs: 文字拆分補「用拆分前後的差值驗證」
+- docs: 分檔後本檔自引改跨檔引用、hook 註解指向新檔、原檔頭補分檔索引
+- docs: 純搬移 track-command 與 agent-dispatch-template 依職責分檔，原檔留路由
+- docs: 文字拆分補引用盤點、權威文字不搬、圍欄內標題
+- docs: 拆分流程補注入點不 re-export 與盤點單檔前提工具
+- docs: 萃取模組補「re-export 保不住 patch」
+- docs: 拆分前置補「派發前把新模組與相關測試列入 where.files」
+- docs: 拆分流程補「分辨鎖行為與鎖位置的測試」
+- docs: 拆分流程補「新模組不與標準庫同名」
+- docs: 同檔競爭作為拆分訊號：rule 觸發列與 skill 拆分流程
+- chore: sync skill-sync version to 1.25.0 in pyproject and uv.lock
+- chore: wrap-decision 升版 2.16.0，供 skill-sync push
+- chore: 移除 spec 與 wrap-decision 的專案層路徑與票號
+- chore: 8 個 skill 升版並補 CHANGELOG，供 skill-sync push
+- chore: skill-sync pull 4 個 skill 至發佈庫最新版
+- chore: sync-push --clean 回寫框架版本 某版本
+- style: fields.py 補 working = 等號後空格
+- test: content-file 讀檔失敗兩案例斷言 stderr 與票面不變
+- test: 補 3.10 後備解析直接測試並限定 pytest 區段
+- test: 補兩個受測呼叫的回傳碼斷言
+- test: 種子票建立補回傳碼斷言
+- test: 改名 hook 模板去重測試為面向化檔名，加測試根同名守衛
+- test: reclaim 落地測試隔離 dispatch-active 路徑
+- test: append-log 測試輸入補 content_file=None
+- test: 建票測試 helper 隨收緊補 dedup_keywords
+- test: linked worktree 與 symlink 路徑混用的放行測試
+- test: hooks 套件同名測試改斷言 /worktree cleanup 形式
+- test: 注入失敗重現 locked initializing；正向對照斷言不經 add
+- test: 測試名與 docstring 的 path-limited 改為精確 add 加裸 commit
+- test: 補 lib.dispatch_scope／git_operation_state 單元測試
+- test: 時鐘與專案根注入點改由符號反查模組，J 系列掃描涵蓋 tripwire 套件
+- test: 後綴剝除測試改 patch lib 層，不再釘住 hook 內剝除接縫
+
+---
+
+## [2.82.1] - 2026-10-16
+
+### Summary
+chore: sync-push 回寫框架版本 某版本
+
+Changes: 1 chore
+
+- chore: sync-push 回寫框架版本 某版本
+
+---
+
+## [2.82.0] - 2026-10-16
+
+### Summary
+revert: fix(某票.1): SubagentStop FIFO 後援限定非同步派發記錄 (原 commit); feat: persistence-reminder 加入 session 節流與增量提醒; feat: 清理過期的他 session 狀態分檔 (+359 more)
+
+Changes: 1 revert, 83 feat, 13 refactor, 180 fix, 44 docs, 5 chore, 1 style, 35 test
+
+- revert: fix(某票.1): SubagentStop FIFO 後援限定非同步派發記錄 (原 commit)
+- feat: persistence-reminder 加入 session 節流與增量提醒
+- feat: 清理過期的他 session 狀態分檔
+- feat: wrap-decision-tripwire 狀態檔依 payload session_id 分檔
+- feat: PostToolUse/SessionStart 提醒類 hook 改走 additionalContext
+- feat: 5 支提醒類 hook 改走 additionalContext
+- feat: Stop/UserPromptSubmit 模型可見提醒改走 additionalContext
+- feat: PreToolUse 5 支提醒 hook 改走 additionalContext
+- feat: commit_files_isolated 回傳結構化 failure_kind，classify_failure 改讀欄位
+- feat: worktree merge 可指定合併訊息與票號
+- feat: 新增 emit_model_reminder 薄包裝與六事件輸出形狀測試
+- feat: merge_gate 紅燈時保留失敗細節與記憶體快照
+- feat: parallel-dispatch-verification 與 worktree-merge-reminder 補處理結束碼 75
+- feat: track commit 拒絕訊息區分判準性與環境性，三份文件同步
+- feat: acceptance-gate hook 票前三項改為 Test Results/Solution 證據檢查，過渡期 WARN 放行
+- feat: cli-error-feedback 遮蔽路徑偵測 stdout 行首 [Error]
+- feat: complete 與 finish 類 hook 改用分層成功判定與 completed 狀態驗證器
+- feat: 合併閘門 CAS 重試依套件範圍沿用驗證結果
+- feat: 名額排隊依前方預估耗時提早拒絕
+- feat: slot_gate 名額依到達順序排隊
+- feat: 並行期判定依派發條目工作位置過濾
+- feat: hook 票判定排除 hooks/tests 並阻擋殘留 <待填>
+- feat: Bash 成功判定分層（遮蔽判斷、票面狀態驗證器、標記退路）
+- feat: hook 票 create/set-where 帶入 acceptance 模板與提醒
+- feat: phase4 守衛改用 lib 共用任意位置掃描
+- feat: 完成類 hook 對 PostToolUseFailure 結束碼 75 補處理 (某票.5)
+- feat: agent-dispatch-validation 名單外代理人依目標路徑判定 worktree 強制
+- feat: post-test-hook 與 cli-error-feedback 處理 PostToolUseFailure:Bash
+- feat: acceptance-gate 完成類辨識改用共用任意位置掃描
+- feat: global-pkill-guard 改任意位置掃描加閱讀類例外
+- feat: 統一測試入口，補 doc 與 mermaid-ascii 的 dev group，派發範本新增測試入口小節
+- feat: 收斂 git -C 目標目錄解析至 lib 單一函式
+- feat: agent-commit-verification 判定日誌補 agent_id、查詢命中與狀態根路徑
+- feat: 共用狀態讀取改走 get_shared_state_root，並行期判定收斂為 hook_base.has_parallel_dispatch
+- feat: 分級守衛區分 tokenize 失敗與僅掃描命中的提示文案，lib 無法解析不寫 stderr
+- feat: 分派器與 settings 支援 PostToolUseFailure:Bash 群組
+- feat: 五支狀態型守衛改傳 scan=True
+- feat: 四支分級守衛改用 scan 模式，僅掃描命中比照無法解析
+- feat: git_command_parse 新增 scan 任意位置掃描模式與 via_scan 欄位
+- feat: worktree 收尾句止於 ticket track commit
+- feat: git_command_parse 涵蓋控制結構、背景符號、前綴命令與行內別名
+- feat: domain-import-lint-hook 改用共用 git 命令解析
+- feat: 五支提示型 hook 的 commit 判定改用 match_git_commit
+- feat: 五支 hook 的 commit 判定改用 find_git_invocations
+- feat: 豁免清單加 topic-assignments.txt，每個套件輸出一行結果並寫日誌
+- feat: hook_base 新增 get_shared_state_root 並改接 acceptance-gate 讀票面
+- feat: 分派器經 lib.hook_registry 讀 registry，補 linked worktree 專案根一致性測試
+- feat: 註冊表消費端改經 lib.hook_registry 讀取分派 registry
+- feat: Bash 的 PreToolUse/PostToolUse hook 合併為單一分派程序
+- feat: skill 被 hooks 或 scripts 使用時加跑對應套件
+- feat: worktree 合併前於快照內經名額閘門跑全套件，紅燈不合併
+- feat: bare-commit-guard 擋 cherry-pick、revert、rebase 進行中裸 commit
+- feat: 擴充 git 命令解析器涵蓋包裝寫法與有效目錄
+- feat: worktree merge 新增 --branch 與 --pre-acceptance 入口，落後 base 改提示
+- feat: 工作提交歸屬 trailer 提交後提示 hook
+- feat: phase4_review_checker 公開證據判定函式，lifecycle 改用公開介面
+- feat: pre-test-hook 封堵未包裝 heavy 命令與不帶 paths 的 mcp__dart__run_tests
+- feat: heavy 命令啟動前提示本專案孤兒程序
+- feat: zombie-cleanup 以整體期限扣減各 git 呼叫逾時
+- feat: track commit 缺 Co-Authored-By 時自動補上
+- feat: 測試與編譯的本機名額閘門
+- feat: hook_base 專案根解析加行程內快取
+- feat: worktree merge 以隔離索引 CAS 直接完成合併，含 pre_merge_check 掛點
+- feat: post-test-hook 評估紀錄加 matched_excerpt 與 tool_response 形態欄位
+- feat: lib 啟動器收到 SIGTERM 時轉送子群組
+- feat: complete 同步 tdd_phase／Executing Agent／Review Status，改派追加 who.history
+- feat: 測試命令判定補強漏判形態並公開 skip_prefix_wrapper_count
+- feat: lib 溫和終止改為行程群組終止
+- feat: 新增全機 pkill/killall 守衛 hook
+- feat: 共用測試命令判定，三個 hook 改用同一份
+- feat: 補強 index-lock 線索行命令機密遮罩
+- feat: handoff gc 判查無來源票為 stale；migrate 同步改寫 handoff pending 舊 ID
+- feat: index-lock hook 每次 Bash 檢查，目標含 cwd/-C/--worktree，先記線索後刪
+- feat: lib 溫和終止函式，zombie-cleanup 寫入類改用並補靜默逾時日誌
+- feat: 逾時包裝腳本登記程序群組，清理指令依登記終止孤立群組
+- feat: 孤兒清理指令列出被收養且子孫含執行器的程序樹
+- feat: FR 抽取完整性：部分漏抓警告、略過圍欄區塊、全形冒號端到端測試
+- feat: 新增限本專案範圍的孤兒測試程序清理指令
+- feat: add process-group timeout wrapper
+- feat: check_domain_coverage 層級 SPEC 依 domain 欄以系統層判定
+- feat: index-lock-cleanup 涵蓋 linked worktree 並以三項條件限定刪除
+- feat: validate consumers 檢查依 EVT category 分流
+- feat: bare-commit-guard MERGE_HEAD deny
+- feat: locate_domain_map 多 domain 解析鏈與 fixture 測試
+- refactor: classify_failure 移除字串 fallback，未知類型 fail-closed
+- refactor: 移除重複的 cli-failure-help-reminder hook
+- refactor: 移除 pre-test-hook 的 HOOK_METADATA 區塊
+- refactor: 移除 10 支 hook 的 HOOK_METADATA 區塊
+- refactor: acceptance-gate 完成命令判定改用 lib/ticket_command_parse
+- refactor: 移除四支 hook 無引用的 EXCLUDED_COMMAND_PATTERNS
+- refactor: 新增 match_git_commit 三態判定並遷移四支提示型 hook
+- refactor: 刪除 merge 重構後無呼叫者的三處死碼
+- refactor: 名額閘門抽成 lib/slot_gate，修補 light 判定繞過與鎖目錄
+- refactor: 失敗摘要樣式單一來源，各樣式自帶比對旗標
+- refactor: 全機 pkill 守衛改由公開名稱匯入前綴略過函式
+- refactor: 逾時終止函式收斂至 lib 單一實作
+- refactor: 刪除 check_domain_coverage 單文字版重複實作並收斂歸屬判定
+- fix: 同步 additionalContext 遷移測試的計數檔位置
+- fix: 主套件線性驗證改計數斷言，計時測試標 wallclock
+- fix: wallclock 比值測試依形態放大 n，改 CPU 時間並停用 GC
+- fix: 比值測試改 wallclock，主套件留粗門檻
+- fix: ticket-creation-validation 票檔路徑容許任意層數，日誌改寫專案 hook-logs
+- fix: dart-style-guardian 改讀 stdin tool_input.file_path
+- fix: suggest-compact 計數鍵改 session_id，計數檔移至 hook-state
+- fix: language-guard 與 evaluate-session 改讀 payload transcript_path
+- fix: 名額等待訊息負載欄位標為目前負載並以分隔符區隔
+- fix: boundary-guard 命令解析改為線性 token 走訪
+- fix: SessionStart 提醒改走模型可見的 additionalContext
+- fix: cli-error-feedback 已處理判定改依命令開頭比對
+- fix: 明確指定的既存 .py/.dart 檔不論命名判 light
+- fix: 程序群組登記目錄驗證與機器可讀孤兒摘要
+- fix: 移除 sed -e 前瞻消除平方級回溯
+- fix: 移除 wrap-decision-tripwire 恆落空的 dispatch-active 第二層票號推導
+- fix: version-release-guard 警告路徑保留核准決策
+- fix: sed -i 路徑抽取支援 GNU/BSD/-e 寫法
+- fix: pre-test-hook 測試目標含 shell 變數時 fail-open 放行
+- fix: wrap-decision-tripwire 從 Agent payload 推導票號，推不出時不顯示空 Ticket 欄位
+- fix: 並行派發驗證比對前剝除 where.files 的 ::write/::read 後綴
+- fix: sync STAGING_PHRASE_AGENT fallback conditions
+- fix: 框架標記改為開頭數行內行首比對，補 teammate-message
+- fix: restrictive_keywords 跳過框架標記的非使用者回合
+- fix: 否定詞只看最近逗號後分句，移除單字「別」
+- fix: 收尾提示改子句級判定，引用或否定不再誤報
+- fix: general-cli 分支不再依賴恆空的 PostToolUse stderr
+- fix: 排頭排隊者停住時後方略過並輸出訊號
+- fix: log_root 為空時旁置檔與結果行日誌改警告，不拋 TypeError
+- fix: 名額佇列不再因預估過長提早拒絕，等待上限只偵測持有者卡住
+- fix: hook 票 tests 排除判定先 normpath 並以 realpath 判 symlink
+- fix: test_track_dispatch 提醒測試改比對 HOOK_TICKET_REMINDER 常數
+- fix: claim、handoff、append-log、CLI 回饋類 hook 改用分層成功判定
+- fix: 合併閘門預估拒絕不印 traceback，閘門開始與結束各記一行
+- fix: is_invocation_masked 對子 shell 內層遞迴判斷遮蔽
+- fix: complete 類 hook 不論遮蔽與否皆以 completed 驗證器確認完成轉換
+- fix: set-where 路徑讀票面 how.strategy 判定盤點模板
+- fix: create 第四條盤點模板改讀 how.strategy 與 gate 一致
+- fix: tripwire 警示改走 additionalContext，手動執行判定改為命令形式
+- fix: 待填阻擋只比對結尾為冒號加待填的模板條目
+- fix: bare-commit-guard 工作位置過濾改用全部 commit 目標聯集並排除 git-dir 類覆寫
+- fix: parallel-dispatch-verification 略過 ANA 並併入子孫票提交
+- fix: ticket_command_parse 排除只查說明的 -h/--help
+- fix: wrap-decision-tripwire S1 改認 Agent、以 PostToolUseFailure 為失敗來源
+- fix: 過濾基準改用 commit 實際作用的 checkout
+- fix: 持有標記只到直接子層，run-with-timeout 啟動命令時去除並還原等待上限
+- fix: 套件包裝取同樹 run-with-timeout，持有期間子程序等待上限降為 30 秒
+- fix: 合併閘門先取得 heavy 名額再產生合併 commit，持有至 update-ref
+- fix: 非純賦值陳述含命令替換判為遮蔽
+- fix: header event_type 測試改斷言 settings.json 註冊
+- fix: phase4 守衛以 TICKET_ID_PATTERN 取 ID，帶值選項的值不再被當成 ticket ID
+- fix: 深度警告措辭對齊 258.1 派發深度行為
+- fix: 探針 hook 的 HOOK_METADATA.dependencies 對齊 PEP 723 的 pyyaml
+- fix: 有鍵時 post 不退回舊單檔，pre 清理逾時殘留鍵檔
+- fix: 分派器同程序執行 hook 時隔離 fd 1/2，子程序輸出併入該 hook stderr
+- fix: acceptance-gate 收集並逐一檢查命令內全部 ticket ID
+- fix: global-pkill-guard 的 command -v 例外只看 command 自身選項
+- fix: pre-test-scan 改用 run_hook_safely 寫入 liveness
+- fix: BLOCK_MESSAGE_TEMPLATE 不限實作代理人並補 readonly 豁免說明
+- fix: 閘門 ID 抽取改取掃描結果，無法解析時以原文 fail-closed
+- fix: 完成類掃描對 stdin shell fail-closed，改用公開別名
+- fix: global-pkill-guard 補 man -H/--html 與黏寫短選項，改寫指引補例外
+- fix: global-pkill-guard 閱讀類例外排除執行類選項
+- fix: 閱讀類判定用 extended 前綴跳過
+- fix: merge-reminder 排除進行中派發，不建議清理 locked 或零提交 worktree
+- fix: relax self-check heading regex to accept yu connector
+- fix: dispatch_tracker _state_cache 改以檔案路徑為鍵、st_mtime_ns、命中回 deepcopy
+- fix: dispatch_tracker 在 linked worktree 內讀寫主倉庫登記檔
+- fix: diff-tree 改 --diff-merges=first-parent，補合併情境測試
+- fix: worktree 收尾提示改為止於 ticket track commit
+- fix: strip_line_comments 處理 bash 行接續，防註解剝除繞過
+- fix: session 狀態鍵改用 hook 輸入的 session_id
+- fix: 註解行不再吞掉其後語句使 git 呼叫漏判
+- fix: 三支 hook 成功判定改接 bash_tool_response，helper docstring 依平台事件重寫
+- fix: parallel-dispatch-verification 票號保留子任務後綴並改以票相關 commit 範圍比對
+- fix: 追修反引號、取反、coproc、function、time 選項與字串命令包裹
+- fix: handoff-cleanup 與 parallel-dispatch-verification 改用不依賴 exit_code 的成功判定
+- fix: hook-dispatcher 預算用盡或分派層故障時不再整批放行守衛
+- fix: 兩支 hook 完成命令辨識改用 ticket_command_parse，涵蓋 finish
+- fix: post-ticket-lifecycle 與 handoff-cleanup 改用共用解析器辨識完成命令（涵蓋 finish）
+- fix: 兩支 hook 改走共用解析器辨識 finish 別名
+- fix: acceptance-gate 辨識 finish 別名並走共用解析器
+- fix: registry 讀取失敗改記 warning 並寫 stderr
+- fix: check-acceptance --all 輸出分開本次變更數與目前已勾選數
+- fix: 合併前套件範圍涵蓋 skill、scripts、lib 的測試
+- fix: worktree 模式不借票面副本作共用檔提交的主路徑
+- fix: track commit 對 append-only 共用檔只提交本票的行
+- fix: 巢狀與別名無法解析一律回 None，別名查詢加快取與上限
+- fix: trailer 提示文字由「最新提交」改「本次提交」
+- fix: trailer 提示 hook 以 git commit 輸出的提交 SHA 定位，不讀 HEAD
+- fix: heavy 判定剝除重導向，單檔加 2>&1 不再被錯擋
+- fix: 替身簽名對齊 validate_task_dispatch 三參數
+- fix: 測試監控檔依 tool_use_id 分檔，背景命令不寫監控檔
+- fix: 查詢類命令判 light、建議寫法剝除控制運算子、封堵端全程 fail-open
+- fix: MERGE_HEAD 偵測失敗同時寫 stderr（規則 4）
+- fix: is_ticket_missing 吞例外時寫 warning 日誌
+- fix: orphan 測試的 _merge_in_progress 替身改接受新簽名
+- fix: patch_paths_to_repo 讓專案根指向自建 git repo，補非 git 根降級警告對照
+- fix: 孤兒提示分開可清理與疑似殘留兩個數字
+- fix: bare-commit-guard MERGE_HEAD 偵測目錄改 -C > payload cwd > root，偵測失敗 fail-open 並寫 warning
+- fix: 派發綁定不再以唯讀審查者覆寫 PM 持有的票，身份守衛不再引導他人名義申報
+- fix: 覆審追修（開關吞參數、路徑型選項值判 heavy、當下 load、過期暫存檔）
+- fix: append-log --replace 保留 CLI 管理 H3 並於摘要列出被取代標題
+- fix: 名額鎖目錄安全化（~/.cache/claude-slot、lstat 驗證、O_NOFOLLOW）
+- fix: 派發深度守衛改以實際巢狀層數判定 (某票.1)
+- fix: 補 git 逾時分支 warning 日誌 (某票.6.16)
+- fix: 以 cwd 判定子代理人，model id 改通則推導
+- fix: track commit 將版本工作日誌與 topic-assignments 視為隱含可寫
+- fix: 建票鎖 common dir 改檔案系統解析，降級可見並補 gitignore
+- fix: post-test-hook 背景命令跳過計時與失敗評估
+- fix: 派發骨架收尾句補自檢結果與 Phase 4 評估
+- fix: branch-check hook 只比對 tool_input.command 並停止記錄 payload
+- fix: pytest -q 綠燈摘要不要求行首
+- fix: 移除 dispatch_recommender PEP 723 未使用的 click 依賴
+- fix: post-test-hook 裸 FAILED 改區分大小寫並補小寫摘要樣式
+- fix: git 呼叫逾時與失敗補日誌
+- fix: SIGTERM 轉送在原 handler 為 None 時略過安裝
+- fix: post-test-hook 任一行摘要含 failed/error 即不走綠燈捷徑
+- fix: worktree skill 宣告 pyyaml 相依，使 orphan audit 測試可收集
+- fix: 移除 creation-acceptance-gate 註冊，建票通過硬閘門後直接寫 creation_accepted: true
+- fix: post-test-hook Bash dict 只評估 stdout/stderr 並認得 pytest -q 綠燈摘要
+- fix: post-git-commit-hook 背景 fetch 逾時改用 lib 溫和終止 (某票.6.5)
+- fix: 隔離索引提交後共用 index 同步沿用提交退避預算並回報失敗路徑
+- fix: git_ops 延遲匯入 claude_lib_loader 使降級備援可達
+- fix: 縮減派發骨架 hook 提醒第 4 項為路由，骨架回到 30 行
+- fix: 補 nohup 後接 sudo/env、合併短選項與帶值集合漏判
+- fix: bare-commit-guard 排除擁有者 session 已結束的派發條目
+- fix: 移除 SubagentStop FIFO 後援，無精準匹配走墓碑（案 D）
+- fix: 線索行遮罩不再誤遮 SHA、長檔名與 --author
+- fix: 盤點表表頭後無分隔列時的閘門提示訊息
+- fix: 補套 3d66c1b 空合併遺漏的分支內容
+- fix: fix-multi-view-status 同步寫入 reason 並於缺欄位行時新增平鋪行
+- fix: run-with-timeout 訊號處理器先於啟動安裝並於 finally 清理群組
+- fix: pre-test-hook 只認敘述開頭的測試指令
+- fix: 工作日誌無日期標題時於開發日誌章節建立當日標題再追加
+- fix: 群組終止忽略殭屍群組的 PermissionError
+- fix: post-test-hook 零終止斷言改語法樹檢查、門檻邊界測試、15 分鐘一級指向列出指令
+- fix: 線索檔改名避開日誌清理、持有者靜默、測試補強
+- fix: 非 repo 目錄靜默略過、遮罩網址帳密
+- fix: 更正相容分支可達條件敘述並補端到端測試
+- fix: 依登記終止群組時修正 KILL 升級、登記驗證與查詢失敗處理
+- fix: 審查必修：整份無歸屬檔的尾行說明、文件限定條件與三則存活變異測試
+- fix: spec 未覆蓋尾行改說明可行補法並補部分歸屬檔的未歸屬提示
+- fix: 層級路徑 id 訊息不建議 --domain-map，移除不可達分支
+- fix: 無法解析的 map 列名限於未被選入判定者並單點輸出
+- fix: 層級 SPEC 的 id 無法辨識時共用成因訊息
+- fix: source_specs 格式無法解析的 map 於各路徑皆列出檔名
+- fix: domain map 端的 domain 欄維持舊讀法
+- fix: domain 欄格式檢查限於消費處、引號井號殘留、系統層目錄報錯
+- fix: domain 欄格式健全性、系統層目錄守衛、spec 1.9.6 文件同步
+- fix: spec 層級判定的目錄守衛與已宣告集合/判定優先序測試守護
+- fix: 審查必修 註解遮蔽行內程式碼邊界與略過區段提醒
+- fix: spec check_domain_coverage 宣告讀取與矛盾比對補強
+- fix: 未閉合圍欄非 0、圍欄判定補強、測試鑑別力與文件同步
+- fix: session 增量 diff 加 -c diff.autoRefreshIndex=false 並補 index 位元組效果層測試
+- fix: unstaged diff 加 -c diff.autoRefreshIndex=false 並補 index 位元組效果層測試
+- fix: 孤兒清理指令首詞為絕對路徑時須為存在的一般檔案
+- fix: 差集三檔唯讀 git 呼叫補 --no-optional-locks
+- fix: 孤兒清理指令改只看首詞認定、補終止結果回報與 KILL 後存活判定
+- fix: 唯讀 git 呼叫補 --no-optional-locks
+- fix: 修正測試監控上限警告文字、常數改名與零終止斷言涵蓋範圍
+- fix: 修正孤兒清理指令的認定清單、終止結果回報與失敗可見性
+- fix: source_specs 解析修正 R1-R4、補變異守衛測試 R5、更正 CHANGELOG R6
+- fix: 層級模式覆蓋失敗標題與事件流提醒尾行改稱系統層
+- fix: 測試監控 hook 移除全機 pkill，達上限改輸出警告
+- fix: report every start failure as 126 or 127
+- fix: tolerate EPERM on zombie-only process groups
+- fix: 定位失敗訊息依成因輸出、source_specs 支援區塊清單、刪除無呼叫端入口
+- fix: auto-commit hook 逾時改先 SIGTERM，並加契約測試與測試隔離
+- fix: git 逾時改先 SIGTERM、寬限後才 SIGKILL，逾時後不等輸出管線 EOF
+- fix: 層級模式不走相容後備、空字串旗標報錯、補鑑別力測試
+- fix: 層級判定僅在原定位鏈無 map 時成立，走系統層時印 domain 欄與已宣告集合
+- fix: index-lock-cleanup 改用 payload cwd、刪除前複核、lsof 判定收緊
+- fix: 系統層不適用整份無歸屬規則並補 stderr 訊號與說明
+- fix: 未帶 SPEC 標題的 map 歸屬改回相容語意並移除多檔特例
+- fix: read has_functional_requirements declaration before map location
+- fix: FR title fullwidth colon and empty-set split
+- fix: spec domain coverage 多 map 聯集改在集合層
+- fix: MERGE_HEAD deny message and discriminating tests
+- fix: sibling-blockedby 條件 1 前驅皆終態時放行並補對照測試
+- docs: 新增 PC-GPD-033 放寬守衛判定未驗證應擋者仍被擋
+- docs: 依寫作審查修正 multi-session-orchestration
+- docs: 新增 multi-session-orchestration skill
+- docs: 寫作審查修正（CI 落地前提、套件選擇路由、Step 5 路由、批次界定）
+- docs: 測試要求改為提交前相關測試檔、合併前全套件，新增實機驗證票小節
+- docs: TEST-BAL-003 補移除端實例與依特徵 grep 全部測試檔的防護
+- docs: skip-gate 處置對齊派發範本例外
+- docs: 寫作審查修正
+- docs: 驗收細節與模板同步合併閘門語意
+- docs: 代理人只跑相關測試檔，全套件交合併閘門
+- docs: IMP-GPD-004 補 frontmatter 與 slug 檔名
+- docs: quality-baseline 規則 4 補提醒類輸出受眾宣告
+- docs: 並行期工作位置殘留同步聯集判定與事先 export 的 GIT_DIR 殘留
+- docs: SKILL.md CAS 重試描述同步為依套件範圍沿用
+- docs: 新增並行期工作位置的放行殘留小節
+- docs: 新增 IMP-GPD-003 可重入鎖標記遇版本不一致而等待祖先
+- docs: needs-context-listener 檔頭與函式說明對齊實作
+- docs: PC-165 新增守衛辨識層擴大變體小節
+- docs: 新增 PC-GPD-032 hook 實地觸發落在提早返回分支
+- docs: hook 狀態類別與根解析對照表，ARCH-BAL-020 補實例
+- docs: 補記 scan 模式殘留類別與誤判情境
+- docs: dispatch_skeleton 收尾註解對齊 CLOSING_BY_ISOLATION
+- docs: 隔離代理人收尾條文改為止於 commit、PM 合併後 complete
+- docs: 更正 finish 繞過 acceptance-gate 的過期敘述
+- docs: worktree 隔離派發收尾改為 PM 合併後 complete
+- docs: 新增 PC-GPD-031 代理人依 harness 許可以 Bash 寫檔
+- docs: 新增 TEST-GPD-004 守衛測試以自由文字子字串斷言決策
+- docs: 依寫作審查修正拆分例外條文
+- docs: tool-selection 規則 2 補 too complex to verify 拆分例外
+- docs: 規則七擴及 cherry-pick、revert、rebase 進行中的裸 commit 收尾
+- docs: 同步 worktree merge 新入口至 SKILL 與 subcommands
+- docs: 規則七詳細補 git merge 的 update_ref 失敗變體與處置
+- docs: 新增 IMP-GPD-002 Bash tool_response 整包字串化誤把 bashEditDiff 當命令輸出
+- docs: 建立後審核改為依觸發條件必審
+- docs: 逾時與清理寫法改用包裝腳本與孤兒清理指令
+- docs: SKILL.md 列名敘述與實際行為相符
+- docs: spec skill 說明與版本紀錄同步 FR 抽取的兩項行為（略過圍欄區塊、部分漏抓於 stderr 警告），版號 1.9.4
+- docs: SKILL.md 對齊 check_domain_coverage 層級 SPEC 行為並升版 1.9.2
+- docs: SKILL.md metadata.version 同步為 1.24.12
+- docs: 三份 SPEC 模板補 has_functional_requirements 欄位與註解
+- docs: SKILL.md FR title and empty-set semantics
+- docs: 規則七追修 Unable to write index 對齊 PC-169/IMP-V1-005 並改寫他檔殘留
+- docs: 規則七衝突合併收尾改 merge --continue 並補兩段式合併禁令
+- docs: PC-BAL-004 新增案例四「選項只列直接後果，漏列與既有規則組合後的連鎖」
+- chore: doc 與 mermaid-ascii 的 uv.lock 同步新增的 dev group
+- chore: merge_gate except 區塊補靜默原因註解
+- chore: 註冊 scripts 測試的 wallclock marker
+- chore: 同步 worktree skill 的 uv.lock（新增 pyyaml 6.0.3）
+- chore: VERSION 回寫 某版本（sync-push）
+- style: COMMIT_SHA_PATTERN 賦值補空格
+- test: CLI_FAILURE_PAYLOAD 改為真實 PostToolUseFailure 格式
+- test: staleness-guard 生產啟動測試標 wallclock，斷言附 hook 日誌
+- test: run-with-timeout 等待上限測試改為持有者超出預估語意
+- test: 補閘門重試新增套件加跑的測試
+- test: 對齊流程 B worktree 收尾斷言
+- test: 補 create 命令入口端到端 E1 對照測試
+- test: merge-reminder 測試同步 locked／零提交判準並補正向對照
+- test: 同程序測試改用足額預算並補 pid 斷言
+- test: 失敗事件群組斷言改為不阻擋，容許 DEFAULT_OUTPUT 空殼
+- test: 分派程序同程序下專案根與共用狀態根快取互不汙染回歸測試
+- test: 補送達探針 hook 的測試
+- test: E2 -z 測試改依 279.3 新簽名並分別覆蓋 diff-tree 與 diff HEAD 兩條路徑
+- test: exit_code_75 測試的 cli-error-feedback 案依新判定語意改寫
+- test: E2 與組合情境改用 children 阻擋並斷言 deny
+- test: 補 set-acceptance 全部模式輸出測試
+- test: pre-test-hook 封堵端到端測試（subprocess + stdin）
+- test: 補 git 逾時 warning 日誌測試 (某票.6.18)
+- test: 閘門 fail-open 回歸測試（cwd 已刪除、判定例外）
+- test: 契約測試 ticket 組走 lib 版並加未降級斷言
+- test: 唯讀 status 三處補效果層測試與 branch-check 替身未知引數拋錯
+- test: 補強 zombie-cleanup 替身、returncode 非 0 日誌與訊號測試就緒判定
+- test: 冒煙判定三態改 monkeypatch 驗證，真實 uv 子程序測試標記 wallclock
+- test: 修正 stderr 失敗測資使其命中既有樣式
+- test: CAS 耗盡補救斷言改為 ticket track commit 新訊息
+- test: 殭屍群組終止測試與 killpg 對照
+- test: 補 repo 無鎖常態路徑不起子程序測試
+- test: 修 branch -d 替身失效並更名逾時常數
+- test: source_specs 解析五個邊界補測試，移除 _diagnose_missing 的 explicit 參數
+- test: 既有孫程序案例補 pid_log 清理，消除殘留 sleep
+- test: 補強逾時契約測試的未覆蓋路徑與孤兒程序
+- test: 三個 hook 唯讀 git 旗標 argv 斷言
+- test: 移除 test_worktree_auto_commit_hook 重複的 _no_real_repo fixture，改由 conftest 提供
+- test: worktree 測試套件層級 cwd 隔離 autouse fixture
+- test: close pre-merge test gaps and SKILL.md leftovers
+- test: 分段計時測試改全注入時鐘並補取樣空隙對照
+
+---
+
+## [2.81.1] - 2026-10-09
+
+### Summary
+docs: PC-BAL-004 補「決策選項的後果說明內嵌未查證前提」形態; chore: 回寫 .claude/VERSION 為 2.81.0（canonical sync-push）
+
+Changes: 1 docs, 1 chore
+
+- docs: PC-BAL-004 補「決策選項的後果說明內嵌未查證前提」形態
+- chore: 回寫 .claude/VERSION 為 2.81.0（canonical sync-push）
+
+---
+
+## [2.81.0] - 2026-10-08
+
+### Summary
+revert: 撤回 e074dcce5 誤夾帶的 doc skill 四檔 (原 commit: e074dcce5); feat: 某票.1 doc validate 擋下重複宣告的 domain (1.24.10); docs: ticket skill 補升 2.44.47（architecture.md 路由行漏升版號） (+1 more)
+
+Changes: 1 revert, 1 feat, 1 docs, 1 chore
+
+- revert: 撤回 e074dcce5 誤夾帶的 doc skill 四檔 (原 commit: e074dcce5)
+- feat: 某票.1 doc validate 擋下重複宣告的 domain (1.24.10)
+- docs: ticket skill 補升 2.44.47（architecture.md 路由行漏升版號）
+- chore: 回寫 .claude/VERSION 為 2.80.0（canonical sync-push）
+
+---
+
+## [2.80.0] - 2026-10-08
+
+### Summary
+feat: isolated-subagent guard denies Edit/Write/NotebookEdit on main repo hit; feat: isolated subagent main-repo write guard hook (warn mode); fix: 守衛 hook 日誌依實際決策標示 deny 或 warn (+3 more)
+
+Changes: 2 feat, 1 fix, 2 docs, 1 chore
+
+- feat: isolated-subagent guard denies Edit/Write/NotebookEdit on main repo hit
+- feat: isolated subagent main-repo write guard hook (warn mode)
+- fix: 守衛 hook 日誌依實際決策標示 deny 或 warn
+- docs: 二次審查修正——統一「兩訊號都取不到」處置、補不一致判準、路由行去除重述
+- docs: widen resume-or-reuse worktree check and route from resume sections
+- chore: 回寫 .claude/VERSION 為 2.79.0（canonical sync-push）
+
+---
+
+## [2.79.0] - 2026-10-08
+
+### Summary
+feat: doc validate 通過時先列已執行檢查再說明不適用項; feat: track depth 輸出補 can_descend 用途說明; fix: validate 通過輸出只列實際執行的檢查，略過與型別分流 (+1 more)
+
+Changes: 2 feat, 1 fix, 1 chore
+
+- feat: doc validate 通過時先列已執行檢查再說明不適用項
+- feat: track depth 輸出補 can_descend 用途說明
+- fix: validate 通過輸出只列實際執行的檢查，略過與型別分流
+- chore: 回寫 .claude/VERSION 為 2.78.0（canonical sync-push）
+
+---
+
+## [2.78.0] - 2026-10-08
+
+### Summary
+feat: doc validate 擋下 bundle 依賴成環與 branch_from 懸空/自指/成環; feat: doc validate-paths 與非 domain 路徑清單載體; feat: doc validate 檢查 UC 主線 next 與 flow 順序一致，修正 path_patterns 錯誤位置 (+12 more)
+
+Changes: 6 feat, 5 fix, 3 docs, 1 chore
+
+- feat: doc validate 擋下 bundle 依賴成環與 branch_from 懸空/自指/成環
+- feat: doc validate-paths 與非 domain 路徑清單載體
+- feat: doc validate 檢查 UC 主線 next 與 flow 順序一致，修正 path_patterns 錯誤位置
+- feat: DomainBundle 新增選填 path_patterns 與 doc validate 檢查
+- feat: validate 檢查 traverses 與 depends_on_domains 須為已宣告的 domain (1.24.3)
+- feat: handoff 恢復模式放行時輸出可見訊號
+- fix: 派發深度守衛改為被派發票深度超過 MAX_TICKET_DEPTH 才擋（裁決 E）
+- fix: 5w1h-compliance-check 讀 todos[] 並以 permissionDecision deny 阻擋
+- fix: 相對路徑引數以呼叫者 cwd 解析（shim 傳遞 SKILL_CLI_CALLER_CWD）(1.24.4)
+- fix: 產生版本改由型別表相容版本常數決定，守衛不再排除該鍵
+- fix: handoff 恢復模式放行限縮至 handoff 指向的票
+- docs: 修正版本號撞號並重整 PC-GPD-003 條文
+- docs: append-log 指引落地 PC-GPD-003 預防條文
+- docs: uv -d 改為 uv --directory
+- chore: 回寫 .claude/VERSION 為 2.77.1（canonical sync-push）
+
+---
+
+## [2.77.1] - 2026-10-07
+
+### Summary
+chore: 自 skill 發佈庫拉取 spec 1.9.1（用戶授權）; chore: 自 skill 發佈庫拉取 6 個 skill 的較新版本; chore: 回寫 .claude/VERSION 為 2.77.0（canonical sync-push）
+
+Changes: 3 chore
+
+- chore: 自 skill 發佈庫拉取 spec 1.9.1（用戶授權）
+- chore: 自 skill 發佈庫拉取 6 個 skill 的較新版本
+- chore: 回寫 .claude/VERSION 為 2.77.0（canonical sync-push）
+
+---
+
+## [2.77.0] - 2026-10-07
+
+### Summary
+feat: migrate dry-run 撞號 rc=0 預覽改號，finish 結尾列對照表; feat: migrate 子樹遷移遇根票撞號時自動改號（與單票路徑對等）; feat: hooks-test-gate 為 wallclock 標記測試接上固定執行點 (+20 more)
+
+Changes: 5 feat, 9 fix, 7 docs, 1 chore, 1 test
+
+- feat: migrate dry-run 撞號 rc=0 預覽改號，finish 結尾列對照表
+- feat: migrate 子樹遷移遇根票撞號時自動改號（與單票路徑對等）
+- feat: hooks-test-gate 為 wallclock 標記測試接上固定執行點
+- feat: linked worktree 導回主倉庫時於 stderr 輸出 [INFO] 提示
+- feat: phase4 decision enforcement 補 Solution 寫法的無 trigger 延後句型 (M4/W4)
+- fix: 已附 --acknowledge 時條件 3 純 IMP→IMP 不再重複 WARN
+- fix: blockedBy 循環偵測改以跨版本取票建圖
+- fix: merge-staged-index-guard diff 非零時留下可見訊號並常數化逾時
+- fix: track tree/chain/spawned 跨版本載入 children 與 spawned
+- fix: acceptance 審計跨版本載入 children
+- fix: deny 輸出失敗兜底 exit 2，直接 print 的 PreToolUse 守衛遷移或自行兜底
+- fix: 同步派發 SubagentStop 先於記錄寫入時以墓碑補標回合結束
+- fix: emit_hook_output deny 輸出失敗改 exit 2 並寫 reason 到 stderr
+- fix: claim 新增 --acknowledge，與 sibling-blockedby-validator 建議一致
+- docs: deny 輸出失敗語意段三處修飾（事件限定、後果句、用詞統一）
+- docs: 更正 deny 輸出失敗語意開頭段事實（例外回 exit 1 放行）
+- docs: 補 deny 輸出失敗語意規範段與新守衛檢查項
+- docs: SPEC-004 1.65 裁決 某票 兩項 NeedsContext；更正代理人定義載入時機
+- docs: 全套件回報示例的 exit code 於 tail 前取得（複審建議 1）
+- docs: 全套件指令改 -rfE 並重寫 Why 段（審查修正）
+- docs: 全套件回報規格加 -rf 並禁止過濾 FAILED 行
+- chore: 回寫 .claude/VERSION 為 2.76.0（canonical sync-push）
+- test: conftest autouse 統一清除 CLAUDE_EFFORT
+
+---
+
+## [2.76.0] - 2026-10-05
+
+### Summary
+feat: 代理人 model 分層——實作 sonnet[1m]、規劃與審查 opus[1m]; docs: agent model 權威檔改為兩層分工並移除 registry 重複來源; chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+
+Changes: 1 feat, 1 docs, 1 chore
+
+- feat: 代理人 model 分層——實作 sonnet[1m]、規劃與審查 opus[1m]
+- docs: agent model 權威檔改為兩層分工並移除 registry 重複來源
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+
+---
+
+## [2.75.0] - 2026-10-02
+
+### Summary
+feat: 測試專屬 liveness session id、洩漏哨兵、摘要略過測試索引檔; fix: guard 日誌隔離測試改為只讀 tmp 樹的正向斷言 (2.44.37); fix: 偵測階段非預期輸入記日誌後 exit 0 放行，不再 crash (+20 more)
+
+Changes: 1 feat, 13 fix, 6 docs, 1 chore, 2 test
+
+- feat: 測試專屬 liveness session id、洩漏哨兵、摘要略過測試索引檔
+- fix: guard 日誌隔離測試改為只讀 tmp 樹的正向斷言 (2.44.37)
+- fix: 偵測階段非預期輸入記日誌後 exit 0 放行，不再 crash
+- fix: 真實 pytest 子程序測試移出主套件，改掛 wallclock 標記
+- fix: 防護類 hook 驗收閘門認得合寫的實地觸發條目，並於缺項訊息說明字面比對
+- fix: hooks-test-gate git diff 失敗時輸出可見提醒
+- fix: 隔離 guard_world 測試倉庫的 hook-logs，不再寫入真實目錄
+- fix: 驗證階段例外改 fail-closed deny
+- fix: 某票.2 測試套件 hook 日誌根目錄隔離
+- fix: test_lease 種子時間改每次取當下，長套件不再誤判 STALE
+- fix: complete 的 children 與 spawned 終態檢查改依票 ID 跨版本解析
+- fix: 網路命令保留逾時並報出殘留鎖，pull 拆 fetch+merge
+- fix: git 寫入命令不設逾時，避免殺掉 git 殘留鎖
+- fix: finish 推送啟用下一版本的提交，摘要依實際推送結果
+- docs: checker 註解移除專案版本字樣（框架檔不引用專案版本）
+- docs: 補 2.44.36 CHANGELOG 條目（某票.3 測試 liveness 隔離）
+- docs: 移除測試 docstring 的專案 ticket ID（規則 8）
+- docs: 移除框架檔 docstring 內的專案 ticket ID
+- docs: 依文字審查修正全套件回報規格與 TEST-BAL-006 措辭
+- docs: add full-suite report spec to dispatch template, tool-layer note to TEST-BAL-006
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+- test: 專案根重導提前到 pytest_configure，涵蓋 collection 期的模組層路徑常數
+- test: hooks 測試套件 session 級專案根重導，停止洩漏至真實 hook-logs
+
+---
+
+## [2.74.3] - 2026-10-02
+
+### Summary
+chore: skill-sync 升 1.24.4，涵蓋已加入的 python 下限測試; chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+
+Changes: 2 chore
+
+- chore: skill-sync 升 1.24.4，涵蓋已加入的 python 下限測試
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+
+---
+
+## [2.74.2] - 2026-10-02
+
+### Summary
+fix: finish 前移改父票先移，略過已隨子樹搬走的票並對終態祖先警告; fix: migrate 子樹遷移只搬非終態子孫，completed/closed 留原版本; docs: PC-GPD-030 依 Layer 2 審查修正 (+2 more)
+
+Changes: 2 fix, 2 docs, 1 chore
+
+- fix: finish 前移改父票先移，略過已隨子樹搬走的票並對終態祖先警告
+- fix: migrate 子樹遷移只搬非終態子孫，completed/closed 留原版本
+- docs: PC-GPD-030 依 Layer 2 審查修正
+- docs: 新增 PC-GPD-030 linked worktree 不隔離票務 CLI 寫入
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push --clean）
+
+---
+
+## [2.74.1] - 2026-10-02
+
+### Summary
+chore: 傳播 version-shift 實作與測試的刪除（某票.7 已於本地移除，某版本 推送時未帶 --clean）
+
+---
+
+## [2.74.0] - 2026-10-02
+
+### Summary
+feat: migrate 有子孫的票連帶遷移整個子樹; feat: hooks-test-gate 細化分段計時（四段 + 兩次 load1）; fix: 假時鐘改用 git_utils._sleep 接縫，不再改寫全域 time.sleep (+8 more)
+
+Changes: 2 feat, 4 fix, 3 docs, 1 chore, 1 test
+
+- feat: migrate 有子孫的票連帶遷移整個子樹
+- feat: hooks-test-gate 細化分段計時（四段 + 兩次 load1）
+- fix: 假時鐘改用 git_utils._sleep 接縫，不再改寫全域 time.sleep
+- fix: 提交重試預算改為最少重試次數加只計 sleep 的預算
+- fix: ticket requires-python 提高為 >=3.10 並加 3.9 直譯器驗證測試
+- fix: 重試日誌不退回 process cwd，測試導向 tmp
+- docs: TEST-GPD-003 替換全域 time.sleep 作假時鐘被 subprocess 等待輪詢呼叫
+- docs: PC-GPD-029 送訊號前加比對 cwd 與啟動時間
+- docs: PC-GPD-029 補 TaskStop 停止背景任務後程序樹仍存活的再現
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+- test: 更新 migrate 既有斷言為子樹連帶遷移語意
+
+---
+
+## [2.73.0] - 2026-10-01
+
+### Summary
+feat: 副本一致性測試與全量收集失敗的 stderr 輸出; feat: testpaths 覆蓋警告 conftest 外掛（hooks 與 ticket 兩包）; feat: hooks-test-gate 每檔分段計時日誌 (+5 more)
+
+Changes: 3 feat, 3 fix, 2 chore
+
+- feat: 副本一致性測試與全量收集失敗的 stderr 輸出
+- feat: testpaths 覆蓋警告 conftest 外掛（hooks 與 ticket 兩包）
+- feat: hooks-test-gate 每檔分段計時日誌
+- fix: migrate 新父已列新 ID 時保留 children 原項形式與順序
+- fix: migrate 父票改變時同步舊父/新父 children 並清除根票 parent_id
+- fix: hooks-test-gate uv 啟動失敗改判 red 並 deny
+- chore: hook-exclude-list 排除 conftest 與 testpaths 覆蓋警告模組
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+
+---
+
+## [2.72.0] - 2026-10-01
+
+### Summary
+feat: remove ticket version-shift command; feat: reference-transaction 預驗證命中時鎖內不啟動 python; fix: commit_files_isolated 範圍自檢改子集比對 (+4 more)
+
+Changes: 2 feat, 3 fix, 1 chore, 1 test
+
+- feat: remove ticket version-shift command
+- feat: reference-transaction 預驗證命中時鎖內不啟動 python
+- fix: commit_files_isolated 範圍自檢改子集比對
+- fix: add-spawn-request SR 編號只取 Spawn Requests 章節結構化條目
+- fix: worklog 進度行改以行層級提交 (ticket 2.44.19)
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+- test: shim 不命中對照案例移至 e2e 檔，gate 對象檔降至 20 秒內
+
+---
+
+## [2.71.0] - 2026-10-01
+
+### Summary
+feat: append_lines 非超集回退支援呼叫端提供的 HEAD 重放插入; feat: migrate 自動提交並補齊結構欄位改寫與曾用 ID 記錄 (某票.2); fix: content guard 分支判定改用提交發生處的根與本次寫入的 ref (+7 more)
+
+Changes: 2 feat, 3 fix, 3 docs, 1 chore, 1 test
+
+- feat: append_lines 非超集回退支援呼叫端提供的 HEAD 重放插入
+- feat: migrate 自動提交並補齊結構欄位改寫與曾用 ID 記錄 (某票.2)
+- fix: content guard 分支判定改用提交發生處的根與本次寫入的 ref
+- fix: complete 的 cascade 與反向 blockedBy 解鎖併入 post-completion commit
+- fix: commit_files_isolated 範圍自檢關閉 rename 偵測並拒絕目錄路徑
+- docs: agent-dispatch-template 終止後驗證約束句補 ps 確認與等已知 PID
+- docs: PC-GPD-029 補 pgrep -f 互相比對的等待迴圈陷阱
+- docs: PC-GPD-029 補同日再現五例與孤兒程序
+- chore: 回寫 .claude/VERSION 為 某版本（canonical sync-push）
+- test: split heavy batched tests out of gate-run content guard test
+
+---
+
+## [2.70.1] - 2026-10-01
+
+### Summary
+fix: append-only 檔提交依工作區行序投影 HEAD 各行加本次各行; fix: add-spawned 一併寫反向 source_ticket，與 remove-spawned 對稱; fix: 提交步驟 git 寫入失敗時中止，不再打 tag (+7 more)
+
+Changes: 3 fix, 4 docs, 1 chore, 2 test
+
+- fix: append-only 檔提交依工作區行序投影 HEAD 各行加本次各行
+- fix: add-spawned 一併寫反向 source_ticket，與 remove-spawned 對稱
+- fix: 提交步驟 git 寫入失敗時中止，不再打 tag
+- docs: agent-dispatch-template 新增終止長時間測試後驗證子程序已退出約束句
+- docs: PC-GPD-029 代理人終止背景測試後憑記憶回報，子程序仍在執行
+- docs: 絆腳索指名偵測承擔者，移除 consumer 實測數字
+- docs: 版本生命週期規則落地 canonical #114 方案 1-5
+- chore: .claude/VERSION 2.70.0（sync-push：ticket 2.44.11、ref-transaction 守衛 fail-open 與批次化、票庫 lock 的 gitignore 檢查）
+- test: git-ref-transaction 兩支 hook 測試以模板 repo 複製取代逐測試建 repo
+- test: 暫時鎖測試改以呼叫邊界釋放鎖，消除計時器造成的修正前偽綠
+
+---
+
+## [2.70.0] - 2026-10-01
+
+### Summary
+feat: 多票寫入命令 auto-commit 單一提交與失敗可見性（ticket 2.44.11）; feat: gitignore 檢查 hook 推導票庫 lock sentinel 必要項; fix: shim 警告訊息 rc 改 ${rc}（C locale 下全形標點併入變數名），shim-version 3 (+4 more)
+
+Changes: 2 feat, 3 fix, 1 chore, 1 perf
+
+- feat: 多票寫入命令 auto-commit 單一提交與失敗可見性（ticket 2.44.11）
+- feat: gitignore 檢查 hook 推導票庫 lock sentinel 必要項
+- fix: shim 警告訊息 rc 改 ${rc}（C locale 下全形標點併入變數名），shim-version 3
+- fix: reference-transaction shim 僅在 guard 判定阻擋時中止 ref 寫入
+- fix: 票庫 lock 涵蓋判定不再把 .claude/ 範圍規則誤判為全域
+- chore: .claude/VERSION 2.69.0（sync-push：ticket 2.44.10、doc 1.24.0、ANA children 閘門與規則對齊）
+- perf: reference-transaction content guard 批次化 git 子程序
+
+---
+
+## [2.69.0] - 2026-09-30
+
+### Summary
+feat: 統一寫入票面 track 子命令的 auto-commit 範圍與失敗可見性; feat: 指向 ANA 的 --parent／blockedBy 提示耦合後果（ticket 2.44.9）; feat: acceptance-gate-hook 辨識 complete --force 旁路 children 並寫稽核紀錄 (+9 more)
+
+Changes: 4 feat, 6 docs, 1 chore, 1 test
+
+- feat: 統一寫入票面 track 子命令的 auto-commit 範圍與失敗可見性
+- feat: 指向 ANA 的 --parent／blockedBy 提示耦合後果（ticket 2.44.9）
+- feat: acceptance-gate-hook 辨識 complete --force 旁路 children 並寫稽核紀錄
+- feat: GRAPH_EDGE_TYPES 新增方向性欄位 direction（doc 1.24.0）
+- docs: 兄弟票同檔排序以派發排程處理、不寫 blockedBy（parallel-dispatch 4.35.0、ARCH-017 1.2.0）
+- docs: TEST-GPD-002 契約守衛斷言常數等於其值，而非驗證使用該常數的行為
+- docs: 對齊 ticket 參考文件、PC-091 與代理人指引的 ANA 落地與 --force 行為
+- docs: 審查建議項：--source-ticket 限定語、術語統一、版本行格式
+- docs: execution-discovery-rules 5 step 閉環對齊 PC-091（驗證子任務用 --parent）
+- docs: 規則文字對齊 PC-091，ANA 落地用 --parent，補 blockedBy 耦合與 --force 條件
+- chore: .claude/VERSION 2.68.0（sync-push：ticket 2.44.8、merge／wipe 守衛與共用解析器括號修正）
+- test: fixture repo 比照真實 consumer gitignore hook-logs（修 session 環境依存的工作區乾淨斷言）
+
+---
+
+## [2.68.0] - 2026-09-30
+
+### Summary
+feat: merge-staged-index-guard PreToolUse(Bash) 守衛; fix: track 子命令未給 --version 時從 ID 位置參數解析版本; fix: 共用 index 同步認得己方歷史版本，update-index 不設 timeout (+12 more)
+
+Changes: 1 feat, 12 fix, 1 docs, 1 chore
+
+- feat: merge-staged-index-guard PreToolUse(Bash) 守衛
+- fix: track 子命令未給 --version 時從 ID 位置參數解析版本
+- fix: 共用 index 同步認得己方歷史版本，update-index 不設 timeout
+- fix: hook 端消費點視 exit 75 為動作已完成、僅提交失敗
+- fix: 共用 index 同步讀當下 HEAD + 寫入命令 auto-commit 失敗可見
+- fix: git_command_parse 子 shell 括號盲點
+- fix: 主題推導 S2 接受清單形態的 where_files（ticket 2.44.5）
+- fix: ticket create 自動提交失敗不再靜默（ticket 2.44.6）
+- fix: set-where/add-spawn-request --files 可重複給；expand_list_arg 移至 lib/list_args
+- fix: workspace-wipe-guard cd 作用域洩漏與括號黏著偵測盲點
+- fix: merge-staged-index-guard 放行可快轉的 merge
+- fix: ticket create 的 --blocked-by/--related-to/--where 可重複給且相容逗號分隔
+- fix: workspace-wipe-guard 先解析 git 命令目標 repo，非主 repo 放行
+- docs: CHANGELOG 2.44.7 補 hook 端 exit 75 消費點
+- chore: .claude/VERSION 2.67.0（sync-push：component-contract-design 3.13.1 空節點分流）
+
+---
+
+## [2.67.0] - 2026-09-30
+
+### Summary
+feat: component-contract-design 3.13.1 空節點依位置分流; chore: .claude/VERSION 2.66.1（sync-push：schema 邊型正向基數 doc 1.23.0、建票可攜閘門 ticket 2.44.3）
+
+Changes: 1 feat, 1 chore
+
+- feat: component-contract-design 3.13.1 空節點依位置分流
+- chore: .claude/VERSION 2.66.1（sync-push：schema 邊型正向基數 doc 1.23.0、建票可攜閘門 ticket 2.44.3）
+
+---
+
+## [2.66.1] - 2026-09-30
+
+### Summary
+fix: 可攜問題閘門改以 sync-push 推送範圍判定，private skill 不再誤判; fix: tracking_schema.json 產生版本維持 2.60.13（用戶裁決）; chore: .claude/VERSION 2.66.0（sync-push：session-start-issue-check 並行、ticket 2.44.2、派發骨架票面規則）
+
+Changes: 2 fix, 1 chore
+
+- fix: 可攜問題閘門改以 sync-push 推送範圍判定，private skill 不再誤判
+- fix: tracking_schema.json 產生版本維持 2.60.13（用戶裁決）
+- chore: .claude/VERSION 2.66.0（sync-push：session-start-issue-check 並行、ticket 2.44.2、派發骨架票面規則）
+
+---
+
+## [2.66.0] - 2026-09-30
+
+### Summary
+fix: worktree 派發骨架收尾只提交產品檔，track commit 拒絕 worktree 內提交票面; fix: create 的 auto-commit 併入 --parent children 回填與 --new-topic registry 行; fix: ticket create 的 auto-commit 連同主題行與來源票回填進同一隔離索引提交 (+3 more)
+
+Changes: 3 fix, 1 docs, 1 chore, 1 perf
+
+- fix: worktree 派發骨架收尾只提交產品檔，track commit 拒絕 worktree 內提交票面
+- fix: create 的 auto-commit 併入 --parent children 回填與 --new-topic registry 行
+- fix: ticket create 的 auto-commit 連同主題行與來源票回填進同一隔離索引提交
+- docs: 更新 _collect_registry_hits docstring 為並行與略過已關閉
+- chore: .claude/VERSION 2.65.0（sync-push：hooks-test-gate 未驗證檔放行、hook timeout 秒數校正、component-contract-design 3.13.0）
+- perf: session-start-issue-check 並行 check 並略過已關閉 issue
+
+---
+
+## [2.65.0] - 2026-09-30
+
+### Summary
+feat: component-contract-design 3.13.0 原生佈局掃描判準改寫; fix: hook timeout 下限由 10 秒改為 30 秒; fix: hook timeout 毫秒誤用校正為秒並加回歸守衛 (+3 more)
+
+Changes: 1 feat, 4 fix, 1 chore
+
+- feat: component-contract-design 3.13.0 原生佈局掃描判準改寫
+- fix: hook timeout 下限由 10 秒改為 30 秒
+- fix: hook timeout 毫秒誤用校正為秒並加回歸守衛
+- fix: 依 Layer 2 審查修正原生佈局判準兩項阻擋
+- fix: hooks-test-gate 預算耗盡時未執行檔改為放行並附可見提醒
+- chore: .claude/VERSION 2.64.2（sync-push：hooks-test-gate 逐檔計時，某票）
+
+---
+
+## [2.64.2] - 2026-09-30
+
+### Summary
+fix: hooks-test-gate 改逐檔執行 + 總預算 + 明示平台 timeout; chore: .claude/VERSION 2.64.1；某版本 notes 記發版時待驗證項與 version-release 推送條件
+
+Changes: 1 fix, 1 chore
+
+- fix: hooks-test-gate 改逐檔執行 + 總預算 + 明示平台 timeout
+- chore: .claude/VERSION 2.64.1；某版本 notes 記發版時待驗證項與 version-release 推送條件
+
+---
+
+## [2.64.1] - 2026-09-30
+
+### Summary
+fix: commit_content_guards 放行純版本號變動，finish 整合測試裝 reference-transaction hook; chore: worktree 1.5.1（Guard A 內容取代出口、quotepath 收斂；補版號供發佈庫推送）; chore: .claude/VERSION 2.64.0（sync-push：某版本 框架修正）
+
+Changes: 1 fix, 2 chore
+
+- fix: commit_content_guards 放行純版本號變動，finish 整合測試裝 reference-transaction hook
+- chore: worktree 1.5.1（Guard A 內容取代出口、quotepath 收斂；補版號供發佈庫推送）
+- chore: .claude/VERSION 2.64.0（sync-push：某版本 框架修正）
+
+---
+
+## [2.64.0] - 2026-09-30
+
+### Summary
+refactor: 抽出 parse_name_status_z 至 lib/git_utils，三支守衛共用; fix: Guard A 放行 patch 等價分支，阻擋訊息補顯式丟棄出口; fix: staleness 測試主 repo 狀態守衛只比對 doc skill 目錄 (+16 more)
+
+Changes: 1 refactor, 15 fix, 1 docs, 1 chore, 1 test
+
+- refactor: 抽出 parse_name_status_z 至 lib/git_utils，三支守衛共用
+- fix: Guard A 放行 patch 等價分支，阻擋訊息補顯式丟棄出口
+- fix: staleness 測試主 repo 狀態守衛只比對 doc skill 目錄
+- fix: lib 測試 mock 改 NUL 分隔，測試入口涵蓋 lib/tests
+- fix: finish 啟用提交納入 bump 的版本檔
+- fix: protected-branch-guard 訊息改 worktree add，解析合併短旗標與 2>&1 切分
+- fix: check 依前移清單切換建議，release 遇前移清單拒絕
+- fix: 五支 hook 讀取 git 路徑清單改 -z 並補 E2
+- fix: git 路徑清單讀取改 -z，修復 CJK 檔名 quotepath 跳脫 (某票.2)
+- fix: 提交守衛的 staged 路徑清單讀取改 -z
+- fix: skill-sync uv.lock 自身版號對齊 1.24.3
+- fix: 共用讀取層加 core.quotepath=false 與 -z 解析 CJK 路徑
+- fix: scripts 與其他 skill 讀取 git 路徑清單改 -z
+- fix: bare-commit-guard 宣告範圍改讀票面現行 where.files
+- fix: spec 識別只讀 frontmatter 區塊並限 SPEC-NNN 形式
+- fix: check_domain_coverage FR 比對鍵改為 spec 識別加 FR 編號
+- docs: PC-BAL-004 補「驗收條文內嵌未查證環境前提」形態
+- chore: .claude/VERSION 2.63.3（sync-push：component-contract-design 3.12.0）
+- test: staleness guard 整合測試改在 tmp repo 執行
+
+---
+
+## [2.63.3] - 2026-09-29
+
+### Summary
+docs: component-contract-design 最小尺寸須含元件自身內距（3.12.0）; chore: .claude/VERSION 2.63.2（sync-push：doc 1.22.7）
+
+Changes: 1 docs, 1 chore
+
+- docs: component-contract-design 最小尺寸須含元件自身內距（3.12.0）
+- chore: .claude/VERSION 2.63.2（sync-push：doc 1.22.7）
+
+---
+
+## [2.63.2] - 2026-09-29
+
+### Summary
+chore: doc 1.22.7（子票 id_pattern 本地變更轉為正式版號，供發佈庫推送）; chore: .claude/VERSION 2.63.1（sync-push：component-contract-design 3.11.0）
+
+Changes: 2 chore
+
+- chore: doc 1.22.7（子票 id_pattern 本地變更轉為正式版號，供發佈庫推送）
+- chore: .claude/VERSION 2.63.1（sync-push：component-contract-design 3.11.0）
+
+---
+
+## [2.63.1] - 2026-09-29
+
+### Summary
+docs: component-contract-design 值對映四形與上色判準（3.11.0）; docs: component-contract-design 新增既有變體欄的差異判別（3.10.0）; chore: .claude/VERSION 2.63.0（sync-push：派發位置判準與 worktree 強制修正）
+
+Changes: 2 docs, 1 chore
+
+- docs: component-contract-design 值對映四形與上色判準（3.11.0）
+- docs: component-contract-design 新增既有變體欄的差異判別（3.10.0）
+- chore: .claude/VERSION 2.63.0（sync-push：派發位置判準與 worktree 強制修正）
+
+---
+
+## [2.63.0] - 2026-09-29
+
+### Summary
+feat: dispatch 骨架依 isolation 分流收尾句，review 首行宣告 readonly; fix: 拆除審查關鍵字豁免，審查派發只認 Dispatch-Mode: readonly 首行; fix: 清除 branch-status-reminder 與 guardian SKILL 的主工作樹切分支指引 (+4 more)
+
+Changes: 1 feat, 3 fix, 1 docs, 1 chore, 1 other
+
+- feat: dispatch 骨架依 isolation 分流收尾句，review 首行宣告 readonly
+- fix: 拆除審查關鍵字豁免，審查派發只認 Dispatch-Mode: readonly 首行
+- fix: 清除 branch-status-reminder 與 guardian SKILL 的主工作樹切分支指引
+- fix: branch-verify-hook deny 訊息角色分流，移除 checkout -b
+- docs: 新增派發位置判準表與禁止共用主工作樹切分支條款
+- chore: .claude/VERSION 2.62.1（sync-push：compositional-writing 1.38.1、multi-round-review 2.24.0）
+- other: x
+
+---
+
+## [2.62.1] - 2026-09-29
+
+### Summary
+chore: skill-sync pull compositional-writing 1.38.1、multi-round-review 2.24.0; chore: .claude/VERSION 2.62.0（sync-push：ticket 跨版本關聯與 auto-commit 修正、doc 子票 id_pattern、TEST-GPD-001）
+
+Changes: 2 chore
+
+- chore: skill-sync pull compositional-writing 1.38.1、multi-round-review 2.24.0
+- chore: .claude/VERSION 2.62.0（sync-push：ticket 跨版本關聯與 auto-commit 修正、doc 子票 id_pattern、TEST-GPD-001）
+
+---
+
+## [2.62.0] - 2026-09-29
+
+### Summary
+feat: blocker 解除判定與 complete 反向解鎖支援跨版本 blocker; fix: 跨版本 blocker 解析失敗時輸出 warning; fix: 關聯寫入端以被引用 ID 自身版本驗證存在性 (+6 more)
+
+Changes: 1 feat, 4 fix, 1 docs, 1 chore, 2 other
+
+- feat: blocker 解除判定與 complete 反向解鎖支援跨版本 blocker
+- fix: 跨版本 blocker 解析失敗時輸出 warning
+- fix: 關聯寫入端以被引用 ID 自身版本驗證存在性
+- fix: complete auto-commit 僅在工作日誌本次寫入時列入提交範圍
+- fix: Ticket id_pattern 接受子票 ID，重產內嵌型別表與 IT-2 凍結測資
+- docs: TEST-GPD-001 同 bundle id 多份 .app 污染實機觀測
+- chore: .claude/VERSION 2.61.1（sync-push：compositional-writing 1.34.1、multi-round-review 2.23.1）
+- other: fix 某票 track commit 允許提交票自身 md
+- other: fix 某票 acceptance_auditor 以衍生票自身版本載入 spawned
+
+---
+
+## [2.61.1] - 2026-09-25
+
+### Summary
+chore: skill-sync pull compositional-writing 1.34.1、multi-round-review 2.23.1; chore: .claude/VERSION 2.61.0（sync-push：tracking_schema 完整性集合與 carrier 路徑模式、PC-BAL-040）
+
+Changes: 2 chore
+
+- chore: skill-sync pull compositional-writing 1.34.1、multi-round-review 2.23.1
+- chore: .claude/VERSION 2.61.0（sync-push：tracking_schema 完整性集合與 carrier 路徑模式、PC-BAL-040）
+
+---
+
+## [2.61.0] - 2026-09-25
+
+### Summary
+feat: 節點型別新增機器可比對的 carrier 路徑模式與具體度; feat: 圖譜 schema 完整性集合 JSON 匯出（補齊 schema.py）; feat: 圖譜 schema 完整性集合改為欄位必存在值可空語意 (+5 more)
+
+Changes: 3 feat, 2 fix, 1 docs, 1 chore, 1 test
+
+- feat: 節點型別新增機器可比對的 carrier 路徑模式與具體度
+- feat: 圖譜 schema 完整性集合 JSON 匯出（補齊 schema.py）
+- feat: 圖譜 schema 完整性集合改為欄位必存在值可空語意
+- fix: carrier 具體度改回二層，打平回報歧義而非悄悄消解
+- fix: EVT 值非空附加規則覆核修正（行為退化）
+- docs: PC-BAL-040 補定義檔消費端變體與 worktree 派發邊界
+- chore: VERSION 2.60.13（sync-push 技能庫 pull 九個 skill）
+- test: EVT 值非空附加規則正向對照測試 + CHANGELOG 記錄
+
+---
+
+## [2.60.13] - 2026-09-24
+
+### Summary
+技能庫 pull 九個 skill：compositional-writing 1.33.0、multi-round-review 2.21.0、skill-sync 1.24.2、tdd 2.12.1 等
+
+---
+
+## [2.60.12] - 2026-09-24
+
+### Summary
+ticket 2.42.0 migrate 碰撞改號；version-release 2.7.0 finish dry-run 碰撞 FAIL
+
+---
+
+## [2.60.11] - 2026-09-24
+
+### Summary
+方法論：零交付容器結案路徑（不打 tag）、入口判定表加列
+
+---
+
+## [2.60.10] - 2026-09-24
+
+### Summary
+方法論：落差清單查核範圍、待形式化條款不計入已發布條款
+
+---
+
+## [2.60.9] - 2026-09-24
+
+### Summary
+方法論：patch 發版前移目標分有／無開放後繼兩種情況；runbook 入口 B 第 3 步同步
+
+---
+
+## [2.60.8] - 2026-09-24
+
+### Summary
+version-release 2.6.0 溢出目標補開放後繼分支；方法論 patch 收斂承諾雙向與落差清單五欄
+
+---
+
+## [2.60.7] - 2026-09-24
+
+### Summary
+runbook 入口 B 第 1 步：唯讀 ANA 產出 patch 契約三成分；第 2 步 patch 的第一問
+
+---
+
+## [2.60.6] - 2026-09-24
+
+### Summary
+方法論：patch 契約形態（不變式＋收斂承諾＋缺陷修復）、三問對 patch 的第一問、runbook 契約審查產出、登記規則 notes
+
+---
+
+## [2.60.5] - 2026-09-24
+
+### Summary
+runbook 修正：入口 A 契約來源涵蓋 patch 的版本條目 notes；patch 收件窗口為自身凍結前，minor 發布不關閉
+
+---
+
+## [2.60.4] - 2026-09-23
+
+### Summary
+版本弧線固化：方法論〈執行 runbook〉、version-progression 4.3.0 版本登記規則、parallel-dispatch 4.33.0 PM 側合入與驗收三軸
+
+---
+
+## [2.60.3] - 2026-09-23
+
+### Summary
+某版本 發版後守衛補強與版本結構：溢出優先開放後繼（ticket 2.41）、finish 收尾差集提交／check 凍結前置／啟用冪等化（version-release 2.3–2.5）、版本範圍收斂方法論、version-progression 三層判準、PC-121 superseded
+
+---
+
+## [2.60.2] - 2026-09-23
+
+### Summary
+scope 凍結模型：版本歸屬／收件資格／執行資格三軸解耦——version-progression 衍生問題歸屬改為 scope 分流並新增版本生命週期段、PC-121 superseded、七處回聲同步；ticket CLI 2.40.1（凍結閘門、planned 收票、scope_blocker、set-scope-blocker）與 version-release 2.2（check 以 blocker 阻擋、finish 前移）
+
+---
+
+## [2.60.1] - 2026-09-18
+
+### Summary
+清理十個本地已刪除的孤兒檔（hook-completeness 四份、component-contract-design references 六份）
+
+---
+
+## [2.60.0] - 2026-09-18
+
+### Summary
+feat: FlowStep 新增必填欄位 traverses（某票）; feat: ack-based todo delta 推送，SessionStart 零 gh 呼叫; feat: init/add 自行推導 owner，消滅漏填模式 (+298 more)
+
+Changes: 7 feat, 1 refactor, 25 fix, 257 docs, 8 chore, 2 test, 1 other
+
+- feat: FlowStep 新增必填欄位 traverses（某票）
+- feat: ack-based todo delta 推送，SessionStart 零 gh 呼叫
+- feat: init/add 自行推導 owner，消滅漏填模式
+- feat: 錨定 owner 驗證器前綴並收窄尾碼，同步三處範例文字
+- feat: spec validate Layer 1 新增事件流標定機械檢核
+- feat: rule8 守衛新增專案檔案路徑偵測軌（WARNING-only）
+- feat: worktree 派發 prompt 含 track complete 時提示改用 finish
+- refactor: 外移 SKILL.md 使全檔低於 5000 tokens 門檻
+- fix: 2.11 拉出獨立為第 7 項「同一圖形只承載一個語意」
+- fix: 修正六項判準第 2 項渲染、2.8(2) 讀歪、2.11 部分處置
+- fix: 修 b3 判定 9 處條文讀歪點，升 patch 版 6.6.15
+- fix: 移除 dart-style-guardian-hook 原生元件建議的他專案殘留
+- fix: 修正過度刪除，逐字還原/外移兩處被誤刪內容
+- fix: 校準 dart-style-guardian 的 token 類別名與實際程式碼一致
+- fix: 補齊 7 處範例藏判準的條文缺口（C12/W1/W39-W41/W43/W44）
+- fix: 落檔 W13 測試點粒度用戶裁決，DOC-1 稽核全數完成
+- fix: 落檔 WRAP 評估結論——元件庫範本 11 項條文缺口修補
+- fix: 補齊元件庫範本 slot 契約 C7 條文缺口 + 修正 W14 範例判準
+- fix: test_uc_registry uc05/06/08_09 改用 tmp_path 自建測資
+- fix: CHANGELOG 兩處禁用詞「數據」改為「量測結果」
+- fix: 對齊 hook-logs 日誌根目錄與 ticket 狀態根目錄
+- fix: add／init 整塊處理手寫索引，不再遺留孤兒標題
+- fix: --no-topic 以哨兵短路 S1/S2 自動推導
+- fix: ref 鎖重試條件與鎖齡判讀
+- fix: add-acceptance 補 help 說明並剝除誤帶入的核取方塊前綴
+- fix: 還原 event catalog 到達類別與級別欄（被過期 index 快照回滾）
+- fix: create 一律回報本次存入的驗收條數與逐條內容（part 2/2）
+- fix: create 一律回報本次存入的驗收條數與逐條內容（part 1/2）
+- fix: set-acceptance --add/--edit 剝除誤帶的核取方塊前綴
+- fix: hook 完整性檢查改為陳述量測結果而非結論（2/2：移除舊檔）
+- fix: hook 完整性檢查改為陳述量測結果而非結論（1/2：新增與修改）
+- fix: dispatch-validate 規則 4 補樣板佔位符偵測
+- fix: branch-verify 豁免合併 commit，消解與框架建議指令的互斥並補殘局提醒
+- docs: doc 前置閘門四項條文缺陷修正（tdd 2.10.9）
+- docs: 修正〈判定不拆分 Module〉五項條文缺陷
+- docs: foundation-design 6.7.0 — 待定列改為前半不可獨立取用
+- docs: 新增 PC-GPD-028 壓縮後接手在飛代理人並污染共用器材
+- docs: Step 1 規格層兩項與條文層一項
+- docs: Step 1 刪除 7.2(3-2)② 的二分推理禁令句
+- docs: Step 1 改 7.2(3-2)② 乙寫法的比對與合成規則
+- docs: 射程判定表第二列管轄欄與依據欄補指涉與拆分註記
+- docs: 批次改文 十五張來源票的條文缺陷一次落地
+- docs: 新增 DOC-GPD-010 與 README 索引同步
+- docs: 8.2(3)⑤ 指名句改「哪一語句」，切斷題庫通用結尾的字面通路
+- docs: 8.2(3)⑤ 第一句改為指名條文句，堵住項名列入即算支持
+- docs: 8.2(2) 段首增列前置關、刪 8.2(3) 排除句
+- docs: 8.2(3) 引言增列符合 8.2(4) 文字的排除句
+- docs: 7.2 圖形同一性換軸為兩步判定
+- docs: 界定句補射程限制，不外溢至第 7 項
+- docs: 8.2(3) 增列四款內涵界定與預設值款
+- docs: 射程判定表第五列管轄欄改為條件—值兩分支
+- docs: 7.2 語意判定改判定步驟並併入射程句
+- docs: 2.2 比較對象結論下推為欄位，刪 2.2(3)
+- docs: 8.2(2)(3)(4)/8.5(1)(2) 改寫為兩側封閉描述
+- docs: 建立 project-analysis skill，宣告非本框架專案模式一次
+- docs: 建立協作專案外接資料夾規格與盤點工作項表範本
+- docs: 7.2 補語意同一一般性判準與不傳遞句
+- docs: 新增規則 2.6 協作射程條文
+- docs: 8.2(2) 換色正面定義＋2.8(1) 動作列來源＋版面齊平
+- docs: 補 tdd 條件 2 正向出口排他句
+- docs: 補驗證句受詞＋辨識法反向指引＋計數單位句射程＋第五列誰不得管
+- docs: tdd 條件 2 補回程指標＋分支 (1) 內嵌門檻重比
+- docs: 兜底句升格射程判定表第五列 + 內容角色計數單位與判定順序
+- docs: 落地 ux 第 2/7 項射程補寫（乙-3 B 窄版、乙-4 含解除）
+- docs: 條件 2 三分支前提內嵌＋正向出口＋射程句效力邊界
+- docs: 8.2(2) 換色主問法 + 8.2(3) 明度排除與回指 8.1(1)
+- docs: 落地 ux 八項判準甲類 7 處補句
+- docs: 補 tdd 條件 2 射程限定與判定順序，doc-handoff 前置閘門射程綁回產物
+- docs: 修 doc b6 重測讀歪點三處（DOC-02b/DOC-04b/方法論第四列）
+- docs: foundation-design 補路由——照預設列的權威預設產物出處指向維度與產物表欄名
+- docs: 落檔顏色不作為唯一區分依據判準（第 8 項）
+- docs: 落檔內距與鄰件間距的分界條文（DOC-19a）
+- docs: 修 doc 第 5 批 b5 讀歪點（7/8 題落檔，DOC-19a 轉草稿）
+- docs: FD-17a 補正向句，待建部分權威預設成立時填照預設；待定射程限定為未能判定
+- docs: 落檔八則新判準草稿（風險3/5/6/8/10/11/13/14）
+- docs: 依 某票.1 建議改文與用戶裁示落檔 04a/06a/08b
+- docs: 修 FD-17a／FD-10b 條文讀歪點，升版 6.6.22
+- docs: 落檔剩餘四則讀歪點（用戶裁示定案）
+- docs: UX-09a 判準第 2 項改編號結構落檔
+- docs: 修條文 某票 tdd-1 六題讀歪點（01b/05a/05b/07a/11a/14b）
+- docs: doc skill 補依據 18 項出題附記（4 落檔+3 已有依據+9 草稿轉 NeedsContext）
+- docs: 修 foundation-design FD-05b/FD-10c 條文讀歪點
+- docs: 修 tdd Q8/Q10 讀歪點，餘四題轉草稿
+- docs: 落檔 某票.1 WRAP 裁定改文（TDD-21b/29b）
+- docs: 落檔判準2(a)明顯非按鈕形態最終定義
+- docs: 補依據 tdd 第 4 批出題標記 7 項
+- docs: foundation-design 增列句引文改為所指節原句（6.6.20）
+- docs: 修 FD-21b/FD-22a 兩處條文讀歪點
+- docs: FD-10b 正向定義該版票範圍、FD-14b 拆兩分支括注為順序句
+- docs: 補齊類型 8 與確定性斷言基礎形態兩軸關係
+- docs: FD-05b/FD-13a 最小處置 + 事件流無理由句改指條文
+- docs: 修六項判準第2項讀歪點（UX-09a）
+- docs: WRAP 複核落檔 FD-20a/FD-20b（事件流仲裁判準線改為請求來源競爭）
+- docs: 修 IME 安全清單非 secret 規則表前段無結果的讀歪點
+- docs: 補 foundation-design/test-assertion-design 三則依據
+- docs: 修 ux-design-evaluation b2x 重跑 9 題讀歪點
+- docs: i18n 錯誤碼交界指涉改為指名節段（dart-style-guardian 1.12.1）
+- docs: 補 ux-design-evaluation 依據只在範例內與條文風險
+- docs: ux-design-evaluation 升版 1.11.2 -> 1.11.3
+- docs: step-1 情況二補「提及實作檔不據以判 C」（component-contract-design 3.9.10）
+- docs: 補 version-bootstrap 去重原則射程說明
+- docs: 修正 step-2-path-a 路由錨點（component-contract-design 3.9.9）
+- docs: 落檔階段二三則新判準（F-02/F-05/F-18）與移除 appendix 正例一無依據子句
+- docs: 落檔 F-16/F-18 條文與範例衝突改文
+- docs: 落檔 F-28 何時可選靜默判準（PM 裁定）
+- docs: 補寫 version-bootstrap 第 1 批探針條文問題 P1~P3
+- docs: 補齊 component-contract-design F-01/F-06/F-05半/F-08 部分依據與 某票 P4
+- docs: 補齊 skill-design-guide F-40、F-41 部分依據
+- docs: tdd 補漏列範例部分依據 F-25/26/31/34/36/37
+- docs: 補錯誤碼與使用者可見錯誤訊息交界（某票）
+- docs: 縮減範例至條文可支撐範圍（A-21，階段 2）
+- docs: 範例五改以 where.files 交集判定合併
+- docs: 收斂 GREEN 票粒度「共用狀態→合併」判準（階段 2）
+- docs: 落檔 ux-design-evaluation 階段 2 剩餘 11 則 + E-09 退出路徑格式
+- docs: 落檔階段 2 WRAP 評估五則（C-01b/C-09b/C-13c/C-15/C-11a）
+- docs: tdd 補 D-12a/D-12b 條文依據並修正 SR-1（某票 盤點）
+- docs: 落檔 component-contract-design 巢狀容器/遷移票拆票判準並同步 E-07 內容角色定義
+- docs: test-assertion-design 補 D-24b 條文依據（某票 盤點）
+- docs: 落檔 doc skill 階段 2 六項判定（某票 階段 2 裁決）
+- docs: 補範例查無/部分覆蓋判定的條文依據（13 項落檔）
+- docs: 補 GREEN 粒度/並行安全/地基波依賴/存在判準的條文依據
+- docs: 補階段 1 條文路由（B-03a/B-07/B-22）
+- docs: 補齊元件庫規格範本 4 處範例依據只在範例內的缺口
+- docs: 補 tdd skill 範例依據只在範例內的判定條文
+- docs: CHANGELOG 記錄 1.21.0 兩項處置
+- docs: 補退出路徑判準的跨 skill 路由（A-17b）
+- docs: skill-design-guide 版號同步至 1.21.0
+- docs: O3 修法——判定詞分裁決詞／判準詞，解規則自相衝突
+- docs: 依 PM WRAP 裁決補判準，消除三處推導無條文依據句
+- docs: 發布前檢查清單改用新表欄名（SR-1）
+- docs: 改寫 chained-examples 驗證段機械檢查表頭與規則
+- docs: 查證三處推導無條文依據句標註，皆判定需新判準
+- docs: 依 PM 收尾裁決刪除不合格問句並標註缺引導
+- docs: 第二輪修正 foundation-design 範例驗證段（非撰寫者複核 4/7）
+- docs: 依修補輪數上限刪除兩則複核仍不合格的驗證問句
+- docs: 修補 dart-style-guardian i18n Q2 框架格式名並確認 color Q1 依據句已補齊
+- docs: 修補 foundation-design 範例驗證段依據句可溯性不合格列
+- docs: 補寫 UI 一詞與 version-bootstrap 的分工銜接點
+- docs: CHANGELOG 1.18.0
+- docs: 驗證段依據句可溯性改逐問句逐字引文表
+- docs: 補條文各維度要防的失效（權威出處）
+- docs: 純搬移降低 version-bootstrap SKILL.md 體量至 5000 tokens 以下
+- docs: 統一 foundation-design「無可用判準」與「無可用部分」用詞
+- docs: step-rationale 同步 UI 類判別改為通道判定
+- docs: Step 2 UI 類判別改採呈現通道三分
+- docs: 修正兩則三段鏈式範例的驗證段依據句缺口
+- docs: typography 取整表比照 spacing 方案 D 按值來源分流
+- docs: CHANGELOG 同步 6.6.1（某票 F8 缺引導補文字）
+- docs: 補盤點票驗收條件與完成定義（缺引導 F8）
+- docs: 依 G26 裁決改寫 spacing Non-Standard Values 為按值來源分流
+- docs: 修正 component-contract-design addresses.md 執法工具地址列失實歸屬
+- docs: 補 version-shift-sop.md 契約檔案界定（B9，鎖定點三問）
+- docs: 修補 dart-style-guardian 缺範例、範例改寫與刪除他專案殘留
+- docs: 補齊 foundation-design 缺範例並改寫 examples（某票.7 範圍）
+- docs: 修正 component-contract-design SKILL.md 交界表原生元件直用失實歸屬
+- docs: 外移 version-bootstrap SKILL.md 超標節解消 L2 門檻
+- docs: 修補缺引導 G21-G25/G27 與交界失實歸屬
+- docs: v02-walkthrough 全篇重寫 + 六則缺範例補全（某票.6）
+- docs: 補六處缺引導並解除循環互指（G34-G39）
+- docs: 落檔 G42/B10 WRAP 定稿——契約鎖定點確認
+- docs: 落地 C04/C07 裁決，完成四項原文矛盾統一
+- docs: 落地 C08/C09 矛盾修法（獨立評估者 WRAP 定稿，修改後採用）
+- docs: 補 Step 2.6/Step 3/version-shift-sop 缺引導（G40-G41 + B11）
+- docs: 修補原文矛盾 C05/C06，C04/C07 轉交裁決
+- docs: CHANGELOG 1.6.1 版本紀錄
+- docs: 修補 C10/X3/X4 原文矛盾與計數過期
+- docs: 修正 X1/X2 文字不一致，補齊 C08/C09 矛盾裁決草稿
+- docs: 補未提及控制項不渲染、讀不到程式碼起點待決、不經服務四結局三項缺引導
+- docs: 補畫面票格位編號/覆蓋層/疊加態/非狀態進入情境寫法
+- docs: 依 WRAP 評估與用戶裁決落檔 C10/W37/W38
+- docs: 落檔 某票.33 第 2 階段 12 則缺條文（WRAP 定稿）
+- docs: 補三處缺引導判準（總是/有時集合定義、歸併代表值禁止形式、第2問可見狀態轉換範圍）
+- docs: 修補 C2/C6 範例藏判準，草稿 12 項缺條文待簽核
+- docs: 修補 C11 範例自身矛盾；C10/W37/W38 草稿待簽核
+- docs: 新增 PC-GPD-027 範例驗證段藏判準案例
+- docs: chained-examples 補驗證段依據句可溯性機械檢查
+- docs: 補齊識別信號欄為判準與同時命中並行處置規則
+- docs: 移除三處路由描述中寫死的「五層」
+- docs: 修正三張重切票造成的四處跨檔過期引用
+- docs: 重切 tdd doc-handoff/test-object-catalogue 依讀者任務拆檔並外移版本紀錄
+- docs: 依讀者任務重切 interaction-feedback 與 screen-state-matrix
+- docs: 依讀者任務重切 step-2/step-3
+- docs: 補充拆分指引——補範例後超標依讀者任務重切，不壓縮範例
+- docs: 補齊 component-contract-design 剩餘缺口並對帳位置表
+- docs: 補齊 component-contract-design step-2/3 缺範例位置
+- docs: 補齊 ux-design-evaluation 缺範例與既有範例改寫
+- docs: 新增派發裁示不留未定義行為規則與 error-pattern
+- docs: ux-design-evaluation 補 UC 步驟對應檢查與選取類前置呈現規則
+- docs: 補齊 tdd 的 spec/UC 轉測試缺範例與既有範例改寫
+- docs: 補齊 G01-G09/路徑A組合優先/互動反應表未分組/框架層結構缺引導
+- docs: 補齊六則缺引導 G28-G33
+- docs: 補齊缺範例與元件執行期行為驗證範例
+- docs: 元件庫規格範本補 24 個缺範例位置的三段鏈式範例
+- docs: 補齊 G14/G15 缺引導（類型 3 二選一判準、功能正確性預期值出處）
+- docs: 修補 ux-design-evaluation 四則原文矛盾（C01/C02/C03/C12）
+- docs: 修補三問/分族矛盾與 rules 層過期描述
+- docs: 補齊 tdd 的 spec/UC 轉測試四處缺引導（G10-G13）
+- docs: 元件庫規格範本補齊 G16-G20 缺引導並技術中立化佔位文字
+- docs: chained-examples 補語言專屬 skill 程式碼對照例外條款
+- docs: PC-GPD-025 以參考答案對照量測文件時猜中被計為非缺口
+- docs: ASCII 線框形態補組合樹記法
+- docs: 檢驗問句範例的退出路徑改以層級表述
+- docs: PM 驗收追修 chained-examples 兩處殘留
+- docs: 修正 chained-examples 規格的五項 PM 審查發現
+- docs: 定義三段鏈式範例規格與何處需要範例判準
+- docs: 補全地基波權威的路徑，與同檔其他引用一致
+- docs: 三份新 reference、四份 CHANGELOG、baseline 同步與票面記錄
+- docs: 依探針判定重整相鄰四 skill 的正文路由與交界
+- docs: skill-design-guide 第五輪複驗與處置（1.12.4）
+- docs: README 索引補 PC-GPD-024 一列
+- docs: 新增 PC-GPD-024 變更記錄照計畫寫而非照 diff 寫
+- docs: skill-design-guide 第四輪複驗與處置（1.12.3）
+- docs: skill-design-guide 第三輪複驗與處置（1.12.2）
+- docs: skill-design-guide 1.12.0 複驗與處置（1.12.1）
+- docs: skill-design-guide 補正文與 references 分工、超標診斷、探針審查（1.12.0）
+- docs: 落地 某票 改進設計至條文與引導層
+- docs: 第三輪探針的三項門檻判定與處置（3.0.2）
+- docs: 新增 DOC-GPD-009 對歧義加警告而非改結構
+- docs: README 索引補 DOC-GPD-009 一列
+- docs: 依複驗批次修正 component-contract-design（3.0.1）
+- docs: 重切 component-contract-design 為依步驟有序的結構並重寫內文
+- docs: 落地 framework-issue 修法時點分離條文 + 規則5接縫
+- docs: PC-134 補變體——診斷已在 context 裡仍複製該形態
+- docs: 新增 PC-GPD-023 共用計數器識別符的前向引用競態
+- docs: Layer 2 審查追修，五項皆為規則正本違反自身條文
+- docs: 追溯矩陣與測試對象目錄補互指路由與界線說明
+- docs: 新增 reference-stability-rules 規則 11（行號不作為引用定位符）
+- docs: 新增測試鑑別力規則 E1/E2（明示旗標對照測試、守衛正向對照輸入）
+- docs: PC-GPD-022 由待驗證假說升為 git worktree 形態已確立
+- docs: 新增 PC-GPD-021 與 PC-GPD-022
+- docs: 新增 PC-GPD-020 明示與預設不可區分
+- docs: 併入並行 session 的三點 delta 與第四個實例
+- docs: 撤回，與並行 session 的 PC-GPD-019 為同一教訓且後者較完整
+- docs: 新增 PC-GPD-019 形狀相符終止查證
+- docs: 新增「鄰近性被當成已查證的關係」
+- docs: 檢查清單過濾方向條目拆為唯讀與寫入兩列
+- docs: 修正「與成功回音逐字相同」並補 Action 第 0 項讀 exit code
+- docs: 補第四例——截斷點與他方宣稱吻合時子集升級為偽佐證
+- docs: 新增 PC-GPD-016 與 PC-GPD-017，來自多輪審查本身的兩則形態
+- docs: methodology-index 的方法論列同步七個版本的新增內容
+- docs: 收尾通讀修正——相鄰兩節起首同骨、執行步驟補旁路確認
+- docs: Round 3 outbound 與個案實跑第二批——站內撞義與兩則危險
+- docs: Round 3 個案實跑修正——四個停頓點指向同一形態
+- docs: Round 3 steelman 修正——七項替代結構有五項被反證
+- docs: Round 3 誤用梯度修正——抽出登記與判斷性驗收兩條共用原則
+- docs: skill CHANGELOG 補 1.2.0 條目，與 frontmatter 版本對齊
+- docs: Round 2 cadence 與題目範圍修正——錯引通道列、節範圍、覆蓋缺口
+- docs: Round 2 冷讀修正——反向路由、批次內類別、推回與卸載的區別
+- docs: Round 2 修正的落點目的地——補齊缺格
+- docs: 多輪審查 Round 2 修正——語域對齊、執行者歸屬、三則自造漂移
+- docs: Round 1 修正的周邊檔——反向路由補位與版本雙住址對齊
+- docs: 多輪審查 Round 1 修正——數字閾值補推導、搶佔形態涵蓋五種通道
+- docs: 補 spec CHANGELOG 1.8.0 條目（與 SKILL.md frontmatter 版本對齊）
+- docs: 驗收補正——async-queue 路由句補 skill 名、SKILL.md 範本數與表列對齊
+- docs: 補 CHANGELOG 並更新四個路由句指向新 skill
+- docs: 新建 event-flow-arbitration-design skill
+- docs: spec validate Layer 2 新增維度 5 資源競爭掃描
+- docs: 位置編號引用改語意標題
+- docs: saas-tech-selection event catalog 加到達類別與級別欄
+- docs: domain-map 範本新增「通道與協調圖」節
+- docs: 補 saas-tech-selection 兩維度對事件流負載仲裁方法論的承接位
+- docs: foundation-design 新增事件流仲裁維度
+- docs: Port 回饋契約加反向路由；事件流負載仲裁方法論補測試義務節
+- docs: 新增 DOC-GPD-008 外推通則時例示未回代判準鍵
+- docs: 建立事件流負載仲裁方法論並接線四個消費方
+- docs: 補寫終端回饋訊息的三類測試驗收形態
+- docs: 把驗證器軸錯位模式升級為 framework issue，並收斂本地票範圍
+- docs: 歸屬判準補前提，否則會吞掉全部正確的工作
+- docs: PC-GPD-009 與 015 互指共用骨架，雙向落地
+- docs: 新增 PC-GPD-015 引用了對的權威來源但它回答的不是被問的問題
+- docs: 新增 DOC-GPD-007 範例被讀為契約全集
+- docs: component-contract-design 版號連動 2.2.0
+- docs: 補提示元件通道選擇/類型分化/日誌承接三問
+- docs: 新增 PC-GPD-014 正確結論配錯誤理由當下無症狀
+- docs: 修正根因末段被證偽的斷言，補守衛部分覆蓋機制
+- docs: 修正框架方法論引用專案絕對路徑，升格 INV-FEEDBACK-001 定義
+- docs: 固化元件層回饋日誌為元件庫通用契約條款
+- docs: PC-GPD-009 補換軸邊界宣告與結構性脫鉤
+- docs: PC-GPD-013 判定表補第四欄與 PC-GPD-009 交叉引用
+- docs: PC-GPD-013 補「有內容的鎖處置與空鎖相反」
+- docs: 新增 PC-GPD-013 繞道路徑使共用資源故障失去診斷訊號
+- docs: 新增 DOC-GPD-006 帶條件的決策被壓進表格欄位
+- docs: DOC-GPD-003 補「計數與其列舉同時寫下卻不一致」變體
+- docs: 新增 PC-GPD-012 共識不構成查證
+- docs: 補「載體決定」節，記錄不上移 rules/core 與不開 issue 的理由
+- docs: 新增 PC-GPD-011 過濾產物活得比它的問題久
+- docs: PC-GPD-009 1.2.0 補兩則來源二變體
+- docs: PC-GPD-009 依來源拆兩節，補殘留分佈論證
+- docs: layered-test-strategy 補實機驗證收尾契約三則
+- docs: base SHA 前進後回補三項本地內容
+- chore: sync-pull multi-round-review 2.11.0 與 compositional-writing 1.20.0
+- chore: sync-pull compositional-writing 1.19.0 與 multi-round-review 2.10.0
+- chore: 補齊 component-contract-design 缺範例與既有範例改寫
+- chore: 解決 7 個 skill 的同步衝突，三個補 bump 版號
+- chore: spawn IMP-GPD-001 error-pattern + set blockedBy on 某票
+- chore: complete - Port 回饋契約反向路由 + 事件流仲裁測試義務節
+- chore: 三處重複衝突暫採上游，使 base SHA 得以前進
+- chore: sync-pull 至 canonical 某版本，解三處衝突
+- test: UC 編號擷取改以檔名分段取得，避免字面 UC-00（某票）
+- test: add-acceptance 剝除誤帶核取方塊前綴的迴歸測試
+- other: 某票: 射程判定表第一列收窄為同一容器內的兩個子件
+
+---
+
 ## [2.59.9] - 2026-09-08
 
 ### Summary
