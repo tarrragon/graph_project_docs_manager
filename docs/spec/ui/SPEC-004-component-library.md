@@ -5,14 +5,14 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-09"
-version: "1.130"
+version: "1.131"
 owner: lavender-interface-designer
 
 domain: "ui"
 subdomain: component-library
 
-related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06]
-related_specs: [SPEC-001, SPEC-002, SPEC-003]
+related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06, UC-07]
+related_specs: [SPEC-001, SPEC-002, SPEC-003, SPEC-008]
 implements_requirements: []
 has_functional_requirements: false   # 元件庫規格以逐元件契約表達，不含 FR 為設計（0.5.0-W1-159 判定）
 depends_on_domains: [layout]
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.130（1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.131（1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -118,7 +118,7 @@ depends_on_domains: [layout]
 > 選項型元件（點擊選取的單一動作，如導覽項、最近專案項）依此為元件；資料列（欄位對齊表頭或多欄位並排）為容器。
 >
 > **層級欄**：L2 = 與本專案語意無關、可跨專案重用的複合元件；L3 = 承載本專案語意（domain、UC、ticket、破洞）的元件。
-> **出現畫面欄**以 SPEC-001 章節號表示（§1 Domain 視圖、§2 UC Flow、§3 追溯、§4 Ticket 清單、§5 破洞報告、§6 節點詳情、§7 專案切換浮層、殼 = 全部導覽頁共用的框架層）。
+> **出現畫面欄**以 SPEC-001 章節號表示（§1 Domain 視圖、§2 UC Flow、§3 追溯、§4 Ticket 清單、§5 破洞報告、§6 節點詳情、§7 專案切換浮層、§9 偏好設定面板、§10 變更記錄、殼 = 全部導覽頁共用的框架層）。
 > **變體欄**為語意名，變體數量與最終命名定於第 4 章（L2 決策）；本表為候選。
 
 ### 3.1 總表
@@ -130,13 +130,13 @@ depends_on_domains: [layout]
 | `AppText`（文字） | 元件 | L2 | 所有可見文字的唯一載體，依字級 token 與語意角色渲染；容器的子件清單以此具名 | 全部 | `title` / `subtitle` / `body` / `caption` / `mono`（等寬：ID、路徑）；強調（`emphasis`）與弱化（`secondary`，`AppColors.textSecondary`）為修飾參數 |
 | `AppIcon`（圖示） | 元件 | L2 | 語意圖示（資料夾、全部導覽圖示、展開箭頭、外開箭頭、損壞）；尺寸只取具名階 | 殼、§3、§4、§5、§7 | 不適用（尺寸階與顏色為參數；圖示尺寸階 token 待第 4 章向 `lib/tokens/` 補） |
 | `Divider`（分隔線） | 元件 | L2 | 區隔堆疊中的群組 | §6、§7 | 不適用（原子元件） |
-| `AppButton`（按鈕） | 元件 | L2 | SPEC-001「可用操作」欄所有有視覺承載的動作：開始載入、取消、重新掃描、重新整理、返回、開啟原始檔、檢視關聯、前往破洞報告、開啟 docs 目錄、檢視詳情、選擇資料夾、選擇其他、在泳道中檢視、關閉詳情卡、前往 Domain 視圖、以 App 內建型別表檢視、前往追溯視圖、前往 Ticket 清單、切換專案（阻擋狀態本體） | §1–§7 | `primary`（前進／主要動作）/ `secondary`（取消、返回、重新整理）/ `text`（低強調、可帶 leading icon，如浮層底部「選擇其他資料夾…」）；三變體已核定（§3.7 第 9 項） |
-| `Badge`（徽章） | 元件 | L2 | 非互動的標籤／數值標記 | §1–§7 | `count`（計數）/ `status`（draft／pending／completed／confirmed／approved 等）/ `type`（PROP／SPEC／UC／Ticket）/ `category`（破洞類別）/ `event`（emits X／consumes X）/ `tag`（domain: schema、N 個 FR）/ `legend`（圖例：符號 + 說明）/ `health`（專案健康計數）；顏色以語意 `tone` 參數取 token（§4.5）；chip 底／純文字不設第二變體軸，由所在容器格位決定（§3.7 第 5 項） |
+| `AppButton`（按鈕） | 元件 | L2 | SPEC-001「可用操作」欄所有有視覺承載的動作：開始載入、取消、重新掃描、重新整理、返回、開啟原始檔、檢視關聯、前往破洞報告、開啟 docs 目錄、檢視詳情、選擇資料夾、選擇其他、在泳道中檢視、關閉詳情卡、前往 Domain 視圖、以 App 內建型別表檢視、前往追溯視圖、前往 Ticket 清單、切換專案（阻擋狀態本體）、顯示全部歷史、重新檢查、重試、重新讀取（§10） | §1–§7、§10 | `primary`（前進／主要動作）/ `secondary`（取消、返回、重新整理）/ `text`（低強調、可帶 leading icon，如浮層底部「選擇其他資料夾…」）；三變體已核定（§3.7 第 9 項） |
+| `Badge`（徽章） | 元件 | L2 | 非互動的標籤／數值標記（§10：事件列的新增／移除、淺層 clone 標示） | §1–§7、§10 | `count`（計數）/ `status`（draft／pending／completed／confirmed／approved 等）/ `type`（PROP／SPEC／UC／Ticket）/ `category`（破洞類別）/ `event`（emits X／consumes X）/ `tag`（domain: schema、N 個 FR）/ `legend`（圖例：符號 + 說明）/ `health`（專案健康計數）；顏色以語意 `tone` 參數取 token（§4.5）；chip 底／純文字不設第二變體軸，由所在容器格位決定（§3.7 第 5 項） |
 | `IssueMarker`（問題標記） | 元件 | L3 | 修飾既有節點或欄位的問題標記，可點擊跳轉破洞報告 | §3、§4、§6 | `damagedEdge`（邊損壞：虛線框／降低不透明度，FR-05）/ `damagedDetail`（詳情損壞：圖示 + 計數徽章，`badge-tickets-corrupted`；欄位級附說明文字 slot）/ `gap`（追溯缺口：虛線框 + 「缺口」標籤，`badge-traceability-broken-<nodeId>`，`<nodeId>` 為缺下游的父節點，每個此類父節點一個；SPEC-001 §3、SPEC-003 §3.3，用戶簽核 2026-09-14） |
 | `NavItem`（導覽項） | 元件 | L3 | 側欄全部導覽項，`nav-item-<destination>` | 殼 | `default`；狀態 selected / unselected / hover |
 | `ProjectSwitcherEntry`（專案切換入口） | 元件 | L3 | 側欄頂端：資料夾圖示 + 目前專案名（單行截斷）+ 展開箭頭；= SPEC-001 §7 收合態，`project-switcher-entry` | 殼 | `default`；阻擋狀態下恆 enabled（SPEC-003 §2.7 浮層可用性斷言） |
 | `RecentProjectItem`（最近專案項） | 元件 | L3 | 浮層內單一專案選項：圖示 + 名稱 + 摘要（節點數 · 票數）+ 健康徽章 slot + 不可用原因常駐文字，`card-switcher-recent-<index>` | §7 | `default`；狀態 enabled / disabled（附原因文字，不用 tooltip）/ selected（目前專案） |
-| `SegmentedControl`（分段控制） | 元件 | L3 | 雙模式切換（矩陣／泳道、列表／主題），`mode-*` | §1、§4 | `default`；段數上限 2（0.1 只有雙模式畫面） |
+| `SegmentedControl`（分段控制） | 元件 | L3 | 互斥單選的常駐切換：雙模式切換（矩陣／泳道、列表／主題，`mode-*`）與變更記錄的期間選擇（`option-history-period-<period>`） | §1、§4、§10 | `default`；段數 2–3（三段只用於 §10 期間選擇，1.131） |
 | `PageTitle`（頁面標題） | 元件 | L3 | 頁首左側：畫面名 + 一行副標（模式說明或選取摘要） | §1–§6 | `default`；副標為可選 slot |
 | `SearchField`（搜尋框） | 元件 | L2 | Ticket 清單工具列搜尋，`input-tickets-search` | §4 | `default`；狀態 empty / filled / focused |
 | `FilterDropdown`（篩選下拉） | 元件 | L2 | 「狀態：pending」「優先：全部」類的篩選觸發器，`action-tickets-filter-<key>` | §4 | `default`；狀態 default / active（有篩選值）/ open |
@@ -145,28 +145,29 @@ depends_on_domains: [layout]
 | `SwimlaneNode`（泳道節點） | 元件 | L3 | 泳道格內的動作標籤（掃描、解析、建圖…），0.1 不可點、不可拖 | §1 | `active`（`AppColors.accent` 底、白字）/ `inactive`（`AppColors.surfaceChip` 底） |
 | `StepNumber`（步驟序號） | 元件 | L3 | 步驟列與詳情卡步驟清單的序號 | §1（詳情卡）、§2 | `default`；統一圓形（§3.7 第 11 項）；直徑 `LayoutSize.stepNumberSize`（24） |
 | `ExpanderIcon`（展開收合） | 元件 | L2 | 樹節點、主題節、破洞分節的展開觸發器，`expander-*` | §3、§4、§5 | `default`；狀態 expanded / collapsed / leaf（無子層時不渲染箭頭但保留寬度） |
-| `RelationItem`（關聯項） | 元件 | L3 | 節點詳情右欄的關聯節點 ID，等寬字、chip 底、可點擊替換主欄，`card-nodeDetail-relation-<nodeId>` | §6 | `default`；狀態 default / hover / damaged（邊損壞時套 `IssueMarker.damagedEdge`） |
+| `RelationItem`（關聯項） | 元件 | L3 | 節點詳情右欄的關聯節點 ID，等寬字、chip 底、可點擊替換主欄，`card-nodeDetail-relation-<nodeId>`；變更記錄事件列的宣告端與對端節點，`action-history-open-<index>-<side>` | §6、§2、§10 | `default`；狀態 default / hover / damaged（邊損壞時套 `IssueMarker.damagedEdge`） |
 | `DocumentBody`（文件內文） | 元件 | L3 | 節點詳情主欄的 markdown 渲染內容（段落、行內 code、FR 引用區塊）；由 0.0.3 選定的 `flutter_markdown_plus` 承載，渲染器內部 widget 列第 7 章豁免 | §6 | `default`；屬元件庫（§3.7 第 7 項） |
-| `EmptyState`（空狀態） | 元件 | L3 | 「這裡目前沒有內容」+ 至少一個非返回的前進動作（FR-03，`page` 列舉狀態；無破洞與 `section` 例外見 SPEC-003 §2.7）；訊息、說明、動作為 slot | §1（未選專案、空圖、未選格右欄、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化）、§2（專案未就緒、無 UC、尚未選定 UC、flow 未結構化）、§3（專案未就緒、無提案、圖不可用）、§4（專案未就緒、無 ticket）、§5（專案未就緒、無破洞）、§6（專案未就緒、未選節點、圖不可用、節點不在目前的圖上） | `page`（全頁）/ `section`（區塊內：與 UC 基本資訊並列、未選格右欄、泳道 · 尚未選定 UC、泳道 · flow 未結構化、§2 尚未選定 UC）；`missing` 改為獨立元件 `MissingSourceState`、`compact` 刪除（§3.7 第 3 項） |
+| `EmptyState`（空狀態） | 元件 | L3 | 「這裡目前沒有內容」+ 至少一個非返回的前進動作（FR-03，`page` 列舉狀態；無破洞與 `section` 例外見 SPEC-003 §2.7）；訊息、說明、動作為 slot | §1（未選專案、空圖、未選格右欄、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化）、§2（專案未就緒、無 UC、尚未選定 UC、flow 未結構化）、§3（專案未就緒、無提案、圖不可用）、§4（專案未就緒、無 ticket）、§5（專案未就緒、無破洞）、§6（專案未就緒、未選節點、圖不可用、節點不在目前的圖上）、§10（專案未就緒、期間內無事件、非 git 專案、找不到 git、讀取失敗、已取消） | `page`（全頁）/ `section`（區塊內：與 UC 基本資訊並列、未選格右欄、泳道 · 尚未選定 UC、泳道 · flow 未結構化、§2 尚未選定 UC）；`missing` 改為獨立元件 `MissingSourceState`、`compact` 刪除（§3.7 第 3 項） |
 | `MissingSourceState`（原始檔已消失） | 元件 | L3 | 「原始檔已不存在」+ 最後已知路徑 + 重新整理／返回；退出留在畫面內（重新整理三分支，SPEC-003 §3.6），與 `EmptyState.page` 的跳轉層級不同故獨立 | §6（原始檔已消失） | `default` |
 | `BlockedState`（阻擋狀態） | 元件 | L3 | 「這個專案不適用本 App」+ 版本值（不是框架專案無）+ 說明 + 切換專案出口（恆可用，FR-07）；無可消費的型別表時另提供「以 App 內建型別表檢視」條件式渲染出口（`action-domain-degraded-view`，SPEC-003 §3.1，`0.1.0-W1-035` 定案）。載入失敗不屬「不適用」，同以本元件承載但內容不同：訊息改為結果與原因（`domainLoadFailedMessage`）+ 「重新載入」（`action-domain-reload`，`onReload` 非 null 時渲染）+ 切換專案出口，無版本值、無說明（§3.6 該列，`0.5.0-W1-114.14.1`） | §1（不是框架專案、無可消費的型別表、schema 不相容、載入失敗） | `plain` / `withDetail`（附「檢視詳情」展開 `panel-domain-schema-detail`，內容為「App 已知版本範圍」一列標籤 + 值的 `Section`） |
-| `LoadingState`（載入態） | 元件 | L3 | 骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（共 10 條，SPEC-003 §2.5、§2.8）由本元件單一承擔 | §1（載入中）、§5（掃描中） | `skeleton`（indeterminate + 計數文字；骨架版位 slot：`matrix` / `sections`） |
+| `LoadingState`（載入態） | 元件 | L3 | 骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（共 10 條，SPEC-003 §2.5、§2.8）由本元件單一承擔 | §1（載入中）、§5（掃描中）、§10（讀取中） | `skeleton`（indeterminate + 計數文字；骨架版位 slot：`matrix` / `sections` / `rows`） |
+| `AppCheckbox`（核取切換） | 元件 | L2 | 單一布林設定的常駐切換：核取框 + 文字，點擊切換值；變更記錄的「包含 ticket 建檔」，`action-history-include-ticket-created`（1.131 新增，既有元件不適用的理由見 4.43） | §10 | `default`；狀態 checked / unchecked |
 | `AppSnackBar`（即時訊息） | 元件 | L2 | 「已在外部開啟」「找不到檔案」類的暫時訊息，Material 預設動畫不覆寫 | §1、§2、§4、§5、§6、§7（`denied` fallback 於任一畫面） | `plain`（停留 `Motion.snackBar`）/ `withAction`（帶一個動作，停留 `Motion.snackBarWithAction`）；封裝為元件（§3.7 第 8 項） |
 
 #### 容器
 
 | 元件 | 種類 | 層級 | 用途 | 出現畫面 | 變體（variant） |
 |------|------|------|------|---------|----------------|
-| `AppShell`（根框架） | 容器 | L3 | 根：無父容器。標題列（`AppText.title` 應用名）/ 側欄（`ProjectSwitcherEntry` + `NavItem` × 6，垂直）/ 主區（`PageColumn`）三格；側欄固定寬、主區填滿 | 殼 | `default`；元件庫 `AppShell` 傳值、不 watch；訂閱由組裝層 `lib/assembly/shell.dart` 承擔（漂移見 3.5） |
+| `AppShell`（根框架） | 容器 | L3 | 根：無父容器。標題列（`AppText.title` 應用名）/ 側欄（`ProjectSwitcherEntry` + `NavItem` × 7，垂直）/ 主區（`PageColumn`）三格；側欄固定寬、主區填滿 | 殼 | `default`；元件庫 `AppShell` 傳值、不 watch；訂閱由組裝層 `lib/assembly/shell.dart` 承擔（漂移見 3.5） |
 | `PageColumn`（頁面區塊堆疊） | 容器 | L3 | 每頁根堆疊：`SplitRow.header` + 內容（`Panel` 或 `TwoColumnLayout` 或狀態元件）垂直；內容區內距 `Space.xl` | §1–§6 | `default` |
 | `SplitRow`（左右分列） | 容器 | L2 | 左右兩端對齊的水平列：頁首（`PageTitle` + `SegmentedControl`）、Ticket 清單摘要底列（`AppText` + `AppText`） | §1–§6（頁首）、§4（底列） | `header`（固定高、底邊框 `AppColors.border`、底 `AppColors.surfaceBase`）/ `footer`（頂邊框）；合併為提案（3.3 第 13 項） |
 | `Panel`（面板） | 容器 | L2 | 白底（`AppColors.surfaceBase`）、邊框 `AppColors.border`、圓角 `Radius.lg`、內距 `Space.md` 的垂直堆疊；子件為具名清單（`Toolbar` / `TableRow.header` / `DataTable` / `MatrixGrid` / `SwimlaneGrid` / `Tree` / `Section` / `BadgeRow` / `Divider` / `AppText` / `DocumentBody` / `ListRow`） | §1–§6 | `default` / `scrollable`（主體可垂直捲動，承載 SPEC-003 §1.1〈捲動處清單〉中一維垂直捲動者） |
 | `TwoColumnLayout`（主副雙欄） | 容器 | L3 | 主欄 `Panel`（填滿）+ 右欄 `Panel.scrollable`（固定寬 `LayoutSize.detailPaneWidth`）水平並排，間距 `Space.md`；兩欄各自獨立捲動（SPEC-003 FR-10、§1.1 連動禁令） | §1（正常·矩陣、已選格）、§2（尚未選定 UC、flow 未結構化、正常：右欄為 UC 選擇清單，§3.6）、§6（正常、部分損壞） | `default`（§3.7 第 16、21 項） |
-| `Toolbar`（工具列） | 容器 | L2 | `SearchField`（填滿）+ `FilterDropdown` × N + `IssueMarker.damagedDetail`（可點錨點 `badge-tickets-corrupted`，§3.7 第 14 項）水平，底邊框 | §4 | `default` |
+| `Toolbar`（工具列） | 容器 | L2 | `SearchField`（填滿）+ `FilterDropdown` × N + `IssueMarker.damagedDetail`（可點錨點 `badge-tickets-corrupted`，§3.7 第 14 項）水平，底邊框；變更記錄篩選列：`SegmentedControl`（期間）+ `AppCheckbox`（包含 ticket 建檔）水平 | §4、§10 | `default` / `history`（1.131） |
 | `BadgeRow`（徽章列） | 容器 | L2 | `Badge` × N 水平、間距 `Space.xs`，空間不足換行；承載節點詳情標籤列、矩陣與泳道圖例列、事件標籤 | §1、§2、§6 | `default` / `legend`（頂邊框，面板底部；間距同 `Space.xs`，§3.7 第 12 項） |
 | `ButtonRow`（按鈕列） | 容器 | L2 | `AppButton` × N 水平；承載狀態元件的動作區（開始載入；重新整理；開啟原始檔 + 檢視關聯）、頁首右側頁面級動作區（§3.7 第 17、18 項）、格詳情卡動作區 | §1–§6 | `default`；子件上限 3（0.1 最多三動作） |
-| `TableRow`（表格列） | 容器 | L2 | 欄寬對齊表頭的水平格線列；子件 ∈ {`TableColumnHeader`, `AppText`, `Badge`, `StepNumber`, `BadgeRow`, `IssueMarker`, `RelationItem`（步驟列 domain 欄，可點）} | §2、§4 | `header`（`TableColumnHeader` × N）/ `ticket`（ID mono、標題、狀態徽章、優先、blockedBy、損壞標記；列表與主題模式共用同一欄序，§3.7 第 15 項；blockedBy 欄出處 SPEC-001 §4）/ `step`（序號、步驟名、domain 標籤、事件徽章列）/ `eventFlow`（事件 ID mono、發出、消費、孤立事件標記；非互動，可被定位；SPEC-001 §2〈事件流小表〉） |
-| `DataTable`（資料表） | 容器 | L2（資料視圖） | `TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`） | §2、§4 | `virtual` / `plain` |
+| `TableRow`（表格列） | 容器 | L2 | 欄寬對齊表頭的水平格線列；子件 ∈ {`TableColumnHeader`, `AppText`, `Badge`, `StepNumber`, `BadgeRow`, `IssueMarker`, `RelationItem`（步驟列 domain 欄，可點）} | §2、§4 | `header`（`TableColumnHeader` × N）/ `ticket`（ID mono、標題、狀態徽章、優先、blockedBy、損壞標記；列表與主題模式共用同一欄序，§3.7 第 15 項；blockedBy 欄出處 SPEC-001 §4）/ `step`（序號、步驟名、domain 標籤、事件徽章列）/ `eventFlow`（事件 ID mono、發出、消費、孤立事件標記；非互動，可被定位；SPEC-001 §2〈事件流小表〉）/ `historyEvent`（變動、邊型、宣告端、對端、commit、日期、作者與訊息；列本體非互動，節點格可點；SPEC-001 §10，1.131） |
+| `DataTable`（資料表） | 容器 | L2（資料視圖） | `TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`），變更記錄事件清單為虛擬捲動（`scroll-history-events`） | §2、§4、§10 | `virtual` / `plain` |
 | `MatrixGrid`（矩陣） | 容器 | L3（資料視圖） | domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`） | §1 | `default` |
 | `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× （DomainBundle 數＋1，有未定位步驟時＋2）垂直（「畫面」列 + 每個 DomainBundle 一列，有 `traverses` 異常步驟時於全部 DomainBundle 列之後加「未定位」列，本專案 9 列）、列間虛線；步驟間邊（直線／弧線）；底部步驟箭頭列；列序、欄序、邊形狀依 SPEC-001 §1〈泳道布局規則〉（「畫面」列 + 每個 DomainBundle 一列依 `bundle_dependency` 推導層序與同層字母序、主線清單順序與分支（含巢狀）插欄、前向直線與回指弧線；0.1 為假資料靜態排版，SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
 | `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3 | `default` |
@@ -174,7 +175,7 @@ depends_on_domains: [layout]
 | `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
 | `SwitcherOverlay`（專案切換浮層） | 容器 | L3 | 覆蓋層：`AppText.caption` 標題 + `RecentProjectItem` × N（垂直捲動 `scroll-switcher-recent`）+ `Divider` + `AppButton.text`（選擇其他資料夾）；自入口向下展開，Esc／點外部收合，焦點限制於浮層內 | §7（展開、無最近專案） | `default`；`RecentProjectItem` 數量無上限 → 空間不足策略為捲動 |
 
-**定案數（§3.7 核定後）**：元件 26（原 25 加 `MissingSourceState`）、容器 16（其中資料視圖 4：`DataTable`、`MatrixGrid`、`SwimlaneGrid`、`Tree`；0.1 版原記「17」為計數誤差，本表實列 16）。
+**定案數（§3.7 核定後）**：元件 27（原 25 加 `MissingSourceState`，1.131 加 `AppCheckbox`）、容器 16（其中資料視圖 4：`DataTable`、`MatrixGrid`、`SwimlaneGrid`、`Tree`；0.1 版原記「17」為計數誤差，本表實列 16）。
 非資料視圖的容器 12 個，超過 skill〈Troubleshooting〉的十個門檻；3.5 記錄已做的歸併與未再歸併的理由，
 再往下歸併須把 slot 子件清單寫成「任意元件」，skill 明文視同原生佈局，§3.7 第 10 項核定接受此數。
 
@@ -188,7 +189,7 @@ depends_on_domains: [layout]
 |------|------|------|------|
 | 全部（框架層） | 頂端標題列「專案文件流」 | 標題；無動作 | `AppShell` 標題列 slot（`AppText.title`） |
 | 全部 | 側欄頂端：資料夾圖示 + 專案名 + 展開箭頭 | 動作（開啟切換）+ 標籤（目前專案） | `ProjectSwitcherEntry` |
-| 全部 | 側欄六項：圖示 + 名稱，一項高亮底 | 動作（換頁）；selected 態 | `NavItem` × 6 |
+| 全部 | 側欄導覽項：圖示 + 名稱，一項高亮底（畫布畫六項；第七項「變更記錄」由 SPEC-001 §10 新增，畫布未更新，規格為準） | 動作（換頁）；selected 態 | `NavItem` × 7 |
 | 全部 | 頁首：畫面名 + 灰色副標；右側（§1、§4）雙段切換 | 標題 + 內文；動作（切模式） | `SplitRow.header`[`PageTitle`, `SegmentedControl`] |
 | 全部 | 白底圓角邊框面板 | 容器（無自身語意） | `Panel` |
 | Main（§1 矩陣） | 欄首列：空格 + UC ID 與名稱兩行 × 5 + 小計 | 標籤 | `TableColumnHeader.twoLine` |
@@ -251,7 +252,7 @@ depends_on_domains: [layout]
 | 畫面 | 排列關係（方向：子件） | 間距 token | 容器候選 |
 |------|------|------|------|
 | 殼 | 垂直：標題列 / 主體；主體水平：側欄 / 主區 | 側欄與主區以 `AppColors.border` 分隔線相接 | `AppShell` |
-| 殼 | 側欄垂直：`ProjectSwitcherEntry` / `NavItem` × 6 | `Space.xxs`（項間）、`Space.sm`（入口下方）、側欄內距 `Space.md` × `Space.sm` | `AppShell` 側欄 slot（殼層以框架容器承載，不另立） |
+| 殼 | 側欄垂直：`ProjectSwitcherEntry` / `NavItem` × 7 | `Space.xxs`（項間）、`Space.sm`（入口下方）、側欄內距 `Space.md` × `Space.sm` | `AppShell` 側欄 slot（殼層以框架容器承載，不另立） |
 | §1–§6 | 主區垂直：頁首 / 內容區 | 內容區內距 `Space.xl` | `PageColumn` |
 | §1–§6 | 頁首水平：`PageTitle` / 右側控制 | 兩端對齊 | `SplitRow.header` |
 | §1、§6 | 內容區水平：主 `Panel` / 右 `Panel`（固定寬） | `Space.md` | `TwoColumnLayout` |
@@ -376,6 +377,16 @@ depends_on_domains: [layout]
 | §7 | 無最近專案 | 僅「選擇資料夾…」 | `SwitcherOverlay` 零項 + `AppButton.text`（訊息文案 `switcherChooseFolderPrompt`；不用 `EmptyState`，§3.7 第 3 項） |
 | §9 | 編輯器清單 | 單選清單：系統預設加查得 handler 的編輯器，目前選定值標示為選取 | `Panel.scrollable`[`AppText.subtitle`（`preferencesTitle`）, `ListRow.option` × N（`option-preferences-editor-<editorId>`；首項標籤 `preferencesEditorSystemOption`，其後為編輯器名稱，產品專有名詞不進 i18n）, `AppButton.text`（關閉，`action-preferences-close`）] |
 | §9 | 無可選編輯器 | 單選清單只有「系統預設（不定位）」且為選取 + 說明文字 | 同上：`ListRow.option` × 1（`option-preferences-editor-system`）+ `AppText.multiLine`（`preferencesNoEditorsExplanation`，`maxLines: null`） |
+| §10 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（`state-history-project-unready`；訊息依原因四選一，沿用 §2–§6 同名列的 `projectUnreadyReason*`；動作 `AppButton.primary` 前往 Domain 視圖 `action-history-goto-domain`，既有 `gotoDomainViewAction`） |
+| §10 | 讀取中 | 「正在讀取 git 歷史」+ 已處理的 commit 數 + 取消；篩選列不渲染 | `LoadingState.skeleton`（版位 `rows`，`state-history-loading`；訊息 `historyLoading`、計數 `historyLoadingProcessedCount`（indeterminate，不顯示百分比，SPEC-003 §2.6）、取消 `AppButton.secondary`（`action-history-cancel`，既有 `cancelLoadingAction`，取消中 `cancelInProgressAction`）） |
+| §10 | 正常 | 篩選列 + 期間描述 + 事件數 + 事件清單 + 重新整理 | `PageColumn`[`SplitRow.header`[`PageTitle`（`navHistory`）, `ButtonRow`[`AppButton.secondary` 重新整理 `action-history-refresh`，既有 `refreshAction`]], `Panel.default`（`panelKey` `state-history-normal`）[`leading`: `BadgeRow`[`Badge.category`（tone `warning`，`badge-history-shallow-clone`，`historyShallowCloneBadge`）]（僅結果帶淺層資訊時渲染，置於篩選列之上）, `Toolbar.history`[`SegmentedControl`（三段，`option-history-period-default`／`-recent30`／`-all`）, `AppCheckbox`（`action-history-include-ticket-created`，`historyIncludeTicketCreatedLabel`）], `AppText.body`（`historyPeriodSummary`：期間描述 + 事件數）；`fill`: `DataTable.virtual`（`scroll-history-events`）[`TableRow.header`（七欄欄首，見 4.35 `historyEvent`）, `TableRow.historyEvent` × N]]]；降級徽章 `badge-history-degraded-schema` 與推定版本徽章依 4.27 殼層通則 |
+| §10 | 期間內無事件 | 篩選列 + 期間描述 + 空狀態「此期間沒有關係變動」+ 顯示全部歷史；尚無 commit 變體只有訊息與重新整理 | 頁首同「正常」列；`Panel.default`（`panelKey` `state-history-empty`）[`leading` 同「正常」列；`fill`: `EmptyState.section`（`panel-history-empty`，訊息 `historyEmptyMessage`；動作 `ButtonRow`[`AppButton.primary` 顯示全部歷史 `action-history-show-all`，`historyShowAllAction`]）]。「尚無 commit」變體（SPEC-008 FR-08 規則 4）：`leading` 全不渲染（無篩選列、無期間描述；無 commit 即無淺層邊界），`EmptyState.section` 訊息改為 `historyNoCommitsMessage` 且無動作，出口為頁首重新整理（SPEC-001 §10〈「尚無 commit」變體〉） |
+| §10 | 非 git 專案 | 「此專案不是 git repo，無法讀取變更記錄」+ 重新檢查 | `EmptyState.page`（`state-history-not-git`，訊息 `historyNotGitMessage`；動作 `AppButton.primary` 重新檢查 `action-history-recheck`，`historyRecheckAction`） |
+| §10 | 找不到 git | 「找不到 git 指令」+ 安裝或 PATH 說明 + 重新檢查 | `EmptyState.page`（`state-history-git-missing`，訊息 `historyGitMissingMessage`、說明 `historyGitMissingExplanation`；動作 `AppButton.primary` 重新檢查 `action-history-recheck`，`historyRecheckAction`） |
+| §10 | 讀取失敗 | 「讀取 git 歷史失敗」+ 原因摘要 + 重試 | `EmptyState.page`（`state-history-load-failed`，訊息 `historyLoadFailedMessage`、說明 `historyLoadFailedDetail`（代入 SPEC-008 FR-08 規則 5 的 stderr 摘要原文，資料值不翻譯）；動作 `AppButton.primary` 重試 `action-history-retry`，`retryAction`）；不用 `BlockedState`：讀取失敗不阻擋專案的其他畫面，出口是同畫面重試，不需要切換專案出口（4.21〈何時不用〉的例外說明） |
+| §10 | 已取消 | 「已取消讀取」+ 重新讀取 | `EmptyState.page`（`state-history-cancelled`，訊息 `historyCancelledMessage`；動作 `AppButton.primary` 重新讀取 `action-history-reload`，`historyReloadAction`） |
+
+§10 七態皆渲染頁首 `SplitRow.header`[`PageTitle`（`navHistory`）]；右格 `ButtonRow`（重新整理）只在正常與期間內無事件兩列渲染，其餘狀態的出口在內容區（SPEC-003 §3.9〈導航跳轉與退出〉）。
 
 `SplitRow.header` 與 `SegmentedControl` 僅渲染於正常 · 矩陣、已選格、正常 · 泳道、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化、圖不可用七列；其餘 §1 狀態（未選專案、載入中、空圖、三個阻擋狀態）不渲染頁首模式切換（SPEC-003 §2.2 形態 a，`0.1.0-W3-335.38` S-15）。
 
@@ -859,6 +870,36 @@ EVT-CORPUS-004 項目說明：
 | `preferencesEditorSystemOption` | 系統預設（不定位） | System default (no line positioning) | — | SPEC-001 §9 編輯器清單首項 `option-preferences-editor-system`（`ListRow.option` 主文字） |
 | `preferencesNoEditorsExplanation` | 本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed | No editor that can jump to a line was found on this machine. Supported editors: VS Code, VS Code Insiders, Cursor, Zed | — | SPEC-001 §9 無可選編輯器說明（`AppText.multiLine`，`state-preferences-no-editors`） |
 
+**1.131 新增（`0.7.0-W1-012.2`，對應 SPEC-001 v1.80 §10、SPEC-003 v1.83 §3.9、SPEC-008 FR-06～FR-08；zh／en 為提案文案，ARB 由對應實作票建立）**：第七畫面的導覽名、狀態訊息、篩選列、事件表欄首與列文字、淺層 clone 標示。既有 key 沿用不重登：`projectUnreadyReason*`、`gotoDomainViewAction`、`refreshAction`、`cancelLoadingAction`、`cancelInProgressAction`。邊型以鍵名原值（如 `uc_ticket_refs`）、節點 ID、domain 名稱、commit hash、作者、commit 訊息首行、stderr 摘要皆為資料值，不進 i18n。日期由呼叫端格式化為 `yyyy-MM-dd` 後代入（與語系無關，避免同一欄因語系不同而寬度不同）。
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `navHistory` | 變更記錄 | Change history | — | 4.7 `NavItem`（`nav-item-history`）、§10 頁首 `PageTitle` |
+| `historyLoading` | 正在讀取 git 歷史 | Reading git history | — | §10 讀取中（4.24 訊息） |
+| `historyLoadingProcessedCount` | 已處理 {count} 個 commit | {count, plural, =1{1 commit processed} other{{count} commits processed}} | count（int） | §10 讀取中（4.24 計數文字） |
+| `historyPeriodDefaultLabel` / `historyPeriodRecent30Label` / `historyPeriodAllLabel` | 預設期間 / 最近 30 天 / 全部歷史 | Default period / Last 30 days / All history | — | 4.10 `SegmentedControl` 三段 label（`option-history-period-default`／`-recent30`／`-all`）；後兩者兼作 `historyPeriodSummary` 的期間描述 |
+| `historyPeriodSelectA11yHint` | 以「{period}」篩選事件 | Filter events by {period} | period（String） | 4.10 各段 `semanticLabel`（代入該段 label） |
+| `historyPeriodSinceTag` | {tag} 之後 | Since {tag} | tag（String） | `historyPeriodSummary` 的期間描述：選取預設期間且有基準 tag 時（SPEC-008 FR-06 規則 5）；無基準 tag 時改用 `historyPeriodRecent30Label` |
+| `historyPeriodSummary` | {period} · {count} 筆事件 | {period} · {count, plural, =1{1 event} other{{count} events}} | period（String）、count（int） | §10 正常與期間內無事件，篩選列下方（`AppText.body`） |
+| `historyIncludeTicketCreatedLabel` | 包含 ticket 建檔 | Include ticket creation | — | 4.43 `AppCheckbox` label（`action-history-include-ticket-created`） |
+| `historyShallowCloneBadge` | 歷史不完整：早於 {boundaryDate} 的變更不在其中 | History incomplete: changes before {boundaryDate} are not included | boundaryDate（String，`yyyy-MM-dd`） | 4.5 `Badge.category`（`badge-history-shallow-clone`） |
+| `columnChange` / `columnEdgeType` / `columnDeclarer` / `columnCounterpart` / `columnCommit` / `columnDate` / `columnAuthorMessage` | 變動 / 邊型 / 宣告端 / 對端 / Commit / 日期 / 作者與訊息 | Change / Edge type / Declarer / Counterpart / Commit / Date / Author and message | — | 4.35 `TableRow.header`（`historyEvent` 七欄欄首，4.14 呼叫端） |
+| `historyEventAdded` / `historyEventRemoved` | 新增 / 移除 | Added / Removed | — | 4.35 `historyEvent` 變動欄（`Badge.category`，tone `positive` / `negative`） |
+| `historyEventAuthorMessage` | {author}：{subject} | {author}: {subject} | author（String）、subject（String） | 4.35 `historyEvent` 作者與訊息欄（`AppText.body`） |
+| `historyEventA11yLabel` | {change} {edgeType}，{declarer} 至 {counterpart}，commit {hash}，{date}，{author}：{subject} | {change} {edgeType}, {declarer} to {counterpart}, commit {hash}, {date}, {author}: {subject} | change、edgeType、declarer、counterpart、hash、date、author、subject（皆 String） | 4.35 `historyEvent` 列朗讀（截斷欄的完整值由此承載） |
+| `historyEmptyMessage` | 此期間沒有關係變動 | No relationship changes in this period | — | §10 期間內無事件（4.21 `section` 訊息，`panel-history-empty`） |
+| `historyShowAllAction` | 顯示全部歷史 | Show all history | — | §10 期間內無事件（`action-history-show-all`，4.4 `primary`） |
+| `historyNoCommitsMessage` | 此專案尚無 commit | This project has no commits yet | — | §10 期間內無事件「尚無 commit」變體（4.21 `section` 訊息） |
+| `historyNotGitMessage` | 此專案不是 git repo，無法讀取變更記錄 | This project is not a git repository, so its change history cannot be read | — | §10 非 git 專案（4.21 `page` 訊息） |
+| `historyGitMissingMessage` | 找不到 git 指令 | The git command was not found | — | §10 找不到 git（4.21 `page` 訊息） |
+| `historyGitMissingExplanation` | 請安裝 git，或確認 git 位於 PATH 中 | Install git, or make sure git is on your PATH | — | §10 找不到 git（4.21 `page` 說明） |
+| `historyRecheckAction` | 重新檢查 | Check again | — | §10 非 git 專案、找不到 git（`action-history-recheck`，4.4 `primary`） |
+| `historyLoadFailedMessage` | 讀取 git 歷史失敗 | Failed to read git history | — | §10 讀取失敗（4.21 `page` 訊息） |
+| `historyLoadFailedDetail` | 原因：{reason} | Reason: {reason} | reason（String，stderr 摘要原文） | §10 讀取失敗（4.21 `page` 說明） |
+| `retryAction` | 重試 | Retry | — | §10 讀取失敗（`action-history-retry`，4.4 `primary`） |
+| `historyCancelledMessage` | 已取消讀取 | Reading was cancelled | — | §10 已取消（4.21 `page` 訊息） |
+| `historyReloadAction` | 重新讀取 | Read again | — | §10 已取消（`action-history-reload`，4.4 `primary`） |
+
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
 | 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
@@ -1338,7 +1379,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：SPEC-001「可用操作」欄所有有視覺承載的動作（十四種 + 格詳情卡兩種）。
 **內容角色**：動作（一個 label slot，`text` 變體另有可選 leading icon）。
 **何時不用**：切換工作區（`NavItem`）；開啟關聯節點（`RelationItem`）；雙模式切換（`SegmentedControl`）；非互動標記（`Badge`）；可點的問題標記（`IssueMarker`）。
-**出現畫面**：§1–§7。
+**出現畫面**：§1–§7、§10。
 **層級**：L2
 
 #### 變體
@@ -1481,7 +1522,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：非互動的標籤／數值標記（計數、狀態、型別、類別、事件、標籤、圖例、健康計數）。
 **內容角色**：標籤（`label` slot）；`count` / `health` 為數值（`count` slot）；`legend` 另有符號 slot。
 **何時不用**：標記可點（`IssueMarker`）；可執行動作（`AppButton`）；一般文字（`AppText`）；泳道格內的動作標籤（`SwimlaneNode`）。
-**出現畫面**：§1–§7。
+**出現畫面**：§1–§7、§10。
 **層級**：L2
 
 #### 變體
@@ -1491,7 +1532,7 @@ EVT-CORPUS-004 項目說明：
 | `count` | 數字；預設 tone `negative` | 無 | 損壞計數（作為 `IssueMarker.damagedDetail` 的內部 slot） |
 | `status` | 文字；tone 依狀態值對映（下表） | 無 | 票列狀態、節點 draft chip、樹列狀態 |
 | `type` | 文字；tone `neutral` | 無 | PROP / SPEC / UC / Ticket 型別 |
-| `category` | 文字；tone 由呼叫端指定 | 無 | 破洞類別（畫布：資料損壞 `negative`、追溯缺口 `warning`、圖結構 `neutral`）；4.19 `RelationItem` 的 proposed 邊標記（tone `warning`，`0.5.0-W1-103.1` 裁決 I2） |
+| `category` | 文字；tone 由呼叫端指定 | 無 | 破洞類別（畫布：資料損壞 `negative`、追溯缺口 `warning`、圖結構 `neutral`）；4.19 `RelationItem` 的 proposed 邊標記（tone `warning`，`0.5.0-W1-103.1` 裁決 I2）；§10 事件列變動欄（`historyEventAdded` tone `positive`、`historyEventRemoved` tone `negative`，4.35 `historyEvent`）；§10 淺層 clone 標示（tone `warning`，`badge-history-shallow-clone`，置於 `BadgeRow`；與 RelationItem proposed 標記同為「未定或不完整」語意，故同取 warning） |
 | `event` | 文字（含 `emits` / `consumes` 前綴）；tone 預設 `accent`，呼叫端可改 `negative` | 無 | 事件標籤 |
 | `tag` | 文字；tone `neutral` | 無 | domain: schema、N 個 FR |
 | `legend` | 符號 slot + 文字，無底色；符號色依關係種類 | 無 | 矩陣與泳道圖例 |
@@ -1548,7 +1589,7 @@ EVT-CORPUS-004 項目說明：
 | `symbol` | `String`（`●` / `○` / `·`）| `legend` 必填 | 不適用（非語意排版字元） |
 | `tone` | `BadgeTone` | `category` 必填；其餘有預設 | 不適用 |
 | `semanticLabel` | `String?` | `count` / `health` 必填 | 呼叫端（i18n key 取值；health 用 `healthBadgeA11yLabel`） |
-| `testKey` | `Key?` | health 必填（`badge-switcher-health-<index>`） | 不適用 |
+| `testKey` | `Key?` | health 必填（`badge-switcher-health-<index>`）；§10 淺層 clone 標示必填（`badge-history-shallow-clone`） | 不適用 |
 
 #### 使用 design token
 
@@ -1825,7 +1866,7 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 | i18n key |
 |------|---------|
-| `label` | 呼叫端傳入（既有 `nav*` key 之一） |
+| `label` | 呼叫端傳入（`nav*` key 之一；第七項 `navHistory` 於 1.131 登記，§4.0.6） |
 
 #### 組合規則
 
@@ -2127,17 +2168,18 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.10 SegmentedControl
 
-**用途**：雙模式切換（矩陣／泳道、列表／主題）；每段錨點 `mode-<screen>-<mode>`。
+**用途**：互斥單選的常駐切換。雙模式切換（矩陣／泳道、列表／主題），每段錨點 `mode-<screen>-<mode>`；變更記錄的期間選擇（預設期間／最近 30 天／全部歷史），每段錨點 `option-history-period-<period>`（SPEC-003 §3.9）。錨點由呼叫端經 `segments[i].testKey` 傳入，本元件不組錨點。
+**期間選擇沿用本元件而非 `FilterDropdown` 的理由**（1.131）：(1) SPEC-003 §3.9 只定義三個選項錨點、未定義觸發器錨點，且三個選項在正常與期間內無事件兩態皆可直接點擊；下拉的選項在選單收合時不在元件樹（同 §3.6〈UC 選擇入口〉「為何是常駐清單而非下拉」的理由）。(2) `FilterDropdown` 的首項固定為「全部」並回傳 `null`（SPEC-003 §3.4 F3），期間選擇沒有「不篩選」值，三值皆為具名期間。(3) 三值互斥、恆有一值選取，與本元件的單選語意相同。
 **內容角色**：動作（每段一個 label slot）。
-**何時不用**：畫面導覽（`NavItem`）；一次性動作（`AppButton`）；三段以上的切換（0.1 無此需求，上限 2）。
-**出現畫面**：§1、§4。
+**何時不用**：畫面導覽（`NavItem`）；一次性動作（`AppButton`）；單一布林切換（`AppCheckbox`）；四段以上，或選項數隨資料增減的選擇（`FilterDropdown` 或 `ListRow.option`）。
+**出現畫面**：§1、§4、§10。
 **層級**：L3
 
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `default` | 單一變體；段數上限 2 | | |
+| `default` | 單一變體；段數 2–3（三段只用於 §10 期間選擇） | | |
 
 #### 狀態矩陣
 
@@ -2149,7 +2191,7 @@ EVT-CORPUS-004 項目說明：
 | pressed（每段） | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused（每段） | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
-無 disabled：雙模式切換恆可用（SPEC-001 §1、§4 可用操作）。
+無 disabled：雙模式切換恆可用（SPEC-001 §1、§4 可用操作）；期間選擇於渲染篩選列的兩態（正常、期間內無事件）恆可用，其餘狀態不渲染篩選列（SPEC-001 §10）。§10 的選取值來源：第七畫面頁面狀態持有的期間篩選值（SPEC-008 FR-07 規則 2；切換導覽項保留、切換專案回到預設，SPEC-003 §3.9〈生命週期〉），頁面層以 `selectedIndex` 傳值，同步策略本地即時（在記憶體結果上重新查詢，不重新掃描，SPEC-008 FR-07 規則 5）。
 
 #### 套用時點
 
@@ -2197,13 +2239,13 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
 |-----------|---------|---------|---------|-------------|
-| `segments[i].label` | 否 | 1 | 截斷 | `modeSwimlaneLabel`（en「Swimlane」）；`TestCopy.longToken` |
+| `segments[i].label` | 否 | 1 | 截斷 | `modeSwimlaneLabel`（en「Swimlane」）；三段：`historyPeriodDefaultLabel`（en「Default period」）；`TestCopy.longToken` |
 
 #### slot 契約
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `segments` | `List<SegmentItem{label, semanticLabel, testKey}>`，長度恰 2 | 是 | label 由呼叫端（`mode*Label`）；semanticLabel 由呼叫端（既有 `*SwitchTo*Action`） |
+| `segments` | `List<SegmentItem{label, semanticLabel, testKey}>`，長度 2 或 3（3 只用於 §10 期間選擇） | 是 | label 由呼叫端（`mode*Label` / `historyPeriod*Label`）；semanticLabel 由呼叫端（既有 `*SwitchTo*Action` / `historyPeriodSelectA11yHint`） |
 | `selectedIndex` | `int` | 是 | 不適用 |
 | `onChanged` | `ValueChanged<int>` | 是 | 不適用 |
 
@@ -2223,16 +2265,16 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 | i18n key |
 |------|---------|
-| 段 label | `modeMatrixLabel` / `modeSwimlaneLabel` / `modeListLabel` / `modeTopicLabel`（呼叫端傳入） |
-| 段朗讀提示 | `domainSwitchToMatrixAction` / `domainSwitchToSwimlaneAction` / `ticketsSwitchToListAction` / `ticketsSwitchToTopicAction`（既有，呼叫端傳入） |
+| 段 label | `modeMatrixLabel` / `modeSwimlaneLabel` / `modeListLabel` / `modeTopicLabel` / `historyPeriodDefaultLabel` / `historyPeriodRecent30Label` / `historyPeriodAllLabel`（呼叫端傳入） |
+| 段朗讀提示 | `domainSwitchToMatrixAction` / `domainSwitchToSwimlaneAction` / `ticketsSwitchToListAction` / `ticketsSwitchToTopicAction`（既有）/ `historyPeriodSelectA11yHint`（§10，代入該段 label）（呼叫端傳入） |
 
 #### 組合規則
 
 | 項目 | 值 |
 |------|-----|
-| 可放入的容器 | `SplitRow.header`（右格） |
+| 可放入的容器 | `SplitRow.header`（右格，雙模式）；`Toolbar.history`（首格，§10 期間選擇） |
 | 不得放置的區域 | 依 §4.0.8 |
-| 對齊基準 | 置中於頁首列 |
+| 對齊基準 | 置中於頁首列；`Toolbar.history` 內垂直置中 |
 | 作為表格或列表的一欄時 | 不適用 |
 
 #### 無障礙
@@ -2242,12 +2284,14 @@ EVT-CORPUS-004 項目說明：
 | 朗讀標籤 | 每段 `Semantics.button`，label 等於段 label，`hint` 等於 `semanticLabel`（「切換至矩陣」），`selected` 等於是否選取 |
 | 狀態變化播報 | `selected` 旗標改變由輔助技術播報 |
 | 非視覺替代訊號 | 選取態同時以底色、字重與 `selected` 旗標承載 |
-| 焦點順序與操作路徑（桌機） | Tab 內容區段，兩段依序各為停留點；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
+| 焦點順序與操作路徑（桌機） | Tab 內容區段，各段依序各為停留點（兩段或三段）；Space / Enter 觸發；焦點裝飾依 §4.0.1 |
 | 對比 | 依 §4.0.2 表 1：選取段 `accentStrong` / `surfaceBase` 9.92:1、未選段 `textPrimary` / `surfaceSegmentTrack` 4.56:1（`0.1.0-W1-059` 軌道底調淺為 `#DEE6E4` 後；原畫布值 4.48:1 未達），皆通過 |
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染兩段 × 選取索引 0 / 1
+- [ ] 一支測試渲染兩段 × 選取索引 0 / 1，與三段 × 選取索引 0 / 1 / 2
+- [ ] `segments` 長度為 1 或 4 時建構失敗（assert），長度 2、3 皆可建構
+- [ ] 每段的錨點等於呼叫端傳入的 `testKey`（`mode-*` 與 `option-history-period-*` 兩種形態）
 - [ ] 兩種視窗尺寸下不溢位；高等於 `LayoutSize.hitTargetMin`
 - [ ] 最長測試文案截斷
 - [ ] zh / en 四個 label key 皆不溢位
@@ -2259,14 +2303,15 @@ EVT-CORPUS-004 項目說明：
 | 不該拿它做什麼 | 應改用 |
 |---------------|--------|
 | 篩選條件的多選 | `FilterDropdown` |
-| 三段以上的切換 | 0.1 無此元件；出現需求時走待決出口建元件票 |
+| 四段以上，或選項數隨資料增減的單選 | `FilterDropdown`（篩選）或 `ListRow.option`（常駐清單） |
+| 單一布林開關 | `AppCheckbox` |
 
 ### 4.11 PageTitle
 
 **用途**：頁首左側：畫面名 + 一行副標（模式說明或選取摘要）。
 **內容角色**：標題 + 內文（title slot + subtitle slot；`subtitle` 是 slot 名，其渲染變體為 `AppText.body`，非 `AppText.subtitle`——後者恆為 `Semantics.header`，而副標依本條目無障礙列不得為 header）。
 **何時不用**：面板內標題（`AppText.subtitle`）；節點詳情主標（`AppText.title`）。
-**出現畫面**：§1–§6。
+**出現畫面**：§1–§6、§10。
 **層級**：L3
 
 #### 變體
@@ -3279,7 +3324,7 @@ EVT-CORPUS-004 項目說明：
 **proposed 邊標示**（`0.5.0-W1-103.1`，依 `0.5.0-W1-103` 用戶裁決 2026-10-08：使用中的 proposed 邊在詳情卡與鄰接查詢標示 proposed，`layer` 是穩定性承諾）：關聯右欄的關聯項若來自 `layer` 為 `proposed` 的邊（SPEC-007 FR-08 回傳項的 `layer`；目前只有 `bundle_dependency`），呼叫端傳 `isProposed=true`，chip 尾端加一個 `Badge.category`（tone `warning`，不新增變體，文字 `relationProposedLabel`），朗讀改用 `relationItemProposedA11yLabel`。步驟表 domain 欄不是邊，恆為 `false`。外觀與徽章文案依 `0.5.0-W1-103.1` 用戶裁決 I2（第二輪，2026-10-08）：`Badge.category` 的 warning 色，與 draft／pending 同色，語意同為「未定」；文案 zh「暫定」、en「Proposed」。原提案 `Badge.tag` tone `neutral` 與 chip 同為 `surfaceChip` 底色，區分不出來，故不採。
 **內容角色**：數值（ID 或名稱）+ 動作。
 **何時不用**：非互動的 ID 顯示（`AppText.mono`）；非節點參照的跨畫面動作（`AppButton`）；非互動的 domain 標籤（`Badge.tag`，節點詳情標籤列）。
-**出現畫面**：§6（關聯右欄）、§2（步驟表 domain 欄）。
+**出現畫面**：§6（關聯右欄）、§2（步驟表 domain 欄）、§10（事件列的宣告端與對端欄，`isMono=true`，點擊 jump 至節點詳情並帶入該節點 ID、`returnTo` 設為 `history`，SPEC-003 §3.9）。§10 的對端為 domain 名稱者（`domain_dependency`，SPEC-008 FR-07 規則 4「非節點」）不用本元件，改為 `AppText.mono` 純文字（4.35 `historyEvent`）。§10 不傳 `isProposed`（事件列表示的是邊的增刪，不是目前圖上的邊，`layer` 標示不適用），不外包 `IssueMarker.damagedEdge`。
 **層級**：L3
 
 #### 變體
@@ -3344,7 +3389,7 @@ EVT-CORPUS-004 項目說明：
 | `isMono` | `bool` | 否（預設 `true`；步驟表 domain 欄傳 `false`） | 不適用 |
 | `isProposed` | `bool` | 否（預設 `false`；關聯右欄依 SPEC-007 FR-08 回傳項 `layer == proposed` 傳 `true`，不以邊型鍵名判定） | 不適用（尾端 `Badge.category` 文字為 `relationProposedLabel`） |
 | `onTap` | `VoidCallback` | 是 | 不適用 |
-| `testKey` | `Key` | 是（`card-nodeDetail-relation-<nodeId>` / `action-ucFlow-goto-domain-<domainId>`） | 不適用 |
+| `testKey` | `Key` | 是（`card-nodeDetail-relation-<nodeId>` / `action-ucFlow-goto-domain-<domainId>` / `action-history-open-<index>-<side>`） | 不適用 |
 
 #### 使用 design token
 
@@ -3519,8 +3564,8 @@ EVT-CORPUS-004 項目說明：
 
 **用途**：「這裡目前沒有內容」+ 至少一個非返回的前進動作（SPEC-001 FR-03，`page` 列舉狀態；無破洞與 `section` 例外見 SPEC-003 §2.7）；訊息、說明、動作為 slot。
 **內容角色**：內文（訊息 + 說明）+ 動作（經 `ButtonRow`）。
-**何時不用**：這個專案不適用本 App，或專案資料載入失敗（`BlockedState`，載入失敗內容見 §3.1 該列與 §3.6）；原始檔已消失（`MissingSourceState`）；浮層無最近專案（只有一顆 `AppButton.text`，§3.7 第 3 項）。
-**出現畫面**：§1（未選專案、空圖、未選格右欄、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化、圖不可用）、§2（專案未就緒、無 UC、尚未選定 UC、flow 未結構化）、§3（專案未就緒、無提案、圖不可用）、§4（專案未就緒、無 ticket）、§5（專案未就緒、無破洞）、§6（專案未就緒、未選節點、圖不可用、節點不在目前的圖上）。
+**何時不用**：這個專案不適用本 App，或專案資料載入失敗（`BlockedState`，載入失敗內容見 §3.1 該列與 §3.6；例外：§10 變更記錄的讀取失敗、非 git 專案、找不到 git 用本元件——三者只影響本畫面、不阻擋專案的其他畫面，出口為同畫面的重試或重新檢查，不需 `BlockedState` 的切換專案出口）；原始檔已消失（`MissingSourceState`）；浮層無最近專案（只有一顆 `AppButton.text`，§3.7 第 3 項）。
+**出現畫面**：§1（未選專案、空圖、未選格右欄、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化、圖不可用）、§2（專案未就緒、無 UC、尚未選定 UC、flow 未結構化）、§3（專案未就緒、無提案、圖不可用）、§4（專案未就緒、無 ticket）、§5（專案未就緒、無破洞）、§6（專案未就緒、未選節點、圖不可用、節點不在目前的圖上）、§10（`page`：專案未就緒、非 git 專案、找不到 git、讀取失敗、已取消；`section`：期間內無事件，含「尚無 commit」變體）。
 **層級**：L3
 
 #### 變體
@@ -3585,7 +3630,7 @@ EVT-CORPUS-004 項目說明：
 | `message` | `String` | 是 | 呼叫端（i18n key 取值） |
 | `explanation` | `String?` | 否 | 呼叫端 |
 | `actions` | `List<AppButton>`（0..3） | `page`：SPEC-001 FR-03 列舉狀態與未選專案、未選節點、專案未就緒必填（1..3，首個非 `backAction`）；無破洞（§5）為 0（前進動作於 `SplitRow.header`）；`section` 可空（`0.1.0-W3-335.37` R10） | 不適用 |
-| `testKey` | `Key` | 是（`state-<screen>-<state>` / `panel-domain-cell-detail-empty`） | 不適用 |
+| `testKey` | `Key` | 是（`state-<screen>-<state>` / `panel-domain-cell-detail-empty` / `panel-history-empty`——§10 期間內無事件的狀態根錨點 `state-history-empty` 在外層 `Panel` 的 `panelKey`，故 `section` 另取 panel 錨點） | 不適用 |
 
 #### 使用 design token
 
@@ -3909,14 +3954,14 @@ EVT-CORPUS-004 項目說明：
 **用途**：骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（SPEC-003 §2.5、§2.8，共 10 條）由本元件單一承擔，三處以目標態、進度型別與骨架版位差異化（SPEC-003 §2.11）。
 **內容角色**：內文（訊息 + 計數）+ 數值（進度）+ 動作（取消）。
 **何時不用**：非狀態級的短暫等待（0.1 無，SPEC-003 §2.6）；按鈕內 spinner（禁止，§2.2）。
-**出現畫面**：§1（載入中）、§5（掃描中）。
+**出現畫面**：§1（載入中）、§5（掃描中）、§10（讀取中，1.131）。
 **層級**：L3
 
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `skeleton` | 骨架版位（`matrix` / `sections` slot）shimmer + indeterminate + 計數文字 | 分母未知：不顯示百分比、不顯示預估、不自行推進（SPEC-003 §2.6 誠實性硬規則） | `state-domain-loading`（版位 `matrix`）、`state-gaps-scanning`（版位 `sections`） |
+| `skeleton` | 骨架版位（`matrix` / `sections` / `rows` slot）shimmer + indeterminate + 計數文字 | 分母未知：不顯示百分比、不顯示預估、不自行推進（SPEC-003 §2.6 誠實性硬規則） | `state-domain-loading`（版位 `matrix`）、`state-gaps-scanning`（版位 `sections`）、`state-history-loading`（版位 `rows`：與 `TableRow` 同高的骨架列堆疊，對應事件清單版面；1.131） |
 
 #### 狀態矩陣
 
@@ -3993,7 +4038,7 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 | i18n key |
 |------|---------|
-| 訊息 / 計數 | `domainLoading` / `gapReportScanning` / `domainLoadingProcessedCount` / `gapsScanningProcessedCount`（既有） |
+| 訊息 / 計數 | `domainLoading` / `gapReportScanning` / `domainLoadingProcessedCount` / `gapsScanningProcessedCount`（既有）/ `historyLoading` / `historyLoadingProcessedCount`（§10，1.131） |
 | 取消 | `cancelLoadingAction` / `cancelScanAction` / `cancelInProgressAction`（既有） |
 | 骨架朗讀 | `loadingSkeletonA11yLabel` |
 
@@ -4019,7 +4064,7 @@ EVT-CORPUS-004 項目說明：
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染 `skeleton`（`matrix` / `sections`）× loading / cancelling
+- [ ] 一支測試渲染 `skeleton`（`matrix` / `sections` / `rows`）× loading / cancelling
 - [ ] 兩種視窗尺寸下不溢位
 - [ ] 最長測試文案：訊息與計數截斷
 - [ ] zh / en 全部 key 皆不溢位
@@ -4172,7 +4217,7 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.27 AppShell（容器）
 
-**用途**：根框架容器：標題列 / 側欄（`ProjectSwitcherEntry` + `NavItem` × 6）/ 主區（`PageColumn` × 6 於 `IndexedStack`）三格；承載視窗邊緣內距與專案切換覆蓋層；為傳值元件，不 watch（§2）；訂閱由組裝層 `lib/assembly/shell.dart` 的 `AppShell`（`ConsumerStatefulWidget`）承擔，watch 後傳值。漂移項（側欄寬、導覽項圖示、選取底色、標題列高）由 W1-005 對齊。
+**用途**：根框架容器：標題列 / 側欄（`ProjectSwitcherEntry` + `NavItem` × 7）/ 主區（`PageColumn` × 7 於 `IndexedStack`）三格（第七項變更記錄，SPEC-001 §10、SPEC-003 §2.8「七頁建構時機」）；承載視窗邊緣內距與專案切換覆蓋層；為傳值元件，不 watch（§2）；訂閱由組裝層 `lib/assembly/shell.dart` 的 `AppShell`（`ConsumerStatefulWidget`）承擔，watch 後傳值。漂移項（側欄寬、導覽項圖示、選取底色、標題列高）由 W1-005 對齊。
 **內容角色**：容器（標題列另有一個標題 slot）。
 **何時不用**：頁面內的區塊排列（`PageColumn` / `Panel`）。
 **出現畫面**：殼。
@@ -4241,8 +4286,8 @@ EVT-CORPUS-004 項目說明：
 |------|---------|------|---------|
 | `title` | `String` | 是 | 元件預設 `appTitle`（參數可覆蓋） |
 | `switcherEntry` | `ProjectSwitcherEntry` | 是（恰 1） | 不適用 |
-| `navItems` | `List<NavItem>` | 是（恰 6，依 `AppDestination.values` 順序） | 不適用 |
-| `pages` | `List<PageColumn>` | 是（恰 6，與 `navItems` 同序） | 不適用 |
+| `navItems` | `List<NavItem>` | 是（恰 7，依 `AppDestination.values` 順序） | 不適用 |
+| `pages` | `List<PageColumn>` | 是（恰 7，與 `navItems` 同序） | 不適用 |
 | `overlay` | `SwitcherOverlay?` | 否（overlayOpen 時存在） | 不適用 |
 | `testKey` | `Key` | 是（`app-shell`，`AppShell.shellKey`） | 不適用 |
 
@@ -4302,7 +4347,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：每頁根堆疊：`SplitRow.header`（頁首）+ 內容（`Panel` / `TwoColumnLayout` / 狀態元件）垂直；內容區內距 `Space.xl`；為 `AppShell` 之下的頁面框架，承載頁面級動作列（返回、重新掃描、開啟原始檔）。
 **內容角色**：容器。
 **何時不用**：面板內的垂直堆疊（`Panel`）。
-**出現畫面**：§1–§6。
+**出現畫面**：§1–§6、§10。
 **層級**：L3
 
 #### 變體
@@ -4420,7 +4465,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：左右兩端對齊的水平列：頁首（`PageTitle` + 右側控制）、Ticket 清單摘要底列、格詳情卡標題列（標題 + 關閉）。
 **內容角色**：容器。
 **何時不用**：多於兩個子件的水平排列（`Toolbar` / `ButtonRow` / `BadgeRow`）；欄寬對齊的列（`TableRow`）。
-**出現畫面**：§1–§6（`header`）、§4（`footer`）、§1 詳情卡（`header`）。
+**出現畫面**：§1–§6、§10（`header`）、§4（`footer`）、§1 詳情卡（`header`）。
 **層級**：L2
 
 #### 變體
@@ -4531,7 +4576,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：白底、邊框、圓角、內距的垂直堆疊；所有內容區塊的表面。
 **內容角色**：容器。
 **何時不用**：兩欄並排（`TwoColumnLayout`）；頁面根（`PageColumn`）；無表面的分節（`Section`）。
-**出現畫面**：§1–§6。
+**出現畫面**：§1–§6、§10。
 **層級**：L2
 
 #### 變體
@@ -4593,12 +4638,12 @@ EVT-CORPUS-004 項目說明：
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `leading` | 具名清單（`default`）：`Toolbar` \| `AppText` \| `ListRow.meta` \| `EmptyState.section`（順序即堆疊順序，位於 `fill` 之上） | 否（0..4） | 不適用 |
+| `leading` | 具名清單（`default`）：`Toolbar` \| `AppText` \| `ListRow.meta` \| `EmptyState.section` \| `BadgeRow`（§10 淺層 clone 標示，置於 `Toolbar` 之上，1.131）（順序即堆疊順序，位於 `fill` 之上） | 否（0..4） | 不適用 |
 | `fill` | `Widget`（`default`）：`DataTable` \| `MatrixGrid` \| `SwimlaneGrid` \| `EmptyState.section`（吸收剩餘高；容器以 `Expanded` 承載，呼叫端不包） | `default` 必填（恰 1） | 不適用 |
 | `trailing` | 具名清單（`default`）：`SplitRow.footer` \| `BadgeRow`（順序即堆疊順序，位於 `fill` 之下） | 否（0..2） | 不適用 |
 | `children` | 具名清單（`scrollable`）：`Toolbar` \| `SplitRow` \| `Tree` \| `Section` \| `BadgeRow` \| `Divider` \| `AppText` \| `DocumentBody` \| `ListRow` \| `EmptyState.section` \| `ButtonRow`（順序即堆疊順序；總高超過面板高時捲動，無填滿子件） | `scrollable` 必填（1..12） | 不適用 |
 | `scrollKey` | `Key`（`scrollable`） | `scrollable` 必填（`scroll-<screen>-<area>`） | 不適用 |
-| `panelKey` | `Key?` | 否（`panel-domain-cell-detail` / `panel-domain-cell-detail-empty`） | 不適用 |
+| `panelKey` | `Key?` | 否（`panel-domain-cell-detail` / `panel-domain-cell-detail-empty` / `state-history-normal` / `state-history-empty`——§10 兩態的狀態根錨點落在面板，使淺層標示與篩選列位於狀態根之內，SPEC-003 §3.9〈淺層 clone 標示〉） | 不適用 |
 | `locateTarget` | `Key?`（`scrollable`；§4.0.10 定位入口：值自 `null` 變為某子件 key 的那次 build，本容器於 post-frame 對該 key 執行捲動；焦點移入與高亮只於被定位子件接受 `isLocated` 時執行（§4.0.10 場景 a，4.40 `ListRow.item`），頁面層於高亮結束時改回 `null`；場景 c（4.39 樹展開後子項）只做最小捲動、不移焦點，頁面層於捲動完成的 post-frame 改回 `null`；同值不重複定位） | 否（提案） | 不適用 |
 
 #### 使用 design token
@@ -4773,23 +4818,24 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.32 Toolbar（容器）
 
-**用途**：`SearchField`（填滿）+ `FilterDropdown` × N + `IssueMarker.damagedDetail`（可點損壞計數，§3.7 第 14 項）水平；底邊框。
+**用途**：Panel 首格的篩選列，水平、底邊框。`default`：`SearchField`（填滿）+ `FilterDropdown` × N + `IssueMarker.damagedDetail`（可點損壞計數，§3.7 第 14 項）；`history`：`SegmentedControl`（期間選擇）+ `AppCheckbox`（包含 ticket 建檔），靠左排列（SPEC-001 §10 篩選列，1.131）。
 **內容角色**：容器。
 **何時不用**：頁面級動作（`SplitRow.header` 右格 `ButtonRow`）；徽章列（`BadgeRow`）。
-**出現畫面**：§4。
+**出現畫面**：§4、§10。
 **層級**：L2
 
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `default` | 單一變體 | | |
+| `default` | 子件：`search` + `filters` + `marker?`；`SearchField` 吸收剩餘寬 | 無 | Ticket 清單 |
+| `history` | 子件：`period`（`SegmentedControl` 三段）+ `toggle`（`AppCheckbox`），子件固有寬、靠左，剩餘寬留白 | 無 | 變更記錄（§10 正常、期間內無事件） |
 
 #### 狀態矩陣
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 子件一列 | 由子件承載 | 建構 | 不適用：容器無自身狀態集 | —（建構即渲染；`search` / `filters` / `marker` 由呼叫端傳值，含損壞疊加態時 `marker` 存在與否由頁面層依 Ticket 清單 provider 決定（`ticketListStateProvider` 的 `TicketsReady.corruptedCount` 大於 0），本容器不 watch，§2） | 本地即時 |
+| default | 子件一列 | 由子件承載 | 建構 | 不適用：容器無自身狀態集 | —（建構即渲染；`history` 的 `period` / `toggle` 由第七畫面頁面層依期間篩選值與「包含 ticket 建檔」值傳值；`search` / `filters` / `marker` 由呼叫端傳值，含損壞疊加態時 `marker` 存在與否由頁面層依 Ticket 清單 provider 決定（`ticketListStateProvider` 的 `TicketsReady.corruptedCount` 大於 0），本容器不 watch，§2） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由子件（4.12 / 4.13 / 4.6）承載，本容器不另列。
 
@@ -4812,10 +4858,10 @@ EVT-CORPUS-004 項目說明：
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 填滿父容器（寬）；含底邊框的框體高固定 `LayoutSize.hitTargetMin` + 2 × `Space.xs`（框體內上下內距各 `Space.xs`，子件列高 `hitTargetMin`），不隨 ScreenUtil 縮放；框體下方另有間距 `Space.sm`（見〈使用 design token〉間距列），不計入此固定高 |
-| 最小尺寸 | 寬：`SearchField` 最小寬 + Σ `FilterDropdown` 固有寬 + `IssueMarker` 寬 + (N + 1) × `Space.sm` |
+| 最小尺寸 | 寬：`default` 為 `SearchField` 最小寬 + Σ `FilterDropdown` 固有寬 + `IssueMarker` 寬 + (N + 1) × `Space.sm`；`history` 為 `SegmentedControl` 固有寬 + `AppCheckbox` 固有寬 + `Space.sm` |
 | 最小命中區 | 不適用 |
 | 最大尺寸 | 寬無上限；高固定 |
-| `kMinWindowSize` 下的行為 | 維持（`SearchField` 吸收剩餘寬；5.6 不觸發公式） |
+| `kMinWindowSize` 下的行為 | 維持（`default`：`SearchField` 吸收剩餘寬；`history`：兩子件固有寬遠小於可用寬；5.6 不觸發公式） |
 | `kDesignSize` 下的行為 | 維持 |
 
 #### 內容政策
@@ -4828,9 +4874,11 @@ EVT-CORPUS-004 項目說明：
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `search` | `SearchField` | 是（恰 1，首格） | 不適用 |
-| `filters` | `List<FilterDropdown>` | 是（1..3） | 不適用 |
-| `marker` | `IssueMarker.damagedDetail?` | 否（含損壞疊加態時存在，末格靠右） | 不適用 |
+| `search` | `SearchField` | `default` 必填（恰 1，首格）；`history` 不接受 | 不適用 |
+| `filters` | `List<FilterDropdown>` | `default` 必填（1..3）；`history` 不接受 | 不適用 |
+| `marker` | `IssueMarker.damagedDetail?` | 否（`default` 含損壞疊加態時存在，末格靠右；`history` 不接受） | 不適用 |
+| `period` | `SegmentedControl`（`segments` 長度 3，錨點 `option-history-period-<period>`） | `history` 必填（恰 1，首格）；`default` 不接受 | 不適用 |
+| `toggle` | `AppCheckbox`（`action-history-include-ticket-created`） | `history` 必填（恰 1，接於 `period` 之後）；`default` 不接受 | 不適用 |
 
 #### 使用 design token
 
@@ -4864,13 +4912,13 @@ EVT-CORPUS-004 項目說明：
 | 朗讀標籤 | `Semantics(container: true)`，label 由子件承載 |
 | 狀態變化播報 | 不適用 |
 | 非視覺替代訊號 | 不適用 |
-| 焦點順序與操作路徑（桌機） | 搜尋 → 篩選 × N → 損壞計數（閱讀順序） |
+| 焦點順序與操作路徑（桌機） | `default`：搜尋 → 篩選 × N → 損壞計數；`history`：期間三段 → 包含 ticket 建檔（閱讀順序） |
 | 對比 | 不適用 |
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染 N = 1 / 2 / 3 × 有無 `marker`
-- [ ] 兩種視窗尺寸下不溢位；`SearchField` 寬等於剩餘寬
+- [ ] 一支測試渲染 `default`（N = 1 / 2 / 3 × 有無 `marker`）與 `history`
+- [ ] 兩種視窗尺寸下不溢位；`default` 的 `SearchField` 寬等於剩餘寬；`history` 兩子件靠左、`AppCheckbox` 左緣 = `SegmentedControl` 右緣 + `Space.sm`
 - [ ] 無自有文字（本項不適用）
 - [ ] 子件兩兩邊界盒不相交
 - [ ] 間距與顏色引用 token 非硬編碼
@@ -4887,7 +4935,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：`Badge` × N 水平、空間不足換行；節點詳情標籤列、矩陣與泳道圖例列、事件標籤列、步驟表事件欄。
 **內容角色**：容器。
 **何時不用**：按鈕列（`ButtonRow`）；單一徽章（直接放入所在列的格位）。
-**出現畫面**：§1、§2、§6。
+**出現畫面**：§1、§2、§6、§10（淺層 clone 標示）。
 **層級**：L2
 
 #### 變體
@@ -4997,7 +5045,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：`AppButton` × 1..3 水平；狀態元件動作區、頁首右側頁面級動作區（§3.7 第 17、18 項）、格詳情卡動作區。
 **內容角色**：容器。
 **何時不用**：徽章列（`BadgeRow`）；單一 `AppButton.text` 於浮層末格（直接放入 `SwitcherOverlay`）。
-**出現畫面**：§1–§6。
+**出現畫面**：§1–§6、§10。
 **層級**：L2
 
 #### 變體
@@ -5109,7 +5157,7 @@ EVT-CORPUS-004 項目說明：
 **用途**：欄寬對齊表頭的水平格線列；`header`（欄首）、`ticket`（票列，列表與主題模式共用欄序 ID / 標題 / 狀態 / 優先 / blockedBy / 標記，§3.7 第 15 項；blockedBy 欄 SPEC-001 §4 v1.9）、`step`（序號 / 步驟名 / domain / 事件）、`eventFlow`（事件 / 發出 / 消費 / 孤立事件標記，SPEC-001 §2〈事件流小表〉）。
 **內容角色**：容器。
 **何時不用**：主文字填滿的清單列（`ListRow`）；二維格線（`MatrixGrid`）。
-**出現畫面**：§2、§4。
+**出現畫面**：§2、§4、§10。
 **層級**：L2
 
 #### 變體
@@ -5118,6 +5166,7 @@ EVT-CORPUS-004 項目說明：
 |------|---------|---------|---------|
 | `header` | 底邊框 `AppColors.borderStrong`；格為 `TableColumnHeader` | 無 | 表頭 |
 | `ticket` | 底邊框 `AppColors.border`；格：`AppText.mono`（ID）、`AppText.body`（標題）、`Badge.status`（inline）、`AppText.caption`（優先）、`AppText.mono`（blockedBy：被阻擋的 ticket ID 以「, 」串接，無則「—」，單行截斷）、`IssueMarker.damagedDetail?`（標記） | 整列可點 → 開票（`card-tickets-<ticketId>`）；可被定位（located，SPEC-003 §3.4〈帶目標跳入〉） | Ticket 清單列表與主題模式 |
+| `historyEvent` | 底邊框 `AppColors.border`；格：`Badge.category`（變動：`historyEventAdded` tone `positive` / `historyEventRemoved` tone `negative`，inline）、`AppText.mono`（邊型鍵名原值）、`RelationItem`（宣告端節點 ID，`isMono=true`，`action-history-open-<index>-declarer`）、`RelationItem` 或 `AppText.mono`（對端：節點 ID 時為 `RelationItem`，`action-history-open-<index>-counterpart`；`domain_dependency` 的 domain 名稱時為 `AppText.mono` 純文字、無錨點，SPEC-008 FR-07 規則 4）、`AppText.mono`（commit 短 hash）、`AppText.caption`（日期 `yyyy-MM-dd`）、`AppText.body`（`historyEventAuthorMessage`：作者與訊息首行） | **列本體非互動**（SPEC-003 §3.9 無列點擊條文，只有節點格的 jump）；節點格各自承載點擊；不可被定位（0.7 無定位至事件列的場景） | 變更記錄事件清單（SPEC-001 §10，1.131） |
 | `eventFlow` | 底邊框 `AppColors.border`；格：`AppText.mono`（EVT ID）、`AppText.body`（發出：`eventFlowStepDomain`，多個發出步驟時以「、」串接，缺則 `eventOutsideUc`，`0.1.0-W3-335.38` S-24）、`AppText.body`（消費：同上，多個以「、」串接）、`AppIcon?`（孤立事件標記：warning 圖示 `AppColors.error`，非互動，testKey `badge-ucFlow-event-orphan-<evtId>`，朗讀 `orphanEventMarkerLabel`） | **非互動列**（SPEC-003 §3.2〈事件流小表〉無列點擊條文）；格內 domain 值的資料來源依賴 FlowStep 所屬 domain 的定案（`0.1.0-W3-341`，CLAUDE.md §6 現行待決），本變體只定呈現；可被定位（located，SPEC-003 §3.5 事件類破洞項） | UC Flow 事件流小表 |
 | `step` | 底邊框 `AppColors.border`；格：`StepNumber`、`AppText.body`（步驟名）、`RelationItem`（domain，`isMono=false`）、`BadgeRow`（事件） | 整列可點 → 節點詳情（`card-ucFlow-step-<stepId>`）；domain 格另有自己的點擊；可被定位（located，flow 類破洞項跳入，SPEC-001 §5，`0.5.0-W1-114.23`） | UC Flow 步驟表 |
 
@@ -5131,13 +5180,13 @@ EVT-CORPUS-004 項目說明：
 | focused（`ticket` / `step`） | 依 §4.0.1（整列） | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 | located（`ticket` / `eventFlow` / `step`） | 底 `AppColors.surfaceIconTint`（整列，§4.0.10 高亮 token） | 同所屬變體 | `isLocated` 為 `true`：`ticket` 由 SPEC-003 §3.4〈帶目標跳入〉定位；`eventFlow` 由 SPEC-003 §3.5 事件類破洞項跳入定位；`step` 由 flow 類破洞項跳入定位（SPEC-001 §5，J2；§4.0.10 場景 g） | 焦點離開本列或任一指標按下 → 呼叫端改 `isLocated` 為 `false`（§4.0.10 高亮時長列，同 4.40 `item`） | 資料態：被定位列 id 由頁面層持有並傳值，本容器不 watch（§2） | 本地即時 |
 
-`header` / `eventFlow` 變體無 hover／pressed／focused（列本體非互動；`eventFlow` 不進入 Tab 順序，located 時焦點移入僅供輔助技術朗讀，`Semantics.focusable` 為 `true`、非按鈕；提案）（列本體非互動；可排序欄首的瞬態由 4.14 承載）。
+`historyEvent` 列本體同樣無 hover／pressed／focused、不進入 Tab 順序（非按鈕，`Semantics` label 為 `historyEventA11yLabel`）；列內 `RelationItem` 各為 Tab 停留點，其瞬態與回饋依 4.19。`header` / `eventFlow` 變體無 hover／pressed／focused（列本體非互動；`eventFlow` 不進入 Tab 順序，located 時焦點移入僅供輔助技術朗讀，`Semantics.focusable` 為 `true`、非按鈕；提案）（列本體非互動；可排序欄首的瞬態由 4.14 承載）。
 
 #### 回饋契約
 
 > 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
 > 「時間門檻」填「無」者為 SPEC-003 無時限條文且機制為本地即時，不另設數值（提案，填寫者欄標明）。
-> 六列皆只適用 `ticket` / `step` 變體（整列可點）；`header` 為非互動列，其欄首格的回饋依 4.14。格內可點子件（`step` 的 `RelationItem` 4.19、`ticket` 的 `IssueMarker` 4.6）各自承載回饋且不觸發列點擊。drag 為容器操作路徑（不可拖曳，觸發所在 `DataTable` 捲動，SPEC-003 §1.3），非六類回饋事件，由 4.36 承載。
+> 六列皆只適用 `ticket` / `step` 變體（整列可點）；`historyEvent` 列本體非互動、六類事件不適用於列本體，節點格的回饋依 4.19（press-ack：jump 至 `nav-page-nodeDetail`、`returnTo` 設為 `history`，SPEC-003 §3.9；服務類型本地即時），列集合改變（篩選、重新整理完成）由 4.36 承載、無列動畫（SPEC-003 §3.9〈動畫提示〉「同一狀態內只替換清單與事件數，不做動畫」）；`header` 為非互動列，其欄首格的回饋依 4.14。格內可點子件（`step` 的 `RelationItem` 4.19、`ticket` 的 `IssueMarker` 4.6）各自承載回饋且不觸發列點擊。drag 為容器操作路徑（不可拖曳，觸發所在 `DataTable` 捲動，SPEC-003 §1.3），非六類回饋事件，由 4.36 承載。
 
 | 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
 |------|--------|------|-----------|---------|-----------------|-----------|--------|
@@ -5152,7 +5201,7 @@ EVT-CORPUS-004 項目說明：
 
 | 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
 |------|---------|-------------|--------------|---------|---------|
-| 桌機 | `ticket` / `step`：依 §4.0.7 點選列（整列為一個 Tab 停留點；格內的 `RelationItem` / `IssueMarker` 另為停留點）；`header` / `eventFlow`：不適用（非互動列） | | | | |
+| 桌機 | `ticket` / `step`：依 §4.0.7 點選列（整列為一個 Tab 停留點；格內的 `RelationItem` / `IssueMarker` 另為停留點）；`historyEvent`：列本體不適用，格內 `RelationItem` 依 4.19 點選；`header` / `eventFlow`：不適用（非互動列） | | | | |
 
 #### 尺寸契約
 
@@ -5165,6 +5214,7 @@ EVT-CORPUS-004 項目說明：
 | 欄規格（`ticket`） | ID 固定寬 `LayoutSize.ticketIdColumnWidth`（132）、標題填滿 `flex(2)`、狀態 `LayoutSize.ticketStatusColumnWidth`（84）、優先 `LayoutSize.ticketPriorityColumnWidth`（40）、blockedBy 填滿 `flex(1)`（無專屬寬度 token；ID 清單長度不定，固定寬會在多值時全部截斷，填滿欄以比例讓標題優先，提案）、標記 `LayoutSize.ticketMarkerColumnWidth`（22） |
 | 欄規格（`eventFlow`） | 事件 `LayoutSize.ticketIdColumnWidth`（沿用 ID 欄寬，EVT ID 與 ticket ID 同為等寬識別字，提案）、發出與消費兩填滿欄等分 `flex(1)`、標記 `LayoutSize.ticketMarkerColumnWidth`（22）；`header` 同欄規格，標記欄首無文字 |
 | 欄規格（`step`） | 序號 `LayoutSize.stepNumberColumnWidth`（26）、步驟名填滿、domain `LayoutSize.stepDomainColumnWidth`（118）、事件填滿（兩個填滿欄等分，畫布 `1fr 118px 1fr`） |
+| 欄規格（`historyEvent`） | 變動 `LayoutSize.ticketStatusColumnWidth`（84，en「Removed」最長）、邊型 `LayoutSize.ticketIdColumnWidth`（132，鍵名如 `bundle_dependency` 為等寬識別字，同 ID 欄理由）、宣告端 `flex(1)`、對端 `flex(1)`、commit `LayoutSize.ticketStatusColumnWidth`（84，7 位短 hash）、日期 `LayoutSize.ticketStatusColumnWidth`（84，`yyyy-MM-dd`）、作者與訊息 `flex(2)`（訊息首行長度不定，比例上讓它優先）。全部沿用既有寬度 token，不新增 token；`header` 同欄規格，欄首 `columnChange` … `columnAuthorMessage` |
 | `kMinWindowSize` 下的行為 | 維持（填滿欄截斷） |
 | `kDesignSize` 下的行為 | 維持 |
 
@@ -5183,7 +5233,8 @@ EVT-CORPUS-004 項目說明：
 | `columns` | `List<ColumnSpec>`（`fixed(LayoutSize.*)` / `flex(n)`），由 `DataTable` 統一傳入 | 是 | 不適用 |
 | `cells` | 依變體固定型別序列（見變體表）；上限 = 欄數（依各變體欄規格列） | 是 | 不適用 |
 | `isLocated` | `bool`（`ticket` / `eventFlow` / `step`；§4.0.10 高亮傳值，預設 `false`） | 否（其餘變體不接受） | 不適用 |
-| `onTap` | `VoidCallback`（`ticket` / `step`） | 是 | 不適用 |
+| `onTap` | `VoidCallback`（`ticket` / `step`） | 是（`historyEvent` 不接受：列本體非互動，點擊由格內 `RelationItem.onTap` 承載） | 不適用 |
+| `semanticLabel` | `String`（`historyEvent`） | `historyEvent` 必填（`historyEventA11yLabel` 組字，含截斷欄的完整值）；其餘變體不接受 | 呼叫端（i18n key 取值） |
 | `testKey` | `Key`（`card-tickets-<ticketId>` / `card-ucFlow-step-<stepId>`） | `ticket` / `step` 必填 | 不適用 |
 
 #### 使用 design token
@@ -5207,7 +5258,7 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 可放入的容器 | `DataTable`（`header` 恰 1 + 資料列 × N；`eventFlow` 只放入 UC Flow 事件流小表的 `DataTable.plain`）、`Section.collapsible`（主題節內 `ticket` × N） |
+| 可放入的容器 | `DataTable`（`header` 恰 1 + 資料列 × N；`eventFlow` 只放入 UC Flow 事件流小表的 `DataTable.plain`；`historyEvent` 只放入變更記錄事件清單的 `DataTable.virtual`）、`Section.collapsible`（主題節內 `ticket` × N） |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 格垂直置中；文字欄 `start`、優先欄 `start`、序號欄置中 |
 | 作為表格或列表的一欄時 | 不適用 |
@@ -5216,7 +5267,7 @@ EVT-CORPUS-004 項目說明：
 
 | 面向 | 要求 |
 |------|------|
-| 朗讀標籤 | `ticket` / `step`：`Semantics.button`，label 為各格文字依序串接（`ticket`：ID，標題，狀態，優先，blockedBy 完整值不截斷）；`eventFlow`：非按鈕，label 為事件，發出，消費，有標記時附 `orphanEventMarkerLabel`；`header`：各格 header |
+| 朗讀標籤 | `ticket` / `step`：`Semantics.button`，label 為各格文字依序串接（`ticket`：ID，標題，狀態，優先，blockedBy 完整值不截斷）；`eventFlow`：非按鈕，label 為事件，發出，消費，有標記時附 `orphanEventMarkerLabel`；`historyEvent`：非按鈕，label 為 `historyEventA11yLabel`（變動、邊型、宣告端、對端、hash、日期、作者、訊息首行完整值），格內 `RelationItem` 另依 4.19 朗讀；`header`：各格 header |
 | 狀態變化播報 | 不適用 |
 | 非視覺替代訊號 | 損壞由 `IssueMarker` 標籤承載；孤立事件由 `orphanEventMarkerLabel` 承載（紅色圖示非唯一訊號）；located 高亮以焦點移入為非視覺替代 |
 | 焦點順序與操作路徑（桌機） | 列為 Tab 停留點；列內可點格緊接其後；Space / Enter 開票 |
@@ -5227,6 +5278,7 @@ EVT-CORPUS-004 項目說明：
 - [ ] 一支測試渲染全部變體（`ticket` 含 / 不含標記、blockedBy 空（「—」）/ 多值截斷；`step` 事件欄 0 / 5 個徽章；`eventFlow` 含 / 不含孤立事件標記、發出或消費為 `eventOutsideUc`）
 - [ ] `ticket` / `eventFlow` / `step` 的 `isLocated` 為 `true` 時整列底色為 `surfaceIconTint`，`false` 時無底色；`eventFlow` 點擊不呼叫任何回呼（非互動）
 - [ ] `step` 以 `isLocated: true` 渲染時列點選仍呼叫 `onTap` 恰一次（located 不改變互動）
+- [ ] `historyEvent`：對端為節點時渲染兩個 `RelationItem`（錨點 `action-history-open-<index>-declarer`／`-counterpart`），對端為 domain 名稱時只有宣告端錨點、對端為 `AppText.mono`（對照組：同一列資料只換對端型別，錨點數 2 → 1）；點列本體空白處不呼叫任何回呼；變動欄 `historyEventAdded` tone `positive`、`historyEventRemoved` tone `negative`
 - [ ] 兩種視窗尺寸下不溢位；固定寬欄寬等於 token、填滿欄截斷
 - [ ] 無自有文字（本項不適用）；格子件以其最長測試文案渲染
 - [ ] 列點選呼叫 `onTap` 恰一次；點 domain 格不觸發列 `onTap`
@@ -5247,14 +5299,14 @@ EVT-CORPUS-004 項目說明：
 **用途**：`TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`）。傳值 + callback，不 watch；捲動 offset 由頁面層持有的 `ScrollController` 傳入（§2，`0.6.0-W1-193` 裁決）。
 **內容角色**：容器。
 **何時不用**：二維格線（`MatrixGrid`）；依深度縮排的列（`Tree`）；分節（`Section`）。
-**出現畫面**：§2、§4。
+**出現畫面**：§2、§4、§10。
 **層級**：L2
 
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `virtual` | 同 | 列以 `ListView.builder` + 固定 `itemExtent`（`LayoutSize.rowHeightRelaxed`）虛擬化；不分頁 | Ticket 清單（真實規模不低於 1300 筆） |
+| `virtual` | 同 | 列以 `ListView.builder` + 固定 `itemExtent`（`LayoutSize.rowHeightRelaxed`）虛擬化；不分頁 | Ticket 清單（真實規模不低於 1300 筆）；變更記錄事件清單（`scroll-history-events`，全部歷史的事件數隨 commit 數成長、無上限，1.131） |
 | `plain` | 同 | 一般 `ListView` | UC Flow 步驟表 |
 
 #### 狀態矩陣
@@ -5311,8 +5363,8 @@ EVT-CORPUS-004 項目說明：
 |------|---------|------|---------|
 | `columns` | `List<ColumnSpec>` | 是 | 不適用 |
 | `header` | `TableRow.header` | 是（恰 1，釘選於頂） | 不適用 |
-| `rows` | `List<TableRow>`（`ticket`、`step` 或 `eventFlow`，單一變體）或 builder | 是（0..無上限） | 不適用 |
-| `scrollKey` | `Key` | `appendix` 內的表不接受（不持有捲動）；其餘必填（`scroll-tickets-list` / `scroll-ucFlow-steps`） | 不適用 |
+| `rows` | `List<TableRow>`（`ticket`、`step`、`eventFlow` 或 `historyEvent`，單一變體）或 builder | 是（0..無上限） | 不適用 |
+| `scrollKey` | `Key` | `appendix` 內的表不接受（不持有捲動）；其餘必填（`scroll-tickets-list` / `scroll-ucFlow-steps` / `scroll-history-events`） | 不適用 |
 | `appendix` | `DataTable.plain`（`rows` 為 `eventFlow`，無 `scrollKey`，testKey `panel-ucFlow-event-flow`）；1.35 新增，只用於 UC Flow 步驟表之下的事件流小表（SPEC-001 §2〈事件流小表〉「位置：步驟表下方」） | 否（`plain` 限定，0..1；`virtual` 不接受——虛擬化列表無「最後一列之後」的固定位置） | 不適用 |
 
 #### 使用 design token
@@ -6174,6 +6226,145 @@ EVT-CORPUS-004 項目說明：
 | 以 `showDialog` / `AlertDialog` 呈現（原 `shell.dart` 空殼，**整改完成**：`lib/` 內 `showDialog` / `AlertDialog` / `showModalBottomSheet` / `Drawer(` 實查 0 命中，`0.1.0-W3-169` 複驗 2026-09-09；本列自此為整改記錄，非現存衝突） | 本容器（W1-005 對齊） |
 | schema 詳情面板 | `BlockedState.withDetail` 內展開 |
 
+### 4.43 AppCheckbox
+
+**實作類別**：`AppCheckbox`（以 Material `Checkbox` 為內部實作，頁面層禁直用 `Checkbox`，§6）。
+
+**用途**：單一布林設定的常駐切換：核取框 + 文字 label，點擊（核取框或文字皆可）切換值並呼叫 `onChanged`。0.7 唯一使用處為變更記錄篩選列的「包含 ticket 建檔」（`action-history-include-ticket-created`，預設未核取，SPEC-001 §10、SPEC-003 §3.9、SPEC-008 FR-07 規則 2）。
+**新增元件而非沿用既有元件的理由**（1.131）：`AppButton` 是一次性動作，沒有開／關兩個持續狀態，也不產生 `checked` 朗讀旗標；`SegmentedControl` 以兩段表示開／關時需要兩個錨點，而 SPEC-003 §3.9 對此控制只定義一個錨點、觸發為「點擊（切換）」；`ListRow.option` 是清單中的互斥選項，選取後不能以再點一次取消；`FilterDropdown` 的值域含「全部」且需展開選單，布林值不需要選單。
+**內容角色**：動作 + 狀態（label slot + 核取值）。
+**何時不用**：互斥單選（`SegmentedControl`、`ListRow.option`）；一次性動作（`AppButton`）；多值篩選（`FilterDropdown`）。
+**出現畫面**：§10。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `default` | 單一變體（核取框在前、label 在後） | | |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| unchecked | 核取框外框 `AppColors.textSecondary`、無填色；label `textPrimary` | 點選 | `value` 為 `false` | 點選 → checked（經呼叫端改 `value`） | 資料態：第七畫面頁面狀態持有的「包含 ticket 建檔」值（SPEC-008 FR-07 規則 2，預設否；切換導覽項保留、切換專案回到預設，SPEC-003 §3.9〈生命週期〉）；頁面層以 `value` 傳值，元件不 watch（§2） | 本地即時（在記憶體結果上重新查詢，不重新掃描，SPEC-008 FR-07 規則 5） |
+| checked | 核取框填色 `AppColors.accent`、勾號 `surfaceBase`；label `textPrimary` | 點選 | `value` 為 `true` | 點選 → unchecked | 資料態：同上 | 本地即時 |
+| hover（僅指標形態） | 依 §4.0.1（命中區為核取框 + label 整體） | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 依 §4.0.1 | 點選（Space） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
+
+無 disabled：篩選列只在正常與期間內無事件兩態渲染，兩態皆可切換；其餘狀態不渲染本元件（SPEC-001 §10）。
+
+#### 套用時點
+
+> 判準：`component-contract-design` skill〈套用時點的四問〉（v3.14.0）。
+
+| # | 問句 | 答 |
+|---|------|----|
+| 1 | 設定或動作 | 設定——改變事件清單的篩選條件，不執行命令、不開視窗 |
+| 2 | 套用時點 | (a)–(e) 皆不成立：單一布林值；切換為本地即時（SPEC-003 §3.9〈服務類型〉）；可隨時切回；不在需儲存的表單內 → 立即提交 |
+| 3 | 容器何時關閉 | 無可關閉的容器——本元件常駐於 `Toolbar.history` |
+| 4 | 生效是否當下可見 | 有——事件清單與 `historyPeriodSummary` 的事件數同步更新，或狀態轉為 `state-history-normal`／`state-history-empty`（SPEC-003 §3.9 包含 ticket 建檔列） |
+
+#### 回饋契約
+
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | hover 態（§4.0.1：Material `InkWell` 內建 overlay，範圍為核取框 + label）；指標形狀 `SystemMouseCursors.click` | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文） | §1 子表「可互動提示」列 | 不適用 | 反應：規格撰寫者（抄 §4.0.1）；通道：規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 焦點環（§4.0.1 focused）；為 Tab 內容區段的一個停留點（SPEC-003 §2.10）；朗讀 label + `checked` 旗標 | 無 | 無（SPEC-003 §2.10 不設時限） | §1 子表「焦點」列 | unchecked / checked → focused → 原狀態 | 反應：UX 審查（SPEC-003 §2.10）；通道／狀態邊：規格撰寫者 |
+| 按下確認 press-ack | 使用者 | pressed 態 + Material ripple（§4.0.1）；呼叫 `onChanged(!value)` 恰一次；核取框外觀於呼叫端改傳 `value` 後的同一 frame 更新。按下確認掛在本元件（第一層），不等查詢結果 | Material 內建 ripple | pressed 態出現於 `Motion.feedback` 內（SPEC-003 §2.2、§2.1） | §1 子表「按下確認」列 | unchecked → pressed → checked；checked → pressed → unchecked | 反應／時限：UX 審查（SPEC-003 §2.2、§3.9）；通道／狀態邊：規格撰寫者 |
+| 定位提示 locate | 系統 | 不適用：本元件常駐於 `Toolbar.history`（`Panel` 首格，不捲動），無定位至本元件的場景 | — | — | 不適用（無承載場景） | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（頁面層改傳 `value`；切換專案時回到 `false`，SPEC-003 §3.9〈生命週期〉） | 核取框外觀離散替換，無動畫；`checked` 旗標改變由輔助技術播報（原生旗標，不另組字）；清單的更新由 4.36 承載、無列動畫，狀態根改變時的 cross-fade `Motion.transition` 由畫面承載（SPEC-003 §3.9〈動畫提示〉） | 無（本元件不播動畫；畫面層 `Motion.transition`） | 無（本地即時，與 `value` 同步瞬切） | §1 子表「狀態變更提示」列（無障礙狀態播報適用；不升級系統通知） | unchecked ↔ checked | 反應：UX 審查（SPEC-003 §3.9）；通道／狀態邊：規格撰寫者 |
+| 等待與結果 | 系統 | 掛載點：第一層（本元件 pressed 態與核取外觀）——第二層不適用（查詢在記憶體結果上運算，無服務受理階段），第三層為結果通知本身（清單與事件數更新，或 `state-history-normal`／`state-history-empty` 轉換）。服務類型：本地即時（SPEC-003 §3.9〈服務類型〉）。成功：查詢結果依新值更新；失敗：依 SPEC-003 §2.12 本地即時類不可能失敗（純記憶體查詢），無失敗態；逾時：同（不可能發生）；服務不可用：同（不可能發生——本元件只在已有完成結果的兩態渲染，結果不在記憶體時不渲染）。輸入阻擋範圍：不阻擋。重複觸發防護：無需——每次點擊翻轉一次值，連點兩次回到原值，與使用者意圖一致 | Material 內建 | `Motion.feedback` | §1 子表「等待與結果」列 | 不適用 | 反應：UX 審查（SPEC-003 §2.12、§3.9）；通道：規格撰寫者 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 依 §4.0.7 點選列（核取框與 label 共用一個命中區、一個 Tab 停留點；Space 切換） | | | | |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 固有尺寸（核取框 `LayoutSize.iconLg` + `Space.xs` + label 寬，水平內距 `Space.xs`） |
+| 最小尺寸 | 寬：`LayoutSize.hitTargetMin`；高：`LayoutSize.hitTargetMin` |
+| 最小命中區 | `LayoutSize.hitTargetMin`（核取框 + label 整體） |
+| 最大尺寸 | 寬：父格位寬（超出時 label 截斷）；高：`LayoutSize.hitTargetMin` |
+| `kMinWindowSize` 下的行為 | 維持（`Toolbar.history` 可用寬遠大於固有寬，5.6） |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| `label` | 否 | 1 | 截斷 | `historyIncludeTicketCreatedLabel`（en「Include ticket creation」）；`TestCopy.longToken` |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `label` | `String` | 是 | 呼叫端（i18n key 取值：`historyIncludeTicketCreatedLabel`） |
+| `value` | `bool` | 是 | 不適用 |
+| `onChanged` | `ValueChanged<bool>` | 是 | 不適用 |
+| `testKey` | `Key` | 是（`action-history-include-ticket-created`） | 不適用 |
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | `AppColors.textSecondary`（unchecked 外框）、`accent`（checked 填色）、`surfaceBase`（勾號）、`textPrimary`（label） |
+| 間距 | 核取框與 label 間 `Space.xs`；水平內距 `Space.xs` |
+| 字體 | `AppFontSize.body` |
+| 圓角 | `Radius.sm`（核取框） |
+| 動畫 | `Motion.feedback` |
+| 尺寸 | `LayoutSize.iconLg`（核取框邊長）、`LayoutSize.hitTargetMin` |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| `label` | `historyIncludeTicketCreatedLabel`（呼叫端傳入，§4.0.6 1.131 新增） |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | `Toolbar.history`（`toggle` 格） |
+| 不得放置的區域 | 依 §4.0.8 |
+| 對齊基準 | 垂直置中於所在列 |
+| 作為表格或列表的一欄時 | 不適用 |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | `Semantics` 含 `checked` 旗標，label 等於 `label`；核取框與文字合併為單一語意節點（不重複朗讀） |
+| 狀態變化播報 | `checked` 旗標改變由輔助技術播報 |
+| 非視覺替代訊號 | 核取狀態以填色、勾號與 `checked` 旗標三者承載，顏色非唯一訊號 |
+| 焦點順序與操作路徑（桌機） | Tab 內容區段，接於期間選擇之後；Space 切換；焦點裝飾依 §4.0.1 |
+| 對比 | 依 §4.0.2 表 1：label `textPrimary` / `surfaceBase` 5.79:1；checked 核取框 `accent` / `surfaceBase` 5.84:1、勾號 `surfaceBase` / `accent` 5.84:1；unchecked 外框 `textSecondary` / `surfaceBase` 4.71:1（核取框屬非文字圖形，門檻 3:1，SC 1.4.11），皆通過。外框不用 `borderStrong`：其對 `surfaceBase` 僅 1.55:1，未達 3:1 |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染 unchecked / checked
+- [ ] 兩種視窗尺寸下不溢位；高等於 `LayoutSize.hitTargetMin`
+- [ ] 最長測試文案截斷
+- [ ] zh / en `historyIncludeTicketCreatedLabel` 皆不溢位
+- [ ] 點核取框與點 label 各呼叫 `onChanged` 恰一次，值為 `!value`（對照：`value` 為 `false` 與 `true` 各測一次，兩次傳出值不同）
+- [ ] `Semantics` 的 `checked` 與 `value` 一致
+- [ ] 顏色、間距、圓角引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 互斥單選 | `SegmentedControl` / `ListRow.option` |
+| 觸發一次性命令（重新整理、重試） | `AppButton` |
+| 需要「儲存」才生效的表單欄位 | 0.7 無此需求；出現時另建元件票 |
+
 ---
 
 ## 5. 容器元件
@@ -6193,7 +6384,7 @@ EVT-CORPUS-004 項目說明：
 | 項目 | 值 |
 |------|-----|
 | 接受的子件類型 | 標題列：`AppText`；側欄：`ProjectSwitcherEntry`、`NavItem`；主區：`PageColumn`（`IndexedStack`，一次顯示一頁）；覆蓋層：`SwitcherOverlay` |
-| 子件數量上限 | 標題列 1；側欄 1 + 6；主區 6；覆蓋層 0..1（合計上限 15） |
+| 子件數量上限 | 標題列 1；側欄 1 + 7；主區 7；覆蓋層 0..1（合計上限 17） |
 | 安全區 | 無 SafeArea 需求（§1 禁放區與安全區列：macOS 視窗無瀏海與手勢區）；視窗邊緣內距由本容器承載：側欄內距 `Space.md`（垂直）× `Space.sm`（水平）、標題列水平內距 `Space.md`、主區內距交由 `PageColumn`（`Space.xl`） |
 
 #### 排列不變式
@@ -6202,7 +6393,7 @@ EVT-CORPUS-004 項目說明：
 |--------|-----|
 | 不重疊 | 標題列、側欄、主區三個區域互斥（垂直：標題列 / 主體；主體水平：側欄 / 主區）；側欄內子件垂直堆疊兩兩不相交；覆蓋層允許疊於側欄與主區之上（覆蓋層非佈局流子件）；測試以兩種尺寸 × 上限驗證 |
 | 最小間距 | 側欄：入口與導覽項間 `Space.sm`，導覽項間 `Space.xxs`；側欄與主區以邊框線相接（§4.0.3 線寬）；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發：上限 7（側欄）；`LayoutSize.titleBarHeight`（36）+ 2 × `Space.md` + `ProjectSwitcherEntry` 高 + `Space.sm` + 6 × `NavItem` 高 + 5 × `Space.xxs` ≤ `kMinWindowSize.height`；主區寬 = 視窗寬 − `LayoutSize.sidebarWidth` ≥ `PageColumn` 最小寬 |
+| 空間不足策略 | 不觸發：上限 8（側欄）；`LayoutSize.titleBarHeight`（36）+ 2 × `Space.md` + `ProjectSwitcherEntry` 高 + `Space.sm` + 7 × `NavItem` 高 + 6 × `Space.xxs` ≤ `kMinWindowSize.height`；主區寬 = 視窗寬 − `LayoutSize.sidebarWidth` ≥ `PageColumn` 最小寬 |
 
 ### 5.2 PageColumn
 
@@ -6288,16 +6479,16 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 接受的子件類型 | `SearchField`、`FilterDropdown`、`IssueMarker.damagedDetail` |
-| 子件數量上限 | 5（搜尋 1 + 篩選 1..3 + 標記 0..1） |
+| 接受的子件類型 | `default`：`SearchField`、`FilterDropdown`、`IssueMarker.damagedDetail`；`history`：`SegmentedControl`、`AppCheckbox` |
+| 子件數量上限 | `default` 5（搜尋 1 + 篩選 1..3 + 標記 0..1）；`history` 2（期間 1 + 切換 1） |
 
 #### 排列不變式
 
 | 不變式 | 值 |
 |--------|-----|
-| 不重疊 | 單列水平互斥；`SearchField` 吸收剩餘寬 |
+| 不重疊 | 單列水平互斥；`default` 由 `SearchField` 吸收剩餘寬，`history` 子件固有寬靠左 |
 | 最小間距 | `Space.sm`；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發：上限 5；`SearchField` 最小寬 + Σ `FilterDropdown` 固有寬（以最長選項文案計）+ `IssueMarker` 寬 + 4 × `Space.sm` ≤ 可用寬（= `Panel` 內寬）；測試以 `TestCopy` 最長值與 `kMinWindowSize` 代入斷言 |
+| 空間不足策略 | 不觸發。`history`：上限 2，`SegmentedControl` 固有寬（三段，以 en 最長 label `historyPeriodDefaultLabel`「Default period」計）+ `AppCheckbox` 固有寬（以 en `historyIncludeTicketCreatedLabel`「Include ticket creation」計）+ `Space.sm` ≤ 可用寬（= `Panel` 內寬，`kMinWindowSize` 下為 960 − `LayoutSize.sidebarWidth` − 2 × `Space.xl` − 2 × `Space.md` = 724）；兩者合計不到可用寬的一半，測試以 `kMinWindowSize` 與 en 文案代入斷言。`default`：上限 5；`SearchField` 最小寬 + Σ `FilterDropdown` 固有寬（以最長選項文案計）+ `IssueMarker` 寬 + 4 × `Space.sm` ≤ 可用寬（= `Panel` 內寬）；測試以 `TestCopy` 最長值與 `kMinWindowSize` 代入斷言 |
 
 ### 5.7 BadgeRow
 
@@ -6345,7 +6536,7 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 接受的子件類型 | `header`：`TableColumnHeader`；`ticket`：`AppText.mono`、`AppText.body`、`Badge.status`、`AppText.caption`、`AppText.mono`（blockedBy）、`IssueMarker.damagedDetail`；`step`：`StepNumber`、`AppText.body`、`RelationItem`、`BadgeRow`；`eventFlow`：`AppText.mono`、`AppText.body` × 2、`AppIcon`（孤立事件標記，0..1） |
+| 接受的子件類型 | `header`：`TableColumnHeader`；`ticket`：`AppText.mono`、`AppText.body`、`Badge.status`、`AppText.caption`、`AppText.mono`（blockedBy）、`IssueMarker.damagedDetail`；`step`：`StepNumber`、`AppText.body`、`RelationItem`、`BadgeRow`；`eventFlow`：`AppText.mono`、`AppText.body` × 2、`AppIcon`（孤立事件標記，0..1）；`historyEvent`：`Badge.category`、`AppText.mono`（邊型）、`RelationItem`（宣告端）、`RelationItem` 或 `AppText.mono`（對端）、`AppText.mono`（hash）、`AppText.caption`（日期）、`AppText.body`（作者與訊息） |
 | 子件數量上限 | = 欄數（依 4.35 各變體欄規格列） |
 
 #### 排列不變式
@@ -6354,7 +6545,7 @@ EVT-CORPUS-004 項目說明：
 |--------|-----|
 | 不重疊 | 格依欄規格水平互斥；填滿欄子件截斷（`AppText`）或換行（`BadgeRow`，列高固定時改為單列截斷，提案：`step` 事件欄 `BadgeRow` 限一列） |
 | 最小間距 | `Space.md`（欄間）；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發：Σ 固定寬欄（`ticketIdColumnWidth` + `ticketStatusColumnWidth` + `ticketPriorityColumnWidth` + `ticketMarkerColumnWidth`；`stepNumberColumnWidth` + `stepDomainColumnWidth`；`ticketIdColumnWidth` + `ticketMarkerColumnWidth`（`eventFlow`））+ 填滿欄最小寬 × 填滿欄數 + (欄數 − 1) × `Space.md` + 2 × `Space.sm` ≤ 列寬（= `Panel` 內寬） |
+| 空間不足策略 | 不觸發：Σ 固定寬欄（`ticketIdColumnWidth` + `ticketStatusColumnWidth` + `ticketPriorityColumnWidth` + `ticketMarkerColumnWidth`；`stepNumberColumnWidth` + `stepDomainColumnWidth`；`ticketIdColumnWidth` + `ticketMarkerColumnWidth`（`eventFlow`）；`ticketIdColumnWidth` + 3 × `ticketStatusColumnWidth`（`historyEvent`，= 384））+ 填滿欄最小寬 × 填滿欄數 + (欄數 − 1) × `Space.md` + 2 × `Space.sm` ≤ 列寬（= `Panel` 內寬）。`historyEvent` 代入 `kMinWindowSize`：384 + 6 × 12 + 16 = 472，列寬 724，餘 252 分給 4 個 flex 單位（每單位 63），大於填滿欄最小寬，不觸發；窄視窗下宣告端與對端截斷，完整值由 `historyEventA11yLabel` 承載 |
 
 ### 5.10 DataTable
 
@@ -6364,7 +6555,7 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 接受的子件類型 | `TableRow.header`（1）、`TableRow.ticket`／`TableRow.step`／`TableRow.eventFlow`（單一變體）；`plain` 另接受 `appendix`：`DataTable.plain`（0..1，其自身不得再帶 `appendix`） |
+| 接受的子件類型 | `TableRow.header`（1）、`TableRow.ticket`／`TableRow.step`／`TableRow.eventFlow`／`TableRow.historyEvent`（單一變體）；`plain` 另接受 `appendix`：`DataTable.plain`（0..1，其自身不得再帶 `appendix`） |
 | 子件數量上限 | 表頭 1；資料列無上限；`appendix` 0..1 |
 
 #### 排列不變式
@@ -6373,7 +6564,7 @@ EVT-CORPUS-004 項目說明：
 |--------|-----|
 | 不重疊 | 列垂直互斥、高固定 `LayoutSize.rowHeightRelaxed`（`virtual` 以 `itemExtent` 保證）；表頭釘選於頂且不與首列相交；水平方向承 5.9 |
 | 最小間距 | 列間以 `TableRow` 底邊框線寬分隔（§4.0.3）；呼叫端不得覆寫 |
-| 空間不足策略 | 捲動（垂直，`scroll-tickets-list` / `scroll-ucFlow-steps`）；觸發條件：列數 × `LayoutSize.rowHeightRelaxed`（有 `appendix` 時加上其表頭高 + 列數 × `rowHeightRelaxed` + `Space.lg` 間隔，提案）> 可用高 − 表頭高。`appendix` 高固有、隨外層表捲動，外層表頭釘選時 `appendix` 的表頭不釘選。水平方向不觸發（承 5.9 公式） |
+| 空間不足策略 | 捲動（垂直，`scroll-tickets-list` / `scroll-ucFlow-steps` / `scroll-history-events`；篩選改變後 offset 歸零、切換導覽項保留，SPEC-003 §3.9）；觸發條件：列數 × `LayoutSize.rowHeightRelaxed`（有 `appendix` 時加上其表頭高 + 列數 × `rowHeightRelaxed` + `Space.lg` 間隔，提案）> 可用高 − 表頭高。`appendix` 高固有、隨外層表捲動，外層表頭釘選時 `appendix` 的表頭不釘選。水平方向不觸發（承 5.9 公式） |
 
 ### 5.11 MatrixGrid
 
@@ -6506,6 +6697,7 @@ EVT-CORPUS-004 項目說明：
 | `DropdownButton` / `DropdownMenu` / `PopupMenuButton` | `FilterDropdown` | 篩選狀態集與播報（待 W1-057） |
 | `DataTable`（Material）/ `Table` | `DataTable`（本檔 4.36）+ `TableRow` | 虛擬捲動與欄規格 |
 | `ListTile` | `ListRow` | 五變體與兩端固定策略 |
+| `Checkbox` / `CheckboxListTile` / `Switch` / `SwitchListTile` | `AppCheckbox` | 文字與核取框同一命中區、朗讀 `checked` 旗標（1.131） |
 | `ExpansionTile` / `ExpansionPanel` | `Section.collapsible` + `ExpanderIcon` | 展開狀態存於 provider、offset 不歸零 |
 | `ScaffoldMessenger.showSnackBar(SnackBar(...))` 直呼 | `AppSnackBar` | 停留時間引用 `Motion` token |
 | `showDialog` / `AlertDialog` / `showModalBottomSheet` / `Drawer` | `SwitcherOverlay`（0.1 唯一覆蓋層） | §1 覆蓋表面對映無 dialog / sheet / drawer |
@@ -6563,6 +6755,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.131 | 2026-11-09 | `0.7.0-W1-012.2`（對應 SPEC-001 v1.80 §10、SPEC-003 v1.83 §3.9、SPEC-008 FR-06～FR-09）：補齊第七畫面變更記錄的元件。新增 4.43 `AppCheckbox`（「包含 ticket 建檔」，`AppButton`／`SegmentedControl`／`ListRow.option`／`FilterDropdown` 不適用的理由記於該條）；4.10 `SegmentedControl` 段數由恰 2 放寬為 2–3，承載期間選擇（`option-history-period-<period>`，不用 `FilterDropdown` 的理由記於該條）；4.35 `TableRow` 增 `historyEvent` 變體（七欄，沿用既有寬度 token，`kMinWindowSize` 代入值記於 5.9）；4.32 `Toolbar` 增 `history` 變體（5.6 同步）；4.19 `RelationItem` 承載事件列節點（`action-history-open-<index>-<side>`，domain 名稱對端改 `AppText.mono`）；4.5 `Badge.category` 承載變動欄與淺層 clone 標示（`badge-history-shallow-clone`）；4.24 `LoadingState` 增版位 `rows`；4.21 `EmptyState` 補 §10 用法與讀取失敗等三態不用 `BlockedState` 的例外；4.30 `Panel` 的 `leading` 接受 `BadgeRow`、`panelKey` 接受 `state-history-normal`／`state-history-empty`；4.36 `DataTable` 增 `scroll-history-events`（5.10 同步）；§3.1 總表補列並把元件定案數改為 27；§3.2、§3.4、4.27、5.1 側欄與主區由 6 改為 7；§3.6 補 §10 八列；§4.0.6 登記新 key；§6 補 `Checkbox` 類禁用列；frontmatter 補 UC-07、SPEC-008。`depends_on_domains` 不變 |
 | 1.130 | 2026-11-09 | `0.7.0-W1-012.1`（SPEC-003 v1.83 第七畫面同步）：4.27 `AppShell` state-change 列對 SPEC-003 §2.8 錨點的逐字引用「六頁建構時機」改為「七頁建構時機」。其餘第七畫面元件與 §3.6 對照表補列不在本版 |
 | 1.129 | 2026-11-09 | `0.7.0-W1-008.1`（`0.7.0-W1-008` 用戶裁決：元件契約新增「套用時點」欄，只適用選擇類元件，判準為 `component-contract-design` skill v3.14.0〈套用時點的四問〉）：4.10 `SegmentedControl`、4.13 `FilterDropdown`、4.14 `TableColumnHeader`（限 `sortable`）、4.15 `MatrixCell`、4.40 `ListRow`（限 `option`）各在回饋契約前新增〈套用時點〉子節。前四者與 4.40 的 UC 選擇入口皆為立即提交、生效當下可見；4.40 的偏好設定面板編輯器選項為立即提交、選取即關閉、生效當下不可見，關閉時以暫態提示告知生效範圍。4.7 `NavItem`、4.8 `ProjectSwitcherEntry`、4.9 `RecentProjectItem` 的選取會執行導覽或開浮層，第 1 問判為動作，不填此欄。不改既有回饋契約列。正文版號行由 1.126 補記至本版 |
 | 1.128 | 2026-11-09 | `0.6.0-W1-202`（來源含 `0.6.0-W1-196`，主控裁決方案 A：元件一律傳值，訂閱在上層）：4.15 `MatrixCell` default 列資料態欄與 state-change 列改為畫面層 watch 後經 `MatrixGrid` 傳值，不再寫 `ConsumerWidget`、§2 容器例外、`ref.listen`。§2「導覽狀態」列、4.27 `AppShell` 用途段、default 列、state-change 列改為元件庫 `AppShell` 傳值、訂閱由組裝層 `lib/assembly/shell.dart` 承擔（`ref.watch` 後傳值），刪除「實作雛形」一句（含元件樹表 AppShell 列同款句）；4.42 專案切換浮層 state-change 列同款敘述同步改。不改 key 表與條文編號 |
