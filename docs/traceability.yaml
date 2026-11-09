@@ -442,7 +442,7 @@ runtime_tests:
     covers_uc: UC-06
     tests:
       - test/unit/screens/scan_notification_controller_test.dart
-    status: 邏輯軌（fake）已覆蓋：SPEC-003 §2.2 斷言十二列全綠；平台端事實軌（實機驗證）仍零覆蓋——SPEC-003 §2.2「實作票驗證」段四項平台事實尚未回填實測，承接票 0.3.1-W1-028（進行中，9/10 子票完成）以回填該段為其驗收項之一
+    status: 邏輯軌（fake）已覆蓋：SPEC-003 §2.2 斷言十二列全綠；平台端事實軌（實機驗證）已有實測記錄——0.3.1-W1-028（已完成）回填 SPEC-003 §2.2「實作票驗證」段（SPEC-003 v1.41），UNUserNotificationCenter 可用性（ad-hoc 與 Apple Development 簽章）、Flutter 端載體、AppLifecycleState 對應、撤回 API、點擊通知的前景化皆已實測；仍未量兩項：Developer ID 簽章下的可用性（承接票 1.0.0-W1-027），以及未簽章 build 的首次授權請求回應（本機已存「不允許」記錄，notDetermined 不可達）
 
   - scenario: 開啟原始檔（Process.run('open', ...)）與 doc CLI 呼叫
     covers_uc: UC-06
