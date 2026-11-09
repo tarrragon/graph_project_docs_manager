@@ -2,7 +2,10 @@
 // 預設系統預設、點選即持久化、已存值查無 handler 時標示落在系統預設且不改寫。
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart' show SnackBar;
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,12 +37,17 @@ class _MemoryStore implements EditorPreferenceStore {
   /// `true` 時 [write] 回報失敗且不改變 [value]。
   bool failWrites = false;
 
+  /// 非 null 時 [write] 等它完成才回報（控制完成時機）。
+  Completer<bool>? gate;
+
   @override
   Future<String> read() async => value;
 
   @override
   Future<bool> write(String editorId) async {
     writes.add(editorId);
+    final pending = gate;
+    if (pending != null) return pending.future;
     if (failWrites) return false;
     value = editorId;
     return true;
@@ -176,6 +184,33 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('寫入未完成時按 Esc：不拋錯，寫入完成後面板已關閉', (tester) async {
+    final gate = Completer<bool>();
+    final store = _MemoryStore(systemEditorId)..gate = gate;
+    final container = await pumpHarness(
+      tester,
+      child: const _PanelHost(),
+      overrides: [
+        editorHandlerProbeProvider.overrideWithValue(_SchemeProbe({'vscode'})),
+        editorPreferenceStoreProvider.overrideWithValue(store),
+        preferencesOpenProvider.overrideWithInitial((_) => true),
+      ],
+    );
+
+    await tester.tap(_option('vscode'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(_option('vscode'), findsNothing);
+
+    gate.complete(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(tester.takeException(), isNull);
+    expect(container.read(preferencesOpenProvider), isFalse);
   });
 
   testWidgets('寫入失敗：面板消失、顯示失敗提示、存值不變', (tester) async {

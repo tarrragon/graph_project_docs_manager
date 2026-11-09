@@ -89,6 +89,8 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
       return;
     }
     final l10n = AppLocalizations.of(context);
+    // await 前取得 notifier：寫入期間面板可能因 Esc 卸載，之後不可再用 ref。
+    final openHolder = ref.read(preferencesOpenProvider.notifier);
     final saved = await ref.read(editorPreferenceStoreProvider).write(editorId);
     developer.log(
       '選定編輯器：$editorId saved=$saved', // i18n-exempt: 開發者診斷 log
@@ -105,7 +107,7 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
         origin: AppSnackBarOrigin.userInitiated,
       );
     }
-    _close();
+    openHolder.state = false;
   }
 
   void _close() {

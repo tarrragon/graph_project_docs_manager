@@ -115,9 +115,9 @@ class SharedPreferencesEditorStore implements EditorPreferenceStore {
       final prefs = await SharedPreferences.getInstance();
       final saved = await prefs.setString(editorPreferenceKey, editorId);
       developer.log(
-        '編輯器偏好寫入：$editorId saved=$saved',
+        '編輯器偏好寫入：$editorId saved=$saved', // i18n-exempt: 開發者診斷字串
         name: _tag,
-      ); // i18n-exempt: 開發者診斷字串
+      );
       return saved;
     } on Object catch (error) {
       developer.log(
