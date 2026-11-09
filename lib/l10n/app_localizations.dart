@@ -1686,6 +1686,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重新讀取'**
   String get historyReloadAction;
+
+  /// SPEC-003 §3.8 編輯器選項：選定值寫入成功後的暫態提示（AppSnackBar.plain），editor 為該選項的顯示標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'已改用 {editor}，下次開啟原始檔時生效'**
+  String preferencesEditorAppliedMessage(String editor);
+
+  /// SPEC-003 §3.8 編輯器選項：選定值寫入失敗後的暫態提示（AppSnackBar.plain）
+  ///
+  /// In zh, this message translates to:
+  /// **'無法儲存編輯器設定'**
+  String get preferencesEditorSaveFailedMessage;
 }
 
 class _AppLocalizationsDelegate

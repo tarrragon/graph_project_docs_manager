@@ -262,5 +262,7 @@
   "historyLoadFailedDetail": "Reason: {reason}",
   "retryAction": "Retry",
   "historyCancelledMessage": "Reading was cancelled",
-  "historyReloadAction": "Read again"
+  "historyReloadAction": "Read again",
+  "preferencesEditorAppliedMessage": "Now using {editor}; takes effect the next time a source file is opened",
+  "preferencesEditorSaveFailedMessage": "Could not save the editor setting"
 }

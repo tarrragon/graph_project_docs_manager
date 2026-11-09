@@ -970,4 +970,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get historyReloadAction => '重新讀取';
+
+  @override
+  String preferencesEditorAppliedMessage(String editor) {
+    return '已改用 $editor，下次開啟原始檔時生效';
+  }
+
+  @override
+  String get preferencesEditorSaveFailedMessage => '無法儲存編輯器設定';
 }

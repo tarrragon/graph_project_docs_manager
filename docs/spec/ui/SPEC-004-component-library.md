@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-09"
-version: "1.131"
+version: "1.132"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.131（1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.132（1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -869,6 +869,8 @@ EVT-CORPUS-004 項目說明：
 | `preferencesTitle` | 偏好設定 | Preferences | — | SPEC-001 §9 偏好設定面板標題（`AppText.subtitle`） |
 | `preferencesEditorSystemOption` | 系統預設（不定位） | System default (no line positioning) | — | SPEC-001 §9 編輯器清單首項 `option-preferences-editor-system`（`ListRow.option` 主文字） |
 | `preferencesNoEditorsExplanation` | 本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed | No editor that can jump to a line was found on this machine. Supported editors: VS Code, VS Code Insiders, Cursor, Zed | — | SPEC-001 §9 無可選編輯器說明（`AppText.multiLine`，`state-preferences-no-editors`） |
+| `preferencesEditorAppliedMessage` | 已改用 {editor}，下次開啟原始檔時生效 | Now using {editor}; takes effect the next time a source file is opened | editor（String，該選項的顯示標籤） | 4.26 `AppSnackBar.plain`（SPEC-003 §3.8 編輯器選項，寫入成功；§2.13 列 20）；1.132 登記 |
+| `preferencesEditorSaveFailedMessage` | 無法儲存編輯器設定 | Could not save the editor setting | — | 4.26 `AppSnackBar.plain`（SPEC-003 §3.8 編輯器選項，寫入失敗；§2.13 列 21）；1.132 登記 |
 
 **1.131 新增（`0.7.0-W1-012.2`，對應 SPEC-001 v1.80 §10、SPEC-003 v1.83 §3.9、SPEC-008 FR-06～FR-08；zh／en 為提案文案，ARB 由對應實作票建立）**：第七畫面的導覽名、狀態訊息、篩選列、事件表欄首與列文字、淺層 clone 標示。既有 key 沿用不重登：`projectUnreadyReason*`、`gotoDomainViewAction`、`refreshAction`、`cancelLoadingAction`、`cancelInProgressAction`。邊型以鍵名原值（如 `uc_ticket_refs`）、節點 ID、domain 名稱、commit hash、作者、commit 訊息首行、stderr 摘要皆為資料值，不進 i18n。日期由呼叫端格式化為 `yyyy-MM-dd` 後代入（與語系無關，避免同一欄因語系不同而寬度不同）。
 
@@ -4156,7 +4158,7 @@ EVT-CORPUS-004 項目說明：
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `message` | `String` | 是 | 呼叫端（`openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage` / `ticketsTargetNotFoundMessage` / `chooseFolderUnavailableMessage` / `folderUnavailableMessage` / `workspaceNotRemembered` / `externalOpenFailedMessage` / `scanCompleteNoGapsSnackbarMessage` / `scanCompleteSnackbarMessage` / `ticketsFiltersClearedSnackbarMessage`） |
+| `message` | `String` | 是 | 呼叫端（`openedExternallyMessage` / `sourceFileNotFoundSnackbarMessage` / `sourceFileStillMissingMessage` / `ticketsTargetNotFoundMessage` / `chooseFolderUnavailableMessage` / `folderUnavailableMessage` / `workspaceNotRemembered` / `externalOpenFailedMessage` / `scanCompleteNoGapsSnackbarMessage` / `scanCompleteSnackbarMessage` / `ticketsFiltersClearedSnackbarMessage` / `preferencesEditorAppliedMessage` / `preferencesEditorSaveFailedMessage`） |
 | `actionLabel` / `onAction` | `String` / `VoidCallback`（`withAction`） | `withAction` 必填 | 呼叫端（`rescanAction` / `viewGapsAction` / `undoAction`） |
 
 #### 使用 design token
@@ -6755,6 +6757,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.132 | 2026-11-09 | `0.7.0-W1-009.1`（對應 SPEC-003 v1.85 §3.8、§2.13 列 20／21）：§4.0.6 新增兩 key 並登記 zh／en 與用處，4.26 `AppSnackBar` `message` 呼叫端清單補兩 key；ARB 同批 |
 | 1.131 | 2026-11-09 | `0.7.0-W1-012.2`（對應 SPEC-001 v1.80 §10、SPEC-003 v1.83 §3.9、SPEC-008 FR-06～FR-09）：補齊第七畫面變更記錄的元件。新增 4.43 `AppCheckbox`（「包含 ticket 建檔」，`AppButton`／`SegmentedControl`／`ListRow.option`／`FilterDropdown` 不適用的理由記於該條）；4.10 `SegmentedControl` 段數由恰 2 放寬為 2–3，承載期間選擇（`option-history-period-<period>`，不用 `FilterDropdown` 的理由記於該條）；4.35 `TableRow` 增 `historyEvent` 變體（七欄，沿用既有寬度 token，`kMinWindowSize` 代入值記於 5.9）；4.32 `Toolbar` 增 `history` 變體（5.6 同步）；4.19 `RelationItem` 承載事件列節點（`action-history-open-<index>-<side>`，domain 名稱對端改 `AppText.mono`）；4.5 `Badge.category` 承載變動欄與淺層 clone 標示（`badge-history-shallow-clone`）；4.24 `LoadingState` 增版位 `rows`；4.21 `EmptyState` 補 §10 用法與讀取失敗等三態不用 `BlockedState` 的例外；4.30 `Panel` 的 `leading` 接受 `BadgeRow`、`panelKey` 接受 `state-history-normal`／`state-history-empty`；4.36 `DataTable` 增 `scroll-history-events`（5.10 同步）；§3.1 總表補列並把元件定案數改為 27；§3.2、§3.4、4.27、5.1 側欄與主區由 6 改為 7；§3.6 補 §10 八列；§4.0.6 登記新 key；§6 補 `Checkbox` 類禁用列；frontmatter 補 UC-07、SPEC-008。`depends_on_domains` 不變 |
 | 1.130 | 2026-11-09 | `0.7.0-W1-012.1`（SPEC-003 v1.83 第七畫面同步）：4.27 `AppShell` state-change 列對 SPEC-003 §2.8 錨點的逐字引用「六頁建構時機」改為「七頁建構時機」。其餘第七畫面元件與 §3.6 對照表補列不在本版 |
 | 1.129 | 2026-11-09 | `0.7.0-W1-008.1`（`0.7.0-W1-008` 用戶裁決：元件契約新增「套用時點」欄，只適用選擇類元件，判準為 `component-contract-design` skill v3.14.0〈套用時點的四問〉）：4.10 `SegmentedControl`、4.13 `FilterDropdown`、4.14 `TableColumnHeader`（限 `sortable`）、4.15 `MatrixCell`、4.40 `ListRow`（限 `option`）各在回饋契約前新增〈套用時點〉子節。前四者與 4.40 的 UC 選擇入口皆為立即提交、生效當下可見；4.40 的偏好設定面板編輯器選項為立即提交、選取即關閉、生效當下不可見，關閉時以暫態提示告知生效範圍。4.7 `NavItem`、4.8 `ProjectSwitcherEntry`、4.9 `RecentProjectItem` 的選取會執行導覽或開浮層，第 1 問判為動作，不填此欄。不改既有回饋契約列。正文版號行由 1.126 補記至本版 |
