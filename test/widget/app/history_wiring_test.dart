@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/history_providers.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
-import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/history/application/history_state.dart';
 
 import '../../helpers/history/fake_process_runner.dart';
@@ -81,7 +80,9 @@ void main() {
 
   testWidgets('WR-5 導覽列七項，變更記錄為第七項', (tester) async {
     await _pumpWired(tester, FakeProcessRunner());
-    expect(find.byType(NavItem), findsNWidgets(7));
+    for (final d in AppDestination.values) {
+      expect(_key('nav-item-${d.name}'), findsOneWidget);
+    }
     expect(AppDestination.values.last, AppDestination.history);
     expect(AppDestination.values, hasLength(7));
     final ys = [

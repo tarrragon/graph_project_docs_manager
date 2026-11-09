@@ -30,6 +30,8 @@ import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
+import 'package:graph_project_docs_manager/screens/preferences/preferences_panel.dart';
+import 'package:graph_project_docs_manager/screens/shortcuts/shortcuts_panel.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
@@ -43,6 +45,7 @@ import '../../helpers/stub_workspace_repository.dart';
 
 void main() {
   _registerFocusTests();
+  _registerBottomItemTests();
   testWidgets('啟動首幀（restore 未完成）不顯示 fixture 矩陣', (tester) async {
     final pending = Completer<WorkspaceState>();
     addTearDown(() => pending.complete(const WorkspaceUnset()));
@@ -402,6 +405,64 @@ class _FakeSignalProbe implements FrameworkSignalProbePort {
   Future<String?> readSchemaJsonVersion(String workspacePath) async => null;
 }
 
+// 0.7.0-W1-007.4：側欄底部兩項（SPEC-003 §3.8、§3.10）。
+void _registerBottomItemTests() {
+  group('側欄底部項', () {
+    testWidgets('點「設定」開啟偏好設定面板，與 ⌘, 同一開合狀態', (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(tester, onReady: (c) => container = c);
+
+      await tester.tap(find.byKey(const Key('nav-action-preferences')));
+      await tester.pump();
+
+      expect(container.read(preferencesOpenProvider), isTrue);
+      expect(find.byKey(const Key('action-preferences-close')), findsOneWidget);
+    });
+
+    testWidgets('點「鍵盤快捷鍵」開啟快捷鍵面板', (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(tester, onReady: (c) => container = c);
+
+      await tester.tap(find.byKey(const Key('nav-action-shortcuts')));
+      await tester.pump();
+
+      expect(container.read(shortcutsOpenProvider), isTrue);
+      expect(find.byKey(const Key('state-shortcuts-list')), findsOneWidget);
+    });
+
+    testWidgets('兩面板互斥：開一個先關另一個', (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(tester, onReady: (c) => container = c);
+
+      container.read(preferencesOpenProvider.notifier).state = true;
+      await tester.pump();
+      container.read(shortcutsOpenProvider.notifier).state = true;
+      await tester.pump();
+      expect(container.read(preferencesOpenProvider), isFalse);
+      expect(container.read(shortcutsOpenProvider), isTrue);
+
+      container.read(preferencesOpenProvider.notifier).state = true;
+      await tester.pump();
+      expect(container.read(shortcutsOpenProvider), isFalse);
+      expect(container.read(preferencesOpenProvider), isTrue);
+    });
+
+    testWidgets('底部項不改變導覽狀態', (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(tester, onReady: (c) => container = c);
+
+      await tester.tap(find.byKey(const Key('nav-action-shortcuts')));
+      await tester.pump();
+
+      expect(
+        container.read(selectedDestinationProvider),
+        AppDestination.domain,
+      );
+      expect(container.read(returnToProvider), isNull);
+    });
+  });
+}
+
 Future<void> _pumpShell(
   WidgetTester tester, {
   void Function(ProviderContainer container)? onReady,
@@ -579,11 +640,11 @@ void _registerFocusTests() {
     expect(_navHasAccentBorder(tester, 'nav-item-ucFlow'), isFalse);
   });
 
-  testWidgets('Tab 從專案切換入口依序經六個導覽項後進入內容區', (tester) async {
+  testWidgets('Tab 從專案切換入口依序經七個導覽項、底部兩項後進入內容區（SPEC-003 §2.10）', (tester) async {
     await _pumpShell(tester);
     await _focusSwitcherEntry(tester);
     final stops = <FocusNode?>[];
-    for (var i = 0; i < 9; i++) {
+    for (var i = 0; i < 11; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
       stops.add(FocusManager.instance.primaryFocus);
@@ -592,7 +653,13 @@ void _registerFocusTests() {
       [for (var i = 0; i < 7; i++) _navKeyOf(stops[i])],
       [for (final d in AppDestination.values) 'nav-item-${d.name}'],
     );
-    for (final stop in [stops[7], stops[8]]) {
+    for (final (i, key) in [
+      (7, 'nav-action-preferences'),
+      (8, 'nav-action-shortcuts'),
+    ]) {
+      expect(_ancestorKeys(stops[i]), contains(Key(key)));
+    }
+    for (final stop in [stops[9], stops[10]]) {
       _expectInMainArea(stop);
     }
   });

@@ -73,6 +73,11 @@ ListRow _buildVariant(ListRowVariant variant, {required bool withTrailing}) {
       leading: const SizedBox(width: 24, height: 24),
       primary: AppText.singleLine(TestCopy.stepName),
     ),
+    ListRowVariant.shortcut => ListRow.shortcut(
+      keys: '↑／↓／Home／End',
+      action: TestCopy.nodeTitle,
+      contextLabel: TestCopy.topicName,
+    ),
   };
 }
 
@@ -578,6 +583,52 @@ void main() {
       );
       expect(find.text(TestCopy.gapDescription), findsOneWidget);
       expect(withHeight, greaterThan(withoutHeight));
+    });
+  });
+
+  group('shortcut 變體（SPEC-004 4.40）', () {
+    testWidgets('渲染按鍵、作用、情境三項，整列不可點且朗讀合併為一個節點', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          child: ListRow.shortcut(
+            keys: 'Esc',
+            action: '收合篩選選單',
+            contextLabel: 'Ticket 清單的篩選選單展開時',
+          ),
+        ),
+      );
+
+      expect(find.text('Esc'), findsOneWidget);
+      expect(find.text('收合篩選選單'), findsOneWidget);
+      expect(find.text('Ticket 清單的篩選選單展開時'), findsOneWidget);
+      expect(find.byType(material.InkWell), findsNothing);
+      expect(
+        find.bySemanticsLabel('Esc：收合篩選選單，Ticket 清單的篩選選單展開時'),
+        findsOneWidget,
+      );
+      expectNoOverflow(tester);
+    });
+
+    testWidgets('按鍵欄以 mono 變體、情境以 caption 變體承載', (tester) async {
+      await pumpHarness(
+        tester,
+        child: SizedBox(
+          width: 300,
+          child: ListRow.shortcut(keys: 'Esc', action: 'a', contextLabel: 'c'),
+        ),
+      );
+
+      final texts = tester.widgetList<AppText>(find.byType(AppText)).toList();
+      expect(
+        texts.firstWhere((t) => t.text == 'Esc').variant,
+        AppTextVariant.mono,
+      );
+      expect(
+        texts.firstWhere((t) => t.text == 'c').variant,
+        AppTextVariant.caption,
+      );
     });
   });
 }

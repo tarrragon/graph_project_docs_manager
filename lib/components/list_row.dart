@@ -24,6 +24,7 @@ import 'package:flutter/material.dart' show InkWell;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_text.dart';
 
@@ -49,6 +50,10 @@ enum ListRowVariant {
 
   /// 格詳情卡步驟清單：leading `StepNumber`、主文字 `AppText.body`。
   numbered,
+
+  /// 鍵盤快捷鍵面板列：leading 按鍵字面（`AppText.mono`，固定寬）、主文字
+  /// 作用、次文字作用情境；整列不可點、不取得焦點，朗讀合併為一個節點。
+  shortcut,
 }
 
 /// 容器：leading（可選）+ 主文字（填滿）+ 次文字（可選，堆疊於主文字下）
@@ -64,10 +69,13 @@ class ListRow extends StatelessWidget {
     this.onTap,
     this.testKey,
     this.isSelected = false,
+    this.shortcutKeys,
   }) : assert(
-         secondary == null || variant == ListRowVariant.item,
+         secondary == null ||
+             variant == ListRowVariant.item ||
+             variant == ListRowVariant.shortcut,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'secondary 僅 item 變體接受（SPEC-004 §5.14 子件契約）',
+         'secondary 僅 item／shortcut 變體接受（SPEC-004 §5.14 子件契約）',
        ),
        assert(
          !isSelected || variant == ListRowVariant.option,
@@ -169,6 +177,31 @@ class ListRow extends StatelessWidget {
          primary: primary,
        );
 
+  /// 鍵盤快捷鍵列（SPEC-004 4.40 `shortcut`）。[keys] 為按鍵字面（資料值，
+  /// 不進 i18n）、[action] 為作用、[contextLabel] 為作用情境。
+  ListRow.shortcut({
+    Key? key,
+    required String keys,
+    required String action,
+    required String contextLabel,
+  }) : this._(
+         key: key,
+         variant: ListRowVariant.shortcut,
+         primary: AppText.multiLine(action, maxLines: null),
+         secondary: AppText.singleLine(
+           contextLabel,
+           variant: AppTextVariant.caption,
+         ),
+         shortcutKeys: keys,
+       );
+
+  /// `shortcut` 變體的按鍵字面；其餘變體為 `null`。
+  String? get keys => shortcutKeys;
+
+  /// `shortcut` 變體的作用情境；其餘變體為 `null`。
+  String? get contextLabel =>
+      variant == ListRowVariant.shortcut ? secondary?.text : null;
+
   /// 語意變體。
   final ListRowVariant variant;
 
@@ -196,6 +229,9 @@ class ListRow extends StatelessWidget {
   /// `option` 變體的選定態；其餘變體不接受（預設 `false`）。
   final bool isSelected;
 
+  /// `shortcut` 變體的按鍵字面（資料值，不進 i18n）。
+  final String? shortcutKeys;
+
   bool get _isTappableRow =>
       variant == ListRowVariant.tree ||
       variant == ListRowVariant.item ||
@@ -203,6 +239,7 @@ class ListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (variant == ListRowVariant.shortcut) return _buildShortcut(context);
     final row = Row(
       crossAxisAlignment: variant == ListRowVariant.item
           ? CrossAxisAlignment.start
@@ -252,10 +289,49 @@ class ListRow extends StatelessWidget {
     return sized;
   }
 
+  /// `shortcut`：按鍵（固定寬 mono）+ 作用／情境堆疊，列間頂邊框同 `item`；
+  /// 子文字以 [ExcludeSemantics] 排除，整列由 `shortcutRowA11yLabel` 朗讀。
+  Widget _buildShortcut(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final keyText = shortcutKeys ?? '';
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: LayoutSize.ticketIdColumnWidth.w,
+          child: AppText.singleLine(keyText, variant: AppTextVariant.mono),
+        ),
+        SizedBox(width: Space.sm.w),
+        Expanded(child: _buildTextBlock()),
+      ],
+    );
+    return Semantics(
+      container: true,
+      label: l10n.shortcutRowA11yLabel(
+        keyText,
+        primary.text,
+        contextLabel ?? '',
+      ),
+      child: ExcludeSemantics(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: Space.sm.h),
+            child: row,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 主／次文字堆疊。`sectionHeader` 依契約色（`emphasis` +
   /// `accentStrong`）重建，見檔頭說明。
   Widget _buildTextBlock() {
-    if (variant != ListRowVariant.item || secondary == null) {
+    final stacked =
+        variant == ListRowVariant.item || variant == ListRowVariant.shortcut;
+    if (!stacked || secondary == null) {
       return _buildPrimary();
     }
     return Column(
