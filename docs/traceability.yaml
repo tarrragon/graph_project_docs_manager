@@ -170,6 +170,38 @@ mappings:
       - test/unit/diagnostics/parse_failure_gap_test.dart
       - test/integration/corpus_it2_gap_classification_test.dart
 
+  # UC-07（0.7.0 History，PROP-006）：畫面狀態在 SPEC-001 §10，資料管線在 SPEC-008。
+  # tests 待 0.7.0 紅燈測試設計（version-bootstrap Step 5）回填。
+  - spec: SPEC-001
+    usecase: UC-07
+    title: 回顧一段期間內的關係變動
+    main_flow:
+      - enter-history
+      - read-history
+      - review-default-period
+      - open-node
+    alt_scenarios:
+      - change-period
+      - include-ticket-creation
+      - empty-period
+      - cancel-reading
+      - history-unavailable
+      - shallow-clone
+    tests: []
+
+  - spec: SPEC-008
+    usecase: UC-07
+    title: 回顧一段期間內的關係變動（邊事件管線）
+    main_flow:
+      - read-history
+      - review-default-period
+    alt_scenarios:
+      - include-ticket-creation
+      - cancel-reading
+      - history-unavailable
+      - shallow-clone
+    tests: []
+
 # 水平 domain 規則軸：docs/spec/{domain}/domain-map.md §3 的 8 個 bundle（索引見 docs/system-layer.md §1.3）。
 # invariants 取自該表「唯一變更理由」欄；layer 取自 docs/system-layer.md §2 分層圖。
 # tests 全數為空——8 個 domain 的業務邏輯尚未實作（專案現處於
@@ -251,9 +283,10 @@ domain_bundle_tests:
       - test/integration/graph_it2_defects_to_diagnostics_test.dart
 
   - bundle: History
-    layer: L2
+    layer: L1  # 2026-11-09 更正（原 L2；系統層 §2 於 2026-10-08 已改為 L1，`0.7.0-W1-012` 同批對齊）
     invariants:
       - git 查詢方式或歷史語意改變是唯一合法變更理由（docs/spec/history/domain-map.md §3）
+      - 逐條不變式見 docs/spec/history/domain-map.md〈Bundle 不變式清單〉（SPEC-008），待 0.7.0 Step 5 轉為測試
     tests: []
 
   - bundle: Layout

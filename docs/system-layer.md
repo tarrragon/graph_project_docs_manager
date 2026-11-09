@@ -76,7 +76,7 @@ L1   Corpus     History
 L0   Schema     Workspace
 ```
 
-**層由 `bundle_dependency` 推導**（2026-10-08 用戶裁決，`docs/tech-decisions.md` 同日補記第 1 項）：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；上圖為推導結果，非手寫指派。`History` 只依賴 `Workspace`，推導為 L1（原寫 L2，已更正）。`Diagnostics` 在 2026-10-21 補上 `Graph` 出邊後推導為 L3（原為 L2，`0.5.0-W1-460`）；`Graph` 補上 `Schema` 出邊後仍是 L2。泳道列序依此層序與同層字母序（SPEC-001 §1〈泳道布局規則〉）。
+**層由 `bundle_dependency` 推導**（2026-10-08 用戶裁決，`docs/tech-decisions.md` 同日補記第 1 項）：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；上圖為推導結果，非手寫指派。`History` 依賴 `Workspace` 與 `Schema`（後者 2026-11-09 新增，`0.7.0-W1-012`），兩者皆為 L0，推導為 L1（原寫 L2，已更正）。`Diagnostics` 在 2026-10-21 補上 `Graph` 出邊後推導為 L3（原為 L2，`0.5.0-W1-460`）；`Graph` 補上 `Schema` 出邊後仍是 L2。泳道列序依此層序與同層字母序（SPEC-001 §1〈泳道布局規則〉）。
 
 **依賴邊（完整列舉）**：出邊的唯一權威是各 domain map frontmatter 的 `depends_on_bundles`，下表為彙整視圖；兩者不一致時以 frontmatter 為準。
 
@@ -91,6 +91,7 @@ L0   Schema     Workspace
 | Corpus | Schema | 以 `id_pattern` 為有 frontmatter 的檔案判型；以「路徑對型別」查詢分流沒拿到可用 frontmatter 的檔案（SPEC-006 FR-03、FR-06，見系統層 §5） |
 | Corpus | Workspace | 取得專案根路徑 |
 | History | Workspace | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見系統層 §4.3） |
+| History | Schema | 以邊型表判定 frontmatter diff 中的邊欄位，以 `id_pattern` 判定節點是否為 ticket（SPEC-008 FR-03、FR-05）；2026-11-09 新增（`0.7.0-W1-012`，PROP-006），不經 Corpus 的理由同 §4.3 |
 
 Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影其產出——
 若讓三者各自解析同一份檔案，容錯規則會分歧。

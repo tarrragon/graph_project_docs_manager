@@ -835,6 +835,7 @@ versions:
     status: "active"
     proposals:
       - PROP-005
+      - PROP-006
     worklog: "docs/work-logs/v0/v0.7/v0.7.0/"
     notes: |
       2026-09-29 依「major 起始即定 minor 清單」登記（0.4.0-W1-040；PROP-005 §0.7）。

@@ -78,6 +78,22 @@ proposals:
   - 0.4.0-W2-009
   - 0.5.0-W1-114.13
   checklist: []
+- id: PROP-006
+  title: History：期間內全專案的關係變動
+  status: draft
+  proposed: '2026-11-09'
+  confirmed_at: null
+  target_version: 0.7.0
+  depends_on:
+  - PROP-005
+  source: development
+  spec_refs:
+  - SPEC-008
+  - SPEC-001
+  usecase_refs:
+  - UC-07
+  ticket_refs: []
+  checklist: []
 usecases:
 - id: UC-01
   title: 開啟專案並抵達可用狀態
@@ -103,6 +119,10 @@ usecases:
   title: 找出並修復文件破洞
   status: draft
   source_proposal: PROP-004
+- id: UC-07
+  title: 回顧一段期間內的關係變動
+  status: draft
+  source_proposal: PROP-006
 specs:
 - id: SPEC-001
   title: 畫面狀態矩陣與 gate 退出路徑
@@ -139,3 +159,8 @@ specs:
   status: draft
   domain: graph
   source_proposal: PROP-005
+- id: SPEC-008
+  title: History：主線邊事件的掃描、解析與降級
+  status: draft
+  domain: history
+  source_proposal: PROP-006
