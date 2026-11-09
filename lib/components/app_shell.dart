@@ -52,14 +52,14 @@ class AppShell extends StatelessWidget {
     this.overlay,
     this.testKey = shellKey,
   }) : assert(
-         navItems.length == 6,
+         navItems.length == 7,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'navItems 恰 6 項（SPEC-004 4.27 slot 契約）',
+         'navItems 恰 7 項（SPEC-004 4.27 slot 契約）',
        ),
        assert(
-         pages.length == 6,
+         pages.length == 7,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'pages 恰 6 項（SPEC-004 4.27 slot 契約）',
+         'pages 恰 7 項（SPEC-004 4.27 slot 契約）',
        );
 
   /// 整合測試與元件測試用來確認「已抵達殼」的錨點（SPEC-004 4.27 slot

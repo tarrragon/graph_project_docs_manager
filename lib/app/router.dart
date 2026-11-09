@@ -31,7 +31,10 @@ enum AppDestination {
   gaps,
 
   /// SPEC-001 §6 節點詳情。
-  nodeDetail;
+  nodeDetail,
+
+  /// SPEC-001 §10 變更記錄（第七畫面，導覽列最後一項）。
+  history;
 
   /// 導覽列上顯示的語系化文字。
   String label(AppLocalizations l10n) => switch (this) {
@@ -41,6 +44,7 @@ enum AppDestination {
     AppDestination.tickets => l10n.navTickets,
     AppDestination.gaps => l10n.navGaps,
     AppDestination.nodeDetail => l10n.navNodeDetail,
+    AppDestination.history => l10n.navHistory,
   };
 
   /// 整合測試與 widget 測試用來定位個別佔位頁的錨點。
