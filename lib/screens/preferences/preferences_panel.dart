@@ -2,8 +2,8 @@
 ///
 /// 主視窗內的面板（不是獨立視窗）：⌘, 開啟，只承載「開啟原始檔使用的編輯器」
 /// 一項。開啟時對 [editorTable] 各編輯器查一次 handler，只列查得者；偵測
-/// 完成前不渲染選項。選定值於點選當下持久化，不需另按儲存，也不顯示
-/// SnackBar（選取標示即結果，SPEC-003 §2.13 判準 T2）。
+/// 完成前不渲染選項。點選即關閉面板：與持久化值不同則寫入並以
+/// SnackBar 提示成敗，相同則只關閉（SPEC-003 §3.8）。
 ///
 /// 已持久化的編輯器本次查無 handler：選取標示落在「系統預設（不定位）」，
 /// 持久化值不改寫，直到使用者點選（SPEC-001 §9〈預設值與持久化〉）。
@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../components/attention_level.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/macos_preferences_channel.dart';
@@ -50,7 +51,6 @@ class PreferencesPanel extends ConsumerStatefulWidget {
 
 class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
   _PreferencesSnapshot? _snapshot;
-  String? _chosenId;
 
   @override
   void initState() {
@@ -79,9 +79,33 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
     });
   }
 
-  void _choose(String editorId) {
-    setState(() => _chosenId = editorId);
-    ref.read(editorPreferenceStoreProvider).write(editorId);
+  /// 點選即關閉（SPEC-003 §3.8）：與持久化值比對，不同才寫入並依成敗提示，
+  /// 相同只關閉。提示在關閉前送出——SnackBar 掛在主視窗的 ScaffoldMessenger，
+  /// 面板卸載後仍續存。
+  Future<void> _choose(String editorId, String label) async {
+    final snapshot = _snapshot;
+    if (snapshot == null || editorId == snapshot.storedId) {
+      _close();
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final saved = await ref.read(editorPreferenceStoreProvider).write(editorId);
+    developer.log(
+      '選定編輯器：$editorId saved=$saved', // i18n-exempt: 開發者診斷 log
+      name: _tag,
+      level: saved ? 800 : 900,
+    );
+    if (mounted) {
+      AppSnackBar.show(
+        context,
+        message: saved
+            ? l10n.preferencesEditorAppliedMessage(label)
+            : l10n.preferencesEditorSaveFailedMessage,
+        level: AttentionLevel.discardable,
+        origin: AppSnackBarOrigin.userInitiated,
+      );
+    }
+    _close();
   }
 
   void _close() {
@@ -134,7 +158,7 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
     AppLocalizations l10n,
     _PreferencesSnapshot snapshot,
   ) {
-    final selectedId = _chosenId ?? snapshot.selectedId;
+    final selectedId = snapshot.selectedId;
     return [
       _option(
         editorId: systemEditorId,
@@ -159,7 +183,7 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
   }) {
     return ListRow.option(
       primary: AppText.singleLine(label),
-      onTap: () => _choose(editorId),
+      onTap: () => _choose(editorId, label),
       testKey: Key('option-preferences-editor-$editorId'),
       isSelected: editorId == selectedId,
     );

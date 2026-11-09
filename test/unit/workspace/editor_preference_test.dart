@@ -18,8 +18,9 @@ void main() {
     test('寫入後讀回同值，且使用 App 層鍵名', () async {
       SharedPreferences.setMockInitialValues({});
 
-      await store.write('zed');
+      final ok = await store.write('zed');
 
+      expect(ok, isTrue);
       expect(await store.read(), 'zed');
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString(editorPreferenceKey), 'zed');
