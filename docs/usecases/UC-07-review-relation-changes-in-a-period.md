@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-006
 created: "2026-11-09"
 updated: "2026-11-09"
-version: "1.0"
+version: "1.1"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -77,7 +77,7 @@ flow:
     return_to: null
     emits: []
     consumes: []
-    traverses: ["history"]
+    traverses: ["workspace", "schema", "history"]
   - id: "review-default-period"
     name: "檢視預設期間"
     next: ["open-node"]
@@ -123,7 +123,7 @@ flow:
     name: "讀取期間取消"
     next: []
     branch_from: "read-history"
-    return_to: "enter-history"
+    return_to: "read-history"
     emits: []
     consumes: []
     traverses: ["history"]
@@ -132,7 +132,7 @@ flow:
     name: "無法讀取歷史"
     next: []
     branch_from: "read-history"
-    return_to: "enter-history"
+    return_to: "read-history"
     emits: []
     consumes: []
     traverses: ["history"]
@@ -151,15 +151,15 @@ flow:
 
 ### 讀取期間取消
 
-使用者在讀取中按取消，系統終止讀取；沒有先前結果時顯示「已取消」並提供重新讀取，有先前結果時回到先前的畫面（SPEC-008 FR-09 規則 4）。讀取中切換到其他畫面時，讀取照常進行
+使用者在讀取中按取消，系統終止讀取；沒有完成結果時顯示「已取消」，按重新讀取回到讀取步驟（flow 的 `return_to`）；有完成結果時直接回到檢視步驟（SPEC-008 FR-09 規則 4）。讀取中切換到其他畫面時，讀取照常進行
 
 ### 無法讀取歷史
 
-專案不是 git repo、找不到 git 指令、或讀取失敗時，畫面各顯示不同的說明與重新檢查／重試動作；三種定案降級不顯示為「讀取失敗」（SPEC-008 FR-08）
+專案不是 git repo、找不到 git 指令、或讀取失敗時，畫面各顯示不同的說明與重新檢查／重試動作，按下後回到讀取步驟；三種定案降級不顯示為「讀取失敗」（SPEC-008 FR-08）
 
 ### 淺層 clone
 
-專案是淺層 clone 時照常列出事件，並常駐標示「歷史不完整」與邊界日期；邊界 commit 不產生事件（SPEC-008 FR-08 規則 3）
+專案是淺層 clone 時照常列出事件，並常駐標示「歷史不完整」與邊界日期；邊界 commit 不產生事件（SPEC-008 FR-08 規則 3）。flow 中的 `shallow-clone` 分支表示這段呈現差異，畫面上是疊加標示而非另一個狀態（SPEC-001 §10）
 
 ## 驗收條件
 
@@ -173,4 +173,5 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.1 | 2026-11-09 | 多視角審查（saffron）修正：`cancel-reading`、`history-unavailable` 的 `return_to` 改為 `read-history`；`read-history` traverses 補 workspace、schema；淺層 clone 註明為疊加標示 |
 | 1.0 | 2026-11-09 | 初版（`0.7.0-W1-012` 規劃波，PROP-006） |

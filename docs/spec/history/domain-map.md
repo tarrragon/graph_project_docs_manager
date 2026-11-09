@@ -50,15 +50,17 @@ updated: "2026-11-09"
 
 | Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
 |---|---|---|
-| History | 一個邊鍵的宣告來源集合只在由空變非空時產生新增、由非空變空時產生移除；只增減宣告側不產生事件 | SPEC-008 FR-04 規則 2、3 |
+| History | 一個邊鍵的宣告來源集合（元素為路徑、欄位、值）只在由空變非空時產生新增、由非空變空時產生移除；只增減宣告側不產生事件 | SPEC-008 FR-04 規則 2 |
 | History | 宣告在同一 commit 內移到另一個路徑（含改名），不產生事件 | SPEC-008 FR-04 規則 2 |
 | History | 有向邊的反向宣告換算為與正向宣告相同的邊鍵；無向邊兩端依字典序排列 | SPEC-008 FR-04 規則 1 |
-| History | 無法解析的 frontmatter 版本沿用上一個可解析版本的宣告，不產生事件 | SPEC-008 FR-02 規則 5 |
-| History | 狀態失步的路徑凍結最後已知宣告，之後不產生事件，直到該路徑被刪除或重新新增 | SPEC-008 FR-02 規則 6 |
+| History | hunk 依 `@@` 標頭的行數消耗；行數歸零之前不認任何檔頭 | SPEC-008 FR-02 規則 4 |
+| History | frontmatter 範圍每個 commit 從全文重新計算；邊界移動（補上或刪除 `---`）不造成失步 | SPEC-008 FR-02 規則 5、6 |
+| History | 無法解析的 frontmatter 版本：全文照常更新，宣告沿用上一個可解析版本，不產生事件 | SPEC-008 FR-02 規則 7 |
+| History | 狀態失步的路徑之後不產生事件，並計數 | SPEC-008 FR-02 規則 8 |
 | History | 只收字串值；`closed_by` 不符合主圖節點型別 `id_pattern` 的值略過 | SPEC-008 FR-03 規則 4、5 |
 | History | ticket 建檔事件只出現在新增事件，且該 commit 新建了宣告者之一的 ticket 檔案 | SPEC-008 FR-05 |
-| History | 基準 tag 不取 HEAD 本身；不符合版本 tag 樣式或不在主線上的 tag 不採用 | SPEC-008 FR-06 規則 1、2 |
-| History | 淺層邊界 commit 只建立初始狀態，不產生事件 | SPEC-008 FR-08 規則 3 |
+| History | 基準 tag 不取 HEAD 本身；不符合版本 tag 樣式或不在主線上的 tag 不採用；tag commit 未觸及 `docs/` 時仍採用 | SPEC-008 FR-06 規則 1～3 |
+| History | 淺層邊界 commit 只建立初始狀態，不產生事件；非淺層 repo 的根 commit 照常產生事件 | SPEC-008 FR-08 規則 3 |
 | History | 同一份結果上，「包含 ticket 建檔」為否的查詢結果是為是的子集 | SPEC-008 FR-07 |
 
 ## 4. 邊界決策

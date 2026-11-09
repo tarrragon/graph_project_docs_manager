@@ -80,9 +80,9 @@ proposals:
   checklist: []
 - id: PROP-006
   title: History：期間內全專案的關係變動
-  status: draft
+  status: confirmed
   proposed: '2026-11-09'
-  confirmed_at: null
+  confirmed_at: '2026-11-09'
   target_version: 0.7.0
   depends_on:
   - PROP-005
