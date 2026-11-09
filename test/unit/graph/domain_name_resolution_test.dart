@@ -215,7 +215,7 @@ void main() {
       expect(e.graphDefects.whereType<DanglingRefGraphDefect>(), hasLength(1));
     });
 
-    test('G11-8d 本專案 docs/spec：24 條邊、0 假 targetMissing', () {
+    test('G11-8d 本專案 docs/spec：25 條邊、0 假 targetMissing', () {
       final nodes = <RawNode>[];
       for (final f in Directory('docs/spec').listSync(recursive: true)) {
         if (f is! File || !f.path.endsWith('.md')) continue;
@@ -249,8 +249,8 @@ void main() {
           .whereType<List>()
           .expand((l) => l)
           .length;
-      expect(domainDeps, hasLength(24));
-      expect(declared, 24);
+      expect(domainDeps, hasLength(25));
+      expect(declared, 25);
       final fakeMissing = e.graphDefects
           .whereType<DanglingRefGraphDefect>()
           .where((d) => d.ref.edgeTypeName == 'domain_dependency');
