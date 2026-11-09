@@ -40,12 +40,12 @@ class SegmentedControl extends StatelessWidget {
     required this.selectedIndex,
     required this.onChanged,
   }) : assert(
-         segments.length == 2,
+         segments.length >= 2 && segments.length <= 3,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'segments 長度必須恰為 2（SPEC-004 §4.10 slot 契約）',
+         'segments 長度必須為 2–3（SPEC-004 §4.10 slot 契約）',
        );
 
-  /// 兩段內容，長度恰 2。
+  /// 段內容，長度 2–3（三段只用於變更記錄期間選擇，1.131）。
   final List<SegmentItem> segments;
 
   /// 目前選中的段索引。

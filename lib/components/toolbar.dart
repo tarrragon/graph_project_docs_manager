@@ -17,9 +17,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../tokens/tokens.dart';
+import 'app_checkbox.dart';
 import 'filter_dropdown.dart';
 import 'issue_marker.dart';
 import 'search_field.dart';
+import 'segmented_control.dart';
 
 /// SPEC-004 §4.32 容器：`SearchField` + `FilterDropdown` × N +
 /// `IssueMarker.damagedDetail`? 水平排列。
@@ -31,18 +33,38 @@ import 'search_field.dart';
 class Toolbar extends StatelessWidget {
   Toolbar({
     super.key,
-    required this.search,
+    required SearchField this.search,
     required this.filters,
     required this.testKey,
     this.marker,
-  }) : assert(
+  }) : period = null,
+       toggle = null,
+       assert(
          filters.isNotEmpty && filters.length <= 3,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
          'Toolbar filters 數量須介於 1..3（SPEC-004 5.6 子件契約）',
        );
 
-  /// 首格：搜尋框，吸收剩餘寬。
-  final SearchField search;
+  /// `history` 變體（SPEC-004 4.32，1.131；變更記錄篩選列）：[period]
+  /// （期間選擇，首格）+ [toggle]（包含 ticket 建檔），子件固有寬、靠左，
+  /// 剩餘寬留白；不接受 search / filters / marker。
+  const Toolbar.history({
+    super.key,
+    required SegmentedControl this.period,
+    required AppCheckbox this.toggle,
+    required this.testKey,
+  }) : search = null,
+       filters = const [],
+       marker = null;
+
+  /// 首格：搜尋框，吸收剩餘寬（`default` 變體；`history` 為 `null`）。
+  final SearchField? search;
+
+  /// `history` 首格：期間選擇（三段）。
+  final SegmentedControl? period;
+
+  /// `history` 次格：包含 ticket 建檔核取。
+  final AppCheckbox? toggle;
 
   /// 第 2..N 格：篩選下拉（1..3 個，SPEC-004 §4.32 slot 契約）。
   final List<FilterDropdown> filters;
@@ -55,18 +77,7 @@ class Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = <Widget>[Expanded(child: search)];
-    for (final filter in filters) {
-      children
-        ..add(SizedBox(width: Space.sm.w))
-        ..add(filter);
-    }
-    final trailingMarker = marker;
-    if (trailingMarker != null) {
-      children
-        ..add(SizedBox(width: Space.sm.w))
-        ..add(trailingMarker);
-    }
+    final children = period != null ? _historyChildren() : _defaultChildren();
 
     return Padding(
       padding: EdgeInsets.only(bottom: Space.sm.h),
@@ -93,5 +104,25 @@ class Toolbar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _historyChildren() {
+    return [period!, SizedBox(width: Space.sm.w), toggle!];
+  }
+
+  List<Widget> _defaultChildren() {
+    final children = <Widget>[Expanded(child: search!)];
+    for (final filter in filters) {
+      children
+        ..add(SizedBox(width: Space.sm.w))
+        ..add(filter);
+    }
+    final trailingMarker = marker;
+    if (trailingMarker != null) {
+      children
+        ..add(SizedBox(width: Space.sm.w))
+        ..add(trailingMarker);
+    }
+    return children;
   }
 }

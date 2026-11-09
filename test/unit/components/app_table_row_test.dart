@@ -603,4 +603,68 @@ void main() {
       expect(sizedBoxes.first.width, LayoutSize.stepDomainColumnWidth.w);
     });
   });
+
+  group('historyEvent（SPEC-004 4.35，1.131）', () {
+    AppTableRow build({bool nodeCounterpart = true}) {
+      return AppTableRow.historyEvent(
+        change: const Badge.category(
+          label: 'Added',
+          tone: BadgeTone.positive,
+          inline: true,
+        ),
+        edgeType: const AppText.singleLine(
+          'spec_uc',
+          variant: AppTextVariant.mono,
+        ),
+        declarer: RelationItem(
+          id: 'SPEC-001',
+          onTap: () {},
+          testKey: const Key('action-history-open-0-declarer'),
+        ),
+        counterpart: nodeCounterpart
+            ? RelationItem(
+                id: 'UC-01',
+                onTap: () {},
+                testKey: const Key('action-history-open-0-counterpart'),
+              )
+            : const AppText.singleLine('ui', variant: AppTextVariant.mono),
+        commit: const AppText.singleLine(
+          'abc1234',
+          variant: AppTextVariant.mono,
+        ),
+        date: const AppText.singleLine(
+          '2026-11-09',
+          variant: AppTextVariant.caption,
+        ),
+        authorMessage: const AppText.singleLine('me: msg'),
+        semanticLabel: 'ROW-LABEL',
+      );
+    }
+
+    testWidgetsAtEachSize('節點對端兩個錨點；domain 對端一個', (tester, size) async {
+      await pumpHarness(tester, size: size, child: build());
+      expectNoOverflow(tester);
+      const declarer = Key('action-history-open-0-declarer');
+      const counterpart = Key('action-history-open-0-counterpart');
+      expect(find.byKey(declarer), findsOneWidget);
+      expect(find.byKey(counterpart), findsOneWidget);
+      await pumpHarness(
+        tester,
+        size: size,
+        child: build(nodeCounterpart: false),
+      );
+      expect(find.byKey(counterpart), findsNothing);
+    });
+
+    testWidgetsAtEachSize('列本體非互動、朗讀為 semanticLabel', (tester, size) async {
+      final handle = tester.ensureSemantics();
+      await pumpHarness(tester, size: size, child: build());
+      expect(find.bySemanticsLabel(RegExp('ROW-LABEL')), findsOneWidget);
+      handle.dispose();
+    });
+
+    test('historyEventColumns 七欄', () {
+      expect(AppTableRow.historyEventColumns.length, 7);
+    });
+  });
 }

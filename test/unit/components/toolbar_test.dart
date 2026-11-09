@@ -269,4 +269,37 @@ void main() {
       );
     });
   });
+
+  group('Toolbar.history（SPEC-004 4.32，1.131）', () {
+    Toolbar build() => Toolbar.history(
+      testKey: const Key('toolbar-history'),
+      period: SegmentedControl(
+        segments: const [
+          SegmentItem(label: 'A', semanticLabel: 'a', testKey: Key('p-a')),
+          SegmentItem(label: 'B', semanticLabel: 'b', testKey: Key('p-b')),
+          SegmentItem(label: 'C', semanticLabel: 'c', testKey: Key('p-c')),
+        ],
+        selectedIndex: 0,
+        onChanged: (_) {},
+      ),
+      toggle: AppCheckbox(
+        label: 'Include',
+        value: false,
+        onChanged: (_) {},
+        testKey: const Key('action-history-include-ticket-created'),
+      ),
+    );
+
+    for (final size in WindowSize.values) {
+      testWidgets('兩子件靠左、間距 Space.sm、不溢位 @ ${size.label}', (tester) async {
+        await pumpHarness(tester, size: size, child: build());
+        expectNoOverflow(tester);
+        final seg = tester.getRect(find.byType(SegmentedControl));
+        final box = tester.getRect(find.byType(AppCheckbox));
+        expect(box.left - seg.right, closeTo(Space.sm.w, 0.5));
+        expect(seg.left, lessThan(box.left));
+        expect(find.byType(SearchField), findsNothing);
+      });
+    }
+  });
 }
