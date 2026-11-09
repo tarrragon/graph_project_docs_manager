@@ -832,6 +832,7 @@ versions:
   - version: "0.7.0"
     codename: "History"
     description: "git 邊層級變更記錄；0.x 的最後一個 minor"
+    scope: "frozen"    # 2026-11-09 凍結（用戶裁定）：規劃期完成。範圍為 History 0.7.0-W1-012.1～012.15 與 001（roadmap 16 張），以及候選池選入的 005、007、008、008.1、009 和 v3.0.1 採用票 013（維護 6 張，6/22≈27%，在三成以內；v3.0.0 採用的 002 系列是 0.6.0 收尾裁定的前置工作，不從候選池選入，不計入比例）。必要票已標 scope_blocker。保留一輪的 004、006、011 在發版時前移。新票須帶 --scope-blocker 理由，否則路由至 1.0.0
     status: "active"
     proposals:
       - PROP-005
