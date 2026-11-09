@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-09"
-version: "1.133"
+version: "1.134"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -170,7 +170,7 @@ depends_on_domains: [layout]
 | `DataTable`（資料表） | 容器 | L2（資料視圖） | `TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`），變更記錄事件清單為虛擬捲動（`scroll-history-events`） | §2、§4、§10 | `virtual` / `plain` |
 | `MatrixGrid`（矩陣） | 容器 | L3（資料視圖） | domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`） | §1 | `default` |
 | `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× （DomainBundle 數＋1，有未定位步驟時＋2）垂直（「畫面」列 + 每個 DomainBundle 一列，有 `traverses` 異常步驟時於全部 DomainBundle 列之後加「未定位」列，本專案 9 列）、列間虛線；步驟間邊（直線／弧線）；底部步驟箭頭列；列序、欄序、邊形狀依 SPEC-001 §1〈泳道布局規則〉（「畫面」列 + 每個 DomainBundle 一列依 `bundle_dependency` 推導層序與同層字母序、主線清單順序與分支（含巢狀）插欄、前向直線與回指弧線；0.1 為假資料靜態排版，SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
-| `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3 | `default` |
+| `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3、§6（來源鏈） | `default` / `sourceChain`（節點詳情主欄內嵌來源鏈：全部展開、無展開器、不持有展開集合，4.39） |
 | `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption`，可選）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
 | `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
 | `SwitcherOverlay`（專案切換浮層） | 容器 | L3 | 覆蓋層：`AppText.caption` 標題 + `RecentProjectItem` × N（垂直捲動 `scroll-switcher-recent`）+ `Divider` + `AppButton.text`（選擇其他資料夾）；自入口向下展開，Esc／點外部收合，焦點限制於浮層內 | §7（展開、無最近專案） | `default`；`RecentProjectItem` 數量無上限 → 空間不足策略為捲動 |
@@ -367,7 +367,7 @@ depends_on_domains: [layout]
 | §5 | 無法判定破洞 | 頁首標題 + 原因說明（三選一）+ 其餘類別分節（有項目時）+ 重新掃描 | `Panel.scrollable`[`Section.static`[`AppText.subtitle`（`gapsUndeterminableTitle`）, `AppText.body`（`gapsUndeterminableReasonVersionOutOfRange`、`gapsUndeterminableReasonNoPathPattern` 或 `gapsUndeterminableReasonScanFailed`）], 其餘類別同「有破洞」列的 `Section.collapsible` × N（解析失敗類別不渲染）]；**不使用 `EmptyState`**，與無破洞的 `EmptyState.page` 在元件層即不同（SPEC-001 §5〈無法判定破洞〉成列註記）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項）（`0.3.0-W1-082`） |
 | §6 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-nodeDetail-goto-domain`；優先於「未選節點」，SPEC-003 §3.6 註記） |
 | §6 | 未選節點 | 空狀態元件 + 「尚未選取節點」 | `EmptyState.page`（動作前往追溯視圖） |
-| §6 | 正常 | 全頁內容 + 關聯右欄 + 開啟原始檔／返回 | `TwoColumnLayout`[`Panel.scrollable`[`ListRow.meta`, `AppText.title`, `BadgeRow`, `Divider`, `DocumentBody`], `Panel.scrollable`[`Section.static` × N]]；返回與開啟原始檔的 `AppButton` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 17 項；返回鍵由 `AppShell` 之下的頁面框架單一渲染，SPEC-003 §2.4） |
+| §6 | 正常 | 全頁內容 + 關聯右欄 + 開啟原始檔／返回；選定節點為 Ticket 時主欄另含來源鏈區塊（SPEC-001 §6〈來源鏈〉） | `TwoColumnLayout`[`Panel.scrollable`[`ListRow.meta`, `AppText.title`, `BadgeRow`, `Divider`, `Section.static`（僅選定節點為 Ticket 時；小標 `sourceChainTitle`，`panel-nodeDetail-source-chain`）[`Tree.sourceChain`[`ListRow.tree` × N]], `DocumentBody`], `Panel.scrollable`[`Section.static` × N]]；來源鏈缺上游列主文字 `sourceChainNoUpstream`、trailing `IssueMarker.gap`（`badge-nodeDetail-chain-broken-<nodeId>`），見 4.39〈`sourceChain` 變體〉；返回與開啟原始檔的 `AppButton` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 17 項；返回鍵由 `AppShell` 之下的頁面框架單一渲染，SPEC-003 §2.4） |
 | §6 | 部分損壞 | 可讀欄位 + 損失欄位標示 + 跳轉破洞報告 | 同上 + 欄位級 `IssueMarker.damagedDetail`（說明文字 slot） |
 | §6 | 原始檔已消失 | 訊息 + 最後已知路徑 + 重新整理／返回 | `MissingSourceState`（`ButtonRow`[`AppButton.primary` 重新整理]）；返回由頁面框架渲染（SPEC-003 §2.4） |
 | §6 | 圖不可用 | 說明最近一次掃描無法建立圖譜 + 前往 Domain 視圖 | `EmptyState.page`（`state-nodeDetail-graph-unavailable`，訊息 `nodeDetailGraphUnavailableMessage`（代入 `appVersion`）；動作 `AppButton.primary` 前往 Domain 視圖 `action-nodeDetail-goto-domain`，沿用專案未就緒的動作文案；不設重新掃描，重新掃描屬 Domain 視圖「圖不可用」列，SPEC-001 v1.65，`0.6.0-W1-105.2`） |
@@ -643,6 +643,8 @@ ARB 值的「最長」以 zh 與 en 中字元數較多者為準，條目內直�
 | `orphanEventMarkerLabel` | 孤立事件 | Orphan event | — | 4.35 `eventFlow` 標記格朗讀 |
 | `columnBlockedBy` | blockedBy | blockedBy | — | §4 畫面（4.35 `ticket`；欄名沿用欄位字面，SPEC-001 §4） |
 | `traceabilityNoDownstream` | （尚無 {layer}） | (No {layer} yet) | layer | §3 缺口列主文字（4.40 `tree`；§3.2 TraceA 畫布） |
+| `sourceChainTitle` | 來源鏈 | Source chain | — | §6 正常（選定節點為 Ticket）來源鏈區塊小標（4.41 `Section.static`，`panel-nodeDetail-source-chain`；新 key） |
+| `sourceChainNoUpstream` | （缺上游 {layer}） | (Missing upstream {layer}) | layer | §6 來源鏈缺上游列主文字（4.39 `sourceChain`、4.40 `tree`；`layer` 代入缺的那一層型別名 UC／SPEC／PROP；新 key）。不沿用 `traceabilityNoDownstream`：該 key 指缺下游，方向相反 |
 | `ticketsFiltersClearedSnackbarMessage` | 已清除搜尋與篩選以顯示目標 ticket | Search and filters cleared to show the target ticket | — | 4.26 `withAction`（SPEC-003 §3.4〈帶目標跳入〉） |
 | `undoAction` | 復原 | Undo | — | 4.26 `withAction` 動作（同上） |
 
@@ -5740,14 +5742,27 @@ EVT-CORPUS-004 項目說明：
 **用途**：`ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`）。傳值 + callback，不 watch（§2，`0.6.0-W1-193` 裁決）。
 **內容角色**：容器。
 **何時不用**：無層級的清單（`Section` / `DataTable`）。
-**出現畫面**：§3。
+**出現畫面**：§3、§6（來源鏈，`sourceChain` 變體）。
 **層級**：L3
 
 #### 變體
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `default` | 單一變體 | | |
+| `default` | 依深度縮排，列 leading 為 `ExpanderIcon` | 展開收合改變列集合；展開集合存於 `expandedTraceNodesProvider` | 追溯視圖（§3） |
+| `sourceChain` | 依深度縮排；根列為選定的 Ticket（深度 0），其下依序 UC（1）、SPEC（2）、PROP（3）；每列 leading 一律 `ExpanderIcon.leaf`（保留寬度不渲染箭頭） | 恆全部展開，無展開器、不持有展開集合（SPEC-003 §3.6〈來源鏈〉無展開收合列）；非根列可點，根列不可點（即目前主欄節點） | 節點詳情主欄的來源鏈區塊（§6，見下方〈`sourceChain` 變體〉） |
+
+**`sourceChain` 變體**（SPEC-001 §6〈來源鏈〉、SPEC-003 §3.6〈來源鏈〉）：
+
+| 項目 | 規則 |
+|------|------|
+| 選擇理由 | 來源鏈與追溯樹同為「節點 + 深度 + 缺口列」的層級資料，差別只在根為 Ticket、方向向上；方向只影響列資料由誰計算，不影響列外觀，故沿用 `Tree` 與 `ListRow.tree`，不另立向上的列變體。不沿用 `default`：`default` 綁定追溯視圖的展開集合與其初始值規則，來源鏈則恆全部展開、與追溯視圖的展開狀態無關 |
+| 承載位置 | 主欄 `Divider` 之後、`DocumentBody` 之前，外包 `Section.static`（小標 `sourceChainTitle`，testKey `panel-nodeDetail-source-chain`）；置於內文之前，使維護者不需捲過全文即可看到鏈與缺口 |
+| 尺寸約束 | 寬填滿主欄；高固有，隨列數增長，不持有 `ScrollController`、不設最大高，捲動由主欄 `Panel.scrollable` 承載（規模約 1～15 列，見 SPEC-001 §6〈來源鏈〉裁決依據）；深度上限 3，縮排最多 3 × `LayoutSize.treeIndent`；列高 `LayoutSize.rowHeightDense`；`kMinWindowSize` 下列主文字單行截斷，不溢位 |
+| 節點列 | `ListRow.tree`：主文字為節點 ID 與標題、trailing `Badge.status`；非根列 testKey `card-nodeDetail-chain-<nodeId>`，`onTap` 由畫面層傳入（主欄內容替換為該節點，`returnTo` 不變，同 SPEC-003 §3.6「關聯項」）；同一節點經多條路徑抵達時每個出現位置一列，同一 testKey 多實例 |
+| 缺上游列 | 位於缺上游節點之下一層：`ListRow.tree`，主文字 `sourceChainNoUpstream`（`layer` 代入缺的那一層型別名）、trailing `IssueMarker.gap`（testKey `badge-nodeDetail-chain-broken-<缺上游節點 nodeId>`）；整列 `onTap` 為 null，點擊由 `IssueMarker.gap` 承載（jump 破洞報告，`returnTo` 設為 `nodeDetail`）；PROP 為頂端，不產生缺上游列 |
+| 不渲染 | 選定節點不是 Ticket，或不在 `state-nodeDetail-normal`：整個 `Section.static` 不建構 |
+| 資料來源 | 畫面層依最後完成輪次的圖計算來源鏈後傳入，本容器不 watch（§2）；輪次更新時依新傳入值重建 |
 
 #### 狀態矩陣
 
@@ -5879,7 +5894,7 @@ EVT-CORPUS-004 項目說明：
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `tree` | leading `ExpanderIcon`、主文字 `AppText.body`（PROP 層 `emphasis`）、trailing `Badge.status` 或 `IssueMarker.gap`；高 `LayoutSize.rowHeightDense` | 整列可點 → 節點詳情（`card-traceability-<nodeId>`）；缺口列（trailing `IssueMarker.gap`）整列不可點，見 4.39〈展開集合初始值與缺口列〉 | 追溯樹列 |
+| `tree` | leading `ExpanderIcon`、主文字 `AppText.body`（PROP 層 `emphasis`）、trailing `Badge.status` 或 `IssueMarker.gap`；高 `LayoutSize.rowHeightDense` | 整列可點 → 節點詳情（`card-traceability-<nodeId>`）；缺口列（trailing `IssueMarker.gap`）整列不可點，見 4.39〈展開集合初始值與缺口列〉。於 `Tree.sourceChain` 內：leading 恆為 `ExpanderIcon.leaf`，非根列整列可點 → 主欄替換為該節點（`card-nodeDetail-chain-<nodeId>`），根列與缺上游列不可點，見 4.39〈`sourceChain` 變體〉 | 追溯樹列；節點詳情來源鏈列 |
 | `sectionHeader` | leading `ExpanderIcon` 或 `Badge.category`、主文字 `AppText.body`（`emphasis`，`accentStrong`）、trailing `AppText.caption`（計數 / 摘要）；高 `rowHeightDense` | 展開由 leading `ExpanderIcon` 承載；列本體不可點 | 主題節首、破洞類別節首 |
 | `item` | 主文字 `AppText.body` + 次文字 `AppText.caption`（檔案路徑；來源含行號時附行號，無行號者只顯示路徑，`0.1.0-W3-335.37` R11 修訂）堆疊；頂邊框；高固有（兩行）。項目沒有說明 key 時（例：事件類、0.1 起既有類別），路徑連同行號移到主文字，不渲染次文字，高為一行（PM 處置 2026-10-12，`0.5.0-W1-114.15`：`ListRow` 主文字必填、次文字可選的直接後果，路徑與行號維持在同一行）。trailing 依指向節點：有指向者 `AppButton.text`（leading 外開圖示 + `openSourceFileAction`，testKey `action-gaps-open-source-<itemId>`，次要操作）；無指向者 `AppIcon`（外開箭頭，`openExternallyA11yLabel`） | 整列可點（`card-gaps-<itemId>`），結果依指向節點型別（SPEC-003 §3.5 四列）：ticket → jump Ticket 清單並定位；其他圖節點 → jump 節點詳情；事件類 → 寫入選定 UC 後 jump UC Flow 並定位事件列；無指向 → 外部開啟。點 trailing 次要操作不觸發列 `onTap` | 破洞項 |
 | `option` | 主文字 `AppText.body`（UC ID + 空格 + 標題，單行截斷）；無 leading／trailing；高 `rowHeightDense`；`selected` 時底 `AppColors.surfaceIconTint`、主文字 `emphasis` | 整列可點 → 寫入選定 UC（`action-ucFlow-select-uc-<ucId>`，SPEC-003 §3.2「選擇 UC」列）；點已選定者為合法操作，值不變 | UC Flow 右欄〈UC 選擇入口〉（§3.6；UC-03 步驟 1） |
@@ -5958,7 +5973,7 @@ EVT-CORPUS-004 項目說明：
 | `secondary` | `AppText.caption` | `item` 必填，其餘不接受 | 文字由呼叫端（`item`：檔案路徑，來源含行號時附行號，`0.1.0-W3-335.37` R11 修訂；追修票核對組字 i18n key 是否以行號為必填佔位） |
 | `trailing` | `Badge` \| `AppIcon` \| `AppText.caption` \| `IssueMarker` \| `AppButton.text`（限 `item` 有指向節點者） | 否（恰 0..1；`option` 不接受） | 文字由呼叫端 |
 | `onTap` | `VoidCallback?`（`tree` / `item` / `option`） | 該三變體必填，唯 `tree` 缺口列為 null | 不適用 |
-| `testKey` | `Key`（`card-traceability-<nodeId>` / `card-gaps-<itemId>` / `action-ucFlow-select-uc-<ucId>`） | 該三變體必填，唯 `tree` 缺口列不帶 | 不適用 |
+| `testKey` | `Key`（`card-traceability-<nodeId>` / `card-nodeDetail-chain-<nodeId>` / `card-gaps-<itemId>` / `action-ucFlow-select-uc-<ucId>`） | 該三變體必填，唯 `tree` 缺口列、缺上游列與來源鏈根列不帶 | 不適用 |
 | `isSelected` | `bool`（`option`，預設 `false`） | 否（其餘變體不接受） | 不適用 |
 | `isLocated` | `bool`（`item`；§4.0.10 場景 a 的高亮傳值，預設 `false`） | 否（其餘變體不接受） | 不適用 |
 
@@ -5979,6 +5994,7 @@ EVT-CORPUS-004 項目說明：
 |------|---------|
 | `item` trailing 朗讀 | 無指向：`openExternallyA11yLabel`；有指向：`openSourceFileAction`（既有，按鈕可見文字即朗讀） |
 | `tree` 缺口列主文字 | `traceabilityNoDownstream`（呼叫端傳入） |
+| `tree` 缺上游列主文字（`Tree.sourceChain`） | `sourceChainNoUpstream`（呼叫端傳入） |
 | `sectionHeader` trailing | `topicSectionSummary` / `gapSectionCount`（呼叫端傳入） |
 
 #### 組合規則
@@ -6804,6 +6820,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.134 | 2026-11-09 | 登記節點詳情來源鏈（對應 SPEC-001 v1.84 §6〈來源鏈〉、SPEC-003 v1.88 §3.6〈來源鏈〉與 §2.9）：4.39 `Tree` 新增 `sourceChain` 變體（恆全部展開、無展開器、不持有展開集合；選擇理由、承載位置、尺寸約束、節點列、缺上游列、不渲染條件、資料來源），總表同步；4.40 `ListRow.tree` 補來源鏈列行為、`testKey` 與 i18n；§3.6 §6 正常列組成補 `Section.static`[`Tree.sourceChain`]；§4.0.6 新增 `sourceChainTitle`、`sourceChainNoUpstream`（zh／en）。ARB 同批 |
 | 1.133 | 2026-11-09 | `0.7.0-W1-007.1`（`0.7.0-W1-007` 用戶裁決三項，對應 SPEC-001 v1.83、SPEC-003 v1.86）：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項的順序、動作、錨點、Tab 順序接在七個導覽項之後、`kMinWindowSize` 下不溢位的 token 算式），slot 表增 `bottomItems`，焦點路徑三區段改四區段，i18n 與測試點同步；4.7 `NavItem` 增 `action` 變體（恆 unselected、不改導覽狀態）；4.40 `ListRow` 增 `shortcut` 變體（按鍵、作用、情境）；§3.6 補 SPEC-001 §11「快捷鍵清單」一列（`Panel.scrollable` + `ListRow.shortcut`）；§4.0.6 新增〈1.133 新增〉表登記 20 個 key，並註明主選單標題不進 ARB。未新增元件 |
 | 1.132 | 2026-11-09 | `0.7.0-W1-009.1`（對應 SPEC-003 v1.85 §3.8、§2.13 列 20／21）：§4.0.6 新增兩 key 並登記 zh／en 與用處，4.26 `AppSnackBar` `message` 呼叫端清單補兩 key；ARB 同批 |
 | 1.131 | 2026-11-09 | `0.7.0-W1-012.2`（對應 SPEC-001 v1.80 §10、SPEC-003 v1.83 §3.9、SPEC-008 FR-06～FR-09）：補齊第七畫面變更記錄的元件。新增 4.43 `AppCheckbox`（「包含 ticket 建檔」，`AppButton`／`SegmentedControl`／`ListRow.option`／`FilterDropdown` 不適用的理由記於該條）；4.10 `SegmentedControl` 段數由恰 2 放寬為 2–3，承載期間選擇（`option-history-period-<period>`，不用 `FilterDropdown` 的理由記於該條）；4.35 `TableRow` 增 `historyEvent` 變體（七欄，沿用既有寬度 token，`kMinWindowSize` 代入值記於 5.9）；4.32 `Toolbar` 增 `history` 變體（5.6 同步）；4.19 `RelationItem` 承載事件列節點（`action-history-open-<index>-<side>`，domain 名稱對端改 `AppText.mono`）；4.5 `Badge.category` 承載變動欄與淺層 clone 標示（`badge-history-shallow-clone`）；4.24 `LoadingState` 增版位 `rows`；4.21 `EmptyState` 補 §10 用法與讀取失敗等三態不用 `BlockedState` 的例外；4.30 `Panel` 的 `leading` 接受 `BadgeRow`、`panelKey` 接受 `state-history-normal`／`state-history-empty`；4.36 `DataTable` 增 `scroll-history-events`（5.10 同步）；§3.1 總表補列並把元件定案數改為 27；§3.2、§3.4、4.27、5.1 側欄與主區由 6 改為 7；§3.6 補 §10 八列；§4.0.6 登記新 key；§6 補 `Checkbox` 類禁用列；frontmatter 補 UC-07、SPEC-008。`depends_on_domains` 不變 |
