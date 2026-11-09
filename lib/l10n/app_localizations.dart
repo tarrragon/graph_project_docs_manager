@@ -1698,6 +1698,126 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'無法儲存編輯器設定'**
   String get preferencesEditorSaveFailedMessage;
+
+  /// SPEC-004 §4.0.6 1.133：4.7 NavItem.action（nav-action-preferences，4.27〈側欄底部 slot〉）
+  ///
+  /// In zh, this message translates to:
+  /// **'設定'**
+  String get sidebarSettingsLabel;
+
+  /// SPEC-004 §4.0.6 1.133：4.7 NavItem.action（nav-action-shortcuts）、SPEC-001 §11 面板標題（AppText.subtitle）
+  ///
+  /// In zh, this message translates to:
+  /// **'鍵盤快捷鍵'**
+  String get keyboardShortcutsTitle;
+
+  /// SPEC-004 §4.0.6 1.133：4.40 ListRow.shortcut 作用（SPEC-001 §11 第 1 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'開啟偏好設定'**
+  String get shortcutOpenPreferencesAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 2 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'收合專案切換浮層'**
+  String get shortcutCloseSwitcherAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 3 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'收合型別表詳情面板'**
+  String get shortcutCloseSchemaDetailAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 4 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'清除矩陣的已選格'**
+  String get shortcutClearCellAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 5 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'收合篩選選單'**
+  String get shortcutCloseFilterMenuAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 6 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'關閉偏好設定或鍵盤快捷鍵面板'**
+  String get shortcutClosePanelAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 7 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'依序移動焦點（Shift+Tab 反向）'**
+  String get shortcutMoveFocusAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 8 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'執行已聚焦的按鈕或項目'**
+  String get shortcutActivateAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 9 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'展開已聚焦的篩選選單'**
+  String get shortcutOpenFilterMenuAction;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 10 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'在篩選選單的選項間移動'**
+  String get shortcutMoveInFilterMenuAction;
+
+  /// SPEC-004 §4.0.6 1.133：4.40 ListRow.shortcut 情境（第 1、7、8 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'任何畫面'**
+  String get shortcutContextAnywhere;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 2 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'專案切換浮層展開時'**
+  String get shortcutContextSwitcherOpen;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 3 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'Domain 視圖的型別表詳情面板展開時'**
+  String get shortcutContextSchemaDetailOpen;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 4 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'Domain 視圖矩陣有已選格，且焦點在矩陣內時'**
+  String get shortcutContextCellSelected;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 5、10 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'Ticket 清單的篩選選單展開時'**
+  String get shortcutContextFilterMenuOpen;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 6 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'任一面板開啟時'**
+  String get shortcutContextPanelOpen;
+
+  /// SPEC-004 §4.0.6 1.133：同上（第 9 列）
+  ///
+  /// In zh, this message translates to:
+  /// **'Ticket 清單的篩選按鈕取得焦點時'**
+  String get shortcutContextFilterFocused;
+
+  /// SPEC-004 §4.0.6 1.133：4.40 ListRow.shortcut 整列朗讀
+  ///
+  /// In zh, this message translates to:
+  /// **'{keys}：{action}，{context}'**
+  String shortcutRowA11yLabel(String keys, String action, String context);
 }
 
 class _AppLocalizationsDelegate

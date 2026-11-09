@@ -1808,5 +1808,96 @@
   "preferencesEditorSaveFailedMessage": "無法儲存編輯器設定",
   "@preferencesEditorSaveFailedMessage": {
     "description": "SPEC-003 §3.8 編輯器選項：選定值寫入失敗後的暫態提示（AppSnackBar.plain）"
+  },
+  "sidebarSettingsLabel": "設定",
+  "@sidebarSettingsLabel": {
+    "description": "SPEC-004 §4.0.6 1.133：4.7 NavItem.action（nav-action-preferences，4.27〈側欄底部 slot〉）"
+  },
+  "keyboardShortcutsTitle": "鍵盤快捷鍵",
+  "@keyboardShortcutsTitle": {
+    "description": "SPEC-004 §4.0.6 1.133：4.7 NavItem.action（nav-action-shortcuts）、SPEC-001 §11 面板標題（AppText.subtitle）"
+  },
+  "shortcutOpenPreferencesAction": "開啟偏好設定",
+  "@shortcutOpenPreferencesAction": {
+    "description": "SPEC-004 §4.0.6 1.133：4.40 ListRow.shortcut 作用（SPEC-001 §11 第 1 列）"
+  },
+  "shortcutCloseSwitcherAction": "收合專案切換浮層",
+  "@shortcutCloseSwitcherAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 2 列）"
+  },
+  "shortcutCloseSchemaDetailAction": "收合型別表詳情面板",
+  "@shortcutCloseSchemaDetailAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 3 列）"
+  },
+  "shortcutClearCellAction": "清除矩陣的已選格",
+  "@shortcutClearCellAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 4 列）"
+  },
+  "shortcutCloseFilterMenuAction": "收合篩選選單",
+  "@shortcutCloseFilterMenuAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 5 列）"
+  },
+  "shortcutClosePanelAction": "關閉偏好設定或鍵盤快捷鍵面板",
+  "@shortcutClosePanelAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 6 列）"
+  },
+  "shortcutMoveFocusAction": "依序移動焦點（Shift+Tab 反向）",
+  "@shortcutMoveFocusAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 7 列）"
+  },
+  "shortcutActivateAction": "執行已聚焦的按鈕或項目",
+  "@shortcutActivateAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 8 列）"
+  },
+  "shortcutOpenFilterMenuAction": "展開已聚焦的篩選選單",
+  "@shortcutOpenFilterMenuAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 9 列）"
+  },
+  "shortcutMoveInFilterMenuAction": "在篩選選單的選項間移動",
+  "@shortcutMoveInFilterMenuAction": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 10 列）"
+  },
+  "shortcutContextAnywhere": "任何畫面",
+  "@shortcutContextAnywhere": {
+    "description": "SPEC-004 §4.0.6 1.133：4.40 ListRow.shortcut 情境（第 1、7、8 列）"
+  },
+  "shortcutContextSwitcherOpen": "專案切換浮層展開時",
+  "@shortcutContextSwitcherOpen": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 2 列）"
+  },
+  "shortcutContextSchemaDetailOpen": "Domain 視圖的型別表詳情面板展開時",
+  "@shortcutContextSchemaDetailOpen": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 3 列）"
+  },
+  "shortcutContextCellSelected": "Domain 視圖矩陣有已選格，且焦點在矩陣內時",
+  "@shortcutContextCellSelected": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 4 列）"
+  },
+  "shortcutContextFilterMenuOpen": "Ticket 清單的篩選選單展開時",
+  "@shortcutContextFilterMenuOpen": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 5、10 列）"
+  },
+  "shortcutContextPanelOpen": "任一面板開啟時",
+  "@shortcutContextPanelOpen": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 6 列）"
+  },
+  "shortcutContextFilterFocused": "Ticket 清單的篩選按鈕取得焦點時",
+  "@shortcutContextFilterFocused": {
+    "description": "SPEC-004 §4.0.6 1.133：同上（第 9 列）"
+  },
+  "shortcutRowA11yLabel": "{keys}：{action}，{context}",
+  "@shortcutRowA11yLabel": {
+    "description": "SPEC-004 §4.0.6 1.133：4.40 ListRow.shortcut 整列朗讀",
+    "placeholders": {
+      "keys": {
+        "type": "String"
+      },
+      "action": {
+        "type": "String"
+      },
+      "context": {
+        "type": "String"
+      }
+    }
   }
 }

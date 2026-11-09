@@ -1043,4 +1043,75 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get preferencesEditorSaveFailedMessage =>
       'Could not save the editor setting';
+
+  @override
+  String get sidebarSettingsLabel => 'Settings';
+
+  @override
+  String get keyboardShortcutsTitle => 'Keyboard Shortcuts';
+
+  @override
+  String get shortcutOpenPreferencesAction => 'Open Preferences';
+
+  @override
+  String get shortcutCloseSwitcherAction => 'Close the project switcher';
+
+  @override
+  String get shortcutCloseSchemaDetailAction =>
+      'Close the schema details panel';
+
+  @override
+  String get shortcutClearCellAction => 'Clear the selected matrix cell';
+
+  @override
+  String get shortcutCloseFilterMenuAction => 'Close the filter menu';
+
+  @override
+  String get shortcutClosePanelAction =>
+      'Close the Preferences or Keyboard Shortcuts panel';
+
+  @override
+  String get shortcutMoveFocusAction =>
+      'Move focus in order (Shift+Tab moves back)';
+
+  @override
+  String get shortcutActivateAction => 'Activate the focused button or item';
+
+  @override
+  String get shortcutOpenFilterMenuAction => 'Open the focused filter menu';
+
+  @override
+  String get shortcutMoveInFilterMenuAction =>
+      'Move between options in the filter menu';
+
+  @override
+  String get shortcutContextAnywhere => 'Anywhere';
+
+  @override
+  String get shortcutContextSwitcherOpen =>
+      'While the project switcher is open';
+
+  @override
+  String get shortcutContextSchemaDetailOpen =>
+      'While the schema details panel is open in the Domain view';
+
+  @override
+  String get shortcutContextCellSelected =>
+      'When a matrix cell is selected in the Domain view and focus is in the matrix';
+
+  @override
+  String get shortcutContextFilterMenuOpen =>
+      'While a filter menu is open in the Ticket list';
+
+  @override
+  String get shortcutContextPanelOpen => 'While either panel is open';
+
+  @override
+  String get shortcutContextFilterFocused =>
+      'When a filter button in the Ticket list has focus';
+
+  @override
+  String shortcutRowA11yLabel(String keys, String action, String context) {
+    return '$keys: $action, $context';
+  }
 }
