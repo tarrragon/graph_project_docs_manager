@@ -52,7 +52,7 @@ class _FlexColumnSpec extends ColumnSpec {
 }
 
 /// 四變體（SPEC-004 4.35「變體」表）。
-enum _TableRowVariant { header, ticket, step, eventFlow }
+enum _TableRowVariant { header, ticket, step, eventFlow, historyEvent }
 
 /// 表格列（SPEC-004 §4.35，契約名 `TableRow`；類別名因與 Flutter 內建
 /// `TableRow` 撞名改為 [AppTableRow]，見檔頭「命名注意」）。
@@ -65,6 +65,7 @@ class AppTableRow extends StatelessWidget {
     this.onTap,
     this.testKey,
     this.isLocated = false,
+    this.semanticLabelOverride,
   }) : assert(
          columns.length == cells.length,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
@@ -162,6 +163,51 @@ class AppTableRow extends StatelessWidget {
          isLocated: isLocated,
        );
 
+  /// 變更記錄事件列（SPEC-004 4.35，1.131）。七欄：變動 / 邊型 / 宣告端 /
+  /// 對端 / commit / 日期 / 作者與訊息。**列本體非互動**（無 `onTap`、不可
+  /// 被定位）；節點格（[declarer]、[counterpart] 為節點時）各自承載點擊。
+  /// [counterpart] 為節點 ID 時傳 [RelationItem]，為 domain 名稱時傳
+  /// [AppText]（mono，無錨點）。[semanticLabel] 為 `historyEventA11yLabel`
+  /// 組字（含截斷欄完整值）。
+  AppTableRow.historyEvent({
+    Key? key,
+    required Badge change,
+    required AppText edgeType,
+    required RelationItem declarer,
+    required Widget counterpart,
+    required AppText commit,
+    required AppText date,
+    required AppText authorMessage,
+    required String semanticLabel,
+  }) : this._(
+         key: key,
+         variant: _TableRowVariant.historyEvent,
+         columns: historyEventColumns,
+         cells: [
+           change,
+           edgeType,
+           declarer,
+           counterpart,
+           commit,
+           date,
+           authorMessage,
+         ],
+         semanticLabelOverride: semanticLabel,
+       );
+
+  /// `historyEvent` 欄規格（SPEC-004 4.35「尺寸契約」）：變動、commit、日期
+  /// 為狀態欄寬；邊型為 ID 欄寬；宣告端與對端填滿；作者與訊息 flex(2)。
+  /// `header` 傳此欄規格即與事件列對齊。
+  static const List<ColumnSpec> historyEventColumns = [
+    ColumnSpec.fixed(LayoutSize.ticketStatusColumnWidth),
+    ColumnSpec.fixed(LayoutSize.ticketIdColumnWidth),
+    ColumnSpec.flex(),
+    ColumnSpec.flex(),
+    ColumnSpec.fixed(LayoutSize.ticketStatusColumnWidth),
+    ColumnSpec.fixed(LayoutSize.ticketStatusColumnWidth),
+    ColumnSpec.flex(2),
+  ];
+
   /// `ticket` 欄規格（SPEC-004 4.35「尺寸契約」欄規格 `ticket`）：ID 固定寬、
   /// 標題填滿、狀態固定寬、優先固定寬、blockedBy 填滿（無專屬寬度 token；
   /// ID 清單長度不定，固定寬會在多值時全部截斷，填滿欄以比例讓標題優先，
@@ -213,6 +259,9 @@ class AppTableRow extends StatelessWidget {
   /// `false`）。
   final bool isLocated;
 
+  /// `historyEvent` 的朗讀標籤（呼叫端以 `historyEventA11yLabel` 組字）。
+  final String? semanticLabelOverride;
+
   bool get _isTappable =>
       _variant == _TableRowVariant.ticket || _variant == _TableRowVariant.step;
 
@@ -240,6 +289,15 @@ class AppTableRow extends StatelessWidget {
       ),
       child: row,
     );
+
+    if (_variant == _TableRowVariant.historyEvent) {
+      // 列本體非互動、不可被定位；格內 RelationItem 自帶語意。
+      return Semantics(
+        label: semanticLabelOverride,
+        container: true,
+        child: bordered,
+      );
+    }
 
     if (_variant == _TableRowVariant.eventFlow) {
       // 非互動列（無 onTap）；located 時焦點移入僅供輔助技術朗讀（SPEC-004
@@ -316,7 +374,8 @@ class AppTableRow extends StatelessWidget {
             when marker.semanticLabel != null)
           marker.semanticLabel!,
       ],
-      _TableRowVariant.header => const <String>[],
+      _TableRowVariant.header ||
+      _TableRowVariant.historyEvent => const <String>[],
     };
     return parts.join('，');
   }

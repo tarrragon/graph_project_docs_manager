@@ -283,4 +283,62 @@ void main() {
       expect(unselectedText.style?.color, AppColors.textPrimary);
     });
   });
+
+  group('三段（SPEC-004 4.10，1.131）', () {
+    testWidgetsAtEachSize('三段渲染、點選未選段回報索引', (tester, size) async {
+      final calls = <int>[];
+      await pumpHarness(
+        tester,
+        size: size,
+        child: SegmentedControl(
+          segments: const [
+            SegmentItem(
+              label: 'A',
+              semanticLabel: 'a',
+              testKey: ValueKey('option-history-period-default'),
+            ),
+            SegmentItem(
+              label: 'B',
+              semanticLabel: 'b',
+              testKey: ValueKey('option-history-period-recent30'),
+            ),
+            SegmentItem(
+              label: 'C',
+              semanticLabel: 'c',
+              testKey: ValueKey('option-history-period-all'),
+            ),
+          ],
+          selectedIndex: 0,
+          onChanged: calls.add,
+        ),
+      );
+      expectNoOverflow(tester);
+      await tester.tap(find.text('C'));
+      expect(calls, [2]);
+    });
+
+    test('一段或四段仍被拒絕', () {
+      const item = SegmentItem(
+        label: 'x',
+        semanticLabel: 'x',
+        testKey: ValueKey('k'),
+      );
+      expect(
+        () => SegmentedControl(
+          segments: const [item],
+          selectedIndex: 0,
+          onChanged: (_) {},
+        ),
+        throwsAssertionError,
+      );
+      expect(
+        () => SegmentedControl(
+          segments: const [item, item, item, item],
+          selectedIndex: 0,
+          onChanged: (_) {},
+        ),
+        throwsAssertionError,
+      );
+    });
+  });
 }
