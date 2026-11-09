@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-09"
-version: "1.87"
+version: "1.88"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -674,6 +674,8 @@ SPEC-002 已定「空狀態與阻擋狀態必須是兩個元件」。本規格�
 浮層不在 `AppDestination` 中，`<screen>` 取 `switcher`；偏好設定面板取 `preferences`、鍵盤快捷鍵面板取 `shortcuts`（同此慣例）。
 側欄底部項不是導覽目的地，故不用 `nav-item-` 前綴，改用 `nav-action-`，`<kind>` 取所開啟面板的 `<screen>` 值；
 目前恰兩項：`nav-action-preferences`（設定）、`nav-action-shortcuts`（鍵盤快捷鍵）。
+
+**節點詳情來源鏈的錨點**（§3.6〈來源鏈〉）：區塊 `panel-nodeDetail-source-chain`；節點列 `card-nodeDetail-chain-<nodeId>`（`<nodeId>` 為該列節點；根列即選定的 Ticket，不帶此錨點；同一節點經多條路徑抵達時同一錨點多實例）；缺上游虛線框 `badge-nodeDetail-chain-broken-<nodeId>`（`<nodeId>` 為缺上游的節點）。不沿用 `card-nodeDetail-relation-<nodeId>` 與 `badge-traceability-broken-<nodeId>`：前者是右欄關聯項，後者屬追溯視圖且指缺下游，共用會使 finder 無法區分來源。
 
 **動態 ID 段取值**：`<domainId>`、`<rowId>`（矩陣列）取 `FlowStep.traverses`
 元素字面值（各 `docs/spec/{domain}/domain-map.md` 的 domain 名，不轉換大小寫）；`<ucId>`、
@@ -2230,15 +2232,15 @@ SPEC-001 §6〈來源鏈〉，本節只定可觀察結果。不新增 §4 對照
 
 | 條件 | 可觀察結果 |
 |------|-----------|
-| 選定節點為 Ticket，且被一或多個 UC 的 `ticket_refs` 列出 | 來源鏈依 UC → SPEC → PROP 呈現，每個上層節點一個分支，首次渲染即全部展開；節點帶 status |
+| 選定節點為 Ticket，且被一或多個 UC 的 `ticket_refs` 列出 | `panel-nodeDetail-source-chain` 出現；來源鏈依 UC → SPEC → PROP 呈現，每個上層節點一個分支，首次渲染即全部展開；節點帶 status |
 | 同一 SPEC 或 PROP 經多條路徑抵達 | 於每條路徑下各出現一次；斷言以祖先限定 finder 區分，比照 §3.3〈多父節點〉 |
-| 某節點缺上游 | 該節點下方出現缺口虛線框（靜態，同 §3.3〈動畫提示〉）；點擊 jump 至 `nav-page-gaps`，`returnTo` 設為 `nodeDetail`，比照 §3.3 缺口虛線框 |
+| 某節點缺上游 | 該節點下方出現缺口虛線框 `badge-nodeDetail-chain-broken-<nodeId>`（靜態，同 §3.3〈動畫提示〉）；點擊 jump 至 `nav-page-gaps`，`returnTo` 設為 `nodeDetail`，比照 §3.3 缺口虛線框 |
 | 選定節點為 Ticket 且沒有任何 UC 列出它 | 來源鏈只有該 Ticket 下方一處缺口虛線框 |
-| 點擊來源鏈上任一節點 | 沿用本節「關聯項」：主欄內容替換為該節點，`returnTo` 不變 |
-| 選定節點不是 Ticket；或處於 `state-nodeDetail-node-absent`、圖不可用、專案未就緒 | 不渲染來源鏈 |
+| 點擊來源鏈上任一節點（`card-nodeDetail-chain-<nodeId>`；根列為目前節點，不可點） | 沿用本節「關聯項」：主欄內容替換為該節點，`returnTo` 不變 |
+| 選定節點不是 Ticket；或處於 `state-nodeDetail-node-absent`、圖不可用、專案未就緒 | 不渲染來源鏈（`panel-nodeDetail-source-chain` 不存在） |
 | 新一輪掃描輪次完成 | 來源鏈依新輪次結果替換 |
 
-> 錨點命名與所需的 i18n key、元件變體，由後續實作票連同 ARB 同批登記於 SPEC-004。
+> 錨點命名見 §2.9〈節點詳情來源鏈的錨點〉；承載元件與 i18n key 見 SPEC-004 4.39〈`sourceChain` 變體〉與 §4.0.6。
 
 #### 導航跳轉與退出
 
@@ -2820,6 +2822,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.88 | 2026-11-09 | 來源鏈錨點定名：§2.9 新增〈節點詳情來源鏈的錨點〉（區塊 `panel-nodeDetail-source-chain`、節點列 `card-nodeDetail-chain-<nodeId>`、缺上游虛線框 `badge-nodeDetail-chain-broken-<nodeId>`，及不沿用既有錨點的理由）；§3.6〈來源鏈〉表補錨點、根列不可點，表後註記改指 §2.9 與 SPEC-004 4.39。不新增 §4 列，總數不變。對應 SPEC-004 v1.134 |
 | 1.87 | 2026-11-09 | UC-04〈反向追溯〉（用戶裁決 2026-11-09）：§3.6 新增〈來源鏈〉小節——選定 Ticket 時主欄內嵌來源鏈的可觀察結果（多 UC 全部展開、多路徑重複出現、缺上游虛線框跳轉破洞報告、無 UC 時單一缺口、點節點沿用「關聯項」（`returnTo` 不變）、不渲染條件、輪次更新），資料定義指向 SPEC-001 §6〈來源鏈〉。不新增 §4 列，總數不變。對應 SPEC-001 v1.84 |
 | 1.86 | 2026-11-09 | `0.7.0-W1-007.1`（`0.7.0-W1-007` 用戶裁決三項，對應 SPEC-001 v1.83、SPEC-004 v1.133）：§2.9 新增錨點類別「側欄底部項」`nav-action-<kind>`（`nav-action-preferences`、`nav-action-shortcuts`），`<screen>` 補 `shortcuts`；§2.10 Tab 由三區段改為四區段（側欄底部兩項接在七個導覽項之後），新增面板 Esc 與面板關閉後焦點歸位兩列；§3.8 新增側欄「設定」列、兩面板互斥；新增 §3.10 鍵盤快捷鍵面板（互動反應、生命週期）與 §3.11 macOS 選單列（整份主選單 zh／en 標題對照、在地化載體約束、新增「說明 > 鍵盤快捷鍵」、通道方法名 `openKeyboardShortcuts`）；§4 新增第 57 列，標題、加總式、同步提醒與 FR-01 由 54 改為 55；§0 概述同步；FR-09 驗收補面板 Esc |
 | 1.85 | 2026-11-09 | `0.7.0-W1-009`（用戶覆核 v1.84 的兩個 PM 處置）。§3.8〈互動反應〉「編輯器選項」列的寫入失敗分支改為：面板消失並顯示 `preferencesEditorSaveFailedMessage`（`AppSnackBar.plain`，zh「無法儲存編輯器設定」），持久化值維持舊值，失敗另記錄日誌；取代 v1.84 的「只關閉、不提示」，理由是面板關閉與成功時同形，不提示會讓使用者以為已改用。點選相同值的分支（只關閉、不寫入、不提示）經用戶覆核採用。§2.13 對照表新增列 21（T1 是、T2 否、T3 否、T4 否，結論 `plain`）；§2.14 指派表新增列 22（等待型、可棄），列 21 的不送出條件同步改寫；§4 第 47、48 列補寫入失敗的提示。SPEC-004 §4.0.6 登記與 ARB 由 `0.7.0-W1-009.1` 承接 |
