@@ -41,7 +41,7 @@ class _FixedStore implements EditorPreferenceStore {
   Future<String> read() async => id;
 
   @override
-  Future<void> write(String editorId) async {}
+  Future<bool> write(String editorId) async => true;
 }
 
 void main() {

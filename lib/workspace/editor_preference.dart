@@ -85,9 +85,9 @@ abstract interface class EditorPreferenceStore {
   /// 讀取選定值；從未寫入或讀取失敗時回傳 [systemEditorId]。
   Future<String> read();
 
-  /// 寫入選定值；失敗只記錄日誌，不拋出（選取標示已即時反映，下次開啟時
-  /// 讀到舊值）。
-  Future<void> write(String editorId);
+  /// 寫入選定值並回報成敗：成功 `true`，失敗 `false`（記錄日誌，不拋出，
+  /// 持久化值不變），供呼叫端分流提示（SPEC-003 §3.8）。
+  Future<bool> write(String editorId);
 }
 
 /// [EditorPreferenceStore] 的 `shared_preferences` 載體。
@@ -110,17 +110,22 @@ class SharedPreferencesEditorStore implements EditorPreferenceStore {
   }
 
   @override
-  Future<void> write(String editorId) async {
+  Future<bool> write(String editorId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(editorPreferenceKey, editorId);
-      developer.log('編輯器偏好已寫入：$editorId', name: _tag); // i18n-exempt: 開發者診斷字串
+      final saved = await prefs.setString(editorPreferenceKey, editorId);
+      developer.log(
+        '編輯器偏好寫入：$editorId saved=$saved', // i18n-exempt: 開發者診斷字串
+        name: _tag,
+      );
+      return saved;
     } on Object catch (error) {
       developer.log(
         '寫入編輯器偏好失敗：$editorId，$error', // i18n-exempt: 開發者診斷字串
         name: _tag,
         level: 900,
       );
+      return false;
     }
   }
 }
