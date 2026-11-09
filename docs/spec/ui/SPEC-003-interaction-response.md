@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-09"
-version: "1.84"
+version: "1.85"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -985,6 +985,7 @@ FR-14 只斷言「阻擋期間取消錨點存在」，取消本身的可用性�
 | 18 | 專案切換浮層內選定資料夾或最近專案項判定不可讀或不存在（§3.7） | 是 | 「選擇其他」選定後判定失敗：否（同列 17）。最近專案項：是 (ii)——該項 `enabled` 轉為 `false` 且同列常駐原因（用戶裁決 2026-10-13） | 否 | 否 | 「選擇其他」：`plain`；最近專案項：不用暫態提示 | §3.7：浮層內常駐文字，不出現 SnackBar（v1.60） | 「選擇其他」：**否，判準的具名例外：條文為準**（同列 17）；最近專案項：是 |
 | 19 | `sourceFileUnparsableMessage`（§3.6 重新整理後檔案存在但 frontmatter 解析失敗；`0.5.0-W1-540.1.2`） | 是 | **否**（維持 `state-nodeDetail-missing`，無轉換；同列 4） | 否 | 否 | `plain` | §3.6：`plain` | 是 |
 | 20 | `preferencesEditorAppliedMessage`（§3.8 偏好設定面板點選與持久化值不同的編輯器，寫入成功） | 是（面板覆蓋於當前導覽頁之上，關閉後使用者所見即該頁，視窗在前景） | **否**（面板關閉是可見變化，但不說明改用了哪一個、何時生效；選取標示隨面板消失，且 (ii) 要求的「同列常駐顯示結果」不成立。效果要到下次開啟原始檔才出現，SPEC-004 4.40〈套用時點〉第 4 問答「沒有」） | 否 | 否 | `plain` | §3.8：`plain`（v1.84，`0.7.0-W1-009`；取代 v1.82 起的「不顯示 SnackBar」） | 是 |
+| 21 | `preferencesEditorSaveFailedMessage`（§3.8 偏好設定面板點選與持久化值不同的編輯器，寫入失敗） | 是（同列 20） | **否**（面板關閉與寫入成功時的關閉同形，不說明未能儲存；持久化值不變，主視窗無任何轉換） | 否 | 否（無附帶動作；重試即再次開啟面板點選，不需提示內的動作鈕） | `plain` | §3.8：`plain`（v1.85，`0.7.0-W1-009`；取代 v1.84 的「只關閉、不提示」） | 是 |
 
 **列 17 與列 18 的「選擇其他」分支是判準 T 的具名例外：條文為準，改由浮層內常駐文字承載**
 （用戶裁決 2026-10-12，`0.5.0-W1-156`；為 `0.1.0-W3-335.38` S-13／S-38 當時預留的退路）。
@@ -1174,7 +1175,8 @@ T1 判否且三個承接落到 (c) 時，該事件對使用者完全不可見。
 | 18 | Domain 視圖載入失敗（阻擋狀態，`state-domain-load-failed`） | 自發型 | 不可棄（使用者必須重新載入或切換專案才能繼續） | 發起點：載入輪次拋出非預期例外的當下（不落入未選專案與列 11–13 三個阻擋狀態判定者，SPEC-001 §1「載入失敗」列） | — | 顯式阻擋狀態，非 SnackBar／系統通知（SPEC-001 §8.1 判否）。`0.5.0-W1-114.14.1` 補登 |
 | 19 | §3.6〈重新整理的三分支〉：重新整理後檔案存在但 frontmatter 解析失敗 | 等待型（同列 10） | 可棄 | 同列 10 | — | `AppSnackBar.plain`（`sourceFileUnparsableMessage`）。`0.5.0-W1-540.1.2` 補登（用戶裁決 2026-10-30） |
 | 20 | 破洞監看輪次完成且 itemId 集合改變，T1 判否（§2.2「監看輪次觸發條件」列，SPEC-006 FR-11 規則 9 (a)） | 自發型 | 可棄 | 發起點：監看輪次完成、改變判準成立的當下 | — | macOS 系統通知（`scanCompleteWatchNotificationTitle` / `scanCompleteWatchNotificationBody`）；權限 `denied` 或發送失敗時同列 3 的 `AppSnackBar.withAction`。`0.6.0-W1-080` 補登（用戶裁定 2026-11-03） |
-| 21 | 偏好設定面板改用編輯器（§3.8 點選與持久化值不同的選項，寫入成功） | 等待型（使用者點選選項觸發） | 可棄 | 進入邊界時：編輯器偏好寫入呼叫發出當下 | — | `AppSnackBar.plain`（`preferencesEditorAppliedMessage`，§2.13 對照表列 20），於寫入成功、面板消失後送出；寫入失敗與點選相同值時不送出（§3.8）。`0.7.0-W1-009` 補登（用戶裁決 2026-11-09，出處 `0.7.0-W1-008`） |
+| 21 | 偏好設定面板改用編輯器（§3.8 點選與持久化值不同的選項，寫入成功） | 等待型（使用者點選選項觸發） | 可棄 | 進入邊界時：編輯器偏好寫入呼叫發出當下 | — | `AppSnackBar.plain`（`preferencesEditorAppliedMessage`，§2.13 對照表列 20），於寫入成功、面板消失後送出；寫入失敗時改送列 22 的提示，點選相同值時不送出（§3.8）。`0.7.0-W1-009` 補登（用戶裁決 2026-11-09，出處 `0.7.0-W1-008`） |
+| 22 | 偏好設定面板未能儲存編輯器（§3.8 點選與持久化值不同的選項，寫入失敗） | 等待型（使用者點選選項觸發） | 可棄 | 進入邊界時：編輯器偏好寫入呼叫發出當下 | — | `AppSnackBar.plain`（`preferencesEditorSaveFailedMessage`，§2.13 對照表列 21），於寫入失敗、面板消失後送出；持久化值維持舊值（§3.8）。`0.7.0-W1-009` 補登（用戶裁決 2026-11-09，取代 v1.84 的不提示） |
 
 **與功能需求的對應**：列 1–4 的驗收落在 FR-11；列 5–10 與列 14–17 的載體選擇，同時落在
 FR-16（判準 T 推導）與 FR-17（截斷與不顯示皆有紀錄）的驗收範圍內，兩者不
@@ -2329,7 +2331,7 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 元素 | 錨點 | 觸發 | 可觀察結果 |
 |------|------|------|-----------|
 | 選單列「偏好設定…」 | 無 widget 錨點（macOS 選單項） | 點擊，或按 ⌘, | 面板未開啟 → 開啟偏好設定面板並取得焦點，開啟時偵測對照表各編輯器的 handler，依結果渲染 `state-preferences-editors` 或 `state-preferences-no-editors`；面板已開啟 → 維持開啟，不重複掛載，不重新偵測 |
-| 編輯器選項 | `option-preferences-editor-<editorId>` | 點擊 | 依點選值與**已持久化的選定值**是否相同分流（比對對象是持久化值，不是選取標示，見下方〈選定值不在選項中〉）：**不同** → 寫入新值，寫入成功後面板消失，主視窗顯示暫態提示 `preferencesEditorAppliedMessage`（`AppSnackBar.plain`，placeholder `editor` 為該選項的顯示標籤，zh「已改用 {editor}，下次開啟原始檔時生效」，§2.13 對照表列 20、§2.14 列 21）；主視窗的畫面狀態不變，下一次開啟原始檔即採用新值。不需另按儲存。**寫入失敗** → 面板消失，不顯示提示，持久化值維持舊值，失敗只記錄日誌（PM 處置 2026-11-09，避免提示告知一件未發生的事；待用戶覆核）。**相同** → 面板消失，不寫入、不顯示提示（PM 處置 2026-11-09，同上，待用戶覆核）。套用時點依 SPEC-004 4.40〈套用時點〉偏好設定欄：立即提交、選取即關閉、生效當下不可見，故選取標示不算結果（用戶裁決 2026-11-09，出處 `0.7.0-W1-008`） |
+| 編輯器選項 | `option-preferences-editor-<editorId>` | 點擊 | 依點選值與**已持久化的選定值**是否相同分流（比對對象是持久化值，不是選取標示，見下方〈選定值不在選項中〉）：**不同** → 寫入新值，寫入成功後面板消失，主視窗顯示暫態提示 `preferencesEditorAppliedMessage`（`AppSnackBar.plain`，placeholder `editor` 為該選項的顯示標籤，zh「已改用 {editor}，下次開啟原始檔時生效」，§2.13 對照表列 20、§2.14 列 21）；主視窗的畫面狀態不變，下一次開啟原始檔即採用新值。不需另按儲存。**寫入失敗** → 面板消失，主視窗顯示暫態提示 `preferencesEditorSaveFailedMessage`（`AppSnackBar.plain`，無 placeholder，zh「無法儲存編輯器設定」，§2.13 對照表列 21、§2.14 列 22）；持久化值維持舊值，失敗另記錄日誌（用戶裁決 2026-11-09，取代 v1.84 的「只關閉、不提示」：面板關閉與成功時的關閉同形，不提示會讓使用者以為已改用）。**相同** → 面板消失，不寫入、不顯示提示（PM 處置 2026-11-09，用戶覆核採用）。套用時點依 SPEC-004 4.40〈套用時點〉偏好設定欄：立即提交、選取即關閉、生效當下不可見，故選取標示不算結果（用戶裁決 2026-11-09，出處 `0.7.0-W1-008`） |
 | 關閉面板 | `action-preferences-close` | 點擊，或按 Esc | 偏好設定面板消失；主視窗的畫面狀態不變 |
 
 **選項的列出規則**：`option-preferences-editor-system` 恆列出且排第一；對照表中的編輯器只在
@@ -2491,8 +2493,8 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 | 44 | 節點詳情 | 圖不可用 | `state-nodeDetail-graph-unavailable` | jump：`action-nodeDetail-goto-domain` → `nav-page-domain`，`returnTo`=nodeDetail（重新掃描在 Domain 視圖「圖不可用」列）；同畫面轉換：下一個建圖可用的輪次完成 → 依 SPEC-001 §6 判定順序 3–5 轉為 `state-nodeDetail-unset`、`state-nodeDetail-node-absent` 或 `state-nodeDetail-normal`；rail；覆蓋層 |
 | 45 | 節點詳情 | 節點不在目前的圖上 | `state-nodeDetail-node-absent` | jump：`action-nodeDetail-goto-traceability` → `nav-page-traceability`，`returnTo`=nodeDetail；返回：`action-nodeDetail-back` → `returnTo`（非 null 時）；同畫面轉換：之後完成的輪次圖上又出現該 id → `state-nodeDetail-normal`；rail；覆蓋層 |
 | 46 | 追溯 | 圖不可用 | `state-traceability-graph-unavailable` | jump：`action-traceability-goto-domain` → `nav-page-domain`，`returnTo`=traceability（重新掃描在 Domain 視圖「圖不可用」列）；同畫面轉換：下一個建圖可用的輪次完成 → 依 SPEC-001 §3 判定順序 3–5 轉為 `state-traceability-empty`、`state-traceability-broken` 或 `state-traceability-normal`；rail；覆蓋層 |
-| 47 | 偏好設定面板 | 編輯器清單 | `state-preferences-editors` | `option-preferences-editor-<editorId>` → 面板消失，主視窗狀態不變；點選值與持久化值不同且寫入成功時另顯示 `preferencesEditorAppliedMessage`（§3.8 編輯器選項列）；關閉面板（關閉鈕或 Esc）→ 面板消失，主視窗狀態不變（§3.8）。本面板不屬 `AppDestination`，無返回與覆蓋層出口 |
-| 48 | 偏好設定面板 | 無可選編輯器 | `state-preferences-no-editors` | `option-preferences-editor-system` → 面板消失；持久化值為某編輯器（本次查無 handler，§3.8〈選定值不在選項中〉）時寫入系統預設，寫入成功後顯示 `preferencesEditorAppliedMessage`，持久化值已是系統預設時不提示（§3.8 編輯器選項列）；關閉面板 → 面板消失（§3.8）；再次開啟時若偵測到編輯器 → `state-preferences-editors` |
+| 47 | 偏好設定面板 | 編輯器清單 | `state-preferences-editors` | `option-preferences-editor-<editorId>` → 面板消失，主視窗狀態不變；點選值與持久化值不同且寫入成功時另顯示 `preferencesEditorAppliedMessage`，寫入失敗時另顯示 `preferencesEditorSaveFailedMessage`（§3.8 編輯器選項列）；關閉面板（關閉鈕或 Esc）→ 面板消失，主視窗狀態不變（§3.8）。本面板不屬 `AppDestination`，無返回與覆蓋層出口 |
+| 48 | 偏好設定面板 | 無可選編輯器 | `state-preferences-no-editors` | `option-preferences-editor-system` → 面板消失；持久化值為某編輯器（本次查無 handler，§3.8〈選定值不在選項中〉）時寫入系統預設，寫入成功後顯示 `preferencesEditorAppliedMessage`、寫入失敗時顯示 `preferencesEditorSaveFailedMessage`，持久化值已是系統預設時不提示（§3.8 編輯器選項列）；關閉面板 → 面板消失（§3.8）；再次開啟時若偵測到編輯器 → `state-preferences-editors` |
 | 49 | 變更記錄 | 專案未就緒 | `state-history-project-unready` | jump：`action-history-goto-domain` → `nav-page-domain`，`returnTo`=history；同畫面轉換：Domain 視圖到達正常或空圖 → 依 §3.9〈生命週期〉「首次可見且專案就緒」列；rail；覆蓋層 |
 | 50 | 變更記錄 | 讀取中 | `state-history-loading` | 同畫面轉換：`action-history-cancel` → `state-history-normal`／`state-history-empty`（有快取）或 `state-history-cancelled`；完成 → `state-history-normal` 或 `state-history-empty`；前置檢查判定 → `state-history-not-git` 或 `state-history-git-missing`；失敗 → `state-history-load-failed`；rail（讀取繼續，§2.8 L1）；覆蓋層 |
 | 51 | 變更記錄 | 正常 | `state-history-normal` | 同畫面轉換：`option-history-period-<period>`、`action-history-include-ticket-created` → `state-history-normal` 或 `state-history-empty`；`action-history-refresh` → `state-history-loading`；jump：`action-history-open-<index>-<side>` → `nav-page-nodeDetail`，`returnTo`=history；rail；覆蓋層 |
@@ -2683,6 +2685,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.85 | 2026-11-09 | `0.7.0-W1-009`（用戶覆核 v1.84 的兩個 PM 處置）。§3.8〈互動反應〉「編輯器選項」列的寫入失敗分支改為：面板消失並顯示 `preferencesEditorSaveFailedMessage`（`AppSnackBar.plain`，zh「無法儲存編輯器設定」），持久化值維持舊值，失敗另記錄日誌；取代 v1.84 的「只關閉、不提示」，理由是面板關閉與成功時同形，不提示會讓使用者以為已改用。點選相同值的分支（只關閉、不寫入、不提示）經用戶覆核採用。§2.13 對照表新增列 21（T1 是、T2 否、T3 否、T4 否，結論 `plain`）；§2.14 指派表新增列 22（等待型、可棄），列 21 的不送出條件同步改寫；§4 第 47、48 列補寫入失敗的提示。SPEC-004 §4.0.6 登記與 ARB 由 `0.7.0-W1-009.1` 承接 |
 | 1.84 | 2026-11-09 | `0.7.0-W1-009`（`0.7.0-W1-008` 用戶裁決：偏好設定面板選取即關閉並提示；判準為 `component-contract-design` skill 3.14.0〈套用時點的四問〉，對應 SPEC-004 v1.129 4.40〈套用時點〉、SPEC-001 v1.81 §9）。§3.8〈互動反應〉「編輯器選項」列改寫：點選值與持久化值不同時寫入，寫入成功後面板消失並顯示 `preferencesEditorAppliedMessage`（`AppSnackBar.plain`），取代 v1.82 起「選取標示即結果、不顯示 SnackBar」。寫入失敗與點選相同值兩個分支為 PM 處置，待用戶覆核：都只關閉面板、不提示。§2.13 對照表新增列 20（T1 是、T2 否、T3 否、T4 否，結論 `plain`）；§2.14 指派表新增列 21（等待型、可棄）；§4 第 47、48 列的出口改為面板消失。本版只在 SPEC-003 指名新 key；SPEC-004 §4.0.6 的 zh／en 登記、ARB 與實作不在本版 |
 | 1.83 | 2026-11-09 | `0.7.0-W1-012.1`（對應 SPEC-001 v1.80 §10、SPEC-008 FR-07～FR-09、UC-07）：新增 §3.9 變更記錄（`nav-page-history`），定八個 `state-history-*` 錨點、互動反應（取消、期間選項、包含 ticket 建檔、重新整理、顯示全部歷史、重新檢查、重試、重新讀取、事件列節點 jump 與 `returnTo`）、淺層 clone 標示、動畫提示、導航跳轉與退出、生命週期；§4 補第 49～56 列，標題、加總式（+ §10（8）= 54）、同步提醒、§0 概述與 FR-01 46 → 54；六畫面、六項導覽、六頁、六個導覽項等寫法改為七（§1.2、§2.3 標題與規則、§2.4、§2.10、§3.7、§4 引言、§5 判讀註記、FR-14）；§2.2〈系統層通知〉前提由「唯一離開後仍完成的長時操作」改為「唯一獲承接 (a) 授權」（同 SPEC-001 §8.1 末段 v1.80）；§2.8「六頁建構時機」更名「七頁建構時機」（SPEC-004 4.27 逐字引用同批更新），切換專案（L2）列補取消 History 讀取並清除結果與快取（SPEC-008 FR-09 規則 5）；§2.12 長時操作實例補變更記錄讀取。frontmatter 補 UC-07、SPEC-008、history |
 | 1.82 | 2026-11-04 | 依 `0.6.0-W1-070` 用戶裁定「主視窗內的設定面板」（`0.6.0-W1-070.2`，對應 SPEC-001 v1.76）：§3.8 由「獨立視窗」改寫為主視窗內的面板，⌘, 開啟、面板已開啟時維持開啟不重複掛載；關閉動作改為 `action-preferences-close` 或 Esc（原視窗關閉鈕與 ⌘W 取消）；§0、§2.2〈行號定位〉、§2.2 `denied` 列、§2.14 破洞項開啟原始檔列、§4 第 47、48 列的「視窗」一併改為「面板」；破洞項開啟原始檔列登記 `openedWithoutEditor` 文案 key `openedWithoutEditorMessage`。§2.2〈行號定位〉列原文同時寫「`line` 為 `null` 時以不帶行號的編輯器 URL 開啟」與「§3.1、§3.2、§3.6 行為不因選定編輯器而改變」，兩句互斥；本版改為只在 `line` 非 `null` 時查 handler，`null` 時同系統預設 |
