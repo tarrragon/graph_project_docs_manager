@@ -16,9 +16,12 @@ import 'package:graph_project_docs_manager/workspace/current_workspace_provider.
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/history/fake_process_runner.dart';
+import '../../helpers/history/synthetic_git_log.dart';
 
 /// 一次性呼叫可被暫停的 fake（C-6：前置檢查進行中）。
 class _GatedRunner extends FakeProcessRunner {
+  _GatedRunner({super.scanFactory});
+
   Completer<void>? gate;
 
   @override
@@ -245,6 +248,77 @@ void main() {
       }
       expect(runner.scanStartCount, startsBefore);
       expect(runner.calls.length, callsBefore);
+    });
+  });
+
+  group('G 畫面資料缺口（0.7.0-W1-012.11 G-1～G-3）', () {
+    test('G-1 掃描非 0 結束：HistoryFailed 帶 stderr 摘要原文', () async {
+      final runner = _GatedRunner()
+        ..scanFactory = () =>
+            FakeScanScript.exit(128, stderr: 'fatal: bad object h3');
+      final container = _container(runner);
+      await _notifier(container).enter();
+      final state = _state(container);
+      expect(state, isA<HistoryFailed>());
+      expect((state as HistoryFailed).stderrSummary, contains('bad object h3'));
+    });
+
+    test('G-1 對照 前置檢查失敗同樣帶 stderr 摘要', () async {
+      final runner = _GatedRunner()
+        ..mainline = failResponse(128, stderr: 'fatal: bad revision');
+      final container = _container(runner);
+      await _notifier(container).enter();
+      final state = _state(container);
+      expect(state, isA<HistoryFailed>());
+      expect((state as HistoryFailed).stderrSummary, contains('bad revision'));
+    });
+
+    test('G-3 讀取中帶已處理 commit 數，自 0 起算並隨掃描增加', () async {
+      final script = FakeScanScript.manual();
+      final runner = _GatedRunner(scanFactory: () => script);
+      final container = _container(runner);
+      final pending = _notifier(container).enter();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(_state(container), const HistoryLoading());
+      script.emitText(
+        (SyntheticLogBuilder()
+              ..commit('c1', parents: ['c0'])
+              ..commit('c2', parents: ['c1'])
+              ..commit('c3', parents: ['c2']))
+            .toBytes()
+            .map(String.fromCharCode)
+            .join(),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final loading = _state(container) as HistoryLoading;
+      expect(loading.processedCount, greaterThanOrEqualTo(2));
+      await script.finish();
+      await pending;
+    });
+
+    test('G-2 淺層快照帶邊界 commit 的 committer 時間；非淺層為 null', () async {
+      final shallowRunner = _GatedRunner()
+        ..workTree = okResponse('true\ntrue\n')
+        ..scanFactory = () => FakeScanScript.complete([
+          (SyntheticLogBuilder()
+                ..commit('b', parents: ['a'], time: 1790000000)
+                ..commit('a', time: 1780000000))
+              .toBytes(),
+        ]);
+      final shallow = _container(shallowRunner);
+      await _notifier(shallow).enter();
+      final snap = (_state(shallow) as HistoryLoaded).snapshot;
+      expect(snap.isShallow, isTrue);
+      expect(
+        snap.shallowBoundaryDate,
+        DateTime.fromMillisecondsSinceEpoch(1780000000 * 1000, isUtc: true),
+      );
+      final full = _container(_GatedRunner());
+      await _notifier(full).enter();
+      expect(
+        (_state(full) as HistoryLoaded).snapshot.shallowBoundaryDate,
+        isNull,
+      );
     });
   });
 

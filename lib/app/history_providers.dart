@@ -4,8 +4,17 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/degraded_schema.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/history/application/history_state.dart';
+import 'package:graph_project_docs_manager/history/events/declaration_extractor.dart';
 import 'package:graph_project_docs_manager/history/events/edge_event.dart';
+import 'package:graph_project_docs_manager/history/events/edge_event_builder.dart';
+import 'package:graph_project_docs_manager/history/query/history_query.dart';
+import 'package:graph_project_docs_manager/schema/edge_type.dart';
+import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/history/git/git_history_port.dart';
 import 'package:graph_project_docs_manager/history/git/git_history_types.dart';
 import 'package:graph_project_docs_manager/history/git/git_process_runner.dart';
@@ -25,14 +34,104 @@ final historyGitPortProvider = Provider<GitHistoryPort>(
   (ref) => GitHistoryPort(runner: ref.watch(historyProcessRunnerProvider)),
 );
 
-/// 必接線：Schema 就緒度、型別表識別與事件建構器工廠，app root 須以真實
-/// 實作 override；未 override 即拋錯（DI 契約，配 wiring test）。
-final historyScanInputsProvider = stateHolderProvider<HistoryScanInputs>(
-  (ref) => throw UnimplementedError(
-    // i18n-exempt: 開發者面向的 DI 契約錯誤訊息
-    'historyScanInputsProvider must be overridden at app root',
-  ),
+/// 時鐘；測試以固定值覆寫。
+final historyClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
 );
+
+/// app root（`AppShell`）啟動時設為 `true`，宣告 [historyScanInputsProvider]
+/// 已接線到實際 Schema 狀態；未接線（最小容器）讀取時仍拋錯。
+final historyScanInputsWiredProvider = stateHolderProvider<bool>(
+  (ref) => false,
+);
+
+/// 必接線：Schema 就緒度、型別表識別與事件建構器工廠。
+///
+/// 未接線（[historyScanInputsWiredProvider] 為 `false`）即拋錯（DI 契約，配
+/// wiring test）；接線後取自實際 Schema 狀態（Domain 視圖狀態、降級旗標、
+/// 最近一輪掃描的型別表），其中任一改變即重建。
+final historyScanInputsProvider = stateHolderProvider<HistoryScanInputs>((ref) {
+  if (!ref.watch(historyScanInputsWiredProvider)) {
+    throw UnimplementedError(
+      // i18n-exempt: 開發者面向的 DI 契約錯誤訊息
+      'historyScanInputsProvider must be overridden at app root',
+    );
+  }
+  return _inputsFromSchemaState(ref);
+});
+
+/// 期間選擇（預設期間／最近 30 天／全部）；切換專案時重置。
+final historyPeriodChoiceProvider = stateHolderProvider<PeriodChoice>((ref) {
+  ref.watch(currentWorkspaceStateProvider.select(_workspaceRootOf));
+  return PeriodChoice.defaultPeriod;
+});
+
+/// 是否包含 ticket 建檔事件；切換專案時重置。
+final historyIncludeTicketCreationProvider = stateHolderProvider<bool>((ref) {
+  ref.watch(currentWorkspaceStateProvider.select(_workspaceRootOf));
+  return false;
+});
+
+String? _workspaceRootOf(WorkspaceState s) =>
+    s is WorkspaceReady ? s.path : null;
+
+HistoryScanInputs _inputsFromSchemaState(Ref ref) {
+  final domain = ref.watch(domainViewStateProvider);
+  final degraded = ref.watch(degradedSchemaProvider);
+  final round = ref.watch(scanRoundProvider);
+  final table = round is ScanRoundCompleted
+      ? round.result.schemaResolution.typeTable
+      : null;
+  return HistoryScanInputs(
+    schemaReadiness: _readinessOf(domain, degraded),
+    tableIdentity: _tableIdentityOf(table, degraded),
+    createBuilder: () => _newBuilder(ref, table),
+  );
+}
+
+/// 需求：[SPEC-008 FR-08 規則 6] 三個阻擋狀態不掃描；降級檢視時以內建表掃描。
+HistorySchemaReadiness _readinessOf(DomainViewState domain, bool degraded) {
+  if (degraded || (domain is DomainReady && domain.isDegraded)) {
+    return HistorySchemaReadiness.degradedBuiltinTable;
+  }
+  return switch (domain) {
+    DomainNotFramework() ||
+    DomainSchemaUnconsumable() ||
+    DomainSchemaIncompatible() => HistorySchemaReadiness.blocked,
+    _ => HistorySchemaReadiness.ready,
+  };
+}
+
+String _tableIdentityOf(TypeTable? table, bool degraded) {
+  final edges = [
+    for (final e in table?.edgeTypes?.values ?? const <EdgeTypeDecl>[])
+      '${e.name}/${e.layer}/${e.forwardField}/${e.edgeClass}',
+  ]..sort();
+  return '${degraded ? 'builtin' : 'project'}:${Object.hashAll(edges)}';
+}
+
+/// 事件建構器：使用中邊型取內建表決議後，限縮到實際型別表宣告的邊型；
+/// ticket 與 closed_by 略過規則的 id_pattern 取自實際型別表。
+EdgeEventBuilder _newBuilder(Ref ref, TypeTable? table) {
+  final builtin = ref.read(builtinTrackingSchemaJsonProvider).value;
+  final declared = table?.edgeTypes?.keys.toSet();
+  final active = builtin == null
+      ? const <EdgeTypeEntry>[]
+      : resolveEdgeTypes(projectSchemaJson: null, builtinSchemaJson: builtin)
+            .activeEdgeTypes
+            .where((e) => declared == null || declared.contains(e.name));
+  final nodeTypes = table?.nodeTypes ?? const <String, NodeTypeEntry>{};
+  return EdgeEventBuilder(
+    extractor: DeclarationExtractor(
+      activeEdgeTypes: active,
+      closedByIdPatterns: [
+        for (final entry in nodeTypes.entries)
+          if (entry.key != 'FlowStep') ?entry.value.idRegExp,
+      ],
+    ),
+    ticketIdPattern: nodeTypes['Ticket']?.idRegExp ?? RegExp(r'(?!)'),
+  );
+}
 
 final historyProvider = NotifierProvider<HistoryNotifier, HistoryViewState>(
   HistoryNotifier.new,
@@ -107,8 +206,8 @@ class HistoryNotifier extends Notifier<HistoryViewState> {
         _terminal(const HistoryNotGitRepo());
       case GitPreflightGitNotFound():
         _terminal(const HistoryGitNotFound());
-      case GitPreflightFailed(:final reason):
-        _terminal(HistoryFailed(reason));
+      case GitPreflightFailed(:final reason, :final stderrSummary):
+        _terminal(HistoryFailed(reason, stderrSummary: stderrSummary));
       case GitPreflightNoCommit():
         _cacheAndShow(_noCommitSnapshot(root, inputs));
       case GitPreflightReady():
@@ -179,11 +278,21 @@ class HistoryNotifier extends Notifier<HistoryViewState> {
     final parser = ScanStreamParser();
     final builder = inputs.createBuilder();
     final events = <EdgeEvent>[];
+    var processed = 0;
+    DateTime? boundary;
     void feed(List<ScanCommitResult> done) {
       for (final r in done) {
         events.addAll(
           builder.processCommitWithShallow(r, isShallow: ready.isShallow),
         );
+        processed++;
+        if (ready.isShallow && r.commit.parents.isEmpty) {
+          boundary = _utcOf(r.commit.committedAtSeconds);
+        }
+      }
+      // G-3：讀取中帶已處理 commit 數；已有結果的重掃維持結果畫面。
+      if (token == _generation && state is HistoryLoading) {
+        state = HistoryLoading(processedCount: processed);
       }
     }
 
@@ -218,9 +327,13 @@ class HistoryNotifier extends Notifier<HistoryViewState> {
         tags: ready.tags,
         isShallow: ready.isShallow,
         isBuiltinTableDegraded: _isDegraded(inputs),
+        shallowBoundaryDate: boundary,
       ),
     );
   }
+
+  static DateTime _utcOf(int seconds) =>
+      DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
 
   void _finishWithoutResult(GitScanResult result) {
     developer.log(
@@ -230,7 +343,10 @@ class HistoryNotifier extends Notifier<HistoryViewState> {
     );
     final cached = _cache;
     state = switch (result) {
-      GitScanFailed(:final reason) => HistoryFailed(reason),
+      GitScanFailed(:final reason, :final stderrSummary) => HistoryFailed(
+        reason,
+        stderrSummary: stderrSummary,
+      ),
       _ => cached == null ? const HistoryCancelled() : HistoryLoaded(cached),
     };
   }

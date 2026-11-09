@@ -36,6 +36,7 @@ class HistoryScanSnapshot {
     required this.tags,
     required this.isShallow,
     required this.isBuiltinTableDegraded,
+    this.shallowBoundaryDate,
   }) : hasNoCommit = false;
 
   /// 尚無 commit：結果完成、事件空、帶標記（FR-08 規則 4；不是失敗）。
@@ -46,6 +47,7 @@ class HistoryScanSnapshot {
        mainline = const [],
        tags = const [],
        isShallow = false,
+       shallowBoundaryDate = null,
        hasNoCommit = true;
 
   final HistoryCacheKey key;
@@ -55,6 +57,10 @@ class HistoryScanSnapshot {
   final bool isShallow;
   final bool isBuiltinTableDegraded;
   final bool hasNoCommit;
+
+  /// 淺層邊界日期：無 parent 之 commit 的 committer 時間（UTC）；
+  /// 非淺層或無邊界 commit 時為 `null`（SPEC-003 §3.9 淺層標示）。
+  final DateTime? shallowBoundaryDate;
 
   HistoryQuery query({required DateTime Function() clock}) => HistoryQuery(
     events: events,
@@ -76,7 +82,17 @@ final class HistoryIdle extends HistoryViewState {
 }
 
 final class HistoryLoading extends HistoryViewState {
-  const HistoryLoading();
+  const HistoryLoading({this.processedCount = 0});
+
+  /// 已處理的 commit 數（SPEC-001 §10 讀取中；不推算百分比）。
+  final int processedCount;
+
+  @override
+  bool operator ==(Object other) =>
+      other is HistoryLoading && other.processedCount == processedCount;
+
+  @override
+  int get hashCode => Object.hash(HistoryLoading, processedCount);
 }
 
 final class HistoryLoaded extends HistoryViewState {
@@ -97,9 +113,12 @@ final class HistoryGitNotFound extends HistoryViewState {
 
 /// 讀取失敗（可重試）。
 final class HistoryFailed extends HistoryViewState {
-  const HistoryFailed(this.reason);
+  const HistoryFailed(this.reason, {this.stderrSummary = ''});
 
   final GitFailureReason reason;
+
+  /// git 的 stderr 摘要原文（可空）；畫面據此顯示原因（historyLoadFailedDetail）。
+  final String stderrSummary;
 }
 
 /// 掃描被取消；部分事件不外露。

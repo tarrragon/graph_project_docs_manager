@@ -9,6 +9,7 @@ import '../app/router.dart';
 import '../screens/domain_view/domain_view_screen.dart';
 import '../screens/trace/trace_screen.dart';
 import '../screens/gap_report/gap_report_screen.dart';
+import '../screens/history/history_screen.dart';
 import '../screens/node_detail/node_detail_screen.dart';
 import '../screens/ticket_list/ticket_list_screen.dart';
 import '../screens/uc_flow/uc_flow_screen.dart';
@@ -23,5 +24,6 @@ Widget buildDestinationPage(BuildContext context, AppDestination destination) {
     AppDestination.tickets => TicketListScreen(key: key),
     AppDestination.nodeDetail => NodeDetailScreen(key: key),
     AppDestination.ucFlow => UcFlowScreen(key: key),
+    AppDestination.history => HistoryScreen(key: key),
   };
 }

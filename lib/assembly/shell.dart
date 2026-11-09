@@ -24,6 +24,7 @@ import '../app/domain_view_providers.dart';
 import '../screens/domain_view/domain_view_screen.dart';
 import '../app/domain_view_state.dart';
 import '../app/gate_detection_notifier.dart';
+import '../app/history_providers.dart';
 import '../screens/gap_report/gap_report_screen.dart';
 import '../screens/gap_report/scan_notification_controller.dart';
 import '../screens/node_detail/node_detail_screen.dart';
@@ -88,6 +89,12 @@ class _AppShellState extends ConsumerState<AppShell>
     // W1-019 接線的上游進入點）。`unawaited`：initState 不可為 async，
     // 結果透過 provider 寫回，畫面依 domainViewStateProvider 反應變化。
     unawaited(_restoreWorkspaceAndDetect());
+    // 變更記錄的掃描輸入由本殼接線（SPEC-008 FR-09）：延後到 build 階段之後
+    // 寫入，避免在 initState 內改寫 provider。
+    Future.microtask(() {
+      if (!mounted) return;
+      ref.read(historyScanInputsWiredProvider.notifier).state = true;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       developer.log(
         '首幀 Domain 狀態：${ref.read(domainViewStateProvider).runtimeType}', // i18n-exempt: 開發者診斷 log
@@ -245,4 +252,5 @@ IconData _iconFor(AppDestination destination) => switch (destination) {
   AppDestination.tickets => Icons.checklist_outlined,
   AppDestination.gaps => Icons.report_problem_outlined,
   AppDestination.nodeDetail => Icons.description_outlined,
+  AppDestination.history => Icons.history_outlined,
 };
