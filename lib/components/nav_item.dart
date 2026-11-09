@@ -29,7 +29,21 @@ class NavItem extends StatefulWidget {
     required this.isSelected,
     required this.onTap,
     required this.testKey,
-  });
+  }) : _isAction = false;
+
+  /// `action` 變體（SPEC-004 4.7）：側欄底部項，開啟面板，不屬
+  /// `AppDestination`。外觀同 unselected、恆不呈選中，`Semantics.selected`
+  /// 不設；錨點由呼叫端傳入（`nav-action-<kind>`）。
+  const NavItem.action({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.testKey,
+  }) : isSelected = false,
+       _isAction = true;
+
+  final bool _isAction;
 
   /// 導覽項圖示（裝飾性，`semanticLabel` 為 `null`）。
   final AppIcon icon;
@@ -96,7 +110,7 @@ class _NavItemState extends State<NavItem> {
     return Semantics(
       button: true,
       label: label,
-      selected: isSelected,
+      selected: widget._isAction ? null : isSelected,
       // `hitTargetMin` 是**命中區下界**（SPEC-004 §1「可點元件的最小尺寸不得
       // 小於之」），不是內容容器的高度上界。以 `SizedBox(height:)` 釘死等於把
       // 無障礙下限反過來當排版上限用：內容（`iconLg` + 2 × `Space.sm`）需要的

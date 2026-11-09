@@ -314,4 +314,68 @@ void main() {
       expect(renderedIcon.color, AppColors.textPrimary);
     });
   });
+
+  group('action 變體（SPEC-004 4.7）', () {
+    testWidgets('點選呼叫 onTap 恰一次；不設 Semantics.selected', (tester) async {
+      var callCount = 0;
+      await pumpHarness(
+        tester,
+        child: NavItem.action(
+          icon: icon(),
+          label: 'label',
+          onTap: () => callCount++,
+          testKey: testKey,
+        ),
+      );
+
+      await tester.tap(find.byKey(testKey));
+      await tester.pump();
+      expect(callCount, 1);
+
+      final data = tester.getSemantics(find.byKey(testKey));
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.flagsCollection.isSelected, Tristate.none);
+      expect(data.label, 'label');
+    });
+
+    testWidgets('恆呈 unselected：圖示色為 textPrimary，無選中底色', (tester) async {
+      await pumpHarness(
+        tester,
+        child: NavItem.action(
+          icon: icon(),
+          label: 'label',
+          onTap: () {},
+          testKey: testKey,
+        ),
+      );
+
+      final renderedIcon = tester.widget<AppIcon>(find.byType(AppIcon));
+      expect(renderedIcon.color, AppColors.textPrimary);
+      final selectedBg = find.descendant(
+        of: find.byKey(testKey),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).color ==
+                  AppColors.surfaceIconTint,
+        ),
+      );
+      expect(selectedBg, findsNothing);
+    });
+
+    testWidgetsAtEachSize('最長文案不溢位', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: NavItem.action(
+          icon: icon(),
+          label: TestCopy.longToken,
+          onTap: () {},
+          testKey: testKey,
+        ),
+      );
+      expectNoOverflow(tester);
+    });
+  });
 }

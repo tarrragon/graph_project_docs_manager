@@ -16,6 +16,7 @@ import '../tokens/tokens.dart';
 import 'app_button.dart';
 import 'app_text.dart';
 import 'badge.dart';
+import 'divider.dart';
 import 'nav_item.dart';
 import 'page_column.dart';
 import 'project_switcher_entry.dart';
@@ -41,6 +42,7 @@ class AppShell extends StatelessWidget {
     required this.switcherEntry,
     required this.navItems,
     required this.pages,
+    this.bottomItems = const [],
     this.selectedIndex = 0,
     this.screenName = 'domain',
     this.hasBackAction = false,
@@ -60,6 +62,11 @@ class AppShell extends StatelessWidget {
          pages.length == 7,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
          'pages 恰 7 項（SPEC-004 4.27 slot 契約）',
+       ),
+       assert(
+         bottomItems.length == 0 || bottomItems.length == 2,
+         // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
+         'bottomItems 為空或恰 2 項（SPEC-004 4.27 側欄底部 slot）',
        );
 
   /// 整合測試與元件測試用來確認「已抵達殼」的錨點（SPEC-004 4.27 slot
@@ -80,6 +87,10 @@ class AppShell extends StatelessWidget {
 
   /// 六個頁面，與 [navItems] 同序（SPEC-004 4.27 slot 契約）。
   final List<PageColumn> pages;
+
+  /// 側欄底部兩項（`NavItem.action`，依序設定、鍵盤快捷鍵；SPEC-004 4.27
+  /// 〈側欄底部 slot〉）。空清單表示呼叫端尚未掛接，不渲染底部區。
+  final List<NavItem> bottomItems;
 
   /// 當前可見頁序號（`IndexedStack.index`）。
   final int selectedIndex;
@@ -125,7 +136,11 @@ class AppShell extends StatelessWidget {
           child: FocusTraversalOrder(
             order: const NumericFocusOrder(0),
             child: FocusTraversalGroup(
-              child: _Sidebar(switcherEntry: switcherEntry, navItems: navItems),
+              child: _Sidebar(
+                switcherEntry: switcherEntry,
+                navItems: navItems,
+                bottomItems: bottomItems,
+              ),
             ),
           ),
         ),
@@ -225,10 +240,15 @@ class _TitleBar extends StatelessWidget {
 
 /// 側欄：專案切換入口 + 六個導覽項，垂直堆疊（SPEC-004 §5.1 子件契約）。
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.switcherEntry, required this.navItems});
+  const _Sidebar({
+    required this.switcherEntry,
+    required this.navItems,
+    required this.bottomItems,
+  });
 
   final ProjectSwitcherEntry switcherEntry;
   final List<NavItem> navItems;
+  final List<NavItem> bottomItems;
 
   @override
   Widget build(BuildContext context) {
@@ -244,9 +264,27 @@ class _Sidebar extends StatelessWidget {
           children: [
             switcherEntry,
             const SizedBox(height: Space.sm),
-            for (final item in navItems) ...[
-              item,
-              if (item != navItems.last) const SizedBox(height: Space.xxs),
+            // 導覽項區段高度不足時垂直捲動，底部兩項固定可見
+            // （SPEC-004 4.27〈側欄底部 slot〉空間不足策略）。
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final item in navItems) ...[
+                      item,
+                      if (item != navItems.last)
+                        const SizedBox(height: Space.xxs),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (bottomItems.isNotEmpty) ...[
+              const SizedBox(height: Space.sm),
+              const Divider(),
+              const SizedBox(height: Space.sm),
+              for (final item in bottomItems) item,
             ],
           ],
         ),
