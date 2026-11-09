@@ -978,4 +978,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get preferencesEditorSaveFailedMessage => '無法儲存編輯器設定';
+
+  @override
+  String get sidebarSettingsLabel => '設定';
+
+  @override
+  String get keyboardShortcutsTitle => '鍵盤快捷鍵';
+
+  @override
+  String get shortcutOpenPreferencesAction => '開啟偏好設定';
+
+  @override
+  String get shortcutCloseSwitcherAction => '收合專案切換浮層';
+
+  @override
+  String get shortcutCloseSchemaDetailAction => '收合型別表詳情面板';
+
+  @override
+  String get shortcutClearCellAction => '清除矩陣的已選格';
+
+  @override
+  String get shortcutCloseFilterMenuAction => '收合篩選選單';
+
+  @override
+  String get shortcutClosePanelAction => '關閉偏好設定或鍵盤快捷鍵面板';
+
+  @override
+  String get shortcutMoveFocusAction => '依序移動焦點（Shift+Tab 反向）';
+
+  @override
+  String get shortcutActivateAction => '執行已聚焦的按鈕或項目';
+
+  @override
+  String get shortcutOpenFilterMenuAction => '展開已聚焦的篩選選單';
+
+  @override
+  String get shortcutMoveInFilterMenuAction => '在篩選選單的選項間移動';
+
+  @override
+  String get shortcutContextAnywhere => '任何畫面';
+
+  @override
+  String get shortcutContextSwitcherOpen => '專案切換浮層展開時';
+
+  @override
+  String get shortcutContextSchemaDetailOpen => 'Domain 視圖的型別表詳情面板展開時';
+
+  @override
+  String get shortcutContextCellSelected => 'Domain 視圖矩陣有已選格，且焦點在矩陣內時';
+
+  @override
+  String get shortcutContextFilterMenuOpen => 'Ticket 清單的篩選選單展開時';
+
+  @override
+  String get shortcutContextPanelOpen => '任一面板開啟時';
+
+  @override
+  String get shortcutContextFilterFocused => 'Ticket 清單的篩選按鈕取得焦點時';
+
+  @override
+  String shortcutRowA11yLabel(String keys, String action, String context) {
+    return '$keys：$action，$context';
+  }
 }
