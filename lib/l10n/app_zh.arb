@@ -1899,5 +1899,18 @@
         "type": "String"
       }
     }
+  },
+  "sourceChainTitle": "來源鏈",
+  "@sourceChainTitle": {
+    "description": "SPEC-004 §4.0.6 1.134：§6 來源鏈區塊小標"
+  },
+  "sourceChainNoUpstream": "（缺上游 {layer}）",
+  "@sourceChainNoUpstream": {
+    "description": "SPEC-004 §4.0.6 1.134：來源鏈缺上游列主文字",
+    "placeholders": {
+      "layer": {
+        "type": "String"
+      }
+    }
   }
 }

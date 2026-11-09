@@ -1818,6 +1818,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{keys}：{action}，{context}'**
   String shortcutRowA11yLabel(String keys, String action, String context);
+
+  /// SPEC-004 §4.0.6 1.134：§6 來源鏈區塊小標
+  ///
+  /// In zh, this message translates to:
+  /// **'來源鏈'**
+  String get sourceChainTitle;
+
+  /// SPEC-004 §4.0.6 1.134：來源鏈缺上游列主文字
+  ///
+  /// In zh, this message translates to:
+  /// **'（缺上游 {layer}）'**
+  String sourceChainNoUpstream(String layer);
 }
 
 class _AppLocalizationsDelegate
