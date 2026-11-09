@@ -246,6 +246,7 @@ Future<FakeHistoryNotifier> pumpHistoryApp(
   bool settle = true,
 }) async {
   final (fake, overrides) = fakeHistoryOverrides(state);
+  await tester.pumpWidget(const SizedBox());
   await pumpApp(
     tester,
     locale: locale,

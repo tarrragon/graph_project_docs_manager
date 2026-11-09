@@ -46,7 +46,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       ),
     );
     _enterWhenVisible(state: state, isReady: reason == null && root != null);
-    return _viewFor(state, reason: reason, hasWorkspace: root != null);
+    return _viewFor(
+      state,
+      reason: reason,
+      hasWorkspace: root != null,
+      isVisible:
+          ref.watch(selectedDestinationProvider) == AppDestination.history,
+    );
   }
 
   /// 需求：[SPEC-003 §3.9] 首次可見與再次可見才進入；讀取中、已取消與三種
@@ -85,12 +91,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     HistoryViewState state, {
     required ProjectUnreadyReason? reason,
     required bool hasWorkspace,
+    required bool isVisible,
   }) {
     final unready =
         reason ??
         switch (state) {
           HistorySchemaBlocked() => ProjectUnreadyReason.incompatible,
-          HistoryIdle() when !hasWorkspace => ProjectUnreadyReason.notSelected,
+          // 未進入前（含背景頁）維持靜態畫面，避免骨架動畫在 IndexedStack
+          // 背景無限重播。
+          HistoryIdle() when !hasWorkspace || !isVisible =>
+            ProjectUnreadyReason.notSelected,
           _ => null,
         };
     if (unready != null) {

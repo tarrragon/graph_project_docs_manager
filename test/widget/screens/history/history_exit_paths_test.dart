@@ -123,8 +123,9 @@ void main() {
   });
 
   testWidgets('EX-7 真實 notifier：重新讀取後計數自 0 起算', (tester) async {
-    final script = FakeScanScript.manual();
-    final runner = FakeProcessRunner(scanFactory: () => script);
+    final runner = FakeProcessRunner(
+      scanFactory: () => FakeScanScript.manual(),
+    );
     await pumpHistoryRealApp(tester, runner, settle: false);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(_key('action-history-cancel'));

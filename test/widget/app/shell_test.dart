@@ -583,16 +583,16 @@ void _registerFocusTests() {
     await _pumpShell(tester);
     await _focusSwitcherEntry(tester);
     final stops = <FocusNode?>[];
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < 9; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
       stops.add(FocusManager.instance.primaryFocus);
     }
     expect(
-      [for (var i = 0; i < 6; i++) _navKeyOf(stops[i])],
+      [for (var i = 0; i < 7; i++) _navKeyOf(stops[i])],
       [for (final d in AppDestination.values) 'nav-item-${d.name}'],
     );
-    for (final stop in [stops[6], stops[7]]) {
+    for (final stop in [stops[7], stops[8]]) {
       _expectInMainArea(stop);
     }
   });
