@@ -12,7 +12,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/history_providers.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/history/application/history_state.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/main.dart';
@@ -26,6 +28,7 @@ import 'package:graph_project_docs_manager/screens/ticket_list/ticket_list_state
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
+import '../test/helpers/history/history_screen_fixtures.dart';
 import '../test/helpers/pump_harness.dart';
 import '../test/helpers/window_sizes.dart';
 import 'domain_view_v050.dart'
@@ -63,6 +66,7 @@ const Map<AppDestination, String> _readyKey = {
   AppDestination.tickets: 'state-tickets-list',
   AppDestination.gaps: 'state-gaps-found',
   AppDestination.nodeDetail: 'state-nodeDetail-normal',
+  AppDestination.history: 'state-history-normal',
 };
 
 // i18n-exempt: 版面測試用固定票列資料值
@@ -128,6 +132,12 @@ void main() {
                 traceabilityStateProvider.overrideWithInitial(
                   (ref) =>
                       const TraceabilityNormal(TraceabilityFixtures.normal),
+                ),
+              // fixture 工作區不是 git 工作樹，history 不會自然進入 normal，
+              // 固定為有事件的結果（比照 tickets、traceability）。
+              if (destination == AppDestination.history)
+                historyProvider.overrideWith(
+                  () => FakeHistoryNotifier(HistoryLoaded(snapTagged())),
                 ),
               if (destination == AppDestination.tickets)
                 ticketListStateProvider.overrideWithInitial(
