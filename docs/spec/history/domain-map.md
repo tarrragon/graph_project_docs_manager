@@ -90,9 +90,11 @@ updated: "2026-11-09"
 - 行程呼叫（前置檢查、掃描、取消）與解析分票：前者屬平台互動，須自帶日誌（`observability-rules` 規則 5）
 - History 的票不得 import `lib/corpus/` 與 `lib/graph/`（系統層 §4.3、SPEC-008 H3）
 
-## 7. FR → Bundle 覆蓋對照
+## 7. 驗收條文 → Bundle 覆蓋對照
 
-| SPEC-008 FR | Bundle | 備註 |
+### SPEC-008（History：主線邊事件的掃描、解析與降級）
+
+| 驗收條文（FR、具名判定式或全文） | 覆蓋 | 備註 |
 |---|---|---|
 | FR-01 前置檢查與掃描指令 | History（driven port：git 程序） | 工作區根取自 Workspace |
 | FR-02 串流解析與狀態追蹤 | History | 純函式 |
