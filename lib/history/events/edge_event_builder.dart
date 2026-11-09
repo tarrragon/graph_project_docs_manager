@@ -41,6 +41,21 @@ class EdgeEventBuilder {
     ];
   }
 
+  /// 需求：[SPEC-008 FR-08 規則 3] 淺層邊界 commit（父欄位為空且前置檢查回報淺層）
+  /// 只建初始狀態，不產生事件；其餘情況照 [processCommit]（含非淺層的根 commit）。
+  List<EdgeEvent> processCommitWithShallow(
+    ScanCommitResult result, {
+    required bool isShallow,
+  }) {
+    if (!isShallow || result.commit.parents.isNotEmpty) {
+      return processCommit(result);
+    }
+    for (final change in result.changes) {
+      _applyChange(change, {}, {});
+    }
+    return const [];
+  }
+
   void _applyChange(
     PathChange change,
     Map<EdgeKey, Set<EdgeSource>> before,
