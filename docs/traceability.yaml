@@ -171,7 +171,6 @@ mappings:
       - test/integration/corpus_it2_gap_classification_test.dart
 
   # UC-07（0.7.0 History，PROP-006）：畫面狀態在 SPEC-001 §10，資料管線在 SPEC-008。
-  # tests 待 0.7.0 紅燈測試設計（version-bootstrap Step 5）回填。
   - spec: SPEC-001
     usecase: UC-07
     title: 回顧一段期間內的關係變動
@@ -187,7 +186,17 @@ mappings:
       - cancel-reading
       - history-unavailable
       - shallow-clone
-    tests: []
+    tests:  # 規格 docs/test-design/SPEC-001-history-screen-test-design.md（0.7.0-W1-012.4），檔案待 012.11、012.12 實作
+      - test/widget/screens/history/history_states_test.dart
+      - test/widget/screens/history/history_exit_paths_test.dart
+      - test/widget/screens/history/history_filter_test.dart
+      - test/widget/screens/history/history_event_row_test.dart
+      - test/widget/screens/history/history_jump_test.dart
+      - test/widget/screens/history/history_overlay_badges_test.dart
+      - test/widget/screens/history/history_lifecycle_test.dart
+      - test/widget/screens/history/history_layout_test.dart
+      - test/widget/app/history_wiring_test.dart
+      - integration_test/uc07_history_test.dart
 
   - spec: SPEC-008
     usecase: UC-07
