@@ -179,7 +179,7 @@ flutter_balance 不在 CI 與一般機器上，依 test-assertion-design D2 標 
 
 | # | Given | Then |
 |---|-------|------|
-| K-1 | `blood` 邊：commit A 子節點寫 `parent_id: P`；commit B 父節點補 `children: [C]` | A 一筆新增，邊鍵（blood、P、C）；B 無事件 |
+| K-1 | `blood` 邊：commit A 子節點寫 `parent_id: P`；commit B 父節點補 `children: [C]` | A 一筆新增，邊鍵（blood、C、P）：`blood` 正向欄位為 `parent_id`，依 SPEC-008 FR-04 規則 1 換為（邊型、宣告者、值）；B 無事件 |
 | K-2 | 承 K-1：commit C 刪 `parent_id`（`children` 仍在）；commit D 刪 `children` | C 無事件；D 一筆移除 |
 | K-3 | `relatedTo` 邊：X 寫 `relatedTo: [Y]`（commit 1）、Y 寫 `relatedTo: [X]`（commit 2），X 字典序小於 Y | commit 1 一筆新增，邊鍵（relatedTo、X、Y）；commit 2 無事件；若改由 Y 先宣告，邊鍵仍為（relatedTo、X、Y） |
 | K-4 | 同一 commit 刪除 `docs/a/n.md`、新增內容相同的 `docs/b/n.md` | 無事件 |
