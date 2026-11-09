@@ -1,7 +1,8 @@
 /// SPEC-004 §4.27 / §5.1 `AppShell` 測試點。
 library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Divider;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -39,6 +40,18 @@ List<PageColumn> _buildPages({String? longestLabel}) {
               ? longestLabel
               : destination.name,
         ),
+      ),
+  ];
+}
+
+List<NavItem> _buildBottomItems({List<String>? tapLog}) {
+  return [
+    for (final kind in const ['preferences', 'shortcuts'])
+      NavItem.action(
+        icon: const AppIcon(icon: Icons.circle),
+        label: kind,
+        onTap: () => tapLog?.add(kind),
+        testKey: Key('nav-action-$kind'),
       ),
   ];
 }
@@ -533,6 +546,119 @@ void main() {
             .first,
       );
       expect(sidebarBox.width, LayoutSize.sidebarWidth);
+    });
+  });
+
+  group('AppShell 側欄底部 slot（SPEC-004 4.27）', () {
+    testWidgetsAtEachSize('兩項依序渲染於導覽項之下、貼齊側欄底部，不溢位', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(selected: AppDestination.domain),
+          bottomItems: _buildBottomItems(),
+          pages: _buildPages(),
+        ),
+      );
+      expectNoOverflow(tester);
+
+      final prefs = tester.getRect(
+        find.byKey(const Key('nav-action-preferences')),
+      );
+      final shortcuts = tester.getRect(
+        find.byKey(const Key('nav-action-shortcuts')),
+      );
+      final lastNav = tester.getRect(
+        find.byKey(Key('nav-item-${AppDestination.values.last.name}')),
+      );
+      expect(lastNav.bottom, lessThan(prefs.top));
+      expect(prefs.bottom, lessThanOrEqualTo(shortcuts.top));
+      final shell = tester.getRect(find.byKey(AppShell.shellKey));
+      expect(shortcuts.bottom, shell.bottom - Space.md);
+    });
+
+    testWidgetsAtEachSize('底部區上方有一條 Divider，與兩項間隔 Space.sm', (
+      tester,
+      size,
+    ) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(),
+          bottomItems: _buildBottomItems(),
+          pages: _buildPages(),
+        ),
+      );
+      final divider = tester.getRect(find.byType(Divider));
+      final prefs = tester.getRect(
+        find.byKey(const Key('nav-action-preferences')),
+      );
+      expect(divider.bottom + Space.sm, prefs.top);
+    });
+
+    testWidgetsAtEachSize('點兩項呼叫各自 onTap，且不改變導覽選取', (tester, size) async {
+      final log = <String>[];
+      await pumpHarness(
+        tester,
+        size: size,
+        child: AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(selected: AppDestination.domain),
+          bottomItems: _buildBottomItems(tapLog: log),
+          pages: _buildPages(),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('nav-action-preferences')));
+      await tester.tap(find.byKey(const Key('nav-action-shortcuts')));
+      expect(log, ['preferences', 'shortcuts']);
+      final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
+      expect(stack.index, 0);
+    });
+
+    testWidgets('Tab 順序：七導覽項之後依序進入底部兩項', (tester) async {
+      await pumpHarness(
+        tester,
+        child: AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(selected: AppDestination.domain),
+          bottomItems: _buildBottomItems(),
+          pages: _buildPages(),
+        ),
+      );
+      final order = <Key>[
+        AppShell.projectSwitcherEntryKey,
+        for (final d in AppDestination.values) Key('nav-item-${d.name}'),
+        const Key('nav-action-preferences'),
+        const Key('nav-action-shortcuts'),
+      ];
+      for (final key in order) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        final focusedContext = FocusManager.instance.primaryFocus!.context!;
+        expect(
+          find.descendant(
+            of: find.byKey(key),
+            matching: find.byElementPredicate((e) => e == focusedContext),
+          ),
+          findsOneWidget,
+          reason: '焦點應在 $key',
+        );
+      }
+    });
+
+    test('bottomItems 只接受 0 或恰 2 項', () {
+      expect(
+        () => AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(),
+          bottomItems: _buildBottomItems().take(1).toList(),
+          pages: _buildPages(),
+        ),
+        throwsAssertionError,
+      );
     });
   });
 }
