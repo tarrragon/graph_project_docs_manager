@@ -28,7 +28,7 @@
 meta:
   project: "graph_project_docs_manager"
   architecture: "Flutter macOS 桌面（見 CLAUDE.md 技術選型與架構決策）"
-  last_updated: "2026-11-01"
+  last_updated: "2026-11-09"
   maintainer: "rosemary-project-manager"
 
 versions:
@@ -809,7 +809,7 @@ versions:
   - version: "0.6.0"
     codename: "Screens"
     description: "其餘畫面接真資料：Ticket 清單、節點詳情、追溯視圖"
-    status: "active"
+    status: completed
     scope: "frozen"    # 2026-11-09 凍結（用戶裁定發版）：0.6.0-W1-170 實機驗證結案後，版本內票除協調票 W1-099 外皆已完成或關閉，無待標 scope_blocker 的必要票；新票路由至 0.7.0
     proposals:
       - PROP-005
