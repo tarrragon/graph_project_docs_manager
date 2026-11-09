@@ -200,7 +200,21 @@ mappings:
       - cancel-reading
       - history-unavailable
       - shallow-clone
-    tests: []
+    tests:  # 規格 docs/test-design/SPEC-008-test-design.md（0.7.0-W1-012.3），檔案待 012.5～012.9、012.13 實作
+      - test/unit/history/git_preflight_test.dart
+      - test/unit/history/git_degradation_test.dart
+      - test/unit/history/scan_stream_parser_test.dart
+      - test/unit/history/declaration_extraction_test.dart
+      - test/unit/history/edge_event_test.dart
+      - test/unit/history/ticket_creation_flag_test.dart
+      - test/unit/history/tag_period_test.dart
+      - test/unit/history/shallow_boundary_test.dart
+      - test/unit/history/history_query_test.dart
+      - test/unit/history/history_cache_provider_test.dart
+      - test/unit/history/history_log_events_test.dart
+      - integration_test/history_it_h1_cost_test.dart
+      - integration_test/history_it_h2_degradations_test.dart
+      - integration_test/history_real_git_scan_test.dart
 
 # 水平 domain 規則軸：docs/spec/{domain}/domain-map.md §3 的 8 個 bundle（索引見 docs/system-layer.md §1.3）。
 # invariants 取自該表「唯一變更理由」欄；layer 取自 docs/system-layer.md §2 分層圖。
@@ -286,8 +300,15 @@ domain_bundle_tests:
     layer: L1  # 2026-11-09 更正（原 L2；系統層 §2 於 2026-10-08 已改為 L1，`0.7.0-W1-012` 同批對齊）
     invariants:
       - git 查詢方式或歷史語意改變是唯一合法變更理由（docs/spec/history/domain-map.md §3）
-      - 逐條不變式見 docs/spec/history/domain-map.md〈Bundle 不變式清單〉（SPEC-008），待 0.7.0 Step 5 轉為測試
-    tests: []
+      - 逐條不變式見 docs/spec/history/domain-map.md〈Bundle 不變式清單〉（SPEC-008），對應案例見 docs/test-design/SPEC-008-test-design.md §4.4
+    tests:  # 待實作（0.7.0-W1-012.5～012.9）
+      - test/unit/history/scan_stream_parser_test.dart
+      - test/unit/history/declaration_extraction_test.dart
+      - test/unit/history/edge_event_test.dart
+      - test/unit/history/ticket_creation_flag_test.dart
+      - test/unit/history/tag_period_test.dart
+      - test/unit/history/shallow_boundary_test.dart
+      - test/unit/history/history_query_test.dart
 
   - bundle: Layout
     layer: L3
