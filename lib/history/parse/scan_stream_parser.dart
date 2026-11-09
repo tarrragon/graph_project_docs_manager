@@ -86,16 +86,15 @@ class _Touch {
 }
 
 class ScanStreamParser {
-  ScanStreamParser({FrontmatterParseCheck? parseCheck, ParseLogSink? logSink})
-    : _parseCheck = parseCheck ?? _defaultParseCheck,
-      _logSink = logSink;
+  ScanStreamParser({FrontmatterParseCheck? parseCheck, this.logSink})
+    : _parseCheck = parseCheck ?? _defaultParseCheck;
 
   static final RegExp _hunkHeader = RegExp(
     r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@',
   );
 
   final FrontmatterParseCheck _parseCheck;
-  final ParseLogSink? _logSink;
+  final ParseLogSink? logSink;
   final ScanCounters counters = ScanCounters();
   final Map<String, _FileState> _states = {};
   final BytesBuilder _carry = BytesBuilder(copy: false);
@@ -409,7 +408,7 @@ class ScanStreamParser {
 
   void _markDesync(String path) {
     counters.desyncs++;
-    _logSink?.call(
+    logSink?.call(
       ParseLogLevel.warning,
       'history.scan.desync path=$path commit=${_commit?.id ?? ''}',
     ); // i18n-exempt: 日誌
@@ -473,7 +472,7 @@ class ScanStreamParser {
       return;
     }
     counters.unparsableVersions++;
-    _logSink?.call(
+    logSink?.call(
       ParseLogLevel.debug,
       'history.scan.unparsable path=$path commit=${_commit?.id ?? ''}',
     ); // i18n-exempt: 日誌

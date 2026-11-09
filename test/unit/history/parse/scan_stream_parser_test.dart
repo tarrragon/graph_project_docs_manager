@@ -6,8 +6,8 @@ import '../../../helpers/history/synthetic_git_log.dart';
 
 const _path = 'docs/a.md';
 
-class _Run {
-  _Run(this.results, this.parser, this.logs);
+class ScanRun {
+  ScanRun(this.results, this.parser, this.logs);
   final List<ScanCommitResult> results;
   final ScanStreamParser parser;
   final List<String> logs;
@@ -20,7 +20,7 @@ class _Run {
   }
 }
 
-_Run run(
+ScanRun run(
   SyntheticLogBuilder b, {
   bool Function(String)? parseCheck,
   int? chunkSize,
@@ -36,7 +36,7 @@ _Run run(
     results.addAll(parser.addChunk(chunk));
   }
   results.addAll(parser.close());
-  return _Run(results, parser, logs);
+  return ScanRun(results, parser, logs);
 }
 
 List<String> spawnList(int n) => frontmatterLines(
