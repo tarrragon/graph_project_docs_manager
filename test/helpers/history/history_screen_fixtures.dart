@@ -13,6 +13,8 @@ import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/app/history_providers.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_fixtures.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/node_detail_providers.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -49,6 +51,8 @@ EdgeEvent _event({
   required String commit,
   required int seconds,
   bool isTicketCreation = false,
+  String author = 'tester',
+  String? subject,
 }) => EdgeEvent(
   type: type,
   key: EdgeKey(edge, from, to),
@@ -56,8 +60,8 @@ EdgeEvent _event({
   declarersAfter: const [],
   commitId: commit,
   committedAtSeconds: seconds,
-  author: 'tester',
-  subject: 'subject $commit $_hash',
+  author: author,
+  subject: subject ?? 'subject $commit $_hash',
   isTicketCreation: isTicketCreation,
 );
 
@@ -202,6 +206,66 @@ HistoryScanSnapshot snapShallow() =>
 /// 降級：同 [snapTagged]，內建型別表降級。
 HistoryScanSnapshot snapDegraded() => snapTagged(degraded: true);
 
+/// 對端不在目前的圖上：1 筆移除事件，對端 `0.1.0-W9-999`。
+HistoryScanSnapshot snapAbsentNode() => HistoryScanSnapshot(
+  key: _key(),
+  events: [
+    _event(
+      type: EdgeEventType.removed,
+      edge: 'uc_ticket_refs',
+      from: 'UC-07',
+      to: '0.1.0-W9-999',
+      commit: 'h5',
+      seconds: _secondsOf(11, 5),
+    ),
+  ],
+  mainline: _mainline,
+  tags: _tag060,
+  isShallow: false,
+  isBuiltinTableDegraded: false,
+);
+
+/// 預設期間內 [count] 筆事件，供捲動測試（FL-10）。
+HistoryScanSnapshot snapMany({int count = 40}) => HistoryScanSnapshot(
+  key: _key(),
+  events: [
+    for (var i = 0; i < count; i++)
+      _event(
+        type: EdgeEventType.added,
+        edge: 'uc_ticket_refs',
+        from: 'UC-07',
+        to: '0.7.0-W1-$i',
+        commit: 'h5',
+        seconds: _secondsOf(11, 5),
+      ),
+  ],
+  mainline: _mainline,
+  tags: _tag060,
+  isShallow: false,
+  isBuiltinTableDegraded: false,
+);
+
+/// 事件含無斷字機會的超長作者、訊息與邊型（LY-2）。
+HistoryScanSnapshot snapLongValues(String longToken) => HistoryScanSnapshot(
+  key: _key(),
+  events: [
+    _event(
+      type: EdgeEventType.added,
+      edge: longToken,
+      from: longToken,
+      to: longToken,
+      commit: 'h5',
+      seconds: _secondsOf(11, 5),
+      author: longToken,
+      subject: longToken,
+    ),
+  ],
+  mainline: _mainline,
+  tags: _tag060,
+  isShallow: false,
+  isBuiltinTableDegraded: false,
+);
+
 /// 八狀態各一個代表值（ST-11、EX-1、LY-1 共用），依 SPEC-001 §10 順序。
 List<(String rootKey, HistoryViewState state)> historyStateCases() => [
   ('state-history-loading', const HistoryLoading(processedCount: 7)),
@@ -316,6 +380,20 @@ Future<void> pumpHistoryRealApp(
 /// 取目前 app 的 provider 容器。
 ProviderContainer historyContainer(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+
+/// 目前的圖上存在的節點（JP 測試）：節點詳情只認這些 id。
+Override historyGraphNodes(Iterable<String> ids) =>
+    nodeDetailNodesProvider.overrideWithValue({
+      for (final id in ids)
+        id: NodeDetailFixture(
+          id: id,
+          type: 'Ticket',
+          status: 'pending',
+          title: 'title $id',
+          filePath: 'docs/$id.md',
+          markdown: '# $id',
+        ),
+    });
 
 /// 狀態固定、記錄 `enter`／`refresh`／`cancel` 呼叫次數的 fake notifier。
 class FakeHistoryNotifier extends HistoryNotifier {
