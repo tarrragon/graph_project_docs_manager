@@ -832,7 +832,7 @@ versions:
   - version: "0.7.0"
     codename: "History"
     description: "git 邊層級變更記錄；0.x 的最後一個 minor"
-    status: "planned"
+    status: "active"
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v0/v0.7/v0.7.0/"
