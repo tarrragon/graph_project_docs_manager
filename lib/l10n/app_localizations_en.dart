@@ -893,4 +893,145 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get preferencesNoEditorsExplanation =>
       'No editor that can jump to a line was found on this machine. Supported editors: VS Code, VS Code Insiders, Cursor, Zed';
+
+  @override
+  String get navHistory => 'Change history';
+
+  @override
+  String get historyLoading => 'Reading git history';
+
+  @override
+  String historyLoadingProcessedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count commits processed',
+      one: '1 commit processed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get historyPeriodDefaultLabel => 'Default period';
+
+  @override
+  String get historyPeriodRecent30Label => 'Last 30 days';
+
+  @override
+  String get historyPeriodAllLabel => 'All history';
+
+  @override
+  String historyPeriodSelectA11yHint(String period) {
+    return 'Filter events by $period';
+  }
+
+  @override
+  String historyPeriodSinceTag(String tag) {
+    return 'Since $tag';
+  }
+
+  @override
+  String historyPeriodSummary(String period, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return '$period · $_temp0';
+  }
+
+  @override
+  String get historyIncludeTicketCreatedLabel => 'Include ticket creation';
+
+  @override
+  String historyShallowCloneBadge(String boundaryDate) {
+    return 'History incomplete: changes before $boundaryDate are not included';
+  }
+
+  @override
+  String get columnChange => 'Change';
+
+  @override
+  String get columnEdgeType => 'Edge type';
+
+  @override
+  String get columnDeclarer => 'Declarer';
+
+  @override
+  String get columnCounterpart => 'Counterpart';
+
+  @override
+  String get columnCommit => 'Commit';
+
+  @override
+  String get columnDate => 'Date';
+
+  @override
+  String get columnAuthorMessage => 'Author and message';
+
+  @override
+  String get historyEventAdded => 'Added';
+
+  @override
+  String get historyEventRemoved => 'Removed';
+
+  @override
+  String historyEventAuthorMessage(String author, String subject) {
+    return '$author: $subject';
+  }
+
+  @override
+  String historyEventA11yLabel(
+    String change,
+    String edgeType,
+    String declarer,
+    String counterpart,
+    String hash,
+    String date,
+    String author,
+    String subject,
+  ) {
+    return '$change $edgeType, $declarer to $counterpart, commit $hash, $date, $author: $subject';
+  }
+
+  @override
+  String get historyEmptyMessage => 'No relationship changes in this period';
+
+  @override
+  String get historyShowAllAction => 'Show all history';
+
+  @override
+  String get historyNoCommitsMessage => 'This project has no commits yet';
+
+  @override
+  String get historyNotGitMessage =>
+      'This project is not a git repository, so its change history cannot be read';
+
+  @override
+  String get historyGitMissingMessage => 'The git command was not found';
+
+  @override
+  String get historyGitMissingExplanation =>
+      'Install git, or make sure git is on your PATH';
+
+  @override
+  String get historyRecheckAction => 'Check again';
+
+  @override
+  String get historyLoadFailedMessage => 'Failed to read git history';
+
+  @override
+  String historyLoadFailedDetail(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get retryAction => 'Retry';
+
+  @override
+  String get historyCancelledMessage => 'Reading was cancelled';
+
+  @override
+  String get historyReloadAction => 'Read again';
 }

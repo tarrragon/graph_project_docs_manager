@@ -1473,6 +1473,219 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed'**
   String get preferencesNoEditorsExplanation;
+
+  /// SPEC-004 §4.0.6 1.131：側欄 nav-item-history 與 §10 頁首標題
+  ///
+  /// In zh, this message translates to:
+  /// **'變更記錄'**
+  String get navHistory;
+
+  /// SPEC-004 §4.0.6 1.131：§10 讀取中訊息
+  ///
+  /// In zh, this message translates to:
+  /// **'正在讀取 git 歷史'**
+  String get historyLoading;
+
+  /// SPEC-004 §4.0.6 1.131：§10 讀取中計數文字
+  ///
+  /// In zh, this message translates to:
+  /// **'已處理 {count} 個 commit'**
+  String historyLoadingProcessedCount(int count);
+
+  /// SPEC-004 §4.0.6 1.131：期間分段 option-history-period-default
+  ///
+  /// In zh, this message translates to:
+  /// **'預設期間'**
+  String get historyPeriodDefaultLabel;
+
+  /// SPEC-004 §4.0.6 1.131：期間分段 option-history-period-recent30，兼作期間描述
+  ///
+  /// In zh, this message translates to:
+  /// **'最近 30 天'**
+  String get historyPeriodRecent30Label;
+
+  /// SPEC-004 §4.0.6 1.131：期間分段 option-history-period-all，兼作期間描述
+  ///
+  /// In zh, this message translates to:
+  /// **'全部歷史'**
+  String get historyPeriodAllLabel;
+
+  /// SPEC-004 §4.0.6 1.131：期間分段各段 semanticLabel
+  ///
+  /// In zh, this message translates to:
+  /// **'以「{period}」篩選事件'**
+  String historyPeriodSelectA11yHint(String period);
+
+  /// SPEC-004 §4.0.6 1.131：預設期間且有基準 tag 時的期間描述
+  ///
+  /// In zh, this message translates to:
+  /// **'{tag} 之後'**
+  String historyPeriodSinceTag(String tag);
+
+  /// SPEC-004 §4.0.6 1.131：篩選列下方摘要
+  ///
+  /// In zh, this message translates to:
+  /// **'{period} · {count} 筆事件'**
+  String historyPeriodSummary(String period, int count);
+
+  /// SPEC-004 §4.0.6 1.131：AppCheckbox label
+  ///
+  /// In zh, this message translates to:
+  /// **'包含 ticket 建檔'**
+  String get historyIncludeTicketCreatedLabel;
+
+  /// SPEC-004 §4.0.6 1.131：淺層 clone 徽章，日期為 yyyy-MM-dd
+  ///
+  /// In zh, this message translates to:
+  /// **'歷史不完整：早於 {boundaryDate} 的變更不在其中'**
+  String historyShallowCloneBadge(String boundaryDate);
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 欄首
+  ///
+  /// In zh, this message translates to:
+  /// **'變動'**
+  String get columnChange;
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 欄首
+  ///
+  /// In zh, this message translates to:
+  /// **'邊型'**
+  String get columnEdgeType;
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 欄首
+  ///
+  /// In zh, this message translates to:
+  /// **'宣告端'**
+  String get columnDeclarer;
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 欄首
+  ///
+  /// In zh, this message translates to:
+  /// **'對端'**
+  String get columnCounterpart;
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 欄首
+  ///
+  /// In zh, this message translates to:
+  /// **'Commit'**
+  String get columnCommit;
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 欄首
+  ///
+  /// In zh, this message translates to:
+  /// **'日期'**
+  String get columnDate;
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 欄首
+  ///
+  /// In zh, this message translates to:
+  /// **'作者與訊息'**
+  String get columnAuthorMessage;
+
+  /// SPEC-004 §4.0.6 1.131：變動欄 Badge positive
+  ///
+  /// In zh, this message translates to:
+  /// **'新增'**
+  String get historyEventAdded;
+
+  /// SPEC-004 §4.0.6 1.131：變動欄 Badge negative
+  ///
+  /// In zh, this message translates to:
+  /// **'移除'**
+  String get historyEventRemoved;
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 作者與訊息欄
+  ///
+  /// In zh, this message translates to:
+  /// **'{author}：{subject}'**
+  String historyEventAuthorMessage(String author, String subject);
+
+  /// SPEC-004 §4.0.6 1.131：historyEvent 列朗讀
+  ///
+  /// In zh, this message translates to:
+  /// **'{change} {edgeType}，{declarer} 至 {counterpart}，commit {hash}，{date}，{author}：{subject}'**
+  String historyEventA11yLabel(
+    String change,
+    String edgeType,
+    String declarer,
+    String counterpart,
+    String hash,
+    String date,
+    String author,
+    String subject,
+  );
+
+  /// SPEC-004 §4.0.6 1.131：期間內無事件
+  ///
+  /// In zh, this message translates to:
+  /// **'此期間沒有關係變動'**
+  String get historyEmptyMessage;
+
+  /// SPEC-004 §4.0.6 1.131：action-history-show-all
+  ///
+  /// In zh, this message translates to:
+  /// **'顯示全部歷史'**
+  String get historyShowAllAction;
+
+  /// SPEC-004 §4.0.6 1.131：尚無 commit 變體
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案尚無 commit'**
+  String get historyNoCommitsMessage;
+
+  /// SPEC-004 §4.0.6 1.131：非 git 專案
+  ///
+  /// In zh, this message translates to:
+  /// **'此專案不是 git repo，無法讀取變更記錄'**
+  String get historyNotGitMessage;
+
+  /// SPEC-004 §4.0.6 1.131：找不到 git 訊息
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到 git 指令'**
+  String get historyGitMissingMessage;
+
+  /// SPEC-004 §4.0.6 1.131：找不到 git 說明
+  ///
+  /// In zh, this message translates to:
+  /// **'請安裝 git，或確認 git 位於 PATH 中'**
+  String get historyGitMissingExplanation;
+
+  /// SPEC-004 §4.0.6 1.131：action-history-recheck
+  ///
+  /// In zh, this message translates to:
+  /// **'重新檢查'**
+  String get historyRecheckAction;
+
+  /// SPEC-004 §4.0.6 1.131：讀取失敗訊息
+  ///
+  /// In zh, this message translates to:
+  /// **'讀取 git 歷史失敗'**
+  String get historyLoadFailedMessage;
+
+  /// SPEC-004 §4.0.6 1.131：讀取失敗說明，reason 為 stderr 摘要原文
+  ///
+  /// In zh, this message translates to:
+  /// **'原因：{reason}'**
+  String historyLoadFailedDetail(String reason);
+
+  /// SPEC-004 §4.0.6 1.131：action-history-retry
+  ///
+  /// In zh, this message translates to:
+  /// **'重試'**
+  String get retryAction;
+
+  /// SPEC-004 §4.0.6 1.131：已取消訊息
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消讀取'**
+  String get historyCancelledMessage;
+
+  /// SPEC-004 §4.0.6 1.131：action-history-reload
+  ///
+  /// In zh, this message translates to:
+  /// **'重新讀取'**
+  String get historyReloadAction;
 }
 
 class _AppLocalizationsDelegate

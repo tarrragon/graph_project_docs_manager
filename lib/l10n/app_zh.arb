@@ -1558,5 +1558,242 @@
   "preferencesNoEditorsExplanation": "本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed",
   "@preferencesNoEditorsExplanation": {
     "description": "SPEC-001 §9 無可選編輯器狀態 state-preferences-no-editors 的說明文字；支援清單與 SPEC-003 §2.2〈編輯器對照表〉同步"
+  },
+
+  "navHistory": "變更記錄",
+  "@navHistory": {
+    "description": "SPEC-004 §4.0.6 1.131：側欄 nav-item-history 與 §10 頁首標題"
+  },
+
+  "historyLoading": "正在讀取 git 歷史",
+  "@historyLoading": {
+    "description": "SPEC-004 §4.0.6 1.131：§10 讀取中訊息"
+  },
+
+  "historyLoadingProcessedCount": "已處理 {count} 個 commit",
+  "@historyLoadingProcessedCount": {
+    "description": "SPEC-004 §4.0.6 1.131：§10 讀取中計數文字",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "historyPeriodDefaultLabel": "預設期間",
+  "@historyPeriodDefaultLabel": {
+    "description": "SPEC-004 §4.0.6 1.131：期間分段 option-history-period-default"
+  },
+
+  "historyPeriodRecent30Label": "最近 30 天",
+  "@historyPeriodRecent30Label": {
+    "description": "SPEC-004 §4.0.6 1.131：期間分段 option-history-period-recent30，兼作期間描述"
+  },
+
+  "historyPeriodAllLabel": "全部歷史",
+  "@historyPeriodAllLabel": {
+    "description": "SPEC-004 §4.0.6 1.131：期間分段 option-history-period-all，兼作期間描述"
+  },
+
+  "historyPeriodSelectA11yHint": "以「{period}」篩選事件",
+  "@historyPeriodSelectA11yHint": {
+    "description": "SPEC-004 §4.0.6 1.131：期間分段各段 semanticLabel",
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+
+  "historyPeriodSinceTag": "{tag} 之後",
+  "@historyPeriodSinceTag": {
+    "description": "SPEC-004 §4.0.6 1.131：預設期間且有基準 tag 時的期間描述",
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+
+  "historyPeriodSummary": "{period} · {count} 筆事件",
+  "@historyPeriodSummary": {
+    "description": "SPEC-004 §4.0.6 1.131：篩選列下方摘要",
+    "placeholders": {
+      "period": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "historyIncludeTicketCreatedLabel": "包含 ticket 建檔",
+  "@historyIncludeTicketCreatedLabel": {
+    "description": "SPEC-004 §4.0.6 1.131：AppCheckbox label"
+  },
+
+  "historyShallowCloneBadge": "歷史不完整：早於 {boundaryDate} 的變更不在其中",
+  "@historyShallowCloneBadge": {
+    "description": "SPEC-004 §4.0.6 1.131：淺層 clone 徽章，日期為 yyyy-MM-dd",
+    "placeholders": {
+      "boundaryDate": {
+        "type": "String"
+      }
+    }
+  },
+
+  "columnChange": "變動",
+  "@columnChange": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 欄首"
+  },
+
+  "columnEdgeType": "邊型",
+  "@columnEdgeType": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 欄首"
+  },
+
+  "columnDeclarer": "宣告端",
+  "@columnDeclarer": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 欄首"
+  },
+
+  "columnCounterpart": "對端",
+  "@columnCounterpart": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 欄首"
+  },
+
+  "columnCommit": "Commit",
+  "@columnCommit": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 欄首"
+  },
+
+  "columnDate": "日期",
+  "@columnDate": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 欄首"
+  },
+
+  "columnAuthorMessage": "作者與訊息",
+  "@columnAuthorMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 欄首"
+  },
+
+  "historyEventAdded": "新增",
+  "@historyEventAdded": {
+    "description": "SPEC-004 §4.0.6 1.131：變動欄 Badge positive"
+  },
+
+  "historyEventRemoved": "移除",
+  "@historyEventRemoved": {
+    "description": "SPEC-004 §4.0.6 1.131：變動欄 Badge negative"
+  },
+
+  "historyEventAuthorMessage": "{author}：{subject}",
+  "@historyEventAuthorMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 作者與訊息欄",
+    "placeholders": {
+      "author": {
+        "type": "String"
+      },
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
+
+  "historyEventA11yLabel": "{change} {edgeType}，{declarer} 至 {counterpart}，commit {hash}，{date}，{author}：{subject}",
+  "@historyEventA11yLabel": {
+    "description": "SPEC-004 §4.0.6 1.131：historyEvent 列朗讀",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "edgeType": {
+        "type": "String"
+      },
+      "declarer": {
+        "type": "String"
+      },
+      "counterpart": {
+        "type": "String"
+      },
+      "hash": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "author": {
+        "type": "String"
+      },
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
+
+  "historyEmptyMessage": "此期間沒有關係變動",
+  "@historyEmptyMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：期間內無事件"
+  },
+
+  "historyShowAllAction": "顯示全部歷史",
+  "@historyShowAllAction": {
+    "description": "SPEC-004 §4.0.6 1.131：action-history-show-all"
+  },
+
+  "historyNoCommitsMessage": "此專案尚無 commit",
+  "@historyNoCommitsMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：尚無 commit 變體"
+  },
+
+  "historyNotGitMessage": "此專案不是 git repo，無法讀取變更記錄",
+  "@historyNotGitMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：非 git 專案"
+  },
+
+  "historyGitMissingMessage": "找不到 git 指令",
+  "@historyGitMissingMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：找不到 git 訊息"
+  },
+
+  "historyGitMissingExplanation": "請安裝 git，或確認 git 位於 PATH 中",
+  "@historyGitMissingExplanation": {
+    "description": "SPEC-004 §4.0.6 1.131：找不到 git 說明"
+  },
+
+  "historyRecheckAction": "重新檢查",
+  "@historyRecheckAction": {
+    "description": "SPEC-004 §4.0.6 1.131：action-history-recheck"
+  },
+
+  "historyLoadFailedMessage": "讀取 git 歷史失敗",
+  "@historyLoadFailedMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：讀取失敗訊息"
+  },
+
+  "historyLoadFailedDetail": "原因：{reason}",
+  "@historyLoadFailedDetail": {
+    "description": "SPEC-004 §4.0.6 1.131：讀取失敗說明，reason 為 stderr 摘要原文",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+
+  "retryAction": "重試",
+  "@retryAction": {
+    "description": "SPEC-004 §4.0.6 1.131：action-history-retry"
+  },
+
+  "historyCancelledMessage": "已取消讀取",
+  "@historyCancelledMessage": {
+    "description": "SPEC-004 §4.0.6 1.131：已取消訊息"
+  },
+
+  "historyReloadAction": "重新讀取",
+  "@historyReloadAction": {
+    "description": "SPEC-004 §4.0.6 1.131：action-history-reload"
   }
 }

@@ -843,4 +843,131 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get preferencesNoEditorsExplanation =>
       '本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed';
+
+  @override
+  String get navHistory => '變更記錄';
+
+  @override
+  String get historyLoading => '正在讀取 git 歷史';
+
+  @override
+  String historyLoadingProcessedCount(int count) {
+    return '已處理 $count 個 commit';
+  }
+
+  @override
+  String get historyPeriodDefaultLabel => '預設期間';
+
+  @override
+  String get historyPeriodRecent30Label => '最近 30 天';
+
+  @override
+  String get historyPeriodAllLabel => '全部歷史';
+
+  @override
+  String historyPeriodSelectA11yHint(String period) {
+    return '以「$period」篩選事件';
+  }
+
+  @override
+  String historyPeriodSinceTag(String tag) {
+    return '$tag 之後';
+  }
+
+  @override
+  String historyPeriodSummary(String period, int count) {
+    return '$period · $count 筆事件';
+  }
+
+  @override
+  String get historyIncludeTicketCreatedLabel => '包含 ticket 建檔';
+
+  @override
+  String historyShallowCloneBadge(String boundaryDate) {
+    return '歷史不完整：早於 $boundaryDate 的變更不在其中';
+  }
+
+  @override
+  String get columnChange => '變動';
+
+  @override
+  String get columnEdgeType => '邊型';
+
+  @override
+  String get columnDeclarer => '宣告端';
+
+  @override
+  String get columnCounterpart => '對端';
+
+  @override
+  String get columnCommit => 'Commit';
+
+  @override
+  String get columnDate => '日期';
+
+  @override
+  String get columnAuthorMessage => '作者與訊息';
+
+  @override
+  String get historyEventAdded => '新增';
+
+  @override
+  String get historyEventRemoved => '移除';
+
+  @override
+  String historyEventAuthorMessage(String author, String subject) {
+    return '$author：$subject';
+  }
+
+  @override
+  String historyEventA11yLabel(
+    String change,
+    String edgeType,
+    String declarer,
+    String counterpart,
+    String hash,
+    String date,
+    String author,
+    String subject,
+  ) {
+    return '$change $edgeType，$declarer 至 $counterpart，commit $hash，$date，$author：$subject';
+  }
+
+  @override
+  String get historyEmptyMessage => '此期間沒有關係變動';
+
+  @override
+  String get historyShowAllAction => '顯示全部歷史';
+
+  @override
+  String get historyNoCommitsMessage => '此專案尚無 commit';
+
+  @override
+  String get historyNotGitMessage => '此專案不是 git repo，無法讀取變更記錄';
+
+  @override
+  String get historyGitMissingMessage => '找不到 git 指令';
+
+  @override
+  String get historyGitMissingExplanation => '請安裝 git，或確認 git 位於 PATH 中';
+
+  @override
+  String get historyRecheckAction => '重新檢查';
+
+  @override
+  String get historyLoadFailedMessage => '讀取 git 歷史失敗';
+
+  @override
+  String historyLoadFailedDetail(String reason) {
+    return '原因：$reason';
+  }
+
+  @override
+  String get retryAction => '重試';
+
+  @override
+  String get historyCancelledMessage => '已取消讀取';
+
+  @override
+  String get historyReloadAction => '重新讀取';
 }
