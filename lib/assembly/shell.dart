@@ -30,6 +30,7 @@ import '../screens/gap_report/scan_notification_controller.dart';
 import '../screens/node_detail/node_detail_screen.dart';
 import '../screens/ticket_list/ticket_list_screen.dart';
 import '../screens/preferences/preferences_panel.dart';
+import '../screens/shortcuts/shortcuts_panel.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
 import '../services/macos_preferences_channel.dart';
 import '../app/project_switcher_providers.dart';
@@ -178,6 +179,14 @@ class _AppShellState extends ConsumerState<AppShell>
     // 因 `_scaffolds.isEmpty` 直接拋出斷言錯誤——純 `Material` 無法滿足
     // 此前提，屬既有設計缺口，隨本票一併修正）。
     final isPreferencesOpen = ref.watch(preferencesOpenProvider);
+    final isShortcutsOpen = ref.watch(shortcutsOpenProvider);
+    // 兩面板互斥（SPEC-003 §3.8、§3.10）：開一個時先關另一個。
+    ref.listen<bool>(preferencesOpenProvider, (_, open) {
+      if (open) ref.read(shortcutsOpenProvider.notifier).state = false;
+    });
+    ref.listen<bool>(shortcutsOpenProvider, (_, open) {
+      if (open) ref.read(preferencesOpenProvider.notifier).state = false;
+    });
     return Scaffold(
       body: Stack(
         children: [
@@ -208,6 +217,22 @@ class _AppShellState extends ConsumerState<AppShell>
                     testKey: Key('nav-item-${item.name}'),
                   ),
               ],
+              bottomItems: [
+                components.NavItem.action(
+                  icon: const components.AppIcon(icon: Icons.settings_outlined),
+                  label: l10n.sidebarSettingsLabel,
+                  onTap: () =>
+                      ref.read(preferencesOpenProvider.notifier).state = true,
+                  testKey: const Key('nav-action-preferences'),
+                ),
+                components.NavItem.action(
+                  icon: const components.AppIcon(icon: Icons.keyboard_outlined),
+                  label: l10n.keyboardShortcutsTitle,
+                  onTap: () =>
+                      ref.read(shortcutsOpenProvider.notifier).state = true,
+                  testKey: const Key('nav-action-shortcuts'),
+                ),
+              ],
               pages: [
                 for (final item in AppDestination.values)
                   components.PageColumn(
@@ -237,6 +262,7 @@ class _AppShellState extends ConsumerState<AppShell>
             ),
           ),
           if (isPreferencesOpen) const Center(child: PreferencesPanel()),
+          if (isShortcutsOpen) const Center(child: ShortcutsPanel()),
         ],
       ),
     );
