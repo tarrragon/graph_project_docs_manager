@@ -1114,4 +1114,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String shortcutRowA11yLabel(String keys, String action, String context) {
     return '$keys: $action, $context';
   }
+
+  @override
+  String get sourceChainTitle => 'Source chain';
+
+  @override
+  String sourceChainNoUpstream(String layer) {
+    return '(Missing upstream $layer)';
+  }
 }

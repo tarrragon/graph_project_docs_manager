@@ -284,5 +284,7 @@
   "shortcutContextFilterMenuOpen": "While a filter menu is open in the Ticket list",
   "shortcutContextPanelOpen": "While either panel is open",
   "shortcutContextFilterFocused": "When a filter button in the Ticket list has focus",
-  "shortcutRowA11yLabel": "{keys}: {action}, {context}"
+  "shortcutRowA11yLabel": "{keys}: {action}, {context}",
+  "sourceChainTitle": "Source chain",
+  "sourceChainNoUpstream": "(Missing upstream {layer})"
 }

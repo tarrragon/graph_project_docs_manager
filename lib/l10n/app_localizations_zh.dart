@@ -1040,4 +1040,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String shortcutRowA11yLabel(String keys, String action, String context) {
     return '$keys：$action，$context';
   }
+
+  @override
+  String get sourceChainTitle => '來源鏈';
+
+  @override
+  String sourceChainNoUpstream(String layer) {
+    return '（缺上游 $layer）';
+  }
 }
