@@ -1795,5 +1795,18 @@
   "historyReloadAction": "重新讀取",
   "@historyReloadAction": {
     "description": "SPEC-004 §4.0.6 1.131：action-history-reload"
+  },
+  "preferencesEditorAppliedMessage": "已改用 {editor}，下次開啟原始檔時生效",
+  "@preferencesEditorAppliedMessage": {
+    "description": "SPEC-003 §3.8 編輯器選項：選定值寫入成功後的暫態提示（AppSnackBar.plain），editor 為該選項的顯示標籤",
+    "placeholders": {
+      "editor": {
+        "type": "String"
+      }
+    }
+  },
+  "preferencesEditorSaveFailedMessage": "無法儲存編輯器設定",
+  "@preferencesEditorSaveFailedMessage": {
+    "description": "SPEC-003 §3.8 編輯器選項：選定值寫入失敗後的暫態提示（AppSnackBar.plain）"
   }
 }

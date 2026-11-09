@@ -1034,4 +1034,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyReloadAction => 'Read again';
+
+  @override
+  String preferencesEditorAppliedMessage(String editor) {
+    return 'Now using $editor; takes effect the next time a source file is opened';
+  }
+
+  @override
+  String get preferencesEditorSaveFailedMessage =>
+      'Could not save the editor setting';
 }
