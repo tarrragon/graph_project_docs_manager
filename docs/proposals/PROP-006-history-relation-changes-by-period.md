@@ -13,7 +13,7 @@ priority: P1
 outputs:
   spec_refs: [SPEC-008, SPEC-001]
   usecase_refs: [UC-07]
-  ticket_refs: []
+  ticket_refs: [0.7.0-W1-012]
 
 related_proposals: [PROP-005, PROP-003]
 supersedes: null
@@ -186,4 +186,5 @@ History → Schema 出邊由規劃線決定，主控授權。
 | 規格 | docs/spec/history/SPEC-008-history-edge-change-events.md | 2026-11-09 | created |
 | 規格 | docs/spec/ui/SPEC-001-screen-state-matrix.md（§10，v1.80） | 2026-11-09 | created |
 | 用例 | docs/usecases/UC-07-review-relation-changes-in-a-period.md | 2026-11-09 | created |
-| Ticket | 執行期票於 `0.7.0-W1-012` 匯總建票後回填 | | pending |
+| Ticket | `0.7.0-W1-012.1`～`0.7.0-W1-012.14`（規格 DOC 2、紅燈設計 2、實作 8、整合測試 1、驗收 1），另有語料計數測試更新票，見 `0.7.0-W1-012` Solution | 2026-11-09 | created |
+| Ticket | `1.0.0-W3-657`（未選入 0.7.0 的延伸功能，停放區） | 2026-11-09 | created |

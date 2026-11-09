@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-006
 created: "2026-11-09"
 updated: "2026-11-09"
-version: "1.1"
+version: "1.2"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -17,7 +17,7 @@ runtime_surface: "yes"
 
 related_specs: [SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-008]
 related_usecases: []
-ticket_refs: []
+ticket_refs: [0.7.0-W1-012.5, 0.7.0-W1-012.6, 0.7.0-W1-012.7, 0.7.0-W1-012.8, 0.7.0-W1-012.9, 0.7.0-W1-012.10, 0.7.0-W1-012.11, 0.7.0-W1-012.12, 0.7.0-W1-012.13]
 ---
 
 # UC-07: 回顧一段期間內的關係變動
@@ -173,5 +173,6 @@ flow:
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.2 | 2026-11-09 | `ticket_refs` 回填 0.7.0 的九張實作票（012.5～012.13，lib/history 與 lib/screens/history 的承接票）；空值會使 UC 缺 `uc_ticket_refs` 必要邊（SPEC-007 FR-09〈孤島與缺必要邊〉），由主控覆核全套件時發現 |
 | 1.1 | 2026-11-09 | 多視角審查（saffron）修正：`cancel-reading`、`history-unavailable` 的 `return_to` 改為 `read-history`；`read-history` traverses 補 workspace、schema；淺層 clone 註明為疊加標示 |
 | 1.0 | 2026-11-09 | 初版（`0.7.0-W1-012` 規劃波，PROP-006） |
