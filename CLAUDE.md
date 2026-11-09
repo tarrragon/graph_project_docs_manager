@@ -65,7 +65,7 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 授權理由：框架缺陷存在於每一個 consumer 專案，逐次徵詢會使發現停在本地，而本地修會被下次
 `sync-pull` 以上游舊版覆蓋且無 canonical 記錄。判準客觀可查，且 observe 可刪。
 
-**本專案是 `component-contract-design` skill 的開發上游**（2026-09-29 用戶裁示）。其他 consumer 回報該 skill 的條文缺口時，除了觀測 canonical issue，也須在 active 版本建實作票、在本專案修正。完成後 sync-push 到 canonical；推送 skill 發佈庫（`skill-sync push`）仍需逐次授權。
+**本專案是 `component-contract-design` skill 的開發上游**（2026-09-29 用戶裁示）。其他 consumer 回報該 skill 的條文缺口時，除了觀測 canonical issue，也須在 active 版本建實作票、在本專案修正。完成後以 `skill-sync push` 送進 skill 發佈庫（`tarrragon/claude-skills`），不執行 `sync-push`；主控方發版前以 `skill-sync pull` 收入 canonical（框架 v3.0.0 起，`.claude/skills/framework-issue/references/escalation-flow.md`〈角色：主控方與 consumer〉）。`skill-sync push` 仍需逐次授權。
 
 **`.claude/` 框架的主控方已移到 `tarrragon/llm-dev`**（private，本機路徑 `~/project/llm-dev`；2026-11-09 用戶裁定，取代 2026-10-13 起由本專案擔任主控方的安排）。
 - 本專案改為一般 consumer：發現框架問題時只到 `tarrragon/claude` 開 framework issue，附上 `.claude/VERSION`，不在本專案修改框架內容。
@@ -73,12 +73,11 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 - 框架依 llm-dev 的 `docs/roadmap.md` 發版到 `tarrragon/claude`，每版打 `v<版號>` tag，從 v3.0.0 起算。本專案在發版後才執行 sync-pull。
 - 理由：開發與發佈分開，下游才知道每一版修了什麼、何時該拉。
 
-**框架修補的節奏**（2026-10-20 用戶裁示）：工作主目標是本專案的產品進度，框架修補是手段。
-- 發現框架問題照常建票。只有 P0／P1 bug 或用戶要求才派修，其餘觀測進 issue 後關閉本地票。
-- 清理線在兩種情況下開：同一 issue 第二次被標「拖慢專案」，或每個 minor 收尾時由用戶從 open issue 摘要中挑選。
-- 開清理線前要先有產品線在跑。
-- 同時修框架或工具的線不超過兩條。
-- 細則見 `.claude/skills/framework-issue/references/escalation-flow.md`〈修復時點：派修或累積到清理線〉。
+**框架修補的節奏**（2026-10-20 用戶裁示；2026-11-09 起依框架 v3.0.0 的 consumer 角色收窄）：工作主目標是本專案的產品進度。
+- 本專案是 consumer，不開修框架的線，也不派修框架。發現框架問題照常建票，回報後關閉本地票：到 `tarrragon/claude` 開 issue 或 observe，或直接通知 llm-dev session。P0／P1 也一樣回報，由主控方排入版本。
+- 碰到框架阻礙時，照常在回報中標「拖慢專案」，作為主控方分診的優先序依據。
+- 例外只有 component-contract-design，見上方「開發上游」一段。
+- 清理線與派修判準只適用主控方，見 `.claude/skills/framework-issue/references/escalation-flow.md`〈修復時點：派修或累積到清理線〉。
 
 **仍不在授權內**：`sync-push` 與 `skill-sync push`（同上段理由，那是改資產本體不是留一則可刪的觀測）、
 改他人 owner 的區段或 issue body、其他 remote 與其他 repo、以 `create_issue.py` 新開 issue
@@ -239,8 +238,12 @@ established），由 `0.6.0-W1-102`／`0.6.0-W1-103` 同批進 main，內嵌副�
 
 
 版本以 `docs/todolist.yaml` 為準。版本可以預先登記：major 起始時規劃其下
-固定的 minor 清單（各解決哪些 SPEC），minor 完成後分診一次、依 topic 定下固定
-數量的 patch。**不在任何已規劃版本內的項目，須經討論後明確決定延後**，
+固定的 minor 清單（各解決哪些 SPEC）。每個版本分規劃期與執行期，規劃結束即凍結。
+執行期只處理讓本版跑不起來的問題；其他發現依類別處理：
+- 本 minor 的承諾未達成：進 patch，patch 數量不預設
+- 改善、技術債、新能力：進下一個 minor 的候選池
+依據是框架 v3.0.0 的 `.claude/pm-rules/version-progression.md`〈兩期〉〈收斂：patch 線與 minor 推進〉（2026-11-09 用戶裁示，取代 2026-09-29「minor 完成後分診、依 topic 定下固定數量的 patch」）。
+**不在任何已規劃版本內的項目，須經討論後明確決定延後**，
 不以版本標籤代替討論（2026-09-29 決策，見 `docs/tech-decisions.md`）。
 
 | 版本 | 內容 | 狀態 |
