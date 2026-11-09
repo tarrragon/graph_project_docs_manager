@@ -4,8 +4,8 @@ title: "追溯一項需求的實現鏈"
 status: draft
 source_proposal: PROP-004
 created: "2026-08-26"
-updated: "2026-11-03"
-version: "1.5"
+updated: "2026-11-09"
+version: "1.6"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -66,8 +66,47 @@ ticket_refs: [0.1.0-W2-007, 0.1.0-W3-127, 0.1.0-W3-380, 0.1.0-W3-383, 0.3.3-W3-4
 原寫法的 `source_ticket` 是 ticket 之間的衍生邊，`implements_requirements` 也不是
 追溯視圖所取的邊，兩者都不在本場景的路徑上，已改寫。
 
-追溯視圖（SPEC-001 §3）只定義以 PROP 為根的樹，沒有「選定起點」的狀態或錨點，
-本場景需要的起點選擇、反向樹的呈現與缺口判定都尚未規格化；是否排入版本由 PM 裁定。
+**互動規格（v1.6）**：本版只交付 Ticket 起點，其他起點由後續版本承接。選定節點為 Ticket 時，節點詳情
+內嵌「來源鏈」區塊往上呈現；三跳邊型、讀取方向與缺口判定見 SPEC-001 §6〈來源鏈〉，互動反應見
+SPEC-003 §3.6〈來源鏈〉。
+
+| 向上跳 | 邊（`GRAPH_EDGE_TYPES` 鍵名） | 讀取方向 |
+|--------|------|------|
+| Ticket → UC | `uc_ticket_refs`（UC 的 `ticket_refs`） | 逆 forward 方向：找 `ticket_refs` 含該 ticket id 的 UC |
+| UC → SPEC | `spec_association`（UC 的 `related_specs`） | 沿 forward 方向：讀該 UC 的 `related_specs` |
+| SPEC → PROP | `provenance`（SPEC 的 `source_proposal`） | 沿 forward 方向：讀該 SPEC 的 `source_proposal` |
+
+#### GWT
+
+**場景 R1：完整上溯**
+- Given 最後完成輪次建圖可用，ticket T 被 UC U 的 `ticket_refs` 列出，U 的 `related_specs` 含 SPEC S，S 的 `source_proposal` 含 PROP P
+- When 使用者在節點詳情開啟 T
+- Then 來源鏈以 T 為起點，依序呈現 U、S、P 三層，各節點帶其 status，不顯示缺口標示
+
+**場景 R2：多 UC 指向同一票**
+- Given T 同時被 UC U1、U2 的 `ticket_refs` 列出
+- When 使用者在節點詳情開啟 T
+- Then U1、U2 皆作為 T 的上層節點出現且全部展開，各自往上呈現其 SPEC 與 PROP；同一 SPEC 或 PROP 經兩條路徑抵達時，於每條路徑下各出現一次
+
+**場景 R3：票未被任何 UC 列出**
+- Given 沒有任何 UC 的 `ticket_refs` 含 T
+- When 使用者在節點詳情開啟 T
+- Then 來源鏈只有 T 下方一處虛線框缺口（缺上游）
+
+**場景 R4：中間層缺上游**
+- Given U 的 `related_specs` 為空，或 S 的 `source_proposal` 為 null
+- When 使用者在節點詳情開啟 T
+- Then 該 UC 或 SPEC 下方以虛線框標示缺口，其餘分支照常展開；缺口標示可跳轉破洞報告
+
+**場景 R5：指向不存在的節點**
+- Given U 的 `related_specs` 只列出圖上不存在的 SPEC id
+- When 使用者在節點詳情開啟 T
+- Then 該 id 不成節點，U 的缺口判定與 `related_specs` 為空相同（場景 R4）
+
+**場景 R6：點選上層節點**
+- Given 來源鏈已呈現
+- When 使用者點選其中任一節點
+- Then 節點詳情改顯示該節點，與點選關聯項相同；返回鍵回到進入節點詳情之前的畫面
 
 ## 流程拓撲（結構化 Flow 區塊）
 
@@ -147,13 +186,14 @@ flow:
 - [ ] 樹狀結構完整呈現四層，缺口層以視覺差異標示而非省略
       （第三跳無邊、第二跳欄位未定，見 §9）
 - [ ] 反向追溯可自任一層出發，不限於自 PROP 開始
-      （各層向上欄位已具備，見〈反向追溯〉；畫面互動未規格化）
+      （本版只交付 Ticket 起點，見〈反向追溯〉場景 R1–R6；其他起點由後續版本承接）
 - [ ] 點選節點開啟的詳情與該節點一致，且部分損壞的節點仍能開啟
 
 ## 變更歷史
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.6 | 2026-11-09 | 〈反向追溯〉補互動規格（用戶裁決 2026-11-09）：Ticket 起點以節點詳情內嵌「來源鏈」呈現；三跳邊型（`uc_ticket_refs`／`spec_association`／`provenance`）與讀取方向表、GWT 場景 R1–R6；刪「尚未規格化」段，改指向 SPEC-001 §6、SPEC-003 §3.6〈來源鏈〉；驗收第二項保留原文並補範圍註記。flow 區塊不動 |
 | 1.5 | 2026-11-03 | `related_specs` 對齊 SPEC 端宣告（`0.6.0-W1-116`，用戶裁定 B：UC 列出畫面所依賴的每一份 SPEC，橫切 SPEC 亦列）：補 SPEC-002、SPEC-003、SPEC-004、SPEC-007（追溯樹由建圖結果衍生）；不動正文與結構化 flow |
 | 1.4 | 2026-11-03 | `0.6.0-W1-104`：`ticket_refs` 由 `[]` 回填 5 張實作票（依該票〈入選判準修訂版〉，以 lib/screens/trace/ 為對照目錄）；不動正文與結構化 flow 區塊 |
 | 1.3 | 2026-11-02 | `0.6.0-W1-110`：〈反向追溯〉依 UC → Ticket 新邊重評——各層向上欄位已具備（Ticket → UC 反查 `ticket_refs`、UC → SPEC 取 `related_specs`、SPEC → PROP 取 `source_proposal`），更正原寫法的 `source_ticket`／`implements_requirements` 路徑；畫面互動未規格化，0.6 不涵蓋，排入與否由 PM 裁定。驗收條件註記同步。flow 區塊不動 |
