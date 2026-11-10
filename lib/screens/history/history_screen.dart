@@ -128,7 +128,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         actionKey: 'action-history-recheck',
         kind: _RecoverKind.gitMissing,
       ),
-      HistoryFailed() => _FailedView(state: state),
+      HistoryFailed(:final reason, :final stderrSummary) => _FailedView(
+        summary: stderrSummary.isEmpty ? reason.name : stderrSummary,
+      ),
+      HistoryScanRoundUnavailable() => const _FailedView(
+        summary: 'scanRoundUnavailable', // i18n-exempt: 技術識別字，同 reason.name
+      ),
       HistoryCancelled() => const _RecoverView(
         stateKey: 'state-history-cancelled',
         actionKey: 'action-history-reload',
@@ -203,16 +208,13 @@ class _RecoverView extends ConsumerWidget {
 
 /// 讀取失敗：訊息、stderr 摘要原文、重試。
 class _FailedView extends ConsumerWidget {
-  const _FailedView({required this.state});
+  const _FailedView({required this.summary});
 
-  final HistoryFailed state;
+  final String summary;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final summary = state.stderrSummary.isEmpty
-        ? state.reason.name
-        : state.stderrSummary;
     return EmptyState(
       variant: EmptyStateVariant.page,
       testKey: const Key('state-history-load-failed'),

@@ -78,18 +78,50 @@ String? _workspaceRootOf(WorkspaceState s) =>
 HistoryScanInputs _inputsFromSchemaState(Ref ref) {
   final domain = ref.watch(domainViewStateProvider);
   final degraded = ref.watch(degradedSchemaProvider);
-  final round = ref.watch(scanRoundProvider);
-  final table = round is ScanRoundCompleted
-      ? round.result.schemaResolution.typeTable
-      : null;
-  final resolution = round is ScanRoundCompleted
-      ? round.result.edgeResolution
-      : null;
+  // 取本工作區最近一次完成的輪次：重掃、取消、失敗期間仍保留上一輪。
+  final round = ref.watch(lastCompletedRoundProvider);
+  final table = round?.schemaResolution.typeTable;
   return HistoryScanInputs(
     schemaReadiness: _readinessOf(domain, degraded),
     tableIdentity: _tableIdentityOf(table, degraded),
-    createBuilder: () => _newBuilder(ref, table, resolution),
+    createBuilder: () => _newBuilder(table, round?.edgeResolution),
+    awaitTypeTable: () => _awaitTypeTable(ref),
   );
+}
+
+/// 需求：[SPEC-008 FR-09 規則 1] 尚無完成輪次時等輪次完成；已有則沿用上一輪。
+/// 回傳 `false`：輪次結束而沒有結果（失敗，或被取消且沒有後續輪次）。
+Future<bool> _awaitTypeTable(Ref ref) async {
+  if (ref.read(lastCompletedRoundProvider) != null) {
+    developer.log(
+      // i18n-exempt: 開發者 log
+      'history waits no round: reuse last completed round',
+      name: _tag,
+    );
+    return true;
+  }
+  final notifier = ref.read(scanRoundProvider.notifier);
+  final watch = Stopwatch()..start();
+  // i18n-exempt: 開發者 log
+  developer.log('history waits for first round: start', name: _tag);
+  while (true) {
+    final result = await notifier.ensureRound();
+    if (result != null) return _logWaitEnd(watch, 'completed', true);
+    // 等待中的輪次被重掃取代：接續等新輪次；否則輪次不可用。
+    if (ref.read(scanRoundProvider) is! ScanRoundRunning) {
+      return _logWaitEnd(watch, 'unavailable', false);
+    }
+  }
+}
+
+bool _logWaitEnd(Stopwatch watch, String outcome, bool ok) {
+  developer.log(
+    // i18n-exempt: 開發者 log
+    'history waits for first round: end outcome=$outcome waitedMs=${watch.elapsedMilliseconds}',
+    name: _tag,
+    level: ok ? 500 : 900,
+  );
+  return ok;
 }
 
 /// 需求：[SPEC-008 FR-08 規則 6] 三個阻擋狀態不掃描；降級檢視時以內建表掃描。
@@ -106,21 +138,24 @@ HistorySchemaReadiness _readinessOf(DomainViewState domain, bool degraded) {
 }
 
 String _tableIdentityOf(TypeTable? table, bool degraded) {
+  // 尚無完成輪次：識別不得與任何實際型別表（含空邊型表）相同。
+  if (table == null) return 'none';
   final edges = [
-    for (final e in table?.edgeTypes?.values ?? const <EdgeTypeDecl>[])
+    for (final e in table.edgeTypes?.values ?? const <EdgeTypeDecl>[])
       '${e.name}/${e.layer}/${e.forwardField}/${e.edgeClass}',
   ]..sort();
-  return '${degraded ? 'builtin' : 'project'}:${Object.hashAll(edges)}';
+  // 事件的 ticket 旗標與 closed_by 略過規則取自節點型別的 id_pattern。
+  final idPatterns = [
+    for (final e in table.nodeTypes.entries)
+      if (e.key != 'FlowStep') '${e.key}=${e.value.idPattern}',
+  ]..sort();
+  return '${degraded ? 'builtin' : 'project'}:'
+      '${Object.hashAll(edges)}:${Object.hashAll(idPatterns)}';
 }
 
 /// 事件建構器：使用中邊型取內建表決議後，限縮到實際型別表宣告的邊型；
 /// ticket 與 closed_by 略過規則的 id_pattern 取自實際型別表。
-EdgeEventBuilder _newBuilder(
-  Ref ref,
-  TypeTable? table,
-  EdgeTypeResolution? roundResolution,
-) {
-  final resolution = roundResolution ?? _fallbackResolution(ref);
+EdgeEventBuilder _newBuilder(TypeTable? table, EdgeTypeResolution? resolution) {
   final declared = table?.edgeTypes?.keys.toSet();
   final active = (resolution?.activeEdgeTypes ?? const <EdgeTypeEntry>[])
       .where((e) => declared == null || declared.contains(e.name))
@@ -143,16 +178,6 @@ EdgeEventBuilder _newBuilder(
       ],
     ),
     ticketIdPattern: nodeTypes['Ticket']?.idRegExp ?? RegExp(r'(?!)'),
-  );
-}
-
-/// 本輪未記錄決議結果時（輪次未完成或替身）：以內建表同時作專案表決議。
-EdgeTypeResolution? _fallbackResolution(Ref ref) {
-  final builtin = ref.read(builtinTrackingSchemaJsonProvider).value;
-  if (builtin == null) return null;
-  return resolveEdgeTypes(
-    projectSchemaJson: builtin,
-    builtinSchemaJson: builtin,
   );
 }
 
@@ -200,7 +225,7 @@ class HistoryNotifier extends Notifier<HistoryViewState> {
 
   /// 需求：[SPEC-008 FR-09] 前置檢查期間維持先前狀態；非 git 直接降級。
   Future<void> _load({required bool force}) async {
-    final inputs = ref.read(historyScanInputsProvider);
+    var inputs = ref.read(historyScanInputsProvider);
     if (inputs.schemaReadiness == HistorySchemaReadiness.blocked) {
       state = const HistorySchemaBlocked();
       return;
@@ -210,6 +235,17 @@ class HistoryNotifier extends Notifier<HistoryViewState> {
     _abandonActiveScan();
     final token = _generation;
     if (state is! HistoryLoaded) state = const HistoryLoading();
+    final hasTable = await inputs.awaitTypeTable();
+    if (token != _generation) return;
+    if (!hasTable) {
+      _terminal(const HistoryScanRoundUnavailable());
+      return;
+    }
+    inputs = ref.read(historyScanInputsProvider);
+    if (inputs.schemaReadiness == HistorySchemaReadiness.blocked) {
+      state = const HistorySchemaBlocked();
+      return;
+    }
     final port = ref.read(historyGitPortProvider);
     final outcome = await port.preflight(root);
     if (token != _generation) return;
