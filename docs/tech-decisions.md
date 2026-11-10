@@ -2076,3 +2076,26 @@ PROP-005 §0.7 的版本契約要求記錄單次掃描的成本量級。IT-H1 �
 **實測**（2026-11-10，`git log --no-merges -- lib/`，463 個觸及 `lib/` 的 commit）：8 個 domain 兩兩之間的共現率（同時觸及兩者的 commit 數 ÷ 兩者中較少的那個）最高為 0.40（graph × ticket_detail，2 筆），沒有任何一對接近永遠一起改。
 
 **定案**：domain 數量只觸發檢查。新增 domain 時，對最近鄰 domain 跑 SRP 三問與共現檢查，通過即可新增。edit domain 對 corpus 的 SRP 三問見 `1.0.0-W3-553` Solution。§4.5 的改寫由 `1.0.0-W3-553.1` 承接。
+
+## 補記：2026-11-10 — structured log 設計八項裁定（用戶裁定，`1.0.0-W3-553.2`）
+
+承接〈補記：2026-11-10 — 1.0 編輯能力四項架構決策定案〉子決策 3。候選與利弊見 `1.0.0-W3-553.2` 的 Solution；用戶經 AUQ 兩輪裁定。〈2026-08-27〉裁決二、三、四不變：structured log 是畫面之外新增的記錄載體，畫面錯誤態照舊。
+
+| 題目 | 定案 | 未採候選 |
+|---|---|---|
+| 記錄格式 | JSON Lines，每行一筆記錄信封 | logfmt |
+| 錯誤分類 | 依來源：platform_io／external_process／parse／gate_blocked／internal | 依可恢復性；兩軸並記 |
+| 落地位置 | `~/Library/Logs/<bundle id>/`，由 App 自管 | 經 platform channel 寫 `os_log` |
+| 保留策略 | 依大小輪替（單檔上限、保留檔數由規格定） | 依日期分檔 |
+| C-2 強制方式 | 型別層白名單：欄位值只收規格列出的包裝型別，不收任意 String；錯誤只記類型與來源分類，不記 `toString()`。路徑記工作區相對路徑 | 約定加測試 |
+| 規格歸屬 | 新建 observability domain 與其 SPEC | 系統層章節加各 SPEC 事件表 |
+| LogSink 統一 | 單一泛型 `LogSink<E extends Enum>`，事件 enum 仍由各 domain 自有 | 各 port 保留 typedef、只統一 writer |
+| 與 `developer.log` 的關係 | 並寫 | 正式版只落檔 |
+
+**Why 路徑記工作區相對路徑**：絕對路徑含 `/Users/<name>/`，使用者貼出 log 求助時會外洩帳號名稱。工作區相對路徑仍足以定位檔案，屬 C-2 的「識別」。
+
+**Why 新建 domain**：判準同 edit domain，依職責拆分；現有 8 個 domain 無一以記錄格式與錯誤分類為變更理由。加上 edit 後 domain 數為 10，依前一補記〈domain 數量：只觸發檢查，不是上限〉處理。**此檢查尚未執行**：新增前由 `1.0.0-W3-553.2.1` 對最近鄰 diagnostics 跑 SRP 三問與共現檢查；不通過時停手回報主控，規格歸屬重新裁決。
+
+**C-1 的關係**：log 檔是 App 新增的持有物，但依 C-2 只含識別不含使用者內容，不構成使用者內容的第二份副本。
+
+**落地**：規格 `1.0.0-W3-553.2.1`（observability domain-map 與 SPEC，SPEC-009 已保留給 edit domain）；實作 `1.0.0-W3-553.2.2`（writer）、`1.0.0-W3-553.2.3`（LogSink 統一，併入的 `1.0.0-W3-549`）、`1.0.0-W3-553.2.4`（`reportFatalError` 落檔）。皆排入 1.0.0。
