@@ -154,4 +154,19 @@ void main() {
     expect(_inRow(4, find.text('UC-01')), findsOneWidget);
     expect(_key('action-history-open-4-declarer'), findsOneWidget);
   });
+
+  testWidgets('EV-8 事件遠超一屏時只建構可見範圍，捲到底可找到末列', (tester) async {
+    await pumpHistoryApp(tester, HistoryLoaded(snapMany(count: 500)));
+    expect(_key('action-history-open-0-declarer'), findsOneWidget);
+    expect(_key('action-history-open-400-declarer'), findsNothing);
+    final scrollable = find.descendant(
+      of: _key('scroll-history-events'),
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    expect(_key('action-history-open-499-declarer'), findsOneWidget);
+    expect(_key('action-history-open-0-declarer'), findsNothing);
+  });
 }

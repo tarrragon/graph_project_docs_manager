@@ -4,6 +4,8 @@
 /// `domain_dependency` 的對端是 domain 名稱，以純文字呈現、不可點。
 library;
 
+import 'dart:collection';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,17 +32,19 @@ class HistoryEventList extends ConsumerWidget {
       ref.watch(historyPeriodChoiceProvider),
       ref.watch(historyIncludeTicketCreationProvider),
     );
-    return Panel.scrollable(
+    return Panel(
       key: ValueKey(filterKey),
-      scrollKey: const Key('scroll-history-events'),
-      children: [
-        _header(l10n),
-        for (var i = 0; i < events.length; i++) _row(l10n, ref, i, events[i]),
-      ],
+      fill: AppDataTable(
+        variant: AppDataTableVariant.virtual,
+        columns: AppTableRow.historyEventColumns,
+        header: _header(l10n),
+        rows: _LazyRows(events.length, (i) => _row(l10n, ref, i, events[i])),
+        scrollKey: const Key('scroll-history-events'),
+      ),
     );
   }
 
-  Widget _header(AppLocalizations l10n) => AppTableRow.header(
+  AppTableRow _header(AppLocalizations l10n) => AppTableRow.header(
     columns: AppTableRow.historyEventColumns,
     cells: [
       TableColumnHeader.plain(label: l10n.columnChange),
@@ -53,7 +57,7 @@ class HistoryEventList extends ConsumerWidget {
     ],
   );
 
-  Widget _row(
+  AppTableRow _row(
     AppLocalizations l10n,
     WidgetRef ref,
     int index,
@@ -104,6 +108,30 @@ class HistoryEventList extends ConsumerWidget {
 
   static String _shortHash(String id) =>
       id.length <= _shortHashLength ? id : id.substring(0, _shortHashLength);
+}
+
+/// 依索引惰性建列的唯讀清單；virtual 變體只以 `rows[index]` 存取，
+/// 未進入視窗的列不會被建構，已建的列快取以維持 widget 實例同一性。
+class _LazyRows extends ListBase<AppTableRow> {
+  _LazyRows(this._length, this._build);
+
+  final int _length;
+  final AppTableRow Function(int index) _build;
+  final Map<int, AppTableRow> _cache = {};
+
+  @override
+  int get length => _length;
+
+  @override
+  set length(int value) => throw UnsupportedError('read-only');
+
+  @override
+  AppTableRow operator [](int index) =>
+      _cache.putIfAbsent(index, () => _build(index));
+
+  @override
+  void operator []=(int index, AppTableRow value) =>
+      throw UnsupportedError('read-only');
 }
 
 /// UTC 日期 `yyyy-MM-dd`。
