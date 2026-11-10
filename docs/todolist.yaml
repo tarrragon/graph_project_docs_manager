@@ -845,7 +845,7 @@ versions:
   - version: "1.0.0"
     codename: "Edit"
     description: "編輯能力：直接改檔 + CLI 驗證（PROP-005 §1.0）；兼作下一個 major 的暫行停放區"
-    status: "planned"
+    status: "active"    # 2026-11-10 啟用（用戶裁決，AUQ）：0.7.0 發版後進入規劃期，自 1.0.0-W3-553 開始；停放票於規劃波逐張裁決。發版工具不自動跨 0.x → 1.x，故人工設定（1.0.0-W1-100）
     proposals:
       - PROP-005
     worklog: "docs/work-logs/v1/v1.0/v1.0.0/"
