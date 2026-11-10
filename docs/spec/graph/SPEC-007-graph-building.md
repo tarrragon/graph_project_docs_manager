@@ -4,15 +4,15 @@ title: "建圖：輕節點、邊的聯集與圖結構破洞"
 status: draft
 source_proposal: PROP-005
 created: "2026-09-30"
-updated: "2026-11-05"
-version: "1.42"
+updated: "2026-11-10"
+version: "1.43"
 owner: "主線程（PM）"
 
 domain: "graph"
 subdomain: null
 
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06]
-related_specs: [SPEC-006]
+related_specs: [SPEC-006, SPEC-010]
 implements_requirements: []
 depends_on_domains: [schema, corpus, diagnostics]
 ---
@@ -20,6 +20,8 @@ depends_on_domains: [schema, corpus, diagnostics]
 # 建圖：輕節點、邊的聯集與圖結構破洞
 
 ## 概述
+
+> **日誌**：本規格的日誌事件（`GraphLogEvent`，含 `buildCompleted`、`buildUnavailable` 與各查詢的不可用事件）只定義事件碼與負載鍵；記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010。
 
 本規格定義 0.4.0（Graph）的資料管線：把 Corpus 產出的節點（SPEC-006 FR-07 的 `rawNodes`）
 建成圖。依賴方向照 `docs/system-layer.md` §2（Graph → Corpus）。涉及的 domain 與職責：
@@ -507,6 +509,7 @@ flow 子類的程式識別名：「flow 參照未解析」為 `FlowDefectKind.un
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.43 | 2026-11-10 | 〈概述〉補一段：日誌事件的記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010（`1.0.0-W3-553.2.1`）。不改建圖契約 |
 | 1.42 | 2026-11-05 | `0.6.0-W1-191.1`（依 `0.6.0-W1-191` 時效型註記盤點）：〈前置依賴〉表承接欄兩列補「（已完成）」，與既有第三列一致。不改契約 |
 | 1.41 | 2026-11-05 | `0.6.0-W1-086.1`（依 `0.6.0-W1-086` 規則 7 盤點）：FR-09 識別名段首句原寫「前三種 flow 子類的識別名由 NeedsContext 上報」「實作票命名前不得自行命名」，改為直接列出 `FlowDefectKind.unresolvedReference`／`duplicateStepId` 與對應的 `GraphDefectKind`，`traverses` 兩子類與 domain 重複宣告改指 FR-11 規則清單；已命名完畢的條件句刪除。不改行為 |
 | 1.40 | 2026-11-05 | 使用中邊型加入 proposed 層的 `closed_by`（`0.6.0-W1-169.3`，依 `0.6.0-W1-169` 用戶裁決 C）：〈用詞〉、FR-01 鍵名例外（兩處改三處）與三條驗收、FR-08 proposed 標示、FR-11 例外計數敘述、D6 同步；FR-03 新增〈`closed_by` 的略過規則〉：字串值不符合任何主圖節點型別 `id_pattern`（排除 FlowStep；外部格式值）時略過，不計 `danglingRef`／`malformedRef`，不計入引用值與守恆式，另計略過數；符合 `id_pattern` 但語料內不存在者為 `danglingRef`（`targetMissing`，2026-11-05 用戶裁決）；形狀不合法仍為格式錯誤；補六條驗收（含 E2 正向對照與不外溢對照） |

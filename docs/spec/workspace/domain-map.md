@@ -3,7 +3,7 @@ id: DOMAIN-MAP-workspace
 domain: "workspace"
 source_specs: [SPEC-005]
 related_usecases: [UC-01, UC-06]
-depends_on_bundles: []
+depends_on_bundles: [DOMAIN-MAP-observability]
 path_patterns: [lib/workspace/]
 created: "2026-08-26"
 updated: "2026-11-03"
@@ -23,11 +23,11 @@ updated: "2026-11-03"
 
 ## 2. 分層與依賴方向
 
-層級：L0（層級圖與完整依賴邊見系統層 §2）。
+層級：L1（層級圖與完整依賴邊見系統層 §2）。2026-11-10 加入 Observability 出邊後，由 L0 推導為 L1（`1.0.0-W3-553.2.1`）。
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
-| 出邊 | （無） | `depends_on_bundles: []` |
+| 出邊 | Observability（`DOMAIN-MAP-observability`） | driven port 的日誌以 `LogSink<E>` 與白名單型別發出（SPEC-010 FR-03、FR-04）；2026-11-10 新增（`1.0.0-W3-553.2.1`，用戶裁定依賴邊照實登記） |
 | 入邊 | Corpus | 取得專案根路徑 |
 | 入邊 | History | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見系統層 §4.3） |
 

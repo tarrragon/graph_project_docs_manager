@@ -4,8 +4,8 @@ title: "Workspace driven port 回饋契約"
 status: draft
 source_proposal: null            # 來源非提案：由 0.1.0-W3-139 的 driven port 盤點裁定新建
 created: "2026-09-09"
-updated: "2026-11-09"
-version: "1.10"
+updated: "2026-11-10"
+version: "1.11"
 owner: star-anise-system-designer
 has_functional_requirements: false   # 本規格只記 workspace driven port 的專案事實，不含 FR（0.5.0-W1-159 判定）
 
@@ -13,7 +13,7 @@ domain: "workspace"
 subdomain: driven-ports
 
 related_usecases: [UC-01]
-related_specs: [SPEC-003]
+related_specs: [SPEC-003, SPEC-010]
 implements_requirements: []
 depends_on_domains: []
 ---
@@ -21,6 +21,8 @@ depends_on_domains: []
 # Workspace driven port 回饋契約
 
 ## 概述
+
+> **日誌**：本規格各 port 的日誌事件（`WorkspaceLogEvent`）只定義事件碼與負載鍵；記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010。負載中的 path 依 SPEC-010 FR-03 記工作區相對路徑，工作區外位置只記位置類別。
 
 本規格記載 workspace domain 往外呼叫的 driven port——資料夾選取、偏好設定持久化、
 資料夾可用性探測——各自的回饋點由什麼承載、哪些時刻不適用、現況缺口在哪裡。
@@ -369,6 +371,7 @@ bundle 的界定）。與 UI 互動方式改變而生的 port 契約（`ScanNoti
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.11 | 2026-11-10 | 〈概述〉補一段：日誌事件的記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010；負載中的 path 改記工作區相對路徑（`1.0.0-W3-553.2.1`） |
 | 1.10 | 2026-11-09 | `0.6.0-W1-194.1`（依 `0.6.0-W1-194` 查證）：更正 v1.8 列「原承接票 `0.1.0-W3-135` 已不在票庫」——該票是改號，不是刪除，現為 `1.0.0-W3-135`（pending），內容是 `WorkspaceDirectoryProbePort` 的例外契約；§三 G-1、G-2 的日誌已由 `0.6.0-W1-192` 修畢。v1.8 列保留原文。不改契約 |
 | 1.9 | 2026-11-05 | `0.6.0-W1-192`：§三 G-1、G-2 改記為已修並附測試；§2.3 `exists` 回 false 結果列 adapter 欄 N 改 Y，§2.5 對應列同步 |
 | 1.8 | 2026-11-05 | `0.6.0-W1-191.2`（依 `0.6.0-W1-191` 時效型註記盤點，讀碼查證）：§2.4、§2.5 原寫「實作尚未存在」，實作已落地，改為依實作判定的 Y／N，共 14 列；唯一 N 為 §2.4 讀取損壞的日誌（實作有 level 900 一筆，但不含原始例外與首個不符元素索引）。§2.2 `remove` 仍未實作，維持「契約」。§三 G-1、G-2 確認仍未修，原承接票 `0.1.0-W3-135` 已不在票庫，承接改為 `0.6.0-W1-192` |

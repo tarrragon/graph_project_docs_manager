@@ -3,7 +3,7 @@ id: DOMAIN-MAP-diagnostics
 domain: "diagnostics"
 source_specs: [SPEC-006, SPEC-007]
 related_usecases: [UC-05, UC-06]
-depends_on_bundles: [DOMAIN-MAP-corpus, DOMAIN-MAP-graph]
+depends_on_bundles: [DOMAIN-MAP-corpus, DOMAIN-MAP-graph, DOMAIN-MAP-observability]
 path_patterns: [lib/diagnostics/]
 created: "2026-08-26"
 updated: "2026-10-21"
@@ -23,10 +23,11 @@ updated: "2026-10-21"
 
 ## 2. 分層與依賴方向
 
-層級：L3（層級圖與完整依賴邊見系統層 §2）。2026-10-21 補上 Graph 出邊後，依「所依賴 bundle 的最大層 + 1」由 L2 推導為 L3（`0.5.0-W1-460`）。
+層級：L4（層級圖與完整依賴邊見系統層 §2）。2026-10-21 補上 Graph 出邊後，依「所依賴 bundle 的最大層 + 1」由 L2 推導為 L3（`0.5.0-W1-460`）；2026-11-10 各 domain 加入 Observability 出邊後，由 L3 推導為 L4（`1.0.0-W3-553.2.1`）。
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
+| 出邊 | Observability（`DOMAIN-MAP-observability`） | 破洞判定的日誌以 `LogSink<E>` 與白名單型別發出（SPEC-010 FR-03、FR-04）；2026-11-10 新增（`1.0.0-W3-553.2.1`） |
 | 出邊 | Corpus（`DOMAIN-MAP-corpus`） | 取解析錯誤事件（EVT-CORPUS-003、004、005），由此產生破洞 |
 | 出邊 | Graph（`DOMAIN-MAP-graph`） | 經 EVT-GRAPH-001 取 `graphDefects` 產生 `graphDefect` 破洞（SPEC-007 FR-09），取 flow 子圖判定事件類破洞（SPEC-003 §3.5）；`lib/diagnostics/graph_defect_gap.dart`、`event_gap.dart` import `lib/graph/`。2026-10-21 補記（`0.5.0-W1-460`），原本漏列。不經 Graph 依賴 Schema：建圖不可用的原因碼由編排層轉換（SPEC-007 FR-09） |
 

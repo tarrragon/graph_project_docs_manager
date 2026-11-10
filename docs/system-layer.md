@@ -38,14 +38,15 @@ updated: "2026-11-10"
 
 | Domain | 層 | 唯一變更理由 | domain map |
 |--------|----|------------|-----------|
-| **Workspace** | L0 | 資料夾存取方式改變 | `docs/spec/workspace/domain-map.md` |
-| **Schema** | L0 | 上游 schema 格式或版本語意改變 | `docs/spec/schema/domain-map.md` |
-| **Corpus** | L1 | 文件格式或解析寬容度改變 | `docs/spec/corpus/domain-map.md` |
-| **Graph** | L2 | 圖語意改變（如 symmetric union 規則） | `docs/spec/graph/domain-map.md` |
-| **TicketDetail** | L2 | ticket 的 5W1H 結構語意改變 | `docs/spec/ticketdetail/domain-map.md` |
-| **Layout** | L3 | 布局演算法或版型規則改變 | `docs/spec/layout/domain-map.md` |
-| **Diagnostics** | L3 | 「什麼算破洞」的定義改變 | `docs/spec/diagnostics/domain-map.md` |
-| **History** | L1 | git 查詢方式或歷史語意改變 | `docs/spec/history/domain-map.md` |
+| **Workspace** | L1 | 資料夾存取方式改變 | `docs/spec/workspace/domain-map.md` |
+| **Schema** | L1 | 上游 schema 格式或版本語意改變 | `docs/spec/schema/domain-map.md` |
+| **Corpus** | L2 | 文件格式或解析寬容度改變 | `docs/spec/corpus/domain-map.md` |
+| **Graph** | L3 | 圖語意改變（如 symmetric union 規則） | `docs/spec/graph/domain-map.md` |
+| **TicketDetail** | L3 | ticket 的 5W1H 結構語意改變 | `docs/spec/ticketdetail/domain-map.md` |
+| **Layout** | L4 | 布局演算法或版型規則改變 | `docs/spec/layout/domain-map.md` |
+| **Diagnostics** | L4 | 「什麼算破洞」的定義改變 | `docs/spec/diagnostics/domain-map.md` |
+| **History** | L2 | git 查詢方式或歷史語意改變 | `docs/spec/history/domain-map.md` |
+| **Observability** | L0 | 記錄格式、錯誤來源分類、落地與保留政策或白名單型別改變 | `docs/spec/observability/domain-map.md` |
 
 **畫面狀態不是 domain，是 layer。** 布局演算法（有真實規則與演算法）與
 畫面狀態（純 UI）分開 —— 前者可獨立測試，後者依賴 widget tree。
@@ -56,7 +57,7 @@ updated: "2026-11-10"
 
 | 詞 | 語意 | 用在哪 |
 |----|------|--------|
-| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（L4 畫面狀態層）為 `[]`。計數由 Graph 聚合（Graph domain map §3） | Domain 視圖矩陣的格、UC-02、UC-03 |
+| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（畫面狀態層）為 `[]`。計數由 Graph 聚合（Graph domain map §3） | Domain 視圖矩陣的格、UC-02、UC-03 |
 | **穿透**（drill-through） | 使用者在兩個視圖之間**雙向導覽**的操作行為（domain → UC、UC → domain） | PROP-004 §核心場景、`tech-decisions.md` §3.1 |
 | **鄰接查詢** | Graph domain 的公開 API，沿邊取相鄰節點（1 hop）。簽章定於 SPEC-007 FR-08：輸入節點 ID、可選邊型集合與方向，回傳邊型、另一端 ID、方向、宣告來源 | Graph domain map §3 的公開面 |
 
@@ -69,14 +70,17 @@ updated: "2026-11-10"
 依賴單向向下，上層可依賴下層，反向禁止。
 
 ```
-L4   畫面狀態（layer，非 domain）
-L3   Diagnostics      Layout
-L2   Graph      TicketDetail
-L1   Corpus     History
-L0   Schema     Workspace
+畫面狀態層（layer，非 domain；不帶層號）
+L4   Diagnostics      Layout
+L3   Graph      TicketDetail
+L2   Corpus     History
+L1   Schema     Workspace
+L0   Observability
 ```
 
-**層由 `bundle_dependency` 推導**（2026-10-08 用戶裁決，`docs/tech-decisions.md` 同日補記第 1 項）：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；上圖為推導結果，非手寫指派。`History` 依賴 `Workspace` 與 `Schema`（後者 2026-11-09 新增，`0.7.0-W1-012`），兩者皆為 L0，推導為 L1（原寫 L2，已更正）。`Diagnostics` 在 2026-10-21 補上 `Graph` 出邊後推導為 L3（原為 L2，`0.5.0-W1-460`）；`Graph` 補上 `Schema` 出邊後仍是 L2。泳道列序依此層序與同層字母序（SPEC-001 §1〈泳道布局規則〉）。
+**層由 `bundle_dependency` 推導**（2026-10-08 用戶裁決，`docs/tech-decisions.md` 同日補記第 1 項）：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；上圖為推導結果，非手寫指派。`History` 依賴 `Workspace` 與 `Schema`（後者 2026-11-09 新增，`0.7.0-W1-012`）。`Diagnostics` 在 2026-10-21 補上 `Graph` 出邊（`0.5.0-W1-460`）。2026-11-10 其餘每個 domain 加入指向 `Observability` 的出邊（用戶裁定照實登記，`1.0.0-W3-553.2.1`），既有 domain 層號一律 +1，相對順序不變。泳道列序依此層序與同層字母序（SPEC-001 §1〈泳道布局規則〉）。
+
+**畫面狀態層不帶層號**（2026-11-10 主控裁定，用戶可推翻；`1.0.0-W3-553.2.1`）：原標 `L4`，domain 層號推導到 L4 後撞號。domain 的層數隨 domain 增減而變，畫面狀態層固定在全部 domain 之上，以名稱指稱，不再以數字指稱。
 
 **依賴邊（完整列舉）**：出邊的唯一權威是各 domain map frontmatter 的 `depends_on_bundles`，下表為彙整視圖；兩者不一致時以 frontmatter 為準。
 
@@ -92,6 +96,7 @@ L0   Schema     Workspace
 | Corpus | Workspace | 取得專案根路徑 |
 | History | Workspace | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見系統層 §4.3） |
 | History | Schema | 以邊型表判定 frontmatter diff 中的邊欄位，以 `id_pattern` 判定節點是否為 ticket（SPEC-008 FR-03、FR-05）；2026-11-09 新增（`0.7.0-W1-012`，PROP-006），不經 Corpus 的理由同 §4.3 |
+| Workspace、Schema、Corpus、History、Graph、TicketDetail、Layout、Diagnostics | Observability | 以 `LogSink<E>` 與白名單型別發出日誌（SPEC-010 FR-03、FR-04）。2026-11-10 用戶裁定照實登記為 bundle 邊、不設橫切契約例外（`1.0.0-W3-553.2.1`）；Observability 本身無出邊，否則形成循環 |
 
 Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影其產出——
 若讓三者各自解析同一份檔案，容錯規則會分歧。
@@ -104,9 +109,9 @@ Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影�
 沒有用途，2026-09-24 刪除（SPEC-006 D7，用戶裁決）。日後若有破洞類別需要型別表，
 附上理由再加回。
 
-### 2.1 L4 內部的分層：components、app、screens 與組裝根
+### 2.1 畫面狀態層內部的分層：components、app、screens 與組裝根
 
-上圖的 L4 只寫「畫面狀態」。L4 對應 lib 的三個目錄與組裝根，它們之間也是單向依賴，由下而上：
+上圖的畫面狀態層只寫一列。它對應 lib 的三個目錄與組裝根，它們之間也是單向依賴，由下而上：
 
 ```
 組裝根      lib/assembly/：shell 與畫面組裝（buildDestinationPage）；lib/main.dart
@@ -122,7 +127,7 @@ components  lib/components/：元件庫，只依賴 tokens、l10n 與 Flutter
 - screens 不 import 組裝根。
 - screens 內的畫面功能目錄之間不互相 import。兩個畫面共用的狀態或 provider 下沉到 app，共用的展示 widget 下沉到 components。
 
-L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import 本節任何一層。
+所有 domain 目錄（workspace、schema、corpus、graph 等）不 import 本節任何一層。
 
 **import 方向守衛一覽**：全專案共 7 支，分散在 5 個目錄。任何改動 `lib/` import 的工作，本機都要把 7 支跑齊再送合併閘門；只跑改動目錄旁邊的那一支，其他目錄的守衛會在閘門才紅燈。
 
@@ -144,14 +149,14 @@ L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import
 
 ### 2.2 畫面層的四個名稱
 
-畫面層（L4）在不同載體有四種寫法。四者都指同一層，但各有消費端，語意層次也不同，所以不統一寫法：
+畫面層在不同載體有四種寫法。四者都指同一層，但各有消費端，語意層次也不同，所以不統一寫法：
 
 | 名稱 | 載體 | 語意 | 消費端與行為 |
 |---|---|---|---|
 | `ui` | 目錄 `docs/spec/ui/` | 規格檔的存放位置 | 只供人工導航，工具不依目錄名分流 |
 | `ui` | SPEC-001～004 frontmatter 的 `domain` 欄 | 規格分類：這是層級 SPEC，不是 domain SPEC | spec 的 domain 覆蓋檢查：`domain` 欄的值不在已宣告 domain 集合內，就判為層級 SPEC，改依本檔 §8 判定 FR 歸屬 |
 | `presentation` | EVT frontmatter 的 `consumers` | 資料中的本地保留字，表示消費方是畫面層 | Diagnostics 的事件類破洞判定：此值改為比對 `traverses == []` 的步驟（SPEC-003 §3.5）；`producers` 不可用此值 |
-| L4 畫面狀態 | 本檔 §2 分層圖與 §8 歸屬表 | 架構層：layer，不是 domain | 只供人工閱讀；覆蓋檢查以 FR 號比對，不比對「L4」字面 |
+| 畫面狀態層 | 本檔 §2 分層圖與 §8 歸屬表 | 架構層：layer，不是 domain | 只供人工閱讀；覆蓋檢查以 FR 號比對，不比對字面。2026-11-10 前寫作「L4 畫面狀態」，domain 層號推導到 L4 後撞號，改為不帶層號（§2） |
 
 **前提**：`ui` 和 `presentation` 兩個值能正確運作，都是因為沒有任何 DomainBundle 以這兩個名稱宣告 `domain`。若有 DomainBundle 用了其中一個名稱：
 
@@ -179,7 +184,7 @@ L0～L3 的 domain 目錄（workspace、schema、corpus、graph 等）不 import
 
 | 通道 | 真持有者 | 仲裁器落層 | 涉及 domain |
 |---|---|---|---|
-| 使用者呈現焦點（暫態提示佇列：SnackBar／macOS 系統通知；App 啟動時的顯式關卡） | 使用者一次只能被引導去看一件事 | L4 畫面狀態層或其下的 presentation 包裝（非 domain） | Workspace、Schema、Diagnostics |
+| 使用者呈現焦點（暫態提示佇列：SnackBar／macOS 系統通知；App 啟動時的顯式關卡） | 使用者一次只能被引導去看一件事 | 畫面狀態層或其下的 presentation 包裝（非 domain） | Workspace、Schema、Diagnostics |
 
 具體實作形態不只一種：Diagnostics 的破洞掃描完成走暫態提示佇列，
 Schema 的型別表缺席降級走的是 App 啟動時的顯式關卡。但兩者持有同一種
@@ -192,7 +197,7 @@ Schema 的型別表缺席降級走的是 App 啟動時的顯式關卡。但兩�
 〈通道與仲裁器〉判準「每個通道恰有一個仲裁器；仲裁器落在通道的持有
 層，不落入任何 domain 內部」回答的問題是「誰決定這個請求現在能不能
 佔用通道？」：真持有者是使用者的呈現焦點本身，不屬於 Workspace、
-Schema、Diagnostics 任一者。仲裁點落在 L4（畫面狀態，本檔 §2 已定為
+Schema、Diagnostics 任一者。仲裁點落在畫面狀態層（本檔 §2 已定為
 layer 而非 domain）或其下的 presentation 包裝，**不得落入任一涉及
 domain 內部**——落入 Diagnostics 內部，代表 Diagnostics 必須知道
 Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 domain 之間
@@ -202,7 +207,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 ### 3.2 逐 domain 判定
 
 判準：該 domain 的公開面（各 domain map §3）是否包含「不必然由使用者當下操作觸發、
-卻需要佔用使用者呈現焦點通道」的事件。8 個 domain 逐一判定（各 domain map §2.5 只留本 domain 的判定列）：
+卻需要佔用使用者呈現焦點通道」的事件。§1.3 列出的 domain 逐一判定（各 domain map §2.5 只留本 domain 的判定列）：
 
 | Domain | 是否產生注意力請求 | 依據 |
 |--------|:---:|------|
@@ -214,14 +219,15 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 | Layout | 否 | 排列演算法為內部計算，無對外呈現面 |
 | Diagnostics | 是 | 破洞掃描完成通知（SPEC-003 §2.2〈系統層通知〉），App 啟動時自動觸發，不由使用者當下操作發起 |
 | History | 否 | 依視圖惰性載入（§4.3），由使用者開啟歷史視圖觸發（等待型），結果在同一畫面內呈現；離開畫面後完成者為持久狀態，不發提示（SPEC-001 §8.1 §10 各列，`0.7.0-W1-012`） |
+| Observability | 否 | 記錄只寫檔與 `developer.log`，不佔用呈現焦點通道；需要使用者知道的失敗由發出端轉為畫面錯誤態（SPEC-010〈概述〉，`1.0.0-W3-553.2.1`） |
 
 ### 3.3 協調圖
 
 ```
 使用者呈現焦點
-   ├── Workspace     (L0)
-   ├── Schema        (L0)
-   └── Diagnostics   (L3)
+   ├── Workspace     (L1)
+   ├── Schema        (L1)
+   └── Diagnostics   (L4)
 ```
 
 三者兩兩相鄰，共三對；與 §2 依賴圖逐對比對：
@@ -560,7 +566,7 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   （`0.5.0-W1-091`，blockedBy W1-090）。App 精確比對，不一致交 Diagnostics；列首顯示 `domain` 原值，只有「畫面」列（`presentation`，
   App 自身詞彙）經 i18n（2026-10-08 用戶裁決 K6，SPEC-004 §4.0.6／4.37／4.38）。原待決描述（大小寫並存使比對與錨點失準）見來源票 `0.1.1-W3-378`
 - **畫面層的名稱與「列＝DomainBundle」例外範圍已定案**（2026-10-07 用戶裁決，`0.5.0-W1-095` WRAP 第二輪
-  G2＋A′，見 `docs/tech-decisions.md` 同日補記）：畫面層（L4，§2）在資料中以本地保留字 `presentation`
+  G2＋A′，見 `docs/tech-decisions.md` 同日補記）：畫面層（畫面狀態層，§2）在資料中以本地保留字 `presentation`
   表示，畫面例外由「僅限泳道」延伸為兩處——泳道「畫面」列（SPEC-001 §1）與 EVT `consumers`
   的 `presentation`（`producers` 不適用、值只能是已宣告 domain 名，2026-10-08 用戶裁決第 4 項，`0.5.0-W1-106` 收窄；比對 `traverses == []` 的 FlowStep，規則權威 SPEC-003 §3.5）；矩陣不加此列。
   保留字只在本專案 SPEC 定義，上游 validate 不動；EVT 值改寫由 `0.5.0-W1-095.1` 承接
@@ -597,29 +603,29 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 
 歸屬判準：該 FR 的**驗收對象**落在哪個 bundle 的公開面（各 domain map §3），不依「哪個畫面顯示它」——
 畫面狀態是 layer 不是 domain（§2）。驗收對象只落在畫面狀態（錨點、焦點、捲動、動畫、元件層
-回饋）者標為「L4 畫面狀態（非 domain）」；跨多 bundle 者全部列出並說明跨在哪裡。
+回饋）者標為「畫面狀態層（非 domain）」；跨多 bundle 者全部列出並說明跨在哪裡。
 
 ### SPEC-003（互動反應）
 
 | FR | 內容 | Bundle | 跨在哪裡 |
 |----|------|--------|---------|
-| FR-01 | 每個狀態的退出路徑皆有具名觸發錨點 | L4 畫面狀態（非 domain） | 驗收對象為 §4 對照表的錨點與狀態錨點 |
-| FR-02 | 取消契約的十條行為 | L4 畫面狀態；Corpus、Diagnostics | 載入態（L4）承載取消錨點與時限；取消後結果不得寫回由長時操作的承擔方兌現——Domain 載入為 Corpus 解析，破洞掃描為 Diagnostics（Ticket 清單自 SPEC-001 v1.64 起無載入態） |
-| FR-03 | 導航來源單槽記錄 | L4 畫面狀態（非 domain） | `returnTo` 為畫面導航狀態 |
-| FR-04 | 惰性載入以首次可見觸發、保留狀態 | Corpus、Workspace；L4 畫面狀態 | 「解析計數為 0」為 Corpus 解析的觸發時機；「切換專案後重置」以 Workspace 目前路徑改變為觸發；offset／搜尋詞／模式保留屬 L4 |
-| FR-05 | 時間值具名、減少動態效果仍抵達目標態 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/tokens/` 與狀態錨點 |
-| FR-06 | 未接線動作不得無回饋上線 | L4 畫面狀態（非 domain） | 驗收對象為可點錨點的回饋；「外部程序被呼叫」為 Workspace 開啟原始檔的呼叫端觀測，不以 Workspace 行為為驗收對象 |
-| FR-07 | 進度指示誠實 | Corpus、Diagnostics；L4 畫面狀態 | 破洞掃描的進度呈現（不含百分比）以 Diagnostics 掃描為承擔方；呈現屬 L4 |
-| FR-08 | 捲動、換頁、拖拉可斷言 | L4 畫面狀態（非 domain） | 泳道拖曳平移量為手勢反應，不以 Layout 座標計算為驗收對象 |
-| FR-09 | 焦點與鍵盤下界 | L4 畫面狀態（非 domain） | 驗收對象為焦點序列與焦點裝飾 |
-| FR-10 | 兩個獨立捲動區不連動 | L4 畫面狀態（非 domain） | 驗收對象為兩個捲動錨點的 offset |
+| FR-01 | 每個狀態的退出路徑皆有具名觸發錨點 | 畫面狀態層（非 domain） | 驗收對象為 §4 對照表的錨點與狀態錨點 |
+| FR-02 | 取消契約的十條行為 | 畫面狀態層；Corpus、Diagnostics | 載入態（畫面狀態層）承載取消錨點與時限；取消後結果不得寫回由長時操作的承擔方兌現——Domain 載入為 Corpus 解析，破洞掃描為 Diagnostics（Ticket 清單自 SPEC-001 v1.64 起無載入態） |
+| FR-03 | 導航來源單槽記錄 | 畫面狀態層（非 domain） | `returnTo` 為畫面導航狀態 |
+| FR-04 | 惰性載入以首次可見觸發、保留狀態 | Corpus、Workspace；畫面狀態層 | 「解析計數為 0」為 Corpus 解析的觸發時機；「切換專案後重置」以 Workspace 目前路徑改變為觸發；offset／搜尋詞／模式保留屬畫面狀態層 |
+| FR-05 | 時間值具名、減少動態效果仍抵達目標態 | 畫面狀態層（非 domain） | 驗收對象為 `lib/tokens/` 與狀態錨點 |
+| FR-06 | 未接線動作不得無回饋上線 | 畫面狀態層（非 domain） | 驗收對象為可點錨點的回饋；「外部程序被呼叫」為 Workspace 開啟原始檔的呼叫端觀測，不以 Workspace 行為為驗收對象 |
+| FR-07 | 進度指示誠實 | Corpus、Diagnostics；畫面狀態層 | 破洞掃描的進度呈現（不含百分比）以 Diagnostics 掃描為承擔方；呈現屬畫面狀態層 |
+| FR-08 | 捲動、換頁、拖拉可斷言 | 畫面狀態層（非 domain） | 泳道拖曳平移量為手勢反應，不以 Layout 座標計算為驗收對象 |
+| FR-09 | 焦點與鍵盤下界 | 畫面狀態層（非 domain） | 驗收對象為焦點序列與焦點裝飾 |
+| FR-10 | 兩個獨立捲動區不連動 | 畫面狀態層（非 domain） | 驗收對象為兩個捲動錨點的 offset |
 | FR-11 | 掃描完成的系統層通知 | Diagnostics | 與 §3.4「破洞掃描完成」列一致（自發型、可棄，驗收落點 FR-11） |
-| FR-12 | 第一層回饋不因服務狀態而免除 | L4 畫面狀態（非 domain） | 驗收以永不受理的服務替身驅動元件層，服務行為不在驗收範圍 |
-| FR-13 | 各類服務的回饋形式依 §2.12 成立 | Corpus、Diagnostics、Workspace；L4 畫面狀態 | 長時操作的承擔方為 Corpus（Domain 載入）與 Diagnostics（破洞掃描）；短暫非同步的承擔方為 Workspace（外部開啟、資料夾選擇）；各類回饋形式的呈現屬 L4 |
-| FR-14 | 等待期輸入阻擋範圍依服務類型成立 | L4 畫面狀態；Corpus、Diagnostics | 阻擋範圍由載入態（L4）承載；長時操作來源同 FR-13 |
-| FR-15 | 重複觸發防護由服務承擔 | Workspace；L4 畫面狀態 | (d) 外部開啟冪等為 Workspace 公開面「開啟原始檔」；(a)(b) 元件層不實作計時器屬 L4；(c) 搜尋防抖的服務歸屬依 §6「搜尋與全域導覽」待決項 |
-| FR-16 | 暫態提示載體可由判準 T 推導 | Workspace、Diagnostics；L4 畫面狀態 | 與 §3.4「開啟原始檔結果」列一致（Workspace，驗收落點 FR-16）；掃描完成 `denied` fallback 為 Diagnostics；判準表與載體選擇屬 L4 仲裁層（§3.1 仲裁器落層） |
-| FR-17 | 截斷與不顯示皆有紀錄 | L4 畫面狀態；Workspace、Diagnostics | 截斷紀錄由 L4 仲裁層（`AppSnackBar`）產生；請求方為 Workspace（開啟原始檔結果，§3.4 列一致，驗收落點 FR-17）與 Diagnostics（掃描完成） |
+| FR-12 | 第一層回饋不因服務狀態而免除 | 畫面狀態層（非 domain） | 驗收以永不受理的服務替身驅動元件層，服務行為不在驗收範圍 |
+| FR-13 | 各類服務的回饋形式依 §2.12 成立 | Corpus、Diagnostics、Workspace；畫面狀態層 | 長時操作的承擔方為 Corpus（Domain 載入）與 Diagnostics（破洞掃描）；短暫非同步的承擔方為 Workspace（外部開啟、資料夾選擇）；各類回饋形式的呈現屬畫面狀態層 |
+| FR-14 | 等待期輸入阻擋範圍依服務類型成立 | 畫面狀態層；Corpus、Diagnostics | 阻擋範圍由載入態（畫面狀態層）承載；長時操作來源同 FR-13 |
+| FR-15 | 重複觸發防護由服務承擔 | Workspace；畫面狀態層 | (d) 外部開啟冪等為 Workspace 公開面「開啟原始檔」；(a)(b) 元件層不實作計時器屬畫面狀態層；(c) 搜尋防抖的服務歸屬依 §6「搜尋與全域導覽」待決項 |
+| FR-16 | 暫態提示載體可由判準 T 推導 | Workspace、Diagnostics；畫面狀態層 | 與 §3.4「開啟原始檔結果」列一致（Workspace，驗收落點 FR-16）；掃描完成 `denied` fallback 為 Diagnostics；判準表與載體選擇屬畫面狀態層的仲裁層（§3.1 仲裁器落層） |
+| FR-17 | 截斷與不顯示皆有紀錄 | 畫面狀態層；Workspace、Diagnostics | 截斷紀錄由畫面狀態層的仲裁層（`AppSnackBar`）產生；請求方為 Workspace（開啟原始檔結果，§3.4 列一致，驗收落點 FR-17）與 Diagnostics（掃描完成） |
 
 ### SPEC-001（畫面狀態矩陣）
 
@@ -627,23 +633,23 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
 
 | FR | 內容 | Bundle | 跨在哪裡 |
 |----|------|--------|---------|
-| FR-01 | 所有狀態皆有非空退出路徑 | L4 畫面狀態（非 domain） | 驗收對象為本 spec §1–7 每列的退出路徑欄 |
-| FR-02 | 長時操作可取消 | L4 畫面狀態；Corpus、Diagnostics | 取消操作恆可用屬載入態（L4）；兩處長時操作的承擔方為 Corpus（Domain 視圖載入）與 Diagnostics（破洞掃描），與上表 SPEC-003 取消契約列的分法一致 |
-| FR-03 | 空狀態必須提供前進動作 | L4 畫面狀態（非 domain） | 驗收對象為空狀態畫面提供的動作 |
-| FR-04 | 版本不符時拒絕渲染 | Schema；L4 畫面狀態 | 「schema 版本超出已知範圍」由 Schema 公開面「版本相容判定」產生（Schema domain map §3）；顯示兩個版本值與不繪製圖譜屬 L4 |
-| FR-05 | 損壞資料依嚴重度分級標記 | L4 畫面狀態（非 domain） | 驗收對象為虛線框／不透明度／圖示與徽章等視覺差異；損壞資料的來源不在驗收範圍 |
-| FR-06 | flow 未結構化為一級狀態 | L4 畫面狀態（非 domain） | 驗收對象為 UC 基本資訊、說明與開啟原始檔動作的呈現；開啟原始檔為 Workspace 的呼叫端觀測，比照上表 SPEC-003 未接線動作列，不以 Workspace 行為為驗收對象 |
-| FR-07 | 型別表不可消費或非框架專案時明確說明 | Schema；L4 畫面狀態 | `tracking_schema.json` 缺席判定與 `.claude/VERSION` 讀取屬 Schema（Schema domain map §3 公開面「型別表」、內部面「`.claude/VERSION` 讀取」）；兩個狀態的說明與切換專案出口屬 L4 |
-| FR-08 | 狀態轉換的提示需求逐狀態有結論 | L4 畫面狀態（非 domain） | 驗收對象為本 spec §8.1 表與 `AppSnackBar` 是否出現 |
+| FR-01 | 所有狀態皆有非空退出路徑 | 畫面狀態層（非 domain） | 驗收對象為本 spec §1–7 每列的退出路徑欄 |
+| FR-02 | 長時操作可取消 | 畫面狀態層；Corpus、Diagnostics | 取消操作恆可用屬載入態（畫面狀態層）；兩處長時操作的承擔方為 Corpus（Domain 視圖載入）與 Diagnostics（破洞掃描），與上表 SPEC-003 取消契約列的分法一致 |
+| FR-03 | 空狀態必須提供前進動作 | 畫面狀態層（非 domain） | 驗收對象為空狀態畫面提供的動作 |
+| FR-04 | 版本不符時拒絕渲染 | Schema；畫面狀態層 | 「schema 版本超出已知範圍」由 Schema 公開面「版本相容判定」產生（Schema domain map §3）；顯示兩個版本值與不繪製圖譜屬畫面狀態層 |
+| FR-05 | 損壞資料依嚴重度分級標記 | 畫面狀態層（非 domain） | 驗收對象為虛線框／不透明度／圖示與徽章等視覺差異；損壞資料的來源不在驗收範圍 |
+| FR-06 | flow 未結構化為一級狀態 | 畫面狀態層（非 domain） | 驗收對象為 UC 基本資訊、說明與開啟原始檔動作的呈現；開啟原始檔為 Workspace 的呼叫端觀測，比照上表 SPEC-003 未接線動作列，不以 Workspace 行為為驗收對象 |
+| FR-07 | 型別表不可消費或非框架專案時明確說明 | Schema；畫面狀態層 | `tracking_schema.json` 缺席判定與 `.claude/VERSION` 讀取屬 Schema（Schema domain map §3 公開面「型別表」、內部面「`.claude/VERSION` 讀取」）；兩個狀態的說明與切換專案出口屬畫面狀態層 |
+| FR-08 | 狀態轉換的提示需求逐狀態有結論 | 畫面狀態層（非 domain） | 驗收對象為本 spec §8.1 表與 `AppSnackBar` 是否出現 |
 
 ### SPEC-002（design token 與元件庫）
 
 | FR | 內容 | Bundle | 跨在哪裡 |
 |----|------|--------|---------|
-| FR-01 | 程式碼中無裸值 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/` 下（`lib/tokens/` 除外）的 grep 結果 |
-| FR-02 | 每個 token 有語意名 | L4 畫面狀態（非 domain） | 驗收對象為 `lib/tokens/` 的具名常數表 |
-| FR-03 | 畫面只用元件庫 | L4 畫面狀態（非 domain） | 驗收對象為 SPEC-001 各狀態顯示欄的元件組成 |
-| FR-04 | 間距與字級為離散尺度 | L4 畫面狀態（非 domain） | 驗收對象為間距與字級的具名階 |
+| FR-01 | 程式碼中無裸值 | 畫面狀態層（非 domain） | 驗收對象為 `lib/` 下（`lib/tokens/` 除外）的 grep 結果 |
+| FR-02 | 每個 token 有語意名 | 畫面狀態層（非 domain） | 驗收對象為 `lib/tokens/` 的具名常數表 |
+| FR-03 | 畫面只用元件庫 | 畫面狀態層（非 domain） | 驗收對象為 SPEC-001 各狀態顯示欄的元件組成 |
+| FR-04 | 間距與字級為離散尺度 | 畫面狀態層（非 domain） | 驗收對象為間距與字級的具名階 |
 
 ### SPEC-006 與 SPEC-007
 

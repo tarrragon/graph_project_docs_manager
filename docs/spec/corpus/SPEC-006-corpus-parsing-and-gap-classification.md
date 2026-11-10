@@ -5,14 +5,14 @@ status: draft
 source_proposal: PROP-005
 created: "2026-09-24"
 updated: "2026-11-10"
-version: "1.41"
+version: "1.42"
 owner: "主線程（PM）"
 
 domain: "corpus"
 subdomain: null
 
 related_usecases: [UC-01, UC-02, UC-05, UC-06]
-related_specs: [SPEC-001, SPEC-005]
+related_specs: [SPEC-001, SPEC-005, SPEC-010]
 implements_requirements: []
 depends_on_domains: [schema, workspace]
 ---
@@ -20,6 +20,8 @@ depends_on_domains: [schema, workspace]
 # Corpus 解析與破洞判定
 
 ## 概述
+
+> **日誌**：本規格的日誌（掃描、解析、監看，含 FR-09 規則 3a 的 warning）只定義事件碼與負載鍵；記錄信封、錯誤來源分類、欄位值白名單（路徑記工作區相對路徑）與落地位置依 SPEC-010。文件內容造成的解析失敗是破洞，log 只記識別（SPEC-010 FR-02〈與 Diagnostics 的界線〉）；逐檔觸發的事件依 SPEC-010 FR-04 記 `debug` 或聚合。
 
 本規格定義 0.3.0（Corpus）的資料管線，跨三個 domain，依賴方向照 `docs/system-layer.md` §2：
 
@@ -450,6 +452,7 @@ flow 區塊解析失敗的 UC 數（FR-09 規則 3b；這些 UC 是節點，已�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.42 | 2026-11-10 | 〈概述〉補一段：日誌事件的記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010（`1.0.0-W3-553.2.1`）；related_specs 加 SPEC-010。不改解析契約 |
 | 1.41 | 2026-11-10 | 引用字面更正（`1.0.0-W1-110` 停放票分診，用戶裁決移入 1.1.0 候選池）：〈本版範圍外〉「id 缺席或不符合 id_pattern」列的歸類實作票 ID 由 `1.0.0-W1-084` 改為遷移後的 `1.1.0-W1-084`；變更歷史列保留原文。條文不變 |
 | 1.40 | 2026-11-09 | `0.6.0-W1-197`（依 `0.6.0-W1-194.1` 改號表）：IT-1 樣本段的 `0.3.0-W1-077` 更正為改號後的 `0.3.1-W1-077`；變更歷史列的舊號保留原文。不改約束 |
 | 1.39 | 2026-11-09 | `0.6.0-W1-194.1`（依 `0.6.0-W1-194` 查證）：更正 v1.37 列「原票號已不存在於票庫」——`0.3.0-W1-086` 是改號，不是刪除，現為 `0.3.1-W1-086`（closed）。v1.37 列保留原文。D9 條文已不引用該票號，不改約束 |

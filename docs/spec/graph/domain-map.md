@@ -3,7 +3,7 @@ id: DOMAIN-MAP-graph
 domain: "graph"
 source_specs: [SPEC-007]
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05]
-depends_on_bundles: [DOMAIN-MAP-corpus, DOMAIN-MAP-schema]
+depends_on_bundles: [DOMAIN-MAP-corpus, DOMAIN-MAP-schema, DOMAIN-MAP-observability]
 path_patterns: [lib/graph/]
 created: "2026-08-26"
 updated: "2026-10-21"
@@ -23,10 +23,11 @@ updated: "2026-10-21"
 
 ## 2. 分層與依賴方向
 
-層級：L2（層級圖與完整依賴邊見系統層 §2）。
+層級：L3（層級圖與完整依賴邊見系統層 §2）。2026-11-10 各 domain 加入 Observability 出邊後，由 L2 推導為 L3（`1.0.0-W3-553.2.1`）。
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
+| 出邊 | Observability（`DOMAIN-MAP-observability`） | 建圖與查詢的日誌（`GraphLogEvent`）以 `LogSink<E>` 與白名單型別發出（SPEC-010 FR-03、FR-04）；2026-11-10 新增（`1.0.0-W3-553.2.1`） |
 | 出邊 | Corpus（`DOMAIN-MAP-corpus`） | 圖建自解析產物 |
 | 出邊 | Schema（`DOMAIN-MAP-schema`） | 建邊依 Schema 的邊型表（正向欄位、反向欄位、正向基數、方向；SPEC-007 FR-01）；`lib/graph/graph_builder.dart` 等五檔 import `lib/schema/`。2026-10-21 補記（`0.5.0-W1-460`），原本漏列 |
 | 入邊 | Layout | 布局的輸入是圖 |

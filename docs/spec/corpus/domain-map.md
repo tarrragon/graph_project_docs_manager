@@ -3,7 +3,7 @@ id: DOMAIN-MAP-corpus
 domain: "corpus"
 source_specs: [SPEC-006]
 related_usecases: [UC-01, UC-02, UC-03, UC-05, UC-06]
-depends_on_bundles: [DOMAIN-MAP-schema, DOMAIN-MAP-workspace]
+depends_on_bundles: [DOMAIN-MAP-schema, DOMAIN-MAP-workspace, DOMAIN-MAP-observability]
 path_patterns: [lib/corpus/]
 created: "2026-08-26"
 updated: "2026-11-02"
@@ -23,10 +23,11 @@ updated: "2026-11-02"
 
 ## 2. 分層與依賴方向
 
-層級：L1（層級圖與完整依賴邊見系統層 §2）。
+層級：L2（層級圖與完整依賴邊見系統層 §2）。2026-11-10 Schema、Workspace 加入 Observability 出邊升為 L1 後，由 L1 推導為 L2（`1.0.0-W3-553.2.1`）。
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
+| 出邊 | Observability（`DOMAIN-MAP-observability`） | 掃描與解析的日誌以 `LogSink<E>` 與白名單型別發出（SPEC-010 FR-03、FR-04）；2026-11-10 新增（`1.0.0-W3-553.2.1`） |
 | 出邊 | Schema（`DOMAIN-MAP-schema`） | 以 `id_pattern` 為有 frontmatter 的檔案判型；以「路徑對型別」查詢分流沒拿到可用 frontmatter 的檔案（SPEC-006 FR-03、FR-06，見系統層 §5） |
 | 出邊 | Workspace（`DOMAIN-MAP-workspace`） | 取得專案根路徑 |
 | 入邊 | Graph | 圖建自解析產物 |

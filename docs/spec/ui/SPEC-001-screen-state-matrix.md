@@ -5,14 +5,14 @@ status: draft
 source_proposal: [PROP-004, PROP-006]
 created: "2026-08-26"
 updated: "2026-11-10"
-version: "1.85"
+version: "1.86"
 owner: star-anise-system-designer
 
 domain: "ui"
 subdomain: null
 
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06, UC-07]
-related_specs: [SPEC-002, SPEC-003, SPEC-004, SPEC-008]
+related_specs: [SPEC-002, SPEC-003, SPEC-004, SPEC-008, SPEC-010]
 implements_requirements: []
 depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, diagnostics, history]
 ---
@@ -20,6 +20,8 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 # 畫面狀態矩陣與 gate 退出路徑
 
 ## 概述
+
+> **日誌**：本規格引用的日誌事件只定義事件碼與負載鍵；記錄信封、錯誤來源分類、欄位值白名單（路徑記工作區相對路徑）與落地位置依 SPEC-010。
 
 界定七個畫面（§1–§6、§10）、專案切換浮層、偏好設定面板（§9）與鍵盤快捷鍵面板（§11）的**每一個狀態**，各以四欄描述：
 顯示／可用操作／進入條件／退出路徑。
@@ -53,7 +55,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 | 載入中 | 骨架版面 + 進度 | **取消載入**、開啟切換浮層 | 已選專案，節點解析未完成 | 取消 → 未選專案；完成 → 正常／空圖／不是框架專案／無可消費的型別表／schema 不相容；載入輪次拋出非預期例外 → 載入失敗 |
 | 正常 · 矩陣 | domain × UC 交叉表（每列末為該 domain 被直接貫穿的 UC 數小計）+ 底部圖例（關係種類：直接貫穿／間接依賴／無關）+ 右欄格詳情卡區（未選格時顯示提示「點選一格檢視詳情」，右欄常駐不隱藏） | 點格子→已選格、選 domain、切模式 | 節點解析成功且有節點。載體欄位 `inferredVersion`（`String?`）：`.claude/VERSION` 缺失而 `tracking_schema.json` 存在時，值為該 JSON 的產生版本（推定），否則為 `null`（版本為 `VERSION` 真實值）；本列與已選格、正常 · 泳道、泳道 · 尚未選定 UC、泳道 · 投影準備中、泳道 · flow 未結構化、圖不可用六列共用同一載體，欄位語意相同，見下方〈推定版本〉註記 | 點格子 → 已選格；切至泳道 → 正常 · 泳道／泳道 · 尚未選定 UC／泳道 · 投影準備中／泳道 · flow 未結構化；最後完成輪次建圖不可用 → 圖不可用（已選格、正常 · 泳道與泳道三態同此出口，見〈FR-13 回傳「圖不可用」時的 Domain 視圖呈現〉）；導覽至其他畫面、切換專案 |
 | **已選格**（疊加於正常 · 矩陣） | 正常 · 矩陣 + 右欄格詳情卡（標題 domain × UC、關係種類、說明、編號步驟、事件標籤；間接依賴格另含依賴路徑，見下方〈間接依賴判定式〉）；該格與所在列呈選中態 | 同正常 · 矩陣 + 點其他格（換選）、在泳道中檢視、關閉詳情卡、Esc 清除選取 | 於正常 · 矩陣點擊任一格（含「無關」格） | 點其他格 → 已選格（換內容）；Esc／關閉 → 正常 · 矩陣（未選格）；在泳道中檢視 → 正常 · 泳道／泳道 · flow 未結構化；導覽、切換專案（同正常 · 矩陣） |
-| 正常 · 泳道 | flow 橫向穿過 domain 泳道：頂端一條「畫面」列，其下每個 DomainBundle 一條泳道列（列首為 domain 名，共 8 列、依 `bundle_dependency` 推導的層序與同層 code point 序，推不出層者接在最後，無步驟者為空列）垂直堆疊、列間分隔；選定 UC 的步驟依主線清單順序排列、分支插在起點後，各佔一欄，步驟節點置於其所屬 domain 的列內（`traverses` 為 `[]` 者置於「畫面」列；`traverses` 值全部未宣告或缺 `traverses` 鍵者置於最末的「未定位」列，該列只在有此類步驟時出現，見〈泳道布局規則〉「`traverses` 異常的步驟」）；選定 UC 有 flow 區塊解析失敗但仍有合法區塊時，泳道照常渲染並加提示「flow 有解析失敗區塊」（見下方〈flow 區塊解析失敗的泳道呈現〉）；前向關係畫直線、回指關係畫弧線（列序、欄序、邊與畫面列的判定式見下方〈泳道布局規則〉），步驟 `traverses` 含選中 domain 者與其餘步驟兩種呈現（UC-02 步驟 4；未選 domain 時皆為其餘）；底部一列標示步驟方向；面板標題為選定 UC（`<UC id> <UC 標題>`）、底部圖例 | 選 domain、切模式 | 同上，且已選定一條 UC | 切回矩陣、導覽、切換專案 |
+| 正常 · 泳道 | flow 橫向穿過 domain 泳道：頂端一條「畫面」列，其下每個 DomainBundle 一條泳道列（列首為 domain 名，列數等於語料宣告的 DomainBundle 數、依 `bundle_dependency` 推導的層序與同層 code point 序，推不出層者接在最後，無步驟者為空列）垂直堆疊、列間分隔；選定 UC 的步驟依主線清單順序排列、分支插在起點後，各佔一欄，步驟節點置於其所屬 domain 的列內（`traverses` 為 `[]` 者置於「畫面」列；`traverses` 值全部未宣告或缺 `traverses` 鍵者置於最末的「未定位」列，該列只在有此類步驟時出現，見〈泳道布局規則〉「`traverses` 異常的步驟」）；選定 UC 有 flow 區塊解析失敗但仍有合法區塊時，泳道照常渲染並加提示「flow 有解析失敗區塊」（見下方〈flow 區塊解析失敗的泳道呈現〉）；前向關係畫直線、回指關係畫弧線（列序、欄序、邊與畫面列的判定式見下方〈泳道布局規則〉），步驟 `traverses` 含選中 domain 者與其餘步驟兩種呈現（UC-02 步驟 4；未選 domain 時皆為其餘）；底部一列標示步驟方向；面板標題為選定 UC（`<UC id> <UC 標題>`）、底部圖例 | 選 domain、切模式 | 同上，且已選定一條 UC | 切回矩陣、導覽、切換專案 |
 | **泳道 · 尚未選定 UC** | domain 泳道列（同正常 · 泳道的列結構）不含任何步驟節點 + 提示需先選定一條 UC 並指出選定方式（矩陣點格、UC Flow 視圖選擇）；無面板標題的 UC 名 | 選 domain、切回矩陣 | 節點解析成功且有節點，泳道模式且選定 UC 為空（已選定 UC 而投影暫不可得者屬「泳道 · 投影準備中」） | 切回矩陣、導覽（含至 UC Flow 視圖選擇 UC）、切換專案 |
 | **泳道 · 投影準備中** | 泳道面板標題為選定 UC（`<UC id> <UC 標題>`；拿不到 UC 標題時只顯示 UC id，同〈顯示字面的退路〉UC 標題列）；domain 泳道列（同正常 · 泳道的列結構）不含任何步驟節點 + 提示「泳道投影準備中」（`swimlaneProjectionPendingPrompt`），不顯示「需先選定 UC」；錨點 `state-domain-swimlane-projection-pending` | 選 domain、切回矩陣 | 泳道模式，已選定一條 UC，且該專案尚無任何完成的掃描輪次；已有完成輪次時（含重掃進行中、取消重掃、輪次失敗）沿用最後一次完成輪次的結果，不進本列（見下方〈矩陣與泳道同由掃描輪次衍生〉） | 該專案首次輪次完成 → 依選定 UC 是否含 FlowStep 落正常 · 泳道或泳道 · flow 未結構化，該輪建圖不可用時落圖不可用；切回矩陣、導覽、切換專案 |
 | **泳道 · flow 未結構化** | 泳道面板標題為選定 UC（`<UC id> <UC 標題>`）；主區顯示「此 UC 尚未填寫結構化 flow」，不渲染泳道列；選定 UC 的 flow 區塊皆解析失敗（無任何合法區塊）時，主區改顯示解析失敗專用文案（見下方〈flow 區塊解析失敗的泳道呈現〉） | 開啟原始檔（解析失敗時即「開啟來源檔」）、切回矩陣 | 泳道模式，且選定 UC 無 FlowStep（含 flow 區塊皆解析失敗） | 切回矩陣、導覽、切換專案 |
@@ -275,7 +277,7 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 >
 > | 項目 | 判定式 | 期望值（UC-02 實例） |
 > |------|--------|---------------------|
-> | 列集合與列序 | 「畫面」列在最上，其下每個 DomainBundle 一列。DomainBundle 列的順序取自 Graph 公開面的分層與層內排序（SPEC-007 FR-13，權威條文在該處；Layout 不自行推導，`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08），以下為摘錄。DomainBundle 的層由 `bundle_dependency` 邊（各 domain map frontmatter `depends_on_bundles`）推導：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；列序依層遞增（L0 在上），同層依 `DomainBundle.domain` 字面的 Unicode code point 逐字元遞增排序（不依 locale 排序規則）。推不出層的 bundle（依賴循環，或 `depends_on_bundles` 指向未宣告的 bundle）不消失：依 `DomainBundle.domain` code point 序接在最後一列之後，其依賴邊照常依存在的端點繪製、指向未宣告者的邊不畫。規則不寫死 domain 名；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 本專案語料的凍結快照（`test/fixtures/spec001/corpus_snapshot/`）推導：L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`。列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列；UC-02 下 `schema`、`workspace`、`history`、`diagnostics` 為空列。現行語料自 2026-10-21 起 `diagnostics` 依賴 `graph`（`0.5.0-W1-460` 補記漏列的依賴邊），推導為 L3，列序變為「畫面」、`schema`、`workspace`、`corpus`、`history`、`graph`、`ticketdetail`、`diagnostics`、`layout`；快照不隨語料更新，驗收期望值以快照為準 |
+> | 列集合與列序 | 「畫面」列在最上，其下每個 DomainBundle 一列。DomainBundle 列的順序取自 Graph 公開面的分層與層內排序（SPEC-007 FR-13，權威條文在該處；Layout 不自行推導，`0.5.0-W1-114.2` 用戶裁決 R1，2026-10-08），以下為摘錄。DomainBundle 的層由 `bundle_dependency` 邊（各 domain map frontmatter `depends_on_bundles`）推導：無出邊者為 L0，其餘為其所依賴 bundle 的最大層 + 1；列序依層遞增（L0 在上），同層依 `DomainBundle.domain` 字面的 Unicode code point 逐字元遞增排序（不依 locale 排序規則）。推不出層的 bundle（依賴循環，或 `depends_on_bundles` 指向未宣告的 bundle）不消失：依 `DomainBundle.domain` code point 序接在最後一列之後，其依賴邊照常依存在的端點繪製、指向未宣告者的邊不畫。規則不寫死 domain 名；與選定 UC 無關，換 UC 列序不變；無步驟的列照常渲染為空列 | 本專案語料的凍結快照（`test/fixtures/spec001/corpus_snapshot/`）推導：L0 `schema`、`workspace`；L1 `corpus`、`history`；L2 `diagnostics`、`graph`、`ticketdetail`；L3 `layout`。列序為「畫面」、`schema`、`workspace`、`corpus`、`history`、`diagnostics`、`graph`、`ticketdetail`、`layout`，共 9 列；UC-02 下 `schema`、`workspace`、`history`、`diagnostics` 為空列。現行語料自 2026-10-21 起 `diagnostics` 依賴 `graph`（`0.5.0-W1-460` 補記漏列的依賴邊），推導為 L3，列序變為「畫面」、`schema`、`workspace`、`corpus`、`history`、`graph`、`ticketdetail`、`diagnostics`、`layout`。2026-11-10 加入 `observability`（其餘每個 domain 皆依賴它，`1.0.0-W3-553.2.1`）後，現行語料各層 +1、`observability` 在最上；快照不隨語料更新，驗收期望值以快照為準 |
 > | 列鍵比對 | 列鍵為 `DomainBundle.domain` 宣告字面；步驟 `traverses` 值與列鍵精確比對（不做大小寫轉換）；列首顯示 `DomainBundle.domain` 原值（未知 domain 亦同），只有「畫面」列經 i18n | `traverses: ["graph"]` 落 `graph` 列 |
 > | 主線 | `branch_from == null` 的步驟為主線，主線順序為其在 flow 清單中的檔內順序 `i`（不沿 `next` 推導；與 2026-10-07 `next` (c) 裁決同源） | locate-domain → read-traversal-count → switch-to-swimlane → inspect-steps |
 > | 欄序 | 依主線順序逐一輸出主線步驟 M；輸出 M 後，緊接輸出所有 `branch_from == M.id` 的分支步驟（多個時依檔內順序 `i`）；每輸出一個分支步驟 B 後，對 B 遞迴套用同一規則（緊接輸出 `branch_from == B.id` 的巢狀分支，再處理 B 的下一個同層分支）；步驟的欄號 = 輸出序（0 起），每步驟恰一欄 | 0 locate-domain、1 enter-from-ticket、2 read-traversal-count、3 matrix-overview-only、4 switch-to-swimlane、5 flow-not-structured、6 inspect-steps |
@@ -1362,6 +1364,7 @@ FR-04 只涵蓋「版本超出已知範圍」這一路，而實際輸入 94% 落
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.86 | 2026-11-10 | 〈概述〉補一段：日誌事件的記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010（`1.0.0-W3-553.2.1`）；§1「正常 · 泳道」列的「共 8 列」改為「列數等於語料宣告的 DomainBundle 數」（新增 observability、edit 兩個 domain 後寫死的數字失效）；§1〈泳道布局規則〉列集合與列序的現行語料註記補 observability 加入後各層 +1。不改畫面契約，驗收期望值仍以凍結快照為準 |
 | 1.85 | 2026-11-10 | 引用字面更正（`1.0.0-W1-110` 停放票分診，用戶裁決移入 1.1.0 候選池）：§6〈「部分損壞」在 0.x 不可達〉的觸發票 ID 由 `1.0.0-W3-656` 改為遷移後的 `1.1.0-W3-656`；變更歷史列保留原文。條文不變 |
 | 1.84 | 2026-11-09 | UC-04〈反向追溯〉（用戶裁決 2026-11-09）：§6 新增〈來源鏈〉註記——選定節點為 Ticket 時「正常」狀態主欄內嵌來源鏈，三跳邊型（`uc_ticket_refs`／`spec_association`／`provenance`）、讀取方向、子→父取法與缺上游判定在此唯一定義；多 UC 全部展開、缺口沿用正向樹虛線框並可跳轉破洞報告、點節點沿用點關聯（`returnTo` 不變）、起點不在圖上沿用「節點不在目前的圖上」；附裁決依據（使用者情境、約 96% 第一跳無 UC 實測、四個排除選項）。§3 補一行引用。不新增狀態列，狀態總數不變。SPEC-003 v1.87 同批 |
 | 1.83 | 2026-11-09 | `0.7.0-W1-007.1`（`0.7.0-W1-007` 用戶裁決三項）：新增 §11 鍵盤快捷鍵面板，一列「快捷鍵清單」，含〈清單內容〉十列 App 自訂鍵盤操作（不含系統項）與作用情境；§9 入口改為側欄底部「設定」、選單列「偏好設定…」與 ⌘, 三處（選單 zh／en 對照在 SPEC-003 §3.11）；〈狀態總數〉54 → 55（第 57 列），§8.1 補一列（判否）；概述、§8 引言、§8.1 標題、FR-01 驗收納入 §11（FR-01 同時補上原缺漏的 §10）。SPEC-003 v1.86、SPEC-004 v1.133 同批同步 |

@@ -5,14 +5,14 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-10"
-version: "1.91"
+version: "1.92"
 owner: star-anise-system-designer
 
 domain: "ui"
 subdomain: null
 
 related_usecases: [UC-01, UC-02, UC-03, UC-04, UC-05, UC-06, UC-07]
-related_specs: [SPEC-001, SPEC-002, SPEC-004, SPEC-008]
+related_specs: [SPEC-001, SPEC-002, SPEC-004, SPEC-008, SPEC-010]
 implements_requirements: []
 depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, diagnostics, history]
 ---
@@ -20,6 +20,8 @@ depends_on_domains: [workspace, schema, corpus, graph, ticketdetail, layout, dia
 # 互動反應規格：七畫面的反應、動畫、導航與生命週期
 
 ## 概述
+
+> **日誌**：本規格的日誌事件（含仲裁器的 `rejected`／`invalidRequest`）只定義事件碼與負載鍵；記錄信封、錯誤來源分類、欄位值白名單（路徑記工作區相對路徑）與落地位置依 SPEC-010。
 
 SPEC-001 界定七個畫面、偏好設定面板與鍵盤快捷鍵面板的 55 個狀態「是什麼、怎麼進、怎麼出」；本規格界定
 **使用者做了動作之後系統怎麼反應**，涵蓋四類行為：
@@ -2103,7 +2105,7 @@ FlowStep `traverses` 為 0..n 個 domain 名（只列直接觸及的 domain 公�
 
 **`presentation` 本地保留字**（`0.5.0-W1-095.3`，用戶裁決 2026-10-07，`0.5.0-W1-095` WRAP 第二輪 A′；決策見
 `docs/tech-decisions.md` 同日補記）：EVT `consumers` 的值必須是已宣告的 domain 名（各
-`DomainBundle` 的 `domain`）或本地保留字 `presentation`；`producers` 的值只能是已宣告的 domain 名（用戶裁決 2026-10-08 第 4 項，`0.5.0-W1-106` 收窄；見 `docs/tech-decisions.md` 同日補記）——畫面消費 domain 事件屬正常，畫面發出 domain 事件代表事件起點放錯層，須被檢查抓出。`presentation` 表示畫面層（L4，非 domain），
+`DomainBundle` 的 `domain`）或本地保留字 `presentation`；`producers` 的值只能是已宣告的 domain 名（用戶裁決 2026-10-08 第 4 項，`0.5.0-W1-106` 收窄；見 `docs/tech-decisions.md` 同日補記）——畫面消費 domain 事件屬正常，畫面發出 domain 事件代表事件起點放錯層，須被檢查抓出。`presentation` 表示畫面層（畫面狀態層，非 domain；`docs/system-layer.md` §2），
 與泳道「畫面」列同義（SPEC-001 §1〈「畫面」列是泳道的例外，不進矩陣〉）；本保留字只在本專案規格定義，
 不屬上游 schema。
 
@@ -2822,6 +2824,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.92 | 2026-11-10 | 〈概述〉補一段：日誌事件的記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010（`1.0.0-W3-553.2.1`）；§3.5 的「畫面層（L4，非 domain）」改為「畫面狀態層」（domain 層號推導到 L4 後撞號，系統層 §2 改為不帶層號）。不改互動契約 |
 | 1.91 | 2026-11-10 | 引用字面更正（`1.0.0-W1-110` 停放票分診，用戶裁決移入 1.1.0 候選池）：§3.6〈重新整理的三分支〉註記的觸發票 ID 由 `1.0.0-W3-656` 改為 `1.1.0-W3-656`；`UNUserNotificationCenter` 可用性列「Developer ID 簽章下的可用性未量」的承接票由 `1.0.0-W1-027` 改為 `1.1.0-W1-027`；變更歷史列保留原文。條文不變 |
 | 1.90 | 2026-11-10 | `0.7.0-W1-007.10`：§3.11〈在地化載體（約束）〉App 名稱載體由 `CFBundleDisplayName` 改為 `CFBundleName` 與 `CFBundleDisplayName` 並列（AppKit 以本地化 CFBundleName 作為 App 選單標題） |
 | 1.89 | 2026-11-10 | `0.7.0-W1-007.6`：§3.10〈清單為靜態內容〉補關閉鈕固定於面板底部、開啟時焦點落點與關閉後歸位的元件承載出處（對應 SPEC-004 v1.136 4.30、4.4、4.7），偏好設定面板同此；§2.10 條文不變 |

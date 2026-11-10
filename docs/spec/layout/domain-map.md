@@ -3,7 +3,7 @@ id: DOMAIN-MAP-layout
 domain: "layout"
 source_specs: [SPEC-001]
 related_usecases: [UC-02, UC-03]
-depends_on_bundles: [DOMAIN-MAP-graph]
+depends_on_bundles: [DOMAIN-MAP-graph, DOMAIN-MAP-observability]
 path_patterns: [lib/layout/, lib/components/swimlane_grid.dart, lib/components/swimlane_node.dart, lib/components/matrix_cell.dart, lib/components/matrix_grid.dart]
 created: "2026-08-26"
 updated: "2026-10-08"
@@ -23,10 +23,11 @@ updated: "2026-10-08"
 
 ## 2. 分層與依賴方向
 
-層級：L3（層級圖與完整依賴邊見系統層 §2）。
+層級：L4（層級圖與完整依賴邊見系統層 §2）。2026-11-10 各 domain 加入 Observability 出邊後，由 L3 推導為 L4（`1.0.0-W3-553.2.1`）。
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
+| 出邊 | Observability（`DOMAIN-MAP-observability`） | 布局的日誌以 `LogSink<E>` 與白名單型別發出（SPEC-010 FR-03、FR-04）；2026-11-10 新增（`1.0.0-W3-553.2.1`） |
 | 出邊 | Graph（`DOMAIN-MAP-graph`） | 布局的輸入是圖 |
 
 ## 2.5 通道與協調圖

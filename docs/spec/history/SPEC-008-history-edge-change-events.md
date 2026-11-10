@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-006
 created: "2026-11-09"
 updated: "2026-11-10"
-version: "1.2"
+version: "1.3"
 owner: "主線程（PM）"
 has_functional_requirements: true
 
@@ -13,7 +13,7 @@ domain: "history"
 subdomain: null
 
 related_usecases: [UC-07]
-related_specs: [SPEC-007, SPEC-001]
+related_specs: [SPEC-007, SPEC-001, SPEC-010]
 implements_requirements: []
 depends_on_domains: [workspace, schema]
 ---
@@ -21,6 +21,8 @@ depends_on_domains: [workspace, schema]
 # History：主線邊事件的掃描、解析與降級
 
 ## 概述
+
+> **日誌**：本規格的日誌事件（`HistoryLogEvent` 與解析器的 desync、unparsable 記錄）只定義事件碼與負載鍵；記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010。
 
 本規格定義 0.7.0（History）的資料管線：以單次 `git log -p` 讀取工作區的主線歷史，把 frontmatter 的
 變更解析為**邊事件**（某條邊在某個主線 commit 新增或移除），供第七畫面「變更記錄」（SPEC-001 §10）依期間呈現。
@@ -296,6 +298,7 @@ History 無主動推送的呈現面：掃描由使用者進入第七畫面觸發
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.3 | 2026-11-10 | 〈概述〉補一段：日誌事件的記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010（`1.0.0-W3-553.2.1`）。不改歷史掃描契約 |
 | 1.2 | 2026-11-10 | 0.7.0-W1-012.20：FR-09 規則 1 補型別表來源（最近一次完成的輪次）、尚無完成輪次時等待、等待期間可取消、被重掃取代時接續；規則 2 型別表識別涵蓋節點型別 id_pattern 並區分「尚無完成輪次」；驗收條件補四條。FR-08 規則 5 另列「掃描輪次不可用」（與 git 原因碼分開）。原因：實機以空型別表掃描，ticket 建檔旗標恆為 false |
 | 1.1 | 2026-11-09 | 多視角審查（linux、saffron）修正：FR-02 改為追蹤每個路徑全文，frontmatter 範圍每個 commit 重新計算（原只追蹤 frontmatter，邊界移動時失準）；hunk 依行數消耗，不以前綴辨認檔頭；補 `\` 行、CRLF、空新增檔、無 hunk 條目、C-style 引號路徑、容錯解碼；失步只作斷言、不設恢復。FR-01 加 `LC_ALL=C`、`--no-show-signature`、固定前綴、最低 git 2.31，前置檢查改以結構化輸出判定並取得主線清單與 tag 清單；FR-06 版本 tag 改由 tag 清單與主線序號決定（原取自掃描輸出的 decoration，`-- docs/` 會剪掉未觸及 docs 的 tag commit）。FR-04 來源集合元素為（路徑、欄位、值）；FR-08 淺層邊界以父欄位為空辨認，型別表阻擋落 SPEC-001 §10「專案未就緒」；FR-09 前置檢查期間維持先前狀態；新增 H7、H8 |
 | 1.0 | 2026-11-09 | 初版（`0.7.0-W1-012` 規劃波；用戶裁定：一列一個邊事件、期間內全專案、第七畫面、主線歸屬、預設期間為最近版本 tag 至今） |

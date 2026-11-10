@@ -3,7 +3,7 @@ id: DOMAIN-MAP-history
 domain: "history"
 source_specs: [SPEC-008]
 related_usecases: [UC-07]
-depends_on_bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema]
+depends_on_bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-observability]
 path_patterns: []
 created: "2026-08-26"
 updated: "2026-11-09"
@@ -23,10 +23,11 @@ updated: "2026-11-09"
 
 ## 2. 分層與依賴方向
 
-層級：L1（層級圖與完整依賴邊見系統層 §2）。依賴 Workspace 與 Schema（皆 L0），推導為 L1；系統層 §2 已於 2026-10-08 更正，本行 2026-10-21 補同步（`0.5.0-W1-460`），2026-11-09 補 Schema 出邊（`0.7.0-W1-012`）。
+層級：L2（層級圖與完整依賴邊見系統層 §2）。依賴 Workspace、Schema（皆 L1）與 Observability（L0），推導為 L2（2026-11-10 加入 Observability 出邊，`1.0.0-W3-553.2.1`；此前為 L1）；系統層 §2 已於 2026-10-08 更正，本行 2026-10-21 補同步（`0.5.0-W1-460`），2026-11-09 補 Schema 出邊（`0.7.0-W1-012`）。
 
 | 方向 | 對象 | 為什麼 |
 |------|------|--------|
+| 出邊 | Observability（`DOMAIN-MAP-observability`） | 掃描與解析的日誌（`HistoryLogEvent`、desync、unparsable）以 `LogSink<E>` 與白名單型別發出（SPEC-010 FR-03、FR-04）；2026-11-10 新增（`1.0.0-W3-553.2.1`） |
 | 出邊 | Workspace（`DOMAIN-MAP-workspace`） | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見系統層 §4.3） |
 | 出邊 | Schema（`DOMAIN-MAP-schema`） | 邊型表判定 diff 中的邊欄位；節點型別 `id_pattern` 判定 ticket（SPEC-008 FR-03、FR-05）。由 History 直接依賴而不由呼叫端傳入：兩者都在 Schema 公開面，型別表缺席時的內建表降級也沿用 Schema；改由呼叫端傳入會把同一條依賴藏到組裝根（PROP-006〈提案方案〉第 4 點） |
 
@@ -104,7 +105,7 @@ updated: "2026-11-09"
 | FR-06 版本 tag 與預設期間 | History | 時鐘注入 |
 | FR-07 查詢 | History（公開面） | |
 | FR-08 降級與失敗 | History | 型別表阻擋由 Schema 決定，畫面沿用 SPEC-001 §1 |
-| FR-09 惰性載入、快取、取消 | History（application 層） | 觸發點在 L4 畫面狀態 |
+| FR-09 惰性載入、快取、取消 | History（application 層） | 觸發點在畫面狀態層 |
 | FR-10 可觀測性與 tripwire | History | |
 
 本 domain 在 SPEC-006、SPEC-007 無 FR 歸屬。SPEC-003 逐 FR 的跨 domain 對照見系統層 §8。
