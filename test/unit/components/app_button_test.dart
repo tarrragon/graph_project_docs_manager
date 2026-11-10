@@ -400,4 +400,48 @@ void main() {
       handle.dispose();
     });
   });
+
+  group('autofocus（§4.4 開啟時取得焦點）', () {
+    Widget button({required bool autofocus}) => AppButton(
+      testKey: const ValueKey('autofocus-btn'),
+      label: 'x',
+      onPressed: () {},
+      autofocus: autofocus,
+    );
+
+    testWidgets('autofocus 為 true 時掛載後取得焦點', (tester) async {
+      await pumpHarness(
+        tester,
+        size: WindowSize.min,
+        child: button(autofocus: true),
+      );
+      await tester.pump();
+      final focusCtx = FocusManager.instance.primaryFocus?.context;
+      expect(focusCtx, isNotNull);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('autofocus-btn')),
+          matching: find.byElementPredicate((e) => e == focusCtx),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('預設不取得焦點', (tester) async {
+      await pumpHarness(
+        tester,
+        size: WindowSize.min,
+        child: button(autofocus: false),
+      );
+      await tester.pump();
+      final focusCtx = FocusManager.instance.primaryFocus?.context;
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('autofocus-btn')),
+          matching: find.byElementPredicate((e) => e == focusCtx),
+        ),
+        findsNothing,
+      );
+    });
+  });
 }
