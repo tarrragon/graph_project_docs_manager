@@ -493,6 +493,33 @@ void main() {
       expectNoOverflow(tester);
     });
 
+    testWidgets('footer 單顆 AppButton 靠右且維持固有寬度', (tester) async {
+      final scrollKey = UniqueKey();
+      const buttonKey = ValueKey('footer-button');
+      await pumpHarness(
+        tester,
+        size: WindowSize.min,
+        child: SizedBox(
+          width: 400,
+          height: 200,
+          child: Panel.scrollable(
+            scrollKey: scrollKey,
+            footer: AppButton(
+              testKey: buttonKey,
+              label: 'x',
+              onPressed: () {},
+              variant: AppButtonVariant.text,
+            ),
+            children: const [_FixedChild(height: 40)],
+          ),
+        ),
+      );
+      final button = tester.getRect(find.byKey(buttonKey));
+      final scroll = tester.getRect(find.byKey(scrollKey));
+      expect(button.right, scroll.right);
+      expect(button.width, lessThan(scroll.width));
+    });
+
     testWidgets('不傳 footer 時沒有 footer 子件', (tester) async {
       final scrollKey = UniqueKey();
       await pumpHarness(

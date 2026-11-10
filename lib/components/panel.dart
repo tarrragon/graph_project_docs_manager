@@ -132,7 +132,7 @@ class Panel extends StatelessWidget {
       children: [
         Expanded(child: scroll),
         const SizedBox(height: Space.sm),
-        footer,
+        Align(alignment: Alignment.centerRight, child: footer),
       ],
     );
   }
