@@ -428,6 +428,7 @@ Claude Code 內建原生的 memory 系統（`~/.claude/projects/{project}/memory
 | IMP-GPD-026 | 寫入端正規化在補償讀取端的解析缺陷，只修寫入端會造成讀取端回歸 | 中 | v0.6.0 |
 | IMP-GPD-027 | 紀錄端以比產生端窄的規則抽出衍生欄位，欄位外觀正常而下游聚合失真 | 中 | 0.6.0 |
 | IMP-GPD-028 | 以舊路徑當 pathspec 追 git 歷史，rename 被顯示為刪除 | 中 | v0.6.0 |
+| IMP-GPD-029 | 以 null 同時代表「尚未就緒」與「沒有資料」，消費端以預設值續算，結果靜默失真 | 中 | v0.7.0 |
 
 ### 流程 (PROC)
 
