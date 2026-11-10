@@ -27,7 +27,7 @@ class HistoryFilterBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final choice = ref.watch(historyPeriodChoiceProvider);
-    final toolbar = Toolbar.history(
+    return Toolbar.history(
       testKey: const Key('toolbar-history-filter'),
       period: SegmentedControl(
         segments: [
@@ -45,12 +45,6 @@ class HistoryFilterBar extends ConsumerWidget {
             ref.read(historyIncludeTicketCreationProvider.notifier).state = v,
         testKey: const Key('action-history-include-ticket-created'),
       ),
-    );
-    // Toolbar.history 的兩個子件取固有寬、無截斷策略；字型寬於預期時（測試
-    // 字型、極端系統字型）縮小而非溢位。固有寬容得下時不縮放。
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: FittedBox(fit: BoxFit.scaleDown, child: toolbar),
     );
   }
 
