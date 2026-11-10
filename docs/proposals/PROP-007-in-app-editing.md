@@ -1,0 +1,165 @@
+---
+id: PROP-007
+title: "編輯能力：在 App 內直接編輯文件與票"
+status: discussing
+evaluation_level: heavy
+source: development
+proposed_by: 1.0 規劃波訪談（1.0.0-W1-104）
+proposed_date: "2026-11-10"
+confirmed_date: null
+target_version: "1.0.0"
+priority: P1
+
+outputs:
+  spec_refs: []
+  usecase_refs: []
+  ticket_refs: [1.0.0-W1-104]
+
+related_proposals: [PROP-005, PROP-002, PROP-004]
+supersedes: null
+---
+
+# PROP-007: 編輯能力：在 App 內直接編輯文件與票
+
+## 需求來源
+
+PROP-005〈1.0 — 編輯〉把編輯能力劃為 1.0 major：App 由唯讀檢視變為可寫，屬系統基本能力的改變。編輯模型已於 0.0.3 選型（`docs/tech-decisions.md`〈markdown 編輯模型：直接改檔 + CLI 驗證〉）：App 直接改檔，CLI 只當驗證器；frontmatter 用結構化表單，內文用 `re_editor`。寫入前後的安全約束已於〈2026-09-10：加入編輯能力 tripwire 的重評〉與〈補記：2026-11-10 — 1.0 編輯能力四項架構決策定案〉定案。
+
+PROP-005 只定版本序列與整合測試，沒有定可編輯的範圍。本提案定範圍、輸入方式與 1.x 的 minor 清單（1.0 規劃波訪談，2026-11-10）。
+
+## 問題描述
+
+使用者在 App 內看到破洞或錯誤的關係時，現在只能交給外部編輯器開檔修改（UC-06），改完由檔案監看偵測後重新解析。修改的對象多半是 frontmatter 的一個欄位或一條邊，在外部編輯器裡要自己找位置、記得合法值，寫錯的值要等重新解析後才在破洞報告裡看到。
+
+## 影響範圍
+
+- 新增 edit domain（`docs/spec/edit/`）與編輯能力規格 SPEC-009。
+- 畫面：節點詳情（就地編輯）、破洞報告（直接修復）的狀態矩陣與互動反應（SPEC-001、SPEC-003）。
+- 元件庫：新增一組表單元件（SPEC-004）。元件庫目前沒有表單輸入元件；現有的選擇類元件語意分別是畫面模式切換（`SegmentedControl`）、篩選（`FilterDropdown`）與核取（`AppCheckbox`）。
+- 橫切：structured log 與錯誤分類（全面解除延後，設計另立）。
+
+## 範圍界定
+
+### 本提案要做的（In Scope）
+
+1. **文件節點**（PROP、SPEC、UC、EVT、DomainBundle）的 frontmatter、關係邊、markdown 內文、結構化區塊，以及檔案層級操作（新建、刪除、更名）。
+2. **Ticket**：經 ticket CLI 寫入。這是「CLI 只當驗證器」的例外，只能改 CLI 有子命令的欄位；status 以生命週期動作呈現（認領、完成、關閉、釋放、還原），不做成自由選單；內文章節只能追加。
+3. **唯讀範圍**：ticket 的兩種終態（completed、closed）整張唯讀，要改須先以「還原」回到非終態。系統維護的欄位（id、created、updated、version、DomainBundle 的 domain 名）唯讀，由寫入流程維護；改 id 與 domain 名屬檔案層級操作。
+4. **編輯入口**：節點詳情就地編輯、破洞報告直接修復。
+
+### 本提案不做的（Out of Scope）
+
+- 型別表（`tracking_schema`）的編輯：JSON 是衍生產物，唯一權威是框架的 `.py`（PROP-002）。
+- 獨立的編輯畫面（第八個導覽項）。
+- 樂觀更新：0.x 與 1.0 皆不允許（SPEC-004 §2）。
+
+## 提案方案
+
+### 1.x minor 清單
+
+依對象風險遞進：1.0 建立寫入基礎並開放最單純的對象，之後每個 minor 加一種對象。
+
+| minor | 範圍 | 主要規格 |
+|------|------|---------|
+| 1.0 | 寫入基礎：三平面寫入前閘門、快照、寫入結果型別與三個可觀測時刻、CLI 驗證狀態、變更記錄、路徑界內型別、structured log、表單元件地基。對象：文件節點的純量欄位（非邊的單值欄位，如 title、status、priority、platform）。入口：節點詳情、破洞報告 | SPEC-009（新建）、SPEC-001、SPEC-003、SPEC-004 |
+| 1.1 | 關係邊。provenance、blood、spawn 三種邊有反向欄位，改一條要寫兩個檔，閘門與快照對兩個檔各做一次 | SPEC-009、SPEC-004 |
+| 1.2 | Ticket 編輯（經 ticket CLI）：欄位、驗收清單、生命週期動作；終態唯讀 | SPEC-009、SPEC-001、SPEC-003 |
+| 1.3 | markdown 內文（`re_editor`，關閉語法高亮） | SPEC-009、SPEC-004 |
+| 1.4 | 結構化區塊（UC flow、PROP outputs），表格列編輯 | SPEC-009、SPEC-004 |
+| 1.5 | 檔案層級：新建、刪除、更名；id 與 domain 改名連同引用它的檔一起改 | SPEC-009、SPEC-007 |
+
+1.0 的整合測試沿用 PROP-005〈1.0 — 編輯〉：寫入後呼叫唯讀驗證器，索引不同步成為可偵測的紅燈。
+
+### 輸入元件依欄位功能決定
+
+同一概念在不同型別用同一元件；元件依欄位的功能決定，不依當下的選項數（值域增長時不必換元件）。
+
+| 功能 | 元件 | 例 |
+|------|------|----|
+| 分類（互斥、值域小且固定、需並列比較） | 單選鈕組 | EVT category、UC platform |
+| 等級 | 下拉 | priority（文件與 Ticket 相同） |
+| 生命週期（文件節點） | 下拉 | status |
+| 單一引用 | 可搜尋下拉 | source_proposal（cardinality one）、parent、SPEC domain |
+| 多值引用（節點 ID） | chips 加搜尋加入 | related_usecases、blockedBy |
+| 多值引用（domain） | 核取清單 | depends_on_domains、traverses |
+| 自由文字 | 單行、多行 | title、what |
+| 內文 | `re_editor` | markdown 本文 |
+| 字串清單 | 可增刪的字串清單 | path_patterns、where.files |
+| 結構化區塊 | 表格列編輯 | UC flow |
+
+逐欄位對照表在 SPEC-009 定稿。
+
+**值域來源**：下拉與單選的選項取自 `tracking_schema.json`。目前 schema 只定義必填欄位與邊；機器定義的列舉只有 PROP status 與 EVT category，其餘列舉只寫在 doc 範本註解，且 CLI 與範本對 SPEC status 的值域互相矛盾。已回報上游（tarrragon/claude#99 第五項觀測）。上游補上之前，沒有機器定義的列舉欄位用單行文字輸入。
+
+## 替代方案
+
+| 方案 | 內容 | 結論 |
+|------|------|------|
+| 依入口畫面切 minor | 1.0 做完一個入口內的所有可編輯項 | 不採：同一 minor 混入多種寫入風險（單檔、兩檔、ticket CLI） |
+| 1.0 一次做完 | 全部對象在 1.0 交付 | 不採：寫入基礎尚未經實機驗證就承載全部對象 |
+| Ticket 直接改檔 | 與文件節點同一條寫入路徑 | 不採：ticket 檔會有 App 與 ticket CLI 兩個寫入者 |
+| App 內建欄位值域表 | App 自帶一份值域 | 不採：與「上游 schema 唯一權威，禁止另建副本」衝突（CLAUDE.md §7） |
+
+## 失敗防護
+
+| 失敗情境 | 早期訊號 | 防護 |
+|---------|---------|------|
+| 文字輸入的列舉欄位寫入不合法值，CLI 驗證也不檢查 status 值 | 破洞報告或驗證狀態出現未知 status | 過渡期間接受此風險（用戶裁定以文字暫代）；上游修正抵達後改為下拉與單選（驗證票 `1.0.0-W1-107`） |
+| edit domain 與 corpus 因 frontmatter 格式在多數 PR 共現 | 前 10 個觸及寫入路徑的 commit 中，過半同時觸及 `lib/corpus/` | 依系統層 §4.5 合併 |
+| 兩檔寫入只成功一半（1.1） | 反向欄位不一致的驗證紅燈 | SPEC-009 定義兩檔寫入的順序與失敗回復 |
+
+## 機會成本
+
+1.x 期間不處理 0.x 停放的唯讀功能改善（停放票於本規劃波逐張裁決）。表單元件地基佔 1.0 的一部分容量。
+
+## 驗收條件
+
+- [ ] 對應 1.0：寫入後呼叫唯讀驗證器，索引不同步成為可偵測的紅燈（PROP-005〈1.0 — 編輯〉整合測試）
+- [ ] 對應 1.0：三平面閘門的三種判定（外部已改、需快照、直接寫入）各有 fixture 驗證，快照失敗時阻擋
+- [ ] 對應 1.0：寫入的三個可觀測時刻與寫入結果型別可由呼叫端區分，不以日誌抵扣
+- [ ] 對應 1.0：節點詳情與破洞報告兩個入口的編輯狀態皆在 SPEC-001 狀態矩陣內，所有狀態都有退出路徑
+- [ ] 對應 1.2：終態 ticket 的編輯控制項全部不可用，「還原」動作可用
+- [ ] 各 minor 的驗收在該 minor 的規劃波細化
+
+## Reality Test / 觸發案例實證
+
+### 觸發案例
+
+UC-06 的修復路徑交給外部編輯器；0.7.0 期間本專案文件的欄位修正全部在 App 外完成。
+
+### 假設列舉
+
+1. 使用者在 App 內最常改的是 frontmatter 的單一欄位與關係邊，不是長段內文。
+2. 寫入後呼叫 CLI 驗證的延遲不影響操作節奏。
+3. 三平面閘門能涵蓋 git 工作區內所有檔案狀態。
+
+### 實驗驗證
+
+（量測環境：作者本機 macOS，2026-11-10，本專案 repo）
+- CLI 驗證延遲：`doc validate SPEC-006` 0.35 秒、`doc uc verify` 0.52 秒（經 cwd-resolving shim）。
+- 寫入路徑現況：`lib/` 唯一的寫入是檔案監看的金絲雀檔，覆寫使用者檔案的路徑為 0。
+- 值域現況：掃 41 份節點 frontmatter；`doc update <SPEC-id> --status approved` 被拒，與範本矛盾。
+
+### 已驗證 vs 未驗證
+
+- 已驗證：假設 2 的 CLI 本身延遲量級；假設 3 的判準覆蓋未追蹤檔（W ≠ H 含 H 不存在）。
+- 未驗證：假設 1（無使用紀錄）；從 App 內經 `uv run` 呼叫 CLI 的延遲（多一層行程啟動），SPEC-009 實作時量測。
+
+## 風險與權衡
+
+- Ticket 經 CLI 寫入，App 不經三平面閘門，安全性由 ticket CLI 承擔；CLI 子命令沒涵蓋的欄位在 App 內唯讀。
+- 上游值域補上前，列舉欄位以文字輸入，錯誤值要靠提示與破洞報告發現。
+
+## 討論記錄
+
+### 2026-11-10
+
+1.0 規劃波訪談（AUQ）裁定：可編輯對象原則為絕大部分欄位可編輯，已關閉的票除外；輸入元件依欄位功能決定（用戶交由 PM 以 WRAP 逐項決定）；值域由上游補進 schema；ticket 兩種終態都唯讀；系統維護欄位唯讀；Ticket 經 ticket CLI 寫入；入口為節點詳情與破洞報告；minor 依對象風險遞進，邊優先、Ticket 第三。架構前提見 `docs/tech-decisions.md`〈補記：2026-11-10 — 1.0 編輯能力四項架構決策定案〉。
+
+## 轉化記錄
+
+| 轉化類型 | 檔案 | 日期 | 狀態 |
+|---------|------|------|------|
+| Ticket | `1.0.0-W1-104`（本提案） | 2026-11-10 | created |
+| Ticket | `1.0.0-W3-553.1`（edit domain 與 SPEC-009） | 2026-11-10 | created |
+| Ticket | `1.0.0-W3-553.2`（structured log 設計） | 2026-11-10 | created |
