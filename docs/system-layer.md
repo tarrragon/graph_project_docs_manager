@@ -47,6 +47,7 @@ updated: "2026-11-10"
 | **Diagnostics** | L4 | 「什麼算破洞」的定義改變 | `docs/spec/diagnostics/domain-map.md` |
 | **History** | L2 | git 查詢方式或歷史語意改變 | `docs/spec/history/domain-map.md` |
 | **Observability** | L0 | 記錄格式、錯誤來源分類、落地與保留政策或白名單型別改變 | `docs/spec/observability/domain-map.md` |
+| **Edit** | L3 | 寫入安全政策（三平面閘門、快照、原子寫入、路徑界內）、與 git 和 doc CLI 的寫入期互動，或寫入結果的呈現契約改變 | `docs/spec/edit/domain-map.md` |
 
 **畫面狀態不是 domain，是 layer。** 布局演算法（有真實規則與演算法）與
 畫面狀態（純 UI）分開 —— 前者可獨立測試，後者依賴 widget tree。
@@ -72,7 +73,7 @@ updated: "2026-11-10"
 ```
 畫面狀態層（layer，非 domain；不帶層號）
 L4   Diagnostics      Layout
-L3   Graph      TicketDetail
+L3   Graph      TicketDetail      Edit
 L2   Corpus     History
 L1   Schema     Workspace
 L0   Observability
@@ -96,7 +97,10 @@ L0   Observability
 | Corpus | Workspace | 取得專案根路徑 |
 | History | Workspace | 取得專案根路徑後直接查 git 物件庫，不經 Corpus（見系統層 §4.3） |
 | History | Schema | 以邊型表判定 frontmatter diff 中的邊欄位，以 `id_pattern` 判定節點是否為 ticket（SPEC-008 FR-03、FR-05）；2026-11-09 新增（`0.7.0-W1-012`，PROP-006），不經 Corpus 的理由同 §4.3 |
-| Workspace、Schema、Corpus、History、Graph、TicketDetail、Layout、Diagnostics | Observability | 以 `LogSink<E>` 與白名單型別發出日誌（SPEC-010 FR-03、FR-04）。2026-11-10 用戶裁定照實登記為 bundle 邊、不設橫切契約例外（`1.0.0-W3-553.2.1`）；Observability 本身無出邊，否則形成循環 |
+| Edit | Workspace | 工作區根路徑；「可寫／唯讀降級」由 Edit 自行判定（`docs/spec/edit/domain-map.md` §2）。2026-11-10 新增（`1.0.0-W3-553.1`） |
+| Edit | Schema | 欄位值域、邊型與 `id_pattern`（`docs/spec/edit/domain-map.md` §2）。2026-11-10 新增 |
+| Edit | Corpus | 以 Corpus 的公開解析函式做改寫隔離檢查；Corpus 不依賴 Edit（`docs/spec/edit/domain-map.md` §2）。2026-11-10 主控裁定（用戶可推翻，`1.0.0-W3-553.1`） |
+| Workspace、Schema、Corpus、History、Graph、TicketDetail、Layout、Diagnostics、Edit | Observability | 以 `LogSink<E>` 與白名單型別發出日誌（SPEC-010 FR-03、FR-04）。2026-11-10 用戶裁定照實登記為 bundle 邊、不設橫切契約例外（`1.0.0-W3-553.2.1`）；Observability 本身無出邊，否則形成循環 |
 
 Corpus 是唯一的解析者，Graph、TicketDetail、Diagnostics 各自投影其產出——
 若讓三者各自解析同一份檔案，容錯規則會分歧。
@@ -220,6 +224,7 @@ Workspace 與 Schema 何時也想佔用同一焦點並互相確認，三個 doma
 | Diagnostics | 是 | 破洞掃描完成通知（SPEC-003 §2.2〈系統層通知〉），App 啟動時自動觸發，不由使用者當下操作發起 |
 | History | 否 | 依視圖惰性載入（§4.3），由使用者開啟歷史視圖觸發（等待型），結果在同一畫面內呈現；離開畫面後完成者為持久狀態，不發提示（SPEC-001 §8.1 §10 各列，`0.7.0-W1-012`） |
 | Observability | 否 | 記錄只寫檔與 `developer.log`，不佔用呈現焦點通道；需要使用者知道的失敗由發出端轉為畫面錯誤態（SPEC-010〈概述〉，`1.0.0-W3-553.2.1`） |
+| Edit | 否 | 皆由使用者按下寫入觸發（等待型），外部改動的預警以編輯狀態承載（`docs/spec/edit/domain-map.md` §2.5；2026-11-10 主控裁定，用戶可推翻，`1.0.0-W3-553.1`） |
 
 ### 3.3 協調圖
 
@@ -298,16 +303,36 @@ Corpus 呼叫 Schema 的判型與「路徑對型別」查詢，這是依賴關�
 CLI 的職責改為驗證：`doc validate`、`uc verify`、`validate-filenames`
 皆為唯讀，寫入後立即呼叫，把索引不同步從靜默錯誤變成可偵測的紅燈。
 
-此職責歸屬 Corpus（寫入）與一個新的驗證呼叫點；CLI 呼叫依賴使用者機器
-裝有 `uv`——系統內建 python3 為 3.9.6，執行 doc CLI 會因 PEP 604 語法
-直接 `TypeError`。
+**寫入與驗證呼叫歸 Edit，Corpus 只讀**（`docs/tech-decisions.md`〈補記：2026-11-10 — 1.0 編輯能力四項架構決策定案〉
+子決策 1；本節改寫沿革見同檔〈補記：2026-11-10 — 系統層 §4.4、§4.5 改寫沿革與共現量測〉）。
+Edit 依賴 Corpus 的解析，Corpus 不依賴 Edit（§2）。寫入路徑的條文見 SPEC-009。
+
+CLI 呼叫依賴使用者機器裝有 `uv`——系統內建 python3 為 3.9.6，執行 doc CLI 會因 PEP 604 語法
+直接 `TypeError`。驗證器無法執行時，寫入後的驗證狀態為「無法驗證」，不視為通過（SPEC-009 FR-05）。
 
 ### 4.5 Domain 數量檢查
 
-八個，觸及協議建議上限（3-6 常態，>8 懷疑切太細）。
+**domain 數量只觸發檢查，不是上限**（`docs/tech-decisions.md`〈補記：2026-11-10 — 1.0 編輯能力四項架構決策定案〉
+〈domain 數量：只觸發檢查，不是上限〉）。現行 domain 清單以 §1.3 為準，本節不寫數字。改寫沿革與
+2026-11-10 共現量測見同檔〈補記：2026-11-10 — 系統層 §4.4、§4.5 改寫沿革與共現量測〉。
 
-切太細的訊號是「兩個 domain 永遠出現在同一個 PR 裡」。八個 domain 有
-28 組配對，**其中三組經過實際論證**：
+**新增 domain 的檢查**：對最近鄰 domain 跑 SRP 三問與共現檢查，並在新 domain 的 domain-map §1
+記下檢查出處與結論。通過的判準：兩者的唯一變更理由不同，且共現資料沒有「永遠一起改」的訊號
+（判準來源見上引〈domain 數量：只觸發檢查，不是上限〉）。
+
+**已執行的新增檢查**：
+
+| 新 domain | 最近鄰 | 出處 |
+|---|---|---|
+| Edit | Corpus | `1.0.0-W3-553` Solution（SRP 三問）；`docs/spec/edit/domain-map.md` §1 |
+| Observability | Diagnostics | `1.0.0-W3-553.2.1` Problem Analysis；`docs/spec/observability/domain-map.md` §1 |
+
+**共現 tripwire：Edit × Corpus**。觸及寫入路徑（`lib/edit/`）的前 10 個 commit 中，過半同時觸及
+`lib/corpus/`，即合併兩者（用戶裁定，`1.0.0-W3-553`；PROP-007〈失敗防護〉第 2 列）。
+偵測承擔者：1.0 寫入路徑實作票的 Phase 4 評估，計數以 `git log --no-merges -- lib/edit/` 的前 10 筆為準。
+
+**逐對論證**：切太細的訊號是「兩個 domain 永遠出現在同一個 PR 裡」。原八個 domain 的 28 組配對中，
+**三組經過實際論證**：
 
 | 配對 | 結論 | 依據 |
 |------|------|------|
@@ -584,8 +609,8 @@ SPEC-006 D1、FR-06）。人讀的 `carrier` 描述文字不作比對用。
   (2) 寫入前閘門採三平面單一判準（磁碟 ≠ App 讀入內容即阻擋；磁碟 ≠ HEAD
   或檔案未追蹤即先快照再寫，快照失敗即阻擋）；(3) structured log 全面解除
   延後；(4) 1.0 不允許樂觀更新，寫入等位元組落檔才顯示，CLI 驗證另以狀態
-  呈現，失敗不自動回滾。edit domain、SPEC-009 與 §4.5 改寫由
-  `1.0.0-W3-553.1` 承接；structured log 的設計由 `1.0.0-W3-553.2` 承接
+  呈現，失敗不自動回滾。edit domain（`docs/spec/edit/domain-map.md`）、
+  SPEC-009 與 §4.4、§4.5 改寫已由 `1.0.0-W3-553.1` 落地；structured log 的設計由 `1.0.0-W3-553.2` 承接
   （來源票 `0.1.1-W3-073`／`0.1.1-W3-280`／`0.1.1-W3-281`／`0.1.1-W3-283`）
 
 ## 7. 對實作票的切分指引（跨 domain）

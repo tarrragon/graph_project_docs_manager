@@ -1,17 +1,17 @@
 ---
 id: PROP-007
 title: "編輯能力：在 App 內直接編輯文件與票"
-status: discussing
+status: confirmed
 evaluation_level: heavy
 source: development
 proposed_by: 1.0 規劃波訪談（1.0.0-W1-104）
 proposed_date: "2026-11-10"
-confirmed_date: null
+confirmed_date: "2026-11-10"
 target_version: "1.0.0"
 priority: P1
 
 outputs:
-  spec_refs: []
+  spec_refs: [SPEC-009]
   usecase_refs: []
   ticket_refs: [1.0.0-W1-104]
 
@@ -106,7 +106,7 @@ PROP-005 只定版本序列與整合測試，沒有定可編輯的範圍。本�
 |---------|---------|------|
 | 文字輸入的列舉欄位寫入不合法值，CLI 驗證也不檢查 status 值 | 破洞報告或驗證狀態出現未知 status | 過渡期間接受此風險（用戶裁定以文字暫代）；上游修正抵達後改為下拉與單選（驗證票 `1.0.0-W1-107`） |
 | edit domain 與 corpus 因 frontmatter 格式在多數 PR 共現 | 前 10 個觸及寫入路徑的 commit 中，過半同時觸及 `lib/corpus/` | 依系統層 §4.5 合併 |
-| 兩檔寫入只成功一半（1.1） | 反向欄位不一致的驗證紅燈 | SPEC-009 定義兩檔寫入的順序與失敗回復 |
+| 兩檔寫入只成功一半（1.1） | 反向欄位不一致的驗證紅燈 | 1.1 規劃波在 SPEC-009 補進兩檔寫入的順序與失敗回復（SPEC-009 FR-03） |
 
 ## 機會成本
 
@@ -144,6 +144,19 @@ UC-06 的修復路徑交給外部編輯器；0.7.0 期間本專案文件的欄�
 
 - 已驗證：假設 2 的 CLI 本身延遲量級；假設 3 的判準覆蓋未追蹤檔（W ≠ H 含 H 不存在）。
 - 未驗證：假設 1（無使用紀錄）；從 App 內經 `uv run` 呼叫 CLI 的延遲（多一層行程啟動），SPEC-009 實作時量測。
+
+## 多視角審查
+
+2026-11-10 派發四個視角（唯讀），對象為本提案、SPEC-009 初稿、edit domain-map 與系統層 §2、§3.2、§4.4、§4.5。四者結論皆為「需修正後定稿」。修正已落入 SPEC-009、edit domain-map 與系統層，並經主控審查通過（`1.0.0-W3-553.1`）。
+
+| 視角 | 必修項 | 處置 |
+|------|------|------|
+| linux（技術設計） | 隔離檢查與 `updated` 互相矛盾；閘門步驟沒有順序；驗證 baseline 定義不完整；事件數過多 | 定出允許變更集合；改為六步有序閘門；baseline 差集採一般定義（含 CLI 結束碼 2）；事件精簡為 8 個（SPEC-009 FR-01、FR-03、FR-05、FR-07） |
+| saffron（系統一致性） | 編輯狀態沒有承接者；`git` 缺席時實際唯讀卻沒有徽章；本提案失敗防護第 3 列指向不存在的條文 | 編輯狀態交 `1.0.0-W3-553.3`；工作區開啟時由 edit domain 探測 `git`，缺席即唯讀降級並顯示常駐徽章；第 3 列改為 1.1 規劃波補進 SPEC-009 |
+| parsley（實作可行性） | `hash-object` 套用 `.gitattributes` 致快照與 W 不同；檔名本身為 symlink 可穿越；rename 前存在 TOCTOU；Corpus 未公開位元組解析函式 | 改用 `--stdin`；檔名以不跟隨連結的方式查詢型別；rename 前重比，殘餘時窗列為已知限制；corpus domain-map 公開面登記 `classifyFrontmatter` |
+| basil（文字品質） | 依賴型票號、括號內藏理由、系統層與 domain-map 重複陳述 | 改寫為結論句；系統層只留結論加連結，沿革移到 `docs/tech-decisions.md` |
+
+審查期間用戶另行裁定：App 內提交不進 1.0（移入 `1.1.0-W3-675`），SPEC-009 刪除提交條文。
 
 ## 風險與權衡
 
