@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-11"
-version: "1.140"
+version: "1.141"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.140（1.140 依 `1.0.0-W3-553.6`：新增編輯用表單元件 4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48／5.17 `FieldBlock`（提案，依賴編輯狀態者待決 1.0.0-W3-553.3）；1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.141（1.141 依 `1.0.0-W3-673.1`：4.20 `DocumentBody` 的 `markdown` 來源改為 frontmatter 之後的本文並補〈本文來源的界線〉，§3.6 §6 正常列同步，§4.0.6 登記 `nodeDetailBodyUnavailableMessage`；1.140 依 `1.0.0-W3-553.6`：新增編輯用表單元件 4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48／5.17 `FieldBlock`（提案，依賴編輯狀態者待決 1.0.0-W3-553.3）；1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -374,7 +374,7 @@ depends_on_domains: [layout]
 | §5 | 無法判定破洞 | 頁首標題 + 原因說明（三選一）+ 其餘類別分節（有項目時）+ 重新掃描 | `Panel.scrollable`[`Section.static`[`AppText.subtitle`（`gapsUndeterminableTitle`）, `AppText.body`（`gapsUndeterminableReasonVersionOutOfRange`、`gapsUndeterminableReasonNoPathPattern` 或 `gapsUndeterminableReasonScanFailed`）], 其餘類別同「有破洞」列的 `Section.collapsible` × N（解析失敗類別不渲染）]；**不使用 `EmptyState`**，與無破洞的 `EmptyState.page` 在元件層即不同（SPEC-001 §5〈無法判定破洞〉成列註記）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項）（`0.3.0-W1-082`） |
 | §6 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-nodeDetail-goto-domain`；優先於「未選節點」，SPEC-003 §3.6 註記） |
 | §6 | 未選節點 | 空狀態元件 + 「尚未選取節點」 | `EmptyState.page`（動作前往追溯視圖） |
-| §6 | 正常 | 全頁內容 + 關聯右欄 + 開啟原始檔／返回；選定節點為 Ticket 時主欄另含來源鏈區塊（SPEC-001 §6〈來源鏈〉） | `TwoColumnLayout`[`Panel.scrollable`[`ListRow.meta`, `AppText.title`, `BadgeRow`, `Divider`, `Section.static`（僅選定節點為 Ticket 時；小標 `sourceChainTitle`，`panel-nodeDetail-source-chain`）[`Tree.sourceChain`[`ListRow.tree` × N]], `DocumentBody`], `Panel.scrollable`[`Section.static` × N]]；來源鏈缺上游列主文字 `sourceChainNoUpstream`、trailing `IssueMarker.gap`（`badge-nodeDetail-chain-broken-<nodeId>`），見 4.39〈`sourceChain` 變體〉；返回與開啟原始檔的 `AppButton` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 17 項；返回鍵由 `AppShell` 之下的頁面框架單一渲染，SPEC-003 §2.4） |
+| §6 | 正常 | 主欄分隔線以上為 frontmatter 欄位、以下為本文（不含 frontmatter，SPEC-001 §6〈主欄分隔線上下的內容〉）+ 關聯右欄 + 開啟原始檔／返回；選定節點為 Ticket 時分隔線下方另含來源鏈區塊（SPEC-001 §6〈來源鏈〉）；本文讀取或切分失敗時 `DocumentBody` 改為 `AppText.body`（`nodeDetailBodyUnavailableMessage`，4.20〈本文來源的界線〉） | `TwoColumnLayout`[`Panel.scrollable`[`ListRow.meta`, `AppText.title`, `BadgeRow`, `Divider`, `Section.static`（僅選定節點為 Ticket 時；小標 `sourceChainTitle`，`panel-nodeDetail-source-chain`）[`Tree.sourceChain`[`ListRow.tree` × N]], `DocumentBody`], `Panel.scrollable`[`Section.static` × N]]；來源鏈缺上游列主文字 `sourceChainNoUpstream`、trailing `IssueMarker.gap`（`badge-nodeDetail-chain-broken-<nodeId>`），見 4.39〈`sourceChain` 變體〉；返回與開啟原始檔的 `AppButton` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 17 項；返回鍵由 `AppShell` 之下的頁面框架單一渲染，SPEC-003 §2.4） |
 | §6 | 部分損壞 | 可讀欄位 + 損失欄位標示 + 跳轉破洞報告 | 同上 + 欄位級 `IssueMarker.damagedDetail`（說明文字 slot） |
 | §6 | 原始檔已消失 | 訊息 + 最後已知路徑 + 重新整理／返回 | `MissingSourceState`（`ButtonRow`[`AppButton.primary` 重新整理]）；返回由頁面框架渲染（SPEC-003 §2.4） |
 | §6 | 圖不可用 | 說明最近一次掃描無法建立圖譜 + 前往 Domain 視圖 | `EmptyState.page`（`state-nodeDetail-graph-unavailable`，訊息 `nodeDetailGraphUnavailableMessage`（代入 `appVersion`）；動作 `AppButton.primary` 前往 Domain 視圖 `action-nodeDetail-goto-domain`，沿用專案未就緒的動作文案；不設重新掃描，重新掃描屬 Domain 視圖「圖不可用」列，SPEC-001 v1.65，`0.6.0-W1-105.2`） |
@@ -947,6 +947,12 @@ EVT-CORPUS-004 項目說明：
 | `dropdownA11yLabel` | {label}，目前：{value} | {label}, current: {value} | label、value（String） | 4.45、4.46 觸發器朗讀 |
 | `referencePickerNoMatch` | 沒有符合的項目 | No matching items | — | 4.46 無符合項 |
 | `radioYes` / `radioNo` | 是 / 否 | Yes / No | — | 4.47 布林欄位選項（SPEC has_functional_requirements） |
+
+**1.141 新增（`1.0.0-W3-673.1`，對應 SPEC-001 v1.87 §6〈主欄分隔線上下的內容〉；zh／en 為提案文案，ARB 由對應實作票建立）**：節點詳情本文讀取或切分失敗時，本文區的替代說明。
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `nodeDetailBodyUnavailableMessage` | 無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新 | Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan | — | §6 正常，本文區替代 `DocumentBody`（`AppText.body`，4.20〈本文來源的界線〉） |
 
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
@@ -3530,7 +3536,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 渲染 markdown | 捲動（由 `Panel.scrollable` 承載） | 建構 | 不適用：純顯示，無狀態集 | —（建構即渲染；`markdown` 由呼叫端傳值，關聯項點選引起的內容替換由頁面層重建本元件，元件不 watch 任何 provider，§2；節點詳情為 `nodeDetailBodyProvider`（`lib/screens/node_detail/node_detail_providers.dart`）以 `markdown` 傳值） | 本地即時（元件自身；內容為解析完成後的檔案內容，是否渲染由頁面層等確認才決定） |
+| default | 渲染 markdown | 捲動（由 `Panel.scrollable` 承載） | 建構 | 不適用：純顯示，無狀態集 | —（建構即渲染；`markdown` 由呼叫端傳值，關聯項點選引起的內容替換由頁面層重建本元件，元件不 watch 任何 provider，§2；節點詳情為 `nodeDetailBodyProvider`（`lib/screens/node_detail/node_detail_providers.dart`）以 `markdown` 傳值） | 本地即時（元件自身；內容為 frontmatter 結尾分隔線之後的本文，見 slot 契約；是否渲染由頁面層等確認才決定） |
 
 #### 回饋契約
 
@@ -3571,7 +3577,12 @@ EVT-CORPUS-004 項目說明：
 
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
-| `markdown` | `String` | 是 | 呼叫端（檔案內容） |
+| `markdown` | `String` | 是 | 呼叫端：原始檔 frontmatter 結尾分隔線之後的本文，不含 frontmatter；切分規則同 SPEC-006 FR-01 切分規則 1–4（Corpus 讀 UC 本文的 flow 區塊時使用同一切分，FR-09） |
+
+**本文來源的界線**（1.141，`1.0.0-W3-673.1`）：
+
+- 呼叫端不得傳入整檔。frontmatter 欄位由主欄分隔線以上的 `ListRow.meta`、`BadgeRow` 承載（見〈何時不用〉），本元件只承載本文；整檔傳入時 frontmatter 會在本文區以段落或 setext 標題重複渲染（`1.0.0-W3-673` 判定 F-4）。
+- 讀取或切分失敗時不建構本元件：原始檔不存在或無法讀取、無法以 UTF-8 解碼、無 frontmatter、frontmatter 未閉合，這幾種情況下頁面層改放 `AppText.body`（`multiLine`，`maxLines` 3；文字 `nodeDetailBodyUnavailableMessage`）。不得退回整檔，也不得以節點標題代替本文。呈現與重新判定見 SPEC-001 §6〈主欄分隔線上下的內容〉。
 
 #### 使用 design token
 
@@ -3589,7 +3600,8 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 | i18n key |
 |------|---------|
-| 內容 | 檔案內容，不經 i18n |
+| 內容 | 本文（原始檔內容），不經 i18n |
+| 讀取或切分失敗時的替代說明（不由本元件渲染，頁面層放 `AppText.body`） | `nodeDetailBodyUnavailableMessage` |
 
 #### 組合規則
 
@@ -7630,6 +7642,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.141 | 2026-11-11 | `1.0.0-W3-673.1`（`1.0.0-W3-673` 判定 F-4：元件組成已要求內文不含 frontmatter，但 slot 來源寫「檔案內容」，實作依 slot 表傳入整檔）：4.20 `DocumentBody` slot 契約的 `markdown` 來源改為 frontmatter 結尾分隔線之後的本文，切分規則同 SPEC-006 FR-01 規則 1–4；新增〈本文來源的界線〉：不得傳入整檔，讀取或切分失敗時頁面層改放 `AppText.body`（`nodeDetailBodyUnavailableMessage`），不退回整檔、不以標題代替；狀態矩陣同步策略欄與 i18n 子節同步。§3.6 §6 正常列顯示欄同步；§4.0.6 新增〈1.141 新增〉一個 key。對應 SPEC-001 v1.87 |
 | 1.140 | 2026-11-11 | `1.0.0-W3-553.6`（依 SPEC-009 FR-09，`component-contract-design` step 2～4 路徑 A）：新增編輯用表單元件 4.44 `AppTextInput`（`singleLine`／`multiLine`）、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48 `FieldBlock`（`editable`／`readOnly`），§5 新增 5.17（交叉軸代入值分實機字型與測試字型兩欄）；各條目記不沿用 `SearchField`／`FilterDropdown`／`SegmentedControl`／`AppCheckbox`／`ListRow.option` 的理由。依賴編輯狀態的子節與欄標「待決（1.0.0-W3-553.3）」，outOfDomain 呈現、單選方向與鍵盤、文字失焦提交為提案；§4.0.9 登記封鎖項。§3.1 總表補五列與定案數註記；§4.0.6 新增〈1.140 新增〉表六個 key（zh／en 提案，ARB 由元件票建立）；§6 `TextField`、`DropdownButton` 兩列補表單對應元件並新增 `Radio`、`FormField` 兩列；§9 新增兩項驗收。未改既有元件契約。同版經用戶裁定（2026-11-11，`1.0.0-W3-675`）定案四項：逐欄立即提交、outOfDomain 觸發器顯示原值並以提示格註明、`AppRadioGroup` 恆垂直、↑↓ 只移焦點且 Space 選取；文字失焦提交、錨點命名、欄位堆疊父容器仍為提案，隨 `1.0.0-W3-553.3` 裁定；4.48 逾時段待 `1.0.0-W3-676`。兩者完成前本組條目不可被畫面票引用 |
 | 1.139 | 2026-11-10 | `1.0.0-W3-553.1`：§2 樂觀更新政策列對編輯能力規格的引用改為指名 SPEC-009 FR-05（原寫「edit domain 的編輯能力規格」，當時 SPEC-009 尚未建立）。條文不變 |
 | 1.138 | 2026-11-10 | 引用字面更正（`1.0.0-W1-110` 停放票分診，用戶裁決移入 1.1.0 候選池）：4.6 `IssueMarker` default 列「恢復條件見 SPEC-001 §6」的票 ID 由 `1.0.0-W3-656` 改為 `1.1.0-W3-656`；變更歷史列保留原文。條文不變 |
