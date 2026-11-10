@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-11-09"
-version: "1.134"
+updated: "2026-11-10"
+version: "1.136"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.133（1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.136（1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -375,7 +375,7 @@ depends_on_domains: [layout]
 | §7 | 收合 | 側欄頂端顯示目前專案名 | `ProjectSwitcherEntry` |
 | §7 | 展開 | 最近專案清單 + 健康徽章 + 選擇其他 | `SwitcherOverlay`[`AppText.caption`, `RecentProjectItem`（`Badge.health`）× N, `Divider`, `AppButton.text`] |
 | §7 | 無最近專案 | 僅「選擇資料夾…」 | `SwitcherOverlay` 零項 + `AppButton.text`（訊息文案 `switcherChooseFolderPrompt`；不用 `EmptyState`，§3.7 第 3 項） |
-| §9 | 編輯器清單 | 單選清單：系統預設加查得 handler 的編輯器，目前選定值標示為選取 | `Panel.scrollable`[`AppText.subtitle`（`preferencesTitle`）, `ListRow.option` × N（`option-preferences-editor-<editorId>`；首項標籤 `preferencesEditorSystemOption`，其後為編輯器名稱，產品專有名詞不進 i18n）, `AppButton.text`（關閉，`action-preferences-close`）] |
+| §9 | 編輯器清單 | 單選清單：系統預設加查得 handler 的編輯器，目前選定值標示為選取 | `Panel.scrollable`[`AppText.subtitle`（`preferencesTitle`）, `ListRow.option` × N（`option-preferences-editor-<editorId>`；首項標籤 `preferencesEditorSystemOption`，其後為編輯器名稱，產品專有名詞不進 i18n）]，`footer`: `AppButton.text`（關閉，`action-preferences-close`，`autofocus`；固定於面板底部，4.30〈固定底部 slot〉） |
 | §9 | 無可選編輯器 | 單選清單只有「系統預設（不定位）」且為選取 + 說明文字 | 同上：`ListRow.option` × 1（`option-preferences-editor-system`）+ `AppText.multiLine`（`preferencesNoEditorsExplanation`，`maxLines: null`） |
 | §10 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（`state-history-project-unready`；訊息依原因四選一，沿用 §2–§6 同名列的 `projectUnreadyReason*`；動作 `AppButton.primary` 前往 Domain 視圖 `action-history-goto-domain`，既有 `gotoDomainViewAction`） |
 | §10 | 讀取中 | 「正在讀取 git 歷史」+ 已處理的 commit 數 + 取消；篩選列不渲染 | `LoadingState.skeleton`（版位 `rows`，`state-history-loading`；訊息 `historyLoading`、計數 `historyLoadingProcessedCount`（indeterminate，不顯示百分比，SPEC-003 §2.6）、取消 `AppButton.secondary`（`action-history-cancel`，既有 `cancelLoadingAction`，取消中 `cancelInProgressAction`）） |
@@ -385,7 +385,7 @@ depends_on_domains: [layout]
 | §10 | 找不到 git | 「找不到 git 指令」+ 安裝或 PATH 說明 + 重新檢查 | `EmptyState.page`（`state-history-git-missing`，訊息 `historyGitMissingMessage`、說明 `historyGitMissingExplanation`；動作 `AppButton.primary` 重新檢查 `action-history-recheck`，`historyRecheckAction`） |
 | §10 | 讀取失敗 | 「讀取 git 歷史失敗」+ 原因摘要 + 重試 | `EmptyState.page`（`state-history-load-failed`，訊息 `historyLoadFailedMessage`、說明 `historyLoadFailedDetail`（代入 SPEC-008 FR-08 規則 5 的 stderr 摘要原文，資料值不翻譯）；動作 `AppButton.primary` 重試 `action-history-retry`，`retryAction`）；不用 `BlockedState`：讀取失敗不阻擋專案的其他畫面，出口是同畫面重試，不需要切換專案出口（4.21〈何時不用〉的例外說明） |
 | §10 | 已取消 | 「已取消讀取」+ 重新讀取 | `EmptyState.page`（`state-history-cancelled`，訊息 `historyCancelledMessage`；動作 `AppButton.primary` 重新讀取 `action-history-reload`，`historyReloadAction`） |
-| §11 | 快捷鍵清單 | 面板標題 + 十列快捷鍵（按鍵、作用、作用情境）+ 關閉鈕 | `Panel.scrollable`（`panelKey` `state-shortcuts-list`，scrollKey `scroll-shortcuts-list`）[`AppText.subtitle`（`keyboardShortcutsTitle`）, `ListRow.shortcut` × 10（依 SPEC-001 §11〈清單內容〉列序；按鍵字面為資料值不進 i18n，作用 `shortcut*Action`、情境 `shortcutContext*`）, `AppButton.text`（關閉，`action-shortcuts-close`，沿用偏好設定面板的 `cellDetailCloseAction`）]；面板的呈現宿主與 §9 相同（覆蓋於主視窗之上） |
+| §11 | 快捷鍵清單 | 面板標題 + 十列快捷鍵（按鍵、作用、作用情境）+ 關閉鈕 | `Panel.scrollable`（`panelKey` `state-shortcuts-list`，scrollKey `scroll-shortcuts-list`）[`AppText.subtitle`（`keyboardShortcutsTitle`）, `ListRow.shortcut` × 10（依 SPEC-001 §11〈清單內容〉列序；按鍵字面為資料值不進 i18n，作用 `shortcut*Action`、情境 `shortcutContext*`）]，`footer`: `AppButton.text`（關閉，`action-shortcuts-close`，沿用偏好設定面板的 `cellDetailCloseAction`，`autofocus`；固定於面板底部不隨清單捲動，4.30〈固定底部 slot〉）；面板的呈現宿主與 §9 相同（覆蓋於主視窗之上） |
 
 §10 七態皆渲染頁首 `SplitRow.header`[`PageTitle`（`navHistory`）]；右格 `ButtonRow`（重新整理）只在正常與期間內無事件兩列渲染，其餘狀態的出口在內容區（SPEC-003 §3.9〈導航跳轉與退出〉）。
 
@@ -1440,6 +1440,15 @@ EVT-CORPUS-004 項目說明：
 
 不適用：SPEC-003 §2.2 FR-06 合法形態 (b)「未接線動作渲染為停用」一律以 `disabledReason` 說明，不得以本旗標省略。`disabledReason` 傳空字串不合法——空字串不構成原因，且會使停用分支渲染空 caption 與空 hint；不提供原因時必須以本旗標顯式宣告。
 
+**開啟時取得焦點**（`autofocus`，1.136）：參數 `autofocus: bool`，預設 `false`。為 `true` 時，按鈕掛載後的第一個 frame 取得焦點（`primaryFocus` 落在本按鈕、渲染 focused 態），直接交給 Flutter 按鈕內建的 `autofocus` 承載，不另建焦點管理。按鈕已掛載後把值由 `false` 改為 `true` 不會搶焦點；只有掛載當下為 `true` 才生效。
+
+| 項目 | 值 |
+|------|-----|
+| 使用場景 | 面板開啟時焦點移入面板：偏好設定面板 `action-preferences-close`、鍵盤快捷鍵面板 `action-shortcuts-close`（SPEC-003 §3.8、§3.10「焦點移入面板」） |
+| 呼叫端約束 | 同一個面板或浮層內最多一顆按鈕傳 `true`；頁面層按鈕不傳（SPEC-003 §2.10 App 啟動不預設焦點） |
+| disabled 時 | `enabled` 為 `false` 時不取得焦點（停用按鈕不可聚焦） |
+| 測試點 | 掛載含 `autofocus: true` 按鈕的面板後 pump 一個 frame，該按鈕 `Focus.hasFocus` 為 `true`；不傳時為 `false` |
+
 #### 回饋契約
 
 > 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄；反應與時間門檻抄 SPEC-003，通道與對應狀態邊由本檔填。
@@ -1836,6 +1845,12 @@ EVT-CORPUS-004 項目說明：
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
 
 無 disabled：全部導覽項恆可用（SPEC-003 §2.3）。
+
+**`action` 變體的焦點節點**（`focusNode`，1.136）：參數 `focusNode: FocusNode?`，預設 `null`（元件內部自建）。呼叫端傳入時，本元件把它交給內部的可聚焦節點使用，不自行 dispose；FocusNode 由呼叫端建立、持有、dispose。用途是面板關閉後焦點回到開啟者（SPEC-003 §2.10「面板關閉後」列）：組裝層（`lib/assembly/shell.dart`）為 `nav-action-preferences`、`nav-action-shortcuts` 各持有一個 FocusNode，記下面板是由哪一項開啟的，面板關閉時對該節點 `requestFocus()`。由選單項或 ⌘, 開啟者不經本參數，焦點歸位由組裝層在開啟前記下的 `primaryFocus` 承載（SPEC-003 §2.10 同列），不屬本元件契約。`default` 變體可傳同一參數，但 0.7 無使用場景。
+
+| 項目 | 值 |
+|------|-----|
+| 測試點 | 傳入 FocusNode 後對其 `requestFocus()`，pump 一個 frame，該 `NavItem` 渲染 focused 態且 `Focus.hasFocus` 為 `true`；元件 dispose 後傳入的 FocusNode 仍可使用（未被元件 dispose） |
 
 #### 回饋契約
 
@@ -4634,7 +4649,17 @@ EVT-CORPUS-004 項目說明：
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
 | `default` | 無捲動 | `fill` slot 的子件吸收剩餘高；「恰一個填滿」由 slot 型別保證（單一 `Widget`，必填），呼叫端不包 `Expanded`；`leading`／`trailing` 依內容高排在其上下 | 矩陣、泳道、Ticket 列表、UC 步驟表，以及以 `EmptyState.section` 為主體的面板 |
-| `scrollable` | 主體垂直捲動（`scroll-*` 錨點） | 子件總高超過面板高時捲動 | 追溯樹、破洞分節、主題分節、節點詳情主欄與右欄、格詳情卡 |
+| `scrollable` | 主體垂直捲動（`scroll-*` 錨點）；傳 `footer` 時面板底部多一條固定列 | 子件總高超過面板高時捲動；`footer` 不隨捲動移動（見下方〈固定底部 slot〉） | 追溯樹、破洞分節、主題分節、節點詳情主欄與右欄、格詳情卡；偏好設定面板與鍵盤快捷鍵面板（帶 `footer`） |
+
+**固定底部 slot**（`scrollable`，`footer`，1.136）：面板內分上下兩格——上格為 `children` 的捲動區（`scrollKey` 掛於此格），下格為 `footer`，常駐可見、不進入捲動區。不傳 `footer` 時版面與 1.135 以前相同（只有捲動區），既有呼叫端不需改動。採用理由：鍵盤快捷鍵面板高 524（`LayoutSize.overlayWidth` × 2）時，標題加十列 `ListRow.shortcut` 加關閉鈕的總高超過面板高，關閉鈕若在 `children` 尾端就要捲到底才點得到；關閉是面板的離開路徑，不應依賴捲動位置。偏好設定面板（高 `LayoutSize.overlayWidth`）的編輯器清單長度隨本機安裝的編輯器而變，同一問題可能發生，故同步改用 `footer` 承載關閉鈕。
+
+| 項目 | 值 |
+|------|-----|
+| 接受型別 | `AppButton` \| `ButtonRow`（面板層級的離開或確認動作；資料內容不得放入） |
+| 版面 | 上格捲動區以 `Expanded` 吸收剩餘高；下格高為子件固有高；兩格之間間距 `Space.sm`；面板內距 `Space.md` 包住兩格（下格不另加內距） |
+| 對齊 | 下格子件靠右（`AppButton` 單顆時亦同），與 `ButtonRow` 慣例一致 |
+| Tab 順序 | 捲動區（容器停留點與其內可用動作）先，`footer` 後；面板開啟時的初始焦點由 `footer` 內 `AppButton` 的 `autofocus` 指定（4.4〈開啟時取得焦點〉） |
+| `kMinWindowSize`（960 × 640）下的尺寸依據 | 主區可用高 = 640 − `LayoutSize.titleBarHeight`（36）= 604，不小於快捷鍵面板高 524，面板不被裁切。面板內：捲動區高 = 524 − 2 × `Space.md`（24）− `LayoutSize.hitTargetMin`（28，`footer` 內 `AppButton` 高）− `Space.sm`（8）= 464，不小於 `LayoutSize.rowHeightRelaxed`（34），至少一列可見；超出部分由捲動區捲動。偏好設定面板同式：262 − 24 − 28 − 8 = 202，同樣不小於 34 |
 
 #### 狀態矩陣
 
@@ -4692,7 +4717,8 @@ EVT-CORPUS-004 項目說明：
 | `fill` | `Widget`（`default`）：`DataTable` \| `MatrixGrid` \| `SwimlaneGrid` \| `EmptyState.section`（吸收剩餘高；容器以 `Expanded` 承載，呼叫端不包） | `default` 必填（恰 1） | 不適用 |
 | `trailing` | 具名清單（`default`）：`SplitRow.footer` \| `BadgeRow`（順序即堆疊順序，位於 `fill` 之下） | 否（0..2） | 不適用 |
 | `children` | 具名清單（`scrollable`）：`Toolbar` \| `SplitRow` \| `Tree` \| `Section` \| `BadgeRow` \| `Divider` \| `AppText` \| `DocumentBody` \| `ListRow` \| `EmptyState.section` \| `ButtonRow`（順序即堆疊順序；總高超過面板高時捲動，無填滿子件） | `scrollable` 必填（1..12） | 不適用 |
-| `scrollKey` | `Key`（`scrollable`） | `scrollable` 必填（`scroll-<screen>-<area>`） | 不適用 |
+| `footer` | `Widget?`（`scrollable`）：`AppButton` \| `ButtonRow`（固定於面板底部、不捲動，見〈固定底部 slot〉） | 否（0..1；偏好設定面板與鍵盤快捷鍵面板傳關閉鈕，其餘呼叫端不傳、行為不變） | 不適用 |
+| `scrollKey` | `Key`（`scrollable`） | `scrollable` 必填（`scroll-<screen>-<area>`，掛於捲動區） | 不適用 |
 | `panelKey` | `Key?` | 否（`panel-domain-cell-detail` / `panel-domain-cell-detail-empty` / `state-history-normal` / `state-history-empty`——§10 兩態的狀態根錨點落在面板，使淺層標示與篩選列位於狀態根之內，SPEC-003 §3.9〈淺層 clone 標示〉） | 不適用 |
 | `locateTarget` | `Key?`（`scrollable`；§4.0.10 定位入口：值自 `null` 變為某子件 key 的那次 build，本容器於 post-frame 對該 key 執行捲動；焦點移入與高亮只於被定位子件接受 `isLocated` 時執行（§4.0.10 場景 a，4.40 `ListRow.item`），頁面層於高亮結束時改回 `null`；場景 c（4.39 樹展開後子項）只做最小捲動、不移焦點，頁面層於捲動完成的 post-frame 改回 `null`；同值不重複定位） | 否（提案） | 不適用 |
 
@@ -6820,6 +6846,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.136 | 2026-11-10 | `0.7.0-W1-007.6`（補 `0.7.0-W1-007.4` 回報的 SPEC-003 §3.10 三項缺口）：4.30 `Panel.scrollable` 新增 optional `footer` slot〈固定底部 slot〉（不隨捲動、不傳時版面不變，含 `kMinWindowSize` 下的尺寸算式），偏好設定面板與鍵盤快捷鍵面板的關閉鈕改放 `footer`（§3.6 §9、§11 兩列同步）；4.4 `AppButton` 新增〈開啟時取得焦點〉`autofocus` 參數；4.7 `NavItem` 新增〈`action` 變體的焦點節點〉`focusNode` 參數供面板關閉後焦點歸位；正文版本行由 1.133 修正。未新增元件與 i18n key |
 | 1.134 | 2026-11-09 | 登記節點詳情來源鏈（對應 SPEC-001 v1.84 §6〈來源鏈〉、SPEC-003 v1.88 §3.6〈來源鏈〉與 §2.9）：4.39 `Tree` 新增 `sourceChain` 變體（恆全部展開、無展開器、不持有展開集合；選擇理由、承載位置、尺寸約束、節點列、缺上游列、不渲染條件、資料來源），總表同步；4.40 `ListRow.tree` 補來源鏈列行為、`testKey` 與 i18n；§3.6 §6 正常列組成補 `Section.static`[`Tree.sourceChain`]；§4.0.6 新增 `sourceChainTitle`、`sourceChainNoUpstream`（zh／en）。ARB 同批 |
 | 1.133 | 2026-11-09 | `0.7.0-W1-007.1`（`0.7.0-W1-007` 用戶裁決三項，對應 SPEC-001 v1.83、SPEC-003 v1.86）：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項的順序、動作、錨點、Tab 順序接在七個導覽項之後、`kMinWindowSize` 下不溢位的 token 算式），slot 表增 `bottomItems`，焦點路徑三區段改四區段，i18n 與測試點同步；4.7 `NavItem` 增 `action` 變體（恆 unselected、不改導覽狀態）；4.40 `ListRow` 增 `shortcut` 變體（按鍵、作用、情境）；§3.6 補 SPEC-001 §11「快捷鍵清單」一列（`Panel.scrollable` + `ListRow.shortcut`）；§4.0.6 新增〈1.133 新增〉表登記 20 個 key，並註明主選單標題不進 ARB。未新增元件 |
 | 1.132 | 2026-11-09 | `0.7.0-W1-009.1`（對應 SPEC-003 v1.85 §3.8、§2.13 列 20／21）：§4.0.6 新增兩 key 並登記 zh／en 與用處，4.26 `AppSnackBar` `message` 呼叫端清單補兩 key；ARB 同批 |
