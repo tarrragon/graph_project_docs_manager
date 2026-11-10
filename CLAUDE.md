@@ -211,8 +211,8 @@ established），由 `0.6.0-W1-102`／`0.6.0-W1-103` 同批進 main，內嵌副�
 
 | 文件 | 用途 | 現況 |
 |------|------|------|
-| `docs/proposals/` | PROP 節點 | PROP-001~004，皆 confirmed |
-| `docs/spec/{domain}/` | SPEC 節點 | SPEC-001（ui domain） |
+| `docs/proposals/` | PROP 節點 | 已建立；清單與狀態以 `docs/proposals-tracking.yaml` 為準（新編號用 `doc create` 自動配號，不憑此表推算） |
+| `docs/spec/{domain}/` | SPEC 節點 | 已建立；清單以 `doc list` 為準 |
 | `docs/spec/{domain}/domain-map.md` | DomainBundle 節點，每個 domain 一份（8 個 domain 各一） | 已建立 |
 | `docs/system-layer.md` | 系統層：跨 domain 的依賴方向、通道、邊界決策、容錯、待決（非圖節點） | 已建立 |
 | `docs/usecases/` | UC 節點（含結構化 flow 區塊） | UC-01~06（FlowStep 數以各 UC 的 flow 區塊為準，不在此寫死） |
