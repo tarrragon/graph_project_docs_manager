@@ -137,7 +137,8 @@ security-scoped bookmark 實作已移除（PROP-001）；狀態管理定為 Rive
 **執行期 log 已裁決**（W1-013，補記段「2026-08-27：執行期 log 的裁決」）：
 全域錯誤攔截三層不在延後範圍，須立即建立（W1-016）。structured log 原維持延後，
 **2026-11-10 起全面解除延後**（`1.0.0-W3-553` 用戶裁決，補記段「補記：2026-11-10 — 1.0 編輯能力四項架構決策定案」）：
-原三個延後理由中「不擁有資料」「唯讀」已隨編輯能力失效；設計由 `1.0.0-W3-553.2` 承接。**錯誤的載體是畫面不是檔案**——App 層失敗轉為
+原三個延後理由中「不擁有資料」「唯讀」已隨編輯能力失效；設計由 `1.0.0-W3-553.2` 承接，已定案為 observability domain 與 SPEC-010（八項裁定見補記段「補記：2026-11-10 — structured log 設計八項裁定」）。
+`developer.log` 的等級對應以 SPEC-010 FR-06 為準，取代 `.claude/rules/core/observability-rules.md` 規則 2 專案註記的「level 900 = error」；該註記隨框架同步而來，本地不改。**錯誤的載體是畫面不是檔案**——App 層失敗轉為
 SPEC-001 既有的阻擋狀態或損壞標記。原待決記「Stage 5 明示不寫」是轉述失真，
 原文為「延後」且附重評條件，兩者決策語意不同。
 
@@ -213,7 +214,7 @@ established），由 `0.6.0-W1-102`／`0.6.0-W1-103` 同批進 main，內嵌副�
 |------|------|------|
 | `docs/proposals/` | PROP 節點 | 已建立；清單與狀態以 `docs/proposals-tracking.yaml` 為準（新編號用 `doc create` 自動配號，不憑此表推算） |
 | `docs/spec/{domain}/` | SPEC 節點 | 已建立；清單以 `doc list` 為準 |
-| `docs/spec/{domain}/domain-map.md` | DomainBundle 節點，每個 domain 一份（8 個 domain 各一） | 已建立 |
+| `docs/spec/{domain}/domain-map.md` | DomainBundle 節點，每個 domain 一份（domain 清單與層號以 `docs/system-layer.md` §1.3 為準） | 已建立 |
 | `docs/system-layer.md` | 系統層：跨 domain 的依賴方向、通道、邊界決策、容錯、待決（非圖節點） | 已建立 |
 | `docs/usecases/` | UC 節點（含結構化 flow 區塊） | UC-01~06（FlowStep 數以各 UC 的 flow 區塊為準，不在此寫死） |
 | `docs/events/{domain}/` | EVT 節點 | 9 個 |
