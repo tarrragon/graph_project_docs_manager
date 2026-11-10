@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-10"
-version: "1.89"
+version: "1.90"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -2495,7 +2495,7 @@ SPEC-008（FR-07～FR-09）；流程見 UC-07。`<screen>` 取 `AppDestination.h
 **在地化載體（約束）**：
 
 - 標題的在地化以 macOS 的 `.lproj` 字串檔承載：主選單的 Base 定義維持英文作為 en 與退路；zh-Hant 以 `zh-Hant.lproj` 內對應主選單的
-  `.strings` 檔提供下表 zh 欄字面。App 名稱（下表 `{App}`）以 `InfoPlist.strings` 的 `CFBundleDisplayName` 依語系提供。
+  `.strings` 檔提供下表 zh 欄字面。App 名稱（下表 `{App}`）以 `InfoPlist.strings` 的 `CFBundleName`（App 選單粗體標題）與 `CFBundleDisplayName` 並列依語系提供。
 - 選單標題**不進 ARB**：ARB 只服務 Flutter 畫面；選單項由原生層渲染，在 Flutter 起動前即可見。
 - 選單語系跟隨 macOS 對本 App 的語系選擇（系統偏好語言與 `CFBundleLocalizations` 的交集），與 Flutter 畫面的語系來源相同；兩者不一致時以系統的選擇為準，不另設 App 內語系切換。
 - `{App}` 的字面：zh「專案文件流」、en「Docs Flow」，與標題列 `appTitle`（SPEC-004 §4.0.6）同值。
@@ -2822,6 +2822,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.90 | 2026-11-10 | `0.7.0-W1-007.10`：§3.11〈在地化載體（約束）〉App 名稱載體由 `CFBundleDisplayName` 改為 `CFBundleName` 與 `CFBundleDisplayName` 並列（AppKit 以本地化 CFBundleName 作為 App 選單標題） |
 | 1.89 | 2026-11-10 | `0.7.0-W1-007.6`：§3.10〈清單為靜態內容〉補關閉鈕固定於面板底部、開啟時焦點落點與關閉後歸位的元件承載出處（對應 SPEC-004 v1.136 4.30、4.4、4.7），偏好設定面板同此；§2.10 條文不變 |
 | 1.88 | 2026-11-09 | 來源鏈錨點定名：§2.9 新增〈節點詳情來源鏈的錨點〉（區塊 `panel-nodeDetail-source-chain`、節點列 `card-nodeDetail-chain-<nodeId>`、缺上游虛線框 `badge-nodeDetail-chain-broken-<nodeId>`，及不沿用既有錨點的理由）；§3.6〈來源鏈〉表補錨點、根列不可點，表後註記改指 §2.9 與 SPEC-004 4.39。不新增 §4 列，總數不變。對應 SPEC-004 v1.134 |
 | 1.87 | 2026-11-09 | UC-04〈反向追溯〉（用戶裁決 2026-11-09）：§3.6 新增〈來源鏈〉小節——選定 Ticket 時主欄內嵌來源鏈的可觀察結果（多 UC 全部展開、多路徑重複出現、缺上游虛線框跳轉破洞報告、無 UC 時單一缺口、點節點沿用「關聯項」（`returnTo` 不變）、不渲染條件、輪次更新），資料定義指向 SPEC-001 §6〈來源鏈〉。不新增 §4 列，總數不變。對應 SPEC-001 v1.84 |
