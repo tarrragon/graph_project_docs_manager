@@ -121,6 +121,12 @@ final class HistoryFailed extends HistoryViewState {
   final String stderrSummary;
 }
 
+/// 掃描輪次不可用：等待型別表的輪次失敗，或被取消且無後續輪次
+/// （SPEC-008 FR-09 規則 1、FR-08 規則 5；與 git 原因碼分開，可重試）。
+final class HistoryScanRoundUnavailable extends HistoryViewState {
+  const HistoryScanRoundUnavailable();
+}
+
 /// 掃描被取消；部分事件不外露。
 final class HistoryCancelled extends HistoryViewState {
   const HistoryCancelled();
@@ -137,7 +143,12 @@ class HistoryScanInputs {
     required this.schemaReadiness,
     required this.tableIdentity,
     required this.createBuilder,
+    this.awaitTypeTable = _typeTableAlwaysReady,
   });
+
+  /// 等到本工作區有可用的型別表（SPEC-008 FR-09 規則 1）。回傳 `false`
+  /// 代表輪次結束而沒有結果（失敗或被取消且無後續輪次）。預設立即就緒。
+  final Future<bool> Function() awaitTypeTable;
 
   final HistorySchemaReadiness schemaReadiness;
   final String tableIdentity;
@@ -145,3 +156,5 @@ class HistoryScanInputs {
   /// 每次掃描建立新的建構器（內含逐 commit 狀態）。
   final EdgeEventBuilder Function() createBuilder;
 }
+
+Future<bool> _typeTableAlwaysReady() => Future.value(true);

@@ -88,6 +88,8 @@ ScanRoundResult fakeRound({
   NonDomainPathsReadResult? nonDomainRead,
   GraphBuildResult? graphOverride,
   TopicFilesReadResult? topicFilesRead,
+  TypeTable? typeTable,
+  EdgeTypeResolution? edgeResolution,
 }) {
   final scan = CorpusScanResult(
     rawNodes: [
@@ -130,13 +132,13 @@ ScanRoundResult fakeRound({
                     ),
               )),
     schemaResolution: SchemaSourceResolution(
-      typeTable: const TypeTable(
-        {},
-        nonDomainPathsKey: 'non_domain_path_patterns',
-      ),
+      typeTable:
+          typeTable ??
+          const TypeTable({}, nonDomainPathsKey: 'non_domain_path_patterns'),
       pathPatternSource: pathSource,
     ),
     isDegraded: isDegraded,
+    edgeResolution: edgeResolution,
   );
 }
 
@@ -163,6 +165,9 @@ class FakeScanRound extends ScanRoundNotifier {
   ScanRoundResult? Function() produce;
   final ScanRoundResult? initial;
   final Duration latency;
+
+  /// 非 `null` 時，輪次產生會停在 Running，直到此 future 完成。
+  Future<void>? hold;
 
   int ensureCalls = 0;
   int rescanCalls = 0;
@@ -231,6 +236,8 @@ class FakeScanRound extends ScanRoundNotifier {
     // 讓出一個 microtask，確保呼叫端先登記 _inFlight 再完成。
     await Future<void>.value();
     if (latency > Duration.zero) await Future<void>.delayed(latency);
+    final held = hold;
+    if (held != null) await held;
     if (generation != _generation) return null;
     _inFlight = null;
     final ScanRoundResult? result;
