@@ -4,8 +4,8 @@ title: "編輯能力：寫入路徑、寫入前閘門與寫入結果"
 status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
-updated: "2026-11-10"
-version: "1.1"
+updated: "2026-11-11"
+version: "1.2"
 owner: L54-main
 has_functional_requirements: true
 
@@ -76,6 +76,10 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - 比較用位元組內容本身，不用雜湊（〈2026-09-10〉A-2：單檔 KB 級、短生命週期比對）。
 - H 以 `git -C <工作區根> show HEAD:./<工作區相對路徑>` 取得。`./` 前綴使路徑相對於 `-C` 指定的目錄解析，工作區可以是 repo 的子目錄。stdout 以位元組讀取，不經字元解碼。結束碼 0 為 H 存在；結束碼 128 且 stderr 指出路徑不在 HEAD 中，為 H 不存在；其他情況為 H 無法判定。後兩者都走快照分支。
 - App 發出的 `git` 呼叫一律在環境中設 `LC_ALL=C`（比照 SPEC-008 FR-01 規則 1）。理由：上一條以 stderr 內容區分「H 不存在」與「H 無法判定」，而 `git` 的 stderr 會依 `LANG`／`LC_MESSAGES` 翻譯，不固定語系時判定結果會隨使用者的語系設定改變。
+- **`git` 子行程逾時 5 秒**（用戶裁定 2026-11-11，`1.0.0-W3-676`）：本規格發出的 `git` 子行程（步驟 3 的 `git show`、FR-02 的 `hash-object`）各自計時，自子行程啟動起算，超過 5 秒即終止該子行程。逾時歸入既有結果，不新增 `WriteResult` 型別：`git show` 逾時視同 H 無法判定，走快照分支；`hash-object` 逾時歸 `blocked(snapshotFailed)`（FR-02）。
+  - 理由：兩者都在步驟 4 之前，逾時時目標檔與暫存檔都還沒動，「`blocked` 時檔案未動」的保證不變。步驟 6 的 `rename` 一旦執行就無法撤回，逾時若落在其後，回報「檔案未動」就是錯的，因此不對整次寫入計時。
+  - 5 秒的依據：兩個呼叫只讀 HEAD 或寫一個 blob，正常為毫秒級；與 SPEC-006 FR-11 規則 10 監看就緒逾時同值（同屬外部程序可能卡住）。誤判的代價是一次 `snapshotFailed`，使用者重送即可。
+- **本地檔案 IO 不設逾時**：步驟 1、4、5、6 與開始編輯時的讀取為本地檔案操作，不設逾時。比照 SPEC-005 §2.5（`dart:io` 無取消介面）與 SPEC-003 §3.6（重新整理不存在逾時結果）。檔案系統卡住時寫入停在「發出」之後、沒有受理，此為已知限制。
 - 步驟 5 的重比把外部寫入的時窗縮到步驟 5 與步驟 6 之間。該殘餘時窗內的外部寫入會被覆蓋，為已知限制：不採檔案鎖與 `xattr` 標記（〈2026-09-10〉A-2：對不參與協定的外部編輯器無強制力）。
 - **唯讀降級不進本閘門**：由本 domain 在工作區開啟時判定（以工作區根探測 `git`）。可寫或唯讀是本 domain 的狀態，不放進 Workspace：Workspace 的變更理由是資料夾存取方式，放進去會讓它知道編輯的存在（2026-11-10 主控裁定）。工作區不是 git repo，或 `git` 無法執行時，整個工作區進入唯讀降級並常駐降級徽章，編輯控制項不可用。理由：快照與 H 都需要 `git`，缺席時每次寫入都只會落入 `snapshotFailed`；在開啟時降級，與 A-1「依賴缺席 → 降級並常駐徽章」的先例一致（〈2026-09-10〉A-1 末段；`git` 缺席部分為 2026-11-10 主控裁定）。本 domain 不在每次寫入時重判；編輯期間 `git` 變為不可用時，由步驟 3 回傳 `snapshotFailed`，不靜默放行。
 
@@ -114,7 +118,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | 有快照（W ≠ H） | `git cat-file -p <sha> > <路徑>` |
 | 無快照（W = H） | `git checkout HEAD -- <路徑>` |
 
-- 快照失敗（權限、repo 損壞、`git` 無法執行）一律退回阻擋，不得靜默放行。
+- 快照失敗（權限、repo 損壞、`git` 無法執行、`hash-object` 逾時）一律退回阻擋，不得靜默放行。逾時值與終止方式見 FR-01〈`git` 子行程逾時 5 秒〉。
 
 **驗收標準**：
 
@@ -122,6 +126,8 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 寫入結果攜帶快照 SHA，且以 `git cat-file -p <sha>` 取回的內容逐位元組等於 W
 - [ ] fixture repo 設有換行轉換的 `.gitattributes` 時，取回內容仍逐位元組等於 W
 - [ ] `git` 無法執行時回傳 `snapshotFailed`
+- [ ] `hash-object` 超過 5 秒（以注入模擬）時，子行程被終止、回傳 `snapshotFailed`，目標檔內容不變且無暫存檔
+- [ ] `git show` 超過 5 秒（以注入模擬）時，子行程被終止、走快照分支
 
 ---
 
@@ -212,7 +218,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | `blocked` | 閘門阻擋，檔案未動 | 原因：`externallyModified`／`snapshotFailed`／`rewriteNotIsolated` |
 | `ioFailed` | 讀取、寫入或 `rename` 失敗，檔案未動 | IO 失敗分類（不含路徑以外的訊息） |
 
-`ValidationStatus`：`running` → `passed`／`failed`（攜帶新增問題數）／`unavailable`（攜帶原因）。
+`ValidationStatus`：`running` → `passed`／`failed`（攜帶新增問題數）／`unavailable`（攜帶原因：`executableMissing`、`unexpectedExitCode`、`unparsableOutput`、`timedOut`）。
 
 **約束條件**：
 
@@ -227,7 +233,10 @@ depends_on_domains: [workspace, schema, corpus, observability]
   - baseline 為 `unavailable` 時，該次編輯期間所有寫入的驗證結果皆為 `unavailable`。
   - 理由：`uc verify` 分不出提及與使用（上游 tarrragon/claude#98），寫入檔本身的提及會讓每次寫入都報錯。上游修正後 baseline 不再含這類誤報，差集判定照樣成立，條文不需改。
 - **CLI 結束碼對應**：0 為無問題；1 為有問題，解析輸出取得問題集合；2 為驗證器無法定位或解析目標文件。結束碼 2 同樣套用 baseline：baseline 不是 2、寫入後才出現 2，判為 `failed`；baseline 已是 2 時，寫入後的 2 屬既有問題，不判 `failed`。理由：寫入已通過 Corpus 的隔離檢查，驗證器卻變得無法解析，代表兩套解析不一致，正是要浮上來的索引不同步；而驗證器原本就無法解析的檔案，若每次寫入都判 `failed`，就與「baseline 已有的問題不算驗證失敗」矛盾。
-- **`unavailable` 的情況**：`uv` 或 doc CLI 無法執行（含 shim 找不到 skill）、結束碼不在上述三值、或輸出無法解析。不得視為 `passed`（系統層 §4.4：系統內建 python3 執行 doc CLI 會 `TypeError`）。
+- **`unavailable` 的情況**：`uv` 或 doc CLI 無法執行（含 shim 找不到 skill，原因 `executableMissing`）、結束碼不在上述三值（`unexpectedExitCode`）、輸出無法解析（`unparsableOutput`），或驗證子行程逾時（`timedOut`）。不得視為 `passed`（系統層 §4.4：系統內建 python3 執行 doc CLI 會 `TypeError`）。
+- **驗證子行程逾時 30 秒**（用戶裁定 2026-11-11，`1.0.0-W3-676`）：baseline 與寫入後驗證的每一個 CLI 子行程（`doc validate`、`doc uc verify`）各自計時，自子行程啟動起算，超過 30 秒即終止該子行程，該次驗證為 `unavailable(timedOut)`。baseline 逾時時依上一條「baseline 為 `unavailable`」規則，該次編輯期間的驗證皆為 `unavailable`；放棄並重讀時重跑 baseline。
+  - 理由：CLI 本身約 0.35＋0.52 秒（NFR-01），經 `uv run` 另加行程啟動，`uv` 第一次執行可能要先建立環境，可達數秒以上。驗證不阻擋輸入（NFR-01），逾時設長的成本低；設短則第一次執行就可能誤報無法驗證，而 baseline 誤報會使整次編輯的驗證皆無法判定。
+  - 驗證逾時不影響寫入結果：寫入已受理為 `written`，檔案不回滾（同驗證失敗）。
 
 **驗收標準**：
 
@@ -237,6 +246,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 改寫使問題所在行號位移時，不因行號改變判為新增問題
 - [ ] baseline 結束碼為 2 時，寫入後結束碼仍為 2 不判 `failed`；baseline 結束碼非 2、寫入後為 2 時判 `failed`
 - [ ] 驗證器無法執行、或 baseline 為 `unavailable` 時為 `unavailable`
+- [ ] 驗證子行程超過 30 秒（以注入模擬）時，子行程被終止，驗證狀態為 `unavailable(timedOut)`，寫入結果仍為 `written`、檔案未回滾
 
 ---
 
@@ -286,10 +296,10 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | `writeAccepted` | info | — | 路徑、欄位名 |
 | `snapshotTaken` | info | — | 路徑、`blob_sha` |
 | `writeBlocked`（原因 `externallyModified`、`rewriteNotIsolated`） | warning | `gate_blocked` | 路徑、原因 |
-| `writeBlocked`（原因 `snapshotFailed`） | error | `external_process` | 路徑、原因、`git` 結束碼或 `executableMissing` 二擇一 |
+| `writeBlocked`（原因 `snapshotFailed`） | error | `external_process` | 路徑、原因、`git` 結束碼／`executableMissing`／`timedOut` 三擇一 |
 | `readIoFailed` | error | `platform_io` | 路徑、`osError.errorCode` |
 | `writeIoFailed` | error | `platform_io` | 路徑、`osError.errorCode` |
-| `validationCompleted` | `passed` 為 info；`failed`、`unavailable` 為 warning | `unavailable` 為 `external_process`；其餘無 | 路徑、節點 ID、狀態；`failed` 加新增問題數；`unavailable` 加 CLI 結束碼或原因 enum 二擇一 |
+| `validationCompleted` | `passed` 為 info；`failed`、`unavailable` 為 warning | `unavailable` 為 `external_process`；其餘無 | 路徑、節點 ID、狀態；`failed` 加新增問題數；`unavailable` 加 CLI 結束碼或原因 enum（FR-05，含 `timedOut`）二擇一 |
 
 **約束條件**：
 
@@ -462,6 +472,8 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 讀取或寫入 IO 失敗 | `ioFailed` | 目標檔維持原內容，暫存檔已刪除 | 說明寫入失敗、檔案未改 |
 | 驗證失敗 | `written`＋`failed` | 不回滾 | 驗證狀態顯示新增問題數與取回說明（FR-02） |
 | 驗證器無法執行 | `written`＋`unavailable` | 不回滾 | 驗證狀態顯示無法驗證 |
+| `git` 子行程逾時（5 秒） | `git show`：無（走快照分支）；`hash-object`：`blocked(snapshotFailed)` | 終止子行程；`hash-object` 逾時時不寫入 | 同快照失敗 |
+| 驗證子行程逾時（30 秒） | `written`＋`unavailable(timedOut)` | 終止子行程，不回滾 | 驗證狀態顯示無法驗證 |
 
 ## 設計約束
 
@@ -480,3 +492,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 |------|------|---------|
 | 1.0 | 2026-11-10 | 初始版本（1.0.0-W3-553.1） |
 | 1.1 | 2026-11-10 | FR-01 約束新增：App 發出的 `git` 呼叫一律設 `LC_ALL=C`；FR-02 註明 `hash-object` 同樣適用。出處為 `1.0.0-W3-553.4` 測試設計審查：H 的判定依賴 `git` stderr，stderr 會隨語系翻譯 |
+| 1.2 | 2026-11-11 | `1.0.0-W3-676`（用戶裁定 2026-11-11）：FR-01 新增 `git` 子行程逾時 5 秒（`git show` 逾時視同 H 無法判定、`hash-object` 逾時歸 `snapshotFailed`，不新增 `WriteResult` 型別）與本地檔案 IO 不設逾時；FR-02 快照失敗原因補逾時；FR-05 `unavailable` 原因列舉化並新增 `timedOut`，驗證子行程逾時 30 秒；FR-07 日誌欄位、〈錯誤處理〉表與 FR-02、FR-05 驗收同步。出處為 `1.0.0-W3-553.6` 待裁 6：FieldBlock 的逾時段無法填寫 |
