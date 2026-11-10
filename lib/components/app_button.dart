@@ -41,6 +41,7 @@ class AppButton extends StatefulWidget {
     this.disabledReason,
     this.reasonShownNearby = false,
     this.semanticExpanded,
+    this.autofocus = false,
   }) : assert(
          enabled ||
              reasonShownNearby ||
@@ -86,6 +87,9 @@ class AppButton extends StatefulWidget {
   /// 不需呼叫端外部包裹 `Semantics(expanded: ...)` 即可維持 `AppButton`
   /// 型別（回收 4.34 `ButtonRow` 的 `List<AppButton>` 型別限定）。
   final bool? semanticExpanded;
+
+  /// 掛載後第一個 frame 取得焦點（SPEC-004 4.4〈開啟時取得焦點〉）。
+  final bool autofocus;
 
   @override
   State<AppButton> createState() => _AppButtonState();
@@ -153,6 +157,7 @@ class _AppButtonState extends State<AppButton> {
     final button = TextButton(
       key: widget.testKey,
       onPressed: widget.enabled ? widget.onPressed : null,
+      autofocus: widget.autofocus,
       onFocusChange: _onFocusChange,
       style: TextButton.styleFrom(
         backgroundColor: colors.background,

@@ -29,6 +29,7 @@ class NavItem extends StatefulWidget {
     required this.isSelected,
     required this.onTap,
     required this.testKey,
+    this.focusNode,
   }) : _isAction = false;
 
   /// `action` 變體（SPEC-004 4.7）：側欄底部項，開啟面板，不屬
@@ -40,6 +41,7 @@ class NavItem extends StatefulWidget {
     required this.label,
     required this.onTap,
     required this.testKey,
+    this.focusNode,
   }) : isSelected = false,
        _isAction = true;
 
@@ -62,6 +64,10 @@ class NavItem extends StatefulWidget {
   /// 呼叫端定址 key（SPEC-004 4.7 slot 契約，既有 `nav-item-<destination>`）。
   final Key testKey;
 
+  /// 呼叫端持有的焦點節點（SPEC-004 4.7〈`action` 變體的焦點節點〉）；
+  /// 為 `null` 時元件自建。傳入者由呼叫端 dispose，元件不 dispose。
+  final FocusNode? focusNode;
+
   @override
   State<NavItem> createState() => _NavItemState();
 }
@@ -71,20 +77,38 @@ class _NavItemState extends State<NavItem> {
   /// `ProjectSwitcherEntry` 同範式）。非語意色彩，不進 token 表。
   static const Color _unfocusedBorder = Colors.transparent; // color-exempt
 
-  late final FocusNode _focusNode;
+  FocusNode? _ownedNode;
+
+  FocusNode get _focusNode => widget.focusNode ?? _ownedNode!;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode(debugLabel: 'NavItem');
+    if (widget.focusNode == null) {
+      _ownedNode = FocusNode(debugLabel: 'NavItem');
+    }
     _focusNode.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChange);
-    _focusNode.dispose();
+    _ownedNode?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(NavItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode == widget.focusNode) return;
+    (oldWidget.focusNode ?? _ownedNode!).removeListener(_onFocusChange);
+    if (widget.focusNode == null) {
+      _ownedNode = FocusNode(debugLabel: 'NavItem');
+    } else {
+      _ownedNode?.dispose();
+      _ownedNode = null;
+    }
+    _focusNode.addListener(_onFocusChange);
   }
 
   void _onFocusChange() => setState(() {});

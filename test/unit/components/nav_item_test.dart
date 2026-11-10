@@ -378,4 +378,25 @@ void main() {
       expectNoOverflow(tester);
     });
   });
+
+  group('action 變體 focusNode（§4.7）', () {
+    testWidgets('呼叫端傳入的 FocusNode 可 requestFocus 且元件不 dispose', (tester) async {
+      final node = FocusNode();
+      addTearDown(node.dispose);
+      Widget item() => NavItem.action(
+        icon: icon(),
+        label: 'x',
+        onTap: () {},
+        testKey: testKey,
+        focusNode: node,
+      );
+      await pumpHarness(tester, size: WindowSize.min, child: item());
+      node.requestFocus();
+      await tester.pump();
+      expect(node.hasPrimaryFocus, isTrue);
+      await tester.pumpWidget(const SizedBox());
+      // 元件卸載後節點仍可用（由呼叫端 dispose）。
+      expect(() => node.requestFocus(), returnsNormally);
+    });
+  });
 }

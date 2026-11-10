@@ -63,11 +63,13 @@ class Panel extends StatelessWidget {
     Key? key,
     required List<Widget> children,
     required Key scrollKey,
+    Widget? footer,
   }) : this._(
          key: key,
          variant: PanelVariant.scrollable,
          children: children,
          scrollKey: scrollKey,
+         footer: footer,
        );
 
   const Panel._({
@@ -75,6 +77,7 @@ class Panel extends StatelessWidget {
     required this.variant,
     required this.children,
     this.scrollKey,
+    this.footer,
   });
 
   /// 面板變體。
@@ -86,17 +89,14 @@ class Panel extends StatelessWidget {
   /// 捲動容器錨點（`scrollable` 必填；`standard` 不使用）。
   final Key? scrollKey;
 
+  /// 固定底部 slot（`scrollable` 專用，SPEC-004 4.30〈固定底部 slot〉）：
+  /// 常駐可見、不進入捲動區；不傳時版面不變。
+  final Widget? footer;
+
   @override
   Widget build(BuildContext context) {
     final body = variant == PanelVariant.scrollable
-        ? SingleChildScrollView(
-            key: scrollKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _spacedChildren(),
-            ),
-          )
+        ? _scrollableBody()
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: _spacedChildren(),
@@ -112,6 +112,28 @@ class Panel extends StatelessWidget {
         ),
         child: Padding(padding: EdgeInsets.all(Space.md), child: body),
       ),
+    );
+  }
+
+  /// 捲動區；有 [footer] 時其下多一條固定列（間距 `Space.sm`）。
+  Widget _scrollableBody() {
+    final scroll = SingleChildScrollView(
+      key: scrollKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _spacedChildren(),
+      ),
+    );
+    final footer = this.footer;
+    if (footer == null) return scroll;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: scroll),
+        const SizedBox(height: Space.sm),
+        Align(alignment: Alignment.centerRight, child: footer),
+      ],
     );
   }
 

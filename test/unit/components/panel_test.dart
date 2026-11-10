@@ -461,4 +461,81 @@ void main() {
       expectNoOverflow(tester);
     });
   });
+
+  group('固定底部 slot（§4.30 footer）', () {
+    testWidgets('傳 footer 時捲動區外多一條固定列，捲動不帶動 footer', (tester) async {
+      final scrollKey = UniqueKey();
+      const footerKey = ValueKey('footer-test');
+      await pumpHarness(
+        tester,
+        size: WindowSize.min,
+        child: SizedBox(
+          width: 400,
+          height: 200,
+          child: Panel.scrollable(
+            scrollKey: scrollKey,
+            footer: const SizedBox(key: footerKey, height: 28),
+            children: const [_FixedChild(height: 600)],
+          ),
+        ),
+      );
+      final before = tester.getTopLeft(find.byKey(footerKey));
+      await tester.drag(find.byKey(scrollKey), const Offset(0, -300));
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(footerKey)), before);
+      expect(
+        find.descendant(
+          of: find.byKey(scrollKey),
+          matching: find.byKey(footerKey),
+        ),
+        findsNothing,
+      );
+      expectNoOverflow(tester);
+    });
+
+    testWidgets('footer 單顆 AppButton 靠右且維持固有寬度', (tester) async {
+      final scrollKey = UniqueKey();
+      const buttonKey = ValueKey('footer-button');
+      await pumpHarness(
+        tester,
+        size: WindowSize.min,
+        child: SizedBox(
+          width: 400,
+          height: 200,
+          child: Panel.scrollable(
+            scrollKey: scrollKey,
+            footer: AppButton(
+              testKey: buttonKey,
+              label: 'x',
+              onPressed: () {},
+              variant: AppButtonVariant.text,
+            ),
+            children: const [_FixedChild(height: 40)],
+          ),
+        ),
+      );
+      final button = tester.getRect(find.byKey(buttonKey));
+      final scroll = tester.getRect(find.byKey(scrollKey));
+      expect(button.right, scroll.right);
+      expect(button.width, lessThan(scroll.width));
+    });
+
+    testWidgets('不傳 footer 時沒有 footer 子件', (tester) async {
+      final scrollKey = UniqueKey();
+      await pumpHarness(
+        tester,
+        size: WindowSize.min,
+        child: SizedBox(
+          width: 400,
+          height: 200,
+          child: Panel.scrollable(
+            scrollKey: scrollKey,
+            children: const [_FixedChild(height: 40)],
+          ),
+        ),
+      );
+      expect(find.byKey(scrollKey), findsOneWidget);
+      expectNoOverflow(tester);
+    });
+  });
 }
